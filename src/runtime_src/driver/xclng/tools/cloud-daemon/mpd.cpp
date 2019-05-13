@@ -47,7 +47,6 @@ static void mpd_comm_init(int *handle)
 
     *handle = sockfd;
 }
-
 int main(void)
 {
     int comm_fd, local_fd = -1;
@@ -78,13 +77,9 @@ int main(void)
             mpd_comm_init(&comm_fd);
 
             /* handshake to MSD by sending cloud token id */
-            int64_t i64_host_id = std::stoi(host_id);
-            int64_t cloud_token = i64_host_id;
-            char *data = (char*)&cloud_token;
-            if( write( comm_fd, data, sizeof(cloud_token) ) == -1 ) {
-                std::cout << "Handshake comm_write token failed\n";
-                exit(1);
-            }
+            uint32_t dataLength = htonl(host_id.size());
+            send(comm_fd, &dataLength, sizeof(uint32_t), MSG_CONFIRM);
+            send(comm_fd, host_id.c_str(), host_id.size(), MSG_CONFIRM);
 
             local_fd = xclMailbox( i );
             if (local_fd < 0) {

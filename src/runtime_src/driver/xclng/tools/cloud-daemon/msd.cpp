@@ -6,13 +6,90 @@
 #include <iostream>
 #include <string>
 #include <wordexp.h>
+#include <vector>
+#include <sstream>
 
 #include "xclhal2.h"
 #include "common.h"
 
+#define MAX_TOKEN_LEN 32
+
 std::string host_ip;
 std::string host_port;
 std::string mbx_switch;
+std::vector<std::string> boards;
+
+/*
+ * parse configuration file
+ */
+int parse_cfg(std::string filename)
+{
+    std::ifstream file(filename);
+    std::string line;
+    int i = 0;
+    while (std::getline(file, line))
+    {
+        std::istringstream is_line(line);
+        std::string key;
+        if (std::getline(is_line, key, '=')) {
+            std::string value;
+            if (std::getline(is_line, value)) {
+                std::cout << "key: " << key << std::endl;
+                std::cout << "value: " << value << std::endl;
+                if (key == "board") {
+                    std::cout << "board[" << i << "]: " << value << std::endl;
+                    if (value.size() > MAX_TOKEN_LEN) {
+                        std::cout << "board token is too long, please reconfigure, maxlen: " 
+                                  << MAX_TOKEN_LEN << std::endl;
+                        return -EINVAL;
+                    }
+                    boards.push_back(value);
+                    i++;
+                    continue;
+                }
+                if (key == "ip") {
+                    host_ip = value;
+                    continue;
+                }
+                if (key == "port") {
+                    host_port = value;
+                    continue;
+                }
+                if (key == "switch") { 
+                    mbx_switch = value;
+                    continue;
+                }
+            } else {
+                std::cout << "comment: " << key << std::endl;
+            }
+        }
+    }
+
+    if( i == 0 ) {
+        std::cout << "Invalid configuration file -- no device found.\n";
+        return -ENODEV;
+    }
+        
+    return i;
+}
+
+/*
+ * Lookup token and get index
+ */
+int lookup_board(std::string val)
+{
+    size_t found = val.find_last_not_of('\0');
+    if (found != std::string::npos)
+        val.erase(found+1);
+
+    std::vector<std::string>::iterator it = std::find(boards.begin(), boards.end(), val);
+    if (it == boards.end()) {
+        std::cout << "Device not found.\n";
+        return -ENODEV;
+    }
+    std::cout << "Device found.\n";
+    return std::distance(boards.begin(), it);
+}
 
 /*
  * Example code to setup communication channel between vm and host.
@@ -60,10 +137,10 @@ static void msd_comm_init(int *handle)
         // Accept the data packet from client and verification
         connfd = accept(sockfd, (SA*)&cli, (socklen_t*)&len);
         if (connfd < 0) {
-            perror("server acccept failed...");
+            perror("server accept failed...");
             continue;
         } else {
-            printf("server acccept the client...\n");
+            printf("server accept the client...\n");
         }
 
         //In case there are multiple VMs created on the same host,
@@ -92,46 +169,47 @@ int main( void )
     // mgmt sysf with xclMailboxMgmtPutID().
     wordexp_t p;
     char **w;
-    wordexp( "$XILINX_XRT/etc/msd-host.config", &p, 0 );
+    wordexp( /*"$XILINX_XRT/etc/msd-host.config"*/"config.cfg", &p, 0 );
     w = p.we_wordv;
     std::string config_path(*w);
     wordfree( &p );
 
-    std::ifstream file( config_path );
-    std::getline(file, host_ip);
-    if (host_ip.length() <= std::string("ip=").length()) {
-        std::cout << "Failed to parse config file: " << config_path << ", exiting.\n";
-        file.close();
+    if (parse_cfg( config_path ) <= 0)
         return -EINVAL;
-    }
-    host_ip = host_ip.substr( std::string("ip=").length(), host_ip.length() );
-    std::getline(file, host_port);
-    host_port = host_port.substr( std::string("port=").length(), host_port.length() );
-    std::getline(file, mbx_switch);
-    mbx_switch = mbx_switch.substr( std::string("switch=").length(), mbx_switch.length() );
-    file.close();
 
     // Write to config_mailbox_comm_id in format "127.0.0.1,12345,0", where 0 is the device index.
     int numDevs = 0;
-    while (xclMailboxMgmtPutID(numDevs, std::string(host_ip+","+host_port+","+std::to_string(numDevs)+";").c_str(), mbx_switch.c_str()) != -ENODEV)
-        numDevs++;
-
-    for (int i = 0; i < numDevs; i++) {
-        msd_comm_init(&comm_fd); // blocks waiting for connection, then forks
-
-        // receive cloud token and map to device index
-        int64_t cloud_token = -1;
-        char *data = (char*)&cloud_token;
-        recv( comm_fd, data, sizeof(cloud_token), 0 );
-        std::cout << "cloud token received: " << cloud_token << std::endl;
-
-        // only reached by child process
-        local_fd = xclMailboxMgmt( cloud_token );
-        if (local_fd < 0) {
-            std::cout << "xclMailboxMgmt(): " << errno << std::endl;
+    for (numDevs; numDevs < boards.size(); numDevs++) {
+        if (xclMailboxMgmtPutID(numDevs, std::string(host_ip+","+host_port+","+boards.at(numDevs)+";").c_str(), mbx_switch.c_str())) {
+            std::cout << "xclMailboxMgmtPutID(): " << errno << std::endl;
             return errno;
         }
-        break;
+    }
+
+    // blocks waiting for connection, then forks child process from here
+    msd_comm_init(&comm_fd); 
+
+    // handshake with MPD to identify device
+    std::string cloud_token;
+    uint32_t dataLength;
+    recv(comm_fd, &dataLength, sizeof(uint32_t), 0); // Receive the message length
+    dataLength = ntohl(dataLength);                  // Ensure host system byte order
+    std::vector<char> buf(MAX_TOKEN_LEN, '\0');      // Allocate a receive buffer
+    recv(comm_fd, &(buf[0]), dataLength, 0);         // Receive the string data
+    cloud_token.append( buf.cbegin(), buf.cend() );
+
+    std::cout << "cloud token received: " << cloud_token << std::endl;
+
+    int devIdx = lookup_board(cloud_token);
+    if (devIdx < 0)
+        return devIdx;
+
+    std::cout << "device index of token: " << devIdx << std::endl;
+
+    local_fd = xclMailboxMgmt( devIdx );
+    if (local_fd < 0) {
+        std::cout << "xclMailboxMgmt(): " << errno << std::endl;
+        return errno;
     }
 
     if ((comm_fd >= 0) && (local_fd >= 0)) {
