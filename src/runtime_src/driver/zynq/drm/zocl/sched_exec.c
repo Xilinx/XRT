@@ -174,9 +174,7 @@ cu_idx_from_mask(unsigned int cu_idx, unsigned int mask_idx)
 	return cu_idx + (mask_idx << 5);
 }
 
-/*
- * explicitly set cucu_valid bitmap to valid(1) for cuid
- */
+/* explicitly set cucu_valid bitmap to valid(1) for cuid */
 static inline void
 zocl_cu_set_valid(struct sched_exec_core *exec_core, unsigned int cu_idx)
 {
@@ -184,9 +182,7 @@ zocl_cu_set_valid(struct sched_exec_core *exec_core, unsigned int cu_idx)
 		(1 << cu_idx_in_mask(cu_idx));
 }
 
-/*
- * explicitly set cu_valid bitmap to invalid(0) for cuid
- */
+/* explicitly set cu_valid bitmap to invalid(0) for cuid */
 static inline void
 zocl_cu_set_invalid(struct sched_exec_core *exec_core, unsigned int cu_idx)
 {
@@ -194,9 +190,7 @@ zocl_cu_set_invalid(struct sched_exec_core *exec_core, unsigned int cu_idx)
 		(1 << cu_idx_in_mask(cu_idx));
 }
 
-/*
- * return values: valid(1)/invalid(0)
- */
+/* return values: valid(1)/invalid(0) */
 static inline unsigned int
 zocl_cu_is_valid(struct sched_exec_core *exec_core, unsigned int cu_idx)
 {
@@ -601,7 +595,7 @@ init_cus(struct sched_cmd *cmd)
 			if (!zocl_cu_is_valid(zdev->exec, cu_idx)) {
 				DRM_WARN("Init CU %d fail: NOT a valid CU.\n",
 				    cu_idx);
-				goto done;
+				continue;
 			}
 
 			if (cu_idx >= zdev->exec->num_cus) {
@@ -701,9 +695,7 @@ configure(struct sched_cmd *cmd)
 	}
 
 	for (i = 0; i < exec->num_cus; i++) {
-		/*
-		 * CU address should be masked by encoded handshake for KDS.
-		 */
+		/* CU address should be masked by encoded handshake for KDS. */
 		cu_addr = cfg->data[i] & ZOCL_KDS_MASK;
 		if (cu_addr == ZOCL_CU_FREE_RUNNING) {
 			DRM_INFO("CU %x is free-running.", cfg->data[i]);
@@ -1300,19 +1292,8 @@ static int
 add_cmd(struct sched_cmd *cmd)
 {
 	int ret = 0;
-	int num_masks = 0;
-	int mask_idx = 0;
 
 	SCHED_DEBUG("-> add_cmd\n");
-
-	/*
-	 * We always check if given cmd is set wrong CU mask.
-	 */
-	num_masks = cu_masks(cmd);
-	for (mask_idx = 0; mask_idx < num_masks; mask_idx++) {
-		if (cmd->packet->data[mask_idx] & cmd->exec->cu_valid[mask_idx])
-			return -EINVAL;
-	}
 
 	cmd->cu_idx = -1;
 	cmd->slot_idx = -1;
@@ -2450,7 +2431,7 @@ int sched_fini_exec(struct drm_device *drm)
 			if (zocl_cu_is_valid(zdev->exec, i))
 				free_irq(zdev->irq[i], zdev);
 		}
-        }
+	}
 
 	if (zdev->exec->cq_thread)
 		kthread_stop(zdev->exec->cq_thread);
