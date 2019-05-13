@@ -1,5 +1,8 @@
-XRT Platforms
--------------
+.. _platforms.rst:
+
+
+Platform Overview
+*****************
 
 .. image:: XRT-Architecture.svg
    :align: center
@@ -9,7 +12,7 @@ From user perspective there is very little porting effort when migrating an
 application from one class of platform to another.
 
 PCIe Based Platforms
-~~~~~~~~~~~~~~~~~~~~
+====================
 
 1. VCU1525
 2. U200
@@ -21,7 +24,7 @@ PCIe based platforms are supported on x86_64, PPC64LE and AARCH64 host architect
 The shell (previously known as DSA) has two physical functions: *mgmt pf* and *user pf*.
 
 MGMT PF
-.......
+-------
 
 XRT Linux kernel driver *xclmgmt* binds to mgmt pf. The driver is organized into subdevices and handles
 the following functionality:
@@ -36,28 +39,30 @@ the following functionality:
 8.  Hardware mailbox
 9.  Interrupt handling for AXI Firewall and Mailbox
 10. Device DNA discovery and validation
+11. ECC handling
 
 USER PF
-.......
+-------
 
 XRT Linux kernel driver *xocl* binds to user pf. The driver is organized into subdevices and handles the
 following functionality:
 
-1.  Device memory management as abstracted buffer objects
-2.  XDMA memory mapped PCIe DMA engine programming
-3.  QDMA streaming DMA engine programming
-4.  Multi-process aware context management
-5.  Standardized compute unit execution management (optionally with help of ERT) for client processes
-6.  Interrupt handling for DMA, Compute unit completion and Mailbox
-7.  Buffer object migration between device and host as DMA operation
-8.  Queue creation/deletion read/write operation for sreaming DMA operation
-9.  AIO support for the streaming queues
-10. Buffer import and export via DMA-BUF
-11. PCIe peer-to-peer buffer mapping and sharing
+1.  Device memory topology discovery and memory management
+2.  Device memory management as abstracted buffer objects
+3.  XDMA memory mapped PCIe DMA engine programming
+4.  QDMA streaming DMA engine programming
+5.  Multi-process aware context management
+6.  Standardized compute unit execution management (optionally with help of ERT) for client processes
+7.  Interrupt handling for DMA, Compute unit completion and Mailbox
+8.  Buffer object migration between device and host as DMA operation
+9.  Queue creation/deletion read/write operation for sreaming DMA operation
+10. AIO support for the streaming queues
+11. Buffer import and export via DMA-BUF
+12. PCIe peer-to-peer buffer mapping and sharing
 
 
-MPSoC Based Embedded Platforms
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Zynq Ultrascale+ MPSoC Based Embedded Platforms
+===============================================
 
 1. ZCU19
 2. ZCU102
@@ -73,3 +78,4 @@ following functionality
 3.  Standardized compute unit execution management on behalf of client processes
 4.  xclbin download for platforms with Partial Reconfiguration support
 5.  Buffer import and export via DMA-BUF
+6.  Interrupt handling for compute unit completion

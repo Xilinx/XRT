@@ -1,3 +1,5 @@
+.. _system_requirements.rst:
+
 System Requirements
 -------------------
 
