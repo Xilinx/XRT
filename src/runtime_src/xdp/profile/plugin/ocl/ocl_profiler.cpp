@@ -87,8 +87,8 @@ namespace xdp {
 
     if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE)) {
       for (auto device : platform->get_device_range()) {
-        auto power_profile = std::make_shared<OclPowerProfile>(device->get_xrt_device(), Plugin, device->get_unique_name());
-        PowerProfileList.push_back(power_profile);
+        auto power_profile = std::make_unique<OclPowerProfile>(device->get_xrt_device(), Plugin, device->get_unique_name());
+        PowerProfileList.push_back(std::move(power_profile));
       }
     }
 

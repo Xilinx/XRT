@@ -103,7 +103,7 @@ namespace xdp {
     std::shared_ptr<xocl::platform> Platform;
     std::shared_ptr<XoclPlugin> Plugin;
     std::unique_ptr<RTProfile> ProfileMgr;
-    std::vector<std::shared_ptr<OclPowerProfile>> PowerProfileList;
+    std::vector<std::unique_ptr<OclPowerProfile>> PowerProfileList;
   };
 
   /*
