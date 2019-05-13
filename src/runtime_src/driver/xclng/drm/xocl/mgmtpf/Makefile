@@ -58,7 +58,7 @@ all:
 
 install: all
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules_install
-	depmod -a
+	@depmod -a || (echo "Error: 'depmod -a' failed.")
 	install -m 644 10-xclmgmt.rules /etc/udev/rules.d
 	-rmmod -s xclmgmt || true
 	-modprobe xclmgmt
