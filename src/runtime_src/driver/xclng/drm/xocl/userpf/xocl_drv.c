@@ -268,6 +268,7 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	struct xocl_dev *xdev = (struct xocl_dev *)arg;
 	struct mailbox_req *req = (struct mailbox_req *)data;
 	struct mailbox_peer_state *st = NULL;
+	int delay_jiffies = 0;
 
 	if (err != 0)
 		return;
@@ -276,7 +277,8 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 
 	switch (req->req) {
 	case MAILBOX_REQ_FIREWALL:
-		(void) xocl_hot_reset(xdev, true);
+		delay_jiffies = msecs_to_jiffies(XOCL_RESET_DELAY);
+		schedule_delayed_work(&xdev->core.reset_work, delay_jiffies);
 		break;
 	case MAILBOX_REQ_MGMT_STATE:
 		st = (struct mailbox_peer_state *)req->data;

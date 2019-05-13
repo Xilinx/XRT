@@ -89,75 +89,59 @@ inline void* wordcopy(void *dst, const void* src, size_t bytes)
 }
 
 /*
- * newDeviceName()
- */
-const std::string xocl::newDeviceName(const std::string& name)
-{
-    auto i = deviceOld2NewNameMap.find(name);
-    return (i == deviceOld2NewNameMap.end()) ? name : i->second;
-}
-
-/*
  * numClocks()
  */
-unsigned xocl::numClocks(const std::string& name)
+inline unsigned numClocks(const std::string& name)
 {
     return name.compare(0, 15, "xilinx_adm-pcie", 15) ? 2 : 1;
 }
 
-/*
- * operator <<
- */
-std::ostream& xocl::operator<< (std::ostream &strm, const AddressRange &rng)
-{
-    strm << "[" << rng.first << ", " << rng.second << "]";
-    return strm;
-}
-
 inline int io_setup(unsigned nr, aio_context_t *ctxp)
 {
-        return syscall(__NR_io_setup, nr, ctxp);
+  return syscall(__NR_io_setup, nr, ctxp);
 }
 
 inline int io_destroy(aio_context_t ctx)
 {
-        return syscall(__NR_io_destroy, ctx);
+  return syscall(__NR_io_destroy, ctx);
 }
 
 inline int io_submit(aio_context_t ctx, long nr,  struct iocb **iocbpp)
 {
-        return syscall(__NR_io_submit, ctx, nr, iocbpp);
+  return syscall(__NR_io_submit, ctx, nr, iocbpp);
 }
 
 inline int io_getevents(aio_context_t ctx, long min_nr, long max_nr,
                 struct io_event *events, struct timespec *timeout)
 {
-        return syscall(__NR_io_getevents, ctx, min_nr, max_nr, events, timeout);
+  return syscall(__NR_io_getevents, ctx, min_nr, max_nr, events, timeout);
 }
 
+namespace xocl {
+
 /*
- * XOCLShim()
+ * shim()
  */
-xocl::XOCLShim::XOCLShim(unsigned index,
-                         const char *logfileName,
-                         xclVerbosityLevel verbosity) : mVerbosity(verbosity),
-                                                        mUserHandle(-1),
-                                                        mMgtHandle(-1),
-                                                        mUserMap(nullptr),
-                                                        mBoardNumber(index),
-                                                        mMgtMap(nullptr),
-                                                        mLocked(false),
-                                                        mOffsets{0x0, 0x0, OCL_CTLR_BASE, 0x0, 0x0},
-                                                        mMemoryProfilingNumberSlots(0),
-                                                        mAccelProfilingNumberSlots(0),
-                                                        mStallProfilingNumberSlots(0),
-                                                        mStreamProfilingNumberSlots(0)
+shim::shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
+  : mVerbosity(verbosity),
+    mUserHandle(-1),
+    mMgtHandle(-1),
+    mStreamHandle(-1),
+    mUserMap(nullptr),
+    mBoardNumber(index),
+    mMgtMap(nullptr),
+    mLocked(false),
+    mLogfileName(nullptr),
+    mOffsets{0x0, 0x0, OCL_CTLR_BASE, 0x0, 0x0},
+    mMemoryProfilingNumberSlots(0),
+    mAccelProfilingNumberSlots(0),
+    mStallProfilingNumberSlots(0),
+    mStreamProfilingNumberSlots(0)
 {
-    mLogfileName = nullptr;
     init(index, logfileName, verbosity);
 }
 
-int xocl::XOCLShim::dev_init()
+int shim::dev_init()
 {
     auto dev = pcidev::get_dev(mBoardNumber);
 
@@ -232,7 +216,7 @@ int xocl::XOCLShim::dev_init()
     return 0;
 }
 
-void xocl::XOCLShim::dev_fini()
+void shim::dev_fini()
 {
     auto dev = pcidev::get_dev(mBoardNumber);
 
@@ -270,7 +254,7 @@ void xocl::XOCLShim::dev_fini()
 /*
  * init()
  */
-void xocl::XOCLShim::init(unsigned index, const char *logfileName,
+void shim::init(unsigned index, const char *logfileName,
     xclVerbosityLevel verbosity)
 {
     if( logfileName != nullptr ) {
@@ -296,9 +280,9 @@ void xocl::XOCLShim::init(unsigned index, const char *logfileName,
 }
 
 /*
- * ~XOCLShim()
+ * ~shim()
  */
-xocl::XOCLShim::~XOCLShim()
+shim::~shim()
 {
     if (mLogStream.is_open()) {
         mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
@@ -311,26 +295,20 @@ xocl::XOCLShim::~XOCLShim()
 /*
  * pcieBarRead()
  */
-int xocl::XOCLShim::pcieBarRead(unsigned int pf_bar, unsigned long long offset, void* buffer, unsigned long long length)
+int shim::pcieBarRead(unsigned int pf_bar, unsigned long long offset, void* buffer, unsigned long long length)
 {
     const char *mem = 0;
     switch (pf_bar) {
-        case 0:
-        {
-            // BAR0 on PF0
-            mem = mUserMap;
-            break;
-        }
-        case 0x10000:
-        {
-            // BAR0 on PF1
-            mem = mMgtMap;
-            break;
-        }
-        default:
-        {
-            return -1;
-        }
+    case 0:
+      // BAR0 on PF0
+      mem = mUserMap;
+      break;
+    case 0x10000:
+      // BAR0 on PF1
+      mem = mMgtMap;
+      break;
+    default:
+      return -1;
     }
     wordcopy(buffer, mem + offset, length);
     return 0;
@@ -339,26 +317,20 @@ int xocl::XOCLShim::pcieBarRead(unsigned int pf_bar, unsigned long long offset, 
 /*
  * pcieBarWrite()
  */
-int xocl::XOCLShim::pcieBarWrite(unsigned int pf_bar, unsigned long long offset, const void* buffer, unsigned long long length)
+int shim::pcieBarWrite(unsigned int pf_bar, unsigned long long offset, const void* buffer, unsigned long long length)
 {
     char *mem = 0;
     switch (pf_bar) {
-        case 0:
-        {
-            // BAR0 on PF0
-            mem = mUserMap;
-            break;
-        }
-        case 0x10000:
-        {
-            // BAR0 on PF1
-            mem = mMgtMap;
-            break;
-        }
-        default:
-        {
-            return -1;
-        }
+    case 0:
+      // BAR0 on PF0
+      mem = mUserMap;
+      break;
+    case 0x10000:
+      // BAR0 on PF1
+      mem = mMgtMap;
+      break;
+    default:
+      return -1;
     }
 
     wordcopy(mem + offset, buffer, length);
@@ -368,7 +340,7 @@ int xocl::XOCLShim::pcieBarWrite(unsigned int pf_bar, unsigned long long offset,
 /*
  * xclLogMsg()
  */
-int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, va_list args)
+int shim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, va_list args)
 {
     va_list args_bak;
     // vsnprintf will mutate va_list so back it up
@@ -403,7 +375,7 @@ int xocl::XOCLShim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, cons
 /*
  * xclWrite()
  */
-size_t xocl::XOCLShim::xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
+size_t shim::xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
 {
     switch (space) {
         case XCL_ADDR_SPACE_DEVICE_PERFMON:
@@ -444,7 +416,7 @@ size_t xocl::XOCLShim::xclWrite(xclAddressSpace space, uint64_t offset, const vo
 /*
  * xclRead()
  */
-size_t xocl::XOCLShim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
+size_t shim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
 {
     if (mLogStream.is_open()) {
         mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << space << ", "
@@ -495,7 +467,7 @@ size_t xocl::XOCLShim::xclRead(xclAddressSpace space, uint64_t offset, void *hos
  *
  * Assume that the memory is always created for the device ddr for now. Ignoring the flags as well.
  */
-unsigned int xocl::XOCLShim::xclAllocBO(size_t size, xclBOKind domain, unsigned flags)
+unsigned int shim::xclAllocBO(size_t size, xclBOKind domain, unsigned flags)
 {
     //std::cout << "alloc bo with combined flags " << std::hex << flags ;
     unsigned flag = flags & 0xFFFFFFLL;
@@ -510,7 +482,7 @@ unsigned int xocl::XOCLShim::xclAllocBO(size_t size, xclBOKind domain, unsigned 
 /*
  * xclAllocUserPtrBO()
  */
-unsigned int xocl::XOCLShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
+unsigned int shim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
 {
     //std::cout << "User alloc bo with combined flags " << flags ;
     unsigned flag = flags & 0xFFFFFFLL;
@@ -526,7 +498,7 @@ unsigned int xocl::XOCLShim::xclAllocUserPtrBO(void *userptr, size_t size, unsig
 /*
  * xclFreeBO()
  */
-void xocl::XOCLShim::xclFreeBO(unsigned int boHandle)
+void shim::xclFreeBO(unsigned int boHandle)
 {
     drm_gem_close closeInfo = {boHandle, 0};
     ioctl(mUserHandle, DRM_IOCTL_GEM_CLOSE, &closeInfo);
@@ -535,7 +507,7 @@ void xocl::XOCLShim::xclFreeBO(unsigned int boHandle)
 /*
  * xclWriteBO()
  */
-int xocl::XOCLShim::xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek)
+int shim::xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek)
 {
     int ret;
     drm_xocl_pwrite_bo pwriteInfo = { boHandle, 0, seek, size, reinterpret_cast<uint64_t>(src) };
@@ -546,7 +518,7 @@ int xocl::XOCLShim::xclWriteBO(unsigned int boHandle, const void *src, size_t si
 /*
  * xclReadBO()
  */
-int xocl::XOCLShim::xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip)
+int shim::xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip)
 {
     int ret;
     drm_xocl_pread_bo preadInfo = { boHandle, 0, skip, size, reinterpret_cast<uint64_t>(dst) };
@@ -557,7 +529,7 @@ int xocl::XOCLShim::xclReadBO(unsigned int boHandle, void *dst, size_t size, siz
 /*
  * xclMapBO()
  */
-void *xocl::XOCLShim::xclMapBO(unsigned int boHandle, bool write)
+void *shim::xclMapBO(unsigned int boHandle, bool write)
 {
     drm_xocl_info_bo info = { boHandle, 0, 0 };
     int result = ioctl(mUserHandle, DRM_IOCTL_XOCL_INFO_BO, &info);
@@ -578,7 +550,7 @@ void *xocl::XOCLShim::xclMapBO(unsigned int boHandle, bool write)
 /*
  * xclSyncBO()
  */
-int xocl::XOCLShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset)
+int shim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset)
 {
     int ret;
     drm_xocl_sync_bo_dir drm_dir = (dir == XCL_BO_SYNC_BO_TO_DEVICE) ?
@@ -592,7 +564,7 @@ int xocl::XOCLShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, siz
 /*
  * xclCopyBO() - TO BE REMOVED
  */
-int xocl::XOCLShim::xclCopyBO(unsigned int dst_boHandle,
+int shim::xclCopyBO(unsigned int dst_boHandle,
     unsigned int src_boHandle, size_t size, size_t dst_offset,
     size_t src_offset)
 {
@@ -619,7 +591,7 @@ int xocl::XOCLShim::xclCopyBO(unsigned int dst_boHandle,
 /*
  * xclSysfsGetErrorStatus()
  */
-void xocl::XOCLShim::xclSysfsGetErrorStatus(xclErrorStatus& stat)
+void shim::xclSysfsGetErrorStatus(xclErrorStatus& stat)
 {
     std::string errmsg;
     unsigned int status;
@@ -647,7 +619,7 @@ void xocl::XOCLShim::xclSysfsGetErrorStatus(xclErrorStatus& stat)
 /*
  * xclGetErrorStatus()
  */
-int xocl::XOCLShim::xclGetErrorStatus(xclErrorStatus *info)
+int shim::xclGetErrorStatus(xclErrorStatus *info)
 {
 #ifdef AXI_FIREWALL
     xclSysfsGetErrorStatus(*info);
@@ -658,7 +630,7 @@ int xocl::XOCLShim::xclGetErrorStatus(xclErrorStatus *info)
 /*
  * xclSysfsGetDeviceInfo()
  */
-void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
+void shim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
 {
     std::string s;
     std::string errmsg;
@@ -805,7 +777,7 @@ void xocl::XOCLShim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
 /*
  * xclGetDeviceInfo2()
  */
-int xocl::XOCLShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
+int shim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
 {
     std::memset(info, 0, sizeof(xclDeviceInfo2));
     info->mMagic = 0X586C0C6C;
@@ -820,7 +792,7 @@ int xocl::XOCLShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
 /*
  * resetDevice()
  */
-int xocl::XOCLShim::resetDevice(xclResetKind kind)
+int shim::resetDevice(xclResetKind kind)
 {
     int ret;
     std::string err;
@@ -847,7 +819,7 @@ int xocl::XOCLShim::resetDevice(xclResetKind kind)
     return ret ? errno : 0;
 }
 
-int xocl::XOCLShim::p2pEnable(bool enable, bool force)
+int shim::p2pEnable(bool enable, bool force)
 {
     const std::string input = "1\n";
     std::string err;
@@ -891,7 +863,7 @@ int xocl::XOCLShim::p2pEnable(bool enable, bool force)
 /*
  * xclLockDevice()
  */
-bool xocl::XOCLShim::xclLockDevice()
+bool shim::xclLockDevice()
 {
     if (!is_multiprocess_mode() && flock(mUserHandle, LOCK_EX | LOCK_NB) == -1)
         return false;
@@ -903,7 +875,7 @@ bool xocl::XOCLShim::xclLockDevice()
 /*
  * xclUnlockDevice()
  */
-bool xocl::XOCLShim::xclUnlockDevice()
+bool shim::xclUnlockDevice()
 {
     if (!is_multiprocess_mode())
       flock(mUserHandle, LOCK_UN);
@@ -915,7 +887,7 @@ bool xocl::XOCLShim::xclUnlockDevice()
 /*
  * xclReClock2()
  */
-int xocl::XOCLShim::xclReClock2(unsigned short region, const unsigned short *targetFreqMHz)
+int shim::xclReClock2(unsigned short region, const unsigned short *targetFreqMHz)
 {
     int ret;
     xclmgmt_ioc_freqscaling obj;
@@ -931,7 +903,7 @@ int xocl::XOCLShim::xclReClock2(unsigned short region, const unsigned short *tar
 /*
  * zeroOutDDR()
  */
-bool xocl::XOCLShim::zeroOutDDR()
+bool shim::zeroOutDDR()
 {
     // Zero out the DDR so MIG ECC believes we have touched all the bits
     // and it does not complain when we try to read back without explicit
@@ -951,7 +923,7 @@ bool xocl::XOCLShim::zeroOutDDR()
     return true;
 }
 
-int xocl::XOCLShim::xclLoadXclBinMgmt(const xclBin *buffer)
+int shim::xclLoadXclBinMgmt(const xclBin *buffer)
 {
     int ret = 0;
     const char *xclbininmemory = reinterpret_cast<char*> (const_cast<xclBin*> (buffer));
@@ -997,7 +969,7 @@ int xocl::XOCLShim::xclLoadXclBinMgmt(const xclBin *buffer)
 /*
  * xclLoadXclBin()
  */
-int xocl::XOCLShim::xclLoadXclBin(const xclBin *buffer)
+int shim::xclLoadXclBin(const xclBin *buffer)
 {
     int ret = 0;
     const char *xclbininmemory = reinterpret_cast<char*> (const_cast<xclBin*> (buffer));
@@ -1043,7 +1015,7 @@ int xocl::XOCLShim::xclLoadXclBin(const xclBin *buffer)
 /*
  * xclLoadAxlf()
  */
-int xocl::XOCLShim::xclLoadAxlf(const axlf *buffer)
+int shim::xclLoadAxlf(const axlf *buffer)
 {
     if (mLogStream.is_open()) {
         mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << buffer << std::endl;
@@ -1086,7 +1058,7 @@ int xocl::XOCLShim::xclLoadAxlf(const axlf *buffer)
     return ret;
 }
 
-int xocl::XOCLShim::xclLoadAxlfMgmt(const axlf *buffer)
+int shim::xclLoadAxlfMgmt(const axlf *buffer)
 {
     if (mLogStream.is_open()) {
         mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << buffer << std::endl;
@@ -1120,7 +1092,7 @@ int xocl::XOCLShim::xclLoadAxlfMgmt(const axlf *buffer)
 /*
  * xclExportBO()
  */
-int xocl::XOCLShim::xclExportBO(unsigned int boHandle)
+int shim::xclExportBO(unsigned int boHandle)
 {
     drm_prime_handle info = {boHandle, 0, -1};
     int result = ioctl(mUserHandle, DRM_IOCTL_PRIME_HANDLE_TO_FD, &info);
@@ -1130,7 +1102,7 @@ int xocl::XOCLShim::xclExportBO(unsigned int boHandle)
 /*
  * xclImportBO()
  */
-unsigned int xocl::XOCLShim::xclImportBO(int fd, unsigned flags)
+unsigned int shim::xclImportBO(int fd, unsigned flags)
 {
     drm_prime_handle info = {mNullBO, flags, fd};
     int result = ioctl(mUserHandle, DRM_IOCTL_PRIME_FD_TO_HANDLE, &info);
@@ -1143,7 +1115,7 @@ unsigned int xocl::XOCLShim::xclImportBO(int fd, unsigned flags)
 /*
  * xclGetBOProperties()
  */
-int xocl::XOCLShim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties)
+int shim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties)
 {
     drm_xocl_info_bo info = {boHandle, 0, mNullBO, mNullAddr};
     int result = ioctl(mUserHandle, DRM_IOCTL_XOCL_INFO_BO, &info);
@@ -1155,7 +1127,7 @@ int xocl::XOCLShim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *p
     return result ? -errno : result;
 }
 
-int xocl::XOCLShim::xclGetSectionInfo(void* section_info, size_t * section_size,
+int shim::xclGetSectionInfo(void* section_info, size_t * section_size,
     enum axlf_section_kind kind, int index)
 {
     if(section_info == nullptr || section_size == nullptr)
@@ -1209,7 +1181,7 @@ int xocl::XOCLShim::xclGetSectionInfo(void* section_info, size_t * section_size,
 /*
  * xclSysfsGetUsageInfo()
  */
-void xocl::XOCLShim::xclSysfsGetUsageInfo(drm_xocl_usage_stat& stat)
+void shim::xclSysfsGetUsageInfo(drm_xocl_usage_stat& stat)
 {
     std::string errmsg;
     std::vector<std::string> dmaStatStrs;
@@ -1245,7 +1217,7 @@ void xocl::XOCLShim::xclSysfsGetUsageInfo(drm_xocl_usage_stat& stat)
 /*
  * xclGetUsageInfo()
  */
-int xocl::XOCLShim::xclGetUsageInfo(xclDeviceUsage *info)
+int shim::xclGetUsageInfo(xclDeviceUsage *info)
 {
     drm_xocl_usage_stat stat = { 0 };
 
@@ -1265,11 +1237,11 @@ int xocl::XOCLShim::xclGetUsageInfo(xclDeviceUsage *info)
 /*
  * isGood()
  */
-bool xocl::XOCLShim::isGood() const {
+bool shim::isGood() const {
     return (mUserHandle >= 0);
 }
 
-bool xocl::XOCLShim::isGoodMgmt() const {
+bool shim::isGoodMgmt() const {
     return (mMgtHandle >= 0);
 }
 /*
@@ -1277,151 +1249,32 @@ bool xocl::XOCLShim::isGoodMgmt() const {
  *
  * Returns pointer to valid handle on success, 0 on failure.
  */
-xocl::XOCLShim *xocl::XOCLShim::handleCheck(void *handle)
+shim *shim::handleCheck(void *handle)
 {
     if (!handle) {
         return 0;
     }
-    if (!((XOCLShim *) handle)->isGood()) {
+    if (!((shim *) handle)->isGood()) {
         return 0;
     }
-    return (XOCLShim *) handle;
+    return (shim *) handle;
 }
 
-xocl::XOCLShim *xocl::XOCLShim::handleCheckMgmt(void *handle)
+shim *shim::handleCheckMgmt(void *handle)
 {
     if (!handle) {
         return NULL;
     }
-    if (!((XOCLShim *) handle)->isGoodMgmt()) {
+    if (!((shim *) handle)->isGoodMgmt()) {
         return NULL;
     }
-    return (XOCLShim *) handle;
-}
-/*
- * xclAllocDeviceBuffer()
- */
-uint64_t xocl::XOCLShim::xclAllocDeviceBuffer(size_t size)
-{
-    if (mLogStream.is_open()) {
-        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << size << std::endl;
-    }
-
-    uint64_t result = mNullAddr;
-    unsigned boHandle = xclAllocBO(size, XCL_BO_DEVICE_RAM, 0x0);
-    if (boHandle == mNullBO) {
-        return result;
-    }
-
-    drm_xocl_info_bo boInfo = {boHandle, 0, 0, 0};
-    if (ioctl(mUserHandle, DRM_IOCTL_XOCL_INFO_BO, &boInfo)) {
-        return result;
-    }
-
-    void *hbuf = xclMapBO(boHandle, true);
-    if (hbuf == MAP_FAILED) {
-        xclFreeBO(boHandle);
-        return mNullAddr;
-    }
-    mLegacyAddressTable.insert(boInfo.paddr, size, std::make_pair(boHandle, (char *)hbuf));
-    return boInfo.paddr;
-}
-
-/*
- * xclAllocDeviceBuffer2()
- */
-uint64_t xocl::XOCLShim::xclAllocDeviceBuffer2(size_t size, xclMemoryDomains domain, unsigned flags)
-{
-    if (mLogStream.is_open()) {
-        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << size << ", "
-                   << domain << ", " << flags << std::endl;
-    }
-
-    uint64_t result = mNullAddr;
-    if (domain != XCL_MEM_DEVICE_RAM) {
-        return result;
-    }
-
-    uint64_t ddr = 1;
-    ddr <<= flags;
-    unsigned boHandle = xclAllocBO(size, XCL_BO_DEVICE_RAM, ddr);
-    if (boHandle == mNullBO) {
-        return result;
-    }
-
-    drm_xocl_info_bo boInfo = {boHandle, 0, 0, 0};
-    if (ioctl(mUserHandle, DRM_IOCTL_XOCL_INFO_BO, &boInfo)) {
-        return result;
-    }
-
-    void *hbuf = xclMapBO(boHandle, true);
-    if (hbuf == MAP_FAILED) {
-        xclFreeBO(boHandle);
-        return mNullAddr;
-    }
-    mLegacyAddressTable.insert(boInfo.paddr, size, std::make_pair(boHandle, (char *)hbuf));
-    return boInfo.paddr;
-}
-
-/*
- * xclFreeDeviceBuffer()
- */
-void xocl::XOCLShim::xclFreeDeviceBuffer(uint64_t buf)
-{
-    if (mLogStream.is_open()) {
-        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << buf << std::endl;
-    }
-
-    std::pair<unsigned, char *> bo = mLegacyAddressTable.erase(buf);
-    drm_xocl_info_bo boInfo = {bo.first, 0, 0, 0};
-    if (!ioctl(mUserHandle, DRM_IOCTL_XOCL_INFO_BO, &boInfo)) {
-        munmap(bo.second, boInfo.size);
-    }
-    xclFreeBO(bo.first);
-}
-
-/*
- * xclCopyBufferHost2Device()
- */
-size_t xocl::XOCLShim::xclCopyBufferHost2Device(uint64_t dest, const void *src, size_t size, size_t seek)
-{
-    if (mLogStream.is_open()) {
-        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << dest << ", "
-                   << src << ", " << size << ", " << seek << std::endl;
-    }
-
-    std::pair<unsigned, char *> bo = mLegacyAddressTable.find(dest);
-    std::memcpy(bo.second + seek, src, size);
-    int result = xclSyncBO(bo.first, XCL_BO_SYNC_BO_TO_DEVICE, size, seek);
-    if (result) {
-        return result;
-    }
-    return size;
-}
-
-/*
- * xclCopyBufferDevice2Host()
- */
-size_t xocl::XOCLShim::xclCopyBufferDevice2Host(void *dest, uint64_t src, size_t size, size_t skip)
-{
-    if (mLogStream.is_open()) {
-        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << dest << ", "
-                << src << ", " << size << ", " << skip << std::endl;
-    }
-
-    std::pair<unsigned, char *> bo = mLegacyAddressTable.find(src);
-    int result = xclSyncBO(bo.first, XCL_BO_SYNC_BO_FROM_DEVICE, size, skip);
-    if (result) {
-        return result;
-    }
-    std::memcpy(dest, bo.second + skip, size);
-    return size;
+    return (shim *) handle;
 }
 
 /*
  * xclUnmgdPwrite()
  */
-ssize_t xocl::XOCLShim::xclUnmgdPwrite(unsigned flags, const void *buf, size_t count, uint64_t offset)
+ssize_t shim::xclUnmgdPwrite(unsigned flags, const void *buf, size_t count, uint64_t offset)
 {
     if (flags) {
         return -EINVAL;
@@ -1433,7 +1286,7 @@ ssize_t xocl::XOCLShim::xclUnmgdPwrite(unsigned flags, const void *buf, size_t c
 /*
  * xclUnmgdPread()
  */
-ssize_t xocl::XOCLShim::xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset)
+ssize_t shim::xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset)
 {
     if (flags) {
         return -EINVAL;
@@ -1445,7 +1298,7 @@ ssize_t xocl::XOCLShim::xclUnmgdPread(unsigned flags, void *buf, size_t count, u
 /*
  * xclExecBuf()
  */
-int xocl::XOCLShim::xclExecBuf(unsigned int cmdBO)
+int shim::xclExecBuf(unsigned int cmdBO)
 {
     int ret;
     if (mLogStream.is_open()) {
@@ -1459,7 +1312,7 @@ int xocl::XOCLShim::xclExecBuf(unsigned int cmdBO)
 /*
  * xclExecBuf()
  */
-int xocl::XOCLShim::xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, unsigned int *bo_wait_list)
+int shim::xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, unsigned int *bo_wait_list)
 {
     if (mLogStream.is_open()) {
         mLogStream << __func__ << ", " << std::this_thread::get_id() << ", "
@@ -1476,7 +1329,7 @@ int xocl::XOCLShim::xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, u
 /*
  * xclRegisterEventNotify()
  */
-int xocl::XOCLShim::xclRegisterEventNotify(unsigned int userInterrupt, int fd)
+int shim::xclRegisterEventNotify(unsigned int userInterrupt, int fd)
 {
     int ret ;
     drm_xocl_user_intr userIntr = {0, fd, (int)userInterrupt};
@@ -1487,7 +1340,7 @@ int xocl::XOCLShim::xclRegisterEventNotify(unsigned int userInterrupt, int fd)
 /*
  * xclExecWait()
  */
-int xocl::XOCLShim::xclExecWait(int timeoutMilliSec)
+int shim::xclExecWait(int timeoutMilliSec)
 {
     std::vector<pollfd> uifdVector;
     pollfd info = {mUserHandle, POLLIN, 0};
@@ -1498,7 +1351,7 @@ int xocl::XOCLShim::xclExecWait(int timeoutMilliSec)
 /*
  * xclOpenContext
  */
-int xocl::XOCLShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
+int shim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
 {
     unsigned int flags = shared ? XOCL_CTX_SHARED : XOCL_CTX_EXCLUSIVE;
     int ret;
@@ -1513,7 +1366,7 @@ int xocl::XOCLShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, 
 /*
  * xclCloseContext
  */
-int xocl::XOCLShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const
+int shim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const
 {
     int ret;
     drm_xocl_ctx ctx = {XOCL_CTX_OP_FREE_CTX};
@@ -1526,7 +1379,7 @@ int xocl::XOCLShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
 /*
  * xclBootFPGA()
  */
-int xocl::XOCLShim::xclBootFPGA()
+int shim::xclBootFPGA()
 {
     int ret;
     ret = ioctl( mMgtHandle, XCLMGMT_IOCREBOOT );
@@ -1536,7 +1389,7 @@ int xocl::XOCLShim::xclBootFPGA()
 /*
  * xclCreateWriteQueue()
  */
-int xocl::XOCLShim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
+int shim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 {
     struct xocl_qdma_ioc_create_queue q_info;
     int rc;
@@ -1559,7 +1412,7 @@ int xocl::XOCLShim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 /*
  * xclCreateReadQueue()
  */
-int xocl::XOCLShim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
+int shim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 {
     struct xocl_qdma_ioc_create_queue q_info;
     int rc;
@@ -1582,7 +1435,7 @@ int xocl::XOCLShim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 /*
  * xclDestroyQueue()
  */
-int xocl::XOCLShim::xclDestroyQueue(uint64_t q_hdl)
+int shim::xclDestroyQueue(uint64_t q_hdl)
 {
     int rc;
 
@@ -1596,7 +1449,7 @@ int xocl::XOCLShim::xclDestroyQueue(uint64_t q_hdl)
 /*
  * xclAllocQDMABuf()
  */
-void *xocl::XOCLShim::xclAllocQDMABuf(size_t size, uint64_t *buf_hdl)
+void *shim::xclAllocQDMABuf(size_t size, uint64_t *buf_hdl)
 {
     struct xocl_qdma_ioc_alloc_buf req;
     void *buf;
@@ -1625,7 +1478,7 @@ void *xocl::XOCLShim::xclAllocQDMABuf(size_t size, uint64_t *buf_hdl)
 /*
  * xclFreeQDMABuf()
  */
-int xocl::XOCLShim::xclFreeQDMABuf(uint64_t buf_hdl)
+int shim::xclFreeQDMABuf(uint64_t buf_hdl)
 {
     int rc;
 
@@ -1639,7 +1492,7 @@ int xocl::XOCLShim::xclFreeQDMABuf(uint64_t buf_hdl)
 /*
  * xclPollCompletion()
  */
-int xocl::XOCLShim::xclPollCompletion(int min_compl, int max_compl, struct xclReqCompletion *comps, int* actual, int timeout /*ms*/)
+int shim::xclPollCompletion(int min_compl, int max_compl, struct xclReqCompletion *comps, int* actual, int timeout /*ms*/)
 {
     /* TODO: populate actual and timeout args correctly */
     struct timespec time, *ptime = NULL;
@@ -1685,7 +1538,7 @@ done:
 /*
  * xclWriteQueue()
  */
-ssize_t xocl::XOCLShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
+ssize_t shim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
 {
     ssize_t rc = 0;
 
@@ -1753,7 +1606,7 @@ ssize_t xocl::XOCLShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
 /*
  * xclReadQueue()
  */
-ssize_t xocl::XOCLShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr)
+ssize_t shim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr)
 {
     ssize_t rc = 0;
 
@@ -1805,7 +1658,7 @@ ssize_t xocl::XOCLShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr)
 }
 
 
-int xocl::XOCLShim::xclReClockUser(unsigned short region, const unsigned short *targetFreqMHz)
+int shim::xclReClockUser(unsigned short region, const unsigned short *targetFreqMHz)
 {
     int ret;
     drm_xocl_reclock_info reClockInfo;
@@ -1818,7 +1671,7 @@ int xocl::XOCLShim::xclReClockUser(unsigned short region, const unsigned short *
     return ret ? -errno : ret;
 }
 
-uint xocl::XOCLShim::xclGetNumLiveProcesses()
+uint shim::xclGetNumLiveProcesses()
 {
   std::string errmsg;
   auto dev = pcidev::get_dev(mBoardNumber);
@@ -1838,6 +1691,8 @@ uint xocl::XOCLShim::xclGetNumLiveProcesses()
   }
   return 0;
 }
+
+} // namespace xocl
 
 /*******************************/
 /* GLOBAL DECLARATIONS *********/
@@ -1900,19 +1755,19 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logFileName, xclVerbos
         return nullptr;
     }
 
-    xocl::XOCLShim *handle = new xocl::XOCLShim(deviceIndex, logFileName, level);
+    xocl::shim *handle = new xocl::shim(deviceIndex, logFileName, level);
 
     return static_cast<xclDeviceHandle>(handle);
 }
 
 void xclClose(xclDeviceHandle handle)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (drv) {
         delete drv;
         return;
     }
-    xocl::XOCLShim *mgmt_drv = xocl::XOCLShim::handleCheckMgmt(handle);
+    xocl::shim *mgmt_drv = xocl::shim::handleCheckMgmt(handle);
     if (mgmt_drv) {
         delete mgmt_drv;
         return;
@@ -1921,14 +1776,14 @@ void xclClose(xclDeviceHandle handle)
 
 int xclLoadXclBinMgmt(xclDeviceHandle handle, const xclBin *buffer)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheckMgmt(handle);
+    xocl::shim *drv = xocl::shim::handleCheckMgmt(handle);
 
     return drv ? drv->xclLoadXclBinMgmt(buffer) : -ENODEV;
 }
 
 int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
     if (!ret)
       ret = xrt_core::scheduler::init(handle, buffer);
@@ -1940,7 +1795,7 @@ int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, con
     va_list args;
     va_start(args, format);
 
-    int ret = xocl::XOCLShim::xclLogMsg(handle, level, tag, format, args);
+    int ret = xocl::shim::xclLogMsg(handle, level, tag, format, args);
     va_end(args);
 
     return ret;
@@ -1949,20 +1804,20 @@ int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, con
 
 size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclWrite(space, offset, hostBuf, size) : -ENODEV;
 }
 
 size_t xclRead(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
 {
     //  std::cout << "xclRead called" << std::endl;
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclRead(space, offset, hostBuf, size) : -ENODEV;
 }
 
 int xclGetErrorStatus(xclDeviceHandle handle, xclErrorStatus *info)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheckMgmt(handle);
+    xocl::shim *drv = xocl::shim::handleCheckMgmt(handle);
     std::memset(info, 0, sizeof(xclErrorStatus));
     if(!drv)
         return 0;
@@ -1971,7 +1826,7 @@ int xclGetErrorStatus(xclDeviceHandle handle, xclErrorStatus *info)
 
 int xclGetDeviceInfo2(xclDeviceHandle handle, xclDeviceInfo2 *info)
 {
-    xocl::XOCLShim *drv = (xocl::XOCLShim *) handle;
+    xocl::shim *drv = (xocl::shim *) handle;
     return drv ? drv->xclGetDeviceInfo2(info) : -ENODEV;
 }
 
@@ -1982,18 +1837,18 @@ unsigned int xclVersion ()
 
 unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, xclBOKind domain, unsigned flags)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclAllocBO(size, domain, flags) : -ENODEV;
 }
 
 unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclAllocUserPtrBO(userptr, size, flags) : -ENODEV;
 }
 
 void xclFreeBO(xclDeviceHandle handle, unsigned int boHandle) {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (!drv) {
         return;
     }
@@ -2002,52 +1857,52 @@ void xclFreeBO(xclDeviceHandle handle, unsigned int boHandle) {
 
 size_t xclWriteBO(xclDeviceHandle handle, unsigned int boHandle, const void *src, size_t size, size_t seek)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclWriteBO(boHandle, src, size, seek) : -ENODEV;
 }
 
 size_t xclReadBO(xclDeviceHandle handle, unsigned int boHandle, void *dst, size_t size, size_t skip)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclReadBO(boHandle, dst, size, skip) : -ENODEV;
 }
 
 void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclMapBO(boHandle, write) : nullptr;
 }
 
 int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclSyncBO(boHandle, dir, size, offset) : -ENODEV;
 }
 
 int xclCopyBO(xclDeviceHandle handle, unsigned int dst_boHandle,
             unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ?
       drv->xclCopyBO(dst_boHandle, src_boHandle, size, dst_offset, src_offset) : -ENODEV;
 }
 
 int xclReClock2(xclDeviceHandle handle, unsigned short region, const unsigned short *targetFreqMHz)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheckMgmt(handle);
+    xocl::shim *drv = xocl::shim::handleCheckMgmt(handle);
     std::cout<<"xclReClock2"<<std::endl;
     return drv ? drv->xclReClock2(region, targetFreqMHz) : -ENODEV;
 }
 
 int xclReClockUser(xclDeviceHandle handle, unsigned short region, const unsigned short *targetFreqMHz)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclReClockUser(region, targetFreqMHz) : -ENODEV;
 }
 
 int xclLockDevice(xclDeviceHandle handle)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (!drv)
         return -ENODEV;
     return drv->xclLockDevice() ? 0 : 1;
@@ -2055,7 +1910,7 @@ int xclLockDevice(xclDeviceHandle handle)
 
 int xclUnlockDevice(xclDeviceHandle handle)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (!drv)
         return -ENODEV;
     return drv->xclUnlockDevice() ? 0 : 1;
@@ -2063,13 +1918,13 @@ int xclUnlockDevice(xclDeviceHandle handle)
 
 int xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheckMgmt(handle);
+    xocl::shim *drv = xocl::shim::handleCheckMgmt(handle);
     return drv ? drv->resetDevice(kind) : -ENODEV;
 }
 
 int xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->p2pEnable(enable, force) : -ENODEV;
 }
 
@@ -2089,7 +1944,7 @@ int xclBootFPGA(xclDeviceHandle handle)
 {
     int retVal = -1;
 
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheckMgmt(handle);
+    xocl::shim *drv = xocl::shim::handleCheckMgmt(handle);
     if( !drv )
         return -ENODEV;
 
@@ -2138,51 +1993,15 @@ int xclRemoveAndScanFPGA(void)
     return 0;
 }
 
-// Support for XCLHAL1 legacy API's
-
-uint64_t xclAllocDeviceBuffer(xclDeviceHandle handle, size_t size)
-{
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
-    return drv ? drv->xclAllocDeviceBuffer(size) : xocl::mNullAddr;
-}
-
-uint64_t xclAllocDeviceBuffer2(xclDeviceHandle handle, size_t size, xclMemoryDomains domain, unsigned flags)
-{
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
-    return drv ? drv->xclAllocDeviceBuffer2(size, domain, flags) : xocl::mNullAddr;
-}
-
-void xclFreeDeviceBuffer(xclDeviceHandle handle, uint64_t buf)
-{
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
-    if (!drv) {
-        return;
-    }
-    drv->xclFreeDeviceBuffer(buf);
-}
-
-size_t xclCopyBufferHost2Device(xclDeviceHandle handle, uint64_t dest, const void *src, size_t size, size_t seek)
-{
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
-    return drv ? drv->xclCopyBufferHost2Device(dest, src, size, seek) : -ENODEV;
-}
-
-
-size_t xclCopyBufferDevice2Host(xclDeviceHandle handle, void *dest, uint64_t src, size_t size, size_t skip)
-{
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
-    return drv ? drv->xclCopyBufferDevice2Host(dest, src, size, skip) : -ENODEV;
-}
-
 int xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclExportBO(boHandle) : -ENODEV;
 }
 
 unsigned int xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (!drv) {
         std::cout << __func__ << ", " << std::this_thread::get_id() << ", handle & XOCL Device are bad" << std::endl;
     }
@@ -2191,68 +2010,68 @@ unsigned int xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
 
 ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf, size_t count, uint64_t offset)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclUnmgdPwrite(flags, buf, count, offset) : -ENODEV;
 }
 
 ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t count, uint64_t offset)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclUnmgdPread(flags, buf, count, offset) : -ENODEV;
 }
 
 int xclGetBOProperties(xclDeviceHandle handle, unsigned int boHandle, xclBOProperties *properties)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclGetBOProperties(boHandle, properties) : -ENODEV;
 }
 
 int xclGetUsageInfo(xclDeviceHandle handle, xclDeviceUsage *info)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclGetUsageInfo(info) : -ENODEV;
 }
 
 int xclGetSectionInfo(xclDeviceHandle handle, void* section_info, size_t * section_size,
     enum axlf_section_kind kind, int index)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclGetSectionInfo(section_info, section_size, kind, index) : -ENODEV;
 }
 
 int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclExecBuf(cmdBO) : -ENODEV;
 }
 
 int xclExecBufWithWaitList(xclDeviceHandle handle, unsigned int cmdBO, size_t num_bo_in_wait_list, unsigned int *bo_wait_list)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclExecBuf(cmdBO,num_bo_in_wait_list,bo_wait_list) : -ENODEV;
 }
 
 int xclRegisterEventNotify(xclDeviceHandle handle, unsigned int userInterrupt, int fd)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclRegisterEventNotify(userInterrupt, fd) : -ENODEV;
 }
 
 int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
 {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclExecWait(timeoutMilliSec) : -ENODEV;
 }
 
 int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
 }
 
 int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
 {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
 }
 
@@ -2264,49 +2083,49 @@ const axlf_section_header* wrap_get_axlf_section(const axlf* top, axlf_section_k
 // QDMA streaming APIs
 int xclCreateWriteQueue(xclDeviceHandle handle, xclQueueContext *q_ctx, uint64_t *q_hdl)
 {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclCreateWriteQueue(q_ctx, q_hdl) : -ENODEV;
 }
 
 int xclCreateReadQueue(xclDeviceHandle handle, xclQueueContext *q_ctx, uint64_t *q_hdl)
 {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclCreateReadQueue(q_ctx, q_hdl) : -ENODEV;
 }
 
 int xclDestroyQueue(xclDeviceHandle handle, uint64_t q_hdl)
 {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclDestroyQueue(q_hdl) : -ENODEV;
 }
 
 void *xclAllocQDMABuf(xclDeviceHandle handle, size_t size, uint64_t *buf_hdl)
 {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclAllocQDMABuf(size, buf_hdl) : NULL;
 }
 
 int xclFreeQDMABuf(xclDeviceHandle handle, uint64_t buf_hdl)
 {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclFreeQDMABuf(buf_hdl) : -ENODEV;
 }
 
 ssize_t xclWriteQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclWriteQueue(q_hdl, wr) : -ENODEV;
 }
 
 ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclReadQueue(q_hdl, wr) : -ENODEV;
 }
 
 int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout)
 {
-        xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+        xocl::shim *drv = xocl::shim::handleCheck(handle);
         return drv ? drv->xclPollCompletion(min_compl, max_compl, comps, actual, timeout) : -ENODEV;
 }
 
@@ -2317,19 +2136,19 @@ xclDeviceHandle xclOpenMgmt(unsigned deviceIndex, const char *logFileName, xclVe
         return nullptr;
     }
 
-    xocl::XOCLShim *handle = new xocl::XOCLShim(deviceIndex, logFileName, level);
+    xocl::shim *handle = new xocl::shim(deviceIndex, logFileName, level);
     return static_cast<xclDeviceHandle>(handle);
 }
 
 char *xclMapMgmt(xclDeviceHandle handle)
 {
-  xocl::XOCLShim *drv = static_cast<xocl::XOCLShim *>(handle);
+  xocl::shim *drv = static_cast<xocl::shim *>(handle);
   return drv ? drv->xclMapMgmt() :   nullptr;
 }
 
 uint xclGetNumLiveProcesses(xclDeviceHandle handle)
 {
-    xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclGetNumLiveProcesses() : 0;
 }
 

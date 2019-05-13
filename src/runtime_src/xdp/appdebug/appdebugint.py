@@ -48,11 +48,11 @@ class printSSPMInfo (infCallUtil):
 			return				
 
 		if (jsonformat):
-			stdstr = self.callmethod(spm_ptr,"getstring",[1, 1]);
+			stdstr = self.callmethod(sspm_ptr,"getstring",[1, 1]);
 			strout = stdstr['_M_dataplus']['_M_p'].string();
 			print strout
 		else:
-			stdstr = self.callmethod(spm_ptr,"getstring",[1, 0]);
+			stdstr = self.callmethod(sspm_ptr,"getstring",[1, 0]);
 			strout = stdstr['_M_dataplus']['_M_p'].string();
 			print strout
 

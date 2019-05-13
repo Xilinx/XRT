@@ -2524,27 +2524,6 @@ done:
 	return err;
 }
 
-
-/*
- * should always get the latest value of IDCODE and PEER_UUID
- */
-static bool get_latest_force(enum data_kind kind)
-{
-	bool ret = false;
-
-	switch (kind) {
-	case IDCODE:
-		ret = true;
-		break;
-	case PEER_UUID:
-		ret = true;
-		break;
-	default:
-		break;
-	}
-	return ret;
-}
-
 static uint64_t icap_get_data_nolock(struct platform_device *pdev,
 	enum data_kind kind)
 {
@@ -2554,7 +2533,7 @@ static uint64_t icap_get_data_nolock(struct platform_device *pdev,
 
 	if (!ICAP_PRIVILEGED(icap)) {
 
-		if (ktime_compare(now, icap->cache_expires) > 0 || get_latest_force(kind))
+		if (ktime_compare(now, icap->cache_expires) > 0)
 			icap_read_from_peer(pdev);
 
 		switch (kind) {

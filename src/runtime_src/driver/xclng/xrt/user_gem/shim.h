@@ -38,109 +38,12 @@
 
 namespace xocl {
 
-// This list will get populated in xclProbe
-// 0 -> /dev/dri/renderD129
-// 1 -> /dev/dri/renderD130
-static const std::map<std::string, std::string> deviceOld2NewNameMap = {
-    std::pair<std::string, std::string>("xilinx:adm-pcie-7v3:1ddr:3.0", "xilinx_adm-pcie-7v3_1ddr_3_0"),
-    std::pair<std::string, std::string>("xilinx:adm-pcie-8k5:2ddr:4.0", "xilinx_adm-pcie-8k5_2ddr_4_0"),
-    std::pair<std::string, std::string>("xilinx:adm-pcie-ku3:2ddr-xpr:4.0", "xilinx_adm-pcie-ku3_2ddr-xpr_4_0"),
-    std::pair<std::string, std::string>("xilinx:adm-pcie-ku3:2ddr:4.0", "xilinx_adm-pcie-ku3_2ddr_4_0"),
-    std::pair<std::string, std::string>("xilinx:aws-vu9p-f1:4ddr-xpr-2pr:4.0", "xilinx_aws-vu9p-f1_4ddr-xpr-2pr_4_0"),
-    std::pair<std::string, std::string>("xilinx:kcu1500:4ddr-xpr:4.0", "xilinx_kcu1500_4ddr-xpr_4_0"),
-    std::pair<std::string, std::string>("xilinx:kcu1500:4ddr-xpr:4.3", "xilinx_kcu1500_4ddr-xpr_4_3"),
-    std::pair<std::string, std::string>("xilinx:vcu1525:4ddr-xpr:4.2", "xilinx_vcu1525_4ddr-xpr_4_2"),
-    std::pair<std::string, std::string>("xilinx:xil-accel-rd-ku115:4ddr-xpr:4.0", "xilinx_xil-accel-rd-ku115_4ddr-xpr_4_0"),
-    std::pair<std::string, std::string>("xilinx:xil-accel-rd-vu9p-hp:4ddr-xpr:4.2", "xilinx_xil-accel-rd-vu9p-hp_4ddr-xpr_4_2"),
-    std::pair<std::string, std::string>("xilinx:xil-accel-rd-vu9p:4ddr-xpr-xare:4.6", "xilinx_xil-accel-rd-vu9p_4ddr-xpr-xare_4_6"),
-    std::pair<std::string, std::string>("xilinx:xil-accel-rd-vu9p:4ddr-xpr:4.0", "xilinx_xil-accel-rd-vu9p_4ddr-xpr_4_0"),
-    std::pair<std::string, std::string>("xilinx:xil-accel-rd-vu9p:4ddr-xpr:4.2", "xilinx_xil-accel-rd-vu9p_4ddr-xpr_4_2"),
-    std::pair<std::string, std::string>("xilinx:zc706:linux-uart:1.0", "xilinx_zc706_linux-uart_1_0"),
-    std::pair<std::string, std::string>("xilinx:zcu102:1HP:1.1", "xilinx_zcu102_1HP_1_1"),
-    std::pair<std::string, std::string>("xilinx:zcu102:4HP:1.2", "xilinx_zcu102_4HP_1_2")
-};
-const std::string newDeviceName(const std::string& name);
-unsigned numClocks(const std::string& name);
-struct AddressRange;
-std::ostream& operator<< (std::ostream &strm, const AddressRange &rng);
-
-/**
- * Simple tuple struct to store non overlapping address ranges: address and size
- */
-struct AddressRange : public std::pair<uint64_t, size_t>
-{
-    // size will be zero when we are looking up an address that was passed by the user
-    AddressRange(uint64_t addr, size_t size = 0) : std::pair<uint64_t, size_t>(std::make_pair(addr, size)) {
-        //std::cout << "CTOR(" << addr << ',' << size << ")\n";
-    }
-    AddressRange(AddressRange && rhs) : std::pair<uint64_t, size_t>(std::move(rhs)) {
-        //std::cout << "MOVE CTOR(" << rhs.first << ',' << rhs.second << ")\n";
-    }
-
-    AddressRange(const AddressRange &rhs) = delete;
-    AddressRange& operator=(const AddressRange &rhs) = delete;
-
-    // Comparison operator is useful when using AddressRange as a key in std::map
-    // Note one operand in the comparator may have only the address without the size
-    // However both operands in the comparator will not have zero size
-    bool operator < (const AddressRange& other) const {
-        //std::cout << *this << " < " << other << "\n";
-        if ((this->second != 0) && (other.second != 0))
-            // regular ranges
-            return (this->first < other.first);
-        if (other.second == 0)
-            // second range just has an address
-            // (1000, 100) < (1200, 0)
-            // (1000, 100) < (1100, 0) first range ends at 1099
-            return ((this->first + this->second) <= other.first);
-        assert(this->second == 0);
-        // this range just has an address
-        // (1100, 0) < (1200, 100)
-        return (this->first < other.first);
-    }
-}; /* AddressRange */
-
-/**
- * Simple map of address range to its bo handle and mapped virtual address
- */
-static const std::pair<unsigned, char *> mNullValue = std::make_pair(0xffffffff, nullptr);
-
-class RangeTable
-{
-    std::map<AddressRange, std::pair<unsigned, char *>> mTable;
-    mutable std::mutex mMutex;
-public:
-    void insert(uint64_t addr, size_t size, const std::pair<unsigned, char *> &bo) {
-        // assert(find(addr) == 0xffffffff);
-        std::lock_guard<std::mutex> lock(mMutex);
-        mTable[AddressRange(addr, size)] = bo;
-    }
-
-    std::pair<unsigned, char *> erase(uint64_t addr) {
-        std::lock_guard<std::mutex> lock(mMutex);
-        std::map<AddressRange, std::pair<unsigned, char *>>::const_iterator i = mTable.find(AddressRange(addr));
-        if (i == mTable.end())
-            return mNullValue;
-        std::pair<unsigned, char *> result = i->second;
-        mTable.erase(i);
-        return result;
-    }
-
-    std::pair<unsigned, char *> find(uint64_t addr) const {
-        std::lock_guard<std::mutex> lock(mMutex);
-        std::map<AddressRange, std::pair<unsigned, char *>>::const_iterator i = mTable.find(AddressRange(addr));
-        if (i == mTable.end())
-            return mNullValue;
-        return i->second;
-    }
-}; /* RangeTable */
-
 const unsigned SHIM_USER_BAR = 0x0;
 const unsigned SHIM_MGMT_BAR = 0x10000;
 const uint64_t mNullAddr = 0xffffffffffffffffull;
 const uint64_t mNullBO = 0xffffffff;
 
-class XOCLShim
+class shim
 {
     struct ELARecord
     {
@@ -154,8 +57,8 @@ class XOCLShim
     typedef std::list<ELARecord> ELARecordList;
 
 public:
-    ~XOCLShim();
-    XOCLShim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity);
+    ~shim();
+    shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity);
     void init(unsigned index, const char *logfileName, xclVerbosityLevel verbosity);
     void readDebugIpLayout();
     static int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, va_list args1);
@@ -183,8 +86,8 @@ public:
     int xclGetDeviceInfo2(xclDeviceInfo2 *info);
     bool isGood() const;
     bool isGoodMgmt() const;
-    static XOCLShim *handleCheck(void * handle);
-    static XOCLShim *handleCheckMgmt(void * handle);
+    static shim *handleCheck(void * handle);
+    static shim *handleCheckMgmt(void * handle);
     int resetDevice(xclResetKind kind);
     int p2pEnable(bool enable, bool force);
     bool xclLockDevice();
@@ -195,13 +98,6 @@ public:
     int xclTestXSpi(int device_index);
     int xclBootFPGA();
     int xclRemoveAndScanFPGA();
-
-    // Legacy buffer management API support
-    uint64_t xclAllocDeviceBuffer(size_t size);
-    uint64_t xclAllocDeviceBuffer2(size_t size, xclMemoryDomains domain, unsigned flags);
-    void xclFreeDeviceBuffer(uint64_t buf);
-    size_t xclCopyBufferHost2Device(uint64_t dest, const void *src, size_t size, size_t seek);
-    size_t xclCopyBufferDevice2Host(void *dest, uint64_t src, size_t size, size_t skip);
 
     ssize_t xclUnmgdPwrite(unsigned flags, const void *buf, size_t count, uint64_t offset);
     ssize_t xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset);
@@ -293,7 +189,6 @@ private:
     const char *mLogfileName;
     uint64_t mOffsets[XCL_ADDR_SPACE_MAX];
     xclDeviceInfo2 mDeviceInfo;
-    RangeTable mLegacyAddressTable;
     ELARecordList mRecordList;
     uint32_t mMemoryProfilingNumberSlots;
     uint32_t mAccelProfilingNumberSlots;
@@ -406,7 +301,7 @@ private:
     // QDMA AIO
     aio_context_t mAioContext;
     bool mAioEnabled;
-}; /* XOCLShim */
+}; /* shim */
 
 } /* xocl */
 

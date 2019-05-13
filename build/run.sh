@@ -12,11 +12,10 @@ XRTBUILD=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 # and Vivado tools in addition to using XRT.
 
 # Set to location of your preferred SDx install
-sdx=/proj/xbuilds/2019.1_daily_latest/installs/lin64/SDx/2019.1
-#sdx=/home/soeren/perforce/sbx-p4/REL/2018.2/prep/rdi/sdx
+sdx=/proj/xbuilds/2019.2_daily_latest/installs/lin64/Scout/2019.2
 
 # Set to location of your preferred Vivado install
-vivado=/proj/xbuilds/2019.1_daily_latest/installs/lin64/Vivado/2019.1
+vivado=/proj/xbuilds/2019.2_daily_latest/installs/lin64/Vivado/2019.2
 
 ext=.o
 rel="Release"
@@ -114,6 +113,7 @@ fi
 
 if [[ "X$sdx" != "X" && -d "$sdx" ]] ; then
  export XILINX_SDX=${XILINX_SDX:=$sdx}
+ export XILINX_SCOUT=$XILINX_SDX
  export XILINX_OPENCL=$XILINX_SDX
  export SDX_CXX_PATH=${SDX_CXX_PATH:=$XILINX_SDX/bin/xcpp}
  export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$XILINX_SDX/lib/lnx64${ext}/Default:$XILINX_SDX/lib/lnx64${ext}:$XILINX_SDX/runtime/lib/x86_64
