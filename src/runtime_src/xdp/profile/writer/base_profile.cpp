@@ -265,11 +265,12 @@ namespace xdp {
     double aveBytes = (totalTranx == 0) ? 0.0 : (double)(totalBytes) / totalTranx;
     double aveLatencyNsec = (totalTranx == 0) ? 0.0 : totalLatencyNsec / totalTranx;
 
-    // Don't show these values for HW emulation
+    // Don't show these values for HW emulation or when invalid
     std::string transferRateStr = std::to_string(transferRateMBps);
     std::string totalTimeStr = std::to_string(totalTimeMsec);
     std::string aveLatencyStr = std::to_string(aveLatencyNsec);
-    if (mPluginHandle->getFlowMode() == xdp::RTUtil::HW_EM) {
+    if ((mPluginHandle->getFlowMode() == xdp::RTUtil::HW_EM)
+        || (totalTimeMsec == 0) || (totalTranx == 0)) {
       transferRateStr = "N/A";
       totalTimeStr = "N/A";
       aveLatencyStr = "N/A";
