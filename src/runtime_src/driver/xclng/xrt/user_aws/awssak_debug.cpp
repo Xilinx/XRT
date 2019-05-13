@@ -38,8 +38,14 @@ static const int depug_ip_max_type = 8;
 
 uint32_t xcldev::device::getIPCountAddrNames(int type, std::vector<uint64_t> *baseAddress, std::vector<std::string> * portNames) {
     debug_ip_layout *map;
-    std::string path = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ m_idx ].user_name + "/debug_ip_layout";
-    std::ifstream ifs(path.c_str(), std::ifstream::binary);
+
+    std::string devName = xcldev::pci_device_scanner::device_list[ m_idx ].user_name;
+    std::string subdevStr("icap");
+    std::string entryStr("debug_ip_layout");
+
+    std::string sysfsPathStr = xcldev::get_sysfs_path(devName, subdevStr, entryStr);
+
+    std::ifstream ifs(sysfsPathStr.c_str(), std::ifstream::binary);
     uint32_t count = 0;
     char buffer[debug_ip_layout_max_size];
     if( ifs.good() ) {
@@ -236,8 +242,13 @@ int xcldev::device::print_debug_ip_list (int aVerbose) {
     };
     int available_ip [depug_ip_max_type] = {0};
     debug_ip_layout *map;
-    std::string path = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ m_idx ].user_name + "/debug_ip_layout";
-    std::ifstream ifs(path.c_str(), std::ifstream::binary);
+
+    std::string devName = xcldev::pci_device_scanner::device_list[ m_idx ].user_name;
+    std::string subdevStr("icap");
+    std::string entryStr("debug_ip_layout");
+
+    std::string sysfsPathStr = xcldev::get_sysfs_path(devName, subdevStr, entryStr);
+    std::ifstream ifs(sysfsPathStr.c_str(), std::ifstream::binary);
 
     char buffer[debug_ip_layout_max_size];
     std::stringstream sstr;
