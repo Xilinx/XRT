@@ -530,6 +530,7 @@ int32_t xma_res_kern_chan_id_get(XmaKernelRes kern_res)
 static XmaResConfig *xma_shm_open(char *shm_filename, XmaSystemCfg *config)
 {
     extern XmaSingleton *g_xma_singleton;
+    struct stat shm_file_stat;
     int i, ret, fd, max_retry;
     bool shm_initalized;
     int max_wait = xma_cfg_dev_cnt_get() * 10; /* 10s per device programmed */
@@ -583,10 +584,18 @@ eexist:
 
     /* Check to see that read bit has been asserted by process in control of shm
      * indicating that the mutex and other header info of the shm db is ready */
-    ret = access(shm_filename, R_OK | W_OK);
-    for (max_retry = 50; ret < 0 && max_retry > 0; max_retry--)
+    stat(shm_filename,&shm_file_stat);
+    if(shm_file_stat.st_mode & S_IRUSR)
+	    ret = 0;
+    else
+	    ret = -1;
+    for (max_retry = 500; ret < 0 && max_retry > 0; max_retry--)
     {
-        ret = access(shm_filename, R_OK);
+        stat(shm_filename,&shm_file_stat);
+        if(shm_file_stat.st_mode & S_IRUSR)
+	        ret = 0;
+        else
+	        ret = -1;
         usleep(100);
     }
 
