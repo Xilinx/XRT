@@ -254,7 +254,9 @@ namespace xclhwemhal2 {
     for (mask_idx=0; mask_idx<num_masks; ++mask_idx)
     {
       uint32_t cmd_mask = xcmd->packet->data[mask_idx]; /* skip header */
-      uint32_t cu_idx = cu_idx_from_mask (f_cu_idx, mask_idx);
+      uint32_t cu_idx = cu_idx_in_mask (f_cu_idx);
+      if(cu_mask_idx(f_cu_idx) < mask_idx)
+        return false;
 
       if( isKthBitSet(cmd_mask, cu_idx))
       {
