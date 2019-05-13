@@ -19,6 +19,7 @@
  */
 
 #include "shim.h"
+#include "driver/common/scheduler.h"
 #include <errno.h>
 /*
  * Define GCC version macro so we can use newer C++11 features
@@ -119,28 +120,14 @@ namespace awsbwhal {
 
     int AwsXcl::xclGetXclBinIdFromSysfs(uint64_t &xclbin_id_from_sysfs) 
     {
-         const std::string devPath = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ mBoardNumber ].user_name;
-         std::string binid_path = devPath + "/xclbinid";
-         struct stat sb;
-         if( stat( binid_path.c_str(), &sb ) < 0 ) {
-             std::cout << "ERROR: failed to stat " << binid_path << std::endl;
-             return errno;
-         }
-         std::ifstream ifs( binid_path.c_str(), std::ifstream::binary );
-         if( !ifs.good() ) {
-             return errno;
-         }
-         char* fileReadBuf = new char[sb.st_size];
-         memset(fileReadBuf, 0, sb.st_size);
-         ifs.read( fileReadBuf, sb.st_size );
-         if( ifs.gcount() > 0 ) {
-             std::string tmp_hex_string = fileReadBuf;
-             xclbin_id_from_sysfs = std::stoi(std::string(fileReadBuf),nullptr,16);
-         } else { // xclbinid exists, but no data read or reported
-             std::cout << "WARNING: 'xclbinid' invalid, unable to report xclbinid. Has the bitstream been loaded? See 'xbsak program'.\n";
-         }
-         delete [] fileReadBuf;
-         ifs.close();
+        std::string buf, dev_name;
+        std::string errmsg;
+        dev_name = xcldev::pci_device_scanner::device_list[ mBoardNumber ].user_name;
+        xcldev::sysfs_get(dev_name, "", "xclbinuuid", errmsg, buf);
+        if (!buf.empty())
+             xclbin_id_from_sysfs = std::stoi(buf,nullptr,16);
+        else
+            std::cout << "WARNING: 'xclbinuuid' invalid, unable to report xclbinuuid. Has the bitstream been loaded? See 'awssak program'.\n"; 
          return 0;
     }
 
@@ -167,21 +154,36 @@ namespace awsbwhal {
              return retVal;
 
           if ( (xclbin_id_from_sysfs == 0) || (axlfbuffer->m_uniqueId != xclbin_id_from_sysfs) || checkAndSkipReload(afi_id, &orig_info) ) {
-              // proceed with download
-              retVal = fpga_mgmt_load_local_image(mBoardNumber, afi_id);
-              if (!retVal) {
-                  retVal = sleepUntilLoaded( std::string(afi_id) );
+              // force data retention option
+              union fpga_mgmt_load_local_image_options opt;
+              fpga_mgmt_init_load_local_image_options(&opt);
+              opt.flags = FPGA_CMD_DRAM_DATA_RETENTION;
+              opt.afi_id = afi_id;
+              opt.slot_id = mBoardNumber;
+              retVal = fpga_mgmt_load_local_image_with_options(&opt);
+              if (retVal == FPGA_ERR_DRAM_DATA_RETENTION_NOT_POSSIBLE ||
+                  retVal == FPGA_ERR_DRAM_DATA_RETENTION_FAILED ||
+                  retVal == FPGA_ERR_DRAM_DATA_RETENTION_SETUP_FAILED) {
+                  std::cout << "INFO: Could not load AFI for data retention, code: " << retVal 
+                            << " - Loading in classic mode." << std::endl;
+                  retVal = fpga_mgmt_load_local_image(mBoardNumber, afi_id);
               }
-              if (!retVal) {
-                  drm_xocl_axlf axlf_obj = { reinterpret_cast<axlf*>(const_cast<xclBin*>(buffer)) };
-                  retVal = ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
-                  if (retVal) {
-                      std::cout << "IOCTL DRM_IOCTL_XOCL_READ_AXLF Failed: " << retVal << std::endl;
-                  } else {
-                      std::cout << "AFI load complete." << std::endl; 
-                  }
+              // check retVal from image load
+              if (retVal) {
+                  std::cout << "Failed to load AFI, error: " << retVal << std::endl;
+                  return -retVal;
               }
-          } 
+              retVal = sleepUntilLoaded( std::string(afi_id) );
+          }
+          if (!retVal) {
+              drm_xocl_axlf axlf_obj = { reinterpret_cast<axlf*>(const_cast<xclBin*>(buffer)) };
+              retVal = ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
+              if (retVal) {
+                  std::cout << "IOCTL DRM_IOCTL_XOCL_READ_AXLF Failed: " << retVal << std::endl;
+              } else {
+                  std::cout << "AFI load complete." << std::endl;
+              }
+          }
           return retVal;
       } else {
           //char* afi_id = get_afi_from_xclBin(buffer);
@@ -525,9 +527,10 @@ namespace awsbwhal {
                    maxDMASize(0xfa0000),
                    mLocked(false),
                    mOffsets{0x0, 0x0, 0x0, 0x0},
-                                                      mMemoryProfilingNumberSlots(0),
-                                                      mAccelProfilingNumberSlots(0),
-                                                      mStallProfilingNumberSlots(0)
+                   mMemoryProfilingNumberSlots(0),
+                   mAccelProfilingNumberSlots(0),
+                   mStallProfilingNumberSlots(0),
+                   mStreamProfilingNumberSlots(0)
     {
 #ifndef INTERNAL_TESTING
         loadDefaultAfiIfCleared();
@@ -536,6 +539,11 @@ namespace awsbwhal {
         mUserHandle = open(devName.c_str(), O_RDWR);
         if(mUserHandle <= 0) {
             std::cout << "WARNING: AwsXcl - Cannot open userPF: " << devName << std::endl;
+        }
+        if (logfileName != nullptr) {
+          mLogStream.open(logfileName);
+          mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
+          mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
         }
 
 #ifdef INTERNAL_TESTING
@@ -586,21 +594,6 @@ namespace awsbwhal {
                         std::cout << "ERROR AwsXcl: PCI mgmt bar attach failed for slot# " << std::dec << slot_id << std::endl;
         }
 #endif
-
-        //
-        // Profiling - defaults
-        // Class-level defaults: mIsDebugIpLayoutRead = mIsDeviceProfiling = false
-        mDevUserName = xcldev::pci_device_scanner::device_list[mBoardNumber].user_name;
-        mMemoryProfilingNumberSlots = 0;
-        mPerfMonFifoCtrlBaseAddress = 0x00;
-        mPerfMonFifoReadBaseAddress = 0x00;
-        //
-        // Profiling - defaults
-        // Class-level defaults: mIsDebugIpLayoutRead = mIsDeviceProfiling = false
-        mDevUserName = xcldev::pci_device_scanner::device_list[mBoardNumber].user_name;
-        mMemoryProfilingNumberSlots = 0;
-        mPerfMonFifoCtrlBaseAddress = 0x00;
-        mPerfMonFifoReadBaseAddress = 0x00;
 
         //
         // Profiling - defaults
@@ -923,6 +916,21 @@ namespace awsbwhal {
         return -EINVAL;
       drm_xocl_pread_unmgd unmgd = {0, 0, offset, count, reinterpret_cast<uint64_t>(buf)};
       return ioctl(mUserHandle, DRM_IOCTL_XOCL_PREAD_UNMGD, &unmgd);
+    }
+
+    int AwsXcl::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size)
+    {
+      std::string devName = xcldev::pci_device_scanner::device_list[ mBoardNumber ].user_name;
+      std::string subdevStr(subdev);        
+      std::string entryStr(entry);        
+
+      if(mLogStream.is_open()) {
+        mLogStream << "Retrieving [sysfs root]" << subdevStr << "/" << entryStr << std::endl;
+      }
+      std::string sysfsPathStr = xcldev::get_sysfs_path(devName, subdevStr, entryStr);
+      strncpy(sysfsPath, sysfsPathStr.c_str(), size);
+      sysfsPathStr[size - 1] = '\0';
+      return 0;
     }
     
     /*
@@ -1256,9 +1264,10 @@ int xclLoadBitstream(xclDeviceHandle handle, const char *xclBinFileName)
 int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
     awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
-    if (!drv)
-        return -1;
-    return drv->xclLoadXclBin(buffer);
+    auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
+    if (!ret)
+      ret = xrt_core::scheduler::init(handle, buffer);
+    return ret;
 }
 
 size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
@@ -1599,8 +1608,15 @@ int xclGetErrorStatus(xclDeviceHandle handle, xclErrorStatus *info)
   //return drv->xclGetErrorStatus(info); Not supported for AWS
 }
 
-int xclXbsak(int argc, char *argv[])
+int xclAwssak(int argc, char *argv[])
 {
-    return xcldev::xclXbsak(argc, argv);
+    return xcldev::xclAwssak(argc, argv);
+}
+
+int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev, const char* entry,
+                    char* sysfsPath, size_t size)
+{
+  awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+  return drv ? drv->xclGetSysfsPath(subdev, entry, sysfsPath, size) : -ENODEV;
 }
 

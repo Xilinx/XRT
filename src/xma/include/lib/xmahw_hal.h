@@ -28,6 +28,7 @@ typedef struct XmaHwHAL
 {
     void           *dev_handle;                  // HAL device handle
     XmaHwHALKernel  kernels[MAX_XILINX_KERNELS];
+    uint32_t       dev_index;
 } XmaHwHAL;
 
 #endif

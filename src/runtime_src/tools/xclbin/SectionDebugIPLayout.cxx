@@ -53,6 +53,8 @@ SectionDebugIPLayout::getDebugIPTypeStr(enum DEBUG_IP_TYPE _debugIpType) const {
       return "ACCEL_MONITOR";
     case AXI_STREAM_MONITOR:
       return "AXI_STREAM_MONITOR";
+    case AXI_STREAM_PROTOCOL_CHECKER:
+      return "AXI_STREAM_PROTOCOL_CHECKER";
   }
 
   return XUtil::format("UNKNOWN (%d)", (unsigned int)_debugIpType);
@@ -82,7 +84,10 @@ SectionDebugIPLayout::getDebugIPType(std::string& _sDebugIPType) const {
     return ACCEL_MONITOR;
 
   if ( _sDebugIPType == "AXI_STREAM_MONITOR" )
-      return AXI_STREAM_MONITOR;
+    return AXI_STREAM_MONITOR;
+
+  if ( _sDebugIPType == "AXI_STREAM_PROTOCOL_CHECKER" ) 
+    return AXI_STREAM_PROTOCOL_CHECKER;
 
   if (_sDebugIPType == "UNDEFINED")
     return UNDEFINED;
@@ -199,13 +204,18 @@ SectionDebugIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSect
     debugIpDataHdr.m_index = ptDebugIPData.get<int8_t>("m_index");
     debugIpDataHdr.m_properties = ptDebugIPData.get<int8_t>("m_properties");
 
+    // Optional value, will set to 0 if not set (as it was initialized)
+    debugIpDataHdr.m_major = ptDebugIPData.get<uint8_t>("m_major", 0);
+    // Optional value, will set to 0 if not set (as it was initialized)
+    debugIpDataHdr.m_minor = ptDebugIPData.get<uint8_t>("m_minor", 0);
+
     std::string sBaseAddress = ptDebugIPData.get<std::string>("m_base_address");
     debugIpDataHdr.m_base_address = XUtil::stringToUInt64(sBaseAddress);
 
     std::string sm_name = ptDebugIPData.get<std::string>("m_name");
     if (sm_name.length() >= sizeof(debug_ip_data::m_name)) {
       std::string errMsg = XUtil::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'",
-                                         (unsigned int)sm_name.length(), (unsigned int)sizeof(debug_ip_data::m_name), sm_name);
+                                         (unsigned int)sm_name.length(), (unsigned int)sizeof(debug_ip_data::m_name), sm_name.c_str());
       throw std::runtime_error(errMsg);
     }
 
@@ -244,4 +254,26 @@ SectionDebugIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSect
     std::cout << errMsg << std::endl;
     // throw std::runtime_error(errMsg);
   }
+}
+
+bool 
+SectionDebugIPLayout::doesSupportAddFormatType(FormatType _eFormatType) const
+{
+  if (_eFormatType == FT_JSON) {
+    return true;
+  }
+  return false;
+}
+
+bool 
+SectionDebugIPLayout::doesSupportDumpFormatType(FormatType _eFormatType) const
+{
+    if ((_eFormatType == FT_JSON) ||
+        (_eFormatType == FT_HTML) ||
+        (_eFormatType == FT_RAW))
+    {
+      return true;
+    }
+
+    return false;
 }

@@ -15,25 +15,17 @@ namespace systemUtil {
 
       case CREATE :
         {
-          std::stringstream mkdirCommand;
-          mkdirCommand << "mkdir -p "<< operand1;
-          struct stat statBuf;
-          if ( stat(operand1.c_str(), &statBuf) == -1 )
+          if (boost::filesystem::exists(operand1) == false)
           {
-            int status = system(mkdirCommand.str().c_str());
-            printErrorMessage(mkdirCommand.str(),status);
+            boost::filesystem::create_directories(operand1);
           }
           break;
         }
       case REMOVE :
         {
-          std::stringstream removeDirCommand ;
-          removeDirCommand << "rm -rf " << operand1;
-          struct stat statBuf;
-          if ( stat(operand1.c_str(), &statBuf) == 0 )
+          if (boost::filesystem::exists(operand1) )
           {
-            int status = system(removeDirCommand.str().c_str());
-            printErrorMessage(removeDirCommand.str(),status);
+            boost::filesystem::remove_all(operand1);
           }
           break;
         }
@@ -41,8 +33,7 @@ namespace systemUtil {
         {
           std::stringstream copyCommand;
           copyCommand <<"cp "<<operand1<<" "<<operand2;
-          struct stat statBuf;
-          if ( stat(operand1.c_str(), &statBuf) == 0 )
+          if (boost::filesystem::exists(operand1) )
           {
             int status = system(copyCommand.str().c_str());
             printErrorMessage(copyCommand.str(),status);
@@ -53,8 +44,7 @@ namespace systemUtil {
         {
           std::stringstream appendCommand;
           appendCommand <<"cat "<<operand1<<">> "<<operand2;
-          struct stat statBuf;
-          if ( stat(operand1.c_str(), &statBuf) == 0 )
+          if (boost::filesystem::exists(operand1) )
           {
             int status = system(appendCommand.str().c_str());
             printErrorMessage(appendCommand.str(),status);

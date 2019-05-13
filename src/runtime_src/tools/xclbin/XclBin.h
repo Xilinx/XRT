@@ -40,38 +40,26 @@ class XclBin {
   virtual ~XclBin();
 
  public:
-  std::string getMagicAsString();
-  std::string getCipherAsString();
-  std::string getKeyBlockAsString();
-  std::string getUniqueIdAsString();
-  std::string getSizeAsString();
-  std::string getTimeStampAsString();
-  std::string getFeatureRomTimeStampAsString();
-  std::string getVersionAsString();
-  std::string getModeAsString();
-  std::string getModeAsPrettyString();
-  std::string getFeatureRomUuidAsString();
-  std::string getPlatformVbnvAsString();
-  std::string getXclBinUuidAsString();
-  std::string getDebugBinAsString();
-  std::string getNumSectionAsString();
-  std::string getSectionKindAsString(unsigned int i);
-  unsigned int getSectionCount();
-  void printSections();
-  void printSectionHeader(Section* pSection);
-  void printHeader();
+  void reportInfo(std::ostream &_ostream, const std::string & _sInputFile, bool _bVerbose) const;
+  void printSections(std::ostream &_ostream) const;
 
   void readXclBinBinary(const std::string &_binaryFileName, bool _bMigrate = false);
-  void writeXclBinBinary(const std::string &_binaryFileName, bool _bSkipUUIDInsertion = false);
+  void writeXclBinBinary(const std::string &_binaryFileName, bool _bSkipUUIDInsertion);
   void removeSection(const std::string & _sSectionToRemove);
   void addSection(ParameterSectionData &_PSD);
+  void addSections(ParameterSectionData &_PSD);
+  void appendSections(ParameterSectionData &_PSD);
   void replaceSection(ParameterSectionData &_PSD);
   void dumpSection(ParameterSectionData &_PSD);
+  void dumpSections(ParameterSectionData &_PSD);
+  void setKeyValue(const std::string & _keyValue);
+  void removeKey(const std::string & _keyValue);
 
  public:
   Section *findSection(enum axlf_section_kind _eKind);
 
  private:
+  void updateHeaderFromSection(Section *_pSection);
   void readXclBinBinaryHeader(std::fstream& _istream);
   void readXclBinBinarySections(std::fstream& _istream);
 
@@ -83,9 +71,14 @@ class XclBin {
   void addHeaderMirrorData(boost::property_tree::ptree& _pt_header);
 
   void addSection(Section* _pSection);
+  void addSubSection(ParameterSectionData &_PSD);
+  void dumpSubSection(ParameterSectionData &_PSD);
+
   void removeSection(const Section* _pSection);
 
   void updateUUID();
+
+  void initializeHeader(axlf &_xclBinHeader);
 
   // Should be in their own separate class
  private:

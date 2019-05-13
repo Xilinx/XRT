@@ -4,10 +4,17 @@
  * Copyright (c) 2017-present,  Xilinx, Inc.
  * All rights reserved.
  *
- * This source code is licensed under both the BSD-style license (found in the
- * LICENSE file in the root directory of this source tree) and the GPLv2 (found
- * in the COPYING file in the root directory of this source tree).
- * You may select, at your option, one of the above-listed licenses.
+ * This source code is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * The full GNU General Public License is included in this distribution in
+ * the file called "COPYING".
  */
 
 #ifndef __LIBQDMA_CONTEXT_H__
@@ -30,6 +37,22 @@
  * @return	<0: failure
  *****************************************************************************/
 int qdma_intr_context_setup(struct xlnx_dma_dev *xdev);
+
+/*****************************************************************************/
+/**
+ * qdma_prog_intr_context() -
+ *			handler to program the qdma interrupt context for
+ *			VF from PF
+ *
+ * @param[in]	xdev:		pointer to xdev
+ * @param[in]	ictxt:		interrupt context
+ *
+ * @return	0: success
+ * @return	<0: failure
+ *****************************************************************************/
+
+int qdma_prog_intr_context(struct xlnx_dma_dev *xdev,
+		struct mbox_msg_intr_ctxt *ictxt);
 
 /*****************************************************************************/
 /**
@@ -103,13 +126,15 @@ int qdma_descq_context_read(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
  *
  * @param[in]	xdev:	pointer to xdev
  * @param[in]	ring_index:	interrupt ring index
- * @param[out]	context:	pointer to interrupt context
+ * @param[in]	ctxt_sz:	context size
+ * @param[out]	context:	pointer to interrupt context*
  *
  * @return	0: success
  * @return	<0: failure
  *****************************************************************************/
 int qdma_intr_context_read(struct xlnx_dma_dev *xdev,
-				int ring_index, u32 *context);
+				int ring_index, unsigned int ctxt_sz,
+				u32 *context);
 
 #ifndef __QDMA_VF__
 /*****************************************************************************/
@@ -128,6 +153,26 @@ int qdma_intr_context_read(struct xlnx_dma_dev *xdev,
 int qdma_descq_context_program(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
 				bool st, bool c2h,
 				struct hw_descq_context *ctxt);
+
+
+/*****************************************************************************/
+/**
+ * qdma_descq_stm_read() - handler to read stm context, can, maps
+ *
+ * @param[in]	xdev:	pointer to xdev
+ * @param[in]	qid_hw:	hw qidx
+ * @param[in]	pipe_flow_id: pipe_flow_id for queue
+ * @param[in]	c2h:	indicates whether the h2c or c2h direction
+ * @param[in]	map:	indicates whether to read map or ctxt/can
+ * @param[in]   ctxt:	indicates whether to read ctxt or can
+ * @param[out]  context: pointer to context data
+ *
+ * @return	0: success
+ * @return	<0: failure
+ *****************************************************************************/
+int qdma_descq_stm_read(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
+			u8 pipe_flow_id, bool c2h, bool map, bool ctxt,
+			struct stm_descq_context *context);
 
 
 /*****************************************************************************/

@@ -44,14 +44,13 @@ class stream_mem;
 /**
  * Base class for all CL API object types
  */
-template <typename XOCLTYPE, typename XCLTYPE, typename CLTYPE>
+template <typename XOCLTYPE, typename CLTYPE>
 class object
 {
   const _cl_icd_dispatch* m_dispatch;
 
 public:
   typedef XOCLTYPE xocl_type;
-  typedef XCLTYPE  xcl_type;
   typedef CLTYPE   cl_type;
 
   object() : m_dispatch(&cl_icd_dispatch) {}
@@ -66,18 +65,11 @@ template <typename CLTYPE>
 struct cl_object_traits<CLTYPE*>
 {
   using xocl_type = typename CLTYPE::xocl_type;
-  using xcl_type = typename CLTYPE::xcl_type;
 
   static xocl_type*
   get_xocl(CLTYPE* cl)
   {
     return static_cast<xocl_type*>(cl);
-  }
-
-  static xcl_type*
-  get_xcl(CLTYPE* cl)
-  {
-    return static_cast<xcl_type*>(cl);
   }
 };
 
@@ -99,13 +91,6 @@ typename detail::cl_object_traits<CLTYPE>::xocl_type*
 xocl(CLTYPE c)
 {
   return detail::cl_object_traits<CLTYPE>::get_xocl(c);
-}
-
-template <typename CLTYPE>
-typename detail::cl_object_traits<CLTYPE>::xcl_type*
-xcl(CLTYPE c)
-{
-  return detail::cl_object_traits<CLTYPE>::get_xcl(c);
 }
 
 template <typename CLTYPE>
@@ -161,30 +146,17 @@ retobj(CLTYPE c)
 }
 
 // Wire in old xilinxopencl classes until their content is moved
-// to xocl:: objects. the XCLTYPE disappears once everything is
-// ported to new xocl objects.
-class _xcl_platform_id;
-class _xcl_device_id;
-class _xcl_context;
-class _xcl_event;
-class _xcl_command_queue;
-class _xcl_program;
-class _xcl_kernel;
-class _xcl_sampler;
-class _xcl_mem;
-class _xcl_stream;
-class _xcl_stream_mem;
-
-struct _cl_platform_id :   public xocl::object<xocl::platform,     _xcl_platform_id,  _cl_platform_id> {};
-struct _cl_device_id :     public xocl::object<xocl::device,       _xcl_device_id,    _cl_device_id> {};
-struct _cl_context :       public xocl::object<xocl::context,      _xcl_context,      _cl_context> {};
-struct _cl_event :         public xocl::object<xocl::event,        _xcl_event,        _cl_event> {};
-struct _cl_command_queue : public xocl::object<xocl::command_queue,_xcl_command_queue,_cl_command_queue> {};
-struct _cl_program :       public xocl::object<xocl::program,      _xcl_program,      _cl_program> {};
-struct _cl_sampler :       public xocl::object<xocl::sampler,      _xcl_sampler,      _cl_sampler> {};
-struct _cl_kernel :        public xocl::object<xocl::kernel,       _xcl_kernel,       _cl_kernel> {};
-struct _cl_mem :           public xocl::object<xocl::memory,       _xcl_mem,          _cl_mem> {};
-struct _cl_stream :        public xocl::object<xocl::stream,       _xcl_stream,       _cl_stream> {};
-struct _cl_stream_mem :    public xocl::object<xocl::stream_mem,   _xcl_stream_mem,   _cl_stream_mem> {};
+// to xocl:: objects.
+struct _cl_platform_id :   public xocl::object<xocl::platform,     _cl_platform_id> {};
+struct _cl_device_id :     public xocl::object<xocl::device,       _cl_device_id> {};
+struct _cl_context :       public xocl::object<xocl::context,      _cl_context> {};
+struct _cl_event :         public xocl::object<xocl::event,        _cl_event> {};
+struct _cl_command_queue : public xocl::object<xocl::command_queue,_cl_command_queue> {};
+struct _cl_program :       public xocl::object<xocl::program,      _cl_program> {};
+struct _cl_sampler :       public xocl::object<xocl::sampler,      _cl_sampler> {};
+struct _cl_kernel :        public xocl::object<xocl::kernel,       _cl_kernel> {};
+struct _cl_mem :           public xocl::object<xocl::memory,       _cl_mem> {};
+struct _cl_stream :        public xocl::object<xocl::stream,       _cl_stream> {};
+struct _cl_stream_mem :    public xocl::object<xocl::stream_mem,   _cl_stream_mem> {};
 
 #endif

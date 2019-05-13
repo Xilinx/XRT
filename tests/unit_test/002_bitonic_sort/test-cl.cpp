@@ -53,9 +53,7 @@ typedef union _LARGE_INTEGER {
   } u;
   LONGLONG QuadPart;
 } LARGE_INTEGER, *PLARGE_INTEGER;
-LARGE_INTEGER g_PerfFrequency;
-LARGE_INTEGER g_PerformanceCountNDRangeStart;
-LARGE_INTEGER g_PerformanceCountNDRangeStop;
+
 
 int
 load_file_to_memory(const char *filename, char **result)
@@ -92,65 +90,99 @@ void Cleanup_OpenCL()
 
 int Setup_OpenCL( const char *program_source, cl_uint* alignment, const char *kernelfilename)
 {
-    cl_device_id devices[16];
     size_t cb;
     cl_uint size_ret = 0;
     cl_int err;
 
-	if(g_bRunOnPG)
-	{
-		printf("Trying to run on a FPGA\n");
-	}
-	else
-	{
-		printf("Trying to run on a CPU \n");
-	}
+    char cl_platform_vendor[1001];
+    char cl_platform_name[1001];
 
-	cl_platform_id intel_platform_id = GetIntelOCLPlatform();
-    if( intel_platform_id == NULL )
+    cl_platform_id platform_id;         // platform id
+    cl_device_id device_id;             // compute device id 
+    cl_device_id *devices;
+
+    // Connect to first platform
+    //
+    err = clGetPlatformIDs(1,&platform_id,NULL);
+    if (err != CL_SUCCESS)
     {
-        printf("ERROR: Failed to find Intel OpenCL platform.\n");
-        return -1;
+        printf("ERROR: Failed to find an OpenCL platform!\n");
+        printf("ERROR: Test failed\n");
+        return EXIT_FAILURE;
+    }
+    
+    err = clGetPlatformInfo(platform_id,CL_PLATFORM_VENDOR,1000,(void *)cl_platform_vendor,NULL);
+    if (err != CL_SUCCESS)
+    {
+        printf("ERROR: clGetPlatformInfo(CL_PLATFORM_VENDOR) failed!\n");
+        printf("ERROR: Test failed\n");
+        return EXIT_FAILURE;
     }
 
-    cl_context_properties context_properties[3] = {CL_CONTEXT_PLATFORM, (cl_context_properties)intel_platform_id, 0 };
-
-    // create the OpenCL context on a CPU/PG 
-	if(g_bRunOnPG)
-	{
-		g_context = clCreateContextFromType(context_properties, CL_DEVICE_TYPE_ACCELERATOR, NULL, NULL, NULL);
-	}
-	else
-	{
-		g_context = clCreateContextFromType(context_properties, CL_DEVICE_TYPE_CPU, NULL, NULL, NULL);
-	}
-    if (g_context == (cl_context)0)
-        return -1;
-
-
-    // get the list of CPU devices associated with context
-    err = clGetContextInfo(g_context, CL_CONTEXT_DEVICES, 0, NULL, &cb);
-    clGetContextInfo(g_context, CL_CONTEXT_DEVICES, cb, devices, NULL);
-
-    if( alignment )
+    printf("CL_PLATFORM_VENDOR %s\n",cl_platform_vendor);
+    err = clGetPlatformInfo(platform_id,CL_PLATFORM_NAME,1000,(void *)cl_platform_name,NULL);
+    if (err != CL_SUCCESS)
     {
-        err = clGetDeviceInfo (devices[0],
-            CL_DEVICE_MEM_BASE_ADDR_ALIGN ,
-            sizeof(cl_uint),
-            alignment,
-            NULL);
+        printf("ERROR: clGetPlatformInfo(CL_PLATFORM_NAME) failed!\n");
+        printf("ERROR: Test failed\n");
+        return EXIT_FAILURE;
+    }
+    printf("CL_PLATFORM_NAME %s\n",cl_platform_name);
+  
+    // Connect to a compute device
+    // 
 
-        *alignment/=8; //in bytes
-        printf("OpenCL data alignment is %d bytes.\n", *alignment);
+    int fpga = 0;
+#if defined (FLOW_ZYNQ_HLS_BITSTREAM) || defined(FLOW_HLS_CSIM) || defined(FLOW_HLS_COSIM)
+    fpga = 1;
+#endif
+    cl_uint num_devices = 0;
+    err = clGetDeviceIDs(platform_id, fpga ? CL_DEVICE_TYPE_ACCELERATOR : CL_DEVICE_TYPE_CPU,
+                       0, NULL, &num_devices);
+    if (err != CL_SUCCESS)
+    {
+        printf("ERROR: Failed to create a device group!\n");
+        return EXIT_FAILURE;
     }
 
-    g_cmd_queue = clCreateCommandQueue(g_context, devices[0], 0, NULL);
-    if (g_cmd_queue == (cl_command_queue)0)
+    // Create a compute context 
+    // 
+    printf("Get %d devices\n", num_devices);
+    devices = (cl_device_id *)malloc(num_devices*sizeof(cl_device_id));
+    err = clGetDeviceIDs(platform_id, fpga ? CL_DEVICE_TYPE_ACCELERATOR : CL_DEVICE_TYPE_CPU,
+                       num_devices, devices, NULL);
+    if (err != CL_SUCCESS)
     {
-        Cleanup_OpenCL();
-        return -1;
+        printf("ERROR: Failed to create a device group!\n");
+        return EXIT_FAILURE;
     }
 
+    for(int i = 0; i < num_devices; i++) {
+        g_context = clCreateContext(0, 1, &devices[i], NULL, NULL, &err);
+        if(err != CL_SUCCESS || g_context == NULL)
+            continue;
+        else {
+            device_id = devices[i];
+            printf("Using %dth device\n", i+1);
+            break;
+        }
+    }
+
+    if  (device_id == NULL) {
+        printf("ERROR: Can not find any available device\n");
+        printf("ERROR: Failed to create a compute context!\n");
+        return EXIT_FAILURE;
+    }
+    
+    // Create a command commands
+    //
+    g_cmd_queue = clCreateCommandQueue(g_context, device_id, 0, &err);
+    if (!g_cmd_queue)
+    {
+        printf("ERROR: Failed to create a command commands!\n");
+        printf("ERROR: code %i\n",err);
+        return EXIT_FAILURE;
+    }
 
 
 #if defined(FLOW_X86_64_ONLINE) || defined(FLOW_AMD_SDK_ONLINE) 
@@ -228,7 +260,7 @@ int Setup_OpenCL( const char *program_source, cl_uint* alignment, const char *ke
     if (err != CL_SUCCESS)
     {
         printf("ERROR: Failed to build program...\n");
-        BuildFailLog(g_program, devices[0]);
+        //BuildFailLog(g_program, devices[0]);
         Cleanup_OpenCL();
         return -1;
     }
@@ -356,7 +388,6 @@ bool ExecuteSortKernel(cl_int* inputArray, cl_int arraySize, cl_uint sortAscendi
         return false;
     }
 
-    //QueryPerformanceCounter(&g_PerformanceCountNDRangeStart);
     for (stage = 0; stage < numStages; stage++)
     {
         if ( CL_SUCCESS != clSetKernelArg(g_kernel, 1, sizeof(cl_uint), (void *) &stage) )
@@ -381,8 +412,8 @@ bool ExecuteSortKernel(cl_int* inputArray, cl_int arraySize, cl_uint sortAscendi
         }
     }
 
-    //err = clFinish(g_cmd_queue);
-    //QueryPerformanceCounter(&g_PerformanceCountNDRangeStop);
+    printf("Wait until kernel finishes.\n");
+    clFinish(g_cmd_queue);
 
     // *** workaround - use clWaitForEvents instead of clFinish ***
     cl_event readevent;
@@ -539,10 +570,6 @@ int main(int argc, char* argv[])
         printf("Verification succeeded.\n");
     }
 
-    //retrieve perf. counter frequency
-    //QueryPerformanceFrequency(&g_PerfFrequency);
-    printf("NDRange perf. counter time %f ms.\n", 
-        1000.0f*(float)(g_PerformanceCountNDRangeStop.QuadPart - g_PerformanceCountNDRangeStart.QuadPart)/(float)g_PerfFrequency.QuadPart);
 
     printf("Releasing resources...\n");
 #define _aligned_free free

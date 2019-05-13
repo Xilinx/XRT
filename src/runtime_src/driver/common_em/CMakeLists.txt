@@ -34,15 +34,14 @@ add_library(common_em SHARED ${CURR_SOURCE}
 
 add_dependencies(common_em generated_code)
 
-set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")
-
 set_target_properties(common_em PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
 target_link_libraries(common_em
-  ${BOOST_FILESYSTEM_LIBRARY}
-  ${BOOST_SYSTEM_LIBRARY}
+  ${Boost_FILESYSTEM_LIBRARY}
+  ${Boost_SYSTEM_LIBRARY}
   ${PROTOBUF_LIBRARY}
+  xrt_coreutil
   dl
   pthread
   crypt

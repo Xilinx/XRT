@@ -29,10 +29,12 @@
 
 namespace xocl {
 
+class compute_unit;
+
 class kernel : public refcount, public _cl_kernel
 {
+  using memidx_bitmask_type = xclbin::memidx_bitmask_type;
 public:
-
   /**
    * class argument is a class hierarchy that represents a kernel
    * object argument constructed from xclbin::symbol::arg meta data.
@@ -48,6 +50,7 @@ public:
     using arginfo_vector_type = std::vector<arginfo_type>;
     using arginfo_iterator_type = arginfo_vector_type::const_iterator;
     using arginfo_range_type = range<arginfo_iterator_type>;
+    using memidx_type = xclbin::memidx_type;
 
   private:
     /**
@@ -349,7 +352,7 @@ public:
   {
   public:
     stream_argument(arginfo_type arg, kernel* kernel)
-      : argument(kernel), m_arg_info(arg) {}
+      : argument(kernel), m_arg_info(arg) { m_set = true; }
     virtual std::unique_ptr<argument> clone();
     virtual void set(size_t sz, const void* arg);
     virtual argtype get_argtype() const { return m_arg_info->atype; }
@@ -366,7 +369,7 @@ private:
 
 public:
   // only program constructs kernels, but private doesn't work as long
-  // xrt::make_unique is used
+  // std::make_unique is used
   friend class program; // only program constructs kernels
   kernel(program* prog, const std::string& name,const xclbin::symbol&);
   kernel(program* prog, const std::string& name);
@@ -569,6 +572,65 @@ public:
     return boost::join(m_printf_args,m_rtinfo_args);
   }
 
+  /**
+   * @return
+   *  List of CUs that can be used by this kernel object
+   */
+  std::vector<const compute_unit*>
+  get_cus() const
+  {
+    return m_cus;
+  }
+
+  /**
+   * @return
+   *  Number of CUs that can be used by this kernel object
+   */
+  size_t
+  get_num_cus() const
+  {
+    return m_cus.size();
+  }
+
+  /**
+   * Get the set of memory banks an argument can connect to given the
+   * current set of kernel compute units for specified device
+   *
+   * @param dev
+   *  Targeted device for connectivity check
+   * @param argidx
+   *  The argument index to check connectivity for
+   * @return
+   *  Bitset with mapping indicies to possible bank connections
+   */
+  memidx_bitmask_type
+  get_memidx(const device* dev, unsigned int arg) const;
+
+  /**
+   * Validate current list of CUs that can be used by this kernel
+   *
+   * Internal validated list of CUs is updated / trimmed to those that
+   * support argument at @argidx connected to memory bank at @memidx
+   *
+   * @param dev
+   *  Targeted device for connectivity check
+   * @param argidx
+   *  The argument index to validate
+   * @param memidx
+   *  The memory index that must be used by argument
+   */
+  size_t
+  validate_cus(const device* dev, unsigned long argidx, int memidx) const;
+
+  /**
+   * Error message for exceptions when connectivity checks fail
+   *
+   * @return
+   *   Current kernel argument connectivity
+   */
+  std::string
+  connectivity_debug() const;
+
   ////////////////////////////////////////////////////////////////
   // Conformance helpers
   ////////////////////////////////////////////////////////////////
@@ -576,6 +638,25 @@ public:
   {
     return m_symbol.hash;
   }
+
+private:
+  // Compute units that can be used by this kernel object The list is
+  // dynamically trimmed as kernel arguments are added and validated.
+  // Mutable because it is an implementation detail that the list is
+  // trimmed dynamically for the purpose of validation - yet not a cool
+  // contract.
+  mutable std::vector<const compute_unit*> m_cus;
+
+  // Select a CU for argument buffer
+  const compute_unit*
+  select_cu(const device* dev) const;
+  const compute_unit*
+  select_cu(const memory* buf) const;
+
+  // Assign a buffer argument to a argidx and if possible validate CUs
+  // now otherwise postpone validate to later.
+  void
+  assign_buffer_to_argidx(memory* mem, unsigned long argidx);
 
 private:
   unsigned int m_uid = 0;
@@ -587,6 +668,16 @@ private:
   argument_vector_type m_progvar_args;
   argument_vector_type m_rtinfo_args;
 };
+
+namespace kernel_utils {
+
+std::string
+normalize_kernel_name(const std::string& kernel_name);
+
+std::vector<std::string>
+get_cu_names(const std::string& kernel_name);
+
+} // kernel_utils
 
 } // xocl
 
