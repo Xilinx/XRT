@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -458,8 +458,13 @@ device::
 exec_wait(int timeout_ms) const
 {
   auto retval = m_ops->mExecWait(m_handle,timeout_ms);
-  if (retval==-1)
-    throw std::runtime_error(std::string("exec wait failed '") + std::strerror(errno) + "'");
+  if (retval==-1) {
+    // We should not treat interrupted syscall as an error
+    if (errno == EINTR)
+      retval = 0;
+    else
+      throw std::runtime_error(std::string("exec wait failed '") + std::strerror(errno) + "'");
+  }
   return retval;
 }
 
