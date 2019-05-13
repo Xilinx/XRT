@@ -68,7 +68,7 @@ namespace xocl {
   // Helper functions
   // ****************
 
-  void XOCLShim::readDebugIpLayout()
+  void shim::readDebugIpLayout()
   {
     if (mIsDebugIpLayoutRead)
       return;
@@ -153,7 +153,7 @@ namespace xocl {
 
   // Gets the information about the specified IP from the sysfs debug_ip_table.
   // The IP types are defined in xclbin.h
-  uint32_t XOCLShim::getIPCountAddrNames(int type, uint64_t *baseAddress, std::string * portNames,
+  uint32_t shim::getIPCountAddrNames(int type, uint64_t *baseAddress, std::string * portNames,
                                          uint8_t *properties, uint8_t *majorVersions, uint8_t *minorVersions,
                                          size_t size) {
     debug_ip_layout *map;
@@ -193,7 +193,7 @@ namespace xocl {
   }
 
   // Read APM performance counters
-  size_t XOCLShim::xclDebugReadCheckers(xclDebugCheckersResults* aCheckerResults) {
+  size_t shim::xclDebugReadCheckers(xclDebugCheckersResults* aCheckerResults) {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id()
       << ", " << aCheckerResults
@@ -231,7 +231,7 @@ namespace xocl {
 
   // Read APM performance counters
 
-  size_t XOCLShim::xclDebugReadCounters(xclDebugCountersResults* aCounterResults) {
+  size_t shim::xclDebugReadCounters(xclDebugCountersResults* aCounterResults) {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id()
       << ", " << XCL_PERF_MON_MEMORY << ", " << aCounterResults
@@ -315,7 +315,7 @@ namespace xocl {
 
   // Read the streaming performance monitors
 
-  size_t XOCLShim::xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* aCounterResults) {
+  size_t shim::xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* aCounterResults) {
 
     size_t size = 0; // The amount of data read from the hardware
 
@@ -371,7 +371,7 @@ namespace xocl {
     return size;
   }
 
-  size_t XOCLShim::xclDebugReadStreamingCheckers(xclDebugStreamingCheckersResults* aStreamingCheckerResults) {
+  size_t shim::xclDebugReadStreamingCheckers(xclDebugStreamingCheckersResults* aStreamingCheckerResults) {
 
     size_t size = 0; // The amount of data read from the hardware
 
@@ -416,7 +416,7 @@ namespace xocl {
     return size;
   }
 
-  size_t XOCLShim::xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult) {
+  size_t shim::xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult) {
     size_t size = 0;
 
     /*
@@ -505,7 +505,7 @@ namespace xocl {
 
 size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void* debugResults)
 {
-  xocl::XOCLShim *drv = xocl::XOCLShim::handleCheck(handle);
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
   if (!drv)
     return -1;
   switch (type) {
