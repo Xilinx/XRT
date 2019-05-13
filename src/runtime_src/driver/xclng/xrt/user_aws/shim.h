@@ -234,6 +234,10 @@ public:
                                     uint8_t *properties, uint8_t *majorVersions, uint8_t *minorVersions, size_t size);
         size_t xclDebugReadCounters(xclDebugCountersResults* debugResult);
         size_t xclDebugReadCheckers(xclDebugCheckersResults* checkerResult);
+        size_t xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* streamingResult);
+        size_t xclDebugReadStreamingCheckers(xclDebugStreamingCheckersResults* streamingCheckerResult);
+        size_t xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult);
+
         void readDebugIpLayout();
 
         // Trace
