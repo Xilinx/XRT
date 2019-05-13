@@ -143,7 +143,7 @@ slot_size(struct drm_device *dev)
  * @cu_idx: Global [0..127] index of a CU
  * Return: Index of the CU mask containing the CU with cu_idx
  */
-inline unsigned int
+static inline unsigned int
 cu_mask_idx(unsigned int cu_idx)
 {
 	return cu_idx >> 5; /* 32 cus per mask */
@@ -155,7 +155,7 @@ cu_mask_idx(unsigned int cu_idx)
  * @cu_idx: Global [0..127] index of a CU
  * Return: Index of the CU within the mask that contains it
  */
-inline unsigned int
+static inline unsigned int
 cu_idx_in_mask(unsigned int cu_idx)
 {
 	return cu_idx - (cu_mask_idx(cu_idx) << 5);
@@ -168,10 +168,34 @@ cu_idx_in_mask(unsigned int cu_idx)
  * @mask_idx: Mask index of the has CU with cu_idx
  * Return: Global cu_idx [0..127]
  */
-inline unsigned int
+static inline unsigned int
 cu_idx_from_mask(unsigned int cu_idx, unsigned int mask_idx)
 {
 	return cu_idx + (mask_idx << 5);
+}
+
+/* explicitly set cucu_valid bitmap to valid(1) for cuid */
+static inline void
+zocl_cu_set_valid(struct sched_exec_core *exec_core, unsigned int cu_idx)
+{
+	exec_core->cu_valid[cu_mask_idx(cu_idx)] |=
+		(1 << cu_idx_in_mask(cu_idx));
+}
+
+/* explicitly set cu_valid bitmap to invalid(0) for cuid */
+static inline void
+zocl_cu_set_invalid(struct sched_exec_core *exec_core, unsigned int cu_idx)
+{
+	exec_core->cu_valid[cu_mask_idx(cu_idx)] ^=
+		(1 << cu_idx_in_mask(cu_idx));
+}
+
+/* return values: valid(1)/invalid(0) */
+static inline unsigned int
+zocl_cu_is_valid(struct sched_exec_core *exec_core, unsigned int cu_idx)
+{
+	return (exec_core->cu_valid[cu_mask_idx(cu_idx)] &
+		(1 << cu_idx_in_mask(cu_idx))) > 0;
 }
 
 /**
@@ -568,6 +592,12 @@ init_cus(struct sched_cmd *cmd)
 				continue;
 			}
 
+			if (!zocl_cu_is_valid(zdev->exec, cu_idx)) {
+				DRM_WARN("Init CU %d fail: NOT a valid CU.\n",
+				    cu_idx);
+				continue;
+			}
+
 			if (cu_idx >= zdev->exec->num_cus) {
 				/*
 				 * Requested CU index exceeds the configured
@@ -665,11 +695,19 @@ configure(struct sched_cmd *cmd)
 	}
 
 	for (i = 0; i < exec->num_cus; i++) {
-		/* Clear encoded handshake
-		 * TODO: This is how xocl KDS do this. It will be better if the
-		 * mask is a macro in a common header file.
-		 */
-		cu_addr = cfg->data[i] & ~(0xFF);
+		/* CU address should be masked by encoded handshake for KDS. */
+		cu_addr = cfg->data[i] & ZOCL_KDS_MASK;
+		if (cu_addr == ZOCL_CU_FREE_RUNNING) {
+			DRM_INFO("CU %x is free-running.", cfg->data[i]);
+			continue;
+		} else {
+			/*
+			 * Explicity set cu is valid,
+			 * only valid cu will be processed below.
+			 */
+			zocl_cu_set_valid(exec, i);
+		}
+
 		/* If it is in ert mode, there is no XCLBIN parsed now
 		 * Trust configuration from host. Once host download XCLBIN to
 		 * PS side, verify host configuration in the same way.
@@ -720,6 +758,9 @@ configure(struct sched_cmd *cmd)
 	 * interrupt according to the command
 	 */
 	for (i = 0; i < exec->num_cus; i++) {
+		if (!zocl_cu_is_valid(exec, i))
+			continue;
+
 		ret = request_irq(zdev->irq[i], sched_exec_isr, 0,
 		    "zocl", zdev);
 		if (ret) {
@@ -728,8 +769,10 @@ configure(struct sched_cmd *cmd)
 			 * already installed and fall back to
 			 * polling mode.
 			 */
-			for (j = 0; j < i; j++)
-				free_irq(zdev->irq[j], zdev);
+			for (j = 0; j < i; j++) {
+				if (zocl_cu_is_valid(exec, i))
+					free_irq(zdev->irq[j], zdev);
+			}
 			DRM_WARN("Fail to install CU %d interrupt handler: %d. "
 			    "Fall back to polling mode.\n", i, ret);
 			exec->polling_mode = 1;
@@ -739,12 +782,15 @@ configure(struct sched_cmd *cmd)
 
 set_cu_and_print:
 	/* Do not trust user's interrupt enable setting in the start cu cmd */
-	if (exec->polling_mode)
-		for (i = 0; i < exec->num_cus; i++)
+	for (i = 0; i < exec->num_cus; i++) {
+		if (!zocl_cu_is_valid(exec, i))
+			continue;
+
+		if (exec->polling_mode)
 			disable_interrupts(cmd->ddev, i);
-	else
-		for (i = 0; i < exec->num_cus; i++)
+		else
 			enable_interrupts(cmd->ddev, i);
+	}
 
 print_and_out:
 	write_unlock(&zdev->attr_rwlock);
@@ -954,7 +1000,7 @@ set_cmd_ext_timestamp(struct sched_cmd *cmd, enum zocl_ts_type ts)
  *
  * This function is called from scheduler thread
  *
- * Return: Command queue slot index, or -1 if none avaiable
+ * Return: Command queue slot index, or -1 if none available
  */
 static int
 acquire_slot_idx(struct drm_device *dev)
@@ -1248,6 +1294,7 @@ add_cmd(struct sched_cmd *cmd)
 	int ret = 0;
 
 	SCHED_DEBUG("-> add_cmd\n");
+
 	cmd->cu_idx = -1;
 	cmd->slot_idx = -1;
 	DRM_DEBUG("packet header 0x%08x, data 0x%08x\n",
@@ -1415,7 +1462,8 @@ reset_all(void)
  * get_free_cu() - get index of first available CU per command cu mask
  *
  * @cmd:    command containing CUs to check for availability
- * @is_scu: 1 to get free soft CU, 0 to get free CU
+ * @cu_type: ZOCL_SOFT_CU(1) to get free soft CU,
+ *           ZOCL_HARD_CU(0) to get free hard CU
  *
  * This function is called kernel software scheduler mode only, in embedded
  * scheduler mode, the hardware scheduler handles the commands directly.
@@ -1428,14 +1476,21 @@ get_free_cu(struct sched_cmd *cmd, enum zocl_cu_type cu_type)
 	int mask_idx = 0;
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
 	int num_masks = cu_masks(cmd);
+	struct sched_exec_core *exec = zdev->exec;
+	int cu_idx = -1;
 
 	SCHED_DEBUG("-> get_free_cu\n");
 	for (mask_idx = 0; mask_idx < num_masks; ++mask_idx) {
 		u32 cmd_mask = cmd->packet->data[mask_idx]; /* skip header */
 		u32 busy_mask = cu_type == ZOCL_SOFT_CU ?
-		    zdev->exec->scu_status[mask_idx]
-		    : zdev->exec->cu_status[mask_idx];
-		int cu_idx = ffs_or_neg_one((cmd_mask | busy_mask) ^ busy_mask);
+		    exec->scu_status[mask_idx]
+		    : exec->cu_status[mask_idx];
+		u32 free_mask = (cmd_mask | busy_mask) ^ busy_mask;
+		/* For hardware cu, we have to search on valid CUs only. */
+		if (cu_type == ZOCL_HARD_CU)
+			free_mask &= exec->cu_valid[mask_idx];
+
+		cu_idx = ffs_or_neg_one(free_mask);
 
 		if (cu_idx >= 0) {
 			if (cu_type == ZOCL_SOFT_CU)
@@ -1852,7 +1907,7 @@ penguin_query(struct sched_cmd *cmd)
 		break;
 
 	default:
-		SCHED_DEBUG("unknow op");
+		SCHED_DEBUG("unknown op");
 	}
 	SCHED_DEBUG("<- penguin_queury\n");
 }
@@ -1959,7 +2014,7 @@ ps_ert_query(struct sched_cmd *cmd)
 		break;
 
 	default:
-		SCHED_DEBUG("unknow op");
+		SCHED_DEBUG("unknown op");
 	}
 	SCHED_DEBUG("<- ps_ert_queury\n");
 }
@@ -2339,6 +2394,7 @@ sched_init_exec(struct drm_device *drm)
 	for (i = 0; i < MAX_U32_CU_MASKS; ++i) {
 		exec_core->cu_status[i] = 0;
 		exec_core->cu_init[i] = 0;
+		exec_core->cu_valid[i] = 0; //default value is invalid(0)
 	}
 
 	init_scheduler_thread();
@@ -2370,9 +2426,12 @@ int sched_fini_exec(struct drm_device *drm)
 	int i;
 
 	SCHED_DEBUG("-> sched_fini_exec\n");
-	if (!(zdev->ert || zdev->exec->polling_mode))
-		for (i = 0; i < zdev->exec->num_cus; i++)
-			free_irq(zdev->irq[i], zdev);
+	if (!(zdev->ert || zdev->exec->polling_mode)) {
+		for (i = 0; i < zdev->exec->num_cus; i++) {
+			if (zocl_cu_is_valid(zdev->exec, i))
+				free_irq(zdev->irq[i], zdev);
+		}
+	}
 
 	if (zdev->exec->cq_thread)
 		kthread_stop(zdev->exec->cq_thread);
