@@ -1,12 +1,14 @@
+.. _sysfs.rst:
+
 Linux Sys FileSystem Nodes
---------------------------
+**************************
 
 ``xocl`` and ``xclmgmt`` drivers expose several ``sysfs`` nodes under
 the ``pci`` device root node. The sysfs nodes are populated by
 platform drivers present in the respective drivers.
 
 xocl
-~~~~
+====
 
 The ``xocl`` driver exposes various sections of the ``xclbin`` image
 including the ``xclbinuuid`` on ``sysfs``. This makes it very
@@ -390,7 +392,7 @@ Sample output of tree command below::
 
 
 xclmgmt
-~~~~~~~
+=======
 
 The ``xclmgmt`` driver exposes various sections of the ``xclbin`` image
 including the ``xclbinuuid`` on ``sysfs``. This makes it very
@@ -841,3 +843,41 @@ Sample output of tree command below::
               └── uevent
 
   71 directories, 364 files
+
+
+zocl
+====
+
+Similar to PCIe drivers ``zocl`` driver used in embedded platforms
+exposes various sections of the ``xclbin`` image
+including the ``xclbinuuid`` on ``sysfs``. This makes it very
+convenient for tools (such as ``xbutil``) to discover characteristics
+of the image currently loaded on the FPGA. The data layout of ``xclbin``
+sections are defined in file ``xclbin.h`` which can be found under
+``runtime/driver/include`` directory.
+
+Sample output of tree command below::
+
+  mpsoc:/sys/bus/platform/devices/amba>tree zyxclmm_drm
+  zyxclmm_drm
+  ├── connectivity
+  ├── debug_ip_layout
+  ├── ip_layout
+  ├── kds_custat
+  ├── memstat
+  ├── memstat_raw
+  ├── mem_topology
+  ├── modalias
+  ├── of_node
+  │   ├── compatible
+  │   ├── name
+  │   ├── reg
+  │   └── status
+  ├── power
+  │   ├── autosuspend_delay_ms
+  │   ├── control
+  │   ├── runtime_active_time
+  │   ├── runtime_status
+  │   └── runtime_suspended_time
+  ├── uevent
+  └── xclbinid
