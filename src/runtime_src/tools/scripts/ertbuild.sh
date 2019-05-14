@@ -3,14 +3,14 @@
 
 # This script is used to build the XRT Embedded Platform PetaLinux Image
 #
-# petalinux.sh <PATH_TO_VIVADO> <PATH_TO_XSCT> <PETALINUX_LOCATION> <PLATFORM_NAME> <XRT_REPO_DIR>
+# 
 #
-# PetaLinux output is put into directory $PWD/$PLATFORM_NAME
+# the output is put into directory $PWD/$PLATFORM_NAME
 #
 # *** The generated platform will be in $PWD/platform/
 #
 
-APPNAME="XRT EMBEDDED PETALINUX"
+APPNAME="EMBEDDED Runtime "
 echo "** $APPNAME STARTING [${BASH_SOURCE[0]}] **"
 
 SAVED_OPTIONS=$(set +o)
@@ -22,16 +22,16 @@ set -e
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 
 usage() {
-    echo "Build Embedded platform (ert)"
+    echo "Build platfrom specific embedded runtime (ert)"
     echo
-    echo "-platform <NAME>            Embedded Platform name, e.g. zcu102ng"
+    echo "-platform <NAME>            Embedded Platform name, e.g. zcu102ng / xcu104_revmin"
     echo "-vivado <PATH>              Full path to vivado executable"
     echo "-xsct <PATH>                Full path to xsct executable"
     echo "-petalinux <PATH>           Full path to petalinux folder"
     echo "-xrt <PATH>                 XRT github repo path"
     echo "[-build-dsa <Yes/No>]       Build DSA or not, if not then copy a pre-build DSA from a relative path to vivado executable. Default=Yes"
-    echo "-[build-sysroot <Yes/No>]   Build SYSROOT or not, default=No"
-    echo "-[bsp <PATH>]               Optional, full path to the platform bsp file, if not supplied, then the PetaLinux project is created using --template" 
+    echo "[-build-sysroot <Yes/No>]   Build SYSROOT or not, default=No"
+    echo "[-bsp <PATH>]               Optional, full path to the platform bsp file, if not supplied, then the PetaLinux project is created using --template" 
     echo "[-help]                     List this help"
     exit $1
 }
@@ -100,10 +100,12 @@ if [ "foo${PATH_TO_XSCT}" == "foo" ] ; then
   echo "full path to xsct is missing"
   usage 1
 fi
+
 if [ "foo${PETALINUX_LOCATION}" == "foo" ] ; then
   echo "full path to petalinux is missing"
   usage 1
 fi
+
 if [ "foo${PLATFORM_NAME}" == "foo" ] ; then
   echo "Embedded platform name is missing"
   usage 1
@@ -114,16 +116,10 @@ if [ "foo${XRT_REPO_DIR}" == "foo" ] ; then
   usage 1
 fi
 
-
-
 if [ ! -f $PATH_TO_VIVADO ]; then
   echo "ERROR: Failed to find vivado executable (it is missing): ${PATH_TO_VIVADO}"
   exit 1
 fi
-#if [ ! -f $DSA ]; then
- # echo "ERROR: Failed to find platform dsa (it is missing): ${DSA}"
- # exit 1
-#fi
 
 if [ ! -f $PATH_TO_XSCT ]; then
   echo "ERROR: Failed to find xsct executale (it is missing): ${PATH_TO_XSCT}"
@@ -140,11 +136,21 @@ fi
 
 ORIGINAL_DIR=$PWD
 
+#######################################################################
+# check $1 (string) in $2 (File) and if $1 does not exists in the file #
+# append to it                                                         #
+######################################################################
+addIfNoExists() {
+  grep "$1" $2
+  if [ $? != 0 ]; then
+      echo "$1"  >> $2    
+  fi
+}
 
 if [ "${GEN_DSA}" == "Yes" ]; then
   # Generate DSA and HDF
   #  * ${XRT_REPO_DIR}/src/platform/${PLATFORM_NAME}/${PLATFORM_NAME}.dsa
-  #  * ${XRT_REPO_DIR}/src/platform/${PLATFORM_NAME}/zcu102_vivado/${PLATFORM_NAME}.hdf
+  #  * ${XRT_REPO_DIR}/src/platform/${PLATFORM_NAME}/${PLATFORM_NAME}_vivado/${PLATFORM_NAME}.hdf
   cp -r ${XRT_REPO_DIR}/src/platform/${PLATFORM_NAME} ${ORIGINAL_DIR}/dsa_build
   cd ${ORIGINAL_DIR}/dsa_build
   echo " * Building Platform (DSA & HDF from: $PWD)"
@@ -154,12 +160,12 @@ if [ "${GEN_DSA}" == "Yes" ]; then
 fi
 
 if [ ! -f ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}.dsa ]; then
-  echo "ERROR: Failed to create DSA (it is missing): ${XRT_REPO_DIR}/dsa_build/${PLATFORM_NAME}.dsa"
+  echo "ERROR: Failed to create/locate DSA (it is missing): ${XRT_REPO_DIR}/dsa_build/${PLATFORM_NAME}.dsa"
   exit 1
 fi
 
 if [ ! -f ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_vivado/${PLATFORM_NAME}.hdf ]; then
-  echo "ERROR: Failed to create HDF (it is missing): ${XRT_REPO_DIR}/dsa_build/${PLATFORM_NAME}_vivado/${PLATFORM_NAME}.hdf"
+  echo "ERROR: Failed to create/locate HDF (it is missing): ${XRT_REPO_DIR}/dsa_build/${PLATFORM_NAME}_vivado/${PLATFORM_NAME}.hdf"
   exit 1
 fi
 
@@ -175,11 +181,9 @@ echo " * Setup PetaLinux: $PETALINUX_LOCATION"
 cd $ORIGINAL_DIR
 
 
-echo "ORIGINAL_DIR : ${ORIGINAL_DIR} $PLATFORM_NAME"
-# if .bsp is passed (/proj/petalinux/2019.1/petalinux-v2019.1_daily_latest/bsp/release/xilinx-zcu104-v2019.1-final.bsp) use that instead of the template
-
 if [ ! -d $PLATFORM_NAME ]; then
   echo " * Create PetaLinux Project: $PLATFORM_NAME"
+  # if .bsp is passed (e.g, /proj/petalinux/2019.1/petalinux-v2019.1_daily_latest/bsp/release/xilinx-zcu104-v2019.1-final.bsp) use that instead of the template
   if [ -f $BSP_FILE ]; then
     echo "petalinux-create -t project -n $PLATFORM_NAME -s $BSP_FILE" 
     petalinux-create -t project -n $PLATFORM_NAME -s $BSP_FILE
@@ -187,7 +191,7 @@ if [ ! -d $PLATFORM_NAME ]; then
     echo "petalinux-create -t project -n $PLATFORM_NAME --template zynqMP"
     petalinux-create -t project -n $PLATFORM_NAME --template zynqMP
   fi  
-
+fi
 mkdir -p ${PLATFORM_NAME}/build/conf/
 echo " * Configuring PetaLinux Project"
 # Allow users to access shell without login
@@ -217,20 +221,20 @@ echo " * Adding XRT, HAL, Driver recipes"
 
 # In 2018.3 Petalinux the name of this file changed..
 if [ -f recipes-core/images/petalinux-image.bbappend ]; then
-	PETALINUX_IMAGE_BBAPPEND=recipes-core/images/petalinux-image.bbappend
+  PETALINUX_IMAGE_BBAPPEND=recipes-core/images/petalinux-image.bbappend
 elif [ -f recipes-core/images/petalinux-image-full.bbappend ]; then
-	PETALINUX_IMAGE_BBAPPEND=recipes-core/images/petalinux-image-full.bbappend
+  PETALINUX_IMAGE_BBAPPEND=recipes-core/images/petalinux-image-full.bbappend
 else
-	echo "Not petalinux image .bbappend file in project-spec/meta-user/recipes-core/images/"
-	exit 1;
+  echo "Not petalinux image .bbappend file in project-spec/meta-user/recipes-core/images/"
+  exit 1;
 fi
 
-echo 'IMAGE_INSTALL_append = " xrt-dev"'            >> $PETALINUX_IMAGE_BBAPPEND
-echo 'IMAGE_INSTALL_append = " mnt-sd"'             >> $PETALINUX_IMAGE_BBAPPEND
-echo 'IMAGE_INSTALL_append = " xrt"'                >> $PETALINUX_IMAGE_BBAPPEND
-echo 'IMAGE_INSTALL_append = " zocl"'               >> $PETALINUX_IMAGE_BBAPPEND
-echo 'IMAGE_INSTALL_append = " opencl-headers-dev"' >> $PETALINUX_IMAGE_BBAPPEND
-echo 'IMAGE_INSTALL_append = " opencl-clhpp-dev"'   >> $PETALINUX_IMAGE_BBAPPEND
+addIfNoExists 'IMAGE_INSTALL_append = " xrt-dev"' $PETALINUX_IMAGE_BBAPPEND
+addIfNoExists 'IMAGE_INSTALL_append = " mnt-sd"'  $PETALINUX_IMAGE_BBAPPEND
+addIfNoExists 'IMAGE_INSTALL_append = " xrt"'     $PETALINUX_IMAGE_BBAPPEND
+addIfNoExists 'IMAGE_INSTALL_append = " zocl"'    $PETALINUX_IMAGE_BBAPPEND
+addIfNoExists 'IMAGE_INSTALL_append = " opencl-headers-dev"' $PETALINUX_IMAGE_BBAPPEND
+addIfNoExists 'IMAGE_INSTALL_append = " opencl-clhpp-dev"'   $PETALINUX_IMAGE_BBAPPEND
 
 echo " * Adding XRT Kernel Node to Device Tree"
 echo "cat ${XRT_REPO_DIR}/src/runtime_src/driver/zynq/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi"
@@ -255,19 +259,22 @@ echo " * Configuring rootfs"
 #   menu -> "user packages" -> opencl-clhpp-dev
 # Saves to: ${PLATFORM_NAME}/project-spec/configs/rootfs_config
 cp ../configs/rootfs_config{,.orig}
-echo 'CONFIG_xrt=y' >> ../configs/rootfs_config
-echo 'CONFIG_mnt-sd=y' >> ../configs/rootfs_config
-echo 'CONFIG_xrt-dev=y' >> ../configs/rootfs_config
-echo 'CONFIG_zocl=y' >> ../configs/rootfs_config
-echo 'CONFIG_opencl-headers-dev=y' >> ../configs/rootfs_config
-echo 'CONFIG_opencl-clhpp-dev=y' >> ../configs/rootfs_config
+
+addIfNoExists 'CONFIG_xrt=y' ../configs/rootfs_config
+addIfNoExists  'CONFIG_mnt-sd=y'  ../configs/rootfs_config
+addIfNoExists 'CONFIG_xrt-dev=y'  ../configs/rootfs_config
+addIfNoExists 'CONFIG_zocl=y'  ../configs/rootfs_config
+addIfNoExists 'CONFIG_opencl-headers-dev=y'  ../configs/rootfs_config
+addIfNoExists 'CONFIG_opencl-clhpp-dev=y'  ../configs/rootfs_config
+
+
 petalinux-config -c rootfs --oldconfig
 
 # Build package
 echo " * Performing PetaLinux Build (from: ${PWD})"
 echo "petalinux-build"
 petalinux-build 
-fi
+
 cd $ORIGINAL_DIR
 echo " * Copying PetaLinux boot files (from: $PWD)"
 mkdir -p ${ORIGINAL_DIR}/dsa_build/src/a53/xrt/image
@@ -319,4 +326,3 @@ cd $ORIGINAL_DIR
 
 eval "$SAVED_OPTIONS"; # Restore shell options
 echo "** $APPNAME COMPLETE [${BASH_SOURCE[0]}] **"
-
