@@ -33,6 +33,8 @@
 # define XQSPIPS_UNUSED __attribute__((unused))
 #endif
 
+#define SAVE_FILE 0
+
 /*
  * The following constants define the commands which may be sent to the Flash device.
  */
@@ -63,7 +65,8 @@
 #define EXTADD_REG_WR		        0xC5
 #define BULK_ERASE_CMD		        0xC7
 #define EXTADD_REG_RD		        0xC8
-#define	SEC_ERASE_CMD		        0xD8
+#define FOURKB_SUBSECTOR_ERASE_CMD  0x20
+#define SEC_ERASE_CMD               0xD8
 #define EXIT_4B_ADDR_MODE	        0xE9
 
 #define IDCODE_READ_BYTES               6
@@ -73,6 +76,7 @@
 #define STATUS_WRITE_BYTES              2 /* Status write bytes count */
 
 #define FLASH_SR_BUSY_MASK          0x01
+#define FOURKB_SUBSECTOR_SIZE		0x1000
 #define SECTOR_SIZE		            0x10000
 
 #define ENTER_4B    1
@@ -338,13 +342,13 @@ int XQSPIPS_Flasher::xclUpgradeFirmware(std::istream& binStream)
     int pages = 0;
     unsigned addr = 0;
     unsigned size = 0;
+    const timespec req = {0, 20000};
+    int beatCount = 0;
+    int mismatched = 0;
 
     binStream.seekg(0, binStream.end);
     total_size = binStream.tellg();
     binStream.seekg(0, binStream.beg);
-
-    remain = total_size % PAGE_SIZE;
-    pages = total_size / PAGE_SIZE;
 
     std::cout << "INFO: ***BOOT.BIN has " << total_size << " bytes" << std::endl;
     /* Test only */
@@ -374,15 +378,44 @@ int XQSPIPS_Flasher::xclUpgradeFirmware(std::istream& binStream)
     /* Use 4 bytes address mode */
     enterOrExitFourBytesMode(ENTER_4B);
 
-    std::cout << "Erasing flash" << std::endl;
+    // Sectoer size is defined by SECTOR_SIZE
+    std::cout << "Erasing flash" << std::flush;
     eraseSector(0, total_size);
-    std::cout << "Erase flash done" << std::endl;
+    std::cout << std::endl;
+
+    pages = total_size / PAGE_SIZE;
+    remain = total_size % PAGE_SIZE;
+
+#if defined(_DEBUG)
+    std::cout << "Verify earse flash" << std::endl;
+    for (int page = 0; page <= pages; page++) {
+        addr = page * PAGE_SIZE;
+        if (page != pages)
+            size = PAGE_SIZE;
+        else
+            size = remain;
+
+        readFlash(addr, size);
+        for (unsigned i = 0; i < size; i++) {
+            if (0xFF != mReadBuffer[i]) {
+                mismatched = 1;
+            }
+        }
+
+        if (mismatched) {
+            std::cout << "Erase failed at page " << page << std::endl;
+            mismatched = 0;
+        }
+
+        nanosleep(&req, 0);
+    }
+#endif
 
     std::cout << "Programming flash" << std::flush;
-    int beatCount = 0;
+    beatCount = 0;
     for (int page = 0; page <= pages; page++) {
         beatCount++;
-        if(beatCount%4000==0) {
+        if (beatCount % 4000 == 0) {
             std::cout << "." << std::flush;
         }
 
@@ -394,53 +427,58 @@ int XQSPIPS_Flasher::xclUpgradeFirmware(std::istream& binStream)
 
         binStream.read((char *)mWriteBuffer, size);
         writeFlash(addr, size);
-
-        // Read one byte in that sector. This avoid mismatch issue...
-        readFlash(addr, 1);
-
-//#if defined(_DEBUG)
-        readFlash(addr, size);
-        int mismatched = 0;
-        for (unsigned i = 0; i < size; i++) {
-            if (mWriteBuffer[i] != mReadBuffer[i]) {
-                std::cout << page << " page the " << i << " byte is mismatched." << std::endl;
-                std::cout << "write 0x" << std::hex << (unsigned)mWriteBuffer[i]
-                          << " got 0x" << (unsigned)mReadBuffer[i] << std::dec << std::endl;
-                mismatched = 1;
-            }
-        }
-        if (mismatched)
-            return -1;
-//#endif
+        nanosleep(&req, 0);
     }
     std::cout << std::endl;
 
     /* Verify (just for debug) */
-#if defined(_DEBUG)
+    binStream.seekg(0, binStream.beg);
+
+#if SAVE_FILE
     std::ofstream of_flash;
-    of_flash.open("~/BOOT.BIN", std::ofstream::out);
+    of_flash.open("/tmp/BOOT.BIN", std::ofstream::out);
     if (!of_flash.is_open()) {
-        std::cout << "Could not open ~/BOOT.BIN" << std::endl;
+        std::cout << "Could not open /tmp/BOOT.BIN" << std::endl;
         return false;
     }
+#endif
 
-    remain = total_size % 8192;
-    pages = total_size / 8192;
+    remain = total_size % PAGE_SIZE;
+    pages = total_size / PAGE_SIZE;
 
+    std::cout << "Verifying" << std::flush;
+    beatCount = 0;
     for (int page = 0; page <= pages; page++) {
-        addr = page * 8192;
+        beatCount++;
+        if (beatCount % 4000 == 0) {
+            std::cout << "." << std::flush;
+        }
+
+        addr = page * PAGE_SIZE;
         if (page != pages)
-            size = 8192;
+            size = PAGE_SIZE;
         else
             size = remain;
 
+        binStream.read((char *)mWriteBuffer, size);
+
         readFlash(addr, size);
 
+        mismatched = 0;
         for (unsigned i = 0; i < size; i++) {
+#if SAVE_FILE
             of_flash << mReadBuffer[i];
+#endif
+            if (mWriteBuffer[i] != mReadBuffer[i]) {
+                mismatched = 1;
+            }
         }
+        if (mismatched)
+            std::cout << "Find mismatch at page " << page << std::endl;
     }
+    std::cout << std::endl;
 
+#if SAVE_FILE
     of_flash.close();
 #endif
 
@@ -955,14 +993,22 @@ bool XQSPIPS_Flasher::eraseSector(unsigned addr, uint32_t byteCount, uint8_t era
     uint8_t writeCmds[5];
     uint32_t realAddr;
     uint32_t Sector;
-
-    if(!isFlashReady())
-        return false;
+    //const timespec req = {0, 20000};
 
     if (eraseCmd == 0xff)
-        eraseCmd = SEC_ERASE_CMD;
+        eraseCmd = FOURKB_SUBSECTOR_ERASE_CMD;
 
-    for (Sector = 0; Sector < ((byteCount / SECTOR_SIZE) + 1); Sector++) {
+    int beatCount = 0;
+    for (Sector = 0; Sector < ((byteCount / (FOURKB_SUBSECTOR_SIZE/4)) + 1); Sector++) {
+
+        if(!isFlashReady())
+            return false;
+
+        beatCount++;
+        if (beatCount % 1024 == 0) {
+            std::cout << "." << std::flush;
+        }
+
         /* TODO Only support dual Qual SPI mode */
         realAddr = addr / 2;
 
@@ -983,10 +1029,9 @@ bool XQSPIPS_Flasher::eraseSector(unsigned addr, uint32_t byteCount, uint8_t era
         if (!finalTransfer(msgEraseFlash, 1))
             return false;
 
-        if(!isFlashReady())
-            return false;
-
-        addr += SECTOR_SIZE;
+        addr += FOURKB_SUBSECTOR_SIZE/4;
+        //Pause before next sector erase
+        //nanosleep(&req, 0);
     }
 
     if (TEST_MODE)
