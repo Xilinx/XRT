@@ -109,7 +109,7 @@ UB_LIST=(\
      libyaml-dev \
      linux-libc-dev \
      lm-sensors \
-     lsb \
+     lsb-release \
      make \
      ocl-icd-dev \
      ocl-icd-libopencl1 \
