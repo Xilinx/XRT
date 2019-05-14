@@ -140,11 +140,17 @@ ORIGINAL_DIR=$PWD
 # check $1 (string) in $2 (File) and if $1 does not exists in the file #
 # append to it                                                         #
 ######################################################################
+
 addIfNoExists() {
-  grep "$1" $2
+  SAVED_OPTIONS=$(set +o)
+  set +e
+  str=$1
+  file=$2
+  grep "$str" $file 
   if [ $? != 0 ]; then
-      echo "$1"  >> $2    
+      echo "$str"  >> $file    
   fi
+  eval "$SAVED_OPTIONS"
 }
 
 if [ "${GEN_DSA}" == "Yes" ]; then
