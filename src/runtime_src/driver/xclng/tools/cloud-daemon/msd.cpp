@@ -65,7 +65,7 @@ int parse_cfg(std::string filename)
         }
     }
 
-    if( i == 0 ) {
+    if (i == 0) {
         std::cout << "Invalid configuration file -- no device found.\n";
         return -ENODEV;
     }
@@ -169,15 +169,15 @@ int main( void )
     // mgmt sysf with xclMailboxMgmtPutID().
     wordexp_t p;
     char **w;
-    wordexp( /*"$XILINX_XRT/etc/msd-host.config"*/"config.cfg", &p, 0 );
+    wordexp( "$XILINX_XRT/etc/msd-host.config", &p, 0 );
     w = p.we_wordv;
     std::string config_path(*w);
     wordfree( &p );
 
-    if (parse_cfg( config_path ) <= 0)
+    if (parse_cfg(config_path) <= 0)
         return -EINVAL;
 
-    // Write to config_mailbox_comm_id in format "127.0.0.1,12345,0", where 0 is the device index.
+    // Write to config_mailbox_comm_id in format "127.0.0.1,12345,abc123", where 'abc123' is the cloud token
     int numDevs = 0;
     for (numDevs; numDevs < boards.size(); numDevs++) {
         if (xclMailboxMgmtPutID(numDevs, std::string(host_ip+","+host_port+","+boards.at(numDevs)+";").c_str(), mbx_switch.c_str())) {
@@ -206,7 +206,7 @@ int main( void )
 
     std::cout << "device index of token: " << devIdx << std::endl;
 
-    local_fd = xclMailboxMgmt( devIdx );
+    local_fd = xclMailboxMgmt(devIdx);
     if (local_fd < 0) {
         std::cout << "xclMailboxMgmt(): " << errno << std::endl;
         return errno;
