@@ -178,8 +178,8 @@ int main( void )
         return -EINVAL;
 
     // Write to config_mailbox_comm_id in format "127.0.0.1,12345,abc123", where 'abc123' is the cloud token
-    int numDevs = 0;
-    for (numDevs; numDevs < boards.size(); numDevs++) {
+    unsigned numDevs;
+    for (numDevs = 0; numDevs < boards.size(); numDevs++) {
         if (xclMailboxMgmtPutID(numDevs, std::string(host_ip+","+host_port+","+boards.at(numDevs)+";").c_str(), mbx_switch.c_str())) {
             std::cout << "xclMailboxMgmtPutID(): " << errno << std::endl;
             return errno;
