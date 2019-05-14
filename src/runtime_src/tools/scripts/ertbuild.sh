@@ -192,6 +192,7 @@ if [ ! -d $PLATFORM_NAME ]; then
     petalinux-create -t project -n $PLATFORM_NAME --template zynqMP
   fi  
 fi
+
 mkdir -p ${PLATFORM_NAME}/build/conf/
 echo " * Configuring PetaLinux Project"
 # Allow users to access shell without login
@@ -314,6 +315,8 @@ fi
 cd ${ORIGINAL_DIR}/dsa_build
 echo " * Building Platform (from: $PWD)"
 echo "${PATH_TO_XSCT} -sdx ./${PLATFORM_NAME}_pfm.tcl"
+# clear the display, otherwise xsct will fail
+unset DISPLAY
 ${PATH_TO_XSCT} -sdx ./${PLATFORM_NAME}_pfm.tcl
 
 # Copy platform directory to ORIGINAL_DIR/platform
