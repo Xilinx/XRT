@@ -93,6 +93,11 @@ struct stream_async_req {
 	struct qdma_request req;
 };
 
+enum {
+	QUEUE_STATE_INITIALIZED,
+	QUEUE_STATE_CLEANUP,
+};
+
 struct stream_queue {
 	struct device		dev;
 	struct xocl_qdma	*qdma;
@@ -103,7 +108,6 @@ struct stream_queue {
 	int			routeid;
 	struct file		*file;
 	int			qfd;
-	int			refcnt;
 	kuid_t			uid;
 	spinlock_t		req_lock;
 	struct list_head	req_pend_list;
@@ -161,6 +165,10 @@ struct mm_channel {
 	struct qdma_queue_conf	qconf;
 	uint64_t		total_trans_bytes;
 };
+
+static u32 get_channel_count(struct platform_device *pdev);
+static u64 get_channel_stat(struct platform_device *pdev, u32 channel,
+	u32 write);
 
 static void dump_sgtable(struct device *dev, struct sg_table *sgt)
 {
@@ -416,8 +424,26 @@ static ssize_t error_show(struct device *dev, struct device_attribute *da,
 }
 static DEVICE_ATTR_RO(error);
 
+static ssize_t channel_stat_raw_show(struct device *dev,
+		        struct device_attribute *attr, char *buf)
+{
+	u32 i;
+	ssize_t nbytes = 0;
+	struct platform_device *pdev = to_platform_device(dev);
+	u32 chs = get_channel_count(pdev);
+
+	for (i = 0; i < chs; i++) {
+		nbytes += sprintf(buf + nbytes, "%llu %llu\n",
+		get_channel_stat(pdev, i, 0),
+		get_channel_stat(pdev, i, 1));
+	}
+	return nbytes;
+}
+static DEVICE_ATTR_RO(channel_stat_raw);
+
 static struct attribute *qdma_attributes[] = {
 	&dev_attr_error.attr,
+	&dev_attr_channel_stat_raw.attr,
 	NULL,
 };
 
@@ -1266,12 +1292,13 @@ static int queue_flush(struct file *file, fl_owner_t id)
 
 	mutex_lock(&qdma->str_dev_lock);
 	xocl_info(&qdma->pdev->dev, "Release Queue 0x%lx", queue->queue);
-
-	if (queue->refcnt > 0) {
+	if (queue->state != QUEUE_STATE_INITIALIZED) {
+		xocl_info(&qdma->pdev->dev, "Already released 0x%lx",
+			queue->queue);
 		mutex_unlock(&qdma->str_dev_lock);
-		xocl_err(&qdma->pdev->dev, "Queue is busy");
-		return -EBUSY;
+		return 0;
 	}
+	queue->state = QUEUE_STATE_CLEANUP;
 
 	stream_sysfs_destroy(queue);
 	qdma->queues[queue->qconf.qidx] = NULL;
@@ -1291,7 +1318,6 @@ static int queue_flush(struct file *file, fl_owner_t id)
 			"Destroy queue failed ret = %ld", ret);
 		goto failed;
 	}
-	queue->queue = 0UL;
 
 	spin_lock_bh(&queue->req_lock);
 	while (!list_empty(&queue->req_pend_list)) {
@@ -1310,10 +1336,22 @@ static int queue_flush(struct file *file, fl_owner_t id)
 
 	if (queue->req_cache)
 		vfree(queue->req_cache);
-	devm_kfree(&qdma->pdev->dev, queue);
-	file->private_data = NULL;
 failed:
 	return ret;
+}
+
+static int queue_close(struct inode *inode, struct file *file)
+{
+	struct xocl_qdma *qdma;
+	struct stream_queue *queue;
+
+	queue = (struct stream_queue *)file->private_data;
+	qdma = queue->qdma;
+
+	devm_kfree(&qdma->pdev->dev, queue);
+	file->private_data = NULL;
+
+	return 0;
 }
 
 static struct file_operations queue_fops = {
@@ -1326,6 +1364,7 @@ static struct file_operations queue_fops = {
 		.aio_write = queue_aio_write,
 #endif
 		.flush = queue_flush,
+		.release = queue_close,
 };
 
 /* stream device file operations */

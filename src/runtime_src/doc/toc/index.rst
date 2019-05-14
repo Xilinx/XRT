@@ -35,3 +35,5 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    p2p.rst
    debug-faq.rst
    xma.main.rst
+   mailbox.main.rst
+   mailbox.proto.rst

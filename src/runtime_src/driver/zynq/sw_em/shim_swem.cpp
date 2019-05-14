@@ -75,10 +75,7 @@ bool validateXclBin(const xclBin *header , std::string &xclBinName)
     ssize_t debugFileSize = 0;
     ssize_t memTopologySize = 0;
 
-    char* zipFile = nullptr;
     char* xmlFile = nullptr;
-    char* debugFile = nullptr;
-    char* memTopology = nullptr;
 
     if ((!std::memcmp(bitstreambin, "xclbin0", 7)) || (!std::memcmp(bitstreambin, "xclbin1", 7)))
     {
@@ -92,87 +89,25 @@ bool validateXclBin(const xclBin *header , std::string &xclBinName)
         xmlFile = new char[xmlFileSize];
         memcpy(xmlFile, bitstreambin + sec->m_sectionOffset, xmlFileSize);
       }
-      if (auto sec = xclbin::get_axlf_section(top,BITSTREAM)) {
-        zipFileSize = sec->m_sectionSize;
-        zipFile = new char[zipFileSize];
-        memcpy(zipFile, bitstreambin + sec->m_sectionOffset, zipFileSize);
-      }
-      if (auto sec = xclbin::get_axlf_section(top,DEBUG_IP_LAYOUT)) {
-        debugFileSize = sec->m_sectionSize;
-        debugFile = new char[debugFileSize];
-        memcpy(debugFile, bitstreambin + sec->m_sectionOffset, debugFileSize);
-      }
-      if (auto sec = xclbin::get_axlf_section(top,MEM_TOPOLOGY)) {
-        memTopologySize = sec->m_sectionSize;
-        memTopology = new char[memTopologySize];
-        memcpy(memTopology, bitstreambin + sec->m_sectionOffset, memTopologySize);
-      }
     }
     else
     {
       return false;
     }
 
-    if(!zipFile || !xmlFile)
-    {
-      //deallocate all allocated memories to fix memory leak
-      if(zipFile)
-      {
-        delete[] zipFile;
-        zipFile = nullptr;
-      }
-
-      if(debugFile)
-      {
-        delete[] debugFile;
-        debugFile = nullptr;
-      }
-
-      if(xmlFile)
-      {
-        delete[] xmlFile;
-        xmlFile = nullptr;
-      }
-
-      if(memTopology)
-      {
-        delete[] memTopology;
-        memTopology = nullptr;
-      }
-
-      return false;
-    }
-
-    std::string xmlFileName("");
-    xmlFileName = "xmltmp";
-    bool xmlFileCreated=false;
-
-    while(!xmlFileCreated)
-    {
-      FILE *fp=fopen(xmlFileName.c_str(),"rb");
-      if(fp==NULL) xmlFileCreated=true;
-      else
-      {
-        fclose(fp);
-        xmlFileName += std::string("_");
-      }
-    }
-
-    FILE *fp=fopen(xmlFileName.c_str(),"wb");
-    if(fp==NULL)
+    if(!xmlFile)
     {
       return false;
     }
-    fwrite(xmlFile,xmlFileSize,1,fp);
-    fflush(fp);
-    fclose(fp);
 
     pt::ptree xml_project;
+    std::string sXmlFile;
+    sXmlFile.assign(xmlFile,xmlFileSize);
     std::stringstream xml_stream;
-    xml_stream << xmlFile;
+    xml_stream<<sXmlFile;
     pt::read_xml(xml_stream,xml_project);
-
-     // iterate platforms
+     
+    // iterate platforms
     int count = 0;
     for (auto& xml_platform : xml_project.get_child("project"))
     {

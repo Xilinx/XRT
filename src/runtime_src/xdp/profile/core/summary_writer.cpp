@@ -300,19 +300,22 @@ namespace xdp {
     std::string monitorName;
     RTUtil::monitorTypeToString(monitorType, monitorName);
 
-    auto readKind  = RTUtil::READ_BUFFER;
-    auto writeKind = RTUtil::WRITE_BUFFER;
+    double totalReadTimeMsec  = 0;
+    double totalWriteTimeMsec = 0;
     if (monitorType == RTUtil::MON_SHELL_KDMA) {
-      readKind  = RTUtil::COPY_BUFFER;
-      writeKind = RTUtil::COPY_BUFFER;
+      totalReadTimeMsec  += mProfileCounters->getBufferTransferTotalTime(RTUtil::COPY_BUFFER);
+      totalWriteTimeMsec += mProfileCounters->getBufferTransferTotalTime(RTUtil::COPY_BUFFER);
     }
     else if (monitorType == RTUtil::MON_SHELL_P2P) {
-      readKind  = RTUtil::COPY_BUFFER_P2P;
-      writeKind = RTUtil::COPY_BUFFER_P2P;
-    }
+      totalReadTimeMsec  += mProfileCounters->getBufferTransferTotalTime(RTUtil::COPY_BUFFER_P2P);
+      totalReadTimeMsec  += mProfileCounters->getBufferTransferTotalTime(RTUtil::READ_BUFFER_P2P);
 
-    double totalReadTimeMsec  = mProfileCounters->getBufferTransferTotalTime(readKind);
-    double totalWriteTimeMsec = mProfileCounters->getBufferTransferTotalTime(writeKind);
+      totalWriteTimeMsec += mProfileCounters->getBufferTransferTotalTime(RTUtil::COPY_BUFFER_P2P);
+      totalWriteTimeMsec += mProfileCounters->getBufferTransferTotalTime(RTUtil::WRITE_BUFFER_P2P);
+    } else {
+      totalReadTimeMsec  += mProfileCounters->getBufferTransferTotalTime(RTUtil::READ_BUFFER);
+      totalWriteTimeMsec += mProfileCounters->getBufferTransferTotalTime(RTUtil::WRITE_BUFFER);
+    }
 
     //
     // Shell monitors: KDMA/XDMA/P2P

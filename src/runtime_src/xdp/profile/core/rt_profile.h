@@ -82,9 +82,11 @@ namespace xdp {
     void addDeviceName(std::string deviceName) { mDeviceNames.push_back(deviceName); }
     std::string getDeviceNames(const std::string& sep) const;
     std::string getProjectName() const;
-    int getMigrateMemCalls() const;
     const std::set<std::thread::id>& getThreadIds();
+
     // Functions required by guidance
+    int getMigrateMemCalls() const;
+    int getHostP2PTransfers() const;
     double getDeviceStartTime(const std::string& deviceName) const;
     double getTotalKernelExecutionTime(const std::string& deviceName) const;
     uint32_t getComputeUnitCalls(const std::string& deviceName, const std::string& cuName) const;

@@ -1664,7 +1664,7 @@ static bool check_bo_user_flags(HwEmShim* dev, unsigned flags)
 	if (flags == 0xffffffff)
 		return true;
 
-  ddr = xclemulation::xocl_bo_ddr_idx(flags);
+  ddr = xclemulation::xocl_bo_ddr_idx(flags,false);
   if (ddr > ddr_count)
 		return false;
 
@@ -1719,7 +1719,7 @@ int HwEmShim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *propert
 uint64_t HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
 {
 	size_t size = info->size;
-  unsigned ddr = xclemulation::xocl_bo_ddr_idx(info->flags);
+  unsigned ddr = xclemulation::xocl_bo_ddr_idx(info->flags,false);
 
   if (!size)
   {
@@ -1866,6 +1866,7 @@ unsigned int HwEmShim::xclImportBO(int boGlobalHandle, unsigned flags)
       std::cout<<"ERROR HERE in importBO "<<std::endl;
       return -1;
     }
+    mImportedBOs.insert(importedBo);
     bo->fd = boGlobalHandle;
     bool ack;
     xclImportBO_RPC_CALL(xclImportBO,fileName,bo->base,size);
@@ -2101,9 +2102,9 @@ int HwEmShim::xclExecBuf(unsigned int cmdBO)
     PRINTENDFUNC;
     return -1;
   }
-  mMBSch->add_exec_buffer(mCore, bo);
+  int ret = mMBSch->add_exec_buffer(mCore, bo);
   PRINTENDFUNC;
-  return 0;
+  return ret;
 }
 
 int HwEmShim::xclRegisterEventNotify(unsigned int userInterrupt, int fd)
@@ -2388,7 +2389,7 @@ int HwEmShim::xclFreeQDMABuf(uint64_t buf_hdl)
 /*
  * xclLogMsg()
  */
-int HwEmShim::xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, va_list args1)
+int HwEmShim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, va_list args1)
 {
     int len = std::vsnprintf(nullptr, 0, format, args1);
 

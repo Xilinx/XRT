@@ -19,6 +19,7 @@
  */
 
 #include "shim.h"
+#include "driver/common/scheduler.h"
 #include <errno.h>
 /*
  * Define GCC version macro so we can use newer C++11 features
@@ -119,28 +120,14 @@ namespace awsbwhal {
 
     int AwsXcl::xclGetXclBinIdFromSysfs(uint64_t &xclbin_id_from_sysfs) 
     {
-         const std::string devPath = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ mBoardNumber ].user_name;
-         std::string binid_path = devPath + "/xclbinuuid";
-         struct stat sb;
-         if( stat( binid_path.c_str(), &sb ) < 0 ) {
-             std::cout << "ERROR: failed to stat " << binid_path << std::endl;
-             return errno;
-         }
-         std::ifstream ifs( binid_path.c_str(), std::ifstream::binary );
-         if( !ifs.good() ) {
-             return errno;
-         }
-         char* fileReadBuf = new char[sb.st_size];
-         memset(fileReadBuf, 0, sb.st_size);
-         ifs.read( fileReadBuf, sb.st_size );
-         if( ifs.gcount() > 0 ) {
-             std::string tmp_hex_string = fileReadBuf;
-             xclbin_id_from_sysfs = std::stoi(std::string(fileReadBuf),nullptr,16);
-         } else { // xclbinuuid exists, but no data read or reported
-             std::cout << "WARNING: 'xclbinuuid' invalid, unable to report xclbinuuid. Has the bitstream been loaded? See 'awssak program'.\n";
-         }
-         delete [] fileReadBuf;
-         ifs.close();
+        std::string buf, dev_name;
+        std::string errmsg;
+        dev_name = xcldev::pci_device_scanner::device_list[ mBoardNumber ].user_name;
+        xcldev::sysfs_get(dev_name, "", "xclbinuuid", errmsg, buf);
+        if (!buf.empty())
+             xclbin_id_from_sysfs = std::stoi(buf,nullptr,16);
+        else
+            std::cout << "WARNING: 'xclbinuuid' invalid, unable to report xclbinuuid. Has the bitstream been loaded? See 'awssak program'.\n"; 
          return 0;
     }
 
@@ -354,107 +341,6 @@ namespace awsbwhal {
         }
         }
     }
-
-    uint64_t AwsXcl::xclAllocDeviceBuffer(size_t size)
-    {
-      if (mLogStream.is_open()) {
-        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << size << std::endl;
-      }
-
-      uint64_t result = mNullAddr;
-      unsigned boHandle = xclAllocBO(size, XCL_BO_DEVICE_RAM, 0x0);
-      if (boHandle == mNullBO)
-        return result;
-
-      drm_xocl_info_bo boInfo = {boHandle, 0, 0, 0};
-      if (ioctl(mUserHandle, DRM_IOCTL_XOCL_INFO_BO, &boInfo))
-        return result;
-
-      void *hbuf = xclMapBO(boHandle, true);
-      if (hbuf == MAP_FAILED) {
-        xclFreeBO(boHandle);
-        return mNullAddr;
-      }
-      mLegacyAddressTable.insert(boInfo.paddr, size, std::make_pair(boHandle, (char *)hbuf));
-      return boInfo.paddr;
-    }
-
-    uint64_t AwsXcl::xclAllocDeviceBuffer2(size_t size, xclMemoryDomains domain, unsigned flags)
-    {
-      if (mLogStream.is_open()) {
-        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << size << ", "
-                   << domain << ", " << flags << std::endl;
-      }
-
-      uint64_t result = mNullAddr;
-      if (domain != XCL_MEM_DEVICE_RAM)
-        return result;
-
-      unsigned ddr = 1;
-      //ddr <<= flags;
-      unsigned boHandle = xclAllocBO(size, XCL_BO_DEVICE_RAM, ddr);
-      if (boHandle == mNullBO)
-        return result;
-
-      drm_xocl_info_bo boInfo = {boHandle, 0, 0, 0};
-      if (ioctl(mUserHandle, DRM_IOCTL_XOCL_INFO_BO, &boInfo))
-        return result;
-
-      void *hbuf = xclMapBO(boHandle, true);
-      if (hbuf == MAP_FAILED) {
-        xclFreeBO(boHandle);
-        return mNullAddr;
-      }
-      mLegacyAddressTable.insert(boInfo.paddr, size, std::make_pair(boHandle, (char *)hbuf));
-      return boInfo.paddr;
-    }
-
-    void AwsXcl::xclFreeDeviceBuffer(uint64_t buf)
-    {
-      if (mLogStream.is_open()) {
-        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << buf << std::endl;
-      }
-
-      std::pair<unsigned, char *> bo = mLegacyAddressTable.erase(buf);
-      drm_xocl_info_bo boInfo = {bo.first, 0, 0, 0};
-      if (!ioctl(mUserHandle, DRM_IOCTL_XOCL_INFO_BO, &boInfo)) {
-        munmap(bo.second, boInfo.size);
-      }
-      xclFreeBO(bo.first);
-    }
-
-
-    size_t AwsXcl::xclCopyBufferHost2Device(uint64_t dest, const void *src, size_t size, size_t seek)
-    {
-      if (mLogStream.is_open()) {
-        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << dest << ", "
-                   << src << ", " << size << ", " << seek << std::endl;
-      }
-
-      std::pair<unsigned, char *> bo = mLegacyAddressTable.find(dest);
-      std::memcpy(bo.second + seek, src, size);
-      int result = xclSyncBO(bo.first, XCL_BO_SYNC_BO_TO_DEVICE, size, seek);
-      if (result)
-        return result;
-      return size;
-    }
-
-
-    size_t AwsXcl::xclCopyBufferDevice2Host(void *dest, uint64_t src, size_t size, size_t skip)
-    {
-      if (mLogStream.is_open()) {
-        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << dest << ", "
-                   << src << ", " << size << ", " << skip << std::endl;
-      }
-
-      std::pair<unsigned, char *> bo = mLegacyAddressTable.find(src);
-      int result = xclSyncBO(bo.first, XCL_BO_SYNC_BO_FROM_DEVICE, size, skip);
-      if (result)
-        return result;
-      std::memcpy(dest, bo.second + skip, size);
-      return size;
-    }
-
 
     AwsXcl *AwsXcl::handleCheck(void *handle) {
         // Sanity checks
@@ -1271,9 +1157,10 @@ int xclLoadBitstream(xclDeviceHandle handle, const char *xclBinFileName)
 int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
     awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
-    if (!drv)
-        return -1;
-    return drv->xclLoadXclBin(buffer);
+    auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
+    if (!ret)
+      ret = xrt_core::scheduler::init(handle, buffer);
+    return ret;
 }
 
 size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
@@ -1291,53 +1178,6 @@ size_t xclRead(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, v
         return -1;
     return drv->xclRead(space, offset, hostBuf, size);
 }
-
-
-uint64_t xclAllocDeviceBuffer(xclDeviceHandle handle, size_t size)
-{
-    awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
-    if (!drv)
-        return -1;
-    return drv->xclAllocDeviceBuffer(size);
-}
-
-
-uint64_t xclAllocDeviceBuffer2(xclDeviceHandle handle, size_t size, xclMemoryDomains domain,
-                               unsigned flags)
-{
-    awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
-    if (!drv)
-        return -1;
-    return drv->xclAllocDeviceBuffer2(size, domain, flags);
-}
-
-
-void xclFreeDeviceBuffer(xclDeviceHandle handle, uint64_t buf)
-{
-    awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
-    if (!drv)
-        return;
-    return drv->xclFreeDeviceBuffer(buf);
-}
-
-
-size_t xclCopyBufferHost2Device(xclDeviceHandle handle, uint64_t dest, const void *src, size_t size, size_t seek)
-{
-    awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
-    if (!drv)
-        return -1;
-    return drv->xclCopyBufferHost2Device(dest, src, size, seek);
-}
-
-
-size_t xclCopyBufferDevice2Host(xclDeviceHandle handle, void *dest, uint64_t src, size_t size, size_t skip)
-{
-    awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
-    if (!drv)
-        return -1;
-    return drv->xclCopyBufferDevice2Host(dest, src, size, skip);
-}
-
 
 //This will be deprecated.
 int xclUpgradeFirmware(xclDeviceHandle handle, const char *fileName)

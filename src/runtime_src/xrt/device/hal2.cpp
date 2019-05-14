@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,6 +16,7 @@
 
 #include "hal2.h"
 #include "xrt/util/thread.h"
+#include "driver/include/ert.h"
 
 #include <cstring> // for std::memcpy
 #include <iostream>
@@ -389,6 +390,17 @@ copy(const BufferObjectHandle& dst_boh, const BufferObjectHandle& src_boh, size_
   return event(typed_event<int>(m_ops->mCopyBO(m_handle, dst_bo->handle, src_bo->handle, sz, dst_offset, src_offset)));
 }
 
+void
+device::
+fill_copy_pkt(const BufferObjectHandle& dst_boh, const BufferObjectHandle& src_boh
+              ,size_t sz, size_t dst_offset, size_t src_offset, ert_start_copybo_cmd* pkt)
+{
+  BufferObject* dst_bo = getBufferObject(dst_boh);
+  BufferObject* src_bo = getBufferObject(src_boh);
+  ert_fill_copybo_cmd(pkt,src_bo->handle,dst_bo->handle,src_offset,dst_offset,sz);
+  return;
+}
+
 size_t
 device::
 read_register(size_t offset, void* buffer, size_t size)
@@ -446,8 +458,13 @@ device::
 exec_wait(int timeout_ms) const
 {
   auto retval = m_ops->mExecWait(m_handle,timeout_ms);
-  if (retval==-1)
-    throw std::runtime_error(std::string("exec wait failed '") + std::strerror(errno) + "'");
+  if (retval==-1) {
+    // We should not treat interrupted syscall as an error
+    if (errno == EINTR)
+      retval = 0;
+    else
+      throw std::runtime_error(std::string("exec wait failed '") + std::strerror(errno) + "'");
+  }
   return retval;
 }
 
@@ -482,6 +499,14 @@ getDeviceAddr(const BufferObjectHandle& boh)
   return bo->deviceAddr;
 }
 
+bool
+device::
+is_imported(const BufferObjectHandle& boh) const
+{
+  auto bo = getBufferObject(boh);
+  return bo->imported;
+}
+
 int
 device::
 getMemObjectFd(const BufferObjectHandle& boh)
@@ -512,13 +537,13 @@ getBufferFromFd(const int fd, size_t& size, unsigned flags)
   if (ubo->handle == 0xffffffff)
     throw std::runtime_error("getBufferFromFd-Create XRT-BO: BOH handle is invalid");
 
-
   ubo->kind = XCL_BO_DEVICE_RAM;
   ubo->size = m_ops->mGetBOSize(m_handle, ubo->handle);
   size = ubo->size;
   ubo->owner = m_handle;
   ubo->deviceAddr = m_ops->mGetDeviceAddr(m_handle, ubo->handle);
   ubo->hostAddr = m_ops->mMapBO(m_handle, ubo->handle, true /*write*/);
+  ubo->imported = true;
 
   return BufferObjectHandle(ubo.release(), delBufferObject);
 }
@@ -646,7 +671,8 @@ readStream(hal::StreamHandle stream, void* ptr, size_t size, hal::StreamXferReq*
 
 int
 device::
-pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout) {
+pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout)
+{
   xclReqCompletion* req = reinterpret_cast<xclReqCompletion*>(comps);
   return m_ops->mPollQueues(m_handle,min,max,req,actual,timeout);
 }

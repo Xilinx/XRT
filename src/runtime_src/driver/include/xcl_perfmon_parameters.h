@@ -128,6 +128,7 @@
 /* SAM Trace Control Masks */
 #define XSAM_TRACE_STALL_SELECT_MASK    0x0000001c
 #define XSAM_COUNTER_RESET_MASK         0x00000002
+#define XSAM_DATAFLOW_EN_MASK           0x00000008
 
 /* Debug IP layout properties mask bits */
 #define XSAM_STALL_PROPERTY_MASK        0x4
@@ -135,12 +136,16 @@
 
 /************************** AXI Stream Monitor (ASM, earlier SSPM) *********************/
 
+#define XSSPM_CONTROL_OFFSET           0x0
 #define XSSPM_SAMPLE_OFFSET            0x20
 #define XSSPM_NUM_TRANX_OFFSET         0x80
 #define XSSPM_DATA_BYTES_OFFSET        0x88
 #define XSSPM_BUSY_CYCLES_OFFSET       0x90
 #define XSSPM_STALL_CYCLES_OFFSET      0x98
 #define XSSPM_STARVE_CYCLES_OFFSET     0xA0
+
+/* SSPM Control Mask */
+#define XSSPM_COUNTER_RESET_MASK       0x00000001
 
 /********************* AXI Stream Protocol Checker (SPC) *********************/
 

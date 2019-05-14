@@ -38,14 +38,14 @@ namespace xdp
     xdp::RTSingleton::Instance()->getDebugManager()->reset(binary);
   }
 
-  RTDebug::RTDebug() : uid(-1), pid(-1), 
+  RTDebug::RTDebug() : uid(-1), pid(-1),
 		       sdxDirectory(""), jsonFile(""), dwarfFile("")
   {
     uid = getuid() ;
     pid = getpid() ;
-    
+
     // On start up, check to see if the directory /tmp/sdx/$uid exists.
-    //  If it does, then the sdx_server is running, so we have to 
+    //  If it does, then the sdx_server is running, so we have to
     //  create the directory /tmp/sdx/$uid/$pid.
 
     std::stringstream directoryName ;
@@ -83,7 +83,7 @@ namespace xdp
     (void) result ; // For Coverity
   }
 
-  // When the binary is being loaded, this function is called and 
+  // When the binary is being loaded, this function is called and
   //  the debug information is extracted and dumped to the common
   //  directory.
   void RTDebug::reset(const xclbin::binary& xclbin)
@@ -98,7 +98,7 @@ namespace xdp
     // Extract the Debug data, split it into a DWARF file and a JSON file,
     //  and dump it into the directory.
     xclbin::data_range consolidatedRange ;
-    
+
     try
     {
       consolidatedRange = xclbin.debug_data() ;
@@ -108,22 +108,22 @@ namespace xdp
       // If the debug data section does not exist, don't dump anything
       return ;
     }
-    
+
     if (consolidatedRange.first != consolidatedRange.second)
     {
-      // Treat the memory as the consolidated format header, 
+      // Treat the memory as the consolidated format header,
       //  and extract out the DWARF and JSON section if they exist.
       //  In order to make sure the meta data files are unique
       //  amongst multiple xclbin files, use the address as an
       //  identifier.
       FileHeader* header = (FileHeader*)(consolidatedRange.first) ;
       std::stringstream dwarfName ;
-      dwarfName << sdxDirectory << "/" 
-		<< reinterpret_cast<unsigned long long int>(&xclbin) 
+      dwarfName << sdxDirectory << "/"
+		<< reinterpret_cast<unsigned long long int>(&xclbin)
 		<< ".DWARF" ;
       dwarfFile = dwarfName.str() ;
       std::stringstream jsonName ;
-      jsonName << sdxDirectory << "/" 
+      jsonName << sdxDirectory << "/"
 	       << reinterpret_cast<unsigned long long int>(&xclbin)
 	       << ".JSON" ;
       jsonFile = jsonName.str() ;
@@ -140,12 +140,12 @@ namespace xdp
 	std::stringstream errMsg ;
 	errMsg << "Kernel debug data exists, but cannot open files in "
 	       << sdxDirectory
-	       << "/" 
-	       << uid 
-	       << " directory.  " 
+	       << "/"
+	       << uid
+	       << " directory.  "
 	       << "Breakpoints set in kernels may not be honored."
 	       << std::endl ;
-	xrt::message::send(xrt::message::severity_level::WARNING, errMsg.str()) ;
+	xrt::message::send(xrt::message::severity_level::XRT_WARNING, errMsg.str()) ;
 	return ;
       }
 
@@ -170,7 +170,7 @@ namespace xdp
   bool RTDebug::exists(const char* filename)
   {
     struct stat statBuf ;
-    
+
     return (stat(filename, &statBuf) != -1) ;
   }
 
@@ -199,5 +199,3 @@ namespace xdp
   }
 
 }
-
-

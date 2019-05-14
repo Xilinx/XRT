@@ -21,6 +21,7 @@
 #include <linux/kthread.h>
 #include <linux/delay.h>
 #include <linux/sched.h>
+#include "ert.h"
 #include "sched_exec.h"
 #include "zocl_sk.h"
 
@@ -142,7 +143,7 @@ slot_size(struct drm_device *dev)
  * @cu_idx: Global [0..127] index of a CU
  * Return: Index of the CU mask containing the CU with cu_idx
  */
-inline unsigned int
+static inline unsigned int
 cu_mask_idx(unsigned int cu_idx)
 {
 	return cu_idx >> 5; /* 32 cus per mask */
@@ -154,7 +155,7 @@ cu_mask_idx(unsigned int cu_idx)
  * @cu_idx: Global [0..127] index of a CU
  * Return: Index of the CU within the mask that contains it
  */
-inline unsigned int
+static inline unsigned int
 cu_idx_in_mask(unsigned int cu_idx)
 {
 	return cu_idx - (cu_mask_idx(cu_idx) << 5);
@@ -167,10 +168,34 @@ cu_idx_in_mask(unsigned int cu_idx)
  * @mask_idx: Mask index of the has CU with cu_idx
  * Return: Global cu_idx [0..127]
  */
-inline unsigned int
+static inline unsigned int
 cu_idx_from_mask(unsigned int cu_idx, unsigned int mask_idx)
 {
 	return cu_idx + (mask_idx << 5);
+}
+
+/* explicitly set cucu_valid bitmap to valid(1) for cuid */
+static inline void
+zocl_cu_set_valid(struct sched_exec_core *exec_core, unsigned int cu_idx)
+{
+	exec_core->cu_valid[cu_mask_idx(cu_idx)] |=
+		(1 << cu_idx_in_mask(cu_idx));
+}
+
+/* explicitly set cu_valid bitmap to invalid(0) for cuid */
+static inline void
+zocl_cu_set_invalid(struct sched_exec_core *exec_core, unsigned int cu_idx)
+{
+	exec_core->cu_valid[cu_mask_idx(cu_idx)] ^=
+		(1 << cu_idx_in_mask(cu_idx));
+}
+
+/* return values: valid(1)/invalid(0) */
+static inline unsigned int
+zocl_cu_is_valid(struct sched_exec_core *exec_core, unsigned int cu_idx)
+{
+	return (exec_core->cu_valid[cu_mask_idx(cu_idx)] &
+		(1 << cu_idx_in_mask(cu_idx))) > 0;
 }
 
 /**
@@ -255,24 +280,46 @@ packet_size(struct sched_cmd *cmd)
 inline u32
 cu_masks(struct sched_cmd *cmd)
 {
-	struct start_kernel_cmd *sk;
+	struct ert_start_kernel_cmd *sk;
+	u32 op = opcode(cmd);
 
-	if (opcode(cmd) != OP_START_KERNEL && opcode(cmd) != OP_START_SKERNEL)
+	if (op != ERT_START_KERNEL && op != ERT_SK_START && op != ERT_INIT_CU)
 		return 0;
-	sk = (struct start_kernel_cmd *)cmd->packet;
+	sk = (struct ert_start_kernel_cmd *)cmd->packet;
 	return 1 + sk->extra_cu_masks;
 }
 
 /**
  * regmap_size() - Size of regmap
- *
+ *                 It is calculated by payload size + one packet header size -
+ *                 offset of cu_mask field - cu_masks
+ *                 This is based on the assumption that regmap is located
+ *                 right after the cu_masks (including extra_cu_masks).
  * @xcmd: Command object
  * Return: Size of register map in number of words
  */
 inline u32
 regmap_size(struct sched_cmd *cmd)
 {
-	return payload_size(cmd) - cu_masks(cmd);
+	switch (opcode(cmd)) {
+
+	case ERT_INIT_CU:
+		return
+		    payload_size(cmd) + 1 -
+		    offsetof(struct ert_init_kernel_cmd, cu_mask) / WORD_SIZE -
+		    cu_masks(cmd);
+
+	case ERT_START_CU:
+	case ERT_SK_START:
+		return
+		    payload_size(cmd) + 1 -
+		    offsetof(struct ert_start_kernel_cmd, cu_mask) / WORD_SIZE -
+		    cu_masks(cmd);
+
+	default:
+		DRM_WARN("Command %d does not support regmap.\n", opcode(cmd));
+		return 0;
+	}
 }
 
 /**
@@ -296,12 +343,34 @@ cu_idx_to_addr(struct drm_device *dev, unsigned int cu_idx)
  * @xcmd: command to change internal state on
  * @state: new command state per ert.h
  */
-inline void
-set_cmd_int_state(struct sched_cmd *cmd, enum cmd_state state)
+static inline void
+set_cmd_int_state(struct sched_cmd *cmd, enum ert_cmd_state state)
 {
 	SCHED_DEBUG("-> set_cmd_int_state(,%d)\n", state);
 	cmd->state = state;
 	SCHED_DEBUG("<- set_cmd_int_state\n");
+}
+
+/**
+ * write_cu_regmap - Write CU regmap
+ *
+ * @reg_data: start address of regmap data
+ * @base_addr: CU regmap base virtual address
+ */
+static inline void
+write_cu_regmap(u32 *reg_data, u32 *base_addr, u32 size)
+{
+	u32 i;
+
+	/* Write register map, starting at base_addr + 0x10 (byte)
+	 * This based on the fact that kernel used
+	 *	0x00 -- Control Register
+	 *	0x04 and 0x08 -- Interrupt Enable Registers
+	 *	0x0C -- Interrupt Status Register
+	 * Skip the first 4 words in user regmap.
+	 */
+	for (i = 4; i < size; ++i)
+		iowrite32(reg_data[i], base_addr + i);
 }
 
 /**
@@ -454,6 +523,102 @@ static irqreturn_t sched_exec_isr(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
+static void
+init_cu_by_idx(struct sched_cmd *cmd, int cu_idx)
+{
+	u32 size = regmap_size(cmd);
+	u32 *virt_addr = cu_idx_to_addr(cmd->ddev, cu_idx);
+	struct ert_init_kernel_cmd *ik;
+
+	ik = (struct ert_init_kernel_cmd *)cmd->packet;
+
+	write_cu_regmap(ik->data + ik->extra_cu_masks, virt_addr, size);
+}
+
+/**
+ * init_cus() - Initialize CUs from user space command.
+ *
+ * Process the initialize CUs command sent from user space. Only one process
+ * can initialize a given CU, so if a CU in the CU masks is initialized,
+ * this function ignores the initialize request.
+ *
+ * The initialization is done by copying the user regmap to register map.
+ */
+static void
+init_cus(struct sched_cmd *cmd)
+{
+	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	struct ert_init_kernel_cmd *ik;
+	unsigned int i;
+	uint32_t *cmp;
+	int num_masks = cu_masks(cmd);
+	int mask_idx;
+	int warn_flag = 0;
+
+	ik = (struct ert_init_kernel_cmd*)cmd->packet;
+	cmp = &ik->cu_mask;
+
+	for (mask_idx = 0; mask_idx < num_masks; ++mask_idx) {
+		u32 cmd_mask = cmp[mask_idx];
+		u32 inited_mask = zdev->exec->cu_init[mask_idx];
+		u32 uninited_mask = (cmd_mask | inited_mask) ^ inited_mask;
+		u32 busy_mask = zdev->exec->cu_status[mask_idx];
+
+		/*
+		 * If some requested CUs are initialized already,
+		 * record a flag and post some log later.
+		 */
+		if (!warn_flag && (inited_mask & cmd_mask))
+			warn_flag = 1;
+
+		/*
+		 * We don't have uninitialized CU for this 32 mask_id.
+		 * Move to next 32 CUs.
+		 */
+		if (!uninited_mask)
+			continue;
+
+		for (i = 0; i < 32; ++i) {
+			int cu_idx;
+
+			if (!(uninited_mask & (1 << i))) 
+				continue;
+
+			cu_idx = cu_idx_from_mask(i, mask_idx);
+
+			if (busy_mask & (1 << i)) {
+				DRM_WARN("Can not init CU %d while running.\n",
+				   cu_idx);
+				continue;
+			}
+
+			if (!zocl_cu_is_valid(zdev->exec, cu_idx)) {
+				DRM_WARN("Init CU %d fail: NOT a valid CU.\n",
+				    cu_idx);
+				continue;
+			}
+
+			if (cu_idx >= zdev->exec->num_cus) {
+				/*
+				 * Requested CU index exceeds the configured
+				 * CU numbers.
+				 */
+				DRM_WARN("Init CU %d fail: NOT configured.\n",
+				    cu_idx);
+				goto done;
+			}
+
+			init_cu_by_idx(cmd, cu_idx);
+
+			zdev->exec->cu_init[mask_idx] ^= (1 << i);
+		}
+	}
+
+done:
+	if (warn_flag)
+		DRM_INFO("CU can only be initialized once.\n");
+}
+
 /**
  * configure() - Configure the scheduler from user space command
  *
@@ -472,12 +637,12 @@ configure(struct sched_cmd *cmd)
 {
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
 	struct sched_exec_core *exec = zdev->exec;
-	struct configure_cmd *cfg;
+	struct ert_configure_cmd *cfg;
 	unsigned int i, j;
 	u32 cu_addr;
 	int ret;
 
-	if (sched_error_on(exec, opcode(cmd) != OP_CONFIGURE))
+	if (sched_error_on(exec, opcode(cmd) != ERT_CONFIGURE))
 		return 1;
 
 	if (!list_empty(&pending_cmds)) {
@@ -490,7 +655,7 @@ configure(struct sched_cmd *cmd)
 		return 1;
 	}
 
-	cfg = (struct configure_cmd *)(cmd->packet);
+	cfg = (struct ert_configure_cmd *)(cmd->packet);
 
 	if (exec->configured != 0) {
 		DRM_WARN("Reconfiguration not supported\n");
@@ -530,11 +695,19 @@ configure(struct sched_cmd *cmd)
 	}
 
 	for (i = 0; i < exec->num_cus; i++) {
-		/* Clear encoded handshake
-		 * TODO: This is how xocl KDS do this. It will be better if the
-		 * mask is a macro in a common header file.
-		 */
-		cu_addr = cfg->data[i] & ~(0xFF);
+		/* CU address should be masked by encoded handshake for KDS. */
+		cu_addr = cfg->data[i] & ZOCL_KDS_MASK;
+		if (cu_addr == ZOCL_CU_FREE_RUNNING) {
+			DRM_INFO("CU %x is free-running.", cfg->data[i]);
+			continue;
+		} else {
+			/*
+			 * Explicity set cu is valid,
+			 * only valid cu will be processed below.
+			 */
+			zocl_cu_set_valid(exec, i);
+		}
+
 		/* If it is in ert mode, there is no XCLBIN parsed now
 		 * Trust configuration from host. Once host download XCLBIN to
 		 * PS side, verify host configuration in the same way.
@@ -543,7 +716,7 @@ configure(struct sched_cmd *cmd)
 		 * Need cleanup.
 		 */
 		if (!zdev->ert && get_apt_index(zdev, cu_addr) < 0) {
-			DRM_ERROR("CU address %x is not found in XLBCIN\n",
+			DRM_ERROR("CU address %x is not found in XCLBIN\n",
 				  cfg->data[i]);
 			write_unlock(&zdev->attr_rwlock);
 			return 1;
@@ -585,6 +758,9 @@ configure(struct sched_cmd *cmd)
 	 * interrupt according to the command
 	 */
 	for (i = 0; i < exec->num_cus; i++) {
+		if (!zocl_cu_is_valid(exec, i))
+			continue;
+
 		ret = request_irq(zdev->irq[i], sched_exec_isr, 0,
 		    "zocl", zdev);
 		if (ret) {
@@ -593,8 +769,10 @@ configure(struct sched_cmd *cmd)
 			 * already installed and fall back to
 			 * polling mode.
 			 */
-			for (j = 0; j < i; j++)
-				free_irq(zdev->irq[j], zdev);
+			for (j = 0; j < i; j++) {
+				if (zocl_cu_is_valid(exec, i))
+					free_irq(zdev->irq[j], zdev);
+			}
 			DRM_WARN("Fail to install CU %d interrupt handler: %d. "
 			    "Fall back to polling mode.\n", i, ret);
 			exec->polling_mode = 1;
@@ -604,12 +782,15 @@ configure(struct sched_cmd *cmd)
 
 set_cu_and_print:
 	/* Do not trust user's interrupt enable setting in the start cu cmd */
-	if (exec->polling_mode)
-		for (i = 0; i < exec->num_cus; i++)
+	for (i = 0; i < exec->num_cus; i++) {
+		if (!zocl_cu_is_valid(exec, i))
+			continue;
+
+		if (exec->polling_mode)
 			disable_interrupts(cmd->ddev, i);
-	else
-		for (i = 0; i < exec->num_cus; i++)
+		else
 			enable_interrupts(cmd->ddev, i);
+	}
 
 print_and_out:
 	write_unlock(&zdev->attr_rwlock);
@@ -628,14 +809,14 @@ configure_soft_kernel(struct sched_cmd *cmd)
 {
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
 	struct soft_kernel *sk = zdev->soft_kernel;
-	struct configure_sk_cmd *cfg;
+	struct ert_configure_sk_cmd *cfg;
 	u32 i;
 	struct soft_kernel_cmd *scmd;
 	int ret;
 
 	SCHED_DEBUG("-> configure_soft_kernel ");
 
-	cfg = (struct configure_sk_cmd *)(cmd->packet);
+	cfg = (struct ert_configure_sk_cmd *)(cmd->packet);
 
 	mutex_lock(&sk->sk_lock);
 
@@ -669,7 +850,7 @@ configure_soft_kernel(struct sched_cmd *cmd)
 		goto fail;
 	}
 
-	scmd->skc_packet = (struct sched_packet *)cfg;
+	scmd->skc_packet = (struct ert_packet *)cfg;
 
 	mutex_lock(&sk->sk_lock);
 	list_add_tail(&scmd->skc_list, &sk->sk_cmd_list);
@@ -678,7 +859,7 @@ configure_soft_kernel(struct sched_cmd *cmd)
 	/* start CU by waking up Soft Kernel handler */
 	wake_up_interruptible(&sk->sk_wait_queue);
 
-	SCHED_DEBUG("<- ert_configure_cu\n");
+	SCHED_DEBUG("<- configure_soft_kernel\n");
 
 	return 0;
 
@@ -695,12 +876,12 @@ unconfigure_soft_kernel(struct sched_cmd *cmd)
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
 	struct soft_kernel *sk = zdev->soft_kernel;
 	struct soft_cu *scu;
-	struct unconfigure_sk_cmd *cfg;
+	struct ert_unconfigure_sk_cmd *cfg;
 	u32 i;
 
-	SCHED_DEBUG("-> configure_soft_kernel ");
+	SCHED_DEBUG("-> unconfigure_soft_kernel\n");
 
-	cfg = (struct unconfigure_sk_cmd *)(cmd->packet);
+	cfg = (struct ert_unconfigure_sk_cmd *)(cmd->packet);
 
 	mutex_lock(&sk->sk_lock);
 
@@ -734,6 +915,8 @@ unconfigure_soft_kernel(struct sched_cmd *cmd)
 
 	mutex_unlock(&sk->sk_lock);
 
+	SCHED_DEBUG("<- unconfigure_soft_kernel\n");
+
 	return 0;
 }
 
@@ -746,8 +929,8 @@ unconfigure_soft_kernel(struct sched_cmd *cmd)
  * @cmd: command object
  * @state: new state
  */
-inline void
-set_cmd_state(struct sched_cmd *cmd, enum cmd_state state)
+static inline void
+set_cmd_state(struct sched_cmd *cmd, enum ert_cmd_state state)
 {
 	SCHED_DEBUG("-> set_cmd_state(,%d)\n", state);
 	cmd->state = state;
@@ -756,12 +939,68 @@ set_cmd_state(struct sched_cmd *cmd, enum cmd_state state)
 }
 
 /**
+ * set_cmd_ext_cu_idx() - Set external cu_idx of a command
+ *
+ * The cu_idx is reflected externally through the command packet
+ *
+ * @cmd: command object
+ * @cu_idx: CU idex
+ */
+static inline void
+set_cmd_ext_cu_idx(struct sched_cmd *cmd, int cu_idx)
+{
+	int mask_idx = cu_mask_idx(cu_idx);
+	int mask_cu_idx = cu_idx_in_mask(cu_idx);
+
+	cmd->packet->data[mask_idx] &= 1 << mask_cu_idx;
+}
+
+/**
+ * set_cmd_ext_timestamp() - Set timestamp in the command packet
+ *
+ * The timestamp is reflected externally through the command packet
+ * TODO: Should have scheduler profiling solution in the future.
+ *
+ * @cmd: command object
+ * @ts: timestamp type
+ */
+static inline void
+set_cmd_ext_timestamp(struct sched_cmd *cmd, enum zocl_ts_type ts)
+{
+	u32 opc = opcode(cmd);
+	struct timeval tv;
+	struct ert_start_kernel_cmd *sk;
+
+	sk = (struct ert_start_kernel_cmd *)cmd->packet;
+
+	/* Simply skip if it is not start CU command */
+	if (opc != ERT_START_CU)
+		return;
+	/* Use the first 4 32bits in the regmap to record CU start/end time.
+	 * To let user application know the CU start/end time.
+	 * The first  32 bits - CU start seconds
+	 * The second 32 bits - CU start microseconds
+	 * The third  32 bits - CU done  seconds
+	 * The fourth 32 bits - CU done  microseconds
+	 * Use 32 bits timestamp is good enough for this purpose for now.
+	 */
+	do_gettimeofday(&tv);
+	if (ts == CU_START_TIME) {
+		*(sk->data + sk->extra_cu_masks) = (u32)tv.tv_sec;
+		*(sk->data + sk->extra_cu_masks + 1) = (u32)tv.tv_usec;
+	} else if (ts == CU_DONE_TIME) {
+		*(sk->data + sk->extra_cu_masks + 2) = (u32)tv.tv_sec;
+		*(sk->data + sk->extra_cu_masks + 3) = (u32)tv.tv_usec;
+	}
+}
+
+/**
  * acquire_slot_idx() - Acquire a slot index if available.
  *                      Update slot status to busy so it cannot be reacquired.
  *
  * This function is called from scheduler thread
  *
- * Return: Command queue slot index, or -1 if none avaiable
+ * Return: Command queue slot index, or -1 if none available
  */
 static int
 acquire_slot_idx(struct drm_device *dev)
@@ -808,40 +1047,21 @@ release_slot_idx(struct drm_device *dev, unsigned int slot_idx)
 }
 
 /**
- * get_cu_idx() - Get index of CU executing command at idx
+ * cu_done() - Check status of CU which execute cmd
  *
- * This function is called in polling mode only and
- * the command at cmd_idx is guaranteed to have been
- * started on a CU
+ * @cmd: submmited command
  *
- * Return: Index of CU, or -1 on error
- */
-inline unsigned int
-get_cu_idx(struct drm_device *dev, unsigned int cmd_idx)
-{
-	struct drm_zocl_dev *zdev = dev->dev_private;
-	struct sched_cmd *cmd = zdev->exec->submitted_cmds[cmd_idx];
-
-	if (sched_error_on(zdev->exec, !cmd))
-		return -1;
-	return cmd->cu_idx;
-}
-
-/**
- * cu_done() - Check status of CU
- *
- * @cu_idx: Index of cu to check
- *
- * This function is called in polling mode only. The cu_idx
- * is guaranteed to have been started
+ * This function is called to check if the CU which execute cmd is done.
+ * The cmd should be guaranteed to have been submitted.
  *
  * Return: %true if cu done, %false otherwise
  */
 inline int
-cu_done(struct drm_device *dev, unsigned int cu_idx)
+cu_done(struct sched_cmd *cmd)
 {
-	struct drm_zocl_dev *zdev = dev->dev_private;
-	u32 *virt_addr = cu_idx_to_addr(dev, cu_idx);
+	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	int cu_idx = cmd->cu_idx;
+	u32 *virt_addr = cu_idx_to_addr(cmd->ddev, cu_idx);
 	u32 status;
 
 	SCHED_DEBUG("-> cu_done(,%d) checks cu at address 0x%p\n",
@@ -855,6 +1075,7 @@ cu_done(struct drm_device *dev, unsigned int cu_idx)
 		unsigned int mask_idx = cu_mask_idx(cu_idx);
 		unsigned int pos = cu_idx_in_mask(cu_idx);
 
+		set_cmd_ext_timestamp(cmd, CU_DONE_TIME);
 		zdev->exec->cu_status[mask_idx] ^= 1<<pos;
 		SCHED_DEBUG("<- cu_done returns 1\n");
 		return true;
@@ -864,9 +1085,10 @@ cu_done(struct drm_device *dev, unsigned int cu_idx)
 }
 
 inline int
-scu_done(struct drm_device *dev, unsigned int cu_idx)
+scu_done(struct sched_cmd *cmd)
 {
-	struct drm_zocl_dev *zdev = dev->dev_private;
+	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	int cu_idx = cmd->cu_idx;
 	struct soft_kernel *sk = zdev->soft_kernel;
 	u32 *virt_addr = sk->sk_cu[cu_idx]->sc_vregs;
 
@@ -899,10 +1121,10 @@ scu_configure_done(struct sched_cmd *cmd)
 	struct drm_device *dev = cmd->ddev;
 	struct drm_zocl_dev *zdev = dev->dev_private;
 	struct soft_kernel *sk = zdev->soft_kernel;
-	struct configure_sk_cmd *cfg;
+	struct ert_configure_sk_cmd *cfg;
 	int i;
 
-	cfg = (struct configure_sk_cmd *)(cmd->packet);
+	cfg = (struct ert_configure_sk_cmd *)(cmd->packet);
 
 	mutex_lock(&sk->sk_lock);
 
@@ -927,10 +1149,10 @@ scu_unconfig_done(struct sched_cmd *cmd)
 	struct drm_device *dev = cmd->ddev;
 	struct drm_zocl_dev *zdev = dev->dev_private;
 	struct soft_kernel *sk = zdev->soft_kernel;
-	struct unconfigure_sk_cmd *cfg;
+	struct ert_unconfigure_sk_cmd *cfg;
 	int i;
 
-	cfg = (struct unconfigure_sk_cmd *)(cmd->packet);
+	cfg = (struct ert_unconfigure_sk_cmd *)(cmd->packet);
 
 	mutex_lock(&sk->sk_lock);
 	for (i = cfg->start_cuidx; i < cfg->start_cuidx + cfg->num_cus; i++)
@@ -946,38 +1168,6 @@ scu_unconfig_done(struct sched_cmd *cmd)
 	mutex_unlock(&sk->sk_lock);
 
 	return true;
-}
-
-/**
- * ert_cu_done() - Check status of CU in ERT way
- *
- * @cu_idx: Index of cu to check
- *
- * This function is called in polling mode only. The cu_idx
- * is guaranteed to have been started
- *
- * Return: %true if cu done, %false otherwise
- */
-inline int
-ert_cu_done(struct drm_device *dev, unsigned int cu_idx)
-{
-	struct drm_zocl_dev *zdev = dev->dev_private;
-	u32 *virt_addr = cu_idx_to_addr(dev, cu_idx);
-	u32 status;
-
-	SCHED_DEBUG("-> ert_cu_done(,%d) checks cu at address 0x%p\n",
-		    cu_idx, virt_addr);
-	status = ioread32(virt_addr);
-	if (status & 2) {
-		unsigned int mask_idx = cu_mask_idx(cu_idx);
-		unsigned int pos = cu_idx_in_mask(cu_idx);
-
-		zdev->exec->cu_status[mask_idx] ^= 1<<pos;
-		SCHED_DEBUG("<- ert_cu_done returns 1\n");
-		return true;
-	}
-	SCHED_DEBUG("<- ert_cu_done returns 0\n");
-	return false;
 }
 
 /**
@@ -1034,7 +1224,7 @@ mark_cmd_complete(struct sched_cmd *cmd)
 
 	SCHED_DEBUG("-> mark_cmd_complete(,%d)\n", cmd->slot_idx);
 	zdev->exec->submitted_cmds[cmd->slot_idx] = NULL;
-	set_cmd_state(cmd, CMD_STATE_COMPLETED);
+	set_cmd_state(cmd, ERT_CMD_STATE_COMPLETED);
 	if (zdev->ert || zdev->exec->polling_mode)
 		--cmd->sched->poll;
 	release_slot_idx(cmd->ddev, cmd->slot_idx);
@@ -1104,11 +1294,12 @@ add_cmd(struct sched_cmd *cmd)
 	int ret = 0;
 
 	SCHED_DEBUG("-> add_cmd\n");
+
 	cmd->cu_idx = -1;
 	cmd->slot_idx = -1;
 	DRM_DEBUG("packet header 0x%08x, data 0x%08x\n",
 		  cmd->packet->header, cmd->packet->data[0]);
-	set_cmd_state(cmd, CMD_STATE_NEW);
+	set_cmd_state(cmd, ERT_CMD_STATE_NEW);
 	mutex_lock(&pending_cmds_mutex);
 	list_add_tail(&cmd->list, &pending_cmds);
 	mutex_unlock(&pending_cmds_mutex);
@@ -1137,7 +1328,7 @@ add_gem_bo_cmd(struct drm_device *dev, struct drm_zocl_bo *bo)
 {
 	struct sched_cmd *cmd;
 	struct drm_zocl_dev *zdev = dev->dev_private;
-	struct sched_packet *packet;
+	struct ert_packet *packet;
 	int ret;
 
 	cmd = get_free_sched_cmd();
@@ -1150,9 +1341,9 @@ add_gem_bo_cmd(struct drm_device *dev, struct drm_zocl_bo *bo)
 	cmd->buffer = (void *)bo;
 	cmd->exec = zdev->exec;
 	if (zdev->domain)
-		packet = (struct sched_packet *)bo->vmapping;
+		packet = (struct ert_packet *)bo->vmapping;
 	else
-		packet = (struct sched_packet *)bo->cma_base.vaddr;
+		packet = (struct ert_packet *)bo->cma_base.vaddr;
 	cmd->packet = packet;
 	cmd->cq_slot_idx = 0;
 	cmd->free_buffer = zocl_gem_object_unref;
@@ -1271,7 +1462,8 @@ reset_all(void)
  * get_free_cu() - get index of first available CU per command cu mask
  *
  * @cmd:    command containing CUs to check for availability
- * @is_scu: 1 to get free soft CU, 0 to get free CU
+ * @cu_type: ZOCL_SOFT_CU(1) to get free soft CU,
+ *           ZOCL_HARD_CU(0) to get free hard CU
  *
  * This function is called kernel software scheduler mode only, in embedded
  * scheduler mode, the hardware scheduler handles the commands directly.
@@ -1284,14 +1476,21 @@ get_free_cu(struct sched_cmd *cmd, enum zocl_cu_type cu_type)
 	int mask_idx = 0;
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
 	int num_masks = cu_masks(cmd);
+	struct sched_exec_core *exec = zdev->exec;
+	int cu_idx = -1;
 
 	SCHED_DEBUG("-> get_free_cu\n");
 	for (mask_idx = 0; mask_idx < num_masks; ++mask_idx) {
 		u32 cmd_mask = cmd->packet->data[mask_idx]; /* skip header */
 		u32 busy_mask = cu_type == ZOCL_SOFT_CU ?
-		    zdev->exec->scu_status[mask_idx]
-		    : zdev->exec->cu_status[mask_idx];
-		int cu_idx = ffs_or_neg_one((cmd_mask | busy_mask) ^ busy_mask);
+		    exec->scu_status[mask_idx]
+		    : exec->cu_status[mask_idx];
+		u32 free_mask = (cmd_mask | busy_mask) ^ busy_mask;
+		/* For hardware cu, we have to search on valid CUs only. */
+		if (cu_type == ZOCL_HARD_CU)
+			free_mask &= exec->cu_valid[mask_idx];
+
+		cu_idx = ffs_or_neg_one(free_mask);
 
 		if (cu_idx >= 0) {
 			if (cu_type == ZOCL_SOFT_CU)
@@ -1319,21 +1518,21 @@ get_free_cu(struct sched_cmd *cmd, enum zocl_cu_type cu_type)
 static void
 configure_cu(struct sched_cmd *cmd, int cu_idx)
 {
-	u32 i, size = regmap_size(cmd);
+	u32 size = regmap_size(cmd);
 	u32 *virt_addr = cu_idx_to_addr(cmd->ddev, cu_idx);
-	struct start_kernel_cmd *sk = (struct start_kernel_cmd *)cmd->packet;
+	struct ert_start_kernel_cmd *sk;
 
 	SCHED_DEBUG("-> configure_cu cu_idx=%d, cu_addr=0x%p, regmap_size=%d\n",
 		    cu_idx, virt_addr, size);
-	/* Write register map, starting at base_address + 0x10 (byte)
-	 * This based on the fact that kernel used
-	 *	0x00 -- Control Register
-	 *	0x04 and 0x08 -- Interrupt Enable Registers
-	 *	0x0C -- Interrupt Status Register
-	 * Skip the first 4 words in user regmap.
-	 */
-	for (i = 4; i < size; ++i)
-		iowrite32(*(sk->data + sk->extra_cu_masks + i), virt_addr + i);
+
+	sk = (struct ert_start_kernel_cmd *)cmd->packet;
+
+	write_cu_regmap(sk->data + sk->extra_cu_masks, virt_addr, size);
+
+	/* Let user know which CU execute this command */
+	set_cmd_ext_cu_idx(cmd, cu_idx);
+
+	set_cmd_ext_timestamp(cmd, CU_START_TIME);
 
 	/* start CU at base + 0x0 */
 	iowrite32(0x1, virt_addr);
@@ -1355,11 +1554,13 @@ ert_configure_cu(struct sched_cmd *cmd, int cu_idx)
 {
 	u32 i, size = regmap_size(cmd);
 	u32 *virt_addr = cu_idx_to_addr(cmd->ddev, cu_idx);
-	struct start_kernel_cmd *sk = (struct start_kernel_cmd *)cmd->packet;
+	struct ert_start_kernel_cmd *sk;
 
 	SCHED_DEBUG("-> ert_configure_cu ");
 	SCHED_DEBUG("cu_idx=%d, cu_addr=0x%p, regmap_size=%d\n",
 		    cu_idx, virt_addr, size);
+
+	sk = (struct ert_start_kernel_cmd *)cmd->packet;
 
 	for (i = 1; i < size; ++i)
 		iowrite32(*(sk->data + sk->extra_cu_masks + i), virt_addr + i);
@@ -1378,7 +1579,9 @@ ert_configure_scu(struct sched_cmd *cmd, int cu_idx)
 	struct soft_cu *scu;
 	u32 i, size = regmap_size(cmd);
 	u32 *cu_regfile;
-	struct start_kernel_cmd *skc = (struct start_kernel_cmd *)cmd->packet;
+	struct ert_start_kernel_cmd *skc;
+
+	skc = (struct ert_start_kernel_cmd *)cmd->packet;
 
 	SCHED_DEBUG("-> ert_configure_scu ");
 
@@ -1425,11 +1628,14 @@ queued_to_running(struct sched_cmd *cmd)
 	int retval = false;
 
 	SCHED_DEBUG("-> queued_to_running\n");
-	if (opcode(cmd) == OP_CONFIGURE)
+	if (opcode(cmd) == ERT_CONFIGURE)
 		configure(cmd);
 
+	if (opcode(cmd) == ERT_INIT_CU)
+		init_cus(cmd);
+
 	if (zdev->exec->ops->submit(cmd)) {
-		set_cmd_int_state(cmd, CMD_STATE_RUNNING);
+		set_cmd_int_state(cmd, ERT_CMD_STATE_RUNNING);
 		if (zdev->ert || zdev->exec->polling_mode)
 			++cmd->sched->poll;
 		zdev->exec->submitted_cmds[cmd->slot_idx] = cmd;
@@ -1493,7 +1699,7 @@ scheduler_queue_cmds(struct scheduler *sched)
 			continue;
 		list_del(&cmd->list);
 		list_add_tail(&cmd->list, &sched->cq);
-		set_cmd_int_state(cmd, CMD_STATE_QUEUED);
+		set_cmd_int_state(cmd, ERT_CMD_STATE_QUEUED);
 		atomic_dec(&num_pending);
 	}
 	mutex_unlock(&pending_cmds_mutex);
@@ -1513,11 +1719,11 @@ scheduler_iterate_cmds(struct scheduler *sched)
 	list_for_each_safe(pos, next, &sched->cq) {
 		cmd = list_entry(pos, struct sched_cmd, list);
 
-		if (cmd->state == CMD_STATE_QUEUED)
+		if (cmd->state == ERT_CMD_STATE_QUEUED)
 			queued_to_running(cmd);
-		if (cmd->state == CMD_STATE_RUNNING)
+		if (cmd->state == ERT_CMD_STATE_RUNNING)
 			running_to_complete(cmd);
-		if (cmd->state == CMD_STATE_COMPLETED)
+		if (cmd->state == ERT_CMD_STATE_COMPLETED)
 			complete_to_free(cmd);
 	}
 	SCHED_DEBUG("<- scheduler_iterate_cmds\n");
@@ -1691,16 +1897,17 @@ penguin_query(struct sched_cmd *cmd)
 	SCHED_DEBUG("-> penguin_queury() slot_idx=%d\n", cmd->slot_idx);
 	switch (opc) {
 
-	case OP_START_CU:
-		if (!cu_done(cmd->ddev, get_cu_idx(cmd->ddev, cmd->slot_idx)))
+	case ERT_START_CU:
+		if (!cu_done(cmd))
 			break;
 
-	case OP_CONFIGURE:
+	case ERT_INIT_CU:
+	case ERT_CONFIGURE:
 		mark_cmd_complete(cmd);
 		break;
 
 	default:
-		SCHED_DEBUG("unknow op");
+		SCHED_DEBUG("unknown op");
 	}
 	SCHED_DEBUG("<- penguin_queury\n");
 }
@@ -1710,10 +1917,11 @@ penguin_query(struct sched_cmd *cmd)
  *
  * @cmd: command to submit
  *
- * Special processing for configure command. Configuration itself is
- * done/called by queued_to_running before calling penguin_submit. In penguin
- * mode configuration need to ensure that the command is retired properly by
- * scheduler, so assign it a slot index and let normal flow continue.
+ * Special processing for configure and init command.
+ * Configuration and initialization are done/called by queued_to_running
+ * before calling penguin_submit. In penguin mode configuration and
+ * initialization need to ensure that the commands are retired properly by
+ * scheduler, so assign them slot indexes and let normal flow continue.
  *
  * Return: %true on successful submit, %false otherwise
  */
@@ -1722,13 +1930,19 @@ penguin_submit(struct sched_cmd *cmd)
 {
 	SCHED_DEBUG("-> penguin_submit\n");
 
-	if (opcode(cmd) == OP_CONFIGURE) {
+	if (opcode(cmd) == ERT_CONFIGURE) {
 		cmd->slot_idx = acquire_slot_idx(cmd->ddev);
 		SCHED_DEBUG("<- penguin_submit (configure)\n");
 		return true;
 	}
 
-	if (opcode(cmd) != OP_START_CU)
+	if (opcode(cmd) == ERT_INIT_CU) {
+		cmd->slot_idx = acquire_slot_idx(cmd->ddev);
+		SCHED_DEBUG("<- penguin_submit (init CU)\n");
+		return true;
+	}
+
+	if (opcode(cmd) != ERT_START_CU)
 		return false;
 
 	/* extract cu list */
@@ -1775,32 +1989,32 @@ ps_ert_query(struct sched_cmd *cmd)
 	SCHED_DEBUG("-> ps_ert_queury() slot_idx=%d\n", cmd->slot_idx);
 	switch (opc) {
 
-	case OP_CONFIG_SKERNEL:
+	case ERT_SK_CONFIG:
 		if (scu_configure_done(cmd))
 			mark_cmd_complete(cmd);
 		break;
 
-	case OP_UNCONFIG_SKERNEL:
+	case ERT_SK_UNCONFIG:
 		if (scu_unconfig_done(cmd))
 			mark_cmd_complete(cmd);
 		break;
 
-	case OP_START_SKERNEL:
-		if (scu_done(cmd->ddev, get_cu_idx(cmd->ddev, cmd->slot_idx)))
+	case ERT_SK_START:
+		if (scu_done(cmd))
 			mark_cmd_complete(cmd);
 		break;
 
-	case OP_START_CU:
-		if (!cu_done(cmd->ddev, get_cu_idx(cmd->ddev, cmd->slot_idx)))
+	case ERT_START_CU:
+		if (!cu_done(cmd))
 			break;
 		/* pass through */
 
-	case OP_CONFIGURE:
+	case ERT_CONFIGURE:
 		mark_cmd_complete(cmd);
 		break;
 
 	default:
-		SCHED_DEBUG("unknow op");
+		SCHED_DEBUG("unknown op");
 	}
 	SCHED_DEBUG("<- ps_ert_queury\n");
 }
@@ -1827,11 +2041,11 @@ ps_ert_submit(struct sched_cmd *cmd)
 		return false;
 
 	switch (opcode(cmd)) {
-	case OP_CONFIGURE:
+	case ERT_CONFIGURE:
 		SCHED_DEBUG("<- ps_ert_submit (configure)\n");
 		break;
 
-	case OP_CONFIG_SKERNEL:
+	case ERT_SK_CONFIG:
 		SCHED_DEBUG("<- ps_ert_submit (configure soft kernel)\n");
 		if (configure_soft_kernel(cmd)) {
 			release_slot_idx(cmd->ddev, cmd->slot_idx);
@@ -1839,7 +2053,7 @@ ps_ert_submit(struct sched_cmd *cmd)
 		}
 		break;
 
-	case OP_UNCONFIG_SKERNEL:
+	case ERT_SK_UNCONFIG:
 		SCHED_DEBUG("<- ps_ert_submit (unconfigure soft kernel)\n");
 		if (unconfigure_soft_kernel(cmd)) {
 			release_slot_idx(cmd->ddev, cmd->slot_idx);
@@ -1847,7 +2061,7 @@ ps_ert_submit(struct sched_cmd *cmd)
 		}
 		break;
 
-	case OP_START_SKERNEL:
+	case ERT_SK_START:
 		cmd->cu_idx = get_free_cu(cmd, ZOCL_SOFT_CU);
 		if (cmd->cu_idx < 0) {
 			DRM_ERROR("Can not find free soft kernel slot.");
@@ -1863,7 +2077,7 @@ ps_ert_submit(struct sched_cmd *cmd)
 			    cmd->cu_idx, cmd->slot_idx, cmd->cq_slot_idx);
 		break;
 
-	case OP_START_CU:
+	case ERT_START_CU:
 		/* extract cu list */
 		cmd->cu_idx = get_free_cu(cmd, ZOCL_HARD_CU);
 		if (cmd->cu_idx < 0) {
@@ -1943,12 +2157,12 @@ out:
 	return ret;
 }
 
-struct sched_packet *
-get_next_packet(struct sched_packet *packet, unsigned int size)
+struct ert_packet *
+get_next_packet(struct ert_packet *packet, unsigned int size)
 {
 	char *bytes = (char *)packet;
 
-	return (struct sched_packet *)(bytes+size);
+	return (struct ert_packet *)(bytes+size);
 }
 
 void
@@ -1960,40 +2174,40 @@ zocl_cmd_buffer_free(struct sched_cmd *cmd)
 }
 
 static unsigned int
-get_packet_size(struct sched_packet *packet)
+get_packet_size(struct ert_packet *packet)
 {
 	unsigned int payload;
 
 	SCHED_DEBUG("-> get_packet_size");
 	switch (packet->opcode) {
 
-	case OP_CONFIGURE:
+	case ERT_CONFIGURE:
 		SCHED_DEBUG("configure cmd");
 		payload = 5 + packet->count;
 		break;
 
-	case OP_CONFIG_SKERNEL:
+	case ERT_SK_CONFIG:
 		SCHED_DEBUG("configure soft kernel cmd");
 		payload = packet->count;
 		break;
 
-	case OP_UNCONFIG_SKERNEL:
+	case ERT_SK_UNCONFIG:
 		SCHED_DEBUG("unconfigure soft kernel cmd");
 		payload = packet->count;
 		break;
 
-	case OP_START_SKERNEL:
+	case ERT_SK_START:
 		SCHED_DEBUG("start Soft CU/Kernel cmd");
 		payload = packet->count;
 		break;
 
-	case OP_START_CU:
+	case ERT_START_CU:
 		SCHED_DEBUG("start CU/Kernel cmd");
 		payload = packet->count;
 		break;
 
-	case OP_STOP:
-	case OP_ABORT:
+	case ERT_EXIT:
+	case ERT_ABORT:
 		SCHED_DEBUG("abort or stop cmd");
 
 	default:
@@ -2046,15 +2260,15 @@ add_ert_cq_cmd(struct drm_device *drm, void *buffer, unsigned int cq_idx)
  * Return: buffer pointer
  */
 static void*
-create_cmd_buffer(struct sched_packet *packet, unsigned slot_size)
+create_cmd_buffer(struct ert_packet *packet, unsigned slot_size)
 {
 	void *buffer;
 	size_t size;
 
-	if (packet->state != CMD_STATE_NEW)
+	if (packet->state != ERT_CMD_STATE_NEW)
 		return ERR_PTR(-EAGAIN);
 
-	packet->state = CMD_STATE_QUEUED;
+	packet->state = ERT_CMD_STATE_QUEUED;
 	SCHED_DEBUG("packet header 0x%8x, packet addr 0x%p slot size %d",
 		    packet->header, packet, slot_size);
 	buffer = kzalloc(slot_size, GFP_KERNEL);
@@ -2083,7 +2297,7 @@ iterate_packets(struct drm_device *drm)
 	struct drm_zocl_dev *zdev = drm->dev_private;
 	struct zocl_ert_dev *ert = zdev->ert;
 	struct sched_exec_core *exec_core = zdev->exec;
-	struct sched_packet *packet;
+	struct ert_packet *packet;
 	unsigned int slot_idx, num_slots, slot_sz;
 	void *buffer;
 	int ret;
@@ -2177,8 +2391,11 @@ sched_init_exec(struct drm_device *drm)
 	for (i = 0; i < MAX_U32_SLOT_MASKS; ++i)
 		exec_core->slot_status[i] = 0;
 
-	for (i = 0; i < MAX_U32_CU_MASKS; ++i)
+	for (i = 0; i < MAX_U32_CU_MASKS; ++i) {
 		exec_core->cu_status[i] = 0;
+		exec_core->cu_init[i] = 0;
+		exec_core->cu_valid[i] = 0; //default value is invalid(0)
+	}
 
 	init_scheduler_thread();
 
@@ -2209,9 +2426,12 @@ int sched_fini_exec(struct drm_device *drm)
 	int i;
 
 	SCHED_DEBUG("-> sched_fini_exec\n");
-	if (!(zdev->ert || zdev->exec->polling_mode))
-		for (i = 0; i < zdev->exec->num_cus; i++)
-			free_irq(zdev->irq[i], zdev);
+	if (!(zdev->ert || zdev->exec->polling_mode)) {
+		for (i = 0; i < zdev->exec->num_cus; i++) {
+			if (zocl_cu_is_valid(zdev->exec, i))
+				free_irq(zdev->irq[i], zdev);
+		}
+	}
 
 	if (zdev->exec->cq_thread)
 		kthread_stop(zdev->exec->cq_thread);

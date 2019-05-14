@@ -42,6 +42,36 @@ std::string get_val_string(std::string& dir, const char* key);
 long get_val_int(std::string& dir, const char* key);
 int get_render_value(std::string& dir);
 
+std::fstream sysfs_open(const std::string& sysfs_name, const std::string& subdev,
+    const std::string& entry, std::string& err,
+    bool write = false, bool binary = false);
+void sysfs_get(const std::string& sysfs_name, const std::string& subdev, const std::string& entry,
+    std::string& err_msg, std::vector<std::string>& sv);
+void sysfs_get(const std::string& sysfs_name, const std::string& subdev, const std::string& entry,
+    std::string& err_msg, std::vector<uint64_t>& iv);
+void sysfs_get(const std::string& sysfs_name, const std::string& subdev, const std::string& entry,
+    std::string& err_msg, std::string& s);
+void sysfs_get(const std::string& sysfs_name, const std::string& subdev, const std::string& entry,
+    std::string& err_msg, bool& b);
+void sysfs_get(const std::string& sysfs_name, const std::string& subdev, const std::string& entry,
+    std::string& err_msg, std::vector<char>& buf);
+template <typename T>
+void sysfs_get(const std::string& sysfs_name, const std::string& subdev, const std::string& entry,
+    std::string& err_msg, T& i) {
+    std::vector<uint64_t> iv;
+
+    sysfs_get(sysfs_name, subdev, entry, err_msg, iv);
+    if (!iv.empty())
+        i = static_cast<T>(iv[0]);
+    else
+        i = static_cast<T>(-1); // default value
+}
+void sysfs_put(const std::string& subdev, const std::string& entry,
+    std::string& err_msg, const std::string& input);
+
+std::string get_sysfs_path(const std::string& sysfs_name, const std::string& subdev,
+    const std::string& entry);
+
 class pci_device_scanner {
 public:
     struct device_info {
@@ -74,5 +104,4 @@ private:
 }; /* pci_device_scanner */
 
 } /* xcldev */
-
 #endif /* _XCL_SCAN_H_ */

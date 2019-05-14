@@ -51,13 +51,23 @@ enum {
 #define	FLASH_TYPE_SPI	"spi"
 #define	FLASH_TYPE_QSPIPS	"qspi_ps"
 
+enum {
+	XOCL_SUBDEV_LEVEL_STATIC,
+	XOCL_SUBDEV_LEVEL_BLD,
+	XOCL_SUBDEV_LEVEL_PRP,
+	XOCL_SUBDEV_LEVEL_URP,
+};
 struct xocl_subdev_info {
         uint32_t		id;
-        char			*name;
+        const char		*name;
         struct resource		*res;
         int			num_res;
 	void			*priv_data;
 	int			data_len;
+	bool			multi_inst;
+	int			level;
+	int			bar_idx;
+	int			pf;
 };
 
 struct xocl_board_private {
@@ -119,8 +129,8 @@ enum {
 
 #define	XOCL_FEATURE_ROM_USER	"rom" USER_SUFFIX
 #define XOCL_FEATURE_ROM	"rom" SUBDEV_SUFFIX
-#define XOCL_XDMA		"xdma" SUBDEV_SUFFIX
-#define XOCL_QDMA		"qdma" SUBDEV_SUFFIX
+#define XOCL_XDMA		"dma.xdma" SUBDEV_SUFFIX
+#define XOCL_QDMA		"dma.qdma" SUBDEV_SUFFIX
 #define XOCL_MB_SCHEDULER	"mb_scheduler" SUBDEV_SUFFIX
 #define XOCL_XVC_PUB		"xvc_pub" SUBDEV_SUFFIX
 #define XOCL_XVC_PRI		"xvc_pri" SUBDEV_SUFFIX
@@ -150,12 +160,15 @@ enum subdev_id {
 	XOCL_SUBDEV_XIIC,
 	XOCL_SUBDEV_MAILBOX,
 	XOCL_SUBDEV_ICAP,
-	XOCL_SUBDEV_XMC,
 	XOCL_SUBDEV_DNA,
 	XOCL_SUBDEV_FMGR,
 	XOCL_SUBDEV_MIG_HBM,
 	XOCL_SUBDEV_NUM
 };
+
+#define XOCL_SUBDEV_MAX_RES		32
+#define XOCL_SUBDEV_RES_NAME_LEN	64
+#define XOCL_SUBDEV_MAX_INST		64
 
 #define	XOCL_RES_FEATURE_ROM				\
 		((struct resource []) {			\
@@ -208,6 +221,8 @@ enum subdev_id {
 		XOCL_MIG,				\
 		XOCL_RES_MIG,				\
 		ARRAY_SIZE(XOCL_RES_MIG),		\
+		.level = XOCL_SUBDEV_LEVEL_URP,		\
+		.multi_inst = true,			\
 	}
 
 
@@ -226,6 +241,8 @@ enum subdev_id {
 		XOCL_MIG,				\
 		XOCL_RES_MIG_HBM,			\
 		ARRAY_SIZE(XOCL_RES_MIG_HBM),		\
+		.level = XOCL_SUBDEV_LEVEL_URP,		\
+		.multi_inst = true,			\
 	}
 
 #define	XOCL_RES_AF					\
@@ -382,6 +399,7 @@ enum subdev_id {
 		XOCL_DNA,				\
 		XOCL_RES_DNA,				\
 		ARRAY_SIZE(XOCL_RES_DNA),		\
+		.level = XOCL_SUBDEV_LEVEL_URP,		\
 	}
 
 #define	XOCL_MAILBOX_OFFSET_MGMT	0x210000
@@ -617,11 +635,17 @@ enum subdev_id {
 			.end 	= 0x19FFFF,		\
 			.flags  = IORESOURCE_MEM,	\
 			},				\
+			/* RUNTIME CLOCK SCALING FEATURE BASE */	\
+			{				\
+			.start	= 0x053000,		\
+			.end	= 0x053fff,		\
+			.flags	= IORESOURCE_MEM,	\
+			},				\
 		})
 
 #define	XOCL_DEVINFO_XMC					\
 	{						\
-		XOCL_SUBDEV_XMC,				\
+		XOCL_SUBDEV_MB,				\
 		XOCL_XMC,				\
 		XOCL_RES_XMC,				\
 		ARRAY_SIZE(XOCL_RES_XMC),		\
@@ -629,7 +653,7 @@ enum subdev_id {
 
 #define	XOCL_DEVINFO_XMC_USER			\
 	{						\
-		XOCL_SUBDEV_XMC,				\
+		XOCL_SUBDEV_MB,				\
 		XOCL_XMC,				\
 		NULL,					\
 		0,					\
@@ -760,7 +784,7 @@ enum subdev_id {
 
 #define	XOCL_BOARD_USER_QDMA						\
 	(struct xocl_board_private){					\
-		.flags		= XOCL_DSAFLAG_CUDMA_OFF,					\
+		.flags		= 0,					\
 		.subdev_info	= USER_RES_QDMA,			\
 		.subdev_num = ARRAY_SIZE(USER_RES_QDMA),		\
 	}
@@ -1164,11 +1188,13 @@ enum subdev_id {
 	{ XOCL_PCI_DEVID(0x10EE, 0x5008, PCI_ANY_ID, MGMT_XBB_DSA52_U280) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x500C, PCI_ANY_ID, MGMT_XBB_DSA52_U280) },\
 	{ XOCL_PCI_DEVID(0x13FE, 0x006C, PCI_ANY_ID, MGMT_6A8F) },	\
+	{ XOCL_PCI_DEVID(0x13FE, 0x0078, PCI_ANY_ID, MGMT_XBB_DSA52) },  \
 	{ XOCL_PCI_DEVID(0x10EE, 0xD000, PCI_ANY_ID, XBB_MFG("u200")) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0xD004, PCI_ANY_ID, XBB_MFG("u250")) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0xD008, PCI_ANY_ID, XBB_MFG("u280-es1")) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0xD00C, PCI_ANY_ID, XBB_MFG("u280")) },\
-	{ XOCL_PCI_DEVID(0x10EE, 0xEB10, PCI_ANY_ID, XBB_MFG("twitch")) }
+	{ XOCL_PCI_DEVID(0x10EE, 0xEB10, PCI_ANY_ID, XBB_MFG("twitch")) }, \
+	{ XOCL_PCI_DEVID(0x13FE, 0x806C, PCI_ANY_ID, XBB_MFG("advantech")) }
 
 #define	XOCL_USER_XDMA_PCI_IDS						\
 	{ XOCL_PCI_DEVID(0x10EE, 0x4A48, PCI_ANY_ID, USER_XDMA) },	\
@@ -1200,6 +1226,7 @@ enum subdev_id {
 	{ XOCL_PCI_DEVID(0x10EE, 0x5009, PCI_ANY_ID, USER_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x500D, PCI_ANY_ID, USER_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x0065, PCI_ANY_ID, USER_XDMA) },	\
+	{ XOCL_PCI_DEVID(0x13FE, 0x0077, PCI_ANY_ID, USER_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x1D0F, 0x1042, PCI_ANY_ID, USER_AWS) },	\
 	{ XOCL_PCI_DEVID(0x1D0F, 0xF000, PCI_ANY_ID, USER_AWS) },	\
 	{ XOCL_PCI_DEVID(0x1D0F, 0xF010, PCI_ANY_ID, USER_AWS) },	\

@@ -1759,6 +1759,11 @@ static int __icap_lock_peer(struct platform_device *pdev, const xuid_t *id)
 
 		if (err) {
 			err = -ENODEV;
+			/*
+			 * ignore error if aws
+			 */
+			if (xocl_is_aws(xdev))
+				err = 0;
 			goto done;
 		}
 
@@ -1783,6 +1788,7 @@ static int __icap_unlock_peer(struct platform_device *pdev, const xuid_t *id)
 	size_t reqlen = sizeof(struct mailbox_req) + data_len;
 	int resp = 0;
 	size_t resplen = sizeof(resp);
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	/* if there is no user there
 	 * ask mgmt to unlock the bitstream
@@ -1800,6 +1806,11 @@ static int __icap_unlock_peer(struct platform_device *pdev, const xuid_t *id)
 			mb_req, reqlen, &resp, &resplen, NULL, NULL);
 		if (err) {
 			err = -ENODEV;
+			/*
+			 * ignore error if aws
+			 */
+			if (xocl_is_aws(xdev))
+				err = 0;
 			goto done;
 		}
 	}
@@ -2037,7 +2048,10 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 			(void) xocl_peer_request(xdev,
 				mb_req, data_len, &msg, &resplen, NULL, NULL);
 
-			if (msg != 0) {
+			/*
+			 *  Ignore fail if it's an AWS device
+			 */
+			if (msg != 0 && !xocl_is_aws(xdev)) {
 				ICAP_ERR(icap,
 					"%s peer failed to download xclbin",
 					__func__);
@@ -2152,14 +2166,13 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 		goto done;
 	}
 	for (i = 0; i < icap->ip_layout->m_count; ++i) {
-		struct xocl_subdev_info subdev_info = { 0 };
-		struct resource res = { 0 };
 		struct ip_data *ip = &icap->ip_layout->m_ip_data[i];
 
 		if (ip->m_type == IP_KERNEL)
 			continue;
 
 		if (ip->m_type == IP_DDR4_CONTROLLER) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_MIG;
 			uint32_t memidx = ip->properties;
 
 			if (!icap->mem_topo || ip->properties >= icap->mem_topo->m_count ||
@@ -2175,29 +2188,23 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 					icap->mem_topo->m_mem_data[memidx].m_tag);
 				continue;
 			}
-			err = xocl_subdev_get_devinfo(xdev, XOCL_SUBDEV_MIG,
-				&subdev_info, &res);
-			if (err) {
-				ICAP_ERR(icap, "can't get MIG subdev info");
-				goto done;
-			}
-			res.start += ip->m_base_address;
-			res.end += ip->m_base_address;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
 			subdev_info.priv_data =
 				icap->mem_topo->m_mem_data[memidx].m_tag;
 			subdev_info.data_len =
 				sizeof(icap->mem_topo->m_mem_data[memidx].m_tag);
-			err = xocl_subdev_create_multi_inst(xdev, &subdev_info);
+			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create MIG subdev");
 				goto done;
 			}
-		}
-
-		if (ip->m_type == IP_MEM_DDR4) {
+		} else if (ip->m_type == IP_MEM_DDR4) {
 			/*
 			 * Get global memory index by feeding desired memory type and index
 			 */
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_MIG;
 			uint16_t memidx = icap_get_memidx(icap, MEM_DRAM, ip->properties);
 
 			if (memidx == INVALID_MEM_IDX)
@@ -2216,26 +2223,20 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 					icap->mem_topo->m_mem_data[memidx].m_tag);
 				continue;
 			}
-			err = xocl_subdev_get_devinfo(xdev, XOCL_SUBDEV_MIG,
-				&subdev_info, &res);
-			if (err) {
-				ICAP_ERR(icap, "can't get MIG subdev info");
-				goto done;
-			}
-			res.start += ip->m_base_address;
-			res.end += ip->m_base_address;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
 			subdev_info.priv_data =
 				icap->mem_topo->m_mem_data[memidx].m_tag;
 			subdev_info.data_len =
 				sizeof(icap->mem_topo->m_mem_data[memidx].m_tag);
-			err = xocl_subdev_create_multi_inst(xdev, &subdev_info);
+			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create MIG subdev");
 				goto done;
 			}
-		}
-
-		if (ip->m_type == IP_MEM_HBM) {
+		} else if (ip->m_type == IP_MEM_HBM) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_MIG_HBM;
 			uint16_t memidx = icap_get_memidx(icap, MEM_HBM, ip->indices.m_index);
 
 			if (memidx == INVALID_MEM_IDX)
@@ -2253,36 +2254,25 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 					icap->mem_topo->m_mem_data[memidx].m_tag);
 				continue;
 			}
-			err = xocl_subdev_get_devinfo(xdev, XOCL_SUBDEV_MIG_HBM,
-				&subdev_info, &res);
-			if (err) {
-				ICAP_ERR(icap, "can't get MIG subdev info");
-				goto done;
-			}
-			res.start += ip->m_base_address;
-			res.end += ip->m_base_address;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
 			subdev_info.priv_data =
 				icap->mem_topo->m_mem_data[memidx].m_tag;
 			subdev_info.data_len =
 				sizeof(icap->mem_topo->m_mem_data[memidx].m_tag);
-			err = xocl_subdev_create_multi_inst(xdev, &subdev_info);
+			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
-				ICAP_ERR(icap, "can't create MIG subdev");
+				ICAP_ERR(icap, "can't create MIG_HBM subdev");
 				goto done;
 			}
-		}
+		} else if (ip->m_type == IP_DNASC) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_DNA;
 
-		if (ip->m_type == IP_DNASC) {
 			dna_check = true;
-			err = xocl_subdev_get_devinfo(xdev, XOCL_SUBDEV_DNA,
-				&subdev_info, &res);
-			if (err) {
-				ICAP_ERR(icap, "can't get DNA subdev info");
-				goto done;
-			}
-			res.start += ip->m_base_address;
-			res.end += ip->m_base_address;
-			err = xocl_subdev_create_one(xdev, &subdev_info);
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create DNA subdev");
 				goto done;
@@ -2534,27 +2524,6 @@ done:
 	return err;
 }
 
-
-/*
- * should always get the latest value of IDCODE and PEER_UUID
- */
-static bool get_latest_force(enum data_kind kind)
-{
-	bool ret = false;
-
-	switch (kind) {
-	case IDCODE:
-		ret = true;
-		break;
-	case PEER_UUID:
-		ret = true;
-		break;
-	default:
-		break;
-	}
-	return ret;
-}
-
 static uint64_t icap_get_data_nolock(struct platform_device *pdev,
 	enum data_kind kind)
 {
@@ -2564,7 +2533,7 @@ static uint64_t icap_get_data_nolock(struct platform_device *pdev,
 
 	if (!ICAP_PRIVILEGED(icap)) {
 
-		if (ktime_compare(now, icap->cache_expires) > 0 || get_latest_force(kind))
+		if (ktime_compare(now, icap->cache_expires) > 0)
 			icap_read_from_peer(pdev);
 
 		switch (kind) {
@@ -3200,8 +3169,6 @@ static int icap_probe(struct platform_device *pdev)
 	icap->cache_expire_secs = ICAP_DEFAULT_EXPIRE_SECS;
 
 	icap_probe_chip(icap);
-	if (!ICAP_PRIVILEGED(icap))
-		icap_unlock_bitstream(pdev, NULL, 0);
 	ICAP_INFO(icap, "successfully initialized FPGA IDCODE 0x%x",
 			icap->idcode);
 	xocl_subdev_register(pdev, XOCL_SUBDEV_ICAP, &icap_ops);

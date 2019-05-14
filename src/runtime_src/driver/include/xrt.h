@@ -206,15 +206,15 @@ enum xclAddressSpace {
  * Defines log message severity levels for messages sent to log file with xclLogMsg cmd
  */
 
-enum xclLogMsgLevel {
-     EMERGENCY = 0,
-     ALERT = 1,
-     CRITICAL = 2,
-     ERROR = 3,
-     WARNING = 4,
-     NOTICE = 5,
-     INFO = 6,
-     DEBUG = 7
+enum xrtLogMsgLevel {
+     XRT_EMERGENCY = 0,
+     XRT_ALERT = 1,
+     XRT_CRITICAL = 2,
+     XRT_ERROR = 3,
+     XRT_WARNING = 4,
+     XRT_NOTICE = 5,
+     XRT_INFO = 6,
+     XRT_DEBUG = 7
 };
 
 /**
@@ -490,7 +490,7 @@ XCL_DRIVER_DLLESPEC unsigned int xclVersion();
  *
  * Return:         0 on success or appropriate error number
  */
-XCL_DRIVER_DLLESPEC int xclLogMsg(xclDeviceHandle handle, enum xclLogMsgLevel level, const char* tag, const char* format, ...);
+XCL_DRIVER_DLLESPEC int xclLogMsg(xclDeviceHandle handle, enum xrtLogMsgLevel level, const char* tag, const char* format, ...);
 
 /**
  * DOC: XRT Buffer Management APIs
@@ -681,93 +681,6 @@ inline XCL_DRIVER_DLLESPEC uint64_t xclGetDeviceAddr(xclDeviceHandle handle, uns
 }
 
 /* End XRT Buffer Management APIs */
-
-/**
- * DOC: XRT Legacy Buffer Management APIs
- * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- *
- * Do *not* develop new features using the following 5 API's. These are for backwards
- * compatibility with classic XRT interface and will be deprecated in future. New clients
- * should use BO based APIs defined above
- *
- */
-
-/**
- * xclAllocDeviceBuffer() - Allocate a buffer on the device
- *
- * @handle:        Device handle
- * @size:          Size of buffer
- * Return:         Physical address of buffer on device or 0xFFFFFFFFFFFFFFFF in case of failure
- *
- * Allocate a buffer on the device DDR and return its address. This API will be deprecated in future.
- * Use xclAllocBO() in all new code.
- */
-XCL_DRIVER_DLLESPEC uint64_t xclAllocDeviceBuffer(xclDeviceHandle handle, size_t size);
-
-/**
- * xclAllocDeviceBuffer2() - Allocate a buffer on the device on a specific DDR
- *
- * @handle:        Device handle
- * @size:          Size of buffer
- * @domain:        Memory domain
- * @flags:         Desired DDR bank as a bitmap.
- * Return:         Physical address of buffer on device or 0xFFFFFFFFFFFFFFFF in case of failure
- *
- * Allocate a buffer on a specific device DDR and return its address. This API will be deprecated in future.
- * Use xclAllocBO() in all new code.
- */
-XCL_DRIVER_DLLESPEC uint64_t xclAllocDeviceBuffer2(xclDeviceHandle handle, size_t size,
-                                                   enum xclMemoryDomains domain,
-                                                   unsigned flags);
-
-/**
- * xclFreeDeviceBuffer() - Free a previously buffer on the device
- *
- * @handle:        Device handle
- * @buf:           Physical address of buffer
- *
- * The physical address should have been previously allocated by xclAllocDeviceBuffe() or xclAllocDeviceBuffer2().
- * The address should point to the beginning of the buffer and not at an offset in the buffer. This API will
- * be deprecated in future. Use xclFreeBO() together with BO allocation APIs.
- */
-XCL_DRIVER_DLLESPEC void xclFreeDeviceBuffer(xclDeviceHandle handle, uint64_t buf);
-
-/**
- * xclCopyBufferHost2Device() - Write to device memory
- *
- * @handle:        Device handle
- * @dest:          Physical address in the device
- * @src:           Source buffer pointer
- * @size:          Size of data to synchronize
- * @seek:          Seek within the segment pointed to physical address
- * Return:         Size of data moved or standard error number
- *
- * Copy host buffer contents to previously allocated device memory. ``seek`` specifies how many bytes to skip
- * at the beginning of the destination before copying ``size`` bytes of host buffer. This API will be
- * deprecated in future. Use xclSyncBO() together with other BO APIs.
- */
-XCL_DRIVER_DLLESPEC size_t xclCopyBufferHost2Device(xclDeviceHandle handle, uint64_t dest,
-                                                    const void *src, size_t size, size_t seek);
-
-/**
- * xclCopyBufferDevice2Host() - Read from device memory
- *
- * @handle:        Device handle
- * @dest:          Destination buffer pointer
- * @src:           Physical address in the device
- * @size:          Size of data to synchronize
- * @skip:          Skip within the segment pointed to physical address
- * Return:         Size of data moved or standard error number
- *
- * Copy contents of previously allocated device memory to host buffer. ``skip`` specifies how many bytes to skip
- * from the beginning of the source before copying ``size`` bytes of device buffer. This API will be
- * deprecated in future. Use xclSyncBO() together with other BO APIs.
- */
-XCL_DRIVER_DLLESPEC size_t xclCopyBufferDevice2Host(xclDeviceHandle handle, void *dest,
-                                                    uint64_t src, size_t size, size_t skip);
-
-/* End XRT Legacy Buffer Management APIs */
-
 
 /**
  * DOC: XRT Unmanaged DMA APIs
@@ -1201,6 +1114,8 @@ XCL_DRIVER_DLLESPEC uint32_t xclGetProfilingSlotProperties(xclDeviceHandle handl
                                                  uint32_t slotnum);
 
 XCL_DRIVER_DLLESPEC size_t xclPerfMonClockTraining(xclDeviceHandle handle, enum xclPerfMonType type);
+
+XCL_DRIVER_DLLESPEC void xclPerfMonConfigureDataflow(xclDeviceHandle handle, xclPerfMonType type, unsigned *ip_data);
 
 XCL_DRIVER_DLLESPEC size_t xclPerfMonStartCounters(xclDeviceHandle handle, enum xclPerfMonType type);
 

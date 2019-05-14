@@ -320,7 +320,7 @@ static DEVICE_ATTR_WO(ecc_inject_2bits);
 static ssize_t name_show(struct device *dev, struct device_attribute *da,
 	char *buf)
 {
-	return sprintf(buf, "%s\n", XOCL_GET_SUBDEV_PRIV(dev));
+	return sprintf(buf, "%s\n", (char *)XOCL_GET_SUBDEV_PRIV(dev));
 }
 static DEVICE_ATTR_RO(name);
 
@@ -408,7 +408,7 @@ static int mig_probe(struct platform_device *pdev)
 	}
 
 	xocl_info(&pdev->dev, "MIG name: %s, IO start: 0x%llx, end: 0x%llx mig->type %d",
-		XOCL_GET_SUBDEV_PRIV(&pdev->dev), res->start, res->end, mig->type);
+		(char *)XOCL_GET_SUBDEV_PRIV(&pdev->dev), res->start, res->end, mig->type);
 
 	if (mig->type == DRAM_ECC)
 		mig->base = ioremap_nocache(res->start, res->end - res->start + 1);
@@ -443,7 +443,7 @@ static int mig_remove(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	xocl_info(&pdev->dev, "MIG name: %s", XOCL_GET_SUBDEV_PRIV(&pdev->dev));
+	xocl_info(&pdev->dev, "MIG name: %s", (char *)XOCL_GET_SUBDEV_PRIV(&pdev->dev));
 
 	mgmt_sysfs_destroy_mig(pdev);
 

@@ -60,7 +60,7 @@ namespace xdp {
     Plugin->setObjectsReleased(mEndDeviceProfilingCalled);
 
     if (!mEndDeviceProfilingCalled && applicationProfilingOn()) {
-      xrt::message::send(xrt::message::severity_level::WARNING,
+      xrt::message::send(xrt::message::severity_level::XRT_WARNING,
           "Profiling may contain incomplete information. Please ensure all OpenCL objects are released by your host code (e.g., clReleaseProgram()).");
 
       // Before deleting, do a final read of counters and force flush of trace buffers
@@ -95,7 +95,7 @@ namespace xdp {
     // Only needs to be called once
     if (mEndDeviceProfilingCalled)
    	  return;
-    
+
     auto platform = getclPlatformID();
     if (applicationProfilingOn()) {
       // Write end of app event to trace buffer (Zynq only)
@@ -158,7 +158,7 @@ namespace xdp {
   void OCLProfiler::getDeviceTrace(bool forceReadTrace)
   {
     auto platform = getclPlatformID();
-    if (!isProfileRunning() || 
+    if (!isProfileRunning() ||
         (!deviceTraceProfilingOn() && !(Plugin->getFlowMode() == xdp::RTUtil::HW_EM) ))
       return;
 

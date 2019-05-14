@@ -120,25 +120,24 @@ struct tree
     try {
       read_ini(path,m_tree);
 
-      // set env vars to expose sdaccel.ini to hal layer
-      setenv();
-
       // inform which .ini was read
-      xrt_core::message::send(xrt_core::message::severity_level::INFO, "XRT", std::string("Read ") + path);
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_INFO, "XRT", std::string("Read ") + path);
     }
     catch (const std::exception& ex) {
-      xrt_core::message::send(xrt_core::message::severity_level::WARNING, "XRT", ex.what());
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", ex.what());
     }
   }
 
   tree()
   {
     auto ini_path = get_ini_path();
-    if (ini_path.empty())
-      return;
+    if (!ini_path.empty())
+      read(ini_path);
 
-    //XRT_PRINT(std::cout,"Reading configuration from '",ini_path,"'\n");
-    read(ini_path);
+    // set env vars to expose sdaccel.ini (or default) to hal layer
+    setenv();
+
+    return;
   }
 
   void

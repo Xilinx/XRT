@@ -94,6 +94,9 @@ namespace xdp {
       case P2P_DEVICE:
         name = "P2P_DEVICE";
         break;
+      case P2P_HOST_TRANSFERS:
+        name = "P2P_HOST_TRANSFERS";
+        break;
       case PORT_BIT_WIDTH:
         name = "PORT_BIT_WIDTH";
         break;

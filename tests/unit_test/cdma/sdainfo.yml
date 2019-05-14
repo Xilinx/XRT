@@ -16,6 +16,7 @@ board_copy: [addone.xclbin]
 copy: [main.cpp, addone.cl]
 devices:
 - [xilinx_.*]
+exclude_devices: [xilinx_u280-es1_xdma_201910_1, xilinx_u200_qdma_201910_1]
 flags: -g -Wall -std=c++14
 flows: [hw_all]
 krnls:
@@ -40,6 +41,6 @@ xclbins:
   - {krnl: add1, name: add10}
   - {krnl: add2, name: add20}
   - {krnl: add3, name: add30}
-  link_flags: --sp add00.m_axi_gmem:bank0 --sp add10.m_axi_gmem:bank1 --sp add20.m_axi_gmem:bank2 --sp add30.m_axi_gmem:bank3
+  link_flags: --sp add00.m_axi_gmem:DDR[0] --sp add10.m_axi_gmem:DDR[1] --sp add20.m_axi_gmem:DDR[2] --sp add30.m_axi_gmem:DDR[3]
   name: addone
   region: OCL_REGION_0

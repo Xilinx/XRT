@@ -18,6 +18,7 @@
 #include "scan.h"
 #include <stdexcept>
 #include <iostream>
+#include <sstream>
 #include <cassert>
 #include <fstream>
 #include <dirent.h>
@@ -35,6 +36,195 @@
 #endif
 
 std::vector<xcldev::pci_device_scanner::device_info> xcldev::pci_device_scanner::device_list;
+
+static const std::string sysfs_root = "/sys/bus/pci/devices/";
+
+static std::string get_name(const std::string& dir, const std::string& subdir)
+{
+    std::string line;
+    std::ifstream ifs(dir + "/" + subdir + "/name");
+
+    if (ifs.is_open())
+        std::getline(ifs, line);
+
+    return line;
+}   
+// Helper to find subdevice directory name
+// Assumption: all subdevice's sysfs directory name starts with subdevice name!!
+static int get_subdev_dir_name(const std::string& dir,
+    const std::string& subDevName, std::string& subdir)
+{
+    DIR *dp;
+    size_t sub_nm_sz = subDevName.size();
+
+    subdir = "";
+    if (subDevName.empty())
+        return 0;
+
+    int ret = -ENOENT;
+    dp = opendir(dir.c_str());
+    if (dp) {
+        struct dirent *entry;
+        while ((entry = readdir(dp))) {
+            std::string nm = get_name(dir, entry->d_name);
+            if (!nm.empty()) {
+                if (nm != subDevName)
+                    continue;
+            } else if(strncmp(entry->d_name, subDevName.c_str(), sub_nm_sz) ||
+                entry->d_name[sub_nm_sz] != '.') {
+                continue;
+            }
+            // found it
+            subdir = entry->d_name;
+            ret = 0;
+            break;
+        }
+        closedir(dp);
+    }
+
+    return ret;
+}
+
+std::string xcldev::get_sysfs_path(const std::string& sysfs_name, const std::string& subdev,
+    const std::string& entry)
+{
+    std::string subdir;
+    if (get_subdev_dir_name(sysfs_root + sysfs_name, subdev, subdir) != 0)
+        return "";
+
+    std::string path = sysfs_root;
+    path += sysfs_name;
+    path += "/";
+    path += subdir;
+    path += "/";
+    path += entry;
+    return path;
+}
+
+static std::fstream sysfs_open_path(const std::string& path, std::string& err,
+    bool write, bool binary)
+{
+    std::fstream fs;
+    std::ios::openmode mode = write ? std::ios::out : std::ios::in;
+
+    if (binary)
+        mode |= std::ios::binary;
+
+    err.clear();
+    fs.open(path, mode);
+    if (!fs.is_open()) {
+        std::stringstream ss;
+        ss << "Failed to open " << path << " for "
+            << (binary ? "binary " : "")
+            << (write ? "writing" : "reading") << ": "
+            << strerror(errno) << std::endl;
+        err = ss.str();
+    }
+    return fs;
+}
+
+std::fstream xcldev::sysfs_open(const std::string& sysfs_name, const std::string& subdev,
+    const std::string& entry, std::string& err, bool write, bool binary)
+{
+    std::fstream fs;
+    const std::string path = get_sysfs_path(sysfs_name, subdev, entry);
+
+    if (path.empty()) {
+        std::stringstream ss;
+        ss << "Failed to find subdirectory for " << subdev
+            << " under " << sysfs_root + sysfs_name << std::endl;
+        err = ss.str();
+    } else {
+        fs = sysfs_open_path(path, err, write, binary);
+    }
+
+    return fs;
+}
+
+void xcldev::sysfs_get(
+    const std::string& sysfs_name, const std::string& subdev, const std::string& entry,
+    std::string& err_msg, std::vector<char>& buf)
+{
+    std::fstream fs = sysfs_open(sysfs_name, subdev, entry, err_msg, false, true);
+    if (!err_msg.empty())
+        return;
+
+    buf.insert(std::end(buf),std::istreambuf_iterator<char>(fs),std::istreambuf_iterator<char>());
+}
+
+void xcldev::sysfs_get(
+    const std::string& sysfs_name, const std::string& subdev, const std::string& entry,
+    std::string& err_msg, std::vector<std::string>& sv)
+{
+    std::fstream fs = sysfs_open(sysfs_name, subdev, entry, err_msg, false, false);
+    if (!err_msg.empty())
+        return;
+
+    sv.clear();
+    std::string line;
+    while (std::getline(fs, line))
+        sv.push_back(line);
+}
+
+void xcldev::sysfs_get(
+    const std::string& sysfs_name, const std::string& subdev, const std::string& entry,
+    std::string& err_msg, std::vector<uint64_t>& iv)
+{
+    uint64_t n;
+    std::vector<std::string> sv;
+
+    iv.clear();
+
+    sysfs_get(sysfs_name, subdev, entry, err_msg, sv);
+    if (!err_msg.empty())
+        return;
+
+    char *end;
+    for (auto& s : sv) {
+        std::stringstream ss;
+
+        if (s.empty()) {
+            ss << "Reading " << get_sysfs_path(sysfs_name, subdev, entry) << ", ";
+            ss << "can't convert empty string to integer" << std::endl;
+            err_msg = ss.str();
+            break;
+        }
+        n = std::strtoull(s.c_str(), &end, 0);
+        if (*end != '\0') {
+            ss << "Reading " << get_sysfs_path(sysfs_name, subdev, entry) << ", ";
+            ss << "failed to convert string to integer: " << s << std::endl;
+            err_msg = ss.str();
+            break;
+        }
+        iv.push_back(n);
+    }
+}
+
+void xcldev::sysfs_get(
+    const std::string& sysfs_name, const std::string& subdev, const std::string& entry,
+    std::string& err_msg, std::string& s)
+{
+    std::vector<std::string> sv;
+
+    sysfs_get(sysfs_name, subdev, entry, err_msg, sv);
+    if (!sv.empty())
+        s = sv[0];
+    else
+        s = ""; // default value
+}
+
+void xcldev::sysfs_get(
+    const std::string& sysfs_name, const std::string& subdev, const std::string& entry,
+    std::string& err_msg, bool& b)
+{
+    std::vector<uint64_t> iv;
+
+    sysfs_get(sysfs_name, subdev, entry, err_msg, iv);
+    if (!iv.empty())
+        b = (iv[0] == 1);
+    else
+        b = false; // default value
+}
 
 /*
  * get_val_string()

@@ -729,19 +729,24 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	}
 	case MAILBOX_REQ_USER_PROBE: {
 		struct mailbox_conn *conn = (struct mailbox_conn *)req->data;
-		struct mailbox_conn_resp resp = { 0 };
+		struct mailbox_conn_resp *resp =
+			(struct mailbox_conn_resp *)vzalloc(sizeof(*resp));
 		uint64_t ch_switch = 0;
 
+		if (!resp)
+			break;
+
 		xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
-		resp.version = min(MB_PROTOCOL_VER, conn->version);
-		resp.conn_flags |= MB_PEER_READY;
+		resp->version = min(MB_PROTOCOL_VER, conn->version);
+		resp->conn_flags |= MB_PEER_READY;
 		/* Same domain check only applies when everything is thru HW. */
 		if (!ch_switch && xclmgmt_is_same_domain(lro, conn))
-			resp.conn_flags |= MB_PEER_SAME_DOMAIN;
-		resp.chan_switch = ch_switch;
-		(void) xocl_mailbox_get(lro, COMM_ID, (u64 *)resp.comm_id);
-		(void) xocl_peer_response(lro, req->req, msgid, &resp,
+			resp->conn_flags |= MB_PEER_SAME_DOMAIN;
+		resp->chan_switch = ch_switch;
+		(void) xocl_mailbox_get(lro, COMM_ID, (u64 *)resp->comm_id);
+		(void) xocl_peer_response(lro, req->req, msgid, resp,
 			sizeof(struct mailbox_conn_resp));
+		vfree(resp);
 		break;
 	}
 	default:
@@ -774,7 +779,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	 * Workaround needed on some platforms. Will clear out any stale
 	 * data after the platform has been reset
 	 */
-	ret = xocl_subdev_create_one(lro,
+	ret = xocl_subdev_create(lro,
 		&(struct xocl_subdev_info)XOCL_DEVINFO_AF);
 	if (ret) {
 		xocl_err(&pdev->dev, "failed to register firewall\n");
@@ -874,6 +879,14 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		goto err_alloc;
 	}
 
+	rc = xocl_subdev_init(lro);
+	if (rc) {
+		xocl_err(&pdev->dev, "init subdev failed");
+		goto err_init_subdev;
+	}
+
+
+	mutex_init(&lro->core.lock);
 	rwlock_init(&lro->core.rwlock);
 
 	/* create a device to driver reference */
@@ -941,6 +954,8 @@ err_cdev:
 err_map:
 	xocl_free_dev_minor(lro);
 err_alloc_minor:
+	xocl_subdev_fini(lro);
+err_init_subdev:
 	dev_set_drvdata(&pdev->dev, NULL);
 	xocl_drvinst_free(lro);
 err_alloc:
@@ -968,6 +983,7 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 	mgmt_fini_sysfs(&pdev->dev);
 
 	xocl_subdev_destroy_all(lro);
+	xocl_subdev_fini(lro);
 
 	xclmgmt_teardown_msix(lro);
 	/* remove user character device */

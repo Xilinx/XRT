@@ -149,14 +149,17 @@ int ZYNQShim::mapKernelControl(const std::vector<std::pair<uint64_t, size_t>>& o
   auto end = offsets.end();
 
   while (offset_it != end) {
-    auto it = mKernelControl.find(offset_it->first);
-    if (it == mKernelControl.end()) {
-      ptr = mmap(0, offset_it->second, PROT_READ | PROT_WRITE, MAP_SHARED, mKernelFD, offset_it->first);
-      if (!ptr) {
-          printf("Map failed for aperture 0x%lx, size 0x%x\n", offset_it->first, offset_it->second);
-          return -1;
+    // This (~0xFF) is the KDS mask
+    if ((offset_it->first & (~0xFF)) != (-1UL & ~0xFF)) {
+      auto it = mKernelControl.find(offset_it->first);
+      if (it == mKernelControl.end()) {
+        ptr = mmap(0, offset_it->second, PROT_READ | PROT_WRITE, MAP_SHARED, mKernelFD, offset_it->first);
+        if (!ptr) {
+            printf("Map failed for aperture 0x%lx, size 0x%lx\n", offset_it->first, offset_it->second);
+            return -1;
+        }
+        mKernelControl.insert(it, std::pair<uint64_t, uint32_t *>(offset_it->first, (uint32_t *)ptr));
       }
-      mKernelControl.insert(it, std::pair<uint64_t, uint32_t *>(offset_it->first, (uint32_t *)ptr));
     }
     offset_it++;
   }
@@ -169,20 +172,15 @@ int ZYNQShim::mapKernelControl(const std::vector<std::pair<uint64_t, size_t>>& o
 void *ZYNQShim::getVirtAddressOfApture(xclAddressSpace space, const uint64_t phy_addr, uint64_t& offset)
 {
     void *vaddr = NULL;
-    uint64_t mask = 0xFFFF;
 
-    // If CU size is still 64KiB, this is safe.
+    // If CU size is 64 Kb, then this is safe.  For Debug/Profile IPs,
+    //  they may have 4K or 8K register space.  The profiling library
+    //  will make sure that the offset will not be abused.
+    uint64_t mask = (space == XCL_ADDR_SPACE_DEVICE_PERFMON) ? 0x1FFF : 0xFFFF;
+
     vaddr  = mKernelControl[phy_addr & ~mask];
     offset = phy_addr & mask;
-    if (!vaddr && space == XCL_ADDR_SPACE_DEVICE_PERFMON) {
-      // Get base address again for Debug IPs.
-      // Since some Debug IP has 4KiB/8KiB register space.
-      // There is a risk that we only check 8KiB register space.
-      // The profiling library make sure that the offset will not be abused.
-      mask   = 0x1FFF;
-      vaddr  = mKernelControl[phy_addr & ~mask];
-      offset = phy_addr & mask;
-    }
+
     if (!vaddr)
         std::cout  << "Could not found the mapped address. Check if XCLBIN is loaded." << std::endl;
 
@@ -921,6 +919,16 @@ size_t xclPerfMonClockTraining(xclDeviceHandle handle, xclPerfMonType type)
   if (!(drv->profiling))
     return -EINVAL;
   return 1; // Not yet enabled
+}
+
+void xclPerfMonConfigureDataflow(xclDeviceHandle handle, xclPerfMonType type, unsigned *ip_config)
+{
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  if (!drv)
+    return;
+  if (!(drv->profiling))
+    return;
+  return drv->profiling->xclPerfMonConfigureDataflow(type, ip_config);
 }
 
 size_t xclPerfMonStartCounters(xclDeviceHandle handle, xclPerfMonType type)

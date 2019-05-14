@@ -402,6 +402,14 @@ size_t xclPerfMonClockTraining(xclDeviceHandle handle, xclPerfMonType type)
   return drv->xclPerfMonClockTraining();
 }
 
+void xclPerfMonConfigureDataflow(xclDeviceHandle handle, xclPerfMonType type, unsigned *ip_config)
+{
+  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
+  if (!drv)
+    return;
+  return drv->xclPerfMonConfigureDataflow(type, ip_config);
+}
+
 size_t xclPerfMonStartCounters(xclDeviceHandle handle, xclPerfMonType type)
 {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
@@ -531,7 +539,7 @@ uint xclGetNumLiveProcesses(xclDeviceHandle handle)
     return 0;
 }
 
-int xclLogMsg(xclDeviceHandle handle, xclLogMsgLevel level, const char* tag, const char* format, ...)
+int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, ...)
 {
   va_list args;
   va_start(args, format);

@@ -311,6 +311,17 @@ public:
   free(const memory* mem);
 
   /**
+   * Check if buffer is imported to this device
+   *
+   * If the buffer is allocated on this device, then check if the
+   * corresponding buffer object is an imported buffer object
+   *
+   * @return: true if imported, false otherwise
+   */
+  bool
+  is_imported(const memory* mem) const;
+
+  /**
    * Get memory addr for the given boh
    *
    * @return

@@ -326,11 +326,11 @@ initBMCVar()
     prefix=""
     if [ "${SatelliteControllerFamily}" != "" ]; then
       if [ "${SatelliteControllerFamily}" == "Alveo-Gen1" ]; then
-         prefix="Alveo-Gen1:"
+         prefix="AlveoGen1-"
       elif [ "${SatelliteControllerFamily}" == "Alveo-Gen2" ]; then
-         prefix="Alveo-Gen2:"
+         prefix="AlveoGen2-"
       elif [ "${SatelliteControllerFamily}" == "Alveo-Gen3" ]; then
-         prefix="Alveo-Gen3:"
+         prefix="AlveoGen3-"
       else
          echo "ERROR: Unknown satellite controller family: ${SatelliteControllerFamily}"
          exit 1

@@ -37,6 +37,7 @@ namespace xdp {
   // ************************
   TraceLogger::TraceLogger(ProfileCounters* profileCounters, TraceParser * TraceParserHandle, XDPPluginI* Plugin)
   : mMigrateMemCalls(0),
+    mHostP2PTransfers(0),
     mCurrentContextId(0),
     mCuStarts(0),
     mProfileCounters(profileCounters),
@@ -265,6 +266,8 @@ namespace xdp {
         bool isRead = (objKind == RTUtil::READ_BUFFER);
         mProfileCounters->pushToSortedTopUsage(traceObject, isRead);
       }
+      else if (objKind == RTUtil::READ_BUFFER_P2P || objKind == RTUtil::WRITE_BUFFER_P2P)
+        mHostP2PTransfers++;
 
       // Mark and keep top trace data
       // Data can be additionally streamed to a data transfer record

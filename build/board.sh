@@ -19,7 +19,8 @@ run=1
 tests=
 csv=
 select="PASS"
-rel=2018.3
+rel=2019.1
+sdxp="Scout"
 
 usage()
 {
@@ -28,7 +29,7 @@ usage()
     echo
     echo "[-help]                        List this help"
     echo "[-board <kcu1500|vcu1525|...>] Board to use"
-    echo "[-rel <2018.2|2018.3>          Select branch to havest xclbins from (default: 2018.3)"
+    echo "[-rel <2018.2|2018.3|...>      Select branch to havest xclbins from (default: $rel)"
     echo "[-select <regex>]              Pattern to grep for in csv to pick test (default: PASS)"
     echo "[-sync]                        Sync from sprite"
     echo "[-norun]                       Don't run, just rsync all tests"
@@ -41,28 +42,28 @@ usage()
     echo ""
     echo "With no optional options, this script runs all previously synced tests in"
     echo "current directory. "
-    echo "% board.sh -board vcu1525"
+    echo "% board.sh -board u200_xdma_201830_1"
     echo ""
     echo "Use -sync to sync all $rel UNIT_HW tests from latest sprite run into working directory."
-    echo "% board.sh -board vcu1525 -sync "
+    echo "% board.sh -board u200_xdma_201830_1 -sync"
     echo ""
     echo "Use -rel <release> to sync sprite tests from specified release"
-    echo "% board.sh -board u200 -rel 2018.2 -sync "
+    echo "% board.sh -board ... -rel 2019.1 -sync "
     echo ""
     echo "Use -tests <file> (without -sync) to run a subset of curently synced tests.  "
     echo "The specified file should have one tests per line"
-    echo "% board.sh -board vcu1525 -tests ~/tmp/files.txt"
+    echo "% board.sh -board u200 -tests ~/tmp/files.txt"
     echo ""
     echo "Use -csv (with -sync) to explicity specify a csv file to parse for tests to sync."
     echo "The board script supports any csv file for any suite.  By default the board script"
     echo "syncs the UNIT_HW test suite, so use -csv option to sync a different suite."
     echo "The path to the csv file must be a absolute path to sprite generated file."
-    echo "% board.sh -board vcu1525 -sync -csv /proj/fisdata2/results/sdx_${rel}/SDX_UNIT_HWBRD/sdx_u_hw_20180611_232013_lnx64.csv"
-    echo "% board.sh -board u200 -sync -csv /proj/fisdata2/results/sdx_2018.3/SDX_CRS_HWBRD/sdx_crs_hw_20181024_223210_lnx64.csv"
+    echo "% board.sh -board ... -sync -csv /proj/fisdata2/results/sdx_${rel}/SDX_UNIT_HWBRD/sdx_u_hw_20190411_232013_lnx64.csv"
+    echo "% board.sh -board ... -sync -csv /proj/fisdata2/results/sdx_2019.1/SDX_CRS_HWBRD/sdx_crs_hw_20190510_223210_lnx64.csv"
     echo ""
     echo "When selecting tests from csv file, only PASS tests are selected by default."
     echo "Use the -select option to pick any tests that matches the regular expression."
-    echo "% board.sh -board u200 -sync -select 'PASS|INTR' -csv <csv>"
+    echo "% board.sh -board ... -sync -select 'PASS|INTR' -csv <csv>"
     exit 1
 }
 
@@ -130,14 +131,18 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-sdx=/proj/xbuilds/${rel}_daily_latest/installs/lin64/SDx/${rel}
+sdx=/proj/xbuilds/${rel}_daily_latest/installs/lin64/Scout/${rel}
+if [[ $rel < 2019.2 ]]; then
+    sdx=/proj/xbuilds/${rel}_daily_latest/installs/lin64/SDx/${rel}
+fi
 
 ################################################################
 # Environment
 ################################################################
-if [ "X$ini" != "X" ] ; then
- echo "SDACCEL_INI_PATH=$ini"
+if [[ "X$ini" != "X" ]] ; then
+ echo "XRT_INI_PATH=$ini"
  export SDACCEL_INI_PATH=$ini
+ export XRT_INI_PATH=$ini
 fi
 
 
@@ -157,6 +162,7 @@ export DSA=`${XILINX_XRT}/bin/xbutil list | grep '\[0\]' | cut -d' ' -f3`
 
 echo "XILINX_XRT      = $XILINX_XRT"
 echo "XILINX_SDX      = $XILINX_SDX"
+echo "XILINX_SCOUT    = $XILINX_SDX"
 echo "XILINX_OPENCL   = $XILINX_OPENCL"
 echo "LD_LIBRARY_PATH = $LD_LIBRARY_PATH"
 
@@ -210,8 +216,7 @@ for f in ${tests[*]}; do
  if [ $sync == 1 ]; then
   # sync from sprite
   echo $base/$f/${rundir}
-  rsync -avz -f '- /*/*/' $base/$f/${rundir} $f/
-  rsync -avz -f '+ /*/xclbin/' -f '+ /*/src/' -f '+ /*/data/' -f '- /*/*/' $base/$f/${rundir} $f/
+  rsync -avz -f '- /*/_x*/' -f '- /*/.Xil/' -f '- /*/reports/' -f '- /*/xocc_log/' -f '- /*/xbinst/' $base/$f/${rundir} $f/
  fi
 
  if [ $run -eq 0 ]; then
@@ -234,7 +239,7 @@ for f in ${tests[*]}; do
   echo "DSA		= $DSA"
   echo "================================================================"
 
-  cmd=`grep '\.exe' board_lsf.sh |grep  -v echo | grep -v '/bin/cp' | /bin/sed -e 's/2>&1 | tee output.log//g'| awk '{printf("./host.exe "); for(i=5;i<=NF;++i) printf("%s ",$i)}'`
+  cmd=`grep 'host.exe' board_lsf.sh |grep  -v echo | grep -v '/bin/cp' | /bin/sed -e 's/2>&1 | tee output.log//g'| awk '{printf("./host.exe "); for(i=5;i<=NF;++i) printf("%s ",$i)}'`
 
   # this is required for dsv.onbrd suite
   if [ "X$cmd" == "X" ]; then
