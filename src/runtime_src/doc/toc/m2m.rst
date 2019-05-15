@@ -37,5 +37,5 @@ Some limitations:
 1. M2M occurs between only between two DDR banks. Not PLRAM, HBM for that matter
 2. The copied data has to be 64 bit aligned. Otherwise XRT will do copy via host using the same API
 3. Not all the cards are M2M capable, in that case XRT will do copy via host using the same API
-4. Copying OpenCL sub-buffers not properly supported
+4. M2M Copy of OpenCL sub-buffers not properly supported
 
