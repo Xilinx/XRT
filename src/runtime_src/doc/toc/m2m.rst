@@ -12,7 +12,7 @@ K1 interacts with DDR0 due to location proximity on the FPGA.
 
 Similarly, K2 interacts with DDR1 due to location proximity on the FPGA. 
 
-The output of the K1 is consumed by K2 for its input. So there should be data transfer from DDR bank0 to DDR bank1. 
+The output of the K1 is consumed by K2 for its input. So there has to be data transfer from DDR bank0 to DDR bank1. 
 
 .. image:: M2M-transfer.png
    :align: center
