@@ -406,6 +406,7 @@ struct xocl_mb_scheduler_funcs {
 		void *data, void *drm_filp);
 	int (*stop)(struct platform_device *pdev);
 	int (*reset)(struct platform_device *pdev);
+	int (*reconfig)(struct platform_device *pdev);
 };
 #define	MB_SCHEDULER_DEV(xdev)	\
 	SUBDEV(xdev, XOCL_SUBDEV_MB_SCHEDULER).pldev
@@ -437,6 +438,10 @@ struct xocl_mb_scheduler_funcs {
 #define	xocl_exec_reset(xdev)		\
 	(SCHE_CB(xdev, reset) ?				\
 	 MB_SCHEDULER_OPS(xdev)->reset(MB_SCHEDULER_DEV(xdev)) : \
+	-ENODEV)
+#define	xocl_exec_reconfig(xdev)		\
+	(SCHE_CB(xdev, reconfig) ?				\
+	 MB_SCHEDULER_OPS(xdev)->reconfig(MB_SCHEDULER_DEV(xdev)) : \
 	-ENODEV)
 
 #define XOCL_MEM_TOPOLOGY(xdev)						\
