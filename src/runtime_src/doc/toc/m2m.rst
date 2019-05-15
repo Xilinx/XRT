@@ -4,8 +4,8 @@ Memory-to-Memory (M2M) Support
 Some of the recent Alveo cards supports direct Memory to Memory (M2M) data transfer on the card, improving the data transfer performance 
 as data does not need to be transferred via host while moving from one DDR bank to another. 
 
-Example scenario and OpenCL coding
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Example scenario
+~~~~~~~~~~~~~~~~
 Assume there are two kernels in the XCLBIN, K1 and K2. 
 
 K1 interacts with DDR0 due to location proximity on the FPGA. 
