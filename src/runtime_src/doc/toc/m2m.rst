@@ -1,7 +1,7 @@
 Memory-to-Memory (M2M) Support
 ------------------------------
 
-Some of the recent Alveo cards supports direct Memory to Memory (M2M) data transfer on the card, improving the data transfer performance 
+Some of the recent Alveo cards support direct Memory to Memory (M2M) data transfer on the card, improving the data transfer performance 
 as data does not need to be transferred via host while moving from one DDR bank to another. 
 
 Example scenario
@@ -35,7 +35,7 @@ We can perform a copy from Buf2 to Buf3 using standard OpenCL API ``clEnqueueCop
 Some limitations:
 ~~~~~~~~~~~~~~~~
 1. Hardware supports M2M between two DDR banks, not other memory types such as HBM or PLRAM
-2. The data being copied has to be 64 bit aligned. Otherwise XRT will do copy via host using the same API
-3. Not all the cards are M2M capable, in that case XRT will do copy via host using the same API
+2. The data being copied has to be 64 bit aligned. Otherwise, XRT will do copy via host using the same API
+3. Not all the cards are M2M capable, in that case, XRT will do copy via host using the same API
 4. M2M copy of OpenCL sub-buffers is not properly supported
 
