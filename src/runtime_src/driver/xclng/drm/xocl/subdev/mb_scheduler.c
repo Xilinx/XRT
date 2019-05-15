@@ -1108,11 +1108,12 @@ struct exec_core {
 	unsigned int		   num_slots;
 	unsigned int		   num_cus;
 	unsigned int		   num_cdma;
-	unsigned int		   polling_mode;
-	unsigned int		   cq_interrupt;
-	unsigned int		   configured;
-	unsigned int		   stopped;
-	unsigned int		   flush;
+	
+	bool		           polling_mode;
+	bool		           cq_interrupt;
+	bool		           configured;
+	bool		           stopped;
+	bool		           flush;
 
 	struct xocl_cu		   *cus[MAX_CUS];
 	struct xocl_ert		   *ert;
@@ -1334,7 +1335,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	} else {
 		userpf_info(xdev, "configuring penguin scheduler mode\n");
 		exec->ops = &penguin_ops;
-		exec->polling_mode = 1;
+		exec->polling_mode = true;
 	}
 
 	if (XDEV(xdev)->priv.flags & XOCL_DSAFLAG_CUDMA_OFF)
@@ -1382,16 +1383,16 @@ exec_reset(struct exec_core *exec)
 		goto out;
 	}
 
+	userpf_info(xdev, "%s resets", __func__);
 	userpf_info(xdev, "exec->xclbin(%pUb),xclbin(%pUb)\n", &exec->xclbin_id, xclbin_id);
-	userpf_info(xdev, "%s resets for new xclbin", __func__);
 	memset(exec->cu_usage, 0, MAX_CUS * sizeof(u32));
 	uuid_copy(&exec->xclbin_id, xclbin_id);
 	exec->num_cus = 0;
 	exec->num_cdma = 0;
 
 	exec->num_slots = 16;
-	exec->polling_mode = 1;
-	exec->cq_interrupt = 0;
+	exec->polling_mode = true;
+	exec->cq_interrupt = false;
 	exec->configured = false;
 	exec->stopped = false;
 	exec->flush = false;
@@ -3267,6 +3268,19 @@ stop(struct platform_device *pdev)
 }
 
 /**
+ * reconfig() - Force scheduler to reconfigure on next ERT_CONFIGURE command
+ *
+ * Adding of commands will fail until next command is a configure command
+ */
+static int
+reconfig(struct platform_device *pdev)
+{
+	struct exec_core *exec = platform_get_drvdata(pdev);
+	exec->configured = false;
+	return 0;
+}
+
+/**
  * validate() - Check if requested cmd is valid in the current context
  */
 static int
@@ -3324,6 +3338,7 @@ struct xocl_mb_scheduler_funcs sche_ops = {
 	.client_ioctl = client_ioctl,
 	.stop = stop,
 	.reset = reset,
+	.reconfig = reconfig,
 };
 
 /* sysfs */
