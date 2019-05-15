@@ -8,9 +8,9 @@ Example scenario and OpenCL coding
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Assume there are two kernels in the XCLBIN, K1 and K2. 
 
-Kernel1 interacts with DDR0 due to location proximity on the FPGA. 
+K1 interacts with DDR0 due to location proximity on the FPGA. 
 
-Similarly, Kernel2 interacts with DDR1 due to location proximity on the FPGA. 
+Similarly, K2 interacts with DDR1 due to location proximity on the FPGA. 
 
 The output of the K1 is consumed by K2 for its input. So there should be data transfer from DDR bank0 to DDR bank1. 
 
