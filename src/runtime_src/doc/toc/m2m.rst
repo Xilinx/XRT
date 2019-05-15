@@ -17,7 +17,7 @@ The output of the K1 is consumed by K2 for its input. So there should be data tr
 .. image:: M2M-transfer.png
    :align: center
 
-In OpenCL host code, let's assume four buffers: buffer0, buffer1, buffer2, buffer3.  
+In OpenCL host code, let's assume four buffers: Buf1, Buf2, Buf3, Buf4.  
 
 
 So the data transfer from the host follow the order
