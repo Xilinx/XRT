@@ -94,9 +94,11 @@
  *
  * At the highest layer, the driver implements a request-response communication
  * model. Three types of msgs can be sent/received in this model:
- *   - A request msg which requires a response.
- *   - A notification msg which does not require a response.
- *   - A response msg which is used to respond a request.
+ *
+ * - A request msg which requires a response.
+ * - A notification msg which does not require a response.
+ * - A response msg which is used to respond a request.
+ *
  * The OP code of the request determines whether it's a request or notification.
  *
  * If provided, a response msg must match a request msg by msg ID, or it'll be
