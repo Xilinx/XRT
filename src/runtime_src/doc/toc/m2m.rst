@@ -14,7 +14,7 @@ Similarly, K2 interacts with DDR1 due to location proximity on the FPGA.
 
 The output of the K1 is consumed by K2 for its input. So there has to be data transfer from DDR bank0 to DDR bank1. 
 
-.. image:: M2M-transfer.png
+.. image:: M2M-transfer.svg
    :align: center
 
 In OpenCL host code, let's assume four buffers: Buf1, Buf2, Buf3, Buf4.  
