@@ -27,6 +27,7 @@
 
 #include <cstdlib>
 #include <cstdint>
+#include <iostream>
 
 #define GCC_VERSION (__GNUC__ * 10000 \
                      + __GNUC_MINOR__ * 100 \
@@ -190,15 +191,16 @@ namespace xclemulation {
     int                   fd;
   };
 
-  static inline unsigned xocl_bo_ddr_idx(unsigned flags)
+  //we should not create a memory in default bank for hw_emu. As sw_emu doesnt have rtd information, we are not doing any error check
+  static inline unsigned xocl_bo_ddr_idx(unsigned flags, bool is_sw_emu = true)
   {
-    if(flags == 0 || flags == 0x80000000)
+    unsigned flag = flags & 0xFFFFFFLL;
+    //unsigned type = flags & 0xFF000000LL ;
+
+    if(flag == 0 || ((flag == 0xFFFFFFLL) && is_sw_emu))
       return 0;
-    const unsigned ddr = flags & XOCL_MEM_BANK_MSK;
-    //if (!ddr)
-      //return 0xffffffff;
-    return ddr;
-    //return __builtin_ctz(ddr) ;
+    
+    return flag;
   }
 
   static inline bool xocl_bo_userptr(const struct drm_xocl_bo *bo)

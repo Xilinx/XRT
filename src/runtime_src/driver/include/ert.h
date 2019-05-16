@@ -1,5 +1,5 @@
-/**
- *  Copyright (C) 2018, Xilinx Inc
+/*
+ *  Copyright (C) 2019, Xilinx Inc
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -36,12 +36,10 @@
  */
 
 /**
- *  Xilinx SDAccel Embedded Runtime definition
- *  Copyright (C) 2018, Xilinx Inc - All rights reserved
+ * DOC: Xilinx SDAccel Embedded Runtime definition
  *
- *  This file is dual licensed.  It may be redistributed and/or modified
- *  under the terms of the Apache 2.0 License OR version 2 of the GNU
- *  General Public License.
+ * Header file *ert.h* defines data structures used by Emebdded Runtime (ERT) and
+ * XRT xclExecBuf() API.
  */
 
 #ifndef _ERT_H_
@@ -82,15 +80,15 @@ struct ert_packet {
  *
  * @state:           [3-0] current state of a command
  * @extra_cu_masks:  [11-10] extra CU masks in addition to mandatory mask
- * @count:           [22-12] number of words in payload (data)
+ * @count:           [22-12] number of words following header
  * @opcode:          [27-23] 0, opcode for start_kernel
  * @type:            [31-27] 0, type of start_kernel
  *
  * @cu_mask:         first mandatory CU mask
- * @data:            count number of words representing command payload
+ * @data:            count-1 number of words representing interpreted payload
  *
- * The packet payload is comprised of 1 mandatory CU mask plus
- * extra_cu_masks per header field, followed a CU register map of size
+ * The packet payload is comprised of reserved id field, a mandatory CU mask,
+ * and extra_cu_masks per header field, followed by a CU register map of size
  * (count - (1 + extra_cu_masks)) uint32_t words.
  */
 struct ert_start_kernel_cmd {
@@ -109,6 +107,64 @@ struct ert_start_kernel_cmd {
   /* payload */
   uint32_t cu_mask;          /* mandatory cu mask */
   uint32_t data[1];          /* count-1 number of words */
+};
+
+/**
+ * struct ert_init_kernel_cmd: ERT initialize kernel command format
+ * this command initializes CUs by writing CU registers. CUs are
+ * represented by cu_mask and extra_cu_masks.
+ *
+ * @state:           [3-0] current state of a command
+ * @extra_cu_masks:  [11-10] extra CU masks in addition to mandatory mask
+ * @count:           [22-12] number of words following header
+ * @opcode:          [27-23] 0, opcode for init_kernel
+ * @type:            [31-27] 0, type of init_kernel
+ *
+ * @cu_mask:         first mandatory CU mask
+ * @data:            count-9 number of words representing interpreted payload
+ *
+ * The packet payload is comprised of reserved id field, 8 reserved fields,
+ * a mandatory CU mask, and extra_cu_masks per header field, followed by a
+ * CU register map of size (count - (9 + extra_cu_masks)) uint32_t words.
+ */
+struct ert_init_kernel_cmd {
+  union {
+    struct {
+      uint32_t state:4;          /* [3-0]   */
+      uint32_t unused:6;         /* [9-4]  */
+      uint32_t extra_cu_masks:2; /* [11-10]  */
+      uint32_t count:11;         /* [22-12] */
+      uint32_t opcode:5;         /* [27-23] */
+      uint32_t type:4;           /* [31-27] */
+    };
+    uint32_t header;
+  };
+
+  uint32_t reserved[8];      /* reserved for future use */
+
+  /* payload */
+  uint32_t cu_mask;          /* mandatory cu mask */
+  uint32_t data[1];          /* count-9 number of words */
+};
+
+#define KDMA_BLOCK_SIZE 64   /* Limited by KDMA CU */
+struct ert_start_copybo_cmd {
+  uint32_t state:4;          /* [3-0], must be ERT_CMD_STATE_NEW */
+  uint32_t unused:6;         /* [9-4] */
+  uint32_t extra_cu_masks:2; /* [11-10], = 3 */
+  uint32_t count:11;         /* [22-12], = 15, exclude 'arg' */
+  uint32_t opcode:5;         /* [27-23], = ERT_START_COPYBO */
+  uint32_t type:4;           /* [31-27], = ERT_DEFAULT */
+  uint32_t cu_mask[4];       /* mandatory cu masks */
+  uint32_t reserved[4];      /* for scheduler use */
+  uint32_t src_addr_lo;      /* low 32 bit of src addr */
+  uint32_t src_addr_hi;      /* high 32 bit of src addr */
+  uint32_t src_bo_hdl;       /* src bo handle, cleared by driver */
+  uint32_t dst_addr_lo;      /* low 32 bit of dst addr */
+  uint32_t dst_addr_hi;      /* high 32 bit of dst addr */
+  uint32_t dst_bo_hdl;       /* dst bo handle, cleared by driver */
+  uint32_t size;             /* size in bytes */
+  void     *arg;             /* pointer to aux data for KDS */
 };
 
 /**
@@ -160,11 +216,74 @@ struct ert_configure_cmd {
   uint32_t cu_isr:1;
   uint32_t cq_int:1;
   uint32_t cdma:1;
-  uint32_t unusedf:25;
+  uint32_t dataflow:1;
+  uint32_t unusedf:24;
   uint32_t dsa52:1;
 
   /* cu address map size is num_cus */
   uint32_t data[1];
+};
+
+/**
+ * struct ert_configure_sk_cmd: ERT configure soft kernel command format
+ *
+ * @state:           [3-0] current state of a command
+ * @count:           [22-12] number of words in payload (13 DWords)
+ * @opcode:          [27-23] 1, opcode for configure
+ * @type:            [31-27] 0, type of configure
+ *
+ * @start_cuidx:     start index of compute units
+ * @num_cus:         number of compute units in program
+ * @sk_size:         size in bytes of soft kernel image
+ * @sk_name:         symbol name of soft kernel
+ * @sk_addr:         soft kernel image's physical address (little endian)
+ */
+struct ert_configure_sk_cmd {
+  union {
+    struct {
+      uint32_t state:4;          /* [3-0]   */
+      uint32_t unused:8;         /* [11-4]  */
+      uint32_t count:11;         /* [22-12] */
+      uint32_t opcode:5;         /* [27-23] */
+      uint32_t type:4;           /* [31-27] */
+    };
+    uint32_t header;
+  };
+
+  /* payload */
+  uint32_t start_cuidx;
+  uint32_t num_cus;
+  uint32_t sk_size;		/* soft kernel size */
+  uint32_t sk_name[8];		/* soft kernel name */
+  uint64_t sk_addr;
+};
+
+/**
+ * struct ert_unconfigure_sk_cmd: ERT unconfigure soft kernel command format
+ *
+ * @state:           [3-0] current state of a command
+ * @count:           [22-12] number of words in payload
+ * @opcode:          [27-23] 1, opcode for configure
+ * @type:            [31-27] 0, type of configure
+ *
+ * @start_cuidx:     start index of compute units
+ * @num_cus:         number of compute units in program
+ */
+struct ert_unconfigure_sk_cmd {
+  union {
+    struct {
+      uint32_t state:4;          /* [3-0]   */
+      uint32_t unused:8;         /* [11-4]  */
+      uint32_t count:11;         /* [22-12] */
+      uint32_t opcode:5;         /* [27-23] */
+      uint32_t type:4;           /* [31-27] */
+    };
+    uint32_t header;
+  };
+
+  /* payload */
+  uint32_t start_cuidx;
+  uint32_t num_cus;
 };
 
 /**
@@ -190,6 +309,7 @@ struct ert_abort_cmd {
  *
  * @ERT_CMD_STATE_NEW:      Set by host before submitting a command to scheduler
  * @ERT_CMD_STATE_QUEUED:   Internal scheduler state
+ * @ERT_CMD_STATE_SUBMITTED:Internal scheduler state
  * @ERT_CMD_STATE_RUNNING:  Internal scheduler state
  * @ERT_CMD_STATE_COMPLETE: Set by scheduler when command completes
  * @ERT_CMD_STATE_ERROR:    Set by scheduler if command failed
@@ -202,6 +322,7 @@ enum ert_cmd_state {
   ERT_CMD_STATE_COMPLETED = 4,
   ERT_CMD_STATE_ERROR = 5,
   ERT_CMD_STATE_ABORT = 6,
+  ERT_CMD_STATE_SUBMITTED = 7,
 };
 
 /**
@@ -210,15 +331,27 @@ enum ert_cmd_state {
  * @ERT_START_CU:       start a workgroup on a CU
  * @ERT_START_KERNEL:   currently aliased to ERT_START_CU
  * @ERT_CONFIGURE:      configure command scheduler
- * @ERT_WRITE:          write pairs of addr and value
+ * @ERT_EXEC_WRITE:     execute a specified CU after writing
+ * @ERT_CU_STAT:        get stats about CU execution
+ * @ERT_START_COPYBO:   start KDMA CU or P2P, may be converted to ERT_START_CU
+ *                      before cmd reach to scheduler, short-term hack
+ * @ERT_SK_CONFIG:      configure soft kernel
+ * @ERT_SK_START:       start a soft kernel
+ * @ERT_SK_UNCONFIG:    unconfigure a soft kernel
  */
 enum ert_cmd_opcode {
-  ERT_START_CU     = 0,
-  ERT_START_KERNEL = 0,
-  ERT_CONFIGURE    = 2,
-  ERT_STOP         = 3,
-  ERT_ABORT        = 4,
-  ERT_WRITE        = 5,
+  ERT_START_CU      = 0,
+  ERT_START_KERNEL  = 0,
+  ERT_CONFIGURE     = 2,
+  ERT_EXIT          = 3,
+  ERT_ABORT         = 4,
+  ERT_EXEC_WRITE    = 5,
+  ERT_CU_STAT       = 6,
+  ERT_START_COPYBO  = 7,
+  ERT_SK_CONFIG     = 8,
+  ERT_SK_START      = 9,
+  ERT_SK_UNCONFIG   = 10,
+  ERT_INIT_CU       = 11,
 };
 
 /**
@@ -226,10 +359,14 @@ enum ert_cmd_opcode {
  *
  * @ERT_DEFAULT:        default command type
  * @ERT_KDS_LOCAL:      command processed by KDS locally
+ * @ERT_CTRL:           control command uses reserved command queue slot
+ * @ERT_CU:             compute unit command
  */
 enum ert_cmd_type {
   ERT_DEFAULT = 0,
   ERT_KDS_LOCAL = 1,
+  ERT_CTRL = 2,
+  ERT_CU = 3,
 };
 
 /**
@@ -347,10 +484,10 @@ enum ert_cmd_type {
 #define ERT_CUISR_LUT_ADDR                (ERT_CSR_ADDR + 0x400)
 
 /**
- * ERT stop command/ack
+ * ERT exit command/ack
  */
-#define	ERT_STOP_CMD			  ((ERT_STOP << 23) | ERT_CMD_STATE_NEW)
-#define	ERT_STOP_ACK			  (ERT_CMD_STATE_COMPLETED)
+#define	ERT_EXIT_CMD			  ((ERT_EXIT << 23) | ERT_CMD_STATE_NEW)
+#define	ERT_EXIT_ACK			  (ERT_CMD_STATE_COMPLETED)
 
 /**
  * State machine for both CUDMA and CUISR modules
@@ -367,5 +504,46 @@ enum ert_cmd_type {
 #define ERT_INTC_IER_ADDR                 (ERT_INTC_ADDR + 0x8)  /* enable */
 #define ERT_INTC_IAR_ADDR                 (ERT_INTC_ADDR + 0x0C) /* acknowledge */
 #define ERT_INTC_MER_ADDR                 (ERT_INTC_ADDR + 0x1C) /* master enable */
+
+/*
+ * Helper functions to hide details of ert_start_copybo_cmd
+ */
+static inline void
+ert_fill_copybo_cmd(struct ert_start_copybo_cmd *pkt, uint32_t src_bo,
+  uint32_t dst_bo, uint64_t src_offset, uint64_t dst_offset, uint64_t size)
+{
+  pkt->state = ERT_CMD_STATE_NEW;
+  pkt->extra_cu_masks = 3;
+  pkt->count = 15;
+  pkt->opcode = ERT_START_COPYBO;
+  pkt->type = ERT_DEFAULT;
+  pkt->cu_mask[0] = 0;
+  pkt->cu_mask[1] = 0;
+  pkt->cu_mask[2] = 0;
+  pkt->cu_mask[3] = 0;
+  pkt->src_addr_lo = src_offset;
+  pkt->src_addr_hi = (src_offset >> 32) & 0xFFFFFFFF;
+  pkt->src_bo_hdl = src_bo;
+  pkt->dst_addr_lo = dst_offset;
+  pkt->dst_addr_hi = (dst_offset >> 32) & 0xFFFFFFFF;
+  pkt->dst_bo_hdl = dst_bo;
+  pkt->size = size;
+  pkt->arg = 0;
+}
+static inline uint64_t
+ert_copybo_src_offset(struct ert_start_copybo_cmd *pkt)
+{
+  return (uint64_t)pkt->src_addr_hi << 32 | pkt->src_addr_lo;
+}
+static inline uint64_t
+ert_copybo_dst_offset(struct ert_start_copybo_cmd *pkt)
+{
+  return (uint64_t)pkt->dst_addr_hi << 32 | pkt->dst_addr_lo;
+}
+static inline uint64_t
+ert_copybo_size(struct ert_start_copybo_cmd *pkt)
+{
+  return pkt->size;
+}
 
 #endif

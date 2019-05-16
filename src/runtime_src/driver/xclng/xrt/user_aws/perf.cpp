@@ -16,7 +16,7 @@
  */
 
 #include "shim.h"
-#include "../user_common/perfmon_parameters.h"
+#include "driver/include/xcl_perfmon_parameters.h"
 #include "driver/xclng/include/xocl_ioctl.h"
 
 #include <sys/types.h>
@@ -258,6 +258,32 @@ namespace awsbwhal {
     }
 
     return size;
+  }
+
+  void AwsXcl::xclPerfMonConfigureDataflow(xclPerfMonType type, unsigned *ip_config) {
+    if (mLogStream.is_open()) {
+      mLogStream << __func__ << ", " << std::this_thread::get_id() << ", "
+          << type << ", Configure Monitors For Dataflow..." << std::endl;
+    }
+    readDebugIpLayout();
+    if (!mIsDeviceProfiling)
+      return;
+
+    uint32_t numSlots = getPerfMonNumberSlots(type);
+
+    if (type == XCL_PERF_MON_ACCEL) {
+      for (uint32_t i=0; i < numSlots; i++) {
+        if (!ip_config[i]) continue;
+        uint64_t baseAddress = getPerfMonBaseAddress(type,i);
+        uint32_t regValue = 0;
+        xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
+        regValue = regValue | XSAM_DATAFLOW_EN_MASK;
+        xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
+        if (mLogStream.is_open()) {
+          mLogStream << "Dataflow enabled on slot : " << i << std::endl;
+        }
+      }
+    }
   }
 
   // ********
@@ -580,7 +606,7 @@ namespace awsbwhal {
 
       // Initialize result to 0
       memset(&results, 0, sizeof(xclTraceResults));
-      // SDSoC Packet Format
+      // Zynq Packet Format
       results.Timestamp = temp & 0x1FFFFFFFFFFF;
       results.EventType = ((temp >> 45) & 0xF) ? XCL_PERF_MON_END_EVENT :
         XCL_PERF_MON_START_EVENT;
@@ -610,6 +636,13 @@ namespace awsbwhal {
 
 } // namespace awsbwhal
 
+void xclPerfMonConfigureDataflow(xclDeviceHandle handle, xclPerfMonType type, unsigned *ip_config)
+{
+  awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+  if (!drv)
+    return;
+  return drv->xclPerfMonConfigureDataflow(type, ip_config);
+}
 
 size_t xclPerfMonStartCounters(xclDeviceHandle handle, xclPerfMonType type)
 {

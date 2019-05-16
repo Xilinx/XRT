@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -15,11 +15,12 @@
  */
 
 #include "hal2.h"
-#include "xrt/util/memory.h"
 #include "xrt/util/thread.h"
+#include "driver/include/ert.h"
 
 #include <cstring> // for std::memcpy
 #include <iostream>
+#include <cerrno>
 #include <sys/mman.h> // for POSIX munmap
 
 namespace xrt { namespace hal2 {
@@ -118,6 +119,34 @@ getExecBufferObject(const ExecBufferObjectHandle& boh) const
   return bo;
 }
 
+void
+device::
+acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared)
+{
+  if (m_handle && m_ops->mOpenContext) {
+    if (m_ops->mOpenContext(m_handle,uuid.get(),cuidx,shared))
+      throw std::runtime_error(std::string("failed to acquire CU(")
+                               + std::to_string(cuidx)
+                               + ") context '"
+                               + std::strerror(errno)
+                               + "'");
+  }
+}
+
+void
+device::
+release_cu_context(const uuid& uuid,size_t cuidx)
+{
+  if (m_handle && m_ops->mCloseContext) {
+    if (m_ops->mCloseContext(m_handle,uuid.get(),cuidx))
+      throw std::runtime_error(std::string("failed to release CU(")
+                               + std::to_string(cuidx)
+                               + ") context '"
+                               + std::strerror(errno)
+                               + "'");
+  }
+}
+
 ExecBufferObjectHandle
 device::
 allocExecBuffer(size_t sz)
@@ -130,7 +159,7 @@ allocExecBuffer(size_t sz)
     delete bo;
   };
 
-  auto ubo = xrt::make_unique<ExecBufferObject>();
+  auto ubo = std::make_unique<ExecBufferObject>();
   //ubo->handle = m_ops->mAllocBO(m_handle,sz,xclBOKind(0),(1<<31));  // 1<<31 xocl_ioctl.h
   ubo->handle = m_ops->mAllocBO(m_handle,sz,xclBOKind(0),(((uint64_t)1)<<31));  // 1<<31 xocl_ioctl.h
   if (ubo->handle == 0xffffffff)
@@ -150,7 +179,7 @@ alloc(size_t sz)
 {
   auto delBufferObject = [this](BufferObjectHandle::element_type* vbo) {
     BufferObject* bo = static_cast<BufferObject*>(vbo);
-    XRT_DEBUG(std::cout,"deleted buffer object device address(",bo->deviceAddr,",",bo->size,")\n");
+    XRT_DEBUGF("deleted buffer object device address(%p,%d)\n",bo->deviceAddr,bo->size);
     munmap(bo->hostAddr, bo->size);
     m_ops->mFreeBO(m_handle, bo->handle);
     delete bo;
@@ -158,7 +187,7 @@ alloc(size_t sz)
 
   xclBOKind kind = XCL_BO_DEVICE_RAM; //TODO: check default
   uint64_t flags = 0xFFFFFF; //TODO: check default, any bank.
-  auto ubo = xrt::make_unique<BufferObject>();
+  auto ubo = std::make_unique<BufferObject>();
   ubo->handle = m_ops->mAllocBO(m_handle, sz, kind, flags);
   if (ubo->handle == 0xffffffff)
     throw std::bad_alloc();
@@ -169,7 +198,7 @@ alloc(size_t sz)
   ubo->deviceAddr = m_ops->mGetDeviceAddr(m_handle, ubo->handle);
   ubo->hostAddr = m_ops->mMapBO(m_handle, ubo->handle, true /*write*/);
 
-  XRT_DEBUG(std::cout,"allocated buffer object device address(",ubo->deviceAddr,",",ubo->size,")\n");
+  XRT_DEBUGF("allocated buffer object device address(%p,%d)\n",ubo->deviceAddr,ubo->size);
   return BufferObjectHandle(ubo.release(), delBufferObject);
 }
 
@@ -179,13 +208,13 @@ alloc(size_t sz,void* userptr)
 {
   auto delBufferObject = [this](BufferObjectHandle::element_type* vbo) {
     BufferObject* bo = static_cast<BufferObject*>(vbo);
-    XRT_DEBUG(std::cout,"deleted buffer object device address(",bo->deviceAddr,",",bo->size,")\n");
+    XRT_DEBUGF("deleted buffer object device address(%p,%d)\n",bo->deviceAddr,bo->size);
     m_ops->mFreeBO(m_handle, bo->handle);
     delete bo;
   };
 
   uint64_t flags = 0xFFFFFF; //TODO:check default
-  auto ubo = xrt::make_unique<BufferObject>();
+  auto ubo = std::make_unique<BufferObject>();
   ubo->handle = m_ops->mAllocUserPtrBO(m_handle, userptr, sz, flags);
   if (ubo->handle == 0xffffffff)
     throw std::bad_alloc();
@@ -196,7 +225,7 @@ alloc(size_t sz,void* userptr)
   ubo->size = sz;
   ubo->owner = m_handle;
 
-  XRT_DEBUG(std::cout,"allocated buffer object device address(",ubo->deviceAddr,",",ubo->size,")\n");
+  XRT_DEBUGF("allocated buffer object device address(%p,%d)\n",ubo->deviceAddr,ubo->size);
   return BufferObjectHandle(ubo.release(), delBufferObject);
 }
 
@@ -207,7 +236,7 @@ alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
   const bool mmapRequired = (userptr == nullptr);
   auto delBufferObject = [mmapRequired, this](BufferObjectHandle::element_type* vbo) {
     BufferObject* bo = static_cast<BufferObject*>(vbo);
-    XRT_DEBUG(std::cout,"deleted buffer object device address(",bo->deviceAddr,",",bo->size,")\n");
+    XRT_DEBUGF("deleted buffer object device address(%p,%d)\n",bo->deviceAddr,bo->size);
     if (bo->kind != XCL_BO_DEVICE_PREALLOCATED_BRAM) {
       if (mmapRequired)
         munmap(bo->hostAddr, bo->size);
@@ -216,7 +245,7 @@ alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
     delete bo;
   };
 
-  auto ubo = xrt::make_unique<BufferObject>();
+  auto ubo = std::make_unique<BufferObject>();
 
   if (domain==Domain::XRT_DEVICE_PREALLOCATED_BRAM) {
     ubo->deviceAddr = memory_index;
@@ -249,7 +278,7 @@ alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
   ubo->size = sz;
   ubo->owner = m_handle;
 
-  XRT_DEBUG(std::cout,"allocated buffer object device address(",ubo->deviceAddr,",",ubo->size,")\n");
+  XRT_DEBUGF("allocated buffer object device address(%p,%d)\n",ubo->deviceAddr,ubo->size);
   return BufferObjectHandle(ubo.release(), delBufferObject);
 }
 
@@ -265,7 +294,7 @@ alloc(const BufferObjectHandle& boh, size_t sz, size_t offset)
 
   BufferObject* bo = getBufferObject(boh);
 
-  auto ubo = xrt::make_unique<BufferObject>();
+  auto ubo = std::make_unique<BufferObject>();
   ubo->handle = bo->handle;
   ubo->deviceAddr = bo->deviceAddr+offset;
   ubo->hostAddr = static_cast<char*>(bo->hostAddr)+offset;
@@ -281,7 +310,7 @@ alloc(const BufferObjectHandle& boh, size_t sz, size_t offset)
   if (reinterpret_cast<uintptr_t>(bo->hostAddr) % alignment || bo->deviceAddr % alignment)
     throw std::bad_alloc();
 
-  XRT_DEBUG(std::cout,"allocated offset buffer object device address(",ubo->deviceAddr,",",ubo->size,")\n");
+  XRT_DEBUGF("allocated buffer object device address(%p,%d)\n",ubo->deviceAddr,ubo->size);
   return BufferObjectHandle(ubo.release(), delBufferObject);
 }
 
@@ -353,11 +382,23 @@ device::sync(const BufferObjectHandle& boh, size_t sz, size_t offset, direction 
 }
 
 event
-device::copy(const BufferObjectHandle& dst_boh, const BufferObjectHandle& src_boh, size_t sz, size_t dst_offset, size_t src_offset)
+device::
+copy(const BufferObjectHandle& dst_boh, const BufferObjectHandle& src_boh, size_t sz, size_t dst_offset, size_t src_offset)
 {
   BufferObject* dst_bo = getBufferObject(dst_boh);
   BufferObject* src_bo = getBufferObject(src_boh);
   return event(typed_event<int>(m_ops->mCopyBO(m_handle, dst_bo->handle, src_bo->handle, sz, dst_offset, src_offset)));
+}
+
+void
+device::
+fill_copy_pkt(const BufferObjectHandle& dst_boh, const BufferObjectHandle& src_boh
+              ,size_t sz, size_t dst_offset, size_t src_offset, ert_start_copybo_cmd* pkt)
+{
+  BufferObject* dst_bo = getBufferObject(dst_boh);
+  BufferObject* src_bo = getBufferObject(src_boh);
+  ert_fill_copybo_cmd(pkt,src_bo->handle,dst_bo->handle,src_offset,dst_offset,sz);
+  return;
 }
 
 size_t
@@ -407,14 +448,24 @@ device::
 exec_buf(const ExecBufferObjectHandle& boh)
 {
   auto bo = getExecBufferObject(boh);
-  return m_ops->mExecBuf(m_handle,bo->handle);
+  if (m_ops->mExecBuf(m_handle,bo->handle))
+    throw std::runtime_error(std::string("failed to launch exec buffer '") + std::strerror(errno) + "'");
+  return 0;
 }
 
 int
 device::
 exec_wait(int timeout_ms) const
 {
-  return m_ops->mExecWait(m_handle,timeout_ms);
+  auto retval = m_ops->mExecWait(m_handle,timeout_ms);
+  if (retval==-1) {
+    // We should not treat interrupted syscall as an error
+    if (errno == EINTR)
+      retval = 0;
+    else
+      throw std::runtime_error(std::string("exec wait failed '") + std::strerror(errno) + "'");
+  }
+  return retval;
 }
 
 BufferObjectHandle
@@ -428,7 +479,7 @@ import(const BufferObjectHandle& boh)
 
   BufferObject* bo = getBufferObject(boh);
 
-  auto ubo = xrt::make_unique<BufferObject>();
+  auto ubo = std::make_unique<BufferObject>();
   ubo->hostAddr = bo->hostAddr;
   ubo->size = bo->size;
   ubo->owner = m_handle;
@@ -448,6 +499,14 @@ getDeviceAddr(const BufferObjectHandle& boh)
   return bo->deviceAddr;
 }
 
+bool
+device::
+is_imported(const BufferObjectHandle& boh) const
+{
+  auto bo = getBufferObject(boh);
+  return bo->imported;
+}
+
 int
 device::
 getMemObjectFd(const BufferObjectHandle& boh)
@@ -463,13 +522,13 @@ getBufferFromFd(const int fd, size_t& size, unsigned flags)
 {
   auto delBufferObject = [this](BufferObjectHandle::element_type* vbo) {
     BufferObject* bo = static_cast<BufferObject*>(vbo);
-    XRT_DEBUG(std::cout,"deleted buffer object device address(",bo->deviceAddr,",",bo->size,")\n");
+    XRT_DEBUGF("deleted buffer object device address(%p,%d)\n",bo->deviceAddr,bo->size);
     munmap(bo->hostAddr, bo->size);
     m_ops->mFreeBO(m_handle, bo->handle);
     delete bo;
   };
 
-  auto ubo = xrt::make_unique<BufferObject>();
+  auto ubo = std::make_unique<BufferObject>();
 
   if (!m_ops->mImportBO)
     throw std::runtime_error("ImportBO function not found in FPGA driver. Please install latest driver");
@@ -478,13 +537,13 @@ getBufferFromFd(const int fd, size_t& size, unsigned flags)
   if (ubo->handle == 0xffffffff)
     throw std::runtime_error("getBufferFromFd-Create XRT-BO: BOH handle is invalid");
 
-
   ubo->kind = XCL_BO_DEVICE_RAM;
   ubo->size = m_ops->mGetBOSize(m_handle, ubo->handle);
   size = ubo->size;
   ubo->owner = m_handle;
   ubo->deviceAddr = m_ops->mGetDeviceAddr(m_handle, ubo->handle);
   ubo->hostAddr = m_ops->mMapBO(m_handle, ubo->handle, true /*write*/);
+  ubo->imported = true;
 
   return BufferObjectHandle(ubo.release(), delBufferObject);
 }
@@ -519,7 +578,7 @@ svm_bo_lookup(void* ptr)
 }
 
 //Stream
-int 
+int
 device::
 createWriteStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream)
 {
@@ -531,7 +590,7 @@ createWriteStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t r
   return m_ops->mCreateWriteQueue(m_handle,&ctx,stream);
 }
 
-int 
+int
 device::
 createReadStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream)
 {
@@ -543,9 +602,9 @@ createReadStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t ro
   return m_ops->mCreateReadQueue(m_handle,&ctx,stream);
 }
 
-int 
+int
 device::
-closeStream(hal::StreamHandle stream) 
+closeStream(hal::StreamHandle stream)
 {
   return m_ops->mDestroyQueue(m_handle,stream);
 }
@@ -557,19 +616,18 @@ allocStreamBuf(size_t size, hal::StreamBufHandle *buf)
   return m_ops->mAllocQDMABuf(m_handle,size,buf);
 }
 
-int 
+int
 device::
 freeStreamBuf(hal::StreamBufHandle buf)
 {
   return m_ops->mFreeQDMABuf(m_handle,buf);
 }
 
-ssize_t 
+ssize_t
 device::
-writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferReq* request) 
+writeStream(hal::StreamHandle stream, const void* ptr, size_t size, hal::StreamXferReq* request)
 {
   //TODO:
-  (void)offset;
   xclQueueRequest req;
   xclReqBuffer buffer;
 
@@ -590,11 +648,10 @@ writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t siz
   return m_ops->mWriteQueue(m_handle,stream,&req);
 }
 
-ssize_t 
+ssize_t
 device::
-readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferReq* request) 
-{ 
-  (void)offset;
+readStream(hal::StreamHandle stream, void* ptr, size_t size, hal::StreamXferReq* request)
+{
   xclQueueRequest req;
   xclReqBuffer buffer;
 
@@ -614,9 +671,10 @@ readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal:
 
 int
 device::
-pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout) {
+pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout)
+{
   xclReqCompletion* req = reinterpret_cast<xclReqCompletion*>(comps);
-  return m_ops->mPollQueues(m_handle,min,max,req,actual,timeout); 
+  return m_ops->mPollQueues(m_handle,min,max,req,actual,timeout);
 }
 
 #ifdef PMD_OCL
@@ -633,7 +691,7 @@ createDevices(hal::device_list& devices,
 {
   auto halops = std::make_shared<operations>(dll,driverHandle,deviceCount);
   for (unsigned int idx=0; idx<deviceCount; ++idx)
-    devices.emplace_back(xrt::make_unique<xrt::hal2::device>(halops,idx));
+    devices.emplace_back(std::make_unique<xrt::hal2::device>(halops,idx));
 }
 #endif
 

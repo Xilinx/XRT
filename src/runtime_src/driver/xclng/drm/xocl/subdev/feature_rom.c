@@ -25,13 +25,12 @@ struct feature_rom {
 	void __iomem		*base;
 
 	struct FeatureRomHeader	header;
-	unsigned int            dsa_version;
 	bool			unified;
 	bool			mb_mgmt_enabled;
 	bool			mb_sche_enabled;
-	bool			cdma_enabled;
 	bool			are_dev;
 	bool			aws_dev;
+	bool			runtime_clk_scale_en;
 };
 
 static ssize_t VBNV_show(struct device *dev,
@@ -106,16 +105,6 @@ static struct attribute_group rom_attr_group = {
 	.attrs = rom_attrs,
 };
 
-static unsigned int dsa_version(struct platform_device *pdev)
-{
-	struct feature_rom *rom;
-
-	rom = platform_get_drvdata(pdev);
-	BUG_ON(!rom);
-
-	return rom->dsa_version;
-}
-
 static bool is_unified(struct platform_device *pdev)
 {
 	struct feature_rom *rom;
@@ -143,17 +132,29 @@ static bool mb_sched_on(struct platform_device *pdev)
 	rom = platform_get_drvdata(pdev);
 	BUG_ON(!rom);
 
-	return rom->mb_sche_enabled;
+	return rom->mb_sche_enabled && !XOCL_DSA_MB_SCHE_OFF(xocl_get_xdev(pdev));
 }
 
-static bool cdma_on(struct platform_device *pdev)
+static bool runtime_clk_scale_on(struct platform_device *pdev)
 {
 	struct feature_rom *rom;
 
 	rom = platform_get_drvdata(pdev);
 	BUG_ON(!rom);
 
-	return rom->cdma_enabled;
+	return rom->runtime_clk_scale_en;
+}
+
+static uint32_t* get_cdma_base_addresses(struct platform_device *pdev)
+{
+	struct feature_rom *rom;
+
+	rom = platform_get_drvdata(pdev);
+	BUG_ON(!rom);
+
+	return (!XOCL_DSA_NO_KDMA(xocl_get_xdev(pdev)) &&
+		(rom->header.FeatureBitMap & CDMA)) ?
+		rom->header.CDMABaseAddress : 0;
 }
 
 static u16 get_ddr_channel_count(struct platform_device *pdev)
@@ -213,6 +214,9 @@ static bool verify_timestamp(struct platform_device *pdev, u64 timestamp)
 	rom = platform_get_drvdata(pdev);
 	BUG_ON(!rom);
 
+	xocl_info(&pdev->dev, "DSA timestamp: 0x%llx",
+		rom->header.TimeSinceEpoch);
+	xocl_info(&pdev->dev, "Verify timestamp: 0x%llx", timestamp);
 	return (rom->header.TimeSinceEpoch == timestamp);
 }
 
@@ -227,11 +231,10 @@ static void get_raw_header(struct platform_device *pdev, void *header)
 }
 
 static struct xocl_rom_funcs rom_ops = {
-	.dsa_version = dsa_version,
 	.is_unified = is_unified,
 	.mb_mgmt_on = mb_mgmt_on,
 	.mb_sched_on = mb_sched_on,
-	.cdma_on = cdma_on,
+	.cdma_addr = get_cdma_base_addresses,
 	.get_ddr_channel_count = get_ddr_channel_count,
 	.get_ddr_channel_size = get_ddr_channel_size,
 	.is_are = is_are,
@@ -239,6 +242,7 @@ static struct xocl_rom_funcs rom_ops = {
 	.verify_timestamp = verify_timestamp,
 	.get_timestamp = get_timestamp,
 	.get_raw_header = get_raw_header,
+	.runtime_clk_scale_on = runtime_clk_scale_on,
 };
 
 static int feature_rom_probe(struct platform_device *pdev)
@@ -247,6 +251,7 @@ static int feature_rom_probe(struct platform_device *pdev)
 	struct resource *res;
 	u32	val;
 	u16	vendor, did;
+	char	*tmp;
 	int	ret;
 
 	rom = devm_kzalloc(&pdev->dev, sizeof(*rom), GFP_KERNEL);
@@ -303,7 +308,8 @@ static int feature_rom_probe(struct platform_device *pdev)
 		}
 	}
 
-	memcpy_fromio(&rom->header, rom->base, sizeof(rom->header));
+	xocl_memcpy_fromio(&rom->header, rom->base, sizeof(rom->header));
+
 	if (strstr(rom->header.VBNVName, "-xare")) {
 		/*
 		 * ARE device, ARE is mapped like another DDR inside FPGA;
@@ -313,32 +319,17 @@ static int feature_rom_probe(struct platform_device *pdev)
 		rom->are_dev = true;
 	}
 
-	rom->dsa_version = 0;
-	if (strstr(rom->header.VBNVName,"5_0"))
-		rom->dsa_version = 50;
-	else if (strstr(rom->header.VBNVName,"5_1")
-		 || strstr(rom->header.VBNVName,"u200_xdma_201820_1"))
-		rom->dsa_version = 51;
-	else if (strstr(rom->header.VBNVName,"5_2")
-		 || strstr(rom->header.VBNVName,"u200_xdma_201820_2")
-		 || strstr(rom->header.VBNVName,"u250_xdma_201820_1"))
-		rom->dsa_version = 52;
-	else if (strstr(rom->header.VBNVName,"5_3"))
-		rom->dsa_version = 53;
-
-	if(rom->header.FeatureBitMap & UNIFIED_PLATFORM) {
+	if(rom->header.FeatureBitMap & UNIFIED_PLATFORM)
 		rom->unified = true;
-	}
-	if(rom->header.FeatureBitMap & BOARD_MGMT_ENBLD) {
+
+	if(rom->header.FeatureBitMap & BOARD_MGMT_ENBLD)
 		rom->mb_mgmt_enabled = true;
-	}
-	if( (rom->header.FeatureBitMap & MB_SCHEDULER)
-	    && rom->dsa_version>=51
-	    && !strstr(rom->header.VBNVName,"kcu1500")) {
+
+	if(rom->header.FeatureBitMap & MB_SCHEDULER)
 		rom->mb_sche_enabled = true;
-	}
-	if(rom->dsa_version>=53 && strstr(rom->header.VBNVName,"vcu1525"))
-	    rom->cdma_enabled = true;
+
+	if(rom->header.FeatureBitMap & RUNTIME_CLK_SCALE)
+		rom->runtime_clk_scale_en = true;
 
 	ret = sysfs_create_group(&pdev->dev.kobj, &rom_attr_group);
 	if (ret) {
@@ -346,7 +337,9 @@ static int feature_rom_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	xocl_info(&pdev->dev, "ROM magic : %s", rom->header.EntryPointString);
+	tmp = rom->header.EntryPointString;
+	xocl_info(&pdev->dev, "ROM magic : %c%c%c%c",
+		tmp[0], tmp[1], tmp[2], tmp[3]);
 	xocl_info(&pdev->dev, "VBNV: %s", rom->header.VBNVName);
 	xocl_info(&pdev->dev, "DDR channel count : %d",
 		rom->header.DDRChannelCount);

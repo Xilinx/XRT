@@ -80,17 +80,17 @@ extern "C" {
 typedef struct cl_mem_ext_ptr_t {
   union {
     struct { // legacy layout
-      unsigned int flags;   // Top 8 bits reserved.
+      unsigned int flags;   // Top 8 bits reserved for XCL_MEM_EXT flags
       void *obj;
       void *param;
     };
     struct { // interpreted legcy bank assignment
-      unsigned int banks;   // Top 8 bits reserved.
+      unsigned int banks;   // Top 8 bits reserved for XCL_MEM_EXT flags
       void *host_ptr;
       void *unused1;        // nullptr required
     };
     struct { // interpreted kernel arg assignment
-      unsigned int argidx;
+      unsigned int argidx;  // Top 8 bits reserved for XCL_MEM_EXT flags
       void *host_ptr_;      // use as host_ptr
       cl_kernel kernel;
     };
@@ -202,6 +202,7 @@ xclEnqueuePeerToPeerCopyBuffer(cl_command_queue    command_queue,
 typedef uint64_t cl_stream_flags;
 #define CL_STREAM_READ_ONLY			    (1 << 0)
 #define CL_STREAM_WRITE_ONLY                        (1 << 1)
+#define CL_STREAM_POLLING                           (1 << 2)
 
 /**
  * cl_stream_attributes. eg set it to CL_STREAM for stream mode. Used
@@ -254,40 +255,32 @@ clReleaseStream(cl_stream /*stream*/) CL_API_SUFFIX__VERSION_1_0;
 
 /**
  * clWriteStream - write data to stream
- * @device_id : The device
  * @stream    : The stream
  * @ptr       : The ptr to write from.
- * @offset    : The offset in the ptr to write from
  * @size      : The number of bytes to write.
  * @req_type  : The write request type.
  * errcode_ret: The return value eg CL_SUCCESS
  * Return a cl_int
  */
 extern CL_API_ENTRY cl_int CL_API_CALL
-clWriteStream(cl_device_id    /* device_id*/,
-	cl_stream             /* stream*/,
+clWriteStream(cl_stream             /* stream*/,
 	const void *          /* ptr */,
-	size_t                /* offset */,
 	size_t                /* size */,
 	cl_stream_xfer_req*   /* attributes */,
 	cl_int*               /* errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
 
 /**
  * clReadStream - write data to stream
- * @device_id : The device
  * @stream    : The stream
  * @ptr       : The ptr to write from.
- * @offset    : The offset in the ptr to write from
  * @size      : The number of bytes to write.
  * @req_type  : The read request type.
  * errcode_ret: The return value eg CL_SUCCESS
  * Return a cl_int.
  */
 extern CL_API_ENTRY cl_int CL_API_CALL
-clReadStream(cl_device_id     /* device_id*/,
-	     cl_stream             /* stream*/,
+clReadStream(cl_stream             /* stream*/,
 	     void *                /* ptr */,
-	     size_t                /* offset */,
 	     size_t                /* size */,
 	     cl_stream_xfer_req*   /* attributes */,
 	     cl_int*               /* errcode_ret*/) CL_API_SUFFIX__VERSION_1_0;
@@ -394,6 +387,13 @@ extern CL_API_ENTRY cl_int CL_API_CALL
 	    cl_pipe pipe,
 	    rte_mbuf* buf) CL_API_SUFFIX__VERSION_1_0;
 
+/*
+ * Low level access to XRT device for use with xrt++
+ */
+struct xrt_device;
+extern CL_API_ENTRY struct xrt_device*
+xclGetXrtDevice(cl_device_id device,
+                cl_int* errcode);
 
 /*
   Host Accessible Program Scope Globals
@@ -435,6 +435,11 @@ typedef cl_uint cl_program_target_type;
 #define CL_PROGRAM_TARGET_TYPE_SW_EMU   0x2
 #define CL_PROGRAM_TARGET_TYPE_HW_EMU   0x4
 
+// K2K kernel argument sentinel
+// XCL_HW_STREAM is a global sentinel value that XRT knows to
+// represent an argument transferred via a hardware stream connection.
+// Such arguments require no direct software intervention.
+#define XCL_HW_STREAM NULL
 
 #ifdef __cplusplus
 }

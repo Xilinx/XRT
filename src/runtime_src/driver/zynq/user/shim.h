@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  * Author(s): Hem C. Neema
  *          : Min Ma
  * ZNYQ HAL Driver layered on top of ZYNQ kernel driver
@@ -20,40 +20,66 @@
 #ifndef _ZYNQ_SHIM_H_
 #define _ZYNQ_SHIM_H_
 
-#include "driver/include/xclhal2.h"
+#include "driver/zynq/include/xclhal2_mpsoc.h"
 #include "driver/zynq/include/zynq_ioctl.h"
 //#include "driver/include/xclperf.h"
 //#include "driver/zynq/include/zynq_perfmon_params.h"
 #include <cstdint>
 #include <fstream>
+#include <map>
+#include <vector>
 
 namespace ZYNQ {
+
+// Forward declaration
+class ZYNQShimProfiling ;
 
 class ZYNQShim {
 
   static const int BUFFER_ALIGNMENT = 0x80; // TODO: UKP
 public:
   ~ZYNQShim();
-  ZYNQShim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity);
+  ZYNQShim(unsigned index, const char *logfileName,
+           xclVerbosityLevel verbosity);
+
+  // The entry of profiling functions
+  ZYNQShimProfiling* profiling;
+
+  int mapKernelControl(const std::vector<std::pair<uint64_t, size_t>>& offsets);
+  void *getVirtAddressOfApture(xclAddressSpace space, const uint64_t phy_addr, uint64_t& offset);
+
   // Raw read/write
-  size_t xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size);
-  size_t xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size);
+  size_t xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf,
+                  size_t size);
+  size_t xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf,
+                 size_t size);
   unsigned int xclAllocBO(size_t size, xclBOKind domain, unsigned flags);
   unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
+  unsigned int xclGetHostBO(uint64_t paddr, size_t size);
   void xclFreeBO(unsigned int boHandle);
   int xclGetBOInfo(uint64_t handle);
-  int xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek);
+  int xclWriteBO(unsigned int boHandle, const void *src, size_t size,
+                 size_t seek);
   int xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip);
   void *xclMapBO(unsigned int boHandle, bool write);
   int xclExportBO(unsigned int boHandle);
   unsigned int xclImportBO(int fd, unsigned flags);
-  unsigned int xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties);
+  unsigned int xclGetBOProperties(unsigned int boHandle,
+                                  xclBOProperties *properties);
   int xclExecBuf(unsigned int cmdBO);
   int xclExecWait(int timeoutMilliSec);
+  int xclSKGetCmd(xclSKCmd *cmd);
+  int xclSKCreate(unsigned int boHandle, uint32_t cu_idx);
+  int xclSKReport(uint32_t cu_idx, xrt_scu_state state);
+
+  uint xclGetNumLiveProcesses();
+
+  int xclGetSysfsPath(const char *subdev, const char *entry, char *sysfPath,
+                      size_t size);
 
   // Bitstream/bin download
   int xclLoadXclBin(const xclBin *buffer);
-	int xclLoadAxlf(const axlf *buffer);
+  int xclLoadAxlf(const axlf *buffer);
 
   int xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size,
                 size_t offset);
@@ -63,7 +89,7 @@ public:
   void xclWriteHostEvent(xclPerfMonEventType type, xclPerfMonEventID id);
 
   bool isGood() const;
-  static ZYNQShim *handleCheck(void * handle);
+  static ZYNQShim *handleCheck(void *handle);
 
 private:
   const int mBoardNumber = -1;
@@ -71,10 +97,8 @@ private:
   std::ifstream mVBNV;
   xclVerbosityLevel mVerbosity;
   int mKernelFD;
-  uint32_t* mKernelControlPtr;
+  std::map<uint64_t, uint32_t *> mKernelControl;
 };
-
-}
-;
+};
 
 #endif

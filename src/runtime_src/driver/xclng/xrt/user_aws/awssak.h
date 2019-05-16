@@ -197,39 +197,25 @@ public:
      */
     int getComputeUnits( std::vector<ip_data> &computeUnits ) const
     {
-        const std::string DevPath = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ m_idx ].user_name;
-        std::string iplayout_path = DevPath + "/ip_layout";
-        std::ifstream ifs;
-        ifs.open( iplayout_path.c_str(), std::ifstream::binary );
-        if( !ifs.good() ) {
-            return errno;
-        }
-        struct stat sb;
-        if(stat( iplayout_path.c_str(), &sb ) < 0)
-	    return -1;
+        std::string errmsg;
+        std::string buf;
+        std::string dev_name;
+        dev_name = xcldev::pci_device_scanner::device_list[ m_idx ].user_name;
+        xcldev::sysfs_get(dev_name, "icap", "ip_layout", errmsg, buf);
 
-	int numCount = 0;
-	ifs.read((char*)&numCount, sizeof(numCount));
-	ifs.seekg(0, ifs.beg);
-	if(numCount == 0)
-	    return 0;
-	if(numCount < 0)
-	    return -1;
-	int buf_size = sizeof(ip_layout)*numCount + offsetof(ip_layout, m_ip_data);
-	buf_size *=2; //TODO: double it for padding safety.
-        char* fileReadBuf = new char [buf_size];
-	memset(fileReadBuf, 0, buf_size);
-        ifs.read( fileReadBuf, buf_size);
-        if( ifs.gcount() <= 0 ) {
-            delete [] fileReadBuf;
-            return errno;
+        if (!errmsg.empty()) {
+            std::cout << errmsg << std::endl;
+            return -EINVAL;
         }
-        const ip_layout *map = (ip_layout *)fileReadBuf;
-        for( int i = 0; i < map->m_count; i++ ) {
-            computeUnits.emplace_back( map->m_ip_data[ i ] );
-        }
-	delete [] fileReadBuf;
-        ifs.close();
+        if (buf.empty())
+            return 0;
+
+        const ip_layout *map = (ip_layout *)buf.data();
+        if(map->m_count < 0)
+            return -EINVAL;
+
+        for(int i = 0; i < map->m_count; i++)
+            computeUnits.emplace_back(map->m_ip_data[i]);
         return 0;
     }
 
@@ -239,7 +225,7 @@ public:
         std::vector<ip_data> computeUnits;
         int retVal = getComputeUnits( computeUnits );
         if( retVal < 0 ) {
-            std::cout << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'xbsak program'.\n";
+            std::cout << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'awssak program'.\n";
             return retVal;
         }
         unsigned buf[ 16 ];
@@ -258,7 +244,7 @@ public:
      * TODO: Refactor to make function much shorter.
      */
     int dump(std::ostream& ostr) const {
-        unsigned numDDR = m_devinfo.mDDRBankCount;
+        unsigned numMemBank = m_devinfo.mDDRBankCount;
         ostr << "DSA name:       " << m_devinfo.mName << "\n";
         ostr << "Vendor:         " << std::hex << m_devinfo.mVendorId << std::dec << "\n";
         ostr << "Device:         " << std::hex << m_devinfo.mDeviceId << std::dec << "\n";
@@ -266,7 +252,7 @@ public:
         ostr << "SVendor:        " << std::hex << m_devinfo.mSubsystemVendorId << std::dec << "\n";
         ostr << "DDR size:       " << "0x" << std::hex << m_devinfo.mDDRSize/1024 << std::dec << " KB\n";
 
-        ostr << "DDR count:      " << numDDR << "\n";
+        ostr << "DDR count:      " << numMemBank << "\n";
         ostr << "OnChip Temp:    " << m_devinfo.mOnChipTemp << " C\n";
         //ostr << "Fan Temp:       " << m_devinfo.mFanTemp<< " C\n";
         ostr << "VCC INT:        " << m_devinfo.mVInt << " mV\n";
@@ -299,77 +285,54 @@ public:
         }
 #endif // AXI Firewall
 
-        // report xclbinid
-        const std::string devPath = "/sys/bus/pci/devices/" + xcldev::pci_device_scanner::device_list[ m_idx ].user_name;
-        std::string binid_path = devPath + "/xclbinid";
-        struct stat sb;
-        if( stat( binid_path.c_str(), &sb ) < 0 ) {
-            std::cout << "ERROR: failed to stat " << binid_path << std::endl;
-            return errno;
-        }
-        std::ifstream ifs( binid_path.c_str(), std::ifstream::binary );
-        if( !ifs.good() ) {
-            return errno;
-        }
-        char* fileReadBuf = new char[sb.st_size];
-        memset(fileReadBuf, 0, sb.st_size);
-        ifs.read( fileReadBuf, sb.st_size );
-        if( ifs.gcount() > 0 ) {
-            ostr << "\nXclbin ID:  0x" << fileReadBuf;
-        } else { // xclbinid exists, but no data read or reported
-            ostr << "WARNING: 'xclbinid' invalid, unable to report xclbinid. Has the bitstream been loaded? See 'xbsak program'.\n";
-        }
-        delete [] fileReadBuf;
-        ifs.close();
+        // report xclbinuuid
+        std::string errmsg;
+        std::string buf;
+        std::string dev_name;
+        dev_name = xcldev::pci_device_scanner::device_list[ m_idx ].user_name;
+        xcldev::sysfs_get(dev_name, "", "xclbinuuid", errmsg, buf);
+        if (!buf.empty())
+             ostr << "\nXclbin ID:  0x" << buf << "\n";
+        else
+            ostr << "WARNING: 'xclbinuuid' invalid, unable to report xclbinuuid. Has the bitstream been loaded? See 'awssak program'.\n"; 
+ 
+        std::vector<char> mem_topo;
+        xcldev::sysfs_get(dev_name, "icap", "mem_topology", errmsg, mem_topo);
 
-        // get DDR bank count from mem_topology if possible
-        std::string mem_path = devPath + "/mem_topology";
-        if( stat( mem_path.c_str(), &sb ) < 0 ) {
-            std::cout << "ERROR: failed to stat " << mem_path << std::endl;
-            return errno;
-        }
-        ifs.open( mem_path.c_str(), std::ifstream::binary );
-        if( !ifs.good() ) {
-            return errno;
-        }
-        int numBanks = 0;
-        ifs.read((char*)&numBanks, sizeof(numBanks));
-        ifs.seekg(0, ifs.beg);
-        if( numBanks == 0 ) {
-            ostr << "\nMem Topology:\n";
-            ostr << "     -- none found --. See 'xbsak program'.\n";
-        } else if( numBanks > 0 ) {
-            int buf_size = sizeof(mem_topology)*numBanks + offsetof(mem_topology, m_mem_data) ;
-            buf_size *= 2; //TODO: just double this for padding safety for now.
-            const int fixed_w = 13;
-            char* buffer = new char[ buf_size ];
-            memset(buffer, 0, buf_size);
-            ifs.read( buffer, buf_size);
-            mem_topology *map;
-            map = (mem_topology *)buffer;
-            ostr << "\nMem Topology:\n";
-            ostr << "     Tag" << "       Type" << "          Base Address" << "  Size (KB)\n";
+        const mem_topology *map = (mem_topology *)mem_topo.data();
+        int numDDR = 0;
+
+        if(!mem_topo.empty())
             numDDR = map->m_count;
-            for( unsigned i = 0; i < numDDR; i++ ) {
-                ostr << " [" << i << "] " << std::setw(10) << std::left << map->m_mem_data[ i ].m_tag;
-                //std::string str = "[" + std::to_string( i ) + "] ";
-                //ostr << " " << std::setw( fixed_w - 6 ) << str.substr( 0, fixed_w ); // print bank
-                //ostr << std::setw( fixed_w - 6 ) << map->m_mem_data[ i ].m_tag;
-                //ostr << map->m_mem_data[ i ].m_tag;
+
+        if(numDDR == 0) {
+            ostr << "-- none found --. See 'awssak program'.\n";
+        } else if(numDDR < 0) {
+            ostr << "WARNING: 'mem_topology' invalid, unable to report topology. Has the bitstream been loaded? See 'awssak program'." << std::endl;
+        } else {
+            ostr << std::left << std::setw(16) << "Tag"  << std::setw(16) << "Type"
+                << std::setw(16) << "Temp" << std::setw(16) << "Size" << std::endl;
+            for(int i = 0; i < numDDR; i++) {
+                const int fixed_w = 16;
+                ostr << std::left << " [" << i << "] " <<
+                    std::setw(16 - (std::to_string(i).length()) - 4)
+                    << map->m_mem_data[i].m_tag;
+
                 std::string str;
-                if( map->m_mem_data[ i ].m_used == 0 ) {
+                if(map->m_mem_data[i].m_used == 0) {
                     str = "**UNUSED**";
                 } else {
                     std::map<MEM_TYPE, std::string> my_map = {
-                         {MEM_DDR3, "MEM_DDR3"}, {MEM_DDR4, "MEM_DDR4"},
-                         {MEM_DRAM, "MEM_DRAM"}, {MEM_STREAMING, "MEM_STREAMING"},
-                         {MEM_PREALLOCATED_GLOB, "MEM_PREALLOCATED_GLOB"},
-                         {MEM_ARE, "MEM_ARE"}, {MEM_HBM, "MEM_HBM"},
-                         {MEM_BRAM, "MEM_BRAM"}, {MEM_URAM, "MEM_URAM"} };
-                    auto search = my_map.find( (MEM_TYPE)map->m_mem_data[ i ].m_type );
+                        {MEM_DDR3, "MEM_DDR3"}, {MEM_DDR4, "MEM_DDR4"},
+                        {MEM_DRAM, "MEM_DRAM"}, {MEM_STREAMING, "MEM_STREAMING"},
+                        {MEM_PREALLOCATED_GLOB, "MEM_PREALLOCATED_GLOB"},
+                        {MEM_ARE, "MEM_ARE"}, {MEM_HBM, "MEM_HBM"},
+                        {MEM_BRAM, "MEM_BRAM"}, {MEM_URAM, "MEM_URAM"}
+                    };
+                    auto search = my_map.find((MEM_TYPE)map->m_mem_data[i].m_type );
                     str = search->second;
                 }
-                ostr << std::setw( fixed_w ) << str;
+                ostr << std::left << std::setw(12) << str;
                 std::stringstream ss;
                 ss << "0x" << std::hex << map->m_mem_data[ i ].m_base_address;          // print base address
                 ostr << " " << std::setw( fixed_w ) << ss.str().substr( 0, fixed_w );
@@ -377,16 +340,12 @@ public:
                 ss << "0x" << std::hex << map->m_mem_data[ i ].m_size;                 // print size
                 ostr << " " << std::setw( fixed_w ) << ss.str().substr( 0, fixed_w ) << std::endl;
             }
-            delete[] buffer;
-        } else { // mem_topology exists, but no data read or reported
-            ostr << "WARNING: 'mem_topology' invalid, unable to report topology. Has the bitstream been loaded? See 'xbsak program'." << std::endl;
         }
-        ifs.close();
 
         ostr << "\nCompute Unit Status:\n";
         std::vector<ip_data> computeUnits;
         if( getComputeUnits( computeUnits ) < 0 ) {
-            ostr << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'xbsak program'.\n";
+            ostr << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'awssak program'.\n";
         } else {
             for( unsigned int i = 0; i < computeUnits.size(); i++ ) {
                 static int cuCnt = 0;
@@ -401,7 +360,7 @@ public:
                 }
             }
             if(computeUnits.size() == 0) {
-                ostr << "     -- none found --. See 'xbsak program'.\n";
+                ostr << "     -- none found --. See 'awssak program'.\n";
             }
         }
         return 0;
@@ -502,13 +461,13 @@ public:
         {   // unified+ mode
             struct stat sb;
             if(stat( path.c_str(), &sb ) < 0) {
-                std::cout << "WARNING: 'mem_topology' invalid, unable to perform DMA Test. Has the bitstream been loaded? See 'xbsak program'." << std::endl;
+                std::cout << "WARNING: 'mem_topology' invalid, unable to perform DMA Test. Has the bitstream been loaded? See 'awssak program'." << std::endl;
                 return -1;
             }
             ifs.read((char*)&numDDR, sizeof(numDDR));
             ifs.seekg(0, ifs.beg);
             if( numDDR == 0 ) {
-                std::cout << "WARNING: 'mem_topology' invalid, unable to perform DMA Test. Has the bitstream been loaded? See 'xbsak program'." << std::endl;
+                std::cout << "WARNING: 'mem_topology' invalid, unable to perform DMA Test. Has the bitstream been loaded? See 'awssak program'." << std::endl;
                 return -1;
             }else {
                 int buf_size = sizeof(mem_topology)*numDDR + offsetof(mem_topology, m_mem_data) ;
@@ -521,20 +480,22 @@ public:
                 std::cout << "Reporting from mem_topology:" << std::endl;
                 numDDR = map->m_count;
                 for( unsigned i = 0; i < numDDR; i++ ) {
+                    if(map->m_mem_data[i].m_type == MEM_STREAMING)
+                        continue;
                     if( map->m_mem_data[i].m_used ) {
                         std::cout << "Data Validity & DMA Test on DDR[" << i << "]\n";
                         addr = map->m_mem_data[i].m_base_address;
 
                         for( unsigned sz = 1; sz <= 256; sz *= 2 ) {
-                            result = memwrite( addr, sz, pattern ); //memwriteQuiet( addr, sz, pattern );
+                            result = memwriteQuiet( addr, sz, pattern );
                             if( result < 0 )
                                 break;
-                            result = memreadCompare(addr, sz, pattern);
+                            result = memreadCompare(addr, sz, pattern, false);
                             if( result < 0 )
                                 break;
                         }
                         if( result >= 0 ) {
-                            DMARunner runner( m_handle, blockSize, 1 << i);
+                            DMARunner runner( m_handle, blockSize, i );
                             result = runner.run();
                         }
 
@@ -577,8 +538,8 @@ public:
         return memaccess(m_handle, m_devinfo.mDDRSize, m_devinfo.mDataAlignment, xcldev::pci_device_scanner::device_list[ m_idx ].user_name  ).read(aFilename, aStartAddr, aSize);
     }
 
-    int memreadCompare(unsigned long long aStartAddr = 0, unsigned long long aSize = 0, unsigned int aPattern = 'J') {
-        return memaccess(m_handle, m_devinfo.mDDRSize, m_devinfo.mDataAlignment, xcldev::pci_device_scanner::device_list[ m_idx ].user_name).readCompare(aStartAddr, aSize, aPattern);
+    int memreadCompare(unsigned long long aStartAddr = 0, unsigned long long aSize = 0, unsigned int aPattern = 'J', bool checks = true) {
+        return memaccess(m_handle, m_devinfo.mDDRSize, m_devinfo.mDataAlignment, xcldev::pci_device_scanner::device_list[ m_idx ].user_name).readCompare(aStartAddr, aSize, aPattern, checks);
     }
 
     int memwrite(unsigned long long aStartAddr, unsigned long long aSize, unsigned int aPattern) {
@@ -598,6 +559,10 @@ public:
             }
         }
         return memaccess(m_handle, m_devinfo.mDDRSize, m_devinfo.mDataAlignment, xcldev::pci_device_scanner::device_list[ m_idx ].user_name).write( aStartAddr, aSize, srcBuf );
+    }
+
+    int memwriteQuiet(unsigned long long aStartAddr, unsigned long long aSize, unsigned int aPattern = 'J') {
+        return memaccess(m_handle, m_devinfo.mDDRSize, m_devinfo.mDataAlignment, xcldev::pci_device_scanner::device_list[ m_idx ].user_name).writeQuiet(aStartAddr, aSize, aPattern);
     }
 
    //Debug related functionality.
@@ -686,7 +651,7 @@ public:
 };
 
 void printHelp(const std::string& exe);
-int xclXbsak(int argc, char *argv[]);
+int xclAwssak(int argc, char *argv[]);
 
 } // end namespace xcldev
 

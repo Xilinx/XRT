@@ -12,7 +12,7 @@ endif()
 
 add_compile_options("-fPIC")
 add_compile_options("-Wall" "-Werror")
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DXMA_RES_TEST -DXMA_DEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
 
 add_subdirectory(src)
 

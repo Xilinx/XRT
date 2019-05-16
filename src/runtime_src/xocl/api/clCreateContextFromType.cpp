@@ -26,7 +26,6 @@
 #include "api.h"
 #include "plugin/xdp/profile.h"
 
-#include "xrt/util/memory.h"
 
 namespace xocl {
 
@@ -123,7 +122,7 @@ clCreateContextFromType(const cl_context_properties* properties,
       }
     : xocl::context::notify_action());
 
-  auto context = xrt::make_unique<xocl::context>(properties,devices.size(),&devices[0],notify);
+  auto context = std::make_unique<xocl::context>(properties,devices.size(),&devices[0],notify);
 
   xocl::assign(errcode_ret,CL_SUCCESS);
   return (context.release());

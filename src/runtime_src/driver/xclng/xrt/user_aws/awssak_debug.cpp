@@ -50,7 +50,11 @@ uint32_t xcldev::device::getIPCountAddrNames(int type, std::vector<uint64_t> *ba
             for( unsigned int i = 0; i < map->m_count; i++ ) {
                 if (map->m_debug_ip_data[i].m_type == type) {
                     if(baseAddress)baseAddress->push_back(map->m_debug_ip_data[i].m_base_address);
-                    if(portNames) portNames->push_back((char*)map->m_debug_ip_data[i].m_name);
+                    if(portNames) {
+                        std::string portName;
+                        portName.assign(map->m_debug_ip_data[i].m_name, 128);
+                        portNames->push_back(portName);
+                    }
                     ++count;
                 }
             }
@@ -102,13 +106,13 @@ int xcldev::device::readSPMCounters() {
     std::vector< std::pair<std::string, std::string> > cuNameportNames;
     unsigned int numSlots = getIPCountAddrNames (AXI_MM_MONITOR, nullptr, &slotNames);
     if (numSlots == 0) {
-        std::cout << "ERROR: SPM IP does not exist on the platform" << std::endl;
+        std::cout << "ERROR: AXI Interface Monitor IP does not exist on the platform" << std::endl;
         return 0;
     }
     std::pair<size_t, size_t> widths = getCUNamePortName(slotNames, cuNameportNames);
     xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_SPM, &debugResults);
 
-    std::cout << "SDx Performance Monitor Counters\n";
+    std::cout << "AXI Interface Monitor Counters\n";
     int col1 = std::max(widths.first, strlen("CU Name")) + 4;
     int col2 = std::max(widths.second, strlen("AXI Portname"));
 
@@ -267,7 +271,7 @@ int xcldev::device::print_debug_ip_list (int aVerbose) {
         return 0;
     }
     std::cout << "IPs found [<ipname>(<count>)]: " << sstr.str() << std::endl;
-    std::cout << "Run 'xbsak status' with option --<ipname> to get more information about the IP" << std::endl;
+    std::cout << "Run 'awssak status' with option --<ipname> to get more information about the IP" << std::endl;
     return 0;
 }
 
