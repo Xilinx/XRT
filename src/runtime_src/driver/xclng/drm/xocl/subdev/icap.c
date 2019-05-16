@@ -2048,6 +2048,10 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 			(void) xocl_peer_request(xdev,
 				mb_req, data_len, &msg, &resplen, NULL, NULL);
 
+			/* xclbin download changes PR region, make sure next
+			 * ERT configure cmd will go through */
+			(void) xocl_exec_reconfig(xdev);
+
 			/*
 			 *  Ignore fail if it's an AWS device
 			 */
