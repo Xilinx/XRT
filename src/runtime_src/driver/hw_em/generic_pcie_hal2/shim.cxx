@@ -148,11 +148,13 @@ namespace xclhwemhal2 {
     ssize_t xmlFileSize = 0;
     ssize_t debugFileSize = 0;
     ssize_t memTopologySize = 0;
+    ssize_t pdiSize = 0;
 
     char* zipFile = nullptr;
     char* xmlFile = nullptr;
     char* debugFile = nullptr;
     char* memTopology = nullptr;
+    char* pdi = nullptr;
 
     if ((!std::memcmp(bitstreambin, "xclbin0", 7)) || (!std::memcmp(bitstreambin, "xclbin1", 7)))
     {
@@ -181,6 +183,11 @@ namespace xclhwemhal2 {
         memTopologySize = sec->m_sectionSize;
         memTopology = new char[memTopologySize];
         memcpy(memTopology, bitstreambin + sec->m_sectionOffset, memTopologySize);
+      }
+      if (auto sec = xclbin::get_axlf_section(top,PDI)) {
+        pdiSize = sec->m_sectionSize;
+        pdi = new char[pdiSize];
+        memcpy(pdi, bitstreambin + sec->m_sectionOffset,pdiSize);
       }
     }
     else
@@ -216,9 +223,15 @@ namespace xclhwemhal2 {
         memTopology = nullptr;
       }
 
+      if (pdi) {
+        delete[] pdi;
+        pdi = nullptr;
+      }
+
+
       return -1;
     }
-    int returnValue = xclLoadBitstreamWorker(zipFile,zipFileSize,xmlFile,xmlFileSize,debugFile,debugFileSize, memTopology, memTopologySize);
+    int returnValue = xclLoadBitstreamWorker(zipFile,zipFileSize,xmlFile,xmlFileSize,debugFile,debugFileSize, memTopology, memTopologySize, pdi, pdiSize);
 
     //mFirstBinary is a static member variable which becomes false once first binary gets loaded
     if(returnValue >=0 && mFirstBinary )
@@ -239,12 +252,14 @@ namespace xclhwemhal2 {
     delete[] debugFile;
     delete[] xmlFile;
     delete[] memTopology;
+    delete[] pdi;
+
     PRINTENDFUNC;
     return returnValue;
   }
 
    int HwEmShim::xclLoadBitstreamWorker(char* zipFile, size_t zipFileSize, char* xmlfile, size_t xmlFileSize,
-                                        char* debugFile, size_t debugFileSize, char* memTopology, size_t memTopologySize)
+                                        char* debugFile, size_t debugFileSize, char* memTopology, size_t memTopologySize, char* pdi, size_t pdiSize)
   {
     if (mLogStream.is_open()) {
       //    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << zipFile<< std::endl;
@@ -305,6 +320,22 @@ namespace xclhwemhal2 {
       fwrite(debugFile, debugFileSize, 1, fp2);
     fflush(fp2);
     fclose(fp2);
+
+    std::string pdiFileName = binaryDirectory + "/aie_pdi";
+
+    if ((pdi != nullptr) && (pdiSize> 1))
+    {
+      FILE *fp2 = fopen(pdiFileName.c_str(), "wb");
+      if (fp2 == NULL) {
+        if (mLogStream.is_open())
+          mLogStream << __func__ << " failed to create temporary aie_pdi file " << std::endl;      
+        return -1;
+      }
+
+      fwrite(pdi, pdiSize, 1, fp2);
+      fflush(fp2);
+      fclose(fp2);
+    }
 
     readDebugIpLayout(debugFileName);
 
@@ -540,6 +571,9 @@ namespace xclhwemhal2 {
           mLogStream << __func__ << " xocc command line: " << launcherArgs << std::endl;
 
         const char* simMode = NULL;
+        if ( pdi ) {
+          launcherArgs += " -pdi " + pdiFileName + " ";
+        }
         if(!launcherArgs.empty())
           simMode = launcherArgs.c_str();
 
