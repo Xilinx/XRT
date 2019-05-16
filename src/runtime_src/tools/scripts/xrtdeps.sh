@@ -109,7 +109,7 @@ UB_LIST=(\
      libyaml-dev \
      linux-libc-dev \
      lm-sensors \
-     lsb \
+     lsb-release \
      make \
      ocl-icd-dev \
      ocl-icd-libopencl1 \
@@ -140,7 +140,7 @@ SUDO=${SUDO:-sudo}
 
 #dmidecode is only applicable for x86_64
 if [ $ARCH == "x86_64" ]; then
-    if [ $FLAVOR == "ubuntu" ]; then
+    if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
 	UB_LIST+=( dmidecode )
     fi
     if [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] ; then
@@ -150,7 +150,7 @@ fi
 
 validate()
 {
-    if [ $FLAVOR == "ubuntu" ]; then
+    if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
         #apt -qq list "${UB_LIST[@]}"
         dpkg -l "${UB_LIST[@]}" > /dev/null
         if [ $? == 0 ] ; then
@@ -170,8 +170,8 @@ validate()
 
 install()
 {
-    if [ $FLAVOR == "ubuntu" ]; then
-        echo "Installing Ubuntu packages..."
+    if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
+        echo "Installing packages..."
         ${SUDO} apt install -y "${UB_LIST[@]}"
     fi
 
