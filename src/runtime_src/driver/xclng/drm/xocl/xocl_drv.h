@@ -418,7 +418,7 @@ struct xocl_mb_scheduler_funcs {
 	 MB_SCHEDULER_OPS(xdev)->reset(MB_SCHEDULER_DEV(xdev)) : \
 	-ENODEV)
 #define	xocl_exec_reconfig(xdev)		\
-	(SCHE_CB(xdev, reconfig) ?				\
+	(MB_SCHEDULER_DEV(xdev) ?				\
 	 MB_SCHEDULER_OPS(xdev)->reconfig(MB_SCHEDULER_DEV(xdev)) : \
 	-ENODEV)
 
