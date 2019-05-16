@@ -6,14 +6,20 @@ if [ -n "`dkms status -m xrt -v @XRT_VERSION_STRING@`" ]; then
     modprobe -r xclmgmt
 
     echo "Unregistering old XRT Linux kernel module sources @XRT_VERSION_STRING@ from dkms"
-    dkms remove -m xrt -v @XRT_VERSION_STRING@ --all
+    dkms remove -m xrt -v @XRT_VERSION_STRING@ --all > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "Error: 'dkms remove -m xrt' failed"
+    fi
     find /lib/modules -type f -name xocl.ko -delete
     find /lib/modules -type f -name xclmgmt.ko -delete
     find /lib/modules -type f -name xocl.ko.kz -delete
     find /lib/modules -type f -name xclmgmt.ko.kz -delete
     find /lib/modules -type f -name xocl.ko.xz -delete
     find /lib/modules -type f -name xclmgmt.ko.xz -delete
-    depmod -A
+    depmod -A > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "Error: 'depmod -A' failed"
+    fi
 fi
 
 DRACUT_CONF_PATH=/etc/dracut.conf.d
@@ -23,7 +29,7 @@ if [ -e $DRACUT_CONF_PATH ]; then
 fi
 
 echo "Invoking DKMS common.postinst for xrt"
-/usr/lib/dkms/common.postinst xrt @XRT_VERSION_STRING@ "" "" $2
+/usr/lib/dkms/common.postinst xrt @XRT_VERSION_STRING@ "" "" $2 > /dev/null 2>&1
 if [ $? -eq 0 ]; then
     echo "Finished DKMS common.postinst"
     install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/userpf/10-xocl.rules /etc/udev/rules.d
