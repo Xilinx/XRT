@@ -145,6 +145,7 @@ enum {
 #define	XOCL_XMC		"xmc" SUBDEV_SUFFIX
 #define	XOCL_DNA		"dna" SUBDEV_SUFFIX
 #define	XOCL_FMGR		"fmgr" SUBDEV_SUFFIX
+#define	XOCL_MIG_CACHE		"mig_cache" SUBDEV_SUFFIX
 
 enum subdev_id {
 	XOCL_SUBDEV_FEATURE_ROM,
@@ -163,6 +164,7 @@ enum subdev_id {
 	XOCL_SUBDEV_DNA,
 	XOCL_SUBDEV_FMGR,
 	XOCL_SUBDEV_MIG_HBM,
+	XOCL_SUBDEV_MIG_CACHE,
 	XOCL_SUBDEV_NUM
 };
 
@@ -225,6 +227,14 @@ enum subdev_id {
 		.multi_inst = true,			\
 	}
 
+#define	XOCL_DEVINFO_MIG_CACHE				\
+	{						\
+		XOCL_SUBDEV_MIG_CACHE,			\
+		XOCL_MIG_CACHE,				\
+		NULL,					\
+		0,					\
+	}
+
 
 #define	XOCL_RES_MIG_HBM				\
 		((struct resource []) {			\
@@ -237,7 +247,7 @@ enum subdev_id {
 
 #define	XOCL_DEVINFO_MIG_HBM				\
 	{						\
-		XOCL_SUBDEV_MIG_HBM,			\
+		XOCL_SUBDEV_MIG,			\
 		XOCL_MIG,				\
 		XOCL_RES_MIG_HBM,			\
 		ARRAY_SIZE(XOCL_RES_MIG_HBM),		\
@@ -275,6 +285,14 @@ enum subdev_id {
 		XOCL_FIREWALL,				\
 		XOCL_RES_AF,				\
 		ARRAY_SIZE(XOCL_RES_AF),		\
+	}
+
+#define	XOCL_DEVINFO_AF_USER				\
+	{						\
+		XOCL_SUBDEV_AF,				\
+		XOCL_FIREWALL,				\
+		NULL,					\
+		0,					\
 	}
 
 #define	XOCL_RES_AF_DSA52				\
@@ -824,6 +842,8 @@ enum subdev_id {
 			XOCL_DEVINFO_XVC_PUB,				\
 			XOCL_DEVINFO_ICAP_USER,				\
 			XOCL_DEVINFO_XMC_USER,				\
+			XOCL_DEVINFO_AF_USER,				\
+			XOCL_DEVINFO_MIG_CACHE,				\
 		})
 
 #define	XOCL_BOARD_USER_XDMA_DSA50					\

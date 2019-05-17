@@ -1855,7 +1855,7 @@ static int mailbox_offline(struct platform_device *pdev)
 {
 	struct mailbox *mbx;
 
-        mbx = platform_get_drvdata(pdev);
+	mbx = platform_get_drvdata(pdev);
 	mailbox_disable_intr_mode(mbx);
 	return 0;
 }
@@ -1864,7 +1864,7 @@ static int mailbox_online(struct platform_device *pdev)
 {
 	struct mailbox *mbx;
 
-        mbx = platform_get_drvdata(pdev);
+	mbx = platform_get_drvdata(pdev);
 	mailbox_enable_intr_mode(mbx);
 	return 0;
 }
@@ -1918,7 +1918,7 @@ mailbox_read(struct file *file, char __user *buf, size_t n, loff_t *ignored)
 	struct mailbox_channel *ch = &mbx->mbx_tx;
 	struct sw_chan args = { 0 };
 
-	if (n < sizeof (struct sw_chan)) {
+	if (n < sizeof(struct sw_chan)) {
 		MBX_ERR(mbx, "Software TX buf has no room for header");
 		return -EINVAL;
 	}
@@ -1945,7 +1945,7 @@ mailbox_read(struct file *file, char __user *buf, size_t n, loff_t *ignored)
 	args.id = ch->sw_chan_msg_id;
 	args.sz = ch->sw_chan_buf_sz;
 	args.flags = ch->sw_chan_msg_flags;
-	if (copy_to_user(buf, &args, sizeof (struct sw_chan)) != 0) {
+	if (copy_to_user(buf, &args, sizeof(struct sw_chan)) != 0) {
 		mutex_unlock(&ch->sw_chan_mutex);
 		return -EFAULT;
 	}
@@ -1954,14 +1954,14 @@ mailbox_read(struct file *file, char __user *buf, size_t n, loff_t *ignored)
 	 * Buffer passed in is too small for payload, return EMSGSIZE to ask
 	 * for a bigger one.
 	 */
-	if (ch->sw_chan_buf_sz > (n - sizeof (struct sw_chan))) {
+	if (ch->sw_chan_buf_sz > (n - sizeof(struct sw_chan))) {
 		mutex_unlock(&ch->sw_chan_mutex);
 		MBX_ERR(mbx, "Software TX msg is too big");
 		return -EMSGSIZE;
 	}
 
 	/* Copy payload to user. */
-	if (copy_to_user(buf + sizeof (struct sw_chan),
+	if (copy_to_user(buf + sizeof(struct sw_chan),
 		ch->sw_chan_buf, ch->sw_chan_buf_sz) != 0) {
 		mutex_unlock(&ch->sw_chan_mutex);
 		return -EFAULT;
@@ -1976,7 +1976,7 @@ mailbox_read(struct file *file, char __user *buf, size_t n, loff_t *ignored)
 	/* Wake up tx worker. */
 	complete(&ch->mbc_worker);
 
-	return args.sz + sizeof (struct sw_chan);
+	return args.sz + sizeof(struct sw_chan);
 }
 
 /*
@@ -1994,7 +1994,7 @@ mailbox_write(struct file *file, const char __user *buf, size_t n,
 	struct sw_chan args = { 0 };
 	void *payload = NULL;
 
-	if (n < sizeof (struct sw_chan)) {
+	if (n < sizeof(struct sw_chan)) {
 		MBX_ERR(mbx, "Software RX msg has invalid header");
 		return -EINVAL;
 	}
@@ -2018,7 +2018,7 @@ mailbox_write(struct file *file, const char __user *buf, size_t n,
 	}
 
 	/* Copy header from user. */
-	if (copy_from_user(&args, buf, sizeof (struct sw_chan)) != 0) {
+	if (copy_from_user(&args, buf, sizeof(struct sw_chan)) != 0) {
 		mutex_unlock(&ch->sw_chan_mutex);
 		return -EFAULT;
 	}
@@ -2029,7 +2029,7 @@ mailbox_write(struct file *file, const char __user *buf, size_t n,
 	}
 
 	/* Copy payload from user. */
-	if (n < args.sz + sizeof (struct sw_chan)) {
+	if (n < args.sz + sizeof(struct sw_chan)) {
 		mutex_unlock(&ch->sw_chan_mutex);
 		MBX_ERR(mbx, "Software RX msg has invalid payload");
 		return -EINVAL;
@@ -2039,7 +2039,7 @@ mailbox_write(struct file *file, const char __user *buf, size_t n,
 		mutex_unlock(&ch->sw_chan_mutex);
 		return -ENOMEM;
 	}
-	if (copy_from_user(payload, buf + sizeof (struct sw_chan),
+	if (copy_from_user(payload, buf + sizeof(struct sw_chan),
 		args.sz) != 0) {
 		mutex_unlock(&ch->sw_chan_mutex);
 		vfree(payload);
@@ -2059,7 +2059,7 @@ mailbox_write(struct file *file, const char __user *buf, size_t n,
 	/* Wake up tx worker. */
 	complete(&ch->mbc_worker);
 
-	return args.sz + sizeof (struct sw_chan);
+	return args.sz + sizeof(struct sw_chan);
 }
 
 static uint mailbox_poll(struct file *file, poll_table *wait)
@@ -2093,19 +2093,14 @@ static int mailbox_remove(struct platform_device *pdev)
 	struct mailbox *mbx = platform_get_drvdata(pdev);
 
 	BUG_ON(mbx == NULL);
-
 	mailbox_disable_intr_mode(mbx);
-
 	sysfs_remove_group(&pdev->dev.kobj, &mailbox_attrgroup);
-
 	chan_fini(&mbx->mbx_rx);
 	chan_fini(&mbx->mbx_tx);
 	listen_wq_fini(mbx);
-
 	BUG_ON(!(list_empty(&mbx->mbx_req_list)));
 
 	xocl_subdev_register(pdev, XOCL_SUBDEV_MAILBOX, NULL);
-
 	if (mbx->mbx_regs)
 		iounmap(mbx->mbx_regs);
 
@@ -2117,7 +2112,6 @@ static int mailbox_remove(struct platform_device *pdev)
 		cdev_del(mbx->sys_cdev);
 	platform_set_drvdata(pdev, NULL);
 	xocl_drvinst_free(mbx);
-
 	return 0;
 }
 

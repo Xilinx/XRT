@@ -285,7 +285,7 @@ static void icap_read_from_peer(struct platform_device *pdev)
 		return;
 
 	mb_req->req = MAILBOX_REQ_PEER_DATA;
-	subdev_peer.size = resp_len;
+	subdev_peer.entry_size = resp_len;
 	subdev_peer.kind = ICAP;
 
 	memcpy(mb_req->data, &subdev_peer, data_len);
@@ -2083,8 +2083,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		icap_parse_bitstream_axlf_section(pdev, xclbin, DEBUG_IP_LAYOUT);
 	}
 
-	if (ICAP_PRIVILEGED(icap))
-		err = icap_verify_bitstream_axlf(pdev, xclbin);
+	err = icap_verify_bitstream_axlf(pdev, xclbin);
 
 	/* if verify failed */
 done:
@@ -2167,6 +2166,7 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 	}
 	for (i = 0; i < icap->ip_layout->m_count; ++i) {
 		struct ip_data *ip = &icap->ip_layout->m_ip_data[i];
+		struct xocl_mig_label mig_label = {0};
 
 		if (ip->m_type == IP_KERNEL)
 			continue;
@@ -2189,12 +2189,19 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 				continue;
 			}
 
+			memcpy(&mig_label.tag, icap->mem_topo->m_mem_data[memidx].m_tag, 16);
+			mig_label.mem_idx = i;
+
+
 			subdev_info.res[0].start += ip->m_base_address;
 			subdev_info.res[0].end += ip->m_base_address;
-			subdev_info.priv_data =
-				icap->mem_topo->m_mem_data[memidx].m_tag;
+			subdev_info.priv_data = &mig_label;
 			subdev_info.data_len =
-				sizeof(icap->mem_topo->m_mem_data[memidx].m_tag);
+				sizeof(struct xocl_mig_label);
+
+			if (!ICAP_PRIVILEGED(icap))
+				subdev_info.num_res = 0;
+
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create MIG subdev");
@@ -2224,12 +2231,17 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 				continue;
 			}
 
+			memcpy(&mig_label.tag, icap->mem_topo->m_mem_data[memidx].m_tag, 16);
+			mig_label.mem_idx = i;
+
 			subdev_info.res[0].start += ip->m_base_address;
 			subdev_info.res[0].end += ip->m_base_address;
-			subdev_info.priv_data =
-				icap->mem_topo->m_mem_data[memidx].m_tag;
+			subdev_info.priv_data = &mig_label;
 			subdev_info.data_len =
-				sizeof(icap->mem_topo->m_mem_data[memidx].m_tag);
+				sizeof(struct xocl_mig_label);
+
+			if (!ICAP_PRIVILEGED(icap))
+				subdev_info.num_res = 0;
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create MIG subdev");
@@ -2255,12 +2267,16 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 				continue;
 			}
 
+			memcpy(&mig_label.tag, icap->mem_topo->m_mem_data[memidx].m_tag, 16);
+			mig_label.mem_idx = i;
+
 			subdev_info.res[0].start += ip->m_base_address;
 			subdev_info.res[0].end += ip->m_base_address;
-			subdev_info.priv_data =
-				icap->mem_topo->m_mem_data[memidx].m_tag;
+			subdev_info.priv_data = &mig_label;
 			subdev_info.data_len =
-				sizeof(icap->mem_topo->m_mem_data[memidx].m_tag);
+				sizeof(struct xocl_mig_label);
+			if (!ICAP_PRIVILEGED(icap))
+				subdev_info.num_res = 0;
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create MIG_HBM subdev");
@@ -2269,6 +2285,8 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 		} else if (ip->m_type == IP_DNASC) {
 			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_DNA;
 
+			if (!ICAP_PRIVILEGED(icap))
+				continue;
 			dna_check = true;
 			subdev_info.res[0].start += ip->m_base_address;
 			subdev_info.res[0].end += ip->m_base_address;

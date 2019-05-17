@@ -433,7 +433,13 @@ static int add_to_device_list(
                     auto new_dev = std::unique_ptr<pcidev::pci_device>(
                         new pcidev::pci_device(mdev_dummy, dev->user));
                     devices.insert(devices.begin(), std::move(new_dev));
-                    good_dev++;
+                    if(!dev->is_ready){
+                        devices.push_back(std::move(dev));
+                    }
+                    else{
+                        devices.insert(devices.begin(), std::move(dev));
+                        good_dev++;
+                    }
                 }
 
                 break;

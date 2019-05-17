@@ -595,6 +595,14 @@ static void xclmgmt_get_data(struct xclmgmt_dev *lro, void *buf)
 
 }
 
+static void xclmgmt_mig_get_data(struct xclmgmt_dev *lro, struct xcl_mig_ecc *mig_ecc, size_t entry_sz)
+{
+	int i;
+
+	for (i = 0; i < MAX_M_COUNT; i++)
+		xocl_mig_get_data(lro, i, &mig_ecc[i], entry_sz);
+}
+
 static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void **resp, size_t *sz)
 {
 	size_t resp_sz = 0, current_sz;
@@ -605,23 +613,38 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 	switch (subdev_req->kind) {
 	case SENSOR:
 		current_sz = sizeof(struct xcl_sensor);
+		resp_sz = subdev_req->entry_size;
 		*resp = vzalloc(current_sz);
 		(void) xocl_xmc_get_data(lro, *resp);
 		break;
 	case ICAP:
 		current_sz = sizeof(struct xcl_hwicap);
+		resp_sz = subdev_req->entry_size;
 		*resp = vzalloc(current_sz);
 		(void) xclmgmt_icap_get_data(lro, *resp);
 		break;
 	case MGMT:
 		current_sz = sizeof(struct xcl_common);
+		resp_sz = subdev_req->entry_size;
 		*resp = vzalloc(current_sz);
 		(void) xclmgmt_get_data(lro, *resp);
+		break;
+	case MIG_ECC:
+		current_sz = sizeof(struct xcl_mig_ecc)*subdev_req->entries;
+		resp_sz = subdev_req->entry_size*subdev_req->entries;
+		*resp = vzalloc(current_sz);
+		(void) xclmgmt_mig_get_data(lro, *resp, subdev_req->entry_size);
+		break;
+	case FIREWALL:
+		current_sz = sizeof(struct xcl_mig_ecc);
+		resp_sz = subdev_req->entry_size;
+		*resp = vzalloc(current_sz);
+		(void) xocl_af_get_data(lro, *resp);
 		break;
 	default:
 		break;
 	}
-	resp_sz = min_t(size_t, subdev_req->size, current_sz);
+	resp_sz = min_t(size_t, resp_sz, current_sz);
 	if (!*resp)
 		return -EINVAL;
 	*sz = resp_sz;
