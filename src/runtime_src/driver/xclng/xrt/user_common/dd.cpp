@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  * Author: Ryan Radjabi, Hem C Neema
  * Simple command line utility to inetract with SDX PCIe devices
  *
@@ -17,6 +17,8 @@
  */
 
 #include "dd.h"
+#include <getopt.h>
+#include <iostream>
 
 namespace dd {
 const char *ddOptString = "i:o:b:c:p:e:";
@@ -29,24 +31,6 @@ static const struct option longOpts[] = {
     { "skip",  required_argument, 0,    'p' },
     { "seek",  required_argument, 0,    'e' }
 };
-
-/*
-enum e_direction {
-    deviceToFile,
-    fileToDevice,
-    unset
-};
-
-static struct ddArgs_t {
-    bool isValid = false;
-    std::string file = "";
-    int blockSize = defaultBS;
-    e_direction dir;
-    int count = -1;
-    int skip = -1;
-    int seek = -1;
-} globalArgs;
-*/
 
 
 /*
