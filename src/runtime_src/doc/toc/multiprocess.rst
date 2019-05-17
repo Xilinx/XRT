@@ -1,9 +1,9 @@
-Multi-Process Support
----------------------
+.. _multiprocess.rst:
 
-Support for Multi-Process kernel execution is added in the 2018.2
-release as a preview feature and supported as Early Access feature
-in 2018.3.
+Multi-Process Support
+*********************
+
+Support for Multi-Process kernel execution is default in 2019.1 release
 
 Requirements
 ============
@@ -17,26 +17,26 @@ successfull in loading its xclbin. The other processes will get error code
 Usage
 =====
 
-Processes share access to all device resources; as of 2018.3, there is
-no support for exclusive access to resources by any process.
+Processes share access to all device resources; as of 2019.1, there is
+no support for exclusive access to resources by any one process.
 
 If two or more processes execute the same kernel, then these processes
 will acquire the kernel's compute units per the ``xocl`` kernel driver
 compute unit scheduler, which is first-come first-serve.  All
 processes have the same priority in XRT.
 
-To enable multi-process support, add the following entry to ``sdaccel.ini``
+To disable multi-process support, add the following entry to ``xrt.ini``
 in the same directory as all the executable(s)::
 
   [Runtime]
-  multiprocess=true
+  multiprocess=false
 
 
 Known problems
 ==============
 
-Debug and Profile will not function correctly when multi-process has
-been enabled. Emulation flow does not have support for multi-process yet.
+Debug and Profile will only be enable for the first process when multi-process
+has been enabled. Emulation flow does not have support for multi-process yet.
 
 
 Implementation Details For Curious

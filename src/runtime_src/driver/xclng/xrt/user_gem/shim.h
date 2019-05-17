@@ -175,6 +175,8 @@ public:
     xclDeviceHandle xclOpenMgmt(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level);
     int xclMailbox(unsigned deviceIndex);
     int xclMailboxMgmt(unsigned deviceIndex);
+    int xclMailboxMgmtPutID(unsigned deviceIndex, const char *id, const char *mbx_switch);
+    int xclMailboxUserGetID(unsigned deviceIndex, char *id);
 
 private:
     xclVerbosityLevel mVerbosity;

@@ -86,12 +86,14 @@ XCL_DRIVER_DLLESPEC int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xcl
  *              mailbox pseudo-device to call read()/write() on.
  */
 XCL_DRIVER_DLLESPEC int xclMailbox(unsigned deviceIndex);
+XCL_DRIVER_DLLESPEC int xclMailboxUserGetID(unsigned deviceIndex, char *id);
 
 /**
  * xclMailboxMgmt - opens and returns file descriptor for mgmtpf
  *                  mailbox pseudo-device to call read()/write() on.
  */
 XCL_DRIVER_DLLESPEC int xclMailboxMgmt(unsigned deviceIndex);
+XCL_DRIVER_DLLESPEC int xclMailboxMgmtPutID(unsigned deviceIndex, const char* id, const char* mbx_switch);
 
 #ifdef __cplusplus
 }

@@ -1460,15 +1460,9 @@ int xclGetErrorStatus(xclDeviceHandle handle, xclErrorStatus *info)
   //return drv->xclGetErrorStatus(info); Not supported for AWS
 }
 
-int xclAwssak(int argc, char *argv[])
-{
-    return xcldev::xclAwssak(argc, argv);
-}
-
 int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev, const char* entry,
                     char* sysfsPath, size_t size)
 {
   awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
   return drv ? drv->xclGetSysfsPath(subdev, entry, sysfsPath, size) : -ENODEV;
 }
-

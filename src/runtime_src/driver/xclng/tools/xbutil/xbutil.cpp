@@ -22,6 +22,7 @@
 #include <sstream>
 #include <climits>
 #include <algorithm>
+#include <getopt.h>
 #include <sys/mman.h>
 
 #include "xbutil.h"

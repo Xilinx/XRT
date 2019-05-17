@@ -18,18 +18,22 @@
 #ifndef MEMACCESS_H
 #define MEMACCESS_H
 
+#include "dmatest.h"
+
+#include <string>
 #include <iostream>
+#include <fstream>
+#include <sstream>
+#include <vector>
+#include <numeric>
+
 #include <cstring>
 #include <cstddef>
+
 #include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <string>
-#include <algorithm>
-#include <numeric>
 #include <dirent.h>
-#include "dmatest.h"
+#include <unistd.h>
+#include <sys/stat.h>
 
 #include "driver/include/xclhal2.h"
 #include "driver/include/xclbin.h"
@@ -203,7 +207,7 @@ namespace xcldev {
           return -1;
         }
 
-        for(const auto itr : mems) {
+        for(const auto& itr : mems) {
             if( writeBank(itr.m_base_address, itr.m_size, aPattern) == -1) 
                 return -1;
             result = readCompare(itr.m_base_address, itr.m_size, aPattern, false);

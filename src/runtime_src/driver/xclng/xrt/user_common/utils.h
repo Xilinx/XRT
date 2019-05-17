@@ -15,15 +15,16 @@
  * under the License.
  */
 
-#ifndef _COMMON_UTILS_H_
-#define _COMMON_UTILS_H_
+#ifndef XRT_USER_COMMON_UTILS_H_
+#define XRT_USER_COMMON_UTILS_H_
 
 #include <string>
 
-std::string parseCUStatus(unsigned val);
-std::string parseFirewallStatus(unsigned val);
-std::string parseDNAStatus(unsigned val);
+std::string parseCUStatus(unsigned int val);
+std::string parseFirewallStatus(unsigned int val);
+std::string parseDNAStatus(unsigned int val);
 std::string unitConvert(size_t size);
+
 #endif /* _COMMON_UTILS_H_ */
 
 
