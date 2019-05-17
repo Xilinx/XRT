@@ -16,19 +16,10 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#ifndef DD_H_
-#define DD_H_
+#ifndef XRT_DD_H_
+#define XRT_DD_H_
 
-#include <iostream>
-#include <errno.h>
-#include <fstream>
-#include <fcntl.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <cstring>
-#include <stdio.h>
-#include <getopt.h>
-#include <cstdlib>
+#include <string>
 
 namespace dd {
 
