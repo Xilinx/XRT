@@ -2158,7 +2158,7 @@ int xclMailbox(unsigned deviceIndex)
     uint16_t bus  = pcidev::get_dev(deviceIndex)->user->bus;
     uint16_t dev  = pcidev::get_dev(deviceIndex)->user->dev;
     uint16_t func = pcidev::get_dev(deviceIndex)->user->func;
-    const int instance = ((dom<<16) + (bus<<8) + (dev<<5) + (func));
+    const int instance = ((dom<<16) + (bus<<8) + (dev<<3) + (func));
     const int fd = open(std::string("/dev/mailbox.u" + std::to_string(instance)).c_str(), O_RDWR);
     if (fd == -1) {
         perror("open");
@@ -2173,7 +2173,7 @@ int xclMailboxMgmt(unsigned deviceIndex)
     uint16_t bus  = pcidev::get_dev(deviceIndex)->mgmt->bus;
     uint16_t dev  = pcidev::get_dev(deviceIndex)->mgmt->dev;
     uint16_t func = pcidev::get_dev(deviceIndex)->mgmt->func;
-    const int instance = ((dom<<16) + (bus<<8) + (dev<<5) + (func));
+    const int instance = ((dom<<16) + (bus<<8) + (dev<<3) + (func));
     const int fd = open(std::string("/dev/mailbox.m" + std::to_string(instance)).c_str(), O_RDWR);
     if (fd == -1) {
         perror("open");
@@ -2181,3 +2181,25 @@ int xclMailboxMgmt(unsigned deviceIndex)
     }
     return fd;
 }
+
+int xclMailboxUserGetID(unsigned deviceIndex, char *id)
+{
+    std::string err;
+    std::string s_id;
+    pcidev::get_dev(deviceIndex)->user->sysfs_get("", "config_mailbox_comm_id", err, s_id);
+    strcpy(id, s_id.c_str());
+    return 0;
+}
+
+int xclMailboxMgmtPutID(unsigned deviceIndex, const char *id, const char *mbx_switch)
+{
+    if (deviceIndex >= pcidev::get_dev_total())
+        return -ENODEV;
+    std::string err;
+    std::string s_id = std::string(id);
+    std::string s_mbx_switch = std::string(mbx_switch);
+    pcidev::get_dev(deviceIndex)->mgmt->sysfs_put("", "config_mailbox_channel_switch", err, s_mbx_switch);
+    pcidev::get_dev(deviceIndex)->mgmt->sysfs_put("", "config_mailbox_comm_id", err, s_id);
+    return 0;
+}
+
