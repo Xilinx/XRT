@@ -356,6 +356,25 @@ static int stream_sysfs_create(struct stream_queue *queue)
 		queue->qconf.qidx);
 #endif
 
+	for (i = 0; i < QDMA_QSETS_MAX * 2; i++) {
+		temp_q = queue->qdma->queues[i];
+		if (!temp_q)
+		       continue;
+		if (temp_q->qconf.c2h && queue->qconf.c2h &&
+			temp_q->flowid == queue->flowid) {
+			xocl_err(&pdev->dev,
+				"flowid overlapped with queue %d", i);
+			return -EINVAL;
+		}
+
+		 if (!(temp_q->qconf.c2h) && !(queue->qconf.c2h) &&
+			temp_q->routeid == queue->routeid) {
+			 xocl_err(&pdev->dev,
+				"routeid overlapped with queue %d", i);
+			 return -EINVAL;
+		 }
+	}
+
 	queue->dev.parent = &pdev->dev;
 	queue->dev.release = stream_device_release;
 	dev_set_drvdata(&queue->dev, queue);
@@ -374,25 +393,6 @@ static int stream_sysfs_create(struct stream_queue *queue)
 		goto failed;
 	}
 
-	for (i = 0; i < QDMA_QSETS_MAX; i++) {
-		temp_q = queue->qdma->queues[i];
-		if (!temp_q)
-		       continue;
-		if (temp_q->qconf.c2h && queue->qconf.c2h &&
-			temp_q->flowid == queue->flowid) {
-			xocl_info(&pdev->dev,
-				"flowid overlapped with queue %d", i);
-			return 0;
-		}
-
-		 if (!temp_q->qconf.c2h && !queue->qconf.c2h &&
-			temp_q->routeid == queue->routeid) {
-			 xocl_info(&pdev->dev,
-				"routeid overlapped with queue %d", i);
-			 return 0;
-		 }
-	}
-
 	if (queue->qconf.c2h)
 		snprintf(name, sizeof(name) - 1, "flow%d", queue->flowid);
 	else
@@ -401,8 +401,9 @@ static int stream_sysfs_create(struct stream_queue *queue)
 	ret = sysfs_create_link(&pdev->dev.kobj, &queue->dev.kobj,
 			(const char *)name);
 	if (ret) {
-		xocl_err(&pdev->dev, "create sysfs link failed");
+		xocl_err(&pdev->dev, "create sysfs link %s failed", name);
 		sysfs_remove_group(&queue->dev.kobj, &queue_attrgroup);
+		goto failed;
 	}
 
 	return 0;
@@ -1305,7 +1306,10 @@ static int queue_flush(struct file *file, fl_owner_t id)
 	queue->state = QUEUE_STATE_CLEANUP;
 
 	stream_sysfs_destroy(queue);
-	qdma->queues[queue->qconf.qidx] = NULL;
+	if (queue->qconf.c2h)
+		qdma->queues[queue->qconf.qidx] = NULL;
+	else
+		qdma->queues[QDMA_QSETS_MAX + queue->qconf.qidx] = NULL;
 	mutex_unlock(&qdma->str_dev_lock);
 
 	ret = qdma_queue_stop((unsigned long)qdma->dma_handle, queue->queue,
@@ -1350,6 +1354,9 @@ static int queue_close(struct inode *inode, struct file *file)
 	struct stream_queue *queue;
 
 	queue = (struct stream_queue *)file->private_data;
+	if (!queue) 
+		return 0;
+
 	qdma = queue->qdma;
 
 	devm_kfree(&qdma->pdev->dev, queue);
@@ -1499,7 +1506,6 @@ static long stream_ioctl_create_queue(struct xocl_qdma *qdma,
 		xocl_err(&qdma->pdev->dev, "Failed get fd");
 		goto failed;
 	}
-	fd_install(queue->qfd, queue->file);
 	req.handle = queue->qfd;
 
 	if (copy_to_user(arg, &req, sizeof (req))) {
@@ -1519,8 +1525,13 @@ static long stream_ioctl_create_queue(struct xocl_qdma *qdma,
 	}
 
 	queue->uid = current_uid();
-	qdma->queues[queue->qconf.qidx] = queue;
+	if (queue->qconf.c2h)
+		qdma->queues[queue->qconf.qidx] = queue;
+	else
+		qdma->queues[QDMA_QSETS_MAX + queue->qconf.qidx] = queue;
 	mutex_unlock(&qdma->str_dev_lock);
+
+	fd_install(queue->qfd, queue->file);
 
 	return 0;
 
@@ -1529,6 +1540,7 @@ failed:
 		put_unused_fd(queue->qfd);
 
 	if (queue->file) {
+		queue->file->private_data = NULL;
 		fput(queue->file);
 		queue->file = NULL;
 	}
@@ -1539,9 +1551,9 @@ failed:
 		devm_kfree(&qdma->pdev->dev, queue);
 	}
 
-	ret = qdma_queue_stop((unsigned long)qdma->dma_handle, queue->queue,
+	qdma_queue_stop((unsigned long)qdma->dma_handle, queue->queue,
 		NULL, 0);
-	ret = qdma_queue_remove((unsigned long)qdma->dma_handle, queue->queue,
+	qdma_queue_remove((unsigned long)qdma->dma_handle, queue->queue,
 		NULL, 0);
 	queue->queue = 0UL;
 

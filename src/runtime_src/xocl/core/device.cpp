@@ -308,6 +308,7 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
 {
   uint64_t route = (uint64_t)-1;
   uint64_t flow = (uint64_t)-1;
+  int rc = 0;
 
   if(ext && ext->param) {
     auto kernel = xocl::xocl(ext->kernel);
@@ -343,12 +344,15 @@ get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, con
   }
 
   if (flags & CL_STREAM_READ_ONLY)
-    return m_xdevice->createReadStream(flags, attrs, route, flow, stream);
+    rc = m_xdevice->createReadStream(flags, attrs, route, flow, stream);
   else if (flags & CL_STREAM_WRITE_ONLY)
-    return m_xdevice->createWriteStream(flags, attrs, route, flow, stream);
+    rc = m_xdevice->createWriteStream(flags, attrs, route, flow, stream);
   else
     throw xocl::error(CL_INVALID_OPERATION,"Unknown stream type specified");
-  return -1;
+
+  if(rc)
+    throw xocl::error(CL_INVALID_OPERATION,"Create stream failed");
+  return rc;
 }
 
 int
