@@ -25,6 +25,7 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <numeric>
 
 #include <cstring>
 #include <cstddef>
