@@ -30,10 +30,9 @@
 #include <sys/file.h>
 
 #include "driver/include/xclbin.h"
+#include "driver/include/xcl_perfmon_parameters.h"
 #include "scan.h"
 #include "awssak.h"
-
-#define XSPM_HOST_PROPERTY_MASK 0x4
 
 static const int debug_ip_layout_max_size = 65536;
 static const int depug_ip_max_type = 8;
