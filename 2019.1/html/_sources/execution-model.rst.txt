@@ -38,7 +38,7 @@ User space submits execution commands to KDS in well defined command packets. Th
 
 KDS notifies user process of a submitted execution task completion asynchronously via POSIX poll mechanism. On PCIe platforms KDS leverages hardware scheduler running on Microblaze soft processor for fine control of compute units. Compute units use interrupts to notify xocl/zocl when they are done. KDS also supports polling mode where KDS actively polls the compute units for completion instead of relying on interrupts from compute units.
 
-On PCIe platforms hardware scheduler (referred to above) runs firmware called Embedded Runtime (ERT) which is also open source. ERT receives requests from KDS on hardware Command Queue which is an out-of-order queue in the hardware with upto 128 slots. ERT notifies KDS of work completion by using bits in Status Register and MSI-X interrupts.
+On PCIe platforms hardware scheduler (referred to above) runs firmware called Embedded Runtime (ERT). ERT receives requests from KDS on hardware out-of-order Command Queue with upto 128 command slots. ERT notifies KDS of work completion by using bits in Status Register and MSI-X interrupts. ERT source code is also included with XRT source on GitHub.
 
 Board Management
 ================

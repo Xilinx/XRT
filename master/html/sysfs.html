@@ -97,10 +97,10 @@
 <li class="toctree-l1"><a class="reference internal" href="xrt.main.html">Xilinx Runtime (XRT) Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
-<li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Linux Sys FileSystem Nodes</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#xocl">xocl</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#xclmgmt">xclmgmt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#zocl">zocl</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
@@ -115,6 +115,7 @@
 <li class="toctree-l1"><a class="reference internal" href="newdsa-bringup.html">New DSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">Xilinx Media Accelerator (XMA) Core Library</a></li>
 </ul>
@@ -181,7 +182,7 @@
            <div itemprop="articleBody">
             
   <div class="section" id="linux-sys-filesystem-nodes">
-<h1>Linux Sys FileSystem Nodes<a class="headerlink" href="#linux-sys-filesystem-nodes" title="Permalink to this headline">¶</a></h1>
+<span id="sysfs-rst"></span><h1>Linux Sys FileSystem Nodes<a class="headerlink" href="#linux-sys-filesystem-nodes" title="Permalink to this headline">¶</a></h1>
 <p><code class="docutils literal"><span class="pre">xocl</span></code> and <code class="docutils literal"><span class="pre">xclmgmt</span></code> drivers expose several <code class="docutils literal"><span class="pre">sysfs</span></code> nodes under
 the <code class="docutils literal"><span class="pre">pci</span></code> device root node. The sysfs nodes are populated by
 platform drivers present in the respective drivers.</p>
@@ -1016,6 +1017,42 @@ AXI Firewall, Mailbox, XMC, XVC, FeatureROM export their nodes on sysfs.</p>
             └── uevent
 
 71 directories, 364 files
+</pre></div>
+</div>
+</div>
+<div class="section" id="zocl">
+<h2>zocl<a class="headerlink" href="#zocl" title="Permalink to this headline">¶</a></h2>
+<p>Similar to PCIe drivers <code class="docutils literal"><span class="pre">zocl</span></code> driver used in embedded platforms
+exposes various sections of the <code class="docutils literal"><span class="pre">xclbin</span></code> image
+including the <code class="docutils literal"><span class="pre">xclbinuuid</span></code> on <code class="docutils literal"><span class="pre">sysfs</span></code>. This makes it very
+convenient for tools (such as <code class="docutils literal"><span class="pre">xbutil</span></code>) to discover characteristics
+of the image currently loaded on the FPGA. The data layout of <code class="docutils literal"><span class="pre">xclbin</span></code>
+sections are defined in file <code class="docutils literal"><span class="pre">xclbin.h</span></code> which can be found under
+<code class="docutils literal"><span class="pre">runtime/driver/include</span></code> directory.</p>
+<p>Sample output of tree command below:</p>
+<div class="highlight-none"><div class="highlight"><pre><span></span>mpsoc:/sys/bus/platform/devices/amba&gt;tree zyxclmm_drm
+zyxclmm_drm
+├── connectivity
+├── debug_ip_layout
+├── ip_layout
+├── kds_custat
+├── memstat
+├── memstat_raw
+├── mem_topology
+├── modalias
+├── of_node
+│   ├── compatible
+│   ├── name
+│   ├── reg
+│   └── status
+├── power
+│   ├── autosuspend_delay_ms
+│   ├── control
+│   ├── runtime_active_time
+│   ├── runtime_status
+│   └── runtime_suspended_time
+├── uevent
+└── xclbinid
 </pre></div>
 </div>
 </div>
