@@ -426,9 +426,10 @@ namespace awsbwhal {
                    maxDMASize(0xfa0000),
                    mLocked(false),
                    mOffsets{0x0, 0x0, 0x0, 0x0},
-                                                      mMemoryProfilingNumberSlots(0),
-                                                      mAccelProfilingNumberSlots(0),
-                                                      mStallProfilingNumberSlots(0)
+                   mMemoryProfilingNumberSlots(0),
+                   mAccelProfilingNumberSlots(0),
+                   mStallProfilingNumberSlots(0),
+                   mStreamProfilingNumberSlots(0)
     {
 #ifndef INTERNAL_TESTING
         loadDefaultAfiIfCleared();
@@ -437,6 +438,11 @@ namespace awsbwhal {
         mUserHandle = open(devName.c_str(), O_RDWR);
         if(mUserHandle <= 0) {
             std::cout << "WARNING: AwsXcl - Cannot open userPF: " << devName << std::endl;
+        }
+        if (logfileName != nullptr) {
+          mLogStream.open(logfileName);
+          mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
+          mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
         }
 
 #ifdef INTERNAL_TESTING
@@ -487,21 +493,6 @@ namespace awsbwhal {
                         std::cout << "ERROR AwsXcl: PCI mgmt bar attach failed for slot# " << std::dec << slot_id << std::endl;
         }
 #endif
-
-        //
-        // Profiling - defaults
-        // Class-level defaults: mIsDebugIpLayoutRead = mIsDeviceProfiling = false
-        mDevUserName = xcldev::pci_device_scanner::device_list[mBoardNumber].user_name;
-        mMemoryProfilingNumberSlots = 0;
-        mPerfMonFifoCtrlBaseAddress = 0x00;
-        mPerfMonFifoReadBaseAddress = 0x00;
-        //
-        // Profiling - defaults
-        // Class-level defaults: mIsDebugIpLayoutRead = mIsDeviceProfiling = false
-        mDevUserName = xcldev::pci_device_scanner::device_list[mBoardNumber].user_name;
-        mMemoryProfilingNumberSlots = 0;
-        mPerfMonFifoCtrlBaseAddress = 0x00;
-        mPerfMonFifoReadBaseAddress = 0x00;
 
         //
         // Profiling - defaults
@@ -824,6 +815,21 @@ namespace awsbwhal {
         return -EINVAL;
       drm_xocl_pread_unmgd unmgd = {0, 0, offset, count, reinterpret_cast<uint64_t>(buf)};
       return ioctl(mUserHandle, DRM_IOCTL_XOCL_PREAD_UNMGD, &unmgd);
+    }
+
+    int AwsXcl::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size)
+    {
+      std::string devName = xcldev::pci_device_scanner::device_list[ mBoardNumber ].user_name;
+      std::string subdevStr(subdev);        
+      std::string entryStr(entry);        
+
+      if(mLogStream.is_open()) {
+        mLogStream << "Retrieving [sysfs root]" << subdevStr << "/" << entryStr << std::endl;
+      }
+      std::string sysfsPathStr = xcldev::get_sysfs_path(devName, subdevStr, entryStr);
+      strncpy(sysfsPath, sysfsPathStr.c_str(), size);
+      sysfsPathStr[size - 1] = '\0';
+      return 0;
     }
     
     /*
@@ -1454,3 +1460,9 @@ int xclGetErrorStatus(xclDeviceHandle handle, xclErrorStatus *info)
   //return drv->xclGetErrorStatus(info); Not supported for AWS
 }
 
+int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev, const char* entry,
+                    char* sysfsPath, size_t size)
+{
+  awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+  return drv ? drv->xclGetSysfsPath(subdev, entry, sysfsPath, size) : -ENODEV;
+}
