@@ -23,6 +23,7 @@
 #include <list>
 #include <sys/stat.h>
 #include <iostream>
+#include "scan.h"
 
 class BPI_Flasher
 {
@@ -39,12 +40,12 @@ class BPI_Flasher
     ELARecordList mRecordList;
 
 public:
-    BPI_Flasher( unsigned int device_index, char *inMap );
+    BPI_Flasher(std::shared_ptr<pcidev::pci_device> dev);
     ~BPI_Flasher();
     int xclUpgradeFirmware(std::istream& mcsStream);
 
 private:
-    char *mMgmtMap;
+    std::shared_ptr<pcidev::pci_device> mDev;
 
     int freezeAXIGate();
     int freeAXIGate();

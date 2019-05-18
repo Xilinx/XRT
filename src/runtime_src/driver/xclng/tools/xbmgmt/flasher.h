@@ -29,7 +29,6 @@
 #include "xclfeatures.h"
 #include "firmware_image.h"
 #include "scan.h"
-#include "driver/include/xclhal2.h"
 #include <sys/stat.h>
 #include <vector>
 #include <memory>
@@ -69,16 +68,9 @@ class Flasher
 {
 public:
     Flasher(unsigned int index);
-    ~Flasher();
     int upgradeFirmware(const std::string& typeStr, firmwareImage* primary, firmwareImage* secondary);
     int upgradeBMCFirmware(firmwareImage* bmc);
-    bool isValid(void) { return mMgmtMap != nullptr; }
-
-    static void* wordcopy(void *dst, const void* src, size_t bytes);
-    static int flashRead(unsigned int pf_bar, unsigned long long offset, void *buffer, unsigned long long length);
-    static int flashWrite(unsigned int pf_bar, unsigned long long offset, const void *buffer, unsigned long long length);
-    static int pcieBarRead(unsigned int pf_bar, unsigned long long offset, void* buffer, unsigned long long length);
-    static int pcieBarWrite(unsigned int pf_bar, unsigned long long offset, const void* buffer, unsigned long long length);
+    bool isValid(void) { return mDev != nullptr; }
 
     std::string sGetDBDF();
     std::string sGetFlashType() { return std::string( getFlasherTypeText( getFlashType() ) ); }
@@ -95,14 +87,11 @@ private:
     };
     const char *E_FlasherTypeStrings[4] = { "UNKNOWN", "SPI", "BPI", "QSPI_PS" };
     const char *getFlasherTypeText( E_FlasherType val ) { return E_FlasherTypeStrings[ val ]; }
-    unsigned int mIdx;
+    std::shared_ptr<pcidev::pci_device> mDev;
 
     int getProgrammingTypeFromDeviceName(unsigned char name[], E_FlasherType &type );
 
-    char *mMgmtMap;
     FeatureRomHeader mFRHeader;
-    xclDeviceHandle mHandle;
-    struct stat mSb;
     unsigned int mGoldenVer = UINT_MAX;
 
     const std::vector<std::pair<std::string, E_FlasherType>> flashPairs = {

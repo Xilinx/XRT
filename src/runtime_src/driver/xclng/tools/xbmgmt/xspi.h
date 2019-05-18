@@ -22,7 +22,7 @@
 #include <sys/stat.h>
 #include <list>
 #include <iostream>
-
+#include "scan.h"
 
 class XSPI_Flasher
 {
@@ -39,14 +39,13 @@ class XSPI_Flasher
     ELARecordList recordList;
 
 public:
-    XSPI_Flasher( unsigned int device_index, char *inMap );
-    ~XSPI_Flasher();
+    XSPI_Flasher(std::shared_ptr<pcidev::pci_device> dev);
     int xclUpgradeFirmware2(std::istream& mcsStream1, std::istream& mcsStream2);
     int xclUpgradeFirmwareXSpi(std::istream& mcsStream, int device_index=0);
     int revertToMFG(void);
 
 private:
-    char *mMgmtMap;
+    std::shared_ptr<pcidev::pci_device> mDev;
 
     int xclTestXSpi(int device_index);
     unsigned readReg(unsigned offset);

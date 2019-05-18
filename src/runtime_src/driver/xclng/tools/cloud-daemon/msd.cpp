@@ -8,6 +8,7 @@
 #include <wordexp.h>
 #include <vector>
 #include <sstream>
+#include <cstring>
 
 #include "xclhal2.h"
 #include "common.h"
@@ -180,7 +181,11 @@ int main( void )
     // Write to config_mailbox_comm_id in format "127.0.0.1,12345,abc123", where 'abc123' is the cloud token
     unsigned numDevs;
     for (numDevs = 0; numDevs < boards.size(); numDevs++) {
-        if (xclMailboxMgmtPutID(numDevs, std::string(host_ip+","+host_port+","+boards.at(numDevs)+";").c_str(), mbx_switch.c_str())) {
+        std::string id(host_ip+","+host_port+","+boards.at(numDevs)+";");
+        char buf[256] = { 0 };
+        std::memcpy(buf, id.c_str(), id.size());
+        struct xclMailboxConf conf = { buf, 256, strtoull(mbx_switch.c_str(), nullptr, 10) };
+        if (xclMailboxConfWrite(numDevs, &conf)) {
             std::cout << "xclMailboxMgmtPutID(): " << errno << std::endl;
             return errno;
         }
@@ -206,7 +211,7 @@ int main( void )
 
     std::cout << "device index of token: " << devIdx << std::endl;
 
-    local_fd = xclMailboxMgmt(devIdx);
+    local_fd = xclMailboxOpen(devIdx, false);
     if (local_fd < 0) {
         std::cout << "xclMailboxMgmt(): " << errno << std::endl;
         return errno;

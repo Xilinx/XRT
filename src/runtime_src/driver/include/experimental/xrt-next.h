@@ -38,10 +38,6 @@ extern "C" {
  */
 XCL_DRIVER_DLLESPEC int xclP2pEnable(xclDeviceHandle handle, bool enable, bool force);
 
-/* Hack for xbflash only */
-XCL_DRIVER_DLLESPEC char *xclMapMgmt(xclDeviceHandle handle);
-XCL_DRIVER_DLLESPEC xclDeviceHandle xclOpenMgmt(unsigned deviceIndex, const char *logFileName, enum xclVerbosityLevel level);
-
 /*
  * API to get number of live processes on the given device.
  * This uses kdsstat information in sysfs.
@@ -81,19 +77,29 @@ XCL_DRIVER_DLLESPEC int xclGetSysfsPath(xclDeviceHandle handle, const char* subd
  */
 XCL_DRIVER_DLLESPEC int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info);
 
-/**
- * xclMailbox - opens and returns file descriptor for userpf
- *              mailbox pseudo-device to call read()/write() on.
- */
-XCL_DRIVER_DLLESPEC int xclMailbox(unsigned deviceIndex);
-XCL_DRIVER_DLLESPEC int xclMailboxUserGetID(unsigned deviceIndex, char *id);
+struct xclMailboxConf {
+    char *commID;
+    size_t commIDLen;
+    uint64_t chanSwitch;
+};
 
 /**
- * xclMailboxMgmt - opens and returns file descriptor for mgmtpf
- *                  mailbox pseudo-device to call read()/write() on.
+ * xclMailboxConfRead - read mailbox configuration from user or mgmt pf.
  */
-XCL_DRIVER_DLLESPEC int xclMailboxMgmt(unsigned deviceIndex);
-XCL_DRIVER_DLLESPEC int xclMailboxMgmtPutID(unsigned deviceIndex, const char* id, const char* mbx_switch);
+XCL_DRIVER_DLLESPEC int xclMailboxConfRead(unsigned deviceIndex, bool user,
+    struct xclMailboxConf *conf);
+
+/**
+ * xclMailboxConfWrite - write mailbox configuration to mgmt pf.
+ */
+XCL_DRIVER_DLLESPEC int xclMailboxConfWrite(unsigned deviceIndex,
+    struct xclMailboxConf *conf);
+
+/**
+ * xclMailboxOpen - opens and returns file descriptor for mgmt or user pf
+ *              mailbox pseudo-device to call read()/write() on.
+ */
+XCL_DRIVER_DLLESPEC int xclMailboxOpen(unsigned deviceIndex, bool user);
 
 #ifdef __cplusplus
 }

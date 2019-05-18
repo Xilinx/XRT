@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  * Author(s): Hem C. Neema, Ryan Radjabi
  * PCIe HAL Driver layered on top of XOCL GEM kernel driver
  *
@@ -17,7 +17,9 @@
  */
 
 #include <stdexcept>
+#include <cassert>
 #include <iostream>
+#include <iomanip>
 #include <sstream>
 #include <fstream>
 #include <dirent.h>
@@ -25,7 +27,9 @@
 #include <unistd.h>
 #include <algorithm>
 #include <mutex>
-
+#include <sys/stat.h>
+#include <sys/file.h>
+#include <poll.h>
 #include "scan.h"
 
 // Supported vendors
@@ -81,7 +85,7 @@ static int get_subdev_dir_name(const std::string& dir,
     return ret;
 }
 
-std::string pcidev::pci_func::get_sysfs_path(const std::string& subdev,
+std::string pcidev::pci_device::get_sysfs_path(const std::string& subdev,
     const std::string& entry)
 {
     std::string subdir;
@@ -119,7 +123,7 @@ static std::fstream sysfs_open_path(const std::string& path, std::string& err,
     return fs;
 }
 
-std::fstream pcidev::pci_func::sysfs_open(const std::string& subdev,
+std::fstream pcidev::pci_device::sysfs_open(const std::string& subdev,
     const std::string& entry, std::string& err, bool write, bool binary)
 {
     std::fstream fs;
@@ -137,7 +141,7 @@ std::fstream pcidev::pci_func::sysfs_open(const std::string& subdev,
     return fs;
 }
 
-void pcidev::pci_func::sysfs_put(
+void pcidev::pci_device::sysfs_put(
     const std::string& subdev, const std::string& entry,
     std::string& err_msg, const std::string& input)
 {
@@ -147,7 +151,18 @@ void pcidev::pci_func::sysfs_put(
     fs << input;
 }
 
-void pcidev::pci_func::sysfs_get(
+void pcidev::pci_device::sysfs_put(
+    const std::string& subdev, const std::string& entry,
+    std::string& err_msg, const std::vector<char>& buf)
+{
+    std::fstream fs = sysfs_open(subdev, entry, err_msg, true, true);
+    if (!err_msg.empty())
+        return;
+
+    fs.write(buf.data(), buf.size());
+}
+
+void pcidev::pci_device::sysfs_get(
     const std::string& subdev, const std::string& entry,
     std::string& err_msg, std::vector<char>& buf)
 {
@@ -155,10 +170,11 @@ void pcidev::pci_func::sysfs_get(
     if (!err_msg.empty())
         return;
 
-    buf.insert(std::end(buf),std::istreambuf_iterator<char>(fs),std::istreambuf_iterator<char>());
+    buf.insert(std::end(buf),std::istreambuf_iterator<char>(fs),
+        std::istreambuf_iterator<char>());
 }
 
-void pcidev::pci_func::sysfs_get(
+void pcidev::pci_device::sysfs_get(
     const std::string& subdev, const std::string& entry,
     std::string& err_msg, std::vector<std::string>& sv)
 {
@@ -172,7 +188,7 @@ void pcidev::pci_func::sysfs_get(
         sv.push_back(line);
 }
 
-void pcidev::pci_func::sysfs_get(
+void pcidev::pci_device::sysfs_get(
     const std::string& subdev, const std::string& entry,
     std::string& err_msg, std::vector<uint64_t>& iv)
 {
@@ -206,7 +222,7 @@ void pcidev::pci_func::sysfs_get(
     }
 }
 
-void pcidev::pci_func::sysfs_get(
+void pcidev::pci_device::sysfs_get(
     const std::string& subdev, const std::string& entry,
     std::string& err_msg, std::string& s)
 {
@@ -219,7 +235,7 @@ void pcidev::pci_func::sysfs_get(
         s = ""; // default value
 }
 
-void pcidev::pci_func::sysfs_get(
+void pcidev::pci_device::sysfs_get(
     const std::string& subdev, const std::string& entry,
     std::string& err_msg, bool& b)
 {
@@ -271,14 +287,30 @@ static int get_render_value(const std::string& dir)
     return instance_num;
 }
 
-pcidev::pci_func::pci_func(const std::string& sysfs) : sysfs_name(sysfs)
+static std::string get_devfs_path(bool is_mgmt, uint32_t instance)
+{
+    std::string prefixStr = is_mgmt ? "/dev/xclmgmt" : "/dev/dri/renderD";
+    std::string instStr = std::to_string(instance);
+
+    return prefixStr + instStr;
+}
+
+static bool devfs_exists(bool is_mgmt, uint32_t instance)
+{
+    struct stat buf;
+    std::string devfs = get_devfs_path(is_mgmt, instance);
+
+    return (stat(devfs.c_str(), &buf) == 0);
+}
+
+pcidev::pci_device::pci_device(const std::string& sysfs) : sysfs_name(sysfs)
 {
     const std::string dir = sysfs_root + sysfs;
     std::string err;
-    std::vector<pci_func> mgmt_devices;
-    std::vector<pci_func> user_devices;
-    uint16_t dom, b, d, f, vendor, device, subdevice;
-    bool is_mgmt = false;
+    std::vector<pci_device> mgmt_devices;
+    std::vector<pci_device> user_devices;
+    uint16_t dom, b, d, f, vendor;
+    bool mgmt = false;
 
     if((sysfs.c_str())[0] == '.')
         return;
@@ -297,189 +329,163 @@ pcidev::pci_func::pci_func(const std::string& sysfs) : sysfs_name(sysfs)
     if((vendor != XILINX_ID) && (vendor != ADVANTECH_ID))
         return;
 
-    device = subdevice = INVALID_ID;
-    sysfs_get("", "device", err, device);
-    sysfs_get("", "subsystem_device", err, subdevice);
-
     // Determine if the device is mgmt or user pf.
     std::string tmp;
     sysfs_get("", "mgmt_pf", err, tmp);
     if (err.empty()) {
-        is_mgmt = true;
+        mgmt = true;
     } else {
         sysfs_get("", "user_pf", err, tmp);
         if (err.empty()) {
-            is_mgmt = false;
+            mgmt = false;
         } else {
             return; // device not recognized
         }
     }
 
+    uint32_t inst = INVALID_ID;
+    if (mgmt)
+        sysfs_get("", "instance", err, inst);
+    else
+        inst = get_render_value(dir + "/drm");
+    if (!devfs_exists(mgmt, inst))
+        return; // device node is not available
+
     // Found a supported PCIE function.
-    vendor_id = vendor;
     domain = dom;
     bus = b;
     dev = d;
     func = f;
-    device_id = device;
-    subsystem_id = subdevice;
     sysfs_get("", "userbar", err, user_bar);
     user_bar_size = bar_size(dir, user_bar);
-    mgmt = is_mgmt;
+    is_mgmt = mgmt;
+    instance = inst;
+    sysfs_get("", "ready", err, is_ready);
+}
 
-    if (is_mgmt) {
-        sysfs_get("", "instance", err, instance);
-    } else {
-        instance = get_render_value(dir + "/drm");
-    }
+pcidev::pci_device::~pci_device()
+{
+    devfs_close();
+}
 
-    //Get the driver name and version.
-    char driverName[1024] = { 0 };
-    unsigned int rc = readlink((dir + "/driver").c_str(),
-        driverName, sizeof (driverName));
+int pcidev::pci_device::devfs_open_and_map()
+{
+        std::lock_guard<std::mutex> l(lock);
 
-    if (rc > 0 && rc < sizeof (driverName)) {
-        driver_name = driverName;
-        size_t found = driver_name.find_last_of("/");
-        if( found != std::string::npos )
-            driver_name = driver_name.substr(found + 1);
+        if (user_bar_map != MAP_FAILED)
+            return 0;
 
-        //Get driver version
-        std::string version;
-        std::fstream fs = sysfs_open_path(dir + "/driver/module/version", err,
-            false, false);
-        if (fs.is_open()) {
-            std::getline(fs, version);
-            version.erase(std::remove(version.begin(), version.end(), '\n'),
-                version.end());
-            driver_version = version;
+        std::string devfs = get_devfs_path(is_mgmt, instance);
+
+        dev_handle = open(devfs.c_str(), O_RDWR);
+        if (dev_handle < 0)
+            return -errno;
+
+        user_bar_map = (char *)::mmap(0, user_bar_size,
+            PROT_READ | PROT_WRITE, MAP_SHARED, dev_handle, 0);
+        if (user_bar_map == MAP_FAILED) {
+            (void) close(dev_handle);
+            dev_handle = -1;
+            return -errno;
         }
+
+        return 0;
+}
+
+void pcidev::pci_device::devfs_close(void)
+{
+    if (user_bar_map != MAP_FAILED)
+        munmap(user_bar_map, user_bar_size);
+    if (dev_handle != -1)
+        (void) close(dev_handle);
+}
+
 /*
-        if(mgmt){
-            std::string mgmt_drv;
-            std::fstream mgmt_drv_fs = sysfs_open_path(dir + "/driver/module/drivers/pci:xclmgmt", err,
-                false, false);
-            if (fs.is_open()) {
-                std::getline(mgmt_drv_fs, mgmt_drv);
-                mgmt_drv.erase(std::remove(mgmt_drv.begin(), mgmt_drv.end(), '\n'),
-                    mgmt_drv.end());
-                driver_mgmt = mgmt_drv;
-            }
-        }*/
-    }
-}
-
-static bool find_mgmtpf_devfs(std::unique_ptr<pcidev::pci_device> &dev){
-    std::string err;
-    if(!dev->mgmt)
-        return false;
-    if(dev->mgmt->instance){
-        const std::string devName = "/dev/xclmgmt" + std::to_string(dev->mgmt->instance);
-        std::fstream fs = sysfs_open_path(devName, err, false, false);
-        if (fs.is_open())
-            return true;
-    }
-    return false;
-}
-static bool find_userpf_devfs(std::unique_ptr<pcidev::pci_device> &dev){
-    std::string err;
-    if(!dev->user)
-        return false;
-    if(dev->user->instance){
-        const std::string devName = "/dev/dri/renderD" + std::to_string(dev->user->instance);
-        std::fstream fs = sysfs_open_path(devName, err, false, false);
-        if (fs.is_open())
-            return true;
-    }
-    return false;
-}
-
-static int add_to_device_list(
-    std::vector<std::unique_ptr<pcidev::pci_func>>& mgmt_devices,
-    std::vector<std::unique_ptr<pcidev::pci_func>>& user_devices,
-    std::vector<std::unique_ptr<pcidev::pci_device>>& devices)
+ * wordcopy()
+ *
+ * Copy bytes word (32bit) by word.
+ * Neither memcpy, nor std::copy work as they become byte copying
+ * on some platforms.
+ */
+inline void* wordcopy(void *dst, const void* src, size_t bytes)
 {
-    int good_dev = 0;
-    std::string errmsg;
-    bool userpf_devfs_good, mgmtpf_devfs_good;
+    // assert dest is 4 byte aligned
+    assert((reinterpret_cast<intptr_t>(dst) % 4) == 0);
 
-    for (auto &udev : user_devices) {
-        if (udev == nullptr)
-            continue;
-        for (auto &mdev : mgmt_devices) {
-            if (mdev == nullptr)
-                continue;
-            // Found the matching user pf.
-            if( (mdev->domain == udev->domain) &&
-                (mdev->bus == udev->bus) && (mdev->dev == udev->dev) ) {
-                auto dev = std::unique_ptr<pcidev::pci_device>(
-                    new pcidev::pci_device(mdev, udev));
-                userpf_devfs_good = find_userpf_devfs(dev);
-                mgmtpf_devfs_good = find_mgmtpf_devfs(dev);
+    using word = uint32_t;
+    auto d = reinterpret_cast<word*>(dst);
+    auto s = reinterpret_cast<const word*>(src);
+    auto w = bytes/sizeof(word);
 
-                if(userpf_devfs_good && mgmtpf_devfs_good){
-                    if(!dev->is_ready){
-                        devices.push_back(std::move(dev));
-                    }
-                    else{
-                        devices.insert(devices.begin(), std::move(dev));
-                        good_dev++;
-                    }
-                }
-                else if(!userpf_devfs_good && mgmtpf_devfs_good)
-                    devices.push_back(std::move(dev));
-                else if(userpf_devfs_good && !mgmtpf_devfs_good){
-                    std::unique_ptr<pcidev::pci_func> mdev_dummy;
-                    auto new_dev = std::unique_ptr<pcidev::pci_device>(
-                        new pcidev::pci_device(mdev_dummy, dev->user));
-                    devices.insert(devices.begin(), std::move(new_dev));
-                    good_dev++;
-                }
+    for (size_t i=0; i<w; ++i)
+        d[i] = s[i];
 
-                break;
-            }
-        }
-        if (udev != nullptr) { // mgmt pf without matching user pf
-            std::unique_ptr<pcidev::pci_func> mdev_dummy;
-            auto dev = std::unique_ptr<pcidev::pci_device>(
-                new pcidev::pci_device(mdev_dummy, udev));
-            userpf_devfs_good = find_userpf_devfs(dev);
-            if(userpf_devfs_good){
-                devices.insert(devices.begin(), std::move(dev));
-                good_dev++;
-            }
-        }
-    }
-    for (auto &mdev : mgmt_devices) {
-        if (mdev == nullptr)
-            continue;
-        std::unique_ptr<pcidev::pci_func> udev;
-        auto dev = std::unique_ptr<pcidev::pci_device>(
-            new pcidev::pci_device(mdev, udev));
-        mgmtpf_devfs_good = find_mgmtpf_devfs(dev);
-        if(mgmtpf_devfs_good)
-            devices.push_back(std::move(dev));
-    }
-    return good_dev;
+    return dst;
 }
 
-pcidev::pci_device::pci_device(std::unique_ptr<pci_func>& mdev,
-    std::unique_ptr<pci_func>& udev) :
-    mgmt(std::move(mdev)), user(std::move(udev)), is_mfg(false)
+int pcidev::pci_device::pcieBarRead(uint64_t offset, void* buf, uint64_t len)
 {
-    std::string errmsg;
-    if(mgmt == NULL){
-        is_ready = false;
-        is_mfg = false;
-        return;
+    if (user_bar_map == MAP_FAILED) {
+        int ret = devfs_open_and_map();
+        if (ret)
+            return ret;
     }
-    mgmt->sysfs_get("", "ready", errmsg, is_ready);
-    if (!errmsg.empty())
-        std::cout << errmsg << std::endl;
+    (void) wordcopy(buf, user_bar_map + offset, len);
+    return 0;
+}
 
-    mgmt->sysfs_get("", "mfg", errmsg, is_mfg);
-    mgmt->sysfs_get("", "flash_type", errmsg, flash_type);
-    mgmt->sysfs_get("", "board_name", errmsg, board_name);
+int pcidev::pci_device::pcieBarWrite(uint64_t offset,
+    const void* buf, uint64_t len)
+{
+    if (user_bar_map == MAP_FAILED) {
+        int ret = devfs_open_and_map();
+        if (ret)
+            return ret;
+    }
+    (void) wordcopy(user_bar_map + offset, buf, len);
+    return 0;
+}
+
+int pcidev::pci_device::ioctl(unsigned long cmd, void *arg)
+{
+    if (dev_handle == -1) {
+        int ret = devfs_open_and_map();
+        if (ret)
+            return ret;
+    }
+    return ::ioctl(dev_handle, cmd, arg);
+}
+
+int pcidev::pci_device::poll(short events, int timeoutMilliSec)
+{
+    if (dev_handle == -1) {
+        int ret = devfs_open_and_map();
+        if (ret)
+            return ret;
+    }
+
+    pollfd info = {dev_handle, events, 0};
+    return ::poll(&info, 1, timeoutMilliSec);
+}
+
+void *pcidev::pci_device::mmap(size_t len, int prot, int flags, off_t offset)
+{
+    if (dev_handle == -1) {
+        int ret = devfs_open_and_map();
+        if (ret)
+            return MAP_FAILED;
+    }
+    return ::mmap(0, len, prot, flags, dev_handle, offset);
+}
+
+int pcidev::pci_device::flock(int op)
+{
+    if (dev_handle == -1) {
+        int ret = devfs_open_and_map();
+        if (ret)
+            return ret;
+    }
+    return ::flock(dev_handle, op);
 }
 
 class pci_device_scanner {
@@ -489,35 +495,73 @@ public:
         static pci_device_scanner scanner;
         return &scanner;
     }
+
     void rescan() {
         std::lock_guard<std::mutex> l(lock);
         rescan_nolock();
     }
 
-    // Full list of discovered supported devices. Index 0 ~ (num_ready - 1) are
-    // boards ready for use. The rest, if any, are not ready, according to what
-    // is indicated by driver's "ready" sysfs entry. The applications only see
-    // ready-for-use boards since xclProbe returns num_ready, not the size of
-    // the full list.
-    std::vector<std::unique_ptr<pcidev::pci_device>> dev_list;
-    int num_ready;
+    size_t get_num_ready(bool is_user) {
+        std::lock_guard<std::mutex> l(lock);
+        return is_user ? num_user_ready : num_mgmt_ready;
+    }
+
+    size_t get_num_total(bool is_user) {
+        std::lock_guard<std::mutex> l(lock);
+        return is_user ? user_list.size() : mgmt_list.size();
+    }
+
+    const std::shared_ptr<pcidev::pci_device> get_dev(int index, bool user) {
+        std::lock_guard<std::mutex> l(lock);
+        return user ? user_list[index] : mgmt_list[index];
+    }
 
 private:
+
+    // Full list of discovered user devices. Index 0 ~ (num_user_ready - 1) are
+    // boards ready for use. The rest, if any, are not ready, according to what
+    // is indicated by driver's "ready" sysfs entry. The applications only see
+    // ready-for-use boards since xclProbe returns num_user_ready, not the size
+    // of the full list.
+    std::vector<std::shared_ptr<pcidev::pci_device>> user_list;
+    size_t num_user_ready;
+
+    // Full list of discovered mgmt devices. Index 0 ~ (num_mgmt_ready - 1) are
+    // boards ready for use. The rest, if any, are not ready, according to what
+    // is indicated by driver's "ready" sysfs entry. Application does not see
+    // mgmt devices.
+    std::vector<std::shared_ptr<pcidev::pci_device>> mgmt_list;
+    size_t num_mgmt_ready;
+
     std::mutex lock;
     void rescan_nolock();
-    pci_device_scanner();
+    pci_device_scanner() {
+        rescan_nolock();
+    }
     pci_device_scanner(const pci_device_scanner& s);
     pci_device_scanner& operator=(const pci_device_scanner& s);
-}; /* pci_device_scanner */
+};
+
+static bool is_in_use(std::vector<std::shared_ptr<pcidev::pci_device>>& vec)
+{
+    for (auto& d : vec)
+        if (d.use_count() > 1)
+            return true;
+    return false;
+}
 
 void pci_device_scanner::pci_device_scanner::rescan_nolock()
 {
-    std::vector<std::unique_ptr<pcidev::pci_func>> mgmt_devices;
-    std::vector<std::unique_ptr<pcidev::pci_func>> user_devices;
     DIR *dir;
     struct dirent *entry;
 
-    dev_list.clear();
+    if (is_in_use(user_list) || is_in_use(mgmt_list)) {
+        std::cout << "Device list is in use, can't rescan" << std::endl;
+        return;
+    }
+
+    user_list.clear();
+    mgmt_list.clear();
 
     dir = opendir(sysfs_root.c_str());
     if(!dir) {
@@ -526,67 +570,90 @@ void pci_device_scanner::pci_device_scanner::rescan_nolock()
     }
 
     while((entry = readdir(dir))) {
-        std::unique_ptr<pcidev::pci_func> pf(
-            new pcidev::pci_func(std::string(entry->d_name)));
-        if(pf->vendor_id == INVALID_ID)
+        auto pf = std::make_shared<pcidev::pci_device>(
+            std::string(entry->d_name));
+        if(pf->domain == INVALID_ID)
             continue;
 
-        if (pf->mgmt) {
-            mgmt_devices.push_back(std::move(pf));
+        auto list = pf->is_mgmt ? &mgmt_list : &user_list;
+        auto num_ready = pf->is_mgmt ? &num_mgmt_ready : &num_user_ready;
+        if (pf->is_ready) {
+            list->insert(list->begin(), pf);
+            ++(*num_ready);
         } else {
-            user_devices.push_back(std::move(pf));
+            list->push_back(pf);
         }
     }
 
     (void) closedir(dir);
-
-    num_ready = add_to_device_list(mgmt_devices, user_devices, dev_list);
-
-
 }
 
-pci_device_scanner::pci_device_scanner()
-{
-    rescan_nolock();
-}
 
 void pcidev::rescan(void)
 {
-    return pci_device_scanner::get_scanner()->rescan();
+    pci_device_scanner::get_scanner()->rescan();
 }
 
-size_t pcidev::get_dev_ready()
+size_t pcidev::get_dev_ready(bool user)
 {
-    return pci_device_scanner::get_scanner()->num_ready;
+    return pci_device_scanner::get_scanner()->get_num_ready(user);
 }
 
-size_t pcidev::get_dev_total()
+size_t pcidev::get_dev_total(bool user)
 {
-    return pci_device_scanner::get_scanner()->dev_list.size();
+    return pci_device_scanner::get_scanner()->get_num_total(user);
 }
 
-const pcidev::pci_device* pcidev::get_dev(int index)
+std::shared_ptr<pcidev::pci_device> pcidev::get_dev(int index, bool user)
 {
-    return pci_device_scanner::get_scanner()->dev_list[index].get();
+    return pci_device_scanner::get_scanner()->get_dev(index, user);
 }
 
-void pcidev::dump_dev_list(void)
+std::ostream& operator<<(std::ostream& stream,
+    const std::shared_ptr<pcidev::pci_device>& dev)
 {
-    //auto dev_list = pci_device_scanner::get_scanner()->dev_list;
-    std::vector<std::string> result;
+    if (!dev->is_ready)
+        stream << "*";
 
-    for(auto &dev : pci_device_scanner::get_scanner()->dev_list){
-        std::string str = "[ ";
-        if(dev->user)
-            str += "U,";
-        else
-            str += "X,";
+    std::ios_base::fmtflags f(stream.flags());
 
-        if(dev->mgmt)
-            str += "M ]";
-        else
-            str += "X ]";
-        std::cout << str << " " << std::endl;
+    stream << std::hex << std::setfill('0');
+
+    // [dddd:bb:dd.f]
+    stream << "[" << std::setw(4) << dev->domain << ":"
+        << std::setw(2) << dev->bus << ":"
+        << std::setw(2) << dev->dev << "."
+        << std::setw(1) << dev->func << "]";
+
+    // board/shell name
+    std::string shell_name;
+    std::string err;
+    uint64_t ts = 0;
+    dev->sysfs_get("rom", "VBNV", err, shell_name);
+    if (!err.empty()) {
+        unsigned ver = 0;
+        std::string nm;
+
+        dev->sysfs_get("", "board_name", err, nm);
+        dev->pcieBarRead(MFG_REV_OFFSET, &ver, sizeof(ver));
+        shell_name += "xilinx_";
+        shell_name += nm;
+        shell_name += "_GOLDEN_";
+        shell_name += std::to_string(ver);
+    } else {
+        dev->sysfs_get("rom", "timestamp", err, ts);
     }
+    stream << ":" << shell_name;
+    if (ts != 0)
+        stream << "(ts=0x" << std::hex << ts << ")";
 
+    // instance number
+    if (dev->is_mgmt)
+        stream << ":mgmt(inst=";
+    else
+        stream << ":user(inst=";
+    stream << std::dec << dev->instance << ")";
+
+    stream.flags(f);
+    return stream;
 }
