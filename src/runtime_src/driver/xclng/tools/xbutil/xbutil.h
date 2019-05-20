@@ -22,6 +22,7 @@
 #include <assert.h>
 #include <vector>
 #include <map>
+#include <iomanip>
 #include <sstream>
 #include <string>
 
@@ -60,7 +61,6 @@ using Clock = std::chrono::high_resolution_clock;
 namespace xcldev {
 
 enum command {
-    FLASH,
     PROGRAM,
     CLOCK,
     BOOT,
@@ -102,7 +102,6 @@ enum p2pcommand {
 };
 
 static const std::pair<std::string, command> map_pairs[] = {
-    std::make_pair("flash", FLASH),
     std::make_pair("program", PROGRAM),
     std::make_pair("clock", CLOCK),
     std::make_pair("boot", BOOT),
@@ -130,18 +129,6 @@ static const std::pair<std::string, subcommand> subcmd_pairs[] = {
     std::make_pair("stream", STREAM)
 };
 
-static const std::vector<std::pair<std::string, std::string>> flash_types = {
-    // bpi types
-    std::make_pair( "7v3", "bpi" ),
-    std::make_pair( "8k5", "bpi" ),
-    std::make_pair( "ku3", "bpi" ),
-    // spi types
-    std::make_pair( "vu9p",    "spi" ),
-    std::make_pair( "kcu1500", "spi" ),
-    std::make_pair( "vcu1525", "spi" ),
-    std::make_pair( "ku115",   "spi" )
-};
-
 static const std::map<MEM_TYPE, std::string> memtype_map = {
     {MEM_DDR3, "MEM_DDR3"},
     {MEM_DDR4, "MEM_DDR4"},
@@ -165,20 +152,16 @@ class device {
 
 public:
     int domain() {
-        return pcidev::get_dev(m_idx)->user->domain;
+        return pcidev::get_dev(m_idx)->domain;
     }
     int bus() {
-        return pcidev::get_dev(m_idx)->user->bus;
+        return pcidev::get_dev(m_idx)->bus;
     }
     int dev() {
-        return pcidev::get_dev(m_idx)->user->dev;
+        return pcidev::get_dev(m_idx)->dev;
     }
     int userFunc() {
-        return pcidev::get_dev(m_idx)->user->func;
-    }
-    int mgmtFunc() {
-        auto dev = pcidev::get_dev(m_idx);
-        return dev->mgmt ? dev->mgmt->func : -1;
+        return pcidev::get_dev(m_idx)->func;
     }
     device(unsigned int idx, const char* log) : m_idx(idx), m_handle(nullptr), m_devinfo{} {
         std::string devstr = "device[" + std::to_string(m_idx) + "]";
@@ -207,26 +190,9 @@ public:
         return m_devinfo.mName;
     }
 
-    /*
-     * flash
-     *
-     * Determine flash method as BPI or SPI from flash_types table by the DSA name.
-     * Override this if a flash type is passed in by command line switch.
-     */
-    int flash( const std::string& mcs1, const std::string& mcs2, std::string flashType )
-    {
-        std::cout << "Flash disabled. See 'xbflash'.\n";
-        return 0;
-    }
-
     int reclock2(unsigned regionIndex, const unsigned short *freq) {
         const unsigned short targetFreqMHz[4] = {freq[0], freq[1], freq[2], 0};
         return xclReClock2(m_handle, 0, targetFreqMHz);
-    }
-
-    int reclockUser(unsigned regionIndex, const unsigned short *freq) {
-        const unsigned short targetFreqMHz[4] = {freq[0], freq[1], freq[2], 0};
-        return xclReClockUser(m_handle, 0, targetFreqMHz);
     }
 
     int getComputeUnits(std::vector<ip_data> &computeUnits) const
@@ -234,8 +200,7 @@ public:
         std::string errmsg;
         std::vector<char> buf;
 
-        if(pcidev::get_dev(m_idx)->user)
-            pcidev::get_dev(m_idx)->user->sysfs_get("icap", "ip_layout", errmsg, buf);
+        pcidev::get_dev(m_idx)->sysfs_get("icap", "ip_layout", errmsg, buf);
 
         if (!errmsg.empty()) {
             std::cout << errmsg << std::endl;
@@ -321,8 +286,7 @@ public:
         std::vector<std::string> mm_buf;
         ss << "Device Memory Usage\n";
 
-        pcidev::get_dev(m_idx)->user->sysfs_get(
-            "icap", "mem_topology", errmsg, buf);
+        pcidev::get_dev(m_idx)->sysfs_get("icap", "mem_topology", errmsg, buf);
 
         if (!errmsg.empty()) {
             ss << errmsg << std::endl;
@@ -345,7 +309,7 @@ public:
             return;
         }
 
-        pcidev::get_dev(m_idx)->user->sysfs_get("", "memstat_raw", errmsg, mm_buf);
+        pcidev::get_dev(m_idx)->sysfs_get("", "memstat_raw", errmsg, mm_buf);
         if (!errmsg.empty()) {
             ss << errmsg << std::endl;
             lines.push_back(ss.str());
@@ -385,17 +349,43 @@ public:
         lines.push_back(ss.str());
     }
 
+    static int eccStatus2Str(unsigned int status, std::string& str)
+    {
+        const int ce_mask = (0x1 << 1);
+        const int ue_mask = (0x1 << 0);
+
+        str.clear();
+
+        // If unknown status bits, can't support.
+        if (status & ~(ce_mask | ue_mask)) {
+            std::cout << "Bad ECC status detected!" << std::endl;
+            return -EINVAL;
+        }
+
+        if (status == 0) {
+            str = "(None)";
+            return 0;
+        }
+
+        if (status & ue_mask)
+            str += "UE ";
+        if (status & ce_mask)
+            str += "CE ";
+        // Remove the trailing space.
+        str.pop_back();
+        return 0;
+    }
+
     void getMemTopology( const xclDeviceUsage &devstat ) const
     {
         std::string errmsg;
         std::vector<char> buf, temp_buf;
         std::vector<std::string> mm_buf, stream_stat;
         uint64_t memoryUsage, boCount;
+	auto dev = pcidev::get_dev(m_idx);
 
-        pcidev::get_dev(m_idx)->user->sysfs_get("icap", "mem_topology", errmsg, buf);
-        if(pcidev::get_dev(m_idx)->mgmt)
-            pcidev::get_dev(m_idx)->mgmt->sysfs_get("xmc", "temp_by_mem_topology", errmsg, temp_buf);
-        pcidev::get_dev(m_idx)->user->sysfs_get("", "memstat_raw", errmsg, mm_buf);
+        dev->sysfs_get("icap", "mem_topology", errmsg, buf);
+        dev->sysfs_get("", "memstat_raw", errmsg, mm_buf);
 
         const mem_topology *map = (mem_topology *)buf.data();
         const uint32_t *temp = (uint32_t *)temp_buf.data();
@@ -419,7 +409,7 @@ public:
                 else
                     status = "N/A";
 
-                pcidev::get_dev(m_idx)->user->sysfs_get("dma", lname, errmsg, stream_stat);
+                dev->sysfs_get("dma", lname, errmsg, stream_stat);
                 if (errmsg.empty()) {
                     status = "Active";
                     for (unsigned k = 0; k < stream_stat.size(); k++) {
@@ -445,15 +435,36 @@ public:
                 continue;
             }
 
+            boost::property_tree::ptree ptMem;
+
             std::string str = "**UNUSED**";
             if(map->m_mem_data[i].m_used != 0) {
                 auto search = memtype_map.find((MEM_TYPE)map->m_mem_data[i].m_type );
                 str = search->second;
+                unsigned ecc_st;
+                std::string ecc_st_str;
+                std::string tag(reinterpret_cast<const char *>(map->m_mem_data[i].m_tag));
+                dev->sysfs_get(tag, "ecc_status", errmsg, ecc_st);
+                if (errmsg.empty() && eccStatus2Str(ecc_st, ecc_st_str) == 0) {
+                    unsigned ce_cnt = 0;
+                    dev->sysfs_get(tag, "ecc_ce_cnt", errmsg, ce_cnt);
+                    unsigned ue_cnt = 0;
+                    dev->sysfs_get(tag, "ecc_ue_cnt", errmsg, ue_cnt);
+                    uint64_t ce_ffa = 0;
+                    dev->sysfs_get(tag, "ecc_ce_ffa", errmsg, ce_ffa);
+                    uint64_t ue_ffa = 0;
+                    dev->sysfs_get(tag, "ecc_ue_ffa", errmsg, ue_ffa);
+
+                    ptMem.put("ecc_status", ecc_st_str);
+                    ptMem.put("ecc_ce_cnt", ce_cnt);
+                    ptMem.put("ecc_ue_cnt", ue_cnt);
+                    ptMem.put("ecc_ce_ffa", ce_ffa);
+                    ptMem.put("ecc_ue_ffa", ue_ffa);
+                }
             }
             std::stringstream ss(mm_buf[i]);
             ss >> memoryUsage >> boCount;
 
-            boost::property_tree::ptree ptMem;
             ptMem.put( "type",      str );
             ptMem.put( "temp",      temp_buf.empty() ? XCL_NO_SENSOR_DEV : temp[i]);
             ptMem.put( "tag",       map->m_mem_data[i].m_tag );
@@ -477,13 +488,12 @@ public:
         ss << std::left << std::setw(48) << "Mem Topology"
             << std::setw(32) << "Device Memory Usage" << "\n";
         auto dev = pcidev::get_dev(m_idx);
-        if(!dev->user){
+        if(!dev){
             ss << "xocl driver is not loaded, skipped" << std::endl;
             lines.push_back(ss.str());
             return;
         }
-        pcidev::get_dev(m_idx)->user->sysfs_get(
-            "icap", "mem_topology", errmsg, buf);
+        pcidev::get_dev(m_idx)->sysfs_get("icap", "mem_topology", errmsg, buf);
 
         if (!errmsg.empty()) {
             ss << errmsg << std::endl;
@@ -511,7 +521,7 @@ public:
                 << "\n";
         }
 
-        pcidev::get_dev(m_idx)->user->sysfs_get("", "memstat_raw", errmsg, mm_buf);
+        pcidev::get_dev(m_idx)->sysfs_get("", "memstat_raw", errmsg, mm_buf);
         if(mm_buf.empty())
             return;
 
@@ -580,14 +590,8 @@ public:
         std::string errmsg;
         std::vector<char> buf;
 
-#if 0
-        std::vector<ip_data> computeUnits;
-        if( getComputeUnits( computeUnits ) < 0 )
-            std::cout << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'xbutil program'.\n";
-#endif
-
-        pcidev::get_dev(m_idx)->user->
-          sysfs_get("mb_scheduler", "kds_custat", errmsg, buf);
+        pcidev::get_dev(m_idx)->sysfs_get("mb_scheduler",
+            "kds_custat", errmsg, buf);
 
         if (!errmsg.empty()) {
             ss << errmsg << std::endl;
@@ -624,15 +628,9 @@ public:
         sensor_tree::put( "board.info.mig_calibrated", m_devinfo.mMigCalib );
         {
             std::string idcode, fpga, dna, errmsg;
-            if(pcidev::get_dev(m_idx)->mgmt){
-                pcidev::get_dev(m_idx)->mgmt->sysfs_get("icap", "idcode", errmsg, idcode);
-                pcidev::get_dev(m_idx)->mgmt->sysfs_get("rom", "FPGA", errmsg, fpga);
-                pcidev::get_dev(m_idx)->mgmt->sysfs_get("dna", "dna", errmsg, dna);
-            }
-            if(pcidev::get_dev(m_idx)->user){
-                pcidev::get_dev(m_idx)->user->sysfs_get("rom", "FPGA", errmsg, fpga);
-                pcidev::get_dev(m_idx)->user->sysfs_get("icap", "idcode", errmsg, idcode);
-            }
+            pcidev::get_dev(m_idx)->sysfs_get("rom", "FPGA", errmsg, fpga);
+            pcidev::get_dev(m_idx)->sysfs_get("icap", "idcode", errmsg, idcode);
+            pcidev::get_dev(m_idx)->sysfs_get("dna", "dna", errmsg, dna);
             sensor_tree::put( "board.info.idcode", idcode );
             sensor_tree::put( "board.info.fpga_name", fpga );
             sensor_tree::put( "board.info.dna", dna);
@@ -649,10 +647,10 @@ public:
         {
             unsigned short temp0 = 0, temp1 = 0, temp2 = 0, temp3 = 0;
             std::string errmsg;
-            pcidev::get_dev(m_idx)->user->sysfs_get("xmc", "xmc_cage_temp0", errmsg, temp0);
-            pcidev::get_dev(m_idx)->user->sysfs_get("xmc", "xmc_cage_temp1", errmsg, temp1);
-            pcidev::get_dev(m_idx)->user->sysfs_get("xmc", "xmc_cage_temp2", errmsg, temp2);
-            pcidev::get_dev(m_idx)->user->sysfs_get("xmc", "xmc_cage_temp3", errmsg, temp3);
+            pcidev::get_dev(m_idx)->sysfs_get("xmc", "xmc_cage_temp0", errmsg, temp0);
+            pcidev::get_dev(m_idx)->sysfs_get("xmc", "xmc_cage_temp1", errmsg, temp1);
+            pcidev::get_dev(m_idx)->sysfs_get("xmc", "xmc_cage_temp2", errmsg, temp2);
+            pcidev::get_dev(m_idx)->sysfs_get("xmc", "xmc_cage_temp3", errmsg, temp3);
             sensor_tree::put( "board.physical.thermal.cage.temp0", temp0);
             sensor_tree::put( "board.physical.thermal.cage.temp1", temp1);
             sensor_tree::put( "board.physical.thermal.cage.temp2", temp2);
@@ -678,7 +676,7 @@ public:
         {
             unsigned cur = 0;
             std::string errmsg;
-            pcidev::get_dev(m_idx)->user->sysfs_get("xmc", "xmc_vccint_curr", errmsg, cur);
+            pcidev::get_dev(m_idx)->sysfs_get("xmc", "xmc_vccint_curr", errmsg, cur);
             sensor_tree::put( "board.physical.electrical.vccint.current",            cur);
         }
 
@@ -704,7 +702,7 @@ public:
 
         // xclbin
         std::string errmsg, xclbinid;
-        pcidev::get_dev(m_idx)->user->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
+        pcidev::get_dev(m_idx)->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
         if(errmsg.empty()) {
             sensor_tree::put( "board.xclbin.uuid", xclbinid );
         }
@@ -728,7 +726,6 @@ public:
         sensor_tree::put("debug_profile.device_info.error", err);
         sensor_tree::put("debug_profile.device_info.device_index", info.device_index);
         sensor_tree::put("debug_profile.device_info.user_instance", info.user_instance);
-        sensor_tree::put("debug_profile.device_info.mgmt_instance", info.mgmt_instance);
         sensor_tree::put("debug_profile.device_info.nifd_instance", info.nifd_instance);
         sensor_tree::put("debug_profile.device_info.device_name", std::string(info.device_name));
         sensor_tree::put("debug_profile.device_info.nifd_name", std::string(info.nifd_name));
@@ -736,7 +733,7 @@ public:
 
         // p2p enable
         int p2p_enabled;
-        pcidev::get_dev(m_idx)->user->sysfs_get("", "p2p_enable", errmsg, p2p_enabled);
+        pcidev::get_dev(m_idx)->sysfs_get("", "p2p_enable", errmsg, p2p_enabled);
         if(errmsg.empty()) {
             sensor_tree::put( "board.info.p2p_enabled", p2p_enabled );
         }
@@ -846,8 +843,48 @@ public:
         ostr << sensor_tree::get_pretty<unsigned>( "board.physical.power" ) << " W" << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Firewall Last Error Status\n";
-        ostr << " Level " << std::setw(2) << sensor_tree::get( "board.error.firewall.firewall_level", -1 ) << ": 0x0"
+        ostr << "Level " << std::setw(2) << sensor_tree::get( "board.error.firewall.firewall_level", -1 ) << ": 0x0"
              << sensor_tree::get<std::string>( "board.error.firewall.status", "N/A" ) << std::endl;
+        ostr << "ECC Error Status\n";
+        ostr << std::left << std::setw(8) << "Tag" << std::setw(12) << "Errors"
+             << std::setw(10) << "CE Count" << std::setw(10) << "UE Count"
+             << std::setw(20) << "CE FFA" << std::setw(20) << "UE FFA" << std::endl;
+        try {
+          for (auto& v : sensor_tree::get_child("board.memory.mem")) {
+            int index = std::stoi(v.first);
+            if( index >= 0 ) {
+              std::string tag, st;
+              unsigned int ce_cnt, ue_cnt;
+              uint64_t ce_ffa, ue_ffa;
+              for (auto& subv : v.second) {
+                  if( subv.first == "tag" ) {
+                      tag = subv.second.get_value<std::string>();
+                  } else if( subv.first == "ecc_status" ) {
+                      st = subv.second.get_value<std::string>();
+                  } else if( subv.first == "ecc_ce_cnt" ) {
+                      ce_cnt = subv.second.get_value<unsigned int>();
+                  } else if( subv.first == "ecc_ue_cnt" ) {
+                      ue_cnt = subv.second.get_value<unsigned int>();
+                  } else if( subv.first == "ecc_ce_ffa" ) {
+                      ce_ffa = subv.second.get_value<uint64_t>();
+                  } else if( subv.first == "ecc_ue_ffa" ) {
+                      ue_ffa = subv.second.get_value<uint64_t>();
+                  }
+              }
+              if (!st.empty()) {
+                  ostr << std::left << std::setw(8) << tag << std::setw(12)
+                    << st << std::dec << std::setw(10) << ce_cnt
+                    << std::setw(10) << ue_cnt << "0x" << std::setw(18)
+                    << std::hex << ce_ffa << "0x" << std::setw(18) << ue_ffa
+                    << std::endl;
+              }
+            }
+          }
+        }
+        catch( std::exception const& e) {
+          // eat the exception, probably bad path
+        }
+
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << std::left << "Memory Status" << std::endl;
         ostr << std::setw(17) << "     Tag"  << std::setw(12) << "Type"
@@ -1108,9 +1145,7 @@ public:
         std::vector<char> buf;
 
         auto dev = pcidev::get_dev(m_idx);
-        if(dev->user)
-            pcidev::get_dev(m_idx)->user->sysfs_get(
-                "icap", "mem_topology", errmsg, buf);
+        dev->sysfs_get("icap", "mem_topology", errmsg, buf);
 
         if (!errmsg.empty()) {
             std::cout << errmsg << std::endl;
@@ -1204,20 +1239,20 @@ public:
         std::cout.flags(f);
 
         return memaccess(m_handle, m_devinfo.mDDRSize, m_devinfo.mDataAlignment,
-            pcidev::get_dev(m_idx)->user->sysfs_name).read(
+            pcidev::get_dev(m_idx)->sysfs_name).read(
             aFilename, aStartAddr, aSize);
     }
 
 
     int memDMATest(size_t blocksize, unsigned int aPattern = 'J') {
         return memaccess(m_handle, m_devinfo.mDDRSize, m_devinfo.mDataAlignment,
-            pcidev::get_dev(m_idx)->user->sysfs_name).runDMATest(
+            pcidev::get_dev(m_idx)->sysfs_name).runDMATest(
             blocksize, aPattern);
     }
 
     int memreadCompare(unsigned long long aStartAddr = 0, unsigned long long aSize = 0, unsigned int aPattern = 'J', bool checks = true) {
         return memaccess(m_handle, m_devinfo.mDDRSize, m_devinfo.mDataAlignment,
-            pcidev::get_dev(m_idx)->user->sysfs_name).readCompare(
+            pcidev::get_dev(m_idx)->sysfs_name).readCompare(
             aStartAddr, aSize, aPattern, checks);
     }
 
@@ -1235,7 +1270,7 @@ public:
         }
         std::cout.flags(f);
         return memaccess(m_handle, m_devinfo.mDDRSize, m_devinfo.mDataAlignment,
-            pcidev::get_dev(m_idx)->user->sysfs_name).write(
+            pcidev::get_dev(m_idx)->sysfs_name).write(
             aStartAddr, aSize, aPattern);
     }
 
@@ -1254,13 +1289,13 @@ public:
         }
         std::cout.flags(f);
         return memaccess(m_handle, m_devinfo.mDDRSize, m_devinfo.mDataAlignment,
-            pcidev::get_dev(m_idx)->user->sysfs_name).write(
+            pcidev::get_dev(m_idx)->sysfs_name).write(
             aStartAddr, aSize, srcBuf);
     }
 
     int memwriteQuiet(unsigned long long aStartAddr, unsigned long long aSize, unsigned int aPattern = 'J') {
         return memaccess(m_handle, m_devinfo.mDDRSize, m_devinfo.mDataAlignment,
-            pcidev::get_dev(m_idx)->user->sysfs_name).writeQuiet(
+            pcidev::get_dev(m_idx)->sysfs_name).writeQuiet(
             aStartAddr, aSize, aPattern);
     }
 

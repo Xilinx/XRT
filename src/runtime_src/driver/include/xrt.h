@@ -341,18 +341,6 @@ XCL_DRIVER_DLLESPEC int xclGetErrorStatus(xclDeviceHandle handle, struct xclErro
  */
 XCL_DRIVER_DLLESPEC int xclLoadXclBin(xclDeviceHandle handle, const struct axlf *buffer);
 /**
- * xclLoadXclBinMgmt() - Download FPGA image (xclbin) to the device via mgmtpf
- *
- * @handle:        Device handle
- * @buffer:        Pointer to device image (xclbin) in memory
- * Return:         0 on success or appropriate error number
- *
- * Download FPGA image (AXLF) to the device. The PR bitstream is encapsulated inside
- * xclbin as a section. xclbin may also contains other sections which are suitably
- * handled by the driver.
- */
-XCL_DRIVER_DLLESPEC int xclLoadXclBinMgmt(xclDeviceHandle handle, const struct axlf *buffer);
-/**
  * xclGetSectionInfo() - Get Information from sysfs about the downloaded xclbin sections
  *
  * @handle:        Device handle
@@ -380,18 +368,6 @@ XCL_DRIVER_DLLESPEC int xclGetSectionInfo(xclDeviceHandle handle, void* info,
  * Return:         0 on success or appropriate error number
  */
 XCL_DRIVER_DLLESPEC int xclReClock2(xclDeviceHandle handle, unsigned short region,
-                                    const unsigned short *targetFreqMHz);
-
-/**
- * xclReClockUser() - Configure PR region frequncies via userpf
- *
- * @handle:        Device handle
- * @region:        PR region (always 0)
- * @targetFreqMHz: Array of target frequencies in order for the Clock Wizards driving
- *                 the PR region
- * Return:         0 on success or appropriate error number
- */
-XCL_DRIVER_DLLESPEC int xclReClockUser(xclDeviceHandle handle, unsigned short region,
                                     const unsigned short *targetFreqMHz);
 
 /**

@@ -33,9 +33,6 @@
 #include "scan.h"
 #include "flasher.h"
 #include "mgmt-reg.h"
-//#include "mgmt-ioctl.h"
-//#include "shim.h"
-//#include "driver/xclng/include/mgmt-ioctl.h"
 
 #ifdef WINDOWS
 #define __func__ __FUNCTION__
@@ -45,12 +42,8 @@
  * freezeAXIGate
  */
 int BPI_Flasher::freezeAXIGate() {
-//    if (mLogStream.is_open()) {
-//        mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-//    }
     unsigned char buf = 0x0;
-//    return pcieBarWrite(/*SHIM_MGMT_BAR*/0, AXI_GATE_OFFSET, &buf, 1);
-    return Flasher::flashWrite( 0, AXI_GATE_OFFSET, &buf, 1 );
+    return mDev->pcieBarWrite(AXI_GATE_OFFSET, &buf, 1);
 }
 
 /*
@@ -66,7 +59,7 @@ int BPI_Flasher::freeAXIGate() {
     const timespec interval = {0, 500};
 #endif
     unsigned char buf = 0x2;
-    if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, AXI_GATE_OFFSET, &buf, 1))
+    if (mDev->pcieBarWrite(AXI_GATE_OFFSET, &buf, 1))
         return -ENXIO;
     buf = 0x0;
 #ifndef _WINDOWS
@@ -74,7 +67,7 @@ int BPI_Flasher::freeAXIGate() {
     //  nanosleep is defined in unistd.h
     nanosleep(&interval, 0);
 #endif
-    if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, AXI_GATE_OFFSET, &buf, 1))
+    if (mDev->pcieBarWrite(AXI_GATE_OFFSET, &buf, 1))
         return -ENXIO;
     buf = 0x2;
 #ifndef _WINDOWS
@@ -82,7 +75,7 @@ int BPI_Flasher::freeAXIGate() {
     //  nanosleep is defined in unistd.h
     nanosleep(&interval, 0);
 #endif
-    if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, AXI_GATE_OFFSET, &buf, 1))
+    if (mDev->pcieBarWrite(AXI_GATE_OFFSET, &buf, 1))
         return -ENXIO;
     buf = 0x3;
 #ifndef _WINDOWS
@@ -90,12 +83,12 @@ int BPI_Flasher::freeAXIGate() {
     //    nanosleep is defined in unistd.h
     nanosleep(&interval, 0);
 #endif
-    return Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, AXI_GATE_OFFSET, &buf, 1);
+    return mDev->pcieBarWrite(AXI_GATE_OFFSET, &buf, 1);
 }
 
-BPI_Flasher::BPI_Flasher(unsigned int device_index, char *inMap)
+BPI_Flasher::BPI_Flasher(std::shared_ptr<pcidev::pci_device> dev)
 {
-    mMgmtMap = inMap;
+    mDev = dev;
 }
 
 BPI_Flasher::~BPI_Flasher()
@@ -218,16 +211,16 @@ int BPI_Flasher::prepare_microblaze(unsigned startAddress, unsigned endAddress) 
     cmdHi |= addrHi;
 
     // Drain mailbox
-    Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x10, &status, 4);
+    mDev->pcieBarRead(BPI_FLASH_OFFSET+0x10, &status, 4);
     while(!(status&0x1)){ //0: fifo is not empty
-        if(Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x8, &status, 4)) {
+        if(mDev->pcieBarRead(BPI_FLASH_OFFSET+0x8, &status, 4)) {
             return -ENXIO;
         }
-        Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x10, &status, 4);
+        mDev->pcieBarRead(BPI_FLASH_OFFSET+0x10, &status, 4);
     }
     std::cout << "INFO: Finished draining mailbox\n";
     // Check for Ready
-    if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &cmdHi, 4)) {
+    if (mDev->pcieBarWrite(BPI_FLASH_OFFSET, &cmdHi, 4)) {
         return -ENXIO;
     }
     if (waitAndFinish_microblaze(READY_STAT, 0xff)) {
@@ -235,7 +228,7 @@ int BPI_Flasher::prepare_microblaze(unsigned startAddress, unsigned endAddress) 
     }
     std::cout << "INFO: Finished waiting for READY_STAT\n";
 
-    if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &cmdHi, 4)) {
+    if (mDev->pcieBarWrite(BPI_FLASH_OFFSET, &cmdHi, 4)) {
         return -ENXIO;
     }
     std::cout << "done sending hi cmd " << std::hex << cmdHi << std::dec<< std::endl;
@@ -252,26 +245,26 @@ int BPI_Flasher::prepare_microblaze(unsigned startAddress, unsigned endAddress) 
     // Send start and end address
     unsigned command = START_ADDR_CMD;
     command |= startAddress;
-    if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &command, 4)) {
+    if (mDev->pcieBarWrite(BPI_FLASH_OFFSET, &command, 4)) {
         return -ENXIO;
     }
 
     command = END_ADDR_CMD;
     command |= endAddress;
-    if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &command, 4)) {
+    if (mDev->pcieBarWrite(BPI_FLASH_OFFSET, &command, 4)) {
         return -ENXIO;
     }
 
     command = END_ADDR_HI_CMD;
     command |= endAddressHi;
-    if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &command, 4)) {
+    if (mDev->pcieBarWrite(BPI_FLASH_OFFSET, &command, 4)) {
         return -ENXIO;
     }
 
     std::cout << "INFO: Sending unlock command\n";
     // Send unlock command
     command = UNLOCK_CMD;
-    if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &command, 4)) {
+    if (mDev->pcieBarWrite(BPI_FLASH_OFFSET, &command, 4)) {
         return -ENXIO;
     }
     if (waitForReady_microblaze(READY_STAT)) {
@@ -281,7 +274,7 @@ int BPI_Flasher::prepare_microblaze(unsigned startAddress, unsigned endAddress) 
     // Send erase command
     std::cout << "INFO: Sending erase command\n";
     command = ERASE_CMD;
-    if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &command, 4)) {
+    if (mDev->pcieBarWrite(BPI_FLASH_OFFSET, &command, 4)) {
         return -ENXIO;
     }
     // now hanging here
@@ -296,7 +289,7 @@ int BPI_Flasher::prepare_microblaze(unsigned startAddress, unsigned endAddress) 
     // Send program command
     std::cout << "INFO: Erasing the address range\n";
     command = PROGRAM_CMD;
-    if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &command, 4)) {
+    if (mDev->pcieBarWrite(BPI_FLASH_OFFSET, &command, 4)) {
         return -ENXIO;
     }
 
@@ -317,7 +310,7 @@ int BPI_Flasher::prepare(unsigned startAddress, unsigned endAddress) {
     unsigned endAddressHi = (endAddress >>24)& 0x3;
     unsigned cmdHi = START_ADDR_HI_CMD;
     cmdHi |= addrHi;
-    if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &cmdHi, 4)) {
+    if (mDev->pcieBarWrite(BPI_FLASH_OFFSET, &cmdHi, 4)) {
         return -ENXIO;
     }
     std::cout << "done sending hi cmd " << std::hex << cmdHi << std::dec<< std::endl;
@@ -334,26 +327,26 @@ int BPI_Flasher::prepare(unsigned startAddress, unsigned endAddress) {
     // Send start and end address
     unsigned command = START_ADDR_CMD;
     command |= startAddress;
-    if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &command, 4)) {
+    if (mDev->pcieBarWrite(BPI_FLASH_OFFSET, &command, 4)) {
         return -ENXIO;
     }
 
     command = END_ADDR_CMD;
     command |= endAddress;
-    if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &command, 4)) {
+    if (mDev->pcieBarWrite(BPI_FLASH_OFFSET, &command, 4)) {
         return -ENXIO;
     }
 
     command = END_ADDR_HI_CMD;
     command |= endAddressHi;
-    if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &command, 4)) {
+    if (mDev->pcieBarWrite(BPI_FLASH_OFFSET, &command, 4)) {
         return -ENXIO;
     }
 
     std::cout << "INFO: Sending unlock command\n";
     // Send unlock command
     command = UNLOCK_CMD;
-    if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &command, 4)) {
+    if (mDev->pcieBarWrite(BPI_FLASH_OFFSET, &command, 4)) {
         return -ENXIO;
     }
     if (waitForReady(READY_STAT)) {
@@ -363,7 +356,7 @@ int BPI_Flasher::prepare(unsigned startAddress, unsigned endAddress) {
     // Send erase command
     std::cout << "INFO: Sending erase command\n";
     command = ERASE_CMD;
-    if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &command, 4)) {
+    if (mDev->pcieBarWrite(BPI_FLASH_OFFSET, &command, 4)) {
         return -ENXIO;
     }
     // now hanging here
@@ -378,7 +371,7 @@ int BPI_Flasher::prepare(unsigned startAddress, unsigned endAddress) {
     // Send program command
     std::cout << "INFO: Erasing the address range\n";
     command = PROGRAM_CMD;
-    if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &command, 4)) {
+    if (mDev->pcieBarWrite(BPI_FLASH_OFFSET, &command, 4)) {
         return -ENXIO;
     }
 
@@ -443,11 +436,11 @@ int BPI_Flasher::program_microblaze(std::istream& mcsStream, const ELARecord& re
             }
             for (int i=0; i< 16; i++)
             {
-                Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x10, &status, 4);
+                mDev->pcieBarRead(BPI_FLASH_OFFSET+0x10, &status, 4);
                 while((status&2)==2){ //2: fifo is full
-                    Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x10, &status, 4);
+                    mDev->pcieBarRead(BPI_FLASH_OFFSET+0x10, &status, 4);
                 }
-                if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, buffer+4*i, 4)) {
+                if (mDev->pcieBarWrite(BPI_FLASH_OFFSET, buffer+4*i, 4)) {
                     return -ENXIO;
                 }
             }
@@ -468,11 +461,11 @@ int BPI_Flasher::program_microblaze(std::istream& mcsStream, const ELARecord& re
         }
         for (int i=0; i<bufferIndex/4 ; i++)
         {
-            Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x10, &status, 4);
+            mDev->pcieBarRead(BPI_FLASH_OFFSET+0x10, &status, 4);
             while((status&2)==2){ //2: fifo is full
-                Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x10, &status, 4);
+                mDev->pcieBarRead(BPI_FLASH_OFFSET+0x10, &status, 4);
             }
-            if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, buffer+4*i, 4)) {
+            if (mDev->pcieBarWrite(BPI_FLASH_OFFSET, buffer+4*i, 4)) {
                 return -ENXIO;
             }
         }
@@ -536,7 +529,7 @@ int BPI_Flasher::program(std::istream& mcsStream, const ELARecord& record) {
             if (waitForReady(PROGRAM_STAT, false)) {
                 return -ETIMEDOUT;
             }
-            if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, buffer, 64)) {
+            if (mDev->pcieBarWrite(BPI_FLASH_OFFSET, buffer, 64)) {
                 return -ENXIO;
             }
             if (waitForReady(PROGRAM_STAT, false)) {
@@ -554,7 +547,7 @@ int BPI_Flasher::program(std::istream& mcsStream, const ELARecord& record) {
         if (waitForReady(PROGRAM_STAT, false)) {
             return -ETIMEDOUT;
         }
-        if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, buffer, bufferIndex)) {
+        if (mDev->pcieBarWrite(BPI_FLASH_OFFSET, buffer, bufferIndex)) {
             return -ENXIO;
         }
         if (waitForReady(PROGRAM_STAT, false)) {
@@ -589,10 +582,10 @@ int BPI_Flasher::program(std::istream& mcsStream) {
     std::cout << "INFO: End address 0x" << std::hex << mRecordList.back().mEndAddress << std::dec << "\n";
 
     // Check for existance of Mailbox IP
-    if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x1C, &rxthresh, 4)) {
+    if (mDev->pcieBarWrite(BPI_FLASH_OFFSET+0x1C, &rxthresh, 4)) {
         return -ENXIO;
     }
-    if (Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x1C, &status, 4)) {
+    if (mDev->pcieBarRead(BPI_FLASH_OFFSET+0x1C, &status, 4)) {
         return -ENXIO;
     }
     if(status==rxthresh) {
@@ -678,10 +671,10 @@ int BPI_Flasher::waitForReady_microblaze(unsigned code, bool verbose) {
         nanosleep(&req, 0);
 #endif
 
-        Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x10, &status, 4);
+        mDev->pcieBarRead(BPI_FLASH_OFFSET+0x10, &status, 4);
         if(!(status&0x1)){ //0: fifo is not empty
 
-            if(Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x8, &status, 4)) {
+            if(mDev->pcieBarRead(BPI_FLASH_OFFSET+0x8, &status, 4)) {
                 return -ENXIO;
             }
         }
@@ -715,7 +708,7 @@ int BPI_Flasher::waitForReady(unsigned code, bool verbose) {
         //    nanosleep is defined in unistd.h
         nanosleep(&req, 0);
 #endif
-        if (Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &status, 4)) {
+        if (mDev->pcieBarRead(BPI_FLASH_OFFSET, &status, 4)) {
             return -ENXIO;
         }
         delay += 5000;
@@ -737,10 +730,10 @@ int BPI_Flasher::waitAndFinish_microblaze(unsigned code, unsigned data, bool ver
     if (verbose) {
         std::cout << "INFO: Finishing up\n";
     }
-    Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x10, &status, 4);
+    mDev->pcieBarRead(BPI_FLASH_OFFSET+0x10, &status, 4);
     if(!(status&0x1)){ //0: fifo is not empty
 
-        if(Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x8, &status, 4)) {
+        if(mDev->pcieBarRead(BPI_FLASH_OFFSET+0x8, &status, 4)) {
             std::cout << "INFO: Failed to read from Mailbox\n";
             return -ENXIO;
         }
@@ -752,18 +745,18 @@ int BPI_Flasher::waitAndFinish_microblaze(unsigned code, unsigned data, bool ver
         //    nanosleep is defined in unistd.h
         nanosleep(&req, 0);
 #endif
-        Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x10, &status, 4);
+        mDev->pcieBarRead(BPI_FLASH_OFFSET+0x10, &status, 4);
         if((status&2)==2) {
             return 0;
         }
-        if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &data, 4)) {
+        if (mDev->pcieBarWrite(BPI_FLASH_OFFSET, &data, 4)) {
             std::cout << "INFO: Failed to write to Mailbox\n";
             return -ENXIO;
         }
 
         if(!(status&0x1)){ //0: fifo is not empty
 
-            if(Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET+0x8, &status, 4)) {
+            if(mDev->pcieBarRead(BPI_FLASH_OFFSET+0x8, &status, 4)) {
                 std::cout << "INFO: Failed to read from Mailbox\n";
                 return -ENXIO;
             }
@@ -788,7 +781,7 @@ int BPI_Flasher::waitAndFinish(unsigned code, unsigned data, bool verbose) {
     if (verbose) {
         std::cout << "INFO: Finishing up\n";
     }
-    if (Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &status, 4)) {
+    if (mDev->pcieBarRead(BPI_FLASH_OFFSET, &status, 4)) {
         return -ENXIO;
     }
     while ((status != code) && (delay < 30000000000)) {
@@ -797,10 +790,10 @@ int BPI_Flasher::waitAndFinish(unsigned code, unsigned data, bool verbose) {
         //    nanosleep is defined in unistd.h
         nanosleep(&req, 0);
 #endif
-        if (Flasher::flashWrite(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &data, 4)) {
+        if (mDev->pcieBarWrite(BPI_FLASH_OFFSET, &data, 4)) {
             return -ENXIO;
         }
-        if (Flasher::flashRead(/*SHIM_MGMT_BAR*/0, BPI_FLASH_OFFSET, &status, 4)) {
+        if (mDev->pcieBarRead(BPI_FLASH_OFFSET, &status, 4)) {
             return -ENXIO;
         }
         delay += 5000;

@@ -56,6 +56,7 @@
 #include <string.h>
 #include <chrono>
 #include <iostream>
+#include <iomanip>
 
 #ifndef _WINDOWS
 // TODO: Windows build support
@@ -73,11 +74,6 @@
 
 namespace xocl {
 
-  static int unmgdPread(int fd, void *buffer, size_t size, uint64_t addr)
-  {
-    drm_xocl_pread_unmgd unmgd = {0, 0, addr, size, reinterpret_cast<uint64_t>(buffer)};
-    return ioctl(fd, DRM_IOCTL_XOCL_PREAD_UNMGD, &unmgd);
-  }
   // Memory alignment for DDR and AXI-MM trace access
   template <typename T> class AlignedAllocator {
       void *mBuffer;
@@ -997,7 +993,9 @@ namespace xocl {
                 << (void *)(hostbuf + words) << std::dec << std::endl;
           }
 
-          if (unmgdPread(mUserHandle, (void *)(hostbuf + words), chunkSizeBytes,  fifoReadAddress[0]) < 0)
+          drm_xocl_pread_unmgd unmgd = {0, 0, fifoReadAddress[0], chunkSizeBytes,
+            reinterpret_cast<uint64_t>((void *)(hostbuf + words))};
+          if (mDev->ioctl(DRM_IOCTL_XOCL_PREAD_UNMGD, &unmgd) < 0)
             return 0;
 
           size += chunkSizeBytes;
@@ -1014,8 +1012,10 @@ namespace xocl {
               << (void *)(hostbuf + words) << std::dec << std::endl;
         }
 
-        if (unmgdPread(mUserHandle, (void *)(hostbuf + words), chunkSizeBytes,  fifoReadAddress[0]) < 0)
-            return 0;
+        drm_xocl_pread_unmgd unmgd = {0, 0, fifoReadAddress[0], chunkSizeBytes,
+          reinterpret_cast<uint64_t>((void *)(hostbuf + words))};
+        if (mDev->ioctl(DRM_IOCTL_XOCL_PREAD_UNMGD, &unmgd) < 0)
+          return 0;
 
         size += chunkSizeBytes;
       }
@@ -1112,7 +1112,7 @@ namespace xocl {
       mLogStream << subdev_str << "/" << entry_str;
       mLogStream << std::endl;
     }
-    std::string sysfsFullPath = dev->user->get_sysfs_path(subdev_str, entry_str);
+    std::string sysfsFullPath = dev->get_sysfs_path(subdev_str, entry_str);
     strncpy(sysfsPath, sysfsFullPath.c_str(), size);
     sysfsPath[size - 1] = '\0';
     return 0;
@@ -1120,15 +1120,13 @@ namespace xocl {
 
   int shim::xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info) {
     auto dev = pcidev::get_dev(mBoardNumber);
-    uint16_t user_instance = dev->user->instance;
-    uint16_t mgmt_instance = dev->mgmt ? dev->mgmt->instance : 0;
+    uint16_t user_instance = dev->instance;
     uint16_t nifd_instance = 0;
     std::string device_name = std::string(DRIVER_NAME_ROOT) + std::string(DEVICE_PREFIX) + std::to_string(user_instance);
     std::string nifd_name = std::string(DRIVER_NAME_ROOT) + std::string(NIFD_PREFIX) + std::to_string(nifd_instance);
     info->device_type = DeviceType::XBB;
     info->device_index = mBoardNumber;
     info->user_instance = user_instance;
-    info->mgmt_instance = mgmt_instance;
     info->nifd_instance = nifd_instance;
     strncpy(info->device_name, device_name.c_str(), MAX_NAME_LEN - 1);
     strncpy(info->nifd_name, nifd_name.c_str(), MAX_NAME_LEN - 1);

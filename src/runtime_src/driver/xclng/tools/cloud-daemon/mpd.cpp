@@ -64,7 +64,8 @@ int main(void)
         if (ret == 0) { // child
             /* Ugly way to get host_ip, host_port, and cloud token(host_id) */
             char c_id[256];
-            xclMailboxUserGetID(i, c_id);
+            struct xclMailboxConf conf = { c_id, 256, 0 };
+            xclMailboxConfRead(i, true, &conf);
             std::string s_id = std::string( c_id );
             size_t pos =  s_id.find(",");
             std::string rem = s_id.substr( pos+1, s_id.length() );
@@ -81,7 +82,7 @@ int main(void)
             send(comm_fd, &dataLength, sizeof(uint32_t), MSG_CONFIRM);
             send(comm_fd, host_id.c_str(), host_id.size(), MSG_CONFIRM);
 
-            local_fd = xclMailbox( i );
+            local_fd = xclMailboxOpen( i, true );
             if (local_fd < 0) {
                 std::cout << "xclMailbox(): " << errno << std::endl;
                 return errno;

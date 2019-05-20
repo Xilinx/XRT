@@ -48,12 +48,10 @@ int bdf2index(std::string& bdfStr, unsigned& index)
 
     for (unsigned i = 0; i < pcidev::get_dev_total(); i++) {
         auto dev = pcidev::get_dev(i);
-        if(dev->user){
-            if (dom == dev->user->domain && b == dev->user->bus &&
-                d == dev->user->dev && (f == 0 || f == 1)) {
-                index = i;
-                return 0;
-            }
+        if (dom == dev->domain && b == dev->bus &&
+            d == dev->dev && (f == 0 || f == 1)) {
+            index = i;
+            return 0;
         }
     }
 
@@ -89,68 +87,20 @@ int str2index(const char *arg, unsigned& index)
 
 void print_pci_info(std::ostream &ostr)
 {
-    auto print = [&ostr](const std::unique_ptr<pcidev::pci_func>& dev) {
-        ostr << std::hex;
-        ostr << ":[" << std::setw(2) << std::setfill('0') << dev->bus
-            << ":" << std::setw(2) << std::setfill('0') << dev->dev
-            << "." << dev->func << "]";
-
-        ostr << std::hex;
-        ostr << ":0x" << std::setw(4) << std::setfill('0') << dev->device_id;
-        ostr << ":0x" << std::setw(4) << std::setfill('0') << dev->subsystem_id;
-
-        ostr << std::dec;
-        ostr << ":[";
-        if(!dev->driver_name.empty()) {
-            ostr << dev->driver_name << ":" << dev->driver_version << ":";
-            if(dev->instance == INVALID_ID) {
-                ostr << "???";
-            } else {
-                ostr << dev->instance;
-            }
-        }
-        ostr << "]" << std::endl;;
-    };
-
     ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
     if (pcidev::get_dev_total() == 0) {
         ostr << "No card found!" << std::endl;
         return;
     }
 
-    int i = 0;
-    int not_ready = 0;
-    for (unsigned j = 0; j < pcidev::get_dev_total(); j++) {
-        auto dev = pcidev::get_dev(j);
-        auto& mdev = dev->mgmt;
-        auto& udev = dev->user;
-        bool ready = false;
-        std::string errmsg;
+    for (unsigned j = 0; j < pcidev::get_dev_total(); j++)
+        ostr << "[" << j << "]:" << pcidev::get_dev(j) << std::endl;
 
-        if (mdev != nullptr) {
-            mdev->sysfs_get("", "ready", errmsg, ready);
-            ostr << (ready ? "" : "*");
-            ostr << "[" << i << "]" << "mgmt";
-            print(mdev);
-        }
-
-        if (udev != nullptr) {
-            ready = false;
-            udev->sysfs_get("", "ready", errmsg, ready);
-            ostr << (ready ? "" : "*");
-            ostr << "[" << i << "]" << "user";
-            print(udev);
-        }
-
-        if (!ready)
-            not_ready++;
-        ++i;
-    }
-    if (not_ready != 0) {
-        ostr << "WARNING: " << not_ready
-                  << " card(s) marked by '*' are not ready, "
-                  << "run xbutil flash scan -v to further check the details."
-                  << std::endl;
+    if (pcidev::get_dev_total() != pcidev::get_dev_ready()) {
+        ostr << "WARNING: "
+            << " card(s) marked by '*' are not ready, "
+            << "run xbmgmt flash --scan -verbose to further check the details."
+            << std::endl;
     }
 }
 
@@ -185,10 +135,9 @@ int main(int argc, char *argv[])
      * xbflash and never returns. All arguments will be passed
      * down to xbflash.
      */
-    if( std::string( argv[ 1 ] ).compare( "flash" ) == 0        ||
-       (std::string( argv[ 1 ] ).compare( "mem" ) == 0          &&
-       (std::string( argv[ 2 ] ).compare( "--query-ecc" ) == 0  ||
-        std::string( argv[ 2 ] ).compare( "--reset-ecc" ) == 0  ))) {
+    if(std::string( argv[ 1 ] ).compare( "flash" ) == 0) {
+        std::cout << "WARNING: flash sub-command is obsolete. "
+            << "Use xbmgmt flash instead" << std::endl;
         // get self path, launch xbflash from self path
         char buf[ PATH_MAX ] = {0};
         auto len = readlink( "/proc/self/exe", buf, PATH_MAX );
@@ -253,7 +202,7 @@ int main(int argc, char *argv[])
     };
 
     int long_index;
-    const char* short_options = "a:b:c:d:e:f:g:h:i:m:n:o:p:r:s"; //don't add numbers
+    const char* short_options = "a:b:c:d:e:f:g:h:i:o:p:r:s"; //don't add numbers
     while ((c = getopt_long(argc, argv, short_options, long_options, &long_index)) != -1)
     {
         if (cmd == xcldev::LIST) {
@@ -352,10 +301,7 @@ int main(int argc, char *argv[])
             break;
         }
         case 'o': {
-            if (cmd == xcldev::FLASH) {
-                flashType = optarg;
-                break;
-            } else if (cmd != xcldev::MEM || subcmd != xcldev::MEM_READ) {
+            if (cmd != xcldev::MEM || subcmd != xcldev::MEM_READ) {
                 std::cout << "ERROR: '-o' not applicable for this command\n";
                 return -1;
             }
@@ -412,7 +358,7 @@ int main(int argc, char *argv[])
             break;
         }
         case 'r':
-            if ((cmd == xcldev::FLASH) || (cmd == xcldev::BOOT) || (cmd == xcldev::DMATEST) ||(cmd == xcldev::STATUS)) {
+            if ((cmd == xcldev::BOOT) || (cmd == xcldev::DMATEST) ||(cmd == xcldev::STATUS)) {
                 std::cout << "ERROR: '-r' not applicable for this command\n";
                 return -1;
             }
@@ -449,20 +395,6 @@ int main(int argc, char *argv[])
                 return -1;
             }
             targetFreq[2] = std::atoi(optarg);
-            break;
-        case 'm':
-            if (cmd != xcldev::FLASH) {
-                std::cout << "ERROR: '-m' only allowed with 'flash' command\n";
-                return -1;
-            }
-            mcsFile1 = optarg;
-            break;
-        case 'n':
-            if (cmd != xcldev::FLASH) {
-                std::cout << "ERROR: '-n' only allowed with 'flash' command\n";
-                return -1;
-            }
-            mcsFile2 = optarg;
             break;
         case 'c':
             if (cmd != xcldev::RUN) {
@@ -559,13 +491,13 @@ int main(int argc, char *argv[])
         std::cout << "INFO: Found total " << total << " card(s), "
                   << count << " are usable" << std::endl;
 
-    if ((cmd == xcldev::QUERY) || (cmd == xcldev::SCAN))
+    if ((cmd == xcldev::QUERY) || (cmd == xcldev::SCAN) || (cmd == xcldev::LIST))
         xcldev::baseDump(std::cout);
 
     if (total == 0)
         return -ENODEV;
 
-    if (cmd == xcldev::SCAN) {
+    if (cmd == xcldev::SCAN || cmd == xcldev::LIST) {
         print_pci_info(std::cout);
         return 0;
     }
@@ -576,17 +508,6 @@ int main(int argc, char *argv[])
         } catch (const std::exception& ex) {
             std::cout << ex.what() << std::endl;
         }
-    }
-
-    if (cmd == xcldev::LIST) {
-        for (unsigned i = 0; i < count; i++) {
-            std::cout << '[' << i << "] " << std::hex
-                << std::setw(2) << std::setfill('0') << deviceVec[i]->bus() << ":"
-                << std::setw(2) << std::setfill('0') << deviceVec[i]->dev() << "."
-                << deviceVec[i]->userFunc() << " "
-                << deviceVec[i]->name() << std::endl;
-        }
-        return 0;
     }
 
     if (index >= deviceVec.size()) {
@@ -601,7 +522,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    if(pcidev::get_dev(index)->user == NULL){
+    if (pcidev::get_dev(index) == NULL){
         std::cout << "ERROR: Card index " << index << " is not usable\n";
         return 1;
     }
@@ -615,13 +536,10 @@ int main(int argc, char *argv[])
         result = deviceVec[index]->boot();
         break;
     case xcldev::CLOCK:
-        result = deviceVec[index]->reclockUser(regionIndex, targetFreq);
+        result = deviceVec[index]->reclock2(regionIndex, targetFreq);
         break;
     case xcldev::FAN:
         result = deviceVec[index]->fan(fanSpeed);
-        break;
-    case xcldev::FLASH:
-        result = deviceVec[index]->flash(mcsFile1, mcsFile2, flashType);
         break;
     case xcldev::PROGRAM:
         result = deviceVec[index]->program(xclbin, regionIndex);
@@ -638,7 +556,6 @@ int main(int argc, char *argv[])
         catch (...) {
             result = -1;
             std::cout << std::endl;
-            //std::cout << "ERROR: query failed" << std::endl;
         }
         break;
     case xcldev::DUMP:
@@ -707,22 +624,17 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  dmatest [-d card] [-b [0x]block_size_KB]\n";
     std::cout << "  dump\n";
     std::cout << "  help\n";
-    std::cout << "  list\n";
     std::cout << "  m2mtest\n";
     std::cout << "  mem --read [-d card] [-a [0x]start_addr] [-i size_bytes] [-o output filename]\n";
     std::cout << "  mem --write [-d card] [-a [0x]start_addr] [-i size_bytes] [-e pattern_byte]\n";
     std::cout << "  program [-d card] [-r region] -p xclbin\n";
     std::cout << "  query   [-d card [-r region]]\n";
-    std::cout << "  reset   [-d card]\n";
     std::cout << "  status [-d card] [--debug_ip_name]\n";
     std::cout << "  scan\n";
     std::cout << "  top [-i seconds]\n";
     std::cout << "  validate [-d card]\n";
     std::cout << " Requires root privileges:\n";
-    std::cout << "  flash   [-d card] -m primary_mcs [-n secondary_mcs] [-o bpi|spi]\n";
-    std::cout << "  flash   [-d card] -a <all | shell> [-t timestamp]\n";
-    std::cout << "  flash   [-d card] -p msp432_firmware\n";
-    std::cout << "  flash   scan [-v]\n";
+    std::cout << "  reset  [-d card]\n";
     std::cout << "  p2p    [-d card] --enable\n";
     std::cout << "  p2p    [-d card] --disable\n";
     std::cout << "  p2p    [-d card] --validate\n";
@@ -749,10 +661,6 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  " << "Default values for address is 0x0, size is DDR size and pattern is 0x0\n";
     std::cout << "List the debug IPs available on the platform\n";
     std::cout << "  " << exe << " status \n";
-    std::cout << "Flash all installed shell for all cards, if not done\n";
-    std::cout << "  sudo " << exe << " flash -a all\n";
-    std::cout << "Show shell related information for all cards in the system\n";
-    std::cout << "  sudo " << exe << " flash scan\n";
     std::cout << "Validate installation on card 1\n";
     std::cout << "  " << exe << " validate -d 1\n";
 }
@@ -916,8 +824,6 @@ int xcldev::xclTop(int argc, char *argv[])
     if (!ctrl.dev) {
         return -ENOENT;
     }
-
-    std::cout << "top interval is " << interval << std::endl;
 
     initscr();
     cbreak();
@@ -1229,17 +1135,33 @@ int xcldev::device::reset(xclResetKind kind)
     return xclResetDevice(m_handle, kind);
 }
 
+static bool canProceed()
+{
+    std::string input;
+    bool answered = false;
+    bool proceed = false;
+
+    while (!answered) {
+        std::cout << "Are you sure you wish to proceed? [y/n]: ";
+        std::cin >> input;
+        if(input.compare("y") == 0 || input.compare("n") == 0)
+            answered = true;
+    }
+
+    proceed = (input.compare("y") == 0);
+    if (!proceed)
+        std::cout << "Action canceled." << std::endl;
+    return proceed;
+}
+
 int xcldev::xclReset(int argc, char *argv[])
 {
     int c;
     unsigned index = 0;
-    bool ocl_only = false;
-    bool force = false;
     bool root = ((getuid() == 0) || (geteuid() == 0));
     const std::string usage("Options: [-d index]");
 
-    // Both -x and -f are hidden options.
-    while ((c = getopt(argc, argv, "d:hxf")) != -1) {
+    while ((c = getopt(argc, argv, "d:")) != -1) {
         switch (c) {
         case 'd': {
             int ret = str2index(optarg, index);
@@ -1252,15 +1174,6 @@ int xcldev::xclReset(int argc, char *argv[])
             }
             break;
         }
-        case 'h':
-            std::cout << "WARNING: -h option is obsolete." << std::endl;
-            break;
-        case 'x':
-            ocl_only = true;
-            break;
-        case 'f':
-            force = true;
-            break;
         default:
             std::cerr << usage << std::endl;
             return -EINVAL;
@@ -1271,22 +1184,20 @@ int xcldev::xclReset(int argc, char *argv[])
         return -EINVAL;
     }
 
-    if ((ocl_only || force) && !root) {
+    if (!root) {
         std::cout << "ERROR: root privileges required." << std::endl;
         return -EPERM;
     }
+
+    std::cout << "All eixisting processes will be killed." << std::endl;
+    if(!canProceed())
+        return -ECANCELED;
 
     std::unique_ptr<device> d = xclGetDevice(index);
     if (!d)
         return -EINVAL;
 
-    int err = 0;
-    if (ocl_only)
-        err = d->reset(XCL_RESET_KERNEL);
-    if (force)
-        err = d->reset(XCL_RESET_FULL);
-    else
-        err = d->reset(XCL_USER_RESET);
+    int err = d->reset(XCL_USER_RESET);
     if (err)
         std::cout << "ERROR: " << strerror(err) << std::endl;
     return err;
@@ -1402,16 +1313,16 @@ int xcldev::device::testP2p()
     int p2p_enabled = 0;
 
     auto dev = pcidev::get_dev(m_idx);
-    if (dev->user == nullptr)
+    if (dev == nullptr)
         return -EINVAL;
 
-    dev->user->sysfs_get("", "p2p_enable", errmsg, p2p_enabled);
+    dev->sysfs_get("", "p2p_enable", errmsg, p2p_enabled);
     if (p2p_enabled != 1) {
         std::cout << "P2P BAR is not enabled. Skipping validation" << std::endl;
         return 0;
     }
 
-    dev->user->sysfs_get("icap", "mem_topology", errmsg, buf);
+    dev->sysfs_get("icap", "mem_topology", errmsg, buf);
 
     const mem_topology *map = (mem_topology *)buf.data();
     if(buf.empty() || map->m_count == 0) {
@@ -1641,16 +1552,16 @@ int xcldev::device::testM2m()
     int ret = 0;
 
     auto dev = pcidev::get_dev(m_idx);
-    if (dev->user == nullptr)
+    if (dev == nullptr)
         return -EINVAL;
 
-    dev->user->sysfs_get("mb_scheduler", "kds_numcdmas", errmsg, m2m_enabled);
+    dev->sysfs_get("mb_scheduler", "kds_numcdmas", errmsg, m2m_enabled);
     if (m2m_enabled == 0) {
         std::cout << "M2M is not available. Skipping validation" << std::endl;
         return 0;
     }
 
-    dev->user->sysfs_get("icap", "mem_topology", errmsg, buf);
+    dev->sysfs_get("icap", "mem_topology", errmsg, buf);
     const mem_topology *map = (mem_topology *)buf.data();
 
     if(buf.empty() || map->m_count == 0) {
@@ -1660,7 +1571,7 @@ int xcldev::device::testM2m()
         return -EINVAL;
     }
 
-    dev->user->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
+    dev->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
     uuid_parse(xclbinid.c_str(), uuid);
 
     if(xclbinid.empty()) {

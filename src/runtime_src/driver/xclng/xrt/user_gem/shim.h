@@ -24,9 +24,8 @@
 
 #include "driver/include/xclhal2.h"
 #include "driver/xclng/include/xocl_ioctl.h"
-#include "driver/xclng/include/mgmt-ioctl.h"
-#include "driver/xclng/include/mgmt-reg.h"
 #include "driver/xclng/include/qdma_ioctl.h"
+#include "scan.h"
 #include <libdrm/drm.h>
 #include <mutex>
 #include <fstream>
@@ -38,24 +37,11 @@
 
 namespace xocl {
 
-const unsigned SHIM_USER_BAR = 0x0;
-const unsigned SHIM_MGMT_BAR = 0x10000;
 const uint64_t mNullAddr = 0xffffffffffffffffull;
 const uint64_t mNullBO = 0xffffffff;
 
 class shim
 {
-    struct ELARecord
-    {
-        unsigned mStartAddress;
-        unsigned mEndAddress;
-        unsigned mDataCount;
-        std::streampos mDataPos;
-        ELARecord() : mStartAddress(0), mEndAddress(0), mDataCount(0), mDataPos(0) {}
-    };
-
-    typedef std::list<ELARecord> ELARecordList;
-
 public:
     ~shim();
     shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity);
@@ -81,13 +67,10 @@ public:
 
     // Bitstream/bin download
     int xclLoadXclBin(const xclBin *buffer);
-    int xclLoadXclBinMgmt(const xclBin *buffer);
     int xclGetErrorStatus(xclErrorStatus *info);
     int xclGetDeviceInfo2(xclDeviceInfo2 *info);
     bool isGood() const;
-    bool isGoodMgmt() const;
     static shim *handleCheck(void * handle);
-    static shim *handleCheckMgmt(void * handle);
     int resetDevice(xclResetKind kind);
     int p2pEnable(bool enable, bool force);
     bool xclLockDevice();
@@ -103,7 +86,6 @@ public:
     ssize_t xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset);
 
     int xclGetSectionInfo(void *section_info, size_t *section_size, enum axlf_section_kind, int index);
-    int xclReClockUser(unsigned short region, const unsigned short *targetFreqMHz);
 
     // Performance monitoring
     // Control
@@ -170,28 +152,16 @@ public:
     ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
     int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int * actual, int timeout /*ms*/);
 
-    // Temporary hack for xbflash use only
-    char *xclMapMgmt(void) { return mMgtMap; }
-    xclDeviceHandle xclOpenMgmt(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level);
-    int xclMailbox(unsigned deviceIndex);
-    int xclMailboxMgmt(unsigned deviceIndex);
-    int xclMailboxMgmtPutID(unsigned deviceIndex, const char *id, const char *mbx_switch);
-    int xclMailboxUserGetID(unsigned deviceIndex, char *id);
-
 private:
+    std::shared_ptr<pcidev::pci_device> mDev;
     xclVerbosityLevel mVerbosity;
     std::ofstream mLogStream;
-    int mUserHandle;
-    int mMgtHandle;
     int mStreamHandle;
-    char *mUserMap;
     int mBoardNumber;
-    char *mMgtMap;
     bool mLocked;
     const char *mLogfileName;
     uint64_t mOffsets[XCL_ADDR_SPACE_MAX];
     xclDeviceInfo2 mDeviceInfo;
-    ELARecordList mRecordList;
     uint32_t mMemoryProfilingNumberSlots;
     uint32_t mAccelProfilingNumberSlots;
     uint32_t mStallProfilingNumberSlots;
@@ -207,43 +177,13 @@ private:
     void dev_fini();
 
     int xclLoadAxlf(const axlf *buffer);
-    int xclLoadAxlfMgmt(const axlf *buffer);
     void xclSysfsGetDeviceInfo(xclDeviceInfo2 *info);
     void xclSysfsGetUsageInfo(drm_xocl_usage_stat& stat);
     void xclSysfsGetErrorStatus(xclErrorStatus& stat);
 
-    // Upper two denote PF, lower two bytes denote BAR
-    // USERPF == 0x0
-    // MGTPF == 0x10000
-
-    int pcieBarRead(unsigned int pf_bar, unsigned long long offset, void* buffer, unsigned long long length);
-    int pcieBarWrite(unsigned int pf_bar, unsigned long long offset, const void* buffer, unsigned long long length);
     int freezeAXIGate();
     int freeAXIGate();
-    // PROM flashing
-    int prepare_microblaze(unsigned startAddress, unsigned endAddress);
-    int prepare(unsigned startAddress, unsigned endAddress);
-    int program_microblaze(std::ifstream& mcsStream, const ELARecord& record);
-    int program(std::ifstream& mcsStream, const ELARecord& record);
-    int program(std::ifstream& mcsStream);
-    int waitForReady_microblaze(unsigned code, bool verbose = true);
-    int waitForReady(unsigned code, bool verbose = true);
-    int waitAndFinish_microblaze(unsigned code, unsigned data, bool verbose = true);
-    int waitAndFinish(unsigned code, unsigned data, bool verbose = true);
 
-    //XSpi flashing.
-    bool prepareXSpi();
-    int programXSpi(std::ifstream& mcsStream, const ELARecord& record);
-    int programXSpi(std::ifstream& mcsStream);
-    bool waitTxEmpty();
-    bool isFlashReady();
-    //bool windDownWrites();
-    bool bulkErase();
-    bool sectorErase(unsigned Addr);
-    bool writeEnable();
-#if 0
-    bool dataTransfer(bool read);
-#endif
     bool readPage(unsigned addr, uint8_t readCmd = 0xff);
     bool writePage(unsigned addr, uint8_t writeCmd = 0xff);
     unsigned readReg(unsigned offset);
@@ -304,6 +244,10 @@ private:
     aio_context_t mAioContext;
     bool mAioEnabled;
 }; /* shim */
+
+int xclMailboxOpen(unsigned deviceIndex, bool user);
+int xclMailboxConfRead(unsigned deviceIndex, bool user, struct xclMailboxConf *conf);
+int xclMailboxConfWrite(unsigned deviceIndex, bool user, struct xclMailboxConf *conf);
 
 } /* xocl */
 
