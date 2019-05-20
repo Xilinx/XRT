@@ -4,15 +4,15 @@ echo "Unloading old AWS Linux kernel modules"
 modprobe -r awsmgmt
 
 echo "Unregistering AWS Linux kernel module sources @XRT_VERSION_STRING@ from dkms"
-dkms remove -m xrt-aws -v @XRT_VERSION_STRING@ --all > /dev/null 2>&1
+res=$(dkms remove -m xrt-aws -v @XRT_VERSION_STRING@ --all)
 if [ $? -ne 0 ]; then
-    echo "Error: 'dkms remove of xrt-aws' failed"
+    echo "Error: dkms: $res"
 fi
 find /lib/modules -type f -name awsmgmt.ko -delete
 find /lib/modules -type f -name awsmgmt.ko.kz -delete
-depmod -A > /dev/null 2>&1
+res=$(depmod -A)
 if [ $? -ne 0 ]; then
-    echo "Error: 'depmod -A' failed"
+    echo "Error: depmod: $res"
 fi
 
 rm -f /etc/udev/rules.d/10-awsmgmt.rules
