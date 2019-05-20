@@ -18,6 +18,7 @@
 #include <cstring>
 #include <iostream>
 #include <map>
+#include <functional>
 #include <getopt.h>
 
 #include "flasher.h"
