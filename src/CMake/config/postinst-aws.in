@@ -22,15 +22,9 @@ echo "Invoking xrt-aws common.postinst"
 #that prints benign 'Error' messages. These are not truly errors, so (for RHEL/CentOS)
 #we are capturing them in the 'res' variable, and only displaying them if the
 #command returns non-zero.
-if [ -f /etc/lsb-release ]; then #Ubuntu
-    /usr/lib/dkms/common.postinst xrt-aws @XRT_VERSION_STRING@ "" "" $2
-else #RHEL/CentOS
-    res=$("(/usr/lib/dkms/common.postinst xrt-aws @XRT_VERSION_STRING@ "" "" $2)" 2>&1)
-fi
+res=$(/usr/lib/dkms/common.postinst xrt-aws @XRT_VERSION_STRING@ '' '' $2)
 if [ $? -ne 0 ]; then
-    if [ -e res ]; then
-        echo "Error: common.postinst: $res"
-    fi
+    echo "Error: $res"
 else
     echo "Finished xrt-aws common.postinst"
     install -m 644 /usr/src/xrt-aws-@XRT_VERSION_STRING@/driver/aws/kernel/mgmt/10-awsmgmt.rules /etc/udev/rules.d
