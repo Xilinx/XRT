@@ -107,7 +107,7 @@ private:
 void rescan(void);
 size_t get_dev_total(bool user = true);
 size_t get_dev_ready(bool user = true);
-std::shared_ptr<pci_device> get_dev(int index, bool user = true);
+std::shared_ptr<pci_device> get_dev(unsigned index, bool user = true);
 
 } /* pcidev */
 

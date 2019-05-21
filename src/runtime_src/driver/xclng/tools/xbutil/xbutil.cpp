@@ -93,13 +93,19 @@ void print_pci_info(std::ostream &ostr)
         return;
     }
 
-    for (unsigned j = 0; j < pcidev::get_dev_total(); j++)
-        ostr << "[" << j << "]:" << pcidev::get_dev(j) << std::endl;
+    for (unsigned j = 0; j < pcidev::get_dev_total(); j++) {
+        auto dev = pcidev::get_dev(j);
+        if (dev->is_ready)
+            ostr << " ";
+        else
+            ostr << "*";
+        ostr << "[" << j << "]:" << dev << std::endl;
+    }
 
     if (pcidev::get_dev_total() != pcidev::get_dev_ready()) {
         ostr << "WARNING: "
-            << " card(s) marked by '*' are not ready, "
-            << "run xbmgmt flash --scan -verbose to further check the details."
+            << "card(s) marked by '*' are not ready, "
+            << "run xbmgmt flash --scan --verbose to further check the details."
             << std::endl;
     }
 }

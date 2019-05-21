@@ -330,12 +330,14 @@ static int autoFlash(unsigned index, std::string& shell,
         // Perform DSA and BMC updating
         for (auto p : boardsToUpdate) {
             bool reboot;
+            std::cout << std::endl;
             if (updateShellAndSC(p.first, p.second, reboot) == 0)
                 success++;
             needreboot |= reboot;
         }
     }
 
+    std::cout << std::endl;
     std::cout << success << " Card(s) flashed successfully." << std::endl;
     if (needreboot) {
         std::cout << "Cold reboot machine to load the new image on card(s)."
@@ -384,11 +386,14 @@ static int flashCompatibleMode(int argc, char *argv[])
         switch (opt) {
         case 'a':
             dsa = optarg;
-            if (dsa.compare("all") == 0)
-                dsa.clear();
             break;
         case 'd':
-            devIdx = atoi(optarg);
+            if (std::string(optarg).find(":") == std::string::npos)
+                devIdx = atoi(optarg);
+            else
+                devIdx = bdf2index(optarg);
+            if (devIdx == UINT_MAX)
+                return -EINVAL;
             break;
         case 'f':
             force = true;
@@ -400,7 +405,7 @@ static int flashCompatibleMode(int argc, char *argv[])
             secondary = optarg;
             break;
         case 'o':
-            flashType = std::string(optarg);
+            flashType = optarg;
             break;
         case 'p':
             bmc = optarg;
@@ -442,7 +447,13 @@ static int flashCompatibleMode(int argc, char *argv[])
         return 0;
     }
 
-    return autoFlash(devIdx, dsa, timestamp, force);
+    if (!dsa.empty()) {
+        if (dsa.compare("all") == 0)
+            dsa.clear();
+        return autoFlash(devIdx, dsa, timestamp, force);
+    }
+
+    return -EINVAL;
 }
 
 static int scan(int argc, char *argv[])
