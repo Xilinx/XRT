@@ -595,6 +595,18 @@ static void xclmgmt_get_data(struct xclmgmt_dev *lro, void *buf)
 
 }
 
+static void xclmgmt_mig_get_data(struct xclmgmt_dev *lro, void *mig_ecc, size_t entry_sz)
+{
+	int i;
+	size_t offset = 0;
+
+	for (i = 0; i < MAX_M_COUNT; i++) {
+
+		xocl_mig_get_data(lro, i, mig_ecc+offset, entry_sz);
+		offset += entry_sz;
+	}
+}
+
 static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void **resp, size_t *sz)
 {
 	size_t resp_sz = 0, current_sz;
@@ -618,10 +630,25 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 		*resp = vzalloc(current_sz);
 		(void) xclmgmt_get_data(lro, *resp);
 		break;
+	case MIG_ECC:
+		current_sz = sizeof(struct xcl_mig_ecc)*MAX_M_COUNT;
+		*resp = vzalloc(current_sz);
+		(void) xclmgmt_mig_get_data(lro, *resp, subdev_req->size);
+		break;
+	case FIREWALL:
+		current_sz = sizeof(struct xcl_mig_ecc);
+		*resp = vzalloc(current_sz);
+		(void) xocl_af_get_data(lro, *resp);
+		break;
+	case DNA:
+		current_sz = sizeof(struct xcl_dna);
+		*resp = vzalloc(current_sz);
+		(void) xocl_dna_get_data(lro, *resp);
+		break;
 	default:
 		break;
 	}
-	resp_sz = min_t(size_t, subdev_req->size, current_sz);
+	resp_sz = min_t(size_t, subdev_req->size*subdev_req->entries, current_sz);
 	if (!*resp)
 		return -EINVAL;
 	*sz = resp_sz;
@@ -729,8 +756,7 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	}
 	case MAILBOX_REQ_USER_PROBE: {
 		struct mailbox_conn *conn = (struct mailbox_conn *)req->data;
-		struct mailbox_conn_resp *resp =
-			(struct mailbox_conn_resp *)vzalloc(sizeof(*resp));
+		struct mailbox_conn_resp *resp = vzalloc(sizeof(*resp));
 		uint64_t ch_switch = 0;
 
 		if (!resp)

@@ -225,7 +225,6 @@ enum subdev_id {
 		.multi_inst = true,			\
 	}
 
-
 #define	XOCL_RES_MIG_HBM				\
 		((struct resource []) {			\
 			{				\
@@ -237,7 +236,7 @@ enum subdev_id {
 
 #define	XOCL_DEVINFO_MIG_HBM				\
 	{						\
-		XOCL_SUBDEV_MIG_HBM,			\
+		XOCL_SUBDEV_MIG,			\
 		XOCL_MIG,				\
 		XOCL_RES_MIG_HBM,			\
 		ARRAY_SIZE(XOCL_RES_MIG_HBM),		\
@@ -275,6 +274,14 @@ enum subdev_id {
 		XOCL_FIREWALL,				\
 		XOCL_RES_AF,				\
 		ARRAY_SIZE(XOCL_RES_AF),		\
+	}
+
+#define	XOCL_DEVINFO_AF_USER				\
+	{						\
+		XOCL_SUBDEV_AF,				\
+		XOCL_FIREWALL,				\
+		NULL,					\
+		0,					\
 	}
 
 #define	XOCL_RES_AF_DSA52				\
@@ -824,6 +831,7 @@ enum subdev_id {
 			XOCL_DEVINFO_XVC_PUB,				\
 			XOCL_DEVINFO_ICAP_USER,				\
 			XOCL_DEVINFO_XMC_USER,				\
+			XOCL_DEVINFO_AF_USER,				\
 		})
 
 #define	XOCL_BOARD_USER_XDMA_DSA50					\

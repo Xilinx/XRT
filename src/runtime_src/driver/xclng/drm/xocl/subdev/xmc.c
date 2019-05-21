@@ -223,6 +223,7 @@ static void xmc_read_from_peer(struct platform_device *pdev)
 	mb_req->req = MAILBOX_REQ_PEER_DATA;
 	subdev_peer.size = resp_len;
 	subdev_peer.kind = SENSOR;
+	subdev_peer.entries = 1;
 
 	memcpy(mb_req->data, &subdev_peer, data_len);
 
@@ -1054,7 +1055,7 @@ static int get_temp_by_m_tag(struct xocl_xmc *xmc, char *m_tag)
 		return -ENODEV;
 
 
-	if (!strncmp(m_tag, "HBM", 3)){
+	if (!strncmp(m_tag, "HBM", 3)) {
 		safe_read32(xmc, XMC_HBM_TEMP_REG + sizeof(u32)*VOLTAGE_INS, &ret);
 		return ret;
 	}
@@ -1108,9 +1109,13 @@ static ssize_t scaling_governor_show(struct device *dev, struct device_attribute
 	mode = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_MODE_REG);
 	mutex_unlock(&xmc->xmc_lock);
 
-	switch(mode) {
-		case 0: strcpy(val, "power"); break;
-		case 1: strcpy(val, "temp"); break;
+	switch (mode) {
+	case 0:
+		strcpy(val, "power");
+		break;
+	case 1:
+		strcpy(val, "temp");
+		break;
 	}
 
 	return sprintf(buf, "%s\n", val);
@@ -1849,7 +1854,6 @@ static int xmc_remove(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, NULL);
 	devm_kfree(&pdev->dev, xmc);
-
 	return 0;
 }
 
@@ -1857,7 +1861,7 @@ static int xmc_probe(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc;
 	struct resource *res;
-	void	*xdev_hdl;
+	void *xdev_hdl;
 	int i, err;
 
 	xmc = devm_kzalloc(&pdev->dev, sizeof(*xmc), GFP_KERNEL);
