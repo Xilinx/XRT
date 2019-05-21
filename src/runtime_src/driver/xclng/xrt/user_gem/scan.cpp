@@ -491,29 +491,37 @@ int pcidev::pci_device::flock(int op)
 class pci_device_scanner {
 public:
 
-    static pci_device_scanner *get_scanner() {
+    static pci_device_scanner *get_scanner()
+    {
         static pci_device_scanner scanner;
         return &scanner;
     }
 
-    void rescan() {
+    void rescan()
+    {
         std::lock_guard<std::mutex> l(lock);
         rescan_nolock();
     }
 
-    size_t get_num_ready(bool is_user) {
+    size_t get_num_ready(bool is_user)
+    {
         std::lock_guard<std::mutex> l(lock);
         return is_user ? num_user_ready : num_mgmt_ready;
     }
 
-    size_t get_num_total(bool is_user) {
+    size_t get_num_total(bool is_user)
+    {
         std::lock_guard<std::mutex> l(lock);
         return is_user ? user_list.size() : mgmt_list.size();
     }
 
-    const std::shared_ptr<pcidev::pci_device> get_dev(int index, bool user) {
+    const std::shared_ptr<pcidev::pci_device> get_dev(unsigned index,bool user)
+    {
         std::lock_guard<std::mutex> l(lock);
-        return user ? user_list[index] : mgmt_list[index];
+        auto list = user ? &user_list : &mgmt_list;
+        if (index >= list->size())
+            return nullptr;
+        return (*list)[index];
     }
 
 private:
@@ -604,7 +612,7 @@ size_t pcidev::get_dev_total(bool user)
     return pci_device_scanner::get_scanner()->get_num_total(user);
 }
 
-std::shared_ptr<pcidev::pci_device> pcidev::get_dev(int index, bool user)
+std::shared_ptr<pcidev::pci_device> pcidev::get_dev(unsigned index, bool user)
 {
     return pci_device_scanner::get_scanner()->get_dev(index, user);
 }
@@ -612,9 +620,6 @@ std::shared_ptr<pcidev::pci_device> pcidev::get_dev(int index, bool user)
 std::ostream& operator<<(std::ostream& stream,
     const std::shared_ptr<pcidev::pci_device>& dev)
 {
-    if (!dev->is_ready)
-        stream << "*";
-
     std::ios_base::fmtflags f(stream.flags());
 
     stream << std::hex << std::setfill('0');
@@ -628,9 +633,10 @@ std::ostream& operator<<(std::ostream& stream,
     // board/shell name
     std::string shell_name;
     std::string err;
+    bool is_mfg = false;
     uint64_t ts = 0;
-    dev->sysfs_get("rom", "VBNV", err, shell_name);
-    if (!err.empty()) {
+    dev->sysfs_get("", "mfg", err, is_mfg);
+    if (is_mfg) {
         unsigned ver = 0;
         std::string nm;
 
@@ -641,6 +647,7 @@ std::ostream& operator<<(std::ostream& stream,
         shell_name += "_GOLDEN_";
         shell_name += std::to_string(ver);
     } else {
+        dev->sysfs_get("rom", "VBNV", err, shell_name);
         dev->sysfs_get("rom", "timestamp", err, ts);
     }
     stream << ":" << shell_name;

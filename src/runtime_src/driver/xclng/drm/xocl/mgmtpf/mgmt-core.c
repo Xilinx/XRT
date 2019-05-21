@@ -755,6 +755,29 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	}
 }
 
+void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online)
+{
+	struct mailbox_req *mb_req = NULL;
+	struct mailbox_peer_state mb_conn = { 0 };
+	size_t data_len = 0, reqlen = 0;
+
+	data_len = sizeof(struct mailbox_peer_state);
+	reqlen = sizeof(struct mailbox_req) + data_len;
+	mb_req = vzalloc(reqlen);
+	if (!mb_req)
+		return;
+
+	mb_req->req = MAILBOX_REQ_MGMT_STATE;
+	if (online)
+		mb_conn.state_flags |= MB_STATE_ONLINE;
+	else
+		mb_conn.state_flags |= MB_STATE_OFFLINE;
+	memcpy(mb_req->data, &mb_conn, data_len);
+
+	(void) xocl_peer_notify(lro, mb_req, reqlen);
+	vfree(mb_req);
+}
+
 /*
  * Called after minimum initialization is done. Should not return failure.
  * If something goes wrong, it should clean up and return back to minimum
@@ -808,6 +831,8 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 
 	/* Launch the mailbox server. */
 	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
+	/* Notify our peer that we're listening. */
+	xclmgmt_connect_notify(lro, true);
 
 	lro->ready = true;
 	xocl_err(&pdev->dev, "device fully initialized\n");
@@ -819,30 +844,6 @@ fail_firewall:
 	xclmgmt_teardown_msix(lro);
 fail:
 	xocl_err(&pdev->dev, "failed to fully probe device, err: %d\n", ret);
-}
-
-
-void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online)
-{
-	struct mailbox_req *mb_req = NULL;
-	struct mailbox_peer_state mb_conn = { 0 };
-	size_t data_len = 0, reqlen = 0;
-
-	data_len = sizeof(struct mailbox_peer_state);
-	reqlen = sizeof(struct mailbox_req) + data_len;
-	mb_req = vzalloc(reqlen);
-	if (!mb_req)
-		return;
-
-	mb_req->req = MAILBOX_REQ_MGMT_STATE;
-	if (online)
-		mb_conn.state_flags |= MB_STATE_ONLINE;
-	else
-		mb_conn.state_flags |= MB_STATE_OFFLINE;
-	memcpy(mb_req->data, &mb_conn, data_len);
-
-	(void) xocl_peer_notify(lro, mb_req, reqlen);
-	vfree(mb_req);
 }
 
 /*
@@ -945,7 +946,12 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	xclmgmt_extended_probe(lro);
 
-	xclmgmt_connect_notify(lro, true);
+	/*
+	 * Even if extended probe fails, make sure feature ROM subdev
+	 * is loaded to provide basic info about the board.
+	 */
+	(void) xocl_subdev_create(lro,
+		&(struct xocl_subdev_info)XOCL_DEVINFO_FEATURE_ROM);
 
 	return 0;
 

@@ -33,8 +33,14 @@ int scanHandler(int argc, char *argv[])
     if (total == 0) {
         std::cout << "No card is found!" << std::endl;
     } else {
-        for (size_t i = 0; i < total; i++)
-            std::cout << pcidev::get_dev(i, false) << std::endl;
+        for (size_t i = 0; i < total; i++) {
+            auto dev = pcidev::get_dev(i, false);
+            if (dev->is_ready)
+                std::cout << " ";
+            else
+                std::cout << "*";
+            std::cout << dev << std::endl;
+        }
     }
 
     return 0;
