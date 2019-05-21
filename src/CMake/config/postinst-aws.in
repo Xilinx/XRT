@@ -18,9 +18,13 @@ if [ -n "`dkms status -m xrt-aws -v @XRT_VERSION_STRING@`" ]; then
 fi
 
 echo "Invoking xrt-aws common.postinst"
-if [ -f /etc/lsb-release ]; then
+#DKMS common.postinst behaves differently on RHEL/CentOS due to 'weak-modules' feature
+#that prints benign 'Error' messages. These are not truly errors, so (for RHEL/CentOS)
+#we are capturing them in the 'res' variable, and only displaying them if the
+#command returns non-zero.
+if [ -f /etc/lsb-release ]; then #Ubuntu
     /usr/lib/dkms/common.postinst xrt-aws @XRT_VERSION_STRING@ "" "" $2
-else
+else #RHEL/CentOS
     res=$("(/usr/lib/dkms/common.postinst xrt-aws @XRT_VERSION_STRING@ "" "" $2)" 2>&1)
 fi
 if [ $? -ne 0 ]; then
