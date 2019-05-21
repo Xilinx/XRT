@@ -19,8 +19,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-//#include "lib/xmalogger.h"
-#include <xrt.h>
+#include "core/include/xrt.h"
 
 #ifdef __cplusplus
 extern "C" {

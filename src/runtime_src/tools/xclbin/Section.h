@@ -20,7 +20,7 @@
 // ----------------------- I N C L U D E S -----------------------------------
 
 // #includes here - please keep these to a bare minimum!
-#include "xclbin.h"
+#include "core/include/xclbin.h"
 
 #include <string>
 #include <fstream>

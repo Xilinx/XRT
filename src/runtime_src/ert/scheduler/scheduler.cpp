@@ -19,7 +19,7 @@
  */
 
 #ifndef ERT_HW_EMU
-#include "driver/include/ert.h"
+#include "core/include/ert.h"
 #else
 #include "ert.h"
 #endif

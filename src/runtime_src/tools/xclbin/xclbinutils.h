@@ -21,7 +21,7 @@
 // File Name: xclbinutil.cxx
 // ============================================================================
 
-#include "xclbin.h"
+#include "core/include/xclbin.h"
 #include <map>
 #include <vector>
 #include <string.h>

@@ -36,10 +36,10 @@
 #include "xclbin/binary.h"
 #include "impl/spir.h"
 
-#include "xclperf.h"
-#include "xcl_app_debug.h"
-#include "xclbin.h"
-#include "xcl_axi_checker_codes.h"
+#include "core/include/xclperf.h"
+#include "core/include/xcl_app_debug.h"
+#include "core/include/xclbin.h"
+#include "core/include/xcl_axi_checker_codes.h"
 
 #include <map>
 #include <sstream>

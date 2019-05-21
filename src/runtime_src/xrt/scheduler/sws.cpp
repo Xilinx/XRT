@@ -25,9 +25,9 @@
 #include "xrt/util/debug.h"
 #include "xrt/util/thread.h"
 #include "xrt/util/task.h"
-#include "driver/include/ert.h"
-#include "driver/include/xclbin.h"
-#include "driver/common/xclbin_parser.h"
+#include "core/include/ert.h"
+#include "core/include/xclbin.h"
+#include "core/common/xclbin_parser.h"
 #include "command.h"
 #include <limits>
 #include <bitset>

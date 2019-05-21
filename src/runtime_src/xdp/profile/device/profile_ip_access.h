@@ -21,8 +21,8 @@
 #include <stdexcept>
 #include <fstream>
 #include <iostream>
-#include "xclhal2.h"
-#include "xclbin.h"
+#include "core/include/xclhal2.h"
+#include "core/include/xclbin.h"
 
 namespace xdp {
 

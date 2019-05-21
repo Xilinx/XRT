@@ -21,7 +21,7 @@
 #ifndef _XRT_XRTEXEC_H_
 #define _XRT_XRTEXEC_H_
 #include <memory>
-#include "ert.h"
+#include "core/include/ert.h"
 
 struct xrt_device;
 

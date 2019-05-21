@@ -14,15 +14,15 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#include <stdio.h>
-#include "xclhal2.h"
+#include "core/include/xclhal2.h"
+#include "core/include/ert.h"
 #include "xmaplugin.h"
 
+#include <cstdio>
 #include <iostream>
-#include <memory.h>
+#include <cstring>
 #include <thread>
 #include <chrono>
-#include "ert.h"
 using namespace std;
 
 #define XMAPLUGIN_MOD "xmapluginlib"

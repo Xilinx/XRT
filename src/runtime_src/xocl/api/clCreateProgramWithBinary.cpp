@@ -17,7 +17,7 @@
 // (c) Copyright 2017 Xilinx, Inc. All rights reserved.
 
 #include <CL/opencl.h>
-#include "xclbin.h"
+#include "core/include/xclbin.h"
 
 #include "xocl/core/range.h"
 #include "xocl/core/error.h"

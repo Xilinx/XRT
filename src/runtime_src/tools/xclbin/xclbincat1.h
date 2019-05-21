@@ -27,7 +27,7 @@
 #include <map>
 #include <string>
 #include <vector>
-#include "xclbin.h"
+#include "core/include/xclbin.h"
 
 namespace xclbincat1 {
 

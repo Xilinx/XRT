@@ -19,7 +19,7 @@
 #include "context.h"
 #include "device.h"
 #include "compute_unit.h"
-#include "driver/common/xclbin_parser.h"
+#include "core/common/xclbin_parser.h"
 
 #include <sstream>
 #include <iostream>

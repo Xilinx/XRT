@@ -23,8 +23,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
-#include <xclhal2.h>
-//#include <xclbin.h>
+#include "core/include/xclhal2.h"
 #include "app/xmaerror.h"
 #include "app/xmalogger.h"
 #include "lib/xmaxclbin.h"
@@ -32,7 +31,7 @@
 #include "lib/xmahw_private.h"
 #include <dlfcn.h>
 #include <iostream>
-#include "ert.h"
+#include "core/include/ert.h"
 
 //#define xma_logmsg(f_, ...) printf((f_), ##__VA_ARGS__)
 #define XMAAPI_MOD "xmahw_hal"

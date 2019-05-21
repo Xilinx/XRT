@@ -16,7 +16,7 @@
 
 #include "xclbincat1.h"
 
-#include "xclbin.h"
+#include "core/include/xclbin.h"
 #include "xclbindata.h"
 #include "xclbinutils.h"
 #include <sys/stat.h>

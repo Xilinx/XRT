@@ -16,7 +16,7 @@
 
 #include "binary.h"
 
-#include "driver/include/xclbin.h"
+#include "core/include/xclbin.h"
 
 #include <algorithm>
 #include <iostream>
