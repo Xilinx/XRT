@@ -28,5 +28,8 @@ if platform_ID is None:
 devices = platforms[platform_ID].get_devices()
 print("\n%d devices were found" %len(devices))
 print(devices)
+ 
 
-ctx = 
+
+
+
