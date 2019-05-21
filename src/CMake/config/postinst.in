@@ -29,9 +29,15 @@ if [ -e $DRACUT_CONF_PATH ]; then
 fi
 
 echo "Invoking DKMS common.postinst for xrt"
-res=$((/usr/lib/dkms/common.postinst xrt @XRT_VERSION_STRING@ "" "" $2) 2>&1)
+if [ -f /etc/lsb-release ]; then
+    /usr/lib/dkms/common.postinst xrt @XRT_VERSION_STRING@ "" "" $2
+else
+    res=$("( /usr/lib/dkms/common.postinst xrt @XRT_VERSION_STRING@ "" "" $2 )" 2>&1 )
+fi
 if [ $? -ne 0 ]; then
-    echo "Error: common.postinst: $res"
+    if [ -e res ]; then
+        echo "Error: common.postinst: $res"
+    fi
 else
     echo "Finished DKMS common.postinst"
     install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/userpf/10-xocl.rules /etc/udev/rules.d
