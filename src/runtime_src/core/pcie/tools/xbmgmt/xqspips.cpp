@@ -33,7 +33,8 @@
 # define XQSPIPS_UNUSED __attribute__((unused))
 #endif
 
-#define SAVE_FILE 0
+#define SAVE_FILE                   0
+#define FLASH_BASE                  0x040000
 
 /*
  * The following constants define the commands which may be sent to the Flash device.
@@ -210,9 +211,9 @@ static int flashVendor = -1;
  *
  * - Bring mgmt mapping from Flasher object
  */
-XQSPIPS_Flasher::XQSPIPS_Flasher(unsigned int device_index, char *inMap)
+XQSPIPS_Flasher::XQSPIPS_Flasher(std::shared_ptr<pcidev::pci_device> dev)
 {
-    mMgmtMap = inMap;
+    mDev = dev;
     mTxBytes = 0;
     mRxBytes = 0;
     mMaxNumSectors = 0;
@@ -253,7 +254,7 @@ void XQSPIPS_Flasher::clearBuffers(unsigned size)
 uint32_t XQSPIPS_Flasher::readReg(unsigned RegOffset)
 {
     unsigned value;
-    int status = Flasher::flashRead(0, (unsigned long long)mMgmtMap + RegOffset, &value, 4);
+    int status = mDev->pcieBarRead(FLASH_BASE + RegOffset, &value, 4);
     if(status != 0) {
         assert(0);
         std::cout << "read reg ERROR" << std::endl;
@@ -263,7 +264,7 @@ uint32_t XQSPIPS_Flasher::readReg(unsigned RegOffset)
 
 int XQSPIPS_Flasher::writeReg(unsigned RegOffset, unsigned value)
 {
-    int status = Flasher::flashWrite(0, (unsigned long long)mMgmtMap + RegOffset, &value, 4);
+    int status = mDev->pcieBarWrite(FLASH_BASE + RegOffset, &value, 4);
     if(status != 0) {
         assert(0);
         std::cout << "write reg ERROR " << std::endl;

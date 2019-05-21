@@ -28,27 +28,14 @@
 
 #define FLASH_BASE_ADDRESS BPI_FLASH_OFFSET
 #define MAGIC_XLNX_STRING "xlnx" // from xclfeatures.h FeatureRomHeader
-#define MFG_REV_OFFSET  0x131008
-
-/*
- * destructor
- */
-Flasher::~Flasher()
-{
-    if(mHandle != nullptr)
-    {
-        xclClose(mHandle);
-    }
-}
 
 Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
 {
-    auto dev = pcidev::get_dev(mIdx);
-
+    std::string err;
     E_FlasherType type = E_FlasherType::UNKNOWN;
 
     if (typeStr.empty())
-        typeStr = dev->flash_type;
+        mDev->sysfs_get("", "flash_type", err, typeStr);
 
     if (typeStr.empty())
     {
@@ -87,7 +74,7 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
     {
     case SPI:
     {
-        XSPI_Flasher xspi(mIdx, mMgmtMap);
+        XSPI_Flasher xspi(mDev);
         if (primary == nullptr)
         {
             retVal = xspi.revertToMFG();
@@ -104,7 +91,7 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
     }
     case BPI:
     {
-        BPI_Flasher bpi(mIdx, mMgmtMap);
+        BPI_Flasher bpi(mDev);
         if (primary == nullptr)
         {
             std::cout << "ERROR: BPI mode does not support reverting to MFG." << std::endl;
@@ -121,7 +108,7 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
     }
     case QSPIPS:
     {
-        XQSPIPS_Flasher xqspi_ps(mIdx, mMgmtMap);
+        XQSPIPS_Flasher xqspi_ps(mDev);
         if (primary == nullptr)
         {
             std::cout << "ERROR: QSPIPS mode does not support reverting to MFG." << std::endl;
@@ -144,7 +131,7 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
 
 int Flasher::upgradeBMCFirmware(firmwareImage* bmc)
 {
-    XMC_Flasher flasher(mIdx, mMgmtMap);
+    XMC_Flasher flasher(mDev);
     const std::string e = flasher.probingErrMsg();
 
     if (!e.empty())
@@ -180,7 +167,7 @@ std::string int2PowerString(unsigned lvl)
 int Flasher::getBoardInfo(BoardInfo& board)
 {
     std::map<char, std::vector<char>> info;
-    XMC_Flasher flasher(mIdx, mMgmtMap);
+    XMC_Flasher flasher(mDev);
 
     if (!flasher.probingErrMsg().empty())
     {
@@ -209,34 +196,23 @@ int Flasher::getBoardInfo(BoardInfo& board)
 /*
  * constructor
  */
-Flasher::Flasher(unsigned int index) :
-    mIdx(index), mMgmtMap(nullptr), mFRHeader{}
+Flasher::Flasher(unsigned int index) : mFRHeader{}
 {
-    if(mIdx >= pcidev::get_dev_total()) {
-        std::cout << "ERROR: Invalid card index." << std::endl;
-        return;
-    }
-
-    mHandle = xclOpenMgmt(mIdx, NULL, XCL_QUIET);
-    if (!mHandle)
-    {
-        std::cout << "open card failed: " << errno << std::endl;
-        return;
-    }
-    mMgmtMap = xclMapMgmt(mHandle);
-    if (!mMgmtMap)
-    {
-        std::cout << "map card failed" << std::endl;
+    auto dev = pcidev::get_dev(index, false);
+    if(dev == nullptr) {
+        std::cout << "ERROR: Invalid card index:" << index << std::endl;
         return;
     }
 
     std::string err;
+    bool is_mfg = false;
+    dev->sysfs_get("", "mfg", err, is_mfg);
+
     unsigned long long feature_rom_base = 0;
-    pcidev::get_dev(mIdx)->mgmt->sysfs_get("", "feature_rom_offset", err,
-        feature_rom_base);
+    dev->sysfs_get("", "feature_rom_offset", err, feature_rom_base);
     if (err.empty() && feature_rom_base != 0)
     {
-        pcieBarRead(0, (unsigned long long)mMgmtMap + feature_rom_base,
+        dev->pcieBarRead(feature_rom_base,
             &mFRHeader, sizeof(struct FeatureRomHeader));
         // Something funny going on here. There must be a strange line ending
         // character. Using "<" will check for a match that EntryPointString
@@ -247,67 +223,16 @@ Flasher::Flasher(unsigned int index) :
             std::cout << "ERROR: Failed to detect feature ROM." << std::endl;
         }
     }
-    else if (pcidev::get_dev(mIdx)->is_mfg)
+    else if (is_mfg)
     {
-        pcieBarRead(0, (unsigned long long)mMgmtMap + MFG_REV_OFFSET,
-            &mGoldenVer, sizeof(mGoldenVer));
+        dev->pcieBarRead(MFG_REV_OFFSET, &mGoldenVer, sizeof(mGoldenVer));
     }
     else
     {
         std::cout << "ERROR: card not supported." << std::endl;
     }
-}
 
-/*
- * pcieBarRead
- */
-int Flasher::pcieBarRead(unsigned int pf_bar, unsigned long long offset, void* buffer, unsigned long long length)
-{
-    wordcopy(buffer, (void*)offset, length);
-    return 0;
-}
-
-/*
- * pcieBarWrite
- */
-int Flasher::pcieBarWrite(unsigned int pf_bar, unsigned long long offset, const void* buffer, unsigned long long length)
-{
-    wordcopy((void*)offset, buffer, length);
-    return 0;
-}
-
-int Flasher::flashRead(unsigned int pf_bar, unsigned long long offset, void* buffer, unsigned long long length)
-{
-    return pcieBarRead( pf_bar, ( offset + FLASH_BASE_ADDRESS ), buffer, length );
-}
-
-int Flasher::flashWrite(unsigned int pf_bar, unsigned long long offset, const void* buffer, unsigned long long length)
-{
-    return pcieBarWrite( pf_bar, (offset + FLASH_BASE_ADDRESS ), buffer, length );
-}
-
-/*
- * wordcopy
- *
- * Copy bytes word (32bit) by word.
- * Neither memcpy, nor std::copy work as they become byte copying on some platforms.
- */
-void* Flasher::wordcopy(void *dst, const void* src, size_t bytes)
-{
-    // assert dest is 4 byte aligned
-    assert((reinterpret_cast<intptr_t>(dst) % 4) == 0);
-
-    using word = uint32_t;
-    auto d = reinterpret_cast<word*>(dst);
-    auto s = reinterpret_cast<const word*>(src);
-    auto w = bytes/sizeof(word);
-
-    for (size_t i=0; i<w; ++i)
-    {
-        d[i] = s[i];
-    }
-
-    return dst;
+    mDev = dev; // Successfully initialized
 }
 
 /*
@@ -368,13 +293,17 @@ DSAInfo Flasher::getOnBoardDSA()
     std::string vbnv;
     std::string bmc;
     uint64_t ts = NULL_TIMESTAMP;
-    auto dev = pcidev::get_dev(mIdx);
 
-    if (dev->is_mfg)
+    std::string err;
+    std::string board_name;
+    bool is_mfg = false;
+    mDev->sysfs_get("", "mfg", err, is_mfg);
+    mDev->sysfs_get("", "board_name", err, board_name);
+    if (is_mfg)
     {
         std::stringstream ss;
 
-        ss << "xilinx_" << dev->board_name << "_GOLDEN_" << mGoldenVer;
+        ss << "xilinx_" << board_name << "_GOLDEN_" << mGoldenVer;
         vbnv = ss.str();
     }
     else if (mFRHeader.VBNVName[0] != '\0')
@@ -402,9 +331,8 @@ DSAInfo Flasher::getOnBoardDSA()
 std::string Flasher::sGetDBDF()
 {
     char cDBDF[128];
-    auto& mdev = pcidev::get_dev(mIdx)->mgmt;
 
     sprintf(cDBDF, "%.4x:%.2x:%.2x.%.1x",
-        mdev->domain, mdev->bus, mdev->dev, mdev->func);
+        mDev->domain, mDev->bus, mDev->dev, mDev->func);
     return std::string(cDBDF);
 }

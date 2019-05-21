@@ -167,6 +167,9 @@ struct xclmgmt_ioc_freqscaling {
 	unsigned ocl_region;
 	unsigned short ocl_target_freq[XCLMGMT_NUM_SUPPORTED_CLOCKS];
 };
+#define DATA_CLK			0
+#define KERNEL_CLK			1
+#define SYSTEM_CLK			2
 
 #define XCLMGMT_IOCINFO			_IOR(XCLMGMT_IOC_MAGIC, XCLMGMT_IOC_INFO, struct xclmgmt_ioc_info)
 #define XCLMGMT_IOCICAPDOWNLOAD		_IOW(XCLMGMT_IOC_MAGIC, XCLMGMT_IOC_ICAP_DOWNLOAD, struct xclmgmt_ioc_bitstream)

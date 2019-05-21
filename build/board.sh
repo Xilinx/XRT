@@ -158,7 +158,7 @@ if [[ "X$sdx" != "X" && -d "$sdx" ]] ; then
  export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$XILINX_SDX/lib/lnx64.o/Default:$XILINX_SDX/lib/lnx64.o:$XILINX_SDX/runtime/lib/x86_64
 fi
 
-export DSA=`${XILINX_XRT}/bin/xbutil list | grep '\[0\]' | cut -d' ' -f3`
+export DSA=`${XILINX_XRT}/bin/xbutil scan | grep '\[0\]' | cut -d':' -f5 | cut -d'(' -f1`
 
 echo "XILINX_XRT      = $XILINX_XRT"
 echo "XILINX_SDX      = $XILINX_SDX"
