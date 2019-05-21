@@ -173,7 +173,7 @@ validate()
 install()
 {
     if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
-        echo "Installing packages..."
+        echo "Installing packages..."``
         ${SUDO} apt install -y "${UB_LIST[@]}"
         ${SUDO} -H pip install pyopencl
     fi
