@@ -18,6 +18,7 @@
 #include <cassert>
 #include <vector>
 #include <thread>
+#include <iomanip>
 
 #include "xmc.h"
 #include "flasher.h"
@@ -25,17 +26,19 @@
 //#define XMC_DEBUG
 #define BMC_JUMP_ADDR   0x201  /* Hard-coded for now */
 
-XMC_Flasher::XMC_Flasher(unsigned int device_index, char *inMap)
+XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
 {
     unsigned val = 0;
-    mMgmtMap = inMap;
+    mDev = dev;
     mPktBufOffset = 0;
     mPkt = {};
-    auto dev = pcidev::get_dev(device_index);
 
-    if (!dev->is_mfg) {
-        if(Flasher::pcieBarRead(0, (unsigned long long)mMgmtMap +
-            XMC_GPIO_RESET, &val, sizeof (val)) != 0 || val == 0) {
+    std::string err;
+    bool is_mfg = false;
+    mDev->sysfs_get("", "mfg", err, is_mfg);
+    if (!is_mfg) {
+        if(mDev->pcieBarRead(XMC_GPIO_RESET, &val, sizeof (val)) != 0 ||
+            val == 0) {
             mProbingErrMsg << "Failed to detect XMC, xmc.bin not loaded";
             goto nosup;
         }
@@ -61,10 +64,7 @@ XMC_Flasher::XMC_Flasher(unsigned int device_index, char *inMap)
     }
 
     mPktBufOffset = readReg(XMC_REG_OFF_PKT_OFFSET);
-    return;
-
 nosup:
-    mMgmtMap = nullptr;
     return;
 }
 
@@ -455,8 +455,7 @@ int XMC_Flasher::waitTillIdle()
 
 unsigned XMC_Flasher::readReg(unsigned RegOffset) {
     unsigned value;
-    if( Flasher::pcieBarRead(0, (unsigned long long)mMgmtMap +
-        XMC_REG_BASE + RegOffset, &value, 4 ) != 0 ) {
+    if( mDev->pcieBarRead(XMC_REG_BASE + RegOffset, &value, 4) != 0 ) {
         assert(0);
         std::cout << "read reg ERROR" << std::endl;
     }
@@ -464,8 +463,7 @@ unsigned XMC_Flasher::readReg(unsigned RegOffset) {
 }
 
 int XMC_Flasher::writeReg(unsigned RegOffset, unsigned value) {
-    int status = Flasher::pcieBarWrite(0, (unsigned long long)mMgmtMap +
-        XMC_REG_BASE + RegOffset, &value, 4);
+    int status = mDev->pcieBarWrite(XMC_REG_BASE + RegOffset, &value, 4);
     if(status != 0) {
         assert(0);
         std::cout << "write reg ERROR " << std::endl;

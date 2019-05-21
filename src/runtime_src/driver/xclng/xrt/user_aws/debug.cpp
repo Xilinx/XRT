@@ -61,19 +61,26 @@ namespace awsbwhal {
       mLogStream << "debug_ip_layout: reading profile addresses and names..." << std::endl;
     }
     mMemoryProfilingNumberSlots = getIPCountAddrNames(AXI_MM_MONITOR, mPerfMonBaseAddress,
-      mPerfMonSlotName, mPerfmonProperties, XSPM_MAX_NUMBER_SLOTS);
+      mPerfMonSlotName, mPerfmonProperties, mPerfmonMajorVersions, mPerfmonMinorVersions, XSPM_MAX_NUMBER_SLOTS);
     mAccelProfilingNumberSlots = getIPCountAddrNames(ACCEL_MONITOR, mAccelMonBaseAddress,
-      mAccelMonSlotName, mAccelmonProperties, XSAM_MAX_NUMBER_SLOTS);
+      mAccelMonSlotName, mAccelmonProperties, mAccelmonMajorVersions, mAccelmonMinorVersions, XSAM_MAX_NUMBER_SLOTS);
+    mStreamProfilingNumberSlots = getIPCountAddrNames(AXI_STREAM_MONITOR, mStreamMonBaseAddress,
+      mStreamMonSlotName, mStreammonProperties, mStreammonMajorVersions, mStreammonMinorVersions, XSSPM_MAX_NUMBER_SLOTS);
+
     mIsDeviceProfiling = (mMemoryProfilingNumberSlots > 0 || mAccelProfilingNumberSlots > 0);
 
     std::string fifoName;
     uint64_t fifoCtrlBaseAddr = mOffsets[XCL_ADDR_SPACE_DEVICE_PERFMON];
-    getIPCountAddrNames(AXI_MONITOR_FIFO_LITE, &fifoCtrlBaseAddr, &fifoName, nullptr, 1);
+    getIPCountAddrNames(AXI_MONITOR_FIFO_LITE, &fifoCtrlBaseAddr, &fifoName, nullptr, nullptr, nullptr, 1);
     mPerfMonFifoCtrlBaseAddress = fifoCtrlBaseAddr;
 
     uint64_t fifoReadBaseAddr = XPAR_AXI_PERF_MON_0_TRACE_OFFSET_AXI_FULL2;
-    getIPCountAddrNames(AXI_MONITOR_FIFO_FULL, &fifoReadBaseAddr, &fifoName, nullptr, 1);
+    getIPCountAddrNames(AXI_MONITOR_FIFO_FULL, &fifoReadBaseAddr, &fifoName, nullptr, nullptr, nullptr, 1);
     mPerfMonFifoReadBaseAddress = fifoReadBaseAddr;
+
+    uint64_t traceFunnelAddr = 0x0;
+    getIPCountAddrNames(AXI_TRACE_FUNNEL, &traceFunnelAddr, nullptr, nullptr, nullptr, nullptr, 1);
+    mTraceFunnelAddress = traceFunnelAddr;
 
     // Count accel monitors with stall monitoring turned on
     mStallProfilingNumberSlots = 0;
@@ -93,6 +100,12 @@ namespace awsbwhal {
                    << "base address = 0x" << std::hex << mAccelMonBaseAddress[i]
                    << ", name = " << mAccelMonSlotName[i] << std::endl;
       }
+      for (unsigned int i = 0; i < mStreamProfilingNumberSlots; ++i) {
+        mLogStream << "debug_ip_layout: STREAM_MONITOR slot " << i << ": "
+                   << "base address = 0x" << std::hex << mStreamMonBaseAddress[i]
+                   << ", name = " << mStreamMonSlotName[i] << std::endl;
+      }
+
       mLogStream << "debug_ip_layout: AXI_MONITOR_FIFO_LITE: "
                  << "base address = 0x" << std::hex << fifoCtrlBaseAddr << std::endl;
       mLogStream << "debug_ip_layout: AXI_MONITOR_FIFO_FULL: "
@@ -106,9 +119,14 @@ namespace awsbwhal {
   // Gets the information about the specified IP from the sysfs debug_ip_table.
   // The IP types are defined in xclbin.h
   uint32_t AwsXcl::getIPCountAddrNames(int type, uint64_t *baseAddress, std::string * portNames,
-                                       uint8_t *properties, size_t size) {
+                                       uint8_t *properties, uint8_t *majorVersions, uint8_t *minorVersions,
+                                       size_t size) {
     debug_ip_layout *map;
-    std::string path = "/sys/bus/pci/devices/" + mDevUserName + "/debug_ip_layout";
+    char debugIPLayoutPath[512] = {0};
+    xclGetSysfsPath("icap", "debug_ip_layout", debugIPLayoutPath, 512);
+    std::string path(debugIPLayoutPath);
+//    std::string path = "/sys/bus/pci/devices/0000:85:00.0/icap.u.34048/debug_ip_layout";
+//    std::string path = "/sys/bus/pci/devices/" + mDevUserName + "/debug_ip_layout";
     std::ifstream ifs(path.c_str(), std::ifstream::binary);
     uint32_t count = 0;
     char buffer[65536];
@@ -121,8 +139,15 @@ namespace awsbwhal {
           if (count >= size) break;
           if (map->m_debug_ip_data[i].m_type == type) {
             if(baseAddress)baseAddress[count] = map->m_debug_ip_data[i].m_base_address;
-            if(portNames)  portNames[count].assign(map->m_debug_ip_data[i].m_name, 128);
+            if(portNames) {
+              // Fill up string with 128 characters (padded with null characters)
+              portNames[count].assign(map->m_debug_ip_data[i].m_name, 128);
+              // Strip away extraneous null characters
+              portNames[count].assign(portNames[count].c_str());
+            }
             if(properties) properties[count] = map->m_debug_ip_data[i].m_properties;
+            if(majorVersions) majorVersions[count] = map->m_debug_ip_data[i].m_major;
+            if(minorVersions) minorVersions[count] = map->m_debug_ip_data[i].m_minor;
             ++count;
           }
         }
@@ -153,7 +178,7 @@ namespace awsbwhal {
     };
 
     uint64_t baseAddress[XLAPC_MAX_NUMBER_SLOTS];
-    uint32_t numSlots = getIPCountAddrNames(LAPC, baseAddress, nullptr, nullptr, XLAPC_MAX_NUMBER_SLOTS);
+    uint32_t numSlots = getIPCountAddrNames(LAPC, baseAddress, nullptr, nullptr, nullptr, nullptr, XLAPC_MAX_NUMBER_SLOTS);
     uint32_t temp[XLAPC_STATUS_PER_SLOT];
     aCheckerResults->NumSlots = numSlots;
     snprintf(aCheckerResults->DevUserName, 256, "%s", mDevUserName.c_str());
@@ -194,7 +219,7 @@ namespace awsbwhal {
 
     // Read all metric counters
     uint64_t baseAddress[XSPM_MAX_NUMBER_SLOTS];
-    uint32_t numSlots = getIPCountAddrNames(AXI_MM_MONITOR, baseAddress, nullptr, nullptr, XSPM_MAX_NUMBER_SLOTS);
+    uint32_t numSlots = getIPCountAddrNames(AXI_MM_MONITOR, baseAddress, nullptr, nullptr, nullptr, nullptr, XSPM_MAX_NUMBER_SLOTS);
 
     uint32_t temp[XSPM_DEBUG_SAMPLE_COUNTERS_PER_SLOT];
 

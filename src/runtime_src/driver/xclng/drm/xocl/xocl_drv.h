@@ -225,6 +225,9 @@ struct xocl_drvinst_proc {
 	u32			count;
 };
 
+/*
+ * Base structure for platform driver data structures
+ */
 struct xocl_drvinst {
 	struct device		*dev;
 	u32			size;
@@ -233,7 +236,11 @@ struct xocl_drvinst {
 	struct list_head	open_procs;
 	void			*file_dev;
 	bool			offline;
-	char			data[1];
+        /*
+	 * The derived object placed inline in field "data"
+	 * should be aligned at 8 byte boundary
+	 */
+        u64			data[1];
 };
 
 struct xocl_dev_core {
@@ -406,6 +413,7 @@ struct xocl_mb_scheduler_funcs {
 		void *data, void *drm_filp);
 	int (*stop)(struct platform_device *pdev);
 	int (*reset)(struct platform_device *pdev);
+	int (*reconfig)(struct platform_device *pdev);
 };
 #define	MB_SCHEDULER_DEV(xdev)	\
 	SUBDEV(xdev, XOCL_SUBDEV_MB_SCHEDULER).pldev
@@ -437,6 +445,10 @@ struct xocl_mb_scheduler_funcs {
 #define	xocl_exec_reset(xdev)		\
 	(SCHE_CB(xdev, reset) ?				\
 	 MB_SCHEDULER_OPS(xdev)->reset(MB_SCHEDULER_DEV(xdev)) : \
+	-ENODEV)
+#define	xocl_exec_reconfig(xdev)		\
+	(SCHE_CB(xdev, reconfig) ?				\
+	 MB_SCHEDULER_OPS(xdev)->reconfig(MB_SCHEDULER_DEV(xdev)) : \
 	-ENODEV)
 
 #define XOCL_MEM_TOPOLOGY(xdev)						\

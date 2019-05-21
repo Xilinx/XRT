@@ -160,7 +160,7 @@ namespace xocl {
     auto dev = pcidev::get_dev(mBoardNumber);
     std::string subdev_str = "icap";
     std::string entry_str = "debug_ip_layout";
-    std::string path = dev->user->get_sysfs_path(subdev_str, entry_str);
+    std::string path = dev->get_sysfs_path(subdev_str, entry_str);
     std::ifstream ifs(path.c_str(), std::ifstream::binary);
     uint32_t count = 0;
     char buffer[65536];

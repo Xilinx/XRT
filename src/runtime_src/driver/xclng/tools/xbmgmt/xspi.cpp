@@ -200,7 +200,7 @@ static const unsigned  SECTOR_ERASE_BYTES = FOUR_BYTE_ADDRESSING ? 5 :4;
 #define SYNC        0x665599AA//0xAA995566
 #define TIMER       0x01200230//0x30022001
 #define WDT_ENABLE  0x02000040//0x40000002
-
+#define FLASH_BASE  0x040000
 #define BITSTREAM_GUARD_SIZE 0x1000
 uint32_t BITSTREAM_START_LOC = -1; //Set to 0xFFFFFFFF
 uint32_t BITSTREAM_GUARD[] = {
@@ -266,19 +266,9 @@ static void clearBuffers() {
     clearWriteBuffer(PAGE_SIZE + READ_WRITE_EXTRA_BYTES);
 }
 
-XSPI_Flasher::XSPI_Flasher( unsigned int device_index, char *inMap )
+XSPI_Flasher::XSPI_Flasher(std::shared_ptr<pcidev::pci_device> dev)
 {
-    mMgmtMap = inMap; // brought in from Flasher object
-}
-
-/**
- * @brief XSPI_Flasher::~XSPI_Flasher
- *
- * - munmap
- * - delete file descriptor
- */
-XSPI_Flasher::~XSPI_Flasher()
-{
+    mDev = dev;
 }
 
 unsigned XSPI_Flasher::getSector(unsigned address) {
@@ -500,9 +490,6 @@ int XSPI_Flasher::xclUpgradeFirmwareXSpi(std::istream& mcsStream, int index) {
     clearBuffers();
     recordList.clear();
 
-    if (!mMgmtMap)
-        return -EACCES;
-
     slave_index = index;
     std::string line;
     std::string startAddress;
@@ -598,7 +585,7 @@ int XSPI_Flasher::xclUpgradeFirmwareXSpi(std::istream& mcsStream, int index) {
 
 unsigned XSPI_Flasher::readReg(unsigned RegOffset) {
     unsigned value;
-    if( Flasher::flashRead( 0, (unsigned long long)mMgmtMap + RegOffset, &value, 4 ) != 0 ) {
+    if( mDev->pcieBarRead( FLASH_BASE + RegOffset, &value, 4 ) != 0 ) {
         assert(0);
         std::cout << "read reg ERROR" << std::endl;
     }
@@ -606,7 +593,7 @@ unsigned XSPI_Flasher::readReg(unsigned RegOffset) {
 }
 
 int XSPI_Flasher::writeReg(unsigned RegOffset, unsigned value) {
-    int status = Flasher::flashWrite(0, (unsigned long long)mMgmtMap + RegOffset, &value, 4);
+    int status = mDev->pcieBarWrite(FLASH_BASE + RegOffset, &value, 4);
     if(status != 0) {
         assert(0);
         std::cout << "write reg ERROR " << std::endl;
@@ -924,7 +911,7 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
             Data = *(uint32_t *)SendBufferPtr;
         }
 
-        if(Flasher::flashWrite(0, (unsigned long long)mMgmtMap + XSP_DTR_OFFSET, &Data, 4) != 0) {
+        if(mDev->pcieBarWrite(FLASH_BASE + XSP_DTR_OFFSET, &Data, 4) != 0) {
             return false;
         }
         SendBufferPtr += (DataWidth >> 3);
@@ -1013,7 +1000,7 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
             while ((StatusReg & XSP_SR_RX_EMPTY_MASK) == 0)
             {
                 //read the data.
-                if(Flasher::flashRead(0, (unsigned long long)mMgmtMap + XSP_DRR_OFFSET, &Data, 4) != 0)
+                if(mDev->pcieBarRead(FLASH_BASE + XSP_DRR_OFFSET, &Data, 4) != 0)
                 {
                     return false;
                 }
@@ -1070,7 +1057,7 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
                         Data = *(uint32_t *)SendBufferPtr;
                     }
 
-                    if(Flasher::flashWrite(0, (unsigned long long)mMgmtMap + XSP_DTR_OFFSET, &Data, 4) != 0) {
+                    if(mDev->pcieBarWrite( FLASH_BASE + XSP_DTR_OFFSET, &Data, 4) != 0) {
                         return false;
                     }
 
@@ -1354,9 +1341,6 @@ int XSPI_Flasher::programXSpi(std::istream& mcsStream, const ELARecord& record) 
             std::cout << "writing page " << pageIndex << std::endl;
 #endif
             const unsigned address = std::stoi(line.substr(3, 4), 0, 16);
-            //assert ( (address + dataLen) == static_cast<unsigned int>((pageIndex +1)*WRITE_DATA_SIZE));
-            assert ( (address + dataLen - (record.mStartAddress & 0xFFFF))
-                == static_cast<unsigned int>((pageIndex +1)*WRITE_DATA_SIZE));
             if(TEST_MODE) {
                 std::cout << (address + dataLen) << " " << (pageIndex +1)*WRITE_DATA_SIZE << std::endl;
                 std::cout << record.mStartAddress << " " << record.mStartAddress + pageIndex*PAGE_SIZE;

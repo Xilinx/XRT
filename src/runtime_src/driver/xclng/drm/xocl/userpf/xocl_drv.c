@@ -255,6 +255,10 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 	err = xocl_peer_request(xdev, req, reqlen,
 		&msg, &resplen, NULL, NULL);
 
+	/* Re-clock changes PR region, make sure next ERT configure cmd will
+	 * go through */
+	(void) xocl_exec_reconfig(xdev);
+
 	if (msg != 0)
 		err = -ENODEV;
 

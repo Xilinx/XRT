@@ -1,3 +1,5 @@
+.. _formats.rst:
+
 Binary Formats
 --------------
 

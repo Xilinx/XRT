@@ -13,7 +13,7 @@ Note that in addition to BIOS, host CPU should be capable of supporting a very l
 BIOS Setup
 ~~~~~~~~~~
 
-1. Before turning on P2P, please make sure 64-bit IO is enabled and the maximium supported IO memory space is greater than total size of DDRs on SDx PCIe platform in host BIOS setup.
+1. Before turning on P2P, please make sure 64-bit IO is enabled and the maximium host supported IO memory space is greater than total size of DDRs on SDx PCIe platform in host BIOS setup.
 
 2. Enable large BAR support in BIOS. This is sometimes called "Above 4G decoding" and may be found under PCIe configuration or Boot configuration.
 
@@ -22,16 +22,14 @@ Warning
 
 Mother board vendors have different implementations of large PCIe BAR support in BIOS. If the host system does not support large IO memory well or if host Linux kernel does not support this feature, the host could stop responding after P2P is enabled. Please note that in some cases a warm reboot may not recover the system. Power cycle is required to recover the system in this scenario. As previosuly noted SDx PCIe platforms turn off P2P after a power cycle.
 
-Some Mother board BIOS setup allows administrator to set IO Memory base address and some does not. Having large or small IO Memory base could possibly cause memory address collision between P2P memory and RAM. The symptom we have seen with having IO memory base set to 56T is that warm reboot hangs forever because Linux kernel crash. Setting IO memory base to 1T is recommended.
-
-This P2P feature is in early access stage. It is tested only on ubuntu 16.04 with standart linux kernel 4.4. The compatibility with other version of linux is still ongoing.
+Some Mother board BIOS setup allows administrator to set IO Memory base address and some do not. Having high or low IO Memory base could possibly cause memory address collision between P2P memory and host RAM. For example setting IO memory base set to 56T in BIOS will cause Linux to crash after a warm reboot. This is because mapped virtual address of P2P PCIe BAR collides with virtual address of other subsystems in Linux. Recent versions of Linux (4.19+) dont have this issue as they detect this during P2P BAR mapping stage itself and refuse to map the BAR. Setting IO memory base to 1T in BIOS is recommended.
 
 Enable/Disable P2P
 ~~~~~~~~~~~~~~~~~~
 
-XRT ``xbutil`` is used to enable/disable P2P and check current configuration. P2P configuration is persistent across warm reboot. Enabling or disabling P2P requires root privilege.
+XRT ``xbutil`` is used to enable/disable P2P feature and check current configuration. P2P configuration is persistent across warm reboot. Enabling or disabling P2P requires root privilege.
 
-Enabling P2P after cold boot is likly to fail because it resizes an exisitng P2P PCIe BAR to a large size and usually Linux will not reserve large IO memory for the PCIe bridges. XRT driver checks the maximum IO memory allowed by host BIOS setup and returns error if there is not enough IO memory for P2P. A warm reboot is required in this scenario after which BIOS and Linux will assign the required expanded IO memory resource for P2P BAR.
+Enabling P2P after cold boot is likly to fail because it resizes an exisitng P2P PCIe BAR to a large size and usually Linux will not reserve large IO memory for the PCIe bridges. XRT driver checks the maximum IO memory allowed by host BIOS setup and returns error if there is not enough IO memory for P2P. A warm reboot is required in this scenario after which BIOS and Linux will reassign the required expanded IO memory resource for P2P BAR.
 If a system stops responding after enabling P2P and warm reboot does not recover the host then power cycle is required to recover the host.
 
 Disabling P2P takes effect immediately. Currently XRT does not check if the P2P memory is in use. Administrator needs to make sure P2P is not in use before disabling it. The result of disabling P2P while it is in use is undefined.
@@ -58,18 +56,19 @@ Current P2P Configuration
 
 There are three possible values for ``P2P Enabled`` field above.
 
-============  ====================================================================
+============  =========================================================
 Value         Remarks
-============  ====================================================================
+============  =========================================================
 ``True``      P2P is enabled
 ``False``     P2P is disabled
-``no iomem``  P2P is enabled in device but lack of IO memory. Warm rebooting might be needed.
-============  ====================================================================
+``no iomem``  P2P is enabled in device but system could not allocate IO
+              memory, warm reboot is needed
+============  =========================================================
 
 Enable P2P
 ..........
 
-Enable P2P after power up.
+Enable P2P after power up sequence.
 
 ::
 

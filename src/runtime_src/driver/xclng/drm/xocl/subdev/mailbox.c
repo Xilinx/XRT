@@ -94,9 +94,11 @@
  *
  * At the highest layer, the driver implements a request-response communication
  * model. Three types of msgs can be sent/received in this model:
- *   - A request msg which requires a response.
- *   - A notification msg which does not require a response.
- *   - A response msg which is used to respond a request.
+ *
+ * - A request msg which requires a response.
+ * - A notification msg which does not require a response.
+ * - A response msg which is used to respond a request.
+ *
  * The OP code of the request determines whether it's a request or notification.
  *
  * If provided, a response msg must match a request msg by msg ID, or it'll be
@@ -2199,7 +2201,7 @@ static int mailbox_probe(struct platform_device *pdev)
 	mbx->sys_cdev = cdev_alloc();
 	mbx->sys_cdev->ops = &mailbox_fops;
 	mbx->sys_cdev->owner = THIS_MODULE;
-	mbx->sys_cdev->dev = MKDEV(MAJOR(mailbox_dev), 0);
+	mbx->sys_cdev->dev = MKDEV(MAJOR(mailbox_dev), core->dev_minor);
 	ret = cdev_add(mbx->sys_cdev, mbx->sys_cdev->dev, 1);
 	if (ret) {
 		MBX_ERR(mbx, "cdev add failed");
