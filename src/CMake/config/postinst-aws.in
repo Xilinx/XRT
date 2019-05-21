@@ -19,7 +19,7 @@ fi
 
 echo "Invoking xrt-aws common.postinst"
 #DKMS common.postinst behaves differently on RHEL/CentOS due to 'weak-modules' feature
-#that prints benign 'Error' messages. These are not truly errors, so (for RHEL/CentOS)
+#that prints benign 'Error' messages. These are not truly errors, so
 #we are capturing them in the 'res' variable, and only displaying them if the
 #command returns non-zero.
 res=$(/usr/lib/dkms/common.postinst xrt-aws @XRT_VERSION_STRING@ '' '' $2)
