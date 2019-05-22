@@ -1,106 +1,156 @@
-/*
- * ryan.radjabi@xilinx.com
+/**
+ * Copyright (C) 2019 Xilinx, Inc
  *
- * Private Cloud Management Proxy Daemon
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
  */
-#include <iostream>
-#include <string>
-#include "xclhal2.h"
+
+/*
+ * Xilinx Management Proxy Daemon (MPD) for cloud.
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <syslog.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+
+#include <fstream>
+#include <vector>
+#include <thread>
+#include <cstdlib>
+
+#include "pciefunc.h"
 #include "common.h"
 
-std::string host_ip;
-std::string host_port;
-std::string host_id;
-
-/*
- * Example code to setup communication channel between vm and host.
- * TCP is being used here for example.
- * Cloud vendor should implement this function.
- */
-static void mpd_comm_init(int *handle)
+std::string getIP(std::string host)
 {
-    int sockfd;
-    struct sockaddr_in servaddr;
+    struct hostent *hp = gethostbyname(host.c_str());
 
-    // socket create and varification
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd == -1) {
-        perror("socket creation failed...");
-        exit(1);
-    } else {
-        printf("Socket successfully created..\n");
-    }
-    bzero(&servaddr, sizeof(servaddr));
+    if (hp == NULL)
+        return "";
 
-    // assign IP, PORT
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = inet_addr( host_ip.c_str() );
-    servaddr.sin_port = htons( std::stoi( host_port.c_str() ) );
-
-    // connect the client socket to server socket
-    if (connect(sockfd, (SA*)&servaddr, sizeof(servaddr)) != 0) {
-        perror("connection with the server failed...");
-        exit(1);
-    } else {
-        printf("connected to the server..\n");
-    }
-
-    *handle = sockfd;
+    char dst[INET_ADDRSTRLEN + 1] = { 0 };
+    const char *d = inet_ntop(AF_INET, (struct in_addr *)(hp->h_addr),
+        dst, sizeof(dst));
+    return d;
 }
+
+static int connectMsd(pcieFunc& dev, std::string ip, uint16_t port, int id)
+{
+    int msdfd;
+    struct sockaddr_in msdaddr = { 0 };
+
+    msdfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (msdfd < 0) {
+        dev.log(LOG_ERR, "failed to create socket: %m");
+        return -1;
+    }
+
+    msdaddr.sin_family = AF_INET;
+    msdaddr.sin_addr.s_addr = inet_addr(ip.c_str());
+    msdaddr.sin_port = htons(port);
+    if (connect(msdfd, (struct sockaddr *)&msdaddr, sizeof(msdaddr)) != 0) {
+        dev.log(LOG_ERR, "failed to connect to msd: %m");
+        close(msdfd);
+        return -1;
+    }
+
+    id = htonl(id);
+    if (write(msdfd, &id, sizeof(id)) != sizeof(id)) {
+        dev.log(LOG_ERR, "failed to send id to msd: %m");
+        close(msdfd);
+        return -1;
+    }
+
+    int ret = 0;
+    if (read(msdfd, &ret, sizeof(ret)) != sizeof(ret) || ret) {
+        dev.log(LOG_ERR, "id not recognized by msd");
+        close(msdfd);
+        return -1;
+    }
+
+    dev.log(LOG_INFO, "successfully connected to msd");
+    return msdfd;
+}
+
+// Client of MSD. Will quit on any error from either local mailbox or socket fd.
+// No retry is ever conducted.
+static void mpd(std::shared_ptr<pcidev::pci_device> d)
+{
+    int msdfd = -1, mbxfd = -1;
+    std::string ip;
+
+    pcieFunc dev(d);
+
+    mbxfd = dev.getMailbox();
+    if (mbxfd == -1)
+        return;
+
+    if (!dev.loadConf())
+        return;
+
+    ip = getIP(dev.getHost());
+    if (ip.empty()) {
+        dev.log(LOG_ERR, "Can't find out IP from host: %s", dev.getHost());
+        return;
+    }
+
+    dev.log(LOG_INFO, "peer msd ip=%s, port=%d, id=0x%x",
+        ip.c_str(), dev.getPort(), dev.getId());
+
+    if ((msdfd = connectMsd(dev, ip, dev.getPort(), dev.getId())) < 0)
+        return;
+
+    for ( ;; ) {
+        int ret = waitForMsg(dev, mbxfd, msdfd, 0);
+        if (ret < 0)
+            break;
+
+        if (ret == mbxfd) {
+            if (localToRemote(dev, mbxfd, msdfd) != 0)
+                break;
+        } else {
+            if (remoteToLocal(dev, mbxfd, msdfd) != 0)
+                break;
+        }
+    }
+
+    close(msdfd);
+}
+
 int main(void)
 {
-    int comm_fd, local_fd = -1;
-    const int numDevs = xclProbe();
+    // Daemon has no connection to terminal.
+    fcloseall();
+        
+    // Start logging ASAP.
+    openlog("mpd", LOG_PID|LOG_CONS, LOG_USER);
+    syslog(LOG_INFO, "started");
 
-    if (numDevs <= 0)
-        return -ENODEV;
+    // Fire up one thread for each board.
+    auto total = pcidev::get_dev_total();
+    std::vector<std::thread> threads;
+    for (size_t i = 0; i < total; i++)
+        threads.emplace_back(mpd, pcidev::get_dev(i));
 
-    for (int i = 0; i < numDevs; i++) {
-        int ret = fork();
-        if (ret < 0) {
-            std::cout << "Failed to create child process: " << errno << std::endl;
-            exit(errno);
-        }
-        if (ret == 0) { // child
-            /* Ugly way to get host_ip, host_port, and cloud token(host_id) */
-            char c_id[256];
-            struct xclMailboxConf conf = { c_id, 256, 0 };
-            xclMailboxConfRead(i, true, &conf);
-            std::string s_id = std::string( c_id );
-            size_t pos =  s_id.find(",");
-            std::string rem = s_id.substr( pos+1, s_id.length() );
-            host_ip = s_id.substr( 0, pos );
-            pos =  rem.find(",");
-            host_port = rem.substr( 0, pos );
-            rem = rem.substr( pos+1, rem.length()-1 );
-            host_id = rem.substr( 0, rem.length()-1 );
+    // Wait for all threads to finish before quit.
+    for (auto& t : threads)
+        t.join();
 
-            mpd_comm_init(&comm_fd);
-
-            /* handshake to MSD by sending cloud token id */
-            uint32_t dataLength = htonl(host_id.size());
-            send(comm_fd, &dataLength, sizeof(uint32_t), MSG_CONFIRM);
-            send(comm_fd, host_id.c_str(), host_id.size(), MSG_CONFIRM);
-
-            local_fd = xclMailboxOpen( i, true );
-            if (local_fd < 0) {
-                std::cout << "xclMailbox(): " << errno << std::endl;
-                return errno;
-            }
-            break;
-        }
-        // parent continues but will never create thread, and eventually exit
-        std::cout << "New child process: " << ret << std::endl;
-    }
-
-    if ((comm_fd > 0) && (local_fd > 0)) {
-        // run until daemon is killed
-        mailbox_daemon(local_fd, comm_fd, "[MPD]");
-
-        // cleanup when stopped
-        close(comm_fd);
-        close(local_fd);
-    }
+    syslog(LOG_INFO, "ended");
+    closelog();         
     return 0;
 }
-

@@ -1,0 +1,10 @@
+[Unit]
+Description=Xilinx Management Proxy Daemon (MPD)
+
+[Service]
+Type=simple
+ExecStart=${XRT_INSTALL_DIR}/bin/mpd
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

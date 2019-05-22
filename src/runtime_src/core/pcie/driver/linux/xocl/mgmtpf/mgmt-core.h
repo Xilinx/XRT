@@ -133,6 +133,7 @@ int pci_fundamental_reset(struct xclmgmt_dev *lro);
 long reset_hot_ioctl(struct xclmgmt_dev *lro);
 void xdma_reset(struct pci_dev *pdev, bool prepare);
 void xclmgmt_reset_pci(struct xclmgmt_dev *lro);
+void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online);
 
 /* firewall.c */
 void init_firewall(struct xclmgmt_dev *lro);
