@@ -129,6 +129,13 @@ get_data_transfer_trace()
 }
 
 inline std::string
+get_power_profile()
+{
+  static std::string value = (!get_profile()) ? "off" : detail::get_string_value("Debug.power_profile","off");
+  return value;
+}
+
+inline std::string
 get_stall_trace()
 {
   static std::string value = (!get_profile()) ? "off" : detail::get_string_value("Debug.stall_trace","off");
