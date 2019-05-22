@@ -114,7 +114,7 @@ static void xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 	mutex_lock(&core->lock);
 	if (subdev->state == XOCL_SUBDEV_STATE_UNINIT) {
 		mutex_unlock(&core->lock);
-		return; 
+		return;
 	}
 	pldev = subdev->pldev;
 	state = subdev->state;
@@ -122,7 +122,6 @@ static void xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 	subdev->ops = NULL;
 	subdev->state = XOCL_SUBDEV_STATE_UNINIT;
 	ida_simple_remove(&subdev_inst_ida, subdev->inst);
-
 	mutex_unlock(&core->lock);
 
 	if (pldev) {
@@ -163,16 +162,16 @@ int xocl_subdev_create(xdev_handle_t xdev_hdl,
 			goto error;
 		}
 		res = subdev->res;
-		memcpy(res, sdev_info->res, sizeof (*res) * sdev_info->num_res);
+		memcpy(res, sdev_info->res, sizeof(*res) * sdev_info->num_res);
 	}
 
-	if ((sdev_info->level == XOCL_SUBDEV_LEVEL_BLD || 
+	if ((sdev_info->level == XOCL_SUBDEV_LEVEL_BLD ||
 		sdev_info->level == XOCL_SUBDEV_LEVEL_PRP) &&
-	   	sdev_info->pf != XOCL_PCI_FUNC(xdev_hdl)) {
+		sdev_info->pf != XOCL_PCI_FUNC(xdev_hdl)) {
 		xocl_xdev_info(xdev_hdl, "Cache subdev %s id %d pf %d",
 			sdev_info->name, subdev->inst, sdev_info->pf);
 		return 0;
-	}	
+	}
 
 	xocl_xdev_info(xdev_hdl, "creating subdev %s id %d",
 			sdev_info->name, subdev->inst);
@@ -268,7 +267,7 @@ int xocl_subdev_create_by_name(xdev_handle_t xdev_hdl, char *name)
 	if (i == core->priv.subdev_num)
 		return -ENODEV;
 
-	return xocl_subdev_create(xdev_hdl, 
+	return xocl_subdev_create(xdev_hdl,
 			&core->priv.subdev_info[i]);
 }
 
@@ -303,7 +302,7 @@ int xocl_subdev_create_by_id(xdev_handle_t xdev_hdl, int id)
 	if (i == core->priv.subdev_num)
 		return -ENOENT;
 
-	return xocl_subdev_create(xdev_hdl, 
+	return xocl_subdev_create(xdev_hdl,
 			&core->priv.subdev_info[i]);
 }
 
@@ -360,9 +359,8 @@ void xocl_subdev_destroy_by_id(xdev_handle_t xdev_hdl, uint32_t subdev_id)
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
 	int i;
 
-	if (subdev_id==INVALID_SUBDEVICE)
+	if (subdev_id == INVALID_SUBDEVICE)
 		return;
-
 	for (i = 0; i < XOCL_SUBDEV_MAX_INST; i++)
 		xocl_subdev_destroy(xdev_hdl, &core->subdevs[subdev_id][i]);
 }
@@ -379,7 +377,7 @@ void xocl_subdev_destroy_all(xdev_handle_t xdev_hdl)
 void xocl_subdev_destroy_by_level(xdev_handle_t xdev_hdl, int level)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
-	int 		i, j;
+	int i, j;
 
 	for (i = ARRAY_SIZE(core->subdevs) - 1; i >= 0; i--)
 		for (j = 0; j < XOCL_SUBDEV_MAX_INST; j++)
@@ -411,7 +409,7 @@ int xocl_subdev_offline(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev)
 	subdev->state = XOCL_SUBDEV_STATE_OFFLINE;
 
 	subdev_funcs = subdev->ops;
-	if(subdev_funcs && subdev_funcs->offline) {
+	if (subdev_funcs && subdev_funcs->offline) {
 		ret = subdev_funcs->offline(subdev->pldev);
 		goto done;
 	} else {
@@ -452,7 +450,7 @@ int xocl_subdev_online(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev)
 	}
 
 	subdev_funcs = subdev->ops;
-	if(subdev_funcs && subdev_funcs->online)
+	if (subdev_funcs && subdev_funcs->online)
 		ret = subdev_funcs->online(subdev->pldev);
 	else
 		pldev = subdev->pldev;
@@ -486,7 +484,7 @@ int xocl_subdev_offline_by_id(xdev_handle_t xdev_hdl, uint32_t subdev_id)
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
 	int i, ret = 0;
 
-	if (subdev_id==INVALID_SUBDEVICE)
+	if (subdev_id == INVALID_SUBDEVICE)
 		return -EINVAL;
 
 	for (i = 0; i < XOCL_SUBDEV_MAX_INST; i++) {
@@ -506,7 +504,7 @@ int xocl_subdev_online_by_id(xdev_handle_t xdev_hdl, uint32_t subdev_id)
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
 	int i, ret = 0;
 
-	if (subdev_id==INVALID_SUBDEVICE)
+	if (subdev_id == INVALID_SUBDEVICE)
 		return -EINVAL;
 
 	for (i = 0; i < XOCL_SUBDEV_MAX_INST; i++) {
@@ -592,12 +590,12 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 
 	memset(&core->priv, 0, sizeof(core->priv));
 	/*
- 	 * follow xilinx device id, subsystem id codeing rules to set dsa
+	 * follow xilinx device id, subsystem id codeing rules to set dsa
 	 * private data. And they can be overwrited in subdev header file
 	 */
-	if ((pdev->device >> 5) & 0x1) {
+	if ((pdev->device >> 5) & 0x1)
 		core->priv.xpr = true;
-	}
+
 	core->priv.dsa_ver = pdev->subsystem_device & 0xff;
 
 	/* data defined in subdev header */
@@ -648,8 +646,8 @@ int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
 
 err:
 	xocl_err(&XDEV(xdev_hdl)->pdev->dev,
-		"Mismatch xrt version, xrt %s, xclbin "
-		"%d.%d.%d", xrt_build_version,
+		"Mismatch xrt version, xrt %s, xclbin %d.%d.%d",
+		xrt_build_version,
 		bin_obj->m_header.m_versionMajor,
 		bin_obj->m_header.m_versionMinor,
 		bin_obj->m_header.m_versionPatch);

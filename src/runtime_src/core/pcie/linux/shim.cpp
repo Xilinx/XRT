@@ -484,9 +484,7 @@ void shim::xclSysfsGetErrorStatus(xclErrorStatus& stat)
  */
 int shim::xclGetErrorStatus(xclErrorStatus *info)
 {
-#ifdef AXI_FIREWALL
     xclSysfsGetErrorStatus(*info);
-#endif  // AXI Firewall
     return 0;
 }
 

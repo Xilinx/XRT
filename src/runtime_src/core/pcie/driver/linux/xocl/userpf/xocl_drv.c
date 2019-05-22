@@ -341,6 +341,7 @@ static uint64_t xocl_read_from_peer(struct xocl_dev *xdev, enum data_kind kind)
 
 	subdev_peer.size = resp_len;
 	subdev_peer.kind = MGMT;
+	subdev_peer.entries = 1;
 
 	memcpy(mb_req->data, &subdev_peer, data_len);
 
@@ -870,6 +871,9 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_xmc,
 	xocl_init_icap,
 	xocl_init_xvc,
+	xocl_init_firewall,
+	xocl_init_mig,
+	xocl_init_dna,
 };
 
 static void (*xocl_drv_unreg_funcs[])(void) = {
@@ -881,6 +885,9 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_xmc,
 	xocl_fini_icap,
 	xocl_fini_xvc,
+	xocl_fini_firewall,
+	xocl_fini_mig,
+	xocl_fini_dna,
 };
 
 static int __init xocl_init(void)

@@ -86,6 +86,9 @@ enum group_kind {
 	SENSOR = 0,
 	ICAP,
 	MGMT,
+	MIG_ECC,
+	FIREWALL,
+	DNA,
 };
 
 /**
@@ -149,6 +152,44 @@ struct xcl_common {
 	uint64_t mig_calib;
 };
 
+
+/**
+ * struct xcl_mig_ecc -  Data structure used to fetch MIG_ECC group
+ */
+struct xcl_mig_ecc {
+	uint64_t mem_type;
+	uint64_t mem_idx;
+	uint64_t ecc_enabled;
+	uint64_t ecc_status;
+	uint64_t ecc_ce_cnt;
+	uint64_t ecc_ue_cnt;
+	uint64_t ecc_ce_ffa;
+	uint64_t ecc_ue_ffa;
+};
+
+/**
+ * struct xcl_firewall -  Data structure used to fetch FIREWALL group
+ */
+struct xcl_firewall {
+	uint64_t max_level;
+	uint64_t curr_status;
+	uint64_t curr_level;
+	uint64_t err_detected_status;
+	uint64_t err_detected_level;
+	uint64_t err_detected_time;
+};
+
+
+/**
+ * struct xcl_dna -  Data structure used to fetch DNA group
+ */
+struct xcl_dna {
+	uint64_t status;
+	uint32_t dna[4];
+	uint64_t capability;
+	uint64_t dna_version;
+	uint64_t revision;
+};
 /**
  * struct mailbox_subdev_peer - MAILBOX_REQ_PEER_DATA payload type
  * @kind: data group
@@ -157,6 +198,7 @@ struct xcl_common {
 struct mailbox_subdev_peer {
 	enum group_kind kind;
 	size_t size;
+	uint64_t entries;
 };
 
 /**

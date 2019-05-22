@@ -295,6 +295,8 @@ struct xocl_dev_core {
 
 #define	SUBDEV(xdev, id)	\
 	(XDEV(xdev)->subdevs[id][0])
+#define	SUBDEV_MULTI(xdev, id, idx)	\
+	(XDEV(xdev)->subdevs[id][idx])
 
 struct xocl_subdev_funcs {
 	int (*offline)(struct platform_device *pdev);
@@ -513,6 +515,7 @@ struct xocl_firewall_funcs {
 	int (*get_prop)(struct platform_device *pdev, u32 prop, void *val);
 	int (*clear_firewall)(struct platform_device *pdev);
 	u32 (*check_firewall)(struct platform_device *pdev, int *level);
+	void (*get_data)(struct platform_device *pdev, void *buf);
 };
 #define AF_DEV(xdev)	\
 	SUBDEV(xdev, XOCL_SUBDEV_AF).pldev
@@ -528,6 +531,8 @@ struct xocl_firewall_funcs {
 	(AF_CB(xdev, check_firewall) ? AF_OPS(xdev)->check_firewall(AF_DEV(xdev), level) : 0)
 #define	xocl_af_clear(xdev)				\
 	(AF_CB(xdev, clear_firewall) ? AF_OPS(xdev)->clear_firewall(AF_DEV(xdev)) : -ENODEV)
+#define	xocl_af_get_data(xdev, buf)				\
+	(AF_CB(xdev, get_data) ? AF_OPS(xdev)->get_data(AF_DEV(xdev), buf) : -ENODEV)
 
 /* microblaze callbacks */
 struct xocl_mb_funcs {
@@ -569,6 +574,7 @@ struct xocl_dna_funcs {
 	u32 (*status)(struct platform_device *pdev);
 	u32 (*capability)(struct platform_device *pdev);
 	void (*write_cert)(struct platform_device *pdev, const uint32_t *buf, u32 len);
+	void (*get_data)(struct platform_device *pdev, void *buf);
 };
 
 #define	DNA_DEV(xdev)		\
@@ -584,7 +590,8 @@ struct xocl_dna_funcs {
 	(DNA_CB(xdev, capability) ? DNA_OPS(xdev)->capability(DNA_DEV(xdev)) : 2)
 #define xocl_dna_write_cert(xdev, data, len)  \
 	(DNA_CB(xdev, write_cert) ? DNA_OPS(xdev)->write_cert(DNA_DEV(xdev), data, len) : 0)
-
+#define xocl_dna_get_data(xdev, buf)  \
+	(DNA_CB(xdev, get_data) ? DNA_OPS(xdev)->get_data(DNA_DEV(xdev), buf) : 0)
 /**
  *	data_kind
  */
@@ -746,6 +753,27 @@ struct xocl_icap_funcs {
 #define	xocl_icap_get_data(xdev, kind)				\
 	(ICAP_CB(xdev, get_data) ?						\
 	ICAP_OPS(xdev)->get_data(ICAP_DEV(xdev), kind) : \
+	0)
+
+struct xocl_mig_label {
+	unsigned char	tag[16];
+	uint64_t	mem_idx;
+	enum MEM_TYPE	mem_type;	
+};
+
+struct xocl_mig_funcs {
+	void (*get_data)(struct platform_device *pdev, void *buf, size_t entry_sz);
+};
+
+
+#define	MIG_DEV(xdev, idx)	SUBDEV_MULTI(xdev, XOCL_SUBDEV_MIG, idx).pldev
+#define	MIG_OPS(xdev, idx)							\
+	((struct xocl_mig_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_MIG, idx).ops)
+#define	MIG_CB(xdev, idx)	\
+	(MIG_DEV(xdev, idx) && MIG_OPS(xdev, idx))
+#define	xocl_mig_get_data(xdev, idx, buf, entry_sz)				\
+	(MIG_CB(xdev, idx) ?						\
+	MIG_OPS(xdev, idx)->get_data(MIG_DEV(xdev, idx), buf, entry_sz) : \
 	0)
 
 /* helper functions */
