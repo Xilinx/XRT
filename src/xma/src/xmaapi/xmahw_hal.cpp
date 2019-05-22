@@ -242,7 +242,14 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
                        info.ip_layout[t].base_addr;
                     int32_t ip_ddr_map = info.ip_ddr_mapping[t];
                     int num_ddr_used = 0;
-                    int ddr_banks[MAX_DDR_MAP] = {-1};
+                    /*
+                     * MPSoC based accelerator platforms have IP/Kernels
+                     * which are not visible to x86/Host and not listed in
+                     * the xclbins. Let the default be ddr_bank 0, in the
+                     * event xclbins contain the kernel to ddr_bank mapping, the
+                     * default value will be overwrriten
+                     */
+                    int ddr_banks[MAX_DDR_MAP] = {0};
                     xma_xclbin_map2ddr(ip_ddr_map, ddr_banks, &num_ddr_used);
                     for(int d=0; d < num_ddr_used; d++)
                     {
