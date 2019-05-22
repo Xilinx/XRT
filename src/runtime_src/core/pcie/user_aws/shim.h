@@ -141,6 +141,7 @@ public:
   double xclGetWriteMaxBandwidthMBps();
   void xclSetProfilingNumberSlots(xclPerfMonType type, uint32_t numSlots);
   size_t xclPerfMonClockTraining(xclPerfMonType type);
+  uint32_t getPerfMonProperties(xclPerfMonType type, uint32_t slotnum);
   uint32_t getPerfMonNumberSlots(xclPerfMonType type);
   void getPerfMonSlotName(xclPerfMonType type, uint32_t slotnum,
                           char* slotName, uint32_t length);
@@ -155,6 +156,9 @@ public:
                                uint8_t *properties, uint8_t *majorVersions, uint8_t *minorVersions, size_t size);
   size_t xclDebugReadCounters(xclDebugCountersResults* debugResult);
   size_t xclDebugReadCheckers(xclDebugCheckersResults* checkerResult);
+  size_t xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* streamingResult);
+  size_t xclDebugReadStreamingCheckers(xclDebugStreamingCheckersResults* streamingCheckerResult);
+  size_t xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult);
   void readDebugIpLayout();
 
   // Trace
