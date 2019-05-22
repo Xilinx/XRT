@@ -37,6 +37,7 @@ ccache=0
 docs=0
 verbose=""
 driver=0
+clangtidy=0
 checkpatch=0
 jcore=$CORE
 while [ $# -gt 0 ]; do
@@ -67,6 +68,10 @@ while [ $# -gt 0 ]; do
             ;;
         -driver)
             driver=1
+            shift
+            ;;
+        -clangtidy)
+            clangtidy=1
             shift
             ;;
         -verbose)
@@ -122,6 +127,10 @@ fi
 
 if [[ $docs == 1 ]]; then
     make xrt_docs
+fi
+
+if [[ $clangtidy == 1 ]]; then
+    make clang-tidy
 fi
 
 if [[ $checkpatch == 1 ]]; then
