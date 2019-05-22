@@ -20,10 +20,8 @@
 #ifndef _ZYNQ_SHIM_H_
 #define _ZYNQ_SHIM_H_
 
-#include "driver/zynq/include/xclhal2_mpsoc.h"
-#include "driver/zynq/include/zynq_ioctl.h"
-//#include "driver/include/xclperf.h"
-//#include "driver/zynq/include/zynq_perfmon_params.h"
+#include "core/edge/include/xclhal2_mpsoc.h"
+#include "core/edge/include/zynq_ioctl.h"
 #include <cstdint>
 #include <fstream>
 #include <map>

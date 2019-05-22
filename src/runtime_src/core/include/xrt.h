@@ -991,7 +991,7 @@ struct xclQueueRequest {
 /*
  * struct xclReqCompletion - read/write completion
  * keep this in sync with cl_streams_poll_req_completions
- * in driver/include/stream.h
+ * in core/include/stream.h
  */
 struct xclReqCompletion {
     char			resv[64]; /* reserved for meta data */

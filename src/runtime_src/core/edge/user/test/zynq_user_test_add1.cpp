@@ -9,7 +9,7 @@
 #include <chrono>
 #include <unistd.h>
 #include <time.h>
-#include "driver/include/xclhal2.h"
+#include "core/include/xclhal2.h"
 
 #include "xclHALProxy2.h"
 

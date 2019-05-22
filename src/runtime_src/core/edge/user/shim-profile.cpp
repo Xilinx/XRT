@@ -26,7 +26,7 @@
 #include "shim-profile.h"
 
 #include "xclperf.h"
-#include "driver/zynq/include/zynq_perfmon_params.h"
+#include "core/edge/include/zynq_perfmon_params.h"
 
 namespace ZYNQ {
   

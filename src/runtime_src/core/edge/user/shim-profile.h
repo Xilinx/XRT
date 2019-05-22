@@ -21,7 +21,7 @@
 #define _ZYNQ_SHIM_PROFILE_H_
 
 #include <string>
-#include "driver/include/xclperf.h"
+#include "core/include/xclperf.h"
 
 namespace ZYNQ {
   

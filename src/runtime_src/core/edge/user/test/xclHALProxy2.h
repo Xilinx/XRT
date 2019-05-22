@@ -14,8 +14,8 @@
 #include <stdint.h>
 #include <fstream>
 #include <iostream>
-#include "driver/include/xclhal2.h"
-#include "driver/zynq/include/zynq_ioctl.h"
+#include "core/include/xclhal2.h"
+#include "core/edge/include/zynq_ioctl.h"
 
 class xclHALProxy2 {
 public:

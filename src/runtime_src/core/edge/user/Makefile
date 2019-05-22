@@ -16,7 +16,7 @@ CXXFLAGS :=  -Werror -std=c++11
 LIBNAME := libxclzynqdrv.so
 XCLHAL_VER =-DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=1
 
-SHIM_INC := -I../../../ -I$(XILINX_SDX)/runtime/driver/include
+SHIM_INC := -I../../../ -I$(XILINX_SDX)/runtime/core/include
 CXXFLAGS += $(CXXFLAGS) $(XCLHAL_VER) $(SHIM_INC) -fpic -fvisibility=hidden -lrt
 
 ifeq ($(debug),1)

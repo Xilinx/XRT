@@ -32,9 +32,9 @@
 #include <unistd.h>
 #include <vector>
 #include <poll.h>
-#include "driver/common/message.h"
-#include "driver/common/scheduler.h"
-#include "driver/common/xclbin_parser.h"
+#include "core/common/message.h"
+#include "core/common/scheduler.h"
+#include "core/common/xclbin_parser.h"
 //#include "xclbin.h"
 #include <assert.h>
 
