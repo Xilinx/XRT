@@ -140,7 +140,7 @@ include (CMake/cpack.cmake)
 
 include (CMake/lint.cmake)
 
-set (XRT_DKMS_DRIVER_SRC_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime_src")
+set (XRT_DKMS_DRIVER_SRC_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/core")
 include (CMake/dkms.cmake)
 include (CMake/dkms-aws.cmake)
 

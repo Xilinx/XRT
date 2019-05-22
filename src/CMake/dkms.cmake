@@ -4,6 +4,7 @@
 # LINUX_KERNEL_VERSION
 
 set (XRT_DKMS_INSTALL_DIR "/usr/src/xrt-${XRT_VERSION_STRING}")
+set (XRT_DKMS_INSTALL_DRIVER_DIR "${XRT_DKMS_INSTALL_DIR}/driver")
 
 message("-- XRT DRIVER SRC BASE DIR ${XRT_DKMS_DRIVER_SRC_BASE_DIR}")
 
@@ -29,126 +30,131 @@ configure_file (
   @ONLY
   )
 
-SET (XRT_DKMS_SRCS
-  driver/xclng/drm/xocl/mgmtpf/mgmt-core.c
-  driver/xclng/drm/xocl/mgmtpf/mgmt-cw.c
-  driver/xclng/drm/xocl/mgmtpf/mgmt-utils.c
-  driver/xclng/drm/xocl/mgmtpf/mgmt-ioctl.c
-  driver/xclng/drm/xocl/mgmtpf/mgmt-sysfs.c
-  driver/xclng/drm/xocl/mgmtpf/mgmt-core.h
-  driver/xclng/drm/xocl/mgmtpf/xclmgmt.dracut.conf
-  driver/xclng/drm/xocl/mgmtpf/10-xclmgmt.rules
-  driver/xclng/drm/xocl/mgmtpf/Makefile
-  driver/xclng/drm/xocl/devices.h
-  driver/xclng/drm/xocl/xocl_drv.h
-  driver/xclng/drm/xocl/xocl_drm.h
-  driver/xclng/drm/xocl/xocl_subdev.c
-  driver/xclng/drm/xocl/xocl_ctx.c
-  driver/xclng/drm/xocl/xocl_thread.c
-  driver/xclng/drm/xocl/xocl_test.c
-  driver/xclng/drm/xocl/userpf/common.h
-  driver/xclng/drm/xocl/userpf/xocl_bo.c
-  driver/xclng/drm/xocl/userpf/xocl_bo.h
-  driver/xclng/drm/xocl/userpf/xocl_drm.c
-  driver/xclng/drm/xocl/userpf/xocl_ioctl.c
-  driver/xclng/drm/xocl/userpf/xocl_sysfs.c
-  driver/xclng/drm/xocl/userpf/xocl_drv.c
-  driver/xclng/drm/xocl/userpf/xocl.dracut.conf
-  driver/xclng/drm/xocl/userpf/10-xocl.rules
-  driver/xclng/drm/xocl/userpf/Makefile
-  driver/xclng/drm/xocl/lib/libxdma.c
-  driver/xclng/drm/xocl/lib/libxdma.h
-  driver/xclng/drm/xocl/lib/cdev_sgdma.h
-  driver/xclng/drm/xocl/lib/libxdma_api.h
-  driver/xclng/drm/xocl/lib/Makefile.in
-  driver/xclng/drm/xocl/lib/libqdma/libqdma_config.h
-  driver/xclng/drm/xocl/lib/libqdma/libqdma_config.c
-  driver/xclng/drm/xocl/lib/libqdma/libqdma_export.h
-  driver/xclng/drm/xocl/lib/libqdma/libqdma_export.c
-  driver/xclng/drm/xocl/lib/libqdma/qdma_compat.h
-  driver/xclng/drm/xocl/lib/libqdma/qdma_context.h
-  driver/xclng/drm/xocl/lib/libqdma/qdma_context.c
-  driver/xclng/drm/xocl/lib/libqdma/qdma_debugfs.c
-  driver/xclng/drm/xocl/lib/libqdma/qdma_debugfs.h
-  driver/xclng/drm/xocl/lib/libqdma/qdma_debugfs_cmpt_queue.c
-  driver/xclng/drm/xocl/lib/libqdma/qdma_debugfs_dev.h
-  driver/xclng/drm/xocl/lib/libqdma/qdma_debugfs_dev.c
-  driver/xclng/drm/xocl/lib/libqdma/qdma_debugfs_queue.h
-  driver/xclng/drm/xocl/lib/libqdma/qdma_debugfs_queue.c
-  driver/xclng/drm/xocl/lib/libqdma/qdma_descq.c
-  driver/xclng/drm/xocl/lib/libqdma/qdma_descq.h
-  driver/xclng/drm/xocl/lib/libqdma/qdma_device.c
-  driver/xclng/drm/xocl/lib/libqdma/qdma_device.h
-  driver/xclng/drm/xocl/lib/libqdma/qdma_intr.h
-  driver/xclng/drm/xocl/lib/libqdma/qdma_intr.c
-  driver/xclng/drm/xocl/lib/libqdma/qdma_context.c
-  driver/xclng/drm/xocl/lib/libqdma/qdma_mbox.h
-  driver/xclng/drm/xocl/lib/libqdma/qdma_qconf_mgr.h
-  driver/xclng/drm/xocl/lib/libqdma/qdma_qconf_mgr.c
-  driver/xclng/drm/xocl/lib/libqdma/qdma_regs.h
-  driver/xclng/drm/xocl/lib/libqdma/qdma_regs.c
-  driver/xclng/drm/xocl/lib/libqdma/qdma_request.h
-  driver/xclng/drm/xocl/lib/libqdma/qdma_request.c
-  driver/xclng/drm/xocl/lib/libqdma/qdma_st_c2h.h
-  driver/xclng/drm/xocl/lib/libqdma/qdma_st_c2h.c
-  driver/xclng/drm/xocl/lib/libqdma/qdma_thread.h
-  driver/xclng/drm/xocl/lib/libqdma/qdma_thread.c
-  driver/xclng/drm/xocl/lib/libqdma/thread.h
-  driver/xclng/drm/xocl/lib/libqdma/thread.c
-  driver/xclng/drm/xocl/lib/libqdma/version.h
-  driver/xclng/drm/xocl/lib/libqdma/xdev.h
-  driver/xclng/drm/xocl/lib/libqdma/xdev.c
-  driver/xclng/drm/xocl/subdev/xdma.c
-  driver/xclng/drm/xocl/subdev/qdma.c
-  driver/xclng/drm/xocl/subdev/feature_rom.c
-  driver/xclng/drm/xocl/subdev/mb_scheduler.c
-  driver/xclng/drm/xocl/subdev/xvc.c
-  driver/xclng/drm/xocl/subdev/nifd.c
-  driver/xclng/drm/xocl/subdev/sysmon.c
-  driver/xclng/drm/xocl/subdev/firewall.c
-  driver/xclng/drm/xocl/subdev/microblaze.c
-  driver/xclng/drm/xocl/subdev/xiic.c
-  driver/xclng/drm/xocl/subdev/mailbox.c
-  driver/xclng/drm/xocl/subdev/icap.c
-  driver/xclng/drm/xocl/subdev/mig.c
-  driver/xclng/drm/xocl/subdev/xmc.c
-  driver/xclng/drm/xocl/subdev/dna.c
-  driver/xclng/drm/xocl/subdev/fmgr.c
-  driver/xclng/drm/xocl/Makefile
-  driver/xclng/drm/.dir-locals.el
-  driver/xclng/include/xocl_ioctl.h
-  driver/xclng/include/mgmt-reg.h
-  driver/xclng/include/mgmt-ioctl.h
-  driver/xclng/include/qdma_ioctl.h
-  driver/xclng/include/mailbox_proto.h
-  driver/include/ert.h
-  driver/include/xclfeatures.h
-  driver/include/xclbin.h
-  driver/include/xclerr.h
+SET (XRT_DKMS_DRIVER_SRC_DIR ${XRT_DKMS_DRIVER_SRC_BASE_DIR}/pcie/driver/linux)
+SET (XRT_DKMS_DRIVER_INCLUDE_DIR ${XRT_DKMS_DRIVER_SRC_BASE_DIR}/pcie/driver/linux)
+SET (XRT_DKMS_CORE_DIR ${XRT_DKMS_DRIVER_SRC_BASE_DIR})
+
+SET (XRT_DKMS_DRIVER_SRCS
+  xocl/mgmtpf/mgmt-core.c
+  xocl/mgmtpf/mgmt-cw.c
+  xocl/mgmtpf/mgmt-utils.c
+  xocl/mgmtpf/mgmt-ioctl.c
+  xocl/mgmtpf/mgmt-sysfs.c
+  xocl/mgmtpf/mgmt-core.h
+  xocl/mgmtpf/xclmgmt.dracut.conf
+  xocl/mgmtpf/10-xclmgmt.rules
+  xocl/mgmtpf/Makefile
+  xocl/devices.h
+  xocl/xocl_drv.h
+  xocl/xocl_drm.h
+  xocl/xocl_subdev.c
+  xocl/xocl_ctx.c
+  xocl/xocl_thread.c
+  xocl/xocl_test.c
+  xocl/userpf/common.h
+  xocl/userpf/xocl_bo.c
+  xocl/userpf/xocl_bo.h
+  xocl/userpf/xocl_drm.c
+  xocl/userpf/xocl_ioctl.c
+  xocl/userpf/xocl_sysfs.c
+  xocl/userpf/xocl_drv.c
+  xocl/userpf/xocl.dracut.conf
+  xocl/userpf/10-xocl.rules
+  xocl/userpf/Makefile
+  xocl/lib/libxdma.c
+  xocl/lib/libxdma.h
+  xocl/lib/cdev_sgdma.h
+  xocl/lib/libxdma_api.h
+  xocl/lib/Makefile.in
+  xocl/lib/libqdma/libqdma_config.h
+  xocl/lib/libqdma/libqdma_config.c
+  xocl/lib/libqdma/libqdma_export.h
+  xocl/lib/libqdma/libqdma_export.c
+  xocl/lib/libqdma/qdma_compat.h
+  xocl/lib/libqdma/qdma_context.h
+  xocl/lib/libqdma/qdma_context.c
+  xocl/lib/libqdma/qdma_debugfs.c
+  xocl/lib/libqdma/qdma_debugfs.h
+  xocl/lib/libqdma/qdma_debugfs_cmpt_queue.c
+  xocl/lib/libqdma/qdma_debugfs_dev.h
+  xocl/lib/libqdma/qdma_debugfs_dev.c
+  xocl/lib/libqdma/qdma_debugfs_queue.h
+  xocl/lib/libqdma/qdma_debugfs_queue.c
+  xocl/lib/libqdma/qdma_descq.c
+  xocl/lib/libqdma/qdma_descq.h
+  xocl/lib/libqdma/qdma_device.c
+  xocl/lib/libqdma/qdma_device.h
+  xocl/lib/libqdma/qdma_intr.h
+  xocl/lib/libqdma/qdma_intr.c
+  xocl/lib/libqdma/qdma_context.c
+  xocl/lib/libqdma/qdma_mbox.h
+  xocl/lib/libqdma/qdma_qconf_mgr.h
+  xocl/lib/libqdma/qdma_qconf_mgr.c
+  xocl/lib/libqdma/qdma_regs.h
+  xocl/lib/libqdma/qdma_regs.c
+  xocl/lib/libqdma/qdma_request.h
+  xocl/lib/libqdma/qdma_request.c
+  xocl/lib/libqdma/qdma_st_c2h.h
+  xocl/lib/libqdma/qdma_st_c2h.c
+  xocl/lib/libqdma/qdma_thread.h
+  xocl/lib/libqdma/qdma_thread.c
+  xocl/lib/libqdma/thread.h
+  xocl/lib/libqdma/thread.c
+  xocl/lib/libqdma/version.h
+  xocl/lib/libqdma/xdev.h
+  xocl/lib/libqdma/xdev.c
+  xocl/subdev/xdma.c
+  xocl/subdev/qdma.c
+  xocl/subdev/feature_rom.c
+  xocl/subdev/mb_scheduler.c
+  xocl/subdev/xvc.c
+  xocl/subdev/nifd.c
+  xocl/subdev/sysmon.c
+  xocl/subdev/firewall.c
+  xocl/subdev/microblaze.c
+  xocl/subdev/xiic.c
+  xocl/subdev/mailbox.c
+  xocl/subdev/icap.c
+  xocl/subdev/mig.c
+  xocl/subdev/xmc.c
+  xocl/subdev/dna.c
+  xocl/subdev/fmgr.c
+  xocl/Makefile
+  )
+
+# includes relative to core/pcie/driver/linux
+SET (XRT_DKMS_DRIVER_INCLUDES
+  include/xocl_ioctl.h
+  include/mgmt-reg.h
+  include/mgmt-ioctl.h
+  include/qdma_ioctl.h
+  include/mailbox_proto.h
+  )
+
+# includes relative to core
+SET (XRT_DKMS_CORE_INCLUDES
+  include/ert.h
+  include/xclfeatures.h
+  include/xclbin.h
+  include/xclerr.h
   )
 
 SET (XRT_DKMS_ABS_SRCS)
 
-foreach (DKMS_FILE ${XRT_DKMS_SRCS})
+foreach (DKMS_FILE ${XRT_DKMS_DRIVER_SRCS})
   get_filename_component(DKMS_DIR ${DKMS_FILE} DIRECTORY)
-  install (FILES ${XRT_DKMS_DRIVER_SRC_BASE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DIR}/${DKMS_DIR})
-  list (APPEND XRT_DKMS_ABS_SRCS ${XRT_DKMS_DRIVER_SRC_BASE_DIR}/${DKMS_FILE})
+  install (FILES ${XRT_DKMS_DRIVER_SRC_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/${DKMS_DIR})
+endforeach()
+  
+foreach (DKMS_FILE ${XRT_DKMS_DRIVER_INCLUDES})
+  get_filename_component(DKMS_DIR ${DKMS_FILE} DIRECTORY)
+  install (FILES ${XRT_DKMS_DRIVER_INCLUDE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/${DKMS_DIR})
+endforeach()
+  
+foreach (DKMS_FILE ${XRT_DKMS_CORE_INCLUDES})
+  get_filename_component(DKMS_DIR ${DKMS_FILE} DIRECTORY)
+  install (FILES ${XRT_DKMS_CORE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/${DKMS_DIR})
 endforeach()
 
 install (FILES ${CMAKE_CURRENT_BINARY_DIR}/${DKMS_FILE_NAME} DESTINATION ${XRT_DKMS_INSTALL_DIR})
 
-find_program(CHECKPATCH checkpatch.pl PATHS /lib/modules/${LINUX_KERNEL_VERSION}/build/scripts/ NO_DEFAULT_PATH)
-
-message("-- checkpatch ${CHECKPATCH}")
-
-if (NOT CHECKPATCH)
-  message (WARNING "-- checkpatch.pl not found, Linux driver code style check disabled")
-else ()
-  add_custom_target(
-    checkpatch
-    COMMAND ${CHECKPATCH}
-    --emacs
-    --no-tree -f
-    ${XRT_DKMS_ABS_SRCS}
-    )
-endif ()

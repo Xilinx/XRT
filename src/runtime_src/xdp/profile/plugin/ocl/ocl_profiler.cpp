@@ -29,7 +29,7 @@
 #include "xdp/profile/core/rt_profile.h"
 #include "xrt/util/config_reader.h"
 #include "xrt/util/message.h"
-#include "driver/include/xclperf.h"
+#include "xclperf.h"
 
 namespace xdp {
 

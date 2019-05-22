@@ -17,7 +17,7 @@
 #ifndef xrt_device_config_reader_h_
 #define xrt_device_config_reader_h_
 
-#include "driver/common/config_reader.h"
+#include "core/common/config_reader.h"
 
 namespace xrt {
 

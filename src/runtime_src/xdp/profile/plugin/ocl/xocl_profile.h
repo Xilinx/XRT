@@ -22,8 +22,8 @@
  */
 
 #include "xdp/profile/device/device_intf.h"
-#include "driver/include/xclperf.h"
-#include "driver/include/xcl_app_debug.h"
+#include "xclperf.h"
+#include "xcl_app_debug.h"
 #include "xocl/core/object.h"
 #include "xocl/core/platform.h"
 #include "xocl/core/device.h"

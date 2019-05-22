@@ -94,4 +94,4 @@ target_link_libraries(xilinxopencl
 
 install (TARGETS xilinxopencl oclxdp LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
 
-add_subdirectory(driver)
+add_subdirectory(core)

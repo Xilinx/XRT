@@ -16,7 +16,7 @@
 
 #include "hal2.h"
 #include "xrt/util/thread.h"
-#include "driver/include/ert.h"
+#include "ert.h"
 
 #include <cstring> // for std::memcpy
 #include <iostream>

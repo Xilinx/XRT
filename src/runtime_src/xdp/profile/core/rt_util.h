@@ -17,7 +17,7 @@
 #ifndef __XDP_CORE_RT_UTIL_H
 #define __XDP_CORE_RT_UTIL_H
 
-#include "driver/include/xclperf.h"
+#include "xclperf.h"
 
 #include <map>
 #include <vector>

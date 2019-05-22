@@ -17,7 +17,7 @@
 #ifndef runtime_src_xocl_xclbin_h_
 #define runtime_src_xocl_xclbin_h_
 
-#include "driver/include/xclbin.h" // definition of binary structs
+#include "core/include/xclbin.h" // definition of binary structs
 
 #include "xocl/core/refcount.h"
 #include "xclbin/binary.h"

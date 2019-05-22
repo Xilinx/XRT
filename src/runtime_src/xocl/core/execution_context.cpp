@@ -21,7 +21,7 @@
 #include "xrt/scheduler/command.h"
 #include "xrt/scheduler/scheduler.h"
 
-#include "driver/common/xclbin_parser.h"
+#include "core/common/xclbin_parser.h"
 
 #include "impl/spir.h"
 

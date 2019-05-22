@@ -18,16 +18,16 @@ fi
 
 DRACUT_CONF_PATH=/etc/dracut.conf.d
 if [ -e $DRACUT_CONF_PATH ]; then
-    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/userpf/xocl.dracut.conf $DRACUT_CONF_PATH
-    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/mgmtpf/xclmgmt.dracut.conf $DRACUT_CONF_PATH
+    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xocl/userpf/xocl.dracut.conf $DRACUT_CONF_PATH
+    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xocl/mgmtpf/xclmgmt.dracut.conf $DRACUT_CONF_PATH
 fi
 
 echo "Invoking DKMS common.postinst for xrt"
 /usr/lib/dkms/common.postinst xrt @XRT_VERSION_STRING@ "" "" $2
 if [ $? -eq 0 ]; then
     echo "Finished DKMS common.postinst"
-    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/userpf/10-xocl.rules /etc/udev/rules.d
-    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/mgmtpf/10-xclmgmt.rules /etc/udev/rules.d
+    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xocl/userpf/10-xocl.rules /etc/udev/rules.d
+    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xocl/mgmtpf/10-xclmgmt.rules /etc/udev/rules.d
 
     echo "Loading new XRT Linux kernel modules"
     udevadm control --reload-rules

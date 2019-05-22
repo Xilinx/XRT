@@ -19,8 +19,8 @@
 
 #include "xrt/device/hal.h"
 #include "xrt/util/range.h"
-#include "driver/include/xclbin.h"
-#include "driver/include/ert.h"
+#include "xclbin.h"
+#include "ert.h"
 
 #include <set>
 #include <vector>
