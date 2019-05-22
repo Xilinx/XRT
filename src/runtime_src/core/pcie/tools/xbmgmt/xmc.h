@@ -23,7 +23,7 @@
 #include <sstream>
 #include <map>
 #include <vector>
-#include "scan.h"
+#include "core/pcie/linux/scan.h"
 
 // Register offset in mgmt pf BAR 0
 #define XMC_REG_BASE                        0x120000

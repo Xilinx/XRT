@@ -21,7 +21,7 @@
 #include <sys/stat.h>
 #include <list>
 #include <iostream>
-#include "scan.h"
+#include "core/pcie/linux/scan.h"
 
 #define PAGE_SIZE 256
 #define PAGE_8K   8192

@@ -1,5 +1,6 @@
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
+  ${XRT_SRC_DIR}/runtime_src/core/include
   ${CMAKE_BINARY_DIR}/gen # includes version.h
   )
 

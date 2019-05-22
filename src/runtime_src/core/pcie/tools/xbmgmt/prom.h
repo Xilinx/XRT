@@ -23,7 +23,7 @@
 #include <list>
 #include <sys/stat.h>
 #include <iostream>
-#include "scan.h"
+#include "core/pcie/linux/scan.h"
 
 class BPI_Flasher
 {

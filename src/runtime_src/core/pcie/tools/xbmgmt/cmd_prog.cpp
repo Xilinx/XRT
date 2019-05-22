@@ -16,18 +16,42 @@
 
 #include <string>
 #include <iostream>
+#include <fstream>
 #include <climits>
 #include <getopt.h>
 
-#include "scan.h"
 #include "xbmgmt.h"
-#include "mgmt-ioctl.h"
+#include "core/pcie/linux/scan.h"
+#include "core/include/xclbin.h"
+#include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
-const char *subCmdClockDesc = "Change various clock frequency on the device";
-const char *subCmdClockUsage =
-    "[--data freq] [--kernel freq] [--system freq] [--card bdf] [--force]";
+const char *subCmdProgDesc = "Download xclbin onto the device";
+const char *subCmdProgUsage = "--path xclbin [--card bdf] [--force]";
 
-int clockHandler(int argc, char *argv[])
+int program(unsigned index, const std::string& xclbin)
+{
+    std::ifstream stream(xclbin.c_str());
+
+    if(!stream.is_open()) {
+        std::cout << "ERROR: Cannot open " << xclbin << std::endl;
+        return -ENOENT;
+    }
+
+    stream.seekg(0, stream.end);
+    int length = stream.tellg();
+    stream.seekg(0, stream.beg);
+
+    char *buffer = new char[length];
+    stream.read(buffer, length);
+    xclmgmt_ioc_bitstream_axlf obj = { reinterpret_cast<axlf *>(buffer) };
+    auto dev = pcidev::get_dev(index, false);
+    int ret = dev->ioctl(XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
+    delete [] buffer;
+
+    return ret ? -errno : ret;
+}
+
+int progHandler(int argc, char *argv[])
 {
     sudoOrDie();
 
@@ -35,16 +59,12 @@ int clockHandler(int argc, char *argv[])
         return -EINVAL;
 
     unsigned index = UINT_MAX;
-    unsigned short data = 0;
-    unsigned short kernel = 0;
-    unsigned short system = 0;
     bool force = false;
+    std::string file;
     const option opts[] = {
         { "card", required_argument, nullptr, '0' },
-        { "data", required_argument, nullptr, '1' },
-        { "kernel", required_argument, nullptr, '2' },
-        { "system", required_argument, nullptr, '3' },
-        { "force", no_argument, nullptr, '4' },
+        { "force", no_argument, nullptr, '1' },
+        { "path", required_argument, nullptr, '2' },
     };
 
     while (true) {
@@ -59,30 +79,17 @@ int clockHandler(int argc, char *argv[])
                 return -ENOENT;
             break;
         case '1':
-            data = std::atoi(optarg);
-            if (data == 0)
-                return -EINVAL;
+            force = true;
             break;
         case '2':
-            kernel = std::atoi(optarg);
-            if (kernel == 0)
-                return -EINVAL;
-            break;
-        case '3':
-            system = std::atoi(optarg);
-            if (system == 0)
-                return -EINVAL;
-            break;
-        case '4':
-            force = true;
+            file = std::string(optarg);
             break;
         default:
             return -EINVAL;
         }
     }
 
-    /* Should specify at least one freq. */
-    if (!data && !kernel && !system)
+    if (file.empty())
         return -EINVAL;
 
     if (index == UINT_MAX)
@@ -90,18 +97,11 @@ int clockHandler(int argc, char *argv[])
 
     /* Get permission from user. */
     if (!force) {
-        std::cout << "CAUTION: Changing clock frequency. " <<
+        std::cout << "CAUTION: Downloading xclbin. " <<
             "Please make sure xocl driver is unloaded." << std::endl;
         if(!canProceed())
             return -ECANCELED;
     }
 
-    xclmgmt_ioc_freqscaling obj = { 0 };
-    obj.ocl_target_freq[DATA_CLK] = data;
-    obj.ocl_target_freq[KERNEL_CLK] = kernel;
-    obj.ocl_target_freq[SYSTEM_CLK] = system;
-    auto dev = pcidev::get_dev(index, false);
-    int ret = dev->ioctl(XCLMGMT_IOCFREQSCALE, &obj);
-
-    return ret ? -errno : ret;
+    return program(index, file);
 }

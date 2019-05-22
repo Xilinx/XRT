@@ -22,7 +22,7 @@
 #include <sys/stat.h>
 #include <list>
 #include <iostream>
-#include "scan.h"
+#include "core/pcie/linux/scan.h"
 
 class XSPI_Flasher
 {

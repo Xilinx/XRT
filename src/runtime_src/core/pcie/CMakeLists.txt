@@ -12,4 +12,4 @@ add_subdirectory(user_aws)
 add_subdirectory(common)
 add_subdirectory(linux)
 add_subdirectory(tools)
-
+add_subdirectory(driver)

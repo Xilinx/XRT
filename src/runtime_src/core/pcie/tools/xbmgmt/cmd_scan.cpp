@@ -17,8 +17,8 @@
 #include <string>
 #include <iostream>
 
-#include "scan.h"
 #include "xbmgmt.h"
+#include "core/pcie/linux/scan.h"
 
 const char *subCmdScanDesc = "List all detected mgmt PCIE functions";
 const char *subCmdScanUsage = "(no options supported)";

@@ -22,7 +22,7 @@
 #include <getopt.h>
 
 #include "flasher.h"
-#include "scan.h"
+#include "core/pcie/linux/scan.h"
 #include "xbmgmt.h"
 
 const char *subCmdFlashDesc = "Update SC firmware or shell on the device";

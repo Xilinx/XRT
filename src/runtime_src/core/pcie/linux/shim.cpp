@@ -24,7 +24,7 @@
 #include "core/include/xclbin.h"
 #include "core/include/ert.h"
 
-#include "driver/xclng/include/mgmt-reg.h"
+#include "core/pcie/driver/linux/include/mgmt-reg.h"
 
 #include <iostream>
 #include <iomanip>
