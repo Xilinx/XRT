@@ -319,8 +319,8 @@ cb_action_unmap (xocl::event* event,cl_int status, cl_mem buffer, size_t size, u
     auto queue = event->get_command_queue();
     auto device = queue->get_device();
 
-    // Catch if buffer is *not* resident on device; if so, then covered by NDRange migration
-    if (!xocl::xocl(buffer)->is_resident(device))
+    // Catch if buffer is *not* resident on device (covered by NDRange migration) or is P2P buffer
+    if (!xocl::xocl(buffer)->is_resident(device) || xocl::xocl(buffer)->is_p2p_memory())
       return;
 
     // Create string to specify event and its dependencies
@@ -367,30 +367,6 @@ cb_action_ndrange_migrate (xocl::event* event,cl_int status, cl_mem mem0, size_t
     if (!isProfilingOn() || (totalSize == 0))
       return;
 
-    //Fix for CR-1004188 Using of the static variable below does not work
-    //as intended. There is only one copy of migrateCount created for all ndrange migrate events
-    //We need to address following cases:
-    //1. For the case when no buffers are migrated by ndrange migrate
-    //   ==> we will not receive "running" but we will receive compelete, there will be an "END" entry in csv file
-    //       without corresponding "START" entry. sdx_analyze should drop the unmatched END
-    //2. For the case when n out of m buffers are migrated (n<=m)
-    //   ==> we will receive one callback for "running" and one callback for "complete", ie. we produce matching
-    //       start and end
-#if 0
-    // Ensure there are START/END pairs
-    // NOTE: When clEnqueueMigrateMemObjects is used, END events are received here, too
-    static int migrateCount = 0;
-    if (status == CL_RUNNING) {
-      migrateCount++;
-    }
-    else if (status == CL_COMPLETE) {
-      if (migrateCount > 0)
-        migrateCount--;
-      else
-        return;
-    }
-#endif
-
     // Create string to specify event and its dependencies
     std::string eventStr;
     std::string dependStr;
@@ -436,26 +412,6 @@ cb_action_migrate (xocl::event* event,cl_int status, cl_mem mem0, size_t totalSi
       return;
 
     auto commandState = event_status_to_profile_state(status);
-
-#if 0
-    // Report the first START and the last END
-    static int numOutstanding = 0;
-    if (commandState == xdp::RTUtil::SUBMIT) {
-      numOutstanding = 0;
-    }
-    else if (commandState == xdp::RTUtil::START) {
-   	  numOutstanding++;
-      XOCL_DEBUGF("action_migrate: START, outstanding = %d\n", numOutstanding);
-   	  //if (numOutstanding != 1)
-   	  //  return;
-    }
-    else if (commandState == xdp::RTUtil::END) {
-   	  numOutstanding--;
-      XOCL_DEBUGF("action_migrate: END, outstanding = %d\n", numOutstanding);
-   	  //if (numOutstanding != 0)
-   	  //  return;
-    }
-#endif
 
     // Create string to specify event and its dependencies
     std::string eventStr;
