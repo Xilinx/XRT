@@ -3,6 +3,11 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.0.0)
 
 SET(PROJECT_DESCRIPTION "https://github.com/Xilinx/XRT")
 
+# Exported interface into XRT for include from implemenation
+include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/core/include
+  )
+
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 

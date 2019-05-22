@@ -20,9 +20,9 @@
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/foreach.hpp>
 
-#include "core/include/xbar_sys_parameters.h"
-#include "core/include/xclhal2.h"
-#include "core/include/xclfeatures.h"
+#include "xbar_sys_parameters.h"
+#include "xclhal2.h"
+#include "xclfeatures.h"
 
 namespace xclemulation{
 

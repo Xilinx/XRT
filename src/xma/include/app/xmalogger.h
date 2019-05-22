@@ -19,7 +19,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "core/include/xrt.h"
+#include "xrt.h"
 
 #ifdef __cplusplus
 extern "C" {

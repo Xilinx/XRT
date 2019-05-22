@@ -26,16 +26,16 @@
 #include <sstream>
 #include <string>
 
-#include "core/include/xclhal2.h"
-#include "core/include/xclperf.h"
-#include "core/include/xcl_axi_checker_codes.h"
+#include "xclhal2.h"
+#include "xclperf.h"
+#include "xcl_axi_checker_codes.h"
 #include "core/pcie/common/dmatest.h"
 #include "core/pcie/common/memaccess.h"
 #include "core/pcie/common/dd.h"
 #include "core/pcie/common/utils.h"
 #include "core/pcie/common/sensor.h"
 #include "core/pcie/linux/scan.h"
-#include "core/include/xclbin.h"
+#include "xclbin.h"
 #include <version.h>
 
 #include <chrono>

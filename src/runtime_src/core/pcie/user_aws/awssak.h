@@ -39,8 +39,8 @@
 #include <iomanip>
 
 #include "scan.h"
-#include "core/include/xclbin.h"
-#include "core/include/xcl_axi_checker_codes.h"
+#include "xclbin.h"
+#include "xcl_axi_checker_codes.h"
 #include "core/pcie/common/dmatest.h"
 #include "core/pcie/common/memaccess.h"
 #include "core/pcie/common/utils.h"

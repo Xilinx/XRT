@@ -10,7 +10,7 @@
 #include <sstream>
 #include <cstring>
 
-#include "core/include/xclhal2.h"
+#include "xclhal2.h"
 #include "common.h"
 
 #define MAX_TOKEN_LEN 32

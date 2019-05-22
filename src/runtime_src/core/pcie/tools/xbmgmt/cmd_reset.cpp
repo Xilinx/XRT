@@ -21,7 +21,7 @@
 
 #include "xbmgmt.h"
 #include "core/pcie/linux/scan.h"
-#include "core/include/xclbin.h"
+#include "xclbin.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
 const char *subCmdResetDesc = "Perform various flavors of reset on the device";

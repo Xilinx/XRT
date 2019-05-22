@@ -18,7 +18,7 @@
 #define __XclBinUtilities_h_
 
 // Include files
-#include "core/include/xclbin.h"
+#include "xclbin.h"
 #include <string>
 #include <memory>
 #include <sstream>

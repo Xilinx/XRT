@@ -37,8 +37,8 @@
 #include "core/pcie/driver/linux/include/mgmt-reg.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 #include "core/pcie/driver/linux/include/xocl_ioctl.h"
-#include "core/include/xclperf.h"
-#include "core/include/xcl_perfmon_parameters.h"
+#include "xclperf.h"
+#include "xcl_perfmon_parameters.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>

@@ -23,7 +23,7 @@
 #include <algorithm>
 
 #include "em_defines.h"
-#include "core/include/xclhal2.h"
+#include "xclhal2.h"
 
 namespace xclemulation
 {

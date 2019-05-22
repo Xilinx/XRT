@@ -34,8 +34,8 @@
 
 #include "shim.h"
 #include "scan.h"
-#include "core/include/xcl_perfmon_parameters.h"
-#include "core/include/xclbin.h"
+#include "xcl_perfmon_parameters.h"
+#include "xclbin.h"
 #include "core/common/message.h"
 
 #include <sys/types.h>

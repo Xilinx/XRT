@@ -28,7 +28,7 @@
 #include "xmc.h"
 #include "firmware_image.h"
 #include "core/pcie/linux/scan.h"
-#include "core/include/xclfeatures.h"
+#include "xclfeatures.h"
 #include <sys/stat.h>
 #include <vector>
 #include <memory>

@@ -1,7 +1,3 @@
-include_directories(
-  ${XRT_SRC_DIR}/runtime_src/core/include
-  )
-
 file(GLOB XMA_API_FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
   "${CMAKE_CURRENT_SOURCE_DIR}/*.c"

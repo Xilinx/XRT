@@ -16,7 +16,7 @@
 
 #include "binary.h"
 
-#include "core/include/xclbin.h"
+#include "xclbin.h"
 
 #include <algorithm>
 #include <iostream>

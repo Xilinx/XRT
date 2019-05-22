@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 #include <boost/property_tree/ptree.hpp>
-#include "core/include/xclbin.h"
+#include "xclbin.h"
 
 
 // #includes here - please keep these to a bare minimum!

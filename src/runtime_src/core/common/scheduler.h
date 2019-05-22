@@ -17,8 +17,8 @@
 #ifndef core_common_scheduler_h_
 #define core_common_scheduler_h_
 
-#include "core/include/xclhal2.h"
-#include "core/include/xclbin.h"
+#include "xclhal2.h"
+#include "xclbin.h"
 
 // This is interim, must be consolidated with runtime_src/xrt/scheduler
 // when XRT C++ code is refactored.

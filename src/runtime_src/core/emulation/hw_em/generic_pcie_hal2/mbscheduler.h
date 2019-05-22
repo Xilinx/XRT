@@ -6,7 +6,7 @@
 #include <cmath>
 #include <cstdint>
 #include <queue>
-#include "core/include/ert.h"
+#include "ert.h"
 
 #define XOCL_U32_MASK 0xFFFFFFFF
 

@@ -21,8 +21,8 @@
 #include "scan.h"
 #include "core/common/message.h"
 #include "core/common/scheduler.h"
-#include "core/include/xclbin.h"
-#include "core/include/ert.h"
+#include "xclbin.h"
+#include "ert.h"
 
 #include "core/pcie/driver/linux/include/mgmt-reg.h"
 

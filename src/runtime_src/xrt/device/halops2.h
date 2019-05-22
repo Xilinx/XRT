@@ -17,7 +17,7 @@
 #ifndef xrt_device_halops2_h
 #define xrt_device_halops2_h
 
-#include "core/include/xclhal2.h"
+#include "xclhal2.h"
 #include <string>
 
 /**

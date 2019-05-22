@@ -33,7 +33,7 @@
  */
 
 #include "shim.h"
-#include "core/include/xclbin.h"
+#include "xclbin.h"
 
 #include <iostream>
 #include <cstdio>

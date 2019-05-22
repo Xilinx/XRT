@@ -17,7 +17,7 @@
 #ifndef xclbin_parser_h_
 #define xclbin_parser_h_
 
-#include "core/include/xclbin.h"
+#include "xclbin.h"
 #include <string>
 #include <vector>
 

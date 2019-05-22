@@ -24,10 +24,10 @@
 #include "memorymanager.h"
 #include "rpc_messages.pb.h"
 
-#include "core/include/xclperf.h"
-#include "core/include/xcl_api_macros.h"
-#include "core/include/xcl_macros.h"
-#include "core/include/xclbin.h"
+#include "xclperf.h"
+#include "xcl_api_macros.h"
+#include "xcl_macros.h"
+#include "xclbin.h"
 #include "core/common/scheduler.h"
 #include "core/common/message.h"
 

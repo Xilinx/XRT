@@ -21,7 +21,7 @@
 #include "lib/xmacfg.h"
 #include "lib/xmahw.h"
 #include "lib/xmalimits.h"
-#include "core/include/xclbin.h"
+#include "xclbin.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
 

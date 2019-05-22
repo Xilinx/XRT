@@ -24,7 +24,7 @@
 #ifndef __XCLBINDATA_H_
 #define __XCLBINDATA_H_
 
-#include "core/include/xclbin.h"
+#include "xclbin.h"
 
 #include <map>
 #include <vector>

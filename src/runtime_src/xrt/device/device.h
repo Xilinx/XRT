@@ -19,8 +19,8 @@
 
 #include "xrt/device/hal.h"
 #include "xrt/util/range.h"
-#include "core/include/xclbin.h"
-#include "core/include/ert.h"
+#include "xclbin.h"
+#include "ert.h"
 
 #include <set>
 #include <vector>

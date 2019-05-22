@@ -5,7 +5,7 @@
  */
 #include <iostream>
 #include <string>
-#include "core/include/xclhal2.h"
+#include "xclhal2.h"
 #include "common.h"
 
 std::string host_ip;

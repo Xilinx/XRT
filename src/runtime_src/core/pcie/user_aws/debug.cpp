@@ -17,8 +17,8 @@
 
 
 #include "shim.h"
-#include "core/include/xcl_perfmon_parameters.h"
-#include "core/include/xclbin.h"
+#include "xcl_perfmon_parameters.h"
+#include "xclbin.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>

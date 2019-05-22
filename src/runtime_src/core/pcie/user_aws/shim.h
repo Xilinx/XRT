@@ -20,8 +20,8 @@
 #ifndef _AWS_SHIM_H_
 #define _AWS_SHIM_H_
 
-#include "core/include/xclhal2.h"
-#include "core/include/xclperf.h"
+#include "xclhal2.h"
+#include "xclperf.h"
 #include "drm.h"
 #include <fstream>
 #include <list>

@@ -11,7 +11,6 @@ endif()
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${DRM_INCLUDE_DIRS}
-  ${XRT_SRC_DIR}/runtime_src/core/include
   )
 
 file(GLOB XRT_USER_AWS_FILES

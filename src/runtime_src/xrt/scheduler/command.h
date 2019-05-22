@@ -17,7 +17,7 @@
 #ifndef xrt_command_h_
 #define xrt_command_h_
 
-#include "core/include/ert.h"
+#include "ert.h"
 #include "xrt/util/regmap.h"
 #include "xrt/device/device.h"
 

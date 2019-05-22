@@ -25,7 +25,7 @@
 #include <cstring>
 #include <iostream>
 
-#include "core/include/xclhal2.h"
+#include "xclhal2.h"
 
 namespace xcldev {
     class Timer {

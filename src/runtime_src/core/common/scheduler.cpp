@@ -18,7 +18,7 @@
 #include "config_reader.h"
 #include "xclbin_parser.h"
 #include "message.h"
-#include "core/include/ert.h"
+#include "ert.h"
 
 #include <sys/mman.h>
 #include <memory>

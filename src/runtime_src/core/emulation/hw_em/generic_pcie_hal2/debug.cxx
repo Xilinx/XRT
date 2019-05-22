@@ -33,8 +33,8 @@
  */
 
 #include "shim.h"
-#include "core/include/xclbin.h"
-#include "core/include/xcl_perfmon_parameters.h"
+#include "xclbin.h"
+#include "xcl_perfmon_parameters.h"
 
 #include <iostream>
 #include <cstdio>

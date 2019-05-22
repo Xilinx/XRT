@@ -29,8 +29,8 @@
 #include <unistd.h>
 #include <sys/file.h>
 
-#include "core/include/xclbin.h"
-#include "core/include/xclperf.h"
+#include "xclbin.h"
+#include "xclperf.h"
 #include "core/pcie/linux/scan.h"
 #include "xbutil.h"
 

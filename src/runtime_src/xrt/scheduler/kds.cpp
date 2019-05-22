@@ -30,7 +30,7 @@
 #include "xrt/util/time.h"
 #include "xrt/util/task.h"
 #include "xrt/device/device.h"
-#include "core/include/ert.h"
+#include "ert.h"
 #include "command.h"
 
 #include <memory>

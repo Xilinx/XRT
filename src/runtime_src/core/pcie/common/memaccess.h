@@ -35,8 +35,8 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-#include "core/include/xclhal2.h"
-#include "core/include/xclbin.h"
+#include "xclhal2.h"
+#include "xclbin.h"
 
 static std::string get_name(const std::string& dir, const std::string& subdir)
 {

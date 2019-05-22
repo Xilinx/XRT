@@ -26,7 +26,7 @@
 
 #include "system_utils.h"
 #include "em_defines.h"
-#include "core/include/xclhal2.h"
+#include "xclhal2.h"
 
 class unix_socket {
   private:

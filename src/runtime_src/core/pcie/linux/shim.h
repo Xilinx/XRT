@@ -23,7 +23,7 @@
  */
 
 #include "scan.h"
-#include "core/include/xclhal2.h"
+#include "xclhal2.h"
 #include "core/pcie/driver/linux/include/xocl_ioctl.h"
 #include "core/pcie/driver/linux/include/qdma_ioctl.h"
 

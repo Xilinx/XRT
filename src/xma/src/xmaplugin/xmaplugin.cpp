@@ -14,9 +14,9 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#include "core/include/xclhal2.h"
-#include "core/include/ert.h"
 #include "xmaplugin.h"
+#include "xclhal2.h"
+#include "ert.h"
 
 #include <cstdio>
 #include <iostream>

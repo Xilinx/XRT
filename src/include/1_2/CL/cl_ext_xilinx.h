@@ -43,7 +43,7 @@
 // Do *not* include cl_ext.h from this directory
 #include_next <CL/cl_ext.h>
 
-#include "core/include/stream.h"
+#include "stream.h"
 
 #ifdef __cplusplus
 extern "C" {

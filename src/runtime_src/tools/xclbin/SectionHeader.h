@@ -23,7 +23,7 @@
 
 #include <string>
 #include <fstream>
-#include "core/include/xclbin.h"
+#include "xclbin.h"
 
 // ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
 // Forward declarations - use these instead whenever possible...

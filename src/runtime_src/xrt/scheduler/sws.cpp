@@ -25,8 +25,8 @@
 #include "xrt/util/debug.h"
 #include "xrt/util/thread.h"
 #include "xrt/util/task.h"
-#include "core/include/ert.h"
-#include "core/include/xclbin.h"
+#include "ert.h"
+#include "xclbin.h"
 #include "core/common/xclbin_parser.h"
 #include "command.h"
 #include <limits>

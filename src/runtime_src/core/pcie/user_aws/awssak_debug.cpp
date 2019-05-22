@@ -28,7 +28,7 @@
 #include <unistd.h>
 #include <sys/file.h>
 
-#include "core/include/xclbin.h"
+#include "xclbin.h"
 #include "scan.h"
 #include "awssak.h"
 

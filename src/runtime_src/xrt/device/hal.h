@@ -23,10 +23,10 @@
 #include "xrt/util/range.h"
 #include "xrt/util/uuid.h"
 
-#include "core/include/xclperf.h"
-#include "core/include/xcl_app_debug.h"
-#include "core/include/stream.h"
-#include "core/include/ert.h"
+#include "xclperf.h"
+#include "xcl_app_debug.h"
+#include "stream.h"
+#include "ert.h"
 
 #include <memory>
 #include <string>

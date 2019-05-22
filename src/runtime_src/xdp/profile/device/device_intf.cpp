@@ -15,8 +15,8 @@
  */
 
 #include "device_intf.h"
-#include "core/include/xclperf.h"
-#include "core/include/xcl_perfmon_parameters.h"
+#include "xclperf.h"
+#include "xcl_perfmon_parameters.h"
 
 #include <iostream>
 #include <cstdio>
