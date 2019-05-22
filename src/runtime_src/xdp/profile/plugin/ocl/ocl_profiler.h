@@ -27,6 +27,7 @@
 #include "xdp/profile/writer/csv_profile.h"
 #include "xdp/profile/writer/csv_trace.h"
 #include "xdp/profile/writer/unified_csv_profile.h"
+#include "xdp/profile/plugin/ocl/ocl_power_profile.h"
 
 namespace xdp {
 
@@ -102,7 +103,7 @@ namespace xdp {
     std::shared_ptr<xocl::platform> Platform;
     std::shared_ptr<XoclPlugin> Plugin;
     std::unique_ptr<RTProfile> ProfileMgr;
-
+    std::vector<std::unique_ptr<OclPowerProfile>> PowerProfileList;
   };
 
   /*

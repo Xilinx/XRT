@@ -290,7 +290,7 @@ void configSoftKernel(xclSKCmd *cmd)
     if (pid == 0) {
       char path[XRT_MAX_PATH_LENGTH];
 
-      getSoftKernelPathName(i, path);
+      getSoftKernelPathName(cmd->start_cuidx, path);
 
       /* Start the soft kenel loop for each CU. */
       softKernelLoop(cmd->krnl_name, path, i);

@@ -654,8 +654,16 @@ extern "C"
 void
 initXDPLib()
 {
-  (void)xdp::RTSingleton::Instance();
-  (void)xdp::OCLProfiler::Instance();
+  try {
+    (void)xdp::RTSingleton::Instance();
+    (void)xdp::OCLProfiler::Instance();
+  } catch (std::runtime_error& e) {
+    xrt::message::send(xrt::message::severity_level::XRT_WARNING, e.what());
+    // Don't register any of the callbacks.  Something went wrong during
+    //  initialization.
+    return ;
+  }
+
   if (xdp::OCLProfiler::Instance()->applicationProfilingOn())
     xdp::register_xocl_profile_callbacks();
 }

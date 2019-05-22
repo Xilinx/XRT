@@ -111,6 +111,19 @@ namespace awsbwhal {
       return 0;
   }
 
+  uint32_t AwsXcl::getPerfMonProperties(xclPerfMonType type, uint32_t slotnum) {
+    if (type == XCL_PERF_MON_MEMORY && slotnum < XSPM_MAX_NUMBER_SLOTS)
+      return static_cast<uint32_t>(mPerfmonProperties[slotnum]);
+    if (type == XCL_PERF_MON_ACCEL && slotnum < XSAM_MAX_NUMBER_SLOTS)
+        return static_cast<uint32_t>(mAccelmonProperties[slotnum]);
+    if (type == XCL_PERF_MON_STR && slotnum < XSSPM_MAX_NUMBER_SLOTS)
+      return static_cast<uint32_t>(mStreammonProperties[slotnum]);
+// Trace Fifo not added yet
+//    if (type == XCL_PERF_MON_FIFO)
+//      return static_cast<uint32_t>(mTraceFifoProperties);
+    return 0;
+  }
+
   uint32_t AwsXcl::getPerfMonNumberSlots(xclPerfMonType type) {
     if (type == XCL_PERF_MON_MEMORY)
       return mMemoryProfilingNumberSlots;
@@ -1133,6 +1146,11 @@ uint32_t xclGetProfilingNumberSlots(xclDeviceHandle handle, xclPerfMonType type)
   return drv ? drv->getPerfMonNumberSlots(type) : 2;
 }
 
+uint32_t xclGetProfilingSlotProperties(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum)
+{
+  awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+  return drv ? drv->getPerfMonProperties(type, slotnum) : 0;
+}
 
 void xclGetProfilingSlotName(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum,
 		                     char* slotName, uint32_t length)

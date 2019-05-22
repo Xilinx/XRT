@@ -1410,6 +1410,8 @@ clGetDebugStreamCounters()
 struct sam_debug_view {
   unsigned long long CuExecCount        [XSAM_MAX_NUMBER_SLOTS];
   unsigned long long CuExecCycles       [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuBusyCycles       [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuMaxParallelIter  [XSAM_MAX_NUMBER_SLOTS];
   unsigned long long CuStallExtCycles   [XSAM_MAX_NUMBER_SLOTS];
   unsigned long long CuStallIntCycles   [XSAM_MAX_NUMBER_SLOTS];
   unsigned long long CuStallStrCycles   [XSAM_MAX_NUMBER_SLOTS];
@@ -1425,6 +1427,8 @@ struct sam_debug_view {
   {
     std::fill(CuExecCount, CuExecCount + XSAM_MAX_NUMBER_SLOTS, 0);
     std::fill(CuExecCycles, CuExecCycles + XSAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuBusyCycles, CuBusyCycles + XSAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuMaxParallelIter, CuMaxParallelIter + XSAM_MAX_NUMBER_SLOTS, 0);
     std::fill(CuStallExtCycles, CuStallExtCycles + XSAM_MAX_NUMBER_SLOTS, 0);
     std::fill(CuStallIntCycles, CuStallIntCycles + XSAM_MAX_NUMBER_SLOTS, 0);
     std::fill(CuStallStrCycles, CuStallStrCycles + XSAM_MAX_NUMBER_SLOTS, 0);
@@ -1464,6 +1468,10 @@ sam_debug_view::getJSONString(bool aVerbose) {
 	 << "\"" << CuExecCount[i] << "\"" << "," ;
     sstr << "\"" << "CuExecCycles"  << "\"" << ":" 
 	 << "\"" << CuExecCycles[i] << "\"" << "," ;
+    sstr << "\"" << "CuBusyCycles"  << "\"" << ":" 
+	     << "\"" << CuBusyCycles[i] << "\"" << "," ;
+    sstr << "\"" << "CuMaxParallelIter"  << "\"" << ":" 
+	     << "\"" << CuMaxParallelIter[i] << "\"" << "," ;
     sstr << "\"" << "CuStallExtCycles"  << "\"" << ":" 
 	 << "\"" << CuStallExtCycles[i] << "\"" << "," ;
     sstr << "\"" << "CuStallIntCycles"  << "\"" << ":" 
@@ -1499,6 +1507,8 @@ sam_debug_view::getXGDBString(bool aVerbose) {
        <<         std::setw(col) << "CU Name"
        << "  " << std::setw(16) << "Exec Count" 
        << "  " << std::setw(16) << "Exec Cycles" 
+       << "  " << std::setw(16) << "Busy Cycles" 
+       << "  " << std::setw(16) << "Max Parallels" 
        << "  " << std::setw(16) << "Ext Stall Cycles"
        << "  " << std::setw(16) << "Int Stall Cycles"
        << "  " << std::setw(16) << "Str Stall Cycles"
@@ -1512,7 +1522,9 @@ sam_debug_view::getXGDBString(bool aVerbose) {
     sstr << std::left
 	 <<         std::setw(col) << slotNames[i]
 	 << "  " << std::setw(16) << CuExecCount[i]
-   << "  " << std::setw(16) << CuExecCycles[i]
+     << "  " << std::setw(16) << CuExecCycles[i]
+     << "  " << std::setw(16) << CuBusyCycles[i]
+     << "  " << std::setw(16) << CuMaxParallelIter[i]
 	 << "  " << std::setw(16) << CuStallExtCycles[i]
 	 << "  " << std::setw(16) << CuStallIntCycles[i]
    << "  " << std::setw(16) << CuStallStrCycles[i]
@@ -1570,6 +1582,12 @@ clGetDebugAccelMonitorCounters()
   std::copy(samCounters.CuExecCycles,
 	    samCounters.CuExecCycles+XSAM_MAX_NUMBER_SLOTS,
 	    sam_view->CuExecCycles);
+  std::copy(samCounters.CuBusyCycles,
+	    samCounters.CuBusyCycles+XSAM_MAX_NUMBER_SLOTS,
+	    sam_view->CuBusyCycles);
+  std::copy(samCounters.CuMaxParallelIter,
+	    samCounters.CuMaxParallelIter+XSAM_MAX_NUMBER_SLOTS,
+	    sam_view->CuMaxParallelIter);
   std::copy(samCounters.CuStallExtCycles,
 	    samCounters.CuStallExtCycles+XSAM_MAX_NUMBER_SLOTS,
 	    sam_view->CuStallExtCycles);
