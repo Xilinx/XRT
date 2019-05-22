@@ -12,7 +12,7 @@ else ()
   message ("-- run-clang-tidy found, static code analysis enabled")
 # run-clang-tidy uses CMake generated compile_comands.json with -p switch
   add_custom_target(
-    clangtidy
+    clang-tidy
     COMMAND ${CLANGTIDY}
     -j ${JOBS}
     -p ${CMAKE_CURRENT_BINARY_DIR}
