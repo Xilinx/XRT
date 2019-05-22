@@ -101,7 +101,7 @@ namespace xocl {
     mStreamProfilingNumberSlots = getIPCountAddrNames(AXI_STREAM_MONITOR, mStreamMonBaseAddress,
       mStreamMonSlotName, mStreammonProperties, mStreammonMajorVersions, mStreammonMinorVersions, XSSPM_MAX_NUMBER_SLOTS);
 
-    mIsDeviceProfiling = (mMemoryProfilingNumberSlots > 0 || mAccelProfilingNumberSlots > 0);
+    mIsDeviceProfiling = (mMemoryProfilingNumberSlots > 0 || mAccelProfilingNumberSlots > 0 || mStreamProfilingNumberSlots > 0);
 
     std::string fifoName;
     uint64_t fifoCtrlBaseAddr = 0x0;
@@ -454,10 +454,15 @@ namespace xocl {
     };
 
     // Read all metric counters
-    uint64_t baseAddress[XSAM_MAX_NUMBER_SLOTS];
-    uint32_t numSlots = getIPCountAddrNames(ACCEL_MONITOR, baseAddress, nullptr, mPerfmonProperties, nullptr, nullptr, XSAM_MAX_NUMBER_SLOTS);
+    uint64_t baseAddress[XSAM_MAX_NUMBER_SLOTS] = {0};
+    uint8_t  accelmonProperties[XSAM_MAX_NUMBER_SLOTS] = {0};
+    uint8_t  accelmonMajorVersions[XSAM_MAX_NUMBER_SLOTS] = {0};
+    uint8_t  accelmonMinorVersions[XSAM_MAX_NUMBER_SLOTS] = {0};
 
-    uint32_t temp[XSAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT];
+    uint32_t numSlots = getIPCountAddrNames(ACCEL_MONITOR, baseAddress, nullptr, accelmonProperties,
+                                            accelmonMajorVersions, accelmonMinorVersions, XSAM_MAX_NUMBER_SLOTS);
+
+    uint32_t temp[XSAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT] = {0};
 
     samResult->NumSlots = numSlots;
     snprintf(samResult->DevUserName, 256, "%s", mDevUserName.c_str());
@@ -468,8 +473,10 @@ namespace xocl {
                     baseAddress[s] + XSAM_SAMPLE_OFFSET,
                     &sampleInterval, 4);
 
+      bool hasDataflow = (cmpMonVersions(accelmonMajorVersions[s],accelmonMinorVersions[s],1,1) < 0) ? true : false;
+
       // If applicable, read the upper 32-bits of the 64-bit debug counters
-      if (mPerfmonProperties[s] & XSAM_64BIT_PROPERTY_MASK) {
+      if (accelmonProperties[s] & XSAM_64BIT_PROPERTY_MASK) {
         for (int c = 0 ; c < XSAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT ; ++c) {
           xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
             baseAddress[s] + sam_upper_offsets[c],
@@ -483,6 +490,15 @@ namespace xocl {
         samResult->CuMinExecCycles[s]  = ((uint64_t)(temp[5])) << 32;
         samResult->CuMaxExecCycles[s]  = ((uint64_t)(temp[6])) << 32;
         samResult->CuStartCount[s]     = ((uint64_t)(temp[7])) << 32;
+
+        if(hasDataflow) {
+          uint64_t dfTmp[2] = {0};
+          xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + XSAM_BUSY_CYCLES_UPPER_OFFSET, &dfTmp[0], 4);
+          xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + XSAM_MAX_PARALLEL_ITER_UPPER_OFFSET, &dfTmp[1], 4);
+
+          samResult->CuBusyCycles[s]      = dfTmp[0] << 32;
+          samResult->CuMaxParallelIter[s] = dfTmp[1] << 32;
+        }
       }
 
       for (int c=0; c < XSAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++)
@@ -496,6 +512,18 @@ namespace xocl {
       samResult->CuMinExecCycles[s]  |= temp[5];
       samResult->CuMaxExecCycles[s]  |= temp[6];
       samResult->CuStartCount[s]     |= temp[7];
+
+      if(hasDataflow) {
+        uint64_t dfTmp[2] = {0};
+        xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + XSAM_BUSY_CYCLES_OFFSET, &dfTmp[0], 4);
+        xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + XSAM_MAX_PARALLEL_ITER_OFFSET, &dfTmp[1], 4);
+
+        samResult->CuBusyCycles[s]      |= dfTmp[0] << 32;
+        samResult->CuMaxParallelIter[s] |= dfTmp[1] << 32;
+      } else {
+        samResult->CuBusyCycles[s]      = samResult->CuExecCycles[s];
+        samResult->CuMaxParallelIter[s] = 1;
+      }
     }
 
     return size;
