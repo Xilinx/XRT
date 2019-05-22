@@ -276,7 +276,8 @@ start_device_trace(key k, xclPerfMonType type, size_t numComputeUnits)
   cl_int ret = CL_SUCCESS;
   if (isValidPerfMonTypeTrace(k,type)) {
     for (auto device : platform->get_device_range()) {
-      ret |= device::startTrace(device,type, numComputeUnits);
+      if (device->is_active())
+        ret |= device::startTrace(device,type, numComputeUnits);
     }
     mgr->setLoggingTrace(type, false);
   }
@@ -290,7 +291,8 @@ stop_device_trace(key k, xclPerfMonType type)
   cl_int ret = CL_SUCCESS;
   if (isValidPerfMonTypeTrace(k,type)) {
     for (auto device : platform->get_device_range()) {
-      ret |= device::stopTrace(device,type);
+      if (device->is_active())
+        ret |= device::stopTrace(device,type);
     }
   }
   return ret;
@@ -331,9 +333,11 @@ start_device_counters(key k, xclPerfMonType type)
   cl_int ret = CL_SUCCESS;
   if (isValidPerfMonTypeCounters(k,type)) {
     for (auto device : platform->get_device_range()) {
-      ret |= device::startCounters(device,type);
-      // TODO: figure out why we need to start trace here for counters to always work (12/14/15, schuey)
-      ret |= device::startTrace(device,type, 1);
+      if (device->is_active()) {
+        ret |= device::startCounters(device,type);
+        // TODO: figure out why we need to start trace here for counters to always work (12/14/15, schuey)
+        ret |= device::startTrace(device,type, 1);
+      }
     }
   }
   return ret;
@@ -346,7 +350,8 @@ stop_device_counters(key k, xclPerfMonType type)
   cl_int ret = CL_SUCCESS;
   if (isValidPerfMonTypeCounters(k,type)) {
     for (auto device : platform->get_device_range()) {
-      ret |= device::stopCounters(device,type);
+      if (device->is_active())
+        ret |= device::stopCounters(device,type);
     }
   }
   return ret;

@@ -21,6 +21,7 @@
 #include <sys/stat.h>
 #include <list>
 #include <iostream>
+#include "scan.h"
 
 #define PAGE_SIZE 256
 #define PAGE_8K   8192
@@ -40,7 +41,7 @@ class XQSPIPS_Flasher
     ELARecordList mRecordList;
 
 public:
-    XQSPIPS_Flasher(unsigned int device_index, char *inMap);
+    XQSPIPS_Flasher(std::shared_ptr<pcidev::pci_device> dev);
     ~XQSPIPS_Flasher();
     int xclUpgradeFirmware(std::istream& binStream);
 
@@ -52,7 +53,7 @@ private:
         uint32_t    flags;
     } xqspips_msg_t;
 
-    char *mMgmtMap;
+    std::shared_ptr<pcidev::pci_device> mDev;
     uint8_t mWriteBuffer[PAGE_8K];
     uint8_t mReadBuffer[PAGE_8K];
     uint32_t mTxBytes;

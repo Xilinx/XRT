@@ -56,10 +56,6 @@ static xuid_t uuid_null = NULL_UUID_LE;
 #define OCL_CLK_FREQ_COUNTER_OFFSET	0x8
 #define ICAP_DEFAULT_EXPIRE_SECS	1
 
-#define DATA_CLK			0
-#define KERNEL_CLK			1
-#define SYSTEM_CLK			2
-
 #define INVALID_MEM_IDX			0xFFFF
 /*
  * Bitstream header information.
@@ -2048,6 +2044,10 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 			(void) xocl_peer_request(xdev,
 				mb_req, data_len, &msg, &resplen, NULL, NULL);
 
+			/* xclbin download changes PR region, make sure next
+			 * ERT configure cmd will go through */
+			(void) xocl_exec_reconfig(xdev);
+
 			/*
 			 *  Ignore fail if it's an AWS device
 			 */
@@ -2524,27 +2524,6 @@ done:
 	return err;
 }
 
-
-/*
- * should always get the latest value of IDCODE and PEER_UUID
- */
-static bool get_latest_force(enum data_kind kind)
-{
-	bool ret = false;
-
-	switch (kind) {
-	case IDCODE:
-		ret = true;
-		break;
-	case PEER_UUID:
-		ret = true;
-		break;
-	default:
-		break;
-	}
-	return ret;
-}
-
 static uint64_t icap_get_data_nolock(struct platform_device *pdev,
 	enum data_kind kind)
 {
@@ -2554,7 +2533,7 @@ static uint64_t icap_get_data_nolock(struct platform_device *pdev,
 
 	if (!ICAP_PRIVILEGED(icap)) {
 
-		if (ktime_compare(now, icap->cache_expires) > 0 || get_latest_force(kind))
+		if (ktime_compare(now, icap->cache_expires) > 0)
 			icap_read_from_peer(pdev);
 
 		switch (kind) {

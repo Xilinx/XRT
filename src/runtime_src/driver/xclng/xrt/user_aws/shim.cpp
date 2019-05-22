@@ -342,107 +342,6 @@ namespace awsbwhal {
         }
     }
 
-    uint64_t AwsXcl::xclAllocDeviceBuffer(size_t size)
-    {
-      if (mLogStream.is_open()) {
-        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << size << std::endl;
-      }
-
-      uint64_t result = mNullAddr;
-      unsigned boHandle = xclAllocBO(size, XCL_BO_DEVICE_RAM, 0x0);
-      if (boHandle == mNullBO)
-        return result;
-
-      drm_xocl_info_bo boInfo = {boHandle, 0, 0, 0};
-      if (ioctl(mUserHandle, DRM_IOCTL_XOCL_INFO_BO, &boInfo))
-        return result;
-
-      void *hbuf = xclMapBO(boHandle, true);
-      if (hbuf == MAP_FAILED) {
-        xclFreeBO(boHandle);
-        return mNullAddr;
-      }
-      mLegacyAddressTable.insert(boInfo.paddr, size, std::make_pair(boHandle, (char *)hbuf));
-      return boInfo.paddr;
-    }
-
-    uint64_t AwsXcl::xclAllocDeviceBuffer2(size_t size, xclMemoryDomains domain, unsigned flags)
-    {
-      if (mLogStream.is_open()) {
-        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << size << ", "
-                   << domain << ", " << flags << std::endl;
-      }
-
-      uint64_t result = mNullAddr;
-      if (domain != XCL_MEM_DEVICE_RAM)
-        return result;
-
-      unsigned ddr = 1;
-      //ddr <<= flags;
-      unsigned boHandle = xclAllocBO(size, XCL_BO_DEVICE_RAM, ddr);
-      if (boHandle == mNullBO)
-        return result;
-
-      drm_xocl_info_bo boInfo = {boHandle, 0, 0, 0};
-      if (ioctl(mUserHandle, DRM_IOCTL_XOCL_INFO_BO, &boInfo))
-        return result;
-
-      void *hbuf = xclMapBO(boHandle, true);
-      if (hbuf == MAP_FAILED) {
-        xclFreeBO(boHandle);
-        return mNullAddr;
-      }
-      mLegacyAddressTable.insert(boInfo.paddr, size, std::make_pair(boHandle, (char *)hbuf));
-      return boInfo.paddr;
-    }
-
-    void AwsXcl::xclFreeDeviceBuffer(uint64_t buf)
-    {
-      if (mLogStream.is_open()) {
-        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << buf << std::endl;
-      }
-
-      std::pair<unsigned, char *> bo = mLegacyAddressTable.erase(buf);
-      drm_xocl_info_bo boInfo = {bo.first, 0, 0, 0};
-      if (!ioctl(mUserHandle, DRM_IOCTL_XOCL_INFO_BO, &boInfo)) {
-        munmap(bo.second, boInfo.size);
-      }
-      xclFreeBO(bo.first);
-    }
-
-
-    size_t AwsXcl::xclCopyBufferHost2Device(uint64_t dest, const void *src, size_t size, size_t seek)
-    {
-      if (mLogStream.is_open()) {
-        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << dest << ", "
-                   << src << ", " << size << ", " << seek << std::endl;
-      }
-
-      std::pair<unsigned, char *> bo = mLegacyAddressTable.find(dest);
-      std::memcpy(bo.second + seek, src, size);
-      int result = xclSyncBO(bo.first, XCL_BO_SYNC_BO_TO_DEVICE, size, seek);
-      if (result)
-        return result;
-      return size;
-    }
-
-
-    size_t AwsXcl::xclCopyBufferDevice2Host(void *dest, uint64_t src, size_t size, size_t skip)
-    {
-      if (mLogStream.is_open()) {
-        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << dest << ", "
-                   << src << ", " << size << ", " << skip << std::endl;
-      }
-
-      std::pair<unsigned, char *> bo = mLegacyAddressTable.find(src);
-      int result = xclSyncBO(bo.first, XCL_BO_SYNC_BO_FROM_DEVICE, size, skip);
-      if (result)
-        return result;
-      std::memcpy(dest, bo.second + skip, size);
-      return size;
-    }
-
-
     AwsXcl *AwsXcl::handleCheck(void *handle) {
         // Sanity checks
         if (!handle)
@@ -527,9 +426,10 @@ namespace awsbwhal {
                    maxDMASize(0xfa0000),
                    mLocked(false),
                    mOffsets{0x0, 0x0, 0x0, 0x0},
-                                                      mMemoryProfilingNumberSlots(0),
-                                                      mAccelProfilingNumberSlots(0),
-                                                      mStallProfilingNumberSlots(0)
+                   mMemoryProfilingNumberSlots(0),
+                   mAccelProfilingNumberSlots(0),
+                   mStallProfilingNumberSlots(0),
+                   mStreamProfilingNumberSlots(0)
     {
 #ifndef INTERNAL_TESTING
         loadDefaultAfiIfCleared();
@@ -538,6 +438,11 @@ namespace awsbwhal {
         mUserHandle = open(devName.c_str(), O_RDWR);
         if(mUserHandle <= 0) {
             std::cout << "WARNING: AwsXcl - Cannot open userPF: " << devName << std::endl;
+        }
+        if (logfileName != nullptr) {
+          mLogStream.open(logfileName);
+          mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
+          mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
         }
 
 #ifdef INTERNAL_TESTING
@@ -588,21 +493,6 @@ namespace awsbwhal {
                         std::cout << "ERROR AwsXcl: PCI mgmt bar attach failed for slot# " << std::dec << slot_id << std::endl;
         }
 #endif
-
-        //
-        // Profiling - defaults
-        // Class-level defaults: mIsDebugIpLayoutRead = mIsDeviceProfiling = false
-        mDevUserName = xcldev::pci_device_scanner::device_list[mBoardNumber].user_name;
-        mMemoryProfilingNumberSlots = 0;
-        mPerfMonFifoCtrlBaseAddress = 0x00;
-        mPerfMonFifoReadBaseAddress = 0x00;
-        //
-        // Profiling - defaults
-        // Class-level defaults: mIsDebugIpLayoutRead = mIsDeviceProfiling = false
-        mDevUserName = xcldev::pci_device_scanner::device_list[mBoardNumber].user_name;
-        mMemoryProfilingNumberSlots = 0;
-        mPerfMonFifoCtrlBaseAddress = 0x00;
-        mPerfMonFifoReadBaseAddress = 0x00;
 
         //
         // Profiling - defaults
@@ -925,6 +815,21 @@ namespace awsbwhal {
         return -EINVAL;
       drm_xocl_pread_unmgd unmgd = {0, 0, offset, count, reinterpret_cast<uint64_t>(buf)};
       return ioctl(mUserHandle, DRM_IOCTL_XOCL_PREAD_UNMGD, &unmgd);
+    }
+
+    int AwsXcl::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size)
+    {
+      std::string devName = xcldev::pci_device_scanner::device_list[ mBoardNumber ].user_name;
+      std::string subdevStr(subdev);        
+      std::string entryStr(entry);        
+
+      if(mLogStream.is_open()) {
+        mLogStream << "Retrieving [sysfs root]" << subdevStr << "/" << entryStr << std::endl;
+      }
+      std::string sysfsPathStr = xcldev::get_sysfs_path(devName, subdevStr, entryStr);
+      strncpy(sysfsPath, sysfsPathStr.c_str(), size);
+      sysfsPathStr[size - 1] = '\0';
+      return 0;
     }
     
     /*
@@ -1280,53 +1185,6 @@ size_t xclRead(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, v
     return drv->xclRead(space, offset, hostBuf, size);
 }
 
-
-uint64_t xclAllocDeviceBuffer(xclDeviceHandle handle, size_t size)
-{
-    awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
-    if (!drv)
-        return -1;
-    return drv->xclAllocDeviceBuffer(size);
-}
-
-
-uint64_t xclAllocDeviceBuffer2(xclDeviceHandle handle, size_t size, xclMemoryDomains domain,
-                               unsigned flags)
-{
-    awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
-    if (!drv)
-        return -1;
-    return drv->xclAllocDeviceBuffer2(size, domain, flags);
-}
-
-
-void xclFreeDeviceBuffer(xclDeviceHandle handle, uint64_t buf)
-{
-    awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
-    if (!drv)
-        return;
-    return drv->xclFreeDeviceBuffer(buf);
-}
-
-
-size_t xclCopyBufferHost2Device(xclDeviceHandle handle, uint64_t dest, const void *src, size_t size, size_t seek)
-{
-    awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
-    if (!drv)
-        return -1;
-    return drv->xclCopyBufferHost2Device(dest, src, size, seek);
-}
-
-
-size_t xclCopyBufferDevice2Host(xclDeviceHandle handle, void *dest, uint64_t src, size_t size, size_t skip)
-{
-    awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
-    if (!drv)
-        return -1;
-    return drv->xclCopyBufferDevice2Host(dest, src, size, skip);
-}
-
-
 //This will be deprecated.
 int xclUpgradeFirmware(xclDeviceHandle handle, const char *fileName)
 {
@@ -1602,8 +1460,9 @@ int xclGetErrorStatus(xclDeviceHandle handle, xclErrorStatus *info)
   //return drv->xclGetErrorStatus(info); Not supported for AWS
 }
 
-int xclAwssak(int argc, char *argv[])
+int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev, const char* entry,
+                    char* sysfsPath, size_t size)
 {
-    return xcldev::xclAwssak(argc, argv);
+  awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+  return drv ? drv->xclGetSysfsPath(subdev, entry, sysfsPath, size) : -ENODEV;
 }
-

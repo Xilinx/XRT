@@ -1,5 +1,5 @@
-Developer Build and Test Instructions
--------------------------------------
+XRT Developer Build and Test Instructions
+-----------------------------------------
 
 Switching XRT development work from P4 to Git can be done without much
 downtime provided you use a few scripts we have created:
@@ -116,7 +116,7 @@ This will add GTest static library symbolic links here:
 
 CMake will handle linking, finding etc. for you.
 
-To add GTest support to a ``CMakeLists.txt`` use the following, and this is using 
+To add GTest support to a ``CMakeLists.txt`` use the following, and this is using
 an example executable called ``xclbintest``::
 
    find_package(GTest)

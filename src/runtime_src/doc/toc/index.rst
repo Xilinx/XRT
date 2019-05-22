@@ -16,10 +16,11 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    :maxdepth: 1
    :caption: Table of Contents
 
+   platforms.rst
+   execution-model.rst
    xrt.main.rst
    mgmt-ioctl.main.rst
    xocl_ioctl.main.rst
-   platforms.rst
    sysfs.rst
    tools.rst
    xclbintools.rst

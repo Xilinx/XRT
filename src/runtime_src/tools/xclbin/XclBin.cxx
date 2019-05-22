@@ -1039,7 +1039,8 @@ XclBin::appendSections(ParameterSectionData &_PSD)
 
       // Add DTC exception. Only for 2019.1
       if (eKind == DTC) {
-        pSection = pTempSection;
+        pSection = Section::createSectionObjectOfKind(eKind);
+        addSection(pSection);
       } else {
         std::string errMsg = XUtil::format("ERROR: Section '%s' doesn't exists for JSON key '%s'.  Must have an existing section in order to append.", pTempSection->getSectionKindAsString().c_str(), sectionName.c_str());
         throw std::runtime_error(errMsg);

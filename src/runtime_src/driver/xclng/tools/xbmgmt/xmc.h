@@ -23,6 +23,7 @@
 #include <sstream>
 #include <map>
 #include <vector>
+#include "scan.h"
 
 // Register offset in mgmt pf BAR 0
 #define XMC_REG_BASE                        0x120000
@@ -103,14 +104,14 @@ class XMC_Flasher
     ELARecordList mRecordList;
 
 public:
-    XMC_Flasher( unsigned int device_index, char *inMap );
+    XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev);
     ~XMC_Flasher();
     int xclUpgradeFirmware(std::istream& tiTxtStream);
     int xclGetBoardInfo(std::map<char, std::vector<char>>& info);
     const std::string probingErrMsg() { return mProbingErrMsg.str(); }
 
 private:
-    char *mMgmtMap;
+    std::shared_ptr<pcidev::pci_device> mDev;
     unsigned mPktBufOffset;
     struct xmcPkt mPkt;
     std::stringstream mProbingErrMsg;

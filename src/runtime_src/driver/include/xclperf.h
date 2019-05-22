@@ -448,7 +448,6 @@ enum DeviceType {
 typedef struct {
   enum DeviceType device_type;
   unsigned int device_index;
-  unsigned int mgmt_instance;
   unsigned int user_instance;
   unsigned int nifd_instance;
   char device_name[MAX_NAME_LEN];

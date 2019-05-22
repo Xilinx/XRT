@@ -32,12 +32,26 @@
 
 namespace xcldev {
 
+static std::string driver_version(std::string driver)
+{
+    std::string line("unknown");
+    std::string path("/sys/bus/pci/drivers/");
+    path += driver;
+    path += "/module/version";
+    std::ifstream ver(path);
+    if (ver.is_open())
+        getline(ver, line);
+    return line;
+}
+
 void xrtInfo(boost::property_tree::ptree &pt)
 {
     pt.put("build.version",   xrt_build_version);
     pt.put("build.hash",      xrt_build_version_hash);
     pt.put("build.date",      xrt_build_version_date);
     pt.put("build.branch",    xrt_build_version_branch);
+    pt.put("build.xocl",      driver_version("xocl"));
+    pt.put("build.xclmgmt",   driver_version("xclmgmt"));
 }
 
 void osInfo(boost::property_tree::ptree &pt)
@@ -94,20 +108,26 @@ void baseDump(std::ostream &ostr)
     ostr << std::left;
     ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
     ostr << "System Configuration"
-         <<    "\nSysname:      " << sensor_tree::get<std::string>("system.sysname", "N/A")
-         <<    "\nRelease:      " << sensor_tree::get<std::string>("system.release", "N/A")
-         <<    "\nVersion:      " << sensor_tree::get<std::string>("system.version", "N/A")
-         <<    "\nMachine:      " << sensor_tree::get<std::string>("system.machine", "N/A")
-         <<    "\nGlibc:        " << sensor_tree::get<std::string>("system.glibc", "N/A")
-         <<    "\nDistribution: " << sensor_tree::get<std::string>("system.linux", "N/A")
-         <<    "\nNow:          " << sensor_tree::get<std::string>("system.now", "N/A") << std::endl;
+         << "\nOS name:\t"      << sensor_tree::get<std::string>("system.sysname", "N/A")
+         << "\nRelease:\t"      << sensor_tree::get<std::string>("system.release", "N/A")
+         << "\nVersion:\t"      << sensor_tree::get<std::string>("system.version", "N/A")
+         << "\nMachine:\t"      << sensor_tree::get<std::string>("system.machine", "N/A")
+         << "\nGlibc:\t\t"      << sensor_tree::get<std::string>("system.glibc", "N/A")
+         << "\nDistribution:\t" << sensor_tree::get<std::string>("system.linux", "N/A")
+         << "\nNow:\t\t"        << sensor_tree::get<std::string>("system.now", "N/A")
+	 << std::endl;
 
     ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-    ostr << "XRT\nVersion:    " << sensor_tree::get<std::string>( "runtime.build.version", "N/A" )
-         <<    "\nGit Hash:   " << sensor_tree::get<std::string>( "runtime.build.hash", "N/A" )
-         <<    "\nGit Branch: " << sensor_tree::get<std::string>( "runtime.build.branch", "N/A" )
-         <<    "\nBuild Date: " << sensor_tree::get<std::string>( "runtime.build.date", "N/A" ) << std::endl;
+    ostr << "XRT Information"
+	 << "\nVersion:\t"      << sensor_tree::get<std::string>( "runtime.build.version", "N/A" )
+         << "\nGit Hash:\t"     << sensor_tree::get<std::string>( "runtime.build.hash", "N/A" )
+         << "\nGit Branch:\t"   << sensor_tree::get<std::string>( "runtime.build.branch", "N/A" )
+         << "\nBuild Date:\t"   << sensor_tree::get<std::string>( "runtime.build.date", "N/A" )
+         << "\nXOCL:\t\t"       << sensor_tree::get<std::string>( "runtime.build.xocl", "N/A" )
+         << "\nXCLMGMT:\t"      << sensor_tree::get<std::string>( "runtime.build.xclmgmt", "N/A" )
+         << std::endl;
 }
-}
+
+} // xcldev
 
 #endif

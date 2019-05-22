@@ -20,7 +20,7 @@
 
 #define BIT(x) (0x1 << x)
 
-std::string parseCUStatus(unsigned val)  {
+std::string parseCUStatus(unsigned int val)  {
     char delim = '(';
     std::string status;
     if (val & 0x1) {
@@ -57,7 +57,7 @@ std::string parseCUStatus(unsigned val)  {
     return status;
 }
 
-std::string parseFirewallStatus(unsigned val)  {
+std::string parseFirewallStatus(unsigned int val)  {
     char delim = '(';
     std::string status;
     // Read channel error
@@ -121,7 +121,7 @@ std::string parseFirewallStatus(unsigned val)  {
     return status;
 }
 
-std::string parseDNAStatus(unsigned val)  {
+std::string parseDNAStatus(unsigned int val)  {
     char delim = '(';
     std::string status;
     if (val & BIT(0)) {

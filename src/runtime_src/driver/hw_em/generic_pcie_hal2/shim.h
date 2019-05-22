@@ -118,7 +118,7 @@ using addr_type = uint64_t;
       int xclLoadXclBin(const xclBin *buffer);
       //int xclLoadBitstream(const char *fileName);
       int xclLoadBitstreamWorker(char* zipFile, size_t zipFileSize, char* xmlfile, size_t xmlFileSize,
-                                 char* debugFile, size_t debugFileSize, char* memTopology, size_t memTopologySize);
+                                 char* debugFile, size_t debugFileSize, char* memTopology, size_t memTopologySize, char* pdi, size_t pdiSize);
       bool isUltraScale() const;
       int xclUpgradeFirmware(const char *fileName);
       int xclBootFPGA();

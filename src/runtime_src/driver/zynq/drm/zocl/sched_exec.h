@@ -33,6 +33,9 @@
 #define MAX_U32_CU_MASKS (((MAX_CU_NUM-1)>>5) + 1)
 #define U32_MASK 0xFFFFFFFF
 
+#define ZOCL_KDS_MASK		(~0xFF)
+#define ZOCL_CU_FREE_RUNNING	(U32_MASK & ZOCL_KDS_MASK)
+
 /**
  * Timestamp only use in set_cmd_ext_timestamp()
  */
@@ -119,6 +122,9 @@ struct sched_exec_core {
 
 	/* Soft kernel definitions */
 	u32                        scu_status[MAX_U32_CU_MASKS];
+
+	/* Bitmap tracks valid CU valid(1)/invalid(0) */
+	u32 			   cu_valid[MAX_U32_CU_MASKS];
 
 	u32                        cu_addr_phy[MAX_CU_NUM];
 	void __iomem              *cu_addr_virt[MAX_CU_NUM];
