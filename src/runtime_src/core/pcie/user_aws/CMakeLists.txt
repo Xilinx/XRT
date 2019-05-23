@@ -48,6 +48,7 @@ if (${INTERNAL_TESTING})
   rt
   boost_filesystem
   boost_system
+  uuid
   )
 else ()
   set(AWS_FPGA_MGMT_LIB_DIR ${AWS_FPGA_REPO_DIR}/sdk/userspace/lib)
@@ -57,6 +58,7 @@ else ()
   rt
   boost_filesystem
   boost_system
+  uuid
   ${AWS_FPGA_MGMT_LIB_DIR}/libfpga_mgmt.a
 )
 endif ()
