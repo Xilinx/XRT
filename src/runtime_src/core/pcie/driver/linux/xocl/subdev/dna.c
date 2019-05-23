@@ -43,47 +43,158 @@
 #define DEV2XDEV(d) xocl_get_xdev(to_platform_device(d))
 
 #define XLNX_DNA_INVALID_CAPABILITY_MASK                            0xFFFFFFFE
+#define XLNX_DNA_PRIVILEGED(xlnx_dna)				    ((xlnx_dna)->base != NULL)
+
+
+#define XLNX_DNA_DEFAULT_EXPIRE_SECS 	1
+
+#define XLNX_DNA_MAX_RES		1
 
 struct xocl_xlnx_dna {
 	void __iomem		*base;
 	struct device		*xlnx_dna_dev;
 	struct mutex		xlnx_dna_lock;
+	u64			cache_expire_secs;
+	struct xcl_dna		cache;
+	ktime_t			cache_expires;
 };
+
+
+enum dna_prop {
+	DNA_RAW,
+	STATUS,
+	CAP,
+	VER,
+	REVERSION,
+};
+
+static void set_xlnx_dna_data(struct xocl_xlnx_dna *xlnx_dna, struct xcl_dna *dna_status)
+{
+	memcpy(&xlnx_dna->cache, dna_status, sizeof(struct xcl_dna));
+	xlnx_dna->cache_expires = ktime_add(ktime_get_boottime(),
+		ktime_set(xlnx_dna->cache_expire_secs, 0));
+}
+
+static void xlnx_dna_read_from_peer(struct platform_device *pdev)
+{
+	struct xocl_xlnx_dna *xlnx_dna = platform_get_drvdata(pdev);
+	struct mailbox_subdev_peer subdev_peer = {0};
+	struct xcl_dna dna_status = {0};
+	size_t resp_len = sizeof(struct xcl_dna);
+	size_t data_len = sizeof(struct mailbox_subdev_peer);
+	struct mailbox_req *mb_req = NULL;
+	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+
+	mb_req = vmalloc(reqlen);
+	if (!mb_req)
+		return;
+
+	mb_req->req = MAILBOX_REQ_PEER_DATA;
+	subdev_peer.size = resp_len;
+	subdev_peer.kind = DNA;
+	subdev_peer.entries = 1;
+
+	memcpy(mb_req->data, &subdev_peer, data_len);
+
+	(void) xocl_peer_request(xdev,
+		mb_req, reqlen, &dna_status, &resp_len, NULL, NULL);
+	set_xlnx_dna_data(xlnx_dna, &dna_status);
+
+	vfree(mb_req);
+}
+
+static void get_xlnx_dna_data(struct platform_device *pdev)
+{
+	struct xocl_xlnx_dna *xlnx_dna = platform_get_drvdata(pdev);
+	ktime_t now = ktime_get_boottime();
+
+	if (ktime_compare(now, xlnx_dna->cache_expires) > 0)
+		xlnx_dna_read_from_peer(pdev);
+}
+
+static void xlnx_dna_get_prop(struct device *dev, enum dna_prop prop, void *val)
+{
+	struct xocl_xlnx_dna *xlnx_dna = dev_get_drvdata(dev);
+
+	BUG_ON(!xlnx_dna);
+
+	if (XLNX_DNA_PRIVILEGED(xlnx_dna)) {
+		switch (prop) {
+		case DNA_RAW:
+			*((u32 *)val+2) = xocl_dr_reg_read32(DEV2XDEV(dev), xlnx_dna->base+XLNX_DNA_READBACK_REGISTER_2_OFFSET);
+			*((u32 *)val+1) = xocl_dr_reg_read32(DEV2XDEV(dev), xlnx_dna->base+XLNX_DNA_READBACK_REGISTER_1_OFFSET);
+			*(u32 *)val     = xocl_dr_reg_read32(DEV2XDEV(dev), xlnx_dna->base+XLNX_DNA_READBACK_REGISTER_0_OFFSET);
+			break;
+		case STATUS:
+			*(u32 *)val = xocl_dr_reg_read32(DEV2XDEV(dev), xlnx_dna->base+XLNX_DNA_STATUS_REGISTER_OFFSET);
+			break;
+		case CAP:
+			*(u32 *)val = xocl_dr_reg_read32(DEV2XDEV(dev), xlnx_dna->base+XLNX_DNA_CAPABILITY_REGISTER_OFFSET);
+			break;
+		case VER:
+			*(u32 *)val = xocl_dr_reg_read32(DEV2XDEV(dev), xlnx_dna->base+XLNX_DNA_MAJOR_MINOR_VERSION_REGISTER_OFFSET);
+			break;
+		case REVERSION:
+			*(u32 *)val = xocl_dr_reg_read32(DEV2XDEV(dev), xlnx_dna->base+XLNX_DNA_REVISION_REGISTER_OFFSET);
+			break;
+		default:
+			break;
+		}
+	} else {
+
+		get_xlnx_dna_data(to_platform_device(dev));
+
+		switch (prop) {
+		case DNA_RAW:
+			memcpy(val, xlnx_dna->cache.dna, sizeof(u32)*4);
+			break;
+		case STATUS:
+			*(u32 *)val = xlnx_dna->cache.status;
+			break;
+		case CAP:
+			*(u32 *)val = xlnx_dna->cache.capability;
+			break;
+		case VER:
+			*(u32 *)val = xlnx_dna->cache.dna_version;
+			break;
+		case REVERSION:
+			*(u32 *)val = xlnx_dna->cache.revision;
+			break;
+		default:
+			break;
+		}
+	}
+}
 
 static ssize_t status_show(struct device *dev, struct device_attribute *attr,
 	char *buf)
 {
-	struct xocl_xlnx_dna *xlnx_dna = dev_get_drvdata(dev);
 	u32 status;
 
-	status = xocl_dr_reg_read32(DEV2XDEV(dev), xlnx_dna->base+XLNX_DNA_STATUS_REGISTER_OFFSET);
-
+	xlnx_dna_get_prop(dev, STATUS, &status);
 	return sprintf(buf, "0x%x\n", status);
 }
 static DEVICE_ATTR_RO(status);
 
+
 static ssize_t dna_show(struct device *dev, struct device_attribute *attr,
 	char *buf)
 {
-	struct xocl_xlnx_dna *xlnx_dna = dev_get_drvdata(dev);
-	uint32_t dna96_64, dna63_32, dna31_0;
+	uint32_t dna[4];
 
-	dna96_64 = xocl_dr_reg_read32(DEV2XDEV(dev), xlnx_dna->base+XLNX_DNA_READBACK_REGISTER_2_OFFSET);
-	dna63_32 = xocl_dr_reg_read32(DEV2XDEV(dev), xlnx_dna->base+XLNX_DNA_READBACK_REGISTER_1_OFFSET);
-	dna31_0  = xocl_dr_reg_read32(DEV2XDEV(dev), xlnx_dna->base+XLNX_DNA_READBACK_REGISTER_0_OFFSET);
-
-	return sprintf(buf, "%08x%08x%08x\n", dna96_64, dna63_32, dna31_0);
+	xlnx_dna_get_prop(dev, DNA_RAW, dna);
+	return sprintf(buf, "%08x%08x%08x\n", dna[2], dna[1], dna[0]);
 }
 static DEVICE_ATTR_RO(dna);
+
 
 static ssize_t capability_show(struct device *dev, struct device_attribute *attr,
 	char *buf)
 {
-	struct xocl_xlnx_dna *xlnx_dna = dev_get_drvdata(dev);
 	u32 capability;
 
-	capability = xocl_dr_reg_read32(DEV2XDEV(dev), xlnx_dna->base+XLNX_DNA_CAPABILITY_REGISTER_OFFSET);
-
+	xlnx_dna_get_prop(dev, CAP, &capability);
 	return sprintf(buf, "0x%x\n", capability);
 }
 static DEVICE_ATTR_RO(capability);
@@ -92,10 +203,9 @@ static DEVICE_ATTR_RO(capability);
 static ssize_t dna_version_show(struct device *dev, struct device_attribute *attr,
 	char *buf)
 {
-	struct xocl_xlnx_dna *xlnx_dna = dev_get_drvdata(dev);
 	u32 version;
 
-	version = xocl_dr_reg_read32(DEV2XDEV(dev), xlnx_dna->base+XLNX_DNA_MAJOR_MINOR_VERSION_REGISTER_OFFSET);
+	xlnx_dna_get_prop(dev, VER, &version);
 
 	return sprintf(buf, "%d.%d\n", version>>16, version&0xffff);
 }
@@ -104,11 +214,10 @@ static DEVICE_ATTR_RO(dna_version);
 static ssize_t revision_show(struct device *dev, struct device_attribute *attr,
 	char *buf)
 {
-	struct xocl_xlnx_dna *xlnx_dna = dev_get_drvdata(dev);
+
 	u32 revision;
 
-	revision = xocl_dr_reg_read32(DEV2XDEV(dev), xlnx_dna->base+XLNX_DNA_REVISION_REGISTER_OFFSET);
-
+	xlnx_dna_get_prop(dev, REVERSION, &revision);
 	return sprintf(buf, "%d\n", revision);
 }
 static DEVICE_ATTR_RO(revision);
@@ -138,7 +247,7 @@ static uint32_t dna_status(struct platform_device *pdev)
 		return status;
 
 	while (!rsa4096done && retries) {
-		status = xocl_dr_reg_read32(DEV2XDEV(dev), xlnx_dna->base+XLNX_DNA_STATUS_REGISTER_OFFSET);
+		xlnx_dna_get_prop(dev, STATUS, &status);
 		if (status>>8 & 0x1) {
 			rsa4096done = true;
 			break;
@@ -150,7 +259,7 @@ static uint32_t dna_status(struct platform_device *pdev)
 	if (retries == 0)
 		return -EBUSY;
 
-	status = xocl_dr_reg_read32(DEV2XDEV(dev), xlnx_dna->base+XLNX_DNA_STATUS_REGISTER_OFFSET);
+	xlnx_dna_get_prop(dev, STATUS, &status);
 
 	return status;
 }
@@ -164,7 +273,7 @@ static uint32_t dna_capability(struct platform_device *pdev)
 	if (!xlnx_dna)
 		return capability;
 
-	capability = xocl_dr_reg_read32(DEV2XDEV(dev), xlnx_dna->base+XLNX_DNA_CAPABILITY_REGISTER_OFFSET);
+	xlnx_dna_get_prop(dev, CAP, &capability);
 
 	return capability;
 }
@@ -182,6 +291,9 @@ static void dna_write_cert(struct platform_device *pdev, const uint32_t *cert, u
 
 	sign_start = message_words;
 	if (!xlnx_dna)
+		return;
+
+	if (!XLNX_DNA_PRIVILEGED(xlnx_dna))
 		return;
 
 	xocl_dr_reg_write32(DEV2XDEV(dev), 0x1, xlnx_dna->base+XLNX_DNA_MESSAGE_START_AXI_ONLY_REGISTER_OFFSET);
@@ -236,10 +348,28 @@ static void dna_write_cert(struct platform_device *pdev, const uint32_t *cert, u
 	xocl_info(&pdev->dev, "Signature: status %08x certificate words %d", status, words);
 }
 
+static void dna_get_data(struct platform_device *pdev, void *buf)
+{
+	struct xocl_xlnx_dna *xlnx_dna = platform_get_drvdata(pdev);
+	struct xcl_dna dna_status = {0};
+
+	if (!XLNX_DNA_PRIVILEGED(xlnx_dna))
+		return;
+
+	xlnx_dna_get_prop(&pdev->dev, STATUS, &dna_status.status);
+	xlnx_dna_get_prop(&pdev->dev, CAP, &dna_status.capability);
+	xlnx_dna_get_prop(&pdev->dev, DNA_RAW, dna_status.dna);
+	xlnx_dna_get_prop(&pdev->dev, VER, &dna_status.dna_version);
+	xlnx_dna_get_prop(&pdev->dev, REVERSION, &dna_status.revision);
+
+	memcpy(buf, &dna_status, sizeof(struct xcl_dna));
+}
+
 static struct xocl_dna_funcs dna_ops = {
 	.status = dna_status,
 	.capability = dna_capability,
 	.write_cert = dna_write_cert,
+	.get_data = dna_get_data,
 };
 
 
@@ -278,32 +408,29 @@ static int xlnx_dna_probe(struct platform_device *pdev)
 {
 	struct xocl_xlnx_dna *xlnx_dna;
 	struct resource *res;
-	int err;
+	int i, err;
 	uint32_t capability;
 
 	xlnx_dna = devm_kzalloc(&pdev->dev, sizeof(*xlnx_dna), GFP_KERNEL);
 	if (!xlnx_dna)
 		return -ENOMEM;
 
-	xlnx_dna->base = devm_kzalloc(&pdev->dev, sizeof(void __iomem *), GFP_KERNEL);
-	if (!xlnx_dna->base)
-		return -ENOMEM;
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res) {
-		xocl_err(&pdev->dev, "resource is NULL");
-		return -EINVAL;
+	for (i = 0; i < XLNX_DNA_MAX_RES; ++i) {
+		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+		if (!res)
+			break;
+
+		xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx",
+			res->start, res->end);
+
+		xlnx_dna->base = ioremap_nocache(res->start, res->end - res->start + 1);
+		if (!xlnx_dna->base) {
+			err = -EIO;
+			xocl_err(&pdev->dev, "Map iomem failed");
+			goto failed;
+		}
 	}
-	xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx",
-		res->start, res->end);
-
-	xlnx_dna->base = ioremap_nocache(res->start, res->end - res->start + 1);
-	if (!xlnx_dna->base) {
-		err = -EIO;
-		xocl_err(&pdev->dev, "Map iomem failed");
-		goto failed;
-	}
-
 	platform_set_drvdata(pdev, xlnx_dna);
 
 	capability = dna_capability(pdev);
@@ -317,6 +444,7 @@ static int xlnx_dna_probe(struct platform_device *pdev)
 	if (err)
 		goto create_xlnx_dna_failed;
 
+	xlnx_dna->cache_expire_secs = XLNX_DNA_DEFAULT_EXPIRE_SECS;
 	xocl_subdev_register(pdev, XOCL_SUBDEV_DNA, &dna_ops);
 
 	return 0;
@@ -358,7 +486,7 @@ static struct platform_driver	xlnx_dna_driver = {
 	.probe		= xlnx_dna_probe,
 	.remove		= xlnx_dna_remove,
 	.driver		= {
-		.name = "xocl_dna",
+		.name = XOCL_DNA,
 	},
 	.id_table = xlnx_dna_id_table,
 };

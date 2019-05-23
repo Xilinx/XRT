@@ -1028,7 +1028,6 @@ failed:
 static int xiic_remove(struct platform_device *pdev)
 {
 	struct xiic_i2c *i2c;
-
 	i2c = platform_get_drvdata(pdev);
 	if (!i2c) {
 		xocl_err(&pdev->dev, "driver data is NULL");
