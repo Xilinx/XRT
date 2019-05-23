@@ -22,7 +22,7 @@ add_library(hw_emu_objects OBJECT ${EM_SRC_FILES})
 set(CURR_SOURCE "")
 add_library(xrt_hwemu SHARED ${CURR_SOURCE}
   $<TARGET_OBJECTS:hw_emu_objects>
-  $<TARGET_OBJECTS:util>  
+  $<TARGET_OBJECTS:core_common_objects>
   )
 
 set_target_properties(xrt_hwemu PROPERTIES VERSION ${XRT_VERSION_STRING}

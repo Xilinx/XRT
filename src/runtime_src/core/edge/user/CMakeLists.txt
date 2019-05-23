@@ -17,7 +17,7 @@ set(XRT_SRC
   )
 
 add_library(xrt_core SHARED ${XRT_SRC}
-  $<TARGET_OBJECTS:util>
+  $<TARGET_OBJECTS:core_common_objects>
   )
 
 set_target_properties(xrt_core PROPERTIES VERSION ${XRT_VERSION_STRING}
