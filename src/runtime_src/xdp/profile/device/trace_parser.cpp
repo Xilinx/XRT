@@ -66,27 +66,28 @@ namespace xdp {
 
   // Destructor
   TraceParser::~TraceParser() {
-    // Clear queues (i.e., swap with an empty one)
-    std::queue<uint64_t> empty64;
-    std::queue<uint32_t> empty32;
-    std::queue<uint16_t> empty16;
+    ResetState();
+  }
+
+  void TraceParser::ResetState() {
+    std::fill_n(mAccelMonStartedEvents,XSAM_MAX_NUMBER_SLOTS,0);
+    // Clear queues
     for (int i=0; i < XSPM_MAX_NUMBER_SLOTS; i++) {
-      std::swap(mWriteStarts[i], empty64);
-      std::swap(mHostWriteStarts[i], empty64);
-      std::swap(mReadStarts[i], empty64);
-      std::swap(mHostReadStarts[i], empty64);
+      mWriteStarts[i].clear();
+      mHostWriteStarts[i].clear();
+      mReadStarts[i].clear();
+      mHostReadStarts[i].clear();
     }
     for (int i=0; i< XSSPM_MAX_NUMBER_SLOTS; i++) {
-      mStreamTxStarts[i] = std::queue<uint64_t>();
-      mStreamStallStarts[i] = std::queue<uint64_t>();
-      mStreamStarveStarts[i] = std::queue<uint64_t>();
-
-      mStreamTxStartsHostTime[i] = std::queue<uint64_t>();
-      mStreamStallStartsHostTime[i] = std::queue<uint64_t>();
-      mStreamStarveStartsHostTime[i] = std::queue<uint64_t>();
+      mStreamTxStarts[i].clear();
+      mStreamStallStarts[i].clear();
+      mStreamStarveStarts[i].clear();
+      mStreamTxStartsHostTime[i].clear();
+      mStreamStallStartsHostTime[i].clear();
+      mStreamStarveStartsHostTime[i].clear();
     }
     for (int i=0; i< XSAM_MAX_NUMBER_SLOTS; i++) {
-      mAccelMonCuStarts[i] = std::queue<uint64_t>();
+      mAccelMonCuStarts[i].clear();
     }
   }
 
@@ -168,11 +169,11 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
         bool isRead = (ipInfo & 0x2) ? true : false;
         if (isStart) {
           if (txEvent)
-            mStreamTxStarts[s].push(timestamp);
+            mStreamTxStarts[s].push_back(timestamp);
           else if (starveEvent)
-            mStreamStarveStarts[s].push(timestamp);
+            mStreamStarveStarts[s].push_back(timestamp);
           else if (stallEvent)
-            mStreamStallStarts[s].push(timestamp);
+            mStreamStallStarts[s].push_back(timestamp);
         } else {
           DeviceTrace streamTrace;
           streamTrace.Kind =  DeviceTrace::DEVICE_STREAM;
@@ -181,7 +182,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
               startTime = timestamp;
             } else {
               startTime = mStreamTxStarts[s].front();
-              mStreamTxStarts[s].pop();
+              mStreamTxStarts[s].pop_front();
             }
             streamTrace.Type = isRead ? "Stream_Read" : "Stream_Write";
           } else if (starveEvent) {
@@ -189,7 +190,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
               startTime = timestamp;
             } else {
               startTime = mStreamStarveStarts[s].front();
-              mStreamStarveStarts[s].pop();
+              mStreamStarveStarts[s].pop_front();
             }
             streamTrace.Type = "Stream_Starve";
           } else if (stallEvent) {
@@ -197,7 +198,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
               startTime = timestamp;
             } else {
               startTime = mStreamStallStarts[s].front();
-              mStreamStallStarts[s].pop();
+              mStreamStallStarts[s].pop_front();
             }
             streamTrace.Type = "Stream_Stall";
           }
@@ -209,6 +210,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
           streamTrace.Start = convertDeviceToHostTimestamp(startTime, type, deviceName);
           streamTrace.End = convertDeviceToHostTimestamp(timestamp, type, deviceName);
           resultVector.push_back(streamTrace);
+          mStreamMonLastTranx[s] = timestamp;
         } // !isStart
       } else if (SAMPacket) {
         s = ((trace.TraceID - MIN_TRACE_ID_SAM) / 16);
@@ -229,7 +231,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
             kernelTrace.Type = "Kernel";
             if (!mAccelMonCuStarts[s].empty()) {
               startTime = mAccelMonCuStarts[s].front();
-              mAccelMonCuStarts[s].pop();
+              mAccelMonCuStarts[s].pop_front();
               kernelTrace.StartTime = startTime;
               kernelTrace.Start = convertDeviceToHostTimestamp(startTime, type, deviceName);
               kernelTrace.TraceStart = kernelTrace.Start;
@@ -238,7 +240,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
             }
           }
           else {
-            mAccelMonCuStarts[s].push(timestamp);
+            mAccelMonCuStarts[s].push_back(timestamp);
           }
         }
         if (stallIntEvent) {
@@ -286,7 +288,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
       } else if (IS_READ(trace.TraceID)) {         // SPM Read Trace
         s = trace.TraceID/2;
         if (trace.EventType == XCL_PERF_MON_START_EVENT) {
-          mReadStarts[s].push(timestamp);
+          mReadStarts[s].push_back(timestamp);
         }
         else if (trace.EventType == XCL_PERF_MON_END_EVENT) {
            if (trace.Reserved == 1) {
@@ -297,7 +299,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
               startTime = timestamp;
             } else {
               startTime = mReadStarts[s].front();
-              mReadStarts[s].pop();
+              mReadStarts[s].pop_front();
             }
            }
           DeviceTrace readTrace;
@@ -314,7 +316,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
       } else if (IS_WRITE(trace.TraceID)) {           // SPM Write Trace
         s = trace.TraceID/2;
         if (trace.EventType == XCL_PERF_MON_START_EVENT) {
-          mWriteStarts[s].push(timestamp);
+          mWriteStarts[s].push_back(timestamp);
         }
         else if (trace.EventType == XCL_PERF_MON_END_EVENT) {
           if (trace.Reserved == 1) {
@@ -325,7 +327,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
               startTime = timestamp;
             } else {
               startTime = mWriteStarts[s].front();
-              mWriteStarts[s].pop();
+              mWriteStarts[s].pop_front();
             }
           }
           DeviceTrace writeTrace;
@@ -342,9 +344,10 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
       }
     } // for i
 
-    // Try to approximate CU Ends from data transnfers
-    std::string cuPortName, cuNameSAM, cuNameSPM;
-    for (int i = 0; i < XSAM_MAX_NUMBER_SLOTS; i++) {
+    // Try to approximate CU Ends from cu port events
+    bool warning = false;
+    unsigned numCu = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_ACCEL, deviceName);
+    for (unsigned i = 0; i < numCu; i++) {
       if (!mAccelMonCuStarts[i].empty()) {
         kernelTrace.SlotNum = i;
         kernelTrace.Name = "OCL Region";
@@ -355,18 +358,35 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
         kernelTrace.BurstLength = 0;
         kernelTrace.NumBytes = 0;
         uint64_t lastTimeStamp = 0;
-        mPluginHandle->getProfileSlotName(XCL_PERF_MON_ACCEL, deviceName, i, cuNameSAM);
-        for (int j = 0; j < XSPM_MAX_NUMBER_SLOTS; j++) {
-          mPluginHandle->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, j, cuPortName);
-          cuNameSPM = cuPortName.substr(0, cuPortName.find_first_of("/"));
-          if (cuNameSAM == cuNameSPM && lastTimeStamp < mPerfMonLastTranx[j])
+        std::string cu;
+        mPluginHandle->getProfileSlotName(XCL_PERF_MON_ACCEL, deviceName, i, cu);
+        // Check if any memory port on current CU had a trace packet
+        unsigned numMem = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_MEMORY, deviceName);
+        for (unsigned j = 0; j < numMem; j++) {
+          std::string port;
+          mPluginHandle->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, j, port);
+          auto found = port.find(cu);
+          if (found != std::string::npos && lastTimeStamp < mPerfMonLastTranx[j])
             lastTimeStamp = mPerfMonLastTranx[j];
         }
+        // Check if any streaming port on current CU had a trace packet
+        unsigned numStream = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_STR, deviceName);
+        for (unsigned j = 0; j < numStream; j++) {
+          std::string port;
+          mPluginHandle->getProfileSlotName(XCL_PERF_MON_STR, deviceName, j, port);
+          auto found = port.find(cu);
+          if (found != std::string::npos && lastTimeStamp < mStreamMonLastTranx[j])
+            lastTimeStamp = mStreamMonLastTranx[j];
+        }
+        // Default case
         if (lastTimeStamp < mAccelMonLastTranx[i])
           lastTimeStamp = mAccelMonLastTranx[i];
         if (lastTimeStamp) {
-          mPluginHandle->sendMessage(
-          "Incomplete CU profile trace detected. Timeline trace will have approximate CU End");
+          if (!warning) {
+            mPluginHandle->sendMessage(
+            "Incomplete CU profile trace detected. Timeline trace will have approximate CU End");
+            warning = true;
+          }
           kernelTrace.EndTime = lastTimeStamp;
           kernelTrace.End = convertDeviceToHostTimestamp(kernelTrace.EndTime, type, deviceName);
           kernelTrace.EventID = mCuEventID++;
@@ -375,8 +395,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
         }
       }
     }
-    // Clear vectors
-    std::fill_n(mAccelMonStartedEvents,XSAM_MAX_NUMBER_SLOTS,0);
+    ResetState();
     XDP_LOG("[profile_device] Done logging device trace samples\n");
   }
 
@@ -427,8 +446,8 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
         
         // Write start
         if (getBit(flags, XAPM_WRITE_FIRST)) {
-          mWriteStarts[s].push(timestamp);
-          mHostWriteStarts[s].push(hostTimestampNsec);
+          mWriteStarts[s].push_back(timestamp);
+          mHostWriteStarts[s].push_back(hostTimestampNsec);
         }
   
         // Write end
@@ -441,8 +460,8 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
 
           uint64_t startTime = mWriteStarts[s].front();
           uint64_t hostStartTime = mHostWriteStarts[s].front();  
-          mWriteStarts[s].pop();
-          mHostWriteStarts[s].pop();
+          mWriteStarts[s].pop_front();
+          mHostWriteStarts[s].pop_front();
   
           // Add write trace class to vector
           DeviceTrace writeTrace;
@@ -464,8 +483,8 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
   
         // Read start
         if (getBit(flags, XAPM_READ_FIRST)) {
-          mReadStarts[s].push(timestamp);
-          mHostReadStarts[s].push(hostTimestampNsec);
+          mReadStarts[s].push_back(timestamp);
+          mHostReadStarts[s].push_back(hostTimestampNsec);
         }
   
         // Read end
@@ -478,8 +497,8 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
 
           uint64_t startTime = mReadStarts[s].front();
           uint64_t hostStartTime = mHostReadStarts[s].front();
-          mReadStarts[s].pop();
-          mHostReadStarts[s].pop();
+          mReadStarts[s].pop_front();
+          mHostReadStarts[s].pop_front();
   
           // Add read trace class to vector
           DeviceTrace readTrace;
@@ -544,14 +563,14 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
         bool isRead     = (ipInfo & 0x2) ? true : false;
         if (isStart) {
           if (txEvent) {
-            mStreamTxStarts[s].push(timestamp);
-            mStreamTxStartsHostTime[s].push(hostTimestampNsec);
+            mStreamTxStarts[s].push_back(timestamp);
+            mStreamTxStartsHostTime[s].push_back(hostTimestampNsec);
           } else if (starveEvent) {
-            mStreamStarveStarts[s].push(timestamp);
-            mStreamStarveStartsHostTime[s].push(hostTimestampNsec);
+            mStreamStarveStarts[s].push_back(timestamp);
+            mStreamStarveStartsHostTime[s].push_back(hostTimestampNsec);
           } else if (stallEvent) {
-            mStreamStallStarts[s].push(timestamp);
-            mStreamStallStartsHostTime[s].push(hostTimestampNsec);
+            mStreamStallStarts[s].push_back(timestamp);
+            mStreamStallStartsHostTime[s].push_back(hostTimestampNsec);
           }
         } else {
           if (txEvent) {
@@ -561,8 +580,8 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
             } else {
               startTime = mStreamTxStarts[s].front();
               hostStartTime = mStreamTxStartsHostTime[s].front();
-              mStreamTxStarts[s].pop();
-              mStreamTxStartsHostTime[s].pop();
+              mStreamTxStarts[s].pop_front();
+              mStreamTxStartsHostTime[s].pop_front();
             }
             kernelTrace.Type = isRead ? "Stream_Read" : "Stream_Write";
           } else if (starveEvent) {
@@ -572,8 +591,8 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
             } else {
               startTime = mStreamStarveStarts[s].front();
               hostStartTime = mStreamStarveStartsHostTime[s].front();
-              mStreamStarveStarts[s].pop();
-              mStreamStarveStartsHostTime[s].pop();
+              mStreamStarveStarts[s].pop_front();
+              mStreamStarveStartsHostTime[s].pop_front();
             }
             kernelTrace.Type = "Stream_Starve";
           } else if (stallEvent) {
@@ -583,8 +602,8 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
             } else {
               startTime = mStreamStallStarts[s].front();
               hostStartTime = mStreamStallStartsHostTime[s].front();
-              mStreamStallStarts[s].pop();
-              mStreamStallStartsHostTime[s].pop();
+              mStreamStallStarts[s].pop_front();
+              mStreamStallStartsHostTime[s].pop_front();
             }
             kernelTrace.Type = "Stream_Stall";
           }

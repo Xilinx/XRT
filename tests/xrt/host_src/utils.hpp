@@ -35,7 +35,7 @@ namespace utils {
 static std::mutex s_debug_mutex;
 
 MAYBE_UNUSED
-static void 
+static void
 debugf(const char* format,...)
 {
   std::lock_guard<std::mutex> lk(s_debug_mutex);
@@ -95,6 +95,7 @@ struct device_object
 {
   xclDeviceHandle handle;
   uint64_t cu_base_addr;
+  uuid_t xclbin_id;
 };
 
 using device = std::shared_ptr<device_object>;
@@ -177,9 +178,9 @@ get_exec_buffer(const device& device, size_t sz)
   return create_exec_bo(device,sz);
 }
 
-/**  
+/**
  * recycle_exec_buffer() - recycle a used exec buffer object
- * 
+ *
  * @ebo: Exec buffer object to recycle
  */
 MAYBE_UNUSED
@@ -223,7 +224,7 @@ create_bo(const device& device, size_t sz, int bank=-1)
  * @device_index: Index of device to open
  * @log: Log file
  * Return: Shared pointer to device object
- */  
+ */
 MAYBE_UNUSED
 static device
 init(const std::string& bit, unsigned int deviceIndex, const std::string& log, int& first_used_mem)
@@ -237,7 +238,7 @@ init(const std::string& bit, unsigned int deviceIndex, const std::string& log, i
 
   auto udo = std::make_unique<device_object>();
   udo->handle = xclOpen(deviceIndex, log.c_str(), XCL_INFO);
-  
+
   xclDeviceInfo2 deviceInfo;
   if (xclGetDeviceInfo2(udo->handle, &deviceInfo))
     throw std::runtime_error("Unable to obtain device information");
@@ -263,7 +264,7 @@ init(const std::string& bit, unsigned int deviceIndex, const std::string& log, i
 
   if (std::strncmp(header.data(), "xclbin2", 8))
     throw std::runtime_error("Invalid bitstream");
-  
+
   auto xclbin = reinterpret_cast<const xclBin*>(header.data());
   if (xclLoadXclBin(udo->handle, xclbin))
     throw std::runtime_error("Bitstream download failed");
@@ -276,12 +277,16 @@ init(const std::string& bit, unsigned int deviceIndex, const std::string& log, i
   auto topo = xclbin::get_axlf_section(top, MEM_TOPOLOGY);
   auto topology = reinterpret_cast<mem_topology*>(header.data() + topo->m_sectionOffset);
 
+  uuid_copy(udo->xclbin_id, top->m_header.uuid);
+
   // compute cu base addr
+  size_t cu_count = 0;
   udo->cu_base_addr = std::numeric_limits<uint64_t>::max();
   std::for_each(layout->m_ip_data,layout->m_ip_data+layout->m_count,
-                [&udo](auto ip_data) {
+                [&udo,&cu_count](auto ip_data) {
                   if (ip_data.m_type != IP_KERNEL)
                     return;
+                  xclOpenContext(udo->handle,udo->xclbin_id,cu_count++,true);
                   udo->cu_base_addr = std::min(udo->cu_base_addr,ip_data.m_base_address);
                 });
 
@@ -291,7 +296,8 @@ init(const std::string& bit, unsigned int deviceIndex, const std::string& log, i
       break;
     }
   }
-  
+
+
   return device(udo.release(),delDO);
 }
 

@@ -29,7 +29,7 @@
 #include "xdp/profile/core/rt_profile.h"
 #include "xrt/util/config_reader.h"
 #include "xrt/util/message.h"
-#include "driver/include/xclperf.h"
+#include "xclperf.h"
 
 namespace xdp {
 
@@ -60,7 +60,7 @@ namespace xdp {
     Plugin->setObjectsReleased(mEndDeviceProfilingCalled);
 
     if (!mEndDeviceProfilingCalled && applicationProfilingOn()) {
-      xrt::message::send(xrt::message::severity_level::WARNING,
+      xrt::message::send(xrt::message::severity_level::XRT_WARNING,
           "Profiling may contain incomplete information. Please ensure all OpenCL objects are released by your host code (e.g., clReleaseProgram()).");
 
       // Before deleting, do a final read of counters and force flush of trace buffers
@@ -85,6 +85,13 @@ namespace xdp {
     if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM))
       xoclp::platform::start_device_trace(platform, XCL_PERF_MON_ACCEL, numComputeUnits);
 
+    if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE)) {
+      for (auto device : platform->get_device_range()) {
+        auto power_profile = std::make_unique<OclPowerProfile>(device->get_xrt_device(), Plugin, device->get_unique_name());
+        PowerProfileList.push_back(std::move(power_profile));
+      }
+    }
+
     mProfileRunning = true;
   }
 
@@ -95,7 +102,7 @@ namespace xdp {
     // Only needs to be called once
     if (mEndDeviceProfilingCalled)
    	  return;
-    
+
     auto platform = getclPlatformID();
     if (applicationProfilingOn()) {
       // Write end of app event to trace buffer (Zynq only)
@@ -158,7 +165,7 @@ namespace xdp {
   void OCLProfiler::getDeviceTrace(bool forceReadTrace)
   {
     auto platform = getclPlatformID();
-    if (!isProfileRunning() || 
+    if (!isProfileRunning() ||
         (!deviceTraceProfilingOn() && !(Plugin->getFlowMode() == xdp::RTUtil::HW_EM) ))
       return;
 

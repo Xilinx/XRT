@@ -583,6 +583,16 @@ public:
   }
 
   /**
+   * @return
+   *  Number of CUs that can be used by this kernel object
+   */
+  size_t
+  get_num_cus() const
+  {
+    return m_cus.size();
+  }
+
+  /**
    * Get the set of memory banks an argument can connect to given the
    * current set of kernel compute units for specified device
    *
@@ -602,13 +612,15 @@ public:
    * Internal validated list of CUs is updated / trimmed to those that
    * support argument at @argidx connected to memory bank at @memidx
    *
+   * @param dev
+   *  Targeted device for connectivity check
    * @param argidx
    *  The argument index to validate
    * @param memidx
    *  The memory index that must be used by argument
    */
   size_t
-  validate_cus(unsigned long argidx, int memidx) const;
+  validate_cus(const device* dev, unsigned long argidx, int memidx) const;
 
   /**
    * Error message for exceptions when connectivity checks fail

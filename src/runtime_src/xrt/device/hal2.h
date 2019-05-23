@@ -21,6 +21,8 @@
 #include "xrt/device/halops2.h"
 #include "xrt/device/PMDOperations.h"
 
+#include "ert.h"
+
 #include <cassert>
 
 #include <functional>
@@ -78,6 +80,7 @@ class device : public xrt::hal::device
     unsigned int flags = 0;
     hal2::device_handle owner = nullptr;
     BufferObjectHandle parent = nullptr;
+    bool imported = false;
   };
 
   struct ExecBufferObject : hal::exec_buffer_object
@@ -303,6 +306,10 @@ public:
   virtual event
   copy(const BufferObjectHandle& dst_bo, const BufferObjectHandle& src_bo, size_t sz, size_t dst_offset, size_t src_offset);
 
+  virtual void
+  fill_copy_pkt(const BufferObjectHandle& dst_boh, const BufferObjectHandle& src_boh
+                ,size_t sz, size_t dst_offset, size_t src_offset,ert_start_copybo_cmd* pkt);
+
   virtual size_t
   read_register(size_t offset, void* buffer, size_t size);
 
@@ -354,6 +361,9 @@ public:
   pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout);
 
 public:
+  virtual bool
+  is_imported(const BufferObjectHandle& boh) const;
+
   virtual uint64_t
   getDeviceAddr(const BufferObjectHandle& boh);
 
@@ -543,6 +553,15 @@ public:
     return hal::operations_result<void>(0);
   }
 
+  virtual hal::operations_result<void>
+  configureDataflow(xclPerfMonType type, unsigned *ip_config)
+  {
+    if (!m_ops->mConfigureDataflow)
+      return hal::operations_result<void>();
+    m_ops->mConfigureDataflow(m_handle,type, ip_config);
+    return hal::operations_result<void>(0);
+  }
+
   virtual hal::operations_result<size_t>
   startCounters(xclPerfMonType type)
   {
@@ -576,7 +595,7 @@ public:
   }
 
   virtual void*
-  getHalDeviceHandle() { 
+  getHalDeviceHandle() {
     return m_handle;
   }
 

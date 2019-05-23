@@ -17,7 +17,7 @@
 #include "xocl_profile.h"
 #include "ocl_profiler.h"
 #include "xdp/profile/config.h"
-#include "driver/include/xclbin.h"
+#include "xclbin.h"
 
 namespace xdp { namespace xoclp {
 
@@ -276,7 +276,8 @@ start_device_trace(key k, xclPerfMonType type, size_t numComputeUnits)
   cl_int ret = CL_SUCCESS;
   if (isValidPerfMonTypeTrace(k,type)) {
     for (auto device : platform->get_device_range()) {
-      ret |= device::startTrace(device,type, numComputeUnits);
+      if (device->is_active())
+        ret |= device::startTrace(device,type, numComputeUnits);
     }
     mgr->setLoggingTrace(type, false);
   }
@@ -290,7 +291,8 @@ stop_device_trace(key k, xclPerfMonType type)
   cl_int ret = CL_SUCCESS;
   if (isValidPerfMonTypeTrace(k,type)) {
     for (auto device : platform->get_device_range()) {
-      ret |= device::stopTrace(device,type);
+      if (device->is_active())
+        ret |= device::stopTrace(device,type);
     }
   }
   return ret;
@@ -331,9 +333,11 @@ start_device_counters(key k, xclPerfMonType type)
   cl_int ret = CL_SUCCESS;
   if (isValidPerfMonTypeCounters(k,type)) {
     for (auto device : platform->get_device_range()) {
-      ret |= device::startCounters(device,type);
-      // TODO: figure out why we need to start trace here for counters to always work (12/14/15, schuey)
-      ret |= device::startTrace(device,type, 1);
+      if (device->is_active()) {
+        ret |= device::startCounters(device,type);
+        // TODO: figure out why we need to start trace here for counters to always work (12/14/15, schuey)
+        ret |= device::startTrace(device,type, 1);
+      }
     }
   }
   return ret;
@@ -346,7 +350,8 @@ stop_device_counters(key k, xclPerfMonType type)
   cl_int ret = CL_SUCCESS;
   if (isValidPerfMonTypeCounters(k,type)) {
     for (auto device : platform->get_device_range()) {
-      ret |= device::stopCounters(device,type);
+      if (device->is_active())
+        ret |= device::stopCounters(device,type);
     }
   }
   return ret;
@@ -547,6 +552,21 @@ getMaxWrite(key k)
   return device->get_xrt_device()->getDeviceMaxWrite().get();
 }
 
+void configureDataflow(key k, xclPerfMonType type)
+{
+  unsigned num_slots = getProfileNumSlots(k, type);
+  auto ip_config = std::make_unique <unsigned []>(num_slots);
+  for (unsigned i=0; i < num_slots; i++) {
+    std::string slot;
+    getProfileSlotName(k, type, i, slot);
+    ip_config[i] = isAPCtrlChain(k, slot) ? 1 : 0;
+  }
+
+  auto device = k;
+  auto xdevice = device->get_xrt_device();
+  xdevice->configureDataflow(type, ip_config.get());
+}
+
 cl_int 
 startCounters(key k, xclPerfMonType type)
 {
@@ -564,6 +584,9 @@ startCounters(key k, xclPerfMonType type)
   xdevice->startCounters(type);
   data->mSampleIntervalMsec =
     OCLProfiler::Instance()->getProfileManager()->getSampleIntervalMsec();
+
+  // Depends on Debug IP Layout data loaded in hal
+  configureDataflow(k, XCL_PERF_MON_ACCEL);
   return CL_SUCCESS;
 }
 
@@ -702,19 +725,24 @@ isAPCtrlChain(key k, const std::string& cu)
   auto device = k;
   if (!device)
     return false;
+  size_t base_addr = 0;
+  for (auto& xcu : device->get_cus()) {
+    if (xcu->get_name().compare(cu) == 0)
+      base_addr = xcu->get_base_addr();
+  }
   auto xclbin = device->get_xclbin();
   auto binary = xclbin.binary();
   auto binary_data = binary.binary_data();
   auto header = reinterpret_cast<const xclBin *>(binary_data.first);
   auto ip_layout = getAxlfSection<const ::ip_layout>(header, axlf_section_kind::IP_LAYOUT);
-  if (!ip_layout)
+  if (!ip_layout || !base_addr)
     return false;
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
-    std::string current((char *)ip_data.m_name);
-    if (current.find(cu) == std::string::npos)
+    auto current = ip_data.m_base_address;
+    if (current != base_addr || ip_data.m_type != IP_TYPE::IP_KERNEL)
       continue;
-    if (ip_data.m_type==IP_TYPE::IP_KERNEL && ((ip_data.properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN))
+    if ((ip_data.properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN)
       return true;
   }
   return false;

@@ -17,7 +17,7 @@
 #ifndef __XDP_CORE_RT_UTIL_H
 #define __XDP_CORE_RT_UTIL_H
 
-#include "driver/include/xclperf.h"
+#include "xclperf.h"
 
 #include <map>
 #include <vector>
@@ -48,16 +48,18 @@ namespace xdp {
 
     enum e_profile_command_kind {
       READ_BUFFER = 0x1,
-      WRITE_BUFFER = 0x2,
-      COPY_BUFFER = 0x3,
-      COPY_BUFFER_P2P = 0x4,
-      EXECUTE_KERNEL = 0x5,
-      DEVICE_KERNEL_READ = 0x6,
-      DEVICE_KERNEL_WRITE = 0x7,
-      DEVICE_KERNEL_EXECUTE = 0x8,
-      DEVICE_BUFFER_READ = 0x9,
-      DEVICE_BUFFER_WRITE = 0xA,
-      DEPENDENCY_EVENT = 0xB
+      READ_BUFFER_P2P = 0x2,
+      WRITE_BUFFER = 0x3,
+      WRITE_BUFFER_P2P = 0x4,
+      COPY_BUFFER = 0x5,
+      COPY_BUFFER_P2P = 0x6,
+      EXECUTE_KERNEL = 0x7,
+      DEVICE_KERNEL_READ = 0x8,
+      DEVICE_KERNEL_WRITE = 0x9,
+      DEVICE_KERNEL_EXECUTE = 0xA,
+      DEVICE_BUFFER_READ = 0xB,
+      DEVICE_BUFFER_WRITE = 0xC,
+      DEPENDENCY_EVENT = 0xD
     };
 
     enum e_profile_command_state {

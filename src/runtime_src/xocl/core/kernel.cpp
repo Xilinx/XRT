@@ -19,6 +19,7 @@
 #include "context.h"
 #include "device.h"
 #include "compute_unit.h"
+#include "core/common/xclbin_parser.h"
 
 #include <sstream>
 #include <iostream>
@@ -420,8 +421,15 @@ get_memidx(const device* device, unsigned int argidx) const
 
 size_t
 kernel::
-validate_cus(unsigned long argidx, int memidx) const
+validate_cus(const device* device, unsigned long argidx, int memidx) const
 {
+#if defined(__arm__)
+  // embedded platforms can have different HP ports connected to same memory bank
+  auto name = device->get_name();
+  if (name.find("_xdma_") == std::string::npos && name.find("_qdma_") == std::string::npos)
+    return m_cus.size();
+#endif
+
   XOCL_DEBUG(std::cout,"xocl::kernel::validate_cus(",argidx,",",memidx,")\n");
   xclbin::memidx_bitmask_type connections;
   connections.set(memidx);
@@ -430,11 +438,12 @@ validate_cus(unsigned long argidx, int memidx) const
     auto cu = (*itr);
     auto cuconn = cu->get_memidx(argidx);
     if ((cuconn & connections).none()) {
+      auto axlf = device->get_axlf();
       xrt::message::send
-        (xrt::message::severity_level::WARNING
+        (xrt::message::severity_level::XRT_WARNING
          , "Argument '" + std::to_string(argidx)
          + "' of kernel '" + get_name()
-         + "' is allocated in memory bank '" + std::to_string(memidx)
+         + "' is allocated in memory bank '" + xrt_core::xclbin::memidx_to_name(axlf,memidx)
          + "'; compute unit '" + cu->get_name()
          + "' cannot be used with this argument and is ignored.");
       XOCL_DEBUG(std::cout,"xocl::kernel::validate_cus removing cu(",cu->get_uid(),") ",cu->get_name(),"\n");
@@ -505,7 +514,7 @@ assign_buffer_to_argidx(memory* buf, unsigned long argidx)
     if (trim) {
       auto memidx = buf->get_memidx();
       assert(memidx>=0);
-      validate_cus(argidx,memidx);
+      validate_cus(device,argidx,memidx);
     }
   }
 

@@ -78,6 +78,7 @@ RH_LIST=(\
      protobuf-compiler \
      protobuf-static \
      python \
+     python-pip \
      redhat-lsb \
      rpm-build \
      strace \
@@ -109,7 +110,7 @@ UB_LIST=(\
      libyaml-dev \
      linux-libc-dev \
      lm-sensors \
-     lsb \
+     lsb-release \
      make \
      ocl-icd-dev \
      ocl-icd-libopencl1 \
@@ -120,6 +121,7 @@ UB_LIST=(\
      pciutils \
      pkg-config \
      protobuf-compiler \
+     python-pip \
      python3-sphinx \
      python3-sphinx-rtd-theme \
      sphinx-common \
@@ -140,7 +142,7 @@ SUDO=${SUDO:-sudo}
 
 #dmidecode is only applicable for x86_64
 if [ $ARCH == "x86_64" ]; then
-    if [ $FLAVOR == "ubuntu" ]; then
+    if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
 	UB_LIST+=( dmidecode )
     fi
     if [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] ; then
@@ -150,7 +152,7 @@ fi
 
 validate()
 {
-    if [ $FLAVOR == "ubuntu" ]; then
+    if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
         #apt -qq list "${UB_LIST[@]}"
         dpkg -l "${UB_LIST[@]}" > /dev/null
         if [ $? == 0 ] ; then
@@ -170,9 +172,11 @@ validate()
 
 install()
 {
-    if [ $FLAVOR == "ubuntu" ]; then
-        echo "Installing Ubuntu packages..."
+    if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
+        echo "Installing packages..."
         ${SUDO} apt install -y "${UB_LIST[@]}"
+        ${SUDO} -H pip install --upgrade setuptools 
+        ${SUDO} -H pip install pyopencl
     fi
 
     # Enable EPEL on CentOS/RHEL
@@ -203,6 +207,8 @@ install()
         echo "Installing RHEL/CentOS packages..."
         ${SUDO} yum install -y "${RH_LIST[@]}"
         ${SUDO} yum install -y devtoolset-6
+        ${SUDO} -H pip install pyopencl
+        ${SUDO} pip install --ignore-installed numpy==1.8
     fi
 }
 

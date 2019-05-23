@@ -36,6 +36,7 @@ class SectionDTC : public Section {
  public:
   virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;
   virtual bool doesSupportDumpFormatType(FormatType _eFormatType) const;
+  virtual void appendToSectionMetadata(const boost::property_tree::ptree& _ptAppendData, boost::property_tree::ptree& _ptToAppendTo);
 
  protected:
   virtual void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const;
@@ -50,7 +51,7 @@ class SectionDTC : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(DTC, "DTC", "", false, boost::factory<SectionDTC*>()); }
+    _init() { registerSectionCtor(DTC, "DTC", "ip_shell_definitions", false, boost::factory<SectionDTC*>()); }
   } _initializer;
 };
 

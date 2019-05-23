@@ -238,6 +238,11 @@ namespace xdp {
     return mLogger->getMigrateMemCalls();
   }
 
+  int RTProfile::getHostP2PTransfers() const
+  {
+    return mLogger->getHostP2PTransfers();
+  }
+
   const std::set<std::thread::id>& RTProfile::getThreadIds()
   {
     return mLogger->getThreadIds();
