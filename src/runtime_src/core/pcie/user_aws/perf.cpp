@@ -133,7 +133,7 @@ namespace awsbwhal {
     if (type == XCL_PERF_MON_HOST) {
       uint32_t count = 0;
       for (unsigned int i=0; i < mMemoryProfilingNumberSlots; i++) {
-        if (mPerfmonProperties[i] & 0x4) count++;
+        if (mPerfmonProperties[i] & XSPM_HOST_PROPERTY_MASK) count++;
       }
       return count;
     }
