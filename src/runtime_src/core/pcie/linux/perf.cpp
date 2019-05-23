@@ -37,6 +37,7 @@
 #include "core/pcie/driver/linux/include/mgmt-reg.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 #include "core/pcie/driver/linux/include/xocl_ioctl.h"
+#include "core/common/memalign.h"
 #include "xclperf.h"
 #include "xcl_perfmon_parameters.h"
 
@@ -87,7 +88,7 @@ namespace xocl {
       }
 
       AlignedAllocator(size_t alignment, size_t count) : mBuffer(0), mCount(count) {
-          if (posix_memalign(&mBuffer, alignment, count * sizeof(T))) {
+        if (xrt_core::posix_memalign(&mBuffer, alignment, count * sizeof(T))) {
               mBuffer = 0;
           }
       }

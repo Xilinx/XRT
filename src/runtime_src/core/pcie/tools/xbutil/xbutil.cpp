@@ -29,6 +29,7 @@
 #include "base.h"
 #include "ert.h"
 #include "core/pcie/linux/shim.h"
+#include "core/common/memalign.h"
 
 int bdf2index(std::string& bdfStr, unsigned& index)
 {
@@ -1234,7 +1235,7 @@ static int p2ptest_chunk(xclDeviceHandle handle, char *boptr,
     char patternA = 'A';
     char patternB = 'B';
 
-    if (posix_memalign((void **)&buf, getpagesize(), size))
+    if (xrt_core::posix_memalign((void **)&buf, getpagesize(), size))
           return -ENOMEM;
 
     (void) p2ptest_set_or_cmp(buf, size, patternA, true);

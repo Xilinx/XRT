@@ -21,16 +21,17 @@
 #include "xocl/core/context.h"
 #include "xocl/core/device.h"
 #include "xocl/core/memory.h"
+#include "core/common/memalign.h"
 
 #include "detail/context.h"
 #include "detail/memory.h"
 
 #include "api.h"
+#include "plugin/xdp/profile.h"
 
 #include <cstdlib>
 #include <mutex>
 #include <deque>
-#include "plugin/xdp/profile.h"
 
 // Unused code, but left as reference to be reimplemented in needed
 
@@ -521,7 +522,7 @@ clCreatePipe(cl_context                context,
   // it would be nice to not allocate the pipe if it's a hardware pipe.
   size_t nbytes = upipe->get_pipe_packet_size() * (upipe->get_pipe_max_packets()+8);
   void* user_ptr=nullptr;
-  int status = posix_memalign(&user_ptr, 128, (sizeof(cpu_pipe_t)+nbytes));
+  int status = xrt_core::posix_memalign(&user_ptr, 128, (sizeof(cpu_pipe_t)+nbytes));
   if (status)
     throw xocl::error(CL_MEM_OBJECT_ALLOCATION_FAILURE);
   upipe->set_pipe_host_ptr(user_ptr);
