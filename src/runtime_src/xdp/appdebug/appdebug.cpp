@@ -23,11 +23,12 @@
 #include "appdebug.h"
 #include "appdebug_track.h"
 #include "xdp/rt_singleton.h"
-#include "xdp/profile/rt_profile.h"
+#include "xdp/profile/core/rt_profile.h"
 
 #include "xocl/core/event.h"
 #include "xocl/core/command_queue.h"
 #include "xocl/core/device.h"
+#include "xocl/core/platform.h"
 #include "xocl/core/context.h"
 #include "xocl/core/compute_unit.h"
 #include "xocl/core/execution_context.h"
@@ -42,6 +43,7 @@
 
 #include <map>
 #include <sstream>
+#include <fstream>
 #include "xocl/api/plugin/xdp/appdebug.h"
 
 namespace {
@@ -180,6 +182,7 @@ template class app_debug_view<event_debug_view_base>;
 template class app_debug_view<std::vector<kernel_debug_view*>>;
 template class app_debug_view<spm_debug_view>;
 template class app_debug_view<sspm_debug_view>;
+template class app_debug_view<sam_debug_view>;
 template class app_debug_view<lapc_debug_view>;
 template class app_debug_view<std::vector<cl_command_queue>>;
 template class app_debug_view<std::vector<cl_mem>>;
@@ -302,7 +305,7 @@ std::string event_debug_view_migrate::getstring(int aVerbose, int aQuotes)
   }
   else {
     sstr << "Migrate " << m_num_objects << " cl_mem objects ";
-    for(auto i = 0; i<m_num_objects; ++i)
+    for(unsigned int i = 0; i<m_num_objects; ++i)
       sstr << std::hex << m_mem_objects[i] << " ";
     sstr << " with flags " << m_flags;
   }
@@ -402,7 +405,7 @@ std::string clmem_debug_view::getstring(int aVerbose, int aQuotes)
 
   sstr << quotes << "Mem" << quotes << " : " << quotes << std::hex <<  m_mem << quotes << ", ";
   sstr << quotes << "MemID" << quotes << " : " << quotes << std::dec << m_uid << quotes << ", ";
-  sstr << quotes << "DDRAddress" << quotes << " : " << quotes << "0x" << std::hex << m_device_addr << quotes << ", ";
+  sstr << quotes << "Device Memory Address" << quotes << " : " << quotes << "0x" << std::hex << m_device_addr << quotes << ", ";
   if (!m_bank.empty()) {
     sstr << quotes << "Bank" << quotes << " : " << quotes << std::dec << m_bank << quotes << ", ";
   }
@@ -917,7 +920,7 @@ getArgValueString(const xocl::event* aEvent)
     auto address_space = arg->get_address_space();
     if (address_space == SPIR_ADDRSPACE_PRIVATE)
     {
-      auto arginforange = arg->get_arginfo_range();
+      //auto arginforange = arg->get_arginfo_range();
       //sstr << arg->get_name() << " = " << getscalarval((const void*)arg->get_value(), arg->get_size(),arginforange) << " ";
       sstr << arg->get_name() << " = " << arg->get_string_value() << " ";
     } else if (address_space==SPIR_ADDRSPACE_PIPES){
@@ -1023,8 +1026,9 @@ isAppdebugEnabled()
 
 uint32_t getIPCountAddrNames(std::string& devUserName, int type, std::vector<uint64_t> *baseAddress, std::vector<std::string> * portNames) {
   debug_ip_layout *map;
-  //Get the path to the device from the HAL
-  std::string path = "/sys/bus/pci/devices/" + devUserName + "/debug_ip_layout";
+  // Get the path to the device from the HAL
+  // std::string path = "/sys/bus/pci/devices/" + devUserName + "/debug_ip_layout";
+  std::string path = devUserName;
   std::ifstream ifs(path.c_str(), std::ifstream::binary);
   uint32_t count = 0;
   char buffer[debug_ip_layout_max_size];
@@ -1072,29 +1076,33 @@ std::pair<size_t, size_t> getCUNamePortName (std::vector<std::string>& aSlotName
             aCUNamePortNames.pop_back();
             aCUNamePortNames.emplace_back("XDMA", "N/A");
         }
-        max1 = std::max(aCUNamePortNames.back().first.length(), max1);
-        max2 = std::max(aCUNamePortNames.back().second.length(), max2);
+
+        // Use strlen() instead of length() because the strings taken from debug_ip_layout
+        // are always 128 in length, where the end is full of null characters
+        max1 = std::max(strlen(aCUNamePortNames.back().first.c_str()), max1);
+        max2 = std::max(strlen(aCUNamePortNames.back().second.c_str()), max2);
     }
     return std::pair<size_t, size_t>(max1, max2);
 }
 
 struct spm_debug_view {
-  unsigned int   WriteBytes[XSPM_MAX_NUMBER_SLOTS];
-  unsigned int   WriteTranx[XSPM_MAX_NUMBER_SLOTS];
-  unsigned int   ReadBytes[XSPM_MAX_NUMBER_SLOTS];
-  unsigned int   ReadTranx[XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int WriteBytes[XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int WriteTranx[XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int ReadBytes[XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int ReadTranx[XSPM_MAX_NUMBER_SLOTS];
 
-  unsigned int   OutStandCnts[XSPM_MAX_NUMBER_SLOTS];
-  unsigned int   LastWriteAddr[XSPM_MAX_NUMBER_SLOTS];
-  unsigned int   LastWriteData[XSPM_MAX_NUMBER_SLOTS];
-  unsigned int   LastReadAddr[XSPM_MAX_NUMBER_SLOTS];
-  unsigned int   LastReadData[XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int OutStandCnts[XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int LastWriteAddr[XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int LastWriteData[XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int LastReadAddr[XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int LastReadData[XSPM_MAX_NUMBER_SLOTS];
   unsigned int   NumSlots;
   std::string    DevUserName;
+  std::string    SysfsPath;
   spm_debug_view () {
     std::fill (WriteBytes, WriteBytes+XSPM_MAX_NUMBER_SLOTS, 0);
     std::fill (WriteTranx, WriteTranx+XSPM_MAX_NUMBER_SLOTS, 0);
-    std::fill (WriteBytes, WriteBytes+XSPM_MAX_NUMBER_SLOTS, 0);
+    std::fill (ReadBytes, ReadBytes+XSPM_MAX_NUMBER_SLOTS, 0);
     std::fill (ReadTranx, ReadTranx+XSPM_MAX_NUMBER_SLOTS, 0);
     std::fill (OutStandCnts, OutStandCnts+XSPM_MAX_NUMBER_SLOTS, 0);
     std::fill (LastWriteAddr, LastWriteAddr+XSPM_MAX_NUMBER_SLOTS, 0);
@@ -1127,36 +1135,37 @@ spm_debug_view::getstring(int aVerbose, int aJSONFormat) {
     }
   }
 
-  unsigned int numSlots = getIPCountAddrNames (DevUserName, AXI_MM_MONITOR, nullptr, &slotNames);
+  //  unsigned int numSlots = 
+  getIPCountAddrNames(SysfsPath, AXI_MM_MONITOR, nullptr, &slotNames);
   std::pair<size_t, size_t> widths = getCUNamePortName(slotNames, cuNameportNames);
 
   if (aJSONFormat) {
     sstr << "["; //spm list
-      for (int i = 0; i<NumSlots; ++i) {
+      for (unsigned int i = 0; i<NumSlots; ++i) {
          sstr << (i > 0 ? "," : "") << "{";
-         sstr << quotes << "CUName" << quotes << " : " << quotes << cuNameportNames[i].first << quotes << ",";
-         sstr << quotes << "AXIPortname" << quotes << " : " << quotes << cuNameportNames[i].second << quotes << ",";
+         sstr << quotes << "RegionCU" << quotes << " : " << quotes << cuNameportNames[i].first << quotes << ",";
+         sstr << quotes << "TypePort" << quotes << " : " << quotes << cuNameportNames[i].second.c_str() << quotes << ",";
          sstr << quotes << "WriteBytes" << quotes << " : " << quotes <<  WriteBytes[i] << quotes << ",";
          sstr << quotes << "WriteTranx" << quotes << " : " << quotes <<  WriteTranx[i] << quotes << ",";
          sstr << quotes << "ReadBytes" << quotes << " : " << quotes <<  ReadBytes[i] << quotes << ",";
          sstr << quotes << "ReadTranx" << quotes << " : " << quotes <<  ReadTranx[i] << quotes << ",";
          sstr << quotes << "OutstandingCnt" << quotes << " : " << quotes <<  OutStandCnts[i] << quotes << ",";
-         sstr << quotes << "LastWrAddr" << quotes << " : " << quotes << std::hex << "0x" <<  LastWriteAddr[i] << std::dec << quotes << ",";
-         sstr << quotes << "LastWrData" << quotes << " : " << quotes <<  LastWriteData[i] << quotes << ",";
-         sstr << quotes << "LastRdAddr" << quotes << " : " << quotes << std::hex << "0x" <<  LastReadAddr[i] << std::dec << quotes << ",";
-         sstr << quotes << "LastRdData" << quotes << " : " << quotes <<  LastReadData[i] << quotes ;
+         sstr << quotes << "LastWrAddr" << quotes << " : " << quotes << "0x" << std::hex << LastWriteAddr[i] << quotes << ",";
+         sstr << quotes << "LastWrData" << quotes << " : " << quotes << "0x" << LastWriteData[i] << quotes << ",";
+         sstr << quotes << "LastRdAddr" << quotes << " : " << quotes << "0x" << LastReadAddr[i]  << quotes << ",";
+         sstr << quotes << "LastRdData" << quotes << " : " << quotes << "0x" << LastReadData[i]  << quotes << std::dec ;
          sstr << "}";
       }
     sstr << "]";
   }
   else {
-    sstr<< "SDx Performance Monitor Counters\n";
-    int col1 = std::max(widths.first, strlen("CU Name")) + 4;
-    int col2 = std::max(widths.second, strlen("AXI Portname"));
+    sstr<< "Performance Monitor Counters\n";
+    int col1 = std::max(widths.first, strlen("Region or CU")) + 4;
+    int col2 = std::max(widths.second, strlen("Type or Port"));
 
     sstr << std::left
-              << std::setw(col1) << "CU Name"
-              << " " << std::setw(col2) << "AXI Portname"
+              << std::setw(col1) << "Region or CU"
+              << " " << std::setw(col2) << "Type or Port"
               << "  " << std::setw(16)  << "Write Bytes"
               << "  " << std::setw(16)  << "Write Tranx."
               << "  " << std::setw(16)  << "Read Bytes"
@@ -1167,20 +1176,21 @@ spm_debug_view::getstring(int aVerbose, int aJSONFormat) {
               << "  " << std::setw(16)  << "Last Rd Addr"
               << "  " << std::setw(16)  << "Last Rd Data"
               << std::endl;
-    for (int i = 0; i<NumSlots; ++i) {
+    for (unsigned int i = 0; i<NumSlots; ++i) {
       sstr << std::left
               << std::setw(col1) << cuNameportNames[i].first
-              << " " << std::setw(col2) << cuNameportNames[i].second
+              << " " << std::setw(col2) << cuNameportNames[i].second.c_str()
               << "  " << std::setw(16) << WriteBytes[i]
               << "  " << std::setw(16) << WriteTranx[i]
               << "  " << std::setw(16) << ReadBytes[i]
               << "  " << std::setw(16) << ReadTranx[i]
               << "  " << std::setw(16) << OutStandCnts[i]
-              << "  " << std::hex << "0x" << std::setw(16) << LastWriteAddr[i] << std::dec
-              << "  " << std::setw(16) << LastWriteData[i]
-              << "  " << std::hex << "0x" << std::setw(16) << LastReadAddr[i] << std::dec
-              << "  " << std::setw(16) << LastReadData[i]
-              << std::endl;
+              << std::hex
+              << "  " << "0x" << std::setw(14) << LastWriteAddr[i]
+              << "  " << "0x" << std::setw(14) << LastWriteData[i]
+              << "  " << "0x" << std::setw(14) << LastReadAddr[i]
+              << "  " << "0x" << std::setw(14) << LastReadData[i]
+              << std::dec << std::endl;
     }
   }
   return sstr.str();
@@ -1195,7 +1205,6 @@ isEmulationMode()
 
 app_debug_view<spm_debug_view>*
 clGetDebugCounters() {
-  cl_int ret = CL_SUCCESS;
   xclDebugCountersResults debugResults = {0};
 
   if (isEmulationMode()) {
@@ -1203,11 +1212,11 @@ clGetDebugCounters() {
     return adv;
   }
 
-  if (!XCL::active()) {
+  if (!xdp::active()) {
     auto adv = new app_debug_view<spm_debug_view>(nullptr, nullptr, true, "Runtime instance not yet created");
     return adv;
   }
-  auto rts = XCL::RTSingleton::Instance();
+  auto rts = xdp::RTSingleton::Instance();
   if (!rts) {
     auto adv = new app_debug_view<spm_debug_view>(nullptr, nullptr, true, "Error: Runtime instance not available");
     return adv;
@@ -1216,18 +1225,19 @@ clGetDebugCounters() {
   auto platform = rts->getcl_platform_id();
   // Iterates over all devices, but assumes only one device
   memset(&debugResults,0, sizeof(xclDebugCountersResults));
+  std::string subdev = "icap";
+  std::string entry = "debug_ip_layout";
+  std::string sysfs_open_path;
   for (auto device : platform->get_device_range()) {
     if (device->is_active()) {
       //memset(&debugResults,0, sizeof(xclDebugCountersResults));
       //At this point we deal with only one deviceyy
-      ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SPM, &debugResults);
+      device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_SPM, &debugResults);
+      sysfs_open_path = device->get_xrt_device()->getSysfsPath(subdev, entry).get();
+      //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SPM, &debugResults);
     }
   }
 
-  if (ret) {
-    auto adv = new app_debug_view<spm_debug_view>(nullptr, nullptr, true, "Error reading spm counters");
-    return adv;
-  }
   auto spm_view = new spm_debug_view ();
   std::copy(debugResults.WriteBytes, debugResults.WriteBytes+XSPM_MAX_NUMBER_SLOTS, spm_view->WriteBytes);
   std::copy(debugResults.WriteTranx, debugResults.WriteTranx+XSPM_MAX_NUMBER_SLOTS, spm_view->WriteTranx);
@@ -1240,8 +1250,10 @@ clGetDebugCounters() {
   std::copy(debugResults.LastReadData, debugResults.LastReadData+XSPM_MAX_NUMBER_SLOTS, spm_view->LastReadData);
   spm_view->NumSlots = debugResults.NumSlots;
   spm_view->DevUserName = debugResults.DevUserName;
+  spm_view->SysfsPath = sysfs_open_path;
 
   auto adv = new app_debug_view <spm_debug_view> (spm_view, [spm_view](){delete spm_view;}, false, "");
+
   return adv;
 }
 
@@ -1256,6 +1268,7 @@ struct sspm_debug_view {
 
   unsigned int NumSlots ;
   std::string  DevUserName ;
+  std::string    SysfsPath;
 
   sspm_debug_view() 
   {
@@ -1310,7 +1323,7 @@ std::string
 sspm_debug_view::getXGDBString(bool aVerbose) {
   std::stringstream sstr;
 
-  sstr << "SDx Streaming Performance Monitor Counters\n" ;
+  sstr << "Streaming Performance Monitor Counters\n" ;
   sstr << std::left
        <<         std::setw(32) << "Number of Transactions"
        << "  " << std::setw(16) << "Data Bytes" 
@@ -1340,35 +1353,31 @@ clGetDebugStreamCounters()
     auto adv = new app_debug_view<sspm_debug_view>(nullptr, nullptr, true, "xstatus is not supported in emulation flow");
     return adv;
   }
-  if (!XCL::active()) {
+  if (!xdp::active()) {
     auto adv = new app_debug_view<sspm_debug_view>(nullptr, nullptr, true, "Runtime instance not yet created");
     return adv;
   }
-  auto rts = XCL::RTSingleton::Instance();
+  auto rts = xdp::RTSingleton::Instance();
   if (!rts) {
     auto adv = new app_debug_view<sspm_debug_view>(nullptr, nullptr, true, "Error: Runtime instance not available");
     return adv;
   }
 
-  cl_int ret = CL_SUCCESS;
-
   xclStreamingDebugCountersResults streamingDebugCounters;  
   memset(&streamingDebugCounters, 0, sizeof(xclStreamingDebugCountersResults));
-
+  std::string subdev = "icap";
+  std::string entry = "debug_ip_layout";
+  std::string sysfs_open_path;
   auto platform = rts->getcl_platform_id();
   for (auto device : platform->get_device_range())
   {
     if (device->is_active())
     {
       // At this point, we are dealing with only one device
-      ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SSPM, &streamingDebugCounters);
+      device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_SSPM, &streamingDebugCounters);
+      sysfs_open_path = device->get_xrt_device()->getSysfsPath(subdev, entry).get();
+      //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SSPM, &streamingDebugCounters);
     }
-  }
-
-  if (ret) 
-  {
-    auto adv = new app_debug_view<sspm_debug_view>(nullptr, nullptr, true, "Error reading sspm counters");
-    return adv;
   }
 
   auto sspm_view = new sspm_debug_view () ;
@@ -1391,10 +1400,222 @@ clGetDebugStreamCounters()
   
   sspm_view->NumSlots    = streamingDebugCounters.NumSlots ;
   sspm_view->DevUserName = streamingDebugCounters.DevUserName ;
+  sspm_view->SysfsPath = sysfs_open_path;
 
   auto adv = new app_debug_view<sspm_debug_view>(sspm_view, [sspm_view]() { delete sspm_view;}, false, "") ;
   return adv ;
 }
+
+// Accel monitor
+struct sam_debug_view {
+  unsigned long long CuExecCount        [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuExecCycles       [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuBusyCycles       [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuMaxParallelIter  [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuStallExtCycles   [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuStallIntCycles   [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuStallStrCycles   [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuMinExecCycles    [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuMaxExecCycles    [XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuStartCount       [XSAM_MAX_NUMBER_SLOTS];
+
+  unsigned int NumSlots ;
+  std::string DevUserName ;
+  std::string SysfsPath;
+
+  sam_debug_view() 
+  {
+    std::fill(CuExecCount, CuExecCount + XSAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuExecCycles, CuExecCycles + XSAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuBusyCycles, CuBusyCycles + XSAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuMaxParallelIter, CuMaxParallelIter + XSAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuStallExtCycles, CuStallExtCycles + XSAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuStallIntCycles, CuStallIntCycles + XSAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuStallStrCycles, CuStallStrCycles + XSAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuMinExecCycles, CuMinExecCycles + XSAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuMaxExecCycles, CuMaxExecCycles + XSAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuStartCount, CuStartCount + XSAM_MAX_NUMBER_SLOTS, 0);
+
+    NumSlots = 0;
+  }
+  ~sam_debug_view() { }
+  std::string getstring(int aVerbose = 0, int aJSONFormat = 0);
+  
+  std::string getJSONString(bool aVerbose) ;
+  std::string getXGDBString(bool aVerbose) ;
+} ;
+
+std::string
+sam_debug_view::getstring(int aVerbose, int aJSONFormat) {
+  if (aJSONFormat) return getJSONString(aVerbose != 0 ? true : false) ;  
+  else return getXGDBString(aVerbose != 0 ? true : false) ;
+}
+
+std::string
+sam_debug_view::getJSONString(bool aVerbose) {
+  std::stringstream sstr ;
+  std::vector<std::string> slotNames;
+  getIPCountAddrNames(SysfsPath, ACCEL_MONITOR, nullptr, &slotNames);
+
+  sstr << "[" ;
+  for (unsigned int i = 0 ; i < NumSlots ; ++i)
+  {
+    if (i > 0) sstr << "," ;
+    sstr << "{" ;
+    sstr << "\"" << "CuName"  << "\"" << ":" 
+	 << "\"" << slotNames[i] << "\"" << "," ;
+    sstr << "\"" << "CuExecCount"  << "\"" << ":" 
+	 << "\"" << CuExecCount[i] << "\"" << "," ;
+    sstr << "\"" << "CuExecCycles"  << "\"" << ":" 
+	 << "\"" << CuExecCycles[i] << "\"" << "," ;
+    sstr << "\"" << "CuBusyCycles"  << "\"" << ":" 
+	     << "\"" << CuBusyCycles[i] << "\"" << "," ;
+    sstr << "\"" << "CuMaxParallelIter"  << "\"" << ":" 
+	     << "\"" << CuMaxParallelIter[i] << "\"" << "," ;
+    sstr << "\"" << "CuStallExtCycles"  << "\"" << ":" 
+	 << "\"" << CuStallExtCycles[i] << "\"" << "," ;
+    sstr << "\"" << "CuStallIntCycles"  << "\"" << ":" 
+	 << "\"" << CuStallIntCycles[i] << "\"" << "," ;
+    sstr << "\"" << "CuStallStrCycles"  << "\"" << ":" 
+	 << "\"" << CuStallStrCycles[i] << "\"" ;
+    sstr << "\"" << "CuMinExecCycles"  << "\"" << ":" 
+	 << "\"" << CuMinExecCycles[i] << "\"" ;
+    sstr << "\"" << "CuMaxExecCycles"  << "\"" << ":" 
+	 << "\"" << CuMaxExecCycles[i] << "\"" ;
+    sstr << "\"" << "CuStartCount"  << "\"" << ":" 
+	 << "\"" << CuStartCount[i] << "\"" ;
+    sstr << "}" ;
+  }
+  sstr << "]" ;
+
+  return sstr.str();
+}
+
+std::string
+sam_debug_view::getXGDBString(bool aVerbose) {
+  std::stringstream sstr;
+  std::vector<std::string> slotNames;
+  getIPCountAddrNames(SysfsPath, ACCEL_MONITOR, nullptr, &slotNames);
+  int col = 11;
+  std::for_each(slotNames.begin(), slotNames.end(), [&](std::string& slotName){
+    col = std::max(col, (int)slotName.length() + 4);
+  });
+  
+
+  sstr << "Kernel Activities\n" ;
+  sstr << std::left
+       <<         std::setw(col) << "CU Name"
+       << "  " << std::setw(16) << "Exec Count" 
+       << "  " << std::setw(16) << "Exec Cycles" 
+       << "  " << std::setw(16) << "Busy Cycles" 
+       << "  " << std::setw(16) << "Max Parallels" 
+       << "  " << std::setw(16) << "Ext Stall Cycles"
+       << "  " << std::setw(16) << "Int Stall Cycles"
+       << "  " << std::setw(16) << "Str Stall Cycles"
+       << "  " << std::setw(16) << "Min Exec Cycles"
+       << "  " << std::setw(16) << "Max Exec Cycles"
+       << "  " << std::setw(16) << "Start Count"
+       << std::endl ;
+  for (unsigned int i = 0 ; i < NumSlots ; ++i)
+  {
+    unsigned long long minCycle = (CuMinExecCycles[i] == 0xFFFFFFFFFFFFFFFF) ? 0 : CuMinExecCycles[i];
+    sstr << std::left
+	 <<         std::setw(col) << slotNames[i]
+	 << "  " << std::setw(16) << CuExecCount[i]
+     << "  " << std::setw(16) << CuExecCycles[i]
+     << "  " << std::setw(16) << CuBusyCycles[i]
+     << "  " << std::setw(16) << CuMaxParallelIter[i]
+	 << "  " << std::setw(16) << CuStallExtCycles[i]
+	 << "  " << std::setw(16) << CuStallIntCycles[i]
+   << "  " << std::setw(16) << CuStallStrCycles[i]
+   << "  " << std::setw(16) << minCycle
+   << "  " << std::setw(16) << CuMaxExecCycles[i]
+   << "  " << std::setw(16) << CuStartCount[i]
+	 << std::endl ;
+  }
+
+  return sstr.str() ;
+}
+
+app_debug_view<sam_debug_view>*
+clGetDebugAccelMonitorCounters()
+{
+  // Check for error conditions where we cannot read the streaming counters
+  if (isEmulationMode()) {
+    auto adv = new app_debug_view<sam_debug_view>(nullptr, nullptr, true, "xstatus is not supported in emulation flow");
+    return adv;
+  }
+  if (!xdp::active()) {
+    auto adv = new app_debug_view<sam_debug_view>(nullptr, nullptr, true, "Runtime instance not yet created");
+    return adv;
+  }
+  auto rts = xdp::RTSingleton::Instance();
+  if (!rts) {
+    auto adv = new app_debug_view<sam_debug_view>(nullptr, nullptr, true, "Error: Runtime instance not available");
+    return adv;
+  }
+
+  xclAccelMonitorCounterResults samCounters;  
+  memset(&samCounters, 0, sizeof(xclAccelMonitorCounterResults));
+
+  std::string subdev = "icap";
+  std::string entry = "debug_ip_layout";
+  std::string sysfs_open_path;
+  auto platform = rts->getcl_platform_id();
+  for (auto device : platform->get_device_range())
+  {
+    if (device->is_active())
+    {
+      // At this point, we are dealing with only one device
+      device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_SAM, &samCounters);
+      sysfs_open_path = device->get_xrt_device()->getSysfsPath(subdev, entry).get();
+      // ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SAM, &samCounters);
+    }
+  }
+
+  auto sam_view = new sam_debug_view() ;
+  sam_view->SysfsPath = sysfs_open_path;
+  
+  std::copy(samCounters.CuExecCount,
+	    samCounters.CuExecCount+XSAM_MAX_NUMBER_SLOTS,
+	    sam_view->CuExecCount);
+  std::copy(samCounters.CuExecCycles,
+	    samCounters.CuExecCycles+XSAM_MAX_NUMBER_SLOTS,
+	    sam_view->CuExecCycles);
+  std::copy(samCounters.CuBusyCycles,
+	    samCounters.CuBusyCycles+XSAM_MAX_NUMBER_SLOTS,
+	    sam_view->CuBusyCycles);
+  std::copy(samCounters.CuMaxParallelIter,
+	    samCounters.CuMaxParallelIter+XSAM_MAX_NUMBER_SLOTS,
+	    sam_view->CuMaxParallelIter);
+  std::copy(samCounters.CuStallExtCycles,
+	    samCounters.CuStallExtCycles+XSAM_MAX_NUMBER_SLOTS,
+	    sam_view->CuStallExtCycles);
+  std::copy(samCounters.CuStallIntCycles,
+	    samCounters.CuStallIntCycles+XSAM_MAX_NUMBER_SLOTS,
+	    sam_view->CuStallIntCycles);
+  std::copy(samCounters.CuStallStrCycles,
+	    samCounters.CuStallStrCycles+XSAM_MAX_NUMBER_SLOTS,
+	    sam_view->CuStallStrCycles);
+  std::copy(samCounters.CuMinExecCycles,
+	    samCounters.CuMinExecCycles+XSAM_MAX_NUMBER_SLOTS,
+	    sam_view->CuMinExecCycles);
+  std::copy(samCounters.CuMaxExecCycles,
+	    samCounters.CuMaxExecCycles+XSAM_MAX_NUMBER_SLOTS,
+	    sam_view->CuMaxExecCycles);
+  std::copy(samCounters.CuStartCount,
+	    samCounters.CuStartCount+XSAM_MAX_NUMBER_SLOTS,
+	    sam_view->CuStartCount);
+  
+  sam_view->NumSlots    = samCounters.NumSlots ;
+  sam_view->DevUserName = samCounters.DevUserName ;
+
+  auto adv = new app_debug_view<sam_debug_view>(sam_view, [sam_view]() { delete sam_view;}, false, "") ;
+
+  return adv ;
+}
+// End of Accel monitor
+
 
 struct lapc_debug_view {
   unsigned int   OverallStatus[XLAPC_MAX_NUMBER_SLOTS];
@@ -1402,6 +1623,7 @@ struct lapc_debug_view {
   unsigned int   SnapshotStatus[XLAPC_MAX_NUMBER_SLOTS][4];
   unsigned int   NumSlots;
   std::string    DevUserName;
+  std::string    SysfsPath;
   lapc_debug_view () {
     std::fill (OverallStatus, OverallStatus+XLAPC_MAX_NUMBER_SLOTS, 0);
     for (auto i = 0; i<XLAPC_MAX_NUMBER_SLOTS; ++i)
@@ -1435,7 +1657,8 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
     }
   }
 
-  unsigned int numSlots = getIPCountAddrNames (DevUserName, LAPC, nullptr, &lapcSlotNames);
+  // unsigned int numSlots = 
+  getIPCountAddrNames(SysfsPath, LAPC, nullptr, &lapcSlotNames);
   std::pair<size_t, size_t> widths = getCUNamePortName(lapcSlotNames, cuNameportNames);
 
   bool violations_found = false;
@@ -1443,7 +1666,7 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
 
   if (aJSONFormat) {
     sstr << "["; //spm list
-      for (int i = 0; i<NumSlots; ++i) {
+      for (unsigned int i = 0; i<NumSlots; ++i) {
          sstr << (i > 0 ? "," : "") << "{";
          sstr << quotes << "CUName" << quotes << " : " << quotes << cuNameportNames[i].first << quotes << ",";
          sstr << quotes << "AXIPortname" << quotes << " : " << quotes << cuNameportNames[i].second << quotes << ",";
@@ -1455,7 +1678,7 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
          else {
            if (OverallStatus[i]) {
               std::string tstr;
-              unsigned int tCummStatus[4];
+              unsigned int tCummStatus[4] = {0};
               //snapshot reflects first violation, cumulative has all violations
               tstr = xclAXICheckerCodes::decodeAXICheckerCodes(SnapshotStatus[i]);
               tstr = (tstr == "") ? "None" : tstr;
@@ -1480,7 +1703,7 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
     int col2 = std::max(widths.second, strlen("AXI Portname"));
 
     sstr << "Light-weight AXI protocol checker status\n";
-    for (int i = 0; i<NumSlots; ++i) {
+    for (unsigned int i = 0; i<NumSlots; ++i) {
       if (!xclAXICheckerCodes::isValidAXICheckerCodes(OverallStatus[i],
                           SnapshotStatus[i], CumulativeStatus[i])) {
         sstr << "CU Name: " << cuNameportNames[i].first << " AXI Port: " << cuNameportNames[i].second << "\n";
@@ -1492,7 +1715,7 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
         sstr << "  First violation: \n";
         sstr << "    " <<  xclAXICheckerCodes::decodeAXICheckerCodes(SnapshotStatus[i]);
         //snapshot reflects first violation, cumulative has all violations
-        unsigned int tCummStatus[4];
+        unsigned int tCummStatus[4] = {0};
         std::transform(CumulativeStatus[i], CumulativeStatus[i]+4, SnapshotStatus[i], tCummStatus, std::bit_xor<unsigned int>());
         sstr << "  Other violations: \n";
         std::string tstr = xclAXICheckerCodes::decodeAXICheckerCodes(tCummStatus);
@@ -1523,20 +1746,21 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
                 << "  " << std::setw(16) << "Cumulative[2]"
                 << "  " << std::setw(16) << "Cumulative[3]"
                 << std::endl;
-      for (int i = 0; i<NumSlots; ++i) {
+      for (unsigned int i = 0; i<NumSlots; ++i) {
         sstr << std::left
                 << std::setw(col1) << cuNameportNames[i].first
                 << " " << std::setw(col2) << cuNameportNames[i].second
-                << "  " << std::setw(16) << std::hex << OverallStatus[i]
-                << "  " << std::setw(16) << std::hex << SnapshotStatus[i][0]
-                << "  " << std::setw(16) << std::hex << SnapshotStatus[i][1]
-                << "  " << std::setw(16) << std::hex << SnapshotStatus[i][2]
-                << "  " << std::setw(16) << std::hex << SnapshotStatus[i][3]
-                << "  " << std::setw(16) << std::hex << CumulativeStatus[i][0]
-                << "  " << std::setw(16) << std::hex << CumulativeStatus[i][1]
-                << "  " << std::setw(16) << std::hex << CumulativeStatus[i][2]
-                << "  " << std::setw(16) << std::hex << CumulativeStatus[i][3]
-                << std::endl;
+                << std::hex
+                << "  " << std::setw(16) << OverallStatus[i]
+                << "  " << std::setw(16) << SnapshotStatus[i][0]
+                << "  " << std::setw(16) << SnapshotStatus[i][1]
+                << "  " << std::setw(16) << SnapshotStatus[i][2]
+                << "  " << std::setw(16) << SnapshotStatus[i][3]
+                << "  " << std::setw(16) << CumulativeStatus[i][0]
+                << "  " << std::setw(16) << CumulativeStatus[i][1]
+                << "  " << std::setw(16) << CumulativeStatus[i][2]
+                << "  " << std::setw(16) << CumulativeStatus[i][3]
+                << std::dec << std::endl;
       }
     }
   }
@@ -1544,22 +1768,24 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
 }
 app_debug_view<lapc_debug_view>*
 clGetDebugCheckers() {
-  cl_int ret = CL_SUCCESS;
   xclDebugCheckersResults debugCheckers;
 
   if (isEmulationMode()) {
     auto adv = new app_debug_view<lapc_debug_view>(nullptr, nullptr, true, "xstatus is not supported in emulation flow");
     return adv;
   }
-  if (!XCL::active()) {
+  if (!xdp::active()) {
     auto adv = new app_debug_view<lapc_debug_view>(nullptr, nullptr, true, "Runtime instance not yet created");
     return adv;
   }
-  auto rts = XCL::RTSingleton::Instance();
+  auto rts = xdp::RTSingleton::Instance();
   if (!rts) {
     auto adv = new app_debug_view<lapc_debug_view>(nullptr, nullptr, true, "Error: Runtime instance not available");
     return adv;
   }
+  std::string subdev = "icap";
+  std::string entry = "debug_ip_layout";
+  std::string sysfs_open_path;
   auto platform = rts->getcl_platform_id();
   // Iterates over all devices, but assumes only one device
   memset(&debugCheckers,0, sizeof(xclDebugCheckersResults));
@@ -1567,14 +1793,12 @@ clGetDebugCheckers() {
     if (device->is_active()) {
       //memset(&debugCheckers,0, sizeof(xclDebugCheckersResults));
       //At this point we deal with only one deviceyy
-      ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_LAPC, &debugCheckers);
+      device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_LAPC, &debugCheckers);
+      sysfs_open_path = device->get_xrt_device()->getSysfsPath(subdev, entry).get();
+      //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_LAPC, &debugCheckers);
     }
   }
 
-  if (ret) {
-    auto adv = new app_debug_view<lapc_debug_view>(nullptr, nullptr, true, "Error reading lapc status");
-    return adv;
-  }
   auto lapc_view = new lapc_debug_view ();
   std::copy(debugCheckers.OverallStatus, debugCheckers.OverallStatus+XLAPC_MAX_NUMBER_SLOTS, lapc_view->OverallStatus);
   for (auto i = 0; i<XLAPC_MAX_NUMBER_SLOTS; ++i)
@@ -1583,6 +1807,7 @@ clGetDebugCheckers() {
     std::copy(debugCheckers.SnapshotStatus[i], debugCheckers.SnapshotStatus[i]+4, lapc_view->SnapshotStatus[i]);
   lapc_view->NumSlots = debugCheckers.NumSlots;
   lapc_view->DevUserName = debugCheckers.DevUserName;
+  lapc_view->SysfsPath = sysfs_open_path;
   auto adv = new app_debug_view <lapc_debug_view> (lapc_view, [lapc_view](){delete lapc_view;}, false, "");
   return adv;
 }

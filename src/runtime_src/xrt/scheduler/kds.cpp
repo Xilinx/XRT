@@ -30,11 +30,12 @@
 #include "xrt/util/time.h"
 #include "xrt/util/task.h"
 #include "xrt/device/device.h"
-#include "driver/include/ert.h"
+#include "ert.h"
 #include "command.h"
 
 #include <memory>
 #include <cstring>
+#include <cerrno>
 #include <algorithm>
 #include <thread>
 #include <list>
@@ -72,11 +73,17 @@ is_51_dsa(const xrt::device* device)
   return (nm.find("_5_1")!=std::string::npos || nm.find("u200_xdma_201820_1")!=std::string::npos);
 }
 
+inline ert_cmd_state
+get_command_state(const command_type& cmd)
+{
+  ert_packet* epacket = xrt::command_cast<ert_packet*>(cmd.get());
+  return static_cast<ert_cmd_state>(epacket->state);
+}
+
 inline bool
 is_command_done(const command_type& cmd)
 {
-  ert_packet* epacket = xrt::command_cast<ert_packet*>(cmd.get());
-  return epacket->state >= ERT_CMD_STATE_COMPLETED;
+  return get_command_state(cmd) >= ERT_CMD_STATE_COMPLETED;
 }
 
 static bool
@@ -104,18 +111,31 @@ launch(command_type cmd)
 {
   XRT_DEBUG(std::cout,"xrt::kds::command(",cmd->get_uid(),") [new->submitted->running]\n");
 
-  // Submit the command
   auto device = cmd->get_device();
+  auto& submitted_cmds = s_device_cmds[device]; // safe since inserted in init
+
+  command_queue_type::const_iterator pos;
+
+  // Store command so completion can be tracked.  Make sure this is
+  // done prior to exec_buf as exec_wait can otherwise be missed.
+  {
+    std::lock_guard<std::mutex> lk(s_mutex);
+    pos = submitted_cmds.insert(submitted_cmds.end(),cmd);
+    s_work.notify_all();
+  }
+
+  // Submit the command
   auto exec_bo = cmd->get_exec_bo();
-  device->exec_buf(exec_bo);
-
-  // thread safe access, since guaranteed to be inserted in init
-  auto& submitted_cmds = s_device_cmds[device];
-
-  // Store command so completion can be tracked
-  std::lock_guard<std::mutex> lk(s_mutex);
-  submitted_cmds.push_back(cmd);
-  s_work.notify_all();
+  try {
+    device->exec_buf(exec_bo);
+  }
+  catch (...) {
+    // Remove the pending command
+    std::lock_guard<std::mutex> lk(s_mutex);
+    assert(get_command_state(cmd)==ERT_CMD_STATE_NEW);
+    submitted_cmds.erase(pos);
+    throw;
+  }
 }
 
 static void
@@ -181,8 +201,6 @@ monitor(const xrt::device* device)
   }
 }
 
-static std::thread s_monitor;
-
 } // namespace
 
 
@@ -191,7 +209,7 @@ namespace xrt { namespace kds {
 void
 schedule(const command_type& cmd)
 {
-  launch(cmd);
+  return launch(cmd);
 }
 
 void
@@ -229,50 +247,8 @@ stop()
 }
 
 void
-init(xrt::device* device, size_t regmap_size, bool cu_isr, size_t num_cus, size_t cu_offset, size_t cu_base_addr, const std::vector<uint32_t>& cu_addr_map)
+init(xrt::device* device, const axlf*)
 {
-  auto cudma = xrt::config::get_ert_cudma();
-  if (cudma && regmap_size>=0x210 && is_51_dsa(device)) {
-    // bug in cudma.c HW
-    xrt::message::send(xrt::message::severity_level::WARNING,
-                       "Disabling CUDMA. Kernel register map size '"
-                       + std::to_string(regmap_size)
-                       + " bytes' exceeds CUDMA limit '"
-                       + std::to_string(0x210)
-                       + " bytes'.");
-    cudma = false;
-  }
-
-  auto configure = std::make_shared<command>(device,ERT_CONFIGURE);
-  auto epacket = xrt::command_cast<ert_configure_cmd*>(configure.get());
-
-  // variables (one word each)
-  epacket->slot_size = xrt::config::get_ert_slotsize();
-  epacket->num_cus = num_cus;
-  epacket->cu_shift = cu_offset;
-  epacket->cu_base_addr = cu_base_addr;
-
-  // features (one word) per sdaccel.ini
-  epacket->ert     = xrt::config::get_ert();
-  epacket->polling = xrt::config::get_ert_polling();
-  epacket->cu_dma  = cudma;
-  epacket->cu_isr  = cu_isr && xrt::config::get_ert_cuisr();
-  epacket->cq_int  = xrt::config::get_ert_cqint();
-
-  // cu addr map
-  std::copy(cu_addr_map.begin(), cu_addr_map.end(), epacket->data);
-
-  // payload size
-  epacket->count = 5 + cu_addr_map.size();
-
-  XRT_DEBUG(std::cout,"configure scheduler\n");
-  auto exec_bo = configure->get_exec_bo();
-  device->exec_buf(exec_bo);
-
-  // wait for command to complete
-  while (!is_command_done(configure))
-    while (device->exec_wait(1000)==0) ;
-
   // create a submitted command queue for this device if necessary,
   // create a command monitor thread for this device if necessary
   std::lock_guard<std::mutex> lk(s_mutex);
@@ -282,8 +258,6 @@ init(xrt::device* device, size_t regmap_size, bool cu_isr, size_t num_cus, size_
     s_device_cmds.emplace(device,command_queue_type());
     s_device_monitor_threads.emplace(device,xrt::thread(::monitor,device));
   }
-
-  XRT_DEBUG(std::cout,"configure complete\n");
 }
 
 }} // kds,xrt

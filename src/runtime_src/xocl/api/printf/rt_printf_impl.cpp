@@ -46,24 +46,24 @@ namespace {
 
 /////////////////////////////////////////////////////////////////////////
 
-namespace XCL { 
+namespace XCL {
 namespace Printf {
 
 
-ConversionSpec::ConversionSpec() 
-{ 
-  setDefaults(); 
+ConversionSpec::ConversionSpec()
+{
+  setDefaults();
 }
 
-ConversionSpec::ConversionSpec(const std::string& str) 
-    : m_validSpec(false) 
-{ 
-  parse(str); 
+ConversionSpec::ConversionSpec(const std::string& str)
+    : m_validSpec(false)
+{
+  parse(str);
 }
 
-ConversionSpec::~ConversionSpec() 
-{ 
-  m_validSpec = false; 
+ConversionSpec::~ConversionSpec()
+{
+  m_validSpec = false;
 }
 
 bool ConversionSpec::isFloatClass() const
@@ -151,7 +151,7 @@ void ConversionSpec::parse(const std::string& str)
   bool parseDone = false;
   while ( !parseDone ) {
     char c = *p_mover;
-    switch ( c ) 
+    switch ( c )
     {
         case '%': {
                     m_specifier = c;
@@ -197,14 +197,14 @@ void ConversionSpec::parse(const std::string& str)
                   }
 
         // Field width [1-9][0-9]*
-        case '1': 
-        case '2': 
-        case '3': 
-        case '4': 
-        case '5': 
-        case '6': 
-        case '7': 
-        case '8': 
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
         case '9': {
                     m_fieldWidth = true;
                     m_fieldWidthValue = parseNumber(&p_mover);
@@ -254,7 +254,7 @@ void ConversionSpec::parse(const std::string& str)
                       case 3:
                       case 4:
                       case 8:
-                      case 16: break; 
+                      case 16: break;
                       default: {
                                  throwError("Bad vector size argument during format parse");
                                  return;
@@ -266,8 +266,8 @@ void ConversionSpec::parse(const std::string& str)
         // Any valid conversion specifier type (ends specifier)
         case 'p':
         case 's':
-        case 'c': 
-        case 'd': 
+        case 'c':
+        case 'd':
         case 'i':
         case 'o':
         case 'u':
@@ -327,129 +327,129 @@ int ConversionSpec::parseNumber(const char** p_buf)
 
 PrintfArg::PrintfArg(void *val)
     : m_typeInfo(AT_PTR), ptr(val)
-    , int_arg(0), uint_arg(0), float_arg(0.0) 
+    , int_arg(0), uint_arg(0), float_arg(0.0)
 {
 }
 
-PrintfArg::PrintfArg(const std::string& val) 
+PrintfArg::PrintfArg(const std::string& val)
     : m_typeInfo(AT_STR), ptr(nullptr)
-    , int_arg(0), uint_arg(0), float_arg(0.0) 
+    , int_arg(0), uint_arg(0), float_arg(0.0)
 {
   str = val;
 }
 
-PrintfArg::PrintfArg(uint8_t val) 
+PrintfArg::PrintfArg(uint8_t val)
     : m_typeInfo(AT_UINT), ptr(nullptr)
     , int_arg(0), uint_arg(val), float_arg(0.0)
 {
 }
 
-PrintfArg::PrintfArg(int16_t val) 
+PrintfArg::PrintfArg(int16_t val)
     : m_typeInfo(AT_INT), ptr(nullptr)
     , int_arg(val), uint_arg(val), float_arg(0.0)
 {
 }
 
-PrintfArg::PrintfArg(uint16_t val) 
+PrintfArg::PrintfArg(uint16_t val)
     : m_typeInfo(AT_UINT), ptr(nullptr)
     , int_arg(0), uint_arg(val), float_arg(0.0)
 {
 }
 
-PrintfArg::PrintfArg(int32_t val) 
+PrintfArg::PrintfArg(int32_t val)
     : m_typeInfo(AT_INT), ptr(nullptr)
     , int_arg(val), uint_arg(val), float_arg(0.0)
 {
 }
 
-PrintfArg::PrintfArg(uint32_t val) 
+PrintfArg::PrintfArg(uint32_t val)
     : m_typeInfo(AT_UINT), ptr(nullptr)
     , int_arg(0), uint_arg(val), float_arg(0.0)
 {
 }
 
-PrintfArg::PrintfArg(int64_t val) 
+PrintfArg::PrintfArg(int64_t val)
     : m_typeInfo(AT_INT), ptr(nullptr)
     , int_arg(val), uint_arg(val), float_arg(0.0)
 {
 }
 
-PrintfArg::PrintfArg(uint64_t val) 
+PrintfArg::PrintfArg(uint64_t val)
     : m_typeInfo(AT_UINT), ptr(nullptr)
     , int_arg(0), uint_arg(val), float_arg(0.0)
 {
 }
 
-PrintfArg::PrintfArg(double val) 
+PrintfArg::PrintfArg(double val)
     : m_typeInfo(AT_FLOAT), ptr(nullptr)
     , int_arg(0), uint_arg(0), float_arg(val)
 {
 }
 
-PrintfArg::PrintfArg(std::vector<int8_t> vec) 
+PrintfArg::PrintfArg(std::vector<int8_t> vec)
     : m_typeInfo(AT_INTVEC), ptr(nullptr)
     , int_arg(0), uint_arg(0), float_arg(0.0)
 {
   std::copy(vec.begin(), vec.end(), std::back_inserter(intVec));
 }
 
-PrintfArg::PrintfArg(std::vector<uint8_t> vec) 
+PrintfArg::PrintfArg(std::vector<uint8_t> vec)
     : m_typeInfo(AT_UINTVEC), ptr(nullptr)
     , int_arg(0), uint_arg(0), float_arg(0.0)
 {
   std::copy(vec.begin(), vec.end(), std::back_inserter(uintVec));
 }
 
-PrintfArg::PrintfArg(std::vector<int16_t> vec) 
+PrintfArg::PrintfArg(std::vector<int16_t> vec)
     : m_typeInfo(AT_INTVEC), ptr(nullptr)
     , int_arg(0), uint_arg(0), float_arg(0.0)
 {
   std::copy(vec.begin(), vec.end(), std::back_inserter(intVec));
 }
 
-PrintfArg::PrintfArg(std::vector<uint16_t> vec) 
+PrintfArg::PrintfArg(std::vector<uint16_t> vec)
     : m_typeInfo(AT_UINTVEC), ptr(nullptr)
     , int_arg(0), uint_arg(0), float_arg(0.0)
 {
   std::copy(vec.begin(), vec.end(), std::back_inserter(uintVec));
 }
 
-PrintfArg::PrintfArg(std::vector<int32_t> vec) 
+PrintfArg::PrintfArg(std::vector<int32_t> vec)
     : m_typeInfo(AT_INTVEC), ptr(nullptr)
     , int_arg(0), uint_arg(0), float_arg(0.0)
 {
   std::copy(vec.begin(), vec.end(), std::back_inserter(intVec));
 }
 
-PrintfArg::PrintfArg(std::vector<uint32_t> vec) 
+PrintfArg::PrintfArg(std::vector<uint32_t> vec)
     : m_typeInfo(AT_UINTVEC), ptr(nullptr)
     , int_arg(0), uint_arg(0), float_arg(0.0)
 {
   std::copy(vec.begin(), vec.end(), std::back_inserter(uintVec));
 }
 
-PrintfArg::PrintfArg(std::vector<int64_t> vec) 
+PrintfArg::PrintfArg(std::vector<int64_t> vec)
     : m_typeInfo(AT_INTVEC), ptr(nullptr)
     , int_arg(0), uint_arg(0), float_arg(0.0)
 {
   std::copy(vec.begin(), vec.end(), std::back_inserter(intVec));
 }
 
-PrintfArg::PrintfArg(std::vector<uint64_t> vec) 
+PrintfArg::PrintfArg(std::vector<uint64_t> vec)
     : m_typeInfo(AT_UINTVEC), ptr(nullptr)
     , int_arg(0), uint_arg(0), float_arg(0.0)
 {
   std::copy(vec.begin(), vec.end(), std::back_inserter(uintVec));
 }
 
-PrintfArg::PrintfArg(std::vector<float> vec) 
+PrintfArg::PrintfArg(std::vector<float> vec)
     : m_typeInfo(AT_FLOATVEC), ptr(nullptr)
     , int_arg(0), uint_arg(0), float_arg(0.0)
 {
   std::copy(vec.begin(), vec.end(), std::back_inserter(floatVec));
 }
 
-PrintfArg::PrintfArg(std::vector<double> vec) 
+PrintfArg::PrintfArg(std::vector<double> vec)
     : m_typeInfo(AT_FLOATVEC), ptr(nullptr)
     , int_arg(0), uint_arg(0), float_arg(0.0)
 {
@@ -542,12 +542,12 @@ void FormatString::getSplitFormatString(std::vector<std::string>& splitVec) cons
 }
 
 /*static*/
-size_t FormatString::findNextConversion(const std::string& format, size_t pos) 
+size_t FormatString::findNextConversion(const std::string& format, size_t pos)
 {
   // Return position of the next '%' conversion specifier in the string
   bool done = false;
   size_t retval = std::string::npos;
-  do { 
+  do {
     retval = format.find('%', pos);
     if ( retval == std::string::npos ) {
       return retval;
@@ -645,7 +645,7 @@ void FormatString::parse(const std::string& format)
       }
     }
     else {
-      // Illegal - must be an end to a conversion 
+      // Illegal - must be an end to a conversion
       m_valid = false;
       m_specVec.clear();
       m_splitFormatString.clear();
@@ -660,10 +660,10 @@ void FormatString::dbgDump(std::ostream& str) const
   str << "  m_format = " << m_format << "\n";
   str << "  m_valid  = " << m_valid << "\n";
   size_t idx = 0;
-  str << "  STRING    : " << m_splitFormatString[idx] << "\n"; 
+  str << "  STRING    : " << m_splitFormatString[idx] << "\n";
   for (idx = 1; idx < m_splitFormatString.size(); ++idx) {
-      str << "  CONVERSION: %" << std::string(1, m_specVec[idx-1].m_specifier) << "\n";      
-      str << "  STRING    : " << m_splitFormatString[idx] << "\n"; 
+      str << "  CONVERSION: %" << std::string(1, m_specVec[idx-1].m_specifier) << "\n";
+      str << "  STRING    : " << m_splitFormatString[idx] << "\n";
   }
   str << "\n";
 }
@@ -688,7 +688,7 @@ BufferPrintf::~BufferPrintf()
   m_buf.clear();
   m_stringTable.clear();
 }
-        
+
 BufferPrintf::BufferPrintf(const uint8_t* buf, size_t bufLen, const StringTable& table)
   : m_currentOffset(0)
 {
@@ -713,7 +713,7 @@ void BufferPrintf::setBuffer(const MemBuffer& buf)
   std::copy(buf.begin(), buf.end(), m_buf.begin());
 }
 
-void BufferPrintf::setStringTable(const StringTable& table) 
+void BufferPrintf::setStringTable(const StringTable& table)
 {
   m_stringTable = table;
 }
@@ -832,24 +832,24 @@ int BufferPrintf::nextRecordOffset(int currentOffset) const
     return -1;
   }
   // format entry of 0xFFFFFFFFFFFFFFFF or 0x0 means this work item is finished
-  uint64_t val = extractField(offset, 8); 
+  uint64_t val = extractField(offset, 8);
   bool endOfWorkItem = (val == 0xFFFFFFFFFFFFFFFF ) || (val == 0x0000000000000000);
   if ( endOfWorkItem ) {
     offset = ((offset+segmentSize-1) / segmentSize) * segmentSize;
     if ( offset >= (int)m_buf.size() ) {
       return -1;
     }
-    val = extractField(offset, 8); 
+    val = extractField(offset, 8);
     endOfWorkItem = (val == 0xFFFFFFFFFFFFFFFF ) || (val == 0x0000000000000000);
     while ( endOfWorkItem ) {
-      // Round up to next segment - in this loop we are guaranteed the 
+      // Round up to next segment - in this loop we are guaranteed the
       // offset is aligned on a segmentSize segment start so just quickly
       // step one to the next looking for a valid format field to print.
       offset += segmentSize;
       if ( offset >= (int)m_buf.size() ) {
         return -1;
       }
-      val = extractField(offset, 8); 
+      val = extractField(offset, 8);
       endOfWorkItem = (val == 0xFFFFFFFFFFFFFFFF ) || (val == 0x0000000000000000);
     }
   }
@@ -887,7 +887,7 @@ void BufferPrintf::nextRecord()
   std::vector<ConversionSpec> conversionVec;
   format.getSpecifiers(conversionVec);
   // skip format ID
-  m_currentOffset += getFormatByteCount();  
+  m_currentOffset += getFormatByteCount();
   // Skip all arguments
   for (auto conversion : conversionVec) {
     m_currentOffset += getElementByteCount(conversion) * conversion.m_vectorSize;
@@ -1010,7 +1010,7 @@ std::string convertArg(PrintfArg& arg, ConversionSpec& conversion)
   strcpy(formatStr, "%");
   if (conversion.m_leftJustify)
     strcat(formatStr, "-");
-  if (conversion.m_signPlus) 
+  if (conversion.m_signPlus)
     strcat(formatStr, "+");
   if (conversion.m_prefixSpace)
     strcat(formatStr, " ");
@@ -1050,7 +1050,7 @@ std::string convertArg(PrintfArg& arg, ConversionSpec& conversion)
     default:
       break;
   }
-  
+
   strcat(formatStr, " ");
   formatStr[strlen(formatStr)-1] = conversion.m_specifier;
   // TODO: later make this dynamically size... for now 1024 should be sufficient
@@ -1133,7 +1133,7 @@ std::string string_printf(const std::string& formatStr, std::vector<PrintfArg> a
   }
   formatString.getSplitFormatString(splitVec);
   formatString.getSpecifiers(specVec);
-   
+
   if ( args.size() != specVec.size() ) {
     std::ostringstream oss;
     oss << "Error - Format string conversion specifier count " << specVec.size() << " does not match argument count of " << args.size();
@@ -1160,9 +1160,9 @@ void throwError(const std::string& errorMsg)
   throw std::runtime_error(errorMsg);
 }
 
-unsigned int getWorkItemPrintfBufferSize() 
-{ 
-  return 2048; 
+unsigned int getWorkItemPrintfBufferSize()
+{
+  return 2048;
 }
 
 size_t getPrintfBufferSize(const std::vector<size_t>& globalSize, const std::vector<size_t>& localSize)
@@ -1200,6 +1200,3 @@ size_t getPrintfBufferSize(const std::vector<size_t>& globalSize, const std::vec
 } //namespace XCL
 
 /////////////////////////////////////////////////////////////////////////
-
-
-

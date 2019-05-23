@@ -1,0 +1,6 @@
+description: Python test
+args: -k verify.xclbin
+copy: [utils_binding.py]
+srcs: [main.py]
+user:
+  xclbin_suites: [xrt_pipeline]

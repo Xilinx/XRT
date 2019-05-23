@@ -415,7 +415,7 @@ private:
    * Check if this event chains argument event
    */
   bool
-  chains(const event* ev) const;
+  chains_nolock(const event* ev) const;
 
   /**
    * Check if this event depends on argument event

@@ -54,8 +54,8 @@ RH_LIST=(\
      gnuplot \
      gnutls-devel \
      gtest-devel \
-     kernel-devel \
-     kernel-headers \
+     kernel-devel-$(uname -r) \
+     kernel-headers-$(uname -r) \
      libdrm-devel \
      libjpeg-turbo-devel \
      libpng12-devel \
@@ -78,6 +78,7 @@ RH_LIST=(\
      protobuf-compiler \
      protobuf-static \
      python \
+     python-pip \
      redhat-lsb \
      rpm-build \
      strace \
@@ -109,7 +110,7 @@ UB_LIST=(\
      libyaml-dev \
      linux-libc-dev \
      lm-sensors \
-     lsb \
+     lsb-release \
      make \
      ocl-icd-dev \
      ocl-icd-libopencl1 \
@@ -120,6 +121,7 @@ UB_LIST=(\
      pciutils \
      pkg-config \
      protobuf-compiler \
+     python-pip \
      python3-sphinx \
      python3-sphinx-rtd-theme \
      sphinx-common \
@@ -140,7 +142,7 @@ SUDO=${SUDO:-sudo}
 
 #dmidecode is only applicable for x86_64
 if [ $ARCH == "x86_64" ]; then
-    if [ $FLAVOR == "ubuntu" ]; then
+    if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
 	UB_LIST+=( dmidecode )
     fi
     if [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] ; then
@@ -150,7 +152,7 @@ fi
 
 validate()
 {
-    if [ $FLAVOR == "ubuntu" ]; then
+    if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
         #apt -qq list "${UB_LIST[@]}"
         dpkg -l "${UB_LIST[@]}" > /dev/null
         if [ $? == 0 ] ; then
@@ -170,20 +172,24 @@ validate()
 
 install()
 {
-    if [ $FLAVOR == "ubuntu" ]; then
-        echo "Installing Ubuntu packages..."
+    if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
+        echo "Installing packages..."
         ${SUDO} apt install -y "${UB_LIST[@]}"
+        ${SUDO} -H pip install --upgrade setuptools 
+        ${SUDO} -H pip install pyopencl
     fi
 
     # Enable EPEL on CentOS/RHEL
     if [ $FLAVOR == "centos" ]; then
         echo "Enabling EPEL repository..."
-        ${SUDO} yum install epel-release
+        ${SUDO} yum install -y epel-release
+        echo "Installing cmake3 from EPEL repository..."
+        ${SUDO} yum install -y cmake3
     elif [ $FLAVOR == "rhel" ]; then
         echo "Enabling EPEL repository..."
         rpm -q --quiet epel-release
         if [ $? != 0 ]; then
-	    ${SUDO} yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+	    ${SUDO} yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 	    ${SUDO} yum check-update
         fi
     fi
@@ -194,13 +200,15 @@ install()
         ${SUDO} yum-config-manager --enable rhel-server-rhscl-7-rpms
     elif [ $FLAVOR == "centos" ]; then
         echo "Enabling CentOS SCL repository..."
-        ${SUDO} yum --enablerepo=extras install centos-release-scl
+        ${SUDO} yum --enablerepo=extras install -y centos-release-scl
     fi
 
     if [ $FLAVOR == "rhel" ] || [ $FLAVOR == "centos" ]; then
         echo "Installing RHEL/CentOS packages..."
         ${SUDO} yum install -y "${RH_LIST[@]}"
-        ${SUDO} yum install devtoolset-6
+        ${SUDO} yum install -y devtoolset-6
+        ${SUDO} -H pip install pyopencl
+        ${SUDO} pip install --ignore-installed numpy==1.8
     fi
 }
 

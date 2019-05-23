@@ -15,7 +15,6 @@
  */
 
 #include "hal.h"
-#include "xrt/util/memory.h"
 
 #include <dlfcn.h>
 #include <boost/filesystem/operations.hpp>
@@ -99,7 +98,9 @@ isEmulationMode()
 static void
 createHalDevices(hal::device_list& devices, const std::string& dll, unsigned int count=0)
 {
-  auto delHandle = [](void* handle){dlclose(handle);};
+  auto delHandle = [](void* handle) {
+    dlclose(handle);
+  };
   typedef std::unique_ptr<void,decltype(delHandle)> handle_type;
 
   auto handle = handle_type(dlopen(dll.c_str(), RTLD_LAZY | RTLD_GLOBAL),delHandle);

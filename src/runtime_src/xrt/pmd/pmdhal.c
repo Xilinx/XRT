@@ -40,7 +40,7 @@
 #include <rte_mbuf.h>
 #include <rte_errno.h>
 
-#include "driver/include/pmdhal.h"
+#include "pmdhal.h"
 
 #include <string.h>
 

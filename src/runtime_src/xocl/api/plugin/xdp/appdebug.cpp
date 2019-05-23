@@ -143,7 +143,7 @@ action_migrate(cl_uint num_mem_objects, const cl_mem *mem_objects, cl_mem_migrat
 }
 
 action_debug_type
-action_ndrange_migrate(cl_event event, cl_kernel kernel)
+action_ndrange_migrate(cl_event, cl_kernel kernel)
 {
   return [kernel](xocl::event* event) {
     if (cb_action_ndrange_migrate)
@@ -152,7 +152,7 @@ action_ndrange_migrate(cl_event event, cl_kernel kernel)
 }
 
 action_debug_type
-action_ndrange(cl_event event, cl_kernel kernel)
+action_ndrange(cl_event, cl_kernel kernel)
 {
   return [kernel](xocl::event* event) {
     if (cb_action_ndrange_migrate)
@@ -189,5 +189,3 @@ action_readwrite_image(cl_mem image,const size_t* origin,const size_t* region, s
 
 }//appdebug
 }//xocl
-
-

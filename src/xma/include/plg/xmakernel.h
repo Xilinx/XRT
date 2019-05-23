@@ -17,35 +17,20 @@
 #ifndef _XMAPLG_KERNEL_H_
 #define _XMAPLG_KERNEL_H_
 
-/**
- * @ingroup xma_plg_intf
- * @file plg/xmakernel.h
- * XMA plugin interface for general purpose kernels
- */
-
 #include "xma.h"
 #include "plg/xmasess.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-/**
- * @ingroup xmaplugin
- * @addtogroup xmaplgkernel xmakernel.h
- * @{
-*/
 
 /**
- * @typedef XmaKernelPlugin
- * XmaKernel plugin interface
+ * typedef XmaKernelPlugin - XmaKernel plugin interface
 */
-
-/* Forward declaration */
 typedef struct XmaKernelSession XmaKernelSession;
 
 /**
- * @struct XmaKernelPlugin
- * XmaKernel plugin interface
+ * struct XmaKernelPlugin - XmaKernel plugin interface
 */
 typedef struct XmaKernelPlugin
 {
@@ -64,11 +49,23 @@ typedef struct XmaKernelPlugin
                             int32_t            *param_cnt);
     /** close callback used to preform cleanup when application terminates session*/
     int32_t         (*close)(XmaKernelSession *session);
+
+    /** Optional callback called when app calls xma_kern_session_create()
+      * Implement this callback if your kernel supports channels and is
+      * multi-process safe
+    */
+    xma_plg_alloc_chan_mp alloc_chan_mp;
+
+    /** Optional callback called when app calls xma_kern_session_create()
+      * Implement this callback if your kernel supports channels and is
+      * NOT multi-process safe (but it IS thread-safe)
+    */
+    xma_plg_alloc_chan alloc_chan;
+
 } XmaKernelPlugin;
 
 /**
- * @struct XmaKernelSession
- * An instance of an XmaKernel
+ * struct XmaKernelSession - An instance of an XmaKernel
 */
 typedef struct XmaKernelSession
 {
@@ -78,24 +75,21 @@ typedef struct XmaKernelSession
 } XmaKernelSession;
 
 /**
- * Unpack XmaSession to XmaKernelSession subclass pointer
+ * to_xma_kernel() - Unpack XmaSession to XmaKernelSession subclass pointer
  *
- * @param s XmaSession parent instance
+ * @s: XmaSession parent instance
  *
- * @returns pointer to XmaKernelSession container
+ * RETURN:  pointer to XmaKernelSession container
  *
- * @note caller must have checked if XmaSession represents a member
- *  of XmaKernelSession by calling is_xma_kernel() prior to ensure
- *  this unpacking is safe
+ * Note: caller must have checked if XmaSession represents a member
+ * of XmaKernelSession by calling is_xma_kernel() prior to ensure
+ * this unpacking is safe
 */
 static inline XmaKernelSession *to_xma_kernel(XmaSession *s)
 {
     return (XmaKernelSession *)s;
 }
 
-/**
- * @}
- */
 #ifdef __cplusplus
 }
 #endif
