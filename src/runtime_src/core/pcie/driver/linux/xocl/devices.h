@@ -787,6 +787,7 @@ enum subdev_id {
 		 	XOCL_DEVINFO_MAILBOX_USER_QDMA,			\
 			XOCL_DEVINFO_ICAP_USER,				\
 			XOCL_DEVINFO_XMC_USER,				\
+			XOCL_DEVINFO_AF_USER,				\
 		})
 
 #define	XOCL_BOARD_USER_QDMA						\
@@ -812,6 +813,7 @@ enum subdev_id {
 			XOCL_DEVINFO_MAILBOX_USER,			\
 			XOCL_DEVINFO_ICAP_USER,				\
 			XOCL_DEVINFO_XMC_USER,				\
+			XOCL_DEVINFO_AF_USER,				\
 		})
 
 #define USER_RES_AWS							\
