@@ -1876,7 +1876,7 @@ static int qdma_remove(struct platform_device *pdev)
 }
 
 static struct platform_device_id qdma_id_table[] = {
-	{ XOCL_QDMA, 0 },
+	{ XOCL_DEVNAME(XOCL_QDMA), 0 },
 	{ },
 };
 
@@ -1884,7 +1884,7 @@ static struct platform_driver	qdma_driver = {
 	.probe		= qdma_probe,
 	.remove		= qdma_remove,
 	.driver		= {
-		.name = "xocl_qdma",
+		.name = XOCL_DEVNAME(XOCL_QDMA),
 	},
 	.id_table	= qdma_id_table,
 };

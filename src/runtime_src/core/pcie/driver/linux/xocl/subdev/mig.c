@@ -702,7 +702,7 @@ static int mig_remove(struct platform_device *pdev)
 }
 
 struct platform_device_id mig_id_table[] = {
-	{ XOCL_MIG, 0 },
+	{ XOCL_DEVNAME(XOCL_MIG), 0 },
 	{ },
 };
 
@@ -710,7 +710,7 @@ static struct platform_driver	mig_driver = {
 	.probe		= mig_probe,
 	.remove		= mig_remove,
 	.driver		= {
-		.name = XOCL_MIG,
+		.name = XOCL_DEVNAME(XOCL_MIG),
 	},
 	.id_table = mig_id_table,
 };

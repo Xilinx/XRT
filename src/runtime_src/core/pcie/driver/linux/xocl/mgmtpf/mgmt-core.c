@@ -57,6 +57,7 @@ MODULE_PARM_DESC(minimum_initialization,
 #define	LOW_MILLVOLT		500
 #define	HI_MILLVOLT		2500
 
+#define MAX_DYN_SUBDEV		1024
 
 static dev_t xclmgmt_devnode;
 struct class *xrt_class;
@@ -420,8 +421,12 @@ inline void check_volt_within_range(struct xclmgmt_dev *lro, u16 volt)
 static void check_sysmon(struct xclmgmt_dev *lro)
 {
 	u32 val;
+	int ret;
 
-	xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_TEMP, &val);
+	ret = xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_TEMP, &val);
+	if (ret == -ENODEV)
+		return;
+
 	check_temp_within_range(lro, val);
 
 	xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_VCC_INT, &val);
@@ -456,6 +461,9 @@ static int health_check_cb(void *data)
 static inline bool xclmgmt_support_intr(struct xclmgmt_dev *lro)
 {
 	struct xocl_board_private *dev_info = &lro->core.priv;
+
+	if (dev_info->flags & XOCL_DSAFLAG_DYNAMIC_IP)
+		return false;
 
 	return (dev_info->flags & XOCL_DSAFLAG_FIXED_INTR) ||
 		lro->core.intr_bar_addr != NULL;
@@ -519,6 +527,11 @@ static int xclmgmt_intr_config(xdev_handle_t xdev_hdl, u32 intr, bool en)
 {
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)xdev_hdl;
 	struct xocl_board_private *dev_info = &lro->core.priv;
+	int ret;
+
+	ret = xocl_dma_intr_config(lro, intr, en);
+	if (!ret)
+		return ret;
 
 	if (!xclmgmt_support_intr(lro))
 		return -EOPNOTSUPP;
@@ -535,6 +548,13 @@ static int xclmgmt_intr_register(xdev_handle_t xdev_hdl, u32 intr,
 {
 	u32 vec;
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)xdev_hdl;
+	int ret;
+
+	ret = handler ?
+		xocl_dma_intr_register(lro, intr, handler, arg, -1) :
+		xocl_dma_intr_unreg(lro, intr);
+	if (!ret)
+		return ret;
 
 	if (!xclmgmt_support_intr(lro))
 		return -EOPNOTSUPP;
@@ -607,6 +627,45 @@ static void xclmgmt_mig_get_data(struct xclmgmt_dev *lro, void *mig_ecc, size_t 
 	}
 }
 
+static void xclmgmt_subdev_get_data(struct xclmgmt_dev *lro, size_t offset,
+		size_t buf_sz, void **resp, size_t *actual_sz)
+{
+	struct xcl_subdev	*hdr;
+	size_t			data_sz, fdt_sz;
+
+	mgmt_info(lro, "userpf requests subdev information");
+
+	data_sz = sizeof(*hdr);
+	fdt_sz = lro->userpf_blob ? fdt_totalsize(lro->userpf_blob) : 0;
+	data_sz += fdt_sz > offset ? (fdt_sz - offset) : 0;
+
+	*actual_sz = min_t(size_t, buf_sz, data_sz);
+	*resp = vzalloc(*actual_sz);
+	if (!*resp) {
+		mgmt_err(lro, "allocate resp failed");
+		return;
+	}
+
+	/* if it is invalid req, do nothing */
+	if (*actual_sz < sizeof(*hdr)) {
+		mgmt_err(lro, "Req buffer is too small");
+		return;
+	}
+
+	hdr = *resp;
+	hdr->ver = XOCL_MSG_SUBDEV_VER;
+	hdr->size = *actual_sz - sizeof(*hdr);
+	hdr->offset = offset;
+	//hdr->checksum = csum_partial(hdr->data, hdr->size, 0);
+	memcpy(hdr->data, (char *)lro->userpf_blob + offset, hdr->size);
+	if (*actual_sz == sizeof(*hdr))
+		hdr->rtncode = XOCL_MSG_SUBDEV_RTN_EMPTY;
+	else if (hdr->size + offset < fdt_sz)
+		hdr->rtncode = XOCL_MSG_SUBDEV_RTN_PARTIAL;
+	else
+		hdr->rtncode = XOCL_MSG_SUBDEV_RTN_COMPLETE;
+}
+
 static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void **resp, size_t *sz)
 {
 	size_t resp_sz = 0, current_sz;
@@ -645,6 +704,10 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 		*resp = vzalloc(current_sz);
 		(void) xocl_dna_get_data(lro, *resp);
 		break;
+	case SUBDEV:
+		xclmgmt_subdev_get_data(lro, subdev_req->offset,
+			subdev_req->size, resp, &current_sz);
+		break;
 	default:
 		break;
 	}
@@ -679,7 +742,7 @@ static bool xclmgmt_is_same_domain(struct xclmgmt_dev *lro,
 	return true;
 }
 
-static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
+void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	u64 msgid, int err, bool sw_ch)
 {
 	int ret = 0;
@@ -775,6 +838,12 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		vfree(resp);
 		break;
 	}
+	case MAILBOX_REQ_PROGRAM_SHELL: {
+		/* blob should already been updated */
+		xclmgmt_program_shell(lro);
+		
+		break;
+	}
 	default:
 		mgmt_err(lro, "unknown peer request opcode: %d\n", req->req);
 		break;
@@ -828,19 +897,20 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	 * Workaround needed on some platforms. Will clear out any stale
 	 * data after the platform has been reset
 	 */
-	ret = xocl_subdev_create(lro,
-		&(struct xocl_subdev_info)XOCL_DEVINFO_AF);
-	if (ret) {
-		xocl_err(&pdev->dev, "failed to register firewall\n");
-		goto fail_firewall;
+	if (!(dev_info->flags & XOCL_DSAFLAG_DYNAMIC_IP)) {
+		ret = xocl_subdev_create(lro,
+			&(struct xocl_subdev_info)XOCL_DEVINFO_AF);
+		if (ret) {
+			xocl_err(&pdev->dev, "failed to register firewall\n");
+			goto fail_firewall;
+		}
+		if (dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
+			platform_axilite_flush(lro);
 	}
-	if (dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
-		platform_axilite_flush(lro);
 
-	ret = xocl_subdev_create_all(lro, dev_info->subdev_info,
-		dev_info->subdev_num);
+	ret = xocl_subdev_create_all(lro);
 	if (ret) {
-		xocl_err(&pdev->dev, "failed to register subdevs\n");
+		xocl_err(&pdev->dev, "failed to register subdevs %d", ret);
 		goto fail_all_subdev;
 	}
 	xocl_err(&pdev->dev, "created all sub devices");
@@ -976,8 +1046,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	 * Even if extended probe fails, make sure feature ROM subdev
 	 * is loaded to provide basic info about the board.
 	 */
-	(void) xocl_subdev_create(lro,
-		&(struct xocl_subdev_info)XOCL_DEVINFO_FEATURE_ROM);
+	(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FEATURE_ROM);
 
 	return 0;
 
@@ -1028,6 +1097,14 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 
 	xocl_free_dev_minor(lro);
 
+	if (lro->core.fdt_blob)
+		vfree(lro->core.fdt_blob);
+	if (lro->core.dyn_subdev_store)
+		vfree(lro->core.dyn_subdev_store);
+
+	if (lro->userpf_blob)
+		vfree(lro->userpf_blob);
+
 	dev_set_drvdata(&pdev->dev, NULL);
 
 	xocl_drvinst_free(lro);
@@ -1068,6 +1145,7 @@ static struct pci_driver xclmgmt_driver = {
 
 static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_feature_rom,
+	xocl_init_xdma_mgmt,
 	xocl_init_sysmon,
 	xocl_init_mb,
 	xocl_init_xvc,
@@ -1084,6 +1162,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 
 static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_feature_rom,
+	xocl_fini_xdma_mgmt,
 	xocl_fini_sysmon,
 	xocl_fini_mb,
 	xocl_fini_xvc,

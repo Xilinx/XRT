@@ -410,3 +410,99 @@ void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 
 	xocl_pci_restore_config_all(pdev);
 }
+
+int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
+{
+	int len, userpf_idx;
+	int ret;
+	struct FeatureRomHeader	rom_header;
+
+
+	if (!lro->core.fdt_blob)
+		return 0;
+
+	userpf_idx = xocl_fdt_get_userpf(lro, lro->core.fdt_blob);
+	if (userpf_idx < 0) {
+		mgmt_info(lro, "did not get userpf index. %d", userpf_idx);
+		return 0;
+	}
+
+	len = fdt_totalsize(lro->core.fdt_blob) + 1024;
+	if (lro->userpf_blob)
+		vfree(lro->userpf_blob);
+
+	lro->userpf_blob = vzalloc(len);
+	if (!lro->userpf_blob)
+			return -ENOMEM;
+
+	ret = fdt_create_empty_tree(lro->userpf_blob, len);
+	if (ret) {
+		mgmt_err(lro, "create fdt failed %d", ret);
+		goto failed;
+	}
+
+	ret = xocl_fdt_overlay(lro->userpf_blob, 0, lro->core.fdt_blob, 0,
+			userpf_idx);
+	if (ret) {
+		mgmt_err(lro, "overlay fdt failed %d", ret);
+		goto failed;
+	}
+
+	ret = xocl_get_raw_header(lro, &rom_header);
+	if (ret) {
+		mgmt_err(lro, "get featurerom raw header failed %d", ret);
+		goto failed;
+	}
+pr_info("RAW header %s\n", (char *)&rom_header);
+	ret = xocl_fdt_add_vrom(lro, lro->userpf_blob, &rom_header);
+	if (ret) {
+		mgmt_err(lro, "add vrom failed %d", ret);
+		goto failed;
+	}
+
+	fdt_pack(lro->userpf_blob);
+
+	return 0;
+
+failed:
+	if (lro->userpf_blob) {
+		vfree(lro->userpf_blob);
+		lro->userpf_blob = NULL;
+	}
+
+	return ret;
+}
+
+int xclmgmt_program_shell(struct xclmgmt_dev *lro)
+{
+	int ret, i;
+
+	xocl_drvinst_offline(lro, true);
+	ret = xocl_subdev_offline_all(lro);
+	if (ret) {
+		mgmt_err(lro, "offline sub devices failed %d", ret);
+		goto failed;
+	}
+
+	for (i = XOCL_SUBDEV_LEVEL_URP; i > XOCL_SUBDEV_LEVEL_STATIC; i--)
+		xocl_subdev_destroy_by_level(lro, i);
+
+	// TODO: program partial bitstream
+	
+	ret = xocl_subdev_create_all(lro);
+	if (ret) {
+		mgmt_err(lro, "failed to create sub devices %d", ret);
+		goto failed;
+	}
+
+	xocl_subdev_online_by_id(lro, XOCL_SUBDEV_MAILBOX);
+	ret = xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
+	if (ret)
+		goto failed;
+
+	xocl_drvinst_offline(lro, false);
+failed:
+
+	return ret;
+
+}

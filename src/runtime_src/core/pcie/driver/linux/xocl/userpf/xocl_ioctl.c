@@ -405,12 +405,6 @@ int xocl_read_axlf_ioctl(struct drm_device *dev,
 	return err;
 }
 
-void reset_notify_client_ctx(struct xocl_dev *xdev)
-{
-	xdev->needs_reset = false;
-	wmb();
-}
-
 int xocl_hot_reset_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp)
 {
@@ -420,8 +414,8 @@ int xocl_hot_reset_ioctl(struct drm_device *dev, void *data,
 
 	xocl_drvinst_offline(xdev, true);
 	delay_jiffies = msecs_to_jiffies(XOCL_RESET_DELAY);
-	schedule_delayed_work(&xdev->core.reset_work, delay_jiffies);
-
+	queue_delayed_work(xdev->wq, &xdev->reset_work,
+		delay_jiffies);
 	xocl_xdev_info(xdev, "Scheduled reset");
 
 	return 0;

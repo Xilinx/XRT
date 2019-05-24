@@ -51,6 +51,7 @@
 	for (root = dev; root->bus && root->bus->self; root = root->bus->self)
 
 #define	XOCL_RESET_DELAY		2000
+#define	XOCL_PROGRAM_SHELL_DELAY	2000
 
 #define	XOCL_USER_PROC_HASH_SZ		256
 
@@ -95,6 +96,9 @@ struct xocl_dev	{
 	struct dev_pagemap pgmap;
 #endif
 	struct list_head                ctx_list;
+	struct workqueue_struct		*wq;
+	struct delayed_work		reset_work;
+	struct delayed_work		program_work;
 	/*
 	 * Per xdev lock protecting client list and all client contexts in the
 	 * list. Any operation which requires client status, such as xclbin
@@ -105,6 +109,9 @@ struct xocl_dev	{
 	atomic_t                        outstanding_execs;
 	atomic64_t                      total_execs;
 	void				*p2p_res_grp;
+
+	struct xocl_subdev		*dyn_subdev_store;
+	int dyn_subdev_num;
 };
 
 /**
@@ -172,6 +179,8 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare);
 void user_pci_reset_prepare(struct pci_dev *pdev);
 void user_pci_reset_done(struct pci_dev *pdev);
 #endif
+
+int xocl_refresh_prp_subdevs(struct xocl_dev *xdev);
 
 u32 get_live_clients(struct xocl_dev *xdev, pid_t **pid_list);
 void reset_notify_client_ctx(struct xocl_dev *xdev);

@@ -3128,7 +3128,7 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 			}
 			/* transfer can still be in-flight */
 			pr_info("xfer 0x%p,%u, s 0x%x timed out, ep 0x%llx.\n",
-				 xfer, xfer->len, xfer->state, req->ep_addr);
+				 xfer, xfer->len, xfer->state, req->ep_addr - xfer->len);
 			engine_status_read(engine, 0, 1);
 			//engine_status_dump(engine);
 			transfer_abort(engine, xfer);
