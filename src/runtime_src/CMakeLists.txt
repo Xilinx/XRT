@@ -15,7 +15,6 @@ add_library(xilinxopencl SHARED ${OPENCL_SRC}
   $<TARGET_OBJECTS:xocl>
   $<TARGET_OBJECTS:xrt>
   $<TARGET_OBJECTS:xclbin>
-  $<TARGET_OBJECTS:impl>
   )
 
 add_library(oclxdp SHARED ${OPENCL_SRC}
@@ -48,7 +47,6 @@ add_subdirectory(xdp)
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   add_subdirectory(tools/xclbin)
 endif()
-add_subdirectory(impl)
 add_subdirectory(xclbin)
 add_subdirectory(xocl)
 add_subdirectory(xrt)

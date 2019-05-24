@@ -35,6 +35,8 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
+#include "core/common/memalign.h"
+
 #include "xclhal2.h"
 #include "xclbin.h"
 
@@ -164,7 +166,7 @@ namespace xcldev {
     int readBank(std::ofstream& aOutFile, unsigned long long aStartAddr, unsigned long long aSize) {
       char *buf = 0;
       unsigned long long blockSize = 0x20000;
-      if (posix_memalign((void**)&buf, getpagesize(), blockSize))
+      if (xrt_core::posix_memalign((void**)&buf, getpagesize(), blockSize))
         return -1;
       std::memset(buf, 0, blockSize);
 
@@ -375,9 +377,9 @@ namespace xcldev {
         blockSize = 64;
       }
 
-      if (posix_memalign(&buf, getpagesize(), blockSize+1))//Last is for termination char
+      if (xrt_core::posix_memalign(&buf, getpagesize(), blockSize+1))//Last is for termination char
         return -1;
-      if (posix_memalign(&bufPattern, getpagesize(), blockSize+1)) {//Last is for termination char
+      if (xrt_core::posix_memalign(&bufPattern, getpagesize(), blockSize+1)) {//Last is for termination char
         free(buf);
         return -1;
       }
@@ -445,7 +447,7 @@ namespace xcldev {
       unsigned long long endAddr;
       unsigned long long size;
       unsigned long long blockSize = 0x20000;//128KB
-      if (posix_memalign((void**)&buf, getpagesize(), blockSize))
+      if (xrt_core::posix_memalign((void**)&buf, getpagesize(), blockSize))
         return -1;
 
       endAddr = aStartAddr + aSize;
@@ -534,7 +536,7 @@ namespace xcldev {
       unsigned long long endAddr;
       unsigned long long size;
       unsigned long long blockSize = aSize; //0x20000;//128KB
-      if (posix_memalign(&buf, getpagesize(), blockSize))
+      if (xrt_core::posix_memalign(&buf, getpagesize(), blockSize))
         return -1;
 
       endAddr = aSize == 0 ? mDDRSize : aStartAddr + aSize;
@@ -575,7 +577,7 @@ namespace xcldev {
         unsigned long long size;
         //unsigned long long blockSize = 0x20000;
         unsigned long long blockSize = aSize;
-        if (posix_memalign(&buf, getpagesize(), blockSize))
+        if (xrt_core::posix_memalign(&buf, getpagesize(), blockSize))
           return -1;
 
         endAddr = aSize == 0 ? mDDRSize : aStartAddr + aSize;

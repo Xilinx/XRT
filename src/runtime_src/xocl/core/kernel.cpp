@@ -89,15 +89,15 @@ kernel::argument::
 get_address_qualifier() const
 {
   switch (get_address_space()) {
-  case 0:
+  case addr_space_type::SPIR_ADDRSPACE_PRIVATE:
     return CL_KERNEL_ARG_ADDRESS_PRIVATE;
-  case 1:
+  case addr_space_type::SPIR_ADDRSPACE_GLOBAL:
     return CL_KERNEL_ARG_ADDRESS_GLOBAL;
-  case 2:
+  case addr_space_type::SPIR_ADDRSPACE_CONSTANT:
     return CL_KERNEL_ARG_ADDRESS_CONSTANT;
-  case 3:
+  case addr_space_type::SPIR_ADDRSPACE_LOCAL:
     return CL_KERNEL_ARG_ADDRESS_LOCAL;
-  case 4:
+  case addr_space_type::SPIR_ADDRSPACE_PIPES:
     return CL_KERNEL_ARG_ADDRESS_PRIVATE;
   default:
     throw std::runtime_error("kernel::argument::get_address_qualifier: internal error");

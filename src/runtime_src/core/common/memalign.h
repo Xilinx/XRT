@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,17 +14,34 @@
  * under the License.
  */
 
-//todo : temporory until there is a place for this in llvm/spir
+#ifndef xrtcore_xstdlib_h_
+#define xrtcore_xstdlib_h_
+#include <cstdlib>
 
-#ifndef __SPIR_H
-#define __SPIR_H
+namespace xrt_core { 
 
+inline int
+posix_memalign(void **memptr, size_t alignment, size_t size)
+{
+#if defined(__GNUC__)
+  return ::posix_memalign(memptr,alignment,size);
+#elif defined(_WINDOWS)
+  // power of 2
+  if (!alignment || (alignment & (alignment - 1)))
+    return EINVAL;
 
-#define SPIR_ADDRSPACE_PRIVATE          0
-#define SPIR_ADDRSPACE_GLOBAL           1
-#define SPIR_ADDRSPACE_CONSTANT         2
-#define SPIR_ADDRSPACE_LOCAL            3
-#define SPIR_ADDRSPACE_PIPES            4
+  auto save = errno;
+  auto ptr = _aligned_malloc(size,alignment);
+  if (!ptr) {
+    errno = save;
+    return ENOMEM;
+  }
 
+  *memptr = ptr;
+  return 0;
+#endif
+}
+
+} // xrt_core
 
 #endif
