@@ -15,7 +15,7 @@ including the ``xclbinuuid`` on ``sysfs``. This makes it very
 convenient for tools (such as ``xbutil``) to discover characteristics
 of the image currently loaded on the FPGA. The data layout of ``xclbin``
 sections are defined in file ``xclbin.h`` which can be found under
-``runtime/driver/include`` directory. Platform drivers XDMA, ICAP,
+``runtime/core/include`` directory. Platform drivers XDMA, ICAP,
 MB Scheduler, Mailbox, XMC, XVC, FeatureROM export their nodes on sysfs.
 
 Sample output of tree command below::
@@ -399,7 +399,7 @@ including the ``xclbinuuid`` on ``sysfs``. This makes it very
 convenient for tools (such as ``xbutil``) to discover characteristics
 of the image currently loaded on the FPGA. The data layout of ``xclbin``
 sections are defined in file ``xclbin.h`` which can be found under
-``runtime/driver/include`` directory. Platform drivers ICAP, FPGA Manager,
+``runtime/core/include`` directory. Platform drivers ICAP, FPGA Manager,
 AXI Firewall, Mailbox, XMC, XVC, FeatureROM export their nodes on sysfs.
 
 Sample output of tree command below::
@@ -854,7 +854,7 @@ including the ``xclbinuuid`` on ``sysfs``. This makes it very
 convenient for tools (such as ``xbutil``) to discover characteristics
 of the image currently loaded on the FPGA. The data layout of ``xclbin``
 sections are defined in file ``xclbin.h`` which can be found under
-``runtime/driver/include`` directory.
+``runtime/core/include`` directory.
 
 Sample output of tree command below::
 

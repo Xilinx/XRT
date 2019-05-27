@@ -57,8 +57,8 @@ if [ $etags == 1 ]; then
     grep \"file\": $project | awk '{print $2}' | sed 's/\"//g' | ctags --totals -e -L - -f user.TAGS
 fi
 
-XOCL_FILES=$(git ls-files --full-name ../../src/runtime_src/driver/xclng/drm/xocl)
-ZOCL_FILES=$(git ls-files --full-name ../../src/runtime_src/driver/zynq/kernel2/drm/zocl)
+XOCL_FILES=$(git ls-files --full-name ../../src/runtime_src/core/pcie/driver/linux/xocl)
+ZOCL_FILES=$(git ls-files --full-name ../../src/runtime_src/core/edge/drm/zocl)
 BASE_DIR=$(readlink -e ../../)
 
 FILES=()

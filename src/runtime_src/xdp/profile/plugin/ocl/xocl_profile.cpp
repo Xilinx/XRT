@@ -17,7 +17,7 @@
 #include "xocl_profile.h"
 #include "ocl_profiler.h"
 #include "xdp/profile/config.h"
-#include "driver/include/xclbin.h"
+#include "xclbin.h"
 
 namespace xdp { namespace xoclp {
 

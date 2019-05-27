@@ -21,9 +21,7 @@
 #include "xrt/scheduler/command.h"
 #include "xrt/scheduler/scheduler.h"
 
-#include "driver/common/xclbin_parser.h"
-
-#include "impl/spir.h"
+#include "core/common/xclbin_parser.h"
 
 #include <iostream>
 #include <fstream>
@@ -421,14 +419,14 @@ start()
     }
 
     auto address_space = arg->get_address_space();
-    if (address_space == SPIR_ADDRSPACE_PRIVATE)
+    if (address_space == kernel::argument::addr_space_type::SPIR_ADDRSPACE_PRIVATE)
     {
       auto arginforange = arg->get_arginfo_range();
       fill_regmap(regmap,offset,arg->get_value(),arg->get_size(),arginforange);
-    } else if(address_space==SPIR_ADDRSPACE_PIPES) {
+    } else if(address_space == kernel::argument::addr_space_type::SPIR_ADDRSPACE_PIPES) {
 	//do nothing
-    } else if (address_space==SPIR_ADDRSPACE_GLOBAL
-             || address_space==SPIR_ADDRSPACE_CONSTANT)
+    } else if (address_space == kernel::argument::addr_space_type::SPIR_ADDRSPACE_GLOBAL
+            || address_space == kernel::argument::addr_space_type::SPIR_ADDRSPACE_CONSTANT)
     {
       uint64_t physaddr = 0;
       if (auto mem = arg->get_memory_object()) {

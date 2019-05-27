@@ -18,7 +18,7 @@
 #define __XDP_CORE_WRITER_H
 
 #include "rt_util.h"
-#include "driver/include/xclperf.h"
+#include "xclperf.h"
 #include "xdp/profile/plugin/base_plugin.h"
 #include "xdp/profile/device/trace_parser.h"
 

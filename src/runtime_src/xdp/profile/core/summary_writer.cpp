@@ -23,7 +23,7 @@
 #include "xdp/profile/writer/base_profile.h"
 #include "xdp/profile/writer/base_trace.h"
 
-#include "driver/include/xcl_perfmon_parameters.h"
+#include "xcl_perfmon_parameters.h"
 
 #include <iostream>
 #include <sstream>

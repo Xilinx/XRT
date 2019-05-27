@@ -23,10 +23,10 @@
 #include "xrt/util/range.h"
 #include "xrt/util/uuid.h"
 
-#include "driver/include/xclperf.h"
-#include "driver/include/xcl_app_debug.h"
-#include "driver/include/stream.h"
-#include "driver/include/ert.h"
+#include "xclperf.h"
+#include "xcl_app_debug.h"
+#include "stream.h"
+#include "ert.h"
 
 #include <memory>
 #include <string>

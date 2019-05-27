@@ -29,7 +29,7 @@
 #include "xdp/profile/core/rt_profile.h"
 #include "xrt/util/config_reader.h"
 #include "xrt/util/message.h"
-#include "driver/include/xclperf.h"
+#include "xclperf.h"
 
 namespace xdp {
 
@@ -84,6 +84,13 @@ namespace xdp {
 
     if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM))
       xoclp::platform::start_device_trace(platform, XCL_PERF_MON_ACCEL, numComputeUnits);
+
+    if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE)) {
+      for (auto device : platform->get_device_range()) {
+        auto power_profile = std::make_unique<OclPowerProfile>(device->get_xrt_device(), Plugin, device->get_unique_name());
+        PowerProfileList.push_back(std::move(power_profile));
+      }
+    }
 
     mProfileRunning = true;
   }

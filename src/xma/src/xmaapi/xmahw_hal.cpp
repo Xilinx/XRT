@@ -23,8 +23,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
-#include <xclhal2.h>
-//#include <xclbin.h>
+#include "xclhal2.h"
 #include "app/xmaerror.h"
 #include "app/xmalogger.h"
 #include "lib/xmaxclbin.h"

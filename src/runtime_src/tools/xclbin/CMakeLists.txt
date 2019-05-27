@@ -1,6 +1,3 @@
-include_directories(
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../driver/include
-  )
 set(Boost_USE_STATIC_LIBS ON)               # Only find static libraries
 find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 

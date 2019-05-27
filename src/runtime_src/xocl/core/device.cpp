@@ -25,7 +25,7 @@
 #include "xrt/scheduler/scheduler.h"
 #include "xrt/util/config_reader.h"
 
-#include "driver/common/xclbin_parser.h"
+#include "core/common/xclbin_parser.h"
 
 #include <iostream>
 #include <fstream>
