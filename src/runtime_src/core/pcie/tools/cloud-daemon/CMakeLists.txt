@@ -4,29 +4,58 @@ include_directories(
 
 file(GLOB MPD_FILES
   "mpd.cpp"
+  "pciefunc.cpp"
+  "pciefunc.h"
+  "common.cpp"
   "common.h"
   )
 set(MPD_SRC ${MPD_FILES})
 add_executable(mpd ${MPD_SRC})
 target_link_libraries(mpd
-  xrt_core
+  xrt_core_static
+  xrt_coreutil_static
   pthread
+  boost_filesystem
+  boost_system
   uuid
   )
 install (TARGETS mpd RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
 
 file(GLOB MSD_FILES
   "msd.cpp"
+  "pciefunc.cpp"
+  "pciefunc.h"
+  "common.cpp"
   "common.h"
   )
 set(MSD_SRC ${MSD_FILES})
 add_executable(msd ${MSD_SRC})
 target_link_libraries(msd
-  xrt_core
+  xrt_core_static
+  xrt_coreutil_static
   pthread
+  boost_filesystem
+  boost_system
   uuid
   )
 install (TARGETS msd RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
 
-# deploy the config file
-install (FILES msd-host.config DESTINATION ${XRT_INSTALL_DIR}/etc)
+# deploy the systemd unit file for msd/mpd
+set (MSD_SERVICE_FILE "msd.service")
+configure_file (
+  ${MSD_SERVICE_FILE}.in
+  ${MSD_SERVICE_FILE}
+  )
+install (
+  FILES ${CMAKE_CURRENT_BINARY_DIR}/${MSD_SERVICE_FILE}
+  DESTINATION ${XRT_INSTALL_DIR}/etc
+  )
+set (MPD_SERVICE_FILE "mpd.service")
+configure_file (
+  ${MPD_SERVICE_FILE}.in
+  ${MPD_SERVICE_FILE}
+  )
+install (
+  FILES ${CMAKE_CURRENT_BINARY_DIR}/${MPD_SERVICE_FILE}
+  DESTINATION ${XRT_INSTALL_DIR}/etc
+  )

@@ -1,231 +1,256 @@
-/*
- * ryan.radjabi@xilinx.com
+/**
+ * Copyright (C) 2019 Xilinx, Inc
  *
- * Private Cloud Management Service Daemon
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
  */
-#include <iostream>
-#include <string>
-#include <wordexp.h>
-#include <vector>
-#include <sstream>
-#include <cstring>
 
-#include "xclhal2.h"
+/*
+ * Xilinx Management Service Daemon (MSD) for cloud.
+ */
+
+#include <stdio.h>
+#include <unistd.h>
+#include <syslog.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+
+#include <fstream>
+#include <vector>
+#include <thread>
+#include <cstdlib>
+#include <csignal>
+
+#include "pciefunc.h"
 #include "common.h"
 
-#define MAX_TOKEN_LEN 32
+static const std::string configFile("/etc/msd.conf");
+bool quit = false;
+// We'd like to only handle below request through daemons.
+uint64_t chanSwitch = (1UL<<MAILBOX_REQ_TEST_READY) |
+                      (1UL<<MAILBOX_REQ_TEST_READ)  |
+                      (1UL<<MAILBOX_REQ_LOAD_XCLBIN);
 
-std::string host_ip;
-std::string host_port;
-std::string mbx_switch;
-std::vector<std::string> boards;
-
-/*
- * parse configuration file
- */
-int parse_cfg(std::string filename)
+// Get host configured in config file
+static std::string getHost()
 {
-    std::ifstream file(filename);
-    std::string line;
-    int i = 0;
-    while (std::getline(file, line))
-    {
-        std::istringstream is_line(line);
-        std::string key;
-        if (std::getline(is_line, key, '=')) {
-            std::string value;
-            if (std::getline(is_line, value)) {
-                std::cout << "key: " << key << std::endl;
-                std::cout << "value: " << value << std::endl;
-                if (key == "board") {
-                    std::cout << "board[" << i << "]: " << value << std::endl;
-                    if (value.size() > MAX_TOKEN_LEN) {
-                        std::cout << "board token is too long, please reconfigure, maxlen: " 
-                                  << MAX_TOKEN_LEN << std::endl;
-                        return -EINVAL;
-                    }
-                    boards.push_back(value);
-                    i++;
-                    continue;
-                }
-                if (key == "ip") {
-                    host_ip = value;
-                    continue;
-                }
-                if (key == "port") {
-                    host_port = value;
-                    continue;
-                }
-                if (key == "switch") { 
-                    mbx_switch = value;
-                    continue;
-                }
-            } else {
-                std::cout << "comment: " << key << std::endl;
-            }
-        }
+    std::ifstream cfile(configFile);
+    if (!cfile.good()) {
+        syslog(LOG_ERR, "failed to open config file: %s", configFile.c_str());
+        return "";
     }
 
-    if (i == 0) {
-        std::cout << "Invalid configuration file -- no device found.\n";
-        return -ENODEV;
+    for (std::string line; std::getline(cfile, line);) {
+        std::string key, value;
+        int ret = splitLine(line, key, value);
+        if (ret != 0)
+            break;
+        if (key.compare("host") == 0)
+            return value;
     }
-        
-    return i;
+
+    syslog(LOG_ERR, "failed to read hostname from: %s", configFile.c_str());
+    return "";
 }
 
-/*
- * Lookup token and get index
- */
-int lookup_board(std::string val)
+static void createSocket(pcieFunc& dev, int& sockfd, uint16_t& port)
 {
-    size_t found = val.find_last_not_of('\0');
-    if (found != std::string::npos)
-        val.erase(found+1);
+    struct sockaddr_in saddr = { 0 };
 
-    std::vector<std::string>::iterator it = std::find(boards.begin(), boards.end(), val);
-    if (it == boards.end()) {
-        std::cout << "Device not found.\n";
-        return -ENODEV;
+    // A non-block socket would allow us to quit gracefully.
+    sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+    if (sockfd < 0) {
+        dev.log(LOG_ERR, "failed to create socket: %m");
+        return;
     }
-    std::cout << "Device found.\n";
-    return std::distance(boards.begin(), it);
+
+    saddr.sin_family = AF_INET;
+    saddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    saddr.sin_port = htons(port);
+    if ((bind(sockfd, (struct sockaddr *)&saddr, sizeof(saddr))) < 0) {
+        dev.log(LOG_ERR, "failed to bind socket: %m");
+        close(sockfd);
+        return;
+    }
+
+    int backlog = 50; // shouldn't have more than 50 boards in one host
+    if ((listen(sockfd, backlog)) != 0) {
+        dev.log(LOG_ERR, "failed to listen: %m");
+        close(sockfd);
+        return;
+    }
+
+    socklen_t slen = sizeof(saddr);
+    if (getsockname(sockfd, (struct sockaddr *)&saddr, &slen) < 0) {
+        dev.log(LOG_ERR, "failed to obtain port: %m");
+        close(sockfd);
+        return;
+    }
+    port = ntohs(saddr.sin_port); // Retrieve allocated port by kernel
 }
 
-/*
- * Example code to setup communication channel between vm and host.
- * TCP is being used here for example.
- * Cloud vendor should implement this function.
- */
-static void msd_comm_init(int *handle)
+static int verifyMpd(pcieFunc& dev, int mpdfd, int id)
 {
-    int sockfd, connfd, len;
-    struct sockaddr_in servaddr, cli;
+    int mpdid;
 
-    // socket create and verification
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd == -1) {
-        perror("socket creation failed...");
-        exit(1);
-    } else {
-        printf("Socket successfully created..\n");
-    }
-    bzero(&servaddr, sizeof(servaddr));
-
-    // assign IP, PORT
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    servaddr.sin_port = htons( std::stoi( host_port.c_str() ) );
-
-    // Binding newly created socket to given IP and verification
-    if ((bind(sockfd, (SA*)&servaddr, sizeof(servaddr))) != 0) {
-        perror("socket bind failed...");
-        exit(1);
-    } else {
-        printf("Socket successfully binded..\n");
-    }
-
-    // Now server is ready to listen and verification
-    if ((listen(sockfd, 5)) != 0) {
-        perror("Listen failed...");
-        exit(1);
-    } else {
-        printf("Server listening..\n");
-    }
-    len = sizeof(cli);
-
-    while (1) {
-        // Accept the data packet from client and verification
-        connfd = accept(sockfd, (SA*)&cli, (socklen_t*)&len);
-        if (connfd < 0) {
-            perror("server accept failed...");
-            continue;
-        } else {
-            printf("server accept the client...\n");
-        }
-
-        //In case there are multiple VMs created on the same host,
-        //there should be just one msd running on host, and multiple mpds
-        //each of which runs on a VM. So there would be multiple tcp
-        //connections established. each child here handles one connection
-        if (!fork()) { //child
-            close(sockfd);
-            *handle = connfd;
-            return;
-        }
-        //parent
-        close(connfd);
-        while(waitpid(-1,NULL,WNOHANG) > 0); /* clean up child processes */
-    }
-    //Assume the server never exits.
-    printf("Never happen!!\n");
-    exit(100);
-}
-
-int main( void )
-{
-    int comm_fd, local_fd = -1;
-
-    // Read config file, store ip, port, and switch, later write to
-    // mgmt sysf with xclMailboxMgmtPutID().
-    wordexp_t p;
-    char **w;
-    wordexp( "$XILINX_XRT/etc/msd-host.config", &p, 0 );
-    w = p.we_wordv;
-    std::string config_path(*w);
-    wordfree( &p );
-
-    if (parse_cfg(config_path) <= 0)
+    if (read(mpdfd, &mpdid, sizeof(mpdid)) != sizeof(mpdid)) {
+        dev.log(LOG_ERR, "short read mpd id");
         return -EINVAL;
-
-    // Write to config_mailbox_comm_id in format "127.0.0.1,12345,abc123", where 'abc123' is the cloud token
-    unsigned numDevs;
-    for (numDevs = 0; numDevs < boards.size(); numDevs++) {
-        std::string id(host_ip+","+host_port+","+boards.at(numDevs)+";");
-        char buf[256] = { 0 };
-        std::memcpy(buf, id.c_str(), id.size());
-        struct xclMailboxConf conf = { buf, 256, strtoull(mbx_switch.c_str(), nullptr, 10) };
-        if (xclMailboxConfWrite(numDevs, &conf)) {
-            std::cout << "xclMailboxMgmtPutID(): " << errno << std::endl;
-            return errno;
-        }
     }
 
-    // blocks waiting for connection, then forks child process from here
-    msd_comm_init(&comm_fd); 
-
-    // handshake with MPD to identify device
-    std::string cloud_token;
-    uint32_t dataLength;
-    recv(comm_fd, &dataLength, sizeof(uint32_t), 0); // Receive the message length
-    dataLength = ntohl(dataLength);                  // Ensure host system byte order
-    std::vector<char> buf(MAX_TOKEN_LEN, '\0');      // Allocate a receive buffer
-    recv(comm_fd, &(buf[0]), dataLength, 0);         // Receive the string data
-    cloud_token.append( buf.cbegin(), buf.cend() );
-
-    std::cout << "cloud token received: " << cloud_token << std::endl;
-
-    int devIdx = lookup_board(cloud_token);
-    if (devIdx < 0)
-        return devIdx;
-
-    std::cout << "device index of token: " << devIdx << std::endl;
-
-    local_fd = xclMailboxOpen(devIdx, false);
-    if (local_fd < 0) {
-        std::cout << "xclMailboxMgmt(): " << errno << std::endl;
-        return errno;
+    mpdid = ntohl(mpdid);
+    if (mpdid != id) {
+        dev.log(LOG_ERR, "bad mpd id: 0x%x", mpdid);
+        return -EINVAL;
     }
 
-    if ((comm_fd >= 0) && (local_fd >= 0)) {
-        // run until daemon is killed
-        mailbox_daemon(local_fd, comm_fd, "[MSD]");
-
-        // cleanup when stopped
-        close(comm_fd);
-        close(local_fd);
+    int ret = 0;
+    if (write(mpdfd, &ret, sizeof(ret)) != sizeof(ret)) {
+        dev.log(LOG_ERR, "failed to send reply to identification, %m");
+        return -EINVAL;
     }
 
     return 0;
 }
 
+static int connectMpd(pcieFunc& dev, int sockfd, int id, int& mpdfd)
+{
+    struct sockaddr_in mpdaddr = { 0 };
+
+    mpdfd = -1;
+
+    socklen_t len = sizeof(mpdaddr);
+    mpdfd = accept(sockfd, (struct sockaddr *)&mpdaddr, &len);
+    if (mpdfd < 0) {
+        if (errno != EWOULDBLOCK)
+            dev.log(LOG_ERR, "failed to accept, %m");
+        return -errno;
+    }
+
+    if (verifyMpd(dev, mpdfd, id) != 0) {
+        dev.log(LOG_ERR, "failed to verify mpd");
+        close(mpdfd);
+        mpdfd = -1;
+        return -EINVAL;
+    }
+
+    dev.log(LOG_INFO, "successfully connected to mpd");
+    return 0;
+}
+
+// Server serving MPD. Any error from socket fd, re-accept, don't quit.
+// Will quit on any error from local mailbox fd.
+static void msd(std::shared_ptr<pcidev::pci_device> d, std::string host)
+{
+    uint16_t port;
+    int sockfd = -1, mpdfd = -1, mbxfd = -1;
+    int ret;
+
+    pcieFunc dev(d);
+
+    mbxfd = dev.getMailbox();
+    if (mbxfd == -1)
+        goto done;
+
+    // Create socket and obtain port.
+    port = dev.getPort();
+    createSocket(dev, sockfd, port);
+    if (sockfd < 0 || port == 0)
+        goto done;
+
+    // Update config, if the existing one is not the same.
+    (void) dev.loadConf();
+    if (host != dev.getHost() || port != dev.getPort() ||
+        chanSwitch != dev.getSwitch()) {
+        if (dev.updateConf(host, port, chanSwitch) != 0)
+            goto done;
+    }
+
+    while (!quit) {
+        // Connect to mpd.
+        if (mpdfd == -1) {
+            ret = connectMpd(dev, sockfd, dev.getId(), mpdfd);
+            if (ret == -EWOULDBLOCK) {
+                sleep(1);
+                mpdfd = -1;
+                continue; // MPD is not ready yet, retry.
+            } else if (ret != 0) {
+                break;
+            }
+        }
+
+        // Waiting for msg to show up, interval is 3 seconds.
+        ret = waitForMsg(dev, mbxfd, mpdfd, 3);
+        if (ret < 0) {
+            if (ret == -EAGAIN) // MPD has been quiet, retry.
+                continue;
+            else
+                break;
+        }
+
+        // Process msg.
+        if (ret == mbxfd)
+            ret = localToRemote(dev, mbxfd, mpdfd);
+        else
+            ret = remoteToLocal(dev, mbxfd, mpdfd);
+        if (ret == -EAGAIN) { // Socket connection was lost, retry
+            close(mpdfd);
+            mpdfd = -1;
+            continue;
+        } else if (ret != 0) {
+            break;
+        }
+    }
+
+done:
+    dev.updateConf("", 0, 0); // Restore default config.
+    close(mpdfd);
+    close(sockfd);
+}
+
+void signalHandler(int signum)
+{
+    syslog(LOG_INFO, "Caught SIGTERM! Leaving!");
+    quit = true;
+}
+
+int main(void)
+{
+    // Daemon has no connection to terminal.
+    fcloseall();
+
+    // Start logging ASAP.
+    openlog("msd", LOG_PID|LOG_CONS, LOG_USER);
+    syslog(LOG_INFO, "started");
+
+    // Fetching host name from config file.
+    std::string host = getHost();
+    if (host.empty())
+        return 0;
+
+    // Handle sigterm from systemd to shutdown gracefully.
+    signal(SIGTERM, signalHandler);
+
+    // Fire up one thread for each board.
+    auto total = pcidev::get_dev_total(false);
+    std::vector<std::thread> threads;
+    for (size_t i = 0; i < total; i++)
+        threads.emplace_back(msd, pcidev::get_dev(i, false), host);
+
+    // Wait for all threads to finish before quit.
+    for (auto& t : threads)
+        t.join();
+
+    syslog(LOG_INFO, "ended");
+    closelog();         
+    return 0;
+}

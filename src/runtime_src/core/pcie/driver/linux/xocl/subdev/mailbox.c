@@ -1958,7 +1958,11 @@ mailbox_read(struct file *file, char __user *buf, size_t n, loff_t *ignored)
 	 */
 	if (ch->sw_chan_buf_sz > (n - sizeof(struct sw_chan))) {
 		mutex_unlock(&ch->sw_chan_mutex);
-		MBX_ERR(mbx, "Software TX msg is too big");
+		/*
+		 * This error occurs when daemons try to query the size
+		 * of the msg. Show it as info to avoid flushing sytem console.
+		 */
+		MBX_INFO(mbx, "Software TX msg is too big");
 		return -EMSGSIZE;
 	}
 
@@ -2072,7 +2076,7 @@ static uint mailbox_poll(struct file *file, poll_table *wait)
 
 	poll_wait(file, &ch->sw_chan_wq, wait);
 	counter = atomic_read(&ch->sw_num_pending_msg);
-	MBX_INFO(mbx, "mailbox_poll: %d", counter);
+	MBX_DBG(mbx, "mailbox_poll: %d", counter);
 	if (counter == 0)
 		return 0;
 	return POLLIN;
