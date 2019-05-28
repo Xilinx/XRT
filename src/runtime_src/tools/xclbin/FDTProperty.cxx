@@ -19,9 +19,17 @@
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
 
-#include <arpa/inet.h>
-#include <limits>
 #include "DTCStringsBlock.h"
+
+#include <limits.h>
+#include <stdint.h>
+
+#ifdef _WIN32
+  #include <winsock2.h>
+#else
+  #include <arpa/inet.h>
+#endif
+
 
 FDTProperty::FDTProperty()
   : m_dataLength(0)
@@ -335,7 +343,7 @@ FDTProperty::isDataFormatArray(enum DataFormat _eDataFormat)
     case DF_u128:
     case DF_sz:
     default:
-      return false;
+      // Fall through
       break;
   }
   return false;
@@ -357,7 +365,7 @@ FDTProperty::writeDataWord(enum DataFormat _eDataFormat,
     case DF_au8:
       {
         uint64_t dataWord = std::strtoul(_sData.c_str(), NULL, 0);
-        if (dataWord > std::numeric_limits<uint8_t>::max()) {
+        if (dataWord > UINT8_MAX) {
           std::string err = XUtil::format("ERROR: Property '%s' data value '%s' exceeds the maximum byte storage space'.", m_name.c_str(), _sData.c_str());
           throw std::runtime_error(err);
         }
@@ -371,7 +379,7 @@ FDTProperty::writeDataWord(enum DataFormat _eDataFormat,
     case DF_u16:
       {
         uint64_t dataWord = std::strtoul(_sData.c_str(), NULL, 0);
-        if (dataWord > std::numeric_limits<uint16_t>::max()) {
+        if (dataWord > UINT16_MAX) {
           std::string err = XUtil::format("ERROR: Property '%s' data value '%s' exceeds the maximum uint16_t storage space.", m_name.c_str(), _sData.c_str());
           throw std::runtime_error(err);
         }
@@ -384,7 +392,7 @@ FDTProperty::writeDataWord(enum DataFormat _eDataFormat,
     case DF_u32:
       {
         uint64_t dataWord = std::strtoul(_sData.c_str(), NULL, 0);
-        if (dataWord > std::numeric_limits<uint32_t>::max()) {
+        if (dataWord > UINT32_MAX) {
           std::string err = XUtil::format("ERROR: Property '%s' data value '%s' exceeds the maximum uint32_t storage space.", m_name.c_str(), _sData.c_str());
           throw std::runtime_error(err);
         }
@@ -403,7 +411,11 @@ FDTProperty::writeDataWord(enum DataFormat _eDataFormat,
         }
 
         uint64_t * pWord = (uint64_t *) _buffer;
+#ifdef _WIN32
+        *pWord = _byteswap_uint64((uint64_t) dataWord);
+#else
         *pWord = __builtin_bswap64((uint64_t) dataWord);
+#endif
       }
       break;
 
@@ -430,8 +442,9 @@ FDTProperty::writeDataWord(enum DataFormat _eDataFormat,
 
         std::string sHex(_sData.c_str() + 2);  // Strip off the 2 two characters
 
-        static int sizeWord = 16;
-        uint8_t dataWord[sizeWord] = {0};
+        static const int sizeWord = 16;
+        uint8_t dataWord[sizeWord] = {};
+
         XUtil::hexStringToBinaryBuffer(sHex, &dataWord[0], sizeWord);
 
         memcpy(_buffer, &dataWord[0], sizeWord);
@@ -456,7 +469,7 @@ FDTProperty::marshalDataFromJSON(boost::property_tree::ptree::const_iterator & _
   DataFormat eDataFormat = getDataFormat(m_name);
   unsigned int wordSizeBytes = getWordLength(eDataFormat);
   const boost::property_tree::ptree & ptData = _iter->second;
-  unsigned int arraySize = ptData.size();
+  unsigned int arraySize = (unsigned int) ptData.size();
 
   // Make sure that we are not dealing with an array of data for non arrays
   if ((arraySize > 1) && !isDataFormatArray(eDataFormat)) {
@@ -469,7 +482,7 @@ FDTProperty::marshalDataFromJSON(boost::property_tree::ptree::const_iterator & _
     std::string sData = ptData.data();  
 
     if (eDataFormat == DF_sz) {
-      m_dataLength = sData.size() + 1; // Add room for the '\0' character
+      m_dataLength = (unsigned int) sData.size() + 1; // Add room for the '\0' character
     } else {
       m_dataLength = wordSizeBytes;
     }

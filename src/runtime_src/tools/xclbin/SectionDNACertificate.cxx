@@ -91,8 +91,8 @@ SectionDNACertificate::marshalToJSON(char* _pDataSection,
 
   // Get padding string
   std::string sPadding;
-  unsigned int paddingOffset = dnaEntryCount * dnaEntrySizeBytes;
-  unsigned int paddingSize = (_sectionSize - signatureSizeBytes) - paddingOffset;
+  uint64_t paddingOffset = dnaEntryCount * dnaEntrySizeBytes;
+  uint64_t paddingSize = (_sectionSize - signatureSizeBytes) - paddingOffset;
   XUtil::binaryBufferToHexString((unsigned char *) &_pDataSection[paddingOffset], paddingSize, sPadding);
 
 

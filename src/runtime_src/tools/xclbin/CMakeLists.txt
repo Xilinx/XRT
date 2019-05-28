@@ -1,11 +1,16 @@
+# -----------------------------------------------------------------------------
+
 set(Boost_USE_STATIC_LIBS ON)               # Only find static libraries
 find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
+include_directories(${Boost_INCLUDE_DIRS})
 
 # -----------------------------------------------------------------------------
 
 include_directories(${CMAKE_BINARY_DIR}/gen)
 
 # -----------------------------------------------------------------------------
+
+if(NOT WIN32)    # We don't support xclbincat on windows
 
 file(GLOB XCLBINCAT_FILES
   "xclbincat.cxx"
@@ -24,7 +29,12 @@ target_link_libraries(xclbincat -static ${Boost_LIBRARIES})
 #   Therefore, we direct CMake to end with static, so that it doesn't do that:
 set_target_properties(xclbincat PROPERTIES LINK_SEARCH_END_STATIC 1)
 
+install (TARGETS xclbincat RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
+
+endif()
 # -----------------------------------------------------------------------------
+
+if(NOT WIN32)    # We don't support xclbinsplit on windows
 
 file(GLOB XCLBINSPLIT_FILES
   "xclbinsplit.cxx"
@@ -42,14 +52,17 @@ target_link_libraries(xclbinsplit -static ${Boost_LIBRARIES})
 # produce "Command not found" when running the executable.
 #   Therefore, we direct CMake to end with static, so that it doesn't do that:
 set_target_properties(xclbinsplit PROPERTIES LINK_SEARCH_END_STATIC 1)
- 
+
+install (TARGETS xclbinsplit RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
+endif()
+
 # -----------------------------------------------------------------------------
 
 file(GLOB XCLBINUTIL_FILES
   "FormattedOutput.cxx"
   "ParameterSectionData.cxx"
   "XclBinUtilMain.cxx"
-  "XclBin.cxx"
+  "XclBinClass.cxx"
   "SectionHeader.cxx"
   "XclBinUtilities.cxx"
   "Section.cxx"
@@ -97,7 +110,7 @@ set_target_properties(xclbinutil PROPERTIES LINK_SEARCH_END_STATIC 1)
 
 # -----------------------------------------------------------------------------
 
-install (TARGETS xclbincat xclbinsplit xclbinutil RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
+install (TARGETS xclbinutil RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
 
 # -----------------------------------------------------------------------------
 
