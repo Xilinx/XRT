@@ -22,6 +22,7 @@
 #include <boost/filesystem/operations.hpp>
 #include <iostream>
 #include <cstdlib>
+#include <regex>
 
 #ifdef __GNUC__
 # include <linux/limits.h>
@@ -189,6 +190,37 @@ get_uint_value(const char* key, unsigned int default_value)
   return s_tree.m_tree.get<unsigned int>(key,default_value);
 }
 
+unsigned long long
+get_bytes_value(const char* key, unsigned long long default_value)
+{
+  std::string size_str = get_string_value(key, "");
+  std::smatch pieces_match;
+  // Regex can parse values like : "1024M" "1G" "8192k"
+  const std::regex size_regex("\\s*([0-9]+)\\s*(K|k|M|m|G|g|)\\s*");
+  unsigned long long bytes;
+
+  if (std::regex_match(size_str, pieces_match, size_regex)) {
+    try {
+      if (pieces_match[2] == "K" || pieces_match[2] == "k") {
+        bytes = std::stoull(pieces_match[1]) * 1024;
+      } else if (pieces_match[2] == "M" || pieces_match[2] == "m") {
+        bytes = std::stoull(pieces_match[1]) * 1024 * 1024;
+      } else if (pieces_match[2] == "G" || pieces_match[2] == "g") {
+        bytes = std::stoull(pieces_match[1]) * 1024 * 1024 * 1024;
+      } else {
+        bytes = std::stoull(pieces_match[1]);
+      }
+    } catch (const std::exception& ex) {
+      // User specified number cannot be parsed
+      bytes = default_value;
+    }
+  } else {
+      // No match found
+      bytes = default_value;
+  }
+
+  return bytes;
+}
 
 const boost::property_tree::ptree&
 get_ptree_value(const char* key)
