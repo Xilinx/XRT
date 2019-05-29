@@ -37,7 +37,7 @@ if (${LINUX_FLAVOR} STREQUAL Ubuntu)
   # xrt component dependencies
   SET(CPACK_DEBIAN_XRT_PACKAGE_DEPENDS "ocl-icd-opencl-dev (>= 2.2.0), libboost-dev (>=1.58), libboost-filesystem-dev (>=1.58), uuid-dev (>= 2.27.1), dkms (>= 2.2.0), libprotoc-dev (>=2.6.1), protobuf-compiler (>=2.6.1), libncurses5-dev (>=6.0), lsb-release, libxml2-dev (>=2.9.1), libyaml-dev (>= 0.1.6)")
 
-elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS)")
+elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Amazon)")
   SET(CPACK_GENERATOR "RPM;TGZ")
   SET(PACKAGE_KIND "RPM")
   # Modify the package name for the xrt component
@@ -53,6 +53,10 @@ elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS)")
   SET(CPACK_RPM_AWS_PACKAGE_REQUIRES "xrt >= ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH}")
   # xrt component dependencies
   SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "ocl-icd-devel >= 2.2, boost-devel >= 1.53, boost-filesystem >= 1.53, libuuid-devel >= 2.23.2, dkms >= 2.5.0, protobuf-devel >= 2.5.0, protobuf-compiler >= 2.5.0, ncurses-devel >= 5.9, redhat-lsb-core, libxml2-devel >= 2.9.1, libyaml-devel >= 0.1.4 ")
+  # Few extras necessary to install XRT on an AL2 image
+  if(${LINUX_FLAVOR} MATCHES "^Amazon")
+    SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "${CPACK_RPM_XRT_PACKAGE_REQUIRES} libdrm-devel >= 2.4.83, libpciaccess-devel >= 0.14, boost-static >= 1.53, gtest >= 1.7.0, glibc-static >= 2.26 gcc-c++ >= 7.3.1")
+  endif()
 else ()
   SET (CPACK_GENERATOR "TGZ")
 endif()
