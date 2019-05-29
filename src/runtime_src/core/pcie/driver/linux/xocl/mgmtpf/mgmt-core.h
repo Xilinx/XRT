@@ -143,6 +143,7 @@ void xclmgmt_reset_pci(struct xclmgmt_dev *lro);
 
 void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		        u64 msgid, int err, bool sw_ch);
+int xclmgmt_load_fdt(struct xclmgmt_dev *lro);
 int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro);
 int xclmgmt_program_shell(struct xclmgmt_dev *lro);
 

@@ -25,6 +25,7 @@
 #include <stddef.h>
 #include <cassert>
 #include <vector>
+#include <string.h>
 
 #define FLASH_BASE_ADDRESS BPI_FLASH_OFFSET
 #define MAGIC_XLNX_STRING "xlnx" // from xclfeatures.h FeatureRomHeader
@@ -34,6 +35,8 @@ Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
     std::string err;
     E_FlasherType type = E_FlasherType::UNKNOWN;
 
+    if (typeStr.empty())
+        mDev->sysfs_get("flash", "flash_type", err, typeStr);
     if (typeStr.empty())
         mDev->sysfs_get("", "flash_type", err, typeStr);
 
@@ -208,12 +211,11 @@ Flasher::Flasher(unsigned int index) : mFRHeader{}
     bool is_mfg = false;
     dev->sysfs_get("", "mfg", err, is_mfg);
 
-    unsigned long long feature_rom_base = 0;
-    dev->sysfs_get("", "feature_rom_offset", err, feature_rom_base);
-    if (err.empty() && feature_rom_base != 0)
+    std::vector<char> feature_rom;
+    dev->sysfs_get("rom", "raw", err, feature_rom);
+    if (err.empty())
     {
-        dev->pcieBarRead(feature_rom_base,
-            &mFRHeader, sizeof(struct FeatureRomHeader));
+        memcpy(&mFRHeader, feature_rom.data(), sizeof(struct FeatureRomHeader));
         // Something funny going on here. There must be a strange line ending
         // character. Using "<" will check for a match that EntryPointString
         // starts with magic char sequence "xlnx".

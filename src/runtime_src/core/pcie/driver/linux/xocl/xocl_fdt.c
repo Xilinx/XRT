@@ -21,6 +21,8 @@
 
 #define LEVEL1_INT_NODE "/exposes/interfaces/level1"
 #define LEVEL1_DEV_PATH "/exposes/regions/level1_prp/ips"
+
+#define LEVEL0_DEV_PATH "/_self_/ips"
 struct ip_node {
 	const char *name;
 	int level;
@@ -29,7 +31,7 @@ struct ip_node {
 	u16 minor;
 };
 
-void *ert_build_priv(xdev_handle_t xdev_hdl, size_t *len)
+static void *ert_build_priv(xdev_handle_t xdev_hdl, size_t *len)
 {
 	char *priv_data;
 
@@ -45,15 +47,13 @@ void *ert_build_priv(xdev_handle_t xdev_hdl, size_t *len)
 	return priv_data;
 }
 
-void *rom_build_priv(xdev_handle_t xdev_hdl, size_t *len)
+static void *rom_build_priv(xdev_handle_t xdev_hdl, size_t *len)
 {
 	char *priv_data;
 	struct xocl_dev_core *core = XDEV(xdev_hdl);
 	void *blob;
 	const char *vrom;
 	int node, proplen;
-
-	pr_info("BLOB %p\n", core->fdt_blob);
 
 	blob = core->fdt_blob;
 	if (!blob)
@@ -75,7 +75,6 @@ void *rom_build_priv(xdev_handle_t xdev_hdl, size_t *len)
 	priv_data = vmalloc(proplen);
 	if (!priv_data)
 		goto failed;
-	pr_info("LEN %d, vrom %c%c%c%c\n", proplen, vrom[0], vrom[1], vrom[2], vrom[3]);
 
 	memcpy(priv_data, vrom, proplen);
 	*len = (size_t)proplen;
@@ -85,6 +84,73 @@ void *rom_build_priv(xdev_handle_t xdev_hdl, size_t *len)
 failed:
 	*len = 0;
 	return NULL;
+}
+
+static void *flash_build_priv(xdev_handle_t xdev_hdl, size_t *len)
+{
+	struct xocl_dev_core *core = XDEV(xdev_hdl);
+	struct xocl_flash_privdata *priv = NULL;
+	const char *prop, *flash_type;
+	void *blob;
+	int node, proplen;
+
+	blob = core->fdt_blob;
+	if (!blob)
+		goto failed;
+
+	node = fdt_path_offset(blob, LEVEL0_DEV_PATH
+			"/flashpgrm");
+	if (node < 0) {
+		xocl_xdev_err(xdev_hdl, "did not find flash node");
+		goto failed;
+	}
+	prop = fdt_getprop(blob, node, "Name_sz", NULL);
+	if (!prop) {
+		xocl_xdev_err(xdev_hdl, "did not find Name_sz");
+		goto failed;
+	}
+
+	if (!strcmp(prop, "axi_quad_spi"))
+		flash_type = FLASH_TYPE_SPI;
+	else {
+		xocl_xdev_err(xdev_hdl, "UNKNOWN flash type %s", prop);
+		goto failed;
+	}
+
+	node = fdt_path_offset(blob, LEVEL0_DEV_PATH
+			"/flashpgrm/segments/segment@1");
+	if (node < 0) {
+		xocl_xdev_err(xdev_hdl, "did not find flash seg");
+		goto failed;
+	}
+
+	prop = fdt_getprop(blob, node, "ConfigProperties_sz", NULL);
+	if (!prop) {
+		xocl_xdev_err(xdev_hdl, "did not find ConfigProperties_sz");
+		goto failed;
+	}
+
+	proplen = sizeof(*priv) + strlen(flash_type) + strlen(prop);
+	priv = vzalloc(proplen);
+	if (!priv)
+		goto failed;
+
+	priv->flash_type = offsetof(struct xocl_flash_privdata, data);
+	priv->properties = priv->flash_type + strlen(flash_type) + 1;
+	strcpy((char *)priv + priv->properties, prop);
+	strcpy((char *)priv + priv->flash_type, flash_type);
+
+	prop = fdt_getprop(blob, node, "OffsetRange_au64", NULL);
+	priv->bar_off = be64_to_cpu(*((u64 *)prop));
+
+	*len = proplen;
+
+	return priv;
+failed:
+	if (priv)
+		vfree(priv);
+	return NULL;
+
 }
 
 static struct xocl_subdev_map		subdev_map[] = {
@@ -227,6 +293,17 @@ static struct xocl_subdev_map		subdev_map[] = {
 		1,
 		0,
 		NULL,
+	},
+	{
+		XOCL_SUBDEV_FLASH,
+		XOCL_FLASH,
+		{
+			"flashpgrm",
+			NULL
+		},
+		1,
+		0,
+		flash_build_priv,
 	},
 #if 0
 	{
@@ -424,7 +501,7 @@ static int xocl_fdt_parse_seg(xdev_handle_t xdev_hdl, char *blob,
 static int xocl_fdt_next_ip(xdev_handle_t xdev_hdl, char *blob,
 		int off, struct ip_node *ip)
 {
-	char *l0_path = "/_self_/ips";
+	char *l0_path = LEVEL0_DEV_PATH;
 	char *l1_path = LEVEL1_DEV_PATH;
 	int l1_off, l0_off, node, end;
 	const u16 *ver;
@@ -828,4 +905,39 @@ int xocl_fdt_add_vrom(xdev_handle_t xdev_hdl, void *blob, void *rom)
 	}
 
 	return 0;
+}
+
+const struct axlf_section_header *xocl_axlf_section_header(
+	xdev_handle_t xdev_hdl, const struct axlf *top,
+	enum axlf_section_kind kind)
+{
+	const struct axlf_section_header	*hdr = NULL;
+	int	i;
+
+	xocl_xdev_info(xdev_hdl,
+		"trying to find section header for axlf section %d", kind);
+
+	for (i = 0; i < top->m_header.m_numSections; i++) {
+		xocl_xdev_info(xdev_hdl, "saw section header: %d",
+			top->m_sections[i].m_sectionKind);
+		if (top->m_sections[i].m_sectionKind == kind) {
+			hdr = &top->m_sections[i];
+			break;
+		}
+	}
+
+	if (hdr) {
+		if ((hdr->m_sectionOffset + hdr->m_sectionSize) >
+				 top->m_header.m_length) {
+			xocl_xdev_err(xdev_hdl, "found section is invalid");
+			hdr = NULL;
+		} else
+			xocl_xdev_info(xdev_hdl,
+				"header offset: %llu, size: %llu",
+				hdr->m_sectionOffset, hdr->m_sectionSize);
+	} else
+		xocl_xdev_info(xdev_hdl, "could not find section header %d",
+				kind);
+
+	return hdr;
 }

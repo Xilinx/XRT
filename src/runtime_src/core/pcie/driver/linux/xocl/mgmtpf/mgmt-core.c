@@ -897,16 +897,13 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	 * Workaround needed on some platforms. Will clear out any stale
 	 * data after the platform has been reset
 	 */
-	if (!(dev_info->flags & XOCL_DSAFLAG_DYNAMIC_IP)) {
-		ret = xocl_subdev_create(lro,
-			&(struct xocl_subdev_info)XOCL_DEVINFO_AF);
-		if (ret) {
-			xocl_err(&pdev->dev, "failed to register firewall\n");
-			goto fail_firewall;
-		}
-		if (dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
-			platform_axilite_flush(lro);
+	ret = xocl_subdev_create_by_id(lro, XOCL_SUBDEV_AF);
+	if (ret && ret != -ENODEV) {
+		xocl_err(&pdev->dev, "failed to register firewall\n");
+		goto fail_firewall;
 	}
+	if (dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
+			platform_axilite_flush(lro);
 
 	ret = xocl_subdev_create_all(lro);
 	if (ret) {
@@ -915,7 +912,12 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	}
 	xocl_err(&pdev->dev, "created all sub devices");
 
+	/* return -ENODEV for 2RP platform */
 	ret = xocl_icap_download_boot_firmware(lro);
+	if (ret && ret != -ENODEV)
+		goto fail_all_subdev;
+
+	ret = xclmgmt_load_fdt(lro);
 	if (ret)
 		goto fail_all_subdev;
 
@@ -1145,6 +1147,7 @@ static struct pci_driver xclmgmt_driver = {
 
 static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_feature_rom,
+	xocl_init_flash,
 	xocl_init_xdma_mgmt,
 	xocl_init_sysmon,
 	xocl_init_mb,
@@ -1162,6 +1165,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 
 static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_feature_rom,
+	xocl_fini_flash,
 	xocl_fini_xdma_mgmt,
 	xocl_fini_sysmon,
 	xocl_fini_mb,

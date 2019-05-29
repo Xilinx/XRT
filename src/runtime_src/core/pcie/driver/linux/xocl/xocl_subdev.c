@@ -671,7 +671,6 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
 	struct pci_dev *pdev = core->pdev;
-	unsigned int i;
 
 	memset(&core->priv, 0, sizeof(core->priv));
 	/*
@@ -694,15 +693,6 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 		core->priv.dsa_ver = in->dsa_ver;
 	if (in->flags & XOCL_DSAFLAG_SET_XPR)
 		core->priv.xpr = in->xpr;
-
-	for (i = 0; i < in->subdev_num; i++) {
-		if (in->subdev_info[i].id == XOCL_SUBDEV_FEATURE_ROM &&
-			in->subdev_info[i].res) {
-			core->feature_rom_offset =
-				in->subdev_info[i].res[0].start;
-			break;
-		}
-	}
 }
 
 int xocl_xrt_version_check(xdev_handle_t xdev_hdl,

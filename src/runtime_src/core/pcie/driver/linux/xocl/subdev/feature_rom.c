@@ -115,8 +115,41 @@ static struct attribute *rom_attrs[] = {
 	NULL,
 };
 
+static ssize_t raw_show(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+{
+	struct device *dev = kobj_to_dev(kobj);
+	struct feature_rom *rom = platform_get_drvdata(to_platform_device(dev));
+
+	if (off >= sizeof(rom->header))
+		return 0;
+
+	if (off + count >= sizeof(rom->header))
+		count = sizeof(rom->header) - off;
+
+	memcpy(buf, &rom->header, count);
+
+	return count;
+};
+
+static struct bin_attribute raw_attr = {
+	.attr = {
+		.name = "raw",
+		.mode = 0400
+	},
+	.read = raw_show,
+	.write = NULL,
+	.size = 0
+};
+
+static struct bin_attribute  *rom_bin_attrs[] = {
+	&raw_attr,
+	NULL,
+};
+
 static struct attribute_group rom_attr_group = {
 	.attrs = rom_attrs,
+	.bin_attrs = rom_bin_attrs,
 };
 
 static bool is_unified(struct platform_device *pdev)

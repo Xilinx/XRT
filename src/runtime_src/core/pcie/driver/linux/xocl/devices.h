@@ -43,7 +43,7 @@ enum {
 	XOCL_DSAFLAG_AXILITE_FLUSH		= 0x04,
 	XOCL_DSAFLAG_SET_DSA_VER		= 0x08,
 	XOCL_DSAFLAG_SET_XPR			= 0x10,
-	XOCL_DSAFLAG_MFG				= 0x20,
+	XOCL_DSAFLAG_MFG			= 0x20,
 	XOCL_DSAFLAG_FIXED_INTR			= 0x40,
 	XOCL_DSAFLAG_NO_KDMA			= 0x80,
 	XOCL_DSAFLAG_CUDMA_OFF			= 0x100,
@@ -86,6 +86,13 @@ struct xocl_board_private {
         char			*flash_type; /* used by xbflash */
         char			*board_name; /* used by xbflash */
 	bool			mpsoc;
+};
+
+struct xocl_flash_privdata {
+	u64			bar_off;
+	u32			flash_type;
+	u32			properties;
+	uint64_t		data[1];
 };
 
 #ifdef __KERNEL__
@@ -152,11 +159,13 @@ enum {
 #define	XOCL_XMC			"xmc"
 #define	XOCL_DNA			"dna"
 #define	XOCL_FMGR			"fmgr"
+#define	XOCL_FLASH			"flash"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
 enum subdev_id {
 	XOCL_SUBDEV_FEATURE_ROM,
+	XOCL_SUBDEV_FLASH,
 	XOCL_SUBDEV_DMA,
 	XOCL_SUBDEV_MB_SCHEDULER,
 	XOCL_SUBDEV_XVC_PUB,
@@ -1187,29 +1196,22 @@ struct xocl_subdev_map {
 		.flash_type = FLASH_TYPE_SPI,				\
 	}
 
+#define XOCL_RES_FEATURE_ROM_DYN			\
+	((struct resource []) {				\
+	 	{					\
+	 		.start = 0x1f10000,		\
+	 		.end = 0x1f10fff,		\
+	 		.flags = IORESOURCE_MEM,	\
+	 	},					\
+	 })
+
+
 #define	XOCL_DEVINFO_FEATURE_ROM_DYN			\
 	{						\
 		XOCL_SUBDEV_FEATURE_ROM,		\
 		XOCL_FEATURE_ROM,			\
-		NULL,					\
-		0,					\
-	}
-
-#define	XOCL_RES_XVC_PUB_DYN				\
-	((struct resource []) {				\
-		{					\
-			.start	= 0x1f40000,		\
-			.end	= 0x1f4FFFF,		\
-			.flags	= IORESOURCE_MEM,	\
-		},					\
-	})
-
-#define	XOCL_DEVINFO_XVC_PUB_DYN			\
-	{						\
-		XOCL_SUBDEV_XVC_PUB,			\
-		XOCL_XVC_PUB,				\
-		XOCL_RES_XVC_PUB_DYN,			\
-		ARRAY_SIZE(XOCL_RES_XVC_PUB_DYN),	\
+		XOCL_RES_FEATURE_ROM_DYN,		\
+		ARRAY_SIZE(XOCL_RES_FEATURE_ROM_DYN),	\
 	}
 
 #define	XOCL_RES_MAILBOX_MGMT_DYN				\
@@ -1261,6 +1263,7 @@ struct xocl_subdev_map {
 
 #define MGMT_RES_DYNAMIC_IP						\
 		((struct xocl_subdev_info []) {				\
+		 	XOCL_DEVINFO_FEATURE_ROM_DYN,			\
 		 	XOCL_DEVINFO_MAILBOX_MGMT_DYN,			\
 			XOCL_DEVINFO_FMGR,      			\
 		})

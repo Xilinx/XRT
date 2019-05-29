@@ -269,6 +269,12 @@ static void clearBuffers() {
 XSPI_Flasher::XSPI_Flasher(std::shared_ptr<pcidev::pci_device> dev)
 {
     mDev = dev;
+
+    std::string err;
+    mDev->sysfs_get("flash", "bar_off", err, flash_base);
+    if (!err.empty())
+        flash_base = FLASH_BASE;
+
 }
 
 unsigned XSPI_Flasher::getSector(unsigned address) {
@@ -585,15 +591,15 @@ int XSPI_Flasher::xclUpgradeFirmwareXSpi(std::istream& mcsStream, int index) {
 
 unsigned XSPI_Flasher::readReg(unsigned RegOffset) {
     unsigned value;
-    if( mDev->pcieBarRead( FLASH_BASE + RegOffset, &value, 4 ) != 0 ) {
+    if( mDev->pcieBarRead( flash_base + RegOffset, &value, 4 ) != 0 ) {
         assert(0);
-        std::cout << "read reg ERROR" << std::endl;
+	throw std::runtime_error("read reg ERROR");
     }
     return value;
 }
 
 int XSPI_Flasher::writeReg(unsigned RegOffset, unsigned value) {
-    int status = mDev->pcieBarWrite(FLASH_BASE + RegOffset, &value, 4);
+    int status = mDev->pcieBarWrite(flash_base + RegOffset, &value, 4);
     if(status != 0) {
         assert(0);
         std::cout << "write reg ERROR " << std::endl;
@@ -911,7 +917,7 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
             Data = *(uint32_t *)SendBufferPtr;
         }
 
-        if(mDev->pcieBarWrite(FLASH_BASE + XSP_DTR_OFFSET, &Data, 4) != 0) {
+	if (writeReg(XSP_DTR_OFFSET, Data) != 0) {
             return false;
         }
         SendBufferPtr += (DataWidth >> 3);
@@ -1000,11 +1006,11 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
             while ((StatusReg & XSP_SR_RX_EMPTY_MASK) == 0)
             {
                 //read the data.
-                if(mDev->pcieBarRead(FLASH_BASE + XSP_DRR_OFFSET, &Data, 4) != 0)
-                {
+                try {
+                    Data = readReg(XSP_DRR_OFFSET);
+		} catch (const std::exception& ex) {
                     return false;
                 }
-
 
                 if (DataWidth == 8) {
                     if(RecvBufferPtr != NULL) {
@@ -1057,7 +1063,7 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
                         Data = *(uint32_t *)SendBufferPtr;
                     }
 
-                    if(mDev->pcieBarWrite( FLASH_BASE + XSP_DTR_OFFSET, &Data, 4) != 0) {
+		    if(writeReg(XSP_DTR_OFFSET, Data) != 0) {
                         return false;
                     }
 

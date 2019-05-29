@@ -134,6 +134,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/dna.c
   xocl/subdev/fmgr.c
   xocl/subdev/xdma_mgmt.c
+  xocl/subdev/flash.c
   xocl/Makefile
   )
 

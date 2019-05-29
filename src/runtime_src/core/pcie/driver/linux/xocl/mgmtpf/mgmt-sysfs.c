@@ -82,15 +82,6 @@ static ssize_t mfg_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(mfg);
 
-static ssize_t feature_rom_offset_show(struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
-
-	return sprintf(buf, "%llu\n", lro->core.feature_rom_offset);
-}
-static DEVICE_ATTR_RO(feature_rom_offset);
-
 static ssize_t mgmt_pf_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -336,7 +327,6 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_mgmt_pf.attr,
 	&dev_attr_flash_type.attr,
 	&dev_attr_board_name.attr,
-	&dev_attr_feature_rom_offset.attr,
 	&dev_attr_dev_offline.attr,
 	&dev_attr_config_mailbox_channel_switch.attr,
 	&dev_attr_config_mailbox_comm_id.attr,

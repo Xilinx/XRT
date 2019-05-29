@@ -15,6 +15,7 @@
  *  GNU General Public License for more details.
  */
 
+#include <linux/firmware.h>
 #include "mgmt-core.h"
 #include <linux/module.h>
 #include "../xocl_drv.h"
@@ -453,7 +454,7 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 		mgmt_err(lro, "get featurerom raw header failed %d", ret);
 		goto failed;
 	}
-pr_info("RAW header %s\n", (char *)&rom_header);
+
 	ret = xocl_fdt_add_vrom(lro, lro->userpf_blob, &rom_header);
 	if (ret) {
 		mgmt_err(lro, "add vrom failed %d", ret);
@@ -505,4 +506,52 @@ failed:
 
 	return ret;
 
+}
+
+int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
+{
+	const struct firmware			*fw;
+	const struct axlf_section_header	*dtc_header;
+	struct axlf				*bin_axlf;
+	char					fw_name[128];
+	int					ret;
+
+	snprintf(fw_name, sizeof(fw_name),
+		"xilinx/%04x-%04x-%04x-%016llx.dsabin",
+		lro->core.pdev->vendor,
+		lro->core.pdev->device,
+		lro->core.pdev->subsystem_device,
+		xocl_get_timestamp(lro));
+
+	mgmt_info(lro, "Load fdt from %s", fw_name);
+	ret = request_firmware(&fw, fw_name, &lro->core.pdev->dev);
+	if (ret) {
+		mgmt_err(lro, "unable to find firmware");
+		goto failed;
+	}
+
+	bin_axlf = (struct axlf *)fw->data;
+	dtc_header = xocl_axlf_section_header(lro, bin_axlf, DTC);
+	if (!dtc_header)
+		goto failed;
+
+	ret = xocl_fdt_blob_input(lro,
+			(char *)fw->data + dtc_header->m_sectionOffset);
+	if (ret) {
+		mgmt_err(lro, "Invalid dtc");
+		goto failed;
+	}
+
+	xclmgmt_connect_notify(lro, false);
+	xocl_subdev_destroy_all(lro);
+	ret = xocl_subdev_create_all(lro);
+	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
+	xclmgmt_update_userpf_blob(lro);
+	xclmgmt_connect_notify(lro, true);
+
+failed:
+	if (fw)
+		release_firmware(fw);
+
+	return ret;
 }
