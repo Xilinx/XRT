@@ -20,17 +20,6 @@
 
 namespace {
 
-template <typename SectionType>
-static SectionType*
-get_axlf_section(const axlf* top, axlf_section_kind kind)
-{
-  if (auto header = ::xclbin::get_axlf_section(top, kind)) {
-    auto begin = reinterpret_cast<const char*>(top) + header->m_sectionOffset ;
-    return reinterpret_cast<SectionType*>(begin);
-  }
-  return nullptr;
-}
-
 // Filter out IPs with invalid base address (streaming kernel)
 static bool
 is_valid_cu(const ip_data& ip)
@@ -64,7 +53,7 @@ namespace xrt_core { namespace xclbin {
 std::string
 memidx_to_name(const axlf* top,  int32_t midx)
 {
-  auto mem_topology = get_axlf_section<const ::mem_topology>(top,axlf_section_kind::MEM_TOPOLOGY);
+  auto mem_topology = axlf_section_type<const ::mem_topology*>::get(top,axlf_section_kind::MEM_TOPOLOGY);
   if (!mem_topology)
     return std::to_string(midx);
   if (midx >= mem_topology->m_count)
@@ -78,7 +67,7 @@ std::vector<uint64_t>
 get_cus(const axlf* top, bool encoding)
 {
   std::vector<uint64_t> cus;
-  auto ip_layout = get_axlf_section<const ::ip_layout>(top,axlf_section_kind::IP_LAYOUT);
+  auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
   if (!ip_layout)
    return cus;
 
@@ -100,8 +89,8 @@ std::vector<std::pair<uint64_t, size_t>>
 get_debug_ips(const axlf* top)
 {
   std::vector<std::pair<uint64_t, size_t>> ips;
-  auto debug_ip_layout = get_axlf_section<const ::debug_ip_layout>(top,
-                         axlf_section_kind::DEBUG_IP_LAYOUT);
+  auto debug_ip_layout = axlf_section_type<const ::debug_ip_layout*>::
+    get(top,axlf_section_kind::DEBUG_IP_LAYOUT);
   if (!debug_ip_layout)
     return ips;
 
@@ -127,7 +116,7 @@ uint64_t
 get_cu_base_offset(const axlf* top)
 {
   std::vector<uint64_t> cus;
-  auto ip_layout = get_axlf_section<const ::ip_layout>(top,axlf_section_kind::IP_LAYOUT);
+  auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
   if (!ip_layout)
     return 0;
 
@@ -143,7 +132,7 @@ get_cu_base_offset(const axlf* top)
 bool
 get_cuisr(const axlf* top)
 {
-  auto ip_layout = get_axlf_section<const ::ip_layout>(top,axlf_section_kind::IP_LAYOUT);
+  auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
   if (!ip_layout)
     return false;
 
@@ -158,7 +147,7 @@ get_cuisr(const axlf* top)
 bool
 get_dataflow(const axlf* top)
 {
-  auto ip_layout = get_axlf_section<const ::ip_layout>(top,axlf_section_kind::IP_LAYOUT);
+  auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
   if (!ip_layout)
     return false;
 

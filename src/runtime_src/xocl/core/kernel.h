@@ -449,17 +449,6 @@ public:
       throw std::runtime_error("Internal Error");
     return get_name();
   }
-  /**
-   * Return list of instances (CUs) in this kernel
-   *
-   * This function directly access the kernel symbol to
-   * extract the names of the embedded kernel instances
-   *
-   * @return
-   *   A vector with the names of the CUs
-   */
-  std::vector<std::string>
-  get_instance_names() const;
 
   const std::string&
   get_attributes() const

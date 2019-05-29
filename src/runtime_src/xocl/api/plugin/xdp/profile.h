@@ -31,9 +31,9 @@
 #include <utility>
 #include <string>
 
-namespace xocl { 
+struct axlf;
 
-class xclbin;
+namespace xocl { 
 
 namespace profile {
 
@@ -68,7 +68,7 @@ using cb_log_function_end_type = std::function<void(const char* functionName, lo
 using cb_log_dependencies_type = std::function<void(xocl::event* event,  cl_uint num_deps, const cl_event* deps)>;
 using cb_add_to_active_devices_type = std::function<void (const std::string& device_name)>;
 using cb_set_kernel_clock_freq_type = std::function<void(const std::string& device_name, unsigned int freq)>;
-using cb_reset_type = std::function<void(const xocl::xclbin&)>;
+using cb_reset_type = std::function<void(const axlf*)>;
 using cb_init_type = std::function<void(void)>;
 
 /*
@@ -181,7 +181,7 @@ void
 set_kernel_clock_freq(const std::string& device_name, unsigned int freq);
 
 void
-reset(const xocl::xclbin& xclbin);
+reset(const axlf* xclbin);
 
 /**
  * Initialize profiling (was RTSignleton::instance() blah blah

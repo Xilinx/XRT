@@ -14,7 +14,7 @@
  * under the License.
  */
 
-#include "xocl/xclbin/xclbin.h"
+#include "core/include/xclbin.h"
 #include "plugin/xdp/debug.h"
 
 namespace xocl { namespace debug {
@@ -28,7 +28,7 @@ register_cb_reset (cb_reset_type&& cb)
 }
 
 void
-reset(const xocl::xclbin& xclbin)
+reset(const axlf* xclbin)
 {
   if (cb_reset)
     cb_reset(xclbin);
