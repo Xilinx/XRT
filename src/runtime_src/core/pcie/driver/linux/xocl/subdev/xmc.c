@@ -270,61 +270,272 @@ static void safe_read_from_peer(struct xocl_xmc *xmc, struct platform_device *pd
 	mutex_unlock(&xmc->xmc_lock);
 }
 
-static void xmc_get_data(struct platform_device *pdev, void *buf)
+static void xmc_get_prop(struct platform_device *pdev, enum data_kind kind, void *buf)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
-	struct xcl_sensor *sensors = (struct xcl_sensor *)buf;
+	uint32_t *val = (uint32_t *)buf;
 
 	if (XMC_PRIVILEGED(xmc)) {
-		safe_read32(xmc, XMC_12V_PEX_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->vol_12v_pex);
-		safe_read32(xmc, XMC_12V_AUX_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->vol_12v_aux);
-		safe_read32(xmc, XMC_12V_PEX_I_IN_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->cur_12v_pex);
-		safe_read32(xmc, XMC_12V_AUX_I_IN_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->cur_12v_aux);
-		safe_read32(xmc, XMC_3V3_PEX_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->vol_3v3_pex);
-		safe_read32(xmc, XMC_3V3_AUX_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->vol_3v3_aux);
-		safe_read32(xmc, XMC_DDR4_VPP_BTM_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->ddr_vpp_btm);
-		safe_read32(xmc, XMC_SYS_5V5_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->sys_5v5);
-		safe_read32(xmc, XMC_VCC1V2_TOP_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->top_1v2);
-		safe_read32(xmc, XMC_VCC1V8_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->vol_1v8);
-		safe_read32(xmc, XMC_VCC0V85_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->vol_0v85);
-		safe_read32(xmc, XMC_DDR4_VPP_TOP_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->ddr_vpp_top);
-		safe_read32(xmc, XMC_MGT0V9AVCC_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->mgt0v9avcc);
-		safe_read32(xmc, XMC_12V_SW_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->vol_12v_sw);
-		safe_read32(xmc, XMC_MGTAVTT_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->mgtavtt);
-		safe_read32(xmc, XMC_VCC1V2_BTM_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->vcc1v2_btm);
-		safe_read32(xmc, XMC_FPGA_TEMP, (u32 *)&sensors->fpga_temp);
-		safe_read32(xmc, XMC_FAN_TEMP_REG, (u32 *)&sensors->fan_temp);
-		safe_read32(xmc, XMC_FAN_SPEED_REG, (u32 *)&sensors->fan_rpm);
-		safe_read32(xmc, XMC_DIMM_TEMP0_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->dimm_temp0);
-		safe_read32(xmc, XMC_DIMM_TEMP1_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->dimm_temp1);
-		safe_read32(xmc, XMC_DIMM_TEMP2_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->dimm_temp2);
-		safe_read32(xmc, XMC_DIMM_TEMP3_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->dimm_temp3);
-		safe_read32(xmc, XMC_VCCINT_V_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->vccint_vol);
-		safe_read32(xmc, XMC_VCCINT_I_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->vccint_curr);
-		safe_read32(xmc, XMC_SE98_TEMP0_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->se98_temp0);
-		safe_read32(xmc, XMC_SE98_TEMP1_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->se98_temp1);
-		safe_read32(xmc, XMC_SE98_TEMP2_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->se98_temp2);
-		safe_read32(xmc, XMC_CAGE_TEMP0_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->cage_temp0);
-		safe_read32(xmc, XMC_CAGE_TEMP1_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->cage_temp1);
-		safe_read32(xmc, XMC_CAGE_TEMP2_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->cage_temp2);
-		safe_read32(xmc, XMC_CAGE_TEMP3_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->cage_temp3);
+		switch (kind) {
+		case DIMM0_TEMP:
+			safe_read32(xmc, XMC_DIMM_TEMP0_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case DIMM1_TEMP:
+			safe_read32(xmc, XMC_DIMM_TEMP1_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case DIMM2_TEMP:
+			safe_read32(xmc, XMC_DIMM_TEMP2_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case DIMM3_TEMP:
+			safe_read32(xmc, XMC_DIMM_TEMP3_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case FPGA_TEMP:
+			safe_read32(xmc, XMC_FPGA_TEMP, (u32 *)buf);
+			break;
+		case VOL_12V_PEX:
+			safe_read32(xmc, XMC_12V_PEX_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case VOL_12V_AUX:
+			safe_read32(xmc, XMC_12V_AUX_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case CUR_12V_PEX:
+			safe_read32(xmc, XMC_12V_PEX_I_IN_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case CUR_12V_AUX:
+			safe_read32(xmc, XMC_12V_AUX_I_IN_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case SE98_TEMP0:
+			safe_read32(xmc, XMC_SE98_TEMP0_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case SE98_TEMP1:
+			safe_read32(xmc, XMC_SE98_TEMP1_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case SE98_TEMP2:
+			safe_read32(xmc, XMC_SE98_TEMP2_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case FAN_TEMP:
+			safe_read32(xmc, XMC_FAN_TEMP_REG, (u32 *)buf);
+			break;
+		case FAN_RPM:
+			safe_read32(xmc, XMC_FAN_SPEED_REG, (u32 *)buf);
+			break;
+		case VOL_3V3_PEX:
+			safe_read32(xmc, XMC_3V3_PEX_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case VOL_3V3_AUX:
+			safe_read32(xmc, XMC_3V3_AUX_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case VPP_BTM:
+			safe_read32(xmc, XMC_DDR4_VPP_BTM_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case VPP_TOP:
+			safe_read32(xmc, XMC_DDR4_VPP_TOP_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case VOL_5V5_SYS:
+			safe_read32(xmc, XMC_SYS_5V5_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case VOL_1V2_TOP:
+			safe_read32(xmc, XMC_VCC1V2_TOP_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case VOL_1V2_BTM:
+			safe_read32(xmc, XMC_VCC1V2_BTM_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case VOL_1V8:
+			safe_read32(xmc, XMC_VCC1V8_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case VCC_0V9A:
+			safe_read32(xmc, XMC_MGT0V9AVCC_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case VOL_12V_SW:
+			safe_read32(xmc, XMC_12V_SW_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case VTT_MGTA:
+			safe_read32(xmc, XMC_MGTAVTT_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case VOL_VCC_INT:
+			safe_read32(xmc, XMC_VCCINT_V_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case CUR_VCC_INT:
+			safe_read32(xmc, XMC_VCCINT_I_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case HBM_TEMP:
+			safe_read32(xmc, XMC_HBM_TEMP_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case CAGE_TEMP0:
+			safe_read32(xmc, XMC_CAGE_TEMP0_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case CAGE_TEMP1:
+			safe_read32(xmc, XMC_CAGE_TEMP1_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case CAGE_TEMP2:
+			safe_read32(xmc, XMC_CAGE_TEMP2_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case CAGE_TEMP3:
+			safe_read32(xmc, XMC_CAGE_TEMP3_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		case VCC_0V85:
+			safe_read32(xmc, XMC_VCC0V85_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
+			break;
+		default:
+			break;
+		}
+
+	} else {
+		safe_read_from_peer(xmc, pdev);
+
+		switch (kind) {
+		case DIMM0_TEMP:
+			*val = xmc->cache.dimm_temp0;
+			break;
+		case DIMM1_TEMP:
+			*val = xmc->cache.dimm_temp1;
+			break;
+		case DIMM2_TEMP:
+			*val = xmc->cache.dimm_temp2;
+			break;
+		case DIMM3_TEMP:
+			*val = xmc->cache.dimm_temp3;
+			break;
+		case FPGA_TEMP:
+			*val = xmc->cache.fpga_temp;
+			break;
+		case VOL_12V_PEX:
+			*val = xmc->cache.vol_12v_pex;
+			break;
+		case VOL_12V_AUX:
+			*val = xmc->cache.vol_12v_aux;
+			break;
+		case CUR_12V_PEX:
+			*val = xmc->cache.cur_12v_pex;
+			break;
+		case CUR_12V_AUX:
+			*val = xmc->cache.cur_12v_aux;
+			break;
+		case SE98_TEMP0:
+			*val = xmc->cache.se98_temp0;
+			break;
+		case SE98_TEMP1:
+			*val = xmc->cache.se98_temp1;
+			break;
+		case SE98_TEMP2:
+			*val = xmc->cache.se98_temp2;
+			break;
+		case FAN_TEMP:
+			*val = xmc->cache.fan_temp;
+			break;
+		case FAN_RPM:
+			*val = xmc->cache.fan_rpm;
+			break;
+		case VOL_3V3_PEX:
+			*val = xmc->cache.vol_3v3_pex;
+			break;
+		case VOL_3V3_AUX:
+			*val = xmc->cache.vol_3v3_aux;
+			break;
+		case VPP_BTM:
+			*val = xmc->cache.ddr_vpp_btm;
+			break;
+		case VPP_TOP:
+			*val = xmc->cache.ddr_vpp_top;
+			break;
+		case VOL_5V5_SYS:
+			*val = xmc->cache.sys_5v5;
+			break;
+		case VOL_1V2_TOP:
+			*val = xmc->cache.top_1v2;
+			break;
+		case VOL_1V2_BTM:
+			*val = xmc->cache.vcc1v2_btm;
+			break;
+		case VOL_1V8:
+			*val = xmc->cache.vol_1v8;
+			break;
+		case VCC_0V9A:
+			*val = xmc->cache.mgt0v9avcc;
+			break;
+		case VOL_12V_SW:
+			*val = xmc->cache.vol_12v_sw;
+			break;
+		case VTT_MGTA:
+			*val = xmc->cache.mgtavtt;
+			break;
+		case VOL_VCC_INT:
+			*val = xmc->cache.vccint_vol;
+			break;
+		case CUR_VCC_INT:
+			*val = xmc->cache.vccint_curr;
+			break;
+		case HBM_TEMP:
+			*val = xmc->cache.hbm_temp0;
+			break;
+		case CAGE_TEMP0:
+			*val = xmc->cache.cage_temp0;
+			break;
+		case CAGE_TEMP1:
+			*val = xmc->cache.cage_temp1;
+			break;
+		case CAGE_TEMP2:
+			*val = xmc->cache.cage_temp2;
+			break;
+		case CAGE_TEMP3:
+			*val = xmc->cache.cage_temp3;
+			break;
+		case VCC_0V85:
+			*val = xmc->cache.vol_0v85;
+			break;
+		default:
+			break;
+		}
 	}
+}
+
+static void xmc_get_data(struct platform_device *pdev, void *buf)
+{
+	struct xcl_sensor *sensors = (struct xcl_sensor *)buf;
+
+	xmc_get_prop(pdev, VOL_12V_PEX, &sensors->vol_12v_pex);
+	xmc_get_prop(pdev, VOL_12V_AUX, &sensors->vol_12v_aux);
+	xmc_get_prop(pdev, CUR_12V_PEX, &sensors->cur_12v_pex);
+	xmc_get_prop(pdev, CUR_12V_AUX, &sensors->cur_12v_aux);
+	xmc_get_prop(pdev, VOL_3V3_PEX, &sensors->vol_3v3_pex);
+	xmc_get_prop(pdev, VOL_3V3_AUX, &sensors->vol_3v3_aux);
+	xmc_get_prop(pdev, VPP_BTM, &sensors->ddr_vpp_btm);
+	xmc_get_prop(pdev, VOL_5V5_SYS, &sensors->sys_5v5);
+	xmc_get_prop(pdev, VOL_1V2_TOP, &sensors->top_1v2);
+	xmc_get_prop(pdev, VOL_1V8, &sensors->vol_1v8);
+	xmc_get_prop(pdev, VCC_0V85, &sensors->vol_0v85);
+	xmc_get_prop(pdev, VPP_TOP, &sensors->ddr_vpp_top);
+	xmc_get_prop(pdev, VCC_0V9A, &sensors->mgt0v9avcc);
+	xmc_get_prop(pdev, VOL_12V_SW, &sensors->vol_12v_sw);
+	xmc_get_prop(pdev, VTT_MGTA, &sensors->mgtavtt);
+	xmc_get_prop(pdev, VOL_1V2_BTM, &sensors->vcc1v2_btm);
+	xmc_get_prop(pdev, FPGA_TEMP, &sensors->fpga_temp);
+	xmc_get_prop(pdev, FAN_TEMP, &sensors->fan_temp);
+	xmc_get_prop(pdev, FAN_RPM, &sensors->fan_rpm);
+	xmc_get_prop(pdev, DIMM0_TEMP, &sensors->dimm_temp0);
+	xmc_get_prop(pdev, DIMM1_TEMP, &sensors->dimm_temp1);
+	xmc_get_prop(pdev, DIMM2_TEMP, &sensors->dimm_temp2);
+	xmc_get_prop(pdev, DIMM3_TEMP, &sensors->dimm_temp3);
+	xmc_get_prop(pdev, VOL_VCC_INT, &sensors->vccint_vol);
+	xmc_get_prop(pdev, CUR_VCC_INT, &sensors->vccint_curr);
+	xmc_get_prop(pdev, SE98_TEMP0, &sensors->se98_temp0);
+	xmc_get_prop(pdev, SE98_TEMP1, &sensors->se98_temp1);
+	xmc_get_prop(pdev, SE98_TEMP2, &sensors->se98_temp2);
+	xmc_get_prop(pdev, CAGE_TEMP0, &sensors->cage_temp0);
+	xmc_get_prop(pdev, CAGE_TEMP1, &sensors->cage_temp1);
+	xmc_get_prop(pdev, CAGE_TEMP2, &sensors->cage_temp2);
+	xmc_get_prop(pdev, CAGE_TEMP3, &sensors->cage_temp3);
+	xmc_get_prop(pdev, HBM_TEMP, &sensors->hbm_temp0);
 }
 
 static ssize_t xmc_12v_pex_vol_show(struct device *dev, struct device_attribute *attr,
 	char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
-	u32 pes_val = 0;
+	u32 val = 0;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_12V_PEX_REG+sizeof(u32)*VOLTAGE_INS, &pes_val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		pes_val = (u32)xmc->cache.vol_12v_pex;
-	}
-
-	return sprintf(buf, "%d\n", pes_val);
+	xmc_get_prop(xmc->pdev, VOL_12V_PEX, &val);
+	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_12v_pex_vol);
 
@@ -334,13 +545,7 @@ static ssize_t xmc_12v_aux_vol_show(struct device *dev, struct device_attribute 
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_12V_AUX_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.vol_12v_aux;
-	}
-
+	xmc_get_prop(xmc->pdev, VOL_12V_AUX, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_12v_aux_vol);
@@ -349,15 +554,10 @@ static ssize_t xmc_12v_pex_curr_show(struct device *dev, struct device_attribute
 	char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
-	u32 pes_val;
+	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_12V_PEX_I_IN_REG+sizeof(u32)*VOLTAGE_INS, &pes_val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		pes_val = (u32)xmc->cache.cur_12v_pex;
-	}
-	return sprintf(buf, "%d\n", pes_val);
+	xmc_get_prop(xmc->pdev, CUR_12V_PEX, &val);
+	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_12v_pex_curr);
 
@@ -367,12 +567,7 @@ static ssize_t xmc_12v_aux_curr_show(struct device *dev, struct device_attribute
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_12V_AUX_I_IN_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.cur_12v_aux;
-	}
+	xmc_get_prop(xmc->pdev, CUR_12V_AUX, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_12v_aux_curr);
@@ -383,12 +578,7 @@ static ssize_t xmc_3v3_pex_vol_show(struct device *dev, struct device_attribute 
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_3V3_PEX_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.vol_3v3_pex;
-	}
+	xmc_get_prop(xmc->pdev, VOL_3V3_PEX, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_3v3_pex_vol);
@@ -399,12 +589,7 @@ static ssize_t xmc_3v3_aux_vol_show(struct device *dev, struct device_attribute 
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_3V3_AUX_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.vol_3v3_aux;
-	}
+	xmc_get_prop(xmc->pdev, VOL_3V3_AUX, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_3v3_aux_vol);
@@ -415,12 +600,7 @@ static ssize_t xmc_ddr_vpp_btm_show(struct device *dev, struct device_attribute 
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_DDR4_VPP_BTM_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.ddr_vpp_btm;
-	}
+	xmc_get_prop(xmc->pdev, VPP_BTM, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_ddr_vpp_btm);
@@ -431,12 +611,7 @@ static ssize_t xmc_sys_5v5_show(struct device *dev, struct device_attribute *att
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_SYS_5V5_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.sys_5v5;
-	}
+	xmc_get_prop(xmc->pdev, VOL_5V5_SYS, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_sys_5v5);
@@ -447,12 +622,7 @@ static ssize_t xmc_1v2_top_show(struct device *dev, struct device_attribute *att
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_VCC1V2_TOP_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.top_1v2;
-	}
+	xmc_get_prop(xmc->pdev, VOL_1V2_TOP, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_1v2_top);
@@ -463,12 +633,7 @@ static ssize_t xmc_1v8_show(struct device *dev, struct device_attribute *attr,
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_VCC1V8_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.vol_1v8;
-	}
+	xmc_get_prop(xmc->pdev, VOL_1V8, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_1v8);
@@ -479,12 +644,7 @@ static ssize_t xmc_0v85_show(struct device *dev, struct device_attribute *attr,
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_VCC0V85_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.vol_0v85;
-	}
+	xmc_get_prop(xmc->pdev, VCC_0V85, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_0v85);
@@ -495,12 +655,7 @@ static ssize_t xmc_ddr_vpp_top_show(struct device *dev, struct device_attribute 
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_DDR4_VPP_TOP_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.ddr_vpp_top;
-	}
+	xmc_get_prop(xmc->pdev, VPP_TOP, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_ddr_vpp_top);
@@ -511,12 +666,7 @@ static ssize_t xmc_mgt0v9avcc_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_MGT0V9AVCC_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.mgt0v9avcc;
-	}
+	xmc_get_prop(xmc->pdev, VCC_0V9A, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_mgt0v9avcc);
@@ -527,12 +677,7 @@ static ssize_t xmc_12v_sw_show(struct device *dev, struct device_attribute *attr
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_12V_SW_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.vol_12v_sw;
-	}
+	xmc_get_prop(xmc->pdev, VOL_12V_SW, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_12v_sw);
@@ -543,12 +688,7 @@ static ssize_t xmc_mgtavtt_show(struct device *dev, struct device_attribute *att
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_MGTAVTT_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.mgtavtt;
-	}
+	xmc_get_prop(xmc->pdev, VTT_MGTA, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_mgtavtt);
@@ -559,12 +699,7 @@ static ssize_t xmc_vcc1v2_btm_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_VCC1V2_BTM_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.vcc1v2_btm;
-	}
+	xmc_get_prop(xmc->pdev, VOL_1V2_BTM, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_vcc1v2_btm);
@@ -575,12 +710,7 @@ static ssize_t xmc_vccint_vol_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_VCCINT_V_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.vccint_vol;
-	}
+	xmc_get_prop(xmc->pdev, VOL_VCC_INT, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_vccint_vol);
@@ -591,12 +721,7 @@ static ssize_t xmc_vccint_curr_show(struct device *dev, struct device_attribute 
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_VCCINT_I_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.vccint_curr;
-	}
+	xmc_get_prop(xmc->pdev, CUR_VCC_INT, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_vccint_curr);
@@ -607,12 +732,7 @@ static ssize_t xmc_se98_temp0_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_SE98_TEMP0_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.se98_temp0;
-	}
+	xmc_get_prop(xmc->pdev, SE98_TEMP0, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_se98_temp0);
@@ -623,12 +743,7 @@ static ssize_t xmc_se98_temp1_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_SE98_TEMP1_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.se98_temp1;
-	}
+	xmc_get_prop(xmc->pdev, SE98_TEMP1, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_se98_temp1);
@@ -639,12 +754,7 @@ static ssize_t xmc_se98_temp2_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_SE98_TEMP2_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.se98_temp2;
-	}
+	xmc_get_prop(xmc->pdev, SE98_TEMP2, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_se98_temp2);
@@ -655,12 +765,7 @@ static ssize_t xmc_fpga_temp_show(struct device *dev, struct device_attribute *a
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_FPGA_TEMP, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.fpga_temp;
-	}
+	xmc_get_prop(xmc->pdev, FPGA_TEMP, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_fpga_temp);
@@ -671,12 +776,7 @@ static ssize_t xmc_fan_temp_show(struct device *dev, struct device_attribute *at
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_FAN_TEMP_REG, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.fan_temp;
-	}
+	xmc_get_prop(xmc->pdev, FAN_TEMP, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_fan_temp);
@@ -687,12 +787,7 @@ static ssize_t xmc_fan_rpm_show(struct device *dev, struct device_attribute *att
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_FAN_SPEED_REG, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.fan_rpm;
-	}
+	xmc_get_prop(xmc->pdev, FAN_RPM, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_fan_rpm);
@@ -703,12 +798,7 @@ static ssize_t xmc_dimm_temp0_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_DIMM_TEMP0_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.dimm_temp0;
-	}
+	xmc_get_prop(xmc->pdev, DIMM0_TEMP, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_dimm_temp0);
@@ -719,12 +809,7 @@ static ssize_t xmc_dimm_temp1_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_DIMM_TEMP1_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.dimm_temp1;
-	}
+	xmc_get_prop(xmc->pdev, DIMM1_TEMP, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_dimm_temp1);
@@ -735,12 +820,7 @@ static ssize_t xmc_dimm_temp2_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_DIMM_TEMP2_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.dimm_temp2;
-	}
+	xmc_get_prop(xmc->pdev, DIMM2_TEMP, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_dimm_temp2);
@@ -751,12 +831,7 @@ static ssize_t xmc_dimm_temp3_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_DIMM_TEMP3_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.dimm_temp3;
-	}
+	xmc_get_prop(xmc->pdev, DIMM3_TEMP, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_dimm_temp3);
@@ -767,12 +842,7 @@ static ssize_t xmc_cage_temp0_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_CAGE_TEMP0_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.cage_temp0;
-	}
+	xmc_get_prop(xmc->pdev, CAGE_TEMP0, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_cage_temp0);
@@ -783,12 +853,7 @@ static ssize_t xmc_cage_temp1_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_CAGE_TEMP1_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.cage_temp1;
-	}
+	xmc_get_prop(xmc->pdev, CAGE_TEMP1, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_cage_temp1);
@@ -799,12 +864,7 @@ static ssize_t xmc_cage_temp2_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_CAGE_TEMP2_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.cage_temp2;
-	}
+	xmc_get_prop(xmc->pdev, CAGE_TEMP2, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_cage_temp2);
@@ -815,12 +875,7 @@ static ssize_t xmc_cage_temp3_show(struct device *dev, struct device_attribute *
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_CAGE_TEMP3_REG+sizeof(u32)*VOLTAGE_INS, &val);
-	else {
-		safe_read_from_peer(xmc, to_platform_device(dev));
-		val = (u32)xmc->cache.cage_temp3;
-	}
+	xmc_get_prop(xmc->pdev, CAGE_TEMP3, &val);
 	return sprintf(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RO(xmc_cage_temp3);
@@ -1054,12 +1109,10 @@ static int get_temp_by_m_tag(struct xocl_xmc *xmc, char *m_tag)
 	if (!xmc)
 		return -ENODEV;
 
-
 	if (!strncmp(m_tag, "HBM", 3)) {
-		safe_read32(xmc, XMC_HBM_TEMP_REG + sizeof(u32)*VOLTAGE_INS, &ret);
+		xmc_get_prop(xmc->pdev, HBM_TEMP, &ret);
 		return ret;
 	}
-
 
 	if (!strncmp(m_tag, "bank", 4)) {
 		start = m_tag;
@@ -1084,10 +1137,24 @@ static int get_temp_by_m_tag(struct xocl_xmc *xmc, char *m_tag)
 		/* assumption, temperature won't higher than 3 digits, or the temp[digit_len] should be a null character */
 		temp[digit_len] = '\0';
 		/* convert to signed long, decimal base */
-		if (kstrtol(temp, 10, &idx) == 0 && idx < 4 && idx >= 0)
-			safe_read32(xmc, XMC_DIMM_TEMP0_REG + (3*sizeof(int32_t)) * idx + sizeof(u32)*VOLTAGE_INS, &ret);
-		else
-			ret = 0;
+		if (kstrtol(temp, 10, &idx))
+			return ret;
+
+		switch (idx) {
+		case 0:
+			xmc_get_prop(xmc->pdev, DIMM0_TEMP, &ret);
+			break;
+		case 1:
+			xmc_get_prop(xmc->pdev, DIMM1_TEMP, &ret);
+			break;
+		case 2:
+			xmc_get_prop(xmc->pdev, DIMM2_TEMP, &ret);
+			break;
+		case 3:
+			xmc_get_prop(xmc->pdev, DIMM3_TEMP, &ret);
+			break;
+		}
+
 	}
 
 	return ret;
@@ -1351,15 +1418,11 @@ static ssize_t read_temp_by_mem_topology(struct file *filp, struct kobject *kobj
 	size_t size = 0;
 	u32 i;
 	struct mem_topology *memtopo = NULL;
-	struct xocl_xmc *xmc;
+	struct xocl_xmc *xmc = dev_get_drvdata(container_of(kobj, struct device, kobj));
 	uint32_t temp[MAX_M_COUNT] = {0};
-	struct xclmgmt_dev *lro;
+	xdev_handle_t xdev = xocl_get_xdev(xmc->pdev);
 
-	/* xocl_icap_lock_bitstream */
-	lro = (struct xclmgmt_dev *)dev_get_drvdata(container_of(kobj, struct device, kobj)->parent);
-	xmc = (struct xocl_xmc *)dev_get_drvdata(container_of(kobj, struct device, kobj));
-
-	memtopo = (struct mem_topology *)xocl_icap_get_data(lro, MEMTOPO_AXLF);
+	memtopo = (struct mem_topology *)xocl_icap_get_data(xdev, MEMTOPO_AXLF);
 
 	if (!memtopo)
 		return 0;
@@ -1368,7 +1431,6 @@ static ssize_t read_temp_by_mem_topology(struct file *filp, struct kobject *kobj
 
 	if (offset >= size)
 		return 0;
-
 	for (i = 0; i < memtopo->m_count; ++i)
 		*(temp+i) = get_temp_by_m_tag(xmc, memtopo->m_mem_data[i].m_tag);
 

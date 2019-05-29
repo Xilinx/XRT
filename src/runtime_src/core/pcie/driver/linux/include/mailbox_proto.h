@@ -127,6 +127,7 @@ struct xcl_sensor {
 	uint64_t cage_temp1;
 	uint64_t cage_temp2;
 	uint64_t cage_temp3;
+	uint64_t hbm_temp0;
 };
 
 /**
