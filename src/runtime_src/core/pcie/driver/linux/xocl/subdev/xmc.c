@@ -466,7 +466,7 @@ static void xmc_get_prop(struct platform_device *pdev, enum data_kind kind, void
 			*val = xmc->cache.vccint_curr;
 			break;
 		case HBM_TEMP:
-			*val = xmc->cache.hbm_temp;
+			*val = xmc->cache.hbm_temp0;
 			break;
 		case CAGE_TEMP0:
 			*val = xmc->cache.cage_temp0;
@@ -525,7 +525,7 @@ static void xmc_get_data(struct platform_device *pdev, void *buf)
 	xmc_get_prop(pdev, CAGE_TEMP1, &sensors->cage_temp1);
 	xmc_get_prop(pdev, CAGE_TEMP2, &sensors->cage_temp2);
 	xmc_get_prop(pdev, CAGE_TEMP3, &sensors->cage_temp3);
-	xmc_get_prop(pdev, HBM_TEMP, &sensors->hbm_temp);
+	xmc_get_prop(pdev, HBM_TEMP, &sensors->hbm_temp0);
 }
 
 static ssize_t xmc_12v_pex_vol_show(struct device *dev, struct device_attribute *attr,
