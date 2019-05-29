@@ -86,7 +86,7 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
         return XMA_ERROR;
     }
 
-    uuid_copy(xclbin_info->uuid, xclbin->m_header.uuid); 
+    uuid_copy(xclbin_info->uuid, xclbin->m_header.uuid);
 
     return XMA_SUCCESS;
 }
@@ -171,14 +171,14 @@ int xma_xclbin_info_get(char *buffer, XmaXclbinInfo *info)
     if(rc == XMA_ERROR)
         return rc;
 
-    uint16_t map[MAX_KERNEL_CONFIGS] = {};
+    uint64_t map[MAX_KERNEL_CONFIGS] = {};
     for(uint32_t c = 0; c < info->number_of_connections; c++)
     {
         XmaAXLFConnectivity *xma_conn = &info->connectivity[c];
         map[xma_conn->m_ip_layout_index] |= 1 << (xma_conn->mem_data_index + 1);
     }
-    memcpy(info->ip_ddr_mapping,map,MAX_KERNEL_CONFIGS*sizeof(uint16_t));
-    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\nCONNECTIONS (bitmap 15<-0)\n");
+    memcpy(info->ip_ddr_mapping,map,MAX_KERNEL_CONFIGS*sizeof(uint64_t));
+    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\nCONNECTIONS (bitmap 63<-0)\n");
     for(uint32_t i = 0; i < info->number_of_kernels; i++)
     {
         xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "%s - 0x%04x\n",info->ip_layout[i].kernel_name, info->ip_ddr_mapping[i]);
@@ -188,9 +188,9 @@ int xma_xclbin_info_get(char *buffer, XmaXclbinInfo *info)
     return XMA_SUCCESS;
 }
 
-int xma_xclbin_map2ddr(uint16_t bit_map, int* ddr_banks, int* num_banks)
+int xma_xclbin_map2ddr(uint64_t bit_map, int* ddr_banks, int* num_banks)
 {
-    //TODO HHS Based on uint16_t bitmap considering 16 DDRs as max
+    //TODO HHS Based on uint64_t bitmap considering 64 DDRs as max
     int ddr_bank_idx = -1;
     int count = 0;
     while (bit_map != 0)

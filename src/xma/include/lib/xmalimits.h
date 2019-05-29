@@ -19,10 +19,10 @@
 
 #define MAX_SCALER_OUTPUTS       8
 #define MAX_FILTER_OUTPUTS      MAX_SCALER_OUTPUTS
-#define MAX_DDR_MAP             16
+#define MAX_DDR_MAP             64
 #define MAX_XILINX_DEVICES      16
 #define MAX_XILINX_KERNELS      60
-#define MAX_KERNEL_CONFIGS      60
+#define MAX_KERNEL_CONFIGS      MAX_XILINX_KERNELS
 #define MAX_KERNEL_CHANS        64
 #define MAX_KERNEL_FREQS         2
 #define MAX_IMAGE_CONFIGS       16
@@ -30,8 +30,9 @@
 #define MAX_PLUGIN_NAME         32
 #define MAX_VENDOR_NAME         32
 #define MAX_KERNEL_NAME         64
-#define MAX_DSA_NAME            256
+#define MAX_DSA_NAME           256
 #define XMA_MAX_PLANES           3
 #define MAX_PLUGINS             16
-#define MAX_CONNECTION_ENTRIES  64
+#define MAX_REGS_PER_IP          1
+#define MAX_CONNECTION_ENTRIES  (MAX_DDR_MAP * MAX_XILINX_KERNELS * MAX_REGS_PER_IP)
 #endif
