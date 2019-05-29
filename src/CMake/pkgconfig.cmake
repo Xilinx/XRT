@@ -2,7 +2,7 @@ message("-- Preparing XRT pkg-config")
 
 if (${LINUX_FLAVOR} STREQUAL Ubuntu)
   set(XRT_PKG_CONFIG_DIR "/usr/lib/pkgconfig")
-elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS)")
+elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Amazon)")
   set(XRT_PKG_CONFIG_DIR "/usr/lib64/pkgconfig")
 else ()
   set(XRT_PKG_CONFIG_DIR "/usr/share/pkgconfig")
