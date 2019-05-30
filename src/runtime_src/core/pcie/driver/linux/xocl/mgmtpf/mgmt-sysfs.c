@@ -208,9 +208,9 @@ static ssize_t subdev_cmd_store(struct device *dev,
 		xclmgmt_connect_notify(lro, false);
 		xocl_subdev_destroy_all(lro);
 		ret = xocl_subdev_create_all(lro);
+		xclmgmt_update_userpf_blob(lro);
 
 		(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
-		xclmgmt_update_userpf_blob(lro);
 		xclmgmt_connect_notify(lro, true);
 	} else if (!strcmp(cmd, "destroy") &&
 			!strcmp(sdev_name, "dynamic")) {

@@ -53,20 +53,13 @@ static void *rom_build_priv(xdev_handle_t xdev_hdl, size_t *len)
 	struct xocl_dev_core *core = XDEV(xdev_hdl);
 	void *blob;
 	const char *vrom;
-	int node, proplen;
+	int proplen;
 
 	blob = core->fdt_blob;
 	if (!blob)
 		goto failed;
 
-	node = fdt_path_offset(blob, LEVEL1_DEV_PATH
-			"/featurerom/segments/segment@1");
-	if (node < 0) {
-		xocl_xdev_err(xdev_hdl, "did not find featurerom node");
-		goto failed;
-	}
-
-	vrom = fdt_getprop(blob, node, "vrom", &proplen);
+	vrom = fdt_getprop(blob, 0, "vrom", &proplen);
 	if (!vrom) {
 		xocl_xdev_err(xdev_hdl, "did not find vrom prop");
 		goto failed;
@@ -696,6 +689,11 @@ static int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob,
 		goto failed;
 	}
 
+	if (!dev_num) {
+		*subdevs = NULL;
+		goto failed;
+	}
+
 	*subdevs = vzalloc(dev_num * sizeof(**subdevs));
 	if (!*subdevs)
 		return -ENOMEM;
@@ -793,11 +791,11 @@ int xocl_fdt_get_userpf(xdev_handle_t xdev_hdl, void *blob)
 	return ntohl(*pfnum);
 }
 
-static const xuid_t *xocl_fdt_get_uuid(xdev_handle_t xdev_hdl, void *blob,
-		const char *node_path)
+static const char *xocl_fdt_get_uuid(xdev_handle_t xdev_hdl, void *blob,
+		const char *node_path, int *len)
 {
-	int node;
-	const xuid_t *uuid;
+	int node, proplen;
+	const char *prop;
 
 	if (!blob)
 		return NULL;
@@ -805,22 +803,26 @@ static const xuid_t *xocl_fdt_get_uuid(xdev_handle_t xdev_hdl, void *blob,
 
 	node = fdt_path_offset(blob, node_path);
 	if (node < 0) {
-		xocl_xdev_err(xdev_hdl, "Did not find node %s", node_path);
+		xocl_xdev_info(xdev_hdl, "Did not find node %s", node_path);
 		return NULL;
 	}
 
-	uuid = fdt_getprop(blob, node, "UUID_u128", NULL);
-	if (!uuid) {
-		xocl_xdev_err(xdev_hdl, "Did not find prp int uuid");
+	prop = fdt_getprop(blob, node, "UUID_u128", &proplen);
+	if (!prop) {
+		xocl_xdev_info(xdev_hdl, "Did not find prp int uuid");
 		return NULL;
 	}
 
-	return uuid;
+	if (len)
+		*len = proplen;
+
+	return prop;
 }
 
-const xuid_t *xocl_fdt_get_prp_int_uuid(xdev_handle_t xdev_hdl, void *blob)
+const char *xocl_fdt_get_prp_int_uuid(xdev_handle_t xdev_hdl, void *blob,
+		int *len)
 {
-	return xocl_fdt_get_uuid(xdev_hdl, blob, LEVEL1_INT_NODE);
+	return xocl_fdt_get_uuid(xdev_hdl, blob, LEVEL1_INT_NODE, len);
 }
 
 int xocl_fdt_build_priv_data(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev,
@@ -853,51 +855,9 @@ int xocl_fdt_build_priv_data(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev,
 
 int xocl_fdt_add_vrom(xdev_handle_t xdev_hdl, void *blob, void *rom)
 {
-	int l1_off, node, ret;
-	int pf;
+	int ret;
 
-	pf = xocl_fdt_get_userpf(xdev_hdl, blob);
-	if (pf < 0) {
-		xocl_xdev_err(xdev_hdl, "did not get userpf");
-		return -EINVAL;
-	}
-
-	l1_off = fdt_path_offset(blob, LEVEL1_DEV_PATH);
-	if (l1_off < 0) {
-		xocl_xdev_err(xdev_hdl, "did not find %s",
-				LEVEL1_DEV_PATH);
-		return l1_off;
-	}
-
-	node = fdt_add_subnode(blob, l1_off, "featurerom");
-	if (node < 0) {
-		xocl_xdev_err(xdev_hdl, "add featurerom node failed %d",
-				node);
-		return node;
-	}
-
-	node = fdt_add_subnode(blob, node, "segments");
-	if (node < 0) {
-		xocl_xdev_err(xdev_hdl, "add segments node failed %d",
-				node);
-		return node;
-	}
-
-	node = fdt_add_subnode(blob, node, "segment@1");
-	if (node < 0) {
-		xocl_xdev_err(xdev_hdl, "add segment@1 node failed %d",
-				node);
-		return node;
-	}
-
-	pf = ntohl(pf);
-	ret = fdt_setprop(blob, node, "PFMapping_u32", &pf, sizeof pf);
-	if (ret) {
-		xocl_xdev_err(xdev_hdl, "set PFMapping failed %d",ret);
-		return ret;
-	}
-
-	ret = fdt_setprop(blob, node, "vrom", rom,
+	ret = fdt_setprop(blob, 0, "vrom", rom,
 			sizeof(struct FeatureRomHeader));
 	if (ret) {
 		xocl_xdev_err(xdev_hdl, "set vrom prop failed %d",ret);

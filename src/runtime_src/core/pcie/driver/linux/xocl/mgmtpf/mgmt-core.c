@@ -596,7 +596,8 @@ static void xclmgmt_icap_get_data(struct xclmgmt_dev *lro, void *buf)
 
 	hwicap = (struct xcl_hwicap *)buf;
 	hwicap->idcode = xocl_icap_get_data(lro, IDCODE);
-	uuid_copy((xuid_t *)hwicap->uuid, XOCL_XCLBIN_ID(lro));
+	if (XOCL_XCLBIN_ID(lro))
+		uuid_copy((xuid_t *)hwicap->uuid, XOCL_XCLBIN_ID(lro));
 	hwicap->freq_0 = xocl_icap_get_data(lro, CLOCK_FREQ_0);
 	hwicap->freq_1 = xocl_icap_get_data(lro, CLOCK_FREQ_1);
 	hwicap->freq_2 = xocl_icap_get_data(lro, CLOCK_FREQ_2);
@@ -673,6 +674,7 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 
 	BUG_ON(!lro);
 
+	mgmt_info(lro, "req kind %d", subdev_req->kind);
 	switch (subdev_req->kind) {
 	case SENSOR:
 		current_sz = sizeof(struct xcl_sensor);

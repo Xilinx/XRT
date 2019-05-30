@@ -59,9 +59,6 @@ static inline bool uuid_is_null(const xuid_t *uuid)
 }
 #endif
 
-#define XOCL_UUID_FMT(uuid)	*((u32 *)uuid), *((u32 *)uuid + 1),	\
-	*((u32 *)uuid + 2), *((u32 *)uuid + 3)
-
 static inline void xocl_memcpy_fromio(void *buf, void *iomem, u32 size)
 {
 	int i;
@@ -872,7 +869,8 @@ int xocl_fdt_overlay(void *fdt, int target, void *fdto, int node, int pf);
 int xocl_fdt_build_priv_data(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev,
 		void **priv_data,  size_t *data_len);
 int xocl_fdt_get_userpf(xdev_handle_t xdev_hdl, void *blob);
-const xuid_t *xocl_fdt_get_prp_int_uuid(xdev_handle_t xdev_hdl, void *blob);
+const char *xocl_fdt_get_prp_int_uuid(xdev_handle_t xdev_hdl, void *blob,
+		int *len);
 int xocl_fdt_add_vrom(xdev_handle_t xdev_hdl, void *blob, void *rom);
 const struct axlf_section_header *xocl_axlf_section_header(
 	xdev_handle_t xdev_hdl, const struct axlf *top,

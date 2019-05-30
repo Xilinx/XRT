@@ -1214,6 +1214,16 @@ struct xocl_subdev_map {
 		ARRAY_SIZE(XOCL_RES_FEATURE_ROM_DYN),	\
 	}
 
+#define	XOCL_DEVINFO_FEATURE_ROM_USER_DYN		\
+	{						\
+		XOCL_SUBDEV_FEATURE_ROM,		\
+		XOCL_FEATURE_ROM,			\
+		NULL,					\
+		0,					\
+		.dyn_ip = 1,				\
+		.level = XOCL_SUBDEV_LEVEL_PRP,		\
+	}
+
 #define	XOCL_RES_MAILBOX_MGMT_DYN				\
 	((struct resource []) {				\
 		{					\
@@ -1278,6 +1288,7 @@ struct xocl_subdev_map {
 
 #define USER_RES_DYNAMIC_IP						\
 		((struct xocl_subdev_info []) {				\
+		 	XOCL_DEVINFO_FEATURE_ROM_USER_DYN,		\
 		 	XOCL_DEVINFO_MAILBOX_USER_DYN,			\
 		 	XOCL_DEVINFO_SCHEDULER,				\
 		 	XOCL_DEVINFO_ICAP_USER,				\

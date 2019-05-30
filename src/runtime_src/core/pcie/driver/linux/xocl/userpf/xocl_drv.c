@@ -518,7 +518,8 @@ int xocl_refresh_prp_subdevs(struct xocl_dev *xdev)
 	size_t resp_len = sizeof(*resp) + XOCL_MSG_SUBDEV_DATA_LEN;
         char *blob = NULL, *tmp;
 	uint64_t checksum;
-	const xuid_t *cur_uuid, *new_uuid;
+	const char *cur_uuid, *new_uuid;
+	int cur_uuid_len, new_uuid_len;
 	bool skip_refresh = false;
 	size_t offset = 0;
 	int ret = 0;
@@ -582,16 +583,13 @@ int xocl_refresh_prp_subdevs(struct xocl_dev *xdev)
 
 	if (xdev->core.fdt_blob) {
 		cur_uuid = xocl_fdt_get_prp_int_uuid(xdev,
-				xdev->core.fdt_blob);
-		if (cur_uuid)
-			userpf_info(xdev, "current uuid:%x, %x, %x, %x",
-				XOCL_UUID_FMT(cur_uuid));
-		new_uuid = xocl_fdt_get_prp_int_uuid(xdev, blob);
-		if (new_uuid)
-			userpf_info(xdev, "new uuid:%x, %x, %x, %x",
-				XOCL_UUID_FMT(new_uuid));
-		if ((cur_uuid && new_uuid && uuid_equal(cur_uuid,
-			new_uuid)) || !new_uuid) {
+			xdev->core.fdt_blob, &cur_uuid_len);
+		new_uuid = xocl_fdt_get_prp_int_uuid(xdev, blob,
+			&new_uuid_len);
+		if (!new_uuid ||
+		    (cur_uuid && new_uuid &&
+		    cur_uuid_len == new_uuid_len &&
+		    !memcmp(cur_uuid, new_uuid, cur_uuid_len))) {
 			userpf_info(xdev, "same prp int uuid, skip refresh");
 			skip_refresh = true;
 		}

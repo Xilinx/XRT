@@ -418,17 +418,11 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 	int ret;
 	struct FeatureRomHeader	rom_header;
 
-
 	if (!lro->core.fdt_blob)
 		return 0;
 
-	userpf_idx = xocl_fdt_get_userpf(lro, lro->core.fdt_blob);
-	if (userpf_idx < 0) {
-		mgmt_info(lro, "did not get userpf index. %d", userpf_idx);
-		return 0;
-	}
-
-	len = fdt_totalsize(lro->core.fdt_blob) + 1024;
+	len = fdt_totalsize(lro->core.fdt_blob) + sizeof(rom_header)
+	       + 1024;
 	if (lro->userpf_blob)
 		vfree(lro->userpf_blob);
 
@@ -442,11 +436,14 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 		goto failed;
 	}
 
-	ret = xocl_fdt_overlay(lro->userpf_blob, 0, lro->core.fdt_blob, 0,
-			userpf_idx);
-	if (ret) {
-		mgmt_err(lro, "overlay fdt failed %d", ret);
-		goto failed;
+	userpf_idx = xocl_fdt_get_userpf(lro, lro->core.fdt_blob);
+	if (userpf_idx >= 0) {
+		ret = xocl_fdt_overlay(lro->userpf_blob, 0,
+			lro->core.fdt_blob, 0, userpf_idx);
+		if (ret) {
+			mgmt_err(lro, "overlay fdt failed %d", ret);
+			goto failed;
+		}
 	}
 
 	ret = xocl_get_raw_header(lro, &rom_header);
@@ -545,8 +542,8 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	xclmgmt_connect_notify(lro, false);
 	xocl_subdev_destroy_all(lro);
 	ret = xocl_subdev_create_all(lro);
-	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
 	xclmgmt_update_userpf_blob(lro);
+	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
 	xclmgmt_connect_notify(lro, true);
 
 failed:
