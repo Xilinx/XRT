@@ -1,6 +1,9 @@
 # -----------------------------------------------------------------------------
 
 set(Boost_USE_STATIC_LIBS ON)               # Only find static libraries
+set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
+set(Boost_USE_STATIC_RUNTIME ON)            # This is how the boost libraries were build
+
 find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 include_directories(${Boost_INCLUDE_DIRS})
 
@@ -101,14 +104,31 @@ file(GLOB XCLBINUTIL_MAIN_FILE
 set(XCLBINUTIL_SRCS ${XCLBINUTIL_MAIN_FILE} ${XCLBINUTIL_FILES_SRCS})
 
 add_executable(xclbinutil ${XCLBINUTIL_SRCS})
-target_link_libraries(xclbinutil -static ${Boost_LIBRARIES})
-# On Ubuntu 18.04 CMake was appending '-Wl,-Bdynamic' to the command line which 
-# was causing the executable to reference 'linux-vdso.so.1' which would then 
-# produce "Command not found" when running the executable.
-#   Therefore, we direct CMake to end with static, so that it doesn't do that:
-set_target_properties(xclbinutil PROPERTIES LINK_SEARCH_END_STATIC 1)
 
-# -----------------------------------------------------------------------------
+if(WIN32) 
+  add_definitions( -DBOOST_ALL_NO_LIB )
+  target_link_libraries(xclbinutil PRIVATE Boost::filesystem Boost::program_options Boost::system)
+
+  # Use the static version of the run-time library 
+  # Note: Needed to link with boost
+  if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    target_compile_options(xclbinutil PRIVATE /MTd)
+  else()
+    target_compile_options(xclbinutil PRIVATE /MT)
+  endif()
+
+  # Disable BOOST warning message indicating that the MS compiler is newer then
+  # when BOOST was released
+  target_compile_options(xclbinutil PRIVATE /DBOOST_CONFIG_SUPPRESS_OUTDATED_MESSAGE)
+else()
+  target_link_libraries(xclbinutil -static ${Boost_LIBRARIES})
+
+  # On Ubuntu 18.04 CMake was appending '-Wl,-Bdynamic' to the command line which 
+  # was causing the executable to reference 'linux-vdso.so.1' which would then 
+  # produce "Command not found" when running the executable.
+  #   Therefore, we direct CMake to end with static, so that it doesn't do that:
+  set_target_properties(xclbinutil PROPERTIES LINK_SEARCH_END_STATIC 1)
+endif()
 
 install (TARGETS xclbinutil RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
 
@@ -136,3 +156,5 @@ if (GTEST_FOUND)
 else()
   message (STATUS "GTest was not found, skipping generation of test executables")
 endif()
+# -----------------------------------------------------------------------------
+
