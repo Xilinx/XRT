@@ -77,12 +77,6 @@ XCL_DRIVER_DLLESPEC int xclGetSysfsPath(xclDeviceHandle handle, const char* subd
  */
 XCL_DRIVER_DLLESPEC int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info);
 
-struct xclMailboxConf {
-    char *commID;
-    size_t commIDLen;
-    uint64_t chanSwitch;
-};
-
 #ifdef __cplusplus
 }
 #endif

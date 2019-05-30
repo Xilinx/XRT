@@ -159,6 +159,8 @@
  * the previous msg is consumed by the RX thread before it can finish
  * transmiting its own msg and return back to user land.
  *
+ * The interface between daemons and mailbox is defined as struct sw_chan. Refer
+ * to mailbox_proto.h for details.
  *
  * Communication protocols
  *
