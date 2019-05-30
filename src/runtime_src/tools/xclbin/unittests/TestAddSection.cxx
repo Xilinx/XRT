@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include "ParameterSectionData.h"
-#include "XclBin.h"
+#include "XclBinClass.h"
 
 TEST(AddSection, AddClearingBitstream) {
    XclBin xclBin;

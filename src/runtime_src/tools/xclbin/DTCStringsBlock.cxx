@@ -91,7 +91,7 @@ DTCStringsBlock::addString(const std::string _dtcString)
 
   // Did we find it?
   if (index != std::string::npos) {
-    return index;
+    return (unsigned int) index;
   }
 
   // Not found, lets add it
@@ -99,7 +99,7 @@ DTCStringsBlock::addString(const std::string _dtcString)
 
   *m_pDTCStringBlock << _dtcString << '\0';
  
-  return index;
+  return (unsigned int) index;
 }
 
 
