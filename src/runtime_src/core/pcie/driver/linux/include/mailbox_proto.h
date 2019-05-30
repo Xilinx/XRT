@@ -33,7 +33,12 @@
 #define UUID_SZ		16
 
 /**
- * enum mailbox_request - List of all mailbox request OPCODE
+ * enum mailbox_request - List of all mailbox request OPCODE. Some OP code
+ *                        requires arguments, which is defined as corresponding
+ *                        data structures below. Response to the request usually
+ *                        is a int32_t containing the error code. Some responses
+ *                        are more complicated and require a data structure,
+ *                        which is also defined below in this file.
  * @MAILBOX_REQ_UNKNOWN: invalid OP code
  * @MAILBOX_REQ_TEST_READY: test msg is ready (post only, internal test only)
  * @MAILBOX_REQ_TEST_READ: fetch test msg from peer (internal test only)
@@ -280,11 +285,17 @@ struct mailbox_req {
 };
 
 /**
- * struct sw_chan - mailbox software channel message metadata
+ * struct sw_chan - mailbox software channel message metadata. This defines the
+ *                  interface between daemons (MPD and MSD) and mailbox's
+ *                  read or write callbacks. A mailbox message (either a request
+ *                  or response) is wrapped by this data structure as payload.
+ *                  A sw_chan is passed between mailbox driver and daemon via
+ *                  read / write driver callbacks. And it is also passed between
+ *                  MPD and MSD via vendor defined interface (TCP socket, etc).
  * @sz: payload size
- * @flags: flags of this message as in mailbox_req
+ * @flags: flags of this message as in struct mailbox_req
  * @id: message ID
- * @data: payload (request or response buffer)
+ * @data: payload (request or response message)
  */
 struct sw_chan {
 	uint64_t sz;
@@ -295,6 +306,3 @@ struct sw_chan {
 
 
 #endif /* _XCL_MB_PROTOCOL_H_ */
-
-
-
