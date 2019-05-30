@@ -120,10 +120,10 @@ static void mpd(std::shared_ptr<pcidev::pci_device> d)
             break;
 
         if (ret == mbxfd) {
-            if (localToRemote(dev, mbxfd, msdfd) != 0)
+            if (processLocalMsg(dev, mbxfd, msdfd) != 0)
                 break;
         } else {
-            if (remoteToLocal(dev, mbxfd, msdfd) != 0)
+            if (processRemoteMsg(dev, mbxfd, msdfd) != 0)
                 break;
         }
     }
@@ -142,6 +142,8 @@ int main(void)
 
     // Fire up one thread for each board.
     auto total = pcidev::get_dev_total();
+    if (total == 0)
+        syslog(LOG_INFO, "no device found");
     std::vector<std::thread> threads;
     for (size_t i = 0; i < total; i++)
         threads.emplace_back(mpd, pcidev::get_dev(i));

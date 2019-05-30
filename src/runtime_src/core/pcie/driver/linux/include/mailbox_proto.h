@@ -17,6 +17,10 @@
 #ifndef _XCL_MB_PROTOCOL_H_
 #define _XCL_MB_PROTOCOL_H_
 
+#ifndef __KERNEL__
+#include <stdint.h>
+#endif
+
 /*
  * This header file contains mailbox protocol b/w mgmt and user pfs.
  * - Any changes made here should maintain backward compatibility.
