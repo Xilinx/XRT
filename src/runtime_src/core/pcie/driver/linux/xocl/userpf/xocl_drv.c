@@ -160,7 +160,8 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 	if (force)
 		kill_all_clients(xdev);
 
-	xocl_cleanup_mem(XOCL_DRM(xdev));
+	if (XOCL_DRM(xdev))
+		xocl_cleanup_mem(XOCL_DRM(xdev));
 	ret = xocl_subdev_offline_all(xdev);
 	if (!ret) {
 		userpf_err(xdev, "offline sub devices failed %d", ret);
@@ -623,6 +624,7 @@ int xocl_refresh_prp_subdevs(struct xocl_dev *xdev)
 			goto failed;
 		}
 		(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
+		xocl_drvinst_offline(xdev, false);
 	}
 failed:
 	if (blob)
