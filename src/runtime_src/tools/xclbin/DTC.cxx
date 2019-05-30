@@ -19,8 +19,11 @@
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
 
-#include <arpa/inet.h>
-
+#ifdef _WIN32
+  #include <winsock2.h>
+#else
+  #include <arpa/inet.h>
+#endif
 
 DTC::DTC() 
   : m_pTopFDTNode(NULL)
@@ -184,7 +187,7 @@ DTC::marshalToDTC(std::ostringstream& _buf) const
   }
   std::string sMemoryBlock = memoryBlock.str();
   header.off_mem_rsvmap = htonl(runningOffset);
-  runningOffset += sMemoryBlock.size();
+  runningOffset += (unsigned int) sMemoryBlock.size();
 
   // -- Create structure node image --
   std::ostringstream structureNodesBuf;
@@ -193,16 +196,16 @@ DTC::marshalToDTC(std::ostringstream& _buf) const
   XUtil::write_htonl(structureNodesBuf, FDT_END);
   std::string sStructureNodes = structureNodesBuf.str();
   header.off_dt_struct = htonl(runningOffset);
-  header.size_dt_struct = htonl(sStructureNodes.size());
-  runningOffset += sStructureNodes.size();
+  header.size_dt_struct = htonl((unsigned long) sStructureNodes.size());
+  runningOffset += (unsigned int) sStructureNodes.size();
 
   // -- Create strings block --
   std::ostringstream stringBlock;
   stringsBlock.marshalToDTC(stringBlock);
   std::string sStringBlock = stringBlock.str();
   header.off_dt_strings = htonl(runningOffset);
-  header.size_dt_strings = htonl(sStringBlock.size());
-  runningOffset += sStringBlock.size();
+  header.size_dt_strings = htonl((unsigned long) sStringBlock.size());
+  runningOffset += (unsigned int) sStringBlock.size();
 
   // Complete the header 
   header.totalsize = htonl(runningOffset);

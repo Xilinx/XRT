@@ -52,6 +52,14 @@ public:
     using arginfo_range_type = range<arginfo_iterator_type>;
     using memidx_type = xclbin::memidx_type;
 
+    enum class addr_space_type : unsigned short {
+      SPIR_ADDRSPACE_PRIVATE=0,
+      SPIR_ADDRSPACE_GLOBAL=1,
+      SPIR_ADDRSPACE_CONSTANT=2,
+      SPIR_ADDRSPACE_LOCAL=3,
+      SPIR_ADDRSPACE_PIPES=4
+    };
+
   private:
     /**
      * Get the type of the argument
@@ -155,7 +163,7 @@ public:
 
     /**
      */
-    virtual size_t
+    virtual addr_space_type
     get_address_space() const
     { throw std::runtime_error("not implemented"); }
 
@@ -242,7 +250,7 @@ public:
     }
     virtual std::string get_name() const { return (*m_components.begin())->name; }
     virtual argtype get_argtype() const  { return (*m_components.begin())->atype; }
-    virtual size_t get_address_space() const { return 0; }
+    virtual addr_space_type get_address_space() const { return addr_space_type::SPIR_ADDRSPACE_PRIVATE; }
     virtual std::unique_ptr<argument> clone();
     virtual size_t add(arginfo_type arg);
     virtual void set(size_t sz, const void* arg);
@@ -266,7 +274,7 @@ public:
       : argument(kernel), m_arg_info(arg) {}
     virtual argtype get_argtype() const { return m_arg_info->atype; }
     virtual std::string get_name() const { return m_arg_info->name; }
-    virtual size_t get_address_space() const { return 1; }
+    virtual addr_space_type get_address_space() const { return addr_space_type::SPIR_ADDRSPACE_GLOBAL; }
     virtual std::unique_ptr<argument> clone();
     void set(size_t sz, const void* arg) ;
     void set_svm(size_t sz, const void* arg) ;
@@ -301,7 +309,7 @@ public:
       : argument(kernel), m_arg_info(arg) {}
     virtual argtype get_argtype() const { return m_arg_info->atype; }
     virtual std::string get_name() const { return m_arg_info->name; }
-    virtual size_t get_address_space() const { return 3; }
+    virtual addr_space_type get_address_space() const { return addr_space_type::SPIR_ADDRSPACE_LOCAL; }
     virtual std::unique_ptr<argument> clone();
     virtual void set(size_t sz, const void* arg);
     virtual arginfo_range_type get_arginfo_range() const
@@ -317,7 +325,7 @@ public:
       : argument(kernel), m_arg_info(arg) {}
     virtual std::string get_name() const { return m_arg_info->name; }
     virtual argtype get_argtype() const { return m_arg_info->atype; }
-    virtual size_t get_address_space() const { return 2; }
+    virtual addr_space_type get_address_space() const { return addr_space_type::SPIR_ADDRSPACE_CONSTANT; }
     virtual std::unique_ptr<argument> clone();
     virtual void set(size_t sz, const void* arg);
     virtual memory* get_memory_object() const { return m_buf.get(); }
@@ -356,7 +364,7 @@ public:
     virtual std::unique_ptr<argument> clone();
     virtual void set(size_t sz, const void* arg);
     virtual argtype get_argtype() const { return m_arg_info->atype; }
-    virtual size_t get_address_space() const { return 4; }
+    virtual addr_space_type get_address_space() const { return addr_space_type::SPIR_ADDRSPACE_PIPES; }
   private:
     arginfo_type m_arg_info;
   };

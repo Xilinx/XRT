@@ -21,15 +21,434 @@
 #include "xocl/core/context.h"
 #include "xocl/core/device.h"
 #include "xocl/core/memory.h"
+#include "core/common/memalign.h"
 
 #include "detail/context.h"
 #include "detail/memory.h"
 
 #include "api.h"
-#include "impl/cpu_pipes.h"
+#include "plugin/xdp/profile.h"
 
 #include <cstdlib>
-#include "plugin/xdp/profile.h"
+#include <mutex>
+#include <deque>
+
+// Unused code, but left as reference to be reimplemented in needed
+
+namespace {
+
+struct cpu_pipe_reserve_id_t {
+  std::size_t head;
+  std::size_t tail;
+  std::size_t next;
+  unsigned int size;
+  unsigned int ref;
+};
+
+struct cpu_pipe_t {
+  std::mutex rd_mutex;
+  std::mutex wr_mutex;
+  std::size_t pkt_size;
+  std::size_t pipe_size;
+  std::size_t head;
+  std::size_t tail;
+
+  std::deque<cpu_pipe_reserve_id_t*> rd_rids;
+  std::deque<cpu_pipe_reserve_id_t*> wr_rids;
+
+  char buf[0];
+};
+
+/*
+ * 6.13.16.2 - work-item builtins, non-reservation, non-locking
+ */
+
+XOCL_UNUSED
+static int
+cpu_write_pipe_nolock(void *v, void *e)
+{
+  cpu_pipe_t *p = (cpu_pipe_t*)v;
+
+#ifdef PIPE_VERBOSE
+  printf("cpu_write_pipe_nolock %p %p\n", v, e);
+#endif
+
+  std::size_t head = p->head;
+  std::size_t next = (head + p->pkt_size) % p->pipe_size;
+
+  while (next == p->tail);
+
+  std::memcpy(&p->buf[head], e, p->pkt_size);
+  p->head = next;
+
+  return 0;
+}
+
+XOCL_UNUSED
+static int
+cpu_write_pipe_nb_nolock(void *v, void *e)
+{
+  cpu_pipe_t *p = (cpu_pipe_t*)v;
+
+#ifdef PIPE_VERBOSE
+  printf("cpu_write_pipe_nb_nolock %p %p\n", v, e);
+#endif
+
+  std::size_t head = p->head;
+  std::size_t next = (head + p->pkt_size) % p->pipe_size;
+
+  if (next == p->tail) {
+    return -1;
+  }
+
+  std::memcpy(&p->buf[head], e, p->pkt_size);
+  p->head = next;
+  return 0;
+}
+
+XOCL_UNUSED
+static int
+cpu_read_pipe_nolock(void *v, void *e)
+{
+  cpu_pipe_t *p = (cpu_pipe_t*)v;
+
+#ifdef PIPE_VERBOSE
+  printf("cpu_read_pipe_nolock %p %p\n", v, e);
+#endif
+
+  std::size_t tail = p->tail;
+
+  while (p->head == tail);
+
+  std::memcpy(e, &p->buf[tail], p->pkt_size);
+  p->tail = (tail + p->pkt_size) % p->pipe_size;
+  return 0;
+}
+
+XOCL_UNUSED
+static int
+cpu_read_pipe_nb_nolock(void *v, void *e)
+{
+  cpu_pipe_t *p = (cpu_pipe_t*)v;
+
+#ifdef PIPE_VERBOSE
+  printf("cpu_read_pipe_nb_nolock %p %p\n", v, e);
+#endif
+
+  std::size_t tail = p->tail;
+
+  if (p->head == tail) {
+    return -1;
+  }
+
+  std::memcpy(e, &p->buf[tail], p->pkt_size);
+  p->tail = (tail + p->pkt_size) % p->pipe_size;
+
+  return 0;
+}
+
+
+XOCL_UNUSED
+static int
+cpu_peek_pipe_nb_nolock(void *v, void *e)
+{
+  cpu_pipe_t *p = (cpu_pipe_t*)v;
+
+#ifdef PIPE_VERBOSE
+  printf("cpu_peek_pipe_nb_nolock %p %p\n", v, e);
+#endif
+
+  std::size_t tail = p->tail;
+
+  if (p->head == tail) {
+    return -1;
+  }
+  std::memcpy(e, &p->buf[tail], p->pkt_size);
+  return 0;
+}
+
+
+/*
+ * 6.13.16.2 - work-item builtins, non-reservation, locking
+ */
+
+XOCL_UNUSED
+static int
+cpu_write_pipe(void *v, void *e)
+{
+  cpu_pipe_t *p = (cpu_pipe_t*)v;
+  std::lock_guard<std::mutex> lk(p->wr_mutex);
+  int ret = cpu_write_pipe_nolock(v, e);
+  return ret;
+}
+
+XOCL_UNUSED
+static int
+cpu_write_pipe_nb(void *v, void *e)
+{
+  cpu_pipe_t *p = (cpu_pipe_t*)v;
+  std::lock_guard<std::mutex> lk(p->wr_mutex);
+  int ret = cpu_write_pipe_nb_nolock(v, e);
+  return ret;
+}
+
+XOCL_UNUSED
+static int
+cpu_read_pipe(void *v, void *e)
+{
+  cpu_pipe_t *p = (cpu_pipe_t*)v;
+  std::lock_guard<std::mutex> lk(p->rd_mutex);
+  int ret = cpu_read_pipe_nolock(v, e);
+  return ret;
+}
+
+XOCL_UNUSED
+static int
+cpu_read_pipe_nb(void *v, void *e)
+{
+  cpu_pipe_t *p = (cpu_pipe_t*)v;
+  std::lock_guard<std::mutex> lk(p->rd_mutex);
+  int ret = cpu_read_pipe_nb_nolock(v, e);
+  return ret;
+}
+
+XOCL_UNUSED
+static int
+cpu_peek_pipe_nb(void *v, void *e)
+{
+  cpu_pipe_t *p = (cpu_pipe_t*)v;
+  std::lock_guard<std::mutex> lk(p->rd_mutex);
+  int ret = cpu_peek_pipe_nb_nolock(v, e);
+  return ret;
+}
+
+/*
+ * 6.13.16.2 - work-item builtins, reservation, locking
+ */
+
+XOCL_UNUSED
+static void *
+cpu_reserve_read_pipe(void *v, unsigned n)
+{
+  cpu_pipe_t *p = (cpu_pipe_t*)v;
+  if (!v) return 0;
+
+  std::lock_guard<std::mutex> lk(p->rd_mutex);
+
+  std::size_t tail;
+  if (p->rd_rids.size()) {
+    cpu_pipe_reserve_id_t *id = p->rd_rids.back();
+    tail = id->tail;
+  }
+  else {
+    tail = p->tail;
+  }
+
+  int space = p->head - tail;
+  if (space < 0)
+    space += p->pipe_size;
+
+  cpu_pipe_reserve_id_t *rid = 0;
+  if ((int)n <= space) {
+    rid = (cpu_pipe_reserve_id_t*)malloc(sizeof(cpu_pipe_reserve_id_t));
+    if (rid) {
+      // success
+      rid->tail = tail;
+      rid->next = (tail + (p->pkt_size*n)) % p->pipe_size;
+      rid->size = n*p->pkt_size;
+      rid->ref = 1;
+      p->rd_rids.push_back(rid);
+    }
+  }
+
+  return rid;
+}
+
+XOCL_UNUSED
+static void
+cpu_commit_read_pipe(void *v, void *r)
+{
+  cpu_pipe_t *p = (cpu_pipe_t*)v;
+  cpu_pipe_reserve_id_t *rid = (cpu_pipe_reserve_id_t *)r;
+  std::lock_guard<std::mutex> lk(p->rd_mutex);
+
+  rid->ref--;
+  assert(rid->ref == 0 && "bad commit on read pipe");
+
+  while (p->rd_rids.size() && !p->rd_rids.front()->ref) {
+    cpu_pipe_reserve_id_t *front = p->rd_rids.front();
+    p->tail = front->next;
+    p->rd_rids.pop_front();
+    free(front);
+  }
+}
+
+XOCL_UNUSED
+static int
+cpu_read_pipe_reserve(void *v, void *r, unsigned idx, void *e)
+{
+  cpu_pipe_t *p = (cpu_pipe_t*)v;
+  cpu_pipe_reserve_id_t *rid = (cpu_pipe_reserve_id_t *)r;
+  if (!p || !rid)
+    return -1;
+
+  std::size_t offset = idx*p->pkt_size;
+  if (offset > (rid->size+p->pkt_size))
+    return -1;
+
+  offset = (rid->tail + offset) % p->pipe_size;
+  std::memcpy(e, &p->buf[offset], p->pkt_size);
+
+  return 0;
+}
+
+XOCL_UNUSED
+static void *
+cpu_reserve_write_pipe(void *v, unsigned n)
+{
+  cpu_pipe_t *p = (cpu_pipe_t*)v;
+  if (!v) return 0;
+
+  std::lock_guard<std::mutex> lk(p->wr_mutex);
+
+  std::size_t head;
+  if (p->wr_rids.size()) {
+    cpu_pipe_reserve_id_t *id = p->wr_rids.back();
+    head = id->head;
+  }
+  else {
+    head = p->head;
+  }
+
+  int next = (head + p->pkt_size) % p->pipe_size;
+  int space = p->tail - next;
+  if (space < 0)
+    space += p->pipe_size;
+
+  cpu_pipe_reserve_id_t *rid = 0;
+  if ((int)n <= space) {
+    rid = (cpu_pipe_reserve_id_t*)malloc(sizeof(cpu_pipe_reserve_id_t));
+    if (rid) {
+      // success
+      rid->head = head;
+      rid->next = (head + (p->pkt_size*n)) % p->pipe_size;
+      rid->size = n*p->pkt_size;
+      rid->ref = 1;
+      p->wr_rids.push_back(rid);
+    }
+  }
+
+  return rid;
+}
+
+XOCL_UNUSED
+static void
+cpu_commit_write_pipe(void *v, void *r)
+{
+  cpu_pipe_t *p = (cpu_pipe_t*)v;
+  cpu_pipe_reserve_id_t *rid = (cpu_pipe_reserve_id_t *)r;
+  std::lock_guard<std::mutex> lk(p->wr_mutex);
+
+  rid->ref--;
+  assert(rid->ref == 0 && "bad commit on write pipe");
+
+  while (p->wr_rids.size() && !p->wr_rids.front()->ref) {
+    cpu_pipe_reserve_id_t *front = p->wr_rids.front();
+    p->head = front->next;
+    p->wr_rids.pop_front();
+    free(front);
+  }
+}
+
+XOCL_UNUSED
+static int
+cpu_write_pipe_reserve(void *v, void *r, unsigned idx, void *e)
+{
+  cpu_pipe_t *p = (cpu_pipe_t*)v;
+  cpu_pipe_reserve_id_t *rid = (cpu_pipe_reserve_id_t *)r;
+  if (!p || !rid)
+    return -1;
+
+  std::size_t offset = idx*p->pkt_size;
+  if (offset > (rid->size+p->pkt_size))
+    return -1;
+
+  offset = (rid->head + offset) % p->pipe_size;
+  std::memcpy(&p->buf[offset], e, p->pkt_size);
+
+  return 0;
+}
+
+
+/*
+ * 6.13.16.3 work-group builtins
+ */
+
+XOCL_UNUSED
+static void *
+cpu_work_group_reserve_read_pipe(void *v, unsigned n)
+{
+  return cpu_reserve_read_pipe(v,n);
+}
+
+XOCL_UNUSED
+static void *
+cpu_work_group_reserve_write_pipe(void *v, unsigned n)
+{
+  return cpu_reserve_write_pipe(v,n);
+}
+
+XOCL_UNUSED
+static void
+cpu_work_group_commit_read_pipe(void *v, void *r)
+{
+  cpu_commit_read_pipe(v,r);
+}
+
+XOCL_UNUSED
+static void
+cpu_work_group_commit_write_pipe(void *v, void *r)
+{
+  cpu_commit_write_pipe(v,r);
+}
+
+/*
+ * 6.13.16.4 pipe query functions
+ */
+
+XOCL_UNUSED
+static unsigned int
+cpu_get_pipe_num_packets(void *v)
+{
+  cpu_pipe_t *p = (cpu_pipe_t*)v;
+
+  std::lock_guard<std::mutex> lk(p->rd_mutex);
+  std::size_t head = p->head;
+  std::size_t tail;
+  if (p->rd_rids.size()) {
+    cpu_pipe_reserve_id_t *id = p->rd_rids.back();
+    tail = id->tail;
+  }
+  else {
+    tail = p->tail;
+  }
+
+  int space = head - tail;
+  if (space < 0)
+    space += p->pipe_size;
+
+  return (unsigned int)(space / p->pkt_size);
+}
+
+XOCL_UNUSED
+static unsigned int
+cpu_get_pipe_max_packets(void *v)
+{
+  cpu_pipe_t *p = (cpu_pipe_t*)v;
+  return (p->pipe_size / p->pkt_size) - 8;
+}
+  
+}
 
 namespace xocl {
 
@@ -103,7 +522,7 @@ clCreatePipe(cl_context                context,
   // it would be nice to not allocate the pipe if it's a hardware pipe.
   size_t nbytes = upipe->get_pipe_packet_size() * (upipe->get_pipe_max_packets()+8);
   void* user_ptr=nullptr;
-  int status = posix_memalign(&user_ptr, 128, (sizeof(cpu_pipe_t)+nbytes));
+  int status = xrt_core::posix_memalign(&user_ptr, 128, (sizeof(cpu_pipe_t)+nbytes));
   if (status)
     throw xocl::error(CL_MEM_OBJECT_ALLOCATION_FAILURE);
   upipe->set_pipe_host_ptr(user_ptr);

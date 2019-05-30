@@ -115,10 +115,10 @@ SectionIPLayout::marshalToJSON(char* _pDataSection,
   XUtil::TRACE(XUtil::format("m_count: %d", pHdr->m_count));
 
   // Write out the entire structure except for the array structure
-  XUtil::TRACE_BUF("ip_layout", reinterpret_cast<const char*>(pHdr), (unsigned long)&(pHdr->m_ip_data[0]) - (unsigned long)pHdr);
+  XUtil::TRACE_BUF("ip_layout", reinterpret_cast<const char*>(pHdr), ((uint64_t)&(pHdr->m_ip_data[0]) - (uint64_t)pHdr));
   ip_layout.put("m_count", XUtil::format("%d", (unsigned int)pHdr->m_count).c_str());
 
-  unsigned int expectedSize = ((unsigned long)&(pHdr->m_ip_data[0]) - (unsigned long)pHdr) + (sizeof(ip_data) * pHdr->m_count);
+  uint64_t expectedSize = ((uint64_t)&(pHdr->m_ip_data[0]) - (uint64_t)pHdr) + (sizeof(ip_data) * pHdr->m_count);
 
   if (_sectionSize != expectedSize) {
     throw std::runtime_error(XUtil::format("ERROR: Section size (%d) does not match expected section size (%d).",
@@ -198,7 +198,7 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
   const boost::property_tree::ptree& ptIPLayout = _ptSection.get_child("ip_layout");
 
   // Initialize the memory to zero's
-  ip_layout ipLayoutHdr = (ip_layout){ 0 };
+  ip_layout ipLayoutHdr = ip_layout {0};
 
   // Read, store, and report mem_topology data
   ipLayoutHdr.m_count = ptIPLayout.get<uint32_t>("m_count");
@@ -220,7 +220,7 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
   unsigned int count = 0;
   boost::property_tree::ptree ipDatas = ptIPLayout.get_child("m_ip_data");
   for (const auto& kv : ipDatas) {
-    ip_data ipDataHdr = (ip_data){ 0 };
+    ip_data ipDataHdr = ip_data {0};
     boost::property_tree::ptree ptIPData = kv.second;
 
     std::string sm_type = ptIPData.get<std::string>("m_type");
@@ -338,7 +338,7 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
   }
 
   // -- Buffer needs to be less than 64K--
-  unsigned int bufferSize = _buf.str().size();
+  unsigned int bufferSize = (unsigned int) _buf.str().size();
   const unsigned int maxBufferSize = 64 * 1024;
   if ( bufferSize > maxBufferSize ) {
     std::string errMsg = XUtil::format("CRITICAL WARNING: The buffer size for the IP_LAYOUT section (%d) exceed the maximum size of %d.\nThis can result in lose of data in the driver.",

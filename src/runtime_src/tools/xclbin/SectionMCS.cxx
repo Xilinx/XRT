@@ -19,6 +19,12 @@
 #include "XclBinUtilities.h"
 #include <boost/algorithm/string.hpp>
 
+// Disable windows compiler warnings
+#ifdef _WIN32
+  #pragma warning( disable : 4100)      // 4100 - Unreferenced formal parameter
+#endif
+
+
 namespace XUtil = XclBinUtilities;
 
 // Static Variables / Classes
@@ -56,7 +62,7 @@ SectionMCS::marshalToJSON(char* _pDataSegment,
   boost::property_tree::ptree pt_mcs;
 
   XUtil::TRACE(XUtil::format("m_count: %d", (uint32_t)pHdr->m_count));
-  XUtil::TRACE_BUF("mcs", reinterpret_cast<const char*>(pHdr), (unsigned long)&(pHdr->m_chunk[0]) - (unsigned long)pHdr);
+  XUtil::TRACE_BUF("mcs", reinterpret_cast<const char*>(pHdr), ((uint64_t)&(pHdr->m_chunk[0]) - (uint64_t)pHdr));
 
   // Do we have something to extract.  Note: This should never happen.
   if (pHdr->m_count == 0) {
@@ -67,7 +73,7 @@ SectionMCS::marshalToJSON(char* _pDataSegment,
   pt_mcs.put("count", XUtil::format("%d", (unsigned int)pHdr->m_count).c_str());
 
   // Check to make sure that the array did not exceed its bounds
-  unsigned int arraySize = ((unsigned long)&(pHdr->m_chunk[0]) - (unsigned long)pHdr) + (sizeof(mcs_chunk) * pHdr->m_count);
+  uint64_t arraySize = ((uint64_t)&(pHdr->m_chunk[0]) - (uint64_t)pHdr) + (sizeof(mcs_chunk) * pHdr->m_count);
 
   if (arraySize > _segmentSize) {
     throw std::runtime_error(XUtil::format("ERROR: m_chunk array size (0x%lx) exceeds segment size (0x%lx).",
@@ -89,11 +95,11 @@ SectionMCS::marshalToJSON(char* _pDataSegment,
     char* ptrImageBase = _pDataSegment + pHdr->m_chunk[index].m_offset;
 
     // Check to make sure that the MCS image is partially looking good
-    if ((unsigned long)ptrImageBase > ((unsigned long)_pDataSegment) + _segmentSize) {
+    if ((uint64_t)ptrImageBase > ((uint64_t)_pDataSegment) + _segmentSize) {
       throw std::runtime_error(XUtil::format("ERROR: MCS image %d start offset exceeds MCS segment size.", index));
     }
 
-    if (((unsigned long)ptrImageBase) + pHdr->m_chunk[index].m_size > ((unsigned long)_pDataSegment) + _segmentSize) {
+    if (((uint64_t)ptrImageBase) + pHdr->m_chunk[index].m_size > ((uint64_t)_pDataSegment) + _segmentSize) {
       throw std::runtime_error(XUtil::format("ERROR: MCS image %d size exceeds the MCS segment size.", index));
     }
 
@@ -101,6 +107,8 @@ SectionMCS::marshalToJSON(char* _pDataSegment,
     pt_mcs_chunk.put("m_offset", XUtil::format("0x%ld", pHdr->m_chunk[index].m_offset).c_str());
     pt_mcs_chunk.put("m_size", XUtil::format("0x%ld", pHdr->m_chunk[index].m_size).c_str());
   }
+
+  // TODO: Add support to write out this data
 }
 
 // --------------------------------------------------------------------------
@@ -168,7 +176,7 @@ SectionMCS::extractBuffers(const char* _pDataSection,
   mcs* pHdr = (mcs*)_pDataSection;
 
   XUtil::TRACE(XUtil::format("m_count: %d", (uint32_t)pHdr->m_count));
-  XUtil::TRACE_BUF("mcs", reinterpret_cast<const char*>(pHdr), (unsigned long)&(pHdr->m_chunk[0]) - (unsigned long)pHdr);
+  XUtil::TRACE_BUF("mcs", reinterpret_cast<const char*>(pHdr), ((uint64_t)&(pHdr->m_chunk[0]) - (uint64_t)pHdr));
 
   // Do we have something to extract.  Note: This should never happen.
   if (pHdr->m_count == 0) {
@@ -177,7 +185,7 @@ SectionMCS::extractBuffers(const char* _pDataSection,
   }
 
   // Check to make sure that the array did not exceed its bounds
-  unsigned int arraySize = ((unsigned long)&(pHdr->m_chunk[0]) - (unsigned long)pHdr) + (sizeof(mcs_chunk) * pHdr->m_count);
+  uint64_t arraySize = ((uint64_t)&(pHdr->m_chunk[0]) - (uint64_t)pHdr) + (sizeof(mcs_chunk) * pHdr->m_count);
 
   if (arraySize > _sectionSize) {
     std::string errMsg = XUtil::format("ERROR: m_chunk array size (0x%lx) exceeds segment size (0x%lx).", arraySize, _sectionSize);
@@ -197,12 +205,12 @@ SectionMCS::extractBuffers(const char* _pDataSection,
     const char* ptrImageBase = _pDataSection + pHdr->m_chunk[index].m_offset;
 
     // Check to make sure that the MCS image is partially looking good
-    if ((unsigned long)ptrImageBase > ((unsigned long)_pDataSection) + _sectionSize) {
+    if ((uint64_t)ptrImageBase > ((uint64_t)_pDataSection) + _sectionSize) {
       std::string errMsg = XUtil::format("ERROR: MCS image %d start offset exceeds MCS segment size.", index);
       throw std::runtime_error(errMsg);
     }
 
-    if (((unsigned long)ptrImageBase) + pHdr->m_chunk[index].m_size > ((unsigned long)_pDataSection) + _sectionSize) {
+    if (((uint64_t)ptrImageBase) + pHdr->m_chunk[index].m_size > ((uint64_t)_pDataSection) + _sectionSize) {
       std::string errMsg = XUtil::format("ERROR: MCS image %d size exceeds the MCS segment size.", index);
       throw std::runtime_error(errMsg);
     }
@@ -222,11 +230,11 @@ SectionMCS::buildBuffer(const std::vector<mcsBufferPair>& _mcsBuffers,
   XUtil::TRACE("Building: MCS buffers");
 
   // Must have something to work with
-  int count = _mcsBuffers.size();
+  int count = (int) _mcsBuffers.size();
   if (count == 0)
     return;
 
-  mcs mcsHdr = (mcs) { 0 };
+  mcs mcsHdr = mcs {0};
   mcsHdr.m_count = (int8_t)count;
 
   XUtil::TRACE(XUtil::format("m_count: %d", (int)mcsHdr.m_count).c_str());
@@ -243,8 +251,8 @@ SectionMCS::buildBuffer(const std::vector<mcsBufferPair>& _mcsBuffers,
                               (sizeof(mcs_chunk) * count));
 
     for (auto mcsEntry : _mcsBuffers) {
-      mcs_chunk mcsChunk = (mcs_chunk) { 0 };
-      mcsChunk.m_type = mcsEntry.first;   // Record the MCS type
+      mcs_chunk mcsChunk = mcs_chunk {0};
+      mcsChunk.m_type = (uint8_t) mcsEntry.first;   // Record the MCS type
 
       mcsEntry.second->seekp(0, std::ios_base::end);
       mcsChunk.m_size = mcsEntry.second->tellp();

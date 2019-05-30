@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "XclBin.h"
+#include "XclBinClass.h"
 #include "ParameterSectionData.h"
 
 #include <string>

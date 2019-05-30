@@ -15,7 +15,7 @@
  */
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
-#include "XclBin.h"
+#include "XclBinClass.h"
 #include "Section.h"
 
 #include <stdexcept>
@@ -142,7 +142,7 @@ XclBin::readXclBinBinarySections(std::fstream& _istream) {
     _istream.seekg(sectionOffset);
 
     // Read in the section header
-    axlf_section_header sectionHeader = (axlf_section_header){ 0 };
+    axlf_section_header sectionHeader = axlf_section_header {0};
     const unsigned int expectBufferSize = sizeof(axlf_section_header);
 
     _istream.read((char*)&sectionHeader, sizeof(axlf_section_header));
@@ -250,15 +250,15 @@ XclBin::writeXclBinBinarySections(std::fstream& _ostream, boost::property_tree::
 
 
   // Populate the array size and offsets
-  unsigned int currentOffset = sizeof(axlf) - sizeof(axlf_section_header) + sizeof(sectionHeader);
+  uint64_t currentOffset = (uint64_t) (sizeof(axlf) - sizeof(axlf_section_header) + sizeof(sectionHeader));
   for (unsigned int index = 0; index < m_sections.size(); ++index) {
     // Calculate padding
-    currentOffset += XUtil::bytesToAlign(currentOffset);
+    currentOffset += (uint64_t) XUtil::bytesToAlign(currentOffset);
 
     // Initialize section header
     m_sections[index]->initXclBinSectionHeader(sectionHeader[index]);
     sectionHeader[index].m_sectionOffset = currentOffset;
-    currentOffset += sectionHeader[index].m_sectionSize;
+    currentOffset += (uint64_t) sectionHeader[index].m_sectionSize;
   }
 
   XUtil::TRACE("Writing xclbin section header array");
@@ -269,7 +269,7 @@ XclBin::writeXclBinBinarySections(std::fstream& _ostream, boost::property_tree::
     XUtil::TRACE(XUtil::format("Writing section: Index: %d, ID: %d", index, sectionHeader[index].m_sectionKind));
 
     // Align section to next 8 byte boundary
-    unsigned int runningOffset = _ostream.tellp();
+    unsigned int runningOffset = (unsigned int) _ostream.tellp();
     unsigned int bytePadding = XUtil::bytesToAlign(runningOffset);
     if (bytePadding != 0) {
       static char holePack[] = { (char)0, (char)0, (char)0, (char)0, (char)0, (char)0, (char)0, (char)0 };
@@ -385,7 +385,7 @@ XclBin::writeXclBinBinary(const std::string &_binaryFileName,
   {
     // Determine file size
     ofXclBin.seekg(0, ofXclBin.end);
-    unsigned int streamSize = ofXclBin.tellg();
+    unsigned int streamSize = (unsigned int) ofXclBin.tellg();
 
     // Update Header
     m_xclBinHeader.m_header.m_length = streamSize;
@@ -446,7 +446,7 @@ XclBin::findAndReadMirrorData(std::fstream& _istream, boost::property_tree::ptre
   unsigned int startOffset = 0;
   if (XUtil::findBytesInStream(_istream, MIRROR_DATA_START, startOffset) == true) {
     XUtil::TRACE(XUtil::format("Found MIRROR_DATA_START at offset: 0x%lx", startOffset));
-    startOffset += MIRROR_DATA_START.length();
+    startOffset += (unsigned int) MIRROR_DATA_START.length();
   }  else {
     std::string errMsg;
     errMsg  = "ERROR: Mirror backup data not found in given file.\n"; 
@@ -586,7 +586,7 @@ XclBin::addSection(Section* _pSection) {
   }
 
   m_sections.push_back(_pSection);
-  m_xclBinHeader.m_header.m_numSections = m_sections.size();
+  m_xclBinHeader.m_header.m_numSections = (uint32_t) m_sections.size();
 }
 
 void 
@@ -602,7 +602,7 @@ XclBin::removeSection(const Section* _pSection)
       XUtil::TRACE(XUtil::format("Removing and deleting section '%s' (%d).", _pSection->getSectionKindAsString().c_str(), _pSection->getSectionKind()));
       m_sections.erase(m_sections.begin() + index);
       delete _pSection;
-      m_xclBinHeader.m_header.m_numSections = m_sections.size();
+      m_xclBinHeader.m_header.m_numSections = (uint32_t) m_sections.size();
       return;
     }
   }

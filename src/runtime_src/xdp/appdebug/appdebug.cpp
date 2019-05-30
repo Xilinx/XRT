@@ -34,7 +34,6 @@
 #include "xocl/core/execution_context.h"
 
 #include "xclbin/binary.h"
-#include "impl/spir.h"
 
 #include "xclperf.h"
 #include "xcl_app_debug.h"
@@ -918,16 +917,16 @@ getArgValueString(const xocl::event* aEvent)
   auto ctx = aEvent->get_execution_context();
   for (auto& arg : ctx->get_indexed_argument_range()) {
     auto address_space = arg->get_address_space();
-    if (address_space == SPIR_ADDRSPACE_PRIVATE)
+    if (address_space == xocl::kernel::argument::addr_space_type::SPIR_ADDRSPACE_PRIVATE)
     {
       //auto arginforange = arg->get_arginfo_range();
       //sstr << arg->get_name() << " = " << getscalarval((const void*)arg->get_value(), arg->get_size(),arginforange) << " ";
       sstr << arg->get_name() << " = " << arg->get_string_value() << " ";
-    } else if (address_space==SPIR_ADDRSPACE_PIPES){
+    } else if (address_space == xocl::kernel::argument::addr_space_type::SPIR_ADDRSPACE_PIPES) {
       sstr << arg->get_name() << " = " << "stream arg " << std::dec;
 
-    } else if (address_space==SPIR_ADDRSPACE_GLOBAL
-             || address_space==SPIR_ADDRSPACE_CONSTANT)
+    } else if (address_space == xocl::kernel::argument::addr_space_type::SPIR_ADDRSPACE_GLOBAL
+            || address_space == xocl::kernel::argument::addr_space_type::SPIR_ADDRSPACE_CONSTANT)
     {
       uint64_t physaddr = 0;
       std::string bank = "";
@@ -939,7 +938,7 @@ getArgValueString(const xocl::event* aEvent)
       sstr << bank;
       sstr <<  ") ";
     }
-    else if (address_space==SPIR_ADDRSPACE_LOCAL)
+    else if (address_space == xocl::kernel::argument::addr_space_type::SPIR_ADDRSPACE_LOCAL)
     {
       sstr << arg->get_name() << " = " << "local arg " << std::dec;
     }

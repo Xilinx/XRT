@@ -21,7 +21,12 @@ namespace XUtil = XclBinUtilities;
 
 #include "FDTProperty.h"
 #include "DTCStringsBlock.h"
-#include <arpa/inet.h>
+
+#ifdef _WIN32
+  #include <winsock2.h>
+#else
+  #include <arpa/inet.h>
+#endif
 
 
 FDTNode::FDTNode() {
@@ -87,7 +92,7 @@ FDTNode::FDTNode(const char* _pBuffer,
   // Get the node name
   {
     m_name = _pBuffer;                  // Get the null terminated ascii string
-    index += m_name.size() + 1;         // Count the "null" character
+    index += (unsigned int) m_name.size() + 1;         // Count the "null" character
     runningBufferCheck(index, _size);
 
     XUtil::TRACE(XUtil::format("DTC Node Name: '%s'", m_name.c_str()));
