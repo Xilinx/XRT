@@ -21,7 +21,17 @@
 
 #include <string>
 #include "pciefunc.h"
+#include "sw_msg.h"
 #include "core/pcie/driver/linux/include/mailbox_proto.h"
+
+// Callback function for processing SW channel msg. The original msg
+// is passed in. The output would be a new msg ready to pass to either
+// local mailbox or remote socket for further handling. The return value
+// will indicate where to pass.
+using msgHandler = int(*)(pcieFunc& dev, std::shared_ptr<sw_msg>&,
+    std::shared_ptr<sw_msg>&);
+#define PROCESSED_FOR_REMOTE 0
+#define PROCESSED_FOR_LOCAL  1
 
 int splitLine(std::string line, std::string& key, std::string& value);
 sw_chan *allocmsg(pcieFunc& dev, size_t payloadSize);
@@ -31,7 +41,9 @@ size_t getMailboxMsgSize(pcieFunc& dev, int mbxfd);
 bool readMsg(pcieFunc& dev, int fd, sw_chan *sc);
 bool sendMsg(pcieFunc& dev, int fd, sw_chan *sc);
 int waitForMsg(pcieFunc& dev, int localfd, int remotefd, long interval);
-int localToRemote(pcieFunc& dev, int localfd, int remotefd);
-int remoteToLocal(pcieFunc& dev, int localfd, int remotefd);
+int processLocalMsg(pcieFunc& dev, int localfd, int remotefd,
+    msgHandler cb = nullptr);
+int processRemoteMsg(pcieFunc& dev, int localfd, int remotefd,
+    msgHandler cb = nullptr);
 
 #endif	// COMMON_H

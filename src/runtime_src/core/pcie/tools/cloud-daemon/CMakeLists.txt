@@ -8,6 +8,8 @@ file(GLOB MPD_FILES
   "pciefunc.h"
   "common.cpp"
   "common.h"
+  "sw_msg.cpp"
+  "sw_msg.h"
   )
 set(MPD_SRC ${MPD_FILES})
 add_executable(mpd ${MPD_SRC})
@@ -27,6 +29,9 @@ file(GLOB MSD_FILES
   "pciefunc.h"
   "common.cpp"
   "common.h"
+  "sw_msg.cpp"
+  "sw_msg.h"
+  "msd_plugin.h"
   )
 set(MSD_SRC ${MSD_FILES})
 add_executable(msd ${MSD_SRC})
@@ -37,6 +42,7 @@ target_link_libraries(msd
   boost_filesystem
   boost_system
   uuid
+  dl
   )
 install (TARGETS msd RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
 
@@ -59,3 +65,14 @@ install (
   FILES ${CMAKE_CURRENT_BINARY_DIR}/${MPD_SERVICE_FILE}
   DESTINATION ${XRT_INSTALL_DIR}/etc
   )
+
+# depoly header files
+set(XRT_HEADER_SRC                                                              
+  msd_plugin.h)                                                              
+                                                                                
+install (FILES ${XRT_HEADER_SRC} DESTINATION ${XRT_INSTALL_INCLUDE_DIR})        
+                                                                                
+message("-- XRT header files")                                                  
+foreach (header ${XRT_HEADER_SRC})                                              
+  message("-- ${header}")                                                       
+endforeach() 

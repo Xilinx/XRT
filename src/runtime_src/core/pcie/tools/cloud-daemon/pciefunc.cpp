@@ -184,7 +184,6 @@ int pcieFunc::updateConf(std::string hostname, uint16_t hostport, uint64_t swch)
 int pcieFunc::ioctl(unsigned long cmd, void *arg)
 {
     int ret = dev->ioctl(cmd, arg);
-    dev->devfs_close();
     return ret;
 }
 

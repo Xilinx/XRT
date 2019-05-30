@@ -28,6 +28,7 @@
 #include <algorithm>
 
 #include "common.h"
+#include "sw_msg.h"
 
 /* Parse name value pair in format as "key=value". */
 int splitLine(std::string line, std::string& key, std::string& value)
@@ -41,67 +42,45 @@ int splitLine(std::string line, std::string& key, std::string& value)
     return 0;
 }
 
-/* Allocate a zero-initialized sw channel msg for playloadSize msg. */
-sw_chan *allocmsg(pcieFunc& dev, size_t payloadSize)
-{
-    size_t total = sizeof(sw_chan) + payloadSize;
-    void *p = malloc(total);
-
-    if (p == nullptr) {
-        dev.log(LOG_ERR, "failed to alloc msg, size=%d", payloadSize);
-        return nullptr;
-    }
-
-    bzero(p, total);
-    sw_chan *sc = (sw_chan *)p;
-    sc->sz = payloadSize;
-    dev.log(LOG_INFO, "alloc'ed msg (%d + %d = %d bytes): %p",
-        sizeof(sw_chan), payloadSize, total, sc);
-    return sc;
-}
-
-/* Free a sw channel msg allocated by allocmsg(). */
-void freemsg(pcieFunc& dev, sw_chan *msg)
-{
-    free(msg);
-    dev.log(LOG_INFO, "freed msg: %p", msg);
-}
-
 /* Retrieve size for the next msg from socket fd. */
 size_t getSockMsgSize(pcieFunc& dev, int sockfd)
 {
-    sw_chan sc = { 0 };
+    std::shared_ptr<sw_msg> swmsg = std::make_shared<sw_msg>(0);
 
-    if (recv(sockfd, (void *)&sc, sizeof(sc), MSG_PEEK) != sizeof(sc)) {
+    if (recv(sockfd, swmsg->data(), swmsg->size(), MSG_PEEK) !=
+        static_cast<ssize_t>(swmsg->size())) {
         dev.log(LOG_ERR, "can't receive sw_chan from socket, %m");
         return 0;
     }
 
-    dev.log(LOG_INFO, "retrieved msg size from socket: %d bytes", sc.sz);
-    return sc.sz;
+    dev.log(LOG_INFO, "retrieved msg size from socket: %d bytes",
+        swmsg->payloadSize());
+    return swmsg->payloadSize();
 }
 
 /* Retrieve size for the next msg from mailbox fd. */
 size_t getMailboxMsgSize(pcieFunc& dev, int mbxfd)
 {
-    sw_chan sc = { 0 };
+    std::shared_ptr<sw_msg> swmsg = std::make_shared<sw_msg>(0);
 
     // This read is expected to fail w/ errno == EMSGSIZE
-    if (read(mbxfd, (void *)&sc, sizeof(sc)) >= 0 || errno != EMSGSIZE) {
+    // However, the real msg size should be filled out by driver.
+    if (read(mbxfd, swmsg->data(), swmsg->size()) >= 0 || errno != EMSGSIZE) {
         dev.log(LOG_ERR, "can't read sw_chan from mailbox, %m");
         return 0;
     }
 
-    dev.log(LOG_INFO, "retrieved msg size from mailbox: %d bytes", sc.sz);
-    return sc.sz;
+    dev.log(LOG_INFO, "retrieved msg size from mailbox: %d bytes",
+        swmsg->payloadSize());
+    return swmsg->payloadSize();
 }
 
 /* Read a sw channel msg from fd (can be a socket or mailbox one). */
-bool readMsg(pcieFunc& dev, int fd, sw_chan *sc)
+bool readMsg(pcieFunc& dev, int fd, sw_msg *swmsg)
 {
-    ssize_t total = sizeof(*sc) + sc->sz;
+    ssize_t total = swmsg->size();
     ssize_t cur = 0;
-    char *buf = reinterpret_cast<char *>(sc);
+    char *buf = swmsg->data();
 
     while (cur < total) {
         ssize_t ret = read(fd, buf + cur, total - cur);
@@ -110,17 +89,17 @@ bool readMsg(pcieFunc& dev, int fd, sw_chan *sc)
         cur += ret;
     }
 
-    dev.log(LOG_INFO, "read %d bytes out of %d bytes from fd %d",
-        cur, total, fd);
-    return (cur == total);
+    dev.log(LOG_INFO, "read %d bytes out of %d bytes from fd %d, valid: %d",
+        cur, total, fd, swmsg->valid());
+    return (cur == total && swmsg->valid());
 }
 
 /* Write a sw channel msg to fd (can be a socket or mailbox one). */
-bool sendMsg(pcieFunc& dev, int fd, sw_chan *sc)
+bool sendMsg(pcieFunc& dev, int fd, sw_msg *swmsg)
 {
-    ssize_t total = sizeof(*sc) + sc->sz;
+    ssize_t total = swmsg->size();
     ssize_t cur = 0;
-    char *buf = reinterpret_cast<char *>(sc);
+    char *buf = swmsg->data();
 
     while (cur < total) {
         ssize_t ret = write(fd, buf + cur, total - cur);
@@ -177,69 +156,79 @@ int waitForMsg(pcieFunc& dev, int localfd, int remotefd, long interval)
 
 /*
  * Fetch sw channel msg from local mailbox fd, process it by passing it through
- * to socket fd.
+ * to socket fd or by the callback.
  */
-int localToRemote(pcieFunc& dev, int localfd, int remotefd)
+int processLocalMsg(pcieFunc& dev, int localfd, int remotefd, msgHandler cb)
 {
-    int ret = -EINVAL;
-    sw_chan *sc = nullptr;
-
     size_t msgsz = getMailboxMsgSize(dev, localfd);
     if (msgsz == 0)
-        goto done;
+        return -EINVAL;
 
-    sc = allocmsg(dev, msgsz);
-    if (sc == nullptr)
-        goto done;
+    std::shared_ptr<sw_msg> swmsg = std::make_shared<sw_msg>(msgsz);
+    if (swmsg == nullptr)
+        return -ENOMEM;
 
-    if (!readMsg(dev, localfd, sc))
-        goto done;
+    if (!readMsg(dev, localfd, swmsg.get()))
+        return -EINVAL;
 
-    if (!sendMsg(dev, remotefd, sc)) {
-        ret = -EAGAIN;
-        goto done;
+    int pass;
+    std::shared_ptr<sw_msg> swmsgProcessed;
+    if (!cb) {
+        // Continue passing received msg to local mailbox.
+        swmsgProcessed = swmsg;
+        pass = PROCESSED_FOR_REMOTE;
+    } else {
+        pass = (*cb)(dev, swmsg, swmsgProcessed);
     }
 
-    ret = 0;
+    bool sent;
+    if (pass == PROCESSED_FOR_LOCAL)
+        sent = sendMsg(dev, localfd, swmsgProcessed.get());
+    else if (pass == PROCESSED_FOR_REMOTE)
+        sent = sendMsg(dev, remotefd, swmsgProcessed.get());
+    else // Error occured
+        return pass;
 
-done:
-    freemsg(dev, sc);
-    return ret;
+    return sent ? 0 : -EINVAL;
 }
 
 /*
  * Fetch sw channel msg from remote socket fd, process it by passing it through
- * to local mailbox fd.
+ * to local mailbox fd or by the callback.
  */
-int remoteToLocal(pcieFunc& dev, int localfd, int remotefd)
+int processRemoteMsg(pcieFunc& dev, int localfd, int remotefd, msgHandler cb)
 {
-    int ret = -EINVAL;
-    sw_chan *sc = nullptr;
-
     size_t msgsz = getSockMsgSize(dev, remotefd);
-    if (msgsz == 0) {
-        ret = -EAGAIN;
-        goto done;
-    }
+    if (msgsz == 0)
+        return -EAGAIN;
 
     if (msgsz > 1024 * 1024 * 1024)
-        goto done;
+        return -EMSGSIZE;
 
-    sc = allocmsg(dev, msgsz);
-    if (sc == nullptr)
-        goto done;
+    std::shared_ptr<sw_msg> swmsg = std::make_shared<sw_msg>(msgsz);
+    if (swmsg == nullptr)
+        return -ENOMEM;
 
-    if (!readMsg(dev, remotefd, sc)) {
-        ret = -EAGAIN;
-        goto done;
+    if (!readMsg(dev, remotefd, swmsg.get()))
+        return -EAGAIN;
+
+    int pass;
+    std::shared_ptr<sw_msg> swmsgProcessed;
+    if (!cb) {
+        // Continue passing received msg to local mailbox.
+        swmsgProcessed = swmsg;
+        pass = PROCESSED_FOR_LOCAL;
+    } else {
+        pass = (*cb)(dev, swmsg, swmsgProcessed);
     }
 
-    if (!sendMsg(dev, localfd, sc))
-        goto done;
+    bool sent;
+    if (pass == PROCESSED_FOR_LOCAL)
+        sent = sendMsg(dev, localfd, swmsgProcessed.get());
+    else if (pass == PROCESSED_FOR_REMOTE)
+        sent = sendMsg(dev, remotefd, swmsgProcessed.get());
+    else // Error occured
+        return pass;
 
-    ret = 0;
-
-done:
-    freemsg(dev, sc);
-    return ret;
+    return sent ? 0 : -EINVAL;
 }
