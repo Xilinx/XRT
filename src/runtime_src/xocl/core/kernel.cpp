@@ -532,16 +532,6 @@ get_context() const
   return m_program->get_context();
 }
 
-std::vector<std::string>
-kernel::
-get_instance_names() const
-{
-  std::vector<std::string> instances;
-  for (auto& inst : m_symbol.instances)
-    instances.push_back(inst.name);
-  return instances;
-}
-
 namespace kernel_utils {
 
 std::string

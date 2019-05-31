@@ -18,9 +18,8 @@
 #ifndef __XILINX_RT_DEBUG_H
 #define __XILINX_RT_DEBUG_H
 
+#include "core/include/xclbin.h"
 #include <string>
-
-#include "xclbin/binary.h"
 
 namespace xdp
 {
@@ -75,7 +74,7 @@ namespace xdp
      * @param xclbin
      *   The complete xclbin binary wrapped in a binary API class
      */
-    void reset(const xclbin::binary& xclbin);
+    void reset(const axlf* xclbin);
 
     void setEnvironment() ;
   } ;

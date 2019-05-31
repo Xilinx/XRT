@@ -23,6 +23,37 @@
 #include "xdp/rt_singleton.h"
 #include "xdp/profile/core/rt_profile.h"
 
+namespace {
+
+static bool
+is_hw_emulation()
+{
+  // Temporary work-around used to set the mDevice based on
+  // XCL_EMULATION_MODE=hw_emu.  Otherwise default is mSwEmDevice
+  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static bool hwem = xem ? std::strcmp(xem,"hw_emu")==0 : false;
+  return hwem;
+}
+
+static bool
+is_sw_emulation()
+{
+  // Temporary work-around used to set the mDevice based on
+  // XCL_EMULATION_MODE=hw_emu.  Otherwise default is mSwEmDevice
+  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static bool swem = xem ? std::strcmp(xem,"sw_emu")==0 : false;
+  return swem;
+}
+
+static bool
+is_emulation_mode()
+{
+  static bool val = is_sw_emulation() || is_hw_emulation();
+  return val;
+}
+
+}
+
 namespace xdp {
 
 bool isProfilingOn() {
@@ -544,31 +575,25 @@ cb_set_kernel_clock_freq(const std::string& device_name, unsigned int freq)
   OCLProfiler::Instance()->setKernelClockFreqMHz(device_name, freq);
 }
 
-void cb_reset(const xocl::xclbin& xclbin)
+void cb_reset(const axlf* xclbin)
 {
   auto profiler = OCLProfiler::Instance();
 
   // init flow mode
-  auto xclbin_target = xclbin.target();
-  if (xclbin_target == xocl::xclbin::target_type::bin) {
-    auto dsa = xclbin.dsa_name();
+  if (!is_emulation_mode()) {
+    auto dsa = std::string(reinterpret_cast<const char*>(xclbin->m_header.m_platformVBNV),64);
     // CR-964171: trace clock is 300 MHz on DDR4 systems (e.g., KU115 4DDR)
     // TODO: this is kludgy; replace this with getting info from feature ROM
     // http://confluence.xilinx.com/display/XIP/DSA+Feature+ROM+Proposal
     if(dsa.find("4ddr") != std::string::npos)
       profiler->getProfileManager()->setDeviceTraceClockFreqMHz(300.0);
     profiler->getPlugin()->setFlowMode(xdp::RTUtil::DEVICE);
-  } else if (xclbin_target == xocl::xclbin::target_type::csim) {
+  } else if (is_sw_emulation()) {
     profiler->getPlugin()->setFlowMode(xdp::RTUtil::CPU);
     // old and unsupported modes
     profiler->turnOffProfile(xdp::RTUtil::PROFILE_DEVICE);
-  } else if (xclbin_target == xocl::xclbin::target_type::cosim) {
-    profiler->getPlugin()->setFlowMode(xdp::RTUtil::COSIM_EM);
-    profiler->turnOffProfile(xdp::RTUtil::PROFILE_DEVICE);
-  } else if (xclbin_target == xocl::xclbin::target_type::hwem) {
+  } else if (is_hw_emulation()) {
     profiler->getPlugin()->setFlowMode(xdp::RTUtil::HW_EM);
-  } else if (xclbin_target == xocl::xclbin::target_type::x86) {
-  } else if (xclbin_target == xocl::xclbin::target_type::zynqps7) {
   } else {
     throw xocl::error(CL_INVALID_BINARY,"invalid xclbin region target");
   }
