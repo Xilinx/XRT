@@ -334,7 +334,6 @@ namespace xclhwemhal2 {
     fclose(fp2);
 
     std::string pdiFileName = binaryDirectory + "/aie_pdi";
-    //std::string emuDataFileName = binaryDirectory + "/emuData";
 
     if ((pdi != nullptr) && (pdiSize> 1))
     {
@@ -365,7 +364,6 @@ namespace xclhwemhal2 {
 
       std::string emuDataFilePath(emuDataFileName);
       systemUtil::makeSystemCall(emuDataFilePath, systemUtil::systemOperation::UNZIP, binaryDirectory);
-      systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777");
     }
 
     readDebugIpLayout(debugFileName);
@@ -602,8 +600,7 @@ namespace xclhwemhal2 {
           mLogStream << __func__ << " xocc command line: " << launcherArgs << std::endl;
 
         const char* simMode = NULL;
-        if ( pdi ) {
-          launcherArgs += " -pdi " + pdiFileName + " ";
+        if ( emuData ) {
           launcherArgs += " -emuData " + binaryDirectory + "/krnl_aie_vadd_int/aieshim_solution.aiesol";
         }
 
