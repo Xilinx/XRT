@@ -12,8 +12,25 @@ if "%1" == "-help" (
   goto Help
 )
 
-if "%1" == "" (
+if "%1" == "-debug" (
   goto DebugBuild
+)
+
+if "%1" == "-release" (
+  goto ReleaseBuild
+)
+
+if "%1" == "-all" (
+  call:DebugBuild
+  call:ReleaseBuild
+  goto EOF
+)
+
+
+if "%1" == "" (
+  call:DebugBuild
+  call:ReleaseBuild
+  goto EOF
 )
 
 ECHO Unknown option: %1
@@ -35,6 +52,10 @@ if exist Debug (
   echo Removing 'Debug' directory...
   rmdir /S /Q Debug
 )
+if exist Release (
+  echo Removing 'Release' directory...
+  rmdir /S /Q Release
+)
 GOTO:EOF
 
 
@@ -43,7 +64,23 @@ REM --------------------------------------------------------------------------
 echo ====================== Windows Debug Build ============================
 mkdir Debug
 cd Debug
-cmake -G "Visual Studio 15 2017" -DBOOST_ROOT=C:\XRT\libs\boost -DBOOST_LIBRARYDIR=C:\XRT\libs\boost\lib -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..\..\src
+cmake -G "Visual Studio 15 2017 Win64" -DBOOST_ROOT=C:\XRT\libs\boost -DBOOST_LIBRARYDIR=C:\XRT\libs\boost  -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..\..\src
+msbuild ALL_BUILD.vcxproj
+cd ..
+GOTO:EOF
+
+REM --------------------------------------------------------------------------
+:ReleaseBuild
+echo ====================== Windows Release Build ============================
+echo.
+echo **** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ******
+echo * Release build currently fails to build for various reasons. *
+echo * Work is in progress to address this issue.                  *
+echo **** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ******
+echo.
+mkdir Release
+cd Release
+cmake -G "Visual Studio 15 2017 Win64" -DBOOST_ROOT=C:\XRT\libs\boost -DBOOST_LIBRARYDIR=C:\XRT\libs\boost  -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..\..\src
 msbuild ALL_BUILD.vcxproj
 cd ..
 GOTO:EOF

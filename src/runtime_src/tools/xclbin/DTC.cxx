@@ -20,6 +20,7 @@
 namespace XUtil = XclBinUtilities;
 
 #ifdef _WIN32
+  #pragma comment(lib, "wsock32.lib")
   #include <winsock2.h>
 #else
   #include <arpa/inet.h>
