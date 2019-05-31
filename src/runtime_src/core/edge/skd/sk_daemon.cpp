@@ -149,13 +149,19 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
   }
 
   syslog(LOG_INFO, "%s_%d start running\n", name, cu_idx);
-    
+
   /* Set Kernel Ops */
   ops.getHostBO = &getHostBO;
   ops.mapBO     = &mapBO;
   ops.freeBO    = &freeBO;
 
   args_from_host = (unsigned *)getKernelArg(boh, cu_idx);
+  if (args_from_host == MAP_FAILED) {
+      syslog(LOG_ERR, "Failed to map soft kernel args for %s_%d", name, cu_idx);
+      freeBO(boh);
+      dlclose(sk_handle);
+      return;
+  }
 
   while (1) {
     ret = waitNextCmd(cu_idx);
