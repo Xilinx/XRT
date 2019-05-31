@@ -23,14 +23,14 @@ if "%1" == "-release" (
 if "%1" == "-all" (
   call:DebugBuild
   call:ReleaseBuild
-  goto EOF
+  goto:EOF
 )
 
 
 if "%1" == "" (
   call:DebugBuild
   call:ReleaseBuild
-  goto EOF
+  GOTO:EOF
 )
 
 ECHO Unknown option: %1
@@ -65,22 +65,16 @@ echo ====================== Windows Debug Build ============================
 mkdir Debug
 cd Debug
 cmake -G "Visual Studio 15 2017 Win64" -DBOOST_ROOT=C:\XRT\libs\boost -DBOOST_LIBRARYDIR=C:\XRT\libs\boost  -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..\..\src
-msbuild ALL_BUILD.vcxproj
+cmake --build . --verbose --config Debug
 cd ..
 GOTO:EOF
 
 REM --------------------------------------------------------------------------
 :ReleaseBuild
 echo ====================== Windows Release Build ============================
-echo.
-echo **** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ******
-echo * Release build currently fails to build for various reasons. *
-echo * Work is in progress to address this issue.                  *
-echo **** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ******
-echo.
 mkdir Release
 cd Release
 cmake -G "Visual Studio 15 2017 Win64" -DBOOST_ROOT=C:\XRT\libs\boost -DBOOST_LIBRARYDIR=C:\XRT\libs\boost  -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..\..\src
-msbuild ALL_BUILD.vcxproj
+cmake --build . --verbose --config Release
 cd ..
 GOTO:EOF
