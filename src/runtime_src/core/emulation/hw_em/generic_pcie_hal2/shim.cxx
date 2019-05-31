@@ -149,12 +149,14 @@ namespace xclhwemhal2 {
     ssize_t debugFileSize = 0;
     ssize_t memTopologySize = 0;
     ssize_t pdiSize = 0;
+    ssize_t emuDataSize = 0;
 
     char* zipFile = nullptr;
     char* xmlFile = nullptr;
     char* debugFile = nullptr;
     char* memTopology = nullptr;
     char* pdi = nullptr;
+    char* emuData = nullptr;
 
     if ((!std::memcmp(bitstreambin, "xclbin0", 7)) || (!std::memcmp(bitstreambin, "xclbin1", 7)))
     {
@@ -188,6 +190,11 @@ namespace xclhwemhal2 {
         pdiSize = sec->m_sectionSize;
         pdi = new char[pdiSize];
         memcpy(pdi, bitstreambin + sec->m_sectionOffset,pdiSize);
+      }
+      if (auto sec = xclbin::get_axlf_section(top, EMULATION_DATA)) {
+        emuDataSize = sec->m_sectionSize;
+        emuData = new char[emuDataSize];
+        memcpy(emuData, bitstreambin + sec->m_sectionOffset, emuDataSize);
       }
     }
     else
@@ -228,10 +235,13 @@ namespace xclhwemhal2 {
         pdi = nullptr;
       }
 
-
+      if (emuData) {
+        delete[] emuData;
+        emuData = nullptr;
+      }
       return -1;
     }
-    int returnValue = xclLoadBitstreamWorker(zipFile,zipFileSize,xmlFile,xmlFileSize,debugFile,debugFileSize, memTopology, memTopologySize, pdi, pdiSize);
+    int returnValue = xclLoadBitstreamWorker(zipFile,zipFileSize,xmlFile,xmlFileSize,debugFile,debugFileSize, memTopology, memTopologySize, pdi, pdiSize, emuData, emuDataSize);
 
     //mFirstBinary is a static member variable which becomes false once first binary gets loaded
     if(returnValue >=0 && mFirstBinary )
@@ -253,13 +263,15 @@ namespace xclhwemhal2 {
     delete[] xmlFile;
     delete[] memTopology;
     delete[] pdi;
+    delete[] emuData;
 
     PRINTENDFUNC;
     return returnValue;
   }
 
    int HwEmShim::xclLoadBitstreamWorker(char* zipFile, size_t zipFileSize, char* xmlfile, size_t xmlFileSize,
-                                        char* debugFile, size_t debugFileSize, char* memTopology, size_t memTopologySize, char* pdi, size_t pdiSize)
+                                        char* debugFile, size_t debugFileSize, char* memTopology, size_t memTopologySize, 
+                                        char* pdi, size_t pdiSize, char* emuData, size_t emuDataSize)
   {
     if (mLogStream.is_open()) {
       //    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << zipFile<< std::endl;
@@ -272,6 +284,7 @@ namespace xclhwemhal2 {
     //    getpid is defined in unistd.h
     std::sprintf(fileName, "%s/tempFile_%d", deviceDirectory.c_str(),binaryCounter);
 #endif
+
     if(mMemModel)
     {
       delete mMemModel;
@@ -282,13 +295,12 @@ namespace xclhwemhal2 {
       resetProgram();
     }
     std::stringstream ss;
-    ss<<deviceDirectory<<"/binary_"<<binaryCounter;
+    ss << deviceDirectory << "/binary_" << binaryCounter;
     std::string binaryDirectory = ss.str();
 
     systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::CREATE);
 
     std::ofstream os(fileName);
-
     os.write(zipFile, zipFileSize);
     os.close();
 
@@ -322,6 +334,7 @@ namespace xclhwemhal2 {
     fclose(fp2);
 
     std::string pdiFileName = binaryDirectory + "/aie_pdi";
+    //std::string emuDataFileName = binaryDirectory + "/emuData";
 
     if ((pdi != nullptr) && (pdiSize> 1))
     {
@@ -335,6 +348,24 @@ namespace xclhwemhal2 {
       fwrite(pdi, pdiSize, 1, fp2);
       fflush(fp2);
       fclose(fp2);
+    }
+
+    char emuDataFileName[1024];
+#ifndef _WINDOWS
+    // TODO: Windows build support
+    // getpid is defined in unistd.h
+    std::sprintf(emuDataFileName, "%s/emuDataFile_%d", binaryDirectory.c_str(), binaryCounter);
+#endif
+
+    if ((emuData != nullptr) && (emuDataSize> 1))
+    {
+      std::ofstream os(emuDataFileName);
+      os.write(emuData, emuDataSize);
+      os.close();
+
+      std::string emuDataFilePath(emuDataFileName);
+      systemUtil::makeSystemCall(emuDataFilePath, systemUtil::systemOperation::UNZIP, binaryDirectory);
+      systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777");
     }
 
     readDebugIpLayout(debugFileName);
@@ -573,7 +604,9 @@ namespace xclhwemhal2 {
         const char* simMode = NULL;
         if ( pdi ) {
           launcherArgs += " -pdi " + pdiFileName + " ";
+          launcherArgs += " -emuData " + binaryDirectory + "/krnl_aie_vadd_int/aieshim_solution.aiesol";
         }
+
         if(!launcherArgs.empty())
           simMode = launcherArgs.c_str();
 
