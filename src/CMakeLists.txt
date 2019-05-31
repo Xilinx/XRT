@@ -50,7 +50,14 @@ set(XRT_VERSION_STRING ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_P
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake/")
 
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
-  include(CMake/native.cmake)
+  # Temporary native wrapper while Linux code is being ported to windows.
+  # When completed the two build flows will once again be merged into one
+  # common file
+  if (WIN32)
+    include(CMake/nativeWin.cmake)
+  else()
+    include(CMake/nativeLnx.cmake)
+  endif()
 else()
   include(CMake/embedded_system.cmake)
 endif()

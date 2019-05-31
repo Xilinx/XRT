@@ -245,12 +245,21 @@ XclBin::writeXclBinBinarySections(std::fstream& _ostream, boost::property_tree::
   }
 
   // Prepare the array
+#ifdef _WIN32
+  // WARNING - Do not us this code in Linux.  It hasn't been fully flushed out.
+  struct axlf_section_header *sectionHeader = new struct axlf_section_header[m_sections.size()];
+  memset(sectionHeader, 0, sizeof(struct axlf_section_header) * m_sections.size());  // Zero out memory
+
+  // Populate the array size and offsets
+ uint64_t currentOffset = (uint64_t) (sizeof(axlf) - sizeof(axlf_section_header) + (sizeof(axlf_section_header) * m_sections.size()));
+#else
   struct axlf_section_header sectionHeader[m_sections.size()];
   memset(&sectionHeader, 0, sizeof(sectionHeader));  // Zero out memory
 
+  uint64_t currentOffset = (uint64_t) (sizeof(axlf) - sizeof(axlf_section_header) + sizeof(sectionHeader));  
+#endif
 
-  // Populate the array size and offsets
-  uint64_t currentOffset = (uint64_t) (sizeof(axlf) - sizeof(axlf_section_header) + sizeof(sectionHeader));  for (unsigned int index = 0; index < m_sections.size(); ++index) {
+  for (unsigned int index = 0; index < m_sections.size(); ++index) {
     // Calculate padding
     currentOffset += (uint64_t) XUtil::bytesToAlign(currentOffset);
 
@@ -316,6 +325,10 @@ XclBin::writeXclBinBinarySections(std::fstream& _ostream, boost::property_tree::
       _mirroredData.add_child("section_header", pt_sectionHeader);
     }
   }
+
+#ifdef _WIN32
+  delete[] sectionHeader;
+#endif
 }
 
 

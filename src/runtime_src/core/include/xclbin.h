@@ -38,35 +38,42 @@
 #ifndef _XCLBIN_H_
 #define _XCLBIN_H_
 
-#if defined(__KERNEL__)
-#include <linux/types.h>
-#include <linux/uuid.h>
-#include <linux/version.h>
-#elif defined(__cplusplus)
-#include <cstdlib>
-#include <cstdint>
-#include <algorithm>
-#include <uuid/uuid.h>
-#else
-#include <stdlib.h>
-#include <stdint.h>
-#include <uuid/uuid.h>
-#endif
+#ifdef _WIN32
+  #include <cstdint>
+  #include <algorithm>
 
-#if !defined(__KERNEL__)
-typedef uuid_t xuid_t;
-#else //(__KERNEL__)
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
-typedef uuid_t xuid_t;
-#elif defined(RHEL_RELEASE_CODE)
-#if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7,4)
-typedef uuid_t xuid_t;
+  typedef unsigned char xuid_t[16];
 #else
-typedef uuid_le xuid_t;
-#endif
-#else
-typedef uuid_le xuid_t;
-#endif
+  #if defined(__KERNEL__)
+    #include <linux/types.h>
+    #include <linux/uuid.h>
+    #include <linux/version.h>
+  #elif defined(__cplusplus)
+    #include <cstdlib>
+    #include <cstdint>
+    #include <algorithm>
+    #include <uuid/uuid.h>
+  #else
+    #include <stdlib.h>
+    #include <stdint.h>
+    #include <uuid/uuid.h>
+  #endif
+
+  #if !defined(__KERNEL__)
+    typedef uuid_t xuid_t;
+  #else //(__KERNEL__)
+    #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
+      typedef uuid_t xuid_t;
+    #elif defined(RHEL_RELEASE_CODE)
+      #if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7,4)
+        typedef uuid_t xuid_t;
+      #else
+        typedef uuid_le xuid_t;
+      #endif
+    #else
+      typedef uuid_le xuid_t;
+    #endif
+  #endif
 #endif
 
 #ifdef __cplusplus
@@ -326,9 +333,9 @@ extern "C" {
     };
 
     struct clock_freq {                    /* Clock Frequency Entry */
-        u_int16_t m_freq_Mhz;              /* Frequency in MHz */
-        u_int8_t m_type;                   /* Clock type (enum CLOCK_TYPE) */
-        u_int8_t m_unused[5];              /* Not used - padding */
+        uint16_t m_freq_Mhz;               /* Frequency in MHz */
+        uint8_t m_type;                    /* Clock type (enum CLOCK_TYPE) */
+        uint8_t m_unused[5];               /* Not used - padding */
         char m_name[128];                  /* Clock Name */
     };
 
@@ -382,7 +389,7 @@ extern "C" {
       {
         auto begin = top->m_sections;
         auto end = begin + top->m_header.m_numSections;
-        auto itr = std::find_if(begin,end,[kind](const axlf_section_header& sec) { return sec.m_sectionKind==kind; });
+        auto itr = std::find_if(begin,end,[kind](const axlf_section_header& sec) { return sec.m_sectionKind==(const uint32_t) kind; });
         return (itr!=end) ? &(*itr) : nullptr;
       }
     }
