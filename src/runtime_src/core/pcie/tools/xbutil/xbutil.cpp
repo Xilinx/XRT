@@ -1165,7 +1165,6 @@ int xcldev::xclReset(int argc, char *argv[])
 {
     int c;
     unsigned index = 0;
-    bool root = ((getuid() == 0) || (geteuid() == 0));
     const std::string usage("Options: [-d index]");
 
     while ((c = getopt(argc, argv, "d:")) != -1) {
@@ -1189,11 +1188,6 @@ int xcldev::xclReset(int argc, char *argv[])
     if (optind != argc) {
         std::cerr << usage << std::endl;
         return -EINVAL;
-    }
-
-    if (!root) {
-        std::cout << "ERROR: root privileges required." << std::endl;
-        return -EPERM;
     }
 
     std::cout << "All existing processes will be killed." << std::endl;
