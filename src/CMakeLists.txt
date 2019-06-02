@@ -1,6 +1,8 @@
 PROJECT(XRT)
 CMAKE_MINIMUM_REQUIRED(VERSION 3.0.0)
 
+ENABLE_TESTING()
+
 SET(PROJECT_DESCRIPTION "https://github.com/Xilinx/XRT")
 
 # Exported interface into XRT for include from implemenation
