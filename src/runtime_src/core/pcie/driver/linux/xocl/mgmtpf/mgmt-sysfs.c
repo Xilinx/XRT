@@ -290,8 +290,7 @@ static ssize_t config_mailbox_channel_switch_store(struct device *dev,
 		return -EINVAL;
 
 	(void) xocl_mailbox_set(lro, CHAN_SWITCH, val);
-	mgmt_err(lro, "mailbox channel switch changed on mgmt pf\n");
-	mgmt_err(lro, "user pf won't be notified until next load of xocl\n");
+	xclmgmt_connect_notify(lro, true);
 
 	return count;
 }
@@ -323,8 +322,7 @@ static ssize_t config_mailbox_comm_id_store(struct device *dev,
 	(void) memcpy(id, buf, count);
 	(void) xocl_mailbox_set(lro, COMM_ID, (u64)(uintptr_t)id);
 	vfree(id);
-	mgmt_err(lro, "mailbox communication ID changed on mgmt pf\n");
-	mgmt_err(lro, "user pf won't be notified until next load of xocl\n");
+	xclmgmt_connect_notify(lro, true);
 
 	return count;
 }

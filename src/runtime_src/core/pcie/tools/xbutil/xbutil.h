@@ -382,10 +382,11 @@ public:
         std::vector<char> buf, temp_buf;
         std::vector<std::string> mm_buf, stream_stat;
         uint64_t memoryUsage, boCount;
-	auto dev = pcidev::get_dev(m_idx);
+        auto dev = pcidev::get_dev(m_idx);
 
         dev->sysfs_get("icap", "mem_topology", errmsg, buf);
         dev->sysfs_get("", "memstat_raw", errmsg, mm_buf);
+        dev->sysfs_get("xmc", "temp_by_mem_topology", errmsg, temp_buf);
 
         const mem_topology *map = (mem_topology *)buf.data();
         const uint32_t *temp = (uint32_t *)temp_buf.data();
@@ -482,7 +483,7 @@ public:
     {
         std::stringstream ss;
         std::string errmsg;
-        std::vector<char> buf;
+        std::vector<char> buf, temp_buf;
         std::vector<std::string> mm_buf;
 
         ss << std::left << std::setw(48) << "Mem Topology"
@@ -494,12 +495,14 @@ public:
             return;
         }
         pcidev::get_dev(m_idx)->sysfs_get("icap", "mem_topology", errmsg, buf);
-
         if (!errmsg.empty()) {
             ss << errmsg << std::endl;
             lines.push_back(ss.str());
             return;
         }
+
+        pcidev::get_dev(m_idx)->sysfs_get("xmc", "temp_by_mem_topology", errmsg, temp_buf);
+        const uint32_t *temp = (uint32_t *)temp_buf.data();
 
         const mem_topology *map = (mem_topology *)buf.data();
         unsigned numDDR = 0;
@@ -550,10 +553,9 @@ public:
             }
 
             ss << std::left << std::setw(12) << str;
-            if (i < sizeof (m_devinfo.mDimmTemp) / sizeof (m_devinfo.mDimmTemp[0]) &&
-                m_devinfo.mDimmTemp[i] != XCL_INVALID_SENSOR_VAL &&
-                m_devinfo.mDimmTemp[i] != XCL_NO_SENSOR_DEV_S) {
-                ss << std::setw(12) << std::to_string(m_devinfo.mDimmTemp[i]) + " C";
+
+            if (!temp_buf.empty()) {
+                ss << std::setw(12) << std::to_string(temp[i]) + " C";
             } else {
                 ss << std::setw(12) << "Not Supp";
             }

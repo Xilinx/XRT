@@ -133,6 +133,7 @@ static int runKernel(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose
                 munmap(iter->second, 4096);
                 xclFreeBO(handle, iter->first);
                 iter = cmdBO.erase(iter);
+                break;
             default:
                 iter++;
             }

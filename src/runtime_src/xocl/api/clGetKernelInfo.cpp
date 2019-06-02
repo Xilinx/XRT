@@ -23,6 +23,7 @@
 #include "xocl/core/kernel.h"
 #include "xocl/core/program.h"
 #include "xocl/core/context.h"
+#include "xocl/core/compute_unit.h"
 #include "xocl/xclbin/xclbin.h"
 
 #include "detail/kernel.h"
@@ -86,11 +87,11 @@ clGetKernelInfo(cl_kernel        kernel,
       buffer.as<char>() = xocl(kernel)->get_attributes();
       break;
     case CL_KERNEL_COMPUTE_UNIT_COUNT:
-      buffer.as<cl_uint>() = xocl(kernel)->get_instance_names().size();
+      buffer.as<cl_uint>() = xocl(kernel)->get_cus().size();
       break;
     case CL_KERNEL_INSTANCE_BASE_ADDRESS: 
-      for (auto& inst : xocl(kernel)->get_symbol().instances)
-        buffer.as<size_t>() = inst.base;
+      for (auto cu : xocl(kernel)->get_cus())
+        buffer.as<size_t>() = cu->get_base_addr();
       break;
     default:
       throw error(CL_INVALID_VALUE,"clGetKernelInfo invalud param name");

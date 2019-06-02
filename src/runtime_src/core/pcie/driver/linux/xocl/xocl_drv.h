@@ -642,6 +642,12 @@ enum data_kind {
 	FREQ_COUNTER_2,
 	FREQ_COUNTER_3,
 	PEER_UUID,
+	HBM_TEMP,
+	CAGE_TEMP0,
+	CAGE_TEMP1,
+	CAGE_TEMP2,
+	CAGE_TEMP3,
+	VCC_0V85,
 };
 
 enum mb_kind {

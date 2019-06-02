@@ -28,7 +28,11 @@
 #include <boost/uuid/uuid.hpp>          // for uuid
 #include <boost/uuid/uuid_io.hpp>       // for to_string
 
-#include <arpa/inet.h>
+#ifdef _WIN32
+  #include <winsock2.h>
+#else
+  #include <arpa/inet.h>
+#endif
 
 namespace XUtil = XclBinUtilities;
 
@@ -55,7 +59,7 @@ XclBinUtilities::TRACE(const std::string& _msg, bool _endl) {
 void
 XclBinUtilities::TRACE_BUF(const std::string& _msg,
                            const char* _pData,
-                           unsigned long _size) {
+                           uint64_t _size) {
   if (!m_bVerbose)
     return;
 
@@ -64,7 +68,7 @@ XclBinUtilities::TRACE_BUF(const std::string& _msg,
 
   buf << std::hex << std::setfill('0');
 
-  unsigned long address = 0;
+  uint64_t address = 0;
   while (address < _size) {
     // We know we have data, create the address entry
     buf << "       " << std::setw(8) << address;
@@ -185,7 +189,7 @@ XclBinUtilities::safeStringCopy(char* _destBuffer,
   unsigned int bytesToCopy = _bufferSize - 1;
 
   if (_source.size() < bytesToCopy) {
-    bytesToCopy = _source.length();
+    bytesToCopy = (unsigned int) _source.length();
   }
 
   // Copy the string
@@ -193,7 +197,7 @@ XclBinUtilities::safeStringCopy(char* _destBuffer,
 }
 
 unsigned int
-XclBinUtilities::bytesToAlign(unsigned int _offset) {
+XclBinUtilities::bytesToAlign(uint64_t _offset) {
   unsigned int bytesToAlign = (_offset & 0x7) ? 0x8 - (_offset & 0x7) : 0;
 
   return bytesToAlign;
@@ -203,7 +207,7 @@ unsigned int
 XclBinUtilities::alignBytes(std::ostream & _buf, unsigned int _byteBoundary)
 {
   _buf.seekp(0, std::ios_base::end);
-  unsigned int bufSize = _buf.tellp();
+  uint64_t bufSize = (uint64_t) _buf.tellp();
   unsigned int bytesAdded = 0;
 
   if ((bufSize % _byteBoundary) != 0 ) {
@@ -220,7 +224,7 @@ XclBinUtilities::alignBytes(std::ostream & _buf, unsigned int _byteBoundary)
 
 void
 XclBinUtilities::binaryBufferToHexString(const unsigned char* _binBuf,
-                                         unsigned int _size,
+                                         uint64_t _size,
                                          std::string& _outputString) {
   // Initialize output data
   _outputString.clear();
@@ -279,6 +283,28 @@ XclBinUtilities::hexStringToBinaryBuffer(const std::string& _inputString,
   }
 }
 
+#ifdef _WIN32
+uint64_t
+XclBinUtilities::stringToUInt64(const std::string& _sInteger) {
+  uint64_t value = 0;
+
+  // Is it a hex value
+  if ((_sInteger.length() > 2) &&
+      (_sInteger[0] == '0') &&
+      (_sInteger[1] == 'x')) {
+    if (1 == sscanf_s(_sInteger.c_str(), "%" PRIx64 "", &value)) {
+      return value;
+    }
+  } else {
+    if (1 == sscanf_s(_sInteger.c_str(), "%" PRId64 "", &value)) {
+      return value;
+    }
+  }
+
+  std::string errMsg = "ERROR: Invalid integer string in JSON file: '" + _sInteger + "'";
+  throw std::runtime_error(errMsg);
+}
+#else
 uint64_t
 XclBinUtilities::stringToUInt64(const std::string& _sInteger) {
   uint64_t value = 0;
@@ -299,6 +325,7 @@ XclBinUtilities::stringToUInt64(const std::string& _sInteger) {
   std::string errMsg = "ERROR: Invalid integer string in JSON file: '" + _sInteger + "'";
   throw std::runtime_error(errMsg);
 }
+#endif
 
 void
 XclBinUtilities::printKinds() {
@@ -328,9 +355,9 @@ bool
 XclBinUtilities::findBytesInStream(std::fstream& _istream, const std::string& _searchString, unsigned int& _foundOffset) {
   _foundOffset = 0;
 
-  unsigned int savedLocation = _istream.tellg();
+  std::iostream::pos_type savedLocation = _istream.tellg();
 
-  unsigned int stringLength = _searchString.length();
+  unsigned int stringLength = (unsigned int) _searchString.length();
   unsigned int matchIndex = 0;
 
   char aChar;
@@ -355,10 +382,12 @@ static
 const std::string &getSignatureMagicValue()
 {
   // Magic Value: 5349474E-9DFF41C0-8CCB82A7-131CC9F3
-  static std::string sMagicString {(char) 0x53, (char) 0x49, (char) 0x47, (char) 0x4E, 
-                                   (char) 0x9D, (char) 0xFF, (char) 0x41, (char) 0xC0, 
-                                   (char) 0x8C, (char) 0xCB, (char) 0x82, (char) 0xA7, 
-                                   (char) 0x13, (char) 0x1C, (char) 0xC9, (char) 0xF3};
+  unsigned char magicChar[] = { 0x53, 0x49, 0x47, 0x4E, 
+                                             0x9D, 0xFF, 0x41, 0xC0, 
+                                             0x8C, 0xCB, 0x82, 0xA7, 
+                                             0x13, 0x1C, 0xC9, 0xF3};
+
+  static std::string sMagicString((char *) &magicChar[0], 16);
 
   return sMagicString;
 }
@@ -484,11 +513,11 @@ createSignatureBufferImage(std::ostringstream& _buf, const std::string & _sSigna
   memcpy(&signature.magicValue, magicValue.c_str(), sizeof(XUtil::SignatureHeader::magicValue));
 
   signature.signatureOffset = runningOffset;
-  signature.signatureSize = _sSignature.size();
+  signature.signatureSize = (unsigned int) _sSignature.size();
   runningOffset += signature.signatureSize;
 
   signature.signedByOffset = runningOffset;
-  signature.signedBySize = _sSignedBy.size();
+  signature.signedBySize = (unsigned int) _sSignedBy.size();
   runningOffset += signature.signedBySize;
 
   signature.totalSignatureSize = runningOffset;

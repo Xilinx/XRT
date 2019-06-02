@@ -1,3 +1,4 @@
+if(NOT WIN32)
 # Set INTERNAL_TESTING variable by setting the shell environment 
 # variable "AWS_F1_TARGET" when invoking build.sh or cmake. If it
 # is not defined, default to INTERNAL_TESTING = 1.
@@ -13,3 +14,9 @@ add_subdirectory(common)
 add_subdirectory(linux)
 add_subdirectory(tools)
 add_subdirectory(driver)
+
+else()
+
+add_subdirectory(windows)
+  
+endif(NOT WIN32)

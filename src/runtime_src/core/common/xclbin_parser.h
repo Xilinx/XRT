@@ -24,6 +24,28 @@
 namespace xrt_core { namespace xclbin {
 
 /**
+ * Get specific binary section of the axlf structure
+ *
+ * auto data = axlf_section_type::get<const ip_layout*>(top,axlf_section_kind::IP_LAYOUT);
+ */
+template <typename SectionType>
+struct axlf_section_type;
+
+template <typename SectionType>
+struct axlf_section_type<SectionType*>
+{
+  static SectionType*
+  get(const axlf* top, axlf_section_kind kind)
+  {
+    if (auto header = ::xclbin::get_axlf_section(top, kind)) {
+      auto begin = reinterpret_cast<const char*>(top) + header->m_sectionOffset ;
+      return reinterpret_cast<SectionType*>(begin);
+    }
+    return nullptr;
+  }
+};
+
+/**
  * memidx_to_name() - Convert mem topology memory index to name
  */
 std::string
@@ -40,6 +62,9 @@ get_cus(const axlf* top, bool encode=false);
 std::vector<std::pair<uint64_t, size_t>>
 get_debug_ips(const axlf* top);
 
+/**
+ * get_cu_base_offset() - Get minimum base offset of all IP_KERNEL objects
+ */
 uint64_t
 get_cu_base_offset(const axlf* top);
 
