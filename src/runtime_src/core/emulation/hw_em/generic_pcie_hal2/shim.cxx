@@ -158,49 +158,41 @@ namespace xclhwemhal2 {
     char* pdi = nullptr;
     char* emuData = nullptr;
 
-    if ((!std::memcmp(bitstreambin, "xclbin0", 7)) || (!std::memcmp(bitstreambin, "xclbin1", 7)))
-    {
+    if (std::memcmp(bitstreambin, "xclbin2", 7)) {
       PRINTENDFUNC;
       return -1;
     }
-    else if (!std::memcmp(bitstreambin,"xclbin2",7))
-    {
-      auto top = reinterpret_cast<const axlf*>(header);
-      if (auto sec = xclbin::get_axlf_section(top,EMBEDDED_METADATA)) {
-        xmlFileSize = sec->m_sectionSize;
-        xmlFile = new char[xmlFileSize];
-        memcpy(xmlFile, bitstreambin + sec->m_sectionOffset, xmlFileSize);
-      }
-      if (auto sec = xclbin::get_axlf_section(top,BITSTREAM)) {
-        zipFileSize = sec->m_sectionSize;
-        zipFile = new char[zipFileSize];
-        memcpy(zipFile, bitstreambin + sec->m_sectionOffset, zipFileSize);
-      }
-      if (auto sec = xclbin::get_axlf_section(top,DEBUG_IP_LAYOUT)) {
-        debugFileSize = sec->m_sectionSize;
-        debugFile = new char[debugFileSize];
-        memcpy(debugFile, bitstreambin + sec->m_sectionOffset, debugFileSize);
-      }
-      if (auto sec = xclbin::get_axlf_section(top,MEM_TOPOLOGY)) {
-        memTopologySize = sec->m_sectionSize;
-        memTopology = new char[memTopologySize];
-        memcpy(memTopology, bitstreambin + sec->m_sectionOffset, memTopologySize);
-      }
-      if (auto sec = xclbin::get_axlf_section(top,PDI)) {
-        pdiSize = sec->m_sectionSize;
-        pdi = new char[pdiSize];
-        memcpy(pdi, bitstreambin + sec->m_sectionOffset,pdiSize);
-      }
-      if (auto sec = xclbin::get_axlf_section(top, EMULATION_DATA)) {
-        emuDataSize = sec->m_sectionSize;
-        emuData = new char[emuDataSize];
-        memcpy(emuData, bitstreambin + sec->m_sectionOffset, emuDataSize);
-      }
+
+    auto top = reinterpret_cast<const axlf*>(header);
+    if (auto sec = xclbin::get_axlf_section(top, EMBEDDED_METADATA)) {
+      xmlFileSize = sec->m_sectionSize;
+      xmlFile = new char[xmlFileSize];
+      memcpy(xmlFile, bitstreambin + sec->m_sectionOffset, xmlFileSize);
     }
-    else
-    {
-      PRINTENDFUNC;
-      return -1;
+    if (auto sec = xclbin::get_axlf_section(top, BITSTREAM)) {
+      zipFileSize = sec->m_sectionSize;
+      zipFile = new char[zipFileSize];
+      memcpy(zipFile, bitstreambin + sec->m_sectionOffset, zipFileSize);
+    }
+    if (auto sec = xclbin::get_axlf_section(top, DEBUG_IP_LAYOUT)) {
+      debugFileSize = sec->m_sectionSize;
+      debugFile = new char[debugFileSize];
+      memcpy(debugFile, bitstreambin + sec->m_sectionOffset, debugFileSize);
+    }
+    if (auto sec = xclbin::get_axlf_section(top, MEM_TOPOLOGY)) {
+      memTopologySize = sec->m_sectionSize;
+      memTopology = new char[memTopologySize];
+      memcpy(memTopology, bitstreambin + sec->m_sectionOffset, memTopologySize);
+    }
+    if (auto sec = xclbin::get_axlf_section(top, PDI)) {
+      pdiSize = sec->m_sectionSize;
+      pdi = new char[pdiSize];
+      memcpy(pdi, bitstreambin + sec->m_sectionOffset, pdiSize);
+    }
+    if (auto sec = xclbin::get_axlf_section(top, EMULATION_DATA)) {
+      emuDataSize = sec->m_sectionSize;
+      emuData = new char[emuDataSize];
+      memcpy(emuData, bitstreambin + sec->m_sectionOffset, emuDataSize);
     }
 
     if(!zipFile || !xmlFile)
@@ -278,11 +270,11 @@ namespace xclhwemhal2 {
     }
 
     //TBD the file read may slowdown things...whenever xclLoadBitStream hal API implementation changes, we also need to make changes.
-    char fileName[1024];
+    std::unique_ptr<char[]> fileName(new char[1024]);
 #ifndef _WINDOWS
     // TODO: Windows build support
     //    getpid is defined in unistd.h
-    std::sprintf(fileName, "%s/tempFile_%d", deviceDirectory.c_str(),binaryCounter);
+    std::sprintf(fileName.get(), "%s/tempFile_%d", deviceDirectory.c_str(),binaryCounter);
 #endif
 
     if(mMemModel)
@@ -300,7 +292,7 @@ namespace xclhwemhal2 {
 
     systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::CREATE);
 
-    std::ofstream os(fileName);
+    std::ofstream os(fileName.get());
     os.write(zipFile, zipFileSize);
     os.close();
 
@@ -349,20 +341,20 @@ namespace xclhwemhal2 {
       fclose(fp2);
     }
 
-    char emuDataFileName[1024];
+    std::unique_ptr<char[]> emuDataFileName(new char[1024]);
 #ifndef _WINDOWS
     // TODO: Windows build support
     // getpid is defined in unistd.h
-    std::sprintf(emuDataFileName, "%s/emuDataFile_%d", binaryDirectory.c_str(), binaryCounter);
+    std::sprintf(emuDataFileName.get(), "%s/emuDataFile_%d", binaryDirectory.c_str(), binaryCounter);
 #endif
 
     if ((emuData != nullptr) && (emuDataSize> 1))
     {
-      std::ofstream os(emuDataFileName);
+      std::ofstream os(emuDataFileName.get());
       os.write(emuData, emuDataSize);
       os.close();
 
-      std::string emuDataFilePath(emuDataFileName);
+      std::string emuDataFilePath(emuDataFileName.get());
       systemUtil::makeSystemCall(emuDataFilePath, systemUtil::systemOperation::UNZIP, binaryDirectory);
     }
 
@@ -495,7 +487,7 @@ namespace xclhwemhal2 {
       std::string userSpecifiedSimPath = xclemulation::config::getInstance()->getSimDir();
       if(userSpecifiedSimPath.empty())
       {
-        std::string _sFilePath(fileName);
+        std::string _sFilePath(fileName.get());
         systemUtil::makeSystemCall (_sFilePath, systemUtil::systemOperation::UNZIP, binaryDirectory);
         systemUtil::makeSystemCall (binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777");
       }
@@ -600,7 +592,7 @@ namespace xclhwemhal2 {
           mLogStream << __func__ << " xocc command line: " << launcherArgs << std::endl;
 
         const char* simMode = NULL;
-        if ( emuData ) {
+        if (emuData) {
           launcherArgs += " -emuData " + binaryDirectory + "/krnl_aie_vadd_int/aieshim_solution.aiesol";
         }
 
