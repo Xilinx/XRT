@@ -153,6 +153,19 @@ if (GTEST_FOUND)
 
   message (STATUS "GTest libraries: '${Boost_LIBRARIES} ${GTEST_BOTH_LIBRARIES} pthread'")
   target_link_libraries(xclbintest ${Boost_LIBRARIES} ${GTEST_BOTH_LIBRARIES} pthread )
+
+  message(STATUS "Configuring CMake to run unit test after building")
+  set(UNIT_TEST_XCLBINUTIL xclbintest)
+  add_test(NAME ${UNIT_TEST_XCLBINUTIL} COMMAND ${UNIT_TEST_XCLBINUTIL})
+# Execute unit tests after the xclbintest is created.
+# Note: This command works GREAT if the tests pass.  If they fail xclbintest is deleted :(
+#  add_custom_command(
+#     TARGET ${UNIT_TEST_XCLBINUTIL}
+#     COMMENT "Run xclbinutil unit-tests"
+#     POST_BUILD 
+#     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+#     COMMAND ${CMAKE_CTEST_COMMAND} -C ${CMAKE_BUILD_TYPE} -R ${UNIT_TEST_XCLBINUTIL} --output-on-failures
+#  )
 else()
   message (STATUS "GTest was not found, skipping generation of test executables")
 endif()
