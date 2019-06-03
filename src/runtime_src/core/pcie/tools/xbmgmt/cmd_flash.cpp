@@ -44,24 +44,34 @@ static int scanDevices(bool verbose, bool json)
     }
 
     for(unsigned i = 0; i < total; i++) {
-        const std::string card = "card" + std::to_string(i);
         Flasher f(i);
         if (!f.isValid())
             continue;
 
         DSAInfo board = f.getOnBoardDSA();
         std::vector<DSAInfo> installedDSA = f.getInstalledDSA();
+        BoardInfo info;
+        const auto getinfo_res = f.getBoardInfo(info);
         if (json) {
-            sensor_tree::put(card+".bdf", f.sGetDBDF());
-            sensor_tree::put(card+".type", board.board);
-            sensor_tree::put(card+".flashtype", f.sGetFlashType());
-            sensor_tree::put(card+".shell", board);
+            const std::string card = "card" + std::to_string(i);
             if (!installedDSA.empty()) {
                 std::stringstream shellpackage;
                 for (auto& d : installedDSA)
                     shellpackage << d << "; ";
-                sensor_tree::put(card+".shellpackage", shellpackage.str());
+                sensor_tree::put(card + ".shellpackage", shellpackage.str());
             }
+            if (getinfo_res == 0) {
+                sensor_tree::put(card + ".name", info.mName);
+                sensor_tree::put(card + ".serial", info.mSerialNum);
+                sensor_tree::put(card + ".config_mode", info.mConfigMode);
+                sensor_tree::put(card + ".fan_presence", info.mFanPresence);
+                sensor_tree::put(card + ".max_power", info.mMaxPower);
+                sensor_tree::put(card + ".mac0", info.mMacAddr0);
+                sensor_tree::put(card + ".mac1", info.mMacAddr1);
+                sensor_tree::put(card + ".mac2", info.mMacAddr2);
+                sensor_tree::put(card + ".mac3", info.mMacAddr3);
+            }
+            sensor_tree::json_dump( std::cout );
         } else {
             std::cout << "Card [" << f.sGetDBDF() << "]" << std::endl;
             std::cout << "\tCard type:\t\t" << board.board << std::endl;
@@ -77,21 +87,7 @@ static int scanDevices(bool verbose, bool json)
                 std::cout << "(None)";
             }
             std::cout << std::endl;
-        }
-
-        BoardInfo info;
-        if ((verbose || json) && f.getBoardInfo(info) == 0) {
-            if (json) {
-                sensor_tree::put(card+".name", info.mName);
-                sensor_tree::put(card+".serial", info.mSerialNum);
-                sensor_tree::put(card+".config_mode", info.mConfigMode);
-                sensor_tree::put(card+".fan_presence", info.mFanPresence);
-                sensor_tree::put(card+".max_power", info.mMaxPower);
-                sensor_tree::put(card+".mac0", info.mMacAddr0);
-                sensor_tree::put(card+".mac1", info.mMacAddr1);
-                sensor_tree::put(card+".mac2", info.mMacAddr2);
-                sensor_tree::put(card+".mac3", info.mMacAddr3);
-            } else {
+            if (verbose && getinfo_res == 0) {
                 std::cout << "\tCard name\t\t" << info.mName << std::endl;
 #if 0   // Do not print out rev until further notice
                 std::cout << "\tCard rev\t\t" << info.mRev << std::endl;
@@ -105,12 +101,9 @@ static int scanDevices(bool verbose, bool json)
                 std::cout << "\tMAC address2:\t\t" << info.mMacAddr2 << std::endl;
                 std::cout << "\tMAC address3:\t\t" << info.mMacAddr3 << std::endl;
             }
-        }
-        if (!json)
             std::cout << std::endl;
+        }
     }
-    if (json)
-        sensor_tree::json_dump( std::cout );
 
     return 0;
 }
@@ -388,20 +381,17 @@ static int flashCompatibleMode(int argc, char *argv[])
 
     if (strcmp(argv[1], "scan") == 0) {
         bool verbose = false;
-        bool json = false;
 
         if (argc > 3)
             return -EINVAL;
 
         if (argc == 3) {
-            if (strcmp(argv[2], "-v") == 0)
-              verbose = true;
-            else if (strcmp(argv[2], "-j") == 0)
-              json = true;
-            else return -EINVAL;
+            if (strcmp(argv[2], "-v") != 0)
+                return -EINVAL;
+            verbose = true;
         }
 
-        return scanDevices(verbose, json);
+        return scanDevices(verbose, false);
     }
 
     unsigned devIdx = UINT_MAX;
@@ -514,6 +504,8 @@ static int scan(int argc, char *argv[])
             return -EINVAL;
         }
     }
+    if (verbose && json)
+        return -EINVAL;
     return scanDevices(verbose, json);
 }
 
