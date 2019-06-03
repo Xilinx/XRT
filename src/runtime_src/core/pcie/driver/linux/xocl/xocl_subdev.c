@@ -171,11 +171,17 @@ int xocl_subdev_create(xdev_handle_t xdev_hdl,
 				strncpy(subdev->res_name[i],
 					sdev_info->res[i].name,
 					XOCL_SUBDEV_RES_NAME_LEN - 1);
-			}
-
+			} else
+				res[i].name = NULL;
 		}
 
 		subdev->info.res = res;
+		if (sdev_info->bar_idx) {
+			subdev->info.bar_idx = subdev->bar_idx;
+			memcpy(subdev->bar_idx, sdev_info->bar_idx,
+			    sizeof(*sdev_info->bar_idx) * sdev_info->num_res);
+		} else
+			subdev->info.bar_idx = NULL;
 	}
 
 	if (sdev_info->override_name)
@@ -195,12 +201,14 @@ int xocl_subdev_create(xdev_handle_t xdev_hdl,
 	}
 
 	if (res) {
-		iostart = (sdev_info->level == XOCL_SUBDEV_LEVEL_STATIC) ?
-			pci_resource_start(core->pdev, core->bar_idx) :
-			pci_resource_start(core->pdev, sdev_info->bar_idx);
+		iostart = pci_resource_start(core->pdev, core->bar_idx);
 
 		for (i = 0; i < sdev_info->num_res; i++) {
 			if (sdev_info->res[i].flags & IORESOURCE_MEM) {
+				if (sdev_info->bar_idx)
+					iostart = pci_resource_start(
+						core->pdev,
+					       	(int)sdev_info->bar_idx[i]);
 				res[i].start += iostart;
 				res[i].end += iostart;
 			}

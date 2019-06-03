@@ -72,7 +72,7 @@ struct xocl_subdev_info {
 	int			data_len;
 	bool			multi_inst;
 	int			level;
-	int			bar_idx;
+	char			*bar_idx;
 	int			dyn_ip;
 	const char		*override_name;
 };
@@ -777,6 +777,17 @@ struct xocl_subdev_map {
 #define XOCL_RES_SCHEDULER_QDMA				\
 		((struct resource []) {			\
 			{				\
+			.start	= ERT_CSR_ADDR,		\
+			.end	= ERT_CSR_ADDR + 0xfff,	\
+			.flags	= IORESOURCE_MEM,	\
+			},				\
+			{				\
+			.start	= ERT_CQ_BASE_ADDR,	\
+			.end	= ERT_CQ_BASE_ADDR +	\
+		       		ERT_CQ_SIZE - 1,	\
+			.flags	= IORESOURCE_MEM,	\
+			},				\
+			{				\
 			.start	= 2,			\
 			.end	= 5,			\
 			.flags	= IORESOURCE_IRQ,	\
@@ -1288,11 +1299,22 @@ struct xocl_subdev_map {
 		.flash_type = FLASH_TYPE_SPI,				\
 	}
 
+#define	XOCL_DEVINFO_SCHEDULER_DYN				\
+	{						\
+		XOCL_SUBDEV_MB_SCHEDULER,		\
+		XOCL_MB_SCHEDULER,			\
+		NULL,					\
+		0,					\
+		&(char []){1},				\
+		1,					\
+		.level = XOCL_SUBDEV_LEVEL_PRP,         \
+	}
+
 #define USER_RES_DYNAMIC_IP						\
 		((struct xocl_subdev_info []) {				\
 		 	XOCL_DEVINFO_FEATURE_ROM_USER_DYN,		\
 		 	XOCL_DEVINFO_MAILBOX_USER_DYN,			\
-		 	XOCL_DEVINFO_SCHEDULER,				\
+		 	XOCL_DEVINFO_SCHEDULER_DYN,				\
 		 	XOCL_DEVINFO_ICAP_USER,				\
 		 	XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\

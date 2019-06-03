@@ -433,8 +433,6 @@ static int xocl_fdt_parse_seg(xdev_handle_t xdev_hdl, char *blob,
 			if (!subdevs[i].info.dyn_ip) {
 				subdevs[i].info.level = ip->level;
 				subdevs[i].pf = ntohl(*pfnum);
-				subdevs[i].info.bar_idx =
-					bar_idx ? ntohl(*bar_idx) : 0;
 				subdevs[i].info.dyn_ip++;
 				total++;
 				break;
@@ -463,6 +461,9 @@ static int xocl_fdt_parse_seg(xdev_handle_t xdev_hdl, char *blob,
 				ip->name, name, ip->major, ip->minor,
 				ip->level);
 			subdevs[i].res[idx].name = subdevs[i].res_name[idx];
+
+			subdevs[i].bar_idx[idx] =
+					bar_idx ? ntohl(*bar_idx) : 0;
 
 			subdevs[i].info.num_res++;
 			sz -= sizeof(*io_off) * 2;
@@ -631,6 +632,8 @@ static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 					sizeof(struct xocl_subdev));
 			rtn_subdevs[dev_num].info.res =
 				rtn_subdevs[dev_num].res;
+			rtn_subdevs[dev_num].info.bar_idx =
+				rtn_subdevs[dev_num].bar_idx;
 			for (ip_num = 0;
 				ip_num < rtn_subdevs[dev_num].info.num_res;
 				ip_num ++)

@@ -192,6 +192,7 @@ struct xocl_subdev {
 
         struct resource		res[XOCL_SUBDEV_MAX_RES];
 	char	res_name[XOCL_SUBDEV_MAX_RES][XOCL_SUBDEV_RES_NAME_LEN];
+	char			bar_idx[XOCL_SUBDEV_MAX_RES];
 };
 
 #define	XOCL_GET_SUBDEV_PRIV(dev)				\
@@ -940,4 +941,7 @@ void xocl_fini_xdma_mgmt(void);
 
 int __init xocl_init_flash(void);
 void xocl_fini_flash(void);
+
+int __init xocl_init_icap_bld(void);
+void xocl_fini_icap_bld(void);
 #endif

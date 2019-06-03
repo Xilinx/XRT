@@ -36,6 +36,7 @@ xclmgmt-y := \
 	../subdev/fmgr.o \
 	../subdev/xdma_mgmt.o \
 	../subdev/flash.o \
+	../subdev/icap_bld.o \
 	mgmt-core.o \
 	mgmt-cw.o \
 	mgmt-utils.o \
