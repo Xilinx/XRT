@@ -20,6 +20,7 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <sys/mman.h>
+#include <sys/prctl.h>
 
 #include "sk_types.h"
 #include "sk_daemon.h"
@@ -126,7 +127,7 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
   unsigned *args_from_host;
   unsigned int boh;
   int ret;
- 
+
   devHdl = initXRTHandle(0);
 
   ret = createSoftKernel(&boh, cu_idx);
@@ -149,7 +150,7 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
   }
 
   syslog(LOG_INFO, "%s_%d start running\n", name, cu_idx);
-    
+
   /* Set Kernel Ops */
   ops.getHostBO = &getHostBO;
   ops.mapBO     = &mapBO;
@@ -267,6 +268,7 @@ static void sigAct(int sig)
   wait((int *)0);
 }
 
+#define PNAME_LEN	(16)
 void configSoftKernel(xclSKCmd *cmd)
 {
   pid_t pid;
@@ -289,6 +291,12 @@ void configSoftKernel(xclSKCmd *cmd)
     pid = fork();
     if (pid == 0) {
       char path[XRT_MAX_PATH_LENGTH];
+      char proc_name[PNAME_LEN] = {};
+
+      (void)snprintf(proc_name, PNAME_LEN, "%s%d", cmd->krnl_name, i);
+      if (prctl(PR_SET_NAME, (char *)proc_name) != 0) {
+          syslog(LOG_ERR, "Unable to set process name to %s due to %s\n", proc_name, strerror(errno));
+      }
 
       getSoftKernelPathName(cmd->start_cuidx, path);
 
