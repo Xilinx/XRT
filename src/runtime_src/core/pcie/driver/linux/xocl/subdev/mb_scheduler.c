@@ -1540,30 +1540,28 @@ exec_create(struct platform_device *pdev, struct xocl_scheduler *xs)
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
-		xocl_err(&pdev->dev, "did not get CSR resource");
-		return NULL;
-	}
-
-	exec->csr_base = ioremap_nocache(res->start,
+		xocl_info(&pdev->dev, "did not get CSR resource");
+	} else {
+		exec->csr_base = ioremap_nocache(res->start,
 			res->end - res->start + 1);
-	if (!exec->csr_base) {
-		xocl_err(&pdev->dev, "map CSR resource failed");
-		return NULL;
+		if (!exec->csr_base) {
+			xocl_err(&pdev->dev, "map CSR resource failed");
+			return NULL;
+		}
 	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 	if (!res) {
-		iounmap(exec->csr_base);
-		xocl_err(&pdev->dev, "did not get CQ resource");
-		return NULL;
-	}
-
-	exec->cq_base = ioremap_nocache(res->start,
+		xocl_info(&pdev->dev, "did not get CQ resource");
+	} else {
+		exec->cq_base = ioremap_nocache(res->start,
 			res->end - res->start + 1);
-	if (!exec->cq_base) {
-		iounmap(exec->csr_base);
-		xocl_err(&pdev->dev, "map CQ resource failed");
-		return NULL;
+		if (!exec->cq_base) {
+			if (exec->csr_base)
+				iounmap(exec->csr_base);
+			xocl_err(&pdev->dev, "map CQ resource failed");
+			return NULL;
+		}
 	}
 
 	exec->pdev = pdev;
