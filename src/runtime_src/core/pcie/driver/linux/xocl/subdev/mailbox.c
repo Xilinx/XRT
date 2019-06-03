@@ -2228,7 +2228,7 @@ failed:
 }
 
 struct platform_device_id mailbox_id_table[] = {
-	{ XOCL_MAILBOX, 0 },
+	{ XOCL_DEVNAME(XOCL_MAILBOX), 0 },
 	{ },
 };
 
@@ -2236,7 +2236,7 @@ static struct platform_driver mailbox_driver = {
 	.probe		= mailbox_probe,
 	.remove		= mailbox_remove,
 	.driver		= {
-		.name	= XOCL_MAILBOX,
+		.name	= XOCL_DEVNAME(XOCL_MAILBOX),
 	},
 	.id_table = mailbox_id_table,
 };

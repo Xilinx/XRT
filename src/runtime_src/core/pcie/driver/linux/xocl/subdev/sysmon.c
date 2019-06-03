@@ -360,7 +360,7 @@ static int sysmon_remove(struct platform_device *pdev)
 }
 
 struct platform_device_id sysmon_id_table[] = {
-	{ XOCL_SYSMON, 0 },
+	{ XOCL_DEVNAME(XOCL_SYSMON), 0 },
 	{ },
 };
 
@@ -368,7 +368,7 @@ static struct platform_driver	sysmon_driver = {
 	.probe		= sysmon_probe,
 	.remove		= sysmon_remove,
 	.driver		= {
-		.name = "xocl_sysmon",
+		.name = XOCL_DEVNAME(XOCL_SYSMON),
 	},
 	.id_table = sysmon_id_table,
 };

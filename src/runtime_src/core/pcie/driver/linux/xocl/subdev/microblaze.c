@@ -704,7 +704,7 @@ failed:
 }
 
 struct platform_device_id mb_id_table[] = {
-	{ XOCL_MB, 0 },
+	{ XOCL_DEVNAME(XOCL_MB), 0 },
 	{ },
 };
 

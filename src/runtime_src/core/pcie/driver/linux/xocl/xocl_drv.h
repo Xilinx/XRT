@@ -28,6 +28,8 @@
 #include "xocl_ioctl.h"
 #include "mgmt-ioctl.h"
 #include "mailbox_proto.h"
+#include <linux/libfdt_env.h>
+#include "lib/libfdt/libfdt.h"
 
 
 #if defined(RHEL_RELEASE_CODE)
@@ -87,6 +89,7 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 		snprintf(((struct xocl_dev_core *)xdev)->ebuf, XOCL_EBUF_LEN,	\
 		fmt, ##args)
 #define MAX_M_COUNT      64
+#define XOCL_MAX_FDT_LEN		1024 * 512
 
 #define	XDEV2DEV(xdev)		(&XDEV(xdev)->pdev->dev)
 
@@ -185,8 +188,11 @@ struct xocl_subdev {
 	int				state;
 	struct xocl_subdev_info		info;
 	int				inst;
-	struct resource			res[XOCL_SUBDEV_MAX_RES];
+	int				pf;
+
+        struct resource		res[XOCL_SUBDEV_MAX_RES];
 	char	res_name[XOCL_SUBDEV_MAX_RES][XOCL_SUBDEV_RES_NAME_LEN];
+	char			bar_idx[XOCL_SUBDEV_MAX_RES];
 };
 
 #define	XOCL_GET_SUBDEV_PRIV(dev)				\
@@ -247,6 +253,8 @@ struct xocl_dev_core {
 	struct pci_dev		*pdev;
 	int			dev_minor;
 	struct xocl_subdev	*subdevs[XOCL_SUBDEV_NUM];
+	struct xocl_subdev	*dyn_subdev_store;
+	int			dyn_subdev_num;
 	struct xocl_pci_funcs	*pci_ops;
 
 	struct mutex 		lock;
@@ -264,8 +272,8 @@ struct xocl_dev_core {
 	struct xocl_health_thread_arg thread_arg;
 
 	struct xocl_drm		*drm;
-	struct delayed_work	reset_work;
 
+	char			*fdt_blob;
 	struct xocl_board_private priv;
 
 	rwlock_t		rwlock;
@@ -319,7 +327,7 @@ struct xocl_rom_funcs {
 	bool (*is_aws)(struct platform_device *pdev);
 	bool (*verify_timestamp)(struct platform_device *pdev, u64 timestamp);
 	u64 (*get_timestamp)(struct platform_device *pdev);
-	void (*get_raw_header)(struct platform_device *pdev, void *header);
+	int (*get_raw_header)(struct platform_device *pdev, void *header);
 	bool (*runtime_clk_scale_on)(struct platform_device *pdev);
 };
 #define ROM_DEV(xdev)	\
@@ -354,7 +362,7 @@ struct xocl_rom_funcs {
 	(ROM_CB(xdev, get_timestamp) ? ROM_OPS(xdev)->get_timestamp(ROM_DEV(xdev)) : 0)
 #define	xocl_get_raw_header(xdev, header) \
 	(ROM_CB(xdev, get_raw_header) ? ROM_OPS(xdev)->get_raw_header(ROM_DEV(xdev), header) :\
-	NULL)
+	-ENODEV)
 
 /* dma callbacks */
 struct xocl_dma_funcs {
@@ -786,14 +794,23 @@ struct xocl_mig_funcs {
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
 void xocl_init_dsa_priv(xdev_handle_t xdev_hdl);
 
+/* subdev mbx messages */
+#define XOCL_MSG_SUBDEV_VER	1
+#define XOCL_MSG_SUBDEV_DATA_LEN	(512 * 1024)
+
+enum {
+	XOCL_MSG_SUBDEV_RTN_EMPTY = 1,
+	XOCL_MSG_SUBDEV_RTN_PARTIAL,
+	XOCL_MSG_SUBDEV_RTN_COMPLETE,
+};
+
 /* subdev functions */
 int xocl_subdev_init(xdev_handle_t xdev_hdl);
 void xocl_subdev_fini(xdev_handle_t xdev_hdl);
 int xocl_subdev_create(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info);
 int xocl_subdev_create_by_id(xdev_handle_t xdev_hdl, int id);
-int xocl_subdev_create_all(xdev_handle_t xdev_hdl,
-	struct xocl_subdev_info *sdev_info, u32 subdev_num);
+int xocl_subdev_create_all(xdev_handle_t xdev_hdl);
 void xocl_subdev_destroy_all(xdev_handle_t xdev_hdl);
 int xocl_subdev_offline_all(xdev_handle_t xdev_hdl);
 int xocl_subdev_offline_by_id(xdev_handle_t xdev_hdl, u32 id);
@@ -804,6 +821,11 @@ void xocl_subdev_destroy_by_level(xdev_handle_t xdev_hdl, int level);
 
 int xocl_subdev_create_by_name(xdev_handle_t xdev_hdl, char *name);
 int xocl_subdev_destroy_by_name(xdev_handle_t xdev_hdl, char *name);
+
+void xocl_subdev_update_info(xdev_handle_t xdev_hdl,
+        struct xocl_subdev_info *info_array, int *num,
+        struct xocl_subdev_info *sdev_info);
+
 void xocl_subdev_register(struct platform_device *pldev, u32 id,
 	void *cb_funcs);
 void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in);
@@ -845,6 +867,22 @@ bool xocl_drvinst_get_offline(xdev_handle_t xdev_hdl);
 /* health thread functions */
 int health_thread_start(xdev_handle_t xdev);
 int health_thread_stop(xdev_handle_t xdev);
+
+/* subdev blob functions */
+int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob);
+int xocl_fdt_remove_subdevs(xdev_handle_t xdev_hdl, struct list_head *devlist);
+int xocl_fdt_unlink_node(xdev_handle_t xdev_hdl, void *node);
+int xocl_fdt_overlay(void *fdt, int target, void *fdto, int node, int pf);
+int xocl_fdt_build_priv_data(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev,
+		void **priv_data,  size_t *data_len);
+int xocl_fdt_get_userpf(xdev_handle_t xdev_hdl, void *blob);
+const char *xocl_fdt_get_prp_int_uuid(xdev_handle_t xdev_hdl, void *blob,
+		int *len);
+int xocl_fdt_add_vrom(xdev_handle_t xdev_hdl, void *blob, void *rom);
+const struct axlf_section_header *xocl_axlf_section_header(
+	xdev_handle_t xdev_hdl, const struct axlf *top,
+	enum axlf_section_kind kind);
+
 
 /* init functions */
 int __init xocl_init_userpf(void);
@@ -897,4 +935,13 @@ void xocl_fini_dna(void);
 
 int __init xocl_init_fmgr(void);
 void xocl_fini_fmgr(void);
+
+int __init xocl_init_xdma_mgmt(void);
+void xocl_fini_xdma_mgmt(void);
+
+int __init xocl_init_flash(void);
+void xocl_fini_flash(void);
+
+int __init xocl_init_icap_bld(void);
+void xocl_fini_icap_bld(void);
 #endif

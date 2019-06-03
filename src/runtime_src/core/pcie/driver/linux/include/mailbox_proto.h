@@ -57,6 +57,8 @@
  * @MAILBOX_REQ_USER_PROBE: for user pf to probe the peer mgmt pf
  * @MAILBOX_REQ_MGMT_STATE: for mgmt pf to notify user pf of its state change
  *                          (post only)
+ * @MAILBOX_REQ_CHG_SHELL: shell change is required on mgmt pf (post only)
+ * @MAILBOX_REQ_PROGRAM_SHELL: request mgmt pf driver to reprogram shell
  */
 enum mailbox_request {
 	MAILBOX_REQ_UNKNOWN =		0,
@@ -72,6 +74,8 @@ enum mailbox_request {
 	MAILBOX_REQ_PEER_DATA =		10,
 	MAILBOX_REQ_USER_PROBE =	11,
 	MAILBOX_REQ_MGMT_STATE =	12,
+	MAILBOX_REQ_CHG_SHELL =		13,
+	MAILBOX_REQ_PROGRAM_SHELL =	14,
 	/* Version 0 OP code ends */
 };
 
@@ -98,6 +102,7 @@ enum group_kind {
 	MIG_ECC,
 	FIREWALL,
 	DNA,
+	SUBDEV,
 };
 
 /**
@@ -201,6 +206,17 @@ struct xcl_dna {
 	uint64_t revision;
 };
 /**
+ * Data structure used to fetch SUBDEV group
+ */
+struct xcl_subdev {
+	uint32_t ver;
+	int32_t rtncode;
+	uint64_t checksum;
+	size_t size;
+	size_t offset;
+	uint64_t data[1];
+};
+/**
  * struct mailbox_subdev_peer - MAILBOX_REQ_PEER_DATA payload type
  * @kind: data group
  * @size: buffer size for receiving response
@@ -209,6 +225,7 @@ struct mailbox_subdev_peer {
 	enum group_kind kind;
 	size_t size;
 	uint64_t entries;
+	size_t offset;
 };
 
 /**

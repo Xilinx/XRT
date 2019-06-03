@@ -25,7 +25,8 @@ int health_thread(void *data)
 	while (!kthread_should_stop()) {
 		msleep_interruptible(thread_arg->interval);
 
-		thread_arg->health_cb(thread_arg->arg);
+		if (thread_arg->health_cb)
+			thread_arg->health_cb(thread_arg->arg);
 	}
 	xocl_info(thread_arg->dev, "The health thread has terminated.");
 	return 0;

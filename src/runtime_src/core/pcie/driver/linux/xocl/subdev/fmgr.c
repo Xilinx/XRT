@@ -147,7 +147,7 @@ static const struct fpga_manager_ops xocl_pr_ops = {
 #endif
 
 struct platform_device_id fmgr_id_table[] = {
-	{ XOCL_FMGR, 0 },
+	{ XOCL_DEVNAME(XOCL_FMGR), 0 },
 	{ },
 };
 

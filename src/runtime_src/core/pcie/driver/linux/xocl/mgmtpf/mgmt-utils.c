@@ -15,6 +15,7 @@
  *  GNU General Public License for more details.
  */
 
+#include <linux/firmware.h>
 #include "mgmt-core.h"
 #include <linux/module.h>
 #include "../xocl_drv.h"
@@ -409,4 +410,145 @@ void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	mgmt_info(lro, "Resetting for %d ms", i);
 
 	xocl_pci_restore_config_all(pdev);
+}
+
+int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
+{
+	int len, userpf_idx;
+	int ret;
+	struct FeatureRomHeader	rom_header;
+
+	if (!lro->core.fdt_blob)
+		return 0;
+
+	len = fdt_totalsize(lro->core.fdt_blob) + sizeof(rom_header)
+	       + 1024;
+	if (lro->userpf_blob)
+		vfree(lro->userpf_blob);
+
+	lro->userpf_blob = vzalloc(len);
+	if (!lro->userpf_blob)
+			return -ENOMEM;
+
+	ret = fdt_create_empty_tree(lro->userpf_blob, len);
+	if (ret) {
+		mgmt_err(lro, "create fdt failed %d", ret);
+		goto failed;
+	}
+
+	userpf_idx = xocl_fdt_get_userpf(lro, lro->core.fdt_blob);
+	if (userpf_idx >= 0) {
+		ret = xocl_fdt_overlay(lro->userpf_blob, 0,
+			lro->core.fdt_blob, 0, userpf_idx);
+		if (ret) {
+			mgmt_err(lro, "overlay fdt failed %d", ret);
+			goto failed;
+		}
+	}
+
+	ret = xocl_get_raw_header(lro, &rom_header);
+	if (ret) {
+		mgmt_err(lro, "get featurerom raw header failed %d", ret);
+		goto failed;
+	}
+
+	ret = xocl_fdt_add_vrom(lro, lro->userpf_blob, &rom_header);
+	if (ret) {
+		mgmt_err(lro, "add vrom failed %d", ret);
+		goto failed;
+	}
+
+	fdt_pack(lro->userpf_blob);
+
+	return 0;
+
+failed:
+	if (lro->userpf_blob) {
+		vfree(lro->userpf_blob);
+		lro->userpf_blob = NULL;
+	}
+
+	return ret;
+}
+
+int xclmgmt_program_shell(struct xclmgmt_dev *lro)
+{
+	int ret, i;
+
+	xocl_drvinst_offline(lro, true);
+	ret = xocl_subdev_offline_all(lro);
+	if (ret) {
+		mgmt_err(lro, "offline sub devices failed %d", ret);
+		goto failed;
+	}
+
+	for (i = XOCL_SUBDEV_LEVEL_URP; i > XOCL_SUBDEV_LEVEL_STATIC; i--)
+		xocl_subdev_destroy_by_level(lro, i);
+
+	// TODO: program partial bitstream
+	
+	ret = xocl_subdev_create_all(lro);
+	if (ret) {
+		mgmt_err(lro, "failed to create sub devices %d", ret);
+		goto failed;
+	}
+
+	xocl_subdev_online_by_id(lro, XOCL_SUBDEV_MAILBOX);
+	ret = xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
+	if (ret)
+		goto failed;
+
+	xocl_drvinst_offline(lro, false);
+failed:
+
+	return ret;
+
+}
+
+int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
+{
+	const struct firmware			*fw;
+	const struct axlf_section_header	*dtc_header;
+	struct axlf				*bin_axlf;
+	char					fw_name[128];
+	int					ret;
+
+	snprintf(fw_name, sizeof(fw_name),
+		"xilinx/%04x-%04x-%04x-%016llx.dsabin",
+		lro->core.pdev->vendor,
+		lro->core.pdev->device,
+		lro->core.pdev->subsystem_device,
+		xocl_get_timestamp(lro));
+
+	mgmt_info(lro, "Load fdt from %s", fw_name);
+	ret = request_firmware(&fw, fw_name, &lro->core.pdev->dev);
+	if (ret) {
+		mgmt_err(lro, "unable to find firmware");
+		goto failed;
+	}
+
+	bin_axlf = (struct axlf *)fw->data;
+	dtc_header = xocl_axlf_section_header(lro, bin_axlf, DTC);
+	if (!dtc_header)
+		goto failed;
+
+	ret = xocl_fdt_blob_input(lro,
+			(char *)fw->data + dtc_header->m_sectionOffset);
+	if (ret) {
+		mgmt_err(lro, "Invalid dtc");
+		goto failed;
+	}
+
+	xclmgmt_connect_notify(lro, false);
+	xocl_subdev_destroy_all(lro);
+	ret = xocl_subdev_create_all(lro);
+	xclmgmt_update_userpf_blob(lro);
+	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
+	xclmgmt_connect_notify(lro, true);
+
+failed:
+	if (fw)
+		release_firmware(fw);
+
+	return ret;
 }

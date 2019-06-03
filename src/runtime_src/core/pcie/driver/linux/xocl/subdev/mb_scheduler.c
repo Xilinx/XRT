@@ -90,6 +90,10 @@
 # define SCHED_DEBUG_PACKET(packet, size)
 #endif
 
+#define csr_read32(base, r_off)			\
+	ioread32((base) + (r_off) - ERT_CSR_ADDR)
+#define csr_write32(val, base, r_off)		\
+	iowrite32((val), (base) + (r_off) - ERT_CSR_ADDR)
 /* constants */
 static const unsigned int no_index = -1;
 
@@ -675,7 +679,7 @@ struct xocl_cu {
 	u32                control;
 	void __iomem       *base;
 	u32                addr;
-	u32                polladdr;
+	void __iomem       *polladdr;
 	u32                ap_check;
 
 	u32                ctrlreg;
@@ -686,7 +690,7 @@ struct xocl_cu {
 /*
  */
 void
-cu_reset(struct xocl_cu *xcu, unsigned int idx, void __iomem *base, u32 addr, u32 polladdr)
+cu_reset(struct xocl_cu *xcu, unsigned int idx, void __iomem *base, u32 addr, void *polladdr)
 {
 	xcu->idx = idx;
 	xcu->control = (addr & 0xFF);
@@ -697,7 +701,7 @@ cu_reset(struct xocl_cu *xcu, unsigned int idx, void __iomem *base, u32 addr, u3
 	xcu->ctrlreg = 0;
 	xcu->done_cnt = 0;
 	xcu->run_cnt = 0;
-	userpf_info(xcu->xdev, "configured cu(%d) base@0x%x poll@0x%x control(%d)\n",
+	userpf_info(xcu->xdev, "configured cu(%d) base@0x%x poll@0x%p control(%d)\n",
 		    xcu->idx, xcu->addr, xcu->polladdr, xcu->control);
 }
 
@@ -766,8 +770,8 @@ cu_continue(struct xocl_cu *xcu)
 
 	// in ert_poll mode acknowlegde done to ERT
 	if (xcu->polladdr && xcu->run_cnt) {
-		SCHED_DEBUGF("+ @0x%x\n", xcu->polladdr);
-		iowrite32(AP_CONTINUE, xcu->base + xcu->polladdr);
+		SCHED_DEBUGF("+ @0x%p\n", xcu->polladdr);
+		iowrite32(AP_CONTINUE, xcu->polladdr);
 	}
 
 	SCHED_DEBUGF("<- %s\n", __func__);
@@ -929,8 +933,8 @@ cu_start(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
 
 	// in ert poll mode request ERT to poll CU
 	if (xcu->polladdr) {
-		SCHED_DEBUGF("+ @0x%x\n", xcu->polladdr);
-		iowrite32(AP_START, xcu->base + xcu->polladdr);
+		SCHED_DEBUGF("+ @0x%p\n", xcu->polladdr);
+		iowrite32(AP_START, xcu->polladdr);
 	}
 
 	// add cmd to end of running queue
@@ -948,8 +952,8 @@ cu_start(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
  * sruct xocl_ert: Represents embedded scheduler in ert mode
  */
 struct xocl_ert {
-	void __iomem *base;
-	u32	     cq_addr;
+	void __iomem *csr_base;
+	void __iomem *cq_base;
 	unsigned int uid;
 
 	unsigned int slot_size;
@@ -959,17 +963,17 @@ struct xocl_ert {
 /*
  */
 struct xocl_ert *
-ert_create(void __iomem *base, u32 cq_addr)
+ert_create(void __iomem *csr_base, void __iomem *cq_base)
 {
 	struct xocl_ert *xert = kmalloc(sizeof(struct xocl_ert), GFP_KERNEL);
 	static unsigned int uid;
 
-	xert->base = base;
-	xert->cq_addr = cq_addr;
+	xert->csr_base = csr_base;
+	xert->cq_base = cq_base;
 	xert->uid = uid++;
 	xert->slot_size = 0;
 	xert->cq_intr = false;
-	SCHED_DEBUGF("%s(%d,0x%x)\n", __func__, xert->uid, xert->cq_addr);
+	SCHED_DEBUGF("%s(%d,0x%p)\n", __func__, xert->uid, xert->cq_base);
 	return xert;
 }
 
@@ -1002,7 +1006,7 @@ ert_cfg(struct xocl_ert *xert, unsigned int slot_size, bool cq_intr)
 static bool
 ert_start_cmd(struct xocl_ert *xert, struct xocl_cmd *xcmd)
 {
-	u32 slot_addr = xert->cq_addr + xcmd->slot_idx * xert->slot_size;
+	u32 slot_addr = xcmd->slot_idx * xert->slot_size;
 	struct ert_packet *ecmd = cmd_packet(xcmd);
 
 	SCHED_DEBUG_PACKET(ecmd, cmd_packet_size(xcmd));
@@ -1011,10 +1015,10 @@ ert_start_cmd(struct xocl_ert *xert, struct xocl_cmd *xcmd)
 
 	// write packet minus header
 	SCHED_DEBUGF("++ slot_idx=%d, slot_addr=0x%x\n", xcmd->slot_idx, slot_addr);
-	memcpy_toio(xert->base + slot_addr + 4, ecmd->data, (cmd_packet_size(xcmd) - 1) * sizeof(u32));
+	memcpy_toio(xert->cq_base + slot_addr + 4, ecmd->data, (cmd_packet_size(xcmd) - 1) * sizeof(u32));
 
 	// write header
-	iowrite32(ecmd->header, xert->base + slot_addr);
+	iowrite32(ecmd->header, xert->cq_base + slot_addr);
 
 	// trigger interrupt to embedded scheduler if feature is enabled
 	if (xert->cq_intr) {
@@ -1023,7 +1027,7 @@ ert_start_cmd(struct xocl_ert *xert, struct xocl_cmd *xcmd)
 
 		SCHED_DEBUGF("++ mb_submit writes slot mask 0x%x to CQ_INT register at addr 0x%x\n",
 			     mask, cq_int_addr);
-		iowrite32(mask, xert->base + cq_int_addr);
+		csr_write32(mask, xert->csr_base, cq_int_addr);
 	}
 	SCHED_DEBUGF("<- %s returns true\n", __func__);
 	return true;
@@ -1034,9 +1038,9 @@ ert_start_cmd(struct xocl_ert *xert, struct xocl_cmd *xcmd)
 static void
 ert_read_custat(struct xocl_ert *xert, unsigned int num_cus, u32 *cu_usage, struct xocl_cmd *xcmd)
 {
-	u32 slot_addr = xert->cq_addr + xcmd->slot_idx*xert->slot_size;
+	u32 slot_addr = xcmd->slot_idx*xert->slot_size;
 
-	memcpy_fromio(cu_usage, xert->base + slot_addr + 4, num_cus * sizeof(u32));
+	memcpy_fromio(cu_usage, xert->cq_base + slot_addr + 4, num_cus * sizeof(u32));
 }
 
 /**
@@ -1095,9 +1099,12 @@ struct exec_core {
 	struct mutex		   exec_lock;
 
 	void __iomem		   *base;
+	void __iomem		   *csr_base;
+	void __iomem		   *cq_base;
 	u32			   intr_base;
 	u32			   intr_num;
 	char			   ert_cfg_priv;
+	bool			   needs_reset;
 
 	wait_queue_head_t	   poll_wait_queue;
 
@@ -1279,10 +1286,10 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	// Create CUs for regular CUs
 	for (cuidx = 0; cuidx < exec->num_cus; ++cuidx) {
 		struct xocl_cu *xcu = exec->cus[cuidx];
-		u32 polladdr = (ert_poll)
+		void *polladdr = (ert_poll)
 			// cuidx+1 to reserve slot 0 for ctrl => max 127 CUs in ert_poll mode
-			? ERT_CQ_BASE_ADDR + (cuidx+1) * cfg->slot_size
-			: 0;
+			? (char *)exec->cq_base + (cuidx+1) * cfg->slot_size
+			: NULL;
 
 		if (!xcu)
 			xcu = exec->cus[cuidx] = cu_create(xdev);
@@ -1296,9 +1303,9 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		for (addr = cdma; addr < cdma+4; ++addr) { /* 4 is from xclfeatures.h */
 			if (*addr) {
 				struct xocl_cu *xcu = exec->cus[cuidx];
-				u32 polladdr = (ert_poll)
-					? ERT_CQ_BASE_ADDR + (cuidx+1) * cfg->slot_size
-					: 0;
+				void *polladdr = (ert_poll)
+					? (char *)exec->cq_base + (cuidx+1) *
+					cfg->slot_size : 0;
 
 				if (!xcu)
 					xcu = exec->cus[cuidx] = cu_create(xdev);
@@ -1314,7 +1321,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	}
 
 	if ((ert_full || ert_poll) && !exec->ert)
-		exec->ert = ert_create(exec->base, ERT_CQ_BASE_ADDR);
+		exec->ert = ert_create(exec->csr_base, exec->cq_base);
 
 	if (ert_poll) {
 		userpf_info(xdev, "configuring dataflow mode with ert polling\n");
@@ -1510,7 +1517,7 @@ exec_create(struct platform_device *pdev, struct xocl_scheduler *xs)
 {
 	struct exec_core *exec = devm_kzalloc(&pdev->dev, sizeof(struct exec_core), GFP_KERNEL);
 	struct xocl_dev *xdev = xocl_get_xdev(pdev);
-	struct resource *res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
+	struct resource *res;
 	static unsigned int count;
 	unsigned int i;
 
@@ -1519,11 +1526,47 @@ exec_create(struct platform_device *pdev, struct xocl_scheduler *xs)
 
 	mutex_init(&exec->exec_lock);
 	exec->base = xdev->core.bar_addr;
+	if (XOCL_GET_SUBDEV_PRIV(&pdev->dev))
+		exec->ert_cfg_priv = *(char *)XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+	else
+		xocl_info(&pdev->dev, "did not get private data");
 
-	exec->intr_base = res->start;
-	exec->intr_num = res->end - res->start + 1;
+	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
+	if (res) {
+		exec->intr_base = res->start;
+		exec->intr_num = res->end - res->start + 1;
+	} else
+		xocl_info(&pdev->dev, "did not get IRQ resource");
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		xocl_info(&pdev->dev, "did not get CSR resource");
+	} else {
+		exec->csr_base = ioremap_nocache(res->start,
+			res->end - res->start + 1);
+		if (!exec->csr_base) {
+			xocl_err(&pdev->dev, "map CSR resource failed");
+			return NULL;
+		}
+	}
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	if (!res) {
+		xocl_info(&pdev->dev, "did not get CQ resource");
+	} else {
+		exec->cq_base = ioremap_nocache(res->start,
+			res->end - res->start + 1);
+		if (!exec->cq_base) {
+			if (exec->csr_base)
+				iounmap(exec->csr_base);
+			xocl_err(&pdev->dev, "map CQ resource failed");
+			return NULL;
+		}
+	}
+
 	exec->pdev = pdev;
-	exec->ert_cfg_priv = *(char *)XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+	if (XOCL_GET_SUBDEV_PRIV(&pdev->dev))
+		exec->ert_cfg_priv = *(char *)XOCL_GET_SUBDEV_PRIV(&pdev->dev);
 
 	init_waitqueue_head(&exec->poll_wait_queue);
 	exec->scheduler = xs;
@@ -1554,6 +1597,11 @@ exec_destroy(struct exec_core *exec)
 		cu_destroy(exec->cus[idx]);
 	if (exec->ert)
 		ert_destroy(exec->ert);
+	if (exec->csr_base) 
+		iounmap(exec->csr_base);
+	if (exec->cq_base)
+		iounmap(exec->cq_base);
+
 	devm_kfree(&exec->pdev->dev, exec);
 }
 
@@ -1941,7 +1989,7 @@ exec_ert_clear_csr(struct exec_core *exec)
 
 	for (idx = 0; idx < 4; ++idx) {
 		u32 csr_addr = ERT_STATUS_REGISTER_ADDR + (idx<<2);
-		u32 val = ioread32(exec->base + csr_addr);
+		u32 val = csr_read32(exec->csr_base, csr_addr);
 
 		if (val)
 			userpf_info(exec_get_xdev(exec),
@@ -1985,7 +2033,7 @@ exec_ert_query_csr(struct exec_core *exec, struct xocl_cmd *xcmd, unsigned int m
 	    || (mask_idx == 3 && atomic_xchg(&exec->sr3, 0))) {
 		u32 csr_addr = ERT_STATUS_REGISTER_ADDR + (mask_idx<<2);
 
-		mask = ioread32(exec->base + csr_addr);
+		mask = csr_read32(exec->csr_base, csr_addr);
 		SCHED_DEBUGF("++ %s csr_addr=0x%x mask=0x%x\n", __func__, csr_addr, mask);
 	}
 
@@ -2824,7 +2872,7 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 				   outstanding);
 			userpf_err(xdev,
 				   "Please reset device with 'xbutil reset'\n");
-			xdev->needs_reset = true;
+			exec->needs_reset = true;
 			// reset the scheduler loop
 			xs->reset = true;
 			break;
@@ -3111,8 +3159,9 @@ client_ioctl_execbuf(struct platform_device *pdev,
 	int ret = 0;
 	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
 	struct drm_device *ddev = filp->minor->dev;
+	struct exec_core *exec = platform_get_drvdata(pdev);
 
-	if (xdev->needs_reset) {
+	if (exec->needs_reset) {
 		userpf_err(xdev, "device needs reset, use 'xbutil reset'");
 		return -EBUSY;
 	}
@@ -3243,6 +3292,7 @@ reset(struct platform_device *pdev)
 
 	exec_stop(exec);   // remove when upstream explicitly calls stop()
 	exec_reset(exec);
+	exec->needs_reset = false;
 	return 0;
 }
 
@@ -3509,7 +3559,7 @@ static int mb_scheduler_remove(struct platform_device *pdev)
 }
 
 static struct platform_device_id mb_sche_id_table[] = {
-	{ XOCL_MB_SCHEDULER, 0 },
+	{ XOCL_DEVNAME(XOCL_MB_SCHEDULER), 0 },
 	{ },
 };
 

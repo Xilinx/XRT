@@ -1196,7 +1196,7 @@ int xcldev::xclReset(int argc, char *argv[])
         return -EPERM;
     }
 
-    std::cout << "All eixisting processes will be killed." << std::endl;
+    std::cout << "All existing processes will be killed." << std::endl;
     if(!canProceed())
         return -ECANCELED;
 

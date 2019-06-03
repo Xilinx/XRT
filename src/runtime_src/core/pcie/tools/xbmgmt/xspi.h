@@ -47,6 +47,7 @@ public:
 private:
     std::shared_ptr<pcidev::pci_device> mDev;
 
+    unsigned long long flash_base;
     int xclTestXSpi(int device_index);
     unsigned readReg(unsigned offset);
     int writeReg(unsigned regOffset, unsigned value);

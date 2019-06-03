@@ -676,7 +676,7 @@ public:
         sensor_tree::put( "board.physical.electrical.mgt_vtt.voltage",           m_devinfo.mMgtVtt );
         sensor_tree::put( "board.physical.electrical.vccint.voltage",            m_devinfo.mVccIntVol );
         {
-            unsigned cur = 0;
+            unsigned short cur = 0;
             std::string errmsg;
             pcidev::get_dev(m_idx)->sysfs_get("xmc", "xmc_vccint_curr", errmsg, cur);
             sensor_tree::put( "board.physical.electrical.vccint.current",            cur);

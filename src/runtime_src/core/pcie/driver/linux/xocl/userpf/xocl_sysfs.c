@@ -223,36 +223,8 @@ static ssize_t dev_offline_show(struct device *dev,
 
 	return sprintf(buf, "%d\n", val);
 }
-static ssize_t dev_offline_store(struct device *dev,
-		struct device_attribute *da, const char *buf, size_t count)
-{
-	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	int ret;
-	u32 offline;
 
-
-	if (kstrtou32(buf, 10, &offline) == -EINVAL || offline > 1)
-		return -EINVAL;
-
-	device_lock(dev);
-	if (offline) {
-		xocl_drvinst_offline(xdev, true);
-		xocl_subdev_destroy_all(xdev);
-	} else {
-		ret = xocl_subdev_create_all(xdev, xdev->core.priv.subdev_info,
-				xdev->core.priv.subdev_num);
-		if (ret) {
-			xocl_err(dev, "Online subdevices failed");
-			return -EIO;
-		}
-		xocl_drvinst_offline(xdev, false);
-	}
-	device_unlock(dev);
-
-	return count;
-}
-
-static DEVICE_ATTR(dev_offline, 0644, dev_offline_show, dev_offline_store);
+static DEVICE_ATTR(dev_offline, 0444, dev_offline_show, NULL);
 
 static ssize_t mig_calibration_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -378,8 +350,53 @@ static struct attribute *xocl_attrs[] = {
 	NULL,
 };
 
+static ssize_t fdt_blob_output(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+{
+	struct device *dev = kobj_to_dev(kobj);
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	unsigned char *blob;
+	size_t size;
+	ssize_t ret = 0;
+
+	if (!xdev->core.fdt_blob)
+		goto bail;
+
+	blob = xdev->core.fdt_blob;
+
+	size = fdt_totalsize(xdev->core.fdt_blob);
+
+	if (off >= size)
+		goto bail;
+
+	if (off + count > size)
+		count = size - off;
+	memcpy(buf, blob + off, count);
+
+	ret = count;
+bail:
+
+	return ret;
+
+}
+
+static struct bin_attribute fdt_blob_attr = {
+	.attr = {
+		.name = "fdt_blob",
+		.mode = 0400
+	},
+	.read = fdt_blob_output,
+	.size = 0
+};
+
+static struct bin_attribute  *xocl_bin_attrs[] = {
+	&fdt_blob_attr,
+	NULL,
+};
+
 static struct attribute_group xocl_attr_group = {
 	.attrs = xocl_attrs,
+	.bin_attrs = xocl_bin_attrs,
 };
 
 int xocl_init_sysfs(struct device *dev)

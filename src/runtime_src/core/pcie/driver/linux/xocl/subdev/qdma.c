@@ -41,7 +41,11 @@
 #define	MM_QUEUE_LEN		8
 #define	MM_EBUF_LEN		256
 
-#define MM_DEFAULT_RINGSZ_IDX	5
+/* qdma bar # */
+#define	QDMA_BARNUM_STM		0
+#define	QDMA_BARNUM_CONFIG	2
+
+#define MM_DEFAULT_RINGSZ_IDX	0
 
 
 /* streaming defines */
@@ -52,15 +56,15 @@
 #define	STREAM_SLRID_MASK	0xff
 #define	STREAM_TDEST_MASK	0xffff
 
-#define	STREAM_DEFAULT_H2C_RINGSZ_IDX		5
-#define	STREAM_DEFAULT_C2H_RINGSZ_IDX		5
-#define	STREAM_DEFAULT_WRB_RINGSZ_IDX		5
+#define	STREAM_DEFAULT_H2C_RINGSZ_IDX		0
+#define	STREAM_DEFAULT_C2H_RINGSZ_IDX		0
+#define	STREAM_DEFAULT_WRB_RINGSZ_IDX		0
 
 #define	QUEUE_POST_TIMEOUT	10000
 #define QDMA_MAX_INTR		16
 #define QDMA_USER_INTR_MASK	0xfe
 
-#define QDMA_QSETS_MAX		2048
+#define QDMA_QSETS_MAX		256
 
 static dev_t	str_dev;
 
@@ -1743,6 +1747,8 @@ static int qdma_probe(struct platform_device *pdev)
 	conf->intr_rngsz = QDMA_INTR_COAL_RING_SIZE;
 	conf->master_pf = 1;
 	conf->qsets_max = QDMA_QSETS_MAX;
+	conf->bar_num_config = QDMA_BARNUM_CONFIG;
+	conf->bar_num_stm = QDMA_BARNUM_STM;
 
 	conf->fp_user_isr_handler = qdma_isr;
 	conf->uld = (unsigned long)qdma;
@@ -1876,7 +1882,7 @@ static int qdma_remove(struct platform_device *pdev)
 }
 
 static struct platform_device_id qdma_id_table[] = {
-	{ XOCL_QDMA, 0 },
+	{ XOCL_DEVNAME(XOCL_QDMA), 0 },
 	{ },
 };
 
@@ -1884,7 +1890,7 @@ static struct platform_driver	qdma_driver = {
 	.probe		= qdma_probe,
 	.remove		= qdma_remove,
 	.driver		= {
-		.name = "xocl_qdma",
+		.name = XOCL_DEVNAME(XOCL_QDMA),
 	},
 	.id_table	= qdma_id_table,
 };

@@ -19,6 +19,8 @@
 #include <climits>
 #include <iomanip>
 #include <memory>
+#include <regex>
+#include <sstream>
 #include <fcntl.h>
 #include <unistd.h>
 #include <dirent.h>
@@ -55,6 +57,21 @@ void getVendorBoardFromDSAName(std::string& dsa, std::string& vendor, std::strin
         return;
     vendor = tokens[0];
     board = tokens[1];
+}
+
+void getTimestampFromFilename(std::string filename, uint64_t &ts)
+{
+    std::regex e(".*-([0-9a-fA-F]+)." DSABIN_FILE_SUFFIX);
+    std::cmatch cm;
+
+    std::regex_match(filename.c_str(), cm, e);
+    if (cm.size() == 2) {
+        std::stringstream ss;
+
+        ss << std::hex << cm[1];
+	ss >> ts;
+    } else
+        ts = NULL_TIMESTAMP;
 }
 
 DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& bmc) :
@@ -135,7 +152,8 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& bm
         std::replace_if(name.begin(), name.end(),
             [](const char &a){ return a == ':' || a == '.'; }, '_');
         getVendorBoardFromDSAName(name, vendor, board);
-        timestamp = ap->m_header.m_featureRomTimeStamp;
+	getTimestampFromFilename(filename, timestamp);
+        //timestamp = ap->m_header.m_featureRomTimeStamp;
         DSAValid = (xclbin::get_axlf_section(ap, MCS) != nullptr);
 
         // Find out BMC version

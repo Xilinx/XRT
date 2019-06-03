@@ -1998,7 +1998,7 @@ failed:
 }
 
 struct platform_device_id xmc_id_table[] = {
-	{ XOCL_XMC, 0 },
+	{ XOCL_DEVNAME(XOCL_XMC), 0 },
 	{ },
 };
 
@@ -2006,7 +2006,7 @@ static struct platform_driver	xmc_driver = {
 	.probe		= xmc_probe,
 	.remove		= xmc_remove,
 	.driver		= {
-		.name = XOCL_XMC,
+		.name = XOCL_DEVNAME(XOCL_XMC),
 	},
 	.id_table = xmc_id_table,
 };

@@ -111,6 +111,11 @@ struct xclmgmt_dev {
 	int msix_user_start_vector;
 	bool ready;
 
+	void *userpf_blob;
+
+	char *bin_buffer;
+	size_t bin_length;
+
 	/* ID set on mgmt and passed to user for inter-domain communication */
 	u64 comm_id;
 };
@@ -126,6 +131,8 @@ long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
 void get_pcie_link_info(struct xclmgmt_dev *lro,
 	unsigned short *width, unsigned short *speed, bool is_cap);
 
+void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online);
+
 /* utils.c */
 unsigned compute_unit_busy(struct xclmgmt_dev *lro);
 int pci_fundamental_reset(struct xclmgmt_dev *lro);
@@ -134,6 +141,12 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro);
 void xdma_reset(struct pci_dev *pdev, bool prepare);
 void xclmgmt_reset_pci(struct xclmgmt_dev *lro);
 void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online);
+
+void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
+		        u64 msgid, int err, bool sw_ch);
+int xclmgmt_load_fdt(struct xclmgmt_dev *lro);
+int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro);
+int xclmgmt_program_shell(struct xclmgmt_dev *lro);
 
 /* firewall.c */
 void init_firewall(struct xclmgmt_dev *lro);
