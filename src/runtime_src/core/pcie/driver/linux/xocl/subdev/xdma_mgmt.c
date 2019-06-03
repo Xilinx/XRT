@@ -210,8 +210,8 @@ static int xdma_mgmt_probe(struct platform_device *pdev)
 	i = 0;
 	ret = pci_alloc_irq_vectors(XDEV(xdev)->pdev, total, total,
 			PCI_IRQ_MSIX);
-	if (rv != total) {
-		rv = -ENOENT;
+	if (ret != total) {
+		ret = -ENOENT;
 		goto failed;
 	}
 #else

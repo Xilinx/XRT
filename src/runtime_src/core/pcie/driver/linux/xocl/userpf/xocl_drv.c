@@ -976,7 +976,7 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	unmap_bar(xdev);
 
 	xocl_subdev_fini(xdev);
-	if (xdev->core.dyn_subdev_store);
+	if (xdev->core.dyn_subdev_store)
 		vfree(xdev->core.dyn_subdev_store);
 	mutex_destroy(&xdev->core.lock);
 	mutex_destroy(&xdev->dev_lock);
