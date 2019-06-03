@@ -23,17 +23,18 @@
 
 #include "flasher.h"
 #include "core/pcie/linux/scan.h"
+#include "core/pcie/common/sensor.h"
 #include "xbmgmt.h"
 
 const char *subCmdFlashDesc = "Update SC firmware or shell on the device";
 const char *subCmdFlashUsage =
-    "--scan [--verbose]\n"
+    "--scan [--verbose|--json]\n"
     "--update [--shell name [--timestamp timestamp]] [--card bdf] [--force]\n"
     "--shell --path file [--card bdf] [--type flash_type]\n"
     "--sc_firmware --path file [--card bdf]\n"
     "--reset [--card bdf]";
 
-static int scanDevices(bool verbose)
+static int scanDevices(bool verbose, bool json)
 {
     unsigned total = pcidev::get_dev_total(false);
 
@@ -47,39 +48,61 @@ static int scanDevices(bool verbose)
         if (!f.isValid())
             continue;
 
-        std::cout << "Card [" << f.sGetDBDF() << "]" << std::endl;
         DSAInfo board = f.getOnBoardDSA();
-        std::cout << "\tCard type:\t\t" << board.board << std::endl;
-        std::cout << "\tFlash type:\t\t" << f.sGetFlashType() << std::endl;
-        std::cout << "\tShell running on FPGA:" << std::endl;
-        std::cout << "\t\t" << board << std::endl;
-
         std::vector<DSAInfo> installedDSA = f.getInstalledDSA();
-        std::cout << "\tShell package installed in system:\t";
-        if (!installedDSA.empty()) {
-            for (auto& d : installedDSA)
-                std::cout << std::endl << "\t\t" << d;
-        } else {
-            std::cout << "(None)";
-        }
-        std::cout << std::endl;
-
         BoardInfo info;
-        if (verbose && f.getBoardInfo(info) == 0) {
-            std::cout << "\tCard name\t\t" << info.mName << std::endl;
+        const auto getinfo_res = f.getBoardInfo(info);
+        if (json) {
+            const std::string card = "card" + std::to_string(i);
+            if (!installedDSA.empty()) {
+                std::stringstream shellpackage;
+                for (auto& d : installedDSA)
+                    shellpackage << d << "; ";
+                sensor_tree::put(card + ".shellpackage", shellpackage.str());
+            }
+            if (getinfo_res == 0) {
+                sensor_tree::put(card + ".name", info.mName);
+                sensor_tree::put(card + ".serial", info.mSerialNum);
+                sensor_tree::put(card + ".config_mode", info.mConfigMode);
+                sensor_tree::put(card + ".fan_presence", info.mFanPresence);
+                sensor_tree::put(card + ".max_power", info.mMaxPower);
+                sensor_tree::put(card + ".mac0", info.mMacAddr0);
+                sensor_tree::put(card + ".mac1", info.mMacAddr1);
+                sensor_tree::put(card + ".mac2", info.mMacAddr2);
+                sensor_tree::put(card + ".mac3", info.mMacAddr3);
+            }
+            sensor_tree::json_dump( std::cout );
+        } else {
+            std::cout << "Card [" << f.sGetDBDF() << "]" << std::endl;
+            std::cout << "\tCard type:\t\t" << board.board << std::endl;
+            std::cout << "\tFlash type:\t\t" << f.sGetFlashType() << std::endl;
+            std::cout << "\tShell running on FPGA:" << std::endl;
+            std::cout << "\t\t" << board << std::endl;
+
+            std::cout << "\tShell package installed in system:\t";
+            if (!installedDSA.empty()) {
+                for (auto& d : installedDSA)
+                    std::cout << std::endl << "\t\t" << d;
+            } else {
+                std::cout << "(None)";
+            }
+            std::cout << std::endl;
+            if (verbose && getinfo_res == 0) {
+                std::cout << "\tCard name\t\t" << info.mName << std::endl;
 #if 0   // Do not print out rev until further notice
-            std::cout << "\tCard rev\t\t" << info.mRev << std::endl;
+                std::cout << "\tCard rev\t\t" << info.mRev << std::endl;
 #endif
-            std::cout << "\tCard S/N: \t\t" << info.mSerialNum << std::endl;
-            std::cout << "\tConfig mode: \t\t" << info.mConfigMode << std::endl;
-            std::cout << "\tFan presence:\t\t" << info.mFanPresence << std::endl;
-            std::cout << "\tMax power level:\t" << info.mMaxPower << std::endl;
-            std::cout << "\tMAC address0:\t\t" << info.mMacAddr0 << std::endl;
-            std::cout << "\tMAC address1:\t\t" << info.mMacAddr1 << std::endl;
-            std::cout << "\tMAC address2:\t\t" << info.mMacAddr2 << std::endl;
-            std::cout << "\tMAC address3:\t\t" << info.mMacAddr3 << std::endl;
+                std::cout << "\tCard S/N: \t\t" << info.mSerialNum << std::endl;
+                std::cout << "\tConfig mode: \t\t" << info.mConfigMode << std::endl;
+                std::cout << "\tFan presence:\t\t" << info.mFanPresence << std::endl;
+                std::cout << "\tMax power level:\t" << info.mMaxPower << std::endl;
+                std::cout << "\tMAC address0:\t\t" << info.mMacAddr0 << std::endl;
+                std::cout << "\tMAC address1:\t\t" << info.mMacAddr1 << std::endl;
+                std::cout << "\tMAC address2:\t\t" << info.mMacAddr2 << std::endl;
+                std::cout << "\tMAC address3:\t\t" << info.mMacAddr3 << std::endl;
+            }
+            std::cout << std::endl;
         }
-        std::cout << std::endl;
     }
 
     return 0;
@@ -368,7 +391,7 @@ static int flashCompatibleMode(int argc, char *argv[])
             verbose = true;
         }
 
-        return scanDevices(verbose);
+        return scanDevices(verbose, false);
     }
 
     unsigned devIdx = UINT_MAX;
@@ -459,8 +482,10 @@ static int flashCompatibleMode(int argc, char *argv[])
 static int scan(int argc, char *argv[])
 {
     bool verbose = false;
+    bool json = false;
     const option opts[] = {
         { "verbose", no_argument, nullptr, '0' },
+        { "json", no_argument, nullptr, '1' },
     };
 
     while (true) {
@@ -472,12 +497,16 @@ static int scan(int argc, char *argv[])
         case '0':
             verbose = true;
             break;
+        case '1':
+            json = true;
+            break;
         default:
             return -EINVAL;
         }
     }
-
-    return scanDevices(verbose);
+    if (verbose && json)
+        return -EINVAL;
+    return scanDevices(verbose, json);
 }
 
 static int update(int argc, char *argv[])
