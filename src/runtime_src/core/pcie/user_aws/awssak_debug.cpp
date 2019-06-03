@@ -139,7 +139,7 @@ int xcldev::device::readSPMCounters() {
             << "  " << std::setw(16)  << "Last Rd Data"
             << std::endl;
     for (unsigned int i = 0; i<debugResults.NumSlots; ++i) {
-        if(properties[i] & XSPM_HOST_PROPERTY_MASK)
+        if(i < properties.size() && (properties[i] & XSPM_HOST_PROPERTY_MASK))
             continue;
         std::cout << std::left
             << std::setw(col1) << cuNameportNames[i].first
