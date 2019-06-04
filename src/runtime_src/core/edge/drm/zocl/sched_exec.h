@@ -133,6 +133,11 @@ struct sched_exec_core {
 	struct sched_ops          *ops;
 	struct task_struct        *cq_thread;
 	wait_queue_head_t          cq_wait_queue;
+
+#ifdef ZOCL_DEBUG
+	atomic_t 		  sec_intr_send;
+	atomic_t 		  sec_intr_recv;
+#endif
 };
 
 /**

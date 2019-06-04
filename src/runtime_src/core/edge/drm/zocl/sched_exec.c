@@ -505,6 +505,10 @@ static irqreturn_t sched_exec_isr(int irq, void *arg)
 	isr = ioread32(virt_addr + 3);
 	iowrite32(isr, virt_addr + 3);
 
+#ifdef ZOCL_DEBUG
+	atomic_inc(&zdev->exec->sec_intr_recv);
+#endif
+
 	/* wake up all scheduler ... currently one only
 	 *
 	 * This might have race with sched_wait_cond(), which will read then set
@@ -1544,6 +1548,10 @@ configure_cu(struct sched_cmd *cmd, int cu_idx)
 	/* start CU at base + 0x0 */
 	iowrite32(0x1, virt_addr);
 
+#ifdef ZOCL_DEBUG
+	atomic_inc(&cmd->exec->sec_intr_send);
+#endif
+
 	SCHED_DEBUG("<- configure_cu\n");
 }
 
@@ -2415,6 +2423,11 @@ sched_init_exec(struct drm_device *drm)
 
 		exec_core->cq_thread = kthread_run(cq_check, zdev, name);
 	}
+
+#ifdef ZOCL_DEBUG
+	atomic_set(&exec_core->sec_intr_send, 0); 
+	atomic_set(&exec_core->sec_intr_recv, 0); 
+#endif
 
 	SCHED_DEBUG("<- sched_init_exec\n");
 	return 0;

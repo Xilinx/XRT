@@ -30,6 +30,10 @@
 #include "zocl_util.h"
 #include "xclhal2_mem.h"
 
+#if 0
+#define ZOCL_DEBUG
+#endif
+
 struct drm_zocl_exec_metadata {
 	enum drm_zocl_execbuf_state state;
 	unsigned int                index;

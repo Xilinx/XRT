@@ -71,6 +71,24 @@ static ssize_t kds_custat_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(kds_custat);
 
+#ifdef ZOCL_DEBUG
+static ssize_t intr_stat_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+	ssize_t size = 0;
+
+	if (!zdev || !zdev->exec)
+		return 0;
+
+	size = sprintf(buf, "Triggered: %d, Signaled: %d\n",
+		atomic_read(&zdev->exec->sec_intr_send),
+		atomic_read(&zdev->exec->sec_intr_recv));
+	return size;
+}
+static DEVICE_ATTR_RO(intr_stat);
+#endif
+
 static ssize_t zocl_get_memstat(struct device *dev, char *buf, bool raw)
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
@@ -138,6 +156,9 @@ static struct attribute *zocl_attrs[] = {
 	&dev_attr_kds_custat.attr,
 	&dev_attr_memstat.attr,
 	&dev_attr_memstat_raw.attr,
+#ifdef ZOCL_DEBUG
+	&dev_attr_intr_stat.attr,
+#endif
 	NULL,
 };
 
