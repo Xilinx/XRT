@@ -276,10 +276,6 @@ namespace xclhwemhal2 {
     return returnValue;
   }
 
-   //int HwEmShim::xclLoadBitstreamWorker(char* zipFile, size_t zipFileSize, char* xmlfile, size_t xmlFileSize,
-   //                                     char* debugFile, size_t debugFileSize, char* memTopology, size_t memTopologySize, 
-   //                                     char* pdi, size_t pdiSize, char* emuData, size_t emuDataSize)
-
   int HwEmShim::xclLoadBitstreamWorker(bitStreamArg args)
   {
     if (mLogStream.is_open()) {
