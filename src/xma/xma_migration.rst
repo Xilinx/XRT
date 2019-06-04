@@ -1,3 +1,5 @@
+.. _xma_migration_label:
+
 XMA Migration to SDAccel 2018.3/2019.1
 --------------------------------------
 
