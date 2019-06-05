@@ -35,6 +35,7 @@
 #include "msd_plugin.h"
 #include "sw_msg.h"
 #include "common.h"
+#include "xclbin.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
 static const std::string configFile("/etc/msd.conf");
@@ -59,8 +60,8 @@ static void init_plugin()
         return;
 
     syslog(LOG_INFO, "found msd plugin: %s", plugin_path.c_str());
-    auto plugin_init = dlsym(plugin_handle, INIT_FN_NAME);
-    auto plugin_fini = dlsym(plugin_handle, FINI_FN_NAME);
+    plugin_init = (init_fn) dlsym(plugin_handle, INIT_FN_NAME);
+    plugin_fini = (fini_fn) dlsym(plugin_handle, FINI_FN_NAME);
     if (plugin_init == nullptr || plugin_fini == nullptr)
         syslog(LOG_ERR, "failed to find init/fini symbols in plugin");
 }
@@ -181,8 +182,9 @@ static int download_xclbin(pcieFunc& dev, char *xclbin, size_t len)
     int ret = 0;
 
     if (plugin_cbs.retrieve_xclbin) {
-        ret = (*plugin_cbs.retrieve_xclbin)(xclbin, len, &newxclbin, &newlen,
-            &done, &done_arg);
+    	xclmgmt_ioc_bitstream_axlf x = {reinterpret_cast<axlf *>(xclbin)};
+        ret = (*plugin_cbs.retrieve_xclbin)(xclbin,
+            x.xclbin->m_header.m_length, &newxclbin, &newlen, &done, &done_arg);
         if (ret)
             return ret;
     } else {
