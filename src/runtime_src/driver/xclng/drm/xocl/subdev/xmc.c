@@ -269,9 +269,9 @@ static void xmc_get_data(struct platform_device *pdev, void *buf)
 		safe_read32(xmc, XMC_12V_SW_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->vol_12v_sw);
 		safe_read32(xmc, XMC_MGTAVTT_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->mgtavtt);
 		safe_read32(xmc, XMC_VCC1V2_BTM_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->vcc1v2_btm);
-		safe_read32(xmc, XMC_FPGA_TEMP, (u32 *)&sensors->fpga_temp);
-		safe_read32(xmc, XMC_FAN_TEMP_REG, (u32 *)&sensors->fan_temp);
-		safe_read32(xmc, XMC_FAN_SPEED_REG, (u32 *)&sensors->fan_rpm);
+		safe_read32(xmc, XMC_FPGA_TEMP+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->fpga_temp);
+		safe_read32(xmc, XMC_FAN_TEMP_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->fan_temp);
+		safe_read32(xmc, XMC_FAN_SPEED_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->fan_rpm);
 		safe_read32(xmc, XMC_DIMM_TEMP0_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->dimm_temp0);
 		safe_read32(xmc, XMC_DIMM_TEMP1_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->dimm_temp1);
 		safe_read32(xmc, XMC_DIMM_TEMP2_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)&sensors->dimm_temp2);
@@ -633,7 +633,7 @@ static ssize_t xmc_fpga_temp_show(struct device *dev, struct device_attribute *a
 	u32 val;
 
 	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_FPGA_TEMP, &val);
+		safe_read32(xmc, XMC_FPGA_TEMP+sizeof(u32)*VOLTAGE_INS, &val);
 	else {
 		safe_read_from_peer(xmc, to_platform_device(dev));
 		val = (u32)xmc->cache.fpga_temp;
@@ -649,7 +649,7 @@ static ssize_t xmc_fan_temp_show(struct device *dev, struct device_attribute *at
 	u32 val;
 
 	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_FAN_TEMP_REG, &val);
+		safe_read32(xmc, XMC_FAN_TEMP_REG+sizeof(u32)*VOLTAGE_INS, &val);
 	else {
 		safe_read_from_peer(xmc, to_platform_device(dev));
 		val = (u32)xmc->cache.fan_temp;
@@ -665,7 +665,7 @@ static ssize_t xmc_fan_rpm_show(struct device *dev, struct device_attribute *att
 	u32 val;
 
 	if (XMC_PRIVILEGED(xmc))
-		safe_read32(xmc, XMC_FAN_SPEED_REG, &val);
+		safe_read32(xmc, XMC_FAN_SPEED_REG+sizeof(u32)*VOLTAGE_INS, &val);
 	else {
 		safe_read_from_peer(xmc, to_platform_device(dev));
 		val = (u32)xmc->cache.fan_rpm;
