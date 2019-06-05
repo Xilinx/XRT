@@ -572,7 +572,7 @@ static void free_channels(struct platform_device *pdev)
 		qidx = i % qdma->channel;
 		chan = &qdma->chans[write][qidx];
 
-		if (!chan || !chan->queue)
+		if (!chan)
 			continue;
 
 		channel_sysfs_destroy(chan);
@@ -582,16 +582,13 @@ static void free_channels(struct platform_device *pdev)
 		if (ret < 0) {
 			xocl_err(&pdev->dev, "Stopping queue for "
 				"channel %d failed, ret %x", qidx, ret);
-			return;
 		}
 		ret = qdma_queue_remove((unsigned long)qdma->dma_handle,
 				chan->queue, NULL, 0);
 		if (ret < 0) {
 			xocl_err(&pdev->dev, "Destroy queue for "
 				"channel %d failed, ret %x", qidx, ret);
-			return;
 		}
-		chan->queue = 0UL;
 	}
 	if (qdma->chans[0])
 		devm_kfree(&pdev->dev, qdma->chans[0]);
@@ -1777,7 +1774,7 @@ static int qdma_probe(struct platform_device *pdev)
 	qdma->cdev->ops = &stream_fops;
 	qdma->cdev->owner = THIS_MODULE;
 	qdma->instance = XOCL_DEV_ID(XDEV(xdev)->pdev);
-	qdma->cdev->dev = MKDEV(MAJOR(str_dev), qdma->instance);
+	qdma->cdev->dev = MKDEV(MAJOR(str_dev), XDEV(xdev)->dev_minor);
 	ret = cdev_add(qdma->cdev, qdma->cdev->dev, 1);
 	if (ret) {
 		xocl_err(&pdev->dev, "failed cdev_add, ret=%d", ret);
