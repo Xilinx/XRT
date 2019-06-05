@@ -290,7 +290,7 @@ static void xmc_get_prop(struct platform_device *pdev, enum data_kind kind, void
 			safe_read32(xmc, XMC_DIMM_TEMP3_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
 			break;
 		case FPGA_TEMP:
-			safe_read32(xmc, XMC_FPGA_TEMP, (u32 *)buf);
+			safe_read32(xmc, XMC_FPGA_TEMP+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
 			break;
 		case VOL_12V_PEX:
 			safe_read32(xmc, XMC_12V_PEX_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
@@ -314,10 +314,10 @@ static void xmc_get_prop(struct platform_device *pdev, enum data_kind kind, void
 			safe_read32(xmc, XMC_SE98_TEMP2_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
 			break;
 		case FAN_TEMP:
-			safe_read32(xmc, XMC_FAN_TEMP_REG, (u32 *)buf);
+			safe_read32(xmc, XMC_FAN_TEMP_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
 			break;
 		case FAN_RPM:
-			safe_read32(xmc, XMC_FAN_SPEED_REG, (u32 *)buf);
+			safe_read32(xmc, XMC_FAN_SPEED_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
 			break;
 		case VOL_3V3_PEX:
 			safe_read32(xmc, XMC_3V3_PEX_REG+sizeof(u32)*VOLTAGE_INS, (u32 *)buf);
@@ -1222,7 +1222,7 @@ static ssize_t scaling_cur_temp_show(struct device *dev, struct device_attribute
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 board_temp;
 
-	safe_read32(xmc, XMC_FPGA_TEMP, &board_temp);
+	safe_read32(xmc, XMC_FPGA_TEMP+sizeof(u32)*VOLTAGE_INS, &board_temp);
 
 	return sprintf(buf, "%d\n", board_temp);
 }
@@ -1230,14 +1230,15 @@ static DEVICE_ATTR_RO(scaling_cur_temp);
 
 static ssize_t scaling_cur_power_show(struct device *dev, struct device_attribute *da, char *buf)
 {
-	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	struct platform_device *pdev = to_platform_device(dev);
 	u32 mPexCurr, m12VPex, mAuxCurr, m12VAux, board_power;
 
 	//Measure board power in terms of Watts and store it in register
-	safe_read32(xmc, XMC_12V_PEX_REG+sizeof(u32)*VOLTAGE_INS, &m12VPex);
-	safe_read32(xmc, XMC_12V_AUX_REG+sizeof(u32)*VOLTAGE_INS, &m12VAux);
-	safe_read32(xmc, XMC_12V_PEX_I_IN_REG+sizeof(u32)*VOLTAGE_INS, &mPexCurr);
-	safe_read32(xmc, XMC_12V_AUX_I_IN_REG+sizeof(u32)*VOLTAGE_INS, &mAuxCurr);
+	xmc_get_prop(pdev, VOL_12V_PEX, &m12VPex);
+	xmc_get_prop(pdev, VOL_12V_AUX, &m12VAux);
+	xmc_get_prop(pdev, CUR_12V_PEX, &mPexCurr);
+	xmc_get_prop(pdev, CUR_12V_AUX, &mAuxCurr);
+
 	board_power = ((mPexCurr * m12VPex) + (mAuxCurr * m12VAux)) / 1000000;
 
 	return sprintf(buf, "%d\n", board_power);
