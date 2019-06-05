@@ -14,6 +14,10 @@ add_subdirectory(common)
 add_subdirectory(linux)
 add_subdirectory(tools)
 add_subdirectory(driver)
+if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
+  # Emulation flow only works on x86_64
+  add_subdirectory(emulation)
+endif()
 
 else()
 
