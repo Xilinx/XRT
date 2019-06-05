@@ -22,7 +22,7 @@
 #include "lib/xmahw.h"
 #include "lib/xmalimits.h"
 #include "xclbin.h"
-#include "mgmt-ioctl.h"
+#include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
 
 typedef struct XmaIpLayout

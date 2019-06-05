@@ -21,7 +21,7 @@
 #include "xrt/device/halops2.h"
 #include "xrt/device/PMDOperations.h"
 
-#include "driver/include/ert.h"
+#include "ert.h"
 
 #include <cassert>
 

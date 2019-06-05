@@ -34,6 +34,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    newdsa-bringup.rst
    create_platforms.rst
    p2p.rst
+   m2m.rst
    debug-faq.rst
    xma.main.rst
    mailbox.main.rst

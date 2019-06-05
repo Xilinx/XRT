@@ -1,5 +1,20 @@
 #!/bin/sh
 
+installdir=/opt/xilinx/xrt
+systemddir=/etc/systemd/system
+
+msd_active=`systemctl is-active msd`
+mpd_active=`systemctl is-active mpd`
+# Stopping existing daemons so that we could swap drivers and update daemons later
+if [ "$mpd_active" = "active" ]; then
+	echo "Stopping MPD daemon"
+	systemctl stop mpd > /dev/null 2>&1 
+fi
+if [ "$msd_active" = "active" ]; then
+	echo "Stopping MSD daemon"
+	systemctl stop msd > /dev/null 2>&1 
+fi
+
 if [ -n "`dkms status -m xrt -v @XRT_VERSION_STRING@`" ]; then
     echo "Unloading old XRT Linux kernel modules"
     modprobe -r xocl
@@ -18,16 +33,16 @@ fi
 
 DRACUT_CONF_PATH=/etc/dracut.conf.d
 if [ -e $DRACUT_CONF_PATH ]; then
-    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/userpf/xocl.dracut.conf $DRACUT_CONF_PATH
-    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/mgmtpf/xclmgmt.dracut.conf $DRACUT_CONF_PATH
+    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xocl/userpf/xocl.dracut.conf $DRACUT_CONF_PATH
+    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xocl/mgmtpf/xclmgmt.dracut.conf $DRACUT_CONF_PATH
 fi
 
 echo "Invoking DKMS common.postinst for xrt"
 /usr/lib/dkms/common.postinst xrt @XRT_VERSION_STRING@ "" "" $2
 if [ $? -eq 0 ]; then
     echo "Finished DKMS common.postinst"
-    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/userpf/10-xocl.rules /etc/udev/rules.d
-    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xclng/drm/xocl/mgmtpf/10-xclmgmt.rules /etc/udev/rules.d
+    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xocl/userpf/10-xocl.rules /etc/udev/rules.d
+    install -m 644 /usr/src/xrt-@XRT_VERSION_STRING@/driver/xocl/mgmtpf/10-xclmgmt.rules /etc/udev/rules.d
 
     echo "Loading new XRT Linux kernel modules"
     udevadm control --reload-rules
@@ -43,6 +58,26 @@ if [ -z "`dkms status -m xrt -v @XRT_VERSION_STRING@ |grep installed`" ]; then
     echo "* "
     echo "* Check build logs in /var/lib/dkms/xrt/@XRT_VERSION_STRING@"
     echo "****************************************************************"
+fi
+
+echo "Installing MSD / MPD daemons"
+
+# Update msd configuration before start daemons
+${installdir}/bin/xbmgmt config --update
+
+# Install msd/mpd services
+cp -f ${installdir}/etc/msd.service ${systemddir}
+cp -f ${installdir}/etc/mpd.service ${systemddir}
+systemctl daemon-reload > /dev/null 2>&1
+
+# Start daemons only when it was started previously
+if [ "$msd_active" = "active" ]; then
+	echo "Starting MSD daemon"
+	systemctl start msd > /dev/null 2>&1 
+fi
+if [ "$mpd_active" = "active" ]; then
+	echo "Starting MPD daemon"
+	systemctl start mpd > /dev/null 2>&1 
 fi
 
 exit 0

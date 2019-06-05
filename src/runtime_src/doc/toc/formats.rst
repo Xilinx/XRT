@@ -19,11 +19,11 @@ kernel connectivity for each kernel.
 
 The compiler generates unique ``xclbin`` file for every design
 compiled. The Vivado front-end tools programmatically
-populate this file (layout described in ``driver/include/xclbin.h``,
+populate this file (layout described in ``core/include/xclbin.h``,
 attached) and then the runtime & device drivers read the information and apply
 it accordingly.
 
-The path to ``xclbin.h`` is ``runtime/driver/include/xclbin.h`` under
+The path to ``xclbin.h`` is ``runtime/core/include/xclbin.h`` under
 SDx installation directory.
 
 Feature ROM
@@ -41,5 +41,5 @@ and enable functionality in driver and also use the information to
 perform hardware/software compatibility checks.
 
 The path to ``xclfeatures.h`` is
-``runtime/driver/include/xclfeatures.h`` under SDx installation
+``runtime/core/include/xclfeatures.h`` under SDx installation
 directory.

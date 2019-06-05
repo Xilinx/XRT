@@ -16,7 +16,7 @@ echo "Invoking xrt-aws common.postinst"
 /usr/lib/dkms/common.postinst xrt-aws @XRT_VERSION_STRING@ "" "" $2
 if [ $? -eq 0 ]; then
     echo "Finished xrt-aws common.postinst"
-    install -m 644 /usr/src/xrt-aws-@XRT_VERSION_STRING@/driver/aws/kernel/mgmt/10-awsmgmt.rules /etc/udev/rules.d
+    install -m 644 /usr/src/xrt-aws-@XRT_VERSION_STRING@/driver/aws/mgmt/10-awsmgmt.rules /etc/udev/rules.d
 
     echo "Loading new XRT AWS Linux kernel modules"
     udevadm control --reload-rules

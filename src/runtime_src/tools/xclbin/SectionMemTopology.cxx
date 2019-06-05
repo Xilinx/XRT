@@ -117,10 +117,10 @@ SectionMemTopology::marshalToJSON(char* _pDataSection,
   XUtil::TRACE(XUtil::format("m_count: %d", pHdr->m_count));
 
   // Write out the entire structure except for the array structure
-  XUtil::TRACE_BUF("mem_topology", reinterpret_cast<const char*>(pHdr), (unsigned long)&(pHdr->m_mem_data[0]) - (unsigned long)pHdr);
+  XUtil::TRACE_BUF("mem_topology", reinterpret_cast<const char*>(pHdr), ((uint64_t)&(pHdr->m_mem_data[0]) - (uint64_t)pHdr));
   mem_topology.put("m_count", XUtil::format("%d", (unsigned int)pHdr->m_count).c_str());
 
-  unsigned int expectedSize = ((unsigned long)&(pHdr->m_mem_data[0]) - (unsigned long)pHdr) + (sizeof(mem_data) * pHdr->m_count);
+  uint64_t expectedSize = ((uint64_t)&(pHdr->m_mem_data[0]) - (uint64_t)pHdr) + (sizeof(mem_data) * pHdr->m_count);
 
   if (_sectionSize != expectedSize) {
     throw std::runtime_error(XUtil::format("ERROR: Section size (%d) does not match expected section size (%d).",
@@ -163,7 +163,7 @@ SectionMemTopology::marshalFromJSON(const boost::property_tree::ptree& _ptSectio
                                     std::ostringstream& _buf) const {
   const boost::property_tree::ptree& ptMemtopPayload = _ptSection.get_child("mem_topology");
 
-  mem_topology memTopologyHdr = (mem_topology){ 0 };
+  mem_topology memTopologyHdr = mem_topology {0};
 
   // Read, store, and report mem_topology data
   memTopologyHdr.m_count = ptMemtopPayload.get<uint32_t>("m_count");
@@ -185,7 +185,7 @@ SectionMemTopology::marshalFromJSON(const boost::property_tree::ptree& _ptSectio
   unsigned int count = 0;
   boost::property_tree::ptree memDatas = ptMemtopPayload.get_child("m_mem_data");
   for (const auto& kv : memDatas) {
-    mem_data memData = (mem_data){ 0 };
+    mem_data memData = mem_data {0};
     boost::property_tree::ptree ptMemData = kv.second;
 
     std::string sm_type = ptMemData.get<std::string>("m_type");
@@ -253,7 +253,7 @@ SectionMemTopology::marshalFromJSON(const boost::property_tree::ptree& _ptSectio
   }
 
   // -- Buffer needs to be less than 64K--
-  unsigned int bufferSize = _buf.str().size();
+  unsigned int bufferSize = (unsigned int) _buf.str().size();
   const unsigned int maxBufferSize = 64 * 1024;
   if ( bufferSize > maxBufferSize ) {
     std::string errMsg = XUtil::format("CRITICAL WARNING: The buffer size for the MEM_TOPOLOGY (%d) exceed the maximum size of %d.\nThis can result in lose of data in the driver.",

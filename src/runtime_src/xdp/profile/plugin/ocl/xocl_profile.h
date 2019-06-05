@@ -22,8 +22,8 @@
  */
 
 #include "xdp/profile/device/device_intf.h"
-#include "driver/include/xclperf.h"
-#include "driver/include/xcl_app_debug.h"
+#include "xclperf.h"
+#include "xcl_app_debug.h"
 #include "xocl/core/object.h"
 #include "xocl/core/platform.h"
 #include "xocl/core/device.h"
@@ -34,7 +34,6 @@
 #include "xocl/core/program.h"
 #include "xocl/core/range.h"
 #include "xocl/core/execution_context.h"
-#include "xocl/xclbin/xclbin.h"
 #include <map>
 #include <memory>
 #include <cmath>

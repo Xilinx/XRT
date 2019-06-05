@@ -17,7 +17,7 @@
 #ifndef xrt_message_h_
 #define xrt_message_h_
 
-#include "driver/common/message.h"
+#include "core/common/message.h"
 #include <string>
 
 namespace xrt { namespace message {

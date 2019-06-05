@@ -37,6 +37,7 @@ ccache=0
 docs=0
 verbose=""
 driver=0
+clangtidy=0
 checkpatch=0
 jcore=$CORE
 while [ $# -gt 0 ]; do
@@ -67,6 +68,10 @@ while [ $# -gt 0 ]; do
             ;;
         -driver)
             driver=1
+            shift
+            ;;
+        -clangtidy)
+            clangtidy=1
             shift
             ;;
         -verbose)
@@ -108,28 +113,34 @@ cd Debug
 echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
 time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
 time make -j $jcore $verbose DESTDIR=$PWD install
+time ctest --output-on-failure
 cd $BUILDDIR
 
 cd Release
 echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
 time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
 time make -j $jcore $verbose DESTDIR=$PWD install
+time ctest --output-on-failure
 time make package
 
 if [[ $driver == 1 ]]; then
-    make -C usr/src/xrt-2.2.0/driver/xclng/drm/xocl
+    make -C usr/src/xrt-2.3.0/driver/xocl
 fi
 
 if [[ $docs == 1 ]]; then
     make xrt_docs
 fi
 
+if [[ $clangtidy == 1 ]]; then
+    make clang-tidy
+fi
+
 if [[ $checkpatch == 1 ]]; then
     # check only driver released files
-    DRIVERROOT=`readlink -f $BUILDDIR/Release/usr/src/xrt-2.2.0/driver`
+    DRIVERROOT=`readlink -f $BUILDDIR/Release/usr/src/xrt-2.3.0/driver`
 
     # find corresponding source under src tree so errors can be fixed in place
-    XOCLROOT=`readlink -f $BUILDDIR/../src/runtime_src/driver`
+    XOCLROOT=`readlink -f $BUILDDIR/../src/runtime_src/core/pcie/driver`
     echo $XOCLROOT
     for f in $(find $DRIVERROOT -type f -name *.c -o -name *.h); do
         fsum=$(md5sum $f | cut -d ' ' -f 1)

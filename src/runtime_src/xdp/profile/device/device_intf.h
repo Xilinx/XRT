@@ -22,7 +22,7 @@
  * under the License.
  */
 
-#include "driver/include/xclhal2.h"
+#include "xclhal2.h"
 #include <fstream>
 #include <list>
 #include <map>

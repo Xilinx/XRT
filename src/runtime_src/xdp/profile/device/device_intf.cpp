@@ -15,8 +15,8 @@
  */
 
 #include "device_intf.h"
-#include "driver/include/xclperf.h"
-#include "driver/include/xcl_perfmon_parameters.h"
+#include "xclperf.h"
+#include "xcl_perfmon_parameters.h"
 
 #include <iostream>
 #include <cstdio>

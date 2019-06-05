@@ -15,7 +15,7 @@ Assumption
 Identify DSA
 ~~~~~~~~~~~~
 
-There are two factor could be used to identify the new DSA. The first is PCI vendor-id, device-id and subsystem-id combination. The second is DSA VBNV name. For XRT driver ``src/runtime_src/driver/xclng/drm/xocl/devices.h`` need to be changed to identify the new DSA.
+There are two factor could be used to identify the new DSA. The first is PCI vendor-id, device-id and subsystem-id combination. The second is DSA VBNV name. For XRT driver ``src/runtime_src/core/pcie/driver/linux/xocl/devices.h`` need to be changed to identify the new DSA.
 
 Add new PCI ID combination
 ..........................

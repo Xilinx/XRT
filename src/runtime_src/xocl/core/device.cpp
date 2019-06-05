@@ -25,7 +25,7 @@
 #include "xrt/scheduler/scheduler.h"
 #include "xrt/util/config_reader.h"
 
-#include "driver/common/xclbin_parser.h"
+#include "core/common/xclbin_parser.h"
 
 #include <iostream>
 #include <fstream>
@@ -1144,8 +1144,8 @@ load_program(program* program)
   if (binary.debug_data().first)
     xrt::hal::load_xdp();
 
-  xocl::debug::reset(m_xclbin);
-  xocl::profile::reset(m_xclbin);
+  xocl::debug::reset(get_axlf());
+  xocl::profile::reset(get_axlf());
 
   // validatate target binary for target device and set the xrt device
   // according to target binary this is likely temp code that is

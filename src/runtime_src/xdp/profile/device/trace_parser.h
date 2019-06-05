@@ -25,7 +25,7 @@
 #include <string>
 #include <fstream>
 #include <CL/opencl.h>
-#include "driver/include/xclperf.h"
+#include "xclperf.h"
 #include "../collection/results.h"
 #include "../config.h"
 #include "xdp/profile/plugin/base_plugin.h"

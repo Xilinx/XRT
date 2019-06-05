@@ -19,7 +19,7 @@
  */
 
 #ifndef ERT_HW_EMU
-#include "driver/include/ert.h"
+#include "core/include/ert.h"
 #else
 #include "ert.h"
 #endif
@@ -100,7 +100,7 @@ static const u32 AP_CTRL_NONE  = 2;
 static const u32 AP_CTRL_ME    = 3;
 
 ////////////////////////////////////////////////////////////////
-// Extensions to driver/include/ert.h
+// Extensions to core/include/ert.h
 ////////////////////////////////////////////////////////////////
 const addr_type STATUS_REGISTER_ADDR[4] =
 {
@@ -240,7 +240,7 @@ struct bitset_type
 // If this assert fails, then ert_parameters is out of sync with
 // the board support package header files.
 #ifndef ERT_HW_EMU
-static_assert(ERT_INTC_ADDR==XPAR_INTC_SINGLE_BASEADDR,"update driver/include/ert.h");
+static_assert(ERT_INTC_ADDR==XPAR_INTC_SINGLE_BASEADDR,"update core/include/ert.h");
 #endif
 
 // Marker for invalid index
