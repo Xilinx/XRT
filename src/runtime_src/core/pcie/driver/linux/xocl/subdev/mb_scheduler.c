@@ -2818,7 +2818,7 @@ create_client(struct platform_device *pdev, void **priv)
 	mutex_lock(&xdev->dev_lock);
 
 	if (!xdev->offline) {
-		client->pid = task_tgid(current);
+		client->pid = get_pid(task_pid(current));
 		client->abort = false;
 		atomic_set(&client->trigger, 0);
 		atomic_set(&client->outstanding_execs, 0);
@@ -2883,6 +2883,8 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 	mutex_lock(&xdev->dev_lock);
 
 	pid = pid_nr(client->pid);
+	put_pid(client->pid);
+	client->pid = NULL;
 
 	list_del(&client->link);
 	DRM_INFO("client exits pid(%d)\n", pid);
