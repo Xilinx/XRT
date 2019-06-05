@@ -116,7 +116,7 @@ static int xocl_mmap(struct file *filp, struct vm_area_struct *vma)
 
 		xobj = to_xocl_bo(vma->vm_private_data);
 
-		if (WARN_ON(!xobj->pages))
+		if (!xobj->pages)
 			return -EINVAL;
 		/* Clear VM_PFNMAP flag set by drm_gem_mmap()
 		 * we have "struct page" for all backing pages for bo
