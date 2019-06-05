@@ -29,13 +29,15 @@
 #include <sys/file.h>
 
 #include "xclbin.h"
+#include "xcl_perfmon_parameters.h"
 #include "scan.h"
 #include "awssak.h"
 
 static const int debug_ip_layout_max_size = 65536;
 static const int depug_ip_max_type = 8;
 
-uint32_t xcldev::device::getIPCountAddrNames(int type, std::vector<uint64_t> *baseAddress, std::vector<std::string> * portNames) {
+uint32_t xcldev::device::getIPCountAddrNames(int type, std::vector<uint64_t> *baseAddress, std::vector<std::string> * portNames,
+                                             std::vector<uint8_t> *properties) {
     debug_ip_layout *map;
 
     std::string devName = xcldev::pci_device_scanner::device_list[ m_idx ].user_name;
@@ -60,6 +62,7 @@ uint32_t xcldev::device::getIPCountAddrNames(int type, std::vector<uint64_t> *ba
                         portName.assign(map->m_debug_ip_data[i].m_name, 128);
                         portNames->push_back(portName);
                     }
+                    if(properties) properties->push_back(map->m_debug_ip_data[i].m_properties);
                     ++count;
                 }
             }
@@ -108,8 +111,9 @@ std::pair<size_t, size_t> xcldev::device::getCUNamePortName (std::vector<std::st
 int xcldev::device::readSPMCounters() {
     xclDebugCountersResults debugResults = {0};
     std::vector<std::string> slotNames;
+    std::vector<uint8_t> properties;
     std::vector< std::pair<std::string, std::string> > cuNameportNames;
-    unsigned int numSlots = getIPCountAddrNames (AXI_MM_MONITOR, nullptr, &slotNames);
+    unsigned int numSlots = getIPCountAddrNames (AXI_MM_MONITOR, nullptr, &slotNames, &properties);
     if (numSlots == 0) {
         std::cout << "ERROR: AXI Interface Monitor IP does not exist on the platform" << std::endl;
         return 0;
@@ -135,6 +139,8 @@ int xcldev::device::readSPMCounters() {
             << "  " << std::setw(16)  << "Last Rd Data"
             << std::endl;
     for (unsigned int i = 0; i<debugResults.NumSlots; ++i) {
+        if(i < properties.size() && (properties[i] & XSPM_HOST_PROPERTY_MASK))
+            continue;
         std::cout << std::left
             << std::setw(col1) << cuNameportNames[i].first
             << " " << std::setw(col2) << cuNameportNames[i].second

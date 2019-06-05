@@ -566,7 +566,7 @@ public:
     }
 
    //Debug related functionality.
-    uint32_t getIPCountAddrNames(int type, std::vector<uint64_t> *baseAddress, std::vector<std::string> * portNames);
+    uint32_t getIPCountAddrNames(int type, std::vector<uint64_t> *baseAddress, std::vector<std::string> * portNames, std::vector<uint8_t> *properties = nullptr);
 
     std::pair<size_t, size_t> getCUNamePortName (std::vector<std::string>& aSlotNames,
                              std::vector< std::pair<std::string, std::string> >& aCUNamePortNames);
