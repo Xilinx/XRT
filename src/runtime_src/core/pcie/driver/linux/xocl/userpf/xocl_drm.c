@@ -100,6 +100,7 @@ static int xocl_mmap(struct file *filp, struct vm_area_struct *vma)
 	xdev_handle_t xdev = drm_p->xdev;
 	unsigned long vsize;
 	phys_addr_t res_start;
+	struct drm_xocl_bo *xobj;
 
 	DRM_ENTER("vm pgoff %lx", vma->vm_pgoff);
 
@@ -108,9 +109,15 @@ static int xocl_mmap(struct file *filp, struct vm_area_struct *vma)
 	 * it thinks is best,we will only handle page offsets less than 4G.
 	 */
 	if (likely(vma->vm_pgoff >= XOCL_FILE_PAGE_OFFSET)) {
+
 		ret = drm_gem_mmap(filp, vma);
 		if (ret)
 			return ret;
+
+		xobj = to_xocl_bo(vma->vm_private_data);
+
+		if (WARN_ON(!xobj->pages))
+			return -EINVAL;
 		/* Clear VM_PFNMAP flag set by drm_gem_mmap()
 		 * we have "struct page" for all backing pages for bo
 		 */
@@ -177,7 +184,6 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 #else
 	unsigned long vmf_address = (unsigned long)vmf->virtual_address;
 #endif
-
 	page_offset = (vmf_address - vma->vm_start) >> PAGE_SHIFT;
 
 

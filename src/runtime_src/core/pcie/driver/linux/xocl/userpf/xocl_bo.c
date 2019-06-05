@@ -26,7 +26,7 @@
 #ifdef XOCL_CMA_ALLOC
 #include <linux/cma.h>
 #endif
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(3,0,0)
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 0, 0)
 #include <drm/drm_backport.h>
 #endif
 #include <drm/drmP.h>
@@ -36,7 +36,7 @@
 #define	BO_ENTER(fmt, args...)		\
 	printk(KERN_INFO "[BO] Entering %s:"fmt"\n", __func__, ##args)
 #define	BO_DEBUG(fmt, args...)		\
-	printk(KERN_INFO "[BO] %s:%d:"fmt"\n", __func__,__LINE__, ##args)
+	printk(KERN_INFO "[BO] %s:%d:"fmt"\n", __func__, __LINE__, ##args)
 #else
 #define BO_ENTER(fmt, args...)
 #define	BO_DEBUG(fmt, args...)
@@ -87,10 +87,12 @@ void xocl_describe(const struct drm_xocl_bo *xobj)
 	size_t physical_addr = xocl_bo_physical_addr(xobj);
 	unsigned ddr = xocl_bo_ddr_idx(xobj->flags);
 	unsigned userptr = xocl_bo_userptr(xobj) ? 1 : 0;
+	uint64_t addr = 0;
 
-	DRM_DEBUG("%p: H[%p] SIZE[0x%zxKB] D[0x%zx] DDR[%u] UPTR[%u] SGLCOUNT[%u]\n",
-		  xobj, xobj->vmapping ? xobj->vmapping : xobj->bar_vmapping, size_in_kb,
-			physical_addr, ddr, userptr, xobj->sgt->orig_nents);
+	addr = xobj->vmapping ? (uint64_t)xobj->vmapping : (uint64_t)xobj->bar_vmapping;
+	DRM_DEBUG("%p: H[%llx] SIZE[0x%zxKB] D[0x%zx] DDR[%u] UPTR[%u] SGLCOUNT[%u]\n",
+		  xobj, addr ? addr : 0, size_in_kb,
+			physical_addr, ddr, userptr, xobj->sgt ? xobj->sgt->orig_nents : 0);
 }
 
 static void xocl_free_mm_node(struct drm_xocl_bo *xobj)
@@ -119,7 +121,7 @@ static void xocl_free_bo(struct drm_gem_object *obj)
 	struct drm_xocl_bo *xobj = to_xocl_bo(obj);
 	struct drm_device *ddev = xobj->base.dev;
 	struct xocl_drm *drm_p = ddev->dev_private;
-	struct xocl_dev *xdev= drm_p->xdev;
+	struct xocl_dev *xdev = drm_p->xdev;
 	int npages = obj->size >> PAGE_SHIFT;
 	DRM_DEBUG("Freeing BO %p\n", xobj);
 
@@ -149,10 +151,9 @@ static void xocl_free_bo(struct drm_gem_object *obj)
 			drm_free_large(xobj->pages);
 		}
 #endif
-		else if(xocl_bo_p2p(xobj) || xocl_bo_import(xobj)){
+		else if (xocl_bo_p2p(xobj) || xocl_bo_import(xobj)) {
 			drm_free_large(xobj->pages);
-		}
-		else {
+		} else {
 			drm_gem_put_pages(obj, xobj->pages, false, false);
 		}
 	}
@@ -166,8 +167,7 @@ static void xocl_free_bo(struct drm_gem_object *obj)
 		}
 		xobj->sgt = NULL;
 		xocl_free_mm_node(xobj);
-	}
-	else {
+	} else {
 		DRM_DEBUG("Freeing imported buffer\n");
 		if (obj->import_attach) {
 			DRM_DEBUG("Unnmapping attached dma buf\n");
@@ -204,10 +204,10 @@ void xocl_drm_free_bo(struct drm_gem_object *obj)
 }
 
 static inline int check_bo_user_reqs(const struct drm_device *dev,
-	unsigned flags , unsigned type)
+	unsigned flags, unsigned type)
 {
 	struct xocl_drm *drm_p = dev->dev_private;
-	struct xocl_dev *xdev= drm_p->xdev;
+	struct xocl_dev *xdev = drm_p->xdev;
 	u16 ddr_count;
 	unsigned ddr;
 
@@ -225,7 +225,7 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 	//unified or non-unified dsa
 	ddr_count = XOCL_DDR_COUNT(xdev);
 
-	if(ddr_count == 0)
+	if (ddr_count == 0)
 		return -EINVAL;
 	ddr = xocl_bo_ddr_idx(flags);
 	if (ddr >= ddr_count)
@@ -258,6 +258,7 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	u16 ddr_count = 0;
 	bool xobj_inited = false;
 	int err = 0;
+	bool dev_only_mem = user_type & DRM_XOCL_BO_P2P ? true : false;
 
 	BO_DEBUG("New create bo flags:%u type:%u", user_flags, user_type);
 	if (!size)
@@ -273,9 +274,14 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 		return ERR_PTR(-ENOMEM);
 
 	BO_ENTER("xobj %p", xobj);
-	err = drm_gem_object_init(dev, &xobj->base, size);
-	if (err)
-		goto failed;
+	if (dev_only_mem)
+		drm_gem_private_object_init(dev, &xobj->base, size);
+	else {
+		err = drm_gem_object_init(dev, &xobj->base, size);
+		if (err)
+			goto failed;
+	}
+
 	xobj_inited = true;
 
 	if (user_type == DRM_XOCL_BO_EXECBUF) {
@@ -288,9 +294,9 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 		return xobj;
 	}
 
-	if (user_type & DRM_XOCL_BO_P2P){
+	if (dev_only_mem)
 		xobj->type = XOCL_BO_P2P;
-	}
+
 #ifdef XOCL_CMA_ALLOC
 	if (user_type == DRM_XOCL_BO_CMA) {
 		xobj->type = XOCL_BO_CMA;
@@ -326,12 +332,10 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	return xobj;
 failed:
 	mutex_unlock(&drm_p->mm_lock);
-	if (xobj->mm_node)
-		kfree(xobj->mm_node);
+	kfree(xobj->mm_node);
 	if (xobj_inited)
 		drm_gem_object_release(&xobj->base);
-	if (xobj)
-		kfree(xobj);
+	kfree(xobj);
 	return ERR_PTR(err);
 }
 
@@ -344,7 +348,7 @@ struct drm_xocl_bo *xocl_drm_create_bo(struct xocl_drm *drm_p,
 			user_type);
 }
 
-static struct page** xocl_p2p_get_pages(void *bar_vaddr, int npages)
+static struct page **xocl_p2p_get_pages(void *bar_vaddr, int npages)
 {
 	struct page *p, **pages;
 	int i;
@@ -355,7 +359,7 @@ static struct page** xocl_p2p_get_pages(void *bar_vaddr, int npages)
 	if (pages == NULL)
 		return ERR_PTR(-ENOMEM);
 
-	for(i=0; i<npages;i++){
+	for (i = 0; i < npages; i++) {
 		p = virt_to_page(bar_vaddr+page_offset_enum);
 		pages[i] = p;
 
@@ -386,15 +390,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 #endif
 	struct drm_xocl_create_bo *args = data;
 	unsigned ddr = args->flags;
-	unsigned bar_mapped = (args->type & DRM_XOCL_BO_P2P) ? 1 : 0;
-
-	if(bar_mapped){
-		if(!xdev->p2p_bar_addr){
-			xocl_xdev_err(xdev, "No P2P mem region available, "
-					"Can't create p2p BO");
-			return -EINVAL;
-		}
-	}
+	bool dev_only_mem = (args->type & DRM_XOCL_BO_P2P) ? true : false;
 
 	xobj = xocl_create_bo(dev, args->size, args->flags, args->type);
 
@@ -403,72 +399,72 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 		DRM_DEBUG("object creation failed\n");
 		return PTR_ERR(xobj);
 	}
+	if (dev_only_mem) {
 
-	if(bar_mapped){
 		ddr = xocl_bo_ddr_idx(xobj->flags);
 		/*
 		 * DRM allocate contiguous pages, shift the vmapping with
 		 * bar address offset
 		 */
-		xobj->bar_vmapping = xdev->p2p_bar_addr +
-			drm_p->mm_p2p_off[ddr] + xobj->mm_node->start -
-			XOCL_MEM_TOPOLOGY(xdev)->m_mem_data[ddr].m_base_address;
+		if (xdev->p2p_bar_addr) {
+			xobj->bar_vmapping = xdev->p2p_bar_addr +
+				drm_p->mm_p2p_off[ddr] + xobj->mm_node->start -
+				XOCL_MEM_TOPOLOGY(xdev)->m_mem_data[ddr].m_base_address;
+		} else
+			xobj->bar_vmapping = NULL;
 	}
 
+	if (xobj->bar_vmapping || !dev_only_mem) {
 #ifdef XOCL_CMA_ALLOC
-	if (args->type == DRM_XOCL_BO_CMA) {
-		page_count = xobj->base.size >> PAGE_SHIFT;
-		xobj->pages = drm_malloc_ab(page_count, sizeof(*xobj->pages));
-		if (!xobj->pages) {
-			ret = -ENOMEM;
-			goto out_free;
+		if (args->type == DRM_XOCL_BO_CMA) {
+			page_count = xobj->base.size >> PAGE_SHIFT;
+			xobj->pages = drm_malloc_ab(page_count, sizeof(*xobj->pages));
+			if (!xobj->pages) {
+				ret = -ENOMEM;
+				goto out_free;
+			}
+			cpages = cma_alloc(xdev->cma_blk, page_count, 0, GFP_KERNEL);
+			if (!cpages) {
+				ret = -ENOMEM;
+				goto out_free;
+			}
+			for (j = 0; j < page_count; j++)
+				xobj->pages[j] = cpages++;
+		} else {
+			xobj->pages = drm_gem_get_pages(&xobj->base);
 		}
-		cpages = cma_alloc(xdev->cma_blk, page_count, 0, GFP_KERNEL);
-		if (!cpages) {
-			ret = -ENOMEM;
-			goto out_free;
-		}
-		for (j = 0; j < page_count; j++)
-			xobj->pages[j] = cpages++;
-	}
-	else {
-		xobj->pages = drm_gem_get_pages(&xobj->base);
-	}
 #else
-
-	if(bar_mapped){
-		xobj->pages = xocl_p2p_get_pages(xobj->bar_vmapping, xobj->base.size >> PAGE_SHIFT);
-	} else {
-		xobj->pages = drm_gem_get_pages(&xobj->base);
-	}
+		if (dev_only_mem)
+			xobj->pages = xocl_p2p_get_pages(xobj->bar_vmapping, xobj->base.size >> PAGE_SHIFT);
+		else
+			xobj->pages = drm_gem_get_pages(&xobj->base);
 
 #endif
-	if (IS_ERR(xobj->pages)) {
-		ret = PTR_ERR(xobj->pages);
-		goto out_free;
-	}
-
-	xobj->sgt = drm_prime_pages_to_sg(xobj->pages, xobj->base.size >> PAGE_SHIFT);
-	if (IS_ERR(xobj->sgt)) {
-		ret = PTR_ERR(xobj->sgt);
-		goto out_free;
-	}
-
-	if(!bar_mapped){
-		xobj->vmapping = vmap(xobj->pages, xobj->base.size >> PAGE_SHIFT, VM_MAP, PAGE_KERNEL);
-		if (!xobj->vmapping) {
-			ret = -ENOMEM;
+		if (IS_ERR(xobj->pages)) {
+			ret = PTR_ERR(xobj->pages);
 			goto out_free;
 		}
-	}
 
+		xobj->sgt = drm_prime_pages_to_sg(xobj->pages, xobj->base.size >> PAGE_SHIFT);
+		if (IS_ERR(xobj->sgt)) {
+			ret = PTR_ERR(xobj->sgt);
+			goto out_free;
+		}
+
+		if (!dev_only_mem) {
+			xobj->vmapping = vmap(xobj->pages, xobj->base.size >> PAGE_SHIFT, VM_MAP, PAGE_KERNEL);
+			if (!xobj->vmapping) {
+				ret = -ENOMEM;
+				goto out_free;
+			}
+		}
+	}
 	ret = drm_gem_create_mmap_offset(&xobj->base);
 	if (ret < 0)
 		goto out_free;
 	ret = drm_gem_handle_create(filp, &xobj->base, &args->handle);
 	if (ret < 0)
 		goto out_free;
-
 	xocl_describe(xobj);
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&xobj->base);
 	return ret;
@@ -590,6 +586,7 @@ static struct sg_table *alloc_onetime_sg_table(struct page **pages, uint64_t off
 	int ret;
 	unsigned int nr_pages;
 	struct sg_table *sgt = kmalloc(sizeof(struct sg_table), GFP_KERNEL);
+
 	if (!sgt)
 		return ERR_PTR(-ENOMEM);
 
@@ -632,7 +629,7 @@ int xocl_sync_bo_ioctl(struct drm_device *dev,
 	BO_ENTER("xobj %p", xobj);
 	sgt = xobj->sgt;
 
-	if(xocl_bo_p2p(xobj)){
+	if (xocl_bo_p2p(xobj)) {
 		DRM_DEBUG("P2P_BO doesn't support sync_bo\n");
 		ret = -EOPNOTSUPP;
 		goto out;
@@ -870,7 +867,7 @@ int xocl_copy_import_bo(struct drm_device *dev, struct drm_file *filp,
 	dst_xobj = to_xocl_bo(dst_gem_obj);
 	src_xobj = to_xocl_bo(src_gem_obj);
 	DRM_DEBUG("dst_xobj %p, src_xobj %p", dst_xobj, src_xobj);
-	if(xocl_bo_import(src_xobj) == xocl_bo_import(dst_xobj)){
+	if (xocl_bo_import(src_xobj) == xocl_bo_import(dst_xobj)) {
 		DRM_ERROR("invalid src or dst BO type, copy_bo aborted");
 		DRM_ERROR("expecting one local and one imported BO");
 		ret = -EINVAL;
@@ -878,7 +875,7 @@ int xocl_copy_import_bo(struct drm_device *dev, struct drm_file *filp,
 	}
 
 	/* If device is offline (due to error), reject all DMA requests */
-	if (xdev->offline){
+	if (xdev->offline) {
 		DRM_ERROR("DMA engine is offline, copy_bo aborted");
 		ret = -ENODEV;
 		goto out;
@@ -955,12 +952,13 @@ out:
 struct sg_table *xocl_gem_prime_get_sg_table(struct drm_gem_object *obj)
 {
 	struct drm_xocl_bo *xobj = to_xocl_bo(obj);
+
 	BO_ENTER("xobj %p", xobj);
 	return drm_prime_pages_to_sg(xobj->pages, xobj->base.size >> PAGE_SHIFT);
 }
 
 struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
-      struct dma_buf_attachment *attach, struct sg_table *sgt)
+	struct dma_buf_attachment *attach, struct sg_table *sgt)
 {
 	int ret = 0;
 	struct drm_xocl_bo *importing_xobj;
@@ -1002,14 +1000,15 @@ struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
 	return &importing_xobj->base;
 
 out_free:
-        xocl_free_bo(&importing_xobj->base);
-        DRM_ERROR("Buffer import failed\n");
-        return ERR_PTR(ret);
+	xocl_free_bo(&importing_xobj->base);
+	DRM_ERROR("Buffer import failed\n");
+	return ERR_PTR(ret);
 }
 
 void *xocl_gem_prime_vmap(struct drm_gem_object *obj)
 {
 	struct drm_xocl_bo *xobj = to_xocl_bo(obj);
+
 	BO_ENTER("xobj %p", xobj);
 	return xobj->vmapping;
 }
@@ -1233,9 +1232,8 @@ int xocl_usage_stat_ioctl(struct drm_device *dev, void *data,
 	args->mm_channel_count = XOCL_DDR_COUNT(xdev);
 	if (args->mm_channel_count > 8)
 		args->mm_channel_count = 8;
-	for (i = 0; i < args->mm_channel_count; i++) {
+	for (i = 0; i < args->mm_channel_count; i++)
 		xocl_mm_get_usage_stat(drm_p, i, args->mm + i);
-	}
 
 	args->dma_channel_count = xocl_get_chan_count(xdev);
 	if (args->dma_channel_count > 8)
