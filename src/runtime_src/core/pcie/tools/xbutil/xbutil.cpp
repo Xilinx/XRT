@@ -29,6 +29,7 @@
 #include "base.h"
 #include "ert.h"
 #include "core/pcie/linux/shim.h"
+#include "core/common/memalign.h"
 
 int bdf2index(std::string& bdfStr, unsigned& index)
 {
@@ -1164,7 +1165,6 @@ int xcldev::xclReset(int argc, char *argv[])
 {
     int c;
     unsigned index = 0;
-    bool root = ((getuid() == 0) || (geteuid() == 0));
     const std::string usage("Options: [-d index]");
 
     while ((c = getopt(argc, argv, "d:")) != -1) {
@@ -1190,12 +1190,7 @@ int xcldev::xclReset(int argc, char *argv[])
         return -EINVAL;
     }
 
-    if (!root) {
-        std::cout << "ERROR: root privileges required." << std::endl;
-        return -EPERM;
-    }
-
-    std::cout << "All eixisting processes will be killed." << std::endl;
+    std::cout << "All existing processes will be killed." << std::endl;
     if(!canProceed())
         return -ECANCELED;
 
@@ -1234,7 +1229,7 @@ static int p2ptest_chunk(xclDeviceHandle handle, char *boptr,
     char patternA = 'A';
     char patternB = 'B';
 
-    if (posix_memalign((void **)&buf, getpagesize(), size))
+    if (xrt_core::posix_memalign((void **)&buf, getpagesize(), size))
           return -ENOMEM;
 
     (void) p2ptest_set_or_cmp(buf, size, patternA, true);

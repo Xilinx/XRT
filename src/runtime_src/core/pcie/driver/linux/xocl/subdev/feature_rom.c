@@ -23,6 +23,7 @@
 #define	MAGIC_NUM	0x786e6c78
 struct feature_rom {
 	void __iomem		*base;
+	struct platform_device	*pdev;
 
 	struct FeatureRomHeader	header;
 	bool			unified;
@@ -32,6 +33,19 @@ struct feature_rom {
 	bool			aws_dev;
 	bool			runtime_clk_scale_en;
 };
+
+/* TODO: replace this with .dtb driven */
+static int xocl_init_rom_v5(struct feature_rom *rom5)
+{
+	struct FeatureRomHeader *header = &rom5->header;
+
+	strcpy(header->VBNVName, "xilinx_u200_dynamic_201910_1");
+	header->DDRChannelCount = 4;
+	header->DDRChannelSize = 16;
+	header->FeatureBitMap = UNIFIED_PLATFORM;
+
+	return 0;
+}
 
 static ssize_t VBNV_show(struct device *dev,
     struct device_attribute *attr, char *buf)
@@ -101,8 +115,41 @@ static struct attribute *rom_attrs[] = {
 	NULL,
 };
 
+static ssize_t raw_show(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+{
+	struct device *dev = kobj_to_dev(kobj);
+	struct feature_rom *rom = platform_get_drvdata(to_platform_device(dev));
+
+	if (off >= sizeof(rom->header))
+		return 0;
+
+	if (off + count >= sizeof(rom->header))
+		count = sizeof(rom->header) - off;
+
+	memcpy(buf, &rom->header, count);
+
+	return count;
+};
+
+static struct bin_attribute raw_attr = {
+	.attr = {
+		.name = "raw",
+		.mode = 0400
+	},
+	.read = raw_show,
+	.write = NULL,
+	.size = 0
+};
+
+static struct bin_attribute  *rom_bin_attrs[] = {
+	&raw_attr,
+	NULL,
+};
+
 static struct attribute_group rom_attr_group = {
 	.attrs = rom_attrs,
+	.bin_attrs = rom_bin_attrs,
 };
 
 static bool is_unified(struct platform_device *pdev)
@@ -220,7 +267,7 @@ static bool verify_timestamp(struct platform_device *pdev, u64 timestamp)
 	return (rom->header.TimeSinceEpoch == timestamp);
 }
 
-static void get_raw_header(struct platform_device *pdev, void *header)
+static int get_raw_header(struct platform_device *pdev, void *header)
 {
 	struct feature_rom *rom;
 
@@ -228,6 +275,8 @@ static void get_raw_header(struct platform_device *pdev, void *header)
 	BUG_ON(!rom);
 
 	memcpy(header, &rom->header, sizeof (rom->header));
+
+	return 0;
 }
 
 static struct xocl_rom_funcs rom_ops = {
@@ -245,26 +294,25 @@ static struct xocl_rom_funcs rom_ops = {
 	.runtime_clk_scale_on = runtime_clk_scale_on,
 };
 
-static int feature_rom_probe(struct platform_device *pdev)
+static int get_header_from_peer(struct feature_rom *rom)
 {
-	struct feature_rom *rom;
-	struct resource *res;
+	struct FeatureRomHeader *header;
+	
+	header = XOCL_GET_SUBDEV_PRIV(&rom->pdev->dev);
+	if (!header)
+		return -ENODEV;
+
+	memcpy(&rom->header, header, sizeof(*header));
+
+	return 0;
+}
+
+static int get_header_from_iomem(struct feature_rom *rom)
+{
+	struct platform_device *pdev = rom->pdev;
 	u32	val;
 	u16	vendor, did;
-	char	*tmp;
-	int	ret;
-
-	rom = devm_kzalloc(&pdev->dev, sizeof(*rom), GFP_KERNEL);
-	if (!rom)
-		return -ENOMEM;
-
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	rom->base = ioremap_nocache(res->start, res->end - res->start + 1);
-	if (!rom->base) {
-		ret = -EIO;
-		xocl_err(&pdev->dev, "Map iomem failed");
-		goto failed;
-	}
+	int	ret = 0;
 
 	val = ioread32(rom->base);
 	if (val != MAGIC_NUM) {
@@ -309,6 +357,40 @@ static int feature_rom_probe(struct platform_device *pdev)
 	}
 
 	xocl_memcpy_fromio(&rom->header, rom->base, sizeof(rom->header));
+
+	if (rom->header.MajorVersion == 5)
+		xocl_init_rom_v5(rom);
+
+failed:
+	return ret;
+}
+
+static int feature_rom_probe(struct platform_device *pdev)
+{
+	struct feature_rom *rom;
+	struct resource *res;
+	char	*tmp;
+	int	ret;
+
+	rom = devm_kzalloc(&pdev->dev, sizeof(*rom), GFP_KERNEL);
+	if (!rom)
+		return -ENOMEM;
+
+	rom->pdev =  pdev;
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (res == NULL)
+		ret = get_header_from_peer(rom);
+	else {
+		rom->base = ioremap_nocache(res->start, res->end - res->start + 1);
+		if (!rom->base) {
+			ret = -EIO;
+			xocl_err(&pdev->dev, "Map iomem failed");
+			goto failed;
+		}
+
+		ret = get_header_from_iomem(rom);
+	}
 
 	if (strstr(rom->header.VBNVName, "-xare")) {
 		/*
@@ -385,7 +467,7 @@ static int feature_rom_remove(struct platform_device *pdev)
 }
 
 struct platform_device_id rom_id_table[] =  {
-	{ XOCL_FEATURE_ROM, 0 },
+	{ XOCL_DEVNAME(XOCL_FEATURE_ROM), 0 },
 	{ },
 };
 
@@ -393,7 +475,7 @@ static struct platform_driver	feature_rom_driver = {
 	.probe		= feature_rom_probe,
 	.remove		= feature_rom_remove,
 	.driver		= {
-		.name = XOCL_FEATURE_ROM,
+		.name = XOCL_DEVNAME(XOCL_FEATURE_ROM),
 	},
 	.id_table = rom_id_table,
 };

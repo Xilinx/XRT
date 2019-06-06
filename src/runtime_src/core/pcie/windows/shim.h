@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,17 +14,13 @@
  * under the License.
  */
 
-//todo : temporory until there is a place for this in llvm/spir
+#ifndef _XRT_CORE_PCIE_WINDOWS_SHIM_H
+#define _XRT_CORE_PCIE_WINDOWS_SHIM_H
 
-#ifndef __SPIR_H
-#define __SPIR_H
+#include "xrt.h"
 
+namespace xocl { // shared implementation
 
-#define SPIR_ADDRSPACE_PRIVATE          0
-#define SPIR_ADDRSPACE_GLOBAL           1
-#define SPIR_ADDRSPACE_CONSTANT         2
-#define SPIR_ADDRSPACE_LOCAL            3
-#define SPIR_ADDRSPACE_PIPES            4
-
+} // xocl
 
 #endif

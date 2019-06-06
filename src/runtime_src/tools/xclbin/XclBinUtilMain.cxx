@@ -18,7 +18,7 @@
 // Local - Include Files
 #include "XclBinUtilMain.h"
 #include "XclBinUtilities.h"
-#include "XclBin.h"
+#include "XclBinClass.h"
 #include "ParameterSectionData.h"
 #include "FormattedOutput.h"
 

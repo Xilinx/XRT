@@ -34,7 +34,6 @@
 #include "xocl/core/program.h"
 #include "xocl/core/range.h"
 #include "xocl/core/execution_context.h"
-#include "xocl/xclbin/xclbin.h"
 #include <map>
 #include <memory>
 #include <cmath>

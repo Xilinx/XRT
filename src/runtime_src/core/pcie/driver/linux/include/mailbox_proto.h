@@ -17,6 +17,10 @@
 #ifndef _XCL_MB_PROTOCOL_H_
 #define _XCL_MB_PROTOCOL_H_
 
+#ifndef __KERNEL__
+#include <stdint.h>
+#endif
+
 /*
  * This header file contains mailbox protocol b/w mgmt and user pfs.
  * - Any changes made here should maintain backward compatibility.
@@ -33,7 +37,12 @@
 #define UUID_SZ		16
 
 /**
- * enum mailbox_request - List of all mailbox request OPCODE
+ * enum mailbox_request - List of all mailbox request OPCODE. Some OP code
+ *                        requires arguments, which is defined as corresponding
+ *                        data structures below. Response to the request usually
+ *                        is a int32_t containing the error code. Some responses
+ *                        are more complicated and require a data structure,
+ *                        which is also defined below in this file.
  * @MAILBOX_REQ_UNKNOWN: invalid OP code
  * @MAILBOX_REQ_TEST_READY: test msg is ready (post only, internal test only)
  * @MAILBOX_REQ_TEST_READ: fetch test msg from peer (internal test only)
@@ -48,6 +57,8 @@
  * @MAILBOX_REQ_USER_PROBE: for user pf to probe the peer mgmt pf
  * @MAILBOX_REQ_MGMT_STATE: for mgmt pf to notify user pf of its state change
  *                          (post only)
+ * @MAILBOX_REQ_CHG_SHELL: shell change is required on mgmt pf (post only)
+ * @MAILBOX_REQ_PROGRAM_SHELL: request mgmt pf driver to reprogram shell
  */
 enum mailbox_request {
 	MAILBOX_REQ_UNKNOWN =		0,
@@ -63,6 +74,8 @@ enum mailbox_request {
 	MAILBOX_REQ_PEER_DATA =		10,
 	MAILBOX_REQ_USER_PROBE =	11,
 	MAILBOX_REQ_MGMT_STATE =	12,
+	MAILBOX_REQ_CHG_SHELL =		13,
+	MAILBOX_REQ_PROGRAM_SHELL =	14,
 	/* Version 0 OP code ends */
 };
 
@@ -89,6 +102,7 @@ enum group_kind {
 	MIG_ECC,
 	FIREWALL,
 	DNA,
+	SUBDEV,
 };
 
 /**
@@ -127,6 +141,7 @@ struct xcl_sensor {
 	uint64_t cage_temp1;
 	uint64_t cage_temp2;
 	uint64_t cage_temp3;
+	uint64_t hbm_temp0;
 };
 
 /**
@@ -191,6 +206,17 @@ struct xcl_dna {
 	uint64_t revision;
 };
 /**
+ * Data structure used to fetch SUBDEV group
+ */
+struct xcl_subdev {
+	uint32_t ver;
+	int32_t rtncode;
+	uint64_t checksum;
+	size_t size;
+	size_t offset;
+	uint64_t data[1];
+};
+/**
  * struct mailbox_subdev_peer - MAILBOX_REQ_PEER_DATA payload type
  * @kind: data group
  * @size: buffer size for receiving response
@@ -199,6 +225,7 @@ struct mailbox_subdev_peer {
 	enum group_kind kind;
 	size_t size;
 	uint64_t entries;
+	size_t offset;
 };
 
 /**
@@ -279,11 +306,17 @@ struct mailbox_req {
 };
 
 /**
- * struct sw_chan - mailbox software channel message metadata
+ * struct sw_chan - mailbox software channel message metadata. This defines the
+ *                  interface between daemons (MPD and MSD) and mailbox's
+ *                  read or write callbacks. A mailbox message (either a request
+ *                  or response) is wrapped by this data structure as payload.
+ *                  A sw_chan is passed between mailbox driver and daemon via
+ *                  read / write driver callbacks. And it is also passed between
+ *                  MPD and MSD via vendor defined interface (TCP socket, etc).
  * @sz: payload size
- * @flags: flags of this message as in mailbox_req
+ * @flags: flags of this message as in struct mailbox_req
  * @id: message ID
- * @data: payload (request or response buffer)
+ * @data: payload (request or response message)
  */
 struct sw_chan {
 	uint64_t sz;
@@ -294,6 +327,3 @@ struct sw_chan {
 
 
 #endif /* _XCL_MB_PROTOCOL_H_ */
-
-
-

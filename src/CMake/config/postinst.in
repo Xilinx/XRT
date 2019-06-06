@@ -1,5 +1,20 @@
 #!/bin/sh
 
+installdir=/opt/xilinx/xrt
+systemddir=/etc/systemd/system
+
+msd_active=`systemctl is-active msd`
+mpd_active=`systemctl is-active mpd`
+# Stopping existing daemons so that we could swap drivers and update daemons later
+if [ "$mpd_active" = "active" ]; then
+	echo "Stopping MPD daemon"
+	systemctl stop mpd > /dev/null 2>&1 
+fi
+if [ "$msd_active" = "active" ]; then
+	echo "Stopping MSD daemon"
+	systemctl stop msd > /dev/null 2>&1 
+fi
+
 if [ -n "`dkms status -m xrt -v @XRT_VERSION_STRING@`" ]; then
     echo "Unloading old XRT Linux kernel modules"
     modprobe -r xocl
@@ -43,6 +58,26 @@ if [ -z "`dkms status -m xrt -v @XRT_VERSION_STRING@ |grep installed`" ]; then
     echo "* "
     echo "* Check build logs in /var/lib/dkms/xrt/@XRT_VERSION_STRING@"
     echo "****************************************************************"
+fi
+
+echo "Installing MSD / MPD daemons"
+
+# Update msd configuration before start daemons
+${installdir}/bin/xbmgmt config --update
+
+# Install msd/mpd services
+cp -f ${installdir}/etc/msd.service ${systemddir}
+cp -f ${installdir}/etc/mpd.service ${systemddir}
+systemctl daemon-reload > /dev/null 2>&1
+
+# Start daemons only when it was started previously
+if [ "$msd_active" = "active" ]; then
+	echo "Starting MSD daemon"
+	systemctl start msd > /dev/null 2>&1 
+fi
+if [ "$mpd_active" = "active" ]; then
+	echo "Starting MPD daemon"
+	systemctl start mpd > /dev/null 2>&1 
 fi
 
 exit 0

@@ -419,7 +419,7 @@ void setup_ert_hw(struct drm_zocl_dev *zdev)
 
 	/* For cu dma 5.2, need to configure cuisr. Ignore it for Fidus 5.1 */
 
-	/* Enable cu interupts (cu -> cu_isr -> PS interrupt) */
+	/* Enable cu interrupts (cu -> cu_isr -> PS interrupt) */
 
 	/* Enable interrupt from host to PS when new commands are ready */
 
@@ -448,8 +448,12 @@ enable_interrupts(struct drm_device *dev, int cu_idx)
 
 	/* 0x04 and 0x08 -- Interrupt Enable Registers */
 	iowrite32(0x1, virt_addr + 1);
-	/* bit 0 is ap_done, bit 1 is ap_ready, enable both of interrupts */
-	iowrite32(0x3, virt_addr + 2);
+	/*
+	 * bit 0 is ap_done, bit 1 is ap_ready
+	 * only enable ap_done before dataflow support, interrupts are handled
+	 * in sched_exec_isr, please see dataflow comments for more information.
+	 */
+	iowrite32(0x1, virt_addr + 2);
 }
 
 static irqreturn_t sched_exec_isr(int irq, void *arg)
@@ -483,7 +487,10 @@ static irqreturn_t sched_exec_isr(int irq, void *arg)
 	 * The ap_ready interrupt means all inputs have been read.
 	 *
 	 * TODO: Need to handle ap_done and ap_ready interrupt separately
-	 * after support dataflow exectution model
+	 * after supporting dataflow execution model.
+	 *
+	 * NOTE: Before dataflow support, we clearly toggle ap_done and
+	 * ap_ready to all ZERO. 
 	 *
 	 * The Interrupt Status Register is Toggle On Write
 	 * RegData = RegData ^ WriteData

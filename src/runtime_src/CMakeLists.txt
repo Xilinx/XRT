@@ -1,3 +1,8 @@
+
+# Note: Add Windows compilation directives at the END of this file
+
+if( NOT WIN32)
+
 if(${CMAKE_BUILD_TYPE} STREQUAL "Release" AND ${XRT_NATIVE_BUILD} STREQUAL "yes")
   add_subdirectory(doc)
 endif()
@@ -15,7 +20,6 @@ add_library(xilinxopencl SHARED ${OPENCL_SRC}
   $<TARGET_OBJECTS:xocl>
   $<TARGET_OBJECTS:xrt>
   $<TARGET_OBJECTS:xclbin>
-  $<TARGET_OBJECTS:impl>
   )
 
 add_library(oclxdp SHARED ${OPENCL_SRC}
@@ -48,7 +52,6 @@ add_subdirectory(xdp)
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   add_subdirectory(tools/xclbin)
 endif()
-add_subdirectory(impl)
 add_subdirectory(xclbin)
 add_subdirectory(xocl)
 add_subdirectory(xrt)
@@ -95,3 +98,23 @@ target_link_libraries(xilinxopencl
 install (TARGETS xilinxopencl oclxdp LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
 
 add_subdirectory(core)
+
+
+else()
+# = WINDOWS ===================================================================
+
+  # Enable ALL warnings and make them errors if they occur
+  if (MSVC)
+    # warning level 4 and all warnings are errors
+    add_compile_options(/W4 /WX)
+  else()
+    # lots of warnings and all warnings as errors
+    # add_compile_options(-Wall -Wextra -pedantic -Werror)
+    add_compile_options("-Wall" "-Werror")
+  endif()
+
+
+  # Build Subdirectories
+  add_subdirectory(tools/xclbin)
+endif()
+

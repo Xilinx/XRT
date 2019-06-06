@@ -77,30 +77,6 @@ XCL_DRIVER_DLLESPEC int xclGetSysfsPath(xclDeviceHandle handle, const char* subd
  */
 XCL_DRIVER_DLLESPEC int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info);
 
-struct xclMailboxConf {
-    char *commID;
-    size_t commIDLen;
-    uint64_t chanSwitch;
-};
-
-/**
- * xclMailboxConfRead - read mailbox configuration from user or mgmt pf.
- */
-XCL_DRIVER_DLLESPEC int xclMailboxConfRead(unsigned deviceIndex, bool user,
-    struct xclMailboxConf *conf);
-
-/**
- * xclMailboxConfWrite - write mailbox configuration to mgmt pf.
- */
-XCL_DRIVER_DLLESPEC int xclMailboxConfWrite(unsigned deviceIndex,
-    struct xclMailboxConf *conf);
-
-/**
- * xclMailboxOpen - opens and returns file descriptor for mgmt or user pf
- *              mailbox pseudo-device to call read()/write() on.
- */
-XCL_DRIVER_DLLESPEC int xclMailboxOpen(unsigned deviceIndex, bool user);
-
 #ifdef __cplusplus
 }
 #endif

@@ -24,6 +24,14 @@
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
 
+
+// Disable windows compiler warnings
+#ifdef _WIN32
+  #pragma warning( disable : 4100)      // 4100 - Unreferenced formal parameter
+#endif
+
+
+
 // Static Variables Initialization
 std::map<enum axlf_section_kind, std::string> Section::m_mapIdToName;
 std::map<std::string, enum axlf_section_kind> Section::m_mapNameToId;
@@ -229,14 +237,21 @@ Section::readXclBinBinary(std::fstream& _istream, const axlf_section_header& _se
   }
 
   m_name = (char*)&_sectionHeader.m_sectionName;
-  m_bufferSize = _sectionHeader.m_sectionSize;
+
+  if (_sectionHeader.m_sectionSize > UINT64_MAX) {
+    std::string errMsg ("FATAL ERROR: Section header size exceeds internal representation size.");
+    throw std::runtime_error(errMsg);
+  }
+
+  m_bufferSize = (unsigned int) _sectionHeader.m_sectionSize;
+
   m_pBuffer = new char[m_bufferSize];
 
   _istream.seekg(_sectionHeader.m_sectionOffset);
 
   _istream.read(m_pBuffer, m_bufferSize);
 
-  if (_istream.gcount() != m_bufferSize) {
+  if (_istream.gcount() != (std::streamsize) m_bufferSize) {
     std::string errMsg = "ERROR: Input stream for the binary buffer is smaller then the expected size.";
     throw std::runtime_error(errMsg);
   }
@@ -254,7 +269,7 @@ Section::readJSONSectionImage(const boost::property_tree::ptree& _ptSection)
   marshalFromJSON(_ptSection, buffer);
 
   // -- Read contents into memory buffer --
-  m_bufferSize = buffer.tellp();
+  m_bufferSize = (unsigned int) buffer.tellp();
 
   if (m_bufferSize == 0) {
     std::string errMsg = XUtil::format("WARNING: Section '%s' content is empty.  No data in the given JSON file.", getSectionKindAsString().c_str());
@@ -292,15 +307,22 @@ Section::readXclBinBinary(std::fstream& _istream,
   } else {
     // We don't initialize the buffer via any metadata.  Just read in the section as is
     XUtil::TRACE(XUtil::format("Reading in the section '%s' (%d) as a image.", getSectionKindAsString().c_str(), (unsigned int)getSectionKind()));
-    m_bufferSize =  XUtil::stringToUInt64(_ptSection.get<std::string>("Size"));
+
+    uint64_t imageSize = XUtil::stringToUInt64(_ptSection.get<std::string>("Size"));
+    if (imageSize > UINT64_MAX) {
+      std::string errMsg ("FATAL ERROR: Image size exceeds internal representation size.");
+      throw std::runtime_error(errMsg);
+    }
+
+    m_bufferSize = (unsigned int) imageSize;
     m_pBuffer = new char[m_bufferSize];
 
-    unsigned int offset = XUtil::stringToUInt64(_ptSection.get<std::string>("Offset"));
+    uint64_t offset = XUtil::stringToUInt64(_ptSection.get<std::string>("Offset"));
 
     _istream.seekg(offset);
     _istream.read(m_pBuffer, m_bufferSize);
 
-    if (_istream.gcount() != m_bufferSize) {
+    if (_istream.gcount() != (std::streamsize) m_bufferSize) {
       std::string errMsg = "ERROR: Input stream for the binary buffer is smaller then the expected size.";
       throw std::runtime_error(errMsg);
     }
@@ -350,7 +372,7 @@ Section::readPayload(std::fstream& _istream, enum FormatType _eFormatType)
     switch (_eFormatType) {
     case FT_RAW:
       {
-        axlf_section_header sectionHeader = (axlf_section_header){ 0 };
+        axlf_section_header sectionHeader = axlf_section_header {0};
         sectionHeader.m_sectionKind = getSectionKind();
         sectionHeader.m_sectionOffset = 0;
         _istream.seekg(0, _istream.end);
@@ -363,7 +385,7 @@ Section::readPayload(std::fstream& _istream, enum FormatType _eFormatType)
       {
         // Bring the file into memory
         _istream.seekg(0, _istream.end);
-        unsigned int fileSize = _istream.tellg();
+        unsigned int fileSize = (unsigned int) _istream.tellg();
 
         std::unique_ptr<unsigned char> memBuffer(new unsigned char[fileSize]);
         _istream.clear();
@@ -407,7 +429,7 @@ Section::readXclBinBinary(std::fstream& _istream, enum FormatType _eFormatType)
   switch (_eFormatType) {
   case FT_RAW:
     {
-      axlf_section_header sectionHeader = (axlf_section_header){ 0 };
+      axlf_section_header sectionHeader = axlf_section_header {0};
       sectionHeader.m_sectionKind = getSectionKind();
       sectionHeader.m_sectionOffset = 0;
       _istream.seekg(0, _istream.end);
@@ -420,7 +442,7 @@ Section::readXclBinBinary(std::fstream& _istream, enum FormatType _eFormatType)
     {
       // Bring the file into memory
       _istream.seekg(0, _istream.end);
-      unsigned int fileSize = _istream.tellg();
+      unsigned int fileSize = (unsigned int) _istream.tellg();
 
       std::unique_ptr<unsigned char> memBuffer(new unsigned char[fileSize]);
       _istream.clear();
@@ -591,7 +613,7 @@ Section::readSubPayload(std::fstream& _istream,
     m_bufferSize = 0;
   }
 
-  m_bufferSize = buffer.tellp();
+  m_bufferSize = (unsigned int) buffer.tellp();
 
   if (m_bufferSize == 0) {
     std::string errMsg = XUtil::format("WARNING: Section '%s' content is empty.", getSectionKindAsString().c_str());

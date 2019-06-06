@@ -357,7 +357,8 @@ retry_level1:
 	clear_retry = 0;
 
 retry_level2:
-	XOCL_WRITE_REG32(CLEAR_RESET_GPIO, fw->gpio_addr);
+	if (fw->gpio_addr)
+		XOCL_WRITE_REG32(CLEAR_RESET_GPIO, fw->gpio_addr);
 
 	if (check_firewall(pdev, NULL) && clear_retry++ < CLEAR_RETRY_COUNT) {
 		msleep(CLEAR_RETRY_INTERVAL);
@@ -413,7 +414,7 @@ static int firewall_remove(struct platform_device *pdev)
 
 	sysfs_remove_group(&pdev->dev.kobj, &firewall_attrgroup);
 
-	for (i = 0; i < MAX_LEVEL; i++) {
+	for (i = 0; i <= fw->max_level; i++) {
 		if (fw->base_addrs[i])
 			iounmap(fw->base_addrs[i]);
 	}
@@ -439,8 +440,8 @@ static int firewall_probe(struct platform_device *pdev)
 	for (i = 0; i < MAX_LEVEL; i++) {
 		res = platform_get_resource(pdev, IORESOURCE_MEM, i);
 		if (!res) {
-			fw->max_level = i - 1;
-			fw->gpio_addr = fw->base_addrs[i - 1];
+			fw->max_level = (i > 1) ? (i - 1) : i;
+			fw->gpio_addr = (i > 1) ?fw->base_addrs[i - 1] : NULL;
 			break;
 		}
 		fw->base_addrs[i] =
@@ -451,6 +452,8 @@ static int firewall_probe(struct platform_device *pdev)
 			goto failed;
 		}
 	}
+
+
 	ret = sysfs_create_group(&pdev->dev.kobj, &firewall_attrgroup);
 	if (ret) {
 		xocl_err(&pdev->dev, "create attr group failed: %d", ret);
@@ -468,7 +471,7 @@ failed:
 }
 
 struct platform_device_id firewall_id_table[] = {
-	{ XOCL_FIREWALL, 0 },
+	{ XOCL_DEVNAME(XOCL_FIREWALL), 0 },
 	{ },
 };
 
@@ -476,7 +479,7 @@ static struct platform_driver	firewall_driver = {
 	.probe		= firewall_probe,
 	.remove		= firewall_remove,
 	.driver		= {
-		.name = XOCL_FIREWALL,
+		.name = XOCL_DEVNAME(XOCL_FIREWALL),
 	},
 	.id_table = firewall_id_table,
 };

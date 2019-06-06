@@ -2772,9 +2772,9 @@ static ssize_t icap_rl_program(struct file *filp, struct kobject *kobj,
 		memset(&icap->icap_bitstream_uuid, 0, sizeof(xuid_t));
 		vfree(icap->bit_buffer);
 		icap->bit_buffer = NULL;
-	} else {
+		icap->bit_length = 0;
+	} else
 		memcpy(icap->bit_buffer + off, buffer, count);
-	}
 
 	return ret;
 }
@@ -3208,7 +3208,7 @@ failed:
 
 
 struct platform_device_id icap_id_table[] = {
-	{ XOCL_ICAP, 0 },
+	{ XOCL_DEVNAME(XOCL_ICAP), 0 },
 	{ },
 };
 
@@ -3216,7 +3216,7 @@ static struct platform_driver icap_driver = {
 	.probe		= icap_probe,
 	.remove		= icap_remove,
 	.driver		= {
-		.name	= XOCL_ICAP,
+		.name	= XOCL_DEVNAME(XOCL_ICAP),
 	},
 	.id_table = icap_id_table,
 };

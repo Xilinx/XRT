@@ -478,7 +478,7 @@ static int xlnx_dna_remove(struct platform_device *pdev)
 }
 
 struct platform_device_id xlnx_dna_id_table[] = {
-	{ XOCL_DNA, 0 },
+	{ XOCL_DEVNAME(XOCL_DNA), 0 },
 	{ },
 };
 
@@ -486,7 +486,7 @@ static struct platform_driver	xlnx_dna_driver = {
 	.probe		= xlnx_dna_probe,
 	.remove		= xlnx_dna_remove,
 	.driver		= {
-		.name = XOCL_DNA,
+		.name = XOCL_DEVNAME(XOCL_DNA),
 	},
 	.id_table = xlnx_dna_id_table,
 };

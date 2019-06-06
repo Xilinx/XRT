@@ -366,7 +366,7 @@ reportXclbinInfo( std::ostream & _ostream,
        if (sections.empty()) {
          sections.push_back(token);
        } else {
-         unsigned int index = sections.size() - 1;
+         unsigned int index = (unsigned int) sections.size() - 1;
          if ((sections[index].length() + token.length()) > wrapLength) {
            sections.push_back(token);
          } else {
@@ -578,7 +578,7 @@ reportMemoryConfiguration( std::ostream & _ostream,
     std::string sType = ptMemData.get<std::string>("m_type");
     std::string sBaseAddress = ptMemData.get<std::string>("m_base_address");
     std::string sAddressSizeKB = ptMemData.get<std::string>("m_sizeKB");
-    unsigned long addressSize = XUtil::stringToUInt64(sAddressSizeKB) * 1024;
+    uint64_t addressSize = XUtil::stringToUInt64(sAddressSizeKB) * 1024;
     std::string sUsed = ptMemData.get<std::string>("m_used");
   
     std::string sBankUsed = "No";

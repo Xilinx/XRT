@@ -247,10 +247,6 @@ private:
     bool mAioEnabled;
 }; /* shim */
 
-int xclMailboxOpen(unsigned deviceIndex, bool user);
-int xclMailboxConfRead(unsigned deviceIndex, bool user, struct xclMailboxConf *conf);
-int xclMailboxConfWrite(unsigned deviceIndex, bool user, struct xclMailboxConf *conf);
-
 } /* xocl */
 
 #endif

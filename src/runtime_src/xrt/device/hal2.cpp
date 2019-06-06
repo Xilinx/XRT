@@ -262,7 +262,7 @@ alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
     if (userptr)
       ubo->handle = m_ops->mAllocUserPtrBO(m_handle, userptr, sz, flags);
     else
-      ubo->handle = m_ops->mAllocBO(m_handle, sz, kind, flags);
+      ubo->handle = m_ops->mAllocBO(m_handle, sz, kind, flags | XCL_BO_FLAGS_CACHEABLE);
 
     if (ubo->handle == 0xffffffff)
       throw std::bad_alloc();

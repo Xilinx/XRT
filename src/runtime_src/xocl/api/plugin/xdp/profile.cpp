@@ -480,7 +480,7 @@ set_kernel_clock_freq(const std::string& device_name, unsigned int freq)
 }
 
 void
-reset(const xocl::xclbin& xclbin)
+reset(const axlf* xclbin)
 {
   if (cb_reset)
     cb_reset(xclbin);
