@@ -946,7 +946,6 @@ namespace awsbwhal {
       properties->flags  = info.flags;
       properties->size   = info.size;
       properties->paddr  = info.paddr;
-      properties->domain = XCL_BO_DEVICE_RAM; // currently all BO domains are XCL_BO_DEVICE_RAM
       return result ? mNullBO : 0;
     }
 
@@ -959,7 +958,7 @@ namespace awsbwhal {
 
     // Assume that the memory is always
     // created for the device ddr for now. Ignoring the flags as well.
-    unsigned int AwsXcl::xclAllocBO(size_t size, xclBOKind domain, unsigned flags)
+    unsigned int AwsXcl::xclAllocBO(size_t size, int unused, unsigned flags)
     {
       unsigned flag = flags & 0xFFFFFFLL;
       unsigned type = flags & 0xFF000000LL ;
@@ -1401,10 +1400,10 @@ int xclUnlockDevice(xclDeviceHandle handle)
   }
 }
 
-unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, xclBOKind domain, unsigned flags)
+unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned flags)
 {
   awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
-  return drv ? drv->xclAllocBO(size, domain, flags) : -ENODEV;
+  return drv ? drv->xclAllocBO(size, unused, flags) : -ENODEV;
 }
 
 unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)

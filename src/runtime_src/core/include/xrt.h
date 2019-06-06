@@ -144,44 +144,6 @@ enum xclMemoryDomains {
     XCL_MEM_DEVICE_REG  = 0x00000005
 };
 
-/**
- * xclBOKind defines Buffer Object Kind which represents a fragment of device accesible
- * memory and the corresponding backing host memory.
- *
- * 1. Shared virtual memory (SVM) class of systems like CAPI or MPSoc with SMMU. BOs
- *    have a common host RAM backing store.
- *    XCL_BO_SHARED_VIRTUAL
- *
- * 2. Shared physical memory class of systems like Zynq (or MPSoc with pass though SMMU)
- *    with Linux CMA buffer allocation. BOs have common host CMA allocated backing store.
- *    XCL_BO_SHARED_PHYSICAL
- *
- * 3. Shared virtual memory (SVM) class of systems with dedicated RAM and device MMU. BOs
- *    have a device RAM dedicated backing store and another host RAM allocated backing store.
- *    The buffers are sync'd via DMA. Both physical buffers use the same virtual address,
- *    hence giving the effect of SVM.
- *    XCL_BO_MIRRORED_VIRTUAL
- *
- * 4. Dedicated memory class of devices like PCIe card with DDR. BOs have a device RAM
- *    dedicated backing store and another host RAM allocated backing store. The buffers
- *    are sync'd via DMA
- *    XCL_BO_DEVICE_RAM
- *
- * 5. Dedicated onchip memory class of devices like PCIe card with BRAM. BOs have a device
- *    BRAM dedicated backing store and another host RAM allocated backing store. The buffers
- *    are sync'd via DMA
- *    XCL_BO_DEVICE_BRAM
- */
-
-enum xclBOKind {
-    XCL_BO_SHARED_VIRTUAL = 0,
-    XCL_BO_SHARED_PHYSICAL,
-    XCL_BO_MIRRORED_VIRTUAL,
-    XCL_BO_DEVICE_RAM,
-    XCL_BO_DEVICE_BRAM,
-    XCL_BO_DEVICE_PREALLOCATED_BRAM,
-};
-
 enum xclBOSyncDirection {
     XCL_BO_SYNC_BO_TO_DEVICE = 0,
     XCL_BO_SYNC_BO_FROM_DEVICE,
@@ -251,7 +213,7 @@ struct xclBOProperties {
     uint32_t flags;
     uint64_t size;
     uint64_t paddr;
-    enum xclBOKind domain; // not implemented
+    int reserved; // not implemented
 };
 
 #define	NULLBO	0xffffffff
@@ -483,12 +445,11 @@ XCL_DRIVER_DLLESPEC int xclLogMsg(xclDeviceHandle handle, enum xrtLogMsgLevel le
  *
  * @handle:        Device handle
  * @size:          Size of buffer
- * @domain:        Memory domain
  * @flags:         Specify bank information, etc
  * Return:         BO handle
  */
 XCL_DRIVER_DLLESPEC unsigned int xclAllocBO(xclDeviceHandle handle, size_t size,
-       	enum xclBOKind domain, unsigned flags);
+       	int unused, unsigned flags);
 
 /**
  * xclAllocUserPtrBO() - Allocate a BO using userptr provided by the user
