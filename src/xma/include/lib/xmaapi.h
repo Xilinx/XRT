@@ -39,6 +39,10 @@ typedef struct XmaSingleton
     bool              shm_freed;
 } XmaSingleton;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void xma_exit(void);
 
 /**
@@ -63,4 +67,10 @@ int32_t xma_filter_plugins_load(XmaSystemCfg      *systemcfg,
  */
 int32_t xma_kernel_plugins_load(XmaSystemCfg      *systemcfg,
                                 XmaKernelPlugin   *kernels);
+
+/** @} */
+#ifdef __cplusplus
+}
+#endif
+
 #endif

@@ -33,23 +33,6 @@
 
 namespace {
 
-// Command based enqueue needs to manage event state
-struct enqueue_command : xrt::command
-{
-  xocl::event* m_ev;
-  enqueue_command(xocl::device* device, xocl::event* event,ert_cmd_opcode opcode)
-    : xrt::command(device->get_xrt_device(),opcode), m_ev(event)
-  {}
-  virtual void start() const
-  {
-    m_ev->set_status(CL_RUNNING);
-  }
-  virtual void done() const
-  {
-    m_ev->set_status(CL_COMPLETE);
-  }
-};
-
 // Exception pointer for device exceptions during enqueue tasks.  The
 // pointer is set with the exception thrown by the task.
 static std::exception_ptr s_exception_ptr;
@@ -93,6 +76,27 @@ throw_if_error()
     throw xocl::error(CL_OUT_OF_RESOURCES,std::string("Operation failed due to earlier error '") + ex.what() + "'");
   }
 }
+
+// Command based enqueue needs to manage event state
+struct enqueue_command : xrt::command
+{
+  xocl::event* m_ev;
+  enqueue_command(xocl::device* device, xocl::event* event,ert_cmd_opcode opcode)
+    : xrt::command(device->get_xrt_device(),opcode), m_ev(event)
+  {}
+  virtual void start() const
+  {
+    m_ev->set_status(CL_RUNNING);
+  }
+  virtual void done() const
+  {
+    m_ev->set_status(CL_COMPLETE);
+  }
+  virtual void error(const std::exception& ex) const
+  {
+    handle_device_exception(m_ev,ex);
+  }
+};
 
 using async_type = xrt::device::queue_type;
 

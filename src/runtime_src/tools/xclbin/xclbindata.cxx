@@ -341,6 +341,22 @@ XclBinData::extractSectionData( int sectionNum, const char* name )
     type = "debug";
     ext = ".bin";
   }
+  else if ( header.m_sectionKind == DNA_CERTIFICATE ) {
+    type = "dna_certificate";
+    ext = ".bin";
+  }
+  else if ( header.m_sectionKind == BUILD_METADATA ) {
+    type = "build_metadata";
+    ext = ".bin";
+  }
+  else if ( header.m_sectionKind == KEYVALUE_METADATA ) {
+    type = "keyvalue_metadata";
+    ext = ".bin";
+  }
+  else if ( header.m_sectionKind == USER_METADATA ) {
+    type = "user_metadata";
+    ext = ".bin";
+  }
   else if ( header.m_sectionKind == MEM_TOPOLOGY ) {
     type = "mem_topology";
     ext = ".bin";
@@ -373,8 +389,14 @@ XclBinData::extractSectionData( int sectionNum, const char* name )
   else if ( header.m_sectionKind == BMC ) {
     extractAndWriteBMCImages((char*) data.get(), sectionSize);
     return true;
+  } else {
+    static unsigned int uniqueCount = 1;
+    type = "unknown(" + std::to_string(uniqueCount) + ")";
+    ext = ".bin";
+    ++uniqueCount;
   }
-  // Note: BUILD_METADATA, KEYVALUE_METADATA, USER_METADATA extraction currently not support
+
+  
 
 
   std::string id = "";
@@ -466,7 +488,9 @@ bool
 XclBinData::reportHeader() 
 {
   std::cout << "xclbin1 Size:           " << m_xclBinHead.m_header.m_length << "\n";
-  std::cout << "Version:                " << m_xclBinHead.m_header.m_version << "\n";
+  std::cout << "Version:                " << m_xclBinHead.m_header.m_versionMajor 
+                                            << "." << m_xclBinHead.m_header.m_versionMinor 
+                                            << "." << m_xclBinHead.m_header.m_versionPatch << "\n";
   std::cout << "Timestamp:              " << m_xclBinHead.m_header.m_timeStamp << "\n";
   std::cout << "Feature ROM Timestamp:  " << m_xclBinHead.m_header.m_featureRomTimeStamp << "\n";
   std::cout << "Mode:                   " << (int)m_xclBinHead.m_header.m_mode << "\n";
@@ -707,6 +731,9 @@ XclBinData::getMemType( std::string &_sMemType ) const
   if ( _sMemType == "MEM_ARE" )
       return MEM_ARE;
 
+  if ( _sMemType == "MEM_STREAMING_CONNECTION" )
+      return MEM_STREAMING_CONNECTION;
+
   std::string errMsg = "ERROR: Unknown memory type: '" + _sMemType + "'";
   throw std::runtime_error(errMsg);
 }
@@ -857,6 +884,7 @@ XclBinData::getIPType( std::string &_sIPType ) const
   if ( _sIPType == "IP_MB" ) return IP_MB;
   if ( _sIPType == "IP_KERNEL" ) return IP_KERNEL;
   if ( _sIPType == "IP_DNASC" ) return IP_DNASC;
+  if ( _sIPType == "IP_DDR4_CONTROLLER" ) return IP_DDR4_CONTROLLER;
 
   std::string errMsg = "ERROR: Unknown IP type: '" + _sIPType + "'";
   throw std::runtime_error(errMsg);
@@ -964,6 +992,9 @@ XclBinData::getDebugIPType( std::string &_sDebugIPType ) const
 
   if ( _sDebugIPType == "AXI_STREAM_MONITOR" )
       return AXI_STREAM_MONITOR;
+
+  if ( _sDebugIPType == "AXI_STREAM_PROTOCOL_CHECKER" )
+      return AXI_STREAM_PROTOCOL_CHECKER;
 
   if ( _sDebugIPType == "UNDEFINED" )
       return UNDEFINED;
@@ -1300,6 +1331,7 @@ XclBinData::getMemTypeStr(enum MEM_TYPE _memType) const
     case MEM_STREAMING: return "MEM_STREAMING";
     case MEM_PREALLOCATED_GLOB: return "MEM_PREALLOCATED_GLOB";
     case MEM_ARE: return "MEM_ARE";
+    case MEM_STREAMING_CONNECTION: return "MEM_STREAMING_CONNECTION";
   }
 
   return XclBinUtil::format("UNKNOWN (%d)", (unsigned int) _memType);
@@ -1445,6 +1477,9 @@ XclBinData::getIPTypeStr(enum IP_TYPE _ipType) const
     case IP_MB: return "IP_MB";
     case IP_KERNEL: return "IP_KERNEL";
     case IP_DNASC: return "IP_DNASC";
+    case IP_DDR4_CONTROLLER: return "IP_DDR4_CONTROLLER";
+    case IP_MEM_DDR4: return "IP_MEM_DDR4";
+    case IP_MEM_HBM: return "IP_MEM_DDR4";
   }
 
   return XclBinUtil::format("UNKNOWN (%d)", (unsigned int) _ipType);
@@ -1527,6 +1562,7 @@ XclBinData::getDebugIPTypeStr(enum DEBUG_IP_TYPE _debugIpType) const
     case AXI_MONITOR_FIFO_FULL: return "AXI_MONITOR_FIFO_FULL";
     case ACCEL_MONITOR: return "ACCEL_MONITOR";
     case AXI_STREAM_MONITOR: return "AXI_STREAM_MONITOR";
+    case AXI_STREAM_PROTOCOL_CHECKER: return "AXI_STREAM_PROTOCOL_CHECKER";
   }
 
   return XclBinUtil::format("UNKNOWN (%d)", (unsigned int) _debugIpType);

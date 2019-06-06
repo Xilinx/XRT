@@ -66,6 +66,15 @@ int main_( int argc, char** argv )
 
 int main( int argc, char** argv )
 {
+  std::cout << std::endl;
+  std::cout << "**** DEPRICATION WARNING ****"                                             << std::endl;
+  std::cout << "xclbincat and xclbinsplit utilities are replaced by xclbinutil."           << std::endl; 
+  std::cout << "You are recommended to use xclbinutil instead."                            << std::endl;
+  std::cout << std::endl;
+  std::cout << "The xclbincat and xclbinsplit utilities will be obsoleted and removed in " << std::endl; 
+  std::cout << "the next software release."                                                << std::endl;
+  std::cout << std::endl;
+
   try {
     return main_( argc, argv );
   } catch ( std::exception &e ) {
