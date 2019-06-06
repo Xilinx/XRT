@@ -8,6 +8,7 @@
  *    Sonal Santan <sonal.santan@xilinx.com>
  *    Umang Parekh <umang.parekh@xilinx.com>
  *    Min Ma       <min.ma@xilinx.com>
+ *    Jan Stephan  <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -29,6 +30,7 @@
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
 #include <linux/spinlock.h>
+#include <linux/version.h>
 #include "zocl_drv.h"
 #include "zocl_sk.h"
 #include "sched_exec.h"
@@ -666,7 +668,12 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 err1:
 	zocl_fini_sysfs(drm->dev);
 err0:
-	drm_dev_unref(drm);
+    /* TODO: Remove drm_dev_unref once Linux < 4.15 is no longer supported. */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0)
+	drm_dev_put(drm);
+#else
+    drm_dev_unref(drm);
+#endif
 	return ret;
 }
 
@@ -693,7 +700,12 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 
 	if (drm) {
 		drm_dev_unregister(drm);
-		drm_dev_unref(drm);
+    /* TODO: Remove drm_dev_unref once Linux < 4.15 is no longer supported. */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0)
+		drm_dev_put(drm);
+#else
+        drm_dev_unref(drm);
+#endif
 	}
 
 	return 0;

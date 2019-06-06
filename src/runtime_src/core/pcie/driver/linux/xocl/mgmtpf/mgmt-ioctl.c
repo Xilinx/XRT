@@ -1,6 +1,7 @@
 /**
  *  Copyright (C) 2017 Xilinx, Inc. All rights reserved.
- *  Author: Sonal Santan
+ *  Authors: Sonal Santan
+ *           Jan Stephan <j.stephan@hzdr.de>
  *  Code copied verbatim from SDAccel xcldma kernel mode driver
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -15,6 +16,7 @@
  */
 
 #include "mgmt-core.h"
+#include <linux/version.h>
 
 static int err_info_ioctl(struct xclmgmt_dev *lro, void __user *arg)
 {
@@ -112,11 +114,17 @@ long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	if (!lro->ready || _IOC_TYPE(cmd) != XCLMGMT_IOC_MAGIC)
 		return -ENOTTY;
 
-	if (_IOC_DIR(cmd) & _IOC_READ)
-		result = !access_ok(VERIFY_WRITE, (void __user *)arg, _IOC_SIZE(cmd));
-	else if (_IOC_DIR(cmd) & _IOC_WRITE)
-		result =  !access_ok(VERIFY_READ, (void __user *)arg, _IOC_SIZE(cmd));
-
+    /* TODO: Remove old access_ok macro as soon as Linux < 5.0 is no longer
+     * supported.
+     */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
+	result = !access_ok((void __user *)arg, _IOC_SIZE(cmd));
+#else
+    if (_IOC_DIR(cmd) & _IOC_READ)
+        result = !access_ok(VERIFY_WRITE, (void __user *)arg, _IOC_SIZE(cmd));
+    else if (_IOC_DIR(cmd) & _IOC_WRITE)
+        result =  !access_ok(VERIFY_READ, (void __user *)arg, _IOC_SIZE(cmd));
+#endif
 	if (result)
 		return -EFAULT;
 

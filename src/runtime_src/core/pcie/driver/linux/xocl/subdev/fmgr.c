@@ -4,6 +4,7 @@
  * Copyright (C) 2019 Xilinx, Inc. All rights reserved.
  *
  * Authors: Sonal Santan
+ *          Jan Stephan <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -157,13 +158,22 @@ static int fmgr_probe(struct platform_device *pdev)
 	struct xfpga_klass *obj = kzalloc(sizeof(struct xfpga_klass), GFP_KERNEL);
 	if (!obj)
 		return -ENOMEM;
-
+    /* TODO: Remove old fpga_mgr_register call as soon as Linux < 4.18 is no
+     * longer supported.
+     */
+#if defined(FPGA_MGR_SUPPORT) && (LINUX_VERSION_CODE >= KERNEL_VERSION(4,18,0))
+	struct fpga_manager *mgr = platform_get_drvdata(pdev);
+#endif
 	obj->xdev = xocl_get_xdev(pdev);
 	snprintf(obj->name, sizeof(obj->name), "Xilinx PCIe FPGA Manager");
 
 #if defined(FPGA_MGR_SUPPORT)
 	obj->state = FPGA_MGR_STATE_UNKNOWN;
-	ret = fpga_mgr_register(&pdev->dev, obj->name, &xocl_pr_ops, obj);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,18,0)
+	ret = fpga_mgr_register(mgr);
+#else
+    ret = fpga_mgr_register(&pdev->dev, obj->name, &xocl_pr_ops, obj);
+#endif // LINUX_VERSION_CODE
 #else
 	platform_set_drvdata(pdev, obj);
 #endif
@@ -177,7 +187,14 @@ static int fmgr_remove(struct platform_device *pdev)
 	struct xfpga_klass *obj = mgr->priv;
 
 	obj->state = FPGA_MGR_STATE_UNKNOWN;
-	fpga_mgr_unregister(&pdev->dev);
+    /* TODO: Remove old fpga_mgr_unregister as soon as Linux < 4.18 is no
+     * longer supported.
+     */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,18,0)
+	fpga_mgr_unregister(mgr);
+#else
+    fpga_mgr_unregister(&pdev->dev);
+#endif // LINUX_VERSION_CODE
 #else
 	struct xfpga_klass *obj = platform_get_drvdata(pdev);
 #endif

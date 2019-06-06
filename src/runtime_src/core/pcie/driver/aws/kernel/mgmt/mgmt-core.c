@@ -7,6 +7,7 @@
  *
  * Author(s):
  * Sonal Santan <sonal.santan@xilinx.com>
+ * Jan Stephan  <j.stephan@hzdr.de>
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
@@ -266,11 +267,17 @@ static long char_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	if (_IOC_TYPE(cmd) != XCLMGMT_IOC_MAGIC)
 		return -ENOTTY;
 
-	if (_IOC_DIR(cmd) & _IOC_READ)
-		result = !access_ok(VERIFY_WRITE, (void __user *)arg, _IOC_SIZE(cmd));
-	else if (_IOC_DIR(cmd) & _IOC_WRITE)
-		result =  !access_ok(VERIFY_READ, (void __user *)arg, _IOC_SIZE(cmd));
-
+    /* TODO: Remove old access_ok macro as soon as Linux < 5.0 is no longer
+     * supported.
+     */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
+	result =  !access_ok((void __user *)arg, _IOC_SIZE(cmd));
+#else
+    if (_IOC_DIR(cmd) & _IOC_READ)
+        result = !access_ok(VERIFY_WRITE, (void __user *)arg, _IOC_SIZE(cmd));
+    else if(_IOC_DIR(cmd) & _IOC_WRITE)
+        result =  !access_ok(VERIFY_READ, (void __user *)arg, _IOC_SIZE(cmd));
+#endif
 	if (result)
 		return -EFAULT;
 

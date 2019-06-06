@@ -4,8 +4,9 @@
  * Copyright (C) 2017-2019 Xilinx, Inc. All rights reserved.
  *
  * Authors:
- *    Soren Soe <soren.soe@xilinx.com>
- *    Min Ma <min.ma@xilinx.com>
+ *    Soren Soe   <soren.soe@xilinx.com>
+ *    Min Ma      <min.ma@xilinx.com>
+ *    Jan Stephan <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -21,6 +22,7 @@
 #include <linux/kthread.h>
 #include <linux/delay.h>
 #include <linux/sched.h>
+#include <linux/version.h>
 #include "ert.h"
 #include "sched_exec.h"
 #include "zocl_sk.h"
@@ -967,6 +969,8 @@ set_cmd_ext_cu_idx(struct sched_cmd *cmd, int cu_idx)
  *
  * The timestamp is reflected externally through the command packet
  * TODO: Should have scheduler profiling solution in the future.
+ * TODO: Remove deprecated do_gettimeofday once kernels < 3.17 are no
+ * longer supported.
  *
  * @cmd: command object
  * @ts: timestamp type
@@ -975,7 +979,11 @@ static inline void
 set_cmd_ext_timestamp(struct sched_cmd *cmd, enum zocl_ts_type ts)
 {
 	u32 opc = opcode(cmd);
-	struct timeval tv;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
+	struct timespec64 tv;
+#else
+    struct timeval tv;
+#endif
 	struct ert_start_kernel_cmd *sk;
 
 	sk = (struct ert_start_kernel_cmd *)cmd->packet;
@@ -991,13 +999,25 @@ set_cmd_ext_timestamp(struct sched_cmd *cmd, enum zocl_ts_type ts)
 	 * The fourth 32 bits - CU done  microseconds
 	 * Use 32 bits timestamp is good enough for this purpose for now.
 	 */
-	do_gettimeofday(&tv);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
+    ktime_get_real_ts64(&tv);
+#else
+    do_gettimeofday(&tv);
+#endif
 	if (ts == CU_START_TIME) {
 		*(sk->data + sk->extra_cu_masks) = (u32)tv.tv_sec;
-		*(sk->data + sk->extra_cu_masks + 1) = (u32)tv.tv_usec;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
+		*(sk->data + sk->extra_cu_masks + 1) = (u32)tv.tv_nsec / NSEC_PER_USEC;
+#else
+        *(sk->data + sk->extra_cu_masks + 1) = (u32)tv.tv_usec;
+#endif
 	} else if (ts == CU_DONE_TIME) {
 		*(sk->data + sk->extra_cu_masks + 2) = (u32)tv.tv_sec;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
+		*(sk->data + sk->extra_cu_masks + 3) = (u32)tv.tv_nsec / NSEC_PER_USEC;
+#else
 		*(sk->data + sk->extra_cu_masks + 3) = (u32)tv.tv_usec;
+#endif
 	}
 }
 
@@ -1273,16 +1293,25 @@ get_free_sched_cmd(void)
  *
  * Use the correct way to unreference a gem object
  *
+ * TODO: Remove drm_gem_object_unreference_unlocked as soon as kernels < 4.12
+ *       are no longer supported.
  */
 void zocl_gem_object_unref(struct sched_cmd *cmd)
 {
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
 	struct drm_zocl_bo *bo = cmd->buffer;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+	if (zdev->domain)
+		drm_gem_object_put_unlocked(&bo->gem_base);
+	else
+		drm_gem_object_put_unlocked(&bo->cma_base.base);
+#else
 	if (zdev->domain)
 		drm_gem_object_unreference_unlocked(&bo->gem_base);
 	else
 		drm_gem_object_unreference_unlocked(&bo->cma_base.base);
+#endif
 }
 
 /*

@@ -4,6 +4,7 @@
  * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@Xilinx.com
+ *          j.stephan@hzdr.de
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -925,7 +926,14 @@ static int queue_req_complete(unsigned long priv, unsigned int done_bytes,
 			cb->queue->qconf.c2h ? DMA_FROM_DEVICE : DMA_TO_DEVICE);
 		xocl_finish_unmgd(&cb->unmgd);
 	} else {
-		drm_gem_object_unreference_unlocked(&cb->xobj->base);
+        /* TODO: Remove drm_gem_object_unreference_unlocked as soon as
+         * Linux < 4.12 is no longer supported.
+         */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+		drm_gem_object_put_unlocked(&cb->xobj->base);
+#else
+        drm_gem_object_unreference_unlocked(&cb->xobj->base);
+#endif
 	}
 
 	spin_lock_bh(&cb->lock);
@@ -959,7 +967,14 @@ static ssize_t stream_post_bo(struct xocl_qdma *qdma,
 		goto out;
 	}
 
-	drm_gem_object_reference(gem_obj);
+    /* TODO: Remove drm_gem_object_reference as soon as Linux < 4.12 is no
+     * longer supported.
+     */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+	drm_gem_object_get(gem_obj);
+#else
+    drm_gem_object_reference(gem_obj);
+#endif
 	xobj = to_xocl_bo(gem_obj);
 
 	io_req = queue_req_new(queue);
@@ -1007,7 +1022,14 @@ static ssize_t stream_post_bo(struct xocl_qdma *qdma,
 
 out:
 	if (!kiocb) {
-		drm_gem_object_unreference_unlocked(gem_obj);
+        /* TODO: Remove drm_gem_object_unreference_unlocked as soon as
+         * Linux < 4.12 is no longer supported.
+         */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+		drm_gem_object_put_unlocked(gem_obj);
+#else
+        drm_gem_object_unreference_unlocked(gem_obj);
+#endif
 		if (io_req)
 			queue_req_free(queue, io_req, false);
 	} else {
@@ -1618,7 +1640,14 @@ static long stream_ioctl_alloc_buffer(struct xocl_qdma *qdma,
 
 	flags = O_CLOEXEC | O_RDWR;
 
-	drm_gem_object_reference(&xobj->base);
+    /* TODO: Remove drm_gem_object_reference as soon as Linux < 4.12 is no
+     * longer supported.
+     */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+	drm_gem_object_get(&xobj->base);
+#else
+    drm_gem_object_reference(&xobj->base);
+#endif
 	dmabuf = drm_gem_prime_export(XOCL_DRM(xdev)->ddev,
 		       	&xobj->base, flags);
 	if (IS_ERR(dmabuf)) {

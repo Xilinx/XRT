@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2018 Xilinx, Inc. All rights reserved.
  *
- * Authors:
+ * Authors: Jan Stephan <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -14,6 +14,7 @@
  */
 
 #include <linux/kthread.h>
+#include <linux/version.h>
 #include "xocl_drv.h"
 
 int xocl_test_interval = 5;
@@ -27,14 +28,25 @@ bool xocl_test_on = true;
 static int xocl_test_thread_main(void *data)
 {
 #if 0
-	struct timeval now;
+    /* TODO: Remove old timeval as soon as Linux < 3.17 is no longer supported.
+     */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
+	struct timespec64 now;
+#else
+    struct timeval now;
+#endif
 	struct drm_xocl_dev *xdev = (struct drm_xocl_dev *)data;
 	int irq = 0;
 	int count = 0;
 	while (!kthread_should_stop()) {
 		ssleep(xocl_test_interval);
-		do_gettimeofday(&now);
-		DRM_INFO("irq[%d] tv_sec[%ld]tv_usec[%ld]\n", irq, now.tv_sec, now.tv_usec);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
+        ktime_get_real_ts64(&now);
+		DRM_INFO("irq[%d] tv_sec[%ld]tv_usec[%ld]\n", irq, now.tv_sec, now.tv_nsec / NSEC_PER_USEC);
+#else
+        do_gettimeofday(&now);
+        DRM_INFO("irq[%d] tv_sec[%ld]tv_usec[%ld]\n", irq, now.tv_sec, now.tv_usec);
+#endif
 		xocl_user_event(irq, xdev);
 		irq++;
 		irq &= 0xf;

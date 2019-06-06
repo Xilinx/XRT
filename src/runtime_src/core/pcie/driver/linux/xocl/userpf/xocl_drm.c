@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
  *
- * Authors:
+ * Authors: Jan Stephan <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -406,7 +406,14 @@ failed:
 	if (drm_registered)
 		drm_dev_unregister(ddev);
 	if (ddev)
-		drm_dev_unref(ddev);
+        /* TODO: Remove drm_dev_unref as soon as Linux < 4.15 is no longer
+         * supported.
+         */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0)
+		drm_dev_put(ddev);
+#else
+        drm_dev_unref(ddev);
+#endif
 	if (drm_p)
 		xocl_drvinst_free(drm_p);
 
