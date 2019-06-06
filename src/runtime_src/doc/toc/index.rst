@@ -14,28 +14,70 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
 
 .. toctree::
    :maxdepth: 1
-   :caption: Table of Contents
+   :caption: XRT Introduction
 
    platforms.rst
-   execution-model.rst
-   xrt.main.rst
-   mgmt-ioctl.main.rst
-   xocl_ioctl.main.rst
-   sysfs.rst
-   tools.rst
-   xclbintools.rst
-   ert.main.rst
-   multiprocess.rst
-   formats.rst
    system_requirements.rst
    build.rst
-   yocto.rst
    test.rst
-   newdsa-bringup.rst
-   create_platforms.rst
+
+
+.. toctree::
+   :maxdepth: 1
+   :caption: XRT Use Model and Features
+
+   execution-model.rst
+   multiprocess.rst
    p2p.rst
    m2m.rst
-   debug-faq.rst
    xma.main.rst
+
+
+.. toctree::
+   :maxdepth: 1
+   :caption: XRT API Library
+
+   xrt.main.rst
+   ert.main.rst
+
+
+.. toctree::
+   :caption: Kernel Driver 
+   :maxdepth: 1
+
+   sysfs.rst
+   mgmt-ioctl.main.rst
+   xocl_ioctl.main.rst
+
+
+.. toctree::
+   :caption: Tools and Utilities  
+   :maxdepth: 1
+
+   tools.rst
+   formats.rst
+   xclbintools.rst
+
+
+.. toctree::
+   :caption: Platform Building  
+   :maxdepth: 1
+
+   yocto.rst
+   newdsa-bringup.rst
+   create_platforms.rst
+
+
+.. toctree::
+   :caption: Cloud Support   
+   :maxdepth: 1
+
    mailbox.main.rst
    mailbox.proto.rst
+
+
+.. toctree::
+   :caption: Debug and Faqs  
+   :maxdepth: 1
+
+   debug-faq.rst
