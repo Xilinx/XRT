@@ -159,25 +159,37 @@ static int fmgr_probe(struct platform_device *pdev)
 	if (!obj)
 		return -ENOMEM;
 
-	/* TODO: Remove old fpga_mgr_register call as soon as Linux < 4.18 is no
-	 * longer supported.
-	 */
-#if defined(FPGA_MGR_SUPPORT) && (LINUX_VERSION_CODE >= KERNEL_VERSION(4,18,0))
-	struct fpga_manager *mgr = platform_get_drvdata(pdev);
-#endif
 	obj->xdev = xocl_get_xdev(pdev);
 	snprintf(obj->name, sizeof(obj->name), "Xilinx PCIe FPGA Manager");
 
+	/* TODO: Remove old fpga_mgr_register call as soon as Linux < 4.18 is no
+	 * longer supported.
+	 */
 #if defined(FPGA_MGR_SUPPORT)
 	obj->state = FPGA_MGR_STATE_UNKNOWN;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,18,0)
+	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,18,0)
+	struct fpga_manager *mgr = fpga_mgr_create(&pdev->dev,
+											   obj->name,
+											   &xocl_pr_ops,
+											   obj);
+	if (!mgr)
+		return -ENOMEM;
+
+	/* Historically this was internally called by fpga_mgr_register (in the form
+	 * of drv_set_drvdata) but is expected to be called here since Linux 4.18.
+	 */
+	platform_set_drvdata(pdev, mgr);
+
 	ret = fpga_mgr_register(mgr);
-#else
+	if (ret)
+		fpga_mgr_free(mgr);
+	#else
 	ret = fpga_mgr_register(&pdev->dev, obj->name, &xocl_pr_ops, obj);
-#endif // LINUX_VERSION_CODE
+	#endif
 #else
 	platform_set_drvdata(pdev, obj);
 #endif
+
 	return ret;
 }
 
