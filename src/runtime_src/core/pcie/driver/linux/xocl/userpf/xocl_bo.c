@@ -4,9 +4,9 @@
  * Copyright (C) 2016-2017 Xilinx, Inc. All rights reserved.
  *
  * Authors:
- *    Sonal Santan <sonal.santan@xilinx.com>
- *    Sarabjeet Singh <sarabjeet.singh@xilinx.com>
- *    Jan Stephan <j.stephan@hzdr.de>
+ *	  Sonal Santan <sonal.santan@xilinx.com>
+ *	  Sarabjeet Singh <sarabjeet.singh@xilinx.com>
+ *	  Jan Stephan <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -486,8 +486,8 @@ out_free:
 }
 
 int xocl_userptr_bo_ioctl(struct drm_device *dev,
-			      void *data,
-			      struct drm_file *filp)
+				  void *data,
+				  struct drm_file *filp)
 {
 	int ret;
 	struct drm_xocl_bo *xobj;
@@ -570,8 +570,8 @@ out1:
 
 
 int xocl_map_bo_ioctl(struct drm_device *dev,
-		      void *data,
-		      struct drm_file *filp)
+			  void *data,
+			  struct drm_file *filp)
 {
 	int ret = 0;
 	struct drm_xocl_map_bo *args = data;
@@ -629,8 +629,8 @@ cleanup:
 }
 
 int xocl_sync_bo_ioctl(struct drm_device *dev,
-		       void *data,
-		       struct drm_file *filp)
+			   void *data,
+			   struct drm_file *filp)
 {
 	const struct drm_xocl_bo *xobj;
 	struct sg_table *sgt;
@@ -643,7 +643,7 @@ int xocl_sync_bo_ioctl(struct drm_device *dev,
 
 	u32 dir = (args->dir == DRM_XOCL_SYNC_BO_TO_DEVICE) ? 1 : 0;
 	struct drm_gem_object *gem_obj = xocl_gem_object_lookup(dev, filp,
-							       args->handle);
+								   args->handle);
 	if (!gem_obj) {
 		DRM_ERROR("Failed to look up GEM BO %d\n", args->handle);
 		return -ENOENT;
@@ -728,8 +728,8 @@ out:
 }
 
 int xocl_info_bo_ioctl(struct drm_device *dev,
-		       void *data,
-		       struct drm_file *filp)
+			   void *data,
+			   struct drm_file *filp)
 {
 	const struct drm_xocl_bo *xobj;
 	struct drm_xocl_info_bo *args = data;
@@ -766,7 +766,7 @@ int xocl_pwrite_bo_ioctl(struct drm_device *dev, void *data,
 	struct drm_xocl_bo *xobj;
 	const struct drm_xocl_pwrite_bo *args = data;
 	struct drm_gem_object *gem_obj = xocl_gem_object_lookup(dev, filp,
-							       args->handle);
+								   args->handle);
 	char __user *user_data = to_user_ptr(args->data_ptr);
 	int ret = 0;
 	void *kaddr;
@@ -777,7 +777,7 @@ int xocl_pwrite_bo_ioctl(struct drm_device *dev, void *data,
 	}
 
 	if ((args->offset > gem_obj->size) || (args->size > gem_obj->size)
-	    || ((args->offset + args->size) > gem_obj->size)) {
+		|| ((args->offset + args->size) > gem_obj->size)) {
 		ret = -EINVAL;
 		goto out;
 	}
@@ -830,7 +830,7 @@ int xocl_pread_bo_ioctl(struct drm_device *dev, void *data,
 	struct drm_xocl_bo *xobj;
 	const struct drm_xocl_pread_bo *args = data;
 	struct drm_gem_object *gem_obj = xocl_gem_object_lookup(dev, filp,
-							       args->handle);
+								   args->handle);
 	char __user *user_data = to_user_ptr(args->data_ptr);
 	int ret = 0;
 	void *kaddr;
@@ -846,7 +846,7 @@ int xocl_pread_bo_ioctl(struct drm_device *dev, void *data,
 	}
 
 	if ((args->offset > gem_obj->size) || (args->size > gem_obj->size)
-	    || ((args->offset + args->size) > gem_obj->size)) {
+		|| ((args->offset + args->size) > gem_obj->size)) {
 		ret = -EINVAL;
 		goto out;
 	}
@@ -1032,7 +1032,7 @@ struct sg_table *xocl_gem_prime_get_sg_table(struct drm_gem_object *obj)
 }
 
 struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
-      struct dma_buf_attachment *attach, struct sg_table *sgt)
+	  struct dma_buf_attachment *attach, struct sg_table *sgt)
 {
 	int ret = 0;
 	struct drm_xocl_bo *importing_xobj;
@@ -1055,7 +1055,7 @@ struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
 		goto out_free;
 	}
 	ret = drm_prime_sg_to_page_addr_arrays(sgt, importing_xobj->pages,
-	       NULL, attach->dmabuf->size >> PAGE_SHIFT);
+		   NULL, attach->dmabuf->size >> PAGE_SHIFT);
 	if (ret)
 		goto out_free;
 
@@ -1074,9 +1074,9 @@ struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
 	return &importing_xobj->base;
 
 out_free:
-        xocl_free_bo(&importing_xobj->base);
-        DRM_ERROR("Buffer import failed\n");
-        return ERR_PTR(ret);
+		xocl_free_bo(&importing_xobj->base);
+		DRM_ERROR("Buffer import failed\n");
+		return ERR_PTR(ret);
 }
 
 void *xocl_gem_prime_vmap(struct drm_gem_object *obj)
@@ -1196,7 +1196,7 @@ static bool xocl_validate_paddr(struct xocl_dev *xdev, u64 paddr, u64 size)
 }
 
 int xocl_pwrite_unmgd_ioctl(struct drm_device *dev, void *data,
-			    struct drm_file *filp)
+				struct drm_file *filp)
 {
 	int channel;
 	struct drm_xocl_unmgd unmgd;

@@ -4,7 +4,7 @@
  * Copyright (C) 2019 Xilinx, Inc. All rights reserved.
  *
  * Authors: Sonal Santan
- *          Jan Stephan <j.stephan@hzdr.de>
+ *			Jan Stephan <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -51,17 +51,17 @@ struct xfpga_klass {
 
 #if defined(FPGA_MGR_SUPPORT)
 static int xocl_pr_write_init(struct fpga_manager *mgr,
-			      struct fpga_image_info *info, const char *buf, size_t count)
+				  struct fpga_image_info *info, const char *buf, size_t count)
 {
 	struct xfpga_klass *obj = mgr->priv;
 	const struct axlf *bin = (const struct axlf *)buf;
 	if (count < sizeof(struct axlf)) {
-	 	obj->state = FPGA_MGR_STATE_WRITE_INIT_ERR;
+		obj->state = FPGA_MGR_STATE_WRITE_INIT_ERR;
 		return -EINVAL;
 	}
 
 	if (count > bin->m_header.m_length) {
-	 	obj->state = FPGA_MGR_STATE_WRITE_INIT_ERR;
+		obj->state = FPGA_MGR_STATE_WRITE_INIT_ERR;
 		return -EINVAL;
 	}
 

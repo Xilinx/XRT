@@ -4,7 +4,7 @@
  * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@Xilinx.com
- *          j.stephan@hzdr.de
+ *			j.stephan@hzdr.de
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -34,7 +34,7 @@
 #include "../lib/libqdma/libqdma_export.h"
 #include "qdma_ioctl.h"
 
-#define XOCL_FILE_PAGE_OFFSET   0x100000
+#define XOCL_FILE_PAGE_OFFSET	0x100000
 #ifndef VM_RESERVED
 #define VM_RESERVED (VM_DONTEXPAND | VM_DONTDUMP)
 #endif
@@ -107,7 +107,7 @@ struct stream_queue {
 	struct device		dev;
 	struct xocl_qdma	*qdma;
 	unsigned long		queue;
-	struct qdma_queue_conf  qconf;
+	struct qdma_queue_conf	qconf;
 	u32			state;
 	int			flowid;
 	int			routeid;
@@ -119,12 +119,12 @@ struct stream_queue {
 	struct list_head	req_free_list;
 	struct stream_async_req *req_cache;
 	/* stats */
-	unsigned int 		req_pend_cnt;
-	unsigned int 		req_free_cnt;
-	unsigned int 		req_submit_cnt;
-	unsigned int 		req_cmpl_cnt;
-	unsigned int 		req_cancel_cnt;
-	unsigned int 		req_cancel_cmpl_cnt;
+	unsigned int		req_pend_cnt;
+	unsigned int		req_free_cnt;
+	unsigned int		req_submit_cnt;
+	unsigned int		req_cmpl_cnt;
+	unsigned int		req_cancel_cnt;
+	unsigned int		req_cancel_cmpl_cnt;
 };
 
 struct xocl_qdma {
@@ -360,7 +360,7 @@ static int stream_sysfs_create(struct stream_queue *queue)
 	for (i = 0; i < QDMA_QSETS_MAX * 2; i++) {
 		temp_q = queue->qdma->queues[i];
 		if (!temp_q)
-		       continue;
+			   continue;
 		if (temp_q->qconf.c2h && queue->qconf.c2h &&
 			temp_q->flowid == queue->flowid) {
 			xocl_err(&pdev->dev,
@@ -431,7 +431,7 @@ static ssize_t error_show(struct device *dev, struct device_attribute *da,
 static DEVICE_ATTR_RO(error);
 
 static ssize_t channel_stat_raw_show(struct device *dev,
-		        struct device_attribute *attr, char *buf)
+				struct device_attribute *attr, char *buf)
 {
 	u32 i;
 	ssize_t nbytes = 0;
@@ -480,7 +480,7 @@ static ssize_t qdma_migrate_bo(struct platform_device *pdev,
 
 	dir = write ? DMA_TO_DEVICE : DMA_FROM_DEVICE; 
 	nents = pci_map_sg(XDEV(xdev)->pdev, sgt->sgl, sgt->orig_nents, dir);
-        if (!nents) {
+		if (!nents) {
 		xocl_err(&pdev->dev, "map sgl failed, sgt 0x%p.\n", sgt);
 		return -EIO;
 	}
@@ -500,7 +500,7 @@ static ssize_t qdma_migrate_bo(struct platform_device *pdev,
 
 	if (ret >= 0) {
 		chan->total_trans_bytes += ret;
-	} else  {
+	} else	{
 		xocl_err(&pdev->dev, "DMA failed, Dumping SG Page Table");
 		dump_sgtable(&pdev->dev, sgt);
 	}
@@ -516,8 +516,8 @@ static void release_channel(struct platform_device *pdev, u32 dir, u32 channel)
 
 
 	qdma = platform_get_drvdata(pdev);
-        set_bit(channel, &qdma->channel_bitmap[dir]);
-        up(&qdma->channel_sem[dir]);
+		set_bit(channel, &qdma->channel_bitmap[dir]);
+		up(&qdma->channel_sem[dir]);
 }
 
 static int acquire_channel(struct platform_device *pdev, u32 dir)
@@ -539,8 +539,8 @@ static int acquire_channel(struct platform_device *pdev, u32 dir)
 			&qdma->channel_bitmap[dir]);
 		if (result)
 			break;
-        }
-        if (!result) {
+		}
+		if (!result) {
 		// How is this possible?
 		up(&qdma->channel_sem[dir]);
 		channel = -EIO;
@@ -688,10 +688,10 @@ static u32 get_channel_count(struct platform_device *pdev)
 {
 	struct xocl_qdma *qdma;
 
-        qdma = platform_get_drvdata(pdev);
-        BUG_ON(!qdma);
+		qdma = platform_get_drvdata(pdev);
+		BUG_ON(!qdma);
 
-        return qdma->channel;
+		return qdma->channel;
 }
 
 static u64 get_channel_stat(struct platform_device *pdev, u32 channel,
@@ -699,10 +699,10 @@ static u64 get_channel_stat(struct platform_device *pdev, u32 channel,
 {
 	struct xocl_qdma *qdma;
 
-        qdma = platform_get_drvdata(pdev);
-        BUG_ON(!qdma);
+		qdma = platform_get_drvdata(pdev);
+		BUG_ON(!qdma);
 
-        return qdma->chans[write][channel].total_trans_bytes;
+		return qdma->chans[write][channel].total_trans_bytes;
 }
 
 static u64 get_str_stat(struct platform_device *pdev, u32 q_idx)
@@ -1642,14 +1642,14 @@ static long stream_ioctl_alloc_buffer(struct xocl_qdma *qdma,
 
 	/* TODO: Remove drm_gem_object_reference as soon as Linux < 4.12 is no
 	 * longer supported.
-	*/
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	drm_gem_object_get(&xobj->base);
 #else
 	drm_gem_object_reference(&xobj->base);
 #endif
 	dmabuf = drm_gem_prime_export(XOCL_DRM(xdev)->ddev,
-		       	&xobj->base, flags);
+				&xobj->base, flags);
 	if (IS_ERR(dmabuf)) {
 		xocl_err(&qdma->pdev->dev, "failed to export dma_buf");
 		ret = PTR_ERR(dmabuf);
