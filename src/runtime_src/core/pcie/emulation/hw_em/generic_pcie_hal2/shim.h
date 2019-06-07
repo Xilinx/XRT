@@ -64,7 +64,8 @@ using addr_type = uint64_t;
       uint16_t writeBytes;
       Event();
   };
- struct membank
+ 
+  struct membank
   {
     addr_type base_addr; // base address of bank
     std::string tag;     // bank tag in lowercase
@@ -72,6 +73,20 @@ using addr_type = uint64_t;
     int32_t index;       // bank id
   };
 
+  typedef struct loadBitStream {
+    char* m_zipFile;
+    size_t m_zipFileSize;
+    char* m_xmlfile;
+    size_t m_xmlFileSize;
+    char* m_debugFile;
+    size_t m_debugFileSize;
+    char* m_memTopology;
+    size_t m_memTopologySize;
+    char* m_pdi;
+    size_t m_pdiSize;
+    char* m_emuData;
+    size_t m_emuDataSize;
+  } bitStreamArg;
 
  typedef struct 
  {
@@ -117,8 +132,7 @@ using addr_type = uint64_t;
       // Bitstreams
       int xclLoadXclBin(const xclBin *buffer);
       //int xclLoadBitstream(const char *fileName);
-      int xclLoadBitstreamWorker(char* zipFile, size_t zipFileSize, char* xmlfile, size_t xmlFileSize,
-                                 char* debugFile, size_t debugFileSize, char* memTopology, size_t memTopologySize, char* pdi, size_t pdiSize);
+      int xclLoadBitstreamWorker(bitStreamArg);
       bool isUltraScale() const;
       int xclUpgradeFirmware(const char *fileName);
       int xclBootFPGA();
