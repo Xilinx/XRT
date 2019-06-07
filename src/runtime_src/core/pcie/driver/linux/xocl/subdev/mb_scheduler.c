@@ -3271,14 +3271,15 @@ client_ioctl_execbuf(struct platform_device *pdev,
 	return ret;
 
 out:
-	for (--numdeps; numdeps >= 0; numdeps--)
-		/* TODO: Remove drm_gem_object_unreference_unlocked as soon as
-		 * Linux < 4.12 is no longer supported.
-		 */
+	/* TODO: Remove drm_gem_object_unreference_unlocked as soon as  Linux < 4.12
+	 * is no longer supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+	for (--numdeps; numdeps >= 0; numdeps--)
 		drm_gem_object_put_unlocked(&deps[numdeps]->base);
 	drm_gem_object_put_unlocked(&xobj->base);
 #else
+	for (--numdeps; numdeps >= 0; numdeps--)
 		drm_gem_object_unreference_unlocked(&deps[numdeps]->base);
 	drm_gem_object_unreference_unlocked(&xobj->base);
 #endif

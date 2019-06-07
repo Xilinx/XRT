@@ -406,13 +406,13 @@ failed:
 	if (drm_registered)
 		drm_dev_unregister(ddev);
 	if (ddev)
-        /* TODO: Remove drm_dev_unref as soon as Linux < 4.15 is no longer
-         * supported.
-         */
+		/* TODO: Remove drm_dev_unref as soon as Linux < 4.15 is no longer
+		 * supported.
+		 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0)
 		drm_dev_put(ddev);
 #else
-        drm_dev_unref(ddev);
+		drm_dev_unref(ddev);
 #endif
 	if (drm_p)
 		xocl_drvinst_free(drm_p);

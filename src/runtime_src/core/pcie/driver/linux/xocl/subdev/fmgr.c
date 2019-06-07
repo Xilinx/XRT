@@ -158,6 +158,7 @@ static int fmgr_probe(struct platform_device *pdev)
 	struct xfpga_klass *obj = kzalloc(sizeof(struct xfpga_klass), GFP_KERNEL);
 	if (!obj)
 		return -ENOMEM;
+
 	/* TODO: Remove old fpga_mgr_register call as soon as Linux < 4.18 is no
 	 * longer supported.
 	 */

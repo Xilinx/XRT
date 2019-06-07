@@ -4,7 +4,7 @@
  * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@Xilinx.com
- *          j.stephan@hzdr.de
+ *          Jan Stephan <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -1649,7 +1649,7 @@ static long stream_ioctl_alloc_buffer(struct xocl_qdma *qdma,
 	drm_gem_object_reference(&xobj->base);
 #endif
 	dmabuf = drm_gem_prime_export(XOCL_DRM(xdev)->ddev,
-		       	&xobj->base, flags);
+				&xobj->base, flags);
 	if (IS_ERR(dmabuf)) {
 		xocl_err(&qdma->pdev->dev, "failed to export dma_buf");
 		ret = PTR_ERR(dmabuf);
