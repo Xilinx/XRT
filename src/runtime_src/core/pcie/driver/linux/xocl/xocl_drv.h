@@ -264,6 +264,8 @@ struct xocl_dev_core {
 	resource_size_t		bar_size;
 	resource_size_t		feature_rom_offset;
 
+	u32			dma_bar_idx;
+
 	u32			intr_bar_idx;
 	void __iomem		*intr_bar_addr;
 	resource_size_t		intr_bar_size;
@@ -790,6 +792,43 @@ struct xocl_mig_funcs {
 	MIG_OPS(xdev, idx)->get_data(MIG_DEV(xdev, idx), buf, entry_sz) : \
 	0)
 
+struct xocl_axigate_funcs {
+	int (*freeze)(struct platform_device *pdev);
+	int (*free)(struct platform_device *pdev);
+	int (*get_level)(struct platform_device *pdev);
+};
+
+#define	AXIGATE_DEV(xdev, idx)	SUBDEV_MULTI(xdev, XOCL_SUBDEV_AXIGATE, idx).pldev
+#define AXIGATE_OPS(xdev, idx)					\
+	((struct xocl_axigate_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_AXIGATE, idx).ops)
+#define AXIGATE_CB(xdev, subdev)		\
+	(subdev && subdev->pldev && subdev->ops)
+#define xocl_axigate_freeze(xdev, subdev)			\
+	(AXIGATE_CB(xdev, subdev) ?			\
+	subdev->ops->freeze(subdev->pldev) : \
+	-ENODEV)
+#define xocl_axigate_free(xdev, idx)			\
+	(AXIGATE_CB(xdev, idx) ?			\
+	AXIGATE_OPS(xdev, idx)->free(AXIGATE_DEV(xdev, idx)) : \
+	-ENODEV)
+static inline struct xocl_subdev *
+xocl_axigate_dev_by_level(xdev_handle_t xdev, int level)
+{
+	struct xocl_subdev	*subdev;
+	int i;
+
+	for (i = 0; i < XOCL_SUBDEV_MAX_INST; i++) {
+		subdev = &XDEV(xdev)->subdevs[XOCL_SUBDEV_AXIGATE][i];
+		if (subdev->pldev && subdev->ops &&
+		    level == ((struct xocl_axigate_funcs *)subdev->ops)->
+		    get_level(subdev->pldev))
+			return subdev;
+	}
+
+	return NULL;
+}
+
+
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
 void xocl_init_dsa_priv(xdev_handle_t xdev_hdl);
@@ -814,8 +853,10 @@ int xocl_subdev_create_all(xdev_handle_t xdev_hdl);
 void xocl_subdev_destroy_all(xdev_handle_t xdev_hdl);
 int xocl_subdev_offline_all(xdev_handle_t xdev_hdl);
 int xocl_subdev_offline_by_id(xdev_handle_t xdev_hdl, u32 id);
+int xocl_subdev_offline_by_level(xdev_handle_t xdev_hdl, int level);
 int xocl_subdev_online_all(xdev_handle_t xdev_hdl);
 int xocl_subdev_online_by_id(xdev_handle_t xdev_hdl, u32 id);
+int xocl_subdev_online_by_level(xdev_handle_t xdev_hdl, int level);
 void xocl_subdev_destroy_by_id(xdev_handle_t xdev_hdl, u32 id);
 void xocl_subdev_destroy_by_level(xdev_handle_t xdev_hdl, int level);
 
@@ -942,6 +983,6 @@ void xocl_fini_xdma_mgmt(void);
 int __init xocl_init_flash(void);
 void xocl_fini_flash(void);
 
-int __init xocl_init_icap_bld(void);
-void xocl_fini_icap_bld(void);
+int __init xocl_init_axigate(void);
+void xocl_fini_axigate(void);
 #endif

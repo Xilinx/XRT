@@ -586,6 +586,38 @@ int xocl_subdev_online_by_id(xdev_handle_t xdev_hdl, uint32_t subdev_id)
 	return (ret && ret != -EAGAIN) ? ret : 0;
 }
 
+int xocl_subdev_offline_by_level(xdev_handle_t xdev_hdl, int level)
+{
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+	int i, j, ret = 0;
+
+	for (i = ARRAY_SIZE(core->subdevs) - 1; i >= 0; i--)
+		for (j = 0; j < XOCL_SUBDEV_MAX_INST; j++)
+			if (core->subdevs[i][j].info.level == level) {
+				ret = xocl_subdev_offline(xdev_hdl,
+					&core->subdevs[i][j]);
+				if (ret)
+					return ret;
+			}
+	return 0;
+}
+
+int xocl_subdev_online_by_level(xdev_handle_t xdev_hdl, int level)
+{
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+	int i, j, ret;
+
+	for (i = ARRAY_SIZE(core->subdevs) - 1; i >= 0; i--)
+		for (j = 0; j < XOCL_SUBDEV_MAX_INST; j++)
+			if (core->subdevs[i][j].info.level == level) {
+				ret = xocl_subdev_online(xdev_hdl,
+					&core->subdevs[i][j]);
+				if (ret)
+					return ret;
+			}
+	return 0;
+}
+
 int xocl_subdev_offline_all(xdev_handle_t xdev_hdl)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
@@ -626,7 +658,8 @@ void xocl_subdev_update_info(xdev_handle_t xdev_hdl,
 	int	i, idx;
 
 	for (i = 0; i < *num; i++) {
-		if (info_array[i].id == sdev_info->id) {
+		if (info_array[i].id == sdev_info->id &&
+			!info_array[i].multi_inst) {
 			memcpy(&info_array[i], sdev_info,
 				sizeof(*info_array));
 			return;

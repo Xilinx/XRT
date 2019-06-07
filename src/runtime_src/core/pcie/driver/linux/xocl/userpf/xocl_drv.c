@@ -930,7 +930,8 @@ static int identify_bar(struct xocl_dev *xdev)
 				return -EIO;
 			xdev->core.bar_idx = i;
 			xdev->core.bar_size = bar_len;
-		}
+		} else
+			xdev->core.dma_bar_idx = i;
 	}
 
 	return 0;

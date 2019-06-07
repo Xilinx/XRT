@@ -246,15 +246,25 @@ static struct xocl_subdev_map		subdev_map[] = {
 		NULL,
 	},
 	{
-		XOCL_SUBDEV_ICAP_BLD,
-		XOCL_ICAP_BLD,
+		XOCL_SUBDEV_AXIGATE,
+		XOCL_AXIGATE,
 		{
-			"icap",
 			"gateprbld",
 			NULL
 		},
-		2,
-		0,
+		1,
+		XOCL_SUBDEV_MAP_MULTI_INST,
+		NULL,
+	},
+	{
+		XOCL_SUBDEV_AXIGATE,
+		XOCL_AXIGATE,
+		{
+			"gateprprp",
+			NULL
+		},
+		1,
+		XOCL_SUBDEV_MAP_MULTI_INST,
 		NULL,
 	},
 	{
@@ -436,8 +446,7 @@ static int xocl_fdt_parse_seg(xdev_handle_t xdev_hdl, char *blob,
 				subdevs[i].info.dyn_ip++;
 				total++;
 				break;
-			} else if (subdevs[i].info.level == ip->level &&
-				    subdevs[i].pf == ntohl(*pfnum)) {
+			} else if (subdevs[i].pf == ntohl(*pfnum)) {
 				subdevs[i].info.dyn_ip++;
 				total++;
 				break;
@@ -457,7 +466,7 @@ static int xocl_fdt_parse_seg(xdev_handle_t xdev_hdl, char *blob,
 			subdevs[i].res[idx].flags = IORESOURCE_MEM;
 			snprintf(subdevs[i].res_name[idx],
 				XOCL_SUBDEV_RES_NAME_LEN,
-				"%s/%s.%d.%d.%d",
+				"%s/%s %d %d %d",
 				ip->name, name, ip->major, ip->minor,
 				ip->level);
 			subdevs[i].res[idx].name = subdevs[i].res_name[idx];
@@ -478,7 +487,7 @@ static int xocl_fdt_parse_seg(xdev_handle_t xdev_hdl, char *blob,
 			subdevs[i].res[idx].flags = IORESOURCE_IRQ;
 			snprintf(subdevs[i].res_name[idx],
 				XOCL_SUBDEV_RES_NAME_LEN,
-				"%s/%s.%d.%d.%d",
+				"%s/%s %d %d %d",
 				ip->name, name, ip->major, ip->minor,
 				ip->level);
 			subdevs[i].res[idx].name = subdevs[i].res_name[idx];
@@ -497,33 +506,20 @@ static int xocl_fdt_next_ip(xdev_handle_t xdev_hdl, char *blob,
 {
 	char *l0_path = LEVEL0_DEV_PATH;
 	char *l1_path = LEVEL1_DEV_PATH;
-	int l1_off, l0_off, node, end;
+	int l1_off, l0_off, node;
 	const u16 *ver;
 
 	l0_off = fdt_path_offset(blob, l0_path);
-	if (off <= l0_off) {
-		ip->level = XOCL_SUBDEV_LEVEL_BLD;
-		node = fdt_first_subnode(blob, l0_off);
-		goto found;
-	} else if (l0_off >= 0) {
-		end = fdt_next_subnode(blob, l0_off);
-		if (end < 0 || off < end) {
-			node = fdt_next_subnode(blob, off);
-			if (node > 0) {
-				ip->level = XOCL_SUBDEV_LEVEL_BLD;
-				goto found;
-			}
-		}
-	}
-	
 	l1_off = fdt_path_offset(blob, l1_path);
-	if (off <= l1_off) {
-		ip->level = XOCL_SUBDEV_LEVEL_PRP;
-		node = fdt_first_subnode(blob, l1_off);
-		goto found;
-	} else if (l1_off >= 0) {
-		node = fdt_next_subnode(blob, off);
-		if (node > 0) {
+	for (node = fdt_next_node(blob, off, NULL);
+	    node >= 0;
+	    node = fdt_next_node(blob, node, NULL)) {
+		if (fdt_parent_offset(blob, node) == l0_off) {
+			ip->level = XOCL_SUBDEV_LEVEL_BLD;
+			goto found;
+		}
+
+		if (fdt_parent_offset(blob, node) == l1_off) {
 			ip->level = XOCL_SUBDEV_LEVEL_PRP;
 			goto found;
 		}
@@ -549,7 +545,7 @@ static int xocl_fdt_ip_lookup(xdev_handle_t xdev_hdl, char *blob,
 		struct xocl_subdev *subdevs, int dev_num)
 {
 	struct ip_node	ip;
-	int off = 0, seg, num, total = 0; 
+	int off = -1, seg, num, total = 0; 
 
 	for (off = xocl_fdt_next_ip(xdev_hdl, blob, off, &ip); off >= 0;
 		off = xocl_fdt_next_ip(xdev_hdl, blob, off, &ip)) {
@@ -624,6 +620,9 @@ static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 		if (subdevs[i].info.dyn_ip >= map_p->required_ip) {
 			subdevs[i].info.id = map_p->id;
 			subdevs[i].info.name = map_p->dev_name;
+			subdevs[i].info.multi_inst =
+				(map_p->flags & XOCL_SUBDEV_MAP_MULTI_INST) ?
+				true : false;
 			if (!rtn_subdevs) {
 				dev_num++;
 				continue;

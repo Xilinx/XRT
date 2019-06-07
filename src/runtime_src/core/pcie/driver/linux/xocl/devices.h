@@ -62,6 +62,7 @@ enum {
 	XOCL_SUBDEV_LEVEL_BLD,
 	XOCL_SUBDEV_LEVEL_PRP,
 	XOCL_SUBDEV_LEVEL_URP,
+	XOCL_SUBDEV_LEVEL_MAX,
 };
 struct xocl_subdev_info {
         uint32_t		id;
@@ -154,7 +155,7 @@ enum {
 #define	XOCL_XIIC			"xiic"
 #define	XOCL_MAILBOX		"mailbox"
 #define	XOCL_ICAP			"icap"
-#define	XOCL_ICAP_BLD		"icap_bld"
+#define	XOCL_AXIGATE		"axigate"
 #define	XOCL_MIG			"mig"
 #define	XOCL_XMC			"xmc"
 #define	XOCL_DNA			"dna"
@@ -177,8 +178,8 @@ enum subdev_id {
 	XOCL_SUBDEV_MB,
 	XOCL_SUBDEV_XIIC,
 	XOCL_SUBDEV_MAILBOX,
+	XOCL_SUBDEV_AXIGATE,
 	XOCL_SUBDEV_ICAP,
-	XOCL_SUBDEV_ICAP_BLD,
 	XOCL_SUBDEV_DNA,
 	XOCL_SUBDEV_FMGR,
 	XOCL_SUBDEV_MIG_HBM,
@@ -186,6 +187,7 @@ enum subdev_id {
 };
 
 #define	XOCL_SUBDEV_MAP_USERPF_ONLY		0x1
+#define XOCL_SUBDEV_MAP_MULTI_INST		0x2
 struct xocl_subdev_map {
 	int	id;
 	const char *dev_name;
