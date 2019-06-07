@@ -926,13 +926,13 @@ static int queue_req_complete(unsigned long priv, unsigned int done_bytes,
 			cb->queue->qconf.c2h ? DMA_FROM_DEVICE : DMA_TO_DEVICE);
 		xocl_finish_unmgd(&cb->unmgd);
 	} else {
-        /* TODO: Remove drm_gem_object_unreference_unlocked as soon as
-         * Linux < 4.12 is no longer supported.
-         */
+		/* TODO: Remove drm_gem_object_unreference_unlocked as soon as
+		 * Linux < 4.12 is no longer supported.
+		 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 		drm_gem_object_put_unlocked(&cb->xobj->base);
 #else
-        drm_gem_object_unreference_unlocked(&cb->xobj->base);
+		drm_gem_object_unreference_unlocked(&cb->xobj->base);
 #endif
 	}
 
@@ -967,13 +967,13 @@ static ssize_t stream_post_bo(struct xocl_qdma *qdma,
 		goto out;
 	}
 
-    /* TODO: Remove drm_gem_object_reference as soon as Linux < 4.12 is no
-     * longer supported.
-     */
+	/* TODO: Remove drm_gem_object_reference as soon as Linux < 4.12 is no
+	 * longer supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	drm_gem_object_get(gem_obj);
 #else
-    drm_gem_object_reference(gem_obj);
+	drm_gem_object_reference(gem_obj);
 #endif
 	xobj = to_xocl_bo(gem_obj);
 
@@ -1022,13 +1022,13 @@ static ssize_t stream_post_bo(struct xocl_qdma *qdma,
 
 out:
 	if (!kiocb) {
-        /* TODO: Remove drm_gem_object_unreference_unlocked as soon as
-         * Linux < 4.12 is no longer supported.
-         */
+		/* TODO: Remove drm_gem_object_unreference_unlocked as soon as
+		 * Linux < 4.12 is no longer supported.
+		 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 		drm_gem_object_put_unlocked(gem_obj);
 #else
-        drm_gem_object_unreference_unlocked(gem_obj);
+		drm_gem_object_unreference_unlocked(gem_obj);
 #endif
 		if (io_req)
 			queue_req_free(queue, io_req, false);
@@ -1640,13 +1640,13 @@ static long stream_ioctl_alloc_buffer(struct xocl_qdma *qdma,
 
 	flags = O_CLOEXEC | O_RDWR;
 
-    /* TODO: Remove drm_gem_object_reference as soon as Linux < 4.12 is no
-     * longer supported.
-     */
+	/* TODO: Remove drm_gem_object_reference as soon as Linux < 4.12 is no
+	 * longer supported.
+	*/
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	drm_gem_object_get(&xobj->base);
 #else
-    drm_gem_object_reference(&xobj->base);
+	drm_gem_object_reference(&xobj->base);
 #endif
 	dmabuf = drm_gem_prime_export(XOCL_DRM(xdev)->ddev,
 		       	&xobj->base, flags);

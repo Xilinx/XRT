@@ -28,12 +28,12 @@ bool xocl_test_on = true;
 static int xocl_test_thread_main(void *data)
 {
 #if 0
-    /* TODO: Remove old timeval as soon as Linux < 3.17 is no longer supported.
-     */
+	/* TODO: Remove old timeval as soon as Linux < 3.17 is no longer supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
 	struct timespec64 now;
 #else
-    struct timeval now;
+	struct timeval now;
 #endif
 	struct drm_xocl_dev *xdev = (struct drm_xocl_dev *)data;
 	int irq = 0;
@@ -41,11 +41,11 @@ static int xocl_test_thread_main(void *data)
 	while (!kthread_should_stop()) {
 		ssleep(xocl_test_interval);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
-        ktime_get_real_ts64(&now);
+		ktime_get_real_ts64(&now);
 		DRM_INFO("irq[%d] tv_sec[%ld]tv_usec[%ld]\n", irq, now.tv_sec, now.tv_nsec / NSEC_PER_USEC);
 #else
-        do_gettimeofday(&now);
-        DRM_INFO("irq[%d] tv_sec[%ld]tv_usec[%ld]\n", irq, now.tv_sec, now.tv_usec);
+		do_gettimeofday(&now);
+		DRM_INFO("irq[%d] tv_sec[%ld]tv_usec[%ld]\n", irq, now.tv_sec, now.tv_usec);
 #endif
 		xocl_user_event(irq, xdev);
 		irq++;

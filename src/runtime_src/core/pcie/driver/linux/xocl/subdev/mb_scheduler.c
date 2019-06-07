@@ -435,13 +435,13 @@ static inline void
 cmd_release_gem_object_reference(struct xocl_cmd *xcmd)
 {
 	if (xcmd->bo)
-        /* TODO: Remove drm_gem_object_unreference_unlocked as soon as
-         * Linux < 4.12 is no longer supported.
-         */
+		/* TODO: Remove drm_gem_object_unreference_unlocked as soon as
+		 * Linux < 4.12 is no longer supported.
+		 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 		drm_gem_object_put_unlocked(&xcmd->bo->base);
 #else
-        drm_gem_object_unreference_unlocked(&xcmd->bo->base);
+		drm_gem_object_unreference_unlocked(&xcmd->bo->base);
 #endif
 }
 
@@ -486,13 +486,13 @@ cmd_chain_dependencies(struct xocl_cmd *xcmd)
 		struct xocl_cmd *chain_to = dbo->metadata.active;
 		// release reference created in ioctl call when dependency was looked up
 		// see comments in xocl_ioctl.c:xocl_execbuf_ioctl()
-        /* TODO: Remove drm_gem_object_unreference_unlocked as soon as
-         * Linux < 4.12 is no longer supported.
-         */
+		/* TODO: Remove drm_gem_object_unreference_unlocked as soon as
+		 * Linux < 4.12 is no longer supported.
+		 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 		drm_gem_object_put_unlocked(&dbo->base);
 #else
-        drm_gem_object_unreference_unlocked(&dbo->base);
+		drm_gem_object_unreference_unlocked(&dbo->base);
 #endif
 		xcmd->deps[didx] = NULL;
 		if (!chain_to) { // command may have completed already
@@ -3083,38 +3083,38 @@ get_bo_paddr(struct xocl_dev *xdev, struct drm_file *filp,
 	xobj = to_xocl_bo(obj);
 	if (!xobj->mm_node) {
 		/* Not a local BO */
-        /* TODO: Remove drm_gem_object_unreference_unlocked as soon as
-         * Linux < 4.12 is no longer supported.
-         */
+		/* TODO: Remove drm_gem_object_unreference_unlocked as soon as
+		 * Linux < 4.12 is no longer supported.
+		 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 		drm_gem_object_put_unlocked(obj);
 #else
-        drm_gem_object_unreference_unlocked(obj);
+		drm_gem_object_unreference_unlocked(obj);
 #endif
 		return -EADDRNOTAVAIL;
 	}
 
 	if (obj->size <= off || obj->size < off + size) {
 		userpf_err(xdev, "Failed to get paddr for BO 0x%x\n", bo_hdl);
-        /* TODO: Remove drm_gem_object_unreference_unlocked as soon as
-         * Linux < 4.12 is no longer supported.
-         */
+		/* TODO: Remove drm_gem_object_unreference_unlocked as soon as
+		 * Linux < 4.12 is no longer supported.
+		 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 		drm_gem_object_put_unlocked(obj);
 #else
-        drm_gem_object_unreference_unlocked(obj);
+		drm_gem_object_unreference_unlocked(obj);
 #endif
 		return -EINVAL;
 	}
 
 	*paddrp = xobj->mm_node->start + off;
-    /* TODO: Remove drm_gem_object_unreference_unlocked as soon as
-     * Linux < 4.12 is no longer supported.
-     */
+	/* TODO: Remove drm_gem_object_unreference_unlocked as soon as
+	 * Linux < 4.12 is no longer supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	drm_gem_object_put_unlocked(obj);
 #else
-    drm_gem_object_unreference_unlocked(obj);
+	drm_gem_object_unreference_unlocked(obj);
 #endif
 	return 0;
 }
@@ -3272,15 +3272,15 @@ client_ioctl_execbuf(struct platform_device *pdev,
 
 out:
 	for (--numdeps; numdeps >= 0; numdeps--)
-        /* TODO: Remove drm_gem_object_unreference_unlocked as soon as
-         * Linux < 4.12 is no longer supported.
-         */
+		/* TODO: Remove drm_gem_object_unreference_unlocked as soon as
+		 * Linux < 4.12 is no longer supported.
+		 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 		drm_gem_object_put_unlocked(&deps[numdeps]->base);
 	drm_gem_object_put_unlocked(&xobj->base);
 #else
-        drm_gem_object_unreference_unlocked(&deps[numdeps]->base);
-    drm_gem_object_unreference_unlocked(&xobj->base);
+		drm_gem_object_unreference_unlocked(&deps[numdeps]->base);
+	drm_gem_object_unreference_unlocked(&xobj->base);
 #endif
 	return ret;
 }

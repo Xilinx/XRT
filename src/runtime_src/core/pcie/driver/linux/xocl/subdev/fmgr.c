@@ -158,9 +158,9 @@ static int fmgr_probe(struct platform_device *pdev)
 	struct xfpga_klass *obj = kzalloc(sizeof(struct xfpga_klass), GFP_KERNEL);
 	if (!obj)
 		return -ENOMEM;
-    /* TODO: Remove old fpga_mgr_register call as soon as Linux < 4.18 is no
-     * longer supported.
-     */
+	/* TODO: Remove old fpga_mgr_register call as soon as Linux < 4.18 is no
+	 * longer supported.
+	 */
 #if defined(FPGA_MGR_SUPPORT) && (LINUX_VERSION_CODE >= KERNEL_VERSION(4,18,0))
 	struct fpga_manager *mgr = platform_get_drvdata(pdev);
 #endif
@@ -172,7 +172,7 @@ static int fmgr_probe(struct platform_device *pdev)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,18,0)
 	ret = fpga_mgr_register(mgr);
 #else
-    ret = fpga_mgr_register(&pdev->dev, obj->name, &xocl_pr_ops, obj);
+	ret = fpga_mgr_register(&pdev->dev, obj->name, &xocl_pr_ops, obj);
 #endif // LINUX_VERSION_CODE
 #else
 	platform_set_drvdata(pdev, obj);
@@ -187,13 +187,13 @@ static int fmgr_remove(struct platform_device *pdev)
 	struct xfpga_klass *obj = mgr->priv;
 
 	obj->state = FPGA_MGR_STATE_UNKNOWN;
-    /* TODO: Remove old fpga_mgr_unregister as soon as Linux < 4.18 is no
-     * longer supported.
-     */
+	/* TODO: Remove old fpga_mgr_unregister as soon as Linux < 4.18 is no
+	 * longer supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,18,0)
 	fpga_mgr_unregister(mgr);
 #else
-    fpga_mgr_unregister(&pdev->dev);
+	fpga_mgr_unregister(&pdev->dev);
 #endif // LINUX_VERSION_CODE
 #else
 	struct xfpga_klass *obj = platform_get_drvdata(pdev);

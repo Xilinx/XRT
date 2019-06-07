@@ -274,11 +274,11 @@ static const struct attribute_group firewall_attrgroup = {
 static u32 check_firewall(struct platform_device *pdev, int *level)
 {
 	struct firewall	*fw;
-    /* TODO: Remove old timeval as soon as Linux < 3.17 is no longer supported. */
+	/* TODO: Remove old timeval as soon as Linux < 3.17 is no longer supported. */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
 	struct timespec64 time;
 #else
-    struct timeval time;
+	struct timeval time;
 #endif
 	int	i;
 	u32	val = 0;
@@ -296,13 +296,13 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 			if (!fw->curr_status) {
 				fw->err_detected_status = val;
 				fw->err_detected_level = i;
-                /* TODO: Remove do_gettimeofday once Linux < 3.17 is no longer
-                 * supported.
-                 */
+				/* TODO: Remove do_gettimeofday once Linux < 3.17 is no longer
+				 * supported.
+				 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
-                ktime_get_real_ts64(&time);
+				ktime_get_real_ts64(&time);
 #else
-                do_gettimeofday(&time);
+				do_gettimeofday(&time);
 #endif
 				fw->err_detected_time = (u64)(time.tv_sec -
 					(sys_tz.tz_minuteswest * 60));
