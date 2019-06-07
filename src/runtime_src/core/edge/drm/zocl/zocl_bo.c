@@ -5,9 +5,9 @@
  * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
  *
  * Authors:
- *    Sonal Santan <sonal.santan@xilinx.com>
- *    Umang Parekh <umang.parekh@xilinx.com>
- *    Jan Stephan  <j.stephan@hzdr.de>
+ *	  Sonal Santan <sonal.santan@xilinx.com>
+ *	  Umang Parekh <umang.parekh@xilinx.com>
+ *	  Jan Stephan  <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -213,13 +213,13 @@ zocl_create_svm_bo(struct drm_device *dev, void *data, struct drm_file *filp)
 		goto out_free;
 
 	zocl_describe(bo);
-    /* TODO: Remove drm_gem_object_unreference_unlocked once Linux < 4.12 is
-     * no longer supported.
-     */
+	/* TODO: Remove drm_gem_object_unreference_unlocked once Linux < 4.12 is
+	 * no longer supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	drm_gem_object_put_unlocked(&bo->gem_base);
 #else
-    drm_gem_object_unreference_unlocked(&bo->gem_base);
+	drm_gem_object_unreference_unlocked(&bo->gem_base);
 #endif
 
 	/* Update memory usage statistics */
@@ -274,21 +274,21 @@ zocl_create_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	}
 
 	zocl_describe(bo);
-    /* TODO: Remove drm_gem_object_unreference_unlocked once Linux < 4.12 is
-     * no longer supported.
-     */
+	/* TODO: Remove drm_gem_object_unreference_unlocked once Linux < 4.12 is
+	 * no longer supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	drm_gem_object_put_unlocked(&bo->cma_base.base);
 #else
-    drm_gem_object_unreference_unlocked(&bo->cma_base.base);
+	drm_gem_object_unreference_unlocked(&bo->cma_base.base);
 #endif
 
 	/*
 	 * Update memory usage statistics.
 	 *
 	 * Note: We can not use args->size here because it is
-	 *       the required size while gem object records the
-	 *       actual size allocated.
+	 *		 the required size while gem object records the
+	 *		 actual size allocated.
 	 */
 	zocl_update_mem_stat(zdev, bo->gem_base.size, 1);
 
@@ -372,13 +372,13 @@ zocl_userptr_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	bo->flags |= XCL_BO_FLAGS_USERPTR;
 
 	zocl_describe(bo);
-    /* TODO: Remove drm_gem_object_unreference_unlocked once Linux < 4.12 is
-     * no longer supported.
-     */
+	/* TODO: Remove drm_gem_object_unreference_unlocked once Linux < 4.12 is
+	 * no longer supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	drm_gem_object_put_unlocked(&bo->cma_base.base);
 #else
-    drm_gem_object_unreference_unlocked(&bo->cma_base.base);
+	drm_gem_object_unreference_unlocked(&bo->cma_base.base);
 #endif
 
 	kvfree(pages);
@@ -417,13 +417,13 @@ int zocl_map_bo_ioctl(struct drm_device *dev,
 	zocl_describe(to_zocl_bo(gem_obj));
 
 out:
-    /* TODO: Remove drm_gem_object_unreference_unlocked once Linux < 4.12 is
-     * no longer supported.
-     */
+	/* TODO: Remove drm_gem_object_unreference_unlocked once Linux < 4.12 is
+	 * no longer supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	drm_gem_object_put_unlocked(gem_obj);
 #else
-    drm_gem_object_unreference_unlocked(gem_obj);
+	drm_gem_object_unreference_unlocked(gem_obj);
 #endif
 	return ret;
 }
@@ -466,28 +466,28 @@ int zocl_sync_bo_ioctl(struct drm_device *dev,
 
 	/**
 	 * NOTE: We a little bit abuse the dma_sync_single_* API here because
-	 *       it is documented as for the DMA buffer mapped by dma_map_*
-	 *       API. The buffer we are syncing here is mapped through
-	 *       remap_pfn_range(). But so far this is our best choice
-	 *       and it works.
+	 *		 it is documented as for the DMA buffer mapped by dma_map_*
+	 *		 API. The buffer we are syncing here is mapped through
+	 *		 remap_pfn_range(). But so far this is our best choice
+	 *		 and it works.
 	 */
 	if (args->dir == DRM_ZOCL_SYNC_BO_TO_DEVICE) {
 		dma_sync_single_for_device(dev->dev, bus_addr, args->size,
-		    DMA_TO_DEVICE);
+			DMA_TO_DEVICE);
 	} else if (args->dir == DRM_ZOCL_SYNC_BO_FROM_DEVICE) {
 		dma_sync_single_for_cpu(dev->dev, bus_addr, args->size,
-		    DMA_FROM_DEVICE);
+			DMA_FROM_DEVICE);
 	} else
 		rc = -EINVAL;
 
 out:
-    /* TODO: Remove drm_gem_object_unreference_unlocked once Linux < 4.12 is
-     * no longer supported.
-     */
+	/* TODO: Remove drm_gem_object_unreference_unlocked once Linux < 4.12 is
+	 * no longer supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	drm_gem_object_put_unlocked(gem_obj);
 #else
-    drm_gem_object_unreference_unlocked(gem_obj);
+	drm_gem_object_unreference_unlocked(gem_obj);
 #endif
 
 	return rc;
@@ -511,13 +511,13 @@ int zocl_info_bo_ioctl(struct drm_device *dev,
 
 	args->size = bo->cma_base.base.size;
 	args->paddr = bo->cma_base.paddr;
-    /* TODO: Remove drm_gem_object_unreference_unlocked once Linux < 4.12 is
-     * no longer supported.
-     */
+	/* TODO: Remove drm_gem_object_unreference_unlocked once Linux < 4.12 is
+	 * no longer supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	drm_gem_object_put_unlocked(gem_obj);
 #else
-    drm_gem_object_unreference_unlocked(gem_obj);
+	drm_gem_object_unreference_unlocked(gem_obj);
 #endif
 
 	return 0;
@@ -548,9 +548,9 @@ int zocl_pwrite_bo_ioctl(struct drm_device *dev, void *data,
 		ret = 0;
 		goto out;
 	}
-    /* TODO: Remove old access_ok macro once Linux < 5.0.0 is no longer
-     * supported.
-     */
+	/* TODO: Remove old access_ok macro once Linux < 5.0.0 is no longer
+	 * supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
 	if (!access_ok(user_data, args->size)) {
 #else
@@ -565,13 +565,13 @@ int zocl_pwrite_bo_ioctl(struct drm_device *dev, void *data,
 
 	ret = copy_from_user(kaddr, user_data, args->size);
 out:
-    /* TODO: Remove drm_gem_object_unreference_unlocked once Linux < 4.12 is
-     * no longer supported.
-     */
+	/* TODO: Remove drm_gem_object_unreference_unlocked once Linux < 4.12 is
+	 * no longer supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	drm_gem_object_put_unlocked(gem_obj);
 #else
-    drm_gem_object_unreference_unlocked(gem_obj);
+	drm_gem_object_unreference_unlocked(gem_obj);
 #endif
 
 	return ret;
@@ -603,9 +603,9 @@ int zocl_pread_bo_ioctl(struct drm_device *dev, void *data,
 		goto out;
 	}
 
-    /* TODO: Remove old access_ok macro once Linux < 5.0.0 is no longer
-     * supported.
-     */
+	/* TODO: Remove old access_ok macro once Linux < 5.0.0 is no longer
+	 * supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
 	if (!access_ok(user_data, args->size)) {
 #else
@@ -621,13 +621,13 @@ int zocl_pread_bo_ioctl(struct drm_device *dev, void *data,
 	ret = copy_to_user(user_data, kaddr, args->size);
 
 out:
-    /* TODO: Remove drm_gem_object_unreference_unlocked once Linux < 4.12 is
-     * no longer supported.
-     */
+	/* TODO: Remove drm_gem_object_unreference_unlocked once Linux < 4.12 is
+	 * no longer supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	drm_gem_object_put_unlocked(gem_obj);
 #else
-    drm_gem_object_unreference_unlocked(gem_obj);
+	drm_gem_object_unreference_unlocked(gem_obj);
 #endif
 
 	return ret;
@@ -663,7 +663,7 @@ error:
 }
 
 int zocl_get_hbo_ioctl(struct drm_device *dev, void *data,
-		       struct drm_file *filp)
+			   struct drm_file *filp)
 {
 	struct drm_zocl_bo *bo;
 	struct drm_zocl_host_bo *args = data;
@@ -674,7 +674,7 @@ int zocl_get_hbo_ioctl(struct drm_device *dev, void *data,
 	int ret;
 
 	if (!(host_mem_start <= args->paddr &&
-	      args->paddr + args->size <= host_mem_end)) {
+		  args->paddr + args->size <= host_mem_end)) {
 		DRM_ERROR("Buffer at out side of reserved memory region\n");
 		return -ENOMEM;
 	}
@@ -705,24 +705,24 @@ int zocl_get_hbo_ioctl(struct drm_device *dev, void *data,
 	}
 
 	zocl_describe(bo);
-    /* TODO: Remove drm_gem_object_unreference_unlocked once Linux < 4.12 is
-     * no longer supported.
-     */
+	/* TODO: Remove drm_gem_object_unreference_unlocked once Linux < 4.12 is
+	 * no longer supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	drm_gem_object_put_unlocked(&bo->cma_base.base);
 #else
-    drm_gem_object_unreference_unlocked(&bo->cma_base.base);
+	drm_gem_object_unreference_unlocked(&bo->cma_base.base);
 #endif
 
 	return ret;
 error:
-    /* TODO: Remove drm_gem_object_unreference_unlocked once Linux < 4.12 is
-     * no longer supported.
-     */
+	/* TODO: Remove drm_gem_object_unreference_unlocked once Linux < 4.12 is
+	 * no longer supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	drm_gem_object_put_unlocked(&cma_obj->base)
 #else
-    drm_gem_object_unreference_unlocked(&cma_obj->base);
+	drm_gem_object_unreference_unlocked(&cma_obj->base);
 #endif
 	return ret;
 }

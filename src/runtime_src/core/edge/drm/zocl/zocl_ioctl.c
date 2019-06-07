@@ -5,8 +5,8 @@
  * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
  *
  * Authors:
- *    Sonal Santan <sonal.santan@xilinx.com>
- *    Jan Stephan  <j.stephan@hzdr.de>
+ *	  Sonal Santan <sonal.santan@xilinx.com>
+ *	  Jan Stephan  <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -28,25 +28,25 @@
  * Bitstream header information.
  */
 struct {
-	unsigned int HeaderLength;     /* Length of header in 32 bit words */
+	unsigned int HeaderLength;	   /* Length of header in 32 bit words */
 	unsigned int BitstreamLength;  /* Length of bitstream to read in bytes*/
-	unsigned char *DesignName;     /* Design name get from bitstream */
-	unsigned char *PartName;       /* Part name read from bitstream */
-	unsigned char *Date;           /* Date read from bitstream header */
-	unsigned char *Time;           /* Bitstream creation time*/
-	unsigned int MagicLength;      /* Length of the magic numbers*/
+	unsigned char *DesignName;	   /* Design name get from bitstream */
+	unsigned char *PartName;	   /* Part name read from bitstream */
+	unsigned char *Date;		   /* Date read from bitstream header */
+	unsigned char *Time;		   /* Bitstream creation time*/
+	unsigned int MagicLength;	   /* Length of the magic numbers*/
 } XHwIcap_Bit_Header;
 
 /* Used for parsing bitstream header */
-#define XHI_EVEN_MAGIC_BYTE     0x0f
-#define XHI_ODD_MAGIC_BYTE      0xf0
+#define XHI_EVEN_MAGIC_BYTE		0x0f
+#define XHI_ODD_MAGIC_BYTE		0xf0
 
 /* Extra mode for IDLE */
 #define XHI_OP_IDLE  -1
 #define XHI_BIT_HEADER_FAILURE -1
 
 /* The imaginary module length register */
-#define XHI_MLR                  15
+#define XHI_MLR					 15
 
 #define DMA_HWICAP_BITFILE_BUFFER_SIZE 1024
 #define BITFILE_BUFFER_SIZE DMA_HWICAP_BITFILE_BUFFER_SIZE
@@ -75,10 +75,10 @@ static int bitstream_parse_header(const unsigned char *Data, unsigned int Size,
 	for (i = 0; i < Header->Magiclength - 1; i++) {
 		tmp = Data[idx++];
 		if (i%2 == 0 && tmp != XHI_EVEN_MAGIC_BYTE)
-			return -1;   /* INVALID_FILE_HEADER_ERROR */
+			return -1;	 /* INVALID_FILE_HEADER_ERROR */
 
 		if (i%2 == 1 && tmp != XHI_ODD_MAGIC_BYTE)
-			return -1;   /* INVALID_FILE_HEADER_ERROR */
+			return -1;	 /* INVALID_FILE_HEADER_ERROR */
 
 	}
 
@@ -191,7 +191,7 @@ static int bitstream_parse_header(const unsigned char *Data, unsigned int Size,
 }
 
 static int zocl_pcap_download(struct drm_zocl_dev *zdev,
-			      const void __user *bit_buf, unsigned long length)
+				  const void __user *bit_buf, unsigned long length)
 {
 	struct fpga_manager *fpga_mgr = zdev->fpga_mgr;
 	XHwIcap_Bit_Header bit_header;
@@ -266,7 +266,7 @@ free_buffers:
 }
 
 int zocl_pcap_download_ioctl(struct drm_device *dev, void *data,
-			     struct drm_file *filp)
+				 struct drm_file *filp)
 {
 	struct xclBin bin_obj;
 	char __user *buffer;
@@ -290,9 +290,9 @@ int zocl_pcap_download_ioctl(struct drm_device *dev, void *data,
 
 	buffer = (char __user *)args->xclbin;
 
-    /* TODO: Remove old access_ok as soon as Linux < 5.0.0 is no longer
-     * supported.
-     */
+	/* TODO: Remove old access_ok as soon as Linux < 5.0.0 is no longer
+	 * supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
 	if (!access_ok(buffer, bin_obj.m_length))
 #else
@@ -348,8 +348,8 @@ zocl_check_section(struct axlf_section_header *header, uint64_t xclbin_len,
 	uint64_t size;
 
 	DRM_INFO("Section %s details:", kind_to_string(kind));
-	DRM_INFO("  offset = 0x%llx", header->m_sectionOffset);
-	DRM_INFO("  size = 0x%llx", header->m_sectionSize);
+	DRM_INFO("	offset = 0x%llx", header->m_sectionOffset);
+	DRM_INFO("	size = 0x%llx", header->m_sectionSize);
 
 	offset = header->m_sectionOffset;
 	size = header->m_sectionSize;
@@ -445,7 +445,7 @@ zocl_update_apertures(struct drm_zocl_dev *zdev)
 			dbg_ip = &zdev->debug_ip->m_debug_ip_data[i];
 			apt[zdev->num_apts].addr = dbg_ip->m_base_address;
 			if (dbg_ip->m_type == AXI_MONITOR_FIFO_LITE
-			    || dbg_ip->m_type == AXI_MONITOR_FIFO_FULL)
+				|| dbg_ip->m_type == AXI_MONITOR_FIFO_FULL)
 				/* FIFO_LITE has 4KB and FIFO FULL has 8KB
 				 * address range. Use both 8K is okay.
 				 */
@@ -508,13 +508,13 @@ zocl_read_axlf_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	}
 
 	xclbin = (char __user *)axlf_obj->xclbin;
-    /* TODO: Remove old access_ok as soon as Linux < 5.0.0 is no longer
-     * supported.
-     */
+	/* TODO: Remove old access_ok as soon as Linux < 5.0.0 is no longer
+	 * supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
 	ret = !access_ok(xclbin, axlf_head.m_header.m_length);
 #else
-    ret = !access_ok(VERIFY_READ, xclbin, axlf_head.m_header.m_length);
+	ret = !access_ok(VERIFY_READ, xclbin, axlf_head.m_header.m_length);
 #endif
 	if (ret) {
 		ret = -EFAULT;

@@ -5,8 +5,8 @@
  * Copyright (C) 2019 Xilinx, Inc. All rights reserved.
  *
  * Authors:
- *    Larry Liu       <yliu@xilinx.com>
- *    Jan Stephan     <j.stephan@hzdr.de>
+ *	  Larry Liu		  <yliu@xilinx.com>
+ *	  Jan Stephan	  <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -38,13 +38,13 @@ zocl_sk_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	while (list_empty(&sk->sk_cmd_list)) {
 		mutex_unlock(&sk->sk_lock);
 		if (wait_event_interruptible(sk->sk_wait_queue,
-		    !list_empty(&sk->sk_cmd_list)))
+			!list_empty(&sk->sk_cmd_list)))
 			return -ERESTARTSYS;
 		mutex_lock(&sk->sk_lock);
 	}
 
 	scmd = list_first_entry(&sk->sk_cmd_list, struct soft_kernel_cmd,
-	    skc_list);
+		skc_list);
 	list_del(&scmd->skc_list);
 	mutex_unlock(&sk->sk_lock);
 
@@ -63,11 +63,11 @@ zocl_sk_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		kdata->paddr = cmd->sk_addr;
 
 		snprintf(kdata->name, ZOCL_MAX_NAME_LENGTH, "%s",
-		    (char *)cmd->sk_name);
+			(char *)cmd->sk_name);
 	} else
 		/* We will handle more opcodes */
 		DRM_WARN("Unknown soft kernel command: %d\n",
-		    kdata->opcode);
+			kdata->opcode);
 
 	kfree(scmd);
 	return 0;
@@ -87,7 +87,7 @@ zocl_sk_create_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 
 	if (sk->sk_cu[cu_idx]) {
 		DRM_ERROR("Fail to create soft kernel: CU %d created.\n",
-		    cu_idx);
+			cu_idx);
 		mutex_unlock(&sk->sk_lock);
 		return -EINVAL;
 	}
@@ -105,20 +105,20 @@ zocl_sk_create_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	gem_obj = zocl_gem_object_lookup(dev, filp, args->handle);
 	if (!gem_obj) {
 		DRM_ERROR("Fail to create soft kernel: BO %d does not exist.\n",
-		    args->handle);
+			args->handle);
 		return -ENXIO;
 	}
 	bo = to_zocl_bo(gem_obj);
 	sk->sk_cu[cu_idx]->sc_vregs = bo->cma_base.vaddr;
 	sema_init(&sk->sk_cu[cu_idx]->sc_sem, 0);
 
-    /* TODO: Remove drm_gem_object_unreference as soon as Linux < 4.12 is no
-     * longer supported.
-     */
+	/* TODO: Remove drm_gem_object_unreference as soon as Linux < 4.12 is no
+	 * longer supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	drm_gem_object_put_unlocked(gem_obj);
 #else
-    drm_gem_object_unreference_unlocked(gem_obj);
+	drm_gem_object_unreference_unlocked(gem_obj);
 #endif
 
 	return 0;
@@ -126,7 +126,7 @@ zocl_sk_create_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 
 int
 zocl_sk_report_ioctl(struct drm_device *dev, void *data,
-   		struct drm_file *filp)
+		struct drm_file *filp)
 {
 	struct drm_zocl_dev *zdev = dev->dev_private;
 	struct soft_kernel *sk = zdev->soft_kernel;
@@ -141,7 +141,7 @@ zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 
 	if (args->cu_idx > sk->sk_ncus) {
 		DRM_ERROR("Fail to get cu state: CU %d does not exist.\n",
-		    cu_idx);
+			cu_idx);
 		mutex_unlock(&sk->sk_lock);
 		return -ENXIO;
 	}
@@ -197,8 +197,8 @@ zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 int
 zocl_init_soft_kernel(struct drm_device *drm)
 {
-        struct drm_zocl_dev *zdev = drm->dev_private;
-        struct soft_kernel *sk;
+		struct drm_zocl_dev *zdev = drm->dev_private;
+		struct soft_kernel *sk;
 
 	sk = devm_kzalloc(drm->dev, sizeof (*sk), GFP_KERNEL);
 	if (!sk)

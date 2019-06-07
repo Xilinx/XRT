@@ -1,19 +1,19 @@
 /**
- *  Copyright (C) 2017 Xilinx, Inc. All rights reserved.
+ *	Copyright (C) 2017 Xilinx, Inc. All rights reserved.
  *
- *  Utility Functions for AXI firewall IP.
- *  Author: Lizhi.Hou@Xilinx.com
- *          j.stephan@hzdr.de
+ *	Utility Functions for AXI firewall IP.
+ *	Author: Lizhi.Hou@Xilinx.com
+ *			j.stephan@hzdr.de
  *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
+ *	This program is free software; you can redistribute it and/or modify
+ *	it under the terms of the GNU General Public License as published by
+ *	the Free Software Foundation; either version 2 of the License, or
+ *	(at your option) any later version.
  *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU General Public License for more details.
  */
 
 #include <linux/pci.h>
@@ -28,16 +28,16 @@
 #define	SOFT_CTRL				0x4
 #define	UNBLOCK_CTRL				0x8
 // Firewall error bits
-#define READ_RESPONSE_BUSY                        BIT(0)
-#define RECS_ARREADY_MAX_WAIT                     BIT(1)
-#define RECS_CONTINUOUS_RTRANSFERS_MAX_WAIT       BIT(2)
-#define ERRS_RDATA_NUM                            BIT(3)
-#define ERRS_RID                                  BIT(4)
-#define WRITE_RESPONSE_BUSY                       BIT(16)
-#define RECS_AWREADY_MAX_WAIT                     BIT(17)
-#define RECS_WREADY_MAX_WAIT                      BIT(18)
-#define RECS_WRITE_TO_BVALID_MAX_WAIT             BIT(19)
-#define ERRS_BRESP                                BIT(20)
+#define READ_RESPONSE_BUSY						  BIT(0)
+#define RECS_ARREADY_MAX_WAIT					  BIT(1)
+#define RECS_CONTINUOUS_RTRANSFERS_MAX_WAIT		  BIT(2)
+#define ERRS_RDATA_NUM							  BIT(3)
+#define ERRS_RID								  BIT(4)
+#define WRITE_RESPONSE_BUSY						  BIT(16)
+#define RECS_AWREADY_MAX_WAIT					  BIT(17)
+#define RECS_WREADY_MAX_WAIT					  BIT(18)
+#define RECS_WRITE_TO_BVALID_MAX_WAIT			  BIT(19)
+#define ERRS_BRESP								  BIT(20)
 
 // Get the timezone info from the linux kernel
 extern struct timezone sys_tz;
@@ -274,11 +274,11 @@ static const struct attribute_group firewall_attrgroup = {
 static u32 check_firewall(struct platform_device *pdev, int *level)
 {
 	struct firewall	*fw;
-    /* TODO: Remove old timeval as soon as Linux < 3.17 is no longer supported. */
+	/* TODO: Remove old timeval as soon as Linux < 3.17 is no longer supported. */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
 	struct timespec64 time;
 #else
-    struct timeval time;
+	struct timeval time;
 #endif
 	int	i;
 	u32	val = 0;
@@ -296,13 +296,13 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 			if (!fw->curr_status) {
 				fw->err_detected_status = val;
 				fw->err_detected_level = i;
-                /* TODO: Remove do_gettimeofday once Linux < 3.17 is no longer
-                 * supported.
-                 */
+				/* TODO: Remove do_gettimeofday once Linux < 3.17 is no longer
+				 * supported.
+				 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
-                ktime_get_real_ts64(&time);
+				ktime_get_real_ts64(&time);
 #else
-                do_gettimeofday(&time);
+				do_gettimeofday(&time);
 #endif
 				fw->err_detected_time = (u64)(time.tv_sec -
 					(sys_tz.tz_minuteswest * 60));
@@ -418,7 +418,7 @@ static struct xocl_firewall_funcs fw_ops = {
 static int firewall_remove(struct platform_device *pdev)
 {
 	struct firewall *fw;
-	int     i;
+	int		i;
 
 	fw = platform_get_drvdata(pdev);
 	if (!fw) {

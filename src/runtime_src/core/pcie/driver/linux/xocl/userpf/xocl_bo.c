@@ -4,9 +4,9 @@
  * Copyright (C) 2016-2017 Xilinx, Inc. All rights reserved.
  *
  * Authors:
- *    Sonal Santan <sonal.santan@xilinx.com>
- *    Sarabjeet Singh <sarabjeet.singh@xilinx.com>
- *    Jan Stephan <j.stephan@hzdr.de>
+ *	  Sonal Santan <sonal.santan@xilinx.com>
+ *	  Sarabjeet Singh <sarabjeet.singh@xilinx.com>
+ *	  Jan Stephan <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -470,13 +470,13 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 		goto out_free;
 
 	xocl_describe(xobj);
-    /* TODO: Remove drm_gem_object_unreference_unlocked as soon as Linux < 4.12
-     * is no longer supported.
-     */
+	/* TODO: Remove drm_gem_object_unreference_unlocked as soon as Linux < 4.12
+	 * is no longer supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	drm_gem_object_put_unlocked(&xobj->base);
 #else
-    drm_gem_object_unreference_unlocked(&xobj->base);
+	drm_gem_object_unreference_unlocked(&xobj->base);
 #endif
 	return ret;
 
@@ -486,8 +486,8 @@ out_free:
 }
 
 int xocl_userptr_bo_ioctl(struct drm_device *dev,
-			      void *data,
-			      struct drm_file *filp)
+				  void *data,
+				  struct drm_file *filp)
 {
 	int ret;
 	struct drm_xocl_bo *xobj;
@@ -549,13 +549,13 @@ int xocl_userptr_bo_ioctl(struct drm_device *dev,
 
 	xobj->type |= XOCL_BO_USERPTR;
 	xocl_describe(xobj);
-    /* TODO: Remove drm_gem_object_unreference_unlocked as soon as Linux < 4.12
-     * is no longer supported.
-     */
+	/* TODO: Remove drm_gem_object_unreference_unlocked as soon as Linux < 4.12
+	 * is no longer supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	drm_gem_object_put_unlocked(&xobj->base);
 #else
-    drm_gem_object_unreference_unlocked(&xobj->base);
+	drm_gem_object_unreference_unlocked(&xobj->base);
 #endif
 	return ret;
 
@@ -570,8 +570,8 @@ out1:
 
 
 int xocl_map_bo_ioctl(struct drm_device *dev,
-		      void *data,
-		      struct drm_file *filp)
+			  void *data,
+			  struct drm_file *filp)
 {
 	int ret = 0;
 	struct drm_xocl_map_bo *args = data;
@@ -595,13 +595,13 @@ int xocl_map_bo_ioctl(struct drm_device *dev,
 	args->offset = drm_vma_node_offset_addr(&obj->vma_node);
 	xocl_describe(to_xocl_bo(obj));
 out:
-    /* TODO: Remove drm_gem_object_unreference_unlocked as soon as Linux < 4.12
-     * is no longer supported.
-     */
+	/* TODO: Remove drm_gem_object_unreference_unlocked as soon as Linux < 4.12
+	 * is no longer supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	drm_gem_object_put_unlocked(obj);
 #else
-    drm_gem_object_unreference_unlocked(obj);
+	drm_gem_object_unreference_unlocked(obj);
 #endif
 	return ret;
 }
@@ -629,8 +629,8 @@ cleanup:
 }
 
 int xocl_sync_bo_ioctl(struct drm_device *dev,
-		       void *data,
-		       struct drm_file *filp)
+			   void *data,
+			   struct drm_file *filp)
 {
 	const struct drm_xocl_bo *xobj;
 	struct sg_table *sgt;
@@ -643,7 +643,7 @@ int xocl_sync_bo_ioctl(struct drm_device *dev,
 
 	u32 dir = (args->dir == DRM_XOCL_SYNC_BO_TO_DEVICE) ? 1 : 0;
 	struct drm_gem_object *gem_obj = xocl_gem_object_lookup(dev, filp,
-							       args->handle);
+								   args->handle);
 	if (!gem_obj) {
 		DRM_ERROR("Failed to look up GEM BO %d\n", args->handle);
 		return -ENOENT;
@@ -716,20 +716,20 @@ clear:
 		kfree(sgt);
 	}
 out:
-    /* TODO: Remove drm_gem_object_unreference_unlocked as soon as Linux < 4.12
-     * is no longer supported.
-     */
+	/* TODO: Remove drm_gem_object_unreference_unlocked as soon as Linux < 4.12
+	 * is no longer supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	drm_gem_object_put_unlocked(gem_obj);
 #else
-    drm_gem_object_unreference_unlocked(gem_obj);
+	drm_gem_object_unreference_unlocked(gem_obj);
 #endif
 	return ret;
 }
 
 int xocl_info_bo_ioctl(struct drm_device *dev,
-		       void *data,
-		       struct drm_file *filp)
+			   void *data,
+			   struct drm_file *filp)
 {
 	const struct drm_xocl_bo *xobj;
 	struct drm_xocl_info_bo *args = data;
@@ -748,13 +748,13 @@ int xocl_info_bo_ioctl(struct drm_device *dev,
 
 	args->paddr = xocl_bo_physical_addr(xobj);
 	xocl_describe(xobj);
-    /* TODO: Remove drm_gem_object_unreference_unlocked as soon as Linux < 4.12
-     * is no longer supported.
-     */
+	/* TODO: Remove drm_gem_object_unreference_unlocked as soon as Linux < 4.12
+	 * is no longer supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	drm_gem_object_put_unlocked(gem_obj);
 #else
-    drm_gem_object_unreference_unlocked(gem_obj)
+	drm_gem_object_unreference_unlocked(gem_obj)
 #endif
 
 	return 0;
@@ -766,7 +766,7 @@ int xocl_pwrite_bo_ioctl(struct drm_device *dev, void *data,
 	struct drm_xocl_bo *xobj;
 	const struct drm_xocl_pwrite_bo *args = data;
 	struct drm_gem_object *gem_obj = xocl_gem_object_lookup(dev, filp,
-							       args->handle);
+								   args->handle);
 	char __user *user_data = to_user_ptr(args->data_ptr);
 	int ret = 0;
 	void *kaddr;
@@ -777,7 +777,7 @@ int xocl_pwrite_bo_ioctl(struct drm_device *dev, void *data,
 	}
 
 	if ((args->offset > gem_obj->size) || (args->size > gem_obj->size)
-	    || ((args->offset + args->size) > gem_obj->size)) {
+		|| ((args->offset + args->size) > gem_obj->size)) {
 		ret = -EINVAL;
 		goto out;
 	}
@@ -787,9 +787,9 @@ int xocl_pwrite_bo_ioctl(struct drm_device *dev, void *data,
 		goto out;
 	}
 
-    /* TODO: Remove old access_ok macro as soon as Linux < 5.0 is no longer
-     * supported.
-     */
+	/* TODO: Remove old access_ok macro as soon as Linux < 5.0 is no longer
+	 * supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
 	if (!access_ok(user_data, args->size)) {
 #else
@@ -812,13 +812,13 @@ int xocl_pwrite_bo_ioctl(struct drm_device *dev, void *data,
 
 	ret = copy_from_user(kaddr, user_data, args->size);
 out:
-    /* TODO: Remove drm_gem_object_unreference_unlocked as soon as Linux < 4.12
-     * is no longer supported.
-     */
+	/* TODO: Remove drm_gem_object_unreference_unlocked as soon as Linux < 4.12
+	 * is no longer supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	drm_gem_object_put_unlocked(gem_obj);
 #else
-    drm_gem_object_unreference_unlocked(gem_obj);
+	drm_gem_object_unreference_unlocked(gem_obj);
 #endif
 
 	return ret;
@@ -830,7 +830,7 @@ int xocl_pread_bo_ioctl(struct drm_device *dev, void *data,
 	struct drm_xocl_bo *xobj;
 	const struct drm_xocl_pread_bo *args = data;
 	struct drm_gem_object *gem_obj = xocl_gem_object_lookup(dev, filp,
-							       args->handle);
+								   args->handle);
 	char __user *user_data = to_user_ptr(args->data_ptr);
 	int ret = 0;
 	void *kaddr;
@@ -846,7 +846,7 @@ int xocl_pread_bo_ioctl(struct drm_device *dev, void *data,
 	}
 
 	if ((args->offset > gem_obj->size) || (args->size > gem_obj->size)
-	    || ((args->offset + args->size) > gem_obj->size)) {
+		|| ((args->offset + args->size) > gem_obj->size)) {
 		ret = -EINVAL;
 		goto out;
 	}
@@ -856,9 +856,9 @@ int xocl_pread_bo_ioctl(struct drm_device *dev, void *data,
 		goto out;
 	}
 
-    /* TODO: Remove old access_ok macro as soon as Linux < 5.0 is no longer
-     * supported.
-     */
+	/* TODO: Remove old access_ok macro as soon as Linux < 5.0 is no longer
+	 * supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
 	if (!access_ok(user_data, args->size)) {
 #else
@@ -876,13 +876,13 @@ int xocl_pread_bo_ioctl(struct drm_device *dev, void *data,
 	ret = copy_to_user(user_data, kaddr, args->size);
 
 out:
-    /* TODO: Remove drm_gem_object_unreference_unlocked as soon as Linux < 4.12
-     * is no longer supported.
-     */
+	/* TODO: Remove drm_gem_object_unreference_unlocked as soon as Linux < 4.12
+	 * is no longer supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	drm_gem_object_put_unlocked(gem_obj);
 #else
-    drm_gem_object_unreference_unlocked(gem_obj);
+	drm_gem_object_unreference_unlocked(gem_obj);
 #endif
 
 	return ret;
@@ -1006,9 +1006,9 @@ out:
 		sg_free_table(tmp_sgt);
 		kfree(tmp_sgt);
 	}
-    /* TODO: Remove drm_gem_object_unreference_unlocked as soon as Linux < 4.12
-     * is no longer supported.
-     */
+	/* TODO: Remove drm_gem_object_unreference_unlocked as soon as Linux < 4.12
+	 * is no longer supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	if (src_gem_obj)
 		drm_gem_object_put_unlocked(src_gem_obj);
@@ -1016,9 +1016,9 @@ out:
 		drm_gem_object_put_unlocked(dst_gem_obj);
 #else
 	if (src_gem_obj)
-        drm_gem_object_unreference_unlocked(src_gem_obj);
+		drm_gem_object_unreference_unlocked(src_gem_obj);
 	if (dst_gem_obj)
-        drm_gem_object_unreference_unlocked(dst_gem_obj);
+		drm_gem_object_unreference_unlocked(dst_gem_obj);
 #endif
 	return ret;
 }
@@ -1032,7 +1032,7 @@ struct sg_table *xocl_gem_prime_get_sg_table(struct drm_gem_object *obj)
 }
 
 struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
-      struct dma_buf_attachment *attach, struct sg_table *sgt)
+	  struct dma_buf_attachment *attach, struct sg_table *sgt)
 {
 	int ret = 0;
 	struct drm_xocl_bo *importing_xobj;
@@ -1055,7 +1055,7 @@ struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
 		goto out_free;
 	}
 	ret = drm_prime_sg_to_page_addr_arrays(sgt, importing_xobj->pages,
-	       NULL, attach->dmabuf->size >> PAGE_SHIFT);
+		   NULL, attach->dmabuf->size >> PAGE_SHIFT);
 	if (ret)
 		goto out_free;
 
@@ -1074,9 +1074,9 @@ struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
 	return &importing_xobj->base;
 
 out_free:
-        xocl_free_bo(&importing_xobj->base);
-        DRM_ERROR("Buffer import failed\n");
-        return ERR_PTR(ret);
+		xocl_free_bo(&importing_xobj->base);
+		DRM_ERROR("Buffer import failed\n");
+		return ERR_PTR(ret);
 }
 
 void *xocl_gem_prime_vmap(struct drm_gem_object *obj)
@@ -1124,9 +1124,9 @@ int xocl_init_unmgd(struct drm_xocl_unmgd *unmgd, uint64_t data_ptr,
 	int ret;
 	char __user *user_data = to_user_ptr(data_ptr);
 
-    /* TODO: Remove old access_ok macro as soon as Linux < 5.0 is no longer
-     * supported.
-     */
+	/* TODO: Remove old access_ok macro as soon as Linux < 5.0 is no longer
+	 * supported.
+	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
 	if (!access_ok(user_data, size))
 #else
@@ -1196,7 +1196,7 @@ static bool xocl_validate_paddr(struct xocl_dev *xdev, u64 paddr, u64 size)
 }
 
 int xocl_pwrite_unmgd_ioctl(struct drm_device *dev, void *data,
-			    struct drm_file *filp)
+				struct drm_file *filp)
 {
 	int channel;
 	struct drm_xocl_unmgd unmgd;
