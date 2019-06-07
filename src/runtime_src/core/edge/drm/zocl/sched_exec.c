@@ -982,7 +982,7 @@ set_cmd_ext_timestamp(struct sched_cmd *cmd, enum zocl_ts_type ts)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
 	struct timespec64 tv;
 #else
-    struct timeval tv;
+	struct timeval tv;
 #endif
 	struct ert_start_kernel_cmd *sk;
 
@@ -1000,16 +1000,16 @@ set_cmd_ext_timestamp(struct sched_cmd *cmd, enum zocl_ts_type ts)
 	 * Use 32 bits timestamp is good enough for this purpose for now.
 	 */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
-    ktime_get_real_ts64(&tv);
+	ktime_get_real_ts64(&tv);
 #else
-    do_gettimeofday(&tv);
+	do_gettimeofday(&tv);
 #endif
 	if (ts == CU_START_TIME) {
 		*(sk->data + sk->extra_cu_masks) = (u32)tv.tv_sec;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
 		*(sk->data + sk->extra_cu_masks + 1) = (u32)tv.tv_nsec / NSEC_PER_USEC;
 #else
-        *(sk->data + sk->extra_cu_masks + 1) = (u32)tv.tv_usec;
+		*(sk->data + sk->extra_cu_masks + 1) = (u32)tv.tv_usec;
 #endif
 	} else if (ts == CU_DONE_TIME) {
 		*(sk->data + sk->extra_cu_masks + 2) = (u32)tv.tv_sec;
