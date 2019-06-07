@@ -5,10 +5,10 @@
  * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
  *
  * Authors:
- *	  Sonal Santan <sonal.santan@xilinx.com>
- *	  Umang Parekh <umang.parekh@xilinx.com>
- *	  Min Ma	   <min.ma@xilinx.com>
- *	  Jan Stephan  <j.stephan@hzdr.de>
+ *    Sonal Santan <sonal.santan@xilinx.com>
+ *    Umang Parekh <umang.parekh@xilinx.com>
+ *    Min Ma       <min.ma@xilinx.com>
+ *    Jan Stephan  <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -35,18 +35,18 @@
 #include "zocl_sk.h"
 #include "sched_exec.h"
 
-#define ZOCL_DRIVER_NAME		"zocl"
-#define ZOCL_DRIVER_DESC		"Zynq BO manager"
-#define ZOCL_DRIVER_DATE		"20180313"
-#define ZOCL_DRIVER_MAJOR		2018
-#define ZOCL_DRIVER_MINOR		2
-#define ZOCL_DRIVER_PATCHLEVEL	1
+#define ZOCL_DRIVER_NAME        "zocl"
+#define ZOCL_DRIVER_DESC        "Zynq BO manager"
+#define ZOCL_DRIVER_DATE        "20180313"
+#define ZOCL_DRIVER_MAJOR       2018
+#define ZOCL_DRIVER_MINOR       2
+#define ZOCL_DRIVER_PATCHLEVEL  1
 
 /* This should be the same as DRM_FILE_PAGE_OFFSET_START in drm_gem.c */
 #if defined(CONFIG_ARM64)
-#define ZOCL_FILE_PAGE_OFFSET	0x00100000
+#define ZOCL_FILE_PAGE_OFFSET   0x00100000
 #else
-#define ZOCL_FILE_PAGE_OFFSET	0x00010000
+#define ZOCL_FILE_PAGE_OFFSET   0x00010000
 #endif
 
 #ifndef VM_RESERVED
@@ -274,13 +274,13 @@ zocl_gem_cma_mmap(struct file *filp, struct vm_area_struct *vma)
 		 */
 		vma->vm_page_prot = prot;
 		rc = remap_pfn_range(vma, vma->vm_start,
-			cma_obj->paddr >> PAGE_SHIFT,
-			vma->vm_end - vma->vm_start,
-			prot);
+		    cma_obj->paddr >> PAGE_SHIFT,
+		    vma->vm_end - vma->vm_start,
+		    prot);
 
 	} else
 		rc = dma_mmap_wc(cma_obj->base.dev->dev, vma, cma_obj->vaddr,
-			cma_obj->paddr, vma->vm_end - vma->vm_start);
+		    cma_obj->paddr, vma->vm_end - vma->vm_start);
 
 	if (rc)
 		drm_gem_vm_close(vma);
@@ -294,12 +294,12 @@ zocl_gem_cma_mmap(struct file *filp, struct vm_area_struct *vma)
  */
 static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 {
-	struct drm_file		*priv = filp->private_data;
-	struct drm_device	*dev = priv->minor->dev;
+	struct drm_file     *priv = filp->private_data;
+	struct drm_device   *dev = priv->minor->dev;
 	struct drm_zocl_dev *zdev = dev->dev_private;
-	struct drm_zocl_bo	*bo = NULL;
-	unsigned long		 vsize;
-	phys_addr_t			 phy_addr;
+	struct drm_zocl_bo  *bo = NULL;
+	unsigned long        vsize;
+	phys_addr_t          phy_addr;
 	int apt_idx;
 	int rc;
 
@@ -498,40 +498,40 @@ static const struct drm_ioctl_desc zocl_ioctls[] = {
 };
 
 static const struct file_operations zocl_driver_fops = {
-	.owner			= THIS_MODULE,
-	.open			= drm_open,
-	.mmap			= zocl_mmap,
-	.poll			= zocl_poll,
-	.read			= drm_read,
+	.owner          = THIS_MODULE,
+	.open           = drm_open,
+	.mmap           = zocl_mmap,
+	.poll           = zocl_poll,
+	.read           = drm_read,
 	.unlocked_ioctl = drm_ioctl,
-	.release		= drm_release,
+	.release        = drm_release,
 };
 
 static struct drm_driver zocl_driver = {
-	.driver_features		   = DRIVER_GEM | DRIVER_PRIME | DRIVER_RENDER,
-	.open					   = zocl_client_open,
-	.postclose				   = zocl_client_release,
-	.gem_free_object		   = zocl_free_bo,
-	.gem_vm_ops				   = &zocl_bo_vm_ops,
-	.gem_create_object		   = zocl_gem_create_object,
-	.prime_handle_to_fd		   = drm_gem_prime_handle_to_fd,
-	.prime_fd_to_handle		   = drm_gem_prime_fd_to_handle,
-	.gem_prime_import		   = drm_gem_prime_import,
-	.gem_prime_export		   = drm_gem_prime_export,
+	.driver_features           = DRIVER_GEM | DRIVER_PRIME | DRIVER_RENDER,
+	.open                      = zocl_client_open,
+	.postclose                 = zocl_client_release,
+	.gem_free_object           = zocl_free_bo,
+	.gem_vm_ops                = &zocl_bo_vm_ops,
+	.gem_create_object         = zocl_gem_create_object,
+	.prime_handle_to_fd        = drm_gem_prime_handle_to_fd,
+	.prime_fd_to_handle        = drm_gem_prime_fd_to_handle,
+	.gem_prime_import          = drm_gem_prime_import,
+	.gem_prime_export          = drm_gem_prime_export,
 	.gem_prime_get_sg_table    = drm_gem_cma_prime_get_sg_table,
 	.gem_prime_import_sg_table = drm_gem_cma_prime_import_sg_table,
-	.gem_prime_vmap			   = drm_gem_cma_prime_vmap,
-	.gem_prime_vunmap		   = drm_gem_cma_prime_vunmap,
-	.gem_prime_mmap			   = drm_gem_cma_prime_mmap,
-	.ioctls					   = zocl_ioctls,
-	.num_ioctls				   = ARRAY_SIZE(zocl_ioctls),
-	.fops					   = &zocl_driver_fops,
-	.name					   = ZOCL_DRIVER_NAME,
-	.desc					   = ZOCL_DRIVER_DESC,
-	.date					   = ZOCL_DRIVER_DATE,
-	.major					   = ZOCL_DRIVER_MAJOR,
-	.minor					   = ZOCL_DRIVER_MINOR,
-	.patchlevel				   = ZOCL_DRIVER_PATCHLEVEL,
+	.gem_prime_vmap            = drm_gem_cma_prime_vmap,
+	.gem_prime_vunmap          = drm_gem_cma_prime_vunmap,
+	.gem_prime_mmap            = drm_gem_cma_prime_mmap,
+	.ioctls                    = zocl_ioctls,
+	.num_ioctls                = ARRAY_SIZE(zocl_ioctls),
+	.fops                      = &zocl_driver_fops,
+	.name                      = ZOCL_DRIVER_NAME,
+	.desc                      = ZOCL_DRIVER_DESC,
+	.date                      = ZOCL_DRIVER_DATE,
+	.major                     = ZOCL_DRIVER_MAJOR,
+	.minor                     = ZOCL_DRIVER_MINOR,
+	.patchlevel                = ZOCL_DRIVER_PATCHLEVEL,
 };
 
 static const struct of_device_id zocl_drm_of_match[] = {
@@ -651,7 +651,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 		goto err0;
 
 	drm->dev_private = zdev;
-	zdev->ddev		 = drm;
+	zdev->ddev       = drm;
 
 	/* Initial sysfs */
 	rwlock_init(&zdev->attr_rwlock);
@@ -668,11 +668,11 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 err1:
 	zocl_fini_sysfs(drm->dev);
 err0:
-	/* TODO: Remove drm_dev_unref once Linux < 4.15 is no longer supported. */
+    /* TODO: Remove drm_dev_unref once Linux < 4.15 is no longer supported. */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0)
 	drm_dev_put(drm);
 #else
-	drm_dev_unref(drm);
+    drm_dev_unref(drm);
 #endif
 	return ret;
 }
@@ -700,11 +700,11 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 
 	if (drm) {
 		drm_dev_unregister(drm);
-	/* TODO: Remove drm_dev_unref once Linux < 4.15 is no longer supported. */
+    /* TODO: Remove drm_dev_unref once Linux < 4.15 is no longer supported. */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0)
 		drm_dev_put(drm);
 #else
-		drm_dev_unref(drm);
+        drm_dev_unref(drm);
 #endif
 	}
 
@@ -715,7 +715,7 @@ static struct platform_driver zocl_drm_private_driver = {
 	.probe			= zocl_drm_platform_probe,
 	.remove			= zocl_drm_platform_remove,
 	.driver			= {
-		.name				= "zocl-drm",
+		.name		        = "zocl-drm",
 		.of_match_table	= zocl_drm_of_match,
 	},
 };

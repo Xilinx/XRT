@@ -4,7 +4,7 @@
  * Copyright (C) 2019 Xilinx, Inc. All rights reserved.
  *
  * Authors: Sonal Santan
- *			Jan Stephan <j.stephan@hzdr.de>
+ *          Jan Stephan <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -51,17 +51,17 @@ struct xfpga_klass {
 
 #if defined(FPGA_MGR_SUPPORT)
 static int xocl_pr_write_init(struct fpga_manager *mgr,
-				  struct fpga_image_info *info, const char *buf, size_t count)
+			      struct fpga_image_info *info, const char *buf, size_t count)
 {
 	struct xfpga_klass *obj = mgr->priv;
 	const struct axlf *bin = (const struct axlf *)buf;
 	if (count < sizeof(struct axlf)) {
-		obj->state = FPGA_MGR_STATE_WRITE_INIT_ERR;
+	 	obj->state = FPGA_MGR_STATE_WRITE_INIT_ERR;
 		return -EINVAL;
 	}
 
 	if (count > bin->m_header.m_length) {
-		obj->state = FPGA_MGR_STATE_WRITE_INIT_ERR;
+	 	obj->state = FPGA_MGR_STATE_WRITE_INIT_ERR;
 		return -EINVAL;
 	}
 
@@ -158,9 +158,9 @@ static int fmgr_probe(struct platform_device *pdev)
 	struct xfpga_klass *obj = kzalloc(sizeof(struct xfpga_klass), GFP_KERNEL);
 	if (!obj)
 		return -ENOMEM;
-	/* TODO: Remove old fpga_mgr_register call as soon as Linux < 4.18 is no
-	 * longer supported.
-	 */
+    /* TODO: Remove old fpga_mgr_register call as soon as Linux < 4.18 is no
+     * longer supported.
+     */
 #if defined(FPGA_MGR_SUPPORT) && (LINUX_VERSION_CODE >= KERNEL_VERSION(4,18,0))
 	struct fpga_manager *mgr = platform_get_drvdata(pdev);
 #endif
@@ -172,7 +172,7 @@ static int fmgr_probe(struct platform_device *pdev)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,18,0)
 	ret = fpga_mgr_register(mgr);
 #else
-	ret = fpga_mgr_register(&pdev->dev, obj->name, &xocl_pr_ops, obj);
+    ret = fpga_mgr_register(&pdev->dev, obj->name, &xocl_pr_ops, obj);
 #endif // LINUX_VERSION_CODE
 #else
 	platform_set_drvdata(pdev, obj);
@@ -187,13 +187,13 @@ static int fmgr_remove(struct platform_device *pdev)
 	struct xfpga_klass *obj = mgr->priv;
 
 	obj->state = FPGA_MGR_STATE_UNKNOWN;
-	/* TODO: Remove old fpga_mgr_unregister as soon as Linux < 4.18 is no
-	 * longer supported.
-	 */
+    /* TODO: Remove old fpga_mgr_unregister as soon as Linux < 4.18 is no
+     * longer supported.
+     */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,18,0)
 	fpga_mgr_unregister(mgr);
 #else
-	fpga_mgr_unregister(&pdev->dev);
+    fpga_mgr_unregister(&pdev->dev);
 #endif // LINUX_VERSION_CODE
 #else
 	struct xfpga_klass *obj = platform_get_drvdata(pdev);

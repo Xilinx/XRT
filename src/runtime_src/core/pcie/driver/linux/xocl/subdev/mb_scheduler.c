@@ -2,8 +2,8 @@
  * Copyright (C) 2018-2019 Xilinx, Inc. All rights reserved.
  *
  * Authors:
- *	  Soren Soe <soren.soe@xilinx.com>
- *	  Jan Stephan <j.stephan@hzdr.de>
+ *    Soren Soe <soren.soe@xilinx.com>
+ *    Jan Stephan <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -19,24 +19,24 @@
  * Kernel Driver Scheduler (KDS) for XRT
  *
  * struct xocl_cmd
- *	- wraps exec BOs create from user space
- *	- transitions through a number of states
- *	- initially added to pending command queue
- *	- consumed by scheduler which manages its execution (state transition)
+ *  - wraps exec BOs create from user space
+ *  - transitions through a number of states
+ *  - initially added to pending command queue
+ *  - consumed by scheduler which manages its execution (state transition)
  * struct xcol_cu
- *	- compute unit for executing commands
- *	- used only without embedded scheduler (ert)
- *	- talks to HW compute units
+ *  - compute unit for executing commands
+ *  - used only without embedded scheduler (ert)
+ *  - talks to HW compute units
  * struct xocl_ert
- *	- embedded scheduler for executing commands on ert
- *	- talks to HW ERT
+ *  - embedded scheduler for executing commands on ert
+ *  - talks to HW ERT
  * struct exec_core
- *	- execution core managing execution on one device
+ *  - execution core managing execution on one device
  * struct xocl_scheduler
- *	- manages execution of cmds on one or more exec cores
- *	- executed in a separate kernel thread
- *	- loops repeatedly when there is work to do
- *	- moves pending commands into a scheduler command queue
+ *  - manages execution of cmds on one or more exec cores
+ *  - executed in a separate kernel thread
+ *  - loops repeatedly when there is work to do
+ *  - moves pending commands into a scheduler command queue
  *
  * [new -> pending]. The xocl API adds exec BOs to KDS.	 The exec BOs are
  * wrapped in a xocl_cmd object and added to a pending command queue.
@@ -53,7 +53,7 @@
  * ert) or if ERT is used, then when ERT has room.
  *
  * [running -> complete]. Commands running on ERT complete by sending an
- * interrupt to scheduler.	When ERT is not used, commands are running on a
+ * interrupt to scheduler.  When ERT is not used, commands are running on a
  * compute unit and are polled for completion.
  */
 
@@ -76,7 +76,7 @@
 ({									\
 	int i;								\
 	u32 *data = (u32 *)packet;					\
-	for (i = 0; i < size; ++i)						\
+	for (i = 0; i < size; ++i)					    \
 		DRM_INFO("packet(0x%p) data[%d] = 0x%x\n", data, i, data[i]); \
 })
 
@@ -100,10 +100,10 @@
 static const unsigned int no_index = -1;
 
 /* FFA	handling */
-static const u32 AP_START	 = 0x1;
-static const u32 AP_DONE	 = 0x2;
-static const u32 AP_IDLE	 = 0x4;
-static const u32 AP_READY	 = 0x8;
+static const u32 AP_START    = 0x1;
+static const u32 AP_DONE     = 0x2;
+static const u32 AP_IDLE     = 0x4;
+static const u32 AP_READY    = 0x8;
 static const u32 AP_CONTINUE = 0x10;
 
 /* Forward declaration */
@@ -112,7 +112,7 @@ struct exec_ops;
 struct xocl_scheduler;
 
 static int validate(struct platform_device *pdev, struct client_ctx *client,
-			const struct drm_xocl_bo *bo);
+		    const struct drm_xocl_bo *bo);
 static bool exec_is_flush(struct exec_core *exec);
 static void exec_ert_clear_csr(struct exec_core *exec);
 static void scheduler_wake_up(struct xocl_scheduler *xs);
@@ -208,8 +208,8 @@ struct xocl_cmd {
 	/* command packet */
 	struct drm_xocl_bo *bo;
 	union {
-		struct ert_packet		*ert_pkt;
-		struct ert_configure_cmd	*ert_cfg;
+		struct ert_packet	    *ert_pkt;
+		struct ert_configure_cmd    *ert_cfg;
 		struct ert_start_kernel_cmd *ert_cu;
 		struct ert_start_copybo_cmd *ert_cp;
 	};
@@ -230,7 +230,7 @@ struct xocl_cmd {
 		struct drm_xocl_bo *deps[8];
 	};
 
-	unsigned long uid;	   // unique id for this command
+	unsigned long uid;     // unique id for this command
 	unsigned int cu_idx;   // index of CU running this cmd (penguin mode)
 	unsigned int slot_idx; // index in exec core submit queue
 };
@@ -435,13 +435,13 @@ static inline void
 cmd_release_gem_object_reference(struct xocl_cmd *xcmd)
 {
 	if (xcmd->bo)
-		/* TODO: Remove drm_gem_object_unreference_unlocked as soon as
-		 * Linux < 4.12 is no longer supported.
-		 */
+        /* TODO: Remove drm_gem_object_unreference_unlocked as soon as
+         * Linux < 4.12 is no longer supported.
+         */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 		drm_gem_object_put_unlocked(&xcmd->bo->base);
 #else
-		drm_gem_object_unreference_unlocked(&xcmd->bo->base);
+        drm_gem_object_unreference_unlocked(&xcmd->bo->base);
 #endif
 }
 
@@ -486,13 +486,13 @@ cmd_chain_dependencies(struct xocl_cmd *xcmd)
 		struct xocl_cmd *chain_to = dbo->metadata.active;
 		// release reference created in ioctl call when dependency was looked up
 		// see comments in xocl_ioctl.c:xocl_execbuf_ioctl()
-		/* TODO: Remove drm_gem_object_unreference_unlocked as soon as
-		 * Linux < 4.12 is no longer supported.
-		 */
+        /* TODO: Remove drm_gem_object_unreference_unlocked as soon as
+         * Linux < 4.12 is no longer supported.
+         */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 		drm_gem_object_put_unlocked(&dbo->base);
 #else
-		drm_gem_object_unreference_unlocked(&dbo->base);
+        drm_gem_object_unreference_unlocked(&dbo->base);
 #endif
 		xcmd->deps[didx] = NULL;
 		if (!chain_to) { // command may have completed already
@@ -526,7 +526,7 @@ cmd_trigger_chain(struct xocl_cmd *xcmd)
 		struct xocl_cmd *trigger = xcmd->chain[--xcmd->chain_count];
 
 		SCHED_DEBUGF("+ cmd(%lu) triggers cmd(%lu) with wait_count(%d)\n",
-				 xcmd->uid, trigger->uid, trigger->wait_count);
+			     xcmd->uid, trigger->uid, trigger->wait_count);
 		// decrement trigger wait count
 		// scheduler will submit when wait count reaches zero
 		--trigger->wait_count;
@@ -618,12 +618,12 @@ cmd_abort(struct xocl_cmd *xcmd)
  * cmd_bo_init() - Initialize a command object with an exec BO
  *
  * In penguin mode, the command object caches the CUs available
- * to execute the command.	When ERT is enabled, the CU info
+ * to execute the command.  When ERT is enabled, the CU info
  * is not used.
  */
 static void
 cmd_bo_init(struct xocl_cmd *xcmd, struct drm_xocl_bo *bo,
-		int numdeps, struct drm_xocl_bo **deps, bool penguin)
+	    int numdeps, struct drm_xocl_bo **deps, bool penguin)
 {
 	SCHED_DEBUGF("%s(%lu,bo,%d,deps,%d)\n", __func__, xcmd->uid, numdeps, penguin);
 	xcmd->bo = bo;
@@ -690,17 +690,17 @@ cmd_has_cu(struct xocl_cmd *xcmd, unsigned int cuidx)
 struct xocl_cu {
 	struct list_head   running_queue;
 	struct xocl_dev    *xdev;
-	unsigned int	   idx;
-	unsigned int	   uid;
-	u32				   control;
-	void __iomem	   *base;
-	u32				   addr;
-	void __iomem	   *polladdr;
-	u32				   ap_check;
+	unsigned int       idx;
+	unsigned int       uid;
+	u32                control;
+	void __iomem       *base;
+	u32                addr;
+	void __iomem       *polladdr;
+	u32                ap_check;
 
-	u32				   ctrlreg;
-	unsigned int	   done_cnt;
-	unsigned int	   run_cnt;
+	u32                ctrlreg;
+	unsigned int       done_cnt;
+	unsigned int       run_cnt;
 };
 
 /*
@@ -718,7 +718,7 @@ cu_reset(struct xocl_cu *xcu, unsigned int idx, void __iomem *base, u32 addr, vo
 	xcu->done_cnt = 0;
 	xcu->run_cnt = 0;
 	userpf_info(xcu->xdev, "configured cu(%d) base@0x%x poll@0x%p control(%d)\n",
-			xcu->idx, xcu->addr, xcu->polladdr, xcu->control);
+		    xcu->idx, xcu->addr, xcu->polladdr, xcu->control);
 }
 
 /**
@@ -797,7 +797,7 @@ cu_continue(struct xocl_cu *xcu)
  * cu_poll() - Poll a CU for its status
  *
  * Used in penguin and ert_poll mode only. Read the CU control register and
- * update run and done count as necessary.	Acknowledge any AP_DONE received
+ * update run and done count as necessary.  Acknowledge any AP_DONE received
  * from kernel.  Check for AP_IDLE since ERT in poll mode will also read the
  * kernel control register and AP_DONE is COR.
  */
@@ -806,7 +806,7 @@ cu_poll(struct xocl_cu *xcu)
 {
 	// assert !list_empty(&running_queue)
 	SCHED_DEBUGF("-> %s cu(%d) @0x%x done(%d) run(%d)\n", __func__,
-			 xcu->idx, xcu->addr, xcu->done_cnt, xcu->run_cnt);
+		     xcu->idx, xcu->addr, xcu->done_cnt, xcu->run_cnt);
 
 	xcu->ctrlreg = ioread32(xcu->base + xcu->addr);
 
@@ -819,7 +819,7 @@ cu_poll(struct xocl_cu *xcu)
 	}
 
 	SCHED_DEBUGF("<- %s cu(%d) done(%d) run(%d)\n", __func__,
-			 xcu->idx, xcu->done_cnt, xcu->run_cnt);
+		     xcu->idx, xcu->done_cnt, xcu->run_cnt);
 }
 
 /**
@@ -837,7 +837,7 @@ cu_ready(struct xocl_cu *xcu)
 		cu_poll(xcu);
 
 	SCHED_DEBUGF("<- %s returns %d\n", __func__,
-			 cu_dataflow(xcu) ? !(xcu->ctrlreg & AP_START) : xcu->run_cnt == 0);
+		     cu_dataflow(xcu) ? !(xcu->ctrlreg & AP_START) : xcu->run_cnt == 0);
 
 	return cu_dataflow(xcu) ? !(xcu->ctrlreg & AP_START) : xcu->run_cnt == 0;
 }
@@ -878,7 +878,7 @@ cu_pop_done(struct xocl_cu *xcu)
 	--xcu->done_cnt;
 
 	SCHED_DEBUGF("%s(%d) xcmd(%lu) done(%d) run(%d)\n", __func__,
-			 xcu->idx, xcmd->uid, xcu->done_cnt, xcu->run_cnt);
+		     xcu->idx, xcmd->uid, xcu->done_cnt, xcu->run_cnt);
 }
 
 /**
@@ -958,7 +958,7 @@ cu_start(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
 	++xcu->run_cnt;
 
 	SCHED_DEBUGF("<- %s cu(%d) started xcmd(%lu) done(%d) run(%d)\n",
-			 __func__, xcu->idx, xcmd->uid, xcu->done_cnt, xcu->run_cnt);
+		     __func__, xcu->idx, xcmd->uid, xcu->done_cnt, xcu->run_cnt);
 
 	return true;
 }
@@ -973,7 +973,7 @@ struct xocl_ert {
 	unsigned int uid;
 
 	unsigned int slot_size;
-	bool		 cq_intr;
+	bool         cq_intr;
 };
 
 /*
@@ -1042,7 +1042,7 @@ ert_start_cmd(struct xocl_ert *xert, struct xocl_cmd *xcmd)
 		u32 mask = 1 << slot_idx_in_mask(xcmd->slot_idx);
 
 		SCHED_DEBUGF("++ mb_submit writes slot mask 0x%x to CQ_INT register at addr 0x%x\n",
-				 mask, cq_int_addr);
+			     mask, cq_int_addr);
 		csr_write32(mask, xert->csr_base, cq_int_addr);
 	}
 	SCHED_DEBUGF("<- %s returns true\n", __func__);
@@ -1079,7 +1079,7 @@ struct exec_ops {
 	void (*process_mask)(struct exec_core *exec, u32 mask, unsigned int maskidx);
 };
 
-static struct exec_ops ert_ops;		  // ert mode
+static struct exec_ops ert_ops;       // ert mode
 static struct exec_ops ert_poll_ops;  // ert polling mode
 static struct exec_ops penguin_ops;   // kds mode (no ert)
 
@@ -1132,11 +1132,11 @@ struct exec_core {
 	unsigned int		   num_cus;
 	unsigned int		   num_cdma;
 	
-	bool				   polling_mode;
-	bool				   cq_interrupt;
-	bool				   configured;
-	bool				   stopped;
-	bool				   flush;
+	bool		           polling_mode;
+	bool		           cq_interrupt;
+	bool		           configured;
+	bool		           stopped;
+	bool		           flush;
 
 	struct xocl_cu		   *cus[MAX_CUS];
 	struct xocl_ert		   *ert;
@@ -1689,7 +1689,7 @@ exec_release_slot(struct exec_core *exec, struct xocl_cmd *xcmd)
 		return; // already released
 
 	SCHED_DEBUGF("-> %s(%d) xcmd(%lu) slotidx(%d)\n",
-			 __func__, exec->uid, xcmd->uid, xcmd->slot_idx);
+		     __func__, exec->uid, xcmd->uid, xcmd->slot_idx);
 	if (cmd_type(xcmd) == ERT_CTRL) {
 		SCHED_DEBUG("+ ctrl cmd\n");
 		exec->ctrl_busy = false;
@@ -1776,8 +1776,8 @@ exec_notify_host(struct exec_core *exec)
  * exec_cmd_mark_complete() - Move a command to complete state
  *
  * Commands are marked complete in two ways
- *	1. Through polling of CUs or polling of MB status register
- *	2. Through interrupts from MB
+ *  1. Through polling of CUs or polling of MB status register
+ *  2. Through interrupts from MB
  *
  * @xcmd: Command to mark complete
  *
@@ -1938,7 +1938,7 @@ exec_penguin_query_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	u32 cmdtype = cmd_type(xcmd);
 
 	SCHED_DEBUGF("-> %s cmd(%lu) opcode(%d) type(%d) slot_idx=%d\n",
-			 __func__, xcmd->uid, cmd_opcode(xcmd), cmdtype, xcmd->slot_idx);
+		     __func__, xcmd->uid, cmd_opcode(xcmd), cmdtype, xcmd->slot_idx);
 
 	if (cmdtype == ERT_KDS_LOCAL || cmdtype == ERT_CTRL)
 		exec_mark_cmd_complete(exec, xcmd);
@@ -2009,7 +2009,7 @@ exec_ert_clear_csr(struct exec_core *exec)
 
 		if (val)
 			userpf_info(exec_get_xdev(exec),
-					"csr[%d]=0x%x cleared\n", idx, val);
+				    "csr[%d]=0x%x cleared\n", idx, val);
 	}
 }
 
@@ -2043,10 +2043,10 @@ exec_ert_query_csr(struct exec_core *exec, struct xocl_cmd *xcmd, unsigned int m
 	}
 
 	if (exec->polling_mode
-		|| (mask_idx == 0 && atomic_xchg(&exec->sr0, 0))
-		|| (mask_idx == 1 && atomic_xchg(&exec->sr1, 0))
-		|| (mask_idx == 2 && atomic_xchg(&exec->sr2, 0))
-		|| (mask_idx == 3 && atomic_xchg(&exec->sr3, 0))) {
+	    || (mask_idx == 0 && atomic_xchg(&exec->sr0, 0))
+	    || (mask_idx == 1 && atomic_xchg(&exec->sr1, 0))
+	    || (mask_idx == 2 && atomic_xchg(&exec->sr2, 0))
+	    || (mask_idx == 3 && atomic_xchg(&exec->sr3, 0))) {
 		u32 csr_addr = ERT_STATUS_REGISTER_ADDR + (mask_idx<<2);
 
 		mask = csr_read32(exec->csr_base, csr_addr);
@@ -2522,9 +2522,9 @@ scheduler_iterate_cmds(struct xocl_scheduler *xs)
  * scheduler_wait_condition() - Check status of scheduler wait condition
  *
  * Scheduler must wait (sleep) if
- *	 1. there are no pending commands
- *	 2. no pending interrupt from embedded scheduler
- *	 3. no pending complete commands in polling mode
+ *   1. there are no pending commands
+ *   2. no pending interrupt from embedded scheduler
+ *   3. no pending complete commands in polling mode
  *
  * Return: 1 if scheduler must wait, 0 othewise
  */
@@ -2655,13 +2655,13 @@ add_xcmd(struct xocl_cmd *xcmd)
 	scheduler_wake_up(xcmd->xs);
 
 	SCHED_DEBUGF("<- %s ret(0) opcode(%d) type(%d) num_pending(%d)\n",
-			 __func__, cmd_opcode(xcmd), cmd_type(xcmd), atomic_read(&num_pending));
+		     __func__, cmd_opcode(xcmd), cmd_type(xcmd), atomic_read(&num_pending));
 	mutex_unlock(&exec->exec_lock);
 	return 0;
 
 err:
 	SCHED_DEBUGF("<- %s ret(1) opcode(%d) type(%d) num_pending(%d)\n",
-			 __func__, cmd_opcode(xcmd), cmd_type(xcmd), atomic_read(&num_pending));
+		     __func__, cmd_opcode(xcmd), cmd_type(xcmd), atomic_read(&num_pending));
 	mutex_unlock(&exec->exec_lock);
 	return 1;
 }
@@ -2957,7 +2957,7 @@ static uint poll_client(struct platform_device *pdev, struct file *filp,
 }
 
 static int client_ioctl_ctx(struct platform_device *pdev,
-				struct client_ctx *client, void *data)
+			    struct client_ctx *client, void *data)
 {
 	struct drm_xocl_ctx *args = data;
 	int ret = 0;
@@ -2976,7 +2976,7 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 	}
 
 	if (cu_idx != XOCL_CTX_VIRT_CU_INDEX
-		&& cu_idx >= XOCL_IP_LAYOUT(xdev)->m_count) {
+	    && cu_idx >= XOCL_IP_LAYOUT(xdev)->m_count) {
 		userpf_err(xdev, "cuidx(%d) >= numcus(%d)\n",
 			cu_idx, XOCL_IP_LAYOUT(xdev)->m_count);
 		ret = -EINVAL;
@@ -2984,7 +2984,7 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 	}
 
 	if (cu_idx != XOCL_CTX_VIRT_CU_INDEX
-		&& !exec_valid_cu(exec,cu_idx)) {
+	    && !exec_valid_cu(exec,cu_idx)) {
 		userpf_err(xdev, "cuidx(%d) cannot be reserved\n",cu_idx);
 		ret = -EINVAL;
 		goto out;
@@ -3068,7 +3068,7 @@ out:
 
 static int
 get_bo_paddr(struct xocl_dev *xdev, struct drm_file *filp,
-		 uint32_t bo_hdl, size_t off, size_t size, uint64_t *paddrp)
+	     uint32_t bo_hdl, size_t off, size_t size, uint64_t *paddrp)
 {
 	struct drm_device *ddev = filp->minor->dev;
 	struct drm_gem_object *obj;
@@ -3083,38 +3083,38 @@ get_bo_paddr(struct xocl_dev *xdev, struct drm_file *filp,
 	xobj = to_xocl_bo(obj);
 	if (!xobj->mm_node) {
 		/* Not a local BO */
-		/* TODO: Remove drm_gem_object_unreference_unlocked as soon as
-		 * Linux < 4.12 is no longer supported.
-		 */
+        /* TODO: Remove drm_gem_object_unreference_unlocked as soon as
+         * Linux < 4.12 is no longer supported.
+         */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 		drm_gem_object_put_unlocked(obj);
 #else
-		drm_gem_object_unreference_unlocked(obj);
+        drm_gem_object_unreference_unlocked(obj);
 #endif
 		return -EADDRNOTAVAIL;
 	}
 
 	if (obj->size <= off || obj->size < off + size) {
 		userpf_err(xdev, "Failed to get paddr for BO 0x%x\n", bo_hdl);
-		/* TODO: Remove drm_gem_object_unreference_unlocked as soon as
-		 * Linux < 4.12 is no longer supported.
-		 */
+        /* TODO: Remove drm_gem_object_unreference_unlocked as soon as
+         * Linux < 4.12 is no longer supported.
+         */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 		drm_gem_object_put_unlocked(obj);
 #else
-		drm_gem_object_unreference_unlocked(obj);
+        drm_gem_object_unreference_unlocked(obj);
 #endif
 		return -EINVAL;
 	}
 
 	*paddrp = xobj->mm_node->start + off;
-	/* TODO: Remove drm_gem_object_unreference_unlocked as soon as
-	 * Linux < 4.12 is no longer supported.
-	 */
+    /* TODO: Remove drm_gem_object_unreference_unlocked as soon as
+     * Linux < 4.12 is no longer supported.
+     */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 	drm_gem_object_put_unlocked(obj);
 #else
-	drm_gem_object_unreference_unlocked(obj);
+    drm_gem_object_unreference_unlocked(obj);
 #endif
 	return 0;
 }
@@ -3169,8 +3169,8 @@ static int convert_execbuf(struct xocl_dev *xdev, struct drm_file *filp,
 
 	userpf_info(xdev,"checking alignment requirments for KDMA sz(%lu)",sz);
 	if ((dst_addr + dst_off) % KDMA_BLOCK_SIZE ||
-		(src_addr + src_off) % KDMA_BLOCK_SIZE ||
-		sz % KDMA_BLOCK_SIZE) {
+	    (src_addr + src_off) % KDMA_BLOCK_SIZE ||
+	    sz % KDMA_BLOCK_SIZE) {
 		userpf_info(xdev,"improper alignment, cannot use KDMA");
 		return -EINVAL;
 	}
@@ -3188,7 +3188,7 @@ static int convert_execbuf(struct xocl_dev *xdev, struct drm_file *filp,
 
 static int
 client_ioctl_execbuf(struct platform_device *pdev,
-			 struct client_ctx *client, void *data, struct drm_file *filp)
+		     struct client_ctx *client, void *data, struct drm_file *filp)
 {
 	struct drm_xocl_execbuf *args = data;
 	struct drm_xocl_bo *xobj;
@@ -3233,7 +3233,7 @@ client_ioctl_execbuf(struct platform_device *pdev,
 
 	/* Copy dependencies from user.	 It is an error if a BO handle specified
 	 * as a dependency does not exists. Lookup gem object corresponding to bo
-	 * handle.	Convert gem object to xocl_bo extension.  Note that the
+	 * handle.  Convert gem object to xocl_bo extension.  Note that the
 	 * gem lookup acquires a reference to the drm object, this reference
 	 * is passed on to the the scheduler via xocl_exec_add_buffer.
 	 */
@@ -3264,7 +3264,7 @@ client_ioctl_execbuf(struct platform_device *pdev,
 	}
 
 	/* Return here, noting that the gem objects passed to kds have
-	 * references that must be released by kds itself.	User manages
+	 * references that must be released by kds itself.  User manages
 	 * a regular reference to all BOs returned as file handles.  These
 	 * references are released with the BOs are freed.
 	 */
@@ -3272,15 +3272,15 @@ client_ioctl_execbuf(struct platform_device *pdev,
 
 out:
 	for (--numdeps; numdeps >= 0; numdeps--)
-		/* TODO: Remove drm_gem_object_unreference_unlocked as soon as
-		 * Linux < 4.12 is no longer supported.
-		 */
+        /* TODO: Remove drm_gem_object_unreference_unlocked as soon as
+         * Linux < 4.12 is no longer supported.
+         */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
 		drm_gem_object_put_unlocked(&deps[numdeps]->base);
 	drm_gem_object_put_unlocked(&xobj->base);
 #else
-		drm_gem_object_unreference_unlocked(&deps[numdeps]->base);
-	drm_gem_object_unreference_unlocked(&xobj->base);
+        drm_gem_object_unreference_unlocked(&deps[numdeps]->base);
+    drm_gem_object_unreference_unlocked(&xobj->base);
 #endif
 	return ret;
 }
@@ -3321,7 +3321,7 @@ int client_ioctl(struct platform_device *pdev,
  * Even though the very first client created for this device also resets the
  * exec core, it is possible that further resets are necessary.	 For example
  * in multi-process case, there can be 'n' processes that attach to the
- * device.	On first client attach the exec core is reset correctly, but now
+ * device.  On first client attach the exec core is reset correctly, but now
  * assume that 'm' of these processes finishes completely before any remaining
  * (n-m) processes start using the scheduler.  In this case, the n-m clients have
  * already been created, but icap resets AXI because the xclbin has no
@@ -3329,8 +3329,8 @@ int client_ioctl(struct platform_device *pdev,
  *
  * [Work-in-progress:]
  * Proper contract:
- *	Pre-condition: xocl_exec_stop has been called before xocl_exec_reset.
- *	Pre-condition: new bitstream has been downloaded and AXI has been reset
+ *  Pre-condition: xocl_exec_stop has been called before xocl_exec_reset.
+ *  Pre-condition: new bitstream has been downloaded and AXI has been reset
  */
 static int
 reset(struct platform_device *pdev)
@@ -3415,7 +3415,7 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 		// cmd_cus must be subset of ctx_cus
 		if (cmd_cus & ~ctx_cus[maskidx]) {
 			SCHED_DEBUGF("<- %s(1), CU mismatch in mask(%d) cmd(0x%x) ctx(0x%x)\n",
-					 __func__, maskidx, cmd_cus, ctx_cus[maskidx]);
+				     __func__, maskidx, cmd_cus, ctx_cus[maskidx]);
 			err = 1;
 			goto out; /* error */
 		}
@@ -3513,8 +3513,8 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 
 	for (count = 0; count < exec->num_cus; ++count)
 		sz += sprintf(buf+sz, "CU[@0x%x] : %d\n",
-				  exec_cu_base_addr(exec, count),
-				  exec_cu_usage(exec, count));
+			      exec_cu_base_addr(exec, count),
+			      exec_cu_usage(exec, count));
 	if (sz)
 		buf[sz++] = 0;
 
