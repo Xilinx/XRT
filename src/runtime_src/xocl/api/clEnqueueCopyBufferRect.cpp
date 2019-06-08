@@ -60,9 +60,9 @@ src_extent_in_bytes(const size_t* region,
                     size_t        src_row_pitch, 
                     size_t        src_slice_pitch)
 {
-  return src_origin_in_bytes(src_origin,src_row_pitch,src_slice_pitch)  
-    + region[2] * src_slice_pitch
-    + region[1] * src_row_pitch
+  return src_origin_in_bytes(src_origin,src_row_pitch,src_slice_pitch)
+    + (region[2] - 1) * src_slice_pitch
+    + (region[1] - 1) * src_row_pitch
     + region[0];
 }
 
@@ -82,9 +82,9 @@ dst_extent_in_bytes(const size_t* region,
                     size_t        dst_row_pitch, 
                     size_t        dst_slice_pitch)
 {
-  return dst_origin_in_bytes(dst_origin,dst_row_pitch,dst_slice_pitch)  
-    + region[2] * dst_slice_pitch
-    + region[1] * dst_row_pitch
+  return dst_origin_in_bytes(dst_origin,dst_row_pitch,dst_slice_pitch)
+    + (region[2] - 1) * dst_slice_pitch
+    + (region[1] - 1) * dst_row_pitch
     + region[0];
 }
 
