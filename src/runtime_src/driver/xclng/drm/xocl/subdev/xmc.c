@@ -443,7 +443,7 @@ static ssize_t xmc_fpga_temp_show(struct device *dev, struct device_attribute *a
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read32(xmc, XMC_FPGA_TEMP, &val);
+	safe_read32(xmc, XMC_FPGA_TEMP+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -455,7 +455,7 @@ static ssize_t xmc_fan_temp_show(struct device *dev, struct device_attribute *at
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read32(xmc, XMC_FAN_TEMP_REG, &val);
+	safe_read32(xmc, XMC_FAN_TEMP_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -467,7 +467,7 @@ static ssize_t xmc_fan_rpm_show(struct device *dev, struct device_attribute *att
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
-	safe_read32(xmc, XMC_FAN_SPEED_REG, &val);
+	safe_read32(xmc, XMC_FAN_SPEED_REG+sizeof(u32)*VOLTAGE_INS, &val);
 
 	return sprintf(buf, "%d\n", val);
 }
