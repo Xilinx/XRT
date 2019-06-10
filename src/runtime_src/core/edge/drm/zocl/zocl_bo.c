@@ -153,6 +153,9 @@ zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
 	} else {
 		/* We are allocating from a separate BANK, i.e. PL-DDR */
 		unsigned int bank = GET_MEM_BANK(user_flags);
+		if (bank >= zdev->num_mem || !zdev->mem[bank].zm_used ||
+		    zdev->mem[bank].zm_type != ZOCL_MEM_TYPE_PLDDR)
+			return ERR_PTR(-EINVAL);
 
 		bo = kzalloc(sizeof (struct drm_zocl_bo), GFP_KERNEL);
 		if (IS_ERR(bo))
@@ -831,12 +834,10 @@ void zocl_clear_mem(struct drm_zocl_dev *zdev)
 {
 	int i;
 
-	mutex_lock(&zdev->mm_lock);
-
-	if (!zdev->mem) {
-		mutex_unlock(&zdev->mm_lock);
+	if (!zdev->mem)
 		return;
-	}
+
+	mutex_lock(&zdev->mm_lock);
 
 	for (i = 0; i < zdev->num_mem; i++) {
 		struct zocl_mem *md = &zdev->mem[i];
