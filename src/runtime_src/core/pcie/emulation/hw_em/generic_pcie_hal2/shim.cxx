@@ -439,12 +439,15 @@ namespace xclhwemhal2 {
       }
     }
 
+    std::vector<std::string> kernels;
+
     // iterate kernels
     for (auto& xml_kernel : xml_project.get_child("project.platform.device.core"))
     {
       if (xml_kernel.first != "kernel")
         continue;
       std::string kernelName = xml_kernel.second.get<std::string>("<xmlattr>.name");
+      kernels.push_back(kernelName);
 
       for (auto& xml_kernel_info : xml_kernel.second)
       {
@@ -464,8 +467,6 @@ namespace xclhwemhal2 {
         if (xml_kernel_info.first == "instance")
         {
           std::string instanceName = xml_kernel_info.second.get<std::string>("<xmlattr>.name");
-
-
           for (auto& xml_remap : xml_kernel_info.second)
           {
             if (xml_remap.first != "addrRemap")
@@ -485,7 +486,6 @@ namespace xclhwemhal2 {
     }
 
     std::string xclBinName = xml_project.get<std::string>("project.<xmlattr>.name", "");
-
     set_simulator_started(true);
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     std::string launcherArgs = xclemulation::config::getInstance()->getLauncherArgs();
@@ -606,7 +606,10 @@ namespace xclhwemhal2 {
 
         const char* simMode = NULL;
         if (args.m_emuData) {
-          launcherArgs += " -emuData " + binaryDirectory + "/krnl_aie_vadd_int/aieshim_solution.aiesol";
+          //So far assuming that we will have only one AIR Kernel, need to 
+          //update this logic when we have suport for multiple AIE Kernels
+          launcherArgs += " -emuData " + binaryDirectory + "/" + kernels.at(0) + "/aieshim_solution.aiesol";
+          launcherArgs += " -bootBH " + binaryDirectory + "/" + kernels.at(0) + "/boot_bh.bin";
         }
 
         if (!launcherArgs.empty())
