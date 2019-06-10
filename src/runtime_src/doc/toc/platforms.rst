@@ -31,7 +31,7 @@ the following functionality:
 
 1.  ICAP programming
 2.  CLock scaling
-3.  Loading firmware container, dsabin (RL Shell for 2 RP solution, embedded Microblaze firmware: ERT, XMC)
+3.  Loading firmware container, dsabin(renamed to xsabin since 2019.2) (RL Shell for 2 RP solution, embedded Microblaze firmware: ERT, XMC)
 4.  In-band sensors: Temp, Voltage, Power, etc
 5.  AXI Firewall management
 6.  Access to flash programmer

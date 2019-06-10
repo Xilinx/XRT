@@ -861,6 +861,7 @@ int xcldev::xclTop(int argc, char *argv[])
 }
 
 const std::string dsaPath("/opt/xilinx/dsa/");
+const std::string xsaPath("/opt/xilinx/xsa/");
 
 void testCaseProgressReporter(bool *quit)
 {    int i = 0;
@@ -908,14 +909,27 @@ int runShellCmd(const std::string& cmd, std::string& output)
 int xcldev::device::runTestCase(const std::string& exe,
     const std::string& xclbin, std::string& output)
 {
-    std::string testCasePath = dsaPath +
+    std::string dirPath;
+    struct stat st;
+
+    output.clear();
+    
+    if (stat(xsaPath.c_str(), &st) != 0) {
+      if (stat(dsaPath.c_str(), &st) != 0) {
+        output += "ERROR: Failed to find ";
+        output += dsaPath.c_str();
+        return -ENOENT;
+      }
+      dirPath = dsaPath;
+    } else {
+      dirPath = xsaPath;
+    }
+
+    std::string testCasePath = dirPath +
         std::string(m_devinfo.mName) + "/test/";
     std::string exePath = testCasePath + exe;
     std::string xclbinPath = testCasePath + xclbin;
     std::string idxOption;
-    struct stat st;
-
-    output.clear();
 
     if (stat(exePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
         output += "ERROR: Failed to find ";

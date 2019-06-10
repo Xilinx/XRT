@@ -272,7 +272,7 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
     DSAInfo onBoard = getOnBoardDSA();
     if (onBoard.vendor.empty() || onBoard.board.empty())
     {
-        std::cout << "DSA on FPGA is unknown" << std::endl;
+        std::cout << "Shell on FPGA is unknown" << std::endl;
         return DSAs;
     }
 

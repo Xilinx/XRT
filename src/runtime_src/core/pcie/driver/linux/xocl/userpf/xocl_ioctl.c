@@ -255,7 +255,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	userpf_info(xdev, "READ_AXLF IOCTL\n");
 
 	if (!xocl_is_unified(xdev)) {
-		printk(KERN_INFO "XOCL: not unified dsa");
+		printk(KERN_INFO "XOCL: not unified Shell");
 		return err;
 	}
 

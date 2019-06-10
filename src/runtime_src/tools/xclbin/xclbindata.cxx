@@ -500,7 +500,7 @@ XclBinData::reportHeader()
   std::cout << "  XCLBIN_SW_EMU:          " << XCLBIN_SW_EMU << "\n";
   std::cout << "  XCLBIN_MODE_MAX:        " << XCLBIN_MODE_MAX << "\n";
   std::cout << "Platform VBNV:          " << m_xclBinHead.m_header.m_platformVBNV << "\n";
-  std::cout << "DSA uuid:               " << getUUIDAsString(m_xclBinHead.m_header.rom_uuid) << "\n";
+  std::cout << "XSA uuid:               " << getUUIDAsString(m_xclBinHead.m_header.rom_uuid) << "\n";
   std::cout << "xclbin uuid:            " << getUUIDAsString(m_xclBinHead.m_header.uuid) << "\n";
   std::cout << "Debug Bin:              " << m_xclBinHead.m_header.m_debug_bin << "\n";
   std::cout << "Num of sections:        " << m_xclBinHead.m_header.m_numSections << "\n";
