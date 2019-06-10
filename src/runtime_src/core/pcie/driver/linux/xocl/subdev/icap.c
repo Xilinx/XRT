@@ -518,6 +518,10 @@ static unsigned int icap_get_clock_frequency_counter_khz(const struct icap *icap
 /*
  * Based on Clocking Wizard v5.1, section Dynamic Reconfiguration
  * through AXI4-Lite
+ * Note: this is being protected by write_lock which is atomic context,
+ *       we should only use n[m]delay instead of n[m]sleep.
+ *       based on Linux doc of timers, mdelay may not be exactly accurate
+ *       on non-PC devices.
  */
 static int icap_ocl_freqscaling(struct icap *icap, bool force)
 {
@@ -560,20 +564,20 @@ static int icap_ocl_freqscaling(struct icap *icap, bool force)
 		config = frequency_table[idx].config2;
 		reg_wr(icap->icap_clock_bases[i] + OCL_CLKWIZ_CONFIG_OFFSET(2),
 			config);
-		msleep(10);
+		mdelay(10);
 		reg_wr(icap->icap_clock_bases[i] + OCL_CLKWIZ_CONFIG_OFFSET(23),
 			0x00000007);
-		msleep(1);
+		mdelay(1);
 		reg_wr(icap->icap_clock_bases[i] + OCL_CLKWIZ_CONFIG_OFFSET(23),
 			0x00000002);
 
 		ICAP_INFO(icap, "clockwiz waiting for locked signal");
-		msleep(100);
+		mdelay(100);
 		for (j = 0; j < 100; j++) {
 			val = reg_rd(icap->icap_clock_bases[i] +
 				OCL_CLKWIZ_STATUS_OFFSET);
 			if (val != 1) {
-				msleep(100);
+				mdelay(100);
 				continue;
 			}
 		}
@@ -584,7 +588,7 @@ static int icap_ocl_freqscaling(struct icap *icap, bool force)
 			/* restore the original clock configuration */
 			reg_wr(icap->icap_clock_bases[i] +
 				OCL_CLKWIZ_CONFIG_OFFSET(23), 0x00000004);
-			msleep(10);
+			mdelay(10);
 			reg_wr(icap->icap_clock_bases[i] +
 				OCL_CLKWIZ_CONFIG_OFFSET(23), 0x00000000);
 			err = -ETIMEDOUT;
