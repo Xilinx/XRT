@@ -264,8 +264,6 @@ struct xocl_dev_core {
 	resource_size_t		bar_size;
 	resource_size_t		feature_rom_offset;
 
-	u32			dma_bar_idx;
-
 	u32			intr_bar_idx;
 	void __iomem		*intr_bar_addr;
 	resource_size_t		intr_bar_size;
@@ -713,6 +711,7 @@ struct xocl_icap_funcs {
 	int (*download_bitstream_axlf)(struct platform_device *pdev,
 		const void __user *arg);
 	int (*download_boot_firmware)(struct platform_device *pdev);
+	int (*download_rp)(struct platform_device *pdev, int level, bool dry);
 	int (*ocl_set_freq)(struct platform_device *pdev,
 		unsigned int region, unsigned short *freqs, int num_freqs);
 	int (*ocl_get_freq)(struct platform_device *pdev,
@@ -745,7 +744,11 @@ struct xocl_icap_funcs {
 #define	xocl_icap_download_boot_firmware(xdev)				\
 	(ICAP_CB(xdev, download_boot_firmware) ?						\
 	ICAP_OPS(xdev)->download_boot_firmware(ICAP_DEV(xdev)) :	\
-	 -ENODEV)
+	-ENODEV)
+#define xocl_icap_download_rp(xdev, level, dry)					\
+	(ICAP_CB(xdev, download_rp) ?					\
+	ICAP_OPS(xdev)->download_rp(ICAP_DEV(xdev), level, dry) :	\
+	-ENODEV)
 #define	xocl_icap_ocl_get_freq(xdev, region, freqs, num)		\
 	(ICAP_CB(xdev, ocl_get_freq) ?						\
 	ICAP_OPS(xdev)->ocl_get_freq(ICAP_DEV(xdev), region, freqs, num) : \
@@ -801,15 +804,16 @@ struct xocl_axigate_funcs {
 #define	AXIGATE_DEV(xdev, idx)	SUBDEV_MULTI(xdev, XOCL_SUBDEV_AXIGATE, idx).pldev
 #define AXIGATE_OPS(xdev, idx)					\
 	((struct xocl_axigate_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_AXIGATE, idx).ops)
-#define AXIGATE_CB(xdev, subdev)		\
-	(subdev && subdev->pldev && subdev->ops)
+#define AXIGATE_CB(xdev, subdev, func)		\
+	(subdev && subdev->pldev &&		\
+	 ((struct xocl_axigate_funcs *)subdev->ops)->func)
 #define xocl_axigate_freeze(xdev, subdev)			\
-	(AXIGATE_CB(xdev, subdev) ?			\
-	subdev->ops->freeze(subdev->pldev) : \
+	(AXIGATE_CB(xdev, subdev, freeze) ?			\
+	((struct xocl_axigate_funcs *)subdev->ops)->freeze(subdev->pldev) : \
 	-ENODEV)
-#define xocl_axigate_free(xdev, idx)			\
-	(AXIGATE_CB(xdev, idx) ?			\
-	AXIGATE_OPS(xdev, idx)->free(AXIGATE_DEV(xdev, idx)) : \
+#define xocl_axigate_free(xdev, subdev)			\
+	(AXIGATE_CB(xdev, subdev, free) ?			\
+	((struct xocl_axigate_funcs *)subdev->ops)->free(subdev->pldev) : \
 	-ENODEV)
 static inline struct xocl_subdev *
 xocl_axigate_dev_by_level(xdev_handle_t xdev, int level)
@@ -827,7 +831,6 @@ xocl_axigate_dev_by_level(xdev_handle_t xdev, int level)
 
 	return NULL;
 }
-
 
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
@@ -874,6 +877,9 @@ int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
 	struct axlf *bin_obj, bool major_only);
 int xocl_alloc_dev_minor(xdev_handle_t xdev_hdl);
 void xocl_free_dev_minor(xdev_handle_t xdev_hdl);
+
+int xocl_ioaddr_to_baroff(xdev_handle_t xdev_hdl, resource_size_t io_addr,
+	int *bar_idx, resource_size_t *bar_off);
 
 static inline uint32_t xocl_dr_reg_read32(xdev_handle_t xdev, void __iomem *addr)
 {

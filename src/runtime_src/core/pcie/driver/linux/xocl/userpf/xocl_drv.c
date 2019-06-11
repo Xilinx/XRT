@@ -137,7 +137,7 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 {
 	bool skip = false;
 	int ret = 0, mbret = 0;
-	struct mailbox_req mbreq = { MAILBOX_REQ_CHG_SHELL, };
+	struct mailbox_req mbreq = { MAILBOX_REQ_PROGRAM_SHELL, };
 	size_t resplen = sizeof(ret);
 
 	mutex_lock(&xdev->dev_lock);
@@ -930,8 +930,7 @@ static int identify_bar(struct xocl_dev *xdev)
 				return -EIO;
 			xdev->core.bar_idx = i;
 			xdev->core.bar_size = bar_len;
-		} else
-			xdev->core.dma_bar_idx = i;
+		}
 	}
 
 	return 0;

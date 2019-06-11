@@ -209,11 +209,13 @@ static ssize_t subdev_cmd_store(struct device *dev,
 		xocl_subdev_destroy_all(lro);
 		ret = xocl_subdev_create_all(lro);
 		xclmgmt_update_userpf_blob(lro);
+		health_thread_start(lro);
 
 		(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
 		xclmgmt_connect_notify(lro, true);
 	} else if (!strcmp(cmd, "destroy") &&
 			!strcmp(sdev_name, "dynamic")) {
+		health_thread_stop(lro);
 		for (i = XOCL_SUBDEV_LEVEL_URP; i > XOCL_SUBDEV_LEVEL_STATIC;
 				i--) {
 			xocl_subdev_destroy_by_level(lro, i);
@@ -351,19 +353,20 @@ static ssize_t mgmt_blob_input(struct file *filp, struct kobject *kobj,
 			return -EINVAL;
 		}
 
-		lro->bin_length = fdt_totalsize(buffer);
-		lro->bin_buffer = vmalloc(lro->bin_length);
+		lro->sysfs_bin_length = fdt_totalsize(buffer);
+		lro->sysfs_bin_buffer = vmalloc(lro->sysfs_bin_length);
 	}
 
-	if (off + count >= lro->bin_length) {
-		memcpy(lro->bin_buffer + off, buffer, lro->bin_length - off);
-		ret = xocl_fdt_blob_input(lro, lro->bin_buffer);
-		vfree(lro->bin_buffer);
-		lro->bin_buffer = NULL;
-		lro->bin_length = 0;
+	if (off + count >= lro->sysfs_bin_length) {
+		memcpy(lro->sysfs_bin_buffer + off, buffer,
+				lro->sysfs_bin_length - off);
+		ret = xocl_fdt_blob_input(lro, lro->sysfs_bin_buffer);
+		vfree(lro->sysfs_bin_buffer);
+		lro->sysfs_bin_buffer = NULL;
+		lro->sysfs_bin_length = 0;
 
 	} else
-		memcpy(lro->bin_buffer + off, buffer, count);
+		memcpy(lro->sysfs_bin_buffer + off, buffer, count);
 
 	return ret ? ret : count;
 }

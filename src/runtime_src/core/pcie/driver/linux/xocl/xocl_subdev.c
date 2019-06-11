@@ -142,7 +142,7 @@ int xocl_subdev_create(xdev_handle_t xdev_hdl,
 	size_t data_len = 0;
 	resource_size_t iostart;
 	struct resource *res = NULL;
-	int i, retval;
+	int i, bar_idx, retval;
 	char devname[64];
 
 	subdev = xocl_subdev_reserve(xdev_hdl, sdev_info);
@@ -201,16 +201,21 @@ int xocl_subdev_create(xdev_handle_t xdev_hdl,
 	}
 
 	if (res) {
-		iostart = pci_resource_start(core->pdev, core->bar_idx);
+		bar_idx = core->bar_idx;
 
 		for (i = 0; i < sdev_info->num_res; i++) {
 			if (sdev_info->res[i].flags & IORESOURCE_MEM) {
 				if (sdev_info->bar_idx)
-					iostart = pci_resource_start(
-						core->pdev,
-					       	(int)sdev_info->bar_idx[i]);
+					bar_idx = (int)sdev_info->bar_idx[i];
+				iostart = pci_resource_start(core->pdev, 
+						bar_idx);
 				res[i].start += iostart;
-				res[i].end += iostart;
+				if (!res[i].end)
+					res[i].end =
+						pci_resource_end(core->pdev,
+							bar_idx);
+				else
+					res[i].end += iostart;
 			}
 		}
 
@@ -796,4 +801,30 @@ void xocl_free_dev_minor(xdev_handle_t xdev_hdl)
 		ida_simple_remove(&xocl_dev_minor_ida, core->dev_minor);
 		core->dev_minor = XOCL_INVALID_MINOR;
 	}
+}
+
+int xocl_ioaddr_to_baroff(xdev_handle_t xdev_hdl, resource_size_t io_addr,
+		int *bar_idx, resource_size_t *bar_off)
+{
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+	int mask, i;
+
+	mask = pci_select_bars(core->pdev, IORESOURCE_MEM | IORESOURCE_MEM_64);
+	for (i = 0; mask; mask >>= 1, i++) {
+		if ((mask & 1) &&
+		    pci_resource_start(core->pdev, i) <= io_addr &&
+		    pci_resource_end(core->pdev, i) >= io_addr)
+			break;
+	}
+	if (!mask) {
+		xocl_xdev_err(xdev_hdl, "Invalid io address %llx", io_addr);
+		return -EINVAL;
+	}
+
+	if (bar_idx)
+		*bar_idx = i;
+	if (bar_off)
+		*bar_off = io_addr - pci_resource_start(core->pdev, i);
+
+	return 0;
 }

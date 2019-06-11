@@ -725,12 +725,22 @@ struct xocl_subdev_map {
 		ARRAY_SIZE(XOCL_RES_MB),		\
 	}
 
+#define XOCL_RES_QDMA					\
+	((struct resource []) {				\
+	 	{					\
+	 		.start = 0x0,			\
+	 		.end = 0x0,			\
+	 		.flags = IORESOURCE_MEM,	\
+	 	},					\
+	 })
+
 #define	XOCL_DEVINFO_QDMA				\
 	{						\
 		XOCL_SUBDEV_DMA,			\
 		XOCL_QDMA,				\
-		NULL,					\
-		0,					\
+		XOCL_RES_QDMA,				\
+		ARRAY_SIZE(XOCL_RES_QDMA),		\
+		.bar_idx = (char []){ 2 },		\
 	}
 
 #define	XOCL_DEVINFO_XDMA				\

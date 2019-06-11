@@ -473,33 +473,66 @@ failed:
 
 int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 {
-	int ret, i;
+	void *blob = NULL;
+	int ret;
 
-	xocl_drvinst_offline(lro, true);
-	ret = xocl_subdev_offline_all(lro);
+	mutex_lock(&lro->busy_mutex);
+	if (!lro->bld_blob || !lro->core.fdt_blob) {
+		mgmt_err(lro, "Invalid reprogram request");
+		ret = -EINVAL;
+		goto failed;
+	}
+	/* if dry run failed, return error */
+	ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP, true);
 	if (ret) {
-		mgmt_err(lro, "offline sub devices failed %d", ret);
+		mgmt_err(lro, "download dry run failed %d", ret);
 		goto failed;
 	}
 
-	for (i = XOCL_SUBDEV_LEVEL_URP; i > XOCL_SUBDEV_LEVEL_STATIC; i--)
-		xocl_subdev_destroy_by_level(lro, i);
+	xocl_drvinst_offline(lro, true);
+	health_thread_stop(lro);
+	xocl_subdev_destroy_all(lro);
 
-	// TODO: program partial bitstream
-	
+	/*save current blob */
+	blob = lro->core.fdt_blob;
+	lro->core.fdt_blob = NULL;
+
+	ret = xocl_fdt_blob_input(lro, lro->bld_blob);
+	if (ret) {
+		mgmt_err(lro, "input bld blob failed %d", ret);
+		goto failed;
+	}
+
+	ret = xocl_subdev_create_all(lro);
+	if (ret) {
+		mgmt_err(lro, "create bld subdevices failed %d", ret);
+		goto failed;
+	}
+
+	ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP, false);
+	if (ret) {
+		mgmt_err(lro, "program shell failed %d", ret);
+		goto failed;
+	}
+
+	vfree(lro->core.fdt_blob);
+	lro->core.fdt_blob = blob;
+
+	xocl_subdev_destroy_all(lro);
 	ret = xocl_subdev_create_all(lro);
 	if (ret) {
 		mgmt_err(lro, "failed to create sub devices %d", ret);
 		goto failed;
 	}
 
-	xocl_subdev_online_by_id(lro, XOCL_SUBDEV_MAILBOX);
 	ret = xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
 	if (ret)
 		goto failed;
 
+	health_thread_start(lro);
 	xocl_drvinst_offline(lro, false);
 failed:
+	mutex_unlock(&lro->busy_mutex);
 
 	return ret;
 
@@ -538,6 +571,15 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 		mgmt_err(lro, "Invalid dtc");
 		goto failed;
 	}
+
+	lro->bld_blob = vmalloc(fdt_totalsize(lro->core.fdt_blob));
+	if (!lro->bld_blob) {
+		mgmt_err(lro, "not enough memory");
+		ret = -ENOMEM;
+		goto failed;
+	}
+	memcpy(lro->bld_blob, lro->core.fdt_blob,
+			fdt_totalsize(lro->core.fdt_blob));
 
 	xclmgmt_connect_notify(lro, false);
 	xocl_subdev_destroy_all(lro);

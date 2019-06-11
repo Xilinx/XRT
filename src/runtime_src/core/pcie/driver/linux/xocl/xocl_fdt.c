@@ -220,7 +220,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 			NULL
 		},
 		1,
-		0,
+		XOCL_SUBDEV_MAP_MULTI_INST,
 		NULL,
 	},
 	{
@@ -278,7 +278,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 			"clkwizkernel2",
 			NULL
 		},
-		5,
+		1,
 		0,
 		NULL,
 	},

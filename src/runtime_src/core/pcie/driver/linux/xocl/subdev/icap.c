@@ -79,10 +79,8 @@ typedef struct {
 #define XHI_MLR			15
 
 #define	GATE_FREEZE_USER	0x0c
-#define GATE_FREEZE_SHELL	0x00
 
 static u32 gate_free_user[] = {0xe, 0xc, 0xe, 0xf};
-static u32 gate_free_shell[] = {0x8, 0xc, 0xe, 0xf};
 
 /*
  * AXI-HWICAP IP register layout
@@ -126,7 +124,6 @@ struct icap {
 	struct icap_generic_state *icap_state;
 	unsigned int		idcode;
 	bool			icap_axi_gate_frozen;
-	bool			icap_axi_gate_shell_frozen;
 	struct icap_axi_gate	*icap_axi_gate;
 
 	u64			icap_bitstream_id;
@@ -614,63 +611,6 @@ static bool icap_bitstream_in_use(struct icap *icap, pid_t pid)
 	if ((icap->icap_bitstream_ref == 1) && obtain_user(icap, pid))
 		return false;
 	return true;
-}
-
-static int icap_freeze_axi_gate_shell(struct icap *icap)
-{
-	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
-
-	ICAP_INFO(icap, "freezing Shell AXI gate");
-	BUG_ON(icap->icap_axi_gate_shell_frozen);
-
-	(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-	reg_wr(&icap->icap_axi_gate->iag_wr, GATE_FREEZE_SHELL);
-	(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-
-	if (!xocl_is_unified(xdev)) {
-		reg_wr(&icap->icap_regs->ir_cr, 0xc);
-		ndelay(20);
-	} else {
-		/* New ICAP reset sequence applicable only to unified dsa. */
-		reg_wr(&icap->icap_regs->ir_cr, 0x8);
-		ndelay(2000);
-		reg_wr(&icap->icap_regs->ir_cr, 0x0);
-		ndelay(2000);
-		reg_wr(&icap->icap_regs->ir_cr, 0x4);
-		ndelay(2000);
-		reg_wr(&icap->icap_regs->ir_cr, 0x0);
-		ndelay(2000);
-	}
-
-	icap->icap_axi_gate_shell_frozen = true;
-
-	return 0;
-}
-
-static int icap_free_axi_gate_shell(struct icap *icap)
-{
-	int i;
-
-	ICAP_INFO(icap, "freeing Shell AXI gate");
-	/*
-	 * First pulse the OCL RESET. This is important for PR with multiple
-	 * clocks as it resets the edge triggered clock converter FIFO
-	 */
-
-	if (!icap->icap_axi_gate_shell_frozen)
-		return 0;
-
-	for (i = 0; i < ARRAY_SIZE(gate_free_shell); i++) {
-		(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-		reg_wr(&icap->icap_axi_gate->iag_wr, gate_free_shell[i]);
-		mdelay(50);
-	}
-
-	(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-
-	icap->icap_axi_gate_shell_frozen = false;
-
-	return 0;
 }
 
 static int icap_freeze_axi_gate(struct icap *icap)
@@ -1579,6 +1519,53 @@ static long icap_download_clear_bitstream(struct icap *icap)
 
 	free_clear_bitstream(icap);
 	return err;
+}
+
+static int icap_download_rp(struct platform_device *pdev, int level, bool dry)
+{
+	struct icap *icap = platform_get_drvdata(pdev);
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	struct xocl_subdev *axigate;
+	int ret = 0;
+
+	if (!icap->bit_buffer) {
+		xocl_xdev_err(xdev, "Invalid reprogram request");
+		ret = -EINVAL;
+		goto failed;
+	}
+
+	axigate = xocl_axigate_dev_by_level(xdev, level);
+	if (!axigate) {
+		xocl_xdev_err(xdev, "did not find level %d axigate", level);
+		ret = -ENODEV;
+		goto failed;
+	}
+
+	if (dry)
+		return 0;
+
+	ret = xocl_axigate_freeze(xdev, axigate);
+	if (ret)
+		goto failed;
+
+	mutex_lock(&icap->icap_lock);
+	ret = icap_download(icap, icap->bit_buffer, icap->bit_length);
+	if (ret) {
+		mutex_unlock(&icap->icap_lock);
+		goto failed;
+	}
+	mutex_unlock(&icap->icap_lock);
+
+	ret = xocl_axigate_free(xdev, axigate);
+	if (ret)
+		goto failed;
+
+	vfree(icap->bit_buffer);
+	icap->bit_buffer = NULL;
+	icap->bit_length = 0;
+
+failed:
+	return ret;
 }
 
 /*
@@ -2669,6 +2656,7 @@ static struct xocl_icap_funcs icap_ops = {
 	.reset_bitstream = icap_reset_bitstream,
 	.download_boot_firmware = icap_download_boot_firmware,
 	.download_bitstream_axlf = icap_download_bitstream_axlf,
+	.download_rp = icap_download_rp,
 	.ocl_set_freq = icap_ocl_set_freqscaling,
 	.ocl_get_freq = icap_ocl_get_freqscaling,
 	.ocl_update_clock_freq_topology = icap_ocl_update_clock_freq_topology,
@@ -2727,7 +2715,7 @@ static ssize_t clock_freqs_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(clock_freqs);
 
-static ssize_t icap_rl_program(struct file *filp, struct kobject *kobj,
+static ssize_t icap_rpbit_input(struct file *filp, struct kobject *kobj,
 	struct bin_attribute *attr, char *buffer, loff_t off, size_t count)
 {
 	XHwIcap_Bit_Header bit_header = { 0 };
@@ -2753,44 +2741,25 @@ static ssize_t icap_rl_program(struct file *filp, struct kobject *kobj,
 	}
 
 	if (off + count >= icap->bit_length) {
-		/*
-		 * assumes all subdevices are removed at this time
-		 */
 		memcpy(icap->bit_buffer + off, buffer, icap->bit_length - off);
-		icap_freeze_axi_gate_shell(icap);
-		ret = icap_download(icap, icap->bit_buffer, icap->bit_length);
-		if (ret) {
-			ICAP_ERR(icap, "bitstream download failed");
-			ret = -EIO;
-		} else {
-			ret = count;
-		}
-		icap_free_axi_gate_shell(icap);
-		/* has to reset pci, otherwise firewall trips */
-		xocl_reset(xocl_get_xdev(icap->icap_pdev));
-		icap->icap_bitstream_id = 0;
-		memset(&icap->icap_bitstream_uuid, 0, sizeof(xuid_t));
-		vfree(icap->bit_buffer);
-		icap->bit_buffer = NULL;
-		icap->bit_length = 0;
 	} else
 		memcpy(icap->bit_buffer + off, buffer, count);
 
 	return ret;
 }
 
-static struct bin_attribute shell_program_attr = {
+static struct bin_attribute rpbit_attr = {
 	.attr = {
-		.name = "shell_program",
+		.name = "rpbit",
 		.mode = 0200
 	},
 	.read = NULL,
-	.write = icap_rl_program,
+	.write = icap_rpbit_input,
 	.size = 0
 };
 
 static struct bin_attribute *icap_mgmt_bin_attrs[] = {
-	&shell_program_attr,
+	&rpbit_attr,
 	NULL,
 };
 

@@ -1721,7 +1721,8 @@ static int qdma_probe(struct platform_device *pdev)
 	struct xocl_qdma *qdma = NULL;
 	struct qdma_dev_conf *conf;
 	xdev_handle_t	xdev;
-	int	ret = 0;
+	struct resource *res = NULL;
+	int	ret = 0, dma_bar;
 
 	xdev = xocl_get_xdev(pdev);
 
@@ -1734,13 +1735,25 @@ static int qdma_probe(struct platform_device *pdev)
 
 	qdma->pdev = pdev;
 
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		xocl_err(&pdev->dev, "Empty resource");
+		return -EINVAL;
+	}
+
+	ret = xocl_ioaddr_to_baroff(xdev, res->start, &dma_bar, NULL);
+	if (ret) {
+		xocl_err(&pdev->dev, "Invalid resource %pR", res);
+		return -EINVAL;
+	}
+
 	conf = &qdma->dev_conf;
 	memset(conf, 0, sizeof(*conf));
 	conf->pdev = XDEV(xdev)->pdev;
 	conf->intr_rngsz = QDMA_INTR_COAL_RING_SIZE;
 	conf->master_pf = 1;
 	conf->qsets_max = QDMA_QSETS_MAX;
-	conf->bar_num_config = XDEV(xdev)->dma_bar_idx;
+	conf->bar_num_config = dma_bar;
 	conf->bar_num_stm = XDEV(xdev)->bar_idx;
 
 	conf->fp_user_isr_handler = qdma_isr;
