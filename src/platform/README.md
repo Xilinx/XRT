@@ -13,29 +13,31 @@ Copy the whole directory to your yocto or petalinux project. You could reference
 # Platforms
 The zcu102ng/ and zcu104\_revmin/ etc. are XRT platforms.
 A standard platform directory should looks like,
-	__<platform_name>__
-	|-- config.sh (optional)
-	|-- dynamic_postlink.tcl (optional)
-	|-- src
-	|   |-- a53 (Determined by CPU arch)
-	|   |   |-- xrt
-	|   |       |-- image
-	|   |       |   |-- init.sh (optional)
-	|   |       |   |-- platform\_desc.txt (optional)
-	|   |       |
-	|   |       |-- linux.bif
-	|   |-- generic.readme
-	|   |-- prebuilt
-	|   |   |-- apsys\_0.xml
-	|   |   |-- partitions.xml
-	|   |   |-- portinfo.c
-	|   |   |-- portinfo.h
-	|   |-- qemu
-	|   |   |-- lnx
-	|   |       |-- pmu\_args.txt
-	|   |       |-- qemu\_args.txt
-	|   |-- __<platform\_name>__.hpfm
-	|-- __<platform_name>__\_dsa.tcl
-	|-- __<platform_name>__\_pfm.tcl
-	|-- __<platform_name>__\_fragment.dts (optional)
+
+<pre><code>    <b>&lt;platform_name&gt;</b>
+    |-- config.sh (optional)
+    |-- dynamic_postlink.tcl (optional)
+    |-- src
+    |   |-- a53 (Determined by CPU arch)
+    |   |   |-- xrt
+    |   |       |-- image
+    |   |       |   |-- init.sh (optional)
+    |   |       |   |-- platform_desc.txt (optional)
+    |   |       |
+    |   |       |-- linux.bif
+    |   |-- generic.readme
+    |   |-- prebuilt
+    |   |   |-- apsys_0.xml
+    |   |   |-- partitions.xml
+    |   |   |-- portinfo.c
+    |   |   |-- portinfo.h
+    |   |-- qemu
+    |   |   |-- lnx
+    |   |       |-- pmu_args.txt
+    |   |       |-- qemu_args.txt
+    |   |-- <b>&lt;platform_name&gt;</b>.hpfm
+    |-- <b>&lt;platform_name&gt;</b>_dsa.tcl
+    |-- <b>&lt;platform_name&gt;</b>_pfm.tcl
+    |-- <b>&lt;platform_name&gt;</b>_fragment.dts (optional)
+</code></pre>
 
