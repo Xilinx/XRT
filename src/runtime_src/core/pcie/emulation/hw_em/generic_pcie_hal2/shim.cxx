@@ -149,51 +149,50 @@ namespace xclhwemhal2 {
     ssize_t debugFileSize = 0;
     ssize_t memTopologySize = 0;
     ssize_t pdiSize = 0;
+    ssize_t emuDataSize = 0;
 
     char* zipFile = nullptr;
     char* xmlFile = nullptr;
     char* debugFile = nullptr;
     char* memTopology = nullptr;
     char* pdi = nullptr;
+    char* emuData = nullptr;
 
-    if ((!std::memcmp(bitstreambin, "xclbin0", 7)) || (!std::memcmp(bitstreambin, "xclbin1", 7)))
-    {
+    if (std::memcmp(bitstreambin, "xclbin2", 7)) {
       PRINTENDFUNC;
       return -1;
     }
-    else if (!std::memcmp(bitstreambin,"xclbin2",7))
-    {
-      auto top = reinterpret_cast<const axlf*>(header);
-      if (auto sec = xclbin::get_axlf_section(top,EMBEDDED_METADATA)) {
-        xmlFileSize = sec->m_sectionSize;
-        xmlFile = new char[xmlFileSize];
-        memcpy(xmlFile, bitstreambin + sec->m_sectionOffset, xmlFileSize);
-      }
-      if (auto sec = xclbin::get_axlf_section(top,BITSTREAM)) {
-        zipFileSize = sec->m_sectionSize;
-        zipFile = new char[zipFileSize];
-        memcpy(zipFile, bitstreambin + sec->m_sectionOffset, zipFileSize);
-      }
-      if (auto sec = xclbin::get_axlf_section(top,DEBUG_IP_LAYOUT)) {
-        debugFileSize = sec->m_sectionSize;
-        debugFile = new char[debugFileSize];
-        memcpy(debugFile, bitstreambin + sec->m_sectionOffset, debugFileSize);
-      }
-      if (auto sec = xclbin::get_axlf_section(top,MEM_TOPOLOGY)) {
-        memTopologySize = sec->m_sectionSize;
-        memTopology = new char[memTopologySize];
-        memcpy(memTopology, bitstreambin + sec->m_sectionOffset, memTopologySize);
-      }
-      if (auto sec = xclbin::get_axlf_section(top,PDI)) {
-        pdiSize = sec->m_sectionSize;
-        pdi = new char[pdiSize];
-        memcpy(pdi, bitstreambin + sec->m_sectionOffset,pdiSize);
-      }
+
+    auto top = reinterpret_cast<const axlf*>(header);
+    if (auto sec = xclbin::get_axlf_section(top, EMBEDDED_METADATA)) {
+      xmlFileSize = sec->m_sectionSize;
+      xmlFile = new char[xmlFileSize];
+      memcpy(xmlFile, bitstreambin + sec->m_sectionOffset, xmlFileSize);
     }
-    else
-    {
-      PRINTENDFUNC;
-      return -1;
+    if (auto sec = xclbin::get_axlf_section(top, BITSTREAM)) {
+      zipFileSize = sec->m_sectionSize;
+      zipFile = new char[zipFileSize];
+      memcpy(zipFile, bitstreambin + sec->m_sectionOffset, zipFileSize);
+    }
+    if (auto sec = xclbin::get_axlf_section(top, DEBUG_IP_LAYOUT)) {
+      debugFileSize = sec->m_sectionSize;
+      debugFile = new char[debugFileSize];
+      memcpy(debugFile, bitstreambin + sec->m_sectionOffset, debugFileSize);
+    }
+    if (auto sec = xclbin::get_axlf_section(top, MEM_TOPOLOGY)) {
+      memTopologySize = sec->m_sectionSize;
+      memTopology = new char[memTopologySize];
+      memcpy(memTopology, bitstreambin + sec->m_sectionOffset, memTopologySize);
+    }
+    if (auto sec = xclbin::get_axlf_section(top, PDI)) {
+      pdiSize = sec->m_sectionSize;
+      pdi = new char[pdiSize];
+      memcpy(pdi, bitstreambin + sec->m_sectionOffset, pdiSize);
+    }
+    if (auto sec = xclbin::get_axlf_section(top, EMULATION_DATA)) {
+      emuDataSize = sec->m_sectionSize;
+      emuData = new char[emuDataSize];
+      memcpy(emuData, bitstreambin + sec->m_sectionOffset, emuDataSize);
     }
 
     if(!zipFile || !xmlFile)
@@ -228,10 +227,28 @@ namespace xclhwemhal2 {
         pdi = nullptr;
       }
 
-
+      if (emuData) {
+        delete[] emuData;
+        emuData = nullptr;
+      }
       return -1;
     }
-    int returnValue = xclLoadBitstreamWorker(zipFile,zipFileSize,xmlFile,xmlFileSize,debugFile,debugFileSize, memTopology, memTopologySize, pdi, pdiSize);
+
+    bitStreamArg loadBitStreamArgs;
+    loadBitStreamArgs.m_zipFile = zipFile;
+    loadBitStreamArgs.m_zipFileSize = zipFileSize;
+    loadBitStreamArgs.m_xmlfile = xmlFile;
+    loadBitStreamArgs.m_xmlFileSize = xmlFileSize;
+    loadBitStreamArgs.m_debugFile = debugFile;
+    loadBitStreamArgs.m_debugFileSize = debugFileSize;
+    loadBitStreamArgs.m_memTopology = memTopology;
+    loadBitStreamArgs.m_memTopologySize = memTopologySize;
+    loadBitStreamArgs.m_pdi = pdi;
+    loadBitStreamArgs.m_pdiSize = pdiSize;
+    loadBitStreamArgs.m_emuData = emuData;
+    loadBitStreamArgs.m_emuDataSize = emuDataSize;
+
+    int returnValue = xclLoadBitstreamWorker(loadBitStreamArgs);
 
     //mFirstBinary is a static member variable which becomes false once first binary gets loaded
     if(returnValue >=0 && mFirstBinary )
@@ -253,43 +270,43 @@ namespace xclhwemhal2 {
     delete[] xmlFile;
     delete[] memTopology;
     delete[] pdi;
+    delete[] emuData;
 
     PRINTENDFUNC;
     return returnValue;
   }
 
-   int HwEmShim::xclLoadBitstreamWorker(char* zipFile, size_t zipFileSize, char* xmlfile, size_t xmlFileSize,
-                                        char* debugFile, size_t debugFileSize, char* memTopology, size_t memTopologySize, char* pdi, size_t pdiSize)
+  int HwEmShim::xclLoadBitstreamWorker(bitStreamArg args)
   {
     if (mLogStream.is_open()) {
-      //    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << zipFile<< std::endl;
+      //    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << args.m_zipFile << std::endl;
     }
 
     //TBD the file read may slowdown things...whenever xclLoadBitStream hal API implementation changes, we also need to make changes.
-    char fileName[1024];
+    std::unique_ptr<char[]> fileName(new char[1024]);
 #ifndef _WINDOWS
     // TODO: Windows build support
     //    getpid is defined in unistd.h
-    std::sprintf(fileName, "%s/tempFile_%d", deviceDirectory.c_str(),binaryCounter);
+    std::sprintf(fileName.get(), "%s/tempFile_%d", deviceDirectory.c_str(), binaryCounter);
 #endif
-    if(mMemModel)
+
+    if (mMemModel)
     {
       delete mMemModel;
       mMemModel = NULL;
     }
-    if(sock)
+    if (sock)
     {
       resetProgram();
     }
     std::stringstream ss;
-    ss<<deviceDirectory<<"/binary_"<<binaryCounter;
+    ss << deviceDirectory << "/binary_" << binaryCounter;
     std::string binaryDirectory = ss.str();
 
     systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::CREATE);
 
-    std::ofstream os(fileName);
-
-    os.write(zipFile, zipFileSize);
+    std::ofstream os(fileName.get());
+    os.write(args.m_zipFile, args.m_zipFileSize);
     os.close();
 
     struct sigaction s;
@@ -297,8 +314,8 @@ namespace xclhwemhal2 {
     s.sa_flags = SA_SIGINFO;
     s.sa_sigaction = sigHandler;
     if (sigaction(SIGSEGV, &s, (struct sigaction *)0) ||
-        sigaction(SIGFPE , &s, (struct sigaction *)0) ||
-        sigaction(SIGABRT, &s, (struct sigaction *)0))
+      sigaction(SIGFPE, &s, (struct sigaction *)0) ||
+      sigaction(SIGABRT, &s, (struct sigaction *)0))
     {
       //debug_print("unable to support all signals");
     }
@@ -316,66 +333,83 @@ namespace xclhwemhal2 {
       return -1;
     }
 
-    if ((debugFile != nullptr) && (debugFileSize > 1))
-      fwrite(debugFile, debugFileSize, 1, fp2);
+    if ((args.m_debugFile != nullptr) && (args.m_debugFileSize > 1))
+      fwrite(args.m_debugFile, args.m_debugFileSize, 1, fp2);
     fflush(fp2);
     fclose(fp2);
 
     std::string pdiFileName = binaryDirectory + "/aie_pdi";
 
-    if ((pdi != nullptr) && (pdiSize> 1))
+    if ((args.m_pdi != nullptr) && (args.m_pdiSize > 1))
     {
       FILE *fp2 = fopen(pdiFileName.c_str(), "wb");
       if (fp2 == NULL) {
         if (mLogStream.is_open())
-          mLogStream << __func__ << " failed to create temporary aie_pdi file " << std::endl;      
+          mLogStream << __func__ << " failed to create temporary aie_pdi file " << std::endl;
         return -1;
       }
 
-      fwrite(pdi, pdiSize, 1, fp2);
+      fwrite(args.m_pdi, args.m_pdiSize, 1, fp2);
       fflush(fp2);
       fclose(fp2);
     }
 
+    std::unique_ptr<char[]> emuDataFileName(new char[1024]);
+#ifndef _WINDOWS
+    // TODO: Windows build support
+    // getpid is defined in unistd.h
+    std::sprintf(emuDataFileName.get(), "%s/emuDataFile_%d", binaryDirectory.c_str(), binaryCounter);
+#endif
+
+    if ((args.m_emuData != nullptr) && (args.m_emuDataSize > 1))
+    {
+      std::ofstream os(emuDataFileName.get());
+      os.write(args.m_emuData, args.m_emuDataSize);
+      os.close();
+
+      std::string emuDataFilePath(emuDataFileName.get());
+      systemUtil::makeSystemCall(emuDataFilePath, systemUtil::systemOperation::UNZIP, binaryDirectory);
+    }
+
     readDebugIpLayout(debugFileName);
 
-    const mem_topology* m_mem = (reinterpret_cast<const ::mem_topology*>(memTopology));
-    if(m_mem)
+    const mem_topology* m_mem = (reinterpret_cast<const ::mem_topology*>(args.m_memTopology));
+    if (m_mem)
     {
       mMembanks.clear();
-      for (int32_t i=0; i<m_mem->m_count; ++i)
+      for (int32_t i = 0; i<m_mem->m_count; ++i)
       {
-        if(m_mem->m_mem_data[i].m_type == MEM_TYPE::MEM_STREAMING)
+        if (m_mem->m_mem_data[i].m_type == MEM_TYPE::MEM_STREAMING)
           continue;
         std::string tag = reinterpret_cast<const char*>(m_mem->m_mem_data[i].m_tag);
-        mMembanks.emplace_back (membank{m_mem->m_mem_data[i].m_base_address,tag,m_mem->m_mem_data[i].m_size*1024,i});
+        mMembanks.emplace_back(membank{ m_mem->m_mem_data[i].m_base_address, tag, m_mem->m_mem_data[i].m_size * 1024, i });
       }
-      if(m_mem->m_count > 0)
+      if (m_mem->m_count > 0)
       {
         mDDRMemoryManager.clear();
       }
 
-      for(auto it:mMembanks )
+      for (auto it : mMembanks)
       {
         //CR 966701: alignment to 4k (instead of mDeviceInfo.mDataAlignment)
         mDDRMemoryManager.push_back(new xclemulation::MemoryManager(it.size, it.base_addr, getpagesize()));
       }
     }
-  
+
     pt::ptree xml_project;
     std::string sXmlFile;
-    sXmlFile.assign(xmlfile,xmlFileSize);
+    sXmlFile.assign(args.m_xmlfile, args.m_xmlFileSize);
     std::stringstream xml_stream;
-    xml_stream<<sXmlFile;
-    pt::read_xml(xml_stream,xml_project);
+    xml_stream << sXmlFile;
+    pt::read_xml(xml_stream, xml_project);
 
-     // iterate platforms
+    // iterate platforms
     int count = 0;
     for (auto& xml_platform : xml_project.get_child("project"))
     {
       if (xml_platform.first != "platform")
         continue;
-      if (++count>1)
+      if (++count > 1)
       {
         //Give error and return from here
       }
@@ -387,7 +421,7 @@ namespace xclhwemhal2 {
     {
       if (xml_device.first != "device")
         continue;
-      if (++count>1)
+      if (++count > 1)
       {
         //Give error and return from here
       }
@@ -399,7 +433,7 @@ namespace xclhwemhal2 {
     {
       if (xml_core.first != "core")
         continue;
-      if (++count>1)
+      if (++count > 1)
       {
         //Give error and return from here
       }
@@ -441,7 +475,7 @@ namespace xclhwemhal2 {
             if (xclemulation::config::getInstance()->isMemLogsEnabled())
             {
               std::ofstream* controlStream = new std::ofstream;
-              controlStream->open( instanceName + "_control.mem" );
+              controlStream->open(instanceName + "_control.mem");
               mOffsetInstanceStreamMap[base] = controlStream;
             }
             break;
@@ -450,94 +484,94 @@ namespace xclhwemhal2 {
       }
     }
 
-    std::string xclBinName = xml_project.get<std::string>("project.<xmlattr>.name","");
+    std::string xclBinName = xml_project.get<std::string>("project.<xmlattr>.name", "");
 
     set_simulator_started(true);
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
-    std::string launcherArgs = xclemulation::config::getInstance()->getLauncherArgs(); 
+    std::string launcherArgs = xclemulation::config::getInstance()->getLauncherArgs();
     std::string wdbFileName("");
     // The following is evil--hardcoding. This name may change.
     // Is there a way we can determine the name from the directories or otherwise?
     std::string bdName("dr"); // Used to be opencldesign. This is new default.
-    if( !simDontRun )
+    if (!simDontRun)
     {
-      wdbFileName = std::string(mDeviceInfo.mName) + "-" + std::to_string(mDeviceIndex) + "-" + xclBinName ;
+      wdbFileName = std::string(mDeviceInfo.mName) + "-" + std::to_string(mDeviceIndex) + "-" + xclBinName;
       xclemulation::LAUNCHWAVEFORM lWaveform = xclemulation::config::getInstance()->getLaunchWaveform();
       std::string userSpecifiedSimPath = xclemulation::config::getInstance()->getSimDir();
-      if(userSpecifiedSimPath.empty())
+      if (userSpecifiedSimPath.empty())
       {
-        std::string _sFilePath(fileName);
-        systemUtil::makeSystemCall (_sFilePath, systemUtil::systemOperation::UNZIP, binaryDirectory);
-        systemUtil::makeSystemCall (binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777");
+        std::string _sFilePath(fileName.get());
+        systemUtil::makeSystemCall(_sFilePath, systemUtil::systemOperation::UNZIP, binaryDirectory);
+        systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777");
       }
 
-      if( lWaveform == xclemulation::LAUNCHWAVEFORM::GUI )
+      if (lWaveform == xclemulation::LAUNCHWAVEFORM::GUI)
       {
         // NOTE: proto inst filename must match name in HPIKernelCompilerHwEmu.cpp
         std::string protoFileName = "./" + bdName + "_behav.protoinst";
         std::stringstream cmdLineOption;
         cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
-                      << " --protoinst " << protoFileName;
+          << " --protoinst " << protoFileName;
 
         launcherArgs = launcherArgs + cmdLineOption.str();
-        sim_path = binaryDirectory+ "/behav_waveform/xsim";
+        sim_path = binaryDirectory + "/behav_waveform/xsim";
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
         unsetenv("SDX_LAUNCH_WAVEFORM_BATCH");
-        setenv("SDX_WAVEFORM",generatedWcfgFileName.c_str(),true);
+        setenv("SDX_WAVEFORM", generatedWcfgFileName.c_str(), true);
       }
 
-      if(lWaveform == xclemulation::LAUNCHWAVEFORM::BATCH )
+      if (lWaveform == xclemulation::LAUNCHWAVEFORM::BATCH)
       {
         // NOTE: proto inst filename must match name in HPIKernelCompilerHwEmu.cpp
         std::string protoFileName = "./" + bdName + "_behav.protoinst";
         std::stringstream cmdLineOption;
         cmdLineOption << " --wdb " << wdbFileName << ".wdb"
-                      << " --protoinst " << protoFileName;
+          << " --protoinst " << protoFileName;
 
         launcherArgs = launcherArgs + cmdLineOption.str();
-        sim_path = binaryDirectory+ "/behav_waveform/xsim";
+        sim_path = binaryDirectory + "/behav_waveform/xsim";
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
-        setenv("SDX_LAUNCH_WAVEFORM_BATCH","1",true);
-        setenv("SDX_WAVEFORM",generatedWcfgFileName.c_str(),true);
+        setenv("SDX_LAUNCH_WAVEFORM_BATCH", "1", true);
+        setenv("SDX_WAVEFORM", generatedWcfgFileName.c_str(), true);
       }
 
-      if(userSpecifiedSimPath.empty() == false)
+      if (userSpecifiedSimPath.empty() == false)
       {
         sim_path = userSpecifiedSimPath;
       }
       else
       {
-        if(sim_path.empty())
+        if (sim_path.empty())
         {
-          sim_path = binaryDirectory+ "/behav_gdb/xsim";
+          sim_path = binaryDirectory + "/behav_gdb/xsim";
         }
         if (boost::filesystem::exists(sim_path) == false)
         {
           std::string dMsg = "WARNING: [HW-EM 07] None of the kernels is compiled in debug mode. Compile kernels in debug mode to launch waveform";
-          logMessage(dMsg,0);
-          sim_path = binaryDirectory+ "/behav_gdb/xsim";
+          logMessage(dMsg, 0);
+          sim_path = binaryDirectory + "/behav_gdb/xsim";
         }
       }
       std::stringstream socket_id;
-      socket_id << deviceName<<"_"<<binaryCounter<<"_";
+      socket_id << deviceName << "_" << binaryCounter << "_";
 #ifndef _WINDOWS
       // TODO: Windows build support
       //   getpid is defined in unistd.h
       //   setenv is defined in stdlib.h
       socket_id << getpid();
-      setenv("EMULATION_SOCKETID",socket_id.str().c_str(),true);
+      setenv("EMULATION_SOCKETID", socket_id.str().c_str(), true);
 #endif
       binaryCounter++;
     }
-    if(deviceDirectory.empty() == false)
-      setenv ("EMULATION_RUN_DIR", deviceDirectory.c_str(),true);
+    if (deviceDirectory.empty() == false)
+      setenv("EMULATION_RUN_DIR", deviceDirectory.c_str(), true);
 
 
     // Create waveform config file
     // NOTE: see corresponding wdb file in saveWaveDataBase
-    if(wdbFileName.empty() == false)
+    if (wdbFileName.empty() == false)
     {
-      setenv("SDX_QUESTA_WLF_FILENAME",std::string(wdbFileName+".wlf").c_str(),true);
+      setenv("SDX_QUESTA_WLF_FILENAME", std::string(wdbFileName + ".wlf").c_str(), true);
       mBinaryDirectories[sim_path] = wdbFileName;
     }
 
@@ -547,60 +581,61 @@ namespace xclhwemhal2 {
       // TODO: Windows build support
       //   pid_t, fork, chdir, execl is defined in unistd.h
       //   this environment variable is added to disable the systemc copyright message
-      setenv("SYSTEMC_DISABLE_COPYRIGHT_MESSAGE","1",true);
+      setenv("SYSTEMC_DISABLE_COPYRIGHT_MESSAGE", "1", true);
       pid_t pid = fork();
       assert(pid >= 0);
       if (pid == 0){ //I am child
         //Redirecting the XSIM log to a file
-        FILE* nP = freopen("/dev/null","w",stdout);
-        if(!nP) { std::cerr <<"FATAR ERROR : Unable to redirect simulation output "<<std::endl; exit(1);}
+        FILE* nP = freopen("/dev/null", "w", stdout);
+        if (!nP) { std::cerr << "FATAR ERROR : Unable to redirect simulation output " << std::endl; exit(1); }
 
         int rV = chdir(sim_path.c_str());
-        if(rV == -1){std::cerr << "FATAL ERROR : Unable to go to simulation directory " << std::endl; exit(1);}
+        if (rV == -1){ std::cerr << "FATAL ERROR : Unable to go to simulation directory " << std::endl; exit(1); }
 
         // If the sdx server port was specified in the .ini file,
         //  we need to pass this information to the spawned xsim process.
         if (xclemulation::config::getInstance()->getServerPort() != 0)
         {
-          std::stringstream convert ;
-          convert << xclemulation::config::getInstance()->getServerPort() ;
-          setenv("XILINX_SDX_SERVER_PORT", convert.str().c_str(), 1) ;
+          std::stringstream convert;
+          convert << xclemulation::config::getInstance()->getServerPort();
+          setenv("XILINX_SDX_SERVER_PORT", convert.str().c_str(), 1);
         }
 
         if (mLogStream.is_open() && launcherArgs.empty() == false)
           mLogStream << __func__ << " xocc command line: " << launcherArgs << std::endl;
 
         const char* simMode = NULL;
-        if ( pdi ) {
-          launcherArgs += " -pdi " + pdiFileName + " ";
+        if (args.m_emuData) {
+          launcherArgs += " -emuData " + binaryDirectory + "/krnl_aie_vadd_int/aieshim_solution.aiesol";
         }
-        if(!launcherArgs.empty())
+
+        if (!launcherArgs.empty())
           simMode = launcherArgs.c_str();
 
         struct stat statBuf;
-        if ( stat(sim_file.c_str(), &statBuf) == -1 )
+        if (stat(sim_file.c_str(), &statBuf) == -1)
         {
           sim_file = "simulate.sh";
         }
-        int r = execl(sim_file.c_str(),sim_file.c_str(),simMode,NULL);
-        fclose (stdout);
-        if(r == -1){std::cerr << "FATAL ERROR : Simulation process did not launch" << std::endl; exit(1);}
+        int r = execl(sim_file.c_str(), sim_file.c_str(), simMode, NULL);
+        fclose(stdout);
+        if (r == -1){ std::cerr << "FATAL ERROR : Simulation process did not launch" << std::endl; exit(1); }
         exit(0);
       }
 #endif
     }
     //if platform is a XPR platform, dont serilize ddr memory
-    if(isXPR())
+    if (isXPR())
     {
       mEnvironmentNameValueMap["enable_pr"] = "false";
     }
     sock = new unix_socket;
-    if(sock && mEnvironmentNameValueMap.empty() == false)
+    if (sock && mEnvironmentNameValueMap.empty() == false)
     {
       //send environment information to device
       bool ack = true;
       xclSetEnvironment_RPC_CALL(xclSetEnvironment);
-      if(!ack)
+      if (!ack)
       {
         //std::cout<<"environment is not set properly"<<std::endl;
       }
