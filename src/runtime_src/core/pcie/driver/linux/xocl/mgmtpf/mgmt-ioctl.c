@@ -16,7 +16,6 @@
  */
 
 #include "mgmt-core.h"
-#include <linux/version.h>
 
 static int err_info_ioctl(struct xclmgmt_dev *lro, void __user *arg)
 {
@@ -114,17 +113,11 @@ long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	if (!lro->ready || _IOC_TYPE(cmd) != XCLMGMT_IOC_MAGIC)
 		return -ENOTTY;
 
-	/* TODO: Remove old access_ok macro as soon as Linux < 5.0 is no longer
-	 * supported.
-	 */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
-	result = !access_ok((void __user *)arg, _IOC_SIZE(cmd));
-#else
 	if (_IOC_DIR(cmd) & _IOC_READ)
-		result = !access_ok(VERIFY_WRITE, (void __user *)arg, _IOC_SIZE(cmd));
+		result = !XOCL_ACCESS_OK(VERIFY_WRITE, (void __user *)arg, _IOC_SIZE(cmd));
 	else if (_IOC_DIR(cmd) & _IOC_WRITE)
-		result = !access_ok(VERIFY_READ, (void __user *)arg, _IOC_SIZE(cmd));
-#endif
+		result = !XOCL_ACCESS_OK(VERIFY_READ, (void __user *)arg, _IOC_SIZE(cmd));
+
 	if (result)
 		return -EFAULT;
 

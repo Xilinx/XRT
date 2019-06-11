@@ -18,8 +18,6 @@
  * GNU General Public License for more details.
  */
 
-#include <linux/version.h>
-
 #include "ert.h"
 #include "zocl_drv.h"
 #include "zocl_sk.h"
@@ -112,14 +110,7 @@ zocl_sk_create_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	sk->sk_cu[cu_idx]->sc_vregs = bo->cma_base.vaddr;
 	sema_init(&sk->sk_cu[cu_idx]->sc_sem, 0);
 
-	/* TODO: Remove drm_gem_object_unreference as soon as Linux < 4.12 is no
-	 * longer supported.
-	 */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
-	drm_gem_object_put_unlocked(gem_obj);
-#else
-	drm_gem_object_unreference_unlocked(gem_obj);
-#endif
+	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
 
 	return 0;
 }

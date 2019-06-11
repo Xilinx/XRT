@@ -19,7 +19,6 @@
  */
 
 #include <linux/fpga/fpga-mgr.h>
-#include <linux/version.h>
 #include "zocl_drv.h"
 #include "xclbin.h"
 
@@ -290,14 +289,7 @@ int zocl_pcap_download_ioctl(struct drm_device *dev, void *data,
 
 	buffer = (char __user *)args->xclbin;
 
-	/* TODO: Remove old access_ok as soon as Linux < 5.0.0 is no longer
-	 * supported.
-	 */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
-	if (!access_ok(buffer, bin_obj.m_length))
-#else
-	if (!access_ok(VERIFY_READ, buffer, bin_obj.m_length))
-#endif
+	if (!ZOCL_ACCESS_OK(VERIFY_READ, buffer, bin_obj.m_length))
 		return -EFAULT;
 
 	buffer += primary_fw_off;
@@ -508,14 +500,7 @@ zocl_read_axlf_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	}
 
 	xclbin = (char __user *)axlf_obj->xclbin;
-	/* TODO: Remove old access_ok as soon as Linux < 5.0.0 is no longer
-	 * supported.
-	 */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
-	ret = !access_ok(xclbin, axlf_head.m_header.m_length);
-#else
-	ret = !access_ok(VERIFY_READ, xclbin, axlf_head.m_header.m_length);
-#endif
+	ret = !ZOCL_ACCESS_OK(VERIFY_READ, xclbin, axlf_head.m_header.m_length);
 	if (ret) {
 		ret = -EFAULT;
 		goto out0;
