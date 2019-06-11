@@ -162,8 +162,10 @@ zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
 			return ERR_PTR(-ENOMEM);
 
 		err = drm_gem_object_init(dev, &bo->gem_base, size);
-		if (err)
+		if (err) {
+			kfree(bo);
 			return ERR_PTR(err);
+		}
 
 		bo->mm_node = kzalloc(sizeof(struct drm_mm_node),
 		    GFP_KERNEL);
