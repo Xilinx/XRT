@@ -32,7 +32,7 @@ $ dsa_build.sh ../../../platform/zcu104_revmin/zcu104_revmin_dsa.tcl
 ### peta\_build.sh
 This script is used to generate PetaLinux image from a DSA file. Source PetaLinux setup script before running this script.
 It needs \<DSA\_name\>.dsa as input and a \<DSA\_name\>/ directory will be created for PetaLinux project.
-Specially, if the DSA directory, which has .dsa file, has path src/a53/xrt/image/, the script would copy i.e. image.ub, fsbl.elf to src/a53 and prepare sysroot in src/aarch64-xilinx-linux.
+Specially, if the DSA directory, which has .dsa file, has path src/\<CPU\_ARCH\>/xrt/image/, the script would copy i.e. image.ub, fsbl.elf to proper place in src/ and prepare sysroot in src/aarch64-xilinx-linux.
 > NOTE: Don't move this script to another place. It uses relative path in XRT repository.
 
 For example:

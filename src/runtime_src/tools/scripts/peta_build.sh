@@ -117,6 +117,7 @@ PETA_BSP=""
 DSA_NAME=""
 XRT_REPO_DIR=`readlink -f ${THIS_SCRIPT_DIR}/../../../..`
 PETA_CREATE_OPT="--template zynqMP"
+CPU_ARCH="a53"
 GLOB_DTS=${XRT_REPO_DIR}/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts
 
 while [ $# -gt 0 ]; do
@@ -177,11 +178,13 @@ fi
 
 if [ "X$TEMPLATE" == "XzynqMP" ]; then
 	PETA_CREATE_OPT="--template zynqMP"
+	CPU_ARCH="a53"
 	GLOB_DTS=${XRT_REPO_DIR}/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts
 fi
 
 if [ "X$TEMPLATE" == "Xzynq" ]; then
 	PETA_CREATE_OPT="--template zynq"
+	CPU_ARCH="a9"
 	GLOB_DTS=${XRT_REPO_DIR}/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_zynq.dts
 fi
 
@@ -255,11 +258,11 @@ petalinux-build
 
 cd $ORIGINAL_DIR
 
-# If DSA_DIR has src/a53/xrt/image, let's do below extra steps
-if [ -d "${DSA_DIR}/src/a53/xrt/image" ]; then
-	echo " ** The DSA directory has src/a53/xrt/image. Update images and sysroot"
+# If DSA_DIR has src/$CPU_ARCH/xrt/image, let's do below extra steps
+if [ -d "${DSA_DIR}/src/${CPU_ARCH}/xrt/image" ]; then
+	echo " ** The DSA directory has src/${CPU_ARCH}/xrt/image. Update images and sysroot"
 	echo " * Copying PetaLinux boot files (from: $PWD)"
-	cp -f ./${PETALINUX_NAME}/images/linux/image.ub 	${DSA_DIR}/src/a53/xrt/image/image.ub
+	cp -f ./${PETALINUX_NAME}/images/linux/image.ub 	${DSA_DIR}/src/${CPU_ARCH}/xrt/image/image.ub
 	mkdir -p ${DSA_DIR}/src/boot
 	cp -f ./${PETALINUX_NAME}/images/linux/bl31.elf 	${DSA_DIR}/src/boot/bl31.elf
 	cp -f ./${PETALINUX_NAME}/images/linux/pmufw.elf 	${DSA_DIR}/src/boot/pmufw.elf
