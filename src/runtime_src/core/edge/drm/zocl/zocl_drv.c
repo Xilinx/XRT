@@ -8,6 +8,7 @@
  *    Sonal Santan <sonal.santan@xilinx.com>
  *    Umang Parekh <umang.parekh@xilinx.com>
  *    Min Ma       <min.ma@xilinx.com>
+ *    Jan Stephan  <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -666,7 +667,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 err1:
 	zocl_fini_sysfs(drm->dev);
 err0:
-	drm_dev_unref(drm);
+	ZOCL_DRM_DEV_PUT(drm);
 	return ret;
 }
 
@@ -693,7 +694,7 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 
 	if (drm) {
 		drm_dev_unregister(drm);
-		drm_dev_unref(drm);
+		ZOCL_DRM_DEV_PUT(drm);
 	}
 
 	return 0;
