@@ -156,7 +156,7 @@ int get_apt_index(struct drm_zocl_dev *zdev, phys_addr_t addr)
 		if (apts[i].addr == addr)
 			break;
 
-	return (i == zdev->num_apts)? -EINVAL : i;
+	return (i == zdev->num_apts) ? -EINVAL : i;
 }
 
 /**
@@ -191,11 +191,23 @@ void zocl_free_bo(struct drm_gem_object *obj)
 			zocl_free_userptr_bo(obj);
 		else if (zocl_obj->flags & XCL_BO_FLAGS_HOST_BO)
 			zocl_free_host_bo(obj);
-		else {
+		else if (zocl_obj->flags & XCL_BO_FLAGS_CMA) {
 			drm_gem_cma_free_object(obj);
 
 			/* Update memory usage statistics */
-			zocl_update_mem_stat(zdev, obj->size, -1);
+			zocl_update_mem_stat(zdev, obj->size, -1,
+			    zocl_obj->bank);
+		} else {
+			if (zocl_obj->mm_node) {
+				mutex_lock(&zdev->mm_lock);
+				drm_mm_remove_node(zocl_obj->mm_node);
+				mutex_unlock(&zdev->mm_lock);
+				kfree(zocl_obj->mm_node);
+				zocl_update_mem_stat(zdev, obj->size, -1,
+				    zocl_obj->bank);
+			}
+			drm_gem_object_release(obj);
+			kfree(zocl_obj);
 		}
 
 		return;
@@ -221,7 +233,8 @@ void zocl_free_bo(struct drm_gem_object *obj)
 			drm_gem_put_pages(obj, zocl_obj->pages, false, false);
 
 			/* Update memory usage statistics */
-			zocl_update_mem_stat(zdev, obj->size, -1);
+			zocl_update_mem_stat(zdev, obj->size, -1,
+			    zocl_obj->bank);
 		}
 	}
 	if (zocl_obj->sgt)
@@ -232,11 +245,12 @@ void zocl_free_bo(struct drm_gem_object *obj)
 }
 
 static int
-zocl_gem_cma_mmap(struct file *filp, struct vm_area_struct *vma)
+zocl_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 {
-	struct drm_gem_cma_object *cma_obj;
+	struct drm_gem_cma_object *cma_obj = NULL;
 	struct drm_gem_object *gem_obj;
 	struct drm_zocl_bo *bo;
+	dma_addr_t paddr;
 	pgprot_t prot;
 	int rc;
 
@@ -248,12 +262,9 @@ zocl_gem_cma_mmap(struct file *filp, struct vm_area_struct *vma)
 	prot = vma->vm_page_prot;
 
 	rc = drm_gem_mmap(filp, vma);
+
 	if (rc)
 		return rc;
-
-	gem_obj = vma->vm_private_data;
-	cma_obj = to_drm_gem_cma_obj(gem_obj);
-	bo = to_zocl_bo(gem_obj);
 
 	/**
 	 * Clear the VM_PFNMAP flag that was set by drm_gem_mmap(),
@@ -263,7 +274,10 @@ zocl_gem_cma_mmap(struct file *filp, struct vm_area_struct *vma)
 	vma->vm_flags &= ~VM_PFNMAP;
 	vma->vm_pgoff = 0;
 
-	if (bo->flags & XCL_BO_FLAGS_CACHEABLE) {
+	gem_obj = vma->vm_private_data;
+	bo = to_zocl_bo(gem_obj);
+
+	if (bo->flags & XCL_BO_FLAGS_CACHEABLE)
 		/**
 		 * Resume the protection field from mmap(). Most likely
 		 * it will be cacheable. If there is a case that mmap()
@@ -272,14 +286,25 @@ zocl_gem_cma_mmap(struct file *filp, struct vm_area_struct *vma)
 		 * the cacheable BO property.
 		 */
 		vma->vm_page_prot = prot;
-		rc = remap_pfn_range(vma, vma->vm_start,
-		    cma_obj->paddr >> PAGE_SHIFT,
-		    vma->vm_end - vma->vm_start,
-		    prot);
 
+	if (bo->flags & XCL_BO_FLAGS_CMA) {
+		cma_obj = to_drm_gem_cma_obj(gem_obj);
+		paddr = cma_obj->paddr;
 	} else
+		paddr = bo->mm_node->start;
+
+	if ((!(bo->flags & XCL_BO_FLAGS_CMA)) ||
+	    (bo->flags & XCL_BO_FLAGS_CMA &&
+	    bo->flags & XCL_BO_FLAGS_CACHEABLE)) {
+		/* Map PL-DDR and cacheable CMA */
+		rc = remap_pfn_range(vma, vma->vm_start,
+		    paddr >> PAGE_SHIFT, vma->vm_end - vma->vm_start,
+		    vma->vm_page_prot);
+	} else {
+		/* Map non-cacheable CMA */
 		rc = dma_mmap_wc(cma_obj->base.dev->dev, vma, cma_obj->vaddr,
-		    cma_obj->paddr, vma->vm_end - vma->vm_start);
+		    paddr, vma->vm_end - vma->vm_start);
+	}
 
 	if (rc)
 		drm_gem_vm_close(vma);
@@ -309,7 +334,7 @@ static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 	 */
 	if (likely(vma->vm_pgoff >= ZOCL_FILE_PAGE_OFFSET)) {
 		if (!zdev->domain)
-			return zocl_gem_cma_mmap(filp, vma);
+			return zocl_gem_mmap(filp, vma);
 
 		/* Map user's pages into his VM */
 		rc = drm_gem_mmap(filp, vma);
@@ -582,6 +607,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 		zdev->host_mem = res_mem.start;
 		zdev->host_mem_len = resource_size(&res_mem);
 	}
+	mutex_init(&zdev->mm_lock);
 
 	subdev = find_pdev("80180000.ert_hw");
 	if (subdev) {
@@ -687,6 +713,8 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 #endif
 
 	sched_fini_exec(drm);
+	zocl_clear_mem(zdev);
+	mutex_destroy(&zdev->mm_lock);
 	zocl_free_sections(zdev);
 	zocl_fini_sysfs(drm->dev);
 
