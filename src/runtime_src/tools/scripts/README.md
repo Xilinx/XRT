@@ -31,8 +31,23 @@ $ dsa_build.sh ../../../platform/zcu104_revmin/zcu104_revmin_dsa.tcl
 
 ### peta\_build.sh
 This script is used to generate PetaLinux image from a DSA file. Source PetaLinux setup script before running this script.
-It needs \<DSA\_name\>.dsa as input and a \<DSA\_name\>/ directory will be created for PetaLinux project.
+
+It only needs a \<DSA\_name\>.dsa as input and a \<DSA\_name\>/ directory will be created for PetaLinux project.
 Specially, if the DSA directory, which has .dsa file, has path src/\<CPU\_ARCH\>/xrt/image/, the script would copy i.e. image.ub, fsbl.elf to proper place in src/ and prepare sysroot in src/aarch64-xilinx-linux.
+
+You are able to configure the PetaLinux project, Linux kernel, devie tree, rootfs by provided a config.sh file.
+You have two ways to do that,
+1. Use --config option to specify a config.sh file.
+2. Create config.sh in the same directory of the .dsa file.
+
+If both methods were used, the script will respect '--config'.
+If no spcific configure is needed, this script would use default configurations.
+
+An example config.sh file is src/platform/zcu102ng/config.sh.
+
+The PetaLinux project is by default created from '--template zynqMP'. The config.sh allow platform to select template(zynqMP/zynq).
+If a BSP is needed, use --bsp/-b option to specify BSP file.
+
 > NOTE: Don't move this script to another place. It uses relative path in XRT repository.
 
 For example:
