@@ -14,7 +14,6 @@
  */
 
 #include <linux/kthread.h>
-#include <linux/version.h>
 #include "xocl_drv.h"
 
 int xocl_test_interval = 5;
