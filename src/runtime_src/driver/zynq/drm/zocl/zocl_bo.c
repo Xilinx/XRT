@@ -7,6 +7,7 @@
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
  *    Umang Parekh <umang.parekh@xilinx.com>
+ *    Jan Stephan  <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -211,7 +212,7 @@ zocl_create_svm_bo(struct drm_device *dev, void *data, struct drm_file *filp)
 		goto out_free;
 
 	zocl_describe(bo);
-	drm_gem_object_unreference_unlocked(&bo->gem_base);
+	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&bo->gem_base);
 
 	/* Update memory usage statistics */
 	zocl_update_mem_stat(dev->dev_private, args->size, 1);
@@ -265,7 +266,7 @@ zocl_create_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	}
 
 	zocl_describe(bo);
-	drm_gem_object_unreference_unlocked(&bo->cma_base.base);
+	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&bo->cma_base.base);
 
 	/*
 	 * Update memory usage statistics.
@@ -356,7 +357,7 @@ zocl_userptr_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	bo->flags |= XCL_BO_FLAGS_USERPTR;
 
 	zocl_describe(bo);
-	drm_gem_object_unreference_unlocked(&bo->cma_base.base);
+	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&bo->cma_base.base);
 
 	kvfree(pages);
 
@@ -394,7 +395,7 @@ int zocl_map_bo_ioctl(struct drm_device *dev,
 	zocl_describe(to_zocl_bo(gem_obj));
 
 out:
-	drm_gem_object_unreference_unlocked(gem_obj);
+	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
 	return ret;
 }
 
@@ -451,7 +452,7 @@ int zocl_sync_bo_ioctl(struct drm_device *dev,
 		rc = -EINVAL;
 
 out:
-	drm_gem_object_unreference_unlocked(gem_obj);
+	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
 
 	return rc;
 }
@@ -474,7 +475,7 @@ int zocl_info_bo_ioctl(struct drm_device *dev,
 
 	args->size = bo->cma_base.base.size;
 	args->paddr = bo->cma_base.paddr;
-	drm_gem_object_unreference_unlocked(gem_obj);
+	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
 
 	return 0;
 }
@@ -504,8 +505,7 @@ int zocl_pwrite_bo_ioctl(struct drm_device *dev, void *data,
 		ret = 0;
 		goto out;
 	}
-
-	if (!access_ok(VERIFY_READ, user_data, args->size)) {
+	if (!ZOCL_ACCESS_OK(VERIFY_READ, user_data, args->size)) {
 		ret = -EFAULT;
 		goto out;
 	}
@@ -515,7 +515,7 @@ int zocl_pwrite_bo_ioctl(struct drm_device *dev, void *data,
 
 	ret = copy_from_user(kaddr, user_data, args->size);
 out:
-	drm_gem_object_unreference_unlocked(gem_obj);
+	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
 
 	return ret;
 }
@@ -546,7 +546,7 @@ int zocl_pread_bo_ioctl(struct drm_device *dev, void *data,
 		goto out;
 	}
 
-	if (!access_ok(VERIFY_WRITE, user_data, args->size)) {
+	if (!ZOCL_ACCESS_OK(VERIFY_WRITE, user_data, args->size)) {
 		ret = EFAULT;
 		goto out;
 	}
@@ -557,7 +557,7 @@ int zocl_pread_bo_ioctl(struct drm_device *dev, void *data,
 	ret = copy_to_user(user_data, kaddr, args->size);
 
 out:
-	drm_gem_object_unreference_unlocked(gem_obj);
+	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
 
 	return ret;
 }
@@ -634,11 +634,11 @@ int zocl_get_hbo_ioctl(struct drm_device *dev, void *data,
 	}
 
 	zocl_describe(bo);
-	drm_gem_object_unreference_unlocked(&bo->cma_base.base);
+	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&bo->cma_base.base);
 
 	return ret;
 error:
-	drm_gem_object_put_unlocked(&cma_obj->base);
+	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&cma_obj->base)
 	return ret;
 }
 

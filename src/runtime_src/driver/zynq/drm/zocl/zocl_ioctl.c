@@ -6,6 +6,7 @@
  *
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
+ *    Jan Stephan  <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -288,7 +289,7 @@ int zocl_pcap_download_ioctl(struct drm_device *dev, void *data,
 
 	buffer = (char __user *)args->xclbin;
 
-	if (!access_ok(VERIFY_READ, buffer, bin_obj.m_length))
+	if (!ZOCL_ACCESS_OK(VERIFY_READ, buffer, bin_obj.m_length))
 		return -EFAULT;
 
 	buffer += primary_fw_off;
@@ -499,7 +500,7 @@ zocl_read_axlf_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	}
 
 	xclbin = (char __user *)axlf_obj->xclbin;
-	ret = !access_ok(VERIFY_READ, xclbin, axlf_head.m_header.m_length);
+	ret = !ZOCL_ACCESS_OK(VERIFY_READ, xclbin, axlf_head.m_header.m_length);
 	if (ret) {
 		ret = -EFAULT;
 		goto out0;
