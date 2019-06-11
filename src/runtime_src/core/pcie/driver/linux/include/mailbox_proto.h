@@ -294,13 +294,11 @@ struct mailbox_clock_freqscaling {
 /**
  * struct mailbox_req - mailbox request message header
  * @req: opcode
- * @data_len: payload size
  * @flags: flags of this message
  * @data: payload of variable length
  */
 struct mailbox_req {
 	enum mailbox_request req;
-	uint32_t data_len;
 	uint64_t flags;
 	char data[0];
 };
@@ -316,7 +314,7 @@ struct mailbox_req {
  * @sz: payload size
  * @flags: flags of this message as in struct mailbox_req
  * @id: message ID
- * @data: payload (request or response message)
+ * @data: payload (struct mailbox_req or response data matching the request)
  */
 struct sw_chan {
 	uint64_t sz;

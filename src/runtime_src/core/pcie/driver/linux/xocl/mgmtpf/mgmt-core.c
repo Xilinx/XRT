@@ -29,6 +29,7 @@
 #include <linux/crc32c.h>
 #include "../xocl_drv.h"
 #include "version.h"
+#include "xclbin.h"
 
 static const struct pci_device_id pci_ids[] = {
 	XOCL_MGMT_PCI_IDS,
@@ -752,6 +753,13 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)arg;
 	struct mailbox_req *req = (struct mailbox_req *)data;
 	bool is_sw = false;
+	size_t payload_len;
+
+	if (len < sizeof(*req)) {
+		mgmt_err(lro, "peer request dropped due to wrong size\n");
+		return;
+	}
+	payload_len = len - sizeof(*req);
 
 	mgmt_dbg(lro, "received request (%d) from peer sw_ch %d\n",
 		req->req, sw_ch);
@@ -772,40 +780,100 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	case MAILBOX_REQ_LOCK_BITSTREAM: {
 		struct mailbox_req_bitstream_lock *bitstm_lock =
 			(struct mailbox_req_bitstream_lock *)req->data;
-		ret = xocl_icap_lock_bitstream(lro, (xuid_t *)bitstm_lock->uuid, 0);
-		(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
+		if (payload_len < sizeof(*bitstm_lock)) {
+			mgmt_err(lro, "peer request dropped, wrong size\n");
+			break;
+		}
+		ret = xocl_icap_lock_bitstream(lro,
+			(xuid_t *)bitstm_lock->uuid, 0);
+		(void) xocl_peer_response(lro, req->req, msgid,
+			&ret, sizeof(ret));
 		break;
 	}
 	case MAILBOX_REQ_UNLOCK_BITSTREAM: {
 		struct mailbox_req_bitstream_lock *bitstm_lock =
 			(struct mailbox_req_bitstream_lock *)req->data;
-		ret = xocl_icap_unlock_bitstream(lro, (xuid_t *)bitstm_lock->uuid, 0);
-		(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
+		if (payload_len < sizeof(*bitstm_lock)) {
+			mgmt_err(lro, "peer request dropped, wrong size\n");
+			break;
+		}
+		ret = xocl_icap_unlock_bitstream(lro,
+			(xuid_t *)bitstm_lock->uuid, 0);
+		(void) xocl_peer_response(lro, req->req, msgid, &ret,
+			sizeof(ret));
 		break;
 	}
 	case MAILBOX_REQ_HOT_RESET:
 		ret = (int) reset_hot_ioctl(lro);
-		(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
+		(void) xocl_peer_response(lro, req->req, msgid, &ret,
+			sizeof(ret));
 		break;
 	case MAILBOX_REQ_LOAD_XCLBIN_KADDR: {
+		void *buf = NULL;
+		struct axlf *xclbin = NULL;
+		uint64_t xclbin_len = 0;
 		struct mailbox_bitstream_kaddr *mb_kaddr =
 			(struct mailbox_bitstream_kaddr *)req->data;
-		ret = xocl_icap_download_axlf(lro, (void *)mb_kaddr->addr);
-		(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
+		if (payload_len < sizeof(*mb_kaddr)) {
+			mgmt_err(lro, "peer request dropped, wrong size\n");
+			break;
+		}
+		xclbin = (struct axlf *)mb_kaddr->addr;
+		xclbin_len = xclbin->m_header.m_length;
+		/*
+		 * The xclbin download may take a while. Make a local copy of
+		 * xclbin in case peer frees it too early due to a timeout
+		 */
+		buf = vmalloc(xclbin_len);
+		if (buf == NULL) {
+			ret = -ENOMEM;
+		} else {
+			memcpy(buf, xclbin, xclbin_len);
+			ret = xocl_icap_download_axlf(lro, buf);
+			vfree(buf);
+		}
+		(void) xocl_peer_response(lro, req->req, msgid, &ret,
+			sizeof(ret));
 		break;
 	}
-	case MAILBOX_REQ_LOAD_XCLBIN:
-		ret = xocl_icap_download_axlf(lro, req->data);
-		(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
+	case MAILBOX_REQ_LOAD_XCLBIN: {
+		uint64_t xclbin_len = 0;
+		struct axlf *xclbin = (struct axlf *)req->data;
+		if (payload_len < sizeof(*xclbin)) {
+			mgmt_err(lro, "peer request dropped, wrong size\n");
+			break;
+		}
+		xclbin_len = xclbin->m_header.m_length;
+		if (payload_len < xclbin_len) {
+			mgmt_err(lro, "peer request dropped, wrong size\n");
+			break;
+		}
+		ret = xocl_icap_download_axlf(lro, xclbin);
+		(void) xocl_peer_response(lro, req->req, msgid, &ret,
+			sizeof(ret));
 		break;
-	case MAILBOX_REQ_RECLOCK:
-		ret = xocl_icap_ocl_update_clock_freq_topology(lro,
-			(struct xclmgmt_ioc_freqscaling *)req->data);
-		(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
+	}
+	case MAILBOX_REQ_RECLOCK: {
+		struct xclmgmt_ioc_freqscaling *clk =
+			(struct xclmgmt_ioc_freqscaling *)req->data;
+		if (payload_len < sizeof(*clk)) {
+			mgmt_err(lro, "peer request dropped, wrong size\n");
+			break;
+		}
+		ret = xocl_icap_ocl_update_clock_freq_topology(lro, clk);
+		(void) xocl_peer_response(lro, req->req, msgid, &ret,
+			sizeof(ret));
 		break;
+	}
 	case MAILBOX_REQ_PEER_DATA: {
 		size_t sz = 0;
 		void *resp = NULL;
+		struct mailbox_subdev_peer *subdev_req =
+			(struct mailbox_subdev_peer *)req->data;
+		if (payload_len < sizeof(*subdev_req)) {
+			mgmt_err(lro, "peer request dropped, wrong size\n");
+			break;
+		}
 
 		ret = xclmgmt_read_subdev_req(lro, req->data, &resp, &sz);
 		if (ret) {
@@ -814,16 +882,23 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			(void) xocl_peer_response(lro, req->req, msgid, &ret,
 				sizeof(ret));
 		} else {
-			(void) xocl_peer_response(lro, req->req, msgid, resp, sz);
+			(void) xocl_peer_response(lro, req->req, msgid, resp,
+				sz);
 		}
 		vfree(resp);
 		break;
 	}
 	case MAILBOX_REQ_USER_PROBE: {
+		struct mailbox_conn_resp *resp = NULL;
 		struct mailbox_conn *conn = (struct mailbox_conn *)req->data;
-		struct mailbox_conn_resp *resp = vzalloc(sizeof(*resp));
 		uint64_t ch_switch = 0;
 
+		if (payload_len < sizeof(*conn)) {
+			mgmt_err(lro, "peer request dropped, wrong size\n");
+			break;
+		}
+
+		resp = vzalloc(sizeof(*resp));
 		if (!resp)
 			break;
 
@@ -842,8 +917,8 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	}
 	case MAILBOX_REQ_PROGRAM_SHELL: {
 		/* blob should already been updated */
+		/* Need to carefully validate user request at this point. */
 		xclmgmt_program_shell(lro);
-		
 		break;
 	}
 	default:
