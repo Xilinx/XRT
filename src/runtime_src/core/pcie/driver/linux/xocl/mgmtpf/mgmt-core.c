@@ -935,7 +935,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	xclmgmt_connect_notify(lro, true);
 
 	lro->ready = true;
-	xocl_err(&pdev->dev, "device fully initialized\n");
+	xocl_info(&pdev->dev, "device fully initialized\n");
 	return;
 
 fail_all_subdev:
