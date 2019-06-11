@@ -57,24 +57,26 @@ done
 
 [ ! -e "$PFMSCRIPT" ] && error "XSCT Tcl script no exist. Is path correct? $PFMSCRIPT"
 
+PFM_TCL=`basename $PFMSCRIPT`
 # Normalized Tcl script path
 PFMSCRIPT=`readlink -f $PFMSCRIPT`
-PFM_TCL=`basename $PFMSCRIPT`
 SRC_DIR=`dirname $PFMSCRIPT`
 PLATFORM_NAME=${PFM_TCL%_pfm.tcl}
 
-[ -z "$SRC_DIR" ] && error "Source code path is incorrect"
+[ -z "$SRC_DIR" ] && error "Source code path is empty"
 
-[ -z "$PLATFORM_NAME" ] && error "Should be <platform_name>_pfm.tcl"
+[ ! "${PLATFORM_NAME}_pfm.tcl" == $PFM_TCL ] && error "Should be <platform_name>_pfm.tcl"
 
 # Sanity check done
 
 ORIGINAL_DIR=`pwd`
 
-echo "Starting build platform for $PLATFORM_NAME"
+echo "** Starting build platform for $PLATFORM_NAME **"
 echo "Current DIR: $ORIGINAL_DIR"
 echo "xsct: $PATH_TO_XSCT"
 echo ""
+
+[ -d "$ORIGINAL_DIR/platform" ] && error "$ORIGINAL_DIR/platform is existed. Please remove it."
 
 cd $SRC_DIR
 echo " * Building Platform (from: $PWD)"
@@ -93,3 +95,4 @@ cd $ORIGINAL_DIR
 
 eval "$SAVED_OPTIONS"; # Restore shell options
 echo "** COMPLETE [${BASH_SOURCE[0]}] **"
+echo ""
