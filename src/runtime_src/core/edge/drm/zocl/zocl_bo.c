@@ -723,7 +723,7 @@ int zocl_get_hbo_ioctl(struct drm_device *dev, void *data,
 
 	return ret;
 error:
-	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&cma_obj->base)
+	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&cma_obj->base);
 	return ret;
 }
 
