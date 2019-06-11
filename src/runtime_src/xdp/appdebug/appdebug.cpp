@@ -1266,6 +1266,7 @@ struct sspm_debug_view {
   unsigned long long int StrStarveCycles[XSSPM_MAX_NUMBER_SLOTS];
 
   unsigned int NumSlots ;
+  std::vector<std::pair<std::string, std::string> > ConnectionNames;
   std::string  DevUserName ;
   std::string    SysfsPath;
 
@@ -1322,22 +1323,38 @@ std::string
 sspm_debug_view::getXGDBString(bool aVerbose) {
   std::stringstream sstr;
 
+  // Calculate the width for formatting the columns
+  size_t maxMasterWidth = 0 ;
+  size_t maxSlaveWidth  = 0 ;
+  for (unsigned int i = 0 ; i < NumSlots ; ++i)
+  {
+    maxMasterWidth = std::max(ConnectionNames[i].first.length(), maxMasterWidth);
+    maxSlaveWidth = std::max(ConnectionNames[i].second.length(), maxSlaveWidth);
+  }
+
+  size_t col1 = std::max(strlen("Stream Master"), maxMasterWidth) + 4 ;
+  size_t col2 = std::max(strlen("Stream Slave"), maxSlaveWidth) ;
+
   sstr << "Streaming Performance Monitor Counters\n" ;
   sstr << std::left
-       <<         std::setw(32) << "Number of Transactions"
-       << "  " << std::setw(16) << "Data Bytes" 
-       << "  " << std::setw(16) << "Busy Cycles" 
-       << "  " << std::setw(16) << "Stall Cycles"
-       << "  " << std::setw(16) << "Starve Cycles"
+               << std::setw(col1) << "Stream Master"
+       << "  " << std::setw(col2) << "Stream Slave"
+       << "  " << std::setw(32)   << "Number of Transactions"
+       << "  " << std::setw(16)   << "Data Bytes"
+       << "  " << std::setw(16)   << "Busy Cycles"
+       << "  " << std::setw(16)   << "Stall Cycles"
+       << "  " << std::setw(16)   << "Starve Cycles"
        << std::endl ;
   for (unsigned int i = 0 ; i < NumSlots ; ++i)
   {
     sstr << std::left
-	 <<         std::setw(32) << StrNumTranx[i] 
-	 << "  " << std::setw(16) << StrDataBytes[i]
-	 << "  " << std::setw(16) << StrBusyCycles[i]
-	 << "  " << std::setw(16) << StrStallCycles[i]
-	 << "  " << std::setw(16) << StrStarveCycles[i]
+	         << std::setw(col1) << ConnectionNames[i].first
+	 << "  " << std::setw(col2) << ConnectionNames[i].second
+	 << "  " << std::setw(32)   << StrNumTranx[i]
+	 << "  " << std::setw(16)   << StrDataBytes[i]
+	 << "  " << std::setw(16)   << StrBusyCycles[i]
+	 << "  " << std::setw(16)   << StrStallCycles[i]
+	 << "  " << std::setw(16)   << StrStarveCycles[i]
 	 << std::endl ;
   }
 
@@ -1400,6 +1417,19 @@ clGetDebugStreamCounters()
   sspm_view->NumSlots    = streamingDebugCounters.NumSlots ;
   sspm_view->DevUserName = streamingDebugCounters.DevUserName ;
   sspm_view->SysfsPath = sysfs_open_path;
+
+  std::vector<std::string> slotNames;
+  getIPCountAddrNames(sysfs_open_path, AXI_STREAM_MONITOR, nullptr, &slotNames);
+
+  for (auto& s : slotNames)
+  {
+    size_t found ;
+    found = s.find(IP_LAYOUT_SEP, 0) ;
+    if (found != std::string::npos)
+      sspm_view->ConnectionNames.push_back(std::make_pair(s.substr(0, found), s.substr(found+1)));
+    else
+      sspm_view->ConnectionNames.push_back(std::make_pair("Unknown", "Unknown"));
+  }
 
   auto adv = new app_debug_view<sspm_debug_view>(sspm_view, [sspm_view]() { delete sspm_view;}, false, "") ;
   return adv ;
