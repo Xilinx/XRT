@@ -2,12 +2,12 @@
 
 # This configure file is used by src/runtime_src/tools/scripts/peta_build.sh
 # You could override below functions in this configure script
-#	config_peta		-- configure petalinux project.
-#	config_kernel	-- configure linux kernel.
-#	config_rootfs	-- configure rootfs.
-#	config_dts		-- configure system user device tree.
-#	install_recipes	-- install recipes to petalinux.
-#	update_append	-- update recipes-core bbappend to add packages.
+#	config_peta     -- configure petalinux project.
+#	config_kernel   -- configure linux kernel.
+#	config_rootfs   -- configure rootfs.
+#	config_dts      -- configure system user device tree.
+#	install_recipes -- install recipes to petalinux.
+#	update_append   -- update recipes-core bbappend to add packages.
 
 THIS_CONFIG_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
@@ -41,12 +41,12 @@ TEMPLATE=zynqMP
 #config_rootfs()
 #{
 #	ROOTFS_CONFIG_FILE=$1
-#	echo 'CONFIG_xrt=y' 				>> $ROOTFS_CONFIG_FILE
-#	echo 'CONFIG_mnt-sd=y' 				>> $ROOTFS_CONFIG_FILE
-#	echo 'CONFIG_xrt-dev=y' 			>> $ROOTFS_CONFIG_FILE
-#	echo 'CONFIG_zocl=y' 				>> $ROOTFS_CONFIG_FILE
-#	echo 'CONFIG_opencl-headers-dev=y' 	>> $ROOTFS_CONFIG_FILE
-#	echo 'CONFIG_opencl-clhpp-dev=y' 	>> $ROOTFS_CONFIG_FILE
+#	echo 'CONFIG_xrt=y'                 >> $ROOTFS_CONFIG_FILE
+#	echo 'CONFIG_mnt-sd=y'              >> $ROOTFS_CONFIG_FILE
+#	echo 'CONFIG_xrt-dev=y'             >> $ROOTFS_CONFIG_FILE
+#	echo 'CONFIG_zocl=y'                >> $ROOTFS_CONFIG_FILE
+#	echo 'CONFIG_opencl-headers-dev=y'  >> $ROOTFS_CONFIG_FILE
+#	echo 'CONFIG_opencl-clhpp-dev=y'    >> $ROOTFS_CONFIG_FILE
 #}
 
 # The first argument is the rootfs configure file
