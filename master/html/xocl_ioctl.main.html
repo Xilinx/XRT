@@ -17,42 +17,37 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
-  
-  
-    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  
-
-  
-
-  
-        <link rel="index" title="Index"
-              href="genindex.html"/>
-        <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="Xilinx Runtime 2019.1 documentation" href="index.html"/>
-        <link rel="next" title="Linux Sys FileSystem Nodes" href="sysfs.html"/>
-        <link rel="prev" title="XCLMGMT (PCIe Management Physical Function) Driver Interfaces" href="mgmt-ioctl.main.html"/> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Board Tools and Utilities" href="tools.html" />
+    <link rel="prev" title="XCLMGMT (PCIe Management Physical Function) Driver Interfaces" href="mgmt-ioctl.main.html" /> 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -90,29 +85,52 @@
               
             
             
-              <p class="caption"><span class="caption-text">Table of Contents</span></p>
-<ul class="current">
+              <p class="caption"><span class="caption-text">XRT Introduction</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">Xilinx Runtime (XRT) Core Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
-<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">XRT Developer Build and Test Instructions</a></li>
-<li class="toctree-l1"><a class="reference internal" href="newdsa-bringup.html">New DSA Bringup</a></li>
-<li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
+</ul>
+<p class="caption"><span class="caption-text">XRT Use Model and Features</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">Xilinx Media Accelerator (XMA) Core Library</a></li>
+</ul>
+<p class="caption"><span class="caption-text">XRT API Library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">Xilinx Runtime (XRT) Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Kernel Driver</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tools and Utilities</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Platform Building</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="newdsa-bringup.html">New DSA Bringup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Cloud Support</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Debug and Faqs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 
             
@@ -124,7 +142,7 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+      <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="index.html">Xilinx Runtime</a>
@@ -132,9 +150,10 @@
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
 
 
@@ -189,99 +208,99 @@ is used to wait for finished commands. Commands for a compute unit can only be s
 context has been opened by the client.</p>
 <p><em>xocl</em> driver functionality is described in the following table. All the APIs are multi-threading and
 multi-process safe.</p>
-<table border="1" class="docutils">
+<table class="docutils align-center">
 <colgroup>
-<col width="4%" />
-<col width="36%" />
-<col width="28%" />
-<col width="32%" />
+<col style="width: 4%" />
+<col style="width: 36%" />
+<col style="width: 28%" />
+<col style="width: 32%" />
 </colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">#</th>
-<th class="head">Functionality</th>
-<th class="head">ioctl request code</th>
-<th class="head">data format</th>
+<thead>
+<tr class="row-odd"><th class="head"><p>#</p></th>
+<th class="head"><p>Functionality</p></th>
+<th class="head"><p>ioctl request code</p></th>
+<th class="head"><p>data format</p></th>
 </tr>
 </thead>
-<tbody valign="top">
-<tr class="row-even"><td>1</td>
-<td>Allocate buffer on device</td>
-<td>DRM_IOCTL_XOCL_CREATE_BO</td>
-<td>drm_xocl_create_bo</td>
+<tbody>
+<tr class="row-even"><td><p>1</p></td>
+<td><p>Allocate buffer on device</p></td>
+<td><p>DRM_IOCTL_XOCL_CREATE_BO</p></td>
+<td><p>drm_xocl_create_bo</p></td>
 </tr>
-<tr class="row-odd"><td>2</td>
-<td>Allocate buffer on device with
-userptr</td>
-<td>DRM_IOCTL_XOCL_USERPTR_BO</td>
-<td>drm_xocl_userptr_bo</td>
+<tr class="row-odd"><td><p>2</p></td>
+<td><p>Allocate buffer on device with
+userptr</p></td>
+<td><p>DRM_IOCTL_XOCL_USERPTR_BO</p></td>
+<td><p>drm_xocl_userptr_bo</p></td>
 </tr>
-<tr class="row-even"><td>3</td>
-<td>Prepare bo for mapping into user’s
-address space</td>
-<td>DRM_IOCTL_XOCL_MAP_BO</td>
-<td>drm_xocl_map_bo</td>
+<tr class="row-even"><td><p>3</p></td>
+<td><p>Prepare bo for mapping into user’s
+address space</p></td>
+<td><p>DRM_IOCTL_XOCL_MAP_BO</p></td>
+<td><p>drm_xocl_map_bo</p></td>
 </tr>
-<tr class="row-odd"><td>4</td>
-<td>Synchronize (DMA) buffer contents in
-requested direction</td>
-<td>DRM_IOCTL_XOCL_SYNC_BO</td>
-<td>drm_xocl_sync_bo</td>
+<tr class="row-odd"><td><p>4</p></td>
+<td><p>Synchronize (DMA) buffer contents in
+requested direction</p></td>
+<td><p>DRM_IOCTL_XOCL_SYNC_BO</p></td>
+<td><p>drm_xocl_sync_bo</p></td>
 </tr>
-<tr class="row-even"><td>5</td>
-<td>Obtain information about buffer
-object</td>
-<td>DRM_IOCTL_XOCL_INFO_BO</td>
-<td>drm_xocl_info_bo</td>
+<tr class="row-even"><td><p>5</p></td>
+<td><p>Obtain information about buffer
+object</p></td>
+<td><p>DRM_IOCTL_XOCL_INFO_BO</p></td>
+<td><p>drm_xocl_info_bo</p></td>
 </tr>
-<tr class="row-odd"><td>6</td>
-<td>Update bo backing storage with user’s
-data</td>
-<td>DRM_IOCTL_XOCL_PWRITE_BO</td>
-<td>drm_xocl_pwrite_bo</td>
+<tr class="row-odd"><td><p>6</p></td>
+<td><p>Update bo backing storage with user’s
+data</p></td>
+<td><p>DRM_IOCTL_XOCL_PWRITE_BO</p></td>
+<td><p>drm_xocl_pwrite_bo</p></td>
 </tr>
-<tr class="row-even"><td>7</td>
-<td>Read back data in bo backing storage</td>
-<td>DRM_IOCTL_XOCL_PREAD_BO</td>
-<td>drm_xocl_pread_bo</td>
+<tr class="row-even"><td><p>7</p></td>
+<td><p>Read back data in bo backing storage</p></td>
+<td><p>DRM_IOCTL_XOCL_PREAD_BO</p></td>
+<td><p>drm_xocl_pread_bo</p></td>
 </tr>
-<tr class="row-odd"><td>8</td>
-<td>Open/close a context on a compute unit
-on the device</td>
-<td>DRM_XOCL_CTX</td>
-<td>drm_xocl_ctx</td>
+<tr class="row-odd"><td><p>8</p></td>
+<td><p>Open/close a context on a compute unit
+on the device</p></td>
+<td><p>DRM_XOCL_CTX</p></td>
+<td><p>drm_xocl_ctx</p></td>
 </tr>
-<tr class="row-even"><td>9</td>
-<td>Unprotected write to device memory</td>
-<td>DRM_IOCTL_XOCL_PWRITE_UNMGD</td>
-<td>drm_xocl_pwrite_unmgd</td>
+<tr class="row-even"><td><p>9</p></td>
+<td><p>Unprotected write to device memory</p></td>
+<td><p>DRM_IOCTL_XOCL_PWRITE_UNMGD</p></td>
+<td><p>drm_xocl_pwrite_unmgd</p></td>
 </tr>
-<tr class="row-odd"><td>10</td>
-<td>Unprotected read from device memory</td>
-<td>DRM_IOCTL_XOCL_PREAD_UNMGD</td>
-<td>drm_xocl_pread_unmgd</td>
+<tr class="row-odd"><td><p>10</p></td>
+<td><p>Unprotected read from device memory</p></td>
+<td><p>DRM_IOCTL_XOCL_PREAD_UNMGD</p></td>
+<td><p>drm_xocl_pread_unmgd</p></td>
 </tr>
-<tr class="row-even"><td>11</td>
-<td>Send an execute job to a compute unit</td>
-<td>DRM_IOCTL_XOCL_EXECBUF</td>
-<td>drm_xocl_execbuf</td>
+<tr class="row-even"><td><p>11</p></td>
+<td><p>Send an execute job to a compute unit</p></td>
+<td><p>DRM_IOCTL_XOCL_EXECBUF</p></td>
+<td><p>drm_xocl_execbuf</p></td>
 </tr>
-<tr class="row-odd"><td>12</td>
-<td>Register eventfd handle for MSIX
-interrupt</td>
-<td>DRM_IOCTL_XOCL_USER_INTR</td>
-<td>drm_xocl_user_intr</td>
+<tr class="row-odd"><td><p>12</p></td>
+<td><p>Register eventfd handle for MSIX
+interrupt</p></td>
+<td><p>DRM_IOCTL_XOCL_USER_INTR</p></td>
+<td><p>drm_xocl_user_intr</p></td>
 </tr>
-<tr class="row-even"><td>13</td>
-<td>Update device view with a specific
-xclbin image</td>
-<td>DRM_XOCL_READ_AXLF</td>
-<td>drm_xocl_axlf</td>
+<tr class="row-even"><td><p>13</p></td>
+<td><p>Update device view with a specific
+xclbin image</p></td>
+<td><p>DRM_XOCL_READ_AXLF</p></td>
+<td><p>drm_xocl_axlf</p></td>
 </tr>
-<tr class="row-odd"><td>14</td>
-<td>Write buffer from device to peer FPGA
-buffer</td>
-<td>DRM_IOCTL_XOCL_COPY_BO</td>
-<td>drm_xocl_copy_bo</td>
+<tr class="row-odd"><td><p>14</p></td>
+<td><p>Write buffer from device to peer FPGA
+buffer</p></td>
+<td><p>DRM_IOCTL_XOCL_COPY_BO</p></td>
+<td><p>drm_xocl_copy_bo</p></td>
 </tr>
 </tbody>
 </table>
@@ -292,7 +311,7 @@ struct <code class="descname">drm_xocl_create_bo</code><a class="headerlink" hre
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>struct drm_xocl_create_bo {
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_create_bo {
   uint64_t size;
   uint32_t handle;
   uint32_t flags;
@@ -301,15 +320,15 @@ struct <code class="descname">drm_xocl_create_bo</code><a class="headerlink" hre
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal"><span class="pre">size</span></code></dt>
-<dd>Requested size of the buffer object</dd>
-<dt><code class="docutils literal"><span class="pre">handle</span></code></dt>
-<dd>bo handle returned by the driver</dd>
-<dt><code class="docutils literal"><span class="pre">flags</span></code></dt>
-<dd>DRM_XOCL_BO_XXX flags</dd>
-<dt><code class="docutils literal"><span class="pre">type</span></code></dt>
-<dd>The type of bo</dd>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>Requested size of the buffer object</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt><dd><p>bo handle returned by the driver</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">flags</span></code></dt><dd><p>DRM_XOCL_BO_XXX flags</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">type</span></code></dt><dd><p>The type of bo</p>
+</dd>
 </dl>
 <dl class="type">
 <dt id="c.drm_xocl_userptr_bo">
@@ -318,7 +337,7 @@ struct <code class="descname">drm_xocl_userptr_bo</code><a class="headerlink" hr
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>struct drm_xocl_userptr_bo {
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_userptr_bo {
   uint64_t addr;
   uint64_t size;
   uint32_t handle;
@@ -328,17 +347,17 @@ struct <code class="descname">drm_xocl_userptr_bo</code><a class="headerlink" hr
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal"><span class="pre">addr</span></code></dt>
-<dd>Address of buffer allocated by user</dd>
-<dt><code class="docutils literal"><span class="pre">size</span></code></dt>
-<dd>Requested size of the buffer object</dd>
-<dt><code class="docutils literal"><span class="pre">handle</span></code></dt>
-<dd>bo handle returned by the driver</dd>
-<dt><code class="docutils literal"><span class="pre">flags</span></code></dt>
-<dd>DRM_XOCL_BO_XXX flags</dd>
-<dt><code class="docutils literal"><span class="pre">type</span></code></dt>
-<dd>The type of bo</dd>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">addr</span></code></dt><dd><p>Address of buffer allocated by user</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>Requested size of the buffer object</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt><dd><p>bo handle returned by the driver</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">flags</span></code></dt><dd><p>DRM_XOCL_BO_XXX flags</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">type</span></code></dt><dd><p>The type of bo</p>
+</dd>
 </dl>
 <dl class="type">
 <dt id="c.drm_xocl_map_bo">
@@ -347,7 +366,7 @@ struct <code class="descname">drm_xocl_map_bo</code><a class="headerlink" href="
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>struct drm_xocl_map_bo {
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_map_bo {
   uint32_t handle;
   uint32_t pad;
   uint64_t offset;
@@ -355,13 +374,13 @@ struct <code class="descname">drm_xocl_map_bo</code><a class="headerlink" href="
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal"><span class="pre">handle</span></code></dt>
-<dd>bo handle</dd>
-<dt><code class="docutils literal"><span class="pre">pad</span></code></dt>
-<dd>Unused</dd>
-<dt><code class="docutils literal"><span class="pre">offset</span></code></dt>
-<dd>‘Fake’ offset returned by the driver which can be used with POSIX mmap</dd>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt><dd><p>bo handle</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">pad</span></code></dt><dd><p>Unused</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">offset</span></code></dt><dd><p>‘Fake’ offset returned by the driver which can be used with POSIX mmap</p>
+</dd>
 </dl>
 <dl class="type">
 <dt id="c.drm_xocl_sync_bo">
@@ -370,7 +389,7 @@ struct <code class="descname">drm_xocl_sync_bo</code><a class="headerlink" href=
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>struct drm_xocl_sync_bo {
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_sync_bo {
   uint32_t handle;
   uint32_t flags;
   uint64_t size;
@@ -380,17 +399,17 @@ struct <code class="descname">drm_xocl_sync_bo</code><a class="headerlink" href=
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal"><span class="pre">handle</span></code></dt>
-<dd>bo handle</dd>
-<dt><code class="docutils literal"><span class="pre">flags</span></code></dt>
-<dd>Unused</dd>
-<dt><code class="docutils literal"><span class="pre">size</span></code></dt>
-<dd>Number of bytes to synchronize</dd>
-<dt><code class="docutils literal"><span class="pre">offset</span></code></dt>
-<dd>Offset into the object to synchronize</dd>
-<dt><code class="docutils literal"><span class="pre">dir</span></code></dt>
-<dd>DRM_XOCL_SYNC_DIR_XXX</dd>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt><dd><p>bo handle</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">flags</span></code></dt><dd><p>Unused</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>Number of bytes to synchronize</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">offset</span></code></dt><dd><p>Offset into the object to synchronize</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">dir</span></code></dt><dd><p>DRM_XOCL_SYNC_DIR_XXX</p>
+</dd>
 </dl>
 <dl class="type">
 <dt id="c.drm_xocl_info_bo">
@@ -399,7 +418,7 @@ struct <code class="descname">drm_xocl_info_bo</code><a class="headerlink" href=
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>struct drm_xocl_info_bo {
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_info_bo {
   uint32_t handle;
   uint32_t flags;
   uint64_t size;
@@ -408,15 +427,15 @@ struct <code class="descname">drm_xocl_info_bo</code><a class="headerlink" href=
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal"><span class="pre">handle</span></code></dt>
-<dd>bo handle</dd>
-<dt><code class="docutils literal"><span class="pre">flags</span></code></dt>
-<dd>Unused</dd>
-<dt><code class="docutils literal"><span class="pre">size</span></code></dt>
-<dd>Size of buffer object (out)</dd>
-<dt><code class="docutils literal"><span class="pre">paddr</span></code></dt>
-<dd>Physical address (out)</dd>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt><dd><p>bo handle</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">flags</span></code></dt><dd><p>Unused</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>Size of buffer object (out)</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">paddr</span></code></dt><dd><p>Physical address (out)</p>
+</dd>
 </dl>
 <dl class="type">
 <dt id="c.drm_xocl_axlf">
@@ -425,15 +444,15 @@ struct <code class="descname">drm_xocl_axlf</code><a class="headerlink" href="#c
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>struct drm_xocl_axlf {
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_axlf {
   struct axlf * xclbin;
 };
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal"><span class="pre">xclbin</span></code></dt>
-<dd>Pointer to user’s xclbin structure in memory</dd>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">xclbin</span></code></dt><dd><p>Pointer to user’s xclbin structure in memory</p>
+</dd>
 </dl>
 <p><strong>NOTE</strong></p>
 <p>This ioctl will be removed in next release</p>
@@ -444,7 +463,7 @@ struct <code class="descname">drm_xocl_pwrite_bo</code><a class="headerlink" hre
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>struct drm_xocl_pwrite_bo {
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_pwrite_bo {
   uint32_t handle;
   uint32_t pad;
   uint64_t offset;
@@ -454,17 +473,17 @@ struct <code class="descname">drm_xocl_pwrite_bo</code><a class="headerlink" hre
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal"><span class="pre">handle</span></code></dt>
-<dd>bo handle</dd>
-<dt><code class="docutils literal"><span class="pre">pad</span></code></dt>
-<dd>Unused</dd>
-<dt><code class="docutils literal"><span class="pre">offset</span></code></dt>
-<dd>Offset into the buffer object to write to</dd>
-<dt><code class="docutils literal"><span class="pre">size</span></code></dt>
-<dd>Length of data to write</dd>
-<dt><code class="docutils literal"><span class="pre">data_ptr</span></code></dt>
-<dd>User’s pointer to read the data from</dd>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt><dd><p>bo handle</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">pad</span></code></dt><dd><p>Unused</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">offset</span></code></dt><dd><p>Offset into the buffer object to write to</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>Length of data to write</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">data_ptr</span></code></dt><dd><p>User’s pointer to read the data from</p>
+</dd>
 </dl>
 <dl class="type">
 <dt id="c.drm_xocl_pread_bo">
@@ -473,7 +492,7 @@ struct <code class="descname">drm_xocl_pread_bo</code><a class="headerlink" href
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>struct drm_xocl_pread_bo {
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_pread_bo {
   uint32_t handle;
   uint32_t pad;
   uint64_t offset;
@@ -483,17 +502,17 @@ struct <code class="descname">drm_xocl_pread_bo</code><a class="headerlink" href
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal"><span class="pre">handle</span></code></dt>
-<dd>bo handle</dd>
-<dt><code class="docutils literal"><span class="pre">pad</span></code></dt>
-<dd>Unused</dd>
-<dt><code class="docutils literal"><span class="pre">offset</span></code></dt>
-<dd>Offset into the buffer object to read from</dd>
-<dt><code class="docutils literal"><span class="pre">size</span></code></dt>
-<dd>Length of data to read</dd>
-<dt><code class="docutils literal"><span class="pre">data_ptr</span></code></dt>
-<dd>User’s pointer to write the data into</dd>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt><dd><p>bo handle</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">pad</span></code></dt><dd><p>Unused</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">offset</span></code></dt><dd><p>Offset into the buffer object to read from</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>Length of data to read</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">data_ptr</span></code></dt><dd><p>User’s pointer to write the data into</p>
+</dd>
 </dl>
 <dl class="type">
 <dt id="c.drm_xocl_ctx">
@@ -502,7 +521,7 @@ struct <code class="descname">drm_xocl_ctx</code><a class="headerlink" href="#c.
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>struct drm_xocl_ctx {
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_ctx {
   enum drm_xocl_ctx_code op;
   xuid_t xclbin_id;
   uint32_t cu_index;
@@ -512,18 +531,18 @@ struct <code class="descname">drm_xocl_ctx</code><a class="headerlink" href="#c.
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal"><span class="pre">op</span></code></dt>
-<dd>Alloc or free a context (XOCL_CTX_OP_ALLOC_CTX/XOCL_CTX_OP_FREE_CTX)</dd>
-<dt><code class="docutils literal"><span class="pre">xclbin_id</span></code></dt>
-<dd>UUID of the device image (xclbin)</dd>
-<dt><code class="docutils literal"><span class="pre">cu_index</span></code></dt>
-<dd>Index of the compute unit in the device inage for which
-the request is being made</dd>
-<dt><code class="docutils literal"><span class="pre">flags</span></code></dt>
-<dd>Shared or exclusive context (XOCL_CTX_SHARED/XOCL_CTX_EXCLUSIVE)</dd>
-<dt><code class="docutils literal"><span class="pre">handle</span></code></dt>
-<dd>Unused</dd>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">op</span></code></dt><dd><p>Alloc or free a context (XOCL_CTX_OP_ALLOC_CTX/XOCL_CTX_OP_FREE_CTX)</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">xclbin_id</span></code></dt><dd><p>UUID of the device image (xclbin)</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_index</span></code></dt><dd><p>Index of the compute unit in the device inage for which
+the request is being made</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">flags</span></code></dt><dd><p>Shared or exclusive context (XOCL_CTX_SHARED/XOCL_CTX_EXCLUSIVE)</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt><dd><p>Unused</p>
+</dd>
 </dl>
 <dl class="type">
 <dt id="c.drm_xocl_pwrite_unmgd">
@@ -532,7 +551,7 @@ struct <code class="descname">drm_xocl_pwrite_unmgd</code><a class="headerlink" 
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>struct drm_xocl_pwrite_unmgd {
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_pwrite_unmgd {
   uint32_t address_space;
   uint32_t pad;
   uint64_t paddr;
@@ -542,17 +561,17 @@ struct <code class="descname">drm_xocl_pwrite_unmgd</code><a class="headerlink" 
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal"><span class="pre">address_space</span></code></dt>
-<dd>Address space in the DSA; currently only 0 is suported</dd>
-<dt><code class="docutils literal"><span class="pre">pad</span></code></dt>
-<dd>Unused</dd>
-<dt><code class="docutils literal"><span class="pre">paddr</span></code></dt>
-<dd>Physical address in the specified address space</dd>
-<dt><code class="docutils literal"><span class="pre">size</span></code></dt>
-<dd>Length of data to write</dd>
-<dt><code class="docutils literal"><span class="pre">data_ptr</span></code></dt>
-<dd>User’s pointer to read the data from</dd>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">address_space</span></code></dt><dd><p>Address space in the DSA; currently only 0 is suported</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">pad</span></code></dt><dd><p>Unused</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">paddr</span></code></dt><dd><p>Physical address in the specified address space</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>Length of data to write</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">data_ptr</span></code></dt><dd><p>User’s pointer to read the data from</p>
+</dd>
 </dl>
 <dl class="type">
 <dt id="c.drm_xocl_pread_unmgd">
@@ -561,7 +580,7 @@ struct <code class="descname">drm_xocl_pread_unmgd</code><a class="headerlink" h
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>struct drm_xocl_pread_unmgd {
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_pread_unmgd {
   uint32_t address_space;
   uint32_t pad;
   uint64_t paddr;
@@ -571,17 +590,17 @@ struct <code class="descname">drm_xocl_pread_unmgd</code><a class="headerlink" h
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal"><span class="pre">address_space</span></code></dt>
-<dd>Address space in the DSA; currently only 0 is valid</dd>
-<dt><code class="docutils literal"><span class="pre">pad</span></code></dt>
-<dd>Unused</dd>
-<dt><code class="docutils literal"><span class="pre">paddr</span></code></dt>
-<dd>Physical address in the specified address space</dd>
-<dt><code class="docutils literal"><span class="pre">size</span></code></dt>
-<dd>Length of data to write</dd>
-<dt><code class="docutils literal"><span class="pre">data_ptr</span></code></dt>
-<dd>User’s pointer to write the data to</dd>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">address_space</span></code></dt><dd><p>Address space in the DSA; currently only 0 is valid</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">pad</span></code></dt><dd><p>Unused</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">paddr</span></code></dt><dd><p>Physical address in the specified address space</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>Length of data to write</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">data_ptr</span></code></dt><dd><p>User’s pointer to write the data to</p>
+</dd>
 </dl>
 <dl class="type">
 <dt id="c.drm_xocl_usage_stat">
@@ -590,7 +609,7 @@ struct <code class="descname">drm_xocl_usage_stat</code><a class="headerlink" hr
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>struct drm_xocl_usage_stat {
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_usage_stat {
   unsigned dma_channel_count;
   unsigned mm_channel_count;
   uint64_t h2c;
@@ -600,17 +619,17 @@ struct <code class="descname">drm_xocl_usage_stat</code><a class="headerlink" hr
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal"><span class="pre">dma_channel_count</span></code></dt>
-<dd>How many DMA channels are present</dd>
-<dt><code class="docutils literal"><span class="pre">mm_channel_count</span></code></dt>
-<dd>How many storage banks (DDR) are present</dd>
-<dt><code class="docutils literal"><span class="pre">h2c</span></code></dt>
-<dd>Total data transferred from host to device by a DMA channel</dd>
-<dt><code class="docutils literal"><span class="pre">c2h</span></code></dt>
-<dd>Total data transferred from device to host by a DMA channel</dd>
-<dt><code class="docutils literal"><span class="pre">mm</span></code></dt>
-<dd>BO statistics for a storage bank (DDR)</dd>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">dma_channel_count</span></code></dt><dd><p>How many DMA channels are present</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">mm_channel_count</span></code></dt><dd><p>How many storage banks (DDR) are present</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">h2c</span></code></dt><dd><p>Total data transferred from host to device by a DMA channel</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">c2h</span></code></dt><dd><p>Total data transferred from device to host by a DMA channel</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">mm</span></code></dt><dd><p>BO statistics for a storage bank (DDR)</p>
+</dd>
 </dl>
 <dl class="type">
 <dt id="c.drm_xocl_execbuf">
@@ -619,7 +638,7 @@ struct <code class="descname">drm_xocl_execbuf</code><a class="headerlink" href=
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>struct drm_xocl_execbuf {
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_execbuf {
   uint32_t ctx_id;
   uint32_t exec_bo_handle;
   uint32_t deps;
@@ -627,14 +646,14 @@ struct <code class="descname">drm_xocl_execbuf</code><a class="headerlink" href=
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal"><span class="pre">ctx_id</span></code></dt>
-<dd>Pass 0</dd>
-<dt><code class="docutils literal"><span class="pre">exec_bo_handle</span></code></dt>
-<dd>BO handle of command buffer formatted as ERT command</dd>
-<dt><code class="docutils literal"><span class="pre">deps</span></code></dt>
-<dd>Upto 8 dependency command BO handles this command is dependent on
-for automatic event dependency handling by ERT</dd>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">ctx_id</span></code></dt><dd><p>Pass 0</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">exec_bo_handle</span></code></dt><dd><p>BO handle of command buffer formatted as ERT command</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">deps</span></code></dt><dd><p>Upto 8 dependency command BO handles this command is dependent on
+for automatic event dependency handling by ERT</p>
+</dd>
 </dl>
 <dl class="type">
 <dt id="c.drm_xocl_user_intr">
@@ -643,7 +662,7 @@ struct <code class="descname">drm_xocl_user_intr</code><a class="headerlink" hre
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>struct drm_xocl_user_intr {
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_user_intr {
   uint32_t ctx_id;
   int fd;
   int msix;
@@ -651,30 +670,28 @@ struct <code class="descname">drm_xocl_user_intr</code><a class="headerlink" hre
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal"><span class="pre">ctx_id</span></code></dt>
-<dd>Pass 0</dd>
-<dt><code class="docutils literal"><span class="pre">fd</span></code></dt>
-<dd>File descriptor created with eventfd system call</dd>
-<dt><code class="docutils literal"><span class="pre">msix</span></code></dt>
-<dd>User interrupt number (0 to 15)</dd>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">ctx_id</span></code></dt><dd><p>Pass 0</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">fd</span></code></dt><dd><p>File descriptor created with eventfd system call</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">msix</span></code></dt><dd><p>User interrupt number (0 to 15)</p>
+</dd>
 </dl>
 </div>
 
 
            </div>
-           <div class="articleComments">
-            
-           </div>
+           
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="sysfs.html" class="btn btn-neutral float-right" title="Linux Sys FileSystem Nodes" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="tools.html" class="btn btn-neutral float-right" title="Board Tools and Utilities" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="mgmt-ioctl.main.html" class="btn btn-neutral" title="XCLMGMT (PCIe Management Physical Function) Driver Interfaces" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="mgmt-ioctl.main.html" class="btn btn-neutral float-left" title="XCLMGMT (PCIe Management Physical Function) Driver Interfaces" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -683,11 +700,11 @@ struct <code class="descname">drm_xocl_user_intr</code><a class="headerlink" hre
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2019, Xilinx, Inc.
+        &copy; Copyright 2017-2019, Xilinx, Inc
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -700,36 +717,15 @@ struct <code class="descname">drm_xocl_user_intr</code><a class="headerlink" hre
   
 
 
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'2019.1',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-
-  
-
-  
-  
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-  
-
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
    
 
 </body>

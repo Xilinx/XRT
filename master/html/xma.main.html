@@ -17,41 +17,37 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
-  
-  
-    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  
-
-  
-
-  
-        <link rel="index" title="Index"
-              href="genindex.html"/>
-        <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="Xilinx Runtime 2019.1 documentation" href="index.html"/>
-        <link rel="prev" title="XRT/Board Debug FAQ" href="debug-faq.html"/> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Xilinx Runtime (XRT) Core Library" href="xrt.main.html" />
+    <link rel="prev" title="Memory-to-Memory (M2M) Support" href="m2m.html" /> 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -89,28 +85,19 @@
               
             
             
-              <p class="caption"><span class="caption-text">Table of Contents</span></p>
-<ul class="current">
+              <p class="caption"><span class="caption-text">XRT Introduction</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">Xilinx Runtime (XRT) Core Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
-<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">XRT Developer Build and Test Instructions</a></li>
-<li class="toctree-l1"><a class="reference internal" href="newdsa-bringup.html">New DSA Bringup</a></li>
-<li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
+</ul>
+<p class="caption"><span class="caption-text">XRT Use Model and Features</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Xilinx Media Accelerator (XMA) Core Library</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#introduction">Introduction</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#xma-application-interface-overview">XMA Application Interface Overview</a></li>
@@ -140,6 +127,38 @@
 </ul>
 </li>
 </ul>
+<p class="caption"><span class="caption-text">XRT API Library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">Xilinx Runtime (XRT) Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Kernel Driver</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tools and Utilities</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Platform Building</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="newdsa-bringup.html">New DSA Bringup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Cloud Support</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Debug and Faqs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
+</ul>
 
             
           
@@ -150,7 +169,7 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+      <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="index.html">Xilinx Runtime</a>
@@ -158,9 +177,10 @@
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
 
 
@@ -232,9 +252,9 @@ API.</p>
 <h2>XMA Application Interface Overview<a class="headerlink" href="#xma-application-interface-overview" title="Permalink to this headline">¶</a></h2>
 <p>The API for the libxmaapi can be categorized into three areas:</p>
 <ol class="arabic simple">
-<li>Initialization</li>
-<li>Video frame processing</li>
-<li>Termination</li>
+<li><p>Initialization</p></li>
+<li><p>Video frame processing</p></li>
+<li><p>Termination</p></li>
 </ol>
 <p>From an interface perspective, the high-level or upper edge interface and the
 low-level or plugin interface are organized as follows:</p>
@@ -275,7 +295,7 @@ zero-copy support as this buffer address is required by the kernel preceding
 the encoder as the output buffer.</p>
 <p>By way of example, the following represents the interface of the XMA Encoder
 class:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>typedef struct XmaEncoderPlugin
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>typedef struct XmaEncoderPlugin
 {
  XmaEncoderType  hwencoder_type;
  const char    hwvendor_string;
@@ -318,11 +338,11 @@ diagram only calls out the initialization and processing stages:</p>
 <img alt="_images/XMA-Sequence-Diagram.png" class="align-center" src="_images/XMA-Sequence-Diagram.png" />
 <p>As shown in the diagram above, the system is comprised of five blocks:</p>
 <ul class="simple">
-<li>The FFmpeg Command Line application that is used to create a processing graph</li>
-<li>The FFmpeg encoder plugin that interfaces with the XMA Upper Edge Interface to manage a video session</li>
-<li>The XMA Upper Edge library interface responsible for initialization, resource allocation, and dispatching of the XMA plugin</li>
-<li>The XMA Lower Edge plugin responsible for interfacing with the SDAccel Video Kernel</li>
-<li>The XMA Video Kernel responsible for accelerating the encoding function</li>
+<li><p>The FFmpeg Command Line application that is used to create a processing graph</p></li>
+<li><p>The FFmpeg encoder plugin that interfaces with the XMA Upper Edge Interface to manage a video session</p></li>
+<li><p>The XMA Upper Edge library interface responsible for initialization, resource allocation, and dispatching of the XMA plugin</p></li>
+<li><p>The XMA Lower Edge plugin responsible for interfacing with the SDAccel Video Kernel</p></li>
+<li><p>The XMA Video Kernel responsible for accelerating the encoding function</p></li>
 </ul>
 <p>While this sequence diagram only shows five components, more complex systems
 can be developed that include multiple accelerators with the associated XMA
@@ -382,9 +402,9 @@ appropriate higher-level purposed based API to achieve the same result.</p>
 <p>The new APIs are:</p>
 <blockquote>
 <div><ul class="simple">
-<li>xma_plg_register_prep_write</li>
-<li>xma_plg_schedule_work_item</li>
-<li>xma_plg_is_work_item_done</li>
+<li><p>xma_plg_register_prep_write</p></li>
+<li><p>xma_plg_schedule_work_item</p></li>
+<li><p>xma_plg_is_work_item_done</p></li>
 </ul>
 </div></blockquote>
 <p>Lets consider the various purposes where the above APIs would be useful.</p>
@@ -401,30 +421,30 @@ The API <strong>xma_plg_register_read</strong> was used to check kernel idle sta
 register bit) to determine if the kernel finished processing the operation. For this purpose
 now the new API <strong>xma_plg_is_work_item_done</strong> should be used.</p>
 <p>The below table summarizes how to migrate to the new APIs from <strong>xma_plg_register_write</strong>/<strong>xma_plg_register_read</strong>.</p>
-<table border="1" class="docutils">
+<table class="docutils align-center">
 <colgroup>
-<col width="36%" />
-<col width="37%" />
-<col width="27%" />
+<col style="width: 36%" />
+<col style="width: 37%" />
+<col style="width: 27%" />
 </colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">Purposes</th>
-<th class="head">Earlier register read/write API</th>
-<th class="head">New API</th>
+<thead>
+<tr class="row-odd"><th class="head"><p>Purposes</p></th>
+<th class="head"><p>Earlier register read/write API</p></th>
+<th class="head"><p>New API</p></th>
 </tr>
 </thead>
-<tbody valign="top">
-<tr class="row-even"><td>Sending scalar input</td>
-<td>xma_plg_register_write</td>
-<td>xma_plg_register_prep_write</td>
+<tbody>
+<tr class="row-even"><td><p>Sending scalar input</p></td>
+<td><p>xma_plg_register_write</p></td>
+<td><p>xma_plg_register_prep_write</p></td>
 </tr>
-<tr class="row-odd"><td>Starting the kernel</td>
-<td>xma_plg_register_write</td>
-<td>xma_plg_schedule_work_item</td>
+<tr class="row-odd"><td><p>Starting the kernel</p></td>
+<td><p>xma_plg_register_write</p></td>
+<td><p>xma_plg_schedule_work_item</p></td>
 </tr>
-<tr class="row-even"><td>Checking if kernel finished processing</td>
-<td>xma_plg_register_read</td>
-<td>xma_plg_is_work_item_done</td>
+<tr class="row-even"><td><p>Checking if kernel finished processing</p></td>
+<td><p>xma_plg_register_read</p></td>
+<td><p>xma_plg_is_work_item_done</p></td>
 </tr>
 </tbody>
 </table>
@@ -435,9 +455,9 @@ now the new API <strong>xma_plg_is_work_item_done</strong> should be used.</p>
 be used to control video accelerators.  The XMA API operations
 fall into three categories:</p>
 <ul class="simple">
-<li>Initialization</li>
-<li>Runtime frame/data processing</li>
-<li>Cleanup</li>
+<li><p>Initialization</p></li>
+<li><p>Runtime frame/data processing</p></li>
+<li><p>Cleanup</p></li>
 </ul>
 <div class="section" id="initialization">
 <h3>Initialization<a class="headerlink" href="#initialization" title="Permalink to this headline">¶</a></h3>
@@ -467,7 +487,7 @@ image file(s).  The configuration file consists of two logial parts:
 <p>Below is a sample configuration file describing a simple system
 configuration for a single device utilizing an image file containing a
 single HEVC encoder kernel:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>SystemCfg:
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>SystemCfg:
     - logfile:    ./output.log
     - loglevel:   2
     - dsa:        xilinx_1525_dynamic_5_1
@@ -501,7 +521,7 @@ syntax as well as include the requisite keys else an error will be thrown
 indicating what is missing/mistaken.</p>
 <p>In Backus-Naur Form, the grammar of the YAML file could be described as
 follows:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>@precondition
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>@precondition
 [SystemCfg]    ::= SystemCfg:CRLF
                    (HTAB[logifile]CRLF)*
                    (HTAB[loglevel]CRLF)*
@@ -537,73 +557,73 @@ follows:</p>
 </div>
 <p>A description of each YAML key:</p>
 <p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal"><span class="pre">SystemCfg</span></code></dt>
-<dd>Mandatory header property. Takes no arguments.</dd>
-<dt><code class="docutils literal"><span class="pre">logifile</span></code></dt>
-<dd>Optional property of SystemCfg; specifies filename to write
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">SystemCfg</span></code></dt><dd><p>Mandatory header property. Takes no arguments.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">logifile</span></code></dt><dd><p>Optional property of SystemCfg; specifies filename to write
 log output.  If logfile and loglevel parameters are not specified, the
-log level will default to INFO and the output file will be stdout.</dd>
-<dt><code class="docutils literal"><span class="pre">loglevel</span></code></dt>
-<dd>Optional property of SystemCfg; specifies the level of logging
+log level will default to INFO and the output file will be stdout.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">loglevel</span></code></dt><dd><p>Optional property of SystemCfg; specifies the level of logging
 of which there are four: CRITICAL, ERROR, INFO, DEBUG.  Logs of a the level
 specified or lower will be output to the specified logfile.  The level mapping
 is as follows: 0 = CRITICAL, 1 = ERROR, 2 = INFO, 3 = DEBUG.
-For more information regarding the logging capability see xmalog.</dd>
-<dt><code class="docutils literal"><span class="pre">dsa</span></code></dt>
-<dd>Property of SystemCfg; The name of the “Dynamic System Archive”
-used for all images.</dd>
-<dt><code class="docutils literal"><span class="pre">pluginpath</span></code></dt>
-<dd>Property of SystemCfg; The path to directory containing all
-plugin libraries (typically &lt;libxmaapi install dir&gt;/share/libxmaapi)</dd>
-<dt><code class="docutils literal"><span class="pre">xclbinpath</span></code></dt>
-<dd>Property of SystemCfg; The path to the directory containing
+For more information regarding the logging capability see xmalog.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">dsa</span></code></dt><dd><p>Property of SystemCfg; The name of the “Dynamic System Archive”
+used for all images.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">pluginpath</span></code></dt><dd><p>Property of SystemCfg; The path to directory containing all
+plugin libraries (typically &lt;libxmaapi install dir&gt;/share/libxmaapi)</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">xclbinpath</span></code></dt><dd><p>Property of SystemCfg; The path to the directory containing
 the hardware binary file(s) that will be used to program the devices on the
-system.</dd>
-<dt><code class="docutils literal"><span class="pre">ImageCfg</span></code></dt>
-<dd>Property of SystemCfg; Mandatory sub-header property
+system.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">ImageCfg</span></code></dt><dd><p>Property of SystemCfg; Mandatory sub-header property
 describing an xclbin image as well as specifying to which device(s) is shall
-be deployed.</dd>
-<dt><code class="docutils literal"><span class="pre">xclbin</span></code></dt>
-<dd>Property of ImageCfg; The xclbin filename that comprises this
-image to be deployed to the specified devices in device_id_map.</dd>
-<dt><code class="docutils literal"><span class="pre">zerocopy</span></code></dt>
-<dd>Property of ImageCfg; Either the bare word ‘enable’ or ‘disable’.
+be deployed.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">xclbin</span></code></dt><dd><p>Property of ImageCfg; The xclbin filename that comprises this
+image to be deployed to the specified devices in device_id_map.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">zerocopy</span></code></dt><dd><p>Property of ImageCfg; Either the bare word ‘enable’ or ‘disable’.
 If set to ‘enable’, indicates that zerocopy between kernels will be attempted
 if possible (requires both kernels to be connected to the same device
-memory).</dd>
-<dt><code class="docutils literal"><span class="pre">device_id_map</span></code></dt>
-<dd>Property of ImageCfg; An array of numeric device ids
+memory).</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">device_id_map</span></code></dt><dd><p>Property of ImageCfg; An array of numeric device ids
 (0-indexed) indicating which fpga devices will be programmed with the xclbin.
 Note: if a device id specified is &gt; than the number of actual devices on the
-system, initalization will fail and an error message will be logged.</dd>
-<dt><code class="docutils literal"><span class="pre">KernelCfg</span></code></dt>
-<dd>Property denoting the start of array of kernel entries contained in the xclbin.</dd>
-<dt><code class="docutils literal"><span class="pre">instances</span></code></dt>
-<dd>Propery of KernelCfg; identifies the number of kernels of a
+system, initalization will fail and an error message will be logged.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">KernelCfg</span></code></dt><dd><p>Property denoting the start of array of kernel entries contained in the xclbin.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">instances</span></code></dt><dd><p>Propery of KernelCfg; identifies the number of kernels of a
 a specific type included in this xclbin.  IMPORTANT: The order of the
 kernel entries MUST MATCH the order of base addresses in which the kernels
-are assigned in a given xclbin.  Lowest base address must be described first.</dd>
-<dt><code class="docutils literal"><span class="pre">function</span></code></dt>
-<dd>Either ‘encoder’,’scaler’,’decoder’,’filter’ or ‘kernel’ as
-appropriate for this kernel entry.</dd>
-<dt><code class="docutils literal"><span class="pre">plugin</span></code></dt>
-<dd>Then name of the XMA plugin library that will be mapped to
+are assigned in a given xclbin.  Lowest base address must be described first.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">function</span></code></dt><dd><p>Either ‘encoder’,’scaler’,’decoder’,’filter’ or ‘kernel’ as
+appropriate for this kernel entry.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">plugin</span></code></dt><dd><p>Then name of the XMA plugin library that will be mapped to
 this kernel entry; used by XMA to route high level application calls to the
-appropriate XMA plugin driver.</dd>
-<dt><code class="docutils literal"><span class="pre">vendor</span></code></dt>
-<dd>Name of the vendor that authored this kernel.  Important for
+appropriate XMA plugin driver.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">vendor</span></code></dt><dd><p>Name of the vendor that authored this kernel.  Important for
 session creation as the vendor string is used by application code to, in
-part, identify which kernel entry is being requested for a given session.</dd>
-<dt><code class="docutils literal"><span class="pre">name</span></code></dt>
-<dd>The name, as it appears in the xclbin, of this kernel entry. Not used as this time.</dd>
-<dt><code class="docutils literal"><span class="pre">ddr_map</span></code></dt>
-<dd>An array of integer values indicating a mapping of
+part, identify which kernel entry is being requested for a given session.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">name</span></code></dt><dd><p>The name, as it appears in the xclbin, of this kernel entry. Not used as this time.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">ddr_map</span></code></dt><dd><p>An array of integer values indicating a mapping of
 kernel instances to DDR banks.  This MUST MATCH the number of kernel
-instances indicated for this entry.</dd>
+instances indicated for this entry.</p>
+</dd>
 </dl>
 <p>Below is a sample of a more complex, multi-image YAML configuration file:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>SystemCfg:
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>SystemCfg:
     - logfile:    ./output.log
     - loglevel:   2
     - dsa:        xilinx_xil-accel-rd-vu9p_4ddr-xpr_4_2
@@ -656,12 +676,12 @@ with your properly prepared YAML system configuration file as well as the
 to allocate and initialize one or more video kernels.</p>
 <p>Initialization has two parts and must be performed in the following order:</p>
 <ul class="simple">
-<li>system initialization wherein all devices are programmed with images as described by the XMA system configuration file</li>
-<li>kernel initialization wherein a specific kernel resource is initialized for video processing</li>
+<li><p>system initialization wherein all devices are programmed with images as described by the XMA system configuration file</p></li>
+<li><p>kernel initialization wherein a specific kernel resource is initialized for video processing</p></li>
 </ul>
 <p>All application code must include the following header file to access the
 XMA application interface:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>#include &lt;xma.h&gt;
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>#include &lt;xma.h&gt;
 </pre></div>
 </div>
 <p>This header will pull in all files located in [include_dir]/app/ which,
@@ -669,7 +689,7 @@ collectively, defines the complete application interface and datastructures
 required for XMA development.</p>
 <p>The first step for any XMA application is to initalize the system with the
 system configuraton file:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>//prior includes
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>//prior includes
 ...
 #include &lt;xma.h&gt;
 // XMA application interface
@@ -703,11 +723,11 @@ kernel type:
 - xmakernel</p>
 <p>The general initialization sequence that is common to all kernel classes is as follows:</p>
 <ul class="simple">
-<li>define key type-specific properties of the kernel to be initialized</li>
-<li>call the_session_create() routine corresponding to the kernel (e.g. xma_enc_session_create())
-Using the decoder kernel as an example, the following code defines request for an H264 decoder kernel made by Xilinx:</li>
+<li><p>define key type-specific properties of the kernel to be initialized</p></li>
+<li><p>call the_session_create() routine corresponding to the kernel (e.g. xma_enc_session_create())
+Using the decoder kernel as an example, the following code defines request for an H264 decoder kernel made by Xilinx:</p></li>
 </ul>
-<div class="highlight-none"><div class="highlight"><pre><span></span>#include &lt;xma.h&gt;
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>#include &lt;xma.h&gt;
 ...
 // init system via yaml file
 ...
@@ -743,19 +763,19 @@ you.  See xmabuffers.h for additional information.</p>
 <p>Continuing with our decoder example, the two runtime routines for data
 processing are:</p>
 <ul class="simple">
-<li>xma_dec_session_send_data()</li>
-<li>xma_dec_session_recv_frame()</li>
+<li><p>xma_dec_session_send_data()</p></li>
+<li><p>xma_dec_session_recv_frame()</p></li>
 </ul>
 <p>Calling the send_data() routine and following with recv_frame() will form
 the body of your runtime processing code.</p>
 <p>If, by contrast, we examine the XMA Encoder library, we see the following
 two routines:</p>
 <ul class="simple">
-<li>xma_enc_session_send_frame()</li>
-<li>xma_enc_session_recv_data()</li>
+<li><p>xma_enc_session_send_frame()</p></li>
+<li><p>xma_enc_session_recv_data()</p></li>
 </ul>
 <p>The idea is the same as that of the decoder: send data to be processed, thereceive the data.</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>int ret, data_size = 0;...// XMA init code and enc_session
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>int ret, data_size = 0;...// XMA init code and enc_session
 ...
 // Create an input frame
 XmaFrameProperties fprops;
@@ -792,8 +812,8 @@ perform control functions and/or other functions not easily represented by
 any of the other kernel classes.</p>
 <p>As such, the application API is more flexible:</p>
 <ul class="simple">
-<li>xma_kernel_session_write</li>
-<li>xma_kernel_session_read</li>
+<li><p>xma_kernel_session_write</p></li>
+<li><p>xma_kernel_session_read</p></li>
 </ul>
 <p>These routines take a list of XmaParameter objects which are type-length-value
 objects.  A kernel implementing this interface must make known what parameters
@@ -810,11 +830,11 @@ each session.  Doing so will free the session to be used by another thread or
 process and ensure that the kernel plugin has the opportunity to perform
 proper cleanup/closing procedures.</p>
 <ul class="simple">
-<li>xma_enc_session_destroy()</li>
-<li>xma_dec_session_destroy()</li>
-<li>xma_scaler_session_destroy()</li>
-<li>xma_filter_session_destroy()</li>
-<li>xma_kernel_session_destroy()</li>
+<li><p>xma_enc_session_destroy()</p></li>
+<li><p>xma_dec_session_destroy()</p></li>
+<li><p>xma_scaler_session_destroy()</p></li>
+<li><p>xma_filter_session_destroy()</p></li>
+<li><p>xma_kernel_session_destroy()</p></li>
 </ul>
 </div>
 </div>
@@ -835,31 +855,31 @@ software ‘driver’ in this regard.</p>
 <p>The first step in developing an XMA plugin requires you to decide which XMA
 kernel interface accurately represents the type of hardware kernel for which
 you seek to provide support:</p>
-<table border="1" class="docutils">
+<table class="docutils align-center">
 <colgroup>
-<col width="49%" />
-<col width="51%" />
+<col style="width: 49%" />
+<col style="width: 51%" />
 </colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">Kernel Type</th>
-<th class="head">XMA Plugin Interface</th>
+<thead>
+<tr class="row-odd"><th class="head"><p>Kernel Type</p></th>
+<th class="head"><p>XMA Plugin Interface</p></th>
 </tr>
 </thead>
-<tbody valign="top">
-<tr class="row-even"><td>Encoders (VP9, H.264, H.265)</td>
-<td>xmaplgenc</td>
+<tbody>
+<tr class="row-even"><td><p>Encoders (VP9, H.264, H.265)</p></td>
+<td><p>xmaplgenc</p></td>
 </tr>
-<tr class="row-odd"><td>Decoders (VP9, H.264, H.265)</td>
-<td>xmaplgdec</td>
+<tr class="row-odd"><td><p>Decoders (VP9, H.264, H.265)</p></td>
+<td><p>xmaplgdec</p></td>
 </tr>
-<tr class="row-even"><td>Filters (colorspace converter, scalers)</td>
-<td>xmaplgfilter or xmaplgscaler</td>
+<tr class="row-even"><td><p>Filters (colorspace converter, scalers)</p></td>
+<td><p>xmaplgfilter or xmaplgscaler</p></td>
 </tr>
-<tr class="row-odd"><td>Scalers</td>
-<td>xmaplgscaler</td>
+<tr class="row-odd"><td><p>Scalers</p></td>
+<td><p>xmaplgscaler</p></td>
 </tr>
-<tr class="row-even"><td>Other (embedded cpu)</td>
-<td>xmaplgkernel</td>
+<tr class="row-even"><td><p>Other (embedded cpu)</p></td>
+<td><p>xmaplgkernel</p></td>
 </tr>
 </tbody>
 </table>
@@ -869,7 +889,7 @@ the kernel.  Most callbacks specified are implicitly mandatory with some excepti
 which will be noted below.</p>
 <p>Your plugin will be compiled into a shared object library and linked to the
 kernel via the XMA configuration file ‘pluginpath’ property:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>SystemCfg:
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>SystemCfg:
     - dsa:        xilinx_1525_dynamic_5_1
     - pluginpath: /tmp/libxmaapi/installdir/share/libxmaapi
     - xclbinpath: /tmp/xclbins
@@ -902,7 +922,7 @@ the kernel in response to the application interface.</p>
 <p>Each XMA kernel type specifies a slightly different interface so these
 guidelines are intended to cover what is generally common.</p>
 <p>All plugin code must include xmaplugin.h</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>#include &lt;xmaplugin.h&gt;
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>#include &lt;xmaplugin.h&gt;
 </pre></div>
 </div>
 <p>This will provide the plugin code access to all data structures necessary
@@ -913,45 +933,45 @@ response to the xma_app_intf.</p>
 <p>From the application perspective, the following operations
 will be peformed:</p>
 <ol class="arabic simple">
-<li>Create session</li>
-<li>Send data/frame or write**</li>
-<li>Receive data/frame or read**</li>
-<li>Destroy</li>
+<li><p>Create session</p></li>
+<li><p>Send data/frame or write**</p></li>
+<li><p>Receive data/frame or read**</p></li>
+<li><p>Destroy</p></li>
 </ol>
 <p>** in the case of a non-video kernel</p>
 <p>Steps 2 and 3 will form the runtime processing of frames/data and likely
 repeated for as long as there is data to be processed.</p>
 <p>A general mapping between the application interface and plugin interface:</p>
-<table border="1" class="docutils">
+<table class="docutils align-center">
 <colgroup>
-<col width="40%" />
-<col width="60%" />
+<col style="width: 40%" />
+<col style="width: 60%" />
 </colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">Application Call</th>
-<th class="head">Plugin Callbacks Invoked</th>
+<thead>
+<tr class="row-odd"><th class="head"><p>Application Call</p></th>
+<th class="head"><p>Plugin Callbacks Invoked</p></th>
 </tr>
 </thead>
-<tbody valign="top">
-<tr class="row-even"><td>session_create()</td>
-<td><div class="first last line-block">
+<tbody>
+<tr class="row-even"><td><p>session_create()</p></td>
+<td><div class="line-block">
 <div class="line">alloc_chan()**</div>
 <div class="line">init()</div>
 </div>
 </td>
 </tr>
-<tr class="row-odd"><td>send_(data|frame)()</td>
-<td><div class="first last line-block">
+<tr class="row-odd"><td><p>send_(data|frame)()</p></td>
+<td><div class="line-block">
 <div class="line">get_dev_input_paddr()**</div>
 <div class="line">send_(data|frame)()</div>
 </div>
 </td>
 </tr>
-<tr class="row-even"><td>recv_(data|frame)()</td>
-<td>recv_(data|frame)()</td>
+<tr class="row-even"><td><p>recv_(data|frame)()</p></td>
+<td><p>recv_(data|frame)()</p></td>
 </tr>
-<tr class="row-odd"><td>destroy()</td>
-<td>close()</td>
+<tr class="row-odd"><td><p>destroy()</p></td>
+<td><p>close()</p></td>
 </tr>
 </tbody>
 </table>
@@ -959,7 +979,7 @@ repeated for as long as there is data to be processed.</p>
 <p>Using the XMA encoder plugin kernel type as an example (specified by
 XmaEncoderPlugin) the following is a rough sketch of a simple plugin
 implementation with most implementation details omitted for brevity:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>#include &lt;stdio.h&gt;
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>#include &lt;stdio.h&gt;
 #include &lt;xmaplugin.h&gt;
 
 
@@ -1085,31 +1105,31 @@ XmaEncoderPlugin encoder_plugin = {
 </div>
 <p>Note that each plugin implementation must statically allocate a data structure
 with a specific name (as present on line 425 in the above example):</p>
-<table border="1" class="docutils">
+<table class="docutils align-center">
 <colgroup>
-<col width="49%" />
-<col width="51%" />
+<col style="width: 49%" />
+<col style="width: 51%" />
 </colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">Plugin Type</th>
-<th class="head">Required Global Variable Name</th>
+<thead>
+<tr class="row-odd"><th class="head"><p>Plugin Type</p></th>
+<th class="head"><p>Required Global Variable Name</p></th>
 </tr>
 </thead>
-<tbody valign="top">
-<tr class="row-even"><td>XmaDecoderPlugin</td>
-<td>decoder_plugin</td>
+<tbody>
+<tr class="row-even"><td><p>XmaDecoderPlugin</p></td>
+<td><p>decoder_plugin</p></td>
 </tr>
-<tr class="row-odd"><td>XmaEncoderPlugin</td>
-<td>encoder_plugin</td>
+<tr class="row-odd"><td><p>XmaEncoderPlugin</p></td>
+<td><p>encoder_plugin</p></td>
 </tr>
-<tr class="row-even"><td>XmaFilterPlugin</td>
-<td>filter_plugin</td>
+<tr class="row-even"><td><p>XmaFilterPlugin</p></td>
+<td><p>filter_plugin</p></td>
 </tr>
-<tr class="row-odd"><td>XmaScalerPlugin</td>
-<td>scaler_plugin</td>
+<tr class="row-odd"><td><p>XmaScalerPlugin</p></td>
+<td><p>scaler_plugin</p></td>
 </tr>
-<tr class="row-even"><td>XmaKernelPlugin</td>
-<td>Kernel_plugin</td>
+<tr class="row-even"><td><p>XmaKernelPlugin</p></td>
+<td><p>Kernel_plugin</p></td>
 </tr>
 </tbody>
 </table>
@@ -1124,8 +1144,8 @@ following:
 <p>When an application creates a session (e.g. xma_enc_session_create()), the
 plugin code will have the following callbacks invoked:</p>
 <ol class="arabic simple">
-<li>alloc_chan (optional)</li>
-<li>init</li>
+<li><p>alloc_chan (optional)</p></li>
+<li><p>init</p></li>
 </ol>
 <p>What is returned to the application code is a session object corresponding
 to the type of session requested (e.g. XmaEncoderSession).  All
@@ -1223,10 +1243,10 @@ encoder must implement the XmaEncoderPlugin::get_dev_input_paddr() callback.
 The XMA library can detect whether the two kernel sessions are capable of
 sharing buffers.  The following conditions will be checked:</p>
 <ol class="arabic simple">
-<li>Both kernel sessions are connected to the same device DDR bank</li>
-<li>The get_dev_input_paddr() callback is implemented by the encoder session</li>
-<li>The encoder has been configured to expect frame data that is same format and size as the upstream filter kernel is producing as output.</li>
-<li>The system configuration file has specified that zerocopy is ‘enabled’</li>
+<li><p>Both kernel sessions are connected to the same device DDR bank</p></li>
+<li><p>The get_dev_input_paddr() callback is implemented by the encoder session</p></li>
+<li><p>The encoder has been configured to expect frame data that is same format and size as the upstream filter kernel is producing as output.</p></li>
+<li><p>The system configuration file has specified that zerocopy is ‘enabled’</p></li>
 </ol>
 <p>If all of the above conditions are true, zero-copy between the kernels will
 be supported.  The XMA library will obtain the destination buffer address
@@ -1241,22 +1261,22 @@ recv_frame() callback.</p>
 <p>The interface used by stand-alone XMA applications or plugins</p>
 <dl class="function">
 <dt id="c.xma_initialize">
-int32_t <code class="descname">xma_initialize</code><span class="sig-paren">(</span>char *<em>&nbsp;cfgfile</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_initialize" title="Permalink to this definition">¶</a></dt>
+int32_t <code class="descname">xma_initialize</code><span class="sig-paren">(</span>char *<em> cfgfile</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_initialize" title="Permalink to this definition">¶</a></dt>
 <dd><p>the system according to the layout specified in the YAML configuration file.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal"><span class="pre">char</span> <span class="pre">*</span> <span class="pre">cfgfile</span></code></dt>
-<dd>a filepath to the YAML configuration file describing
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">char</span> <span class="pre">*</span> <span class="pre">cfgfile</span></code></dt><dd><p>a filepath to the YAML configuration file describing
 the layout of the xclbin(s) and the devices to which the xclbin(s) are
 to be deployed. If a NULL value is passed, the XMA will use a default
 name and location: /etc/xma/xma_def_sys_cfg.yaml.  In all cases, a
-properly defined yaml configuration file must exist.</dd>
+properly defined yaml configuration file must exist.</p>
+</dd>
 </dl>
 <p><strong>Description</strong></p>
 <blockquote>
-<div>This is the entry point routine for utilzing the XMA library and must be
+<div><p>This is the entry point routine for utilzing the XMA library and must be
 the first call within any application before calling any other XMA APIs.
 The YAML file is parsed and then verified for compatibility with the system
 hardware.  If deemed compatible, each device specified in the YAML file
@@ -1277,7 +1297,8 @@ their configuration file argument will be ignored.
 When all currently running processes attached to a given resource file
 database have run to completion normally, the resource file will be deleted
 and a subsequent process invoking this routine will restart the parsing and
-programming of the system as would be true during initial invocation.</div></blockquote>
+programming of the system as would be true during initial invocation.</p>
+</div></blockquote>
 <p><strong>Return</strong></p>
 <p>XMA_SUCCESS after successfully initializing the system and/or (if not the first process to invoke)
 mapping in the currently active system configuration.</p>
@@ -1287,149 +1308,149 @@ mapping in the currently active system configuration.</p>
 <div class="section" id="xmaplugin">
 <h2>xmaplugin<a class="headerlink" href="#xmaplugin" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic simple">
-<li>Intro from xmaplugin.h</li>
-<li>xmaplugin.h autogenerated</li>
+<li><p>Intro from xmaplugin.h</p></li>
+<li><p>xmaplugin.h autogenerated</p></li>
 </ol>
 <p><strong>XMA Plugin Interface</strong></p>
 <p>The interface used by XMA kernel plugin developers</p>
 <dl class="function">
 <dt id="c.xma_plg_buffer_alloc">
-XmaBufferHandle <code class="descname">xma_plg_buffer_alloc</code><span class="sig-paren">(</span>XmaHwSession<em>&nbsp;s_handle</em>, size_t<em>&nbsp;size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_alloc" title="Permalink to this definition">¶</a></dt>
-<dd><p>Allocate device memory This function allocates memory on the FPGA DDR and provides a handle to the memory that can be used for copying data from the host to device memory or from the device to the host. In addition, the handle can be passed to the function <strong>ref</strong> <a class="reference internal" href="#c.xma_plg_get_paddr" title="xma_plg_get_paddr"><code class="xref c c-func docutils literal"><span class="pre">xma_plg_get_paddr()</span></code></a> in order to obtain the physical address of the buffer. Obtaining the physical address is necessary for setting the AXI register map with physical pointers so that the kernel knows where key input and output buffers are located. This function knows which DDR bank is associated with this session and therefore automatically selects the correct DDR bank.</p>
+XmaBufferHandle <code class="descname">xma_plg_buffer_alloc</code><span class="sig-paren">(</span>XmaHwSession<em> s_handle</em>, size_t<em> size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_alloc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Allocate device memory This function allocates memory on the FPGA DDR and provides a handle to the memory that can be used for copying data from the host to device memory or from the device to the host. In addition, the handle can be passed to the function <strong>ref</strong> <a class="reference internal" href="#c.xma_plg_get_paddr" title="xma_plg_get_paddr"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_get_paddr()</span></code></a> in order to obtain the physical address of the buffer. Obtaining the physical address is necessary for setting the AXI register map with physical pointers so that the kernel knows where key input and output buffers are located. This function knows which DDR bank is associated with this session and therefore automatically selects the correct DDR bank.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal"><span class="pre">XmaHwSession</span> <span class="pre">s_handle</span></code></dt>
-<dd>The session handle associated with this plugin instance.</dd>
-<dt><code class="docutils literal"><span class="pre">size_t</span> <span class="pre">size</span></code></dt>
-<dd>Size in bytes of the device buffer to be allocated.</dd>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaHwSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt><dd><p>Size in bytes of the device buffer to be allocated.</p>
+</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>Non-zero buffer handle on success</p>
 <dl class="function">
 <dt id="c.xma_plg_buffer_free">
-void <code class="descname">xma_plg_buffer_free</code><span class="sig-paren">(</span>XmaHwSession<em>&nbsp;s_handle</em>, XmaBufferHandle<em>&nbsp;b_handle</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_free" title="Permalink to this definition">¶</a></dt>
-<dd><p>Free a device buffer This function frees a previous allocated buffer that was obtained using the <strong>ref</strong> <a class="reference internal" href="#c.xma_plg_buffer_alloc" title="xma_plg_buffer_alloc"><code class="xref c c-func docutils literal"><span class="pre">xma_plg_buffer_alloc()</span></code></a> function.</p>
+void <code class="descname">xma_plg_buffer_free</code><span class="sig-paren">(</span>XmaHwSession<em> s_handle</em>, XmaBufferHandle<em> b_handle</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_free" title="Permalink to this definition">¶</a></dt>
+<dd><p>Free a device buffer This function frees a previous allocated buffer that was obtained using the <strong>ref</strong> <a class="reference internal" href="#c.xma_plg_buffer_alloc" title="xma_plg_buffer_alloc"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_buffer_alloc()</span></code></a> function.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal"><span class="pre">XmaHwSession</span> <span class="pre">s_handle</span></code></dt>
-<dd>The session handle associated with this plugin instance</dd>
-<dt><code class="docutils literal"><span class="pre">XmaBufferHandle</span> <span class="pre">b_handle</span></code></dt>
-<dd>The buffer handle returned from
-<strong>ref</strong> <a class="reference internal" href="#c.xma_plg_buffer_alloc" title="xma_plg_buffer_alloc"><code class="xref c c-func docutils literal"><span class="pre">xma_plg_buffer_alloc()</span></code></a></dd>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaHwSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaBufferHandle</span> <span class="pre">b_handle</span></code></dt><dd><p>The buffer handle returned from
+<strong>ref</strong> <a class="reference internal" href="#c.xma_plg_buffer_alloc" title="xma_plg_buffer_alloc"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_buffer_alloc()</span></code></a></p>
+</dd>
 </dl>
 <dl class="function">
 <dt id="c.xma_plg_get_paddr">
-uint64_t <code class="descname">xma_plg_get_paddr</code><span class="sig-paren">(</span>XmaHwSession<em>&nbsp;s_handle</em>, XmaBufferHandle<em>&nbsp;b_handle</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_get_paddr" title="Permalink to this definition">¶</a></dt>
+uint64_t <code class="descname">xma_plg_get_paddr</code><span class="sig-paren">(</span>XmaHwSession<em> s_handle</em>, XmaBufferHandle<em> b_handle</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_get_paddr" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get a physical address for a buffer handle This function returns the physical address of DDR memory on the FPGA used by a specific session</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal"><span class="pre">XmaHwSession</span> <span class="pre">s_handle</span></code></dt>
-<dd>The session handle associated with this plugin instance</dd>
-<dt><code class="docutils literal"><span class="pre">XmaBufferHandle</span> <span class="pre">b_handle</span></code></dt>
-<dd>The buffer handle returned from
-<strong>ref</strong> <a class="reference internal" href="#c.xma_plg_buffer_alloc" title="xma_plg_buffer_alloc"><code class="xref c c-func docutils literal"><span class="pre">xma_plg_buffer_alloc()</span></code></a></dd>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaHwSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaBufferHandle</span> <span class="pre">b_handle</span></code></dt><dd><p>The buffer handle returned from
+<strong>ref</strong> <a class="reference internal" href="#c.xma_plg_buffer_alloc" title="xma_plg_buffer_alloc"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_buffer_alloc()</span></code></a></p>
+</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>Physical address of DDR on the FPGA</p>
 <dl class="function">
 <dt id="c.xma_plg_buffer_write">
-int32_t <code class="descname">xma_plg_buffer_write</code><span class="sig-paren">(</span>XmaHwSession<em>&nbsp;s_handle</em>, XmaBufferHandle<em>&nbsp;b_handle</em>, const void *<em>&nbsp;src</em>, size_t<em>&nbsp;size</em>, size_t<em>&nbsp;offset</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_write" title="Permalink to this definition">¶</a></dt>
+int32_t <code class="descname">xma_plg_buffer_write</code><span class="sig-paren">(</span>XmaHwSession<em> s_handle</em>, XmaBufferHandle<em> b_handle</em>, const void *<em> src</em>, size_t<em> size</em>, size_t<em> offset</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_write" title="Permalink to this definition">¶</a></dt>
 <dd><p>Write data from host to device buffer This function copies data from host to memory to device memory.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal"><span class="pre">XmaHwSession</span> <span class="pre">s_handle</span></code></dt>
-<dd>The session handle associated with this plugin instance</dd>
-<dt><code class="docutils literal"><span class="pre">XmaBufferHandle</span> <span class="pre">b_handle</span></code></dt>
-<dd>The buffer handle returned from
-<strong>ref</strong> <a class="reference internal" href="#c.xma_plg_buffer_alloc" title="xma_plg_buffer_alloc"><code class="xref c c-func docutils literal"><span class="pre">xma_plg_buffer_alloc()</span></code></a></dd>
-<dt><code class="docutils literal"><span class="pre">const</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">src</span></code></dt>
-<dd>Source data pointer</dd>
-<dt><code class="docutils literal"><span class="pre">size_t</span> <span class="pre">size</span></code></dt>
-<dd>Size of data to copy</dd>
-<dt><code class="docutils literal"><span class="pre">size_t</span> <span class="pre">offset</span></code></dt>
-<dd>Offset from the beginning of the allocated device memory</dd>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaHwSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaBufferHandle</span> <span class="pre">b_handle</span></code></dt><dd><p>The buffer handle returned from
+<strong>ref</strong> <a class="reference internal" href="#c.xma_plg_buffer_alloc" title="xma_plg_buffer_alloc"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_buffer_alloc()</span></code></a></p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">src</span></code></dt><dd><p>Source data pointer</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt><dd><p>Size of data to copy</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">offset</span></code></dt><dd><p>Offset from the beginning of the allocated device memory</p>
+</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>XMA_SUCCESS on success
 XMA_ERROR on failure</p>
 <dl class="function">
 <dt id="c.xma_plg_buffer_read">
-int32_t <code class="descname">xma_plg_buffer_read</code><span class="sig-paren">(</span>XmaHwSession<em>&nbsp;s_handle</em>, XmaBufferHandle<em>&nbsp;b_handle</em>, void *<em>&nbsp;dst</em>, size_t<em>&nbsp;size</em>, size_t<em>&nbsp;offset</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_read" title="Permalink to this definition">¶</a></dt>
+int32_t <code class="descname">xma_plg_buffer_read</code><span class="sig-paren">(</span>XmaHwSession<em> s_handle</em>, XmaBufferHandle<em> b_handle</em>, void *<em> dst</em>, size_t<em> size</em>, size_t<em> offset</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_read" title="Permalink to this definition">¶</a></dt>
 <dd><p>Read data from device memory and copy to host memory This function copies data from device memory and stores the result in the requested host memory</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal"><span class="pre">XmaHwSession</span> <span class="pre">s_handle</span></code></dt>
-<dd>The session handle associated with this plugin instance</dd>
-<dt><code class="docutils literal"><span class="pre">XmaBufferHandle</span> <span class="pre">b_handle</span></code></dt>
-<dd>The buffer handle returned from
-<strong>ref</strong> <a class="reference internal" href="#c.xma_plg_buffer_alloc" title="xma_plg_buffer_alloc"><code class="xref c c-func docutils literal"><span class="pre">xma_plg_buffer_alloc()</span></code></a></dd>
-<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">dst</span></code></dt>
-<dd>Destination data pointer</dd>
-<dt><code class="docutils literal"><span class="pre">size_t</span> <span class="pre">size</span></code></dt>
-<dd>Size of data to copy</dd>
-<dt><code class="docutils literal"><span class="pre">size_t</span> <span class="pre">offset</span></code></dt>
-<dd>Offset from the beginning of the allocated device memory</dd>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaHwSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaBufferHandle</span> <span class="pre">b_handle</span></code></dt><dd><p>The buffer handle returned from
+<strong>ref</strong> <a class="reference internal" href="#c.xma_plg_buffer_alloc" title="xma_plg_buffer_alloc"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_buffer_alloc()</span></code></a></p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">dst</span></code></dt><dd><p>Destination data pointer</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt><dd><p>Size of data to copy</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">offset</span></code></dt><dd><p>Offset from the beginning of the allocated device memory</p>
+</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>XMA_SUCCESS on success
 XMA_ERROR on failure</p>
 <dl class="function">
 <dt id="c.xma_plg_schedule_work_item">
-int32_t <code class="descname">xma_plg_schedule_work_item</code><span class="sig-paren">(</span>XmaHwSession<em>&nbsp;s_handle</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_schedule_work_item" title="Permalink to this definition">¶</a></dt>
-<dd><p>This function schedules a request to the XRT scheduler for execution of a kernel based on the saved state of the kernel registers supplied by the <a class="reference internal" href="#c.xma_plg_register_prep_write" title="xma_plg_register_prep_write"><code class="xref c c-func docutils literal"><span class="pre">xma_plg_register_prep_write()</span></code></a> function call. The <code class="xref c c-func docutils literal"><span class="pre">prep_write()</span></code> keeps a shadow register map so that the <code class="xref c c-func docutils literal"><span class="pre">schedule_work_item()</span></code> can gather all registers and push a new work item onto the scheduler queue. Work items are processed in FIFO order. After calling <code class="xref c c-func docutils literal"><span class="pre">schedule_work_item()</span></code> one or more times, the caller can invoke <a class="reference internal" href="#c.xma_plg_is_work_item_done" title="xma_plg_is_work_item_done"><code class="xref c c-func docutils literal"><span class="pre">xma_plg_is_work_item_done()</span></code></a> to wait for one item of work to complete.</p>
+int32_t <code class="descname">xma_plg_schedule_work_item</code><span class="sig-paren">(</span>XmaHwSession<em> s_handle</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_schedule_work_item" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function schedules a request to the XRT scheduler for execution of a kernel based on the saved state of the kernel registers supplied by the <a class="reference internal" href="#c.xma_plg_register_prep_write" title="xma_plg_register_prep_write"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_register_prep_write()</span></code></a> function call. The <code class="xref c c-func docutils literal notranslate"><span class="pre">prep_write()</span></code> keeps a shadow register map so that the <code class="xref c c-func docutils literal notranslate"><span class="pre">schedule_work_item()</span></code> can gather all registers and push a new work item onto the scheduler queue. Work items are processed in FIFO order. After calling <code class="xref c c-func docutils literal notranslate"><span class="pre">schedule_work_item()</span></code> one or more times, the caller can invoke <a class="reference internal" href="#c.xma_plg_is_work_item_done" title="xma_plg_is_work_item_done"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_is_work_item_done()</span></code></a> to wait for one item of work to complete.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal"><span class="pre">XmaHwSession</span> <span class="pre">s_handle</span></code></dt>
-<dd>The session handle associated with this plugin instance</dd>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaHwSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance</p>
+</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>XMA_SUCCESS on success</p>
 <p>XMA_ERROR on failure</p>
 <dl class="function">
 <dt id="c.xma_plg_is_work_item_done">
-int32_t <code class="descname">xma_plg_is_work_item_done</code><span class="sig-paren">(</span>XmaHwSession<em>&nbsp;s_handle</em>, int32_t<em>&nbsp;timeout_in_ms</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_is_work_item_done" title="Permalink to this definition">¶</a></dt>
-<dd><p>This function checks if at least one work item previously submitted via <a class="reference internal" href="#c.xma_plg_schedule_work_item" title="xma_plg_schedule_work_item"><code class="xref c c-func docutils literal"><span class="pre">xma_plg_schedule_work_item()</span></code></a> has completed. If the supplied timeout expires before a work item has completed, this function returns an error.</p>
+int32_t <code class="descname">xma_plg_is_work_item_done</code><span class="sig-paren">(</span>XmaHwSession<em> s_handle</em>, int32_t<em> timeout_in_ms</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_is_work_item_done" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function checks if at least one work item previously submitted via <a class="reference internal" href="#c.xma_plg_schedule_work_item" title="xma_plg_schedule_work_item"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_schedule_work_item()</span></code></a> has completed. If the supplied timeout expires before a work item has completed, this function returns an error.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal"><span class="pre">XmaHwSession</span> <span class="pre">s_handle</span></code></dt>
-<dd>The session handle associated with this plugin instance</dd>
-<dt><code class="docutils literal"><span class="pre">int32_t</span> <span class="pre">timeout_in_ms</span></code></dt>
-<dd>A timeout value in milliseconds</dd>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaHwSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">int32_t</span> <span class="pre">timeout_in_ms</span></code></dt><dd><p>A timeout value in milliseconds</p>
+</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>XMA_SUCCESS on success</p>
 <p>XMA_ERROR on timeout</p>
 <dl class="function">
 <dt id="c.xma_plg_register_prep_write">
-int32_t <code class="descname">xma_plg_register_prep_write</code><span class="sig-paren">(</span>XmaHwSession<em>&nbsp;s_handle</em>, void *<em>&nbsp;dst</em>, size_t<em>&nbsp;size</em>, size_t<em>&nbsp;offset</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_register_prep_write" title="Permalink to this definition">¶</a></dt>
+int32_t <code class="descname">xma_plg_register_prep_write</code><span class="sig-paren">(</span>XmaHwSession<em> s_handle</em>, void *<em> dst</em>, size_t<em> size</em>, size_t<em> offset</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_register_prep_write" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function writes the data provided and sets the specified AXI_Lite register(s) exposed by a kernel. The base offset of 0 is the beginning of the kernels AXI_Lite memory map as this function adds the required offsets internally for the kernel and PCIe.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal"><span class="pre">XmaHwSession</span> <span class="pre">s_handle</span></code></dt>
-<dd>The session handle associated with this plugin instance</dd>
-<dt><code class="docutils literal"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">dst</span></code></dt>
-<dd>Destination data pointer</dd>
-<dt><code class="docutils literal"><span class="pre">size_t</span> <span class="pre">size</span></code></dt>
-<dd>Size of data to copy</dd>
-<dt><code class="docutils literal"><span class="pre">size_t</span> <span class="pre">offset</span></code></dt>
-<dd>Offset from the beginning of the kernel AXI_Lite register
-register map</dd>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaHwSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">dst</span></code></dt><dd><p>Destination data pointer</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt><dd><p>Size of data to copy</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">offset</span></code></dt><dd><p>Offset from the beginning of the kernel AXI_Lite register
+register map</p>
+</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>&gt;=0 number of bytes written</p>
@@ -1439,16 +1460,16 @@ register map</dd>
 
 
            </div>
-           <div class="articleComments">
-            
-           </div>
+           
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
+        <a href="xrt.main.html" class="btn btn-neutral float-right" title="Xilinx Runtime (XRT) Core Library" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
-        <a href="debug-faq.html" class="btn btn-neutral" title="XRT/Board Debug FAQ" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+        <a href="m2m.html" class="btn btn-neutral float-left" title="Memory-to-Memory (M2M) Support" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -1457,11 +1478,11 @@ register map</dd>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2019, Xilinx, Inc.
+        &copy; Copyright 2017-2019, Xilinx, Inc
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -1474,36 +1495,15 @@ register map</dd>
   
 
 
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'2019.1',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-
-  
-
-  
-  
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-  
-
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
    
 
 </body>

@@ -17,42 +17,37 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
-  
-  
-    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  
-
-  
-
-  
-        <link rel="index" title="Index"
-              href="genindex.html"/>
-        <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="Xilinx Runtime 2019.1 documentation" href="index.html"/>
-        <link rel="next" title="Binary Formats" href="formats.html"/>
-        <link rel="prev" title="Embedded Runtime Library" href="ert.main.html"/> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="PCIe Peer-to-Peer Support" href="p2p.html" />
+    <link rel="prev" title="Execution Model Overview" href="execution-model.html" /> 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -90,17 +85,16 @@
               
             
             
-              <p class="caption"><span class="caption-text">Table of Contents</span></p>
-<ul class="current">
+              <p class="caption"><span class="caption-text">XRT Introduction</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">XRT Developer Build and Test Instructions</a></li>
+</ul>
+<p class="caption"><span class="caption-text">XRT Use Model and Features</span></p>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">Xilinx Runtime (XRT) Core Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Multi-Process Support</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#requirements">Requirements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#usage">Usage</a></li>
@@ -108,17 +102,41 @@
 <li class="toctree-l2"><a class="reference internal" href="#implementation-details-for-curious">Implementation Details For Curious</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
-<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
-<li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
-<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
-<li class="toctree-l1"><a class="reference internal" href="test.html">XRT Developer Build and Test Instructions</a></li>
-<li class="toctree-l1"><a class="reference internal" href="newdsa-bringup.html">New DSA Bringup</a></li>
-<li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">Xilinx Media Accelerator (XMA) Core Library</a></li>
+</ul>
+<p class="caption"><span class="caption-text">XRT API Library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">Xilinx Runtime (XRT) Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Kernel Driver</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tools and Utilities</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Platform Building</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="newdsa-bringup.html">New DSA Bringup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Cloud Support</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Debug and Faqs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 
             
@@ -130,7 +148,7 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+      <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="index.html">Xilinx Runtime</a>
@@ -138,9 +156,10 @@
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
 
 
@@ -188,7 +207,7 @@
 <div class="section" id="requirements">
 <h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h2>
 <p>Multiple processes can share access to the same device provided each
-process uses the same <code class="docutils literal"><span class="pre">xclbin</span></code>. Attempting to load different xclbins via
+process uses the same <code class="docutils literal notranslate"><span class="pre">xclbin</span></code>. Attempting to load different xclbins via
 different processes concurrently will result in only one process being
 successfull in loading its xclbin. The other processes will get error code
 -EBUSY or -EPERM.</p>
@@ -198,12 +217,12 @@ successfull in loading its xclbin. The other processes will get error code
 <p>Processes share access to all device resources; as of 2019.1, there is
 no support for exclusive access to resources by any one process.</p>
 <p>If two or more processes execute the same kernel, then these processes
-will acquire the kernel’s compute units per the <code class="docutils literal"><span class="pre">xocl</span></code> kernel driver
+will acquire the kernel’s compute units per the <code class="docutils literal notranslate"><span class="pre">xocl</span></code> kernel driver
 compute unit scheduler, which is first-come first-serve.  All
 processes have the same priority in XRT.</p>
-<p>To disable multi-process support, add the following entry to <code class="docutils literal"><span class="pre">xrt.ini</span></code>
+<p>To disable multi-process support, add the following entry to <code class="docutils literal notranslate"><span class="pre">xrt.ini</span></code>
 in the same directory as all the executable(s):</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>[Runtime]
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[Runtime]
 multiprocess=false
 </pre></div>
 </div>
@@ -231,8 +250,8 @@ error codes. Processes P0, P1, P2, P3, P4 and P6 are each trying to use xclbin w
 process P5 is attempting to use UUID_Y. Processes P0, P1, P3, P4, and P6 are trying to use CU_0 in
 UUID_X. Process P2 is trying to use CU_1 in UUID_X and Process P5 is trying to use CU_0 in UUID_Y.
 The diagram shows timeline view with all 7 processes running concurrently.</p>
-<object data="_images/graphviz-e9e4ab66bcb52b485b7f55882b37b0d78770e917.svg" type="image/svg+xml">
-            <p class="warning">digraph G {
+<div class="graphviz"><object data="_images/graphviz-e3642d1d054f86a195c477303a09c70986745b9d.svg" type="image/svg+xml" class="graphviz">
+<p class="warning">digraph G {
 	node [fontname = &quot;Courier&quot;, fontsize = 10];
 
 	subgraph cluster_0 {
@@ -333,24 +352,22 @@ The diagram shows timeline view with all 7 processes running concurrently.</p>
 		g0 -&gt; g7 -&gt;g1 -&gt; g2 -&gt; g3;
 		label = &quot;process #6&quot;;
 	}
-}</p></object>
+}</p></object></div>
 </div>
 </div>
 
 
            </div>
-           <div class="articleComments">
-            
-           </div>
+           
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="formats.html" class="btn btn-neutral float-right" title="Binary Formats" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="p2p.html" class="btn btn-neutral float-right" title="PCIe Peer-to-Peer Support" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="ert.main.html" class="btn btn-neutral" title="Embedded Runtime Library" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="execution-model.html" class="btn btn-neutral float-left" title="Execution Model Overview" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -359,11 +376,11 @@ The diagram shows timeline view with all 7 processes running concurrently.</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2019, Xilinx, Inc.
+        &copy; Copyright 2017-2019, Xilinx, Inc
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -376,36 +393,15 @@ The diagram shows timeline view with all 7 processes running concurrently.</p>
   
 
 
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'2019.1',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-
-  
-
-  
-  
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-  
-
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
    
 
 </body>

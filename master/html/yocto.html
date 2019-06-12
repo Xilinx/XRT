@@ -17,42 +17,37 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
-  
-  
-    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  
-
-  
-
-  
-        <link rel="index" title="Index"
-              href="genindex.html"/>
-        <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="Xilinx Runtime 2019.1 documentation" href="index.html"/>
-        <link rel="next" title="XRT Developer Build and Test Instructions" href="test.html"/>
-        <link rel="prev" title="Building and Installing Software Stack" href="build.html"/> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="New DSA Bringup" href="newdsa-bringup.html" />
+    <link rel="prev" title="Xclbin Tools" href="xclbintools.html" /> 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -90,21 +85,40 @@
               
             
             
-              <p class="caption"><span class="caption-text">Table of Contents</span></p>
-<ul class="current">
+              <p class="caption"><span class="caption-text">XRT Introduction</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">Xilinx Runtime (XRT) Core Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">XRT Developer Build and Test Instructions</a></li>
+</ul>
+<p class="caption"><span class="caption-text">XRT Use Model and Features</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma.main.html">Xilinx Media Accelerator (XMA) Core Library</a></li>
+</ul>
+<p class="caption"><span class="caption-text">XRT API Library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">Xilinx Runtime (XRT) Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Kernel Driver</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tools and Utilities</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Platform Building</span></p>
+<ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Yocto Recipes For Embedded Flow</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#prerequisite">Prerequisite</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#create-petalinux-project-with-xrt-recipes">Create PetaLinux Project with XRT recipes</a></li>
@@ -112,13 +126,17 @@
 <li class="toctree-l2"><a class="reference internal" href="#configure-linux-kernel-and-enable-xrt-module">Configure Linux kernel and enable XRT module</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="test.html">XRT Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="newdsa-bringup.html">New DSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
-<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Cloud Support</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Debug and Faqs</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma.main.html">Xilinx Media Accelerator (XMA) Core Library</a></li>
 </ul>
 
             
@@ -130,7 +148,7 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+      <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="index.html">Xilinx Runtime</a>
@@ -138,9 +156,10 @@
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
 
 
@@ -193,11 +212,10 @@ If you are interested in details about creating software images for embedded pla
 Please read the Software Platform section of Xilinx Document UG1146.</p>
 <div class="section" id="prerequisite">
 <h2>Prerequisite<a class="headerlink" href="#prerequisite" title="Permalink to this headline">¶</a></h2>
-<dl class="docutils">
-<dt>Before start to build Linux image, make sure your have:</dt>
-<dd><ol class="first last arabic simple">
-<li>PetaLinux tool chain installed and setup;</li>
-<li>Hardware Definithion File(.hdf) for your platform;</li>
+<dl class="simple">
+<dt>Before start to build Linux image, make sure your have:</dt><dd><ol class="arabic simple">
+<li><p>PetaLinux tool chain installed and setup;</p></li>
+<li><p>Hardware Definithion File(.hdf) for your platform;</p></li>
 </ol>
 </dd>
 </dl>
@@ -206,8 +224,8 @@ If you don’t have a .hdf file, please see <a class="reference internal" href="
 </div>
 <div class="section" id="create-petalinux-project-with-xrt-recipes">
 <h2>Create PetaLinux Project with XRT recipes<a class="headerlink" href="#create-petalinux-project-with-xrt-recipes" title="Permalink to this headline">¶</a></h2>
-<p>All of the XRT recipes are in <code class="docutils literal"><span class="pre">&lt;XRT&gt;/src/platform/recipes-xrt</span></code> directory. Where &lt;XRT&gt; is the root directory of your XRT git repository.</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># Replace &lt;name&gt; in below commands</span>
+<p>All of the XRT recipes are in <code class="docutils literal notranslate"><span class="pre">&lt;XRT&gt;/src/platform/recipes-xrt</span></code> directory. Where &lt;XRT&gt; is the root directory of your XRT git repository.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Replace &lt;name&gt; in below commands</span>
 $ petalinux-create -t project -n &lt;name&gt; --template zynqMP
 
 <span class="c1"># Get HDF file, which is exported by Vivado</span>
@@ -228,7 +246,7 @@ $ wget -O recipes-xrt/opencl-headers/opencl-headers_git.bb http://cgit.openembed
 </div>
 <p>The above commands create PetaLinux project and add necessary recipes to build XRT library and driver. Please check all the .bb files for details.</p>
 <p>The next step is to add all recipes to PetaLinux Rootfs Menu.
-Still stay in <code class="docutils literal"><span class="pre">meta-user</span></code> directory. Open <code class="docutils literal"><span class="pre">recipes-core/images/petalinux-image.bbappend</span></code> then add below lines at the end.</p>
+Still stay in <code class="docutils literal notranslate"><span class="pre">meta-user</span></code> directory. Open <code class="docutils literal notranslate"><span class="pre">recipes-core/images/petalinux-image.bbappend</span></code> then add below lines at the end.</p>
 <blockquote>
 <div><div class="line-block">
 <div class="line">IMAGE_INSTALL_append = ” xrt-dev”</div>
@@ -241,13 +259,13 @@ Still stay in <code class="docutils literal"><span class="pre">meta-user</span><
 </div>
 <div class="section" id="add-xrt-kernel-node-in-device-tree">
 <h2>Add XRT kernel node in device tree<a class="headerlink" href="#add-xrt-kernel-node-in-device-tree" title="Permalink to this headline">¶</a></h2>
-<p>An example of device tree is in <code class="docutils literal"><span class="pre">&lt;XRT&gt;/src/runtime_src/driver/zynq/fragments/xlnk_dts_fragment_mpsoc.dts</span></code>. You can attach it to <code class="docutils literal"><span class="pre">project-spec/meta-user/recipes-bsp/device-tree/files/system-user.dtsi</span></code> in your PetaLinux project.</p>
+<p>An example of device tree is in <code class="docutils literal notranslate"><span class="pre">&lt;XRT&gt;/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts</span></code>. You can attach it to <code class="docutils literal notranslate"><span class="pre">project-spec/meta-user/recipes-bsp/device-tree/files/system-user.dtsi</span></code> in your PetaLinux project.</p>
 </div>
 <div class="section" id="configure-linux-kernel-and-enable-xrt-module">
 <h2>Configure Linux kernel and enable XRT module<a class="headerlink" href="#configure-linux-kernel-and-enable-xrt-module" title="Permalink to this headline">¶</a></h2>
 <p>Now we can configure linux kernel and rootfs.
 Please see the comments in below code block. Enable “xrt” and “xrt-dev” options will install XRT libraries and header files to /opt/xilinx/xrt directory in rootfs. Enable “zocl” option will install zocl.ko in rootfs. The zocl.ko driver is a XRT driver module only for MPSoC platform.</p>
-<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1">#Configure Linux kernel (default kernel config is good for zocl driver)</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1">#Configure Linux kernel (default kernel config is good for zocl driver)</span>
 $ petalinux-config -c kernel
 
 <span class="c1"># Configure rootfs, enable below components:</span>
@@ -265,29 +283,27 @@ $ petalinux-build
 <p>You can find all output files from images/linux directory in your PetaLinux project.
 These files can be used when creating an embedded platform.</p>
 <ul class="simple">
-<li><code class="docutils literal"><span class="pre">image.ub</span></code></li>
-<li><code class="docutils literal"><span class="pre">bl31.elf</span></code></li>
-<li><code class="docutils literal"><span class="pre">fsbl.elf</span></code></li>
-<li><code class="docutils literal"><span class="pre">pmufw.elf</span></code></li>
-<li><code class="docutils literal"><span class="pre">u-boot.elf</span></code></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">image.ub</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bl31.elf</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fsbl.elf</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pmufw.elf</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">u-boot.elf</span></code></p></li>
 </ul>
 </div>
 </div>
 
 
            </div>
-           <div class="articleComments">
-            
-           </div>
+           
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="test.html" class="btn btn-neutral float-right" title="XRT Developer Build and Test Instructions" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="newdsa-bringup.html" class="btn btn-neutral float-right" title="New DSA Bringup" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="build.html" class="btn btn-neutral" title="Building and Installing Software Stack" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="xclbintools.html" class="btn btn-neutral float-left" title="Xclbin Tools" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -296,11 +312,11 @@ These files can be used when creating an embedded platform.</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2019, Xilinx, Inc.
+        &copy; Copyright 2017-2019, Xilinx, Inc
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -313,36 +329,15 @@ These files can be used when creating an embedded platform.</p>
   
 
 
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'2019.1',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-
-  
-
-  
-  
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-  
-
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
    
 
 </body>

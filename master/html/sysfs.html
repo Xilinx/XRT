@@ -17,42 +17,37 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
-  
-  
-    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  
-
-  
-
-  
-        <link rel="index" title="Index"
-              href="genindex.html"/>
-        <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="Xilinx Runtime 2019.1 documentation" href="index.html"/>
-        <link rel="next" title="Board Tools and Utilities" href="tools.html"/>
-        <link rel="prev" title="XOCL (PCIe User Physical Function) Driver Interfaces" href="xocl_ioctl.main.html"/> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="XCLMGMT (PCIe Management Physical Function) Driver Interfaces" href="mgmt-ioctl.main.html" />
+    <link rel="prev" title="Embedded Runtime Library" href="ert.main.html" /> 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -90,34 +85,57 @@
               
             
             
-              <p class="caption"><span class="caption-text">Table of Contents</span></p>
-<ul class="current">
+              <p class="caption"><span class="caption-text">XRT Introduction</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">XRT Developer Build and Test Instructions</a></li>
+</ul>
+<p class="caption"><span class="caption-text">XRT Use Model and Features</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma.main.html">Xilinx Media Accelerator (XMA) Core Library</a></li>
+</ul>
+<p class="caption"><span class="caption-text">XRT API Library</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="xrt.main.html">Xilinx Runtime (XRT) Core Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Kernel Driver</span></p>
+<ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Linux Sys FileSystem Nodes</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#xocl">xocl</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#xclmgmt">xclmgmt</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#zocl">zocl</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tools and Utilities</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
-<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
-<li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Platform Building</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
-<li class="toctree-l1"><a class="reference internal" href="test.html">XRT Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="newdsa-bringup.html">New DSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
-<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Cloud Support</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Debug and Faqs</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma.main.html">Xilinx Media Accelerator (XMA) Core Library</a></li>
 </ul>
 
             
@@ -129,7 +147,7 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+      <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="index.html">Xilinx Runtime</a>
@@ -137,9 +155,10 @@
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
 
 
@@ -183,20 +202,20 @@
             
   <div class="section" id="linux-sys-filesystem-nodes">
 <span id="sysfs-rst"></span><h1>Linux Sys FileSystem Nodes<a class="headerlink" href="#linux-sys-filesystem-nodes" title="Permalink to this headline">¶</a></h1>
-<p><code class="docutils literal"><span class="pre">xocl</span></code> and <code class="docutils literal"><span class="pre">xclmgmt</span></code> drivers expose several <code class="docutils literal"><span class="pre">sysfs</span></code> nodes under
-the <code class="docutils literal"><span class="pre">pci</span></code> device root node. The sysfs nodes are populated by
+<p><code class="docutils literal notranslate"><span class="pre">xocl</span></code> and <code class="docutils literal notranslate"><span class="pre">xclmgmt</span></code> drivers expose several <code class="docutils literal notranslate"><span class="pre">sysfs</span></code> nodes under
+the <code class="docutils literal notranslate"><span class="pre">pci</span></code> device root node. The sysfs nodes are populated by
 platform drivers present in the respective drivers.</p>
 <div class="section" id="xocl">
 <h2>xocl<a class="headerlink" href="#xocl" title="Permalink to this headline">¶</a></h2>
-<p>The <code class="docutils literal"><span class="pre">xocl</span></code> driver exposes various sections of the <code class="docutils literal"><span class="pre">xclbin</span></code> image
-including the <code class="docutils literal"><span class="pre">xclbinuuid</span></code> on <code class="docutils literal"><span class="pre">sysfs</span></code>. This makes it very
-convenient for tools (such as <code class="docutils literal"><span class="pre">xbutil</span></code>) to discover characteristics
-of the image currently loaded on the FPGA. The data layout of <code class="docutils literal"><span class="pre">xclbin</span></code>
-sections are defined in file <code class="docutils literal"><span class="pre">xclbin.h</span></code> which can be found under
-<code class="docutils literal"><span class="pre">runtime/driver/include</span></code> directory. Platform drivers XDMA, ICAP,
+<p>The <code class="docutils literal notranslate"><span class="pre">xocl</span></code> driver exposes various sections of the <code class="docutils literal notranslate"><span class="pre">xclbin</span></code> image
+including the <code class="docutils literal notranslate"><span class="pre">xclbinuuid</span></code> on <code class="docutils literal notranslate"><span class="pre">sysfs</span></code>. This makes it very
+convenient for tools (such as <code class="docutils literal notranslate"><span class="pre">xbutil</span></code>) to discover characteristics
+of the image currently loaded on the FPGA. The data layout of <code class="docutils literal notranslate"><span class="pre">xclbin</span></code>
+sections are defined in file <code class="docutils literal notranslate"><span class="pre">xclbin.h</span></code> which can be found under
+<code class="docutils literal notranslate"><span class="pre">runtime/core/include</span></code> directory. Platform drivers XDMA, ICAP,
 MB Scheduler, Mailbox, XMC, XVC, FeatureROM export their nodes on sysfs.</p>
 <p>Sample output of tree command below:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>dx4300:/&lt;1&gt;devices/pci0000:00/0000:00:15.0&gt;tree -n 0000:04:00.1
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>dx4300:/&lt;1&gt;devices/pci0000:00/0000:00:15.0&gt;tree -n 0000:04:00.1
 0000:04:00.1
 ├── broken_parity_status
 ├── class
@@ -570,15 +589,15 @@ MB Scheduler, Mailbox, XMC, XVC, FeatureROM export their nodes on sysfs.</p>
 </div>
 <div class="section" id="xclmgmt">
 <h2>xclmgmt<a class="headerlink" href="#xclmgmt" title="Permalink to this headline">¶</a></h2>
-<p>The <code class="docutils literal"><span class="pre">xclmgmt</span></code> driver exposes various sections of the <code class="docutils literal"><span class="pre">xclbin</span></code> image
-including the <code class="docutils literal"><span class="pre">xclbinuuid</span></code> on <code class="docutils literal"><span class="pre">sysfs</span></code>. This makes it very
-convenient for tools (such as <code class="docutils literal"><span class="pre">xbutil</span></code>) to discover characteristics
-of the image currently loaded on the FPGA. The data layout of <code class="docutils literal"><span class="pre">xclbin</span></code>
-sections are defined in file <code class="docutils literal"><span class="pre">xclbin.h</span></code> which can be found under
-<code class="docutils literal"><span class="pre">runtime/driver/include</span></code> directory. Platform drivers ICAP, FPGA Manager,
+<p>The <code class="docutils literal notranslate"><span class="pre">xclmgmt</span></code> driver exposes various sections of the <code class="docutils literal notranslate"><span class="pre">xclbin</span></code> image
+including the <code class="docutils literal notranslate"><span class="pre">xclbinuuid</span></code> on <code class="docutils literal notranslate"><span class="pre">sysfs</span></code>. This makes it very
+convenient for tools (such as <code class="docutils literal notranslate"><span class="pre">xbutil</span></code>) to discover characteristics
+of the image currently loaded on the FPGA. The data layout of <code class="docutils literal notranslate"><span class="pre">xclbin</span></code>
+sections are defined in file <code class="docutils literal notranslate"><span class="pre">xclbin.h</span></code> which can be found under
+<code class="docutils literal notranslate"><span class="pre">runtime/core/include</span></code> directory. Platform drivers ICAP, FPGA Manager,
 AXI Firewall, Mailbox, XMC, XVC, FeatureROM export their nodes on sysfs.</p>
 <p>Sample output of tree command below:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>dx4300:/&lt;1&gt;devices/pci0000:00/0000:00:15.0&gt;tree 0000:04:00.0
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>dx4300:/&lt;1&gt;devices/pci0000:00/0000:00:15.0&gt;tree 0000:04:00.0
 0000:04:00.0
 ├── board_name
 ├── broken_parity_status
@@ -1022,15 +1041,15 @@ AXI Firewall, Mailbox, XMC, XVC, FeatureROM export their nodes on sysfs.</p>
 </div>
 <div class="section" id="zocl">
 <h2>zocl<a class="headerlink" href="#zocl" title="Permalink to this headline">¶</a></h2>
-<p>Similar to PCIe drivers <code class="docutils literal"><span class="pre">zocl</span></code> driver used in embedded platforms
-exposes various sections of the <code class="docutils literal"><span class="pre">xclbin</span></code> image
-including the <code class="docutils literal"><span class="pre">xclbinuuid</span></code> on <code class="docutils literal"><span class="pre">sysfs</span></code>. This makes it very
-convenient for tools (such as <code class="docutils literal"><span class="pre">xbutil</span></code>) to discover characteristics
-of the image currently loaded on the FPGA. The data layout of <code class="docutils literal"><span class="pre">xclbin</span></code>
-sections are defined in file <code class="docutils literal"><span class="pre">xclbin.h</span></code> which can be found under
-<code class="docutils literal"><span class="pre">runtime/driver/include</span></code> directory.</p>
+<p>Similar to PCIe drivers <code class="docutils literal notranslate"><span class="pre">zocl</span></code> driver used in embedded platforms
+exposes various sections of the <code class="docutils literal notranslate"><span class="pre">xclbin</span></code> image
+including the <code class="docutils literal notranslate"><span class="pre">xclbinuuid</span></code> on <code class="docutils literal notranslate"><span class="pre">sysfs</span></code>. This makes it very
+convenient for tools (such as <code class="docutils literal notranslate"><span class="pre">xbutil</span></code>) to discover characteristics
+of the image currently loaded on the FPGA. The data layout of <code class="docutils literal notranslate"><span class="pre">xclbin</span></code>
+sections are defined in file <code class="docutils literal notranslate"><span class="pre">xclbin.h</span></code> which can be found under
+<code class="docutils literal notranslate"><span class="pre">runtime/core/include</span></code> directory.</p>
 <p>Sample output of tree command below:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>mpsoc:/sys/bus/platform/devices/amba&gt;tree zyxclmm_drm
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>mpsoc:/sys/bus/platform/devices/amba&gt;tree zyxclmm_drm
 zyxclmm_drm
 ├── connectivity
 ├── debug_ip_layout
@@ -1060,18 +1079,16 @@ zyxclmm_drm
 
 
            </div>
-           <div class="articleComments">
-            
-           </div>
+           
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="tools.html" class="btn btn-neutral float-right" title="Board Tools and Utilities" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="mgmt-ioctl.main.html" class="btn btn-neutral float-right" title="XCLMGMT (PCIe Management Physical Function) Driver Interfaces" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="xocl_ioctl.main.html" class="btn btn-neutral" title="XOCL (PCIe User Physical Function) Driver Interfaces" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="ert.main.html" class="btn btn-neutral float-left" title="Embedded Runtime Library" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -1080,11 +1097,11 @@ zyxclmm_drm
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2019, Xilinx, Inc.
+        &copy; Copyright 2017-2019, Xilinx, Inc
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -1097,36 +1114,15 @@ zyxclmm_drm
   
 
 
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'2019.1',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-
-  
-
-  
-  
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-  
-
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
    
 
 </body>
