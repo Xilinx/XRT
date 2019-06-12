@@ -437,7 +437,7 @@ long load_boot_firmware(struct awsmgmt_dev *lro)
 		printk(KERN_WARNING "Unable to find firmware %s\n", fw_name);
 
 		create_fw_name(fw_name, sizeof(fw_name), lro, "dsabin");
-		printk(KERN_INFO "Try to find firmware %s\n", fw_name);
+		printk(KERN_INFO "Searching for legacy firmware %s\n", fw_name);
 		err = request_firmware(&fw, fw_name, &lro->pci_dev->dev);
 		if (err) {
 			printk(KERN_WARNING "Unable to find firmware %s\n", fw_name);

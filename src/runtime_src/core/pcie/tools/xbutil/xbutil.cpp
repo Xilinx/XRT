@@ -909,26 +909,28 @@ int runShellCmd(const std::string& cmd, std::string& output)
 int xcldev::device::runTestCase(const std::string& exe,
     const std::string& xclbin, std::string& output)
 {
-    std::string dirPath;
+    std::string testCasePath;
     struct stat st;
 
+    std::string devInfoPath = std::string(m_devinfo.mName) + "/test/";
+    std::string xsaTestCasePath = xsaPath + devInfoPath;
+    std::string dsaTestCasePath = dsaPath + devInfoPath;
+
     output.clear();
-    
-    if (stat(xsaPath.c_str(), &st) != 0) {
-        if (stat(dsaPath.c_str(), &st) != 0) {
-            output += "ERROR: Failed to find both ";
-            output += xsaPath.c_str();
+
+    if (stat(xsaTestCasePath.c_str(), &st) != 0) {
+        if (stat(dsaTestCasePath.c_str(), &st) != 0) {
+            output += "ERROR: Failed to find test in ";
+            output += xsaTestCasePath;
             output += " and ";
-            output += dsaPath.c_str();
+            output += dsaTestCasePath;
             return -ENOENT;
         }
-        dirPath = dsaPath;
+        testCasePath = dsaTestCasePath;
     } else {
-        dirPath = xsaPath;
+        testCasePath = xsaTestCasePath;
     }
 
-    std::string testCasePath = dirPath +
-        std::string(m_devinfo.mName) + "/test/";
     std::string exePath = testCasePath + exe;
     std::string xclbinPath = testCasePath + xclbin;
     std::string idxOption;

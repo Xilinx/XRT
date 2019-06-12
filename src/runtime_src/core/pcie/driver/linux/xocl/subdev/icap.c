@@ -1372,7 +1372,7 @@ find_firmware_impl(struct platform_device *pdev, char *fw_name, size_t len,
 		snprintf(fw_name, len, "xilinx/%04x-%04x-%04x-%016llx.%s",
 			vendor, le16_to_cpu(pcidev->device + 1), subdevice,
 			le64_to_cpu(0x0000000000000000), suffix);
-		ICAP_INFO(icap, "try load %s %s", suffix, fw_name);
+		ICAP_INFO(icap, "try load legacy %s %s", suffix, fw_name);
 		err = request_firmware(fw, fw_name, &pcidev->dev);
 	}
 
