@@ -286,7 +286,11 @@ petalinux-config -c rootfs --oldconfig
 # Build package
 echo " * Performing PetaLinux Build (from: ${PWD})"
 echo "petalinux-build"
-petalinux-build 
+
+petalinux-build
+# NASSER for incremental XRT build use
+petalinux-build -c xrt
+petalinux-build -c zocl
 
 cd $ORIGINAL_DIR
 echo " * Copying PetaLinux boot files (from: $PWD)"
@@ -319,11 +323,11 @@ if [ $BUILD_SYSROOT == "Yes" ]; then
   petalinux-build --sdk
   petalinux-package --sysroot -d .
   cd -
-else
-  echo " * Expanding $ORIGINAL_DIR/${PLATFORM_NAME}/images/linux/rootfs.tar.gz"    
-  tar zxf $ORIGINAL_DIR/${PLATFORM_NAME}/images/linux/rootfs.tar.gz 
 fi
 
+echo " * Expanding $ORIGINAL_DIR/${PLATFORM_NAME}/images/linux/rootfs.tar.gz"    
+tar zxf $ORIGINAL_DIR/${PLATFORM_NAME}/images/linux/rootfs.tar.gz
+  
 cd ${ORIGINAL_DIR}/dsa_build
 echo " * Building Platform (from: $PWD)"
 echo "${PATH_TO_XSCT} -sdx ./${PLATFORM_NAME}_pfm.tcl"
