@@ -61,7 +61,7 @@ Still stay in ``meta-user`` directory. Open ``recipes-core/images/petalinux-imag
 Add XRT kernel node in device tree
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-An example of device tree is in ``<XRT>/src/runtime_src/driver/zynq/fragments/xlnk_dts_fragment_mpsoc.dts``. You can attach it to ``project-spec/meta-user/recipes-bsp/device-tree/files/system-user.dtsi`` in your PetaLinux project.
+An example of device tree is in ``<XRT>/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts``. You can attach it to ``project-spec/meta-user/recipes-bsp/device-tree/files/system-user.dtsi`` in your PetaLinux project.
 
 Configure Linux kernel and enable XRT module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

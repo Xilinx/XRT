@@ -17,42 +17,37 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
-  
-  
-    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  
-
-  
-
-  
-        <link rel="index" title="Index"
-              href="genindex.html"/>
-        <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="Xilinx Runtime 2019.1 documentation" href="index.html"/>
-        <link rel="next" title="PCIe Peer-to-Peer Support" href="p2p.html"/>
-        <link rel="prev" title="New DSA Bringup" href="newdsa-bringup.html"/> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Mailbox Subdevice Driver" href="mailbox.main.html" />
+    <link rel="prev" title="New DSA Bringup" href="newdsa-bringup.html" /> 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -90,23 +85,41 @@
               
             
             
-              <p class="caption"><span class="caption-text">Table of Contents</span></p>
-<ul class="current">
+              <p class="caption"><span class="caption-text">XRT Introduction</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">Xilinx Runtime (XRT) Core Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
-<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">XRT Developer Build and Test Instructions</a></li>
+</ul>
+<p class="caption"><span class="caption-text">XRT Use Model and Features</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma.main.html">Xilinx Media Accelerator (XMA) Core Library</a></li>
+</ul>
+<p class="caption"><span class="caption-text">XRT API Library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">Xilinx Runtime (XRT) Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Kernel Driver</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tools and Utilities</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Platform Building</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="newdsa-bringup.html">New DSA Bringup</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Create MPSoC Based Embedded Platforms</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#build-hardware-platform">Build Hardware Platform</a></li>
@@ -115,10 +128,15 @@
 <li class="toctree-l2"><a class="reference internal" href="#make-use-of-platform">Make use of Platform</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Cloud Support</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Debug and Faqs</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma.main.html">Xilinx Media Accelerator (XMA) Core Library</a></li>
 </ul>
 
             
@@ -130,7 +148,7 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+      <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="index.html">Xilinx Runtime</a>
@@ -138,9 +156,10 @@
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
 
 
@@ -188,8 +207,8 @@
 architecture and application context. We provide a few scripts and
 some basic source files as an example to create a custom MPSoC platform.</p>
 <ul class="simple">
-<li><code class="docutils literal"><span class="pre">src/platform/zcu102ng</span></code></li>
-<li><code class="docutils literal"><span class="pre">src/platform/zcu102ng_svm</span></code></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">src/platform/zcu102ng</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">src/platform/zcu102ng_svm</span></code></p></li>
 </ul>
 <p>Before creating platform, make sure to properly set up environment
 for vivado. It takes same procedures to create platform for
@@ -200,12 +219,12 @@ Please read the Hardware Platform section of Xilinx Document UG1146.</p>
 <div class="section" id="build-hardware-platform">
 <h2>Build Hardware Platform<a class="headerlink" href="#build-hardware-platform" title="Permalink to this headline">¶</a></h2>
 <p>To create Hardware Platform, under platform/zcu102ng/</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>vivado -mode batch -notrace -source ./zcu102ng_dsa.tcl
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>vivado -mode batch -notrace -source ./zcu102ng_dsa.tcl
 </pre></div>
 </div>
 <p>This will generate hardware Device Support Archive
-<code class="docutils literal"><span class="pre">platform/zcu102ng/zcu102ng.dsa</span></code> and Hardware Definition File
-<code class="docutils literal"><span class="pre">platform/zcu102ng/zcu102ng_vivado/zcu102ng.hdf</span></code></p>
+<code class="docutils literal notranslate"><span class="pre">platform/zcu102ng/zcu102ng.dsa</span></code> and Hardware Definition File
+<code class="docutils literal notranslate"><span class="pre">platform/zcu102ng/zcu102ng_vivado/zcu102ng.hdf</span></code></p>
 </div>
 <div class="section" id="build-boot-images">
 <span id="id1"></span><h2>Build Boot Images<a class="headerlink" href="#build-boot-images" title="Permalink to this headline">¶</a></h2>
@@ -213,15 +232,15 @@ Please read the Hardware Platform section of Xilinx Document UG1146.</p>
 platform with the Hardware Definition File we created. <a class="reference internal" href="yocto.html#yocto-recipes-for-embedded-flow"><span class="std std-ref">Yocto Recipes For Embedded Flow</span></a>.</p>
 <p>The boot image files required include</p>
 <ul class="simple">
-<li><code class="docutils literal"><span class="pre">image.ub</span></code></li>
-<li><code class="docutils literal"><span class="pre">bl31.elf</span></code></li>
-<li><code class="docutils literal"><span class="pre">fsbl.elf</span></code></li>
-<li><code class="docutils literal"><span class="pre">pmufw.elf</span></code></li>
-<li><code class="docutils literal"><span class="pre">u-boot.elf</span></code></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">image.ub</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bl31.elf</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fsbl.elf</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pmufw.elf</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">u-boot.elf</span></code></p></li>
 </ul>
-<p>Copy image.ub to <code class="docutils literal"><span class="pre">platform/zcu102ng/src/a53/xrt/image/</span></code> and copy other elf
-files to <code class="docutils literal"><span class="pre">platform/zcu102ng/src/boot/</span></code></p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>cp image.ub         platform/zcu102ng/src/a53/xrt/image/image.ub
+<p>Copy image.ub to <code class="docutils literal notranslate"><span class="pre">platform/zcu102ng/src/a53/xrt/image/</span></code> and copy other elf
+files to <code class="docutils literal notranslate"><span class="pre">platform/zcu102ng/src/boot/</span></code></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>cp image.ub         platform/zcu102ng/src/a53/xrt/image/image.ub
 mkdir platform/zcu102ng/src/boot
 cp bl31.elf         platform/zcu102ng/src/boot/bl31.elf
 cp zynqmp_fsbl.elf  platform/zcu102ng/src/boot/fsbl.elf
@@ -233,12 +252,12 @@ cp u-boot.elf       platform/zcu102ng/src/boot/u-boot.elf
 <div class="section" id="build-software-platform">
 <h2>Build Software Platform<a class="headerlink" href="#build-software-platform" title="Permalink to this headline">¶</a></h2>
 <p>To Create Software Platform, under platform/zcu102ng/</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>xsct -sdx ./zcu102ng_pfm.tcl
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xsct -sdx ./zcu102ng_pfm.tcl
 </pre></div>
 </div>
 <p>The created zcu102ng platform will be posted at</p>
 <ul class="simple">
-<li><code class="docutils literal"><span class="pre">platform/zcu102ng/output/zcu102ng/export/zcu102ng</span></code></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">platform/zcu102ng/output/zcu102ng/export/zcu102ng</span></code></p></li>
 </ul>
 </div>
 <div class="section" id="make-use-of-platform">
@@ -246,7 +265,7 @@ cp u-boot.elf       platform/zcu102ng/src/boot/u-boot.elf
 <p>Here is a simple example of how to make use of the customized platform we built.
 Suppose we have a hello world OpenCL application hello.cl, we can use xocc tool
 to build boot images (including BOOT.BIN) on zcu102 board.</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>xocc -c -t hw --platform &lt;PATH_TO_PLATFORM&gt;/zcu102ng.xpfm hello.cl -o hello.xo
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xocc -c -t hw --platform &lt;PATH_TO_PLATFORM&gt;/zcu102ng.xpfm hello.cl -o hello.xo
 xocc -l -t hw --platform &lt;PATH_TO_PLATFORM&gt;/zcu102ng.xpfm hello.xo -o hello.xclbin --sys_config xrt
 </pre></div>
 </div>
@@ -256,18 +275,16 @@ xocc -l -t hw --platform &lt;PATH_TO_PLATFORM&gt;/zcu102ng.xpfm hello.xo -o hell
 
 
            </div>
-           <div class="articleComments">
-            
-           </div>
+           
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="p2p.html" class="btn btn-neutral float-right" title="PCIe Peer-to-Peer Support" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="mailbox.main.html" class="btn btn-neutral float-right" title="Mailbox Subdevice Driver" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="newdsa-bringup.html" class="btn btn-neutral" title="New DSA Bringup" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="newdsa-bringup.html" class="btn btn-neutral float-left" title="New DSA Bringup" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -276,11 +293,11 @@ xocc -l -t hw --platform &lt;PATH_TO_PLATFORM&gt;/zcu102ng.xpfm hello.xo -o hell
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2019, Xilinx, Inc.
+        &copy; Copyright 2017-2019, Xilinx, Inc
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -293,36 +310,15 @@ xocc -l -t hw --platform &lt;PATH_TO_PLATFORM&gt;/zcu102ng.xpfm hello.xo -o hell
   
 
 
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'2019.1',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-
-  
-
-  
-  
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-  
-
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
    
 
 </body>

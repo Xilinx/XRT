@@ -17,42 +17,37 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
-  
-  
-    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  
-
-  
-
-  
-        <link rel="index" title="Index"
-              href="genindex.html"/>
-        <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="Xilinx Runtime 2019.1 documentation" href="index.html"/>
-        <link rel="next" title="System Requirements" href="system_requirements.html"/>
-        <link rel="prev" title="Multi-Process Support" href="multiprocess.html"/> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Xclbin Tools" href="xclbintools.html" />
+    <link rel="prev" title="Board Tools and Utilities" href="tools.html" /> 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -90,33 +85,56 @@
               
             
             
-              <p class="caption"><span class="caption-text">Table of Contents</span></p>
-<ul class="current">
+              <p class="caption"><span class="caption-text">XRT Introduction</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">XRT Developer Build and Test Instructions</a></li>
+</ul>
+<p class="caption"><span class="caption-text">XRT Use Model and Features</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma.main.html">Xilinx Media Accelerator (XMA) Core Library</a></li>
+</ul>
+<p class="caption"><span class="caption-text">XRT API Library</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="xrt.main.html">Xilinx Runtime (XRT) Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Kernel Driver</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tools and Utilities</span></p>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Binary Formats</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#xclbin">xclbin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#feature-rom">Feature ROM</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
-<li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Platform Building</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
-<li class="toctree-l1"><a class="reference internal" href="test.html">XRT Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="newdsa-bringup.html">New DSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
-<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Cloud Support</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Debug and Faqs</span></p>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma.main.html">Xilinx Media Accelerator (XMA) Core Library</a></li>
 </ul>
 
             
@@ -128,7 +146,7 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+      <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="index.html">Xilinx Runtime</a>
@@ -136,9 +154,10 @@
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
 
 
@@ -184,22 +203,22 @@
 <span id="formats-rst"></span><h1>Binary Formats<a class="headerlink" href="#binary-formats" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="xclbin">
 <h2>xclbin<a class="headerlink" href="#xclbin" title="Permalink to this headline">¶</a></h2>
-<p><code class="docutils literal"><span class="pre">xclbin</span></code> container format is defined in file <code class="docutils literal"><span class="pre">xclbin.h</span></code>. Since
-2017.1, tools use <code class="docutils literal"><span class="pre">xclbin2</span></code> format also known as AXLF format. AXLF is
+<p><code class="docutils literal notranslate"><span class="pre">xclbin</span></code> container format is defined in file <code class="docutils literal notranslate"><span class="pre">xclbin.h</span></code>. Since
+2017.1, tools use <code class="docutils literal notranslate"><span class="pre">xclbin2</span></code> format also known as AXLF format. AXLF is
 an extensible, future-proof container of (bitstream/platform) hardware
 as well as software (MPSoC/Microblaze ELF files) design data.  This
 unified container can hold outputs of our hardware compilers (SDAccel
-<code class="docutils literal"><span class="pre">xocc</span></code>) as well as software compilers (processor ELF formats for
+<code class="docutils literal notranslate"><span class="pre">xocc</span></code>) as well as software compilers (processor ELF formats for
 MPSoc/Microblaze). This allows for easier integration of embedded
 processors and SDx on the same device. It also has structures to
 describe the memory topology, acceleration kernel instantiations and
 kernel connectivity for each kernel.</p>
-<p>The compiler generates unique <code class="docutils literal"><span class="pre">xclbin</span></code> file for every design
+<p>The compiler generates unique <code class="docutils literal notranslate"><span class="pre">xclbin</span></code> file for every design
 compiled. The Vivado front-end tools programmatically
-populate this file (layout described in <code class="docutils literal"><span class="pre">driver/include/xclbin.h</span></code>,
+populate this file (layout described in <code class="docutils literal notranslate"><span class="pre">core/include/xclbin.h</span></code>,
 attached) and then the runtime &amp; device drivers read the information and apply
 it accordingly.</p>
-<p>The path to <code class="docutils literal"><span class="pre">xclbin.h</span></code> is <code class="docutils literal"><span class="pre">runtime/driver/include/xclbin.h</span></code> under
+<p>The path to <code class="docutils literal notranslate"><span class="pre">xclbin.h</span></code> is <code class="docutils literal notranslate"><span class="pre">runtime/core/include/xclbin.h</span></code> under
 SDx installation directory.</p>
 </div>
 <div class="section" id="feature-rom">
@@ -207,33 +226,31 @@ SDx installation directory.</p>
 <p>Feature ROM is like a BIOS like table for FPGA which describes key
 properties of the device like its name and features enabled in the
 Shell of the platform. The format for the data in Feature ROM is
-defined in file <code class="docutils literal"><span class="pre">xclfeatures.h</span></code>. It a section of memory mapped BRAM
+defined in file <code class="docutils literal notranslate"><span class="pre">xclfeatures.h</span></code>. It a section of memory mapped BRAM
 memory which can be used for data sharing, error checking,
 functionality discover and optimizations in SDx. The Vivado tools will
 programmatically capture and populate BRAM memory in the platform
 during platform creation time. Runtime components like drivers read it
 and enable functionality in driver and also use the information to
 perform hardware/software compatibility checks.</p>
-<p>The path to <code class="docutils literal"><span class="pre">xclfeatures.h</span></code> is
-<code class="docutils literal"><span class="pre">runtime/driver/include/xclfeatures.h</span></code> under SDx installation
+<p>The path to <code class="docutils literal notranslate"><span class="pre">xclfeatures.h</span></code> is
+<code class="docutils literal notranslate"><span class="pre">runtime/core/include/xclfeatures.h</span></code> under SDx installation
 directory.</p>
 </div>
 </div>
 
 
            </div>
-           <div class="articleComments">
-            
-           </div>
+           
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="system_requirements.html" class="btn btn-neutral float-right" title="System Requirements" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="xclbintools.html" class="btn btn-neutral float-right" title="Xclbin Tools" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="multiprocess.html" class="btn btn-neutral" title="Multi-Process Support" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="tools.html" class="btn btn-neutral float-left" title="Board Tools and Utilities" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -242,11 +259,11 @@ directory.</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2019, Xilinx, Inc.
+        &copy; Copyright 2017-2019, Xilinx, Inc
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -259,36 +276,15 @@ directory.</p>
   
 
 
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'2019.1',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-
-  
-
-  
-  
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-  
-
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
    
 
 </body>

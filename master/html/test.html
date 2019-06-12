@@ -17,42 +17,37 @@
   
 
   
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
 
-  
-  
     
 
   
-
-  
-  
-    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  
-
-  
-
-  
-        <link rel="index" title="Index"
-              href="genindex.html"/>
-        <link rel="search" title="Search" href="search.html"/>
-    <link rel="top" title="Xilinx Runtime 2019.1 documentation" href="index.html"/>
-        <link rel="next" title="New DSA Bringup" href="newdsa-bringup.html"/>
-        <link rel="prev" title="Yocto Recipes For Embedded Flow" href="yocto.html"/> 
-
-  
-  <script src="_static/js/modernizr.min.js"></script>
-
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Execution Model Overview" href="execution-model.html" />
+    <link rel="prev" title="Building and Installing Software Stack" href="build.html" /> 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
-
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search">
+        <div class="wy-side-nav-search" >
           
 
           
@@ -90,22 +85,11 @@
               
             
             
-              <p class="caption"><span class="caption-text">Table of Contents</span></p>
+              <p class="caption"><span class="caption-text">XRT Introduction</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">Xilinx Runtime (XRT) Core Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
-<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
-<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">XRT Developer Build and Test Instructions</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#building-xrt">Building XRT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#running-xrt">Running XRT</a></li>
@@ -113,12 +97,46 @@
 <li class="toctree-l2"><a class="reference internal" href="#unit-testing-xrt">Unit Testing XRT</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="newdsa-bringup.html">New DSA Bringup</a></li>
-<li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
+</ul>
+<p class="caption"><span class="caption-text">XRT Use Model and Features</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">Xilinx Media Accelerator (XMA) Core Library</a></li>
+</ul>
+<p class="caption"><span class="caption-text">XRT API Library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">Xilinx Runtime (XRT) Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Kernel Driver</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tools and Utilities</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Platform Building</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="newdsa-bringup.html">New DSA Bringup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Cloud Support</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Debug and Faqs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
 </ul>
 
             
@@ -130,7 +148,7 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+      <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="index.html">Xilinx Runtime</a>
@@ -138,9 +156,10 @@
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
 
 
@@ -187,10 +206,10 @@
 <p>Switching XRT development work from P4 to Git can be done without much
 downtime provided you use a few scripts we have created:</p>
 <ul class="simple">
-<li><code class="docutils literal"><span class="pre">build.sh</span></code> build script that builds XRT for both Debug and Release profiles.</li>
-<li><code class="docutils literal"><span class="pre">run.sh</span></code> loader script that sets up environment assuming XRT was
-built with <code class="docutils literal"><span class="pre">build.sh</span></code>.</li>
-<li><code class="docutils literal"><span class="pre">board.sh</span></code> harvests sprite <code class="docutils literal"><span class="pre">UNIT_HW</span></code> test cases and runs board tests.</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">build.sh</span></code> build script that builds XRT for both Debug and Release profiles.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">run.sh</span></code> loader script that sets up environment assuming XRT was
+built with <code class="docutils literal notranslate"><span class="pre">build.sh</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">board.sh</span></code> harvests sprite <code class="docutils literal notranslate"><span class="pre">UNIT_HW</span></code> test cases and runs board tests.</p></li>
 </ul>
 <div class="section" id="building-xrt">
 <h2>Building XRT<a class="headerlink" href="#building-xrt" title="Permalink to this headline">¶</a></h2>
@@ -200,14 +219,14 @@ mounted drive that can be accessed from different hosts.  One
 advantage is that you can have your editor run on a host that is not
 used for board testing, since you don’t really want host/driver
 crashes to leave your unsaved edits in limbo.</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>git clone https://github.com/Xilinx/XRT.git
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/Xilinx/XRT.git
 cd XRT/build
 ./build.sh
 </pre></div>
 </div>
-<p><code class="docutils literal"><span class="pre">build.sh</span></code> script builds for both Debug and Release profiles.  It is
+<p><code class="docutils literal notranslate"><span class="pre">build.sh</span></code> script builds for both Debug and Release profiles.  It is
 necessary to use the build script if you intend to use the loader
-script <code class="docutils literal"><span class="pre">run.sh</span></code> and the board testing script <code class="docutils literal"><span class="pre">board.sh</span></code>.</p>
+script <code class="docutils literal notranslate"><span class="pre">run.sh</span></code> and the board testing script <code class="docutils literal notranslate"><span class="pre">board.sh</span></code>.</p>
 <p>For the normal development flow, it is not necessary to build RPM or
 DEB packages.  The loader and test scripts both work by
 setting the environment to point at the binaries created by the build
@@ -215,61 +234,61 @@ script.</p>
 </div>
 <div class="section" id="running-xrt">
 <h2>Running XRT<a class="headerlink" href="#running-xrt" title="Permalink to this headline">¶</a></h2>
-<p>To run your locally built XRT with a sample <code class="docutils literal"><span class="pre">host.exe</span></code> and
-<code class="docutils literal"><span class="pre">kernel.xclbin</span></code>, simply prepend your command line invocation with
-<code class="docutils literal"><span class="pre">XRT/build/run.sh</span></code></p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>&lt;path&gt;/XRT/build/run.sh ./host.exe kernel.xclbin
+<p>To run your locally built XRT with a sample <code class="docutils literal notranslate"><span class="pre">host.exe</span></code> and
+<code class="docutils literal notranslate"><span class="pre">kernel.xclbin</span></code>, simply prepend your command line invocation with
+<code class="docutils literal notranslate"><span class="pre">XRT/build/run.sh</span></code></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>&lt;path&gt;/XRT/build/run.sh ./host.exe kernel.xclbin
 </pre></div>
 </div>
-<p>By default the <code class="docutils literal"><span class="pre">run.sh</span></code> script uses the binaries from the Release
-profile.  In order run with the binaries from Debug profile use <code class="docutils literal"><span class="pre">-dbg</span></code>
+<p>By default the <code class="docutils literal notranslate"><span class="pre">run.sh</span></code> script uses the binaries from the Release
+profile.  In order run with the binaries from Debug profile use <code class="docutils literal notranslate"><span class="pre">-dbg</span></code>
 flag; this way you can even start your favorite debugger by prefixing its
-invocation with <code class="docutils literal"><span class="pre">run.sh</span> <span class="pre">-dbg</span></code></p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>&lt;path&gt;/XRT/build/run.sh -dbg emacs
+invocation with <code class="docutils literal notranslate"><span class="pre">run.sh</span> <span class="pre">-dbg</span></code></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>&lt;path&gt;/XRT/build/run.sh -dbg emacs
 </pre></div>
 </div>
 </div>
 <div class="section" id="testing-xrt">
 <h2>Testing XRT<a class="headerlink" href="#testing-xrt" title="Permalink to this headline">¶</a></h2>
 <p>After making changes to XRT in your Git clone, rebuild with
-<code class="docutils literal"><span class="pre">build.sh</span></code> as explained above, then run a full set of board tests
-using the <code class="docutils literal"><span class="pre">board.sh</span></code> script.  For example:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>mkdir tests
+<code class="docutils literal notranslate"><span class="pre">build.sh</span></code> as explained above, then run a full set of board tests
+using the <code class="docutils literal notranslate"><span class="pre">board.sh</span></code> script.  For example:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>mkdir tests
 cd tests
 &lt;path&gt;/XRT/build/board.sh -board vcu1525 -sync
 </pre></div>
 </div>
-<p>The <code class="docutils literal"><span class="pre">-sync</span></code> option tells the script to rsync tests from the latest
-nightly sprite area.  Without the <code class="docutils literal"><span class="pre">-sync</span></code> option, the board script will
+<p>The <code class="docutils literal notranslate"><span class="pre">-sync</span></code> option tells the script to rsync tests from the latest
+nightly sprite area.  Without the <code class="docutils literal notranslate"><span class="pre">-sync</span></code> option, the board script will
 run all tests that were previously synced into the current directory.</p>
-<p>While tests run a file named <code class="docutils literal"><span class="pre">results.all</span></code> will list the test with
-<code class="docutils literal"><span class="pre">PASS</span></code>/<code class="docutils literal"><span class="pre">FAIL</span></code> keyword.  This file is appended (not removed
+<p>While tests run a file named <code class="docutils literal notranslate"><span class="pre">results.all</span></code> will list the test with
+<code class="docutils literal notranslate"><span class="pre">PASS</span></code>/<code class="docutils literal notranslate"><span class="pre">FAIL</span></code> keyword.  This file is appended (not removed
 between runs).  A complete run should take 5-10 mins for approximately
 70 tests.</p>
 </div>
 <div class="section" id="unit-testing-xrt">
 <h2>Unit Testing XRT<a class="headerlink" href="#unit-testing-xrt" title="Permalink to this headline">¶</a></h2>
 <p>We use GTest to do unit testing. The GTest package is installed by
-running <code class="docutils literal"><span class="pre">XRT/src/runtime_src/tools/scripts/xrtdeps.sh</span></code>.</p>
+running <code class="docutils literal notranslate"><span class="pre">XRT/src/runtime_src/tools/scripts/xrtdeps.sh</span></code>.</p>
 <p>The GTest package on CentOS/RHEL 7.5 provides the GTest libraries
 here:</p>
 <blockquote>
 <div><ul class="simple">
-<li><code class="docutils literal"><span class="pre">/usr/lib64/libgtest.so</span></code></li>
-<li><code class="docutils literal"><span class="pre">/usr/lib64/libgtest_main.so</span></code></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/usr/lib64/libgtest.so</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/usr/lib64/libgtest_main.so</span></code></p></li>
 </ul>
 </div></blockquote>
-<p>In recent versions of Ubuntu, the GTest <code class="docutils literal"><span class="pre">libgtest-dev</span></code> package
+<p>In recent versions of Ubuntu, the GTest <code class="docutils literal notranslate"><span class="pre">libgtest-dev</span></code> package
 provides the compiled libraries in</p>
 <blockquote>
 <div><ul class="simple">
-<li><code class="docutils literal"><span class="pre">/usr/lib/x86_64-linux-gnu/libgtest.a</span></code></li>
-<li><code class="docutils literal"><span class="pre">/usr/lib/x86_64-linux-gnu/libgtest_main.a</span></code></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/usr/lib/x86_64-linux-gnu/libgtest.a</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/usr/lib/x86_64-linux-gnu/libgtest_main.a</span></code></p></li>
 </ul>
 </div></blockquote>
 <p>However, the GTest package on Ubuntu up to 18.04 provides source only!
 So, to use GTest on older Ubuntu versions, use:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>cd /usr/src/gtest
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>cd /usr/src/gtest
 sudo cmake CMakeLists.txt
 sudo make
 cd /usr/lib
@@ -282,14 +301,14 @@ ls *gtest*
 <p>This will add GTest static library symbolic links here:</p>
 <blockquote>
 <div><ul class="simple">
-<li><code class="docutils literal"><span class="pre">/usr/lib/libgtest.a</span></code></li>
-<li><code class="docutils literal"><span class="pre">/usr/lib/libgtest_main.a</span></code></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/usr/lib/libgtest.a</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/usr/lib/libgtest_main.a</span></code></p></li>
 </ul>
 </div></blockquote>
 <p>CMake will handle linking, finding etc. for you.</p>
-<p>To add GTest support to a <code class="docutils literal"><span class="pre">CMakeLists.txt</span></code> use the following, and this is using
-an example executable called <code class="docutils literal"><span class="pre">xclbintest</span></code>:</p>
-<div class="highlight-none"><div class="highlight"><pre><span></span>find_package(GTest)
+<p>To add GTest support to a <code class="docutils literal notranslate"><span class="pre">CMakeLists.txt</span></code> use the following, and this is using
+an example executable called <code class="docutils literal notranslate"><span class="pre">xclbintest</span></code>:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>find_package(GTest)
 if (GTEST_FOUND)
   enable_testing()
   message (STATUS &quot;GTest include dirs: &#39;${GTEST_INCLUDE_DIRS}&#39;&quot;)
@@ -307,18 +326,16 @@ endif()
 
 
            </div>
-           <div class="articleComments">
-            
-           </div>
+           
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="newdsa-bringup.html" class="btn btn-neutral float-right" title="New DSA Bringup" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="execution-model.html" class="btn btn-neutral float-right" title="Execution Model Overview" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="yocto.html" class="btn btn-neutral" title="Yocto Recipes For Embedded Flow" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="build.html" class="btn btn-neutral float-left" title="Building and Installing Software Stack" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -327,11 +344,11 @@ endif()
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2017-2019, Xilinx, Inc.
+        &copy; Copyright 2017-2019, Xilinx, Inc
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -344,36 +361,15 @@ endif()
   
 
 
-  
-
-    <script type="text/javascript">
-        var DOCUMENTATION_OPTIONS = {
-            URL_ROOT:'./',
-            VERSION:'2019.1',
-            COLLAPSE_INDEX:false,
-            FILE_SUFFIX:'.html',
-            HAS_SOURCE:  true,
-            SOURCELINK_SUFFIX: '.txt'
-        };
-    </script>
-      <script type="text/javascript" src="_static/jquery.js"></script>
-      <script type="text/javascript" src="_static/underscore.js"></script>
-      <script type="text/javascript" src="_static/doctools.js"></script>
-
-  
-
-  
-  
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-  
-
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          SphinxRtdTheme.Navigation.enable(true);
       });
   </script>
+
+  
+  
+    
    
 
 </body>
