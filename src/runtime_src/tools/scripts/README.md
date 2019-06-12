@@ -48,7 +48,10 @@ An example config.sh file is src/platform/zcu102ng/config.sh.
 The PetaLinux project is by default created from '--template zynqMP'. The config.sh allow platform to select template(zynqMP/zynq).
 If a BSP is needed, use --bsp/-b option to specify BSP file.
 
-> NOTE: Don't move this script to another place. It uses relative path in XRT repository.
+Before petalinux-build, a pre\_build\_hook allow you to do other changes in PetaLinux project, such as apply patchs.
+After petalinux-build, a post\_build\_hook allow you to do other things you need, such as create BOOT.BIN.
+
+> NOTE: Don't move this script to another place. It uses relative path in XRT repository. To make it easy of used, you could create a symbol link for this script in another place.
 
 For example:
 ```bash

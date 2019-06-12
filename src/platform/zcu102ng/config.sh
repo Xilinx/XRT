@@ -8,6 +8,8 @@
 #	config_dts      -- configure system user device tree.
 #	install_recipes -- install recipes to petalinux.
 #	update_append   -- update recipes-core bbappend to add packages.
+#	pre_build_hook  -- just before petalinux-build
+#	post_build_hook -- just after petalinux-build
 
 THIS_CONFIG_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
@@ -86,5 +88,23 @@ config_dts()
 #	echo 'IMAGE_INSTALL_append = " zocl"'               >> $BBAPPEND
 #	echo 'IMAGE_INSTALL_append = " opencl-headers-dev"' >> $BBAPPEND
 #	echo 'IMAGE_INSTALL_append = " opencl-clhpp-dev"'   >> $BBAPPEND
+#}
+
+# The first argument is the petalinux project path
+#  pre_build_hook <PETALINUX_PROJECT_DIR>
+#
+#pre_build_hook()
+#{
+#	PETA_DIR=$1
+#	# Nothing needs to do
+#}
+
+# The first argument is the petalinux project path
+#  post_build_hook <PETALINUX_PROJECT_DIR>
+#
+#post_build_hook()
+#{
+#	PETA_DIR=$1
+#	# Nothing needs to do
 #}
 

@@ -99,6 +99,19 @@ update_append()
 	echo 'IMAGE_INSTALL_append = " opencl-headers-dev"' >> $BBAPPEND
 	echo 'IMAGE_INSTALL_append = " opencl-clhpp-dev"'   >> $BBAPPEND
 }
+
+pre_build_hook()
+{
+	PETA_DIR=$1
+	# Nothing needs to do
+}
+
+post_build_hook()
+{
+	PETA_DIR=$1
+	# Nothing needs to do
+}
+
 # --- End internal functions
 
 SAVED_OPTIONS=$(set +o)
@@ -108,7 +121,10 @@ set +x
 # Error on non-zero exit code, by default:
 set -e
 
-THIS_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+# Get real script by read symbol link
+THIS_SCRIPT=`readlink -f ${BASH_SOURCE[0]}`
+
+THIS_SCRIPT_DIR="$( cd "$( dirname "${THIS_SCRIPT}" )" >/dev/null 2>&1 && pwd )"
 
 PROGRAM=`basename $0`
 PATH_TO_DSA=""
@@ -198,7 +214,6 @@ fi
 echo "** START [${BASH_SOURCE[0]}] **"
 echo " PETALINUX: $PETALINUX"
 echo " petalinux-create option: $PETA_CREATE_OPT"
-echo " Global device tree: $GLOB_DTS"
 echo ""
 
 if [ ! -d $PETALINUX_NAME ]; then
@@ -252,9 +267,13 @@ cp ../configs/rootfs_config{,.orig}
 config_rootfs ../configs/rootfs_config
 petalinux-config -c rootfs --oldconfig
 
+pre_build_hook $ORIGINAL_DIR/$PETALINUX_NAME
+
 # Build package
 echo " * Performing PetaLinux Build (from: ${PWD})"
 petalinux-build
+
+post_build_hook $ORIGINAL_DIR/$PETALINUX_NAME
 
 cd $ORIGINAL_DIR
 
