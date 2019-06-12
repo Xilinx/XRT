@@ -915,14 +915,16 @@ int xcldev::device::runTestCase(const std::string& exe,
     output.clear();
     
     if (stat(xsaPath.c_str(), &st) != 0) {
-      if (stat(dsaPath.c_str(), &st) != 0) {
-        output += "ERROR: Failed to find ";
-        output += dsaPath.c_str();
-        return -ENOENT;
-      }
-      dirPath = dsaPath;
+        if (stat(dsaPath.c_str(), &st) != 0) {
+            output += "ERROR: Failed to find both ";
+            output += xsaPath.c_str();
+            output += " and ";
+            output += dsaPath.c_str();
+            return -ENOENT;
+        }
+        dirPath = dsaPath;
     } else {
-      dirPath = xsaPath;
+        dirPath = xsaPath;
     }
 
     std::string testCasePath = dirPath +

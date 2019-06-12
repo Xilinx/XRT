@@ -1343,7 +1343,7 @@ static int alloc_and_get_axlf_section(struct icap *icap,
 }
 
 static long
-find_firmware(struct platform_device *pdev, char *fw_name, size_t len,
+find_firmware_impl(struct platform_device *pdev, char *fw_name, size_t len,
 	u16 deviceid, const struct firmware **fw, char *suffix)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
@@ -1380,6 +1380,19 @@ find_firmware(struct platform_device *pdev, char *fw_name, size_t len,
 		ICAP_ERR(icap, "unable to find firmware of %s", suffix);
 
 	return err;
+}
+
+static long
+find_firmware(struct platform_device *pdev, char *fw_name, size_t len,
+	u16 deviceid, const struct firmware **fw)
+{
+	// try xsabin first, then dsabin
+	if (find_firmware_impl(pdev, fw_name, len, deviceid, fw, "xsabin")) {
+		return find_firmware_impl(pdev, fw_name, len, deviceid, fw,
+			"dsabin");
+	}
+
+	return 0;
 }
 
 static int icap_download_boot_firmware(struct platform_device *pdev)
@@ -1424,13 +1437,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 			deviceid = pcidev_user->device;
 	}
 
-	err = find_firmware(pdev, fw_name, sizeof(fw_name), 
-		deviceid, &fw, "xsabin");
-	if (err) {
-		err = find_firmware(pdev, fw_name, sizeof(fw_name), 
-			deviceid, &fw, "dsabin");
-	}
-
+	err = find_firmware(pdev, fw_name, sizeof(fw_name), deviceid, &fw);
 	if (err) {
 		/* Give up on finding xsabin and dsabin. */
 		ICAP_ERR(icap, "unable to find firmware, giving up");
