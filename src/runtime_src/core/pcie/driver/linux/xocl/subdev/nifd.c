@@ -684,7 +684,7 @@ static int nifd_remove(struct platform_device *pdev)
 }
 
 struct platform_device_id nifd_id_table[] = {
-    {XOCL_NIFD_PRI, 0},
+    {XOCL_DEVNAME(XOCL_NIFD_PRI), 0},
     {},
 };
 
@@ -692,7 +692,7 @@ static struct platform_driver nifd_driver = {
     .probe = nifd_probe,
     .remove = nifd_remove,
     .driver = {
-        .name = NIFD_DEV_NAME,
+        .name = XOCL_DEVNAME(NIFD_DEV_NAME),
     },
     .id_table = nifd_id_table,
 };
