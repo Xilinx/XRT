@@ -138,6 +138,16 @@ is_ap_ctrl_chain(key k, const std::string& deviceName, const std::string& cu);
 namespace device {
 
 using key = const xocl::device*;
+
+struct ts2mm_info
+{
+  xrt::hal::BufferObjectHandle bo_handle;
+  uint64_t bo_size;
+  uint64_t ctrl_addr;
+  bool is_active = false;
+  uint64_t read_count;
+};
+
 struct data
 {
   bool mPerformingFlush = false;
@@ -150,6 +160,7 @@ struct data
   std::chrono::steady_clock::time_point mLastCountersSampleTime;
   std::chrono::steady_clock::time_point mLastTraceTrainingTime[XCL_PERF_MON_TOTAL_PROFILE];
   DeviceIntf mDeviceIntf;
+  ts2mm_info traceinfo;
 };
 
 void

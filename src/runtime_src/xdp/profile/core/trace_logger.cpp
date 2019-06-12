@@ -492,12 +492,17 @@ namespace xdp {
     writeTimelineTrace(traceTime, commandString, "", eventString, dependString);
   }
 
+   void TraceLogger::parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& traceVector)
+  {
+    mTraceParserHandle->parseTraceBuf(buf, size, traceVector);
+  }
+
   // ***************************************************************************
   // Log device trace
   // ***************************************************************************
 
   void TraceLogger::logDeviceTrace(std::string deviceName, std::string binaryName,
-      xclPerfMonType type, xclTraceResultsVector& traceVector) {
+      xclPerfMonType type, xclTraceResultsVector& traceVector, bool endLog) {
     auto tp = mTraceParserHandle;
     if (tp == NULL || traceVector.mLength == 0)
       return;
@@ -505,6 +510,8 @@ namespace xdp {
     std::lock_guard<std::mutex> lock(mLogMutex);
     TraceParser::TraceResultVector resultVector;
     tp->logTrace(deviceName, type, traceVector, resultVector);
+    if (endLog)
+      tp->endLogTrace(deviceName, type, resultVector);
 
     if (resultVector.empty())
       return;

@@ -17,7 +17,9 @@
 #include "xocl_profile.h"
 #include "ocl_profiler.h"
 #include "xdp/profile/config.h"
+#include "xrt/device/hal.h"
 #include "xclbin.h"
+#include <sys/mman.h>
 
 namespace xdp { namespace xoclp {
 
@@ -336,7 +338,7 @@ start_device_counters(key k, xclPerfMonType type)
       if (device->is_active()) {
         ret |= device::startCounters(device,type);
         // TODO: figure out why we need to start trace here for counters to always work (12/14/15, schuey)
-        ret |= device::startTrace(device,type, 1);
+        // ret |= device::startTrace(device,type, 1);
       }
     }
   }
@@ -482,6 +484,116 @@ writeHostEvent(key k, xclPerfMonEventType type, xclPerfMonEventID id)
   return CL_SUCCESS;
 }
 
+#define TS2MM_COUNT_LOW         0x10
+#define TS2MM_COUNT_HIGH        0x14
+#define TS2MM_RST               0x1c
+#define TS2MM_WRITE_OFFSET_LOW  0x2c
+#define TS2MM_WRITE_OFFSET_HIGH 0x30
+#define TS2MM_WRITTEN_LOW       0x38
+#define TS2MM_WRITTEN_HIGH      0x3c
+#define TS2MM_CMD_START         0x1
+
+void print_s2mm_status(key k, uint64_t addr)
+{
+  auto device = k;
+  auto xdevice = device->get_xrt_device();
+  uint32_t reg_read = 0;
+  std::cout <<"--------------TRACE DMA STATUS-------------" << std::endl;
+  xdevice->read_register(addr, &reg_read, 4);
+  std::cout << "INFO Trace dma control reg status : " << std::hex << reg_read << std::endl;
+  xdevice->read_register(addr + TS2MM_COUNT_LOW, &reg_read, 4);
+  std::cout << "INFO Trace dma count status : " << reg_read << std::endl;
+  xdevice->read_register(addr + TS2MM_WRITE_OFFSET_LOW, &reg_read, 4);
+  std::cout << "INFO Trace low write offset : " << reg_read << std::endl;
+  xdevice->read_register(addr + TS2MM_WRITE_OFFSET_HIGH, &reg_read, 4);
+  std::cout << "INFO Trace high write offset : " << reg_read << std::endl;
+  xdevice->read_register(addr + TS2MM_WRITTEN_LOW, &reg_read, 4);
+  std::cout << "INFO Trace written low : " << reg_read << std::endl;
+  xdevice->read_register(addr + TS2MM_WRITTEN_HIGH, &reg_read, 4);
+  std::cout << "INFO Trace written high: " << reg_read << std::dec << std::endl;
+}
+
+void update_ts2mm(key k, ts2mm_info& info) {
+  auto device = k;
+  auto xdevice = device->get_xrt_device();
+  uint32_t reg_read = 0;
+  auto addr = info.ctrl_addr;
+  std::cout << "TDMA Address :" << addr << std::endl;
+  xdevice->read_register(addr + TS2MM_WRITTEN_LOW, &reg_read, 4);
+  std::cout << "TDMA written low : " << reg_read << std::endl;
+  info.read_count = static_cast<uint64_t>(reg_read);
+  xdevice->read_register(addr + TS2MM_WRITTEN_HIGH, &reg_read, 4);
+  std::cout << "TDMA written high : " << reg_read << std::endl;
+  info.read_count |= static_cast<uint64_t>(reg_read) << 32;
+  xdevice->read_register(addr, &reg_read, 4);
+  info.is_active = reg_read & TS2MM_CMD_START;
+}
+
+void init_trace_offload(key k, uint64_t bytes, ts2mm_info& info)
+{
+  uint64_t addr = 0x1810000;
+  auto device = k;
+  auto xdevice = device->get_xrt_device();
+
+  auto buf_handle = xdevice->alloc(bytes, xrt::hal::device::Domain::XRT_DEVICE_RAM, 0, nullptr);
+  // The buffer needs to be initialized because of an xrt bug
+  xdevice->sync(buf_handle, bytes, 0, xrt::hal::device::direction::HOST2DEVICE, false);
+  info.bo_handle = buf_handle;
+  info.bo_size = bytes;
+  uint32_t reg_write = 0;
+  update_ts2mm(k, info);
+  // Reset
+  if (info.is_active) {
+    std::cout << "..Reset DMA.." << std::endl;
+    reg_write = 0x1;
+    xdevice->write_register(addr + TS2MM_RST, &reg_write, 4);
+    reg_write = 0x0;
+    xdevice->write_register(addr + TS2MM_RST, &reg_write, 4);
+  }
+  // Offload Offset
+  uint64_t bufaddr = xdevice->getDeviceAddr(buf_handle);
+  std::cout << "INFO BO Address : 0x" << std::hex << bufaddr << std::dec << std::endl;
+  reg_write = static_cast<uint32_t>(bufaddr);
+  xdevice->write_register(addr + TS2MM_WRITE_OFFSET_LOW, &reg_write, 4);
+  reg_write = static_cast<uint32_t>(bufaddr >> 32);
+  xdevice->write_register(addr + TS2MM_WRITE_OFFSET_HIGH, &reg_write, 4);
+  auto count = bytes / 8;
+  reg_write = static_cast<uint32_t>(count);
+  xdevice->write_register(addr + TS2MM_COUNT_LOW, &reg_write, 4);
+  reg_write = static_cast<uint32_t>(count >> 32);
+  xdevice->write_register(addr + TS2MM_COUNT_HIGH, &reg_write, 4);
+  // AP_START
+  reg_write = TS2MM_CMD_START;
+  xdevice->write_register(addr, &reg_write, 4);
+  print_s2mm_status(k, addr);
+}
+
+void* read_trace(key k, uint64_t offset, uint64_t bytes, const ts2mm_info& info) {
+  auto device = k;
+  auto xdevice = device->get_xrt_device();
+  auto buf_handle = info.bo_handle;
+
+  if(!buf_handle || bytes > info.bo_size)
+    return nullptr;
+  void* space = xdevice->map(buf_handle);
+  auto event = xdevice->sync(buf_handle, bytes, offset, xrt::hal::device::direction::DEVICE2HOST, false);
+  auto retaddr = static_cast<char*>(space) + offset;
+  return retaddr;
+}
+
+void end_trace(key k, ts2mm_info& info) {
+  auto device = k;
+  auto xdevice = device->get_xrt_device();
+
+  // Unmap isn't automatic
+  if(!info.bo_handle)
+    return;
+  void* space = xdevice->map(info.bo_handle);
+  munmap(space, info.bo_size);
+  xdevice->free(info.bo_handle);
+  info.bo_handle = nullptr;
+}
+
 cl_int
 startTrace(key k, xclPerfMonType type, size_t numComputeUnits)
 {
@@ -490,6 +602,14 @@ startTrace(key k, xclPerfMonType type, size_t numComputeUnits)
   auto data = get_data(k);
   auto profiler = OCLProfiler::Instance();
   auto profileMgr = profiler->getProfileManager();
+
+  static bool called = false;
+  if (type == XCL_PERF_MON_MEMORY && !called) {
+    data->traceinfo.ctrl_addr = 0x1810000;
+    init_trace_offload(k, 0x4FFFFFFF, data->traceinfo);
+    std::cout << "INFO configuring dma " << std::endl;
+    called = true;
+  }
 
   // Since clock training is performed in mStartTrace, let's record this time
   data->mLastTraceTrainingTime[type] = std::chrono::steady_clock::now();
@@ -527,7 +647,9 @@ cl_int
 stopTrace(key k, xclPerfMonType type)
 {
   auto device = k;
+  auto data = get_data(k);
   device->get_xrt_device()->stopTrace(type);
+  end_trace(k, data->traceinfo);
   return CL_SUCCESS;
 }
 
@@ -650,6 +772,33 @@ logTrace(key k, xclPerfMonType type, bool forceRead)
       if (OCLProfiler::Instance()->getPlugin()->getFlowMode() != xdp::RTUtil::HW_EM)
         break;
     }
+  }
+
+  uint64_t chunksize = MAX_TRACE_NUMBER_SAMPLES * 8;
+  update_ts2mm(k, data->traceinfo);
+  uint64_t total_bytes = data->traceinfo.read_count * 8;
+  std::cout << "Data written by TDMA : " << total_bytes << std::endl;
+  uint64_t space = 0;
+  bool endLog = false;
+
+  while (space < total_bytes) {
+    auto  read_bytes = (space + chunksize > total_bytes) ? total_bytes - space : chunksize;
+    if (space + chunksize > total_bytes) {
+      read_bytes = total_bytes - space;
+      endLog = true;
+    } else {
+      read_bytes = chunksize;
+    }
+    auto tracebuf = read_trace(k, space, read_bytes, data->traceinfo);
+    if (tracebuf) {
+      std::string device_name = device->get_unique_name();
+      std::string binary_name = "binary";
+      OCLProfiler::Instance()->getProfileManager()->parseTraceBuf(tracebuf, read_bytes, data->mTraceVector);
+      if (data->mTraceVector.mLength)
+        OCLProfiler::Instance()->getProfileManager()->logDeviceTrace(device_name, binary_name, type, data->mTraceVector, endLog);
+      data->mTraceVector = {};
+    }
+    space += chunksize;
   }
 
   if (forceRead)

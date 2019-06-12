@@ -80,9 +80,12 @@ namespace xdp {
         mGlobalMemoryBitWidth = bitWidth;
       }
 
+      void parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& traceVector);
       // log trace results
       void logTrace(std::string& deviceName, xclPerfMonType type,
           xclTraceResultsVector& traceVector, TraceResultVector& resultVector);
+      void endLogTrace(std::string& deviceName, xclPerfMonType type,
+          TraceResultVector& resultVector);
       void logTraceHWEmu(std::string& deviceName,
           xclTraceResultsVector& traceVector, TraceResultVector& resultVector);
 
@@ -148,6 +151,10 @@ namespace xdp {
       std::list<uint64_t> mStreamStallStartsHostTime[XSSPM_MAX_NUMBER_SLOTS];
       std::list<uint64_t> mStreamStarveStartsHostTime[XSSPM_MAX_NUMBER_SLOTS];
       std::list<uint64_t> mAccelMonCuStarts[XSAM_MAX_NUMBER_SLOTS];
+
+    private:
+      uint64_t mPacketFirstTs = 0; 
+      bool mclockTrainingdone = false;
 
     private:
       XDPPluginI* mPluginHandle;
