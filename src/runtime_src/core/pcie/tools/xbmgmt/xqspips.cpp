@@ -39,36 +39,38 @@
 /*
  * The following constants define the commands which may be sent to the Flash device.
  */
-#define WRITE_STATUS_CMD	        0x01
-#define WRITE_CMD			        0x02
-#define READ_CMD			        0x03
-#define WRITE_DISABLE_CMD	        0x04
-#define READ_STATUS_CMD		        0x05
-#define WRITE_ENABLE_CMD	        0x06
-#define FAST_READ_CMD		        0x0B
-#define FAST_READ_CMD_4B	        0x0C
-#define READ_CMD_4B		            0x13
-#define BANK_REG_RD			        0x16
-#define BANK_REG_WR			        0x17
-#define EXIT_4B_ADDR_MODE_ISSI	    0x29
+#define WRITE_STATUS_CMD            0x01
+#define WRITE_CMD                   0x02
+#define READ_CMD                    0x03
+#define WRITE_DISABLE_CMD           0x04
+#define READ_STATUS_CMD             0x05
+#define WRITE_ENABLE_CMD            0x06
+#define FAST_READ_CMD               0x0B
+#define FAST_READ_CMD_4B            0x0C
+#define WRITE_4B_CMD                0x12
+#define READ_CMD_4B                 0x13
+#define BANK_REG_RD                 0x16
+#define BANK_REG_WR                 0x17
+#define EXIT_4B_ADDR_MODE_ISSI      0x29
 #define QUAD_WRITE_CMD              0x32
-#define READ_CONFIG_CMD		        0x35
-#define DUAL_READ_CMD		        0x3B
+#define READ_CONFIG_CMD             0x35
+#define DUAL_READ_CMD               0x3B
 #define DUAL_READ_CMD_4B            0x3C
-#define VOLATILE_WRITE_ENABLE_CMD	0x50
-#define QUAD_READ_CMD		        0x6B
-#define QUAD_READ_CMD_4B	        0x6C
-#define READ_FLAG_STATUS_CMD	    0x70
-#define READ_ID				        0x9F
-#define ENTER_4B_ADDR_MODE	        0xB7
-#define	DIE_ERASE_CMD		        0xC4
+#define VOLATILE_WRITE_ENABLE_CMD   0x50
+#define QUAD_READ_CMD               0x6B
+#define QUAD_READ_CMD_4B            0x6C
+#define READ_FLAG_STATUS_CMD        0x70
+#define READ_ID                     0x9F
+#define ENTER_4B_ADDR_MODE          0xB7
+#define DIE_ERASE_CMD               0xC4
 /* Bank register is called Extended Address Register in Micron */
-#define EXTADD_REG_WR		        0xC5
-#define BULK_ERASE_CMD		        0xC7
-#define EXTADD_REG_RD		        0xC8
+#define EXTADD_REG_WR               0xC5
+#define BULK_ERASE_CMD              0xC7
+#define EXTADD_REG_RD               0xC8
 #define FOURKB_SUBSECTOR_ERASE_CMD  0x20
 #define SEC_ERASE_CMD               0xD8
-#define EXIT_4B_ADDR_MODE	        0xE9
+#define SEC_4B_ERASE_CMD            0xDC
+#define EXIT_4B_ADDR_MODE           0xE9
 
 #define IDCODE_READ_BYTES               6
 #define WRITE_ENABLE_BYTES              1 /* Write Enable bytes */
@@ -77,8 +79,8 @@
 #define STATUS_WRITE_BYTES              2 /* Status write bytes count */
 
 #define FLASH_SR_BUSY_MASK          0x01
-#define FOURKB_SUBSECTOR_SIZE		0x1000
-#define SECTOR_SIZE		            0x10000
+#define FOURKB_SUBSECTOR_SIZE       0x1000
+#define SECTOR_SIZE                 0x10000
 
 #define ENTER_4B    1
 #define EXIT_4B     0
@@ -116,16 +118,16 @@
 #define XQSPIPSU_CFG_CLK_PHA_MASK                   0X00000004U
 #define XQSPIPSU_CFG_CLK_POL_MASK                   0X00000002U
 
-#define XQSPIPSU_GENFIFO_IMM_DATA_MASK	            0x000FFU
-#define XQSPIPSU_GENFIFO_DATA_XFER	                0x00100U
-#define XQSPIPSU_GENFIFO_EXP		                0x00200U
-#define XQSPIPSU_GENFIFO_EXP_START	                0x100U
-#define XQSPIPSU_GENFIFO_MODE_MASK	                0x00C00U	/* And with ~MASK first */
-#define XQSPIPSU_GENFIFO_BUS_MASK	                0x0C000U	/* And with ~MASK first */
-#define XQSPIPSU_GENFIFO_TX		                    0x10000U	/* inverse is zero pump */
-#define XQSPIPSU_GENFIFO_RX		                    0x20000U	/* inverse is RX discard */
-#define XQSPIPSU_GENFIFO_STRIPE		                0x40000U
-#define XQSPIPSU_GENFIFO_POLL		                0x80000U
+#define XQSPIPSU_GENFIFO_IMM_DATA_MASK              0x000FFU
+#define XQSPIPSU_GENFIFO_DATA_XFER                  0x00100U
+#define XQSPIPSU_GENFIFO_EXP                        0x00200U
+#define XQSPIPSU_GENFIFO_EXP_START                  0x100U
+#define XQSPIPSU_GENFIFO_MODE_MASK                  0x00C00U    /* And with ~MASK first */
+#define XQSPIPSU_GENFIFO_BUS_MASK                   0x0C000U    /* And with ~MASK first */
+#define XQSPIPSU_GENFIFO_TX                         0x10000U    /* inverse is zero pump */
+#define XQSPIPSU_GENFIFO_RX                         0x20000U    /* inverse is RX discard */
+#define XQSPIPSU_GENFIFO_STRIPE                     0x40000U
+#define XQSPIPSU_GENFIFO_POLL                       0x80000U
 
 #define XQSPIPSU_ISR_WR_TO_CLR_MASK                 0X00000002U
 #define XQSPIPSU_ISR_POLL_TIME_EXPIRE_MASK          0X00000002U
@@ -152,17 +154,17 @@
 #define CFG_BAUD_RATE_DIV_128                       0X00000030U
 #define CFG_BAUD_RATE_DIV_256                       0X00000038U
 
-#define XQSPIPSU_GENFIFO_CS_LOWER	                0x01000U
-#define XQSPIPSU_GENFIFO_CS_UPPER	                0x02000U
-#define XQSPIPSU_GENFIFO_CS_BOTH	                0x03000U	/* inverse is reserved */
-#define XQSPIPSU_GENFIFO_BUS_LOWER	                0x04000U
-#define XQSPIPSU_GENFIFO_BUS_UPPER	                0x08000U
-#define XQSPIPSU_GENFIFO_BUS_BOTH	                0x0C000U	/* inverse is no bus */
-#define XQSPIPSU_GENFIFO_MODE_SPI	                0x00400U
-#define XQSPIPSU_GENFIFO_MODE_DUALSPI	            0x00800U
-#define XQSPIPSU_GENFIFO_MODE_QUADSPI	            0x00C00U
-#define XQSPIPSU_GENFIFO_CS_SETUP	                0x05U
-#define XQSPIPSU_GENFIFO_CS_HOLD	                0x04U
+#define XQSPIPSU_GENFIFO_CS_LOWER                   0x01000U
+#define XQSPIPSU_GENFIFO_CS_UPPER                   0x02000U
+#define XQSPIPSU_GENFIFO_CS_BOTH                    0x03000U    /* inverse is reserved */
+#define XQSPIPSU_GENFIFO_BUS_LOWER                  0x04000U
+#define XQSPIPSU_GENFIFO_BUS_UPPER                  0x08000U
+#define XQSPIPSU_GENFIFO_BUS_BOTH                   0x0C000U    /* inverse is no bus */
+#define XQSPIPSU_GENFIFO_MODE_SPI                   0x00400U
+#define XQSPIPSU_GENFIFO_MODE_DUALSPI               0x00800U
+#define XQSPIPSU_GENFIFO_MODE_QUADSPI               0x00C00U
+#define XQSPIPSU_GENFIFO_CS_SETUP                   0x05U
+#define XQSPIPSU_GENFIFO_CS_HOLD                    0x04U
 #define XQSPIPSU_TX_FIFO_THRESHOLD_RESET_VAL        0X00000001U
 #define XQSPIPSU_RX_FIFO_THRESHOLD_RESET_VAL        0X00000001U
 #define XQSPIPSU_GEN_FIFO_THRESHOLD_RESET_VAL       0X00000010U
@@ -185,13 +187,13 @@
 #define is_GQSPI_Enable()               XQSpiPS_ReadReg(GQSPI_EN_OFFSET)
 #define is_GQSPI_Mode()                 XQSpiPS_ReadReg(GQSPI_SEL_OFFSET)
 
-#define XQSPIPSU_MSG_FLAG_STRIPE	    0x1U
-#define XQSPIPSU_MSG_FLAG_RX		    0x2U
-#define XQSPIPSU_MSG_FLAG_TX		    0x4U
+#define XQSPIPSU_MSG_FLAG_STRIPE        0x1U
+#define XQSPIPSU_MSG_FLAG_RX            0x2U
+#define XQSPIPSU_MSG_FLAG_TX            0x4U
 
 #define XQSPIPSU_SELECT_MODE_SPI        0x1U
-#define XQSPIPSU_SELECT_MODE_DUALSPI	0x2U
-#define XQSPIPSU_SELECT_MODE_QUADSPI	0x4U
+#define XQSPIPSU_SELECT_MODE_DUALSPI    0x2U
+#define XQSPIPSU_SELECT_MODE_QUADSPI    0x4U
 
 #define printHEX(RegName, RegValue) \
 do { \
@@ -343,7 +345,6 @@ int XQSPIPS_Flasher::xclUpgradeFirmware(std::istream& binStream)
     int pages = 0;
     unsigned addr = 0;
     unsigned size = 0;
-    const timespec req = {0, 20000};
     int beatCount = 0;
     int mismatched = 0;
 
@@ -381,7 +382,8 @@ int XQSPIPS_Flasher::xclUpgradeFirmware(std::istream& binStream)
 
     // Sectoer size is defined by SECTOR_SIZE
     std::cout << "Erasing flash" << std::flush;
-    eraseSector(0, total_size);
+    //eraseSector(0, total_size);
+    eraseBulk();
     std::cout << std::endl;
 
     pages = total_size / PAGE_SIZE;
@@ -428,7 +430,6 @@ int XQSPIPS_Flasher::xclUpgradeFirmware(std::istream& binStream)
 
         binStream.read((char *)mWriteBuffer, size);
         writeFlash(addr, size);
-        nanosleep(&req, 0);
     }
     std::cout << std::endl;
 
@@ -470,9 +471,8 @@ int XQSPIPS_Flasher::xclUpgradeFirmware(std::istream& binStream)
 #if SAVE_FILE
             of_flash << mReadBuffer[i];
 #endif
-            if (mWriteBuffer[i] != mReadBuffer[i]) {
+            if (mWriteBuffer[i] != mReadBuffer[i])
                 mismatched = 1;
-            }
         }
         if (mismatched)
             std::cout << "Find mismatch at page " << page << std::endl;
@@ -867,7 +867,7 @@ bool XQSPIPS_Flasher::isFlashReady()
         if (!Status) {
             return false;
         }
-        StatusReg = mReadBuffer[1];
+        StatusReg = mReadBuffer[1] |= mReadBuffer[0];
 #if defined(_DEBUG)
         printHEX("Flash ready:", StatusReg);
 #endif
@@ -994,13 +994,12 @@ bool XQSPIPS_Flasher::eraseSector(unsigned addr, uint32_t byteCount, uint8_t era
     uint8_t writeCmds[5];
     uint32_t realAddr;
     uint32_t Sector;
-    //const timespec req = {0, 20000};
 
     if (eraseCmd == 0xff)
-        eraseCmd = FOURKB_SUBSECTOR_ERASE_CMD;
+        eraseCmd = SEC_4B_ERASE_CMD;
 
     int beatCount = 0;
-    for (Sector = 0; Sector < ((byteCount / (FOURKB_SUBSECTOR_SIZE/4)) + 1); Sector++) {
+    for (Sector = 0; Sector < ((byteCount / SECTOR_SIZE) + 2); Sector++) {
 
         if(!isFlashReady())
             return false;
@@ -1030,13 +1029,41 @@ bool XQSPIPS_Flasher::eraseSector(unsigned addr, uint32_t byteCount, uint8_t era
         if (!finalTransfer(msgEraseFlash, 1))
             return false;
 
-        addr += FOURKB_SUBSECTOR_SIZE/4;
-        //Pause before next sector erase
-        //nanosleep(&req, 0);
+        addr += SECTOR_SIZE;
     }
 
     if (TEST_MODE)
         std::cout << "Erase Flash done " << byteCount << " bytes" << std::endl;
+
+    return true;
+}
+
+bool XQSPIPS_Flasher::eraseBulk()
+{
+    xqspips_msg_t msgEraseFlash[1];
+    uint8_t writeCmds[5];
+    uint8_t eraseCmd;
+
+    if(!isFlashReady())
+        return false;
+
+    eraseCmd = BULK_ERASE_CMD;
+
+    if(!setWriteEnable())
+        return false;
+
+    writeCmds[0] = eraseCmd;
+
+    msgEraseFlash[0].bufPtr = writeCmds;
+    msgEraseFlash[0].byteCount = 1;
+    msgEraseFlash[0].busWidth = XQSPIPSU_SELECT_MODE_SPI;
+    msgEraseFlash[0].flags = XQSPIPSU_MSG_FLAG_TX;
+
+    if (!finalTransfer(msgEraseFlash, 1))
+        return false;
+
+    if(!isFlashReady())
+        return false;
 
     return true;
 }
@@ -1248,7 +1275,7 @@ bool XQSPIPS_Flasher::writeFlashReg(unsigned commandCode, unsigned value, unsign
 
 int XQSPIPS_Flasher::xclTestXQSpiPS(int index)
 {
-    TEST_MODE = true;
+    TEST_MODE = false;
 
     std::cout << ">>> Test XQSpiPS engine <<<" << std::endl;
     initQSpiPS();
@@ -1302,8 +1329,11 @@ int XQSPIPS_Flasher::xclTestXQSpiPS(int index)
 
     std::cout << "Write " << total_size << " bytes" << std::endl;
 
-    eraseSector(0, total_size);
+    //eraseSector(0, total_size);
+    std::cout << "earse flash" << std::endl;
+    eraseBulk();
 
+    std::cout << ">>>>>> Write " << std::endl;
     for (int page = 0; page <= pages; page++) {
         addr = page * PAGE_SIZE;
         if (page != pages)
@@ -1318,25 +1348,26 @@ int XQSPIPS_Flasher::xclTestXQSpiPS(int index)
         writeFlash(addr, size);
     }
 
-    std::cout << ">>>>>> Write finished" << std::endl;
 
-    remain = total_size % 8192;
-    pages = total_size / 8192;
+    remain = total_size % 256;
+    pages = total_size / 256;
 
+    std::cout << ">>>>>> Verify data" << std::endl;
     for (int page = 0; page <= pages; page++) {
-        addr = page * 8192;
+        addr = page * 256;
         if (page != pages)
-            size = 8192;
+            size = 256;
         else
             size = remain;
 
         readFlash(addr, size);
 
         // Verify
-        std::cout << ">>>>>> Verify data" << std::endl;
         for (unsigned i = 0; i < size; i++) {
-            if (mReadBuffer[i] != (i % PAGE_SIZE))
+            if (mReadBuffer[i] != (i % PAGE_SIZE)) {
+                std::cout << "Found mismatch" << std::endl;
                 return -1;
+            }
         }
     }
     std::cout << ">>>>>> " << total_size << " bytes data correct!" << std::endl;
