@@ -169,9 +169,9 @@ if [ ! -f ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}.dsa ]; then
   echo "ERROR: Failed to create/locate DSA (it is missing): ${XRT_REPO_DIR}/dsa_build/${PLATFORM_NAME}.dsa"
   exit 1
 fi
-
-if [ ! -f ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_vivado/${PLATFORM_NAME}.hdf ]; then
-  echo "ERROR: Failed to create/locate HDF (it is missing): ${XRT_REPO_DIR}/dsa_build/${PLATFORM_NAME}_vivado/${PLATFORM_NAME}.hdf"
+PLATFOMR_SDK=${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}/${PLATFORM_NAME}.sdk
+if [ ! -f ${PLATFOMR_SDK}/${PLATFORM_NAME}_wrapper.hdf ]; then
+  echo "ERROR: Failed to create/locate HDF (it is missing): ${PLATFOMR_SDK}/${PLATFORM_NAME}_wrapper.hdf"
   exit 1
 fi
 
@@ -198,14 +198,20 @@ if [ ! -d $PLATFORM_NAME ]; then
     petalinux-create -t project -n $PLATFORM_NAME --template zynqMP
   fi  
 fi
-
 mkdir -p ${PLATFORM_NAME}/build/conf/
 echo " * Configuring PetaLinux Project"
 # Allow users to access shell without login
 echo "CONFIG_YOCTO_ENABLE_DEBUG_TWEAKS=y" >> ${PLATFORM_NAME}/project-spec/configs/config
-echo "petalinux-config -p $PLATFORM_NAME --get-hw-description=${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_vivado/${PLATFORM_NAME}_vivado/ --oldconfig"
-petalinux-config -p $PLATFORM_NAME --get-hw-description=${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_vivado/ --oldconfig
- 
+echo "petalinux-config -p $PLATFORM_NAME --get-hw-description=${PLATFOMR_SDK} --oldconfig"
+petalinux-config -p $PLATFORM_NAME --get-hw-description=${PLATFOMR_SDK} --oldconfig
+
+#NASSER
+echo "Replacing CONFIG_SUBSYSTEM_AUTOCONFIG_DEVICE__TREE"
+perl -p -i -e  "s/CONFIG_SUBSYSTEM_AUTOCONFIG_DEVICE__TREE/# CONFIG_SUBSYSTEM_AUTOCONFIG_DEVICE__TREE\ is\ not\ set/g" ${PLATFORM_NAME}/project-spec/configs/config
+cd ${PLATFORM_NAME}
+petalinux-config --oldconfig
+cd -
+
 echo " * Change to meta directory: ${PLATFORM_NAME}/project-spec/meta-user/"
 cd ${PLATFORM_NAME}/project-spec/meta-user/
 
@@ -244,8 +250,8 @@ addIfNoExists 'IMAGE_INSTALL_append = " opencl-headers-dev"' $PETALINUX_IMAGE_BB
 addIfNoExists 'IMAGE_INSTALL_append = " opencl-clhpp-dev"'   $PETALINUX_IMAGE_BBAPPEND
 
 echo " * Adding XRT Kernel Node to Device Tree"
-echo "cat ${XRT_REPO_DIR}/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi"
-cat ${XRT_REPO_DIR}/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi
+echo "cat ${XRT_REPO_DIR}/src/runtime_src/driver/zynq/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi"
+cat ${XRT_REPO_DIR}/src/runtime_src/driver/zynq/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi
 
 if [ -f ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_fragment.dts ]; then
   echo "cat ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_fragment.dts >> recipes-bsp/device-tree/files/system-user.dtsi"
@@ -280,7 +286,11 @@ petalinux-config -c rootfs --oldconfig
 # Build package
 echo " * Performing PetaLinux Build (from: ${PWD})"
 echo "petalinux-build"
-petalinux-build 
+
+petalinux-build
+# NASSER for incremental XRT build use
+petalinux-build -c xrt
+petalinux-build -c zocl
 
 cd $ORIGINAL_DIR
 echo " * Copying PetaLinux boot files (from: $PWD)"
@@ -313,11 +323,11 @@ if [ $BUILD_SYSROOT == "Yes" ]; then
   petalinux-build --sdk
   petalinux-package --sysroot -d .
   cd -
-else
-  echo " * Expanding $ORIGINAL_DIR/${PLATFORM_NAME}/images/linux/rootfs.tar.gz"    
-  tar zxf $ORIGINAL_DIR/${PLATFORM_NAME}/images/linux/rootfs.tar.gz 
 fi
 
+echo " * Expanding $ORIGINAL_DIR/${PLATFORM_NAME}/images/linux/rootfs.tar.gz"    
+tar zxf $ORIGINAL_DIR/${PLATFORM_NAME}/images/linux/rootfs.tar.gz
+  
 cd ${ORIGINAL_DIR}/dsa_build
 echo " * Building Platform (from: $PWD)"
 echo "${PATH_TO_XSCT} -sdx ./${PLATFORM_NAME}_pfm.tcl"
