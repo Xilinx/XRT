@@ -19,7 +19,6 @@
  * GNU General Public License for more details.
  */
 
-#include <linux/dma-mapping.h>
 #include <linux/pagemap.h>
 #include <linux/iommu.h>
 #include <asm/io.h>
@@ -42,6 +41,18 @@ void zocl_describe(const struct drm_zocl_bo *obj)
 			obj,
 			size_in_kb,
 			physical_addr);
+}
+
+static inline void
+zocl_bo_describe(const struct drm_zocl_bo *bo, uint64_t *size, uint64_t *paddr)
+{
+	if (bo->flags & (ZOCL_BO_FLAGS_CMA | ZOCL_BO_FLAGS_USERPTR)) {
+		*size = bo->cma_base.base.size;
+		*paddr = bo->cma_base.paddr;
+	} else {
+		*size = bo->gem_base.size;
+		*paddr = bo->mm_node->start;
+	}
 }
 
 int zocl_iommu_map_bo(struct drm_device *dev, struct drm_zocl_bo *bo)
@@ -536,6 +547,92 @@ out:
 	return rc;
 }
 
+
+int zocl_copy_bo_async(struct drm_device *dev,
+		struct drm_file *filp,
+		zocl_dma_handle_t *dma_handle,
+		struct drm_zocl_copy_bo *args)
+{
+	struct drm_gem_object 		*dst_gem_obj, *src_gem_obj;
+	struct drm_zocl_bo 		*dst_bo, *src_bo;
+	dma_addr_t 			dst_paddr, src_paddr;
+	uint64_t		        dst_size, src_size;
+	int 				unsupported_flags = 0;
+	int 				rc = 0;
+
+	if (dma_handle->dma_func == NULL) {
+		DRM_ERROR("Failed: no callback dma_func for async dma");
+		return -EINVAL;
+	}
+
+	dst_gem_obj = zocl_gem_object_lookup(dev, filp, args->dst_handle);
+	if (!dst_gem_obj) {
+		DRM_ERROR("Failed to look up GEM dst handle %d\n",
+		    args->dst_handle);
+		return -EINVAL;
+	}
+
+	src_gem_obj = zocl_gem_object_lookup(dev, filp, args->src_handle);
+	if (!src_gem_obj) {
+		DRM_ERROR("Failed to look up GEM src handle %d\n",
+		    args->src_handle);
+		rc = -EINVAL;
+		goto out;
+	}
+
+	dst_bo = to_zocl_bo(dst_gem_obj);
+	src_bo = to_zocl_bo(src_gem_obj);
+	unsupported_flags = (ZOCL_BO_FLAGS_USERPTR | ZOCL_BO_FLAGS_HOST_BO |
+		ZOCL_BO_FLAGS_SVM);
+	if ((dst_bo->flags & unsupported_flags) ||
+	    (src_bo->flags & unsupported_flags)) {
+		DRM_ERROR("Failed not supported dst flags 0x%x and "
+		    "src flags 0x%x\n", dst_bo->flags, src_bo->flags);
+		rc = -EINVAL;
+		goto out;
+	}
+
+	zocl_bo_describe(dst_bo, &dst_size, &dst_paddr);
+	zocl_bo_describe(src_bo, &src_size, &src_paddr);
+
+	/*
+	 * pre check before requesting DMA memory copy.
+	 *    dst_offset + size <= dst_size
+	 *    src_offset + size <= src_size`
+	 */
+	if (args->size == 0) {
+		DRM_ERROR("Failed: request size cannot be ZERO!");
+		rc = -EINVAL;
+		goto out;
+	}
+	if (args->dst_offset + args->size > dst_size) {
+		DRM_ERROR("Failed: dst_offset + size out of boundary");
+		rc = -EINVAL;
+		goto out;
+	}
+	if (args->src_offset + args->size > src_size) {
+		DRM_ERROR("Failed: src_offset + size out of boundary");
+		rc = -EINVAL;
+		goto out;
+	}
+
+	dst_paddr += args->dst_offset;
+	src_paddr += args->src_offset;
+
+	rc = zocl_dma_memcpy_pre(dma_handle, dst_paddr, src_paddr, args->size);
+	if (!rc)
+		zocl_dma_start(dma_handle);
+
+out:
+	if (dst_gem_obj)
+		ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(dst_gem_obj);
+
+	if (src_gem_obj)
+		ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(src_gem_obj);
+
+	return rc;
+}
+
 int zocl_info_bo_ioctl(struct drm_device *dev,
 		void *data,
 		struct drm_file *filp)
@@ -551,14 +648,7 @@ int zocl_info_bo_ioctl(struct drm_device *dev,
 	}
 
 	bo = to_zocl_bo(gem_obj);
-
-	if (bo->flags & (ZOCL_BO_FLAGS_CMA | ZOCL_BO_FLAGS_USERPTR)) {
-		args->size = bo->cma_base.base.size;
-		args->paddr = bo->cma_base.paddr;
-	} else {
-		args->size = bo->gem_base.size;
-		args->paddr = bo->mm_node->start;
-	}
+	zocl_bo_describe(bo, &args->size, &args->paddr);
 
 	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
 

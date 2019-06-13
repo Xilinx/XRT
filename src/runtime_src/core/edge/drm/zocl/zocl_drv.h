@@ -30,6 +30,13 @@
 #include "zocl_ert.h"
 #include "zocl_util.h"
 #include "zocl_bo.h"
+#include "zocl_dma.h"
+
+#if defined(CONFIG_ARM64)
+#define ZOCL_PLATFORM_ARM64   1
+#else
+#define ZOCL_PLATFORM_ARM64   0
+#endif
 
 /* Ensure compatibility with newer kernels and backported Red Hat kernels. */
 /* The y2k38 bug fix was introduced with Kernel 3.17 and backported to Red Hat
@@ -112,7 +119,15 @@ struct drm_zocl_bo {
 	uint32_t                       flags;
 };
 
-	static inline struct drm_gem_object *
+struct drm_zocl_copy_bo {
+	uint32_t dst_handle;
+	uint32_t src_handle;
+	uint64_t size;
+	uint64_t dst_offset;
+	uint64_t src_offset;
+};
+
+static inline struct drm_gem_object *
 zocl_gem_object_lookup(struct drm_device *dev,
 		struct drm_file   *filp,
 		u32                handle)
@@ -120,19 +135,19 @@ zocl_gem_object_lookup(struct drm_device *dev,
 	return drm_gem_object_lookup(filp, handle);
 }
 
-	static inline struct
+static inline struct
 drm_zocl_bo *to_zocl_bo(struct drm_gem_object *bo)
 {
 	return (struct drm_zocl_bo *) bo;
 }
 
-	static inline bool
+static inline bool
 zocl_bo_userptr(const struct drm_zocl_bo *bo)
 {
 	return (bo->flags & ZOCL_BO_FLAGS_USERPTR);
 }
 
-	static inline bool
+static inline bool
 zocl_bo_execbuf(const struct drm_zocl_bo *bo)
 {
 	return (bo->flags & ZOCL_BO_FLAGS_EXECBUF);
@@ -165,6 +180,8 @@ int zocl_sk_create_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);
 int zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);
+int zocl_copy_bo_async(struct drm_device *, struct drm_file *,
+	zocl_dma_handle_t *, struct drm_zocl_copy_bo *);
 
 void zocl_describe(const struct drm_zocl_bo *obj);
 
