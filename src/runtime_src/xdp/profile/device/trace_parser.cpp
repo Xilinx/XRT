@@ -133,18 +133,14 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
       XDP_LOG("[profile_device] Parsing trace sample %d...\n", i);
 
       timestamp = trace.Timestamp;
-      // ***************
-      // Clock Training
-      // ***************
       // clock training relation is linear within small durations (1 sec)
+      // Assume clock training packets come in pairs
       if (trace.isClockTrain) {
         if (clockTrainingSelect) {
-          std::cout << "updating x1 y1" << std::endl;
           y1 = static_cast <double> (trace.HostTimestamp);
           x1 = static_cast <double> (timestamp);
           clockTrainingSelect = false;
         } else {
-          std::cout << "updating x2 y2" << std::endl;
           y2 = static_cast <double> (trace.HostTimestamp);
           x2 = static_cast <double> (timestamp);
           mTrainSlope[type] = (y2 - y1) / (x2 - x1);
@@ -771,11 +767,13 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
     }
     uint64_t partial = (((packet >> 45) & 0xFFFF) << (16 * mod));
     result.HostTimestamp = result.HostTimestamp | partial;
+    /*
     if (mod == 3) {
       std::cout << std::hex
       << "Clock Training sample : " << result.HostTimestamp << " " << result.Timestamp
       << std::dec << std::endl;
     }
+    */
   }
 
   std::string dec2bin(uint32_t n) {
@@ -800,23 +798,24 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
     result.Error = (packet >> 63) & 0x1;
     result.EventID = XCL_PERF_MON_HW_EVENT;
     result.EventFlags = ((packet >> 45) & 0xF) | ((packet >> 57) & 0x10);
-    if (0) {
-      static uint64_t previousTimestamp = 0;
-      std::cout << std::dec << std::setw(5)
-      //<< "  Trace sample " << ": "
-      //<< dec2bin(uint32_t(packet>>32)) << " " << dec2bin(uint32_t(packet&0xFFFFFFFF)) << std::endl
-      << " Timestamp : " << result.Timestamp << "   "
-      << "Type : " << result.EventType << "   "
-      << "ID : " << result.TraceID << "   "
-      << "Pulse : " << static_cast<int>(result.Reserved) << "   "
-      << "Overflow : " << static_cast<int>(result.Overflow) << "   "
-      << "Err : " << static_cast<int>(result.Error) << "   "
-      << "Flags : " << static_cast<int>(result.EventFlags) << "   "
-      << "Interval : " << result.Timestamp - previousTimestamp << "   "
-      << std::endl;
-      previousTimestamp = result.Timestamp;
-    }
+    /*
+    static uint64_t previousTimestamp = 0;
+    std::cout << std::dec << std::setw(5)
+    //<< "  Trace sample " << ": "
+    //<< dec2bin(uint32_t(packet>>32)) << " " << dec2bin(uint32_t(packet&0xFFFFFFFF)) << std::endl
+    << " Timestamp : " << result.Timestamp << "   "
+    << "Type : " << result.EventType << "   "
+    << "ID : " << result.TraceID << "   "
+    << "Pulse : " << static_cast<int>(result.Reserved) << "   "
+    << "Overflow : " << static_cast<int>(result.Overflow) << "   "
+    << "Err : " << static_cast<int>(result.Error) << "   "
+    << "Flags : " << static_cast<int>(result.EventFlags) << "   "
+    << "Interval : " << result.Timestamp - previousTimestamp << "   "
+    << std::endl;
+    previousTimestamp = result.Timestamp;
+    */
   }
+
   /*
    * DDR Buffers only
    */
@@ -838,7 +837,6 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
       if (i == 0 && !mPacketFirstTs)
         mPacketFirstTs = currentPacket & 0x1FFFFFFFFFFF;
       if (i < 8 && !mclockTrainingdone) {
-        std::cout << "Clock training found .." << std::endl;
         unsigned int mod = i % 4;
         parsePacketClockTrain(currentPacket, mPacketFirstTs, mod, traceVector.mArray[tvindex]);
         tvindex = (mod == 3) ? tvindex + 1 : tvindex;

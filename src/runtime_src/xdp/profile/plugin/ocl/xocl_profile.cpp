@@ -17,6 +17,7 @@
 #include "xocl_profile.h"
 #include "ocl_profiler.h"
 #include "xdp/profile/config.h"
+#include "xdp/profile/device/trace.h"
 #include "xrt/device/hal.h"
 #include "xclbin.h"
 #include <sys/mman.h>
@@ -484,19 +485,8 @@ writeHostEvent(key k, xclPerfMonEventType type, xclPerfMonEventID id)
   return CL_SUCCESS;
 }
 
-#define TS2MM_COUNT_LOW         0x10
-#define TS2MM_COUNT_HIGH        0x14
-#define TS2MM_RST               0x1c
-#define TS2MM_WRITE_OFFSET_LOW  0x2c
-#define TS2MM_WRITE_OFFSET_HIGH 0x30
-#define TS2MM_WRITTEN_LOW       0x38
-#define TS2MM_WRITTEN_HIGH      0x3c
-#define TS2MM_CMD_START         0x1
-
-void print_s2mm_status(key k, uint64_t addr)
+void print_s2mm_status(xrt::device* xdevice, uint64_t addr)
 {
-  auto device = k;
-  auto xdevice = device->get_xrt_device();
   uint32_t reg_read = 0;
   std::cout <<"--------------TRACE DMA STATUS-------------" << std::endl;
   xdevice->read_register(addr, &reg_read, 4);
@@ -513,66 +503,52 @@ void print_s2mm_status(key k, uint64_t addr)
   std::cout << "INFO Trace written high: " << reg_read << std::dec << std::endl;
 }
 
-void update_ts2mm(key k, ts2mm_info& info) {
-  auto device = k;
-  auto xdevice = device->get_xrt_device();
+void update_ts2mm_info(xrt::device* xdevice, ts2mm_info& info) {
   uint32_t reg_read = 0;
   auto addr = info.ctrl_addr;
-  std::cout << "TDMA Address :" << addr << std::endl;
   xdevice->read_register(addr + TS2MM_WRITTEN_LOW, &reg_read, 4);
-  std::cout << "TDMA written low : " << reg_read << std::endl;
   info.read_count = static_cast<uint64_t>(reg_read);
   xdevice->read_register(addr + TS2MM_WRITTEN_HIGH, &reg_read, 4);
-  std::cout << "TDMA written high : " << reg_read << std::endl;
   info.read_count |= static_cast<uint64_t>(reg_read) << 32;
   xdevice->read_register(addr, &reg_read, 4);
-  info.is_active = reg_read & TS2MM_CMD_START;
+  info.is_active = reg_read & TS2MM_AP_START;
 }
 
-void init_trace_offload(key k, uint64_t bytes, ts2mm_info& info)
+void init_trace_offload(xrt::device* xdevice, uint64_t ctrl_addr, uint64_t bytes, ts2mm_info& info)
 {
-  uint64_t addr = 0x1810000;
-  auto device = k;
-  auto xdevice = device->get_xrt_device();
-
   auto buf_handle = xdevice->alloc(bytes, xrt::hal::device::Domain::XRT_DEVICE_RAM, 0, nullptr);
+  uint64_t bufaddr = xdevice->getDeviceAddr(buf_handle);
   // The buffer needs to be initialized because of an xrt bug
   xdevice->sync(buf_handle, bytes, 0, xrt::hal::device::direction::HOST2DEVICE, false);
+  uint32_t reg_write = 0;
+  update_ts2mm_info(xdevice, info);
+  if (info.is_active) {
+    // Reset if active
+    reg_write = 0x1;
+    xdevice->write_register(ctrl_addr + TS2MM_RST, &reg_write, 4);
+    reg_write = 0x0;
+    xdevice->write_register(ctrl_addr + TS2MM_RST, &reg_write, 4);
+  }
+  reg_write = static_cast<uint32_t>(bufaddr);
+  xdevice->write_register(ctrl_addr + TS2MM_WRITE_OFFSET_LOW, &reg_write, 4);
+  reg_write = static_cast<uint32_t>(bufaddr >> 32);
+  xdevice->write_register(ctrl_addr + TS2MM_WRITE_OFFSET_HIGH, &reg_write, 4);
+  auto count = bytes / TRACE_PACKET_SIZE;
+  reg_write = static_cast<uint32_t>(count);
+  xdevice->write_register(ctrl_addr + TS2MM_COUNT_LOW, &reg_write, 4);
+  reg_write = static_cast<uint32_t>(count >> 32);
+  xdevice->write_register(ctrl_addr + TS2MM_COUNT_HIGH, &reg_write, 4);
+  // AP_START
+  reg_write = TS2MM_AP_START;
+  xdevice->write_register(ctrl_addr, &reg_write, 4);
   info.bo_handle = buf_handle;
   info.bo_size = bytes;
-  uint32_t reg_write = 0;
-  update_ts2mm(k, info);
-  // Reset
-  if (info.is_active) {
-    std::cout << "..Reset DMA.." << std::endl;
-    reg_write = 0x1;
-    xdevice->write_register(addr + TS2MM_RST, &reg_write, 4);
-    reg_write = 0x0;
-    xdevice->write_register(addr + TS2MM_RST, &reg_write, 4);
-  }
-  // Offload Offset
-  uint64_t bufaddr = xdevice->getDeviceAddr(buf_handle);
-  std::cout << "INFO BO Address : 0x" << std::hex << bufaddr << std::dec << std::endl;
-  reg_write = static_cast<uint32_t>(bufaddr);
-  xdevice->write_register(addr + TS2MM_WRITE_OFFSET_LOW, &reg_write, 4);
-  reg_write = static_cast<uint32_t>(bufaddr >> 32);
-  xdevice->write_register(addr + TS2MM_WRITE_OFFSET_HIGH, &reg_write, 4);
-  auto count = bytes / 8;
-  reg_write = static_cast<uint32_t>(count);
-  xdevice->write_register(addr + TS2MM_COUNT_LOW, &reg_write, 4);
-  reg_write = static_cast<uint32_t>(count >> 32);
-  xdevice->write_register(addr + TS2MM_COUNT_HIGH, &reg_write, 4);
-  // AP_START
-  reg_write = TS2MM_CMD_START;
-  xdevice->write_register(addr, &reg_write, 4);
-  print_s2mm_status(k, addr);
+  info.ctrl_addr = ctrl_addr;
+  //print_s2mm_status(xdevice, ctrl_addr);
 }
 
-void* read_trace(key k, uint64_t offset, uint64_t bytes, const ts2mm_info& info) {
-  auto device = k;
-  auto xdevice = device->get_xrt_device();
+void* read_trace(xrt::device* xdevice, uint64_t offset, uint64_t bytes, const ts2mm_info& info) {
   auto buf_handle = info.bo_handle;
-
   if(!buf_handle || bytes > info.bo_size)
     return nullptr;
   void* space = xdevice->map(buf_handle);
@@ -581,13 +557,10 @@ void* read_trace(key k, uint64_t offset, uint64_t bytes, const ts2mm_info& info)
   return retaddr;
 }
 
-void end_trace(key k, ts2mm_info& info) {
-  auto device = k;
-  auto xdevice = device->get_xrt_device();
-
-  // Unmap isn't automatic
+void end_trace(xrt::device* xdevice, ts2mm_info& info) {
   if(!info.bo_handle)
     return;
+  // Unmap isn't automatic
   void* space = xdevice->map(info.bo_handle);
   munmap(space, info.bo_size);
   xdevice->free(info.bo_handle);
@@ -605,8 +578,9 @@ startTrace(key k, xclPerfMonType type, size_t numComputeUnits)
 
   static bool called = false;
   if (type == XCL_PERF_MON_MEMORY && !called) {
-    data->traceinfo.ctrl_addr = 0x1810000;
-    init_trace_offload(k, 0x4FFFFFFF, data->traceinfo);
+    uint64_t s2mm_ctrl_addr = 0x1810000;
+    uint64_t bytes = 0x4FFFFFFF;
+    init_trace_offload(xdevice, s2mm_ctrl_addr, bytes, data->traceinfo);
     std::cout << "INFO configuring dma " << std::endl;
     called = true;
   }
@@ -647,9 +621,10 @@ cl_int
 stopTrace(key k, xclPerfMonType type)
 {
   auto device = k;
+  auto xdevice = device->get_xrt_device();
   auto data = get_data(k);
-  device->get_xrt_device()->stopTrace(type);
-  end_trace(k, data->traceinfo);
+  xdevice->stopTrace(type);
+  end_trace(xdevice, data->traceinfo);
   return CL_SUCCESS;
 }
 
@@ -726,6 +701,7 @@ logTrace(key k, xclPerfMonType type, bool forceRead)
   auto data = get_data(k);
   auto device = k;
   auto xdevice = device->get_xrt_device();
+  auto profilemgr = OCLProfiler::Instance()->getProfileManager();
 
   // Do clock training if enough time has passed
   // NOTE: once we start flushing FIFOs, we stop all training (no longer needed)
@@ -764,8 +740,8 @@ logTrace(key k, xclPerfMonType type, bool forceRead)
       if (data->mTraceVector.mLength == 0)
         break;
 
-      // log the device trace
-      OCLProfiler::Instance()->getProfileManager()->logDeviceTrace(device_name, binary_name, type, data->mTraceVector);
+      // log and write
+      profilemgr->logDeviceTrace(device_name, binary_name, type, data->mTraceVector);
       data->mTraceVector.mLength = 0;
 
       // Only check repeatedly for trace buffer flush if HW emulation
@@ -774,10 +750,9 @@ logTrace(key k, xclPerfMonType type, bool forceRead)
     }
   }
 
-  uint64_t chunksize = MAX_TRACE_NUMBER_SAMPLES * 8;
-  update_ts2mm(k, data->traceinfo);
-  uint64_t total_bytes = data->traceinfo.read_count * 8;
-  std::cout << "Data written by TDMA : " << total_bytes << std::endl;
+  uint64_t chunksize = MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE;
+  update_ts2mm_info(xdevice, data->traceinfo);
+  uint64_t total_bytes = data->traceinfo.read_count * TRACE_PACKET_SIZE;
   uint64_t space = 0;
   bool endLog = false;
 
@@ -789,13 +764,13 @@ logTrace(key k, xclPerfMonType type, bool forceRead)
     } else {
       read_bytes = chunksize;
     }
-    auto tracebuf = read_trace(k, space, read_bytes, data->traceinfo);
+    auto tracebuf = read_trace(xdevice, space, read_bytes, data->traceinfo);
     if (tracebuf) {
       std::string device_name = device->get_unique_name();
       std::string binary_name = "binary";
-      OCLProfiler::Instance()->getProfileManager()->parseTraceBuf(tracebuf, read_bytes, data->mTraceVector);
+      profilemgr->parseTraceBuf(tracebuf, read_bytes, data->mTraceVector);
       if (data->mTraceVector.mLength)
-        OCLProfiler::Instance()->getProfileManager()->logDeviceTrace(device_name, binary_name, type, data->mTraceVector, endLog);
+        profilemgr->logDeviceTrace(device_name, binary_name, type, data->mTraceVector, endLog);
       data->mTraceVector = {};
     }
     space += chunksize;
