@@ -563,6 +563,7 @@ namespace ZYNQ {
         uint64_t partial = (((currentSample >> 45) & 0xFFFF) << (16 * mod));
         results.HostTimestamp = results.HostTimestamp | partial;
         if (mod == 3) {
+          results.isClockTrain = true;
           traceVector.mArray[static_cast<int>(i/4)] = results;
         }
         continue;

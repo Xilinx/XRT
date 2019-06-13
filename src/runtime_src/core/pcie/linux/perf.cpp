@@ -1067,6 +1067,7 @@ namespace xocl {
             mLogStream << " Timestamp : " << results.Timestamp << "   ";
             mLogStream << " Host Timestamp : " << std::hex << results.HostTimestamp << std::endl;
           }
+          results.isClockTrain = true;
           traceVector.mArray[static_cast<int>(wordnum/4)] = results;
         }
         continue;
