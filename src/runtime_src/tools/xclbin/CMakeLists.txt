@@ -91,6 +91,7 @@ file(GLOB XCLBINUTIL_FILES
   "SectionBitstreamPartialPDI.cxx"
   "SectionDTC.cxx"
   "SectionEmulationData.cxx"
+  "SectionSystemMetadata.cxx"
   "DTC.cxx"
   "DTCStringsBlock.cxx"
   "FDTNode.cxx"
