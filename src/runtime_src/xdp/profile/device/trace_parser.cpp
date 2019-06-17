@@ -39,7 +39,7 @@ namespace xdp {
     mNumTraceEvents = 0;
     // NOTE: setting this to 0x80000 causes runtime crash when running
     // HW emulation on 070_max_wg_size or 079_median1
-    mMaxTraceEvents = 0x40000;
+    mMaxTraceEventsHwEm = 0x40000;
     mEmuTraceMsecOneCycle = 0.0;
 
     mTraceSamplesThreshold = MAX_TRACE_NUMBER_SAMPLES / 4;
@@ -94,7 +94,7 @@ namespace xdp {
   // Log device trace results: store in queues and report events as they are completed
   void TraceParser::logTrace(std::string& deviceName, xclPerfMonType type,
       xclTraceResultsVector& traceVector, TraceResultVector& resultVector) {
-    if (mNumTraceEvents >= mMaxTraceEvents || traceVector.mLength == 0)
+    if (traceVector.mLength == 0)
       return;
 
     // Hardware Emulation Trace
@@ -131,6 +131,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
     for (unsigned int i=0; i < traceVector.mLength; i++) {
       auto& trace = traceVector.mArray[i];
       XDP_LOG("[profile_device] Parsing trace sample %d...\n", i);
+      packets_parsed++;
 
       timestamp = trace.Timestamp;
       // clock training relation is linear within small durations (1 sec)
@@ -158,8 +159,9 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
       bool SAMPacket = (trace.TraceID >= MIN_TRACE_ID_SAM && trace.TraceID <= MAX_TRACE_ID_SAM);
       bool SPMPacket = (trace.TraceID >= MIN_TRACE_ID_SPM && trace.TraceID <= MAX_TRACE_ID_SPM);
       bool SSPMPacket = (trace.TraceID >= MIN_TRACE_ID_SSPM && trace.TraceID < MAX_TRACE_ID_SSPM);
-      if (!SAMPacket && !SPMPacket && !SSPMPacket)
+      if (!SAMPacket && !SPMPacket && !SSPMPacket) {
         continue;
+      }
 
       if (SSPMPacket) {
         s = trace.TraceID - MIN_TRACE_ID_SSPM;
@@ -410,6 +412,8 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
 
   void TraceParser::logTraceHWEmu(std::string& deviceName,
           xclTraceResultsVector& traceVector, TraceResultVector& resultVector) {
+    if (mNumTraceEvents >= mMaxTraceEventsHwEm)
+      return;
     XDP_LOG("[profile_device] Logging %u device trace samples (total = %ld)...\n",
         traceVector.mLength, mNumTraceEvents);
     mNumTraceEvents += traceVector.mLength;

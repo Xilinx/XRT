@@ -150,10 +150,10 @@ get_timeline_trace()
   return value;
 }
 
-inline unsigned long long
-get_trace_dma_bytes()
+inline std::string
+get_trace_buffer_size()
 {
-  static unsigned long long value = (!get_profile()) ? 0 : detail::get_bytes_value("Debug.trace_dma_size", 0);
+  static std::string value = (!get_profile()) ? "off" : detail::get_string_value("Debug.trace_buffer_size", "1M");
   return value;
 }
 

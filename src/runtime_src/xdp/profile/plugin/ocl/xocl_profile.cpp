@@ -21,6 +21,7 @@
 #include "xrt/device/hal.h"
 #include "xclbin.h"
 #include <sys/mman.h>
+#include <regex>
 
 namespace xdp { namespace xoclp {
 
@@ -503,6 +504,34 @@ void print_ts2mm_status(xrt::device* xdevice, uint64_t addr)
   std::cout << "INFO Trace written high: " << reg_read << std::dec << std::endl;
 }
 
+uint64_t get_ts2mm_buf_size() {
+  std::string size_str = xrt::config::get_trace_buffer_size();
+  std::smatch pieces_match;
+  // Default is 1M
+  uint64_t bytes = 1048576;
+  // Regex can parse values like : "1024M" "1G" "8192k"
+  const std::regex size_regex("\\s*([0-9]+)\\s*(K|k|M|m|G|g|)\\s*");
+  if (std::regex_match(size_str, pieces_match, size_regex)) {
+    try {
+      if (pieces_match[2] == "K" || pieces_match[2] == "k") {
+        bytes = std::stoull(pieces_match[1]) * 1024;
+      } else if (pieces_match[2] == "M" || pieces_match[2] == "m") {
+        bytes = std::stoull(pieces_match[1]) * 1024 * 1024;
+      } else if (pieces_match[2] == "G" || pieces_match[2] == "g") {
+        bytes = std::stoull(pieces_match[1]) * 1024 * 1024 * 1024;
+      } else {
+        bytes = std::stoull(pieces_match[1]);
+      }
+    } catch (const std::exception& ex) {
+      // User specified number cannot be parsed
+    }
+  }
+  if (bytes > TS2MM_MAX_BUF_SIZE) {
+    bytes = TS2MM_MAX_BUF_SIZE;
+  }
+  return bytes;
+}
+
 void update_ts2mm_info(xrt::device* xdevice, ts2mm_info& info) {
   uint32_t reg_read = 0;
   auto addr = info.ctrl_addr;
@@ -516,7 +545,13 @@ void update_ts2mm_info(xrt::device* xdevice, ts2mm_info& info) {
 
 void init_ts2mm_offload(xrt::device* xdevice, uint64_t ctrl_addr, uint64_t bytes, ts2mm_info& info)
 {
-  auto buf_handle = xdevice->alloc(bytes, xrt::hal::device::Domain::XRT_DEVICE_RAM, 0, nullptr);
+  xrt::hal::BufferObjectHandle buf_handle;
+  try {
+    buf_handle = xdevice->alloc(bytes, xrt::hal::device::Domain::XRT_DEVICE_RAM, 0, nullptr);
+  } catch (const std::exception& ex) {
+    info.bo_handle = nullptr;
+    return;
+  }
   uint64_t bufaddr = xdevice->getDeviceAddr(buf_handle);
   // The buffer needs to be initialized because of an xrt bug
   xdevice->sync(buf_handle, bytes, 0, xrt::hal::device::direction::HOST2DEVICE, false);
@@ -579,9 +614,7 @@ startTrace(key k, xclPerfMonType type, size_t numComputeUnits)
   static bool called = false;
   if (type == XCL_PERF_MON_MEMORY && !called) {
     uint64_t s2mm_ctrl_addr = 0x1810000;
-    uint64_t bytes = 0x4FFFFFFF;
-    init_ts2mm_offload(xdevice, s2mm_ctrl_addr, bytes, data->traceinfo);
-    std::cout << "INFO configuring dma " << std::endl;
+    init_ts2mm_offload(xdevice, s2mm_ctrl_addr, get_ts2mm_buf_size(), data->traceinfo);
     called = true;
   }
 
@@ -751,10 +784,13 @@ logTrace(key k, xclPerfMonType type, bool forceRead)
   }
 
   uint64_t chunksize = MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE;
-  update_ts2mm_info(xdevice, data->traceinfo);
-  uint64_t total_bytes = data->traceinfo.read_count * TRACE_PACKET_SIZE;
   uint64_t space = 0;
   bool endLog = false;
+  update_ts2mm_info(xdevice, data->traceinfo);
+  uint64_t total_bytes = data->traceinfo.read_count * TRACE_PACKET_SIZE;
+  // Do a Sanity check to make sure that size is less than 15G
+  if (total_bytes > TS2MM_MAX_BUF_SIZE)
+    total_bytes = 0;
 
   while (space < total_bytes) {
     auto  read_bytes = (space + chunksize > total_bytes) ? total_bytes - space : chunksize;
@@ -773,6 +809,7 @@ logTrace(key k, xclPerfMonType type, bool forceRead)
         profilemgr->logDeviceTrace(device_name, binary_name, type, data->mTraceVector, endLog);
       data->mTraceVector = {};
     }
+    //std::cout << "Done reading until " << (space + read_bytes)/8 << std::endl;
     space += chunksize;
   }
 

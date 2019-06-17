@@ -28,4 +28,7 @@
 #define TS2MM_WRITTEN_HIGH      0x3c
 #define TS2MM_AP_START          0x1
 
+//15GB
+#define TS2MM_MAX_BUF_SIZE      0x3c0000000
+
 #endif

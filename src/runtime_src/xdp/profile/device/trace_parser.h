@@ -122,8 +122,8 @@ namespace xdp {
       uint32_t mTraceSamplesThreshold;
       uint32_t mSampleIntervalMsec;
       uint64_t mStartTimeNsec;
-      long mNumTraceEvents;
-      long mMaxTraceEvents;
+      uint64_t mNumTraceEvents;
+      uint64_t mMaxTraceEventsHwEm;
       double mTraceClockRateMHz;
       double mDeviceClockRateMHz;
       double mGlobalMemoryClockRateMHz;
@@ -155,6 +155,7 @@ namespace xdp {
     private:
       uint64_t mPacketFirstTs = 0; 
       bool mclockTrainingdone = false;
+      uint64_t packets_parsed = 0;
 
     private:
       XDPPluginI* mPluginHandle;
