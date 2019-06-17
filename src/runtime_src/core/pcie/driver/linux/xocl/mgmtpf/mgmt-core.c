@@ -987,7 +987,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 		xocl_err(&pdev->dev, "failed to register subdevs %d", ret);
 		goto fail_all_subdev;
 	}
-	xocl_err(&pdev->dev, "created all sub devices");
+	xocl_info(&pdev->dev, "created all sub devices");
 
 	/* return -ENODEV for 2RP platform */
 	ret = xocl_icap_download_boot_firmware(lro);
@@ -1111,7 +1111,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	mgmt_init_sysfs(&pdev->dev);
 
 	/* Probe will not fail from now on. */
-	xocl_err(&pdev->dev, "minimum initialization done\n");
+	xocl_info(&pdev->dev, "minimum initialization done\n");
 
 	/* No further initialization for MFG board. */
 	if (minimum_initialization ||
