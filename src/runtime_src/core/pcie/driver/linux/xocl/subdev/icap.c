@@ -3179,7 +3179,7 @@ static int icap_load_keyring(void)
 			((KEY_POS_ALL & ~KEY_POS_SETATTR) |
 			KEY_USR_VIEW | KEY_USR_WRITE | KEY_USR_SEARCH),
 			KEY_ALLOC_NOT_IN_QUOTA, NULL, NULL);
-		ret = PTR_ERR(icap_keys);
+		ret = PTR_ERR_OR_ZERO(icap_keys);
 #endif
 	}
 
