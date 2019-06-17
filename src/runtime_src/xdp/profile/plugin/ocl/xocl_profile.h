@@ -161,6 +161,7 @@ struct data
   std::chrono::steady_clock::time_point mLastTraceTrainingTime[XCL_PERF_MON_TOTAL_PROFILE];
   DeviceIntf mDeviceIntf;
   ts2mm_info traceinfo;
+  bool ts2mm_en = false;
 };
 
 void

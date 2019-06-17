@@ -543,19 +543,27 @@ void update_ts2mm_info(xrt::device* xdevice, ts2mm_info& info) {
   info.is_active = reg_read & TS2MM_AP_START;
 }
 
-void init_ts2mm_offload(xrt::device* xdevice, uint64_t ctrl_addr, uint64_t bytes, ts2mm_info& info)
+bool get_ts2mm_debug_ip_layout(xrt::device* xdevice, ts2mm_info& info)
+{
+  // Will be supported when we add debug IP Layout to xdp
+  return false;
+}
+
+bool init_ts2mm_offload(xrt::device* xdevice, ts2mm_info& info)
 {
   xrt::hal::BufferObjectHandle buf_handle;
+  uint32_t reg_write = 0;
+  auto& ctrl_addr = info.ctrl_addr;
+
   try {
-    buf_handle = xdevice->alloc(bytes, xrt::hal::device::Domain::XRT_DEVICE_RAM, 0, nullptr);
+    buf_handle = xdevice->alloc(info.bo_size, xrt::hal::device::Domain::XRT_DEVICE_RAM, 0, nullptr);
   } catch (const std::exception& ex) {
     info.bo_handle = nullptr;
-    return;
+    return false;
   }
   uint64_t bufaddr = xdevice->getDeviceAddr(buf_handle);
   // The buffer needs to be initialized because of an xrt bug
-  xdevice->sync(buf_handle, bytes, 0, xrt::hal::device::direction::HOST2DEVICE, false);
-  uint32_t reg_write = 0;
+  xdevice->sync(buf_handle, info.bo_size, 0, xrt::hal::device::direction::HOST2DEVICE, false);
   update_ts2mm_info(xdevice, info);
   if (info.is_active) {
     // Reset if active
@@ -568,7 +576,7 @@ void init_ts2mm_offload(xrt::device* xdevice, uint64_t ctrl_addr, uint64_t bytes
   xdevice->write_register(ctrl_addr + TS2MM_WRITE_OFFSET_LOW, &reg_write, 4);
   reg_write = static_cast<uint32_t>(bufaddr >> 32);
   xdevice->write_register(ctrl_addr + TS2MM_WRITE_OFFSET_HIGH, &reg_write, 4);
-  auto count = bytes / TRACE_PACKET_SIZE;
+  auto count = info.bo_size / TRACE_PACKET_SIZE;
   reg_write = static_cast<uint32_t>(count);
   xdevice->write_register(ctrl_addr + TS2MM_COUNT_LOW, &reg_write, 4);
   reg_write = static_cast<uint32_t>(count >> 32);
@@ -577,9 +585,8 @@ void init_ts2mm_offload(xrt::device* xdevice, uint64_t ctrl_addr, uint64_t bytes
   reg_write = TS2MM_AP_START;
   xdevice->write_register(ctrl_addr, &reg_write, 4);
   info.bo_handle = buf_handle;
-  info.bo_size = bytes;
-  info.ctrl_addr = ctrl_addr;
   //print_ts2mm_status(xdevice, ctrl_addr);
+  return true;
 }
 
 void* read_buf_ts2mm(xrt::device* xdevice, uint64_t offset, uint64_t bytes, const ts2mm_info& info) {
@@ -611,9 +618,8 @@ startTrace(key k, xclPerfMonType type, size_t numComputeUnits)
   auto profiler = OCLProfiler::Instance();
   auto profileMgr = profiler->getProfileManager();
 
-  if (type == XCL_PERF_MON_MEMORY) {
-    uint64_t s2mm_ctrl_addr = 0x1810000;
-    init_ts2mm_offload(xdevice, s2mm_ctrl_addr, get_ts2mm_buf_size(), data->traceinfo);
+  if (type == XCL_PERF_MON_MEMORY && get_ts2mm_debug_ip_layout(xdevice, data->traceinfo)) {
+    data->ts2mm_en = init_ts2mm_offload(xdevice, data->traceinfo);
   }
 
   // Since clock training is performed in mStartTrace, let's record this time
@@ -781,34 +787,36 @@ logTrace(key k, xclPerfMonType type, bool forceRead)
     }
   }
 
-  uint64_t chunksize = MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE;
-  uint64_t space = 0;
-  bool endLog = false;
-  update_ts2mm_info(xdevice, data->traceinfo);
-  uint64_t total_bytes = data->traceinfo.read_count * TRACE_PACKET_SIZE;
-  // Do a Sanity check to make sure that size is less than 15G
-  if (total_bytes > TS2MM_MAX_BUF_SIZE)
-    total_bytes = 0;
+  if (data->ts2mm_en) {
+    uint64_t chunksize = MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE;
+    uint64_t space = 0;
+    bool endLog = false;
+    update_ts2mm_info(xdevice, data->traceinfo);
+    uint64_t total_bytes = data->traceinfo.read_count * TRACE_PACKET_SIZE;
+    // Do a Sanity check to make sure that size is less than 15G
+    if (total_bytes > TS2MM_MAX_BUF_SIZE)
+      total_bytes = 0;
 
-  while (space < total_bytes) {
-    auto  read_bytes = (space + chunksize > total_bytes) ? total_bytes - space : chunksize;
-    if (space + chunksize > total_bytes) {
-      read_bytes = total_bytes - space;
-      endLog = true;
-    } else {
-      read_bytes = chunksize;
+    while (space < total_bytes) {
+      auto  read_bytes = (space + chunksize > total_bytes) ? total_bytes - space : chunksize;
+      if (space + chunksize > total_bytes) {
+        read_bytes = total_bytes - space;
+        endLog = true;
+      } else {
+        read_bytes = chunksize;
+      }
+      auto tracebuf = read_buf_ts2mm(xdevice, space, read_bytes, data->traceinfo);
+      if (tracebuf) {
+        std::string device_name = device->get_unique_name();
+        std::string binary_name = "binary";
+        profilemgr->parseTraceBuf(tracebuf, read_bytes, data->mTraceVector);
+        if (data->mTraceVector.mLength)
+          profilemgr->logDeviceTrace(device_name, binary_name, type, data->mTraceVector, endLog);
+        data->mTraceVector = {};
+      }
+      //std::cout << "Done reading until " << (space + read_bytes)/8 << std::endl;
+      space += chunksize;
     }
-    auto tracebuf = read_buf_ts2mm(xdevice, space, read_bytes, data->traceinfo);
-    if (tracebuf) {
-      std::string device_name = device->get_unique_name();
-      std::string binary_name = "binary";
-      profilemgr->parseTraceBuf(tracebuf, read_bytes, data->mTraceVector);
-      if (data->mTraceVector.mLength)
-        profilemgr->logDeviceTrace(device_name, binary_name, type, data->mTraceVector, endLog);
-      data->mTraceVector = {};
-    }
-    //std::cout << "Done reading until " << (space + read_bytes)/8 << std::endl;
-    space += chunksize;
   }
 
   if (forceRead)
