@@ -611,11 +611,9 @@ startTrace(key k, xclPerfMonType type, size_t numComputeUnits)
   auto profiler = OCLProfiler::Instance();
   auto profileMgr = profiler->getProfileManager();
 
-  static bool called = false;
-  if (type == XCL_PERF_MON_MEMORY && !called) {
+  if (type == XCL_PERF_MON_MEMORY) {
     uint64_t s2mm_ctrl_addr = 0x1810000;
     init_ts2mm_offload(xdevice, s2mm_ctrl_addr, get_ts2mm_buf_size(), data->traceinfo);
-    called = true;
   }
 
   // Since clock training is performed in mStartTrace, let's record this time

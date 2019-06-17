@@ -189,6 +189,7 @@ get_uint_value(const char* key, unsigned int default_value)
   return s_tree.m_tree.get<unsigned int>(key,default_value);
 }
 
+
 const boost::property_tree::ptree&
 get_ptree_value(const char* key)
 {

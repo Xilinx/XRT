@@ -759,7 +759,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
     return (mTrainSlope[type] * (double)deviceTimestamp)/1e6 + (mTrainOffset[type]-mTrainProgramStart[type])/1e6;
   }
 
-  inline void parsePacketClockTrain(uint64_t packet, uint64_t firstTimestamp, unsigned mod, xclTraceResults &result) {
+  inline void TraceParser::parsePacketClockTrain(uint64_t packet, uint64_t firstTimestamp, unsigned mod, xclTraceResults &result) {
     uint64_t tsmask = 0x1FFFFFFFFFFF;
     if (mod == 0) {
       uint64_t timestamp = packet & tsmask;
@@ -780,19 +780,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
     */
   }
 
-  std::string dec2bin(uint32_t n) {
-    char result[(sizeof(uint32_t) * 8) + 1];
-    unsigned index = sizeof(uint32_t) * 8;
-    result[index] = '\0';
-    do {
-      result[ --index ] = '0' + (n & 1);
-    } while (n >>= 1);
-    for (int i=index-1; i >= 0; --i)
-      result[i] = '0';
-    return std::string( result );
-  }
-
-  inline void parsePacket(uint64_t packet, uint64_t firstTimestamp, xclTraceResults &result) {
+  inline void TraceParser::parsePacket(uint64_t packet, uint64_t firstTimestamp, xclTraceResults &result) {
     result.Timestamp = (packet & 0x1FFFFFFFFFFF) - firstTimestamp;
     result.EventType = ((packet >> 45) & 0xF) ? XCL_PERF_MON_END_EVENT :
         XCL_PERF_MON_START_EVENT;

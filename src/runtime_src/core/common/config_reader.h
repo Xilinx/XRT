@@ -65,7 +65,6 @@ bool                               get_bool_value(const char*, bool);
 const char*                        get_env_value(const char*);
 std::string                        get_string_value(const char*, const std::string&);
 unsigned int                       get_uint_value(const char*, unsigned int);
-unsigned long long                 get_bytes_value(const char*, unsigned long long);
 /* API to return a fragment of ptree. Currently used by emulation drivers */
 const boost::property_tree::ptree& get_ptree_value(const char*);
 std::ostream& debug(std::ostream&, const std::string& ini="");
