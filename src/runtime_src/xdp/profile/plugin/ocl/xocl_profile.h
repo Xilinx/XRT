@@ -148,6 +148,27 @@ struct ts2mm_info
   uint64_t read_count;
 };
 
+void
+print_ts2mm_status(xrt::device* xdevice, uint64_t addr);
+
+uint64_t
+get_ts2mm_buf_size();
+
+void
+update_ts2mm_info(xrt::device* xdevice, ts2mm_info& info);
+
+bool
+get_ts2mm_debug_ip_layout(xrt::device* xdevice, ts2mm_info& info);
+
+bool
+init_ts2mm_offload(xrt::device* xdevice, ts2mm_info& info);
+
+void*
+read_buf_ts2mm(xrt::device* xdevice, uint64_t offset, uint64_t bytes, const ts2mm_info& info);
+
+void
+end_ts2mm_offload(xrt::device* xdevice, ts2mm_info& info);
+
 struct data
 {
   bool mPerformingFlush = false;
