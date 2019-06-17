@@ -661,7 +661,9 @@ stopTrace(key k, xclPerfMonType type)
   auto xdevice = device->get_xrt_device();
   auto data = get_data(k);
   xdevice->stopTrace(type);
-  end_ts2mm_offload(xdevice, data->traceinfo);
+  if (data->ts2mm_en) {
+    end_ts2mm_offload(xdevice, data->traceinfo);
+  }
   return CL_SUCCESS;
 }
 
