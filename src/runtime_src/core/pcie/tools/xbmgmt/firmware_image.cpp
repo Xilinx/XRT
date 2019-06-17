@@ -110,7 +110,8 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& bm
         DSAValid = true;
     }
     // DSABIN file path.
-    else if (suffix.compare(DSABIN_FILE_SUFFIX) == 0)
+    else if ((suffix.compare(XSABIN_FILE_SUFFIX) == 0) ||
+             (suffix.compare(DSABIN_FILE_SUFFIX) == 0))
     {
         std::ifstream in(file);
         if (!in.is_open())
@@ -203,9 +204,13 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
             std::string d(FIRMWARE_DIR);
             std::string e(entry->d_name);
 
-            // Only look for DSA from .dsabin file,
-            // legacy .mcs file is not supported
-            if (e.find(DSABIN_FILE_SUFFIX) == std::string::npos)
+            /*
+             * First look for from .xsabin, if failed,
+             * look for .dsabin file.
+             * legacy .mcs file is not supported.
+             */
+            if ((e.find(XSABIN_FILE_SUFFIX) == std::string::npos) &&
+                (e.find(DSABIN_FILE_SUFFIX) == std::string::npos))
                 continue;
 
             DSAInfo dsa(d + e);
@@ -250,7 +255,8 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
     in.seekg(0);
 
     std::string fn(file);
-    if (fn.find("." DSABIN_FILE_SUFFIX) != std::string::npos)
+    if ((fn.find("." XSABIN_FILE_SUFFIX) != std::string::npos) ||
+        (fn.find("." DSABIN_FILE_SUFFIX) != std::string::npos))
     {
         // Read axlf from dsabin file to find out number of sections in total.
         axlf a;

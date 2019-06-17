@@ -722,7 +722,8 @@ namespace xclbincat1 {
         ss >> std::hex >> _data.getHead().m_header.m_next_axlf;
       } else if ( strcmp( key.c_str(), "debugBin" ) == 0 ) {
         ss >> std::hex >> _data.getHead().m_header.m_debug_bin;
-      } else if ( strcmp( key.c_str(), "dsaUUID" ) == 0 ) {
+      } else if ( (strcmp( key.c_str(), "xsaUUID" ) == 0) ||
+                  (strcmp( key.c_str(), "dsaUUID" ) == 0)) {
         populateDSAUUID(value, _data);
       } else {
         std::cout << "WARNING: Unknown key '" << key.c_str() << "' will be ignored from key-value pair switch (-k).\n";

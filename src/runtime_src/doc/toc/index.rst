@@ -64,7 +64,8 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    :maxdepth: 1
 
    yocto.rst
-   newdsa-bringup.rst
+   test.rst
+   newxsa-bringup.rst
    create_platforms.rst
 
 
