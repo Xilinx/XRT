@@ -529,6 +529,9 @@ uint64_t get_ts2mm_buf_size() {
   if (bytes > TS2MM_MAX_BUF_SIZE) {
     bytes = TS2MM_MAX_BUF_SIZE;
   }
+  if (bytes < TS2MM_MIN_BUF_SIZE) {
+    bytes = TS2MM_MIN_BUF_SIZE;
+  }
   return bytes;
 }
 
@@ -742,6 +745,12 @@ logTrace(key k, xclPerfMonType type, bool forceRead)
   auto xdevice = device->get_xrt_device();
   auto profilemgr = OCLProfiler::Instance()->getProfileManager();
 
+  // Create unique name for device since system can have multiples of same device
+  std::string device_name = device->get_unique_name();
+  std::string binary_name = "binary";
+  if (device->is_active())
+    binary_name = device->get_xclbin().project_name();
+
   // Do clock training if enough time has passed
   // NOTE: once we start flushing FIFOs, we stop all training (no longer needed)
   std::chrono::steady_clock::time_point nowTime = std::chrono::steady_clock::now();
@@ -765,11 +774,6 @@ logTrace(key k, xclPerfMonType type, bool forceRead)
   data->mLastTraceNumSamples[type] = numSamples;
 
   if (forceRead || (numSamples > data->mSamplesThreshold)) {
-    // Create unique name for device since system can have multiples of same device
-    std::string device_name = device->get_unique_name();
-    std::string binary_name = "binary";
-    if (device->is_active())
-      binary_name = device->get_xclbin().project_name();
 
     // warning : reading from the accelerator device only
     // read the device trace
@@ -809,8 +813,6 @@ logTrace(key k, xclPerfMonType type, bool forceRead)
       }
       auto tracebuf = read_buf_ts2mm(xdevice, space, read_bytes, data->traceinfo);
       if (tracebuf) {
-        std::string device_name = device->get_unique_name();
-        std::string binary_name = "binary";
         profilemgr->parseTraceBuf(tracebuf, read_bytes, data->mTraceVector);
         if (data->mTraceVector.mLength)
           profilemgr->logDeviceTrace(device_name, binary_name, type, data->mTraceVector, endLog);

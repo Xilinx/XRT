@@ -30,5 +30,7 @@
 
 //15GB
 #define TS2MM_MAX_BUF_SIZE      0x3c0000000
+//8KB
+#define TS2MM_MIN_BUF_SIZE      0x2000
 
 #endif
