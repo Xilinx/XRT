@@ -157,7 +157,9 @@ static ssize_t p2p_enable_show(struct device *dev,
 		return sprintf(buf, "1\n");
 	else if (xocl_get_p2p_bar(xdev, &size) >= 0 &&
 			size > (1 << XOCL_PA_SECTION_SHIFT))
-		return sprintf(buf, "2\n");
+		return sprintf(buf, "%d\n", EBUSY);
+	else
+		return sprintf(buf, "%d\n", ENXIO);
 
 	return sprintf(buf, "0\n");
 }
@@ -178,7 +180,7 @@ static ssize_t p2p_enable_store(struct device *dev,
 	p2p_bar = xocl_get_p2p_bar(xdev, &curr_size);
 	if (p2p_bar < 0) {
 		xocl_err(&pdev->dev, "p2p bar is not configurable");
-		return -EACCES;
+		return -ENXIO;
 	}
 
 	size = xocl_get_ddr_channel_size(xdev) *
@@ -188,7 +190,7 @@ static ssize_t p2p_enable_store(struct device *dev,
 	if (xocl_pci_rebar_size_to_bytes(size) == curr_size) {
 		xocl_info(&pdev->dev, "p2p is enabled, bar size %d M",
 				(1 << size));
-		return -EALREADY;
+		return 0;
 	}
 
 	xocl_info(&pdev->dev, "Resize p2p bar %d to %d M ", p2p_bar,
