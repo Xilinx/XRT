@@ -1679,9 +1679,9 @@ static int xmc_probe(struct platform_device *pdev)
 	}
 
 	/* Enabling XMC mailbox support. */
+	mutex_init(&xmc->mbx_lock);
 	if (XMC_PRIVILEGED(xmc)) {
 		xmc->mbx_enabled = true;
-		mutex_init(&xmc->mbx_lock);
 		safe_read32(xmc, XMC_HOST_MSG_OFFSET_REG, &val);
 		xmc->mbx_offset = val;
 		xocl_info(&pdev->dev, "XMC mailbox offset: 0x%x.\n", val);
