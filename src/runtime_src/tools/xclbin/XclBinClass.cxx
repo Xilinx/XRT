@@ -120,7 +120,7 @@ XclBin::readXclBinBinaryHeader(std::fstream& _istream) {
   _istream.read((char*)&m_xclBinHeader, sizeof(axlf));
 
   if (_istream.gcount() != expectBufferSize) {
-    std::string errMsg = "ERROR: Input stream is smaller then the expected header size.";
+    std::string errMsg = "ERROR: Input stream is smaller than the expected header size.";
     throw std::runtime_error(errMsg);
   }
 
@@ -148,7 +148,7 @@ XclBin::readXclBinBinarySections(std::fstream& _istream) {
     _istream.read((char*)&sectionHeader, sizeof(axlf_section_header));
 
     if (_istream.gcount() != expectBufferSize) {
-      std::string errMsg = "ERROR: Input stream is smaller then the expected section header size.";
+      std::string errMsg = "ERROR: Input stream is smaller than the expected section header size.";
       throw std::runtime_error(errMsg);
     }
 

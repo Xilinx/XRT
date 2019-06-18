@@ -23,14 +23,15 @@ namespace xdp {
 
     class CSVProfileWriter: public ProfileWriterI {
 
-	public:
+    public:
       CSVProfileWriter(const std::string& summaryFileName, const std::string& platformName, XDPPluginI* Plugin);
       ~CSVProfileWriter();
 
       virtual void writeSummary(RTProfile* profile);
+      virtual const std::string getFileName() { return SummaryFileName; }
 
-	protected:
-     void writeDocumentHeader(std::ofstream& ofs, const std::string& docName) override;
+    protected:
+      void writeDocumentHeader(std::ofstream& ofs, const std::string& docName) override;
       void writeDocumentSubHeader(std::ofstream& ofs, RTProfile* profile) override;
       void writeTableHeader(std::ofstream& ofs, const std::string& caption,
           const std::vector<std::string>& columnLabels) override;
@@ -46,7 +47,7 @@ namespace xdp {
       const char* rowEnd() override { return ""; }
       const char* newLine() override { return "\n"; }
 
-	private:
+    private:
       std::string SummaryFileName;
       std::string PlatformName;
       const std::string FileExtension = ".csv";
