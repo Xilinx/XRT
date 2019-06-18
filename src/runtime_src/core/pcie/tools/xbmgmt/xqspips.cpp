@@ -382,8 +382,8 @@ int XQSPIPS_Flasher::xclUpgradeFirmware(std::istream& binStream)
 
     // Sectoer size is defined by SECTOR_SIZE
     std::cout << "Erasing flash" << std::flush;
-    //eraseSector(0, total_size);
-    eraseBulk();
+    eraseSector(0, total_size);
+    //eraseBulk();
     std::cout << std::endl;
 
     pages = total_size / PAGE_SIZE;
