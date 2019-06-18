@@ -806,11 +806,6 @@ failed:
 	return ret;
 }
 
-static inline u64 xocl_pci_rebar_size_to_bytes(int size)
-{
-	return 1ULL << (size + 20);
-}
-
 int xocl_get_p2p_bar(struct xocl_dev *xdev, u64 *bar_size)
 {
 	struct pci_dev *dev = xdev->core.pdev;

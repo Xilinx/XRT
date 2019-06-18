@@ -169,13 +169,13 @@ static ssize_t p2p_enable_store(struct device *dev,
 	struct pci_dev *pdev = xdev->core.pdev;
 	int ret, p2p_bar;
 	u32 enable;
-	u64 size;
+	u64 size, curr_size;
 
 
 	if (kstrtou32(buf, 10, &enable) == -EINVAL || enable > 1)
 		return -EINVAL;
 
-	p2p_bar = xocl_get_p2p_bar(xdev, NULL);
+	p2p_bar = xocl_get_p2p_bar(xdev, &curr_size);
 	if (p2p_bar < 0) {
 		xocl_err(&pdev->dev, "p2p bar is not configurable");
 		return -EACCES;
@@ -185,6 +185,12 @@ static ssize_t p2p_enable_store(struct device *dev,
 		xocl_get_ddr_channel_count(xdev); /* GB */
 	size = (ffs(size) == fls(size)) ? (fls(size) - 1) : fls(size);
 	size = enable ? (size + 10) : (XOCL_PA_SECTION_SHIFT - 20);
+	if (xocl_pci_rebar_size_to_bytes(size) == curr_size) {
+		xocl_info(&pdev->dev, "p2p is enabled, bar size %d M",
+				(1 << size));
+		return -EALREADY;
+	}
+
 	xocl_info(&pdev->dev, "Resize p2p bar %d to %d M ", p2p_bar,
 			(1 << size));
 	xocl_p2p_mem_release(xdev, false);
