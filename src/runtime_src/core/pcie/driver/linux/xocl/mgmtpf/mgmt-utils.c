@@ -473,8 +473,7 @@ failed:
 
 int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 {
-	void *blob = NULL;
-	int ret;
+	int ret, i;
 
 	mutex_lock(&lro->busy_mutex);
 	if (!lro->bld_blob || !lro->core.fdt_blob) {
@@ -491,23 +490,14 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 
 	xocl_drvinst_offline(lro, true);
 	health_thread_stop(lro);
-	xocl_subdev_destroy_all(lro);
 
-	/*save current blob */
-	blob = lro->core.fdt_blob;
-	lro->core.fdt_blob = NULL;
+	for (i = XOCL_SUBDEV_LEVEL_MAX - 1; i > XOCL_SUBDEV_LEVEL_BLD; i--)
+		xocl_subdev_destroy_by_level(lro, i);
 
-	ret = xocl_fdt_blob_input(lro, lro->bld_blob);
-	if (ret) {
-		mgmt_err(lro, "input bld blob failed %d", ret);
-		goto failed;
-	}
-
-	ret = xocl_subdev_create_all(lro);
-	if (ret) {
-		mgmt_err(lro, "create bld subdevices failed %d", ret);
-		goto failed;
-	}
+	/* currently firewall mixes BLD and PRP
+	 * remove firewall before download PRP
+	 */
+	xocl_subdev_destroy_by_id(lro, XOCL_SUBDEV_AF);
 
 	ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP, false);
 	if (ret) {
@@ -515,10 +505,6 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 		goto failed;
 	}
 
-	vfree(lro->core.fdt_blob);
-	lro->core.fdt_blob = blob;
-
-	xocl_subdev_destroy_all(lro);
 	ret = xocl_subdev_create_all(lro);
 	if (ret) {
 		mgmt_err(lro, "failed to create sub devices %d", ret);

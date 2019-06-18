@@ -82,6 +82,7 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define	XOCL_MODULE_NAME	"xocl"
 #define	XCLMGMT_MODULE_NAME	"xclmgmt"
 #define	ICAP_XCLBIN_V2			"xclbin2"
+#define XOCL_CDEV_DIR		"xfpga"
 
 #define XOCL_MAX_DEVICES	16
 #define XOCL_EBUF_LEN           512
@@ -189,10 +190,24 @@ struct xocl_subdev {
 	struct xocl_subdev_info		info;
 	int				inst;
 	int				pf;
+	struct cdev			*cdev;
 
         struct resource		res[XOCL_SUBDEV_MAX_RES];
 	char	res_name[XOCL_SUBDEV_MAX_RES][XOCL_SUBDEV_RES_NAME_LEN];
 	char			bar_idx[XOCL_SUBDEV_MAX_RES];
+};
+
+#define XOCL_GET_DRV_PRI(pldev)					\
+	(platform_get_device_id(pldev) ?				\
+	((struct xocl_drv_private *)				\
+	platform_get_device_id(pldev)->driver_data) : NULL)
+
+
+struct xocl_drv_private {
+	void			*ops;
+	const struct file_operations	*fops;
+	dev_t			dev;
+	char			*cdev_name;
 };
 
 #define	XOCL_GET_SUBDEV_PRIV(dev)				\
@@ -721,6 +736,7 @@ struct xocl_icap_funcs {
 		const xuid_t *uuid, pid_t pid);
 	int (*ocl_unlock_bitstream)(struct platform_device *pdev,
 		const xuid_t *uuid, pid_t pid);
+	void (*refresh_addrs)(struct platform_device *pdev);
 	uint64_t (*get_data)(struct platform_device *pdev,
 		enum data_kind kind);
 };
@@ -769,8 +785,11 @@ struct xocl_icap_funcs {
 	(ICAP_CB(xdev, ocl_unlock_bitstream) ?						\
 	ICAP_OPS(xdev)->ocl_unlock_bitstream(ICAP_DEV(xdev), uuid, pid) : \
 	 -ENODEV)
+#define xocl_icap_refresh_addrs(xdev)				\
+	(ICAP_CB(xdev, refresh_addrs) ?				\
+	 ICAP_OPS(xdev)->refresh_addrs(ICAP_DEV(xdev)) : NULL)
 #define	xocl_icap_get_data(xdev, kind)				\
-	(ICAP_CB(xdev, get_data) ?						\
+	(ICAP_CB(xdev, get_data) ?				\
 	ICAP_OPS(xdev)->get_data(ICAP_DEV(xdev), kind) : \
 	0)
 
@@ -795,42 +814,29 @@ struct xocl_mig_funcs {
 	MIG_OPS(xdev, idx)->get_data(MIG_DEV(xdev, idx), buf, entry_sz) : \
 	0)
 
-struct xocl_axigate_funcs {
-	int (*freeze)(struct platform_device *pdev);
-	int (*free)(struct platform_device *pdev);
-	int (*get_level)(struct platform_device *pdev);
+struct xocl_iores_funcs {
+	int (*read32)(struct platform_device *pdev, u32 id, u32 off, u32 *val);
+	int (*write32)(struct platform_device *pdev, u32 id, u32 off, u32 val);
+	void __iomem *(*get_base)(struct platform_device *pdev, u32 id);
 };
 
-#define	AXIGATE_DEV(xdev, idx)	SUBDEV_MULTI(xdev, XOCL_SUBDEV_AXIGATE, idx).pldev
-#define AXIGATE_OPS(xdev, idx)					\
-	((struct xocl_axigate_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_AXIGATE, idx).ops)
-#define AXIGATE_CB(xdev, subdev, func)		\
-	(subdev && subdev->pldev &&		\
-	 ((struct xocl_axigate_funcs *)subdev->ops)->func)
-#define xocl_axigate_freeze(xdev, subdev)			\
-	(AXIGATE_CB(xdev, subdev, freeze) ?			\
-	((struct xocl_axigate_funcs *)subdev->ops)->freeze(subdev->pldev) : \
+#define IORES_DEV(xdev, idx)  SUBDEV_MULTI(xdev, XOCL_SUBDEV_IORES, idx).pldev
+#define	IORES_OPS(xdev, idx)						\
+    ((struct xocl_iores_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_IORES, idx).ops)
+#define IORES_CB(xdev, idx, cb)		\
+	(IORES_DEV(xdev, idx) && IORES_OPS(xdev, idx) && 		\
+	IORES_OPS(xdev, idx)->cb)
+#define	xocl_iores_read32(xdev, level, id, off, val)			\
+	(IORES_CB(xdev, level, read32) ?				\
+	IORES_OPS(xdev, level)->read32(IORES_DEV(xdev, level), id, off, val) :\
 	-ENODEV)
-#define xocl_axigate_free(xdev, subdev)			\
-	(AXIGATE_CB(xdev, subdev, free) ?			\
-	((struct xocl_axigate_funcs *)subdev->ops)->free(subdev->pldev) : \
+#define	xocl_iores_write32(xdev, level, id, off, val)			\
+	(IORES_CB(xdev, level, write32) ?				\
+	IORES_OPS(xdev, level)->write32(IORES_DEV(xdev, level), id, off, val) :\
 	-ENODEV)
-static inline struct xocl_subdev *
-xocl_axigate_dev_by_level(xdev_handle_t xdev, int level)
-{
-	struct xocl_subdev	*subdev;
-	int i;
-
-	for (i = 0; i < XOCL_SUBDEV_MAX_INST; i++) {
-		subdev = &XDEV(xdev)->subdevs[XOCL_SUBDEV_AXIGATE][i];
-		if (subdev->pldev && subdev->ops &&
-		    level == ((struct xocl_axigate_funcs *)subdev->ops)->
-		    get_level(subdev->pldev))
-			return subdev;
-	}
-
-	return NULL;
-}
+#define xocl_iores_get_base(xdev, level, id)				\
+	(IORES_CB(xdev, level, get_base) ?				\
+	IORES_OPS(xdev, level)->get_base(IORES_DEV(xdev, level), id) : NULL)
 
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
@@ -906,6 +912,7 @@ extern struct xocl_drvinst *xocl_drvinst_array[XOCL_MAX_DEVICES * 10];
 void *xocl_drvinst_alloc(struct device *dev, u32 size);
 void xocl_drvinst_free(void *data);
 void *xocl_drvinst_open(void *file_dev);
+void *xocl_drvinst_open_single(void *file_dev);
 void xocl_drvinst_close(void *data);
 void xocl_drvinst_set_filedev(void *data, void *file_dev);
 void xocl_drvinst_offline(xdev_handle_t xdev_hdl, bool offline);

@@ -31,7 +31,7 @@ struct ip_node {
 	u16 minor;
 };
 
-static void *ert_build_priv(xdev_handle_t xdev_hdl, size_t *len)
+static void *ert_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 {
 	char *priv_data;
 
@@ -47,13 +47,17 @@ static void *ert_build_priv(xdev_handle_t xdev_hdl, size_t *len)
 	return priv_data;
 }
 
-static void *rom_build_priv(xdev_handle_t xdev_hdl, size_t *len)
+static void *rom_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 {
+	struct xocl_subdev *sub = subdev;
 	char *priv_data;
 	struct xocl_dev_core *core = XDEV(xdev_hdl);
 	void *blob;
 	const char *vrom;
 	int proplen;
+
+	if (sub->info.num_res > 0)
+		return NULL;
 
 	blob = core->fdt_blob;
 	if (!blob)
@@ -79,7 +83,7 @@ failed:
 	return NULL;
 }
 
-static void *flash_build_priv(xdev_handle_t xdev_hdl, size_t *len)
+static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 {
 	struct xocl_dev_core *core = XDEV(xdev_hdl);
 	struct xocl_flash_privdata *priv = NULL;
@@ -146,6 +150,13 @@ failed:
 
 }
 
+static void iores_devinfo_cb(void *dev_hdl, void *subdevs, int num)
+{
+	struct xocl_subdev *subdev = subdevs;
+
+	subdev->info.override_idx = subdev->info.level;
+}
+
 static struct xocl_subdev_map		subdev_map[] = {
 	{
 		XOCL_SUBDEV_FEATURE_ROM,
@@ -154,6 +165,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 		1,
 		0,
 		rom_build_priv,
+		NULL,
        	},
 	{
 		XOCL_SUBDEV_DMA,
@@ -162,6 +174,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 		1,
 		0,
 		NULL,
+		NULL,
 	},
 	{
 		XOCL_SUBDEV_DMA,
@@ -169,6 +182,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 		{ "qdma", NULL },
 		1,
 		0,
+		NULL,
 		NULL,
        	},
 	{
@@ -182,6 +196,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 		2,
 		XOCL_SUBDEV_MAP_USERPF_ONLY,
 		ert_build_priv,
+		NULL,
        	},
 	{
 		XOCL_SUBDEV_XVC_PUB,
@@ -190,6 +205,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 		1,
 		0,
 	       	NULL,
+		NULL,
        	},
 	{
 		XOCL_SUBDEV_XVC_PRI,
@@ -198,6 +214,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 		1,
 		0,
 	       	NULL,
+		NULL,
        	},
 	{
 		XOCL_SUBDEV_SYSMON,
@@ -205,6 +222,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 		{ "sysmon", NULL },
 		1,
 		0,
+		NULL,
 		NULL,
        	},
 	{
@@ -220,7 +238,8 @@ static struct xocl_subdev_map		subdev_map[] = {
 			NULL
 		},
 		1,
-		XOCL_SUBDEV_MAP_MULTI_INST,
+		0,
+		NULL,
 		NULL,
 	},
 	{
@@ -233,8 +252,9 @@ static struct xocl_subdev_map		subdev_map[] = {
 			"cmcmbdmairq",
 			NULL
 		},
-		1,
+		4,
 		0,
+		NULL,
 		NULL,
 	},
 	{
@@ -244,42 +264,45 @@ static struct xocl_subdev_map		subdev_map[] = {
 		1,
 		0,
 		NULL,
-	},
-	{
-		XOCL_SUBDEV_AXIGATE,
-		XOCL_AXIGATE,
-		{
-			"gateprbld",
-			NULL
-		},
-		1,
-		XOCL_SUBDEV_MAP_MULTI_INST,
 		NULL,
 	},
 	{
-		XOCL_SUBDEV_AXIGATE,
-		XOCL_AXIGATE,
+		XOCL_SUBDEV_IORES,
+		XOCL_IORES1,
 		{
-			"gateprprp",
+			RESNAME_GATEPRBLD,
+			NULL,
+		},
+		1,
+		0,
+		NULL,
+		iores_devinfo_cb,
+	},
+	{
+		XOCL_SUBDEV_IORES,
+		XOCL_IORES2,
+		{
+			RESNAME_GATEPRPRP,
+			RESNAME_MEMCALIB,
+			RESNAME_CLKWIZKERNEL1,
+			RESNAME_CLKWIZKERNEL2,
 			NULL
 		},
 		1,
-		XOCL_SUBDEV_MAP_MULTI_INST,
+		0,
 		NULL,
+		iores_devinfo_cb,
 	},
 	{
 		XOCL_SUBDEV_ICAP,
 		XOCL_ICAP,
 		{
 			"icap",
-			"memcalib",
-			"gateprprp",
-			"clkwizkernel1",
-			"clkwizkernel2",
 			NULL
 		},
 		1,
 		0,
+		NULL,
 		NULL,
 	},
 	{
@@ -293,8 +316,9 @@ static struct xocl_subdev_map		subdev_map[] = {
 			"ertcqbram",
 			NULL
 		},
-		1,
+		5,
 		0,
+		NULL,
 		NULL,
 	},
 	{
@@ -307,6 +331,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 		1,
 		0,
 		flash_build_priv,
+		NULL,
 	},
 #if 0
 	{
@@ -404,19 +429,27 @@ int xocl_fdt_overlay(void *fdt, int target,
 
 static int xocl_fdt_parse_seg(xdev_handle_t xdev_hdl, char *blob,
 		int seg, struct ip_node *ip,
-		struct xocl_subdev *subdevs, int dev_num)
+		struct xocl_subdev *subdev) 
 {
 	const char *name;
-	int total = 0, idx, i, sz;
+	int idx, sz, num_res;
 	const u32 *bar_idx, *pfnum;
 	const u64 *io_off;
 	const u16 *irq;
+
+	num_res = subdev->info.num_res;
 	for (seg = fdt_first_subnode(blob, seg); seg >= 0;
 		seg = fdt_next_subnode(blob, seg)) {
-		if (!subdevs) {
-			total++;
-			continue;
+
+		/* Get PF index */
+		pfnum = fdt_getprop(blob, seg, "PFMapping_u32", NULL);
+		if (!pfnum) {
+			xocl_xdev_info(xdev_hdl,
+				"IP %s, PF index not found", ip->name);
+			return -EINVAL;
 		}
+		if (ntohl(*pfnum) != XOCL_PCI_FUNC(xdev_hdl))
+			continue;
 
 		bar_idx = fdt_getprop(blob, seg, "BarMapping_u32", NULL);
 
@@ -431,74 +464,54 @@ static int xocl_fdt_parse_seg(xdev_handle_t xdev_hdl, char *blob,
 		if (!name)
 			name = "";
 
-		/* Get PF index */
-		pfnum = fdt_getprop(blob, seg, "PFMapping_u32", NULL);
-		if (!pfnum) {
-			xocl_xdev_info(xdev_hdl,
-				"IP %s, PF index not found", ip->name);
-			return -EINVAL;
-		}
 
-		for (i = 0; i < dev_num; i++) {
-			if (!subdevs[i].info.dyn_ip) {
-				subdevs[i].info.level = ip->level;
-				subdevs[i].pf = ntohl(*pfnum);
-				subdevs[i].info.dyn_ip++;
-				total++;
-				break;
-			} else if (subdevs[i].pf == ntohl(*pfnum)) {
-				subdevs[i].info.dyn_ip++;
-				total++;
-				break;
-			}
-		}
-		xocl_xdev_info(xdev_hdl, "ipname %s, %s, %d/%d",
-			     ip->name, name, i, dev_num);
-		if (i == dev_num)
-			continue;
+		if (!subdev->info.num_res || ip->level < subdev->info.level)
+			subdev->info.level = ip->level;
 
 		io_off = fdt_getprop(blob, seg, "OffsetRange_au64", &sz);
 		while (io_off && sz >= sizeof(*io_off) * 2) {
-			idx = subdevs[i].info.num_res;
-			subdevs[i].res[idx].start = be64_to_cpu(io_off[0]);
-			subdevs[i].res[idx].end = subdevs[i].res[idx].start +
+			idx = subdev->info.num_res;
+			subdev->res[idx].start = be64_to_cpu(io_off[0]);
+			subdev->res[idx].end = subdev->res[idx].start +
 			       be64_to_cpu(io_off[1]) - 1;
-			subdevs[i].res[idx].flags = IORESOURCE_MEM;
-			snprintf(subdevs[i].res_name[idx],
+			subdev->res[idx].flags = IORESOURCE_MEM;
+			snprintf(subdev->res_name[idx],
 				XOCL_SUBDEV_RES_NAME_LEN,
 				"%s/%s %d %d %d",
 				ip->name, name, ip->major, ip->minor,
 				ip->level);
-			subdevs[i].res[idx].name = subdevs[i].res_name[idx];
+			subdev->res[idx].name = subdev->res_name[idx];
 
-			subdevs[i].bar_idx[idx] =
+			subdev->bar_idx[idx] =
 					bar_idx ? ntohl(*bar_idx) : 0;
 
-			subdevs[i].info.num_res++;
+			subdev->info.num_res++;
 			sz -= sizeof(*io_off) * 2;
 			io_off += 2;
 		}
 
 		irq = fdt_getprop(blob, seg, "IRQRanges_au16", &sz);
 		while (irq && sz >= sizeof(*irq) * 2) {
-			idx = subdevs[i].info.num_res;
-			subdevs[i].res[idx].start = ntohs(irq[0]);
-			subdevs[i].res[idx].end = ntohs(irq[1]);
-			subdevs[i].res[idx].flags = IORESOURCE_IRQ;
-			snprintf(subdevs[i].res_name[idx],
+			idx = subdev->info.num_res;
+			subdev->res[idx].start = ntohs(irq[0]);
+			subdev->res[idx].end = ntohs(irq[1]);
+			subdev->res[idx].flags = IORESOURCE_IRQ;
+			snprintf(subdev->res_name[idx],
 				XOCL_SUBDEV_RES_NAME_LEN,
 				"%s/%s %d %d %d",
 				ip->name, name, ip->major, ip->minor,
 				ip->level);
-			subdevs[i].res[idx].name = subdevs[i].res_name[idx];
-					subdevs[i].info.num_res++;
+			subdev->res[idx].name = subdev->res_name[idx];
+					subdev->info.num_res++;
 					sz -= sizeof(*irq) * 2;
 					irq += 2;
 		}
 
 	}
+	if (subdev->info.num_res > num_res)
+		subdev->info.dyn_ip++;
 
-	return total;
+	return 0;
 }
 
 static int xocl_fdt_next_ip(xdev_handle_t xdev_hdl, char *blob,
@@ -540,36 +553,34 @@ found:
 	return node;
 }
 
-static int xocl_fdt_ip_lookup(xdev_handle_t xdev_hdl, char *blob,
-		const char *ipname,
-		struct xocl_subdev *subdevs, int dev_num)
+static int xocl_fdt_res_lookup(xdev_handle_t xdev_hdl, char *blob,
+		const char *ipname, struct xocl_subdev *subdev)
 {
 	struct ip_node	ip;
-	int off = -1, seg, num, total = 0; 
+	int off = -1, seg, ret; 
 
 	for (off = xocl_fdt_next_ip(xdev_hdl, blob, off, &ip); off >= 0;
 		off = xocl_fdt_next_ip(xdev_hdl, blob, off, &ip)) {
 
-		if (!ip.name || strncmp(ip.name, ipname, strlen(ipname)))
-			continue;
+		if (ip.name && !strncmp(ip.name, ipname, strlen(ipname)))
+			break;
+	}
+	if (off < 0)
+		return 0;
 
-		/* go through all segments */
-		seg = fdt_subnode_offset(blob, off, "segments");
-		if (seg < 0)
-			continue;
+	/* go through all segments */
+	seg = fdt_subnode_offset(blob, off, "segments");
+	if (seg < 0)
+		return -EINVAL;
 
-		num = xocl_fdt_parse_seg(xdev_hdl, blob, seg, &ip,
-				subdevs, dev_num);
-		if (num < 0) {
-			xocl_xdev_err(xdev_hdl,
-					"parse ip failed, Node %s, ip %s",
-					ip.name, ipname);
-			return num;
-		}
-		total += num;
+	ret = xocl_fdt_parse_seg(xdev_hdl, blob, seg, &ip, subdev);
+	if (ret) {
+		xocl_xdev_err(xdev_hdl, "parse ip failed, Node %s, ip %s",
+			ip.name, ipname);
+		return ret;
 	}
 
-	return total;
+	return 0;
 }
 
 static void xocl_fdt_dump_subdev(xdev_handle_t xdev_hdl,
@@ -580,74 +591,68 @@ static void xocl_fdt_dump_subdev(xdev_handle_t xdev_hdl,
 	xocl_xdev_info(xdev_hdl, "Device %s, PF%d, level %d",
 		subdev->info.name, subdev->pf, subdev->info.level);
 
-	for (i = 0; i < subdev->info.num_res; i++)
+	for (i = 0; i < subdev->info.num_res; i++) {
 		xocl_xdev_info(xdev_hdl, "Res%d: %s %pR", i,
 			subdev->info.res[i].name, &subdev->info.res[i]);
+	}
 }
 
 static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 		struct xocl_subdev_map  *map_p,
 		struct xocl_subdev *rtn_subdevs)
 {
-	struct xocl_subdev *subdevs = NULL;
-	char *ip;
-	int dev_num = 0, ip_num, sz = 0, i;
+	struct xocl_subdev *subdev;
+	char *res_name;
+	int num = 0, i = 0, ret;
 
-	for (ip_num = 0, ip = map_p->ip_names[0]; ip;
-			ip = map_p->ip_names[++ip_num]) {
-		dev_num = xocl_fdt_ip_lookup(xdev_hdl, blob, ip,
-					subdevs, dev_num);
-		if (dev_num < 0) {
+	if (rtn_subdevs) {
+		subdev = rtn_subdevs;
+		memset(subdev, 0, sizeof(*subdev));
+	} else {
+		subdev = vzalloc(sizeof(*subdev));
+		if (!subdev)
+			return -ENOMEM;
+	}
+
+	for (res_name = map_p->res_names[0]; res_name;
+			res_name = map_p->res_names[++i]) {
+		ret = xocl_fdt_res_lookup(xdev_hdl, blob, res_name, subdev);
+		if (ret) {
 			xocl_xdev_err(xdev_hdl, "lookup dev %s, ip %s failed",
-					map_p->dev_name, ip);
+					map_p->dev_name, res_name);
+			num = ret;
 			goto failed;
-		} else if (dev_num == 0)
-			break;
-
-		if (!subdevs) {
-			subdevs = vzalloc(sizeof(*subdevs) * dev_num);
-			sz = dev_num;
-			ip_num--;
 		}
 	}
 
-	dev_num = 0;
-	for (i = 0; i < sz; i++) {
-		if ((map_p->flags & XOCL_SUBDEV_MAP_USERPF_ONLY) &&
-			subdevs[i].pf != xocl_fdt_get_userpf(xdev_hdl, blob))
-			continue;
 
-		if (subdevs[i].info.dyn_ip >= map_p->required_ip) {
-			subdevs[i].info.id = map_p->id;
-			subdevs[i].info.name = map_p->dev_name;
-			subdevs[i].info.multi_inst =
-				(map_p->flags & XOCL_SUBDEV_MAP_MULTI_INST) ?
-				true : false;
-			if (!rtn_subdevs) {
-				dev_num++;
-				continue;
-			}
-			memcpy(&rtn_subdevs[dev_num], &subdevs[i],
-					sizeof(struct xocl_subdev));
-			rtn_subdevs[dev_num].info.res =
-				rtn_subdevs[dev_num].res;
-			rtn_subdevs[dev_num].info.bar_idx =
-				rtn_subdevs[dev_num].bar_idx;
-			for (ip_num = 0;
-				ip_num < rtn_subdevs[dev_num].info.num_res;
-				ip_num ++)
-				rtn_subdevs[dev_num].info.res[ip_num].name =
-					rtn_subdevs[dev_num].res_name[ip_num];
+	if (subdev->info.dyn_ip < map_p->required_ip)
+		goto failed;
 
-			dev_num++;
-		}
-	}
+	if ((map_p->flags & XOCL_SUBDEV_MAP_USERPF_ONLY) &&
+			subdev->pf != xocl_fdt_get_userpf(xdev_hdl, blob))
+		goto failed;
+
+	num = 1;
+	if (!rtn_subdevs)
+		goto failed;
+
+	subdev->info.id = map_p->id;
+	subdev->info.name = map_p->dev_name;
+	subdev->pf = XOCL_PCI_FUNC(xdev_hdl);
+	subdev->info.res = subdev->res;
+	subdev->info.bar_idx = subdev->bar_idx;
+	for (i = 0; i < subdev->info.num_res; i++)
+		subdev->info.res[i].name = subdev->res_name[i];
+
+	if (map_p->devinfo_cb)
+		map_p->devinfo_cb(xdev_hdl, rtn_subdevs, 1);
 
 failed:
-	if (subdevs) {
-		vfree(subdevs);
-	}
-	return dev_num;
+	if (!rtn_subdevs)
+		vfree(subdev);
+
+	return num;
 }
 
 static int xocl_fdt_parse_subdevs(xdev_handle_t xdev_hdl, char *blob,
@@ -849,7 +854,7 @@ int xocl_fdt_build_priv_data(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev,
 		*priv_data = NULL;
 		*data_len = 0;
 	} else
-		*priv_data = map_p->build_priv_data(xdev_hdl, data_len);
+		*priv_data = map_p->build_priv_data(xdev_hdl, subdev, data_len);
 
 
 	return 0;

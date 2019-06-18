@@ -157,7 +157,7 @@ void xocl_drvinst_set_filedev(void *data, void *file_dev)
 	mutex_unlock(&xocl_drvinst_lock);
 }
 
-void *xocl_drvinst_open(void *file_dev)
+static void *_xocl_drvinst_open(void *file_dev, u32 max_count)
 {
 	struct xocl_drvinst	*drvinstp;
 	struct xocl_drvinst_proc	*proc;
@@ -175,8 +175,14 @@ void *xocl_drvinst_open(void *file_dev)
 		mutex_unlock(&xocl_drvinst_lock);
 		return NULL;
 	}
-
+	
 	if (drvinstp->offline) {
+		mutex_unlock(&xocl_drvinst_lock);
+		return NULL;
+	}
+
+	pr_info("REF %d Max %d\n", atomic_read(&drvinstp->ref), max_count);
+	if (atomic_read(&drvinstp->ref) > max_count) {
 		mutex_unlock(&xocl_drvinst_lock);
 		return NULL;
 	}
@@ -201,10 +207,19 @@ void *xocl_drvinst_open(void *file_dev)
 	if (atomic_inc_return(&drvinstp->ref) == 2)
 		reinit_completion(&drvinstp->comp);
 
-
 	mutex_unlock(&xocl_drvinst_lock);
 
 	return drvinstp->data;
+}
+
+void *xocl_drvinst_open_single(void *file_dev)
+{
+	return _xocl_drvinst_open(file_dev, 2);
+}
+
+void *xocl_drvinst_open(void *file_dev)
+{
+	return _xocl_drvinst_open(file_dev, -1);
 }
 
 void xocl_drvinst_close(void *data)

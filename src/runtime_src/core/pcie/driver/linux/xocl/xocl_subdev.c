@@ -77,7 +77,10 @@ static struct xocl_subdev *xocl_subdev_reserve(xdev_handle_t xdev_hdl,
 
 	mutex_lock(&core->lock);
 	for (i = 0; i < max; i++) {
-		subdev = &core->subdevs[devid][i];
+		if (sdev_info->override_idx)
+			subdev = &core->subdevs[devid][sdev_info->override_idx];
+		else
+			subdev = &core->subdevs[devid][i];
 		if (subdev->state == XOCL_SUBDEV_STATE_UNINIT) {
 			subdev->state = XOCL_SUBDEV_STATE_INIT;
 			break;
@@ -88,7 +91,9 @@ static struct xocl_subdev *xocl_subdev_reserve(xdev_handle_t xdev_hdl,
 		return NULL;
 
 	subdev->inst = ida_simple_get(&subdev_inst_ida,
-			0, 0, GFP_KERNEL);
+			sdev_info->id << MINORBITS,
+			((sdev_info->id + 1) << MINORBITS) - 1,
+			GFP_KERNEL);
 	if (subdev->inst < 0) {
 		xocl_xdev_err(xdev_hdl, "Not enought inst id");
 		goto error;
@@ -102,6 +107,105 @@ error:
 	mutex_unlock(&core->lock);
 
 	return NULL;
+}
+
+static struct xocl_subdev *xocl_subdev_lookup(struct platform_device *pldev)
+{
+	struct xocl_dev_core		*core;
+	int i, j;
+
+	core = xocl_get_xdev(pldev);
+	BUG_ON(!core);
+
+	for (j = 0; j < XOCL_SUBDEV_NUM; j++)
+		for (i = 0; i < XOCL_SUBDEV_MAX_INST; i++)
+			if (core->subdevs[j][i].pldev == pldev)
+				return &core->subdevs[j][i];
+
+	return NULL;
+}
+
+static dev_t xocl_subdev_get_devt(struct platform_device *pldev)
+{
+	struct xocl_dev_core	*core;
+	struct xocl_subdev *subdev;
+
+	core = xocl_get_xdev(pldev);
+
+	mutex_lock(&core->lock);
+	subdev = xocl_subdev_lookup(pldev);
+	if (!subdev) {
+		xocl_err(&pldev->dev, "did not find subdev");
+		mutex_unlock(&core->lock);
+		return -1;
+	}
+	mutex_unlock(&core->lock);
+
+	return MKDEV(MAJOR(XOCL_GET_DRV_PRI(pldev)->dev),
+		(subdev->inst & MINORMASK));
+}
+
+static int xocl_subdev_cdev_create(struct platform_device *pdev,
+		struct cdev **cdev)
+{
+	struct xocl_dev_core *core;
+	struct device *sysdev;
+	struct cdev *cdevp;
+	int ret;
+
+	if (!XOCL_GET_DRV_PRI(pdev) || !XOCL_GET_DRV_PRI(pdev)->fops)
+		return 0;
+
+	if (!platform_get_drvdata(pdev)) {
+		xocl_err(&pdev->dev, "driver did not probe");
+		return -EAGAIN;
+	}
+
+	core = xocl_get_xdev(pdev);
+	cdevp = cdev_alloc();
+	if (!cdevp) {
+		xocl_err(&pdev->dev, "alloc cdev failed");
+		ret = -EFAULT;
+		goto failed;
+	}
+
+	cdevp->ops = XOCL_GET_DRV_PRI(pdev)->fops;
+	cdevp->owner = THIS_MODULE;
+	cdevp->dev = xocl_subdev_get_devt(pdev);
+
+	ret = cdev_add(cdevp, cdevp->dev, 1);
+	if (ret) {
+		xocl_err(&pdev->dev, "cdev add failed %d", ret);
+		goto failed;
+	}
+
+	if (XOCL_GET_DRV_PRI(pdev)->cdev_name)
+		sysdev = device_create(xrt_class, &pdev->dev, cdevp->dev,
+			NULL, "%s%d", XOCL_GET_DRV_PRI(pdev)->cdev_name,
+			XOCL_DEV_ID(core->pdev));
+	else
+		sysdev = device_create(xrt_class, &pdev->dev, cdevp->dev,
+			NULL, "%s/%s:%d", XOCL_CDEV_DIR, 
+			platform_get_device_id(pdev)->name,
+			XOCL_DEV_ID(core->pdev));
+	if (IS_ERR(sysdev)) {
+		ret = PTR_ERR(sysdev);
+		xocl_err(&pdev->dev, "device create failed %d", ret);
+		goto failed;
+	}
+
+	xocl_drvinst_set_filedev(platform_get_drvdata(pdev), cdevp);
+
+	*cdev = cdevp;
+	return 0;
+
+failed:
+	if (cdevp) {
+		device_destroy(xrt_class, cdevp->dev);
+		cdev_del(cdevp);
+	}
+
+	return ret;
 }
 
 static void xocl_subdev_destroy(xdev_handle_t xdev_hdl,
@@ -121,6 +225,11 @@ static void xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 	subdev->pldev = NULL;
 	subdev->ops = NULL;
 	subdev->state = XOCL_SUBDEV_STATE_UNINIT;
+
+	if (subdev->cdev) {
+		device_destroy(xrt_class, subdev->cdev->dev);
+		cdev_del(subdev->cdev);
+	}
 	ida_simple_remove(&subdev_inst_ida, subdev->inst);
 	mutex_unlock(&core->lock);
 
@@ -144,6 +253,15 @@ int xocl_subdev_create(xdev_handle_t xdev_hdl,
 	struct resource *res = NULL;
 	int i, bar_idx, retval;
 	char devname[64];
+
+	if (sdev_info->override_name)
+		snprintf(devname, sizeof(devname) - 1, "%s",
+				sdev_info->override_name);
+	else
+		snprintf(devname, sizeof(devname) - 1, "%s%s",
+				sdev_info->name, SUBDEV_SUFFIX);
+	xocl_xdev_info(xdev_hdl, "creating subdev %s",
+			devname);
 
 	subdev = xocl_subdev_reserve(xdev_hdl, sdev_info);
 	if (!subdev) {
@@ -184,14 +302,6 @@ int xocl_subdev_create(xdev_handle_t xdev_hdl,
 			subdev->info.bar_idx = NULL;
 	}
 
-	if (sdev_info->override_name)
-		snprintf(devname, sizeof(devname) - 1, "%s",
-				sdev_info->override_name);
-	else
-		snprintf(devname, sizeof(devname) - 1, "%s%s",
-				sdev_info->name, SUBDEV_SUFFIX);
-	xocl_xdev_info(xdev_hdl, "creating subdev %s inst %d",
-			devname, subdev->inst);
 	subdev->pldev = platform_device_alloc(devname, subdev->inst);
 	if (!subdev->pldev) {
 		xocl_xdev_err(xdev_hdl, "failed to alloc device %s",
@@ -268,6 +378,10 @@ int xocl_subdev_create(xdev_handle_t xdev_hdl,
 	xocl_xdev_info(xdev_hdl, "Created subdev %s id %d",
 			sdev_info->name, subdev->inst);
 
+	if (XOCL_GET_DRV_PRI(subdev->pldev) &&
+			XOCL_GET_DRV_PRI(subdev->pldev)->ops)
+		subdev->ops = XOCL_GET_DRV_PRI(subdev->pldev)->ops;
+
 	/*
 	 * force probe to avoid dependence issue. if probing
 	 * failed, it could be the driver is not registered.
@@ -280,6 +394,13 @@ int xocl_subdev_create(xdev_handle_t xdev_hdl,
 			devname, retval);
 		return -EAGAIN;
 	}
+	retval = xocl_subdev_cdev_create(subdev->pldev, &subdev->cdev);
+	if (retval) {
+		xocl_xdev_info(xdev_hdl, "failed to create cdev subdev %s, %d",
+			devname, retval);
+		goto error;
+	}
+
 	xocl_xdev_info(xdev_hdl, "subdev %s inst %d is active",
 			devname, subdev->inst);
 
@@ -296,25 +417,27 @@ int xocl_subdev_create_by_name(xdev_handle_t xdev_hdl, char *name)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
 	struct xocl_subdev_info *subdev_info = NULL;
-	int i;
+	int i, ret = -ENODEV;
 
 	for (i = 0; i < core->dyn_subdev_num; i++) {
 		if (core->dyn_subdev_store[i].pf != XOCL_PCI_FUNC(core))
 			continue;
 		if (!strcmp(core->dyn_subdev_store[i].info.name, name)) {
 			subdev_info = &core->dyn_subdev_store[i].info;
-			goto found;
+			ret = xocl_subdev_create(xdev_hdl, subdev_info);
+			if (ret)
+				return ret;
 		}
 	}
 	for (i = 0; i < core->priv.subdev_num; i++)
 		if (!strcmp(core->priv.subdev_info[i].name, name)) {
 			subdev_info = &core->priv.subdev_info[i];
-			goto found;
+			ret = xocl_subdev_create(xdev_hdl, subdev_info);
+			if (ret)
+				return ret;
 		}
 
-found:
-	return subdev_info ? xocl_subdev_create(xdev_hdl, subdev_info) :
-		-ENODEV;
+	return ret;
 }
 
 int xocl_subdev_destroy_by_name(xdev_handle_t xdev_hdl, char *name)
@@ -338,25 +461,27 @@ int xocl_subdev_create_by_id(xdev_handle_t xdev_hdl, int id)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
 	struct xocl_subdev_info *subdev_info = NULL;
-	int i;
+	int i, ret = -ENODEV;
 
 	for (i = 0; i < core->dyn_subdev_num; i++) {
 		if (core->dyn_subdev_store[i].pf != XOCL_PCI_FUNC(core))
 			continue;
 		if (core->dyn_subdev_store[i].info.id == id) {
 			subdev_info = &core->dyn_subdev_store[i].info;
-			goto found;
+			ret = xocl_subdev_create(xdev_hdl, subdev_info);
+			if (ret)
+				return ret;
 		}
 	}
 	for (i = 0; i < core->priv.subdev_num; i++)
 		if (core->priv.subdev_info[i].id == id) {
 			subdev_info = &core->priv.subdev_info[i];
-			goto found;
+			ret = xocl_subdev_create(xdev_hdl, subdev_info);
+			if (ret)
+				return ret;
 		}
 
-found:
-	return subdev_info ? xocl_subdev_create(xdev_hdl, subdev_info) :
-		-ENODEV;
+	return ret;
 }
 
 int xocl_subdev_create_all(xdev_handle_t xdev_hdl)
@@ -664,6 +789,7 @@ void xocl_subdev_update_info(xdev_handle_t xdev_hdl,
 
 	for (i = 0; i < *num; i++) {
 		if (info_array[i].id == sdev_info->id &&
+			info_array[i].override_idx == sdev_info->override_idx &&
 			!info_array[i].multi_inst) {
 			memcpy(&info_array[i], sdev_info,
 				sizeof(*info_array));
