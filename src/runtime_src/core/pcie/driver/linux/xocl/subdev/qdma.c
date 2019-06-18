@@ -4,6 +4,7 @@
  * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@Xilinx.com
+ *          Jan Stephan <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -925,7 +926,7 @@ static int queue_req_complete(unsigned long priv, unsigned int done_bytes,
 			cb->queue->qconf.c2h ? DMA_FROM_DEVICE : DMA_TO_DEVICE);
 		xocl_finish_unmgd(&cb->unmgd);
 	} else {
-		drm_gem_object_unreference_unlocked(&cb->xobj->base);
+		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&cb->xobj->base);
 	}
 
 	spin_lock_bh(&cb->lock);
@@ -959,7 +960,7 @@ static ssize_t stream_post_bo(struct xocl_qdma *qdma,
 		goto out;
 	}
 
-	drm_gem_object_reference(gem_obj);
+	XOCL_DRM_GEM_OBJECT_GET(gem_obj);
 	xobj = to_xocl_bo(gem_obj);
 
 	io_req = queue_req_new(queue);
@@ -1007,7 +1008,7 @@ static ssize_t stream_post_bo(struct xocl_qdma *qdma,
 
 out:
 	if (!kiocb) {
-		drm_gem_object_unreference_unlocked(gem_obj);
+		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
 		if (io_req)
 			queue_req_free(queue, io_req, false);
 	} else {
@@ -1618,9 +1619,9 @@ static long stream_ioctl_alloc_buffer(struct xocl_qdma *qdma,
 
 	flags = O_CLOEXEC | O_RDWR;
 
-	drm_gem_object_reference(&xobj->base);
+	XOCL_DRM_GEM_OBJECT_GET(&xobj->base);
 	dmabuf = drm_gem_prime_export(XOCL_DRM(xdev)->ddev,
-		       	&xobj->base, flags);
+				&xobj->base, flags);
 	if (IS_ERR(dmabuf)) {
 		xocl_err(&qdma->pdev->dev, "failed to export dma_buf");
 		ret = PTR_ERR(dmabuf);

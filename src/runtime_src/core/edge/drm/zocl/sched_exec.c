@@ -4,8 +4,9 @@
  * Copyright (C) 2017-2019 Xilinx, Inc. All rights reserved.
  *
  * Authors:
- *    Soren Soe <soren.soe@xilinx.com>
- *    Min Ma <min.ma@xilinx.com>
+ *    Soren Soe   <soren.soe@xilinx.com>
+ *    Min Ma      <min.ma@xilinx.com>
+ *    Jan Stephan <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -975,7 +976,7 @@ static inline void
 set_cmd_ext_timestamp(struct sched_cmd *cmd, enum zocl_ts_type ts)
 {
 	u32 opc = opcode(cmd);
-	struct timeval tv;
+	ZOCL_TIMESPEC tv;
 	struct ert_start_kernel_cmd *sk;
 
 	sk = (struct ert_start_kernel_cmd *)cmd->packet;
@@ -991,13 +992,13 @@ set_cmd_ext_timestamp(struct sched_cmd *cmd, enum zocl_ts_type ts)
 	 * The fourth 32 bits - CU done  microseconds
 	 * Use 32 bits timestamp is good enough for this purpose for now.
 	 */
-	do_gettimeofday(&tv);
+	ZOCL_GETTIME(&tv);
 	if (ts == CU_START_TIME) {
 		*(sk->data + sk->extra_cu_masks) = (u32)tv.tv_sec;
-		*(sk->data + sk->extra_cu_masks + 1) = (u32)tv.tv_usec;
+		*(sk->data + sk->extra_cu_masks + 1) = (u32)tv.ZOCL_USEC;
 	} else if (ts == CU_DONE_TIME) {
 		*(sk->data + sk->extra_cu_masks + 2) = (u32)tv.tv_sec;
-		*(sk->data + sk->extra_cu_masks + 3) = (u32)tv.tv_usec;
+		*(sk->data + sk->extra_cu_masks + 3) = (u32)tv.ZOCL_USEC;
 	}
 }
 
@@ -1280,9 +1281,9 @@ void zocl_gem_object_unref(struct sched_cmd *cmd)
 	struct drm_zocl_bo *bo = cmd->buffer;
 
 	if (zdev->domain)
-		drm_gem_object_unreference_unlocked(&bo->gem_base);
+		ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&bo->gem_base);
 	else
-		drm_gem_object_unreference_unlocked(&bo->cma_base.base);
+		ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&bo->cma_base.base);
 }
 
 /*

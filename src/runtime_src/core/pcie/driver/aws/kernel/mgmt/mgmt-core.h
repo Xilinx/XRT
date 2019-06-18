@@ -23,6 +23,14 @@
 #define AWSMGMT_DRIVER_MINOR 2
 #define AWSMGMT_DRIVER_PATCHLEVEL 1
 
+/* Ensure compatibility with newer Linux kernels. */
+/* access_ok lost its first parameter with Linux 5.0. */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
+	#define AWSMGMT_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(ADDR, SIZE)
+#else
+	#define AWSMGMT_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(TYPE, ADDR, SIZE)
+#endif
+
 enum AWSMGMT_BARS {
     AWSMGMT_MAIN_BAR = 0,
     AWSMGMT_MAILBOX_BAR,

@@ -184,7 +184,7 @@ bool hal_is_compatible(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg)
     {
         if (strcmp(systemcfg->dsa, hwcfg->devices[i].dsa) != 0)
         {
-            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "DSA mismatch: requested %s found %s\n",
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Shell mismatch: requested %s found %s\n",
                        systemcfg->dsa, hwcfg->devices[i].dsa);
             return false;
         }

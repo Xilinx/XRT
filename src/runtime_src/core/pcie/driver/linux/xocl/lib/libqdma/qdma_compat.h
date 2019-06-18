@@ -45,17 +45,6 @@
 
 #endif
 
-/* use simple wait queue (swaitq) with newer kernels */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 6, 0)
-#include <linux/swait.h>
-
-#define qdma_wait_queue			struct swait_queue_head
-#define qdma_waitq_init			init_swait_queue_head
-#define qdma_waitq_wakeup		swake_up
-#define qdma_waitq_wait_event		swait_event_interruptible
-#define qdma_waitq_wait_event_timeout	swait_event_interruptible_timeout
-
-#else
 #include <linux/wait.h>
 
 #define qdma_wait_queue			wait_queue_head_t
@@ -63,8 +52,6 @@
 #define qdma_waitq_wakeup		wake_up_interruptible
 #define qdma_waitq_wait_event		wait_event_interruptible
 #define qdma_waitq_wait_event_timeout	wait_event_interruptible_timeout
-
-#endif	/* swaitq */
 
 /* timer */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)

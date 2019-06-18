@@ -716,7 +716,7 @@ int shim::xclLoadXclBin(const xclBin *buffer)
         if (ret != 0) {
             if (ret == -EINVAL) {
                 std::stringstream output;
-                output << "Xclbin does not match DSA on card or xrt version.\n"
+                output << "Xclbin does not match Shell on card or xrt version.\n"
                     << "Please install compatible xrt or run xbutil flash -a all to flash card."
                     << std::endl;
                 if (mLogStream.is_open()) {
