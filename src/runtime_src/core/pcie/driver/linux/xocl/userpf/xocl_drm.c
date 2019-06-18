@@ -194,7 +194,7 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	if (page_offset > num_pages)
 		return VM_FAULT_SIGBUS;
 
-	if (xobj->type & XOCL_BO_P2P) {
+	if (xobj->flags == XOCL_BO_P2P) {
 #if RHEL_P2P_SUPPORT
 		pfn = phys_to_pfn_t(page_to_phys(xobj->pages[page_offset]), PFN_MAP|PFN_DEV);
 		ret = vm_insert_mixed(vma, vmf_address, pfn);

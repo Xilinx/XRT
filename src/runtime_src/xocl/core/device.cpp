@@ -196,7 +196,6 @@ get_xclbin_cus(const xocl::device* device)
   return xrt_core::xclbin::get_cus(device->get_axlf());
 }
 
-
 XOCL_UNUSED static bool
 is_emulation_mode()
 {
@@ -240,6 +239,19 @@ track(const memory* mem)
 #endif
 }
 
+xrt::device::memoryDomain
+get_mem_domain(const memory* mem)
+{
+  auto domain = xrt::device::memoryDomain::XRT_DEVICE_RAM;
+
+  if (mem->is_device_memory_only())
+    domain = xrt::device::memoryDomain::XRT_DEVICE_ONLY_MEM;
+  else if (mem->is_p2p_memory())
+    domain = xrt::device::memoryDomain::XRT_DEVICE_ONLY_MEM_P2P;
+
+  return domain;
+}
+
 void
 device::
 clear_connection(connidx_type conn)
@@ -260,9 +272,7 @@ alloc(memory* mem, memidx_type memidx)
     return boh;
   }
 
-  auto domain = mem->is_device_memory_only()
-    ? xrt::device::memoryDomain::XRT_DEVICE_P2P_RAM
-    : xrt::device::memoryDomain::XRT_DEVICE_RAM;
+  auto domain = get_mem_domain(mem);
 
   auto boh = m_xdevice->alloc(sz,domain,memidx,nullptr);
   track(mem);

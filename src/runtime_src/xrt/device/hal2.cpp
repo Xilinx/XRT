@@ -160,8 +160,7 @@ allocExecBuffer(size_t sz)
   };
 
   auto ubo = std::make_unique<ExecBufferObject>();
-  //ubo->handle = m_ops->mAllocBO(m_handle,sz,xclBOKind(0),(1<<31));  // 1<<31 xocl_ioctl.h
-  ubo->handle = m_ops->mAllocBO(m_handle,sz, 0,(((uint64_t)1)<<31));  // 1<<31 xocl_ioctl.h
+  ubo->handle = m_ops->mAllocBO(m_handle,sz, 0, XCL_BO_FLAGS_EXECBUF);  // xclhal2_mem.h
   if (ubo->handle == 0xffffffff)
     throw std::bad_alloc();
 
@@ -185,7 +184,7 @@ alloc(size_t sz)
     delete bo;
   };
 
-  uint64_t flags = 0xFFFFFF; //TODO: check default, any bank.
+  uint64_t flags = 0xFFFF; //TODO: check default, any bank.
   auto ubo = std::make_unique<BufferObject>();
   ubo->handle = m_ops->mAllocBO(m_handle, sz, 0, flags);
   if (ubo->handle == 0xffffffff)
@@ -212,7 +211,7 @@ alloc(size_t sz,void* userptr)
     delete bo;
   };
 
-  uint64_t flags = 0xFFFFFF; //TODO:check default
+  uint64_t flags = 0xFFFF; //TODO:check default
   auto ubo = std::make_unique<BufferObject>();
   ubo->handle = m_ops->mAllocUserPtrBO(m_handle, userptr, sz, flags);
   if (ubo->handle == 0xffffffff)
@@ -248,15 +247,18 @@ alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
     ubo->hostAddr = nullptr;
   }
   else {
-    //uint64_t flags = (1<<memory_index);
     uint64_t flags = memory_index;
-    if(domain==Domain::XRT_DEVICE_P2P_RAM) {
-      flags |= (1<<30);
-    }
+    if(domain==Domain::XRT_DEVICE_ONLY_MEM_P2P) {
+      flags |= XCL_BO_FLAGS_P2P;
+    } else if (domain == Domain::XRT_DEVICE_ONLY_MEM) {
+      flags |= XCL_BO_FLAGS_DEV_ONLY;
+    } else
+      flags |= XCL_BO_FLAGS_CACHEABLE;
+
     if (userptr)
       ubo->handle = m_ops->mAllocUserPtrBO(m_handle, userptr, sz, flags);
     else
-      ubo->handle = m_ops->mAllocBO(m_handle, sz, 0, flags | XCL_BO_FLAGS_CACHEABLE);
+      ubo->handle = m_ops->mAllocBO(m_handle, sz, 0, flags);
 
     if (ubo->handle == 0xffffffff)
       throw std::bad_alloc();

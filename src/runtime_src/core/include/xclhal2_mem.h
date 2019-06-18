@@ -28,11 +28,10 @@ extern "C" {
  * bits  0 ~ 15: DDR BANK index
  * bits 16 ~ 31: BO flags
  */
-#define	XCL_BO_FLAGS_CACHEABLE		(1 << 24)
-#define	XCL_BO_FLAGS_HOST_BO		(1 << 25)
-#define	XCL_BO_FLAGS_COHERENT		(1 << 26)
+#define	XCL_BO_FLAGS_HOST_ONLY		(1 << 25)
+#define	XCL_BO_FLAGS_CACHEABLE		(1 << 26)
 #define	XCL_BO_FLAGS_SVM		(1 << 27)
-#define	XCL_BO_FLAGS_USERPTR		(1 << 28)
+#define	XCL_BO_FLAGS_DEV_ONLY		(1 << 28)
 #define	XCL_BO_FLAGS_CMA		(1 << 29)
 #define	XCL_BO_FLAGS_P2P		(1 << 30)
 #define	XCL_BO_FLAGS_EXECBUF		(1 << 31)

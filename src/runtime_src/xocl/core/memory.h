@@ -129,7 +129,13 @@ public:
   bool
   is_device_memory_only() const
   {
-    return m_ext_flags & XCL_MEM_EXT_P2P_BUFFER || m_flags & CL_MEM_HOST_NO_ACCESS;
+    return m_flags & CL_MEM_HOST_NO_ACCESS;
+  }
+
+  bool
+  is_p2p_memory() const
+  {
+    return m_ext_flags & XCL_MEM_EXT_P2P_BUFFER;
   }
 
   // Derived classes accessors

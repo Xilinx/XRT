@@ -338,10 +338,7 @@ size_t shim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size
  */
 unsigned int shim::xclAllocBO(size_t size, int unused, unsigned flags)
 {
-    unsigned flag = flags & 0xFFFFFFLL;
-    unsigned type = flags & 0xFF000000LL ;
-
-    drm_xocl_create_bo info = {size, mNullBO, flag, type};
+    drm_xocl_create_bo info = {size, mNullBO, flags};
     int result = mDev->ioctl(DRM_IOCTL_XOCL_CREATE_BO, &info);
     return result ? mNullBO : info.handle;
 }
@@ -351,11 +348,8 @@ unsigned int shim::xclAllocBO(size_t size, int unused, unsigned flags)
  */
 unsigned int shim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
 {
-    unsigned flag = flags & 0xFFFFFFLL;
-    unsigned type = flags & 0xFF000000LL ;
-
     drm_xocl_userptr_bo user =
-        {reinterpret_cast<uint64_t>(userptr), size, mNullBO, flag, type};
+        {reinterpret_cast<uint64_t>(userptr), size, mNullBO, flags};
     int result = mDev->ioctl(DRM_IOCTL_XOCL_USERPTR_BO, &user);
     return result ? mNullBO : user.handle;
 }
