@@ -246,7 +246,7 @@ get_mem_domain(const memory* mem)
 
   if (mem->is_device_memory_only())
     domain = xrt::device::memoryDomain::XRT_DEVICE_ONLY_MEM;
-  else if (mem->is_p2p_memory())
+  else if (mem->is_device_memory_only_p2p())
     domain = xrt::device::memoryDomain::XRT_DEVICE_ONLY_MEM_P2P;
 
   return domain;
@@ -852,7 +852,7 @@ unmap_buffer(memory* buffer, void* mapped_ptr)
   if (flags & (CL_MAP_WRITE | CL_MAP_WRITE_INVALIDATE_REGION)) {
     if (auto ubuf = static_cast<char*>(buffer->get_host_ptr()))
       xdevice->write(boh,ubuf+offset,size,offset,false);
-    if (buffer->is_resident(this) && !buffer->is_device_memory_only())
+    if (buffer->is_resident(this) && !buffer->no_host_memory())
       xdevice->sync(boh,size,offset,xrt::hal::device::direction::HOST2DEVICE,false);
   }
 }
@@ -866,7 +866,7 @@ migrate_buffer(memory* buffer,cl_mem_migration_flags flags)
     buffer_resident_or_error(buffer,this);
     auto boh = buffer->get_buffer_object_or_error(this);
     auto xdevice = get_xrt_device();
-    if(!buffer->is_device_memory_only()){
+    if(!buffer->no_host_memory()){
       xdevice->sync(boh,buffer->get_size(),0,xrt::hal::device::direction::DEVICE2HOST,false);
       sync_to_ubuf(buffer,0,buffer->get_size(),xdevice,boh);
     }
@@ -878,7 +878,7 @@ migrate_buffer(memory* buffer,cl_mem_migration_flags flags)
   auto xdevice = get_xrt_device();
   xrt::device::BufferObjectHandle boh = buffer->get_buffer_object(this);
 
-  if(!buffer->is_device_memory_only()){
+  if(!buffer->no_host_memory()){
     // Sync from host to device to make make buffer resident of this device
     sync_to_hbuf(buffer,0,buffer->get_size(),xdevice,boh);
     xdevice->sync(boh,buffer->get_size(), 0, xrt::hal::device::direction::HOST2DEVICE,false);
@@ -956,7 +956,7 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
   }
 
   // Copy via host of local buffers and no kdma and neither buffer is p2p (no shadow buffer in host)
-  if (!imported && !src_buffer->is_device_memory_only() && !dst_buffer->is_device_memory_only()) {
+  if (!imported && !src_buffer->no_host_memory() && !dst_buffer->no_host_memory()) {
     // non p2p BOs then copy through host
     auto cb = [this](memory* sbuf, memory* dbuf, size_t soff, size_t doff, size_t sz,const cmd_type& c) {
       try {
@@ -998,9 +998,9 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
     err << "The src buffer is imported from another device\n";
   if (is_imported(dst_buffer))
     err << "The dst buffer is imported from another device\n";
-  if (src_buffer->is_device_memory_only())
+  if (src_buffer->no_host_memory())
     err << "The src buffer is a device memory only buffer\n";
-  if (dst_buffer->is_device_memory_only())
+  if (dst_buffer->no_host_memory())
     err << "The dst buffer is a device memory only buffer\n";
   err << "The targeted device has " << get_num_cdmas() << " KDMA kernels\n";
   throw std::runtime_error(err.str());

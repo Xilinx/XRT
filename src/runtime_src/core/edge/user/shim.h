@@ -51,7 +51,7 @@ public:
                   size_t size);
   size_t xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf,
                  size_t size);
-  unsigned int xclAllocBO(size_t size, xclBOKind domain, unsigned flags);
+  unsigned int xclAllocBO(size_t size, int unused, unsigned flags);
   unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
   unsigned int xclGetHostBO(uint64_t paddr, size_t size);
   void xclFreeBO(unsigned int boHandle);

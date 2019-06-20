@@ -133,9 +133,15 @@ public:
   }
 
   bool
-  is_p2p_memory() const
+  is_device_memory_only_p2p() const
   {
     return m_ext_flags & XCL_MEM_EXT_P2P_BUFFER;
+  }
+
+  bool
+  no_host_memory() const
+  {
+    return is_device_memory_only() || is_device_memory_only_p2p();
   }
 
   // Derived classes accessors

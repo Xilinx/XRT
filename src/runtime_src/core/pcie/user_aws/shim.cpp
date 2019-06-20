@@ -960,9 +960,7 @@ namespace awsbwhal {
     // created for the device ddr for now. Ignoring the flags as well.
     unsigned int AwsXcl::xclAllocBO(size_t size, int unused, unsigned flags)
     {
-      unsigned flag = flags & 0xFFFFFFLL;
-      unsigned type = flags & 0xFF000000LL ;
-      drm_xocl_create_bo info = {size, mNullBO, flag, type};
+      drm_xocl_create_bo info = {size, mNullBO, flags};
       int result = ioctl(mUserHandle, DRM_IOCTL_XOCL_CREATE_BO, &info);
       if (result) {
         std::cout << __func__ << " ERROR: AllocBO IOCTL failed" << std::endl;
@@ -972,9 +970,7 @@ namespace awsbwhal {
 
     unsigned int AwsXcl::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
     {
-      unsigned flag = flags & 0xFFFFFFLL;
-      unsigned type = flags & 0xFF000000LL ;
-      drm_xocl_userptr_bo user = {reinterpret_cast<uint64_t>(userptr), size, mNullBO, flag, type};
+      drm_xocl_userptr_bo user = {reinterpret_cast<uint64_t>(userptr), size, mNullBO, flags};
       int result = ioctl(mUserHandle, DRM_IOCTL_XOCL_USERPTR_BO, &user);
       return result ? mNullBO : user.handle;
     }

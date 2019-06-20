@@ -1505,7 +1505,7 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
     }
     //Allocate the exec_bo
     unsigned execHandle = xclAllocBO(handle, sizeof (ert_start_copybo_cmd),
-        0, (1<<31));
+        0, XCL_BO_FLAGS_EXECBUF);
     struct ert_start_copybo_cmd *execData =
         reinterpret_cast<struct ert_start_copybo_cmd *>(
         xclMapBO(handle, execHandle, true));

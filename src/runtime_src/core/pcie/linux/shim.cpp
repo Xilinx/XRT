@@ -429,7 +429,7 @@ int shim::xclCopyBO(unsigned int dst_boHandle,
 {
     int ret;
     unsigned execHandle = xclAllocBO(sizeof (ert_start_copybo_cmd),
-        0, (1<<31));
+        0, XCL_BO_FLAGS_EXECBUF);
     struct ert_start_copybo_cmd *execData =
         reinterpret_cast<struct ert_start_copybo_cmd *>(
         xclMapBO(execHandle, true));
