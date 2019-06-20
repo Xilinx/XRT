@@ -16,7 +16,7 @@
  */
 
 #ifndef _XRT_DRV_H
-#define	_XRT_DRV_H
+#define _XRT_DRV_H
 
 
 #define XRT_DRV_DEVICE_MEM 	(1 << 31)
