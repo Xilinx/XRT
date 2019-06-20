@@ -258,7 +258,7 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 		xobj->metadata.state = DRM_XOCL_EXECBUF_STATE_ABORT;
 
 
-	if (xobj->flags & XRT_DRV_DRM_SHMEM) {
+	if (xobj->flags & XOCL_DRM_SHMEM) {
 		err = drm_gem_object_init(dev, &xobj->base, size);
 		if (err)
 			goto failed;
@@ -268,7 +268,7 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 
 	xobj_inited = true;
 
-	if (!(xobj->flags & XRT_DRV_DEVICE_MEM))
+	if (!(xobj->flags & XOCL_DEVICE_MEM))
 		return xobj;
 
 	/* Let's reserve some device memory */

@@ -23,21 +23,33 @@
 #include "../xocl_drm.h"
 #include "xrt_drv.h"
 
-#define XOCL_DEVICE_MEM 	XRT_DRV_DEVICE_MEM
-#define XOCL_DRM_SHMEM		XRT_DRV_DRM_SHMEM
-#define XOCL_USER_MEM		XRT_DRV_USER_ALLOC
-#define XOCL_DRM_IMPORT 	XRT_DRV_DRM_IMPORT
-#define XOCL_P2P_MEM		XRT_DRV_P2P
+#define XRT_DRV_BO_DEVICE_MEM 	(1 << 31) // This BO has device memory
+#define XRT_DRV_BO_HOST_MEM	(1 << 30) // This BO has host memory
+#define XRT_DRV_BO_DRM_ALLOC	(1 << 29) 
+#define XRT_DRV_BO_DRM_IMPORT 	(1 << 28) // This BO's sg table is imported by DRM API. (Special case: import a P2P buffer).
+#define XRT_DRV_BO_P2P		(1 << 27) // This BO's sg table points to host-accessible, XDMA PCIe bus address.
+#define XRT_DRV_BO_DRM_SHMEM	(1 << 26) // This BO's sg table points to host memory, and the host memory is reserved by calling drm_gem_object init.
+#define XRT_DRV_BO_USER_ALLOC	(1 << 25) // This BO's sg table points to host memory, and the host memory is allocated by user(get_user_pages_*).
+#define XRT_DRV_BO_CMA		(1 << 24) // This BO's sg table points to host memory, and the host memory is allocated by calling drm_gem_cma_create.
+#define XRT_DRV_BO_CACHEABLE	(1 << 23)
 
-#define XOCL_HOST_MEM		(XOCL_USER_MEM | XOCL_DRM_SHMEM)
-#define XOCL_PAGE_ALLOC 	(XOCL_USER_MEM | XOCL_DRM_SHMEM | XOCL_P2P_MEM | XOCL_DRM_IMPORT)
 
-#define XOCL_BO_NORMAL		(XOCL_DEVICE_MEM | XOCL_DRM_SHMEM)
-#define XOCL_BO_USERPTR 	(XOCL_DEVICE_MEM | XOCL_USER_MEM)
+#define XOCL_DEVICE_MEM 	XRT_DRV_BO_DEVICE_MEM
+#define XOCL_HOST_MEM		XRT_DRV_BO_HOST_MEM
+#define XOCL_DRV_ALLOC		XRT_DRV_BO_DRV_ALLOC
+#define XOCL_DRM_SHMEM		XRT_DRV_BO_DRM_SHMEM
+#define XOCL_USER_MEM		XRT_DRV_BO_USER_ALLOC
+#define XOCL_DRM_IMPORT 	XRT_DRV_BO_DRM_IMPORT
+#define XOCL_P2P_MEM		XRT_DRV_BO_P2P
+
+#define XOCL_PAGE_ALLOC 	(XOCL_DRV_ALLOC | XOCL_USER_MEM | XOCL_P2P_MEM | XOCL_DRM_IMPORT)
+
+#define XOCL_BO_NORMAL		(XOCL_DEVICE_MEM | XOCL_HOST_MEM | XOCL_DRV_ALLOC | XOCL_DRM_SHMEM)
+#define XOCL_BO_USERPTR 	(XOCL_DEVICE_MEM | XOCL_HOST_MEM | XOCL_USER_MEM)
 #define XOCL_BO_P2P		(XOCL_DEVICE_MEM | XOCL_P2P_MEM)
 #define XOCL_BO_DEV_ONLY	(XOCL_DEVICE_MEM)
-#define XOCL_BO_IMPORT		(XOCL_DRM_IMPORT)
-#define XOCL_BO_EXECBUF 	(XOCL_DRM_SHMEM)
+#define XOCL_BO_IMPORT		(XOCL_HOST_MEM | XOCL_DRM_IMPORT)
+#define XOCL_BO_EXECBUF 	(XOCL_HOST_MEM | XOCL_DRV_ALLOC | XOCL_DRM_SHMEM)
 
 #define XOCL_BO_DDR0 (1 << 0)
 #define XOCL_BO_DDR1 (1 << 1)

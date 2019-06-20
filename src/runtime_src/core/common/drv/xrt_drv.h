@@ -18,11 +18,13 @@
 #ifndef _XRT_DRV_H
 #define _XRT_DRV_H
 
-
-#define XRT_DRV_DEVICE_MEM 	(1 << 31)
-#define XRT_DRV_DRM_SHMEM	(1 << 30)
-#define XRT_DRV_USER_ALLOC	(1 << 29)
-#define XRT_DRV_DRM_IMPORT 	(1 << 28)
-#define XRT_DRV_P2P		(1 << 27)
-
+#define XRT_DRV_BO_DEVICE_MEM 	(1 << 31)
+#define XRT_DRV_BO_HOST_MEM	(1 << 30)
+#define XRT_DRV_BO_DRV_ALLOC	(1 << 29)
+#define XRT_DRV_BO_DRM_IMPORT 	(1 << 28)
+#define XRT_DRV_BO_P2P		(1 << 27)
+#define XRT_DRV_BO_DRM_SHMEM	(1 << 26)
+#define XRT_DRV_BO_USER_ALLOC	(1 << 25)
+#define XRT_DRV_BO_CMA		(1 << 24)
+#define XRT_DRV_BO_CACHEABLE	(1 << 23)
 #endif
