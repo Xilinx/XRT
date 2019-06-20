@@ -49,7 +49,7 @@ RunSummary::getFileTypeAsStr(enum RunSummary::FileType eFileType)
   switch (eFileType) {
     case FT_UNKNOWN: return "UNKNOWN";
     case FT_PROFILE: return "PROFILE";
-    case FT_TIMING: return "TIMING";
+    case FT_TRACE: return "TRACE";
   }
 
   // Yeah, the code will never get here, but it makes for a clean flow

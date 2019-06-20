@@ -208,7 +208,7 @@ namespace xdp {
 
     // Gather data for TimingSummary
     if ((mProfileFlags & RTUtil::FILE_TIMELINE_TRACE) && (writer != nullptr)) {
-      mRunSummary->addFile(writer->getFileName(), RunSummary::FT_TIMING);
+      mRunSummary->addFile(writer->getFileName(), RunSummary::FT_TRACE);
     }
   }
 
