@@ -324,6 +324,45 @@ regmap_size(struct sched_cmd *cmd)
 }
 
 /**
+ * cu_idx_to_timeout() - Get CU's timeout value for CU index.
+ *                       CU timeout is in Microsecond. Our timer thread wakes
+ *                       up every ZOCL_CU_TIMER_INTERVAL (500) Milliseconds.
+ *                       So we return the timeout value in our timer interval
+ *                       unit plus one in case we just miss one timer slot.
+ * @dev: Device handle
+ * @cu_idx: Global CU idx
+ *
+ * Return: run timeout value of CU
+ */
+inline uint32_t
+cu_idx_to_timeout(struct drm_device *dev, unsigned int cu_idx)
+{
+	struct drm_zocl_dev *zdev = dev->dev_private;
+
+	return zdev->exec->cu[cu_idx].zc_timeout /
+	    (ZOCL_CU_TIMER_INTERVAL * 1000) + 1;
+}
+
+/**
+ * cu_idx_to_reset_timeout() - Get CU's reset timeout value for CU index.
+ *                             CU reset timeout is in Microsecond. We busy
+ *                             check the reset status every
+ *                             ZOCL_CU_RESET_TIMER_INTERVAL (1000) Microsecond.
+ * @dev: Device handle
+ * @cu_idx: Global CU idx
+ *
+ * Return: reset timeout value of CU in Microsecond
+ */
+inline uint32_t
+cu_idx_to_reset_timeout(struct drm_device *dev, unsigned int cu_idx)
+{
+	struct drm_zocl_dev *zdev = dev->dev_private;
+
+	return zdev->exec->cu[cu_idx].zc_reset_timeout /
+	    (ZOCL_CU_RESET_TIMER_INTERVAL) + 1;
+}
+
+/**
  * cu_idx_to_addr() - Convert CU idx into it virtual address.
  *
  * @dev: Device handle
@@ -372,6 +411,65 @@ write_cu_regmap(u32 *reg_data, u32 *base_addr, u32 size)
 	 */
 	for (i = 4; i < size; ++i)
 		iowrite32(reg_data[i], base_addr + i);
+}
+
+/*
+ * This is the timer thread function. In the case that a CU timeout
+ * value is intialized, we start a timer thread. This thread wakes
+ * up every ZOCL_CU_TIMER_INTERVAL (500) Milliseconds. And each time,
+ * it sets a flag in scheduler and wakes up scheduler so that scheduler
+ * can check if a CU timeouts.
+ */
+static int zocl_cu_timer_thread(void *data)
+{
+	struct drm_zocl_dev *zdev = (struct drm_zocl_dev *)data;
+	struct sched_exec_core *exec = zdev->exec;
+	struct scheduler *sched = exec->scheduler;
+
+	while (1) {
+		if (kthread_should_stop())
+			break;
+
+		msleep(ZOCL_CU_TIMER_INTERVAL);
+
+		atomic_set(&sched->check, 1);
+		wake_up_interruptible(&g_sched0.wait_queue);
+	}
+
+	return 0;
+}
+
+int zocl_init_cu_timer(struct drm_zocl_dev *zdev)
+{
+	struct sched_exec_core *exec = zdev->exec;
+	char thread_name[256] = "zocl-cu-timer-thread";
+
+	/* If the timer is initialized, return here */
+	if (exec->timer_task)
+		return 0;
+
+	exec->timer_task = kthread_run(zocl_cu_timer_thread, zdev, thread_name);
+	if (IS_ERR(exec->timer_task)) {
+		int ret = PTR_ERR(exec->timer_task);
+
+		DRM_ERROR("Unable to create CU timer.\n");
+		return ret;
+	}
+
+	return 0;
+}
+
+void zocl_cleanup_cu_timer(struct drm_zocl_dev *zdev)
+{
+	struct sched_exec_core *exec = zdev->exec;
+
+	if (!exec)
+		return;
+
+	if (!exec->timer_task)
+		return;
+
+	kthread_stop(exec->timer_task);
 }
 
 /**
@@ -491,7 +589,7 @@ static irqreturn_t sched_exec_isr(int irq, void *arg)
 	 * after supporting dataflow execution model.
 	 *
 	 * NOTE: Before dataflow support, we clearly toggle ap_done and
-	 * ap_ready to all ZERO. 
+	 * ap_ready to all ZERO.
 	 *
 	 * The Interrupt Status Register is Toggle On Write
 	 * RegData = RegData ^ WriteData
@@ -559,12 +657,21 @@ init_cus(struct sched_cmd *cmd)
 	struct ert_init_kernel_cmd *ik;
 	unsigned int i;
 	uint32_t *cmp;
+	uint32_t run_timeout;
+	uint32_t reset_timeout;
 	int num_masks = cu_masks(cmd);
 	int mask_idx;
 	int warn_flag = 0;
 
-	ik = (struct ert_init_kernel_cmd*)cmd->packet;
+	ik = (struct ert_init_kernel_cmd *)cmd->packet;
 	cmp = &ik->cu_mask;
+
+	run_timeout = ik->cu_run_timeout;
+	reset_timeout = ik->cu_reset_timeout;
+	if (run_timeout != 0 && reset_timeout == 0) {
+		DRM_WARN("Init CU fail: invalid cu reset timeout.\n");
+		goto done;
+	}
 
 	for (mask_idx = 0; mask_idx < num_masks; ++mask_idx) {
 		u32 cmd_mask = cmp[mask_idx];
@@ -589,7 +696,7 @@ init_cus(struct sched_cmd *cmd)
 		for (i = 0; i < 32; ++i) {
 			int cu_idx;
 
-			if (!(uninited_mask & (1 << i))) 
+			if (!(uninited_mask & (1 << i)))
 				continue;
 
 			cu_idx = cu_idx_from_mask(i, mask_idx);
@@ -616,11 +723,21 @@ init_cus(struct sched_cmd *cmd)
 				goto done;
 			}
 
+			zdev->exec->cu[cu_idx].zc_timeout = run_timeout;
+			zdev->exec->cu[cu_idx].zc_reset_timeout = reset_timeout;
+
 			init_cu_by_idx(cmd, cu_idx);
 
 			zdev->exec->cu_init[mask_idx] ^= (1 << i);
 		}
 	}
+
+	/*
+	 * If CU is initialized with a timeout value, we start the timer
+	 * thread to track CU timeout.
+	 */
+	if (run_timeout != 0)
+		zocl_init_cu_timer(zdev);
 
 done:
 	if (warn_flag)
@@ -702,6 +819,8 @@ configure(struct sched_cmd *cmd)
 		exec->configured = 1;
 	}
 
+	exec->cu = vzalloc(sizeof(struct zocl_cu) * exec->num_cus);
+
 	for (i = 0; i < exec->num_cus; i++) {
 		/* CU address should be masked by encoded handshake for KDS. */
 		cu_addr = cfg->data[i] & ZOCL_KDS_MASK;
@@ -741,7 +860,7 @@ configure(struct sched_cmd *cmd)
 			write_unlock(&zdev->attr_rwlock);
 			return 1;
 		}
-		SCHED_DEBUG("++ configure cu(%d) at 0x%x map to 0x%x\n", i,
+		SCHED_DEBUG("++ configure cu(%d) at 0x%x map to 0x%p\n", i,
 		    exec->cu_addr_phy[i], exec->cu_addr_virt[i]);
 	}
 
@@ -1055,6 +1174,61 @@ release_slot_idx(struct drm_device *dev, unsigned int slot_idx)
 }
 
 /**
+ * reset_cu() - reset a given CU pointed by a command
+ *
+ * @cmd: submitted command
+ *
+ * This function is called to reset a given CU at the cmd->cu_idx by
+ * setting bit 5 of CU's Control Register.
+ */
+static inline void
+reset_cu(struct sched_cmd *cmd)
+{
+	int cu_idx = cmd->cu_idx;
+	u32 *virt_addr = cu_idx_to_addr(cmd->ddev, cu_idx);
+
+	SCHED_DEBUG("-> reset_cu cu_idx=%d, cu_addr=0x%p\n", cu_idx, virt_addr);
+
+	/* Bit 5 AP_RESET */
+	iowrite32(1 << 5, virt_addr);
+
+	SCHED_DEBUG("<- reset_cu \n");
+}
+
+/**
+ * reset_cu_done() - check reset status of CU
+ *
+ * @cmd: submitted command
+ *
+ * This function is called to check if the reset of a given CU in the
+ * cmd->cu_idx is done. If bit 6 of the Control Register is set, the
+ * reset is done.
+ *
+ * Return: %true if cu reset done, %false otherwise
+ */
+static inline int
+reset_cu_done(struct sched_cmd *cmd)
+{
+	int cu_idx = cmd->cu_idx;
+	u32 *virt_addr = cu_idx_to_addr(cmd->ddev, cu_idx);
+	u32 status;
+
+	SCHED_DEBUG("-> reset_cu_done(,%d) checks cu at address 0x%p\n",
+	    cu_idx, virt_addr);
+	status = ioread32(virt_addr);
+
+	/* reset done is indicated by AP_RESET_DONE, bit 6 */
+	if (status & (1 << 6)) {
+		SCHED_DEBUG("<- reset_cu_done returns 1\n");
+		return true;
+	}
+
+	SCHED_DEBUG("<- reset_cu_done returns 0\n");
+
+	return false;
+}
+
+/**
  * cu_done() - Check status of CU which execute cmd
  *
  * @cmd: submmited command
@@ -1226,13 +1400,13 @@ notify_host(struct sched_cmd *cmd)
  * is notified that some command has completed.
  */
 static void
-mark_cmd_complete(struct sched_cmd *cmd)
+mark_cmd_complete(struct sched_cmd *cmd, enum ert_cmd_state cmd_state)
 {
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
 
 	SCHED_DEBUG("-> mark_cmd_complete(,%d)\n", cmd->slot_idx);
 	zdev->exec->submitted_cmds[cmd->slot_idx] = NULL;
-	set_cmd_state(cmd, ERT_CMD_STATE_COMPLETED);
+	set_cmd_state(cmd, cmd_state);
 	if (zdev->ert || zdev->exec->polling_mode)
 		--cmd->sched->poll;
 	release_slot_idx(cmd->ddev, cmd->slot_idx);
@@ -1542,6 +1716,10 @@ configure_cu(struct sched_cmd *cmd, int cu_idx)
 
 	set_cmd_ext_timestamp(cmd, CU_START_TIME);
 
+	/* Set the initial command execute time */
+	cmd->exectime = cu_idx_to_timeout(cmd->ddev, cmd->cu_idx);
+	cmd->check_timeout = cmd->exectime > 0 ? 1 : 0;
+
 	/* start CU at base + 0x0 */
 	iowrite32(0x1, virt_addr);
 
@@ -1616,6 +1794,83 @@ ert_configure_scu(struct sched_cmd *cmd, int cu_idx)
 	SCHED_DEBUG("<- ert_configure_scu\n");
 
 	return 0;
+}
+
+/**
+ * zocl_cu_reset() - Reset a running command and CU.
+ *
+ * @cmd: Command to reset. CU is pointed by cmd->cu_idx.
+ *
+ * Reset a CU when detecting CU timeout. After resetting CU, we will
+ * busy wait a preset reset_timeout Microseconds. If CU is reset
+ * successfully, we set cmd state to TIMEOUT so that this CU can be
+ * restarted. If reset is not done after this period of time, we set
+ * cmd state to NORESPONSE to indicate the CU timeout and reset fails.
+ */
+static void
+zocl_cu_reset(struct sched_cmd *cmd)
+{
+	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	int cu_idx = cmd->cu_idx;
+	uint32_t reset_timeout = cu_idx_to_reset_timeout(cmd->ddev, cu_idx);
+	unsigned int mask_idx = cu_mask_idx(cu_idx);
+	unsigned int pos = cu_idx_in_mask(cu_idx);
+	enum ert_cmd_state cmd_state;
+
+	SCHED_DEBUG("-> zocl_cu_reset (,%d)\n", cmd->slot_idx);
+
+	reset_cu(cmd);
+	while (reset_timeout) {
+		if (reset_cu_done(cmd))
+			break;
+		udelay(ZOCL_CU_RESET_TIMER_INTERVAL);
+		reset_timeout--;
+	}
+
+	if (reset_timeout == 0) {
+		DRM_ERROR("CU %d timeouts and reset fails.\n", cmd->cu_idx);
+		cmd_state = ERT_CMD_STATE_NORESPONSE;
+	} else {
+		DRM_WARN("CU %d timeouts and has been reset successfully.\n",
+		    cmd->cu_idx);
+		cmd_state = ERT_CMD_STATE_TIMEOUT;
+	}
+
+	zdev->exec->cu_status[mask_idx] ^= 1<<pos;
+	mark_cmd_complete(cmd, cmd_state);
+
+	SCHED_DEBUG("<- zocl_cu_reset (,%d)\n", cmd->slot_idx);
+}
+
+/**
+ * check_cmds_timeout() - Decrease the execute time and check cmds timeout.
+ *
+ * We reach the checkpoint indicated by the timer thread. So we do a
+ * special check for every command in the running state. Decrease the
+ * command's run time and check if it goes to zero.
+ */
+static void
+check_cmds_timeout(struct scheduler *sched)
+{
+	struct sched_cmd *cmd;
+	struct list_head *pos, *next;
+
+	list_for_each_safe(pos, next, &sched->cq) {
+		cmd = list_entry(pos, struct sched_cmd, list);
+
+		if (cmd->check_timeout && cmd->state == ERT_CMD_STATE_RUNNING) {
+			cmd->exectime--;
+			if (cmd->exectime == 0) {
+				/*
+				 * Detected command timeout. We mark the
+				 * internal command state to TIMEOUT so that
+				 * we can perform reset operation on this
+				 * command and CU.
+				 */
+				set_cmd_int_state(cmd, ERT_CMD_STATE_TIMEOUT);
+			}
+		}
+	}
 }
 
 /**
@@ -1715,7 +1970,7 @@ scheduler_queue_cmds(struct scheduler *sched)
 }
 
 /**
- * scheduler_iterator_cmds() - Iterate all commands in scheduler command queue
+ * scheduler_iterate_cmds() - Iterate all commands in scheduler command queue
  */
 static void
 scheduler_iterate_cmds(struct scheduler *sched)
@@ -1724,6 +1979,12 @@ scheduler_iterate_cmds(struct scheduler *sched)
 	struct list_head *pos, *next;
 
 	SCHED_DEBUG("-> scheduler_iterate_cmds\n");
+
+	if (atomic_read(&sched->check)) {
+		atomic_set(&sched->check, 0);
+		check_cmds_timeout(sched);
+	}
+
 	list_for_each_safe(pos, next, &sched->cq) {
 		cmd = list_entry(pos, struct sched_cmd, list);
 
@@ -1731,9 +1992,14 @@ scheduler_iterate_cmds(struct scheduler *sched)
 			queued_to_running(cmd);
 		if (cmd->state == ERT_CMD_STATE_RUNNING)
 			running_to_complete(cmd);
-		if (cmd->state == ERT_CMD_STATE_COMPLETED)
+		if (cmd->state == ERT_CMD_STATE_TIMEOUT)
+			zocl_cu_reset(cmd);
+		if (cmd->state == ERT_CMD_STATE_COMPLETED ||
+		    cmd->state == ERT_CMD_STATE_TIMEOUT ||
+		    cmd->state == ERT_CMD_STATE_NORESPONSE)
 			complete_to_free(cmd);
 	}
+
 	SCHED_DEBUG("<- scheduler_iterate_cmds\n");
 }
 
@@ -1769,6 +2035,11 @@ sched_wait_cond(struct scheduler *sched)
 
 	if (sched->poll) {
 		SCHED_DEBUG("scheduler wakes to poll\n");
+		return 0;
+	}
+
+	if (atomic_read(&sched->check)) {
+		SCHED_DEBUG("scheduler wakes on timer\n");
 		return 0;
 	}
 
@@ -1854,6 +2125,7 @@ init_scheduler_thread(void)
 	INIT_LIST_HEAD(&g_sched0.cq);
 	g_sched0.intc = 0;
 	g_sched0.poll = 0;
+	atomic_set(&g_sched0.check, 0);
 
 	g_sched0.sched_thread = kthread_run(scheduler, &g_sched0, name);
 	if (IS_ERR(g_sched0.sched_thread)) {
@@ -1911,7 +2183,7 @@ penguin_query(struct sched_cmd *cmd)
 
 	case ERT_INIT_CU:
 	case ERT_CONFIGURE:
-		mark_cmd_complete(cmd);
+		mark_cmd_complete(cmd, ERT_CMD_STATE_COMPLETED);
 		break;
 
 	default:
@@ -1999,17 +2271,17 @@ ps_ert_query(struct sched_cmd *cmd)
 
 	case ERT_SK_CONFIG:
 		if (scu_configure_done(cmd))
-			mark_cmd_complete(cmd);
+			mark_cmd_complete(cmd, ERT_CMD_STATE_COMPLETED);
 		break;
 
 	case ERT_SK_UNCONFIG:
 		if (scu_unconfig_done(cmd))
-			mark_cmd_complete(cmd);
+			mark_cmd_complete(cmd, ERT_CMD_STATE_COMPLETED);
 		break;
 
 	case ERT_SK_START:
 		if (scu_done(cmd))
-			mark_cmd_complete(cmd);
+			mark_cmd_complete(cmd, ERT_CMD_STATE_COMPLETED);
 		break;
 
 	case ERT_START_CU:
@@ -2018,7 +2290,7 @@ ps_ert_query(struct sched_cmd *cmd)
 		/* pass through */
 
 	case ERT_CONFIGURE:
-		mark_cmd_complete(cmd);
+		mark_cmd_complete(cmd, ERT_CMD_STATE_COMPLETED);
 		break;
 
 	default:
@@ -2445,6 +2717,8 @@ int sched_fini_exec(struct drm_device *drm)
 		kthread_stop(zdev->exec->cq_thread);
 
 	fini_scheduler_thread();
+	vfree(zdev->exec->cu);
+	zocl_cleanup_cu_timer(zdev);
 	SCHED_DEBUG("<- sched_fini_exec\n");
 
 	return 0;
