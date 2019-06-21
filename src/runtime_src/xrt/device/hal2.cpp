@@ -184,7 +184,7 @@ alloc(size_t sz)
     delete bo;
   };
 
-  uint64_t flags = 0xFFFF; //TODO: check default, any bank.
+  uint64_t flags = 0xFFFFFF; //TODO: check default, any bank.
   auto ubo = std::make_unique<BufferObject>();
   ubo->handle = m_ops->mAllocBO(m_handle, sz, 0, flags);
   if (ubo->handle == 0xffffffff)
@@ -211,7 +211,7 @@ alloc(size_t sz,void* userptr)
     delete bo;
   };
 
-  uint64_t flags = 0xFFFF; //TODO:check default
+  uint64_t flags = 0xFFFFFF; //TODO:check default
   auto ubo = std::make_unique<BufferObject>();
   ubo->handle = m_ops->mAllocUserPtrBO(m_handle, userptr, sz, flags);
   if (ubo->handle == 0xffffffff)
