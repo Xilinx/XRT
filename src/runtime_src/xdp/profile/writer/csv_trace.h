@@ -23,14 +23,16 @@ namespace xdp {
 
     class CSVTraceWriter: public TraceWriterI {
 
-	public:
+    public:
       CSVTraceWriter(const std::string& traceFileName, const std::string& platformName, XDPPluginI* Plugin);
       ~CSVTraceWriter();
 
-	protected:
+      virtual const std::string getFileName() { return TraceFileName; }
+
+    protected:
       void writeDocumentHeader(std::ofstream& ofs, const std::string& docName) override;
       void writeTableHeader(std::ofstream& ofs, const std::string& caption,
-	      const std::vector<std::string>& columnLabels) override;
+      const std::vector<std::string>& columnLabels) override;
       void writeTableRowStart(std::ofstream& ofs) override { ofs << "";}
       void writeTableRowEnd(std::ofstream& ofs) override { ofs << "\n";}
       void writeDocumentFooter(std::ofstream& ofs) override;
@@ -38,7 +40,7 @@ namespace xdp {
       // Rest of the cell and row parameters are default in base class
       const char* cellEnd() override { return ","; } 
 
-	private:
+    private:
       std::string TraceFileName;
       std::string PlatformName;
       const std::string FileExtension = ".csv";

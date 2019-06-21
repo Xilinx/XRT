@@ -52,6 +52,10 @@ namespace xdp {
       inline void enableStallTable() { mEnStallTable = true; }
       inline void enableStreamTable() { mEnStreamTable = true; }
       inline void enableShellTables() { mEnShellTables = true; }
+
+      // Returns the output file name for the writer
+      virtual const std::string getFileName() { return ""; }
+
       // Functions for Summary
       // Write Kernel Execution Time stats
       virtual void writeTimeStats(const std::string& name, const TimeStats& stats);
