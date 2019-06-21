@@ -514,6 +514,8 @@ int xcldev::flash_helper(int argc, char *argv[])
     // Manually specify DSA/BMC files or revert to MFG.
     if (args.dsa.empty() || seen_r)
     {
+	std::cout << "CAUTION: Do not hit Ctrl-C during flashing." << std::endl;
+
         // By default, only flash the first board.
         if (args.devIdx == UINT_MAX)
             args.devIdx = 0;
@@ -641,6 +643,8 @@ int xcldev::flash_helper(int argc, char *argv[])
         {
             exit(-ECANCELED);
         }
+
+	std::cout << "CAUTION: Do not hit Ctrl-C during flashing." << std::endl;
 
         // Perform DSA and BMC updating
         for (auto p : boardsToUpdate)
