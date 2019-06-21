@@ -59,17 +59,9 @@ echo " * Setup PetaLinux: $PETALINUX_LOCATION"
 
 # dsa_build.sh will create ${PLATFORM_NAME}/ directory for petalinux project
 if [ -z $BSP ]; then
-	if [ -d "${XRT_REPO_DIR}/src/platform/${PLATFORM_NAME}/config.sh" ]; then
-		${XRT_REPO_DIR}/src/runtime_src/tools/scripts/peta_build.sh --config ${XRT_REPO_DIR}/src/platform/${PLATFORM_NAME}/config.sh ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}.dsa
-	else
-		${XRT_REPO_DIR}/src/runtime_src/tools/scripts/peta_build.sh ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}.dsa
-	fi
+	${XRT_REPO_DIR}/src/runtime_src/tools/scripts/peta_build.sh ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}.dsa
 else
-	if [ -d "${XRT_REPO_DIR}/src/platform/${PLATFORM_NAME}/config.sh" ]; then
-		${XRT_REPO_DIR}/src/runtime_src/tools/scripts/peta_build.sh --config ${XRT_REPO_DIR}/src/platform/${PLATFORM_NAME}/config.sh --bsp $BSP ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}.dsa
-	else
-		${XRT_REPO_DIR}/src/runtime_src/tools/scripts/peta_build.sh --bsp $BSP ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}.dsa
-	fi
+	${XRT_REPO_DIR}/src/runtime_src/tools/scripts/peta_build.sh --bsp $BSP ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}.dsa
 fi
 
 ${XRT_REPO_DIR}/src/runtime_src/tools/scripts/pfm_build.sh ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_pfm.tcl
