@@ -84,7 +84,7 @@ void xocl_describe(const struct drm_xocl_bo *xobj)
 	uint64_t addr = 0;
 
 	addr = xobj->vmapping ? (uint64_t)xobj->vmapping : (uint64_t)xobj->bar_vmapping;
-	DRM_ERROR("%p: H[%llx] SIZE[0x%zxKB] D[0x%zx] DDR[%u] UPTR[%u] SGLCOUNT[%u] FLAG[%x]\n",
+	DRM_DEBUG("%p: H[%llx] SIZE[0x%zxKB] D[0x%zx] DDR[%u] UPTR[%u] SGLCOUNT[%u] FLAG[%x]\n",
 		  xobj, addr ? addr : 0, size_in_kb,
 			physical_addr, ddr, userptr, xobj->sgt ? xobj->sgt->orig_nents : 0, xobj->flags);
 }
@@ -117,9 +117,9 @@ static void xocl_free_bo(struct drm_gem_object *obj)
 	struct xocl_drm *drm_p = ddev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
 	int npages = obj->size >> PAGE_SHIFT;
-	DRM_ERROR("Freeing BO %p\n", xobj);
+	DRM_DEBUG("Freeing BO %p\n", xobj);
 
-	DRM_ERROR("xobj %p pages %p", xobj, xobj->pages);
+	BO_ENTER("xobj %p pages %p", xobj, xobj->pages);
 	if (xobj->vmapping)
 		vunmap(xobj->vmapping);
 	xobj->vmapping = NULL;
@@ -146,7 +146,7 @@ static void xocl_free_bo(struct drm_gem_object *obj)
 	xobj->pages = NULL;
 
 	if (!xocl_bo_import(xobj)) {
-		DRM_ERROR("Freeing regular buffer\n");
+		DRM_DEBUG("Freeing regular buffer\n");
 		if (xobj->sgt) {
 			sg_free_table(xobj->sgt);
 			kfree(xobj->sgt);
@@ -154,7 +154,7 @@ static void xocl_free_bo(struct drm_gem_object *obj)
 		xobj->sgt = NULL;
 		xocl_free_mm_node(xobj);
 	} else {
-		DRM_ERROR("Freeing imported buffer\n");
+		DRM_DEBUG("Freeing imported buffer\n");
 		if (obj->import_attach) {
 			DRM_DEBUG("Unnmapping attached dma buf\n");
 			dma_buf_unmap_attachment(obj->import_attach,
@@ -354,11 +354,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 	unsigned ddr = xocl_bo_ddr_idx(args->flags);
 	unsigned bo_type = xocl_bo_type(args->flags);
 
-
-
 	xobj = xocl_create_bo(dev, args->size, args->flags, bo_type);
-
-	DRM_ERROR("bo_type %x, args->flags %x \n", bo_type, args->flags);
 
 	BO_ENTER("xobj %p, mm_node %p", xobj, xobj->mm_node);
 	if (IS_ERR(xobj)) {
@@ -564,11 +560,11 @@ int xocl_sync_bo_ioctl(struct drm_device *dev,
 	}
 
 	xobj = to_xocl_bo(gem_obj);
-	DRM_ERROR("xobj %p", xobj);
+	BO_ENTER("xobj %p", xobj);
 	sgt = xobj->sgt;
 
 	if (!xocl_bo_sync_able(xobj->flags)) {
-		DRM_ERROR("This BO doesn't support sync_bo\n");
+		DRM_DEBUG("This BO doesn't support sync_bo\n");
 		ret = -EOPNOTSUPP;
 		goto out;
 	}
