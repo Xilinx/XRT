@@ -842,8 +842,8 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	}
 	case MAILBOX_REQ_PROGRAM_SHELL: {
 		/* blob should already been updated */
-		xclmgmt_program_shell(lro);
-		
+		ret = xclmgmt_program_shell(lro);
+		(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
 		break;
 	}
 	default:
@@ -1153,6 +1153,7 @@ static struct pci_driver xclmgmt_driver = {
 
 static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_feature_rom,
+	xocl_init_iores,
 	xocl_init_flash,
 	xocl_init_xdma_mgmt,
 	xocl_init_sysmon,
@@ -1172,6 +1173,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 
 static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_feature_rom,
+	xocl_fini_iores,
 	xocl_fini_flash,
 	xocl_fini_xdma_mgmt,
 	xocl_fini_sysmon,

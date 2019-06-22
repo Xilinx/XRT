@@ -2108,7 +2108,6 @@ static int mailbox_remove(struct platform_device *pdev)
 	listen_wq_fini(mbx);
 	BUG_ON(!(list_empty(&mbx->mbx_req_list)));
 
-	xocl_subdev_register(pdev, XOCL_SUBDEV_MAILBOX, NULL);
 	if (mbx->mbx_regs)
 		iounmap(mbx->mbx_regs);
 
@@ -2194,8 +2193,6 @@ static int mailbox_probe(struct platform_device *pdev)
 		}
 	}
 
-	xocl_subdev_register(pdev, XOCL_SUBDEV_MAILBOX, &mailbox_ops);
-
 	mbx->mbx_prot_ver = MB_PROTOCOL_VER;
 
 	mbx->sys_cdev = cdev_alloc();
@@ -2227,8 +2224,12 @@ failed:
 	return ret;
 }
 
+struct xocl_drv_private mailbox_priv = {
+	.ops = &mailbox_ops,
+};
+
 struct platform_device_id mailbox_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_MAILBOX), 0 },
+	{ XOCL_DEVNAME(XOCL_MAILBOX), (kernel_ulong_t)&mailbox_priv },
 	{ },
 };
 

@@ -73,6 +73,21 @@
 
 #define XOCL_PA_SECTION_SHIFT		28
 
+#define xocl_queue_work(xdev, op, delay)			\
+	queue_delayed_work(xdev->wq, &xdev->works[op].work,	\
+			msecs_to_jiffies(delay))
+enum {
+	XOCL_WORK_RESET,
+	XOCL_WORK_PROGRAM_SHELL,
+	XOCL_WORK_REFRESH_SUBDEV,
+	XOCL_WORK_NUM,
+};
+
+struct xocl_work {
+	struct delayed_work	work;
+	int			op;
+};
+
 struct xocl_dev	{
 	struct xocl_dev_core	core;
 
@@ -97,8 +112,8 @@ struct xocl_dev	{
 #endif
 	struct list_head                ctx_list;
 	struct workqueue_struct		*wq;
-	struct delayed_work		reset_work;
-	struct delayed_work		program_work;
+	struct xocl_work		works[XOCL_WORK_NUM];
+
 	/*
 	 * Per xdev lock protecting client list and all client contexts in the
 	 * list. Any operation which requires client status, such as xclbin

@@ -140,8 +140,14 @@ enum {
 
 #endif
 
-#define	MGMT_SUFFIX		".m"
-#define	USER_SUFFIX		".u"
+#define	MGMTPF		0
+#define	USERPF		1
+
+#if PF==MGMTPF
+#define SUBDEV_SUFFIX	".m"
+#elif PF==USERPF
+#define SUBDEV_SUFFIX	".u"
+#endif
 
 #define XOCL_FEATURE_ROM	"rom"
 #define	XOCL_IORES0		"iores0"
@@ -159,6 +165,7 @@ enum {
 #define	XOCL_XIIC			"xiic"
 #define	XOCL_MAILBOX		"mailbox"
 #define	XOCL_ICAP			"icap"
+#define XOCL_AXIGATE			"axigate"
 #define	XOCL_MIG			"mig"
 #define	XOCL_XMC			"xmc"
 #define	XOCL_DNA			"dna"
@@ -182,6 +189,7 @@ enum subdev_id {
 	XOCL_SUBDEV_MB,
 	XOCL_SUBDEV_XIIC,
 	XOCL_SUBDEV_MAILBOX,
+	XOCL_SUBDEV_AXIGATE,
 	XOCL_SUBDEV_ICAP,
 	XOCL_SUBDEV_DNA,
 	XOCL_SUBDEV_FMGR,

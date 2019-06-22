@@ -37,6 +37,7 @@ xclmgmt-y := \
 	../subdev/xdma_mgmt.o \
 	../subdev/flash.o \
 	../subdev/iores.o \
+	../subdev/axigate.o \
 	mgmt-core.o \
 	mgmt-cw.o \
 	mgmt-utils.o \
@@ -52,7 +53,7 @@ PWD	:= $(shell pwd)
 ROOT	:= $(dir $(M))
 XILINXINCLUDE := -I$(ROOT)/../include -I$(ROOT)/../../../../include
 
-ccflags-y += $(XILINXINCLUDE) -DSUBDEV_SUFFIX=MGMT_SUFFIX
+ccflags-y += $(XILINXINCLUDE) -DPF=MGMTPF
 ifeq ($(DEBUG),1)
 ccflags-y += -DDEBUG
 endif

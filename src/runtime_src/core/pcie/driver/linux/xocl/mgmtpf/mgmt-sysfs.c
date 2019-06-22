@@ -185,8 +185,12 @@ static ssize_t dev_offline_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
-
-	int val = xocl_drvinst_get_offline(lro) ? 1 : 0;
+	bool offline;
+	int val;
+       
+	val = xocl_drvinst_get_offline(lro, &offline);
+	if (!val)
+		val = offline ? 1 : 0;
 
 	return sprintf(buf, "%d\n", val);
 }
@@ -200,10 +204,10 @@ static ssize_t subdev_cmd_store(struct device *dev,
 	int ret = 0, i;
 	char *name = (char *)buf;
 	char cmd[32] = { 0 }, sdev_name[33] = { 0 };
+	struct mailbox_req mbreq = { MAILBOX_REQ_CHG_SHELL, };
 
 	sscanf(name, "%32s %32s", cmd, sdev_name);
 
-	device_lock(dev);
 	if (!strcmp(cmd, "create") && !strcmp(sdev_name, "dynamic") ) {
 		xclmgmt_connect_notify(lro, false);
 		xocl_subdev_destroy_all(lro);
@@ -220,6 +224,10 @@ static ssize_t subdev_cmd_store(struct device *dev,
 				i--) {
 			xocl_subdev_destroy_by_level(lro, i);
 		}
+	} else if (!strcmp(cmd, "program")) {
+		mgmt_info(lro, "Notify program prp");
+		(void) xocl_peer_notify(lro, &mbreq,
+				sizeof(struct mailbox_req));
 	}else {
 		xocl_err(dev, "Invalid command");
 		ret = -EINVAL;
@@ -229,7 +237,6 @@ static ssize_t subdev_cmd_store(struct device *dev,
 		ret = count;
 	else
 		xocl_err(dev, "%s %s failed", cmd, sdev_name);
-	device_unlock(dev);
 
 	return ret;
 }

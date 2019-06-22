@@ -150,7 +150,7 @@ failed:
 
 }
 
-static void iores_devinfo_cb(void *dev_hdl, void *subdevs, int num)
+static void devinfo_cb_setlevel(void *dev_hdl, void *subdevs, int num)
 {
 	struct xocl_subdev *subdev = subdevs;
 
@@ -257,6 +257,10 @@ static struct xocl_subdev_map		subdev_map[] = {
 		NULL,
 		NULL,
 	},
+	/* comment mailbox for now because it is in PRP
+	 * static defined in devices.h as a workaround
+	 */
+#if 0
 	{
 		XOCL_SUBDEV_MAILBOX,
 		XOCL_MAILBOX,
@@ -266,9 +270,10 @@ static struct xocl_subdev_map		subdev_map[] = {
 		NULL,
 		NULL,
 	},
+#endif
 	{
-		XOCL_SUBDEV_IORES,
-		XOCL_IORES1,
+		XOCL_SUBDEV_AXIGATE,
+		XOCL_AXIGATE,
 		{
 			RESNAME_GATEPRBLD,
 			NULL,
@@ -276,7 +281,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 		1,
 		0,
 		NULL,
-		iores_devinfo_cb,
+		devinfo_cb_setlevel,
 	},
 	{
 		XOCL_SUBDEV_IORES,
@@ -291,7 +296,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 		1,
 		0,
 		NULL,
-		iores_devinfo_cb,
+		devinfo_cb_setlevel,
 	},
 	{
 		XOCL_SUBDEV_ICAP,
@@ -656,7 +661,7 @@ failed:
 }
 
 static int xocl_fdt_parse_subdevs(xdev_handle_t xdev_hdl, char *blob,
-		struct xocl_subdev *subdevs)
+		struct xocl_subdev *subdevs, int sz)
 {
 	struct xocl_subdev_map  *map_p;
 	int id, j, num, total = 0;
@@ -677,11 +682,15 @@ static int xocl_fdt_parse_subdevs(xdev_handle_t xdev_hdl, char *blob,
 			}
 
 			total += num;
-			if (subdevs)
+			if (subdevs) {
+				if (total == sz)
+					goto end;
 				subdevs += num;
+			}
 		}
 	}
 
+end:
 	return total;
 }
 
@@ -690,7 +699,7 @@ static int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob,
 {
 	int		dev_num; 
 
-	dev_num = xocl_fdt_parse_subdevs(xdev_hdl, blob, NULL);
+	dev_num = xocl_fdt_parse_subdevs(xdev_hdl, blob, NULL, 0);
 	if (dev_num < 0) {
 		xocl_xdev_err(xdev_hdl, "parse dev failed, ret = %d", dev_num);
 		goto failed;
@@ -701,11 +710,11 @@ static int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob,
 		goto failed;
 	}
 
-	*subdevs = vzalloc(dev_num * sizeof(**subdevs));
+	*subdevs = vzalloc(dev_num * sizeof(struct xocl_subdev));
 	if (!*subdevs)
 		return -ENOMEM;
 
-	xocl_fdt_parse_subdevs(xdev_hdl, blob, *subdevs);
+	xocl_fdt_parse_subdevs(xdev_hdl, blob, *subdevs, dev_num);
 
 failed:
 	return dev_num;

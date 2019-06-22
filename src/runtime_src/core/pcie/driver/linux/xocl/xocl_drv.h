@@ -179,8 +179,9 @@ struct client_ctx;
 
 enum {
 	XOCL_SUBDEV_STATE_UNINIT,
-	XOCL_SUBDEV_STATE_INIT,
+	XOCL_SUBDEV_STATE_DETACHED,
 	XOCL_SUBDEV_STATE_OFFLINE,
+	XOCL_SUBDEV_STATE_INIT,
 };
 
 struct xocl_subdev {
@@ -800,6 +801,7 @@ struct xocl_mig_label {
 };
 
 struct xocl_mig_funcs {
+	struct xocl_subdev_funcs common_funcs;
 	void (*get_data)(struct platform_device *pdev, void *buf, size_t entry_sz);
 };
 
@@ -815,6 +817,7 @@ struct xocl_mig_funcs {
 	0)
 
 struct xocl_iores_funcs {
+	struct xocl_subdev_funcs common_funcs;
 	int (*read32)(struct platform_device *pdev, u32 id, u32 off, u32 *val);
 	int (*write32)(struct platform_device *pdev, u32 id, u32 off, u32 val);
 	void __iomem *(*get_base)(struct platform_device *pdev, u32 id);
@@ -837,6 +840,29 @@ struct xocl_iores_funcs {
 #define xocl_iores_get_base(xdev, level, id)				\
 	(IORES_CB(xdev, level, get_base) ?				\
 	IORES_OPS(xdev, level)->get_base(IORES_DEV(xdev, level), id) : NULL)
+
+struct xocl_axigate_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (*freeze)(struct platform_device *pdev);
+	int (*free)(struct platform_device *pdev);
+};
+
+#define AXIGATE_DEV(xdev, idx)			\
+	SUBDEV_MULTI(xdev, XOCL_SUBDEV_AXIGATE, idx).pldev
+#define AXIGATE_OPS(xdev, idx)			\
+	((struct xocl_axigate_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_AXIGATE, \
+	idx).ops)
+#define AXIGATE_CB(xdev, idx, cb)		\
+	(AXIGATE_DEV(xdev, idx) && AXIGATE_OPS(xdev, idx) &&		\
+	AXIGATE_OPS(xdev, idx)->cb)
+#define xocl_axigate_freeze(xdev, level)		\
+	(AXIGATE_CB(xdev, level, freeze) ?		\
+	AXIGATE_OPS(xdev, level)->freeze(AXIGATE_DEV(xdev, level)) :	\
+	-ENODEV)
+#define xocl_axigate_free(xdev, level)		\
+	(AXIGATE_CB(xdev, level, free) ?		\
+	AXIGATE_OPS(xdev, level)->free(AXIGATE_DEV(xdev, level)) :	\
+	-ENODEV)
 
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
@@ -872,12 +898,9 @@ void xocl_subdev_destroy_by_level(xdev_handle_t xdev_hdl, int level);
 int xocl_subdev_create_by_name(xdev_handle_t xdev_hdl, char *name);
 int xocl_subdev_destroy_by_name(xdev_handle_t xdev_hdl, char *name);
 
-void xocl_subdev_update_info(xdev_handle_t xdev_hdl,
-        struct xocl_subdev_info *info_array, int *num,
-        struct xocl_subdev_info *sdev_info);
+int xocl_subdev_destroy_prp(xdev_handle_t xdev);
+int xocl_subdev_create_prp(xdev_handle_t xdev);
 
-void xocl_subdev_register(struct platform_device *pldev, u32 id,
-	void *cb_funcs);
 void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in);
 int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
 	struct axlf *bin_obj, bool major_only);
@@ -886,6 +909,16 @@ void xocl_free_dev_minor(xdev_handle_t xdev_hdl);
 
 int xocl_ioaddr_to_baroff(xdev_handle_t xdev_hdl, resource_size_t io_addr,
 	int *bar_idx, resource_size_t *bar_off);
+
+static inline void xocl_lock_xdev(xdev_handle_t xdev)
+{
+	mutex_lock(&XDEV(xdev)->lock);
+}
+
+static inline void xocl_unlock_xdev(xdev_handle_t xdev)
+{
+	mutex_unlock(&XDEV(xdev)->lock);
+}
 
 static inline uint32_t xocl_dr_reg_read32(xdev_handle_t xdev, void __iomem *addr)
 {
@@ -916,7 +949,9 @@ void *xocl_drvinst_open_single(void *file_dev);
 void xocl_drvinst_close(void *data);
 void xocl_drvinst_set_filedev(void *data, void *file_dev);
 void xocl_drvinst_offline(xdev_handle_t xdev_hdl, bool offline);
-bool xocl_drvinst_get_offline(xdev_handle_t xdev_hdl);
+int xocl_drvinst_set_offline(void *data, bool offline);
+int xocl_drvinst_get_offline(void *data, bool *offline);
+int xocl_drvinst_kill_proc(void *data);
 
 /* health thread functions */
 int health_thread_start(xdev_handle_t xdev);
@@ -998,4 +1033,7 @@ void xocl_fini_flash(void);
 
 int __init xocl_init_axigate(void);
 void xocl_fini_axigate(void);
+
+int __init xocl_init_iores(void);
+void xocl_fini_iores(void);
 #endif

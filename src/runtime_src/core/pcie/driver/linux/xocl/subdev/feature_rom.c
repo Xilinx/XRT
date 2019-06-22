@@ -434,7 +434,6 @@ static int feature_rom_probe(struct platform_device *pdev)
 		rom->header.TimeSinceEpoch);
 	xocl_info(&pdev->dev, "FeatureBitMap: %llx", rom->header.FeatureBitMap);
 
-	xocl_subdev_register(pdev, XOCL_SUBDEV_FEATURE_ROM, &rom_ops);
 	platform_set_drvdata(pdev, rom);
 
 	return 0;
@@ -466,8 +465,12 @@ static int feature_rom_remove(struct platform_device *pdev)
 	return 0;
 }
 
+struct xocl_drv_private rom_priv = {
+	.ops = &rom_ops,
+};
+
 struct platform_device_id rom_id_table[] =  {
-	{ XOCL_DEVNAME(XOCL_FEATURE_ROM), 0 },
+	{ XOCL_DEVNAME(XOCL_FEATURE_ROM), (kernel_ulong_t)&rom_priv },
 	{ },
 };
 

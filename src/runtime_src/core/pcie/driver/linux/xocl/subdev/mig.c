@@ -674,7 +674,6 @@ static int mig_probe(struct platform_device *pdev)
 		return err;
 	}
 	ecc_reset(mig);
-	xocl_subdev_register(pdev, XOCL_SUBDEV_MIG, &mig_ops);
 	mig_cache_expire_secs = MIG_DEFAULT_EXPIRE_SECS;
 	return 0;
 }
@@ -690,7 +689,6 @@ static int mig_remove(struct platform_device *pdev)
 		return -EINVAL;
 	}
 	sysfs_destroy_mig(pdev);
-	xocl_subdev_register(pdev, XOCL_SUBDEV_MIG, NULL);
 	if (mig->base)
 		iounmap(mig->base);
 	platform_set_drvdata(pdev, NULL);
@@ -701,8 +699,12 @@ static int mig_remove(struct platform_device *pdev)
 	return 0;
 }
 
+struct xocl_drv_private mig_priv = {
+	.ops = &mig_ops,
+};
+
 struct platform_device_id mig_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_MIG), 0 },
+	{ XOCL_DEVNAME(XOCL_MIG), (kernel_ulong_t)&mig_priv },
 	{ },
 };
 

@@ -488,8 +488,13 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 		goto failed;
 	}
 
-	xocl_drvinst_offline(lro, true);
 	health_thread_stop(lro);
+
+	ret = xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_MAILBOX);
+	if (ret) {
+		mgmt_err(lro, "failed to online mailbox %d", ret);
+		goto failed;
+	}
 
 	for (i = XOCL_SUBDEV_LEVEL_MAX - 1; i > XOCL_SUBDEV_LEVEL_BLD; i--)
 		xocl_subdev_destroy_by_level(lro, i);
@@ -511,12 +516,18 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 		goto failed;
 	}
 
+	xocl_icap_refresh_addrs(lro);
+
+	ret = xocl_subdev_online_by_id(lro, XOCL_SUBDEV_MAILBOX);
+	if (ret) {
+		mgmt_err(lro, "failed to online mailbox %d", ret);
+		goto failed;
+	}
 	ret = xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
 	if (ret)
 		goto failed;
 
 	health_thread_start(lro);
-	xocl_drvinst_offline(lro, false);
 failed:
 	mutex_unlock(&lro->busy_mutex);
 

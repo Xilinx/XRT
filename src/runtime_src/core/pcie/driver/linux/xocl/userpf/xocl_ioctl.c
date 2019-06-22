@@ -412,7 +412,7 @@ int xocl_hot_reset_ioctl(struct drm_device *dev, void *data,
 	struct xocl_dev *xdev = drm_p->xdev;
 	int delay_jiffies;
 
-	xocl_drvinst_offline(xdev, true);
+	xocl_drvinst_set_offline(xdev, true);
 	delay_jiffies = msecs_to_jiffies(XOCL_RESET_DELAY);
 	queue_delayed_work(xdev->wq, &xdev->reset_work,
 		delay_jiffies);

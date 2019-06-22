@@ -37,7 +37,7 @@ struct axi_gate {
 #define reg_wr(g, v, r)					\
 	XOCL_WRITE_REG32(v, &((struct axi_gate_regs *)g->base)->r)
 
-static int axi_gate_freeze(struct platform_device *pdev)
+static int axigate_freeze(struct platform_device *pdev)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct axi_gate *gate = platform_get_drvdata(pdev);
@@ -62,10 +62,12 @@ static int axi_gate_freeze(struct platform_device *pdev)
 
 failed:
 	mutex_unlock(&gate->gate_lock);
+
+	xocl_xdev_info(xdev, "freeze level %d gate, ret %d", gate->level, ret);
 	return ret;
 }
 
-static int axi_gate_free(struct platform_device *pdev)
+static int axigate_free(struct platform_device *pdev)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct axi_gate *gate = platform_get_drvdata(pdev);
@@ -95,30 +97,97 @@ static int axi_gate_free(struct platform_device *pdev)
 
 failed:
 	mutex_unlock(&gate->gate_lock);
+	xocl_xdev_info(xdev, "free level %d gate, ret %d", gate->level, ret);
 	return ret;
 }
 
 static struct xocl_axigate_funcs axigate_ops = {
-	.freeze = axi_gate_freeze,
-	.free = axi_gate_free,
+	.freeze = axigate_freeze,
+	.free = axigate_free,
 };
+
+static int axigate_remove(struct platform_device *pdev)
+{
+	struct axi_gate *gate;
+
+	gate = platform_get_drvdata(pdev);
+	if (!gate) {
+		xocl_err(&pdev->dev, "driver data is NULL");
+		return -EINVAL;
+	}
+
+	if (gate->base)
+		iounmap(gate->base);
+
+	platform_set_drvdata(pdev, NULL);
+	devm_kfree(&pdev->dev, gate);
+
+	return 0;
+}
+
+static int axigate_probe(struct platform_device *pdev)
+{
+	struct axi_gate *gate;
+	struct resource *res;
+	int ret;
+
+	gate = devm_kzalloc(&pdev->dev, sizeof(*gate), GFP_KERNEL);
+	if (!gate)
+		return -ENOMEM;
+
+	gate->pdev = pdev;
+
+	platform_set_drvdata(pdev, gate);
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		xocl_err(&pdev->dev, "Empty resource 0");
+		ret = -EINVAL;
+		goto failed;
+	}
+
+	gate->base = ioremap_nocache(res->start,
+		res->end - res->start + 1);
+	if (!gate->base) {
+		xocl_err(&pdev->dev, "map base iomem failed");
+		ret = -EFAULT;
+		goto failed;
+	}
+
+	if (res->name && sscanf(res->name, "%*s %*d %*d %d", &gate->level))
+		xocl_info(&pdev->dev, "axi_gate level %d probe success",
+			gate->level);
+	else {
+		xocl_err(&pdev->dev, "did not find level");
+		ret = -EINVAL;
+		goto failed;
+	}
+
+	mutex_init(&gate->gate_lock);
+
+	return 0;
+
+failed:
+	axigate_remove(pdev);
+	return ret;
+}
 
 struct xocl_drv_private axigate_priv = {
 	.ops = &axigate_ops,
 };
 
-struct platform_device_id iores_id_table[] = {
+struct platform_device_id axigate_id_table[] = {
 	{ XOCL_DEVNAME(XOCL_AXIGATE), (kernel_ulong_t)&axigate_priv },
 	{ },
 };
 
 static struct platform_driver	axi_gate_driver = {
-	.probe		= iores_probe,
-	.remove		= iores_remove,
+	.probe		= axigate_probe,
+	.remove		= axigate_remove,
 	.driver		= {
-		.name = XOCL_DEVNAME("iores"),
+		.name = XOCL_DEVNAME(XOCL_AXIGATE),
 	},
-	.id_table = iores_id_table,
+	.id_table = axigate_id_table,
 };
 
 int __init xocl_init_axigate(void)

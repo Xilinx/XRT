@@ -3519,7 +3519,6 @@ static int mb_scheduler_probe(struct platform_device *pdev)
 		goto err;
 
 	init_scheduler_thread(&scheduler0);
-	xocl_subdev_register(pdev, XOCL_SUBDEV_MB_SCHEDULER, &sche_ops);
 	platform_set_drvdata(pdev, exec);
 
 	DRM_INFO("command scheduler started\n");
@@ -3560,8 +3559,12 @@ static int mb_scheduler_remove(struct platform_device *pdev)
 	return 0;
 }
 
+struct xocl_drv_private sche_priv = {
+	.ops = &sche_ops,
+};
+
 static struct platform_device_id mb_sche_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_MB_SCHEDULER), 0 },
+	{ XOCL_DEVNAME(XOCL_MB_SCHEDULER), (kernel_ulong_t)&sche_priv },
 	{ },
 };
 

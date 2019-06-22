@@ -67,7 +67,6 @@ static void __iomem *get_base(struct platform_device *pdev, u32 id)
 {
 	struct iores *iores = platform_get_drvdata(pdev);
 
-pr_info("ID %d, addr %lx\n", id, (unsigned long)iores->base_addrs[id]);
 	return iores->base_addrs[id];
 }
 
@@ -145,7 +144,7 @@ struct platform_device_id iores_id_table[] = {
 	{ },
 };
 
-static struct platform_driver	axi_gate_driver = {
+static struct platform_driver	iores_driver = {
 	.probe		= iores_probe,
 	.remove		= iores_remove,
 	.driver		= {
@@ -154,12 +153,12 @@ static struct platform_driver	axi_gate_driver = {
 	.id_table = iores_id_table,
 };
 
-int __init xocl_init_axigate(void)
+int __init xocl_init_iores(void)
 {
-	return platform_driver_register(&axi_gate_driver);
+	return platform_driver_register(&iores_driver);
 }
 
-void xocl_fini_axigate(void)
+void xocl_fini_iores(void)
 {
-	platform_driver_unregister(&axi_gate_driver);
+	platform_driver_unregister(&iores_driver);
 }

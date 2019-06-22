@@ -124,6 +124,7 @@ struct icap {
 	unsigned int		idcode;
 	bool			icap_axi_gate_frozen;
 	struct icap_axi_gate	*icap_axi_gate;
+	struct icap_axi_gate	*icap_prp_gate;
 
 	u64			icap_bitstream_id;
 	xuid_t			icap_bitstream_uuid;
@@ -1534,22 +1535,25 @@ static int icap_download_rp(struct platform_device *pdev, int level, bool dry)
 	}
 
 	if (dry)
-		return 0;
+		goto failed;
+
+	ret = xocl_axigate_freeze(xdev, XOCL_SUBDEV_LEVEL_BLD);
+	if (ret) {
+		xocl_xdev_err(xdev, "freeze blp gate failed %d", ret);
+		goto failed;
+	}
 
 #if 0
-	ret = xocl_axigate_freeze(xdev, axigate);
-	if (ret)
-		goto failed;
-#endif
-
 	ret = icap_download(icap, icap->rp_buffer, icap->rp_length);
 	if (ret)
 		goto failed;
-#if 0
-	ret = xocl_axigate_free(xdev, axigate);
-	if (ret)
-		goto failed;
 #endif
+
+	ret = xocl_axigate_free(xdev, XOCL_SUBDEV_LEVEL_BLD);
+	if (ret) {
+		xocl_xdev_err(xdev, "freeze blp gate failed %d", ret);
+		goto failed;
+	}
 
 	vfree(icap->rp_buffer);
 	icap->rp_buffer = NULL;
@@ -2677,8 +2681,25 @@ static void icap_refresh_addrs(struct platform_device *pdev)
 			(unsigned long)icap->icap_clock_freq_counter_hbm);
 }
 
+static int icap_offline(struct platform_device *pdev)
+{
+	xocl_drvinst_kill_proc(platform_get_drvdata(pdev));
+	icap_refresh_addrs(pdev);
+
+	return 0;
+}
+
+static int icap_online(struct platform_device *pdev)
+{
+	icap_refresh_addrs(pdev);
+
+	return 0;
+}
+
 /* Kernel APIs exported from this sub-device driver. */
 static struct xocl_icap_funcs icap_ops = {
+        .offline_cb = icap_offline,
+        .online_cb = icap_online,
 	.reset_axi_gate = platform_reset_axi_gate,
 	.reset_bitstream = icap_reset_bitstream,
 	.download_boot_firmware = icap_download_boot_firmware,
@@ -3211,12 +3232,18 @@ static const struct file_operations icap_fops = {
 	.write = icap_rpbit_write,
 };
 
+#if PF==MGMTPF
 struct xocl_drv_private icap_drv_priv = {
 	.ops = &icap_ops,
 	.fops = &icap_fops,
 	.dev = -1,
 	.cdev_name = NULL,
 };
+#else
+struct xocl_drv_private icap_drv_priv = {
+	.ops = &icap_ops,
+};
+#endif
 
 struct platform_device_id icap_id_table[] = {
 	{ XOCL_DEVNAME(XOCL_ICAP), (kernel_ulong_t)&icap_drv_priv },
@@ -3236,15 +3263,12 @@ int __init xocl_init_icap(void)
 {
 	int err = 0;
 
-	if (strcmp(SUBDEV_SUFFIX, MGMT_SUFFIX)) {
-		icap_drv_priv.fops = NULL;
-		return platform_driver_register(&icap_driver);
+	if (icap_drv_priv.fops) {
+		err = alloc_chrdev_region(&icap_drv_priv.dev, 0,
+				XOCL_MAX_DEVICES, icap_driver.driver.name);
+		if (err < 0)
+			goto err_reg_cdev;
 	}
-
-	err = alloc_chrdev_region(&icap_drv_priv.dev, 0, XOCL_MAX_DEVICES,
-			icap_driver.driver.name);
-	if (err < 0)
-		goto err_reg_cdev;
 
 	err = platform_driver_register(&icap_driver);
 	if (err)
@@ -3253,7 +3277,7 @@ int __init xocl_init_icap(void)
 	return 0;
 
 err_reg_driver:
-	if (icap_drv_priv.dev != -1)
+	if (icap_drv_priv.fops && icap_drv_priv.dev != -1)
 		unregister_chrdev_region(icap_drv_priv.dev, XOCL_MAX_DEVICES);
 err_reg_cdev:
 	return err;
@@ -3261,7 +3285,7 @@ err_reg_cdev:
 
 void xocl_fini_icap(void)
 {
-	if (icap_drv_priv.dev != -1)
+	if (icap_drv_priv.fops && icap_drv_priv.dev != -1)
 		unregister_chrdev_region(icap_drv_priv.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&icap_driver);
 }

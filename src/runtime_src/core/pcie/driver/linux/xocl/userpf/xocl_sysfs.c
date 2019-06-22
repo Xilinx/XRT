@@ -227,7 +227,12 @@ static ssize_t dev_offline_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	int val = xocl_drvinst_get_offline(xdev) ? 1 : 0;
+	bool offline;
+	int val;
+       
+	val = xocl_drvinst_get_offline(xdev, &offline);
+        if (!val)
+		val = offline ? 1 : 0;
 
 	return sprintf(buf, "%d\n", val);
 }

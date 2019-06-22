@@ -232,7 +232,6 @@ static int xdma_mgmt_probe(struct platform_device *pdev)
 	}
 	mutex_init(&xdma->user_msix_table_lock);
 
-	xocl_subdev_register(pdev, XOCL_SUBDEV_DMA, &xdma_ops);
 	platform_set_drvdata(pdev, xdma);
 
 	return 0;
@@ -287,8 +286,12 @@ static int xdma_mgmt_remove(struct platform_device *pdev)
 	return 0;
 }
 
+struct xocl_drv_private xdma_mgmt_priv = {
+	.ops = &xdma_ops,
+};
+
 static struct platform_device_id xdma_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_XDMA), 0 },
+	{ XOCL_DEVNAME(XOCL_XDMA), (kernel_ulong_t)&xdma_mgmt_priv },
 	{ },
 };
 
