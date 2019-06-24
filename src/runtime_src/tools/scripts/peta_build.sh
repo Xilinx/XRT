@@ -283,17 +283,29 @@ if [ -d "${DSA_DIR}/src/${CPU_ARCH}/xrt/image" ]; then
 	echo " * Copying PetaLinux boot files (from: $PWD)"
 	cp -f ./${PETALINUX_NAME}/images/linux/image.ub 	${DSA_DIR}/src/${CPU_ARCH}/xrt/image/image.ub
 	mkdir -p ${DSA_DIR}/src/boot
-	cp -f ./${PETALINUX_NAME}/images/linux/bl31.elf 	${DSA_DIR}/src/boot/bl31.elf
-	cp -f ./${PETALINUX_NAME}/images/linux/pmufw.elf 	${DSA_DIR}/src/boot/pmufw.elf
+	if [ "X$TEMPLATE" != "Xzynq" ]; then
+		cp -f ./${PETALINUX_NAME}/images/linux/bl31.elf 	${DSA_DIR}/src/boot/bl31.elf
+		cp -f ./${PETALINUX_NAME}/images/linux/pmufw.elf 	${DSA_DIR}/src/boot/pmufw.elf
+	fi
 	cp -f ./${PETALINUX_NAME}/images/linux/u-boot.elf 	${DSA_DIR}/src/boot/u-boot.elf
 
 	# NOTE: Renames
-	cp -f ./${PETALINUX_NAME}/images/linux/zynqmp_fsbl.elf ${DSA_DIR}/src/boot/fsbl.elf
+	if [ "X$TEMPLATE" == "Xzynq" ]; then
+		cp -f ./${PETALINUX_NAME}/images/linux/zynq_fsbl.elf ${DSA_DIR}/src/boot/fsbl.elf
+	else
+		cp -f ./${PETALINUX_NAME}/images/linux/zynqmp_fsbl.elf ${DSA_DIR}/src/boot/fsbl.elf
+	fi
 
 	# Prepare Sysroot directory
 	echo " * Preparing Sysroot"
-	mkdir -p ${DSA_DIR}/src/aarch64-xilinx-linux
-	cd       ${DSA_DIR}/src/aarch64-xilinx-linux
+	if [ "X$TEMPLATE" == "Xzynq" ]; then
+		mkdir -p ${DSA_DIR}/src/arm-xilinx-linux
+		cd       ${DSA_DIR}/src/arm-xilinx-linux
+	else
+		mkdir -p ${DSA_DIR}/src/aarch64-xilinx-linux
+		cd       ${DSA_DIR}/src/aarch64-xilinx-linux
+	fi
+
 	tar zxf $ORIGINAL_DIR/${PETALINUX_NAME}/images/linux/rootfs.tar.gz
 fi
 

@@ -201,7 +201,7 @@ int main_(int argc, char** argv) {
       std::cout << "Addition Syntax Information" << std::endl;
       std::cout << "---------------------------" << std::endl;
       std::cout << "Syntax: <section>:<format>:<file>" << std::endl;
-      std::cout << "    <section> - The section to add or dump (e.g., BUILD_METDATA, BITSTREAM, etc.)"  << std::endl;
+      std::cout << "    <section> - The section to add or dump (e.g., BUILD_METADATA, BITSTREAM, etc.)"  << std::endl;
       std::cout << "                Note: If a JSON format is being used, this value can be empty.  If so, then" << std::endl;
       std::cout << "                      the JSON metadata will determine the section it is associated with." << std::endl;
       std::cout << "                      In addition, only sections that are found in the JSON file will be reported." << std::endl;
