@@ -19,6 +19,8 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <getopt.h>
+#include <climits>
 
 #if !defined(_WIN32)
 // Linux specific headers
@@ -33,34 +35,36 @@
 #include "core/pcie/linux/scan.h"
 
 const char *subCmdNifdDesc = "Access the NIFD debug IP to readback frames and offsets";
-const char *subCmdNifdUsage = "--status\n--readback <frame/offset file>";
+const char *subCmdNifdUsage = "--status [--card bdf]\n--readback <frame/offset file> [--card bdf]";
 
 #if defined (_WIN32)
 // Accessing NIFD unsupported on Windows
-static int status()
+static int status(unsigned int index)
 {
   return 0 ;
 }
 
-static int readback(const std::string& inputFile)
+static int readback(const std::string& inputFile, unsigned int index)
 {
   return 0 ;
 }
 #else
 
-std::string NIFDDevFile()
+std::string NIFDDevFile(unsigned int index)
 {
-  std::shared_ptr<pcidev::pci_device> dev = pcidev::get_dev(0, false);
+  std::string fileName = "/dev/nifd_pri.m" ;
+  std::shared_ptr<pcidev::pci_device> dev = pcidev::get_dev(index, false);
+  if (!dev) return fileName ;
+
   const int instance = (dev->domain << 16) + (dev->bus << 8) + (dev->dev << 3) + (dev->func) ;
 
-  std::string fileName = "/dev/nifd_pri.m" ;
   fileName += std::to_string(instance) ;
   return fileName ;
 }
 
-static int status()
+static int status(unsigned int index)
 {
-  std::string NIFDFile = NIFDDevFile();
+  std::string NIFDFile = NIFDDevFile(index);
 
   int fd = open(NIFDFile.c_str(), O_RDWR);
   if (fd < 0) 
@@ -84,7 +88,7 @@ static int status()
   return 0;
 }
 
-static int readback(const std::string& inputFile)
+static int readback(const std::string& inputFile, unsigned int index)
 {
   std::ifstream fin(inputFile.c_str()) ;
   if (!fin)
@@ -102,7 +106,7 @@ static int readback(const std::string& inputFile)
   }
   fin.close() ;
 
-  std::string NIFDFile = NIFDDevFile();
+  std::string NIFDFile = NIFDDevFile(index);
 
   int fd = open(NIFDFile.c_str(), O_RDWR);
   if (fd < 0) 
@@ -160,15 +164,46 @@ int nifdHandler(int argc, char* argv[])
   if (argc < 2)
     return -EINVAL ;
 
-  std::string op = argv[1] ;
-  if (op.compare("--status") == 0)
-    return status() ;
-  if (op.compare("--readback") == 0)
+  unsigned int index = 0 ; // Default to first device
+  bool status = false ;
+  bool readback = false ;
+  std::string inputFile ;
+
+  const option opts[] = {
+    { "status",   no_argument,       nullptr, '0' },
+    { "readback", required_argument, nullptr, '1' },
+    { "card",     required_argument, nullptr, '2' },
+  };
+
+  while (true)
   {
-    if (argc < 3) 
+    const auto opt = getopt_long(argc, argv, "", opts, nullptr) ;
+    if (opt == -1)
+      break ;
+
+    switch(opt)
+    {
+    case '0':
+      status = true ;
+      break ;
+    case '1':
+      readback = true ;
+      inputFile = std::string(optarg);
+      break ;
+    case '2':
+      index = bdf2index(optarg);
+      if (index == UINT_MAX)
+	return -ENOENT;
+      break ;
+    default:
       return -EINVAL ;
-    return readback(argv[2]) ;
+    }
   }
+
+  if (status)
+    return ::status(index) ;
+  if (readback)
+    return ::readback(inputFile, index);
 
   return -EINVAL ;
 }
