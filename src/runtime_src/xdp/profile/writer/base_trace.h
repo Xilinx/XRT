@@ -43,6 +43,10 @@ namespace xdp {
 	  virtual ~TraceWriterI() {};
 
     public:
+            // Returns the output file name for the writer
+            virtual const std::string getFileName() { return ""; }
+
+
 	    // Functions for timeline trace log
 	    // Write timeline trace of a function call such as cl API call
 	    void writeFunction(double time, const std::string& functionName,

@@ -30,7 +30,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    multiprocess.rst
    p2p.rst
    m2m.rst
-   xma.main.rst
+   xma_user_guide.rst
 
 
 .. toctree::
@@ -39,6 +39,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
 
    xrt.main.rst
    ert.main.rst
+   xma.main.rst
 
 
 .. toctree::
