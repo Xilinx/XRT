@@ -193,6 +193,11 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 		goto failed;
 	}
 
+	if (xdev->core.fdt_blob) {
+		vfree(xdev->core.fdt_blob);
+		xdev->core.fdt_blob = NULL;
+	}
+
 	xocl_mb_connect(xdev);
 #if 0
 	ret = xocl_subdev_offline_by_id(xdev, XOCL_SUBDEV_MAILBOX);
