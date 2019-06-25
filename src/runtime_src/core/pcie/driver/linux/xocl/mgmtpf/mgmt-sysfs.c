@@ -368,6 +368,7 @@ static ssize_t mgmt_blob_input(struct file *filp, struct kobject *kobj,
 		memcpy(lro->sysfs_bin_buffer + off, buffer,
 				lro->sysfs_bin_length - off);
 		ret = xocl_fdt_blob_input(lro, lro->sysfs_bin_buffer);
+		xclmgmt_update_userpf_blob(lro);
 		vfree(lro->sysfs_bin_buffer);
 		lro->sysfs_bin_buffer = NULL;
 		lro->sysfs_bin_length = 0;

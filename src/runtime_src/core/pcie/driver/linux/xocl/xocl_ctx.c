@@ -237,11 +237,12 @@ static void *_xocl_drvinst_open(void *file_dev, u32 max_count)
 	}
 	
 	if (drvinstp->offline) {
+		xocl_err(drvinstp->dev, "Device %s is offline",
+				dev_name(drvinstp->dev));
 		mutex_unlock(&xocl_drvinst_lock);
 		return NULL;
 	}
 
-	pr_info("REF %d Max %d\n", atomic_read(&drvinstp->ref), max_count);
 	if (atomic_read(&drvinstp->ref) > max_count) {
 		mutex_unlock(&xocl_drvinst_lock);
 		return NULL;

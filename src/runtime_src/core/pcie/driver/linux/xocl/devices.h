@@ -1347,6 +1347,11 @@ struct xocl_iores_map map[] = {						\
 			.end	= 0x1e1002F,		\
 			.flags  = IORESOURCE_MEM,	\
 		},					\
+		{					\
+			.start	= 11,			\
+			.end	= 11,			\
+			.flags  = IORESOURCE_IRQ,	\
+		},					\
 	})
 
 #define	XOCL_DEVINFO_MAILBOX_MGMT_DYN			\

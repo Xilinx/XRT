@@ -257,8 +257,8 @@ static struct xocl_subdev_map		subdev_map[] = {
 		NULL,
 		NULL,
 	},
-	/* comment mailbox for now because it is in PRP
-	 * static defined in devices.h as a workaround
+	/* mailbox is in prp right now, has to comment it out and
+	 * define it in devices.h for now
 	 */
 #if 0
 	{

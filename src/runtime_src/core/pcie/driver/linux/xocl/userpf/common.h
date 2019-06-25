@@ -73,9 +73,11 @@
 
 #define XOCL_PA_SECTION_SHIFT		28
 
-#define xocl_queue_work(xdev, op, delay)			\
-	queue_delayed_work(xdev->wq, &xdev->works[op].work,	\
-			msecs_to_jiffies(delay))
+#define xocl_queue_work(xdev, op, delay)				\
+	do {								\
+		queue_delayed_work(xdev->wq, &xdev->works[op].work,	\
+			msecs_to_jiffies(delay));			\
+	} while (0)
 enum {
 	XOCL_WORK_RESET,
 	XOCL_WORK_PROGRAM_SHELL,

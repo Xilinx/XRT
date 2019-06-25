@@ -193,6 +193,7 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 		goto failed;
 	}
 
+	xocl_mb_connect(xdev);
 #if 0
 	ret = xocl_subdev_offline_by_id(xdev, XOCL_SUBDEV_MAILBOX);
 	if (ret) {
@@ -277,8 +278,8 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 static void xocl_work_cb(struct work_struct *work)
 {
 	struct xocl_work *_work = (struct xocl_work *)to_delayed_work(work);
-	struct xocl_dev *xdev = container_of(_work - work->op, 
-			struct xocl_dev, works);
+	struct xocl_dev *xdev = container_of(_work, 
+			struct xocl_dev, works[_work->op]);
 
 	switch (_work->op) {
 	case XOCL_WORK_RESET:
@@ -307,7 +308,7 @@ static void xocl_mb_connect(struct xocl_dev *xdev)
 	size_t reqlen = 0;
 	size_t resplen = sizeof(struct mailbox_conn_resp);
 	void *kaddr = NULL;
-	int ret, retry_count = 3;
+	int ret;
 
 	if (!resp)
 		goto done;
@@ -338,18 +339,9 @@ static void xocl_mb_connect(struct xocl_dev *xdev)
 
 	userpf_info(xdev, "ch_state 0x%llx\n", resp->conn_flags);
 
-	if (!ret) {
-		queue_delayed_work(xdev, XOCL_WORK_REFRESH_SUBDEV, 1);
+	if (!ret)
+		xocl_queue_work(xdev, XOCL_WORK_REFRESH_SUBDEV, 1);
 
-		do {
-			ret = xocl_refresh_prp_subdevs(xdev);
-			retry_count --;
-			if (ret == -EAGAIN) {
-				userpf_info(xdev, "retry update fdt");
-				msleep(100);
-			}
-		} while (ret == -EAGAIN && retry_count > 0);
-	}
 done:
 	if (!kaddr)
 		kfree(kaddr);
@@ -589,6 +581,7 @@ int xocl_refresh_prp_subdevs(struct xocl_dev *xdev)
 	blob = NULL;
 
 	if (!skip_refresh) {
+		xocl_drvinst_set_offline(xdev, true);
 		if (xdev->core.fdt_blob) {
 			ret = xocl_fdt_blob_input(xdev, xdev->core.fdt_blob);
 			if (ret) {
@@ -596,6 +589,8 @@ int xocl_refresh_prp_subdevs(struct xocl_dev *xdev)
 				goto failed;
 			}
 		}
+		if (XOCL_DRM(xdev))
+			xocl_cleanup_mem(XOCL_DRM(xdev));
 
 		ret = xocl_subdev_destroy_prp(xdev);
 		if (ret) {
@@ -608,6 +603,7 @@ int xocl_refresh_prp_subdevs(struct xocl_dev *xdev)
 			goto failed;
 		}
 		(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
+		xocl_drvinst_set_offline(xdev, false);
 	}
 failed:
 	if (blob)
@@ -994,8 +990,8 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	INIT_LIST_HEAD(&xdev->ctx_list);
 
 	for (i = XOCL_WORK_RESET; i < XOCL_WORK_NUM; i++) {
-		INIT_DELAYED_WORK(&xdev->work[i].work, xocl_work_cb);
-		xdev->work[i].op = i;
+		INIT_DELAYED_WORK(&xdev->works[i].work, xocl_work_cb);
+		xdev->works[i].op = i;
 	}
 
 	ret = xocl_subdev_init(xdev);

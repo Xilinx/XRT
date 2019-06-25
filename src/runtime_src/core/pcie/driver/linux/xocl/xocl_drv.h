@@ -727,7 +727,7 @@ struct xocl_icap_funcs {
 	int (*download_bitstream_axlf)(struct platform_device *pdev,
 		const void __user *arg);
 	int (*download_boot_firmware)(struct platform_device *pdev);
-	int (*download_rp)(struct platform_device *pdev, int level, bool dry);
+	int (*download_rp)(struct platform_device *pdev, int level);
 	int (*ocl_set_freq)(struct platform_device *pdev,
 		unsigned int region, unsigned short *freqs, int num_freqs);
 	int (*ocl_get_freq)(struct platform_device *pdev,
@@ -737,7 +737,6 @@ struct xocl_icap_funcs {
 		const xuid_t *uuid, pid_t pid);
 	int (*ocl_unlock_bitstream)(struct platform_device *pdev,
 		const xuid_t *uuid, pid_t pid);
-	void (*refresh_addrs)(struct platform_device *pdev);
 	uint64_t (*get_data)(struct platform_device *pdev,
 		enum data_kind kind);
 };
@@ -762,9 +761,9 @@ struct xocl_icap_funcs {
 	(ICAP_CB(xdev, download_boot_firmware) ?						\
 	ICAP_OPS(xdev)->download_boot_firmware(ICAP_DEV(xdev)) :	\
 	-ENODEV)
-#define xocl_icap_download_rp(xdev, level, dry)					\
+#define xocl_icap_download_rp(xdev, level)					\
 	(ICAP_CB(xdev, download_rp) ?					\
-	ICAP_OPS(xdev)->download_rp(ICAP_DEV(xdev), level, dry) :	\
+	ICAP_OPS(xdev)->download_rp(ICAP_DEV(xdev), level) :	\
 	-ENODEV)
 #define	xocl_icap_ocl_get_freq(xdev, region, freqs, num)		\
 	(ICAP_CB(xdev, ocl_get_freq) ?						\

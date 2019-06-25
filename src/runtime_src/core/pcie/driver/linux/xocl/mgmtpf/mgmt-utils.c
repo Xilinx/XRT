@@ -473,63 +473,33 @@ failed:
 
 int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 {
-	int ret, i;
-
-	mutex_lock(&lro->busy_mutex);
-	if (!lro->bld_blob || !lro->core.fdt_blob) {
-		mgmt_err(lro, "Invalid reprogram request");
-		ret = -EINVAL;
-		goto failed;
-	}
-	/* if dry run failed, return error */
-	ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP, true);
-	if (ret) {
-		mgmt_err(lro, "download dry run failed %d", ret);
-		goto failed;
-	}
+	int ret;
 
 	health_thread_stop(lro);
 
-	ret = xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_MAILBOX);
+	ret = xocl_subdev_destroy_prp(lro);
 	if (ret) {
-		mgmt_err(lro, "failed to online mailbox %d", ret);
+		mgmt_err(lro, "destroy prp failed %d", ret);
 		goto failed;
 	}
 
-	for (i = XOCL_SUBDEV_LEVEL_MAX - 1; i > XOCL_SUBDEV_LEVEL_BLD; i--)
-		xocl_subdev_destroy_by_level(lro, i);
-
-	/* currently firewall mixes BLD and PRP
-	 * remove firewall before download PRP
-	 */
-	xocl_subdev_destroy_by_id(lro, XOCL_SUBDEV_AF);
-
-	ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP, false);
+	ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP);
 	if (ret) {
 		mgmt_err(lro, "program shell failed %d", ret);
 		goto failed;
 	}
 
-	ret = xocl_subdev_create_all(lro);
+	ret = xocl_subdev_create_prp(lro);
 	if (ret) {
-		mgmt_err(lro, "failed to create sub devices %d", ret);
+		mgmt_err(lro, "failed to create prp %d", ret);
 		goto failed;
 	}
-
-	xocl_icap_refresh_addrs(lro);
-
-	ret = xocl_subdev_online_by_id(lro, XOCL_SUBDEV_MAILBOX);
-	if (ret) {
-		mgmt_err(lro, "failed to online mailbox %d", ret);
-		goto failed;
-	}
-	ret = xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
-	if (ret)
-		goto failed;
 
 	health_thread_start(lro);
+
+	xclmgmt_update_userpf_blob(lro);
+
 failed:
-	mutex_unlock(&lro->busy_mutex);
 
 	return ret;
 

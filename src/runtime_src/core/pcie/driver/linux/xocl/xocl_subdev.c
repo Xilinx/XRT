@@ -291,7 +291,7 @@ static void __xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 	if (pldev) {
 		if (state > XOCL_SUBDEV_STATE_DETACHED) {
 			device_release_driver(&pldev->dev);
-			platform_device_unregister(pldev);
+			platform_device_del(pldev);
 		}
 		platform_device_put(pldev);
 	}
@@ -692,6 +692,8 @@ static int __xocl_subdev_offline(xdev_handle_t xdev_hdl,
 	if (subdev_funcs && subdev_funcs->offline) {
 		ret = subdev_funcs->offline(subdev->pldev);
 	} else {
+		xocl_xdev_info(xdev_hdl, "release driver %s",
+				subdev->info.name);
 		device_release_driver(&subdev->pldev->dev);
 		platform_device_del(subdev->pldev);
 		subdev->ops = NULL;
@@ -738,7 +740,7 @@ static int __xocl_subdev_online(xdev_handle_t xdev_hdl,
 		}
 	}
 
-	if (!ret)
+	if (ret)
 		goto failed;
 
 	ret = xocl_subdev_cdev_create(subdev->pldev, &subdev->cdev);
@@ -747,6 +749,8 @@ static int __xocl_subdev_online(xdev_handle_t xdev_hdl,
 		goto failed;
 	}
 
+	if (XOCL_GET_DRV_PRI(subdev->pldev))
+		subdev->ops = XOCL_GET_DRV_PRI(subdev->pldev)->ops;
 	xocl_drvinst_set_offline(platform_get_drvdata(subdev->pldev), false);
 	subdev->state = XOCL_SUBDEV_STATE_INIT;
 

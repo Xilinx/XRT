@@ -145,8 +145,10 @@ struct icap {
 	struct debug_ip_layout	*debug_layout;
 	struct connectivity	*connectivity;
 
-	char			*rp_buffer;
-	unsigned long		rp_length;
+	void			*rp_bit;
+	unsigned long		rp_bit_len;
+	void			*rp_fdt;
+
 	char			*icap_clock_freq_counter_hbm;
 
 	uint64_t		cache_expire_secs;
@@ -1521,21 +1523,122 @@ static long icap_download_clear_bitstream(struct icap *icap)
 	return err;
 }
 
-static int icap_download_rp(struct platform_device *pdev, int level, bool dry)
+static int icap_req_download_rp(struct icap *icap, struct axlf *axlf)
+{
+	const struct axlf_section_header *section;
+	void *header;
+	XHwIcap_Bit_Header bit_header = { 0 };
+	struct mailbox_req mbreq = { MAILBOX_REQ_CHG_SHELL, };
+	int ret;
+
+	mutex_lock(&icap->icap_lock);
+	if (icap->rp_bit) {
+		ICAP_ERR(icap, "previous dowload in progress");
+		mutex_unlock(&icap->icap_lock);
+		return -EBUSY;
+	}
+
+	section = get_axlf_section_hdr(icap, axlf, DTC);
+	if (!section) {
+		ICAP_ERR(icap, "did not find DTC section");
+		ret = -EINVAL;
+		goto failed;
+	}
+
+	header = (char *)axlf + section->m_sectionOffset;
+
+	if (fdt_check_header(header) || fdt_totalsize(header) >
+			section->m_sectionSize) {
+		ICAP_ERR(icap, "Invalid DTC");
+		ret = -EINVAL;
+		goto failed;
+	}
+
+	icap->rp_fdt = vmalloc(fdt_totalsize(header));
+	if (!icap->rp_fdt) {
+		ICAP_ERR(icap, "Not enough memory for DTC");
+		ret = -ENOMEM;
+		goto failed;
+	}
+	memcpy(icap->rp_fdt, header, fdt_totalsize(header));
+
+	section = get_axlf_section_hdr(icap, axlf, BITSTREAM);
+	if (!section) {
+		ICAP_ERR(icap, "did not find BITSTREAM section");
+		ret = -EINVAL;
+		goto failed;
+	}
+
+	if (section->m_sectionSize < DMA_HWICAP_BITFILE_BUFFER_SIZE) {
+		ICAP_ERR(icap, "bitstream is too small");
+		ret = -EINVAL;
+		goto failed;
+	}
+
+	header = (char *)axlf + section->m_sectionOffset;
+
+	if (bitstream_parse_header(icap, header,
+		DMA_HWICAP_BITFILE_BUFFER_SIZE, &bit_header)) {
+		ICAP_ERR(icap, "parse header failed");
+		goto failed;
+	}
+
+	icap->rp_bit_len = bit_header.HeaderLength + bit_header.BitstreamLength;
+	if (icap->rp_bit_len > section->m_sectionOffset) {
+		ICAP_ERR(icap, "bitstream is too bit");
+		goto failed;
+	}
+
+	icap->rp_bit = vmalloc(icap->rp_bit_len);
+	if (!icap->rp_bit) {
+		ICAP_ERR(icap, "Not enough memory for BITSTREAM");
+		ret = -ENOMEM;
+		goto failed;
+	}
+	memcpy(icap->rp_bit, header, icap->rp_bit_len);
+
+	(void) xocl_peer_notify(xocl_get_xdev(icap->icap_pdev), &mbreq,
+			sizeof(struct mailbox_req));
+	ICAP_INFO(icap, "Notified userpf to program rp");
+
+	mutex_unlock(&icap->icap_lock);
+	return 0;
+
+failed:
+	if (icap->rp_bit) {
+		vfree(icap->rp_bit);
+		icap->rp_bit = NULL;
+		icap->rp_bit_len = 0;
+	}
+	if (icap->rp_fdt) {
+		vfree(icap->rp_fdt);
+		icap->rp_fdt = NULL;
+	}
+
+	mutex_unlock(&icap->icap_lock);
+
+	return ret;
+}
+
+
+static int icap_download_rp(struct platform_device *pdev, int level)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	int ret = 0;
 
 	mutex_lock(&icap->icap_lock);
-	if (!icap->rp_buffer) {
+	if (!icap->rp_bit || !icap->rp_fdt) {
 		xocl_xdev_err(xdev, "Invalid reprogram request");
 		ret = -EINVAL;
 		goto failed;
 	}
 
-	if (dry)
+	ret = xocl_fdt_blob_input(xdev, icap->rp_fdt);
+	if (ret) {
+		xocl_xdev_err(xdev, "failed to parse fdt %d", ret);
 		goto failed;
+	}
 
 	ret = xocl_axigate_freeze(xdev, XOCL_SUBDEV_LEVEL_BLD);
 	if (ret) {
@@ -1544,7 +1647,7 @@ static int icap_download_rp(struct platform_device *pdev, int level, bool dry)
 	}
 
 #if 0
-	ret = icap_download(icap, icap->rp_buffer, icap->rp_length);
+	ret = icap_download(icap, icap->rp_bit, icap->rp_bit_len);
 	if (ret)
 		goto failed;
 #endif
@@ -1555,9 +1658,11 @@ static int icap_download_rp(struct platform_device *pdev, int level, bool dry)
 		goto failed;
 	}
 
-	vfree(icap->rp_buffer);
-	icap->rp_buffer = NULL;
-	icap->rp_length = 0;
+	vfree(icap->rp_bit);
+	icap->rp_bit = NULL;
+	icap->rp_bit_len = 0;
+	vfree(icap->rp_fdt);
+	icap->rp_fdt = NULL;
 
 failed:
 	mutex_unlock(&icap->icap_lock);
@@ -2710,7 +2815,6 @@ static struct xocl_icap_funcs icap_ops = {
 	.ocl_update_clock_freq_topology = icap_ocl_update_clock_freq_topology,
 	.ocl_lock_bitstream = icap_lock_bitstream,
 	.ocl_unlock_bitstream = icap_unlock_bitstream,
-	.refresh_addrs = icap_refresh_addrs,
 	.get_data = icap_get_data,
 };
 
@@ -3014,8 +3118,10 @@ static int icap_remove(struct platform_device *pdev)
 
 	del_all_users(icap);
 
-	if (icap->rp_buffer)
-		vfree(icap->rp_buffer);
+	if (icap->rp_bit)
+		vfree(icap->rp_bit);
+	if (icap->rp_fdt)
+		vfree(icap->rp_fdt);
 
 	iounmap(icap->icap_regs);
 	free_clear_bitstream(icap);
@@ -3139,89 +3245,113 @@ static int icap_close(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static ssize_t icap_rpbit_write(struct file *filp, const char __user *data,
+static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		size_t data_len, loff_t *off)
 {
 	struct icap *icap = filp->private_data;
-	XHwIcap_Bit_Header bit_header = { 0 };
-	void *header_buff = NULL;
+	struct axlf *axlf;
 	ssize_t ret, len;
 
-	mutex_lock(&icap->icap_lock);
 	if (*off == 0) {
-		if (data_len < DMA_HWICAP_BITFILE_BUFFER_SIZE) {
-			ICAP_ERR(icap, "bitstream is too small %ld", data_len);
+		mutex_lock(&icap->icap_lock);
+		if (icap->rp_bit) {
+			ICAP_ERR(icap, "Previous Dowload is not completed");
+			mutex_unlock(&icap->icap_lock);
+			return -EBUSY;
+		}
+		if (data_len < sizeof(struct axlf)) {
+			ICAP_ERR(icap, "axlf file is too small %ld", data_len);
+			mutex_unlock(&icap->icap_lock);
 			ret = -ENOMEM;
 			goto failed;
 		}
-		header_buff = vmalloc(DMA_HWICAP_BITFILE_BUFFER_SIZE);
-		if (!header_buff) {
+		axlf = vmalloc(sizeof(struct axlf));
+		if (!axlf) {
 			ret = -ENOMEM;
+			mutex_unlock(&icap->icap_lock);
 			goto failed;
 		}
 
-		ret = copy_from_user(header_buff, data,
-				DMA_HWICAP_BITFILE_BUFFER_SIZE);
+		ret = copy_from_user(axlf, data, sizeof(struct axlf));
 		if (ret) {
+			vfree(axlf);
+			mutex_unlock(&icap->icap_lock);
 			ICAP_ERR(icap, "copy header buffer failed %ld", ret);
 			goto failed;
 		}
 
-		if (bitstream_parse_header(icap, header_buff,
-			DMA_HWICAP_BITFILE_BUFFER_SIZE, &bit_header)) {
-			ICAP_ERR(icap, "parse header failed");
-			goto failed;
-		}
+		icap->rp_bit_len = axlf->m_header.m_length;
+		vfree(axlf);
 
-		vfree(header_buff);
-		header_buff = NULL;
-
-		icap->rp_length = bit_header.HeaderLength +
-			bit_header.BitstreamLength;
-		icap->rp_buffer = vmalloc(icap->rp_length);
-		if (!icap->rp_buffer) {
+		icap->rp_bit = vmalloc(icap->rp_bit_len);
+		if (!icap->rp_bit) {
 			ret = -ENOMEM;
+			mutex_unlock(&icap->icap_lock);
 			goto failed;
 		}
-	}
 
-	if (icap->rp_buffer) {
-		len = (ssize_t)(min((loff_t)(icap->rp_length),
+		ret = copy_from_user(icap->rp_bit, data, data_len);
+		if (ret) {
+			ICAP_ERR(icap, "copy bit file failed %ld", ret);
+			mutex_unlock(&icap->icap_lock);
+			goto failed;
+		}
+		mutex_unlock(&icap->icap_lock);
+	} else {
+		len = (ssize_t)(min((loff_t)(icap->rp_bit_len),
 				(*off + (loff_t)data_len)) - *off);
 		if (len < 0) {
 			ICAP_ERR(icap, "Invalid len %ld", len);
 			ret = -EINVAL;
 			goto failed;
 		}
-		ret = copy_from_user(icap->rp_buffer + *off, data, len);
+		ret = copy_from_user(icap->rp_bit + *off, data, len);
 		if (ret) {
 			ICAP_ERR(icap, "copy failed off %lld, len %ld",
 					*off, len);
 			goto failed;
 		}
-		if (*off + len == icap->rp_length) {
-			/*
-			 * bit file transfer completed
-			 */
-			ICAP_INFO(icap, "notify userpf programming rp");
-		}
-
 	}
 
+	*off += len;
+	if (*off < icap->rp_bit_len)
+		return len;
+
+	axlf = vmalloc(icap->rp_bit_len);
+	if (!axlf) {
+		ICAP_ERR(icap, "it stream buffer allocation failed");
+		ret = -ENOMEM;
+		goto failed;
+	}
+
+	mutex_lock(&icap->icap_lock);
+	memcpy(axlf, icap->rp_bit, icap->rp_bit_len);
+	vfree(icap->rp_bit);
+	icap->rp_bit = NULL;
+	icap->rp_bit_len = 0;
 	mutex_unlock(&icap->icap_lock);
 
-	*off += len;
+	ret = icap_req_download_rp(icap, axlf);
+	if (ret) {
+		ICAP_ERR(icap, "request download rp failed %ld", ret);
+		goto failed;
+	}
+
 	return len;
 
 failed:
-	mutex_unlock(&icap->icap_lock);
 
-	if (icap->rp_buffer) {
-		vfree(icap->rp_buffer);
-		icap->rp_length = 0;
+	mutex_lock(&icap->icap_lock);
+	if (icap->rp_bit) {
+		vfree(icap->rp_bit);
+		icap->rp_bit = NULL;
+		icap->rp_bit_len = 0;
 	}
-	if (header_buff)
-		vfree(header_buff);
+	if (icap->rp_fdt) {
+		vfree(icap->rp_fdt);
+		icap->rp_fdt = NULL;
+	}
+	mutex_unlock(&icap->icap_lock);
 
 	return ret;
 }
@@ -3229,7 +3359,7 @@ failed:
 static const struct file_operations icap_fops = {
 	.open = icap_open,
 	.release = icap_close,
-	.write = icap_rpbit_write,
+	.write = icap_write_rp,
 };
 
 #if PF==MGMTPF
