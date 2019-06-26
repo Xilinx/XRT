@@ -3,6 +3,7 @@
  *
  *  Utility Functions for AXI firewall IP.
  *  Author: Lizhi.Hou@Xilinx.com
+ *          Jan Stephan <j.stephan@hzdr.de>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -272,7 +273,7 @@ static const struct attribute_group firewall_attrgroup = {
 static u32 check_firewall(struct platform_device *pdev, int *level)
 {
 	struct firewall	*fw;
-	struct timeval	time;
+	XOCL_TIMESPEC time;
 	int	i;
 	u32	val = 0;
 
@@ -289,7 +290,7 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 			if (!fw->curr_status) {
 				fw->err_detected_status = val;
 				fw->err_detected_level = i;
-				do_gettimeofday(&time);
+				XOCL_GETTIME(&time);
 				fw->err_detected_time = (u64)(time.tv_sec -
 					(sys_tz.tz_minuteswest * 60));
 			}

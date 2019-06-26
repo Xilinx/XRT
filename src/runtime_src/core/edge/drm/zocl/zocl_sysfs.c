@@ -74,6 +74,7 @@ static DEVICE_ATTR_RO(kds_custat);
 static ssize_t zocl_get_memstat(struct device *dev, char *buf, bool raw)
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+	struct zocl_mem *memp;
 	struct mem_topology *topo;
 	ssize_t size = 0;
 	ssize_t count;
@@ -83,9 +84,10 @@ static ssize_t zocl_get_memstat(struct device *dev, char *buf, bool raw)
 	const char *raw_fmt = "%llu %d\n";
 	int i;
 
-	if (!zdev || !zdev->topology)
+	if (!zdev || !zdev->topology || !zdev->mem)
 		return 0;
 
+	memp = zdev->mem;
 	topo = zdev->topology;
 	read_lock(&zdev->attr_rwlock);
 
@@ -93,10 +95,8 @@ static ssize_t zocl_get_memstat(struct device *dev, char *buf, bool raw)
 		if (topo->m_mem_data[i].m_type == MEM_STREAMING)
 			continue;
 
-		memory_usage = topo->m_mem_data[i].m_used ?
-		    zdev->mm_usage.memory_usage : 0;
-		bo_count = topo->m_mem_data[i].m_used ?
-		    zdev->mm_usage.bo_count : 0;
+		memory_usage = memp[i].zm_stat.memory_usage;
+		bo_count = memp[i].zm_stat.bo_count;
 
 		if (raw)
 			count = sprintf(buf, raw_fmt, memory_usage, bo_count);

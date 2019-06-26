@@ -579,6 +579,14 @@ void cb_reset(const axlf* xclbin)
 {
   auto profiler = OCLProfiler::Instance();
 
+  // Extract and store the system profile metatdata
+  auto pProfileMgr = profiler ? profiler->getProfileManager() : nullptr;
+  auto pRunSummary = pProfileMgr ? pProfileMgr->getRunSummary() : nullptr;
+
+  if (pRunSummary != nullptr) {
+    pRunSummary->extractSystemProfileMetadata(xclbin, "xclbin");
+  }
+
   // init flow mode
   if (!is_emulation_mode()) {
     auto dsa = std::string(reinterpret_cast<const char*>(xclbin->m_header.m_platformVBNV),64);

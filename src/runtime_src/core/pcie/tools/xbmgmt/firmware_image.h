@@ -32,6 +32,7 @@
 #define FIRMWARE_DIR        "/lib/firmware/xilinx/"
 #define DSA_FILE_SUFFIX     "mcs"
 #define DSABIN_FILE_SUFFIX  "dsabin"
+#define XSABIN_FILE_SUFFIX  "xsabin"
 #define NULL_TIMESTAMP      0
 
 class DSAInfo

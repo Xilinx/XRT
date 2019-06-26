@@ -111,7 +111,7 @@ int xocl_drvinst_kill_proc(void *data)
 	struct xocl_drvinst *drvinstp;
 	struct xocl_drvinst_proc *proc, *temp;
 	struct pid *p;
-	int inst;   
+	int inst;
 	int ret = 0;
 
 	mutex_lock(&xocl_drvinst_lock);
@@ -127,7 +127,7 @@ int xocl_drvinst_kill_proc(void *data)
 	if (atomic_read(&drvinstp->ref) > 1) {
 		list_for_each_entry_safe(proc, temp, &drvinstp->open_procs,
 				link) {
-			p = find_get_pid(proc->pid); 
+			p = find_get_pid(proc->pid);
 			if (!p)
 				continue;
 			ret = kill_pid(p, SIGBUS, 1);
@@ -137,7 +137,7 @@ int xocl_drvinst_kill_proc(void *data)
 				put_pid(p);
 				break;
 			}
-			put_pid(p);     
+			put_pid(p);
 		}
 		if (!ret)
 			ret = wait_for_completion_killable(&drvinstp->comp);
@@ -235,7 +235,7 @@ static void *_xocl_drvinst_open(void *file_dev, u32 max_count)
 		mutex_unlock(&xocl_drvinst_lock);
 		return NULL;
 	}
-	
+
 	if (drvinstp->offline) {
 		xocl_err(drvinstp->dev, "Device %s is offline",
 				dev_name(drvinstp->dev));

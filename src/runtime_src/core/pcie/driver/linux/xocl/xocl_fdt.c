@@ -157,6 +157,7 @@ static void devinfo_cb_setlevel(void *dev_hdl, void *subdevs, int num)
 	subdev->info.override_idx = subdev->info.level;
 }
 
+/* missing clk freq counter ip */
 static struct xocl_subdev_map		subdev_map[] = {
 	{
 		XOCL_SUBDEV_FEATURE_ROM,
@@ -291,6 +292,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 			RESNAME_MEMCALIB,
 			RESNAME_CLKWIZKERNEL1,
 			RESNAME_CLKWIZKERNEL2,
+			RESNAME_KDMA,
 			NULL
 		},
 		1,
@@ -315,10 +317,11 @@ static struct xocl_subdev_map		subdev_map[] = {
 		XOCL_XMC,
 		{
 			"cmcregmapbram",
-			"cmcmbctrl",
+			"cmcmbrstctrl", //"cmcmbctrl"?
 			"cmclmbbram",
 			"ertlmbbram",
 			"ertcqbram",
+			// 0x53000 runtime clk scaling
 			NULL
 		},
 		5,
@@ -434,7 +437,7 @@ int xocl_fdt_overlay(void *fdt, int target,
 
 static int xocl_fdt_parse_seg(xdev_handle_t xdev_hdl, char *blob,
 		int seg, struct ip_node *ip,
-		struct xocl_subdev *subdev) 
+		struct xocl_subdev *subdev)
 {
 	const char *name;
 	int idx, sz, num_res;
@@ -562,7 +565,7 @@ static int xocl_fdt_res_lookup(xdev_handle_t xdev_hdl, char *blob,
 		const char *ipname, struct xocl_subdev *subdev)
 {
 	struct ip_node	ip;
-	int off = -1, seg, ret; 
+	int off = -1, seg, ret;
 
 	for (off = xocl_fdt_next_ip(xdev_hdl, blob, off, &ip); off >= 0;
 		off = xocl_fdt_next_ip(xdev_hdl, blob, off, &ip)) {

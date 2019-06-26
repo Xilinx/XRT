@@ -2,6 +2,7 @@
  * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@Xilinx.com
+ *          Jan Stephan <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -31,6 +32,67 @@
 #include <linux/libfdt_env.h>
 #include "lib/libfdt/libfdt.h"
 
+/* The fix for the y2k38 bug was introduced with Linux 3.17 and backported to
+ * Red Hat 7.2.
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
+	#define XOCL_TIMESPEC struct timespec64
+	#define XOCL_GETTIME ktime_get_real_ts64
+	#define XOCL_USEC tv_nsec / NSEC_PER_USEC
+#elif defined(RHEL_RELEASE_CODE)
+	#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,2)
+		#define XOCL_TIMESPEC struct timespec64
+		#define XOCL_GETTIME ktime_get_real_ts64
+		#define XOCL_USEC tv_nsec / NSEC_PER_USEC
+	#else
+		#define XOCL_TIMESPEC struct timeval
+		#define XOCL_GETTIME do_gettimeofday
+		#define XOCL_USEC tv_usec
+	#endif
+#else
+	#define XOCL_TIMESPEC struct timeval
+	#define XOCL_GETTIME do_gettimeofday
+	#define XOCL_USEC tv_usec
+#endif
+
+/* drm_gem_object_put_unlocked and drm_gem_object_get were introduced with Linux
+ * 4.12 and backported to Red Hat 7.5.
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+	#define XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_put_unlocked
+	#define XOCL_DRM_GEM_OBJECT_GET drm_gem_object_get
+#elif defined(RHEL_RELEASE_CODE)
+	#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,5)
+		#define XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_put_unlocked
+		#define XOCL_DRM_GEM_OBJECT_GET drm_gem_object_get
+	#else
+		#define XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_unreference_unlocked
+		#define XOCL_DRM_GEM_OBJECT_GET drm_gem_object_reference
+	#endif
+#else
+	#define XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_unreference_unlocked
+	#define XOCL_DRM_GEM_OBJECT_GET drm_gem_object_reference
+#endif
+
+/* drm_dev_put was introduced with Linux 4.15 and backported to Red Hat 7.6. */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0)
+	#define XOCL_DRM_DEV_PUT drm_dev_put
+#elif defined(RHEL_RELEASE_CODE)
+	#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,6)
+		#define XOCL_DRM_DEV_PUT drm_dev_put
+	#else
+		#define XOCL_DRM_DEV_PUT drm_dev_unref
+	#endif
+#else
+	#define XOCL_DRM_DEV_PUT drm_dev_unref
+#endif
+
+/* access_ok lost its first parameter with Linux 5.0. */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
+	#define XOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(ADDR, SIZE)
+#else
+	#define XOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(TYPE, ADDR, SIZE)
+#endif
 
 #if defined(RHEL_RELEASE_CODE)
 #if RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(7, 4)
@@ -358,7 +420,7 @@ struct xocl_rom_funcs {
 	(ROM_CB(xdev, mb_mgmt_on) ? ROM_OPS(xdev)->mb_mgmt_on(ROM_DEV(xdev)) : false)
 #define	xocl_mb_sched_on(xdev)		\
 	(ROM_CB(xdev, mb_sched_on) ? ROM_OPS(xdev)->mb_sched_on(ROM_DEV(xdev)) : false)
-#define	xocl_cdma_addr(xdev)		\
+#define	xocl_rom_cdma_addr(xdev)		\
 	(ROM_CB(xdev, cdma_addr) ? ROM_OPS(xdev)->cdma_addr(ROM_DEV(xdev)) : 0)
 #define xocl_clk_scale_on(xdev)		\
 	(ROM_CB(xdev, runtime_clk_scale_on) ? ROM_OPS(xdev)->runtime_clk_scale_on(ROM_DEV(xdev)) : false)
@@ -761,7 +823,7 @@ struct xocl_icap_funcs {
 	(ICAP_CB(xdev, download_boot_firmware) ?						\
 	ICAP_OPS(xdev)->download_boot_firmware(ICAP_DEV(xdev)) :	\
 	-ENODEV)
-#define xocl_icap_download_rp(xdev, level)					\
+#define xocl_icap_download_rp(xdev, level)				\
 	(ICAP_CB(xdev, download_rp) ?					\
 	ICAP_OPS(xdev)->download_rp(ICAP_DEV(xdev), level) :	\
 	-ENODEV)
@@ -824,9 +886,9 @@ struct xocl_iores_funcs {
 
 #define IORES_DEV(xdev, idx)  SUBDEV_MULTI(xdev, XOCL_SUBDEV_IORES, idx).pldev
 #define	IORES_OPS(xdev, idx)						\
-    ((struct xocl_iores_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_IORES, idx).ops)
+	((struct xocl_iores_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_IORES, idx).ops)
 #define IORES_CB(xdev, idx, cb)		\
-	(IORES_DEV(xdev, idx) && IORES_OPS(xdev, idx) && 		\
+	(IORES_DEV(xdev, idx) && IORES_OPS(xdev, idx) &&		\
 	IORES_OPS(xdev, idx)->cb)
 #define	xocl_iores_read32(xdev, level, id, off, val)			\
 	(IORES_CB(xdev, level, read32) ?				\
@@ -863,6 +925,16 @@ struct xocl_axigate_funcs {
 	AXIGATE_OPS(xdev, level)->free(AXIGATE_DEV(xdev, level)) :	\
 	-ENODEV)
 
+static inline void __iomem *xocl_cdma_addr(xdev_handle_t xdev)
+{
+	void	__iomem *ioaddr;
+
+	ioaddr = xocl_iores_get_base(xdev, XOCL_SUBDEV_LEVEL_PRP, IORES_KDMA);
+	if (!ioaddr)
+		ioaddr = xocl_rom_cdma_addr(xdev);
+
+	return ioaddr;
+}
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
 void xocl_init_dsa_priv(xdev_handle_t xdev_hdl);

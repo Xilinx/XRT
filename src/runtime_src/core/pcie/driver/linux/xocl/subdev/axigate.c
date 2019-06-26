@@ -47,7 +47,7 @@ static int axigate_freeze(struct platform_device *pdev)
 	if (gate->freeze)
 		goto failed;
 
-	for (i = XOCL_SUBDEV_LEVEL_MAX- 1; i > gate->level; i--) {
+	for (i = XOCL_SUBDEV_LEVEL_MAX - 1; i > gate->level; i--) {
 		ret = xocl_subdev_offline_by_level(xdev, i);
 		if (ret) {
 			xocl_xdev_err(xdev, "failed offline level %d devs, %d",

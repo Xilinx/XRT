@@ -14,22 +14,17 @@
  *  GNU General Public License for more details.
  */
 
-/*
- * TODO: Currently, locking / unlocking bitstream is implemented w/ pid as
- * identification of bitstream users. We assume that, on bare metal, an app
- * has only one process and will open both user and mgmt pfs. In this model,
- * xclmgmt has enough information to handle locking/unlocking alone, but we
- * still involve user pf and mailbox here so that it'll be easier to support
- * cloud env later. We'll replace pid with a token that is more appropriate
- * to identify a user later as well.
- */
-
 #include <linux/firmware.h>
 #include <linux/vmalloc.h>
 #include <linux/string.h>
 #include <linux/version.h>
 #include <linux/uuid.h>
 #include <linux/pid.h>
+#include <linux/key.h>
+#include <linux/efi.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
+#include <linux/verification.h>
+#endif
 #include "xclbin.h"
 #include "../xocl_drv.h"
 #include "../xocl_drm.h"
@@ -38,6 +33,9 @@
 #if defined(XOCL_UUID)
 static xuid_t uuid_null = NULL_UUID_LE;
 #endif
+
+static DEFINE_MUTEX(icap_keyring_lock);
+static struct key *icap_keys;
 
 #define	ICAP_ERR(icap, fmt, arg...)	\
 	xocl_err(&(icap)->icap_pdev->dev, fmt "\n", ##arg)
@@ -80,6 +78,13 @@ typedef struct {
 #define	GATE_FREEZE_USER	0x0c
 
 static u32 gate_free_user[] = {0xe, 0xc, 0xe, 0xf};
+
+enum icap_sec_level {
+	ICAP_SEC_NONE = 0,
+	ICAP_SEC_DEDICATE,
+	ICAP_SEC_SYSTEM,
+	ICAP_SEC_MAX = ICAP_SEC_SYSTEM,
+};
 
 /*
  * AXI-HWICAP IP register layout
@@ -155,6 +160,7 @@ struct icap {
 	struct xcl_hwicap	cache;
 	ktime_t			cache_expires;
 
+	enum icap_sec_level	sec_level;
 };
 
 static inline u32 reg_rd(void __iomem *reg)
@@ -517,6 +523,10 @@ static unsigned int icap_get_clock_frequency_counter_khz(const struct icap *icap
 /*
  * Based on Clocking Wizard v5.1, section Dynamic Reconfiguration
  * through AXI4-Lite
+ * Note: this is being protected by write_lock which is atomic context,
+ *       we should only use n[m]delay instead of n[m]sleep.
+ *       based on Linux doc of timers, mdelay may not be exactly accurate
+ *       on non-PC devices.
  */
 static int icap_ocl_freqscaling(struct icap *icap, bool force)
 {
@@ -559,20 +569,20 @@ static int icap_ocl_freqscaling(struct icap *icap, bool force)
 		config = frequency_table[idx].config2;
 		reg_wr(icap->icap_clock_bases[i] + OCL_CLKWIZ_CONFIG_OFFSET(2),
 			config);
-		msleep(10);
+		mdelay(10);
 		reg_wr(icap->icap_clock_bases[i] + OCL_CLKWIZ_CONFIG_OFFSET(23),
 			0x00000007);
-		msleep(1);
+		mdelay(1);
 		reg_wr(icap->icap_clock_bases[i] + OCL_CLKWIZ_CONFIG_OFFSET(23),
 			0x00000002);
 
 		ICAP_INFO(icap, "clockwiz waiting for locked signal");
-		msleep(100);
+		mdelay(100);
 		for (j = 0; j < 100; j++) {
 			val = reg_rd(icap->icap_clock_bases[i] +
 				OCL_CLKWIZ_STATUS_OFFSET);
 			if (val != 1) {
-				msleep(100);
+				mdelay(100);
 				continue;
 			}
 		}
@@ -583,7 +593,7 @@ static int icap_ocl_freqscaling(struct icap *icap, bool force)
 			/* restore the original clock configuration */
 			reg_wr(icap->icap_clock_bases[i] +
 				OCL_CLKWIZ_CONFIG_OFFSET(23), 0x00000004);
-			msleep(10);
+			mdelay(10);
 			reg_wr(icap->icap_clock_bases[i] +
 				OCL_CLKWIZ_CONFIG_OFFSET(23), 0x00000000);
 			err = -ETIMEDOUT;
@@ -1274,6 +1284,59 @@ static int alloc_and_get_axlf_section(struct icap *icap,
 	return 0;
 }
 
+static long
+find_firmware_impl(struct platform_device *pdev, char *fw_name, size_t len,
+	u16 deviceid, const struct firmware **fw, char *suffix)
+{
+	struct icap *icap = platform_get_drvdata(pdev);
+	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(pdev);
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	u16 vendor = le16_to_cpu(pcidev->vendor);
+	u16 subdevice =	le16_to_cpu(pcidev->subsystem_device);
+	u64 timestamp = le64_to_cpu(xocl_get_timestamp(xdev));
+	long err = 0;
+
+	/* deviceid is arg, the others are from pdev) */
+
+	snprintf(fw_name, len, "xilinx/%04x-%04x-%04x-%016llx.%s",
+		vendor, deviceid, subdevice, timestamp, suffix);
+	ICAP_INFO(icap, "try load %s %s", suffix, fw_name);
+	err = request_firmware(fw, fw_name, &pcidev->dev);
+	if (err) {
+		snprintf(fw_name, len, "xilinx/%04x-%04x-%04x-%016llx.%s",
+			vendor, (deviceid + 1), subdevice, timestamp, suffix);
+		ICAP_INFO(icap, "try load %s %s", suffix, fw_name);
+		err = request_firmware(fw, fw_name, &pcidev->dev);
+	}
+
+	/* Retry with the legacy dsabin or xsabin. */
+	if (err) {
+		snprintf(fw_name, len, "xilinx/%04x-%04x-%04x-%016llx.%s",
+			vendor, le16_to_cpu(pcidev->device + 1), subdevice,
+			le64_to_cpu(0x0000000000000000), suffix);
+		ICAP_INFO(icap, "try load legacy %s %s", suffix, fw_name);
+		err = request_firmware(fw, fw_name, &pcidev->dev);
+	}
+
+	if (err)
+		ICAP_ERR(icap, "unable to find firmware of %s", suffix);
+
+	return err;
+}
+
+static long
+find_firmware(struct platform_device *pdev, char *fw_name, size_t len,
+	u16 deviceid, const struct firmware **fw)
+{
+	// try xsabin first, then dsabin
+	if (find_firmware_impl(pdev, fw_name, len, deviceid, fw, "xsabin")) {
+		return find_firmware_impl(pdev, fw_name, len, deviceid, fw,
+			"dsabin");
+	}
+
+	return 0;
+}
+
 static int icap_download_boot_firmware(struct platform_device *pdev)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
@@ -1304,8 +1367,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	if (!ICAP_PRIVILEGED(icap))
 		return -EPERM;
 
-	/* Read dsabin from file system. */
-
+	/* Read xsabin first, if failed, try dsabin from file system. */
 	if (funcid != 0) {
 		pcidev_user = pci_get_slot(pcidev->bus,
 			PCI_DEVFN(slotid, funcid - 1));
@@ -1317,37 +1379,9 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 			deviceid = pcidev_user->device;
 	}
 
-	snprintf(fw_name, sizeof(fw_name),
-		"xilinx/%04x-%04x-%04x-%016llx.dsabin",
-		le16_to_cpu(pcidev->vendor),
-		le16_to_cpu(deviceid),
-		le16_to_cpu(pcidev->subsystem_device),
-		le64_to_cpu(xocl_get_timestamp(xdev)));
-	ICAP_INFO(icap, "try load dsabin %s", fw_name);
-	err = request_firmware(&fw, fw_name, &pcidev->dev);
+	err = find_firmware(pdev, fw_name, sizeof(fw_name), deviceid, &fw);
 	if (err) {
-		snprintf(fw_name, sizeof(fw_name),
-			"xilinx/%04x-%04x-%04x-%016llx.dsabin",
-			le16_to_cpu(pcidev->vendor),
-			le16_to_cpu(deviceid + 1),
-			le16_to_cpu(pcidev->subsystem_device),
-			le64_to_cpu(xocl_get_timestamp(xdev)));
-		ICAP_INFO(icap, "try load dsabin %s", fw_name);
-		err = request_firmware(&fw, fw_name, &pcidev->dev);
-	}
-	/* Retry with the legacy dsabin. */
-	if (err) {
-		snprintf(fw_name, sizeof(fw_name),
-			"xilinx/%04x-%04x-%04x-%016llx.dsabin",
-			le16_to_cpu(pcidev->vendor),
-			le16_to_cpu(pcidev->device + 1),
-			le16_to_cpu(pcidev->subsystem_device),
-			le64_to_cpu(0x0000000000000000));
-		ICAP_INFO(icap, "try load dsabin %s", fw_name);
-		err = request_firmware(&fw, fw_name, &pcidev->dev);
-	}
-	if (err) {
-		/* Give up on finding .dsabin. */
+		/* Give up on finding xsabin and dsabin. */
 		ICAP_ERR(icap, "unable to find firmware, giving up");
 		return err;
 	}
@@ -2259,7 +2293,7 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 	}
 	for (i = 0; i < icap->ip_layout->m_count; ++i) {
 		struct ip_data *ip = &icap->ip_layout->m_ip_data[i];
-		struct xocl_mig_label mig_label = {0};
+		struct xocl_mig_label mig_label = { {0} };
 
 		if (ip->m_type == IP_KERNEL)
 			continue;
@@ -2803,8 +2837,8 @@ static int icap_online(struct platform_device *pdev)
 
 /* Kernel APIs exported from this sub-device driver. */
 static struct xocl_icap_funcs icap_ops = {
-        .offline_cb = icap_offline,
-        .online_cb = icap_online,
+	.offline_cb = icap_offline,
+	.online_cb = icap_online,
 	.reset_axi_gate = platform_reset_axi_gate,
 	.reset_bitstream = icap_reset_bitstream,
 	.download_boot_firmware = icap_download_boot_firmware,
@@ -2925,11 +2959,125 @@ static ssize_t cache_expire_secs_store(struct device *dev,
 }
 static DEVICE_ATTR_RW(cache_expire_secs);
 
+static int icap_verify_signature(struct icap *icap,
+	const void *data, size_t data_len, const void *sig, size_t sig_len)
+{
+	int ret = 0;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
+#define	SYS_KEYS	((void *)1UL)
+	ret = verify_pkcs7_signature(data, data_len, sig, sig_len,
+		(icap->sec_level == ICAP_SEC_SYSTEM) ? SYS_KEYS : icap_keys,
+		VERIFYING_UNSPECIFIED_SIGNATURE, NULL, NULL);
+	if (ret && icap->sec_level == 0) {
+		ICAP_INFO(icap, "signature verification failed");
+		ret = 0;
+	}
+#else
+	ret = -EOPNOTSUPP;
+	ICAP_ERR(icap,
+		"signature verification is not supported with < 4.7.0 kernel");
+#endif
+	return ret;
+}
+
+/* Test code for now, will remove later. */
+void icap_key_test(struct icap *icap)
+{
+	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(icap->icap_pdev);
+	const struct firmware *sig = NULL;
+	const struct firmware *text = NULL;
+	int err = 0;
+
+	err = request_firmware(&sig, "xilinx/signature", &pcidev->dev);
+	if (err) {
+		ICAP_ERR(icap, "can't load signature: %d", err);
+		goto done;
+	}
+	err = request_firmware(&text, "xilinx/text", &pcidev->dev);
+	if (err) {
+		ICAP_ERR(icap, "can't load text: %d", err);
+		goto done;
+	}
+
+	err = icap_verify_signature(icap, text->data, text->size,
+		sig->data, sig->size);
+	if (err) {
+		ICAP_ERR(icap, "Failed to verify data file");
+		goto done;
+	}
+
+	ICAP_INFO(icap, "Successfully verified data file!!!");
+
+done:
+	if (sig)
+		release_firmware(sig);
+	if (text)
+		release_firmware(text);
+}
+
+static ssize_t sec_level_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
+	u64 val = 0;
+
+	mutex_lock(&icap->icap_lock);
+	if (!ICAP_PRIVILEGED(icap))
+		val = ICAP_SEC_NONE;
+	else
+		val = icap->sec_level;
+	mutex_unlock(&icap->icap_lock);
+	return sprintf(buf, "%llu\n", val);
+}
+
+static ssize_t sec_level_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
+	u64 val;
+	int ret = count;
+
+	if (kstrtou64(buf, 10, &val) == -EINVAL || val > ICAP_SEC_MAX) {
+		xocl_err(&to_platform_device(dev)->dev,
+			"max sec level is %d", ICAP_SEC_MAX);
+		return -EINVAL;
+	}
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0)
+	if (val == 0)
+		return ret;
+	/* Can't enable xclbin signature verification. */
+	ICAP_ERR(icap,
+		"verifying signed xclbin is not supported with < 4.7.0 kernel");
+	return -EOPNOTSUPP;
+#else
+	mutex_lock(&icap->icap_lock);
+
+	if (ICAP_PRIVILEGED(icap)) {
+		if (icap->sec_level != ICAP_SEC_SYSTEM) {
+			icap->sec_level = val;
+		} else {
+			ICAP_ERR(icap,
+				"can't lower security level from system level");
+			ret = -EINVAL;
+		}
+	}
+
+	mutex_unlock(&icap->icap_lock);
+
+	icap_key_test(icap);
+	return ret;
+#endif
+}
+static DEVICE_ATTR_RW(sec_level);
+
 static struct attribute *icap_attrs[] = {
 	&dev_attr_clock_freq_topology.attr,
 	&dev_attr_clock_freqs.attr,
 	&dev_attr_idcode.attr,
 	&dev_attr_cache_expire_secs.attr,
+	&dev_attr_sec_level.attr,
 	NULL,
 };
 
@@ -3110,6 +3258,38 @@ static struct attribute_group icap_attr_group = {
 	.bin_attrs = icap_bin_attrs,
 };
 
+static int icap_load_keyring(void)
+{
+	int ret = 0;
+
+	mutex_lock(&icap_keyring_lock);
+
+	if (icap_keys) {
+		key_get(icap_keys);
+	} else {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
+		icap_keys = keyring_alloc(".xilinx_fpga_xclbin_keys",
+			KUIDT_INIT(0), KGIDT_INIT(0), current_cred(),
+			((KEY_POS_ALL & ~KEY_POS_SETATTR) |
+			KEY_USR_VIEW | KEY_USR_WRITE | KEY_USR_SEARCH),
+			KEY_ALLOC_NOT_IN_QUOTA, NULL, NULL);
+		ret = PTR_ERR_OR_ZERO(icap_keys);
+#endif
+	}
+
+	mutex_unlock(&icap_keyring_lock);
+
+	return ret;
+}
+
+static void icap_release_keyring(void)
+{
+	mutex_lock(&icap_keyring_lock);
+	if (icap_keys)
+		key_put(icap_keys);
+	mutex_unlock(&icap_keyring_lock);
+}
+
 static int icap_remove(struct platform_device *pdev)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
@@ -3122,6 +3302,8 @@ static int icap_remove(struct platform_device *pdev)
 		vfree(icap->rp_bit);
 	if (icap->rp_fdt)
 		vfree(icap->rp_fdt);
+
+	icap_release_keyring();
 
 	iounmap(icap->icap_regs);
 	free_clear_bitstream(icap);
@@ -3211,6 +3393,16 @@ static int icap_probe(struct platform_device *pdev)
 	if (ret) {
 		ICAP_ERR(icap, "create icap attrs failed: %d", ret);
 		goto failed;
+	}
+
+	if (ICAP_PRIVILEGED(icap)) {
+		ret = icap_load_keyring();
+		if (ret) {
+			ICAP_ERR(icap, "create icap keyring failed: %d", ret);
+			goto failed;
+		}
+		icap->sec_level = efi_enabled(EFI_SECURE_BOOT) ?
+			ICAP_SEC_SYSTEM : ICAP_SEC_NONE;
 	}
 
 	icap->cache_expire_secs = ICAP_DEFAULT_EXPIRE_SECS;
@@ -3362,7 +3554,7 @@ static const struct file_operations icap_fops = {
 	.write = icap_write_rp,
 };
 
-#if PF==MGMTPF
+#if PF == MGMTPF
 struct xocl_drv_private icap_drv_priv = {
 	.ops = &icap_ops,
 	.fops = &icap_fops,

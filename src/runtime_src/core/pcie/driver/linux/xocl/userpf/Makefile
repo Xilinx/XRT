@@ -33,6 +33,7 @@ xocl-y := \
 	../subdev/firewall.o \
 	../subdev/mig.o \
 	../subdev/dna.o \
+	../subdev/iores.o \
 	$(xocl_lib-y)	\
 	xocl_drv.o	\
 	xocl_bo.o	\

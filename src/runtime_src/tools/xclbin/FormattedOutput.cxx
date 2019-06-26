@@ -387,6 +387,20 @@ reportXclbinInfo( std::ostream & _ostream,
   }
 }
 
+/*
+ * get string value from boost:property_tree, first try platform.<name>
+ * then try dsa.<name>.
+ */
+std::string
+getPTreeValue(boost::property_tree::ptree &_ptMetaData, std::string name)
+{
+  std::string result = _ptMetaData.get<std::string>("platform." + name, "--");
+  if (result.compare("--") == 0) {
+    result = _ptMetaData.get<std::string>("dsa." + name, "--");
+  }
+  return result;
+}
+
 void
 reportHardwarePlatform( std::ostream & _ostream,
                   const axlf &_xclBinHeader,
@@ -398,38 +412,38 @@ reportHardwarePlatform( std::ostream & _ostream,
   if (!_ptMetaData.empty()) {
     // Vendor
     {
-      std::string sVendor = _ptMetaData.get<std::string>("dsa.vendor","--");
+      std::string sVendor = getPTreeValue(_ptMetaData, "vendor");
       _ostream << XUtil::format("   %-23s %s", "Vendor:", sVendor.c_str()).c_str() << std::endl;
     }
 
     // Board
     {
-      std::string sName = _ptMetaData.get<std::string>("dsa.board_id","--");
+      std::string sName = getPTreeValue(_ptMetaData, "board_id");
       _ostream << XUtil::format("   %-23s %s", "Board:", sName.c_str()).c_str() << std::endl;
     }
 
     // Name
     {
-      std::string sName = _ptMetaData.get<std::string>("dsa.name","--");
+      std::string sName = getPTreeValue(_ptMetaData, "name");
       _ostream << XUtil::format("   %-23s %s", "Name:", sName.c_str()).c_str() << std::endl;
     }
 
     // Version
     {
-      std::string sVersion = _ptMetaData.get<std::string>("dsa.version_major","--") 
+      std::string sVersion = getPTreeValue(_ptMetaData, "version_major") 
                            + "." 
-                           + _ptMetaData.get<std::string>("dsa.version_minor","--");
+                           + getPTreeValue(_ptMetaData, "version_minor");
       _ostream << XUtil::format("   %-23s %s", "Version:", sVersion.c_str()).c_str() << std::endl;
     }
 
     // Generated Version
     {
-      std::string sGeneratedVersion = _ptMetaData.get<std::string>("dsa.generated_by.name","--") + " "
-                                    + _ptMetaData.get<std::string>("dsa.generated_by.version","--") 
+      std::string sGeneratedVersion = getPTreeValue(_ptMetaData, "generated_by.name") + " "
+                                    + getPTreeValue(_ptMetaData, "generated_by.version") 
                                     + " (SW Build: " 
-                                    + _ptMetaData.get<std::string>("dsa.generated_by.cl", "--");
-      std::string sIPCL = _ptMetaData.get<std::string>("dsa.generated_by.ip_cl","");
-      if (!sIPCL.empty()) {
+                                    + getPTreeValue(_ptMetaData, "generated_by.cl");
+      std::string sIPCL = getPTreeValue(_ptMetaData, "generated_by.ip_cl");
+      if (sIPCL.compare("--") != 0) {
         sGeneratedVersion += "; " + sIPCL;
       }
       sGeneratedVersion += ")";
@@ -439,16 +453,14 @@ reportHardwarePlatform( std::ostream & _ostream,
 
     // Created
     {
-      std::string sCreated = _ptMetaData.get<std::string>("dsa.generated_by.time_stamp","--");
+      std::string sCreated = getPTreeValue(_ptMetaData, "generated_by.time_stamp");
       _ostream << XUtil::format("   %-23s %s", "Created:", sCreated.c_str()).c_str() << std::endl;
     }
 
     // FPGA Device
     {
-      std::string sFPGADevice = _ptMetaData.get<std::string>("dsa.board.part","");
-      if (sFPGADevice.empty()) {
-        sFPGADevice = "--";
-      } else {
+      std::string sFPGADevice = getPTreeValue(_ptMetaData, "board.part");
+      if (sFPGADevice.compare("--") != 0) {
         std::string::size_type pos = sFPGADevice.find("-", 0);
 
         if (pos == std::string::npos) {
@@ -463,19 +475,19 @@ reportHardwarePlatform( std::ostream & _ostream,
 
     // Board Vendor
     {
-       std::string sBoardVendor = _ptMetaData.get<std::string>("dsa.board.vendor","--");
+       std::string sBoardVendor = getPTreeValue(_ptMetaData, "board.vendor");
       _ostream << XUtil::format("   %-23s %s", "Board Vendor:", sBoardVendor.c_str()).c_str() << std::endl;
     }
 
     // Board Name
     {
-       std::string sBoardName = _ptMetaData.get<std::string>("dsa.board.name","--");
+       std::string sBoardName = getPTreeValue(_ptMetaData, "board.name");
       _ostream << XUtil::format("   %-23s %s", "Board Name:", sBoardName.c_str()).c_str() << std::endl;
     }
 
     // Board Part
     {
-       std::string sBoardPart = _ptMetaData.get<std::string>("dsa.board.board_part","--");
+       std::string sBoardPart = getPTreeValue(_ptMetaData, "board.board_part");
       _ostream << XUtil::format("   %-23s %s", "Board Part:", sBoardPart.c_str()).c_str() << std::endl;
     }
   }

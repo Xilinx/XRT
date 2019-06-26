@@ -143,9 +143,9 @@ enum {
 #define	MGMTPF		0
 #define	USERPF		1
 
-#if PF==MGMTPF
+#if PF == MGMTPF
 #define SUBDEV_SUFFIX	".m"
-#elif PF==USERPF
+#elif PF == USERPF
 #define SUBDEV_SUFFIX	".u"
 #endif
 
@@ -217,6 +217,7 @@ enum {
 	IORES_CLKWIZKERNEL3,
 	IORES_CLKFREQ1,
 	IORES_CLKFREQ2,
+	IORES_KDMA,
 	IORES_MAX,
 };
 #define RESNAME_GATEPRBLD	"gateprbld"
@@ -227,6 +228,7 @@ enum {
 #define RESNAME_CLKWIZKERNEL3	"clkwizkernel3"
 #define RESNAME_CLKFREQ1	"clkreq1"
 #define RESNAME_CLKFREQ2	"clkreq2"
+#define RESNAME_KDMA		"kdma"
 
 struct xocl_iores_map {
 	char		*res_name;
@@ -243,6 +245,7 @@ struct xocl_iores_map map[] = {						\
 	{ RESNAME_CLKWIZKERNEL3, IORES_CLKWIZKERNEL3 },			\
 	{ RESNAME_CLKFREQ1, IORES_CLKFREQ1 },				\
 	{ RESNAME_CLKFREQ2, IORES_CLKFREQ2 },				\
+	{ RESNAME_KDMA, IORES_KDMA },					\
 }
 
 #define	XOCL_RES_FEATURE_ROM				\
@@ -593,25 +596,25 @@ struct xocl_iores_map map[] = {						\
 
 #define __RES_PRP_IORES_MGMT				\
 		{					\
-	 		.name	= RESNAME_MEMCALIB,	\
+			.name	= RESNAME_MEMCALIB,	\
 			.start	= 0x032000,		\
 			.end	= 0x032003,		\
 			.flags  = IORESOURCE_MEM,	\
 		},					\
 		{					\
-	 		.name	= RESNAME_GATEPRPRP,	\
+			.name	= RESNAME_GATEPRPRP,	\
 			.start	= 0x030000,		\
 			.end	= 0x03000b,		\
 			.flags  = IORESOURCE_MEM,	\
 		},					\
 		{					\
-	 		.name	= RESNAME_CLKWIZKERNEL1,\
+			.name	= RESNAME_CLKWIZKERNEL1,\
 			.start	= 0x050000,		\
 			.end	= 0x050fff,		\
 			.flags  = IORESOURCE_MEM,	\
 		},					\
 		{					\
-	 		.name	= RESNAME_CLKWIZKERNEL2,\
+			.name	= RESNAME_CLKWIZKERNEL2,\
 			.start	= 0x051000,		\
 			.end	= 0x051fff,		\
 			.flags  = IORESOURCE_MEM,	\
@@ -634,10 +637,10 @@ struct xocl_iores_map map[] = {						\
 
 #define	XOCL_RES_PRP_IORES_MGMT_U280			\
 	((struct resource []) {				\
-	 	__RES_PRP_IORES_MGMT,			\
+		__RES_PRP_IORES_MGMT,			\
 		/* OCL_CLKWIZ2_BASE */			\
 		{					\
-	 		.name	= RESNAME_CLKWIZKERNEL3,\
+			.name	= RESNAME_CLKWIZKERNEL3,\
 			.start	= 0x053000,		\
 			.end	= 0x053fff,		\
 			.flags  = IORESOURCE_MEM,	\
@@ -676,7 +679,7 @@ struct xocl_iores_map map[] = {						\
 		},					\
 		/* OCL_CLKFREQ_BASE */			\
 		{					\
-	 		.name	= RESNAME_CLKFREQ2,	\
+			.name	= RESNAME_CLKFREQ2,	\
 			.start	= 0x055000,		\
 			.end	= 0x055fff,		\
 			.flags  = IORESOURCE_MEM,	\
@@ -792,11 +795,11 @@ struct xocl_iores_map map[] = {						\
 
 #define XOCL_RES_QDMA					\
 	((struct resource []) {				\
-	 	{					\
-	 		.start = 0x0,			\
-	 		.end = 0x0,			\
-	 		.flags = IORESOURCE_MEM,	\
-	 	},					\
+		{					\
+			.start = 0x0,			\
+			.end = 0x0,			\
+			.flags = IORESOURCE_MEM,	\
+		},					\
 	 })
 
 #define	XOCL_DEVINFO_QDMA				\
@@ -1006,8 +1009,8 @@ struct xocl_iores_map map[] = {						\
 #define	MGMT_RES_DEFAULT						\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
-		 	XOCL_DEVINFO_IORES_MGMT,			\
-		 	XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_IORES_MGMT,			\
+			XOCL_DEVINFO_PRP_IORES_MGMT,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF,				\
 			XOCL_DEVINFO_MB,				\
@@ -1021,8 +1024,8 @@ struct xocl_iores_map map[] = {						\
 #define	MGMT_RES_DSA50							\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
-		 	XOCL_DEVINFO_IORES_MGMT,			\
-		 	XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_IORES_MGMT,			\
+			XOCL_DEVINFO_PRP_IORES_MGMT,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF,				\
 			XOCL_DEVINFO_MB,				\
@@ -1051,8 +1054,8 @@ struct xocl_iores_map map[] = {						\
 #define	MGMT_RES_6A8F							\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
-		 	XOCL_DEVINFO_IORES_MGMT,			\
-		 	XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_IORES_MGMT,			\
+			XOCL_DEVINFO_PRP_IORES_MGMT,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF,				\
 			XOCL_DEVINFO_MB,				\
@@ -1065,8 +1068,8 @@ struct xocl_iores_map map[] = {						\
 #define	MGMT_RES_6A8F_DSA50						\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
-		 	XOCL_DEVINFO_IORES_MGMT,			\
-		 	XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_IORES_MGMT,			\
+			XOCL_DEVINFO_PRP_IORES_MGMT,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF,				\
 			XOCL_DEVINFO_MB,				\
@@ -1078,8 +1081,8 @@ struct xocl_iores_map map[] = {						\
 #define	MGMT_RES_XBB_DSA51						\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
-		 	XOCL_DEVINFO_IORES_MGMT,			\
-		 	XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_IORES_MGMT,			\
+			XOCL_DEVINFO_PRP_IORES_MGMT,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF,				\
 			XOCL_DEVINFO_XMC,				\
@@ -1118,8 +1121,8 @@ struct xocl_iores_map map[] = {						\
 #define	MGMT_RES_QDMA							\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
-		 	XOCL_DEVINFO_IORES_MGMT,			\
-		 	XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_IORES_MGMT,			\
+			XOCL_DEVINFO_PRP_IORES_MGMT,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF,				\
 			XOCL_DEVINFO_MB,				\
@@ -1141,8 +1144,8 @@ struct xocl_iores_map map[] = {						\
 #define MGMT_RES_XBB_QDMA                                               \
 	((struct xocl_subdev_info []) {                         \
 		XOCL_DEVINFO_FEATURE_ROM,                       \
-	 	XOCL_DEVINFO_IORES_MGMT,			\
-	 	XOCL_DEVINFO_PRP_IORES_MGMT,			\
+		XOCL_DEVINFO_IORES_MGMT,			\
+		XOCL_DEVINFO_PRP_IORES_MGMT,			\
 		XOCL_DEVINFO_SYSMON,                            \
 		XOCL_DEVINFO_AF_DSA52,                          \
 		XOCL_DEVINFO_XMC,                               \
@@ -1166,8 +1169,8 @@ struct xocl_iores_map map[] = {						\
 #define	MGMT_RES_6A8F_DSA52						\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
-	 		XOCL_DEVINFO_IORES_MGMT,			\
-	 		XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_IORES_MGMT,			\
+			XOCL_DEVINFO_PRP_IORES_MGMT,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF_DSA52,				\
 			XOCL_DEVINFO_MB,				\
@@ -1187,8 +1190,8 @@ struct xocl_iores_map map[] = {						\
 #define	MGMT_RES_XBB_DSA52						\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
-	 		XOCL_DEVINFO_IORES_MGMT,			\
-	 		XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_IORES_MGMT,			\
+			XOCL_DEVINFO_PRP_IORES_MGMT,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF_DSA52,				\
 			XOCL_DEVINFO_XMC,				\
@@ -1211,8 +1214,8 @@ struct xocl_iores_map map[] = {						\
 #define	MGMT_RES_XBB_DSA52_U280						\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
-	 		XOCL_DEVINFO_IORES_MGMT_U280,			\
-	 		XOCL_DEVINFO_PRP_IORES_MGMT_U280,		\
+			XOCL_DEVINFO_IORES_MGMT_U280,			\
+			XOCL_DEVINFO_PRP_IORES_MGMT_U280,		\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF_DSA52,				\
 			XOCL_DEVINFO_XMC,				\
@@ -1233,8 +1236,8 @@ struct xocl_iores_map map[] = {						\
 #define MGMT_RES_XBB_QDMA_U280                                               \
 	((struct xocl_subdev_info []) {                         \
 		XOCL_DEVINFO_FEATURE_ROM,                       \
-	 	XOCL_DEVINFO_IORES_MGMT_U280,			\
-	 	XOCL_DEVINFO_PRP_IORES_MGMT_U280,		\
+		XOCL_DEVINFO_IORES_MGMT_U280,			\
+		XOCL_DEVINFO_PRP_IORES_MGMT_U280,		\
 		XOCL_DEVINFO_SYSMON,                            \
 		XOCL_DEVINFO_AF_DSA52,                          \
 		XOCL_DEVINFO_XMC,                               \
@@ -1255,8 +1258,8 @@ struct xocl_iores_map map[] = {						\
 #define	MGMT_RES_6E8F_DSA52						\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
-	 		XOCL_DEVINFO_IORES_MGMT,			\
-	 		XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_IORES_MGMT,			\
+			XOCL_DEVINFO_PRP_IORES_MGMT,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF,				\
 			XOCL_DEVINFO_MB,				\
@@ -1277,8 +1280,8 @@ struct xocl_iores_map map[] = {						\
 #define MGMT_RES_MPSOC							\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
-	 		XOCL_DEVINFO_IORES_MGMT,			\
-	 		XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_IORES_MGMT,			\
+			XOCL_DEVINFO_PRP_IORES_MGMT,			\
 			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_XVC_PUB,				\
 			XOCL_DEVINFO_MAILBOX_MGMT,			\

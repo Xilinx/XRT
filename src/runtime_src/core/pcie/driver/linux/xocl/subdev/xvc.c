@@ -398,14 +398,14 @@ struct xocl_drv_private xvc_pub = {
 	.ops = NULL,
 	.fops = &xvc_fops,
 	.dev = -1,
-	.cdev_name = XOCL_DEVNAME(XOCL_XVC_PUB), 
+	.cdev_name = XOCL_DEVNAME(XOCL_XVC_PUB),
 };
 
 struct xocl_drv_private xvc_pri = {
 	.ops = NULL,
 	.fops = &xvc_fops,
 	.dev = -1,
-	.cdev_name = XOCL_DEVNAME(XOCL_XVC_PRI), 
+	.cdev_name = XOCL_DEVNAME(XOCL_XVC_PRI),
 };
 
 struct platform_device_id xvc_id_table[] = {

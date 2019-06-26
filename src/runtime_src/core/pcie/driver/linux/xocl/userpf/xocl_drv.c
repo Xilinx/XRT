@@ -102,39 +102,6 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 	}
 }
 
-#if 0
-static void kill_all_clients(struct xocl_dev *xdev)
-{
-	struct list_head *ptr;
-	struct client_ctx *entry;
-	int ret;
-	/* in sec */
-	int total_wait_secs = 10;
-	/* in millisec */
-	int wait_interval = 100;
-	int retry = total_wait_secs * 1000 / wait_interval;
-
-	mutex_lock(&xdev->dev_lock);
-
-	list_for_each(ptr, &xdev->ctx_list) {
-		entry = list_entry(ptr, struct client_ctx, link);
-		ret = kill_pid(entry->pid, SIGBUS, 1);
-		if (ret) {
-			userpf_err(xdev, "killing pid: %d failed. err: %d",
-				pid_nr(entry->pid), ret);
-		}
-	}
-
-	mutex_unlock(&xdev->dev_lock);
-
-	while (!list_empty(&xdev->ctx_list) && retry--)
-		msleep(wait_interval);
-
-	if (!list_empty(&xdev->ctx_list))
-		userpf_err(xdev, "failed to kill all clients");
-}
-#endif
-
 int xocl_program_shell(struct xocl_dev *xdev, bool force)
 {
 	int ret = 0, mbret = 0;
@@ -199,44 +166,6 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 	}
 
 	xocl_mb_connect(xdev);
-#if 0
-	ret = xocl_subdev_offline_by_id(xdev, XOCL_SUBDEV_MAILBOX);
-	if (ret) {
-		userpf_err(xdev, "offline mailbox failed %d", ret);
-		goto failed;
-	}
-
-	ret = xocl_subdev_online_all(xdev);
-	if (ret)
-		goto failed;
-
-	ret = xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
-	if (ret)
-		goto failed;
-
-	xocl_mb_connect(xdev);
-
-	if (!xdev->core.fdt_blob) {
-		userpf_info(xdev, "Empty fdt blob");
-		goto done;
-	}
-
-	ret = xocl_fdt_blob_input(xdev, xdev->core.fdt_blob);
-	if (ret) {
-		userpf_err(xdev, "parse blob failed %d", ret);
-		goto failed;
-	}
-
-	ret = xocl_subdev_create_all(xdev);
-	if (ret) {
-		userpf_err(xdev, "failed to create sub devices %d", ret);
-		goto failed;
-	}
-
-done:
-	xocl_exec_reset(xdev);
-	xocl_drvinst_set_offline(xdev, false);
-#endif
 
 failed:
 	return ret;
@@ -283,7 +212,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 static void xocl_work_cb(struct work_struct *work)
 {
 	struct xocl_work *_work = (struct xocl_work *)to_delayed_work(work);
-	struct xocl_dev *xdev = container_of(_work, 
+	struct xocl_dev *xdev = container_of(_work,
 			struct xocl_dev, works[_work->op]);
 
 	switch (_work->op) {
@@ -298,7 +227,7 @@ static void xocl_work_cb(struct work_struct *work)
 		(void) xocl_refresh_prp_subdevs(xdev);
 		break;
 	default:
-		BUG_ON(1);
+		xocl_xdev_err(xdev, "Invalid op code %d", _work->op);
 		break;
 	}
 }
@@ -1129,6 +1058,7 @@ static struct pci_driver userpf_driver = {
 /* INIT */
 static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_feature_rom,
+	xocl_init_iores,
 	xocl_init_xdma,
 	xocl_init_qdma,
 	xocl_init_mb_scheduler,
@@ -1143,6 +1073,7 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 
 static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_feature_rom,
+	xocl_fini_iores,
 	xocl_fini_xdma,
 	xocl_fini_qdma,
 	xocl_fini_mb_scheduler,

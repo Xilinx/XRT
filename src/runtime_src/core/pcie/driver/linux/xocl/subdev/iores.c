@@ -25,7 +25,8 @@ struct iores {
 
 XOCL_DEFINE_IORES_MAP(res_map);
 
-static inline int res_name2id(const char *res_name) {
+static inline int res_name2id(const char *res_name)
+{
 	int i;
 
 	if (!res_name)
@@ -103,6 +104,7 @@ static int iores_probe(struct platform_device *pdev)
 	struct resource *res;
 	int i, id;
 
+	pr_info("RES PROBE\n");
 	iores = devm_kzalloc(&pdev->dev, sizeof(*iores), GFP_KERNEL);
 	if (!iores)
 		return -ENOMEM;

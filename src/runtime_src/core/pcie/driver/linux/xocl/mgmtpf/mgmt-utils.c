@@ -475,6 +475,8 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 {
 	int ret;
 
+	xocl_drvinst_set_offline(lro, true);
+
 	health_thread_stop(lro);
 
 	ret = xocl_subdev_destroy_prp(lro);
@@ -498,6 +500,7 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 	health_thread_start(lro);
 
 	xclmgmt_update_userpf_blob(lro);
+	xocl_drvinst_set_offline(lro, false);
 
 failed:
 
@@ -541,7 +544,6 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 
 	lro->bld_blob = vmalloc(fdt_totalsize(lro->core.fdt_blob));
 	if (!lro->bld_blob) {
-		mgmt_err(lro, "not enough memory");
 		ret = -ENOMEM;
 		goto failed;
 	}

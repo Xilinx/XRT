@@ -111,7 +111,6 @@ static struct xocl_subdev *xocl_subdev_lookup(struct platform_device *pldev)
 	int i, j;
 
 	core = xocl_get_xdev(pldev);
-	BUG_ON(!core);
 
 	for (j = 0; j < XOCL_SUBDEV_NUM; j++)
 		for (i = 0; i < XOCL_SUBDEV_MAX_INST; i++)
@@ -241,7 +240,7 @@ static int xocl_subdev_cdev_create(struct platform_device *pdev,
 			XOCL_DEV_ID(core->pdev));
 	else
 		sysdev = device_create(xrt_class, &pdev->dev, cdevp->dev,
-			NULL, "%s/%s:%d", XOCL_CDEV_DIR, 
+			NULL, "%s/%s:%d", XOCL_CDEV_DIR,
 			platform_get_device_id(pdev)->name,
 			XOCL_DEV_ID(core->pdev));
 	if (IS_ERR(sysdev)) {
@@ -372,7 +371,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 			if (sdev_info->res[i].flags & IORESOURCE_MEM) {
 				if (sdev_info->bar_idx)
 					bar_idx = (int)sdev_info->bar_idx[i];
-				iostart = pci_resource_start(core->pdev, 
+				iostart = pci_resource_start(core->pdev,
 						bar_idx);
 				res[i].start += iostart;
 				if (!res[i].end)
@@ -765,7 +764,7 @@ int xocl_subdev_offline_by_id(xdev_handle_t xdev_hdl, uint32_t subdev_id)
 
 	if (subdev_id == INVALID_SUBDEVICE)
 		return -EINVAL;
- 
+
 	xocl_lock_xdev(xdev_hdl);
 	for (i = 0; i < XOCL_SUBDEV_MAX_INST; i++) {
 		if (!core->subdevs[subdev_id][i].pldev)
@@ -814,7 +813,7 @@ int xocl_subdev_offline_by_level(xdev_handle_t xdev_hdl, int level)
 				ret = __xocl_subdev_offline(xdev_hdl,
 					&core->subdevs[i][j]);
 				if (ret)
-					goto failed;;
+					goto failed;
 			}
 failed:
 	xocl_unlock_xdev(xdev_hdl);

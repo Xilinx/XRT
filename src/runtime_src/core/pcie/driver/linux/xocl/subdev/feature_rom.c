@@ -261,7 +261,7 @@ static bool verify_timestamp(struct platform_device *pdev, u64 timestamp)
 	rom = platform_get_drvdata(pdev);
 	BUG_ON(!rom);
 
-	xocl_info(&pdev->dev, "DSA timestamp: 0x%llx",
+	xocl_info(&pdev->dev, "Shell timestamp: 0x%llx",
 		rom->header.TimeSinceEpoch);
 	xocl_info(&pdev->dev, "Verify timestamp: 0x%llx", timestamp);
 	return (rom->header.TimeSinceEpoch == timestamp);
@@ -347,7 +347,7 @@ static int get_header_from_iomem(struct feature_rom *rom)
 			rom->unified = true;
 			rom->aws_dev = true;
 
-			xocl_info(&pdev->dev, "Enabling AWS dynamic 5.0 DSA");
+			xocl_info(&pdev->dev, "Enabling AWS dynamic 5.0 Shell");
 		} else {
 			xocl_err(&pdev->dev, "Magic number does not match, "
 			"actual 0x%x, expected 0x%x", val, MAGIC_NUM);

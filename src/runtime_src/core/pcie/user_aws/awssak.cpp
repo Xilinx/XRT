@@ -461,7 +461,7 @@ int xcldev::xclAwssak(int argc, char *argv[])
 }
 
 void xcldev::printHelp(const std::string& exe) {
-    std::cout << "Running awssak for 4.0+ DSA's \n\n";
+    std::cout << "Running awssak for 4.0+ Shell's \n\n";
     std::cout << "Usage: " << exe << " <command> [options]\n\n";
     std::cout << "Command and option summary:\n";
     std::cout << "  boot    [-d device]\n";

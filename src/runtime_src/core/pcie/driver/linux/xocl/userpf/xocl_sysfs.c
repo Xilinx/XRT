@@ -158,7 +158,9 @@ static ssize_t p2p_enable_show(struct device *dev,
 	else if (xocl_get_p2p_bar(xdev, &size) >= 0 &&
 			size > (1 << XOCL_PA_SECTION_SHIFT))
 		return sprintf(buf, "%d\n", EBUSY);
-	else
+	else if (xocl_get_p2p_bar(xdev, &size) < 0 && (
+			xdev->p2p_bar_idx < 0 ||
+			xdev->p2p_bar_len <= (1<<XOCL_PA_SECTION_SHIFT)))
 		return sprintf(buf, "%d\n", ENXIO);
 
 	return sprintf(buf, "0\n");
@@ -229,9 +231,9 @@ static ssize_t dev_offline_show(struct device *dev,
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	bool offline;
 	int val;
-       
+
 	val = xocl_drvinst_get_offline(xdev, &offline);
-        if (!val)
+	if (!val)
 		val = offline ? 1 : 0;
 
 	return sprintf(buf, "%d\n", val);

@@ -204,7 +204,8 @@ namespace awsbwhal {
             mLogStream << __func__ << ", " << std::this_thread::get_id() << ", "
                        << offset << ", " << hostBuf << ", " << size << std::endl;
         }
-#if ((GCC_VERSION >= 40800) && !defined(__PPC64__))
+
+#if ((GCC_VERSION >= 40800) && !defined(__PPC64__) && !defined(__aarch64__))
         alignas(DDR_BUFFER_ALIGNMENT) char buffer[DDR_BUFFER_ALIGNMENT];
 #else
         AlignedAllocator<char> alignedBuffer(DDR_BUFFER_ALIGNMENT, DDR_BUFFER_ALIGNMENT);

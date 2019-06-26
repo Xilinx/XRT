@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<xd:XidanePass xd:num_partitions="1" xmlns:xd="http://www.xilinx.com/xd">
+    <xd:file xd:partition="0" xd:name="apsys_0.xml"/>
+</xd:XidanePass>

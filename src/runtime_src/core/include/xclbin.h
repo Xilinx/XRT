@@ -138,7 +138,8 @@ extern "C" {
         PDI,
         BITSTREAM_PARTIAL_PDI,
         DTC,
-        EMULATION_DATA
+        EMULATION_DATA,
+        SYSTEM_METADATA
     };
 
     enum MEM_TYPE {
