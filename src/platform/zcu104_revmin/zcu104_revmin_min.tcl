@@ -20,7 +20,7 @@ set script_folder [_tcl::get_script_folder]
 ################################################################
 # Check if script is running in correct Vivado version.
 ################################################################
-set scripts_vivado_version 2019.1
+set scripts_vivado_version 2019.2
 set current_vivado_version [version -short]
 
 if { [string first $scripts_vivado_version $current_vivado_version] == -1 } {
@@ -205,23 +205,23 @@ proc create_root_design { parentCell } {
    CONFIG.CLKOUT2_USED {true} \
    CONFIG.CLKOUT3_JITTER {107.567} \
    CONFIG.CLKOUT3_PHASE_ERROR {87.180} \
-   CONFIG.CLKOUT3_REQUESTED_OUT_FREQ {150} \
+   CONFIG.CLKOUT3_REQUESTED_OUT_FREQ {100.000} \
    CONFIG.CLKOUT3_USED {false} \
    CONFIG.CLKOUT4_JITTER {102.086} \
    CONFIG.CLKOUT4_PHASE_ERROR {87.180} \
-   CONFIG.CLKOUT4_REQUESTED_OUT_FREQ {200} \
+   CONFIG.CLKOUT4_REQUESTED_OUT_FREQ {100.000} \
    CONFIG.CLKOUT4_USED {false} \
    CONFIG.CLKOUT5_JITTER {94.862} \
    CONFIG.CLKOUT5_PHASE_ERROR {87.180} \
-   CONFIG.CLKOUT5_REQUESTED_OUT_FREQ {300} \
+   CONFIG.CLKOUT5_REQUESTED_OUT_FREQ {100.000} \
    CONFIG.CLKOUT5_USED {false} \
    CONFIG.CLKOUT6_JITTER {90.074} \
    CONFIG.CLKOUT6_PHASE_ERROR {87.180} \
-   CONFIG.CLKOUT6_REQUESTED_OUT_FREQ {400} \
+   CONFIG.CLKOUT6_REQUESTED_OUT_FREQ {100.000} \
    CONFIG.CLKOUT6_USED {false} \
    CONFIG.CLKOUT7_JITTER {83.768} \
    CONFIG.CLKOUT7_PHASE_ERROR {87.180} \
-   CONFIG.CLKOUT7_REQUESTED_OUT_FREQ {600} \
+   CONFIG.CLKOUT7_REQUESTED_OUT_FREQ {100.000} \
    CONFIG.CLKOUT7_USED {false} \
    CONFIG.MMCM_CLKOUT0_DIVIDE_F {4.000} \
    CONFIG.MMCM_CLKOUT1_DIVIDE {2} \
