@@ -383,6 +383,54 @@ extern CL_API_ENTRY struct xrt_device*
 xclGetXrtDevice(cl_device_id device,
                 cl_int* errcode);
 
+/**
+ * Return information about the compute units of a kernel
+ *
+ * @kernel
+ *   Kernel object being queried for compute unit.
+ * @cuid      
+ *   Compute unit id within @kernel object [0..numcus[
+ *   The CU id must be less that number of CUs as retrieved per 
+ *   CL_KERNEL_COMPUTE_UNIT_COUNT with clGetKernelInfo.
+ * @param_name 
+ *   Information to query (see list below)
+ * @param_value_size
+ *   Number of bytes of memory in @param_value.
+ *   Size must >= size of return type.
+ * @param_value 
+ *   Pointer to memory where result is returned.
+ *   Ignored if NULL.
+ * @param_value_size_ret
+ *   Actual size in bytes of data copied to @param_value.  
+ *   Ignored if NULL.
+ *
+ * @XCL_COMPUTE_UNIT_NAME
+ * @type: char[]
+ * @return: name of compute unit
+ *
+ * @XCL_COMPUTE_UNIT_INDEX:
+ * @type: cl_uint
+ * @return: XRT scheduler index of compute unit
+ *
+ * @XCL_COMPUTE_UNIT_CONNECTIONS:
+ * @type: cl_ulong
+ * @return: Memory connection for each compute unit argument.
+ *  Number of arguments are retrieved per CL_KERNEL_NUM_ARGS 
+ *  with clGetKernelInfo
+ */
+typedef cl_uint xcl_compute_unit_info;
+extern CL_API_ENTRY cl_int CL_API_CALL
+xclGetComputeUnitInfo(cl_kernel             kernel,
+                      cl_uint               cu_id,
+                      xcl_compute_unit_info param_name,
+                      size_t                param_value_size,
+                      void *                param_value,
+                      size_t *              param_value_size_ret );
+
+#define XCL_COMPUTE_UNIT_NAME        0x1320 // name of CU
+#define XCL_COMPUTE_UNIT_INDEX       0x1321 // scheduler index of CU
+#define XCL_COMPUTE_UNIT_CONNECTIONS 0x1322 // connectivity
+
 /*
   Host Accessible Program Scope Globals
 */
