@@ -155,7 +155,6 @@ SET (XRT_DKMS_CORE_INCLUDES
   include/xclfeatures.h
   include/xclbin.h
   include/xclerr.h
-  include/xclhal2_mem.h
   include/xrt_mem.h
   )
 
