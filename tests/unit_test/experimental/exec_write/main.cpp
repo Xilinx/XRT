@@ -174,25 +174,53 @@ run_test(cl_device_id device, cl_program program, cl_context context, cl_command
   throw_if_error(xclGetMemObjDeviceAddress(mem,device,sizeof(uint64_t),&dbuf),"failed to get dbuf address");
   throw_if_error(clEnqueueMigrateMemObjects(queue,1,&mem,0,0,nullptr,nullptr),"failed to migrate");
 
-  // Create kernel to get cu address
+  // Create kernel to get cu index to use with exec_write
   auto kernel = clCreateKernel(program, "hello", &err);
   throw_if_error(err,"failed to create hello kernel");
   cl_uint numcus = 0;
-  clGetKernelInfo(kernel,CL_KERNEL_COMPUTE_UNIT_COUNT,sizeof(cl_uint),&numcus,nullptr);
+  throw_if_error(clGetKernelInfo(kernel,CL_KERNEL_COMPUTE_UNIT_COUNT,sizeof(cl_uint),&numcus,nullptr),"info numcus failed");
   throw_if_error(numcus==0,"no cus in program");
+
+  cl_uint cuidx;  // retrieve index of first cu in kernel
+  throw_if_error(xclGetComputeUnitInfo(kernel,0,XCL_COMPUTE_UNIT_INDEX,sizeof(cuidx),&cuidx,nullptr),"info index failed");
 
   // Get handle to underlying xrt_device
   auto xdev = xclGetXrtDevice(device,&err);
   throw_if_error(err,"failed to get xrt_device");
 
-  // Now run the kernel using the low level write command interface
-  auto ret = run_kernel(xdev,0,dbuf);
+  // Now run the kernel using the low level exec write command interface
+  auto ret = run_kernel(xdev,cuidx,dbuf);
 
   // Verify the result
   char hbuf[LENGTH] = {0};
   throw_if_error(clEnqueueReadBuffer(queue,mem,CL_TRUE,0,sizeof(char)*LENGTH,hbuf,0,nullptr,nullptr),"failed to read");
   std::cout << "kernel result: " << hbuf << "\n";
 
+  ////////////////////////////////////////////////////////////////
+  // Unrelated code demoing xclGetComputeUnitInfo 
+  ////////////////////////////////////////////////////////////////
+  cl_uint numargs = 0;
+  throw_if_error(clGetKernelInfo(kernel,CL_KERNEL_NUM_ARGS,sizeof(numargs),&numargs,nullptr),"info numargs failed");
+  std::cout << "kernel nm = hello\n";
+  std::cout << "kernel number of arguments = " << numargs << "\n";
+
+  for (int cuid=0; cuid<numcus; ++cuid) {
+    char cunm[512] = {0};
+    throw_if_error
+      (xclGetComputeUnitInfo(kernel,cuid,XCL_COMPUTE_UNIT_NAME,sizeof(cunm),cunm,nullptr),"info name failed");
+    cl_uint cuidx;
+    throw_if_error
+      (xclGetComputeUnitInfo(kernel,cuid,XCL_COMPUTE_UNIT_INDEX,sizeof(cuidx),&cuidx,nullptr),"info index failed");
+    std::vector<cl_ulong> cumem(numargs);
+    throw_if_error
+      (xclGetComputeUnitInfo(kernel,cuid,XCL_COMPUTE_UNIT_CONNECTIONS,sizeof(cl_ulong)*numargs,cumem.data(),nullptr),"info conn failed");
+    std::cout << " cu[" << cuid << "].name = " << cunm << "\n";
+    std::cout << " cu[" << cuid << "].idx = " << cuidx << "\n";
+    for (auto memidx : cumem) 
+      std::cout << " cu[" << cuid << "].mem = 0x" << std::hex << memidx << std::dec << "\n";
+  }
+
+  clReleaseKernel(kernel);
   clReleaseMemObject(mem);
 
   return ret;
