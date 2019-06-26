@@ -51,6 +51,9 @@ namespace xdp {
     // Logger & writer
     mLogger = new TraceLogger(mProfileCounters, mTraceParser, mPluginHandle.get());
     mWriter = new SummaryWriter(mProfileCounters, mTraceParser, mPluginHandle.get());
+
+    // Run Summary
+    mRunSummary = new RunSummary();
   }
 
   RTProfile::~RTProfile()
@@ -58,10 +61,14 @@ namespace xdp {
     if (mProfileFlags)
       writeProfileSummary();
 
+    // Write out the run summary file (if there is data to write)
+    mRunSummary->writeContent();    
+
     delete mWriter;
     delete mLogger;
     delete mTraceParser;
     delete mProfileCounters;
+    delete mRunSummary;
   }
 
   // ***************************************************************************
@@ -188,11 +195,21 @@ namespace xdp {
   void RTProfile::attach(ProfileWriterI* writer)
   {
     mWriter->attach(writer);
+
+    // Gather data for RunSummary
+    if ((mProfileFlags & RTUtil::FILE_SUMMARY) && (writer != nullptr)) {
+      mRunSummary->addFile(writer->getFileName(), RunSummary::FT_PROFILE);
+    }
   }
 
   void RTProfile::attach(TraceWriterI* writer)
   {
     mLogger->attach(writer);
+
+    // Gather data for TimingSummary
+    if ((mProfileFlags & RTUtil::FILE_TIMELINE_TRACE) && (writer != nullptr)) {
+      mRunSummary->addFile(writer->getFileName(), RunSummary::FT_TRACE);
+    }
   }
 
   void RTProfile::detach(ProfileWriterI* writer)

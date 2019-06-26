@@ -35,6 +35,7 @@
 #include "msd_plugin.h"
 #include "sw_msg.h"
 #include "common.h"
+#include "xclbin.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
 static const std::string configFile("/etc/msd.conf");
@@ -59,8 +60,8 @@ static void init_plugin()
         return;
 
     syslog(LOG_INFO, "found msd plugin: %s", plugin_path.c_str());
-    auto plugin_init = dlsym(plugin_handle, INIT_FN_NAME);
-    auto plugin_fini = dlsym(plugin_handle, FINI_FN_NAME);
+    plugin_init = (init_fn) dlsym(plugin_handle, INIT_FN_NAME);
+    plugin_fini = (fini_fn) dlsym(plugin_handle, FINI_FN_NAME);
     if (plugin_init == nullptr || plugin_fini == nullptr)
         syslog(LOG_ERR, "failed to find init/fini symbols in plugin");
 }
@@ -172,7 +173,7 @@ static int connectMpd(pcieFunc& dev, int sockfd, int id, int& mpdfd)
     return 0;
 }
 
-static int download_xclbin(pcieFunc& dev, char *xclbin, size_t len)
+static int download_xclbin(pcieFunc& dev, char *xclbin)
 {
     retrieve_xclbin_fini_fn done = nullptr;
     void *done_arg = nullptr;
@@ -180,14 +181,16 @@ static int download_xclbin(pcieFunc& dev, char *xclbin, size_t len)
     size_t newlen = 0;
     int ret = 0;
 
+    xclmgmt_ioc_bitstream_axlf x = {reinterpret_cast<axlf *>(xclbin)};
     if (plugin_cbs.retrieve_xclbin) {
-        ret = (*plugin_cbs.retrieve_xclbin)(xclbin, len, &newxclbin, &newlen,
-            &done, &done_arg);
+        ret = (*plugin_cbs.retrieve_xclbin)(xclbin,
+            x.xclbin->m_header.m_length, &newxclbin, &newlen, &done, &done_arg);
         if (ret)
             return ret;
     } else {
         newxclbin = xclbin;
-        newlen = len;
+        newlen = x.xclbin->m_header.m_length;
+        done = NULL;
     }
 
     if (newxclbin == nullptr || newlen == 0)
@@ -205,16 +208,34 @@ static int download_xclbin(pcieFunc& dev, char *xclbin, size_t len)
 static int remoteMsgHandler(pcieFunc& dev, std::shared_ptr<sw_msg>& orig,
     std::shared_ptr<sw_msg>& processed)
 {
-    int pass = PROCESSED_FOR_LOCAL;
+    int pass = FOR_LOCAL;
     mailbox_req *req = reinterpret_cast<mailbox_req *>(orig->payloadData());
+    if (orig->payloadSize() < sizeof(mailbox_req)) {
+        dev.log(LOG_ERR, "peer request dropped, wrong size");
+        return -EINVAL;
+    }
+    size_t reqSize = orig->payloadSize() - sizeof(mailbox_req);
     
     switch (req->req) {
     case MAILBOX_REQ_LOAD_XCLBIN: {
-        int ret = download_xclbin(dev, req->data, req->data_len);
+        axlf *xclbin = reinterpret_cast<axlf *>(req->data);
+        if (reqSize < sizeof(*xclbin)) {
+            dev.log(LOG_ERR, "peer request dropped, wrong size");
+            pass = -EINVAL;
+            break;
+        }
+        uint64_t xclbinSize = xclbin->m_header.m_length;
+        if (reqSize < xclbinSize) {
+            dev.log(LOG_ERR, "peer request dropped, wrong size");
+            pass = -EINVAL;
+            break;
+        }
+
+        int ret = download_xclbin(dev, req->data);
         dev.log(LOG_INFO, "xclbin download, ret=%d", ret);
         processed = std::make_shared<sw_msg>(&ret, sizeof(ret), orig->id(),
             MB_REQ_FLAG_RESPONSE);
-        pass = PROCESSED_FOR_REMOTE;
+        pass = FOR_REMOTE;
         break;
     }
     default:

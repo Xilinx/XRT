@@ -4,6 +4,7 @@
  * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@Xilinx.com
+ *          Jan Stephan <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -41,7 +42,11 @@
 #define	MM_QUEUE_LEN		8
 #define	MM_EBUF_LEN		256
 
-#define MM_DEFAULT_RINGSZ_IDX	5
+/* qdma bar # */
+#define	QDMA_BARNUM_STM		0
+#define	QDMA_BARNUM_CONFIG	2
+
+#define MM_DEFAULT_RINGSZ_IDX	0
 
 
 /* streaming defines */
@@ -52,15 +57,15 @@
 #define	STREAM_SLRID_MASK	0xff
 #define	STREAM_TDEST_MASK	0xffff
 
-#define	STREAM_DEFAULT_H2C_RINGSZ_IDX		5
-#define	STREAM_DEFAULT_C2H_RINGSZ_IDX		5
-#define	STREAM_DEFAULT_WRB_RINGSZ_IDX		5
+#define	STREAM_DEFAULT_H2C_RINGSZ_IDX		0
+#define	STREAM_DEFAULT_C2H_RINGSZ_IDX		0
+#define	STREAM_DEFAULT_WRB_RINGSZ_IDX		0
 
 #define	QUEUE_POST_TIMEOUT	10000
 #define QDMA_MAX_INTR		16
 #define QDMA_USER_INTR_MASK	0xfe
 
-#define QDMA_QSETS_MAX		2048
+#define QDMA_QSETS_MAX		256
 
 static dev_t	str_dev;
 
@@ -568,7 +573,7 @@ static void free_channels(struct platform_device *pdev)
 		qidx = i % qdma->channel;
 		chan = &qdma->chans[write][qidx];
 
-		if (!chan || !chan->queue)
+		if (!chan)
 			continue;
 
 		channel_sysfs_destroy(chan);
@@ -578,16 +583,13 @@ static void free_channels(struct platform_device *pdev)
 		if (ret < 0) {
 			xocl_err(&pdev->dev, "Stopping queue for "
 				"channel %d failed, ret %x", qidx, ret);
-			return;
 		}
 		ret = qdma_queue_remove((unsigned long)qdma->dma_handle,
 				chan->queue, NULL, 0);
 		if (ret < 0) {
 			xocl_err(&pdev->dev, "Destroy queue for "
 				"channel %d failed, ret %x", qidx, ret);
-			return;
 		}
-		chan->queue = 0UL;
 	}
 	if (qdma->chans[0])
 		devm_kfree(&pdev->dev, qdma->chans[0]);
@@ -924,7 +926,7 @@ static int queue_req_complete(unsigned long priv, unsigned int done_bytes,
 			cb->queue->qconf.c2h ? DMA_FROM_DEVICE : DMA_TO_DEVICE);
 		xocl_finish_unmgd(&cb->unmgd);
 	} else {
-		drm_gem_object_unreference_unlocked(&cb->xobj->base);
+		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&cb->xobj->base);
 	}
 
 	spin_lock_bh(&cb->lock);
@@ -958,7 +960,7 @@ static ssize_t stream_post_bo(struct xocl_qdma *qdma,
 		goto out;
 	}
 
-	drm_gem_object_reference(gem_obj);
+	XOCL_DRM_GEM_OBJECT_GET(gem_obj);
 	xobj = to_xocl_bo(gem_obj);
 
 	io_req = queue_req_new(queue);
@@ -1006,7 +1008,7 @@ static ssize_t stream_post_bo(struct xocl_qdma *qdma,
 
 out:
 	if (!kiocb) {
-		drm_gem_object_unreference_unlocked(gem_obj);
+		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
 		if (io_req)
 			queue_req_free(queue, io_req, false);
 	} else {
@@ -1617,9 +1619,9 @@ static long stream_ioctl_alloc_buffer(struct xocl_qdma *qdma,
 
 	flags = O_CLOEXEC | O_RDWR;
 
-	drm_gem_object_reference(&xobj->base);
+	XOCL_DRM_GEM_OBJECT_GET(&xobj->base);
 	dmabuf = drm_gem_prime_export(XOCL_DRM(xdev)->ddev,
-		       	&xobj->base, flags);
+				&xobj->base, flags);
 	if (IS_ERR(dmabuf)) {
 		xocl_err(&qdma->pdev->dev, "failed to export dma_buf");
 		ret = PTR_ERR(dmabuf);
@@ -1743,6 +1745,8 @@ static int qdma_probe(struct platform_device *pdev)
 	conf->intr_rngsz = QDMA_INTR_COAL_RING_SIZE;
 	conf->master_pf = 1;
 	conf->qsets_max = QDMA_QSETS_MAX;
+	conf->bar_num_config = QDMA_BARNUM_CONFIG;
+	conf->bar_num_stm = QDMA_BARNUM_STM;
 
 	conf->fp_user_isr_handler = qdma_isr;
 	conf->uld = (unsigned long)qdma;
@@ -1771,7 +1775,7 @@ static int qdma_probe(struct platform_device *pdev)
 	qdma->cdev->ops = &stream_fops;
 	qdma->cdev->owner = THIS_MODULE;
 	qdma->instance = XOCL_DEV_ID(XDEV(xdev)->pdev);
-	qdma->cdev->dev = MKDEV(MAJOR(str_dev), qdma->instance);
+	qdma->cdev->dev = MKDEV(MAJOR(str_dev), XDEV(xdev)->dev_minor);
 	ret = cdev_add(qdma->cdev, qdma->cdev->dev, 1);
 	if (ret) {
 		xocl_err(&pdev->dev, "failed cdev_add, ret=%d", ret);
@@ -1876,7 +1880,7 @@ static int qdma_remove(struct platform_device *pdev)
 }
 
 static struct platform_device_id qdma_id_table[] = {
-	{ XOCL_QDMA, 0 },
+	{ XOCL_DEVNAME(XOCL_QDMA), 0 },
 	{ },
 };
 
@@ -1884,7 +1888,7 @@ static struct platform_driver	qdma_driver = {
 	.probe		= qdma_probe,
 	.remove		= qdma_remove,
 	.driver		= {
-		.name = "xocl_qdma",
+		.name = XOCL_DEVNAME(XOCL_QDMA),
 	},
 	.id_table	= qdma_id_table,
 };

@@ -36,6 +36,12 @@
 #define ZOCL_KDS_MASK		(~0xFF)
 #define ZOCL_CU_FREE_RUNNING	(U32_MASK & ZOCL_KDS_MASK)
 
+/* Timer thread wake up interval in Millisecond */
+#define	ZOCL_CU_TIMER_INTERVAL		(500)
+
+/* Reset timer interval in Microsecond */
+#define	ZOCL_CU_RESET_TIMER_INTERVAL	(1000)
+
 /**
  * Timestamp only use in set_cmd_ext_timestamp()
  */
@@ -66,6 +72,11 @@ struct sched_client_ctx {
 	struct mutex        lock;
 };
 
+struct zocl_cu {
+	uint32_t            zc_timeout;
+	uint32_t            zc_reset_timeout;
+};
+
 /**
  * struct sched_exec_core: Core data structure for command execution on a device
  *
@@ -87,7 +98,10 @@ struct sched_client_ctx {
  * @num_cu_masks: Number of CU masks used (computed from @num_cus)
  * @cu_addr_phy: Physical address of CUs.
  * @cu_usage: How many times the CUs are excecuted.
+ * @cu: Per CU structure.
  * @ops: Scheduler operations vtable
+ * @cq_thread: Kernel thread to check the ert command queue.
+ * @timer_task: Kernel thread as a timer interrupt.
  */
 struct sched_exec_core {
 	void __iomem               *base;
@@ -113,7 +127,7 @@ struct sched_exec_core {
 	u32                        slot_status[MAX_U32_SLOT_MASKS];
 	unsigned int               num_slot_masks; /* ((num_slots-1)>>5)+1 */
 
-	/* Bitmap tracks CU busy(1)/free(0) */ 
+	/* Bitmap tracks CU busy(1)/free(0) */
 	u32                        cu_status[MAX_U32_CU_MASKS];
 	unsigned int               num_cu_masks; /* ((num_cus-1)>>5+1 */
 
@@ -130,9 +144,13 @@ struct sched_exec_core {
 	void __iomem              *cu_addr_virt[MAX_CU_NUM];
 	u32                        cu_usage[MAX_CU_NUM];
 
+	struct zocl_cu            *cu;
+
 	struct sched_ops          *ops;
 	struct task_struct        *cq_thread;
 	wait_queue_head_t          cq_wait_queue;
+
+	struct task_struct        *timer_task;
 };
 
 /**
@@ -146,6 +164,7 @@ struct sched_exec_core {
  * @cq: list of command objects managed by scheduler
  * @intc: set when there is a pending interrupt for command completion
  * @poll: number of running commands in polling mode
+ * @check: flag to indicate a CU timerout check
  */
 struct scheduler {
 	struct task_struct        *sched_thread;
@@ -158,6 +177,7 @@ struct scheduler {
 	struct list_head           cq;
 	unsigned int               intc; /* pending intr shared with isr*/
 	unsigned int               poll; /* number of cmds to poll */
+	atomic_t                   check;
 };
 
 /**
@@ -169,7 +189,9 @@ struct scheduler {
  * @cu_idx: index of CU executing this cmd object; used in penguin mode only
  * @slot_idx: command queue index of this command object
  * @buffer: underlying buffer (ex. drm buffer object)
+ * @exectime: time unit elapsed after CU is triggered to run
  * @packet: mapped ert packet object from user space
+ * @check_timeout: flag to indicate if we should check timeout on this CU
  */
 struct sched_cmd {
 	struct list_head list;
@@ -182,6 +204,23 @@ struct sched_cmd {
 	int cq_slot_idx;
 	void *buffer;
 	void (*free_buffer)(struct sched_cmd *xcmd);
+
+	/*
+	 * This is a rough time unit elapsed after the CU is running.
+	 * It is set to a initial value configured by init CU command
+	 * and decreased every time unit. If it reaches zero, this CU
+	 * timeouts.
+	 *
+	 * The time unit is 500 Milliseconds now.
+	 */
+	uint32_t exectime;
+
+	/*
+	 * If this flag is set, we should check the timeout of this
+	 * command. It is set based on the CU timeout value. If the
+	 * timeout value is 0, we should not set this flag.
+	 */
+	int check_timeout;
 
 	/* The actual cmd object representation */
 	struct ert_packet *packet;

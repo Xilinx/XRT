@@ -113,12 +113,14 @@ cd Debug
 echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
 time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
 time make -j $jcore $verbose DESTDIR=$PWD install
+time ctest --output-on-failure
 cd $BUILDDIR
 
 cd Release
 echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
 time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
 time make -j $jcore $verbose DESTDIR=$PWD install
+time ctest --output-on-failure
 time make package
 
 if [[ $driver == 1 ]]; then

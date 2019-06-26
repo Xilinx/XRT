@@ -478,7 +478,7 @@ static int xdma_remove(struct platform_device *pdev)
 }
 
 static struct platform_device_id xdma_id_table[] = {
-	{ XOCL_XDMA, 0 },
+	{ XOCL_DEVNAME(XOCL_XDMA), 0 },
 	{ },
 };
 
@@ -486,7 +486,7 @@ static struct platform_driver	xdma_driver = {
 	.probe		= xdma_probe,
 	.remove		= xdma_remove,
 	.driver		= {
-		.name = "xocl_xdma",
+		.name = XOCL_DEVNAME(XOCL_XDMA),
 	},
 	.id_table	= xdma_id_table,
 };

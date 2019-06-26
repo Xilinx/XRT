@@ -43,6 +43,12 @@
 	(ret); \
 })
 
+/*
+ * Get the bank index from BO creation flags.
+ * bits  0 ~ 15: DDR BANK index
+ */
+#define	GET_MEM_BANK(x)		((x) & 0xFFFF)
+
 struct drm_zocl_mm_stat {
 	size_t memory_usage;
 	unsigned int bo_count;
@@ -51,6 +57,26 @@ struct drm_zocl_mm_stat {
 struct addr_aperture {
 	phys_addr_t	addr;
 	size_t		size;
+};
+
+enum zocl_mem_type {
+	ZOCL_MEM_TYPE_CMA	= 0,
+	ZOCL_MEM_TYPE_PLDDR	= 1,
+	ZOCL_MEM_TYPE_STREAMING = 2,
+};
+
+/*
+ * Memory structure in zocl driver. There will be an array of this
+ * structure where each element is representing each section in
+ * the memory topology in xclbin.
+ */
+struct zocl_mem {
+	enum zocl_mem_type	zm_type;
+	unsigned int		zm_used;
+	u64			zm_base_addr;
+	u64			zm_size;
+	struct drm_zocl_mm_stat zm_stat;
+	struct drm_mm          *zm_mm;    /* DRM MM node for PL-DDR */
 };
 
 struct drm_zocl_dev {
@@ -65,6 +91,9 @@ struct drm_zocl_dev {
 	unsigned int		 cu_num;
 	unsigned int             irq[MAX_CU_NUM];
 	struct sched_exec_core  *exec;
+	unsigned int		 num_mem;
+	struct zocl_mem		*mem;
+	struct mutex		 mm_lock;
 
 	struct mem_topology	*topology;
 	struct ip_layout	*ip;
@@ -72,7 +101,6 @@ struct drm_zocl_dev {
 	struct connectivity	*connectivity;
 	struct addr_aperture	*apertures;
 	unsigned int		 num_apts;
-	struct drm_zocl_mm_stat	 mm_usage;
 	u64			 unique_id_last_bitstream;
 
 	/*

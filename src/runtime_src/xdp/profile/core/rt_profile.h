@@ -19,6 +19,7 @@
 
 #include "rt_util.h"
 #include "xclperf.h"
+#include "run_summary.h"           // Used to create the run_summary file
 #include "xdp/profile/plugin/base_plugin.h"
 
 #include <set>
@@ -58,6 +59,7 @@ namespace xdp {
     void setStallTrace(const std::string traceStr);
     RTUtil::e_device_trace getTransferTrace() { return mDeviceTraceOption; }
     RTUtil::e_stall_trace getStallTrace() { return mStallTraceOption; }
+    RunSummary * getRunSummary() { return mRunSummary; }
 
   public:
     // Attach or detach observer writers
@@ -161,6 +163,7 @@ namespace xdp {
     SummaryWriter* mWriter;
     std::vector<std::string> mDeviceNames;
     std::shared_ptr<XDPPluginI> mPluginHandle;
+    RunSummary* mRunSummary;
   };
 
 } // xdp

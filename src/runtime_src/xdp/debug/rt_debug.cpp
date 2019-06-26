@@ -92,6 +92,17 @@ void RTDebug::reset(const axlf* xclbin)
     return ;
   }
 
+  // In software emulation, we will set the DEBUG_DATA section
+  //  but there will be no information in it.  If this is the case,
+  //  set the environment and exit without dumping any files
+  auto axlfHeader = ::xclbin::get_axlf_section(xclbin, axlf_section_kind::DEBUG_DATA) ;
+  if (!axlfHeader) return ;
+  if (axlfHeader->m_sectionSize == 0)
+  {
+    setEnvironment() ;
+    return ;
+  }
+
   // Extract the Debug data, split it into a DWARF file and a JSON
   // file, Treat the memory as the consolidated format header, and
   // extract out the DWARF and JSON section if they exist.  and dump

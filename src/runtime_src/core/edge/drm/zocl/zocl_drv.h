@@ -7,6 +7,7 @@
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
  *    Umang Parekh <umang.parekh@xilinx.com>
+ *    Jan Stephan  <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -30,6 +31,65 @@
 #include "zocl_util.h"
 #include "xclhal2_mem.h"
 
+/* Ensure compatibility with newer kernels and backported Red Hat kernels. */
+/* The y2k38 bug fix was introduced with Kernel 3.17 and backported to Red Hat
+ * 7.2. 
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
+	#define ZOCL_TIMESPEC struct timespec64
+	#define ZOCL_GETTIME ktime_get_real_ts64
+	#define ZOCL_USEC tv_nsec / NSEC_PER_USEC
+#elif defined(RHEL_RELEASE_CODE)
+	#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,2)
+		#define ZOCL_TIMESPEC struct timespec64
+		#define ZOCL_GETTIME ktime_get_real_ts64
+		#define ZOCL_USEC tv_nsec / NSEC_PER_USEC
+	#else
+		#define ZOCL_TIMESPEC struct timeval
+		#define ZOCL_GETTIME do_gettimeofday
+		#define ZOCL_USEC tv_usec
+	#endif
+#else
+	#define ZOCL_TIMESPEC struct timeval
+	#define ZOCL_GETTIME do_gettimeofday
+	#define ZOCL_USEC tv_usec
+#endif
+
+/* drm_gem_object_put_unlocked was introduced with Kernel 4.12 and backported to
+ * Red Hat 7.5
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+	#define ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_put_unlocked
+#elif defined(RHEL_RELEASE_CODE)
+	#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,5)
+		#define ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_put_unlocked
+	#else
+		#define ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_unreference_unlocked
+	#endif
+#else
+	#define ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_unreference_unlocked
+#endif
+
+/* drm_dev_put was introduced with Kernel 4.15 and backported to Red Hat 7.6. */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0)
+	#define ZOCL_DRM_DEV_PUT drm_dev_put
+#elif defined(RHEL_RELEASE_CODE)
+	#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,6)
+		#define ZOCL_DRM_DEV_PUT drm_dev_put	
+	#else
+		#define ZOCL_DRM_DEV_PUT drm_dev_unref
+	#endif
+#else
+	#define ZOCL_DRM_DEV_PUT drm_dev_unref
+#endif
+
+/* access_ok lost its first parameter with Linux 5.0. */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
+	#define ZOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(ADDR, SIZE)
+#else
+	#define ZOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(TYPE, ADDR, SIZE)
+#endif
+
 struct drm_zocl_exec_metadata {
 	enum drm_zocl_execbuf_state state;
 	unsigned int                index;
@@ -46,7 +106,9 @@ struct drm_zocl_bo {
 			uint64_t                      uaddr;
 		};
 	};
+	struct drm_mm_node            *mm_node;
 	struct drm_zocl_exec_metadata  metadata;
+	unsigned int                   bank;
 	uint32_t                       flags;
 };
 
@@ -119,7 +181,10 @@ int zocl_init_sysfs(struct device *dev);
 void zocl_fini_sysfs(struct device *dev);
 void zocl_free_sections(struct drm_zocl_dev *zdev);
 void zocl_free_bo(struct drm_gem_object *obj);
-void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size, int count);
+void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size,
+		int count, uint32_t bank);
+void zocl_init_mem(struct drm_zocl_dev *zdev, struct mem_topology *mtopo);
+void zocl_clear_mem(struct drm_zocl_dev *zdev);
 
 int get_apt_index(struct drm_zocl_dev *zdev, phys_addr_t addr);
 

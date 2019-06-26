@@ -29,6 +29,7 @@
 #include <linux/crc32c.h>
 #include "../xocl_drv.h"
 #include "version.h"
+#include "xclbin.h"
 
 static const struct pci_device_id pci_ids[] = {
 	XOCL_MGMT_PCI_IDS,
@@ -57,6 +58,7 @@ MODULE_PARM_DESC(minimum_initialization,
 #define	LOW_MILLVOLT		500
 #define	HI_MILLVOLT		2500
 
+#define MAX_DYN_SUBDEV		1024
 
 static dev_t xclmgmt_devnode;
 struct class *xrt_class;
@@ -420,8 +422,12 @@ inline void check_volt_within_range(struct xclmgmt_dev *lro, u16 volt)
 static void check_sysmon(struct xclmgmt_dev *lro)
 {
 	u32 val;
+	int ret;
 
-	xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_TEMP, &val);
+	ret = xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_TEMP, &val);
+	if (ret == -ENODEV)
+		return;
+
 	check_temp_within_range(lro, val);
 
 	xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_VCC_INT, &val);
@@ -456,6 +462,9 @@ static int health_check_cb(void *data)
 static inline bool xclmgmt_support_intr(struct xclmgmt_dev *lro)
 {
 	struct xocl_board_private *dev_info = &lro->core.priv;
+
+	if (dev_info->flags & XOCL_DSAFLAG_DYNAMIC_IP)
+		return false;
 
 	return (dev_info->flags & XOCL_DSAFLAG_FIXED_INTR) ||
 		lro->core.intr_bar_addr != NULL;
@@ -519,6 +528,11 @@ static int xclmgmt_intr_config(xdev_handle_t xdev_hdl, u32 intr, bool en)
 {
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)xdev_hdl;
 	struct xocl_board_private *dev_info = &lro->core.priv;
+	int ret;
+
+	ret = xocl_dma_intr_config(lro, intr, en);
+	if (!ret)
+		return ret;
 
 	if (!xclmgmt_support_intr(lro))
 		return -EOPNOTSUPP;
@@ -535,6 +549,13 @@ static int xclmgmt_intr_register(xdev_handle_t xdev_hdl, u32 intr,
 {
 	u32 vec;
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)xdev_hdl;
+	int ret;
+
+	ret = handler ?
+		xocl_dma_intr_register(lro, intr, handler, arg, -1) :
+		xocl_dma_intr_unreg(lro, intr);
+	if (!ret)
+		return ret;
 
 	if (!xclmgmt_support_intr(lro))
 		return -EOPNOTSUPP;
@@ -576,7 +597,8 @@ static void xclmgmt_icap_get_data(struct xclmgmt_dev *lro, void *buf)
 
 	hwicap = (struct xcl_hwicap *)buf;
 	hwicap->idcode = xocl_icap_get_data(lro, IDCODE);
-	uuid_copy((xuid_t *)hwicap->uuid, XOCL_XCLBIN_ID(lro));
+	if (XOCL_XCLBIN_ID(lro))
+		uuid_copy((xuid_t *)hwicap->uuid, XOCL_XCLBIN_ID(lro));
 	hwicap->freq_0 = xocl_icap_get_data(lro, CLOCK_FREQ_0);
 	hwicap->freq_1 = xocl_icap_get_data(lro, CLOCK_FREQ_1);
 	hwicap->freq_2 = xocl_icap_get_data(lro, CLOCK_FREQ_2);
@@ -607,6 +629,45 @@ static void xclmgmt_mig_get_data(struct xclmgmt_dev *lro, void *mig_ecc, size_t 
 	}
 }
 
+static void xclmgmt_subdev_get_data(struct xclmgmt_dev *lro, size_t offset,
+		size_t buf_sz, void **resp, size_t *actual_sz)
+{
+	struct xcl_subdev	*hdr;
+	size_t			data_sz, fdt_sz;
+
+	mgmt_info(lro, "userpf requests subdev information");
+
+	data_sz = sizeof(*hdr);
+	fdt_sz = lro->userpf_blob ? fdt_totalsize(lro->userpf_blob) : 0;
+	data_sz += fdt_sz > offset ? (fdt_sz - offset) : 0;
+
+	*actual_sz = min_t(size_t, buf_sz, data_sz);
+	*resp = vzalloc(*actual_sz);
+	if (!*resp) {
+		mgmt_err(lro, "allocate resp failed");
+		return;
+	}
+
+	/* if it is invalid req, do nothing */
+	if (*actual_sz < sizeof(*hdr)) {
+		mgmt_err(lro, "Req buffer is too small");
+		return;
+	}
+
+	hdr = *resp;
+	hdr->ver = XOCL_MSG_SUBDEV_VER;
+	hdr->size = *actual_sz - sizeof(*hdr);
+	hdr->offset = offset;
+	//hdr->checksum = csum_partial(hdr->data, hdr->size, 0);
+	memcpy(hdr->data, (char *)lro->userpf_blob + offset, hdr->size);
+	if (*actual_sz == sizeof(*hdr))
+		hdr->rtncode = XOCL_MSG_SUBDEV_RTN_EMPTY;
+	else if (hdr->size + offset < fdt_sz)
+		hdr->rtncode = XOCL_MSG_SUBDEV_RTN_PARTIAL;
+	else
+		hdr->rtncode = XOCL_MSG_SUBDEV_RTN_COMPLETE;
+}
+
 static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void **resp, size_t *sz)
 {
 	size_t resp_sz = 0, current_sz;
@@ -614,6 +675,7 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 
 	BUG_ON(!lro);
 
+	mgmt_info(lro, "req kind %d", subdev_req->kind);
 	switch (subdev_req->kind) {
 	case SENSOR:
 		current_sz = sizeof(struct xcl_sensor);
@@ -644,6 +706,10 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 		current_sz = sizeof(struct xcl_dna);
 		*resp = vzalloc(current_sz);
 		(void) xocl_dna_get_data(lro, *resp);
+		break;
+	case SUBDEV:
+		xclmgmt_subdev_get_data(lro, subdev_req->offset,
+			subdev_req->size, resp, &current_sz);
 		break;
 	default:
 		break;
@@ -679,7 +745,7 @@ static bool xclmgmt_is_same_domain(struct xclmgmt_dev *lro,
 	return true;
 }
 
-static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
+void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	u64 msgid, int err, bool sw_ch)
 {
 	int ret = 0;
@@ -687,6 +753,13 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)arg;
 	struct mailbox_req *req = (struct mailbox_req *)data;
 	bool is_sw = false;
+	size_t payload_len;
+
+	if (len < sizeof(*req)) {
+		mgmt_err(lro, "peer request dropped due to wrong size\n");
+		return;
+	}
+	payload_len = len - sizeof(*req);
 
 	mgmt_dbg(lro, "received request (%d) from peer sw_ch %d\n",
 		req->req, sw_ch);
@@ -707,40 +780,100 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	case MAILBOX_REQ_LOCK_BITSTREAM: {
 		struct mailbox_req_bitstream_lock *bitstm_lock =
 			(struct mailbox_req_bitstream_lock *)req->data;
-		ret = xocl_icap_lock_bitstream(lro, (xuid_t *)bitstm_lock->uuid, 0);
-		(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
+		if (payload_len < sizeof(*bitstm_lock)) {
+			mgmt_err(lro, "peer request dropped, wrong size\n");
+			break;
+		}
+		ret = xocl_icap_lock_bitstream(lro,
+			(xuid_t *)bitstm_lock->uuid, 0);
+		(void) xocl_peer_response(lro, req->req, msgid,
+			&ret, sizeof(ret));
 		break;
 	}
 	case MAILBOX_REQ_UNLOCK_BITSTREAM: {
 		struct mailbox_req_bitstream_lock *bitstm_lock =
 			(struct mailbox_req_bitstream_lock *)req->data;
-		ret = xocl_icap_unlock_bitstream(lro, (xuid_t *)bitstm_lock->uuid, 0);
-		(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
+		if (payload_len < sizeof(*bitstm_lock)) {
+			mgmt_err(lro, "peer request dropped, wrong size\n");
+			break;
+		}
+		ret = xocl_icap_unlock_bitstream(lro,
+			(xuid_t *)bitstm_lock->uuid, 0);
+		(void) xocl_peer_response(lro, req->req, msgid, &ret,
+			sizeof(ret));
 		break;
 	}
 	case MAILBOX_REQ_HOT_RESET:
 		ret = (int) reset_hot_ioctl(lro);
-		(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
+		(void) xocl_peer_response(lro, req->req, msgid, &ret,
+			sizeof(ret));
 		break;
 	case MAILBOX_REQ_LOAD_XCLBIN_KADDR: {
+		void *buf = NULL;
+		struct axlf *xclbin = NULL;
+		uint64_t xclbin_len = 0;
 		struct mailbox_bitstream_kaddr *mb_kaddr =
 			(struct mailbox_bitstream_kaddr *)req->data;
-		ret = xocl_icap_download_axlf(lro, (void *)mb_kaddr->addr);
-		(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
+		if (payload_len < sizeof(*mb_kaddr)) {
+			mgmt_err(lro, "peer request dropped, wrong size\n");
+			break;
+		}
+		xclbin = (struct axlf *)mb_kaddr->addr;
+		xclbin_len = xclbin->m_header.m_length;
+		/*
+		 * The xclbin download may take a while. Make a local copy of
+		 * xclbin in case peer frees it too early due to a timeout
+		 */
+		buf = vmalloc(xclbin_len);
+		if (buf == NULL) {
+			ret = -ENOMEM;
+		} else {
+			memcpy(buf, xclbin, xclbin_len);
+			ret = xocl_icap_download_axlf(lro, buf);
+			vfree(buf);
+		}
+		(void) xocl_peer_response(lro, req->req, msgid, &ret,
+			sizeof(ret));
 		break;
 	}
-	case MAILBOX_REQ_LOAD_XCLBIN:
-		ret = xocl_icap_download_axlf(lro, req->data);
-		(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
+	case MAILBOX_REQ_LOAD_XCLBIN: {
+		uint64_t xclbin_len = 0;
+		struct axlf *xclbin = (struct axlf *)req->data;
+		if (payload_len < sizeof(*xclbin)) {
+			mgmt_err(lro, "peer request dropped, wrong size\n");
+			break;
+		}
+		xclbin_len = xclbin->m_header.m_length;
+		if (payload_len < xclbin_len) {
+			mgmt_err(lro, "peer request dropped, wrong size\n");
+			break;
+		}
+		ret = xocl_icap_download_axlf(lro, xclbin);
+		(void) xocl_peer_response(lro, req->req, msgid, &ret,
+			sizeof(ret));
 		break;
-	case MAILBOX_REQ_RECLOCK:
-		ret = xocl_icap_ocl_update_clock_freq_topology(lro,
-			(struct xclmgmt_ioc_freqscaling *)req->data);
-		(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
+	}
+	case MAILBOX_REQ_RECLOCK: {
+		struct xclmgmt_ioc_freqscaling *clk =
+			(struct xclmgmt_ioc_freqscaling *)req->data;
+		if (payload_len < sizeof(*clk)) {
+			mgmt_err(lro, "peer request dropped, wrong size\n");
+			break;
+		}
+		ret = xocl_icap_ocl_update_clock_freq_topology(lro, clk);
+		(void) xocl_peer_response(lro, req->req, msgid, &ret,
+			sizeof(ret));
 		break;
+	}
 	case MAILBOX_REQ_PEER_DATA: {
 		size_t sz = 0;
 		void *resp = NULL;
+		struct mailbox_subdev_peer *subdev_req =
+			(struct mailbox_subdev_peer *)req->data;
+		if (payload_len < sizeof(*subdev_req)) {
+			mgmt_err(lro, "peer request dropped, wrong size\n");
+			break;
+		}
 
 		ret = xclmgmt_read_subdev_req(lro, req->data, &resp, &sz);
 		if (ret) {
@@ -749,16 +882,23 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			(void) xocl_peer_response(lro, req->req, msgid, &ret,
 				sizeof(ret));
 		} else {
-			(void) xocl_peer_response(lro, req->req, msgid, resp, sz);
+			(void) xocl_peer_response(lro, req->req, msgid, resp,
+				sz);
 		}
 		vfree(resp);
 		break;
 	}
 	case MAILBOX_REQ_USER_PROBE: {
+		struct mailbox_conn_resp *resp = NULL;
 		struct mailbox_conn *conn = (struct mailbox_conn *)req->data;
-		struct mailbox_conn_resp *resp = vzalloc(sizeof(*resp));
 		uint64_t ch_switch = 0;
 
+		if (payload_len < sizeof(*conn)) {
+			mgmt_err(lro, "peer request dropped, wrong size\n");
+			break;
+		}
+
+		resp = vzalloc(sizeof(*resp));
 		if (!resp)
 			break;
 
@@ -773,6 +913,12 @@ static void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		(void) xocl_peer_response(lro, req->req, msgid, resp,
 			sizeof(struct mailbox_conn_resp));
 		vfree(resp);
+		break;
+	}
+	case MAILBOX_REQ_PROGRAM_SHELL: {
+		/* blob should already been updated */
+		/* Need to carefully validate user request at this point. */
+		xclmgmt_program_shell(lro);
 		break;
 	}
 	default:
@@ -828,24 +974,27 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	 * Workaround needed on some platforms. Will clear out any stale
 	 * data after the platform has been reset
 	 */
-	ret = xocl_subdev_create(lro,
-		&(struct xocl_subdev_info)XOCL_DEVINFO_AF);
-	if (ret) {
+	ret = xocl_subdev_create_by_id(lro, XOCL_SUBDEV_AF);
+	if (ret && ret != -ENODEV) {
 		xocl_err(&pdev->dev, "failed to register firewall\n");
 		goto fail_firewall;
 	}
 	if (dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
-		platform_axilite_flush(lro);
+			platform_axilite_flush(lro);
 
-	ret = xocl_subdev_create_all(lro, dev_info->subdev_info,
-		dev_info->subdev_num);
+	ret = xocl_subdev_create_all(lro);
 	if (ret) {
-		xocl_err(&pdev->dev, "failed to register subdevs\n");
+		xocl_err(&pdev->dev, "failed to register subdevs %d", ret);
 		goto fail_all_subdev;
 	}
-	xocl_err(&pdev->dev, "created all sub devices");
+	xocl_info(&pdev->dev, "created all sub devices");
 
+	/* return -ENODEV for 2RP platform */
 	ret = xocl_icap_download_boot_firmware(lro);
+	if (ret && ret != -ENODEV)
+		goto fail_all_subdev;
+
+	ret = xclmgmt_load_fdt(lro);
 	if (ret)
 		goto fail_all_subdev;
 
@@ -861,7 +1010,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	xclmgmt_connect_notify(lro, true);
 
 	lro->ready = true;
-	xocl_err(&pdev->dev, "device fully initialized\n");
+	xocl_info(&pdev->dev, "device fully initialized\n");
 	return;
 
 fail_all_subdev:
@@ -962,7 +1111,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	mgmt_init_sysfs(&pdev->dev);
 
 	/* Probe will not fail from now on. */
-	xocl_err(&pdev->dev, "minimum initialization done\n");
+	xocl_info(&pdev->dev, "minimum initialization done\n");
 
 	/* No further initialization for MFG board. */
 	if (minimum_initialization ||
@@ -976,8 +1125,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	 * Even if extended probe fails, make sure feature ROM subdev
 	 * is loaded to provide basic info about the board.
 	 */
-	(void) xocl_subdev_create(lro,
-		&(struct xocl_subdev_info)XOCL_DEVINFO_FEATURE_ROM);
+	(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FEATURE_ROM);
 
 	return 0;
 
@@ -1028,6 +1176,14 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 
 	xocl_free_dev_minor(lro);
 
+	if (lro->core.fdt_blob)
+		vfree(lro->core.fdt_blob);
+	if (lro->core.dyn_subdev_store)
+		vfree(lro->core.dyn_subdev_store);
+
+	if (lro->userpf_blob)
+		vfree(lro->userpf_blob);
+
 	dev_set_drvdata(&pdev->dev, NULL);
 
 	xocl_drvinst_free(lro);
@@ -1068,6 +1224,8 @@ static struct pci_driver xclmgmt_driver = {
 
 static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_feature_rom,
+	xocl_init_flash,
+	xocl_init_xdma_mgmt,
 	xocl_init_sysmon,
 	xocl_init_mb,
 	xocl_init_xvc,
@@ -1075,6 +1233,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_xiic,
 	xocl_init_mailbox,
 	xocl_init_firewall,
+	xocl_init_icap_bld,
 	xocl_init_icap,
 	xocl_init_mig,
 	xocl_init_xmc,
@@ -1084,6 +1243,8 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 
 static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_feature_rom,
+	xocl_fini_flash,
+	xocl_fini_xdma_mgmt,
 	xocl_fini_sysmon,
 	xocl_fini_mb,
 	xocl_fini_xvc,
@@ -1091,6 +1252,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_xiic,
 	xocl_fini_mailbox,
 	xocl_fini_firewall,
+	xocl_fini_icap_bld,
 	xocl_fini_icap,
 	xocl_fini_mig,
 	xocl_fini_xmc,

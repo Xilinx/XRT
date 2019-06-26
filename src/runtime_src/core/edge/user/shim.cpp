@@ -154,7 +154,7 @@ int ZYNQShim::mapKernelControl(const std::vector<std::pair<uint64_t, size_t>>& o
       auto it = mKernelControl.find(offset_it->first);
       if (it == mKernelControl.end()) {
         ptr = mmap(0, offset_it->second, PROT_READ | PROT_WRITE, MAP_SHARED, mKernelFD, offset_it->first);
-        if (!ptr) {
+        if (ptr == MAP_FAILED){
             printf("Map failed for aperture 0x%lx, size 0x%lx\n", offset_it->first, offset_it->second);
             return -1;
         }

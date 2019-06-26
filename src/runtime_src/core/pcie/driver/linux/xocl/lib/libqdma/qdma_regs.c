@@ -506,9 +506,6 @@ void qdma_device_attributes_get(struct xlnx_dma_dev *xdev)
 	xdev->mm_mode_en = (mm_c2h_flag && mm_h2c_flag) ? 1 : 0;
 	xdev->st_mode_en = (st_c2h_flag && st_h2c_flag) ? 1 : 0;
 
-	if (xdev->stm_en)
-		xdev->conf.bar_num_stm = STM_BAR;
-
 	pr_info("%s: present flr %d, mm %d, st %d.\n",
 		xdev->conf.name, xdev->flr_prsnt, xdev->mm_mode_en,
 		xdev->st_mode_en);

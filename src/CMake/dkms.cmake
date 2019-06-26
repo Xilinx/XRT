@@ -50,6 +50,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/xocl_subdev.c
   xocl/xocl_ctx.c
   xocl/xocl_thread.c
+  xocl/xocl_fdt.c
   xocl/xocl_test.c
   xocl/userpf/common.h
   xocl/userpf/xocl_bo.c
@@ -103,6 +104,19 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/lib/libqdma/version.h
   xocl/lib/libqdma/xdev.h
   xocl/lib/libqdma/xdev.c
+  xocl/lib/libfdt/fdt.c
+  xocl/lib/libfdt/fdt.h
+  xocl/lib/libfdt/fdt_addresses.c
+  xocl/lib/libfdt/fdt_empty_tree.c
+  xocl/lib/libfdt/fdt_overlay.c
+  xocl/lib/libfdt/fdt_ro.c
+  xocl/lib/libfdt/fdt_rw.c
+  xocl/lib/libfdt/fdt_strerror.c
+  xocl/lib/libfdt/fdt_sw.c
+  xocl/lib/libfdt/fdt_wip.c
+  xocl/lib/libfdt/libfdt.h
+  xocl/lib/libfdt/libfdt_env.h
+  xocl/lib/libfdt/libfdt_internal.h
   xocl/subdev/xdma.c
   xocl/subdev/qdma.c
   xocl/subdev/feature_rom.c
@@ -115,10 +129,13 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/xiic.c
   xocl/subdev/mailbox.c
   xocl/subdev/icap.c
+  xocl/subdev/icap_bld.c
   xocl/subdev/mig.c
   xocl/subdev/xmc.c
   xocl/subdev/dna.c
   xocl/subdev/fmgr.c
+  xocl/subdev/xdma_mgmt.c
+  xocl/subdev/flash.c
   xocl/Makefile
   )
 
