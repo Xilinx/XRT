@@ -1097,7 +1097,7 @@ XCL_DRIVER_DLLESPEC uint32_t xclGetProfilingSlotProperties(xclDeviceHandle handl
 
 XCL_DRIVER_DLLESPEC size_t xclPerfMonClockTraining(xclDeviceHandle handle, enum xclPerfMonType type);
 
-XCL_DRIVER_DLLESPEC void xclPerfMonConfigureDataflow(xclDeviceHandle handle, xclPerfMonType type, unsigned *ip_data);
+XCL_DRIVER_DLLESPEC void xclPerfMonConfigureDataflow(xclDeviceHandle handle, enum xclPerfMonType type, unsigned *ip_data);
 
 XCL_DRIVER_DLLESPEC size_t xclPerfMonStartCounters(xclDeviceHandle handle, enum xclPerfMonType type);
 
