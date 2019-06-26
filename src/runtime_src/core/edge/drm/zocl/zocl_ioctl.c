@@ -21,6 +21,7 @@
 #include <linux/fpga/fpga-mgr.h>
 #include "zocl_drv.h"
 #include "xclbin.h"
+#include "sched_exec.h"
 
 #if defined(XCLBIN_DOWNLOAD)
 /**
@@ -561,4 +562,22 @@ out0:
 		ret = size;
 	vfree(axlf);
 	return ret;
+}
+
+int
+zocl_info_cu_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
+{
+	struct drm_zocl_info_cu *args = data;
+	struct drm_zocl_dev *zdev = dev->dev_private;
+	struct sched_exec_core *exec = zdev->exec;
+
+	if (!exec->configured) {
+		DRM_ERROR("Schduler is not configured\n");
+		return -EINVAL;
+	}
+ 
+	if(args->paddr != 0xFFFFFFFF) {
+		args->apt_idx = get_apt_index(zdev, args->paddr);
+	}
+	return 0;
 }

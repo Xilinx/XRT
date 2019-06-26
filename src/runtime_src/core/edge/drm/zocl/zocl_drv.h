@@ -165,6 +165,8 @@ int zocl_sk_create_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);
 int zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);
+int zocl_info_cu_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *filp);
 
 void zocl_describe(const struct drm_zocl_bo *obj);
 
