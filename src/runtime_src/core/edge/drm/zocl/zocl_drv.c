@@ -32,6 +32,7 @@
 #include <linux/spinlock.h>
 #include "zocl_drv.h"
 #include "zocl_sk.h"
+#include "zocl_bo.h"
 #include "sched_exec.h"
 
 #define ZOCL_DRIVER_NAME        "zocl"
@@ -187,11 +188,11 @@ void zocl_free_bo(struct drm_gem_object *obj)
 	if (!zdev->domain) {
 		DRM_INFO("Freeing BO\n");
 		zocl_describe(zocl_obj);
-		if (zocl_obj->flags & XCL_BO_FLAGS_USERPTR)
+		if (zocl_obj->flags & ZOCL_BO_FLAGS_USERPTR)
 			zocl_free_userptr_bo(obj);
-		else if (zocl_obj->flags & XCL_BO_FLAGS_HOST_BO)
+		else if (zocl_obj->flags & ZOCL_BO_FLAGS_HOST_BO)
 			zocl_free_host_bo(obj);
-		else if (zocl_obj->flags & XCL_BO_FLAGS_CMA) {
+		else if (zocl_obj->flags & ZOCL_BO_FLAGS_CMA) {
 			drm_gem_cma_free_object(obj);
 
 			/* Update memory usage statistics */
@@ -277,7 +278,7 @@ zocl_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 	gem_obj = vma->vm_private_data;
 	bo = to_zocl_bo(gem_obj);
 
-	if (bo->flags & XCL_BO_FLAGS_CACHEABLE)
+	if (bo->flags & ZOCL_BO_FLAGS_CACHEABLE)
 		/**
 		 * Resume the protection field from mmap(). Most likely
 		 * it will be cacheable. If there is a case that mmap()
@@ -287,15 +288,15 @@ zocl_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 		 */
 		vma->vm_page_prot = prot;
 
-	if (bo->flags & XCL_BO_FLAGS_CMA) {
+	if (bo->flags & ZOCL_BO_FLAGS_CMA) {
 		cma_obj = to_drm_gem_cma_obj(gem_obj);
 		paddr = cma_obj->paddr;
 	} else
 		paddr = bo->mm_node->start;
 
-	if ((!(bo->flags & XCL_BO_FLAGS_CMA)) ||
-	    (bo->flags & XCL_BO_FLAGS_CMA &&
-	    bo->flags & XCL_BO_FLAGS_CACHEABLE)) {
+	if ((!(bo->flags & ZOCL_BO_FLAGS_CMA)) ||
+	    (bo->flags & ZOCL_BO_FLAGS_CMA &&
+	    bo->flags & ZOCL_BO_FLAGS_CACHEABLE)) {
 		/* Map PL-DDR and cacheable CMA */
 		rc = remap_pfn_range(vma, vma->vm_start,
 		    paddr >> PAGE_SHIFT, vma->vm_end - vma->vm_start,
