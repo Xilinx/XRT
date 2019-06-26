@@ -160,7 +160,7 @@ allocExecBuffer(size_t sz)
   };
 
   auto ubo = std::make_unique<ExecBufferObject>();
-  ubo->handle = m_ops->mAllocBO(m_handle,sz, 0, XCL_BO_FLAGS_EXECBUF);  // xclhal2_mem.h
+  ubo->handle = m_ops->mAllocBO(m_handle,sz, 0, XCL_BO_FLAGS_EXECBUF);  // xrt_mem.h
   if (ubo->handle == 0xffffffff)
     throw std::bad_alloc();
 
