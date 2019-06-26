@@ -104,7 +104,6 @@ static int iores_probe(struct platform_device *pdev)
 	struct resource *res;
 	int i, id;
 
-	pr_info("RES PROBE\n");
 	iores = devm_kzalloc(&pdev->dev, sizeof(*iores), GFP_KERNEL);
 	if (!iores)
 		return -ENOMEM;

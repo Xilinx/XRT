@@ -197,53 +197,6 @@ static ssize_t dev_offline_show(struct device *dev,
 
 static DEVICE_ATTR(dev_offline, 0444, dev_offline_show, NULL);
 
-static ssize_t subdev_cmd_store(struct device *dev,
-	struct device_attribute *da, const char *buf, size_t count)
-{
-	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
-	int ret = 0, i;
-	char *name = (char *)buf;
-	char cmd[32] = { 0 }, sdev_name[33] = { 0 };
-	struct mailbox_req mbreq = { MAILBOX_REQ_CHG_SHELL, };
-
-	sscanf(name, "%32s %32s", cmd, sdev_name);
-
-	if (!strcmp(cmd, "create") && !strcmp(sdev_name, "dynamic") ) {
-		xclmgmt_connect_notify(lro, false);
-		xocl_subdev_destroy_all(lro);
-		ret = xocl_subdev_create_all(lro);
-		xclmgmt_update_userpf_blob(lro);
-		health_thread_start(lro);
-
-		(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
-		xclmgmt_connect_notify(lro, true);
-	} else if (!strcmp(cmd, "destroy") &&
-			!strcmp(sdev_name, "dynamic")) {
-		health_thread_stop(lro);
-		for (i = XOCL_SUBDEV_LEVEL_URP; i > XOCL_SUBDEV_LEVEL_STATIC;
-				i--) {
-			xocl_subdev_destroy_by_level(lro, i);
-		}
-	} else if (!strcmp(cmd, "program")) {
-		mgmt_info(lro, "Notify program prp");
-		(void) xocl_peer_notify(lro, &mbreq,
-				sizeof(struct mailbox_req));
-	}else {
-		xocl_err(dev, "Invalid command");
-		ret = -EINVAL;
-	}
-
-	if (!ret || ret == -EAGAIN)
-		ret = count;
-	else
-		xocl_err(dev, "%s %s failed", cmd, sdev_name);
-
-	return ret;
-}
-
-static DEVICE_ATTR(subdev_cmd, 0200, NULL, subdev_cmd_store);
-
-
 static ssize_t config_mailbox_channel_switch_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
 {
@@ -338,83 +291,7 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_config_mailbox_channel_switch.attr,
 	&dev_attr_config_mailbox_comm_id.attr,
 	&dev_attr_blob_clear.attr,
-	&dev_attr_subdev_cmd.attr,
 	NULL,
-};
-
-static ssize_t mgmt_blob_input(struct file *filp, struct kobject *kobj,
-	struct bin_attribute *attr, char *buffer, loff_t off, size_t count)
-{
-	struct device *dev = container_of(kobj, struct device, kobj);
-	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
-	int ret = 0;
-
-	if (off == 0) {
-		if (count < sizeof(struct fdt_header)) {
-			mgmt_err(lro, "count is too small %ld", count);
-			return -EINVAL;
-		}
-
-		if (fdt_check_header(buffer)) {
-			mgmt_err(lro, "Invalid fdt header");
-			return -EINVAL;
-		}
-
-		lro->sysfs_bin_length = fdt_totalsize(buffer);
-		lro->sysfs_bin_buffer = vmalloc(lro->sysfs_bin_length);
-	}
-
-	if (off + count >= lro->sysfs_bin_length) {
-		memcpy(lro->sysfs_bin_buffer + off, buffer,
-				lro->sysfs_bin_length - off);
-		ret = xocl_fdt_blob_input(lro, lro->sysfs_bin_buffer);
-		xclmgmt_update_userpf_blob(lro);
-		vfree(lro->sysfs_bin_buffer);
-		lro->sysfs_bin_buffer = NULL;
-		lro->sysfs_bin_length = 0;
-
-	} else
-		memcpy(lro->sysfs_bin_buffer + off, buffer, count);
-
-	return ret ? ret : count;
-}
-
-static ssize_t mgmt_blob_output(struct file *filp, struct kobject *kobj,
-	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
-{
-	struct device *dev = kobj_to_dev(kobj);
-	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
-	unsigned char *blob;
-	size_t size;
-	ssize_t ret = 0;
-
-	if (!lro->core.fdt_blob)
-		goto bail;
-
-	blob = lro->core.fdt_blob;
-	size = fdt_totalsize(lro->core.fdt_blob);
-
-	if (off >= size)
-		goto bail;
-
-	if (off + count > size)
-		count = size - off;
-	memcpy(buf, blob + off, count);
-
-	ret = count;
-bail:
-
-	return ret;
-}
-
-static struct bin_attribute blob_input_attr = {
-	.attr = {
-		.name = "blob_input",
-		.mode = 0600
-	},
-	.read = mgmt_blob_output,
-	.write = mgmt_blob_input,
-	.size = 0
 };
 
 static ssize_t userpf_blob_output(struct file *filp, struct kobject *kobj,
@@ -455,7 +332,6 @@ static struct bin_attribute userpf_blob_attr = {
 };
 
 static struct bin_attribute  *mgmt_bin_attrs[] = {
-	&blob_input_attr,
 	&userpf_blob_attr,
 	NULL,
 };

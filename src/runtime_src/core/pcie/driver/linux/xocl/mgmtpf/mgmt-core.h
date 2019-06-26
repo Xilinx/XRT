@@ -114,9 +114,6 @@ struct xclmgmt_dev {
 	void *userpf_blob;
 	void *bld_blob;
 
-	char *sysfs_bin_buffer;
-	size_t sysfs_bin_length;
-
 	/* ID set on mgmt and passed to user for inter-domain communication */
 	u64 comm_id;
 };

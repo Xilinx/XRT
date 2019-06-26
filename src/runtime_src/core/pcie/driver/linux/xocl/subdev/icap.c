@@ -129,7 +129,6 @@ struct icap {
 	unsigned int		idcode;
 	bool			icap_axi_gate_frozen;
 	struct icap_axi_gate	*icap_axi_gate;
-	struct icap_axi_gate	*icap_prp_gate;
 
 	u64			icap_bitstream_id;
 	xuid_t			icap_bitstream_uuid;
