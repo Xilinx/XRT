@@ -445,8 +445,8 @@ namespace xclcpuemhal2 {
     //  files.  Also, the GUI can overwrite this by setting an
     //  environment variable
     bool debuggable = false ;
-    if (getenv("SDA_SKIP_KERNEL_DEBUG") == NULL ||
-	strcmp("true", getenv("SDA_SKIP_KERNEL_DEBUG")) != 0) 
+    if (getenv("ENABLE_KERNEL_DEBUG") != NULL &&
+	strcmp("true", getenv("ENABLE_KERNEL_DEBUG")) == 0)
     {
       char* xclbininmemory = 
         reinterpret_cast<char*>(const_cast<xclBin*>(header)) ;
