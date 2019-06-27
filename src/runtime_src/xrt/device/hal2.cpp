@@ -190,7 +190,6 @@ alloc(size_t sz)
   if (ubo->handle == 0xffffffff)
     throw std::bad_alloc();
 
-  ubo->kind = 0;
   ubo->size = sz;
   ubo->owner = m_handle;
   ubo->deviceAddr = m_ops->mGetDeviceAddr(m_handle, ubo->handle);
@@ -263,7 +262,6 @@ alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
     if (ubo->handle == 0xffffffff)
       throw std::bad_alloc();
 
-    ubo->kind = 0;
     if (userptr)
       ubo->hostAddr = userptr;
     else
@@ -296,7 +294,6 @@ alloc(const BufferObjectHandle& boh, size_t sz, size_t offset)
   ubo->hostAddr = static_cast<char*>(bo->hostAddr)+offset;
   ubo->size = sz;
   ubo->offset = offset;
-  ubo->kind = bo->kind;
   ubo->flags = bo->flags;
   ubo->owner = bo->owner;
   ubo->parent = boh;  // keep parent boh reference
