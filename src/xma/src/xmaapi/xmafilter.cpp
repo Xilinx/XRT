@@ -154,13 +154,14 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
     XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_handle].handle;
     filter_session->base.hw_session.dev_handle = hal->dev_handle;
-    filter_session->base.hw_session.base_address =
-        hwcfg->devices[dev_handle].kernels[kern_handle].base_address;
-    filter_session->base.hw_session.ddr_bank =
-        hwcfg->devices[dev_handle].kernels[kern_handle].ddr_bank;
 
     //For execbo:
     filter_session->base.hw_session.kernel_info = &hwcfg->devices[dev_handle].kernels[kern_handle];
+    filter_session->base.hw_session.kernel_info->base_address =
+        hwcfg->devices[dev_handle].kernels[kern_handle].base_address;
+    filter_session->base.hw_session.kernel_info->ddr_bank =
+        hwcfg->devices[dev_handle].kernels[kern_handle].ddr_bank;
+
     filter_session->base.hw_session.dev_index = hal->dev_index;
 
     // Assume it is the first filter plugin for now

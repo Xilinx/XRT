@@ -50,29 +50,23 @@ typedef struct XmaHwKernel
     void*       kernel_cmd_queue;
     void*       kernel_cmd_completion_queue;
     uint32_t    kernel_execbo_handle[MAX_EXECBO_POOL_SIZE];
-    char*       kernel_execbo_data[MAX_EXECBO_POOL_SIZE];
+    char*       kernel_execbo_data[MAX_EXECBO_POOL_SIZE];//execBO size is 4096 in xmahw_hal.cpp
     bool        kernel_execbo_inuse[MAX_EXECBO_POOL_SIZE];
+    uint32_t    reg_map[2048];//Max regmap 2048; execBO size is 4096 in xmahw_hal.cpp
+    pthread_mutex_t *lock;
+    bool             have_lock;
     uint32_t    reserved[16];
 } XmaHwKernel;
 
-typedef struct XmaHwContext
-{
-    uint32_t         reg_map[1024];
-    size_t           min_offset;
-    size_t           max_offset;
-    pthread_mutex_t *lock;
-    bool             have_lock;
-} XmaHwContext;
 
 typedef struct XmaHwSession
 {
     void            *dev_handle;
-    uint64_t         base_address;
-    uint32_t         ddr_bank;
+    //uint64_t         base_address;
+    //uint32_t         ddr_bank;
     //For execbo:
     uint32_t         dev_index;
     XmaHwKernel     *kernel_info;
-    XmaHwContext    *context;
     uint32_t         reserved[16];
 } XmaHwSession;
 

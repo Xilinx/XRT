@@ -172,7 +172,7 @@ is_connect_compatible(XmaEndpoint *endpt1,
            "endpt1->width   %d, endpt2->width   %d\n"
            "endpt1->height  %d, endpt2->height  %d\n",
             hw1->dev_handle, hw2->dev_handle,
-            hw1->ddr_bank,   hw2->ddr_bank,
+            hw1->kernel_info->ddr_bank,   hw2->kernel_info->ddr_bank,
             endpt1->bits_per_pixel, endpt2->bits_per_pixel,
             endpt1->width,   endpt2->width,
             endpt1->height,  endpt2->height);
@@ -180,7 +180,7 @@ is_connect_compatible(XmaEndpoint *endpt1,
     // Can't check format because of scaler plugin BUG
     //        endpt1->format         == endpt2->format         &&
     return (hw1->dev_handle        == hw2->dev_handle        &&
-            hw1->ddr_bank          == hw2->ddr_bank          &&
+            hw1->kernel_info->ddr_bank          == hw2->kernel_info->ddr_bank          &&
             endpt1->bits_per_pixel == endpt2->bits_per_pixel &&
             endpt1->width          == endpt2->width          &&
             endpt1->height         == endpt2->height);
