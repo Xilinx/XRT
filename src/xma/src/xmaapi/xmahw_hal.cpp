@@ -309,7 +309,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
                     for (int i_execbo = 0; i_execbo < MAX_EXECBO_POOL_SIZE; i_execbo++) 
                     {
                         uint32_t  bo_handle;
-                        int       execBO_size = 1024;
+                        int       execBO_size = 4096;
                         uint32_t  execBO_flags = (1<<31);
                         char     *bo_data;
                         bo_handle = xclAllocBO(hal->dev_handle, 
