@@ -15,7 +15,7 @@
  * under the License.
  */
 #include "xmaplugin.h"
-#include "xclhal2.h"
+#include "xrt.h"
 #include "ert.h"
 
 #include <cstdio>

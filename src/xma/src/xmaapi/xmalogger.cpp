@@ -37,7 +37,7 @@
 #include "lib/xmaapi.h"
 #include "app/xmalogger.h"
 #include "lib/xmalogger.h"
-#include <xclhal2.h>
+#include "xrt.h"
 
 #ifdef XMA_DEBUG
 #define XMA_DBG_PRINTF(format, ...) \
