@@ -14,14 +14,15 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#ifndef _XMA_HW_H_
-#define _XMA_HW_H_
+#ifndef _XMA_HW_LIB_H_
+#define _XMA_HW_LIB_H_
 
 #include <pthread.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include "lib/xmacfg.h"
-#include "lib/xmalimits.h"
+#include "lib/xmalimits_lib.h"
+#include "app/xmahw.h"
 
 #define MAX_EXECBO_POOL_SIZE      16
 
@@ -58,17 +59,6 @@ typedef struct XmaHwKernel
     uint32_t    reserved[16];
 } XmaHwKernel;
 
-
-typedef struct XmaHwSession
-{
-    void            *dev_handle;
-    //uint64_t         base_address;
-    //uint32_t         ddr_bank;
-    //For execbo:
-    uint32_t         dev_index;
-    XmaHwKernel     *kernel_info;
-    uint32_t         reserved[16];
-} XmaHwSession;
 
 typedef void   *XmaHwHandle;
 

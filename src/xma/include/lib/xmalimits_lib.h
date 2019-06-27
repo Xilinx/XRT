@@ -14,11 +14,12 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#ifndef _XMA_LIMITS_H
-#define _XMA_LIMITS_H
 
-#define MAX_SCALER_OUTPUTS       8
-#define MAX_FILTER_OUTPUTS      MAX_SCALER_OUTPUTS
+#include "app/xmalimits.h"
+
+#ifndef _XMA_LIMITS_APP_H
+#define _XMA_LIMITS_APP_H
+
 #define MAX_DDR_MAP             16
 #define MAX_XILINX_DEVICES      16
 #define MAX_XILINX_KERNELS      60
@@ -27,11 +28,7 @@
 #define MAX_KERNEL_FREQS         2
 #define MAX_IMAGE_CONFIGS       16
 #define MAX_FUNCTION_NAME       32
-#define MAX_PLUGIN_NAME         32
-#define MAX_VENDOR_NAME         32
 #define MAX_KERNEL_NAME         64
 #define MAX_DSA_NAME            256
-#define XMA_MAX_PLANES           3
 #define MAX_PLUGINS             16
-#define MAX_CONNECTION_ENTRIES  64
 #endif

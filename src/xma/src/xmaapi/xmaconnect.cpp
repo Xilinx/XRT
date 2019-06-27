@@ -22,7 +22,7 @@
 #include "lib/xmaapi.h"
 #include "lib/xmacfg.h"
 #include "lib/xmaconnect.h"
-#include "lib/xmahw.h"
+#include "lib/xmahw_lib.h"
 
 extern XmaSingleton *g_xma_singleton;
 
