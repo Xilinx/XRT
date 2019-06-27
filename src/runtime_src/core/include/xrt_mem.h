@@ -27,8 +27,10 @@ extern "C" {
  * XCL BO Flags bits layout
  *
  * bits  0 ~ 15: DDR BANK index
- * bits 16 ~ 31: BO flags
+ * bits 24 ~ 31: BO flags
  */
+
+#define XRT_BO_FLAGS_MEMIDX_MASK	(0xFFFFFFUL)
 #define	XCL_BO_FLAGS_CACHEABLE		(1 << 24)
 #define	XCL_BO_FLAGS_SVM		(1 << 27)
 #define	XCL_BO_FLAGS_DEV_ONLY		(1 << 28)

@@ -94,12 +94,12 @@ static inline struct drm_xocl_dev *bo_xocl_dev(const struct drm_xocl_bo *bo)
 
 static inline unsigned xocl_bo_ddr_idx(unsigned user_flags)
 {
-        return user_flags & 0xFFFFFF;
+        return user_flags & XRT_BO_FLAGS_MEMIDX_MASK;
 }
 
 static inline unsigned xocl_bo_type(unsigned user_flags)
 {
-	unsigned type = user_flags & 0xFF000000;
+	unsigned type = (user_flags & ~XRT_BO_FLAGS_MEMIDX_MASK);
 	unsigned bo_type = 0;
 
 	switch (type) {
