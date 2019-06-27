@@ -1,16 +1,46 @@
 #!/bin/sh
 
+#
+# UBUNTU NOTE
+# -----------
+# 1. When downgrading (say from 2.3.0 to 2.2.0) then prerm of 2.3.0 is run
+#    but postinst of 2.2.0 is run. The prerm is invoked with "upgrade 2.2.0"
+#    argument and postinst is invoked with "configure 2.3.0" argument.
+# 2. When upgrading (say from 2.2.0 to 2.3.0) then prerm of 2.2.0 is run
+#    but postinst of 2.3.0 is run. The prerm is invoked with "upgrade 2.3.0"
+#    argument and postinst is invoked with "configure 2.2.0" argument.
+# 3. When re-installing (say from 2.2.0 to 2.2.0) then prerm of 2.2.0 is run
+#    and postinst of 2.2.0 is run. The prerm is invoked with "upgrade 2.2.0"
+#    argument and postinst is invoked with "configure 2.2.0" argument.
+#
+# RHEL/CentOS NOTE
+# ----------------
+# 1. When downgrading (say from 2.3.0 to 2.2.0) then oddly postinst of 2.2.0
+#    is run first followed by prerm of 2.3.0 run. The postinst is invoked with
+#    "2" and prerm is invoked with "1".
+# 2. When upgrading (say from 2.2.0 to 2.3.0) then prerm of 2.2.0 is NOT run
+#    but postinst of 2.3.0 is run. The postinst is invoked with "2" argument.
+# 3. When re-installing (say from 2.2.0 to 2.2.0) then prerm is NOT run but
+#    and postinst of 2.2.0 is run. The postinst is invoked with "2" argument.
+
+# In the case of upgrade, downgrade or re-install we would like to preserve the
+# configuration of the components and hence we want to handle the configuration
+# in postinst script.
+
 lsb_release -si | grep -Eq "^RedHat|^CentOS"
 if [ $? -eq 0 ] && [ $1 -ge 1 ]; then
-    echo "Cleanup is skipped for package upgrade"
+    echo "Cleanup is skipped for package upgrade/downgrade/re-install"
     exit 0
 fi
 
 lsb_release -si | grep -Eq "^Ubuntu"
 if [ $? -eq 0 ] && [ "$1" = "upgrade" ]; then
-    echo "Cleanup is skipped for package upgrade"
+    echo "Cleanup is skipped for package upgrade/downgrade/re-install"
     exit 0
 fi
+
+# If we are here XRT is being uninstalled. It is NOT one of upgrade, downgrade or
+# re-install.
 
 # Stop and remove all daemons
 echo "Removing MSD / MPD daemons"
