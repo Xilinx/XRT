@@ -461,7 +461,6 @@ static int firewall_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	xocl_subdev_register(pdev, XOCL_SUBDEV_AF, &fw_ops);
 	fw->cache_expire_secs = FW_DEFAULT_EXPIRE_SECS;
 
 	return 0;
@@ -471,8 +470,12 @@ failed:
 	return ret;
 }
 
+struct xocl_drv_private firewall_priv = {
+	.ops = &fw_ops,
+};
+
 struct platform_device_id firewall_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_FIREWALL), 0 },
+	{ XOCL_DEVNAME(XOCL_FIREWALL), (kernel_ulong_t)&firewall_priv },
 	{ },
 };
 

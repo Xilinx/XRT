@@ -202,7 +202,6 @@
 #include "mailbox_proto.h"
 
 int mailbox_no_intr;
-dev_t mailbox_dev;
 module_param(mailbox_no_intr, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(mailbox_no_intr,
 	"Disable mailbox interrupt and do timer-driven msg passing");
@@ -359,8 +358,6 @@ struct mailbox_channel {
 struct mailbox {
 	struct platform_device	*mbx_pdev;
 	struct mailbox_reg	*mbx_regs;
-	struct cdev		*sys_cdev;
-	struct device		*sys_device;
 	u32			mbx_irq;
 
 	struct mailbox_channel	mbx_rx;
@@ -2107,15 +2104,9 @@ static int mailbox_remove(struct platform_device *pdev)
 	struct mailbox *mbx = platform_get_drvdata(pdev);
 
 	BUG_ON(mbx == NULL);
-	/* Stop accessing from device node. */
-	if (mbx->sys_device)
-		device_destroy(xrt_class, mbx->sys_cdev->dev);
-	if (mbx->sys_cdev)
-		cdev_del(mbx->sys_cdev);
 	/* Stop accessing from sysfs node. */
 	sysfs_remove_group(&pdev->dev.kobj, &mailbox_attrgroup);
-	/* Stop internal access. */
-	xocl_subdev_register(pdev, XOCL_SUBDEV_MAILBOX, NULL);
+
 	/* Stop interrupt. */
 	mailbox_disable_intr_mode(mbx);
 	/* Tear down all threads. */
@@ -2139,7 +2130,6 @@ static int mailbox_probe(struct platform_device *pdev)
 	struct mailbox *mbx = NULL;
 	struct resource *res;
 	int ret;
-	struct xocl_dev_core *core = xocl_get_xdev(pdev);
 
 	mbx = xocl_drvinst_alloc(&pdev->dev, sizeof(struct mailbox));
 	if (!mbx)
@@ -2202,37 +2192,12 @@ static int mailbox_probe(struct platform_device *pdev)
 		}
 	}
 
-	/* Enable internal access. */
-	xocl_subdev_register(pdev, XOCL_SUBDEV_MAILBOX, &mailbox_ops);
-
 	/* Enable access thru sysfs node. */
 	ret = sysfs_create_group(&pdev->dev.kobj, &mailbox_attrgroup);
 	if (ret != 0) {
 		MBX_ERR(mbx, "failed to init sysfs");
 		goto failed;
 	}
-
-	/* Enable access thru device node (sw channel). */
-	mbx->sys_cdev = cdev_alloc();
-	mbx->sys_cdev->ops = &mailbox_fops;
-	mbx->sys_cdev->owner = THIS_MODULE;
-	mbx->sys_cdev->dev = MKDEV(MAJOR(mailbox_dev), core->dev_minor);
-	ret = cdev_add(mbx->sys_cdev, mbx->sys_cdev->dev, 1);
-	if (ret) {
-		MBX_ERR(mbx, "cdev add failed");
-		goto failed;
-	}
-
-	mbx->sys_device = device_create(xrt_class, &pdev->dev,
-			mbx->sys_cdev->dev, NULL, "%s%d",
-			platform_get_device_id(pdev)->name,
-			XOCL_DEV_ID(core->pdev));
-	if (IS_ERR(mbx->sys_device)) {
-		ret = PTR_ERR(mbx->sys_device);
-		goto failed;
-	}
-
-	xocl_drvinst_set_filedev(mbx, mbx->sys_cdev);
 
 	MBX_INFO(mbx, "successfully initialized");
 	return 0;
@@ -2242,8 +2207,14 @@ failed:
 	return ret;
 }
 
+struct xocl_drv_private mailbox_priv = {
+	.ops = &mailbox_ops,
+	.fops = &mailbox_fops,
+	.dev = -1,
+};
+
 struct platform_device_id mailbox_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_MAILBOX), 0 },
+	{ XOCL_DEVNAME(XOCL_MAILBOX), (kernel_ulong_t)&mailbox_priv },
 	{ },
 };
 
@@ -2262,7 +2233,8 @@ int __init xocl_init_mailbox(void)
 
 	BUILD_BUG_ON(sizeof(struct mailbox_pkt) != sizeof(u32) * PACKET_SIZE);
 
-	err = alloc_chrdev_region(&mailbox_dev, 0, XOCL_MAX_DEVICES, XOCL_MAILBOX);
+	err = alloc_chrdev_region(&mailbox_priv.dev, 0, XOCL_MAX_DEVICES,
+			XOCL_MAILBOX);
 	if (err < 0)
 		goto err_chrdev_reg;
 
@@ -2272,13 +2244,13 @@ int __init xocl_init_mailbox(void)
 
 	return 0;
 err_driver_reg:
-	unregister_chrdev_region(mailbox_dev, 1);
+	unregister_chrdev_region(mailbox_priv.dev, 1);
 err_chrdev_reg:
 	return err;
 }
 
 void xocl_fini_mailbox(void)
 {
-	unregister_chrdev_region(mailbox_dev, XOCL_MAX_DEVICES);
+	unregister_chrdev_region(mailbox_priv.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&mailbox_driver);
 }

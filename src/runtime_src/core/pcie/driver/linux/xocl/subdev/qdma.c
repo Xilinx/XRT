@@ -42,10 +42,6 @@
 #define	MM_QUEUE_LEN		8
 #define	MM_EBUF_LEN		256
 
-/* qdma bar # */
-#define	QDMA_BARNUM_STM		0
-#define	QDMA_BARNUM_CONFIG	2
-
 #define MM_DEFAULT_RINGSZ_IDX	0
 
 
@@ -146,8 +142,6 @@ struct xocl_qdma {
 	struct mm_channel	*chans[2];
 
 	/* streaming */
-	struct cdev		*cdev;
-	struct device		*sys_device;
 	u32			h2c_ringsz_idx;
 	u32			c2h_ringsz_idx;
 	u32			wrb_ringsz_idx;
@@ -1726,7 +1720,8 @@ static int qdma_probe(struct platform_device *pdev)
 	struct xocl_qdma *qdma = NULL;
 	struct qdma_dev_conf *conf;
 	xdev_handle_t	xdev;
-	int	ret = 0;
+	struct resource *res = NULL;
+	int	ret = 0, dma_bar;
 
 	xdev = xocl_get_xdev(pdev);
 
@@ -1739,14 +1734,26 @@ static int qdma_probe(struct platform_device *pdev)
 
 	qdma->pdev = pdev;
 
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		xocl_err(&pdev->dev, "Empty resource");
+		return -EINVAL;
+	}
+
+	ret = xocl_ioaddr_to_baroff(xdev, res->start, &dma_bar, NULL);
+	if (ret) {
+		xocl_err(&pdev->dev, "Invalid resource %pR", res);
+		return -EINVAL;
+	}
+
 	conf = &qdma->dev_conf;
 	memset(conf, 0, sizeof(*conf));
 	conf->pdev = XDEV(xdev)->pdev;
 	conf->intr_rngsz = QDMA_INTR_COAL_RING_SIZE;
 	conf->master_pf = 1;
 	conf->qsets_max = QDMA_QSETS_MAX;
-	conf->bar_num_config = QDMA_BARNUM_CONFIG;
-	conf->bar_num_stm = QDMA_BARNUM_STM;
+	conf->bar_num_config = dma_bar;
+	conf->bar_num_stm = XDEV(xdev)->bar_idx;
 
 	conf->fp_user_isr_handler = qdma_isr;
 	conf->uld = (unsigned long)qdma;
@@ -1771,28 +1778,6 @@ static int qdma_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	qdma->cdev = cdev_alloc();
-	qdma->cdev->ops = &stream_fops;
-	qdma->cdev->owner = THIS_MODULE;
-	qdma->instance = XOCL_DEV_ID(XDEV(xdev)->pdev);
-	qdma->cdev->dev = MKDEV(MAJOR(str_dev), XDEV(xdev)->dev_minor);
-	ret = cdev_add(qdma->cdev, qdma->cdev->dev, 1);
-	if (ret) {
-		xocl_err(&pdev->dev, "failed cdev_add, ret=%d", ret);
-		goto failed;
-	}
-
-	qdma->sys_device = device_create(xrt_class, &pdev->dev,
-		qdma->cdev->dev, NULL, "%s%d", "str_dma.u",
-		qdma->instance & MINOR_NAME_MASK);
-	if (IS_ERR(qdma->sys_device)) {
-		ret = PTR_ERR(qdma->sys_device);
-		xocl_err(&pdev->dev, "failed to create cdev");
-		goto failed;
-	}
-
-	xocl_drvinst_set_filedev(qdma, qdma->cdev);
-
 	ret = sysfs_create_group(&pdev->dev.kobj, &qdma_attrgroup);
 	if (ret) {
 		xocl_err(&pdev->dev, "create sysfs group failed");
@@ -1808,20 +1793,12 @@ static int qdma_probe(struct platform_device *pdev)
 	mutex_init(&qdma->str_dev_lock);
 	spin_lock_init(&qdma->user_msix_table_lock);
 
-	xocl_subdev_register(pdev, XOCL_SUBDEV_DMA, &qdma_ops);
-
 	platform_set_drvdata(pdev, qdma);
 
 	return 0;
 
 failed:
 	if (qdma) {
-		if (qdma->sys_device)
-			device_destroy(xrt_class, qdma->cdev->dev);
-
-		if (qdma->cdev)
-			cdev_del(qdma->cdev);
-
 		free_channels(qdma->pdev);
 
 		if (qdma->dma_handle)
@@ -1852,9 +1829,6 @@ static int qdma_remove(struct platform_device *pdev)
 
 	xdev = xocl_get_xdev(pdev);
 
-	device_destroy(xrt_class, qdma->cdev->dev);
-	cdev_del(qdma->cdev);
-
 	free_channels(pdev);
 
 	qdma_device_close(XDEV(xdev)->pdev, (unsigned long)qdma->dma_handle);
@@ -1879,8 +1853,14 @@ static int qdma_remove(struct platform_device *pdev)
 	return 0;
 }
 
+struct xocl_drv_private qdma_priv = {
+	.ops = &qdma_ops,
+	.fops = &stream_fops,
+	.dev = -1,
+};
+
 static struct platform_device_id qdma_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_QDMA), 0 },
+	{ XOCL_DEVNAME(XOCL_QDMA), (kernel_ulong_t)&qdma_priv },
 	{ },
 };
 

@@ -33,6 +33,7 @@ xocl-y := \
 	../subdev/firewall.o \
 	../subdev/mig.o \
 	../subdev/dna.o \
+	../subdev/iores.o \
 	$(xocl_lib-y)	\
 	xocl_drv.o	\
 	xocl_bo.o	\
@@ -49,7 +50,7 @@ PWD	:= $(shell pwd)
 ROOT	:= $(dir $(M))
 XILINXINCLUDE := -I$(ROOT)/../include -I$(ROOT)/../../../../include
 
-ccflags-y += $(XILINXINCLUDE) -DSUBDEV_SUFFIX=USER_SUFFIX -D__XRT__
+ccflags-y += $(XILINXINCLUDE) -DPF=USERPF -D__XRT__
 ifeq ($(DEBUG),1)
 ccflags-y += -DDEBUG
 endif

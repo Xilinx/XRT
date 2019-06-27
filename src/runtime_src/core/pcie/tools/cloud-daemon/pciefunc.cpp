@@ -191,7 +191,7 @@ int pcieFunc::mailboxOpen()
 {
     const int instance =
         ((dev->domain<<16) + (dev->bus<<8) + (dev->dev<<3) + (dev->func));
-    std::string file("/dev/mailbox.");
+    std::string file("/dev/xfpga/mailbox.");
     file += dev->is_mgmt ? "m" : "u";
     file += std::to_string(instance);
 

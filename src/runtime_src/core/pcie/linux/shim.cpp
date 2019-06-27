@@ -146,7 +146,7 @@ int shim::dev_init()
     // We're good now.
     mDev = dev;
 
-    std::string streamFile = "/dev/str_dma.u"+ std::to_string(USER_PCIID(mDev));
+    std::string streamFile = "/dev/xfpga/qdma.u"+ std::to_string(USER_PCIID(mDev));
     mStreamHandle = open(streamFile.c_str(), O_RDWR | O_SYNC);
     (void) xclGetDeviceInfo2(&mDeviceInfo);
 
@@ -611,11 +611,6 @@ int shim::p2pEnable(bool enable, bool force)
     else
         mDev->sysfs_put("", "p2p_enable", err, "0");
 
-    if (errno == ENOSPC)
-        return errno;
-    else if (errno == EALREADY && !force)
-        return 0;
-
     if (force) {
         dev_fini();
         /* remove root bus and rescan */
@@ -632,10 +627,10 @@ int shim::p2pEnable(bool enable, bool force)
         dev_init();
     }
 
-    int p2p_enable = -1;
+    int p2p_enable = EINVAL;
     mDev->sysfs_get("", "p2p_enable", err, p2p_enable);
-    if (p2p_enable == 2)
-        return EBUSY;
+    if (p2p_enable)
+        return p2p_enable;
 
     return 0;
 }

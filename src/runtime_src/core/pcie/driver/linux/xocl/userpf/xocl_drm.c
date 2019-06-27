@@ -71,8 +71,10 @@ static int xocl_open(struct inode *inode, struct file *filp)
 	priv = filp->private_data;
 	ddev = priv->minor->dev;
 	drm_p = xocl_drvinst_open(ddev);
-	if (!drm_p)
+	if (!drm_p) {
+		drm_release(inode, filp);
 		return -ENXIO;
+	}
 
 	return 0;
 }

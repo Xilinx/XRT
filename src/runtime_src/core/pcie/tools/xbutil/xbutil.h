@@ -784,7 +784,7 @@ public:
              << std::setw(16) << sensor_tree::get( "board.info.dma_threads", -1 )
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.mig_calibrated", "N/A" );
         switch(sensor_tree::get( "board.info.p2p_enabled", -1)) {
-        case -1:
+        case ENXIO:
                  ostr << std::setw(16) << "N/A" << std::endl;
              break;
         case 0:
@@ -793,7 +793,7 @@ public:
         case 1:
                  ostr << std::setw(16) << "true" << std::endl;
              break;
-        case 2:
+        case EBUSY:
                  ostr << std::setw(16) << "no iomem" << std::endl;
              break;
         }

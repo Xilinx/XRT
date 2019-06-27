@@ -77,11 +77,7 @@ struct xocl_nifd
     void *__iomem nifd_base;
     void *__iomem icap_base;
     unsigned int instance;
-    struct cdev *sys_cdev;
-    struct device *sys_device;
 };
-
-static dev_t nifd_dev;
 
 /**
  * helper functions
@@ -613,36 +609,6 @@ static int nifd_probe(struct platform_device *pdev)
         return 0;
     }
 
-    // cdev_init(&nifd->sys_cdev, &nifd_fops);
-    nifd->sys_cdev = cdev_alloc();
-    nifd->sys_cdev->ops = &nifd_fops;
-    nifd->sys_cdev->owner = THIS_MODULE;
-    nifd->instance = XOCL_DEV_ID(core->pdev) 
-                | platform_get_device_id(pdev)->driver_data;
-    nifd->sys_cdev->dev = MKDEV(MAJOR(nifd_dev), core->dev_minor);
-    err = cdev_add(nifd->sys_cdev, nifd->sys_cdev->dev, 1);
-    if (err)
-    {
-        xocl_err(&pdev->dev, "cdev_add failed, %d", err);
-        return err;
-    }
-
-    nifd->sys_device = device_create(xrt_class,
-                                     &pdev->dev,
-                                     nifd->sys_cdev->dev,
-                                     NULL,
-                                     "%s%d",
-                                     platform_get_device_id(pdev)->name,
-                                     nifd->instance);
-    if (IS_ERR(nifd->sys_device))
-    {
-        err = PTR_ERR(nifd->sys_device);
-        cdev_del(nifd->sys_cdev);
-        goto failed;
-    }
-
-    xocl_drvinst_set_filedev(nifd, nifd->sys_cdev);
-
     platform_set_drvdata(pdev, nifd);
     xocl_info(&pdev->dev, "NIFD device instance %d initialized\n",
               nifd->instance);
@@ -668,11 +634,6 @@ static int nifd_remove(struct platform_device *pdev)
         xocl_err(&pdev->dev, "driver data is NULL");
         return -EINVAL;
     }
-    if (nifd->sys_device != NULL) 
-    {
-        device_destroy(xrt_class, nifd->sys_cdev->dev);
-        cdev_del(nifd->sys_cdev);
-    }
     if (nifd->nifd_base) 
     {
         iounmap(nifd->nifd_base);
@@ -683,8 +644,14 @@ static int nifd_remove(struct platform_device *pdev)
     return 0;
 }
 
+struct xocl_drv_private nifd_priv = {
+	.ops = NULL,
+	.fops = &nifd_fops,
+	.dev = -1,
+};
+
 struct platform_device_id nifd_id_table[] = {
-    {XOCL_DEVNAME(XOCL_NIFD_PRI), 0},
+    {XOCL_DEVNAME(XOCL_NIFD_PRI), (kernel_ulong_t)&nifd_priv},
     {},
 };
 
@@ -700,7 +667,7 @@ static struct platform_driver nifd_driver = {
 int __init xocl_init_nifd(void)
 {
     int err = 0;
-    err = alloc_chrdev_region(&nifd_dev, 
+    err = alloc_chrdev_region(&nifd_priv.dev, 
                             0, 
                             XOCL_MAX_DEVICES, 
                             NIFD_DEV_NAME);
@@ -715,13 +682,13 @@ int __init xocl_init_nifd(void)
     return 0;
 
 err_driver_reg:
-    unregister_chrdev_region(nifd_dev, XOCL_MAX_DEVICES);
+    unregister_chrdev_region(nifd_priv.dev, XOCL_MAX_DEVICES);
 err_register_chrdev:
     return err;
 }
 
 void xocl_fini_nifd(void)
 {
-    unregister_chrdev_region(nifd_dev, XOCL_MAX_DEVICES);
+    unregister_chrdev_region(nifd_priv.dev, XOCL_MAX_DEVICES);
     platform_driver_unregister(&nifd_driver);
 }

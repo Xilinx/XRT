@@ -1,5 +1,5 @@
 KERNEL=="xclmgmt*",MODE="0666",SYMLINK="%k"
-KERNEL=="xvc_pub.m*",MODE="0666"
-KERNEL=="xvc_pri.m*",MODE="0666"
-KERNEL=="nifd_pri.m*",MODE="0600"
-
+KERNEL=="xfpga/xvc_pub.m*",MODE="0666",SYMLINK="xvc_pub.m%n"
+KERNEL=="xfpga/xvc_pri.m*",MODE="0600",SYMLINK="xvc_pri.m%n"
+KERNEL=="xfpga/nifd_pri.m*",MODE="0600"
+KERNEL=="xfpga/icap.m*",MODE="0200"
