@@ -56,11 +56,12 @@ Still stay in ``meta-user`` directory. Open ``recipes-core/images/petalinux-imag
         | IMAGE_INSTALL_append = " xrt"
         | IMAGE_INSTALL_append = " zocl"
         | IMAGE_INSTALL_append = " opencl-headers-dev"
+        | IMAGE_INSTALL_append = " opencl-clhpp-dev"
 
 Add XRT kernel node in device tree
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-An example of device tree is in ``<XRT>/src/runtime_src/driver/zynq/fragments/xlnk_dts_fragment_mpsoc.dts``. You can attach it to ``project-spec/meta-user/recipes-bsp/device-tree/files/system-user.dtsi`` in your PetaLinux project.
+An example of device tree is in ``<XRT>/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts``. You can attach it to ``project-spec/meta-user/recipes-bsp/device-tree/files/system-user.dtsi`` in your PetaLinux project.
 
 Configure Linux kernel and enable XRT module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -77,6 +78,8 @@ Please see the comments in below code block. Enable "xrt" and "xrt-dev" options 
         #   menu -> "user packages" -> xrt
         #   menu -> "user packages" -> xrt-dev
         #   menu -> "user packages" -> zocl
+        #   menu -> "user packages" -> opencl-headers-dev
+        #   menu -> "user packages" -> opencl-clhpp-dev
         $ petalinux-config -c rootfs
 
         # Build package

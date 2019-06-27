@@ -21,6 +21,8 @@
 #include "xrt/device/halops2.h"
 #include "xrt/device/PMDOperations.h"
 
+#include "ert.h"
+
 #include <cassert>
 
 #include <functional>
@@ -78,6 +80,7 @@ class device : public xrt::hal::device
     unsigned int flags = 0;
     hal2::device_handle owner = nullptr;
     BufferObjectHandle parent = nullptr;
+    bool imported = false;
   };
 
   struct ExecBufferObject : hal::exec_buffer_object
@@ -303,6 +306,10 @@ public:
   virtual event
   copy(const BufferObjectHandle& dst_bo, const BufferObjectHandle& src_bo, size_t sz, size_t dst_offset, size_t src_offset);
 
+  virtual void
+  fill_copy_pkt(const BufferObjectHandle& dst_boh, const BufferObjectHandle& src_boh
+                ,size_t sz, size_t dst_offset, size_t src_offset,ert_start_copybo_cmd* pkt);
+
   virtual size_t
   read_register(size_t offset, void* buffer, size_t size);
 
@@ -345,15 +352,18 @@ public:
   freeStreamBuf(hal::StreamBufHandle buf);
 
   virtual ssize_t
-  writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferReq* req);
+  writeStream(hal::StreamHandle stream, const void* ptr, size_t size, hal::StreamXferReq* req);
 
   virtual ssize_t
-  readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferReq* req);
+  readStream(hal::StreamHandle stream, void* ptr, size_t size, hal::StreamXferReq* req);
 
   virtual int
   pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout);
 
 public:
+  virtual bool
+  is_imported(const BufferObjectHandle& boh) const;
+
   virtual uint64_t
   getDeviceAddr(const BufferObjectHandle& boh);
 
@@ -543,6 +553,15 @@ public:
     return hal::operations_result<void>(0);
   }
 
+  virtual hal::operations_result<void>
+  configureDataflow(xclPerfMonType type, unsigned *ip_config)
+  {
+    if (!m_ops->mConfigureDataflow)
+      return hal::operations_result<void>();
+    m_ops->mConfigureDataflow(m_handle,type, ip_config);
+    return hal::operations_result<void>(0);
+  }
+
   virtual hal::operations_result<size_t>
   startCounters(xclPerfMonType type)
   {
@@ -573,6 +592,26 @@ public:
     if (!m_ops->mStopTrace)
       return hal::operations_result<size_t>();
     return m_ops->mStopTrace(m_handle,type);
+  }
+
+  virtual void*
+  getHalDeviceHandle() {
+    return m_handle;
+  }
+
+  virtual hal::operations_result<std::string>
+  getSysfsPath(const std::string& subdev, const std::string& entry)
+  {
+    if (!m_ops->mGetSysfsPath)
+      return hal::operations_result<std::string>();
+    size_t max_path = 256;
+    char path_buf[max_path];
+    if (m_ops->mGetSysfsPath(m_handle, subdev.c_str(), entry.c_str(), path_buf, max_path)) {
+      return hal::operations_result<std::string>();
+    }
+    path_buf[max_path - 1] = '\0';
+    std::string sysfs_path = std::string(path_buf);
+    return sysfs_path;
   }
 };
 

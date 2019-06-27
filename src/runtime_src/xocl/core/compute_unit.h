@@ -37,8 +37,11 @@ class compute_unit
   enum class context_type : unsigned short { shared, exclusive, none };
 public:
   const size_t max_index = 128;
+
+private:
+  // construct through static create only
+  compute_unit(const xclbin::symbol* s, const std::string& n, size_t base, size_t idx, const device* d);
 public:
-  compute_unit(const xclbin::symbol* s, const std::string& n, device* d);
   ~compute_unit();
 
   unsigned int
@@ -129,6 +132,22 @@ public:
     return m_device;
   }
 
+  /**
+   * Static constructor for compute units.
+   *
+   * @symbol: The kernel symbol gather from xclbin meta data
+   * @inst: The kernel instance
+   * @device: The device constructing this compute unit
+   * @cuaddr: Sorted base addresses of all CUs in xclbin
+   *
+   * The kernel instance base address is checked against @cuaddr to
+   * determine its index.  If the instance base address is not in
+   * @cuaddr it is ignored, e.g. no compute unit object constructed.
+   */
+  static std::unique_ptr<compute_unit>
+  create(const xclbin::symbol*, const xclbin::symbol::instance&,
+         const device*, const std::vector<uint64_t>&);
+
 private:
 
   // Used by xocl::device to cache the acquire context for
@@ -148,7 +167,7 @@ private:
   unsigned int m_uid = 0;
   const xclbin::symbol* m_symbol = nullptr;
   std::string m_name;
-  device* m_device = nullptr;
+  const device* m_device = nullptr;
   size_t m_address = 0;
   size_t m_index = 0;
   mutable context_type m_context_type = context_type::none;

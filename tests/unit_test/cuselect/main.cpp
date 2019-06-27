@@ -51,15 +51,11 @@ throw_if_error(cl_int errcode, const std::string& msg)
   throw_if_error(errcode,msg.c_str());
 }
 
-// vadd has 8 CUs each with 4 arguments connected as follows
+// vadd has 4 CUs each with 4 arguments connected as follows
 //  vadd_1 (0,1,2,3)
-//  vadd_2 (0,1,2,3)
-//  vadd_3 (1,2,3,0)
-//  vadd_4 (1,2,3,0)
-//  vadd_5 (2,3,0,1)
-//  vadd_6 (2,3,0,1)
-//  vadd_7 (3,0,1,2)
-//  vadd_8 (3,0,1,2)
+//  vadd_2 (1,2,3,0)
+//  vadd_3 (2,3,0,1)
+//  vadd_4 (3,0,1,2)
 // Purpose of this test is to execute 4 kernel jobs with auto select
 // of matching CUs based on the connectivity of the buffer arguments.
 
@@ -114,7 +110,17 @@ struct job_type
 
     cl_int err=CL_SUCCESS;
 
-    kernel = clCreateKernel(program,"vadd",&err);
+    if (banks == std::array<int,4>{0,1,2,3})
+      // Test manual explicit cu selection based on xclbin
+      // introspection. This implies that at least one of the
+      // specified CUs support the connectivity of the arguments per
+      // banks arg.  This particular selection should warn about
+      // vadd_2 being incompatible
+      kernel = clCreateKernel(program,"vadd:{vadd_1,vadd_2}",&err);
+    else
+      // Else just let XRT select the matching CUs, this should filter
+      // out 3 CUs since only one is compatible
+      kernel = clCreateKernel(program,"vadd",&err);
     throw_if_error(err,"failed to allocate kernel object");
 
     // Set kernel inputs

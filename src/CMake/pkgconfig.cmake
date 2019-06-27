@@ -1,6 +1,6 @@
 message("-- Preparing XRT pkg-config")
 
-if (${LINUX_FLAVOR} STREQUAL Ubuntu)
+if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|pynqlinux)")
   set(XRT_PKG_CONFIG_DIR "/usr/lib/pkgconfig")
 elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS)")
   set(XRT_PKG_CONFIG_DIR "/usr/lib64/pkgconfig")

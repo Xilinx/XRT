@@ -1,3 +1,5 @@
+.. _build.rst:
+
 Building and Installing Software Stack
 --------------------------------------
 

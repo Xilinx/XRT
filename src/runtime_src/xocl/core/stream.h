@@ -45,8 +45,8 @@ private:
   int m_connidx = -1;
 public:
   int get_stream(device* device); 
-  ssize_t read(device* device, void* ptr, size_t offset, size_t size, stream_xfer_req* req );
-  ssize_t write(device* device, const void* ptr, size_t offset, size_t size, stream_xfer_req* req);
+  ssize_t read(void* ptr, size_t size, stream_xfer_req* req );
+  ssize_t write(const void* ptr, size_t size, stream_xfer_req* req);
   int close();
 };
 

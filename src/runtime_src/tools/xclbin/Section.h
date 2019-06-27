@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018 - 2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -34,13 +34,6 @@
 // Forward declarations - use these instead whenever possible...
 
 // ------------------- C L A S S :   S e c t i o n ---------------------------
-
-/**
- * Section:
- *
- *    This class represents the base class for a given Section in the xclbin
- *    archive.  
-*/
 
 class Section {
  public:
@@ -81,7 +74,7 @@ class Section {
 
  public:
   // Xclbin Binary helper methods - child classes can override them if they choose
-  virtual void readXclBinBinary(std::fstream& _istream, const axlf_section_header& _sectionHeader);
+  virtual void readXclBinBinary(std::fstream& _istream, const struct axlf_section_header& _sectionHeader);
   virtual void readXclBinBinary(std::fstream& _istream, const boost::property_tree::ptree& _ptSection);
   void readXclBinBinary(std::fstream& _istream, enum FormatType _eFormatType);
   void readJSONSectionImage(const boost::property_tree::ptree& _ptSection);

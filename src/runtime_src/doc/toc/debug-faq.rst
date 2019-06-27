@@ -39,7 +39,7 @@ Board Enumeration
     xbutil scan
     xbutil query
 
-DSA Sanity Test
+XSA Sanity Test
   Check if verify kernel works ::
 
     cd test
@@ -55,7 +55,7 @@ Common Reasons For Failures
 Incorrect Memory Topology Usage
 ...............................
 
-5.0+ DSAs are considered dynamic platforms which use sparse
+5.0+ XSAs are considered dynamic platforms which use sparse
 connectivity between acceleration kernels and memory controllers
 (MIGs). This means that a kernel port can only read/write from/to a
 specific MIG. This connectivity is frozen at ``xclbin`` generation
@@ -74,7 +74,7 @@ all buffer allocation requests.
 Memory Read Before Write
 ........................
 
-Read-Before-Write in 5.0+ DSAs will cause MIG *ECC* error. This is typically a user error. For example if user expects a kernel to write 4KB of data in DDR but it produced only 1KB of data and now the user tries to transfer full 4KB of data to host. It can also happen if user supplied 1KB sized buffer to a kernel but the kernel tries to read 4KB of data. Note ECC read-before-write error occurs if — since the last bitstream download which results in MIG initialization — no data has been written to a memory location but a read request is made for that same memory location. ECC errors stall the affected MIG since usually kernels are not able to handle this error. This can manifest in two different ways:
+Read-Before-Write in 5.0+ XSAs will cause MIG *ECC* error. This is typically a user error. For example if user expects a kernel to write 4KB of data in DDR but it produced only 1KB of data and now the user tries to transfer full 4KB of data to host. It can also happen if user supplied 1KB sized buffer to a kernel but the kernel tries to read 4KB of data. Note ECC read-before-write error occurs if — since the last bitstream download which results in MIG initialization — no data has been written to a memory location but a read request is made for that same memory location. ECC errors stall the affected MIG since usually kernels are not able to handle this error. This can manifest in two different ways:
 
 1. CU may hang or stall because it does not know how to handle this error while reading/writing to/from the affected MIG. ``xbutil query`` will show that the CU is stuck in *BUSY* state and not making progress.
 2. AXI Firewall may trip if PCIe DMA request is made to the affected MIG as the DMA engine will be unable to complete request. AXI Firewall trips result in the Linux kernel driver killing all processes which have opened the device node with *SIGBUS* signal. ``xbutil query`` will show if an AXI Firewall has indeed tripped including its timestamp.
@@ -152,7 +152,7 @@ legacy. By default XRT uses ERT which runs on Microblaze. ERT is
 accessed through KDS which runs inside ``xocl`` Linux kernel
 driver. If ERT is not available KDS uses its own built-in
 scheduler. From 2018.2 release onward KDS (together with ERT if
-available in the DSA) is enabled by default. Users can optionally
+available in the XSA) is enabled by default. Users can optionally
 switch to legacy scheduler which runs in userspace. Switching
 scheduler will help isolate any scheduler related XRT bugs ::
 
@@ -170,4 +170,4 @@ When creating bug reports please include the following:
 3. Output of ``xbutil scan``
 4. Application binaries: xclbin, host executable and code, any data files used by the application
 5. XRT version
-6. DSA name and version
+6. XSA name and version

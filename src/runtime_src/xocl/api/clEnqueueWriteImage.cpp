@@ -139,7 +139,7 @@ clEnqueueWriteImage(cl_command_queue     command_queue,
   xocl::enqueue::set_event_action
     (uevent.get(),xocl::enqueue::action_write_image,image,origin,region,input_row_pitch,input_slice_pitch,ptr);
   xocl::profile::set_event_action
-    (uevent.get(),xocl::profile::action_write,image);
+    (uevent.get(),xocl::profile::action_write,image,0,0,true);
   xocl::appdebug::set_event_action
     (uevent.get(),xocl::appdebug::action_readwrite_image,image,origin,region,input_row_pitch,input_slice_pitch,ptr);
 

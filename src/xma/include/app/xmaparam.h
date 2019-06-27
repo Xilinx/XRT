@@ -17,34 +17,13 @@
 #ifndef _XMAAPP_PARAM_H_
 #define _XMAAPP_PARAM_H_
 
-/**
- * @ingroup xma_app_intf
- * @file app/xmaparam.h
- * Generalized TLV parameters to support custom kernel properties or arguments
- */
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
- *  @ingroup xma
- *  @addtogroup xmadec xmadecoder.h
- *  @{
-*/
-
-/**
- * @typedef XmaDataType
- * Type of data represented by XmaParameter::value
- *
- * @typedef XmaParameter
- * Type-Length-Value data structure used for passing custom arguments to
- * XmaKernel type plugin and/or for custom properties for any given kernel
-*/
-
-/**
- * @enum XmaDataType
- * Type of data represented by XmaParameter::value
+ * XmaDataType - Type of data represented by XmaParameter::value
 */
 typedef enum {
     XMA_STRING = 1, /**< 1 */
@@ -55,8 +34,7 @@ typedef enum {
 } XmaDataType;
 
 /**
- * @struct XmaParameter
- * Type-Length-Value data structure used for passing custom arguments to
+ * struct XmaParameter - Type-Length-Value data structure used for passing custom arguments to
  * XmaKernel type plugin and/or for custom properties for any given kernel
 */
 typedef struct XmaParameter {
@@ -67,7 +45,7 @@ typedef struct XmaParameter {
     size_t       length; /**< size of data in value */
     void        *value; /**< pointer to buffer holding data */
 } XmaParameter;
-/** @} */
+
 
 #ifdef __cplusplus
 }

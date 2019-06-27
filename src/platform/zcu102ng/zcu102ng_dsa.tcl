@@ -88,6 +88,7 @@ set_property PFM.IRQ $intVar [get_bd_cells /xlconcat_1]
 
 ##spit out a DSA
 generate_target all [get_files ./zcu102ng_vivado/zcu102ng.srcs/sources_1/bd/zcu102ng/zcu102ng.bd]
+set_property dsa.post_sys_link_tcl_hook        ./dynamic_postlink.tcl       [current_project]
 write_dsa -force ./zcu102ng.dsa
 
 #generate hdf

@@ -112,7 +112,7 @@ def initXRT(opt):
         return -1
 
     if sys.version_info[0] == 3:
-        print("DSA = %s" % deviceInfo.mName)
+        print("Shell = %s" % deviceInfo.mName)
         print("Index = %d" % opt.index)
         print("PCIe = GEN%d x %d" % (deviceInfo.mPCIeLinkSpeed, deviceInfo.mPCIeLinkWidth))
         print("OCL Frequency = (%d, %d) MHz" % (deviceInfo.mOCLFrequency[0], deviceInfo.mOCLFrequency[1]))
@@ -120,7 +120,7 @@ def initXRT(opt):
         print("Device Temp = %d C" % deviceInfo.mOnChipTemp)
         print("MIG Calibration = %s" % deviceInfo.mMigCalib)
     else:
-        print("DSA = %s") % deviceInfo.mName
+        print("Shell = %s") % deviceInfo.mName
         print("Index = %s") % opt.index
         print("PCIe = GEN%s" + " x %s") % (deviceInfo.mPCIeLinkSpeed, deviceInfo.mPCIeLinkWidth)
         print("OCL Frequency = %s MHz") % deviceInfo.mOCLFrequency[0]
@@ -177,7 +177,7 @@ def initXRT(opt):
         for i in range(topo.m_count):
             print("[%d] %s @0x%x") % (i, ctypes.cast(mem[i].m_tag, ctypes.c_char_p).value, mem[i].mem_u2.m_base_address)
             if (mem[i].m_used == 0):
-                continue;
+                continue
             opt.first_mem = i
             break
 

@@ -17,43 +17,21 @@
 #ifndef _XMAPLG_DECODER_H_
 #define _XMAPLG_DECODER_H_
 
-/**
- * @ingroup xma_plg_intf
- * @file plg/xmadecoder.h
- * XMA decoder plugin interface
- */
-
 #include "xma.h"
 #include "plg/xmasess.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-/**
- * @ingroup xmaplugin
- * @addtogroup xmaplgdec xmadecoder.h
- * @{
-*/
+
 
 /**
- * @typedef XmaDecoderSession
- * Session object serving as handle to a kernel allocated to an application
- *
- * @typedef XmaDecoderPlugin
- * A decoder plugin instance
+ * XmaDecoderSession - Session object serving as handle to a kernel allocated to an application
 */
-
-/**
- * @struct XmaDecoderSession
- * Session object serving as handle to a kernel allocated to an application
-*/
-
-/* Forward declaration */
 typedef struct XmaDecoderSession XmaDecoderSession;
 
 /**
- * @struct XmaDecoderPlugin
- * A decoder plugin instance
+ * struct XmaDecoderPlugin - A decoder plugin instance
 */
 typedef struct XmaDecoderPlugin
 {
@@ -77,16 +55,22 @@ typedef struct XmaDecoderPlugin
                                   XmaFrame           *frame);
     /** Callback invoked to clean up device buffers when app has terminated session */
     int32_t         (*close)(XmaDecoderSession *session);
-    /** Optional callback called when app calls xma_dec_session_create() */
-    int32_t         (*alloc_chan)(XmaSession *pending_sess,
-                                  XmaSession **curr_sess,
-                                  uint32_t sess_cnt);
+
+    /** Optional callback called when app calls xma_dec_session_create()
+      * Implement this callback if your kernel supports channels and is
+      * multi-process safe
+    */
+    xma_plg_alloc_chan_mp alloc_chan_mp;
+
+    /** Optional callback called when app calls xma_dec_session_create()
+      * Implement this callback if your kernel supports channels and is
+      * NOT multi-process safe (but it IS thread-safe)
+    */
+    xma_plg_alloc_chan alloc_chan;
 } XmaDecoderPlugin;
 
 /**
- * @typedef XmaDecoderSession
- * @struct XmaDecoderSession
- * Session object representing a kernel or kernel channel allocated to app
+ * struct XmaDecoderSession - Session object representing a kernel or kernel channel allocated to app
 */
 typedef struct XmaDecoderSession
 {
@@ -97,20 +81,17 @@ typedef struct XmaDecoderSession
 } XmaDecoderSession;
 
 /**
- * Return XmaDecoderSession subclass from XmaSession parent
+ * to_xma_decoder() - Return XmaDecoderSession subclass from XmaSession parent
  *
- * @note Caller should first ensure that this pointer is actually a parent
- *  of an XmaDecoderSession by calling is_xma_decoder() prior to making
- *  this cast.
+ * Note: Caller should first ensure that this pointer is actually a parent
+ * of an XmaDecoderSession by calling is_xma_decoder() prior to making
+ * this cast.
 */
 static inline XmaDecoderSession *to_xma_decoder(XmaSession *s)
 {
     return (XmaDecoderSession *)s;
 }
 
-/**
- * @}
- */
 #ifdef __cplusplus
 }
 #endif

@@ -2,7 +2,7 @@ args: -k verify.xclbin
 copy: [Makefile, utils.h , xhello_hw.h]
 devices:
 - [all_pcie]
-flags: -g -std=c++0x -ldl
+flags: -g -std=c++0x -ldl -luuid
 flows: [hw_all]
 hdrs: [utils.h xhello_hw.h]
 krnls:

@@ -22,6 +22,11 @@ namespace XUtil = XclBinUtilities;
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
+// Disable windows compiler warnings
+#ifdef _WIN32
+  #pragma warning( disable : 4100)      // 4100 - Unreferenced formal parameter
+#endif
+
 // Static Variables / Classes
 SectionBMC::_init SectionBMC::_initializer;
 
@@ -143,7 +148,7 @@ SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection,
                              pHdr->m_version,
                              pHdr->m_md5value));
 
-  unsigned int expectedSize = pHdr->m_offset + pHdr->m_size;
+  uint64_t expectedSize = pHdr->m_offset + pHdr->m_size;
 
   // Check to see if array size  
   if ( expectedSize > _origSectionSize ) {
@@ -155,7 +160,7 @@ SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 
   // Get the JSON metadata
   _istream.seekg( 0, _istream.end );
-  unsigned int fileSize = _istream.tellg();
+  unsigned int fileSize = (unsigned int) _istream.tellg();
 
   std::unique_ptr<unsigned char> memBuffer(new unsigned char[fileSize]);
   _istream.clear();
@@ -230,7 +235,7 @@ SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 void
 SectionBMC::createDefaultFWImage(std::fstream & _istream, std::ostringstream &_buffer) const
 {
-  bmc bmcHdr = (bmc) {0};
+  bmc bmcHdr = bmc {0};
 
   XUtil::TRACE("BMC-FW");
   

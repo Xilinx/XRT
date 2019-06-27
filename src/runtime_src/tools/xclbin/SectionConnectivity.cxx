@@ -51,10 +51,10 @@ SectionConnectivity::marshalToJSON(char* _pDataSection,
   XUtil::TRACE(XUtil::format("m_count: %d", (unsigned int)pHdr->m_count));
 
   // Write out the entire structure except for the array structure
-  XUtil::TRACE_BUF("connectivity", reinterpret_cast<const char*>(pHdr), (unsigned long)&(pHdr->m_connection[0]) - (unsigned long)pHdr);
+  XUtil::TRACE_BUF("connectivity", reinterpret_cast<const char*>(pHdr), ((uint64_t)&(pHdr->m_connection[0]) - (uint64_t)pHdr));
   connectivity.put("m_count", XUtil::format("%d", (unsigned int)pHdr->m_count).c_str());
 
-  unsigned int expectedSize = ((unsigned long)&(pHdr->m_connection[0]) - (unsigned long)pHdr) + (sizeof(connection) * pHdr->m_count);
+  uint64_t expectedSize = ((uint64_t)&(pHdr->m_connection[0]) - (uint64_t)pHdr) + (sizeof(connection) * pHdr->m_count);
 
   if (_sectionSize != expectedSize) {
     throw std::runtime_error(XUtil::format("ERROR: Section size (%d) does not match expected section size (%d).",
@@ -94,7 +94,7 @@ SectionConnectivity::marshalFromJSON(const boost::property_tree::ptree& _ptSecti
                                      std::ostringstream& _buf) const {
   const boost::property_tree::ptree& ptConnectivity = _ptSection.get_child("connectivity");
 
-  connectivity connectivityHdr = (connectivity){ 0 };
+  connectivity connectivityHdr = connectivity {0};
 
   // Read, store, and report mem_topology data
   connectivityHdr.m_count = ptConnectivity.get<uint32_t>("m_count");
@@ -116,7 +116,7 @@ SectionConnectivity::marshalFromJSON(const boost::property_tree::ptree& _ptSecti
   unsigned int count = 0;
   const boost::property_tree::ptree connections = ptConnectivity.get_child("m_connection");
   for (const auto& kv : connections) {
-    connection connectionHdr = (connection){ 0 };
+    connection connectionHdr = connection {0};
     boost::property_tree::ptree ptConnection = kv.second;
 
     connectionHdr.arg_index = ptConnection.get<int32_t>("arg_index");
@@ -142,7 +142,7 @@ SectionConnectivity::marshalFromJSON(const boost::property_tree::ptree& _ptSecti
   }
   
   // -- Buffer needs to be less than 64K--
-  unsigned int bufferSize = _buf.str().size();
+  unsigned int bufferSize = (unsigned int) _buf.str().size();
   const unsigned int maxBufferSize = 64 * 1024;
   if ( bufferSize > maxBufferSize ) {
     std::string errMsg = XUtil::format("CRITICAL WARNING: The buffer size for the CONNECTIVITY section (%d) exceed the maximum size of %d.\nThis can result in lose of data in the driver.",

@@ -17,7 +17,7 @@
 #ifndef xrt_device_halops2_h
 #define xrt_device_halops2_h
 
-#include "driver/include/xclhal2.h"
+#include "xclhal2.h"
 #include <string>
 
 /**
@@ -97,6 +97,7 @@ private:
                                        char* slotName, uint32_t length);
   typedef uint32_t (* getSlotPropertiesFuncType)(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum);
   typedef size_t (* clockTrainingFuncType)(xclDeviceHandle handle, xclPerfMonType type);
+  typedef void  (* configureDataflowFuncType)(xclDeviceHandle handle, xclPerfMonType type, unsigned *ip_config);
   typedef size_t (* startCountersFuncType)(xclDeviceHandle handle, xclPerfMonType type);
   typedef size_t (* stopCountersFuncType)(xclDeviceHandle handle, xclPerfMonType type);
   typedef size_t (* readCountersFuncType)(xclDeviceHandle handle, xclPerfMonType type,
@@ -126,6 +127,11 @@ private:
   typedef ssize_t (*readQueueFuncType)(xclDeviceHandle handle,uint64_t q_hdl, xclQueueRequest *wr);
   typedef int     (*pollQueuesFuncType)(xclDeviceHandle handle,int min, int max, xclReqCompletion* completions, int* actual, int timeout);
 //End Streaming
+
+  //APIs using sysfs
+  typedef uint     (*xclGetNumLiveProcessesFuncType)(xclDeviceHandle handle);
+  typedef int     (*xclGetSysfsPathFuncType)(xclDeviceHandle handle, const char* subdev, const char* entry, char* sysfsPath, size_t size);
+
 //
 #if 0
   typedef int (* loadBitstreamFuncType)(xclDeviceHandle handle, const char *fileName);
@@ -189,6 +195,7 @@ public:
   getSlotNameFuncType mGetProfilingSlotName;
   getSlotPropertiesFuncType mGetProfilingSlotProperties;
   clockTrainingFuncType mClockTraining;
+  configureDataflowFuncType mConfigureDataflow;
   startCountersFuncType mStartCounters;
   stopCountersFuncType mStopCounters;
   readCountersFuncType mReadCounters;
@@ -208,6 +215,10 @@ public:
   readQueueFuncType mReadQueue;
   pollQueuesFuncType mPollQueues;
 //End Streaming
+
+  // APIs using sysfs
+  xclGetNumLiveProcessesFuncType mGetNumLiveProcesses;
+  xclGetSysfsPathFuncType mGetSysfsPath;
 
 #if 0
   /* TBD */

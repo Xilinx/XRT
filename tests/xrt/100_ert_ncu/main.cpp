@@ -44,7 +44,6 @@ const static struct option long_options[] = {
   {"verbose",         no_argument,       0, 'v'},
   {"help",            no_argument,       0, 'h'},
   // enable embedded runtime
-  {"ert",             no_argument,       0, '1'},
   {"slotsize",        required_argument, 0, '2'},
   {0, 0, 0, 0}
 };
@@ -58,7 +57,6 @@ static void printHelp()
   std::cout << "  -v\n";
   std::cout << "  -h\n\n";
   std::cout << "";
-  std::cout << "  [--ert]: enable embedded runtime (default: false)\n";
   std::cout << "  [--slotsize]: command queue slotsize in kB (default: 4096)\n";
   std::cout << "  [--jobs <number>]: number of concurrently scheduled jobs\n";
   std::cout << "  [--cus <number>]: number of cus to use (default: 8) (max: 8)\n";
@@ -88,7 +86,7 @@ struct job_type
     static size_t count=0;
     id = count++;
   }
-  
+
   job_type(job_type&& rhs)
     : id(rhs.id), runs(rhs.runs), ebo(std::move(rhs.ebo)), a(std::move(rhs.a)), b(std::move(rhs.b))
   {}
@@ -149,7 +147,7 @@ run_kernel(const utils::device& d, job_type& job)
   ecmd->state = ERT_CMD_STATE_NEW;
   ecmd->opcode = ERT_START_CU;
   ecmd->count = 1 + regmap_size;  // cu_mask + regmap
-  
+
   // Program the CU mask. One CU at index 0
   ecmd->cu_mask = (1<<cus)-1; // 0xFF for 8 CUs
 
@@ -193,7 +191,7 @@ launcher_thread(const utils::device& d)
       DEBUGF("reentering wait\n");
     }
 
-    
+
     for (auto& job : g_jobs) {
       DEBUGF("checking job %lu\n",job.id);
       if (ready(job)) {
@@ -212,43 +210,10 @@ launcher_thread(const utils::device& d)
 
 }
 
-static void
-init_scheduler(const utils::device& d, bool ert)
+
+static int
+run(const utils::device& d,size_t jobs, size_t seconds, int first_used_mem)
 {
-  auto execbo = utils::get_exec_buffer(d,1024);
-  auto ecmd = reinterpret_cast<ert_configure_cmd*>(execbo->data);
-  ecmd->state = ERT_CMD_STATE_NEW;
-  ecmd->opcode = ERT_CONFIGURE;
-
-  ecmd->slot_size = slotsize;
-  ecmd->num_cus = cus;
-  ecmd->cu_shift = 16;
-  ecmd->cu_base_addr = d->cu_base_addr; 
-  
-  ecmd->ert = ert;
-  if (ert) {
-    ecmd->cu_dma = 1;
-    ecmd->cu_isr = 1;
-  }
-
-  // TODO: read from xclbin
-  for (size_t i=0; i<cus; ++i)
-    ecmd->data[i] = (i<<16) + d->cu_base_addr;
-  
-  ecmd->count = 5 + cus;
-
-  if (xclExecBuf(d->handle,execbo->bo))
-    throw std::runtime_error("unable to issue xclExecBuf");
-
-  while (xclExecWait(d->handle,1000)==0);
-}
-
-
-static int 
-run(const utils::device& d,size_t jobs, size_t seconds, bool ert, int first_used_mem)
-{
-  init_scheduler(d, ert);
-
   // Create specified number of jobs.  All jobs shared input vector 'a'
   const size_t data_size = ELEMENTS * ARRAY_SIZE;
   auto a = utils::create_bo(d,data_size*sizeof(unsigned long), first_used_mem);
@@ -293,16 +258,13 @@ run(const utils::device& d,size_t jobs, size_t seconds, bool ert, int first_used
     DEBUGF("job (%lu,%lu)\n",job.id,job.runs);
   }
 
-  if (ert)
-    std::cout << "ert: ";
-  else 
-    std::cout << "kds: ";
+  std::cout << "xrt: ";
   std::cout << "jobsize cus seconds total = "
             << jobs << " "
             << cus << " "
             << seconds << " "
             << total << "\n";
-                       
+
   return 0;
 }
 
@@ -315,16 +277,12 @@ int run(int argc, char** argv)
   size_t jobs=10;
   size_t seconds=10;
   bool verbose = false;
-  bool ert = false;
   int c;
   while ((c = getopt_long(argc, argv, "k:l:d:j:vh", long_options, &option_index)) != -1) {
     switch (c) {
     case 0:
       if (long_options[option_index].flag != 0)
         break;
-    case '1':
-      ert = true;
-      break;
     case '2':
       slotsize = std::atoi(optarg);
       break;
@@ -371,12 +329,12 @@ int run(int argc, char** argv)
 
   int first_used_mem = 0;
   auto device = utils::init(bitstream,device_index,hallog,first_used_mem);
-  run(device,jobs,seconds,ert,first_used_mem);
+  run(device,jobs,seconds,first_used_mem);
 
   return 0;
 }
 
-int 
+int
 main(int argc, char* argv[])
 {
   try {

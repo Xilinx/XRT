@@ -17,11 +17,6 @@
 #ifndef _XMAPLG_SCALER_H_
 #define _XMAPLG_SCALER_H_
 
-/**
- * @ingroup xma_plg_intf
- * @file plg/xmascaler.h
- * XMA plugin interface for video scaler kernels
- */
 
 #include "xma.h"
 #include "plg/xmasess.h"
@@ -30,27 +25,14 @@
 extern "C" {
 #endif
 
-/**
- * @ingroup xmaplugin
- * @addtogroup xmaplgscaler xmascaler.h
- * @{
- *
-*/
 
 /**
- * @typedef XmaScalerPlugin
- * Scaler plugin interface
- *
- * @typedef XmaScalerSession
- * An instance of a scaler kernel allocated to a client application
+ * typedef XmaScalerSession - An instance of a scaler kernel allocated to a client application
 */
-
-/* Forward declaration */
 typedef struct XmaScalerSession XmaScalerSession;
 
 /**
- * @struct XmaScalerPlugin
- * Scaler plugin interface
+ * @struct XmaScalerPlugin - Scaler plugin interface
 */
 typedef struct XmaScalerPlugin
 {
@@ -70,15 +52,23 @@ typedef struct XmaScalerPlugin
                                       XmaFrame          **frame_list);
     /** callback to perform cleanup when client terminates session */
     int32_t         (*close)(XmaScalerSession *sc_session);
-    /** allocate a kernel channel; only required if kernel supports channels */
-    int32_t         (*alloc_chan)(XmaSession *pending_sess,
-                                  XmaSession **curr_sess,
-                                  uint32_t sess_cnt);
+
+    /** Optional callback called when app calls xma_scal_session_create()
+      * Implement this callback if your kernel supports channels and is
+      * multi-process safe
+    */
+    xma_plg_alloc_chan_mp alloc_chan_mp;
+
+    /** Optional callback called when app calls xma_scal_session_create()
+      * Implement this callback if your kernel supports channels and is
+      * NOT multi-process safe (but it IS thread-safe)
+    */
+    xma_plg_alloc_chan alloc_chan;
+
 } XmaScalerPlugin;
 
 /**
- * @struct XmaScalerSession
- * An instance of a scaler kernel allocated to a client application
+ * struct XmaScalerSession - An instance of a scaler kernel allocated to a client application
 */
 typedef struct XmaScalerSession
 {
@@ -95,20 +85,18 @@ typedef struct XmaScalerSession
 } XmaScalerSession;
 
 /**
- * Unpack an XmaSession to the XmaScalerSession subclass
+ * to_xma_scaler() - Unpack an XmaSession to the XmaScalerSession subclass
  *
- * @param s XmaSession instance
+ * @s: XmaSession instance
  *
- * @note call is_xma_scaler() prior to this call to ensure this
- *  reference can be unpacked into an XmaScalerSession safely.
+ * Note: call is_xma_scaler() prior to this call to ensure this
+ * reference can be unpacked into an XmaScalerSession safely.
 */
 static inline XmaScalerSession *to_xma_scaler(XmaSession *s)
 {
     return (XmaScalerSession *)s;
 }
-/**
- * @}
- */
+
 
 #ifdef __cplusplus
 }

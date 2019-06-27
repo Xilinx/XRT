@@ -223,7 +223,6 @@ namespace xclbincat1 {
         m_bmc.emplace_back( _sFile );
         break;
 
-      case PDI:
       default:
         std::cout << "ERROR: Support missing for the following Segment Type: '" << _sSegmentType << "'" << std::endl;
         break;
@@ -454,6 +453,10 @@ namespace xclbincat1 {
       case USER_METADATA: return "USER_METADATA";
       case DNA_CERTIFICATE: return "DNA_CERTIFICATE";
       case PDI: return "PDI";
+      case BITSTREAM_PARTIAL_PDI: return "BITSTREAM_PARTIAL_PDI";
+      case DTC: return "DTC";
+      case EMULATION_DATA: return "EMULATION_DATA";
+      case SYSTEM_METADATA: return "SYSTEM_METADATA";
 
         break;
     }
@@ -719,7 +722,8 @@ namespace xclbincat1 {
         ss >> std::hex >> _data.getHead().m_header.m_next_axlf;
       } else if ( strcmp( key.c_str(), "debugBin" ) == 0 ) {
         ss >> std::hex >> _data.getHead().m_header.m_debug_bin;
-      } else if ( strcmp( key.c_str(), "dsaUUID" ) == 0 ) {
+      } else if ( (strcmp( key.c_str(), "xsaUUID" ) == 0) ||
+                  (strcmp( key.c_str(), "dsaUUID" ) == 0)) {
         populateDSAUUID(value, _data);
       } else {
         std::cout << "WARNING: Unknown key '" << key.c_str() << "' will be ignored from key-value pair switch (-k).\n";

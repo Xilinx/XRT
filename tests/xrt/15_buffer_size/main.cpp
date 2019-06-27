@@ -146,10 +146,6 @@ static int transferSizeTest1(xclDeviceHandle &handle, size_t alignment, unsigned
         uint64_t bo2devAddr = !xclGetBOProperties(handle, boHandle2, &p) ? p.paddr : -1;
         uint64_t bo1devAddr = !xclGetBOProperties(handle, boHandle1, &p) ? p.paddr : -1;
 
-        xclBOProperties p;
-        uint64_t bo2devAddr = !xclGetBOProperties(handle, boHandle2, &p) ? p.paddr : -1;
-        uint64_t bo1devAddr = !xclGetBOProperties(handle, boHandle1, &p) ? p.paddr : -1;
-
         if( (bo2devAddr == (uint64_t)(-1)) || (bo1devAddr == (uint64_t)(-1)))
             return 1;
 
@@ -169,9 +165,12 @@ static int transferSizeTest1(xclDeviceHandle &handle, size_t alignment, unsigned
             std::cout << size << " B verification failed\n";
             return 1;
         }
+        munmap(readBuffer, maxSize);
     }
 
     std::cout << "transferSizeTest1 complete. Release buffer objects.\n";
+    munmap(writeBuffer, maxSize);
+
     xclFreeBO(handle,boHandle1);
     xclFreeBO(handle,boHandle2);
     for (std::list<uint64_t>::const_iterator i = deviceHandleList.begin(), e = deviceHandleList.end(); i != e; ++i)
@@ -219,13 +218,6 @@ static int transferSizeTest2(xclDeviceHandle &handle, size_t alignment, unsigned
         if( (bo2devAddr == (uint64_t)(-1)) || (bo1devAddr == (uint64_t)(-1)))
             return 1;
 
-        xclBOProperties p;
-        uint64_t bo2devAddr = !xclGetBOProperties(handle, boHandle2, &p) ? p.paddr : -1;
-        uint64_t bo1devAddr = !xclGetBOProperties(handle, boHandle1, &p) ? p.paddr : -1;
-
-        if( (bo2devAddr == (uint64_t)(-1)) || (bo1devAddr == (uint64_t)(-1)))
-            return 1;
-
         //Allocate the exec_bo
         //unsigned execHandle = xclAllocBO(handle, maxSize, xclBOKind(0), (1<<31));
         //void* execData = xclMapBO(handle, execHandle, true);
@@ -236,14 +228,16 @@ static int transferSizeTest2(xclDeviceHandle &handle, size_t alignment, unsigned
             return 1;
         }
         unsigned *readBuffer = (unsigned *)xclMapBO(handle, boHandle1, false);
-
         if (std::memcmp(writeBuffer, readBuffer, size)) {
             std::cout << "FAILED TEST\n";
             std::cout << size << " B verification failed\n";
             return 1;
         }
+        munmap(readBuffer, maxSize);
     }
     std::cout << "transferSizeTest2 complete. Release buffer objects.\n";
+    munmap(writeBuffer, maxSize);
+
     xclFreeBO(handle,boHandle1);
     xclFreeBO(handle,boHandle2);
     return 0;

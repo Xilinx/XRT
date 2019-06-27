@@ -29,6 +29,11 @@ struct uuid
 {
   uuid_t m_uuid;
 
+  uuid()
+  {
+    uuid_clear(m_uuid);
+  }
+
   uuid(const uuid_t val)
   {
     uuid_copy(m_uuid,val);

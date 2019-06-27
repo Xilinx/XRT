@@ -25,7 +25,9 @@
 #include "xrt/util/debug.h"
 #include "xrt/util/thread.h"
 #include "xrt/util/task.h"
-#include "driver/include/ert.h"
+#include "ert.h"
+#include "xclbin.h"
+#include "core/common/xclbin_parser.h"
 #include "command.h"
 #include <limits>
 #include <bitset>
@@ -38,10 +40,18 @@
 namespace {
 
 static bool
-emulation_mode()
+is_emulation()
 {
   static bool val = (std::getenv("XCL_EMULATION_MODE") != nullptr);
   return val;
+}
+
+static bool
+is_sw_emulation()
+{
+  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static bool swem = xem ? (std::strcmp(xem,"sw_emu")==0) : false;
+  return swem;
 }
 
 ////////////////////////////////////////////////////////////////
@@ -78,6 +88,7 @@ const value_type AP_CONTINUE = 0x10;
 static xrt::task::queue notify_queue;
 static std::thread notifier;
 static bool threaded_notification = true;
+static bool cu_trace_enabled = false;
 
 ////////////////////////////////////////////////////////////////
 // Forward declarations
@@ -110,7 +121,6 @@ private:
   cmd_ptr m_cmd;
   union {
     ert_packet* m_ecmd;
-    //ert_df_kernel_cmd* m_kcmd;
     ert_start_kernel_cmd* m_kcmd;
   };
   exec_core* m_exec;
@@ -164,6 +174,22 @@ public:
     xrt::task::createF(notify_queue,notify,m_cmd);
   }
 
+  // Notify of start of cu with idx
+  void
+  notify_start(value_type cuidx)
+  {
+    if (!cu_trace_enabled)
+      return;
+
+    // Update command packet cumasks to reflect running cu before
+    // invoking call back
+    auto mask = cuidx >> 5;
+    auto num_masks = cumasks();
+    for (size_type midx=0; midx<num_masks; ++midx)
+      m_ecmd->data[midx] = mask==midx ? 1 << (cuidx - (midx<<5)) : 0;
+    m_cmd->notify(ERT_CMD_STATE_RUNNING);
+  }
+
   // @return current state of the command object
   ert_cmd_state
   get_state() const
@@ -205,7 +231,6 @@ public:
   {
     return 1 + m_kcmd->extra_cu_masks;
   }
-
 
   // Payload size of this command object
   //
@@ -310,7 +335,8 @@ private:
   value_type addr = 0;
 
   mutable value_type ctrlreg = 0;
-  mutable size_type done_counter = 0;
+  mutable size_type done_cnt = 0;
+  mutable size_type run_cnt = 0;
 
   void
   poll() const
@@ -319,10 +345,11 @@ private:
     ctrlreg = 0;
 
     xdev->read_register(addr,&ctrlreg,4);
-    XRT_DEBUGF("sws cu(%d) poll(0x%x)\n",idx,ctrlreg);
+    XRT_DEBUGF("sws cu(%d) poll(0x%x) done(%d) run(%d)\n",idx,ctrlreg,done_cnt,run_cnt);
     if (ctrlreg & (AP_DONE | AP_IDLE))  { // AP_IDLE check in sw emulation
-      ++done_counter;
-      XRT_ASSERT(done_counter <= running_queue.size(),"too many dones");
+      ++done_cnt;
+      --run_cnt;
+      XRT_ASSERT(done_cnt <= running_queue.size(),"too many dones");
       // acknowledge done
       value_type cont = AP_CONTINUE;
       xdev->write_register(addr,&cont,4);
@@ -343,12 +370,14 @@ public:
   bool
   ready() const
   {
-    if (ctrlreg & AP_START) {
+    if ( (ctrlreg & AP_START) || (is_sw_emulation() && run_cnt) ) {
       XRT_DEBUGF("sws ready() is polling cu(%d)\n",idx);
       poll();
     }
 
-    return !(ctrlreg & AP_START);
+    return is_sw_emulation()
+      ? run_cnt==0
+      : !(ctrlreg & AP_START);
   }
 
   // Get the first completed command from the running queue
@@ -358,12 +387,12 @@ public:
   xocl_cmd*
   get_done() const
   {
-    if (!done_counter) {
+    if (!done_cnt) {
       XRT_DEBUGF("sws get_done() is polling cu(%d)\n",idx);
       poll();
     }
 
-    return done_counter
+    return done_cnt
       ? running_queue.front()
       : nullptr;
   }
@@ -372,11 +401,12 @@ public:
   void
   pop_done()
   {
-    if (!done_counter)
+    if (!done_cnt)
       return;
 
     running_queue.pop();
-    --done_counter;
+    --done_cnt;
+    XRT_DEBUGF("sws pop_done() popped cu(%d) done(%d) run(%d)\n",idx,done_cnt,run_cnt);
   }
 
   // Start the CU with a new command.
@@ -386,7 +416,6 @@ public:
   start(xocl_cmd* xcmd)
   {
     XRT_ASSERT(!(ctrlreg & AP_START),"cu not ready");
-    XRT_DEBUGF("configuring cu(%d) at addr(0x%x)\n",idx,addr);
 
     // data past header and cu_masks
     auto size = xcmd->regmap_size();
@@ -396,19 +425,20 @@ public:
     // 0x4, 0x8 used for interrupt, which is initialized in setu
     xdev->write_register(addr,regmap,size*4);
 
+    // invoke callback for starting cu
+    xcmd->notify_start(idx);
+
     // start cu
-    ctrlreg |= 0x1;
-    const_cast<uint32_t*>(regmap)[0] = 1;
-    if (emulation_mode())
+    ctrlreg |= AP_START;
+    const_cast<uint32_t*>(regmap)[0] = AP_START;
+    if (is_emulation())
       xdev->write_register(addr,regmap,size*4);
     else
       xdev->write_register(addr,regmap,4);
 
     running_queue.push(xcmd);
-#if 0
-    if (running_queue.size()-done_counter > 1)
-      XRT_PRINTF("running_queue size %d\n",running_queue.size());
-#endif
+    ++run_cnt;
+    XRT_DEBUGF("started cu(%d) xcmd(%d) done(%d) run(%d)\n",idx,xcmd->get_uid(),done_cnt,run_cnt);
   }
 };
 
@@ -456,7 +486,7 @@ class exec_core
   size_type num_cus = 0;
 
 public:
-  exec_core(xrt::device* xdev, xocl_scheduler* xs, size_t slots, const std::vector<uint32_t>& cu_amap)
+  exec_core(xrt::device* xdev, xocl_scheduler* xs, size_t slots, const std::vector<uint64_t>& cu_amap)
     : m_xdev(xdev), m_scheduler(xs), num_slots(slots), num_cus(cu_amap.size())
   {
     cu_usage.reserve(cu_amap.size());
@@ -826,14 +856,31 @@ stop()
 }
 
 void
-init(xrt::device* xdev, const std::vector<uint32_t>& cu_amap)
+init(xrt::device* xdev, const std::vector<uint64_t>& cu_addr_map)
 {
-  // create execution core for this device
+  if (!is_sw_emulation())
+    throw std::runtime_error("unexpected scheduler initialization call in non sw emulation");
+
+  std::vector<uint64_t> amap;
+  std::copy(cu_addr_map.begin(),cu_addr_map.end(),std::back_inserter(amap));
   auto slots = ERT_CQ_SIZE / xrt::config::get_ert_slotsize();
+  cu_trace_enabled = xrt::config::get_profile();
   s_device_exec_core.erase(xdev);
   s_device_exec_core.insert
     (std::make_pair
-     (xdev,std::make_unique<exec_core>(xdev,&s_global_scheduler,slots,cu_amap)));
+     (xdev,std::make_unique<exec_core>(xdev,&s_global_scheduler,slots,amap)));
+}
+
+void
+init(xrt::device* xdev, const axlf* top)
+{
+  // create execution core for this device
+  auto slots = ERT_CQ_SIZE / xrt::config::get_ert_slotsize();
+  cu_trace_enabled = xrt::config::get_profile();
+  s_device_exec_core.erase(xdev);
+  s_device_exec_core.insert
+    (std::make_pair
+     (xdev,std::make_unique<exec_core>(xdev,&s_global_scheduler,slots,xrt_core::xclbin::get_cus(top))));
 }
 
 }} // sws,xrt
