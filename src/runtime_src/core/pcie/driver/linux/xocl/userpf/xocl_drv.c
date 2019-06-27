@@ -126,7 +126,6 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 	xocl_drvinst_set_offline(xdev, true);
 	if (force)
 		xocl_drvinst_kill_proc(xdev);
-		//kill_all_clients(xdev);
 
 	if (XOCL_DRM(xdev))
 		xocl_cleanup_mem(XOCL_DRM(xdev));
@@ -192,7 +191,6 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 
 	if (force)
 		xocl_drvinst_kill_proc(xdev);
-		//kill_all_clients(xdev);
 
 	xocl_reset_notify(xdev->core.pdev, true);
 

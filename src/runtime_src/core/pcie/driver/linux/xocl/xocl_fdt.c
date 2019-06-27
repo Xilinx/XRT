@@ -316,7 +316,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 		XOCL_SUBDEV_MB,
 		XOCL_XMC,
 		{
-			"cmcregmapbram",
+			"cmcregmapbram", // how is used?
 			"cmcmbrstctrl", //"cmcmbctrl"?
 			"cmclmbbram",
 			"ertlmbbram",

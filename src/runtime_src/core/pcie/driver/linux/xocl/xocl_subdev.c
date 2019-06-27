@@ -365,12 +365,15 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 	}
 
 	if (res) {
-		bar_idx = core->bar_idx;
-
 		for (i = 0; i < sdev_info->num_res; i++) {
 			if (sdev_info->res[i].flags & IORESOURCE_MEM) {
-				if (sdev_info->bar_idx)
-					bar_idx = (int)sdev_info->bar_idx[i];
+				bar_idx = sdev_info->bar_idx ?
+					(int)sdev_info->bar_idx[i]: 0;
+				if (!pci_resource_len(core->pdev, bar_idx)) {
+					xocl_xdev_err(xdev_hdl, "invalid bar");
+					retval = -EINVAL;
+					goto error;
+				}
 				iostart = pci_resource_start(core->pdev,
 						bar_idx);
 				res[i].start += iostart;
@@ -593,8 +596,6 @@ int xocl_subdev_create_all(xdev_handle_t xdev_hdl)
 				dsa_vbnv_map[i].subdevice == (u16)PCI_ANY_ID) &&
 				!strncmp(rom.VBNVName, dsa_vbnv_map[i].vbnv,
 				sizeof(rom.VBNVName))) {
-				//static_devs = dsa_vbnv_map[i].priv_data->subdev_info;
-				//static_dev_num = dsa_vbnv_map[i].priv_data->subdev_num;
 				xocl_fill_dsa_priv(xdev_hdl, dsa_vbnv_map[i].priv_data);
 				break;
 			}

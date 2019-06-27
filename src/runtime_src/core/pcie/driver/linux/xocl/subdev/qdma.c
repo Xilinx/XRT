@@ -1857,7 +1857,6 @@ struct xocl_drv_private qdma_priv = {
 	.ops = &qdma_ops,
 	.fops = &stream_fops,
 	.dev = -1,
-	.cdev_name = XOCL_DEVNAME("str_dma"),
 };
 
 static struct platform_device_id qdma_id_table[] = {
