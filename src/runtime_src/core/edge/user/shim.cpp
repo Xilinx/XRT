@@ -160,10 +160,6 @@ int ZYNQShim::mapKernelControl(const std::vector<std::pair<uint64_t, size_t>>& o
             return -1;
         }
         size_t psize = getpagesize();
-        if(info.apt_idx == -EINVAL) {
-            printf("Failed to find CU in aperture list 0x%lx\n", offset_it->first);
-            return -1;
-        }
         ptr = mmap(0, offset_it->second, PROT_READ | PROT_WRITE, MAP_SHARED, mKernelFD, info.apt_idx*psize);
         if (ptr == MAP_FAILED){
             printf("Map failed for aperture 0x%lx, size 0x%lx\n", offset_it->first, offset_it->second);

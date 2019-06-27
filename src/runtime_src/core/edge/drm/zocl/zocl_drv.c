@@ -376,12 +376,12 @@ static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 	 * Could not map from the middle of an aperture.
 	 */
 	apt_idx = vma->vm_pgoff;
-	phy_addr = apts[apt_idx].addr;
-	vma->vm_pgoff = phy_addr >> PAGE_SHIFT;
-	if (apt_idx < 0) {
+	if (apt_idx < 0 || apt_idx >= zdev->num_apts) {
 		DRM_ERROR("The offset is not in the apertures list\n");
 		return -EINVAL;
 	}
+	phy_addr = apts[apt_idx].addr;
+	vma->vm_pgoff = phy_addr >> PAGE_SHIFT;
 
 	vsize = vma->vm_end - vma->vm_start;
 	if (vsize > zdev->apertures[apt_idx].size)

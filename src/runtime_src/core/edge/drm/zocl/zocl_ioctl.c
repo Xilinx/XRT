@@ -564,6 +564,9 @@ out0:
 	return ret;
 }
 
+/* IOCTL to get CU index in aperture list
+ * used for recognizing BO and CU in mmap
+ */
 int
 zocl_info_cu_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 {
@@ -576,8 +579,10 @@ zocl_info_cu_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		return -EINVAL;
 	}
  
-	if(args->paddr != 0xFFFFFFFF) {
-		args->apt_idx = get_apt_index(zdev, args->paddr);
+	args->apt_idx = get_apt_index(zdev, args->paddr);
+	if(args->apt_idx == -EINVAL) {
+		DRM_ERROR("Failed to find CU in aperture list 0x%lx\n", args->paddr);
+		return -EINVAL;
 	}
 	return 0;
 }
