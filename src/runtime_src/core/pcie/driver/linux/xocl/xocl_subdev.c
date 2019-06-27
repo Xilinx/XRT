@@ -368,7 +368,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 		for (i = 0; i < sdev_info->num_res; i++) {
 			if (sdev_info->res[i].flags & IORESOURCE_MEM) {
 				bar_idx = sdev_info->bar_idx ?
-					(int)sdev_info->bar_idx[i]: 0;
+					(int)sdev_info->bar_idx[i]: core->bar_idx;
 				if (!pci_resource_len(core->pdev, bar_idx)) {
 					xocl_xdev_err(xdev_hdl, "invalid bar");
 					retval = -EINVAL;
