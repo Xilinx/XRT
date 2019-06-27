@@ -19,7 +19,6 @@
 
 
 #include "app/xmabuffers.h"
-#include "lib/xmalimits.h"
 
 #ifdef __cplusplus
 extern "C" {

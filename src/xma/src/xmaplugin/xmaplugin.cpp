@@ -17,6 +17,8 @@
 #include "xmaplugin.h"
 #include "xrt.h"
 #include "ert.h"
+#include "lib/xmahw_lib.h"
+#include "lib/xmares.h"
 
 #include <cstdio>
 #include <iostream>

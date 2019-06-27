@@ -14,18 +14,28 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#ifndef _XMA_HW_PRIVATE_H_
-#define _XMA_HW_PRIVATE_H_
+#ifndef _XMA_HW_H_
+#define _XMA_HW_H_
 
-#include "lib/xmahw_lib.h"
-#include "lib/xmacfg.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-typedef struct XmaHwInterface
+typedef void * XmaKernelRes;
+typedef struct XmaHwKernel XmaHwKernel;
+
+typedef struct XmaHwSession
 {
-    int32_t (*probe)(XmaHwCfg *hwcfg);
-    bool    (*is_compatible)(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg);
-    bool    (*configure)(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg,
-                         bool hw_cfg_status);
-} XmaHwInterface;
+    void            *dev_handle;
+    //For execbo:
+    uint32_t         dev_index;
+    XmaHwKernel     *kernel_info;
+    uint32_t         reserved[4];
+} XmaHwSession;
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

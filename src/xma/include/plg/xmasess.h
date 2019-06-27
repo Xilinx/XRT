@@ -21,8 +21,7 @@
 
 #include <stdbool.h>
 
-#include "lib/xmahw.h"
-#include "lib/xmares.h"
+#include "app/xmahw.h"
 
 
 /**

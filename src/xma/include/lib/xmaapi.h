@@ -20,7 +20,7 @@
 #include "xmaplugin.h"
 #include "lib/xmacfg.h"
 #include "lib/xmaconnect.h"
-#include "lib/xmahw.h"
+#include "lib/xmahw_lib.h"
 #include "lib/xmares.h"
 #include "lib/xmalogger.h"
 
