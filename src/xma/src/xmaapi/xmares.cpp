@@ -1075,9 +1075,7 @@ kern_alloc_loop:
 
     if (kern_aquired) {
         session->kern_res = (XmaKernelRes)kern_props;
-        session->hw_session.context = (XmaHwContext*) calloc(1, sizeof(XmaHwContext));
-        session->hw_session.context->lock = xma_res_obtain_kernel_mutex(session);
-        session->hw_session.context->min_offset = 0xFFFFFFFF;
+        session->hw_session.kernel_info->lock = xma_res_obtain_kernel_mutex(session);
         return XMA_SUCCESS;
     }
 

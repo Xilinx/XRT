@@ -917,8 +917,9 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	}
 	case MAILBOX_REQ_PROGRAM_SHELL: {
 		/* blob should already been updated */
-		/* Need to carefully validate user request at this point. */
-		xclmgmt_program_shell(lro);
+		ret = xclmgmt_program_shell(lro);
+		(void) xocl_peer_response(lro, req->req, msgid, &ret,
+				sizeof(ret));
 		break;
 	}
 	default:
@@ -1001,7 +1002,6 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	lro->core.thread_arg.health_cb = health_check_cb;
 	lro->core.thread_arg.arg = lro;
 	lro->core.thread_arg.interval = health_interval * 1000;
-
 	health_thread_start(lro);
 
 	/* Launch the mailbox server. */
@@ -1180,9 +1180,10 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 		vfree(lro->core.fdt_blob);
 	if (lro->core.dyn_subdev_store)
 		vfree(lro->core.dyn_subdev_store);
-
 	if (lro->userpf_blob)
 		vfree(lro->userpf_blob);
+	if (lro->bld_blob)
+		vfree(lro->bld_blob);
 
 	dev_set_drvdata(&pdev->dev, NULL);
 
@@ -1224,6 +1225,7 @@ static struct pci_driver xclmgmt_driver = {
 
 static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_feature_rom,
+	xocl_init_iores,
 	xocl_init_flash,
 	xocl_init_xdma_mgmt,
 	xocl_init_sysmon,
@@ -1233,7 +1235,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_xiic,
 	xocl_init_mailbox,
 	xocl_init_firewall,
-	xocl_init_icap_bld,
+	xocl_init_axigate,
 	xocl_init_icap,
 	xocl_init_mig,
 	xocl_init_xmc,
@@ -1243,6 +1245,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 
 static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_feature_rom,
+	xocl_fini_iores,
 	xocl_fini_flash,
 	xocl_fini_xdma_mgmt,
 	xocl_fini_sysmon,
@@ -1252,7 +1255,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_xiic,
 	xocl_fini_mailbox,
 	xocl_fini_firewall,
-	xocl_fini_icap_bld,
+	xocl_fini_axigate,
 	xocl_fini_icap,
 	xocl_fini_mig,
 	xocl_fini_xmc,

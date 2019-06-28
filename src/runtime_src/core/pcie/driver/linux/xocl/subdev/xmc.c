@@ -1662,8 +1662,6 @@ static int xmc_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	xocl_subdev_register(pdev, XOCL_SUBDEV_MB, &xmc_ops);
-
 	mutex_init(&xmc->xmc_lock);
 	xmc->cache_expire_secs = XMC_DEFAULT_EXPIRE_SECS;
 
@@ -1694,8 +1692,12 @@ failed:
 	return err;
 }
 
+struct xocl_drv_private	xmc_priv = {
+	.ops = &xmc_ops,
+};
+
 struct platform_device_id xmc_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_XMC), 0 },
+	{ XOCL_DEVNAME(XOCL_XMC), (kernel_ulong_t)&xmc_priv },
 	{ },
 };
 

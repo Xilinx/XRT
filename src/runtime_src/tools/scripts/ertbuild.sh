@@ -209,14 +209,14 @@ mkdir -p ${PLATFORM_NAME}/build/conf/
 echo " * Configuring PetaLinux Project"
 # Allow users to access shell without login
 echo "CONFIG_YOCTO_ENABLE_DEBUG_TWEAKS=y" >> ${PLATFORM_NAME}/project-spec/configs/config
-echo "petalinux-config -p $PLATFORM_NAME --get-hw-description=${PLATFOMR_SDK} --oldconfig"
-petalinux-config -p $PLATFORM_NAME --get-hw-description=${PLATFOMR_SDK} --oldconfig
+echo "petalinux-config -p $PLATFORM_NAME --get-hw-description=${PLATFOMR_SDK} --silentconfig"
+petalinux-config -p $PLATFORM_NAME --get-hw-description=${PLATFOMR_SDK} --silentconfig
 
 
 echo "Replacing CONFIG_SUBSYSTEM_AUTOCONFIG_DEVICE__TREE"
 perl -p -i -e  "s/CONFIG_SUBSYSTEM_AUTOCONFIG_DEVICE__TREE/# CONFIG_SUBSYSTEM_AUTOCONFIG_DEVICE__TREE\ is\ not\ set/g" ${PLATFORM_NAME}/project-spec/configs/config
 cd ${PLATFORM_NAME}
-petalinux-config --oldconfig
+petalinux-config --silentconfig
 cd -
 
 echo " * Change to meta directory: ${PLATFORM_NAME}/project-spec/meta-user/"
@@ -267,7 +267,7 @@ fi
 
 echo " * Configuring the kernel"
 #Configure Linux kernel (default kernel config is good for zocl driver)
-petalinux-config -c kernel --oldconfig
+petalinux-config -c kernel --silentconfig
 
 echo " * Configuring rootfs"
 # Configure rootfs, enable below components:
@@ -288,7 +288,7 @@ addIfNoExists 'CONFIG_opencl-headers-dev=y'  ../configs/rootfs_config
 addIfNoExists 'CONFIG_opencl-clhpp-dev=y'  ../configs/rootfs_config
 
 
-petalinux-config -c rootfs --oldconfig
+petalinux-config -c rootfs --silentconfig
 
 # Build package
 echo " * Performing PetaLinux Build (from: ${PWD})"

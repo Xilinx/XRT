@@ -398,12 +398,12 @@ unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t siz
   return drv->xclAllocUserPtrBO(userptr,size,flags); 
 }
 
-unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, xclBOKind domain, unsigned flags)
+unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned flags)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
-  return drv->xclAllocBO(size, domain, flags);
+  return drv->xclAllocBO(size, unused, flags);
 }
 
 

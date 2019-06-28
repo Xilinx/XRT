@@ -20,7 +20,6 @@
 
 #include "app/xmabuffers.h"
 #include "app/xmaparam.h"
-#include "lib/xmalimits.h"
 
 #ifdef __cplusplus
 extern "C" {

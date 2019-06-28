@@ -112,9 +112,7 @@ struct xclmgmt_dev {
 	bool ready;
 
 	void *userpf_blob;
-
-	char *bin_buffer;
-	size_t bin_length;
+	void *bld_blob;
 
 	/* ID set on mgmt and passed to user for inter-domain communication */
 	u64 comm_id;

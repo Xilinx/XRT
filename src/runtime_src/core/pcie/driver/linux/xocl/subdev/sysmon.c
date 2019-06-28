@@ -327,8 +327,6 @@ static int sysmon_probe(struct platform_device *pdev)
 		goto create_sysmon_failed;
 	}
 
-	xocl_subdev_register(pdev, XOCL_SUBDEV_SYSMON, &sysmon_ops);
-
 	return 0;
 
 create_sysmon_failed:
@@ -359,8 +357,12 @@ static int sysmon_remove(struct platform_device *pdev)
 	return 0;
 }
 
+struct xocl_drv_private sysmon_priv = {
+	.ops = &sysmon_ops,
+};
+
 struct platform_device_id sysmon_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_SYSMON), 0 },
+	{ XOCL_DEVNAME(XOCL_SYSMON), (kernel_ulong_t)&sysmon_priv },
 	{ },
 };
 
