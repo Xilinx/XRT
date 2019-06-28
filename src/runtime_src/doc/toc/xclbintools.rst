@@ -1,5 +1,2 @@
-Xclbin Tools
+xclbinutil
 ------------
-
-TBD
-~~~
