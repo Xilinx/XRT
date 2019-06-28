@@ -240,7 +240,7 @@ static int xocl_subdev_cdev_create(struct platform_device *pdev,
 			XOCL_DEV_ID(core->pdev));
 	else
 		sysdev = device_create(xrt_class, &pdev->dev, cdevp->dev,
-			NULL, "%s/%s:%d", XOCL_CDEV_DIR,
+			NULL, "%s/%s%d", XOCL_CDEV_DIR,
 			platform_get_device_id(pdev)->name,
 			XOCL_DEV_ID(core->pdev));
 	if (IS_ERR(sysdev)) {
