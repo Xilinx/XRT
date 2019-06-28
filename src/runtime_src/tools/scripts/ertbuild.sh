@@ -225,6 +225,15 @@ cd ${PLATFORM_NAME}/project-spec/meta-user/
 echo " * Copying ${XRT_REPO_DIR}/src/platform/recipes-xrt to `readlink -f .`"
 cp -r ${XRT_REPO_DIR}/src/platform/recipes-xrt .
 
+echo " * Update XRT recipes to point to local workspace"
+addIfNoExists 'inherit externalsrc' ./recipes-xrt/xrt/xrt_git.bb
+addIfNoExists "EXTERNALSRC = \"$XRT_REPO_DIR/src\"" ./recipes-xrt/xrt/xrt_git.bb
+addIfNoExists 'EXTERNALSRC_BUILD = "${WORKDIR}/build"' ./recipes-xrt/xrt/xrt_git.bb
+
+addIfNoExists "inherit externalsrc" ./recipes-xrt/zocl/zocl_git.bb
+addIfNoExists "EXTERNALSRC = \"$XRT_REPO_DIR/src/runtime_src/core/edge/drm/zocl\"" ./recipes-xrt/zocl/zocl_git.bb
+addIfNoExists "EXTERNALSRC_BUILD = \"$XRT_REPO_DIR/src/runtime_src/core/edge/drm/zocl\"" ./recipes-xrt/zocl/zocl_git.bb
+
 # If you are using PetaLinux 2018.3 or earlier version, do below step
 if [[ $PETALINUX_VER == "2018"* ]]; then
   echo " * A 2018.X PetaLinux release (${PETALINUX_VER}) was detected, copying opencl-headers recipe:"
