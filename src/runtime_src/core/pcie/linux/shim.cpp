@@ -146,7 +146,7 @@ int shim::dev_init()
     // We're good now.
     mDev = dev;
 
-    std::string streamFile = "/dev/xfpga/qdma.u"+ std::to_string(USER_PCIID(mDev));
+    std::string streamFile = "/dev/xfpga/dma.qdma.u"+ std::to_string(USER_PCIID(mDev));
     mStreamHandle = open(streamFile.c_str(), O_RDWR | O_SYNC);
     (void) xclGetDeviceInfo2(&mDeviceInfo);
 
