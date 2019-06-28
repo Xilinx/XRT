@@ -257,9 +257,6 @@ int pcidev::pci_device::devfs_open(const std::string& subdev, int flag)
     file += std::to_string((domain<<16) + (bus<<8) + (dev<<3) + func);
 
     const int fd = open(file.c_str(), flag);
-    if (fd == -1) {
-        throw std::runtime_error("Could not open " + file + ", error = " + std::to_string(errno));
-    }
 
     return fd;
 }

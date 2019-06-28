@@ -54,6 +54,12 @@ static int status(unsigned int index)
 {
   std::shared_ptr<pcidev::pci_device> dev = pcidev::get_dev(index, false);
   int fd = dev->devfs_open("nifd_pri", O_RDWR);
+  if (fd == -1)
+  {
+    std::cout << "NIFD IP not available on selected device" << std::endl;
+    return -errno;
+  }
+	  
   const int NIFD_CHECK_STATUS = 8;
   unsigned int status = 0;
   int result = ioctl(fd, NIFD_CHECK_STATUS, &status);
@@ -89,6 +95,12 @@ static int readback(const std::string& inputFile, unsigned int index)
 
   std::shared_ptr<pcidev::pci_device> dev = pcidev::get_dev(index, false);
   int fd = dev->devfs_open("nifd_pri", O_RDWR);
+  if (fd == -1)
+  {
+    std::cout << "NIFD IP not available on selected device" << std::endl;
+    return -errno;
+  }
+	  
   unsigned int numBits = hardwareFramesAndOffsets.size() / 2 ;
   unsigned int resultWords = numBits % 32 ? numBits/32 + 1 : numBits/32 ;
   unsigned int packet[1 + numBits*2 + resultWords] = {0} ;

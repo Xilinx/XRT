@@ -146,6 +146,9 @@ int shim::dev_init()
     mDev = dev;
 
     mStreamHandle = mDev->devfs_open("dma.qdma", O_RDWR | O_SYNC);
+    if (mStreamHandle == -1)
+	    return -errno;
+
     (void) xclGetDeviceInfo2(&mDeviceInfo);
 
     memset(&mAioContext, 0, sizeof(mAioContext));
