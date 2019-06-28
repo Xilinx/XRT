@@ -8,6 +8,7 @@
 #	config_dts      -- configure system user device tree.
 #	install_recipes -- install recipes to petalinux.
 #	update_append   -- update recipes-core bbappend to add packages.
+#   rootfs_menu     -- update rootfsconfig to add package (since 2019.2, replace update_append)
 #	pre_build_hook  -- just before petalinux-build
 #	post_build_hook -- just after petalinux-build
 
@@ -80,9 +81,8 @@ config_dts()
 #	# if you are using petalinux 2018.3 or earlier, you will need to copy opencl-headers_git.bb from openembedded repo.
 #}
 
-# The first argument is the bbappend file
-#  update_append $PETALINUX_IMAGE_BBAPPEND
-#
+# The first argument is the bbappend file. (** For before 2019.2 **)
+#  update_append recipes-core/images/petalinux-*.bbappend
 #update_append()
 #{
 #	BBAPPEND=$1
@@ -92,6 +92,19 @@ config_dts()
 #	echo 'IMAGE_INSTALL_append = " zocl"'               >> $BBAPPEND
 #	echo 'IMAGE_INSTALL_append = " opencl-headers-dev"' >> $BBAPPEND
 #	echo 'IMAGE_INSTALL_append = " opencl-clhpp-dev"'   >> $BBAPPEND
+#}
+
+# The first argument is the rootfsconfig file
+#  rootfs_menu conf/user-rootfsconfig
+#rootfs_menu()
+#{
+#	ROOTFSCONFIG=$1
+#	echo 'CONFIG_xrt'                                   >> $ROOTFSCONFIG
+#	echo 'CONFIG_mnt-sd'                                >> $ROOTFSCONFIG
+#	echo 'CONFIG_xrt-dev'                               >> $ROOTFSCONFIG
+#	echo 'CONFIG_zocl'                                  >> $ROOTFSCONFIG
+#	echo 'CONFIG_opencl-clhpp-dev'                      >> $ROOTFSCONFIG
+#	echo 'CONFIG_opencl-headers-dev'                    >> $ROOTFSCONFIG
 #}
 
 # The first argument is the petalinux project path
