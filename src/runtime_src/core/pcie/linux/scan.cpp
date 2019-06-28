@@ -248,6 +248,22 @@ void pcidev::pci_device::sysfs_get(
         b = false; // default value
 }
 
+int pcidev::pci_device::devfs_open(const std::string& subdev, int flag)
+{
+    std::string file("/dev/xfpga/");
+
+    file += subdev;
+    file += is_mgmt ? ".m" : ".u";
+    file += std::to_string((domain<<16) + (bus<<8) + (dev<<3) + func);
+
+    const int fd = open(file.c_str(), flag);
+    if (fd == -1) {
+        throw std::runtime_error("Could not open " + file + ", error = " + std::to_string(errno));
+    }
+
+    return fd;
+}
+
 static size_t bar_size(const std::string &dir, unsigned bar)
 {
     std::ifstream ifs(dir + "/resource");
