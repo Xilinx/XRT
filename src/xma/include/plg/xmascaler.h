@@ -17,7 +17,6 @@
 #ifndef _XMAPLG_SCALER_H_
 #define _XMAPLG_SCALER_H_
 
-
 #include "xma.h"
 #include "plg/xmasess.h"
 
@@ -53,17 +52,11 @@ typedef struct XmaScalerPlugin
     /** callback to perform cleanup when client terminates session */
     int32_t         (*close)(XmaScalerSession *sc_session);
 
-    /** Optional callback called when app calls xma_scal_session_create()
-      * Implement this callback if your kernel supports channels and is
-      * multi-process safe
-    */
-    xma_plg_alloc_chan_mp alloc_chan_mp;
+    /** Callback invoked at start to check compatibility with XMA version */
+    int32_t         (*xma_version)(int32_t *main_version, int32_t *sub_version);
 
-    /** Optional callback called when app calls xma_scal_session_create()
-      * Implement this callback if your kernel supports channels and is
-      * NOT multi-process safe (but it IS thread-safe)
-    */
-    xma_plg_alloc_chan alloc_chan;
+    /** Reserved */
+    uint32_t        reserved[4];
 
 } XmaScalerPlugin;
 

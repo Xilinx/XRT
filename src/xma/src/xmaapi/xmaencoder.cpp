@@ -220,6 +220,14 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
         xma_connect_alloc(end_pt, XMA_CONNECT_RECEIVER);
 
     // Call the plugins initialization function with this session data
+    //Sarab: Check plugin compatibility to XMA
+    int32_t xma_main_ver = -1;
+    int32_t xma_sub_ver = -1;
+    rc = enc_session->encoder_plugin->xma_version(&xma_main_ver, & xma_sub_ver);
+    //Sarab: Stop here for now
+    //Sarab: Remove it later on
+    return NULL;
+
     rc = enc_session->encoder_plugin->init(enc_session);
     if (rc) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
