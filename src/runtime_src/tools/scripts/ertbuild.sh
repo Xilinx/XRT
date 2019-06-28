@@ -225,6 +225,15 @@ cd ${PLATFORM_NAME}/project-spec/meta-user/
 echo " * Copying ${XRT_REPO_DIR}/src/platform/recipes-xrt to `readlink -f .`"
 cp -r ${XRT_REPO_DIR}/src/platform/recipes-xrt .
 
+echo " * Update XRT recipes to point to local workspace"
+addIfNoExists 'inherit externalsrc' ./recipes-xrt/xrt/xrt_git.bb
+addIfNoExists "EXTERNALSRC = \"$XRT_REPO_DIR/src\"" ./recipes-xrt/xrt/xrt_git.bb
+addIfNoExists 'EXTERNALSRC_BUILD = "${WORKDIR}/build"' ./recipes-xrt/xrt/xrt_git.bb
+
+addIfNoExists "inherit externalsrc" ./recipes-xrt/zocl/zocl_git.bb
+addIfNoExists "EXTERNALSRC = \"$XRT_REPO_DIR/src/runtime_src/core/edge/drm/zocl\"" ./recipes-xrt/zocl/zocl_git.bb
+addIfNoExists "EXTERNALSRC_BUILD = \"$XRT_REPO_DIR/src/runtime_src/core/edge/drm/zocl\"" ./recipes-xrt/zocl/zocl_git.bb
+
 # If you are using PetaLinux 2018.3 or earlier version, do below step
 if [[ $PETALINUX_VER == "2018"* ]]; then
   echo " * A 2018.X PetaLinux release (${PETALINUX_VER}) was detected, copying opencl-headers recipe:"
@@ -256,13 +265,15 @@ addIfNoExists 'IMAGE_INSTALL_append = " zocl"'    $PETALINUX_IMAGE_BBAPPEND
 addIfNoExists 'IMAGE_INSTALL_append = " opencl-headers-dev"' $PETALINUX_IMAGE_BBAPPEND
 addIfNoExists 'IMAGE_INSTALL_append = " opencl-clhpp-dev"'   $PETALINUX_IMAGE_BBAPPEND
 
-echo " * Adding XRT Kernel Node to Device Tree"
-echo "cat ${XRT_REPO_DIR}/src/runtime_src/driver/zynq/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi"
-cat ${XRT_REPO_DIR}/src/runtime_src/driver/zynq/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi
+if [ $FULL_PETA_BULD == "Yes" ]; then
+	echo " * Adding XRT Kernel Node to Device Tree"
+	echo "cat ${XRT_REPO_DIR}/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi"
+	cat ${XRT_REPO_DIR}/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi
 
-if [ -f ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_fragment.dts ]; then
-  echo "cat ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_fragment.dts >> recipes-bsp/device-tree/files/system-user.dtsi"
-  cat ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_fragment.dts >> recipes-bsp/device-tree/files/system-user.dtsi
+	if [ -f ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_fragment.dts ]; then
+		echo "cat ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_fragment.dts >> recipes-bsp/device-tree/files/system-user.dtsi"
+		cat ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_fragment.dts >> recipes-bsp/device-tree/files/system-user.dtsi
+	fi
 fi
 
 echo " * Configuring the kernel"
