@@ -281,6 +281,14 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
 #endif
 
     // Call the plugins initialization function with this session data
+    //Sarab: Check plugin compatibility to XMA
+    int32_t xma_main_ver = -1;
+    int32_t xma_sub_ver = -1;
+    rc = sc_session->scaler_plugin->xma_version(&xma_main_ver, & xma_sub_ver);
+    //Sarab: Stop here for now
+    //Sarab: Remove it later on
+    return NULL;
+
     rc = sc_session->scaler_plugin->init(sc_session);
     if (rc) {
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
@@ -333,9 +341,10 @@ int32_t
 xma_scaler_session_send_frame(XmaScalerSession  *session,
                               XmaFrame          *frame)
 {
-    int32_t i;
+    //int32_t i;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_SCALER_MOD, "%s()\n", __func__);
+    /*Sarab: Remove zerocopy stuff
     for (i = 0; i < session->props.num_outputs; i++)
     {
         if (session->conn_send_handles[i] != -1)
@@ -362,6 +371,7 @@ xma_scaler_session_send_frame(XmaScalerSession  *session,
             }
         }
     }
+    */
 
     return session->scaler_plugin->send_frame(session, frame);
 }
