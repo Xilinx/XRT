@@ -58,7 +58,6 @@
 #endif
 
 #define GB(x)           ((size_t) (x) << 30)
-#define USER_PCIID(x)   (((x)->bus << 8) | ((x)->dev << 3) | (x)->func)
 #define ARRAY_SIZE(x)   (sizeof (x) / sizeof (x[0]))
 
 #define SHIM_QDMA_AIO_EVT_MAX   1024 * 64
@@ -146,8 +145,10 @@ int shim::dev_init()
     // We're good now.
     mDev = dev;
 
-    std::string streamFile = "/dev/xfpga/dma.qdma.u"+ std::to_string(USER_PCIID(mDev));
-    mStreamHandle = open(streamFile.c_str(), O_RDWR | O_SYNC);
+    mStreamHandle = mDev->devfs_open("dma.qdma", O_RDWR | O_SYNC);
+    if (mStreamHandle == -1)
+	    return -errno;
+
     (void) xclGetDeviceInfo2(&mDeviceInfo);
 
     memset(&mAioContext, 0, sizeof(mAioContext));
