@@ -456,7 +456,6 @@ unsigned int ZYNQShim::xclGetBOProperties(unsigned int boHandle, xclBOProperties
   properties->flags  = DRM_ZOCL_BO_FLAGS_COHERENT | DRM_ZOCL_BO_FLAGS_CMA;
   properties->size   = info.size;
   properties->paddr  = info.paddr;
-  properties->domain = XCL_BO_DEVICE_RAM; // currently all BO domains are XCL_BO_DEVICE_RAM
   return result;
 }
 
