@@ -1290,7 +1290,7 @@ static int p2ptest_bank(xclDeviceHandle handle, int memidx,
     const size_t chunk_size = 16 * 1024 * 1024;
     int ret = 0;
 
-    unsigned int boh = xclAllocBO(handle, size, XCL_BO_DEVICE_RAM,
+    unsigned int boh = xclAllocBO(handle, size, 0,
         XCL_BO_FLAGS_P2P | memidx);
     if (boh == NULLBO) {
         std::cout << "Error allocating P2P BO" << std::endl;
@@ -1458,7 +1458,7 @@ static void m2m_free_unmap_bo(xclDeviceHandle handle, unsigned boh,
 static int m2m_alloc_init_bo(xclDeviceHandle handle, unsigned &boh,
     char * &boptr, size_t boSize, int bank, char pattern)
 {
-    boh = xclAllocBO(handle, boSize, XCL_BO_DEVICE_RAM, bank);
+    boh = xclAllocBO(handle, boSize, 0, bank);
     if (boh == NULLBO) {
         std::cout << "Error allocating BO" << std::endl;
         return -ENOMEM;
@@ -1505,7 +1505,7 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
     }
     //Allocate the exec_bo
     unsigned execHandle = xclAllocBO(handle, sizeof (ert_start_copybo_cmd),
-        xclBOKind(0), (1<<31));
+        0, XCL_BO_FLAGS_EXECBUF);
     struct ert_start_copybo_cmd *execData =
         reinterpret_cast<struct ert_start_copybo_cmd *>(
         xclMapBO(handle, execHandle, true));

@@ -62,7 +62,7 @@ struct drm_xocl_bo {
 	const struct vm_operations_struct *dmabuf_vm_ops;
 	unsigned                dma_nsg;
 	unsigned              flags;
-	unsigned              type;
+	unsigned              mem_idx;
 };
 
 struct drm_xocl_unmgd {
@@ -73,7 +73,7 @@ struct drm_xocl_unmgd {
 };
 
 struct drm_xocl_bo *xocl_drm_create_bo(struct xocl_drm *drm_p,
-	uint64_t unaligned_size, unsigned user_flags, unsigned user_type);
+	uint64_t unaligned_size, unsigned user_flags);
 void xocl_drm_free_bo(struct drm_gem_object *obj);
 
 

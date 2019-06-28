@@ -314,7 +314,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
                         char     *bo_data;
                         bo_handle = xclAllocBO(hal->dev_handle, 
                                                execBO_size, 
-                                               XCL_BO_DEVICE_RAM, 
+                                               0, 
                                                execBO_flags);
                         if (!bo_handle || bo_handle == mNullBO) 
                         {

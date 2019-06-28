@@ -33,6 +33,7 @@ configure_file (
 SET (XRT_DKMS_DRIVER_SRC_DIR ${XRT_DKMS_DRIVER_SRC_BASE_DIR}/pcie/driver/linux)
 SET (XRT_DKMS_DRIVER_INCLUDE_DIR ${XRT_DKMS_DRIVER_SRC_BASE_DIR}/pcie/driver/linux)
 SET (XRT_DKMS_CORE_DIR ${XRT_DKMS_DRIVER_SRC_BASE_DIR})
+SET (XRT_DKMS_CORE_COMMON_DRV ${XRT_DKMS_CORE_DIR}/common/drv)
 
 SET (XRT_DKMS_DRIVER_SRCS
   xocl/mgmtpf/mgmt-core.c
@@ -155,6 +156,11 @@ SET (XRT_DKMS_CORE_INCLUDES
   include/xclfeatures.h
   include/xclbin.h
   include/xclerr.h
+  include/xrt_mem.h
+  )
+
+SET (XRT_DKMS_COMMON_XRT_DRV
+  common/drv/xrt_drv.h
   )
 
 SET (XRT_DKMS_ABS_SRCS)
@@ -172,6 +178,11 @@ endforeach()
 foreach (DKMS_FILE ${XRT_DKMS_CORE_INCLUDES})
   get_filename_component(DKMS_DIR ${DKMS_FILE} DIRECTORY)
   install (FILES ${XRT_DKMS_CORE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/${DKMS_DIR})
+endforeach()
+
+foreach (DKMS_FILE ${XRT_DKMS_COMMON_XRT_DRV})
+  get_filename_component(DKMS_DIR ${DKMS_FILE} DIRECTORY)
+  install (FILES ${XRT_DKMS_CORE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/include/)
 endforeach()
 
 install (FILES ${CMAKE_CURRENT_BINARY_DIR}/${DKMS_FILE_NAME} DESTINATION ${XRT_DKMS_INSTALL_DIR})

@@ -98,7 +98,7 @@ public:
   //Sarab: Added for HAL2 XOCL Driver support
   //int xclGetErrorStatus(xclErrorStatus *info); Not supported for AWS
   bool xclUnlockDevice();
-  unsigned int xclAllocBO(size_t size, xclBOKind domain, unsigned flags);
+  unsigned int xclAllocBO(size_t size, int unused, unsigned flags);
   unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
   void xclFreeBO(unsigned int boHandle);
   int xclWriteBO(unsigned int boHandle,

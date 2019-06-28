@@ -25,6 +25,7 @@
 #include <drm/drm_gem.h>
 #include <drm/drm_mm.h>
 #include "xclbin.h"
+#include "xrt_mem.h"
 #include "devices.h"
 #include "xocl_ioctl.h"
 #include "mgmt-ioctl.h"

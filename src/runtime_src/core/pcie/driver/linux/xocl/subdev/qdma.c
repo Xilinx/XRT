@@ -1570,8 +1570,8 @@ static long stream_ioctl_alloc_buffer(struct xocl_qdma *qdma,
 
 	xdev = xocl_get_xdev(qdma->pdev);
 
-	xobj = xocl_drm_create_bo(XOCL_DRM(xdev), req.size, 0,
-			DRM_XOCL_BO_EXECBUF);
+	xobj = xocl_drm_create_bo(XOCL_DRM(xdev), req.size,
+			XCL_BO_FLAGS_EXECBUF);
 	if (IS_ERR(xobj)) {
 		ret = PTR_ERR(xobj);
 		xocl_err(&qdma->pdev->dev, "create bo failed");

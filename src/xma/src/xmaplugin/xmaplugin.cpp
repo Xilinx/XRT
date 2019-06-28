@@ -41,7 +41,7 @@ xma_plg_buffer_alloc(XmaHwSession s_handle, size_t size)
     printf("xma_plg_buffer_alloc size = %lu\n", size);
     printf("xma_plg_buffer_alloc ddr_bank = %u\n", ddr_bank);
 #endif
-    handle = xclAllocBO(dev_handle, size, XCL_BO_DEVICE_RAM, ddr_bank);
+    handle = xclAllocBO(dev_handle, size, 0, ddr_bank);
 #if 0
     printf("xma_plg_buffer_alloc handle = %d\n", handle);
 #endif

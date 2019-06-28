@@ -336,12 +336,9 @@ size_t shim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size
  *
  * Assume that the memory is always created for the device ddr for now. Ignoring the flags as well.
  */
-unsigned int shim::xclAllocBO(size_t size, xclBOKind domain, unsigned flags)
+unsigned int shim::xclAllocBO(size_t size, int unused, unsigned flags)
 {
-    unsigned flag = flags & 0xFFFFFFLL;
-    unsigned type = flags & 0xFF000000LL ;
-
-    drm_xocl_create_bo info = {size, mNullBO, flag, type};
+    drm_xocl_create_bo info = {size, mNullBO, flags};
     int result = mDev->ioctl(DRM_IOCTL_XOCL_CREATE_BO, &info);
     return result ? mNullBO : info.handle;
 }
@@ -351,11 +348,8 @@ unsigned int shim::xclAllocBO(size_t size, xclBOKind domain, unsigned flags)
  */
 unsigned int shim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
 {
-    unsigned flag = flags & 0xFFFFFFLL;
-    unsigned type = flags & 0xFF000000LL ;
-
     drm_xocl_userptr_bo user =
-        {reinterpret_cast<uint64_t>(userptr), size, mNullBO, flag, type};
+        {reinterpret_cast<uint64_t>(userptr), size, mNullBO, flags};
     int result = mDev->ioctl(DRM_IOCTL_XOCL_USERPTR_BO, &user);
     return result ? mNullBO : user.handle;
 }
@@ -435,7 +429,7 @@ int shim::xclCopyBO(unsigned int dst_boHandle,
 {
     int ret;
     unsigned execHandle = xclAllocBO(sizeof (ert_start_copybo_cmd),
-        xclBOKind(0), (1<<31));
+        0, XCL_BO_FLAGS_EXECBUF);
     struct ert_start_copybo_cmd *execData =
         reinterpret_cast<struct ert_start_copybo_cmd *>(
         xclMapBO(execHandle, true));
@@ -809,7 +803,6 @@ int shim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties)
     properties->flags  = info.flags;
     properties->size   = info.size;
     properties->paddr  = info.paddr;
-    properties->domain = XCL_BO_DEVICE_RAM; // currently all BO domains are XCL_BO_DEVICE_RAM
     return result ? -errno : result;
 }
 
@@ -1426,10 +1419,10 @@ unsigned int xclVersion ()
     return 2;
 }
 
-unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, xclBOKind domain, unsigned flags)
+unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned flags)
 {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
-    return drv ? drv->xclAllocBO(size, domain, flags) : -ENODEV;
+    return drv ? drv->xclAllocBO(size, unused, flags) : -ENODEV;
 }
 
 unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)

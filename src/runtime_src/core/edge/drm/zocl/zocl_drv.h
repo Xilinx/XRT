@@ -29,7 +29,7 @@
 #include "zocl_ioctl.h"
 #include "zocl_ert.h"
 #include "zocl_util.h"
-#include "xclhal2_mem.h"
+#include "zocl_bo.h"
 
 /* Ensure compatibility with newer kernels and backported Red Hat kernels. */
 /* The y2k38 bug fix was introduced with Kernel 3.17 and backported to Red Hat
@@ -129,13 +129,13 @@ drm_zocl_bo *to_zocl_bo(struct drm_gem_object *bo)
 	static inline bool
 zocl_bo_userptr(const struct drm_zocl_bo *bo)
 {
-	return (bo->flags & XCL_BO_FLAGS_USERPTR);
+	return (bo->flags & ZOCL_BO_FLAGS_USERPTR);
 }
 
 	static inline bool
 zocl_bo_execbuf(const struct drm_zocl_bo *bo)
 {
-	return (bo->flags & XCL_BO_FLAGS_EXECBUF);
+	return (bo->flags & ZOCL_BO_FLAGS_EXECBUF);
 }
 
 

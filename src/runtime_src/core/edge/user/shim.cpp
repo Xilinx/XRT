@@ -234,7 +234,7 @@ size_t ZYNQShim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, 
   return size;
 }
 
-unsigned int ZYNQShim::xclAllocBO(size_t size, xclBOKind domain, unsigned flags) {
+unsigned int ZYNQShim::xclAllocBO(size_t size, int unused, unsigned flags) {
   // TODO: unify xocl and zocl flags.
   //drm_zocl_create_bo info = { size, 0xffffffff, DRM_ZOCL_BO_FLAGS_COHERENT | DRM_ZOCL_BO_FLAGS_CMA };
   drm_zocl_create_bo info = { size, 0xffffffff, flags};
@@ -623,7 +623,7 @@ void xclClose(xclDeviceHandle handle)
   }
 }
 
-unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, xclBOKind domain, unsigned flags)
+unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned flags)
 {
   //std::cout << "xclAllocBO called " << std::endl;
   //std::cout << "xclAllocBO size:  "  << size << std::endl;
@@ -632,7 +632,7 @@ unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, xclBOKind domain, u
   if (!drv)
     return -EINVAL;
   //std::cout << "xclAllocBO handle check passed" << std::endl;
-  return drv->xclAllocBO(size, domain, flags);
+  return drv->xclAllocBO(size, unused, flags);
 }
 
 unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)
