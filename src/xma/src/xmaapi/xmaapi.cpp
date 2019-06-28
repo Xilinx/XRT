@@ -33,7 +33,6 @@
 #define XMA_CFG_DIR "/var/tmp/xilinx"
 #define XMAAPI_MOD "xmaapi"
 
-XmaSingleton *g_xma_singleton;
 //Create singleton on the stack
 XmaSingleton xma_singleton_internal;
 
