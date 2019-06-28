@@ -46,7 +46,7 @@ If no spcific configure is needed, this script would use default configurations.
 An example config.sh file is `src/platform/zcu102ng/config.sh`.
 
 The PetaLinux project is by default created from '--template zynqMP'. The config.sh allow platform to select template(zynqMP/zynq).
-If a BSP is needed, use --bsp/-b option to specify BSP file.
+If a BSP is needed, use --bsp/-b option to specify BSP file. Usually image is bigger if you build from a BSP. The benifit is BSP is more stable, less chance to meet u-boot, SD slot, ethernet issues etc.
 
 Before petalinux-build, there is a `pre_build_hook` allow you to do other changes in PetaLinux project, such as apply patchs.
 After petalinux-build, there is a `post_build_hook` allow you to do other things you need, such as create BOOT.BIN.
@@ -55,10 +55,11 @@ After petalinux-build, there is a `post_build_hook` allow you to do other things
 
 For example:
 ```bash
-# Build from BSP. This is required for zcu104_revmin platform.
+# Build from BSP, the image would become larger.
+# This is required for all revmin platform (Otherwise the SD card and Ethernet would not work).
 $ peta_build.sh --bsp <BSP> ./dsa_build/zcu104_revmin.dsa
 
-# Build from template by default
+# Build from template. This is a good choice if you know petalinux very well.
 $ peta_build.sh ./dsa_build/zcu102ng.dsa
 
 # Build with special configurations
@@ -81,9 +82,9 @@ You need to specify tools in the arguments list. Those tools are vivado, xsct, p
 
 For example:
 ```bash
-# For zcu104_revmin
+# For zcu104_revmin. Please use <BSP> to build revmin platforms. See peta\_build.sh section.
 $ petalinux.sh $XILINX_VIVADO/bin/vivado $XILINX_SDX/bin/xsct $PETALINUX zcu104_revmin <XRT_REPO_PATH> <BSP>
 
-# For zcu102ng
+# For zcu102ng. Do not build revmin platform from template, unless you know what you are doing.
 $ petalinux.sh $XILINX_VIVADO/bin/vivado $XILINX_SDX/bin/xsct $PETALINUX zcu102ng <XRT_REPO_PATH>
 ```
