@@ -54,7 +54,7 @@ MODULE_PARM_DESC(minimum_initialization,
 	"Enable minimum_initialization to force driver to load without vailid firmware or DSA. Thus xbsak flash is able to upgrade firmware. (0 = normal initialization, 1 = minimum initialization)");
 
 #define	LOW_TEMP		0
-#define	HI_TEMP			85000
+#define	HI_TEMP			85
 #define	LOW_MILLVOLT		500
 #define	HI_MILLVOLT		2500
 
@@ -234,16 +234,6 @@ void device_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj)
 	memcpy(obj->vbnv, rom.VBNVName, 64);
 	memcpy(obj->fpga, rom.FPGAPartName, 64);
 
-	/* Get sysmon info */
-	xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_TEMP, &val);
-	obj->onchip_temp = val / 1000;
-	xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_VCC_INT, &val);
-	obj->vcc_int = val;
-	xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_VCC_AUX, &val);
-	obj->vcc_aux = val;
-	xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_VCC_BRAM, &val);
-	obj->vcc_bram = val;
-
 	fill_frequency_info(lro, obj);
 	get_pcie_link_info(lro, &obj->pcie_link_width, &obj->pcie_link_speed,
 		false);
@@ -413,29 +403,34 @@ inline void check_temp_within_range(struct xclmgmt_dev *lro, u32 temp)
 
 inline void check_volt_within_range(struct xclmgmt_dev *lro, u16 volt)
 {
-	if (volt < LOW_MILLVOLT || volt > HI_MILLVOLT) {
+	if (volt != 0 && (volt < LOW_MILLVOLT || volt > HI_MILLVOLT)) {
 		mgmt_err(lro, "Voltage outside normal range (%d-%d)mV %d.",
 			LOW_MILLVOLT, HI_MILLVOLT, volt);
 	}
 }
 
-static void check_sysmon(struct xclmgmt_dev *lro)
+static void check_sensor(struct xclmgmt_dev *lro)
 {
-	u32 val;
 	int ret;
+	struct xcl_sensor s = { 0 };
 
-	ret = xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_TEMP, &val);
-	if (ret == -ENODEV)
-		return;
+	ret = xocl_xmc_get_data(lro, &s);
+	if (ret == -ENODEV) {
+		(void) xocl_sysmon_get_prop(lro,
+			XOCL_SYSMON_PROP_TEMP, &s.fpga_temp);
+		s.fpga_temp /= 1000;
+		(void) xocl_sysmon_get_prop(lro,
+			XOCL_SYSMON_PROP_VCC_INT, &s.vccint_vol);
+		(void) xocl_sysmon_get_prop(lro,
+			XOCL_SYSMON_PROP_VCC_AUX, &s.vol_1v8);
+		(void) xocl_sysmon_get_prop(lro,
+			XOCL_SYSMON_PROP_VCC_BRAM, &s.vol_0v85);
+	}
 
-	check_temp_within_range(lro, val);
-
-	xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_VCC_INT, &val);
-	check_volt_within_range(lro, val);
-	xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_VCC_AUX, &val);
-	check_volt_within_range(lro, val);
-	xocl_sysmon_get_prop(lro, XOCL_SYSMON_PROP_VCC_BRAM, &val);
-	check_volt_within_range(lro, val);
+	check_temp_within_range(lro, s.fpga_temp);
+	check_volt_within_range(lro, s.vccint_vol);
+	check_volt_within_range(lro, s.vol_1v8);
+	check_volt_within_range(lro, s.vol_0v85);
 }
 
 static int health_check_cb(void *data)
@@ -450,7 +445,7 @@ static int health_check_cb(void *data)
 	tripped = xocl_af_check(lro, NULL);
 
 	if (!tripped) {
-		check_sysmon(lro);
+		check_sensor(lro);
 	} else {
 		mgmt_info(lro, "firewall tripped, notify peer");
 		(void) xocl_peer_notify(lro, &mbreq, sizeof(struct mailbox_req));

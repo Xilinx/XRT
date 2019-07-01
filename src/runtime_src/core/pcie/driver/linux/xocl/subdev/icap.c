@@ -1613,12 +1613,14 @@ static int icap_req_download_rp(struct icap *icap, struct axlf *axlf)
 	if (bitstream_parse_header(icap, header,
 		DMA_HWICAP_BITFILE_BUFFER_SIZE, &bit_header)) {
 		ICAP_ERR(icap, "parse header failed");
+		ret = -EINVAL;
 		goto failed;
 	}
 
 	icap->rp_bit_len = bit_header.HeaderLength + bit_header.BitstreamLength;
 	if (icap->rp_bit_len > section->m_sectionOffset) {
-		ICAP_ERR(icap, "bitstream is too bit");
+		ICAP_ERR(icap, "bitstream is too big");
+		ret = -EINVAL;
 		goto failed;
 	}
 
@@ -3441,7 +3443,7 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 {
 	struct icap *icap = filp->private_data;
 	struct axlf *axlf;
-	ssize_t ret, len;
+	ssize_t ret, len = 0;
 
 	if (*off == 0) {
 		mutex_lock(&icap->icap_lock);

@@ -23,6 +23,7 @@
 #include "../xocl_drv.h"
 #include "mgmt-ioctl.h"
 #include "mailbox_proto.h"
+#include "xclfeatures.h"
 
 /* Retry is set to 15s for XMC */
 #define	MAX_XMC_RETRY			150
@@ -141,7 +142,7 @@ enum {
 	NUM_IOADDR
 };
 
-enum {
+enum sensor_val_kind {
 	SENSOR_MAX,
 	SENSOR_AVG,
 	SENSOR_INS,
@@ -183,8 +184,8 @@ enum {
 	(xmc->base_addrs[IO_CLK_SCALING] ?	\
 	XOCL_WRITE_REG32(val, xmc->base_addrs[IO_CLK_SCALING] + off) : ((void)0))
 
-#define	READ_INSTANT(xmc, off, valp)		\
-	safe_read32(xmc, off + sizeof(u32) * SENSOR_INS, valp);
+#define	READ_SENSOR(xmc, off, valp, val_kind)	\
+	safe_read32(xmc, off + sizeof(u32) * val_kind, valp);
 
 #define	XMC_PKT_SUPPORT_MASK			(1 << 3)
 #define	XMC_PKT_OWNER_MASK			(1 << 5)
@@ -262,7 +263,8 @@ struct xocl_xmc {
 	u64			cache_expire_secs;
 	struct xcl_sensor	cache;
 	ktime_t			cache_expires;
-	bool			runtime_cs_enabled; //Runtime clock scaling enabled status
+	/* Runtime clock scaling enabled status */
+	bool			runtime_cs_enabled;
 
 	/* XMC mailbox support. */
 	struct mutex		mbx_lock;
@@ -343,7 +345,8 @@ static void safe_write32(struct xocl_xmc *xmc, u32 reg, u32 val)
 	mutex_unlock(&xmc->xmc_lock);
 }
 
-static void safe_read_from_peer(struct xocl_xmc *xmc, struct platform_device *pdev)
+static void safe_read_from_peer(struct xocl_xmc *xmc,
+	struct platform_device *pdev)
 {
 	mutex_lock(&xmc->xmc_lock);
 	if (xmc->enabled)
@@ -351,111 +354,111 @@ static void safe_read_from_peer(struct xocl_xmc *xmc, struct platform_device *pd
 	mutex_unlock(&xmc->xmc_lock);
 }
 
-static void xmc_get_prop(struct platform_device *pdev, enum data_kind kind, void *buf)
+static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
+	u32 *val, enum sensor_val_kind val_kind)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
-	uint32_t *val = (uint32_t *)buf;
 
 	if (XMC_PRIVILEGED(xmc)) {
 		switch (kind) {
 		case DIMM0_TEMP:
-			READ_INSTANT(xmc, XMC_DIMM_TEMP0_REG, val);
+			READ_SENSOR(xmc, XMC_DIMM_TEMP0_REG, val, val_kind);
 			break;
 		case DIMM1_TEMP:
-			READ_INSTANT(xmc, XMC_DIMM_TEMP1_REG, val);
+			READ_SENSOR(xmc, XMC_DIMM_TEMP1_REG, val, val_kind);
 			break;
 		case DIMM2_TEMP:
-			READ_INSTANT(xmc, XMC_DIMM_TEMP2_REG, val);
+			READ_SENSOR(xmc, XMC_DIMM_TEMP2_REG, val, val_kind);
 			break;
 		case DIMM3_TEMP:
-			READ_INSTANT(xmc, XMC_DIMM_TEMP3_REG, val);
+			READ_SENSOR(xmc, XMC_DIMM_TEMP3_REG, val, val_kind);
 			break;
 		case FPGA_TEMP:
-			READ_INSTANT(xmc, XMC_FPGA_TEMP, val);
+			READ_SENSOR(xmc, XMC_FPGA_TEMP, val, val_kind);
 			break;
 		case VOL_12V_PEX:
-			READ_INSTANT(xmc, XMC_12V_PEX_REG, val);
+			READ_SENSOR(xmc, XMC_12V_PEX_REG, val, val_kind);
 			break;
 		case VOL_12V_AUX:
-			READ_INSTANT(xmc, XMC_12V_AUX_REG, val);
+			READ_SENSOR(xmc, XMC_12V_AUX_REG, val, val_kind);
 			break;
 		case CUR_12V_PEX:
-			READ_INSTANT(xmc, XMC_12V_PEX_I_IN_REG, val);
+			READ_SENSOR(xmc, XMC_12V_PEX_I_IN_REG, val, val_kind);
 			break;
 		case CUR_12V_AUX:
-			READ_INSTANT(xmc, XMC_12V_AUX_I_IN_REG, val);
+			READ_SENSOR(xmc, XMC_12V_AUX_I_IN_REG, val, val_kind);
 			break;
 		case SE98_TEMP0:
-			READ_INSTANT(xmc, XMC_SE98_TEMP0_REG, val);
+			READ_SENSOR(xmc, XMC_SE98_TEMP0_REG, val, val_kind);
 			break;
 		case SE98_TEMP1:
-			READ_INSTANT(xmc, XMC_SE98_TEMP1_REG, val);
+			READ_SENSOR(xmc, XMC_SE98_TEMP1_REG, val, val_kind);
 			break;
 		case SE98_TEMP2:
-			READ_INSTANT(xmc, XMC_SE98_TEMP2_REG, val);
+			READ_SENSOR(xmc, XMC_SE98_TEMP2_REG, val, val_kind);
 			break;
 		case FAN_TEMP:
-			READ_INSTANT(xmc, XMC_FAN_TEMP_REG, val);
+			READ_SENSOR(xmc, XMC_FAN_TEMP_REG, val, val_kind);
 			break;
 		case FAN_RPM:
-			READ_INSTANT(xmc, XMC_FAN_SPEED_REG, val);
+			READ_SENSOR(xmc, XMC_FAN_SPEED_REG, val, val_kind);
 			break;
 		case VOL_3V3_PEX:
-			READ_INSTANT(xmc, XMC_3V3_PEX_REG, val);
+			READ_SENSOR(xmc, XMC_3V3_PEX_REG, val, val_kind);
 			break;
 		case VOL_3V3_AUX:
-			READ_INSTANT(xmc, XMC_3V3_AUX_REG, val);
+			READ_SENSOR(xmc, XMC_3V3_AUX_REG, val, val_kind);
 			break;
 		case VPP_BTM:
-			READ_INSTANT(xmc, XMC_DDR4_VPP_BTM_REG, val);
+			READ_SENSOR(xmc, XMC_DDR4_VPP_BTM_REG, val, val_kind);
 			break;
 		case VPP_TOP:
-			READ_INSTANT(xmc, XMC_DDR4_VPP_TOP_REG, val);
+			READ_SENSOR(xmc, XMC_DDR4_VPP_TOP_REG, val, val_kind);
 			break;
 		case VOL_5V5_SYS:
-			READ_INSTANT(xmc, XMC_SYS_5V5_REG, val);
+			READ_SENSOR(xmc, XMC_SYS_5V5_REG, val, val_kind);
 			break;
 		case VOL_1V2_TOP:
-			READ_INSTANT(xmc, XMC_VCC1V2_TOP_REG, val);
+			READ_SENSOR(xmc, XMC_VCC1V2_TOP_REG, val, val_kind);
 			break;
 		case VOL_1V2_BTM:
-			READ_INSTANT(xmc, XMC_VCC1V2_BTM_REG, val);
+			READ_SENSOR(xmc, XMC_VCC1V2_BTM_REG, val, val_kind);
 			break;
 		case VOL_1V8:
-			READ_INSTANT(xmc, XMC_VCC1V8_REG, val);
+			READ_SENSOR(xmc, XMC_VCC1V8_REG, val, val_kind);
 			break;
 		case VCC_0V9A:
-			READ_INSTANT(xmc, XMC_MGT0V9AVCC_REG, val);
+			READ_SENSOR(xmc, XMC_MGT0V9AVCC_REG, val, val_kind);
 			break;
 		case VOL_12V_SW:
-			READ_INSTANT(xmc, XMC_12V_SW_REG, val);
+			READ_SENSOR(xmc, XMC_12V_SW_REG, val, val_kind);
 			break;
 		case VTT_MGTA:
-			READ_INSTANT(xmc, XMC_MGTAVTT_REG, val);
+			READ_SENSOR(xmc, XMC_MGTAVTT_REG, val, val_kind);
 			break;
 		case VOL_VCC_INT:
-			READ_INSTANT(xmc, XMC_VCCINT_V_REG, val);
+			READ_SENSOR(xmc, XMC_VCCINT_V_REG, val, val_kind);
 			break;
 		case CUR_VCC_INT:
-			READ_INSTANT(xmc, XMC_VCCINT_I_REG, val);
+			READ_SENSOR(xmc, XMC_VCCINT_I_REG, val, val_kind);
 			break;
 		case HBM_TEMP:
-			READ_INSTANT(xmc, XMC_HBM_TEMP_REG, val);
+			READ_SENSOR(xmc, XMC_HBM_TEMP_REG, val, val_kind);
 			break;
 		case CAGE_TEMP0:
-			READ_INSTANT(xmc, XMC_CAGE_TEMP0_REG, val);
+			READ_SENSOR(xmc, XMC_CAGE_TEMP0_REG, val, val_kind);
 			break;
 		case CAGE_TEMP1:
-			READ_INSTANT(xmc, XMC_CAGE_TEMP1_REG, val);
+			READ_SENSOR(xmc, XMC_CAGE_TEMP1_REG, val, val_kind);
 			break;
 		case CAGE_TEMP2:
-			READ_INSTANT(xmc, XMC_CAGE_TEMP2_REG, val);
+			READ_SENSOR(xmc, XMC_CAGE_TEMP2_REG, val, val_kind);
 			break;
 		case CAGE_TEMP3:
-			READ_INSTANT(xmc, XMC_CAGE_TEMP3_REG, val);
+			READ_SENSOR(xmc, XMC_CAGE_TEMP3_REG, val, val_kind);
 			break;
 		case VCC_0V85:
-			READ_INSTANT(xmc, XMC_VCC0V85_REG, val);
+			READ_SENSOR(xmc, XMC_VCC0V85_REG, val, val_kind);
 			break;
 		default:
 			break;
@@ -569,56 +572,60 @@ static void xmc_get_prop(struct platform_device *pdev, enum data_kind kind, void
 	}
 }
 
-static void xmc_get_data(struct platform_device *pdev, void *buf)
+static int xmc_get_data(struct platform_device *pdev, void *buf)
 {
 	struct xcl_sensor *sensors = (struct xcl_sensor *)buf;
 
-	xmc_get_prop(pdev, VOL_12V_PEX, &sensors->vol_12v_pex);
-	xmc_get_prop(pdev, VOL_12V_AUX, &sensors->vol_12v_aux);
-	xmc_get_prop(pdev, CUR_12V_PEX, &sensors->cur_12v_pex);
-	xmc_get_prop(pdev, CUR_12V_AUX, &sensors->cur_12v_aux);
-	xmc_get_prop(pdev, VOL_3V3_PEX, &sensors->vol_3v3_pex);
-	xmc_get_prop(pdev, VOL_3V3_AUX, &sensors->vol_3v3_aux);
-	xmc_get_prop(pdev, VPP_BTM, &sensors->ddr_vpp_btm);
-	xmc_get_prop(pdev, VOL_5V5_SYS, &sensors->sys_5v5);
-	xmc_get_prop(pdev, VOL_1V2_TOP, &sensors->top_1v2);
-	xmc_get_prop(pdev, VOL_1V8, &sensors->vol_1v8);
-	xmc_get_prop(pdev, VCC_0V85, &sensors->vol_0v85);
-	xmc_get_prop(pdev, VPP_TOP, &sensors->ddr_vpp_top);
-	xmc_get_prop(pdev, VCC_0V9A, &sensors->mgt0v9avcc);
-	xmc_get_prop(pdev, VOL_12V_SW, &sensors->vol_12v_sw);
-	xmc_get_prop(pdev, VTT_MGTA, &sensors->mgtavtt);
-	xmc_get_prop(pdev, VOL_1V2_BTM, &sensors->vcc1v2_btm);
-	xmc_get_prop(pdev, FPGA_TEMP, &sensors->fpga_temp);
-	xmc_get_prop(pdev, FAN_TEMP, &sensors->fan_temp);
-	xmc_get_prop(pdev, FAN_RPM, &sensors->fan_rpm);
-	xmc_get_prop(pdev, DIMM0_TEMP, &sensors->dimm_temp0);
-	xmc_get_prop(pdev, DIMM1_TEMP, &sensors->dimm_temp1);
-	xmc_get_prop(pdev, DIMM2_TEMP, &sensors->dimm_temp2);
-	xmc_get_prop(pdev, DIMM3_TEMP, &sensors->dimm_temp3);
-	xmc_get_prop(pdev, VOL_VCC_INT, &sensors->vccint_vol);
-	xmc_get_prop(pdev, CUR_VCC_INT, &sensors->vccint_curr);
-	xmc_get_prop(pdev, SE98_TEMP0, &sensors->se98_temp0);
-	xmc_get_prop(pdev, SE98_TEMP1, &sensors->se98_temp1);
-	xmc_get_prop(pdev, SE98_TEMP2, &sensors->se98_temp2);
-	xmc_get_prop(pdev, CAGE_TEMP0, &sensors->cage_temp0);
-	xmc_get_prop(pdev, CAGE_TEMP1, &sensors->cage_temp1);
-	xmc_get_prop(pdev, CAGE_TEMP2, &sensors->cage_temp2);
-	xmc_get_prop(pdev, CAGE_TEMP3, &sensors->cage_temp3);
-	xmc_get_prop(pdev, HBM_TEMP, &sensors->hbm_temp0);
+	xmc_sensor(pdev, VOL_12V_PEX, &sensors->vol_12v_pex, SENSOR_INS);
+	xmc_sensor(pdev, VOL_12V_AUX, &sensors->vol_12v_aux, SENSOR_INS);
+	xmc_sensor(pdev, CUR_12V_PEX, &sensors->cur_12v_pex, SENSOR_INS);
+	xmc_sensor(pdev, CUR_12V_AUX, &sensors->cur_12v_aux, SENSOR_INS);
+	xmc_sensor(pdev, VOL_3V3_PEX, &sensors->vol_3v3_pex, SENSOR_INS);
+	xmc_sensor(pdev, VOL_3V3_AUX, &sensors->vol_3v3_aux, SENSOR_INS);
+	xmc_sensor(pdev, VPP_BTM, &sensors->ddr_vpp_btm, SENSOR_INS);
+	xmc_sensor(pdev, VOL_5V5_SYS, &sensors->sys_5v5, SENSOR_INS);
+	xmc_sensor(pdev, VOL_1V2_TOP, &sensors->top_1v2, SENSOR_INS);
+	xmc_sensor(pdev, VOL_1V8, &sensors->vol_1v8, SENSOR_INS);
+	xmc_sensor(pdev, VCC_0V85, &sensors->vol_0v85, SENSOR_INS);
+	xmc_sensor(pdev, VPP_TOP, &sensors->ddr_vpp_top, SENSOR_INS);
+	xmc_sensor(pdev, VCC_0V9A, &sensors->mgt0v9avcc, SENSOR_INS);
+	xmc_sensor(pdev, VOL_12V_SW, &sensors->vol_12v_sw, SENSOR_INS);
+	xmc_sensor(pdev, VTT_MGTA, &sensors->mgtavtt, SENSOR_INS);
+	xmc_sensor(pdev, VOL_1V2_BTM, &sensors->vcc1v2_btm, SENSOR_INS);
+	xmc_sensor(pdev, FPGA_TEMP, &sensors->fpga_temp, SENSOR_INS);
+	xmc_sensor(pdev, FAN_TEMP, &sensors->fan_temp, SENSOR_INS);
+	xmc_sensor(pdev, FAN_RPM, &sensors->fan_rpm, SENSOR_INS);
+	xmc_sensor(pdev, DIMM0_TEMP, &sensors->dimm_temp0, SENSOR_INS);
+	xmc_sensor(pdev, DIMM1_TEMP, &sensors->dimm_temp1, SENSOR_INS);
+	xmc_sensor(pdev, DIMM2_TEMP, &sensors->dimm_temp2, SENSOR_INS);
+	xmc_sensor(pdev, DIMM3_TEMP, &sensors->dimm_temp3, SENSOR_INS);
+	xmc_sensor(pdev, VOL_VCC_INT, &sensors->vccint_vol, SENSOR_INS);
+	xmc_sensor(pdev, CUR_VCC_INT, &sensors->vccint_curr, SENSOR_INS);
+	xmc_sensor(pdev, SE98_TEMP0, &sensors->se98_temp0, SENSOR_INS);
+	xmc_sensor(pdev, SE98_TEMP1, &sensors->se98_temp1, SENSOR_INS);
+	xmc_sensor(pdev, SE98_TEMP2, &sensors->se98_temp2, SENSOR_INS);
+	xmc_sensor(pdev, CAGE_TEMP0, &sensors->cage_temp0, SENSOR_INS);
+	xmc_sensor(pdev, CAGE_TEMP1, &sensors->cage_temp1, SENSOR_INS);
+	xmc_sensor(pdev, CAGE_TEMP2, &sensors->cage_temp2, SENSOR_INS);
+	xmc_sensor(pdev, CAGE_TEMP3, &sensors->cage_temp3, SENSOR_INS);
+	xmc_sensor(pdev, HBM_TEMP, &sensors->hbm_temp0, SENSOR_INS);
+
+	return 0;
 }
 
-#define	SENSOR_SYSFS_NODE(node_name, type)			\
-	static ssize_t node_name##_show(struct device *dev,	\
-		struct device_attribute *attr, char *buf)	\
-	{							\
-		struct xocl_xmc *xmc = dev_get_drvdata(dev);	\
-		u32 val = 0;					\
-		xmc_get_prop(xmc->pdev, type, &val);		\
-		return sprintf(buf, "%d\n", val);		\
-	}							\
+/*
+ * Defining sysfs nodes for all sensor readings.
+ */
+#define	SENSOR_SYSFS_NODE(node_name, type)				\
+	static ssize_t node_name##_show(struct device *dev,		\
+		struct device_attribute *attr, char *buf)		\
+	{								\
+		struct xocl_xmc *xmc = dev_get_drvdata(dev);		\
+		u32 val = 0;						\
+		xmc_sensor(xmc->pdev, type, &val, SENSOR_INS);		\
+		return sprintf(buf, "%d\n", val);			\
+	}								\
 	static DEVICE_ATTR_RO(node_name)
-
 SENSOR_SYSFS_NODE(xmc_12v_pex_vol, VOL_12V_PEX);
 SENSOR_SYSFS_NODE(xmc_12v_aux_vol, VOL_12V_AUX);
 SENSOR_SYSFS_NODE(xmc_12v_pex_curr, CUR_12V_PEX);
@@ -651,7 +658,43 @@ SENSOR_SYSFS_NODE(xmc_cage_temp0, CAGE_TEMP0);
 SENSOR_SYSFS_NODE(xmc_cage_temp1, CAGE_TEMP1);
 SENSOR_SYSFS_NODE(xmc_cage_temp2, CAGE_TEMP2);
 SENSOR_SYSFS_NODE(xmc_cage_temp3, CAGE_TEMP3);
+#define	SENSOR_SYSFS_NODE_ATTRS						\
+	&dev_attr_xmc_12v_pex_vol.attr,					\
+	&dev_attr_xmc_12v_aux_vol.attr,					\
+	&dev_attr_xmc_12v_pex_curr.attr,				\
+	&dev_attr_xmc_12v_aux_curr.attr,				\
+	&dev_attr_xmc_3v3_pex_vol.attr,					\
+	&dev_attr_xmc_3v3_aux_vol.attr,					\
+	&dev_attr_xmc_ddr_vpp_btm.attr,					\
+	&dev_attr_xmc_sys_5v5.attr,					\
+	&dev_attr_xmc_1v2_top.attr,					\
+	&dev_attr_xmc_1v8.attr,						\
+	&dev_attr_xmc_0v85.attr,					\
+	&dev_attr_xmc_ddr_vpp_top.attr,					\
+	&dev_attr_xmc_mgt0v9avcc.attr,					\
+	&dev_attr_xmc_12v_sw.attr,					\
+	&dev_attr_xmc_mgtavtt.attr,					\
+	&dev_attr_xmc_vcc1v2_btm.attr,					\
+	&dev_attr_xmc_fpga_temp.attr,					\
+	&dev_attr_xmc_fan_temp.attr,					\
+	&dev_attr_xmc_fan_rpm.attr,					\
+	&dev_attr_xmc_dimm_temp0.attr,					\
+	&dev_attr_xmc_dimm_temp1.attr,					\
+	&dev_attr_xmc_dimm_temp2.attr,					\
+	&dev_attr_xmc_dimm_temp3.attr,					\
+	&dev_attr_xmc_vccint_vol.attr,					\
+	&dev_attr_xmc_vccint_curr.attr,					\
+	&dev_attr_xmc_se98_temp0.attr,					\
+	&dev_attr_xmc_se98_temp1.attr,					\
+	&dev_attr_xmc_se98_temp2.attr,					\
+	&dev_attr_xmc_cage_temp0.attr,					\
+	&dev_attr_xmc_cage_temp1.attr,					\
+	&dev_attr_xmc_cage_temp2.attr,					\
+	&dev_attr_xmc_cage_temp3.attr
 
+/*
+ * Defining sysfs nodes for reading some of xmc regisers.
+ */
 #define	REG_SYSFS_NODE(node_name, reg, format)				\
 	static ssize_t node_name##_show(struct device *dev,		\
 		struct device_attribute *attr, char *buf) {		\
@@ -662,7 +705,6 @@ SENSOR_SYSFS_NODE(xmc_cage_temp3, CAGE_TEMP3);
 		return sprintf(buf, format, val);			\
 	}								\
 	static DEVICE_ATTR_RO(node_name)
-
 REG_SYSFS_NODE(version, XMC_VERSION_REG, "%d\n");
 REG_SYSFS_NODE(sensor, XMC_SENSOR_REG, "0x%04x\n");
 REG_SYSFS_NODE(id, XMC_MAGIC_REG, "0x%x\n");
@@ -674,6 +716,19 @@ REG_SYSFS_NODE(power_flag, XMC_SNSR_FLAGS_REG, "%d\n");
 REG_SYSFS_NODE(host_msg_offset, XMC_HOST_MSG_OFFSET_REG, "%d\n");
 REG_SYSFS_NODE(host_msg_error, XMC_HOST_MSG_ERROR_REG, "0x%x\n");
 REG_SYSFS_NODE(host_msg_header, XMC_HOST_MSG_HEADER_REG, "0x%x\n");
+#define	REG_SYSFS_NODE_ATTRS						\
+	&dev_attr_version.attr,						\
+	&dev_attr_sensor.attr,						\
+	&dev_attr_id.attr,						\
+	&dev_attr_status.attr,						\
+	&dev_attr_error.attr,						\
+	&dev_attr_capability.attr,					\
+	&dev_attr_power_checksum.attr,					\
+	&dev_attr_power_flag.attr,					\
+	&dev_attr_host_msg_offset.attr,					\
+	&dev_attr_host_msg_error.attr,					\
+	&dev_attr_host_msg_header.attr
+
 
 static ssize_t pause_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -755,7 +810,6 @@ static DEVICE_ATTR_RW(cache_expire_secs);
 
 static int get_temp_by_m_tag(struct xocl_xmc *xmc, char *m_tag)
 {
-
 	/*
 	 * m_tag get from xclbin must follow this format
 	 * DDR[0] or bank1
@@ -771,7 +825,7 @@ static int get_temp_by_m_tag(struct xocl_xmc *xmc, char *m_tag)
 		return -ENODEV;
 
 	if (!strncmp(m_tag, "HBM", 3)) {
-		xmc_get_prop(xmc->pdev, HBM_TEMP, &ret);
+		xmc_sensor(xmc->pdev, HBM_TEMP, &ret, SENSOR_INS);
 		return ret;
 	}
 
@@ -805,16 +859,16 @@ static int get_temp_by_m_tag(struct xocl_xmc *xmc, char *m_tag)
 
 		switch (idx) {
 		case 0:
-			xmc_get_prop(xmc->pdev, DIMM0_TEMP, &ret);
+			xmc_sensor(xmc->pdev, DIMM0_TEMP, &ret, SENSOR_INS);
 			break;
 		case 1:
-			xmc_get_prop(xmc->pdev, DIMM1_TEMP, &ret);
+			xmc_sensor(xmc->pdev, DIMM1_TEMP, &ret, SENSOR_INS);
 			break;
 		case 2:
-			xmc_get_prop(xmc->pdev, DIMM2_TEMP, &ret);
+			xmc_sensor(xmc->pdev, DIMM2_TEMP, &ret, SENSOR_INS);
 			break;
 		case 3:
-			xmc_get_prop(xmc->pdev, DIMM3_TEMP, &ret);
+			xmc_sensor(xmc->pdev, DIMM3_TEMP, &ret, SENSOR_INS);
 			break;
 		}
 
@@ -887,7 +941,7 @@ static ssize_t scaling_cur_temp_show(struct device *dev,
 	struct platform_device *pdev = to_platform_device(dev);
 	u32 board_temp;
 
-	xmc_get_prop(pdev, FPGA_TEMP, &board_temp);
+	xmc_sensor(pdev, FPGA_TEMP, &board_temp, SENSOR_INS);
 
 	return sprintf(buf, "%d\n", board_temp);
 }
@@ -900,10 +954,10 @@ static ssize_t scaling_cur_power_show(struct device *dev,
 	u32 mPexCurr, m12VPex, mAuxCurr, m12VAux, board_power;
 
 	//Measure board power in terms of Watts and store it in register
-	xmc_get_prop(pdev, VOL_12V_PEX, &m12VPex);
-	xmc_get_prop(pdev, VOL_12V_AUX, &m12VAux);
-	xmc_get_prop(pdev, CUR_12V_PEX, &mPexCurr);
-	xmc_get_prop(pdev, CUR_12V_AUX, &mAuxCurr);
+	xmc_sensor(pdev, VOL_12V_PEX, &m12VPex, SENSOR_INS);
+	xmc_sensor(pdev, VOL_12V_AUX, &m12VAux, SENSOR_INS);
+	xmc_sensor(pdev, CUR_12V_PEX, &mPexCurr, SENSOR_INS);
+	xmc_sensor(pdev, CUR_12V_AUX, &mAuxCurr, SENSOR_INS);
 
 	board_power = ((mPexCurr * m12VPex) + (mAuxCurr * m12VAux)) / 1000000;
 
@@ -1028,51 +1082,8 @@ static ssize_t board_info_show(struct device *dev,
 static DEVICE_ATTR_RO(board_info);
 
 static struct attribute *xmc_attrs[] = {
-	&dev_attr_version.attr,
-	&dev_attr_id.attr,
-	&dev_attr_status.attr,
-	&dev_attr_sensor.attr,
-	&dev_attr_error.attr,
-	&dev_attr_capability.attr,
-	&dev_attr_power_checksum.attr,
-	&dev_attr_xmc_12v_pex_vol.attr,
-	&dev_attr_xmc_12v_aux_vol.attr,
-	&dev_attr_xmc_12v_pex_curr.attr,
-	&dev_attr_xmc_12v_aux_curr.attr,
-	&dev_attr_xmc_3v3_pex_vol.attr,
-	&dev_attr_xmc_3v3_aux_vol.attr,
-	&dev_attr_xmc_ddr_vpp_btm.attr,
-	&dev_attr_xmc_sys_5v5.attr,
-	&dev_attr_xmc_1v2_top.attr,
-	&dev_attr_xmc_1v8.attr,
-	&dev_attr_xmc_0v85.attr,
-	&dev_attr_xmc_ddr_vpp_top.attr,
-	&dev_attr_xmc_mgt0v9avcc.attr,
-	&dev_attr_xmc_12v_sw.attr,
-	&dev_attr_xmc_mgtavtt.attr,
-	&dev_attr_xmc_vcc1v2_btm.attr,
-	&dev_attr_xmc_fpga_temp.attr,
-	&dev_attr_xmc_fan_temp.attr,
-	&dev_attr_xmc_fan_rpm.attr,
-	&dev_attr_xmc_dimm_temp0.attr,
-	&dev_attr_xmc_dimm_temp1.attr,
-	&dev_attr_xmc_dimm_temp2.attr,
-	&dev_attr_xmc_dimm_temp3.attr,
-	&dev_attr_xmc_vccint_vol.attr,
-	&dev_attr_xmc_vccint_curr.attr,
-	&dev_attr_xmc_se98_temp0.attr,
-	&dev_attr_xmc_se98_temp1.attr,
-	&dev_attr_xmc_se98_temp2.attr,
-	&dev_attr_xmc_cage_temp0.attr,
-	&dev_attr_xmc_cage_temp1.attr,
-	&dev_attr_xmc_cage_temp2.attr,
-	&dev_attr_xmc_cage_temp3.attr,
 	&dev_attr_pause.attr,
 	&dev_attr_reset.attr,
-	&dev_attr_power_flag.attr,
-	&dev_attr_host_msg_offset.attr,
-	&dev_attr_host_msg_error.attr,
-	&dev_attr_host_msg_header.attr,
 	&dev_attr_cache_expire_secs.attr,
 	&dev_attr_scaling_enabled.attr,
 	&dev_attr_scaling_cur_temp.attr,
@@ -1081,6 +1092,8 @@ static struct attribute *xmc_attrs[] = {
 	&dev_attr_scaling_target_power.attr,
 	&dev_attr_scaling_governor.attr,
 	&dev_attr_board_info.attr,
+	SENSOR_SYSFS_NODE_ATTRS,
+	REG_SYSFS_NODE_ATTRS,
 	NULL,
 };
 
@@ -1140,56 +1153,155 @@ static struct attribute_group xmc_attr_group = {
 	.bin_attrs = xmc_bin_attrs,
 };
 
-static ssize_t show_mb_pw(struct device *dev, struct device_attribute *da,
-	char *buf)
+/*
+ * Defining sysfs nodes for HWMON.
+ */
+#define	HWMON_INDEX(sensor, val_kind)	(sensor | (val_kind << 24))
+#define	HWMON_INDEX2SENSOR(index)	(index & 0xffffff)
+#define	HWMON_INDEX2VAL_KIND(index)	((index & ~0xffffff) >> 24)
+
+/* For voltage and current */
+static ssize_t hwmon_show(struct device *dev,
+	struct device_attribute *da, char *buf)
 {
-	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
-	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	struct platform_device *pdev = to_platform_device(dev);
+	int index = to_sensor_dev_attr(da)->index;
 	u32 val;
 
-	safe_read32(xmc, XMC_12V_PEX_REG + attr->index * sizeof(u32), &val);
-
+	xmc_sensor(pdev, HWMON_INDEX2SENSOR(index), &val,
+		HWMON_INDEX2VAL_KIND(index));
 	return sprintf(buf, "%d\n", val);
 }
 
-static SENSOR_DEVICE_ATTR(curr1_highest, 0444, show_mb_pw, NULL, 0);
-static SENSOR_DEVICE_ATTR(curr1_average, 0444, show_mb_pw, NULL, 1);
-static SENSOR_DEVICE_ATTR(curr1_input, 0444, show_mb_pw, NULL, 2);
-static SENSOR_DEVICE_ATTR(curr2_highest, 0444, show_mb_pw, NULL, 3);
-static SENSOR_DEVICE_ATTR(curr2_average, 0444, show_mb_pw, NULL, 4);
-static SENSOR_DEVICE_ATTR(curr2_input, 0444, show_mb_pw, NULL, 5);
-static SENSOR_DEVICE_ATTR(curr3_highest, 0444, show_mb_pw, NULL, 6);
-static SENSOR_DEVICE_ATTR(curr3_average, 0444, show_mb_pw, NULL, 7);
-static SENSOR_DEVICE_ATTR(curr3_input, 0444, show_mb_pw, NULL, 8);
-static SENSOR_DEVICE_ATTR(curr4_highest, 0444, show_mb_pw, NULL, 9);
-static SENSOR_DEVICE_ATTR(curr4_average, 0444, show_mb_pw, NULL, 10);
-static SENSOR_DEVICE_ATTR(curr4_input, 0444, show_mb_pw, NULL, 11);
-static SENSOR_DEVICE_ATTR(curr5_highest, 0444, show_mb_pw, NULL, 12);
-static SENSOR_DEVICE_ATTR(curr5_average, 0444, show_mb_pw, NULL, 13);
-static SENSOR_DEVICE_ATTR(curr5_input, 0444, show_mb_pw, NULL, 14);
-static SENSOR_DEVICE_ATTR(curr6_highest, 0444, show_mb_pw, NULL, 15);
-static SENSOR_DEVICE_ATTR(curr6_average, 0444, show_mb_pw, NULL, 16);
-static SENSOR_DEVICE_ATTR(curr6_input, 0444, show_mb_pw, NULL, 17);
+#define	HWMON_VOLT_CURR_SYSFS_NODE(type, id, name, sensor)		\
+	static ssize_t type##id##_label(struct device *dev,		\
+		struct device_attribute *attr, char *buf) {		\
+		return sprintf(buf, "%s\n", name);			\
+	}								\
+	static SENSOR_DEVICE_ATTR(type##id##_max, 0444, hwmon_show,	\
+		NULL, HWMON_INDEX(sensor, SENSOR_MAX));			\
+	static SENSOR_DEVICE_ATTR(type##id##_average, 0444, hwmon_show,	\
+		NULL, HWMON_INDEX(sensor, SENSOR_AVG));			\
+	static SENSOR_DEVICE_ATTR(type##id##_input, 0444, hwmon_show,	\
+		NULL, HWMON_INDEX(sensor, SENSOR_INS));			\
+	static SENSOR_DEVICE_ATTR(type##id##_label, 0444, type##id##_label, \
+		NULL, HWMON_INDEX(sensor, SENSOR_INS))
+#define	HWMON_VOLT_CURR_ATTRS(type, id)					\
+	&sensor_dev_attr_##type##id##_max.dev_attr.attr,		\
+	&sensor_dev_attr_##type##id##_average.dev_attr.attr,		\
+	&sensor_dev_attr_##type##id##_input.dev_attr.attr,		\
+	&sensor_dev_attr_##type##id##_label.dev_attr.attr
 
+/* For fan speed. */
+#define	HWMON_FAN_SPEED_SYSFS_NODE(id, name, sensor)			\
+	static ssize_t fan##id##_label(struct device *dev,		\
+		struct device_attribute *attr, char *buf) {		\
+		return sprintf(buf, "%s\n", name);			\
+	}								\
+	static SENSOR_DEVICE_ATTR(fan##id##_input, 0444, hwmon_show,	\
+		NULL, HWMON_INDEX(sensor, SENSOR_INS));			\
+	static SENSOR_DEVICE_ATTR(fan##id##_label, 0444, fan##id##_label, \
+		NULL, HWMON_INDEX(sensor, SENSOR_INS))
+#define	HWMON_FAN_SPEED_ATTRS(id)					\
+	&sensor_dev_attr_fan##id##_input.dev_attr.attr,			\
+	&sensor_dev_attr_fan##id##_label.dev_attr.attr
+
+/* For temperature */
+static ssize_t hwmon_temp_show(struct device *dev,
+	struct device_attribute *da, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	int index = to_sensor_dev_attr(da)->index;
+	u32 val;
+
+	xmc_sensor(pdev, HWMON_INDEX2SENSOR(index), &val,
+		HWMON_INDEX2VAL_KIND(index));
+	return sprintf(buf, "%d\n", val * 1000);
+}
+
+#define	HWMON_TEMPERATURE_SYSFS_NODE(id, name, sensor)			\
+	static ssize_t temp##id##_label(struct device *dev,		\
+		struct device_attribute *attr, char *buf) {		\
+		return sprintf(buf, "%s\n", name);			\
+	}								\
+	static SENSOR_DEVICE_ATTR(temp##id##_highest, 0444, hwmon_temp_show,\
+		NULL, HWMON_INDEX(sensor, SENSOR_MAX));			\
+	static SENSOR_DEVICE_ATTR(temp##id##_input, 0444, hwmon_temp_show, \
+		NULL, HWMON_INDEX(sensor, SENSOR_INS));			\
+	static SENSOR_DEVICE_ATTR(temp##id##_label, 0444, temp##id##_label, \
+		NULL, HWMON_INDEX(sensor, SENSOR_INS))
+#define	HWMON_TEMPERATURE_ATTRS(id)					\
+	&sensor_dev_attr_temp##id##_highest.dev_attr.attr,		\
+	&sensor_dev_attr_temp##id##_input.dev_attr.attr,		\
+	&sensor_dev_attr_temp##id##_label.dev_attr.attr
+
+HWMON_VOLT_CURR_SYSFS_NODE(in, 0, "12V PEX", VOL_12V_PEX);
+HWMON_VOLT_CURR_SYSFS_NODE(in, 1, "12V AUX", VOL_12V_AUX);
+HWMON_VOLT_CURR_SYSFS_NODE(in, 2, "3V3 PEX", VOL_3V3_PEX);
+HWMON_VOLT_CURR_SYSFS_NODE(in, 3, "3V3 AUX", VOL_3V3_AUX);
+HWMON_VOLT_CURR_SYSFS_NODE(in, 4, "5V5 SYS", VOL_5V5_SYS);
+HWMON_VOLT_CURR_SYSFS_NODE(in, 5, "1V2 TOP", VOL_1V2_TOP);
+HWMON_VOLT_CURR_SYSFS_NODE(in, 6, "1V2 BTM", VOL_1V2_BTM);
+HWMON_VOLT_CURR_SYSFS_NODE(in, 7, "1V8 TOP", VOL_1V8);
+HWMON_VOLT_CURR_SYSFS_NODE(in, 8, "12V SW", VOL_12V_SW);
+HWMON_VOLT_CURR_SYSFS_NODE(in, 9, "VCC INT", VOL_VCC_INT);
+HWMON_VOLT_CURR_SYSFS_NODE(in, 10, "0V9 MGT", VCC_0V9A);
+HWMON_VOLT_CURR_SYSFS_NODE(in, 11, "0V85", VCC_0V85);
+HWMON_VOLT_CURR_SYSFS_NODE(in, 12, "MGT VTT", VTT_MGTA);
+HWMON_VOLT_CURR_SYSFS_NODE(in, 13, "DDR VPP BOTTOM", VPP_BTM);
+HWMON_VOLT_CURR_SYSFS_NODE(in, 14, "DDR VPP TOP", VPP_TOP);
+HWMON_VOLT_CURR_SYSFS_NODE(curr, 1, "12V PEX Current", CUR_12V_PEX);
+HWMON_VOLT_CURR_SYSFS_NODE(curr, 2, "12V AUX Current", CUR_12V_AUX);
+HWMON_VOLT_CURR_SYSFS_NODE(curr, 3, "VCC INT Current", CUR_VCC_INT);
+HWMON_TEMPERATURE_SYSFS_NODE(1, "PCB TOP FRONT", SE98_TEMP0);
+HWMON_TEMPERATURE_SYSFS_NODE(2, "PCB TOP REAR", SE98_TEMP1);
+HWMON_TEMPERATURE_SYSFS_NODE(3, "PCB BTM FRONT", SE98_TEMP2);
+HWMON_TEMPERATURE_SYSFS_NODE(4, "FPGA TEMP", FPGA_TEMP);
+HWMON_TEMPERATURE_SYSFS_NODE(5, "TCRIT TEMP", FAN_TEMP);
+HWMON_TEMPERATURE_SYSFS_NODE(6, "DIMM0 TEMP", DIMM0_TEMP);
+HWMON_TEMPERATURE_SYSFS_NODE(7, "DIMM1 TEMP", DIMM1_TEMP);
+HWMON_TEMPERATURE_SYSFS_NODE(8, "DIMM2 TEMP", DIMM2_TEMP);
+HWMON_TEMPERATURE_SYSFS_NODE(9, "DIMM3 TEMP", DIMM3_TEMP);
+HWMON_TEMPERATURE_SYSFS_NODE(10, "HBM TEMP", HBM_TEMP);
+HWMON_TEMPERATURE_SYSFS_NODE(11, "QSPF 0", CAGE_TEMP0);
+HWMON_TEMPERATURE_SYSFS_NODE(12, "QSPF 1", CAGE_TEMP1);
+HWMON_TEMPERATURE_SYSFS_NODE(13, "QSPF 2", CAGE_TEMP2);
+HWMON_TEMPERATURE_SYSFS_NODE(14, "QSPF 3", CAGE_TEMP3);
+HWMON_FAN_SPEED_SYSFS_NODE(1, "FAN SPEED", FAN_RPM);
 static struct attribute *hwmon_xmc_attributes[] = {
-	&sensor_dev_attr_curr1_highest.dev_attr.attr,
-	&sensor_dev_attr_curr1_average.dev_attr.attr,
-	&sensor_dev_attr_curr1_input.dev_attr.attr,
-	&sensor_dev_attr_curr2_highest.dev_attr.attr,
-	&sensor_dev_attr_curr2_average.dev_attr.attr,
-	&sensor_dev_attr_curr2_input.dev_attr.attr,
-	&sensor_dev_attr_curr3_highest.dev_attr.attr,
-	&sensor_dev_attr_curr3_average.dev_attr.attr,
-	&sensor_dev_attr_curr3_input.dev_attr.attr,
-	&sensor_dev_attr_curr4_highest.dev_attr.attr,
-	&sensor_dev_attr_curr4_average.dev_attr.attr,
-	&sensor_dev_attr_curr4_input.dev_attr.attr,
-	&sensor_dev_attr_curr5_highest.dev_attr.attr,
-	&sensor_dev_attr_curr5_average.dev_attr.attr,
-	&sensor_dev_attr_curr5_input.dev_attr.attr,
-	&sensor_dev_attr_curr6_highest.dev_attr.attr,
-	&sensor_dev_attr_curr6_average.dev_attr.attr,
-	&sensor_dev_attr_curr6_input.dev_attr.attr,
+	HWMON_VOLT_CURR_ATTRS(in, 0),
+	HWMON_VOLT_CURR_ATTRS(in, 1),
+	HWMON_VOLT_CURR_ATTRS(in, 2),
+	HWMON_VOLT_CURR_ATTRS(in, 3),
+	HWMON_VOLT_CURR_ATTRS(in, 4),
+	HWMON_VOLT_CURR_ATTRS(in, 5),
+	HWMON_VOLT_CURR_ATTRS(in, 6),
+	HWMON_VOLT_CURR_ATTRS(in, 7),
+	HWMON_VOLT_CURR_ATTRS(in, 8),
+	HWMON_VOLT_CURR_ATTRS(in, 9),
+	HWMON_VOLT_CURR_ATTRS(in, 10),
+	HWMON_VOLT_CURR_ATTRS(in, 11),
+	HWMON_VOLT_CURR_ATTRS(in, 12),
+	HWMON_VOLT_CURR_ATTRS(in, 13),
+	HWMON_VOLT_CURR_ATTRS(in, 14),
+	HWMON_VOLT_CURR_ATTRS(curr, 1),
+	HWMON_VOLT_CURR_ATTRS(curr, 2),
+	HWMON_VOLT_CURR_ATTRS(curr, 3),
+	HWMON_TEMPERATURE_ATTRS(1),
+	HWMON_TEMPERATURE_ATTRS(2),
+	HWMON_TEMPERATURE_ATTRS(3),
+	HWMON_TEMPERATURE_ATTRS(4),
+	HWMON_TEMPERATURE_ATTRS(5),
+	HWMON_TEMPERATURE_ATTRS(6),
+	HWMON_TEMPERATURE_ATTRS(7),
+	HWMON_TEMPERATURE_ATTRS(8),
+	HWMON_TEMPERATURE_ATTRS(9),
+	HWMON_TEMPERATURE_ATTRS(10),
+	HWMON_TEMPERATURE_ATTRS(11),
+	HWMON_TEMPERATURE_ATTRS(12),
+	HWMON_TEMPERATURE_ATTRS(13),
+	HWMON_TEMPERATURE_ATTRS(14),
+	HWMON_FAN_SPEED_ATTRS(1),
 	NULL
 };
 
@@ -1197,14 +1309,25 @@ static const struct attribute_group hwmon_xmc_attrgroup = {
 	.attrs = hwmon_xmc_attributes,
 };
 
-static ssize_t show_name(struct device *dev, struct device_attribute *da,
+static ssize_t show_hwmon_name(struct device *dev, struct device_attribute *da,
 	char *buf)
 {
-	return sprintf(buf, "%s\n", XCLMGMT_MB_HWMON_NAME);
-}
+	struct FeatureRomHeader rom = { {0} };
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	void *xdev_hdl = xocl_get_xdev(xmc->pdev);
+	char nm[150] = { 0 };
+	int n;
 
+	xocl_get_raw_header(xdev_hdl, &rom);
+	n = snprintf(nm, sizeof(nm), "%s", rom.VBNVName);
+	if (XMC_PRIVILEGED(xmc))
+		(void) snprintf(nm + n, sizeof(nm) - n, "%s", "-mgmt");
+	else
+		(void) snprintf(nm + n, sizeof(nm) - n, "%s", "-user");
+	return sprintf(buf, "%s\n", nm);
+}
 static struct sensor_device_attribute name_attr =
-	SENSOR_ATTR(name, 0444, show_name, NULL, 0);
+	SENSOR_ATTR(name, 0444, show_hwmon_name, NULL, 0);
 
 static void mgmt_sysfs_destroy_xmc(struct platform_device *pdev)
 {
@@ -1376,7 +1499,6 @@ static int stop_xmc(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc;
 	int ret = 0;
-	void *xdev_hdl;
 
 	xocl_info(&pdev->dev, "Stop Microblaze...");
 	xmc = platform_get_drvdata(pdev);
@@ -1384,8 +1506,6 @@ static int stop_xmc(struct platform_device *pdev)
 		return -ENODEV;
 	else if (!xmc->enabled)
 		return -ENODEV;
-
-	xdev_hdl = xocl_get_xdev(xmc->pdev);
 
 	mutex_lock(&xmc->xmc_lock);
 	ret = stop_xmc_nolock(pdev);

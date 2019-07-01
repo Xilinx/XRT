@@ -1083,7 +1083,6 @@ struct xocl_iores_map map[] = {						\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_IORES_MGMT,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
-			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF,				\
 			XOCL_DEVINFO_XMC,				\
 			XOCL_DEVINFO_XVC_PUB,				\
@@ -1146,7 +1145,6 @@ struct xocl_iores_map map[] = {						\
 		XOCL_DEVINFO_FEATURE_ROM,                       \
 		XOCL_DEVINFO_IORES_MGMT,			\
 		XOCL_DEVINFO_PRP_IORES_MGMT,			\
-		XOCL_DEVINFO_SYSMON,                            \
 		XOCL_DEVINFO_AF_DSA52,                          \
 		XOCL_DEVINFO_XMC,                               \
 		XOCL_DEVINFO_XVC_PRI,                           \
@@ -1192,7 +1190,6 @@ struct xocl_iores_map map[] = {						\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_IORES_MGMT,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT,			\
-			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF_DSA52,				\
 			XOCL_DEVINFO_XMC,				\
 			XOCL_DEVINFO_XVC_PRI,				\
@@ -1216,7 +1213,6 @@ struct xocl_iores_map map[] = {						\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_IORES_MGMT_U280,			\
 			XOCL_DEVINFO_PRP_IORES_MGMT_U280,		\
-			XOCL_DEVINFO_SYSMON,				\
 			XOCL_DEVINFO_AF_DSA52,				\
 			XOCL_DEVINFO_XMC,				\
 			XOCL_DEVINFO_XVC_PRI,				\
@@ -1238,7 +1234,6 @@ struct xocl_iores_map map[] = {						\
 		XOCL_DEVINFO_FEATURE_ROM,                       \
 		XOCL_DEVINFO_IORES_MGMT_U280,			\
 		XOCL_DEVINFO_PRP_IORES_MGMT_U280,		\
-		XOCL_DEVINFO_SYSMON,                            \
 		XOCL_DEVINFO_AF_DSA52,                          \
 		XOCL_DEVINFO_XMC,                               \
 		XOCL_DEVINFO_XVC_PRI,                           \
