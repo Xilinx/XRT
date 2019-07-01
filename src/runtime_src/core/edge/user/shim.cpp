@@ -155,13 +155,13 @@ int ZYNQShim::mapKernelControl(const std::vector<std::pair<uint64_t, size_t>>& o
       if (it == mKernelControl.end()) {
         drm_zocl_info_cu info = {offset_it->first, -1};
         int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_INFO_CU, &info);
-        if(result) {
+        if (result) {
             printf("failed to find CU info 0x%lx\n", offset_it->first);
             return -1;
         }
         size_t psize = getpagesize();
         ptr = mmap(0, offset_it->second, PROT_READ | PROT_WRITE, MAP_SHARED, mKernelFD, info.apt_idx*psize);
-        if (ptr == MAP_FAILED){
+        if (ptr == MAP_FAILED) {
             printf("Map failed for aperture 0x%lx, size 0x%lx\n", offset_it->first, offset_it->second);
             return -1;
         }
