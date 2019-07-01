@@ -8,7 +8,7 @@ list(GET mystatus 0 error_code)
 if (NOT ${error_code})
 add_custom_command(
   OUTPUT ${CMC}
-  COMMAND curl https://raw.gitenterprise.xilinx.com/XMC/XMC/XBB-dev/release/${CMC} --output ${CMC}
+  COMMAND curl https://raw.gitenterprise.xilinx.com/CMC/CMC/master/release/${CMC} --output ${CMC}
   COMMENT "Generating binary for XMC"
 )
 
