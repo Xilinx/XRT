@@ -7,10 +7,11 @@ set(ERT_INSTALL_PREFIX "/opt/xilinx/xrt/share/fw")
 add_subdirectory(scheduler)
 add_subdirectory(management)
 add_subdirectory(cmc)
+add_subdirectory(xmc)
 add_subdirectory(bmc)
 
 add_custom_target(ert ALL
- DEPENDS scheduler management cmc bmc
+ DEPENDS scheduler management cmc xmc bmc
 )
 
 endif()

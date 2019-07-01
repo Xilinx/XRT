@@ -453,7 +453,18 @@ initDsaBinEnvAndVars()
       if [ "${CardMgmtControllerFamily}" == "Legacy" ]; then
          fwManagement="${XILINX_XRT}/share/fw/mgmt.bin"
       elif [ "${CardMgmtControllerFamily}" == "CMC-Gen1" ]; then
-         fwManagement="${XILINX_XRT}/share/fw/cmc.bin"
+         fwManagement="${XILINX_XRT}/share/fw/xmc.bin"
+
+         # -- Use latest FW for these platforms
+         if [ "${opt_dsa}" == "xilinx_u200_xdma_201830_2" ]; then
+            echo "SPR1"
+            fwManagement="${XILINX_XRT}/share/fw/cmc.bin"
+         fi
+
+         if [ "${opt_dsa}" == "xilinx_u250_xdma_201830_2" ]; then
+            fwManagement="${XILINX_XRT}/share/fw/cmc.bin"
+         fi
+
       else
          echo "ERROR: Unknown card management controller family: ${CardMgmtControllerFamily}"
          exit 1
