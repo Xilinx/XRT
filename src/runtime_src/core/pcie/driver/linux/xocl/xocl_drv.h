@@ -630,7 +630,7 @@ struct xocl_mb_funcs {
 		u32 len);
 	int (*load_sche_image)(struct platform_device *pdev, const char *buf,
 		u32 len);
-	void (*get_data)(struct platform_device *pdev, void *buf);
+	int (*get_data)(struct platform_device *pdev, void *buf);
 };
 
 #define	MB_DEV(xdev)		\
@@ -690,7 +690,6 @@ enum data_kind {
 	DIMM2_TEMP,
 	DIMM3_TEMP,
 	FPGA_TEMP,
-	VCC_BRAM,
 	CLOCK_FREQ_0,
 	CLOCK_FREQ_1,
 	FREQ_COUNTER_0,

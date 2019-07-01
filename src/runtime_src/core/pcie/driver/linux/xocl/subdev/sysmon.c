@@ -138,7 +138,7 @@ static ssize_t show_hwmon(struct device *dev, struct device_attribute *da,
 static ssize_t show_name(struct device *dev, struct device_attribute *da,
 	char *buf)
 {
-	return sprintf(buf, "%s\n", XCLMGMT_SYSMON_HWMON_NAME);
+	return sprintf(buf, "%s\n", "xclmgmt_sysmon");
 }
 
 static SENSOR_DEVICE_ATTR(temp1_input, 0444, show_hwmon, NULL,

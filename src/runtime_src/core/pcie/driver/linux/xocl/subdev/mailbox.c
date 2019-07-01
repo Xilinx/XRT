@@ -2162,6 +2162,7 @@ static int mailbox_probe(struct platform_device *pdev)
 		create_singlethread_workqueue(dev_name(&mbx->mbx_pdev->dev));
 	if (!mbx->mbx_listen_wq) {
 		MBX_ERR(mbx, "failed to create request-listen work queue");
+		ret = -ENOMEM;
 		goto failed;
 	}
 	INIT_WORK(&mbx->mbx_listen_worker, mailbox_recv_request);

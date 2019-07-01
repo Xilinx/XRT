@@ -322,7 +322,7 @@ static const struct attribute_group hwmon_mb_attrgroup = {
 static ssize_t show_name(struct device *dev, struct device_attribute *da,
 			 char *buf)
 {
-	return sprintf(buf, "%s\n", XCLMGMT_MB_HWMON_NAME);
+	return sprintf(buf, "%s\n", "xclmgmt_microblaze");
 }
 
 static struct sensor_device_attribute name_attr =
