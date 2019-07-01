@@ -13,13 +13,11 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
-
-#include <CL/cl.h>
-#include <map>
 #include "detail/platform.h"
 #include "xocl/core/platform.h"
 #include "plugin/xdp/profile.h"
+#include <CL/cl_ext_xilinx.h>
+#include <map>
 
 namespace xocl {
 
@@ -33,6 +31,9 @@ static const std::map<const std::string, void *> extensionFunctionTable = {
   std::pair<const std::string, void *>("clPollStreams", (void *)clPollStreams),
   std::pair<const std::string, void *>("xclGetMemObjectFd", (void *)xclGetMemObjectFd),
   std::pair<const std::string, void *>("xclGetMemObjectFromFd", (void *)xclGetMemObjectFromFd),
+  std::pair<const std::string, void *>("xclGetXrtDevice", (void *)xclGetXrtDevice),
+  std::pair<const std::string, void *>("xclGetMemObjDeviceAddress", (void *)xclGetMemObjDeviceAddress),
+  std::pair<const std::string, void *>("xclGetComputeUnitInfo", (void *)xclGetComputeUnitInfo),
   std::pair<const std::string, void *>("clIcdGetPlatformIDsKHR", (void *)clIcdGetPlatformIDsKHR),
 };
 

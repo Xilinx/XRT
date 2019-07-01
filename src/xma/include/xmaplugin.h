@@ -26,14 +26,13 @@
 
 #include <stddef.h>
 #include "xma.h"
-#include "lib/xmahw.h"
-#include "lib/xmahw_hal.h"
 #include "plg/xmasess.h"
 #include "plg/xmadecoder.h"
 #include "plg/xmaencoder.h"
 #include "plg/xmascaler.h"
 #include "plg/xmafilter.h"
 #include "plg/xmakernel.h"
+#include "app/xmahw.h"
 
 /**
  * DOC: XMA Plugin Interface
@@ -45,6 +44,7 @@ extern "C" {
 #endif
 
 typedef uint32_t  XmaBufferHandle;
+
 
 /**
  *  xma_plg_buffer_alloc)() - Allocate device memory
