@@ -1235,6 +1235,39 @@ static ssize_t hwmon_temp_show(struct device *dev,
 	&sensor_dev_attr_temp##id##_input.dev_attr.attr,		\
 	&sensor_dev_attr_temp##id##_label.dev_attr.attr
 
+/* For power */
+static ssize_t hwmon_power_show(struct device *dev,
+	struct device_attribute *da, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	int index = to_sensor_dev_attr(da)->index;
+	u32 v_pex, v_aux, c_pex, c_aux;
+	u64 val;
+
+	xmc_sensor(pdev, VOL_12V_PEX, &v_pex, HWMON_INDEX2VAL_KIND(index));
+	xmc_sensor(pdev, VOL_12V_AUX, &v_aux, HWMON_INDEX2VAL_KIND(index));
+	xmc_sensor(pdev, CUR_12V_PEX, &c_pex, HWMON_INDEX2VAL_KIND(index));
+	xmc_sensor(pdev, CUR_12V_AUX, &c_aux, HWMON_INDEX2VAL_KIND(index));
+	val = (u64)v_pex * c_pex + (u64)v_aux * c_aux;
+	return sprintf(buf, "%lld\n", val / 1000);
+}
+
+#define	HWMON_POWER_SYSFS_NODE(id, name)				\
+	static ssize_t power##id##_label(struct device *dev,		\
+		struct device_attribute *attr, char *buf) {		\
+		return sprintf(buf, "%s\n", name);			\
+	}								\
+	static SENSOR_DEVICE_ATTR(power##id##_average, 0444, hwmon_power_show,\
+		NULL, HWMON_INDEX(0, SENSOR_MAX));			\
+	static SENSOR_DEVICE_ATTR(power##id##_input, 0444, hwmon_power_show, \
+		NULL, HWMON_INDEX(0, SENSOR_INS));			\
+	static SENSOR_DEVICE_ATTR(power##id##_label, 0444, power##id##_label, \
+		NULL, HWMON_INDEX(0, SENSOR_INS))
+#define	HWMON_POWER_ATTRS(id)						\
+	&sensor_dev_attr_power##id##_average.dev_attr.attr,		\
+	&sensor_dev_attr_power##id##_input.dev_attr.attr,		\
+	&sensor_dev_attr_power##id##_label.dev_attr.attr
+
 HWMON_VOLT_CURR_SYSFS_NODE(in, 0, "12V PEX", VOL_12V_PEX);
 HWMON_VOLT_CURR_SYSFS_NODE(in, 1, "12V AUX", VOL_12V_AUX);
 HWMON_VOLT_CURR_SYSFS_NODE(in, 2, "3V3 PEX", VOL_3V3_PEX);
@@ -1268,6 +1301,7 @@ HWMON_TEMPERATURE_SYSFS_NODE(12, "QSPF 1", CAGE_TEMP1);
 HWMON_TEMPERATURE_SYSFS_NODE(13, "QSPF 2", CAGE_TEMP2);
 HWMON_TEMPERATURE_SYSFS_NODE(14, "QSPF 3", CAGE_TEMP3);
 HWMON_FAN_SPEED_SYSFS_NODE(1, "FAN SPEED", FAN_RPM);
+HWMON_POWER_SYSFS_NODE(1, "POWER");
 static struct attribute *hwmon_xmc_attributes[] = {
 	HWMON_VOLT_CURR_ATTRS(in, 0),
 	HWMON_VOLT_CURR_ATTRS(in, 1),
@@ -1302,6 +1336,7 @@ static struct attribute *hwmon_xmc_attributes[] = {
 	HWMON_TEMPERATURE_ATTRS(13),
 	HWMON_TEMPERATURE_ATTRS(14),
 	HWMON_FAN_SPEED_ATTRS(1),
+	HWMON_POWER_ATTRS(1),
 	NULL
 };
 
