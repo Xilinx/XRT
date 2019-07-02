@@ -959,113 +959,140 @@ int xcldev::device::runTestCase(const std::string& exe,
     return runShellCmd(cmd, output);
 }
 
+int xcldev::device::verifyKernelTest(void)
+{
+    std::string output;
+
+    int ret = runTestCase(std::string("validate.exe"),
+        std::string("verify.xclbin"), output);
+
+    if (ret != 0)
+        return ret;
+
+    if (output.find("Hello World") == std::string::npos) {
+        std::cout << output << std::endl;
+        ret = -EINVAL;
+    }
+    return ret;
+}
+
+int xcldev::device::bandwidthKernelTest(void)
+{
+    std::string output;
+
+    int ret = runTestCase(std::string("kernel_bw.exe"),
+        std::string("bandwidth.xclbin"), output);
+
+    if (ret != 0)
+        return ret;
+
+    if (output.find("PASS") == std::string::npos) {
+        std::cout << output << std::endl;
+        return -EINVAL;
+    }
+
+    // Print out max thruput
+    size_t st = output.find("Maximum");
+    if (st != std::string::npos) {
+        size_t end = output.find("\n", st);
+        std::cout << std::endl << output.substr(st, end - st) << std::endl;
+    }
+
+    return 0;
+}
+
+int xcldev::device::pcieLinkTest(void)
+{
+    if (m_devinfo.mPCIeLinkSpeed != m_devinfo.mPCIeLinkSpeedMax ||
+        m_devinfo.mPCIeLinkWidth != m_devinfo.mPCIeLinkWidthMax) {
+        std::cout << "LINK ACTIVE, ATTENTION" << std::endl;
+        std::cout << "Ensure Card is plugged in to Gen"
+            << m_devinfo.mPCIeLinkSpeedMax << "x" << m_devinfo.mPCIeLinkWidthMax
+            << ", instead of Gen" << m_devinfo.mPCIeLinkSpeed << "x"
+            << m_devinfo.mPCIeLinkWidth << std::endl
+            << "Lower performance may be experienced"
+            << std::endl;
+        return 1;
+    }
+    return 0;
+}
+
+int xcldev::device::runOneTest(std::string testName,
+    std::function<int(void)> testFunc)
+{
+    std::cout << "INFO: == Starting " << testName << ": " << std::endl;
+
+    int ret = testFunc();
+
+    if (ret == 0) {
+	    std::cout << "INFO: == " << testName << " PASSED" << std::endl;
+    } else if (ret == -EOPNOTSUPP) {
+	    std::cout << "INFO: == " << testName << " SKIPPED" << std::endl;
+        ret = 0;
+    } else if (ret == 1) {
+	    std::cout << "WARN: == " << testName << " PASSED with warning"
+            << std::endl;
+    } else {
+        std::cout << "ERROR: == " << testName << " FAILED" << std::endl;
+    }
+    return ret;
+}
+
 /*
  * validate
  */
 int xcldev::device::validate(bool quick)
 {
-    std::string output;
-    bool testKernelBW = true;
+    bool withWarning = false;
     int retVal = 0;
 
     // Check pcie training
-    std::cout << "INFO: Checking PCIE link status: " << std::flush;
-    if (m_devinfo.mPCIeLinkSpeed != m_devinfo.mPCIeLinkSpeedMax ||
-        m_devinfo.mPCIeLinkWidth != m_devinfo.mPCIeLinkWidthMax) {
-        std::cout << "LINK ACTIVE, ATTENTION" << std::endl;
-        std::cout << "WARNING: Ensure Card is plugged in to Gen"
-            << m_devinfo.mPCIeLinkSpeedMax << "x" << m_devinfo.mPCIeLinkWidthMax
-            << ", instead of Gen" << m_devinfo.mPCIeLinkSpeed << "x"
-            << m_devinfo.mPCIeLinkWidth << "\n         "
-            << "Lower performance may be experienced"
-            << std::endl;
-        retVal = 1;
-        // Non-fatal, continue validating.
-    }
-    else
-    {
-        std::cout << "PASSED" << std::endl;
-    }
-
-    // Run various test cases
+    retVal = runOneTest("PCIE link check",
+            std::bind(&xcldev::device::pcieLinkTest, this));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
 
     // Test verify kernel
-    std::cout << "INFO: Starting verify kernel test: " << std::flush;
-    int ret = runTestCase(std::string("validate.exe"),
-        std::string("verify.xclbin"), output);
-    std::cout << std::endl;
-    if (ret == -ENOENT) {
-        if (m_idx == 0) {
-            // Fall back to verify.exe
-            ret = runTestCase(std::string("verify.exe"),
-                std::string("verify.xclbin"), output);
-            if (ret == 0) {
-                // Probably testing with old package, skip kernel bandwidth test.
-                testKernelBW = false;
-            }
-        }
-    }
-    if (ret != 0 || output.find("Hello World") == std::string::npos) {
-        std::cout << output << std::endl;
-        std::cout << "ERROR: verify kernel test FAILED" << std::endl;
-        return ret == 0 ? -EINVAL : ret;
-    }
-    std::cout << "INFO: verify kernel test PASSED" << std::endl;
+    retVal = runOneTest("verify kernel test",
+            std::bind(&xcldev::device::verifyKernelTest, this));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
 
     // Skip the rest of test cases for quicker turn around.
     if (quick)
-        return retVal;
+        return withWarning ? 1 : 0;
 
     // Perform DMA test
-    std::cout << "INFO: Starting DMA test" << std::endl;
-    ret = dmatest(0, false);
-    if (ret != 0) {
-        std::cout << "ERROR: DMA test FAILED" << std::endl;
-        return ret;
-    }
-    std::cout << "INFO: DMA test PASSED" << std::endl;
-
-    if (!testKernelBW)
+    retVal = runOneTest("DMA test",
+            std::bind(&xcldev::device::dmatest, this, 0, false));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
         return retVal;
 
-
-    // Test kernel bandwidth kernel
-    std::cout << "INFO: Starting DDR bandwidth test: " << std::flush;
-    ret = runTestCase(std::string("kernel_bw.exe"),
-        std::string("bandwidth.xclbin"), output);
-    std::cout << std::endl;
-    if (ret != 0 || output.find("PASS") == std::string::npos) {
-        std::cout << output << std::endl;
-        std::cout << "ERROR: DDR bandwidth test FAILED" << std::endl;
-        return ret == 0 ? -EINVAL : ret;
-    }
-    // Print out max thruput
-    size_t st = output.find("Maximum");
-    if (st != std::string::npos) {
-        size_t end = output.find("\n", st);
-        std::cout << output.substr(st, end - st) << std::endl;
-    }
-    std::cout << "INFO: DDR bandwidth test PASSED" << std::endl;
+    // Test bandwidth kernel
+    retVal = runOneTest("device memory bandwidth test",
+            std::bind(&xcldev::device::bandwidthKernelTest, this));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
 
     // Perform P2P test
-    std::cout << "INFO: Starting P2P test" << std::endl;
-    ret = testP2p();
-    if (ret != 0) {
-        std::cout << "ERROR: P2P test FAILED" << std::endl;
-        return ret;
-    }
-    std::cout << "INFO: P2P test PASSED" << std::endl;
+    retVal = runOneTest("PCIE peer-to-peer test",
+            std::bind(&xcldev::device::testP2p, this));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
 
     //Perform M2M test
-    std::cout << "INFO: Starting M2M test" << std::endl;
-    ret = testM2m();
-    if (ret != 0) {
-        std::cout << "ERROR: M2M test FAILED" << std::endl;
-        return ret;
-    }
-    std::cout << "INFO: M2M test PASSED" << std::endl;
+    retVal = runOneTest("memory-to-memory DMA test",
+            std::bind(&xcldev::device::testM2m, this));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
 
-    return retVal;
+    return withWarning ? 1 : 0;
 }
 
 int xcldev::xclValidate(int argc, char *argv[])
@@ -1338,7 +1365,7 @@ int xcldev::device::testP2p()
     dev->sysfs_get("", "p2p_enable", errmsg, p2p_enabled);
     if (p2p_enabled != 1) {
         std::cout << "P2P BAR is not enabled. Skipping validation" << std::endl;
-        return 0;
+        return -EOPNOTSUPP;
     }
 
     dev->sysfs_get("icap", "mem_topology", errmsg, buf);
@@ -1577,7 +1604,7 @@ int xcldev::device::testM2m()
     dev->sysfs_get("mb_scheduler", "kds_numcdmas", errmsg, m2m_enabled);
     if (m2m_enabled == 0) {
         std::cout << "M2M is not available. Skipping validation" << std::endl;
-        return 0;
+        return -EOPNOTSUPP;
     }
 
     dev->sysfs_get("icap", "mem_topology", errmsg, buf);

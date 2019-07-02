@@ -1402,8 +1402,8 @@ public:
 
     int reset(xclResetKind kind);
     int setP2p(bool enable, bool force);
-    int testP2p();
-    int testM2m();
+    int testP2p(void);
+    int testM2m(void);
 
 private:
     // Run a test case as <exe> <xclbin> [-d index] on this device and collect
@@ -1411,6 +1411,12 @@ private:
     // Note: exe should assume index to be 0 without -d
     int runTestCase(const std::string& exe, const std::string& xclbin,
         std::string& output);
+
+    int pcieLinkTest(void);
+    int verifyKernelTest(void);
+    int bandwidthKernelTest(void);
+    // testFunc must return 0 for success, 1 for warning, and < 0 for error
+    int runOneTest(std::string testName, std::function<int(void)> testFunc);
 };
 
 void printHelp(const std::string& exe);
