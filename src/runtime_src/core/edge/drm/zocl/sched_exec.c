@@ -1397,7 +1397,7 @@ notify_host(struct sched_cmd *cmd)
 /**
  * Note: zocl copy bo will use built-in dma without
  * using any real ERT CU kernel, we will need to increase
- * the poll count to weak up scheduler when dma is done
+ * the poll count to wake up scheduler when dma is done
  */
 static inline void
 polling_cnt_inc(struct sched_cmd *cmd)
@@ -2259,6 +2259,30 @@ static void zocl_dma_complete(void *arg)
 }
 
 static int
+zocl_dma_channel_instance(zocl_dma_handle_t *dma_handle,
+    struct drm_zocl_dev *zdev)
+{
+	dma_cap_mask_t dma_mask;
+
+	if (!dma_handle->dma_chan && ZOCL_PLATFORM_ARM64) {
+		// If zdev_dma_chan is NULL, we haven't initialized it yet.
+		if (!zdev->zdev_dma_chan) {
+			dma_cap_zero(dma_mask);
+			dma_cap_set(DMA_MEMCPY, dma_mask);
+			zdev->zdev_dma_chan =
+			    dma_request_channel(dma_mask, 0, NULL);
+			if (!zdev->zdev_dma_chan) {
+				DRM_WARN("no DMA Channel available.\n");
+				return -EBUSY;
+			}
+		}
+		dma_handle->dma_chan = zdev->zdev_dma_chan;
+	}
+
+	return dma_handle->dma_chan ? 0 : -EINVAL;
+}
+
+static int
 zocl_copy_bo_submit(struct sched_cmd *cmd)
 {
 	struct ert_start_copybo_cmd *ecmd = cmd->ert_cp;
@@ -2273,13 +2297,13 @@ zocl_copy_bo_submit(struct sched_cmd *cmd)
 		.dst_offset = ert_copybo_dst_offset(ecmd),
 		.src_offset = ert_copybo_src_offset(ecmd),
 	};
+	int err = 0;
 
-	/**
-	 * set up dma handle channel for memcpy.
-	 * for async dma operations, we have to set up callback and its args
-	 */
-	if (!dma_handle->dma_chan)
-		dma_handle->dma_chan = zdev->zdev_dma_chan;
+	// Get single dma channel instance
+	if ((err = zocl_dma_channel_instance(dma_handle, zdev)) != 0)
+		return err;
+
+	// We must set up callback for async dma operations
 	dma_handle->dma_func = zocl_dma_complete;
 	dma_handle->dma_arg = cmd;
 
@@ -2317,7 +2341,6 @@ penguin_submit(struct sched_cmd *cmd)
 			return true;
 		}
 	}
-
 
 	if (opcode(cmd) == ERT_CONFIGURE) {
 		cmd->slot_idx = acquire_slot_idx(cmd->ddev);
@@ -2497,23 +2520,29 @@ static struct sched_ops ps_ert_ops = {
 	.query = ps_ert_query,
 };
 
-static int
+/**
+ * Only process ERT_START_COPYBO command.
+ * On MPSoC ARM64 platforms, the DMA engine is not a real HLS CU,
+ * thus the cmd->arg is not being used. We use it to preserve the
+ * filp.
+ */
+static bool
 zocl_execbuf_to_ert(struct drm_zocl_bo *bo, struct drm_file *filp)
 {
 	struct ert_start_copybo_cmd *scmd =
 	    (struct ert_start_copybo_cmd *)bo->cma_base.vaddr;
 
 	if (scmd->opcode != ERT_START_COPYBO)
-		return 0;
+		return true;
 
 	if (!ZOCL_PLATFORM_ARM64) {
 		DRM_WARN("only support built-in copybo for ARM64");
-		return 1;
+		return false;
 	}
 
 	/* preserve filp for looking up bo */
 	scmd->arg = filp;
-	return 0;
+	return true;
 }
 
 /**
@@ -2544,7 +2573,7 @@ zocl_execbuf_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	}
 
 	zocl_bo = to_zocl_bo(gem_obj);
-	if (!zocl_bo_execbuf(zocl_bo) || zocl_execbuf_to_ert(zocl_bo, filp)) {
+	if (!zocl_bo_execbuf(zocl_bo) || !zocl_execbuf_to_ert(zocl_bo, filp)) {
 		ret = -EINVAL;
 		goto out;
 	}

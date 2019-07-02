@@ -338,6 +338,12 @@ int ZYNQShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
   info->mDDRBankCount = 1;
   info->mOCLFrequency[0] = 100;
 
+#if defined(__aarch64__)
+  info->mNumCDMA = 1;
+#else
+  info->mNumCDMA = 0;
+#endif
+
   std::string deviceName;
   // Mike add the VBNV in the platform image.
   mVBNV.open("/etc/xocl.txt");

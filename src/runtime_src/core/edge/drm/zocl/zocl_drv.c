@@ -576,7 +576,6 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	struct platform_device *subdev;
 	struct resource res_mem;
 	struct resource *res;
-	dma_cap_mask_t dma_mask;
 	int index;
 	int irq;
 	int ret;
@@ -677,17 +676,8 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	if (ret)
 		goto err0;
 
-	/* Request dma channel */
-	if (ZOCL_PLATFORM_ARM64) {
-		dma_cap_zero(dma_mask);
-		dma_cap_set(DMA_MEMCPY, dma_mask);
-		zdev->zdev_dma_chan = dma_request_channel(dma_mask, 0, NULL);
-		if (!zdev->zdev_dma_chan) {
-			DRM_ERROR("Failed no DMA Channel for DMA_MEMCPY\n");
-			ret = -EBUSY;
-			goto err0;
-		}
-	}
+	/* During attach, we don't request dma channel */
+	zdev->zdev_dma_chan = NULL;
 
 	/* doen with zdev initialization */
 	drm->dev_private = zdev;
@@ -707,12 +697,8 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	return 0;
 err1:
 	zocl_fini_sysfs(drm->dev);
-err0:
-	if (zdev->zdev_dma_chan) {
-		dma_release_channel(zdev->zdev_dma_chan);
-		zdev->zdev_dma_chan = NULL;
-	}
 
+err0:
 	ZOCL_DRM_DEV_PUT(drm);
 	return ret;
 }
@@ -728,6 +714,7 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 		iommu_domain_free(zdev->domain);
 	}
 
+	/* If dma channel has been requested, make sure it is released */
 	if (zdev->zdev_dma_chan) {
 		dma_release_channel(zdev->zdev_dma_chan);
 		zdev->zdev_dma_chan = NULL;
