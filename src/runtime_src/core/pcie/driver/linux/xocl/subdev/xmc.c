@@ -1249,7 +1249,7 @@ static ssize_t hwmon_power_show(struct device *dev,
 	xmc_sensor(pdev, CUR_12V_PEX, &c_pex, HWMON_INDEX2VAL_KIND(index));
 	xmc_sensor(pdev, CUR_12V_AUX, &c_aux, HWMON_INDEX2VAL_KIND(index));
 	val = (u64)v_pex * c_pex + (u64)v_aux * c_aux;
-	return sprintf(buf, "%lld\n", val / 1000);
+	return sprintf(buf, "%lld\n", val);
 }
 
 #define	HWMON_POWER_SYSFS_NODE(id, name)				\
@@ -1356,9 +1356,9 @@ static ssize_t show_hwmon_name(struct device *dev, struct device_attribute *da,
 	xocl_get_raw_header(xdev_hdl, &rom);
 	n = snprintf(nm, sizeof(nm), "%s", rom.VBNVName);
 	if (XMC_PRIVILEGED(xmc))
-		(void) snprintf(nm + n, sizeof(nm) - n, "%s", "-mgmt");
+		(void) snprintf(nm + n, sizeof(nm) - n, "%s", "_mgmt");
 	else
-		(void) snprintf(nm + n, sizeof(nm) - n, "%s", "-user");
+		(void) snprintf(nm + n, sizeof(nm) - n, "%s", "_user");
 	return sprintf(buf, "%s\n", nm);
 }
 static struct sensor_device_attribute name_attr =
