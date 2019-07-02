@@ -143,9 +143,9 @@ xma_plg_register_prep_write(XmaHwSession  s_handle,
     uint32_t  entries = size / sizeof(uint32_t);
     uint32_t  start = offset / sizeof(uint32_t);
 
-    //Kernel regmap only upto 2048 in xmahw.h; execBO size is 4096 in xmahw_hal.cpp
-    if (cur_max >= 2048) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Max kernel regmap size is 2048\n");
+    //Kernel regmap 4KB in xmahw.h; execBO size is 4096 = 4KB in xmahw_hal.cpp; But ERT uses some space for ert pkt so allow max of 4032 Bytes for regmap
+    if (cur_max > MAX_KERNEL_REGMAP_SIZE) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Max kernel regmap size is 4032 Bytes\n");
         return XMA_ERROR;
     }
     for (uint32_t i = 0, tmp_idx = start; i < entries; i++, tmp_idx++) {
@@ -225,7 +225,7 @@ xma_plg_schedule_work_item(XmaHwSession s_handle)
 {
     uint8_t *src = (uint8_t*)s_handle.kernel_info->reg_map;
     //size_t  size = s_handle.kernel_info->max_offset;
-    size_t  size = 2048;//Max regmap in xmahw.h is 2048; execBO size is 4096
+    size_t  size = MAX_KERNEL_REGMAP_SIZE;//Max regmap in xmahw.h is 4KB; execBO size is 4096; Supported max regmap size is 4032 Bytes only
     int32_t bo_idx;
     int32_t rc = XMA_SUCCESS;
     

@@ -25,6 +25,9 @@
 #include "app/xmahw.h"
 
 #define MAX_EXECBO_POOL_SIZE      16
+#define MAX_EXECBO_BUFF_SIZE      4096// 4KB
+#define MAX_KERNEL_REGMAP_SIZE    4032//Some space used by ert pkt
+#define MAX_REGMAP_ENTRIES        1024//Int32 entries; So 4B x 1024 = 4K Bytes
 
 #ifdef __cplusplus
 extern "C" {
@@ -53,7 +56,7 @@ typedef struct XmaHwKernel
     uint32_t    kernel_execbo_handle[MAX_EXECBO_POOL_SIZE];
     char*       kernel_execbo_data[MAX_EXECBO_POOL_SIZE];//execBO size is 4096 in xmahw_hal.cpp
     bool        kernel_execbo_inuse[MAX_EXECBO_POOL_SIZE];
-    uint32_t    reg_map[2048];//Max regmap 2048; execBO size is 4096 in xmahw_hal.cpp
+    uint32_t    reg_map[MAX_REGMAP_ENTRIES];//4KB = 4B x 1024; Supported Max regmap of 4032 Bytes only in xmaplugin.cpp; execBO size is 4096 = 4KB in xmahw_hal.cpp
     pthread_mutex_t *lock;
     bool             have_lock;
     uint32_t    reserved[16];
