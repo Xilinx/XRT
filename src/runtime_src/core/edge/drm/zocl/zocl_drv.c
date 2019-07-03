@@ -676,6 +676,10 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	if (ret)
 		goto err0;
 
+	/* During attach, we don't request dma channel */
+	zdev->zdev_dma_chan = NULL;
+
+	/* doen with zdev initialization */
 	drm->dev_private = zdev;
 	zdev->ddev       = drm;
 
@@ -693,6 +697,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	return 0;
 err1:
 	zocl_fini_sysfs(drm->dev);
+
 err0:
 	ZOCL_DRM_DEV_PUT(drm);
 	return ret;
@@ -707,6 +712,12 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 	if (zdev->domain) {
 		iommu_detach_device(zdev->domain, drm->dev);
 		iommu_domain_free(zdev->domain);
+	}
+
+	/* If dma channel has been requested, make sure it is released */
+	if (zdev->zdev_dma_chan) {
+		dma_release_channel(zdev->zdev_dma_chan);
+		zdev->zdev_dma_chan = NULL;
 	}
 
 #if defined(XCLBIN_DOWNLOAD)
