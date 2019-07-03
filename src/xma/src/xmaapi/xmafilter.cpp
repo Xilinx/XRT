@@ -213,6 +213,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     filter_session->base.plugin_data =
         calloc(g_xma_singleton->filtercfg[filter_handle].plugin_data_size, sizeof(uint8_t));
 
+    /*Sarab: Remove xma_connect stuff
     XmaEndpoint *end_pt = (XmaEndpoint*) malloc(sizeof(XmaEndpoint));
     end_pt->session = &filter_session->base;
     end_pt->dev_id = dev_handle;
@@ -226,15 +227,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     // TODO: fix to use allocate handle making sure that
     //       we don't connect to ourselves
     filter_session->conn_recv_handle = -1;
-/*
-    end_pt = malloc(sizeof(XmaEndpoint));
-    end_pt->session = &filter_session->base;
-    end_pt->dev_id = dev_handle;
-    end_pt->format = filter_props->input.format;
-    end_pt->bits_per_pixel = filter_props->input.bits_per_pixel;
-    end_pt->width = filter_props->input.width;
-    end_pt->height = filter_props->input.height;
-*/
+    */
 
     // Call the plugins initialization function with this session data
     //Sarab: Check plugin compatibility to XMA
@@ -251,7 +244,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
                    "Initalization of filter plugin failed. Return code %d\n",
                    rc);
         free(filter_session->base.plugin_data);
-        xma_connect_free(filter_session->conn_send_handle, XMA_CONNECT_SENDER);
+        //xma_connect_free(filter_session->conn_send_handle, XMA_CONNECT_SENDER);
         free(filter_session);
         return NULL;
     }
@@ -273,11 +266,13 @@ xma_filter_session_destroy(XmaFilterSession *session)
     // Clean up the private data
     free(session->base.plugin_data);
 
+    /*Sarab: Remove xma_connect stuff
     // Free each sender connection
     xma_connect_free(session->conn_send_handle, XMA_CONNECT_SENDER);
 
     // Free the receiver connection
     xma_connect_free(session->conn_recv_handle, XMA_CONNECT_RECEIVER);
+    */
 
     /* Remove xma_res stuff free kernel/kernel-session *--/
     rc = xma_res_free_kernel(g_xma_singleton->shm_res_cfg,

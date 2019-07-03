@@ -19,7 +19,7 @@
 
 #include "xmaplugin.h"
 #include "lib/xmacfg.h"
-#include "lib/xmaconnect.h"
+//#include "lib/xmaconnect.h"
 #include "lib/xmahw_lib.h"
 //#include "lib/xmares.h"
 #include "lib/xmalogger.h"
@@ -28,7 +28,7 @@ typedef struct XmaSingleton
 {
     XmaSystemCfg      systemcfg;
     XmaHwCfg          hwcfg;
-    XmaConnect        connections[MAX_CONNECTION_ENTRIES];
+    //XmaConnect        connections[MAX_CONNECTION_ENTRIES];
     XmaLogger         logger;
     XmaDecoderPlugin  decodercfg[MAX_PLUGINS];
     XmaEncoderPlugin  encodercfg[MAX_PLUGINS];
@@ -36,7 +36,8 @@ typedef struct XmaSingleton
     XmaFilterPlugin   filtercfg[MAX_PLUGINS];
     XmaKernelPlugin   kernelcfg[MAX_PLUGINS];
     //XmaResources      shm_res_cfg;
-    bool              shm_freed;
+    //bool              shm_freed;
+    uint32_t          reserved[4];
 } XmaSingleton;
 
 #ifdef __cplusplus

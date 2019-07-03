@@ -61,10 +61,10 @@ typedef struct XmaFilterSession
     XmaSession            base; /**< base class */
     XmaFilterProperties   props; /**< properties specified by app */
     XmaFilterPlugin      *filter_plugin; /**< link to XMA filter plugin */
-    int32_t               conn_recv_handle; /**< upstream kernel */
-    int32_t               conn_send_handle; /**< downstream kernel */
-    uint64_t              out_dev_addr; /**< paddr of device output buffer */
-    bool                  zerocopy_dest; /**< flag indicating destination supports zerocopy */
+    //int32_t               conn_recv_handle; /**< upstream kernel */
+    //int32_t               conn_send_handle; /**< downstream kernel */
+    //uint64_t              out_dev_addr; /**< paddr of device output buffer */
+    //bool                  zerocopy_dest; /**< flag indicating destination supports zerocopy */
 } XmaFilterSession;
 
 /**
