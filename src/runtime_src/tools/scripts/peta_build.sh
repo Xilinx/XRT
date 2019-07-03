@@ -75,6 +75,26 @@ install_recipes()
 	META_USER_PATH=$1
 
 	cp -r ${XRT_REPO_DIR}/src/platform/recipes-xrt ${META_USER_PATH}
+	# By default, let XRT recipes point to current XRT workspace.
+	# PetaLinux fetch xrt source code from this workspace, instead of fetch from github.
+	SAVED_OPTIONS_LOCAL=$(set +o)
+	set +e
+	XRT_BB=${META_USER_PATH}/recipes-xrt/xrt/xrt_git.bb
+	ZOCL_BB=${META_USER_PATH}/recipes-xrt/zocl/zocl_git.bb
+	grep "inherit externalsrc" $XRT_BB
+	if [ $? != 0 ]; then
+		echo "inherit externalsrc" >> $XRT_BB
+		echo "EXTERNALSRC = \"$XRT_REPO_DIR/src\"" >> $XRT_BB
+		echo 'EXTERNALSRC_BUILD = "${WORKDIR}/build"' >> $XRT_BB
+	fi
+
+	grep "inherit externalsrc" $ZOCL_BB
+	if [ $? != 0 ]; then
+		echo "inherit externalsrc" >> $ZOCL_BB
+		echo "EXTERNALSRC = \"$XRT_REPO_DIR/src/runtime_src/core/edge/drm/zocl\"" >> $ZOCL_BB
+		echo "EXTERNALSRC_BUILD = \"$XRT_REPO_DIR/src/runtime_src/core/edge/drm/zocl\"" >> $ZOCL_BB
+	fi
+	eval "$SAVED_OPTIONS_LOCAL"
 
 	# If you are using PetaLinux 2018.3 or earlier version, do below step
 	if [[ $PETALINUX_VER == "2018"* ]]; then

@@ -46,17 +46,11 @@ typedef struct XmaFilterPlugin
     /** Callback called when application calls xma_filter_session_destroy() */
     int32_t         (*close)(XmaFilterSession *session);
 
-    /** Optional callback called when app calls xma_filter_session_create()
-      * Implement this callback if your kernel supports channels and is
-      * multi-process safe
-    */
-    xma_plg_alloc_chan_mp alloc_chan_mp;
+    /** Callback invoked at start to check compatibility with XMA version */
+    int32_t         (*xma_version)(int32_t *main_version, int32_t *sub_version);
 
-    /** Optional callback called when app calls xma_filter_session_create()
-      * Implement this callback if your kernel supports channels and is
-      * NOT multi-process safe (but it IS thread-safe)
-    */
-    xma_plg_alloc_chan alloc_chan;
+    /** Reserved */
+    uint32_t        reserved[4];
 } XmaFilterPlugin;
 
 /**

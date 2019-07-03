@@ -33,7 +33,11 @@
 #define XMA_CFG_DIR "/var/tmp/xilinx"
 #define XMAAPI_MOD "xmaapi"
 
-XmaSingleton *g_xma_singleton;
+//Create singleton on the stack
+XmaSingleton xma_singleton_internal;
+
+XmaSingleton *g_xma_singleton = &xma_singleton_internal;
+
 
 int32_t xma_check_default_cfg_dir(void)
 {
@@ -57,10 +61,8 @@ int32_t xma_initialize(char *cfgfile)
             return ret;
     }
 
-    g_xma_singleton = (XmaSingleton*) malloc(sizeof(*g_xma_singleton));
     if (g_xma_singleton  == NULL)
         return XMA_ERROR;
-    memset(g_xma_singleton, 0, sizeof(*g_xma_singleton));
 
     ret = xma_cfg_parse(cfgfile, &g_xma_singleton->systemcfg);
     if (ret != XMA_SUCCESS)

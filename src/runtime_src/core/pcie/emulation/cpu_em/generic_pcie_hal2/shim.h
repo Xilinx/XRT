@@ -64,7 +64,7 @@ namespace xclcpuemhal2 {
       static std::map<std::string, std::string> mEnvironmentNameValueMap;
   public:
       // HAL2 RELATED member functions start
-      unsigned int xclAllocBO(size_t size, xclBOKind domain, unsigned flags);
+      unsigned int xclAllocBO(size_t size, int unused, unsigned flags);
       int xoclCreateBo(xclemulation::xocl_create_bo *info);
       void* xclMapBO(unsigned int boHandle, bool write);
       int xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset); 

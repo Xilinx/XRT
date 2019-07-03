@@ -180,8 +180,4 @@ struct xclmgmt_ioc_freqscaling {
 #define XCLMGMT_IOCREBOOT		_IO(XCLMGMT_IOC_MAGIC, XCLMGMT_IOC_REBOOT)
 #define XCLMGMT_IOCERRINFO		_IOR(XCLMGMT_IOC_MAGIC, XCLMGMT_IOC_ERR_INFO, struct xclErrorStatus)
 
-#define	XCLMGMT_MB_HWMON_NAME	    "xclmgmt_microblaze"
-#define XCLMGMT_SYSMON_HWMON_NAME   "xclmgmt_sysmon"
 #endif
-
-

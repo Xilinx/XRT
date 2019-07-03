@@ -146,13 +146,10 @@ xma_kernel_session_create(XmaKernelProperties *props)
     XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_handle].handle;
 
     session->base.hw_session.dev_handle = hal->dev_handle;
-    session->base.hw_session.base_address =
-        hwcfg->devices[dev_handle].kernels[kern_handle].base_address;
-    session->base.hw_session.ddr_bank =
-        hwcfg->devices[dev_handle].kernels[kern_handle].ddr_bank;
 
     //For execbo:
     session->base.hw_session.kernel_info = &hwcfg->devices[dev_handle].kernels[kern_handle];
+
     session->base.hw_session.dev_index = hal->dev_index;
 
     session->kernel_plugin = &g_xma_singleton->kernelcfg[k_handle];
@@ -162,6 +159,14 @@ xma_kernel_session_create(XmaKernelProperties *props)
         calloc(g_xma_singleton->kernelcfg[k_handle].plugin_data_size, sizeof(uint8_t));
 
     // Call the plugins initialization function with this session data
+    //Sarab: Check plugin compatibility to XMA
+    int32_t xma_main_ver = -1;
+    int32_t xma_sub_ver = -1;
+    rc = session->kernel_plugin->xma_version(&xma_main_ver, & xma_sub_ver);
+    //Sarab: Stop here for now
+    //Sarab: Remove it later on
+    return NULL;
+
     rc = session->kernel_plugin->init(session);
     if (rc) {
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,

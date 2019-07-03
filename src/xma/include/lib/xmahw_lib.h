@@ -14,16 +14,20 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#ifndef _XMA_HW_H_
-#define _XMA_HW_H_
+#ifndef _XMA_HW_LIB_H_
+#define _XMA_HW_LIB_H_
 
 #include <pthread.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include "lib/xmacfg.h"
-#include "lib/xmalimits.h"
+#include "lib/xmalimits_lib.h"
+#include "app/xmahw.h"
 
 #define MAX_EXECBO_POOL_SIZE      16
+#define MAX_EXECBO_BUFF_SIZE      4096// 4KB
+#define MAX_KERNEL_REGMAP_SIZE    4032//Some space used by ert pkt
+#define MAX_REGMAP_ENTRIES        1024//Int32 entries; So 4B x 1024 = 4K Bytes
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,31 +54,14 @@ typedef struct XmaHwKernel
     void*       kernel_cmd_queue;
     void*       kernel_cmd_completion_queue;
     uint32_t    kernel_execbo_handle[MAX_EXECBO_POOL_SIZE];
-    char*       kernel_execbo_data[MAX_EXECBO_POOL_SIZE];
+    char*       kernel_execbo_data[MAX_EXECBO_POOL_SIZE];//execBO size is 4096 in xmahw_hal.cpp
     bool        kernel_execbo_inuse[MAX_EXECBO_POOL_SIZE];
+    uint32_t    reg_map[MAX_REGMAP_ENTRIES];//4KB = 4B x 1024; Supported Max regmap of 4032 Bytes only in xmaplugin.cpp; execBO size is 4096 = 4KB in xmahw_hal.cpp
+    pthread_mutex_t *lock;
+    bool             have_lock;
     uint32_t    reserved[16];
 } XmaHwKernel;
 
-typedef struct XmaHwContext
-{
-    uint32_t         reg_map[1024];
-    size_t           min_offset;
-    size_t           max_offset;
-    pthread_mutex_t *lock;
-    bool             have_lock;
-} XmaHwContext;
-
-typedef struct XmaHwSession
-{
-    void            *dev_handle;
-    uint64_t         base_address;
-    uint32_t         ddr_bank;
-    //For execbo:
-    uint32_t         dev_index;
-    XmaHwKernel     *kernel_info;
-    XmaHwContext    *context;
-    uint32_t         reserved[16];
-} XmaHwSession;
 
 typedef void   *XmaHwHandle;
 
