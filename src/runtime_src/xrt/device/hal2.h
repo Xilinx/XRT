@@ -510,6 +510,33 @@ public:
   }
 
   virtual hal::operations_result<void>
+  xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
+  {
+    if (!m_ops->mRead)
+      return hal::operations_result<void>();
+    m_ops->mRead(m_handle, space, offset, hostBuf, size);
+    return hal::operations_result<void>(0);
+  }
+
+  virtual hal::operations_result<void>
+  xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
+  {
+    if (!m_ops->mWrite)
+      return hal::operations_result<void>();
+    m_ops->mWrite(m_handle, space, offset, hostBuf, size);
+    return hal::operations_result<void>(0);
+  }
+
+  virtual hal::operations_result<void>
+  xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset)
+  {
+    if (!m_ops->mUnmgdPread)
+      return hal::operations_result<void>();
+    m_ops->mUnmgdPread(m_handle, flags, buf, count, offset);
+    return hal::operations_result<void>(0);
+  }
+
+  virtual hal::operations_result<void>
   setProfilingSlots(xclPerfMonType type, uint32_t slots)
   {
     if (!m_ops->mSetProfilingSlots)
@@ -597,6 +624,14 @@ public:
   virtual void*
   getHalDeviceHandle() {
     return m_handle;
+  }
+
+  virtual hal::operations_result<uint32_t>
+  getNumLiveProcesses()
+  {
+    if(!m_ops->mGetNumLiveProcesses)
+      return hal::operations_result<uint32_t>();
+    return (uint32_t)(m_ops->mGetNumLiveProcesses(m_handle));
   }
 
   virtual hal::operations_result<std::string>

@@ -408,6 +408,7 @@ namespace xocl {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", "
           << type << ", Start device counters..." << std::endl;
     }
+std::cout << " in shim::xclPerfMonStartCounters : Should not be here " << std::endl;
 
     // Update addresses for debug/profile IP
     readDebugIpLayout();
@@ -503,6 +504,7 @@ namespace xocl {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", "
           << type << ", Stop and reset device counters..." << std::endl;
     }
+std::cout << " in shim::xclPerfMonStartCounters STOP : Should not be here " << std::endl;
 
     if (!mIsDeviceProfiling)
    	  return 0;
@@ -531,6 +533,7 @@ namespace xocl {
       << ", " << type << ", " << &counterResults
       << ", Read device counters..." << std::endl;
     }
+std::cout << " in shim::xclPerfMonStartCounters READ : Should not be here " << std::endl;
 
     // Initialize all values in struct to 0
     memset(&counterResults, 0, sizeof(xclCounterResults));
@@ -826,6 +829,7 @@ namespace xocl {
       << ", " << type << ", " << startTrigger
       << ", Start device tracing..." << std::endl;
     }
+std::cout << " in shim::xclPerfMonStartTrace : Good for now " << std::endl;
     size_t size = 0;
     uint32_t regValue;
     uint64_t baseAddress;
@@ -899,6 +903,8 @@ namespace xocl {
     if (!mIsDeviceProfiling || !fifoBaseAddress)
    	  return 0;
 
+
+// could only find call with MON_ACCEL for hw emu
     xclAddressSpace addressSpace = (type == XCL_PERF_MON_ACCEL) ?
         XCL_ADDR_KERNEL_CTRL : XCL_ADDR_SPACE_DEVICE_PERFMON;
 

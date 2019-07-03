@@ -22,6 +22,7 @@
 #include "xrt/util/event.h"
 #include "xrt/util/range.h"
 #include "xrt/util/uuid.h"
+#include "core/include/xrt.h"
 
 #include "xclperf.h"
 #include "xcl_app_debug.h"
@@ -47,6 +48,8 @@ struct exec_buffer_object {};
 
 using BufferObjectHandle = std::shared_ptr<buffer_object>;
 using ExecBufferObjectHandle = std::shared_ptr<exec_buffer_object>;
+
+
 
 enum class verbosity_level : unsigned short
 {
@@ -562,6 +565,24 @@ public:
   }
 
   virtual operations_result<void>
+  xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
+  {
+    return operations_result<void>();
+  }
+
+  virtual operations_result<void>
+  xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
+  {
+    return operations_result<void>();
+  }
+
+  virtual operations_result<void>
+  xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset)
+  {
+    return operations_result<void>();
+  }
+
+  virtual operations_result<void>
   setProfilingSlots(xclPerfMonType type, uint32_t)
   {
     return operations_result<void>();
@@ -620,6 +641,12 @@ public:
   stopTrace(xclPerfMonType)
   {
     return operations_result<size_t>();
+  }
+
+  virtual operations_result<uint32_t>
+  getNumLiveProcesses()
+  {
+    return operations_result<uint32_t>();
   }
 
   virtual operations_result<std::string>

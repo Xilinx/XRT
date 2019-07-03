@@ -45,6 +45,7 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mMapBO(0)
   ,mWrite(0)
   ,mRead(0)
+  ,mUnmgdPread(0)
   ,mReClock2(0)
   ,mLockDevice(0)
   ,mUnlockDevice(0)
@@ -127,6 +128,9 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
     return;
   mRead     = (readFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclRead");
   if(!mRead)
+    return;
+  mUnmgdPread = (unmgdPreadFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclUnmgdPread");
+  if(!mUnmgdPread)
     return;
 
   mReClock2 = (reClock2FuncType)dlsym(const_cast<void *>(mDriverHandle), "xclReClock2");

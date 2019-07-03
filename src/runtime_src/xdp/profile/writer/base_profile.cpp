@@ -427,6 +427,7 @@ namespace xdp {
 
   void ProfileWriterI::writeComputeUnitSummary(const std::string& name, const TimeStats& stats)
   {
+std::cout << " ProfileWriterI::writeComputeUnitSummary : time " << stats.getTotalTime() << std::endl;
     if (stats.getTotalTime() == 0.0)
       return;
     //"name" is of the form "deviceName|kernelName|globalSize|localSize|cuName"

@@ -81,6 +81,7 @@ private:
                                    const void *hostBuf, size_t size);
   typedef size_t (* readFuncType)(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset,
                                   void *hostbuf, size_t size);
+  typedef size_t (* unmgdPreadFuncType)(xclDeviceHandle handle, unsigned flags, void *buf, size_t count, uint64_t offset);
 
   typedef int (* lockDeviceFuncType)(xclDeviceHandle handle);
   typedef int (* unlockDeviceFuncType)(xclDeviceHandle handle);
@@ -181,6 +182,7 @@ public:
   mapBOFuncType mMapBO;
   writeFuncType mWrite;
   readFuncType mRead;
+  unmgdPreadFuncType mUnmgdPread;
   reClock2FuncType mReClock2;
   lockDeviceFuncType mLockDevice;
   unlockDeviceFuncType mUnlockDevice;

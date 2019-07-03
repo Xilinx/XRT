@@ -787,6 +787,24 @@ public:
   }
 
   hal::operations_result<void>
+  xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
+  {
+    return m_hal->xclRead(space, offset, hostBuf, size);
+  }
+
+  hal::operations_result<void>
+  xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
+  {
+    return m_hal->xclWrite(space, offset, hostBuf, size);
+  }
+
+  hal::operations_result<void>
+  xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset)
+  {
+    return m_hal->xclUnmgdPread(flags, buf, count, offset);
+  }
+
+  hal::operations_result<void>
   setProfilingSlots(xclPerfMonType type, uint32_t slots)
   {
     return m_hal->setProfilingSlots(type, slots);
@@ -845,6 +863,12 @@ public:
   stopTrace(xclPerfMonType type)
   {
     return m_hal->stopTrace(type);
+  }
+
+  hal::operations_result<uint32_t>
+  getNumLiveProcesses()
+  {
+    return m_hal->getNumLiveProcesses();
   }
 
   hal::operations_result<std::string>
