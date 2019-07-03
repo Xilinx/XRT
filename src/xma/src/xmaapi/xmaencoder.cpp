@@ -246,6 +246,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
     enc_session->base.plugin_data =
         calloc(g_xma_singleton->encodercfg[enc_handle].plugin_data_size, sizeof(uint8_t));
 
+    /*Sarab: Remove xma_connect stuff
     // For the encoder, only a receiver connection make sense
     // because no HW component consumes an encoded frame at
     // this point in a pipeline
@@ -258,6 +259,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
     end_pt->height = enc_props->height;
     enc_session->conn_recv_handle =
         xma_connect_alloc(end_pt, XMA_CONNECT_RECEIVER);
+    */
 
     // Call the plugins initialization function with this session data
     //Sarab: Check plugin compatibility to XMA
@@ -274,7 +276,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
                    "Initalization of encoder plugin failed. Return code %d\n",
                    rc);
         free(enc_session->base.plugin_data);
-        xma_connect_free(enc_session->conn_recv_handle, XMA_CONNECT_RECEIVER);
+        //xma_connect_free(enc_session->conn_recv_handle, XMA_CONNECT_RECEIVER);
         free(enc_session);
         return NULL;
     }
@@ -303,10 +305,12 @@ xma_enc_session_destroy(XmaEncoderSession *session)
     // Clean up the private data
     free(session->base.plugin_data);
 
+    /*Sarab: Remove xma_connect stuff
     // Free the receiver connection
     xma_connect_free(session->conn_recv_handle,
                         XMA_CONNECT_RECEIVER);
-
+    */
+   
     /* Remove xma_res stuff free kernel/kernel-session *--/
     rc = xma_res_free_kernel(g_xma_singleton->shm_res_cfg,
                              session->base.kern_res);

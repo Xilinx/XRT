@@ -268,7 +268,7 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
         return NULL;
     */
 
-	int rc, dev_handle, kern_handle, scal_handle, i;
+	int rc, dev_handle, kern_handle, scal_handle;
     dev_handle = sc_props->dev_index;
     kern_handle = sc_props->cu_index;
     scal_handle = sc_props->cu_index;
@@ -289,6 +289,7 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     sc_session->base.plugin_data =
         calloc(g_xma_singleton->scalercfg[scal_handle].plugin_data_size, sizeof(uint8_t));
 
+    /*Sarab: Remove xma_connect stuff
     // Allocate a connection for each output
     for (i = 0; i < sc_props->num_outputs; i++)
     {
@@ -306,6 +307,7 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     // TODO: fix to use allocate handle making sure that
     //       we don't connect to ourselves
     sc_session->conn_recv_handle = -1;
+    */
 
     // Call the plugins initialization function with this session data
     //Sarab: Check plugin compatibility to XMA
@@ -330,7 +332,7 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
 int32_t
 xma_scaler_session_destroy(XmaScalerSession *session)
 {
-    int32_t rc, i;
+    int32_t rc;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_SCALER_MOD, "%s()\n", __func__);
     rc  = session->scaler_plugin->close(session);
@@ -341,10 +343,11 @@ xma_scaler_session_destroy(XmaScalerSession *session)
     // Clean up the private data
     free(session->base.plugin_data);
 
+    /*
     // Free each sender connection
     for (i = 0; i < session->props.num_outputs; i++)
         xma_connect_free(session->conn_send_handles[i], XMA_CONNECT_SENDER);
-
+    */
 
     /* Remove xma_res stuff free kernel/kernel-session *--/
     rc = xma_res_free_kernel(g_xma_singleton->shm_res_cfg,

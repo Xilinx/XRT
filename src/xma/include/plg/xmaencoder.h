@@ -88,7 +88,7 @@ typedef struct XmaEncoderSession
     XmaEncoderProperties  encoder_props; /**< properties specified by app */
     XmaEncoderPlugin     *encoder_plugin; /**< link to XMA encoder plugin */
     /** index into connection table (requires zerocopy: enable in cfg)  */
-    int32_t               conn_recv_handle;
+    //int32_t               conn_recv_handle;
 } XmaEncoderSession;
 
 /**
