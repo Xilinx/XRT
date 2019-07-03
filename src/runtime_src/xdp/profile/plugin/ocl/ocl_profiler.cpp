@@ -174,7 +174,7 @@ namespace xdp {
       if (itr==DeviceData.end()) {
         itr = DeviceData.emplace(device,xdp::xoclp::platform::device::data()).first;
       }
-      DeviceIntf* dInt = &(itr->second.mDeviceIntf);
+      DeviceIntf* dInt = nullptr;
       auto xdevice = device->get_xrt_device();
       if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE)) {
         dInt = &(itr->second.mDeviceIntf);
