@@ -2265,7 +2265,7 @@ zocl_dma_channel_instance(zocl_dma_handle_t *dma_handle,
 	dma_cap_mask_t dma_mask;
 
 	if (!dma_handle->dma_chan && ZOCL_PLATFORM_ARM64) {
-		// If zdev_dma_chan is NULL, we haven't initialized it yet.
+		/* If zdev_dma_chan is NULL, we haven't initialized it yet. */
 		if (!zdev->zdev_dma_chan) {
 			dma_cap_zero(dma_mask);
 			dma_cap_set(DMA_MEMCPY, dma_mask);
@@ -2299,11 +2299,11 @@ zocl_copy_bo_submit(struct sched_cmd *cmd)
 	};
 	int err = 0;
 
-	// Get single dma channel instance
+	/* Get single dma channel instance. */
 	if ((err = zocl_dma_channel_instance(dma_handle, zdev)) != 0)
 		return err;
 
-	// We must set up callback for async dma operations
+	/* We must set up callback for async dma operations. */
 	dma_handle->dma_func = zocl_dma_complete;
 	dma_handle->dma_arg = cmd;
 
