@@ -305,8 +305,8 @@ petalinux-config -c rootfs --silentconfig
 echo " * Performing PetaLinux Build (from: ${PWD})"
 
 if [ $FULL_PETA_BULD == "Yes" ]; then
-  echo "petalinux-build (FULL)"
-  petalinux-build
+  echo "petalinux-build -force (FULL)"
+  petalinux-build -force
 else
   echo "petalinux-build (XRT ONLY)"
   petalinux-build -c xrt
