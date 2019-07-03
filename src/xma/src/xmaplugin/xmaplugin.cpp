@@ -18,7 +18,7 @@
 #include "xrt.h"
 #include "ert.h"
 #include "lib/xmahw_lib.h"
-#include "lib/xmares.h"
+//#include "lib/xmares.h"
 
 #include <cstdio>
 #include <iostream>
@@ -161,7 +161,7 @@ void xma_plg_kernel_lock(XmaHwSession s_handle)
     if (s_handle.kernel_info->have_lock)
         return;
 
-    xma_res_kernel_lock(s_handle.kernel_info->lock);
+    //xma_res_kernel_lock(s_handle.kernel_info->lock);
     s_handle.kernel_info->have_lock = true;
 }
 
@@ -169,7 +169,7 @@ void xma_plg_kernel_unlock(XmaHwSession s_handle)
 {
     if (s_handle.kernel_info->have_lock)
     {
-        xma_res_kernel_unlock(s_handle.kernel_info->lock);
+        //xma_res_kernel_unlock(s_handle.kernel_info->lock);
         s_handle.kernel_info->have_lock = false;
     }
 }

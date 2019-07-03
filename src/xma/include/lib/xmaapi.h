@@ -21,7 +21,7 @@
 #include "lib/xmacfg.h"
 #include "lib/xmaconnect.h"
 #include "lib/xmahw_lib.h"
-#include "lib/xmares.h"
+//#include "lib/xmares.h"
 #include "lib/xmalogger.h"
 
 typedef struct XmaSingleton
@@ -35,7 +35,7 @@ typedef struct XmaSingleton
     XmaScalerPlugin   scalercfg[MAX_PLUGINS];
     XmaFilterPlugin   filtercfg[MAX_PLUGINS];
     XmaKernelPlugin   kernelcfg[MAX_PLUGINS];
-    XmaResources      shm_res_cfg;
+    //XmaResources      shm_res_cfg;
     bool              shm_freed;
 } XmaSingleton;
 

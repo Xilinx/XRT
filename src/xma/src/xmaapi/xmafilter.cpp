@@ -20,7 +20,7 @@
 #include <dlfcn.h>
 #include "lib/xmaapi.h"
 #include "lib/xmahw_hal.h"
-#include "lib/xmares.h"
+//#include "lib/xmares.h"
 #include "xmaplugin.h"
 
 #define XMA_FILTER_MOD "xmafilter"
@@ -91,30 +91,65 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     if (filter_session == NULL) {
         return NULL;
     }
-	XmaResources xma_shm_cfg = g_xma_singleton->shm_res_cfg;
-    XmaKernelRes kern_res;
-	int rc, dev_handle, kern_handle, filter_handle;
+	//XmaResources xma_shm_cfg = g_xma_singleton->shm_res_cfg;
+    //XmaKernelRes kern_res;
 
+    xma_logmsg(XMA_DEBUG_LOG, XMA_FILTER_MOD, "%s()\n", __func__);
+    /*Sarab: Remove xma_res stuff
 	if (!xma_shm_cfg) {
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
                    "No reference to xma res database\n");
         free(filter_session);
 		return NULL;
     }
+    */
+
+    // Load the xmaplugin library as it is a dependency for all plugins
+    void *xmahandle = dlopen("libxmaplugin.so",
+                             RTLD_LAZY | RTLD_GLOBAL);
+    if (!xmahandle)
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
+                   "Failed to open plugin xmaplugin.so. Error msg: %s\n",
+                   dlerror());
+        return NULL;
+    }
+    void *handle = dlopen(filter_props->plugin_lib, RTLD_NOW);
+    if (!handle)
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
+            "Failed to open plugin %s\n Error msg: %s\n",
+            filter_props->plugin_lib, dlerror());
+        return NULL;
+    }
+
+    XmaFilterPlugin *plg =
+        (XmaFilterPlugin*)dlsym(handle, "filter_plugin");
+    char *error;
+    if ((error = dlerror()) != NULL)
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
+            "Failed to get filterer_plugin from %s\n Error msg: %s\n",
+            filter_props->plugin_lib, dlerror());
+        return NULL;
+    }
+
 
     memset(filter_session, 0, sizeof(XmaFilterSession));
     // init session data
     filter_session->props = *filter_props;
     filter_session->base.chan_id = -1;
     filter_session->base.session_type = XMA_FILTER;
+    filter_session->filter_plugin = plg;
 
+    /*Sarab: Remove xma_res stuff
     // Just assume this is an ABR filter for now and that the FPGA
     // has been downloaded.  This is accomplished by getting the
     // first device (dev_handle, base_addr, ddr_bank) and making a
     // XmaHwSession out of it.  Later this needs to be done by searching
     // for an available resource.
-	/* JPM TODO default to exclusive access.  Ensure multiple threads
-	   can access this device if in-use pid = requesting thread pid */
+	/--* JPM TODO default to exclusive access.  Ensure multiple threads
+	   can access this device if in-use pid = requesting thread pid *--/
     rc = xma_res_alloc_filter_kernel(xma_shm_cfg,
                                      filter_props->hwfilter_type,
                                      filter_props->hwvendor_string,
@@ -150,6 +185,13 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         free(filter_session);
         return NULL;
     }
+    */
+
+   //Sarab: TODO Fix device index, CU index & session->xx_plugin assigned above
+	int rc, dev_handle, kern_handle, filter_handle;
+    dev_handle = filter_props->dev_index;
+    kern_handle = filter_props->cu_index;
+    filter_handle = filter_props->cu_index;
 
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
     XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_handle].handle;
@@ -165,7 +207,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     filter_session->base.hw_session.dev_index = hal->dev_index;
 
     // Assume it is the first filter plugin for now
-    filter_session->filter_plugin = &g_xma_singleton->filtercfg[filter_handle];
+    //filter_session->filter_plugin = &g_xma_singleton->filtercfg[filter_handle];
 
     // Allocate the private data
     filter_session->base.plugin_data =
@@ -199,7 +241,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     int32_t xma_main_ver = -1;
     int32_t xma_sub_ver = -1;
     rc = filter_session->filter_plugin->xma_version(&xma_main_ver, & xma_sub_ver);
-    //Sarab: Stop here for now
+    //Sarab: TODO. Check version match. Stop here for now
     //Sarab: Remove it later on
     return NULL;
 
@@ -237,13 +279,13 @@ xma_filter_session_destroy(XmaFilterSession *session)
     // Free the receiver connection
     xma_connect_free(session->conn_recv_handle, XMA_CONNECT_RECEIVER);
 
-    /* free kernel/kernel-session */
+    /* Remove xma_res stuff free kernel/kernel-session *--/
     rc = xma_res_free_kernel(g_xma_singleton->shm_res_cfg,
                              session->base.kern_res);
     if (rc)
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
                    "Error freeing filter session. Return code %d\n", rc);
-
+    */
     // Free the session
     // TODO: (should also free the Hw sessions)
     free(session);

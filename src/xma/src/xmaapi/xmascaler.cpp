@@ -20,7 +20,7 @@
 #include <dlfcn.h>
 #include "lib/xmaapi.h"
 #include "lib/xmahw_hal.h"
-#include "lib/xmares.h"
+//#include "lib/xmares.h"
 #include "xmaplugin.h"
 
 #define XMA_SCALER_MOD "xmascaler"
@@ -183,16 +183,47 @@ XmaScalerSession*
 xma_scaler_session_create(XmaScalerProperties *sc_props)
 {
     XmaScalerSession *sc_session = (XmaScalerSession*) malloc(sizeof(XmaScalerSession));
-	XmaResources xma_shm_cfg = g_xma_singleton->shm_res_cfg;
-    XmaKernelRes kern_res;
-	int rc, dev_handle, kern_handle, scal_handle, i;
+	//XmaResources xma_shm_cfg = g_xma_singleton->shm_res_cfg;
+    //XmaKernelRes kern_res;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_SCALER_MOD, "%s()\n", __func__);
+    /*Sarab: Remove xma_res stuff
 	if (!xma_shm_cfg) {
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
                    "No reference to xma res database\n");
         free(sc_session);
 		return NULL;
+    }
+    */
+
+    // Load the xmaplugin library as it is a dependency for all plugins
+    void *xmahandle = dlopen("libxmaplugin.so",
+                             RTLD_LAZY | RTLD_GLOBAL);
+    if (!xmahandle)
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
+                   "Failed to open plugin xmaplugin.so. Error msg: %s\n",
+                   dlerror());
+        return NULL;
+    }
+    void *handle = dlopen(sc_props->plugin_lib, RTLD_NOW);
+    if (!handle)
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
+            "Failed to open plugin %s\n Error msg: %s\n",
+            sc_props->plugin_lib, dlerror());
+        return NULL;
+    }
+
+    XmaScalerPlugin *plg =
+        (XmaScalerPlugin*)dlsym(handle, "scaler_plugin");
+    char *error;
+    if ((error = dlerror()) != NULL)
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
+            "Failed to get scaler_plugin from %s\n Error msg: %s\n",
+            sc_props->plugin_lib, dlerror());
+        return NULL;
     }
 
     memset(sc_session, 0, sizeof(XmaScalerSession));
@@ -200,14 +231,16 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     sc_session->props = *sc_props;
     sc_session->base.chan_id = -1;
     sc_session->base.session_type = XMA_SCALER;
+    sc_session->scaler_plugin = plg;
 
+    /*Sarab: Remove xma_res stuff
     // Just assume this is an ABR scaler for now and that the FPGA
     // has been downloaded.  This is accomplished by getting the
     // first device (dev_handle, base_addr, ddr_bank) and making a
     // XmaHwSession out of it.  Later this needs to be done by searching
     // for an available resource.
-	/* JPM TODO default to exclusive access.  Ensure multiple threads
-	   can access this device if in-use pid = requesting thread pid */
+	/--* JPM TODO default to exclusive access.  Ensure multiple threads
+	   can access this device if in-use pid = requesting thread pid *--/
     rc = xma_res_alloc_scal_kernel(xma_shm_cfg, sc_props->hwscaler_type,
                                    sc_props->hwvendor_string,
 	                               &sc_session->base, false);
@@ -233,6 +266,12 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     xma_logmsg(XMA_INFO_LOG, XMA_SCALER_MOD,"scal_handle = %d\n", scal_handle);
     if (scal_handle < 0)
         return NULL;
+    */
+
+	int rc, dev_handle, kern_handle, scal_handle, i;
+    dev_handle = sc_props->dev_index;
+    kern_handle = sc_props->cu_index;
+    scal_handle = sc_props->cu_index;
 
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
     XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_handle].handle;
@@ -244,7 +283,7 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     sc_session->base.hw_session.dev_index = hal->dev_index;
 
     // Assume it is the first scaler plugin for now
-    sc_session->scaler_plugin = &g_xma_singleton->scalercfg[scal_handle];
+    //sc_session->scaler_plugin = &g_xma_singleton->scalercfg[scal_handle];
 
     // Allocate the private data
     sc_session->base.plugin_data =
@@ -267,25 +306,13 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     // TODO: fix to use allocate handle making sure that
     //       we don't connect to ourselves
     sc_session->conn_recv_handle = -1;
-#if 0
-    // Allocate a connection for the input
-    XmaEndpoint *end_pt = malloc(sizeof(XmaEndpoint));
-    end_pt->session = &sc_session->base;
-    end_pt->dev_id = dev_handle;
-    end_pt->format = sc_props->input.format;
-    end_pt->bits_per_pixel = sc_props->input.bits_per_pixel;
-    end_pt->width = sc_props->input.width;
-    end_pt->height = sc_props->input.height;
-    sc_session->conn_recv_handle =
-        xma_connect_alloc(end_pt, XMA_CONNECT_RECEIVER);
-#endif
 
     // Call the plugins initialization function with this session data
     //Sarab: Check plugin compatibility to XMA
     int32_t xma_main_ver = -1;
     int32_t xma_sub_ver = -1;
     rc = sc_session->scaler_plugin->xma_version(&xma_main_ver, & xma_sub_ver);
-    //Sarab: Stop here for now
+    //Sarab: TODO. Check version match. Stop here for now
     //Sarab: Remove it later on
     return NULL;
 
@@ -318,18 +345,14 @@ xma_scaler_session_destroy(XmaScalerSession *session)
     for (i = 0; i < session->props.num_outputs; i++)
         xma_connect_free(session->conn_send_handles[i], XMA_CONNECT_SENDER);
 
-#if 0
-    // Free the receiver connection
-    xma_connect_free(session->conn_recv_handle, XMA_CONNECT_RECEIVER);
-#endif
 
-    /* free kernel/kernel-session */
+    /* Remove xma_res stuff free kernel/kernel-session *--/
     rc = xma_res_free_kernel(g_xma_singleton->shm_res_cfg,
                              session->base.kern_res);
     if (rc)
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
                    "Error freeing kernel session. Return code %d\n", rc);
-
+    */
     // Free the session
     // TODO: (should also free the Hw sessions)
     free(session);

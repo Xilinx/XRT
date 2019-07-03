@@ -20,7 +20,7 @@
 #include <dlfcn.h>
 #include "lib/xmaapi.h"
 #include "lib/xmahw_hal.h"
-#include "lib/xmares.h"
+//#include "lib/xmares.h"
 #include "xmaplugin.h"
 
 #define XMA_KERNEL_MOD "xmakernel"
@@ -91,15 +91,46 @@ xma_kernel_session_create(XmaKernelProperties *props)
     if (session == NULL) {
         return NULL;
     }
-    XmaResources xma_shm_cfg = g_xma_singleton->shm_res_cfg;
-    XmaKernelRes kern_res;
-    int rc, dev_handle, kern_handle, k_handle;
+    //XmaResources xma_shm_cfg = g_xma_singleton->shm_res_cfg;
+    //XmaKernelRes kern_res;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_KERNEL_MOD, "%s()\n", __func__);
+    /*Sarab: Remove xma_res stuff
     if (!xma_shm_cfg) {
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
                    "No reference to xma res database\n");
         free(session);
+        return NULL;
+    }
+    */
+
+    // Load the xmaplugin library as it is a dependency for all plugins
+    void *xmahandle = dlopen("libxmaplugin.so",
+                             RTLD_LAZY | RTLD_GLOBAL);
+    if (!xmahandle)
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
+                   "Failed to open plugin xmaplugin.so. Error msg: %s\n",
+                   dlerror());
+        return NULL;
+    }
+    void *handle = dlopen(props->plugin_lib, RTLD_NOW);
+    if (!handle)
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
+            "Failed to open plugin %s\n Error msg: %s\n",
+            props->plugin_lib, dlerror());
+        return NULL;
+    }
+
+    XmaKernelPlugin *plg =
+        (XmaKernelPlugin*)dlsym(handle, "kernel_plugin");
+    char *error;
+    if ((error = dlerror()) != NULL)
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
+            "Failed to get kernel_plugin from %s\n Error msg: %s\n",
+            props->plugin_lib, dlerror());
         return NULL;
     }
 
@@ -108,7 +139,9 @@ xma_kernel_session_create(XmaKernelProperties *props)
     session->kernel_props = *props;
     session->base.chan_id = -1;
     session->base.session_type = XMA_KERNEL;
+    session->kernel_plugin = plg;
 
+    /*Sarab: Remove xma_res stuff
     rc = xma_res_alloc_kernel_kernel(xma_shm_cfg, props->hwkernel_type,
                                      props->hwvendor_string,
                                      &session->base, false);
@@ -141,7 +174,14 @@ xma_kernel_session_create(XmaKernelProperties *props)
         free(session);
         return NULL;
     }
+    */
 
+   //Sarab: TODO Fix device index, CU index & session->xx_plugin assigned above
+    int rc, dev_handle, kern_handle, k_handle;
+    dev_handle = props->dev_index;
+    kern_handle = props->cu_index;
+    k_handle = props->cu_index;
+    
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
     XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_handle].handle;
 
@@ -152,7 +192,7 @@ xma_kernel_session_create(XmaKernelProperties *props)
 
     session->base.hw_session.dev_index = hal->dev_index;
 
-    session->kernel_plugin = &g_xma_singleton->kernelcfg[k_handle];
+    //session->kernel_plugin = &g_xma_singleton->kernelcfg[k_handle];
 
     // Allocate the private data
     session->base.plugin_data =
@@ -163,8 +203,11 @@ xma_kernel_session_create(XmaKernelProperties *props)
     int32_t xma_main_ver = -1;
     int32_t xma_sub_ver = -1;
     rc = session->kernel_plugin->xma_version(&xma_main_ver, & xma_sub_ver);
-    //Sarab: Stop here for now
+    //Sarab: TODO. Check version match. Stop here for now
     //Sarab: Remove it later on
+    if (rc < 0) {
+        return NULL;
+    }
     return NULL;
 
     rc = session->kernel_plugin->init(session);
@@ -194,13 +237,13 @@ xma_kernel_session_destroy(XmaKernelSession *session)
     // Clean up the private data
     free(session->base.plugin_data);
 
-    /* free kernel/kernel-session */
+    /* Remove xma_res stuff free kernel/kernel-session *--/
     rc = xma_res_free_kernel(g_xma_singleton->shm_res_cfg,
                              session->base.kern_res);
     if (rc)
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
                    "Error freeing kernel session. Return code %d\n", rc);
-
+    */
     // Free the session
     // TODO: (should also free the Hw sessions)
     free(session);

@@ -20,7 +20,7 @@
 #include <dlfcn.h>
 #include "lib/xmaapi.h"
 #include "lib/xmahw_hal.h"
-#include "lib/xmares.h"
+//#include "lib/xmares.h"
 #include "app/xmalogger.h"
 #include "xmaplugin.h"
 
@@ -95,29 +95,61 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
     XmaDecoderSession *dec_session = (XmaDecoderSession*) malloc(sizeof(XmaDecoderSession));
     if (dec_session == NULL)
         return NULL;
-    XmaResources xma_shm_cfg = g_xma_singleton->shm_res_cfg;
-    XmaKernelRes kern_res;
-    int rc, dev_handle, kern_handle, dec_handle;
+    //XmaResources xma_shm_cfg = g_xma_singleton->shm_res_cfg;
+    //XmaKernelRes kern_res;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_DECODER_MOD, "%s()\n", __func__);
+    /*Sarab: Remove xma_res stuff
     if (!xma_shm_cfg) {
         free(dec_session);
         return NULL;
     }
+    */
 
+    // Load the xmaplugin library as it is a dependency for all plugins
+    void *xmahandle = dlopen("libxmaplugin.so",
+                             RTLD_LAZY | RTLD_GLOBAL);
+    if (!xmahandle)
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
+                   "Failed to open plugin xmaplugin.so. Error msg: %s\n",
+                   dlerror());
+        return NULL;
+    }
+    void *handle = dlopen(dec_props->plugin_lib, RTLD_NOW);
+    if (!handle)
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
+            "Failed to open plugin %s\n Error msg: %s\n",
+            dec_props->plugin_lib, dlerror());
+        return NULL;
+    }
+
+    XmaDecoderPlugin *plg =
+        (XmaDecoderPlugin*)dlsym(handle, "decoder_plugin");
+    char *error;
+    if ((error = dlerror()) != NULL)
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
+            "Failed to get decoder_plugin from %s\n Error msg: %s\n",
+            dec_props->plugin_lib, dlerror());
+        return NULL;
+    }
     memset(dec_session, 0, sizeof(XmaDecoderSession));
     // init session data
     dec_session->decoder_props = *dec_props;
     dec_session->base.chan_id = -1;
     dec_session->base.session_type = XMA_DECODER;
+    dec_session->decoder_plugin = plg;
 
+    /*Sarab: Remove xma_res stuff
     // Just assume this is a H.264 decoder for now and that the FPGA
     // has been downloaded.  This is accomplished by getting the
     // first device (dev_handle, base_addr, ddr_bank) and making a
     // XmaHwSession out of it.  Later this needs to be done by searching
     // for an available resource.
-    /* JPM TODO default to exclusive device access.  Ensure multiple threads
-       can access this device if in-use pid = requesting thread pid */
+    /--* JPM TODO default to exclusive device access.  Ensure multiple threads
+       can access this device if in-use pid = requesting thread pid *--/
     rc = xma_res_alloc_dec_kernel(xma_shm_cfg, dec_props->hwdecoder_type,
                                   dec_props->hwvendor_string,
                                   &dec_session->base, false);
@@ -154,7 +186,14 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
         free(dec_session);
         return NULL;
     }
+    */
 
+   //Sarab: TODO Fix device index, CU index & session->xx_plugin assigned above
+    int rc, dev_handle, kern_handle, dec_handle;
+    dev_handle = dec_props->dev_index;
+    kern_handle = dec_props->cu_index;
+    dec_handle = dec_props->cu_index;
+    
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
     XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_handle].handle;
 
@@ -164,7 +203,7 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
 
     dec_session->base.hw_session.dev_index = hal->dev_index;
 
-    dec_session->decoder_plugin = &g_xma_singleton->decodercfg[dec_handle];
+    //dec_session->decoder_plugin = &g_xma_singleton->decodercfg[dec_handle];
 
     // Allocate the private data
     dec_session->base.plugin_data =
@@ -175,7 +214,10 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
     int32_t xma_main_ver = -1;
     int32_t xma_sub_ver = -1;
     rc = dec_session->decoder_plugin->xma_version(&xma_main_ver, & xma_sub_ver);
-    //Sarab: Stop here for now
+    if (rc < 0) {
+        return NULL;
+    }
+    //Sarab: TODO. Check version match. Stop here for now
     //Sarab: Remove it later on
     return NULL;
 
@@ -202,13 +244,14 @@ xma_dec_session_destroy(XmaDecoderSession *session)
     // Clean up the private data
     free(session->base.plugin_data);
 
-    /* free kernel/kernel-session */
+    /* Remove xma_res stuff free kernel/kernel-session *--/
     rc = xma_res_free_kernel(g_xma_singleton->shm_res_cfg,
                              session->base.kern_res);
     if (rc)
         xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
                    "Error freeing kernel session. Return code %d\n", rc);
 
+    */
     // Free the session
     // TODO: (should also free the Hw sessions)
     free(session);
