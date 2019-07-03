@@ -154,7 +154,7 @@ int ZYNQShim::mapKernelControl(const std::vector<std::pair<uint64_t, size_t>>& o
       auto it = mKernelControl.find(offset_it->first);
       if (it == mKernelControl.end()) {
         ptr = mmap(0, offset_it->second, PROT_READ | PROT_WRITE, MAP_SHARED, mKernelFD, offset_it->first);
-        if (!ptr) {
+        if (ptr == MAP_FAILED){
             printf("Map failed for aperture 0x%lx, size 0x%lx\n", offset_it->first, offset_it->second);
             return -1;
         }
@@ -234,7 +234,7 @@ size_t ZYNQShim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, 
   return size;
 }
 
-unsigned int ZYNQShim::xclAllocBO(size_t size, xclBOKind domain, unsigned flags) {
+unsigned int ZYNQShim::xclAllocBO(size_t size, int unused, unsigned flags) {
   // TODO: unify xocl and zocl flags.
   //drm_zocl_create_bo info = { size, 0xffffffff, DRM_ZOCL_BO_FLAGS_COHERENT | DRM_ZOCL_BO_FLAGS_CMA };
   drm_zocl_create_bo info = { size, 0xffffffff, flags};
@@ -337,6 +337,12 @@ int ZYNQShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
 
   info->mDDRBankCount = 1;
   info->mOCLFrequency[0] = 100;
+
+#if defined(__aarch64__)
+  info->mNumCDMA = 1;
+#else
+  info->mNumCDMA = 0;
+#endif
 
   std::string deviceName;
   // Mike add the VBNV in the platform image.
@@ -456,7 +462,6 @@ unsigned int ZYNQShim::xclGetBOProperties(unsigned int boHandle, xclBOProperties
   properties->flags  = DRM_ZOCL_BO_FLAGS_COHERENT | DRM_ZOCL_BO_FLAGS_CMA;
   properties->size   = info.size;
   properties->paddr  = info.paddr;
-  properties->domain = XCL_BO_DEVICE_RAM; // currently all BO domains are XCL_BO_DEVICE_RAM
   return result;
 }
 
@@ -623,7 +628,7 @@ void xclClose(xclDeviceHandle handle)
   }
 }
 
-unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, xclBOKind domain, unsigned flags)
+unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned flags)
 {
   //std::cout << "xclAllocBO called " << std::endl;
   //std::cout << "xclAllocBO size:  "  << size << std::endl;
@@ -632,7 +637,7 @@ unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, xclBOKind domain, u
   if (!drv)
     return -EINVAL;
   //std::cout << "xclAllocBO handle check passed" << std::endl;
-  return drv->xclAllocBO(size, domain, flags);
+  return drv->xclAllocBO(size, unused, flags);
 }
 
 unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)

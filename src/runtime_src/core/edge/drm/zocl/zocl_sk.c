@@ -6,6 +6,7 @@
  *
  * Authors:
  *    Larry Liu       <yliu@xilinx.com>
+ *    Jan Stephan     <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -109,7 +110,7 @@ zocl_sk_create_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	sk->sk_cu[cu_idx]->sc_vregs = bo->cma_base.vaddr;
 	sema_init(&sk->sk_cu[cu_idx]->sc_sem, 0);
 
-	drm_gem_object_unreference_unlocked(gem_obj);
+	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
 
 	return 0;
 }

@@ -176,15 +176,15 @@ int processLocalMsg(pcieFunc& dev, int localfd, int remotefd, msgHandler cb)
     if (!cb) {
         // Continue passing received msg to local mailbox.
         swmsgProcessed = swmsg;
-        pass = PROCESSED_FOR_REMOTE;
+        pass = FOR_REMOTE;
     } else {
         pass = (*cb)(dev, swmsg, swmsgProcessed);
     }
 
     bool sent;
-    if (pass == PROCESSED_FOR_LOCAL)
+    if (pass == FOR_LOCAL)
         sent = sendMsg(dev, localfd, swmsgProcessed.get());
-    else if (pass == PROCESSED_FOR_REMOTE)
+    else if (pass == FOR_REMOTE)
         sent = sendMsg(dev, remotefd, swmsgProcessed.get());
     else // Error occured
         return pass;
@@ -217,15 +217,15 @@ int processRemoteMsg(pcieFunc& dev, int localfd, int remotefd, msgHandler cb)
     if (!cb) {
         // Continue passing received msg to local mailbox.
         swmsgProcessed = swmsg;
-        pass = PROCESSED_FOR_LOCAL;
+        pass = FOR_LOCAL;
     } else {
         pass = (*cb)(dev, swmsg, swmsgProcessed);
     }
 
     bool sent;
-    if (pass == PROCESSED_FOR_LOCAL)
+    if (pass == FOR_LOCAL)
         sent = sendMsg(dev, localfd, swmsgProcessed.get());
-    else if (pass == PROCESSED_FOR_REMOTE)
+    else if (pass == FOR_REMOTE)
         sent = sendMsg(dev, remotefd, swmsgProcessed.get());
     else // Error occured
         return pass;

@@ -24,21 +24,23 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 usage() {
     echo "Build platfrom specific embedded runtime (ert)"
     echo
-    echo "-platform <NAME>            Embedded Platform name, e.g. zcu102ng / xcu104_revmin"
-    echo "-vivado <PATH>              Full path to vivado executable"
-    echo "-xsct <PATH>                Full path to xsct executable"
-    echo "-petalinux <PATH>           Full path to petalinux folder"
-    echo "-xrt <PATH>                 XRT github repo path"
-    echo "[-build-dsa <Yes/No>]       Build DSA or not, if not then copy a pre-build DSA from a relative path to vivado executable. Default=Yes"
-    echo "[-build-sysroot <Yes/No>]   Build SYSROOT or not, default=No"
-    echo "[-bsp <PATH>]               Optional, full path to the platform bsp file, if not supplied, then the PetaLinux project is created using --template" 
-    echo "[-help]                     List this help"
+    echo "-platform <NAME>                 Embedded Platform name, e.g. zcu102ng / xcu104_revmin"
+    echo "-vivado <PATH>                   Full path to vivado executable"
+    echo "-xsct <PATH>                     Full path to xsct executable"
+    echo "-petalinux <PATH>                Full path to petalinux folder"
+    echo "-xrt <PATH>                      XRT github repo path"
+    echo "[-full-peta-linux-build <Yes|No> Do a full peta-linux build or not. Full petalinux builds will take much longer time. Default=No" 
+    echo "[-build-dsa <Yes/No>]            Build DSA or not, if not then copy a pre-build DSA from a relative path to vivado executable. Default=Yes"
+    echo "[-build-sysroot <Yes/No>]        Build SYSROOT or not, default=No"
+    echo "[-bsp <PATH>]                    Optional, full path to the platform bsp file, if not supplied, then the PetaLinux project is created using --template" 
+    echo "[-help]                          List this help"
     exit $1
 }
 
 BSP_FILE="/null/null/fasan"
 GEN_DSA="Yes"
 BUILD_SYSROOT="No"
+FULL_PETA_BULD="No"
 while [ $# -gt 0 ]; do
     case "$1" in
         -help)
@@ -54,6 +56,11 @@ while [ $# -gt 0 ]; do
 	    BUILD_SYSROOT=$1
 	    shift
 	    ;;
+	-full-peta-linux-build)
+	    shift
+	    FULL_PETA_BULD=$1
+	    shift
+	 ;;
         -vivado)
             shift
             PATH_TO_VIVADO=$1
@@ -169,9 +176,9 @@ if [ ! -f ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}.dsa ]; then
   echo "ERROR: Failed to create/locate DSA (it is missing): ${XRT_REPO_DIR}/dsa_build/${PLATFORM_NAME}.dsa"
   exit 1
 fi
-
-if [ ! -f ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_vivado/${PLATFORM_NAME}.hdf ]; then
-  echo "ERROR: Failed to create/locate HDF (it is missing): ${XRT_REPO_DIR}/dsa_build/${PLATFORM_NAME}_vivado/${PLATFORM_NAME}.hdf"
+PLATFOMR_SDK=${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}/${PLATFORM_NAME}.sdk
+if [ ! -f ${PLATFOMR_SDK}/${PLATFORM_NAME}_wrapper.hdf ]; then
+  echo "ERROR: Failed to create/locate HDF (it is missing): ${PLATFOMR_SDK}/${PLATFORM_NAME}_wrapper.hdf"
   exit 1
 fi
 
@@ -198,19 +205,34 @@ if [ ! -d $PLATFORM_NAME ]; then
     petalinux-create -t project -n $PLATFORM_NAME --template zynqMP
   fi  
 fi
-
 mkdir -p ${PLATFORM_NAME}/build/conf/
 echo " * Configuring PetaLinux Project"
 # Allow users to access shell without login
 echo "CONFIG_YOCTO_ENABLE_DEBUG_TWEAKS=y" >> ${PLATFORM_NAME}/project-spec/configs/config
-echo "petalinux-config -p $PLATFORM_NAME --get-hw-description=${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_vivado/${PLATFORM_NAME}_vivado/ --oldconfig"
-petalinux-config -p $PLATFORM_NAME --get-hw-description=${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_vivado/ --oldconfig
- 
+echo "petalinux-config -p $PLATFORM_NAME --get-hw-description=${PLATFOMR_SDK} --silentconfig"
+petalinux-config -p $PLATFORM_NAME --get-hw-description=${PLATFOMR_SDK} --silentconfig
+
+
+echo "Replacing CONFIG_SUBSYSTEM_AUTOCONFIG_DEVICE__TREE"
+perl -p -i -e  "s/CONFIG_SUBSYSTEM_AUTOCONFIG_DEVICE__TREE/# CONFIG_SUBSYSTEM_AUTOCONFIG_DEVICE__TREE\ is\ not\ set/g" ${PLATFORM_NAME}/project-spec/configs/config
+cd ${PLATFORM_NAME}
+petalinux-config --silentconfig
+cd -
+
 echo " * Change to meta directory: ${PLATFORM_NAME}/project-spec/meta-user/"
 cd ${PLATFORM_NAME}/project-spec/meta-user/
 
 echo " * Copying ${XRT_REPO_DIR}/src/platform/recipes-xrt to `readlink -f .`"
 cp -r ${XRT_REPO_DIR}/src/platform/recipes-xrt .
+
+echo " * Update XRT recipes to point to local workspace"
+addIfNoExists 'inherit externalsrc' ./recipes-xrt/xrt/xrt_git.bb
+addIfNoExists "EXTERNALSRC = \"$XRT_REPO_DIR/src\"" ./recipes-xrt/xrt/xrt_git.bb
+addIfNoExists 'EXTERNALSRC_BUILD = "${WORKDIR}/build"' ./recipes-xrt/xrt/xrt_git.bb
+
+addIfNoExists "inherit externalsrc" ./recipes-xrt/zocl/zocl_git.bb
+addIfNoExists "EXTERNALSRC = \"$XRT_REPO_DIR/src/runtime_src/core/edge/drm/zocl\"" ./recipes-xrt/zocl/zocl_git.bb
+addIfNoExists "EXTERNALSRC_BUILD = \"$XRT_REPO_DIR/src/runtime_src/core/edge/drm/zocl\"" ./recipes-xrt/zocl/zocl_git.bb
 
 # If you are using PetaLinux 2018.3 or earlier version, do below step
 if [[ $PETALINUX_VER == "2018"* ]]; then
@@ -243,18 +265,20 @@ addIfNoExists 'IMAGE_INSTALL_append = " zocl"'    $PETALINUX_IMAGE_BBAPPEND
 addIfNoExists 'IMAGE_INSTALL_append = " opencl-headers-dev"' $PETALINUX_IMAGE_BBAPPEND
 addIfNoExists 'IMAGE_INSTALL_append = " opencl-clhpp-dev"'   $PETALINUX_IMAGE_BBAPPEND
 
-echo " * Adding XRT Kernel Node to Device Tree"
-echo "cat ${XRT_REPO_DIR}/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi"
-cat ${XRT_REPO_DIR}/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi
+if [ $FULL_PETA_BULD == "Yes" ]; then
+	echo " * Adding XRT Kernel Node to Device Tree"
+	echo "cat ${XRT_REPO_DIR}/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi"
+	cat ${XRT_REPO_DIR}/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi
 
-if [ -f ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_fragment.dts ]; then
-  echo "cat ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_fragment.dts >> recipes-bsp/device-tree/files/system-user.dtsi"
-  cat ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_fragment.dts >> recipes-bsp/device-tree/files/system-user.dtsi
+	if [ -f ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_fragment.dts ]; then
+		echo "cat ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_fragment.dts >> recipes-bsp/device-tree/files/system-user.dtsi"
+		cat ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_fragment.dts >> recipes-bsp/device-tree/files/system-user.dtsi
+	fi
 fi
 
 echo " * Configuring the kernel"
 #Configure Linux kernel (default kernel config is good for zocl driver)
-petalinux-config -c kernel --oldconfig
+petalinux-config -c kernel --silentconfig
 
 echo " * Configuring rootfs"
 # Configure rootfs, enable below components:
@@ -275,12 +299,20 @@ addIfNoExists 'CONFIG_opencl-headers-dev=y'  ../configs/rootfs_config
 addIfNoExists 'CONFIG_opencl-clhpp-dev=y'  ../configs/rootfs_config
 
 
-petalinux-config -c rootfs --oldconfig
+petalinux-config -c rootfs --silentconfig
 
 # Build package
 echo " * Performing PetaLinux Build (from: ${PWD})"
-echo "petalinux-build"
-petalinux-build 
+
+if [ $FULL_PETA_BULD == "Yes" ]; then
+  echo "petalinux-build (FULL)"
+  petalinux-build
+else
+  echo "petalinux-build (XRT ONLY)"
+  petalinux-build -c xrt
+  echo "petalinux-build (ZOCL Only)"
+  petalinux-build -c zocl
+fi
 
 cd $ORIGINAL_DIR
 echo " * Copying PetaLinux boot files (from: $PWD)"
@@ -313,11 +345,11 @@ if [ $BUILD_SYSROOT == "Yes" ]; then
   petalinux-build --sdk
   petalinux-package --sysroot -d .
   cd -
-else
-  echo " * Expanding $ORIGINAL_DIR/${PLATFORM_NAME}/images/linux/rootfs.tar.gz"    
-  tar zxf $ORIGINAL_DIR/${PLATFORM_NAME}/images/linux/rootfs.tar.gz 
 fi
 
+echo " * Expanding $ORIGINAL_DIR/${PLATFORM_NAME}/images/linux/rootfs.tar.gz in $PWD"    
+tar zxf $ORIGINAL_DIR/${PLATFORM_NAME}/images/linux/rootfs.tar.gz
+  
 cd ${ORIGINAL_DIR}/dsa_build
 echo " * Building Platform (from: $PWD)"
 echo "${PATH_TO_XSCT} -sdx ./${PLATFORM_NAME}_pfm.tcl"

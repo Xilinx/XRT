@@ -112,7 +112,7 @@ def initXRT(opt):
         return -1
 
     if sys.version_info[0] == 3:
-        print("DSA = %s" % deviceInfo.mName)
+        print("Shell = %s" % deviceInfo.mName)
         print("Index = %d" % opt.index)
         print("PCIe = GEN%d x %d" % (deviceInfo.mPCIeLinkSpeed, deviceInfo.mPCIeLinkWidth))
         print("OCL Frequency = (%d, %d) MHz" % (deviceInfo.mOCLFrequency[0], deviceInfo.mOCLFrequency[1]))
@@ -120,7 +120,7 @@ def initXRT(opt):
         print("Device Temp = %d C" % deviceInfo.mOnChipTemp)
         print("MIG Calibration = %s" % deviceInfo.mMigCalib)
     else:
-        print("DSA = %s") % deviceInfo.mName
+        print("Shell = %s") % deviceInfo.mName
         print("Index = %s") % opt.index
         print("PCIe = GEN%s" + " x %s") % (deviceInfo.mPCIeLinkSpeed, deviceInfo.mPCIeLinkWidth)
         print("OCL Frequency = %s MHz") % deviceInfo.mOCLFrequency[0]

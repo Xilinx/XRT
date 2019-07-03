@@ -204,7 +204,8 @@ namespace awsbwhal {
             mLogStream << __func__ << ", " << std::this_thread::get_id() << ", "
                        << offset << ", " << hostBuf << ", " << size << std::endl;
         }
-#if ((GCC_VERSION >= 40800) && !defined(__PPC64__))
+
+#if ((GCC_VERSION >= 40800) && !defined(__PPC64__) && !defined(__aarch64__))
         alignas(DDR_BUFFER_ALIGNMENT) char buffer[DDR_BUFFER_ALIGNMENT];
 #else
         AlignedAllocator<char> alignedBuffer(DDR_BUFFER_ALIGNMENT, DDR_BUFFER_ALIGNMENT);
@@ -945,7 +946,6 @@ namespace awsbwhal {
       properties->flags  = info.flags;
       properties->size   = info.size;
       properties->paddr  = info.paddr;
-      properties->domain = XCL_BO_DEVICE_RAM; // currently all BO domains are XCL_BO_DEVICE_RAM
       return result ? mNullBO : 0;
     }
 
@@ -958,11 +958,9 @@ namespace awsbwhal {
 
     // Assume that the memory is always
     // created for the device ddr for now. Ignoring the flags as well.
-    unsigned int AwsXcl::xclAllocBO(size_t size, xclBOKind domain, unsigned flags)
+    unsigned int AwsXcl::xclAllocBO(size_t size, int unused, unsigned flags)
     {
-      unsigned flag = flags & 0xFFFFFFLL;
-      unsigned type = flags & 0xFF000000LL ;
-      drm_xocl_create_bo info = {size, mNullBO, flag, type};
+      drm_xocl_create_bo info = {size, mNullBO, flags};
       int result = ioctl(mUserHandle, DRM_IOCTL_XOCL_CREATE_BO, &info);
       if (result) {
         std::cout << __func__ << " ERROR: AllocBO IOCTL failed" << std::endl;
@@ -972,9 +970,7 @@ namespace awsbwhal {
 
     unsigned int AwsXcl::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
     {
-      unsigned flag = flags & 0xFFFFFFLL;
-      unsigned type = flags & 0xFF000000LL ;
-      drm_xocl_userptr_bo user = {reinterpret_cast<uint64_t>(userptr), size, mNullBO, flag, type};
+      drm_xocl_userptr_bo user = {reinterpret_cast<uint64_t>(userptr), size, mNullBO, flags};
       int result = ioctl(mUserHandle, DRM_IOCTL_XOCL_USERPTR_BO, &user);
       return result ? mNullBO : user.handle;
     }
@@ -1400,10 +1396,10 @@ int xclUnlockDevice(xclDeviceHandle handle)
   }
 }
 
-unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, xclBOKind domain, unsigned flags)
+unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned flags)
 {
   awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
-  return drv ? drv->xclAllocBO(size, domain, flags) : -ENODEV;
+  return drv ? drv->xclAllocBO(size, unused, flags) : -ENODEV;
 }
 
 unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)

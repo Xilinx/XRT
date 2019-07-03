@@ -243,7 +243,7 @@ init(const std::string& bit, unsigned int deviceIndex, const std::string& log, i
   if (xclGetDeviceInfo2(udo->handle, &deviceInfo))
     throw std::runtime_error("Unable to obtain device information");
 
-  std::cout << "DSA = " << deviceInfo.mName << "\n";
+  std::cout << "Shell = " << deviceInfo.mName << "\n";
   std::cout << "Index = " << deviceIndex << "\n";
   std::cout << "PCIe = GEN" << deviceInfo.mPCIeLinkSpeed << " x " << deviceInfo.mPCIeLinkWidth << "\n";
   std::cout << "OCL Frequency = " << deviceInfo.mOCLFrequency[0] << " MHz" << "\n";

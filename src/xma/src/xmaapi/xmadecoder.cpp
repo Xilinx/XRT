@@ -159,12 +159,9 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
     XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_handle].handle;
 
     dec_session->base.hw_session.dev_handle = hal->dev_handle;
-    dec_session->base.hw_session.base_address =
-        hwcfg->devices[dev_handle].kernels[kern_handle].base_address;
-    dec_session->base.hw_session.ddr_bank =
-        hwcfg->devices[dev_handle].kernels[kern_handle].ddr_bank;
     //For execbo:
     dec_session->base.hw_session.kernel_info = &hwcfg->devices[dev_handle].kernels[kern_handle];
+
     dec_session->base.hw_session.dev_index = hal->dev_index;
 
     dec_session->decoder_plugin = &g_xma_singleton->decodercfg[dec_handle];
@@ -174,6 +171,14 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
         calloc(g_xma_singleton->decodercfg[dec_handle].plugin_data_size, sizeof(uint8_t));
 
     // Call the plugins initialization function with this session data
+    //Sarab: Check plugin compatibility to XMA
+    int32_t xma_main_ver = -1;
+    int32_t xma_sub_ver = -1;
+    rc = dec_session->decoder_plugin->xma_version(&xma_main_ver, & xma_sub_ver);
+    //Sarab: Stop here for now
+    //Sarab: Remove it later on
+    return NULL;
+
     if (dec_session->decoder_plugin->init(dec_session)) {
         free(dec_session->base.plugin_data);
         free(dec_session);

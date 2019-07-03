@@ -400,6 +400,17 @@ static const struct axlf_section_header* get_axlf_section(const struct axlf* top
 	return NULL;
 }
 
+static void
+create_fw_name(char *name, size_t len, struct awsmgmt_dev *lro, char *suffix)
+{
+	snprintf(name, len, "xilinx/%04x-%04x-%04x-%016llx.%s",
+		 le16_to_cpu(lro->user_pci_dev->vendor),
+		 le16_to_cpu(lro->user_pci_dev->device),
+		 le16_to_cpu(lro->user_pci_dev->subsystem_device),
+		 le64_to_cpu(lro->feature_id),
+		 suffix);
+}
+
 long load_boot_firmware(struct awsmgmt_dev *lro)
 {
 	const struct axlf *bin_obj_axlf;
@@ -418,17 +429,20 @@ long load_boot_firmware(struct awsmgmt_dev *lro)
 	printk(KERN_DEBUG "%s:%s:%d\n", __func__, __FILE__, __LINE__);
 	memset(&bit_header, 0, sizeof(bit_header));
 
-	snprintf(fw_name, sizeof(fw_name), "xilinx/%04x-%04x-%04x-%016llx.dsabin",
-		 le16_to_cpu(lro->user_pci_dev->vendor),
-		 le16_to_cpu(lro->user_pci_dev->device),
-		 le16_to_cpu(lro->user_pci_dev->subsystem_device),
-		 le64_to_cpu(lro->feature_id));
-
+	//try xsabin suffix first, if failed, then try dsabin suffix
+	create_fw_name(fw_name, sizeof(fw_name), lro, "xsabin");
 	err = request_firmware(&fw, fw_name, &lro->pci_dev->dev);
 
 	if (err) {
 		printk(KERN_WARNING "Unable to find firmware %s\n", fw_name);
-		return err;
+
+		create_fw_name(fw_name, sizeof(fw_name), lro, "dsabin");
+		printk(KERN_INFO "Searching for legacy firmware %s\n", fw_name);
+		err = request_firmware(&fw, fw_name, &lro->pci_dev->dev);
+		if (err) {
+			printk(KERN_WARNING "Unable to find firmware %s\n", fw_name);
+			return err;
+		}
 	}
 
 	if (!memcmp(fw->data, "xclbin2", 8)) {
@@ -665,10 +679,10 @@ int bitstream_ioctl_axlf(struct awsmgmt_dev *lro, const void __user *arg)
 		return -EINVAL;
 
 	if(strstr(bin_obj.m_header.m_platformVBNV, "1ddr-xpr")) {
-		printk(KERN_INFO "Marking it as 1ddr DSA");
+		printk(KERN_INFO "Marking it as 1ddr Shell");
 		lro->is1DDR = true;
 	} else {
-		printk(KERN_INFO "Marking it as 4ddr DSA");
+		printk(KERN_INFO "Marking it as 4ddr Shell");
 		lro->is1DDR = false;
 	}
 

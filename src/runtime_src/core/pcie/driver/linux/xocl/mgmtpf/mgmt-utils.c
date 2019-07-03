@@ -473,32 +473,35 @@ failed:
 
 int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 {
-	int ret, i;
+	int ret;
 
-	xocl_drvinst_offline(lro, true);
-	ret = xocl_subdev_offline_all(lro);
+	xocl_drvinst_set_offline(lro, true);
+
+	health_thread_stop(lro);
+
+	ret = xocl_subdev_destroy_prp(lro);
 	if (ret) {
-		mgmt_err(lro, "offline sub devices failed %d", ret);
+		mgmt_err(lro, "destroy prp failed %d", ret);
 		goto failed;
 	}
 
-	for (i = XOCL_SUBDEV_LEVEL_URP; i > XOCL_SUBDEV_LEVEL_STATIC; i--)
-		xocl_subdev_destroy_by_level(lro, i);
-
-	// TODO: program partial bitstream
-	
-	ret = xocl_subdev_create_all(lro);
+	ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP);
 	if (ret) {
-		mgmt_err(lro, "failed to create sub devices %d", ret);
+		mgmt_err(lro, "program shell failed %d", ret);
 		goto failed;
 	}
 
-	xocl_subdev_online_by_id(lro, XOCL_SUBDEV_MAILBOX);
-	ret = xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
-	if (ret)
+	ret = xocl_subdev_create_prp(lro);
+	if (ret) {
+		mgmt_err(lro, "failed to create prp %d", ret);
 		goto failed;
+	}
 
-	xocl_drvinst_offline(lro, false);
+	health_thread_start(lro);
+
+	xclmgmt_update_userpf_blob(lro);
+	xocl_drvinst_set_offline(lro, false);
+
 failed:
 
 	return ret;
@@ -538,6 +541,14 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 		mgmt_err(lro, "Invalid dtc");
 		goto failed;
 	}
+
+	lro->bld_blob = vmalloc(fdt_totalsize(lro->core.fdt_blob));
+	if (!lro->bld_blob) {
+		ret = -ENOMEM;
+		goto failed;
+	}
+	memcpy(lro->bld_blob, lro->core.fdt_blob,
+			fdt_totalsize(lro->core.fdt_blob));
 
 	xclmgmt_connect_notify(lro, false);
 	xocl_subdev_destroy_all(lro);

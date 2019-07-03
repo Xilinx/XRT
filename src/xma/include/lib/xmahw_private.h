@@ -17,7 +17,7 @@
 #ifndef _XMA_HW_PRIVATE_H_
 #define _XMA_HW_PRIVATE_H_
 
-#include "lib/xmahw.h"
+#include "lib/xmahw_lib.h"
 #include "lib/xmacfg.h"
 
 typedef struct XmaHwInterface

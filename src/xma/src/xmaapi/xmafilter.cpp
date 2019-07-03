@@ -154,13 +154,14 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
     XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_handle].handle;
     filter_session->base.hw_session.dev_handle = hal->dev_handle;
-    filter_session->base.hw_session.base_address =
-        hwcfg->devices[dev_handle].kernels[kern_handle].base_address;
-    filter_session->base.hw_session.ddr_bank =
-        hwcfg->devices[dev_handle].kernels[kern_handle].ddr_bank;
 
     //For execbo:
     filter_session->base.hw_session.kernel_info = &hwcfg->devices[dev_handle].kernels[kern_handle];
+    filter_session->base.hw_session.kernel_info->base_address =
+        hwcfg->devices[dev_handle].kernels[kern_handle].base_address;
+    filter_session->base.hw_session.kernel_info->ddr_bank =
+        hwcfg->devices[dev_handle].kernels[kern_handle].ddr_bank;
+
     filter_session->base.hw_session.dev_index = hal->dev_index;
 
     // Assume it is the first filter plugin for now
@@ -194,6 +195,14 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
 */
 
     // Call the plugins initialization function with this session data
+    //Sarab: Check plugin compatibility to XMA
+    int32_t xma_main_ver = -1;
+    int32_t xma_sub_ver = -1;
+    rc = filter_session->filter_plugin->xma_version(&xma_main_ver, & xma_sub_ver);
+    //Sarab: Stop here for now
+    //Sarab: Remove it later on
+    return NULL;
+
     rc = filter_session->filter_plugin->init(filter_session);
     if (rc) {
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
@@ -247,6 +256,7 @@ xma_filter_session_send_frame(XmaFilterSession  *session,
                               XmaFrame          *frame)
 {
     xma_logmsg(XMA_DEBUG_LOG, XMA_FILTER_MOD, "%s()\n", __func__);
+    /*Sarab: Remove zerocopy stuff
     if (session->conn_send_handle != -1)
     {
         // Get the connection entry to find the receiver
@@ -269,6 +279,7 @@ xma_filter_session_send_frame(XmaFilterSession  *session,
         }
     }
 send:
+    */
     return session->filter_plugin->send_frame(session, frame);
 }
 

@@ -48,7 +48,11 @@ bool initRemotePortMap()
     exit(-1);
   }
 
-  addr = PL_RP_MP_ALLOCATED_ADD;
+  #if defined(CONFIG_ARM64)
+    addr = PL_RP_MP_ALLOCATED_ADD;
+  #else
+    addr = PL_RP_ALLOCATED_ADD;
+  #endif
 
   //page_addr = (addr & ~(page_size - 1));
   //page_offset = addr - page_addr;

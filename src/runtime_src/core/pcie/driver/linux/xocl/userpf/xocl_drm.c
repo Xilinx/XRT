@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
  *
- * Authors:
+ * Authors: Jan Stephan <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -71,8 +71,10 @@ static int xocl_open(struct inode *inode, struct file *filp)
 	priv = filp->private_data;
 	ddev = priv->minor->dev;
 	drm_p = xocl_drvinst_open(ddev);
-	if (!drm_p)
+	if (!drm_p) {
+		drm_release(inode, filp);
 		return -ENXIO;
+	}
 
 	return 0;
 }
@@ -100,6 +102,7 @@ static int xocl_mmap(struct file *filp, struct vm_area_struct *vma)
 	xdev_handle_t xdev = drm_p->xdev;
 	unsigned long vsize;
 	phys_addr_t res_start;
+	struct drm_xocl_bo *xobj;
 
 	DRM_ENTER("vm pgoff %lx", vma->vm_pgoff);
 
@@ -108,9 +111,17 @@ static int xocl_mmap(struct file *filp, struct vm_area_struct *vma)
 	 * it thinks is best,we will only handle page offsets less than 4G.
 	 */
 	if (likely(vma->vm_pgoff >= XOCL_FILE_PAGE_OFFSET)) {
+
 		ret = drm_gem_mmap(filp, vma);
 		if (ret)
 			return ret;
+
+		xobj = to_xocl_bo(vma->vm_private_data);
+
+		if (!xobj->pages) {
+			XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&xobj->base);
+			return -EINVAL;
+		}
 		/* Clear VM_PFNMAP flag set by drm_gem_mmap()
 		 * we have "struct page" for all backing pages for bo
 		 */
@@ -177,7 +188,6 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 #else
 	unsigned long vmf_address = (unsigned long)vmf->virtual_address;
 #endif
-
 	page_offset = (vmf_address - vma->vm_start) >> PAGE_SHIFT;
 
 
@@ -188,7 +198,7 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	if (page_offset > num_pages)
 		return VM_FAULT_SIGBUS;
 
-	if (xobj->type & XOCL_BO_P2P) {
+	if (xocl_bo_p2p(xobj)) {
 #if RHEL_P2P_SUPPORT
 		pfn = phys_to_pfn_t(page_to_phys(xobj->pages[page_offset]), PFN_MAP|PFN_DEV);
 		ret = vm_insert_mixed(vma, vmf_address, pfn);
@@ -406,7 +416,7 @@ failed:
 	if (drm_registered)
 		drm_dev_unregister(ddev);
 	if (ddev)
-		drm_dev_unref(ddev);
+		XOCL_DRM_DEV_PUT(ddev);
 	if (drm_p)
 		xocl_drvinst_free(drm_p);
 

@@ -20,7 +20,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
-#include "lib/xmalimits.h"
+#include "xmalimits.h"
 
 #ifdef __cplusplus
 extern "C" {

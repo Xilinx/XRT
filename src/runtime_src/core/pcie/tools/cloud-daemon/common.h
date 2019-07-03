@@ -30,8 +30,8 @@
 // will indicate where to pass.
 using msgHandler = int(*)(pcieFunc& dev, std::shared_ptr<sw_msg>&,
     std::shared_ptr<sw_msg>&);
-#define PROCESSED_FOR_REMOTE 0
-#define PROCESSED_FOR_LOCAL  1
+#define FOR_REMOTE 0
+#define FOR_LOCAL  1
 
 int splitLine(std::string line, std::string& key, std::string& value);
 sw_chan *allocmsg(pcieFunc& dev, size_t payloadSize);
