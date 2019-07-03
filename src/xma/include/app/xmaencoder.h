@@ -262,7 +262,7 @@ typedef struct XmaEncoderProperties
     int32_t         cu_index;
     int32_t         ddr_bank_index;//Used for allocating device buffers. Used only if valid index is provide (>= 0); value of -1 imples that XMA should select automatically and then XMA will set it with bank index used automatically
     int32_t         channel_id;
-    char            *plugin_lib;
+    char            *plugin_lib;//Lib with full path
     int32_t         reserved[4];
 } XmaEncoderProperties;
 
