@@ -1683,6 +1683,48 @@ int CpuemShim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const cha
     return 0;
 }
 
+/*
+* xclOpenContext
+*/
+int CpuemShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
+{
+  return 0;
+}
+
+/*
+* xclExecWait
+*/
+int CpuemShim::xclExecWait(int timeoutMilliSec)
+{
+  unsigned int tSec = 0;
+  static bool bConfig = true;
+  tSec = timeoutMilliSec / 1000;
+  if (bConfig)
+  {
+    tSec = timeoutMilliSec / 100;
+    bConfig = false;
+  }
+  sleep(tSec);
+  //PRINTENDFUNC;
+  return 0;
+}
+
+/*
+* xclExecBuf
+*/
+int CpuemShim::xclExecBuf(unsigned int cmdBO)
+{
+  return 0;
+}
+
+/*
+* xclCloseContext
+*/
+int CpuemShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const
+{
+  return 0;
+}
+
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/
 /**********************************************HAL2 API's END HERE **********************************************/
 }
