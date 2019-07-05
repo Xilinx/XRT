@@ -24,6 +24,7 @@
 //#include "lib/xmares.h"
 #include "lib/xmalogger.h"
 #include <atomic>
+#include <vector>
 
 typedef struct XmaSingleton
 {

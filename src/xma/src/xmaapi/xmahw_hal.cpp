@@ -19,7 +19,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <vector>
+//#include <vector>
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
