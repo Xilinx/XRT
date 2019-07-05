@@ -324,7 +324,7 @@ xma_enc_session_statsfile_init(XmaEncoderSession *session)
     int32_t          dev_id = 0;
     int32_t          kern_inst = 0;
     int32_t          chan_id = 0;
-    char             fname[100];
+    char             fname[512];
     XmaEncoderStats *stats;
 
     stats = (XmaEncoderStats*) malloc(sizeof(XmaEncoderStats));
