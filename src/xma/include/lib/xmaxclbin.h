@@ -18,11 +18,12 @@
 #define _XMA_XCLBIN_H_
 
 #include <uuid/uuid.h>
-#include "lib/xmacfg.h"
+#include <limits.h>
+//#include "lib/xmacfg.h"
 #include "lib/xmahw_lib.h"
 #include "lib/xmalimits_lib.h"
 #include "xclbin.h"
-#include "core/pcie/driver/linux/include/mgmt-ioctl.h"
+//#include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
 
 typedef struct XmaIpLayout

@@ -74,7 +74,7 @@ extern "C" {
  * 
  * XMA_ERROR for all other errors.
 */
-int32_t xma_initialize(char *cfgfile);
+int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms);
 
 #ifdef __cplusplus
 }

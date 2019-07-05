@@ -20,7 +20,7 @@
 #include <pthread.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "lib/xmacfg.h"
+//#include "lib/xmacfg.h"
 #include "lib/xmalimits_lib.h"
 #include "app/xmahw.h"
 
@@ -113,8 +113,9 @@ int xma_hw_probe(XmaHwCfg *hwcfg);
  *
  *  @return          TRUE on success
  *                   FALSE on failure
- */
 bool xma_hw_is_compatible(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg);
+ */
+bool xma_hw_is_compatible(XmaHwCfg *hwcfg);
 
 /**
  *  @brief Configure HW using system configuration
@@ -136,8 +137,9 @@ bool xma_hw_is_compatible(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg);
  *
  *  @return          TRUE on success
  *                   FALSE on failure
- */
 bool xma_hw_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_cfg_status);
+ */
+bool xma_hw_configure(XmaHwCfg *hwcfg, bool hw_cfg_status);
 
 /**
  *  @}
