@@ -1511,6 +1511,7 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
     unsigned boTgt = NULLBO;
     char *boSrcPtr = nullptr;
     char *boTgtPtr = nullptr;
+    int ret = 0;
 
     const size_t boSize = 256L * 1024 * 1024;
     if (xclOpenContext(handle, uuid, -1, true)) {
@@ -1530,6 +1531,7 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
         xclCloseContext(handle, uuid, -1);
         return -EINVAL;
     }
+#if 0
     //Allocate the exec_bo
     unsigned execHandle = xclAllocBO(handle, sizeof (ert_start_copybo_cmd),
         0, XCL_BO_FLAGS_EXECBUF);
@@ -1554,11 +1556,16 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
         };
     }
     double timer_stop = timer.stop();
-
+#else
+    xcldev::Timer timer;
+    if ((ret = xclCopyBO(handle, boTgt, boSrc, boSize, 0, 0)))
+        return ret;
+    double timer_stop = timer.stop();
+#endif
     if(xclSyncBO(handle, boTgt, XCL_BO_SYNC_BO_FROM_DEVICE, boSize, 0)) {
         m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
         m2m_free_unmap_bo(handle, boTgt, boTgtPtr, boSize);
-        m2m_free_unmap_bo(handle, execHandle, execData, sizeof (ert_start_copybo_cmd));
+//        m2m_free_unmap_bo(handle, execHandle, execData, sizeof (ert_start_copybo_cmd));
         xclCloseContext(handle, uuid, -1);
         std::cout << "ERROR: Unable to sync target BO" << std::endl;
         return -EINVAL;
@@ -1569,7 +1576,7 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
     // Clean up
     m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
     m2m_free_unmap_bo(handle, boTgt, boTgtPtr, boSize);
-    m2m_free_unmap_bo(handle, execHandle, execData, sizeof (ert_start_copybo_cmd));
+//    m2m_free_unmap_bo(handle, execHandle, execData, sizeof (ert_start_copybo_cmd));
 
     xclCloseContext(handle, uuid, -1);
 

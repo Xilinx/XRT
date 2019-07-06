@@ -1,9 +1,10 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  * Author(s): Umang Parekh
  *          : Sonal Santan
  *          : Ryan Radjabi
- * PCIe HAL Driver layered on top of XOCL GEM kernel driver
+ *
+ * PCIe XRT userspace library core layered on top of XOCL GEM kernel driver
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,6 +22,7 @@
 #include "scan.h"
 #include "core/common/message.h"
 #include "core/common/scheduler.h"
+#include "core/common/bo_cache.h"
 #include "xclbin.h"
 #include "ert.h"
 
@@ -113,7 +115,8 @@ shim::shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
     mMemoryProfilingNumberSlots(0),
     mAccelProfilingNumberSlots(0),
     mStallProfilingNumberSlots(0),
-    mStreamProfilingNumberSlots(0)
+    mStreamProfilingNumberSlots(0),
+    mCmdBOCache(nullptr)
 {
     init(index, logfileName, verbosity);
 }
@@ -153,7 +156,7 @@ int shim::dev_init()
 
     memset(&mAioContext, 0, sizeof(mAioContext));
     mAioEnabled = (io_setup(SHIM_QDMA_AIO_EVT_MAX, &mAioContext) == 0);
-
+    mCmdBOCache = new xrt_core::bo_cache(this, 4);
     return 0;
 }
 
@@ -168,6 +171,8 @@ void shim::dev_fini()
         io_destroy(mAioContext);
             mAioEnabled = false;
     }
+    delete mCmdBOCache;
+    mCmdBOCache = nullptr;
 }
 
 /*
@@ -429,6 +434,7 @@ int shim::xclCopyBO(unsigned int dst_boHandle,
     size_t src_offset)
 {
     int ret;
+#if 0
     unsigned execHandle = xclAllocBO(sizeof (ert_start_copybo_cmd),
         0, XCL_BO_FLAGS_EXECBUF);
     struct ert_start_copybo_cmd *execData =
@@ -444,7 +450,15 @@ int shim::xclCopyBO(unsigned int dst_boHandle,
 
     (void) munmap(execData, sizeof (ert_start_copybo_cmd));
     xclFreeBO(execHandle);
+#endif
+    xrt_core::cmd_bo bo = mCmdBOCache->alloc();
+    ert_fill_copybo_cmd(bo.second, src_boHandle, dst_boHandle,
+                        src_offset, dst_offset, size);
 
+    ret = xclExecBuf(bo.first);
+    if (ret == 0)
+        while (xclExecWait(1000) == 0);
+    mCmdBOCache->release(bo);
     return ret;
 }
 

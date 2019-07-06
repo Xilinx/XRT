@@ -35,7 +35,7 @@
 #include "core/common/message.h"
 #include "core/common/scheduler.h"
 #include "core/common/xclbin_parser.h"
-//#include "xclbin.h"
+#include "core/common/bo_cache.h"
 #include <assert.h>
 
 #define GB(x)   ((size_t) (x) << 30)
@@ -117,12 +117,14 @@ ZYNQShim::ZYNQShim(unsigned index, const char *logfileName, xclVerbosityLevel ve
     mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
     mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
   }
+  mCmdBOCache = new xrt_core::bo_cache(this, 4);
 }
 
 #ifndef __HWEM__
 ZYNQShim::~ZYNQShim()
 {
-  if (profiling != nullptr) delete profiling;
+  delete mCmdBOCache;
+  delete profiling;
   //TODO
   if (mKernelFD > 0) {
     close(mKernelFD);
@@ -371,6 +373,23 @@ int ZYNQShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t si
   return ioctl(mKernelFD, DRM_IOCTL_ZOCL_SYNC_BO, &syncInfo);
 }
 
+int ZYNQShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size,
+                        size_t dst_offset, size_t src_offset)
+{
+  int ret = -EOPNOTSUPP;
+#ifdef __aarch64__
+  xrt_core::cmd_bo bo = cmd_bo_cache->alloc();
+  ert_fill_copybo_cmd(bo.second, src_boHandle, dst_boHandle,
+                      src_offset, dst_offset, size);
+
+  ret = xclExecBuf(bo.first);
+  if (ret == 0)
+      while (xclExecWait(1000) == 0);
+  cmd_bo_cache->release(bo);
+#endif
+  return ret;
+}
+
 #ifndef __HWEM__
 int ZYNQShim::xclLoadXclBin(const xclBin *buffer)
 {
@@ -517,14 +536,14 @@ uint ZYNQShim::xclGetNumLiveProcesses()
 int ZYNQShim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size)
 {
   // Until we have a programmatic way to determine what this directory
-  //  is on Zynq platforms, this is hard-coded so we can test out 
+  //  is on Zynq platforms, this is hard-coded so we can test out
   //  debug and profile features.
   std::string path = "/sys/devices/platform/amba/amba:zyxclmm_drm/";
   path += entry ;
 
   if (path.length() >= size) return -1 ;
 
-  // Since path.length() < size, we are sure to copy over the null 
+  // Since path.length() < size, we are sure to copy over the null
   //  terminating byte.
   strncpy(sysfsPath, path.c_str(), size) ;
   return 0 ;
@@ -573,7 +592,7 @@ int ZYNQShim::xclSKReport(uint32_t cu_idx, xrt_scu_state state)
   }
 
   scmd.cu_idx = cu_idx;
-  
+
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_SK_REPORT, &scmd);
 
   return ret;
@@ -822,7 +841,7 @@ uint xclGetNumLiveProcesses(xclDeviceHandle handle)
   return drv->xclGetNumLiveProcesses();
 }
 
-int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev, 
+int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev,
 		    const char* entry, char* sysfsPath, size_t size)
 {
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
@@ -867,6 +886,14 @@ int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex
 int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
 {
   return 0;
+}
+
+int xclCopyBO(xclDeviceHandle handle, unsigned int dst_boHandle,
+              unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)
+{
+    ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+    return drv ?
+      drv->xclCopyBO(dst_boHandle, src_boHandle, size, dst_offset, src_offset) : -EINVAL;
 }
 
 size_t xclGetDeviceTimestamp(xclDeviceHandle handle)
