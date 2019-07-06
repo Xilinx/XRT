@@ -147,16 +147,15 @@ int shim::dev_init()
 
     // We're good now.
     mDev = dev;
+    (void) xclGetDeviceInfo2(&mDeviceInfo);
+    mCmdBOCache = new xrt_core::bo_cache(this, 4);
 
     mStreamHandle = mDev->devfs_open("dma.qdma", O_RDWR | O_SYNC);
     if (mStreamHandle == -1)
 	    return -errno;
 
-    (void) xclGetDeviceInfo2(&mDeviceInfo);
-
     memset(&mAioContext, 0, sizeof(mAioContext));
     mAioEnabled = (io_setup(SHIM_QDMA_AIO_EVT_MAX, &mAioContext) == 0);
-    mCmdBOCache = new xrt_core::bo_cache(this, 4);
     return 0;
 }
 
@@ -427,35 +426,17 @@ int shim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, 
 }
 
 /*
- * xclCopyBO() - TO BE REMOVED
+ * xclCopyBO
  */
 int shim::xclCopyBO(unsigned int dst_boHandle,
     unsigned int src_boHandle, size_t size, size_t dst_offset,
     size_t src_offset)
 {
-    int ret;
-#if 0
-    unsigned execHandle = xclAllocBO(sizeof (ert_start_copybo_cmd),
-        0, XCL_BO_FLAGS_EXECBUF);
-    struct ert_start_copybo_cmd *execData =
-        reinterpret_cast<struct ert_start_copybo_cmd *>(
-        xclMapBO(execHandle, true));
-
-    ert_fill_copybo_cmd(execData, src_boHandle, dst_boHandle,
-        src_offset, dst_offset, size);
-
-    ret = xclExecBuf(execHandle);
-    if (ret == 0)
-        while (xclExecWait(1000) == 0);
-
-    (void) munmap(execData, sizeof (ert_start_copybo_cmd));
-    xclFreeBO(execHandle);
-#endif
     xrt_core::cmd_bo bo = mCmdBOCache->alloc();
     ert_fill_copybo_cmd(bo.second, src_boHandle, dst_boHandle,
                         src_offset, dst_offset, size);
 
-    ret = xclExecBuf(bo.first);
+    int ret = xclExecBuf(bo.first);
     if (ret == 0)
         while (xclExecWait(1000) == 0);
     mCmdBOCache->release(bo);

@@ -24,9 +24,15 @@
 #include "ert.h"
 
 namespace xrt_core {
+    // Helper typedef for std::pair. Note the elements are const so that the
+    // pair is immutable. The clients should not change the contents of cmd_bo.
     typedef std::pair<const unsigned, struct ert_start_copybo_cmd * const> cmd_bo;
+
+    // Create a cache of CMD BO objects -- for now only used for M2M -- to reduce
+    // the overhead of BO cycle management.
     class bo_cache {
         xclDeviceHandle device_handle;
+        // Maximum number of BOs that can be cached in the pool
         unsigned cmd_bo_cache_max_size;
         std::stack<cmd_bo> cmd_bo_cache;
         std::mutex cmd_bo_cache_lock;
@@ -45,6 +51,7 @@ namespace xrt_core {
 
         cmd_bo alloc() {
             {
+                // First look up in the BO cache
                 std::lock_guard<std::mutex> lock(cmd_bo_cache_lock);
                 if (!cmd_bo_cache.empty()) {
                     cmd_bo bo = cmd_bo_cache.top();
@@ -52,6 +59,7 @@ namespace xrt_core {
                     return bo;
                 }
             }
+
             unsigned execHandle = xclAllocBO(device_handle, sizeof(ert_start_copybo_cmd),
                                              0, XCL_BO_FLAGS_EXECBUF);
             struct ert_start_copybo_cmd *execData =
@@ -61,9 +69,12 @@ namespace xrt_core {
         }
         void release(cmd_bo bo) {
             {
+                // Send this back to the BO cache if the cache is not fully populated
                 std::lock_guard<std::mutex> lock(cmd_bo_cache_lock);
-                if (cmd_bo_cache.size() < cmd_bo_cache_max_size)
+                if (cmd_bo_cache.size() < cmd_bo_cache_max_size) {
                     cmd_bo_cache.push(bo);
+                    return;
+                }
             }
             destroy(bo);
         }
