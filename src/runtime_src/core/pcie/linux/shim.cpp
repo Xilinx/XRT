@@ -437,8 +437,22 @@ int shim::xclCopyBO(unsigned int dst_boHandle,
                         src_offset, dst_offset, size);
 
     int ret = xclExecBuf(bo.first);
-    if (ret == 0)
-        while (xclExecWait(1000) == 0);
+    if (ret) {
+        mCmdBOCache->release(bo);
+        return ret;
+    }
+
+    do {
+        ret = xclExecWait(1000);
+        if (ret == -1)
+            break;
+    }
+    while (bo.second->state < ERT_CMD_STATE_COMPLETED);
+
+    ret = (ret == -1) ? -errno : 0;
+    if (!ret && (bo.second->state != ERT_CMD_STATE_COMPLETED))
+        ret = -EINVAL;
+
     mCmdBOCache->release(bo);
     return ret;
 }
