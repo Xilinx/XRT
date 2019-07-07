@@ -376,18 +376,32 @@ int ZYNQShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t si
 int ZYNQShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size,
                         size_t dst_offset, size_t src_offset)
 {
-  int ret = -EOPNOTSUPP;
+    int ret = -EOPNOTSUPP;
 #ifdef __aarch64__
-  xrt_core::cmd_bo bo = cmd_bo_cache->alloc();
-  ert_fill_copybo_cmd(bo.second, src_boHandle, dst_boHandle,
-                      src_offset, dst_offset, size);
+    xrt_core::cmd_bo bo = mCmdBOCache->alloc();
+    ert_fill_copybo_cmd(bo.second, src_boHandle, dst_boHandle,
+                        src_offset, dst_offset, size);
 
-  ret = xclExecBuf(bo.first);
-  if (ret == 0)
-      while (xclExecWait(1000) == 0);
-  cmd_bo_cache->release(bo);
+    ret = xclExecBuf(bo.first);
+    if (ret) {
+        mCmdBOCache->release(bo);
+        return ret;
+    }
+
+    do {
+        ret = xclExecWait(1000);
+        if (ret == -1)
+            break;
+    }
+    while (bo.second->state < ERT_CMD_STATE_COMPLETED);
+
+    ret = (ret == -1) ? -errno : 0;
+    if (!ret && (bo.second->state != ERT_CMD_STATE_COMPLETED))
+        ret = -EINVAL;
+
+    mCmdBOCache->release(bo);
 #endif
-  return ret;
+    return ret;
 }
 
 #ifndef __HWEM__
