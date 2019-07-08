@@ -33,17 +33,17 @@ typedef struct XmaSingleton
     //XmaConnect        connections[MAX_CONNECTION_ENTRIES];
     //Sarab: Remove logger stuff
     //XmaLogger         logger;
-    XmaDecoderPlugin  decodercfg[MAX_PLUGINS];
-    XmaEncoderPlugin  encodercfg[MAX_PLUGINS];
-    XmaScalerPlugin   scalercfg[MAX_PLUGINS];
-    XmaFilterPlugin   filtercfg[MAX_PLUGINS];
-    XmaKernelPlugin   kernelcfg[MAX_PLUGINS];
+    //XmaDecoderPlugin  decodercfg[MAX_PLUGINS];
+    //XmaEncoderPlugin  encodercfg[MAX_PLUGINS];
+    //XmaScalerPlugin   scalercfg[MAX_PLUGINS];
+    //XmaFilterPlugin   filtercfg[MAX_PLUGINS];
+    //XmaKernelPlugin   kernelcfg[MAX_PLUGINS];
     std::atomic<bool> locked;
-    std::vector<XmaDecoderPlugin> decoders;
-    std::vector<XmaEncoderPlugin> encoders;
-    std::vector<XmaScalerPlugin> scalers;
-    std::vector<XmaFilterPlugin> filters;
-    std::vector<XmaKernelPlugin> kernels;
+    //std::vector<XmaDecoderPlugin*> decoders;
+    //std::vector<XmaEncoderPlugin*> encoders;
+    //std::vector<XmaScalerPlugin*> scalers;
+    //std::vector<XmaFilterPlugin*> filters;
+    //std::vector<XmaKernelPlugin*> kernels;
     //XmaResources      shm_res_cfg;
     //bool              shm_freed;
     uint32_t          reserved[4];

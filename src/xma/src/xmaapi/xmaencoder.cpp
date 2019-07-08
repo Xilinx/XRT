@@ -168,10 +168,10 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
     */
 
    //Sarab: TODO Fix device index, CU index & session->xx_plugin assigned above
-    int rc, dev_handle, kern_handle, enc_handle;
+    int rc, dev_handle, kern_handle;
     dev_handle = enc_props->dev_index;
     kern_handle = enc_props->cu_index;
-    enc_handle = enc_props->cu_index;
+    //enc_handle = enc_props->cu_index;
 
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
     XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_handle].handle;
@@ -187,7 +187,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
 
     // Allocate the private data
     enc_session->base.plugin_data =
-        calloc(g_xma_singleton->encodercfg[enc_handle].plugin_data_size, sizeof(uint8_t));
+        calloc(enc_session->encoder_plugin->plugin_data_size, sizeof(uint8_t));
 
     /*Sarab: Remove xma_connect stuff
     // For the encoder, only a receiver connection make sense

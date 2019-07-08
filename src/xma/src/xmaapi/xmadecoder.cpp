@@ -74,6 +74,7 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
             dec_props->plugin_lib, dlerror());
         return NULL;
     }
+    //g_xma_singleton->decoders.emplace_back(plg);
     memset(dec_session, 0, sizeof(XmaDecoderSession));
     // init session data
     dec_session->decoder_props = *dec_props;
@@ -128,10 +129,11 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
     */
 
    //Sarab: TODO Fix device index, CU index & session->xx_plugin assigned above
-    int rc, dev_handle, kern_handle, dec_handle;
+    //int rc, dev_handle, kern_handle, dec_handle;
+    int rc, dev_handle, kern_handle;
     dev_handle = dec_props->dev_index;
     kern_handle = dec_props->cu_index;
-    dec_handle = dec_props->cu_index;
+    //dec_handle = dec_props->cu_index;
     
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
     XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_handle].handle;
@@ -146,7 +148,7 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
 
     // Allocate the private data
     dec_session->base.plugin_data =
-        calloc(g_xma_singleton->decodercfg[dec_handle].plugin_data_size, sizeof(uint8_t));
+        calloc(dec_session->decoder_plugin->plugin_data_size, sizeof(uint8_t));
 
     // Call the plugins initialization function with this session data
     //Sarab: Check plugin compatibility to XMA

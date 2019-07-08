@@ -131,10 +131,10 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     */
 
    //Sarab: TODO Fix device index, CU index & session->xx_plugin assigned above
-	int rc, dev_handle, kern_handle, filter_handle;
+	int rc, dev_handle, kern_handle;
     dev_handle = filter_props->dev_index;
     kern_handle = filter_props->cu_index;
-    filter_handle = filter_props->cu_index;
+    //filter_handle = filter_props->cu_index;
 
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
     XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_handle].handle;
@@ -154,7 +154,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
 
     // Allocate the private data
     filter_session->base.plugin_data =
-        calloc(g_xma_singleton->filtercfg[filter_handle].plugin_data_size, sizeof(uint8_t));
+        calloc(filter_session->filter_plugin->plugin_data_size, sizeof(uint8_t));
 
     /*Sarab: Remove xma_connect stuff
     XmaEndpoint *end_pt = (XmaEndpoint*) malloc(sizeof(XmaEndpoint));
