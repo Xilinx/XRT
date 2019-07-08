@@ -24,7 +24,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 usage() {
     echo "Build platfrom specific embedded runtime (ert)"
     echo
-    echo "-platform <NAME>                 Embedded Platform name, e.g. zcu102ng / xcu104_revmin"
+    echo "-platform <NAME>                 Embedded Platform name, e.g. zcu102ng / zcu104_revmin"
     echo "-vivado <PATH>                   Full path to vivado executable"
     echo "-xsct <PATH>                     Full path to xsct executable"
     echo "-petalinux <PATH>                Full path to petalinux folder"
@@ -231,8 +231,8 @@ addIfNoExists "EXTERNALSRC = \"$XRT_REPO_DIR/src\"" ./recipes-xrt/xrt/xrt_git.bb
 addIfNoExists 'EXTERNALSRC_BUILD = "${WORKDIR}/build"' ./recipes-xrt/xrt/xrt_git.bb
 
 addIfNoExists "inherit externalsrc" ./recipes-xrt/zocl/zocl_git.bb
-addIfNoExists "EXTERNALSRC = \"$XRT_REPO_DIR/src/runtime_src/core/edge/drm/zocl\"" ./recipes-xrt/zocl/zocl_git.bb
-addIfNoExists "EXTERNALSRC_BUILD = \"$XRT_REPO_DIR/src/runtime_src/core/edge/drm/zocl\"" ./recipes-xrt/zocl/zocl_git.bb
+addIfNoExists "EXTERNALSRC = \"$XRT_REPO_DIR/src/runtime_src/driver/zynq/drm/zocl\"" ./recipes-xrt/zocl/zocl_git.bb
+addIfNoExists "EXTERNALSRC_BUILD = \"$XRT_REPO_DIR/src/runtime_src/driver/zynq/drm/zocl\"" ./recipes-xrt/zocl/zocl_git.bb
 
 # If you are using PetaLinux 2018.3 or earlier version, do below step
 if [[ $PETALINUX_VER == "2018"* ]]; then
@@ -267,8 +267,8 @@ addIfNoExists 'IMAGE_INSTALL_append = " opencl-clhpp-dev"'   $PETALINUX_IMAGE_BB
 
 if [ $FULL_PETA_BULD == "Yes" ]; then
 	echo " * Adding XRT Kernel Node to Device Tree"
-	echo "cat ${XRT_REPO_DIR}/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi"
-	cat ${XRT_REPO_DIR}/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi
+	echo "cat ${XRT_REPO_DIR}/src/runtime_src/driver/zynq/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi"
+	cat ${XRT_REPO_DIR}/src/runtime_src/driver/zynq/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi
 
 	if [ -f ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_fragment.dts ]; then
 		echo "cat ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_fragment.dts >> recipes-bsp/device-tree/files/system-user.dtsi"
