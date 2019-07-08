@@ -1782,7 +1782,6 @@ int HwEmShim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *propert
   properties->flags  = bo->flags;
   properties->size   = bo->size;
   properties->paddr  = bo->base;
-  properties->domain = XCL_BO_DEVICE_RAM; // currently all BO domains are XCL_BO_DEVICE_RAM
   PRINTENDFUNC;
   return 0;
 }
@@ -1836,12 +1835,12 @@ uint64_t HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   return 0;
 }
 
-unsigned int HwEmShim::xclAllocBO(size_t size, xclBOKind domain, unsigned flags)
+unsigned int HwEmShim::xclAllocBO(size_t size, int unused, unsigned flags)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
   if (mLogStream.is_open())
   {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << size << std::dec << " , "<<domain <<" , "<< flags << std::endl;
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << size << std::dec << " , "<< unused <<" , "<< flags << std::endl;
   }
   xclemulation::xocl_create_bo info = {size, mNullBO, flags};
   uint64_t result = xoclCreateBo(&info);
@@ -1932,7 +1931,7 @@ unsigned int HwEmShim::xclImportBO(int boGlobalHandle, unsigned flags)
     const std::string& fileName = std::get<0>((*itr).second);
     int size = std::get<1>((*itr).second);
 
-    unsigned int importedBo = xclAllocBO(size, xclBOKind::XCL_BO_DEVICE_RAM,flags);
+    unsigned int importedBo = xclAllocBO(size, 0, flags);
     xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(importedBo);
     if(!bo)
     {

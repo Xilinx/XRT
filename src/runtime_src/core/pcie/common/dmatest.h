@@ -85,7 +85,7 @@ namespace xcldev {
                 count = 0x40000;
 
             for (long long i = 0; i < count; i++) {
-                unsigned bo = xclAllocBO(mHandle, mSize, XCL_BO_DEVICE_RAM, mFlags);
+                unsigned bo = xclAllocBO(mHandle, mSize, 0, mFlags);
                 if (bo == 0xffffffff)
                     break;
                 mBOList.push_back(bo);

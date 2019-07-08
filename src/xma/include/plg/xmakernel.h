@@ -50,17 +50,11 @@ typedef struct XmaKernelPlugin
     /** close callback used to preform cleanup when application terminates session*/
     int32_t         (*close)(XmaKernelSession *session);
 
-    /** Optional callback called when app calls xma_kern_session_create()
-      * Implement this callback if your kernel supports channels and is
-      * multi-process safe
-    */
-    xma_plg_alloc_chan_mp alloc_chan_mp;
+    /** Callback invoked at start to check compatibility with XMA version */
+    int32_t         (*xma_version)(int32_t *main_version, int32_t *sub_version);
 
-    /** Optional callback called when app calls xma_kern_session_create()
-      * Implement this callback if your kernel supports channels and is
-      * NOT multi-process safe (but it IS thread-safe)
-    */
-    xma_plg_alloc_chan alloc_chan;
+    /** Reserved */
+    uint32_t        reserved[4];
 
 } XmaKernelPlugin;
 

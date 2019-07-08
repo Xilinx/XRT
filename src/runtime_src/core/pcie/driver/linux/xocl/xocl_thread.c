@@ -37,6 +37,11 @@ int health_thread_start(xdev_handle_t xdev)
 	struct xocl_dev_core *core = XDEV(xdev);
 
 	xocl_info(&core->pdev->dev, "init_health_thread");
+	if (core->health_thread) {
+		xocl_info(&core->pdev->dev, "health thread already started");
+		return 0;
+	}
+
 	core->health_thread = kthread_run(health_thread, &core->thread_arg,
 		"xocl_health_thread");
 

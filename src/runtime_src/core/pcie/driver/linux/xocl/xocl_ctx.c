@@ -106,37 +106,97 @@ void xocl_drvinst_free(void *data)
 	kfree(drvinstp);
 }
 
-void xocl_drvinst_offline(xdev_handle_t xdev_hdl, bool offline)
+int xocl_drvinst_kill_proc(void *data)
 {
-	struct xocl_drvinst	*drvinstp;
-	struct device		*dev = &XDEV(xdev_hdl)->pdev->dev;
-	int			inst;
+	struct xocl_drvinst *drvinstp;
+	struct xocl_drvinst_proc *proc, *temp;
+	struct pid *p;
+	int inst;
+	int ret = 0;
 
 	mutex_lock(&xocl_drvinst_lock);
+	drvinstp = container_of(data, struct xocl_drvinst, data);
 	for (inst = 0; inst < ARRAY_SIZE(xocl_drvinst_array); inst++) {
-		drvinstp = xocl_drvinst_array[inst];
-		if (!drvinstp)
-			continue;
-		if (drvinstp->dev &&
-			(drvinstp->dev == dev || drvinstp->dev->parent == dev))
-			drvinstp->offline = offline;
+		if (drvinstp == xocl_drvinst_array[inst])
+			break;
 	}
 
+	/* it must be created before */
+	BUG_ON(inst == ARRAY_SIZE(xocl_drvinst_array));
+
+	if (atomic_read(&drvinstp->ref) > 1) {
+		list_for_each_entry_safe(proc, temp, &drvinstp->open_procs,
+				link) {
+			p = find_get_pid(proc->pid);
+			if (!p)
+				continue;
+			ret = kill_pid(p, SIGBUS, 1);
+			if (ret) {
+				xocl_err(drvinstp->dev, "kill %d failed",
+						proc->pid);
+				put_pid(p);
+				break;
+			}
+			put_pid(p);
+		}
+		if (!ret)
+			ret = wait_for_completion_killable(&drvinstp->comp);
+	}
 
 	mutex_unlock(&xocl_drvinst_lock);
+
+	xocl_err(drvinstp->dev, "return %d", ret);
+
+	return ret;
 }
 
-bool xocl_drvinst_get_offline(xdev_handle_t xdev_hdl)
+int xocl_drvinst_set_offline(void *data, bool offline)
 {
 	struct xocl_drvinst	*drvinstp;
-	bool offline;
+	int			inst;
+	int			ret = 0;
 
 	mutex_lock(&xocl_drvinst_lock);
-	drvinstp = container_of(xdev_hdl, struct xocl_drvinst, data);
-	offline = drvinstp->offline;
+	drvinstp = container_of(data, struct xocl_drvinst, data);
+	for (inst = 0; inst < ARRAY_SIZE(xocl_drvinst_array); inst++) {
+		if (drvinstp == xocl_drvinst_array[inst])
+			break;
+	}
+	if (inst == ARRAY_SIZE(xocl_drvinst_array)) {
+		ret = -ENODEV;
+		goto failed;
+	}
+
+	drvinstp->offline = offline;
+
+failed:
 	mutex_unlock(&xocl_drvinst_lock);
 
-	return offline;
+	return 0;
+}
+
+int xocl_drvinst_get_offline(void *data, bool *offline)
+{
+	struct xocl_drvinst	*drvinstp;
+	int			inst;
+	int			ret = 0;
+
+	mutex_lock(&xocl_drvinst_lock);
+	drvinstp = container_of(data, struct xocl_drvinst, data);
+	for (inst = 0; inst < ARRAY_SIZE(xocl_drvinst_array); inst++) {
+		if (drvinstp == xocl_drvinst_array[inst])
+			break;
+	}
+	if (inst == ARRAY_SIZE(xocl_drvinst_array)) {
+		ret = -ENODEV;
+		goto failed;
+	}
+
+	*offline = drvinstp->offline;
+failed:
+	mutex_unlock(&xocl_drvinst_lock);
+
+	return ret;
 }
 
 void xocl_drvinst_set_filedev(void *data, void *file_dev)
@@ -157,7 +217,7 @@ void xocl_drvinst_set_filedev(void *data, void *file_dev)
 	mutex_unlock(&xocl_drvinst_lock);
 }
 
-void *xocl_drvinst_open(void *file_dev)
+static void *_xocl_drvinst_open(void *file_dev, u32 max_count)
 {
 	struct xocl_drvinst	*drvinstp;
 	struct xocl_drvinst_proc	*proc;
@@ -177,6 +237,13 @@ void *xocl_drvinst_open(void *file_dev)
 	}
 
 	if (drvinstp->offline) {
+		xocl_err(drvinstp->dev, "Device %s is offline",
+				dev_name(drvinstp->dev));
+		mutex_unlock(&xocl_drvinst_lock);
+		return NULL;
+	}
+
+	if (atomic_read(&drvinstp->ref) > max_count) {
 		mutex_unlock(&xocl_drvinst_lock);
 		return NULL;
 	}
@@ -201,10 +268,19 @@ void *xocl_drvinst_open(void *file_dev)
 	if (atomic_inc_return(&drvinstp->ref) == 2)
 		reinit_completion(&drvinstp->comp);
 
-
 	mutex_unlock(&xocl_drvinst_lock);
 
 	return drvinstp->data;
+}
+
+void *xocl_drvinst_open_single(void *file_dev)
+{
+	return _xocl_drvinst_open(file_dev, 2);
+}
+
+void *xocl_drvinst_open(void *file_dev)
+{
+	return _xocl_drvinst_open(file_dev, -1);
 }
 
 void xocl_drvinst_close(void *data)

@@ -15,8 +15,10 @@
  * under the License.
  */
 #include "xmaplugin.h"
-#include "xclhal2.h"
+#include "xrt.h"
 #include "ert.h"
+#include "lib/xmahw_lib.h"
+//#include "lib/xmares.h"
 
 #include <cstdio>
 #include <iostream>
@@ -32,14 +34,14 @@ xma_plg_buffer_alloc(XmaHwSession s_handle, size_t size)
 {
     XmaBufferHandle handle;
     xclDeviceHandle dev_handle = s_handle.dev_handle;
-    uint32_t ddr_bank = s_handle.ddr_bank;
+    uint32_t ddr_bank = s_handle.kernel_info->ddr_bank;
 
 #if 0
     printf("xma_plg_buffer_alloc dev_handle = %p\n", dev_handle);
     printf("xma_plg_buffer_alloc size = %lu\n", size);
     printf("xma_plg_buffer_alloc ddr_bank = %u\n", ddr_bank);
 #endif
-    handle = xclAllocBO(dev_handle, size, XCL_BO_DEVICE_RAM, ddr_bank);
+    handle = xclAllocBO(dev_handle, size, 0, ddr_bank);
 #if 0
     printf("xma_plg_buffer_alloc handle = %d\n", handle);
 #endif
@@ -137,19 +139,18 @@ xma_plg_register_prep_write(XmaHwSession  s_handle,
                        size_t        offset)
 {
     uint32_t *src_array = (uint32_t*)src;
-    size_t   cur_min = offset; 
     size_t   cur_max = offset + size; 
-    int32_t  entries = size / sizeof(uint32_t);
-    int32_t  start = offset / sizeof(uint32_t);
+    uint32_t  entries = size / sizeof(uint32_t);
+    uint32_t  start = offset / sizeof(uint32_t);
 
-    for (int32_t i = 0; i < entries; i++)
-        s_handle.context->reg_map[start + i] = src_array[i];
-
-    if (cur_max > s_handle.context->max_offset)
-        s_handle.context->max_offset = cur_max;
-
-    if (cur_min < s_handle.context->min_offset)
-        s_handle.context->min_offset = cur_min;
+    //Kernel regmap 4KB in xmahw.h; execBO size is 4096 = 4KB in xmahw_hal.cpp; But ERT uses some space for ert pkt so allow max of 4032 Bytes for regmap
+    if (cur_max > MAX_KERNEL_REGMAP_SIZE) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Max kernel regmap size is 4032 Bytes\n");
+        return XMA_ERROR;
+    }
+    for (uint32_t i = 0, tmp_idx = start; i < entries; i++, tmp_idx++) {
+        s_handle.kernel_info->reg_map[tmp_idx] = src_array[i];
+    }
 
     return 0;
 }
@@ -157,19 +158,19 @@ xma_plg_register_prep_write(XmaHwSession  s_handle,
 void xma_plg_kernel_lock(XmaHwSession s_handle)
 {
     /* Only acquire the lock if we don't already own it */
-    if (s_handle.context->have_lock)
+    if (s_handle.kernel_info->have_lock)
         return;
 
-    xma_res_kernel_lock(s_handle.context->lock);
-    s_handle.context->have_lock = true;
+    //xma_res_kernel_lock(s_handle.kernel_info->lock);
+    s_handle.kernel_info->have_lock = true;
 }
 
 void xma_plg_kernel_unlock(XmaHwSession s_handle)
 {
-    if (s_handle.context->have_lock)
+    if (s_handle.kernel_info->have_lock)
     {
-        xma_res_kernel_unlock(s_handle.context->lock);
-        s_handle.context->have_lock = false;
+        //xma_res_kernel_unlock(s_handle.kernel_info->lock);
+        s_handle.kernel_info->have_lock = false;
     }
 }
 
@@ -222,8 +223,9 @@ int32_t xma_plg_execbo_avail_get(XmaHwSession s_handle)
 int32_t
 xma_plg_schedule_work_item(XmaHwSession s_handle)
 {
-    uint8_t *src = (uint8_t*)s_handle.context->reg_map;
-    size_t  size = s_handle.context->max_offset;
+    uint8_t *src = (uint8_t*)s_handle.kernel_info->reg_map;
+    //size_t  size = s_handle.kernel_info->max_offset;
+    size_t  size = MAX_KERNEL_REGMAP_SIZE;//Max regmap in xmahw.h is 4KB; execBO size is 4096; Supported max regmap size is 4032 Bytes only
     int32_t bo_idx;
     int32_t rc = XMA_SUCCESS;
     
@@ -310,7 +312,7 @@ xma_plg_register_write(XmaHwSession  s_handle,
                        size_t        offset)
 {
     xclDeviceHandle dev_handle = s_handle.dev_handle;
-    uint64_t        dev_offset = s_handle.base_address;
+    uint64_t        dev_offset = s_handle.kernel_info->base_address;
     //printf("xma_plg_register_write dev_handle=%p,base_addr=0x%lx,src=%p,size=%lu,offset=0x%lx\n", dev_handle, dev_offset, src, size, offset);
     return xclWrite(dev_handle, XCL_ADDR_KERNEL_CTRL, dev_offset + offset,
                     src, size);
@@ -323,7 +325,7 @@ xma_plg_register_read(XmaHwSession  s_handle,
                       size_t        offset)
 {
     xclDeviceHandle dev_handle = s_handle.dev_handle;
-    uint64_t        dev_offset = s_handle.base_address;
+    uint64_t        dev_offset = s_handle.kernel_info->base_address;
 #if 0
     printf("xma_plg_register_read dev_handle=%p,dst=%p,size=%lu,offset=%lx\n",
             dev_handle, dst, size, offset);

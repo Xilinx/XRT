@@ -1,4 +1,0 @@
-<?xml version="1.0"?>
-<cf:model cf:cpu="cortex_a9" cf:partition="0" cf:prefix="p_0_" cf:name="top" xd:type="design" xmlns:xd="http://www.xilinx.com/xd" xmlns:cf="http://www.xilinx.com/connections">
-  <cf:comp cf:name="zc702" xd:componentRef="zc702" xd:clockId="2"/>
-</cf:model>

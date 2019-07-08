@@ -43,20 +43,20 @@
 #define	ZOCL_CU_RESET_TIMER_INTERVAL	(1000)
 
 /**
- * Timestamp only use in set_cmd_ext_timestamp()
- */
-enum zocl_ts_type {
-	CU_START_TIME,
-	CU_DONE_TIME,
-};
-
-/**
  * Address constants per spec
  */
 #define WORD_SIZE                     4          /* 4 bytes */
 #define CQ_SIZE                       0x10000    /* 64K */
 #define CQ_BASE_ADDR                  0x190000
 #define CSR_ADDR                      0x180000
+
+/**
+ * Timestamp only use in set_cmd_ext_timestamp()
+ */
+enum zocl_ts_type {
+	CU_START_TIME,
+	CU_DONE_TIME,
+};
 
 enum zocl_cu_type {
 	ZOCL_HARD_CU,
@@ -223,7 +223,12 @@ struct sched_cmd {
 	int check_timeout;
 
 	/* The actual cmd object representation */
-	struct ert_packet *packet;
+	union {
+		struct ert_packet *packet;
+		struct ert_start_copybo_cmd *ert_cp;
+	};
+
+	zocl_dma_handle_t dma_handle;
 };
 
 /**

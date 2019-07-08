@@ -96,7 +96,7 @@ private:
 
   xclDeviceHandle mDeviceHandle;
   void *mDriverHandle;
-  typedef unsigned int (*xclAllocBO)(xclDeviceHandle handle, size_t size, xclBOKind domain, unsigned flags);
+  typedef unsigned int (*xclAllocBO)(xclDeviceHandle handle, size_t size, int unused, unsigned flags);
   typedef void (*xclFreeBO)(xclDeviceHandle handle, unsigned int boHandle);
   typedef void * (*xclMapBO)(xclDeviceHandle handle, unsigned int boHandle, bool write);
   typedef uint64_t (*xclGetDeviceAddr)(xclDeviceHandle handle, unsigned int boHandle);
