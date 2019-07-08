@@ -28,67 +28,6 @@
 
 extern XmaSingleton *g_xma_singleton;
 
-int32_t
-xma_dec_plugins_load(XmaSystemCfg      *systemcfg,
-                     XmaDecoderPlugin  *decoders)
-{
-    // Get the plugin path
-    char *pluginpath = systemcfg->pluginpath;
-    char *error;
-    int32_t k = 0;
-
-    xma_logmsg(XMA_DEBUG_LOG, XMA_DECODER_MOD, "%s()\n", __func__);
-    // Load the xmaplugin library as it is a dependency for all plugins
-    void *xmahandle = dlopen("libxmaplugin.so",
-                             RTLD_LAZY | RTLD_GLOBAL);
-    if (!xmahandle)
-    {
-        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
-                   "Failed to open plugin xmaplugin.so\n");
-        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
-                   "   Error message: %s\n", dlerror());
-        return XMA_ERROR;
-    }
-
-    // For each plugin imagecfg/kernelcfg,
-    int32_t i;
-    for (i = 0; i < systemcfg->num_images; i++)
-    {
-    	int32_t j;
-        for (j = 0; j < systemcfg->imagecfg[i].num_kernelcfg_entries; j++)
-        {
-            char *func = systemcfg->imagecfg[i].kernelcfg[j].function;
-            if (strcmp(func, XMA_CFG_FUNC_NM_DEC) != 0)
-                continue;
-            char *plugin = systemcfg->imagecfg[i].kernelcfg[j].plugin;
-            char pluginfullname[PATH_MAX + NAME_MAX];
-            sprintf(pluginfullname, "%s/%s", pluginpath, plugin);
-            void *handle = dlopen(pluginfullname, RTLD_NOW);
-            if (!handle)
-            {
-                xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
-                          "Failed to open plugin %s\n", pluginfullname);
-                xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
-                          "Error message: %s\n", dlerror());
-                return XMA_ERROR;
-            }
-
-            XmaDecoderPlugin *plg =
-                (XmaDecoderPlugin*)dlsym(handle, "decoder_plugin");
-            if ((error = dlerror()) != NULL)
-            {
-                xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
-                          "Failed to open plugin %s\n", pluginfullname);
-                xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
-                          "Error message: %s\n", dlerror());
-                return XMA_ERROR;
-            }
-            memcpy(&decoders[k++], plg, sizeof(XmaDecoderPlugin));
-        }
-    }
-    return XMA_SUCCESS;
-}
-
 XmaDecoderSession*
 xma_dec_session_create(XmaDecoderProperties *dec_props)
 {

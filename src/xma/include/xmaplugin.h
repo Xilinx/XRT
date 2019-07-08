@@ -138,32 +138,6 @@ int32_t xma_plg_buffer_read(XmaHwSession     s_handle,
                             size_t           offset);
 
 /**
- *
- * xma_plg_register_write() - Write kernel register(s)
- *
- *  This function writes the data provided and sets the specified AXI_Lite
- *  register(s) exposed by a kernel. The base offset of 0 is the beginning
- *  of the kernels AXI_Lite memory map as this function adds the required
- *  offsets internally for the kernel and PCIe.  This function does not write
- *  the registers immediately, instead the registers are shadowed as part of
- *  the XmaHwSession until the xma_plg_schedule_work_item() is invoked.
- *
- *  @s_handle:  The session handle associated with this plugin instance
- *  @dst:       Destination data pointer
- *  @size:      Size of data to copy
- *  @offset:    Offset from the beginning of the kernel AXI_Lite register
- *                   register map
- *
- * RETURN:      >=0 number of bytes written
- *               <0 on failure
- *
- */
-int32_t xma_plg_register_prep_write(XmaHwSession     s_handle,
-                                    void            *dst,
-                                    size_t           size,
-                                    size_t           offset);
-
-/**
  * xma_plg_schedule_work_item() - This function schedules a request to the XRT
  * scheduler for execution of a kernel based on the saved state of the kernel registers
  * supplied by the xma_plg_register_prep_write() function call.  The prep_write() keeps a
@@ -223,72 +197,6 @@ int32_t xma_plg_register_prep_write(XmaHwSession     s_handle,
                                     size_t           offset);
 
 
-void xma_plg_kernel_lock(XmaHwSession s_handle);
-void xma_plg_kernel_unlock(XmaHwSession s_handle);
-void xma_plg_kernel_wait_on_finish(XmaHwSession s_handle);
-void xma_plg_kernel_start(XmaHwSession s_handle);
-int32_t xma_plg_kernel_exec(XmaHwSession s_handle, bool wait_on_kernel_finish);
-
-/*
- * Deprecated API
- *  xma_plg_register_write() - This function writes the data provided and sets the
- * specified AXI_Lite register(s) exposed by a kernel. The base offset of 0 is the
- * beginning of the kernels AXI_Lite memory map as this function adds the required
- *  offsets internally for the kernel and PCIe.
- *
- *  @s_handle:  The session handle associated with this plugin instance
- *  @dst:       Destination data pointer
- *  @size:      Size of data to copy
- *  @offset:    Offset from the beginning of the kernel AXI_Lite register
- *                   register map
- *
- *  RETURN:          >=0 number of bytes written
- *
- * <0 on failure
- *
- */
-int32_t xma_plg_register_write(XmaHwSession     s_handle,
-                               void            *dst,
-                               size_t           size,
-                               size_t           offset) __attribute__ ((deprecated));
-
-/*
- * Deprecated API
- * xma_plg_register_read() - Read kernel registers
- *
- *  This function reads the register(s) exposed by the kernel. The base offset
- *  of 0 is the beginning of the kernels AXI_Lite memory map as this function
- *  adds the required offsets internally for the kernel and PCIe.
- *
- *  @s_handle:  The session handle associated with this plugin instance
- *  @dst:       Destination data pointer
- *  @size:      Size of data to copy
- *  @offset:    Offset from the beginning of the kernel's AXI_Lite memory
- *                   map
- *
- *  RETURN:     >=0 number of bytes read
- *
- * <0 on failure
- *
- */
-int32_t xma_plg_register_read(XmaHwSession     s_handle,
-                              void            *dst,
-                              size_t           size,
-                              size_t           offset) __attribute__ ((deprecated));
-
-/**
- *
- * xma_plg_register_dump() - Dump kernel registers
- *
- *  This function dumps the registers for a kernel up to the number of words
- *  specified and prints them with the offset and value.
- *
- *  @s_handle:  The session handle associated with this plugin instance
- *  @num_words: Number of 32-bit words to dump
- *
- */
-void xma_plg_register_dump(XmaHwSession     s_handle,
-                           int32_t          num_words);
 
 #ifdef __cplusplus
 }

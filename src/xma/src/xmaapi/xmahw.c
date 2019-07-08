@@ -26,12 +26,16 @@ int xma_hw_probe(XmaHwCfg *hwcfg)
     return hw_if.probe(hwcfg);
 }
 
-bool xma_hw_is_compatible(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg)
+//bool xma_hw_is_compatible(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg)
+bool xma_hw_is_compatible(XmaHwCfg *hwcfg)
 {
-    return hw_if.is_compatible(hwcfg, systemcfg);
+    return hw_if.is_compatible(hwcfg);
+    //return hw_if.is_compatible(hwcfg, systemcfg);
 }
 
-bool xma_hw_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_cfg_status)
+//bool xma_hw_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_cfg_status)
+bool xma_hw_configure(XmaHwCfg *hwcfg, bool hw_cfg_status)
 {
-    return hw_if.configure(hwcfg, systemcfg, hw_cfg_status);
+    return hw_if.configure(hwcfg, hw_cfg_status);
+    //return hw_if.configure(hwcfg, systemcfg, hw_cfg_status);
 }

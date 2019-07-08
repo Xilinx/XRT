@@ -19,7 +19,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <vector>
+//#include <vector>
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
@@ -52,7 +52,7 @@ static void set_hw_cfg(uint32_t        device_count,
                        XmaHALDevice   *xlnx_devices,
                        XmaHwCfg       *hwcfg);
 
-static int get_max_dev_id(XmaSystemCfg *systemcfg);
+//static int get_max_dev_id(XmaSystemCfg *systemcfg);
 
 void set_hw_cfg(uint32_t        device_count,
                 XmaHALDevice   *xlnx_devices,
@@ -93,6 +93,7 @@ int load_xclbin_to_device(xclDeviceHandle dev_handle, const char *buffer)
     return rc;
 }
 
+/*Sarab: Remove yaml system cfg stuff
 int get_max_dev_id(XmaSystemCfg *systemcfg)
 {
     int max_dev_id = -1;
@@ -105,6 +106,7 @@ int get_max_dev_id(XmaSystemCfg *systemcfg)
 
     return max_dev_id;
 }
+*/
  
 int32_t create_contexts(xclDeviceHandle handle, XmaXclbinInfo &info)
 {
@@ -157,19 +159,23 @@ int hal_probe(XmaHwCfg *hwcfg)
     return XMA_SUCCESS;
 }
 
+/*Sarab: Remove yaml system cfg stuff 
 bool hal_is_compatible(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg)
+*/
+bool hal_is_compatible(XmaHwCfg *hwcfg)
 {
+    /*
     int32_t num_devices_requested = 0;
     int32_t i;
     int32_t max_dev_id;
 
     max_dev_id = get_max_dev_id(systemcfg);
 
-    /* Get number of devices requested in configuration */
+    /--* Get number of devices requested in configuration *--/
     for (i = 0; i < systemcfg->num_images; i++)
         num_devices_requested += systemcfg->imagecfg[i].num_devices;
 
-    /* Check number of devices requested is not greater than number in HW */
+    /--* Check number of devices requested is not greater than number in HW *--/
     if (num_devices_requested > hwcfg->num_devices ||
         max_dev_id > (hwcfg->num_devices - 1))
     {
@@ -179,7 +185,7 @@ bool hal_is_compatible(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg)
         return false;
     }
 
-    /* For each of the requested devices, check that the DSA name matches */
+    /--* For each of the requested devices, check that the DSA name matches *--/
     for (i = 0; i < num_devices_requested; i++)
     {
         if (strcmp(systemcfg->dsa, hwcfg->devices[i].dsa) != 0)
@@ -189,16 +195,18 @@ bool hal_is_compatible(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg)
             return false;
         }
     }
-
+*/
     return true;
 }
 
-bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
-{
+
+//bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
+bool hal_configure(XmaHwCfg *hwcfg, bool hw_configured)
+{/*Sarab: Remove yaml system cfg stuff
     std::string   xclbinpath = systemcfg->xclbinpath;
     XmaXclbinInfo info;
 
-    /* Download the requested image to the associated device */
+    /--* Download the requested image to the associated device *--/
     for (int32_t i = 0; i < systemcfg->num_images; i++)
     {
         std::string xclbin = systemcfg->imagecfg[i].xclbin;
@@ -253,7 +261,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
                 }
             }
 
-            /* Always attempt download xclbin */
+            /--* Always attempt download xclbin *--/
             rc = load_xclbin_to_device(hal->dev_handle, buffer);
             if (rc != 0)
             {
@@ -264,7 +272,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
                 return false;
             }
 
-            /* Create all kernel contexts on the device */
+            /--* Create all kernel contexts on the device *--/
             rc = create_contexts(hal->dev_handle, info);
             if (rc != XMA_SUCCESS)
             {
@@ -340,6 +348,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
         }
         free(buffer);
     }
+*/
     return true;
 }
 

@@ -96,12 +96,13 @@ typedef struct {
  * 
  * XMA_ERROR_NO_CHAN_CAP if the channel exceeds available capacity of available
  * channel
-*/
 typedef int32_t (*xma_plg_alloc_chan_mp)(XmaSession *pending_sess,
                                       const uint16_t    curr_kern_load,
                                       const int32_t    *chan_ids,
                                       const uint8_t     chan_ids_cnt,
                                       XmaChannel *new_channel);
+*/
+
 /**
  * xma_plg_alloc_chan() - Optional plugin callback called when app calls xma_enc_session_create()
  * Common to all core plugin kernel types (encoder, decoder, filter, scaler)
@@ -120,11 +121,11 @@ typedef int32_t (*xma_plg_alloc_chan_mp)(XmaSession *pending_sess,
  * 
  * XMA_ERROR_NO_CHAN_CAP if the channel exceeds available capacity of available
  * channel
-*/
 typedef int32_t (*xma_plg_alloc_chan)(XmaSession *pending_sess,
                                       XmaSession **curr_sess,
                                       uint32_t    sess_cnt);
 
+*/
 /**
  * xma_plg_find_next_chan_id() - Determine next available channel id from array of in-use channel ids
  * Helper function which can be used within a plugin's implementation of alloc_chan
@@ -135,7 +136,6 @@ typedef int32_t (*xma_plg_alloc_chan)(XmaSession *pending_sess,
  * @cnt: size of chan_ids array
  *
  * RETURN: next available channel id
-*/
 static inline int32_t xma_plg_find_next_chan_id(const int32_t *chan_ids, const uint8_t cnt)
 {
     int i;
@@ -144,18 +144,21 @@ static inline int32_t xma_plg_find_next_chan_id(const int32_t *chan_ids, const u
 
     return i;
 }
+*/
 
 /**
  * typedef struct XmaSession - Base class for all other session types
 */
 typedef struct XmaSession {
+    uint64_t        session_signature;
+    int32_t         session_id;
     /** Subclass this session is a part of */
     XmaSessionType session_type;
     /** Hardware handle to kernel */
     XmaHwSession   hw_session;
     /** Opaque object tracking indexes to XMA resource managment database.
     Used internally. */
-    XmaKernelRes   kern_res;
+    //XmaKernelRes   kern_res;
     /** For kernels that support channels, this is the channel id assigned
     by the plugin code. Initalized to -1. */
     int32_t        chan_id;
@@ -163,7 +166,7 @@ typedef struct XmaSession {
     and freed only after all sessions connected to a kernel have closed.
     Used to maintain global kernel state information as may be needed by kernel
     plugin developer. */
-    void          *kernel_data;
+    //void          *kernel_data;
     /** Private kernel data attached to a specific kernel session. Allocated
     by XMA prior to calling plugin init() and freed automatically as part of
     close. */
