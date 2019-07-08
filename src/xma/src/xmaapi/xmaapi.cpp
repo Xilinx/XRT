@@ -48,8 +48,8 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
     }
     //Sarab: TODO initialize all elements of singleton
     g_xma_singleton->locked = false;
-    g_xma_singleton->encoders.reserve(32);
-    g_xma_singleton->encoders.emplace_back(XmaEncoderPlugin{});
+    //g_xma_singleton->encoders.reserve(32);
+    //g_xma_singleton->encoders.emplace_back(XmaEncoderPlugin{});
 
     /*Sarab: Remove yaml cfg stuff
     ret = xma_cfg_parse(cfgfile, &g_xma_singleton->systemcfg);

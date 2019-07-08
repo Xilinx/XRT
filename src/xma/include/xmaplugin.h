@@ -43,7 +43,25 @@
 extern "C" {
 #endif
 
-typedef uint32_t  XmaBufferHandle;
+//typedef uint32_t  XmaBufferHandle;
+typedef struct XmaBufferObj
+{
+   uint8_t* data;
+   uint64_t size;
+   uint32_t paddr_low;
+   uint32_t paddr_high;
+   int32_t  bank_index;
+   int32_t  dev_index;
+   void*    private_do_not_touch;
+  XmaBufferObj() {
+   data = NULL;
+   size = 0;
+   bank_index = -1;
+   dev_index = -1;
+   private_do_not_touch = NULL;
+  }
+} XmaBufferObj;
+
 
 
 /**
@@ -67,7 +85,7 @@ typedef uint32_t  XmaBufferHandle;
  *  RETURN:    Non-zero buffer handle on success
  *
  */
-XmaBufferHandle xma_plg_buffer_alloc(XmaHwSession s_handle, size_t size);
+XmaBufferObj xma_plg_buffer_alloc(XmaHwSession s_handle, size_t size);
 
 /**
  *  xma_plg_buffer_free() - Free a device buffer
@@ -75,31 +93,32 @@ XmaBufferHandle xma_plg_buffer_alloc(XmaHwSession s_handle, size_t size);
  *  using the @ref xma_plg_buffer_alloc() function.
  *
  *  @s_handle:  The session handle associated with this plugin instance
- *  @b_handle:  The buffer handle returned from
+ *  @b_obj:  The buffer handle returned from
  *                   @ref xma_plg_buffer_alloc()
  *
  */
-void xma_plg_buffer_free(XmaHwSession s_handle, XmaBufferHandle b_handle);
+void xma_plg_buffer_free(XmaHwSession s_handle, XmaBufferObj b_obj);
 
 /**
  *  xma_plg_buffer_free() - Get a physical address for a buffer handle
  *  This function returns the physical address of DDR memory on the FPGA
  *  used by a specific session
  *  @s_handle:  The session handle associated with this plugin instance
- *  @b_handle:  The buffer handle returned from
+ *  @b_obj:  The buffer handle returned from
  *                   @ref xma_plg_buffer_alloc()
  *
  *  RETURN:          Physical address of DDR on the FPGA
  *
+uint64_t xma_plg_get_paddr(XmaHwSession s_handle, XmaBufferObj b_obj);
+paddr API not required with buffer object
  */
-uint64_t xma_plg_get_paddr(XmaHwSession s_handle, XmaBufferHandle b_handle);
 
 /**
- *  xma_plg_get_paddr() - Write data from host to device buffer
+ *  xma_plg_buffer_write() - Write data from host to device buffer
  *  This function copies data from host to memory to device memory.
  *
  *  @s_handle:  The session handle associated with this plugin instance
- *  @b_handle:  The buffer handle returned from
+ *  @b_obj:  The buffer handle returned from
  *                   @ref xma_plg_buffer_alloc()
  *  @src:       Source data pointer
  *  @size:      Size of data to copy
@@ -110,7 +129,7 @@ uint64_t xma_plg_get_paddr(XmaHwSession s_handle, XmaBufferHandle b_handle);
  *
  */
 int32_t xma_plg_buffer_write(XmaHwSession     s_handle,
-                             XmaBufferHandle  b_handle,
+                             XmaBufferObj  b_obj,
                              const void      *src,
                              size_t           size,
                              size_t           offset);
@@ -121,7 +140,7 @@ int32_t xma_plg_buffer_write(XmaHwSession     s_handle,
  *  the requested host memory
  *
  *  @s_handle:  The session handle associated with this plugin instance
- *  @b_handle:  The buffer handle returned from
+ *  @b_obj:  The buffer handle returned from
  *                   @ref xma_plg_buffer_alloc()
  *  @dst:       Destination data pointer
  *  @size:      Size of data to copy
@@ -132,7 +151,7 @@ int32_t xma_plg_buffer_write(XmaHwSession     s_handle,
  *
  */
 int32_t xma_plg_buffer_read(XmaHwSession     s_handle,
-                            XmaBufferHandle  b_handle,
+                            XmaBufferObj  b_obj,
                             void            *dst,
                             size_t           size,
                             size_t           offset);

@@ -120,10 +120,10 @@ xma_kernel_session_create(XmaKernelProperties *props)
     */
 
    //Sarab: TODO Fix device index, CU index & session->xx_plugin assigned above
-    int rc, dev_handle, kern_handle, k_handle;
+    int rc, dev_handle, kern_handle;
     dev_handle = props->dev_index;
     kern_handle = props->cu_index;
-    k_handle = props->cu_index;
+    //k_handle = props->cu_index;
     
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
     XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_handle].handle;
@@ -139,7 +139,7 @@ xma_kernel_session_create(XmaKernelProperties *props)
 
     // Allocate the private data
     session->base.plugin_data =
-        calloc(g_xma_singleton->kernelcfg[k_handle].plugin_data_size, sizeof(uint8_t));
+        calloc(session->kernel_plugin->plugin_data_size, sizeof(uint8_t));
 
     // Call the plugins initialization function with this session data
     //Sarab: Check plugin compatibility to XMA
