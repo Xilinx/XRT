@@ -30,7 +30,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    multiprocess.rst
    p2p.rst
    m2m.rst
-   xma.main.rst
+   xma_user_guide.rst
 
 
 .. toctree::
@@ -39,13 +39,15 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
 
    xrt.main.rst
    ert.main.rst
+   xma.main.rst
 
 
 .. toctree::
-   :caption: Kernel Driver 
+   :caption: XRT developer's space 
    :maxdepth: 1
 
    sysfs.rst
+   formats.rst
    mgmt-ioctl.main.rst
    xocl_ioctl.main.rst
 
@@ -55,7 +57,6 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    :maxdepth: 1
 
    tools.rst
-   formats.rst
    xclbintools.rst
 
 
@@ -64,7 +65,8 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    :maxdepth: 1
 
    yocto.rst
-   newdsa-bringup.rst
+   test.rst
+   newxsa-bringup.rst
    create_platforms.rst
 
 

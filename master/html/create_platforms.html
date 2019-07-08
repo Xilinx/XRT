@@ -37,7 +37,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Mailbox Subdevice Driver" href="mailbox.main.html" />
-    <link rel="prev" title="New DSA Bringup" href="newdsa-bringup.html" /> 
+    <link rel="prev" title="New XSA Bringup" href="newxsa-bringup.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -98,29 +98,31 @@
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma.main.html">Xilinx Media Accelerator (XMA) Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator</a></li>
 </ul>
 <p class="caption"><span class="caption-text">XRT API Library</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xrt.main.html">Xilinx Runtime (XRT) Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Kernel Driver</span></p>
+<p class="caption"><span class="caption-text">XRT developer's space</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
-<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Platform Building</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
-<li class="toctree-l1"><a class="reference internal" href="newdsa-bringup.html">New DSA Bringup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">XRT Developer Build and Test Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="newxsa-bringup.html">New XSA Bringup</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Create MPSoC Based Embedded Platforms</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#build-hardware-platform">Build Hardware Platform</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#build-boot-images">Build Boot Images</a></li>
@@ -214,7 +216,7 @@ some basic source files as an example to create a custom MPSoC platform.</p>
 for vivado. It takes same procedures to create platform for
 zcu102ng and zcu102ng_svm. Take zcu102ng as an example.</p>
 <p><em>NOTE</em> The purpose of this page is only for easy to get started.
-If you are interested in details about creating DSA for a platform.
+If you are interested in details about creating Shell for a platform.
 Please read the Hardware Platform section of Xilinx Document UG1146.</p>
 <div class="section" id="build-hardware-platform">
 <h2>Build Hardware Platform<a class="headerlink" href="#build-hardware-platform" title="Permalink to this headline">¶</a></h2>
@@ -222,7 +224,7 @@ Please read the Hardware Platform section of Xilinx Document UG1146.</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>vivado -mode batch -notrace -source ./zcu102ng_dsa.tcl
 </pre></div>
 </div>
-<p>This will generate hardware Device Support Archive
+<p>This will generate hardware Xilinx Shell Archive
 <code class="docutils literal notranslate"><span class="pre">platform/zcu102ng/zcu102ng.dsa</span></code> and Hardware Definition File
 <code class="docutils literal notranslate"><span class="pre">platform/zcu102ng/zcu102ng_vivado/zcu102ng.hdf</span></code></p>
 </div>
@@ -284,7 +286,7 @@ xocc -l -t hw --platform &lt;PATH_TO_PLATFORM&gt;/zcu102ng.xpfm hello.xo -o hell
         <a href="mailbox.main.html" class="btn btn-neutral float-right" title="Mailbox Subdevice Driver" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="newdsa-bringup.html" class="btn btn-neutral float-left" title="New DSA Bringup" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="newxsa-bringup.html" class="btn btn-neutral float-left" title="New XSA Bringup" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

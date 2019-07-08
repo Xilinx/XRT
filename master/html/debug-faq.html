@@ -97,29 +97,31 @@
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma.main.html">Xilinx Media Accelerator (XMA) Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator</a></li>
 </ul>
 <p class="caption"><span class="caption-text">XRT API Library</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xrt.main.html">Xilinx Runtime (XRT) Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Kernel Driver</span></p>
+<p class="caption"><span class="caption-text">XRT developer's space</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
-<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Platform Building</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
-<li class="toctree-l1"><a class="reference internal" href="newdsa-bringup.html">New DSA Bringup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">XRT Developer Build and Test Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="newxsa-bringup.html">New XSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Cloud Support</span></p>
@@ -251,7 +253,7 @@ xbutil query
 </pre></div>
 </div>
 </dd>
-<dt>DSA Sanity Test</dt><dd><p>Check if verify kernel works</p>
+<dt>XSA Sanity Test</dt><dd><p>Check if verify kernel works</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>cd test
 ./verify.exe verify.xclbin
 </pre></div>
@@ -267,7 +269,7 @@ xbutil query
 <h2>Common Reasons For Failures<a class="headerlink" href="#common-reasons-for-failures" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="incorrect-memory-topology-usage">
 <h3>Incorrect Memory Topology Usage<a class="headerlink" href="#incorrect-memory-topology-usage" title="Permalink to this headline">¶</a></h3>
-<p>5.0+ DSAs are considered dynamic platforms which use sparse
+<p>5.0+ XSAs are considered dynamic platforms which use sparse
 connectivity between acceleration kernels and memory controllers
 (MIGs). This means that a kernel port can only read/write from/to a
 specific MIG. This connectivity is frozen at <code class="docutils literal notranslate"><span class="pre">xclbin</span></code> generation
@@ -284,7 +286,7 @@ all buffer allocation requests.</p>
 </div>
 <div class="section" id="memory-read-before-write">
 <h3>Memory Read Before Write<a class="headerlink" href="#memory-read-before-write" title="Permalink to this headline">¶</a></h3>
-<p>Read-Before-Write in 5.0+ DSAs will cause MIG <em>ECC</em> error. This is typically a user error. For example if user expects a kernel to write 4KB of data in DDR but it produced only 1KB of data and now the user tries to transfer full 4KB of data to host. It can also happen if user supplied 1KB sized buffer to a kernel but the kernel tries to read 4KB of data. Note ECC read-before-write error occurs if — since the last bitstream download which results in MIG initialization — no data has been written to a memory location but a read request is made for that same memory location. ECC errors stall the affected MIG since usually kernels are not able to handle this error. This can manifest in two different ways:</p>
+<p>Read-Before-Write in 5.0+ XSAs will cause MIG <em>ECC</em> error. This is typically a user error. For example if user expects a kernel to write 4KB of data in DDR but it produced only 1KB of data and now the user tries to transfer full 4KB of data to host. It can also happen if user supplied 1KB sized buffer to a kernel but the kernel tries to read 4KB of data. Note ECC read-before-write error occurs if — since the last bitstream download which results in MIG initialization — no data has been written to a memory location but a read request is made for that same memory location. ECC errors stall the affected MIG since usually kernels are not able to handle this error. This can manifest in two different ways:</p>
 <ol class="arabic simple">
 <li><p>CU may hang or stall because it does not know how to handle this error while reading/writing to/from the affected MIG. <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">query</span></code> will show that the CU is stuck in <em>BUSY</em> state and not making progress.</p></li>
 <li><p>AXI Firewall may trip if PCIe DMA request is made to the affected MIG as the DMA engine will be unable to complete request. AXI Firewall trips result in the Linux kernel driver killing all processes which have opened the device node with <em>SIGBUS</em> signal. <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">query</span></code> will show if an AXI Firewall has indeed tripped including its timestamp.</p></li>
@@ -355,7 +357,7 @@ legacy. By default XRT uses ERT which runs on Microblaze. ERT is
 accessed through KDS which runs inside <code class="docutils literal notranslate"><span class="pre">xocl</span></code> Linux kernel
 driver. If ERT is not available KDS uses its own built-in
 scheduler. From 2018.2 release onward KDS (together with ERT if
-available in the DSA) is enabled by default. Users can optionally
+available in the XSA) is enabled by default. Users can optionally
 switch to legacy scheduler which runs in userspace. Switching
 scheduler will help isolate any scheduler related XRT bugs</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[Runtime]
@@ -373,7 +375,7 @@ kds=false
 <li><p>Output of <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">scan</span></code></p></li>
 <li><p>Application binaries: xclbin, host executable and code, any data files used by the application</p></li>
 <li><p>XRT version</p></li>
-<li><p>DSA name and version</p></li>
+<li><p>XSA name and version</p></li>
 </ol>
 </div>
 </div>

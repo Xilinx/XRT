@@ -37,7 +37,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Embedded Runtime Library" href="ert.main.html" />
-    <link rel="prev" title="Xilinx Media Accelerator (XMA) Core Library" href="xma.main.html" /> 
+    <link rel="prev" title="Xilinx Media Accelerator" href="xma_user_guide.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -98,29 +98,31 @@
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma.main.html">Xilinx Media Accelerator (XMA) Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator</a></li>
 </ul>
 <p class="caption"><span class="caption-text">XRT API Library</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Xilinx Runtime (XRT) Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Kernel Driver</span></p>
+<p class="caption"><span class="caption-text">XRT developer's space</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
-<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Platform Building</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
-<li class="toctree-l1"><a class="reference internal" href="newdsa-bringup.html">New DSA Bringup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">XRT Developer Build and Test Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="newxsa-bringup.html">New XSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Cloud Support</span></p>
@@ -484,7 +486,7 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclLogMsg</code><span class="sig-
 between host and device memory</p>
 <dl class="function">
 <dt id="c.xclAllocBO">
-XCL_DRIVER_DLLESPEC unsigned int <code class="descname">xclAllocBO</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em> handle</em>, size_t<em> size</em>, enum xclBOKind<em> domain</em>, unsigned<em> flags</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclAllocBO" title="Permalink to this definition">¶</a></dt>
+XCL_DRIVER_DLLESPEC unsigned int <code class="descname">xclAllocBO</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em> handle</em>, size_t<em> size</em>, int<em> unused</em>, unsigned<em> flags</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclAllocBO" title="Permalink to this definition">¶</a></dt>
 <dd><p>Allocate a BO of requested size with appropriate flags</p>
 </dd></dl>
 
@@ -494,7 +496,7 @@ XCL_DRIVER_DLLESPEC unsigned int <code class="descname">xclAllocBO</code><span c
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt><dd><p>Size of buffer</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">enum</span> <span class="pre">xclBOKind</span> <span class="pre">domain</span></code></dt><dd><p>Memory domain</p>
+<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">unused</span></code></dt><dd><p><em>undescribed</em></p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">flags</span></code></dt><dd><p>Specify bank information, etc</p>
 </dd>
@@ -913,7 +915,7 @@ Note that the offset is wrt the address space</p>
         <a href="ert.main.html" class="btn btn-neutral float-right" title="Embedded Runtime Library" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="xma.main.html" class="btn btn-neutral float-left" title="Xilinx Media Accelerator (XMA) Core Library" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="xma_user_guide.html" class="btn btn-neutral float-left" title="Xilinx Media Accelerator" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
