@@ -580,7 +580,7 @@ zocl_info_cu_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	}
  
 	args->apt_idx = get_apt_index(zdev, args->paddr);
-	if(args->apt_idx == -EINVAL) {
+	if (args->apt_idx == -EINVAL) {
 		DRM_ERROR("Failed to find CU in aperture list 0x%lx\n", args->paddr);
 		return -EINVAL;
 	}
