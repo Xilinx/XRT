@@ -36,7 +36,7 @@
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Linux Sys FileSystem Nodes" href="sysfs.html" />
+    <link rel="next" title="XMA Core Library" href="xma.main.html" />
     <link rel="prev" title="Xilinx Runtime (XRT) Core Library" href="xrt.main.html" /> 
 </head>
 
@@ -98,29 +98,31 @@
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma.main.html">Xilinx Media Accelerator (XMA) Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator</a></li>
 </ul>
 <p class="caption"><span class="caption-text">XRT API Library</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="xrt.main.html">Xilinx Runtime (XRT) Core Library</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Kernel Driver</span></p>
+<p class="caption"><span class="caption-text">XRT developer's space</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
-<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Platform Building</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
-<li class="toctree-l1"><a class="reference internal" href="newdsa-bringup.html">New DSA Bringup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">XRT Developer Build and Test Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="newxsa-bringup.html">New XSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Cloud Support</span></p>
@@ -270,6 +272,14 @@ struct <code class="descname">ert_init_kernel_cmd</code><a class="headerlink" hr
 <p><strong>Description</strong></p>
 <p>this command initializes CUs by writing CU registers. CUs are
 represented by cu_mask and extra_cu_masks.</p>
+<dl class="simple">
+<dt><strong>cu_run_timeout</strong>   the configured CU timeout value in Microseconds</dt><dd><p>setting to 0 means CU should not timeout</p>
+</dd>
+<dt><strong>cu_reset_timeout</strong> the configured CU reset timeout value in Microseconds</dt><dd><p>when CU timeout, CU will be reset. this indicates
+CU reset should be completed within the timeout value.
+if cu_run_timeout is set to 0, this field is undefined.</p>
+</dd>
+</dl>
 <p>The packet payload is comprised of reserved id field, 8 reserved fields,
 a mandatory CU mask, and extra_cu_masks per header field, followed by a
 CU register map of size (count - (9 + extra_cu_masks)) uint32_t words.</p>
@@ -542,7 +552,7 @@ MB(W)</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="sysfs.html" class="btn btn-neutral float-right" title="Linux Sys FileSystem Nodes" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="xma.main.html" class="btn btn-neutral float-right" title="XMA Core Library" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="xrt.main.html" class="btn btn-neutral float-left" title="Xilinx Runtime (XRT) Core Library" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>

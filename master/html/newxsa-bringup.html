@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>New DSA Bringup &mdash; Xilinx Runtime 2019.1 documentation</title>
+  <title>New XSA Bringup &mdash; Xilinx Runtime 2019.1 documentation</title>
   
 
   
@@ -98,36 +98,38 @@
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma.main.html">Xilinx Media Accelerator (XMA) Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator</a></li>
 </ul>
 <p class="caption"><span class="caption-text">XRT API Library</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xrt.main.html">Xilinx Runtime (XRT) Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Kernel Driver</span></p>
+<p class="caption"><span class="caption-text">XRT developer's space</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">Board Tools and Utilities</a></li>
-<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">Xclbin Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Platform Building</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">New DSA Bringup</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="test.html">XRT Developer Build and Test Instructions</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">New XSA Bringup</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#assumption">Assumption</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#identify-dsa">Identify DSA</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#identify-xsa">Identify XSA</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#add-new-pci-id-combination">Add new PCI ID combination</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#add-new-vbna">Add new VBNA</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#customize-dsa">Customize DSA</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#customize-xsa">Customize XSA</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#debug">Debug</a></li>
 </ul>
 </li>
@@ -186,13 +188,13 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>New DSA Bringup</li>
+      <li>New XSA Bringup</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="_sources/newdsa-bringup.rst.txt" rel="nofollow"> View page source</a>
+            <a href="_sources/newxsa-bringup.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -205,20 +207,20 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="new-dsa-bringup">
-<h1>New DSA Bringup<a class="headerlink" href="#new-dsa-bringup" title="Permalink to this headline">¶</a></h1>
-<p>To fullfill the different requirements, new DSAs are invented based on existing SDAccel DSAs. The first thing to verify the new DSA with XRT is to attach XRT drivers with it and see how it works. Then it might need to customizing and making changes in XRT to support the new DSA.</p>
-<p>This section focuses on how to modify XRT drivers to identify the new DSA and how to customize XRT drivers for new DSA.</p>
+  <div class="section" id="new-xsa-bringup">
+<h1>New XSA Bringup<a class="headerlink" href="#new-xsa-bringup" title="Permalink to this headline">¶</a></h1>
+<p>To fullfill the different requirements, new XSAs are invented based on existing SDAccel XSAs. The first thing to verify the new XSA with XRT is to attach XRT drivers with it and see how it works. Then it might need to customizing and making changes in XRT to support the new XSA.</p>
+<p>This section focuses on how to modify XRT drivers to identify the new XSA and how to customize XRT drivers for new XSA.</p>
 <div class="section" id="assumption">
 <h2>Assumption<a class="headerlink" href="#assumption" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic simple">
-<li><p>The firmware(.dsabin) file along with the new DSA is installed to the host properly. This firmware file could contain FPGA flash image, XMC image, microblaze image etc. which is consumed by driver and tools.</p></li>
-<li><p>The new DSA bitstream is programed to the FPGA board properly.</p></li>
+<li><p>The firmware(.dsabin) file along with the new XSA is installed to the host properly. This firmware file could contain FPGA flash image, XMC image, microblaze image etc. which is consumed by driver and tools.</p></li>
+<li><p>The new XSA bitstream is programed to the FPGA board properly.</p></li>
 </ol>
 </div>
-<div class="section" id="identify-dsa">
-<h2>Identify DSA<a class="headerlink" href="#identify-dsa" title="Permalink to this headline">¶</a></h2>
-<p>There are two factor could be used to identify the new DSA. The first is PCI vendor-id, device-id and subsystem-id combination. The second is DSA VBNV name. For XRT driver <code class="docutils literal notranslate"><span class="pre">src/runtime_src/core/pcie/driver/linux/xocl/devices.h</span></code> need to be changed to identify the new DSA.</p>
+<div class="section" id="identify-xsa">
+<h2>Identify XSA<a class="headerlink" href="#identify-xsa" title="Permalink to this headline">¶</a></h2>
+<p>There are two factor could be used to identify the new XSA. The first is PCI vendor-id, device-id and subsystem-id combination. The second is XSA VBNV name. For XRT driver <code class="docutils literal notranslate"><span class="pre">src/runtime_src/core/pcie/driver/linux/xocl/devices.h</span></code> need to be changed to identify the new XSA.</p>
 <div class="section" id="add-new-pci-id-combination">
 <h3>Add new PCI ID combination<a class="headerlink" href="#add-new-pci-id-combination" title="Permalink to this headline">¶</a></h3>
 <dl>
@@ -227,26 +229,26 @@
 <p><code class="docutils literal notranslate"><span class="pre">XOCL_USER_QDMA_PCI_IDS</span></code> for QDMA user PCI function</p>
 </dd>
 </dl>
-<p>Then add entries corresponding for the new DSA. The PCI ID combination has to be unique. <code class="docutils literal notranslate"><span class="pre">PCI_ANY_ID</span></code> is acceptable wildcast. The behavior of overlapped combination is undefined.</p>
+<p>Then add entries corresponding for the new XSA. The PCI ID combination has to be unique. <code class="docutils literal notranslate"><span class="pre">PCI_ANY_ID</span></code> is acceptable wildcast. The behavior of overlapped combination is undefined.</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>{ XOCL_PCI_DEVID(0x10EE, 0x4B88, 0x4351, USER_XDMA) },
 { XOCL_PCI_DEVID(0x10EE, 0x6850, PCI_ANY_ID, USER_XDMA) },
 </pre></div>
 </div>
-<p>The “USER_XDMA” in above example is DSA profile macro which describes the IPs implemented by the DSA.</p>
+<p>The “USER_XDMA” in above example is XSA profile macro which describes the IPs implemented by the XSA.</p>
 </div>
 <div class="section" id="add-new-vbna">
 <h3>Add new VBNA<a class="headerlink" href="#add-new-vbna" title="Permalink to this headline">¶</a></h3>
-<p>In some cases, two different DSAs use the same PCI ID combination. VBNV is used to identify them. Macro <code class="docutils literal notranslate"><span class="pre">XOCL_DSA_VBNV_MAP</span></code> in devices.h is used to combine the VBNV name with DSA profile macro.</p>
+<p>In some cases, two different XSAs use the same PCI ID combination. VBNV is used to identify them. Macro <code class="docutils literal notranslate"><span class="pre">XOCL_DSA_VBNV_MAP</span></code> in devices.h is used to combine the VBNV name with XSA profile macro.</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>{ 0x10EE, 0x5001, PCI_ANY_ID, &quot;xilinx_u200_xdma_201820_1&quot;, &amp;XOCL_BOARD_USER_XDMA },
 </pre></div>
 </div>
-<p>Above example specifies xdma DSA profile for DSA which has VBNV “xilinx_u200_xdma_201820_1”. This is going to overwrite the DSA profile combination defined in PCI ID table.</p>
+<p>Above example specifies xdma XSA profile for XSA which has VBNV “xilinx_u200_xdma_201820_1”. This is going to overwrite the XSA profile combination defined in PCI ID table.</p>
 </div>
 </div>
-<div class="section" id="customize-dsa">
-<h2>Customize DSA<a class="headerlink" href="#customize-dsa" title="Permalink to this headline">¶</a></h2>
-<p>Each DSA is described by a DSA profile macro in devices.h. This macro defines all the required information of DSA, include IP implemented in DSA, IO address and IRQ ranges for each IP, flags etc. The easiest way for new DSA is inheriting from an existing profile and customizing it.</p>
-<p>Here are the supported IPs. And IO address and IRQ ranged are pre-defined in devices.h. If the new DSA introduces new IP or changes the IO address or IRQ, it has to add or modify the corresponding macro. For new IP, XRT is going to create a sub device node (platform devcie) and the driver of the new IP has to developed.</p>
+<div class="section" id="customize-xsa">
+<h2>Customize XSA<a class="headerlink" href="#customize-xsa" title="Permalink to this headline">¶</a></h2>
+<p>Each XSA is described by a XSA profile macro in devices.h. This macro defines all the required information of XSA, include IP implemented in XSA, IO address and IRQ ranges for each IP, flags etc. The easiest way for new XSA is inheriting from an existing profile and customizing it.</p>
+<p>Here are the supported IPs. And IO address and IRQ ranged are pre-defined in devices.h. If the new XSA introduces new IP or changes the IO address or IRQ, it has to add or modify the corresponding macro. For new IP, XRT is going to create a sub device node (platform devcie) and the driver of the new IP has to developed.</p>
 <blockquote>
 <div><p>feature ROM (FEATURE_ROM),</p>
 <p>Memmory Mapped DMA (MM_DMA),</p>
