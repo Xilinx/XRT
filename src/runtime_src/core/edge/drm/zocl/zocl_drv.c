@@ -322,6 +322,7 @@ static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 	struct drm_file     *priv = filp->private_data;
 	struct drm_device   *dev = priv->minor->dev;
 	struct drm_zocl_dev *zdev = dev->dev_private;
+	struct addr_aperture *apts = zdev->apertures;
 	struct drm_zocl_bo  *bo = NULL;
 	unsigned long        vsize;
 	phys_addr_t          phy_addr;
@@ -372,16 +373,16 @@ static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 		return -EINVAL;
 	}
 
-	phy_addr = vma->vm_pgoff << PAGE_SHIFT;
-
 	/* Only allow user to map register ranges in apertures list.
 	 * Could not map from the middle of an aperture.
 	 */
-	apt_idx = get_apt_index(zdev, phy_addr);
-	if (apt_idx < 0) {
+	apt_idx = vma->vm_pgoff;
+	if (apt_idx < 0 || apt_idx >= zdev->num_apts) {
 		DRM_ERROR("The offset is not in the apertures list\n");
 		return -EINVAL;
 	}
+	phy_addr = apts[apt_idx].addr;
+	vma->vm_pgoff = phy_addr >> PAGE_SHIFT;
 
 	vsize = vma->vm_end - vma->vm_start;
 	if (vsize > zdev->apertures[apt_idx].size)
@@ -520,6 +521,8 @@ static const struct drm_ioctl_desc zocl_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(ZOCL_PCAP_DOWNLOAD, zocl_pcap_download_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW)
 #endif
+	DRM_IOCTL_DEF_DRV(ZOCL_INFO_CU, zocl_info_cu_ioctl,
+			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 };
 
 static const struct file_operations zocl_driver_fops = {
