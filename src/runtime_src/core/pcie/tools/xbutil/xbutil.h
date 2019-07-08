@@ -1409,7 +1409,7 @@ private:
     // Run a test case as <exe> <xclbin> [-d index] on this device and collect
     // all output from the run into "output"
     // Note: exe should assume index to be 0 without -d
-    int runTestCase(const std::string& exe, const std::string& xclbin,
+    int runTestCase(const std::string& exe, const std::string& xclbin, const bool isPython,
         std::string& output);
 
     int pcieLinkTest(void);
