@@ -21,10 +21,13 @@
 #include "xclbin.h"
 #include <string>
 #include <memory>
+#include <sstream>
+#include <fstream>
 #include <boost/property_tree/ptree.hpp>
 
 
 #include <iostream>
+#include <stdint.h>
 namespace XclBinUtilities {
 //
 template<typename ... Args>
@@ -56,16 +59,19 @@ bool findBytesInStream(std::fstream& _istream, const std::string& _searchString,
 void setVerbose(bool _bVerbose);
 void TRACE(const std::string& _msg, bool _endl = true);
 void TRACE_PrintTree(const std::string& _msg, const boost::property_tree::ptree& _pt);
-void TRACE_BUF(const std::string& _msg, const char* _pData, unsigned long _size);
+void TRACE_BUF(const std::string& _msg, const char* _pData, uint64_t _size);
 
 void safeStringCopy(char* _destBuffer, const std::string& _source, unsigned int _bufferSize);
-unsigned int bytesToAlign(unsigned int _offset);
+unsigned int bytesToAlign(uint64_t _offset);
+unsigned int alignBytes(std::ostream & _buf, unsigned int _byteBoundary);
 
-void binaryBufferToHexString(const unsigned char* _binBuf, unsigned int _size, std::string& _outputString);
+void binaryBufferToHexString(const unsigned char* _binBuf, uint64_t _size, std::string& _outputString);
 void hexStringToBinaryBuffer(const std::string& _inputString, unsigned char* _destBuf, unsigned int _bufferSize);
 uint64_t stringToUInt64(const std::string& _sInteger);
 void printKinds();
 std::string getUUIDAsString( const unsigned char (&_uuid)[16] );
+
+void write_htonl(std::ostream & _buf, uint32_t _word32);
 };
 
 #endif

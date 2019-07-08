@@ -1,14 +1,25 @@
 PROJECT(XRT)
 CMAKE_MINIMUM_REQUIRED(VERSION 3.0.0)
 
+ENABLE_TESTING()
+
 SET(PROJECT_DESCRIPTION "https://github.com/Xilinx/XRT")
 
+# Exported interface into XRT for include from implemenation
 include_directories(
-  ${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/driver/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/core/include
   )
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+message("-- Host system processor is ${CMAKE_HOST_SYSTEM_PROCESSOR}")
+message("-- Target system processor is ${CMAKE_SYSTEM_PROCESSOR}")
+
+set(XRT_NATIVE_BUILD "yes")
+if (NOT ${CMAKE_SYSTEM_PROCESSOR} STREQUAL ${CMAKE_HOST_SYSTEM_PROCESSOR})
+  set(XRT_NATIVE_BUILD "no")
+endif()
 
 if (NOT CMAKE_BUILD_TYPE)
   set (CMAKE_BUILD_TYPE RelWithDebInfo)
@@ -23,11 +34,10 @@ set (CMAKE_INSTALL_PREFIX "/opt/xilinx")
 set (CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "xrt")
 
 set (XRT_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
-set (XRT_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/xrt")
 
-set(XRT_VERSION_RELEASE 201830)
+set(XRT_VERSION_RELEASE 201920)
 SET(XRT_VERSION_MAJOR 2)
-SET(XRT_VERSION_MINOR 2)
+SET(XRT_VERSION_MINOR 3)
 
 if (DEFINED ENV{XRT_VERSION_PATCH})
   SET(XRT_VERSION_PATCH $ENV{XRT_VERSION_PATCH})
@@ -41,16 +51,15 @@ set(XRT_VERSION_STRING ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_P
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake/")
 
-message("-- Host system processor is ${CMAKE_HOST_SYSTEM_PROCESSOR}")
-message("-- Target system processor is ${CMAKE_SYSTEM_PROCESSOR}")
-
-set(XRT_NATIVE_BUILD "yes")
-if (NOT ${CMAKE_SYSTEM_PROCESSOR} STREQUAL ${CMAKE_HOST_SYSTEM_PROCESSOR})
-  set(XRT_NATIVE_BUILD "no")
-endif()
-
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
-  include(CMake/native.cmake)
+  # Temporary native wrapper while Linux code is being ported to windows.
+  # When completed the two build flows will once again be merged into one
+  # common file
+  if (WIN32)
+    include(CMake/nativeWin.cmake)
+  else()
+    include(CMake/nativeLnx.cmake)
+  endif()
 else()
   include(CMake/embedded_system.cmake)
 endif()

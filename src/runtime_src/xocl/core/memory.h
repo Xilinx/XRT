@@ -25,7 +25,8 @@
 
 #include "xrt/device/device.h"
 
-#include <unistd.h>
+#include "core/common/memalign.h"
+
 #include <map>
 
 namespace xocl {
@@ -95,7 +96,7 @@ public:
   }
 
   memidx_type
-  get_ext_memidx(xclbin xclbin) const;
+  get_ext_memidx(const xclbin& xclbin) const;
 
   /**
    * Record that this buffer is used as argument to kernel at argidx
@@ -126,9 +127,21 @@ public:
   }
 
   bool
-  is_p2p_memory() const
+  is_device_memory_only() const
   {
-    return (m_ext_flags >> 30) & 0x1 ? true : false;
+    return m_flags & CL_MEM_HOST_NO_ACCESS;
+  }
+
+  bool
+  is_device_memory_only_p2p() const
+  {
+    return m_ext_flags & XCL_MEM_EXT_P2P_BUFFER;
+  }
+
+  bool
+  no_host_memory() const
+  {
+    return is_device_memory_only() || is_device_memory_only_p2p();
   }
 
   // Derived classes accessors
@@ -287,7 +300,7 @@ public:
    *   true or throws runtime error
    */
   virtual void
-  update_buffer_object_map(device* device, buffer_object_handle boh);
+  update_buffer_object_map(const device* device, buffer_object_handle boh);
 
 
   /**
@@ -443,7 +456,10 @@ private:
   get_memidx_nolock(const device* d) const;
 
   memidx_type
-  get_ext_memidx_nolock(xclbin xclbin) const;
+  get_ext_memidx_nolock(const xclbin& xclbin) const;
+
+  memidx_type
+  update_memidx_nolock(const device* device, const buffer_object_handle& boh);
 
 private:
   unsigned int m_uid = 0;
@@ -483,9 +499,9 @@ public:
 
     if (flags & (CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR))
       // allocate sufficiently aligned memory and reassign m_host_ptr
-      if (posix_memalign(&m_host_ptr,alignment,sz))
+      if (xrt_core::posix_memalign(&m_host_ptr,alignment,sz))
         throw error(CL_MEM_OBJECT_ALLOCATION_FAILURE);
-    if (flags & CL_MEM_COPY_HOST_PTR)
+    if (flags & CL_MEM_COPY_HOST_PTR && host_ptr)
       std::memcpy(m_host_ptr,host_ptr,sz);
 
     m_aligned = (reinterpret_cast<uintptr_t>(m_host_ptr) % alignment)==0;
@@ -774,6 +790,50 @@ private:
   cl_uint m_max_packets = 0;
   void* m_host_ptr = nullptr;
 };
+
+inline const void*
+get_host_ptr(cl_mem_flags flags, const void* host_ptr)
+{
+  return (flags & CL_MEM_EXT_PTR_XILINX)
+    ? reinterpret_cast<const cl_mem_ext_ptr_t*>(host_ptr)->host_ptr
+    : host_ptr;
+}
+
+inline void*
+get_host_ptr(cl_mem_flags flags, void* host_ptr)
+{
+  return (flags & CL_MEM_EXT_PTR_XILINX)
+    ? reinterpret_cast<cl_mem_ext_ptr_t*>(host_ptr)->host_ptr
+    : host_ptr;
+}
+
+inline unsigned int
+get_xlnx_ext_flags(cl_mem_flags flags, const void* host_ptr)
+{
+  return (flags & CL_MEM_EXT_PTR_XILINX)
+    ? reinterpret_cast<const cl_mem_ext_ptr_t*>(host_ptr)->flags
+    : 0;
+}
+
+inline cl_kernel
+get_xlnx_ext_kernel(cl_mem_flags flags, const void* host_ptr)
+{
+  return (flags & CL_MEM_EXT_PTR_XILINX)
+    ? reinterpret_cast<const cl_mem_ext_ptr_t*>(host_ptr)->kernel
+    : 0;
+}
+
+inline unsigned int
+get_xlnx_ext_argidx(cl_mem_flags flags, const void* host_ptr)
+{
+  return get_xlnx_ext_flags(flags,host_ptr) & 0xffffff;
+}
+
+inline unsigned int
+get_ocl_flags(cl_mem_flags flags)
+{
+  return ( flags & ~(CL_MEM_EXT_PTR_XILINX | CL_MEM_PROGVAR) );
+}
 
 } // xocl
 

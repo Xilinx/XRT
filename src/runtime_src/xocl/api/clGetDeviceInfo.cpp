@@ -119,7 +119,7 @@ clGetDeviceInfo(cl_device_id   device,
     buffer.as<cl_uint>() = 64;
     break;
   case CL_DEVICE_MAX_MEM_ALLOC_SIZE:
-    buffer.as<cl_ulong>() = 
+    buffer.as<cl_ulong>() =
 #ifdef __x86_64__
       512*1024*1024; //512 MB
 #else
@@ -163,7 +163,7 @@ clGetDeviceInfo(cl_device_id   device,
     buffer.as<size_t>() = 2048;
     break;
   case CL_DEVICE_MEM_BASE_ADDR_ALIGN:
-    buffer.as<cl_uint>() = 4096 << 3; // 32768
+    buffer.as<cl_uint>() = xocl(device)->get_alignment() << 3;  // in bits
     break;
   case CL_DEVICE_MIN_DATA_TYPE_ALIGN_SIZE:
     buffer.as<cl_uint>() = 128;
@@ -223,9 +223,9 @@ clGetDeviceInfo(cl_device_id   device,
     buffer.as<cl_device_exec_capabilities>() = CL_EXEC_KERNEL;
     break;
   case CL_DEVICE_QUEUE_PROPERTIES:
-    buffer.as<cl_command_queue_properties>() = 
+    buffer.as<cl_command_queue_properties>() =
       (
-       CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE 
+       CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE
        | CL_QUEUE_PROFILING_ENABLE
        | CL_QUEUE_DPDK
      );
@@ -271,14 +271,14 @@ clGetDeviceInfo(cl_device_id   device,
     buffer.as<cl_uint>() = xdevice->get_num_cus();
     break;
   case CL_DEVICE_PARTITION_PROPERTIES:
-    buffer.as<cl_device_partition_property>() = 
+    buffer.as<cl_device_partition_property>() =
       xocl::get_range(std::initializer_list<cl_device_partition_property>({0,0,0,0}));
     break;
   case CL_DEVICE_PARTITION_AFFINITY_DOMAIN:
     buffer.as<cl_device_affinity_domain>() = 0;
     break;
   case CL_DEVICE_PARTITION_TYPE:
-    buffer.as<cl_device_partition_property>() = 
+    buffer.as<cl_device_partition_property>() =
       xocl::get_range(std::initializer_list<cl_device_partition_property>({0,0,0,0}));
     break;
   case CL_DEVICE_REFERENCE_COUNT:
@@ -342,5 +342,3 @@ clGetDeviceInfo(cl_device_id    device,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

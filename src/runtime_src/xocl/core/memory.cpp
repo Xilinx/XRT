@@ -108,12 +108,14 @@ set_kernel_argidx(const kernel* kernel, unsigned int argidx)
 
 void
 memory::
-update_buffer_object_map(device* device, buffer_object_handle boh)
+update_buffer_object_map(const device* device, buffer_object_handle boh)
 {
   std::lock_guard<std::mutex> lk(m_boh_mutex);
   if (m_bomap.size() == 0) {
+    update_memidx_nolock(device,boh);
     m_bomap[device] = std::move(boh);
-  } else {
+  }
+  else {
     throw std::runtime_error("memory::update_buffer_object_map: bomap should be empty. This is a new cl_mem object.");
   }
 }
@@ -154,7 +156,7 @@ get_buffer_object(device* device)
   auto boh = (m_bomap[device] = device->allocate_buffer_object(this,m_memidx));
 
   // To be deleted when strict bank rules are enforced
-  if (m_memidx==-1) {
+  if (boh && m_memidx==-1) {
     auto mset = device->get_boh_memidx(boh);
     for (size_t idx=0; idx<mset.size(); ++idx) {
       if (mset.test(idx)) {
@@ -169,7 +171,7 @@ get_buffer_object(device* device)
     for (auto& karg : m_karg) {
       auto kernel = karg.first;
       auto argidx = karg.second;
-      if (!kernel->validate_cus(argidx,m_memidx))
+      if (!kernel->validate_cus(device,argidx,m_memidx))
         throw xocl::error(CL_MEM_OBJECT_ALLOCATION_FAILURE,
                           "Buffer connected to memory '"
                           + std::to_string(m_memidx)
@@ -205,7 +207,6 @@ get_buffer_object_or_null(const device* device) const
     : (*itr).second;
 }
 
-
 memory::buffer_object_handle
 memory::
 try_get_buffer_object_or_error(const device* device) const
@@ -222,7 +223,7 @@ try_get_buffer_object_or_error(const device* device) const
 // private
 memory::memidx_type
 memory::
-get_ext_memidx_nolock(xclbin xclbin) const
+get_ext_memidx_nolock(const xclbin& xclbin) const
 {
   if (m_memidx>=0)
     return m_memidx;
@@ -245,10 +246,24 @@ get_ext_memidx_nolock(xclbin xclbin) const
 
 memory::memidx_type
 memory::
-get_ext_memidx(xclbin xclbin) const
+get_ext_memidx(const xclbin& xclbin) const
 {
   std::lock_guard<std::mutex> lk(m_boh_mutex);
   return get_ext_memidx_nolock(xclbin);
+}
+
+memory::memidx_type
+memory::
+update_memidx_nolock(const device* device, const buffer_object_handle& boh)
+{
+  auto mset = device->get_boh_memidx(boh);
+  for (size_t idx=0; idx<mset.size(); ++idx) {
+    if (mset.test(idx)) {
+      m_memidx=idx;
+      break;
+    }
+  }
+  return m_memidx;
 }
 
 // private
@@ -259,6 +274,9 @@ get_memidx_nolock(const device* dev) const
   // already initialized
   if (m_memidx>=0)
     return m_memidx;
+
+  if (m_flags & CL_MEM_REGISTER_MAP)
+    return -1;
 
   // subbuffer case must be tested thoroughly
   if (auto parent = get_sub_buffer_parent()) {

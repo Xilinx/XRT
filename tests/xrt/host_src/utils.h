@@ -30,6 +30,7 @@
 #include <map>
 #include <chrono>
 
+#include <sys/mman.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -65,7 +66,7 @@ static int initXRT( const char*bit,
         return -1;
     }
 
-    std::cout << "DSA = " << deviceInfo.mName << "\n";
+    std::cout << "Shell = " << deviceInfo.mName << "\n";
     std::cout << "Index = " << deviceIndex << "\n";
     std::cout << "PCIe = GEN" << deviceInfo.mPCIeLinkSpeed << " x " << deviceInfo.mPCIeLinkWidth << "\n";
     std::cout << "OCL Frequency = " << deviceInfo.mOCLFrequency[0] << " MHz" << "\n";

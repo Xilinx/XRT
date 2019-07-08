@@ -21,7 +21,7 @@
 #include "xrt/scheduler/command.h"
 #include "xrt/scheduler/scheduler.h"
 
-#include "impl/spir.h"
+#include "core/common/xclbin_parser.h"
 
 #include <iostream>
 #include <fstream>
@@ -239,6 +239,9 @@ execution_context(device* device
 
   // Compute units to use
   add_compute_units(device);
+
+  m_dataflow = xrt_core::xclbin::get_dataflow(device->get_axlf());
+  XOCL_DEBUGF("execution_context(%d) has dataflow(%d)\n",m_uid,m_dataflow);
 }
 
 void
@@ -395,7 +398,10 @@ start()
 
   // Ensure that S_AXI_CONTROL is created even when kernel
   // has no arguments.
-  packet[offset] = 0;
+  packet[offset]   = 0;  // control signals
+  packet[offset+1] = 0;  // gier
+  packet[offset+2] = 0;  // ier
+  packet[offset+3] = 0;  // isr
 
   size3 num_workgroups {0,0,0};
   for (auto d : {0,1,2}) {
@@ -413,14 +419,14 @@ start()
     }
 
     auto address_space = arg->get_address_space();
-    if (address_space == SPIR_ADDRSPACE_PRIVATE)
+    if (address_space == kernel::argument::addr_space_type::SPIR_ADDRSPACE_PRIVATE)
     {
       auto arginforange = arg->get_arginfo_range();
       fill_regmap(regmap,offset,arg->get_value(),arg->get_size(),arginforange);
-    } else if(address_space==SPIR_ADDRSPACE_PIPES) {
+    } else if(address_space == kernel::argument::addr_space_type::SPIR_ADDRSPACE_PIPES) {
 	//do nothing
-    } else if (address_space==SPIR_ADDRSPACE_GLOBAL
-             || address_space==SPIR_ADDRSPACE_CONSTANT)
+    } else if (address_space == kernel::argument::addr_space_type::SPIR_ADDRSPACE_GLOBAL
+            || address_space == kernel::argument::addr_space_type::SPIR_ADDRSPACE_CONSTANT)
     {
       uint64_t physaddr = 0;
       if (auto mem = arg->get_memory_object()) {
@@ -547,10 +553,11 @@ execute()
   // In order to keep scheduler busy, we need more than just one
   // workgroup at a time, so here we try to ensure that the scheduled
   // commands at any given time is twice the number of available CUs.
-  auto limit = 2*m_cus.size();
+  auto limit = m_dataflow ? 20*m_cus.size() : 2*m_cus.size();
   for (size_t i=m_active; !m_done && i<limit; ++i) {
     start();
     update_work();
+    XOCL_DEBUG(std::cout,"active=",m_active,"\n");
   }
 
   return m_done;

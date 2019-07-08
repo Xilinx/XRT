@@ -31,17 +31,23 @@ static void
 validOrError(cl_device_id          device,
              cl_stream_flags       flags,
 	     cl_stream_attributes  attributes,
-	     cl_mem_ext_ptr_t*      ext,
+	     cl_mem_ext_ptr_t*     ext,
              cl_int *              errcode_ret)
 {
+  if (!ext || !ext->kernel)
+    throw error(CL_INVALID_KERNEL,"No kernel specified to clCreateStream");
+
+  auto kernel = xocl::xocl(ext->kernel);
+  if (kernel->get_num_cus() > 1)
+    throw error(CL_INVALID_KERNEL,"Only one compute unit allowed in kernel for clCreateStream");
 }
 
-static cl_stream 
+static cl_stream
 clCreateStream(cl_device_id           device,
 	       cl_stream_flags        flags,
 	       cl_stream_attributes   attributes,
 	       cl_mem_ext_ptr_t*      ext,
-	       cl_int*                errcode_ret) 
+	       cl_int*                errcode_ret)
 {
   validOrError(device,flags,attributes,ext,errcode_ret);
   auto stream = std::make_unique<xocl::stream>(flags,attributes,ext);
@@ -74,4 +80,3 @@ clCreateStream(cl_device_id           device,
   }
   return nullptr;
 }
-

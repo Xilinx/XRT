@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018 -2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -26,12 +26,7 @@
 // ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
 // Forward declarations - use these instead whenever possible...
 
-// ------------------- C L A S S :   S e c t i o n ---------------------------
-
-/**
- *    This class represents the base class for a given Section in the xclbin
- *    archive.  
-*/
+// --------- C L A S S :   S e c t i o n I P L a y o u t ---------------------
 
 class SectionIPLayout : public Section {
  public:
@@ -49,7 +44,9 @@ public:
 
  protected:
   const std::string getIPTypeStr(enum IP_TYPE _ipType) const;
+  const std::string getIPControlTypeStr(enum IP_CONTROL _ipControlType) const;
   enum IP_TYPE getIPType(std::string& _sIPType) const;
+  enum IP_CONTROL getIPControlType(std::string& _sIPControlType) const;
 
  private:
   // Purposefully private and undefined ctors...

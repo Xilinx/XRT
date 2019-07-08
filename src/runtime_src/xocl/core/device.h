@@ -218,6 +218,15 @@ public:
 
 public:
   /**
+   * @return Minimum buffer alignment in bytes
+   */
+  size_t
+  get_alignment() const
+  {
+    return m_xdevice ? m_xdevice->getAlignment() : getpagesize();
+  }
+
+  /**
    * Check if memory is aligned per device requirement.
    *
    * Default is page size if no backing xrt device
@@ -228,8 +237,7 @@ public:
   bool
   is_aligned_ptr(void* p) const
   {
-    auto alignment = m_xdevice ? m_xdevice->getAlignment() : getpagesize();
-    return p && (reinterpret_cast<uintptr_t>(p) % alignment)==0;
+    return p && (reinterpret_cast<uintptr_t>(p) % get_alignment())==0;
   }
 
   /**
@@ -301,6 +309,17 @@ public:
    */
   void
   free(const memory* mem);
+
+  /**
+   * Check if buffer is imported to this device
+   *
+   * If the buffer is allocated on this device, then check if the
+   * corresponding buffer object is an imported buffer object
+   *
+   * @return: true if imported, false otherwise
+   */
+  bool
+  is_imported(const memory* mem) const;
 
   /**
    * Get memory addr for the given boh
@@ -476,10 +495,10 @@ public:
   close_stream(xrt::device::stream_handle stream, int connidx);
 
   ssize_t
-  write_stream(xrt::device::stream_handle stream, const void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_req* req);
+  write_stream(xrt::device::stream_handle stream, const void* ptr, size_t size, xrt::device::stream_xfer_req* req);
 
   ssize_t
-  read_stream(xrt::device::stream_handle stream, void* ptr, size_t offset, size_t size, xrt::device::stream_xfer_req* req);
+  read_stream(xrt::device::stream_handle stream, void* ptr, size_t size, xrt::device::stream_xfer_req* req);
 
   xrt::device::stream_buf
   alloc_stream_buf(size_t size, xrt::device::stream_buf_handle* handle);
@@ -555,6 +574,13 @@ public:
    */
   xclbin
   get_xclbin() const;
+
+  /**
+   * @return
+   *  AXLF top
+   */
+  const axlf*
+  get_axlf() const;
 
   /**
    * Check if this device is active, meaning it is programmed

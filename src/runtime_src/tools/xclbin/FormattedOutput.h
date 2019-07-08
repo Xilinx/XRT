@@ -20,8 +20,8 @@
 // ----------------------- I N C L U D E S -----------------------------------
 #include <string>
 #include <vector>
-#include <xclbin.h>
 #include <boost/property_tree/ptree.hpp>
+#include "xclbin.h"
 
 
 // #includes here - please keep these to a bare minimum!

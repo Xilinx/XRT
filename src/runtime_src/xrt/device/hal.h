@@ -23,9 +23,10 @@
 #include "xrt/util/range.h"
 #include "xrt/util/uuid.h"
 
-#include "driver/include/xclperf.h"
-#include "driver/include/xcl_app_debug.h"
-#include "driver/include/stream.h"
+#include "xclperf.h"
+#include "xcl_app_debug.h"
+#include "stream.h"
+#include "ert.h"
 
 #include <memory>
 #include <string>
@@ -152,7 +153,8 @@ public:
     ,XRT_DEVICE_PREALLOCATED_BRAM
     ,XRT_SHARED_VIRTUAL
     ,XRT_SHARED_PHYSICAL
-    ,XRT_DEVICE_P2P_RAM
+    ,XRT_DEVICE_ONLY_MEM_P2P
+    ,XRT_DEVICE_ONLY_MEM
   };
 
   virtual bool
@@ -243,6 +245,10 @@ public:
   copy(const BufferObjectHandle& dst_bo, const BufferObjectHandle& src_bo, size_t sz,
        size_t dst_offset, size_t src_offset) = 0;
 
+  virtual void
+  fill_copy_pkt(const BufferObjectHandle& dst_boh, const BufferObjectHandle& src_boh
+                ,size_t sz, size_t dst_offset, size_t src_offset,ert_start_copybo_cmd* pkt) = 0;
+
   virtual size_t
   read_register(size_t offset, void* buffer, size_t size) = 0;
 
@@ -290,15 +296,23 @@ public:
   freeStreamBuf(hal::StreamBufHandle buf) = 0;
 
   virtual ssize_t
-  writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferReq* req ) = 0;
+  writeStream(hal::StreamHandle stream, const void* ptr, size_t size, hal::StreamXferReq* req ) = 0;
 
   virtual ssize_t
-  readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferReq* req) = 0;
+  readStream(hal::StreamHandle stream, void* ptr, size_t size, hal::StreamXferReq* req) = 0;
 
   virtual int
   pollStreams(StreamXferCompletions* comps, int min, int max, int* actual, int timeout) = 0;
 
 public:
+  /**
+   * @returns
+   *   True of this buffer object is imported from another device,
+   *   false otherwise
+   */
+  virtual bool
+  is_imported(const BufferObjectHandle& boh) const = 0;
+
   /**
    * @returns
    *   The device address of a buffer object
@@ -579,6 +593,12 @@ public:
     return operations_result<void>();
   }
 
+  virtual operations_result<void>
+  configureDataflow(xclPerfMonType, unsigned *ip_config)
+  {
+    return operations_result<void>();
+  }
+
   virtual operations_result<size_t>
   startCounters(xclPerfMonType)
   {
@@ -603,8 +623,17 @@ public:
     return operations_result<size_t>();
   }
 
+  virtual operations_result<std::string>
+  getSysfsPath(const std::string& subdev, const std::string& entry)
+  {
+    return operations_result<std::string>();
+  }
+
   virtual task::queue*
   getQueue(hal::queue_type qt) {return nullptr; }
+
+  virtual void*
+  getHalDeviceHandle() {return nullptr;}
 };
 
 

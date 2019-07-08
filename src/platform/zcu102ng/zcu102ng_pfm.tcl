@@ -4,6 +4,9 @@ system -name xrt -display-name "A53 OpenCL Linux" -boot ./src/boot  -readme ./sr
 domain -name xrt -proc psu_cortexa53 -os linux -image ./src/a53/xrt/image
 sysconfig config -bif ./src/a53/xrt/linux.bif
 domain -runtime opencl
-domain -prebuilt-data ./src/prebuilt
+domain -pmuqemu-args ./src/qemu/lnx/pmu_args.txt
+domain -qemu-args ./src/qemu/lnx/qemu_args.txt
+domain -qemu-data ./src/boot
+domain -sysroot ./src/aarch64-xilinx-linux
 
 platform -generate

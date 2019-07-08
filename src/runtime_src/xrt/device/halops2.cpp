@@ -58,6 +58,7 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mGetProfilingSlotName(0)
   ,mGetProfilingSlotProperties(0)
   ,mClockTraining(0)
+  ,mConfigureDataflow(0)
   ,mStartCounters(0)
   ,mStopCounters(0)
   ,mReadCounters(0)
@@ -75,6 +76,8 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mWriteQueue(0)
   ,mReadQueue(0)
   ,mPollQueues(0)
+  ,mGetNumLiveProcesses(0)
+  ,mGetSysfsPath(0)
 {
   mProbe = (probeFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclProbe");
   if (!mProbe)
@@ -151,6 +154,7 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mGetProfilingSlotProperties = (getSlotPropertiesFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetProfilingSlotProperties");
   mWriteHostEvent = (writeHostEventFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclWriteHostEvent");
   mClockTraining = (clockTrainingFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonClockTraining");
+  mConfigureDataflow = (configureDataflowFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonConfigureDataflow");
   mStartCounters = (startCountersFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonStartCounters");
   mStopCounters = (stopCountersFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonStopCounters");
   mReadCounters = (readCountersFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonReadCounters");
@@ -161,6 +165,9 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mWriteHostEvent = (writeHostEventFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclWriteHostEvent");
   mDebugReadIPStatus = (debugReadIPStatusFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclDebugReadIPStatus");
 
+  // APIs using sysfs
+  mGetNumLiveProcesses = (xclGetNumLiveProcessesFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetNumLiveProcesses");
+  mGetSysfsPath = (xclGetSysfsPathFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetSysfsPath");
 }
 
 operations::

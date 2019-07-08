@@ -1,3 +1,8 @@
+
+# Note: Add Windows compilation directives at the END of this file
+
+if( NOT WIN32)
+
 if(${CMAKE_BUILD_TYPE} STREQUAL "Release" AND ${XRT_NATIVE_BUILD} STREQUAL "yes")
   add_subdirectory(doc)
 endif()
@@ -15,13 +20,12 @@ add_library(xilinxopencl SHARED ${OPENCL_SRC}
   $<TARGET_OBJECTS:xocl>
   $<TARGET_OBJECTS:xrt>
   $<TARGET_OBJECTS:xclbin>
-  $<TARGET_OBJECTS:impl>
   )
 
 add_library(oclxdp SHARED ${OPENCL_SRC}
   $<TARGET_OBJECTS:xdpobj>
   )
-add_dependencies(oclxdp xilinxopencl)
+add_dependencies(oclxdp xdp xilinxopencl)
 
 option(XOCL_VERBOSE "Enable xocl verbosity" OFF)
 option(XRT_VERBOSE "Enable xrt verbosity" OFF)
@@ -48,23 +52,40 @@ add_subdirectory(xdp)
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   add_subdirectory(tools/xclbin)
 endif()
-add_subdirectory(impl)
 add_subdirectory(xclbin)
 add_subdirectory(xocl)
 add_subdirectory(xrt)
 add_subdirectory(ert)
-add_subdirectory(tools/scripts)
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  # Only for host native build.
+  # For embedded, headers and libraries are installed in /usr
+  # Not requeired setup.sh/.csh
+  add_subdirectory(tools/scripts)
+endif()
 
-set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")
+# Attach to the user's linker flags
+set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-Bsymbolic")
+set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,defs")
 
-set_target_properties(xilinxopencl PROPERTIES VERSION ${XRT_VERSION_STRING}
-  SOVERSION ${XRT_SOVERSION})
+set_target_properties(xilinxopencl PROPERTIES
+  VERSION ${XRT_VERSION_STRING}
+  SOVERSION ${XRT_SOVERSION}
+  INSTALL_RPATH $ORIGIN
+  )
 
 target_link_libraries(oclxdp
+  xdp
   xilinxopencl
  )
 
+set_target_properties(oclxdp PROPERTIES VERSION ${XRT_VERSION_STRING}
+  SOVERSION ${XRT_SOVERSION})
+
+set_target_properties(xdp PROPERTIES VERSION ${XRT_VERSION_STRING}
+  SOVERSION ${XRT_SOVERSION})
+
 target_link_libraries(xilinxopencl
+  xrt_coreutil
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
   dl
@@ -76,4 +97,24 @@ target_link_libraries(xilinxopencl
 
 install (TARGETS xilinxopencl oclxdp LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
 
-add_subdirectory(driver)
+add_subdirectory(core)
+
+
+else()
+# = WINDOWS ===================================================================
+
+  # Enable ALL warnings and make them errors if they occur
+  if (MSVC)
+    # warning level 4 and all warnings are errors
+    add_compile_options(/W4 /WX)
+  else()
+    # lots of warnings and all warnings as errors
+    # add_compile_options(-Wall -Wextra -pedantic -Werror)
+    add_compile_options("-Wall" "-Werror")
+  endif()
+
+
+  # Build Subdirectories
+  add_subdirectory(tools/xclbin)
+endif()
+
