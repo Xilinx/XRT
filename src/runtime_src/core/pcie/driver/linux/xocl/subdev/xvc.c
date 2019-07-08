@@ -31,8 +31,6 @@
 
 /* IOCTL interfaces */
 #define XIL_XVC_MAGIC 0x58564344  // "XVCD"
-#define	MINOR_PUB_HIGH_BIT	0x00000
-#define	MINOR_PRI_HIGH_BIT	0x10000
 #define MINOR_NAME_MASK		0xffffffff
 
 enum xvc_algo_type {
@@ -72,12 +70,7 @@ struct xil_xvc_properties {
 
 struct xocl_xvc {
 	void *__iomem base;
-	unsigned int instance;
-	struct cdev *sys_cdev;
-	struct device *sys_device;
 };
-
-static dev_t xvc_dev;
 
 static struct xil_xvc_properties xvc_pci_props;
 
@@ -340,6 +333,8 @@ static int xvc_probe(struct platform_device *pdev)
 	struct xocl_xvc *xvc;
 	struct resource *res;
 	struct xocl_dev_core *core;
+	int bar_idx;
+	resource_size_t bar_off;
 	int err;
 
 	xvc = xocl_drvinst_alloc(&pdev->dev, sizeof(*xvc));
@@ -356,48 +351,23 @@ static int xvc_probe(struct platform_device *pdev)
 
 	core = xocl_get_xdev(pdev);
 
-	xvc->sys_cdev = cdev_alloc();
-	xvc->sys_cdev->ops = &xvc_fops;
-	xvc->sys_cdev->owner = THIS_MODULE;
-	xvc->instance = XOCL_DEV_ID(core->pdev) |
-		platform_get_device_id(pdev)->driver_data;
-	xvc->sys_cdev->dev = MKDEV(MAJOR(xvc_dev), core->dev_minor);
-	err = cdev_add(xvc->sys_cdev, xvc->sys_cdev->dev, 1);
+	err = xocl_ioaddr_to_baroff(core, res->start, &bar_idx, &bar_off);
 	if (err) {
-		xocl_err(&pdev->dev, "cdev_add failed, %d", err);
+		xocl_err(&pdev->dev, "failed to get bar info %d", err);
 		goto failed;
 	}
-
-	xvc->sys_device = device_create(xrt_class, &pdev->dev,
-					xvc->sys_cdev->dev,
-					NULL, "%s%d",
-					platform_get_device_id(pdev)->name,
-					xvc->instance & MINOR_NAME_MASK);
-	if (IS_ERR(xvc->sys_device)) {
-		err = PTR_ERR(xvc->sys_device);
-		goto failed;
-	}
-
-	xocl_drvinst_set_filedev(xvc, xvc->sys_cdev);
-
-	platform_set_drvdata(pdev, xvc);
-	xocl_info(&pdev->dev, "XVC device instance %d initialized\n",
-		xvc->instance);
-
 	// Update PCIe BAR properties in a global structure
 	xvc_pci_props.xvc_algo_type   = XVC_ALGO_BAR;
 	xvc_pci_props.config_vsec_id  = 0;
 	xvc_pci_props.config_vsec_rev = 0;
-	xvc_pci_props.bar_index	      = core->bar_idx;
-	xvc_pci_props.bar_offset      = (unsigned int) res->start - (unsigned int)
-		pci_resource_start(core->pdev, core->bar_idx);
+	xvc_pci_props.bar_index	      = bar_idx;
+	xvc_pci_props.bar_offset      = bar_off;
+
+	platform_set_drvdata(pdev, xvc);
+	xocl_info(&pdev->dev, "XVC device instance initialized\n");
 
 	return 0;
 failed:
-	if (!IS_ERR(xvc->sys_device))
-		device_destroy(xrt_class, xvc->sys_cdev->dev);
-	if (xvc->sys_cdev)
-		cdev_del(xvc->sys_cdev);
 	if (xvc->base)
 		iounmap(xvc->base);
 	xocl_drvinst_free(xvc);
@@ -415,8 +385,6 @@ static int xvc_remove(struct platform_device *pdev)
 		xocl_err(&pdev->dev, "driver data is NULL");
 		return -EINVAL;
 	}
-	device_destroy(xrt_class, xvc->sys_cdev->dev);
-	cdev_del(xvc->sys_cdev);
 	if (xvc->base)
 		iounmap(xvc->base);
 
@@ -426,9 +394,21 @@ static int xvc_remove(struct platform_device *pdev)
 	return 0;
 }
 
+struct xocl_drv_private xvc_pub = {
+	.ops = NULL,
+	.fops = &xvc_fops,
+	.dev = -1,
+};
+
+struct xocl_drv_private xvc_pri = {
+	.ops = NULL,
+	.fops = &xvc_fops,
+	.dev = -1,
+};
+
 struct platform_device_id xvc_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_XVC_PUB), MINOR_PUB_HIGH_BIT },
-	{ XOCL_DEVNAME(XOCL_XVC_PRI), MINOR_PRI_HIGH_BIT },
+	{ XOCL_DEVNAME(XOCL_XVC_PUB), (kernel_ulong_t)&xvc_pub },
+	{ XOCL_DEVNAME(XOCL_XVC_PRI), (kernel_ulong_t)&xvc_pri },
 	{ },
 };
 
@@ -445,9 +425,11 @@ int __init xocl_init_xvc(void)
 {
 	int err = 0;
 
-	err = alloc_chrdev_region(&xvc_dev, 0, XOCL_MAX_DEVICES, XVC_DEV_NAME);
+	err = alloc_chrdev_region(&xvc_pub.dev, 0, XOCL_MAX_DEVICES,
+			XVC_DEV_NAME);
 	if (err < 0)
 		goto err_register_chrdev;
+	xvc_pri.dev = xvc_pub.dev;
 
 	err = platform_driver_register(&xvc_driver);
 	if (err)
@@ -455,13 +437,13 @@ int __init xocl_init_xvc(void)
 	return 0;
 
 err_driver_reg:
-	unregister_chrdev_region(xvc_dev, XOCL_MAX_DEVICES);
+	unregister_chrdev_region(xvc_pub.dev, XOCL_MAX_DEVICES);
 err_register_chrdev:
 	return err;
 }
 
 void xocl_fini_xvc(void)
 {
-	unregister_chrdev_region(xvc_dev, XOCL_MAX_DEVICES);
+	unregister_chrdev_region(xvc_pub.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&xvc_driver);
 }

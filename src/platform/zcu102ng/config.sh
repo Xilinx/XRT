@@ -20,12 +20,16 @@ TEMPLATE=zynqMP
 # This would be helpful when you want to use some resources in XRT repo
 
 # The first argument is the petalinux configure file
-#  config_peta <petalinux_project>/project-pec/configs/config
+#  config_peta <petalinux_project>/project-spec/configs/config
 #
 #config_peta()
 #{
 #	PETA_CONFIG_FILE=$1
+#	# Enable debug tweaks would avoid enter user name and password at boot time
 #	echo "CONFIG_YOCTO_ENABLE_DEBUG_TWEAKS=y" >> $PETA_CONFIG_FILE
+#	# Specify TMP directory. This will be useful when the petalinux project is on NFS
+#	# PetaLinux required TMP directory on a local drive
+#	echo 'CONFIG_TMP_DIR_LOCATION="/scratch/tmp"' >> $PETA_CONFIG_FILE
 #}
 
 # The first argument is the linux kernel configure file

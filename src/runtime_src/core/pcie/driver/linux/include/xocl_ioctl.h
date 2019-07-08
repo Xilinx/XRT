@@ -169,11 +169,6 @@ enum drm_xocl_sync_bo_dir {
 #define DRM_XOCL_BO_BANK2   (0x1 << 2)
 #define DRM_XOCL_BO_BANK3   (0x1 << 3)
 
-#define DRM_XOCL_BO_IMPORT  (0x1 << 28)
-#define DRM_XOCL_BO_CMA     (0x1 << 29)
-#define DRM_XOCL_BO_P2P     (0x1 << 30)
-#define DRM_XOCL_BO_EXECBUF (0x1 << 31)
-
 #define DRM_XOCL_CTX_FLAG_EXCLUSIVE (0x1)
 
 

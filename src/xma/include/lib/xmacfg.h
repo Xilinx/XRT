@@ -22,7 +22,7 @@
 #include <stdint.h>
 #include <limits.h>
 
-#include "lib/xmalimits.h"
+#include "lib/xmalimits_lib.h"
 
 #ifdef __cplusplus
 extern "C" {

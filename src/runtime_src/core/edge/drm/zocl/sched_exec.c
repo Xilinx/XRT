@@ -415,7 +415,7 @@ write_cu_regmap(u32 *reg_data, u32 *base_addr, u32 size)
 
 /*
  * This is the timer thread function. In the case that a CU timeout
- * value is intialized, we start a timer thread. This thread wakes
+ * value is initialized, we start a timer thread. This thread wakes
  * up every ZOCL_CU_TIMER_INTERVAL (500) Milliseconds. And each time,
  * it sets a flag in scheduler and wakes up scheduler so that scheduler
  * can check if a CU timeouts.
@@ -1352,6 +1352,16 @@ scu_unconfig_done(struct sched_cmd *cmd)
 	return true;
 }
 
+static inline int
+dma_done(struct sched_cmd *cmd)
+{
+	if (cmd->dma_handle.dma_flags & ZOCL_DMA_DONE) {
+		cmd->dma_handle.dma_flags &= ~ZOCL_DMA_DONE;
+		return true;
+	}
+	return false;
+}
+
 /**
  * notify_host() - Notify user space that a command is complete.
  */
@@ -1385,6 +1395,29 @@ notify_host(struct sched_cmd *cmd)
 }
 
 /**
+ * Note: zocl copy bo will use built-in dma without
+ * using any real ERT CU kernel, we will need to increase
+ * the poll count to wake up scheduler when dma is done
+ */
+static inline void
+polling_cnt_inc(struct sched_cmd *cmd)
+{
+	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	if (zdev->ert || zdev->exec->polling_mode ||
+	    (opcode(cmd) == ERT_START_COPYBO))
+		++cmd->sched->poll;
+}
+
+static inline void
+polling_cnt_dec(struct sched_cmd *cmd)
+{
+	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	if (zdev->ert || zdev->exec->polling_mode ||
+	    (opcode(cmd) == ERT_START_COPYBO))
+		--cmd->sched->poll;
+}
+
+/**
  * mark_cmd_complete() - Move a command to complete state
  *
  * Commands are marked complete in two ways
@@ -1407,11 +1440,22 @@ mark_cmd_complete(struct sched_cmd *cmd, enum ert_cmd_state cmd_state)
 	SCHED_DEBUG("-> mark_cmd_complete(,%d)\n", cmd->slot_idx);
 	zdev->exec->submitted_cmds[cmd->slot_idx] = NULL;
 	set_cmd_state(cmd, cmd_state);
-	if (zdev->ert || zdev->exec->polling_mode)
-		--cmd->sched->poll;
+	polling_cnt_dec(cmd);
 	release_slot_idx(cmd->ddev, cmd->slot_idx);
 	notify_host(cmd);
 	SCHED_DEBUG("<- mark_cmd_complete\n");
+}
+
+/**
+ * During cmd submit within queued_to_running, we need to handle cases that
+ * submit failed then we want to bail out this cmd by setting it as ERROR.
+ * we will need to notify host as well.
+ */
+static void
+mark_cmd_submit_error(struct sched_cmd *cmd)
+{
+	set_cmd_state(cmd, ERT_CMD_STATE_ERROR);
+	notify_host(cmd);
 }
 
 /**
@@ -1436,6 +1480,7 @@ get_free_sched_cmd(void)
 		cmd = kmalloc(sizeof(struct sched_cmd), GFP_KERNEL);
 	if (!cmd)
 		return ERR_PTR(-ENOMEM);
+	memset(&cmd->dma_handle, 0, sizeof(zocl_dma_handle_t));
 	SCHED_DEBUG("<- get_free_sched_cmd %p\n", cmd);
 	return cmd;
 }
@@ -1899,8 +1944,7 @@ queued_to_running(struct sched_cmd *cmd)
 
 	if (zdev->exec->ops->submit(cmd)) {
 		set_cmd_int_state(cmd, ERT_CMD_STATE_RUNNING);
-		if (zdev->ert || zdev->exec->polling_mode)
-			++cmd->sched->poll;
+		polling_cnt_inc(cmd);
 		zdev->exec->submitted_cmds[cmd->slot_idx] = cmd;
 		retval = true;
 	}
@@ -1935,6 +1979,7 @@ running_to_complete(struct sched_cmd *cmd)
 static void
 complete_to_free(struct sched_cmd *cmd)
 {
+
 	SCHED_DEBUG("-> complete_to_free\n");
 	cmd->free_buffer(cmd);
 	recycle_cmd(cmd);
@@ -1996,6 +2041,7 @@ scheduler_iterate_cmds(struct scheduler *sched)
 			zocl_cu_reset(cmd);
 		if (cmd->state == ERT_CMD_STATE_COMPLETED ||
 		    cmd->state == ERT_CMD_STATE_TIMEOUT ||
+		    cmd->state == ERT_CMD_STATE_ERROR ||
 		    cmd->state == ERT_CMD_STATE_NORESPONSE)
 			complete_to_free(cmd);
 	}
@@ -2173,23 +2219,95 @@ static void
 penguin_query(struct sched_cmd *cmd)
 {
 	u32 opc = opcode(cmd);
+	bool cmd_complete = false;
 
 	SCHED_DEBUG("-> penguin_queury() slot_idx=%d\n", cmd->slot_idx);
 	switch (opc) {
-
+	case ERT_START_COPYBO:
+		if (dma_done(cmd))
+			cmd_complete = true;
+		break;
 	case ERT_START_CU:
-		if (!cu_done(cmd))
-			break;
-
+		if (cu_done(cmd))
+			cmd_complete = true;
+		break;
 	case ERT_INIT_CU:
 	case ERT_CONFIGURE:
-		mark_cmd_complete(cmd, ERT_CMD_STATE_COMPLETED);
+		cmd_complete = true;
 		break;
-
 	default:
 		SCHED_DEBUG("unknown op");
 	}
+
+	if (cmd_complete)
+		mark_cmd_complete(cmd, ERT_CMD_STATE_COMPLETED);
+
 	SCHED_DEBUG("<- penguin_queury\n");
+}
+
+/**
+ * callback function provided to the dma engine, when dma complete
+ * this function will be called. scheduler should have the knowledge
+ * to update its internal status.
+ */
+static void zocl_dma_complete(void *arg)
+{
+	struct sched_cmd *cmd = (struct sched_cmd *)arg;
+	cmd->dma_handle.dma_flags |= ZOCL_DMA_DONE;
+
+	wake_up_interruptible(&cmd->sched->wait_queue);
+}
+
+static int
+zocl_dma_channel_instance(zocl_dma_handle_t *dma_handle,
+    struct drm_zocl_dev *zdev)
+{
+	dma_cap_mask_t dma_mask;
+
+	if (!dma_handle->dma_chan && ZOCL_PLATFORM_ARM64) {
+		/* If zdev_dma_chan is NULL, we haven't initialized it yet. */
+		if (!zdev->zdev_dma_chan) {
+			dma_cap_zero(dma_mask);
+			dma_cap_set(DMA_MEMCPY, dma_mask);
+			zdev->zdev_dma_chan =
+			    dma_request_channel(dma_mask, 0, NULL);
+			if (!zdev->zdev_dma_chan) {
+				DRM_WARN("no DMA Channel available.\n");
+				return -EBUSY;
+			}
+		}
+		dma_handle->dma_chan = zdev->zdev_dma_chan;
+	}
+
+	return dma_handle->dma_chan ? 0 : -EINVAL;
+}
+
+static int
+zocl_copy_bo_submit(struct sched_cmd *cmd)
+{
+	struct ert_start_copybo_cmd *ecmd = cmd->ert_cp;
+	struct drm_file *filp = (struct drm_file *)ecmd->arg;
+	struct drm_device *ddev = cmd->ddev;
+	struct drm_zocl_dev *zdev = ddev->dev_private;
+	zocl_dma_handle_t *dma_handle = &cmd->dma_handle;
+	struct drm_zocl_copy_bo args = {
+		.dst_handle = ecmd->dst_bo_hdl,
+		.src_handle = ecmd->src_bo_hdl,
+		.size = ert_copybo_size(ecmd),
+		.dst_offset = ert_copybo_dst_offset(ecmd),
+		.src_offset = ert_copybo_src_offset(ecmd),
+	};
+	int err = 0;
+
+	/* Get single dma channel instance. */
+	if ((err = zocl_dma_channel_instance(dma_handle, zdev)) != 0)
+		return err;
+
+	/* We must set up callback for async dma operations. */
+	dma_handle->dma_func = zocl_dma_complete;
+	dma_handle->dma_arg = cmd;
+
+	return zocl_copy_bo_async(ddev, filp, dma_handle, &args);
 }
 
 /**
@@ -2209,6 +2327,20 @@ static int
 penguin_submit(struct sched_cmd *cmd)
 {
 	SCHED_DEBUG("-> penguin_submit\n");
+
+	/**
+	 * copy bo will be handled as ert command via execbuf. If submission
+	 * failed, we should bail out and notify polling waiters.
+	 */
+	if (opcode(cmd) == ERT_START_COPYBO) {
+		if (zocl_copy_bo_submit(cmd) != 0) {
+			mark_cmd_submit_error(cmd);
+			return false;
+		} else {
+			cmd->slot_idx = acquire_slot_idx(cmd->ddev);
+			return true;
+		}
+	}
 
 	if (opcode(cmd) == ERT_CONFIGURE) {
 		cmd->slot_idx = acquire_slot_idx(cmd->ddev);
@@ -2389,6 +2521,31 @@ static struct sched_ops ps_ert_ops = {
 };
 
 /**
+ * Only process ERT_START_COPYBO command.
+ * On MPSoC ARM64 platforms, the DMA engine is not a real HLS CU,
+ * thus the cmd->arg is not being used. We use it to preserve the
+ * filp.
+ */
+static bool
+zocl_execbuf_to_ert(struct drm_zocl_bo *bo, struct drm_file *filp)
+{
+	struct ert_start_copybo_cmd *scmd =
+	    (struct ert_start_copybo_cmd *)bo->cma_base.vaddr;
+
+	if (scmd->opcode != ERT_START_COPYBO)
+		return true;
+
+	if (!ZOCL_PLATFORM_ARM64) {
+		DRM_WARN("only support built-in copybo for ARM64");
+		return false;
+	}
+
+	/* preserve filp for looking up bo */
+	scmd->arg = filp;
+	return true;
+}
+
+/**
  * zocl_execbuf_ioctl() - Entry point for exec buffer.
  *
  * @dev: Device node calling execbuf
@@ -2416,7 +2573,7 @@ zocl_execbuf_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	}
 
 	zocl_bo = to_zocl_bo(gem_obj);
-	if (!zocl_bo_execbuf(zocl_bo)) {
+	if (!zocl_bo_execbuf(zocl_bo) || !zocl_execbuf_to_ert(zocl_bo, filp)) {
 		ret = -EINVAL;
 		goto out;
 	}

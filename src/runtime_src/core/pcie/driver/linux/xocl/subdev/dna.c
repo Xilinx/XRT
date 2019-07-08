@@ -446,7 +446,6 @@ static int xlnx_dna_probe(struct platform_device *pdev)
 		goto create_xlnx_dna_failed;
 
 	xlnx_dna->cache_expire_secs = XLNX_DNA_DEFAULT_EXPIRE_SECS;
-	xocl_subdev_register(pdev, XOCL_SUBDEV_DNA, &dna_ops);
 
 	return 0;
 
@@ -478,8 +477,12 @@ static int xlnx_dna_remove(struct platform_device *pdev)
 	return 0;
 }
 
+struct xocl_drv_private dna_priv = {
+	.ops = &dna_ops,
+};
+
 struct platform_device_id xlnx_dna_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_DNA), 0 },
+	{ XOCL_DEVNAME(XOCL_DNA), (kernel_ulong_t)&dna_priv },
 	{ },
 };
 
