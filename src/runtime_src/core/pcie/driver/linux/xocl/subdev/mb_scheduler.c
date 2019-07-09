@@ -1149,6 +1149,12 @@ struct exec_core {
 	struct exec_ops		   *ops;
 
 	unsigned int		   uid;
+
+	/*
+	 * For each CU, ip_reference contains either number of shared users
+	 * when the MSB is not set, or the PID of the process that exclusively
+	 * reserved it when MSB is set.
+	 */
 	unsigned int		   ip_reference[MAX_CUS];
 };
 
