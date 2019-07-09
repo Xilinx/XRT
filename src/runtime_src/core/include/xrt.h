@@ -1033,7 +1033,29 @@ XCL_DRIVER_DLLESPEC int xclPollCompletion(xclDeviceHandle handle, int min_compl,
 
 XCL_DRIVER_DLLESPEC const struct axlf_section_header* wrap_get_axlf_section(const struct axlf* top, enum axlf_section_kind kind);
 
-/* XRT Stream Queue APIs */
+/**
+ * xclRegRead() - Read register in register space of a CU
+ *
+ * @handle:        Device handle
+ * @cu_index:      CU index
+ * @offset:        Offset in the register space
+ * @datap:         Pointer to where result will be saved
+ * Return:         0 or appropriate error number
+ *
+ */
+XCL_DRIVER_DLLESPEC int xclRegRead(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t *datap);
+
+/**
+ * xclRegWRite() - Write to register in register space of a CU
+ *
+ * @handle:        Device handle
+ * @cu_index:      CU index
+ * @offset:        Offset in the register space
+ * @datap:         Data to be written
+ * Return:         0 or appropriate error number
+ *
+ */
+XCL_DRIVER_DLLESPEC int xclRegWrite(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t data);
 
 /**
  * DOC: Performance Monitoring Operations

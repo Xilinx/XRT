@@ -47,6 +47,11 @@
  * is used to wait for finished commands. Commands for a compute unit can only be submitted after an explicit
  * context has been opened by the client.
  *
+ * "xocl" driver allows user land to perform mmap on multiple entities distinguished by offset:
+ * - page offset == 0: whole user BAR is mapped
+ * - page offset > 0 and <= 128: one CU reg space is mapped, offset is used as CU index
+ * - page offset >= (4G >> PAGE_SHIFT): one BO is mapped, offset should be obtained from drm_xocl_map_bo()
+ *
  * *xocl* driver functionality is described in the following table. All the APIs are multi-threading and
  * multi-process safe.
  *
@@ -74,8 +79,6 @@
  *      interrupt
  * 13   Update device view with a specific     DRM_XOCL_READ_AXLF             drm_xocl_axlf
  *      xclbin image
- * 14   Write buffer from device to peer FPGA  DRM_IOCTL_XOCL_COPY_BO         drm_xocl_copy_bo
- *      buffer
  * ==== ====================================== ============================== ==================================
  */
 
@@ -150,8 +153,6 @@ enum drm_xocl_ops {
 	DRM_XOCL_HOT_RESET,
 	/* Reclock through userpf*/
 	DRM_XOCL_RECLOCK,
-	/* Mailbox Tx*/
-	DRM_XOCL_SW_MAILBOX,
 	DRM_XOCL_NUM_IOCTLS
 };
 
@@ -304,8 +305,8 @@ struct drm_xocl_pread_bo {
 };
 
 enum drm_xocl_ctx_code {
-        XOCL_CTX_OP_ALLOC_CTX = 0,
-        XOCL_CTX_OP_FREE_CTX
+	XOCL_CTX_OP_ALLOC_CTX = 0,
+	XOCL_CTX_OP_FREE_CTX
 };
 
 #define	XOCL_CTX_SHARED		0x0
@@ -404,26 +405,26 @@ struct drm_xocl_usage_stat {
 };
 
 enum drm_xocl_debug_code {
-        DRM_XOCL_DEBUG_ACQUIRE_CU = 0,
-        DRM_XOCL_DEBUG_RELEASE_CU,
-        DRM_XOCL_DEBUG_NIFD_RD,
-        DRM_XOCL_DEBUG_NIFD_WR,
+	DRM_XOCL_DEBUG_ACQUIRE_CU = 0,
+	DRM_XOCL_DEBUG_RELEASE_CU,
+	DRM_XOCL_DEBUG_NIFD_RD,
+	DRM_XOCL_DEBUG_NIFD_WR,
 };
 
 struct drm_xocl_debug {
-        uint32_t ctx_id;
+	uint32_t ctx_id;
 	enum drm_xocl_debug_code code;
 	unsigned int code_size;
-        uint64_t code_ptr;
+	uint64_t code_ptr;
 };
 
 enum drm_xocl_execbuf_state {
-        DRM_XOCL_EXECBUF_STATE_COMPLETE = 0,
-        DRM_XOCL_EXECBUF_STATE_RUNNING,
-        DRM_XOCL_EXECBUF_STATE_SUBMITTED,
-        DRM_XOCL_EXECBUF_STATE_QUEUED,
-        DRM_XOCL_EXECBUF_STATE_ERROR,
-        DRM_XOCL_EXECBUF_STATE_ABORT,
+	DRM_XOCL_EXECBUF_STATE_COMPLETE = 0,
+	DRM_XOCL_EXECBUF_STATE_RUNNING,
+	DRM_XOCL_EXECBUF_STATE_SUBMITTED,
+	DRM_XOCL_EXECBUF_STATE_QUEUED,
+	DRM_XOCL_EXECBUF_STATE_ERROR,
+	DRM_XOCL_EXECBUF_STATE_ABORT,
 };
 
 
@@ -437,9 +438,9 @@ enum drm_xocl_execbuf_state {
  *                  for automatic event dependency handling by ERT
  */
 struct drm_xocl_execbuf {
-        uint32_t ctx_id;
-        uint32_t exec_bo_handle;
-        uint32_t deps[8];
+	uint32_t ctx_id;
+	uint32_t exec_bo_handle;
+	uint32_t deps[8];
 };
 
 /**
@@ -451,53 +452,40 @@ struct drm_xocl_execbuf {
  * @msix:	   User interrupt number (0 to 15)
  */
 struct drm_xocl_user_intr {
-        uint32_t ctx_id;
-        int fd;
-        int msix;
+	uint32_t ctx_id;
+	int fd;
+	int msix;
 };
 
 struct drm_xocl_reclock_info {
-  unsigned region;
-  unsigned short ocl_target_freq[DRM_XOCL_NUM_SUPPORTED_CLOCKS];
+	unsigned region;
+	unsigned short ocl_target_freq[DRM_XOCL_NUM_SUPPORTED_CLOCKS];
 };
 
 /*
  * Core ioctls numbers
  */
+#define	XOCL_IOC(cmd)		\
+	DRM_IO(DRM_COMMAND_BASE + DRM_XOCL_##cmd)
+#define	XOCL_IOC_ARG(cmd, type)	\
+	DRM_IOWR(DRM_COMMAND_BASE + DRM_XOCL_##cmd, struct drm_xocl_##type)
+#define DRM_IOCTL_XOCL_CREATE_BO	XOCL_IOC_ARG(CREATE_BO, create_bo)
+#define DRM_IOCTL_XOCL_USERPTR_BO	XOCL_IOC_ARG(USERPTR_BO, userptr_bo)
+#define DRM_IOCTL_XOCL_MAP_BO		XOCL_IOC_ARG(MAP_BO, map_bo)
+#define DRM_IOCTL_XOCL_SYNC_BO		XOCL_IOC_ARG(SYNC_BO, sync_bo)
+#define DRM_IOCTL_XOCL_INFO_BO		XOCL_IOC_ARG(INFO_BO, info_bo)
+#define DRM_IOCTL_XOCL_PWRITE_BO	XOCL_IOC_ARG(PWRITE_BO, pwrite_bo)
+#define DRM_IOCTL_XOCL_PREAD_BO		XOCL_IOC_ARG(PWRITE_BO, pread_bo)
+#define DRM_IOCTL_XOCL_CTX		XOCL_IOC_ARG(CTX, ctx)
+#define DRM_IOCTL_XOCL_INFO		XOCL_IOC_ARG(INFO, info)
+#define DRM_IOCTL_XOCL_READ_AXLF	XOCL_IOC_ARG(READ_AXLF, axlf)
+#define DRM_IOCTL_XOCL_PWRITE_UNMGD	XOCL_IOC_ARG(PWRITE_UNMGD, pwrite_unmgd)
+#define DRM_IOCTL_XOCL_PREAD_UNMGD	XOCL_IOC_ARG(PREAD_UNMGD, pread_unmgd)
+#define DRM_IOCTL_XOCL_USAGE_STAT	XOCL_IOC_ARG(USAGE_STAT, usage_stat)
+#define DRM_IOCTL_XOCL_DEBUG		XOCL_IOC_ARG(DEBUG, debug)
+#define DRM_IOCTL_XOCL_EXECBUF		XOCL_IOC_ARG(EXECBUF, execbuf)
+#define DRM_IOCTL_XOCL_USER_INTR	XOCL_IOC_ARG(USER_INTR, user_intr)
+#define DRM_IOCTL_XOCL_HOT_RESET	XOCL_IOC(HOT_RESET)
+#define DRM_IOCTL_XOCL_RECLOCK		XOCL_IOC_ARG(USER_INTR, reclock_info)
 
-#define DRM_IOCTL_XOCL_CREATE_BO      DRM_IOWR(DRM_COMMAND_BASE +       \
-					       DRM_XOCL_CREATE_BO, struct drm_xocl_create_bo)
-#define DRM_IOCTL_XOCL_USERPTR_BO     DRM_IOWR(DRM_COMMAND_BASE +	\
-					       DRM_XOCL_USERPTR_BO, struct drm_xocl_userptr_bo)
-#define DRM_IOCTL_XOCL_MAP_BO	      DRM_IOWR(DRM_COMMAND_BASE +       \
-					       DRM_XOCL_MAP_BO, struct drm_xocl_map_bo)
-#define DRM_IOCTL_XOCL_SYNC_BO	      DRM_IOW (DRM_COMMAND_BASE +       \
-					       DRM_XOCL_SYNC_BO, struct drm_xocl_sync_bo)
-#define DRM_IOCTL_XOCL_INFO_BO	      DRM_IOWR(DRM_COMMAND_BASE +       \
-					       DRM_XOCL_INFO_BO, struct drm_xocl_info_bo)
-#define DRM_IOCTL_XOCL_PWRITE_BO      DRM_IOW (DRM_COMMAND_BASE +       \
-					       DRM_XOCL_PWRITE_BO, struct drm_xocl_pwrite_bo)
-#define DRM_IOCTL_XOCL_PREAD_BO	      DRM_IOWR(DRM_COMMAND_BASE +       \
-					       DRM_XOCL_PREAD_BO, struct drm_xocl_pread_bo)
-#define DRM_IOCTL_XOCL_CTX	      DRM_IOWR(DRM_COMMAND_BASE +       \
-					       DRM_XOCL_CTX, struct drm_xocl_ctx)
-#define DRM_IOCTL_XOCL_INFO	      DRM_IOR(DRM_COMMAND_BASE +        \
-					      DRM_XOCL_INFO, struct drm_xocl_info)
-#define DRM_IOCTL_XOCL_READ_AXLF      DRM_IOW(DRM_COMMAND_BASE +        \
-					      DRM_XOCL_READ_AXLF, struct drm_xocl_axlf)
-#define DRM_IOCTL_XOCL_PWRITE_UNMGD   DRM_IOW (DRM_COMMAND_BASE +	\
-					       DRM_XOCL_PWRITE_UNMGD, struct drm_xocl_pwrite_unmgd)
-#define DRM_IOCTL_XOCL_PREAD_UNMGD    DRM_IOWR(DRM_COMMAND_BASE +	\
-					       DRM_XOCL_PREAD_UNMGD, struct drm_xocl_pread_unmgd)
-#define DRM_IOCTL_XOCL_USAGE_STAT     DRM_IOR(DRM_COMMAND_BASE +	\
-					      DRM_XOCL_USAGE_STAT, struct drm_xocl_usage_stat)
-#define DRM_IOCTL_XOCL_DEBUG          DRM_IOWR(DRM_COMMAND_BASE +	\
-					       DRM_XOCL_DEBUG, struct drm_xocl_debug)
-#define DRM_IOCTL_XOCL_EXECBUF        DRM_IOWR(DRM_COMMAND_BASE +	\
-					       DRM_XOCL_EXECBUF, struct drm_xocl_execbuf)
-#define DRM_IOCTL_XOCL_USER_INTR      DRM_IOWR(DRM_COMMAND_BASE +	\
-					       DRM_XOCL_USER_INTR, struct drm_xocl_user_intr)
-#define DRM_IOCTL_XOCL_HOT_RESET      DRM_IO(DRM_COMMAND_BASE +	DRM_XOCL_HOT_RESET)
-#define DRM_IOCTL_XOCL_RECLOCK     DRM_IOWR(DRM_COMMAND_BASE + \
-					       DRM_XOCL_RECLOCK, struct drm_xocl_reclock_info)
 #endif
