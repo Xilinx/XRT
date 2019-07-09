@@ -27,6 +27,12 @@
 #include <uapi/drm/drm_mode.h>
 #endif /* !__KERNEL__ */
 
+#if defined(CONFIG_ARM64)
+typedef uint64_t addr_t;
+#else
+typedef uint32_t addr_t;
+#endif
+
 //#define XCLBIN_DOWNLOAD
 
 enum {
@@ -102,7 +108,7 @@ struct drm_zocl_sync_bo {
 struct drm_zocl_info_bo {
 	uint32_t	handle;
 	uint64_t	size;
-	uint64_t	paddr;
+	addr_t	paddr;
 };
 
 /**

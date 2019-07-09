@@ -44,7 +44,7 @@ void zocl_describe(const struct drm_zocl_bo *obj)
 }
 
 static inline void
-zocl_bo_describe(const struct drm_zocl_bo *bo, uint64_t *size, uint64_t *paddr)
+zocl_bo_describe(const struct drm_zocl_bo *bo, uint64_t *size, dma_addr_t *paddr)
 {
 	if (bo->flags & (ZOCL_BO_FLAGS_CMA | ZOCL_BO_FLAGS_USERPTR)) {
 		*size = bo->cma_base.base.size;
