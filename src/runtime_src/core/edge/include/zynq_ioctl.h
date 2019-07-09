@@ -108,7 +108,7 @@ struct drm_zocl_sync_bo {
 struct drm_zocl_info_bo {
 	uint32_t	handle;
 	uint64_t	size;
-	addr_t	paddr;
+	addr_t		paddr;
 };
 
 /**
