@@ -75,6 +75,8 @@ typedef struct XmaScalerSession
     //int8_t                current_pipe; /**< current_pipe */
     //int8_t                first_frame; /**< first_frame */
 
+    /** Reserved */
+    uint32_t        reserved[4];
 } XmaScalerSession;
 
 /**
