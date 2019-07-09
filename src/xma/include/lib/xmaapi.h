@@ -55,6 +55,11 @@ typedef struct XmaSingleton
 
   XmaSingleton() {
     locked = false;
+    num_decoders = 0;
+    num_encoders = 0;
+    num_scalers = 0;
+    num_filters = 0;
+    num_kernels = 0;
   }
 } XmaSingleton;
 

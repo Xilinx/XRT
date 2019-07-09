@@ -32,7 +32,7 @@
 #include "plg/xmascaler.h"
 #include "plg/xmafilter.h"
 #include "plg/xmakernel.h"
-#include "app/xmahw.h"
+//#include "app/xmahw.h"
 
 /**
  * DOC: XMA Plugin Interface
@@ -87,7 +87,7 @@ typedef struct XmaBufferObj
  *  RETURN:    Non-zero buffer handle on success
  *
  */
-XmaBufferObj xma_plg_buffer_alloc(XmaHwSession s_handle, size_t size, bool device_only_buffer);
+XmaBufferObj xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer);
 
 /**
  *  xma_plg_buffer_free() - Free a device buffer
@@ -99,7 +99,7 @@ XmaBufferObj xma_plg_buffer_alloc(XmaHwSession s_handle, size_t size, bool devic
  *                   @ref xma_plg_buffer_alloc()
  *
  */
-void xma_plg_buffer_free(XmaHwSession s_handle, XmaBufferObj b_obj);
+void xma_plg_buffer_free(XmaSession s_handle, XmaBufferObj b_obj);
 
 /**
  *  xma_plg_buffer_free() - Get a physical address for a buffer handle
@@ -130,7 +130,7 @@ paddr API not required with buffer object
  * XMA_ERROR on failure
  *
  */
-int32_t xma_plg_buffer_write(XmaHwSession     s_handle,
+int32_t xma_plg_buffer_write(XmaSession     s_handle,
                              XmaBufferObj  b_obj,
                              size_t           size,
                              size_t           offset);
@@ -151,7 +151,7 @@ int32_t xma_plg_buffer_write(XmaHwSession     s_handle,
  * XMA_ERROR on failure
  *
  */
-int32_t xma_plg_buffer_read(XmaHwSession     s_handle,
+int32_t xma_plg_buffer_read(XmaSession     s_handle,
                             XmaBufferObj  b_obj,
                             size_t           size,
                             size_t           offset);
@@ -172,7 +172,7 @@ int32_t xma_plg_buffer_read(XmaHwSession     s_handle,
  * XMA_ERROR on failure
  *
  */
-int32_t xma_plg_schedule_work_item(XmaHwSession s_handle);
+int32_t xma_plg_schedule_work_item(XmaSession s_handle);
 
 /**
  * xma_plg_is_work_item_done() - This function checks if at least one work item
@@ -188,10 +188,10 @@ int32_t xma_plg_schedule_work_item(XmaHwSession s_handle);
  * XMA_ERROR on timeout
  *
  */
-int32_t xma_plg_is_work_item_done(XmaHwSession s_handle, int32_t timeout_in_ms);
+int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_in_ms);
 
-void xma_plg_kernel_lock(XmaHwSession s_handle);
-void xma_plg_kernel_unlock(XmaHwSession s_handle);
+int32_t xma_plg_kernel_lock_regmap(XmaSession s_handle);
+int32_t xma_plg_kernel_unlock_regmap(XmaSession s_handle);
 
 /**
  *  xma_plg_register_prep_write() - This function writes the data provided and sets
@@ -210,7 +210,7 @@ void xma_plg_kernel_unlock(XmaHwSession s_handle);
  * <0 on failure
  *
  */
-int32_t xma_plg_register_prep_write(XmaHwSession     s_handle,
+int32_t xma_plg_register_prep_write(XmaSession     s_handle,
                                     void            *dst,
                                     size_t           size,
                                     size_t           offset);
