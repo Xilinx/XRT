@@ -150,7 +150,7 @@ static inline int32_t xma_plg_find_next_chan_id(const int32_t *chan_ids, const u
  * typedef struct XmaSession - Base class for all other session types
 */
 typedef struct XmaSession {
-    uint64_t        session_signature;
+    void*        session_signature;
     int32_t         session_id;
     /** Subclass this session is a part of */
     XmaSessionType session_type;
@@ -159,9 +159,8 @@ typedef struct XmaSession {
     /** Opaque object tracking indexes to XMA resource managment database.
     Used internally. */
     //XmaKernelRes   kern_res;
-    /** For kernels that support channels, this is the channel id assigned
-    by the plugin code. Initalized to -1. */
-    int32_t        chan_id;
+    /** For kernels that support channels, this is the channel id assigned by XMA during session creation. Initalized to -1. */
+    int32_t        channel_id; //Assigned by XMA session create
     /** Data allocated by XMA once for a given kernel during initialization
     and freed only after all sessions connected to a kernel have closed.
     Used to maintain global kernel state information as may be needed by kernel
@@ -221,7 +220,7 @@ static inline bool is_xma_kernel(XmaSession *s)
 */
 static inline bool xma_sess_has_chan(XmaSession *s)
 {
-    return s->chan_id < 0 ? false : true;
+    return s->channel_id < 0 ? false : true;
 }
 
 #endif

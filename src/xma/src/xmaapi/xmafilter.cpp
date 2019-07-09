@@ -81,7 +81,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     memset(filter_session, 0, sizeof(XmaFilterSession));
     // init session data
     filter_session->props = *filter_props;
-    filter_session->base.chan_id = -1;
+    filter_session->base.channel_id = filter_props->channel_id;
     filter_session->base.session_type = XMA_FILTER;
     filter_session->filter_plugin = plg;
 
@@ -130,22 +130,27 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     }
     */
 
+    bool expected = false;
+    bool desired = true;
+    while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //Singleton lock acquired
+
    //Sarab: TODO Fix device index, CU index & session->xx_plugin assigned above
-	int rc, dev_handle, kern_handle;
-    dev_handle = filter_props->dev_index;
-    kern_handle = filter_props->cu_index;
+    int rc, dev_index, cu_index;
+    dev_index = filter_props->dev_index;
+    cu_index = filter_props->cu_index;
     //filter_handle = filter_props->cu_index;
 
+    g_xma_singleton->num_filters++;
+
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
-    XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_handle].handle;
+    XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_index].handle;
     filter_session->base.hw_session.dev_handle = hal->dev_handle;
 
     //For execbo:
-    filter_session->base.hw_session.kernel_info = &hwcfg->devices[dev_handle].kernels[kern_handle];
-    filter_session->base.hw_session.kernel_info->base_address =
-        hwcfg->devices[dev_handle].kernels[kern_handle].base_address;
-    filter_session->base.hw_session.kernel_info->ddr_bank =
-        hwcfg->devices[dev_handle].kernels[kern_handle].ddr_bank;
+    filter_session->base.hw_session.kernel_info = &hwcfg->devices[dev_index].kernels[cu_index];
 
     filter_session->base.hw_session.dev_index = hal->dev_index;
 
@@ -171,6 +176,12 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     //       we don't connect to ourselves
     filter_session->conn_recv_handle = -1;
     */
+
+    filter_session->base.session_id = g_xma_singleton->num_filters;
+    filter_session->base.session_signature = (void*)(((uint64_t)filter_session->base.hw_session.kernel_info) | ((uint64_t)filter_session->base.hw_session.dev_handle));
+
+    //Release singleton lock
+    g_xma_singleton->locked = false;
 
     // Call the plugins initialization function with this session data
     //Sarab: Check plugin compatibility to XMA
