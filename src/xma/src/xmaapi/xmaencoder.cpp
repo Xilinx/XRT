@@ -121,7 +121,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
     memset(enc_session, 0, sizeof(XmaEncoderSession));
     // init session data
     enc_session->encoder_props = *enc_props;
-    enc_session->base.chan_id = -1;
+    enc_session->base.channel_id = enc_props->channel_id;
     enc_session->base.session_type = XMA_ENCODER;
     enc_session->encoder_plugin = plg;
 
@@ -167,19 +167,28 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
     }
     */
 
+    bool expected = false;
+    bool desired = true;
+    while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //Singleton lock acquired
+
    //Sarab: TODO Fix device index, CU index & session->xx_plugin assigned above
-    int rc, dev_handle, kern_handle;
-    dev_handle = enc_props->dev_index;
-    kern_handle = enc_props->cu_index;
+    int rc, dev_index, cu_index;
+    dev_index = enc_props->dev_index;
+    cu_index = enc_props->cu_index;
     //enc_handle = enc_props->cu_index;
 
+    g_xma_singleton->num_encoders++;
+
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
-    XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_handle].handle;
+    XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_index].handle;
 
     enc_session->base.hw_session.dev_handle = hal->dev_handle;
 
     //For execbo:
-    enc_session->base.hw_session.kernel_info = &hwcfg->devices[dev_handle].kernels[kern_handle];
+    enc_session->base.hw_session.kernel_info = &hwcfg->devices[dev_index].kernels[cu_index];
 
     enc_session->base.hw_session.dev_index = hal->dev_index;
 
@@ -203,6 +212,12 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
     enc_session->conn_recv_handle =
         xma_connect_alloc(end_pt, XMA_CONNECT_RECEIVER);
     */
+
+    enc_session->base.session_id = g_xma_singleton->num_encoders;
+    enc_session->base.session_signature = (void*)(((uint64_t)enc_session->base.hw_session.kernel_info) | ((uint64_t)enc_session->base.hw_session.dev_handle));
+
+    //Release singleton lock
+    g_xma_singleton->locked = false;
 
     // Call the plugins initialization function with this session data
     //Sarab: Check plugin compatibility to XMA
@@ -363,7 +378,7 @@ xma_enc_session_statsfile_init(XmaEncoderSession *session)
     dev_id = xma_res_dev_handle_get(session->base.kern_res);
     kern_inst = xma_res_kern_handle_get(session->base.kern_res);
     */
-    chan_id = session->base.chan_id;
+    chan_id = session->base.channel_id;
     sprintf(fname, "%s/ENC-%s-%s-%d-%d-%d",
             path, enc_type_str, vendor, dev_id, kern_inst, chan_id);     
     

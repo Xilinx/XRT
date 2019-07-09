@@ -39,6 +39,11 @@ typedef struct XmaSingleton
     //XmaFilterPlugin   filtercfg[MAX_PLUGINS];
     //XmaKernelPlugin   kernelcfg[MAX_PLUGINS];
     std::atomic<bool> locked;
+    std::atomic<uint32_t> num_decoders;
+    std::atomic<uint32_t> num_encoders;
+    std::atomic<uint32_t> num_scalers;
+    std::atomic<uint32_t> num_filters;
+    std::atomic<uint32_t> num_kernels;
     //std::vector<XmaDecoderPlugin*> decoders;
     //std::vector<XmaEncoderPlugin*> encoders;
     //std::vector<XmaScalerPlugin*> scalers;

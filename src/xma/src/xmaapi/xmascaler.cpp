@@ -172,7 +172,7 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     memset(sc_session, 0, sizeof(XmaScalerSession));
     // init session data
     sc_session->props = *sc_props;
-    sc_session->base.chan_id = -1;
+    sc_session->base.channel_id = sc_props->channel_id;
     sc_session->base.session_type = XMA_SCALER;
     sc_session->scaler_plugin = plg;
 
@@ -211,17 +211,27 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
         return NULL;
     */
 
-	int rc, dev_handle, kern_handle;
-    dev_handle = sc_props->dev_index;
-    kern_handle = sc_props->cu_index;
-    //scal_handle = sc_props->cu_index;
+    bool expected = false;
+    bool desired = true;
+    while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //Singleton lock acquired
+
+   //Sarab: TODO Fix device index, CU index & session->xx_plugin assigned above
+    int rc, dev_index, cu_index;
+    dev_index = sc_props->dev_index;
+    cu_index = sc_props->cu_index;
+    //enc_handle = enc_props->cu_index;
+
+    g_xma_singleton->num_scalers++;
 
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
-    XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_handle].handle;
+    XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_index].handle;
     sc_session->base.hw_session.dev_handle = hal->dev_handle;
 
     //For execbo:
-    sc_session->base.hw_session.kernel_info = &hwcfg->devices[dev_handle].kernels[kern_handle];
+    sc_session->base.hw_session.kernel_info = &hwcfg->devices[dev_index].kernels[cu_index];
 
     sc_session->base.hw_session.dev_index = hal->dev_index;
 
@@ -251,6 +261,12 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     //       we don't connect to ourselves
     sc_session->conn_recv_handle = -1;
     */
+
+    sc_session->base.session_id = g_xma_singleton->num_scalers;
+    sc_session->base.session_signature = (void*)(((uint64_t)sc_session->base.hw_session.kernel_info) | ((uint64_t)sc_session->base.hw_session.dev_handle));
+
+    //Release singleton lock
+    g_xma_singleton->locked = false;
 
     // Call the plugins initialization function with this session data
     //Sarab: Check plugin compatibility to XMA

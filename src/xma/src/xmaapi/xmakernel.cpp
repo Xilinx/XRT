@@ -80,7 +80,7 @@ xma_kernel_session_create(XmaKernelProperties *props)
     memset(session, 0, sizeof(XmaKernelSession));
     // init session data
     session->kernel_props = *props;
-    session->base.chan_id = -1;
+    session->base.channel_id = props->channel_id;
     session->base.session_type = XMA_KERNEL;
     session->kernel_plugin = plg;
 
@@ -119,19 +119,27 @@ xma_kernel_session_create(XmaKernelProperties *props)
     }
     */
 
+    bool expected = false;
+    bool desired = true;
+    while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //Singleton lock acquired
+
    //Sarab: TODO Fix device index, CU index & session->xx_plugin assigned above
-    int rc, dev_handle, kern_handle;
-    dev_handle = props->dev_index;
-    kern_handle = props->cu_index;
-    //k_handle = props->cu_index;
+    int rc, dev_index, cu_index;
+    dev_index = props->dev_index;
+    cu_index = props->cu_index;
+
+    g_xma_singleton->num_kernels++;
     
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
-    XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_handle].handle;
+    XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_index].handle;
 
     session->base.hw_session.dev_handle = hal->dev_handle;
 
     //For execbo:
-    session->base.hw_session.kernel_info = &hwcfg->devices[dev_handle].kernels[kern_handle];
+    session->base.hw_session.kernel_info = &hwcfg->devices[dev_index].kernels[cu_index];
 
     session->base.hw_session.dev_index = hal->dev_index;
 
@@ -140,6 +148,13 @@ xma_kernel_session_create(XmaKernelProperties *props)
     // Allocate the private data
     session->base.plugin_data =
         calloc(session->kernel_plugin->plugin_data_size, sizeof(uint8_t));
+
+
+    session->base.session_id = g_xma_singleton->num_kernels;
+    session->base.session_signature = (void*)(((uint64_t)session->base.hw_session.kernel_info) | ((uint64_t)session->base.hw_session.dev_handle));
+
+    //Release singleton lock
+    g_xma_singleton->locked = false;
 
     // Call the plugins initialization function with this session data
     //Sarab: Check plugin compatibility to XMA
