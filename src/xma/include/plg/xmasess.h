@@ -173,6 +173,14 @@ typedef struct XmaSession {
     /** Private stats data attached to a specific session. This field is
     allocated and managed by XMA for each session type. */
     void          *stats;
+  
+  XmaSession() {
+    session_signature = NULL;
+    session_id = -1;
+    channel_id = -1;
+    plugin_data = NULL;
+    stats = NULL;
+  }
 } XmaSession;
 
 /**

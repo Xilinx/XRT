@@ -57,14 +57,14 @@ typedef struct XmaBufferObjPrivate
 //Remove read/write before SyncBO.. As plugin should manage that using host mapped data pointer..
 
 XmaBufferObj
-xma_plg_buffer_alloc(XmaHwSession s_handle, size_t size, bool device_only_buffer)
+xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer)
 {
     XmaBufferObj b_obj;
-    xclDeviceHandle dev_handle = s_handle.dev_handle;
-    uint32_t ddr_bank = s_handle.kernel_info->ddr_bank;
-    b_obj.bank_index = s_handle.kernel_info->ddr_bank;
+    xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
+    uint32_t ddr_bank = s_handle.hw_session.kernel_info->ddr_bank;
+    b_obj.bank_index = s_handle.hw_session.kernel_info->ddr_bank;
     b_obj.size = size;
-    b_obj.dev_index = s_handle.dev_index;
+    b_obj.dev_index = s_handle.hw_session.dev_index;
 
     //Sarab: TODO change for XRT device only buffer
     uint64_t b_obj_handle = xclAllocBO(dev_handle, size, 0, ddr_bank);
@@ -94,7 +94,7 @@ xma_plg_buffer_alloc(XmaHwSession s_handle, size_t size, bool device_only_buffer
 }
 
 void
-xma_plg_buffer_free(XmaHwSession s_handle, XmaBufferObj b_obj)
+xma_plg_buffer_free(XmaSession s_handle, XmaBufferObj b_obj)
 {
     XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj.private_do_not_touch;
     if (b_obj_priv->dummy != (void*)(((uint64_t)b_obj_priv) | signature)) {
@@ -103,7 +103,7 @@ xma_plg_buffer_free(XmaHwSession s_handle, XmaBufferObj b_obj)
         return;
     }
 
-    xclDeviceHandle dev_handle = s_handle.dev_handle;
+    xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
     xclFreeBO(dev_handle, b_obj_priv->boHandle);
     free(b_obj_priv);
 }
@@ -113,7 +113,7 @@ uint64_t
 xma_plg_get_paddr(XmaHwSession s_handle, XmaBufferObj b_obj)
 {
     uint64_t paddr;
-    xclDeviceHandle dev_handle = s_handle.dev_handle;
+    xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
     paddr = xclGetDeviceAddr(dev_handle, b_obj);
 #if 0
     printf("xma_plg_get_paddr b_obj = %d, paddr = %lx\n", b_obj, paddr);
@@ -123,7 +123,7 @@ xma_plg_get_paddr(XmaHwSession s_handle, XmaBufferObj b_obj)
 */
 
 int32_t
-xma_plg_buffer_write(XmaHwSession s_handle,
+xma_plg_buffer_write(XmaSession s_handle,
                      XmaBufferObj  b_obj,
                      size_t           size,
                      size_t           offset)
@@ -144,7 +144,7 @@ xma_plg_buffer_write(XmaHwSession s_handle,
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. Can not write past end of buffer.\n");
         return XMA_ERROR;
     }
-    xclDeviceHandle dev_handle = s_handle.dev_handle;
+    xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
 
     //printf("xma_plg_buffer_write b_obj=%d,src=%p,size=%lu,offset=%lx\n", b_obj, src, size, offset);
 
@@ -154,11 +154,11 @@ xma_plg_buffer_write(XmaHwSession s_handle,
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xclSyncBO failed %d\n", rc);
     }
 
-    return rc;
+    return XMA_SUCCESS;
 }
 
 int32_t
-xma_plg_buffer_read(XmaHwSession s_handle,
+xma_plg_buffer_read(XmaSession s_handle,
                     XmaBufferObj  b_obj,
                     size_t           size,
                     size_t           offset)
@@ -180,7 +180,7 @@ xma_plg_buffer_read(XmaHwSession s_handle,
         return XMA_ERROR;
     }
 
-    xclDeviceHandle dev_handle = s_handle.dev_handle;
+    xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
 
     //printf("xma_plg_buffer_read b_obj=%d,dst=%p,size=%lu,offset=%lx\n",
     //       b_obj, dst, size, offset);
@@ -192,11 +192,11 @@ xma_plg_buffer_read(XmaHwSession s_handle,
         std::cout << "ERROR: xma_plg_buffer_read xclSyncBO failed " << std::dec << rc << std::endl;
     }
 
-    return rc;
+    return XMA_SUCCESS;
 }
 
 int32_t
-xma_plg_register_prep_write(XmaHwSession  s_handle,
+xma_plg_register_prep_write(XmaSession  s_handle,
                        void         *src,
                        size_t        size,
                        size_t        offset)
@@ -211,43 +211,75 @@ xma_plg_register_prep_write(XmaHwSession  s_handle,
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Max kernel regmap size is 4032 Bytes\n");
         return XMA_ERROR;
     }
-    for (uint32_t i = 0, tmp_idx = start; i < entries; i++, tmp_idx++) {
-        s_handle.kernel_info->reg_map[tmp_idx] = src_array[i];
+    if (s_handle.hw_session.kernel_info->reg_map_locked) {
+        if (s_handle.session_id != s_handle.hw_session.kernel_info->locked_by_session_id || s_handle.session_type != s_handle.hw_session.kernel_info->locked_by_session_type) {
+            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regamp is locked by another session\n");
+            return XMA_ERROR;
+        }
+    } else {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Must lock kernel regamp before writing to it and submitting work item\n");
+        return XMA_ERROR;
     }
 
-    return 0;
+    for (uint32_t i = 0, tmp_idx = start; i < entries; i++, tmp_idx++) {
+        s_handle.hw_session.kernel_info->reg_map[tmp_idx] = src_array[i];
+    }
+
+    return XMA_SUCCESS;
 }
 
-void xma_plg_kernel_lock(XmaHwSession s_handle)
+int32_t xma_plg_kernel_lock_regmap(XmaSession s_handle)
 {
     /* Only acquire the lock if we don't already own it */
-    if (s_handle.kernel_info->have_lock)
-        return;
-
-    //xma_res_kernel_lock(s_handle.kernel_info->lock);
-    s_handle.kernel_info->have_lock = true;
-}
-
-void xma_plg_kernel_unlock(XmaHwSession s_handle)
-{
-    if (s_handle.kernel_info->have_lock)
-    {
-        //xma_res_kernel_unlock(s_handle.kernel_info->lock);
-        s_handle.kernel_info->have_lock = false;
+    if (s_handle.hw_session.kernel_info->reg_map_locked) {
+        if (s_handle.session_id == s_handle.hw_session.kernel_info->locked_by_session_id && s_handle.session_type == s_handle.hw_session.kernel_info->locked_by_session_type) {
+            return XMA_SUCCESS;
+        } else {
+            return XMA_ERROR;
+        }
     }
+    bool expected = false;
+    bool desired = true;
+    while (!(s_handle.hw_session.kernel_info->reg_map_locked).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //reg map lock acquired
+
+    s_handle.hw_session.kernel_info->locked_by_session_id = s_handle.session_id;
+    s_handle.hw_session.kernel_info->locked_by_session_type = s_handle.session_type;
+
+    return XMA_SUCCESS;
 }
 
-int32_t xma_plg_execbo_avail_get(XmaHwSession s_handle)
+int32_t xma_plg_kernel_unlock_regmap(XmaSession s_handle)
+{
+    /* Only unlock if this session owns it */
+    if (s_handle.hw_session.kernel_info->reg_map_locked) {
+        if (s_handle.session_id == s_handle.hw_session.kernel_info->locked_by_session_id && s_handle.session_type == s_handle.hw_session.kernel_info->locked_by_session_type) {
+            s_handle.hw_session.kernel_info->reg_map_locked = false;
+            s_handle.hw_session.kernel_info->locked_by_session_id = -1;
+
+            return XMA_SUCCESS;
+        } else {
+            return XMA_ERROR;
+        }
+    }
+    return XMA_SUCCESS;
+}
+
+int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
 {
     int32_t i;
     int32_t rc = -1;
     bool    found = false;
+    bool expected = false;
+    bool desired = true;
 
     for (i = 0; i < MAX_EXECBO_POOL_SIZE; i++)
     {
         ert_start_kernel_cmd *cu_cmd = 
-            (ert_start_kernel_cmd*)s_handle.kernel_info->kernel_execbo_data[i];
-        if (s_handle.kernel_info->kernel_execbo_inuse[i])
+            (ert_start_kernel_cmd*)s_handle.hw_session.kernel_info->kernel_execbo_data[i];
+        if (s_handle.hw_session.kernel_info->kernel_execbo_inuse[i])
         {
             switch(cu_cmd->state)
             {
@@ -258,8 +290,18 @@ int32_t xma_plg_execbo_avail_get(XmaHwSession s_handle)
                 break;
                 case ERT_CMD_STATE_COMPLETED:
                     found = true;
+                    expected = false;
+                    desired = true;
+                    while (!(s_handle.hw_session.kernel_info->kernel_complete_locked).compare_exchange_weak(expected, desired)) {
+                        expected = false;
+                    }
+                    //kernel completion lock acquired
+
                     // Update count of completed work items
-                    s_handle.kernel_info->kernel_complete_count++;
+                    s_handle.hw_session.kernel_info->kernel_complete_count++;
+
+                    //Release completion lock
+                    s_handle.hw_session.kernel_info->kernel_complete_locked = false;
                 break;
                 case ERT_CMD_STATE_ERROR:
                 case ERT_CMD_STATE_ABORT:
@@ -276,7 +318,7 @@ int32_t xma_plg_execbo_avail_get(XmaHwSession s_handle)
     }
     if (found)
     {
-        s_handle.kernel_info->kernel_execbo_inuse[i] = true;
+        s_handle.hw_session.kernel_info->kernel_execbo_inuse[i] = true;
         rc = i;
     }
 
@@ -284,14 +326,24 @@ int32_t xma_plg_execbo_avail_get(XmaHwSession s_handle)
 }
 
 int32_t
-xma_plg_schedule_work_item(XmaHwSession s_handle)
+xma_plg_schedule_work_item(XmaSession s_handle)
 {
-    uint8_t *src = (uint8_t*)s_handle.kernel_info->reg_map;
-    //size_t  size = s_handle.kernel_info->max_offset;
+    uint8_t *src = (uint8_t*)s_handle.hw_session.kernel_info->reg_map;
+    //size_t  size = s_handle.hw_session.kernel_info->max_offset;
     size_t  size = MAX_KERNEL_REGMAP_SIZE;//Max regmap in xmahw.h is 4KB; execBO size is 4096; Supported max regmap size is 4032 Bytes only
     int32_t bo_idx;
     int32_t rc = XMA_SUCCESS;
     
+    if (s_handle.hw_session.kernel_info->reg_map_locked) {
+        if (s_handle.session_id != s_handle.hw_session.kernel_info->locked_by_session_id || s_handle.session_type != s_handle.hw_session.kernel_info->locked_by_session_type) {
+            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regamp is locked by another session\n");
+            return XMA_ERROR;
+        }
+    } else {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Must lock kernel regamp before writing to it and submitting work item\n");
+        return XMA_ERROR;
+    }
+
     // Find an available execBO buffer
     bo_idx = xma_plg_execbo_avail_get(s_handle);
     if (bo_idx == -1)
@@ -300,7 +352,7 @@ xma_plg_schedule_work_item(XmaHwSession s_handle)
     {
         // Setup ert_start_kernel_cmd 
         ert_start_kernel_cmd *cu_cmd = 
-            (ert_start_kernel_cmd*)s_handle.kernel_info->kernel_execbo_data[bo_idx];
+            (ert_start_kernel_cmd*)s_handle.hw_session.kernel_info->kernel_execbo_data[bo_idx];
         cu_cmd->state = ERT_CMD_STATE_NEW;
         cu_cmd->opcode = ERT_START_CU;
 
@@ -310,8 +362,8 @@ xma_plg_schedule_work_item(XmaHwSession s_handle)
         // Set count to size in 32-bit words + 1 
         cu_cmd->count = (size >> 2) + 1;
      
-        if (xclExecBuf(s_handle.dev_handle, 
-                       s_handle.kernel_info->kernel_execbo_handle[bo_idx]) != 0)
+        if (xclExecBuf(s_handle.hw_session.dev_handle, 
+                       s_handle.hw_session.kernel_info->kernel_execbo_handle[bo_idx]) != 0)
         {
             xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
                        "Failed to submit kernel start with xclExecBuf\n");
@@ -322,9 +374,16 @@ xma_plg_schedule_work_item(XmaHwSession s_handle)
     return rc;
 }
 
-int32_t xma_plg_is_work_item_done(XmaHwSession s_handle, int32_t timeout_ms)
+int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
 {
-    int32_t current_count = s_handle.kernel_info->kernel_complete_count;
+    bool expected = false;
+    bool desired = true;
+    while (!(s_handle.hw_session.kernel_info->kernel_complete_locked).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //kernel completion lock acquired
+
+    int32_t current_count = s_handle.hw_session.kernel_info->kernel_complete_count;
     int32_t count = 0;
 
     // Keep track of the number of kernel completions
@@ -333,15 +392,15 @@ int32_t xma_plg_is_work_item_done(XmaHwSession s_handle, int32_t timeout_ms)
         // Look for inuse commands that have completed and increment the count
         for (int32_t i = 0; i < MAX_EXECBO_POOL_SIZE; i++)
         {
-            if (s_handle.kernel_info->kernel_execbo_inuse[i])
+            if (s_handle.hw_session.kernel_info->kernel_execbo_inuse[i])
             {
                 ert_start_kernel_cmd *cu_cmd = 
-                    (ert_start_kernel_cmd*)s_handle.kernel_info->kernel_execbo_data[i];
+                    (ert_start_kernel_cmd*)s_handle.hw_session.kernel_info->kernel_execbo_data[i];
                 if (cu_cmd->state == ERT_CMD_STATE_COMPLETED)
                 {
                     // Increment completed kernel count and make BO buffer available
                     count++;
-                    s_handle.kernel_info->kernel_execbo_inuse[i] = false;
+                    s_handle.hw_session.kernel_info->kernel_execbo_inuse[i] = false;
                 } 
             }
         }
@@ -350,18 +409,23 @@ int32_t xma_plg_is_work_item_done(XmaHwSession s_handle, int32_t timeout_ms)
             break;
 
         // Wait for a notification
-        if (xclExecWait(s_handle.dev_handle, timeout_ms) <= 0)
+        if (xclExecWait(s_handle.hw_session.dev_handle, timeout_ms) <= 0)
             break;
     }
     current_count += count;
     if (current_count)
     {
         current_count--;
-        s_handle.kernel_info->kernel_complete_count = current_count;
+        s_handle.hw_session.kernel_info->kernel_complete_count = current_count;
+        
+        //Release completion lock
+        s_handle.hw_session.kernel_info->kernel_complete_locked = false;
         return XMA_SUCCESS;
     }
     else
     {
+        //Release completion lock
+        s_handle.hw_session.kernel_info->kernel_complete_locked = false;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
                     "Could not find completed work item\n");
         return XMA_ERROR;
