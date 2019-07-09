@@ -29,21 +29,21 @@ using namespace std;
 
 #define XMAPLUGIN_MOD "xmapluginlib"
 
+constexpr std::uint64_t signature = 0xF42F1F8F4F2F1F0F;
+
 typedef struct XmaBufferObjPrivate
 {
     void*    dummy;
-    uint8_t* data;
     uint64_t size;
-    uint32_t paddr_low;
-    uint32_t paddr_high;
+    uint64_t paddr;
     int32_t  bank_index;
     int32_t  dev_index;
     uint64_t boHandle;
+    bool     device_only_buffer;
     uint32_t reserved[4];
 
   XmaBufferObjPrivate() {
    dummy = NULL;
-   data = NULL;
    size = 0;
    bank_index = -1;
    dev_index = -1;
@@ -57,27 +57,39 @@ typedef struct XmaBufferObjPrivate
 //Remove read/write before SyncBO.. As plugin should manage that using host mapped data pointer..
 
 XmaBufferObj
-xma_plg_buffer_alloc(XmaHwSession s_handle, size_t size)
+xma_plg_buffer_alloc(XmaHwSession s_handle, size_t size, bool device_only_buffer)
 {
     XmaBufferObj b_obj;
     xclDeviceHandle dev_handle = s_handle.dev_handle;
     uint32_t ddr_bank = s_handle.kernel_info->ddr_bank;
+    b_obj.bank_index = s_handle.kernel_info->ddr_bank;
+    b_obj.size = size;
+    b_obj.dev_index = s_handle.dev_index;
 
-#if 0
-    printf("xma_plg_buffer_alloc dev_handle = %p\n", dev_handle);
-    printf("xma_plg_buffer_alloc size = %lu\n", size);
-    printf("xma_plg_buffer_alloc ddr_bank = %u\n", ddr_bank);
-#endif
+    //Sarab: TODO change for XRT device only buffer
     uint64_t b_obj_handle = xclAllocBO(dev_handle, size, 0, ddr_bank);
-#if 0
-    printf("xma_plg_buffer_alloc handle = %d\n", handle);
-#endif
   
     if (b_obj_handle < 0) {
-        std::cout << "xclAllocBO failed. handle=0x" << std::hex << b_obj_handle << std::endl;
+        std::cout << "ERROR: xma_plg_buffer_alloc failed. handle=0x" << std::hex << b_obj_handle << std::endl;
         //printf("xclAllocBO failed. handle=0x%ullx\n", b_obj_handle);
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xclAllocBO failed.\n");
     }
+    b_obj.paddr = xclGetDeviceAddr(dev_handle, b_obj_handle);
+    if (device_only_buffer) {
+        b_obj.device_only_buffer = true;
+    } else {
+        b_obj.data = (uint8_t*) xclMapBO(dev_handle, b_obj_handle, true);
+    }
+    XmaBufferObjPrivate* tmp1 = new XmaBufferObjPrivate;
+    b_obj.private_do_not_touch = (void*) tmp1;
+    tmp1->dummy = (void*)(((uint64_t)tmp1) | signature);
+    tmp1->size = size;
+    tmp1->paddr = b_obj.paddr;
+    tmp1->bank_index = b_obj.bank_index;
+    tmp1->dev_index = b_obj.dev_index;
+    tmp1->boHandle = b_obj_handle;
+    tmp1->device_only_buffer = b_obj.device_only_buffer;
+
     return b_obj;
 }
 
@@ -85,11 +97,15 @@ void
 xma_plg_buffer_free(XmaHwSession s_handle, XmaBufferObj b_obj)
 {
     XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj.private_do_not_touch;
-#if 0
-    printf("xma_plg_buffer_free called\n");
-#endif
+    if (b_obj_priv->dummy != (void*)(((uint64_t)b_obj_priv) | signature)) {
+        std::cout << "ERROR: xma_plg_buffer_free failed. XMABufferObj is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_free failed. XMABufferObj is corrupted.\n");
+        return;
+    }
+
     xclDeviceHandle dev_handle = s_handle.dev_handle;
     xclFreeBO(dev_handle, b_obj_priv->boHandle);
+    free(b_obj_priv);
 }
 
 /*Sarab: padd API not required with buffer Object
@@ -109,25 +125,34 @@ xma_plg_get_paddr(XmaHwSession s_handle, XmaBufferObj b_obj)
 int32_t
 xma_plg_buffer_write(XmaHwSession s_handle,
                      XmaBufferObj  b_obj,
-                     const void      *src,
                      size_t           size,
                      size_t           offset)
 {
     int32_t rc;
     XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj.private_do_not_touch;
-    //printf("xma_plg_buffer_write called\n");
-
+    if (b_obj_priv->dummy != (void*)(((uint64_t)b_obj_priv) | signature)) {
+        std::cout << "ERROR: xma_plg_buffer_write failed. XMABufferObj is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. XMABufferObj is corrupted.\n");
+        return XMA_ERROR;
+    }
+    if (b_obj_priv->device_only_buffer) {
+        xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write skipped as it is device only buffer.\n");
+        return XMA_SUCCESS;
+    }
+    if (size + offset > b_obj_priv->size) {
+        std::cout << "ERROR: xma_plg_buffer_write failed. Can not write past end of buffer" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. Can not write past end of buffer.\n");
+        return XMA_ERROR;
+    }
     xclDeviceHandle dev_handle = s_handle.dev_handle;
 
     //printf("xma_plg_buffer_write b_obj=%d,src=%p,size=%lu,offset=%lx\n", b_obj, src, size, offset);
 
-    rc = xclWriteBO(dev_handle, b_obj_priv->boHandle, src, size, offset);
-    if (rc != 0)
-        printf("xclWriteBO failed %d\n", rc);
-
     rc = xclSyncBO(dev_handle, b_obj_priv->boHandle, XCL_BO_SYNC_BO_TO_DEVICE, size, offset);
-    if (rc != 0)
-        printf("xclSyncBO failed %d\n", rc);
+    if (rc != 0) {
+        std::cout << "ERROR: xma_plg_buffer_write xclSyncBO failed " << std::dec << rc << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xclSyncBO failed %d\n", rc);
+    }
 
     return rc;
 }
@@ -135,13 +160,25 @@ xma_plg_buffer_write(XmaHwSession s_handle,
 int32_t
 xma_plg_buffer_read(XmaHwSession s_handle,
                     XmaBufferObj  b_obj,
-                    void            *dst,
                     size_t           size,
                     size_t           offset)
 {
     int32_t rc;
     XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj.private_do_not_touch;
-    //printf("xma_plg_buffer_read called\n");
+    if (b_obj_priv->dummy != (void*)(((uint64_t)b_obj_priv) | signature)) {
+        std::cout << "ERROR: xma_plg_buffer_read failed. XMABufferObj is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read failed. XMABufferObj is corrupted.\n");
+        return XMA_ERROR;
+    }
+    if (b_obj_priv->device_only_buffer) {
+        xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read skipped as it is device only buffer.\n");
+        return XMA_SUCCESS;
+    }
+    if (size + offset > b_obj_priv->size) {
+        std::cout << "ERROR: xma_plg_buffer_read failed. Can not read past end of buffer" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read failed. Can not read past end of buffer.\n");
+        return XMA_ERROR;
+    }
 
     xclDeviceHandle dev_handle = s_handle.dev_handle;
 
@@ -152,14 +189,8 @@ xma_plg_buffer_read(XmaHwSession s_handle,
                    size, offset);
     if (rc != 0)
     {
-        printf("xclSyncBO failed %d\n", rc);
-        return rc;
+        std::cout << "ERROR: xma_plg_buffer_read xclSyncBO failed " << std::dec << rc << std::endl;
     }
-
-    rc = xclReadBO(dev_handle, b_obj_priv->boHandle, dst, size, offset);
-    if (rc != 0)
-        printf("xclReadBO failed %d\n", rc);
-
 
     return rc;
 }

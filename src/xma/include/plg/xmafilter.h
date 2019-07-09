@@ -65,6 +65,8 @@ typedef struct XmaFilterSession
     //int32_t               conn_send_handle; /**< downstream kernel */
     //uint64_t              out_dev_addr; /**< paddr of device output buffer */
     //bool                  zerocopy_dest; /**< flag indicating destination supports zerocopy */
+    /** Reserved */
+    uint32_t        reserved[4];
 } XmaFilterSession;
 
 /**

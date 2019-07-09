@@ -48,16 +48,18 @@ typedef struct XmaBufferObj
 {
    uint8_t* data;
    uint64_t size;
-   uint32_t paddr_low;
-   uint32_t paddr_high;
+   uint64_t paddr;
    int32_t  bank_index;
    int32_t  dev_index;
+   bool     device_only_buffer;
    void*    private_do_not_touch;
+  
   XmaBufferObj() {
    data = NULL;
    size = 0;
    bank_index = -1;
    dev_index = -1;
+   device_only_buffer = false;
    private_do_not_touch = NULL;
   }
 } XmaBufferObj;
@@ -85,7 +87,7 @@ typedef struct XmaBufferObj
  *  RETURN:    Non-zero buffer handle on success
  *
  */
-XmaBufferObj xma_plg_buffer_alloc(XmaHwSession s_handle, size_t size);
+XmaBufferObj xma_plg_buffer_alloc(XmaHwSession s_handle, size_t size, bool device_only_buffer);
 
 /**
  *  xma_plg_buffer_free() - Free a device buffer
@@ -130,7 +132,6 @@ paddr API not required with buffer object
  */
 int32_t xma_plg_buffer_write(XmaHwSession     s_handle,
                              XmaBufferObj  b_obj,
-                             const void      *src,
                              size_t           size,
                              size_t           offset);
 
@@ -152,7 +153,6 @@ int32_t xma_plg_buffer_write(XmaHwSession     s_handle,
  */
 int32_t xma_plg_buffer_read(XmaHwSession     s_handle,
                             XmaBufferObj  b_obj,
-                            void            *dst,
                             size_t           size,
                             size_t           offset);
 
