@@ -32,6 +32,7 @@ opt_dsadir=""
 opt_pkgdir="/tmp/pkgdsa"
 opt_sdx="/proj/xbuilds/2018.2_daily_latest/installs/lin64/SDx/2018.2"
 opt_xrt=""
+alt_fw_dir=""
 opt_cl=0
 opt_dev=0
 license_dir=""
@@ -51,6 +52,7 @@ usage()
     echo "[-pkgdir <path>]           Full path to direcory used by rpm,dep,xbins (default: /tmp/pkgdsa)"
     echo "[-dev]                     Build development package"
     echo "[-license <path>]          Include license file(s) from the <path> in the package"
+    echo "[-altfwdir]                Alternate firmware directory"
     echo "[-help]                    List this help"
 
     exit 1
@@ -98,6 +100,11 @@ while [ $# -gt 0 ]; do
         -sdx)
             shift
             opt_sdx=$1
+            shift
+            ;;
+        -altfwdir)
+            shift
+            alt_fw_dir=$1
             shift
             ;;
         *)
@@ -441,6 +448,15 @@ initDsaBinEnvAndVars()
     if [ "${SchedulerFamily}" != "" ]; then
       if [ "${SchedulerFamily}" == "ERT-Gen1" ]; then
          fwScheduler="${XILINX_XRT}/share/fw/sched.bin"
+
+         if [ "${opt_dsa}" == "xilinx_u200_xdma_201830_2" ]; then
+            fwScheduler="${alt_fw_dir}/share/fw/sched.bin"
+         fi
+
+         if [ "${opt_dsa}" == "xilinx_u250_xdma_201830_2" ]; then
+            fwScheduler="${alt_fw_dir}/share/fw/sched.bin"
+         fi
+         
       else
          echo "ERROR: Unknown scheduler firmware family: ${SchedulerFamily}"
          exit 1
@@ -457,7 +473,6 @@ initDsaBinEnvAndVars()
 
          # -- Use latest FW for these platforms
          if [ "${opt_dsa}" == "xilinx_u200_xdma_201830_2" ]; then
-            echo "SPR1"
             fwManagement="${XILINX_XRT}/share/fw/cmc.bin"
          fi
 
