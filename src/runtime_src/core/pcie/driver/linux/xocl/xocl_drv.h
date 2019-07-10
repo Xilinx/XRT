@@ -2,6 +2,7 @@
  * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@Xilinx.com
+ *          Jan Stephan <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -24,6 +25,7 @@
 #include <drm/drm_gem.h>
 #include <drm/drm_mm.h>
 #include "xclbin.h"
+#include "xrt_mem.h"
 #include "devices.h"
 #include "xocl_ioctl.h"
 #include "mgmt-ioctl.h"
@@ -31,6 +33,67 @@
 #include <linux/libfdt_env.h>
 #include "lib/libfdt/libfdt.h"
 
+/* The fix for the y2k38 bug was introduced with Linux 3.17 and backported to
+ * Red Hat 7.2.
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
+	#define XOCL_TIMESPEC struct timespec64
+	#define XOCL_GETTIME ktime_get_real_ts64
+	#define XOCL_USEC tv_nsec / NSEC_PER_USEC
+#elif defined(RHEL_RELEASE_CODE)
+	#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,2)
+		#define XOCL_TIMESPEC struct timespec64
+		#define XOCL_GETTIME ktime_get_real_ts64
+		#define XOCL_USEC tv_nsec / NSEC_PER_USEC
+	#else
+		#define XOCL_TIMESPEC struct timeval
+		#define XOCL_GETTIME do_gettimeofday
+		#define XOCL_USEC tv_usec
+	#endif
+#else
+	#define XOCL_TIMESPEC struct timeval
+	#define XOCL_GETTIME do_gettimeofday
+	#define XOCL_USEC tv_usec
+#endif
+
+/* drm_gem_object_put_unlocked and drm_gem_object_get were introduced with Linux
+ * 4.12 and backported to Red Hat 7.5.
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+	#define XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_put_unlocked
+	#define XOCL_DRM_GEM_OBJECT_GET drm_gem_object_get
+#elif defined(RHEL_RELEASE_CODE)
+	#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,5)
+		#define XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_put_unlocked
+		#define XOCL_DRM_GEM_OBJECT_GET drm_gem_object_get
+	#else
+		#define XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_unreference_unlocked
+		#define XOCL_DRM_GEM_OBJECT_GET drm_gem_object_reference
+	#endif
+#else
+	#define XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_unreference_unlocked
+	#define XOCL_DRM_GEM_OBJECT_GET drm_gem_object_reference
+#endif
+
+/* drm_dev_put was introduced with Linux 4.15 and backported to Red Hat 7.6. */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0)
+	#define XOCL_DRM_DEV_PUT drm_dev_put
+#elif defined(RHEL_RELEASE_CODE)
+	#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,6)
+		#define XOCL_DRM_DEV_PUT drm_dev_put
+	#else
+		#define XOCL_DRM_DEV_PUT drm_dev_unref
+	#endif
+#else
+	#define XOCL_DRM_DEV_PUT drm_dev_unref
+#endif
+
+/* access_ok lost its first parameter with Linux 5.0. */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
+	#define XOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(ADDR, SIZE)
+#else
+	#define XOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(TYPE, ADDR, SIZE)
+#endif
 
 #if defined(RHEL_RELEASE_CODE)
 #if RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(7, 4)
@@ -82,6 +145,7 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define	XOCL_MODULE_NAME	"xocl"
 #define	XCLMGMT_MODULE_NAME	"xclmgmt"
 #define	ICAP_XCLBIN_V2			"xclbin2"
+#define XOCL_CDEV_DIR		"xfpga"
 
 #define XOCL_MAX_DEVICES	16
 #define XOCL_EBUF_LEN           512
@@ -178,8 +242,9 @@ struct client_ctx;
 
 enum {
 	XOCL_SUBDEV_STATE_UNINIT,
-	XOCL_SUBDEV_STATE_INIT,
+	XOCL_SUBDEV_STATE_DETACHED,
 	XOCL_SUBDEV_STATE_OFFLINE,
+	XOCL_SUBDEV_STATE_INIT,
 };
 
 struct xocl_subdev {
@@ -189,10 +254,24 @@ struct xocl_subdev {
 	struct xocl_subdev_info		info;
 	int				inst;
 	int				pf;
+	struct cdev			*cdev;
 
         struct resource		res[XOCL_SUBDEV_MAX_RES];
 	char	res_name[XOCL_SUBDEV_MAX_RES][XOCL_SUBDEV_RES_NAME_LEN];
 	char			bar_idx[XOCL_SUBDEV_MAX_RES];
+};
+
+#define XOCL_GET_DRV_PRI(pldev)					\
+	(platform_get_device_id(pldev) ?				\
+	((struct xocl_drv_private *)				\
+	platform_get_device_id(pldev)->driver_data) : NULL)
+
+
+struct xocl_drv_private {
+	void			*ops;
+	const struct file_operations	*fops;
+	dev_t			dev;
+	char			*cdev_name;
 };
 
 #define	XOCL_GET_SUBDEV_PRIV(dev)				\
@@ -342,7 +421,7 @@ struct xocl_rom_funcs {
 	(ROM_CB(xdev, mb_mgmt_on) ? ROM_OPS(xdev)->mb_mgmt_on(ROM_DEV(xdev)) : false)
 #define	xocl_mb_sched_on(xdev)		\
 	(ROM_CB(xdev, mb_sched_on) ? ROM_OPS(xdev)->mb_sched_on(ROM_DEV(xdev)) : false)
-#define	xocl_cdma_addr(xdev)		\
+#define	xocl_rom_cdma_addr(xdev)		\
 	(ROM_CB(xdev, cdma_addr) ? ROM_OPS(xdev)->cdma_addr(ROM_DEV(xdev)) : 0)
 #define xocl_clk_scale_on(xdev)		\
 	(ROM_CB(xdev, runtime_clk_scale_on) ? ROM_OPS(xdev)->runtime_clk_scale_on(ROM_DEV(xdev)) : false)
@@ -551,7 +630,7 @@ struct xocl_mb_funcs {
 		u32 len);
 	int (*load_sche_image)(struct platform_device *pdev, const char *buf,
 		u32 len);
-	void (*get_data)(struct platform_device *pdev, void *buf);
+	int (*get_data)(struct platform_device *pdev, void *buf);
 };
 
 #define	MB_DEV(xdev)		\
@@ -611,7 +690,6 @@ enum data_kind {
 	DIMM2_TEMP,
 	DIMM3_TEMP,
 	FPGA_TEMP,
-	VCC_BRAM,
 	CLOCK_FREQ_0,
 	CLOCK_FREQ_1,
 	FREQ_COUNTER_0,
@@ -711,6 +789,7 @@ struct xocl_icap_funcs {
 	int (*download_bitstream_axlf)(struct platform_device *pdev,
 		const void __user *arg);
 	int (*download_boot_firmware)(struct platform_device *pdev);
+	int (*download_rp)(struct platform_device *pdev, int level);
 	int (*ocl_set_freq)(struct platform_device *pdev,
 		unsigned int region, unsigned short *freqs, int num_freqs);
 	int (*ocl_get_freq)(struct platform_device *pdev,
@@ -743,7 +822,11 @@ struct xocl_icap_funcs {
 #define	xocl_icap_download_boot_firmware(xdev)				\
 	(ICAP_CB(xdev, download_boot_firmware) ?						\
 	ICAP_OPS(xdev)->download_boot_firmware(ICAP_DEV(xdev)) :	\
-	 -ENODEV)
+	-ENODEV)
+#define xocl_icap_download_rp(xdev, level)				\
+	(ICAP_CB(xdev, download_rp) ?					\
+	ICAP_OPS(xdev)->download_rp(ICAP_DEV(xdev), level) :	\
+	-ENODEV)
 #define	xocl_icap_ocl_get_freq(xdev, region, freqs, num)		\
 	(ICAP_CB(xdev, ocl_get_freq) ?						\
 	ICAP_OPS(xdev)->ocl_get_freq(ICAP_DEV(xdev), region, freqs, num) : \
@@ -764,8 +847,11 @@ struct xocl_icap_funcs {
 	(ICAP_CB(xdev, ocl_unlock_bitstream) ?						\
 	ICAP_OPS(xdev)->ocl_unlock_bitstream(ICAP_DEV(xdev), uuid, pid) : \
 	 -ENODEV)
+#define xocl_icap_refresh_addrs(xdev)				\
+	(ICAP_CB(xdev, refresh_addrs) ?				\
+	 ICAP_OPS(xdev)->refresh_addrs(ICAP_DEV(xdev)) : NULL)
 #define	xocl_icap_get_data(xdev, kind)				\
-	(ICAP_CB(xdev, get_data) ?						\
+	(ICAP_CB(xdev, get_data) ?				\
 	ICAP_OPS(xdev)->get_data(ICAP_DEV(xdev), kind) : \
 	0)
 
@@ -776,6 +862,7 @@ struct xocl_mig_label {
 };
 
 struct xocl_mig_funcs {
+	struct xocl_subdev_funcs common_funcs;
 	void (*get_data)(struct platform_device *pdev, void *buf, size_t entry_sz);
 };
 
@@ -790,6 +877,64 @@ struct xocl_mig_funcs {
 	MIG_OPS(xdev, idx)->get_data(MIG_DEV(xdev, idx), buf, entry_sz) : \
 	0)
 
+struct xocl_iores_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (*read32)(struct platform_device *pdev, u32 id, u32 off, u32 *val);
+	int (*write32)(struct platform_device *pdev, u32 id, u32 off, u32 val);
+	void __iomem *(*get_base)(struct platform_device *pdev, u32 id);
+};
+
+#define IORES_DEV(xdev, idx)  SUBDEV_MULTI(xdev, XOCL_SUBDEV_IORES, idx).pldev
+#define	IORES_OPS(xdev, idx)						\
+	((struct xocl_iores_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_IORES, idx).ops)
+#define IORES_CB(xdev, idx, cb)		\
+	(IORES_DEV(xdev, idx) && IORES_OPS(xdev, idx) &&		\
+	IORES_OPS(xdev, idx)->cb)
+#define	xocl_iores_read32(xdev, level, id, off, val)			\
+	(IORES_CB(xdev, level, read32) ?				\
+	IORES_OPS(xdev, level)->read32(IORES_DEV(xdev, level), id, off, val) :\
+	-ENODEV)
+#define	xocl_iores_write32(xdev, level, id, off, val)			\
+	(IORES_CB(xdev, level, write32) ?				\
+	IORES_OPS(xdev, level)->write32(IORES_DEV(xdev, level), id, off, val) :\
+	-ENODEV)
+#define xocl_iores_get_base(xdev, level, id)				\
+	(IORES_CB(xdev, level, get_base) ?				\
+	IORES_OPS(xdev, level)->get_base(IORES_DEV(xdev, level), id) : NULL)
+
+struct xocl_axigate_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (*freeze)(struct platform_device *pdev);
+	int (*free)(struct platform_device *pdev);
+};
+
+#define AXIGATE_DEV(xdev, idx)			\
+	SUBDEV_MULTI(xdev, XOCL_SUBDEV_AXIGATE, idx).pldev
+#define AXIGATE_OPS(xdev, idx)			\
+	((struct xocl_axigate_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_AXIGATE, \
+	idx).ops)
+#define AXIGATE_CB(xdev, idx, cb)		\
+	(AXIGATE_DEV(xdev, idx) && AXIGATE_OPS(xdev, idx) &&		\
+	AXIGATE_OPS(xdev, idx)->cb)
+#define xocl_axigate_freeze(xdev, level)		\
+	(AXIGATE_CB(xdev, level, freeze) ?		\
+	AXIGATE_OPS(xdev, level)->freeze(AXIGATE_DEV(xdev, level)) :	\
+	-ENODEV)
+#define xocl_axigate_free(xdev, level)		\
+	(AXIGATE_CB(xdev, level, free) ?		\
+	AXIGATE_OPS(xdev, level)->free(AXIGATE_DEV(xdev, level)) :	\
+	-ENODEV)
+
+static inline void __iomem *xocl_cdma_addr(xdev_handle_t xdev)
+{
+	void	__iomem *ioaddr;
+
+	ioaddr = xocl_iores_get_base(xdev, XOCL_SUBDEV_LEVEL_PRP, IORES_KDMA);
+	if (!ioaddr)
+		ioaddr = xocl_rom_cdma_addr(xdev);
+
+	return ioaddr;
+}
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
 void xocl_init_dsa_priv(xdev_handle_t xdev_hdl);
@@ -814,25 +959,37 @@ int xocl_subdev_create_all(xdev_handle_t xdev_hdl);
 void xocl_subdev_destroy_all(xdev_handle_t xdev_hdl);
 int xocl_subdev_offline_all(xdev_handle_t xdev_hdl);
 int xocl_subdev_offline_by_id(xdev_handle_t xdev_hdl, u32 id);
+int xocl_subdev_offline_by_level(xdev_handle_t xdev_hdl, int level);
 int xocl_subdev_online_all(xdev_handle_t xdev_hdl);
 int xocl_subdev_online_by_id(xdev_handle_t xdev_hdl, u32 id);
+int xocl_subdev_online_by_level(xdev_handle_t xdev_hdl, int level);
 void xocl_subdev_destroy_by_id(xdev_handle_t xdev_hdl, u32 id);
 void xocl_subdev_destroy_by_level(xdev_handle_t xdev_hdl, int level);
 
 int xocl_subdev_create_by_name(xdev_handle_t xdev_hdl, char *name);
 int xocl_subdev_destroy_by_name(xdev_handle_t xdev_hdl, char *name);
 
-void xocl_subdev_update_info(xdev_handle_t xdev_hdl,
-        struct xocl_subdev_info *info_array, int *num,
-        struct xocl_subdev_info *sdev_info);
+int xocl_subdev_destroy_prp(xdev_handle_t xdev);
+int xocl_subdev_create_prp(xdev_handle_t xdev);
 
-void xocl_subdev_register(struct platform_device *pldev, u32 id,
-	void *cb_funcs);
 void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in);
 int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
 	struct axlf *bin_obj, bool major_only);
 int xocl_alloc_dev_minor(xdev_handle_t xdev_hdl);
 void xocl_free_dev_minor(xdev_handle_t xdev_hdl);
+
+int xocl_ioaddr_to_baroff(xdev_handle_t xdev_hdl, resource_size_t io_addr,
+	int *bar_idx, resource_size_t *bar_off);
+
+static inline void xocl_lock_xdev(xdev_handle_t xdev)
+{
+	mutex_lock(&XDEV(xdev)->lock);
+}
+
+static inline void xocl_unlock_xdev(xdev_handle_t xdev)
+{
+	mutex_unlock(&XDEV(xdev)->lock);
+}
 
 static inline uint32_t xocl_dr_reg_read32(xdev_handle_t xdev, void __iomem *addr)
 {
@@ -859,10 +1016,13 @@ extern struct xocl_drvinst *xocl_drvinst_array[XOCL_MAX_DEVICES * 10];
 void *xocl_drvinst_alloc(struct device *dev, u32 size);
 void xocl_drvinst_free(void *data);
 void *xocl_drvinst_open(void *file_dev);
+void *xocl_drvinst_open_single(void *file_dev);
 void xocl_drvinst_close(void *data);
 void xocl_drvinst_set_filedev(void *data, void *file_dev);
 void xocl_drvinst_offline(xdev_handle_t xdev_hdl, bool offline);
-bool xocl_drvinst_get_offline(xdev_handle_t xdev_hdl);
+int xocl_drvinst_set_offline(void *data, bool offline);
+int xocl_drvinst_get_offline(void *data, bool *offline);
+int xocl_drvinst_kill_proc(void *data);
 
 /* health thread functions */
 int health_thread_start(xdev_handle_t xdev);
@@ -942,6 +1102,9 @@ void xocl_fini_xdma_mgmt(void);
 int __init xocl_init_flash(void);
 void xocl_fini_flash(void);
 
-int __init xocl_init_icap_bld(void);
-void xocl_fini_icap_bld(void);
+int __init xocl_init_axigate(void);
+void xocl_fini_axigate(void);
+
+int __init xocl_init_iores(void);
+void xocl_fini_iores(void);
 #endif

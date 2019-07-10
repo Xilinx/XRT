@@ -109,39 +109,39 @@ enum group_kind {
  * struct xcl_sensor - Data structure used to fetch SENSOR group
  */
 struct xcl_sensor {
-	uint64_t vol_12v_pex;
-	uint64_t vol_12v_aux;
-	uint64_t cur_12v_pex;
-	uint64_t cur_12v_aux;
-	uint64_t vol_3v3_pex;
-	uint64_t vol_3v3_aux;
-	uint64_t ddr_vpp_btm;
-	uint64_t sys_5v5;
-	uint64_t top_1v2;
-	uint64_t vol_1v8;
-	uint64_t vol_0v85;
-	uint64_t ddr_vpp_top;
-	uint64_t mgt0v9avcc;
-	uint64_t vol_12v_sw;
-	uint64_t mgtavtt;
-	uint64_t vcc1v2_btm;
-	uint64_t fpga_temp;
-	uint64_t fan_temp;
-	uint64_t fan_rpm;
-	uint64_t dimm_temp0;
-	uint64_t dimm_temp1;
-	uint64_t dimm_temp2;
-	uint64_t dimm_temp3;
-	uint64_t vccint_vol;
-	uint64_t vccint_curr;
-	uint64_t se98_temp0;
-	uint64_t se98_temp1;
-	uint64_t se98_temp2;
-	uint64_t cage_temp0;
-	uint64_t cage_temp1;
-	uint64_t cage_temp2;
-	uint64_t cage_temp3;
-	uint64_t hbm_temp0;
+	uint32_t vol_12v_pex;
+	uint32_t vol_12v_aux;
+	uint32_t cur_12v_pex;
+	uint32_t cur_12v_aux;
+	uint32_t vol_3v3_pex;
+	uint32_t vol_3v3_aux;
+	uint32_t ddr_vpp_btm;
+	uint32_t sys_5v5;
+	uint32_t top_1v2;
+	uint32_t vol_1v8;
+	uint32_t vol_0v85;
+	uint32_t ddr_vpp_top;
+	uint32_t mgt0v9avcc;
+	uint32_t vol_12v_sw;
+	uint32_t mgtavtt;
+	uint32_t vcc1v2_btm;
+	uint32_t fpga_temp;
+	uint32_t fan_temp;
+	uint32_t fan_rpm;
+	uint32_t dimm_temp0;
+	uint32_t dimm_temp1;
+	uint32_t dimm_temp2;
+	uint32_t dimm_temp3;
+	uint32_t vccint_vol;
+	uint32_t vccint_curr;
+	uint32_t se98_temp0;
+	uint32_t se98_temp1;
+	uint32_t se98_temp2;
+	uint32_t cage_temp0;
+	uint32_t cage_temp1;
+	uint32_t cage_temp2;
+	uint32_t cage_temp3;
+	uint32_t hbm_temp0;
 };
 
 /**
@@ -294,13 +294,11 @@ struct mailbox_clock_freqscaling {
 /**
  * struct mailbox_req - mailbox request message header
  * @req: opcode
- * @data_len: payload size
  * @flags: flags of this message
  * @data: payload of variable length
  */
 struct mailbox_req {
 	enum mailbox_request req;
-	uint32_t data_len;
 	uint64_t flags;
 	char data[0];
 };
@@ -316,7 +314,7 @@ struct mailbox_req {
  * @sz: payload size
  * @flags: flags of this message as in struct mailbox_req
  * @id: message ID
- * @data: payload (request or response message)
+ * @data: payload (struct mailbox_req or response data matching the request)
  */
 struct sw_chan {
 	uint64_t sz;

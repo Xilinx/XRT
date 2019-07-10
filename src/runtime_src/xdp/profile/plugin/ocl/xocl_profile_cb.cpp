@@ -351,7 +351,7 @@ cb_action_unmap (xocl::event* event,cl_int status, cl_mem buffer, size_t size, u
     auto device = queue->get_device();
 
     // Catch if buffer is *not* resident on device (covered by NDRange migration) or is P2P buffer
-    if (!xocl::xocl(buffer)->is_resident(device) || xocl::xocl(buffer)->is_p2p_memory())
+    if (!xocl::xocl(buffer)->is_resident(device) || xocl::xocl(buffer)->no_host_memory())
       return;
 
     // Create string to specify event and its dependencies
@@ -578,6 +578,14 @@ cb_set_kernel_clock_freq(const std::string& device_name, unsigned int freq)
 void cb_reset(const axlf* xclbin)
 {
   auto profiler = OCLProfiler::Instance();
+
+  // Extract and store the system profile metatdata
+  auto pProfileMgr = profiler ? profiler->getProfileManager() : nullptr;
+  auto pRunSummary = pProfileMgr ? pProfileMgr->getRunSummary() : nullptr;
+
+  if (pRunSummary != nullptr) {
+    pRunSummary->extractSystemProfileMetadata(xclbin, "xclbin");
+  }
 
   // init flow mode
   if (!is_emulation_mode()) {

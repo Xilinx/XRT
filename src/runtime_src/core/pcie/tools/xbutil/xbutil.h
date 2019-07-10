@@ -784,7 +784,7 @@ public:
              << std::setw(16) << sensor_tree::get( "board.info.dma_threads", -1 )
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.mig_calibrated", "N/A" );
         switch(sensor_tree::get( "board.info.p2p_enabled", -1)) {
-        case -1:
+        case ENXIO:
                  ostr << std::setw(16) << "N/A" << std::endl;
              break;
         case 0:
@@ -793,7 +793,7 @@ public:
         case 1:
                  ostr << std::setw(16) << "true" << std::endl;
              break;
-        case 2:
+        case EBUSY:
                  ostr << std::setw(16) << "no iomem" << std::endl;
              break;
         }
@@ -837,7 +837,7 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.1v2_btm.voltage" ) << std::endl;
         ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "DNA" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.voltage" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.current" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned>( "board.physical.electrical.vccint.current" )
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.dna", "N/A" ) << std::endl;
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
@@ -1402,8 +1402,8 @@ public:
 
     int reset(xclResetKind kind);
     int setP2p(bool enable, bool force);
-    int testP2p();
-    int testM2m();
+    int testP2p(void);
+    int testM2m(void);
 
 private:
     // Run a test case as <exe> <xclbin> [-d index] on this device and collect
@@ -1411,6 +1411,12 @@ private:
     // Note: exe should assume index to be 0 without -d
     int runTestCase(const std::string& exe, const std::string& xclbin,
         std::string& output);
+
+    int pcieLinkTest(void);
+    int verifyKernelTest(void);
+    int bandwidthKernelTest(void);
+    // testFunc must return 0 for success, 1 for warning, and < 0 for error
+    int runOneTest(std::string testName, std::function<int(void)> testFunc);
 };
 
 void printHelp(const std::string& exe);

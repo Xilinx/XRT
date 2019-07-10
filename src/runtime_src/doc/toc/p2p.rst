@@ -44,7 +44,7 @@ Current P2P Configuration
 ::
 
  # xbutil query
- DSA                             FPGA                        IDCode
+ XSA                             FPGA                        IDCode
  xilinx_vcu1525_dynamic_6_0      xcvu9p-fsgd2104-2L-e        0x14b31093
  Vendor          Device          SubDevice       SubVendor
  0x10ee          0x6a9f          0x4360          0x10ee

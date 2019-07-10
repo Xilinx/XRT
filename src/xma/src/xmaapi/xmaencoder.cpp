@@ -25,7 +25,7 @@
 #include <unistd.h>
 #include "lib/xmaapi.h"
 #include "lib/xmahw_hal.h"
-#include "lib/xmares.h"
+//#include "lib/xmares.h"
 #include "xmaplugin.h"
 
 char    g_stat_fmt[] = "last_pid_in_use          :%d\n"
@@ -69,16 +69,25 @@ void xma_enc_session_statsfile_close(XmaEncoderSession *session);
 
 extern XmaSingleton *g_xma_singleton;
 
-int32_t
-xma_enc_plugins_load(XmaSystemCfg      *systemcfg,
-                     XmaEncoderPlugin  *encoders)
+XmaEncoderSession*
+xma_enc_session_create(XmaEncoderProperties *enc_props)
 {
-    // Get the plugin path
-    char *pluginpath = systemcfg->pluginpath;
-    char *error;
-    int32_t k = 0;
+    XmaEncoderSession *enc_session = (XmaEncoderSession*) malloc(sizeof(XmaEncoderSession));
+    if (enc_session == NULL)
+        return NULL;
+    //XmaResources xma_shm_cfg = g_xma_singleton->shm_res_cfg;
+    //XmaKernelRes kern_res;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_ENCODER_MOD, "%s()\n", __func__);
+    /*Sarab: Remove xma_res stuff
+	if (!xma_shm_cfg) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
+                   "No reference to xma res database\n");
+        free(enc_session);
+		return NULL;
+    }
+    */
+
     // Load the xmaplugin library as it is a dependency for all plugins
     void *xmahandle = dlopen("libxmaplugin.so",
                              RTLD_LAZY | RTLD_GLOBAL);
@@ -87,76 +96,43 @@ xma_enc_plugins_load(XmaSystemCfg      *systemcfg,
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
                    "Failed to open plugin xmaplugin.so. Error msg: %s\n",
                    dlerror());
-        return XMA_ERROR;
-    }
-
-    // For each plugin imagecfg/kernelcfg,
-    for (int32_t i = 0; i < systemcfg->num_images; i++)
-    {
-        for (int32_t j = 0;
-             j < systemcfg->imagecfg[i].num_kernelcfg_entries; j++)
-        {
-            char *func = systemcfg->imagecfg[i].kernelcfg[j].function;
-            if (strcmp(func, XMA_CFG_FUNC_NM_ENC) != 0)
-                continue;
-            char *plugin = systemcfg->imagecfg[i].kernelcfg[j].plugin;
-            char pluginfullname[PATH_MAX + NAME_MAX];
-            sprintf(pluginfullname, "%s/%s", pluginpath, plugin);
-            void *handle = dlopen(pluginfullname, RTLD_NOW);
-            if (!handle)
-            {
-                xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
-                    "Failed to open plugin %s\n Error msg: %s\n",
-                    pluginfullname, dlerror());
-                return XMA_ERROR;
-            }
-
-            XmaEncoderPlugin *plg =
-                (XmaEncoderPlugin*)dlsym(handle, "encoder_plugin");
-            if ((error = dlerror()) != NULL)
-            {
-                xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
-                    "Failed to open plugin %s\n Error msg: %s\n",
-                    pluginfullname, dlerror());
-                return XMA_ERROR;
-            }
-            memcpy(&encoders[k++], plg, sizeof(XmaEncoderPlugin));
-        }
-    }
-    return XMA_SUCCESS;
-}
-
-XmaEncoderSession*
-xma_enc_session_create(XmaEncoderProperties *enc_props)
-{
-    XmaEncoderSession *enc_session = (XmaEncoderSession*) malloc(sizeof(XmaEncoderSession));
-    if (enc_session == NULL)
         return NULL;
-    XmaResources xma_shm_cfg = g_xma_singleton->shm_res_cfg;
-    XmaKernelRes kern_res;
-    int rc, dev_handle, kern_handle, enc_handle;
-
-    xma_logmsg(XMA_DEBUG_LOG, XMA_ENCODER_MOD, "%s()\n", __func__);
-	if (!xma_shm_cfg) {
+    }
+    void *handle = dlopen(enc_props->plugin_lib, RTLD_NOW);
+    if (!handle)
+    {
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
-                   "No reference to xma res database\n");
-        free(enc_session);
-		return NULL;
+            "Failed to open plugin %s\n Error msg: %s\n",
+            enc_props->plugin_lib, dlerror());
+        return NULL;
+    }
+
+    XmaEncoderPlugin *plg =
+        (XmaEncoderPlugin*)dlsym(handle, "encoder_plugin");
+    char *error;
+    if ((error = dlerror()) != NULL)
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
+            "Failed to get encoder_plugin from %s\n Error msg: %s\n",
+            enc_props->plugin_lib, dlerror());
+        return NULL;
     }
 
     memset(enc_session, 0, sizeof(XmaEncoderSession));
     // init session data
     enc_session->encoder_props = *enc_props;
-    enc_session->base.chan_id = -1;
+    enc_session->base.channel_id = enc_props->channel_id;
     enc_session->base.session_type = XMA_ENCODER;
+    enc_session->encoder_plugin = plg;
 
+    /*Sarab: Remove xma_res stuff
     // Just assume this is a VP9 encoder for now and that the FPGA
     // has been downloaded.  This is accomplished by getting the
     // first device (dev_handle, base_addr, ddr_bank) and making a
     // XmaHwSession out of it.  Later this needs to be done by searching
     // for an available resource.
-    /* JPM TODO default to exclusive device access.  Ensure multiple threads
-       can access this device if in-use pid = requesting thread pid */
+    /--* JPM TODO default to exclusive device access.  Ensure multiple threads
+       can access this device if in-use pid = requesting thread pid *--/
     rc = xma_res_alloc_enc_kernel(xma_shm_cfg, enc_props->hwencoder_type,
                                   enc_props->hwvendor_string,
                                   &enc_session->base, false);
@@ -189,26 +165,40 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
         free(enc_session);
         return NULL;
     }
+    */
+
+    bool expected = false;
+    bool desired = true;
+    while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //Singleton lock acquired
+
+   //Sarab: TODO Fix device index, CU index & session->xx_plugin assigned above
+    int rc, dev_index, cu_index;
+    dev_index = enc_props->dev_index;
+    cu_index = enc_props->cu_index;
+    //enc_handle = enc_props->cu_index;
+
+    g_xma_singleton->num_encoders++;
 
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
-    XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_handle].handle;
+    XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_index].handle;
 
     enc_session->base.hw_session.dev_handle = hal->dev_handle;
-    enc_session->base.hw_session.base_address =
-        hwcfg->devices[dev_handle].kernels[kern_handle].base_address;
-    enc_session->base.hw_session.ddr_bank =
-        hwcfg->devices[dev_handle].kernels[kern_handle].ddr_bank;
 
     //For execbo:
-    enc_session->base.hw_session.kernel_info = &hwcfg->devices[dev_handle].kernels[kern_handle];
+    enc_session->base.hw_session.kernel_info = &hwcfg->devices[dev_index].kernels[cu_index];
+
     enc_session->base.hw_session.dev_index = hal->dev_index;
 
-    enc_session->encoder_plugin = &g_xma_singleton->encodercfg[enc_handle];
+    //enc_session->encoder_plugin = &g_xma_singleton->encodercfg[enc_handle];
 
     // Allocate the private data
     enc_session->base.plugin_data =
-        calloc(g_xma_singleton->encodercfg[enc_handle].plugin_data_size, sizeof(uint8_t));
+        calloc(enc_session->encoder_plugin->plugin_data_size, sizeof(uint8_t));
 
+    /*Sarab: Remove xma_connect stuff
     // For the encoder, only a receiver connection make sense
     // because no HW component consumes an encoded frame at
     // this point in a pipeline
@@ -221,15 +211,30 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
     end_pt->height = enc_props->height;
     enc_session->conn_recv_handle =
         xma_connect_alloc(end_pt, XMA_CONNECT_RECEIVER);
+    */
+
+    enc_session->base.session_id = g_xma_singleton->num_encoders;
+    enc_session->base.session_signature = (void*)(((uint64_t)enc_session->base.hw_session.kernel_info) | ((uint64_t)enc_session->base.hw_session.dev_handle));
+
+    //Release singleton lock
+    g_xma_singleton->locked = false;
 
     // Call the plugins initialization function with this session data
+    //Sarab: Check plugin compatibility to XMA
+    int32_t xma_main_ver = -1;
+    int32_t xma_sub_ver = -1;
+    rc = enc_session->encoder_plugin->xma_version(&xma_main_ver, & xma_sub_ver);
+    //Sarab: TODO. Check version match. Stop here for now
+    //Sarab: Remove it later on
+    return NULL;
+
     rc = enc_session->encoder_plugin->init(enc_session);
     if (rc) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
                    "Initalization of encoder plugin failed. Return code %d\n",
                    rc);
         free(enc_session->base.plugin_data);
-        xma_connect_free(enc_session->conn_recv_handle, XMA_CONNECT_RECEIVER);
+        //xma_connect_free(enc_session->conn_recv_handle, XMA_CONNECT_RECEIVER);
         free(enc_session);
         return NULL;
     }
@@ -258,17 +263,19 @@ xma_enc_session_destroy(XmaEncoderSession *session)
     // Clean up the private data
     free(session->base.plugin_data);
 
+    /*Sarab: Remove xma_connect stuff
     // Free the receiver connection
     xma_connect_free(session->conn_recv_handle,
                         XMA_CONNECT_RECEIVER);
-
-    /* free kernel/kernel-session */
+    */
+   
+    /* Remove xma_res stuff free kernel/kernel-session *--/
     rc = xma_res_free_kernel(g_xma_singleton->shm_res_cfg,
                              session->base.kern_res);
     if (rc)
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
                    "Error freeing kernel session. Return code %d\n", rc);
-
+    */
     // Free the session
     // TODO: (should also free the Hw sessions)
     free(session);
@@ -332,7 +339,7 @@ xma_enc_session_statsfile_init(XmaEncoderSession *session)
     int32_t          dev_id = 0;
     int32_t          kern_inst = 0;
     int32_t          chan_id = 0;
-    char             fname[100];
+    char             fname[512];
     XmaEncoderStats *stats;
 
     stats = (XmaEncoderStats*) malloc(sizeof(XmaEncoderStats));
@@ -367,9 +374,11 @@ xma_enc_session_statsfile_init(XmaEncoderSession *session)
 
     // Build up file name based on session parameters
     vendor = session->encoder_props.hwvendor_string;
+    /*Sarab: TODO. Fix dev id, cu id, etc
     dev_id = xma_res_dev_handle_get(session->base.kern_res);
     kern_inst = xma_res_kern_handle_get(session->base.kern_res);
-    chan_id = session->base.chan_id;
+    */
+    chan_id = session->base.channel_id;
     sprintf(fname, "%s/ENC-%s-%s-%d-%d-%d",
             path, enc_type_str, vendor, dev_id, kern_inst, chan_id);     
     

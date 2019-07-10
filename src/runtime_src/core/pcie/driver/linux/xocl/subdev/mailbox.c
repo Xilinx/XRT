@@ -202,7 +202,6 @@
 #include "mailbox_proto.h"
 
 int mailbox_no_intr;
-dev_t mailbox_dev;
 module_param(mailbox_no_intr, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(mailbox_no_intr,
 	"Disable mailbox interrupt and do timer-driven msg passing");
@@ -359,8 +358,6 @@ struct mailbox_channel {
 struct mailbox {
 	struct platform_device	*mbx_pdev;
 	struct mailbox_reg	*mbx_regs;
-	struct cdev		*sys_cdev;
-	struct device		*sys_device;
 	u32			mbx_irq;
 
 	struct mailbox_channel	mbx_rx;
@@ -386,8 +383,9 @@ struct mailbox {
 	struct completion	mbx_comp;
 	struct mutex		mbx_lock;
 	struct list_head	mbx_req_list;
-	uint8_t			mbx_req_cnt;
+	uint32_t		mbx_req_cnt;
 	size_t			mbx_req_sz;
+	bool			mbx_req_stop;
 
 	uint32_t		mbx_prot_ver;
 	uint64_t		mbx_ch_state;
@@ -775,6 +773,46 @@ static struct mailbox_msg *alloc_msg(void *buf, size_t len)
 	return msg;
 }
 
+static void chan_fini(struct mailbox_channel *ch)
+{
+	struct mailbox_msg *msg;
+
+	if (!ch->mbc_parent)
+		return;
+
+	/*
+	 * Holding mutex to ensure no new msg is enqueued after
+	 * flag is set.
+	 */
+	mutex_lock(&ch->mbc_mutex);
+	set_bit(MBXCS_BIT_STOP, &ch->mbc_state);
+	mutex_unlock(&ch->mbc_mutex);
+
+	if (ch->mbc_wq) {
+		complete(&ch->mbc_worker);
+		cancel_work_sync(&ch->mbc_work);
+		destroy_workqueue(ch->mbc_wq);
+	}
+
+	mutex_lock(&ch->sw_chan_mutex);
+	if (ch->sw_chan_buf != NULL)
+		vfree(ch->sw_chan_buf);
+	mutex_unlock(&ch->sw_chan_mutex);
+
+	msg = ch->mbc_cur_msg;
+	if (msg)
+		chan_msg_done(ch, -ESHUTDOWN);
+
+	while ((msg = chan_msg_dequeue(ch, INVALID_MSG_ID)) != NULL)
+		msg_done(msg, -ESHUTDOWN);
+
+	del_timer_sync(&ch->mbc_timer);
+
+	mutex_destroy(&ch->mbc_mutex);
+	mutex_destroy(&ch->sw_chan_mutex);
+	ch->mbc_parent = NULL;
+}
+
 static int chan_init(struct mailbox *mbx, char *nm,
 	struct mailbox_channel *ch, chan_func_t fn)
 {
@@ -791,23 +829,12 @@ static int chan_init(struct mailbox *mbx, char *nm,
 	reset_pkt(&ch->mbc_packet);
 	set_bit(MBXCS_BIT_READY, &ch->mbc_state);
 
-	/* One thread for one channel. */
-	ch->mbc_wq =
-		create_singlethread_workqueue(dev_name(&mbx->mbx_pdev->dev));
-	if (!ch->mbc_wq) {
-		ch->mbc_parent = NULL;
-		return -ENOMEM;
-	}
-
-	INIT_WORK(&ch->mbc_work, chann_worker);
-	queue_work(ch->mbc_wq, &ch->mbc_work);
-
 	mutex_init(&ch->sw_chan_mutex);
-	init_waitqueue_head(&ch->sw_chan_wq);
-
 	mutex_lock(&ch->sw_chan_mutex);
 	cleanup_sw_ch(ch);
 	mutex_unlock(&ch->sw_chan_mutex);
+	init_waitqueue_head(&ch->sw_chan_wq);
+	atomic_set(&ch->sw_num_pending_msg, 0);
 
 	/* One timer for one channel. */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
@@ -816,42 +843,18 @@ static int chan_init(struct mailbox *mbx, char *nm,
 	timer_setup(&ch->mbc_timer, chan_timer, 0);
 #endif
 
-	atomic_set(&ch->sw_num_pending_msg, 0);
+	/* One thread for one channel. */
+	ch->mbc_wq =
+		create_singlethread_workqueue(dev_name(&mbx->mbx_pdev->dev));
+	if (!ch->mbc_wq) {
+		chan_fini(ch);
+		return -ENOMEM;
+	}
+	INIT_WORK(&ch->mbc_work, chann_worker);
+
+	/* Kick off channel thread, all initialization should be done by now. */
+	queue_work(ch->mbc_wq, &ch->mbc_work);
 	return 0;
-}
-
-static void chan_fini(struct mailbox_channel *ch)
-{
-	struct mailbox_msg *msg;
-
-	if (!ch->mbc_parent)
-		return;
-
-	/*
-	 * Holding mutex to ensure no new msg is enqueued after
-	 * flag is set.
-	 */
-	mutex_lock(&ch->mbc_mutex);
-	set_bit(MBXCS_BIT_STOP, &ch->mbc_state);
-	mutex_unlock(&ch->mbc_mutex);
-
-	complete(&ch->mbc_worker);
-	cancel_work_sync(&ch->mbc_work);
-	destroy_workqueue(ch->mbc_wq);
-
-	mutex_lock(&ch->sw_chan_mutex);
-	if (ch->sw_chan_buf != NULL)
-		vfree(ch->sw_chan_buf);
-	mutex_unlock(&ch->sw_chan_mutex);
-
-	msg = ch->mbc_cur_msg;
-	if (msg)
-		chan_msg_done(ch, -ESHUTDOWN);
-
-	while ((msg = chan_msg_dequeue(ch, INVALID_MSG_ID)) != NULL)
-		msg_done(msg, -ESHUTDOWN);
-
-	del_timer_sync(&ch->mbc_timer);
 }
 
 static void listen_wq_fini(struct mailbox *mbx)
@@ -859,11 +862,11 @@ static void listen_wq_fini(struct mailbox *mbx)
 	BUG_ON(mbx == NULL);
 
 	if (mbx->mbx_listen_wq != NULL) {
+		mbx->mbx_req_stop = true;
 		complete(&mbx->mbx_comp);
 		cancel_work_sync(&mbx->mbx_listen_worker);
 		destroy_workqueue(mbx->mbx_listen_wq);
 	}
-
 }
 
 static void chan_recv_pkt(struct mailbox_channel *ch)
@@ -1659,42 +1662,41 @@ static void process_request(struct mailbox *mbx, struct mailbox_msg *msg)
  */
 static void mailbox_recv_request(struct work_struct *work)
 {
-	int rv = 0;
 	struct mailbox_msg *msg = NULL;
 	struct mailbox *mbx =
 		container_of(work, struct mailbox, mbx_listen_worker);
 
-	for (;;) {
+	while (!mbx->mbx_req_stop) {
 		/* Only interested in request msg. */
+		(void) wait_for_completion_interruptible(&mbx->mbx_comp);
 
-		rv = wait_for_completion_interruptible(&mbx->mbx_comp);
-		if (rv)
-			break;
 		mutex_lock(&mbx->mbx_lock);
-		msg = list_first_entry_or_null(&mbx->mbx_req_list,
-			struct mailbox_msg, mbm_list);
 
-		if (msg) {
+		while ((msg = list_first_entry_or_null(&mbx->mbx_req_list,
+			struct mailbox_msg, mbm_list)) != NULL) {
 			list_del(&msg->mbm_list);
 			mbx->mbx_req_cnt--;
 			mbx->mbx_req_sz -= msg->mbm_len;
 			mutex_unlock(&mbx->mbx_lock);
-		} else {
-			mutex_unlock(&mbx->mbx_lock);
-			break;
+
+			/* Process msg without holding mutex. */
+			process_request(mbx, msg);
+			free_msg(msg);
+
+			mutex_lock(&mbx->mbx_lock);
 		}
 
-		process_request(mbx, msg);
-		free_msg(msg);
+		mutex_unlock(&mbx->mbx_lock);
 	}
 
-	if (rv == -ESHUTDOWN)
-		MBX_INFO(mbx, "channel is closed, no listen to peer");
-	else if (rv != 0)
-		MBX_ERR(mbx, "failed to receive request from peer, err=%d", rv);
-
-	if (msg)
+	/* Drain all msg before quit. */
+	mutex_lock(&mbx->mbx_lock);
+	while ((msg = list_first_entry_or_null(&mbx->mbx_req_list,
+		struct mailbox_msg, mbm_list)) != NULL) {
+		list_del(&msg->mbm_list);
 		free_msg(msg);
+	}
+	mutex_unlock(&mbx->mbx_lock);
 }
 
 int mailbox_listen(struct platform_device *pdev,
@@ -2096,28 +2098,28 @@ static const struct file_operations mailbox_fops = {
 	.poll = mailbox_poll,
 };
 
+/* Tearing down driver in the exact reverse order as driver setting up. */
 static int mailbox_remove(struct platform_device *pdev)
 {
 	struct mailbox *mbx = platform_get_drvdata(pdev);
 
 	BUG_ON(mbx == NULL);
-	mailbox_disable_intr_mode(mbx);
+	/* Stop accessing from sysfs node. */
 	sysfs_remove_group(&pdev->dev.kobj, &mailbox_attrgroup);
-	chan_fini(&mbx->mbx_rx);
+
+	/* Stop interrupt. */
+	mailbox_disable_intr_mode(mbx);
+	/* Tear down all threads. */
 	chan_fini(&mbx->mbx_tx);
+	chan_fini(&mbx->mbx_rx);
 	listen_wq_fini(mbx);
 	BUG_ON(!(list_empty(&mbx->mbx_req_list)));
 
-	xocl_subdev_register(pdev, XOCL_SUBDEV_MAILBOX, NULL);
 	if (mbx->mbx_regs)
 		iounmap(mbx->mbx_regs);
 
 	MBX_INFO(mbx, "mailbox cleaned up successfully");
 
-	if (mbx->sys_device)
-		device_destroy(xrt_class, mbx->sys_cdev->dev);
-	if (mbx->sys_cdev)
-		cdev_del(mbx->sys_cdev);
 	platform_set_drvdata(pdev, NULL);
 	xocl_drvinst_free(mbx);
 	return 0;
@@ -2128,7 +2130,6 @@ static int mailbox_probe(struct platform_device *pdev)
 	struct mailbox *mbx = NULL;
 	struct resource *res;
 	int ret;
-	struct xocl_dev_core *core = xocl_get_xdev(pdev);
 
 	mbx = xocl_drvinst_alloc(&pdev->dev, sizeof(struct mailbox));
 	if (!mbx)
@@ -2144,6 +2145,7 @@ static int mailbox_probe(struct platform_device *pdev)
 	mbx->mbx_req_cnt = 0;
 	mbx->mbx_req_sz = 0;
 	mbx->mbx_peer_dead = false;
+	mbx->mbx_prot_ver = MB_PROTOCOL_VER;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	mbx->mbx_regs = ioremap_nocache(res->start, res->end - res->start + 1);
@@ -2155,7 +2157,18 @@ static int mailbox_probe(struct platform_device *pdev)
 	/* Reset both TX channel and RX channel */
 	mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_ctrl, 0x3);
 
-	/* Set up software communication channels. */
+	/* Dedicated thread for listening to peer request. */
+	mbx->mbx_listen_wq =
+		create_singlethread_workqueue(dev_name(&mbx->mbx_pdev->dev));
+	if (!mbx->mbx_listen_wq) {
+		MBX_ERR(mbx, "failed to create request-listen work queue");
+		ret = -ENOMEM;
+		goto failed;
+	}
+	INIT_WORK(&mbx->mbx_listen_worker, mailbox_recv_request);
+	queue_work(mbx->mbx_listen_wq, &mbx->mbx_listen_worker);
+
+	/* Set up software communication channels, rx first, then tx. */
 	ret = chan_init(mbx, "RX", &mbx->mbx_rx, chan_do_rx);
 	if (ret != 0) {
 		MBX_ERR(mbx, "failed to init rx channel");
@@ -2166,22 +2179,8 @@ static int mailbox_probe(struct platform_device *pdev)
 		MBX_ERR(mbx, "failed to init tx channel");
 		goto failed;
 	}
-	/* Dedicated thread for listening to peer request. */
-	mbx->mbx_listen_wq =
-		create_singlethread_workqueue(dev_name(&mbx->mbx_pdev->dev));
-	if (!mbx->mbx_listen_wq) {
-		MBX_ERR(mbx, "failed to create request-listen work queue");
-		goto failed;
-	}
-	INIT_WORK(&mbx->mbx_listen_worker, mailbox_recv_request);
-	queue_work(mbx->mbx_listen_wq, &mbx->mbx_listen_worker);
 
-	ret = sysfs_create_group(&pdev->dev.kobj, &mailbox_attrgroup);
-	if (ret != 0) {
-		MBX_ERR(mbx, "failed to init sysfs");
-		goto failed;
-	}
-
+	/* Enable interrupt. */
 	if (mailbox_no_intr) {
 		MBX_INFO(mbx, "Enabled timer-driven mode");
 		mailbox_disable_intr_mode(mbx);
@@ -2194,30 +2193,12 @@ static int mailbox_probe(struct platform_device *pdev)
 		}
 	}
 
-	xocl_subdev_register(pdev, XOCL_SUBDEV_MAILBOX, &mailbox_ops);
-
-	mbx->mbx_prot_ver = MB_PROTOCOL_VER;
-
-	mbx->sys_cdev = cdev_alloc();
-	mbx->sys_cdev->ops = &mailbox_fops;
-	mbx->sys_cdev->owner = THIS_MODULE;
-	mbx->sys_cdev->dev = MKDEV(MAJOR(mailbox_dev), core->dev_minor);
-	ret = cdev_add(mbx->sys_cdev, mbx->sys_cdev->dev, 1);
-	if (ret) {
-		MBX_ERR(mbx, "cdev add failed");
+	/* Enable access thru sysfs node. */
+	ret = sysfs_create_group(&pdev->dev.kobj, &mailbox_attrgroup);
+	if (ret != 0) {
+		MBX_ERR(mbx, "failed to init sysfs");
 		goto failed;
 	}
-
-	mbx->sys_device = device_create(xrt_class, &pdev->dev,
-			mbx->sys_cdev->dev, NULL, "%s%d",
-			platform_get_device_id(pdev)->name,
-			XOCL_DEV_ID(core->pdev));
-	if (IS_ERR(mbx->sys_device)) {
-		ret = PTR_ERR(mbx->sys_device);
-		goto failed;
-	}
-
-	xocl_drvinst_set_filedev(mbx, mbx->sys_cdev);
 
 	MBX_INFO(mbx, "successfully initialized");
 	return 0;
@@ -2227,8 +2208,14 @@ failed:
 	return ret;
 }
 
+struct xocl_drv_private mailbox_priv = {
+	.ops = &mailbox_ops,
+	.fops = &mailbox_fops,
+	.dev = -1,
+};
+
 struct platform_device_id mailbox_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_MAILBOX), 0 },
+	{ XOCL_DEVNAME(XOCL_MAILBOX), (kernel_ulong_t)&mailbox_priv },
 	{ },
 };
 
@@ -2247,7 +2234,8 @@ int __init xocl_init_mailbox(void)
 
 	BUILD_BUG_ON(sizeof(struct mailbox_pkt) != sizeof(u32) * PACKET_SIZE);
 
-	err = alloc_chrdev_region(&mailbox_dev, 0, XOCL_MAX_DEVICES, XOCL_MAILBOX);
+	err = alloc_chrdev_region(&mailbox_priv.dev, 0, XOCL_MAX_DEVICES,
+			XOCL_MAILBOX);
 	if (err < 0)
 		goto err_chrdev_reg;
 
@@ -2257,13 +2245,13 @@ int __init xocl_init_mailbox(void)
 
 	return 0;
 err_driver_reg:
-	unregister_chrdev_region(mailbox_dev, 1);
+	unregister_chrdev_region(mailbox_priv.dev, 1);
 err_chrdev_reg:
 	return err;
 }
 
 void xocl_fini_mailbox(void)
 {
-	unregister_chrdev_region(mailbox_dev, XOCL_MAX_DEVICES);
+	unregister_chrdev_region(mailbox_priv.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&mailbox_driver);
 }

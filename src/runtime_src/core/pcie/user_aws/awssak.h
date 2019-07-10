@@ -245,7 +245,7 @@ public:
      */
     int dump(std::ostream& ostr) const {
         unsigned numMemBank = m_devinfo.mDDRBankCount;
-        ostr << "DSA name:       " << m_devinfo.mName << "\n";
+        ostr << "Shell name:       " << m_devinfo.mName << "\n";
         ostr << "Vendor:         " << std::hex << m_devinfo.mVendorId << std::dec << "\n";
         ostr << "Device:         " << std::hex << m_devinfo.mDeviceId << std::dec << "\n";
         ostr << "SDevice:        " << std::hex << m_devinfo.mSubsystemId << std::dec << "\n";

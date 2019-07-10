@@ -120,7 +120,7 @@ XclBin::readXclBinBinaryHeader(std::fstream& _istream) {
   _istream.read((char*)&m_xclBinHeader, sizeof(axlf));
 
   if (_istream.gcount() != expectBufferSize) {
-    std::string errMsg = "ERROR: Input stream is smaller then the expected header size.";
+    std::string errMsg = "ERROR: Input stream is smaller than the expected header size.";
     throw std::runtime_error(errMsg);
   }
 
@@ -148,7 +148,7 @@ XclBin::readXclBinBinarySections(std::fstream& _istream) {
     _istream.read((char*)&sectionHeader, sizeof(axlf_section_header));
 
     if (_istream.gcount() != expectBufferSize) {
-      std::string errMsg = "ERROR: Input stream is smaller then the expected section header size.";
+      std::string errMsg = "ERROR: Input stream is smaller than the expected section header size.";
       throw std::runtime_error(errMsg);
     }
 
@@ -245,19 +245,12 @@ XclBin::writeXclBinBinarySections(std::fstream& _ostream, boost::property_tree::
   }
 
   // Prepare the array
-#ifdef _WIN32
   // WARNING - Do not us this code in Linux.  It hasn't been fully flushed out.
   struct axlf_section_header *sectionHeader = new struct axlf_section_header[m_sections.size()];
   memset(sectionHeader, 0, sizeof(struct axlf_section_header) * m_sections.size());  // Zero out memory
 
   // Populate the array size and offsets
- uint64_t currentOffset = (uint64_t) (sizeof(axlf) - sizeof(axlf_section_header) + (sizeof(axlf_section_header) * m_sections.size()));
-#else
-  struct axlf_section_header sectionHeader[m_sections.size()];
-  memset(&sectionHeader, 0, sizeof(sectionHeader));  // Zero out memory
-
-  uint64_t currentOffset = (uint64_t) (sizeof(axlf) - sizeof(axlf_section_header) + sizeof(sectionHeader));  
-#endif
+  uint64_t currentOffset = (uint64_t) (sizeof(axlf) - sizeof(axlf_section_header) + (sizeof(axlf_section_header) * m_sections.size()));
 
   for (unsigned int index = 0; index < m_sections.size(); ++index) {
     // Calculate padding
@@ -270,7 +263,7 @@ XclBin::writeXclBinBinarySections(std::fstream& _ostream, boost::property_tree::
   }
 
   XUtil::TRACE("Writing xclbin section header array");
-  _ostream.write((char*)&sectionHeader, sizeof(axlf_section_header) * m_sections.size());
+  _ostream.write((char*) sectionHeader, sizeof(axlf_section_header) * m_sections.size());
 
   // Write out each of the sections
   for (unsigned int index = 0; index < m_sections.size(); ++index) {
@@ -326,9 +319,7 @@ XclBin::writeXclBinBinarySections(std::fstream& _ostream, boost::property_tree::
     }
   }
 
-#ifdef _WIN32
   delete[] sectionHeader;
-#endif
 }
 
 

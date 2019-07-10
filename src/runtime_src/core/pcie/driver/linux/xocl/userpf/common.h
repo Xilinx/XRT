@@ -73,6 +73,22 @@
 
 #define XOCL_PA_SECTION_SHIFT		28
 
+#define xocl_queue_work(xdev, op, delay)				\
+		queue_delayed_work(xdev->wq, &xdev->works[op].work,	\
+			msecs_to_jiffies(delay))
+
+enum {
+	XOCL_WORK_RESET,
+	XOCL_WORK_PROGRAM_SHELL,
+	XOCL_WORK_REFRESH_SUBDEV,
+	XOCL_WORK_NUM,
+};
+
+struct xocl_work {
+	struct delayed_work	work;
+	int			op;
+};
+
 struct xocl_dev	{
 	struct xocl_dev_core	core;
 
@@ -97,8 +113,8 @@ struct xocl_dev	{
 #endif
 	struct list_head                ctx_list;
 	struct workqueue_struct		*wq;
-	struct delayed_work		reset_work;
-	struct delayed_work		program_work;
+	struct xocl_work		works[XOCL_WORK_NUM];
+
 	/*
 	 * Per xdev lock protecting client list and all client contexts in the
 	 * list. Any operation which requires client status, such as xclbin
@@ -189,4 +205,10 @@ void get_pcie_link_info(struct xocl_dev	*xdev,
 	unsigned short *link_width, unsigned short *link_speed, bool is_cap);
 uint64_t xocl_get_data(struct xocl_dev *xdev, enum data_kind kind);
 int xocl_reclock(struct xocl_dev *xdev, void *data);
+
+static inline u64 xocl_pci_rebar_size_to_bytes(int size)
+{
+	return 1ULL << (size + 20);
+}
+
 #endif

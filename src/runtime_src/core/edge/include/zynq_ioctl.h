@@ -44,6 +44,7 @@ enum {
 	DRM_ZOCL_SK_GETCMD,
 	DRM_ZOCL_SK_CREATE,
 	DRM_ZOCL_SK_REPORT,
+	DRM_ZOCL_INFO_CU,
 	DRM_ZOCL_NUM_IOCTLS
 };
 
@@ -157,6 +158,16 @@ struct drm_zocl_pcap_download {
 };
 
 /**
+ * struct drm_zocl_info_cu - used for INFO_CU IOCTL
+ *  @paddr: Physical address 
+ *  @apt_idx: Aperture index
+ */
+struct drm_zocl_info_cu {
+	uint64_t paddr;
+	int apt_idx;
+};
+
+/**
  * Opcodes for the embedded scheduler provided by the client to the driver
  */
 enum drm_zocl_execbuf_code {
@@ -251,4 +262,6 @@ struct drm_zocl_sk_report {
                                        DRM_ZOCL_SK_CREATE, struct drm_zocl_sk_create)
 #define	DRM_IOCTL_ZOCL_SK_REPORT       DRM_IOWR(DRM_COMMAND_BASE + \
                                        DRM_ZOCL_SK_REPORT, struct drm_zocl_sk_report)
+#define DRM_IOCTL_ZOCL_INFO_CU         DRM_IOWR(DRM_COMMAND_BASE + \
+                                       DRM_ZOCL_INFO_CU, struct drm_zocl_info_cu)
 #endif

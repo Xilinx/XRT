@@ -1,6 +1,6 @@
 ROOT	:= $(dir $(M))
 
-ccflags-y := -Iinclude/drm -I${ROOT}/../../include
+ccflags-y := -Iinclude/drm -I${ROOT}/../../include -I${ROOT}/../../common/drv
 zocl-y := \
 	sched_exec.o \
 	zocl_sysfs.o \
@@ -8,6 +8,7 @@ zocl-y := \
 	zocl_ert.o \
 	zocl_drv.o \
 	zocl_bo.o \
+	zocl_dma.o \
 	zocl_sk.o
 
 obj-m	+= zocl.o
