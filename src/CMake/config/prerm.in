@@ -29,7 +29,7 @@ if [ $? -eq 0 ] && [ $1 -ge 1 ]; then
 	exit 0
 fi
 
-lsb_release -si | grep -Eq "^Ubuntu|Debian"
+lsb_release -si | grep -Eq "^Ubuntu|^Debian"
 if [ $? -eq 0 ] && [ "$1" = "upgrade" ]; then
     echo "Unregistering old XRT Linux kernel module sources @XRT_VERSION_STRING@ from dkms on Ubuntu/Debian"
     dkms remove -m xrt -v @XRT_VERSION_STRING@ --all
