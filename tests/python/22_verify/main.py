@@ -105,8 +105,9 @@ def runKernel(opt):
         print("Now wait until the kernel finish")
 
     print("Wait until the command finish")
-    while xclExecWait(opt.handle, 100) == 0: 
-        print(".")
+    while start_cmd.m_uert.m_start_cmd_struct.state < ert_cmd_state.ERT_CMD_STATE_COMPLETED:
+        while xclExecWait(opt.handle, 100) == 0: 
+            print(".")
 
     print("Get the output data from the device")
     if xclSyncBO(opt.handle, boHandle, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, opt.DATA_SIZE, 0):
