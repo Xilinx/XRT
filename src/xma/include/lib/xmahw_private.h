@@ -19,6 +19,7 @@
 
 #include "lib/xmahw_lib.h"
 //#include "lib/xmacfg.h"
+#include "app/xmaparam.h"
 
 /*Sarab: Remove yaml system cfg stuff
 typedef struct XmaHwInterface
@@ -32,8 +33,8 @@ typedef struct XmaHwInterface
 typedef struct XmaHwInterface
 {
     int32_t (*probe)(XmaHwCfg *hwcfg);
-    bool    (*is_compatible)(XmaHwCfg *hwcfg);
-    bool    (*configure)(XmaHwCfg *hwcfg, bool hw_cfg_status);
+    bool    (*is_compatible)(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_parms);
+    bool    (*configure)(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_parms);
 } XmaHwInterface;
 
 #endif
