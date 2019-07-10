@@ -62,7 +62,7 @@ if [ $? -eq 0 ] && [ "$1" = "configure" ]; then
 elif [ -n "`dkms status -m xrt`" ]; then
     # This snippet here to clean any previous XRT DKMS. This is always true for
     # RHEL/CentOS.
-    echo "Unloading old XRT Linux kernel modules"
+    echo "Unloading old XRT Linux kernel modules on RHEL/CentOS"
     rmmod xocl
     rmmod xclmgmt
 
