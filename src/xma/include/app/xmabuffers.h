@@ -64,6 +64,19 @@ typedef struct XmaBufferRef
     bool            is_clone; /**< buffer member allocated externally */
 } XmaBufferRef;
 
+typedef enum XmaFrameSideDataType
+{
+    XMA_FRAME_QP_MAP
+} XmaFrameSideDataType;
+
+typedef struct XmaFrameSideData
+{
+    XmaBufferRef              sdata_ref;
+    void                      *sdata;
+    int32_t                   size;
+    enum XmaFrameSideDataType type;
+} XmaFrameSideData;
+
 /**
  * enum XmaFormatType - ID describing fourcc format of video frame buffer
 */
@@ -94,6 +107,8 @@ typedef struct XmaFrameProperties
 typedef struct XmaFrame
 {
     XmaBufferRef       data[XMA_MAX_PLANES]; /**< data buffers */
+    XmaFrameSideData** side_data;
+    uint32_t           nb_side_data;
     XmaFrameProperties frame_props; /**< description of primary plane */
     XmaFraction        time_base; /**< time base as a fraction */
     XmaFraction        frame_rate; /**< frames per second as a fraction */
@@ -164,6 +179,71 @@ xma_frame_planes_get(XmaFrameProperties *frame_props);
 XmaFrame*
 xma_frame_from_buffers_clone(XmaFrameProperties *frame_props,
                              XmaFrameData       *frame_data);
+/**
+ * xma_frame_get_side_data() - Return the required type of side data buffer
+ *
+ * @frame: Frame whose side data is required
+ * @sd_type: type of side data buffer required
+ *
+ * RETURN: XmaFrameSideData pointer which points to the required side data.
+*/
+XmaFrameSideData*
+xma_frame_get_side_data(XmaFrame                  *frame,
+                        enum XmaFrameSideDataType sd_type);
+
+/**
+ * xma_frame_get_side_data() - Sets the side data of the frame.
+ * In case, there is already same type of side data associated
+ * with the frame, XMA_ERROR_INVALID error is returned
+ *
+ * @frame: Frame with which side data needs to be associated
+ * @sd: side data to be set.
+ *
+ * RETURN: XMA_SUCCESS on success.
+ * Otherwise, returns XMA_ERROR_INVALID/XMA_ERROR
+*/
+int32_t
+xma_frame_set_side_data(XmaFrame          *frame,
+                        XmaFrameSideData  *sd);
+
+/**
+ * xma_frame_add_side_data() - Sets the side data of the frame.
+ * In case, there is already same type of side data associated
+ * with the frame, it is removed and the provided side data
+ * is set.
+ *
+ * @frame: Frame with which side data needs to be associated
+ * @sd_type: side data to be set.
+ * @side_data: The ptr to raw buffer containing the side data
+ * @size: size of teh side data to be set.
+ * @use_buffer: If it is set to 0, then the new buffer of size
+ * is allocated and the side_data provided by the user is
+ * copied into it. User is free to use its buffer.
+ * Else if it is set to 1, then this buffer is used to create
+ * create the returned XmaFrameSideData buffer ptr.
+ *
+ * RETURN: XmaFrameSideData buffer ptr on success, which
+ * contains the provided side data.
+ * In case of failure NULL is returned.
+*/
+XmaFrameSideData*
+xma_frame_add_side_data(XmaFrame                  *frame,
+                        enum XmaFrameSideDataType sd_type,
+                        void                      *side_data,
+                        int32_t                   size,
+                        int32_t                   use_buffer);
+
+/**
+ * xma_frame_remove_side_data() - Remove the specified side
+ * data, associated with the frame.
+ *
+ * @frame: frame instance from which side data is to be removed
+ * @sd_type: Type of side data to be removed.
+ *
+*/
+void
+xma_frame_remove_side_data(XmaFrame                  *frame,
+                           enum XmaFrameSideDataType sd_type);
 
 /**
  * xma_frame_free() - Free frame data structure

@@ -16,10 +16,11 @@
  */
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 
 #include "app/xmabuffers.h"
 #include "app/xmalogger.h"
-
+#include "app/xmaerror.h"
 #define XMA_BUFFER_MOD "xmabuffer"
 
 int32_t
@@ -61,7 +62,8 @@ xma_frame_alloc(XmaFrameProperties *frame_props)
         frame->data[i].buffer = malloc(frame_props->width *
                                        frame_props->height);
     }
-
+    frame->side_data = NULL;
+    frame->nb_side_data = 0;
     return frame;
 }
 
@@ -92,6 +94,156 @@ xma_frame_from_buffers_clone(XmaFrameProperties *frame_props,
     return frame;
 }
 
+XmaFrameSideData*
+xma_frame_get_side_data(XmaFrame                  *frame,
+                        enum XmaFrameSideDataType type)
+{
+    uint32_t i;
+
+    for (i = 0; i < frame->nb_side_data; i++) {
+        if (frame->side_data[i]->type == type)
+            return frame->side_data[i];
+    }
+    return NULL;
+}
+
+int32_t
+xma_frame_set_side_data(XmaFrame          *frame,
+                        XmaFrameSideData  *sd)
+{
+    XmaFrameSideData **tmp;
+    XmaFrameSideData *side_data;
+
+    if (!frame || !sd) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD,
+                   "%s() frame %p side_data %p\n", __func__,
+                   frame, sd);
+        return XMA_ERROR_INVALID;
+    }
+
+    if (frame->nb_side_data > (INT_MAX/sizeof(XmaFrameSideData*)) - 1) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD,
+                   "%s() OOM\n", __func__);
+        return XMA_ERROR_INVALID;
+    }
+    side_data = xma_frame_get_side_data(frame, sd->type);
+    if (side_data) {
+        return XMA_ERROR_INVALID;
+    } else {
+        tmp = (XmaFrameSideData**)realloc(frame->side_data,
+                      (frame->nb_side_data + 1) * sizeof(XmaFrameSideData*));
+        if (!tmp) {
+            xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD,
+                       "%s() OOM\n", __func__);
+            return XMA_ERROR;
+        }
+        frame->side_data = tmp;
+
+        frame->side_data[frame->nb_side_data++] = sd;
+        sd->sdata_ref.refcount++;
+    }
+    return XMA_SUCCESS;
+}
+
+XmaFrameSideData*
+xma_frame_add_side_data(XmaFrame                  *frame,
+                        enum XmaFrameSideDataType type,
+                        void                      *side_data,
+                        int32_t                   size,
+                        int32_t                   use_buffer)
+{
+    XmaBufferRef *xmaBuf;
+    XmaFrameSideData *sd;
+    if (frame  == NULL)
+        return NULL;
+    xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD,
+               "%s() frame %p side_data %p type %d size %d use_buffer=%d\n",
+               __func__, frame, side_data, type, size, use_buffer);
+    sd = (XmaFrameSideData*)calloc(1, sizeof(XmaFrameSideData));
+    if (!sd) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD,
+            "%s() OOM!!\n", __func__);
+        return NULL;
+    }
+    xmaBuf = &sd->sdata_ref;
+    if (!use_buffer) {
+        sd->sdata = calloc(1, size);
+        if (!sd->sdata) {
+            xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD,
+                "%s() OOM!!\n", __func__);
+            free(sd);
+            return NULL;
+        }
+        if (side_data) {
+            memcpy(sd->sdata, side_data, size);
+        }
+        xmaBuf->is_clone = false;
+    } else {
+        sd->sdata = side_data;
+        xmaBuf->is_clone = true;
+    }
+
+    sd->type = type;
+    sd->size = size;
+
+    xmaBuf->refcount = 0;
+    xmaBuf->buffer_type = XMA_HOST_BUFFER_TYPE;
+    xmaBuf->buffer = sd->sdata;
+    //Remove if old side data of the same type is present
+    xma_frame_remove_side_data(frame, sd->type);
+
+    if (xma_frame_set_side_data(frame, sd)) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD,
+		    "%s() Error set side data %p failed!!\n", __func__, sd);
+        free(sd->sdata);
+        free(sd);
+        return NULL;
+    }
+
+    return sd;
+}
+
+static void
+free_side_data(XmaFrameSideData *sd)
+{
+    XmaBufferRef *xmaBuf = &sd->sdata_ref;
+    xmaBuf->refcount--;
+    if (xmaBuf->refcount != 0) return;
+    if (!xmaBuf->is_clone) {
+        free(xmaBuf->buffer);
+    }
+    free(sd);
+}
+
+static void
+clear_side_data(XmaFrame *frame)
+{
+    uint32_t i;
+
+    for (i = 0; i < frame->nb_side_data; i++) {
+        free_side_data(frame->side_data[i]);
+    }
+    frame->nb_side_data = 0;
+
+    free(frame->side_data);
+}
+
+void
+xma_frame_remove_side_data(XmaFrame                  *frame,
+                           enum XmaFrameSideDataType type)
+{
+    uint32_t i;
+
+    for (i = 0; i < frame->nb_side_data; i++) {
+        if (frame->side_data[i]->type == type) {
+            free_side_data(frame->side_data[i]);
+            frame->side_data[i] = NULL;
+            frame->side_data[i] = frame->side_data[frame->nb_side_data - 1];
+            frame->nb_side_data--;
+        }
+    }
+}
+
 void
 xma_frame_free(XmaFrame *frame)
 {
@@ -110,6 +262,7 @@ xma_frame_free(XmaFrame *frame)
     for (int32_t i = 0; i < num_planes && !frame->data[i].is_clone; i++)
         free(frame->data[i].buffer);
 
+    clear_side_data(frame);
     free(frame);
 }
 
