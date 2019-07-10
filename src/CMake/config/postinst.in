@@ -23,22 +23,8 @@
 # 3. When re-installing (say from 2.2.0 to 2.2.0) then prerm is NOT run but
 #    and postinst of 2.2.0 is run. The postinst is invoked with "2" argument.
 
-
-# This snippet here to clean any previous XRT DKMS. This is always true for
-# RHEL/CentOS.
-
-if [ -n "`dkms status -m xrt`" ]; then
-    echo "Unloading old XRT Linux kernel modules"
-    modprobe -r xocl
-    modprobe -r xclmgmt
-
-    XRT_VERSION_STRING_OLD=`dkms status -m xrt | awk -F, '{print $2}'`
-    for OLD in $XRT_VERSION_STRING_OLD; do
-	echo "Unregistering old XRT Linux kernel module sources $OLD from dkms"
-	dkms remove -m xrt -v $OLD --all
-	break
-    done
-
+rmmodules()
+{
     find /lib/modules -type f -name xocl.ko -delete
     find /lib/modules -type f -name xclmgmt.ko -delete
     find /lib/modules -type f -name xocl.ko.kz -delete
@@ -46,6 +32,31 @@ if [ -n "`dkms status -m xrt`" ]; then
     find /lib/modules -type f -name xocl.ko.xz -delete
     find /lib/modules -type f -name xclmgmt.ko.xz -delete
     depmod -A
+}
+
+lsb_release -si | grep -Eq "^Ubuntu|^Debian"
+
+if [ $? -eq 0 ] && [ "$1" = "configure" ]; then
+    # The older modules should already have been unregistered from dkms
+    # by the prerm
+    echo "Unloading old XRT Linux kernel modules on Ubuntu/Debian"
+    rmmod xocl
+    rmmod xclmgmt
+    rmmodules
+elif [ -n "`dkms status -m xrt`" ]; then
+    # This snippet here to clean any previous XRT DKMS. This is always true for
+    # RHEL/CentOS.
+    echo "Unloading old XRT Linux kernel modules on RHEL/CentOS"
+    rmmod xocl
+    rmmod xclmgmt
+
+    XRT_VERSION_STRING_OLD=`dkms status -m xrt | awk -F, '{print $2}'`
+    for OLD in $XRT_VERSION_STRING_OLD; do
+	echo "Unregistering old XRT Linux kernel module sources $OLD from dkms"
+	dkms remove -m xrt -v $OLD --all
+	break
+    done
+    rmmodules
 else
     echo "No previous XRT Linux kernel modules found"
 fi
