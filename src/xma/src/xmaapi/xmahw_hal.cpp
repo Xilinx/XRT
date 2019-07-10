@@ -118,6 +118,11 @@ int32_t create_contexts(xclDeviceHandle handle, XmaXclbinInfo &info)
 int hal_probe(XmaHwCfg *hwcfg)
 {
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Using HAL layer\n");
+    if (hwcfg == NULL) 
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "ERROR: hwcfg is NULL\n");
+        return XMA_ERROR;
+    }
 
     int32_t      rc = 0;
 

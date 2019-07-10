@@ -96,6 +96,7 @@ typedef struct XmaHwDevice
   XmaHwDevice() {
     in_use = false;
     dev_index = -1;
+    handle = NULL;
   }
 } XmaHwDevice;
 
