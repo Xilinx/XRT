@@ -23,9 +23,12 @@
 //#include "lib/xmacfg.h"
 #include "lib/xmalimits_lib.h"
 #include "app/xmahw.h"
+#include "app/xmaparam.h"
 #include "plg/xmasess.h"
+#include "xrt.h"
 #include <atomic>
 #include <vector>
+#include <memory>
 
 #define MAX_EXECBO_POOL_SIZE      16
 #define MAX_EXECBO_BUFF_SIZE      4096// 4KB
@@ -54,43 +57,46 @@ typedef struct XmaHwKernel
     uint32_t    ddr_bank;
     //For execbo:
     int32_t     kernel_complete_count;
-    std::atomic<bool> kernel_complete_locked;
+    std::unique_ptr<std::atomic<bool>> kernel_complete_locked;
     uint32_t    kernel_execbo_handle[MAX_EXECBO_POOL_SIZE];
     char*       kernel_execbo_data[MAX_EXECBO_POOL_SIZE];//execBO size is 4096 in xmahw_hal.cpp
     bool        kernel_execbo_inuse[MAX_EXECBO_POOL_SIZE];
 
     uint32_t    reg_map[MAX_REGMAP_ENTRIES];//4KB = 4B x 1024; Supported Max regmap of 4032 Bytes only in xmaplugin.cpp; execBO size is 4096 = 4KB in xmahw_hal.cpp
     //pthread_mutex_t *lock;
-    std::atomic<bool> reg_map_locked;
+    std::unique_ptr<std::atomic<bool>> reg_map_locked;
     int32_t         locked_by_session_id;
     XmaSessionType locked_by_session_type;
 
     //bool             have_lock;
     uint32_t    reserved[16];
 
-  XmaHwKernel() {
+  XmaHwKernel(): kernel_complete_locked(new std::atomic<bool>), reg_map_locked(new std::atomic<bool>) {
     in_use = false;
     instance = -1;
     kernel_complete_count = 0;
-    kernel_complete_locked = false;
-    reg_map_locked = false;
+    *kernel_complete_locked = false;
+    *reg_map_locked = false;
     locked_by_session_id = -100;
   }
 } XmaHwKernel;
 
-
-typedef void   *XmaHwHandle;
-
 typedef struct XmaHwDevice
 {
-    char        dsa[MAX_DSA_NAME];
-    XmaHwHandle handle;
+    //char        dsa[MAX_DSA_NAME];
+    xclDeviceHandle    handle;
+    xclDeviceInfo2     info;
+    //For execbo:
+    uint32_t           dev_index;
+    uuid_t             uuid; 
     bool        in_use;
     //XmaHwKernel kernels[MAX_KERNEL_CONFIGS];
     std::vector<XmaHwKernel> kernels;
 
   XmaHwDevice() {
     in_use = false;
+    dev_index = -1;
+    handle = NULL;
   }
 } XmaHwDevice;
 
@@ -141,7 +147,7 @@ int xma_hw_probe(XmaHwCfg *hwcfg);
  *                   FALSE on failure
 bool xma_hw_is_compatible(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg);
  */
-bool xma_hw_is_compatible(XmaHwCfg *hwcfg);
+bool xma_hw_is_compatible(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_parms);
 
 /**
  *  @brief Configure HW using system configuration
@@ -165,7 +171,7 @@ bool xma_hw_is_compatible(XmaHwCfg *hwcfg);
  *                   FALSE on failure
 bool xma_hw_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_cfg_status);
  */
-bool xma_hw_configure(XmaHwCfg *hwcfg, bool hw_cfg_status);
+bool xma_hw_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_parms);
 
 /**
  *  @}

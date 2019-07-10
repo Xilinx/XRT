@@ -39,21 +39,13 @@
 using namespace std;
 const uint64_t mNullBO = 0xffffffff;
 
-typedef struct XmaHALDevice
-{
-    xclDeviceHandle    handle;
-    xclDeviceInfo2     info;
-    //For execbo:
-    uint32_t           dev_index;
-    uuid_t             uuid; 
-} XmaHALDevice;
-
+/*
 static void set_hw_cfg(uint32_t        device_count,
                        XmaHALDevice   *xlnx_devices,
                        XmaHwCfg       *hwcfg);
-
+*/
 //static int get_max_dev_id(XmaSystemCfg *systemcfg);
-
+/*Sarab: This is redundant now
 void set_hw_cfg(uint32_t        device_count,
                 XmaHALDevice   *xlnx_devices,
                 XmaHwCfg       *hwcfg)
@@ -73,7 +65,7 @@ void set_hw_cfg(uint32_t        device_count,
         hwcfg->devices[i].handle = hwhal;
     }
 }
-
+*/
 int load_xclbin_to_device(xclDeviceHandle dev_handle, const char *buffer)
 {
     int rc;
@@ -125,26 +117,33 @@ int32_t create_contexts(xclDeviceHandle handle, XmaXclbinInfo &info)
 /* Public function implementation */
 int hal_probe(XmaHwCfg *hwcfg)
 {
-    XmaHALDevice   xlnx_devices[MAX_XILINX_DEVICES];
-    uint32_t       device_count;
-
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Using HAL layer\n");
+    if (hwcfg == NULL) 
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "ERROR: hwcfg is NULL\n");
+        return XMA_ERROR;
+    }
 
     int32_t      rc = 0;
 
-    device_count = xclProbe();
-    if (device_count == 0) 
+    hwcfg->num_devices = xclProbe();
+    if (hwcfg->num_devices < 1) 
     {
         xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "ERROR: No Xilinx device found\n");
         return XMA_ERROR;
     }
-    for (uint32_t i = 0; i < device_count; i++)
+    for (int32_t i = 0; i < hwcfg->num_devices; i++)
     {
-        xlnx_devices[i].handle = xclOpen(i, NULL, XCL_QUIET);
-        xlnx_devices[i].dev_index = i;
+        hwcfg->devices.emplace_back(XmaHwDevice{});
+
+        XmaHwDevice& tmp1 = hwcfg->devices.back();
+        tmp1.kernels.reserve(MAX_KERNEL_CONFIGS);
+
+        tmp1.handle = xclOpen(i, NULL, XCL_QUIET);
+        tmp1.dev_index = i;
         xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "get_device_list xclOpen handle = %p\n",
-            xlnx_devices[i].handle);
-        rc = xclGetDeviceInfo2(xlnx_devices[i].handle, &xlnx_devices[i].info);
+            tmp1.handle);
+        rc = xclGetDeviceInfo2(tmp1.handle, &tmp1.info);
         if (rc != 0)
         {
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "xclGetDeviceInfo2 failed for device id: %d, rc=%d\n",
@@ -153,8 +152,8 @@ int hal_probe(XmaHwCfg *hwcfg)
         }
     }
 
-    /* Populate the XmaHwCfg */
-    set_hw_cfg(device_count, xlnx_devices, hwcfg);
+    /* Sarab: This is redundant now. Populate the XmaHwCfg */
+    //set_hw_cfg(device_count, xlnx_devices, hwcfg);
 
     return XMA_SUCCESS;
 }
@@ -162,7 +161,7 @@ int hal_probe(XmaHwCfg *hwcfg)
 /*Sarab: Remove yaml system cfg stuff 
 bool hal_is_compatible(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg)
 */
-bool hal_is_compatible(XmaHwCfg *hwcfg)
+bool hal_is_compatible(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_parms)
 {
     /*
     int32_t num_devices_requested = 0;
@@ -201,7 +200,7 @@ bool hal_is_compatible(XmaHwCfg *hwcfg)
 
 
 //bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
-bool hal_configure(XmaHwCfg *hwcfg, bool hw_configured)
+bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_parms)
 {/*Sarab: Remove yaml system cfg stuff
     std::string   xclbinpath = systemcfg->xclbinpath;
     XmaXclbinInfo info;

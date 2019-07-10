@@ -211,7 +211,7 @@ xma_plg_register_prep_write(XmaSession  s_handle,
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Max kernel regmap size is 4032 Bytes\n");
         return XMA_ERROR;
     }
-    if (s_handle.hw_session.kernel_info->reg_map_locked) {
+    if (*(s_handle.hw_session.kernel_info->reg_map_locked)) {
         if (s_handle.session_id != s_handle.hw_session.kernel_info->locked_by_session_id || s_handle.session_type != s_handle.hw_session.kernel_info->locked_by_session_type) {
             xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regamp is locked by another session\n");
             return XMA_ERROR;
@@ -231,7 +231,7 @@ xma_plg_register_prep_write(XmaSession  s_handle,
 int32_t xma_plg_kernel_lock_regmap(XmaSession s_handle)
 {
     /* Only acquire the lock if we don't already own it */
-    if (s_handle.hw_session.kernel_info->reg_map_locked) {
+    if (*(s_handle.hw_session.kernel_info->reg_map_locked)) {
         if (s_handle.session_id == s_handle.hw_session.kernel_info->locked_by_session_id && s_handle.session_type == s_handle.hw_session.kernel_info->locked_by_session_type) {
             return XMA_SUCCESS;
         } else {
@@ -240,7 +240,7 @@ int32_t xma_plg_kernel_lock_regmap(XmaSession s_handle)
     }
     bool expected = false;
     bool desired = true;
-    while (!(s_handle.hw_session.kernel_info->reg_map_locked).compare_exchange_weak(expected, desired)) {
+    while (!(*(s_handle.hw_session.kernel_info->reg_map_locked)).compare_exchange_weak(expected, desired)) {
         expected = false;
     }
     //reg map lock acquired
@@ -254,9 +254,9 @@ int32_t xma_plg_kernel_lock_regmap(XmaSession s_handle)
 int32_t xma_plg_kernel_unlock_regmap(XmaSession s_handle)
 {
     /* Only unlock if this session owns it */
-    if (s_handle.hw_session.kernel_info->reg_map_locked) {
+    if (*(s_handle.hw_session.kernel_info->reg_map_locked)) {
         if (s_handle.session_id == s_handle.hw_session.kernel_info->locked_by_session_id && s_handle.session_type == s_handle.hw_session.kernel_info->locked_by_session_type) {
-            s_handle.hw_session.kernel_info->reg_map_locked = false;
+            *(s_handle.hw_session.kernel_info->reg_map_locked) = false;
             s_handle.hw_session.kernel_info->locked_by_session_id = -1;
 
             return XMA_SUCCESS;
@@ -292,7 +292,7 @@ int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
                     found = true;
                     expected = false;
                     desired = true;
-                    while (!(s_handle.hw_session.kernel_info->kernel_complete_locked).compare_exchange_weak(expected, desired)) {
+                    while (!(*(s_handle.hw_session.kernel_info->kernel_complete_locked)).compare_exchange_weak(expected, desired)) {
                         expected = false;
                     }
                     //kernel completion lock acquired
@@ -301,7 +301,7 @@ int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
                     s_handle.hw_session.kernel_info->kernel_complete_count++;
 
                     //Release completion lock
-                    s_handle.hw_session.kernel_info->kernel_complete_locked = false;
+                    *(s_handle.hw_session.kernel_info->kernel_complete_locked) = false;
                 break;
                 case ERT_CMD_STATE_ERROR:
                 case ERT_CMD_STATE_ABORT:
@@ -334,7 +334,7 @@ xma_plg_schedule_work_item(XmaSession s_handle)
     int32_t bo_idx;
     int32_t rc = XMA_SUCCESS;
     
-    if (s_handle.hw_session.kernel_info->reg_map_locked) {
+    if (*(s_handle.hw_session.kernel_info->reg_map_locked)) {
         if (s_handle.session_id != s_handle.hw_session.kernel_info->locked_by_session_id || s_handle.session_type != s_handle.hw_session.kernel_info->locked_by_session_type) {
             xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regamp is locked by another session\n");
             return XMA_ERROR;
@@ -378,7 +378,7 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
 {
     bool expected = false;
     bool desired = true;
-    while (!(s_handle.hw_session.kernel_info->kernel_complete_locked).compare_exchange_weak(expected, desired)) {
+    while (!(*(s_handle.hw_session.kernel_info->kernel_complete_locked)).compare_exchange_weak(expected, desired)) {
         expected = false;
     }
     //kernel completion lock acquired
@@ -419,13 +419,13 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
         s_handle.hw_session.kernel_info->kernel_complete_count = current_count;
         
         //Release completion lock
-        s_handle.hw_session.kernel_info->kernel_complete_locked = false;
+        *(s_handle.hw_session.kernel_info->kernel_complete_locked) = false;
         return XMA_SUCCESS;
     }
     else
     {
         //Release completion lock
-        s_handle.hw_session.kernel_info->kernel_complete_locked = false;
+        *(s_handle.hw_session.kernel_info->kernel_complete_locked) = false;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
                     "Could not find completed work item\n");
         return XMA_ERROR;
