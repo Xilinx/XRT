@@ -253,7 +253,7 @@ if [ -z "$CONFIG_FILE" -a -f "${DSA_DIR}/config.sh" ]; then
 fi
 
 if [ -f "$CONFIG_FILE" ]; then
-	echo "source $CONFIG_FILE"
+	echo "[CMD]: source $CONFIG_FILE"
 	source $CONFIG_FILE
 else
 	echo " * Could not found configure file, use default"
