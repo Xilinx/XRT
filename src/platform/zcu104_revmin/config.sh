@@ -118,6 +118,10 @@ pre_build_hook()
 	# Replace the original pl.dtsi. Remove framebuffer IPs.
 	cp -f ${THIS_CONFIG_SCRIPT_DIR}/pl.dtsi ${PETA_DIR}/components/plnx_workspace/device-tree/device-tree/pl.dtsi
 	cp -f ${THIS_CONFIG_SCRIPT_DIR}/device-tree.mss ${PETA_DIR}/components/plnx_workspace/device-tree/device-tree/device-tree.mss
+	# Remove u-boot 128MB image size limited
+	echo '/* TRD customizations */' >> ${PETA_DIR}/project-spec/meta-user/recipes-bsp/u-boot/files/platform-top.h
+	echo '#undef CONFIG_SYS_BOOTMAPSZ' >> ${PETA_DIR}/project-spec/meta-user/recipes-bsp/u-boot/files/platform-top.h
+	echo '#undef CONFIG_PREBOOT' >> ${PETA_DIR}/project-spec/meta-user/recipes-bsp/u-boot/files/platform-top.h
 }
 
 # The first argument is the petalinux project path
