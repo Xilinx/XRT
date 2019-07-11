@@ -192,6 +192,11 @@ if [ $FULL_PETA_BULD == "Yes" ]; then
 	echo ""
 	echo "* petalinux build (FULL)"
 	# peta_build.sh will create ${PLATFORM_NAME}/ directory for petalinux project
+	if [ -d $PLATFORM_NAME ]; then
+		echo " WARNING: $PLATFORM_NAME/ folder exist. This is not allowed in full petalinux build mode. Remove it then create petalinux project."
+		rm -rf $PLATFORM_NAME
+	fi
+
 	if [ -f $BSP_FILE ]; then
 		${XRT_REPO_DIR}/src/runtime_src/tools/scripts/peta_build.sh --bsp $BSP_FILE ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}.dsa
 	else
@@ -233,7 +238,13 @@ if [ $BUILD_SYSROOT == "Yes" ]; then
   cd -
 fi
 
+# We want the platform folder to go here:
+cd $ORIGINAL_DIR
+
 # Create platform
+if [ -d platform ]; then
+	rm -rf ./platform
+fi
 ${XRT_REPO_DIR}/src/runtime_src/tools/scripts/pfm_build.sh ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_pfm.tcl
 
 # Go back to original directory
