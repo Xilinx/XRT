@@ -59,7 +59,7 @@ typedef struct XmaHwKernel
     uint32_t    cu_mask1;
     //For execbo:
     int32_t     kernel_complete_count;
-    std::unique_ptr<std::atomic<bool>> kernel_complete_locked;
+    //std::unique_ptr<std::atomic<bool>> kernel_complete_locked;
 
     uint32_t    reg_map[MAX_REGMAP_ENTRIES];//4KB = 4B x 1024; Supported Max regmap of 4032 Bytes only in xmaplugin.cpp; execBO size is 4096 = 4KB in xmahw_hal.cpp
     //pthread_mutex_t *lock;
@@ -71,14 +71,14 @@ typedef struct XmaHwKernel
     //bool             have_lock;
     uint32_t    reserved[16];
 
-  XmaHwKernel(): kernel_complete_locked(new std::atomic<bool>), reg_map_locked(new std::atomic<bool>) {
+  XmaHwKernel(): reg_map_locked(new std::atomic<bool>) {
     in_use = false;
     cu_index = -1;
     ddr_bank = -1;
     cu_mask0 = 0;
     cu_mask1 = 0;
     kernel_complete_count = 0;
-    *kernel_complete_locked = false;
+    //*kernel_complete_locked = false;
     *reg_map_locked = false;
     locked_by_session_id = -100;
     private_do_not_use = NULL;
@@ -99,17 +99,18 @@ typedef struct XmaHwDevice
     //XmaHwKernel kernels[MAX_KERNEL_CONFIGS];
     std::vector<XmaHwKernel> kernels;
 
-    //std::unique_ptr<std::atomic<bool>> execbo_locked;
+    std::unique_ptr<std::atomic<bool>> execbo_locked;
     std::vector<uint32_t> kernel_execbo_handle;
     std::vector<char*> kernel_execbo_data;//execBO size is 4096 in xmahw_hal.cpp
     std::vector<bool> kernel_execbo_inuse;
     std::vector<int32_t> kernel_execbo_cu_index;
     int32_t    num_execbo_allocated;
 
-  XmaHwDevice() {
+  XmaHwDevice(): execbo_locked(new std::atomic<bool>) {
     //in_use = false;
     dev_index = -1;
     number_of_cus = 0;
+    *execbo_locked = false;
     number_of_mem_banks = 0;
     num_execbo_allocated = -1;
     handle = NULL;
