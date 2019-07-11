@@ -285,6 +285,11 @@ int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
     bool    found = false;
     bool expected = false;
     bool desired = true;
+    while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //kernel completion lock acquired
+
     for (i = 0; i < num_execbo; i++) {
         ert_start_kernel_cmd *cu_cmd = 
             (ert_start_kernel_cmd*)dev_tmp1->kernel_execbo_data[i];
@@ -299,18 +304,9 @@ int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
                     break;
                     case ERT_CMD_STATE_COMPLETED:
                         found = true;
-                        expected = false;
-                        desired = true;
-                        while (!(*(kernel_tmp1->kernel_complete_locked)).compare_exchange_weak(expected, desired)) {
-                            expected = false;
-                        }
-                        //kernel completion lock acquired
-
                         // Update count of completed work items
                         kernel_tmp1->kernel_complete_count++;
 
-                        //Release completion lock
-                        *(kernel_tmp1->kernel_complete_locked) = false;
                     break;
                     case ERT_CMD_STATE_ERROR:
                     case ERT_CMD_STATE_ABORT:
@@ -332,6 +328,9 @@ int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
         dev_tmp1->kernel_execbo_cu_index[i] = kernel_tmp1->cu_index;
         rc = i;
     }
+    //Release completion lock
+    *(dev_tmp1->execbo_locked) = false;
+
     return rc;
 }
 
@@ -405,19 +404,18 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private: No execbo allocated\n");
         return -1;
     }
-    bool expected = false;
-    bool desired = true;
-    while (!(*(kernel_tmp1->kernel_complete_locked)).compare_exchange_weak(expected, desired)) {
-        expected = false;
-    }
-    //kernel completion lock acquired
 
-    int32_t current_count = kernel_tmp1->kernel_complete_count;
     int32_t count = 0;
-
     // Keep track of the number of kernel completions
     while (count == 0)
     {
+        bool expected = false;
+        bool desired = true;
+        while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
+            expected = false;
+        }
+        //kernel completion lock acquired
+
         // Look for inuse commands that have completed and increment the count
         for (int32_t i = 0; i < num_execbo; i++)
         {
@@ -433,6 +431,8 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
                 } 
             }
         }
+        //Release completion lock
+        *(dev_tmp1->execbo_locked) = false;
 
         if (count)
             break;
@@ -441,20 +441,27 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
         if (xclExecWait(s_handle.hw_session.dev_handle, timeout_ms) <= 0)
             break;
     }
-    current_count += count;
-    if (current_count)
+
+    bool expected = false;
+    bool desired = true;
+    while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //kernel completion lock acquired
+
+    kernel_tmp1->kernel_complete_count += count;
+    if (kernel_tmp1->kernel_complete_count)
     {
-        current_count--;
-        kernel_tmp1->kernel_complete_count = current_count;
+        kernel_tmp1->kernel_complete_count--;
         
         //Release completion lock
-        *(kernel_tmp1->kernel_complete_locked) = false;
+        *(dev_tmp1->execbo_locked) = false;
         return XMA_SUCCESS;
     }
     else
     {
         //Release completion lock
-        *(kernel_tmp1->kernel_complete_locked) = false;
+        *(dev_tmp1->execbo_locked) = false;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
                     "Could not find completed work item\n");
         return XMA_ERROR;
@@ -462,4 +469,3 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
 
     return XMA_SUCCESS;
 }
-    
