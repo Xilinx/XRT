@@ -102,7 +102,7 @@ AIM::AIM(void* handle /** < [in] the xrt hal device handle */,
 
 size_t AIM::startCounter()
 {
-    if(out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/)
+    if(out_stream)
         (*out_stream) << " AIM::startCounter " << std::endl;
 
     size_t size = 0;
@@ -129,7 +129,7 @@ size_t AIM::startCounter()
 
 size_t AIM::stopCounter()
 {
-    if(out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/)
+    if(out_stream)
         (*out_stream) << " AIM::stopCounter " << std::endl;
 
     size_t size = 0;
@@ -146,7 +146,7 @@ size_t AIM::stopCounter()
 
 size_t AIM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
 {
-    if(out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/)
+    if(out_stream)
         (*out_stream) << " AIM::readCounter " << std::endl;
 
     size_t size = 0;
@@ -185,7 +185,7 @@ size_t AIM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
         counterResults.ReadTranx[s]    += (upper[4] << 32);
         counterResults.ReadLatency[s]  += (upper[5] << 32);
 
-        if(out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/) {
+        if(out_stream) {
           (*out_stream) << "AXI Interface Monitor Upper 32, slot " << s << std::endl
                         << "  WriteBytes : " << upper[0] << std::endl
                         << "  WriteTranx : " << upper[1] << std::endl
@@ -197,7 +197,7 @@ size_t AIM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
     }
 
 
-    if(out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/) {
+    if(out_stream) {
         (*out_stream) << "Reading AXI Interface Monitor... SlotNum : " << s << std::endl
                       << "Reading AXI Interface Monitor... WriteBytes : " << counterResults.WriteBytes[s] << std::endl
                       << "Reading AXI Interface Monitor... WriteTranx : " << counterResults.WriteTranx[s] << std::endl
@@ -241,7 +241,7 @@ bool AIM::has64bit()
 
 void AIM::showProperties()
 {
-    std::ostream *outputStream = (out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/) ? out_stream : (&(std::cout));
+    std::ostream *outputStream = (out_stream) ? out_stream : (&(std::cout));
     (*outputStream) << " AIM " << std::endl;
     ProfileIP::showProperties();
 }

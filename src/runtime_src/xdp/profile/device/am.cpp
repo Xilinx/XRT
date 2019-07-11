@@ -78,7 +78,7 @@ AM::AM(void* handle /** < [in] the xrt hal device handle */,
 
 size_t AM::startCounter()
 {
-    if(out_stream /* && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/)
+    if(out_stream)
         (*out_stream) << " AM::startCounter " << std::endl;
 
     size_t size = 0;
@@ -99,7 +99,7 @@ size_t AM::startCounter()
 
 size_t AM::stopCounter()
 {
-    if(out_stream /* && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/)
+    if(out_stream)
         (*out_stream) << " AM::stopCounter " << std::endl;
 
     // nothing to do ?
@@ -108,7 +108,7 @@ size_t AM::stopCounter()
 
 size_t AM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
 {
-    if(out_stream /* && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/)
+    if(out_stream)
         (*out_stream) << " AM::readCounter " << std::endl;
 
     size_t size = 0;
@@ -118,7 +118,7 @@ size_t AM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
     if(s==0)
     size += read(0, 4, &version);
 
-    if(out_stream /* && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/) {
+    if(out_stream) {
         (*out_stream) << "Accelerator Monitor Core vlnv : " << version
                       << " Major " << static_cast<int>(major_version)
                       << " Minor " << static_cast<int>(minor_version)
@@ -134,7 +134,7 @@ size_t AM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
     // NOTE: this also latches the sampled metric counters
     size += read(XSAM_SAMPLE_OFFSET, 4, &sampleInterval);
 
-    if(out_stream /* && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/) {
+    if(out_stream) {
         (*out_stream) << "Accelerator Monitor Sample Interval : " << sampleInterval << std::endl;
     }
 
@@ -156,7 +156,7 @@ size_t AM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
         counterResults.CuMinExecCycles[s] += (upper[2] << 32);
         counterResults.CuMaxExecCycles[s] += (upper[3] << 32);
 
-        if(out_stream /* && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/)
+        if(out_stream)
           (*out_stream) << "Accelerator Monitor Upper 32, slot " << s << std::endl
                         << "  CuExecCount : " << upper[0] << std::endl
                         << "  CuExecCycles : " << upper[1] << std::endl
@@ -180,7 +180,7 @@ size_t AM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
         counterResults.CuMaxParallelIter[s] = 1;
     }
 
-    if(out_stream /* && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/) {
+    if(out_stream) {
         (*out_stream) << "Reading Accelerator Monitor... SlotNum : " << s << std::endl
                       << "Reading Accelerator Monitor... CuExecCount : " << counterResults.CuExecCount[s] << std::endl
                       << "Reading Accelerator Monitor... CuExecCycles : " << counterResults.CuExecCycles[s] << std::endl
@@ -197,7 +197,7 @@ size_t AM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
     }
 
 
-    if(out_stream /* && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/) {
+    if(out_stream) {
           (*out_stream) << "Stall Counters enabled : " << std::endl
                         << "Reading Accelerator Monitor... CuStallIntCycles : " << counterResults.CuStallIntCycles[s] << std::endl
                         << "Reading Accelerator Monitor... CuStallStrCycles : " << counterResults.CuStallStrCycles[s] << std::endl
@@ -248,7 +248,7 @@ void AM::configureDataflow(bool cuHasApCtrlChain)
     regValue = regValue | XSAM_DATAFLOW_EN_MASK;
     write(XSAM_CONTROL_OFFSET, 4, &regValue);
 
-    if(out_stream /* && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/) {
+    if(out_stream) {
       (*out_stream) << "Dataflow enabled on slot : " << getName() << std::endl;
     }
 
@@ -271,7 +271,7 @@ bool AM::hasStall()
 
 void AM::showProperties()
 {
-    std::ostream *outputStream = (out_stream /* && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/) ? out_stream : (&(std::cout));
+    std::ostream *outputStream = (out_stream) ? out_stream : (&(std::cout));
     (*outputStream) << " AM " << std::endl;
     ProfileIP::showProperties();
 }

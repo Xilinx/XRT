@@ -73,7 +73,7 @@ ASM::ASM(void* handle /** < [in] the xrt hal device handle */,
 
 size_t ASM::startCounter()
 {
-    if(out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/)
+    if(out_stream)
         (*out_stream) << " ASM::startCounter " << std::endl;
 
     size_t size = 0;
@@ -94,20 +94,20 @@ size_t ASM::startCounter()
 
 size_t ASM::stopCounter()
 {
-    if(out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/)
+    if(out_stream)
         (*out_stream) << " ASM::stopCounter " << std::endl;
     return 0;
 }
 
 size_t ASM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
 {
-    if(out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/)
+    if(out_stream)
         (*out_stream) << " ASM::readCounter " << std::endl;
 
     size_t size = 0;
     uint32_t sampleInterval = 0;
 
-    if(out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/) {
+    if(out_stream) {
         (*out_stream) << "Reading AXI Stream Monitors.." << std::endl;
     }
 
@@ -124,7 +124,7 @@ size_t ASM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
       counterResults.StrNumTranx[s] = 1;
     }
 
-    if(out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/) {
+    if(out_stream) {
         (*out_stream) << "Reading AXI Stream Monitor... SlotNum : " << s << std::endl
                       << "Reading AXI Stream Monitor... NumTranx : " << counterResults.StrNumTranx[s] << std::endl
                       << "Reading AXI Stream Monitor... DataBytes : " << counterResults.StrDataBytes[s] << std::endl
@@ -143,7 +143,7 @@ size_t ASM::triggerTrace(uint32_t traceOption /* starttrigger*/)
 
 void ASM::showProperties()
 {
-    std::ostream *outputStream = (out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/) ? out_stream : (&(std::cout));
+    std::ostream *outputStream = (out_stream) ? out_stream : (&(std::cout));
     (*outputStream) << " ASM " << std::endl;
     ProfileIP::showProperties();
 }

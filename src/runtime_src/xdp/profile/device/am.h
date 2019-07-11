@@ -19,8 +19,6 @@
 #define XDP_PROFILE_DEVICE_SAM_H
 
 #include <stdexcept>
-#include <fstream>
-#include <iostream>
 #include "profile_ip_access.h"
 
 namespace xdp {

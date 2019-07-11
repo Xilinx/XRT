@@ -43,7 +43,7 @@ namespace xdp {
   class DeviceIntf {
   public:
     DeviceIntf() {}
-    ~DeviceIntf() {}
+    ~DeviceIntf();
 
   public:
 

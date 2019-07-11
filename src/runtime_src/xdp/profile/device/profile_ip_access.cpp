@@ -171,16 +171,14 @@ void ProfileIP::showWarning(std::string reason) {
      * notifying the user that there is a problem in xde and
      * do not expect any profiling information.
      */
-    std::ostream* outputStream = (out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/) ? out_stream : (&(std::cout));
+    std::ostream* outputStream = (out_stream) ? out_stream : (&(std::cout));
     (*outputStream) << "Error: profiling will not be avaiable. Reason: " << reason << std::endl;
     return;
 }
 
 void ProfileIP::showProperties()
 {
-    setLogStream(&std::cout);
-
-    std::ostream* outputStream = (out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/) ? out_stream : (&(std::cout));
+    std::ostream* outputStream = (out_stream) ? out_stream : (&(std::cout));
    
     std::ios_base::fmtflags formatF = outputStream->flags();
 
@@ -195,9 +193,6 @@ uint32_t ProfileIP::setLogStream(std::ostream* oStream)
 {
     if(!oStream)
         return 0;
-
-//    if(!oStream->is_open())
-//        return 0;
 
     out_stream = oStream;
     return 1;

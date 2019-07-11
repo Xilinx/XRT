@@ -42,6 +42,30 @@
 
 namespace xdp {
 
+DeviceIntf::~DeviceIntf()
+{
+    for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
+        delete (*itr);  // delete the object
+        (*itr) = nullptr;
+    }
+    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr) {
+        delete (*itr);  // delete the object
+        (*itr) = nullptr;
+    }
+    for(std::vector<ASM*>::iterator itr = asmList.begin(); itr != asmList.end(); ++itr) {
+        delete (*itr);  // delete the object
+        (*itr) = nullptr;
+    }
+    aimList.clear();
+    amList.clear();
+    asmList.clear();
+
+    delete fifoCtrl;
+    delete fifoRead;
+    delete traceFunnel;
+    delete traceDMA;
+}
+
   // ***************************************************************************
   // Read/Write
   // ***************************************************************************

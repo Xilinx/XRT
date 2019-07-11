@@ -54,6 +54,7 @@ namespace xdp {
     void addToActiveDevices(const std::string& deviceName);
     void setKernelClockFreqMHz(const std::string &deviceName,
                                unsigned int clockRateMHz);
+    void reset();
   public:
     inline xdp::XoclPlugin* getPlugin() { return Plugin.get(); }
     inline xdp::RTProfile* getProfileManager() { return ProfileMgr.get(); }

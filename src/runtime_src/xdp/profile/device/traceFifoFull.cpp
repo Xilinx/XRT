@@ -214,10 +214,11 @@ uint32_t TraceFifoFull::readTrace(xclTraceResultsVector& traceVector, uint32_t n
     if (words < numWords) {
       chunkSizeBytes = 4 * (numWords - words);
 
-    if(out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/)
-      (*out_stream) << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
-                    << std::hex << (getBaseAddress() + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0]*/ << " and writing it to 0x"
-                    << (void *)(hostbuf + words) << std::dec << std::endl;
+      if(out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/) {
+        (*out_stream) << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
+                      << std::hex << (getBaseAddress() + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0]*/ << " and writing it to 0x"
+                      << (void *)(hostbuf + words) << std::dec << std::endl;
+      }
 
       unmgdRead(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
 
