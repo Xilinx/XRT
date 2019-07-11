@@ -153,8 +153,15 @@ int ZYNQShim::mapKernelControl(const std::vector<std::pair<uint64_t, size_t>>& o
     if ((offset_it->first & (~0xFF)) != (-1UL & ~0xFF)) {
       auto it = mKernelControl.find(offset_it->first);
       if (it == mKernelControl.end()) {
-        ptr = mmap(0, offset_it->second, PROT_READ | PROT_WRITE, MAP_SHARED, mKernelFD, offset_it->first);
-        if (ptr == MAP_FAILED){
+        drm_zocl_info_cu info = {offset_it->first, -1};
+        int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_INFO_CU, &info);
+        if (result) {
+            printf("failed to find CU info 0x%lx\n", offset_it->first);
+            return -1;
+        }
+        size_t psize = getpagesize();
+        ptr = mmap(0, offset_it->second, PROT_READ | PROT_WRITE, MAP_SHARED, mKernelFD, info.apt_idx*psize);
+        if (ptr == MAP_FAILED) {
             printf("Map failed for aperture 0x%lx, size 0x%lx\n", offset_it->first, offset_it->second);
             return -1;
         }
@@ -433,8 +440,14 @@ int ZYNQShim::xclLoadAxlf(const axlf *buffer)
 
 int ZYNQShim::xclExportBO(unsigned int boHandle)
 {
-  drm_prime_handle info = {boHandle, 0, -1};
+  drm_prime_handle info = {boHandle, DRM_RDWR, -1};
+  // Since Linux 4.6, drm_prime_handle_to_fd_ioctl respects O_RDWR.
   int result = ioctl(mKernelFD, DRM_IOCTL_PRIME_HANDLE_TO_FD, &info);
+  if (result) {
+    std::cout << "WARNING: DRM prime handle to fd faied with DRM_RDWR. Try default flags." << std::endl;
+    info.flags = 0;
+    result = ioctl(mKernelFD, DRM_IOCTL_PRIME_HANDLE_TO_FD, &info);
+  }
   if (mVerbosity == XCL_INFO) {
     mLogStream << "xclExportBO result = " << result << std::endl;
   }

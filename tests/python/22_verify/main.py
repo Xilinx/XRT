@@ -77,31 +77,6 @@ def runKernel(opt):
         print("Error: Unable to map exec BO")
         return 1
 
-    print("Construct the exe buf cmd to configure FPGA")
-
-    ecmd = ert_configure_cmd.from_buffer(execData.contents)
-    ecmd.m_uert.m_cmd_struct.opcode = 2  # ERT_CONFIGURE
-
-    ecmd.m_features.ert = opt.ert
-    if opt.ert:
-        ecmd.m_features.cu_dma = 1
-        ecmd.m_features.cu_isr = 1
-
-    print("Send the exec command and configure FPGA (ERT)")
-
-    # Send the command.
-    if xclExecBuf(opt.handle, execHandle):
-        xclFreeBO(opt.handle, boHandle)
-        xclFreeBO(opt.handle, execHandle)
-        xclCloseContext(opt.handle, opt.xuuid, 0)
-        print("Error: Unable to issue exec buf")
-        return 1
-
-    print("Wait until the command finish")
-    while ecmd.m_uert.m_cmd_struct.state < ert_cmd_state.ERT_CMD_STATE_COMPLETED:
-        while xclExecWait(opt.handle, 1000) == 0:
-            print(".")
-
     print("Construct the exec command to run the kernel on FPGA")
 
     # construct the exec buffer cmd to start the kernel
@@ -130,7 +105,7 @@ def runKernel(opt):
         print("Now wait until the kernel finish")
 
     print("Wait until the command finish")
-    while ecmd.m_uert.m_cmd_struct.state < ert_cmd_state.ERT_CMD_STATE_COMPLETED:
+    while start_cmd.m_uert.m_start_cmd_struct.state < ert_cmd_state.ERT_CMD_STATE_COMPLETED:
         while xclExecWait(opt.handle, 100) == 0: 
             print(".")
 

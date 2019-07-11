@@ -22,10 +22,10 @@
 #include <stdbool.h>
 #include <pthread.h>
 #include <limits.h>
-#include <queue>
-#include <condition_variable>
-#include <atomic>
-#include <thread>
+//#include <queue>
+//#include <condition_variable>
+//#include <atomic>
+//#include <thread>
 
 
 #if !defined (PATH_MAX) || !defined (NAME_MAX)
@@ -42,7 +42,7 @@
 /* Callback function for an XmaThread */
 //typedef void* (*XmaThreadFunc)(void *data);
 
-/* Data structure for an XmaThread */
+/* Data structure for an XmaThread *--/
 typedef struct XmaThread
 {
     //pthread_t           tid;
@@ -51,6 +51,7 @@ typedef struct XmaThread
     //void               *data;
     bool                is_running;
 } XmaThread;
+*/
 
 /* XmaThread APIs */
 /*
@@ -85,19 +86,12 @@ bool xma_msgq_isempty(XmaMsgQ *msgq);
 int32_t xma_msgq_enqueue(XmaMsgQ *msgq, void *msg, size_t size);
 int32_t xma_msgq_dequeue(XmaMsgQ *msgq, void *msg, size_t size);
 */
-struct XmaActor;
+//struct XmaActor;
 
-/* Data structure for XmaActor */
+/* Data structure for XmaActor *--/
 typedef struct XmaActor
 {
     XmaThread          *thread;
-    /*
-    Sarab: Remove this and use C++ std::queue
-    XmaMsgQ            *msg_q;
-    pthread_mutex_t     lock;
-    pthread_cond_t      queued_cond;
-    pthread_cond_t      dequeued_cond;
-    */
 
     std::unique_ptr<std::mutex> logger_queue_mutex;//Using only for waiting for queue to be not empty
     std::unique_ptr<std::condition_variable> logger_queue_cv;
@@ -110,20 +104,17 @@ typedef struct XmaActor
     thread = NULL;
   }
 } XmaActor;
-
-/* XmaActor APIs */
-/*
-XmaActor *xma_actor_create(XmaThreadFunc      func,
-                           size_t             msg_size,
-                           size_t             max_msg_entries);
 */
+
+/* XmaActor APIs *--/
 XmaActor *xma_actor_create();
 void xma_actor_start(XmaActor *actor);
 void xma_actor_destroy(XmaActor *actor);
 int xma_actor_sendmsg(XmaActor *actor, void *msg, size_t msg_size);
 int xma_actor_recvmsg(XmaActor *actor, void *msg, size_t msg_size);
+*/
 
-/* Data structure for XmaLogger */
+/* Data structure for XmaLogger *--/
 typedef struct XmaLogger
 {
     bool      use_stdout;
@@ -137,6 +128,7 @@ typedef struct XmaLogger
 
 int32_t xma_logger_init(XmaLogger *logger);
 int32_t xma_logger_close(XmaLogger *logger);
+*/
 
 ///** @} */
 //#ifdef __cplusplus

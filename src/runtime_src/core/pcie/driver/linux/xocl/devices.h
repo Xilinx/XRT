@@ -48,6 +48,7 @@ enum {
 	XOCL_DSAFLAG_NO_KDMA			= 0x80,
 	XOCL_DSAFLAG_CUDMA_OFF			= 0x100,
 	XOCL_DSAFLAG_DYNAMIC_IP			= 0x200,
+	XOCL_DSAFLAG_SMARTN			= 0x400,
 };
 
 #define	FLASH_TYPE_SPI	"spi"
@@ -1250,6 +1251,24 @@ struct xocl_iores_map map[] = {						\
 		.flash_type = FLASH_TYPE_SPI				\
 	}
 
+#define MGMT_RES_XBB_SMARTN                                               \
+	((struct xocl_subdev_info []) {                         \
+		XOCL_DEVINFO_FEATURE_ROM,                       \
+		XOCL_DEVINFO_IORES_MGMT,			\
+		XOCL_DEVINFO_PRP_IORES_MGMT,			\
+		XOCL_DEVINFO_XMC,                               \
+		XOCL_DEVINFO_ICAP_MGMT,                    	\
+		XOCL_DEVINFO_FMGR,      			\
+	})
+
+#define XOCL_BOARD_MGMT_XBB_SMARTN                                  	\
+	(struct xocl_board_private){                                    \
+		.flags          = XOCL_DSAFLAG_SMARTN,		\
+		.subdev_info    = MGMT_RES_XBB_SMARTN,               \
+		.subdev_num = ARRAY_SIZE(MGMT_RES_XBB_SMARTN),       \
+		.flash_type = FLASH_TYPE_SPI				\
+	}
+
 #define	MGMT_RES_6E8F_DSA52						\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
@@ -1455,6 +1474,7 @@ struct xocl_iores_map map[] = {						\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5014, PCI_ANY_ID, MGMT_XBB_QDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5018, PCI_ANY_ID, MGMT_XBB_QDMA_U280) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x501C, PCI_ANY_ID, MGMT_XBB_QDMA_U280) },\
+	{ XOCL_PCI_DEVID(0x10EE, 0x5030, PCI_ANY_ID, MGMT_XBB_SMARTN) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6A9F, PCI_ANY_ID, MGMT_DEFAULT) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6E4F, PCI_ANY_ID, MGMT_DEFAULT) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6B0F, PCI_ANY_ID, MGMT_6B0F) },	\

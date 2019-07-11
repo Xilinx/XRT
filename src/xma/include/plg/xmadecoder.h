@@ -71,7 +71,9 @@ typedef struct XmaDecoderSession
     XmaSession            base; /**< base session class */
     XmaDecoderProperties  decoder_props; /**< session decoder properties */
     XmaDecoderPlugin     *decoder_plugin; /**< pointer to plugin instance */
-    int32_t               conn_recv_handle; /**< connection handle to encoder */
+    //int32_t               conn_recv_handle; /**< connection handle to encoder */
+    /** Reserved */
+    uint32_t        reserved[4];
 } XmaDecoderSession;
 
 /**
