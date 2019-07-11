@@ -1,6 +1,4 @@
-cp /mnt/platform_desc.txt /etc/xocl.txt
-
-# XRT is install into linux standard path for MPSoC
-# Headers in /usr/include
-# Libraries in /usr/lib
+SCRIPTPATH4=$(dirname $BASH_SOURCE)
+echo ${SCRIPTPATH4}
+cp ${SCRIPTPATH4}/platform_desc.txt /etc/xocl.txt
 export XILINX_XRT=/usr
