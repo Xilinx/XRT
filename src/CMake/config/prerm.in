@@ -29,13 +29,21 @@ if [ $? -eq 0 ] && [ $1 -ge 1 ]; then
 	exit 0
 fi
 
+lsb_release -si | grep -Eq "^Ubuntu|^Debian"
+if [ $? -eq 0 ] && [ "$1" = "upgrade" ]; then
+    echo "Unregistering old XRT Linux kernel module sources @XRT_VERSION_STRING@ from dkms on Ubuntu/Debian"
+    dkms remove -m xrt -v @XRT_VERSION_STRING@ --all
+    echo "Cleanup is skipped for package upgrade/downgrade/re-install"
+    exit 0
+fi
+
 # If we are here then
 # a. either the user is trying to remove xrt package on Ubuntu or RHEL/CentOS
 # b. or we are executing install (ubgrade), re-install or downgrade on Ubuntu
 
 echo "Unloading old XRT Linux kernel modules"
-modprobe -r xocl
-modprobe -r xclmgmt
+rmmod xocl
+rmmod xclmgmt
 
 echo "Unregistering XRT Linux kernel module sources @XRT_VERSION_STRING@ from dkms"
 dkms remove -m xrt -v @XRT_VERSION_STRING@ --all
