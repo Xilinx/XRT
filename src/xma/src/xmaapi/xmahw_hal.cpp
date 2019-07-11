@@ -245,6 +245,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             strcpy((char*)tmp1.name,
                 (const char*)info.ip_layout[d].kernel_name);
             tmp1.base_address = info.ip_layout[d].base_addr;
+            tmp1.cu_index = (int32_t)d;
 
             rc = xma_xclbin_map2ddr(info.ip_ddr_mapping[d], &tmp1.ddr_bank);
             //XMA supports only 1 Bank per Kernel

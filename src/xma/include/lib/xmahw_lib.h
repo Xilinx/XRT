@@ -52,7 +52,7 @@ typedef struct XmaHwKernel
 {
     uint8_t     name[MAX_KERNEL_NAME];
     bool        in_use;
-    int32_t     instance;
+    int32_t     cu_index;
     uint64_t    base_address;
     int32_t    ddr_bank;
     uint32_t    cu_mask0;
@@ -73,7 +73,7 @@ typedef struct XmaHwKernel
 
   XmaHwKernel(): kernel_complete_locked(new std::atomic<bool>), reg_map_locked(new std::atomic<bool>) {
     in_use = false;
-    instance = -1;
+    cu_index = -1;
     ddr_bank = -1;
     cu_mask0 = 0;
     cu_mask1 = 0;
@@ -103,6 +103,7 @@ typedef struct XmaHwDevice
     std::vector<uint32_t> kernel_execbo_handle;
     std::vector<char*> kernel_execbo_data;//execBO size is 4096 in xmahw_hal.cpp
     std::vector<bool> kernel_execbo_inuse;
+    std::vector<int32_t> kernel_execbo_cu_index;
     int32_t    num_execbo_allocated;
 
   XmaHwDevice() {
