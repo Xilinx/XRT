@@ -70,6 +70,11 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
         {
             if (ipl->m_ip_data[i].m_type != IP_KERNEL)
                 continue;
+
+            if (xclbin_info->number_of_kernels == MAX_KERNEL_CONFIGS) {
+                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only %d kernels per device\n", xclbin_info->number_of_kernels);
+                return XMA_ERROR;
+            }
             memcpy(xclbin_info->ip_layout[j].kernel_name,
                    ipl->m_ip_data[i].m_name, MAX_KERNEL_NAME);
             layout[j].base_addr = ipl->m_ip_data[i].m_base_address;
@@ -104,14 +109,18 @@ static int get_xclbin_mem_topology(char *buffer, XmaXclbinInfo *xclbin_info)
         XmaMemTopology *topology = xclbin_info->mem_topology;
         xclbin_info->number_of_mem_banks = mem_topo->m_count;
         xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "MEM TOPOLOGY - %d banks\n",xclbin_info->number_of_mem_banks);
+        if (xclbin_info->number_of_mem_banks > MAX_DDR_MAP) {
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only 64 mem banks\n");
+            return XMA_ERROR;
+        }
         for (int i = 0; i < mem_topo->m_count; i++)
         {
             topology[i].m_type = mem_topo->m_mem_data[i].m_type;
             topology[i].m_used = mem_topo->m_mem_data[i].m_used;
             topology[i].m_size = mem_topo->m_mem_data[i].m_size;
             topology[i].m_base_address = mem_topo->m_mem_data[i].m_base_address;
-            //HHS change limits from MAX_DDR_MAP = 16 if needed
-            memcpy(topology[i].m_tag, mem_topo->m_mem_data[i].m_tag, MAX_DDR_MAP*sizeof(unsigned char));
+            //m_tag is 16 chars
+            memcpy(topology[i].m_tag, mem_topo->m_mem_data[i].m_tag, 16*sizeof(unsigned char));
             xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index=%d, tag=%s, type = %d, used = %d, size = %lx, base = %lx\n",
                    i,topology[i].m_tag, topology[i].m_type, topology[i].m_used,
                    topology[i].m_size, topology[i].m_base_address);
@@ -171,37 +180,35 @@ int xma_xclbin_info_get(char *buffer, XmaXclbinInfo *info)
     if(rc == XMA_ERROR)
         return rc;
 
-    uint16_t map[MAX_KERNEL_CONFIGS] = {};
+    memset(info->ip_ddr_mapping, 0, sizeof(info->ip_ddr_mapping));
     for(uint32_t c = 0; c < info->number_of_connections; c++)
     {
         XmaAXLFConnectivity *xma_conn = &info->connectivity[c];
-        map[xma_conn->m_ip_layout_index] |= 1 << (xma_conn->mem_data_index + 1);
+        info->ip_ddr_mapping[xma_conn->m_ip_layout_index] |= 1 << (xma_conn->mem_data_index);
     }
-    memcpy(info->ip_ddr_mapping,map,MAX_KERNEL_CONFIGS*sizeof(uint16_t));
-    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\nCONNECTIONS (bitmap 15<-0)\n");
+    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\nCU DDR connections bitmap:\n");
     for(uint32_t i = 0; i < info->number_of_kernels; i++)
     {
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "%s - 0x%04x\n",info->ip_layout[i].kernel_name, info->ip_ddr_mapping[i]);
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\t%s - 0x%04x\n",info->ip_layout[i].kernel_name, info->ip_ddr_mapping[i]);
     }
     //For execbo:
-    info->num_ips = info->number_of_kernels;
+    //info->num_ips = info->number_of_kernels;
     return XMA_SUCCESS;
 }
 
-int xma_xclbin_map2ddr(uint16_t bit_map, int* ddr_banks, int* num_banks)
+int xma_xclbin_map2ddr(uint64_t bit_map, int* ddr_bank)
 {
-    //TODO HHS Based on uint16_t bitmap considering 16 DDRs as max
-    int ddr_bank_idx = -1;
-    int count = 0;
+    //64 bits based on MAX_DDR_MAP = 64
+    int ddr_bank_idx = 0;
     while (bit_map != 0)
     {
-        ddr_bank_idx++;
         if (bit_map & 1)
         {
-            ddr_banks[count++]=ddr_bank_idx-1;
+            *ddr_bank = ddr_bank_idx;
+            return XMA_SUCCESS;
         }
+        ddr_bank_idx++;
         bit_map = bit_map >> 1;
     }
-    *num_banks = count;
-    return XMA_SUCCESS;
+    return XMA_ERROR;
 }
