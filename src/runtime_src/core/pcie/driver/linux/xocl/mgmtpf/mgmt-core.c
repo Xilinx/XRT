@@ -834,6 +834,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	case MAILBOX_REQ_LOAD_XCLBIN: {
 		uint64_t xclbin_len = 0;
 		struct axlf *xclbin = (struct axlf *)req->data;
+
 		if (payload_len < sizeof(*xclbin)) {
 			mgmt_err(lro, "peer request dropped, wrong size\n");
 			break;
@@ -976,7 +977,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 		goto fail_firewall;
 	}
 	if (dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
-			platform_axilite_flush(lro);
+		platform_axilite_flush(lro);
 
 	ret = xocl_subdev_create_all(lro);
 	if (ret) {
@@ -985,15 +986,17 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	}
 	xocl_info(&pdev->dev, "created all sub devices");
 
-	/* return -ENODEV for 2RP platform */
-	ret = xocl_icap_download_boot_firmware(lro);
-	if (ret && ret != -ENODEV)
-		goto fail_all_subdev;
 
-	ret = xclmgmt_load_fdt(lro);
-	if (ret)
-		goto fail_all_subdev;
+	if (!(dev_info->flags & XOCL_DSAFLAG_SMARTN)) {
+		/* return -ENODEV for 2RP platform */
+		ret = xocl_icap_download_boot_firmware(lro);
+		if (ret && ret != -ENODEV)
+			goto fail_all_subdev;
 
+		ret = xclmgmt_load_fdt(lro);
+		if (ret)
+			goto fail_all_subdev;
+	}
 	lro->core.thread_arg.health_cb = health_check_cb;
 	lro->core.thread_arg.arg = lro;
 	lro->core.thread_arg.interval = health_interval * 1000;
