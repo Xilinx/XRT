@@ -269,12 +269,12 @@ int32_t xma_plg_kernel_unlock_regmap(XmaSession s_handle)
 
 int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
 {
+    /*Sarab: TODO Fix for execbo shared between all kernels on a device
     int32_t i;
     int32_t rc = -1;
     bool    found = false;
     bool expected = false;
     bool desired = true;
-
     for (i = 0; i < MAX_EXECBO_POOL_SIZE; i++)
     {
         ert_start_kernel_cmd *cu_cmd = 
@@ -321,13 +321,15 @@ int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
         s_handle.hw_session.kernel_info->kernel_execbo_inuse[i] = true;
         rc = i;
     }
-
     return rc;
+*/
+    return -1;//Sarab: Remove it
 }
 
 int32_t
 xma_plg_schedule_work_item(XmaSession s_handle)
 {
+    /*Sarab: TODO Fix for shared execbo at device level
     uint8_t *src = (uint8_t*)s_handle.hw_session.kernel_info->reg_map;
     //size_t  size = s_handle.hw_session.kernel_info->max_offset;
     size_t  size = MAX_KERNEL_REGMAP_SIZE;//Max regmap in xmahw.h is 4KB; execBO size is 4096; Supported max regmap size is 4032 Bytes only
@@ -370,12 +372,14 @@ xma_plg_schedule_work_item(XmaSession s_handle)
             rc = XMA_ERROR;
         }
     }
-         
     return rc;
+*/
+    return -1;//Sarab: Remove it
 }
 
 int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
 {
+    /*Sarab: TODO Fix for shared execbo at device level
     bool expected = false;
     bool desired = true;
     while (!(*(s_handle.hw_session.kernel_info->kernel_complete_locked)).compare_exchange_weak(expected, desired)) {
@@ -430,5 +434,7 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
                     "Could not find completed work item\n");
         return XMA_ERROR;
     }
+    */
+    return XMA_SUCCESS;
 }
     

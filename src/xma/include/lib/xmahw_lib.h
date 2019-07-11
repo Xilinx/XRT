@@ -54,19 +54,19 @@ typedef struct XmaHwKernel
     bool        in_use;
     int32_t     instance;
     uint64_t    base_address;
-    uint32_t    ddr_bank;
+    int32_t    ddr_bank;
+    uint32_t    cu_mask0;
+    uint32_t    cu_mask1;
     //For execbo:
     int32_t     kernel_complete_count;
     std::unique_ptr<std::atomic<bool>> kernel_complete_locked;
-    uint32_t    kernel_execbo_handle[MAX_EXECBO_POOL_SIZE];
-    char*       kernel_execbo_data[MAX_EXECBO_POOL_SIZE];//execBO size is 4096 in xmahw_hal.cpp
-    bool        kernel_execbo_inuse[MAX_EXECBO_POOL_SIZE];
 
     uint32_t    reg_map[MAX_REGMAP_ENTRIES];//4KB = 4B x 1024; Supported Max regmap of 4032 Bytes only in xmaplugin.cpp; execBO size is 4096 = 4KB in xmahw_hal.cpp
     //pthread_mutex_t *lock;
     std::unique_ptr<std::atomic<bool>> reg_map_locked;
     int32_t         locked_by_session_id;
     XmaSessionType locked_by_session_type;
+    void*   private_do_not_use;
 
     //bool             have_lock;
     uint32_t    reserved[16];
@@ -74,10 +74,14 @@ typedef struct XmaHwKernel
   XmaHwKernel(): kernel_complete_locked(new std::atomic<bool>), reg_map_locked(new std::atomic<bool>) {
     in_use = false;
     instance = -1;
+    ddr_bank = -1;
+    cu_mask0 = 0;
+    cu_mask1 = 0;
     kernel_complete_count = 0;
     *kernel_complete_locked = false;
     *reg_map_locked = false;
     locked_by_session_id = -100;
+    private_do_not_use = NULL;
   }
 } XmaHwKernel;
 
@@ -89,13 +93,24 @@ typedef struct XmaHwDevice
     //For execbo:
     uint32_t           dev_index;
     uuid_t             uuid; 
-    bool        in_use;
+    uint32_t           number_of_cus;
+    uint32_t           number_of_mem_banks;
+    //bool        in_use;
     //XmaHwKernel kernels[MAX_KERNEL_CONFIGS];
     std::vector<XmaHwKernel> kernels;
 
+    //std::unique_ptr<std::atomic<bool>> execbo_locked;
+    std::vector<uint32_t> kernel_execbo_handle;
+    std::vector<char*> kernel_execbo_data;//execBO size is 4096 in xmahw_hal.cpp
+    std::vector<bool> kernel_execbo_inuse;
+    int32_t    num_execbo_allocated;
+
   XmaHwDevice() {
-    in_use = false;
+    //in_use = false;
     dev_index = -1;
+    number_of_cus = 0;
+    number_of_mem_banks = 0;
+    num_execbo_allocated = -1;
     handle = NULL;
   }
 } XmaHwDevice;

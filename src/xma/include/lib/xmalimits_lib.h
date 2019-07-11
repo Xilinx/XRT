@@ -20,11 +20,11 @@
 #ifndef _XMA_LIMITS_APP_H
 #define _XMA_LIMITS_APP_H
 
-#define MAX_DDR_MAP             32
+#define MAX_DDR_MAP             64
 #define MAX_XILINX_DEVICES      16
 #define MAX_XILINX_KERNELS      60
 #define MAX_KERNEL_CONFIGS      60
-#define MAX_KERNEL_CHANS        64
+//#define MAX_KERNEL_CHANS        64
 #define MAX_KERNEL_FREQS         2
 #define MAX_IMAGE_CONFIGS       16
 #define MAX_FUNCTION_NAME       256

@@ -117,13 +117,17 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
     */
 
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Configure hardware\n");
-    /*Sarab: Disable xma_res stuff
-    rc = xma_hw_configure(&g_xma_singleton->hwcfg,
-                          &g_xma_singleton->systemcfg,
-                          xma_res_xma_init_completed(g_xma_singleton->shm_res_cfg));
-    if (!rc)
-        goto error;
-        */
+    if (!xma_hw_configure(&g_xma_singleton->hwcfg, devXclbins, num_parms)) {
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        for(XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
+            hw_device.kernels.clear();
+        }
+        g_xma_singleton->hwcfg.devices.clear();
+        g_xma_singleton->hwcfg.num_devices = -1;
+
+        return XMA_ERROR;
+    }
 
     /*Sarab: Move plugin loading to session_create
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Load scaler plugins\n");
@@ -171,6 +175,12 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
 
         //Release singleton lock
         g_xma_singleton->locked = false;
+        for(XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
+            hw_device.kernels.clear();
+        }
+        g_xma_singleton->hwcfg.devices.clear();
+        g_xma_singleton->hwcfg.num_devices = -1;
+
         return XMA_ERROR;
     }
 
