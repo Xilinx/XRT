@@ -1,7 +1,7 @@
 /**
- * Copyright (C) 2015-2018 Xilinx, Inc
+ * Copyright (C) 2015-2019 Xilinx, Inc
  *
- * Xilinx SDAccel HAL userspace driver APIs
+ * PCIe DMA Test implementation
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -127,7 +127,7 @@ namespace xcldev {
                 return result;
 
             Timer timer;
-            result = runSync(XCL_BO_SYNC_BO_TO_DEVICE, false);
+            result = runSync(XCL_BO_SYNC_BO_TO_DEVICE, true);
             double timer_stop = timer.stop();
             double rate = mBOList.size() * mSize;
             rate /= 0x100000; // MB
