@@ -155,56 +155,56 @@ bool validateXclBin(const xclBin *header , std::string &xclBinName)
 
 int ZYNQShim::xclLoadXclBin(const xclBin *header) {
   int ret = 0;
-  if (mLogStream.is_open()) {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-    mLogStream.close();
-  }
-  char *bitstreambin = reinterpret_cast<char*>(const_cast<xclBin*>(header));
-  std::string xclBinName = "";
-  if (!ZYNQ_HW_EM::isRemotePortMapped) {
-    ZYNQ_HW_EM::initRemotePortMap();
-  }
-  ssize_t xmlFileSize = 0;
-  char* xmlFile = nullptr;
+ //if (mLogStream.is_open()) {
+ //   mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
+ //   mLogStream.close();
+ // }
+ // char *bitstreambin = reinterpret_cast<char*>(const_cast<xclBin*>(header));
+ // std::string xclBinName = "";
+ // if (!ZYNQ_HW_EM::isRemotePortMapped) {
+ //   ZYNQ_HW_EM::initRemotePortMap();
+ // }
+ // ssize_t xmlFileSize = 0;
+ // char* xmlFile = nullptr;
 
-  if ((!std::memcmp(bitstreambin, "xclbin0", 7)) || (!std::memcmp(bitstreambin, "xclbin1", 7))) {
+ // if ((!std::memcmp(bitstreambin, "xclbin0", 7)) || (!std::memcmp(bitstreambin, "xclbin1", 7))) {
 
-	printf("ERROR: Legacy xclbins are no longer supported. \n");
-    return 1;
+ // printf("ERROR: Legacy xclbins are no longer supported. \n");
+ //   return 1;
 
-  } else if (!std::memcmp(bitstreambin, "xclbin2", 7)) {
-    auto top = reinterpret_cast<const axlf*>(header);
-    if (auto sec = xclbin::get_axlf_section(top, EMBEDDED_METADATA)) {
-      xmlFileSize = sec->m_sectionSize;
-      xmlFile = new char[xmlFileSize + 1];
-      memcpy(xmlFile, bitstreambin + sec->m_sectionOffset, xmlFileSize);
-      xmlFile[xmlFileSize] = '\0';
-    }
-  } else {
-    return 1;
-  }
+ // } else if (!std::memcmp(bitstreambin, "xclbin2", 7)) {
+ //   auto top = reinterpret_cast<const axlf*>(header);
+ //   if (auto sec = xclbin::get_axlf_section(top, EMBEDDED_METADATA)) {
+ //     xmlFileSize = sec->m_sectionSize;
+ //     xmlFile = new char[xmlFileSize + 1];
+ //     memcpy(xmlFile, bitstreambin + sec->m_sectionOffset, xmlFileSize);
+ //     xmlFile[xmlFileSize] = '\0';
+ //   }
+ // } else {
+ //   return 1;
+ // }
 
-  if (!ZYNQ_HW_EM::validateXclBin(header, xclBinName)) {
-    printf("ERROR:Xclbin validation failed\n");
-    return 1;
-  }
+ // if (!ZYNQ_HW_EM::validateXclBin(header, xclBinName)) {
+ //   printf("ERROR:Xclbin validation failed\n");
+ //   return 1;
+ // }
 
-  xclBinName = xclBinName + ".xclbin";
+ // xclBinName = xclBinName + ".xclbin";
 
-  //Send the LoadXclBin
-  PLLAUNCHER::OclCommand *cmd = new PLLAUNCHER::OclCommand();
-  cmd->setCommand(PLLAUNCHER::PL_OCL_LOADXCLBIN_ID);
-  cmd->addArg(xclBinName.c_str());
-  uint32_t length;
-  uint8_t* buff = cmd->generateBuffer(&length);
-  for (unsigned int i = 0; i < length; i += 4) {
-    uint32_t copySize = (length - i) > 4 ? 4 : length - i;
-    memcpy(((char*) (ZYNQ_HW_EM::remotePortMappedPointer)) + i, buff + i, copySize);
-  }
+ // //Send the LoadXclBin
+ // PLLAUNCHER::OclCommand *cmd = new PLLAUNCHER::OclCommand();
+ // cmd->setCommand(PLLAUNCHER::PL_OCL_LOADXCLBIN_ID);
+ // cmd->addArg(xclBinName.c_str());
+ // uint32_t length;
+ // uint8_t* buff = cmd->generateBuffer(&length);
+ // for (unsigned int i = 0; i < length; i += 4) {
+ //   uint32_t copySize = (length - i) > 4 ? 4 : length - i;
+ //   memcpy(((char*) (ZYNQ_HW_EM::remotePortMappedPointer)) + i, buff + i, copySize);
+ // }
 
-  //Send the end of packet
-  char cPacketEndChar = PL_OCL_PACKET_END_MARKER;
-  memcpy((char*) (ZYNQ_HW_EM::remotePortMappedPointer), &cPacketEndChar, 1);
+ // //Send the end of packet
+ // char cPacketEndChar = PL_OCL_PACKET_END_MARKER;
+ // memcpy((char*) (ZYNQ_HW_EM::remotePortMappedPointer), &cPacketEndChar, 1);
   
 	drm_zocl_axlf axlf_obj = { const_cast<axlf *>(header) };
 	ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_READ_AXLF, &axlf_obj);
