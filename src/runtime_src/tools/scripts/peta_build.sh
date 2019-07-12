@@ -69,9 +69,9 @@ config_dts()
 	echo "cat $GLOB_DTS >> recipes-bsp/device-tree/files/system-user.dtsi"
 	cat $GLOB_DTS >> recipes-bsp/device-tree/files/system-user.dtsi
 	# By default, assume this script is used right after dsa_build.sh.
-	if [ -f ${ORIGINAL_DIR}/dsa_build/${DSA_NAME}_fragment.dts ]; then
-		echo "cat ${ORIGINAL_DIR}/dsa_build/${DSA_NAME}_fragment.dts >> $DTS_FILE"
-		cat ${ORIGINAL_DIR}/dsa_build/${DSA_NAME}_fragment.dts >> $DTS_FILE
+	if [ -f ${ORIGINAL_DIR}/dsa_build/${DSA_NAME}/${DSA_NAME}_fragment.dts ]; then
+		echo "cat ${ORIGINAL_DIR}/dsa_build/${DSA_NAME}/${DSA_NAME}_fragment.dts >> $DTS_FILE"
+		cat ${ORIGINAL_DIR}/dsa_build/${DSA_NAME}/${DSA_NAME}_fragment.dts >> $DTS_FILE
 	fi
 }
 
