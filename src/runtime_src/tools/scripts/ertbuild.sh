@@ -167,17 +167,20 @@ if [ "${GEN_DSA}" == "Yes" ]; then
   # Generate DSA and HDF
   #  * ${XRT_REPO_DIR}/src/platform/${PLATFORM_NAME}/${PLATFORM_NAME}.dsa
   #  * ${XRT_REPO_DIR}/src/platform/${PLATFORM_NAME}/${PLATFORM_NAME}_vivado/${PLATFORM_NAME}.hdf
+  if [ -d dsa_build/${PLATFORM_NAME} ]; then
+	  rm -rf ./dsa_build/${PLATFORM_NAME}
+  fi
   ${XRT_REPO_DIR}/src/runtime_src/tools/scripts/dsa_build.sh ${XRT_REPO_DIR}/src/platform/${PLATFORM_NAME}/${PLATFORM_NAME}_dsa.tcl
 fi
 
-if [ ! -f ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}.dsa ]; then
-  echo "ERROR: Failed to create/locate DSA (it is missing): ${XRT_REPO_DIR}/dsa_build/${PLATFORM_NAME}.dsa"
+if [ ! -f ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}/${PLATFORM_NAME}.dsa ]; then
+  echo "ERROR: Failed to create/locate DSA (it is missing): ${XRT_REPO_DIR}/dsa_build/${PLATFORM_NAME}/${PLATFORM_NAME}.dsa"
   exit 1
 fi
 
-PLATFOMR_SDK=${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}/${PLATFORM_NAME}.sdk
+PLATFOMR_SDK=${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}/${PLATFORM_NAME}/${PLATFORM_NAME}.sdk
 if [ ! -f ${PLATFOMR_SDK}/${PLATFORM_NAME}_wrapper.hdf ]; then
-  echo "ERROR: Failed to create/locate HDF (it is missing): ${PLATFOMR_SDK}/${PLATFORM_NAME}_wrapper.hdf"
+  echo "ERROR: Failed to create/locate HDF (it is missing): ${PLATFOMR_SDK}/${PLATFORM_NAME}/${PLATFORM_NAME}_wrapper.hdf"
   exit 1
 fi
 
@@ -198,9 +201,9 @@ if [ $FULL_PETA_BULD == "Yes" ]; then
 	fi
 
 	if [ -f $BSP_FILE ]; then
-		${XRT_REPO_DIR}/src/runtime_src/tools/scripts/peta_build.sh --bsp $BSP_FILE ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}.dsa
+		${XRT_REPO_DIR}/src/runtime_src/tools/scripts/peta_build.sh --bsp $BSP_FILE ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}/${PLATFORM_NAME}.dsa
 	else
-		${XRT_REPO_DIR}/src/runtime_src/tools/scripts/peta_build.sh ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}.dsa
+		${XRT_REPO_DIR}/src/runtime_src/tools/scripts/peta_build.sh ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}/${PLATFORM_NAME}.dsa
 	fi
 else
 	if [ ! -d $PLATFORM_NAME ]; then
@@ -219,8 +222,8 @@ else
 fi
 
 if [ ! -f ${ORIGINAL_DIR}/${PLATFORM_NAME}/images/linux/image.ub ]; then
-  echo "ERROR: Failed to create/locate image.ub (it is missing): ${ORIGINAL_DIR}/${PLATFORM_NAME}/images/linux/image.ub"
-  exit 1
+	echo "ERROR: Failed to create/locate image.ub (it is missing): ${ORIGINAL_DIR}/${PLATFORM_NAME}/images/linux/image.ub"
+	exit 1
 fi
 
 # if we need to create HW for tests, then
@@ -242,10 +245,10 @@ fi
 cd $ORIGINAL_DIR
 
 # Create platform
-if [ -d platform ]; then
-	rm -rf ./platform
+if [ -d platform/${PLATFORM_NAME} ]; then
+	rm -rf ./platform/${PLATFORM_NAME}
 fi
-${XRT_REPO_DIR}/src/runtime_src/tools/scripts/pfm_build.sh ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}_pfm.tcl
+${XRT_REPO_DIR}/src/runtime_src/tools/scripts/pfm_build.sh ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}/${PLATFORM_NAME}_pfm.tcl
 
 # Go back to original directory
 cd $ORIGINAL_DIR
