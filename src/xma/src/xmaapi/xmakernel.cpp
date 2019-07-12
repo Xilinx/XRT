@@ -27,63 +27,6 @@
 
 extern XmaSingleton *g_xma_singleton;
 
-int32_t
-xma_kernel_plugins_load(XmaSystemCfg      *systemcfg,
-                        XmaKernelPlugin   *kernels)
-{
-    // Get the plugin path
-    char *pluginpath = systemcfg->pluginpath;
-    char *error;
-    int32_t k = 0;
-
-    xma_logmsg(XMA_DEBUG_LOG, XMA_KERNEL_MOD, "%s()\n", __func__);
-    // Load the xmaplugin library as it is a dependency for all plugins
-    void *xmahandle = dlopen("libxmaplugin.so",
-                             RTLD_LAZY | RTLD_GLOBAL);
-    if (!xmahandle)
-    {
-        xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
-                   "Failed to open plugin xmaplugin.so. Error msg: %s\n",
-                   dlerror());
-        return XMA_ERROR;
-    }
-
-    // For each plugin imagecfg/kernelcfg,
-    for (int32_t i = 0; i < systemcfg->num_images; i++)
-    {
-        for (int32_t j = 0;
-             j < systemcfg->imagecfg[i].num_kernelcfg_entries; j++)
-        {
-            char *func = systemcfg->imagecfg[i].kernelcfg[j].function;
-            if (strcmp(func, XMA_CFG_FUNC_NM_KERNEL) != 0)
-                continue;
-            char *plugin = systemcfg->imagecfg[i].kernelcfg[j].plugin;
-            char pluginfullname[PATH_MAX + NAME_MAX];
-            sprintf(pluginfullname, "%s/%s", pluginpath, plugin);
-            void *handle = dlopen(pluginfullname, RTLD_NOW);
-            if (!handle)
-            {
-                xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
-                    "Failed to open plugin %s\n Error msg: %s\n",
-                    pluginfullname, dlerror());
-                return XMA_ERROR;
-            }
-
-            XmaKernelPlugin *plg =
-                (XmaKernelPlugin*)dlsym(handle, "kernel_plugin");
-            if ((error = dlerror()) != NULL)
-            {
-                xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
-                    "Failed to open plugin %s\n Error msg: %s\n",
-                    pluginfullname, dlerror());
-                return XMA_ERROR;
-            }
-            memcpy(&kernels[k++], plg, sizeof(XmaKernelPlugin));
-        }
-    }
-    return XMA_SUCCESS;
-}
-
 XmaKernelSession*
 xma_kernel_session_create(XmaKernelProperties *props)
 {
@@ -137,7 +80,7 @@ xma_kernel_session_create(XmaKernelProperties *props)
     memset(session, 0, sizeof(XmaKernelSession));
     // init session data
     session->kernel_props = *props;
-    session->base.chan_id = -1;
+    session->base.channel_id = props->channel_id;
     session->base.session_type = XMA_KERNEL;
     session->kernel_plugin = plg;
 
@@ -176,19 +119,27 @@ xma_kernel_session_create(XmaKernelProperties *props)
     }
     */
 
+    bool expected = false;
+    bool desired = true;
+    while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //Singleton lock acquired
+
    //Sarab: TODO Fix device index, CU index & session->xx_plugin assigned above
-    int rc, dev_handle, kern_handle, k_handle;
-    dev_handle = props->dev_index;
-    kern_handle = props->cu_index;
-    k_handle = props->cu_index;
+    int rc, dev_index, cu_index;
+    dev_index = props->dev_index;
+    cu_index = props->cu_index;
+
+    g_xma_singleton->num_kernels++;
     
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
-    XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_handle].handle;
+    XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_index].handle;
 
     session->base.hw_session.dev_handle = hal->dev_handle;
 
     //For execbo:
-    session->base.hw_session.kernel_info = &hwcfg->devices[dev_handle].kernels[kern_handle];
+    session->base.hw_session.kernel_info = &hwcfg->devices[dev_index].kernels[cu_index];
 
     session->base.hw_session.dev_index = hal->dev_index;
 
@@ -196,7 +147,14 @@ xma_kernel_session_create(XmaKernelProperties *props)
 
     // Allocate the private data
     session->base.plugin_data =
-        calloc(g_xma_singleton->kernelcfg[k_handle].plugin_data_size, sizeof(uint8_t));
+        calloc(session->kernel_plugin->plugin_data_size, sizeof(uint8_t));
+
+
+    session->base.session_id = g_xma_singleton->num_kernels;
+    session->base.session_signature = (void*)(((uint64_t)session->base.hw_session.kernel_info) | ((uint64_t)session->base.hw_session.dev_handle));
+
+    //Release singleton lock
+    g_xma_singleton->locked = false;
 
     // Call the plugins initialization function with this session data
     //Sarab: Check plugin compatibility to XMA

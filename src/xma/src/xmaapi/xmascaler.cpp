@@ -109,63 +109,6 @@ static void copy_coeffecients(int16_t coeff[64][12])
     }
 }
 
-int32_t
-xma_scaler_plugins_load(XmaSystemCfg      *systemcfg,
-                       XmaScalerPlugin    *scalers)
-{
-    // Get the plugin path
-    char *pluginpath = systemcfg->pluginpath;
-    char *error;
-    int32_t k = 0;
-
-    xma_logmsg(XMA_DEBUG_LOG, XMA_SCALER_MOD, "%s()\n", __func__);
-    // Load the xmaplugin library as it is a dependency for all plugins
-    void *xmahandle = dlopen("libxmaplugin.so",
-                             RTLD_LAZY | RTLD_GLOBAL);
-    if (!xmahandle)
-    {
-        xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
-                   "Failed to open plugin xmaplugin.so. Error msg: %s\n",
-                   dlerror());
-        return XMA_ERROR;
-    }
-
-    // For each plugin imagecfg/kernelcfg,
-    for (int32_t i = 0; i < systemcfg->num_images; i++)
-    {
-        for (int32_t j = 0;
-             j < systemcfg->imagecfg[i].num_kernelcfg_entries; j++)
-        {
-            char *func = systemcfg->imagecfg[i].kernelcfg[j].function;
-            if (strcmp(func, XMA_CFG_FUNC_NM_SCALE) != 0)
-                continue;
-            char *plugin = systemcfg->imagecfg[i].kernelcfg[j].plugin;
-            char pluginfullname[PATH_MAX + NAME_MAX];
-            sprintf(pluginfullname, "%s/%s", pluginpath, plugin);
-            void *handle = dlopen(pluginfullname, RTLD_NOW);
-            if (!handle)
-            {
-                xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
-                    "Failed to open plugin %s\n Error msg: %s\n",
-                    pluginfullname, dlerror());
-                return XMA_ERROR;
-            }
-
-            XmaScalerPlugin *plg =
-                (XmaScalerPlugin*)dlsym(handle, "scaler_plugin");
-            if ((error = dlerror()) != NULL)
-            {
-                xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
-                    "Failed to open plugin %s\n Error msg: %s\n",
-                    pluginfullname, dlerror());
-                return XMA_ERROR;
-            }
-            memcpy(&scalers[k++], plg, sizeof(XmaScalerPlugin));
-        }
-    }
-    return XMA_SUCCESS;
-}
-
 void xma_scaler_default_filter_coeff_set(XmaScalerFilterProperties *props)
 {
     xma_logmsg(XMA_DEBUG_LOG, XMA_SCALER_MOD, "%s()\n", __func__);
@@ -229,7 +172,7 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     memset(sc_session, 0, sizeof(XmaScalerSession));
     // init session data
     sc_session->props = *sc_props;
-    sc_session->base.chan_id = -1;
+    sc_session->base.channel_id = sc_props->channel_id;
     sc_session->base.session_type = XMA_SCALER;
     sc_session->scaler_plugin = plg;
 
@@ -268,17 +211,27 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
         return NULL;
     */
 
-	int rc, dev_handle, kern_handle, scal_handle;
-    dev_handle = sc_props->dev_index;
-    kern_handle = sc_props->cu_index;
-    scal_handle = sc_props->cu_index;
+    bool expected = false;
+    bool desired = true;
+    while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //Singleton lock acquired
+
+   //Sarab: TODO Fix device index, CU index & session->xx_plugin assigned above
+    int rc, dev_index, cu_index;
+    dev_index = sc_props->dev_index;
+    cu_index = sc_props->cu_index;
+    //enc_handle = enc_props->cu_index;
+
+    g_xma_singleton->num_scalers++;
 
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
-    XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_handle].handle;
+    XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_index].handle;
     sc_session->base.hw_session.dev_handle = hal->dev_handle;
 
     //For execbo:
-    sc_session->base.hw_session.kernel_info = &hwcfg->devices[dev_handle].kernels[kern_handle];
+    sc_session->base.hw_session.kernel_info = &hwcfg->devices[dev_index].kernels[cu_index];
 
     sc_session->base.hw_session.dev_index = hal->dev_index;
 
@@ -287,7 +240,7 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
 
     // Allocate the private data
     sc_session->base.plugin_data =
-        calloc(g_xma_singleton->scalercfg[scal_handle].plugin_data_size, sizeof(uint8_t));
+        calloc(sc_session->scaler_plugin->plugin_data_size, sizeof(uint8_t));
 
     /*Sarab: Remove xma_connect stuff
     // Allocate a connection for each output
@@ -308,6 +261,12 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     //       we don't connect to ourselves
     sc_session->conn_recv_handle = -1;
     */
+
+    sc_session->base.session_id = g_xma_singleton->num_scalers;
+    sc_session->base.session_signature = (void*)(((uint64_t)sc_session->base.hw_session.kernel_info) | ((uint64_t)sc_session->base.hw_session.dev_handle));
+
+    //Release singleton lock
+    g_xma_singleton->locked = false;
 
     // Call the plugins initialization function with this session data
     //Sarab: Check plugin compatibility to XMA

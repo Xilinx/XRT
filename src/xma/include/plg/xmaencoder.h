@@ -89,6 +89,8 @@ typedef struct XmaEncoderSession
     XmaEncoderPlugin     *encoder_plugin; /**< link to XMA encoder plugin */
     /** index into connection table (requires zerocopy: enable in cfg)  */
     //int32_t               conn_recv_handle;
+    /** Reserved */
+    uint32_t        reserved[4];
 } XmaEncoderSession;
 
 /**

@@ -27,63 +27,6 @@
 
 extern XmaSingleton *g_xma_singleton;
 
-int32_t
-xma_filter_plugins_load(XmaSystemCfg      *systemcfg,
-                       XmaFilterPlugin    *filters)
-{
-    // Get the plugin path
-    char *pluginpath = systemcfg->pluginpath;
-    char *error;
-    int32_t k = 0;
-
-    xma_logmsg(XMA_DEBUG_LOG, XMA_FILTER_MOD, "%s()\n", __func__);
-    // Load the xmaplugin library as it is a dependency for all plugins
-    void *xmahandle = dlopen("libxmaplugin.so",
-                             RTLD_LAZY | RTLD_GLOBAL);
-    if (!xmahandle)
-    {
-        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
-                   "Failed to open plugin xmaplugin.so. Error msg: %s\n",
-                   dlerror());
-        return XMA_ERROR;
-    }
-
-    // For each plugin imagecfg/kernelcfg,
-    for (int32_t i = 0; i < systemcfg->num_images; i++)
-    {
-        for (int32_t j = 0;
-             j < systemcfg->imagecfg[i].num_kernelcfg_entries; j++)
-        {
-            char *func = systemcfg->imagecfg[i].kernelcfg[j].function;
-            if (strcmp(func, XMA_CFG_FUNC_NM_FILTER) != 0)
-                continue;
-            char *plugin = systemcfg->imagecfg[i].kernelcfg[j].plugin;
-            char pluginfullname[PATH_MAX + NAME_MAX];
-            sprintf(pluginfullname, "%s/%s", pluginpath, plugin);
-            void *handle = dlopen(pluginfullname, RTLD_NOW);
-            if (!handle)
-            {
-                xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
-                    "Failed to open plugin %s\n Error msg: %s\n",
-                    pluginfullname, dlerror());
-                return XMA_ERROR;
-            }
-
-            XmaFilterPlugin *plg =
-                (XmaFilterPlugin*)dlsym(handle, "filter_plugin");
-            if ((error = dlerror()) != NULL)
-            {
-                xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
-                    "Failed to open plugin %s\n Error msg: %s\n",
-                    pluginfullname, dlerror());
-                return XMA_ERROR;
-            }
-            memcpy(&filters[k++], plg, sizeof(XmaFilterPlugin));
-        }
-    }
-    return XMA_SUCCESS;
-}
-
 XmaFilterSession*
 xma_filter_session_create(XmaFilterProperties *filter_props)
 {
@@ -138,7 +81,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     memset(filter_session, 0, sizeof(XmaFilterSession));
     // init session data
     filter_session->props = *filter_props;
-    filter_session->base.chan_id = -1;
+    filter_session->base.channel_id = filter_props->channel_id;
     filter_session->base.session_type = XMA_FILTER;
     filter_session->filter_plugin = plg;
 
@@ -187,22 +130,27 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     }
     */
 
+    bool expected = false;
+    bool desired = true;
+    while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //Singleton lock acquired
+
    //Sarab: TODO Fix device index, CU index & session->xx_plugin assigned above
-	int rc, dev_handle, kern_handle, filter_handle;
-    dev_handle = filter_props->dev_index;
-    kern_handle = filter_props->cu_index;
-    filter_handle = filter_props->cu_index;
+    int rc, dev_index, cu_index;
+    dev_index = filter_props->dev_index;
+    cu_index = filter_props->cu_index;
+    //filter_handle = filter_props->cu_index;
+
+    g_xma_singleton->num_filters++;
 
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
-    XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_handle].handle;
+    XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_index].handle;
     filter_session->base.hw_session.dev_handle = hal->dev_handle;
 
     //For execbo:
-    filter_session->base.hw_session.kernel_info = &hwcfg->devices[dev_handle].kernels[kern_handle];
-    filter_session->base.hw_session.kernel_info->base_address =
-        hwcfg->devices[dev_handle].kernels[kern_handle].base_address;
-    filter_session->base.hw_session.kernel_info->ddr_bank =
-        hwcfg->devices[dev_handle].kernels[kern_handle].ddr_bank;
+    filter_session->base.hw_session.kernel_info = &hwcfg->devices[dev_index].kernels[cu_index];
 
     filter_session->base.hw_session.dev_index = hal->dev_index;
 
@@ -211,7 +159,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
 
     // Allocate the private data
     filter_session->base.plugin_data =
-        calloc(g_xma_singleton->filtercfg[filter_handle].plugin_data_size, sizeof(uint8_t));
+        calloc(filter_session->filter_plugin->plugin_data_size, sizeof(uint8_t));
 
     /*Sarab: Remove xma_connect stuff
     XmaEndpoint *end_pt = (XmaEndpoint*) malloc(sizeof(XmaEndpoint));
@@ -228,6 +176,12 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     //       we don't connect to ourselves
     filter_session->conn_recv_handle = -1;
     */
+
+    filter_session->base.session_id = g_xma_singleton->num_filters;
+    filter_session->base.session_signature = (void*)(((uint64_t)filter_session->base.hw_session.kernel_info) | ((uint64_t)filter_session->base.hw_session.dev_handle));
+
+    //Release singleton lock
+    g_xma_singleton->locked = false;
 
     // Call the plugins initialization function with this session data
     //Sarab: Check plugin compatibility to XMA

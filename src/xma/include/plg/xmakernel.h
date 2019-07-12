@@ -66,6 +66,8 @@ typedef struct XmaKernelSession
     XmaSession            base; /**< base class of XmaKernelSession */
     XmaKernelProperties   kernel_props; /**< application supplied properites */
     XmaKernelPlugin      *kernel_plugin; /**< pointer to plugin driver */
+    /** Reserved */
+    uint32_t        reserved[4];
 } XmaKernelSession;
 
 /**

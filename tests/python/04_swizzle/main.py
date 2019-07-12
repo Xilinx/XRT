@@ -56,45 +56,6 @@ def runKernel(opt):
     execHandle = xclAllocBO(opt.handle, DATA_SIZE, xclBOKind.XCL_BO_SHARED_VIRTUAL, (1 << 31))
     execData = xclMapBO(opt.handle, execHandle, True)  # returns mmap()
 
-    print("Construct the exe buf cmd to configure FPGA")
-
-    ecmd = ert_configure_cmd.from_buffer(execData.contents)
-    ecmd.m_uert.m_cmd_struct.state = 1  # ERT_CMD_STATE_NEW
-    ecmd.m_uert.m_cmd_struct.opcode = 2  # ERT_CONFIGURE
-
-    ecmd.slot_size = opt.DATA_SIZE
-    ecmd.num_cus = 1
-    ecmd.cu_shift = 16
-    ecmd.cu_base_addr = opt.cu_base_addr
-
-    ecmd.m_features.ert = opt.ert
-    if opt.ert:
-        ecmd.m_features.cu_dma = 1
-        ecmd.m_features.cu_isr = 1
-
-    # CU -> base address mapping
-    ecmd.data[0] = opt.cu_base_addr
-    ecmd.m_uert.m_cmd_struct.count = 5 + ecmd.num_cus
-
-    # sz = sizeof(ert_configure_cmd)
-    print("Send the exec command and configure FPGA (ERT)")
-
-    # Send the command.
-    ret = xclExecBuf(opt.handle, execHandle)
-
-    if ret:
-        print("Unable to issue xclExecBuf")
-        return 1
-
-    print("Wait until the ERT configure command finish")
-
-    while xclExecWait(opt.handle, 1000) == 0:
-        print(".")
-
-    if ecmd.m_uert.m_cmd_struct.state != 4:
-        print("ERT configure command failed")
-        return 1
-
     print("Construct the exec command to run the kernel on FPGA")
 
     xclOpenContext(opt.handle, opt.xuuid, 0, True)

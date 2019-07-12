@@ -18,11 +18,12 @@
 #define _XMA_XCLBIN_H_
 
 #include <uuid/uuid.h>
-#include "lib/xmacfg.h"
+#include <limits.h>
+//#include "lib/xmacfg.h"
 #include "lib/xmahw_lib.h"
 #include "lib/xmalimits_lib.h"
 #include "xclbin.h"
-#include "core/pcie/driver/linux/include/mgmt-ioctl.h"
+//#include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
 
 typedef struct XmaIpLayout
@@ -59,15 +60,15 @@ typedef struct XmaXclbinInfo
     uint32_t            number_of_kernels;
     uint32_t            number_of_mem_banks;
     uint32_t            number_of_connections;
-    //uint16_t bitmap based on MAX_DDR_MAP=16
-    uint16_t            ip_ddr_mapping[MAX_KERNEL_CONFIGS];
+    //uint64_t bitmap based on MAX_DDR_MAP=64
+    uint64_t            ip_ddr_mapping[MAX_KERNEL_CONFIGS];
     //For execbo:
-    uint32_t    num_ips;
+    //uint32_t    num_ips;
     uuid_t      uuid;
     uint32_t    reserved[32];
 } XmaXclbinInfo;
 
 char *xma_xclbin_file_open(const char *xclbin_name);
 int xma_xclbin_info_get(char *buffer, XmaXclbinInfo *info);
-int xma_xclbin_map2ddr(uint16_t bit_map, int* ddr_banks, int* num_banks);
+int xma_xclbin_map2ddr(uint16_t bit_map, int* ddr_bank);
 #endif

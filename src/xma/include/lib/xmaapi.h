@@ -18,26 +18,51 @@
 #define _XMA_API_
 
 #include "xmaplugin.h"
-#include "lib/xmacfg.h"
+//#include "lib/xmacfg.h"
 //#include "lib/xmaconnect.h"
 #include "lib/xmahw_lib.h"
 //#include "lib/xmares.h"
 #include "lib/xmalogger.h"
+#include <atomic>
+#include <vector>
 
 typedef struct XmaSingleton
 {
-    XmaSystemCfg      systemcfg;
+    //XmaSystemCfg      systemcfg;
     XmaHwCfg          hwcfg;
+    bool              xma_initialized;
     //XmaConnect        connections[MAX_CONNECTION_ENTRIES];
-    XmaLogger         logger;
-    XmaDecoderPlugin  decodercfg[MAX_PLUGINS];
-    XmaEncoderPlugin  encodercfg[MAX_PLUGINS];
-    XmaScalerPlugin   scalercfg[MAX_PLUGINS];
-    XmaFilterPlugin   filtercfg[MAX_PLUGINS];
-    XmaKernelPlugin   kernelcfg[MAX_PLUGINS];
+    //Sarab: Remove logger stuff
+    //XmaLogger         logger;
+    //XmaDecoderPlugin  decodercfg[MAX_PLUGINS];
+    //XmaEncoderPlugin  encodercfg[MAX_PLUGINS];
+    //XmaScalerPlugin   scalercfg[MAX_PLUGINS];
+    //XmaFilterPlugin   filtercfg[MAX_PLUGINS];
+    //XmaKernelPlugin   kernelcfg[MAX_PLUGINS];
+    std::atomic<bool> locked;
+    std::atomic<uint32_t> num_decoders;
+    std::atomic<uint32_t> num_encoders;
+    std::atomic<uint32_t> num_scalers;
+    std::atomic<uint32_t> num_filters;
+    std::atomic<uint32_t> num_kernels;
+    //std::vector<XmaDecoderPlugin*> decoders;
+    //std::vector<XmaEncoderPlugin*> encoders;
+    //std::vector<XmaScalerPlugin*> scalers;
+    //std::vector<XmaFilterPlugin*> filters;
+    //std::vector<XmaKernelPlugin*> kernels;
     //XmaResources      shm_res_cfg;
     //bool              shm_freed;
     uint32_t          reserved[4];
+
+  XmaSingleton() {
+    locked = false;
+    xma_initialized = false;
+    num_decoders = 0;
+    num_encoders = 0;
+    num_scalers = 0;
+    num_filters = 0;
+    num_kernels = 0;
+  }
 } XmaSingleton;
 
 #ifdef __cplusplus
@@ -46,28 +71,6 @@ extern "C" {
 
 void xma_exit(void);
 
-/**
- */
-int32_t xma_scaler_plugins_load(XmaSystemCfg      *systemcfg,
-                                XmaScalerPlugin   *scalers);
-
-/**
- */
-int32_t xma_enc_plugins_load(XmaSystemCfg      *systemcfg,
-                             XmaEncoderPlugin  *encoders);
-/**
- */
-int32_t xma_dec_plugins_load(XmaSystemCfg      *systemcfg,
-                             XmaDecoderPlugin  *decoders);
-
-/**
- */
-int32_t xma_filter_plugins_load(XmaSystemCfg      *systemcfg,
-                             XmaFilterPlugin      *filters);
-/**
- */
-int32_t xma_kernel_plugins_load(XmaSystemCfg      *systemcfg,
-                                XmaKernelPlugin   *kernels);
 
 /** @} */
 #ifdef __cplusplus
