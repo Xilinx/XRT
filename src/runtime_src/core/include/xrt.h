@@ -144,6 +144,18 @@ enum xclMemoryDomains {
     XCL_MEM_DEVICE_REG  = 0x00000005
 };
 
+/**
+ *  Unused, keep for backwards compatibility
+ */
+enum xclBOKind {  
+    XCL_BO_SHARED_VIRTUAL = 0,  
+    XCL_BO_SHARED_PHYSICAL, 
+    XCL_BO_MIRRORED_VIRTUAL,  
+    XCL_BO_DEVICE_RAM,  
+    XCL_BO_DEVICE_BRAM, 
+    XCL_BO_DEVICE_PREALLOCATED_BRAM,  
+};
+
 enum xclBOSyncDirection {
     XCL_BO_SYNC_BO_TO_DEVICE = 0,
     XCL_BO_SYNC_BO_FROM_DEVICE,
