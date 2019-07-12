@@ -19,8 +19,8 @@
 
 #define MAX_SCALER_OUTPUTS       8
 #define MAX_FILTER_OUTPUTS      MAX_SCALER_OUTPUTS
-#define MAX_PLUGIN_NAME         32
-#define MAX_VENDOR_NAME         32
+#define MAX_PLUGIN_NAME         256
+#define MAX_VENDOR_NAME         256
 #define XMA_MAX_PLANES           3
 #define MAX_CONNECTION_ENTRIES  64
 #endif

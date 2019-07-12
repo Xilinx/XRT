@@ -23,6 +23,17 @@
 # 3. When re-installing (say from 2.2.0 to 2.2.0) then prerm is NOT run but
 #    and postinst of 2.2.0 is run. The postinst is invoked with "2" argument.
 
+rmmodules()
+{
+    find /lib/modules -type f -name xocl.ko -delete
+    find /lib/modules -type f -name xclmgmt.ko -delete
+    find /lib/modules -type f -name xocl.ko.kz -delete
+    find /lib/modules -type f -name xclmgmt.ko.kz -delete
+    find /lib/modules -type f -name xocl.ko.xz -delete
+    find /lib/modules -type f -name xclmgmt.ko.xz -delete
+    depmod -A
+}
+
 installdir=/opt/xilinx/xrt
 systemddir=/etc/systemd/system
 
@@ -39,13 +50,21 @@ if [ "$msd_active" = "active" ]; then
 fi
 
 
-# This snippet here to clean any previous XRT DKMS. This is always true for
-# RHEL/CentOS.
+lsb_release -si | grep -Eq "^Ubuntu|^Debian"
 
-if [ -n "`dkms status -m xrt`" ]; then
-    echo "Unloading old XRT Linux kernel modules"
-    modprobe -r xocl
-    modprobe -r xclmgmt
+if [ $? -eq 0 ] && [ "$1" = "configure" ]; then
+    # The older modules should already have been unregistered from dkms
+    # by the prerm
+    echo "Unloading old XRT Linux kernel modules on Ubuntu/Debian"
+    rmmod xocl
+    rmmod xclmgmt
+    rmmodules
+elif [ -n "`dkms status -m xrt`" ]; then
+    # This snippet here to clean any previous XRT DKMS. This is always true for
+    # RHEL/CentOS.
+    echo "Unloading old XRT Linux kernel modules on RHEL/CentOS"
+    rmmod xocl
+    rmmod xclmgmt
 
     XRT_VERSION_STRING_OLD=`dkms status -m xrt | awk -F, '{print $2}'`
     for OLD in $XRT_VERSION_STRING_OLD; do
@@ -54,13 +73,7 @@ if [ -n "`dkms status -m xrt`" ]; then
 	break
     done
 
-    find /lib/modules -type f -name xocl.ko -delete
-    find /lib/modules -type f -name xclmgmt.ko -delete
-    find /lib/modules -type f -name xocl.ko.kz -delete
-    find /lib/modules -type f -name xclmgmt.ko.kz -delete
-    find /lib/modules -type f -name xocl.ko.xz -delete
-    find /lib/modules -type f -name xclmgmt.ko.xz -delete
-    depmod -A
+    rmmodules
 else
     echo "No previous XRT Linux kernel modules found"
 fi

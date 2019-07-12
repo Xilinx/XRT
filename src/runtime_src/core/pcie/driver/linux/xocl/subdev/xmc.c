@@ -204,7 +204,10 @@ enum xmc_packet_op {
 	XPO_MSP432_SEC_DATA,
 	XPO_MSP432_IMAGE_END,
 	XPO_BOARD_INFO,
-	XPO_MSP432_ERASE_FW
+	XPO_MSP432_ERASE_FW,
+	XPO_DYNAMIC_REGION_FREEZE,
+	XPO_DYNAMIC_REGION_FREE,
+	XPO_NETWORK_KERNEL_METADATA,
 };
 
 /* Make sure hdr is multiple of u32 */
@@ -227,8 +230,7 @@ struct xmc_pkt {
 	u32 data[XMC_PKT_MAX_PAYLOAD_SZ];
 };
 
-enum board_info_key
-{
+enum board_info_key {
 	BDINFO_SN = 0x21,
 	BDINFO_MAC0,
 	BDINFO_MAC1,
@@ -572,6 +574,13 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 	}
 }
 
+static bool autonomous_xmc(struct platform_device *pdev)
+{
+	struct xocl_dev_core *core = xocl_get_xdev(pdev);
+
+	return core->priv.flags & XOCL_DSAFLAG_SMARTN;
+}
+
 static int xmc_get_data(struct platform_device *pdev, void *buf)
 {
 	struct xcl_sensor *sensors = (struct xcl_sensor *)buf;
@@ -750,7 +759,8 @@ static ssize_t pause_store(struct device *dev,
 		return -EINVAL;
 
 	val = val ? CTL_MASK_PAUSE : 0;
-	safe_write32(xmc, XMC_CONTROL_REG, val);
+	if (!autonomous_xmc(xmc->pdev))
+		safe_write32(xmc, XMC_CONTROL_REG, val);
 
 	return count;
 }
@@ -767,7 +777,6 @@ static ssize_t reset_store(struct device *dev,
 
 	if (val)
 		load_xmc(xmc);
-
 
 	return count;
 }
@@ -1535,6 +1544,9 @@ static int stop_xmc(struct platform_device *pdev)
 	struct xocl_xmc *xmc;
 	int ret = 0;
 
+	if (autonomous_xmc(pdev))
+		return ret;
+
 	xocl_info(&pdev->dev, "Stop Microblaze...");
 	xmc = platform_get_drvdata(pdev);
 	if (!xmc)
@@ -1558,6 +1570,9 @@ static int load_xmc(struct xocl_xmc *xmc)
 
 	if (!xmc->enabled)
 		return -ENODEV;
+
+	if (autonomous_xmc(xmc->pdev))
+		return ret;
 
 	mutex_lock(&xmc->xmc_lock);
 
@@ -1656,6 +1671,9 @@ static int load_mgmt_image(struct platform_device *pdev, const char *image,
 	if (!xmc)
 		return -EINVAL;
 
+	if (autonomous_xmc(pdev))
+		return 0;
+
 	binary = xmc->mgmt_binary;
 	xmc->mgmt_binary = devm_kzalloc(&pdev->dev, len, GFP_KERNEL);
 	if (!xmc->mgmt_binary)
@@ -1681,6 +1699,9 @@ static int load_sche_image(struct platform_device *pdev, const char *image,
 	xmc = platform_get_drvdata(pdev);
 	if (!xmc)
 		return -EINVAL;
+
+	if (autonomous_xmc(pdev))
+		return 0;
 
 	binary = xmc->sche_binary;
 	xmc->sche_binary = devm_kzalloc(&pdev->dev, len, GFP_KERNEL);
@@ -1780,7 +1801,9 @@ static int xmc_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, xmc);
 
 	xdev_hdl = xocl_get_xdev(pdev);
-	if (xocl_mb_mgmt_on(xdev_hdl) || xocl_mb_sched_on(xdev_hdl)) {
+
+	if (xocl_mb_mgmt_on(xdev_hdl) || xocl_mb_sched_on(xdev_hdl)
+					|| autonomous_xmc(pdev)) {
 		xocl_info(&pdev->dev, "Microblaze is supported.");
 		xmc->enabled = true;
 	} else {
@@ -1808,7 +1831,7 @@ static int xmc_probe(struct platform_device *pdev)
 			break;
 	}
 
-	if (READ_GPIO(xmc, 0) == GPIO_ENABLED)
+	if (READ_GPIO(xmc, 0) == GPIO_ENABLED || autonomous_xmc(pdev))
 		xmc->state = XMC_STATE_ENABLED;
 
 	err = mgmt_sysfs_create_xmc(pdev);
@@ -1883,7 +1906,7 @@ static int xmc_mailbox_wait(struct xocl_xmc *xmc)
 	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
 
 	safe_read32(xmc, XMC_CONTROL_REG, &val);
-	while ((retry-- > 0) && (val & XMC_PKT_OWNER_MASK)){
+	while ((retry-- > 0) && (val & XMC_PKT_OWNER_MASK)) {
 		msleep(RETRY_INTERVAL);
 		safe_read32(xmc, XMC_CONTROL_REG, &val);
 	}
@@ -1923,7 +1946,7 @@ static int xmc_send_pkt(struct xocl_xmc *xmc)
 	/* Push pkt data to mailbox on HW. */
 	for (i = 0; i < len; i++)
 		safe_write32(xmc, xmc->mbx_offset + i * sizeof(u32), pkt[i]);
-	
+
 	/* Notify HW that a pkt is ready for process. */
 	safe_read32(xmc, XMC_CONTROL_REG, &val);
 	safe_write32(xmc, XMC_CONTROL_REG, val | XMC_PKT_OWNER_MASK);
@@ -2026,7 +2049,7 @@ static const char *xmc_get_board_info(struct xocl_xmc *xmc,
 	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
 
 	if (xmc->bdinfo_raw == NULL) {
-		if (xmc_load_board_info(xmc) != 0) {		
+		if (xmc_load_board_info(xmc) != 0) {
 			xocl_err(&xmc->pdev->dev, "board info not available\n");
 			return NULL;
 		}
@@ -2037,6 +2060,7 @@ static const char *xmc_get_board_info(struct xocl_xmc *xmc,
 	for (p = buf; p < buf + sz;) {
 		char k = *(p++);
 		u8 l = *(p++);
+
 		if (k == key) {
 			if (len)
 				*len = l;
@@ -2084,9 +2108,10 @@ static ssize_t board_info_show(struct device *dev,
 			key == BDINFO_FAN_PRESENCE	||
 			key == BDINFO_CONFIG_MODE) {
 			sz = sprintf(buf, "%d=%llu\n", key,
-				xmc_get_board_info_int(xmc, key)); 
+				xmc_get_board_info_int(xmc, key));
 		} else {
 			const char *info = xmc_get_board_info(xmc, key, NULL);
+
 			if (info == NULL)
 				continue;
 			sz = sprintf(buf, "%d=%s\n", key, info);
