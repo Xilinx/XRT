@@ -36,7 +36,7 @@ bool isRemotePortMapped = false;
 void * remotePortMappedPointer = NULL;
 namespace pt = boost::property_tree;
 
-bool initRemotePortMap() 
+bool initRemotePortMap()
 {
   int fd;
   unsigned addr;//, page_addr , page_offset;
@@ -68,7 +68,7 @@ bool initRemotePortMap()
   return true;
 }
 
-bool validateXclBin(const xclBin *header , std::string &xclBinName) 
+bool validateXclBin(const xclBin *header , std::string &xclBinName)
 {
 
   char *bitstreambin = reinterpret_cast<char*> (const_cast<xclBin*> (header));
@@ -110,7 +110,7 @@ bool validateXclBin(const xclBin *header , std::string &xclBinName)
     std::stringstream xml_stream;
     xml_stream<<sXmlFile;
     pt::read_xml(xml_stream,xml_project);
-     
+
     // iterate platforms
     int count = 0;
     for (auto& xml_platform : xml_project.get_child("project"))
@@ -205,7 +205,7 @@ int ZYNQShim::xclLoadXclBin(const xclBin *header) {
   //Send the end of packet
   char cPacketEndChar = PL_OCL_PACKET_END_MARKER;
   memcpy((char*) (ZYNQ_HW_EM::remotePortMappedPointer), &cPacketEndChar, 1);*/
-  
+
 	drm_zocl_axlf axlf_obj = { const_cast<axlf *>(header) };
 	ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_READ_AXLF, &axlf_obj);
 
