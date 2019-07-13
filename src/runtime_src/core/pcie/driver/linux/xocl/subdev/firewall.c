@@ -441,8 +441,7 @@ static int firewall_probe(struct platform_device *pdev)
 	for (i = 0; i < MAX_LEVEL; i++) {
 		res = platform_get_resource(pdev, IORESOURCE_MEM, i);
 		if (!res) {
-			fw->max_level = (i > 1) ? (i - 1) : i;
-			fw->gpio_addr = (i > 1) ?fw->base_addrs[i - 1] : NULL;
+			fw->max_level = i;
 			break;
 		}
 		fw->base_addrs[i] =

@@ -459,6 +459,7 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 	}
 
 	fdt_pack(lro->userpf_blob);
+	lro->userpf_blob_updated = true;
 
 	return 0;
 
@@ -485,14 +486,14 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 		goto failed;
 	}
 
-	ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP);
+	ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP, true);
 	if (ret) {
 		mgmt_err(lro, "program shell failed %d", ret);
 		goto failed;
 	}
 
 	ret = xocl_subdev_create_prp(lro);
-	if (ret) {
+	if (ret && ret != -ENODEV) {
 		mgmt_err(lro, "failed to create prp %d", ret);
 		goto failed;
 	}

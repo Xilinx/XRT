@@ -242,9 +242,11 @@ struct client_ctx;
 
 enum {
 	XOCL_SUBDEV_STATE_UNINIT,
-	XOCL_SUBDEV_STATE_DETACHED,
-	XOCL_SUBDEV_STATE_OFFLINE,
 	XOCL_SUBDEV_STATE_INIT,
+	XOCL_SUBDEV_STATE_ADDED,
+	XOCL_SUBDEV_STATE_ATTACHED,
+	XOCL_SUBDEV_STATE_OFFLINE,
+	XOCL_SUBDEV_STATE_ACTIVE,
 };
 
 struct xocl_subdev {
@@ -789,7 +791,7 @@ struct xocl_icap_funcs {
 	int (*download_bitstream_axlf)(struct platform_device *pdev,
 		const void __user *arg);
 	int (*download_boot_firmware)(struct platform_device *pdev);
-	int (*download_rp)(struct platform_device *pdev, int level);
+	int (*download_rp)(struct platform_device *pdev, int level, bool force);
 	int (*ocl_set_freq)(struct platform_device *pdev,
 		unsigned int region, unsigned short *freqs, int num_freqs);
 	int (*ocl_get_freq)(struct platform_device *pdev,
@@ -823,9 +825,9 @@ struct xocl_icap_funcs {
 	(ICAP_CB(xdev, download_boot_firmware) ?						\
 	ICAP_OPS(xdev)->download_boot_firmware(ICAP_DEV(xdev)) :	\
 	-ENODEV)
-#define xocl_icap_download_rp(xdev, level)				\
+#define xocl_icap_download_rp(xdev, level, force)				\
 	(ICAP_CB(xdev, download_rp) ?					\
-	ICAP_OPS(xdev)->download_rp(ICAP_DEV(xdev), level) :	\
+	ICAP_OPS(xdev)->download_rp(ICAP_DEV(xdev), level, force) :	\
 	-ENODEV)
 #define	xocl_icap_ocl_get_freq(xdev, region, freqs, num)		\
 	(ICAP_CB(xdev, ocl_get_freq) ?						\
@@ -898,9 +900,22 @@ struct xocl_iores_funcs {
 	(IORES_CB(xdev, level, write32) ?				\
 	IORES_OPS(xdev, level)->write32(IORES_DEV(xdev, level), id, off, val) :\
 	-ENODEV)
-#define xocl_iores_get_base(xdev, level, id)				\
+#define __get_base(xdev, level, id)				\
 	(IORES_CB(xdev, level, get_base) ?				\
 	IORES_OPS(xdev, level)->get_base(IORES_DEV(xdev, level), id) : NULL)
+static inline void __iomem *xocl_iores_get_base(xdev_handle_t xdev, int id)
+{
+	void __iomem *base;
+	int i;
+
+	for (i = XOCL_SUBDEV_LEVEL_MAX - 1; i >= 0; i--) {
+		base = __get_base(xdev, i, id);
+		if (base)
+			return base;
+	}
+
+	return NULL;
+}
 
 struct xocl_axigate_funcs {
 	struct xocl_subdev_funcs common_funcs;
@@ -929,7 +944,7 @@ static inline void __iomem *xocl_cdma_addr(xdev_handle_t xdev)
 {
 	void	__iomem *ioaddr;
 
-	ioaddr = xocl_iores_get_base(xdev, XOCL_SUBDEV_LEVEL_PRP, IORES_KDMA);
+	ioaddr = xocl_iores_get_base(xdev, IORES_KDMA);
 	if (!ioaddr)
 		ioaddr = xocl_rom_cdma_addr(xdev);
 
@@ -944,7 +959,7 @@ void xocl_init_dsa_priv(xdev_handle_t xdev_hdl);
 #define XOCL_MSG_SUBDEV_DATA_LEN	(512 * 1024)
 
 enum {
-	XOCL_MSG_SUBDEV_RTN_EMPTY = 1,
+	XOCL_MSG_SUBDEV_RTN_UNCHANGED = 1,
 	XOCL_MSG_SUBDEV_RTN_PARTIAL,
 	XOCL_MSG_SUBDEV_RTN_COMPLETE,
 };
