@@ -435,7 +435,7 @@ int shim::xclCopyBO(unsigned int dst_boHandle,
     unsigned int src_boHandle, size_t size, size_t dst_offset,
     size_t src_offset)
 {
-    std::pair<unsigned int, ert_start_copybo_cmd *const> bo = mCmdBOCache->alloc<ert_start_copybo_cmd>();
+    std::pair<const unsigned int, ert_start_copybo_cmd *const> bo = mCmdBOCache->alloc<ert_start_copybo_cmd>();
     ert_fill_copybo_cmd(bo.second, src_boHandle, dst_boHandle,
                         src_offset, dst_offset, size);
 

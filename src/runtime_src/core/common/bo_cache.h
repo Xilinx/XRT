@@ -29,11 +29,15 @@ namespace xrt_core {
     class bo_cache {
         // Helper typedef for std::pair. Note the elements are const so that the
         // pair is immutable. The clients should not change the contents of cmd_bo.
-        typedef std::pair<const unsigned int, void *const> cmd_bo;
+        using cmd_bo = std::pair<const unsigned int, void *const>;
 
+        // We are really allocating a page size as that is what xocl/zocl do. Note on
+        // POWER9 pagesize maybe more than 4K, xocl would upsize the allocation to the
+        // correct pagesize. unmap always unmaps the full page.
         static const size_t mBOSize = 4096;
         xclDeviceHandle mDevice;
-        // Maximum number of BOs that can be cached in the pool
+        // Maximum number of BOs that can be cached in the pool. Value of 0 indicates
+        // caching should be disabled.
         const unsigned int mCacheMaxSize;
         std::vector<cmd_bo> mCmdBOCache;
         std::mutex mCacheMutex;
@@ -46,11 +50,11 @@ namespace xrt_core {
             for (cmd_bo bo : mCmdBOCache)
                 destroy(bo);
         }
-        template<typename T> std::pair<unsigned int, T *const> alloc() {
+        template<typename T> std::pair<const unsigned int, T *const> alloc() {
             cmd_bo bo = allocImpl();
             return std::make_pair(bo.first, static_cast<T *>(bo.second));
         }
-        template<typename T> void release(std::pair<unsigned int, T *const> bo) {
+        template<typename T> void release(const std::pair<const unsigned int, T *const> &bo) {
             releaseImpl(std::make_pair(bo.first, static_cast<void *>(bo.second)));
         }
     private:
@@ -69,10 +73,9 @@ namespace xrt_core {
                                              0, XCL_BO_FLAGS_EXECBUF);
             return std::make_pair(execHandle, xclMapBO(mDevice, execHandle, true));
         }
-        void releaseImpl(cmd_bo bo) {
+        void releaseImpl(const cmd_bo &bo) {
             if (mCacheMaxSize) {
-                // If caching is enabled send this back to the BO cache if the cache is not
-                // fully populated
+                // If caching is enabled and BO cache is not fully populated add this the cache
                 std::lock_guard<std::mutex> lock(mCacheMutex);
                 if (mCmdBOCache.size() < mCacheMaxSize) {
                     mCmdBOCache.push_back(bo);
@@ -83,7 +86,7 @@ namespace xrt_core {
         }
 
     private:
-        void destroy(cmd_bo bo) {
+        void destroy(const cmd_bo &bo) {
             (void)munmap(bo.second, mBOSize);
             xclFreeBO(mDevice, bo.first);
         }
