@@ -166,7 +166,6 @@ addIfNoExists() {
 if [ "${GEN_DSA}" == "Yes" ]; then
   # Generate DSA and HDF
   #  * ${XRT_REPO_DIR}/src/platform/${PLATFORM_NAME}/${PLATFORM_NAME}.dsa
-  #  * ${XRT_REPO_DIR}/src/platform/${PLATFORM_NAME}/${PLATFORM_NAME}_vivado/${PLATFORM_NAME}.hdf
   if [ -d dsa_build/${PLATFORM_NAME} ]; then
 	  rm -rf ./dsa_build/${PLATFORM_NAME}
   fi
@@ -175,12 +174,6 @@ fi
 
 if [ ! -f ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}/${PLATFORM_NAME}.dsa ]; then
   echo "ERROR: Failed to create/locate DSA (it is missing): ${XRT_REPO_DIR}/dsa_build/${PLATFORM_NAME}/${PLATFORM_NAME}.dsa"
-  exit 1
-fi
-
-PLATFOMR_SDK=${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}/${PLATFORM_NAME}/${PLATFORM_NAME}.sdk
-if [ ! -f ${PLATFOMR_SDK}/${PLATFORM_NAME}_wrapper.hdf ]; then
-  echo "ERROR: Failed to create/locate HDF (it is missing): ${PLATFOMR_SDK}/${PLATFORM_NAME}/${PLATFORM_NAME}_wrapper.hdf"
   exit 1
 fi
 
