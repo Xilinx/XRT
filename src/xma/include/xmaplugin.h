@@ -54,14 +54,6 @@ typedef struct XmaBufferObj
    bool     device_only_buffer;
    void*    private_do_not_touch;
   
-  XmaBufferObj() {
-   data = NULL;
-   size = 0;
-   bank_index = -1;
-   dev_index = -1;
-   device_only_buffer = false;
-   private_do_not_touch = NULL;
-  }
 } XmaBufferObj;
 
 

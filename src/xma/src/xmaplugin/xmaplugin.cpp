@@ -61,6 +61,13 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
 {
     XmaBufferObj b_obj;
     XmaBufferObj b_obj_error;
+    b_obj_error.data = NULL;
+    b_obj_error.size = 0;
+    b_obj_error.bank_index = -1;
+    b_obj_error.dev_index = -1;
+    b_obj_error.device_only_buffer = false;
+    b_obj_error.private_do_not_touch = NULL;
+
     xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
     uint32_t ddr_bank = s_handle.hw_session.kernel_info->ddr_bank;
     b_obj.bank_index = s_handle.hw_session.kernel_info->ddr_bank;

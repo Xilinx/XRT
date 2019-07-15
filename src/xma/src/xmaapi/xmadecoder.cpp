@@ -77,6 +77,8 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
     //g_xma_singleton->decoders.emplace_back(plg);
     memset(dec_session, 0, sizeof(XmaDecoderSession));
     // init session data
+    //Sarab: TODO initialize all XMaSession fields
+    //It is a C-struct so doesn't have constructor..
     dec_session->decoder_props = *dec_props;
     dec_session->base.channel_id = dec_props->channel_id;
     dec_session->base.session_type = XMA_DECODER;
