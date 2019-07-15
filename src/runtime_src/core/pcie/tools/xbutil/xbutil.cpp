@@ -27,7 +27,6 @@
 
 #include "xbutil.h"
 #include "base.h"
-#include "ert.h"
 #include "core/pcie/linux/shim.h"
 #include "core/common/memalign.h"
 
@@ -1511,6 +1510,7 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
     unsigned boTgt = NULLBO;
     char *boSrcPtr = nullptr;
     char *boTgtPtr = nullptr;
+    int ret = 0;
 
     const size_t boSize = 256L * 1024 * 1024;
     if (xclOpenContext(handle, uuid, -1, true)) {
@@ -1530,35 +1530,15 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
         xclCloseContext(handle, uuid, -1);
         return -EINVAL;
     }
-    //Allocate the exec_bo
-    unsigned execHandle = xclAllocBO(handle, sizeof (ert_start_copybo_cmd),
-        0, XCL_BO_FLAGS_EXECBUF);
-    struct ert_start_copybo_cmd *execData =
-        reinterpret_cast<struct ert_start_copybo_cmd *>(
-        xclMapBO(handle, execHandle, true));
-    ert_fill_copybo_cmd(execData, boSrc, boTgt, 0, 0, boSize);
 
     xcldev::Timer timer;
-    if(xclExecBuf(handle, execHandle)) {
-        m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
-        m2m_free_unmap_bo(handle, boTgt, boTgtPtr, boSize);
-        m2m_free_unmap_bo(handle, execHandle, execData, sizeof (ert_start_copybo_cmd));
-        xclCloseContext(handle, uuid, -1);
-        std::cout << "ERROR: Unable to issue xclExecBuf" << std::endl;
-        return -EINVAL;
-    }
-
-    while (execData->state < ERT_CMD_STATE_COMPLETED){
-        while (xclExecWait(handle, 1000) == 0) {
-            std::cout << "reentering wait...\n";
-        };
-    }
+    if ((ret = xclCopyBO(handle, boTgt, boSrc, boSize, 0, 0)))
+        return ret;
     double timer_stop = timer.stop();
 
     if(xclSyncBO(handle, boTgt, XCL_BO_SYNC_BO_FROM_DEVICE, boSize, 0)) {
         m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
         m2m_free_unmap_bo(handle, boTgt, boTgtPtr, boSize);
-        m2m_free_unmap_bo(handle, execHandle, execData, sizeof (ert_start_copybo_cmd));
         xclCloseContext(handle, uuid, -1);
         std::cout << "ERROR: Unable to sync target BO" << std::endl;
         return -EINVAL;
@@ -1569,7 +1549,6 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
     // Clean up
     m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
     m2m_free_unmap_bo(handle, boTgt, boTgtPtr, boSize);
-    m2m_free_unmap_bo(handle, execHandle, execData, sizeof (ert_start_copybo_cmd));
 
     xclCloseContext(handle, uuid, -1);
 

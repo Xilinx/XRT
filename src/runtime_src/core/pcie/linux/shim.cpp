@@ -1,9 +1,10 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  * Author(s): Umang Parekh
  *          : Sonal Santan
  *          : Ryan Radjabi
- * PCIe HAL Driver layered on top of XOCL GEM kernel driver
+ *
+ * XRT PCIe library layered on top of xocl kernel driver
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,6 +22,8 @@
 #include "scan.h"
 #include "core/common/message.h"
 #include "core/common/scheduler.h"
+#include "core/common/bo_cache.h"
+#include "core/common/config_reader.h"
 #include "xclbin.h"
 #include "ert.h"
 
@@ -113,7 +116,8 @@ shim::shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
     mMemoryProfilingNumberSlots(0),
     mAccelProfilingNumberSlots(0),
     mStallProfilingNumberSlots(0),
-    mStreamProfilingNumberSlots(0)
+    mStreamProfilingNumberSlots(0),
+    mCmdBOCache(nullptr)
 {
     init(index, logfileName, verbosity);
 }
@@ -144,12 +148,12 @@ int shim::dev_init()
 
     // We're good now.
     mDev = dev;
+    (void) xclGetDeviceInfo2(&mDeviceInfo);
+    mCmdBOCache = new xrt_core::bo_cache(this, xrt_core::config::get_cmdbo_cache());
 
     mStreamHandle = mDev->devfs_open("dma.qdma", O_RDWR | O_SYNC);
     if (mStreamHandle == -1)
 	    return -errno;
-
-    (void) xclGetDeviceInfo2(&mDeviceInfo);
 
     memset(&mAioContext, 0, sizeof(mAioContext));
     mAioEnabled = (io_setup(SHIM_QDMA_AIO_EVT_MAX, &mAioContext) == 0);
@@ -168,6 +172,9 @@ void shim::dev_fini()
         io_destroy(mAioContext);
             mAioEnabled = false;
     }
+
+    delete mCmdBOCache;
+    mCmdBOCache = nullptr;
 }
 
 /*
@@ -422,29 +429,33 @@ int shim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, 
 }
 
 /*
- * xclCopyBO() - TO BE REMOVED
+ * xclCopyBO()
  */
 int shim::xclCopyBO(unsigned int dst_boHandle,
     unsigned int src_boHandle, size_t size, size_t dst_offset,
     size_t src_offset)
 {
-    int ret;
-    unsigned execHandle = xclAllocBO(sizeof (ert_start_copybo_cmd),
-        0, XCL_BO_FLAGS_EXECBUF);
-    struct ert_start_copybo_cmd *execData =
-        reinterpret_cast<struct ert_start_copybo_cmd *>(
-        xclMapBO(execHandle, true));
+    std::pair<const unsigned int, ert_start_copybo_cmd *const> bo = mCmdBOCache->alloc<ert_start_copybo_cmd>();
+    ert_fill_copybo_cmd(bo.second, src_boHandle, dst_boHandle,
+                        src_offset, dst_offset, size);
 
-    ert_fill_copybo_cmd(execData, src_boHandle, dst_boHandle,
-        src_offset, dst_offset, size);
+    int ret = xclExecBuf(bo.first);
+    if (ret) {
+        mCmdBOCache->release(bo);
+        return ret;
+    }
 
-    ret = xclExecBuf(execHandle);
-    if (ret == 0)
-        while (xclExecWait(1000) == 0);
+    do {
+        ret = xclExecWait(1000);
+        if (ret == -1)
+            break;
+    }
+    while (bo.second->state < ERT_CMD_STATE_COMPLETED);
 
-    (void) munmap(execData, sizeof (ert_start_copybo_cmd));
-    xclFreeBO(execHandle);
-
+    ret = (ret == -1) ? -errno : 0;
+    if (!ret && (bo.second->state != ERT_CMD_STATE_COMPLETED))
+        ret = -EINVAL;
+    mCmdBOCache->release<ert_start_copybo_cmd>(bo);
     return ret;
 }
 
