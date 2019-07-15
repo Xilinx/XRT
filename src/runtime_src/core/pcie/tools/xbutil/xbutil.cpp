@@ -930,25 +930,25 @@ int searchXsaAndDsa(std::string xsaPath, std::string
 int xcldev::device::runTestCase(const std::string& exe,
     const std::string& xclbin, std::string& output)
 {
-    std::string testCasePath;
     struct stat st;
     bool isPython = false;
 
     std::string devInfoPath = std::string(m_devinfo.mName) + "/test/";
     std::string xsaTestCasePath = xsaPath + devInfoPath;
     std::string dsaTestCasePath = dsaPath + devInfoPath;
-    std::string xrtTestCasePath = xrtPath + "test/";
+    std::string xrtTestCasePath = xrtPath + "test/" + exe;
+    std::string exePath;
 
     output.clear();
 
     if (stat(xrtTestCasePath.c_str(), &st) == 0) {
-        testCasePath = xrtTestCasePath;
+        exePath = xrtTestCasePath;
         isPython = true;
     } else {
-        searchXsaAndDsa(xsaTestCasePath, dsaTestCasePath, testCasePath, output);
+        searchXsaAndDsa(xsaTestCasePath, dsaTestCasePath, exePath, output);
+        exePath += exe;
     }
 
-    std::string exePath = testCasePath + exe;
     std::string xclbinPath;
     searchXsaAndDsa(xsaTestCasePath, dsaTestCasePath, xclbinPath, output);
     xclbinPath+= xclbin;
