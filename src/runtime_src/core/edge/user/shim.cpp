@@ -107,7 +107,7 @@ ZYNQShim::ZYNQShim(unsigned index, const char *logfileName, xclVerbosityLevel ve
     mBoardNumber(index),
     mVerbosity(verbosity)
 {
-  profiling = new ZYNQShimProfiling(this);
+  profiling = std::make_unique<ZYNQShimProfiling>(this);
   //TODO: Use board number
   mKernelFD = open("/dev/dri/renderD128", O_RDWR);
   if (!mKernelFD) {
@@ -118,14 +118,12 @@ ZYNQShim::ZYNQShim(unsigned index, const char *logfileName, xclVerbosityLevel ve
     mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
     mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
   }
-  mCmdBOCache = new xrt_core::bo_cache(this, xrt_core::config::get_cmdbo_cache());
+  mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
 }
 
 #ifndef __HWEM__
 ZYNQShim::~ZYNQShim()
 {
-  delete mCmdBOCache;
-  delete profiling;
   //TODO
   if (mKernelFD > 0) {
     close(mKernelFD);
@@ -386,7 +384,7 @@ int ZYNQShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
 {
   int ret = -EOPNOTSUPP;
 #ifdef __aarch64__
-    std::pair<const unsigned int, ert_start_copybo_cmd *const> bo = mCmdBOCache->alloc<ert_start_copybo_cmd>();
+    auto bo = mCmdBOCache->alloc<ert_start_copybo_cmd>();
     ert_fill_copybo_cmd(bo.second, src_boHandle, dst_boHandle,
                         src_offset, dst_offset, size);
 
