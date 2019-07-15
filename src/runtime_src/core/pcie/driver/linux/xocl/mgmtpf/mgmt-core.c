@@ -632,15 +632,11 @@ static void xclmgmt_subdev_get_data(struct xclmgmt_dev *lro, size_t offset,
 
 	mgmt_info(lro, "userpf requests subdev information");
 
-	if (!lro->userpf_blob_updated) {
-		*actual_sz = sizeof(*hdr);
-	} else {
-		data_sz = sizeof(*hdr);
-		fdt_sz = lro->userpf_blob ? fdt_totalsize(lro->userpf_blob) : 0;
-		data_sz += fdt_sz > offset ? (fdt_sz - offset) : 0;
+	data_sz = sizeof(*hdr);
+	fdt_sz = lro->userpf_blob ? fdt_totalsize(lro->userpf_blob) : 0;
+	data_sz += fdt_sz > offset ? (fdt_sz - offset) : 0;
 
-		*actual_sz = min_t(size_t, buf_sz, data_sz);
-	}
+	*actual_sz = min_t(size_t, buf_sz, data_sz);
 
 	*resp = vzalloc(*actual_sz);
 	if (!*resp) {
@@ -661,10 +657,11 @@ static void xclmgmt_subdev_get_data(struct xclmgmt_dev *lro, size_t offset,
 	//hdr->checksum = csum_partial(hdr->data, hdr->size, 0);
 	if (hdr->size > 0)
 		memcpy(hdr->data, (char *)lro->userpf_blob + offset, hdr->size);
-	if (*actual_sz == sizeof(*hdr))
-		hdr->rtncode = XOCL_MSG_SUBDEV_RTN_UNCHANGED;
-	else if (hdr->size + offset < fdt_sz)
+
+	if (hdr->size + offset < fdt_sz)
 		hdr->rtncode = XOCL_MSG_SUBDEV_RTN_PARTIAL;
+	else if (!lro->userpf_blob_updated)
+		hdr->rtncode = XOCL_MSG_SUBDEV_RTN_UNCHANGED;
 	else
 		hdr->rtncode = XOCL_MSG_SUBDEV_RTN_COMPLETE;
 

@@ -93,7 +93,7 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 		if (ret)
 			xocl_err(&pdev->dev, "Online mailbox failed %d", ret);
 		(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
-		//(void) xocl_mb_connect(xdev);
+		(void) xocl_mb_connect(xdev);
 	} else {
 		ret = xocl_subdev_offline_by_id(xdev, XOCL_SUBDEV_MAILBOX);
 		if (ret)
@@ -486,18 +486,22 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 			goto failed;
 		}
 
-		if (resp->rtncode == XOCL_MSG_SUBDEV_RTN_UNCHANGED)
-			goto failed;
-
 		memcpy(blob + offset, resp->data, resp->size);
 		offset += resp->size;
 	} while (resp->rtncode == XOCL_MSG_SUBDEV_RTN_PARTIAL);
 
+	if (resp->rtncode == XOCL_MSG_SUBDEV_RTN_UNCHANGED &&
+			xdev->core.fdt_blob)
+		goto failed;
+
+	if (!blob && !xdev->core.fdt_blob)
+		goto failed;
+
 	if (xdev->core.fdt_blob)
 		vfree(xdev->core.fdt_blob);
-
 	xdev->core.fdt_blob = blob;
 	blob = NULL;
+
 
 	xocl_drvinst_set_offline(xdev, true);
 	if (xdev->core.fdt_blob) {
@@ -517,6 +521,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 		goto failed;
 	}
 	(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
+	(void) xocl_mb_connect(xdev);
 	xocl_drvinst_set_offline(xdev, false);
 
 failed:

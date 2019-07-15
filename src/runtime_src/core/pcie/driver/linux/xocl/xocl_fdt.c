@@ -98,13 +98,8 @@ static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 		xocl_xdev_err(xdev_hdl, "did not find flash node");
 		goto failed;
 	}
-	prop = fdt_getprop(blob, node, PROP_IP_NAME, NULL);
-	if (!prop) {
-		xocl_xdev_err(xdev_hdl, "did not find %s", PROP_IP_NAME);
-		goto failed;
-	}
 
-	if (!strcmp(prop, "axi_quad_spi"))
+	if (!fdt_node_check_compatible(blob, node, "axi_quad_spi"))
 		flash_type = FLASH_TYPE_SPI;
 	else {
 		xocl_xdev_err(xdev_hdl, "UNKNOWN flash type %s", prop);
@@ -419,11 +414,10 @@ int xocl_fdt_overlay(void *fdt, int target,
 static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob, int off,
 		struct ip_node *ip, struct xocl_subdev *subdev)
 {
-	const char *name;
 	int idx, sz, num_res;
 	const u32 *bar_idx, *pfnum;
 	const u64 *io_off;
-	const u32 *irq_start, *irq_end;
+	const u32 *irq_off; 
 
 	num_res = subdev->info.num_res;
 
@@ -439,11 +433,6 @@ static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob, int off,
 
 	bar_idx = fdt_getprop(blob, off, PROP_BAR_IDX, NULL);
 
-	name = fdt_getprop(blob, off, PROP_IP_NAME, NULL);
-	if (!name)
-		name = "";
-
-
 	if (!subdev->info.num_res || ip->level < subdev->info.level)
 		subdev->info.level = ip->level;
 
@@ -456,8 +445,8 @@ static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob, int off,
 		subdev->res[idx].flags = IORESOURCE_MEM;
 		snprintf(subdev->res_name[idx],
 			XOCL_SUBDEV_RES_NAME_LEN,
-			"%s/%s %d %d %d",
-			ip->name, name, ip->major, ip->minor,
+			"%s %d %d %d",
+			ip->name, ip->major, ip->minor,
 			ip->level);
 		subdev->res[idx].name = subdev->res_name[idx];
 
@@ -468,20 +457,21 @@ static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob, int off,
 		io_off += 2;
 	}
 
-	irq_start = fdt_getprop(blob, off, PROP_IRQ_START, NULL);
-	irq_end = fdt_getprop(blob, off, PROP_IRQ_END, NULL);
-	if (irq_start && irq_end) {
+	irq_off = fdt_getprop(blob, off, PROP_INTERRUPTS, &sz);
+	while (irq_off && sz >= sizeof(*irq_off) * 2) {
 		idx = subdev->info.num_res;
-		subdev->res[idx].start = ntohl(irq_start[0]);
-		subdev->res[idx].end = ntohl(irq_end[0]);
+		subdev->res[idx].start = ntohl(irq_off[0]);
+		subdev->res[idx].end = ntohl(irq_off[1]);
 		subdev->res[idx].flags = IORESOURCE_IRQ;
 		snprintf(subdev->res_name[idx],
 			XOCL_SUBDEV_RES_NAME_LEN,
-			"%s/%s %d %d %d",
-			ip->name, name, ip->major, ip->minor,
+			"%s %d %d %d",
+			ip->name, ip->major, ip->minor,
 			ip->level);
 		subdev->res[idx].name = subdev->res_name[idx];
 		subdev->info.num_res++;
+		sz -= sizeof(*irq_off) * 2;
+		irq_off += 2;
 	}
 
 	if (subdev->info.num_res > num_res)
@@ -496,7 +486,7 @@ static int xocl_fdt_next_ip(xdev_handle_t xdev_hdl, char *blob,
 	char *l0_path = LEVEL0_DEV_PATH;
 	char *l1_path = LEVEL1_DEV_PATH;
 	int l1_off, l0_off, node;
-	const u16 *ver;
+	const char *comp, *p;
 
 	l0_off = fdt_path_offset(blob, l0_path);
 	l1_off = fdt_path_offset(blob, l1_path);
@@ -520,10 +510,11 @@ found:
 	ip->name = fdt_get_name(blob, node, NULL);
 
 	/* Get Version */
-	ver = fdt_getprop(blob, node, PROP_VERSION, NULL);
-	if (ver) {
-		ip->major = ntohs(ver[0]);
-		ip->minor = ntohs(ver[1]);
+	comp = fdt_getprop(blob, node, PROP_COMPATIBLE, NULL);
+	if (comp) {
+		for (p = comp; p != NULL; p = strstr(comp, "-"))
+			comp = p + 1;
+		sscanf(comp, "%hd.%hd", &ip->major, &ip->minor);
 	}
 
 	return node;
@@ -596,9 +587,10 @@ static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 		}
 	}
 
-
 	if (subdev->info.dyn_ip < map_p->required_ip)
 		goto failed;
+
+	subdev->pf = XOCL_PCI_FUNC(xdev_hdl);
 
 	if ((map_p->flags & XOCL_SUBDEV_MAP_USERPF_ONLY) &&
 			subdev->pf != xocl_fdt_get_userpf(xdev_hdl, blob))
@@ -757,12 +749,19 @@ int xocl_fdt_get_userpf(xdev_handle_t xdev_hdl, void *blob)
 {
 	int offset;
 	const u32 *pfnum;
+	const char *ipname;
 
 	if (!blob)
 		return -EINVAL;
 
-	offset = fdt_node_offset_by_prop_value(blob, -1,
-			PROP_IP_NAME, "dma", strlen("dma") + 1);
+	for (offset = fdt_next_node(blob, -1, NULL);
+		offset >= 0;
+		offset = fdt_next_node(blob, offset, NULL)) {
+		ipname = fdt_get_name(blob, offset, NULL);
+		if (ipname && strncmp(ipname, NODE_MAILBOX_USER,
+				strlen(NODE_MAILBOX_USER)) == 0)
+			break;
+	}
 	if (offset < 0)
 		return -ENODEV;
 

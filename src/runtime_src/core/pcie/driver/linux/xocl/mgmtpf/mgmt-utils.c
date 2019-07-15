@@ -543,6 +543,9 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 		goto failed;
 	}
 
+	release_firmware(fw);
+	fw = NULL;
+
 	lro->bld_blob = vmalloc(fdt_totalsize(lro->core.fdt_blob));
 	if (!lro->bld_blob) {
 		ret = -ENOMEM;
@@ -554,6 +557,12 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	xclmgmt_connect_notify(lro, false);
 	xocl_subdev_destroy_all(lro);
 	ret = xocl_subdev_create_all(lro);
+	if (ret)
+		goto failed;
+	ret = xocl_icap_download_boot_firmware(lro);
+	if (ret)
+		goto failed;
+
 	xclmgmt_update_userpf_blob(lro);
 	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
 	xclmgmt_connect_notify(lro, true);

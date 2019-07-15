@@ -18,13 +18,11 @@
 #ifndef _XOCL_FDT_H
 #define	_XOCL_FDT_H
 
-#define PROP_IP_NAME "ipname"
-#define PROP_VERSION "version"
+#define PROP_COMPATIBLE "compatible"
 #define PROP_PF_NUM "pcie_pf_number"
 #define PROP_BAR_IDX "pcie_base_address_register"
 #define PROP_IO_OFFSET "reg"
-#define PROP_IRQ_START "msix_interrupt_start_index"
-#define PROP_IRQ_END "msix_interrupt_end_index"
+#define PROP_INTERRUPTS "interrupts"
 
 #define NODE_ENDPOINTS "addressable_endpoints"
 #define LEVEL0_DEV_PATH "/addressable_endpoints_0"
@@ -43,8 +41,8 @@
 #define NODE_CMC_RESET "ep_cmc_reset_00"
 #define NODE_CMC_FW_MEM "ep_cmc_firmware_mem_00"
 #define NODE_CMC_ERT_MEM "ep_ert_firmware_mem_00"
-#define NODE_ERT_CQ_MGMT "ep_ert_command_queue_00"
-#define NODE_ERT_CQ_USER "ep_ert_command_queue_01"
+#define NODE_ERT_CQ_MGMT "ep_ert_command_queue_mgmt_00"
+#define NODE_ERT_CQ_USER "ep_ert_command_queue_user_00"
 #define NODE_MAILBOX_MGMT "ep_mailbox_mgmt_00"
 #define NODE_MAILBOX_USER "ep_mailbox_user_00"
 #define NODE_GATE_BLP "ep_pr_isolate_prp_00"
