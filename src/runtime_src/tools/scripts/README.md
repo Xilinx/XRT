@@ -57,13 +57,13 @@ For example:
 ```bash
 # Build from BSP, the image would become larger.
 # This is required for all revmin platform (Otherwise the SD card and Ethernet would not work).
-$ peta_build.sh --bsp <BSP> ./dsa_build/zcu104_revmin.dsa
+$ peta_build.sh --bsp <BSP> ./dsa_build/zcu104_revmin/zcu104_revmin.dsa
 
 # Build from template. This is a good choice if you know petalinux very well.
-$ peta_build.sh ./dsa_build/zcu102ng.dsa
+$ peta_build.sh ./dsa_build/zcu102ng/zcu102ng.dsa
 
 # Build with special configurations
-$ peta_build.sh --config config.sh ./dsa_build/zcu102ng.dsa
+$ peta_build.sh --config config.sh ./dsa_build/zcu102ng/zcu102ng.dsa
 ```
 
 ### pfm\_build.sh

@@ -57,7 +57,7 @@ fi
 echo " * Setup PetaLinux: $PETALINUX_LOCATION"
 . $PETALINUX_LOCATION/settings.sh $PETALINUX_LOCATION
 
-# dsa_build.sh will create ${PLATFORM_NAME}/ directory for petalinux project
+# peta_build.sh will create ${PLATFORM_NAME}/ directory for petalinux project
 if [ -z $BSP ]; then
 	${XRT_REPO_DIR}/src/runtime_src/tools/scripts/peta_build.sh ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}.dsa
 else
