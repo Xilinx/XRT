@@ -14,9 +14,6 @@
  * under the License.
  */
 
-#ifndef _PERFMON_PARAMETERS_H_
-#define _PERFMON_PARAMETERS_H_
-
 /************************ AXI Stream FIFOs ************************************/
 
 /* Address offsets in core */
@@ -31,26 +28,22 @@
 
 /************************** AXI Stream Monitor (ASM, earlier SSPM) *********************/
 
-#define XSSPM_CONTROL_OFFSET           0x0
-#define XSSPM_SAMPLE_OFFSET            0x20
-#define XSSPM_NUM_TRANX_OFFSET         0x80
-#define XSSPM_DATA_BYTES_OFFSET        0x88
-#define XSSPM_BUSY_CYCLES_OFFSET       0x90
-#define XSSPM_STALL_CYCLES_OFFSET      0x98
-#define XSSPM_STARVE_CYCLES_OFFSET     0xA0
+#define XASM_CONTROL_OFFSET           0x0
+#define XASM_SAMPLE_OFFSET            0x20
+#define XASM_NUM_TRANX_OFFSET         0x80
+#define XASM_DATA_BYTES_OFFSET        0x88
+#define XASM_BUSY_CYCLES_OFFSET       0x90
+#define XASM_STALL_CYCLES_OFFSET      0x98
+#define XASM_STARVE_CYCLES_OFFSET     0xA0
 
 /* SSPM Control Mask */
-#define XSSPM_COUNTER_RESET_MASK       0x00000001
+#define XASM_COUNTER_RESET_MASK       0x00000001
 
 /********************* AXI Stream Protocol Checker (SPC) *********************/
 
 #define XSPC_PC_ASSERTED_OFFSET 0x0
 #define XSPC_CURRENT_PC_OFFSET  0x100
 #define XSPC_SNAPSHOT_PC_OFFSET 0x200
-
-#endif /* _PERFMON_PARAMETERS_H_ */
-
-
 
 #include "asm.h"
 
@@ -80,14 +73,14 @@ size_t ASM::startCounter()
     uint32_t regValue = 0;
     uint32_t origRegValue = 0;
 
-    size += read(XSSPM_CONTROL_OFFSET, 4, &origRegValue);
+    size += read(XASM_CONTROL_OFFSET, 4, &origRegValue);
 
     // Reset
-    regValue = origRegValue | XSSPM_COUNTER_RESET_MASK;
-    size += write(XSSPM_CONTROL_OFFSET, 4, &regValue);
+    regValue = origRegValue | XASM_COUNTER_RESET_MASK;
+    size += write(XASM_CONTROL_OFFSET, 4, &regValue);
 
     // Write original value after reset
-    size += write(XSSPM_CONTROL_OFFSET, 4, &origRegValue);
+    size += write(XASM_CONTROL_OFFSET, 4, &origRegValue);
 
     return size;
 }
@@ -111,13 +104,13 @@ size_t ASM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
         (*out_stream) << "Reading AXI Stream Monitors.." << std::endl;
     }
 
-    size += read(XSSPM_SAMPLE_OFFSET, 4, &sampleInterval);
+    size += read(XASM_SAMPLE_OFFSET, 4, &sampleInterval);
 
-    size += read(XSSPM_NUM_TRANX_OFFSET, 8, &counterResults.StrNumTranx[s]);
-    size += read(XSSPM_DATA_BYTES_OFFSET, 8, &counterResults.StrDataBytes[s]);
-    size += read(XSSPM_BUSY_CYCLES_OFFSET, 8, &counterResults.StrBusyCycles[s]);
-    size += read(XSSPM_STALL_CYCLES_OFFSET, 8, &counterResults.StrStallCycles[s]);
-    size += read(XSSPM_STARVE_CYCLES_OFFSET, 8, &counterResults.StrStarveCycles[s]);
+    size += read(XASM_NUM_TRANX_OFFSET, 8, &counterResults.StrNumTranx[s]);
+    size += read(XASM_DATA_BYTES_OFFSET, 8, &counterResults.StrDataBytes[s]);
+    size += read(XASM_BUSY_CYCLES_OFFSET, 8, &counterResults.StrBusyCycles[s]);
+    size += read(XASM_STALL_CYCLES_OFFSET, 8, &counterResults.StrStallCycles[s]);
+    size += read(XASM_STARVE_CYCLES_OFFSET, 8, &counterResults.StrStarveCycles[s]);
 
     // AXIS without TLAST is assumed to be one long transfer
     if (counterResults.StrNumTranx[s] == 0 && counterResults.StrDataBytes[s] > 0) {

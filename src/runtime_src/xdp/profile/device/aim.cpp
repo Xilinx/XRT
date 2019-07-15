@@ -14,72 +14,67 @@
  * under the License.
  */
 
-#ifndef _PERFMON_PARAMETERS_H_
-#define _PERFMON_PARAMETERS_H_
-
 /************************ AXI Interface Monitor (AIM, earlier SPM) ***********************/
 
 /* Address offsets in core */
-#define XSPM_CONTROL_OFFSET                          0x08
-#define XSPM_TRACE_CTRL_OFFSET                       0x10
-#define XSPM_EVENT_OFFSET                            0x18
-#define XSPM_SAMPLE_OFFSET                           0x20
-#define XSPM_FIFO_COUNTS_OFFSET                      0x28
-#define XSPM_FIFO_READ_COUNTS_OFFSET                 0x30
-#define XSPM_WRITE_BYTES_OFFSET                      0x40
-#define XSPM_WRITE_TRANX_OFFSET                      0x44
-#define XSPM_WRITE_LATENCY_OFFSET                    0x48
-#define XSPM_READ_BYTES_OFFSET                       0x4C
-#define XSPM_READ_TRANX_OFFSET                       0x50
-#define XSPM_READ_LATENCY_OFFSET                     0x54
-//#define XSPM_MIN_MAX_WRITE_LATENCY_OFFSET          0x58
-//#define XSPM_MIN_MAX_READ_LATENCY_OFFSET           0x5C
-#define XSPM_OUTSTANDING_COUNTS_OFFSET               0x58
-#define XSPM_LAST_WRITE_ADDRESS_OFFSET               0x5C
-#define XSPM_LAST_WRITE_DATA_OFFSET                  0x60
-#define XSPM_LAST_READ_ADDRESS_OFFSET                0x64
-#define XSPM_LAST_READ_DATA_OFFSET                   0x68
-#define XSPM_SAMPLE_WRITE_BYTES_OFFSET               0x80
-#define XSPM_SAMPLE_WRITE_TRANX_OFFSET               0x84
-#define XSPM_SAMPLE_WRITE_LATENCY_OFFSET             0x88
-#define XSPM_SAMPLE_READ_BYTES_OFFSET                0x8C
-#define XSPM_SAMPLE_READ_TRANX_OFFSET                0x90
-#define XSPM_SAMPLE_READ_LATENCY_OFFSET              0x94
+#define XAIM_CONTROL_OFFSET                          0x08
+#define XAIM_TRACE_CTRL_OFFSET                       0x10
+#define XAIM_EVENT_OFFSET                            0x18
+#define XAIM_SAMPLE_OFFSET                           0x20
+#define XAIM_FIFO_COUNTS_OFFSET                      0x28
+#define XAIM_FIFO_READ_COUNTS_OFFSET                 0x30
+#define XAIM_WRITE_BYTES_OFFSET                      0x40
+#define XAIM_WRITE_TRANX_OFFSET                      0x44
+#define XAIM_WRITE_LATENCY_OFFSET                    0x48
+#define XAIM_READ_BYTES_OFFSET                       0x4C
+#define XAIM_READ_TRANX_OFFSET                       0x50
+#define XAIM_READ_LATENCY_OFFSET                     0x54
+//#define XAIM_MIN_MAX_WRITE_LATENCY_OFFSET          0x58
+//#define XAIM_MIN_MAX_READ_LATENCY_OFFSET           0x5C
+#define XAIM_OUTSTANDING_COUNTS_OFFSET               0x58
+#define XAIM_LAST_WRITE_ADDRESS_OFFSET               0x5C
+#define XAIM_LAST_WRITE_DATA_OFFSET                  0x60
+#define XAIM_LAST_READ_ADDRESS_OFFSET                0x64
+#define XAIM_LAST_READ_DATA_OFFSET                   0x68
+#define XAIM_SAMPLE_WRITE_BYTES_OFFSET               0x80
+#define XAIM_SAMPLE_WRITE_TRANX_OFFSET               0x84
+#define XAIM_SAMPLE_WRITE_LATENCY_OFFSET             0x88
+#define XAIM_SAMPLE_READ_BYTES_OFFSET                0x8C
+#define XAIM_SAMPLE_READ_TRANX_OFFSET                0x90
+#define XAIM_SAMPLE_READ_LATENCY_OFFSET              0x94
 // The following two registers are still in the hardware,
 //  but are unused
-//#define XSPM_SAMPLE_MIN_MAX_WRITE_LATENCY_OFFSET   0x98
-//#define XSPM_SAMPLE_MIN_MAX_READ_LATENCY_OFFSET    0x9C
-#define XSPM_SAMPLE_OUTSTANDING_COUNTS_OFFSET        0xA0
-#define XSPM_SAMPLE_LAST_WRITE_ADDRESS_OFFSET        0xA4
-#define XSPM_SAMPLE_LAST_WRITE_DATA_OFFSET           0xA8
-#define XSPM_SAMPLE_LAST_READ_ADDRESS_OFFSET         0xAC
-#define XSPM_SAMPLE_LAST_READ_DATA_OFFSET            0xB0
-#define XSPM_SAMPLE_WRITE_BYTES_UPPER_OFFSET         0xC0
-#define XSPM_SAMPLE_WRITE_TRANX_UPPER_OFFSET         0xC4
-#define XSPM_SAMPLE_WRITE_LATENCY_UPPER_OFFSET       0xC8
-#define XSPM_SAMPLE_READ_BYTES_UPPER_OFFSET          0xCC
-#define XSPM_SAMPLE_READ_TRANX_UPPER_OFFSET          0xD0
-#define XSPM_SAMPLE_READ_LATENCY_UPPER_OFFSET        0xD4
+//#define XAIM_SAMPLE_MIN_MAX_WRITE_LATENCY_OFFSET   0x98
+//#define XAIM_SAMPLE_MIN_MAX_READ_LATENCY_OFFSET    0x9C
+#define XAIM_SAMPLE_OUTSTANDING_COUNTS_OFFSET        0xA0
+#define XAIM_SAMPLE_LAST_WRITE_ADDRESS_OFFSET        0xA4
+#define XAIM_SAMPLE_LAST_WRITE_DATA_OFFSET           0xA8
+#define XAIM_SAMPLE_LAST_READ_ADDRESS_OFFSET         0xAC
+#define XAIM_SAMPLE_LAST_READ_DATA_OFFSET            0xB0
+#define XAIM_SAMPLE_WRITE_BYTES_UPPER_OFFSET         0xC0
+#define XAIM_SAMPLE_WRITE_TRANX_UPPER_OFFSET         0xC4
+#define XAIM_SAMPLE_WRITE_LATENCY_UPPER_OFFSET       0xC8
+#define XAIM_SAMPLE_READ_BYTES_UPPER_OFFSET          0xCC
+#define XAIM_SAMPLE_READ_TRANX_UPPER_OFFSET          0xD0
+#define XAIM_SAMPLE_READ_LATENCY_UPPER_OFFSET        0xD4
 // Reserved for high 32-bits of MIN_MAX_WRITE_LATENCY - 0xD8
 // Reserved for high 32-bits of MIN_MAX_READ_LATENCY  - 0xDC
-#define XSPM_SAMPLE_OUTSTANDING_COUNTS_UPPER_OFFSET  0xE0
-#define XSPM_SAMPLE_LAST_WRITE_ADDRESS_UPPER_OFFSET  0xE4
-#define XSPM_SAMPLE_LAST_WRITE_DATA_UPPER_OFFSET     0xE8
-#define XSPM_SAMPLE_LAST_READ_ADDRESS_UPPER_OFFSET   0xEC
-#define XSPM_SAMPLE_LAST_READ_DATA_UPPER_OFFSET      0xF0
+#define XAIM_SAMPLE_OUTSTANDING_COUNTS_UPPER_OFFSET  0xE0
+#define XAIM_SAMPLE_LAST_WRITE_ADDRESS_UPPER_OFFSET  0xE4
+#define XAIM_SAMPLE_LAST_WRITE_DATA_UPPER_OFFSET     0xE8
+#define XAIM_SAMPLE_LAST_READ_ADDRESS_UPPER_OFFSET   0xEC
+#define XAIM_SAMPLE_LAST_READ_DATA_UPPER_OFFSET      0xF0
 
 /* SPM Control Register masks */
-#define XSPM_CR_RESET_ON_SAMPLE_MASK             0x00000010
-#define XSPM_CR_FIFO_RESET_MASK                  0x00000008
-#define XSPM_CR_COUNTER_RESET_MASK               0x00000002
-#define XSPM_CR_COUNTER_ENABLE_MASK              0x00000001
-#define XSPM_TRACE_CTRL_MASK                     0x00000003        
+#define XAIM_CR_RESET_ON_SAMPLE_MASK             0x00000010
+#define XAIM_CR_FIFO_RESET_MASK                  0x00000008
+#define XAIM_CR_COUNTER_RESET_MASK               0x00000002
+#define XAIM_CR_COUNTER_ENABLE_MASK              0x00000001
+#define XAIM_TRACE_CTRL_MASK                     0x00000003        
 
 /* Debug IP layout properties mask bits */
-#define XSPM_HOST_PROPERTY_MASK                  0x4
-#define XSPM_64BIT_PROPERTY_MASK                 0x8
-
-#endif /* _PERFMON_PARAMETERS_H_ */
+#define XAIM_HOST_PROPERTY_MASK                  0x4
+#define XAIM_64BIT_PROPERTY_MASK                 0x8
 
 
 #include "aim.h"
@@ -109,20 +104,20 @@ size_t AIM::startCounter()
     uint32_t regValue = 0;
     
     // 1. Reset AXI - MM monitor metric counters
-    size += read(XSPM_CONTROL_OFFSET, 4, &regValue);
+    size += read(XAIM_CONTROL_OFFSET, 4, &regValue);
 
-    regValue = regValue | XSPM_CR_COUNTER_RESET_MASK;
-    size += write(XSPM_CONTROL_OFFSET, 4, &regValue);
+    regValue = regValue | XAIM_CR_COUNTER_RESET_MASK;
+    size += write(XAIM_CONTROL_OFFSET, 4, &regValue);
 
-    regValue = regValue & ~(XSPM_CR_COUNTER_RESET_MASK);
-    size += write(XSPM_CONTROL_OFFSET, 4, &regValue);
+    regValue = regValue & ~(XAIM_CR_COUNTER_RESET_MASK);
+    size += write(XAIM_CONTROL_OFFSET, 4, &regValue);
 
     // 2. Start AXI-MM monitor metric counters
-    regValue = regValue | XSPM_CR_COUNTER_ENABLE_MASK;
-    size += write(XSPM_CONTROL_OFFSET, 4, &regValue);
+    regValue = regValue | XAIM_CR_COUNTER_ENABLE_MASK;
+    size += write(XAIM_CONTROL_OFFSET, 4, &regValue);
 
     // 3. Read from sample register to ensure total time is read again at end
-    size += read(XSPM_SAMPLE_OFFSET, 4, &regValue);
+    size += read(XAIM_SAMPLE_OFFSET, 4, &regValue);
 
     return size;
 }
@@ -136,10 +131,10 @@ size_t AIM::stopCounter()
     uint32_t regValue = 0;
 
     // 1. Stop AIM metric counters
-    size += read(XSPM_CONTROL_OFFSET, 4, &regValue);
+    size += read(XAIM_CONTROL_OFFSET, 4, &regValue);
 
-    regValue = regValue & ~(XSPM_CR_COUNTER_ENABLE_MASK);
-    size += write(XSPM_CONTROL_OFFSET, 4, &regValue);
+    regValue = regValue & ~(XAIM_CR_COUNTER_ENABLE_MASK);
+    size += write(XAIM_CONTROL_OFFSET, 4, &regValue);
 
     return size;
 }
@@ -154,29 +149,29 @@ size_t AIM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
     
     // Read sample interval register
     // NOTE: this also latches the sampled metric counters
-    size += read(XSPM_SAMPLE_OFFSET, 4, &sampleInterval);
+    size += read(XAIM_SAMPLE_OFFSET, 4, &sampleInterval);
 
     // Need to do this for every xilmon : but done for only the first
     if (s==0){
 //        counterResults.SampleIntervalUsec = sampleInterval / xclGetDeviceClockFreqMHz();
     }
 
-    size += read(XSPM_SAMPLE_WRITE_BYTES_OFFSET, 4, &counterResults.WriteBytes[s]);
-    size += read(XSPM_SAMPLE_WRITE_TRANX_OFFSET, 4, &counterResults.WriteTranx[s]);
-    size += read(XSPM_SAMPLE_WRITE_LATENCY_OFFSET, 4, &counterResults.WriteLatency[s]);
-    size += read(XSPM_SAMPLE_READ_BYTES_OFFSET, 4, &counterResults.ReadBytes[s]);
-    size += read(XSPM_SAMPLE_READ_TRANX_OFFSET, 4, &counterResults.ReadTranx[s]);
-    size += read(XSPM_SAMPLE_READ_LATENCY_OFFSET, 4, &counterResults.ReadLatency[s]);
+    size += read(XAIM_SAMPLE_WRITE_BYTES_OFFSET, 4, &counterResults.WriteBytes[s]);
+    size += read(XAIM_SAMPLE_WRITE_TRANX_OFFSET, 4, &counterResults.WriteTranx[s]);
+    size += read(XAIM_SAMPLE_WRITE_LATENCY_OFFSET, 4, &counterResults.WriteLatency[s]);
+    size += read(XAIM_SAMPLE_READ_BYTES_OFFSET, 4, &counterResults.ReadBytes[s]);
+    size += read(XAIM_SAMPLE_READ_TRANX_OFFSET, 4, &counterResults.ReadTranx[s]);
+    size += read(XAIM_SAMPLE_READ_LATENCY_OFFSET, 4, &counterResults.ReadLatency[s]);
 
     // Read upper 32 bits (if available)
     if(has64bit()) {
         uint64_t upper[6] = {};
-        size += read(XSPM_SAMPLE_WRITE_BYTES_UPPER_OFFSET, 4, &upper[0]);
-        size += read(XSPM_SAMPLE_WRITE_TRANX_UPPER_OFFSET, 4, &upper[1]);
-        size += read(XSPM_SAMPLE_WRITE_LATENCY_UPPER_OFFSET, 4, &upper[2]);
-        size += read(XSPM_SAMPLE_READ_BYTES_UPPER_OFFSET, 4, &upper[3]);
-        size += read(XSPM_SAMPLE_READ_TRANX_UPPER_OFFSET, 4, &upper[4]);
-        size += read(XSPM_SAMPLE_READ_LATENCY_UPPER_OFFSET, 4, &upper[5]);
+        size += read(XAIM_SAMPLE_WRITE_BYTES_UPPER_OFFSET, 4, &upper[0]);
+        size += read(XAIM_SAMPLE_WRITE_TRANX_UPPER_OFFSET, 4, &upper[1]);
+        size += read(XAIM_SAMPLE_WRITE_LATENCY_UPPER_OFFSET, 4, &upper[2]);
+        size += read(XAIM_SAMPLE_READ_BYTES_UPPER_OFFSET, 4, &upper[3]);
+        size += read(XAIM_SAMPLE_READ_TRANX_UPPER_OFFSET, 4, &upper[4]);
+        size += read(XAIM_SAMPLE_READ_LATENCY_UPPER_OFFSET, 4, &upper[5]);
 
         counterResults.WriteBytes[s]   += (upper[0] << 32);
         counterResults.WriteTranx[s]   += (upper[1] << 32);
@@ -215,15 +210,15 @@ size_t AIM::triggerTrace(uint32_t traceOption /* starttrigger*/)
     size_t size = 0;
     uint32_t regValue = 0;
     // Set AIM trace control register bits
-    regValue = traceOption & XSPM_TRACE_CTRL_MASK;
-    size += write(XSPM_TRACE_CTRL_OFFSET, 4, &regValue);
+    regValue = traceOption & XAIM_TRACE_CTRL_MASK;
+    size += write(XAIM_TRACE_CTRL_OFFSET, 4, &regValue);
 
     return size;
 }
 
 bool AIM::isHostMonitor()
 {
-    return ((properties & XSPM_HOST_PROPERTY_MASK) ? true : false);
+    return ((properties & XAIM_HOST_PROPERTY_MASK) ? true : false);
 }
 
 bool AIM::isShellMonitor()
@@ -236,7 +231,7 @@ bool AIM::isShellMonitor()
 
 bool AIM::has64bit()
 {
-    return ((properties & XSPM_64BIT_PROPERTY_MASK) ? true : false);
+    return ((properties & XAIM_64BIT_PROPERTY_MASK) ? true : false);
 }
 
 void AIM::showProperties()

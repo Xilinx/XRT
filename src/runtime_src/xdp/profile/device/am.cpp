@@ -15,46 +15,40 @@
  */
 
 
-#ifndef _PERFMON_PARAMETERS_H_
-#define _PERFMON_PARAMETERS_H_
-
 /************************ Accelerator Monitor (AM, earlier SAM) ************************/
 
-#define XSAM_CONTROL_OFFSET                          0x08
-#define XSAM_TRACE_CTRL_OFFSET                       0x10
-#define XSAM_SAMPLE_OFFSET                           0x20
-#define XSAM_ACCEL_EXECUTION_COUNT_OFFSET            0x80
-#define XSAM_ACCEL_EXECUTION_CYCLES_OFFSET           0x84  
-#define XSAM_ACCEL_STALL_INT_OFFSET                  0x88
-#define XSAM_ACCEL_STALL_STR_OFFSET                  0x8c
-#define XSAM_ACCEL_STALL_EXT_OFFSET                  0x90
-#define XSAM_ACCEL_MIN_EXECUTION_CYCLES_OFFSET       0x94
-#define XSAM_ACCEL_MAX_EXECUTION_CYCLES_OFFSET       0x98
-#define XSAM_ACCEL_TOTAL_CU_START_OFFSET             0x9c
-#define XSAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET      0xA0
-#define XSAM_ACCEL_EXECUTION_CYCLES_UPPER_OFFSET     0xA4
-#define XSAM_ACCEL_STALL_INT_UPPER_OFFSET            0xA8
-#define XSAM_ACCEL_STALL_STR_UPPER_OFFSET            0xAc
-#define XSAM_ACCEL_STALL_EXT_UPPER_OFFSET            0xB0
-#define XSAM_ACCEL_MIN_EXECUTION_CYCLES_UPPER_OFFSET 0xB4
-#define XSAM_ACCEL_MAX_EXECUTION_CYCLES_UPPER_OFFSET 0xB8
-#define XSAM_ACCEL_TOTAL_CU_START_UPPER_OFFSET       0xbc
-#define XSAM_BUSY_CYCLES_OFFSET                      0xC0
-#define XSAM_BUSY_CYCLES_UPPER_OFFSET                0xC4
-#define XSAM_MAX_PARALLEL_ITER_OFFSET                0xC8
-#define XSAM_MAX_PARALLEL_ITER_UPPER_OFFSET          0xCC
+#define XAM_CONTROL_OFFSET                          0x08
+#define XAM_TRACE_CTRL_OFFSET                       0x10
+#define XAM_SAMPLE_OFFSET                           0x20
+#define XAM_ACCEL_EXECUTION_COUNT_OFFSET            0x80
+#define XAM_ACCEL_EXECUTION_CYCLES_OFFSET           0x84  
+#define XAM_ACCEL_STALL_INT_OFFSET                  0x88
+#define XAM_ACCEL_STALL_STR_OFFSET                  0x8c
+#define XAM_ACCEL_STALL_EXT_OFFSET                  0x90
+#define XAM_ACCEL_MIN_EXECUTION_CYCLES_OFFSET       0x94
+#define XAM_ACCEL_MAX_EXECUTION_CYCLES_OFFSET       0x98
+#define XAM_ACCEL_TOTAL_CU_START_OFFSET             0x9c
+#define XAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET      0xA0
+#define XAM_ACCEL_EXECUTION_CYCLES_UPPER_OFFSET     0xA4
+#define XAM_ACCEL_STALL_INT_UPPER_OFFSET            0xA8
+#define XAM_ACCEL_STALL_STR_UPPER_OFFSET            0xAc
+#define XAM_ACCEL_STALL_EXT_UPPER_OFFSET            0xB0
+#define XAM_ACCEL_MIN_EXECUTION_CYCLES_UPPER_OFFSET 0xB4
+#define XAM_ACCEL_MAX_EXECUTION_CYCLES_UPPER_OFFSET 0xB8
+#define XAM_ACCEL_TOTAL_CU_START_UPPER_OFFSET       0xbc
+#define XAM_BUSY_CYCLES_OFFSET                      0xC0
+#define XAM_BUSY_CYCLES_UPPER_OFFSET                0xC4
+#define XAM_MAX_PARALLEL_ITER_OFFSET                0xC8
+#define XAM_MAX_PARALLEL_ITER_UPPER_OFFSET          0xCC
 
 /* SAM Trace Control Masks */
-#define XSAM_TRACE_STALL_SELECT_MASK    0x0000001c
-#define XSAM_COUNTER_RESET_MASK         0x00000002
-#define XSAM_DATAFLOW_EN_MASK           0x00000008
+#define XAM_TRACE_STALL_SELECT_MASK    0x0000001c
+#define XAM_COUNTER_RESET_MASK         0x00000002
+#define XAM_DATAFLOW_EN_MASK           0x00000008
 
 /* Debug IP layout properties mask bits */
-#define XSAM_STALL_PROPERTY_MASK        0x4
-#define XSAM_64BIT_PROPERTY_MASK        0x8
-
-
-#endif /* _PERFMON_PARAMETERS_H_ */
+#define XAM_STALL_PROPERTY_MASK        0x4
+#define XAM_64BIT_PROPERTY_MASK        0x8
 
 
 #include "am.h"
@@ -85,14 +79,14 @@ size_t AM::startCounter()
     uint32_t regValue = 0;
     uint32_t origRegValue = 0;
 
-    size += read(XSAM_CONTROL_OFFSET, 4, &origRegValue);
+    size += read(XAM_CONTROL_OFFSET, 4, &origRegValue);
 
     // Reset
-    regValue = origRegValue | XSAM_COUNTER_RESET_MASK;
-    size += write(XSAM_CONTROL_OFFSET, 4, &regValue);
+    regValue = origRegValue | XAM_COUNTER_RESET_MASK;
+    size += write(XAM_CONTROL_OFFSET, 4, &regValue);
 
     // Write original value after reset
-    size += write(XSAM_CONTROL_OFFSET, 4, &origRegValue);
+    size += write(XAM_CONTROL_OFFSET, 4, &origRegValue);
     
     return size;
 }
@@ -132,24 +126,24 @@ size_t AM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
         
     // Read sample interval register
     // NOTE: this also latches the sampled metric counters
-    size += read(XSAM_SAMPLE_OFFSET, 4, &sampleInterval);
+    size += read(XAM_SAMPLE_OFFSET, 4, &sampleInterval);
 
     if(out_stream) {
         (*out_stream) << "Accelerator Monitor Sample Interval : " << sampleInterval << std::endl;
     }
 
-    size += read(XSAM_ACCEL_EXECUTION_COUNT_OFFSET, 4, &counterResults.CuExecCount[s]);
-    size += read(XSAM_ACCEL_EXECUTION_CYCLES_OFFSET, 4, &counterResults.CuExecCycles[s]);
-    size += read(XSAM_ACCEL_MIN_EXECUTION_CYCLES_OFFSET, 4, &counterResults.CuMinExecCycles[s]);
-    size += read(XSAM_ACCEL_MAX_EXECUTION_CYCLES_OFFSET, 4, &counterResults.CuMaxExecCycles[s]);
+    size += read(XAM_ACCEL_EXECUTION_COUNT_OFFSET, 4, &counterResults.CuExecCount[s]);
+    size += read(XAM_ACCEL_EXECUTION_CYCLES_OFFSET, 4, &counterResults.CuExecCycles[s]);
+    size += read(XAM_ACCEL_MIN_EXECUTION_CYCLES_OFFSET, 4, &counterResults.CuMinExecCycles[s]);
+    size += read(XAM_ACCEL_MAX_EXECUTION_CYCLES_OFFSET, 4, &counterResults.CuMaxExecCycles[s]);
 
     // Read upper 32 bits (if available)
     if(has64bit()) {
         uint64_t upper[4] = {};
-        size += read(XSAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET, 4, &upper[0]);
-        size += read(XSAM_ACCEL_EXECUTION_CYCLES_UPPER_OFFSET, 4, &upper[1]);
-        size += read(XSAM_ACCEL_MIN_EXECUTION_CYCLES_UPPER_OFFSET, 4, &upper[2]);
-        size += read(XSAM_ACCEL_MAX_EXECUTION_CYCLES_UPPER_OFFSET, 4, &upper[3]);
+        size += read(XAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET, 4, &upper[0]);
+        size += read(XAM_ACCEL_EXECUTION_CYCLES_UPPER_OFFSET, 4, &upper[1]);
+        size += read(XAM_ACCEL_MIN_EXECUTION_CYCLES_UPPER_OFFSET, 4, &upper[2]);
+        size += read(XAM_ACCEL_MAX_EXECUTION_CYCLES_UPPER_OFFSET, 4, &upper[3]);
 
         counterResults.CuExecCount[s]     += (upper[0] << 32);
         counterResults.CuExecCycles[s]    += (upper[1] << 32);
@@ -165,13 +159,13 @@ size_t AM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
     }
 
     if(hasDataflow()) {
-        size += read(XSAM_BUSY_CYCLES_OFFSET, 4, &counterResults.CuBusyCycles[s]);
-        size += read(XSAM_MAX_PARALLEL_ITER_OFFSET, 4, &counterResults.CuMaxParallelIter[s]);
+        size += read(XAM_BUSY_CYCLES_OFFSET, 4, &counterResults.CuBusyCycles[s]);
+        size += read(XAM_MAX_PARALLEL_ITER_OFFSET, 4, &counterResults.CuMaxParallelIter[s]);
 
         if(has64bit()) {
             uint64_t upper[2] = {};
-            size += read(XSAM_BUSY_CYCLES_UPPER_OFFSET, 4, &upper[0]);
-            size += read(XSAM_MAX_PARALLEL_ITER_UPPER_OFFSET, 4, &upper[1]);
+            size += read(XAM_BUSY_CYCLES_UPPER_OFFSET, 4, &upper[0]);
+            size += read(XAM_MAX_PARALLEL_ITER_UPPER_OFFSET, 4, &upper[1]);
             counterResults.CuBusyCycles[s]  += (upper[0] << 32);
             counterResults.CuMaxParallelIter[s]  += (upper[1] << 32);
         }
@@ -191,9 +185,9 @@ size_t AM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
     }
 
     if(hasStall()) {
-        size += read(XSAM_ACCEL_STALL_INT_OFFSET, 4, &counterResults.CuStallIntCycles[s]);
-        size += read(XSAM_ACCEL_STALL_STR_OFFSET, 4, &counterResults.CuStallStrCycles[s]);
-        size += read(XSAM_ACCEL_STALL_EXT_OFFSET, 4, &counterResults.CuStallExtCycles[s]);
+        size += read(XAM_ACCEL_STALL_INT_OFFSET, 4, &counterResults.CuStallIntCycles[s]);
+        size += read(XAM_ACCEL_STALL_STR_OFFSET, 4, &counterResults.CuStallStrCycles[s]);
+        size += read(XAM_ACCEL_STALL_EXT_OFFSET, 4, &counterResults.CuStallExtCycles[s]);
     }
 
 
@@ -230,8 +224,8 @@ size_t AM::triggerTrace(uint32_t traceOption /* starttrigger*/)
     uint32_t regValue = 0;
     // Set Stall trace control register bits
     // Bit 1 : CU (Always ON)  Bit 2 : INT  Bit 3 : STR  Bit 4 : Ext
-    regValue = ((traceOption & XSAM_TRACE_STALL_SELECT_MASK) >> 1) | 0x1 ;
-    size += write(XSAM_TRACE_CTRL_OFFSET, 4, &regValue); 
+    regValue = ((traceOption & XAM_TRACE_STALL_SELECT_MASK) >> 1) | 0x1 ;
+    size += write(XAM_TRACE_CTRL_OFFSET, 4, &regValue); 
 
     return size;    
 }
@@ -244,9 +238,9 @@ void AM::configureDataflow(bool cuHasApCtrlChain)
         return;
 
     uint32_t regValue = 0;
-    read(XSAM_CONTROL_OFFSET, 4, &regValue);
-    regValue = regValue | XSAM_DATAFLOW_EN_MASK;
-    write(XSAM_CONTROL_OFFSET, 4, &regValue);
+    read(XAM_CONTROL_OFFSET, 4, &regValue);
+    regValue = regValue | XAM_DATAFLOW_EN_MASK;
+    write(XAM_CONTROL_OFFSET, 4, &regValue);
 
     if(out_stream) {
       (*out_stream) << "Dataflow enabled on slot : " << getName() << std::endl;
@@ -256,7 +250,7 @@ void AM::configureDataflow(bool cuHasApCtrlChain)
 
 bool AM::has64bit()
 {
-    return ((properties & XSAM_64BIT_PROPERTY_MASK) ? true : false);
+    return ((properties & XAM_64BIT_PROPERTY_MASK) ? true : false);
 }
 
 bool AM::hasDataflow()
@@ -266,7 +260,7 @@ bool AM::hasDataflow()
 
 bool AM::hasStall()
 {
-    return ((properties & XSAM_STALL_PROPERTY_MASK) ? true : false);
+    return ((properties & XAM_STALL_PROPERTY_MASK) ? true : false);
 }
 
 void AM::showProperties()
