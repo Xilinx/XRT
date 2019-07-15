@@ -31,13 +31,13 @@
 #include <cassert>
 #include <random>
 
-#include "drm/drm.h"
+#include <libdrm/drm.h>
 #include "xocl_ioctl.h"
 
 /**
  * Sanity test case similar to xclgem1.cpp, but uses object oriented modeling of BO
  * Performs simple alloc, read/write ,sync and free operations.
- * Compile command: g++ -g -std=c++11 -I ../../include -I ../../drm/xocl xclgem5.cpp
+ * Compile command: g++ -g -std=c++11 -I ../include xclgem5.cpp
  */
 
 class TestBO {

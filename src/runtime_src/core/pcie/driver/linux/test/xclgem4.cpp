@@ -24,7 +24,7 @@
 #include <cassert>
 #include <vector>
 #include <future>
-#include "drm/drm.h"
+#include <libdrm/drm.h>
 #include "xocl_ioctl.h"
 #include "util.h"
 
@@ -32,7 +32,7 @@
  * Validate xocl's multi channel DMA support and measure bandwidth
  * Perform DMA operations from 2 threads in parallel
  * Compile command:
- * g++ -g -pthread -std=c++11 -I ../../include -I ../../drm/xocl xclgem4.cpp util.cpp
+ * g++ -g -pthread -std=c++11 -I ../include xclgem4.cpp util.cpp
  */
 
 class Timer {

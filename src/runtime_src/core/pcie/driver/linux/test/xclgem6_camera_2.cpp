@@ -31,7 +31,7 @@
 #include <cassert>
 #include <random>
 
-#include "drm/drm.h"
+#include <libdrm/drm.h>
 #include "xocl_ioctl.h"
 #include "util.h"
 
@@ -49,7 +49,7 @@
  * We copy the received frame to a file. Image file should be visible in image softwares.
  * Performs simple alloc, read/write ,sync and free operations.
  * Compile command:
- * g++ -g -std=c++11 -I ../../include -I ../../drm/xocl xclgem6_camera_2.cpp util.cpp
+ * g++ -g -std=c++11 -I ../include xclgem6_camera_2.cpp util.cpp
  */
 
 #define BUFFER_NUM_DEFAULT 5

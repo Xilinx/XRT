@@ -31,7 +31,7 @@
 #include <cassert>
 #include <random>
 
-#include "drm/drm.h"
+#include <libdrm/drm.h>
 #include "xocl_ioctl.h"
 #include "util.h"
 
@@ -39,7 +39,7 @@
  * Sanity test for DMA-BUF export/import. Uses object oriented modeling of BO
  * Performs simple alloc, read/write ,sync and free operations.
  * Compile command:
- * g++ -g -std=c++11 -I ../../include -I ../../drm/xocl xclgem6.cpp util.cpp
+ * g++ -g -std=c++11 -I ../include xclgem6.cpp util.cpp
  */
 
 static int runTest(int fd)

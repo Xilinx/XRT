@@ -32,14 +32,14 @@
 #include <future>
 #include <random>
 
-#include "drm/drm.h"
+#include <libdrm/drm.h>
 #include "xocl_ioctl.h"
 #include "util.h"
 
 /**
  * Run buffer allocation and migration from multiple threads simultaneously
  * Compile command:
- * g++ -pthread -g -std=c++11 -I ../../include -I ../../drm/xocl xclgem7.cpp util.cpp
+ * g++ -pthread -g -std=c++11 -I ../include xclgem7.cpp util.cpp
  */
 
 

@@ -25,14 +25,14 @@
 #include <chrono>
 #include <unistd.h>
 #include <cassert>
-#include "drm/drm.h"
+#include <libdrm/drm.h>
 #include "xocl_ioctl.h"
 #include "util.h"
 
 /**
  * Perform unmanaged read/write operations.
  * Compile command:
- * g++ -g -std=c++11 -I ../../include -I ../../drm/xocl xclgem9.cpp util.cpp
+ * g++ -g -std=c++11 -I ../include xclgem9.cpp util.cpp
  */
 
 

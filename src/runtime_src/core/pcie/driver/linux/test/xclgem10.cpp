@@ -32,7 +32,7 @@
 #include <chrono>
 #include <cerrno>
 
-#include "drm/drm.h"
+#include <libdrm/drm.h>
 #include "xocl_ioctl.h"
 #include "util.h"
 
@@ -41,7 +41,7 @@ static const int maxTimeout = 60000;
 /**
  * User interrupt test.
  * Compile command:
- * g++ -g -std=c++11 -I ../../include -I ../../drm/xocl xclgem10.cpp util.cpp
+ * g++ -g -std=c++11 -I ../include xclgem10.cpp util.cpp
  */
 
 int main(int argc, char *argv[])

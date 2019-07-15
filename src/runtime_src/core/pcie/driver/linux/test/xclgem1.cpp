@@ -25,7 +25,7 @@
 #include <chrono>
 #include <unistd.h>
 #include <cassert>
-#include "drm/drm.h"
+#include <libdrm/drm.h>
 #include "xocl_ioctl.h"
 #include "util.h"
 
@@ -33,7 +33,7 @@
  * Sanity test case which creates 3 regular and 1 userptr BOs
  * Performs simple read/write and sync operations.
  * Compile command:
- * g++ -g -std=c++11 -I ../../include -I ../../drm/xocl xclgem1.cpp util.cpp
+ * g++ -g -std=c++11 -I ../include xclgem1.cpp util.cpp
  */
 
 

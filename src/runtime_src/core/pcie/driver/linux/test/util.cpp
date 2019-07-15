@@ -26,7 +26,7 @@
 #include <iostream>
 #include <stdexcept>
 
-#include "drm/drm.h"
+#include <libdrm/drm.h>
 #include "util.h"
 
 namespace xoclutil {
