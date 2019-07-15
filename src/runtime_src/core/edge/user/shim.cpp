@@ -390,7 +390,7 @@ int ZYNQShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
     ert_fill_copybo_cmd(bo.second, src_boHandle, dst_boHandle,
                         src_offset, dst_offset, size);
 
-    int ret = xclExecBuf(bo.first);
+    ret = xclExecBuf(bo.first);
     if (ret) {
         mCmdBOCache->release(bo);
         return ret;

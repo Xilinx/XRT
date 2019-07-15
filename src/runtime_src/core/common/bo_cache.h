@@ -19,6 +19,7 @@
 
 #include <vector>
 #include <utility>
+#include <mutex>
 
 #include "xrt.h"
 #include "ert.h"
