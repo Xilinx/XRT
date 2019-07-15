@@ -274,10 +274,10 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         }
 
         int32_t num_execbo = 0;
-        if (dev_tmp1.number_of_cus > MAX_EXECBO_POOL_SIZE) {
+        if (dev_tmp1.number_of_cus > MIN_EXECBO_POOL_SIZE) {
             num_execbo = dev_tmp1.number_of_cus;
         } else {
-            num_execbo = MAX_EXECBO_POOL_SIZE;
+            num_execbo = MIN_EXECBO_POOL_SIZE;
         }
         dev_tmp1.kernel_execbo_handle.reserve(num_execbo);
         dev_tmp1.kernel_execbo_data.reserve(num_execbo);

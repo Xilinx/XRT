@@ -54,14 +54,6 @@ typedef struct XmaBufferObj
    bool     device_only_buffer;
    void*    private_do_not_touch;
   
-  XmaBufferObj() {
-   data = NULL;
-   size = 0;
-   bank_index = -1;
-   dev_index = -1;
-   device_only_buffer = false;
-   private_do_not_touch = NULL;
-  }
 } XmaBufferObj;
 
 
@@ -87,7 +79,7 @@ typedef struct XmaBufferObj
  *  RETURN:    Non-zero buffer handle on success
  *
  */
-XmaBufferObj xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer);
+XmaBufferObj xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, int32_t* return_code);
 
 /**
  *  xma_plg_buffer_free() - Free a device buffer
