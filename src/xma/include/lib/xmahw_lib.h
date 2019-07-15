@@ -30,7 +30,7 @@
 #include <vector>
 #include <memory>
 
-#define MAX_EXECBO_POOL_SIZE      16
+#define MIN_EXECBO_POOL_SIZE      16
 #define MAX_EXECBO_BUFF_SIZE      4096// 4KB
 #define MAX_KERNEL_REGMAP_SIZE    4032//Some space used by ert pkt
 #define MAX_REGMAP_ENTRIES        1024//Int32 entries; So 4B x 1024 = 4K Bytes
