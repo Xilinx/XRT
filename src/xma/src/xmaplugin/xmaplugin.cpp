@@ -81,9 +81,22 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
         return b_obj_error;
     }
 
-    //Sarab: TODO change for XRT device only buffer
-    uint64_t b_obj_handle = xclAllocBO(dev_handle, size, 0, ddr_bank);
-  
+    /*
+    #define XRT_BO_FLAGS_MEMIDX_MASK        (0xFFFFFFUL)
+    #define XCL_BO_FLAGS_CACHEABLE          (1 << 24)
+    #define XCL_BO_FLAGS_SVM                (1 << 27)
+    #define XCL_BO_FLAGS_DEV_ONLY           (1 << 28)
+    #define XCL_BO_FLAGS_HOST_ONLY          (1 << 29)
+    #define XCL_BO_FLAGS_P2P                (1 << 30)
+    #define XCL_BO_FLAGS_EXECBUF            (1 << 31)
+    */
+    uint64_t b_obj_handle = 0;
+    if (device_only_buffer) {
+        b_obj_handle = xclAllocBO(dev_handle, size, 0, XCL_BO_FLAGS_DEV_ONLY | ddr_bank);
+    } else {
+        b_obj_handle = xclAllocBO(dev_handle, size, 0, ddr_bank);
+    }
+    /*BO handlk is uint64_t
     if (b_obj_handle < 0) {
         std::cout << "ERROR: xma_plg_buffer_alloc failed. handle=0x" << std::hex << b_obj_handle << std::endl;
         //printf("xclAllocBO failed. handle=0x%ullx\n", b_obj_handle);
@@ -91,6 +104,7 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
     }
+    */
     b_obj.paddr = xclGetDeviceAddr(dev_handle, b_obj_handle);
     if (device_only_buffer) {
         b_obj.device_only_buffer = true;

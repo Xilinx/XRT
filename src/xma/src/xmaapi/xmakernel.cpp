@@ -19,7 +19,7 @@
 #include <string.h>
 #include <dlfcn.h>
 #include "lib/xmaapi.h"
-#include "lib/xmahw_hal.h"
+//#include "lib/xmahw_hal.h"
 //#include "lib/xmares.h"
 #include "xmaplugin.h"
 
@@ -30,6 +30,12 @@ extern XmaSingleton *g_xma_singleton;
 XmaKernelSession*
 xma_kernel_session_create(XmaKernelProperties *props)
 {
+    if (!g_xma_singleton->xma_initialized) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
+                   "XMA session creation must be after initialization\n");
+        return NULL;
+    }
+
     XmaKernelSession *session = (XmaKernelSession*) malloc(sizeof(XmaKernelSession));
     if (session == NULL) {
         return NULL;
@@ -82,6 +88,7 @@ xma_kernel_session_create(XmaKernelProperties *props)
     session->kernel_props = *props;
     session->base.channel_id = props->channel_id;
     session->base.session_type = XMA_KERNEL;
+    session->base.stats = NULL;
     session->kernel_plugin = plg;
 
     /*Sarab: Remove xma_res stuff
@@ -131,17 +138,23 @@ xma_kernel_session_create(XmaKernelProperties *props)
     dev_index = props->dev_index;
     cu_index = props->cu_index;
 
+    XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
+    if (dev_index >= hwcfg->num_devices) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
+                   "XMA session creation failed. dev_index not found\n");
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        return NULL;
+    }
+
     g_xma_singleton->num_kernels++;
     
-    XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
-    XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_index].handle;
-
-    session->base.hw_session.dev_handle = hal->dev_handle;
+    session->base.hw_session.dev_handle = hwcfg->devices[dev_index].handle;
 
     //For execbo:
     session->base.hw_session.kernel_info = &hwcfg->devices[dev_index].kernels[cu_index];
 
-    session->base.hw_session.dev_index = hal->dev_index;
+    session->base.hw_session.dev_index = hwcfg->devices[dev_index].dev_index;
 
     //session->kernel_plugin = &g_xma_singleton->kernelcfg[k_handle];
 

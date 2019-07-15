@@ -19,7 +19,7 @@
 #include <string.h>
 #include <dlfcn.h>
 #include "lib/xmaapi.h"
-#include "lib/xmahw_hal.h"
+//#include "lib/xmahw_hal.h"
 //#include "lib/xmares.h"
 #include "xmaplugin.h"
 
@@ -30,6 +30,12 @@ extern XmaSingleton *g_xma_singleton;
 XmaFilterSession*
 xma_filter_session_create(XmaFilterProperties *filter_props)
 {
+    if (!g_xma_singleton->xma_initialized) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
+                   "XMA session creation must be after initialization\n");
+        return NULL;
+    }
+
     XmaFilterSession *filter_session = (XmaFilterSession*) malloc(sizeof(XmaFilterSession));
     if (filter_session == NULL) {
         return NULL;
@@ -83,6 +89,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     filter_session->props = *filter_props;
     filter_session->base.channel_id = filter_props->channel_id;
     filter_session->base.session_type = XMA_FILTER;
+    filter_session->base.stats = NULL;
     filter_session->filter_plugin = plg;
 
     /*Sarab: Remove xma_res stuff
@@ -143,16 +150,23 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     cu_index = filter_props->cu_index;
     //filter_handle = filter_props->cu_index;
 
+    XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
+    if (dev_index >= hwcfg->num_devices) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
+                   "XMA session creation failed. dev_index not found\n");
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        return NULL;
+    }
+
     g_xma_singleton->num_filters++;
 
-    XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
-    XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_index].handle;
-    filter_session->base.hw_session.dev_handle = hal->dev_handle;
+    filter_session->base.hw_session.dev_handle = hwcfg->devices[dev_index].handle;
 
     //For execbo:
     filter_session->base.hw_session.kernel_info = &hwcfg->devices[dev_index].kernels[cu_index];
 
-    filter_session->base.hw_session.dev_index = hal->dev_index;
+    filter_session->base.hw_session.dev_index = hwcfg->devices[dev_index].dev_index;
 
     // Assume it is the first filter plugin for now
     //filter_session->filter_plugin = &g_xma_singleton->filtercfg[filter_handle];

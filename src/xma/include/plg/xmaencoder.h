@@ -55,7 +55,7 @@ typedef struct XmaEncoderPlugin
     /** bits per pixel for primary plane of input format */
     int32_t         bits_per_pixel;
     /** size of allocated kernel-wide private data */
-    size_t          kernel_data_size;
+    //size_t          kernel_data_size;This is removed;
     /** size of allocated private plugin data.*/
     size_t          plugin_data_size;
     /** Initalization callback.  Called during session_create() */

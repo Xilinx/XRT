@@ -27,7 +27,7 @@
 #include "app/xmalogger.h"
 #include "app/xmaparam.h"
 #include "lib/xmaapi.h"
-#include "lib/xmahw_hal.h"
+//#include "lib/xmahw_hal.h"
 #include "lib/xmasignal.h"
 #include <iostream>
 
