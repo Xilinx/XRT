@@ -129,9 +129,6 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mRead     = (readFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclRead");
   if(!mRead)
     return;
-  mUnmgdPread = (unmgdPreadFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclUnmgdPread");
-  if(!mUnmgdPread)
-    return;
 
   mReClock2 = (reClock2FuncType)dlsym(const_cast<void *>(mDriverHandle), "xclReClock2");
   mLockDevice = (lockDeviceFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclLockDevice");
@@ -168,6 +165,10 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mReadTrace = (readTraceFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonReadTrace");
   mWriteHostEvent = (writeHostEventFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclWriteHostEvent");
   mDebugReadIPStatus = (debugReadIPStatusFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclDebugReadIPStatus");
+
+  mUnmgdPread = (unmgdPreadFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclUnmgdPread");
+  if(!mUnmgdPread)
+    return;
 
   // APIs using sysfs
   mGetNumLiveProcesses = (xclGetNumLiveProcessesFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetNumLiveProcesses");

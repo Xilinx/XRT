@@ -497,6 +497,12 @@ int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclR
   return drv ? drv->xclPollCompletion(min_compl, max_compl, comps, actual, timeout) : -ENODEV;
 }
 
+ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t count, uint64_t offset)
+{
+  return 0;
+}
+
+
 /*
  * API to get number of live processes. 
  * Applicable only for System Flow as it supports Multiple processes on same device.
