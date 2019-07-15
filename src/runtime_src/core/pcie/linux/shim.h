@@ -2,12 +2,13 @@
 #define _XOCL_GEM_SHIM_H_
 
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
 
  * Author(s): Umang Parekh
  *          : Sonal Santan
  *          : Ryan Radjabi
- * XOCL GEM HAL Driver layered on top of XOCL kernel driver
+ *
+ * XRT PCIe library layered on top of xocl kernel driver
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -36,6 +37,11 @@
 #include <map>
 #include <cassert>
 #include <vector>
+
+// Forward declaration
+namespace xrt_core {
+    class bo_cache;
+}
 
 namespace xocl {
 
@@ -169,6 +175,7 @@ private:
     uint32_t mStallProfilingNumberSlots;
     uint32_t mStreamProfilingNumberSlots;
     std::string mDevUserName;
+    xrt_core::bo_cache *mCmdBOCache;
 
     bool zeroOutDDR();
     bool isXPR() const {

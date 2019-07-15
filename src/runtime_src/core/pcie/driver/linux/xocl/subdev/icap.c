@@ -79,6 +79,8 @@ typedef struct {
 
 static u32 gate_free_user[] = {0xe, 0xc, 0xe, 0xf};
 
+static struct attribute_group icap_attr_group;
+
 enum icap_sec_level {
 	ICAP_SEC_NONE = 0,
 	ICAP_SEC_DEDICATE,
@@ -2823,17 +2825,31 @@ static void icap_refresh_addrs(struct platform_device *pdev)
 
 static int icap_offline(struct platform_device *pdev)
 {
+	struct icap *icap = platform_get_drvdata(pdev);
+
 	xocl_drvinst_kill_proc(platform_get_drvdata(pdev));
-	icap_refresh_addrs(pdev);
+
+	del_all_users(icap);
+	sysfs_remove_group(&pdev->dev.kobj, &icap_attr_group);
+	free_clear_bitstream(icap);
+	free_clock_freq_topology(icap);
+
+	icap_clean_bitstream_axlf(pdev);
 
 	return 0;
 }
 
 static int icap_online(struct platform_device *pdev)
 {
-	icap_refresh_addrs(pdev);
+	struct icap *icap = platform_get_drvdata(pdev);
+	int ret;
 
-	return 0;
+	icap_refresh_addrs(pdev);
+	ret = sysfs_create_group(&pdev->dev.kobj, &icap_attr_group);
+	if (ret)
+		ICAP_ERR(icap, "create icap attrs failed: %d", ret);
+
+	return ret;
 }
 
 /* Kernel APIs exported from this sub-device driver. */

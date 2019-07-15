@@ -95,6 +95,9 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 		(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 		(void) xocl_mb_connect(xdev);
 	} else {
+		ret = xocl_subdev_offline_by_id(xdev, XOCL_SUBDEV_MAILBOX);
+		if (ret)
+			xocl_err(&pdev->dev, "Offline mailbox failed %d", ret);
 		ret = xocl_subdev_online_all(xdev);
 		if (ret)
 			xocl_err(&pdev->dev, "Online subdevs failed %d", ret);
@@ -330,6 +333,7 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 
 	switch (req->req) {
 	case MAILBOX_REQ_FIREWALL:
+		userpf_info(xdev, "firewall tripped, request reset");
 		xocl_queue_work(xdev, XOCL_WORK_RESET, XOCL_RESET_DELAY);
 		break;
 	case MAILBOX_REQ_MGMT_STATE:
