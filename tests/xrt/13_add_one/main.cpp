@@ -104,8 +104,8 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
 
     const size_t DATA_SIZE = n_elements * ARRAY_SIZE;
 
-    unsigned boHandle1 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem); //input a
-    unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem); // output b
+    unsigned boHandle1 = xclAllocBO(handle, DATA_SIZE, 0, first_mem); //input a
+    unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE, 0, first_mem); // output b
     unsigned long *bo1 = (unsigned long*)xclMapBO(handle, boHandle1, true);
     memset(bo1, 0, DATA_SIZE);
     unsigned long *bo2 = (unsigned long*)xclMapBO(handle, boHandle2, false);
@@ -123,7 +123,7 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
 
 
     //Allocate the exec_bo
-    unsigned execHandle = xclAllocBO(handle, DATA_SIZE, xclBOKind(0), (1<<31));
+    unsigned execHandle = xclAllocBO(handle, DATA_SIZE, 0, (1<<31));
     void* execData = xclMapBO(handle, execHandle, true);
 
     // Fill our data sets with pattern
