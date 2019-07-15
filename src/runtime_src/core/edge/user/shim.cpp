@@ -391,8 +391,7 @@ int ZYNQShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
                         src_offset, dst_offset, size);
 
     int ret = xclExecBuf(bo.first);
-    if (ret == 0)
-        while (xclExecWait(1000) == 0);   if (ret) {
+    if (ret) {
         mCmdBOCache->release(bo);
         return ret;
     }

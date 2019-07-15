@@ -440,7 +440,6 @@ int shim::xclCopyBO(unsigned int dst_boHandle,
                         src_offset, dst_offset, size);
 
     int ret = xclExecBuf(bo.first);
-
     if (ret) {
         mCmdBOCache->release(bo);
         return ret;
