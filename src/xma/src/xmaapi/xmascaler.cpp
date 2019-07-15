@@ -19,7 +19,7 @@
 #include <string.h>
 #include <dlfcn.h>
 #include "lib/xmaapi.h"
-#include "lib/xmahw_hal.h"
+//#include "lib/xmahw_hal.h"
 //#include "lib/xmares.h"
 #include "xmaplugin.h"
 
@@ -125,6 +125,12 @@ void xma_scaler_default_filter_coeff_set(XmaScalerFilterProperties *props)
 XmaScalerSession*
 xma_scaler_session_create(XmaScalerProperties *sc_props)
 {
+    if (!g_xma_singleton->xma_initialized) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
+                   "XMA session creation must be after initialization\n");
+        return NULL;
+    }
+
     XmaScalerSession *sc_session = (XmaScalerSession*) malloc(sizeof(XmaScalerSession));
 	//XmaResources xma_shm_cfg = g_xma_singleton->shm_res_cfg;
     //XmaKernelRes kern_res;
@@ -174,6 +180,7 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     sc_session->props = *sc_props;
     sc_session->base.channel_id = sc_props->channel_id;
     sc_session->base.session_type = XMA_SCALER;
+    sc_session->base.stats = NULL;
     sc_session->scaler_plugin = plg;
 
     /*Sarab: Remove xma_res stuff
@@ -224,16 +231,23 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     cu_index = sc_props->cu_index;
     //enc_handle = enc_props->cu_index;
 
+    XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
+    if (dev_index >= hwcfg->num_devices) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
+                   "XMA session creation failed. dev_index not found\n");
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        return NULL;
+    }
+
     g_xma_singleton->num_scalers++;
 
-    XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
-    XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_index].handle;
-    sc_session->base.hw_session.dev_handle = hal->dev_handle;
+    sc_session->base.hw_session.dev_handle = hwcfg->devices[dev_index].handle;
 
     //For execbo:
     sc_session->base.hw_session.kernel_info = &hwcfg->devices[dev_index].kernels[cu_index];
 
-    sc_session->base.hw_session.dev_index = hal->dev_index;
+    sc_session->base.hw_session.dev_index = hwcfg->devices[dev_index].dev_index;
 
     // Assume it is the first scaler plugin for now
     //sc_session->scaler_plugin = &g_xma_singleton->scalercfg[scal_handle];

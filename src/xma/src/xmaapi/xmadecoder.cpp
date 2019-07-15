@@ -19,7 +19,7 @@
 #include <string.h>
 #include <dlfcn.h>
 #include "lib/xmaapi.h"
-#include "lib/xmahw_hal.h"
+//#include "lib/xmahw_hal.h"
 //#include "lib/xmares.h"
 #include "app/xmalogger.h"
 #include "xmaplugin.h"
@@ -31,6 +31,12 @@ extern XmaSingleton *g_xma_singleton;
 XmaDecoderSession*
 xma_dec_session_create(XmaDecoderProperties *dec_props)
 {
+    if (!g_xma_singleton->xma_initialized) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
+                   "XMA session creation must be after initialization\n");
+        return NULL;
+    }
+
     XmaDecoderSession *dec_session = (XmaDecoderSession*) malloc(sizeof(XmaDecoderSession));
     if (dec_session == NULL)
         return NULL;
@@ -80,6 +86,7 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
     //Sarab: TODO initialize all XMaSession fields
     //It is a C-struct so doesn't have constructor..
     dec_session->decoder_props = *dec_props;
+    dec_session->base.stats = NULL;
     dec_session->base.channel_id = dec_props->channel_id;
     dec_session->base.session_type = XMA_DECODER;
     dec_session->decoder_plugin = plg;
@@ -144,16 +151,24 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
     cu_index = dec_props->cu_index;
     //dec_handle = dec_props->cu_index;
     
+    XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
+    if (dev_index >= hwcfg->num_devices) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
+                   "XMA session creation failed. dev_index not found\n");
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        return NULL;
+    }
+
     g_xma_singleton->num_decoders++;
 
-    XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
-    XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_index].handle;
+    //XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_index].handle;
 
-    dec_session->base.hw_session.dev_handle = hal->dev_handle;
+    dec_session->base.hw_session.dev_handle = hwcfg->devices[dev_index].handle;
     //For execbo:
     dec_session->base.hw_session.kernel_info = &hwcfg->devices[dev_index].kernels[cu_index];
 
-    dec_session->base.hw_session.dev_index = hal->dev_index;
+    dec_session->base.hw_session.dev_index = hwcfg->devices[dev_index].dev_index;
 
     //dec_session->decoder_plugin = &g_xma_singleton->decodercfg[dec_handle];
 
