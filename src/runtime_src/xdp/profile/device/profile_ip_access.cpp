@@ -164,6 +164,15 @@ int ProfileIP::unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offse
     return 0;
 }
 
+double ProfileIP::getDeviceClock()
+{
+    if(!mapped)
+        return 0;
+
+    xrt::device* xrtDevice = (xrt::device*)xrt_device_handle;
+    return xrtDevice->getDeviceClock().get();
+}
+
 void ProfileIP::showWarning(std::string reason) {
     /**
      * TODO: we will need to discuss more on how xdp should

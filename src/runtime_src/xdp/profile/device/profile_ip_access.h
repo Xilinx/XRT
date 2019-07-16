@@ -135,6 +135,7 @@ public:
     uint32_t setLogStream(std::ostream* oStream);
     std::ostream* getLogStream() { return out_stream; }
 
+    double getDeviceClock();
 private:
     void* xrt_device_handle;  /* the xrt device handle from the hal layer */
     bool  mapped;             /* flag to keep track of if the ip has been mapped */

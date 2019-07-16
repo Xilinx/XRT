@@ -151,9 +151,10 @@ size_t AIM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
     // NOTE: this also latches the sampled metric counters
     size += read(XAIM_SAMPLE_OFFSET, 4, &sampleInterval);
 
-    // Need to do this for every xilmon : but done for only the first
+    // Samples are taken almost immediately and it is assumed that the intervals are close to each other.
+    // So, only one sample interval reading is okay.
     if (s==0){
-//        counterResults.SampleIntervalUsec = sampleInterval / xclGetDeviceClockFreqMHz();
+        counterResults.SampleIntervalUsec = sampleInterval / getDeviceClock();
     }
 
     size += read(XAIM_SAMPLE_WRITE_BYTES_OFFSET, 4, &counterResults.WriteBytes[s]);
