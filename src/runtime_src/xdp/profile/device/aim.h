@@ -62,10 +62,10 @@ public:
     size_t stopCounter();
     size_t readCounter(xclCounterResults& counterResult, uint32_t index);
 
-    bool isHostMonitor();
+    bool isHostMonitor() const ;
     bool isShellMonitor();
 
-    bool has64bit();
+    bool has64bit() const ;
 
     size_t triggerTrace(uint32_t traceOption /*startTrigger*/);
 

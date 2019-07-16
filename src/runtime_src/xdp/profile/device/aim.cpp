@@ -216,12 +216,12 @@ size_t AIM::triggerTrace(uint32_t traceOption /* starttrigger*/)
     return size;
 }
 
-bool AIM::isHostMonitor()
+bool AIM::isHostMonitor() const
 {
     return ((properties & XAIM_HOST_PROPERTY_MASK) ? true : false);
 }
 
-bool AIM::isShellMonitor()
+bool AIM::isShellMonitor() 
 {
     if(isHostMonitor() && (getName().find("HOST" /*IP_LAYOUT_HOST_NAME*/) == std::string::npos)) {
        return true;
@@ -229,7 +229,7 @@ bool AIM::isShellMonitor()
     return false;
 }
 
-bool AIM::has64bit()
+bool AIM::has64bit() const
 {
     return ((properties & XAIM_64BIT_PROPERTY_MASK) ? true : false);
 }

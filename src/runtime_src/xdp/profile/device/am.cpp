@@ -205,7 +205,7 @@ size_t AM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
  * Returns  0 if Version2 = Current Version1
  * Returns -1 if Version2 < Current Version1
  */
-signed AM::compareVersion(unsigned major2, unsigned minor2)
+signed AM::compareVersion(unsigned major2, unsigned minor2) const
 {
     if (major2 > major_version)
       return 1;
@@ -248,17 +248,17 @@ void AM::configureDataflow(bool cuHasApCtrlChain)
 
 }
 
-bool AM::has64bit()
+bool AM::has64bit() const
 {
     return ((properties & XAM_64BIT_PROPERTY_MASK) ? true : false);
 }
 
-bool AM::hasDataflow()
+bool AM::hasDataflow() const
 {
     return ((compareVersion(1, 1) < 0) ? true : false);
 }
 
-bool AM::hasStall()
+bool AM::hasStall() const
 {
     return ((properties & XAM_STALL_PROPERTY_MASK) ? true : false);
 }

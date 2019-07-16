@@ -64,11 +64,11 @@ public:
 
     void configureDataflow(bool cuHasApCtrlChain);
 
-    bool has64bit();
-    bool hasDataflow();
-    bool hasStall();
+    bool has64bit() const;
+    bool hasDataflow() const;
+    bool hasStall() const;
 
-    signed compareVersion(unsigned major2, unsigned minor2);
+    signed compareVersion(unsigned major2, unsigned minor2) const;
 
     size_t triggerTrace(uint32_t traceOption /*startTrigger*/);
 
