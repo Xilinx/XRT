@@ -157,9 +157,12 @@ static ssize_t mig_calibration_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	void __iomem *memcalib;
+
+	memcalib = xocl_iores_get_base(lro, IORES_MEMCALIB);
 
 	return sprintf(buf, "%d\n",
-		lro->ready ? MGMT_READ_REG32(lro, GENERAL_STATUS_BASE) : 0);
+		(memcalib && lro->ready) ? XOCL_READ_REG32(memcalib) : 0);
 }
 static DEVICE_ATTR_RO(mig_calibration);
 

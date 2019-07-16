@@ -27,12 +27,18 @@
 #include <linux/time.h>
 #include <linux/types.h>
 #include <asm/io.h>
-#include "mgmt-reg.h"
 #include "mgmt-ioctl.h"
 #include "xclfeatures.h"
 #include "../xocl_drv.h"
 
-#define GENERAL_STATUS_BASE        0x032000
+/* defines for old DSAs in platform_axilite_flush() */
+#define _FEATURE_ROM_BASE		0xB0000
+#define _MB_GPIO			0x131000
+#define _SYSMON_BASE			0xA0000
+#define _MB_IMAGE_SCHE			0x140000
+#define _XHWICAP_CR			(0x020000 + 0x10c)
+#define _GPIO_NULL_BASE			0x1FFF000
+#define _AXI_GATE_BASE			0x030000
 
 /*
  * Interrupt controls
@@ -146,7 +152,7 @@ void get_pcie_link_info(struct xclmgmt_dev *lro,
 void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online);
 
 /* utils.c */
-unsigned compute_unit_busy(struct xclmgmt_dev *lro);
+// unsigned compute_unit_busy(struct xclmgmt_dev *lro);
 int pci_fundamental_reset(struct xclmgmt_dev *lro);
 
 long reset_hot_ioctl(struct xclmgmt_dev *lro);

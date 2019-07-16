@@ -119,40 +119,40 @@ void platform_axilite_flush(struct xclmgmt_dev *lro)
 	 * (Feature ROM, MB Reset GPIO, Sysmon)
 	 */
 	for (i = 0; i < 4; i++) {
-		val = MGMT_READ_REG32(lro, FEATURE_ROM_BASE);
+		val = MGMT_READ_REG32(lro, _FEATURE_ROM_BASE);
 		xocl_af_clear(lro);
 	}
 
 	for (i = 0; i < 4; i++) {
-		gpio_val = MGMT_READ_REG32(lro, MB_GPIO);
+		gpio_val = MGMT_READ_REG32(lro, _MB_GPIO);
 		xocl_af_clear(lro);
 	}
 
 	for (i = 0; i < 4; i++) {
-		val = MGMT_READ_REG32(lro, SYSMON_BASE);
+		val = MGMT_READ_REG32(lro, _SYSMON_BASE);
 		xocl_af_clear(lro);
 	}
 
 	/* Can only read this safely if not in reset */
 	if (gpio_val == 1) {
 		for (i = 0; i < 4; i++) {
-			val = MGMT_READ_REG32(lro, MB_IMAGE_SCHE);
+			val = MGMT_READ_REG32(lro, _MB_IMAGE_SCHE);
 			xocl_af_clear(lro);
 		}
 	}
 
 	for (i = 0; i < 4; i++) {
-		val = MGMT_READ_REG32(lro, XHWICAP_CR);
+		val = MGMT_READ_REG32(lro, _XHWICAP_CR);
 		xocl_af_clear(lro);
 	}
 
 	for (i = 0; i < 4; i++) {
-		val = MGMT_READ_REG32(lro, GPIO_NULL_BASE);
+		val = MGMT_READ_REG32(lro, _GPIO_NULL_BASE);
 		xocl_af_clear(lro);
 	}
 
 	for (i = 0; i < 4; i++) {
-		val = MGMT_READ_REG32(lro, AXI_GATE_BASE);
+		val = MGMT_READ_REG32(lro, _AXI_GATE_BASE);
 		xocl_af_clear(lro);
 	}
 }
@@ -355,6 +355,7 @@ done:
 	return rc;
 }
 
+#if 0
 unsigned compute_unit_busy(struct xclmgmt_dev *lro)
 {
 	int i = 0;
@@ -376,6 +377,7 @@ unsigned compute_unit_busy(struct xclmgmt_dev *lro)
 	}
 	return result;
 }
+#endif
 
 void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 {

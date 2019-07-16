@@ -204,6 +204,7 @@ void device_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj)
 {
 	u32 val, major, minor, patch;
 	struct FeatureRomHeader rom;
+	void __iomem *memcalib;
 
 	memset(obj, 0, sizeof(struct xclmgmt_ioc_info));
 	sscanf(XRT_DRIVER_VERSION, "%d.%d.%d", &major, &minor, &patch);
@@ -215,7 +216,8 @@ void device_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj)
 	obj->driver_version = XOCL_DRV_VER_NUM(major, minor, patch);
 	obj->pci_slot = PCI_SLOT(lro->core.pdev->devfn);
 
-	val = MGMT_READ_REG32(lro, GENERAL_STATUS_BASE);
+	memcalib = xocl_iores_get_base(lro, IORES_MEMCALIB);
+	val = memcalib ? XOCL_READ_REG32(memcalib) : 0;
 	mgmt_info(lro, "MIG Calibration: %d\n", val);
 
 	obj->mig_calibration[0] = (val & BIT(0)) ? true : false;
@@ -606,9 +608,13 @@ static void xclmgmt_icap_get_data(struct xclmgmt_dev *lro, void *buf)
 static void xclmgmt_get_data(struct xclmgmt_dev *lro, void *buf)
 {
 	struct xcl_common *data = NULL;
+	void __iomem *memcalib;
 
 	data = (struct xcl_common *)buf;
-	data->mig_calib = lro->ready ? MGMT_READ_REG32(lro, GENERAL_STATUS_BASE) : 0;
+	memcalib = xocl_iores_get_base(lro, IORES_MEMCALIB);
+
+	data->mig_calib = (memcalib && lro->ready) ?
+		XOCL_READ_REG32(memcalib) : 0;
 
 }
 
