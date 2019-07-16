@@ -46,6 +46,12 @@ typedef struct XmaParameter {
     void        *value; /**< pointer to buffer holding data */
 } XmaParameter;
 
+typedef struct XmaXclbinParameter {
+    char        *xclbin_name; /**< xclbin path + name*/
+    int32_t      device_id;//device on whic to load the xclbin
+} XmaXclbinParameter;
+
+
 
 #ifdef __cplusplus
 }

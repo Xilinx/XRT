@@ -27,6 +27,11 @@
 #include <map>
 #include <vector>
 
+// Forward declaration
+namespace xrt_core {
+    class bo_cache;
+}
+
 namespace ZYNQ {
 
 // Forward declaration
@@ -51,7 +56,7 @@ public:
                   size_t size);
   size_t xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf,
                  size_t size);
-  unsigned int xclAllocBO(size_t size, xclBOKind domain, unsigned flags);
+  unsigned int xclAllocBO(size_t size, int unused, unsigned flags);
   unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
   unsigned int xclGetHostBO(uint64_t paddr, size_t size);
   void xclFreeBO(unsigned int boHandle);
@@ -81,6 +86,8 @@ public:
 
   int xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size,
                 size_t offset);
+  int xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size,
+                size_t dst_offset, size_t src_offset);
 
   int xclGetDeviceInfo2(xclDeviceInfo2 *info);
 
@@ -96,6 +103,7 @@ private:
   xclVerbosityLevel mVerbosity;
   int mKernelFD;
   std::map<uint64_t, uint32_t *> mKernelControl;
+  xrt_core::bo_cache *mCmdBOCache;
 };
 };
 

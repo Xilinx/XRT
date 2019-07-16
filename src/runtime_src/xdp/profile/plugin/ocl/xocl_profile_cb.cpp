@@ -351,7 +351,7 @@ cb_action_unmap (xocl::event* event,cl_int status, cl_mem buffer, size_t size, u
     auto device = queue->get_device();
 
     // Catch if buffer is *not* resident on device (covered by NDRange migration) or is P2P buffer
-    if (!xocl::xocl(buffer)->is_resident(device) || xocl::xocl(buffer)->is_p2p_memory())
+    if (!xocl::xocl(buffer)->is_resident(device) || xocl::xocl(buffer)->no_host_memory())
       return;
 
     // Create string to specify event and its dependencies

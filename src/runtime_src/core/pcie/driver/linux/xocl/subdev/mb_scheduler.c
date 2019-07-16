@@ -95,6 +95,10 @@
 	ioread32((base) + (r_off) - ERT_CSR_ADDR)
 #define csr_write32(val, base, r_off)		\
 	iowrite32((val), (base) + (r_off) - ERT_CSR_ADDR)
+
+/* Highest bit in ip_reference indicate if it's exclusively reserved. */
+#define	IP_EXCL_RSVD_MASK	(~(1 << 31))
+
 /* constants */
 static const unsigned int no_index = -1;
 
@@ -1145,6 +1149,12 @@ struct exec_core {
 	struct exec_ops		   *ops;
 
 	unsigned int		   uid;
+
+	/*
+	 * For each CU, ip_reference contains either number of shared users
+	 * when the MSB is not set, or the PID of the process that exclusively
+	 * reserved it when MSB is set.
+	 */
 	unsigned int		   ip_reference[MAX_CUS];
 };
 
@@ -2841,6 +2851,66 @@ create_client(struct platform_device *pdev, void **priv)
 	return ret;
 }
 
+static inline bool ip_excl_held(u32 ip_ref)
+{
+	return ((ip_ref & ~IP_EXCL_RSVD_MASK) != 0);
+}
+
+static inline pid_t ip_excl_holder(struct exec_core *exec, u32 ip_idx)
+{
+	u32 ref = exec->ip_reference[ip_idx];
+
+	if (ip_excl_held(ref))
+		return (ref & IP_EXCL_RSVD_MASK);
+	return 0;
+}
+
+static int add_ip_ref(struct xocl_dev *xdev, struct exec_core *exec,
+	u32 ip_idx, pid_t pid, bool shared)
+{
+	u32 ref = exec->ip_reference[ip_idx];
+
+	BUG_ON(ip_idx >= MAX_CUS);
+	BUG_ON(!mutex_is_locked(&xdev->dev_lock));
+
+	if (ip_excl_held(ref)) {
+		userpf_err(xdev, "CU(%d) is exclusively held by process %d",
+			ip_idx, ip_excl_holder(exec, ip_idx));
+		return -EBUSY;
+	}
+	if (!shared && ref) {
+		userpf_err(xdev, "CU(%d) has %d shared users", ip_idx, ref);
+		return -EBUSY;
+	}
+
+	if (shared) {
+		BUG_ON(ref >= IP_EXCL_RSVD_MASK);
+		exec->ip_reference[ip_idx]++;
+	} else {
+		exec->ip_reference[ip_idx] = ~IP_EXCL_RSVD_MASK | pid;
+	}
+	return 0;
+}
+
+static int rem_ip_ref(struct xocl_dev *xdev, struct exec_core *exec, u32 ip_idx)
+{
+	u32 ref = exec->ip_reference[ip_idx];
+
+	BUG_ON(ip_idx >= MAX_CUS);
+	BUG_ON(!mutex_is_locked(&xdev->dev_lock));
+
+	if (ref == 0) {
+		userpf_err(xdev, "CU(%d) has never been reserved", ip_idx);
+		return -EINVAL;
+	}
+
+	if (ip_excl_held(ref))
+		exec->ip_reference[ip_idx] = 0;
+	else
+		exec->ip_reference[ip_idx]--;
+	return 0;
+}
+
 static void destroy_client(struct platform_device *pdev, void **priv)
 {
 	struct client_ctx *client = (struct client_ctx *)(*priv);
@@ -2894,7 +2964,7 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 		goto done;
 
 	/*
-	 * This happens when application exists without formally releasing the
+	 * This happens when application exits without formally releasing the
 	 * contexts on CUs. Give up our contexts on CUs and our lock on xclbin.
 	 * Note, that implicit CUs (such as CDMA) do not add to ip_reference.
 	 */
@@ -2902,21 +2972,19 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 	layout = XOCL_IP_LAYOUT(xdev);
 	xclbin_id = XOCL_XCLBIN_ID(xdev);
 
+	client_release_implicit_cus(exec, client);
+	client->virt_cu_ref = 0;
+
 	bit = layout
 	  ? find_first_bit(client->cu_bitmap, layout->m_count)
 	  : MAX_CUS;
-
 	while (layout && (bit < layout->m_count)) {
-		if (exec->ip_reference[bit]) {
+		if (rem_ip_ref(xdev, exec, bit) == 0) {
 			userpf_info(xdev, "CTX reclaim (%pUb, %d, %u)",
 				xclbin_id, pid, bit);
-			exec->ip_reference[bit]--;
 		}
 		bit = find_next_bit(client->cu_bitmap, layout->m_count, bit + 1);
 	}
-
-	client->virt_cu_ref = 0;
-	client_release_implicit_cus(exec, client);
 	bitmap_zero(client->cu_bitmap, MAX_CUS);
 
 	(void) xocl_icap_unlock_bitstream(xdev, xclbin_id, pid);
@@ -2946,16 +3014,19 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 {
 	struct drm_xocl_ctx *args = data;
 	int ret = 0;
-	int pid = pid_nr(task_tgid(current));
+	pid_t pid = pid_nr(task_tgid(current));
 	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
 	struct exec_core *exec = platform_get_drvdata(pdev);
 	xuid_t *xclbin_id;
 	u32 cu_idx = args->cu_index;
+	bool shared;
 
 	mutex_lock(&xdev->dev_lock);
 
+	/* Sanity check arguments for add/rem CTX */
 	xclbin_id = XOCL_XCLBIN_ID(xdev);
 	if (!xclbin_id || !uuid_equal(xclbin_id, &args->xclbin_id)) {
+		userpf_err(xdev, "try to add/rem CTX on wrong xclbin");
 		ret = -EBUSY;
 		goto out;
 	}
@@ -2968,13 +3039,13 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 		goto out;
 	}
 
-	if (cu_idx != XOCL_CTX_VIRT_CU_INDEX
-	    && !exec_valid_cu(exec,cu_idx)) {
-		userpf_err(xdev, "cuidx(%d) cannot be reserved\n",cu_idx);
+	if (cu_idx != XOCL_CTX_VIRT_CU_INDEX && !exec_valid_cu(exec,cu_idx)) {
+		userpf_err(xdev, "invalid CU(%d)",cu_idx);
 		ret = -EINVAL;
 		goto out;
 	}
 
+	/* Handle CTX removal */
 	if (args->op == XOCL_CTX_OP_FREE_CTX) {
 		if (cu_idx == XOCL_CTX_VIRT_CU_INDEX) {
 			if (client->virt_cu_ref == 0) {
@@ -2990,7 +3061,7 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 			if (ret) // Try to release unreserved CU
 				goto out;
 			--client->num_cus;
-			--exec->ip_reference[cu_idx];
+			(void) rem_ip_ref(xdev, exec, cu_idx);
 		}
 
 		// We just gave up the last context, unlock the xclbin
@@ -3000,34 +3071,46 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 		goto out;
 	}
 
+	/* Handle CTX add */
 	if (args->op != XOCL_CTX_OP_ALLOC_CTX) {
 		ret = -EINVAL;
 		goto out;
 	}
 
-	if (args->flags != XOCL_CTX_SHARED) {
-		userpf_err(xdev, "only support shared contexts");
-		ret = -EOPNOTSUPP;
-		goto out;
-	}
-
-	if (cu_idx != XOCL_CTX_VIRT_CU_INDEX &&
-		test_and_set_bit(cu_idx, client->cu_bitmap)) {
-		// Context was previously allocated for the same CU,
-		// cannot allocate again. Need to implement per CU ref
-		// counter to make it work.
-		userpf_info(xdev, "CTX already allocated by this process");
+	shared = (args->flags == XOCL_CTX_SHARED);
+	if (!shared && cu_idx == XOCL_CTX_VIRT_CU_INDEX) {
+		userpf_err(xdev,
+			"exclusively reserve virtual CU is not allowed");
 		ret = -EINVAL;
 		goto out;
 	}
+
+	if (cu_idx != XOCL_CTX_VIRT_CU_INDEX) {
+		if (test_and_set_bit(cu_idx, client->cu_bitmap)) {
+			// Context was previously allocated for the same CU,
+			// cannot allocate again. Need to implement per CU ref
+			// counter to make it work.
+			userpf_err(xdev, "CTX already added by this process");
+			ret = -EINVAL;
+			goto out;
+		}
+		if (add_ip_ref(xdev, exec, cu_idx, pid, shared) != 0) {
+			clear_bit(cu_idx, client->cu_bitmap);
+			ret = -EBUSY;
+			goto out;
+		}
+	}
+
 
 	if (CLIENT_NUM_CU_CTX(client) == 0) {
 		// This is the first context on any CU for this process,
 		// lock the xclbin
 		ret = xocl_icap_lock_bitstream(xdev, xclbin_id, pid);
 		if (ret) {
-			if (cu_idx != XOCL_CTX_VIRT_CU_INDEX)
+			if (cu_idx != XOCL_CTX_VIRT_CU_INDEX) {
+				(void) rem_ip_ref(xdev, exec, cu_idx);
 				clear_bit(cu_idx, client->cu_bitmap);
+			}
 			goto out;
 		}
 	}
@@ -3038,7 +3121,6 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 		++client->virt_cu_ref;
 	} else {
 		++client->num_cus;
-		++exec->ip_reference[cu_idx];
 	}
 
 out:
@@ -3385,6 +3467,40 @@ out:
 
 }
 
+int cu_map_addr(struct platform_device *pdev, u32 cu_idx, void *drm_filp,
+	u32 *addrp)
+{
+	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
+	struct exec_core *exec = platform_get_drvdata(pdev);
+	struct drm_file *filp = drm_filp;
+	struct client_ctx *client = filp->driver_priv;
+	struct xocl_cu *xcu = NULL;
+
+	mutex_lock(&xdev->dev_lock);
+
+	if (cu_idx >= MAX_CUS) {
+		userpf_err(xdev, "cu index (%d) is too big\n", cu_idx);
+		mutex_unlock(&xdev->dev_lock);
+		return -EINVAL;
+	}
+	if (!test_bit(cu_idx, client->cu_bitmap)) {
+		userpf_err(xdev, "cu(%d) isn't reserved\n", cu_idx);
+		mutex_unlock(&xdev->dev_lock);
+		return -EINVAL;
+	}
+	if (ip_excl_holder(exec, cu_idx) == 0) {
+		userpf_err(xdev, "cu(%d) isn't exclusively reserved\n", cu_idx);
+		mutex_unlock(&xdev->dev_lock);
+		return -EINVAL;
+	}
+
+	xcu = exec->cus[cu_idx];
+	BUG_ON(xcu == NULL);
+	*addrp = xcu->addr;
+	mutex_unlock(&xdev->dev_lock);
+	return 0;
+}
+
 struct xocl_mb_scheduler_funcs sche_ops = {
 	.create_client = create_client,
 	.destroy_client = destroy_client,
@@ -3393,6 +3509,7 @@ struct xocl_mb_scheduler_funcs sche_ops = {
 	.stop = stop,
 	.reset = reset,
 	.reconfig = reconfig,
+	.cu_map_addr = cu_map_addr,
 };
 
 /* sysfs */
@@ -3521,7 +3638,6 @@ static int mb_scheduler_probe(struct platform_device *pdev)
 		goto err;
 
 	init_scheduler_thread(&scheduler0);
-	xocl_subdev_register(pdev, XOCL_SUBDEV_MB_SCHEDULER, &sche_ops);
 	platform_set_drvdata(pdev, exec);
 
 	DRM_INFO("command scheduler started\n");
@@ -3562,8 +3678,12 @@ static int mb_scheduler_remove(struct platform_device *pdev)
 	return 0;
 }
 
+struct xocl_drv_private sche_priv = {
+	.ops = &sche_ops,
+};
+
 static struct platform_device_id mb_sche_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_MB_SCHEDULER), 0 },
+	{ XOCL_DEVNAME(XOCL_MB_SCHEDULER), (kernel_ulong_t)&sche_priv },
 	{ },
 };
 

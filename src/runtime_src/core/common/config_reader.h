@@ -303,6 +303,16 @@ get_feature_toggle(const std::string& feature)
   return detail::get_bool_value(feature.c_str(),false);
 }
 
+/**
+ * Set CMD BO cache size. CUrrently it is only used in xclCopyBO()
+ */
+inline unsigned int
+get_cmdbo_cache()
+{
+  static unsigned int value = detail::get_uint_value("Runtime.cmdbo_cache",0x4);
+  return value;
+}
+
 inline std::string
 get_hw_em_driver()
 {

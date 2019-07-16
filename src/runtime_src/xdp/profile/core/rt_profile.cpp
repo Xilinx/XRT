@@ -197,7 +197,7 @@ namespace xdp {
     mWriter->attach(writer);
 
     // Gather data for RunSummary
-    if ((mProfileFlags & RTUtil::FILE_SUMMARY) && (writer != nullptr)) {
+    if ((mFileFlags & RTUtil::FILE_SUMMARY) && (writer != nullptr)) {
       mRunSummary->addFile(writer->getFileName(), RunSummary::FT_PROFILE);
     }
   }
@@ -207,7 +207,7 @@ namespace xdp {
     mLogger->attach(writer);
 
     // Gather data for TimingSummary
-    if ((mProfileFlags & RTUtil::FILE_TIMELINE_TRACE) && (writer != nullptr)) {
+    if ((mFileFlags & RTUtil::FILE_TIMELINE_TRACE) && (writer != nullptr)) {
       mRunSummary->addFile(writer->getFileName(), RunSummary::FT_TRACE);
     }
   }

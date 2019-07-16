@@ -41,23 +41,7 @@ using addr_type = xocl::xclbin::addr_type;
 
 namespace pt = boost::property_tree;
 
-static std::string::size_type
-ifind(std::string s1, std::string s2)
-{
-  std::transform(s1.begin(),s1.end(),s1.begin(),::tolower);
-  std::transform(s2.begin(),s2.end(),s2.begin(),::tolower);
-  return s1.find(s2);
-}
-
-static bool
-iequals(std::string s1, std::string s2)
-{
-  std::transform(s1.begin(),s1.end(),s1.begin(),::tolower);
-  std::transform(s2.begin(),s2.end(),s2.begin(),::tolower);
-  return s1==s2;
-}
-
-void
+static void
 setXYZ(size_t result[3], const pt::ptree& xml_element)
 {
   result[0] = xml_element.get<size_t>("<xmlattr>.x");
@@ -87,51 +71,16 @@ private:
     using xml_platform_type = pt::ptree;
     const xml_platform_type& xml_platform;
 
-    std::string m_dsa_name;
-
-    void
-    init_dsa_name()
-    {
-      if (auto vendor = xml_platform.get_optional<std::string>("<xmlattr>.vendor"))
-        m_dsa_name.append(vendor.get()).append(":");
-      if (auto boardid = xml_platform.get_optional<std::string>("<xmlattr>.boardid"))
-        m_dsa_name.append(boardid.get()).append(":");
-      if (auto name = xml_platform.get_optional<std::string>("<xmlattr>.name"))
-        m_dsa_name.append(name.get()).append(":");
-      if (auto major = xml_platform.get_optional<std::string>("version.<xmlattr>.major"))
-        m_dsa_name.append(major.get()).append(".");
-      if (auto minor = xml_platform.get_optional<std::string>("version.<xmlattr>.minor"))
-        m_dsa_name.append(minor.get());
-    }
-
   public:
     explicit
     platform_wrapper(const xml_platform_type& p)
       : xml_platform(p)
     {
-      init_dsa_name();
-#if 0
-      if (version() < 50)
-        throw xocl::error(CL_INVALID_BINARY,"Unsupported platform '" + m_dsa_name + "'");
-#endif
     }
 
     const xml_platform_type&
     xml() const
     { return xml_platform; }
-
-    const std::string&
-    dsa_name() const
-    {
-      return m_dsa_name;
-    }
-
-    bool
-    is_unified() const
-    {
-      // Since 17.4, we only support unified platform.
-      return true;
-    }
 
     unsigned int
     version() const
@@ -145,11 +94,6 @@ private:
       return version;
     }
 
-    bool
-    sparse_connectivity() const
-    {
-      return (m_dsa_name.find(":4ddr") != std::string::npos);
-    }
   }; // class platform
 
   ////////////////////////////////////////////////////////////////
@@ -427,22 +371,6 @@ private:
     }
 
     void
-    init_controlport()
-    {
-      for (auto& xml_port : xml_kernel) {
-        if (xml_port.first != "port")
-          continue;
-        auto port_name = xml_port.second.get<std::string>("<xmlattr>.name");
-        auto mode = xml_port.second.get<std::string>("<xmlattr>.mode");
-        if (ifind(port_name,"S_AXI_")==0 && iequals(mode,"slave")) {
-          if (!m_symbol.controlport.empty())
-            throw xocl::error(CL_INVALID_BINARY,"More than 1 AXI Slave (control) port for  kernel " + name());
-          m_symbol.controlport = port_name;
-        }
-      }
-    }
-
-    void
     init_args()
     {
       struct X
@@ -519,7 +447,6 @@ private:
           if (xml_remap.first != "addrRemap")
             continue;
           instance.base = convert(xml_remap.second.get<std::string>("<xmlattr>.base"));
-          instance.port = xml_remap.second.get<std::string>("<xmlattr>.port");
         }
         m_symbol.instances.emplace_back(std::move(instance));
       }
@@ -632,14 +559,10 @@ private:
       init_instances();
       init_stringtable();
       init_workgroup();
-      init_controlport();
 
       m_symbol.name = m_name;
-      m_symbol.dsaname = m_platform->dsa_name();
       m_symbol.attributes = xml_kernel.get<std::string>("<xmlattr>.attributes","");
       m_symbol.hash = hash();
-
-      m_symbol.cu_interrupt = xml_kernel.get<bool>("<xmlattr>.interrupt",false);
 
       m_symbol.target = m_core->target();
     }
@@ -656,15 +579,6 @@ private:
       return m_symbol;
     }
 
-    size_t
-    cu_base_offset() const
-    {
-      size_t offset = std::numeric_limits<size_t>::max();
-      for (auto& instance : m_symbol.instances)
-        offset = std::min(offset,instance.base);
-      return offset;
-    }
-
     void
     cu_base_address_map(std::vector<uint64_t>& amap) const
     {
@@ -679,12 +593,6 @@ private:
       m_name = name.substr(0,name.find_last_of("_"));
       m_symbol.name = m_name;
       return name;
-    }
-
-    bool
-    cu_interrupt() const
-    {
-      return m_symbol.cu_interrupt;
     }
 
     size_t
@@ -704,22 +612,6 @@ private:
   std::vector<std::unique_ptr<core_wrapper>> m_cores;
 
   pt::ptree xml_project;
-
-  bool
-  driver_match(const kernel_wrapper& k, const std::string& dsa) const
-  {
-    // Deal with old dsa's
-    if(dsa.size() == 0)
-      return true;
-
-    // Deal with ibm capi dsa's
-    if(dsa.find("CAPI") != std::string::npos)
-      return true;
-
-    std::string kernel_dsa = k.platform()->dsa_name();
-
-    return (kernel_dsa==dsa) ? true : false;
-  }
 
 public:
   explicit
@@ -825,15 +717,6 @@ public:
     return symbols;
   }
 
-  size_t
-  kernel_max_regmap_size() const
-  {
-    size_t sz = 0;
-    for (auto& kernel : m_kernels)
-      sz = std::max(kernel->regmap_size(),sz);
-    return sz;
-  }
-
   const xocl::xclbin::symbol&
   lookup_kernel(const std::string& kernel_name) const
   {
@@ -842,18 +725,6 @@ public:
         return kernel->symbol();
     }
     throw xocl::error(CL_INVALID_KERNEL_NAME,"No kernel with name '" + kernel_name + "' found in program");
-  }
-
-  std::string
-  dsa_name() const
-  {
-    return m_platforms[0]->dsa_name();
-  }
-
-  bool
-  is_unified() const
-  {
-    return m_platforms[0]->is_unified();
   }
 
   std::string
@@ -872,31 +743,6 @@ public:
   profilers() const
   {
     return m_cores[0]->profilers();
-  }
-
-  size_t
-  cu_base_offset() const
-  {
-    size_t offset = std::numeric_limits<size_t>::max();
-    for (auto& kernel : m_kernels)
-      offset = std::min(offset,kernel->cu_base_offset());
-    return offset;
-  }
-
-  size_t
-  cu_size() const
-  {
-    return m_platforms[0]->is_unified() ? 16 : 12;
-  }
-
-  bool
-  cu_interrupt() const
-  {
-    bool retval = true;
-    for (auto& kernel : m_kernels)
-      if (!kernel->cu_interrupt())
-        return false;
-    return retval;
   }
 
   std::vector<uint64_t>
@@ -1174,14 +1020,6 @@ struct xclbin::impl
   {}
 
   std::string
-  dsa_name() const
-  { return m_xml.dsa_name(); }
-
-  bool
-  is_unified() const
-  { return m_xml.is_unified(); }
-
-  std::string
   project_name() const
   { return m_xml.project_name(); }
 
@@ -1201,10 +1039,6 @@ struct xclbin::impl
   kernel_symbols() const
   { return m_xml.kernel_symbols(); }
 
-  size_t
-  kernel_max_regmap_size() const
-  { return m_xml.kernel_max_regmap_size(); }
-
   const symbol&
   lookup_kernel(const std::string& name) const
   { return m_xml.lookup_kernel(name); }
@@ -1220,18 +1054,6 @@ struct xclbin::impl
   profilers_type
   profilers() const
   { return m_xml.profilers(); }
-
-  size_t
-  cu_base_offset() const
-  { return m_xml.cu_base_offset(); }
-
-  size_t
-  cu_size() const
-  { return m_xml.cu_size(); }
-
-  bool
-  cu_interrupt() const
-  { return m_xml.cu_interrupt(); }
 
   std::vector<uint64_t>
   cu_base_address_map() const
@@ -1364,20 +1186,6 @@ uuid() const
 
 std::string
 xclbin::
-dsa_name() const
-{
-  return impl_or_error()->dsa_name();
-}
-
-bool
-xclbin::
-is_unified() const
-{
-  return impl_or_error()->is_unified();
-}
-
-std::string
-xclbin::
 project_name() const
 {
   return impl_or_error()->project_name();
@@ -1423,13 +1231,6 @@ xclbin::
 kernel_symbols() const
 { return impl_or_error()->kernel_symbols(); }
 
-size_t
-xclbin::
-kernel_max_regmap_size() const
-{
-  return impl_or_error()->kernel_max_regmap_size();
-}
-
 const xclbin::symbol&
 xclbin::
 lookup_kernel(const std::string& name) const
@@ -1456,27 +1257,6 @@ xclbin::
 get_mem_topology() const
 {
   return impl_or_error()->get_mem_topology();
-}
-
-size_t
-xclbin::
-cu_base_offset() const
-{
-  return impl_or_error()->cu_base_offset();
-}
-
-size_t
-xclbin::
-cu_size() const
-{
-  return impl_or_error()->cu_size();
-}
-
-bool
-xclbin::
-cu_interrupt() const
-{
-  return impl_or_error()->cu_interrupt();
 }
 
 std::vector<uint64_t>

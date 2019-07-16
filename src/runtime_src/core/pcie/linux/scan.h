@@ -92,6 +92,7 @@ public:
     int flock(int op);
 
     void devfs_close(void);
+    int devfs_open(const std::string& subdev, int flag);
 
 private:
     std::fstream sysfs_open(const std::string& subdev,

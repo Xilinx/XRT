@@ -19,15 +19,15 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <vector>
+//#include <vector>
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
-#include "xclhal2.h"
+#include "xrt.h"
 #include "app/xmaerror.h"
 #include "app/xmalogger.h"
 #include "lib/xmaxclbin.h"
-#include "lib/xmahw_hal.h"
+//#include "lib/xmahw_hal.h"
 #include "lib/xmahw_private.h"
 #include <dlfcn.h>
 #include <iostream>
@@ -39,21 +39,13 @@
 using namespace std;
 const uint64_t mNullBO = 0xffffffff;
 
-typedef struct XmaHALDevice
-{
-    xclDeviceHandle    handle;
-    xclDeviceInfo2     info;
-    //For execbo:
-    uint32_t           dev_index;
-    uuid_t             uuid; 
-} XmaHALDevice;
-
+/*
 static void set_hw_cfg(uint32_t        device_count,
                        XmaHALDevice   *xlnx_devices,
                        XmaHwCfg       *hwcfg);
-
-static int get_max_dev_id(XmaSystemCfg *systemcfg);
-
+*/
+//static int get_max_dev_id(XmaSystemCfg *systemcfg);
+/*Sarab: This is redundant now
 void set_hw_cfg(uint32_t        device_count,
                 XmaHALDevice   *xlnx_devices,
                 XmaHwCfg       *hwcfg)
@@ -73,7 +65,7 @@ void set_hw_cfg(uint32_t        device_count,
         hwcfg->devices[i].handle = hwhal;
     }
 }
-
+*/
 int load_xclbin_to_device(xclDeviceHandle dev_handle, const char *buffer)
 {
     int rc;
@@ -93,6 +85,7 @@ int load_xclbin_to_device(xclDeviceHandle dev_handle, const char *buffer)
     return rc;
 }
 
+/*Sarab: Remove yaml system cfg stuff
 int get_max_dev_id(XmaSystemCfg *systemcfg)
 {
     int max_dev_id = -1;
@@ -105,71 +98,49 @@ int get_max_dev_id(XmaSystemCfg *systemcfg)
 
     return max_dev_id;
 }
+*/
  
-int32_t create_contexts(xclDeviceHandle handle, XmaXclbinInfo &info)
-{
-    for (uint32_t i = 0; i < info.num_ips; i++)
-    {
-        if (xclOpenContext(handle, info.uuid, i, true) != 0)
-        {
-            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Failed to open context\n");
-            return XMA_ERROR;
-        }
-    }
-
-    return XMA_SUCCESS;
-}    
-
 /* Public function implementation */
 int hal_probe(XmaHwCfg *hwcfg)
 {
-    XmaHALDevice   xlnx_devices[MAX_XILINX_DEVICES];
-    uint32_t       device_count;
-
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Using HAL layer\n");
+    if (hwcfg == NULL) 
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "ERROR: hwcfg is NULL\n");
+        return XMA_ERROR;
+    }
 
-    int32_t      rc = 0;
+    //int32_t      rc = 0;
 
-    device_count = xclProbe();
-    if (device_count == 0) 
+    hwcfg->num_devices = xclProbe();
+    if (hwcfg->num_devices < 1) 
     {
         xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "ERROR: No Xilinx device found\n");
         return XMA_ERROR;
     }
-    for (uint32_t i = 0; i < device_count; i++)
-    {
-        xlnx_devices[i].handle = xclOpen(i, NULL, XCL_QUIET);
-        xlnx_devices[i].dev_index = i;
-        xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "get_device_list xclOpen handle = %p\n",
-            xlnx_devices[i].handle);
-        rc = xclGetDeviceInfo2(xlnx_devices[i].handle, &xlnx_devices[i].info);
-        if (rc != 0)
-        {
-            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "xclGetDeviceInfo2 failed for device id: %d, rc=%d\n",
-                        i, rc);
-            return XMA_ERROR;
-        }
-    }
-
-    /* Populate the XmaHwCfg */
-    set_hw_cfg(device_count, xlnx_devices, hwcfg);
+    /* Sarab: This is redundant now. Populate the XmaHwCfg */
+    //set_hw_cfg(device_count, xlnx_devices, hwcfg);
 
     return XMA_SUCCESS;
 }
 
+/*Sarab: Remove yaml system cfg stuff 
 bool hal_is_compatible(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg)
+*/
+bool hal_is_compatible(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_parms)
 {
+    /*
     int32_t num_devices_requested = 0;
     int32_t i;
     int32_t max_dev_id;
 
     max_dev_id = get_max_dev_id(systemcfg);
 
-    /* Get number of devices requested in configuration */
+    /--* Get number of devices requested in configuration *--/
     for (i = 0; i < systemcfg->num_images; i++)
         num_devices_requested += systemcfg->imagecfg[i].num_devices;
 
-    /* Check number of devices requested is not greater than number in HW */
+    /--* Check number of devices requested is not greater than number in HW *--/
     if (num_devices_requested > hwcfg->num_devices ||
         max_dev_id > (hwcfg->num_devices - 1))
     {
@@ -179,7 +150,7 @@ bool hal_is_compatible(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg)
         return false;
     }
 
-    /* For each of the requested devices, check that the DSA name matches */
+    /--* For each of the requested devices, check that the DSA name matches *--/
     for (i = 0; i < num_devices_requested; i++)
     {
         if (strcmp(systemcfg->dsa, hwcfg->devices[i].dsa) != 0)
@@ -189,157 +160,160 @@ bool hal_is_compatible(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg)
             return false;
         }
     }
-
+*/
     return true;
 }
 
-bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
+
+//bool hal_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_configured)
+bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_parms)
 {
-    std::string   xclbinpath = systemcfg->xclbinpath;
     XmaXclbinInfo info;
+    if (hwcfg == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "hwcfg is NULL\n");
+        return false;
+    }
+
+    if (num_parms > hwcfg->num_devices) {
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Num of Xilinx device is less than num of XmaXclbinParameters as input\n");
+        return false;
+    }
 
     /* Download the requested image to the associated device */
-    for (int32_t i = 0; i < systemcfg->num_images; i++)
-    {
-        std::string xclbin = systemcfg->imagecfg[i].xclbin;
-        std::string xclfullname = xclbinpath + "/" + xclbin;
-        char *buffer = xma_xclbin_file_open(xclfullname.c_str());
+    for (int32_t i = 0; i < num_parms; i++) {
+        std::string xclbin = std::string(devXclbins[i].xclbin_name);
+        int32_t dev_index = devXclbins[i].device_id;
+        if (dev_index >= hwcfg->num_devices) {
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Illegal dev_index for xclbin to load into. dev_index = %d\n",
+                       dev_index);
+            return false;
+        }
+        char *buffer = xma_xclbin_file_open(xclbin.c_str());
         if (!buffer)
         {
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not open xclbin file %s\n",
-                       xclfullname.c_str());
+                       xclbin.c_str());
             return false;
         }
         int32_t rc = xma_xclbin_info_get(buffer, &info);
         if (rc != XMA_SUCCESS)
         {
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not get info for xclbin file %s\n",
-                       xclfullname.c_str());
+                       xclbin.c_str());
             free(buffer);
             return false;
         }
 
-        for (int32_t d = 0; d < systemcfg->imagecfg[i].num_devices; d++)
-        {
-            int32_t dev_id = systemcfg->imagecfg[i].device_id_map[d];
-            XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_id].handle;
+        hwcfg->devices.emplace_back(XmaHwDevice{});
 
-            for (int32_t k = 0, t = 0;
-                 t < MAX_KERNEL_CONFIGS &&
-                 k < systemcfg->imagecfg[i].num_kernelcfg_entries; k++)
-            {
-                for (int32_t x = 0;
-                     t < MAX_KERNEL_CONFIGS &&
-                     x < systemcfg->imagecfg[i].kernelcfg[k].instances;
-                     x++, t++)
-                {
-                    strcpy((char*)hwcfg->devices[dev_id].kernels[t].name,
-                       (const char*)info.ip_layout[t].kernel_name);
-                    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"[%d] %s \t",
-                               t, hwcfg->devices[dev_id].kernels[t].name);
-                    hwcfg->devices[dev_id].kernels[t].base_address =
-                       info.ip_layout[t].base_addr;
-                    int32_t ip_ddr_map = info.ip_ddr_mapping[t];
-                    int num_ddr_used = 0;
-                    int ddr_banks[MAX_DDR_MAP] = {-1};
-                    xma_xclbin_map2ddr(ip_ddr_map, ddr_banks, &num_ddr_used);
-                    for(int d=0; d < num_ddr_used; d++)
-                    {
-                        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "[%d] ddr_table value-xclbin = %d\n",
-                        t, ddr_banks[d]);
-                    }
-                    //HHS currently the support is just for 1 Bank per 1 Kernel support
-                    hwcfg->devices[dev_id].kernels[t].ddr_bank = ddr_banks[0];
-                }
-            }
+        XmaHwDevice& dev_tmp1 = hwcfg->devices.back();
+        dev_tmp1.kernels.reserve(MAX_KERNEL_CONFIGS);
 
-            /* Always attempt download xclbin */
-            rc = load_xclbin_to_device(hal->dev_handle, buffer);
-            if (rc != 0)
-            {
-                free(buffer);
-                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not download xclbin file %s to device %d\n",
-                           xclfullname.c_str(),
-                           systemcfg->imagecfg[i].device_id_map[d]);
-                return false;
-            }
-
-            /* Create all kernel contexts on the device */
-            rc = create_contexts(hal->dev_handle, info);
-            if (rc != XMA_SUCCESS)
-            {
-                free(buffer);
-                return false;
-	    }
-
-            //Setup execbo for use with kernel commands
-            for (int32_t k = 0, t = 0;
-                t < MAX_KERNEL_CONFIGS &&
-                k < systemcfg->imagecfg[i].num_kernelcfg_entries; k++) 
-            {
-                for (int32_t x = 0;
-                     x < systemcfg->imagecfg[i].kernelcfg[k].instances;
-                     x++, t++) 
-                {
-                    bool found = false;
-                    uint32_t cu_bit_mask = 1;
-                    for (uint32_t i_ips = 0; i_ips < info.num_ips; i_ips++) 
-                    {
-                        if (info.ip_layout[i_ips].base_addr == 
-                            hwcfg->devices[dev_id].kernels[t].base_address) 
-                        {
-                            found = true;
-                        } else if (info.ip_layout[i_ips].base_addr <
-                            hwcfg->devices[dev_id].kernels[t].base_address) {
-                            cu_bit_mask = cu_bit_mask << 1;
-                        }
-                    }
-                    if (!found) 
-                    {
-                        free(buffer);
-                        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "CU not found. Couldn't create cu_cmd execbo\n");
-                        return false;
-                    }
-                    if (cu_bit_mask == 0) 
-                    {
-                        free(buffer);
-                        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA library doesn't support more than 32 CUs\n");
-                        return false;
-                    }
-                    for (int i_execbo = 0; i_execbo < MAX_EXECBO_POOL_SIZE; i_execbo++) 
-                    {
-                        uint32_t  bo_handle;
-                        int       execBO_size = 1024;
-                        uint32_t  execBO_flags = (1<<31);
-                        char     *bo_data;
-                        bo_handle = xclAllocBO(hal->dev_handle, 
-                                               execBO_size, 
-                                               XCL_BO_DEVICE_RAM, 
-                                               execBO_flags);
-                        if (!bo_handle || bo_handle == mNullBO) 
-                        {
-                            free(buffer);
-                            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Unable to create bo for cu start\n");
-                            return false;
-                        }
-                        bo_data = (char*)xclMapBO(hal->dev_handle, bo_handle, true);
-                        memset((void*)bo_data, 0x0, execBO_size);
-                        hwcfg->devices[dev_id].kernels[t].kernel_execbo_handle[i_execbo] = 
-                            bo_handle;
-                        hwcfg->devices[dev_id].kernels[t].kernel_execbo_data[i_execbo] = 
-                            bo_data;
-                        hwcfg->devices[dev_id].kernels[t].kernel_execbo_inuse[i_execbo] = 
-                            false;
-                        ert_start_kernel_cmd* cu_start_cmd = (ert_start_kernel_cmd*) bo_data;
-                        cu_start_cmd->state = ERT_CMD_STATE_NEW;
-                        cu_start_cmd->opcode = ERT_START_CU;
-                        cu_start_cmd->cu_mask = cu_bit_mask;
-                    }
-                }
-            }
+        dev_tmp1.handle = xclOpen(dev_index, NULL, XCL_QUIET);
+        if (dev_tmp1.handle == NULL){
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Unable to open device  id: %d\n", dev_index);
+            free(buffer);
+            return false;
         }
+        dev_tmp1.dev_index = dev_index;
+        xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "get_device_list xclOpen handle = %p\n",
+            dev_tmp1.handle);
+        rc = xclGetDeviceInfo2(dev_tmp1.handle, &dev_tmp1.info);
+        if (rc != 0)
+        {
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "xclGetDeviceInfo2 failed for device id: %d, rc=%d\n", dev_index, rc);
+            free(buffer);
+            return false;
+        }
+
+        /* Always attempt download xclbin */
+        rc = load_xclbin_to_device(dev_tmp1.handle, buffer);
+        if (rc != 0) {
+            free(buffer);
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not download xclbin file %s to device %d\n",
+                        xclbin.c_str(), dev_index);
+            return false;
+        }
+        uuid_copy(dev_tmp1.uuid, info.uuid); 
+        dev_tmp1.number_of_cus = info.number_of_kernels;
+        dev_tmp1.number_of_mem_banks = info.number_of_mem_banks;
+
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"For device id: %d; CUs are:\n", dev_index);
+        for (uint32_t d = 0; d < info.number_of_kernels; d++) {
+            dev_tmp1.kernels.emplace_back(XmaHwKernel{});
+            XmaHwKernel& tmp1 = dev_tmp1.kernels.back();
+            strcpy((char*)tmp1.name,
+                (const char*)info.ip_layout[d].kernel_name);
+            tmp1.base_address = info.ip_layout[d].base_addr;
+            tmp1.cu_index = (int32_t)d;
+
+            rc = xma_xclbin_map2ddr(info.ip_ddr_mapping[d], &tmp1.ddr_bank);
+            //XMA supports only 1 Bank per Kernel
+
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - DDR bank:\n", d, tmp1.name, tmp1.ddr_bank);
+            if (xclOpenContext(dev_tmp1.handle, info.uuid, d, true) != 0) {
+                free(buffer);
+                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Failed to open context to this CU\n");
+                return false;
+            }
+            tmp1.private_do_not_use = (void*) &hwcfg->devices[hwcfg->devices.size()-1];
+        }
+
+        for (uint32_t d1 = 0; d1 < info.number_of_kernels; d1++) {
+            uint64_t base_addr1 = dev_tmp1.kernels[d1].base_address;
+            uint64_t cu_mask = 1;
+            for (uint32_t d2 = 0; d2 < info.number_of_kernels; d2++) {
+                if (d1 != d2) {
+                    if (dev_tmp1.kernels[d2].base_address < base_addr1) {
+                        cu_mask = cu_mask << 1;
+                    }
+                }
+            }
+            dev_tmp1.kernels[d1].cu_mask0 = cu_mask & 0xFFFFFFFF;
+            dev_tmp1.kernels[d1].cu_mask1 = ((uint64_t)(cu_mask >> 32)) & 0xFFFFFFFF;
+        }
+
+        int32_t num_execbo = 0;
+        if (dev_tmp1.number_of_cus > MIN_EXECBO_POOL_SIZE) {
+            num_execbo = dev_tmp1.number_of_cus;
+        } else {
+            num_execbo = MIN_EXECBO_POOL_SIZE;
+        }
+        dev_tmp1.kernel_execbo_handle.reserve(num_execbo);
+        dev_tmp1.kernel_execbo_data.reserve(num_execbo);
+        dev_tmp1.kernel_execbo_inuse.reserve(num_execbo);
+        dev_tmp1.num_execbo_allocated = num_execbo;
+        for (int32_t d = 0; d < num_execbo; d++) {
+            uint32_t  bo_handle;
+            int       execBO_size = MAX_EXECBO_BUFF_SIZE;
+            //uint32_t  execBO_flags = (1<<31);
+            char     *bo_data;
+            bo_handle = xclAllocBO(dev_tmp1.handle, 
+                                    execBO_size, 
+                                    0, 
+                                    XCL_BO_FLAGS_EXECBUF);
+            if (!bo_handle || bo_handle == mNullBO) 
+            {
+                free(buffer);
+                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Unable to create bo for cu start\n");
+                return false;
+            }
+            bo_data = (char*)xclMapBO(dev_tmp1.handle, bo_handle, true);
+            memset((void*)bo_data, 0x0, execBO_size);
+            dev_tmp1.kernel_execbo_handle.emplace_back(bo_handle);
+            dev_tmp1.kernel_execbo_data.emplace_back(bo_data);
+            dev_tmp1.kernel_execbo_inuse.emplace_back(false);
+            /*
+            ert_start_kernel_cmd* cu_start_cmd = (ert_start_kernel_cmd*) bo_data;
+            cu_start_cmd->state = ERT_CMD_STATE_NEW;
+            cu_start_cmd->opcode = ERT_START_CU;
+            cu_start_cmd->cu_mask = cu_bit_mask;
+            */
+        }
+
         free(buffer);
     }
+
     return true;
 }
 

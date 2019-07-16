@@ -26,14 +26,13 @@
 
 #include <stddef.h>
 #include "xma.h"
-#include "lib/xmahw.h"
-#include "lib/xmahw_hal.h"
 #include "plg/xmasess.h"
 #include "plg/xmadecoder.h"
 #include "plg/xmaencoder.h"
 #include "plg/xmascaler.h"
 #include "plg/xmafilter.h"
 #include "plg/xmakernel.h"
+//#include "app/xmahw.h"
 
 /**
  * DOC: XMA Plugin Interface
@@ -44,7 +43,20 @@
 extern "C" {
 #endif
 
-typedef uint32_t  XmaBufferHandle;
+//typedef uint32_t  XmaBufferHandle;
+typedef struct XmaBufferObj
+{
+   uint8_t* data;
+   uint64_t size;
+   uint64_t paddr;
+   int32_t  bank_index;
+   int32_t  dev_index;
+   bool     device_only_buffer;
+   void*    private_do_not_touch;
+  
+} XmaBufferObj;
+
+
 
 /**
  *  xma_plg_buffer_alloc)() - Allocate device memory
@@ -67,7 +79,7 @@ typedef uint32_t  XmaBufferHandle;
  *  RETURN:    Non-zero buffer handle on success
  *
  */
-XmaBufferHandle xma_plg_buffer_alloc(XmaHwSession s_handle, size_t size);
+XmaBufferObj xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, int32_t* return_code);
 
 /**
  *  xma_plg_buffer_free() - Free a device buffer
@@ -75,31 +87,32 @@ XmaBufferHandle xma_plg_buffer_alloc(XmaHwSession s_handle, size_t size);
  *  using the @ref xma_plg_buffer_alloc() function.
  *
  *  @s_handle:  The session handle associated with this plugin instance
- *  @b_handle:  The buffer handle returned from
+ *  @b_obj:  The buffer handle returned from
  *                   @ref xma_plg_buffer_alloc()
  *
  */
-void xma_plg_buffer_free(XmaHwSession s_handle, XmaBufferHandle b_handle);
+void xma_plg_buffer_free(XmaSession s_handle, XmaBufferObj b_obj);
 
 /**
  *  xma_plg_buffer_free() - Get a physical address for a buffer handle
  *  This function returns the physical address of DDR memory on the FPGA
  *  used by a specific session
  *  @s_handle:  The session handle associated with this plugin instance
- *  @b_handle:  The buffer handle returned from
+ *  @b_obj:  The buffer handle returned from
  *                   @ref xma_plg_buffer_alloc()
  *
  *  RETURN:          Physical address of DDR on the FPGA
  *
+uint64_t xma_plg_get_paddr(XmaHwSession s_handle, XmaBufferObj b_obj);
+paddr API not required with buffer object
  */
-uint64_t xma_plg_get_paddr(XmaHwSession s_handle, XmaBufferHandle b_handle);
 
 /**
- *  xma_plg_get_paddr() - Write data from host to device buffer
+ *  xma_plg_buffer_write() - Write data from host to device buffer
  *  This function copies data from host to memory to device memory.
  *
  *  @s_handle:  The session handle associated with this plugin instance
- *  @b_handle:  The buffer handle returned from
+ *  @b_obj:  The buffer handle returned from
  *                   @ref xma_plg_buffer_alloc()
  *  @src:       Source data pointer
  *  @size:      Size of data to copy
@@ -109,9 +122,8 @@ uint64_t xma_plg_get_paddr(XmaHwSession s_handle, XmaBufferHandle b_handle);
  * XMA_ERROR on failure
  *
  */
-int32_t xma_plg_buffer_write(XmaHwSession     s_handle,
-                             XmaBufferHandle  b_handle,
-                             const void      *src,
+int32_t xma_plg_buffer_write(XmaSession     s_handle,
+                             XmaBufferObj  b_obj,
                              size_t           size,
                              size_t           offset);
 
@@ -121,7 +133,7 @@ int32_t xma_plg_buffer_write(XmaHwSession     s_handle,
  *  the requested host memory
  *
  *  @s_handle:  The session handle associated with this plugin instance
- *  @b_handle:  The buffer handle returned from
+ *  @b_obj:  The buffer handle returned from
  *                   @ref xma_plg_buffer_alloc()
  *  @dst:       Destination data pointer
  *  @size:      Size of data to copy
@@ -131,37 +143,10 @@ int32_t xma_plg_buffer_write(XmaHwSession     s_handle,
  * XMA_ERROR on failure
  *
  */
-int32_t xma_plg_buffer_read(XmaHwSession     s_handle,
-                            XmaBufferHandle  b_handle,
-                            void            *dst,
+int32_t xma_plg_buffer_read(XmaSession     s_handle,
+                            XmaBufferObj  b_obj,
                             size_t           size,
                             size_t           offset);
-
-/**
- *
- * xma_plg_register_write() - Write kernel register(s)
- *
- *  This function writes the data provided and sets the specified AXI_Lite
- *  register(s) exposed by a kernel. The base offset of 0 is the beginning
- *  of the kernels AXI_Lite memory map as this function adds the required
- *  offsets internally for the kernel and PCIe.  This function does not write
- *  the registers immediately, instead the registers are shadowed as part of
- *  the XmaHwSession until the xma_plg_schedule_work_item() is invoked.
- *
- *  @s_handle:  The session handle associated with this plugin instance
- *  @dst:       Destination data pointer
- *  @size:      Size of data to copy
- *  @offset:    Offset from the beginning of the kernel AXI_Lite register
- *                   register map
- *
- * RETURN:      >=0 number of bytes written
- *               <0 on failure
- *
- */
-int32_t xma_plg_register_prep_write(XmaHwSession     s_handle,
-                                    void            *dst,
-                                    size_t           size,
-                                    size_t           offset);
 
 /**
  * xma_plg_schedule_work_item() - This function schedules a request to the XRT
@@ -179,7 +164,7 @@ int32_t xma_plg_register_prep_write(XmaHwSession     s_handle,
  * XMA_ERROR on failure
  *
  */
-int32_t xma_plg_schedule_work_item(XmaHwSession s_handle);
+int32_t xma_plg_schedule_work_item(XmaSession s_handle);
 
 /**
  * xma_plg_is_work_item_done() - This function checks if at least one work item
@@ -195,10 +180,10 @@ int32_t xma_plg_schedule_work_item(XmaHwSession s_handle);
  * XMA_ERROR on timeout
  *
  */
-int32_t xma_plg_is_work_item_done(XmaHwSession s_handle, int32_t timeout_in_ms);
+int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_in_ms);
 
-void xma_plg_kernel_lock(XmaHwSession s_handle);
-void xma_plg_kernel_unlock(XmaHwSession s_handle);
+int32_t xma_plg_kernel_lock_regmap(XmaSession s_handle);
+int32_t xma_plg_kernel_unlock_regmap(XmaSession s_handle);
 
 /**
  *  xma_plg_register_prep_write() - This function writes the data provided and sets
@@ -217,78 +202,12 @@ void xma_plg_kernel_unlock(XmaHwSession s_handle);
  * <0 on failure
  *
  */
-int32_t xma_plg_register_prep_write(XmaHwSession     s_handle,
+int32_t xma_plg_register_prep_write(XmaSession     s_handle,
                                     void            *dst,
                                     size_t           size,
                                     size_t           offset);
 
 
-void xma_plg_kernel_lock(XmaHwSession s_handle);
-void xma_plg_kernel_unlock(XmaHwSession s_handle);
-void xma_plg_kernel_wait_on_finish(XmaHwSession s_handle);
-void xma_plg_kernel_start(XmaHwSession s_handle);
-int32_t xma_plg_kernel_exec(XmaHwSession s_handle, bool wait_on_kernel_finish);
-
-/*
- * Deprecated API
- *  xma_plg_register_write() - This function writes the data provided and sets the
- * specified AXI_Lite register(s) exposed by a kernel. The base offset of 0 is the
- * beginning of the kernels AXI_Lite memory map as this function adds the required
- *  offsets internally for the kernel and PCIe.
- *
- *  @s_handle:  The session handle associated with this plugin instance
- *  @dst:       Destination data pointer
- *  @size:      Size of data to copy
- *  @offset:    Offset from the beginning of the kernel AXI_Lite register
- *                   register map
- *
- *  RETURN:          >=0 number of bytes written
- *
- * <0 on failure
- *
- */
-int32_t xma_plg_register_write(XmaHwSession     s_handle,
-                               void            *dst,
-                               size_t           size,
-                               size_t           offset) __attribute__ ((deprecated));
-
-/*
- * Deprecated API
- * xma_plg_register_read() - Read kernel registers
- *
- *  This function reads the register(s) exposed by the kernel. The base offset
- *  of 0 is the beginning of the kernels AXI_Lite memory map as this function
- *  adds the required offsets internally for the kernel and PCIe.
- *
- *  @s_handle:  The session handle associated with this plugin instance
- *  @dst:       Destination data pointer
- *  @size:      Size of data to copy
- *  @offset:    Offset from the beginning of the kernel's AXI_Lite memory
- *                   map
- *
- *  RETURN:     >=0 number of bytes read
- *
- * <0 on failure
- *
- */
-int32_t xma_plg_register_read(XmaHwSession     s_handle,
-                              void            *dst,
-                              size_t           size,
-                              size_t           offset) __attribute__ ((deprecated));
-
-/**
- *
- * xma_plg_register_dump() - Dump kernel registers
- *
- *  This function dumps the registers for a kernel up to the number of words
- *  specified and prints them with the offset and value.
- *
- *  @s_handle:  The session handle associated with this plugin instance
- *  @num_words: Number of 32-bit words to dump
- *
- */
-void xma_plg_register_dump(XmaHwSession     s_handle,
-                           int32_t          num_words);
 
 #ifdef __cplusplus
 }

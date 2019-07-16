@@ -210,8 +210,8 @@ create_bo(const device& device, size_t sz, int bank=-1)
   auto ubo = std::make_unique<buffer_object>();
   ubo->dev = device->handle;
   ubo->bo = bank>=0
-    ? xclAllocBO(ubo->dev,sz,XCL_BO_DEVICE_RAM, bank)
-    : xclAllocBO(ubo->dev,sz,XCL_BO_DEVICE_RAM,0);
+    ? xclAllocBO(ubo->dev,sz,0, bank)
+    : xclAllocBO(ubo->dev,sz,0,0);
   ubo->data = xclMapBO(ubo->dev,ubo->bo,true /*write*/);
   ubo->size = sz;
   return buffer(ubo.release(),delBO);

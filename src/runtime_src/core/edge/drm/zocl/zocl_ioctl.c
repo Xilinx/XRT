@@ -21,6 +21,7 @@
 #include <linux/fpga/fpga-mgr.h>
 #include "zocl_drv.h"
 #include "xclbin.h"
+#include "sched_exec.h"
 
 #if defined(XCLBIN_DOWNLOAD)
 /**
@@ -561,4 +562,27 @@ out0:
 		ret = size;
 	vfree(axlf);
 	return ret;
+}
+
+/* IOCTL to get CU index in aperture list
+ * used for recognizing BO and CU in mmap
+ */
+int
+zocl_info_cu_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
+{
+	struct drm_zocl_info_cu *args = data;
+	struct drm_zocl_dev *zdev = dev->dev_private;
+	struct sched_exec_core *exec = zdev->exec;
+
+	if (!exec->configured) {
+		DRM_ERROR("Schduler is not configured\n");
+		return -EINVAL;
+	}
+
+	args->apt_idx = get_apt_index(zdev, args->paddr);
+	if (args->apt_idx == -EINVAL) {
+		DRM_ERROR("Failed to find CU in aperture list 0x%lx\n", args->paddr);
+		return -EINVAL;
+	}
+	return 0;
 }

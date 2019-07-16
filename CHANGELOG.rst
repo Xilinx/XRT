@@ -1,6 +1,17 @@
 XRT ChangeLog
 -------------
 
+2.3.0 (201920.2.3)
+~~~~~~~~~~~~~~~~~~
+
+Added
+.....
+
+* Production support for standalone user pf in private cloud use case.
+* Added ``xbmgmt`` for managing mgmt pf.
+* Device Memory Only Buffer support.
+* HWMON support in CMC.
+
 2.2.0 (201910.2.2)
 ~~~~~~~~~~~~~~~~~~
 
