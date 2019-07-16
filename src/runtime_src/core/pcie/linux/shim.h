@@ -37,6 +37,7 @@
 #include <map>
 #include <cassert>
 #include <vector>
+#include <memory>
 
 // Forward declaration
 namespace xrt_core {
@@ -179,7 +180,7 @@ private:
     uint32_t mStallProfilingNumberSlots;
     uint32_t mStreamProfilingNumberSlots;
     std::string mDevUserName;
-    xrt_core::bo_cache *mCmdBOCache;
+    std::unique_ptr<xrt_core::bo_cache> mCmdBOCache;
 
     /*
      * Mapped CU register space for xclRegRead/Write(). We support at most

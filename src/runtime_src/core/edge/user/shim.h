@@ -46,7 +46,7 @@ public:
            xclVerbosityLevel verbosity);
 
   // The entry of profiling functions
-  ZYNQShimProfiling* profiling;
+  std::unique_ptr<ZYNQShimProfiling> profiling;
 
   int mapKernelControl(const std::vector<std::pair<uint64_t, size_t>>& offsets);
   void *getVirtAddressOfApture(xclAddressSpace space, const uint64_t phy_addr, uint64_t& offset);
@@ -103,8 +103,9 @@ private:
   xclVerbosityLevel mVerbosity;
   int mKernelFD;
   std::map<uint64_t, uint32_t *> mKernelControl;
-  xrt_core::bo_cache *mCmdBOCache;
+  std::unique_ptr<xrt::core::bo_cache> mCmdBOCache;
 };
-};
+
+} // namespace ZYNQ
 
 #endif
