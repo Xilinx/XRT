@@ -125,25 +125,12 @@ void xma_scaler_default_filter_coeff_set(XmaScalerFilterProperties *props)
 XmaScalerSession*
 xma_scaler_session_create(XmaScalerProperties *sc_props)
 {
+    xma_logmsg(XMA_DEBUG_LOG, XMA_SCALER_MOD, "%s()\n", __func__);
     if (!g_xma_singleton->xma_initialized) {
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
                    "XMA session creation must be after initialization\n");
         return NULL;
     }
-
-    XmaScalerSession *sc_session = (XmaScalerSession*) malloc(sizeof(XmaScalerSession));
-	//XmaResources xma_shm_cfg = g_xma_singleton->shm_res_cfg;
-    //XmaKernelRes kern_res;
-
-    xma_logmsg(XMA_DEBUG_LOG, XMA_SCALER_MOD, "%s()\n", __func__);
-    /*Sarab: Remove xma_res stuff
-	if (!xma_shm_cfg) {
-        xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
-                   "No reference to xma res database\n");
-        free(sc_session);
-		return NULL;
-    }
-    */
 
     // Load the xmaplugin library as it is a dependency for all plugins
     void *xmahandle = dlopen("libxmaplugin.so",
@@ -175,6 +162,12 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
         return NULL;
     }
 
+    XmaScalerSession *sc_session = (XmaScalerSession*) malloc(sizeof(XmaScalerSession));
+    if (sc_session == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
+            "Failed to allocate memory for scalerSession\n");
+        return NULL;
+    }
     memset(sc_session, 0, sizeof(XmaScalerSession));
     // init session data
     sc_session->props = *sc_props;
@@ -183,41 +176,6 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     sc_session->base.stats = NULL;
     sc_session->scaler_plugin = plg;
 
-    /*Sarab: Remove xma_res stuff
-    // Just assume this is an ABR scaler for now and that the FPGA
-    // has been downloaded.  This is accomplished by getting the
-    // first device (dev_handle, base_addr, ddr_bank) and making a
-    // XmaHwSession out of it.  Later this needs to be done by searching
-    // for an available resource.
-	/--* JPM TODO default to exclusive access.  Ensure multiple threads
-	   can access this device if in-use pid = requesting thread pid *--/
-    rc = xma_res_alloc_scal_kernel(xma_shm_cfg, sc_props->hwscaler_type,
-                                   sc_props->hwvendor_string,
-	                               &sc_session->base, false);
-    if (rc) {
-        xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
-                   "Failed to allocate free scaler kernel. Return code %d\n", rc);
-        return NULL;
-    }
-
-    kern_res = sc_session->base.kern_res;
-
-    dev_handle = xma_res_dev_handle_get(kern_res);
-    xma_logmsg(XMA_INFO_LOG, XMA_SCALER_MOD,"dev_handle = %d\n", dev_handle);
-    if (dev_handle < 0)
-        return NULL;
-
-    kern_handle = xma_res_kern_handle_get(kern_res);
-    xma_logmsg(XMA_INFO_LOG, XMA_SCALER_MOD,"kern_handle = %d\n", kern_handle);
-    if (kern_handle < 0)
-        return NULL;
-
-    scal_handle = xma_res_plugin_handle_get(kern_res);
-    xma_logmsg(XMA_INFO_LOG, XMA_SCALER_MOD,"scal_handle = %d\n", scal_handle);
-    if (scal_handle < 0)
-        return NULL;
-    */
-
     bool expected = false;
     bool desired = true;
     while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
@@ -225,79 +183,103 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     }
     //Singleton lock acquired
 
-   //Sarab: TODO Fix device index, CU index & session->xx_plugin assigned above
-    int rc, dev_index, cu_index;
+    int32_t rc, dev_index, cu_index;
     dev_index = sc_props->dev_index;
     cu_index = sc_props->cu_index;
     //enc_handle = enc_props->cu_index;
 
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
-    if (dev_index >= hwcfg->num_devices) {
+    if (dev_index >= hwcfg->num_devices || dev_index < 0) {
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
                    "XMA session creation failed. dev_index not found\n");
         //Release singleton lock
         g_xma_singleton->locked = false;
+        free(sc_session);
         return NULL;
     }
 
-    g_xma_singleton->num_scalers++;
-
-    sc_session->base.hw_session.dev_handle = hwcfg->devices[dev_index].handle;
-
-    //For execbo:
-    sc_session->base.hw_session.kernel_info = &hwcfg->devices[dev_index].kernels[cu_index];
-
-    sc_session->base.hw_session.dev_index = hwcfg->devices[dev_index].dev_index;
-
-    // Assume it is the first scaler plugin for now
-    //sc_session->scaler_plugin = &g_xma_singleton->scalercfg[scal_handle];
-
-    // Allocate the private data
-    sc_session->base.plugin_data =
-        calloc(sc_session->scaler_plugin->plugin_data_size, sizeof(uint8_t));
-
-    /*Sarab: Remove xma_connect stuff
-    // Allocate a connection for each output
-    for (i = 0; i < sc_props->num_outputs; i++)
-    {
-        XmaEndpoint *end_pt = (XmaEndpoint*) malloc(sizeof(XmaEndpoint));
-        end_pt->session = &sc_session->base;
-        end_pt->dev_id = dev_handle;
-        end_pt->format = sc_props->output[i].format;
-        end_pt->bits_per_pixel = sc_props->output[i].bits_per_pixel;
-        end_pt->width = sc_props->output[i].width;
-        end_pt->height = sc_props->output[i].height;
-        sc_session->conn_send_handles[i] =
-            xma_connect_alloc(end_pt, XMA_CONNECT_SENDER);
+    uint32_t hwcfg_dev_index = 0;
+    bool found = false;
+    for (XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
+        if (hw_device.dev_index == (uint32_t)dev_index) {
+            found = true;
+            break;
+        }
+        hwcfg_dev_index++;
+    }
+    if (!found) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
+                   "XMA session creation failed. dev_index not loaded with xclbin\n");
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(sc_session);
+        return NULL;
+    }
+    if ((uint32_t)cu_index >= hwcfg->devices[hwcfg_dev_index].number_of_cus || cu_index < 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
+                   "XMA session creation failed. Invalid cu_index = %d\n", cu_index);
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(sc_session);
+        return NULL;
+    }
+    if (hwcfg->devices[hwcfg_dev_index].kernels[cu_index].in_use) {
+        xma_logmsg(XMA_INFO_LOG, XMA_SCALER_MOD,
+                   "XMA session sharing CU: %s\n", hwcfg->devices[hwcfg_dev_index].kernels[cu_index].name);
+    } else {
+        xma_logmsg(XMA_INFO_LOG, XMA_SCALER_MOD,
+                   "XMA session with CU: %s\n", hwcfg->devices[hwcfg_dev_index].kernels[cu_index].name);
     }
 
-    // TODO: fix to use allocate handle making sure that
-    //       we don't connect to ourselves
-    sc_session->conn_recv_handle = -1;
-    */
+    sc_session->base.hw_session.dev_handle = hwcfg->devices[hwcfg_dev_index].handle;
 
-    sc_session->base.session_id = g_xma_singleton->num_scalers;
-    sc_session->base.session_signature = (void*)(((uint64_t)sc_session->base.hw_session.kernel_info) | ((uint64_t)sc_session->base.hw_session.dev_handle));
+    //For execbo:
+    sc_session->base.hw_session.kernel_info = &hwcfg->devices[hwcfg_dev_index].kernels[cu_index];
 
-    //Release singleton lock
-    g_xma_singleton->locked = false;
+    sc_session->base.hw_session.dev_index = hwcfg->devices[hwcfg_dev_index].dev_index;
+    xma_logmsg(XMA_INFO_LOG, XMA_SCALER_MOD,
+                "XMA session ddr_bank: %d\n", sc_session->base.hw_session.kernel_info->ddr_bank);
+
 
     // Call the plugins initialization function with this session data
     //Sarab: Check plugin compatibility to XMA
     int32_t xma_main_ver = -1;
     int32_t xma_sub_ver = -1;
     rc = sc_session->scaler_plugin->xma_version(&xma_main_ver, & xma_sub_ver);
-    //Sarab: TODO. Check version match. Stop here for now
-    //Sarab: Remove it later on
-    return NULL;
+    if ((xma_main_ver == 2019 && xma_sub_ver < 2) || xma_main_ver < 2019 || rc < 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
+                   "Initalization of plugin failed. Plugin is incompatible with this XMA version\n");
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(sc_session);
+        return NULL;
+    }
+
+    // Allocate the private data
+    sc_session->base.plugin_data =
+        calloc(sc_session->scaler_plugin->plugin_data_size, sizeof(uint8_t));
+
+    sc_session->base.session_id = g_xma_singleton->num_scalers + 1;
+    sc_session->base.session_signature = (void*)(((uint64_t)sc_session->base.hw_session.kernel_info) | ((uint64_t)sc_session->base.hw_session.dev_handle));
+    xma_logmsg(XMA_INFO_LOG, XMA_SCALER_MOD,
+                "XMA session channel_id: %d; scaler_id: %d\n", sc_session->base.channel_id, sc_session->base.session_id);
 
     rc = sc_session->scaler_plugin->init(sc_session);
     if (rc) {
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
-                   "Initalization of scaler plugin failed. Return code %d\n",
+                   "Initalization of plugin failed. Return code %d\n",
                    rc);
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(sc_session->base.plugin_data);
+        free(sc_session);
         return NULL;
     }
+    sc_session->base.hw_session.kernel_info->in_use = true;
+    g_xma_singleton->num_scalers = sc_session->base.session_id;
+
+    //Release singleton lock
+    g_xma_singleton->locked = false;
 
     return sc_session;
 }
