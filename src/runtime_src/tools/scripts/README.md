@@ -6,7 +6,7 @@ This script is used to setup the environments on a supported system (Ubuntu/Cent
 It will install all necessary packages to compile and run XRT.
 
 ## pkgdsa.sh
-The pkgdsa.sh script is used to generate deb/rpm package for a DSA.
+The pkgdsa.sh script is used to generate deb/rpm package for a XSA.
 It needs a development platform directory which has .xpfm, `hw/` and `sw/`.
 
 For example:
@@ -19,26 +19,26 @@ At the end, these scripts would be packaged into xrt package and install to `/op
 
 ## Scripts used to build platform
 
-### dsa\_build.sh
-This script is used to generate a DSA from a Vivado Tcl script. It will use the vivado you installed on the system.
-You could use this script to build DSA for a platform in `src/platform/`.
-This script will create a workspace `dsa_build/` in current directory and copy the Tcl script directory into the workspace.
+### xsa\_build.sh
+This script is used to generate a XSA from a Vivado Tcl script. It will use the vivado you installed on the system.
+You could use this script to build XSA for a platform in `src/platform/`.
+This script will create a workspace `xsa_build/` in current directory and copy the Tcl script directory into the workspace.
 
 For example:
 ```bash
-$ dsa_build.sh ../../../platform/zcu104_revmin/zcu104_revmin_dsa.tcl
+$ xsa_build.sh ../../../platform/zcu104_revmin/zcu104_revmin_xsa.tcl
 ```
 
 ### peta\_build.sh
-This script is used to generate PetaLinux image from a DSA file. Source PetaLinux setup script before running this script.
+This script is used to generate PetaLinux image from a XSA file. Source PetaLinux setup script before running this script.
 
-It only needs a \<DSA\_name\>.dsa as input and a `<DSA_name>/` directory will be created for PetaLinux project.
-Specially, if the DSA directory, which has .dsa file, has path `src/<CPU_ARCH>/xrt/image/`, the script would copy image.ub, fsbl.elf to proper place in `src/` of the DSA directory and prepare sysroot in `src/aarch64-xilinx-linux`.
+It only needs a \<XSA\_name\>.xsa as input and a `<XSA_name>/` directory will be created for PetaLinux project.
+Specially, if the XSA directory, which has .xsa file, has path `src/<CPU_ARCH>/xrt/image/`, the script would copy image.ub, fsbl.elf to proper place in `src/` of the XSA directory and prepare sysroot in `src/aarch64-xilinx-linux`.
 
 You are able to configure the PetaLinux project, Linux kernel, devie tree, rootfs by provided a config.sh file.
 You have two ways to do that,
 1. Use --config option to specify a config.sh file.
-2. Create config.sh in the same directory of the .dsa file.
+2. Create config.sh in the same directory of the .xsa file.
 
 If both methods were used, the script will respect '--config'.
 If no spcific configure is needed, this script would use default configurations.
@@ -57,13 +57,13 @@ For example:
 ```bash
 # Build from BSP, the image would become larger.
 # This is required for all revmin platform (Otherwise the SD card and Ethernet would not work).
-$ peta_build.sh --bsp <BSP> ./dsa_build/zcu104_revmin/zcu104_revmin.dsa
+$ peta_build.sh --bsp <BSP> ./xsa_build/zcu104_revmin/zcu104_revmin.xsa
 
 # Build from template. This is a good choice if you know petalinux very well.
-$ peta_build.sh ./dsa_build/zcu102ng/zcu102ng.dsa
+$ peta_build.sh ./xsa_build/zcu102ng/zcu102ng.xsa
 
 # Build with special configurations
-$ peta_build.sh --config config.sh ./dsa_build/zcu102ng/zcu102ng.dsa
+$ peta_build.sh --config config.sh ./xsa_build/zcu102ng/zcu102ng.xsa
 ```
 
 ### pfm\_build.sh
@@ -77,7 +77,7 @@ $ pfm_build.sh ../../../platform/zcu104_revmin/zcu104_revmin_pfm.tcl
 
 ### petalinux.sh
 This script is used to generate platform from src/platform.
-It would call dsa\_build.sh, peta\_build.sh and pfm\_build.sh to build each component.
+It would call xsa\_build.sh, peta\_build.sh and pfm\_build.sh to build each component.
 You need to specify tools in the arguments list. Those tools are vivado, xsct, petalinux.
 
 For example:
