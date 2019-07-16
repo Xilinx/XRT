@@ -183,7 +183,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
     for (int32_t i = 0; i < num_parms; i++) {
         std::string xclbin = std::string(devXclbins[i].xclbin_name);
         int32_t dev_index = devXclbins[i].device_id;
-        if (dev_index >= hwcfg->num_devices) {
+        if (dev_index >= hwcfg->num_devices || dev_index < 0) {
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Illegal dev_index for xclbin to load into. dev_index = %d\n",
                        dev_index);
             return false;

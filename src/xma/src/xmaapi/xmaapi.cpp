@@ -99,7 +99,7 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
     if (ret != XMA_SUCCESS) {
         //Release singleton lock
         g_xma_singleton->locked = false;
-        for(XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
+        for (XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
             hw_device.kernels.clear();
         }
         g_xma_singleton->hwcfg.devices.clear();
@@ -120,7 +120,7 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
     if (!xma_hw_configure(&g_xma_singleton->hwcfg, devXclbins, num_parms)) {
         //Release singleton lock
         g_xma_singleton->locked = false;
-        for(XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
+        for (XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
             hw_device.kernels.clear();
         }
         g_xma_singleton->hwcfg.devices.clear();
@@ -175,7 +175,7 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
 
         //Release singleton lock
         g_xma_singleton->locked = false;
-        for(XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
+        for (XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
             hw_device.kernels.clear();
         }
         g_xma_singleton->hwcfg.devices.clear();

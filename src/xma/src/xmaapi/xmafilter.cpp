@@ -30,28 +30,12 @@ extern XmaSingleton *g_xma_singleton;
 XmaFilterSession*
 xma_filter_session_create(XmaFilterProperties *filter_props)
 {
+    xma_logmsg(XMA_DEBUG_LOG, XMA_FILTER_MOD, "%s()\n", __func__);
     if (!g_xma_singleton->xma_initialized) {
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
                    "XMA session creation must be after initialization\n");
         return NULL;
     }
-
-    XmaFilterSession *filter_session = (XmaFilterSession*) malloc(sizeof(XmaFilterSession));
-    if (filter_session == NULL) {
-        return NULL;
-    }
-	//XmaResources xma_shm_cfg = g_xma_singleton->shm_res_cfg;
-    //XmaKernelRes kern_res;
-
-    xma_logmsg(XMA_DEBUG_LOG, XMA_FILTER_MOD, "%s()\n", __func__);
-    /*Sarab: Remove xma_res stuff
-	if (!xma_shm_cfg) {
-        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
-                   "No reference to xma res database\n");
-        free(filter_session);
-		return NULL;
-    }
-    */
 
     // Load the xmaplugin library as it is a dependency for all plugins
     void *xmahandle = dlopen("libxmaplugin.so",
@@ -83,7 +67,12 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         return NULL;
     }
 
-
+    XmaFilterSession *filter_session = (XmaFilterSession*) malloc(sizeof(XmaFilterSession));
+    if (filter_session == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
+            "Failed to allocate memory for filterSession\n");
+        return NULL;
+    }
     memset(filter_session, 0, sizeof(XmaFilterSession));
     // init session data
     filter_session->props = *filter_props;
@@ -92,51 +81,6 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     filter_session->base.stats = NULL;
     filter_session->filter_plugin = plg;
 
-    /*Sarab: Remove xma_res stuff
-    // Just assume this is an ABR filter for now and that the FPGA
-    // has been downloaded.  This is accomplished by getting the
-    // first device (dev_handle, base_addr, ddr_bank) and making a
-    // XmaHwSession out of it.  Later this needs to be done by searching
-    // for an available resource.
-	/--* JPM TODO default to exclusive access.  Ensure multiple threads
-	   can access this device if in-use pid = requesting thread pid *--/
-    rc = xma_res_alloc_filter_kernel(xma_shm_cfg,
-                                     filter_props->hwfilter_type,
-                                     filter_props->hwvendor_string,
-		                             &filter_session->base, false);
-    if (rc) {
-        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
-                   "Failed to allocate free filter kernel. Return code %d\n", rc);
-        free(filter_session);
-        return NULL;
-    }
-
-    kern_res = filter_session->base.kern_res;
-
-    dev_handle = xma_res_dev_handle_get(kern_res);
-    xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,"dev_handle = %d\n", dev_handle);
-    if (dev_handle < 0) {
-        free(filter_session);
-        return NULL;
-    }
-
-    kern_handle = xma_res_kern_handle_get(kern_res);
-    xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,"kern_handle = %d\n", kern_handle);
-    if (kern_handle < 0) {
-        free(filter_session);
-        return NULL;
-    }
-
-    filter_handle = xma_res_plugin_handle_get(kern_res);
-    xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,"filter_handle = %d\n",
-               filter_handle);
-    if (filter_handle < 0) 
-    {
-        free(filter_session);
-        return NULL;
-    }
-    */
-
     bool expected = false;
     bool desired = true;
     while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
@@ -144,78 +88,103 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     }
     //Singleton lock acquired
 
-   //Sarab: TODO Fix device index, CU index & session->xx_plugin assigned above
-    int rc, dev_index, cu_index;
+    int32_t rc, dev_index, cu_index;
     dev_index = filter_props->dev_index;
     cu_index = filter_props->cu_index;
     //filter_handle = filter_props->cu_index;
 
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
-    if (dev_index >= hwcfg->num_devices) {
+    if (dev_index >= hwcfg->num_devices || dev_index < 0) {
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
                    "XMA session creation failed. dev_index not found\n");
         //Release singleton lock
         g_xma_singleton->locked = false;
+        free(filter_session);
         return NULL;
     }
 
-    g_xma_singleton->num_filters++;
+    uint32_t hwcfg_dev_index = 0;
+    bool found = false;
+    for (XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
+        if (hw_device.dev_index == (uint32_t)dev_index) {
+            found = true;
+            break;
+        }
+        hwcfg_dev_index++;
+    }
+    if (!found) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
+                   "XMA session creation failed. dev_index not loaded with xclbin\n");
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(filter_session);
+        return NULL;
+    }
+    if ((uint32_t)cu_index >= hwcfg->devices[hwcfg_dev_index].number_of_cus || cu_index < 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
+                   "XMA session creation failed. Invalid cu_index = %d\n", cu_index);
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(filter_session);
+        return NULL;
+    }
+    if (hwcfg->devices[hwcfg_dev_index].kernels[cu_index].in_use) {
+        xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,
+                   "XMA session sharing CU: %s\n", hwcfg->devices[hwcfg_dev_index].kernels[cu_index].name);
+    } else {
+        xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,
+                   "XMA session with CU: %s\n", hwcfg->devices[hwcfg_dev_index].kernels[cu_index].name);
+    }
 
-    filter_session->base.hw_session.dev_handle = hwcfg->devices[dev_index].handle;
+    filter_session->base.hw_session.dev_handle = hwcfg->devices[hwcfg_dev_index].handle;
 
     //For execbo:
-    filter_session->base.hw_session.kernel_info = &hwcfg->devices[dev_index].kernels[cu_index];
+    filter_session->base.hw_session.kernel_info = &hwcfg->devices[hwcfg_dev_index].kernels[cu_index];
 
-    filter_session->base.hw_session.dev_index = hwcfg->devices[dev_index].dev_index;
-
-    // Assume it is the first filter plugin for now
-    //filter_session->filter_plugin = &g_xma_singleton->filtercfg[filter_handle];
-
-    // Allocate the private data
-    filter_session->base.plugin_data =
-        calloc(filter_session->filter_plugin->plugin_data_size, sizeof(uint8_t));
-
-    /*Sarab: Remove xma_connect stuff
-    XmaEndpoint *end_pt = (XmaEndpoint*) malloc(sizeof(XmaEndpoint));
-    end_pt->session = &filter_session->base;
-    end_pt->dev_id = dev_handle;
-    end_pt->format = filter_props->output.format;
-    end_pt->bits_per_pixel = filter_props->output.bits_per_pixel;
-    end_pt->width = filter_props->output.width;
-    end_pt->height = filter_props->output.height;
-    filter_session->conn_send_handle =
-        xma_connect_alloc(end_pt, XMA_CONNECT_SENDER);
-
-    // TODO: fix to use allocate handle making sure that
-    //       we don't connect to ourselves
-    filter_session->conn_recv_handle = -1;
-    */
-
-    filter_session->base.session_id = g_xma_singleton->num_filters;
-    filter_session->base.session_signature = (void*)(((uint64_t)filter_session->base.hw_session.kernel_info) | ((uint64_t)filter_session->base.hw_session.dev_handle));
-
-    //Release singleton lock
-    g_xma_singleton->locked = false;
+    filter_session->base.hw_session.dev_index = hwcfg->devices[hwcfg_dev_index].dev_index;
+    xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,
+                "XMA session ddr_bank: %d\n", filter_session->base.hw_session.kernel_info->ddr_bank);
 
     // Call the plugins initialization function with this session data
     //Sarab: Check plugin compatibility to XMA
     int32_t xma_main_ver = -1;
     int32_t xma_sub_ver = -1;
     rc = filter_session->filter_plugin->xma_version(&xma_main_ver, & xma_sub_ver);
-    //Sarab: TODO. Check version match. Stop here for now
-    //Sarab: Remove it later on
-    return NULL;
+    if ((xma_main_ver == 2019 && xma_sub_ver < 2) || xma_main_ver < 2019 || rc < 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
+                   "Initalization of plugin failed. Plugin is incompatible with this XMA version\n");
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(filter_session);
+        return NULL;
+    }
+
+    // Allocate the private data
+    filter_session->base.plugin_data =
+        calloc(filter_session->filter_plugin->plugin_data_size, sizeof(uint8_t));
+
+    filter_session->base.session_id = g_xma_singleton->num_filters + 1;
+    filter_session->base.session_signature = (void*)(((uint64_t)filter_session->base.hw_session.kernel_info) | ((uint64_t)filter_session->base.hw_session.dev_handle));
+    xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,
+                "XMA session channel_id: %d; filter_id: %d\n", filter_session->base.channel_id, filter_session->base.session_id);
 
     rc = filter_session->filter_plugin->init(filter_session);
     if (rc) {
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
                    "Initalization of filter plugin failed. Return code %d\n",
                    rc);
+        //Release singleton lock
+        g_xma_singleton->locked = false;
         free(filter_session->base.plugin_data);
-        //xma_connect_free(filter_session->conn_send_handle, XMA_CONNECT_SENDER);
         free(filter_session);
         return NULL;
     }
+
+    g_xma_singleton->num_filters = filter_session->base.session_id;
+    filter_session->base.hw_session.kernel_info->in_use = true;
+
+    //Release singleton lock
+    g_xma_singleton->locked = false;
 
     return filter_session;
 }

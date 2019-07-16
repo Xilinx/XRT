@@ -72,26 +72,12 @@ extern XmaSingleton *g_xma_singleton;
 XmaEncoderSession*
 xma_enc_session_create(XmaEncoderProperties *enc_props)
 {
+    xma_logmsg(XMA_DEBUG_LOG, XMA_ENCODER_MOD, "%s()\n", __func__);
     if (!g_xma_singleton->xma_initialized) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
                    "XMA session creation must be after initialization\n");
         return NULL;
     }
-    XmaEncoderSession *enc_session = (XmaEncoderSession*) malloc(sizeof(XmaEncoderSession));
-    if (enc_session == NULL)
-        return NULL;
-    //XmaResources xma_shm_cfg = g_xma_singleton->shm_res_cfg;
-    //XmaKernelRes kern_res;
-
-    xma_logmsg(XMA_DEBUG_LOG, XMA_ENCODER_MOD, "%s()\n", __func__);
-    /*Sarab: Remove xma_res stuff
-	if (!xma_shm_cfg) {
-        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
-                   "No reference to xma res database\n");
-        free(enc_session);
-		return NULL;
-    }
-    */
 
     // Load the xmaplugin library as it is a dependency for all plugins
     void *xmahandle = dlopen("libxmaplugin.so",
@@ -123,6 +109,12 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
         return NULL;
     }
 
+    XmaEncoderSession *enc_session = (XmaEncoderSession*) malloc(sizeof(XmaEncoderSession));
+    if (enc_session == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
+            "Failed to allocate memory for encoderSession\n");
+        return NULL;
+    }
     memset(enc_session, 0, sizeof(XmaEncoderSession));
     // init session data
     enc_session->encoder_props = *enc_props;
@@ -131,48 +123,6 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
     enc_session->base.stats = NULL;
     enc_session->encoder_plugin = plg;
 
-    /*Sarab: Remove xma_res stuff
-    // Just assume this is a VP9 encoder for now and that the FPGA
-    // has been downloaded.  This is accomplished by getting the
-    // first device (dev_handle, base_addr, ddr_bank) and making a
-    // XmaHwSession out of it.  Later this needs to be done by searching
-    // for an available resource.
-    /--* JPM TODO default to exclusive device access.  Ensure multiple threads
-       can access this device if in-use pid = requesting thread pid *--/
-    rc = xma_res_alloc_enc_kernel(xma_shm_cfg, enc_props->hwencoder_type,
-                                  enc_props->hwvendor_string,
-                                  &enc_session->base, false);
-    if (rc) {
-        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
-                   "Failed to allocate free encoder kernel. Return code %d\n", rc);
-        free(enc_session);
-        return NULL;
-    }
-
-    kern_res = enc_session->base.kern_res;
-
-    dev_handle = xma_res_dev_handle_get(kern_res);
-    xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,"dev_handle = %d\n", dev_handle);
-    if (dev_handle < 0) {
-        free(enc_session);
-        return NULL;
-    }
-
-    kern_handle = xma_res_kern_handle_get(kern_res);
-    xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,"kern_handle = %d\n", kern_handle);
-    if (kern_handle < 0) {
-        free(enc_session);
-        return NULL;
-    }
-
-    enc_handle = xma_res_plugin_handle_get(kern_res);
-    xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,"enc_handle = %d\n", enc_handle);
-    if (enc_handle < 0) {
-        free(enc_session);
-        return NULL;
-    }
-    */
-
     bool expected = false;
     bool desired = true;
     while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
@@ -180,79 +130,106 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
     }
     //Singleton lock acquired
 
-   //Sarab: TODO Fix device index, CU index & session->xx_plugin assigned above
-    int rc, dev_index, cu_index;
+    int32_t rc, dev_index, cu_index;
     dev_index = enc_props->dev_index;
     cu_index = enc_props->cu_index;
     //enc_handle = enc_props->cu_index;
 
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
-    if (dev_index >= hwcfg->num_devices) {
+    if (dev_index >= hwcfg->num_devices || dev_index < 0) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
                    "XMA session creation failed. dev_index not found\n");
         //Release singleton lock
         g_xma_singleton->locked = false;
+        free(enc_session);
         return NULL;
     }
 
-    g_xma_singleton->num_encoders++;
+    uint32_t hwcfg_dev_index = 0;
+    bool found = false;
+    for (XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
+        if (hw_device.dev_index == (uint32_t)dev_index) {
+            found = true;
+            break;
+        }
+        hwcfg_dev_index++;
+    }
+    if (!found) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
+                   "XMA session creation failed. dev_index not loaded with xclbin\n");
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(enc_session);
+        return NULL;
+    }
+    if ((uint32_t)cu_index >= hwcfg->devices[hwcfg_dev_index].number_of_cus || cu_index < 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
+                   "XMA session creation failed. Invalid cu_index = %d\n", cu_index);
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(enc_session);
+        return NULL;
+    }
+    if (hwcfg->devices[hwcfg_dev_index].kernels[cu_index].in_use) {
+        xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,
+                   "XMA session sharing CU: %s\n", hwcfg->devices[hwcfg_dev_index].kernels[cu_index].name);
+    } else {
+        xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,
+                   "XMA session with CU: %s\n", hwcfg->devices[hwcfg_dev_index].kernels[cu_index].name);
+    }
 
-    enc_session->base.hw_session.dev_handle = hwcfg->devices[dev_index].handle;
+    enc_session->base.hw_session.dev_handle = hwcfg->devices[hwcfg_dev_index].handle;
 
     //For execbo:
-    enc_session->base.hw_session.kernel_info = &hwcfg->devices[dev_index].kernels[cu_index];
+    enc_session->base.hw_session.kernel_info = &hwcfg->devices[hwcfg_dev_index].kernels[cu_index];
 
-    enc_session->base.hw_session.dev_index = hwcfg->devices[dev_index].dev_index;
-
-    //enc_session->encoder_plugin = &g_xma_singleton->encodercfg[enc_handle];
-
-    // Allocate the private data
-    enc_session->base.plugin_data =
-        calloc(enc_session->encoder_plugin->plugin_data_size, sizeof(uint8_t));
-
-    /*Sarab: Remove xma_connect stuff
-    // For the encoder, only a receiver connection make sense
-    // because no HW component consumes an encoded frame at
-    // this point in a pipeline
-    XmaEndpoint *end_pt = (XmaEndpoint*) malloc(sizeof(XmaEndpoint));
-    end_pt->session = &enc_session->base;
-    end_pt->dev_id = dev_handle;
-    end_pt->format = enc_props->format;
-    end_pt->bits_per_pixel = enc_props->bits_per_pixel;
-    end_pt->width = enc_props->width;
-    end_pt->height = enc_props->height;
-    enc_session->conn_recv_handle =
-        xma_connect_alloc(end_pt, XMA_CONNECT_RECEIVER);
-    */
-
-    enc_session->base.session_id = g_xma_singleton->num_encoders;
-    enc_session->base.session_signature = (void*)(((uint64_t)enc_session->base.hw_session.kernel_info) | ((uint64_t)enc_session->base.hw_session.dev_handle));
-
-    //Release singleton lock
-    g_xma_singleton->locked = false;
+    enc_session->base.hw_session.dev_index = hwcfg->devices[hwcfg_dev_index].dev_index;
+    xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,
+                "XMA session ddr_bank: %d\n", enc_session->base.hw_session.kernel_info->ddr_bank);
 
     // Call the plugins initialization function with this session data
     //Sarab: Check plugin compatibility to XMA
     int32_t xma_main_ver = -1;
     int32_t xma_sub_ver = -1;
     rc = enc_session->encoder_plugin->xma_version(&xma_main_ver, & xma_sub_ver);
-    //Sarab: TODO. Check version match. Stop here for now
-    //Sarab: Remove it later on
-    return NULL;
+    if ((xma_main_ver == 2019 && xma_sub_ver < 2) || xma_main_ver < 2019 || rc < 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
+                   "Initalization of plugin failed. Plugin is incompatible with this XMA version\n");
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(enc_session);
+        return NULL;
+    }
+
+    // Allocate the private data
+    enc_session->base.plugin_data =
+        calloc(enc_session->encoder_plugin->plugin_data_size, sizeof(uint8_t));
+
+    enc_session->base.session_id = g_xma_singleton->num_encoders + 1;
+    enc_session->base.session_signature = (void*)(((uint64_t)enc_session->base.hw_session.kernel_info) | ((uint64_t)enc_session->base.hw_session.dev_handle));
+    xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,
+                "XMA session channel_id: %d; encoder_id: %d\n", enc_session->base.channel_id, enc_session->base.session_id);
 
     rc = enc_session->encoder_plugin->init(enc_session);
     if (rc) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
                    "Initalization of encoder plugin failed. Return code %d\n",
                    rc);
+        //Release singleton lock
+        g_xma_singleton->locked = false;
         free(enc_session->base.plugin_data);
-        //xma_connect_free(enc_session->conn_recv_handle, XMA_CONNECT_RECEIVER);
         free(enc_session);
         return NULL;
     }
 
     // Create encoder file if it does not exist and initialize all fields 
     xma_enc_session_statsfile_init(enc_session);
+
+    enc_session->base.hw_session.kernel_info->in_use = true;
+    g_xma_singleton->num_encoders = enc_session->base.session_id;
+
+    //Release singleton lock
+    g_xma_singleton->locked = false;
 
     return enc_session;
 }
