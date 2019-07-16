@@ -97,6 +97,10 @@
 	#define ZOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(TYPE, ADDR, SIZE)
 #endif
 
+/* Enable this macro once partial bitstream loading is successful through pcap
+ * driver */
+//#define XCLBIN_DOWNLOAD
+
 struct drm_zocl_exec_metadata {
 	enum drm_zocl_execbuf_state state;
 	unsigned int                index;

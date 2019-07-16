@@ -27,7 +27,7 @@
 /**
  * Bitstream header information.
  */
-struct {
+typedef struct {
 	unsigned int HeaderLength;     /* Length of header in 32 bit words */
 	unsigned int BitstreamLength;  /* Length of bitstream to read in bytes*/
 	unsigned char *DesignName;     /* Design name get from bitstream */
@@ -36,6 +36,10 @@ struct {
 	unsigned char *Time;           /* Bitstream creation time*/
 	unsigned int MagicLength;      /* Length of the magic numbers*/
 } XHwIcap_Bit_Header;
+
+struct zclmgmt_ioc_bitstream_axlf {
+	struct axlf *xclbin;
+};
 
 /* Used for parsing bitstream header */
 #define XHI_EVEN_MAGIC_BYTE     0x0f
@@ -51,6 +55,39 @@ struct {
 #define DMA_HWICAP_BITFILE_BUFFER_SIZE 1024
 #define BITFILE_BUFFER_SIZE DMA_HWICAP_BITFILE_BUFFER_SIZE
 
+static const struct axlf_section_header *get_axlf_section_hdr(
+	struct axlf *top, enum axlf_section_kind kind)
+{
+	int i;
+	const struct axlf_section_header *hdr = NULL;
+
+	DRM_INFO("trying to find section header for axlf section %d", kind);
+
+	for (i = 0; i < top->m_header.m_numSections; i++) {
+		DRM_INFO("saw section header: %d",
+			top->m_sections[i].m_sectionKind);
+		if (top->m_sections[i].m_sectionKind == kind) {
+			hdr = &top->m_sections[i];
+			break;
+		}
+	}
+
+	if (hdr) {
+		if ((hdr->m_sectionOffset + hdr->m_sectionSize) >
+			top->m_header.m_length) {
+			DRM_INFO("found section is invalid");
+			hdr = NULL;
+		} else {
+			DRM_INFO("header offset: %llu, size: %llu",
+				hdr->m_sectionOffset, hdr->m_sectionSize);
+		}
+	} else {
+		DRM_INFO("could not find section header %d", kind);
+	}
+
+	return hdr;
+}
+
 static int bitstream_parse_header(const unsigned char *Data, unsigned int Size,
 				  XHwIcap_Bit_Header *Header)
 {
@@ -65,14 +102,14 @@ static int bitstream_parse_header(const unsigned char *Data, unsigned int Size,
 	/* Initialize HeaderLength.  If header returned early inidicates
 	 * failure.
 	 */
-	Header->Headerlength = XHI_BIT_HEADER_FAILURE;
+	Header->HeaderLength = XHI_BIT_HEADER_FAILURE;
 
 	/* Get "Magic" length */
-	Header->Magiclength = Data[idx++];
-	Header->Magiclength = (Header->Magiclength << 8) | Data[idx++];
+	Header->MagicLength = Data[idx++];
+	Header->MagicLength = (Header->MagicLength << 8) | Data[idx++];
 
 	/* Read in "magic" */
-	for (i = 0; i < Header->Magiclength - 1; i++) {
+	for (i = 0; i < Header->MagicLength - 1; i++) {
 		tmp = Data[idx++];
 		if (i%2 == 0 && tmp != XHI_EVEN_MAGIC_BYTE)
 			return -1;   /* INVALID_FILE_HEADER_ERROR */
@@ -195,6 +232,7 @@ static int zocl_pcap_download(struct drm_zocl_dev *zdev,
 {
 	struct fpga_manager *fpga_mgr = zdev->fpga_mgr;
 	XHwIcap_Bit_Header bit_header;
+	struct fpga_image_info *info;
 	char *buffer = NULL;
 	char *data = NULL;
 	unsigned int i;
@@ -249,8 +287,22 @@ static int zocl_pcap_download(struct drm_zocl_dev *zdev,
 		data[i+2] = temp;
 	}
 #endif
+	/* struct with information about the FPGA image to program. */
+	info = fpga_image_info_alloc(&fpga_mgr->dev);
+	if (info == NULL) {
+		DRM_ERROR("%s : fpga_image_info_alloc ret NULL\n", __func__);
+		err = -ENOMEM;
+		goto free_buffers;
+	}
 
-	err = fpga_mgr_buf_load(fpga_mgr, 0, data, bit_header.BitstreamLength);
+	info->buf = data;
+	info->count = bit_header.BitstreamLength;
+	info->sgt = NULL;
+	info->firmware_name = NULL;
+	info->flags = FPGA_MGR_PARTIAL_RECONFIG;
+
+	/* Load the buffer to the FPGA */
+	err = fpga_mgr_load(fpga_mgr, info);
 	DRM_INFO("%s : ret code %d\n", __func__, err);
 
 	goto free_buffers;
@@ -268,29 +320,29 @@ free_buffers:
 int zocl_pcap_download_ioctl(struct drm_device *dev, void *data,
 			     struct drm_file *filp)
 {
-	struct xclBin bin_obj;
+	struct axlf bin_obj;
 	char __user *buffer;
 	struct drm_zocl_dev *zdev = dev->dev_private;
 	const struct drm_zocl_pcap_download *args = data;
 	uint64_t primary_fw_off;
 	uint64_t primary_fw_len;
+	struct axlf_section_header *primaryHeader;
 
-	if (copy_from_user(&bin_obj, args->xclbin, sizeof(struct xclBin)))
+	if (copy_from_user(&bin_obj, args->xclbin, sizeof(struct axlf)))
 		return -EFAULT;
-	if (memcmp(bin_obj.m_magic, "xclbin0", 8))
+
+	if (memcmp(bin_obj.m_magic, "xclbin2", 8))
 		return -EINVAL;
 
-	primary_fw_off = bin_obj.m_primaryFirmwareOffset;
-	primary_fw_len = bin_obj.m_primaryFirmwareLength;
-	if ((primary_fw_off + primary_fw_len) > bin_obj.m_length)
-		return -EINVAL;
-
-	if (bin_obj.m_secondaryFirmwareLength)
+	primaryHeader = get_axlf_section_hdr(&bin_obj, BITSTREAM);
+	primary_fw_off = primaryHeader->m_sectionOffset;
+	primary_fw_len = primaryHeader->m_sectionSize;
+	if ((primary_fw_off + primary_fw_len) > bin_obj.m_header.m_length)
 		return -EINVAL;
 
 	buffer = (char __user *)args->xclbin;
 
-	if (!ZOCL_ACCESS_OK(VERIFY_READ, buffer, bin_obj.m_length))
+	if (!ZOCL_ACCESS_OK(VERIFY_READ, buffer, bin_obj.m_header.m_length))
 		return -EFAULT;
 
 	buffer += primary_fw_off;

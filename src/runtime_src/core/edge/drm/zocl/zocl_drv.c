@@ -630,6 +630,8 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	}
 
 #if defined(XCLBIN_DOWNLOAD)
+	struct device_node *fnode;
+
 	fnode = of_get_child_by_name(of_root, "pcap");
 	if (!fnode) {
 		DRM_ERROR("FPGA programming device pcap not found\n");

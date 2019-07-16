@@ -462,8 +462,12 @@ int ZYNQShim::xclLoadAxlf(const axlf *buffer)
 	}
 
 #if defined(XCLBIN_DOWNLOAD)
-  drm_zocl_pcap_download obj = { const_cast<axlf *>(buffer) };
-  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_PCAP_DOWNLOAD, &obj);
+	drm_zocl_pcap_download obj = { const_cast<axlf *>(buffer) };
+	ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_PCAP_DOWNLOAD, &obj);
+	if (0 != ret)
+		std::cout << __func__ << "PCAP download failed, err: " << ret << std::endl;
+	else
+		std::cout << __func__ << "PCAP download successful, ret: " << ret << std::endl;
 #endif
 
 	drm_zocl_axlf axlf_obj = { const_cast<axlf *>(buffer) };
