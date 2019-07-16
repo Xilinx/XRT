@@ -75,6 +75,7 @@ set_property PFM.IRQ $intVar [get_bd_cells /xlconcat_0]
 
 ##spit out a DSA
 generate_target all [get_files ./zc702_vivado/zc702.srcs/sources_1/bd/zc702/zc702.bd]
+set_property dsa.post_sys_link_tcl_hook        ./dynamic_postlink.tcl       [current_project]
 write_dsa -force ./zc702.dsa
 
 #generate hdf
