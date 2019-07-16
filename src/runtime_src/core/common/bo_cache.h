@@ -20,6 +20,7 @@
 #include <vector>
 #include <utility>
 #include <mutex>
+#include <sys/mman.h>
 
 #include "xrt.h"
 #include "ert.h"
