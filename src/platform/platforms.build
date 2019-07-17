@@ -1,0 +1,5 @@
+{
+	"platforms_to_build": {
+		"zcu104_revmin": "zcu104"
+	}
+}
