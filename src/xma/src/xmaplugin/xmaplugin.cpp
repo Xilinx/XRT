@@ -67,6 +67,9 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
     b_obj_error.dev_index = -1;
     b_obj_error.device_only_buffer = false;
     b_obj_error.private_do_not_touch = NULL;
+    b_obj.data = NULL;
+    b_obj.device_only_buffer = false;
+    b_obj.private_do_not_touch = NULL;
 
     xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
     uint32_t ddr_bank = s_handle.hw_session.kernel_info->ddr_bank;
@@ -93,6 +96,7 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
     uint64_t b_obj_handle = 0;
     if (device_only_buffer) {
         b_obj_handle = xclAllocBO(dev_handle, size, 0, XCL_BO_FLAGS_DEV_ONLY | ddr_bank);
+        b_obj.device_only_buffer = true;
     } else {
         b_obj_handle = xclAllocBO(dev_handle, size, 0, ddr_bank);
     }
@@ -106,9 +110,7 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
     }
     */
     b_obj.paddr = xclGetDeviceAddr(dev_handle, b_obj_handle);
-    if (device_only_buffer) {
-        b_obj.device_only_buffer = true;
-    } else {
+    if (!device_only_buffer) {
         b_obj.data = (uint8_t*) xclMapBO(dev_handle, b_obj_handle, true);
     }
     XmaBufferObjPrivate* tmp1 = new XmaBufferObjPrivate;

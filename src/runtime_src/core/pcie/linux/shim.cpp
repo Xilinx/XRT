@@ -156,7 +156,7 @@ int shim::dev_init()
     // We're good now.
     mDev = dev;
     (void) xclGetDeviceInfo2(&mDeviceInfo);
-    mCmdBOCache = new xrt_core::bo_cache(this, xrt_core::config::get_cmdbo_cache());
+    mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
 
     mStreamHandle = mDev->devfs_open("dma.qdma", O_RDWR | O_SYNC);
     if (mStreamHandle == -1)
@@ -179,9 +179,6 @@ void shim::dev_fini()
         io_destroy(mAioContext);
             mAioEnabled = false;
     }
-
-    delete mCmdBOCache;
-    mCmdBOCache = nullptr;
 }
 
 /*
@@ -443,12 +440,12 @@ int shim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, 
 /*
  * xclCopyBO()
  */
-int shim::xclCopyBO(unsigned int dst_boHandle,
-    unsigned int src_boHandle, size_t size, size_t dst_offset,
+int shim::xclCopyBO(unsigned int dst_bo_handle,
+    unsigned int src_bo_handle, size_t size, size_t dst_offset,
     size_t src_offset)
 {
-    std::pair<const unsigned int, ert_start_copybo_cmd *const> bo = mCmdBOCache->alloc<ert_start_copybo_cmd>();
-    ert_fill_copybo_cmd(bo.second, src_boHandle, dst_boHandle,
+    auto bo = mCmdBOCache->alloc<ert_start_copybo_cmd>();
+    ert_fill_copybo_cmd(bo.second, src_bo_handle, dst_bo_handle,
                         src_offset, dst_offset, size);
 
     int ret = xclExecBuf(bo.first);

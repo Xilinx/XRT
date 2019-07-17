@@ -30,13 +30,14 @@ TEMPLATE=zynq
 
 # The first argument is the linux kernel configure file
 #  config_kernel recipes-kernel/linux/linux-xlnx/user.cfg
-#config_kernel()
-#{
-#	KERN_CONFIG_FILE=$1
-#	# *** Enable or disable Linux kernel features as you need ***
-#	# AR# 69143 -- To avoid PetaLinux hang when JTAG connected.
-#	echo '# CONFIG_CPU_IDLE is not set' >> $KERN_CONFIG_FILE
-#}
+config_kernel()
+{
+	KERN_CONFIG_FILE=$1
+	# *** Enable or disable Linux kernel features as you need ***
+	# AR# 69143 -- To avoid PetaLinux hang when JTAG connected.
+	echo '# CONFIG_CPU_IDLE is not set' >> $KERN_CONFIG_FILE
+	echo 'CONFIG_XILINX_INTC=y' >> $KERN_CONFIG_FILE
+}
 
 # The first argument is the rootfs configure file
 #  config_rootfs project-spec/configs/rootfs_config
