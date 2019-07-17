@@ -38,6 +38,11 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
                    "XMA session creation must be after initialization\n");
         return NULL;
     }
+    if (dec_props->plugin_lib == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
+                   "DecoderProperties must set plugin_lib\n");
+        return NULL;
+    }
 
     // Load the xmaplugin library as it is a dependency for all plugins
     void *xmahandle = dlopen("libxmaplugin.so",
@@ -66,6 +71,11 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
         xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
             "Failed to get decoder_plugin from %s\n Error msg: %s\n",
             dec_props->plugin_lib, dlerror());
+        return NULL;
+    }
+    if (plg->xma_version == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
+                   "DecoderPlugin library must have xma_version function\n");
         return NULL;
     }
 

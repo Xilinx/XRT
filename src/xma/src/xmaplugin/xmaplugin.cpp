@@ -363,6 +363,7 @@ int32_t xma_plg_kernel_unlock_regmap(XmaSession s_handle)
 
 int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
 {
+    //std::cout << "Sarab: Debug - " << __func__ << "; " << __LINE__ << std::endl;
     XmaHwKernel* kernel_tmp1 = s_handle.hw_session.kernel_info;
     XmaHwDevice *dev_tmp1 = (XmaHwDevice*)kernel_tmp1->private_do_not_use;
     if (dev_tmp1 == NULL) {
@@ -413,15 +414,14 @@ int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
         else
             found = true;
 
-        if (found)
+        if (found) {
+            dev_tmp1->kernel_execbo_inuse[i] = true;
+            dev_tmp1->kernel_execbo_cu_index[i] = kernel_tmp1->cu_index;
+            rc = i;
             break;
+        }
     }
-    if (found)
-    {
-        dev_tmp1->kernel_execbo_inuse[i] = true;
-        dev_tmp1->kernel_execbo_cu_index[i] = kernel_tmp1->cu_index;
-        rc = i;
-    }
+    //std::cout << "Sarab: Debug - " << __func__ << "; " << __LINE__ << std::endl;
     //Release completion lock
     *(dev_tmp1->execbo_locked) = false;
 
