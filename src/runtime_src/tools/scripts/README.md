@@ -30,7 +30,8 @@ $ xsa_build.sh ../../../platform/zcu104_revmin/zcu104_revmin_xsa.tcl
 ```
 
 ### peta\_build.sh
-This script is used to generate PetaLinux image from a XSA file. Source PetaLinux setup script before running this script.
+This script is used to generate PetaLinux image from a XSA file. It Only support PetaLinux 2019.2 and later.
+Source PetaLinux setup script before running this script.
 
 It only needs a \<XSA\_name\>.xsa as input and a `<XSA_name>/` directory will be created for PetaLinux project.
 Specially, if the XSA directory, which has .xsa file, has path `src/<CPU_ARCH>/xrt/image/`, the script would copy image.ub, fsbl.elf to proper place in `src/` of the XSA directory and prepare sysroot in `src/aarch64-xilinx-linux`.
@@ -75,16 +76,18 @@ For example:
 $ pfm_build.sh ../../../platform/zcu104_revmin/zcu104_revmin_pfm.tcl
 ```
 
-### petalinux.sh
+### ertbuild.sh
 This script is used to generate platform from src/platform.
 It would call xsa\_build.sh, peta\_build.sh and pfm\_build.sh to build each component.
 You need to specify tools in the arguments list. Those tools are vivado, xsct, petalinux.
 
 For example:
 ```bash
-# For zcu104_revmin. Please use <BSP> to build revmin platforms. See peta\_build.sh section.
-$ petalinux.sh $XILINX_VIVADO/bin/vivado $XILINX_SDX/bin/xsct $PETALINUX zcu104_revmin <XRT_REPO_PATH> <BSP>
+# For zcu104_revmin. Please use <BSP> to build revmin platforms. Do not build revmin platform from template, unless you know what you are doing.
+# The -build-xsa options is Yes means build XSA. No means skip it.
+# The -full-peta-linux-build options is Yes means build PetaLinux from scratch. No means build xrt and zocl only.
+$ ertbuild.sh -platform zcu104_revmin -xrt <XRT_REPO_PATH> -vivado $XILINX_VIVADO/bin/vivado -xsct $XILINX_SDX/bin/xsct -petalinux $PETALINUX -bsp <BSP> -full-peta-linux-build Yes -build-xsa Yes
 
-# For zcu102ng. Do not build revmin platform from template, unless you know what you are doing.
-$ petalinux.sh $XILINX_VIVADO/bin/vivado $XILINX_SDX/bin/xsct $PETALINUX zcu102ng <XRT_REPO_PATH>
+# For zcu102ng. Do not build zcu102ng from bsp. Otherwise you will see device tree error in petalinux-build.
+$ ertbuild.sh -platform zcu102ng -xrt <XRT_REPO_PATH> -vivado $XILINX_VIVADO/bin/vivado -xsct $XILINX_SDX/bin/xsct -petalinux $PETALINUX -full-peta-linux-build Yes -build-xsa Yes
 ```
