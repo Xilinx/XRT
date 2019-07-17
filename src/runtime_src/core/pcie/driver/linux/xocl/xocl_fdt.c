@@ -99,7 +99,7 @@ static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 		goto failed;
 	}
 
-	if (!fdt_node_check_compatible(blob, node, "axi_quad_spi"))
+	if (!fdt_node_check_compatible(blob, node, "axi_qspi"))
 		flash_type = FLASH_TYPE_SPI;
 	else {
 		xocl_xdev_err(xdev_hdl, "UNKNOWN flash type %s", prop);
