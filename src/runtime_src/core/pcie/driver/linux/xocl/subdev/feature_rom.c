@@ -40,11 +40,16 @@ static int xocl_init_rom_v5(struct feature_rom *rom5)
 	xdev_handle_t xdev = xocl_get_xdev(rom5->pdev);
 	struct FeatureRomHeader *header = &rom5->header;
 	const char *vbnv;
+	int i;
 
 	if (XDEV(xdev)->fdt_blob) {
 		vbnv = fdt_getprop(XDEV(xdev)->fdt_blob, 0, "vbnv", NULL);
 		if (vbnv)
 			strcpy(header->VBNVName, vbnv);
+		for (i = 0; i < strlen(header->VBNVName); i++)
+			if (header->VBNVName[i] == ':' ||
+					header->VBNVName[i] == '.')
+				header->VBNVName[i] = '_';
 	}
 	header->DDRChannelCount = 4;
 	header->DDRChannelSize = 16;
@@ -366,9 +371,9 @@ static int get_header_from_iomem(struct feature_rom *rom)
 			ret = -ENODEV;
 			goto failed;
 		}
-	}
-
-	xocl_memcpy_fromio(&rom->header, rom->base, sizeof(rom->header));
+	} else
+		xocl_memcpy_fromio(&rom->header, rom->base,
+				sizeof(rom->header));
 
 	if (rom->header.MajorVersion == 5)
 		xocl_init_rom_v5(rom);

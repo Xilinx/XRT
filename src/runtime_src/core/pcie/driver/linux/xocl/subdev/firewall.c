@@ -62,7 +62,6 @@ extern struct timezone sys_tz;
 struct firewall {
 	void __iomem		*base_addrs[MAX_LEVEL];
 	u32			max_level;
-	void __iomem		*gpio_addr;
 
 	u32			curr_status;
 	int			curr_level;
@@ -356,15 +355,6 @@ retry_level1:
 	}
 
 	clear_retry = 0;
-
-retry_level2:
-	if (fw->gpio_addr)
-		XOCL_WRITE_REG32(CLEAR_RESET_GPIO, fw->gpio_addr);
-
-	if (check_firewall(pdev, NULL) && clear_retry++ < CLEAR_RETRY_COUNT) {
-		msleep(CLEAR_RETRY_INTERVAL);
-		goto retry_level2;
-	}
 
 	if (!check_firewall(pdev, NULL)) {
 		xocl_info(&pdev->dev, "firewall cleared level 2");

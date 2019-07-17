@@ -1094,6 +1094,27 @@ static ssize_t board_info_show(struct device *dev,
 	struct device_attribute *da, char *buf);
 static DEVICE_ATTR_RO(board_info);
 
+static ssize_t reg_base_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
+	xdev_handle_t xdev = xocl_get_xdev(xmc->pdev);
+	struct resource *res;
+	int ret, bar_idx;
+	resource_size_t bar_off;
+
+	res = platform_get_resource(to_platform_device(dev), IORESOURCE_MEM, 0);
+	if (!res)
+		return -ENODEV;
+
+	ret = xocl_ioaddr_to_baroff(xdev, res->start, &bar_idx, &bar_off);
+	if (ret)
+		return ret;
+
+	return sprintf(buf, "%lld\n", bar_off);
+}
+static DEVICE_ATTR_RO(reg_base);
+
 static struct attribute *xmc_attrs[] = {
 	&dev_attr_pause.attr,
 	&dev_attr_reset.attr,
@@ -1105,6 +1126,7 @@ static struct attribute *xmc_attrs[] = {
 	&dev_attr_scaling_target_power.attr,
 	&dev_attr_scaling_governor.attr,
 	&dev_attr_board_info.attr,
+	&dev_attr_reg_base.attr,
 	SENSOR_SYSFS_NODE_ATTRS,
 	REG_SYSFS_NODE_ATTRS,
 	NULL,
