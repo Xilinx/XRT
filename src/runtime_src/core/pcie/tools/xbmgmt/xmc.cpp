@@ -373,10 +373,6 @@ void describePkt(struct xmcPkt& pkt, bool send)
 
 int XMC_Flasher::recvPkt()
 {
-    int ret = waitTillIdle();
-    if (ret != 0)
-        return ret;
-
     uint32_t *pkt = reinterpret_cast<uint32_t *>(&mPkt);
     *pkt = readReg(mPktBufOffset);
     unsigned lenInUint32 =
@@ -393,7 +389,7 @@ int XMC_Flasher::recvPkt()
 #ifdef  XMC_DEBUG
     describePkt(mPkt, false);
 #endif
-    return 0;
+    return waitTillIdle();
 }
 
 int XMC_Flasher::sendPkt(bool print_dot)
@@ -409,9 +405,6 @@ int XMC_Flasher::sendPkt(bool print_dot)
 #endif
 
     uint32_t *pkt = reinterpret_cast<uint32_t *>(&mPkt);
-    int ret = waitTillIdle();
-    if (ret != 0)
-        return ret;
 
     for (int i = 0; i < lenInUint32; i++) {
         writeReg(mPktBufOffset + i * sizeof (uint32_t), pkt[i]);
@@ -419,7 +412,7 @@ int XMC_Flasher::sendPkt(bool print_dot)
 
     // Flip pkt buffer ownership bit
     writeReg(XMC_REG_OFF_CTL, readReg(XMC_REG_OFF_CTL) | XMC_PKT_OWNER_MASK);
-    return 0;
+    return waitTillIdle();
 }
 
 int XMC_Flasher::waitTillIdle()
@@ -447,6 +440,7 @@ int XMC_Flasher::waitTillIdle()
 
     if (err) {
         std::cout << "ERROR: XMC packet error: " << err << std::endl;
+        writeReg(XMC_REG_OFF_CTL, readReg(XMC_REG_OFF_CTL) | XMC_CTRL_ERR_CLR);
         return -EINVAL;
     }
 
