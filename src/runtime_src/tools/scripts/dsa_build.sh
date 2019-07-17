@@ -5,7 +5,7 @@
 #
 # This script need path to Vivado Tcl script. The script shoule be <dsa_name>_dsa.tcl
 # This script will create a dsa_build/ directory in current path and build dsa in there.
-# The generated DSA file is dsa_build/<dsa_name>.dsa
+# The generated DSA file is dsa_build/<dsa_name>/<dsa_name>.dsa
 
 error()
 {
@@ -79,9 +79,10 @@ echo " Vivado: $PATH_TO_VIVADO"
 echo ""
 
 # Generate DSA and HDF
-[ -d "${ORIGINAL_DIR}/dsa_build" ] && error "${ORIGINAL_DIR}/dsa_build is existed. Please remove it."
-cp -r $SRC_DIR ${ORIGINAL_DIR}/dsa_build
-cd ${ORIGINAL_DIR}/dsa_build
+[ -d "${ORIGINAL_DIR}/dsa_build/$DSA_NAME" ] && error "${ORIGINAL_DIR}/dsa_build/$DSA_NAME is existed. Please remove it."
+mkdir -p ${ORIGINAL_DIR}/dsa_build/
+cp -r $SRC_DIR ${ORIGINAL_DIR}/dsa_build/$DSA_NAME
+cd ${ORIGINAL_DIR}/dsa_build/$DSA_NAME
 echo " * Building Platform (DSA & HDF from: $PWD)"
 ${PATH_TO_VIVADO} -mode batch -notrace -source $DSA_TCL
 

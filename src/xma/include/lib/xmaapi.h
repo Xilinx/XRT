@@ -30,6 +30,7 @@ typedef struct XmaSingleton
 {
     //XmaSystemCfg      systemcfg;
     XmaHwCfg          hwcfg;
+    bool              xma_initialized;
     //XmaConnect        connections[MAX_CONNECTION_ENTRIES];
     //Sarab: Remove logger stuff
     //XmaLogger         logger;
@@ -55,6 +56,7 @@ typedef struct XmaSingleton
 
   XmaSingleton() {
     locked = false;
+    xma_initialized = false;
     num_decoders = 0;
     num_encoders = 0;
     num_scalers = 0;

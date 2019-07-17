@@ -334,6 +334,7 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 
 	switch (req->req) {
 	case MAILBOX_REQ_FIREWALL:
+		userpf_info(xdev, "firewall tripped, request reset");
 		xocl_queue_work(xdev, XOCL_WORK_RESET, XOCL_RESET_DELAY);
 		break;
 	case MAILBOX_REQ_MGMT_STATE:

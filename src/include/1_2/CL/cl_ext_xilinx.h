@@ -412,6 +412,10 @@ xclGetXrtDevice(cl_device_id device,
  * @type: cl_uint
  * @return: XRT scheduler index of compute unit
  *
+ * @XCL_COMPUTE_UNIT_BASE_ADDRESS:
+ * @type: size_t
+ * @return: Base address of compute unit
+ *
  * @XCL_COMPUTE_UNIT_CONNECTIONS:
  * @type: cl_ulong
  * @return: Memory connection for each compute unit argument.
@@ -427,9 +431,10 @@ xclGetComputeUnitInfo(cl_kernel             kernel,
                       void *                param_value,
                       size_t *              param_value_size_ret );
 
-#define XCL_COMPUTE_UNIT_NAME        0x1320 // name of CU
-#define XCL_COMPUTE_UNIT_INDEX       0x1321 // scheduler index of CU
-#define XCL_COMPUTE_UNIT_CONNECTIONS 0x1322 // connectivity
+#define XCL_COMPUTE_UNIT_NAME         0x1320 // name of CU
+#define XCL_COMPUTE_UNIT_INDEX        0x1321 // scheduler index of CU
+#define XCL_COMPUTE_UNIT_CONNECTIONS  0x1322 // connectivity
+#define XCL_COMPUTE_UNIT_BASE_ADDRESS 0x1323 // base address
 
 /*
   Host Accessible Program Scope Globals

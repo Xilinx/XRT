@@ -2743,13 +2743,13 @@ static int icap_offline(struct platform_device *pdev)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
 
-	ICAP_INFO(icap, "icap offline");
 	xocl_drvinst_kill_proc(platform_get_drvdata(pdev));
-	del_all_users(icap);
-        sysfs_remove_group(&pdev->dev.kobj, &icap_attr_group);
 
+	del_all_users(icap);
+	sysfs_remove_group(&pdev->dev.kobj, &icap_attr_group);
 	free_clear_bitstream(icap);
-        free_clock_freq_topology(icap);
+	free_clock_freq_topology(icap);
+
 	icap_clean_bitstream_axlf(pdev);
 
 	return 0;
@@ -2762,9 +2762,8 @@ static int icap_online(struct platform_device *pdev)
 
 	icap_refresh_addrs(pdev);
 	ret = sysfs_create_group(&pdev->dev.kobj, &icap_attr_group);
-	if (ret) {
+	if (ret)
 		ICAP_ERR(icap, "create icap attrs failed: %d", ret);
-	}
 
 	return ret;
 }

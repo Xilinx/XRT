@@ -83,7 +83,7 @@ static int runKernel(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose
 
     try {
         for (auto &bo : dataBO) {
-            bo.first = xclAllocBO(handle, size, XCL_BO_DEVICE_RAM, 0x1);
+            bo.first = xclAllocBO(handle, size, 0, 0x1);
             bo.second = xclMapBO(handle, bo.first, true);
             std::memset(bo.second, 0, size);
             if (xclSyncBO(handle, bo.first, XCL_BO_SYNC_BO_TO_DEVICE, size, 0))
@@ -92,7 +92,7 @@ static int runKernel(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose
 
         auto dbo = dataBO.begin();
         for (auto &cbo : cmdBO) {
-            cbo.first = xclAllocBO(handle, 4096, xclBOKind(0), (1<<31));
+            cbo.first = xclAllocBO(handle, 4096, 0, (1<<31));
             cbo.second = xclMapBO(handle, cbo.first, true);
             std::memset(cbo.second, 0, 4096);
             ert_start_kernel_cmd *ecmd = reinterpret_cast<ert_start_kernel_cmd*>(cbo.second);
@@ -166,7 +166,7 @@ static int runKernelLoop(xclDeviceHandle handle, uint64_t cu_base_addr, bool ver
         throw std::runtime_error("Cannot create context");
 
     //Allocate the exec_bo
-    unsigned execHandle = xclAllocBO(handle, 1024, xclBOKind(0), (1<<31));
+    unsigned execHandle = xclAllocBO(handle, 1024, 0, (1<<31));
     void* execData = xclMapBO(handle, execHandle, true);
 
     //construct the exec buffer cmd to configure.

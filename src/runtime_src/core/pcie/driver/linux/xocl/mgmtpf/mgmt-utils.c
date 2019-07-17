@@ -188,6 +188,8 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 		lro->instance, ep_name,
 		PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
 
+	health_thread_stop(lro);
+
 	/* request XMC/ERT to stop */
 	xocl_mb_stop(lro);
 
@@ -233,6 +235,8 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 
 	/* restart XMC/ERT */
 	xocl_mb_reset(lro);
+
+	health_thread_start(lro);
 
 #endif
 done:

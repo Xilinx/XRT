@@ -85,8 +85,8 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
             throw std::runtime_error("Cannot create context");
 
         // Allocate the device memory
-        unsigned boHandle1 = xclAllocBO(handle, 2*DATA_SIZE*sizeof(float), XCL_BO_DEVICE_RAM, first_mem); // input a and b
-        unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE*sizeof(float), XCL_BO_DEVICE_RAM, first_mem);   // output
+        unsigned boHandle1 = xclAllocBO(handle, 2*DATA_SIZE*sizeof(float), 0, first_mem); // input a and b
+        unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE*sizeof(float), 0, first_mem);   // output
 
         // Create the mapping to the host memory
         float *bo1 = (float*)xclMapBO(handle, boHandle1, true);
@@ -135,7 +135,7 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
         }
 
         // Create an execution buffer to configure the FPGA (ERT)
-        unsigned execHandle = xclAllocBO(handle, DATA_SIZE*sizeof(float), xclBOKind(0), (1<<31));
+        unsigned execHandle = xclAllocBO(handle, DATA_SIZE*sizeof(float), 0, (1<<31));
         void* execData = xclMapBO(handle, execHandle, true);
         
         std::cout << "Construct the exe buf cmd to confire FPGA" << std::endl;

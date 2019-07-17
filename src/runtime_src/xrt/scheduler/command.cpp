@@ -130,6 +130,11 @@ void
 command::
 execute()
 {
+  // command objects can be reused outside constructor
+  // reset state
+  auto epacket = get_ert_cmd<ert_packet*>();
+  epacket->state = ERT_CMD_STATE_NEW;
+
   m_done=false;
   xrt::scheduler::schedule(get_ptr());
 }

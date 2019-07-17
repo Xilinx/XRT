@@ -29,13 +29,15 @@
 
 lsb_release -si | grep -Eq "^RedHat|^CentOS"
 if [ $? -eq 0 ] && [ $1 -ge 1 ]; then
-    echo "Cleanup is skipped for package upgrade/downgrade/re-install"
+    echo "Cleanup is skipped for package upgrade/downgrade/re-install on RHEL/CentOS"
     exit 0
 fi
 
-lsb_release -si | grep -Eq "^Ubuntu"
+lsb_release -si | grep -Eq "^Ubuntu|^Debian"
 if [ $? -eq 0 ] && [ "$1" = "upgrade" ]; then
-    echo "Cleanup is skipped for package upgrade/downgrade/re-install"
+    echo "Unregistering old XRT Linux kernel module sources @XRT_VERSION_STRING@ from dkms on Ubuntu/Debian"
+    dkms remove -m xrt -v @XRT_VERSION_STRING@ --all
+    echo "Cleanup is skipped for package upgrade/downgrade/re-install on Ubuntu/Debian"
     exit 0
 fi
 
@@ -55,8 +57,8 @@ systemctl daemon-reload
 /opt/xilinx/xrt/bin/xbmgmt config --purge 2>&1 > /dev/null
 
 echo "Unloading old XRT Linux kernel modules"
-modprobe -r xocl
-modprobe -r xclmgmt
+rmmod xocl
+rmmod xclmgmt
 
 echo "Unregistering XRT Linux kernel module sources @XRT_VERSION_STRING@ from dkms"
 dkms remove -m xrt -v @XRT_VERSION_STRING@ --all
