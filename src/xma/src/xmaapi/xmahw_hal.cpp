@@ -27,7 +27,7 @@
 #include "app/xmaerror.h"
 #include "app/xmalogger.h"
 #include "lib/xmaxclbin.h"
-#include "lib/xmahw_hal.h"
+//#include "lib/xmahw_hal.h"
 #include "lib/xmahw_private.h"
 #include <dlfcn.h>
 #include <iostream>
@@ -183,7 +183,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
     for (int32_t i = 0; i < num_parms; i++) {
         std::string xclbin = std::string(devXclbins[i].xclbin_name);
         int32_t dev_index = devXclbins[i].device_id;
-        if (dev_index >= hwcfg->num_devices) {
+        if (dev_index >= hwcfg->num_devices || dev_index < 0) {
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Illegal dev_index for xclbin to load into. dev_index = %d\n",
                        dev_index);
             return false;
@@ -286,12 +286,12 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         for (int32_t d = 0; d < num_execbo; d++) {
             uint32_t  bo_handle;
             int       execBO_size = MAX_EXECBO_BUFF_SIZE;
-            uint32_t  execBO_flags = (1<<31);
+            //uint32_t  execBO_flags = (1<<31);
             char     *bo_data;
             bo_handle = xclAllocBO(dev_tmp1.handle, 
                                     execBO_size, 
                                     0, 
-                                    execBO_flags);
+                                    XCL_BO_FLAGS_EXECBUF);
             if (!bo_handle || bo_handle == mNullBO) 
             {
                 free(buffer);
