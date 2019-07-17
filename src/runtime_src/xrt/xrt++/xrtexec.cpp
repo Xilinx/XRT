@@ -73,6 +73,13 @@ completed() const
   return m_impl->completed();
 }
 
+ert_cmd_state
+command::
+state() const
+{
+  return static_cast<ert_cmd_state>(m_impl->ecmd->state);
+}
+
 exec_write_command::
 exec_write_command(xrt_device* device)
   : command(device,ERT_EXEC_WRITE)
