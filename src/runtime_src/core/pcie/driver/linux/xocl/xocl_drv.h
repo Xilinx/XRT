@@ -1053,7 +1053,8 @@ int xocl_fdt_build_priv_data(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev,
 int xocl_fdt_get_userpf(xdev_handle_t xdev_hdl, void *blob);
 const char *xocl_fdt_get_prp_int_uuid(xdev_handle_t xdev_hdl, void *blob,
 		int *len);
-int xocl_fdt_add_vrom(xdev_handle_t xdev_hdl, void *blob, void *rom);
+int xocl_fdt_add_pair(xdev_handle_t xdev_hdl, void *blob, char *name,
+		void *val, int size);
 const struct axlf_section_header *xocl_axlf_section_header(
 	xdev_handle_t xdev_hdl, const struct axlf *top,
 	enum axlf_section_kind kind);

@@ -454,7 +454,8 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 		goto failed;
 	}
 
-	ret = xocl_fdt_add_vrom(lro, lro->userpf_blob, &rom_header);
+	ret = xocl_fdt_add_pair(lro, lro->userpf_blob, "vrom", &rom_header,
+			sizeof(rom_header));
 	if (ret) {
 		mgmt_err(lro, "add vrom failed %d", ret);
 		goto failed;
@@ -544,6 +545,11 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 		mgmt_err(lro, "Invalid dtc");
 		goto failed;
 	}
+
+	/* temp support for lack of VBNV */
+	xocl_fdt_add_pair(lro, lro->core.fdt_blob, "vbnv",
+			bin_axlf->m_header.m_platformVBNV,
+			strlen(bin_axlf->m_header.m_platformVBNV) + 1);
 
 	release_firmware(fw);
 	fw = NULL;

@@ -707,7 +707,7 @@ static void platform_reset_axi_gate(struct platform_device *pdev)
 static int set_freqs(struct icap *icap, unsigned short *freqs, int num_freqs)
 {
 	int i;
-	int err;
+	int err = 0;
 	u32 val;
 
 	for (i = 0; i < min(ICAP_MAX_NUM_CLOCKS, num_freqs); ++i) {

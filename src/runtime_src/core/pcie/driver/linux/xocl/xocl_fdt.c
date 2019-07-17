@@ -138,17 +138,15 @@ static void devinfo_cb_setlevel(void *dev_hdl, void *subdevs, int num)
 
 /* missing clk freq counter ip */
 static struct xocl_subdev_map		subdev_map[] = {
-#if 0
 	{
 		XOCL_SUBDEV_FEATURE_ROM,
 		XOCL_FEATURE_ROM,
-		{ "ep_blp_rom_00", NULL },
+		{ "", NULL },
 		1,
 		0,
 		rom_build_priv,
 		NULL,
        	},
-#endif
 	{
 		XOCL_SUBDEV_DMA,
 		XOCL_XDMA,
@@ -529,7 +527,8 @@ static int xocl_fdt_res_lookup(xdev_handle_t xdev_hdl, char *blob,
 	for (off = xocl_fdt_next_ip(xdev_hdl, blob, off, &ip); off >= 0;
 		off = xocl_fdt_next_ip(xdev_hdl, blob, off, &ip)) {
 
-		if (ip.name && !strncmp(ip.name, ipname, strlen(ipname)))
+		if (ip.name && strlen(ipname) > 0 &&
+			       !strncmp(ip.name, ipname, strlen(ipname)))
 			break;
 	}
 	if (off < 0)
@@ -800,18 +799,16 @@ int xocl_fdt_build_priv_data(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev,
 	return 0;
 }
 
-int xocl_fdt_add_vrom(xdev_handle_t xdev_hdl, void *blob, void *rom)
+int xocl_fdt_add_pair(xdev_handle_t xdev_hdl, void *blob, char *name,
+		void *val, int size)
 {
 	int ret;
 
-	ret = fdt_setprop(blob, 0, "vrom", rom,
-			sizeof(struct FeatureRomHeader));
-	if (ret) {
-		xocl_xdev_err(xdev_hdl, "set vrom prop failed %d",ret);
-		return ret;
-	}
+	ret = fdt_setprop(blob, 0, name, val, size);
+	if (ret)
+		xocl_xdev_err(xdev_hdl, "set %s prop failed %d", name, ret);
 
-	return 0;
+	return ret;
 }
 
 const struct axlf_section_header *xocl_axlf_section_header(
