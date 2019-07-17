@@ -152,7 +152,6 @@ void get_pcie_link_info(struct xclmgmt_dev *lro,
 void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online);
 
 /* utils.c */
-// unsigned compute_unit_busy(struct xclmgmt_dev *lro);
 int pci_fundamental_reset(struct xclmgmt_dev *lro);
 
 long reset_hot_ioctl(struct xclmgmt_dev *lro);

@@ -359,30 +359,6 @@ done:
 	return rc;
 }
 
-#if 0
-unsigned compute_unit_busy(struct xclmgmt_dev *lro)
-{
-	int i = 0;
-	unsigned result = 0;
-	u32 r = MGMT_READ_REG32(lro, AXI_GATE_BASE_RD_BASE);
-
-	/*
-	 * r != 0x3 implies that OCL region is isolated and we cannot read
-	 * CUs' status
-	 */
-	if (r != 0x3)
-		return 0;
-
-	/* ?? Assumed only 16 CUs ? */
-	for (i = 0; i < 16; i++) {
-		r = MGMT_READ_REG32(lro, OCL_CTLR_BASE + i * OCL_CU_CTRL_RANGE);
-		if (r == 0x1)
-			result |= (r << i);
-	}
-	return result;
-}
-#endif
-
 void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 {
 	struct pci_dev *pdev = lro->pci_dev;
