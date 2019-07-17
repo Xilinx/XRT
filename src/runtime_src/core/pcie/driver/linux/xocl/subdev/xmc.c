@@ -187,6 +187,9 @@ enum sensor_val_kind {
 #define	READ_SENSOR(xmc, off, valp, val_kind)	\
 	safe_read32(xmc, off + sizeof(u32) * val_kind, valp);
 
+
+#define	XMC_CTRL_ERR_CLR			(1 << 1)
+
 #define	XMC_PKT_SUPPORT_MASK			(1 << 3)
 #define	XMC_PKT_OWNER_MASK			(1 << 5)
 #define	XMC_PKT_ERR_MASK			(1 << 26)
@@ -1901,7 +1904,7 @@ void xocl_fini_xmc(void)
 static int xmc_mailbox_wait(struct xocl_xmc *xmc)
 {
 	int retry = MAX_XMC_MBX_RETRY;
-	u32 val;
+	u32 val, ctrl_val;
 
 	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
 
@@ -1922,6 +1925,8 @@ static int xmc_mailbox_wait(struct xocl_xmc *xmc)
 
 	if (val) {
 		xocl_err(&xmc->pdev->dev, "XMC packet error: %d\n", val);
+		safe_read32(xmc, XMC_CONTROL_REG, &ctrl_val);
+		safe_write32(xmc, XMC_CONTROL_REG, ctrl_val | XMC_CTRL_ERR_CLR);
 		return -EINVAL;
 	}
 
@@ -1938,11 +1943,6 @@ static int xmc_send_pkt(struct xocl_xmc *xmc)
 
 	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
 
-	/* Make sure HW is done with the mailbox buffer. */
-	ret = xmc_mailbox_wait(xmc);
-	if (ret != 0)
-		return ret;
-
 	/* Push pkt data to mailbox on HW. */
 	for (i = 0; i < len; i++)
 		safe_write32(xmc, xmc->mbx_offset + i * sizeof(u32), pkt[i]);
@@ -1950,7 +1950,10 @@ static int xmc_send_pkt(struct xocl_xmc *xmc)
 	/* Notify HW that a pkt is ready for process. */
 	safe_read32(xmc, XMC_CONTROL_REG, &val);
 	safe_write32(xmc, XMC_CONTROL_REG, val | XMC_PKT_OWNER_MASK);
-	return 0;
+
+	/* Make sure HW is done with the mailbox buffer. */
+	ret = xmc_mailbox_wait(xmc);
+	return ret;
 }
 
 static int xmc_recv_pkt(struct xocl_xmc *xmc)
@@ -1962,11 +1965,6 @@ static int xmc_recv_pkt(struct xocl_xmc *xmc)
 	int ret;
 
 	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
-
-	/* Make sure HW is done with the mailbox buffer. */
-	ret = xmc_mailbox_wait(xmc);
-	if (ret != 0)
-		return ret;
 
 	/* Receive pkt hdr. */
 	pkt = (u32 *)&hdr;
@@ -1982,7 +1980,10 @@ static int xmc_recv_pkt(struct xocl_xmc *xmc)
 	}
 	for (i = 0; i < len; i++)
 		safe_read32(xmc, xmc->mbx_offset + i * sizeof(u32), &pkt[i]);
-	return 0;
+
+	/* Make sure HW is done with the mailbox buffer. */
+	ret = xmc_mailbox_wait(xmc);
+	return ret;
 }
 
 static bool is_xmc_ready(struct xocl_xmc *xmc)
