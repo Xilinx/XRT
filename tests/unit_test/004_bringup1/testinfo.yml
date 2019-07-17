@@ -1,0 +1,21 @@
+#template_tql < $RDI_TEMPLATES/sdx/sdaccel/swhw/template.tql
+description: testinfo generated using import_sdx_test.py script
+level: 6
+owner: sonals
+user:
+  allowed_test_modes: [sw_emu, hw_emu, hw]
+  host_args: {all: -k kernel.xclbin -d acc}
+  host_cflags: ' -DDSA64'
+  host_exe: host.exe
+  host_src: main.cpp oclErrorCodes.cpp oclHelper.cpp
+  kernels:
+  - {cflags: ' -I.', file: loopback.xo, ksrc: kernel.cl, name: loopback, type: C}
+  name: 004_bringup1
+  xclbins:
+  - files: 'loopback.xo '
+    kernels:
+    - cus: [loopback_cu0]
+      name: loopback
+      num_cus: 1
+    lflags: ''
+    name: kernel.xclbin
