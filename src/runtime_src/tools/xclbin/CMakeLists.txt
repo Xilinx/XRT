@@ -89,7 +89,7 @@ file(GLOB XCLBINUTIL_FILES
   "SectionUserMetadata.cxx"
   "SectionPDI.cxx"
   "SectionBitstreamPartialPDI.cxx"
-  "SectionDTC.cxx"
+  "SectionPartitionMetadata.cxx"
   "SectionEmulationData.cxx"
   "SectionSystemMetadata.cxx"
   "DTC.cxx"

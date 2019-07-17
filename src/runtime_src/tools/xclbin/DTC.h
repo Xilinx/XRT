@@ -22,6 +22,7 @@
 // #includes here - please keep these to a bare minimum!
 #include "DTCStringsBlock.h"
 #include "FDTNode.h"
+
 #include <boost/property_tree/ptree.hpp>
 
 // ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
@@ -32,17 +33,17 @@
 class DTC {
 
  public:
-  DTC(const char* _pBuffer, const unsigned int _size);
-  DTC(const boost::property_tree::ptree &_ptDTC);
+  DTC(const char* _pBuffer, const unsigned int _size, const FDTProperty::PropertyNameFormat & _propertyNameFormat);
+  DTC(const boost::property_tree::ptree &_ptDTC, const FDTProperty::PropertyNameFormat & _propertyNameFormat);
   virtual ~DTC();
 
  public:
-  void marshalToJSON(boost::property_tree::ptree &_dtcTree) const;
+  void marshalToJSON(boost::property_tree::ptree &_dtcTree, const FDTProperty::PropertyNameFormat & _propertyNameFormat) const;
   void marshalToDTC(std::ostringstream& _buf) const;
 
  protected:
-  void marshalFromDTCImage( const char* _pBuffer, const unsigned int _size);
-  void marshalFromJSON(const boost::property_tree::ptree &_ptDTC);
+  void marshalFromDTCImage( const char* _pBuffer, const unsigned int _size, const FDTProperty::PropertyNameFormat & _propertyNameFormat);
+  void marshalFromJSON(const boost::property_tree::ptree &_ptDTC, const FDTProperty::PropertyNameFormat & _propertyNameFormat);
 
  private:
   // Purposefully private and undefined ctors...
