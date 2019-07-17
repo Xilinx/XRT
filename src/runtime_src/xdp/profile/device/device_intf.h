@@ -31,6 +31,7 @@
 #include "traceFifoLite.h"
 #include "traceFifoFull.h"
 #include "traceFunnel.h"
+#include "traceS2MM.h"
 
 #include <fstream>
 #include <list>
@@ -107,7 +108,7 @@ namespace xdp {
     TraceFifoFull* fifoRead  = nullptr;
     TraceFunnel*   traceFunnel = nullptr;
 
-    ProfileIP* traceDMA = nullptr;
+    TraceS2MM* traceDMA = nullptr;
 
 // lapc ip data holder
 //

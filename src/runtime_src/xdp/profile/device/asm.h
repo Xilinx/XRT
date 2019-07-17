@@ -15,8 +15,8 @@
  * under the License.
  */
 
-#ifndef XDP_PROFILE_DEVICE_SSPM_H
-#define XDP_PROFILE_DEVICE_SSPM_H
+#ifndef XDP_PROFILE_DEVICE_ASM_H
+#define XDP_PROFILE_DEVICE_ASM_H
 
 #include <stdexcept>
 #include "profile_ip_access.h"

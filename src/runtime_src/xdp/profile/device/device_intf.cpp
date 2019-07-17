@@ -482,7 +482,7 @@ DeviceIntf::~DeviceIntf()
                                      break;
         case AXI_TRACE_FUNNEL : traceFunnel = new TraceFunnel(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
                                 break;
-//        case TRACE_S2MM : traceDMA = new ProfileIP(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
+//        case TRACE_S2MM : traceDMA = new TraceS2MM(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
 //                          break;
         default : break;
         // case AXI_STREAM_PROTOCOL_CHECKER

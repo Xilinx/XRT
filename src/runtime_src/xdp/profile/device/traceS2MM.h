@@ -15,8 +15,8 @@
  * under the License.
  */
 
-#ifndef XDP_PROFILE_DEVICE_AM_H
-#define XDP_PROFILE_DEVICE_AM_H
+#ifndef XDP_PROFILE_DEVICE_TRACE_S2MM_H
+#define XDP_PROFILE_DEVICE_TRACE_S2MM_H
 
 #include <stdexcept>
 #include "profile_ip_access.h"
@@ -24,7 +24,7 @@
 namespace xdp {
 
 /**
- * AM ProfileIP (IP with safe access) for Accelerator Monitor
+ * TraceS2MM ProfileIP (IP with safe access) for AXI Interface Monitor
  * 
  * Description:
  * 
@@ -38,7 +38,7 @@ namespace xdp {
  * association between IPs and devices should be done in a 
  * different data structure that is built on top of this class.
  */
-class AM : public ProfileIP {
+class TraceS2MM : public ProfileIP {
 public:
 
     /**
@@ -48,33 +48,22 @@ public:
      * During the construction, the exclusive access to this
      * IP will be requested, otherwise exception will be thrown.
      */
-    AM(void* handle /** < [in] the xrt hal device handle */, 
+    TraceS2MM(void* handle /** < [in] the xrt hal device handle */, 
                 int index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data = nullptr);
 
     /**
      * The exclusive access should be release in the destructor
      * to prevent potential card hang.
      */
-    virtual ~AM()
+    virtual ~TraceS2MM()
     {}
 
-    size_t startCounter();
-    size_t stopCounter();
-    size_t readCounter(xclCounterResults& counterResult, uint32_t index);
-
-    void configureDataflow(bool cuHasApCtrlChain);
-
-    bool has64bit() const;
-    bool hasDataflow() const;
-    bool hasStall() const;
-
-    signed compareVersion(unsigned major2, unsigned minor2) const;
-
-    size_t triggerTrace(uint32_t traceOption /*startTrigger*/);
+    void initiateOffload();
+    void readBuffer();
+    void endOffload();
 
     virtual void showProperties();
     virtual uint32_t getProperties() { return properties; }
-
 private:
     uint8_t properties;
     uint8_t major_version;

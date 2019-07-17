@@ -15,8 +15,8 @@
  * under the License.
  */
 
-#ifndef XDP_PROFILE_DEVICE_TRACE_FIFO_H
-#define XDP_PROFILE_DEVICE_TRACE_FIFO_H
+#ifndef XDP_PROFILE_DEVICE_TRACE_FIFO_FULL_H
+#define XDP_PROFILE_DEVICE_TRACE_FIFO_FULL_H
 
 #include <stdexcept>
 #include <fstream>
