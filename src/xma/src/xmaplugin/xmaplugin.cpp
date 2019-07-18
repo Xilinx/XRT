@@ -484,6 +484,9 @@ xma_plg_schedule_work_item(XmaSession s_handle)
     cu_cmd->data[0] = kernel_tmp1->cu_mask1;
     // Copy reg_map into execBO buffer 
     memcpy(&cu_cmd->data[1], src, size);
+    if (kernel_tmp1->regmap_max >= 1024) {
+        xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "Dev# %d; Kernel: %s; Regmap size used is: %d\n", dev_tmp1->dev_index, kernel_tmp1->name, kernel_tmp1->regmap_max);
+    }
 
     // Set count to size in 32-bit words + 2; One extra_cu_mask is present
     cu_cmd->count = (size >> 2) + 2;

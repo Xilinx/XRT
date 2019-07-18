@@ -43,6 +43,7 @@
 extern "C" {
 #endif
 
+/*Declared in xmabuffers.h to allow device buffer object for XmaFrame as well
 //typedef uint32_t  XmaBufferHandle;
 typedef struct XmaBufferObj
 {
@@ -55,6 +56,7 @@ typedef struct XmaBufferObj
    void*    private_do_not_touch;
   
 } XmaBufferObj;
+*/
 
 
 
