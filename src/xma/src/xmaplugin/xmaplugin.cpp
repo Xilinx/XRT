@@ -281,7 +281,7 @@ xma_plg_register_prep_write(XmaSession  s_handle,
                        size_t        offset)
 {
     uint32_t *src_array = (uint32_t*)src;
-    size_t   cur_max = offset + size; 
+    int32_t   cur_max = offset + size; 
     uint32_t  entries = size / sizeof(uint32_t);
     uint32_t  start = offset / sizeof(uint32_t);
 
@@ -304,7 +304,9 @@ xma_plg_register_prep_write(XmaSession  s_handle,
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Must lock kernel regamp before writing to it and submitting work item\n");
         return XMA_ERROR;
     }
-
+    if (s_handle.hw_session.kernel_info->regmap_max < cur_max) {
+        s_handle.hw_session.kernel_info->regmap_max = cur_max;
+    }
     for (uint32_t i = 0, tmp_idx = start; i < entries; i++, tmp_idx++) {
         s_handle.hw_session.kernel_info->reg_map[tmp_idx] = src_array[i];
     }
@@ -443,8 +445,14 @@ xma_plg_schedule_work_item(XmaSession s_handle)
         return XMA_ERROR;
     }
     uint8_t *src = (uint8_t*)kernel_tmp1->reg_map;
-    //size_t  size = s_handle.hw_session.kernel_info->max_offset;
-    size_t  size = MAX_KERNEL_REGMAP_SIZE;//Max regmap in xmahw.h is 4KB; execBO size is 4096; Supported max regmap size is 4032 Bytes only
+    
+    //size_t  size = MAX_KERNEL_REGMAP_SIZE;//Max regmap in xmahw.h is 4KB; execBO size is 4096; Supported max regmap size is 4032 Bytes only
+    size_t  size = s_handle.hw_session.kernel_info->regmap_max;
+    if (size < 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Use xma_plg_register_prep_write to prepare regmap for CU before scheduling work item \n");
+        return XMA_ERROR;
+    }
+
     int32_t bo_idx;
     int32_t rc = XMA_SUCCESS;
     
@@ -463,29 +471,29 @@ xma_plg_schedule_work_item(XmaSession s_handle)
     if (bo_idx == -1) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unable to find free execbo to use\n");
         return XMA_ERROR;
-    } else {
-        // Setup ert_start_kernel_cmd 
-        ert_start_kernel_cmd *cu_cmd = 
-            (ert_start_kernel_cmd*)dev_tmp1->kernel_execbo_data[bo_idx];
-        cu_cmd->state = ERT_CMD_STATE_NEW;
-        cu_cmd->opcode = ERT_START_CU;
-        cu_cmd->extra_cu_masks = 1;//XMA now supports 60 CUs
-        cu_cmd->cu_mask = kernel_tmp1->cu_mask0;
+    }
+    // Setup ert_start_kernel_cmd 
+    ert_start_kernel_cmd *cu_cmd = 
+        (ert_start_kernel_cmd*)dev_tmp1->kernel_execbo_data[bo_idx];
+    cu_cmd->state = ERT_CMD_STATE_NEW;
+    cu_cmd->opcode = ERT_START_CU;
+    cu_cmd->extra_cu_masks = 1;//XMA now supports 60 CUs
 
-        cu_cmd->data[0] = kernel_tmp1->cu_mask1;
-        // Copy reg_map into execBO buffer 
-        memcpy(&cu_cmd->data[1], src, size);
+    cu_cmd->cu_mask = kernel_tmp1->cu_mask0;
 
-        // Set count to size in 32-bit words + 2; One extra_cu_mask is present
-        cu_cmd->count = (size >> 2) + 2;
-     
-        if (xclExecBuf(s_handle.hw_session.dev_handle, 
-                       dev_tmp1->kernel_execbo_handle[bo_idx]) != 0)
-        {
-            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
-                       "Failed to submit kernel start with xclExecBuf\n");
-            rc = XMA_ERROR;
-        }
+    cu_cmd->data[0] = kernel_tmp1->cu_mask1;
+    // Copy reg_map into execBO buffer 
+    memcpy(&cu_cmd->data[1], src, size);
+
+    // Set count to size in 32-bit words + 2; One extra_cu_mask is present
+    cu_cmd->count = (size >> 2) + 2;
+    
+    if (xclExecBuf(s_handle.hw_session.dev_handle, 
+                    dev_tmp1->kernel_execbo_handle[bo_idx]) != 0)
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
+                    "Failed to submit kernel start with xclExecBuf\n");
+        rc = XMA_ERROR;
     }
     return rc;
 }
@@ -510,6 +518,7 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
     }
 
     int32_t count = 0;
+    int32_t give_up = 0;
     // Keep track of the number of kernel completions
     while (count == 0)
     {
@@ -542,7 +551,8 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
             break;
 
         // Wait for a notification
-        if (xclExecWait(s_handle.hw_session.dev_handle, timeout_ms) <= 0)
+        give_up++;
+        if (xclExecWait(s_handle.hw_session.dev_handle, timeout_ms) <= 0 && give_up >= 3)
             break;
     }
 
