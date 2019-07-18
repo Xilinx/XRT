@@ -61,7 +61,7 @@ proc add_interrupt_ctrl_concat { __cu_num } {
       set offset [expr 0x70000000 + ${__intc_inst_num} * 0x1000]
       set_property offset $offset [get_bd_addr_segs "ps7/Data/SEG_axi_intc_${__intc_inst_num}_Reg"]
     } else {
-      puts "(Post-linking DSA Tcl hook) No available xlconcat pins found"
+      puts "(Post-linking XSA Tcl hook) No available xlconcat pins found"
     }
   }
 }
@@ -87,10 +87,10 @@ proc wire_cu_to_xlconcat_intr {__cu_inst_intr_pin __intr_pin_num} {
       disconnect_bd_net /sds_irq_const_dout $__xlconcat_pin -quiet
       connect_bd_net $__cu_inst_intr_pin $__xlconcat_pin -quiet
     } else {
-      puts "(Post-linking DSA Tcl hook) No available xlconcat_intc pins found"
+      puts "(Post-linking XSA Tcl hook) No available xlconcat_intc pins found"
     }
   } else {
-    puts "(Post-linking DSA Tcl hook) No remaining xlconcat_intc pins to connect to"
+    puts "(Post-linking XSA Tcl hook) No remaining xlconcat_intc pins to connect to"
   }
 }
 
@@ -138,11 +138,11 @@ if {[dict exists $config_info kernels]} {
         }
       }
     } else {
-      puts "(Post-linking DSA Tcl hook) No BD cells found for interrupt wiring"
+      puts "(Post-linking XSA Tcl hook) No BD cells found for interrupt wiring"
     }
   } else {
-    puts "(Post-linking DSA Tcl hook) No CUs found for interrupt wiring"
+    puts "(Post-linking XSA Tcl hook) No CUs found for interrupt wiring"
   }
 } else {
-  puts "(Post-linking DSA Tcl hook) No kernels key in config_info dict for interrupt wiring"
+  puts "(Post-linking XSA Tcl hook) No kernels key in config_info dict for interrupt wiring"
 }
