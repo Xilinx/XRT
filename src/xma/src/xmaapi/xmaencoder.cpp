@@ -78,6 +78,11 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
                    "XMA session creation must be after initialization\n");
         return NULL;
     }
+    if (enc_props->plugin_lib == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
+                   "EncoderProperties must set plugin_lib\n");
+        return NULL;
+    }
 
     // Load the xmaplugin library as it is a dependency for all plugins
     void *xmahandle = dlopen("libxmaplugin.so",
@@ -106,6 +111,11 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
             "Failed to get encoder_plugin from %s\n Error msg: %s\n",
             enc_props->plugin_lib, dlerror());
+        return NULL;
+    }
+    if (plg->xma_version == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
+                   "EncoderPlugin library must have xma_version function\n");
         return NULL;
     }
 
@@ -252,21 +262,9 @@ xma_enc_session_destroy(XmaEncoderSession *session)
     // Clean up the private data
     free(session->base.plugin_data);
 
-    /*Sarab: Remove xma_connect stuff
-    // Free the receiver connection
-    xma_connect_free(session->conn_recv_handle,
-                        XMA_CONNECT_RECEIVER);
-    */
-   
-    /* Remove xma_res stuff free kernel/kernel-session *--/
-    rc = xma_res_free_kernel(g_xma_singleton->shm_res_cfg,
-                             session->base.kern_res);
-    if (rc)
-        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
-                   "Error freeing kernel session. Return code %d\n", rc);
-    */
     // Free the session
-    // TODO: (should also free the Hw sessions)
+    //Let's not chnage in_use and num of encoders
+    //It is better to have different session_id for debugging
     free(session);
 
     return XMA_SUCCESS;

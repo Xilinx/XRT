@@ -216,7 +216,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             return false;
         }
         dev_tmp1.dev_index = dev_index;
-        xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "get_device_list xclOpen handle = %p\n",
+        xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "xclOpen handle = %p\n",
             dev_tmp1.handle);
         rc = xclGetDeviceInfo2(dev_tmp1.handle, &dev_tmp1.info);
         if (rc != 0)
@@ -282,6 +282,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         dev_tmp1.kernel_execbo_handle.reserve(num_execbo);
         dev_tmp1.kernel_execbo_data.reserve(num_execbo);
         dev_tmp1.kernel_execbo_inuse.reserve(num_execbo);
+        dev_tmp1.kernel_execbo_cu_index.reserve(num_execbo);
         dev_tmp1.num_execbo_allocated = num_execbo;
         for (int32_t d = 0; d < num_execbo; d++) {
             uint32_t  bo_handle;
@@ -303,6 +304,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             dev_tmp1.kernel_execbo_handle.emplace_back(bo_handle);
             dev_tmp1.kernel_execbo_data.emplace_back(bo_data);
             dev_tmp1.kernel_execbo_inuse.emplace_back(false);
+            dev_tmp1.kernel_execbo_cu_index.emplace_back(-1);
             /*
             ert_start_kernel_cmd* cu_start_cmd = (ert_start_kernel_cmd*) bo_data;
             cu_start_cmd->state = ERT_CMD_STATE_NEW;

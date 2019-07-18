@@ -36,6 +36,11 @@ xma_kernel_session_create(XmaKernelProperties *props)
                    "XMA session creation must be after initialization\n");
         return NULL;
     }
+    if (props->plugin_lib == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
+                   "KernelProperties must set plugin_lib\n");
+        return NULL;
+    }
 
     // Load the xmaplugin library as it is a dependency for all plugins
     void *xmahandle = dlopen("libxmaplugin.so",
@@ -64,6 +69,11 @@ xma_kernel_session_create(XmaKernelProperties *props)
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
             "Failed to get kernel_plugin from %s\n Error msg: %s\n",
             props->plugin_lib, dlerror());
+        return NULL;
+    }
+    if (plg->xma_version == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
+                   "KernelPlugin library must have xma_version function\n");
         return NULL;
     }
 
@@ -203,15 +213,7 @@ xma_kernel_session_destroy(XmaKernelSession *session)
     // Clean up the private data
     free(session->base.plugin_data);
 
-    /* Remove xma_res stuff free kernel/kernel-session *--/
-    rc = xma_res_free_kernel(g_xma_singleton->shm_res_cfg,
-                             session->base.kern_res);
-    if (rc)
-        xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
-                   "Error freeing kernel session. Return code %d\n", rc);
-    */
     // Free the session
-    // TODO: (should also free the Hw sessions)
     free(session);
 
     return XMA_SUCCESS;
