@@ -587,6 +587,10 @@ static bool autonomous_xmc(struct platform_device *pdev)
 static int xmc_get_data(struct platform_device *pdev, void *buf)
 {
 	struct xcl_sensor *sensors = (struct xcl_sensor *)buf;
+	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
+
+        if (XMC_PRIVILEGED(xmc) && !xmc->mgmt_binary)
+		return -ENODEV;
 
 	xmc_sensor(pdev, VOL_12V_PEX, &sensors->vol_12v_pex, SENSOR_INS);
 	xmc_sensor(pdev, VOL_12V_AUX, &sensors->vol_12v_aux, SENSOR_INS);
@@ -1093,6 +1097,27 @@ static ssize_t board_info_show(struct device *dev,
 	struct device_attribute *da, char *buf);
 static DEVICE_ATTR_RO(board_info);
 
+static ssize_t reg_base_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
+	xdev_handle_t xdev = xocl_get_xdev(xmc->pdev);
+	struct resource *res;
+	int ret, bar_idx;
+	resource_size_t bar_off;
+
+	res = platform_get_resource(to_platform_device(dev), IORESOURCE_MEM, 0);
+	if (!res)
+		return -ENODEV;
+
+	ret = xocl_ioaddr_to_baroff(xdev, res->start, &bar_idx, &bar_off);
+	if (ret)
+		return ret;
+
+	return sprintf(buf, "%lld\n", bar_off);
+}
+static DEVICE_ATTR_RO(reg_base);
+
 static struct attribute *xmc_attrs[] = {
 	&dev_attr_pause.attr,
 	&dev_attr_reset.attr,
@@ -1104,6 +1129,7 @@ static struct attribute *xmc_attrs[] = {
 	&dev_attr_scaling_target_power.attr,
 	&dev_attr_scaling_governor.attr,
 	&dev_attr_board_info.attr,
+	&dev_attr_reg_base.attr,
 	SENSOR_SYSFS_NODE_ATTRS,
 	REG_SYSFS_NODE_ATTRS,
 	NULL,
@@ -1655,7 +1681,7 @@ static void xmc_reset(struct platform_device *pdev)
 
 	xocl_info(&pdev->dev, "Reset Microblaze...");
 	xmc = platform_get_drvdata(pdev);
-	if (!xmc)
+	if (!xmc || !xmc->enabled)
 		return;
 
 	load_xmc(xmc);
@@ -1765,21 +1791,25 @@ static int xmc_remove(struct platform_device *pdev)
 	if (xmc->sche_binary)
 		devm_kfree(&pdev->dev, xmc->sche_binary);
 
+	if (!xmc->enabled)
+		goto end;
+
 	mgmt_sysfs_destroy_xmc(pdev);
 
 	mutex_lock(&xmc->mbx_lock);
 	xmc_unload_board_info(xmc);
 	mutex_unlock(&xmc->mbx_lock);
 
+	mutex_destroy(&xmc->xmc_lock);
+	mutex_destroy(&xmc->mbx_lock);
+
+end:
 	for (i = 0; i < NUM_IOADDR; i++) {
 		if ((i == IO_CLK_SCALING) && !xmc->runtime_cs_enabled)
 			continue;
 		if (xmc->base_addrs[i])
 			iounmap(xmc->base_addrs[i]);
 	}
-
-	mutex_destroy(&xmc->xmc_lock);
-	mutex_destroy(&xmc->mbx_lock);
 
 	platform_set_drvdata(pdev, NULL);
 	devm_kfree(&pdev->dev, xmc);
@@ -1803,19 +1833,6 @@ static int xmc_probe(struct platform_device *pdev)
 	xmc->pdev = pdev;
 	platform_set_drvdata(pdev, xmc);
 
-	xdev_hdl = xocl_get_xdev(pdev);
-
-	if (xocl_mb_mgmt_on(xdev_hdl) || xocl_mb_sched_on(xdev_hdl)
-					|| autonomous_xmc(pdev)) {
-		xocl_info(&pdev->dev, "Microblaze is supported.");
-		xmc->enabled = true;
-	} else {
-		xocl_err(&pdev->dev, "Microblaze is not supported.");
-		devm_kfree(&pdev->dev, xmc);
-		platform_set_drvdata(pdev, NULL);
-		return 0;
-	}
-
 	for (i = 0; i < NUM_IOADDR; i++) {
 		if ((i == IO_CLK_SCALING) && !xmc->runtime_cs_enabled)
 			continue;
@@ -1832,6 +1849,15 @@ static int xmc_probe(struct platform_device *pdev)
 			}
 		} else
 			break;
+	}
+
+	xdev_hdl = xocl_get_xdev(pdev);
+	if (xocl_mb_mgmt_on(xdev_hdl) || xocl_mb_sched_on(xdev_hdl)) {
+		xocl_info(&pdev->dev, "Microblaze is supported.");
+		xmc->enabled = true;
+	} else {
+		xocl_err(&pdev->dev, "Microblaze is not supported.");
+		return 0;
 	}
 
 	if (READ_GPIO(xmc, 0) == GPIO_ENABLED || autonomous_xmc(pdev))

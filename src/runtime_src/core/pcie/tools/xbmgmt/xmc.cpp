@@ -37,12 +37,16 @@ XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
     bool is_mfg = false;
     mDev->sysfs_get("", "mfg", err, is_mfg);
     if (!is_mfg) {
-        if(mDev->pcieBarRead(XMC_GPIO_RESET, &val, sizeof (val)) != 0 ||
-            val == 0) {
+        mDev->sysfs_get("xmc", "status", err, val);
+	if (!err.empty() || !(val & 1)) {
             mProbingErrMsg << "Failed to detect XMC, xmc.bin not loaded";
             goto nosup;
         }
     }
+
+    mDev->sysfs_get("xmc", "reg_base", err, mRegBase);
+    if (!err.empty())
+	    mRegBase = XMC_REG_BASE;
 
     val = readReg(XMC_REG_OFF_MAGIC);
     if (val != XMC_MAGIC_NUM) {
@@ -449,7 +453,7 @@ int XMC_Flasher::waitTillIdle()
 
 unsigned XMC_Flasher::readReg(unsigned RegOffset) {
     unsigned value;
-    if( mDev->pcieBarRead(XMC_REG_BASE + RegOffset, &value, 4) != 0 ) {
+    if( mDev->pcieBarRead(mRegBase + RegOffset, &value, 4) != 0 ) {
         assert(0);
         std::cout << "read reg ERROR" << std::endl;
     }
@@ -457,7 +461,7 @@ unsigned XMC_Flasher::readReg(unsigned RegOffset) {
 }
 
 int XMC_Flasher::writeReg(unsigned RegOffset, unsigned value) {
-    int status = mDev->pcieBarWrite(XMC_REG_BASE + RegOffset, &value, 4);
+    int status = mDev->pcieBarWrite(mRegBase + RegOffset, &value, 4);
     if(status != 0) {
         assert(0);
         std::cout << "write reg ERROR " << std::endl;

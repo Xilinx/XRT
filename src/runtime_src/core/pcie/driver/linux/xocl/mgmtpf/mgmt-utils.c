@@ -119,40 +119,40 @@ void platform_axilite_flush(struct xclmgmt_dev *lro)
 	 * (Feature ROM, MB Reset GPIO, Sysmon)
 	 */
 	for (i = 0; i < 4; i++) {
-		val = MGMT_READ_REG32(lro, FEATURE_ROM_BASE);
+		val = MGMT_READ_REG32(lro, _FEATURE_ROM_BASE);
 		xocl_af_clear(lro);
 	}
 
 	for (i = 0; i < 4; i++) {
-		gpio_val = MGMT_READ_REG32(lro, MB_GPIO);
+		gpio_val = MGMT_READ_REG32(lro, _MB_GPIO);
 		xocl_af_clear(lro);
 	}
 
 	for (i = 0; i < 4; i++) {
-		val = MGMT_READ_REG32(lro, SYSMON_BASE);
+		val = MGMT_READ_REG32(lro, _SYSMON_BASE);
 		xocl_af_clear(lro);
 	}
 
 	/* Can only read this safely if not in reset */
 	if (gpio_val == 1) {
 		for (i = 0; i < 4; i++) {
-			val = MGMT_READ_REG32(lro, MB_IMAGE_SCHE);
+			val = MGMT_READ_REG32(lro, _MB_IMAGE_SCHE);
 			xocl_af_clear(lro);
 		}
 	}
 
 	for (i = 0; i < 4; i++) {
-		val = MGMT_READ_REG32(lro, XHWICAP_CR);
+		val = MGMT_READ_REG32(lro, _XHWICAP_CR);
 		xocl_af_clear(lro);
 	}
 
 	for (i = 0; i < 4; i++) {
-		val = MGMT_READ_REG32(lro, GPIO_NULL_BASE);
+		val = MGMT_READ_REG32(lro, _GPIO_NULL_BASE);
 		xocl_af_clear(lro);
 	}
 
 	for (i = 0; i < 4; i++) {
-		val = MGMT_READ_REG32(lro, AXI_GATE_BASE);
+		val = MGMT_READ_REG32(lro, _AXI_GATE_BASE);
 		xocl_af_clear(lro);
 	}
 }
@@ -359,28 +359,6 @@ done:
 	return rc;
 }
 
-unsigned compute_unit_busy(struct xclmgmt_dev *lro)
-{
-	int i = 0;
-	unsigned result = 0;
-	u32 r = MGMT_READ_REG32(lro, AXI_GATE_BASE_RD_BASE);
-
-	/*
-	 * r != 0x3 implies that OCL region is isolated and we cannot read
-	 * CUs' status
-	 */
-	if (r != 0x3)
-		return 0;
-
-	/* ?? Assumed only 16 CUs ? */
-	for (i = 0; i < 16; i++) {
-		r = MGMT_READ_REG32(lro, OCL_CTLR_BASE + i * OCL_CU_CTRL_RANGE);
-		if (r == 0x1)
-			result |= (r << i);
-	}
-	return result;
-}
-
 void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 {
 	struct pci_dev *pdev = lro->pci_dev;
@@ -456,13 +434,15 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 		goto failed;
 	}
 
-	ret = xocl_fdt_add_vrom(lro, lro->userpf_blob, &rom_header);
+	ret = xocl_fdt_add_pair(lro, lro->userpf_blob, "vrom", &rom_header,
+			sizeof(rom_header));
 	if (ret) {
 		mgmt_err(lro, "add vrom failed %d", ret);
 		goto failed;
 	}
 
 	fdt_pack(lro->userpf_blob);
+	lro->userpf_blob_updated = true;
 
 	return 0;
 
@@ -489,14 +469,14 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 		goto failed;
 	}
 
-	ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP);
+	ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP, true);
 	if (ret) {
 		mgmt_err(lro, "program shell failed %d", ret);
 		goto failed;
 	}
 
 	ret = xocl_subdev_create_prp(lro);
-	if (ret) {
+	if (ret && ret != -ENODEV) {
 		mgmt_err(lro, "failed to create prp %d", ret);
 		goto failed;
 	}
@@ -546,6 +526,14 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 		goto failed;
 	}
 
+	/* temp support for lack of VBNV */
+	xocl_fdt_add_pair(lro, lro->core.fdt_blob, "vbnv",
+			bin_axlf->m_header.m_platformVBNV,
+			strlen(bin_axlf->m_header.m_platformVBNV) + 1);
+
+	release_firmware(fw);
+	fw = NULL;
+
 	lro->bld_blob = vmalloc(fdt_totalsize(lro->core.fdt_blob));
 	if (!lro->bld_blob) {
 		ret = -ENOMEM;
@@ -557,6 +545,12 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	xclmgmt_connect_notify(lro, false);
 	xocl_subdev_destroy_all(lro);
 	ret = xocl_subdev_create_all(lro);
+	if (ret)
+		goto failed;
+	ret = xocl_icap_download_boot_firmware(lro);
+	if (ret)
+		goto failed;
+
 	xclmgmt_update_userpf_blob(lro);
 	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
 	xclmgmt_connect_notify(lro, true);

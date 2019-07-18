@@ -288,11 +288,15 @@ static void __xocl_subdev_destroy(xdev_handle_t xdev_hdl,
 	ida_simple_remove(&subdev_inst_ida, subdev->inst);
 
 	if (pldev) {
-		if (state > XOCL_SUBDEV_STATE_DETACHED) {
+		switch (state) {
+		case XOCL_SUBDEV_STATE_ACTIVE:
+		case XOCL_SUBDEV_STATE_OFFLINE:
 			device_release_driver(&pldev->dev);
+		case XOCL_SUBDEV_STATE_ADDED:
 			platform_device_del(pldev);
+		default:
+			platform_device_put(pldev);
 		}
-		platform_device_put(pldev);
 	}
 }
 
@@ -429,6 +433,8 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 		goto error;
 	}
 
+	subdev->state = XOCL_SUBDEV_STATE_ADDED;
+
 	xocl_xdev_info(xdev_hdl, "Created subdev %s inst %d",
 			sdev_info->name, subdev->inst);
 
@@ -448,6 +454,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 			devname, retval);
 		return -EAGAIN;
 	}
+	subdev->state = XOCL_SUBDEV_STATE_ACTIVE;
 	retval = xocl_subdev_cdev_create(subdev->pldev, &subdev->cdev);
 	if (retval) {
 		xocl_xdev_info(xdev_hdl, "failed to create cdev subdev %s, %d",
@@ -563,7 +570,7 @@ int xocl_subdev_create_by_level(xdev_handle_t xdev_hdl, int level)
 		if (subdev_info[i].level != level)
 			continue;
 		ret = __xocl_subdev_create(xdev_hdl, &subdev_info[i]);
-		if (ret)
+		if (ret && ret != -EEXIST && ret != -EAGAIN)
 			goto failed;
 	}
 
@@ -673,12 +680,11 @@ static int __xocl_subdev_offline(xdev_handle_t xdev_hdl,
 	if (!subdev->pldev)
 		goto done;
 
-	if (subdev->state < XOCL_SUBDEV_STATE_INIT) {
+	if (subdev->state < XOCL_SUBDEV_STATE_ACTIVE) {
 		xocl_xdev_info(xdev_hdl, "%s, already offline",
 			subdev->info.name);
 		goto done;
 	}
-	subdev->state = XOCL_SUBDEV_STATE_OFFLINE;
 	xocl_drvinst_set_offline(platform_get_drvdata(subdev->pldev), true);
 
 	xocl_xdev_info(xdev_hdl, "offline subdev %s, cdev %p\n",
@@ -691,13 +697,15 @@ static int __xocl_subdev_offline(xdev_handle_t xdev_hdl,
 	subdev_funcs = subdev->ops;
 	if (subdev_funcs && subdev_funcs->offline) {
 		ret = subdev_funcs->offline(subdev->pldev);
+		if (!ret)
+			subdev->state = XOCL_SUBDEV_STATE_OFFLINE;
 	} else {
 		xocl_xdev_info(xdev_hdl, "release driver %s",
 				subdev->info.name);
 		device_release_driver(&subdev->pldev->dev);
 		platform_device_del(subdev->pldev);
 		subdev->ops = NULL;
-		subdev->state = XOCL_SUBDEV_STATE_DETACHED;
+		subdev->state = XOCL_SUBDEV_STATE_INIT;
 	}
 
 done:
@@ -723,20 +731,34 @@ static int __xocl_subdev_online(xdev_handle_t xdev_hdl,
 	xocl_xdev_info(xdev_hdl, "online subdev %s, cdev %p\n",
 			subdev->info.name, subdev->cdev);
 	subdev_funcs = subdev->ops;
-	if (subdev_funcs && subdev_funcs->online)
+	if (subdev_funcs && subdev_funcs->online) {
 		ret = subdev_funcs->online(subdev->pldev);
-	else {
-		ret = platform_device_add(subdev->pldev);
-		if (ret) {
-			xocl_xdev_err(xdev_hdl, "add device failed %d", ret);
-		} else {
+		if (ret)
+			goto failed;
+		subdev->state = XOCL_SUBDEV_STATE_ACTIVE;
+	} else {
+		if (subdev->state < XOCL_SUBDEV_STATE_ADDED) {
+			ret = platform_device_add(subdev->pldev);
+			if (ret) {
+				xocl_xdev_err(xdev_hdl, "add device failed %d",
+						ret);
+				goto failed;
+			}
+			subdev->state = XOCL_SUBDEV_STATE_ADDED;
+		}
+
+		if (subdev->state < XOCL_SUBDEV_STATE_OFFLINE) {
 			ret = device_attach(&subdev->pldev->dev);
 			if (ret != 1) {
 				xocl_xdev_info(xdev_hdl,
 					"driver is not attached at this time");
 				ret = -EAGAIN;
-			} else
+			} else {
 				ret = 0;
+				subdev->state = XOCL_SUBDEV_STATE_ACTIVE;
+			}
+			if (ret)
+				goto failed;
 		}
 	}
 
@@ -752,7 +774,6 @@ static int __xocl_subdev_online(xdev_handle_t xdev_hdl,
 	if (XOCL_GET_DRV_PRI(subdev->pldev))
 		subdev->ops = XOCL_GET_DRV_PRI(subdev->pldev)->ops;
 	xocl_drvinst_set_offline(platform_get_drvdata(subdev->pldev), false);
-	subdev->state = XOCL_SUBDEV_STATE_INIT;
 
 failed:
 	return ret;
@@ -833,8 +854,10 @@ int xocl_subdev_online_by_level(xdev_handle_t xdev_hdl, int level)
 			if (core->subdevs[i][j].info.level == level) {
 				ret = __xocl_subdev_online(xdev_hdl,
 					&core->subdevs[i][j]);
-				if (ret)
+				if (ret && ret != -EAGAIN)
 					goto failed;
+				else
+					ret = 0;
 			}
 
 failed:
@@ -878,8 +901,10 @@ int xocl_subdev_online_all(xdev_handle_t xdev_hdl)
 		for (j = 0; j < XOCL_SUBDEV_MAX_INST; j++) {
 			ret = __xocl_subdev_online(xdev_hdl,
 				&core->subdevs[i][j]);
-			if (ret)
+			if (ret && ret != -EAGAIN)
 				goto failed;
+			else
+				ret = 0;
 		}
 	}
 
