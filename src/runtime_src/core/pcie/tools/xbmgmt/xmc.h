@@ -27,7 +27,6 @@
 
 // Register offset in mgmt pf BAR 0
 #define XMC_REG_BASE                        0x120000
-#define XMC_GPIO_RESET                      0x131000
 
 // Register offset in register map of XMC
 #define XMC_REG_OFF_MAGIC                   0x0
@@ -42,6 +41,7 @@
 #define XMC_MAGIC_NUM                       0x74736574
 #define XMC_BASE_VERSION                    2018201
 
+#define XMC_CTRL_ERR_CLR                    (1 << 1)
 #define XMC_PKT_SUPPORT_MASK                (1 << 3)
 #define XMC_PKT_OWNER_MASK                  (1 << 5)
 #define XMC_PKT_ERR_MASK                    (1 << 26)
@@ -113,6 +113,7 @@ public:
 private:
     std::shared_ptr<pcidev::pci_device> mDev;
     unsigned mPktBufOffset;
+    unsigned long long mRegBase;
     struct xmcPkt mPkt;
     std::stringstream mProbingErrMsg;
     int program(std::istream& tiTxtStream, const ELARecord& record);

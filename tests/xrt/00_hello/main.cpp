@@ -154,8 +154,8 @@ int main(int argc, char** argv)
         if (xclOpenContext(handle, xclbinId, cu_index, true))
             throw std::runtime_error("Cannot create context");
 
-        unsigned boHandle1 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem);
-        unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem);
+        unsigned boHandle1 = xclAllocBO(handle, DATA_SIZE, 0, first_mem);
+        unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE, 0, first_mem);
         char* bo1 = (char*)xclMapBO(handle, boHandle1, true);
         memset(bo1, 0, DATA_SIZE);
         std::string testVector =  "hello\nthis is Xilinx OpenCL memory read write test\n:-)\n";
@@ -173,7 +173,7 @@ int main(int argc, char** argv)
             return 1;
 
         //Allocate the exec_bo
-        unsigned execHandle = xclAllocBO(handle, DATA_SIZE, xclBOKind(0), (1<<31));
+        unsigned execHandle = xclAllocBO(handle, DATA_SIZE, 0, (1<<31));
         //void* execData = xclMapBO(handle, execHandle, true);
 
         //Get the output;

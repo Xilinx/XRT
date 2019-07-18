@@ -2972,10 +2972,12 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 	layout = XOCL_IP_LAYOUT(xdev);
 	xclbin_id = XOCL_XCLBIN_ID(xdev);
 
+	client_release_implicit_cus(exec, client);
+	client->virt_cu_ref = 0;
+
 	bit = layout
 	  ? find_first_bit(client->cu_bitmap, layout->m_count)
 	  : MAX_CUS;
-
 	while (layout && (bit < layout->m_count)) {
 		if (rem_ip_ref(xdev, exec, bit) == 0) {
 			userpf_info(xdev, "CTX reclaim (%pUb, %d, %u)",
@@ -2983,9 +2985,6 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 		}
 		bit = find_next_bit(client->cu_bitmap, layout->m_count, bit + 1);
 	}
-
-	client->virt_cu_ref = 0;
-	client_release_implicit_cus(exec, client);
 	bitmap_zero(client->cu_bitmap, MAX_CUS);
 
 	(void) xocl_icap_unlock_bitstream(xdev, xclbin_id, pid);
@@ -3468,6 +3467,40 @@ out:
 
 }
 
+int cu_map_addr(struct platform_device *pdev, u32 cu_idx, void *drm_filp,
+	u32 *addrp)
+{
+	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
+	struct exec_core *exec = platform_get_drvdata(pdev);
+	struct drm_file *filp = drm_filp;
+	struct client_ctx *client = filp->driver_priv;
+	struct xocl_cu *xcu = NULL;
+
+	mutex_lock(&xdev->dev_lock);
+
+	if (cu_idx >= MAX_CUS) {
+		userpf_err(xdev, "cu index (%d) is too big\n", cu_idx);
+		mutex_unlock(&xdev->dev_lock);
+		return -EINVAL;
+	}
+	if (!test_bit(cu_idx, client->cu_bitmap)) {
+		userpf_err(xdev, "cu(%d) isn't reserved\n", cu_idx);
+		mutex_unlock(&xdev->dev_lock);
+		return -EINVAL;
+	}
+	if (ip_excl_holder(exec, cu_idx) == 0) {
+		userpf_err(xdev, "cu(%d) isn't exclusively reserved\n", cu_idx);
+		mutex_unlock(&xdev->dev_lock);
+		return -EINVAL;
+	}
+
+	xcu = exec->cus[cu_idx];
+	BUG_ON(xcu == NULL);
+	*addrp = xcu->addr;
+	mutex_unlock(&xdev->dev_lock);
+	return 0;
+}
+
 struct xocl_mb_scheduler_funcs sche_ops = {
 	.create_client = create_client,
 	.destroy_client = destroy_client,
@@ -3476,6 +3509,7 @@ struct xocl_mb_scheduler_funcs sche_ops = {
 	.stop = stop,
 	.reset = reset,
 	.reconfig = reconfig,
+	.cu_map_addr = cu_map_addr,
 };
 
 /* sysfs */

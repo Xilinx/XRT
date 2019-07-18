@@ -17,6 +17,12 @@ BIOS Setup
 
 2. Enable large BAR support in BIOS. This is sometimes called "Above 4G decoding" and may be found under PCIe configuration or Boot configuration.
 
+
+Note
+.......
+It may be necessary to update to the latest BIOS release before enabling P2P.  Not doing so may cause the system to continuously reboot during the boot process.  If this occurs, power-cycle the system to disable p2p and allow the system to boot normally.
+
+
 Warning
 .......
 

@@ -148,7 +148,10 @@ namespace xclcpuemhal2 {
       ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
       ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
       int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout);
-
+      int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
+      int xclExecWait(int timeoutMilliSec);
+      int xclExecBuf(unsigned int cmdBO);
+      int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const;
 
     private:
       std::mutex mMemManagerMutex;
