@@ -64,7 +64,7 @@ namespace xclcpuemhal2 {
       static std::map<std::string, std::string> mEnvironmentNameValueMap;
   public:
       // HAL2 RELATED member functions start
-      unsigned int xclAllocBO(size_t size, xclBOKind domain, unsigned flags);
+      unsigned int xclAllocBO(size_t size, int unused, unsigned flags);
       int xoclCreateBo(xclemulation::xocl_create_bo *info);
       void* xclMapBO(unsigned int boHandle, bool write);
       int xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset); 
@@ -148,7 +148,10 @@ namespace xclcpuemhal2 {
       ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
       ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
       int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout);
-
+      int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
+      int xclExecWait(int timeoutMilliSec);
+      int xclExecBuf(unsigned int cmdBO);
+      int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const;
 
     private:
       std::mutex mMemManagerMutex;

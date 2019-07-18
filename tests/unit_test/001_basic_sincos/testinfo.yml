@@ -1,0 +1,21 @@
+#template_tql < $RDI_TEMPLATES/sdx/sdaccel/swhw/template.tql
+description: testinfo generated using import_sdx_test.py script
+level: 6
+owner: vallina
+user:
+  allowed_test_modes: [sw_emu, hw_emu, hw]
+  host_args: {all: sincos.xclbin}
+  host_cflags: ' -DDSA64 -DFLOW_HLS_CSIM'
+  host_exe: host.exe
+  host_src: test-cl.cpp
+  kernels:
+  - {cflags: ' -I.', file: test_sincos.xo, ksrc: sincos.cl, name: test_sincos, type: C}
+  name: 001_basic_sincos
+  xclbins:
+  - files: 'test_sincos.xo '
+    kernels:
+    - cus: [test_sincos]
+      name: test_sincos
+      num_cus: 1
+    lflags: ''
+    name: sincos.xclbin

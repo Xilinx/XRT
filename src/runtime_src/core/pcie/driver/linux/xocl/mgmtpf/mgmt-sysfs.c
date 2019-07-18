@@ -157,9 +157,12 @@ static ssize_t mig_calibration_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	void __iomem *memcalib;
+
+	memcalib = xocl_iores_get_base(lro, IORES_MEMCALIB);
 
 	return sprintf(buf, "%d\n",
-		lro->ready ? MGMT_READ_REG32(lro, GENERAL_STATUS_BASE) : 0);
+		(memcalib && lro->ready) ? XOCL_READ_REG32(memcalib) : 0);
 }
 static DEVICE_ATTR_RO(mig_calibration);
 
@@ -185,55 +188,17 @@ static ssize_t dev_offline_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	bool offline;
+	int val;
 
-	int val = xocl_drvinst_get_offline(lro) ? 1 : 0;
+	val = xocl_drvinst_get_offline(lro, &offline);
+	if (!val)
+		val = offline ? 1 : 0;
 
 	return sprintf(buf, "%d\n", val);
 }
 
 static DEVICE_ATTR(dev_offline, 0444, dev_offline_show, NULL);
-
-static ssize_t subdev_cmd_store(struct device *dev,
-	struct device_attribute *da, const char *buf, size_t count)
-{
-	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
-	int ret = 0, i;
-	char *name = (char *)buf;
-	char cmd[32] = { 0 }, sdev_name[33] = { 0 };
-
-	sscanf(name, "%32s %32s", cmd, sdev_name);
-
-	device_lock(dev);
-	if (!strcmp(cmd, "create") && !strcmp(sdev_name, "dynamic") ) {
-		xclmgmt_connect_notify(lro, false);
-		xocl_subdev_destroy_all(lro);
-		ret = xocl_subdev_create_all(lro);
-		xclmgmt_update_userpf_blob(lro);
-
-		(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
-		xclmgmt_connect_notify(lro, true);
-	} else if (!strcmp(cmd, "destroy") &&
-			!strcmp(sdev_name, "dynamic")) {
-		for (i = XOCL_SUBDEV_LEVEL_URP; i > XOCL_SUBDEV_LEVEL_STATIC;
-				i--) {
-			xocl_subdev_destroy_by_level(lro, i);
-		}
-	}else {
-		xocl_err(dev, "Invalid command");
-		ret = -EINVAL;
-	}
-
-	if (!ret || ret == -EAGAIN)
-		ret = count;
-	else
-		xocl_err(dev, "%s %s failed", cmd, sdev_name);
-	device_unlock(dev);
-
-	return ret;
-}
-
-static DEVICE_ATTR(subdev_cmd, 0200, NULL, subdev_cmd_store);
-
 
 static ssize_t config_mailbox_channel_switch_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
@@ -293,20 +258,26 @@ static DEVICE_ATTR(config_mailbox_comm_id, 0644,
 	config_mailbox_comm_id_show,
 	config_mailbox_comm_id_store);
 
-static ssize_t blob_clear_store(struct device *dev,
-	struct device_attribute *da, const char *buf, size_t count)
+static ssize_t rp_program_store(struct device *dev, struct device_attribute *da,
+	const char *buf, size_t count)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	u32 val = 0;
+	ssize_t ret;
 
-	if (lro->core.fdt_blob) {
-		vfree(lro->core.fdt_blob);
-		lro->core.fdt_blob = NULL;
-	}
+	if (kstrtou32(buf, 10, &val) == -EINVAL)
+		return -EINVAL;
+	else if (val == 1)
+		ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP, false);
+	else if (val == 2) {
+		ret = xclmgmt_program_shell(lro);
+		(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
+	} else
+		return -EINVAL;
 
-	return count;
+	return ret ? ret : count;
 }
-
-static DEVICE_ATTR(blob_clear, 0200, NULL, blob_clear_store);
+static DEVICE_ATTR_WO(rp_program);
 
 static struct attribute *mgmt_attrs[] = {
 	&dev_attr_instance.attr,
@@ -328,47 +299,11 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_dev_offline.attr,
 	&dev_attr_config_mailbox_channel_switch.attr,
 	&dev_attr_config_mailbox_comm_id.attr,
-	&dev_attr_blob_clear.attr,
-	&dev_attr_subdev_cmd.attr,
+	&dev_attr_rp_program.attr,
 	NULL,
 };
 
-static ssize_t mgmt_blob_input(struct file *filp, struct kobject *kobj,
-	struct bin_attribute *attr, char *buffer, loff_t off, size_t count)
-{
-	struct device *dev = container_of(kobj, struct device, kobj);
-	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
-	int ret = 0;
-
-	if (off == 0) {
-		if (count < sizeof(struct fdt_header)) {
-			mgmt_err(lro, "count is too small %ld", count);
-			return -EINVAL;
-		}
-
-		if (fdt_check_header(buffer)) {
-			mgmt_err(lro, "Invalid fdt header");
-			return -EINVAL;
-		}
-
-		lro->bin_length = fdt_totalsize(buffer);
-		lro->bin_buffer = vmalloc(lro->bin_length);
-	}
-
-	if (off + count >= lro->bin_length) {
-		memcpy(lro->bin_buffer + off, buffer, lro->bin_length - off);
-		ret = xocl_fdt_blob_input(lro, lro->bin_buffer);
-		vfree(lro->bin_buffer);
-		lro->bin_buffer = NULL;
-		lro->bin_length = 0;
-
-	} else
-		memcpy(lro->bin_buffer + off, buffer, count);
-
-	return ret ? ret : count;
-}
-
-static ssize_t mgmt_blob_output(struct file *filp, struct kobject *kobj,
+static ssize_t fdt_blob_output(struct file *filp, struct kobject *kobj,
 	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
 	struct device *dev = kobj_to_dev(kobj);
@@ -396,16 +331,14 @@ bail:
 	return ret;
 }
 
-static struct bin_attribute blob_input_attr = {
+static struct bin_attribute fdt_blob_attr = {
 	.attr = {
-		.name = "blob_input",
-		.mode = 0600
+		.name = "fdt_blob",
+		.mode = 0400
 	},
-	.read = mgmt_blob_output,
-	.write = mgmt_blob_input,
+	.read = fdt_blob_output,
 	.size = 0
 };
-
 static ssize_t userpf_blob_output(struct file *filp, struct kobject *kobj,
 	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
@@ -444,8 +377,8 @@ static struct bin_attribute userpf_blob_attr = {
 };
 
 static struct bin_attribute  *mgmt_bin_attrs[] = {
-	&blob_input_attr,
 	&userpf_blob_attr,
+	&fdt_blob_attr,
 	NULL,
 };
 

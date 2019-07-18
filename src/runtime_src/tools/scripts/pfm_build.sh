@@ -76,7 +76,7 @@ echo "Current DIR: $ORIGINAL_DIR"
 echo "xsct: $PATH_TO_XSCT"
 echo ""
 
-[ -d "$ORIGINAL_DIR/platform" ] && error "$ORIGINAL_DIR/platform is existed. Please remove it."
+[ -d "$ORIGINAL_DIR/platform/${PLATFORM_NAME}" ] && error "$ORIGINAL_DIR/platform/${PLATFORM_NAME} is existed. Please remove it."
 
 cd $SRC_DIR
 echo " * Building Platform (from: $PWD)"

@@ -120,6 +120,13 @@ struct ert_start_kernel_cmd {
  * @opcode:          [27-23] 0, opcode for init_kernel
  * @type:            [31-27] 0, type of init_kernel
  *
+ * @cu_run_timeout   the configured CU timeout value in Microseconds
+ *                   setting to 0 means CU should not timeout
+ * @cu_reset_timeout the configured CU reset timeout value in Microseconds
+ *                   when CU timeout, CU will be reset. this indicates
+ *                   CU reset should be completed within the timeout value.
+ *                   if cu_run_timeout is set to 0, this field is undefined.
+ *
  * @cu_mask:         first mandatory CU mask
  * @data:            count-9 number of words representing interpreted payload
  *
@@ -140,7 +147,9 @@ struct ert_init_kernel_cmd {
     uint32_t header;
   };
 
-  uint32_t reserved[8];      /* reserved for future use */
+  uint32_t cu_run_timeout;   /* CU timeout value in Microseconds */
+  uint32_t cu_reset_timeout; /* CU reset timeout value in Microseconds */
+  uint32_t reserved[6];      /* reserved for future use */
 
   /* payload */
   uint32_t cu_mask;          /* mandatory cu mask */
@@ -307,13 +316,17 @@ struct ert_abort_cmd {
 /**
  * ERT command state
  *
- * @ERT_CMD_STATE_NEW:      Set by host before submitting a command to scheduler
- * @ERT_CMD_STATE_QUEUED:   Internal scheduler state
- * @ERT_CMD_STATE_SUBMITTED:Internal scheduler state
- * @ERT_CMD_STATE_RUNNING:  Internal scheduler state
- * @ERT_CMD_STATE_COMPLETE: Set by scheduler when command completes
- * @ERT_CMD_STATE_ERROR:    Set by scheduler if command failed
- * @ERT_CMD_STATE_ABORT:    Set by scheduler if command abort
+ * @ERT_CMD_STATE_NEW:         Set by host before submitting a command to
+ *                             scheduler
+ * @ERT_CMD_STATE_QUEUED:      Internal scheduler state
+ * @ERT_CMD_STATE_SUBMITTED:   Internal scheduler state
+ * @ERT_CMD_STATE_RUNNING:     Internal scheduler state
+ * @ERT_CMD_STATE_COMPLETE:    Set by scheduler when command completes
+ * @ERT_CMD_STATE_ERROR:       Set by scheduler if command failed
+ * @ERT_CMD_STATE_ABORT:       Set by scheduler if command abort
+ * @ERT_CMD_STATE_TIMEOUT:     Set by scheduler if command timeout and reset
+ * @ERT_CMD_STATE_NORESPONSE:  Set by scheduler if command timeout and fail to
+ *                             reset
  */
 enum ert_cmd_state {
   ERT_CMD_STATE_NEW = 1,
@@ -323,6 +336,8 @@ enum ert_cmd_state {
   ERT_CMD_STATE_ERROR = 5,
   ERT_CMD_STATE_ABORT = 6,
   ERT_CMD_STATE_SUBMITTED = 7,
+  ERT_CMD_STATE_TIMEOUT = 8,
+  ERT_CMD_STATE_NORESPONSE = 9,
 };
 
 /**

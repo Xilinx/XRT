@@ -23,20 +23,14 @@ A standard platform directory should looks like,
     |   |       |-- image
     |   |       |   |-- init.sh (optional)
     |   |       |   |-- platform_desc.txt (optional)
-    |   |       |
     |   |       |-- linux.bif
     |   |-- generic.readme
-    |   |-- prebuilt
-    |   |   |-- apsys_0.xml
-    |   |   |-- partitions.xml
-    |   |   |-- portinfo.c
-    |   |   |-- portinfo.h
     |   |-- qemu
     |   |   |-- lnx
     |   |       |-- pmu_args.txt
     |   |       |-- qemu_args.txt
     |   |-- <b>&lt;platform_name&gt;</b>.hpfm
-    |-- <b>&lt;platform_name&gt;</b>_dsa.tcl
+    |-- <b>&lt;platform_name&gt;</b>_xsa.tcl
     |-- <b>&lt;platform_name&gt;</b>_pfm.tcl
     |-- <b>&lt;platform_name&gt;</b>_fragment.dts (optional)
 </code></pre>

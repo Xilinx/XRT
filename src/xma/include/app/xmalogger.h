@@ -34,6 +34,7 @@ typedef enum xrtLogMsgLevel XmaLogLevelType;
 
 #define XMA_CRITICAL_LOG XRT_CRITICAL
 #define XMA_ERROR_LOG XRT_ERROR
+#define XMA_WARNING_LOG XRT_WARNING
 #define XMA_INFO_LOG XRT_INFO
 #define XMA_DEBUG_LOG XRT_DEBUG
 

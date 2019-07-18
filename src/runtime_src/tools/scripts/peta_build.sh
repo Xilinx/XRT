@@ -13,13 +13,13 @@ error()
 
 usage()
 {
-	echo "Usage: $PROGRAM [options] /path/to/<dsa_name>.dsa"
+	echo "Usage: $PROGRAM [options] /path/to/<xsa_name>.xsa"
 	echo "	options:"
 	echo "		--help, -v              		Print this usage"
 	echo "		--config, -c config.sh			Specific PetaLinux config script"
 	echo "		--bsp, -b PetaLinuxBSP			Specific PetaLinux BSP"
 	echo ""
-	echo "This script will create <dsa_name>/ directory for petalinux project"
+	echo "This script will create <xsa_name>/ directory for petalinux project"
 	echo "Note: Do NOT move this script to another place. It depends on XRT repo"
 }
 
@@ -27,6 +27,11 @@ usage_and_exit()
 {
 	usage
 	exit $1
+}
+
+version_lt()
+{
+	test "$(printf '%s\n' "$@" | sort -Vr | head -n 1)" != "$1"
 }
 
 # --- Internal funtions ---
@@ -63,10 +68,10 @@ config_dts()
 	DTS_FILE=$1
 	echo "cat $GLOB_DTS >> recipes-bsp/device-tree/files/system-user.dtsi"
 	cat $GLOB_DTS >> recipes-bsp/device-tree/files/system-user.dtsi
-	# By default, assume this script is used right after dsa_build.sh.
-	if [ -f ${ORIGINAL_DIR}/dsa_build/${DSA_NAME}_fragment.dts ]; then
-		echo "cat ${ORIGINAL_DIR}/dsa_build/${DSA_NAME}_fragment.dts >> $DTS_FILE"
-		cat ${ORIGINAL_DIR}/dsa_build/${DSA_NAME}_fragment.dts >> $DTS_FILE
+	# By default, assume this script is used right after xsa_build.sh.
+	if [ -f ${ORIGINAL_DIR}/xsa_build/${XSA_NAME}/${XSA_NAME}_fragment.dts ]; then
+		echo "cat ${ORIGINAL_DIR}/xsa_build/${XSA_NAME}/${XSA_NAME}_fragment.dts >> $DTS_FILE"
+		cat ${ORIGINAL_DIR}/xsa_build/${XSA_NAME}/${XSA_NAME}_fragment.dts >> $DTS_FILE
 	fi
 }
 
@@ -75,13 +80,26 @@ install_recipes()
 	META_USER_PATH=$1
 
 	cp -r ${XRT_REPO_DIR}/src/platform/recipes-xrt ${META_USER_PATH}
-
-	# If you are using PetaLinux 2018.3 or earlier version, do below step
-	if [[ $PETALINUX_VER == "2018"* ]]; then
-		echo " * A 2018.X PetaLinux release (${PETALINUX_VER}) was detected, copying opencl-headers recipe:"
-		mkdir -p $META_USER_PATH/recipes-xrt/opencl-headers
-		wget -O $META_USER_PATH/recipes-xrt/opencl-headers/opencl-headers_git.bb http://cgit.openembedded.org/meta-openembedded/plain/meta-oe/recipes-core/opencl-headers/opencl-headers_git.bb
+	# By default, let XRT recipes point to current XRT workspace.
+	# PetaLinux fetch xrt source code from this workspace, instead of fetch from github.
+	SAVED_OPTIONS_LOCAL=$(set +o)
+	set +e
+	XRT_BB=${META_USER_PATH}/recipes-xrt/xrt/xrt_git.bb
+	ZOCL_BB=${META_USER_PATH}/recipes-xrt/zocl/zocl_git.bb
+	grep "inherit externalsrc" $XRT_BB
+	if [ $? != 0 ]; then
+		echo "inherit externalsrc" >> $XRT_BB
+		echo "EXTERNALSRC = \"$XRT_REPO_DIR/src\"" >> $XRT_BB
+		echo 'EXTERNALSRC_BUILD = "${WORKDIR}/build"' >> $XRT_BB
 	fi
+
+	grep "inherit externalsrc" $ZOCL_BB
+	if [ $? != 0 ]; then
+		echo "inherit externalsrc" >> $ZOCL_BB
+		echo "EXTERNALSRC = \"$XRT_REPO_DIR/src/runtime_src/core/edge/drm/zocl\"" >> $ZOCL_BB
+		echo "EXTERNALSRC_BUILD = \"$XRT_REPO_DIR/src/runtime_src/core/edge/drm/zocl\"" >> $ZOCL_BB
+	fi
+	eval "$SAVED_OPTIONS_LOCAL"
 
 	# mnt-sd will run at the Linux boot time, it do below things
 	#  1. mount SD cart to /mnt
@@ -89,15 +107,15 @@ install_recipes()
 	cp -r ${XRT_REPO_DIR}/src/platform/mnt-sd $META_USER_PATH/recipes-apps/
 }
 
-update_append()
+rootfs_menu()
 {
-	BBAPPEND=$1
-	echo 'IMAGE_INSTALL_append = " xrt-dev"'            >> $BBAPPEND
-	echo 'IMAGE_INSTALL_append = " mnt-sd"'             >> $BBAPPEND
-	echo 'IMAGE_INSTALL_append = " xrt"'                >> $BBAPPEND
-	echo 'IMAGE_INSTALL_append = " zocl"'               >> $BBAPPEND
-	echo 'IMAGE_INSTALL_append = " opencl-headers-dev"' >> $BBAPPEND
-	echo 'IMAGE_INSTALL_append = " opencl-clhpp-dev"'   >> $BBAPPEND
+	ROOTFSCONFIG=$1
+	echo 'CONFIG_xrt'                                   >> $ROOTFSCONFIG
+	echo 'CONFIG_mnt-sd'                                >> $ROOTFSCONFIG
+	echo 'CONFIG_xrt-dev'                               >> $ROOTFSCONFIG
+	echo 'CONFIG_zocl'                                  >> $ROOTFSCONFIG
+	echo 'CONFIG_opencl-clhpp-dev'                      >> $ROOTFSCONFIG
+	echo 'CONFIG_opencl-headers-dev'                    >> $ROOTFSCONFIG
 }
 
 pre_build_hook()
@@ -127,10 +145,10 @@ THIS_SCRIPT=`readlink -f ${BASH_SOURCE[0]}`
 THIS_SCRIPT_DIR="$( cd "$( dirname "${THIS_SCRIPT}" )" >/dev/null 2>&1 && pwd )"
 
 PROGRAM=`basename $0`
-PATH_TO_DSA=""
+PATH_TO_XSA=""
 CONFIG_FILE=""
 PETA_BSP=""
-DSA_NAME=""
+XSA_NAME=""
 XRT_REPO_DIR=`readlink -f ${THIS_SCRIPT_DIR}/../../../..`
 PETA_CREATE_OPT="--template zynqMP"
 CPU_ARCH="a53"
@@ -153,7 +171,7 @@ while [ $# -gt 0 ]; do
 			error "Unregognized option: $1"
 			;;
 		* )
-			PATH_TO_DSA=$1
+			PATH_TO_XSA=$1
 			break
 			;;
 	esac
@@ -161,32 +179,44 @@ while [ $# -gt 0 ]; do
 done
 
 # Sanity Check
-[ ! -f "$PATH_TO_DSA" ] && error "DSA is not exist"
+[ ! -f "$PATH_TO_XSA" ] && error "XSA is not exist"
 
-[ -z "$PETALINUX" ] && error "PetaLinux is not installed"
+# the setting.sh script of petalinux would set this two environment variable
+[ -z "$PETALINUX" -o -z "$PETALINUX_VER" ] && error "PetaLinux is not installed"
 
 [ ! -d "$XRT_REPO_DIR" ] && error "Could not found XRT repository root directory"
 # Sanity check done
 
+# Handle PetaLinux version changes...
+# Latest version
+PETA_CONFIG_OPT="--silentconfig"
+ROOTFS_MENU_CONFIG="conf/user-rootfsconfig"
+
+if $(version_lt $PETALINUX_VER 2019.2); then
+	error "Only support PetaLinux 2019.2 or later"
+fi
+
+# End of PetaLinux version changes...
+
 ORIGINAL_DIR=`pwd`
 
-DSA_FILE=`basename $PATH_TO_DSA`
+XSA_FILE=`basename $PATH_TO_XSA`
 # Normalized Tcl script path
-PATH_TO_DSA=`readlink -f $PATH_TO_DSA`
-DSA_DIR=`dirname $PATH_TO_DSA`
-DSA_NAME=${DSA_FILE%.dsa}
+PATH_TO_XSA=`readlink -f $PATH_TO_XSA`
+XSA_DIR=`dirname $PATH_TO_XSA`
+XSA_NAME=${XSA_FILE%.xsa}
 
-[ ! "$DSA_NAME.dsa" == "$DSA_FILE" ] && error "$DSA_FILE should be <dsa_name>.dsa"
+[ ! "$XSA_NAME.xsa" == "$XSA_FILE" ] && error "$XSA_FILE should be <xsa_name>.xsa"
 
-PETALINUX_NAME=$DSA_NAME
+PETALINUX_NAME=$XSA_NAME
 
-if [ -z "$CONFIG_FILE" -a -f "${DSA_DIR}/config.sh" ]; then
-	# No CONFIG_FILE from command line and DSA directory has config.sh
-	CONFIG_FILE=${DSA_DIR}/config.sh
+if [ -z "$CONFIG_FILE" -a -f "${XSA_DIR}/config.sh" ]; then
+	# No CONFIG_FILE from command line and XSA directory has config.sh
+	CONFIG_FILE=${XSA_DIR}/config.sh
 fi
 
 if [ -f "$CONFIG_FILE" ]; then
-	echo "source $CONFIG_FILE"
+	echo "[CMD]: source $CONFIG_FILE"
 	source $CONFIG_FILE
 else
 	echo " * Could not found configure file, use default"
@@ -218,7 +248,7 @@ echo ""
 
 if [ ! -d $PETALINUX_NAME ]; then
   echo " * Create PetaLinux Project: $PETALINUX_NAME"
-  echo "petalinux-create -t project -n $PETALINUX_NAME $PETA_CREATE_OPT"
+  echo "[CMD]: petalinux-create -t project -n $PETALINUX_NAME $PETA_CREATE_OPT"
   petalinux-create -t project -n $PETALINUX_NAME $PETA_CREATE_OPT
 else
   echo " * PetaLinux Project existed: $PETALINUX_NAME. Skip petalinux-create"
@@ -229,8 +259,8 @@ mkdir -p ${PETALINUX_NAME}/build/conf/
 
 echo " * Configuring PetaLinux Project"
 config_peta ${PETALINUX_NAME}/project-spec/configs/config
-echo "petalinux-config -p $PETALINUX_NAME --get-hw-description=${DSA_DIR} --oldconfig"
-petalinux-config -p $PETALINUX_NAME --get-hw-description=${DSA_DIR} --oldconfig
+echo "[CMD]: petalinux-config -p $PETALINUX_NAME --get-hw-description=${XSA_DIR} $PETA_CONFIG_OPT"
+petalinux-config -p $PETALINUX_NAME --get-hw-description=${XSA_DIR} $PETA_CONFIG_OPT
 
 echo " * Change directory to ${PETALINUX_NAME}/project-spec/meta-user/"
 cd ${PETALINUX_NAME}/project-spec/meta-user/
@@ -239,61 +269,75 @@ echo " * Adding XRT, HAL, Driver recipes"
 echo " ** Installing recipes to meta-user/"
 install_recipes .
 
-# In 2018.3 Petalinux the name of this file changed..
-if [ -f recipes-core/images/petalinux-image.bbappend ]; then
-	PETALINUX_IMAGE_BBAPPEND=recipes-core/images/petalinux-image.bbappend
-elif [ -f recipes-core/images/petalinux-image-full.bbappend ]; then
-	PETALINUX_IMAGE_BBAPPEND=recipes-core/images/petalinux-image-full.bbappend
-else
-	echo "Not petalinux image .bbappend file in project-spec/meta-user/recipes-core/images/"
-	exit 1;
+if [ ! -d recipes-core/images ]; then
+	echo "No project-spec/meta-user/recipes-core/images/ folder."
+	echo "After PetaLinux 2019.2, this was replaced by project-spec/meta-user/conf/user-rootfsconfig"
+	if [ ! -f conf/user-rootfsconfig ]; then
+		echo "oops. conf/user-rootfsconfig not exist.. please check your petalinux version."
+		exit 1
+	fi
 fi
-update_append $PETALINUX_IMAGE_BBAPPEND
+rootfs_menu $ROOTFS_MENU_CONFIG
 
 echo " * Adding XRT Kernel Node to Device Tree"
 config_dts recipes-bsp/device-tree/files/system-user.dtsi
 
-echo " * Configuring the kernel"
+echo " * Configuring Linux kernel"
 mkdir -p recipes-kernel/linux/linux-xlnx
 echo 'SRC_URI += "file://user.cfg"' >> recipes-kernel/linux/linux-xlnx_%.bbappend
 echo 'FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"' >> recipes-kernel/linux/linux-xlnx_%.bbappend
 
 config_kernel recipes-kernel/linux/linux-xlnx/user.cfg
-petalinux-config -c kernel --oldconfig
+echo "[CMD]: petalinux-config -c kernel $PETA_CONFIG_OPT"
+petalinux-config -c kernel $PETA_CONFIG_OPT
 
 echo " * Configuring rootfs"
 # Saves to: ${PETALINUX_NAME}/project-spec/configs/rootfs_config
 cp ../configs/rootfs_config{,.orig}
 config_rootfs ../configs/rootfs_config
-petalinux-config -c rootfs --oldconfig
+echo "[CMD]: petalinux-config -c rootfs $PETA_CONFIG_OPT"
+petalinux-config -c rootfs $PETA_CONFIG_OPT
 
 pre_build_hook $ORIGINAL_DIR/$PETALINUX_NAME
 
 # Build package
 echo " * Performing PetaLinux Build (from: ${PWD})"
+echo "[CMD]: petalinux-build"
 petalinux-build
 
 post_build_hook $ORIGINAL_DIR/$PETALINUX_NAME
 
 cd $ORIGINAL_DIR
 
-# If DSA_DIR has src/$CPU_ARCH/xrt/image, let's do below extra steps
-if [ -d "${DSA_DIR}/src/${CPU_ARCH}/xrt/image" ]; then
-	echo " ** The DSA directory has src/${CPU_ARCH}/xrt/image. Update images and sysroot"
+# If XSA_DIR has src/$CPU_ARCH/xrt/image, let's do below extra steps
+if [ -d "${XSA_DIR}/src/${CPU_ARCH}/xrt/image" ]; then
+	echo " ** The XSA directory has src/${CPU_ARCH}/xrt/image. Update images and sysroot"
 	echo " * Copying PetaLinux boot files (from: $PWD)"
-	cp -f ./${PETALINUX_NAME}/images/linux/image.ub 	${DSA_DIR}/src/${CPU_ARCH}/xrt/image/image.ub
-	mkdir -p ${DSA_DIR}/src/boot
-	cp -f ./${PETALINUX_NAME}/images/linux/bl31.elf 	${DSA_DIR}/src/boot/bl31.elf
-	cp -f ./${PETALINUX_NAME}/images/linux/pmufw.elf 	${DSA_DIR}/src/boot/pmufw.elf
-	cp -f ./${PETALINUX_NAME}/images/linux/u-boot.elf 	${DSA_DIR}/src/boot/u-boot.elf
+	cp -f ./${PETALINUX_NAME}/images/linux/image.ub 	${XSA_DIR}/src/${CPU_ARCH}/xrt/image/image.ub
+	mkdir -p ${XSA_DIR}/src/boot
+	if [ "X$TEMPLATE" != "Xzynq" ]; then
+		cp -f ./${PETALINUX_NAME}/images/linux/bl31.elf 	${XSA_DIR}/src/boot/bl31.elf
+		cp -f ./${PETALINUX_NAME}/images/linux/pmufw.elf 	${XSA_DIR}/src/boot/pmufw.elf
+	fi
+	cp -f ./${PETALINUX_NAME}/images/linux/u-boot.elf 	${XSA_DIR}/src/boot/u-boot.elf
 
 	# NOTE: Renames
-	cp -f ./${PETALINUX_NAME}/images/linux/zynqmp_fsbl.elf ${DSA_DIR}/src/boot/fsbl.elf
+	if [ "X$TEMPLATE" == "Xzynq" ]; then
+		cp -f ./${PETALINUX_NAME}/images/linux/zynq_fsbl.elf ${XSA_DIR}/src/boot/fsbl.elf
+	else
+		cp -f ./${PETALINUX_NAME}/images/linux/zynqmp_fsbl.elf ${XSA_DIR}/src/boot/fsbl.elf
+	fi
 
 	# Prepare Sysroot directory
 	echo " * Preparing Sysroot"
-	mkdir -p ${DSA_DIR}/src/aarch64-xilinx-linux
-	cd       ${DSA_DIR}/src/aarch64-xilinx-linux
+	if [ "X$TEMPLATE" == "Xzynq" ]; then
+		mkdir -p ${XSA_DIR}/src/arm-xilinx-linux
+		cd       ${XSA_DIR}/src/arm-xilinx-linux
+	else
+		mkdir -p ${XSA_DIR}/src/aarch64-xilinx-linux
+		cd       ${XSA_DIR}/src/aarch64-xilinx-linux
+	fi
+
 	tar zxf $ORIGINAL_DIR/${PETALINUX_NAME}/images/linux/rootfs.tar.gz
 fi
 

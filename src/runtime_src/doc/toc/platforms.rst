@@ -14,11 +14,13 @@ application from one class of platform to another.
 PCIe Based Platforms
 ====================
 
-1. VCU1525
-2. U200
-3. U250
-4. U280
-5. AWS F1
+We support below devices:
+
+1. U200
+2. U250
+3. U280
+4. AWS F1
+5. Advantech VEGA-4000/4002
 
 PCIe based platforms are supported on x86_64, PPC64LE and AARCH64 host architectures.
 The shell (previously known as DSA) has two physical functions: *mgmt pf* and *user pf*.
@@ -32,7 +34,7 @@ the following functionality:
 1.  ICAP programming
 2.  CLock scaling
 3.  Loading firmware container, dsabin(renamed to xsabin since 2019.2) (RL Shell for 2 RP solution, embedded Microblaze firmware: ERT, XMC)
-4.  In-band sensors: Temp, Voltage, Power, etc
+4.  In-band sensors: Temperature, Voltage, Current, etc
 5.  AXI Firewall management
 6.  Access to flash programmer
 7.  Device reset and rescan
@@ -63,6 +65,8 @@ following functionality:
 
 Zynq Ultrascale+ MPSoC Based Embedded Platforms
 ===============================================
+
+We support below platforms:
 
 1. ZCU19
 2. ZCU102

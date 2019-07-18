@@ -19,8 +19,19 @@
 
 #include <linux/version.h>
 #include <linux/eventfd.h>
-#include "mgmt-reg.h"
 #include "../xocl_drv.h"
+
+/*
+ * Interrupt controls
+ */
+#define XCLMGMT_MAX_INTR_NUM            32
+#define XCLMGMT_MAX_USER_INTR           16
+#define XCLMGMT_INTR_CTRL_BASE          (0x2000UL)
+#define XCLMGMT_INTR_USER_ENABLE        (XCLMGMT_INTR_CTRL_BASE + 0x08)
+#define XCLMGMT_INTR_USER_DISABLE       (XCLMGMT_INTR_CTRL_BASE + 0x0C)
+#define XCLMGMT_INTR_USER_VECTOR        (XCLMGMT_INTR_CTRL_BASE + 0x80)
+#define XCLMGMT_MAILBOX_INTR            11
+
 
 struct xdma_irq {
 	bool			in_use;
@@ -160,10 +171,28 @@ static struct xocl_dma_funcs xdma_ops = {
 	.user_intr_unreg = user_intr_unreg,
 };
 
+static int identify_intr_bar(struct xocl_xdma *xdma)
+{
+	struct pci_dev *pdev = XOCL_PL_TO_PCI_DEV(xdma->pdev);
+	int	i;
+	resource_size_t bar_len;
+
+	for (i = PCI_STD_RESOURCES; i <= PCI_STD_RESOURCE_END; i++) {
+		bar_len = pci_resource_len(pdev, i);
+		if (bar_len < 1024 * 1024 && bar_len > 0) {
+			xdma->base = ioremap_nocache(
+				pci_resource_start(pdev, i), bar_len);
+			return i;
+		}
+	}
+
+	return -1;
+}
+
 static int xdma_mgmt_probe(struct platform_device *pdev)
 {
 	struct xocl_xdma	*xdma = NULL;
-	int	i, ret = 0, total = 0;
+	int	i, ret = 0, total = 0, bar;
 	xdev_handle_t		xdev;
 	struct resource *res;
 
@@ -177,15 +206,27 @@ static int xdma_mgmt_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
+	xdma->pdev = pdev;
+
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	xdma->base = ioremap_nocache(res->start, res->end - res->start + 1);
+	if (!res) {
+		xocl_err(&pdev->dev,
+			"legacy platform, identify intr bar by size");
+		bar = identify_intr_bar(xdma);
+		if (bar < 0) {
+			xocl_err(&pdev->dev, "Can not find intr bar");
+			ret = -ENXIO;
+			goto failed;
+		}
+
+	} else
+		xdma->base = ioremap_nocache(res->start,
+				res->end - res->start + 1);
 	if (!xdma->base) {
 		ret = -EIO;
 		xocl_err(&pdev->dev, "Map iomem failed");
 		goto failed;
 	}
-
-	xdma->pdev = pdev;
 
 	/*
 	 * Get start vector (index into msi-x table) of msi-x usr intr
@@ -232,7 +273,6 @@ static int xdma_mgmt_probe(struct platform_device *pdev)
 	}
 	mutex_init(&xdma->user_msix_table_lock);
 
-	xocl_subdev_register(pdev, XOCL_SUBDEV_DMA, &xdma_ops);
 	platform_set_drvdata(pdev, xdma);
 
 	return 0;
@@ -287,8 +327,12 @@ static int xdma_mgmt_remove(struct platform_device *pdev)
 	return 0;
 }
 
+struct xocl_drv_private xdma_mgmt_priv = {
+	.ops = &xdma_ops,
+};
+
 static struct platform_device_id xdma_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_XDMA), 0 },
+	{ XOCL_DEVNAME(XOCL_XDMA), (kernel_ulong_t)&xdma_mgmt_priv },
 	{ },
 };
 

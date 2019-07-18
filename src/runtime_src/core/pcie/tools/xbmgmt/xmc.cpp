@@ -37,12 +37,16 @@ XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
     bool is_mfg = false;
     mDev->sysfs_get("", "mfg", err, is_mfg);
     if (!is_mfg) {
-        if(mDev->pcieBarRead(XMC_GPIO_RESET, &val, sizeof (val)) != 0 ||
-            val == 0) {
+        mDev->sysfs_get("xmc", "status", err, val);
+	if (!err.empty() || !(val & 1)) {
             mProbingErrMsg << "Failed to detect XMC, xmc.bin not loaded";
             goto nosup;
         }
     }
+
+    mDev->sysfs_get("xmc", "reg_base", err, mRegBase);
+    if (!err.empty())
+	    mRegBase = XMC_REG_BASE;
 
     val = readReg(XMC_REG_OFF_MAGIC);
     if (val != XMC_MAGIC_NUM) {
@@ -373,10 +377,6 @@ void describePkt(struct xmcPkt& pkt, bool send)
 
 int XMC_Flasher::recvPkt()
 {
-    int ret = waitTillIdle();
-    if (ret != 0)
-        return ret;
-
     uint32_t *pkt = reinterpret_cast<uint32_t *>(&mPkt);
     *pkt = readReg(mPktBufOffset);
     unsigned lenInUint32 =
@@ -393,7 +393,7 @@ int XMC_Flasher::recvPkt()
 #ifdef  XMC_DEBUG
     describePkt(mPkt, false);
 #endif
-    return 0;
+    return waitTillIdle();
 }
 
 int XMC_Flasher::sendPkt(bool print_dot)
@@ -409,9 +409,6 @@ int XMC_Flasher::sendPkt(bool print_dot)
 #endif
 
     uint32_t *pkt = reinterpret_cast<uint32_t *>(&mPkt);
-    int ret = waitTillIdle();
-    if (ret != 0)
-        return ret;
 
     for (int i = 0; i < lenInUint32; i++) {
         writeReg(mPktBufOffset + i * sizeof (uint32_t), pkt[i]);
@@ -419,7 +416,7 @@ int XMC_Flasher::sendPkt(bool print_dot)
 
     // Flip pkt buffer ownership bit
     writeReg(XMC_REG_OFF_CTL, readReg(XMC_REG_OFF_CTL) | XMC_PKT_OWNER_MASK);
-    return 0;
+    return waitTillIdle();
 }
 
 int XMC_Flasher::waitTillIdle()
@@ -447,6 +444,7 @@ int XMC_Flasher::waitTillIdle()
 
     if (err) {
         std::cout << "ERROR: XMC packet error: " << err << std::endl;
+        writeReg(XMC_REG_OFF_CTL, readReg(XMC_REG_OFF_CTL) | XMC_CTRL_ERR_CLR);
         return -EINVAL;
     }
 
@@ -455,7 +453,7 @@ int XMC_Flasher::waitTillIdle()
 
 unsigned XMC_Flasher::readReg(unsigned RegOffset) {
     unsigned value;
-    if( mDev->pcieBarRead(XMC_REG_BASE + RegOffset, &value, 4) != 0 ) {
+    if( mDev->pcieBarRead(mRegBase + RegOffset, &value, 4) != 0 ) {
         assert(0);
         std::cout << "read reg ERROR" << std::endl;
     }
@@ -463,7 +461,7 @@ unsigned XMC_Flasher::readReg(unsigned RegOffset) {
 }
 
 int XMC_Flasher::writeReg(unsigned RegOffset, unsigned value) {
-    int status = mDev->pcieBarWrite(XMC_REG_BASE + RegOffset, &value, 4);
+    int status = mDev->pcieBarWrite(mRegBase + RegOffset, &value, 4);
     if(status != 0) {
         assert(0);
         std::cout << "write reg ERROR " << std::endl;

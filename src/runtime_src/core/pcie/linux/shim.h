@@ -2,12 +2,13 @@
 #define _XOCL_GEM_SHIM_H_
 
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
 
  * Author(s): Umang Parekh
  *          : Sonal Santan
  *          : Ryan Radjabi
- * XOCL GEM HAL Driver layered on top of XOCL kernel driver
+ *
+ * XRT PCIe library layered on top of xocl kernel driver
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -36,6 +37,12 @@
 #include <map>
 #include <cassert>
 #include <vector>
+#include <memory>
+
+// Forward declaration
+namespace xrt_core {
+    class bo_cache;
+}
 
 namespace xocl {
 
@@ -50,10 +57,14 @@ public:
     void init(unsigned index, const char *logfileName, xclVerbosityLevel verbosity);
     void readDebugIpLayout();
     static int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, va_list args1);
-    // Raw read/write
+    // Raw unmanaged read/write on the entire PCIE user BAR
     size_t xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size);
     size_t xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size);
-    unsigned int xclAllocBO(size_t size, xclBOKind domain, unsigned flags);
+    // Restricted read/write on IP register space
+    int xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data);
+    int xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap);
+
+    unsigned int xclAllocBO(size_t size, int unused, unsigned flags);
     unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
     void xclFreeBO(unsigned int boHandle);
     int xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek);
@@ -138,7 +149,7 @@ public:
     int xclRegisterEventNotify(unsigned int userInterrupt, int fd);
     int xclExecWait(int timeoutMilliSec);
     int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
-    int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const;
+    int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex);
 
     int getBoardNumber( void ) { return mBoardNumber; }
     const char *getLogfileName( void ) { return mLogfileName; }
@@ -169,6 +180,15 @@ private:
     uint32_t mStallProfilingNumberSlots;
     uint32_t mStreamProfilingNumberSlots;
     std::string mDevUserName;
+    std::unique_ptr<xrt_core::bo_cache> mCmdBOCache;
+
+    /*
+     * Mapped CU register space for xclRegRead/Write(). We support at most
+     * 128 CUs and each map is of 64k bytes.
+     */
+    std::vector<uint32_t*> mCuMaps;
+    const size_t mCuMapSize = 64 * 1024;
+    std::mutex mCuMapLock;
 
     bool zeroOutDDR();
     bool isXPR() const {
@@ -185,6 +205,8 @@ private:
 
     int freezeAXIGate();
     int freeAXIGate();
+
+    int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
 
     bool readPage(unsigned addr, uint8_t readCmd = 0xff);
     bool writePage(unsigned addr, uint8_t writeCmd = 0xff);

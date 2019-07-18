@@ -1,0 +1,22 @@
+#template_tql < $RDI_TEMPLATES/sdx/sdaccel/swhw/template.tql
+description: testinfo generated using import_sdx_test.py script
+level: 6
+owner: vallina
+user:
+  allowed_test_modes: [sw_emu, hw_emu, hw]
+  host_args: {all: globalbandwidth.xclbin 1024 4 4 -rw}
+  host_cflags: ' -DDSA64 -DFLOW_HLS_CSIM'
+  host_exe: host.exe
+  host_src: test-cl.cpp
+  kernels:
+  - {cflags: ' -I.', file: globalbandwidth.xo, ksrc: globalbandwidth.c, name: globalbandwidth,
+    type: C}
+  name: 008_globalbandwidth
+  xclbins:
+  - files: 'globalbandwidth.xo '
+    kernels:
+    - cus: [globalbandwidth_cu0]
+      name: globalbandwidth
+      num_cus: 1
+    lflags: ''
+    name: globalbandwidth.xclbin

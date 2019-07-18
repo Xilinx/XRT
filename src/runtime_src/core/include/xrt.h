@@ -145,41 +145,15 @@ enum xclMemoryDomains {
 };
 
 /**
- * xclBOKind defines Buffer Object Kind which represents a fragment of device accesible
- * memory and the corresponding backing host memory.
- *
- * 1. Shared virtual memory (SVM) class of systems like CAPI or MPSoc with SMMU. BOs
- *    have a common host RAM backing store.
- *    XCL_BO_SHARED_VIRTUAL
- *
- * 2. Shared physical memory class of systems like Zynq (or MPSoc with pass though SMMU)
- *    with Linux CMA buffer allocation. BOs have common host CMA allocated backing store.
- *    XCL_BO_SHARED_PHYSICAL
- *
- * 3. Shared virtual memory (SVM) class of systems with dedicated RAM and device MMU. BOs
- *    have a device RAM dedicated backing store and another host RAM allocated backing store.
- *    The buffers are sync'd via DMA. Both physical buffers use the same virtual address,
- *    hence giving the effect of SVM.
- *    XCL_BO_MIRRORED_VIRTUAL
- *
- * 4. Dedicated memory class of devices like PCIe card with DDR. BOs have a device RAM
- *    dedicated backing store and another host RAM allocated backing store. The buffers
- *    are sync'd via DMA
- *    XCL_BO_DEVICE_RAM
- *
- * 5. Dedicated onchip memory class of devices like PCIe card with BRAM. BOs have a device
- *    BRAM dedicated backing store and another host RAM allocated backing store. The buffers
- *    are sync'd via DMA
- *    XCL_BO_DEVICE_BRAM
+ *  Unused, keep for backwards compatibility
  */
-
-enum xclBOKind {
-    XCL_BO_SHARED_VIRTUAL = 0,
-    XCL_BO_SHARED_PHYSICAL,
-    XCL_BO_MIRRORED_VIRTUAL,
-    XCL_BO_DEVICE_RAM,
-    XCL_BO_DEVICE_BRAM,
-    XCL_BO_DEVICE_PREALLOCATED_BRAM,
+enum xclBOKind {  
+    XCL_BO_SHARED_VIRTUAL = 0,  
+    XCL_BO_SHARED_PHYSICAL, 
+    XCL_BO_MIRRORED_VIRTUAL,  
+    XCL_BO_DEVICE_RAM,  
+    XCL_BO_DEVICE_BRAM, 
+    XCL_BO_DEVICE_PREALLOCATED_BRAM,  
 };
 
 enum xclBOSyncDirection {
@@ -251,7 +225,7 @@ struct xclBOProperties {
     uint32_t flags;
     uint64_t size;
     uint64_t paddr;
-    enum xclBOKind domain; // not implemented
+    int reserved; // not implemented
 };
 
 #define	NULLBO	0xffffffff
@@ -483,12 +457,11 @@ XCL_DRIVER_DLLESPEC int xclLogMsg(xclDeviceHandle handle, enum xrtLogMsgLevel le
  *
  * @handle:        Device handle
  * @size:          Size of buffer
- * @domain:        Memory domain
  * @flags:         Specify bank information, etc
  * Return:         BO handle
  */
 XCL_DRIVER_DLLESPEC unsigned int xclAllocBO(xclDeviceHandle handle, size_t size,
-       	enum xclBOKind domain, unsigned flags);
+       	int unused, unsigned flags);
 
 /**
  * xclAllocUserPtrBO() - Allocate a BO using userptr provided by the user
@@ -1060,7 +1033,29 @@ XCL_DRIVER_DLLESPEC int xclPollCompletion(xclDeviceHandle handle, int min_compl,
 
 XCL_DRIVER_DLLESPEC const struct axlf_section_header* wrap_get_axlf_section(const struct axlf* top, enum axlf_section_kind kind);
 
-/* XRT Stream Queue APIs */
+/**
+ * xclRegRead() - Read register in register space of a CU
+ *
+ * @handle:        Device handle
+ * @cu_index:      CU index
+ * @offset:        Offset in the register space
+ * @datap:         Pointer to where result will be saved
+ * Return:         0 or appropriate error number
+ *
+ */
+XCL_DRIVER_DLLESPEC int xclRegRead(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t *datap);
+
+/**
+ * xclRegWRite() - Write to register in register space of a CU
+ *
+ * @handle:        Device handle
+ * @cu_index:      CU index
+ * @offset:        Offset in the register space
+ * @datap:         Data to be written
+ * Return:         0 or appropriate error number
+ *
+ */
+XCL_DRIVER_DLLESPEC int xclRegWrite(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t data);
 
 /**
  * DOC: Performance Monitoring Operations
@@ -1097,7 +1092,7 @@ XCL_DRIVER_DLLESPEC uint32_t xclGetProfilingSlotProperties(xclDeviceHandle handl
 
 XCL_DRIVER_DLLESPEC size_t xclPerfMonClockTraining(xclDeviceHandle handle, enum xclPerfMonType type);
 
-XCL_DRIVER_DLLESPEC void xclPerfMonConfigureDataflow(xclDeviceHandle handle, xclPerfMonType type, unsigned *ip_data);
+XCL_DRIVER_DLLESPEC void xclPerfMonConfigureDataflow(xclDeviceHandle handle, enum xclPerfMonType type, unsigned *ip_data);
 
 XCL_DRIVER_DLLESPEC size_t xclPerfMonStartCounters(xclDeviceHandle handle, enum xclPerfMonType type);
 

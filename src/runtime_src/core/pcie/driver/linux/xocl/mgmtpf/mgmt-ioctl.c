@@ -70,7 +70,8 @@ static int version_ioctl(struct xclmgmt_dev *lro, void __user *arg)
 static long reset_ocl_ioctl(struct xclmgmt_dev *lro)
 {
 	xocl_icap_reset_axi_gate(lro);
-	return compute_unit_busy(lro) ? -EBUSY : 0;
+
+	return 0;
 }
 
 static int bitstream_ioctl_axlf(struct xclmgmt_dev *lro, const void __user *arg)

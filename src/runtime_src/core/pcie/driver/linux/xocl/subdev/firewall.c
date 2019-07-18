@@ -62,7 +62,6 @@ extern struct timezone sys_tz;
 struct firewall {
 	void __iomem		*base_addrs[MAX_LEVEL];
 	u32			max_level;
-	void __iomem		*gpio_addr;
 
 	u32			curr_status;
 	int			curr_level;
@@ -357,15 +356,6 @@ retry_level1:
 
 	clear_retry = 0;
 
-retry_level2:
-	if (fw->gpio_addr)
-		XOCL_WRITE_REG32(CLEAR_RESET_GPIO, fw->gpio_addr);
-
-	if (check_firewall(pdev, NULL) && clear_retry++ < CLEAR_RETRY_COUNT) {
-		msleep(CLEAR_RETRY_INTERVAL);
-		goto retry_level2;
-	}
-
 	if (!check_firewall(pdev, NULL)) {
 		xocl_info(&pdev->dev, "firewall cleared level 2");
 		return 0;
@@ -441,8 +431,7 @@ static int firewall_probe(struct platform_device *pdev)
 	for (i = 0; i < MAX_LEVEL; i++) {
 		res = platform_get_resource(pdev, IORESOURCE_MEM, i);
 		if (!res) {
-			fw->max_level = (i > 1) ? (i - 1) : i;
-			fw->gpio_addr = (i > 1) ?fw->base_addrs[i - 1] : NULL;
+			fw->max_level = i;
 			break;
 		}
 		fw->base_addrs[i] =
@@ -461,7 +450,6 @@ static int firewall_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	xocl_subdev_register(pdev, XOCL_SUBDEV_AF, &fw_ops);
 	fw->cache_expire_secs = FW_DEFAULT_EXPIRE_SECS;
 
 	return 0;
@@ -471,8 +459,12 @@ failed:
 	return ret;
 }
 
+struct xocl_drv_private firewall_priv = {
+	.ops = &fw_ops,
+};
+
 struct platform_device_id firewall_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_FIREWALL), 0 },
+	{ XOCL_DEVNAME(XOCL_FIREWALL), (kernel_ulong_t)&firewall_priv },
 	{ },
 };
 

@@ -1,0 +1,34 @@
+#template_tql < $RDI_TEMPLATES/sdx/sdaccel/swhw/template.tql
+description: testinfo generated using import_sdx_test.py script
+level: 6
+owner: soeren
+user:
+  allowed_test_modes: [hw]
+  host_args: {all: addone.xclbin}
+  host_cflags: ' -DDSA64'
+  host_exe: host.exe
+  host_src: main.cpp
+  kernels:
+  - {cflags: ' -I.', file: add1.xo, ksrc: addone.cl, name: add1, type: C}
+  - {cflags: ' -I.', file: add2.xo, ksrc: addone.cl, name: add2, type: C}
+  - {cflags: ' -I.', file: add3.xo, ksrc: addone.cl, name: add3, type: C}
+  - {cflags: ' -I.', file: add0.xo, ksrc: addone.cl, name: add0, type: C}
+  name: cdma
+  xclbins:
+  - files: 'add0.xo add1.xo add2.xo add3.xo '
+    kernels:
+    - cus: [add30]
+      name: add3
+      num_cus: 1
+    - cus: [add20]
+      name: add2
+      num_cus: 1
+    - cus: [add10]
+      name: add1
+      num_cus: 1
+    - cus: [add00]
+      name: add0
+      num_cus: 1
+    lflags: ' --sp add00.m_axi_gmem:DDR[0] --sp add10.m_axi_gmem:DDR[1] --sp add20.m_axi_gmem:DDR[2]
+      --sp add30.m_axi_gmem:DDR[3]'
+    name: addone.xclbin
