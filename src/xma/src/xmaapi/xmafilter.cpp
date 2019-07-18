@@ -36,6 +36,11 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
                    "XMA session creation must be after initialization\n");
         return NULL;
     }
+    if (filter_props->plugin_lib == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
+                   "FilterProperties must set plugin_lib\n");
+        return NULL;
+    }
 
     // Load the xmaplugin library as it is a dependency for all plugins
     void *xmahandle = dlopen("libxmaplugin.so",
@@ -64,6 +69,11 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
             "Failed to get filterer_plugin from %s\n Error msg: %s\n",
             filter_props->plugin_lib, dlerror());
+        return NULL;
+    }
+    if (plg->xma_version == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
+                   "FilterPlugin library must have xma_version function\n");
         return NULL;
     }
 
@@ -203,23 +213,7 @@ xma_filter_session_destroy(XmaFilterSession *session)
     // Clean up the private data
     free(session->base.plugin_data);
 
-    /*Sarab: Remove xma_connect stuff
-    // Free each sender connection
-    xma_connect_free(session->conn_send_handle, XMA_CONNECT_SENDER);
-
-    // Free the receiver connection
-    xma_connect_free(session->conn_recv_handle, XMA_CONNECT_RECEIVER);
-    */
-
-    /* Remove xma_res stuff free kernel/kernel-session *--/
-    rc = xma_res_free_kernel(g_xma_singleton->shm_res_cfg,
-                             session->base.kern_res);
-    if (rc)
-        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
-                   "Error freeing filter session. Return code %d\n", rc);
-    */
     // Free the session
-    // TODO: (should also free the Hw sessions)
     free(session);
 
     return XMA_SUCCESS;
@@ -230,30 +224,7 @@ xma_filter_session_send_frame(XmaFilterSession  *session,
                               XmaFrame          *frame)
 {
     xma_logmsg(XMA_DEBUG_LOG, XMA_FILTER_MOD, "%s()\n", __func__);
-    /*Sarab: Remove zerocopy stuff
-    if (session->conn_send_handle != -1)
-    {
-        // Get the connection entry to find the receiver
-        int32_t c_handle = session->conn_send_handle;
-        XmaConnect *conn = &g_xma_singleton->connections[c_handle];
-        XmaEndpoint *recv = conn->receiver;
-        if (recv)
-        {
-            if (is_xma_encoder(recv->session))
-            {
-                XmaEncoderSession *e_ses = to_xma_encoder(recv->session);
-                if (!e_ses->encoder_plugin->get_dev_input_paddr) {
-                    xma_logmsg(XMA_DEBUG_LOG, XMA_FILTER_MOD,
-                        "encoder plugin does not support zero copy\n");
-                    goto send;
-		}
-                session->out_dev_addr = e_ses->encoder_plugin->get_dev_input_paddr(e_ses);
-                session->zerocopy_dest = true;
-            }
-        }
-    }
-send:
-    */
+
     return session->filter_plugin->send_frame(session, frame);
 }
 

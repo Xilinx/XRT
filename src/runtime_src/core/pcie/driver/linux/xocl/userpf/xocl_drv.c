@@ -101,6 +101,7 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 		ret = xocl_subdev_online_all(xdev);
 		if (ret)
 			xocl_err(&pdev->dev, "Online subdevs failed %d", ret);
+		(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 		xocl_exec_reset(xdev);
 	}
 }
@@ -225,7 +226,7 @@ static void xocl_work_cb(struct work_struct *work)
 		(void) xocl_program_shell(xdev, true);
 		break;
 	case XOCL_WORK_REFRESH_SUBDEV:
-		(void) xocl_refresh_prp_subdevs(xdev);
+		(void) xocl_refresh_subdevs(xdev);
 		break;
 	default:
 		xocl_xdev_err(xdev, "Invalid op code %d", _work->op);
@@ -425,7 +426,7 @@ uint64_t xocl_get_data(struct xocl_dev *xdev, enum data_kind kind)
 	return xocl_read_from_peer(xdev, kind);
 }
 
-int xocl_refresh_prp_subdevs(struct xocl_dev *xdev)
+int xocl_refresh_subdevs(struct xocl_dev *xdev)
 {
 	struct mailbox_subdev_peer subdev_peer = {0};
 	size_t data_len = sizeof(struct mailbox_subdev_peer);
@@ -435,9 +436,6 @@ int xocl_refresh_prp_subdevs(struct xocl_dev *xdev)
 	size_t resp_len = sizeof(*resp) + XOCL_MSG_SUBDEV_DATA_LEN;
         char *blob = NULL, *tmp;
 	uint64_t checksum;
-	const char *cur_uuid, *new_uuid;
-	int cur_uuid_len, new_uuid_len;
-	bool skip_refresh = false;
 	size_t offset = 0;
 	int ret = 0;
 
@@ -487,60 +485,46 @@ int xocl_refresh_prp_subdevs(struct xocl_dev *xdev)
 		if (offset != resp->offset) {
 			ret = -EINVAL;
 			goto failed;
-		} else if (resp->rtncode == XOCL_MSG_SUBDEV_RTN_EMPTY) {
-			if (xdev->core.fdt_blob)
-				vfree(xdev->core.fdt_blob);
-			xdev->core.fdt_blob = NULL;
-			goto failed;
 		}
 
 		memcpy(blob + offset, resp->data, resp->size);
 		offset += resp->size;
 	} while (resp->rtncode == XOCL_MSG_SUBDEV_RTN_PARTIAL);
 
-	if (xdev->core.fdt_blob) {
-		cur_uuid = xocl_fdt_get_prp_int_uuid(xdev,
-			xdev->core.fdt_blob, &cur_uuid_len);
-		new_uuid = xocl_fdt_get_prp_int_uuid(xdev, blob,
-			&new_uuid_len);
-		if (!new_uuid ||
-		    (cur_uuid && new_uuid &&
-		    cur_uuid_len == new_uuid_len &&
-		    !memcmp(cur_uuid, new_uuid, cur_uuid_len))) {
-			userpf_info(xdev, "same prp int uuid, skip refresh");
-			skip_refresh = true;
-		}
-		vfree(xdev->core.fdt_blob);
-	}
+	if (resp->rtncode == XOCL_MSG_SUBDEV_RTN_UNCHANGED &&
+			xdev->core.fdt_blob)
+		goto failed;
 
+	if (!blob && !xdev->core.fdt_blob)
+		goto failed;
+
+	if (xdev->core.fdt_blob)
+		vfree(xdev->core.fdt_blob);
 	xdev->core.fdt_blob = blob;
 	blob = NULL;
 
-	if (!skip_refresh) {
-		xocl_drvinst_set_offline(xdev, true);
-		if (xdev->core.fdt_blob) {
-			ret = xocl_fdt_blob_input(xdev, xdev->core.fdt_blob);
-			if (ret) {
-				userpf_err(xdev, "parse blob failed %d", ret);
-				goto failed;
-			}
-		}
-		if (XOCL_DRM(xdev))
-			xocl_cleanup_mem(XOCL_DRM(xdev));
 
-		ret = xocl_subdev_destroy_prp(xdev);
+	xocl_drvinst_set_offline(xdev, true);
+	if (xdev->core.fdt_blob) {
+		ret = xocl_fdt_blob_input(xdev, xdev->core.fdt_blob);
 		if (ret) {
-			userpf_err(xdev, "destroy prp subdev failed %d", ret);
+			userpf_err(xdev, "parse blob failed %d", ret);
 			goto failed;
 		}
-		ret = xocl_subdev_create_prp(xdev);
-		if (ret) {
-			userpf_err(xdev, "create prp subdev failed %d", ret);
-			goto failed;
-		}
-		(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
-		xocl_drvinst_set_offline(xdev, false);
 	}
+	if (XOCL_DRM(xdev))
+		xocl_cleanup_mem(XOCL_DRM(xdev));
+
+	xocl_subdev_destroy_all(xdev);
+	ret = xocl_subdev_create_all(xdev);
+	if (ret) {
+		userpf_err(xdev, "create subdev failed %d", ret);
+		goto failed;
+	}
+	(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
+	(void) xocl_mb_connect(xdev);
+	xocl_drvinst_set_offline(xdev, false);
+
 failed:
 	if (blob)
 		vfree(blob);

@@ -131,6 +131,11 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
                    "XMA session creation must be after initialization\n");
         return NULL;
     }
+    if (sc_props->plugin_lib == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
+                   "ScalerProperties must set plugin_lib\n");
+        return NULL;
+    }
 
     // Load the xmaplugin library as it is a dependency for all plugins
     void *xmahandle = dlopen("libxmaplugin.so",
@@ -159,6 +164,11 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
             "Failed to get scaler_plugin from %s\n Error msg: %s\n",
             sc_props->plugin_lib, dlerror());
+        return NULL;
+    }
+    if (plg->xma_version == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
+                   "ScalerPlugin library must have xma_version function\n");
         return NULL;
     }
 
@@ -298,21 +308,7 @@ xma_scaler_session_destroy(XmaScalerSession *session)
     // Clean up the private data
     free(session->base.plugin_data);
 
-    /*
-    // Free each sender connection
-    for (i = 0; i < session->props.num_outputs; i++)
-        xma_connect_free(session->conn_send_handles[i], XMA_CONNECT_SENDER);
-    */
-
-    /* Remove xma_res stuff free kernel/kernel-session *--/
-    rc = xma_res_free_kernel(g_xma_singleton->shm_res_cfg,
-                             session->base.kern_res);
-    if (rc)
-        xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
-                   "Error freeing kernel session. Return code %d\n", rc);
-    */
     // Free the session
-    // TODO: (should also free the Hw sessions)
     free(session);
 
     return XMA_SUCCESS;
@@ -325,34 +321,6 @@ xma_scaler_session_send_frame(XmaScalerSession  *session,
     //int32_t i;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_SCALER_MOD, "%s()\n", __func__);
-    /*Sarab: Remove zerocopy stuff
-    for (i = 0; i < session->props.num_outputs; i++)
-    {
-        if (session->conn_send_handles[i] != -1)
-        {
-            // Get the connection entry to find the receiver
-            int32_t c_handle = session->conn_send_handles[i];
-            XmaConnect *conn = &g_xma_singleton->connections[c_handle];
-            XmaEndpoint *recv = conn->receiver;
-            if (recv)
-            {
-                if (is_xma_encoder(recv->session))
-                {
-                    XmaEncoderSession *e_ses =
-                        to_xma_encoder(recv->session);
-                    if (!e_ses->encoder_plugin->get_dev_input_paddr) {
-                        xma_logmsg(XMA_DEBUG_LOG, XMA_SCALER_MOD,
-                            "encoder plugin does not support zero copy\n");
-                        continue;
-                    }
-                    session->out_dev_addrs[i] =
-                        e_ses->encoder_plugin->get_dev_input_paddr(e_ses);
-                    session->zerocopy_dests[i] = true;
-                }
-            }
-        }
-    }
-    */
 
     return session->scaler_plugin->send_frame(session, frame);
 }

@@ -36,6 +36,7 @@
 #define	_XCL_DEVICES_H_
 
 #include <ert.h>
+#include "xocl_fdt.h"
 /* board flags */
 enum {
 	XOCL_DSAFLAG_PCI_RESET_OFF		= 0x01,
@@ -209,46 +210,6 @@ struct xocl_subdev_map {
 	void	(*devinfo_cb)(void *dev_hdl, void *subdevs, int num);
 };
 
-enum {
-	IORES_GATEPRBLD,
-	IORES_MEMCALIB,
-	IORES_GATEPRPRP,
-	IORES_CLKWIZKERNEL1,
-	IORES_CLKWIZKERNEL2,
-	IORES_CLKWIZKERNEL3,
-	IORES_CLKFREQ1,
-	IORES_CLKFREQ2,
-	IORES_KDMA,
-	IORES_MAX,
-};
-#define RESNAME_GATEPRBLD	"gateprbld"
-#define RESNAME_MEMCALIB	"memcalib"
-#define RESNAME_GATEPRPRP	"gateprprp"
-#define RESNAME_CLKWIZKERNEL1	"clkwizkernel1"
-#define RESNAME_CLKWIZKERNEL2	"clkwizkernel2"
-#define RESNAME_CLKWIZKERNEL3	"clkwizkernel3"
-#define RESNAME_CLKFREQ1	"clkreq1"
-#define RESNAME_CLKFREQ2	"clkreq2"
-#define RESNAME_KDMA		"kdma"
-
-struct xocl_iores_map {
-	char		*res_name;
-	int		res_id;
-};
-
-#define XOCL_DEFINE_IORES_MAP(map)					\
-struct xocl_iores_map map[] = {						\
-	{ RESNAME_GATEPRBLD, IORES_GATEPRBLD },				\
-	{ RESNAME_MEMCALIB, IORES_MEMCALIB },				\
-	{ RESNAME_GATEPRPRP, IORES_GATEPRPRP },				\
-	{ RESNAME_CLKWIZKERNEL1, IORES_CLKWIZKERNEL1 },			\
-	{ RESNAME_CLKWIZKERNEL2, IORES_CLKWIZKERNEL2 },			\
-	{ RESNAME_CLKWIZKERNEL3, IORES_CLKWIZKERNEL3 },			\
-	{ RESNAME_CLKFREQ1, IORES_CLKFREQ1 },				\
-	{ RESNAME_CLKFREQ2, IORES_CLKFREQ2 },				\
-	{ RESNAME_KDMA, IORES_KDMA },					\
-}
-
 #define	XOCL_RES_FEATURE_ROM				\
 		((struct resource []) {			\
 			{				\
@@ -340,11 +301,6 @@ struct xocl_iores_map map[] = {						\
 			.end 	= 0xFFFFF,		\
 			.flags  = IORESOURCE_MEM,	\
 			},				\
-			{				\
-			.start	= 0x330000,		\
-			.end 	= 0x330FFF,		\
-			.flags  = IORESOURCE_MEM,	\
-			},				\
 		})
 
 #define	XOCL_DEVINFO_AF					\
@@ -383,11 +339,6 @@ struct xocl_iores_map map[] = {						\
 			{				\
 			.start	= 0xF0000,		\
 			.end 	= 0xFFFFF,		\
-			.flags  = IORESOURCE_MEM,	\
-			},				\
-			{				\
-			.start	= 0x330000,		\
-			.end 	= 0x330FFF,		\
 			.flags  = IORESOURCE_MEM,	\
 			},				\
 		})
@@ -1412,7 +1363,6 @@ struct xocl_iores_map map[] = {						\
 #define MGMT_RES_DYNAMIC_IP						\
 		((struct xocl_subdev_info []) {				\
 		 	XOCL_DEVINFO_FEATURE_ROM_DYN,			\
-		 	XOCL_DEVINFO_MAILBOX_MGMT_DYN,			\
 			XOCL_DEVINFO_FMGR,      			\
 		})
 
@@ -1439,7 +1389,7 @@ struct xocl_iores_map map[] = {						\
 		((struct xocl_subdev_info []) {				\
 		 	XOCL_DEVINFO_FEATURE_ROM_USER_DYN,		\
 		 	XOCL_DEVINFO_MAILBOX_USER_DYN,			\
-		 	XOCL_DEVINFO_SCHEDULER_DYN,				\
+		 	XOCL_DEVINFO_SCHEDULER_DYN,			\
 		 	XOCL_DEVINFO_ICAP_USER,				\
 		 	XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
@@ -1452,6 +1402,82 @@ struct xocl_iores_map map[] = {						\
 		.subdev_num = ARRAY_SIZE(USER_RES_DYNAMIC_IP),		\
 		.flash_type = FLASH_TYPE_SPI,				\
 	}
+
+#define XOCL_RES_FEATURE_ROM_U50			\
+	((struct resource []) {				\
+	 	{					\
+	 		.start = 0x0,			\
+	 		.end = 0xfff,			\
+	 		.flags = IORESOURCE_MEM,	\
+	 	},					\
+	 })
+
+#define	XOCL_DEVINFO_FEATURE_ROM_U50			\
+	{						\
+		XOCL_SUBDEV_FEATURE_ROM,		\
+		XOCL_FEATURE_ROM,			\
+		XOCL_RES_FEATURE_ROM_U50,		\
+		ARRAY_SIZE(XOCL_RES_FEATURE_ROM_U50),	\
+	}
+
+#define XOCL_RES_IORES_MGMT_U50				\
+	((struct resource []) {				\
+		/* OCL_CLKFREQ_BASE */			\
+		{					\
+			.name	= RESNAME_CLKFREQ1,	\
+			.start	= 0x1000000,		\
+			.end	= 0x1000fff,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+		/* OCL_CLKFREQ_BASE */			\
+		{					\
+			.name	= RESNAME_CLKFREQ2,	\
+			.start	= 0x1001000,		\
+			.end	= 0x1001fff,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+	 })
+
+#define	XOCL_DEVINFO_IORES_MGMT_U50			\
+	{						\
+		XOCL_SUBDEV_IORES,			\
+		XOCL_IORES0,				\
+		XOCL_RES_IORES_MGMT_U50,		\
+		ARRAY_SIZE(XOCL_RES_IORES_MGMT_U50),	\
+	}
+
+
+#define MGMT_RES_U50							\
+	((struct xocl_subdev_info []) {					\
+	 	XOCL_DEVINFO_FEATURE_ROM_U50,				\
+	 	XOCL_DEVINFO_IORES_MGMT_U50,				\
+		XOCL_DEVINFO_FMGR,      				\
+	})
+
+#define	XOCL_BOARD_MGMT_U50						\
+	(struct xocl_board_private){					\
+		.flags		= XOCL_DSAFLAG_DYNAMIC_IP,		\
+		.subdev_info	= MGMT_RES_U50,				\
+		.subdev_num = ARRAY_SIZE(MGMT_RES_U50),			\
+		.flash_type = FLASH_TYPE_SPI,				\
+	}
+
+#define USER_RES_U50							\
+		((struct xocl_subdev_info []) {				\
+		 	XOCL_DEVINFO_FEATURE_ROM_U50,			\
+		 	XOCL_DEVINFO_MAILBOX_USER_DYN,			\
+		 	XOCL_DEVINFO_ICAP_USER,				\
+		 	XOCL_DEVINFO_XMC_USER,				\
+			XOCL_DEVINFO_AF_USER,				\
+		})
+
+#define	XOCL_BOARD_USER_U50						\
+	(struct xocl_board_private){					\
+		.flags		= XOCL_DSAFLAG_DYNAMIC_IP,		\
+		.subdev_info	= USER_RES_U50,				\
+		.subdev_num = ARRAY_SIZE(USER_RES_U50),			\
+	}
+
 
 #define	XOCL_MGMT_PCI_IDS						\
 	{ XOCL_PCI_DEVID(0x10EE, 0x4A47, PCI_ANY_ID, MGMT_DEFAULT) },	\
@@ -1490,12 +1516,14 @@ struct xocl_iores_map map[] = {						\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5008, PCI_ANY_ID, MGMT_XBB_DSA52_U280) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x500C, PCI_ANY_ID, MGMT_XBB_DSA52_U280) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x7020, PCI_ANY_ID, MGMT_DYNAMIC_IP) },\
+	{ XOCL_PCI_DEVID(0x10EE, 0x5020, PCI_ANY_ID, MGMT_U50) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x006C, PCI_ANY_ID, MGMT_6A8F) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x0078, PCI_ANY_ID, MGMT_XBB_DSA52) },  \
 	{ XOCL_PCI_DEVID(0x10EE, 0xD000, PCI_ANY_ID, XBB_MFG("u200")) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0xD004, PCI_ANY_ID, XBB_MFG("u250")) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0xD008, PCI_ANY_ID, XBB_MFG("u280-es1")) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0xD00C, PCI_ANY_ID, XBB_MFG("u280")) },\
+	{ XOCL_PCI_DEVID(0x10EE, 0xD020, PCI_ANY_ID, XBB_MFG("u50")) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0xEB10, PCI_ANY_ID, XBB_MFG("twitch")) }, \
 	{ XOCL_PCI_DEVID(0x13FE, 0x806C, PCI_ANY_ID, XBB_MFG("advantech")) }
 
@@ -1528,7 +1556,8 @@ struct xocl_iores_map map[] = {						\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5005, PCI_ANY_ID, USER_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5009, PCI_ANY_ID, USER_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x500D, PCI_ANY_ID, USER_DSA52) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x7021, PCI_ANY_ID, USER_DYNAMIC_IP) },\
+	{ XOCL_PCI_DEVID(0x10EE, 0x7021, PCI_ANY_ID, USER_DYNAMIC_IP) }, \
+	{ XOCL_PCI_DEVID(0x10EE, 0x5021, PCI_ANY_ID, USER_U50) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x0065, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x0077, PCI_ANY_ID, USER_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x1D0F, 0x1042, PCI_ANY_ID, USER_AWS) },	\
