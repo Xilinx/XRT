@@ -798,7 +798,7 @@ public:
     return m_hal->xclWrite(space, offset, hostBuf, size);
   }
 
-  hal::operations_result<void>
+  hal::operations_result<ssize_t>
   xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset)
   {
     return m_hal->xclUnmgdPread(flags, buf, count, offset);

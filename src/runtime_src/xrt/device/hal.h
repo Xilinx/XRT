@@ -577,10 +577,10 @@ public:
     return operations_result<void>();
   }
 
-  virtual operations_result<void>
+  virtual operations_result<ssize_t>
   xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset)
   {
-    return operations_result<void>();
+    return operations_result<ssize_t>();
   }
 
   virtual operations_result<void>

@@ -73,6 +73,10 @@ private:
     uint8_t properties;
     uint8_t major_version;
     uint8_t minor_version;
+
+    uint32_t readTraceForPCIEDevice(xclTraceResultsVector& traceVector, uint32_t nSamples);
+    uint32_t readTraceForEdgeDevice(xclTraceResultsVector& traceVector, uint32_t nSamples);
+    void     processTraceData(xclTraceResultsVector& traceVector, bool isPCIEdevice, uint32_t numSamples, void* data, uint32_t wordsPerSample);
 };
 
 } //  xdp

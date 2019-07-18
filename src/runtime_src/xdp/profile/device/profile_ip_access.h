@@ -136,6 +136,8 @@ public:
     std::ostream* getLogStream() { return out_stream; }
 
     double getDeviceClock();
+
+    bool   isOnEdgeDevice();
 private:
     void* xrt_device_handle;  /* the xrt device handle from the hal layer */
     bool  mapped;             /* flag to keep track of if the ip has been mapped */

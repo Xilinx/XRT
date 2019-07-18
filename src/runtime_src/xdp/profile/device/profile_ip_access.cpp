@@ -173,6 +173,17 @@ double ProfileIP::getDeviceClock()
     return xrtDevice->getDeviceClock().get();
 }
 
+bool ProfileIP::isOnEdgeDevice()
+{
+    // Currently, this flow is for HW only. So, assuming the device can be either Edge or PCIE
+    xrt::device* xrtDevice = (xrt::device*)xrt_device_handle;
+    ssize_t ret = (xrtDevice) ? xrtDevice->xclUnmgdPread(0,0,0,0).get() : -ENODEV;
+    if(ret == -ENOSYS) {
+        return true;
+    }
+    return false;
+}
+
 void ProfileIP::showWarning(std::string reason) {
     /**
      * TODO: we will need to discuss more on how xdp should

@@ -148,12 +148,24 @@ uint32_t TraceFifoFull::getMaxNumTraceSamples()
 
 uint32_t TraceFifoFull::readTrace(xclTraceResultsVector& traceVector, uint32_t nSamples)
 {
-    if(out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/)
-        (*out_stream) << " TraceFifoFull::readTrace " << std::endl;
+    if(out_stream)
+      (*out_stream) << " TraceFifoFull::readTrace " << std::endl;
    
     if(!nSamples) {
-        return 0;
+      return 0;
     }
+
+    if(isOnEdgeDevice()) {
+      return readTraceForEdgeDevice(traceVector, nSamples);
+    } else {
+      return readTraceForPCIEDevice(traceVector, nSamples);
+    }
+}
+
+uint32_t TraceFifoFull::readTraceForPCIEDevice(xclTraceResultsVector& traceVector, uint32_t nSamples)
+{
+    if(out_stream)
+        (*out_stream) << " TraceFifoFull::readTraceForPCIEdevice " << std::endl;
 
     size_t size = 0;
     // Limit to max number of samples so we don't overrun trace buffer on host
@@ -199,7 +211,7 @@ uint32_t TraceFifoFull::readTrace(xclTraceResultsVector& traceVector, uint32_t n
     // Read trace a chunk of bytes at a time
     if (numWords > chunkSizeWords) {
       for (; words < (numWords-chunkSizeWords); words += chunkSizeWords) {
-          if(out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/)
+          if(out_stream)
             (*out_stream) << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
                           << std::hex << (getBaseAddress() + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0] or AXI_FIFO_RDFD*/ << " and writing it to 0x"
                           << (void *)(hostbuf + words) << std::dec << std::endl;
@@ -214,7 +226,7 @@ uint32_t TraceFifoFull::readTrace(xclTraceResultsVector& traceVector, uint32_t n
     if (words < numWords) {
       chunkSizeBytes = 4 * (numWords - words);
 
-      if(out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/) {
+      if(out_stream) {
         (*out_stream) << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
                       << std::hex << (getBaseAddress() + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0]*/ << " and writing it to 0x"
                       << (void *)(hostbuf + words) << std::dec << std::endl;
@@ -225,74 +237,121 @@ uint32_t TraceFifoFull::readTrace(xclTraceResultsVector& traceVector, uint32_t n
       size += chunkSizeBytes;
     }
 
-    if(out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/)
+    if(out_stream)
         (*out_stream) << __func__ << ": done reading " << size << " bytes " << std::endl;
 
+    processTraceData(traceVector, true /*pcie device*/, numSamples, hostbuf /*trace data*/, (uint32_t)wordsPerSample); 
+    return size;
+}
 
+uint32_t TraceFifoFull::readTraceForEdgeDevice(xclTraceResultsVector& traceVector, uint32_t nSamples)
+{
+    if(out_stream)
+        (*out_stream) << " TraceFifoFull::readTraceForEdgeDevice " << std::endl;
+   
+    size_t size = 0;
+    // Limit to max number of samples so we don't overrun trace buffer on host
+    uint32_t maxNumSamples = getMaxNumTraceSamples();
+    uint32_t numSamples    = (nSamples > maxNumSamples) ? maxNumSamples : nSamples;
+
+    // On Zynq, we are currently storing 2 samples per packet in the FIFO
+    numSamples = numSamples/2 ;
+    traceVector.mLength = numSamples;
+
+    // Read all of the contents of the trace FIFO into local memory
+    uint64_t fifoContents[numSamples] ;
+
+    for (uint32_t i = 0 ; i < numSamples ; ++i)
+    {
+      // For each sample, we will need to read two 32-bit values and assemble them together.
+      uint32_t lowOrder = 0 ;
+      uint32_t highOrder = 0 ;
+      size += read(0x1000, sizeof(uint32_t), &lowOrder);
+      size += read(0x1000, sizeof(uint32_t), &highOrder);
+
+      fifoContents[i] = ((uint64_t)(highOrder) << 32) | (uint64_t)(lowOrder) ;
+    }
+
+    // Process all of the contents of the trace FIFO (now in local memory)
+    processTraceData(traceVector, false /*edge device : not PCIE device*/, numSamples, fifoContents /*trace data*/, 1 /*wordsPerSample*/);
+    return size;
+}
+
+void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector, bool isPCIEdevice, uint32_t numSamples, void* data, uint32_t wordsPerSample)
+{
     // ******************************
     // Read & process all trace FIFOs
     // ******************************
     static unsigned long long firstTimestamp;
     xclTraceResults results = {};
     uint64_t previousTimestamp = 0;
-    for (uint32_t wordnum=0; wordnum < numSamples; wordnum++) {
-      uint32_t index = wordsPerSample * wordnum;
-      uint64_t temp = 0;
+    for (uint32_t i = 0; i < numSamples; i++) {
+      uint32_t index = i;
+      uint64_t currentSample = 0;
 
-      temp = *(hostbuf + index) | (uint64_t)*(hostbuf + index + 1) << 32;
-      if (!temp)
+      if(isPCIEdevice) {
+        index = wordsPerSample * i;
+        uint32_t* dataUInt32Ptr = (uint32_t*)data;
+        currentSample = *(dataUInt32Ptr + index) | (uint64_t)*(dataUInt32Ptr + index + 1) << 32;
+      } else {
+        uint64_t* dataUInt64Ptr = (uint64_t*)data;
+        currentSample = *(dataUInt64Ptr + i);
+      }
+
+      if (!currentSample)
         continue;
+
       // Poor Man's reset
-      if (wordnum == 0)
-        firstTimestamp = temp & 0x1FFFFFFFFFFF;
+      if (i == 0)
+        firstTimestamp = currentSample & 0x1FFFFFFFFFFF;
 
       // This section assumes that we write 8 timestamp packets in startTrace
-      int mod = (wordnum % 4);
+      int mod = (i % 4);
       unsigned int clockWordIndex = 7;
-      if (wordnum > clockWordIndex || mod == 0) {
+      if (i > clockWordIndex || mod == 0) {
         memset(&results, 0, sizeof(xclTraceResults));
       }
-      if (wordnum <= clockWordIndex) {
+      if (i <= clockWordIndex) {
         if (mod == 0) {
-          uint64_t currentTimestamp = temp & 0x1FFFFFFFFFFF;
+          uint64_t currentTimestamp = currentSample & 0x1FFFFFFFFFFF;
           if (currentTimestamp >= firstTimestamp)
             results.Timestamp = currentTimestamp - firstTimestamp;
           else
             results.Timestamp = currentTimestamp + (0x1FFFFFFFFFFF - firstTimestamp);
         }
-        uint64_t partial = (((temp >> 45) & 0xFFFF) << (16 * mod));
+        uint64_t partial = (((currentSample >> 45) & 0xFFFF) << (16 * mod));
         results.HostTimestamp = results.HostTimestamp | partial;
 
-        if(out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/)
+        if(out_stream)
             (*out_stream) << "Updated partial host timestamp : " << std::hex << partial << std::endl;
 
         if (mod == 3) {
-          if(out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/)
-            (*out_stream) << "  Trace sample " << std::dec << wordnum << ": "
+          if(out_stream) {
+            (*out_stream) << "  Trace sample " << std::dec << i << ": "
                           << " Timestamp : " << results.Timestamp << "   "
                           << " Host Timestamp : " << std::hex << results.HostTimestamp << std::endl;
-  
-          traceVector.mArray[static_cast<int>(wordnum/4)] = results;    // save result
+          } 
+          traceVector.mArray[static_cast<int>(i/4)] = results;    // save result
         }
         continue;
       }
 
       // Zynq Packet Format
-      results.Timestamp = (temp & 0x1FFFFFFFFFFF) - firstTimestamp;
-      results.EventType = ((temp >> 45) & 0xF) ? XCL_PERF_MON_END_EVENT :
+      results.Timestamp = (currentSample & 0x1FFFFFFFFFFF) - firstTimestamp;
+      results.EventType = ((currentSample >> 45) & 0xF) ? XCL_PERF_MON_END_EVENT :
           XCL_PERF_MON_START_EVENT;
-      results.TraceID = (temp >> 49) & 0xFFF;
-      results.Reserved = (temp >> 61) & 0x1;
-      results.Overflow = (temp >> 62) & 0x1;
-      results.Error = (temp >> 63) & 0x1;
+      results.TraceID = (currentSample >> 49) & 0xFFF;
+      results.Reserved = (currentSample >> 61) & 0x1;
+      results.Overflow = (currentSample >> 62) & 0x1;
+      results.Error = (currentSample >> 63) & 0x1;
       results.EventID = XCL_PERF_MON_HW_EVENT;
-      results.EventFlags = ((temp >> 45) & 0xF) | ((temp >> 57) & 0x10) ;
+      results.EventFlags = ((currentSample >> 45) & 0xF) | ((currentSample >> 57) & 0x10) ;
 
-      traceVector.mArray[wordnum - clockWordIndex + 1] = results;   // save result
+      traceVector.mArray[i - clockWordIndex + 1] = results;   // save result
 
-      if(out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/) {
-        (*out_stream) << "  Trace sample " << std::dec << std::setw(5) << wordnum << ": "
-                      << dec2bin(uint32_t(temp>>32)) << " " << dec2bin(uint32_t(temp&0xFFFFFFFF))
+      if(out_stream) {
+        (*out_stream) << "  Trace sample " << std::dec << std::setw(5) << i << ": "
+                      << dec2bin(uint32_t(currentSample>>32)) << " " << dec2bin(uint32_t(currentSample&0xFFFFFFFF))
                       << std::endl
                       << " Timestamp : " << results.Timestamp << "   "
                       << "Event Type : " << results.EventType << "   "
@@ -306,8 +365,6 @@ uint32_t TraceFifoFull::readTrace(xclTraceResultsVector& traceVector, uint32_t n
         previousTimestamp = results.Timestamp;
       }
     }
-
-    return size;
 }
 
 void TraceFifoFull::showProperties()

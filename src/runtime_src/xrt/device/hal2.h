@@ -526,13 +526,12 @@ public:
     return hal::operations_result<void>(0);
   }
 
-  virtual hal::operations_result<void>
+  virtual hal::operations_result<ssize_t>
   xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset)
   {
     if (!m_ops->mUnmgdPread)
-      return hal::operations_result<void>();
-    m_ops->mUnmgdPread(m_handle, flags, buf, count, offset);
-    return hal::operations_result<void>(0);
+      return hal::operations_result<ssize_t>();
+    return m_ops->mUnmgdPread(m_handle, flags, buf, count, offset);
   }
 
   virtual hal::operations_result<void>

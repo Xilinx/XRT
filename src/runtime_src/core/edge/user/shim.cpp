@@ -1071,7 +1071,7 @@ int xclRemoveAndScanFPGA()
 ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf,
                       size_t size, uint64_t offset)
 {
-  return 0;
+  return -ENOSYS;
 }
 ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf,
                        size_t size, uint64_t offset)
