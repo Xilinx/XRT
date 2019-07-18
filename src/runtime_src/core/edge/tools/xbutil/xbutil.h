@@ -29,9 +29,9 @@
 
 #include "xclhal2.h"
 #include "xclperf.h"
-#include "core/edge/common/dd.h"
-#include "core/edge/common/utils.h"
-#include "core/edge/common/sensor.h"
+#include "core/common/dd.h"
+#include "core/common/utils.h"
+#include "core/common/sensor.h"
 #include "xclbin.h"
 #include <version.h>
 #include <fcntl.h>
