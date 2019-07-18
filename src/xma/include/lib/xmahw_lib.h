@@ -57,6 +57,7 @@ typedef struct XmaHwKernel
     int32_t    ddr_bank;
     uint32_t    cu_mask0;
     uint32_t    cu_mask1;
+    int32_t    regmap_max;
     //For execbo:
     int32_t     kernel_complete_count;
     //std::unique_ptr<std::atomic<bool>> kernel_complete_locked;
@@ -74,6 +75,7 @@ typedef struct XmaHwKernel
   XmaHwKernel(): reg_map_locked(new std::atomic<bool>) {
     in_use = false;
     cu_index = -1;
+    regmap_max = -1;
     ddr_bank = -1;
     cu_mask0 = 0;
     cu_mask1 = 0;

@@ -32,16 +32,19 @@ DTC::DTC()
   // Empty
 }
 
-DTC::DTC(const char* _pBuffer, const unsigned int _size) 
+DTC::DTC(const char* _pBuffer, 
+         const unsigned int _size,
+         const FDTProperty::PropertyNameFormat & _propertyNameFormat) 
   : DTC()
 {
-  marshalFromDTCImage(_pBuffer, _size);
+  marshalFromDTCImage(_pBuffer, _size, _propertyNameFormat);
 }
 
-DTC::DTC(const boost::property_tree::ptree &_ptDTC)
+DTC::DTC(const boost::property_tree::ptree &_ptDTC,
+         const FDTProperty::PropertyNameFormat & _propertyNameFormat)
   : DTC()
 {
-  marshalFromJSON(_ptDTC);
+  marshalFromJSON(_ptDTC, _propertyNameFormat);
 }
 
 
@@ -67,7 +70,9 @@ struct fdt_header {
 };
 
 void
-DTC::marshalFromDTCImage( const char* _pBuffer, const unsigned int _size) 
+DTC::marshalFromDTCImage( const char* _pBuffer, 
+                          const unsigned int _size, 
+                          const FDTProperty::PropertyNameFormat & _propertyNameFormat) 
 {
   XUtil::TRACE("Marshalling from DTC Image");
 
@@ -130,14 +135,15 @@ DTC::marshalFromDTCImage( const char* _pBuffer, const unsigned int _size)
   // -- Get the top FDT Note (which will include the node tree) --
   const char* pStructureBuffer = _pBuffer + ntohl(pHdr->off_dt_struct);
   unsigned int structureBufferSize = ntohl(pHdr->size_dt_struct);
-  m_pTopFDTNode = FDTNode::marshalFromDTC(pStructureBuffer, structureBufferSize, m_DTCStringsBlock);
+  m_pTopFDTNode = FDTNode::marshalFromDTC(pStructureBuffer, structureBufferSize, m_DTCStringsBlock, _propertyNameFormat);
 
   XUtil::TRACE("Marshalling complete");
 }
 
 
 void 
-DTC::marshalToJSON(boost::property_tree::ptree &_dtcTree) const
+DTC::marshalToJSON(boost::property_tree::ptree &_dtcTree,
+                   const FDTProperty::PropertyNameFormat & _propertyNameFormat) const
 {
   XUtil::TRACE("");
 
@@ -145,16 +151,17 @@ DTC::marshalToJSON(boost::property_tree::ptree &_dtcTree) const
      throw std::runtime_error("ERROR: There are no structure nodes in this design.");
   }
 
-  m_pTopFDTNode->marshalToJSON(_dtcTree);
+  m_pTopFDTNode->marshalToJSON(_dtcTree, _propertyNameFormat);
 }
 
 
 void 
-DTC::marshalFromJSON(const boost::property_tree::ptree &_ptDTC)
+DTC::marshalFromJSON( const boost::property_tree::ptree &_ptDTC,
+                      const FDTProperty::PropertyNameFormat & _propertyNameFormat)
 {
     XUtil::TRACE("Marshalling from JSON Image");
 
-    m_pTopFDTNode = FDTNode::marshalFromJSON(_ptDTC);
+    m_pTopFDTNode = FDTNode::marshalFromJSON(_ptDTC, _propertyNameFormat);
 }
 
 
