@@ -250,7 +250,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             rc = xma_xclbin_map2ddr(info.ip_ddr_mapping[d], &tmp1.ddr_bank);
             //XMA supports only 1 Bank per Kernel
 
-            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - DDR bank:\n", d, tmp1.name, tmp1.ddr_bank);
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - DDR bank:%d\n", d, tmp1.name, tmp1.ddr_bank);
             if (xclOpenContext(dev_tmp1.handle, info.uuid, d, true) != 0) {
                 free(buffer);
                 xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Failed to open context to this CU\n");
