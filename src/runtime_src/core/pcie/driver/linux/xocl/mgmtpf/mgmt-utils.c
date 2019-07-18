@@ -515,14 +515,14 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	}
 
 	bin_axlf = (struct axlf *)fw->data;
-	dtc_header = xocl_axlf_section_header(lro, bin_axlf, DTC);
+	dtc_header = xocl_axlf_section_header(lro, bin_axlf, PARTITION_METADATA);
 	if (!dtc_header)
 		goto failed;
 
 	ret = xocl_fdt_blob_input(lro,
 			(char *)fw->data + dtc_header->m_sectionOffset);
 	if (ret) {
-		mgmt_err(lro, "Invalid dtc");
+		mgmt_err(lro, "Invalid PARTITION_METADATA");
 		goto failed;
 	}
 

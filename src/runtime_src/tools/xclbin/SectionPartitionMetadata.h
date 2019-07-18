@@ -14,13 +14,14 @@
  * under the License.
  */
 
-#ifndef __SectionDTC_h_
-#define __SectionDTC_h_
+#ifndef __SectionPartitionMetadata_h_
+#define __SectionPartitionMetadata_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
 
 // #includes here - please keep these to a bare minimum!
 #include "Section.h"
+#include "FDTProperty.h"
 #include <boost/functional/factory.hpp>
 
 // ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
@@ -28,10 +29,10 @@
 
 // ------------- C L A S S :   S e c t i o n D T C ---------------------------
 
-class SectionDTC : public Section {
+class SectionPartitionMetadata : public Section {
  public:
-  SectionDTC();
-  virtual ~SectionDTC();
+  SectionPartitionMetadata();
+  virtual ~SectionPartitionMetadata();
 
  public:
   virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;
@@ -42,16 +43,20 @@ class SectionDTC : public Section {
   virtual void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const;
   virtual void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const;
 
+ protected:
+   static const FDTProperty::PropertyNameFormat m_propertyNameFormat;
+
+
  private:
   // Purposefully private and undefined ctors...
-  SectionDTC(const SectionDTC& obj);
-  SectionDTC& operator=(const SectionDTC& obj);
+  SectionPartitionMetadata(const SectionPartitionMetadata& obj);
+  SectionPartitionMetadata& operator=(const SectionPartitionMetadata& obj);
 
  private:
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(DTC, "DTC", "ip_shell_definitions", false, boost::factory<SectionDTC*>()); }
+      _init() { registerSectionCtor(PARTITION_METADATA, "PARTITION_METADATA", "partition_metadata", false, boost::factory<SectionPartitionMetadata *>()); }
   } _initializer;
 };
 

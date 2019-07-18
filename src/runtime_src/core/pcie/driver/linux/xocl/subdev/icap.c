@@ -3494,9 +3494,9 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 	icap->rp_bit = NULL;
 	icap->rp_bit_len = 0;
 
-	section = get_axlf_section_hdr(icap, axlf, DTC);
+	section = get_axlf_section_hdr(icap, axlf, PARTITION_METADATA);
 	if (!section) {
-		ICAP_ERR(icap, "did not find DTC section");
+		ICAP_ERR(icap, "did not find PARTITION_METADATA section");
 		ret = -EINVAL;
 		goto failed;
 	}
@@ -3504,14 +3504,14 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 	header = (char *)axlf + section->m_sectionOffset;
 	if (fdt_check_header(header) || fdt_totalsize(header) >
 			section->m_sectionSize) {
-		ICAP_ERR(icap, "Invalid DTC");
+		ICAP_ERR(icap, "Invalid PARTITION_METADATA");
 		ret = -EINVAL;
 		goto failed;
 	}
 
 	icap->rp_fdt = vmalloc(fdt_totalsize(header));
 	if (!icap->rp_fdt) {
-		ICAP_ERR(icap, "Not enough memory for DTC");
+		ICAP_ERR(icap, "Not enough memory for PARTITION_METADATA");
 		ret = -ENOMEM;
 		goto failed;
 	}
