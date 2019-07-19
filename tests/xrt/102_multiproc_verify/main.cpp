@@ -25,6 +25,7 @@
 
 #include "xhello_hw.h"
 #include "utils.h"
+#include "utils.hpp" // time_ns
 
 /**
  * Testcase to demostrate XRT's multiprocess support.
@@ -66,12 +67,6 @@ static void printHelp()
     std::cout << "* Bitstream is required\n";
     std::cout << "* HAL logfile is optional but useful for capturing messages from HAL driver\n";
 }
-
-
-class xclBO {
-    unsigned bo;
-    char *ptr;
-};
 
 
 static int runKernel(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose, unsigned n_elements)
@@ -119,8 +114,9 @@ static int runKernel(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose
         }
 
         std::vector<std::pair<unsigned, void*>>::iterator iter = cmdBO.begin();
-        unsigned count = 0;
-        while (cmdBO.size() && (count < 30)) {
+        size_t count = 0;
+        auto start = utils::time_ns();
+        while (cmdBO.size() && (utils::time_ns() - start) * 10e-9 < 30) {
             if (iter == cmdBO.end())
                 iter = cmdBO.begin();
             const ert_start_kernel_cmd *ecmd = reinterpret_cast<ert_start_kernel_cmd*>(iter->second);
@@ -137,9 +133,12 @@ static int runKernel(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose
             default:
                 iter++;
             }
+            ++count;
             xclExecWait(handle, 1000);
-            count++;
         }
+
+        
+        stamp(std::cout) << "wait calls(" << count << ") wait time in (" << (utils::time_ns() - start) * 10e-6 << "ms)\n";
 
         if (cmdBO.size())
             throw std::runtime_error("Could not finish all kernel runs in 30 secs");
@@ -165,45 +164,10 @@ static int runKernelLoop(xclDeviceHandle handle, uint64_t cu_base_addr, bool ver
     if (xclOpenContext(handle, xclbinId, cu_index, true))
         throw std::runtime_error("Cannot create context");
 
-    //Allocate the exec_bo
-    unsigned execHandle = xclAllocBO(handle, 1024, 0, (1<<31));
-    void* execData = xclMapBO(handle, execHandle, true);
-
-    //construct the exec buffer cmd to configure.
-    {
-        auto ecmd = reinterpret_cast<ert_configure_cmd*>(execData);
-
-        std::memset(ecmd, 0, 1024);
-        ecmd->state = ERT_CMD_STATE_NEW;
-        ecmd->opcode = ERT_CONFIGURE;
-
-        ecmd->slot_size = 0x1000;
-        ecmd->num_cus = 1;
-        ecmd->cu_shift = 16;
-        ecmd->cu_base_addr = cu_base_addr;
-
-        ecmd->ert = 1;
-        if (ecmd->ert) {
-            ecmd->cu_dma = 1;
-            ecmd->cu_isr = 1;
-        }
-
-        // CU -> base address mapping
-        ecmd->data[0] = cu_base_addr;
-        ecmd->count = 5 + ecmd->num_cus;
-    }
-
-    stamp(std::cout) << "Send the exec command and configure FPGA (ERT)" << std::endl;
-    //Send the command.
-    if (xclExecBuf(handle, execHandle))
-        throw std::runtime_error("Cannot submit configure command");
-
-    stamp(std::cout) << "Wait for configure command to finish" << std::endl;
-    //Wait on the command finish
-    while (xclExecWait(handle,1000) == 0);
     int result = runKernel(handle, cu_base_addr, verbose, n_elements);
-    // Release the context
+
     xclCloseContext(handle, xclbinId, cu_index);
+
     return result;
 }
 
@@ -288,7 +252,6 @@ int main(int argc, char** argv, char *envp[])
         xclDeviceHandle handle;
         uint64_t cu_base_addr = 0;
         int first_mem = -1;
-        int first_used_mem;
         uuid_t xclbinId;
 
         if (initXRT(bitstreamFile.c_str(), index, halLogfile.c_str(), handle, cu_index, cu_base_addr, first_mem, xclbinId))
