@@ -27,6 +27,9 @@
 #include <vector>
 #include <boost/uuid/uuid.hpp>          // for uuid
 #include <boost/uuid/uuid_io.hpp>       // for to_string
+#include <boost/property_tree/json_parser.hpp>
+
+
 
 #ifdef _WIN32
   #include <winsock2.h>
@@ -166,9 +169,13 @@ XclBinUtilities::TRACE_PrintTree(const std::string& _msg,
 
   std::cout << "Trace: Property Tree (" << _msg << ")" << std::endl;
 
-  std::ostringstream buf;
-  printTree(_pt, buf);
-  std::cout << buf.str();
+  std::ostringstream outputBuffer;
+  boost::property_tree::write_json(outputBuffer, _pt, true /*Pretty print*/);
+  std::cout << outputBuffer.str() << std::endl;
+  
+//  std::ostringstream buf;
+//  printTree(_pt, buf);
+//  std::cout << buf.str();
 }
 
 void

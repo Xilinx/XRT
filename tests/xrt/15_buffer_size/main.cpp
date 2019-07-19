@@ -116,8 +116,8 @@ static int transferSizeTest1(xclDeviceHandle &handle, size_t alignment, unsigned
 
     std::cout << "transferSizeTest1 start\n";
     std::cout << "Allocate two buffers with size: " << maxSize/1024 << " KBytes ...\n";
-    unsigned int boHandle1 = xclAllocBO(handle, maxSize, XCL_BO_DEVICE_RAM, first_mem); //buf1
-    unsigned int boHandle2 = xclAllocBO(handle, maxSize, XCL_BO_DEVICE_RAM, first_mem); // buf2
+    unsigned int boHandle1 = xclAllocBO(handle, maxSize, 0, first_mem); //buf1
+    unsigned int boHandle2 = xclAllocBO(handle, maxSize, 0, first_mem); // buf2
     unsigned *writeBuffer = (unsigned *)xclMapBO(handle, boHandle1, true);
     memset(writeBuffer, 0, maxSize);
     std::list<uint64_t> deviceHandleList;
@@ -150,7 +150,7 @@ static int transferSizeTest1(xclDeviceHandle &handle, size_t alignment, unsigned
             return 1;
 
         //Allocate the exec_bo
-        //unsigned execHandle = xclAllocBO(handle, maxSize, xclBOKind(0), (1<<31));
+        //unsigned execHandle = xclAllocBO(handle, maxSize, 0, (1<<31));
         //void* execData = xclMapBO(handle, execHandle, true);
 
         //Get the output;
@@ -190,8 +190,8 @@ static int transferSizeTest2(xclDeviceHandle &handle, size_t alignment, unsigned
 
     std::cout << "transferSizeTest2 start\n";
     std::cout << "Allocate two buffers with size: " << maxSize/1024 << " KBytes ...\n";
-    unsigned boHandle1 = xclAllocBO(handle, maxSize, XCL_BO_DEVICE_RAM, first_mem); //buf1
-    unsigned boHandle2 = xclAllocBO(handle, maxSize, XCL_BO_DEVICE_RAM, first_mem); // buf2
+    unsigned boHandle1 = xclAllocBO(handle, maxSize, 0, first_mem); //buf1
+    unsigned boHandle2 = xclAllocBO(handle, maxSize, 0, first_mem); // buf2
     unsigned *writeBuffer = (unsigned *)xclMapBO(handle, boHandle1, true);
     memset(writeBuffer, 0, maxSize);
     std::list<uint64_t> deviceHandleList;
@@ -219,7 +219,7 @@ static int transferSizeTest2(xclDeviceHandle &handle, size_t alignment, unsigned
             return 1;
 
         //Allocate the exec_bo
-        //unsigned execHandle = xclAllocBO(handle, maxSize, xclBOKind(0), (1<<31));
+        //unsigned execHandle = xclAllocBO(handle, maxSize, 0, (1<<31));
         //void* execData = xclMapBO(handle, execHandle, true);
         //Get the output;
         if(xclSyncBO(handle, boHandle1, XCL_BO_SYNC_BO_FROM_DEVICE, size, 0)) {
@@ -257,7 +257,7 @@ static int bufferSizeTest(xclDeviceHandle &handle, uint64_t totalSize, int first
     // Fill the DDR with random size buffers and measure the utilization
     while (totalAllocationSize < totalSize) {
         size_t size = dis(generator);
-        unsigned pos = xclAllocBO(handle, size, XCL_BO_DEVICE_RAM, first_mem); //buf1
+        unsigned pos = xclAllocBO(handle, size, 0, first_mem); //buf1
         xclBOProperties p;
         uint64_t bodevAddr = !xclGetBOProperties(handle, pos, &p) ? p.paddr : -1;
         if (bodevAddr == (uint64_t)(-1)) {

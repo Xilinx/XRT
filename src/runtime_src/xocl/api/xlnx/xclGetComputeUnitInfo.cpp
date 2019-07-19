@@ -79,6 +79,9 @@ xclGetComputeUnitInfo(cl_kernel             kernel,
     case XCL_COMPUTE_UNIT_INDEX:
       buffer.as<cl_uint>() = cu->get_index();
       break;
+    case XCL_COMPUTE_UNIT_BASE_ADDRESS:
+      buffer.as<size_t>() = cu->get_base_addr();
+      break;
     case XCL_COMPUTE_UNIT_CONNECTIONS: {
       int argidx = 0;
       for (auto& arg : symbol->arguments) {

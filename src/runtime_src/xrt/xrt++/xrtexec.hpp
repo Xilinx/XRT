@@ -76,6 +76,9 @@ public:
 
   bool
   completed() const;
+
+  ert_cmd_state
+  state() const;
 };
 
 /**

@@ -27,7 +27,7 @@
 #include "app/xmaerror.h"
 #include "app/xmalogger.h"
 #include "lib/xmaxclbin.h"
-#include "lib/xmahw_hal.h"
+//#include "lib/xmahw_hal.h"
 #include "lib/xmahw_private.h"
 #include <dlfcn.h>
 #include <iostream>
@@ -183,7 +183,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
     for (int32_t i = 0; i < num_parms; i++) {
         std::string xclbin = std::string(devXclbins[i].xclbin_name);
         int32_t dev_index = devXclbins[i].device_id;
-        if (dev_index >= hwcfg->num_devices) {
+        if (dev_index >= hwcfg->num_devices || dev_index < 0) {
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Illegal dev_index for xclbin to load into. dev_index = %d\n",
                        dev_index);
             return false;
@@ -216,7 +216,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             return false;
         }
         dev_tmp1.dev_index = dev_index;
-        xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "get_device_list xclOpen handle = %p\n",
+        xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "xclOpen handle = %p\n",
             dev_tmp1.handle);
         rc = xclGetDeviceInfo2(dev_tmp1.handle, &dev_tmp1.info);
         if (rc != 0)
@@ -250,7 +250,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             rc = xma_xclbin_map2ddr(info.ip_ddr_mapping[d], &tmp1.ddr_bank);
             //XMA supports only 1 Bank per Kernel
 
-            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - DDR bank:\n", d, tmp1.name, tmp1.ddr_bank);
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - DDR bank:%d\n", d, tmp1.name, tmp1.ddr_bank);
             if (xclOpenContext(dev_tmp1.handle, info.uuid, d, true) != 0) {
                 free(buffer);
                 xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Failed to open context to this CU\n");
@@ -274,24 +274,25 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         }
 
         int32_t num_execbo = 0;
-        if (dev_tmp1.number_of_cus > MAX_EXECBO_POOL_SIZE) {
+        if (dev_tmp1.number_of_cus > MIN_EXECBO_POOL_SIZE) {
             num_execbo = dev_tmp1.number_of_cus;
         } else {
-            num_execbo = MAX_EXECBO_POOL_SIZE;
+            num_execbo = MIN_EXECBO_POOL_SIZE;
         }
         dev_tmp1.kernel_execbo_handle.reserve(num_execbo);
         dev_tmp1.kernel_execbo_data.reserve(num_execbo);
         dev_tmp1.kernel_execbo_inuse.reserve(num_execbo);
+        dev_tmp1.kernel_execbo_cu_index.reserve(num_execbo);
         dev_tmp1.num_execbo_allocated = num_execbo;
         for (int32_t d = 0; d < num_execbo; d++) {
             uint32_t  bo_handle;
             int       execBO_size = MAX_EXECBO_BUFF_SIZE;
-            uint32_t  execBO_flags = (1<<31);
+            //uint32_t  execBO_flags = (1<<31);
             char     *bo_data;
             bo_handle = xclAllocBO(dev_tmp1.handle, 
                                     execBO_size, 
                                     0, 
-                                    execBO_flags);
+                                    XCL_BO_FLAGS_EXECBUF);
             if (!bo_handle || bo_handle == mNullBO) 
             {
                 free(buffer);
@@ -303,6 +304,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             dev_tmp1.kernel_execbo_handle.emplace_back(bo_handle);
             dev_tmp1.kernel_execbo_data.emplace_back(bo_data);
             dev_tmp1.kernel_execbo_inuse.emplace_back(false);
+            dev_tmp1.kernel_execbo_cu_index.emplace_back(-1);
             /*
             ert_start_kernel_cmd* cu_start_cmd = (ert_start_kernel_cmd*) bo_data;
             cu_start_cmd->state = ERT_CMD_STATE_NEW;

@@ -1,0 +1,22 @@
+#template_tql < $RDI_TEMPLATES/sdx/sdaccel/swhw/template.tql
+description: testinfo generated using import_sdx_test.py script
+level: 6
+owner: soeren
+user:
+  allowed_test_modes: [hw]
+  host_args: {all: -k kernel.xclbin --jobs 1024 --seconds 1 --cus 8 --ert}
+  host_cflags: ' -DDSA64 -ldl -luuid'
+  host_exe: host.exe
+  host_src: main.cpp
+  kernels:
+  - {cflags: ' -I.', file: addone.xo, ksrc: kernel.cl, name: addone, type: C}
+  name: 100_ert_ncu
+  xclbins:
+  - files: 'addone.xo '
+    kernels:
+    - cus: [addone_0, addone_1, addone_2, addone_3, addone_4, addone_5, addone_6,
+        addone_7]
+      name: addone
+      num_cus: 8
+    lflags: ''
+    name: kernel.xclbin

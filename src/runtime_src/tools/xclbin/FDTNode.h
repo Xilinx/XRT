@@ -20,6 +20,7 @@
 // ----------------------- I N C L U D E S -----------------------------------
 
 // #includes here - please keep these to a bare minimum!
+#include "FDTProperty.h"
 
 #include <string>
 #include <vector>
@@ -27,7 +28,6 @@
 
 // ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
 // Forward declarations - use these instead whenever possible...
-class FDTProperty;
 class DTCStringsBlock;
 
 // ------------------- C L A S S :   S e c t i o n ---------------------------
@@ -35,21 +35,21 @@ class DTCStringsBlock;
 class FDTNode {
 
  private:
-  FDTNode(const char* _pBuffer, const unsigned int _size, const DTCStringsBlock& _dtcStringsBlock, unsigned int& _bytesExamined);
-  FDTNode(const boost::property_tree::ptree& _ptDTC, std::string & _nodeName);
+  FDTNode(const char* _pBuffer, const unsigned int _size, const DTCStringsBlock& _dtcStringsBlock, unsigned int& _bytesExamined, const FDTProperty::PropertyNameFormat & _propertyNameFormat);
+  FDTNode(const boost::property_tree::ptree& _ptDTC, std::string & _nodeName, const FDTProperty::PropertyNameFormat & _propertyNameFormat);
 
  public:
   virtual ~FDTNode();
 
  public:
-  static FDTNode* marshalFromDTC(const char* _pBuffer, const unsigned int _size, const DTCStringsBlock& _dtcStringsBlock);
-  static FDTNode* marshalFromJSON(const boost::property_tree::ptree& _ptDTC);
+  static FDTNode* marshalFromDTC(const char* _pBuffer, const unsigned int _size, const DTCStringsBlock& _dtcStringsBlock, const FDTProperty::PropertyNameFormat & _propertyNameFormat);
+  static FDTNode* marshalFromJSON(const boost::property_tree::ptree& _ptDTC, const FDTProperty::PropertyNameFormat & _propertyNameFormat);
 
-  void marshalToJSON(boost::property_tree::ptree& _dtcTree) const;
+  void marshalToJSON(boost::property_tree::ptree& _dtcTree, const FDTProperty::PropertyNameFormat & _propertyNameFormat) const;
   void marshalToDTC(DTCStringsBlock& _dtcStringsBlock, std::ostream& _buf) const;
 
  protected:
-  void marshalSubNodeToJSON(boost::property_tree::ptree& _ptTree) const;
+  void marshalSubNodeToJSON(boost::property_tree::ptree& _ptTree, const FDTProperty::PropertyNameFormat & _propertyNameFormat) const;
   static void runningBufferCheck(const unsigned int _bytesExamined, const unsigned int _size);
 
  private:

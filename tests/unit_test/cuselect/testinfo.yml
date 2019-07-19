@@ -1,0 +1,29 @@
+#template_tql < $RDI_TEMPLATES/sdx/sdaccel/swhw/template.tql
+description: testinfo generated using import_sdx_test.py script
+level: 6
+owner: soeren
+user:
+  allowed_test_modes: [hw]
+  host_args: {all: cuselect.xclbin}
+  host_cflags: ' -DDSA64'
+  host_exe: host.exe
+  host_src: main.cpp
+  kernels:
+  - {cflags: ' -I.', file: vadd.xo, ksrc: vadd.cl, name: vadd, type: C}
+  name: cuselect
+  xclbins:
+  - files: 'vadd.xo '
+    kernels:
+    - cus: [vadd_1, vadd_2, vadd_3, vadd_4, vadd_5, vadd_6, vadd_7, vadd_8]
+      name: vadd
+      num_cus: 8
+    lflags: ' --sp vadd_1.A:DDR[0] --sp vadd_1.B:DDR[1] --sp vadd_1.C:DDR[2] --sp
+      vadd_1.D:DDR[3] --sp vadd_2.A:DDR[0] --sp vadd_2.B:DDR[1] --sp vadd_2.C:DDR[2]
+      --sp vadd_2.D:DDR[3] --sp vadd_3.A:DDR[1] --sp vadd_3.B:DDR[2] --sp vadd_3.C:DDR[3]
+      --sp vadd_3.D:DDR[0] --sp vadd_4.A:DDR[1] --sp vadd_4.B:DDR[2] --sp vadd_4.C:DDR[3]
+      --sp vadd_4.D:DDR[0] --sp vadd_5.A:DDR[2] --sp vadd_5.B:DDR[3] --sp vadd_5.C:DDR[0]
+      --sp vadd_5.D:DDR[1] --sp vadd_6.A:DDR[2] --sp vadd_6.B:DDR[3] --sp vadd_6.C:DDR[0]
+      --sp vadd_6.D:DDR[1] --sp vadd_7.A:DDR[3] --sp vadd_7.B:DDR[0] --sp vadd_7.C:DDR[1]
+      --sp vadd_7.D:DDR[2] --sp vadd_8.A:DDR[3] --sp vadd_8.B:DDR[0] --sp vadd_8.C:DDR[1]
+      --sp vadd_8.D:DDR[2]'
+    name: cuselect.xclbin
