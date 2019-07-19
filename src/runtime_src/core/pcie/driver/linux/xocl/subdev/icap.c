@@ -2903,7 +2903,7 @@ static int icap_verify_signature(struct icap *icap,
 		(icap->sec_level == ICAP_SEC_SYSTEM) ? SYS_KEYS : icap_keys,
 		VERIFYING_UNSPECIFIED_SIGNATURE, NULL, NULL);
 	if (ret && icap->sec_level == 0) {
-		ICAP_INFO(icap, "signature verification failed");
+		ICAP_INFO(icap, "signature verification failed: %d", ret);
 		ret = 0;
 	}
 #else
@@ -2995,11 +2995,11 @@ static ssize_t sec_level_store(struct device *dev,
 				"can't lower security level from system level");
 			ret = -EINVAL;
 		}
+		icap_key_test(icap);
 	}
 
 	mutex_unlock(&icap->icap_lock);
 
-	icap_key_test(icap);
 	return ret;
 #endif
 }
