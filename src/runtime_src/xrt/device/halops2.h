@@ -133,6 +133,11 @@ private:
   typedef uint     (*xclGetNumLiveProcessesFuncType)(xclDeviceHandle handle);
   typedef int     (*xclGetSysfsPathFuncType)(xclDeviceHandle handle, const char* subdev, const char* entry, char* sysfsPath, size_t size);
 
+  typedef int     (*xclGetDebugIPlayoutPathFuncType)(xclDeviceHandle handle, char* layoutPath, size_t size);
+
+  typedef int (*xclGetTraceBufferInfoFuncType)(xclDeviceHandle handle, uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
+  typedef int (*xclReadTraceDataFuncType)(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
+
 //
 #if 0
   typedef int (* loadBitstreamFuncType)(xclDeviceHandle handle, const char *fileName);
@@ -221,6 +226,11 @@ public:
   // APIs using sysfs
   xclGetNumLiveProcessesFuncType mGetNumLiveProcesses;
   xclGetSysfsPathFuncType mGetSysfsPath;
+
+  xclGetDebugIPlayoutPathFuncType mGetDebugIPlayoutPath;
+
+  xclGetTraceBufferInfoFuncType mGetTraceBufferInfo;
+  xclReadTraceDataFuncType mReadTraceData;
 
 #if 0
   /* TBD */

@@ -155,13 +155,32 @@ uint32_t TraceFifoFull::readTrace(xclTraceResultsVector& traceVector, uint32_t n
       return 0;
     }
 
-    if(isOnEdgeDevice()) {
-      return readTraceForEdgeDevice(traceVector, nSamples);
-    } else {
-      return readTraceForPCIEDevice(traceVector, nSamples);
-    }
+    // Limit to max number of samples so we don't overrun trace buffer on host
+    uint32_t maxNumSamples = getMaxNumTraceSamples();
+    uint32_t numSamples    = (nSamples > maxNumSamples) ? maxNumSamples : nSamples;
+    
+    uint32_t traceBufSz = 0;
+    uint32_t traceSamples = 0; 
+
+    xrt::device* xrtDevice = getXRTDevice();
+
+    /* Get the trace buffer size and actual number of samples for the specific device
+     * On Zynq, we store 2 samples per packet in the FIFO. So, actual number of samples
+     * will be different from the already calculated "numSamples".
+     */
+    xrtDevice->getTraceBufferInfo(numSamples, traceSamples /*actual no. of samples for specific device*/, traceBufSz);
+    traceVector.mLength = traceSamples;
+
+    uint32_t traceBuf[traceBufSz];
+    uint32_t wordsPerSample = 1;
+    xrtDevice->readTraceData(traceBuf, traceBufSz, numSamples/* use numSamples */, getBaseAddress(), wordsPerSample);
+
+    processTraceData(traceVector, numSamples, traceBuf, wordsPerSample); 
+
+    return 0;
 }
 
+#if 0
 uint32_t TraceFifoFull::readTraceForPCIEDevice(xclTraceResultsVector& traceVector, uint32_t nSamples)
 {
     if(out_stream)
@@ -276,8 +295,9 @@ uint32_t TraceFifoFull::readTraceForEdgeDevice(xclTraceResultsVector& traceVecto
     processTraceData(traceVector, false /*edge device : not PCIE device*/, numSamples, fifoContents /*trace data*/, 1 /*wordsPerSample*/);
     return size;
 }
+#endif
 
-void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector, bool isPCIEdevice, uint32_t numSamples, void* data, uint32_t wordsPerSample)
+void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t numSamples, void* data, uint32_t wordsPerSample)
 {
     // ******************************
     // Read & process all trace FIFOs
@@ -286,17 +306,10 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector, bool is
     xclTraceResults results = {};
     uint64_t previousTimestamp = 0;
     for (uint32_t i = 0; i < numSamples; i++) {
-      uint32_t index = i;
-      uint64_t currentSample = 0;
+      uint32_t index = wordsPerSample * i;
 
-      if(isPCIEdevice) {
-        index = wordsPerSample * i;
-        uint32_t* dataUInt32Ptr = (uint32_t*)data;
-        currentSample = *(dataUInt32Ptr + index) | (uint64_t)*(dataUInt32Ptr + index + 1) << 32;
-      } else {
-        uint64_t* dataUInt64Ptr = (uint64_t*)data;
-        currentSample = *(dataUInt64Ptr + i);
-      }
+      uint32_t* dataUInt32Ptr = (uint32_t*)data;
+      uint64_t currentSample = *(dataUInt32Ptr + index) | (uint64_t)*(dataUInt32Ptr + index + 1) << 32;
 
       if (!currentSample)
         continue;

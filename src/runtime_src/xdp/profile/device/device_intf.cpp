@@ -438,9 +438,7 @@ DeviceIntf::~DeviceIntf()
         return;
 
     xrt::device* xrtDevice = (xrt::device*)mDeviceHandle;
-
-    auto ret = xrtDevice->getSysfsPath("icap" /* subdev*/, "debug_ip_layout" /* entry*/);
-    std::string path = ret.get();
+    std::string path = xrtDevice->getDebugIPlayoutPath().get();
     if(path.empty()) {
         // error ? : for HW_emu this will be empty for now ; but as of current status should not have been called 
         return;

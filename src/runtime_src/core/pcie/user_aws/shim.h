@@ -170,6 +170,11 @@ public:
   // APIs using sysfs information
   int xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size);
 
+  int xclGetDebugIPlayoutPath(char* layoutPath, size_t size);
+  int xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
+  int xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
+
+
   // Execute and interrupt abstraction
   int xclExecBuf(unsigned int cmdBO);
   int xclExecBuf(unsigned int cmdBO,size_t numdeps, unsigned int* bo_wait_list);

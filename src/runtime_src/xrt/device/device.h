@@ -877,6 +877,24 @@ public:
     return m_hal->getSysfsPath(subdev, entry);
   }
 
+  hal::operations_result<std::string>
+  getDebugIPlayoutPath()
+  {
+    return m_hal->getDebugIPlayoutPath();
+  }
+
+  hal::operations_result<int>
+  getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
+  {
+    return m_hal->getTraceBufferInfo(nSamples, traceSamples, traceBufSz);
+  }
+
+  hal::operations_result<int>
+  readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
+  {
+    return m_hal->readTraceData(traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample);
+  }
+
   /**
    * Explicitly schedule an arbitrary function on the device's
    * task queue.

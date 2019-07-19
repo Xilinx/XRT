@@ -656,6 +656,24 @@ public:
     return operations_result<std::string>();
   }
 
+  virtual operations_result<std::string>
+  getDebugIPlayoutPath()
+  {
+    return operations_result<std::string>();
+  }
+
+  virtual operations_result<int>
+  getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
+  {
+    return operations_result<int>();
+  }
+
+  virtual operations_result<int>
+  readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
+  {
+    return operations_result<int>();
+  }
+
   virtual task::queue*
   getQueue(hal::queue_type qt) {return nullptr; }
 

@@ -170,6 +170,10 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   if(!mUnmgdPread)
     return;
 
+  mGetDebugIPlayoutPath = (xclGetDebugIPlayoutPathFuncType)dlsym(const_cast<void*>(mDriverHandle), "xclGetDebugIPlayoutPath");
+  mGetTraceBufferInfo = (xclGetTraceBufferInfoFuncType)dlsym(const_cast<void*>(mDriverHandle), "xclGetTraceBufferInfo");
+  mReadTraceData = (xclReadTraceDataFuncType)dlsym(const_cast<void*>(mDriverHandle), "xclReadTraceData");
+
   // APIs using sysfs
   mGetNumLiveProcesses = (xclGetNumLiveProcessesFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetNumLiveProcesses");
   mGetSysfsPath = (xclGetSysfsPathFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetSysfsPath");

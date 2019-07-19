@@ -23,6 +23,7 @@
 #include <iostream>
 #include "xclbin.h"
 #include "core/include/xclperf.h"
+#include "xrt/device/device.h"
 
 namespace xdp {
 
@@ -135,9 +136,9 @@ public:
     uint32_t setLogStream(std::ostream* oStream);
     std::ostream* getLogStream() { return out_stream; }
 
-    double getDeviceClock();
+//    double getDeviceClock();
 
-    bool   isOnEdgeDevice();
+//    bool   isOnEdgeDevice();
 private:
     void* xrt_device_handle;  /* the xrt device handle from the hal layer */
     bool  mapped;             /* flag to keep track of if the ip has been mapped */
@@ -150,6 +151,8 @@ private:
 protected:
 
     std::ostream* out_stream = nullptr; /* Output stream for log */
+
+    xrt::device* getXRTDevice() { return (xrt::device*)xrt_device_handle; }
 
     /**
      * TODO: the exclusive context from hal
