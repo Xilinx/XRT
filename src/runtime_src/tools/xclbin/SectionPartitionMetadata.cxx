@@ -380,7 +380,7 @@ SchemaTransformToDTC_root( const boost::property_tree::ptree & _ptOriginal,
                            SchemaTransformUniversal_schema_version,
                            _ptOriginal, _ptTransformed);
 
-  SchemaTransform_nameValue("logic_uuid", "", true  /*required*/, _ptOriginal, _ptTransformed);
+  SchemaTransform_nameValue("logic_uuid", "", false  /*required*/, _ptOriginal, _ptTransformed);
 
   SchemaTransform_subNode( "interfaces", true /*required*/, 
                            SchemaTransformToDTC_interfaces,
@@ -522,7 +522,7 @@ SchemaTransformToPM_root( const boost::property_tree::ptree & _ptOriginal,
                            SchemaTransformUniversal_schema_version,
                            _ptOriginal, _ptTransformed);
 
-  SchemaTransform_nameValue("logic_uuid", "", true  /*required*/, _ptOriginal, _ptTransformed);
+  SchemaTransform_nameValue("logic_uuid", "", false  /*required*/, _ptOriginal, _ptTransformed);
 
   SchemaTransform_subNode( "interfaces", true /*required*/, 
                            SchemaTransformToPM_interfaces,
@@ -574,19 +574,18 @@ SectionPartitionMetadata::marshalToJSON(char* _pDataSection,
   XUtil::TRACE("");
   XUtil::TRACE("Extracting: DTC Image");
 
-  boost::property_tree::ptree dtcTree;
+  boost::property_tree::ptree ptTransformed;
 
   // Parse the DTC buffer
   if (_pDataSection != nullptr) {
-      class DTC dtc(_pDataSection, _sectionSize, m_propertyNameFormat);
-      dtc.marshalToJSON(dtcTree, m_propertyNameFormat);
+    boost::property_tree::ptree dtcTree;
+    class DTC dtc(_pDataSection, _sectionSize, m_propertyNameFormat);
+    dtc.marshalToJSON(dtcTree, m_propertyNameFormat);
+
+    SchemaTransformToPM_root(dtcTree, ptTransformed);
   }
-
-  boost::property_tree::ptree ptTransformed;
-  SchemaTransformToPM_root(dtcTree, ptTransformed);
-
   // Create the JSON file
-  _ptree.add_child("shell_metadata", ptTransformed);
+  _ptree.add_child("partition_metadata", ptTransformed);
   XUtil::TRACE_PrintTree("Ptree", _ptree);
 }
 
