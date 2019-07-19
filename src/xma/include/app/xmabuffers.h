@@ -49,8 +49,21 @@ typedef struct XmaFraction
 typedef enum XmaBufferType
 {
     XMA_HOST_BUFFER_TYPE = 1, /**< 1 */
-    XMA_DEVICE_BUFFER_TYPE, /**< 2 */
+    XMA_DEVICE_BUFFER_TYPE, /**< 2 Has both host and device allocated memory*/
+    XMA_DEVICE_ONLY_BUFFER_TYPE, /**< 3 Has only device memory. Use for zero copy*/
 } XmaBufferType;
+
+typedef struct XmaBufferObj
+{
+   uint8_t* data;
+   uint64_t size;
+   uint64_t paddr;
+   int32_t  bank_index;
+   int32_t  dev_index;
+   bool     device_only_buffer;
+   void*    private_do_not_touch;
+
+} XmaBufferObj;
 
 /**
  * struct XmaBufferRef - Reference counted buffer used in XmaFrame and XmaDataBuffer
@@ -62,6 +75,7 @@ typedef struct XmaBufferRef
     XmaBufferType   buffer_type; /**< location of buffer */
     void           *buffer; /**< data */
     bool            is_clone; /**< buffer member allocated externally */
+    XmaBufferObj    *xma_device_buf; /* xma_device_buffer if allocated */
 } XmaBufferRef;
 
 /**
@@ -121,6 +135,7 @@ typedef struct XmaDataBuffer
 typedef struct XmaFrameData
 {
     uint8_t         *data[XMA_MAX_PLANES]; /**< buffer pointers */
+    XmaBufferObj    *dev_buf[XMA_MAX_PLANES]; /**< device buffer pointers */
 } XmaFrameData;
 
 /**
@@ -165,6 +180,10 @@ XmaFrame*
 xma_frame_from_buffers_clone(XmaFrameProperties *frame_props,
                              XmaFrameData       *frame_data);
 
+XmaFrame*
+xma_frame_from_dev_buffers_clone(XmaFrameProperties *frame_props,
+                             XmaFrameData       *frame_data);
+
 /**
  * xma_frame_free() - Free frame data structure
  *
@@ -198,6 +217,9 @@ xma_data_buffer_alloc(size_t size);
 */
 XmaDataBuffer*
 xma_data_from_buffer_clone(uint8_t *data, size_t size);
+
+XmaDataBuffer*
+xma_data_from_device_buffer_clone(XmaBufferObj *dev_buf);
 
 /**
  * xma_data_buffer_free() - Free XmaDataBuffer container structure

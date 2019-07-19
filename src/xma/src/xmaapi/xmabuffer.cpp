@@ -60,6 +60,7 @@ xma_frame_alloc(XmaFrameProperties *frame_props)
         // TODO: Get plane size for each plane
         frame->data[i].buffer = malloc(frame_props->width *
                                        frame_props->height);
+        frame->data[i].xma_device_buf = NULL;
     }
 
     return frame;
@@ -86,6 +87,45 @@ xma_frame_from_buffers_clone(XmaFrameProperties *frame_props,
         frame->data[i].refcount++;
         frame->data[i].buffer_type = XMA_HOST_BUFFER_TYPE;
         frame->data[i].buffer = frame_data->data[i];
+        frame->data[i].is_clone = true;
+        frame->data[i].xma_device_buf = NULL;
+    }
+
+    return frame;
+}
+
+XmaFrame*
+xma_frame_from_dev_buffers_clone(XmaFrameProperties *frame_props,
+                             XmaFrameData       *frame_data)
+{
+    int32_t num_planes;
+
+    xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD,
+               "%s() frame_props %p and frame_data %p\n",
+               __func__, frame_props, frame_data);
+    XmaFrame *frame = (XmaFrame*) malloc(sizeof(XmaFrame));
+    if (frame  == NULL)
+        return NULL;
+    memset(frame, 0, sizeof(XmaFrame));
+    frame->frame_props = *frame_props;
+    num_planes = xma_frame_planes_get(frame_props);
+
+    for (int32_t i = 0; i < num_planes; i++)
+    {
+        frame->data[i].refcount++;
+        if (frame_data->dev_buf[i] == NULL) {
+            xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD,
+                    "%s(): dev_buf XmaBufferObj is NULL in frame_data\n", __func__);
+            return NULL;
+        }
+        if (frame_data->dev_buf[i]->device_only_buffer) {
+            frame->data[i].buffer_type = XMA_DEVICE_ONLY_BUFFER_TYPE;
+            frame->data[i].buffer = NULL;
+        } else {
+            frame->data[i].buffer_type = XMA_DEVICE_BUFFER_TYPE;
+            frame->data[i].buffer = frame_data->dev_buf[i]->data;
+        }
+        frame->data[i].xma_device_buf = frame_data->dev_buf[i];
         frame->data[i].is_clone = true;
     }
 
@@ -127,6 +167,7 @@ xma_data_from_buffer_clone(uint8_t *data, size_t size)
     buffer->data.buffer_type = XMA_HOST_BUFFER_TYPE;
     buffer->data.is_clone = true;
     buffer->data.buffer = data;
+    buffer->data.xma_device_buf = NULL;
     buffer->alloc_size = size;
     buffer->is_eof = 0;
     buffer->pts = 0;
@@ -134,6 +175,42 @@ xma_data_from_buffer_clone(uint8_t *data, size_t size)
 
     return buffer;
 }
+
+XmaDataBuffer*
+xma_data_from_device_buffer_clone(XmaBufferObj *dev_buf)
+{
+    if (dev_buf == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD,
+                "%s(): dev_buf XmaBufferObj is NULL\n", __func__);
+        return NULL;
+    }
+    xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD,
+               "%s() Cloning buffer from %p of size %lu\n",
+               __func__, dev_buf->data, dev_buf->size);
+    XmaDataBuffer *buffer = (XmaDataBuffer*) malloc(sizeof(XmaDataBuffer));
+    if (buffer  == NULL)
+        return NULL;
+    memset(buffer, 0, sizeof(XmaDataBuffer));
+
+    buffer->data.refcount++;
+
+    if (dev_buf->device_only_buffer) {
+        buffer->data.buffer_type = XMA_DEVICE_ONLY_BUFFER_TYPE;
+        buffer->data.buffer = NULL;
+    } else {
+        buffer->data.buffer_type = XMA_DEVICE_BUFFER_TYPE;
+        buffer->data.buffer = dev_buf->data;
+    }
+    buffer->data.xma_device_buf = dev_buf;
+    buffer->data.is_clone = true;
+    buffer->alloc_size = dev_buf->size;
+    buffer->is_eof = 0;
+    buffer->pts = 0;
+    buffer->poc = 0;
+
+    return buffer;
+}
+
 
 XmaDataBuffer*
 xma_data_buffer_alloc(size_t size)
@@ -148,6 +225,7 @@ xma_data_buffer_alloc(size_t size)
     buffer->data.buffer_type = XMA_HOST_BUFFER_TYPE;
     buffer->data.is_clone = false;
     buffer->data.buffer = malloc(size);
+    buffer->data.xma_device_buf = NULL;
     buffer->alloc_size = size;
     buffer->is_eof = 0;
     buffer->pts = 0;

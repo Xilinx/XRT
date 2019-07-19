@@ -137,7 +137,7 @@ extern "C" {
         DNA_CERTIFICATE,
         PDI,
         BITSTREAM_PARTIAL_PDI,
-        DTC,
+        PARTITION_METADATA,
         EMULATION_DATA,
         SYSTEM_METADATA
     };

@@ -37,9 +37,20 @@ struct feature_rom {
 /* TODO: replace this with .dtb driven */
 static int xocl_init_rom_v5(struct feature_rom *rom5)
 {
+	xdev_handle_t xdev = xocl_get_xdev(rom5->pdev);
 	struct FeatureRomHeader *header = &rom5->header;
+	const char *vbnv;
+	int i;
 
-	strcpy(header->VBNVName, "xilinx_u200_dynamic_201910_1");
+	if (XDEV(xdev)->fdt_blob) {
+		vbnv = fdt_getprop(XDEV(xdev)->fdt_blob, 0, "vbnv", NULL);
+		if (vbnv)
+			strcpy(header->VBNVName, vbnv);
+		for (i = 0; i < strlen(header->VBNVName); i++)
+			if (header->VBNVName[i] == ':' ||
+					header->VBNVName[i] == '.')
+				header->VBNVName[i] = '_';
+	}
 	header->DDRChannelCount = 4;
 	header->DDRChannelSize = 16;
 	header->FeatureBitMap = UNIFIED_PLATFORM;
@@ -264,6 +275,12 @@ static bool verify_timestamp(struct platform_device *pdev, u64 timestamp)
 	xocl_info(&pdev->dev, "Shell timestamp: 0x%llx",
 		rom->header.TimeSinceEpoch);
 	xocl_info(&pdev->dev, "Verify timestamp: 0x%llx", timestamp);
+
+	if (rom->header.MajorVersion == 5) {
+		xocl_info(&pdev->dev, "2RP platform, skip timestamp check");
+		return true;
+	}
+
 	return (rom->header.TimeSinceEpoch == timestamp);
 }
 
@@ -354,9 +371,9 @@ static int get_header_from_iomem(struct feature_rom *rom)
 			ret = -ENODEV;
 			goto failed;
 		}
-	}
-
-	xocl_memcpy_fromio(&rom->header, rom->base, sizeof(rom->header));
+	} else
+		xocl_memcpy_fromio(&rom->header, rom->base,
+				sizeof(rom->header));
 
 	if (rom->header.MajorVersion == 5)
 		xocl_init_rom_v5(rom);

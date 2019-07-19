@@ -7,9 +7,9 @@
 #	config_rootfs   -- configure rootfs.
 #	config_dts      -- configure system user device tree.
 #	install_recipes -- install recipes to petalinux.
-#	update_append   -- update recipes-core bbappend to add packages.
-#	pre_build_hook  -- just before petalinux-build
-#	post_build_hook -- just after petalinux-build
+#	rootfs_menu     -- update rootfsconfig to add package.
+#	pre_build_hook  -- just before petalinux-build.
+#	post_build_hook -- just after petalinux-build.
 
 THIS_CONFIG_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
@@ -34,16 +34,20 @@ TEMPLATE=zynqMP
 
 # The first argument is the linux kernel configure file
 #  config_kernel recipes-kernel/linux/linux-xlnx/user.cfg
+#
 #config_kernel()
 #{
 #	KERN_CONFIG_FILE=$1
 #	# *** Enable or disable Linux kernel features as you need ***
 #	# AR# 69143 -- To avoid PetaLinux hang when JTAG connected.
 #	echo '# CONFIG_CPU_IDLE is not set' >> $KERN_CONFIG_FILE
+#	# To allow userspace(root) access all of memory.
+#	echo '# CONFIG_STRICT_DEVMEM is not set' >> $KERN_CONFIG_FILE
 #}
 
 # The first argument is the rootfs configure file
 #  config_rootfs project-spec/configs/rootfs_config
+#
 #config_rootfs()
 #{
 #	ROOTFS_CONFIG_FILE=$1
@@ -80,18 +84,18 @@ config_dts()
 #	# if you are using petalinux 2018.3 or earlier, you will need to copy opencl-headers_git.bb from openembedded repo.
 #}
 
-# The first argument is the bbappend file
-#  update_append $PETALINUX_IMAGE_BBAPPEND
+# The first argument is the rootfsconfig file
+#  rootfs_menu conf/user-rootfsconfig
 #
-#update_append()
+#rootfs_menu()
 #{
-#	BBAPPEND=$1
-#	echo 'IMAGE_INSTALL_append = " xrt-dev"'            >> $BBAPPEND
-#	echo 'IMAGE_INSTALL_append = " mnt-sd"'             >> $BBAPPEND
-#	echo 'IMAGE_INSTALL_append = " xrt"'                >> $BBAPPEND
-#	echo 'IMAGE_INSTALL_append = " zocl"'               >> $BBAPPEND
-#	echo 'IMAGE_INSTALL_append = " opencl-headers-dev"' >> $BBAPPEND
-#	echo 'IMAGE_INSTALL_append = " opencl-clhpp-dev"'   >> $BBAPPEND
+#	ROOTFSCONFIG=$1
+#	echo 'CONFIG_xrt'                                   >> $ROOTFSCONFIG
+#	echo 'CONFIG_mnt-sd'                                >> $ROOTFSCONFIG
+#	echo 'CONFIG_xrt-dev'                               >> $ROOTFSCONFIG
+#	echo 'CONFIG_zocl'                                  >> $ROOTFSCONFIG
+#	echo 'CONFIG_opencl-clhpp-dev'                      >> $ROOTFSCONFIG
+#	echo 'CONFIG_opencl-headers-dev'                    >> $ROOTFSCONFIG
 #}
 
 # The first argument is the petalinux project path

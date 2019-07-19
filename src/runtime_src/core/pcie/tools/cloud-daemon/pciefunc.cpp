@@ -189,13 +189,7 @@ int pcieFunc::ioctl(unsigned long cmd, void *arg)
 
 int pcieFunc::mailboxOpen()
 {
-    const int instance =
-        ((dev->domain<<16) + (dev->bus<<8) + (dev->dev<<3) + (dev->func));
-    std::string file("/dev/xfpga/mailbox.");
-    file += dev->is_mgmt ? "m" : "u";
-    file += std::to_string(instance);
-
-    const int fd = open(file.c_str(), O_RDWR);
+    const int fd = dev->devfs_open("mailbox", O_RDWR);
     if (fd == -1) {
         log(LOG_ERR, "failed to open mailbox: %m");
         return -1;

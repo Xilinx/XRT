@@ -1017,7 +1017,6 @@ device memory and performing register reads and writes.
 To allocate buffers necessary to handle both incoming and outgoing
 data, please see xma_plg_buffer_alloc().
 
-See `xmaplugin`_ for more details.
 
 Handling Incoming Application Data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

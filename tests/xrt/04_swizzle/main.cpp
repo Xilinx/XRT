@@ -162,7 +162,7 @@ int main(int argc, char** argv)
         if (xclOpenContext(handle, xclbinId, cu_index, true))
             throw std::runtime_error("Cannot create context");
 
-        unsigned boHandle = xclAllocBO(handle, DATA_SIZE*sizeof(int), XCL_BO_DEVICE_RAM, first_mem);
+        unsigned boHandle = xclAllocBO(handle, DATA_SIZE*sizeof(int), 0, first_mem);
         int* bo = (int*)xclMapBO(handle, boHandle, true);
         memset(bo, 0, DATA_SIZE*sizeof(int));
 
@@ -188,7 +188,7 @@ int main(int argc, char** argv)
             return 1;
 
         //Allocate the exec_bo
-        unsigned execHandle = xclAllocBO(handle, DATA_SIZE*4, xclBOKind(0), (1<<31));
+        unsigned execHandle = xclAllocBO(handle, DATA_SIZE*4, 0, (1<<31));
         void* execData = xclMapBO(handle, execHandle, true);
 
         //construct the exec buffer cmd to configure.

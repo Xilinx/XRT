@@ -1,0 +1,23 @@
+#template_tql < $RDI_TEMPLATES/sdx/sdaccel/swhw/template.tql
+description: testinfo generated using import_sdx_test.py script
+level: 6
+owner: soeren
+user:
+  allowed_test_modes: [hw]
+  host_args: {all: addone.xclbin}
+  host_cflags: ' -DDSA64'
+  host_exe: host.exe
+  host_src: main.cpp
+  kernels:
+  - {cflags: ' -I.', file: addone.xo, ksrc: addone.cl, name: addone, type: C}
+  name: subdevice
+  xclbins:
+  - files: 'addone.xo '
+    kernels:
+    - cus: [addone_1, addone_2, addone_3, addone_4]
+      name: addone
+      num_cus: 4
+    lflags: ' --sp addone_1.a:DDR[0] --sp addone_1.b:DDR[1] --sp addone_2.a:DDR[1]
+      --sp addone_2.b:DDR[2] --sp addone_3.a:DDR[2] --sp addone_3.b:DDR[3] --sp addone_4.a:DDR[3]
+      --sp addone_4.b:DDR[0]'
+    name: addone.xclbin

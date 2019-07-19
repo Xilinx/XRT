@@ -75,8 +75,8 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
 
     const size_t DATA_SIZE = count * sizeof(int);
 
-    unsigned boHandle1 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem); //output s1
-    unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem); // input s2
+    unsigned boHandle1 = xclAllocBO(handle, DATA_SIZE, 0, first_mem); //output s1
+    unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE, 0, first_mem); // input s2
     int *bo2 = (int*)xclMapBO(handle, boHandle2, true);
     int *bo1 = (int*)xclMapBO(handle, boHandle1, true);
     
@@ -108,7 +108,7 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
     if( (bo2devAddr == (uint64_t)(-1)) || (bo1devAddr == (uint64_t)(-1)))
         return 1;
     //Allocate the exec_bo
-    unsigned execHandle = xclAllocBO(handle, DATA_SIZE, xclBOKind(0), (1<<31));
+    unsigned execHandle = xclAllocBO(handle, DATA_SIZE, 0, (1<<31));
     void* execData = xclMapBO(handle, execHandle, true);
 
     std::cout << "Construct the exe buf cmd to confire FPGA" << std::endl;

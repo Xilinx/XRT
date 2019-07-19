@@ -303,6 +303,9 @@ struct slot_info
   // free    [0x4]: the command slot is free
   value_type header_value = 0;
 
+  // Cache opcode
+  value_type opcode = 0;
+
   // Bitset of CUs that can be used by current command in slot
   bitset_type cus;
 
@@ -356,6 +359,15 @@ inline value_type
 opcode(value_type header_value)
 {
   return (header_value >> 23) & 0x1F;
+}
+  
+/**
+ * Command type [31:28]
+ */
+inline value_type
+cmd_type(value_type header_value)
+{
+  return (header_value >> 28) & 0xF;
 }
 
 /**
@@ -642,13 +654,30 @@ notify_host(size_type cmd_idx)
 inline void
 configure_cu(addr_type cu_addr, addr_type regmap_addr, size_type regmap_size)
 {
-  // write register map, starting at base + 0xC
-  // 0x4, 0x8 used for interrupt, which is initialized in setup
-  for (size_type i=3; i<regmap_size; ++i)
-    write_reg(cu_addr + (i<<2),read_reg(regmap_addr + (i<<2)));
+  // write register map, starting at base + 0x10
+  // 0x4, 0x8, 0xc used for interrupt, which is initialized in setup
+  for (size_type idx = 4; idx < regmap_size; ++idx)
+    write_reg(cu_addr + (idx << 2), read_reg(regmap_addr + (idx << 2)));
 
   // start kernel at base + 0x0
-  write_reg(cu_addr,0x1);
+  write_reg(cu_addr, 0x1);
+}
+
+/**
+ * Configure CU with address value pairs (out-of-order)
+ */
+inline void
+configure_cu_ooo(addr_type cu_addr, addr_type regmap_addr, size_type regmap_size)
+{
+  // write register map addr, value pairs starting at 0x10
+  for (size_type idx = 4; idx < regmap_size; idx += 2) {
+    addr_type offset = read_reg(regmap_addr + (idx << 2));
+    value_type value = read_reg(regmap_addr + ((idx + 1) << 2));
+    write_reg(offset, value);
+  }
+
+  // start kernel at base + 0x0
+  write_reg(cu_addr, 0x1);
 }
 
 /**
@@ -711,16 +740,18 @@ start_cu(size_type slot_idx)
     if (cus.test(cu_idx) && !cu_status.test(cu_idx)) {
       ERT_DEBUGF("start_cu cu(%d) for slot_idx(%d)\n",cu_idx,slot_idx);
       ERT_ASSERT(read_reg(cu_idx_to_addr(cu_idx))==AP_IDLE,"cu not ready");
-      // cudma in 5.1 DSAs has a bug and supports at most 127 word copy
-      // excluding the 4 control words
-      if (cu_dma_enabled && (cu_dma_52 || regmap_size(slot.header_value)<(127+4))) {
-        // hardware transfer and start
+
+      if (slot.opcode==ERT_EXEC_WRITE)
+        // Out of order configuration
+        configure_cu_ooo(cu_idx_to_addr(cu_idx),slot.regmap_addr,slot.regmap_size);
+      else if (cu_dma_enabled && (cu_dma_52 || regmap_size(slot.header_value)<(127+4)))
+        // Use CUDMA and adjust for 5.1 DSAs that have a bug and supports
+        // at most 127 word copy excluding the 4 control words
         configure_cu_dma(cu_idx,slot_idx,slot.slot_addr);
-      }
-      else {
+      else
         // manually configure and start cu
         configure_cu(cu_idx_to_addr(cu_idx),slot.regmap_addr,slot.regmap_size);
-      }
+
       cu_status.toggle(cu_idx);     // toggle cu status bit, it is now busy
       set_cu_info(cu_idx,slot_idx); // record which slot cu associated with
       return cu_idx;
@@ -993,9 +1024,11 @@ new_to_queued(size_type slot_idx)
   auto& slot = command_slots[slot_idx];
   ERT_ASSERT((slot.header_value & 0xF)==0x1,"slot is not new\n");
 
-  auto opc = opcode(slot.header_value);
-  ERT_DEBUGF("slot_idx(%d) opcode = %d\n",slot_idx,opc);
-  if (opc!=ERT_START_KERNEL) { // Non performance critical command
+  auto cmt = cmd_type(slot.header_value);
+  auto opc = slot.opcode = opcode(slot.header_value);
+  ERT_DEBUGF("slot_idx(%d) type(%d) opcode(%d)\n",slot_idx,cmt,opc);
+
+  if (cmt != ERT_CU) {
     process_special_command(opc,slot_idx);
     return false;
   }

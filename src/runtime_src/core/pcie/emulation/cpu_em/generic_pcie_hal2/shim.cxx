@@ -445,8 +445,8 @@ namespace xclcpuemhal2 {
     //  files.  Also, the GUI can overwrite this by setting an
     //  environment variable
     bool debuggable = false ;
-    if (getenv("SDA_SKIP_KERNEL_DEBUG") == NULL ||
-	strcmp("true", getenv("SDA_SKIP_KERNEL_DEBUG")) != 0) 
+    if (getenv("ENABLE_KERNEL_DEBUG") != NULL &&
+	strcmp("true", getenv("ENABLE_KERNEL_DEBUG")) == 0)
     {
       char* xclbininmemory = 
         reinterpret_cast<char*>(const_cast<xclBin*>(header)) ;
@@ -1681,6 +1681,48 @@ int CpuemShim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const cha
     }
     xrt_core::message::send((xrt_core::message::severity_level)level, tag, buf.data());
     return 0;
+}
+
+/*
+* xclOpenContext
+*/
+int CpuemShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
+{
+  return 0;
+}
+
+/*
+* xclExecWait
+*/
+int CpuemShim::xclExecWait(int timeoutMilliSec)
+{
+  unsigned int tSec = 0;
+  static bool bConfig = true;
+  tSec = timeoutMilliSec / 1000;
+  if (bConfig)
+  {
+    tSec = timeoutMilliSec / 100;
+    bConfig = false;
+  }
+  sleep(tSec);
+  //PRINTENDFUNC;
+  return 0;
+}
+
+/*
+* xclExecBuf
+*/
+int CpuemShim::xclExecBuf(unsigned int cmdBO)
+{
+  return 0;
+}
+
+/*
+* xclCloseContext
+*/
+int CpuemShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const
+{
+  return 0;
 }
 
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/

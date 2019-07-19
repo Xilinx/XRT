@@ -1,0 +1,21 @@
+#template_tql < $RDI_TEMPLATES/sdx/sdaccel/swhw/template.tql
+description: testinfo generated using import_sdx_test.py script
+level: 6
+owner: vallina
+user:
+  allowed_test_modes: [sw_emu, hw_emu, hw]
+  host_args: {all: -k kernel.xclbin}
+  host_cflags: ' -DDSA64 -DFLOW_HLS_CSIM'
+  host_exe: host.exe
+  host_src: test-cl.cpp
+  kernels:
+  - {cflags: ' -I.', file: myCopy.xo, ksrc: kernel.cl, name: myCopy, type: C}
+  name: 006_copy
+  xclbins:
+  - files: 'myCopy.xo '
+    kernels:
+    - cus: [myCopy_cu0]
+      name: myCopy
+      num_cus: 1
+    lflags: ''
+    name: kernel.xclbin
