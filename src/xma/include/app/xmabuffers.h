@@ -181,8 +181,8 @@ xma_frame_from_buffers_clone(XmaFrameProperties *frame_props,
                              XmaFrameData       *frame_data);
 
 XmaFrame*
-xma_frame_from_dev_buffers_clone(XmaFrameProperties *frame_props,
-                             XmaFrameData       *frame_data);
+xma_frame_from_device_buffers(XmaFrameProperties *frame_props,
+                             XmaFrameData *frame_data, bool clone);
 
 /**
  * xma_frame_free() - Free frame data structure
@@ -219,7 +219,7 @@ XmaDataBuffer*
 xma_data_from_buffer_clone(uint8_t *data, size_t size);
 
 XmaDataBuffer*
-xma_data_from_device_buffer_clone(XmaBufferObj *dev_buf);
+xma_data_from_device_buffer(XmaBufferObj *dev_buf, bool clone);
 
 /**
  * xma_data_buffer_free() - Free XmaDataBuffer container structure
