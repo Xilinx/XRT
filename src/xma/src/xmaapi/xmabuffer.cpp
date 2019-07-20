@@ -95,8 +95,8 @@ xma_frame_from_buffers_clone(XmaFrameProperties *frame_props,
 }
 
 XmaFrame*
-xma_frame_from_dev_buffers_clone(XmaFrameProperties *frame_props,
-                             XmaFrameData       *frame_data)
+xma_frame_from_device_buffers(XmaFrameProperties *frame_props,
+                             XmaFrameData *frame_data, bool clone)
 {
     int32_t num_planes;
 
@@ -126,7 +126,7 @@ xma_frame_from_dev_buffers_clone(XmaFrameProperties *frame_props,
             frame->data[i].buffer = frame_data->dev_buf[i]->data;
         }
         frame->data[i].xma_device_buf = frame_data->dev_buf[i];
-        frame->data[i].is_clone = true;
+        frame->data[i].is_clone = clone;
     }
 
     return frame;
@@ -149,6 +149,7 @@ xma_frame_free(XmaFrame *frame)
 
     for (int32_t i = 0; i < num_planes && !frame->data[i].is_clone; i++)
         free(frame->data[i].buffer);
+        //Sarab: TODO Free device buffer also
 
     free(frame);
 }
@@ -177,7 +178,7 @@ xma_data_from_buffer_clone(uint8_t *data, size_t size)
 }
 
 XmaDataBuffer*
-xma_data_from_device_buffer_clone(XmaBufferObj *dev_buf)
+xma_data_from_device_buffer(XmaBufferObj *dev_buf, bool clone)
 {
     if (dev_buf == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD,
@@ -202,7 +203,7 @@ xma_data_from_device_buffer_clone(XmaBufferObj *dev_buf)
         buffer->data.buffer = dev_buf->data;
     }
     buffer->data.xma_device_buf = dev_buf;
-    buffer->data.is_clone = true;
+    buffer->data.is_clone = clone;
     buffer->alloc_size = dev_buf->size;
     buffer->is_eof = 0;
     buffer->pts = 0;
@@ -245,6 +246,7 @@ xma_data_buffer_free(XmaDataBuffer *data)
 
     if (!data->data.is_clone)
         free(data->data.buffer);
+        //Sarab: TODO free device buffer also
 
     free(data);
 }
