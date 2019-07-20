@@ -977,7 +977,7 @@ int xclGetTraceBufferInfo(xclDeviceHandle handle, uint32_t nSamples, uint32_t& t
 int xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
 {
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
-  return (drv) ? drv->xclReadTraceData(handle, traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample) : -EINVAL;
+  return (drv) ? drv->xclReadTraceData(traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample) : -EINVAL;
 }
 
 int xclSKGetCmd(xclDeviceHandle handle, xclSKCmd *cmd)
