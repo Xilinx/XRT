@@ -24,6 +24,10 @@
 #include "xclbin.h"
 #include "mgmt-ioctl.h"
 
+#if !defined (PATH_MAX) || !defined (NAME_MAX)
+#include <linux/limits.h>
+#endif
+
 
 typedef struct XmaIpLayout
 {

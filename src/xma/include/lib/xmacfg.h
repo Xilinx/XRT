@@ -24,6 +24,11 @@
 
 #include "lib/xmalimits.h"
 
+#if !defined (PATH_MAX) || !defined (NAME_MAX)
+#include <linux/limits.h>
+#endif
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
