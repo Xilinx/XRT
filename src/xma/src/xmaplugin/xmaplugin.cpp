@@ -29,28 +29,6 @@ using namespace std;
 
 #define XMAPLUGIN_MOD "xmapluginlib"
 
-constexpr std::uint64_t signature = 0xF42F1F8F4F2F1F0F;
-
-typedef struct XmaBufferObjPrivate
-{
-    void*    dummy;
-    uint64_t size;
-    uint64_t paddr;
-    int32_t  bank_index;
-    int32_t  dev_index;
-    uint64_t boHandle;
-    bool     device_only_buffer;
-    uint32_t reserved[4];
-
-  XmaBufferObjPrivate() {
-   dummy = NULL;
-   size = 0;
-   bank_index = -1;
-   dev_index = -1;
-   boHandle = 0;
-  }
-} XmaBufferObjPrivate;
-
 //Sarab: TODO .. Assign buffr object fields.. bank etc..
 //Add new API for allocating device only buffer object.. which will not have host mappped buffer.. This could be used for zero copy plugins..
 //NULL data pointer in buffer obj implies it is device only buffer..
@@ -122,9 +100,41 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
     tmp1->dev_index = b_obj.dev_index;
     tmp1->boHandle = b_obj_handle;
     tmp1->device_only_buffer = b_obj.device_only_buffer;
+    tmp1->dev_handle = dev_handle;
 
     if (return_code) *return_code = XMA_SUCCESS;
     return b_obj;
+}
+
+int32_t xma_check_device_buffer(XmaBufferObj *b_obj) {
+    if (b_obj == NULL) {
+        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_device_buffer_free failed. XMABufferObj failed allocation\n");
+        return XMA_ERROR;
+    }
+
+    XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj->private_do_not_touch;
+    if (b_obj_priv == NULL) {
+        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_device_buffer_free failed. XMABufferObj failed allocation\n");
+        return XMA_ERROR;
+    }
+    if (b_obj_priv->dev_index < 0 || b_obj_priv->bank_index < 0 || b_obj_priv->size <= 0) {
+        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_device_buffer_free failed. XMABufferObj failed allocation\n");
+        return XMA_ERROR;
+    }
+    if (b_obj_priv->dummy != (void*)(((uint64_t)b_obj_priv) | signature)) {
+        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_device_buffer_free failed. XMABufferObj is corrupted.\n");
+        return XMA_ERROR;
+    }
+    if (b_obj_priv->dev_handle == NULL) {
+        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_device_buffer_free failed. XMABufferObj is corrupted.\n");
+        return XMA_ERROR;
+    }
+    return XMA_SUCCESS;
 }
 
 void
@@ -135,22 +145,10 @@ xma_plg_buffer_free(XmaSession s_handle, XmaBufferObj b_obj)
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_free failed. XMASession is corrupted.\n");
         return;
     }
+    if (xma_check_device_buffer(&b_obj) != XMA_SUCCESS) {
+        return;
+    }
     XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj.private_do_not_touch;
-    if (b_obj_priv == NULL) {
-        std::cout << "ERROR: xma_plg_buffer_free failed. XMABufferObj failed allocation" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_free failed. XMABufferObj failed allocation\n");
-        return;
-    }
-    if (b_obj_priv->dev_index < 0 || b_obj_priv->bank_index < 0 || b_obj_priv->size <= 0) {
-        std::cout << "ERROR: xma_plg_buffer_free failed. XMABufferObj failed allocation" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_free failed. XMABufferObj failed allocation\n");
-        return;
-    }
-    if (b_obj_priv->dummy != (void*)(((uint64_t)b_obj_priv) | signature)) {
-        std::cout << "ERROR: xma_plg_buffer_free failed. XMABufferObj is corrupted" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_free failed. XMABufferObj is corrupted.\n");
-        return;
-    }
 
     xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
     xclFreeBO(dev_handle, b_obj_priv->boHandle);
@@ -183,22 +181,10 @@ xma_plg_buffer_write(XmaSession s_handle,
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
+    if (xma_check_device_buffer(&b_obj) != XMA_SUCCESS) {
+        return XMA_ERROR;
+    }
     XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj.private_do_not_touch;
-    if (b_obj_priv == NULL) {
-        std::cout << "ERROR: xma_plg_buffer_write failed. XMABufferObj failed allocation" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. XMABufferObj failed allocation\n");
-        return XMA_ERROR;
-    }
-    if (b_obj_priv->dev_index < 0 || b_obj_priv->bank_index < 0 || b_obj_priv->size <= 0) {
-        std::cout << "ERROR: xma_plg_buffer_write failed. XMABufferObj failed allocation" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. XMABufferObj failed allocation\n");
-        return XMA_ERROR;
-    }
-    if (b_obj_priv->dummy != (void*)(((uint64_t)b_obj_priv) | signature)) {
-        std::cout << "ERROR: xma_plg_buffer_write failed. XMABufferObj is corrupted" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. XMABufferObj is corrupted.\n");
-        return XMA_ERROR;
-    }
     if (b_obj_priv->device_only_buffer) {
         xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write skipped as it is device only buffer.\n");
         return XMA_SUCCESS;
@@ -233,22 +219,10 @@ xma_plg_buffer_read(XmaSession s_handle,
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
+    if (xma_check_device_buffer(&b_obj) != XMA_SUCCESS) {
+        return XMA_ERROR;
+    }
     XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj.private_do_not_touch;
-    if (b_obj_priv == NULL) {
-        std::cout << "ERROR: xma_plg_buffer_read failed. XMABufferObj failed allocation" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read failed. XMABufferObj failed allocation\n");
-        return XMA_ERROR;
-    }
-    if (b_obj_priv->dev_index < 0 || b_obj_priv->bank_index < 0 || b_obj_priv->size <= 0) {
-        std::cout << "ERROR: xma_plg_buffer_read failed. XMABufferObj failed allocation" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read failed. XMABufferObj failed allocation\n");
-        return XMA_ERROR;
-    }
-    if (b_obj_priv->dummy != (void*)(((uint64_t)b_obj_priv) | signature)) {
-        std::cout << "ERROR: xma_plg_buffer_read failed. XMABufferObj is corrupted" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read failed. XMABufferObj is corrupted.\n");
-        return XMA_ERROR;
-    }
     if (b_obj_priv->device_only_buffer) {
         xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read skipped as it is device only buffer.\n");
         return XMA_SUCCESS;

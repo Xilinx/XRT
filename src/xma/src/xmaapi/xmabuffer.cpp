@@ -19,6 +19,11 @@
 
 #include "app/xmabuffers.h"
 #include "app/xmalogger.h"
+#include "app/xmaerror.h"
+#include "lib/xmahw_lib.h"
+#include <cstdio>
+#include <iostream>
+#include <cstring>
 
 #define XMA_BUFFER_MOD "xmabuffer"
 
@@ -94,6 +99,39 @@ xma_frame_from_buffers_clone(XmaFrameProperties *frame_props,
     return frame;
 }
 
+
+int32_t xma_check_device_buffer(XmaBufferObj *b_obj) {
+    if (b_obj == NULL) {
+        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_device_buffer_free failed. XMABufferObj failed allocation\n");
+        return XMA_ERROR;
+    }
+
+    XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj->private_do_not_touch;
+    if (b_obj_priv == NULL) {
+        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_device_buffer_free failed. XMABufferObj failed allocation\n");
+        return XMA_ERROR;
+    }
+    if (b_obj_priv->dev_index < 0 || b_obj_priv->bank_index < 0 || b_obj_priv->size <= 0) {
+        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_device_buffer_free failed. XMABufferObj failed allocation\n");
+        return XMA_ERROR;
+    }
+    if (b_obj_priv->dummy != (void*)(((uint64_t)b_obj_priv) | signature)) {
+        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_device_buffer_free failed. XMABufferObj is corrupted.\n");
+        return XMA_ERROR;
+    }
+    if (b_obj_priv->dev_handle == NULL) {
+        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_device_buffer_free failed. XMABufferObj is corrupted.\n");
+        return XMA_ERROR;
+    }
+    return XMA_SUCCESS;
+}
+
+
 XmaFrame*
 xma_frame_from_device_buffers(XmaFrameProperties *frame_props,
                              XmaFrameData *frame_data, bool clone)
@@ -118,6 +156,9 @@ xma_frame_from_device_buffers(XmaFrameProperties *frame_props,
                     "%s(): dev_buf XmaBufferObj is NULL in frame_data\n", __func__);
             return NULL;
         }
+        if (xma_check_device_buffer(frame_data->dev_buf[i]) != XMA_SUCCESS) {
+            return NULL;
+        }
         if (frame_data->dev_buf[i]->device_only_buffer) {
             frame->data[i].buffer_type = XMA_DEVICE_ONLY_BUFFER_TYPE;
             frame->data[i].buffer = NULL;
@@ -131,6 +172,22 @@ xma_frame_from_device_buffers(XmaFrameProperties *frame_props,
 
     return frame;
 }
+
+void
+xma_device_buffer_free(XmaBufferObj *b_obj)
+{
+    xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD, "%s()\n", __func__);
+    if (xma_check_device_buffer(b_obj) != XMA_SUCCESS) {
+        return;
+    }
+    XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj->private_do_not_touch;
+
+    xclFreeBO(b_obj_priv->dev_handle, b_obj_priv->boHandle);
+    free(b_obj_priv);
+    free(b_obj);
+}
+
+
 
 void
 xma_frame_free(XmaFrame *frame)
@@ -147,9 +204,13 @@ xma_frame_free(XmaFrame *frame)
     if (frame->data[0].refcount > 0)
         return;
 
-    for (int32_t i = 0; i < num_planes && !frame->data[i].is_clone; i++)
-        free(frame->data[i].buffer);
-        //Sarab: TODO Free device buffer also
+    for (int32_t i = 0; i < num_planes && !frame->data[i].is_clone; i++) {
+        if (frame->data[i].buffer_type == XMA_DEVICE_ONLY_BUFFER_TYPE || frame->data[i].buffer_type == XMA_DEVICE_BUFFER_TYPE) {
+            xma_device_buffer_free(frame->data[i].xma_device_buf);
+        } else {
+            free(frame->data[i].buffer);
+        }
+    }
 
     free(frame);
 }
@@ -183,6 +244,9 @@ xma_data_from_device_buffer(XmaBufferObj *dev_buf, bool clone)
     if (dev_buf == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD,
                 "%s(): dev_buf XmaBufferObj is NULL\n", __func__);
+        return NULL;
+    }
+    if (xma_check_device_buffer(dev_buf) != XMA_SUCCESS) {
         return NULL;
     }
     xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD,
@@ -244,9 +308,13 @@ xma_data_buffer_free(XmaDataBuffer *data)
     if (data->data.refcount > 0)
         return;
 
-    if (!data->data.is_clone)
-        free(data->data.buffer);
-        //Sarab: TODO free device buffer also
+    if (!data->data.is_clone) {
+        if (data->data.buffer_type == XMA_DEVICE_ONLY_BUFFER_TYPE || data->data.buffer_type == XMA_DEVICE_BUFFER_TYPE) {
+            xma_device_buffer_free(data->data.xma_device_buf);
+        } else {
+            free(data->data.buffer);
+        }
+    }
 
     free(data);
 }

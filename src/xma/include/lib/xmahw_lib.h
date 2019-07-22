@@ -47,6 +47,29 @@
  * @addtogroup xmahw
  * @{
  */
+constexpr std::uint64_t signature = 0xF42F1F8F4F2F1F0F;
+
+typedef struct XmaBufferObjPrivate
+{
+    void*    dummy;
+    uint64_t size;
+    uint64_t paddr;
+    int32_t  bank_index;
+    int32_t  dev_index;
+    uint64_t boHandle;
+    bool     device_only_buffer;
+    xclDeviceHandle dev_handle;
+    uint32_t reserved[4];
+
+  XmaBufferObjPrivate() {
+   dummy = NULL;
+   size = 0;
+   bank_index = -1;
+   dev_index = -1;
+   dev_handle = NULL;
+   boHandle = 0;
+  }
+} XmaBufferObjPrivate;
 
 typedef struct XmaHwKernel
 {
