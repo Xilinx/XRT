@@ -79,7 +79,8 @@ void zocl_free_sections(struct drm_zocl_dev *zdev)
 	}
 }
 
-static irqreturn_t zocl_h2c_isr(int irq, void *arg)
+/* Note: this function is not being used, mark it inline to make lint clean */
+static inline irqreturn_t zocl_h2c_isr(int irq, void *arg)
 {
 	void *mmio_sched = arg;
 
