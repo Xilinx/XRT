@@ -1565,7 +1565,6 @@ int xclCopyBO(xclDeviceHandle handle, unsigned int dst_boHandle,
 int xclReClock2(xclDeviceHandle handle, unsigned short region, const unsigned short *targetFreqMHz)
 {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
-    std::cout<<"xclReClock2"<<std::endl;
     return drv ? drv->xclReClock2(region, targetFreqMHz) : -ENODEV;
 }
 
