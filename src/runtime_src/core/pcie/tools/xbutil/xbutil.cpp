@@ -707,6 +707,8 @@ static void topPrintUsage(const xcldev::device *dev, xclDeviceUsage& devstat,
 
     dev->m_devinfo_stringize_power(devinfo, lines);
 
+    dev->m_devinfo_stringize_inst_power(devinfo, lines);
+
     dev->m_mem_usage_stringize_dynamics(devstat, devinfo, lines);
 
     dev->m_stream_usage_stringize_dynamics(lines);

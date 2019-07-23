@@ -277,6 +277,29 @@ public:
         lines.push_back(ss.str());
     }
 
+    void m_devinfo_stringize_inst_power(const xclDeviceInfo2& m_devinfo,
+        std::vector<std::string> &lines) const
+    {
+        std::stringstream ss;
+        unsigned long long power;
+        ss << std::left << "\n";
+
+        ss << std::setw(16) << "Power_inst" << "\n";
+        power = m_devinfo.mPexCurr * m_devinfo.m12VPex;
+        if(m_devinfo.mPexCurr != XCL_INVALID_SENSOR_VAL &&
+            m_devinfo.mPexCurr != XCL_NO_SENSOR_DEV_LL &&
+            m_devinfo.m12VPex != XCL_INVALID_SENSOR_VAL &&
+            m_devinfo.m12VPex != XCL_NO_SENSOR_DEV_S){
+            ss << std::setw(16)
+                << std::to_string((float)power / 1000000).substr(0, 4) + "W"
+                << "\n";
+        } else {
+            ss << std::setw(16) << "Not support" << "\n";
+        }
+
+        lines.push_back(ss.str());
+    }
+
     void m_mem_usage_bar(xclDeviceUsage &devstat,
         std::vector<std::string> &lines) const
     {
