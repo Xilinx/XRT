@@ -1558,7 +1558,8 @@ int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev, const char* entr
 
 uint xclGetNumLiveProcesses(xclDeviceHandle handle)
 {
-  return -ENOSYS;
+  return 1;
+//  return -ENOSYS;
 }
 
 int xclGetDebugIPlayoutPath(xclDeviceHandle handle, char* layoutPath, size_t size)
