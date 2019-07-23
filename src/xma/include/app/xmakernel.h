@@ -284,7 +284,7 @@ typedef struct XmaKernelSession XmaKernelSession;
  * 
  * NULL on failure
  *
- *  Note: Cannot be presumed to be thread safe.
+ *  Note: session create & destroy are thread safe APIs
 */
 XmaKernelSession*
 xma_kernel_session_create(XmaKernelProperties *props);
@@ -300,7 +300,7 @@ xma_kernel_session_create(XmaKernelProperties *props);
  *          
  * XMA_ERROR on failure.
  *
- *  Note: Cannot be presumed to be thread safe.
+ *  Note: session create & destroy are thread safe APIs
 */
 int32_t
 xma_kernel_session_destroy(XmaKernelSession *session);

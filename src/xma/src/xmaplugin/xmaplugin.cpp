@@ -152,6 +152,10 @@ xma_plg_buffer_free(XmaSession s_handle, XmaBufferObj b_obj)
 
     xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
     xclFreeBO(dev_handle, b_obj_priv->boHandle);
+    b_obj_priv->dummy = NULL;
+    b_obj_priv->size = -1;
+    b_obj_priv->bank_index = -1;
+    b_obj_priv->dev_index = -1;
     free(b_obj_priv);
 }
 

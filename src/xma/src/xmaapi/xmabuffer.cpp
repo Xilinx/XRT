@@ -21,7 +21,7 @@
 #include "app/xmalogger.h"
 #include "app/xmaerror.h"
 #include "lib/xmahw_lib.h"
-#include <cstdio>
+//#include <cstdio>
 #include <iostream>
 #include <cstring>
 
@@ -102,30 +102,30 @@ xma_frame_from_buffers_clone(XmaFrameProperties *frame_props,
 
 int32_t xma_check_device_buffer(XmaBufferObj *b_obj) {
     if (b_obj == NULL) {
-        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_device_buffer_free failed. XMABufferObj failed allocation\n");
+        std::cout << "ERROR: xma_check_device_buffer failed. XMABufferObj failed allocation" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_check_device_buffer failed. XMABufferObj failed allocation\n");
         return XMA_ERROR;
     }
 
     XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj->private_do_not_touch;
     if (b_obj_priv == NULL) {
-        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_device_buffer_free failed. XMABufferObj failed allocation\n");
+        std::cout << "ERROR: xma_check_device_buffer failed. XMABufferObj failed allocation" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_check_device_buffer failed. XMABufferObj failed allocation\n");
         return XMA_ERROR;
     }
     if (b_obj_priv->dev_index < 0 || b_obj_priv->bank_index < 0 || b_obj_priv->size <= 0) {
-        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_device_buffer_free failed. XMABufferObj failed allocation\n");
+        std::cout << "ERROR: xma_check_device_buffer failed. XMABufferObj failed allocation" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_check_device_buffer failed. XMABufferObj failed allocation\n");
         return XMA_ERROR;
     }
     if (b_obj_priv->dummy != (void*)(((uint64_t)b_obj_priv) | signature)) {
-        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj is corrupted" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_device_buffer_free failed. XMABufferObj is corrupted.\n");
+        std::cout << "ERROR: xma_check_device_buffer failed. XMABufferObj is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_check_device_buffer failed. XMABufferObj is corrupted.\n");
         return XMA_ERROR;
     }
     if (b_obj_priv->dev_handle == NULL) {
-        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj is corrupted" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_device_buffer_free failed. XMABufferObj is corrupted.\n");
+        std::cout << "ERROR: xma_check_device_buffer failed. XMABufferObj is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_check_device_buffer failed. XMABufferObj is corrupted.\n");
         return XMA_ERROR;
     }
     return XMA_SUCCESS;
@@ -183,11 +183,20 @@ xma_device_buffer_free(XmaBufferObj *b_obj)
     XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj->private_do_not_touch;
 
     xclFreeBO(b_obj_priv->dev_handle, b_obj_priv->boHandle);
+    b_obj_priv->dummy = NULL;
+    b_obj_priv->size = -1;
+    b_obj_priv->bank_index = -1;
+    b_obj_priv->dev_index = -1;
     free(b_obj_priv);
+    b_obj->data = NULL;
+    b_obj->size = -1;
+    b_obj->bank_index = -1;
+    b_obj->dev_index = -1;
+    b_obj->device_only_buffer = false;
+    b_obj->private_do_not_touch = NULL;
     free(b_obj);
+    b_obj = NULL;
 }
-
-
 
 void
 xma_frame_free(XmaFrame *frame)
@@ -210,9 +219,12 @@ xma_frame_free(XmaFrame *frame)
         } else {
             free(frame->data[i].buffer);
         }
+        frame->data[i].buffer = NULL;
+        frame->data[i].xma_device_buf = NULL;
     }
 
     free(frame);
+    frame = NULL;
 }
 
 XmaDataBuffer*
@@ -314,8 +326,12 @@ xma_data_buffer_free(XmaDataBuffer *data)
         } else {
             free(data->data.buffer);
         }
+        data->data.buffer = NULL;
+        data->data.xma_device_buf = NULL;
+        data->alloc_size = -1;
     }
 
     free(data);
+    data = NULL;
 }
 
