@@ -29,6 +29,7 @@
 #include <mutex>
 #include <memory>
 #include "core/common/bo_cache.h"
+#include "core/common/xrt_profiling.h"
 
 namespace ZYNQ {
 

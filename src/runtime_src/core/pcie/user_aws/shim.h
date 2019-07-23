@@ -36,6 +36,9 @@
 #include "fpga_mgmt.h"
 #endif
 
+#include "core/common/xrt_profiling.h"
+
+
 // Work around GCC 4.8 + XDMA BAR implementation bugs
 // With -O3 PCIe BAR read/write are not reliable hence force -O2 as max
 // optimization level for pcieBarRead() and pcieBarWrite()

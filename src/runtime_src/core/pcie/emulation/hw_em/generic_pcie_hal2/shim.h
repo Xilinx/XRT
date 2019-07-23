@@ -30,6 +30,7 @@
 #include "xclbin.h"
 #include "core/common/scheduler.h"
 #include "core/common/message.h"
+#include "core/common/xrt_profiling.h"
 
 #include "mem_model.h"
 #include "mbscheduler.h"
