@@ -276,7 +276,6 @@ static int zocl_pcap_download(struct drm_zocl_dev *zdev,
 		goto free_buffers;
 	}
 
-#if 1
 	for (i = 0; i < bit_header.BitstreamLength ; i = i+4) {
 		temp = data[i];
 		data[i] = data[i+3];
@@ -286,7 +285,7 @@ static int zocl_pcap_download(struct drm_zocl_dev *zdev,
 		data[i+1] = data[i+2];
 		data[i+2] = temp;
 	}
-#endif
+
 	/* struct with information about the FPGA image to program. */
 	info = fpga_image_info_alloc(&fpga_mgr->dev);
 	if (info == NULL) {

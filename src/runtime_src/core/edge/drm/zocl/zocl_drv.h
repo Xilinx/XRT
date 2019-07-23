@@ -97,8 +97,7 @@
 	#define ZOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(TYPE, ADDR, SIZE)
 #endif
 
-/* Enable this macro once partial bitstream loading is successful through pcap
- * driver */
+/* Enable this macro for partial reconfiguration feature */
 //#define XCLBIN_DOWNLOAD
 
 struct drm_zocl_exec_metadata {
