@@ -97,15 +97,21 @@
 //Clock scaling registers
 #define	XMC_CLOCK_CONTROL_REG		0x24
 #define	XMC_CLOCK_SCALING_EN		0x1
+#define	XMC_CLOCK_SCALING_EN_MASK	0x1
 
 #define	XMC_CLOCK_SCALING_MODE_REG	0x10
 #define	XMC_CLOCK_SCALING_MODE_POWER	0x0
 #define	XMC_CLOCK_SCALING_MODE_TEMP	0x1
 
 #define	XMC_CLOCK_SCALING_POWER_REG	0x18
-#define	XMC_CLOCK_SCALING_POWER_REG_MASK 0xFFFF
+#define	XMC_CLOCK_SCALING_POWER_TARGET_MASK 0xFF
+#define	XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK 0xFF00
+#define	XMC_CLOCK_SCALING_POWER_THRESHOLD_POS 8
+
 #define	XMC_CLOCK_SCALING_TEMP_REG	0x14
-#define	XMC_CLOCK_SCALING_TEMP_REG_MASK	0xFFFF
+#define	XMC_CLOCK_SCALING_TEMP_TARGET_MASK	0xFF
+#define	XMC_CLOCK_SCALING_TEMP_THRESHOLD_MASK	0xFF00
+#define	XMC_CLOCK_SCALING_TEMP_THRESHOLD_POS	8
 
 enum ctl_mask {
 	CTL_MASK_CLEAR_POW		= 0x1,
@@ -1004,6 +1010,33 @@ static ssize_t scaling_enabled_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(scaling_enabled);
 
+static ssize_t scaling_force_en_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
+	u32 val_arg, val2;
+
+	if (kstrtou32(buf, 10, &val_arg) == -EINVAL)
+		return -EINVAL;
+
+	mutex_lock(&xmc->xmc_lock);
+	val2 = READ_RUNTIME_CS(xmc, XMC_CLOCK_CONTROL_REG);
+	val2 &= ~XMC_CLOCK_SCALING_EN_MASK;
+
+	val2 |= (val_arg & XMC_CLOCK_SCALING_EN_MASK);
+	WRITE_RUNTIME_CS(xmc, val2, XMC_CLOCK_CONTROL_REG);
+
+	if (val_arg)
+		xmc->runtime_cs_enabled = true;
+	else
+		xmc->runtime_cs_enabled = false;
+
+	mutex_unlock(&xmc->xmc_lock);
+
+	return count;
+}
+static DEVICE_ATTR_WO(scaling_force_en);
+
 static ssize_t scaling_target_power_show(struct device *dev,
 	struct device_attribute *da, char *buf)
 {
@@ -1016,7 +1049,7 @@ static ssize_t scaling_target_power_show(struct device *dev,
 	}
 	mutex_lock(&xmc->xmc_lock);
 	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_POWER_REG);
-	val &= XMC_CLOCK_SCALING_POWER_REG_MASK;
+	val &= XMC_CLOCK_SCALING_POWER_TARGET_MASK;
 	mutex_unlock(&xmc->xmc_lock);
 
 	return sprintf(buf, "%uW\n", val);
@@ -1026,21 +1059,29 @@ static ssize_t scaling_target_power_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
-	u32 val, val2;
+	u32 val_arg, val2, threshold_val;
 
 	if (!xmc->runtime_cs_enabled) {
 		xocl_err(dev, "runtime clock scaling is not supported\n");
 		return -EIO;
 	}
 
-	if (kstrtou32(buf, 10, &val) == -EINVAL)
+	if (kstrtou32(buf, 10, &val_arg) == -EINVAL)
 		return -EINVAL;
 
-	//TODO: Check if the threshold power is in board spec limits.
 	mutex_lock(&xmc->xmc_lock);
 	val2 = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_POWER_REG);
-	val2 &= ~XMC_CLOCK_SCALING_POWER_REG_MASK;
-	val2 |= (val & XMC_CLOCK_SCALING_POWER_REG_MASK);
+	threshold_val = (val2 & XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK) >>
+		XMC_CLOCK_SCALING_POWER_THRESHOLD_POS;
+
+	//Check if the threshold power is in board spec limits.
+	if (val_arg > threshold_val) {
+		mutex_unlock(&xmc->xmc_lock);
+		return -EINVAL;
+	}
+
+	val2 &= ~XMC_CLOCK_SCALING_POWER_TARGET_MASK;
+	val2 |= (val_arg & XMC_CLOCK_SCALING_POWER_TARGET_MASK);
 	WRITE_RUNTIME_CS(xmc, val2, XMC_CLOCK_SCALING_POWER_REG);
 	mutex_unlock(&xmc->xmc_lock);
 
@@ -1060,7 +1101,7 @@ static ssize_t scaling_target_temp_show(struct device *dev,
 	}
 	mutex_lock(&xmc->xmc_lock);
 	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_TEMP_REG);
-	val &= XMC_CLOCK_SCALING_TEMP_REG_MASK;
+	val &= XMC_CLOCK_SCALING_TEMP_TARGET_MASK;
 	mutex_unlock(&xmc->xmc_lock);
 
 	return sprintf(buf, "%uc\n", val);
@@ -1070,7 +1111,7 @@ static ssize_t scaling_target_temp_store(struct device *dev,
 		struct device_attribute *da, const char *buf, size_t count)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
-	u32 val, val2;
+	u32 val, val2, threshold_val;
 
 	/* Check if clock scaling feature enabled */
 	if (!xmc->runtime_cs_enabled) {
@@ -1081,11 +1122,19 @@ static ssize_t scaling_target_temp_store(struct device *dev,
 	if (kstrtou32(buf, 10, &val) == -EINVAL)
 		return -EINVAL;
 
-	//TODO: Check if the threshold temperature is in board spec limits.
 	mutex_lock(&xmc->xmc_lock);
 	val2 = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_TEMP_REG);
-	val2 &= ~XMC_CLOCK_SCALING_TEMP_REG_MASK;
-	val2 |= (val & XMC_CLOCK_SCALING_TEMP_REG_MASK);
+	threshold_val = (val2 & XMC_CLOCK_SCALING_TEMP_THRESHOLD_MASK) >>
+		XMC_CLOCK_SCALING_TEMP_THRESHOLD_POS;
+
+	//Check if the threshold temperature is in board spec limits.
+	if (val > threshold_val) {
+		mutex_unlock(&xmc->xmc_lock);
+		return -EINVAL;
+	}
+
+	val2 &= ~XMC_CLOCK_SCALING_TEMP_TARGET_MASK;
+	val2 |= (val & XMC_CLOCK_SCALING_TEMP_TARGET_MASK);
 	WRITE_RUNTIME_CS(xmc, val2, XMC_CLOCK_SCALING_TEMP_REG);
 	mutex_unlock(&xmc->xmc_lock);
 
@@ -1105,7 +1154,8 @@ static ssize_t scaling_threshold_temp_show(struct device *dev,
 	}
 	mutex_lock(&xmc->xmc_lock);
 	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_TEMP_REG);
-	val &= XMC_CLOCK_SCALING_TEMP_REG_MASK;
+	val = (val & XMC_CLOCK_SCALING_TEMP_THRESHOLD_MASK) >>
+		XMC_CLOCK_SCALING_TEMP_THRESHOLD_POS;
 	mutex_unlock(&xmc->xmc_lock);
 
 	return sprintf(buf, "%uc\n", val);
@@ -1124,7 +1174,8 @@ static ssize_t scaling_threshold_power_show(struct device *dev,
 	}
 	mutex_lock(&xmc->xmc_lock);
 	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_POWER_REG);
-	val &= XMC_CLOCK_SCALING_POWER_REG_MASK;
+	val = (val & XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK) >>
+		XMC_CLOCK_SCALING_POWER_THRESHOLD_POS;
 	mutex_unlock(&xmc->xmc_lock);
 
 	return sprintf(buf, "%uW\n", val);
@@ -1166,6 +1217,9 @@ static struct attribute *xmc_attrs[] = {
 	&dev_attr_scaling_target_temp.attr,
 	&dev_attr_scaling_target_power.attr,
 	&dev_attr_scaling_governor.attr,
+	&dev_attr_scaling_threshold_temp.attr,
+	&dev_attr_scaling_threshold_power.attr,
+	&dev_attr_scaling_force_en.attr,
 	&dev_attr_board_info.attr,
 	&dev_attr_reg_base.attr,
 	SENSOR_SYSFS_NODE_ATTRS,

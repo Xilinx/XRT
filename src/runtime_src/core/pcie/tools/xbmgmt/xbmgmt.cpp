@@ -42,6 +42,7 @@ static const std::map<std::string, struct subCmd> subCmdList = {
     { "program", {progHandler, subCmdProgDesc, subCmdProgUsage} },
     { "config", {configHandler, subCmdConfigDesc, subCmdConfigUsage} },
     { "nifd", {nifdHandler, subCmdNifdDesc, subCmdNifdUsage} },
+    { "clock_scaling", {clockScalingHandler, subCmdClkScalingDesc, subCmdClkScalingUsage} },
 };
 
 void sudoOrDie()

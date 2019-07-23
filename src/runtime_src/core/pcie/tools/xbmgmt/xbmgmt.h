@@ -61,4 +61,8 @@ int nifdHandler(int argc, char *argv[]);
 extern const char *subCmdNifdDesc;
 extern const char *subCmdNifdUsage;
 
+int clockScalingHandler(int argc, char *argv[]);
+extern const char *subCmdClkScalingDesc;
+extern const char *subCmdClkScalingUsage;
+
 #endif /* XBMGMT_H */
