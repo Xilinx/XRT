@@ -191,7 +191,7 @@ zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
 		err = drm_mm_insert_node_generic(zdev->mem[bank].zm_mm,
 		    bo->mm_node, size, PAGE_SIZE, 0, 0);
 		if (err) {
-			DRM_ERROR("Fail to allocate BO: size %ld\n", size);
+			DRM_ERROR("Fail to allocate BO: size %ld\n", (long)size);
 			mutex_unlock(&zdev->mm_lock);
 			kfree(bo->mm_node);
 			kfree(bo);
@@ -435,7 +435,7 @@ zocl_userptr_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		goto out0;
 	}
 
-	bo->cma_base.vaddr = (void *)args->addr;
+	bo->cma_base.vaddr = (void *)(uintptr_t)args->addr;
 
 	ret = drm_gem_handle_create(filp, &bo->cma_base.base, &args->handle);
 	if (ret) {
