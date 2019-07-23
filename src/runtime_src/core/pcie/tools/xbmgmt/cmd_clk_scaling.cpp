@@ -16,9 +16,8 @@
 
 #include <string>
 #include <cstring>
+#include <climits>
 #include <iostream>
-#include <map>
-#include <functional>
 #include <getopt.h>
 
 #include "core/pcie/linux/scan.h"
@@ -153,9 +152,7 @@ int clockScalingHandler(int argc, char *argv[])
 
     unsigned index = UINT_MAX;
     int status = 0;
-    int target_power = 0, target_temp = 0, read_target_power = 0;
-    int read_target_temp = 0, read_cs_mode = 0, mode = 0;
-    int read_threshold_temp = 0, read_threshold_power = 0;
+    int target_power = 0, target_temp = 0;
     int set_mode = 0, force_enable = 0, cs_enable = 0;
     std::string mode;
 
