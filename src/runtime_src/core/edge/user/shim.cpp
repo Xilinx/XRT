@@ -759,7 +759,7 @@ unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t siz
 
 unsigned int xclGetHostBO(xclDeviceHandle handle, uint64_t paddr, size_t size)
 {
-  std::cout << "xclGetHostBO called.. " << handle << std::endl;
+  //std::cout << "xclGetHostBO called.. " << handle << std::endl;
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
