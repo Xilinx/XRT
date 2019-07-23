@@ -563,6 +563,7 @@ void shim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     mDev->sysfs_get("", "link_speed", errmsg, info->mPCIeLinkSpeed);
     mDev->sysfs_get("", "link_speed_max", errmsg, info->mPCIeLinkSpeedMax);
     mDev->sysfs_get("", "link_width_max", errmsg, info->mPCIeLinkWidthMax);
+    mDev->sysfs_get("", "mig_calibration", errmsg, info->mMigCalib);
     std::vector<uint64_t> freqs;
     mDev->sysfs_get("icap", "clock_freqs", errmsg, freqs);
     for (unsigned i = 0;
