@@ -19,6 +19,11 @@
 
 #include "app/xmabuffers.h"
 #include "app/xmalogger.h"
+#include "app/xmaerror.h"
+#include "lib/xmahw_lib.h"
+#include <cstdio>
+#include <iostream>
+#include <cstring>
 
 #define XMA_BUFFER_MOD "xmabuffer"
 
@@ -60,6 +65,7 @@ xma_frame_alloc(XmaFrameProperties *frame_props)
         // TODO: Get plane size for each plane
         frame->data[i].buffer = malloc(frame_props->width *
                                        frame_props->height);
+        frame->data[i].xma_device_buf = NULL;
     }
 
     return frame;
@@ -87,10 +93,101 @@ xma_frame_from_buffers_clone(XmaFrameProperties *frame_props,
         frame->data[i].buffer_type = XMA_HOST_BUFFER_TYPE;
         frame->data[i].buffer = frame_data->data[i];
         frame->data[i].is_clone = true;
+        frame->data[i].xma_device_buf = NULL;
     }
 
     return frame;
 }
+
+
+int32_t xma_check_device_buffer(XmaBufferObj *b_obj) {
+    if (b_obj == NULL) {
+        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_device_buffer_free failed. XMABufferObj failed allocation\n");
+        return XMA_ERROR;
+    }
+
+    XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj->private_do_not_touch;
+    if (b_obj_priv == NULL) {
+        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_device_buffer_free failed. XMABufferObj failed allocation\n");
+        return XMA_ERROR;
+    }
+    if (b_obj_priv->dev_index < 0 || b_obj_priv->bank_index < 0 || b_obj_priv->size <= 0) {
+        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_device_buffer_free failed. XMABufferObj failed allocation\n");
+        return XMA_ERROR;
+    }
+    if (b_obj_priv->dummy != (void*)(((uint64_t)b_obj_priv) | signature)) {
+        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_device_buffer_free failed. XMABufferObj is corrupted.\n");
+        return XMA_ERROR;
+    }
+    if (b_obj_priv->dev_handle == NULL) {
+        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_device_buffer_free failed. XMABufferObj is corrupted.\n");
+        return XMA_ERROR;
+    }
+    return XMA_SUCCESS;
+}
+
+
+XmaFrame*
+xma_frame_from_device_buffers(XmaFrameProperties *frame_props,
+                             XmaFrameData *frame_data, bool clone)
+{
+    int32_t num_planes;
+
+    xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD,
+               "%s() frame_props %p and frame_data %p\n",
+               __func__, frame_props, frame_data);
+    XmaFrame *frame = (XmaFrame*) malloc(sizeof(XmaFrame));
+    if (frame  == NULL)
+        return NULL;
+    memset(frame, 0, sizeof(XmaFrame));
+    frame->frame_props = *frame_props;
+    num_planes = xma_frame_planes_get(frame_props);
+
+    for (int32_t i = 0; i < num_planes; i++)
+    {
+        frame->data[i].refcount++;
+        if (frame_data->dev_buf[i] == NULL) {
+            xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD,
+                    "%s(): dev_buf XmaBufferObj is NULL in frame_data\n", __func__);
+            return NULL;
+        }
+        if (xma_check_device_buffer(frame_data->dev_buf[i]) != XMA_SUCCESS) {
+            return NULL;
+        }
+        if (frame_data->dev_buf[i]->device_only_buffer) {
+            frame->data[i].buffer_type = XMA_DEVICE_ONLY_BUFFER_TYPE;
+            frame->data[i].buffer = NULL;
+        } else {
+            frame->data[i].buffer_type = XMA_DEVICE_BUFFER_TYPE;
+            frame->data[i].buffer = frame_data->dev_buf[i]->data;
+        }
+        frame->data[i].xma_device_buf = frame_data->dev_buf[i];
+        frame->data[i].is_clone = clone;
+    }
+
+    return frame;
+}
+
+void
+xma_device_buffer_free(XmaBufferObj *b_obj)
+{
+    xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD, "%s()\n", __func__);
+    if (xma_check_device_buffer(b_obj) != XMA_SUCCESS) {
+        return;
+    }
+    XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj->private_do_not_touch;
+
+    xclFreeBO(b_obj_priv->dev_handle, b_obj_priv->boHandle);
+    free(b_obj_priv);
+    free(b_obj);
+}
+
+
 
 void
 xma_frame_free(XmaFrame *frame)
@@ -107,8 +204,13 @@ xma_frame_free(XmaFrame *frame)
     if (frame->data[0].refcount > 0)
         return;
 
-    for (int32_t i = 0; i < num_planes && !frame->data[i].is_clone; i++)
-        free(frame->data[i].buffer);
+    for (int32_t i = 0; i < num_planes && !frame->data[i].is_clone; i++) {
+        if (frame->data[i].buffer_type == XMA_DEVICE_ONLY_BUFFER_TYPE || frame->data[i].buffer_type == XMA_DEVICE_BUFFER_TYPE) {
+            xma_device_buffer_free(frame->data[i].xma_device_buf);
+        } else {
+            free(frame->data[i].buffer);
+        }
+    }
 
     free(frame);
 }
@@ -127,6 +229,7 @@ xma_data_from_buffer_clone(uint8_t *data, size_t size)
     buffer->data.buffer_type = XMA_HOST_BUFFER_TYPE;
     buffer->data.is_clone = true;
     buffer->data.buffer = data;
+    buffer->data.xma_device_buf = NULL;
     buffer->alloc_size = size;
     buffer->is_eof = 0;
     buffer->pts = 0;
@@ -134,6 +237,45 @@ xma_data_from_buffer_clone(uint8_t *data, size_t size)
 
     return buffer;
 }
+
+XmaDataBuffer*
+xma_data_from_device_buffer(XmaBufferObj *dev_buf, bool clone)
+{
+    if (dev_buf == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD,
+                "%s(): dev_buf XmaBufferObj is NULL\n", __func__);
+        return NULL;
+    }
+    if (xma_check_device_buffer(dev_buf) != XMA_SUCCESS) {
+        return NULL;
+    }
+    xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD,
+               "%s() Cloning buffer from %p of size %lu\n",
+               __func__, dev_buf->data, dev_buf->size);
+    XmaDataBuffer *buffer = (XmaDataBuffer*) malloc(sizeof(XmaDataBuffer));
+    if (buffer  == NULL)
+        return NULL;
+    memset(buffer, 0, sizeof(XmaDataBuffer));
+
+    buffer->data.refcount++;
+
+    if (dev_buf->device_only_buffer) {
+        buffer->data.buffer_type = XMA_DEVICE_ONLY_BUFFER_TYPE;
+        buffer->data.buffer = NULL;
+    } else {
+        buffer->data.buffer_type = XMA_DEVICE_BUFFER_TYPE;
+        buffer->data.buffer = dev_buf->data;
+    }
+    buffer->data.xma_device_buf = dev_buf;
+    buffer->data.is_clone = clone;
+    buffer->alloc_size = dev_buf->size;
+    buffer->is_eof = 0;
+    buffer->pts = 0;
+    buffer->poc = 0;
+
+    return buffer;
+}
+
 
 XmaDataBuffer*
 xma_data_buffer_alloc(size_t size)
@@ -148,6 +290,7 @@ xma_data_buffer_alloc(size_t size)
     buffer->data.buffer_type = XMA_HOST_BUFFER_TYPE;
     buffer->data.is_clone = false;
     buffer->data.buffer = malloc(size);
+    buffer->data.xma_device_buf = NULL;
     buffer->alloc_size = size;
     buffer->is_eof = 0;
     buffer->pts = 0;
@@ -165,8 +308,13 @@ xma_data_buffer_free(XmaDataBuffer *data)
     if (data->data.refcount > 0)
         return;
 
-    if (!data->data.is_clone)
-        free(data->data.buffer);
+    if (!data->data.is_clone) {
+        if (data->data.buffer_type == XMA_DEVICE_ONLY_BUFFER_TYPE || data->data.buffer_type == XMA_DEVICE_BUFFER_TYPE) {
+            xma_device_buffer_free(data->data.xma_device_buf);
+        } else {
+            free(data->data.buffer);
+        }
+    }
 
     free(data);
 }

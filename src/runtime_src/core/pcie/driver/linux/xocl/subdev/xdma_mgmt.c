@@ -19,8 +19,19 @@
 
 #include <linux/version.h>
 #include <linux/eventfd.h>
-#include "mgmt-reg.h"
 #include "../xocl_drv.h"
+
+/*
+ * Interrupt controls
+ */
+#define XCLMGMT_MAX_INTR_NUM            32
+#define XCLMGMT_MAX_USER_INTR           16
+#define XCLMGMT_INTR_CTRL_BASE          (0x2000UL)
+#define XCLMGMT_INTR_USER_ENABLE        (XCLMGMT_INTR_CTRL_BASE + 0x08)
+#define XCLMGMT_INTR_USER_DISABLE       (XCLMGMT_INTR_CTRL_BASE + 0x0C)
+#define XCLMGMT_INTR_USER_VECTOR        (XCLMGMT_INTR_CTRL_BASE + 0x80)
+#define XCLMGMT_MAILBOX_INTR            11
+
 
 struct xdma_irq {
 	bool			in_use;
