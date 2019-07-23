@@ -91,10 +91,6 @@ CU Deadlock
 
 HLS scheduler bugs can also result in CU hangs. CU deadlocks AXI data bus at which point neither read nor write operation can make progress. The deadlocks can be observed with ``xbutil query`` where the CU will appear stuck in *START* or *---* state. Note this deadlock can cause other CUs which read/write from/to the same MIG to also hang.
 
-Multiple CU DDR Access Deadlock
-...............................
-
-TODO
 
 AXI Bus Deadlock
 ................
