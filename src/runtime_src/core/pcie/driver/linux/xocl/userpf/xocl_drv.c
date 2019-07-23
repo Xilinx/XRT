@@ -306,15 +306,28 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 	req->req = MAILBOX_REQ_RECLOCK;
 	memcpy(req->data, data, data_len);
 
-	err = xocl_peer_request(xdev, req, reqlen,
-		&msg, &resplen, NULL, NULL);
+	mutex_lock(&xdev->dev_lock);
+
+	if (!list_is_singular(&xdev->ctx_list)) {
+		/* We should have one context for ourselves. */
+		BUG_ON(list_empty(&xdev->ctx_list));
+		userpf_err(xdev, "device is in use, can't reset");
+		err = -EBUSY;
+	}
+
+	if (err == 0) {
+		err = xocl_peer_request(xdev, req, reqlen,
+			&msg, &resplen, NULL, NULL);
+		if (err == 0)
+			err = msg;
+	}
+
+	mutex_unlock(&xdev->dev_lock);
 
 	/* Re-clock changes PR region, make sure next ERT configure cmd will
 	 * go through */
-	(void) xocl_exec_reconfig(xdev);
-
-	if (msg != 0)
-		err = -ENODEV;
+	if (err == 0)
+		(void) xocl_exec_reconfig(xdev);
 
 	kfree(req);
 	return err;

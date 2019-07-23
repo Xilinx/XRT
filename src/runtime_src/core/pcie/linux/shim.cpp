@@ -563,6 +563,7 @@ void shim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     mDev->sysfs_get("", "link_speed", errmsg, info->mPCIeLinkSpeed);
     mDev->sysfs_get("", "link_speed_max", errmsg, info->mPCIeLinkSpeedMax);
     mDev->sysfs_get("", "link_width_max", errmsg, info->mPCIeLinkWidthMax);
+    mDev->sysfs_get("", "mig_calibration", errmsg, info->mMigCalib);
     std::vector<uint64_t> freqs;
     mDev->sysfs_get("icap", "clock_freqs", errmsg, freqs);
     for (unsigned i = 0;
@@ -1565,7 +1566,6 @@ int xclCopyBO(xclDeviceHandle handle, unsigned int dst_boHandle,
 int xclReClock2(xclDeviceHandle handle, unsigned short region, const unsigned short *targetFreqMHz)
 {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
-    std::cout<<"xclReClock2"<<std::endl;
     return drv ? drv->xclReClock2(region, targetFreqMHz) : -ENODEV;
 }
 
