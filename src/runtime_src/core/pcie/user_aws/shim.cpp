@@ -71,7 +71,7 @@ extern char* get_afi_from_axlf(const axlf *);
 #define DEFAULT_GLOBAL_AFI "agfi-069ddd533a748059b" // 1.4 shell
 #endif
 
-#include "core/common/memalign.h"
+#include "core/common/AlignedAllocator.h"
 
 // Profiling
 #define AXI_FIFO_RDFD_AXI_FULL          0x1000
@@ -80,32 +80,6 @@ extern char* get_afi_from_axlf(const axlf *);
 
 
 namespace awsbwhal {
-
-#if 0
-  // Memory alignment for DDR and AXI-MM trace access
-  template <typename T> class AlignedAllocator {
-      void *mBuffer;
-      size_t mCount;
-  public:
-      T *getBuffer() {
-          return (T *)mBuffer;
-      }
-
-      size_t size() const {
-          return mCount * sizeof(T);
-      }
-
-      AlignedAllocator(size_t alignment, size_t count) : mBuffer(0), mCount(count) {
-        if (xrt_core::posix_memalign(&mBuffer, alignment, count * sizeof(T))) {
-              mBuffer = 0;
-          }
-      }
-      ~AlignedAllocator() {
-          if (mBuffer)
-              free(mBuffer);
-      }
-  };
-#endif
 
     // This list will get populated in xclProbe
     // 0 -> /dev/dri/renderD129
@@ -243,7 +217,7 @@ namespace awsbwhal {
 #if ((GCC_VERSION >= 40800) && !defined(__PPC64__) && !defined(__aarch64__))
         alignas(DDR_BUFFER_ALIGNMENT) char buffer[DDR_BUFFER_ALIGNMENT];
 #else
-        AlignedAllocator<char> alignedBuffer(DDR_BUFFER_ALIGNMENT, DDR_BUFFER_ALIGNMENT);
+        xrt_core::AlignedAllocator<char> alignedBuffer(DDR_BUFFER_ALIGNMENT, DDR_BUFFER_ALIGNMENT);
         char* buffer = alignedBuffer.getBuffer();
 #endif
 
@@ -894,8 +868,6 @@ namespace awsbwhal {
         wordsPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 32);
         uint32_t numWords = numSamples * wordsPerSample;
 
-    #ifndef _WINDOWS
-    // TODO: Windows build support
     //    alignas is defined in c++11
     #if GCC_VERSION >= 40800
         /* Alignment is limited to 16 by PPC64LE : so , should it be 
@@ -903,11 +875,8 @@ namespace awsbwhal {
         */
         alignas(AXI_FIFO_RDFD_AXI_FULL) uint32_t hostbuf[traceBufWordSz];
     #else
-        AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, traceBufWordSz);
+        xrt_core::AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, traceBufWordSz);
         uint32_t* hostbuf = alignedBuffer.getBuffer();
-    #endif
-    #else
-        uint32_t hostbuf[traceBufWordSz];
     #endif
 
         // Now read trace data

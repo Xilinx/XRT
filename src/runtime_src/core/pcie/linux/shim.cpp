@@ -24,6 +24,8 @@
 #include "core/common/scheduler.h"
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
+#include "core/common/AlignedAllocator.h"
+
 #include "xclbin.h"
 #include "ert.h"
 
@@ -114,37 +116,8 @@ inline int io_getevents(aio_context_t ctx, long min_nr, long max_nr,
   return syscall(__NR_io_getevents, ctx, min_nr, max_nr, events, timeout);
 }
 
-#include "core/common/memalign.h"
 
 namespace xocl {
-
-  // Memory alignment for DDR and AXI-MM trace access
-  template <typename T> class AlignedAllocator {
-      void *mBuffer;
-      size_t mCount;
-  public:
-      T *getBuffer() {
-          return (T *)mBuffer;
-      }
-
-      size_t size() const {
-          return mCount * sizeof(T);
-      }
-
-      AlignedAllocator(size_t alignment, size_t count) : mBuffer(0), mCount(count) {
-        if (xrt_core::posix_memalign(&mBuffer, alignment, count * sizeof(T))) {
-              mBuffer = 0;
-          }
-      }
-      ~AlignedAllocator() {
-          if (mBuffer)
-              free(mBuffer);
-      }
-  };
-
-
-
-
 
 /*
  * shim()
@@ -1426,8 +1399,6 @@ int shim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamp
     wordsPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 32);
     uint32_t numWords = numSamples * wordsPerSample;
 
-#ifndef _WINDOWS
-// TODO: Windows build support
 //    alignas is defined in c++11
 #if GCC_VERSION >= 40800
     /* Alignment is limited to 16 by PPC64LE : so , should it be 
@@ -1435,11 +1406,8 @@ int shim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamp
     */
     alignas(AXI_FIFO_RDFD_AXI_FULL) uint32_t hostbuf[traceBufWordSz];
 #else
-    AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, traceBufWordSz);
+    xrt_core::AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, traceBufWordSz);
     uint32_t* hostbuf = alignedBuffer.getBuffer();
-#endif
-#else
-    uint32_t hostbuf[traceBufWordSz];
 #endif
 
     // Now read trace data
