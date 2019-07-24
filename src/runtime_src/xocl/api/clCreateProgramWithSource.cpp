@@ -23,7 +23,6 @@
 #include "xocl/core/program.h"
 #include "xocl/core/range.h"
 #include "xocl/core/error.h"
-#include "xrt/util/memory.h"
 #include "detail/context.h"
 
 #include <boost/filesystem/operations.hpp>
@@ -104,7 +103,7 @@ clCreateProgramWithSource(cl_context        context,
                ? std::string(strings[i], strings[i] + lengths[i])
                : std::string(strings[i]);
 
-  auto program = xrt::make_unique<xocl::program>(xocl::xocl(context),source);
+  auto program = std::make_unique<xocl::program>(xocl::xocl(context),source);
   program->add_device(device);
 
   // hash source, checksumming would be better (portable)

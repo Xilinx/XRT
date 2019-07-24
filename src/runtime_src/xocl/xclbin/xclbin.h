@@ -17,10 +17,11 @@
 #ifndef runtime_src_xocl_xclbin_h_
 #define runtime_src_xocl_xclbin_h_
 
-#include "driver/include/xclbin.h" // definition of binary structs
+#include "core/include/xclbin.h" // definition of binary structs
 
 #include "xocl/core/refcount.h"
 #include "xclbin/binary.h"
+#include "xrt/util/uuid.h"
 
 #include <map>
 #include <string>
@@ -62,6 +63,7 @@ public:
   //Max 64 mem banks for now.
   using memidx_bitmask_type = std::bitset<64>;
   using memidx_type = int32_t;
+  using connidx_type = int32_t;
 
   enum class target_type{ bin,x86,zynqps7,csim,cosim,hwem,invalid};
 
@@ -120,23 +122,19 @@ public:
     struct instance {
       std::string name;   // inst name
       size_t base;        // base addr
-      std::string port;   // port name
     };
 
     std::map<uint32_t,std::string> stringtable;
 
     std::string name;                // name of kernel
     unsigned int uid;                // unique id for this symbol, some symbols have same name??
-    std::string dsaname;             // name of dsa
     std::string attributes;          // attributes as per .cl file
     std::string hash;                // kernel conformance hash
-    std::string controlport;         // kernel axi slave control port
     size_t workgroupsize = 0;
     size_t compileworkgroupsize[3] = {0};   //
     size_t maxworkgroupsize[3] = {0};// xilinx extension
     std::vector<arg> arguments;      // the args of this kernel
     std::vector<instance> instances; // the kernel instances
-    bool cu_interrupt = false;       // cu have interrupt support
     target_type target;              // xclbin target
   };
 
@@ -155,6 +153,9 @@ public:
   ~xclbin();
 
   xclbin&
+  operator=(const xclbin&& rhs);
+
+  xclbin&
   operator=(const xclbin& rhs);
 
   bool
@@ -170,16 +171,11 @@ public:
   binary() const;
 
   /**
-   * Get dsa name
+   * Get uuid of xclbin
    */
-  std::string
-  dsa_name() const;
-
-  /**
-   * Check if unified platform
-   */
-  bool
-  is_unified() const;
+  using uuid_type = xrt::uuid;
+  uuid_type
+  uuid() const;
 
   /**
    * Access the project name per xml meta data
@@ -233,13 +229,6 @@ public:
   kernel_symbols() const;
 
   /**
-   * @return
-   *   Size (in bytes) of largest kernel register map in the xclbin
-   */
-  size_t
-  kernel_max_regmap_size() const;
-
-  /**
    * Get kernel with specified name.
    *
    * The lifetime of the returned object is tied to the lifetime
@@ -274,42 +263,11 @@ public:
   get_mem_topology() const;
 
   /**
-   * Get the CU base offset
-   *
-   * CU addresses are sequential and separated  by a fixed size
-   * The starting address is the base offset and may differ from
-   * xclbin to xclbin
-   *
-   * @return
-   *   Base address of CU address space.
-   */
-  size_t
-  cu_base_offset() const;
-
-  /**
-   * Get the CU address space size
-   *
-   * @return
-   *   Size of cu addressspace in power of 2
-   */
-  size_t
-  cu_size() const;
-
-  /**
-   * Check if all CUs support completion interrupt
-   *
-   * @return
-   *   True if completion interrupt supported by all CUs, false otherwise
-   */
-  bool
-  cu_interrupt() const;
-
-  /**
    * Get a sorted address map of all CUs in this xclbin
    *
    * The map is sorted in order of increasing base addresses.
    */
-  std::vector<uint32_t>
+  std::vector<uint64_t>
   cu_base_address_map() const;
 
   /**
@@ -374,11 +332,16 @@ public:
        Kernel name to  retrieve the memory index for
    * @param arg
        Index of arg to retrieve the memory index for
+   * @param conn
+   *   Index into the connectivity section allocated.
    * @return
    *   Memory idx
    */
   memidx_type
-  get_memidx_from_arg(const std::string& kernel_name, int32_t arg);
+  get_memidx_from_arg(const std::string& kernel_name, int32_t arg, connidx_type& conn);
+
+  void
+  clear_connection(connidx_type index);
 
   /**
    * Get the memory index with the specified tag.

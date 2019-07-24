@@ -21,6 +21,7 @@
 #include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/error.h"
+#include "xocl/core/platform.h"
 
 #include "plugin/xdp/profile.h"
 
@@ -42,11 +43,7 @@ static void*
 clGetExtensionFunctionAddress(const char *func_name)
 {
   validOrError(func_name);
-
-  if (std::string(func_name)!="clIcdGetPlatformIDsKHR")
-    return nullptr;
-
-  return (void *)clIcdGetPlatformIDsKHR;
+  return clGetExtensionFunctionAddressForPlatform(get_global_platform(), func_name);
 }
 
 } // xocl
@@ -66,5 +63,3 @@ clGetExtensionFunctionAddress(const char *func_name)
   }
   return nullptr;
 }
-
-

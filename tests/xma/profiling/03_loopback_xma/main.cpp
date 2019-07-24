@@ -14,7 +14,7 @@
 // host_src includes
 #include "xclhal2.h"
 #include "xclbin.h"
-#include "xperf.h"
+#include "xma_profile.h"
 
 // lowlevel common include
 

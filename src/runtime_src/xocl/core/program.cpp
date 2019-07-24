@@ -22,7 +22,6 @@
 #include "error.h"
 
 #include "xocl/api/plugin/xdp/profile.h"
-#include "xrt/util/memory.h"
 
 #include <boost/filesystem/operations.hpp>
 #include <vector>
@@ -32,6 +31,7 @@
 
 namespace {
 
+XOCL_UNUSED
 static std::vector<char>
 read_file(const std::string& filename)
 {
@@ -115,15 +115,18 @@ program::
 {
   XOCL_DEBUG(std::cout,"xocl::program::~program(",m_uid,")\n");
 
-  // Before deleting program, do a final read of counters
-  // and force flush of trace buffers
-  xocl::profile::end_device_profiling();
+  try {
+    // Before deleting program, do a final read of counters
+    // and force flush of trace buffers
+    xocl::profile::end_device_profiling();
 
-  for(auto d : get_device_range())
-    d->unload_program(this);
+    for(auto d : get_device_range())
+      d->unload_program(this);
 
-  m_context->remove_program(this);
-  global::remove(this);
+    m_context->remove_program(this);
+    global::remove(this);
+  }
+  catch (...) {}
 }
 
 void
@@ -178,7 +181,7 @@ program::
 get_xclbin(const device* d) const
 {
   // switch to parent device if any
-  d = d->get_root_device();
+  d = d ? d->get_root_device() : nullptr;
   if (d) {
     auto itr = m_binaries.find(d);
     if (itr==m_binaries.end())
@@ -207,6 +210,15 @@ get_binary_sizes() const
   return sizes;
 }
 
+bool
+program::
+has_kernel(const std::string& kname) const
+{
+  auto name = kernel_utils::normalize_kernel_name(kname);
+  auto kernels = get_kernel_names();
+  return range_find(kernels,[&name](const std::string& s){return s==name;})!=kernels.end();
+}
+
 std::unique_ptr<kernel,std::function<void(kernel*)>>
 program::
 create_kernel(const std::string& kernel_name)
@@ -216,16 +228,18 @@ create_kernel(const std::string& kernel_name)
   // If kernel_name is empty, then assert conformance mode and create
   // a 'fake' kernel
   if (kernel_name.empty() && std::getenv("XCL_CONFORMANCE")) {
-    auto k = xrt::make_unique<kernel>(this);
+    auto k = std::make_unique<kernel>(this);
     return std::unique_ptr<kernel,decltype(deleter)>(k.release(),deleter);
   }
 
   // Look up kernel symbol from arbitrary (first) xclbin
   if (m_binaries.empty())
     throw xocl::error(CL_INVALID_PROGRAM_EXECUTABLE,"No binary for program");
+
+  auto symbol_name = kernel_utils::normalize_kernel_name(kernel_name);
   auto& xclbin = m_binaries.begin()->second;
-  auto& symbol = xclbin.lookup_kernel(kernel_name);
-  auto k = xrt::make_unique<kernel>(this,kernel_name,symbol);
+  auto& symbol = xclbin.lookup_kernel(symbol_name);
+  auto k = std::make_unique<kernel>(this,kernel_name,symbol);
   return std::unique_ptr<kernel,decltype(deleter)>(k.release(),deleter);
 }
 
@@ -250,11 +264,15 @@ build(const std::vector<device*>& devices,const std::string& options)
   if (!conformance)
     throw std::runtime_error("internal error program::build");
 
+  throw std::runtime_error("build program is not safe and no longer supported");
+
+#if 0
   // Copied from xcl_device_sim.cpp
   std::ofstream buffer("_temp.cl");
   buffer << get_source();
   buffer.close();
 
+  // unsafe command injection
   std::string command = xocl::get_install_root();
   command.append("/bin/xocc");
 
@@ -295,6 +313,7 @@ build(const std::vector<device*>& devices,const std::string& options)
 
     clReleaseProgram(new_program);
   }
+#endif
 }
 
 range_lock<program_iterator_type>
