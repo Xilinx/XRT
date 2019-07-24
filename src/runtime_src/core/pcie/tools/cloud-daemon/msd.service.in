@@ -1,0 +1,10 @@
+[Unit]
+Description=Xilinx Management Service Daemon (MSD)
+
+[Service]
+Type=simple
+ExecStart=${XRT_INSTALL_DIR}/bin/msd
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

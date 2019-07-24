@@ -1,6 +1,7 @@
 /**
  *  Copyright (C) 2017 Xilinx, Inc. All rights reserved.
- *  Author: Sonal Santan
+ *  Authors: Sonal Santan
+ *           Jan Stephan <j.stephan@hzdr.de>
  *  Code copied verbatim from SDAccel xcldma kernel mode driver
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -69,7 +70,8 @@ static int version_ioctl(struct xclmgmt_dev *lro, void __user *arg)
 static long reset_ocl_ioctl(struct xclmgmt_dev *lro)
 {
 	xocl_icap_reset_axi_gate(lro);
-	return compute_unit_busy(lro) ? -EBUSY : 0;
+
+	return 0;
 }
 
 static int bitstream_ioctl_axlf(struct xclmgmt_dev *lro, const void __user *arg)
@@ -113,9 +115,9 @@ long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		return -ENOTTY;
 
 	if (_IOC_DIR(cmd) & _IOC_READ)
-		result = !access_ok(VERIFY_WRITE, (void __user *)arg, _IOC_SIZE(cmd));
+		result = !XOCL_ACCESS_OK(VERIFY_WRITE, (void __user *)arg, _IOC_SIZE(cmd));
 	else if (_IOC_DIR(cmd) & _IOC_WRITE)
-		result =  !access_ok(VERIFY_READ, (void __user *)arg, _IOC_SIZE(cmd));
+		result = !XOCL_ACCESS_OK(VERIFY_READ, (void __user *)arg, _IOC_SIZE(cmd));
 
 	if (result)
 		return -EFAULT;

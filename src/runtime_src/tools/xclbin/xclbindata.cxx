@@ -500,7 +500,7 @@ XclBinData::reportHeader()
   std::cout << "  XCLBIN_SW_EMU:          " << XCLBIN_SW_EMU << "\n";
   std::cout << "  XCLBIN_MODE_MAX:        " << XCLBIN_MODE_MAX << "\n";
   std::cout << "Platform VBNV:          " << m_xclBinHead.m_header.m_platformVBNV << "\n";
-  std::cout << "DSA uuid:               " << getUUIDAsString(m_xclBinHead.m_header.rom_uuid) << "\n";
+  std::cout << "XSA uuid:               " << getUUIDAsString(m_xclBinHead.m_header.rom_uuid) << "\n";
   std::cout << "xclbin uuid:            " << getUUIDAsString(m_xclBinHead.m_header.uuid) << "\n";
   std::cout << "Debug Bin:              " << m_xclBinHead.m_header.m_debug_bin << "\n";
   std::cout << "Num of sections:        " << m_xclBinHead.m_header.m_numSections << "\n";
@@ -989,6 +989,12 @@ XclBinData::getDebugIPType( std::string &_sDebugIPType ) const
 
   if ( _sDebugIPType == "ACCEL_MONITOR" )
       return ACCEL_MONITOR;
+
+  if ( _sDebugIPType == "TRACE_S2MM" )
+      return TRACE_S2MM;
+
+  if ( _sDebugIPType == "AXI_DMA" )
+      return AXI_DMA;
 
   if ( _sDebugIPType == "AXI_STREAM_MONITOR" )
       return AXI_STREAM_MONITOR;
@@ -1561,6 +1567,8 @@ XclBinData::getDebugIPTypeStr(enum DEBUG_IP_TYPE _debugIpType) const
     case AXI_MONITOR_FIFO_LITE: return "AXI_MONITOR_FIFO_LITE";
     case AXI_MONITOR_FIFO_FULL: return "AXI_MONITOR_FIFO_FULL";
     case ACCEL_MONITOR: return "ACCEL_MONITOR";
+    case AXI_DMA: return "AXI_DMA";
+    case TRACE_S2MM: return "TRACE_S2MM";
     case AXI_STREAM_MONITOR: return "AXI_STREAM_MONITOR";
     case AXI_STREAM_PROTOCOL_CHECKER: return "AXI_STREAM_PROTOCOL_CHECKER";
   }

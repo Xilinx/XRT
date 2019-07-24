@@ -332,7 +332,7 @@ private:
   std::queue<xocl_cmd*> running_queue;
   xrt::device* xdev = nullptr;
   size_type idx = 0;
-  value_type addr = 0;
+  addr_type addr = 0;
 
   mutable value_type ctrlreg = 0;
   mutable size_type done_cnt = 0;
@@ -357,7 +357,7 @@ private:
   }
 
 public:
-  xocl_cu(xrt::device* dev, size_type index, value_type baseaddr)
+  xocl_cu(xrt::device* dev, size_type index, addr_type baseaddr)
     : xdev(dev), idx(index), addr(baseaddr)
   {}
 
@@ -486,7 +486,7 @@ class exec_core
   size_type num_cus = 0;
 
 public:
-  exec_core(xrt::device* xdev, xocl_scheduler* xs, size_t slots, const std::vector<uint64_t>& cu_amap)
+  exec_core(xrt::device* xdev, xocl_scheduler* xs, size_t slots, const std::vector<addr_type>& cu_amap)
     : m_xdev(xdev), m_scheduler(xs), num_slots(slots), num_cus(cu_amap.size())
   {
     cu_usage.reserve(cu_amap.size());
@@ -861,8 +861,7 @@ init(xrt::device* xdev, const std::vector<uint64_t>& cu_addr_map)
   if (!is_sw_emulation())
     throw std::runtime_error("unexpected scheduler initialization call in non sw emulation");
 
-  std::vector<uint64_t> amap;
-  std::copy(cu_addr_map.begin(),cu_addr_map.end(),std::back_inserter(amap));
+  std::vector<addr_type> amap(cu_addr_map.begin(),cu_addr_map.end());
   auto slots = ERT_CQ_SIZE / xrt::config::get_ert_slotsize();
   cu_trace_enabled = xrt::config::get_profile();
   s_device_exec_core.erase(xdev);
@@ -877,10 +876,12 @@ init(xrt::device* xdev, const axlf* top)
   // create execution core for this device
   auto slots = ERT_CQ_SIZE / xrt::config::get_ert_slotsize();
   cu_trace_enabled = xrt::config::get_profile();
+  auto cuaddrs = xrt_core::xclbin::get_cus(top);
+  std::vector<addr_type> amap(cuaddrs.begin(),cuaddrs.end());
   s_device_exec_core.erase(xdev);
   s_device_exec_core.insert
     (std::make_pair
-     (xdev,std::make_unique<exec_core>(xdev,&s_global_scheduler,slots,xrt_core::xclbin::get_cus(top))));
+     (xdev,std::make_unique<exec_core>(xdev,&s_global_scheduler,slots,amap)));
 }
 
 }} // sws,xrt

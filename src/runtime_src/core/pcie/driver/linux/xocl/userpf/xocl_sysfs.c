@@ -157,7 +157,11 @@ static ssize_t p2p_enable_show(struct device *dev,
 		return sprintf(buf, "1\n");
 	else if (xocl_get_p2p_bar(xdev, &size) >= 0 &&
 			size > (1 << XOCL_PA_SECTION_SHIFT))
-		return sprintf(buf, "2\n");
+		return sprintf(buf, "%d\n", EBUSY);
+	else if (xocl_get_p2p_bar(xdev, &size) < 0 && (
+			xdev->p2p_bar_idx < 0 ||
+			xdev->p2p_bar_len <= (1<<XOCL_PA_SECTION_SHIFT)))
+		return sprintf(buf, "%d\n", ENXIO);
 
 	return sprintf(buf, "0\n");
 }
@@ -169,22 +173,28 @@ static ssize_t p2p_enable_store(struct device *dev,
 	struct pci_dev *pdev = xdev->core.pdev;
 	int ret, p2p_bar;
 	u32 enable;
-	u64 size;
+	u64 size, curr_size;
 
 
 	if (kstrtou32(buf, 10, &enable) == -EINVAL || enable > 1)
 		return -EINVAL;
 
-	p2p_bar = xocl_get_p2p_bar(xdev, NULL);
+	p2p_bar = xocl_get_p2p_bar(xdev, &curr_size);
 	if (p2p_bar < 0) {
 		xocl_err(&pdev->dev, "p2p bar is not configurable");
-		return -EACCES;
+		return -ENXIO;
 	}
 
 	size = xocl_get_ddr_channel_size(xdev) *
 		xocl_get_ddr_channel_count(xdev); /* GB */
 	size = (ffs(size) == fls(size)) ? (fls(size) - 1) : fls(size);
 	size = enable ? (size + 10) : (XOCL_PA_SECTION_SHIFT - 20);
+	if (xocl_pci_rebar_size_to_bytes(size) == curr_size) {
+		xocl_info(&pdev->dev, "p2p is enabled, bar size %d M",
+				(1 << size));
+		return 0;
+	}
+
 	xocl_info(&pdev->dev, "Resize p2p bar %d to %d M ", p2p_bar,
 			(1 << size));
 	xocl_p2p_mem_release(xdev, false);
@@ -219,40 +229,17 @@ static ssize_t dev_offline_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	int val = xocl_drvinst_get_offline(xdev) ? 1 : 0;
+	bool offline;
+	int val;
+
+	val = xocl_drvinst_get_offline(xdev, &offline);
+	if (!val)
+		val = offline ? 1 : 0;
 
 	return sprintf(buf, "%d\n", val);
 }
-static ssize_t dev_offline_store(struct device *dev,
-		struct device_attribute *da, const char *buf, size_t count)
-{
-	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	int ret;
-	u32 offline;
 
-
-	if (kstrtou32(buf, 10, &offline) == -EINVAL || offline > 1)
-		return -EINVAL;
-
-	device_lock(dev);
-	if (offline) {
-		xocl_drvinst_offline(xdev, true);
-		xocl_subdev_destroy_all(xdev);
-	} else {
-		ret = xocl_subdev_create_all(xdev, xdev->core.priv.subdev_info,
-				xdev->core.priv.subdev_num);
-		if (ret) {
-			xocl_err(dev, "Online subdevices failed");
-			return -EIO;
-		}
-		xocl_drvinst_offline(xdev, false);
-	}
-	device_unlock(dev);
-
-	return count;
-}
-
-static DEVICE_ATTR(dev_offline, 0644, dev_offline_show, dev_offline_store);
+static DEVICE_ATTR(dev_offline, 0444, dev_offline_show, NULL);
 
 static ssize_t mig_calibration_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -378,8 +365,53 @@ static struct attribute *xocl_attrs[] = {
 	NULL,
 };
 
+static ssize_t fdt_blob_output(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+{
+	struct device *dev = kobj_to_dev(kobj);
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	unsigned char *blob;
+	size_t size;
+	ssize_t ret = 0;
+
+	if (!xdev->core.fdt_blob)
+		goto bail;
+
+	blob = xdev->core.fdt_blob;
+
+	size = fdt_totalsize(xdev->core.fdt_blob);
+
+	if (off >= size)
+		goto bail;
+
+	if (off + count > size)
+		count = size - off;
+	memcpy(buf, blob + off, count);
+
+	ret = count;
+bail:
+
+	return ret;
+
+}
+
+static struct bin_attribute fdt_blob_attr = {
+	.attr = {
+		.name = "fdt_blob",
+		.mode = 0400
+	},
+	.read = fdt_blob_output,
+	.size = 0
+};
+
+static struct bin_attribute  *xocl_bin_attrs[] = {
+	&fdt_blob_attr,
+	NULL,
+};
+
 static struct attribute_group xocl_attr_group = {
 	.attrs = xocl_attrs,
+	.bin_attrs = xocl_bin_attrs,
 };
 
 int xocl_init_sysfs(struct device *dev)

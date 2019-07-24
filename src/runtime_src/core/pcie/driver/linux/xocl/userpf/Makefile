@@ -21,6 +21,7 @@ xocl-y := \
 	../xocl_subdev.o \
 	../xocl_ctx.o \
 	../xocl_thread.o \
+	../xocl_fdt.o \
 	../subdev/xdma.o \
 	../subdev/qdma.o \
 	../subdev/feature_rom.o \
@@ -29,9 +30,10 @@ xocl-y := \
 	../subdev/xvc.o \
 	../subdev/icap.o \
 	../subdev/xmc.o \
-        ../subdev/firewall.o \
-        ../subdev/mig.o \
-        ../subdev/dna.o \
+	../subdev/firewall.o \
+	../subdev/mig.o \
+	../subdev/dna.o \
+	../subdev/iores.o \
 	$(xocl_lib-y)	\
 	xocl_drv.o	\
 	xocl_bo.o	\
@@ -39,17 +41,22 @@ xocl-y := \
 	xocl_ioctl.o	\
 	xocl_sysfs.o
 
+xocl-y += $(libfdt-y)
 
 CONFIG_MODULE_SIG=n
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build
 
 PWD	:= $(shell pwd)
 ROOT	:= $(dir $(M))
-XILINXINCLUDE := -I$(ROOT)/../include -I$(ROOT)/../../../../include
+XILINXINCLUDE := -I$(ROOT)/../include -I$(ROOT)/../../../../include -I$(ROOT)/../../../../common/drv/
 
-ccflags-y += $(XILINXINCLUDE) -DSUBDEV_SUFFIX=USER_SUFFIX -D__XRT__
+ccflags-y += $(XILINXINCLUDE) -DPF=USERPF -D__XRT__
 ifeq ($(DEBUG),1)
 ccflags-y += -DDEBUG
+endif
+
+ifeq ($(SYMBOL),1)
+ccflags-y += -g
 endif
 
 all:

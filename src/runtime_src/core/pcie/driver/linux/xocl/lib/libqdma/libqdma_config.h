@@ -30,16 +30,6 @@
 #include <linux/types.h>
 
 /**
- * QDMA config bar number
- */
-#define QDMA_CONFIG_BAR			0
-
-/**
- * STM bar
- */
-#define STM_BAR		2
-
-/**
  * Maximum number of physical functions
  */
 #define QDMA_PF_MAX		4	/* 4 PFs */

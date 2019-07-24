@@ -36,7 +36,7 @@ bool isRemotePortMapped = false;
 void * remotePortMappedPointer = NULL;
 namespace pt = boost::property_tree;
 
-bool initRemotePortMap() 
+bool initRemotePortMap()
 {
   int fd;
   unsigned addr;//, page_addr , page_offset;
@@ -48,7 +48,11 @@ bool initRemotePortMap()
     exit(-1);
   }
 
-  addr = PL_RP_MP_ALLOCATED_ADD;
+  #if defined(CONFIG_ARM64)
+    addr = PL_RP_MP_ALLOCATED_ADD;
+  #else
+    addr = PL_RP_ALLOCATED_ADD;
+  #endif
 
   //page_addr = (addr & ~(page_size - 1));
   //page_offset = addr - page_addr;
@@ -64,7 +68,7 @@ bool initRemotePortMap()
   return true;
 }
 
-bool validateXclBin(const xclBin *header , std::string &xclBinName) 
+bool validateXclBin(const xclBin *header , std::string &xclBinName)
 {
 
   char *bitstreambin = reinterpret_cast<char*> (const_cast<xclBin*> (header));
@@ -106,7 +110,7 @@ bool validateXclBin(const xclBin *header , std::string &xclBinName)
     std::stringstream xml_stream;
     xml_stream<<sXmlFile;
     pt::read_xml(xml_stream,xml_project);
-     
+
     // iterate platforms
     int count = 0;
     for (auto& xml_platform : xml_project.get_child("project"))
@@ -151,7 +155,7 @@ bool validateXclBin(const xclBin *header , std::string &xclBinName)
 
 int ZYNQShim::xclLoadXclBin(const xclBin *header) {
   int ret = 0;
-  if (mLogStream.is_open()) {
+ /*if (mLogStream.is_open()) {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     mLogStream.close();
   }
@@ -165,7 +169,7 @@ int ZYNQShim::xclLoadXclBin(const xclBin *header) {
 
   if ((!std::memcmp(bitstreambin, "xclbin0", 7)) || (!std::memcmp(bitstreambin, "xclbin1", 7))) {
 
-	printf("ERROR: Legacy xclbins are no longer supported. \n");
+  printf("ERROR: Legacy xclbins are no longer supported. \n");
     return 1;
 
   } else if (!std::memcmp(bitstreambin, "xclbin2", 7)) {
@@ -200,8 +204,8 @@ int ZYNQShim::xclLoadXclBin(const xclBin *header) {
 
   //Send the end of packet
   char cPacketEndChar = PL_OCL_PACKET_END_MARKER;
-  memcpy((char*) (ZYNQ_HW_EM::remotePortMappedPointer), &cPacketEndChar, 1);
-  
+  memcpy((char*) (ZYNQ_HW_EM::remotePortMappedPointer), &cPacketEndChar, 1);*/
+
 	drm_zocl_axlf axlf_obj = { const_cast<axlf *>(header) };
 	ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_READ_AXLF, &axlf_obj);
 

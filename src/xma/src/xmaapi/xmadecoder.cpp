@@ -19,8 +19,8 @@
 #include <string.h>
 #include <dlfcn.h>
 #include "lib/xmaapi.h"
-#include "lib/xmahw_hal.h"
-#include "lib/xmares.h"
+//#include "lib/xmahw_hal.h"
+//#include "lib/xmares.h"
 #include "app/xmalogger.h"
 #include "xmaplugin.h"
 
@@ -28,157 +28,173 @@
 
 extern XmaSingleton *g_xma_singleton;
 
-int32_t
-xma_dec_plugins_load(XmaSystemCfg      *systemcfg,
-                     XmaDecoderPlugin  *decoders)
+XmaDecoderSession*
+xma_dec_session_create(XmaDecoderProperties *dec_props)
 {
-    // Get the plugin path
-    char *pluginpath = systemcfg->pluginpath;
-    char *error;
-    int32_t k = 0;
-
     xma_logmsg(XMA_DEBUG_LOG, XMA_DECODER_MOD, "%s()\n", __func__);
+
+    if (!g_xma_singleton->xma_initialized) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
+                   "XMA session creation must be after initialization\n");
+        return NULL;
+    }
+    if (dec_props->plugin_lib == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
+                   "DecoderProperties must set plugin_lib\n");
+        return NULL;
+    }
+
     // Load the xmaplugin library as it is a dependency for all plugins
     void *xmahandle = dlopen("libxmaplugin.so",
                              RTLD_LAZY | RTLD_GLOBAL);
     if (!xmahandle)
     {
         xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
-                   "Failed to open plugin xmaplugin.so\n");
-        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
-                   "   Error message: %s\n", dlerror());
-        return XMA_ERROR;
+                   "Failed to open plugin xmaplugin.so. Error msg: %s\n",
+                   dlerror());
+        return NULL;
     }
-
-    // For each plugin imagecfg/kernelcfg,
-    int32_t i;
-    for (i = 0; i < systemcfg->num_images; i++)
+    void *handle = dlopen(dec_props->plugin_lib, RTLD_NOW);
+    if (!handle)
     {
-    	int32_t j;
-        for (j = 0; j < systemcfg->imagecfg[i].num_kernelcfg_entries; j++)
-        {
-            char *func = systemcfg->imagecfg[i].kernelcfg[j].function;
-            if (strcmp(func, XMA_CFG_FUNC_NM_DEC) != 0)
-                continue;
-            char *plugin = systemcfg->imagecfg[i].kernelcfg[j].plugin;
-            char pluginfullname[PATH_MAX + NAME_MAX];
-            sprintf(pluginfullname, "%s/%s", pluginpath, plugin);
-            void *handle = dlopen(pluginfullname, RTLD_NOW);
-            if (!handle)
-            {
-                xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
-                          "Failed to open plugin %s\n", pluginfullname);
-                xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
-                          "Error message: %s\n", dlerror());
-                return XMA_ERROR;
-            }
-
-            XmaDecoderPlugin *plg =
-                (XmaDecoderPlugin*)dlsym(handle, "decoder_plugin");
-            if ((error = dlerror()) != NULL)
-            {
-                xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
-                          "Failed to open plugin %s\n", pluginfullname);
-                xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
-                          "Error message: %s\n", dlerror());
-                return XMA_ERROR;
-            }
-            memcpy(&decoders[k++], plg, sizeof(XmaDecoderPlugin));
-        }
+        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
+            "Failed to open plugin %s\n Error msg: %s\n",
+            dec_props->plugin_lib, dlerror());
+        return NULL;
     }
-    return XMA_SUCCESS;
-}
 
-XmaDecoderSession*
-xma_dec_session_create(XmaDecoderProperties *dec_props)
-{
+    XmaDecoderPlugin *plg =
+        (XmaDecoderPlugin*)dlsym(handle, "decoder_plugin");
+    char *error;
+    if ((error = dlerror()) != NULL)
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
+            "Failed to get decoder_plugin from %s\n Error msg: %s\n",
+            dec_props->plugin_lib, dlerror());
+        return NULL;
+    }
+    if (plg->xma_version == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
+                   "DecoderPlugin library must have xma_version function\n");
+        return NULL;
+    }
+
     XmaDecoderSession *dec_session = (XmaDecoderSession*) malloc(sizeof(XmaDecoderSession));
-    if (dec_session == NULL)
-        return NULL;
-    XmaResources xma_shm_cfg = g_xma_singleton->shm_res_cfg;
-    XmaKernelRes kern_res;
-    int rc, dev_handle, kern_handle, dec_handle;
-
-    xma_logmsg(XMA_DEBUG_LOG, XMA_DECODER_MOD, "%s()\n", __func__);
-    if (!xma_shm_cfg) {
-        free(dec_session);
+    if (dec_session == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
+            "Failed to allocate memory for decoderSession\n");
         return NULL;
     }
-
     memset(dec_session, 0, sizeof(XmaDecoderSession));
     // init session data
+    //Sarab: TODO initialize all XMaSession fields
+    //It is a C-struct so doesn't have constructor..
     dec_session->decoder_props = *dec_props;
-    dec_session->base.chan_id = -1;
+    dec_session->base.stats = NULL;
+    dec_session->base.channel_id = dec_props->channel_id;
     dec_session->base.session_type = XMA_DECODER;
+    dec_session->decoder_plugin = plg;
 
-    // Just assume this is a H.264 decoder for now and that the FPGA
-    // has been downloaded.  This is accomplished by getting the
-    // first device (dev_handle, base_addr, ddr_bank) and making a
-    // XmaHwSession out of it.  Later this needs to be done by searching
-    // for an available resource.
-    /* JPM TODO default to exclusive device access.  Ensure multiple threads
-       can access this device if in-use pid = requesting thread pid */
-    rc = xma_res_alloc_dec_kernel(xma_shm_cfg, dec_props->hwdecoder_type,
-                                  dec_props->hwvendor_string,
-                                  &dec_session->base, false);
-    if (rc) {
-        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
-                   "Failed to allocate free decoder kernel. Return code %d\n",
-                   rc);
-        free(dec_session);
-        return NULL;
+    bool expected = false;
+    bool desired = true;
+    while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        expected = false;
     }
+    //Singleton lock acquired
 
-    kern_res = dec_session->base.kern_res;
-
-    dev_handle = xma_res_dev_handle_get(kern_res);
-    xma_logmsg(XMA_INFO_LOG, XMA_DECODER_MOD,
-               "dev_handle = %d\n", dev_handle);
-    if (dev_handle < 0) {
-        free(dec_session);
-        return NULL;
-    }
-
-    kern_handle = xma_res_kern_handle_get(kern_res);
-    xma_logmsg(XMA_INFO_LOG, XMA_DECODER_MOD,
-               "kern_handle = %d\n", kern_handle);
-    if (kern_handle < 0) {
-        free(dec_session);
-        return NULL;
-    }
-
-    dec_handle = xma_res_plugin_handle_get(kern_res);
-    xma_logmsg(XMA_INFO_LOG, XMA_DECODER_MOD,
-              "dec_handle = %d\n", dec_handle);
-    if (dec_handle < 0) {
-        free(dec_session);
-        return NULL;
-    }
-
+    int32_t rc, dev_index, cu_index;
+    dev_index = dec_props->dev_index;
+    cu_index = dec_props->cu_index;
+    //dec_handle = dec_props->cu_index;
+    
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
-    XmaHwHAL *hal = (XmaHwHAL*)hwcfg->devices[dev_handle].handle;
+    if (dev_index >= hwcfg->num_devices || dev_index < 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
+                   "XMA session creation failed. dev_index not found\n");
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(dec_session);
+        return NULL;
+    }
 
-    dec_session->base.hw_session.dev_handle = hal->dev_handle;
-    dec_session->base.hw_session.base_address =
-        hwcfg->devices[dev_handle].kernels[kern_handle].base_address;
-    dec_session->base.hw_session.ddr_bank =
-        hwcfg->devices[dev_handle].kernels[kern_handle].ddr_bank;
+    uint32_t hwcfg_dev_index = 0;
+    bool found = false;
+    for (XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
+        if (hw_device.dev_index == (uint32_t)dev_index) {
+            found = true;
+            break;
+        }
+        hwcfg_dev_index++;
+    }
+    if (!found) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
+                   "XMA session creation failed. dev_index not loaded with xclbin\n");
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(dec_session);
+        return NULL;
+    }
+    if ((uint32_t)cu_index >= hwcfg->devices[hwcfg_dev_index].number_of_cus || cu_index < 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
+                   "XMA session creation failed. Invalid cu_index = %d\n", cu_index);
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(dec_session);
+        return NULL;
+    }
+    if (hwcfg->devices[hwcfg_dev_index].kernels[cu_index].in_use) {
+        xma_logmsg(XMA_INFO_LOG, XMA_DECODER_MOD,
+                   "XMA session sharing CU: %s\n", hwcfg->devices[hwcfg_dev_index].kernels[cu_index].name);
+    } else {
+        xma_logmsg(XMA_INFO_LOG, XMA_DECODER_MOD,
+                   "XMA session with CU: %s\n", hwcfg->devices[hwcfg_dev_index].kernels[cu_index].name);
+    }
+
+    dec_session->base.hw_session.dev_handle = hwcfg->devices[hwcfg_dev_index].handle;
     //For execbo:
-    dec_session->base.hw_session.kernel_info = &hwcfg->devices[dev_handle].kernels[kern_handle];
-    dec_session->base.hw_session.dev_index = hal->dev_index;
+    dec_session->base.hw_session.kernel_info = &hwcfg->devices[hwcfg_dev_index].kernels[cu_index];
 
-    dec_session->decoder_plugin = &g_xma_singleton->decodercfg[dec_handle];
+    dec_session->base.hw_session.dev_index = hwcfg->devices[hwcfg_dev_index].dev_index;
+    xma_logmsg(XMA_INFO_LOG, XMA_DECODER_MOD,
+                "XMA session ddr_bank: %d\n", dec_session->base.hw_session.kernel_info->ddr_bank);
+
+    // Call the plugins initialization function with this session data
+    //Sarab: Check plugin compatibility to XMA
+    int32_t xma_main_ver = -1;
+    int32_t xma_sub_ver = -1;
+    rc = dec_session->decoder_plugin->xma_version(&xma_main_ver, & xma_sub_ver);
+    if ((xma_main_ver == 2019 && xma_sub_ver < 2) || xma_main_ver < 2019 || rc < 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
+                   "Initalization of plugin failed. Plugin is incompatible with this XMA version\n");
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(dec_session);
+        return NULL;
+    }
 
     // Allocate the private data
     dec_session->base.plugin_data =
-        calloc(g_xma_singleton->decodercfg[dec_handle].plugin_data_size, sizeof(uint8_t));
+        calloc(dec_session->decoder_plugin->plugin_data_size, sizeof(uint8_t));
 
-    // Call the plugins initialization function with this session data
+    dec_session->base.session_id = g_xma_singleton->num_decoders + 1;
+    dec_session->base.session_signature = (void*)(((uint64_t)dec_session->base.hw_session.kernel_info) | ((uint64_t)dec_session->base.hw_session.dev_handle));
+    xma_logmsg(XMA_INFO_LOG, XMA_DECODER_MOD,
+                "XMA session channel_id: %d; decoder_id: %d\n", dec_session->base.channel_id, dec_session->base.session_id);
+
     if (dec_session->decoder_plugin->init(dec_session)) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
+                   "Initalization of plugin failed\n");
+        //Release singleton lock
+        g_xma_singleton->locked = false;
         free(dec_session->base.plugin_data);
         free(dec_session);
         return NULL;
     }
+    dec_session->base.hw_session.kernel_info->in_use = true;
+    g_xma_singleton->num_decoders = dec_session->base.session_id;
+
+    //Release singleton lock
+    g_xma_singleton->locked = false;
 
     return dec_session;
 }
@@ -189,6 +205,31 @@ xma_dec_session_destroy(XmaDecoderSession *session)
     int32_t rc;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_DECODER_MOD, "%s()\n", __func__);
+    bool expected = false;
+    bool desired = true;
+    while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //Singleton lock acquired
+
+    if (session == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
+                   "Session is already released\n");
+
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+
+        return XMA_ERROR;
+    }
+    if (session->decoder_plugin == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
+                   "Session is corrupted\n");
+
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+
+        return XMA_ERROR;
+    }
     rc  = session->decoder_plugin->close(session);
     if (rc != 0)
         xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
@@ -197,16 +238,28 @@ xma_dec_session_destroy(XmaDecoderSession *session)
     // Clean up the private data
     free(session->base.plugin_data);
 
-    /* free kernel/kernel-session */
+    /* Remove xma_res stuff free kernel/kernel-session *--/
     rc = xma_res_free_kernel(g_xma_singleton->shm_res_cfg,
                              session->base.kern_res);
     if (rc)
         xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
                    "Error freeing kernel session. Return code %d\n", rc);
 
+    */
     // Free the session
-    // TODO: (should also free the Hw sessions)
+    session->base.plugin_data = NULL;
+    session->base.stats = NULL;
+    session->decoder_plugin = NULL;
+    session->base.hw_session.dev_handle = NULL;
+    session->base.hw_session.kernel_info = NULL;
+    //do not change kernel in_use as it maybe in use by another plugin
+    session->base.hw_session.dev_index = -1;
+    session->base.session_signature = NULL;
     free(session);
+    session = NULL;
+
+    //Release singleton lock
+    g_xma_singleton->locked = false;
 
     return XMA_SUCCESS;
 }

@@ -36,6 +36,7 @@
 #include "core/pcie/common/sensor.h"
 #include "core/pcie/linux/scan.h"
 #include "xclbin.h"
+#include "core/common/xrt_profiling.h"
 #include <version.h>
 
 #include <chrono>
@@ -382,10 +383,11 @@ public:
         std::vector<char> buf, temp_buf;
         std::vector<std::string> mm_buf, stream_stat;
         uint64_t memoryUsage, boCount;
-	auto dev = pcidev::get_dev(m_idx);
+        auto dev = pcidev::get_dev(m_idx);
 
         dev->sysfs_get("icap", "mem_topology", errmsg, buf);
         dev->sysfs_get("", "memstat_raw", errmsg, mm_buf);
+        dev->sysfs_get("xmc", "temp_by_mem_topology", errmsg, temp_buf);
 
         const mem_topology *map = (mem_topology *)buf.data();
         const uint32_t *temp = (uint32_t *)temp_buf.data();
@@ -482,7 +484,7 @@ public:
     {
         std::stringstream ss;
         std::string errmsg;
-        std::vector<char> buf;
+        std::vector<char> buf, temp_buf;
         std::vector<std::string> mm_buf;
 
         ss << std::left << std::setw(48) << "Mem Topology"
@@ -494,12 +496,14 @@ public:
             return;
         }
         pcidev::get_dev(m_idx)->sysfs_get("icap", "mem_topology", errmsg, buf);
-
         if (!errmsg.empty()) {
             ss << errmsg << std::endl;
             lines.push_back(ss.str());
             return;
         }
+
+        pcidev::get_dev(m_idx)->sysfs_get("xmc", "temp_by_mem_topology", errmsg, temp_buf);
+        const uint32_t *temp = (uint32_t *)temp_buf.data();
 
         const mem_topology *map = (mem_topology *)buf.data();
         unsigned numDDR = 0;
@@ -550,10 +554,9 @@ public:
             }
 
             ss << std::left << std::setw(12) << str;
-            if (i < sizeof (m_devinfo.mDimmTemp) / sizeof (m_devinfo.mDimmTemp[0]) &&
-                m_devinfo.mDimmTemp[i] != XCL_INVALID_SENSOR_VAL &&
-                m_devinfo.mDimmTemp[i] != XCL_NO_SENSOR_DEV_S) {
-                ss << std::setw(12) << std::to_string(m_devinfo.mDimmTemp[i]) + " C";
+
+            if (!temp_buf.empty()) {
+                ss << std::setw(12) << std::to_string(temp[i]) + " C";
             } else {
                 ss << std::setw(12) << "Not Supp";
             }
@@ -674,7 +677,7 @@ public:
         sensor_tree::put( "board.physical.electrical.mgt_vtt.voltage",           m_devinfo.mMgtVtt );
         sensor_tree::put( "board.physical.electrical.vccint.voltage",            m_devinfo.mVccIntVol );
         {
-            unsigned cur = 0;
+            unsigned short cur = 0;
             std::string errmsg;
             pcidev::get_dev(m_idx)->sysfs_get("xmc", "xmc_vccint_curr", errmsg, cur);
             sensor_tree::put( "board.physical.electrical.vccint.current",            cur);
@@ -782,7 +785,7 @@ public:
              << std::setw(16) << sensor_tree::get( "board.info.dma_threads", -1 )
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.mig_calibrated", "N/A" );
         switch(sensor_tree::get( "board.info.p2p_enabled", -1)) {
-        case -1:
+        case ENXIO:
                  ostr << std::setw(16) << "N/A" << std::endl;
              break;
         case 0:
@@ -791,7 +794,7 @@ public:
         case 1:
                  ostr << std::setw(16) << "true" << std::endl;
              break;
-        case 2:
+        case EBUSY:
                  ostr << std::setw(16) << "no iomem" << std::endl;
              break;
         }
@@ -835,7 +838,7 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.1v2_btm.voltage" ) << std::endl;
         ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "DNA" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.voltage" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.current" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned>( "board.physical.electrical.vccint.current" )
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.dna", "N/A" ) << std::endl;
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
@@ -1400,15 +1403,20 @@ public:
 
     int reset(xclResetKind kind);
     int setP2p(bool enable, bool force);
-    int testP2p();
-    int testM2m();
+    int testP2p(void);
+    int testM2m(void);
 
 private:
     // Run a test case as <exe> <xclbin> [-d index] on this device and collect
     // all output from the run into "output"
     // Note: exe should assume index to be 0 without -d
-    int runTestCase(const std::string& exe, const std::string& xclbin,
-        std::string& output);
+    int runTestCase(const std::string& exe, const std::string& xclbin, std::string& output);
+
+    int pcieLinkTest(void);
+    int verifyKernelTest(void);
+    int bandwidthKernelTest(void);
+    // testFunc must return 0 for success, 1 for warning, and < 0 for error
+    int runOneTest(std::string testName, std::function<int(void)> testFunc);
 };
 
 void printHelp(const std::string& exe);

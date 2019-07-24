@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,12 +16,14 @@
 
 #include "xocl_profile.h"
 #include "ocl_profiler.h"
+#include "xdp/profile/core/rt_profile.h"
 #include "xdp/profile/config.h"
 #include "xdp/profile/device/trace.h"
 #include "xrt/device/hal.h"
 #include "xclbin.h"
 #include <sys/mman.h>
 #include <regex>
+
 
 namespace xdp { namespace xoclp {
 
@@ -427,6 +429,7 @@ namespace device {
 data*
 get_data(key k);
 
+
 void
 init(key k)
 {
@@ -437,7 +440,23 @@ init(key k)
   for (int i=0; i < XCL_PERF_MON_TOTAL_PROFILE; ++i)
     data->mLastTraceTrainingTime[i] = nowTime;
 }
-  
+
+DeviceIntf* get_device_interface(key k)
+{
+  if(OCLProfiler::Instance()->getPlugin()->getFlowMode() != xdp::RTUtil::DEVICE)
+    return nullptr;
+
+  auto  device = k;
+  auto& device_data = OCLProfiler::Instance()->DeviceData;
+
+  auto itr = device_data.find(device);
+  if (itr == device_data.end()) {
+    itr = device_data.emplace(k,data()).first;
+  }
+  return  &(itr->second.mDeviceIntf);
+}
+
+#if 0  
 cl_int
 setProfileNumSlots(key k, xclPerfMonType type, unsigned numSlots)
 {
@@ -445,30 +464,45 @@ setProfileNumSlots(key k, xclPerfMonType type, unsigned numSlots)
   device->get_xrt_device()->setProfilingSlots(type, numSlots);
   return CL_SUCCESS;
 }
+#endif
 
 unsigned
 getProfileNumSlots(key k, xclPerfMonType type)
 {
   auto device = k;
+  auto device_interface = get_device_interface(device);
+  if(device_interface) {
+    return device_interface->getNumMonitors(type);
+  }
   return device->get_xrt_device()->getProfilingSlots(type).get();
 }
 
 cl_int
-getProfileSlotName(key k, xclPerfMonType type, unsigned slotnum,
+getProfileSlotName(key k, xclPerfMonType type, unsigned index,
 		           std::string& slotName)
 {
   auto device = k;
   char name[128];
-  device->get_xrt_device()->getProfilingSlotName(type, slotnum, name, 128);
+
+  auto device_interface = get_device_interface(device);
+  if(device_interface) {
+    device_interface->getMonitorName(type, index, name, 128);
+  } else {
+    device->get_xrt_device()->getProfilingSlotName(type, index, name, 128);
+  }
   slotName = name;
   return CL_SUCCESS;
 }
 
 unsigned
-getProfileSlotProperties(key k, xclPerfMonType type, unsigned slotnum)
+getProfileSlotProperties(key k, xclPerfMonType type, unsigned index)
 {
   auto device = k;
-  return device->get_xrt_device()->getProfilingSlotProperties(type, slotnum).get();
+  auto device_interface = get_device_interface(device);
+  if(device_interface) {
+    return device_interface->getMonitorProperties(type, index);
+  }
+  return device->get_xrt_device()->getProfilingSlotProperties(type, index).get();
 }
 
 cl_int 
@@ -674,7 +708,10 @@ size_t
 getTimestamp(key k)
 {
   auto device = k;
-  return device->get_xrt_device()->getDeviceTime().get();
+  if(OCLProfiler::Instance()->getPlugin()->getFlowMode() == xdp::RTUtil::HW_EM) {
+      return device->get_xrt_device()->getDeviceTime().get();
+  }
+  return 0;
 }
 
 double 
@@ -721,6 +758,7 @@ startCounters(key k, xclPerfMonType type)
     OCLProfiler::Instance()->getProfileManager()->setDeviceClockFreqMHz( deviceClockMHz );
 
   xdevice->startCounters(type);
+
   data->mSampleIntervalMsec =
     OCLProfiler::Instance()->getProfileManager()->getSampleIntervalMsec();
 
@@ -868,6 +906,7 @@ logCounters(key k, xclPerfMonType type, bool firstReadAfterProgram, bool forceRe
   return CL_SUCCESS;
 }
 
+#if 0
 cl_int
 debugReadIPStatus(key k, xclDebugReadType type, void* aDebugResults)
 {
@@ -878,6 +917,7 @@ debugReadIPStatus(key k, xclDebugReadType type, void* aDebugResults)
   xdevice->debugReadIPStatus(type, aDebugResults);
   return CL_SUCCESS;
 }
+#endif
 
 template <typename SectionType>
 static SectionType*

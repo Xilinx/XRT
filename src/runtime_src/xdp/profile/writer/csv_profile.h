@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -23,14 +23,16 @@ namespace xdp {
 
     class CSVProfileWriter: public ProfileWriterI {
 
-	public:
-      CSVProfileWriter(const std::string& summaryFileName, const std::string& platformName, XDPPluginI* Plugin);
+    public:
+      CSVProfileWriter(XDPPluginI* Plugin,
+                       const std::string& platformName,
+                       const std::string& summaryFileName);
       ~CSVProfileWriter();
 
       virtual void writeSummary(RTProfile* profile);
 
-	protected:
-     void writeDocumentHeader(std::ofstream& ofs, const std::string& docName) override;
+    protected:
+      void writeDocumentHeader(std::ofstream& ofs, const std::string& docName) override;
       void writeDocumentSubHeader(std::ofstream& ofs, RTProfile* profile) override;
       void writeTableHeader(std::ofstream& ofs, const std::string& caption,
           const std::vector<std::string>& columnLabels) override;
@@ -46,8 +48,7 @@ namespace xdp {
       const char* rowEnd() override { return ""; }
       const char* newLine() override { return "\n"; }
 
-	private:
-      std::string SummaryFileName;
+    private:
       std::string PlatformName;
       const std::string FileExtension = ".csv";
     };

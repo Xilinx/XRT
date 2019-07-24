@@ -3,6 +3,7 @@
  *
  * Authors:
  *    Soren Soe <soren.soe@xilinx.com>
+ *    Jan Stephan <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -89,6 +90,14 @@
 # define SCHED_PRINTF(format, ...) DRM_INFO(format, ##__VA_ARGS__)
 # define SCHED_DEBUG_PACKET(packet, size)
 #endif
+
+#define csr_read32(base, r_off)			\
+	ioread32((base) + (r_off) - ERT_CSR_ADDR)
+#define csr_write32(val, base, r_off)		\
+	iowrite32((val), (base) + (r_off) - ERT_CSR_ADDR)
+
+/* Highest bit in ip_reference indicate if it's exclusively reserved. */
+#define	IP_EXCL_RSVD_MASK	(~(1 << 31))
 
 /* constants */
 static const unsigned int no_index = -1;
@@ -412,11 +421,13 @@ static enum ert_cmd_state
 cmd_update_state(struct xocl_cmd *xcmd)
 {
 	if (xcmd->state != ERT_CMD_STATE_RUNNING && xcmd->client->abort) {
-		userpf_info(xcmd->xdev, "aborting stale client cmd(%lu)", xcmd->uid);
+		userpf_info(xcmd->xdev, "aborting stale client pid(%d) cmd(%lu)"
+			    ,pid_nr(xcmd->client->pid),xcmd->uid);
 		cmd_set_state(xcmd, ERT_CMD_STATE_ABORT);
 	}
 	if (exec_is_flush(xcmd->exec)) {
-		userpf_info(xcmd->xdev, "aborting stale exec cmd(%lu)", xcmd->uid);
+		userpf_info(xcmd->xdev, "aborting stale exec pid (%d) cmd(%lu)"
+			    ,pid_nr(xcmd->client->pid),xcmd->uid);
 		cmd_set_state(xcmd, ERT_CMD_STATE_ABORT);
 	}
 	return xcmd->state;
@@ -429,7 +440,7 @@ static inline void
 cmd_release_gem_object_reference(struct xocl_cmd *xcmd)
 {
 	if (xcmd->bo)
-		drm_gem_object_unreference_unlocked(&xcmd->bo->base);
+		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&xcmd->bo->base);
 }
 
 /*
@@ -473,7 +484,7 @@ cmd_chain_dependencies(struct xocl_cmd *xcmd)
 		struct xocl_cmd *chain_to = dbo->metadata.active;
 		// release reference created in ioctl call when dependency was looked up
 		// see comments in xocl_ioctl.c:xocl_execbuf_ioctl()
-		drm_gem_object_unreference_unlocked(&dbo->base);
+		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&dbo->base);
 		xcmd->deps[didx] = NULL;
 		if (!chain_to) { // command may have completed already
 			--xcmd->wait_count;
@@ -675,7 +686,7 @@ struct xocl_cu {
 	u32                control;
 	void __iomem       *base;
 	u32                addr;
-	u32                polladdr;
+	void __iomem       *polladdr;
 	u32                ap_check;
 
 	u32                ctrlreg;
@@ -686,7 +697,7 @@ struct xocl_cu {
 /*
  */
 void
-cu_reset(struct xocl_cu *xcu, unsigned int idx, void __iomem *base, u32 addr, u32 polladdr)
+cu_reset(struct xocl_cu *xcu, unsigned int idx, void __iomem *base, u32 addr, void *polladdr)
 {
 	xcu->idx = idx;
 	xcu->control = (addr & 0xFF);
@@ -697,7 +708,7 @@ cu_reset(struct xocl_cu *xcu, unsigned int idx, void __iomem *base, u32 addr, u3
 	xcu->ctrlreg = 0;
 	xcu->done_cnt = 0;
 	xcu->run_cnt = 0;
-	userpf_info(xcu->xdev, "configured cu(%d) base@0x%x poll@0x%x control(%d)\n",
+	userpf_info(xcu->xdev, "configured cu(%d) base@0x%x poll@0x%p control(%d)\n",
 		    xcu->idx, xcu->addr, xcu->polladdr, xcu->control);
 }
 
@@ -766,8 +777,8 @@ cu_continue(struct xocl_cu *xcu)
 
 	// in ert_poll mode acknowlegde done to ERT
 	if (xcu->polladdr && xcu->run_cnt) {
-		SCHED_DEBUGF("+ @0x%x\n", xcu->polladdr);
-		iowrite32(AP_CONTINUE, xcu->base + xcu->polladdr);
+		SCHED_DEBUGF("+ @0x%p\n", xcu->polladdr);
+		iowrite32(AP_CONTINUE, xcu->polladdr);
 	}
 
 	SCHED_DEBUGF("<- %s\n", __func__);
@@ -929,8 +940,8 @@ cu_start(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
 
 	// in ert poll mode request ERT to poll CU
 	if (xcu->polladdr) {
-		SCHED_DEBUGF("+ @0x%x\n", xcu->polladdr);
-		iowrite32(AP_START, xcu->base + xcu->polladdr);
+		SCHED_DEBUGF("+ @0x%p\n", xcu->polladdr);
+		iowrite32(AP_START, xcu->polladdr);
 	}
 
 	// add cmd to end of running queue
@@ -948,8 +959,8 @@ cu_start(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
  * sruct xocl_ert: Represents embedded scheduler in ert mode
  */
 struct xocl_ert {
-	void __iomem *base;
-	u32	     cq_addr;
+	void __iomem *csr_base;
+	void __iomem *cq_base;
 	unsigned int uid;
 
 	unsigned int slot_size;
@@ -959,17 +970,17 @@ struct xocl_ert {
 /*
  */
 struct xocl_ert *
-ert_create(void __iomem *base, u32 cq_addr)
+ert_create(void __iomem *csr_base, void __iomem *cq_base)
 {
 	struct xocl_ert *xert = kmalloc(sizeof(struct xocl_ert), GFP_KERNEL);
 	static unsigned int uid;
 
-	xert->base = base;
-	xert->cq_addr = cq_addr;
+	xert->csr_base = csr_base;
+	xert->cq_base = cq_base;
 	xert->uid = uid++;
 	xert->slot_size = 0;
 	xert->cq_intr = false;
-	SCHED_DEBUGF("%s(%d,0x%x)\n", __func__, xert->uid, xert->cq_addr);
+	SCHED_DEBUGF("%s(%d,0x%p)\n", __func__, xert->uid, xert->cq_base);
 	return xert;
 }
 
@@ -1002,7 +1013,7 @@ ert_cfg(struct xocl_ert *xert, unsigned int slot_size, bool cq_intr)
 static bool
 ert_start_cmd(struct xocl_ert *xert, struct xocl_cmd *xcmd)
 {
-	u32 slot_addr = xert->cq_addr + xcmd->slot_idx * xert->slot_size;
+	u32 slot_addr = xcmd->slot_idx * xert->slot_size;
 	struct ert_packet *ecmd = cmd_packet(xcmd);
 
 	SCHED_DEBUG_PACKET(ecmd, cmd_packet_size(xcmd));
@@ -1011,10 +1022,10 @@ ert_start_cmd(struct xocl_ert *xert, struct xocl_cmd *xcmd)
 
 	// write packet minus header
 	SCHED_DEBUGF("++ slot_idx=%d, slot_addr=0x%x\n", xcmd->slot_idx, slot_addr);
-	memcpy_toio(xert->base + slot_addr + 4, ecmd->data, (cmd_packet_size(xcmd) - 1) * sizeof(u32));
+	memcpy_toio(xert->cq_base + slot_addr + 4, ecmd->data, (cmd_packet_size(xcmd) - 1) * sizeof(u32));
 
 	// write header
-	iowrite32(ecmd->header, xert->base + slot_addr);
+	iowrite32(ecmd->header, xert->cq_base + slot_addr);
 
 	// trigger interrupt to embedded scheduler if feature is enabled
 	if (xert->cq_intr) {
@@ -1023,7 +1034,7 @@ ert_start_cmd(struct xocl_ert *xert, struct xocl_cmd *xcmd)
 
 		SCHED_DEBUGF("++ mb_submit writes slot mask 0x%x to CQ_INT register at addr 0x%x\n",
 			     mask, cq_int_addr);
-		iowrite32(mask, xert->base + cq_int_addr);
+		csr_write32(mask, xert->csr_base, cq_int_addr);
 	}
 	SCHED_DEBUGF("<- %s returns true\n", __func__);
 	return true;
@@ -1034,9 +1045,9 @@ ert_start_cmd(struct xocl_ert *xert, struct xocl_cmd *xcmd)
 static void
 ert_read_custat(struct xocl_ert *xert, unsigned int num_cus, u32 *cu_usage, struct xocl_cmd *xcmd)
 {
-	u32 slot_addr = xert->cq_addr + xcmd->slot_idx*xert->slot_size;
+	u32 slot_addr = xcmd->slot_idx*xert->slot_size;
 
-	memcpy_fromio(cu_usage, xert->base + slot_addr + 4, num_cus * sizeof(u32));
+	memcpy_fromio(cu_usage, xert->cq_base + slot_addr + 4, num_cus * sizeof(u32));
 }
 
 /**
@@ -1095,9 +1106,12 @@ struct exec_core {
 	struct mutex		   exec_lock;
 
 	void __iomem		   *base;
+	void __iomem		   *csr_base;
+	void __iomem		   *cq_base;
 	u32			   intr_base;
 	u32			   intr_num;
 	char			   ert_cfg_priv;
+	bool			   needs_reset;
 
 	wait_queue_head_t	   poll_wait_queue;
 
@@ -1137,6 +1151,12 @@ struct exec_core {
 	struct exec_ops		   *ops;
 
 	unsigned int		   uid;
+
+	/*
+	 * For each CU, ip_reference contains either number of shared users
+	 * when the MSB is not set, or the PID of the process that exclusively
+	 * reserved it when MSB is set.
+	 */
 	unsigned int		   ip_reference[MAX_CUS];
 };
 
@@ -1279,10 +1299,10 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	// Create CUs for regular CUs
 	for (cuidx = 0; cuidx < exec->num_cus; ++cuidx) {
 		struct xocl_cu *xcu = exec->cus[cuidx];
-		u32 polladdr = (ert_poll)
+		void *polladdr = (ert_poll)
 			// cuidx+1 to reserve slot 0 for ctrl => max 127 CUs in ert_poll mode
-			? ERT_CQ_BASE_ADDR + (cuidx+1) * cfg->slot_size
-			: 0;
+			? (char *)exec->cq_base + (cuidx+1) * cfg->slot_size
+			: NULL;
 
 		if (!xcu)
 			xcu = exec->cus[cuidx] = cu_create(xdev);
@@ -1296,9 +1316,9 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		for (addr = cdma; addr < cdma+4; ++addr) { /* 4 is from xclfeatures.h */
 			if (*addr) {
 				struct xocl_cu *xcu = exec->cus[cuidx];
-				u32 polladdr = (ert_poll)
-					? ERT_CQ_BASE_ADDR + (cuidx+1) * cfg->slot_size
-					: 0;
+				void *polladdr = (ert_poll)
+					? (char *)exec->cq_base + (cuidx+1) *
+					cfg->slot_size : 0;
 
 				if (!xcu)
 					xcu = exec->cus[cuidx] = cu_create(xdev);
@@ -1314,7 +1334,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	}
 
 	if ((ert_full || ert_poll) && !exec->ert)
-		exec->ert = ert_create(exec->base, ERT_CQ_BASE_ADDR);
+		exec->ert = ert_create(exec->csr_base, exec->cq_base);
 
 	if (ert_poll) {
 		userpf_info(xdev, "configuring dataflow mode with ert polling\n");
@@ -1510,7 +1530,7 @@ exec_create(struct platform_device *pdev, struct xocl_scheduler *xs)
 {
 	struct exec_core *exec = devm_kzalloc(&pdev->dev, sizeof(struct exec_core), GFP_KERNEL);
 	struct xocl_dev *xdev = xocl_get_xdev(pdev);
-	struct resource *res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
+	struct resource *res;
 	static unsigned int count;
 	unsigned int i;
 
@@ -1519,11 +1539,47 @@ exec_create(struct platform_device *pdev, struct xocl_scheduler *xs)
 
 	mutex_init(&exec->exec_lock);
 	exec->base = xdev->core.bar_addr;
+	if (XOCL_GET_SUBDEV_PRIV(&pdev->dev))
+		exec->ert_cfg_priv = *(char *)XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+	else
+		xocl_info(&pdev->dev, "did not get private data");
 
-	exec->intr_base = res->start;
-	exec->intr_num = res->end - res->start + 1;
+	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
+	if (res) {
+		exec->intr_base = res->start;
+		exec->intr_num = res->end - res->start + 1;
+	} else
+		xocl_info(&pdev->dev, "did not get IRQ resource");
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		xocl_info(&pdev->dev, "did not get CSR resource");
+	} else {
+		exec->csr_base = ioremap_nocache(res->start,
+			res->end - res->start + 1);
+		if (!exec->csr_base) {
+			xocl_err(&pdev->dev, "map CSR resource failed");
+			return NULL;
+		}
+	}
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	if (!res) {
+		xocl_info(&pdev->dev, "did not get CQ resource");
+	} else {
+		exec->cq_base = ioremap_nocache(res->start,
+			res->end - res->start + 1);
+		if (!exec->cq_base) {
+			if (exec->csr_base)
+				iounmap(exec->csr_base);
+			xocl_err(&pdev->dev, "map CQ resource failed");
+			return NULL;
+		}
+	}
+
 	exec->pdev = pdev;
-	exec->ert_cfg_priv = *(char *)XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+	if (XOCL_GET_SUBDEV_PRIV(&pdev->dev))
+		exec->ert_cfg_priv = *(char *)XOCL_GET_SUBDEV_PRIV(&pdev->dev);
 
 	init_waitqueue_head(&exec->poll_wait_queue);
 	exec->scheduler = xs;
@@ -1554,6 +1610,11 @@ exec_destroy(struct exec_core *exec)
 		cu_destroy(exec->cus[idx]);
 	if (exec->ert)
 		ert_destroy(exec->ert);
+	if (exec->csr_base) 
+		iounmap(exec->csr_base);
+	if (exec->cq_base)
+		iounmap(exec->cq_base);
+
 	devm_kfree(&exec->pdev->dev, exec);
 }
 
@@ -1733,6 +1794,14 @@ exec_mark_cmd_complete(struct exec_core *exec, struct xocl_cmd *xcmd)
 		scheduler_decr_poll(exec->scheduler);
 
 	exec_release_slot(exec, xcmd);
+
+	// This notification is problematic because it occurs before internal
+	// bookkeeping (outstanding cmds) is updated. Client could trigger exit
+	// at notification calling destroy_client which sees outstanding
+	// commands.  This should however be no big deal as destroy_client
+	// will simply wait for the commands to drain through complete_to_free.
+	// Decrementing the client outstanding count here is not simple as
+	// count management is currently consolidated for many paths in cmd_free.
 	exec_notify_host(exec);
 
 	// Deactivate command and trigger chain of waiting commands
@@ -1941,7 +2010,7 @@ exec_ert_clear_csr(struct exec_core *exec)
 
 	for (idx = 0; idx < 4; ++idx) {
 		u32 csr_addr = ERT_STATUS_REGISTER_ADDR + (idx<<2);
-		u32 val = ioread32(exec->base + csr_addr);
+		u32 val = csr_read32(exec->csr_base, csr_addr);
 
 		if (val)
 			userpf_info(exec_get_xdev(exec),
@@ -1985,7 +2054,7 @@ exec_ert_query_csr(struct exec_core *exec, struct xocl_cmd *xcmd, unsigned int m
 	    || (mask_idx == 3 && atomic_xchg(&exec->sr3, 0))) {
 		u32 csr_addr = ERT_STATUS_REGISTER_ADDR + (mask_idx<<2);
 
-		mask = ioread32(exec->base + csr_addr);
+		mask = csr_read32(exec->csr_base, csr_addr);
 		SCHED_DEBUGF("++ %s csr_addr=0x%x mask=0x%x\n", __func__, csr_addr, mask);
 	}
 
@@ -2409,9 +2478,14 @@ scheduler_complete_to_free(struct xocl_scheduler *xs, struct xocl_cmd *xcmd)
 static void
 scheduler_error_to_free(struct xocl_scheduler *xs, struct xocl_cmd *xcmd)
 {
+	struct exec_core *exec = cmd_exec(xcmd);
 	SCHED_DEBUGF("-> %s(%lu)\n", __func__, xcmd->uid);
-	exec_notify_host(cmd_exec(xcmd));
+
+	// book keeping before notification.  client could potentially exit
+	// immediately after notification otherwise leaving outstanding cmds
 	scheduler_complete_to_free(xs, xcmd);
+	exec_notify_host(exec);
+
 	SCHED_DEBUGF("<- %s\n", __func__);
 }
 
@@ -2770,7 +2844,7 @@ create_client(struct platform_device *pdev, void **priv)
 	mutex_lock(&xdev->dev_lock);
 
 	if (!xdev->offline) {
-		client->pid = task_tgid(current);
+		client->pid = get_pid(task_pid(current));
 		client->abort = false;
 		atomic_set(&client->trigger, 0);
 		atomic_set(&client->outstanding_execs, 0);
@@ -2792,6 +2866,66 @@ create_client(struct platform_device *pdev, void **priv)
 	return ret;
 }
 
+static inline bool ip_excl_held(u32 ip_ref)
+{
+	return ((ip_ref & ~IP_EXCL_RSVD_MASK) != 0);
+}
+
+static inline pid_t ip_excl_holder(struct exec_core *exec, u32 ip_idx)
+{
+	u32 ref = exec->ip_reference[ip_idx];
+
+	if (ip_excl_held(ref))
+		return (ref & IP_EXCL_RSVD_MASK);
+	return 0;
+}
+
+static int add_ip_ref(struct xocl_dev *xdev, struct exec_core *exec,
+	u32 ip_idx, pid_t pid, bool shared)
+{
+	u32 ref = exec->ip_reference[ip_idx];
+
+	BUG_ON(ip_idx >= MAX_CUS);
+	BUG_ON(!mutex_is_locked(&xdev->dev_lock));
+
+	if (ip_excl_held(ref)) {
+		userpf_err(xdev, "CU(%d) is exclusively held by process %d",
+			ip_idx, ip_excl_holder(exec, ip_idx));
+		return -EBUSY;
+	}
+	if (!shared && ref) {
+		userpf_err(xdev, "CU(%d) has %d shared users", ip_idx, ref);
+		return -EBUSY;
+	}
+
+	if (shared) {
+		BUG_ON(ref >= IP_EXCL_RSVD_MASK);
+		exec->ip_reference[ip_idx]++;
+	} else {
+		exec->ip_reference[ip_idx] = ~IP_EXCL_RSVD_MASK | pid;
+	}
+	return 0;
+}
+
+static int rem_ip_ref(struct xocl_dev *xdev, struct exec_core *exec, u32 ip_idx)
+{
+	u32 ref = exec->ip_reference[ip_idx];
+
+	BUG_ON(ip_idx >= MAX_CUS);
+	BUG_ON(!mutex_is_locked(&xdev->dev_lock));
+
+	if (ref == 0) {
+		userpf_err(xdev, "CU(%d) has never been reserved", ip_idx);
+		return -EINVAL;
+	}
+
+	if (ip_excl_held(ref))
+		exec->ip_reference[ip_idx] = 0;
+	else
+		exec->ip_reference[ip_idx]--;
+	return 0;
+}
+
 static void destroy_client(struct platform_device *pdev, void **priv)
 {
 	struct client_ctx *client = (struct client_ctx *)(*priv);
@@ -2801,7 +2935,7 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 	unsigned int	outstanding;
 	unsigned int	timeout_loops = 20;
 	unsigned int	loops = 0;
-	int pid;
+	int pid = pid_nr(client->pid);
 	unsigned int bit;
 	struct ip_layout *layout;
 	xuid_t *xclbin_id;
@@ -2813,18 +2947,18 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 	while (outstanding) {
 		unsigned int new;
 
-		userpf_info(xdev, "waiting for %d outstanding execs to finish",
-			outstanding);
+		userpf_info(xdev, "pid(%d) waiting for %d outstanding execs to finish",
+			    pid,outstanding);
 		msleep(500);
 		new = atomic_read(&client->outstanding_execs);
 		loops = (new == outstanding ? (loops + 1) : 0);
 		if (loops == timeout_loops) {
 			userpf_err(xdev,
-				   "Giving up with %d outstanding execs.\n",
-				   outstanding);
+				   "pid(%d) gives up with %d outstanding execs.\n",
+				   pid,outstanding);
 			userpf_err(xdev,
 				   "Please reset device with 'xbutil reset'\n");
-			xdev->needs_reset = true;
+			exec->needs_reset = true;
 			// reset the scheduler loop
 			xs->reset = true;
 			break;
@@ -2833,8 +2967,8 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 	}
 
 	mutex_lock(&xdev->dev_lock);
-
-	pid = pid_nr(client->pid);
+	put_pid(client->pid);
+	client->pid = NULL;
 
 	list_del(&client->link);
 	DRM_INFO("client exits pid(%d)\n", pid);
@@ -2843,7 +2977,7 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 		goto done;
 
 	/*
-	 * This happens when application exists without formally releasing the
+	 * This happens when application exits without formally releasing the
 	 * contexts on CUs. Give up our contexts on CUs and our lock on xclbin.
 	 * Note, that implicit CUs (such as CDMA) do not add to ip_reference.
 	 */
@@ -2851,21 +2985,19 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 	layout = XOCL_IP_LAYOUT(xdev);
 	xclbin_id = XOCL_XCLBIN_ID(xdev);
 
+	client_release_implicit_cus(exec, client);
+	client->virt_cu_ref = 0;
+
 	bit = layout
 	  ? find_first_bit(client->cu_bitmap, layout->m_count)
 	  : MAX_CUS;
-
 	while (layout && (bit < layout->m_count)) {
-		if (exec->ip_reference[bit]) {
+		if (rem_ip_ref(xdev, exec, bit) == 0) {
 			userpf_info(xdev, "CTX reclaim (%pUb, %d, %u)",
 				xclbin_id, pid, bit);
-			exec->ip_reference[bit]--;
 		}
 		bit = find_next_bit(client->cu_bitmap, layout->m_count, bit + 1);
 	}
-
-	client->virt_cu_ref = 0;
-	client_release_implicit_cus(exec, client);
 	bitmap_zero(client->cu_bitmap, MAX_CUS);
 
 	(void) xocl_icap_unlock_bitstream(xdev, xclbin_id, pid);
@@ -2895,16 +3027,19 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 {
 	struct drm_xocl_ctx *args = data;
 	int ret = 0;
-	int pid = pid_nr(task_tgid(current));
+	pid_t pid = pid_nr(task_tgid(current));
 	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
 	struct exec_core *exec = platform_get_drvdata(pdev);
 	xuid_t *xclbin_id;
 	u32 cu_idx = args->cu_index;
+	bool shared;
 
 	mutex_lock(&xdev->dev_lock);
 
+	/* Sanity check arguments for add/rem CTX */
 	xclbin_id = XOCL_XCLBIN_ID(xdev);
 	if (!xclbin_id || !uuid_equal(xclbin_id, &args->xclbin_id)) {
+		userpf_err(xdev, "try to add/rem CTX on wrong xclbin");
 		ret = -EBUSY;
 		goto out;
 	}
@@ -2917,13 +3052,13 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 		goto out;
 	}
 
-	if (cu_idx != XOCL_CTX_VIRT_CU_INDEX
-	    && !exec_valid_cu(exec,cu_idx)) {
-		userpf_err(xdev, "cuidx(%d) cannot be reserved\n",cu_idx);
+	if (cu_idx != XOCL_CTX_VIRT_CU_INDEX && !exec_valid_cu(exec,cu_idx)) {
+		userpf_err(xdev, "invalid CU(%d)",cu_idx);
 		ret = -EINVAL;
 		goto out;
 	}
 
+	/* Handle CTX removal */
 	if (args->op == XOCL_CTX_OP_FREE_CTX) {
 		if (cu_idx == XOCL_CTX_VIRT_CU_INDEX) {
 			if (client->virt_cu_ref == 0) {
@@ -2939,7 +3074,7 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 			if (ret) // Try to release unreserved CU
 				goto out;
 			--client->num_cus;
-			--exec->ip_reference[cu_idx];
+			(void) rem_ip_ref(xdev, exec, cu_idx);
 		}
 
 		// We just gave up the last context, unlock the xclbin
@@ -2949,34 +3084,46 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 		goto out;
 	}
 
+	/* Handle CTX add */
 	if (args->op != XOCL_CTX_OP_ALLOC_CTX) {
 		ret = -EINVAL;
 		goto out;
 	}
 
-	if (args->flags != XOCL_CTX_SHARED) {
-		userpf_err(xdev, "only support shared contexts");
-		ret = -EOPNOTSUPP;
-		goto out;
-	}
-
-	if (cu_idx != XOCL_CTX_VIRT_CU_INDEX &&
-		test_and_set_bit(cu_idx, client->cu_bitmap)) {
-		// Context was previously allocated for the same CU,
-		// cannot allocate again. Need to implement per CU ref
-		// counter to make it work.
-		userpf_info(xdev, "CTX already allocated by this process");
+	shared = (args->flags == XOCL_CTX_SHARED);
+	if (!shared && cu_idx == XOCL_CTX_VIRT_CU_INDEX) {
+		userpf_err(xdev,
+			"exclusively reserve virtual CU is not allowed");
 		ret = -EINVAL;
 		goto out;
 	}
+
+	if (cu_idx != XOCL_CTX_VIRT_CU_INDEX) {
+		if (test_and_set_bit(cu_idx, client->cu_bitmap)) {
+			// Context was previously allocated for the same CU,
+			// cannot allocate again. Need to implement per CU ref
+			// counter to make it work.
+			userpf_err(xdev, "CTX already added by this process");
+			ret = -EINVAL;
+			goto out;
+		}
+		if (add_ip_ref(xdev, exec, cu_idx, pid, shared) != 0) {
+			clear_bit(cu_idx, client->cu_bitmap);
+			ret = -EBUSY;
+			goto out;
+		}
+	}
+
 
 	if (CLIENT_NUM_CU_CTX(client) == 0) {
 		// This is the first context on any CU for this process,
 		// lock the xclbin
 		ret = xocl_icap_lock_bitstream(xdev, xclbin_id, pid);
 		if (ret) {
-			if (cu_idx != XOCL_CTX_VIRT_CU_INDEX)
+			if (cu_idx != XOCL_CTX_VIRT_CU_INDEX) {
+				(void) rem_ip_ref(xdev, exec, cu_idx);
 				clear_bit(cu_idx, client->cu_bitmap);
+			}
 			goto out;
 		}
 	}
@@ -2987,7 +3134,6 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 		++client->virt_cu_ref;
 	} else {
 		++client->num_cus;
-		++exec->ip_reference[cu_idx];
 	}
 
 out:
@@ -3017,18 +3163,18 @@ get_bo_paddr(struct xocl_dev *xdev, struct drm_file *filp,
 	xobj = to_xocl_bo(obj);
 	if (!xobj->mm_node) {
 		/* Not a local BO */
-		drm_gem_object_unreference_unlocked(obj);
+		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(obj);
 		return -EADDRNOTAVAIL;
 	}
 
 	if (obj->size <= off || obj->size < off + size) {
 		userpf_err(xdev, "Failed to get paddr for BO 0x%x\n", bo_hdl);
-		drm_gem_object_unreference_unlocked(obj);
+		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(obj);
 		return -EINVAL;
 	}
 
 	*paddrp = xobj->mm_node->start + off;
-	drm_gem_object_unreference_unlocked(obj);
+	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(obj);
 	return 0;
 }
 
@@ -3111,8 +3257,9 @@ client_ioctl_execbuf(struct platform_device *pdev,
 	int ret = 0;
 	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
 	struct drm_device *ddev = filp->minor->dev;
+	struct exec_core *exec = platform_get_drvdata(pdev);
 
-	if (xdev->needs_reset) {
+	if (exec->needs_reset) {
 		userpf_err(xdev, "device needs reset, use 'xbutil reset'");
 		return -EBUSY;
 	}
@@ -3184,8 +3331,9 @@ client_ioctl_execbuf(struct platform_device *pdev,
 
 out:
 	for (--numdeps; numdeps >= 0; numdeps--)
-		drm_gem_object_unreference_unlocked(&deps[numdeps]->base);
-	drm_gem_object_unreference_unlocked(&xobj->base);
+		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&deps[numdeps]->base);
+	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&xobj->base);
+
 	return ret;
 }
 
@@ -3241,8 +3389,8 @@ reset(struct platform_device *pdev)
 {
 	struct exec_core *exec = platform_get_drvdata(pdev);
 
-	exec_stop(exec);   // remove when upstream explicitly calls stop()
 	exec_reset(exec);
+	exec->needs_reset = false;
 	return 0;
 }
 
@@ -3331,6 +3479,40 @@ out:
 
 }
 
+int cu_map_addr(struct platform_device *pdev, u32 cu_idx, void *drm_filp,
+	u32 *addrp)
+{
+	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
+	struct exec_core *exec = platform_get_drvdata(pdev);
+	struct drm_file *filp = drm_filp;
+	struct client_ctx *client = filp->driver_priv;
+	struct xocl_cu *xcu = NULL;
+
+	mutex_lock(&xdev->dev_lock);
+
+	if (cu_idx >= MAX_CUS) {
+		userpf_err(xdev, "cu index (%d) is too big\n", cu_idx);
+		mutex_unlock(&xdev->dev_lock);
+		return -EINVAL;
+	}
+	if (!test_bit(cu_idx, client->cu_bitmap)) {
+		userpf_err(xdev, "cu(%d) isn't reserved\n", cu_idx);
+		mutex_unlock(&xdev->dev_lock);
+		return -EINVAL;
+	}
+	if (ip_excl_holder(exec, cu_idx) == 0) {
+		userpf_err(xdev, "cu(%d) isn't exclusively reserved\n", cu_idx);
+		mutex_unlock(&xdev->dev_lock);
+		return -EINVAL;
+	}
+
+	xcu = exec->cus[cu_idx];
+	BUG_ON(xcu == NULL);
+	*addrp = xcu->addr;
+	mutex_unlock(&xdev->dev_lock);
+	return 0;
+}
+
 struct xocl_mb_scheduler_funcs sche_ops = {
 	.create_client = create_client,
 	.destroy_client = destroy_client,
@@ -3339,6 +3521,7 @@ struct xocl_mb_scheduler_funcs sche_ops = {
 	.stop = stop,
 	.reset = reset,
 	.reconfig = reconfig,
+	.cu_map_addr = cu_map_addr,
 };
 
 /* sysfs */
@@ -3467,7 +3650,6 @@ static int mb_scheduler_probe(struct platform_device *pdev)
 		goto err;
 
 	init_scheduler_thread(&scheduler0);
-	xocl_subdev_register(pdev, XOCL_SUBDEV_MB_SCHEDULER, &sche_ops);
 	platform_set_drvdata(pdev, exec);
 
 	DRM_INFO("command scheduler started\n");
@@ -3508,8 +3690,12 @@ static int mb_scheduler_remove(struct platform_device *pdev)
 	return 0;
 }
 
+struct xocl_drv_private sche_priv = {
+	.ops = &sche_ops,
+};
+
 static struct platform_device_id mb_sche_id_table[] = {
-	{ XOCL_MB_SCHEDULER, 0 },
+	{ XOCL_DEVNAME(XOCL_MB_SCHEDULER), (kernel_ulong_t)&sche_priv },
 	{ },
 };
 

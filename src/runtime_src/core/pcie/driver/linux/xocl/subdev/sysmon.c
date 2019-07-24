@@ -138,7 +138,7 @@ static ssize_t show_hwmon(struct device *dev, struct device_attribute *da,
 static ssize_t show_name(struct device *dev, struct device_attribute *da,
 	char *buf)
 {
-	return sprintf(buf, "%s\n", XCLMGMT_SYSMON_HWMON_NAME);
+	return sprintf(buf, "%s\n", "xclmgmt_sysmon");
 }
 
 static SENSOR_DEVICE_ATTR(temp1_input, 0444, show_hwmon, NULL,
@@ -327,8 +327,6 @@ static int sysmon_probe(struct platform_device *pdev)
 		goto create_sysmon_failed;
 	}
 
-	xocl_subdev_register(pdev, XOCL_SUBDEV_SYSMON, &sysmon_ops);
-
 	return 0;
 
 create_sysmon_failed:
@@ -359,8 +357,12 @@ static int sysmon_remove(struct platform_device *pdev)
 	return 0;
 }
 
+struct xocl_drv_private sysmon_priv = {
+	.ops = &sysmon_ops,
+};
+
 struct platform_device_id sysmon_id_table[] = {
-	{ XOCL_SYSMON, 0 },
+	{ XOCL_DEVNAME(XOCL_SYSMON), (kernel_ulong_t)&sysmon_priv },
 	{ },
 };
 
@@ -368,7 +370,7 @@ static struct platform_driver	sysmon_driver = {
 	.probe		= sysmon_probe,
 	.remove		= sysmon_remove,
 	.driver		= {
-		.name = "xocl_sysmon",
+		.name = XOCL_DEVNAME(XOCL_SYSMON),
 	},
 	.id_table = sysmon_id_table,
 };

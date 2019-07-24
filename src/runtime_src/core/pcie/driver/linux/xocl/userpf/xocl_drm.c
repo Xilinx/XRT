@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
  *
- * Authors:
+ * Authors: Jan Stephan <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -71,8 +71,10 @@ static int xocl_open(struct inode *inode, struct file *filp)
 	priv = filp->private_data;
 	ddev = priv->minor->dev;
 	drm_p = xocl_drvinst_open(ddev);
-	if (!drm_p)
+	if (!drm_p) {
+		drm_release(inode, filp);
 		return -ENXIO;
+	}
 
 	return 0;
 }
@@ -90,70 +92,127 @@ static int xocl_release(struct inode *inode, struct file *filp)
 	return ret;
 }
 
-static int xocl_mmap(struct file *filp, struct vm_area_struct *vma)
+static int xocl_bo_mmap(struct file *filp, struct vm_area_struct *vma)
 {
 	int ret;
-	struct drm_file *priv = filp->private_data;
-	struct drm_device *dev = priv->minor->dev;
+	struct drm_xocl_bo *xobj;
 	struct mm_struct *mm = current->mm;
-	struct xocl_drm *drm_p = dev->dev_private;
-	xdev_handle_t xdev = drm_p->xdev;
+
+	DRM_ENTER("BO map pgoff 0x%lx, size 0x%lx",
+		vma->vm_pgoff, vma->vm_end - vma->vm_start);
+
+	ret = drm_gem_mmap(filp, vma);
+	if (ret)
+		return ret;
+
+	xobj = to_xocl_bo(vma->vm_private_data);
+
+	if (!xobj->pages) {
+		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&xobj->base);
+		return -EINVAL;
+	}
+	/* Clear VM_PFNMAP flag set by drm_gem_mmap()
+	 * we have "struct page" for all backing pages for bo
+	 */
+	vma->vm_flags &= ~VM_PFNMAP;
+	/* Clear VM_IO flag set by drm_gem_mmap()
+	 * it prevents gdb from accessing mapped buffers
+	 */
+	vma->vm_flags &= ~VM_IO;
+	vma->vm_flags |= VM_MIXEDMAP;
+	vma->vm_flags |= mm->def_flags;
+	vma->vm_pgoff = 0;
+
+	/* Override pgprot_writecombine() mapping setup by
+	 * drm_gem_mmap()
+	 * which results in very poor read performance
+	 */
+	if (vma->vm_flags & (VM_READ | VM_MAYREAD))
+		vma->vm_page_prot = vm_get_page_prot(vma->vm_flags);
+	else
+		vma->vm_page_prot = pgprot_writecombine(
+			vm_get_page_prot(vma->vm_flags));
+	return ret;
+}
+
+static int xocl_native_mmap(struct file *filp, struct vm_area_struct *vma)
+{
+	int ret;
 	unsigned long vsize;
 	phys_addr_t res_start;
 
-	DRM_ENTER("vm pgoff %lx", vma->vm_pgoff);
-
 	/*
-	 * If the page offset is > than 4G, then let GEM handle that and do what
-	 * it thinks is best,we will only handle page offsets less than 4G.
+	 * HACK -- We assume filp->private_data is pointing to
+	 * drm_file data structure.
 	 */
-	if (likely(vma->vm_pgoff >= XOCL_FILE_PAGE_OFFSET)) {
-		ret = drm_gem_mmap(filp, vma);
-		if (ret)
-			return ret;
-		/* Clear VM_PFNMAP flag set by drm_gem_mmap()
-		 * we have "struct page" for all backing pages for bo
-		 */
-		vma->vm_flags &= ~VM_PFNMAP;
-		/* Clear VM_IO flag set by drm_gem_mmap()
-		 * it prevents gdb from accessing mapped buffers
-		 */
-		vma->vm_flags &= ~VM_IO;
-		vma->vm_flags |= VM_MIXEDMAP;
-		vma->vm_flags |= mm->def_flags;
-		vma->vm_pgoff = 0;
+	struct drm_file *priv = filp->private_data;
+	struct xocl_drm *drm_p = priv->minor->dev->dev_private;
+	xdev_handle_t xdev = drm_p->xdev;
 
-		/* Override pgprot_writecombine() mapping setup by
-		 * drm_gem_mmap()
-		 * which results in very poor read performance
-		 */
-		if (vma->vm_flags & (VM_READ | VM_MAYREAD))
-			vma->vm_page_prot = vm_get_page_prot(vma->vm_flags);
-		else
-			vma->vm_page_prot = pgprot_writecombine(
-				vm_get_page_prot(vma->vm_flags));
-		return ret;
+	if (vma->vm_pgoff > MAX_CUS) {
+		userpf_err(xdev, "invalid native mmap offset: 0x%lx",
+			vma->vm_pgoff);
+		return -EINVAL;
 	}
 
-	if (vma->vm_pgoff != 0)
-		return -EINVAL;
-
 	vsize = vma->vm_end - vma->vm_start;
-	if (vsize > XDEV(xdev)->bar_size)
-		return -EINVAL;
+	res_start = pci_resource_start(XDEV(xdev)->pdev, XDEV(xdev)->bar_idx);
 
-	DRM_DBG("MAP size %ld", vsize);
+	if (vma->vm_pgoff == 0) {
+		if (vsize > XDEV(xdev)->bar_size) {
+			userpf_err(xdev,
+				"bad size (0x%lx) for native BAR mmap", vsize);
+			return -EINVAL;
+		}
+	} else {
+		int ret;
+		u32 cu_addr;
+		u32 cu_idx = vma->vm_pgoff - 1;
+
+		if (vsize > 64 * 1024) {
+			userpf_err(xdev,
+				"bad size (0x%lx) for native CU mmap", vsize);
+			return -EINVAL;
+		}
+		ret = xocl_exec_cu_map_addr(xdev, cu_idx, priv, &cu_addr);
+		if (ret != 0)
+			return ret;
+		res_start += cu_addr;
+	}
+
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
 	vma->vm_flags |= VM_IO;
 	vma->vm_flags |= VM_RESERVED;
 
-	res_start = pci_resource_start(XDEV(xdev)->pdev, XDEV(xdev)->bar_idx);
 	ret = io_remap_pfn_range(vma, vma->vm_start,
 				 res_start >> PAGE_SHIFT,
 				 vsize, vma->vm_page_prot);
-	userpf_info(xdev, "io_remap_pfn_range ret code: %d", ret);
+	if (ret != 0) {
+		userpf_err(xdev, "io_remap_pfn_range failed: %d", ret);
+		return ret;
+	}
 
+	userpf_info(xdev, "successful native mmap @0x%lx with size 0x%lx",
+		vma->vm_pgoff >> PAGE_SHIFT, vsize);
 	return ret;
+}
+
+static int xocl_mmap(struct file *filp, struct vm_area_struct *vma)
+{
+	/*
+	 * If the offset is > than 4G, then let GEM handle that and do what
+	 * it thinks is best, we will only handle offsets less than 4G.
+	 */
+	if (likely(vma->vm_pgoff >= XOCL_FILE_PAGE_OFFSET))
+		return xocl_bo_mmap(filp, vma);
+
+	/*
+	 * Native BAR or CU mmap handling.
+	 * When pgoff is 0, we perform mmap of the PCIE BAR.
+	 * When pgoff is non-zero, we treat it as CU index + 1 and perform
+	 * mmap of that particular CU register space.
+	 */
+	return xocl_native_mmap(filp, vma);
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
@@ -177,7 +236,6 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 #else
 	unsigned long vmf_address = (unsigned long)vmf->virtual_address;
 #endif
-
 	page_offset = (vmf_address - vma->vm_start) >> PAGE_SHIFT;
 
 
@@ -188,7 +246,7 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	if (page_offset > num_pages)
 		return VM_FAULT_SIGBUS;
 
-	if (xobj->type & XOCL_BO_P2P) {
+	if (xocl_bo_p2p(xobj)) {
 #if RHEL_P2P_SUPPORT
 		pfn = phys_to_pfn_t(page_to_phys(xobj->pages[page_offset]), PFN_MAP|PFN_DEV);
 		ret = vm_insert_mixed(vma, vmf_address, pfn);
@@ -406,7 +464,7 @@ failed:
 	if (drm_registered)
 		drm_dev_unregister(ddev);
 	if (ddev)
-		drm_dev_unref(ddev);
+		XOCL_DRM_DEV_PUT(ddev);
 	if (drm_p)
 		xocl_drvinst_free(drm_p);
 

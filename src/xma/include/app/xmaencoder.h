@@ -20,7 +20,6 @@
 
 #include "app/xmabuffers.h"
 #include "app/xmaparam.h"
-#include "lib/xmalimits.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -259,6 +258,12 @@ typedef struct XmaEncoderProperties
     XmaParameter    *params;
     /** count of custom parameters for port */
     uint32_t        param_cnt;
+    int32_t         dev_index;
+    int32_t         cu_index;
+    int32_t         ddr_bank_index;//Used for allocating device buffers. Used only if valid index is provide (>= 0); value of -1 imples that XMA should select automatically and then XMA will set it with bank index used automatically
+    int32_t         channel_id;
+    char            *plugin_lib;//Lib with full path
+    int32_t         reserved[4];
 } XmaEncoderProperties;
 
 /* Forward declaration */
@@ -279,7 +284,7 @@ typedef struct XmaEncoderSession XmaEncoderSession;
  * 
  * NULL on failure
  *
- *  Note: Cannot be presumed to be thread safe.
+ *  Note: session create & destroy are thread safe APIs
 */
 XmaEncoderSession*
 xma_enc_session_create(XmaEncoderProperties *enc_props);
@@ -295,7 +300,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props);
  *  
  * XMA_ERROR on failure.
  *
- *  Note: Cannot be presumed to be thread safe.
+ *  Note: session create & destroy are thread safe APIs
 */
 int32_t
 xma_enc_session_destroy(XmaEncoderSession *session);

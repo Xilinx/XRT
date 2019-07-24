@@ -122,23 +122,19 @@ public:
     struct instance {
       std::string name;   // inst name
       size_t base;        // base addr
-      std::string port;   // port name
     };
 
     std::map<uint32_t,std::string> stringtable;
 
     std::string name;                // name of kernel
     unsigned int uid;                // unique id for this symbol, some symbols have same name??
-    std::string dsaname;             // name of dsa
     std::string attributes;          // attributes as per .cl file
     std::string hash;                // kernel conformance hash
-    std::string controlport;         // kernel axi slave control port
     size_t workgroupsize = 0;
     size_t compileworkgroupsize[3] = {0};   //
     size_t maxworkgroupsize[3] = {0};// xilinx extension
     std::vector<arg> arguments;      // the args of this kernel
     std::vector<instance> instances; // the kernel instances
-    bool cu_interrupt = false;       // cu have interrupt support
     target_type target;              // xclbin target
   };
 
@@ -175,23 +171,11 @@ public:
   binary() const;
 
   /**
-   * Get dsa name
-   */
-  std::string
-  dsa_name() const;
-
-  /**
    * Get uuid of xclbin
    */
   using uuid_type = xrt::uuid;
   uuid_type
   uuid() const;
-
-  /**
-   * Check if unified platform
-   */
-  bool
-  is_unified() const;
 
   /**
    * Access the project name per xml meta data
@@ -245,13 +229,6 @@ public:
   kernel_symbols() const;
 
   /**
-   * @return
-   *   Size (in bytes) of largest kernel register map in the xclbin
-   */
-  size_t
-  kernel_max_regmap_size() const;
-
-  /**
    * Get kernel with specified name.
    *
    * The lifetime of the returned object is tied to the lifetime
@@ -284,37 +261,6 @@ public:
    */
   const mem_topology*
   get_mem_topology() const;
-
-  /**
-   * Get the CU base offset
-   *
-   * CU addresses are sequential and separated  by a fixed size
-   * The starting address is the base offset and may differ from
-   * xclbin to xclbin
-   *
-   * @return
-   *   Base address of CU address space.
-   */
-  size_t
-  cu_base_offset() const;
-
-  /**
-   * Get the CU address space size
-   *
-   * @return
-   *   Size of cu addressspace in power of 2
-   */
-  size_t
-  cu_size() const;
-
-  /**
-   * Check if all CUs support completion interrupt
-   *
-   * @return
-   *   True if completion interrupt supported by all CUs, false otherwise
-   */
-  bool
-  cu_interrupt() const;
 
   /**
    * Get a sorted address map of all CUs in this xclbin

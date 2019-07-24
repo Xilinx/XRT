@@ -71,6 +71,7 @@ private:
     bool readFlashReg(unsigned commandCode, unsigned bytes);
     bool writeFlashReg(unsigned commandCode, unsigned value, unsigned bytes);
     bool eraseSector(unsigned addr, uint32_t byteCount, uint8_t eraseCmd = 0xff);
+    bool eraseBulk();
     bool readFlash(unsigned addr, uint32_t byteCount, uint8_t readCmd = 0xff);
     bool writeFlash(unsigned addr, uint32_t byteCount, uint8_t writeCmd = 0xff);
 

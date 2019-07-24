@@ -32,6 +32,7 @@
 #define XLNX_DNA_STATUS_REGISTER_OFFSET                             0x10            //  RO
 #define XLNX_DNA_FSM_DNA_WORD_WRITE_COUNT_REGISTER_OFFSET           (0x14)          //  RO
 #define XLNX_DNA_FSM_CERTIFICATE_WORD_WRITE_COUNT_REGISTER_OFFSET   (0x18)          //  RO
+#define XLNX_DNA_TIMEOUT_REGISTER_OFFSET                            (0x1C)          //  RO
 #define XLNX_DNA_MESSAGE_START_AXI_ONLY_REGISTER_OFFSET             (0x20)          //  RO (31-1) + RW (0)
 #define XLNX_DNA_READBACK_REGISTER_2_OFFSET                         0x40            //  RO XLNX_DNA_BOARD_DNA_95_64
 #define XLNX_DNA_READBACK_REGISTER_1_OFFSET                         0x44            //  RO XLNX_DNA_BOARD_DNA_63_32
@@ -42,7 +43,7 @@
 
 #define DEV2XDEV(d) xocl_get_xdev(to_platform_device(d))
 
-#define XLNX_DNA_INVALID_CAPABILITY_MASK                            0xFFFFFFFE
+#define XLNX_DNA_INVALID_CAPABILITY_MASK                            0xFFFFFFEE
 #define XLNX_DNA_PRIVILEGED(xlnx_dna)				    ((xlnx_dna)->base != NULL)
 
 
@@ -435,7 +436,7 @@ static int xlnx_dna_probe(struct platform_device *pdev)
 
 	capability = dna_capability(pdev);
 	if (capability & XLNX_DNA_INVALID_CAPABILITY_MASK) {
-		xocl_err(&pdev->dev, "DNA IP does not present");
+		xocl_err(&pdev->dev, "DNA IP not detected");
 		err = -EINVAL;
 		goto create_xlnx_dna_failed;
 	}
@@ -445,7 +446,6 @@ static int xlnx_dna_probe(struct platform_device *pdev)
 		goto create_xlnx_dna_failed;
 
 	xlnx_dna->cache_expire_secs = XLNX_DNA_DEFAULT_EXPIRE_SECS;
-	xocl_subdev_register(pdev, XOCL_SUBDEV_DNA, &dna_ops);
 
 	return 0;
 
@@ -477,8 +477,12 @@ static int xlnx_dna_remove(struct platform_device *pdev)
 	return 0;
 }
 
+struct xocl_drv_private dna_priv = {
+	.ops = &dna_ops,
+};
+
 struct platform_device_id xlnx_dna_id_table[] = {
-	{ XOCL_DNA, 0 },
+	{ XOCL_DEVNAME(XOCL_DNA), (kernel_ulong_t)&dna_priv },
 	{ },
 };
 
@@ -486,7 +490,7 @@ static struct platform_driver	xlnx_dna_driver = {
 	.probe		= xlnx_dna_probe,
 	.remove		= xlnx_dna_remove,
 	.driver		= {
-		.name = XOCL_DNA,
+		.name = XOCL_DEVNAME(XOCL_DNA),
 	},
 	.id_table = xlnx_dna_id_table,
 };

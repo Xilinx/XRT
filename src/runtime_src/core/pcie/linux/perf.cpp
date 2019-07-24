@@ -37,7 +37,9 @@
 #include "core/pcie/driver/linux/include/mgmt-reg.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 #include "core/pcie/driver/linux/include/xocl_ioctl.h"
-#include "core/common/memalign.h"
+
+#include "core/common/AlignedAllocator.h"
+
 #include "xclperf.h"
 #include "xcl_perfmon_parameters.h"
 
@@ -73,30 +75,6 @@
 #define FAST_OFFLOAD_MINOR 2
 
 namespace xocl {
-
-  // Memory alignment for DDR and AXI-MM trace access
-  template <typename T> class AlignedAllocator {
-      void *mBuffer;
-      size_t mCount;
-  public:
-      T *getBuffer() {
-          return (T *)mBuffer;
-      }
-
-      size_t size() const {
-          return mCount * sizeof(T);
-      }
-
-      AlignedAllocator(size_t alignment, size_t count) : mBuffer(0), mCount(count) {
-        if (xrt_core::posix_memalign(&mBuffer, alignment, count * sizeof(T))) {
-              mBuffer = 0;
-          }
-      }
-      ~AlignedAllocator() {
-          if (mBuffer)
-              free(mBuffer);
-      }
-  };
 
   // ****************
   // Helper functions
@@ -964,7 +942,7 @@ namespace xocl {
 #if GCC_VERSION >= 40800
     alignas(AXI_FIFO_RDFD_AXI_FULL) uint32_t hostbuf[BUFFER_WORDS];
 #else
-    AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, BUFFER_WORDS);
+    xrt_core::AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, BUFFER_WORDS);
     uint32_t* hostbuf = alignedBuffer.getBuffer();
 #endif
 #else

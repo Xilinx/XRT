@@ -322,7 +322,7 @@ static const struct attribute_group hwmon_mb_attrgroup = {
 static ssize_t show_name(struct device *dev, struct device_attribute *da,
 			 char *buf)
 {
-	return sprintf(buf, "%s\n", XCLMGMT_MB_HWMON_NAME);
+	return sprintf(buf, "%s\n", "xclmgmt_microblaze");
 }
 
 static struct sensor_device_attribute name_attr =
@@ -692,8 +692,6 @@ static int mb_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	xocl_subdev_register(pdev, XOCL_SUBDEV_MB, &mb_ops);
-
 	mutex_init(&mb->mb_lock);
 
 	return 0;
@@ -703,8 +701,12 @@ failed:
 	return err;
 }
 
+struct xocl_drv_private mb_priv = {
+	.ops = &mb_ops,
+};
+
 struct platform_device_id mb_id_table[] = {
-	{ XOCL_MB, 0 },
+	{ XOCL_DEVNAME(XOCL_MB), (kernel_ulong_t)&mb_priv },
 	{ },
 };
 

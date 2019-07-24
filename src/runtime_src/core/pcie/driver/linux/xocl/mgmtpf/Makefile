@@ -14,11 +14,13 @@
 #
 
 obj-m	+= xclmgmt.o
+include $(PWD)/../lib/Makefile.in
 
 xclmgmt-y := \
 	../xocl_subdev.o \
 	../xocl_ctx.o \
 	../xocl_thread.o \
+	../xocl_fdt.o \
 	../subdev/sysmon.o \
 	../subdev/feature_rom.o \
 	../subdev/microblaze.o \
@@ -32,12 +34,17 @@ xclmgmt-y := \
 	../subdev/xmc.o \
 	../subdev/dna.o \
 	../subdev/fmgr.o \
+	../subdev/xdma_mgmt.o \
+	../subdev/flash.o \
+	../subdev/iores.o \
+	../subdev/axigate.o \
 	mgmt-core.o \
 	mgmt-cw.o \
 	mgmt-utils.o \
 	mgmt-ioctl.o \
 	mgmt-sysfs.o
 
+xclmgmt-y += $(libfdt-y)
 
 CONFIG_MODULE_SIG=n
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build
@@ -46,9 +53,13 @@ PWD	:= $(shell pwd)
 ROOT	:= $(dir $(M))
 XILINXINCLUDE := -I$(ROOT)/../include -I$(ROOT)/../../../../include
 
-ccflags-y += $(XILINXINCLUDE) -DSUBDEV_SUFFIX=MGMT_SUFFIX
+ccflags-y += $(XILINXINCLUDE) -DPF=MGMTPF
 ifeq ($(DEBUG),1)
 ccflags-y += -DDEBUG
+endif
+
+ifeq ($(SYMBOL),1)
+	ccflags-y += -g
 endif
 
 all:
@@ -65,5 +76,6 @@ install: all
 clean:
 	rm -rf *.o *.o.d *.o.cmd *~ core .depend .*.cmd *.ko *.ko.unsigned \
 	*.mod.c ../subdev/*.o ../subdev/.*.o.cmd ../*.o ../.*.o.cmd 	\
+	../lib/libfdt/*.o ../lib/libfdt/.*.o.cmd	\
 	.tmp_versions *.symvers modules.order
 	#* *.save *.bak Modules.* modules.order Module.markers *.bin

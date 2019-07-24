@@ -7,6 +7,7 @@
  *
  * Author(s):
  * Sonal Santan <sonal.santan@xilinx.com>
+ * Jan Stephan  <j.stephan@hzdr.de>
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
@@ -267,9 +268,9 @@ static long char_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		return -ENOTTY;
 
 	if (_IOC_DIR(cmd) & _IOC_READ)
-		result = !access_ok(VERIFY_WRITE, (void __user *)arg, _IOC_SIZE(cmd));
-	else if (_IOC_DIR(cmd) & _IOC_WRITE)
-		result =  !access_ok(VERIFY_READ, (void __user *)arg, _IOC_SIZE(cmd));
+		result = !AWSMGMT_ACCESS_OK(VERIFY_WRITE, (void __user *)arg, _IOC_SIZE(cmd));
+	else if(_IOC_DIR(cmd) & _IOC_WRITE)
+		result = !AWSMGMT_ACCESS_OK(VERIFY_READ, (void __user *)arg, _IOC_SIZE(cmd));
 
 	if (result)
 		return -EFAULT;

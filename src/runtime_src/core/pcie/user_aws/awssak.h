@@ -37,6 +37,7 @@
 #include <memory>
 #include <map>
 #include <iomanip>
+#include "core/common/xrt_profiling.h"
 
 #include "scan.h"
 #include "xclbin.h"
@@ -245,7 +246,7 @@ public:
      */
     int dump(std::ostream& ostr) const {
         unsigned numMemBank = m_devinfo.mDDRBankCount;
-        ostr << "DSA name:       " << m_devinfo.mName << "\n";
+        ostr << "Shell name:       " << m_devinfo.mName << "\n";
         ostr << "Vendor:         " << std::hex << m_devinfo.mVendorId << std::dec << "\n";
         ostr << "Device:         " << std::hex << m_devinfo.mDeviceId << std::dec << "\n";
         ostr << "SDevice:        " << std::hex << m_devinfo.mSubsystemId << std::dec << "\n";
@@ -566,7 +567,7 @@ public:
     }
 
    //Debug related functionality.
-    uint32_t getIPCountAddrNames(int type, std::vector<uint64_t> *baseAddress, std::vector<std::string> * portNames);
+    uint32_t getIPCountAddrNames(int type, std::vector<uint64_t> *baseAddress, std::vector<std::string> * portNames, std::vector<uint8_t> *properties = nullptr);
 
     std::pair<size_t, size_t> getCUNamePortName (std::vector<std::string>& aSlotNames,
                              std::vector< std::pair<std::string, std::string> >& aCUNamePortNames);

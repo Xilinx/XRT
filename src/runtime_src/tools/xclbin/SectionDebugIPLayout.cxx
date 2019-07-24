@@ -55,6 +55,10 @@ SectionDebugIPLayout::getDebugIPTypeStr(enum DEBUG_IP_TYPE _debugIpType) const {
       return "AXI_STREAM_MONITOR";
     case AXI_STREAM_PROTOCOL_CHECKER:
       return "AXI_STREAM_PROTOCOL_CHECKER";
+    case TRACE_S2MM:
+      return "TRACE_S2MM";
+    case AXI_DMA:
+      return "AXI_DMA";
   }
 
   return XUtil::format("UNKNOWN (%d)", (unsigned int)_debugIpType);
@@ -82,6 +86,12 @@ SectionDebugIPLayout::getDebugIPType(std::string& _sDebugIPType) const {
 
   if (_sDebugIPType == "ACCEL_MONITOR")
     return ACCEL_MONITOR;
+
+  if (_sDebugIPType == "TRACE_S2MM")
+    return TRACE_S2MM;
+
+  if (_sDebugIPType == "AXI_DMA")
+    return AXI_DMA;
 
   if ( _sDebugIPType == "AXI_STREAM_MONITOR" )
     return AXI_STREAM_MONITOR;
@@ -117,16 +127,16 @@ SectionDebugIPLayout::marshalToJSON(char* _pDataSection,
   XUtil::TRACE(XUtil::format("m_count: %d", (uint32_t)pHdr->m_count));
 
   // Write out the entire structure except for the array structure
-  XUtil::TRACE_BUF("ip_layout", reinterpret_cast<const char*>(pHdr), (unsigned long)&(pHdr->m_debug_ip_data[0]) - (unsigned long)pHdr);
+  XUtil::TRACE_BUF("ip_layout", reinterpret_cast<const char*>(pHdr), ((uint64_t)&(pHdr->m_debug_ip_data[0]) - (uint64_t)pHdr));
   debug_ip_layout.put("m_count", XUtil::format("%d", (unsigned int)pHdr->m_count).c_str());
 
-  debug_ip_data mydata = (debug_ip_data){ 0 };
+  debug_ip_data mydata = debug_ip_data {0};
 
 
   XUtil::TRACE(XUtil::format("Size of debug_ip_data: %d\nSize of mydata: %d",
                              sizeof(debug_ip_data),
                              sizeof(mydata)));
-  unsigned int expectedSize = ((unsigned long)&(pHdr->m_debug_ip_data[0]) - (unsigned long)pHdr) + (sizeof(debug_ip_data) * (uint32_t)pHdr->m_count);
+  uint64_t expectedSize = ((uint64_t)&(pHdr->m_debug_ip_data[0]) - (uint64_t)pHdr) + (sizeof(debug_ip_data) * (uint64_t)pHdr->m_count);
 
   if (_sectionSize != expectedSize) {
     throw std::runtime_error(XUtil::format("ERROR: Section size (%d) does not match expected section size (%d).",
@@ -175,7 +185,7 @@ SectionDebugIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSect
   const boost::property_tree::ptree& ptDebugIPLayout = _ptSection.get_child("debug_ip_layout");
 
   // Initialize the memory to zero's
-  debug_ip_layout debugIpLayoutHdr = (debug_ip_layout){ 0 };
+  debug_ip_layout debugIpLayoutHdr = debug_ip_layout {0};
 
   // Read, store, and report mem_topology data
   debugIpLayoutHdr.m_count = ptDebugIPLayout.get<uint16_t>("m_count");
@@ -196,11 +206,11 @@ SectionDebugIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSect
   unsigned int count = 0;
   const boost::property_tree::ptree debugIpDatas = ptDebugIPLayout.get_child("m_debug_ip_data");
   for (const auto& kv : debugIpDatas) {
-    debug_ip_data debugIpDataHdr = (debug_ip_data){ 0 };
+    debug_ip_data debugIpDataHdr = debug_ip_data {0};
     boost::property_tree::ptree ptDebugIPData = kv.second;
 
     std::string sm_type = ptDebugIPData.get<std::string>("m_type");
-    debugIpDataHdr.m_type = getDebugIPType(sm_type);
+    debugIpDataHdr.m_type = (uint8_t) getDebugIPType(sm_type);
     debugIpDataHdr.m_index = ptDebugIPData.get<int8_t>("m_index");
     debugIpDataHdr.m_properties = ptDebugIPData.get<int8_t>("m_properties");
 
@@ -246,7 +256,7 @@ SectionDebugIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSect
   }
 
   // -- Buffer needs to be less than 64K--
-  unsigned int bufferSize = _buf.str().size();
+  unsigned int bufferSize = (unsigned int) _buf.str().size();
   const unsigned int maxBufferSize = 64 * 1024;
   if ( bufferSize > maxBufferSize ) {
     std::string errMsg = XUtil::format("CRITICAL WARNING: The buffer size for the DEBUG_IP_LAYOUT section (%d) exceed the maximum size of %d.\nThis can result in lose of data in the driver.",

@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2018 Xilinx, Inc. All rights reserved.
  *
- * Authors:
+ * Authors: Jan Stephan <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -27,14 +27,14 @@ bool xocl_test_on = true;
 static int xocl_test_thread_main(void *data)
 {
 #if 0
-	struct timeval now;
+	XOCL_TIMESPEC now;
 	struct drm_xocl_dev *xdev = (struct drm_xocl_dev *)data;
 	int irq = 0;
 	int count = 0;
 	while (!kthread_should_stop()) {
 		ssleep(xocl_test_interval);
-		do_gettimeofday(&now);
-		DRM_INFO("irq[%d] tv_sec[%ld]tv_usec[%ld]\n", irq, now.tv_sec, now.tv_usec);
+		XOCL_GETTIME(&now);
+		DRM_INFO("irq[%d] tv_sec[%ld]tv_usec[%ld]\n", irq, now.tv_sec, now.XOCL_USEC);
 		xocl_user_event(irq, xdev);
 		irq++;
 		irq &= 0xf;

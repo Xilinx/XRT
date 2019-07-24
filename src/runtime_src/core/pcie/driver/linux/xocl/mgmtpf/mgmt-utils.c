@@ -15,6 +15,7 @@
  *  GNU General Public License for more details.
  */
 
+#include <linux/firmware.h>
 #include "mgmt-core.h"
 #include <linux/module.h>
 #include "../xocl_drv.h"
@@ -118,40 +119,40 @@ void platform_axilite_flush(struct xclmgmt_dev *lro)
 	 * (Feature ROM, MB Reset GPIO, Sysmon)
 	 */
 	for (i = 0; i < 4; i++) {
-		val = MGMT_READ_REG32(lro, FEATURE_ROM_BASE);
+		val = MGMT_READ_REG32(lro, _FEATURE_ROM_BASE);
 		xocl_af_clear(lro);
 	}
 
 	for (i = 0; i < 4; i++) {
-		gpio_val = MGMT_READ_REG32(lro, MB_GPIO);
+		gpio_val = MGMT_READ_REG32(lro, _MB_GPIO);
 		xocl_af_clear(lro);
 	}
 
 	for (i = 0; i < 4; i++) {
-		val = MGMT_READ_REG32(lro, SYSMON_BASE);
+		val = MGMT_READ_REG32(lro, _SYSMON_BASE);
 		xocl_af_clear(lro);
 	}
 
 	/* Can only read this safely if not in reset */
 	if (gpio_val == 1) {
 		for (i = 0; i < 4; i++) {
-			val = MGMT_READ_REG32(lro, MB_IMAGE_SCHE);
+			val = MGMT_READ_REG32(lro, _MB_IMAGE_SCHE);
 			xocl_af_clear(lro);
 		}
 	}
 
 	for (i = 0; i < 4; i++) {
-		val = MGMT_READ_REG32(lro, XHWICAP_CR);
+		val = MGMT_READ_REG32(lro, _XHWICAP_CR);
 		xocl_af_clear(lro);
 	}
 
 	for (i = 0; i < 4; i++) {
-		val = MGMT_READ_REG32(lro, GPIO_NULL_BASE);
+		val = MGMT_READ_REG32(lro, _GPIO_NULL_BASE);
 		xocl_af_clear(lro);
 	}
 
 	for (i = 0; i < 4; i++) {
-		val = MGMT_READ_REG32(lro, AXI_GATE_BASE);
+		val = MGMT_READ_REG32(lro, _AXI_GATE_BASE);
 		xocl_af_clear(lro);
 	}
 }
@@ -186,6 +187,8 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 	mgmt_err(lro, "Trying to reset card %d in slot %s:%02x:%1x",
 		lro->instance, ep_name,
 		PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
+
+	health_thread_stop(lro);
 
 	/* request XMC/ERT to stop */
 	xocl_mb_stop(lro);
@@ -232,6 +235,8 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 
 	/* restart XMC/ERT */
 	xocl_mb_reset(lro);
+
+	health_thread_start(lro);
 
 #endif
 done:
@@ -354,28 +359,6 @@ done:
 	return rc;
 }
 
-unsigned compute_unit_busy(struct xclmgmt_dev *lro)
-{
-	int i = 0;
-	unsigned result = 0;
-	u32 r = MGMT_READ_REG32(lro, AXI_GATE_BASE_RD_BASE);
-
-	/*
-	 * r != 0x3 implies that OCL region is isolated and we cannot read
-	 * CUs' status
-	 */
-	if (r != 0x3)
-		return 0;
-
-	/* ?? Assumed only 16 CUs ? */
-	for (i = 0; i < 16; i++) {
-		r = MGMT_READ_REG32(lro, OCL_CTLR_BASE + i * OCL_CU_CTRL_RANGE);
-		if (r == 0x1)
-			result |= (r << i);
-	}
-	return result;
-}
-
 void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 {
 	struct pci_dev *pdev = lro->pci_dev;
@@ -409,4 +392,172 @@ void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	mgmt_info(lro, "Resetting for %d ms", i);
 
 	xocl_pci_restore_config_all(pdev);
+}
+
+int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
+{
+	int len, userpf_idx;
+	int ret;
+	struct FeatureRomHeader	rom_header;
+
+	if (!lro->core.fdt_blob)
+		return 0;
+
+	len = fdt_totalsize(lro->core.fdt_blob) + sizeof(rom_header)
+	       + 1024;
+	if (lro->userpf_blob)
+		vfree(lro->userpf_blob);
+
+	lro->userpf_blob = vzalloc(len);
+	if (!lro->userpf_blob)
+			return -ENOMEM;
+
+	ret = fdt_create_empty_tree(lro->userpf_blob, len);
+	if (ret) {
+		mgmt_err(lro, "create fdt failed %d", ret);
+		goto failed;
+	}
+
+	userpf_idx = xocl_fdt_get_userpf(lro, lro->core.fdt_blob);
+	if (userpf_idx >= 0) {
+		ret = xocl_fdt_overlay(lro->userpf_blob, 0,
+			lro->core.fdt_blob, 0, userpf_idx);
+		if (ret) {
+			mgmt_err(lro, "overlay fdt failed %d", ret);
+			goto failed;
+		}
+	}
+
+	ret = xocl_get_raw_header(lro, &rom_header);
+	if (ret) {
+		mgmt_err(lro, "get featurerom raw header failed %d", ret);
+		goto failed;
+	}
+
+	ret = xocl_fdt_add_pair(lro, lro->userpf_blob, "vrom", &rom_header,
+			sizeof(rom_header));
+	if (ret) {
+		mgmt_err(lro, "add vrom failed %d", ret);
+		goto failed;
+	}
+
+	fdt_pack(lro->userpf_blob);
+	lro->userpf_blob_updated = true;
+
+	return 0;
+
+failed:
+	if (lro->userpf_blob) {
+		vfree(lro->userpf_blob);
+		lro->userpf_blob = NULL;
+	}
+
+	return ret;
+}
+
+int xclmgmt_program_shell(struct xclmgmt_dev *lro)
+{
+	int ret;
+
+	xocl_drvinst_set_offline(lro, true);
+
+	health_thread_stop(lro);
+
+	ret = xocl_subdev_destroy_prp(lro);
+	if (ret) {
+		mgmt_err(lro, "destroy prp failed %d", ret);
+		goto failed;
+	}
+
+	ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP, true);
+	if (ret) {
+		mgmt_err(lro, "program shell failed %d", ret);
+		goto failed;
+	}
+
+	ret = xocl_subdev_create_prp(lro);
+	if (ret && ret != -ENODEV) {
+		mgmt_err(lro, "failed to create prp %d", ret);
+		goto failed;
+	}
+
+	health_thread_start(lro);
+
+	xclmgmt_update_userpf_blob(lro);
+	xocl_drvinst_set_offline(lro, false);
+
+failed:
+
+	return ret;
+
+}
+
+int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
+{
+	const struct firmware			*fw;
+	const struct axlf_section_header	*dtc_header;
+	struct axlf				*bin_axlf;
+	char					fw_name[128];
+	int					ret;
+
+	snprintf(fw_name, sizeof(fw_name),
+		"xilinx/%04x-%04x-%04x-%016llx.dsabin",
+		lro->core.pdev->vendor,
+		lro->core.pdev->device,
+		lro->core.pdev->subsystem_device,
+		xocl_get_timestamp(lro));
+
+	mgmt_info(lro, "Load fdt from %s", fw_name);
+	ret = request_firmware(&fw, fw_name, &lro->core.pdev->dev);
+	if (ret) {
+		mgmt_err(lro, "unable to find firmware");
+		goto failed;
+	}
+
+	bin_axlf = (struct axlf *)fw->data;
+	dtc_header = xocl_axlf_section_header(lro, bin_axlf, PARTITION_METADATA);
+	if (!dtc_header)
+		goto failed;
+
+	ret = xocl_fdt_blob_input(lro,
+			(char *)fw->data + dtc_header->m_sectionOffset);
+	if (ret) {
+		mgmt_err(lro, "Invalid PARTITION_METADATA");
+		goto failed;
+	}
+
+	/* temp support for lack of VBNV */
+	xocl_fdt_add_pair(lro, lro->core.fdt_blob, "vbnv",
+			bin_axlf->m_header.m_platformVBNV,
+			strlen(bin_axlf->m_header.m_platformVBNV) + 1);
+
+	release_firmware(fw);
+	fw = NULL;
+
+	lro->bld_blob = vmalloc(fdt_totalsize(lro->core.fdt_blob));
+	if (!lro->bld_blob) {
+		ret = -ENOMEM;
+		goto failed;
+	}
+	memcpy(lro->bld_blob, lro->core.fdt_blob,
+			fdt_totalsize(lro->core.fdt_blob));
+
+	xclmgmt_connect_notify(lro, false);
+	xocl_subdev_destroy_all(lro);
+	ret = xocl_subdev_create_all(lro);
+	if (ret)
+		goto failed;
+	ret = xocl_icap_download_boot_firmware(lro);
+	if (ret)
+		goto failed;
+
+	xclmgmt_update_userpf_blob(lro);
+	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
+	xclmgmt_connect_notify(lro, true);
+
+failed:
+	if (fw)
+		release_firmware(fw);
+
+	return ret;
 }

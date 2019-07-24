@@ -53,4 +53,12 @@ int progHandler(int argc, char *argv[]);
 extern const char *subCmdProgDesc;
 extern const char *subCmdProgUsage;
 
+int configHandler(int argc, char *argv[]);
+extern const char *subCmdConfigDesc;
+extern const char *subCmdConfigUsage;
+
+int nifdHandler(int argc, char *argv[]);
+extern const char *subCmdNifdDesc;
+extern const char *subCmdNifdUsage;
+
 #endif /* XBMGMT_H */

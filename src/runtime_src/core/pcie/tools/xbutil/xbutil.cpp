@@ -27,7 +27,6 @@
 
 #include "xbutil.h"
 #include "base.h"
-#include "ert.h"
 #include "core/pcie/linux/shim.h"
 #include "core/common/memalign.h"
 
@@ -861,6 +860,8 @@ int xcldev::xclTop(int argc, char *argv[])
 }
 
 const std::string dsaPath("/opt/xilinx/dsa/");
+const std::string xsaPath("/opt/xilinx/xsa/");
+const std::string xrtPath("/opt/xilinx/xrt/");
 
 void testCaseProgressReporter(bool *quit)
 {    int i = 0;
@@ -882,6 +883,7 @@ int runShellCmd(const std::string& cmd, std::string& output)
 
     // Run test case
     setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
+    setenv("PYTHONPATH", "/opt/xilinx/xrt/python", 0);
     setenv("LD_LIBRARY_PATH", "/opt/xilinx/xrt/lib", 1);
     unsetenv("XCL_EMULATION_MODE");
     std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
@@ -905,17 +907,52 @@ int runShellCmd(const std::string& cmd, std::string& output)
     return ret;
 }
 
+int searchXsaAndDsa(std::string xsaPath, std::string 
+    dsaPath, std::string& path, std::string &output) 
+{
+    struct stat st;
+    if (stat(xsaPath.c_str(), &st) != 0) {
+            if (stat(dsaPath.c_str(), &st) != 0) {
+                output += "ERROR: Failed to find test in ";
+                output += xsaPath;
+                output += " and ";
+                output += dsaPath;
+                return -ENOENT;
+            }
+            path =  dsaPath;
+            return EXIT_SUCCESS;
+    } else {
+        path = xsaPath;
+        return EXIT_SUCCESS;
+    }
+}
+
 int xcldev::device::runTestCase(const std::string& exe,
     const std::string& xclbin, std::string& output)
 {
-    std::string testCasePath = dsaPath +
-        std::string(m_devinfo.mName) + "/test/";
-    std::string exePath = testCasePath + exe;
-    std::string xclbinPath = testCasePath + xclbin;
-    std::string idxOption;
     struct stat st;
+    bool isPython = false;
+
+    std::string devInfoPath = std::string(m_devinfo.mName) + "/test/";
+    std::string xsaTestCasePath = xsaPath + devInfoPath;
+    std::string dsaTestCasePath = dsaPath + devInfoPath;
+    std::string xrtTestCasePath = xrtPath + "test/" + exe;
+    std::string exePath;
 
     output.clear();
+
+    if (stat(xrtTestCasePath.c_str(), &st) == 0) {
+        exePath = xrtTestCasePath;
+        isPython = true;
+    } else {
+        searchXsaAndDsa(xsaTestCasePath, dsaTestCasePath, exePath, output);
+        exePath += exe;
+    }
+
+    std::string xclbinPath;
+    searchXsaAndDsa(xsaTestCasePath, dsaTestCasePath, xclbinPath, output);
+    xclbinPath+= xclbin;
+    std::string idxOption;
 
     if (stat(exePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
         output += "ERROR: Failed to find ";
@@ -937,8 +974,95 @@ int xcldev::device::runTestCase(const std::string& exe,
     if (m_idx != 0)
         idxOption = "-d " + std::to_string(m_idx);
 
-    std::string cmd = exePath + " " + xclbinPath + " " + idxOption;
+    std::string cmd = "";
+    if (isPython) {
+        cmd = "python " + exePath + " -k " + xclbinPath + " " + idxOption;
+    } else {
+        cmd = exePath + " " + xclbinPath + " " + idxOption;
+    }
     return runShellCmd(cmd, output);
+}
+
+int xcldev::device::verifyKernelTest(void)
+{
+    std::string output;
+    int ret = runTestCase(std::string("main.py"),
+        std::string("verify.xclbin"), output);
+    if (ret == -ENOENT) {
+        ret = runTestCase(std::string("validate.exe"),
+            std::string("verify.xclbin"), output);
+    }
+
+    if (ret != 0)
+        return ret;
+
+    if (output.find("Hello World") == std::string::npos) {
+        std::cout << output << std::endl;
+        ret = -EINVAL;
+    }
+    return ret;
+}
+
+int xcldev::device::bandwidthKernelTest(void)
+{
+    std::string output;
+
+    int ret = runTestCase(std::string("kernel_bw.exe"),
+        std::string("bandwidth.xclbin"), output);
+
+    if (ret != 0)
+        return ret;
+
+    if (output.find("PASS") == std::string::npos) {
+        std::cout << output << std::endl;
+        return -EINVAL;
+    }
+
+    // Print out max thruput
+    size_t st = output.find("Maximum");
+    if (st != std::string::npos) {
+        size_t end = output.find("\n", st);
+        std::cout << std::endl << output.substr(st, end - st) << std::endl;
+    }
+
+    return 0;
+}
+
+int xcldev::device::pcieLinkTest(void)
+{
+    if (m_devinfo.mPCIeLinkSpeed != m_devinfo.mPCIeLinkSpeedMax ||
+        m_devinfo.mPCIeLinkWidth != m_devinfo.mPCIeLinkWidthMax) {
+        std::cout << "LINK ACTIVE, ATTENTION" << std::endl;
+        std::cout << "Ensure Card is plugged in to Gen"
+            << m_devinfo.mPCIeLinkSpeedMax << "x" << m_devinfo.mPCIeLinkWidthMax
+            << ", instead of Gen" << m_devinfo.mPCIeLinkSpeed << "x"
+            << m_devinfo.mPCIeLinkWidth << std::endl
+            << "Lower performance may be experienced"
+            << std::endl;
+        return 1;
+    }
+    return 0;
+}
+
+int xcldev::device::runOneTest(std::string testName,
+    std::function<int(void)> testFunc)
+{
+    std::cout << "INFO: == Starting " << testName << ": " << std::endl;
+
+    int ret = testFunc();
+
+    if (ret == 0) {
+	    std::cout << "INFO: == " << testName << " PASSED" << std::endl;
+    } else if (ret == -EOPNOTSUPP) {
+	    std::cout << "INFO: == " << testName << " SKIPPED" << std::endl;
+        ret = 0;
+    } else if (ret == 1) {
+	    std::cout << "WARN: == " << testName << " PASSED with warning"
+            << std::endl;
+    } else {
+        std::cout << "ERROR: == " << testName << " FAILED" << std::endl;
+    }
+    return ret;
 }
 
 /*
@@ -946,108 +1070,56 @@ int xcldev::device::runTestCase(const std::string& exe,
  */
 int xcldev::device::validate(bool quick)
 {
-    std::string output;
-    bool testKernelBW = true;
+    bool withWarning = false;
     int retVal = 0;
 
     // Check pcie training
-    std::cout << "INFO: Checking PCIE link status: " << std::flush;
-    if (m_devinfo.mPCIeLinkSpeed != m_devinfo.mPCIeLinkSpeedMax ||
-        m_devinfo.mPCIeLinkWidth != m_devinfo.mPCIeLinkWidthMax) {
-        std::cout << "LINK ACTIVE, ATTENTION" << std::endl;
-        std::cout << "WARNING: Ensure Card is plugged in to Gen"
-            << m_devinfo.mPCIeLinkSpeedMax << "x" << m_devinfo.mPCIeLinkWidthMax
-            << ", instead of Gen" << m_devinfo.mPCIeLinkSpeed << "x"
-            << m_devinfo.mPCIeLinkWidth << "\n         "
-            << "Lower performance may be experienced"
-            << std::endl;
-        retVal = 1;
-        // Non-fatal, continue validating.
-    }
-    else
-    {
-        std::cout << "PASSED" << std::endl;
-    }
-
-    // Run various test cases
+    retVal = runOneTest("PCIE link check",
+            std::bind(&xcldev::device::pcieLinkTest, this));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
 
     // Test verify kernel
-    std::cout << "INFO: Starting verify kernel test: " << std::flush;
-    int ret = runTestCase(std::string("validate.exe"),
-        std::string("verify.xclbin"), output);
-    std::cout << std::endl;
-    if (ret == -ENOENT) {
-        if (m_idx == 0) {
-            // Fall back to verify.exe
-            ret = runTestCase(std::string("verify.exe"),
-                std::string("verify.xclbin"), output);
-            if (ret == 0) {
-                // Probably testing with old package, skip kernel bandwidth test.
-                testKernelBW = false;
-            }
-        }
-    }
-    if (ret != 0 || output.find("Hello World") == std::string::npos) {
-        std::cout << output << std::endl;
-        std::cout << "ERROR: verify kernel test FAILED" << std::endl;
-        return ret == 0 ? -EINVAL : ret;
-    }
-    std::cout << "INFO: verify kernel test PASSED" << std::endl;
+    retVal = runOneTest("verify kernel test",
+            std::bind(&xcldev::device::verifyKernelTest, this));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
 
     // Skip the rest of test cases for quicker turn around.
     if (quick)
-        return retVal;
+        return withWarning ? 1 : 0;
 
     // Perform DMA test
-    std::cout << "INFO: Starting DMA test" << std::endl;
-    ret = dmatest(0, false);
-    if (ret != 0) {
-        std::cout << "ERROR: DMA test FAILED" << std::endl;
-        return ret;
-    }
-    std::cout << "INFO: DMA test PASSED" << std::endl;
-
-    if (!testKernelBW)
+    retVal = runOneTest("DMA test",
+            std::bind(&xcldev::device::dmatest, this, 0, false));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
         return retVal;
 
-
-    // Test kernel bandwidth kernel
-    std::cout << "INFO: Starting DDR bandwidth test: " << std::flush;
-    ret = runTestCase(std::string("kernel_bw.exe"),
-        std::string("bandwidth.xclbin"), output);
-    std::cout << std::endl;
-    if (ret != 0 || output.find("PASS") == std::string::npos) {
-        std::cout << output << std::endl;
-        std::cout << "ERROR: DDR bandwidth test FAILED" << std::endl;
-        return ret == 0 ? -EINVAL : ret;
-    }
-    // Print out max thruput
-    size_t st = output.find("Maximum");
-    if (st != std::string::npos) {
-        size_t end = output.find("\n", st);
-        std::cout << output.substr(st, end - st) << std::endl;
-    }
-    std::cout << "INFO: DDR bandwidth test PASSED" << std::endl;
+    // Test bandwidth kernel
+    retVal = runOneTest("device memory bandwidth test",
+            std::bind(&xcldev::device::bandwidthKernelTest, this));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
 
     // Perform P2P test
-    std::cout << "INFO: Starting P2P test" << std::endl;
-    ret = testP2p();
-    if (ret != 0) {
-        std::cout << "ERROR: P2P test FAILED" << std::endl;
-        return ret;
-    }
-    std::cout << "INFO: P2P test PASSED" << std::endl;
+    retVal = runOneTest("PCIE peer-to-peer test",
+            std::bind(&xcldev::device::testP2p, this));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
 
     //Perform M2M test
-    std::cout << "INFO: Starting M2M test" << std::endl;
-    ret = testM2m();
-    if (ret != 0) {
-        std::cout << "ERROR: M2M test FAILED" << std::endl;
-        return ret;
-    }
-    std::cout << "INFO: M2M test PASSED" << std::endl;
+    retVal = runOneTest("memory-to-memory DMA test",
+            std::bind(&xcldev::device::testM2m, this));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
 
-    return retVal;
+    return withWarning ? 1 : 0;
 }
 
 int xcldev::xclValidate(int argc, char *argv[])
@@ -1165,7 +1237,6 @@ int xcldev::xclReset(int argc, char *argv[])
 {
     int c;
     unsigned index = 0;
-    bool root = ((getuid() == 0) || (geteuid() == 0));
     const std::string usage("Options: [-d index]");
 
     while ((c = getopt(argc, argv, "d:")) != -1) {
@@ -1191,12 +1262,7 @@ int xcldev::xclReset(int argc, char *argv[])
         return -EINVAL;
     }
 
-    if (!root) {
-        std::cout << "ERROR: root privileges required." << std::endl;
-        return -EPERM;
-    }
-
-    std::cout << "All eixisting processes will be killed." << std::endl;
+    std::cout << "All existing processes will be killed." << std::endl;
     if(!canProceed())
         return -ECANCELED;
 
@@ -1278,7 +1344,7 @@ static int p2ptest_bank(xclDeviceHandle handle, int memidx,
     const size_t chunk_size = 16 * 1024 * 1024;
     int ret = 0;
 
-    unsigned int boh = xclAllocBO(handle, size, XCL_BO_DEVICE_RAM,
+    unsigned int boh = xclAllocBO(handle, size, 0,
         XCL_BO_FLAGS_P2P | memidx);
     if (boh == NULLBO) {
         std::cout << "Error allocating P2P BO" << std::endl;
@@ -1326,7 +1392,7 @@ int xcldev::device::testP2p()
     dev->sysfs_get("", "p2p_enable", errmsg, p2p_enabled);
     if (p2p_enabled != 1) {
         std::cout << "P2P BAR is not enabled. Skipping validation" << std::endl;
-        return 0;
+        return -EOPNOTSUPP;
     }
 
     dev->sysfs_get("icap", "mem_topology", errmsg, buf);
@@ -1424,7 +1490,7 @@ int xcldev::xclP2p(int argc, char *argv[])
         std::cout << "ERROR: Not enough iomem space." << std::endl;
         std::cout << "Please check BIOS settings" << std::endl;
     } else if (ret == EBUSY) {
-        std::cout << "ERROR: resoure busy, please try warm reboot" << std::endl;
+        std::cout << "ERROR: P2P is enabled. But there is not enough iomem space, please warm reboot." << std::endl;
     } else if (ret)
         std::cout << "ERROR: " << strerror(ret) << std::endl;
 
@@ -1446,7 +1512,7 @@ static void m2m_free_unmap_bo(xclDeviceHandle handle, unsigned boh,
 static int m2m_alloc_init_bo(xclDeviceHandle handle, unsigned &boh,
     char * &boptr, size_t boSize, int bank, char pattern)
 {
-    boh = xclAllocBO(handle, boSize, XCL_BO_DEVICE_RAM, bank);
+    boh = xclAllocBO(handle, boSize, 0, bank);
     if (boh == NULLBO) {
         std::cout << "Error allocating BO" << std::endl;
         return -ENOMEM;
@@ -1472,6 +1538,7 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
     unsigned boTgt = NULLBO;
     char *boSrcPtr = nullptr;
     char *boTgtPtr = nullptr;
+    int ret = 0;
 
     const size_t boSize = 256L * 1024 * 1024;
     if (xclOpenContext(handle, uuid, -1, true)) {
@@ -1491,35 +1558,15 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
         xclCloseContext(handle, uuid, -1);
         return -EINVAL;
     }
-    //Allocate the exec_bo
-    unsigned execHandle = xclAllocBO(handle, sizeof (ert_start_copybo_cmd),
-        xclBOKind(0), (1<<31));
-    struct ert_start_copybo_cmd *execData =
-        reinterpret_cast<struct ert_start_copybo_cmd *>(
-        xclMapBO(handle, execHandle, true));
-    ert_fill_copybo_cmd(execData, boSrc, boTgt, 0, 0, boSize);
 
     xcldev::Timer timer;
-    if(xclExecBuf(handle, execHandle)) {
-        m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
-        m2m_free_unmap_bo(handle, boTgt, boTgtPtr, boSize);
-        m2m_free_unmap_bo(handle, execHandle, execData, sizeof (ert_start_copybo_cmd));
-        xclCloseContext(handle, uuid, -1);
-        std::cout << "ERROR: Unable to issue xclExecBuf" << std::endl;
-        return -EINVAL;
-    }
-
-    while (execData->state < ERT_CMD_STATE_COMPLETED){
-        while (xclExecWait(handle, 1000) == 0) {
-            std::cout << "reentering wait...\n";
-        };
-    }
+    if ((ret = xclCopyBO(handle, boTgt, boSrc, boSize, 0, 0)))
+        return ret;
     double timer_stop = timer.stop();
 
     if(xclSyncBO(handle, boTgt, XCL_BO_SYNC_BO_FROM_DEVICE, boSize, 0)) {
         m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
         m2m_free_unmap_bo(handle, boTgt, boTgtPtr, boSize);
-        m2m_free_unmap_bo(handle, execHandle, execData, sizeof (ert_start_copybo_cmd));
         xclCloseContext(handle, uuid, -1);
         std::cout << "ERROR: Unable to sync target BO" << std::endl;
         return -EINVAL;
@@ -1530,7 +1577,6 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
     // Clean up
     m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
     m2m_free_unmap_bo(handle, boTgt, boTgtPtr, boSize);
-    m2m_free_unmap_bo(handle, execHandle, execData, sizeof (ert_start_copybo_cmd));
 
     xclCloseContext(handle, uuid, -1);
 
@@ -1565,7 +1611,7 @@ int xcldev::device::testM2m()
     dev->sysfs_get("mb_scheduler", "kds_numcdmas", errmsg, m2m_enabled);
     if (m2m_enabled == 0) {
         std::cout << "M2M is not available. Skipping validation" << std::endl;
-        return 0;
+        return -EOPNOTSUPP;
     }
 
     dev->sysfs_get("icap", "mem_topology", errmsg, buf);
