@@ -381,7 +381,7 @@ struct xdma_result {
 
 struct sw_desc {
 	dma_addr_t addr;
-	unsigned int len;
+	u64 len;
 };
 
 /* Describes a (SG DMA) single transfer for the engine */
@@ -399,13 +399,13 @@ struct xdma_transfer {
 #define XFER_FLAG_NEED_UNMAP	0x1
 	int cyclic;			/* flag if transfer is cyclic */
 	int last_in_request;		/* flag if last within request */
-	unsigned int len;
+	u64 len;
 	struct sg_table *sgt;
 };
 
 struct xdma_request_cb {
 	struct sg_table *sgt;
-	unsigned int total_len;
+	u64 total_len;
 	u64 ep_addr;
 
 	struct xdma_transfer xfer;

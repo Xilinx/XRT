@@ -73,10 +73,10 @@ for {set i 0} {$i < 16} {incr i} {
 }
 set_property PFM.IRQ $intVar [get_bd_cells /xlconcat_0]
 
-##spit out a DSA
+##spit out a XSA
 generate_target all [get_files ./zc702_vivado/zc702.srcs/sources_1/bd/zc702/zc702.bd]
-set_property dsa.post_sys_link_tcl_hook        ./dynamic_postlink.tcl       [current_project]
-write_dsa -force ./zc702.dsa
+set_property platform.post_sys_link_tcl_hook        ./dynamic_postlink.tcl       [current_project]
+write_hw_platform -force ./zc702.xsa
 
 #generate hdf
 write_hwdef -force  -file ./zc702_vivado/zc702.hdf

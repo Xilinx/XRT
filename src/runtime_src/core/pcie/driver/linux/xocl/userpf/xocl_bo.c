@@ -342,6 +342,29 @@ fail:
 	return ERR_CAST(p);
 }
 
+static struct sg_table *alloc_onetime_sg_table(struct page **pages, uint64_t offset, uint64_t size)
+{
+	int ret;
+	unsigned int nr_pages;
+	struct sg_table *sgt = kmalloc(sizeof(struct sg_table), GFP_KERNEL);
+
+	if (!sgt)
+		return ERR_PTR(-ENOMEM);
+
+	pages += (offset >> PAGE_SHIFT);
+	offset &= (~PAGE_MASK);
+	nr_pages = PAGE_ALIGN(size + offset) >> PAGE_SHIFT;
+
+	ret = sg_alloc_table_from_pages(sgt, pages, nr_pages, offset, size, GFP_KERNEL);
+	if (ret)
+		goto cleanup;
+	return sgt;
+
+cleanup:
+	kfree(sgt);
+	return ERR_PTR(-ENOMEM);
+}
+
 int xocl_create_bo_ioctl(struct drm_device *dev,
 			 void *data,
 			 struct drm_file *filp)
@@ -391,7 +414,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 			ret = PTR_ERR(xobj->pages);
 			goto out_free;
 		}
-		xobj->sgt = drm_prime_pages_to_sg(xobj->pages, xobj->base.size >> PAGE_SHIFT);
+		xobj->sgt = alloc_onetime_sg_table(xobj->pages, 0, xobj->base.size);
 		if (IS_ERR(xobj->sgt)) {
 			ret = PTR_ERR(xobj->sgt);
 			goto out_free;
@@ -513,29 +536,6 @@ int xocl_map_bo_ioctl(struct drm_device *dev,
 out:
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(obj);
 	return ret;
-}
-
-static struct sg_table *alloc_onetime_sg_table(struct page **pages, uint64_t offset, uint64_t size)
-{
-	int ret;
-	unsigned int nr_pages;
-	struct sg_table *sgt = kmalloc(sizeof(struct sg_table), GFP_KERNEL);
-
-	if (!sgt)
-		return ERR_PTR(-ENOMEM);
-
-	pages += (offset >> PAGE_SHIFT);
-	offset &= (~PAGE_MASK);
-	nr_pages = PAGE_ALIGN(size + offset) >> PAGE_SHIFT;
-
-	ret = sg_alloc_table_from_pages(sgt, pages, nr_pages, offset, size, GFP_KERNEL);
-	if (ret)
-		goto cleanup;
-	return sgt;
-
-cleanup:
-	kfree(sgt);
-	return ERR_PTR(-ENOMEM);
 }
 
 int xocl_sync_bo_ioctl(struct drm_device *dev,

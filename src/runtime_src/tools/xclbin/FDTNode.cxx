@@ -71,7 +71,8 @@ FDTNode::runningBufferCheck(const unsigned int _bytesExamined,
 FDTNode::FDTNode(const char* _pBuffer,
                  const unsigned int _size,
                  const DTCStringsBlock& _dtcStringsBlock,
-                 unsigned int& _bytesExamined)
+                 unsigned int& _bytesExamined,
+                 const FDTProperty::PropertyNameFormat & _propertyNameFormat)
   : FDTNode() 
 {
   XUtil::TRACE("Extracting FDT Node.");
@@ -125,7 +126,7 @@ FDTNode::FDTNode(const char* _pBuffer,
           const char* pBeginBuffer = &_pBuffer[index];
           unsigned int remainingSize = _size - index;
           unsigned int bytesExamined = 0;
-          FDTNode* pNode = new FDTNode(pBeginBuffer, remainingSize, _dtcStringsBlock, bytesExamined);
+          FDTNode* pNode = new FDTNode(pBeginBuffer, remainingSize, _dtcStringsBlock, bytesExamined, _propertyNameFormat);
           index += bytesExamined;
           runningBufferCheck(index, _size);
           m_nestedNodes.push_back(pNode);
@@ -137,7 +138,7 @@ FDTNode::FDTNode(const char* _pBuffer,
           const char* pBeginBuffer = &_pBuffer[index];
           unsigned int remainingSize = _size - index;
           unsigned int bytesExamined = 0;
-          FDTProperty* pProperty = new FDTProperty(pBeginBuffer, remainingSize, _dtcStringsBlock, bytesExamined);
+          FDTProperty* pProperty = new FDTProperty(pBeginBuffer, remainingSize, _dtcStringsBlock, bytesExamined, _propertyNameFormat);
           index += bytesExamined;
           runningBufferCheck(index, _size);
           m_properties.push_back(pProperty);
@@ -159,7 +160,9 @@ FDTNode::FDTNode(const char* _pBuffer,
   }
 }
 
-FDTNode::FDTNode(const boost::property_tree::ptree& _ptDTC, std::string & _nodeName)
+FDTNode::FDTNode(const boost::property_tree::ptree& _ptDTC, 
+                 std::string & _nodeName,
+                 const FDTProperty::PropertyNameFormat & _propertyNameFormat)
   : FDTNode() 
 {
   m_name = _nodeName;
@@ -170,13 +173,14 @@ FDTNode::FDTNode(const boost::property_tree::ptree& _ptDTC, std::string & _nodeN
        iter != _ptDTC.end();
        ++iter) {
     std::string keyName = iter->first;
-    if (FDTProperty::isProperty(keyName)) {
+
+    if (_propertyNameFormat.find(keyName) != _propertyNameFormat.end()) {
       XUtil::TRACE(XUtil::format("Property Found: %s", keyName.c_str()).c_str());
-      FDTProperty * pProperty = new FDTProperty(iter);
+      FDTProperty * pProperty = new FDTProperty(iter, _propertyNameFormat);
       m_properties.push_back(pProperty);
     } else {
       XUtil::TRACE(XUtil::format("Node Found: %s", keyName.c_str()).c_str());
-      FDTNode * pFDTNode = new FDTNode(iter->second, keyName);
+      FDTNode * pFDTNode = new FDTNode(iter->second, keyName, _propertyNameFormat);
       m_nestedNodes.push_back(pFDTNode);
     }
   }
@@ -186,7 +190,8 @@ FDTNode::FDTNode(const boost::property_tree::ptree& _ptDTC, std::string & _nodeN
 FDTNode*
 FDTNode::marshalFromDTC( const char* _pBuffer, 
                          const unsigned int _size, 
-                         const DTCStringsBlock& _dtcStringsBlock) 
+                         const DTCStringsBlock& _dtcStringsBlock,
+                         const FDTProperty::PropertyNameFormat & _propertyNameFormat) 
 {
   XUtil::TRACE("Examining and extracting nodes from the structure block image.");
 
@@ -235,7 +240,7 @@ FDTNode::marshalFromDTC( const char* _pBuffer,
   unsigned nodeBufferSize = _size - index;
 
   uint32_t bytesExamined = 0;
-  FDTNode* pTopNode = new FDTNode(pNodeBuffer, nodeBufferSize, _dtcStringsBlock, bytesExamined);
+  FDTNode* pTopNode = new FDTNode(pNodeBuffer, nodeBufferSize, _dtcStringsBlock, bytesExamined, _propertyNameFormat);
   index += bytesExamined;
   runningBufferCheck(index, _size);
 
@@ -260,42 +265,48 @@ FDTNode::marshalFromDTC( const char* _pBuffer,
 
 
 FDTNode*
-FDTNode::marshalFromJSON(const boost::property_tree::ptree& _ptDTC) 
+FDTNode::marshalFromJSON( const boost::property_tree::ptree& _ptDTC,
+                          const FDTProperty::PropertyNameFormat & _propertyNameFormat) 
 {
   std::string topName = "";
-  return new FDTNode(_ptDTC, topName);
+  return new FDTNode(_ptDTC, topName, _propertyNameFormat);
 }
 
 
 
 void
-FDTNode::marshalSubNodeToJSON(boost::property_tree::ptree& _ptTree) const 
+FDTNode::marshalSubNodeToJSON(boost::property_tree::ptree& _ptTree, 
+                              const FDTProperty::PropertyNameFormat & _propertyNameFormat) const 
 {
   XUtil::TRACE(XUtil::format("** Examining SubNode: '%s'", m_name.c_str()));
 
-  if (m_name.length() == 0) {
-    std::string err = XUtil::format("ERROR: All nodes need a name.", m_name.c_str());
-    throw std::runtime_error(err);
-  }
+//  if (m_name.length() == 0) {
+//    std::string err = XUtil::format("ERROR: All nodes need a name.", m_name.c_str());
+//    throw std::runtime_error(err);
+//  }
 
   boost::property_tree::ptree ptSubNode;
 
   // Add the Properties
   for (auto pFDTProperty : m_properties) {
-    pFDTProperty->marshalToJSON(ptSubNode);
+    pFDTProperty->marshalToJSON(ptSubNode, _propertyNameFormat);
   }
 
   // Add the underlying nodes
   for (auto pFDTNode : m_nestedNodes) {
-    pFDTNode->marshalSubNodeToJSON(ptSubNode);
+    pFDTNode->marshalSubNodeToJSON(ptSubNode, _propertyNameFormat);
   }
-
-  _ptTree.add_child(m_name.c_str(), ptSubNode);
+  if (m_name.length() != 0) {
+    _ptTree.add_child(m_name.c_str(), ptSubNode);
+  } else {
+    _ptTree.push_back(std::make_pair("", ptSubNode));
+  }
 }
 
 
 void
-FDTNode::marshalToJSON(boost::property_tree::ptree& _ptTree) const 
+FDTNode::marshalToJSON(boost::property_tree::ptree& _ptTree,
+                       const FDTProperty::PropertyNameFormat & _propertyNameFormat) const 
 {
   XUtil::TRACE(XUtil::format("** Examining Node: '%s'", m_name.c_str()));
 
@@ -306,12 +317,12 @@ FDTNode::marshalToJSON(boost::property_tree::ptree& _ptTree) const
 
   // Add the Properties
   for (auto pFDTProperty : m_properties) {
-    pFDTProperty->marshalToJSON(_ptTree);
+    pFDTProperty->marshalToJSON(_ptTree, _propertyNameFormat);
   }
 
   // Add the underlying nodes
   for (auto pFDTNode : m_nestedNodes) {
-    pFDTNode->marshalSubNodeToJSON(_ptTree);
+    pFDTNode->marshalSubNodeToJSON(_ptTree, _propertyNameFormat);
   }
 }
 

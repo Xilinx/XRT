@@ -157,9 +157,12 @@ static ssize_t mig_calibration_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	void __iomem *memcalib;
+
+	memcalib = xocl_iores_get_base(lro, IORES_MEMCALIB);
 
 	return sprintf(buf, "%d\n",
-		lro->ready ? MGMT_READ_REG32(lro, GENERAL_STATUS_BASE) : 0);
+		(memcalib && lro->ready) ? XOCL_READ_REG32(memcalib) : 0);
 }
 static DEVICE_ATTR_RO(mig_calibration);
 
@@ -255,20 +258,26 @@ static DEVICE_ATTR(config_mailbox_comm_id, 0644,
 	config_mailbox_comm_id_show,
 	config_mailbox_comm_id_store);
 
-static ssize_t blob_clear_store(struct device *dev,
-	struct device_attribute *da, const char *buf, size_t count)
+static ssize_t rp_program_store(struct device *dev, struct device_attribute *da,
+	const char *buf, size_t count)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	u32 val = 0;
+	ssize_t ret;
 
-	if (lro->core.fdt_blob) {
-		vfree(lro->core.fdt_blob);
-		lro->core.fdt_blob = NULL;
-	}
+	if (kstrtou32(buf, 10, &val) == -EINVAL)
+		return -EINVAL;
+	else if (val == 1)
+		ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP, false);
+	else if (val == 2) {
+		ret = xclmgmt_program_shell(lro);
+		(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
+	} else
+		return -EINVAL;
 
-	return count;
+	return ret ? ret : count;
 }
-
-static DEVICE_ATTR(blob_clear, 0200, NULL, blob_clear_store);
+static DEVICE_ATTR_WO(rp_program);
 
 static struct attribute *mgmt_attrs[] = {
 	&dev_attr_instance.attr,
@@ -290,10 +299,46 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_dev_offline.attr,
 	&dev_attr_config_mailbox_channel_switch.attr,
 	&dev_attr_config_mailbox_comm_id.attr,
-	&dev_attr_blob_clear.attr,
+	&dev_attr_rp_program.attr,
 	NULL,
 };
 
+static ssize_t fdt_blob_output(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+{
+	struct device *dev = kobj_to_dev(kobj);
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	unsigned char *blob;
+	size_t size;
+	ssize_t ret = 0;
+
+	if (!lro->core.fdt_blob)
+		goto bail;
+
+	blob = lro->core.fdt_blob;
+	size = fdt_totalsize(lro->core.fdt_blob);
+
+	if (off >= size)
+		goto bail;
+
+	if (off + count > size)
+		count = size - off;
+	memcpy(buf, blob + off, count);
+
+	ret = count;
+bail:
+
+	return ret;
+}
+
+static struct bin_attribute fdt_blob_attr = {
+	.attr = {
+		.name = "fdt_blob",
+		.mode = 0400
+	},
+	.read = fdt_blob_output,
+	.size = 0
+};
 static ssize_t userpf_blob_output(struct file *filp, struct kobject *kobj,
 	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
@@ -333,6 +378,7 @@ static struct bin_attribute userpf_blob_attr = {
 
 static struct bin_attribute  *mgmt_bin_attrs[] = {
 	&userpf_blob_attr,
+	&fdt_blob_attr,
 	NULL,
 };
 

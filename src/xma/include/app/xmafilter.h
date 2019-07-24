@@ -101,7 +101,7 @@ typedef struct XmaFilterProperties
  * 
  * NULL on failure
  *
- *  Note: Cannot be presumed to be thread safe.
+ *  Note: session create & destroy are thread safe APIs
 */
 XmaFilterSession*
 xma_filter_session_create(XmaFilterProperties *props);
@@ -116,7 +116,7 @@ xma_filter_session_create(XmaFilterProperties *props);
  *          
  * XMA_ERROR on failure.
  *
- *  Note: Cannot be presumed to be thread safe.
+ *  Note: session create & destroy are thread safe APIs
 */
 int32_t
 xma_filter_session_destroy(XmaFilterSession *session);

@@ -1,0 +1,21 @@
+#template_tql < $RDI_TEMPLATES/sdx/sdaccel/swhw/template.tql
+description: testinfo generated using import_sdx_test.py script
+level: 6
+owner: qinz
+user:
+  allowed_test_modes: [sw_emu, hw_emu, hw]
+  host_args: {all: bin_hello.xclbin}
+  host_cflags: ' -DDSA64 -DFPGA_DEVICE'
+  host_exe: host.exe
+  host_src: hello.cpp
+  kernels:
+  - {cflags: ' -I.', file: hello.xo, ksrc: hello.cl, name: hello, type: C}
+  name: 036_hello
+  xclbins:
+  - files: 'hello.xo '
+    kernels:
+    - cus: [hello_cu0]
+      name: hello
+      num_cus: 1
+    lflags: ''
+    name: bin_hello.xclbin

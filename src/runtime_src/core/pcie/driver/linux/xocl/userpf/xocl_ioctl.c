@@ -423,7 +423,11 @@ int xocl_reclock_ioctl(struct drm_device *dev, void *data,
 {
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
-	int err = xocl_reclock(xdev, data);
+	int err;
+
+	xocl_drvinst_set_offline(xdev, true);
+	err = xocl_reclock(xdev, data);
+	xocl_drvinst_set_offline(xdev, false);
 
 	printk(KERN_INFO "%s err: %d\n", __func__, err);
 	return err;

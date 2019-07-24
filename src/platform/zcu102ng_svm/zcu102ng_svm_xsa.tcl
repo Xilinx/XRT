@@ -88,7 +88,7 @@ connect_bd_net [get_bd_pins proc_sys_reset_4/interconnect_aresetn] [get_bd_pins 
 #apply_bd_automation -rule xilinx.com:bd_rule:microblaze -config {preset "Microcontroller" local_mem "8KB" ecc "None" cache "None" debug_module "Debug Only" axi_periph "Enabled" axi_intc "0" clk "/clk_wiz_0/clk_out5" }  [get_bd_cells hp_0_debug]
 #connect_bd_intf_net [get_bd_intf_pins hp_0_debug/M_AXI_DP] -boundary_type upper [get_bd_intf_pins hp_0_net/S00_AXI]
 
-assign_bd_address 
+assign_bd_address
 
 validate_bd_design
 update_compile_order -fileset sources_1
@@ -122,7 +122,7 @@ for {set i 1} {$i < 16} {incr i} {
 }
 set_property PFM.AXI_PORT $hpVar [get_bd_cells /hp_0_net]
 
-##spit out a DSA
+##spit out a XSA
 generate_target all [get_files ./zcu102ng_svm_vivado/zcu102ng_svm.srcs/sources_1/bd/zcu102ng_svm/zcu102ng_svm.bd]
-write_dsa -force ./zcu102ng_svm.dsa
+write_hw_platform -force ./zcu102ng_svm.xsa
 

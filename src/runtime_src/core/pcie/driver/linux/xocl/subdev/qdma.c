@@ -1307,15 +1307,10 @@ static ssize_t queue_read_iter(struct kiocb *kiocb, struct iov_iter *io)
 }
 #endif
 
-static int queue_flush(struct file *file, fl_owner_t id)
+static int queue_flush(struct stream_queue *queue)
 {
 	struct xocl_qdma *qdma;
-	struct stream_queue *queue;
 	long	ret = 0;
-
-	queue = (struct stream_queue *)file->private_data;
-	if (!queue)
-		return 0;
 
 	qdma = queue->qdma;
 
@@ -1383,6 +1378,8 @@ static int queue_close(struct inode *inode, struct file *file)
 	if (!queue) 
 		return 0;
 
+	queue_flush(queue);
+
 	if (queue->req_cache)
 		vfree(queue->req_cache);
 
@@ -1402,7 +1399,6 @@ static struct file_operations queue_fops = {
 		.aio_read = queue_aio_read,
 		.aio_write = queue_aio_write,
 #endif
-		.flush = queue_flush,
 		.release = queue_close,
 };
 
