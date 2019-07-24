@@ -44,7 +44,7 @@
 #include "core/pcie/common/dmatest.h"
 #include "core/pcie/common/memaccess.h"
 #include "core/common/utils.h"
-#include "core/common/dd.h"
+#include "core/pcie/common/dd.h"
 
 #define TO_STRING(x) #x
 //#define AXI_FIREWALL Not supported for AWS

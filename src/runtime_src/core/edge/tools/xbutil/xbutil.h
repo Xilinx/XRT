@@ -26,12 +26,13 @@
 #include <iomanip>
 #include <sstream>
 #include <string>
-
+#include <sys/ioctl.h>
 #include "xclhal2.h"
 #include "xclperf.h"
-#include "core/common/dd.h"
+//#include "core/common/dd.h"
 #include "core/common/utils.h"
 #include "core/common/sensor.h"
+#include "core/edge/include/zynq_ioctl.h"
 #include "xclbin.h"
 #include <version.h>
 #include <fcntl.h>
@@ -263,9 +264,15 @@ public:
                 int mKernelFD = open("/dev/dri/renderD128", O_RDWR);
                 if (!mKernelFD) {
                     printf("Cannot open /dev/dri/renderD128 \n");
-					return 0;
+					return -1;
                 }
-                ptr = mmap(0, 0x10000, PROT_READ | PROT_WRITE, MAP_SHARED, mKernelFD, computeUnits.at( i ).m_base_address);
+                drm_zocl_info_cu info = {computeUnits.at(i).m_base_address, -1};
+                int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_INFO_CU, &info);
+                if (result) {
+                    printf("failed to find CU info 0x%lx\n", computeUnits.at(i).m_base_address);
+                    return -1;
+                }
+                ptr = mmap(0, 0x10000, PROT_READ | PROT_WRITE, MAP_SHARED, mKernelFD, info.apt_idx*getpagesize());
                 if (!ptr) {
                     printf("Map failed for aperture 0x%lx, size 0x%lx\n", computeUnits.at( i ).m_base_address, 0x10000);
                     return -1;
@@ -524,7 +531,7 @@ public:
     int dmatest(size_t blockSize, bool verbose) { std::cout << "Unsupported API " << std::endl; return -1; }
     int memread(std::string aFilename, unsigned long long aStartAddr = 0, unsigned long long aSize = 0) { std::cout << "Unsupported API " << std::endl; return -1; }
     int memwrite(unsigned long long aStartAddr, unsigned long long aSize, unsigned int aPattern = 'J') { std::cout << "Unsupported API " << std::endl; return -1; }
-    int do_dd(dd::ddArgs_t args ) { std::cout << "Unsupported API " << std::endl; return -1; }
+    //int do_dd(dd::ddArgs_t args ) { std::cout << "Unsupported API " << std::endl; return -1; }
     int validate(bool quick) { std::cout << "Unsupported API " << std::endl; return -1; }
     int reset(xclResetKind kind) { std::cout << "Unsupported API " << std::endl; return -1; }
     int printStreamInfo(std::ostream& ostr) const { std::cout << "Unsupported API " << std::endl; return -1; }

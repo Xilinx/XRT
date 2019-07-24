@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
     std::string xclbin;
     size_t blockSize = 0;
     int c;
-    dd::ddArgs_t ddArgs;
+    //dd::ddArgs_t ddArgs;
 
     xcldev::baseInit();
 
@@ -260,9 +260,9 @@ int main(int argc, char *argv[])
             int ret = 0;//str2index(optarg, index);
             if (ret != 0)
                 return ret;
-            if (cmd == xcldev::DD) {
-                ddArgs = dd::parse_dd_options( argc, argv );
-            }
+            //if (cmd == xcldev::DD) {
+                //ddArgs = dd::parse_dd_options( argc, argv );
+            //}
             break;
         }
         case 'r':

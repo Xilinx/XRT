@@ -31,7 +31,7 @@
 #include "xcl_axi_checker_codes.h"
 #include "core/pcie/common/dmatest.h"
 #include "core/pcie/common/memaccess.h"
-#include "core/common/dd.h"
+#include "core/pcie/common/dd.h"
 #include "core/common/utils.h"
 #include "core/common/sensor.h"
 #include "core/pcie/linux/scan.h"
