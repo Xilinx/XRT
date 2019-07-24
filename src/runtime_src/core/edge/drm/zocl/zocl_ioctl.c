@@ -55,38 +55,10 @@ struct zclmgmt_ioc_bitstream_axlf {
 #define DMA_HWICAP_BITFILE_BUFFER_SIZE 1024
 #define BITFILE_BUFFER_SIZE DMA_HWICAP_BITFILE_BUFFER_SIZE
 
-static const struct axlf_section_header *get_axlf_section_hdr(
-	struct axlf *top, enum axlf_section_kind kind)
-{
-	int i;
-	const struct axlf_section_header *hdr = NULL;
+static struct axlf_section_header* get_axlf_section(struct axlf *top, enum axlf_section_kind kind);
 
-	DRM_INFO("trying to find section header for axlf section %d", kind);
-
-	for (i = 0; i < top->m_header.m_numSections; i++) {
-		DRM_INFO("saw section header: %d",
-			top->m_sections[i].m_sectionKind);
-		if (top->m_sections[i].m_sectionKind == kind) {
-			hdr = &top->m_sections[i];
-			break;
-		}
-	}
-
-	if (hdr) {
-		if ((hdr->m_sectionOffset + hdr->m_sectionSize) >
-			top->m_header.m_length) {
-			DRM_INFO("found section is invalid");
-			hdr = NULL;
-		} else {
-			DRM_INFO("header offset: %llu, size: %llu",
-				hdr->m_sectionOffset, hdr->m_sectionSize);
-		}
-	} else {
-		DRM_INFO("could not find section header %d", kind);
-	}
-
-	return hdr;
-}
+int zocl_check_section(struct axlf_section_header *header, uint64_t xclbin_len,
+		enum axlf_section_kind kind);
 
 static int bitstream_parse_header(const unsigned char *Data, unsigned int Size,
 				  XHwIcap_Bit_Header *Header)
@@ -333,11 +305,15 @@ int zocl_pcap_download_ioctl(struct drm_device *dev, void *data,
 	if (memcmp(bin_obj.m_magic, "xclbin2", 8))
 		return -EINVAL;
 
-	primaryHeader = get_axlf_section_hdr(&bin_obj, BITSTREAM);
+	primaryHeader = get_axlf_section(&bin_obj, BITSTREAM);
+	if (primaryHeader == NULL)
+		return -EINVAL;
+
+	if (zocl_check_section(primaryHeader, bin_obj.m_header.m_length, BITSTREAM))
+		return -EINVAL;
+
 	primary_fw_off = primaryHeader->m_sectionOffset;
 	primary_fw_len = primaryHeader->m_sectionSize;
-	if ((primary_fw_off + primary_fw_len) > bin_obj.m_header.m_length)
-		return -EINVAL;
 
 	buffer = (char __user *)args->xclbin;
 
