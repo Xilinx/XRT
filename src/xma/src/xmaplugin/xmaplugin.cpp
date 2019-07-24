@@ -149,9 +149,8 @@ xma_plg_buffer_free(XmaSession s_handle, XmaBufferObj b_obj)
         return;
     }
     XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj.private_do_not_touch;
-
-    xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
-    xclFreeBO(dev_handle, b_obj_priv->boHandle);
+    //xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
+    xclFreeBO(b_obj_priv->dev_handle, b_obj_priv->boHandle);
     b_obj_priv->dummy = NULL;
     b_obj_priv->size = -1;
     b_obj_priv->bank_index = -1;
@@ -198,11 +197,10 @@ xma_plg_buffer_write(XmaSession s_handle,
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. Can not write past end of buffer.\n");
         return XMA_ERROR;
     }
-    xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
+    //xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
 
     //printf("xma_plg_buffer_write b_obj=%d,src=%p,size=%lu,offset=%lx\n", b_obj, src, size, offset);
-
-    rc = xclSyncBO(dev_handle, b_obj_priv->boHandle, XCL_BO_SYNC_BO_TO_DEVICE, size, offset);
+    rc = xclSyncBO(b_obj_priv->dev_handle, b_obj_priv->boHandle, XCL_BO_SYNC_BO_TO_DEVICE, size, offset);
     if (rc != 0) {
         std::cout << "ERROR: xma_plg_buffer_write xclSyncBO failed " << std::dec << rc << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xclSyncBO failed %d\n", rc);
@@ -237,12 +235,11 @@ xma_plg_buffer_read(XmaSession s_handle,
         return XMA_ERROR;
     }
 
-    xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
+    //xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
 
     //printf("xma_plg_buffer_read b_obj=%d,dst=%p,size=%lu,offset=%lx\n",
     //       b_obj, dst, size, offset);
-
-    rc = xclSyncBO(dev_handle, b_obj_priv->boHandle, XCL_BO_SYNC_BO_FROM_DEVICE,
+    rc = xclSyncBO(b_obj_priv->dev_handle, b_obj_priv->boHandle, XCL_BO_SYNC_BO_FROM_DEVICE,
                    size, offset);
     if (rc != 0)
     {
@@ -454,7 +451,11 @@ xma_plg_schedule_work_item(XmaSession s_handle)
     ert_start_kernel_cmd *cu_cmd = 
         (ert_start_kernel_cmd*)dev_tmp1->kernel_execbo_data[bo_idx];
     cu_cmd->state = ERT_CMD_STATE_NEW;
-    cu_cmd->opcode = ERT_START_CU;
+    if (kernel_tmp1->soft_kernel) {
+        cu_cmd->opcode = ERT_SK_START;
+    } else {
+        cu_cmd->opcode = ERT_START_CU;
+    }
     cu_cmd->extra_cu_masks = 1;//XMA now supports 60 CUs
 
     cu_cmd->cu_mask = kernel_tmp1->cu_mask0;

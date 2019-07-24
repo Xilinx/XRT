@@ -246,7 +246,9 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
                 (const char*)info.ip_layout[d].kernel_name);
             tmp1.base_address = info.ip_layout[d].base_addr;
             tmp1.cu_index = (int32_t)d;
-
+            if (info.ip_layout[d].soft_kernel) {
+                tmp1.soft_kernel = true;
+            }
             rc = xma_xclbin_map2ddr(info.ip_ddr_mapping[d], &tmp1.ddr_bank);
             //XMA supports only 1 Bank per Kernel
 
@@ -305,12 +307,6 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             dev_tmp1.kernel_execbo_data.emplace_back(bo_data);
             dev_tmp1.kernel_execbo_inuse.emplace_back(false);
             dev_tmp1.kernel_execbo_cu_index.emplace_back(-1);
-            /*
-            ert_start_kernel_cmd* cu_start_cmd = (ert_start_kernel_cmd*) bo_data;
-            cu_start_cmd->state = ERT_CMD_STATE_NEW;
-            cu_start_cmd->opcode = ERT_START_CU;
-            cu_start_cmd->cu_mask = cu_bit_mask;
-            */
         }
 
         free(buffer);
