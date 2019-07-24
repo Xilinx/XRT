@@ -71,7 +71,16 @@ extern char* get_afi_from_axlf(const axlf *);
 #define DEFAULT_GLOBAL_AFI "agfi-069ddd533a748059b" // 1.4 shell
 #endif
 
+#include "core/common/AlignedAllocator.h"
+
+// Profiling
+#define AXI_FIFO_RDFD_AXI_FULL          0x1000
+#define MAX_TRACE_NUMBER_SAMPLES                        16384
+#define XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH            64
+
+
 namespace awsbwhal {
+
     // This list will get populated in xclProbe
     // 0 -> /dev/dri/renderD129
     // 1 -> /dev/dri/renderD130
@@ -208,7 +217,7 @@ namespace awsbwhal {
 #if ((GCC_VERSION >= 40800) && !defined(__PPC64__) && !defined(__aarch64__))
         alignas(DDR_BUFFER_ALIGNMENT) char buffer[DDR_BUFFER_ALIGNMENT];
 #else
-        AlignedAllocator<char> alignedBuffer(DDR_BUFFER_ALIGNMENT, DDR_BUFFER_ALIGNMENT);
+        xrt_core::AlignedAllocator<char> alignedBuffer(DDR_BUFFER_ALIGNMENT, DDR_BUFFER_ALIGNMENT);
         char* buffer = alignedBuffer.getBuffer();
 #endif
 
@@ -831,6 +840,90 @@ namespace awsbwhal {
       strncpy(sysfsPath, sysfsPathStr.c_str(), size);
       sysfsPathStr[size - 1] = '\0';
       return 0;
+    }
+
+    int AwsXcl::xclGetDebugIPlayoutPath(char* layoutPath, size_t size)
+    {
+      return xclGetSysfsPath("icap", "debug_ip_layout", layoutPath, size);
+    }
+
+
+    int AwsXcl::xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
+    {
+      uint32_t bytesPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 8);
+
+      traceBufSz = MAX_TRACE_NUMBER_SAMPLES * bytesPerSample;   /* Buffer size in bytes */
+      traceSamples = nSamples;
+
+      return 0;  
+    }
+
+    int AwsXcl::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
+    {
+        // Create trace buffer on host (requires alignment)
+        const int traceBufWordSz = traceBufSz / 4;  // traceBufSz is in number of bytes
+
+        uint32_t size = 0;
+
+        wordsPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 32);
+        uint32_t numWords = numSamples * wordsPerSample;
+
+    //    alignas is defined in c++11
+    #if GCC_VERSION >= 40800
+        /* Alignment is limited to 16 by PPC64LE : so , should it be 
+        alignas(16) uint32_t hostbuf[traceBufSzInWords];
+        */
+        alignas(AXI_FIFO_RDFD_AXI_FULL) uint32_t hostbuf[traceBufWordSz];
+    #else
+        xrt_core::AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, traceBufWordSz);
+        uint32_t* hostbuf = alignedBuffer.getBuffer();
+    #endif
+
+        // Now read trace data
+        memset((void *)hostbuf, 0, traceBufSz);
+
+        // Iterate over chunks
+        // NOTE: AXI limits this to 4K bytes per transfer
+        uint32_t chunkSizeWords = 256 * wordsPerSample;
+        if (chunkSizeWords > 1024) chunkSizeWords = 1024;
+        uint32_t chunkSizeBytes = 4 * chunkSizeWords;
+        uint32_t words=0;
+
+        // Read trace a chunk of bytes at a time
+        if (numWords > chunkSizeWords) {
+          for (; words < (numWords-chunkSizeWords); words += chunkSizeWords) {
+              if(mLogStream.is_open())
+                mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
+                              << std::hex << (ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0] or AXI_FIFO_RDFD*/ << " and writing it to 0x"
+                              << (void *)(hostbuf + words) << std::dec << std::endl;
+
+            xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
+
+            size += chunkSizeBytes;
+          }
+        }
+
+        // Read remainder of trace not divisible by chunk size
+        if (words < numWords) {
+          chunkSizeBytes = 4 * (numWords - words);
+
+          if(mLogStream.is_open()) {
+            mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
+                          << std::hex << (ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0]*/ << " and writing it to 0x"
+                          << (void *)(hostbuf + words) << std::dec << std::endl;
+          }
+
+          xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
+
+          size += chunkSizeBytes;
+        }
+
+        if(mLogStream.is_open())
+            mLogStream << __func__ << ": done reading " << size << " bytes " << std::endl;
+
+        memcpy((char*)traceBuf, (char*)hostbuf, traceBufSz);
+
+        return size;
     }
     
     /*
@@ -1462,3 +1555,29 @@ int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev, const char* entr
   awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
   return drv ? drv->xclGetSysfsPath(subdev, entry, sysfsPath, size) : -ENODEV;
 }
+
+uint xclGetNumLiveProcesses(xclDeviceHandle handle)
+{
+  return 1;
+//  return -ENOSYS;
+}
+
+int xclGetDebugIPlayoutPath(xclDeviceHandle handle, char* layoutPath, size_t size)
+{
+  awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+  return drv ? drv->xclGetDebugIPlayoutPath(layoutPath, size) : -ENODEV;
+}
+
+int xclGetTraceBufferInfo(xclDeviceHandle handle, uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
+{
+  awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+  return (drv) ? drv->xclGetTraceBufferInfo(nSamples, traceSamples, traceBufSz) : -ENODEV;
+}
+
+int xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
+{
+  awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+  return (drv) ? drv->xclReadTraceData(traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample) : -ENODEV;
+}
+
+

@@ -67,6 +67,7 @@ namespace xdp {
       endDeviceProfiling();
     }
     endProfiling();
+    reset();
     pDead = true;
   }
 
@@ -74,13 +75,16 @@ namespace xdp {
   void OCLProfiler::startDeviceProfiling(size_t numComputeUnits)
   {
     auto platform = getclPlatformID();
+
     // Start counters
-    if (deviceCountersProfilingOn())
-      xoclp::platform::start_device_counters(platform, XCL_PERF_MON_MEMORY);
+    if (deviceCountersProfilingOn()) {
+      startCounters();
+    }
 
     // Start trace
-    if (deviceTraceProfilingOn())
-      xoclp::platform::start_device_trace(platform, XCL_PERF_MON_MEMORY, numComputeUnits);
+    if (deviceTraceProfilingOn()) {
+      startTrace();
+    }
 
     if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM))
       xoclp::platform::start_device_trace(platform, XCL_PERF_MON_ACCEL, numComputeUnits);
@@ -91,7 +95,6 @@ namespace xdp {
         PowerProfileList.push_back(std::move(power_profile));
       }
     }
-
     mProfileRunning = true;
   }
 
@@ -103,35 +106,28 @@ namespace xdp {
     if (mEndDeviceProfilingCalled)
    	  return;
 
-    auto platform = getclPlatformID();
-    if (applicationProfilingOn()) {
-      // Write end of app event to trace buffer (Zynq only)
-      xoclp::platform::write_host_event(platform,
-          XCL_PERF_MON_END_EVENT, XCL_PERF_MON_PROGRAM_END);
-
-      XOCL_DEBUGF("Final calls to read device counters and trace\n");
-
-      xoclp::platform::log_device_counters(platform, XCL_PERF_MON_MEMORY, false, true);
-
-      // Only called for hw emulation
-      // Log accel trace before data trace as that is used for timestamp calculations
-      if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM)) {
-        xoclp::platform::log_device_counters(platform, XCL_PERF_MON_ACCEL, true, true);
-        logFinalTrace(XCL_PERF_MON_ACCEL);
-        xoclp::platform::log_device_counters(platform, XCL_PERF_MON_STR, true, true);
-        logFinalTrace(XCL_PERF_MON_STR);
-      }
-
-      logFinalTrace(XCL_PERF_MON_MEMORY);
-
-      // Gather info for guidance
-      // NOTE: this needs to be done here before the device clears its list of CUs
-      // See xocl::device::unload_program as called from xocl::program::~program
-      Plugin->getGuidanceMetadata( getProfileManager() );
-
-      // Record that this was called indirectly by host code
-      mEndDeviceProfilingCalled = true;
+    if(!applicationProfilingOn()) {
+      return;
     }
+
+    // Log Counter Data
+    logDeviceCounters(true, true, true);  // reads and logs device counters for all monitors in all flows
+
+    // Log Trace Data
+    // Log accel trace before data trace as that is used for timestamp calculations
+    if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM)) {
+      logFinalTrace(XCL_PERF_MON_ACCEL);
+      logFinalTrace(XCL_PERF_MON_STR);
+    }
+    logFinalTrace(XCL_PERF_MON_MEMORY);  // reads and logs trace data for all monitors in HW flow
+
+    // Gather info for guidance
+    // NOTE: this needs to be done here before the device clears its list of CUs
+    // See xocl::device::unload_program as called from xocl::program::~program
+    Plugin->getGuidanceMetadata( getProfileManager() );
+
+    // Record that this was called indirectly by host code
+    mEndDeviceProfilingCalled = true;
   }
 
   // Get timestamp difference in usec (used for debug)
@@ -146,6 +142,133 @@ namespace xdp {
     return time_span.count();
   }
 
+  void OCLProfiler::startCounters()
+  {
+    auto platform = getclPlatformID();
+
+    for (auto device : platform->get_device_range()) {
+      if(!device->is_active()) {
+        continue;
+      }
+      auto itr = DeviceData.find(device);
+      if (itr==DeviceData.end()) {
+        itr = DeviceData.emplace(device,xdp::xoclp::platform::device::data()).first;
+      }
+      DeviceIntf* dInt = nullptr;
+      auto xdevice = device->get_xrt_device();
+      if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE)) {
+        dInt = &(itr->second.mDeviceIntf);
+        // Find good place to set device handle
+        dInt->setDeviceHandle(xdevice);
+        dInt->readDebugIPlayout();
+      }       
+      xdp::xoclp::platform::device::data* info = &(itr->second);
+
+      // Set clock etc.
+      double deviceClockMHz = xdevice->getDeviceClock().get();
+      if(deviceClockMHz > 0) {
+          getProfileManager()->setDeviceClockFreqMHz(deviceClockMHz);
+      }
+      info->mPerformingFlush = false;
+
+      // Reset and Start counters
+      if(dInt) {
+        dInt->startCounters(XCL_PERF_MON_MEMORY);
+      } else {
+        xdevice->startCounters(XCL_PERF_MON_MEMORY);
+      }
+
+      info->mSampleIntervalMsec = getProfileManager()->getSampleIntervalMsec();
+
+      // configureDataflow
+      if(dInt) {
+        /* If CU corresponding to Accel Monitors has AP Control Chain, then enable Dataflow on the Accel Monitors */
+        unsigned numMon = dInt->getNumMonitors(XCL_PERF_MON_ACCEL);
+        auto ip_config = std::make_unique <bool []>(numMon);
+        for (unsigned i=0; i < numMon; i++) {
+          char name[128];
+          dInt->getMonitorName(XCL_PERF_MON_ACCEL, i, name, 128);
+          std::string cuName(name); // Assumption : For Accel Monitor, monitor instance is named as the corresponding CU
+
+          /* this ip_config only tells whether the corresponding CU has ap_control_chain :
+           * could have been just a property on the monitor set at compile time (in debug_ip_layout)
+           * Currently, isApCtrlChain retrieves info from xocl::device and conpute_unit. So, could not be moved
+           * into DeviceIntf as it uses xrt::device
+           */
+          ip_config[i] = xoclp::platform::device::isAPCtrlChain(device, cuName) ? true : false;
+        }
+
+        dInt->configureDataflow(ip_config.get());
+      } else {
+          xdp::xoclp::platform::device::configureDataflow(device,XCL_PERF_MON_MEMORY);    // this populates montior IP data which is needed by summary writer
+      }
+    } // for all active devices
+  }
+
+  void OCLProfiler::startTrace()
+  {
+    auto platform = getclPlatformID();
+
+    for (auto device : platform->get_device_range()) {
+      if(!device->is_active()) {
+        continue;
+      }
+      auto itr = DeviceData.find(device);
+      if (itr==DeviceData.end()) {
+        itr = DeviceData.emplace(device,xdp::xoclp::platform::device::data()).first;
+      }
+
+      auto xdevice = device->get_xrt_device();
+      DeviceIntf* dInt = nullptr;
+      if((Plugin->getFlowMode() == xdp::RTUtil::DEVICE)) {
+        dInt = &(itr->second.mDeviceIntf);
+        dInt->setDeviceHandle(xdevice);
+        dInt->readDebugIPlayout();
+      }
+      xdp::xoclp::platform::device::data* info = &(itr->second);
+
+      // Since clock training is performed in mStartTrace, let's record this time
+      // XCL_PERF_MON_MEMORY // any type
+      info->mLastTraceTrainingTime[XCL_PERF_MON_MEMORY] = std::chrono::steady_clock::now();
+      info->mPerformingFlush = false;
+      info->mLastTraceNumSamples[XCL_PERF_MON_MEMORY] = 0;
+
+      auto profileMgr = getProfileManager();
+
+      // Start device trace if enabled
+      xdp::RTUtil::e_device_trace deviceTrace = profileMgr->getTransferTrace();
+      xdp::RTUtil::e_stall_trace stallTrace = profileMgr->getStallTrace();
+      uint32_t traceOption = (deviceTrace == xdp::RTUtil::DEVICE_TRACE_COARSE) ? 0x1 : 0x0;
+      if (deviceTrace != xdp::RTUtil::DEVICE_TRACE_OFF) traceOption   |= (0x1 << 1);
+      if (stallTrace & xdp::RTUtil::STALL_TRACE_INT)    traceOption   |= (0x1 << 2);
+      if (stallTrace & xdp::RTUtil::STALL_TRACE_STR)    traceOption   |= (0x1 << 3);
+      if (stallTrace & xdp::RTUtil::STALL_TRACE_EXT)    traceOption   |= (0x1 << 4);
+      XOCL_DEBUGF("Starting trace with option = 0x%x\n", traceOption);
+
+      if(dInt) {
+        dInt->startTrace(XCL_PERF_MON_MEMORY, traceOption);
+      } else {
+        xdevice->startTrace(XCL_PERF_MON_MEMORY, traceOption);
+        // for HW_EMU consider , 2 calls
+      }
+
+      // Get/set clock freqs
+      double deviceClockMHz = xdevice->getDeviceClock().get();
+      if (deviceClockMHz > 0) {
+        setKernelClockFreqMHz(device->get_unique_name(), deviceClockMHz );
+        profileMgr->setDeviceClockFreqMHz( deviceClockMHz );
+      }
+
+      // Get the trace samples threshold
+      info->mSamplesThreshold = profileMgr->getTraceSamplesThreshold();
+
+      // Calculate interval for clock training
+      info->mTrainingIntervalUsec = (uint32_t)(pow(2, 17) / deviceClockMHz);
+      profileMgr->setLoggingTrace(XCL_PERF_MON_MEMORY, false);
+    }
+    return;
+  }
+
   // Get device counters
   void OCLProfiler::getDeviceCounters(bool firstReadAfterProgram, bool forceReadCounters)
   {
@@ -155,8 +278,9 @@ namespace xdp {
     XOCL_DEBUGF("getDeviceCounters: START (firstRead: %d, forceRead: %d)\n",
                  firstReadAfterProgram, forceReadCounters);
 
-    xoclp::platform::log_device_counters(getclPlatformID(),XCL_PERF_MON_MEMORY,
-                                                firstReadAfterProgram, forceReadCounters);
+    logDeviceCounters(firstReadAfterProgram, forceReadCounters,
+          false /* In HW flow, all monitor counters are logged anyway; only matters in HW EMU */,
+          XCL_PERF_MON_MEMORY);
 
     XOCL_DEBUGF("getDeviceCounters: END\n");
   }
@@ -170,12 +294,13 @@ namespace xdp {
       return;
 
     XOCL_DEBUGF("getDeviceTrace: START (forceRead: %d)\n", forceReadTrace);
-
-    if (deviceTraceProfilingOn())
-      xoclp::platform::log_device_trace(platform, XCL_PERF_MON_MEMORY, forceReadTrace);
-
-    if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM))
-      xoclp::platform::log_device_trace(platform, XCL_PERF_MON_ACCEL, forceReadTrace);
+    if(deviceTraceProfilingOn()) {
+      logTrace(XCL_PERF_MON_MEMORY, forceReadTrace, true);
+      if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM)) {
+        xoclp::platform::log_device_trace(platform, XCL_PERF_MON_ACCEL, forceReadTrace);
+        xoclp::platform::log_device_trace(platform, XCL_PERF_MON_STR, forceReadTrace);
+      }
+    }
 
     XOCL_DEBUGF("getDeviceTrace: END\n");
   }
@@ -276,17 +401,32 @@ namespace xdp {
     unsigned numStreamSlots = 0;
     unsigned numShellSlots = 0;
     if (applicationProfilingOn() && ProfileMgr->isDeviceProfileOn()) {
-      for (auto device_id : Platform->get_device_range()) {
-        std::string deviceName = device_id->get_unique_name();
-        numStallSlots  += xoclp::platform::get_profile_num_slots(getclPlatformID(),
-                                                                 deviceName,
-                                                                 XCL_PERF_MON_STALL);
-        numStreamSlots += xoclp::platform::get_profile_num_slots(getclPlatformID(),
-                                                                 deviceName,
-                                                                 XCL_PERF_MON_STR);
-        numShellSlots  += xoclp::platform::get_profile_num_slots(getclPlatformID(),
-                                                                 deviceName,
-                                                                 XCL_PERF_MON_SHELL);
+      if (Plugin->getFlowMode() == RTUtil::DEVICE) {
+        for (auto device : Platform->get_device_range()) {
+          auto itr = DeviceData.find(device);
+          if (itr==DeviceData.end()) {
+            itr = DeviceData.emplace(device,xdp::xoclp::platform::device::data()).first;
+          }
+          DeviceIntf* dInt = &(itr->second.mDeviceIntf);
+          // Assumption : debug_ip_layout has been read
+  
+          numStallSlots  += dInt->getNumMonitors(XCL_PERF_MON_STALL);
+          numStreamSlots += dInt->getNumMonitors(XCL_PERF_MON_STR);
+          numShellSlots  += dInt->getNumMonitors(XCL_PERF_MON_SHELL);
+        }
+      } else {
+        for (auto device : Platform->get_device_range()) {
+          std::string deviceName = device->get_unique_name();
+          numStallSlots  += xoclp::platform::get_profile_num_slots(getclPlatformID(),
+                                                                   deviceName,
+                                                                   XCL_PERF_MON_STALL);
+          numStreamSlots += xoclp::platform::get_profile_num_slots(getclPlatformID(),
+                                                                   deviceName,
+                                                                   XCL_PERF_MON_STR);
+          numShellSlots  += xoclp::platform::get_profile_num_slots(getclPlatformID(),
+                                                                   deviceName,
+                                                                   XCL_PERF_MON_SHELL);
+        }
       }
 
       for (auto& w: ProfileWriters) {
@@ -305,6 +445,66 @@ namespace xdp {
     }
   }
 
+  void OCLProfiler::logDeviceCounters(bool firstReadAfterProgram, bool forceReadCounters, bool logAllMonitors, xclPerfMonType type)
+  {
+    // check valid perfmon type
+    if(!logAllMonitors && !( (deviceCountersProfilingOn() && (type == XCL_PERF_MON_MEMORY || type == XCL_PERF_MON_STR))
+        || ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM) && type == XCL_PERF_MON_ACCEL) )) {
+      return;
+    }
+
+    auto platform = getclPlatformID();
+    for (auto device : platform->get_device_range()) {
+      if(!device->is_active()) {
+        continue;
+      }
+      auto xdevice = device->get_xrt_device();
+
+      auto itr = DeviceData.find(device);
+      if (itr==DeviceData.end()) {
+        itr = DeviceData.emplace(device,xdp::xoclp::platform::device::data()).first;
+      }
+      xdp::xoclp::platform::device::data* info = &(itr->second);
+      DeviceIntf* dInt = nullptr;
+      if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE)) {
+        dInt = &(itr->second.mDeviceIntf);
+        dInt->setDeviceHandle(xdevice);
+      }
+
+      std::chrono::steady_clock::time_point nowTime = std::chrono::steady_clock::now();
+      if (forceReadCounters || 
+              ((nowTime - info->mLastCountersSampleTime) > std::chrono::milliseconds(info->mSampleIntervalMsec)))
+      {
+        if(dInt) {
+          dInt->readCounters(XCL_PERF_MON_MEMORY, info->mCounterResults);
+        } else {
+          xdevice->readCounters(XCL_PERF_MON_MEMORY, info->mCounterResults);
+        }
+
+        // Record the counter data 
+        struct timespec now;
+        int err = clock_gettime(CLOCK_MONOTONIC, &now);
+        uint64_t timeNsec = (err < 0) ? 0 : (uint64_t) now.tv_sec * 1000000000UL + (uint64_t) now.tv_nsec;
+
+        // Create unique name for device since currently all devices are called fpga0
+        std::string device_name = device->get_unique_name();
+        std::string binary_name = device->get_xclbin().project_name();
+        uint32_t program_id = (device->get_program()) ? (device->get_program()->get_uid()) : 0;
+ 
+        getProfileManager()->logDeviceCounters(device_name, binary_name, program_id,
+                                     XCL_PERF_MON_MEMORY /*For HW flow all types handled together */,
+                                     info->mCounterResults, timeNsec, firstReadAfterProgram);
+ 
+        //update the last time sample
+        info->mLastCountersSampleTime = nowTime;
+      }
+      if(Plugin->getFlowMode() == xdp::RTUtil::HW_EM) {
+          xoclp::platform::device::logCounters(device, XCL_PERF_MON_ACCEL, firstReadAfterProgram, forceReadCounters);
+          xoclp::platform::device::logCounters(device, XCL_PERF_MON_STR, firstReadAfterProgram, forceReadCounters);
+      }
+    }   // for all devices
+  }
+
   // Log final trace for a given profile type
   // NOTE: this is a bit tricky since trace logging is accessed by multiple
   // threads. We have to wait since this is the only place where we flush.
@@ -315,12 +515,108 @@ namespace xdp {
     cl_int ret = -1;
 
     while (ret == -1 && iter < max_iter) {
-      ret = xoclp::platform::log_device_trace(getclPlatformID(),type, true);
+      if(Plugin->getFlowMode() == xdp::RTUtil::DEVICE) {
+        ret = (int)logTrace(type, true /* forceRead*/, true /* logAllMonitors */);
+      } else {
+        ret = xoclp::platform::log_device_trace(getclPlatformID(),type, true);
+      }
       if (ret == -1)
         std::this_thread::sleep_for(std::chrono::milliseconds(wait_msec));
       iter++;
     }
     XDP_LOG("Trace logged for type %d after %d iterations\n", type, iter);
+  }
+
+  int OCLProfiler::logTrace(xclPerfMonType type, bool forceRead, bool logAllMonitors)
+  {
+    auto profileMgr = getProfileManager();
+    if(profileMgr->getLoggingTrace(type)) {
+        return -1;
+    }
+
+    // check valid perfmon type
+    if(!logAllMonitors && !( (deviceTraceProfilingOn() && (type == XCL_PERF_MON_MEMORY || type == XCL_PERF_MON_STR))
+        || ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM) && type == XCL_PERF_MON_ACCEL) )) {
+      return -1;
+    }
+
+    auto platform = getclPlatformID();
+    profileMgr->setLoggingTrace(type, true);
+    for (auto device : platform->get_device_range()) {
+      if(!device->is_active()) {
+        continue;
+      }
+      auto xdevice = device->get_xrt_device();
+
+      auto itr = DeviceData.find(device);
+      if (itr==DeviceData.end()) {
+        itr = DeviceData.emplace(device,xdp::xoclp::platform::device::data()).first;
+      }
+      xdp::xoclp::platform::device::data* info = &(itr->second);
+      DeviceIntf* dInt = nullptr;
+      if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE)) {
+        dInt = &(itr->second.mDeviceIntf);
+        dInt->setDeviceHandle(device->get_xrt_device());
+      }
+
+      // Do clock training if enough time has passed
+      // NOTE: once we start flushing FIFOs, we stop all training (no longer needed)
+      std::chrono::steady_clock::time_point nowTime = std::chrono::steady_clock::now();
+
+      if (!info->mPerformingFlush &&
+            (nowTime - info->mLastTraceTrainingTime[type]) > std::chrono::microseconds(info->mTrainingIntervalUsec)) {
+        // Empty method // xdevice->clockTraining(type);
+        info->mLastTraceTrainingTime[type] = nowTime;
+      }
+
+      // Read and log when trace FIFOs are filled beyond specified threshold
+      uint32_t numSamples = 0;
+      if (!forceRead) {
+        numSamples = (dInt) ? dInt->getTraceCount(type) : xdevice->countTrace(type).get();
+      }
+
+      // Control how often we do clock training: if there are new samples, then don't train
+      if (numSamples > info->mLastTraceNumSamples[type]) {
+        info->mLastTraceTrainingTime[type] = nowTime;
+      }
+      info->mLastTraceNumSamples[type] = numSamples;
+
+      if (forceRead || (numSamples > info->mSamplesThreshold)) {
+        // Create unique name for device since system can have multiples of same device
+        std::string device_name = device->get_unique_name();
+        std::string binary_name = "binary";
+        if (device->is_active())
+          binary_name = device->get_xclbin().project_name();
+
+        if(dInt) {    // HW Device flow
+          dInt->readTrace(type, info->mTraceVector);
+          if(info->mTraceVector.mLength) {
+            profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector);
+          }
+          info->mTraceVector.mLength= 0;
+        } else {
+          while(1) {
+            xdevice->readTrace(type, info->mTraceVector);
+            if(!info->mTraceVector.mLength)
+              break;
+
+            // log the device trace
+            profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector);
+            info->mTraceVector.mLength= 0;
+
+            // Only check repeatedly for trace buffer flush if HW emulation
+            if(Plugin->getFlowMode() != xdp::RTUtil::HW_EM)
+              break;
+          }  // for HW Emu continue the loop
+
+        }
+      }   // forceRead || (numSamples > info->mSamplesThreshold)
+      if(forceRead)
+        info->mPerformingFlush = true;
+
+    } // for all devices
+    profileMgr->setLoggingTrace(type, false);
+    return 0;
   }
 
   void OCLProfiler::setTraceFooterString() {
@@ -390,6 +686,12 @@ namespace xdp {
       ProfileMgr->setTraceClockFreqMHz(clockRateMHz);
       Plugin->setKernelClockFreqMHz(deviceName, clockRateMHz);
     }
+  }
+
+  void OCLProfiler::reset()
+  {
+    // resetDeviceProfilingFlag();
+    DeviceData.clear();  
   }
 
   /*

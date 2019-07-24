@@ -154,8 +154,10 @@ struct data
 void
 init(key k);
 
+#if 0
 cl_int
 setProfileNumSlots(key k, xclPerfMonType type, unsigned numSlots);
+#endif
 
 unsigned
 getProfileNumSlots(key k, xclPerfMonType type);
@@ -184,6 +186,9 @@ getMaxRead(key k);
 double 
 getMaxWrite(key k);
 
+void 
+configureDataflow(key k, xclPerfMonType type);
+
 cl_int 
 startCounters(key k, xclPerfMonType type);
 
@@ -196,8 +201,8 @@ logTrace(key k, xclPerfMonType type, bool forceRead);
 cl_int 
 logCounters(key k, xclPerfMonType type, bool firstReadAfterProgram, bool forceRead);
 
-cl_int
-debugReadIPStatus(key k, xclDebugReadType type, void*  aDebugResults);
+//cl_int
+//debugReadIPStatus(key k, xclDebugReadType type, void*  aDebugResults);
 
 bool
 isAPCtrlChain(key k, const std::string& cu);

@@ -54,7 +54,7 @@ namespace xdp {
     void addToActiveDevices(const std::string& deviceName);
     void setKernelClockFreqMHz(const std::string &deviceName,
                                unsigned int clockRateMHz);
-
+    void reset();
   public:
     inline xdp::XoclPlugin* getPlugin() { return Plugin.get(); }
     inline xdp::RTProfile* getProfileManager() { return ProfileMgr.get(); }
@@ -83,6 +83,10 @@ namespace xdp {
     void startProfiling();
     void endProfiling();
     void configureWriters();
+    void logDeviceCounters(bool firstReadAfterProgram, bool forceReadCounters, bool logAllMonitors, xclPerfMonType type = XCL_PERF_MON_MEMORY);
+    void startCounters();
+    void startTrace();
+    int  logTrace(xclPerfMonType type, bool forceRead, bool logAllMonitors = true);
     void logFinalTrace(xclPerfMonType type);
     void setTraceFooterString();
     bool isProfileRunning() {return mProfileRunning;}

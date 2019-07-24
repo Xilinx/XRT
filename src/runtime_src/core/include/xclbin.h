@@ -307,7 +307,9 @@ extern "C" {
         AXI_MONITOR_FIFO_FULL,
         ACCEL_MONITOR,
         AXI_STREAM_MONITOR,
-	AXI_STREAM_PROTOCOL_CHECKER
+        AXI_STREAM_PROTOCOL_CHECKER,
+        TRACE_S2MM,
+        AXI_DMA
     };
 
     struct debug_ip_data {
