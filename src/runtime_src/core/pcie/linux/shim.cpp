@@ -191,6 +191,9 @@ void shim::dev_fini()
 void shim::init(unsigned index, const char *logfileName,
     xclVerbosityLevel verbosity)
 {
+    if(logfileName != nullptr) {
+        xclLog(XRT_WARNING, "XRT", "%s: logfileName is no longer supported", __func__);
+    }
     xclLog(XRT_INFO, "XRT", "%s", __func__);
     dev_init();
 
