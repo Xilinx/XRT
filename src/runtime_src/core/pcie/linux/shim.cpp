@@ -72,12 +72,6 @@ is_multiprocess_mode()
   return val;
 }
 
-static inline void errlog(std::string& errstr)
-{
-    xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR,
-        "XRT", errstr.c_str());
-}
-
 /*
  * numClocks()
  */
@@ -133,7 +127,7 @@ int shim::dev_init()
 {
     auto dev = pcidev::get_dev(mBoardNumber);
     if(dev == nullptr) {
-        std::cout << "Card [" << mBoardNumber << "] not found" << std::endl;
+        xclLog(XRT_ERROR, "XRT", "%s: Card [%d] not found", __func__, mBoardNumber);
         return -ENOENT;
     }
 
@@ -168,6 +162,16 @@ int shim::dev_init()
     return 0;
 }
 
+inline int shim::xclLog(xrtLogMsgLevel level, const char* tag, const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    int ret = xclLogMsg(level, tag, format, args);
+    va_end(args);
+
+    return ret;
+}
+
 void shim::dev_fini()
 {
     if (mStreamHandle > 0) {
@@ -187,13 +191,7 @@ void shim::dev_fini()
 void shim::init(unsigned index, const char *logfileName,
     xclVerbosityLevel verbosity)
 {
-    if( logfileName != nullptr ) {
-        mLogStream.open(logfileName);
-        mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
-        mLogStream << __func__ << ", " << std::this_thread::get_id()
-            << std::endl;
-    }
-
+    xclLog(XRT_INFO, "XRT", "%s", __func__);
     dev_init();
 
     // Profiling - defaults
@@ -209,10 +207,7 @@ void shim::init(unsigned index, const char *logfileName,
  */
 shim::~shim()
 {
-    if (mLogStream.is_open()) {
-        mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-        mLogStream.close();
-    }
+    xclLog(XRT_INFO, "XRT", "%s", __func__);
 
     dev_fini();
 
@@ -225,7 +220,7 @@ shim::~shim()
 /*
  * xclLogMsg()
  */
-int shim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, va_list args)
+int shim::xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* format, va_list args)
 {
     va_list args_bak;
     // vsnprintf will mutate va_list so back it up
@@ -273,16 +268,13 @@ size_t shim::xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBu
         case XCL_ADDR_KERNEL_CTRL:
         {
             offset += mOffsets[XCL_ADDR_KERNEL_CTRL];
-            if (mLogStream.is_open()) {
-                const unsigned *reg = static_cast<const unsigned *>(hostBuf);
-                size_t regSize = size / 4;
-                if (regSize > 32)
-                regSize = 32;
-                for (unsigned i = 0; i < regSize; i++) {
-                    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << space << ", 0x"
-                               << std::hex << offset + i << ", 0x" << std::hex << std::setw(8)
-                               << std::setfill('0') << reg[i] << std::dec << std::endl;
-                }
+            const unsigned *reg = static_cast<const unsigned *>(hostBuf);
+            size_t regSize = size / 4;
+            if (regSize > 32)
+            regSize = 32;
+            for (unsigned i = 0; i < regSize; i++) {
+                xclLog(XRT_INFO, "XRT", "%s: space: %d, offset:0x%x, reg:%d", 
+                        __func__, space, offset+i, reg[i]);
             }
             if (mDev->pcieBarWrite(offset, hostBuf, size) == 0) {
                 return size;
@@ -302,10 +294,8 @@ size_t shim::xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBu
  */
 size_t shim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
 {
-    if (mLogStream.is_open()) {
-        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << space << ", "
-                   << offset << ", " << hostBuf << ", " << size << std::endl;
-    }
+    xclLog(XRT_INFO, "XRT", "%s, space: %d, offset: %d, hostBuf: %s, size: %d", 
+            __func__, space, offset, hostBuf, size);
 
     switch (space) {
         case XCL_ADDR_SPACE_DEVICE_PERFMON:
@@ -320,17 +310,13 @@ size_t shim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size
         {
             offset += mOffsets[XCL_ADDR_KERNEL_CTRL];
             int result = mDev->pcieBarRead(offset, hostBuf, size);
-            if (mLogStream.is_open()) {
-                const unsigned *reg = static_cast<const unsigned *>(hostBuf);
-                size_t regSize = size / 4;
-                if (regSize > 4)
-                regSize = 4;
-                for (unsigned i = 0; i < regSize; i++) {
-                    mLogStream << __func__ << ", " <<
-                        std::this_thread::get_id() << ", " << space << ", 0x" <<
-                        std::hex << offset + i << std::dec << ", 0x" <<
-                        std::hex << reg[i] << std::dec << std::endl;
-                }
+            const unsigned *reg = static_cast<const unsigned *>(hostBuf);
+            size_t regSize = size / 4;
+            if (regSize > 4)
+            regSize = 4;
+            for (unsigned i = 0; i < regSize; i++) {
+                xclLog(XRT_INFO, "XRT", "%s: space: %d, offset:0x%x, reg:%d", 
+                    __func__, space, offset+i, reg[i]);
             }
             return !result ? size : 0;
         }
@@ -726,22 +712,12 @@ int shim::xclLoadXclBin(const xclBin *buffer)
         ret = xclLoadAxlf(reinterpret_cast<const axlf*>(xclbininmemory));
         if (ret != 0) {
             if (ret == -EINVAL) {
-                std::stringstream output;
-                output << "Xclbin does not match Shell on card or xrt version.\n"
-                    << "Please install compatible xrt or run xbutil flash -a all to flash card."
-                    << std::endl;
-                if (mLogStream.is_open()) {
-                    mLogStream << output.str();
-                } else {
-                    std::cout << output.str();
-                }
+                xclLog(XRT_ERROR, "XRT", "Xclbin does not match Shell on card or xrt version. \
+                        \nPlease install compatible xrt or run xbutil flash -a all to flash card.");
             }
         }
     } else {
-        if (mLogStream.is_open()) {
-            mLogStream << __func__ << ", " << std::this_thread::get_id() <<
-                ", Legacy xclbin no longer supported" << std::endl;
-        }
+        xclLog(XRT_ERROR, "XRT", "%s, Legacy xclbin no longer supported", __func__);
         return -EINVAL;
     }
 
@@ -755,13 +731,10 @@ int shim::xclLoadXclBin(const xclBin *buffer)
  */
 int shim::xclLoadAxlf(const axlf *buffer)
 {
-    if (mLogStream.is_open()) {
-        mLogStream << __func__ << ", " << std::this_thread::get_id() <<
-            ", " << buffer << std::endl;
-    }
+    xclLog(XRT_INFO, "XRT", "%s, buffer: %s", __func__, buffer);
 
     if (!mLocked) {
-         std::cout << __func__ << " ERROR: Device is not locked" << std::endl;
+        xclLog(XRT_ERROR, "XRT", "%s: Device is not locked", __func__);
         return -EPERM;
     }
 
@@ -776,15 +749,11 @@ int shim::xclLoadAxlf(const axlf *buffer)
     // reinitializes the DDR and results in ECC error.
     if(isXPR())
     {
-        if (mLogStream.is_open()) {
-            mLogStream << __func__ << "XPR Device found, zeroing out DDR again.." << std::endl;
-        }
+        xclLog(XRT_INFO, "XRT", "%s, XPR Device found, zeroing out DDR again..", __func__);
 
         if (zeroOutDDR() == false)
         {
-            if (mLogStream.is_open()) {
-                mLogStream <<  __func__ << "zeroing out DDR failed" << std::endl;
-            }
+            xclLog(XRT_ERROR, "XRT", "%s, zeroing out DDR again..", __func__);
             return -EIO;
         }
     }
@@ -809,7 +778,7 @@ unsigned int shim::xclImportBO(int fd, unsigned flags)
     drm_prime_handle info = {mNullBO, flags, fd};
     int result = mDev->ioctl(DRM_IOCTL_PRIME_FD_TO_HANDLE, &info);
     if (result) {
-        std::cout << __func__ << " ERROR: FD to handle IOCTL failed" << std::endl;
+        xclLog(XRT_ERROR, "XRT", "%s: FD to handle IOCTL failed", __func__);
     }
     return !result ? info.handle : mNullBO;
 }
@@ -842,7 +811,7 @@ int shim::xclGetSectionInfo(void* section_info, size_t * section_size,
     else if (kind == IP_LAYOUT)
         entry = "ip_layout";
     else {
-        std::cout << "Unhandled section found" << std::endl;
+        xclLog(XRT_ERROR, "XRT", "%s: Unhandled section found", __func__);
         return -EINVAL;
     }
 
@@ -850,7 +819,7 @@ int shim::xclGetSectionInfo(void* section_info, size_t * section_size,
     std::vector<char> buf;
     mDev->sysfs_get("icap", entry, err, buf);
     if (!err.empty()) {
-        std::cout << err << std::endl;
+        xclLog(XRT_ERROR, "XRT", "%s: %s", __func__, err);
         return -EINVAL;
     }
 
@@ -986,9 +955,7 @@ ssize_t shim::xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t of
 int shim::xclExecBuf(unsigned int cmdBO)
 {
     int ret;
-    if (mLogStream.is_open()) {
-        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << cmdBO << std::endl;
-    }
+    xclLog(XRT_INFO, "XRT", "%s, cmdBO: %d", __func__, cmdBO);
     drm_xocl_execbuf exec = {0, cmdBO, 0,0,0,0,0,0,0,0};
     ret = mDev->ioctl(DRM_IOCTL_XOCL_EXECBUF, &exec);
     return ret ? -errno : ret;
@@ -999,10 +966,8 @@ int shim::xclExecBuf(unsigned int cmdBO)
  */
 int shim::xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, unsigned int *bo_wait_list)
 {
-    if (mLogStream.is_open()) {
-        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", "
-                   << cmdBO << ", " << num_bo_in_wait_list << ", " << bo_wait_list << std::endl;
-    }
+    xclLog(XRT_INFO, "XRT", "%s, cmdBO: %d, num_bo_in_wait_list: %d, bo_wait_list: %d", 
+            __func__, cmdBO, num_bo_in_wait_list, bo_wait_list);
     int ret;
     unsigned int bwl[8] = {0};
     std::memcpy(bwl,bo_wait_list,num_bo_in_wait_list*sizeof(unsigned int));
@@ -1092,7 +1057,7 @@ int shim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 
     rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_CREATE_QUEUE, &q_info);
     if (rc) {
-        std::cout << __func__ << " ERROR: Create Write Queue IOCTL failed" << std::endl;
+        xclLog(XRT_ERROR, "XRT", "%s: Create Write Queue IOCTL failed", __func__);
     } else
         *q_hdl = q_info.handle;
 
@@ -1115,7 +1080,7 @@ int shim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 
     rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_CREATE_QUEUE, &q_info);
     if (rc) {
-        std::cout << __func__ << " ERROR: Create Read Queue IOCTL failed" << std::endl;
+        xclLog(XRT_ERROR, "XRT", "%s: Create Read Queue IOCTL failed", __func__);
     } else
         *q_hdl = q_info.handle;
 
@@ -1131,7 +1096,7 @@ int shim::xclDestroyQueue(uint64_t q_hdl)
 
     rc = close((int)q_hdl);
     if (rc)
-        std::cout << __func__ << " ERROR: Destroy Queue failed" << std::endl;
+        xclLog(XRT_ERROR, "XRT", "%s: Destroy Queue failed", __func__);
 
     return rc;
 }
@@ -1150,13 +1115,14 @@ void *shim::xclAllocQDMABuf(size_t size, uint64_t *buf_hdl)
 
     rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_ALLOC_BUFFER, &req);
     if (rc) {
-        std::cout << __func__ << " ERROR: Alloc buffer IOCTL failed" << std::endl;
+        xclLog(XRT_ERROR, "XRT", "%s: Alloc buffer IOCTL failed", __func__);
         return NULL;
     }
 
     buf = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, req.buf_fd, 0);
     if (!buf) {
-        std::cout << __func__ << " ERROR: Map buffer failed" << std::endl;
+        xclLog(XRT_ERROR, "XRT", "%s: Map buffer failed", __func__);
+
         close(req.buf_fd);
     } else {
         *buf_hdl = req.buf_fd;
@@ -1174,7 +1140,8 @@ int shim::xclFreeQDMABuf(uint64_t buf_hdl)
 
     rc = close((int)buf_hdl);
     if (rc)
-        std::cout << __func__ << " ERROR: Destroy Queue failed" << std::endl;
+        xclLog(XRT_ERROR, "XRT", "%s: Destory Queue failed", __func__);
+
 
     return rc;
 }
@@ -1191,7 +1158,7 @@ int shim::xclPollCompletion(int min_compl, int max_compl, struct xclReqCompletio
     *actual = 0;
     if (!mAioEnabled) {
         num_evt = -EINVAL;
-        std::cout << __func__ << "ERROR: async io is not enabled" << std::endl;
+        xclLog(XRT_ERROR, "XRT", "%s: async io is not enabled", __func__);
         goto done;
     }
     if (timeout > 0) {
@@ -1203,7 +1170,7 @@ int shim::xclPollCompletion(int min_compl, int max_compl, struct xclReqCompletio
 
     num_evt = io_getevents(mAioContext, min_compl, max_compl, (struct io_event *)comps, ptime);
     if (num_evt < min_compl) {
-        std::cout << __func__ << " ERROR: failed to poll Queue Completions" << std::endl;
+        xclLog(XRT_ERROR, "XRT", "%s: failed to poll Queue Completions", __func__);
         goto done;
     }
     *actual = num_evt;
@@ -1248,7 +1215,7 @@ ssize_t shim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
             struct iocb *cbs[1];
 
             if (!mAioEnabled) {
-                std::cout << __func__ << "ERROR: async io is not enabled" << std::endl;
+                xclLog(XRT_ERROR, "XRT", "%s: async io is not enabled", __func__);
                 break;
             }
 
@@ -1316,7 +1283,7 @@ ssize_t shim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr)
             struct iocb *cbs[1];
 
             if (!mAioEnabled) {
-                std::cout << __func__ << "ERROR: async io is not enabled" << std::endl;
+                xclLog(XRT_ERROR, "XRT", "%s: async io is not enabled", __func__);
                 break;
             }
 
@@ -1370,15 +1337,11 @@ int shim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap)
     std::lock_guard<std::mutex> l(mCuMapLock);
 
     if (cu_index >= mCuMaps.size()) {
-        std::string err = "xclRegRW: invalid CU index: ";
-        err += std::to_string(cu_index);
-        errlog(err);
+        xclLog(XRT_ERROR, "XRT", "%s: invalid CU index: %d", __func__, cu_index);
         return -EINVAL;
     }
     if (offset >= mCuMapSize || (offset & (sizeof(uint32_t) - 1)) != 0) {
-        std::string err = "xclRegRW: invalid CU offset: ";
-        err += std::to_string(offset);
-        errlog(err);
+        xclLog(XRT_ERROR, "XRT", "%s: invalid CU offset: %d", __func__, offset);
         return -EINVAL;
     }
 
@@ -1391,9 +1354,7 @@ int shim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap)
 
     uint32_t *cumap = mCuMaps[cu_index];
     if (cumap == nullptr) {
-        std::string err = "xclRegRW: can't map CU ";
-        err += std::to_string(cu_index);
-        errlog(err);
+        xclLog(XRT_ERROR, "XRT", "%s: can't map CU: %d", __func__, cu_index);
         return -EINVAL;
     }
 
@@ -1459,8 +1420,8 @@ int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, con
 {
     va_list args;
     va_start(args, format);
-
-    int ret = xocl::shim::xclLogMsg(handle, level, tag, format, args);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    int ret = drv ? drv->xclLogMsg(level, tag, format, args) : -ENODEV;
     va_end(args);
 
     return ret;
