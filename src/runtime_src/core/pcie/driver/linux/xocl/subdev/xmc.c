@@ -45,7 +45,9 @@
 #define	XMC_CONTROL_REG			0x18
 #define	XMC_STOP_CONFIRM_REG		0x1C
 #define	XMC_12V_PEX_REG			0x20
+#define	XMC_12V_PEX_INS_REG		0x28
 #define	XMC_3V3_PEX_REG			0x2C
+#define	XMC_3V3_PEX_INS_REG		0x34
 #define	XMC_3V3_AUX_REG			0x38
 #define	XMC_12V_AUX_REG			0x44
 #define	XMC_DDR4_VPP_BTM_REG		0x50
@@ -59,6 +61,7 @@
 #define	XMC_MGTAVTT_REG			0xB0
 #define	XMC_VCC1V2_BTM_REG		0xBC
 #define	XMC_12V_PEX_I_IN_REG		0xC8
+#define	XMC_12V_PEX_I_INS_REG		0xD0
 #define	XMC_12V_AUX_I_IN_REG		0xD4
 #define	XMC_VCCINT_V_REG		0xE0
 #define	XMC_VCCINT_I_REG		0xEC
@@ -79,10 +82,10 @@
 #define	XMC_SNSR_CHKSUM_REG		0x1A4
 #define	XMC_SNSR_FLAGS_REG		0x1A8
 #define	XMC_HBM_TEMP_REG		0x260
+#define	XMC_3V3_PEX_I_INS_REG		0x280
 #define	XMC_HOST_MSG_OFFSET_REG		0x300
 #define	XMC_HOST_MSG_ERROR_REG		0x304
 #define	XMC_HOST_MSG_HEADER_REG		0x308
-
 
 #define	VALID_ID			0x74736574
 
@@ -462,6 +465,18 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 		case VCC_0V85:
 			READ_SENSOR(xmc, XMC_VCC0V85_REG, val, val_kind);
 			break;
+		case VOL_12V_PEX_INS:
+			READ_SENSOR(xmc, XMC_12V_PEX_INS_REG, val, val_kind);
+			break;
+		case VOL_3V3_PEX_INS:
+			READ_SENSOR(xmc, XMC_3V3_PEX_INS_REG, val, val_kind);
+			break;
+		case CUR_3V3_PEX_INS:
+			READ_SENSOR(xmc, XMC_3V3_PEX_I_INS_REG, val, val_kind);
+			break;
+		case CUR_12V_PEX_INS:
+			READ_SENSOR(xmc, XMC_12V_PEX_I_INS_REG, val, val_kind);
+			break;
 		default:
 			break;
 		}
@@ -568,6 +583,18 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 		case VCC_0V85:
 			*val = xmc->cache.vol_0v85;
 			break;
+		case VOL_12V_PEX_INS:
+			*val = xmc->cache.vol_12v_pex_ins;
+			break;
+		case VOL_3V3_PEX_INS:
+			*val = xmc->cache.vol_3v3_pex_ins;
+			break;
+		case CUR_3V3_PEX_INS:
+			*val = xmc->cache.cur_3v3_pex_ins;
+			break;
+		case CUR_12V_PEX_INS:
+			*val = xmc->cache.cur_12v_pex_ins;
+			break;
 		default:
 			break;
 		}
@@ -618,6 +645,10 @@ static int xmc_get_data(struct platform_device *pdev, void *buf)
 	xmc_sensor(pdev, CAGE_TEMP2, &sensors->cage_temp2, SENSOR_INS);
 	xmc_sensor(pdev, CAGE_TEMP3, &sensors->cage_temp3, SENSOR_INS);
 	xmc_sensor(pdev, HBM_TEMP, &sensors->hbm_temp0, SENSOR_INS);
+	xmc_sensor(pdev, VOL_12V_PEX_INS, &sensors->vol_12v_pex_ins, SENSOR_INS);
+	xmc_sensor(pdev, VOL_3V3_PEX_INS, &sensors->vol_3v3_pex_ins, SENSOR_INS);
+	xmc_sensor(pdev, CUR_3V3_PEX_INS, &sensors->cur_3v3_pex_ins, SENSOR_INS);
+	xmc_sensor(pdev, CUR_12V_PEX_INS, &sensors->cur_12v_pex_ins, SENSOR_INS);
 
 	return 0;
 }
@@ -667,6 +698,11 @@ SENSOR_SYSFS_NODE(xmc_cage_temp0, CAGE_TEMP0);
 SENSOR_SYSFS_NODE(xmc_cage_temp1, CAGE_TEMP1);
 SENSOR_SYSFS_NODE(xmc_cage_temp2, CAGE_TEMP2);
 SENSOR_SYSFS_NODE(xmc_cage_temp3, CAGE_TEMP3);
+SENSOR_SYSFS_NODE(xmc_vol_12v_pex_ins, VOL_12V_PEX_INS);
+SENSOR_SYSFS_NODE(xmc_cur_12v_pex_ins, CUR_12V_PEX_INS);
+SENSOR_SYSFS_NODE(xmc_vol_3v3_pex_ins, VOL_3V3_PEX_INS);
+SENSOR_SYSFS_NODE(xmc_cur_3v3_pex_ins, CUR_3V3_PEX_INS);
+
 #define	SENSOR_SYSFS_NODE_ATTRS						\
 	&dev_attr_xmc_12v_pex_vol.attr,					\
 	&dev_attr_xmc_12v_aux_vol.attr,					\
@@ -699,7 +735,11 @@ SENSOR_SYSFS_NODE(xmc_cage_temp3, CAGE_TEMP3);
 	&dev_attr_xmc_cage_temp0.attr,					\
 	&dev_attr_xmc_cage_temp1.attr,					\
 	&dev_attr_xmc_cage_temp2.attr,					\
-	&dev_attr_xmc_cage_temp3.attr
+	&dev_attr_xmc_cage_temp3.attr,					\
+	&dev_attr_xmc_vol_12v_pex_ins.attr,				\
+	&dev_attr_xmc_cur_12v_pex_ins.attr,				\
+	&dev_attr_xmc_vol_3v3_pex_ins.attr,				\
+	&dev_attr_xmc_cur_3v3_pex_ins.attr
 
 /*
  * Defining sysfs nodes for reading some of xmc regisers.

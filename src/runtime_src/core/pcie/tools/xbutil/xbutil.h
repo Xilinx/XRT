@@ -284,12 +284,13 @@ public:
         unsigned long long power;
         ss << std::left << "\n";
 
-        ss << std::setw(16) << "Power_inst" << "\n";
-        power = m_devinfo.mPexCurr * m_devinfo.m12VPex;
-        if(m_devinfo.mPexCurr != XCL_INVALID_SENSOR_VAL &&
-            m_devinfo.mPexCurr != XCL_NO_SENSOR_DEV_LL &&
-            m_devinfo.m12VPex != XCL_INVALID_SENSOR_VAL &&
-            m_devinfo.m12VPex != XCL_NO_SENSOR_DEV_S){
+        ss << std::setw(16) << "Inst Power" << "\n";
+        power = (m_devinfo.m12VPexCurrIns * m_devinfo.m12VPexIns) +
+		(m_devinfo.m3v3PexCurrIns * m_devinfo.m3v3PexIns);
+        if(m_devinfo.m3v3PexIns != XCL_INVALID_SENSOR_VAL &&
+            m_devinfo.m3v3PexIns != XCL_NO_SENSOR_DEV_LL &&
+            m_devinfo.m12VPexIns != XCL_INVALID_SENSOR_VAL &&
+            m_devinfo.m12VPexIns != XCL_NO_SENSOR_DEV_S){
             ss << std::setw(16)
                 << std::to_string((float)power / 1000000).substr(0, 4) + "W"
                 << "\n";
@@ -698,6 +699,10 @@ public:
         sensor_tree::put( "board.physical.electrical.12v_sw.voltage",            m_devinfo.m12vSW );
         sensor_tree::put( "board.physical.electrical.mgt_vtt.voltage",           m_devinfo.mMgtVtt );
         sensor_tree::put( "board.physical.electrical.vccint.voltage",            m_devinfo.mVccIntVol );
+        sensor_tree::put( "board.physical.electrical.12v_pex_ins.voltage",       m_devinfo.m12VPexIns );
+        sensor_tree::put( "board.physical.electrical.12v_pex_ins.current",       m_devinfo.m12VPexCurrIns );
+        sensor_tree::put( "board.physical.electrical.3v3_pex_ins.voltage",       m_devinfo.m3v3PexIns );
+        sensor_tree::put( "board.physical.electrical.3v3_pex_ins.current",       m_devinfo.m3v3PexCurrIns );
         {
             unsigned short cur = 0;
             std::string errmsg;
@@ -862,6 +867,13 @@ public:
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned>( "board.physical.electrical.vccint.current" )
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.dna", "N/A" ) << std::endl;
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << "Instantaneous Electrical(mV|mA)\n";
+        ostr << std::setw(16) << "12V PEX INS" << std::setw(16) << "12V PEX CURR_INS" << std::setw(16) << "3V3 PEX INS" << std::setw(16) << "3V3 PEX Current INS" << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.12v_pex_ins.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned long long>( "board.physical.electrical.12v_pex_ins.current" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.3v3_pex_ins.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned long long>( "board.physical.electrical.3v3_pex_ins.current" ) << std::endl;
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Card Power\n";

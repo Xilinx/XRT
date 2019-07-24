@@ -142,6 +142,10 @@ struct xcl_sensor {
 	uint32_t cage_temp2;
 	uint32_t cage_temp3;
 	uint32_t hbm_temp0;
+	uint32_t vol_12v_pex_ins;
+	uint32_t cur_12v_pex_ins;
+	uint32_t vol_3v3_pex_ins;
+	uint32_t cur_3v3_pex_ins;
 };
 
 /**
