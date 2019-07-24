@@ -205,6 +205,31 @@ xma_kernel_session_destroy(XmaKernelSession *session)
     int32_t rc;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_KERNEL_MOD, "%s()\n", __func__);
+    bool expected = false;
+    bool desired = true;
+    while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //Singleton lock acquired
+
+    if (session == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
+                   "Session is already released\n");
+
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+
+        return XMA_ERROR;
+    }
+    if (session->kernel_plugin == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
+                   "Session is corrupted\n");
+
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+
+        return XMA_ERROR;
+    }
     rc  = session->kernel_plugin->close(session);
     if (rc != 0)
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
@@ -214,7 +239,19 @@ xma_kernel_session_destroy(XmaKernelSession *session)
     free(session->base.plugin_data);
 
     // Free the session
+    session->base.plugin_data = NULL;
+    session->base.stats = NULL;
+    session->kernel_plugin = NULL;
+    session->base.hw_session.dev_handle = NULL;
+    session->base.hw_session.kernel_info = NULL;
+    //do not change kernel in_use as it maybe in use by another plugin
+    session->base.hw_session.dev_index = -1;
+    session->base.session_signature = NULL;
     free(session);
+    session = NULL;
+
+    //Release singleton lock
+    g_xma_singleton->locked = false;
 
     return XMA_SUCCESS;
 }
