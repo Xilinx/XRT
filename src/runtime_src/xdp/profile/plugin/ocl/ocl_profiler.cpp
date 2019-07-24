@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -27,9 +27,12 @@
 #include "ocl_profiler.h"
 #include "xdp/profile/config.h"
 #include "xdp/profile/core/rt_profile.h"
+#include "xdp/profile/writer/json_profile.h"
+#include "xdp/profile/writer/csv_profile.h"
 #include "xrt/util/config_reader.h"
 #include "xrt/util/message.h"
 #include "xclperf.h"
+
 
 namespace xdp {
 
@@ -341,9 +344,16 @@ namespace xdp {
     // Enable profile summary if profile is on
     std::string profileFile("profile_summary");
     ProfileMgr->turnOnFile(xdp::RTUtil::FILE_SUMMARY);
-    xdp::CSVProfileWriter* csvProfileWriter = new xdp::CSVProfileWriter(profileFile, "Xilinx", Plugin.get());
+    xdp::CSVProfileWriter* csvProfileWriter = new xdp::CSVProfileWriter(
+      Plugin.get(), "Xilinx", profileFile);
     ProfileWriters.push_back(csvProfileWriter);
     ProfileMgr->attach(csvProfileWriter);
+    // Add JSON writer as well
+    xdp::JSONProfileWriter* jsonWriter = new xdp::JSONProfileWriter(
+      Plugin.get(), "Xilinx", profileFile);
+    ProfileWriters.push_back(jsonWriter);
+    ProfileMgr->attach(jsonWriter);
+    ProfileMgr->getRunSummary()->setProfileTree(jsonWriter->getProfileTree());
 
     // Enable Trace File if profile is on and trace is enabled
     std::string timelineFile("");

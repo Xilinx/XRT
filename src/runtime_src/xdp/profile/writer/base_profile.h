@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,9 +18,8 @@
 #define __XDP_BASE_PROFILE_WRITER_H
 
 #include <boost/format.hpp>
+#include <boost/property_tree/ptree.hpp>
 #include "xdp/profile/device/trace_parser.h"
-#include "xdp/profile/plugin/base_plugin.h"
-#include "xdp/profile/core/rt_profile.h"
 #include "xdp/profile/plugin/base_plugin.h"
 
 #include <cstdlib>
@@ -29,6 +28,7 @@
 #include <chrono>
 #include <iostream>
 #include <map>
+
 
 // Use this class to build run time user services functions
 // such as debugging and profiling
@@ -40,7 +40,9 @@ namespace xdp {
     class ProfileWriterI {
 
     public:
-      ProfileWriterI();
+      ProfileWriterI(XDPPluginI* Plugin = nullptr,
+        const std::string& platformName = "",
+        const std::string& fileName = "");
       virtual ~ProfileWriterI() {};
 
       // A derived class can choose to write less or more, or write differently
@@ -48,13 +50,15 @@ namespace xdp {
       // consistency across all formats of reports
       virtual void writeSummary(RTProfile* profile);
 
+      virtual boost::property_tree::ptree* getSummaryTree() { return nullptr; }
+
     public:
       inline void enableStallTable() { mEnStallTable = true; }
       inline void enableStreamTable() { mEnStreamTable = true; }
       inline void enableShellTables() { mEnShellTables = true; }
 
       // Returns the output file name for the writer
-      virtual const std::string getFileName() { return ""; }
+      virtual const std::string getFileName() { return mFileName; }
 
       // Functions for Summary
       // Write Kernel Execution Time stats
@@ -74,19 +78,19 @@ namespace xdp {
 
       // Write Read/Write Buffer transfer stats
       virtual void writeHostTransferSummary(const std::string& name,
-          const BufferStats& stats, uint64_t totalTranx, uint64_t totalBytes,
+          const BufferStats& stats, uint64_t totalBytes, uint64_t totalTranx,
           double totalTimeMsec, double maxTransferRateMBps);
       // Write Read/Write Shell Internal transfer stats
-      void writeShellTransferSummary(const std::string& deviceName, const std::string& transferType,
+      virtual void writeShellTransferSummary(const std::string& deviceName, const std::string& transferType,
           uint64_t totalBytes, uint64_t totalTranx, double totalLatencyNsec, double totalTimeMsec);
       // Write Read/Write Kernel transfer stats
-      void writeKernelTransferSummary(const std::string& deviceName, const std::string& cuPortName,
+      virtual void writeKernelTransferSummary(const std::string& deviceName, const std::string& cuPortName,
           const std::string& argNames, const std::string& memoryName,
           const std::string& transferType, uint64_t totalBytes, uint64_t totalTranx,
           double totalKernelTimeMsec, double totalTransferTimeMsec, double maxTransferRateMBps);
-      void writeStallSummary(std::string& cuName, uint32_t cuRunCount, double cuRunTimeMsec,
+      virtual void writeStallSummary(std::string& cuName, uint32_t cuRunCount, double cuRunTimeMsec,
           double cuStallExt, double cuStallStr, double cuStallInt);
-      void writeKernelStreamSummary(const std::string& deviceName,
+      virtual void writeKernelStreamSummary(const std::string& deviceName,
                                     const std::string& MasterPort, const std::string& MasterArgs,
                                     const std::string& SlavePort, const std::string& SlaveArgs,
                                     uint64_t strNumTranx, double transferRateMBps,
@@ -101,11 +105,12 @@ namespace xdp {
           uint32_t maxBytesPerTransfer, double maxTransferRateMBps);
 
       // Functions for device counters
-      void writeDeviceCounters(xclPerfMonType type, xclCounterResults& results,
-          double timestamp, uint32_t sampleNum, bool firstReadAfterProgram);
+      // Commented out because there is no implementation.
+      //virtual void writeDeviceCounters(xclPerfMonType type, xclCounterResults& results,
+      //    double timestamp, uint32_t sampleNum, bool firstReadAfterProgram);
 
       // Function for guidance metadata
-      void writeGuidanceMetadataSummary(RTProfile *profile);
+      virtual void writeGuidanceMetadataSummary(RTProfile *profile);
 
     protected:
       // Veraidic args function to take n number of any type of args and
@@ -157,12 +162,13 @@ namespace xdp {
       std::ofstream Summary_ofs;
 
     protected:
+      XDPPluginI* mPluginHandle = nullptr;
+      std::string mPlatformName;
+      std::string mFileName; // Could be empty.
+
       bool mEnStallTable = false;
       bool mEnStreamTable = false;
       bool mEnShellTables = false;
-
-    protected:
-      XDPPluginI * mPluginHandle;
     };
 
 } // xdp
