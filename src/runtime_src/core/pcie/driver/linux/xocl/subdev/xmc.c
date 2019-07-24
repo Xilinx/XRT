@@ -316,7 +316,7 @@ static void xmc_read_from_peer(struct platform_device *pdev)
 	memcpy(mb_req->data, &subdev_peer, data_len);
 
 	(void) xocl_peer_request(xdev,
-		mb_req, reqlen, &xcl_sensor, &resp_len, NULL, NULL);
+		mb_req, reqlen, &xcl_sensor, &resp_len, NULL, NULL, 0);
 	set_sensors_data(xmc, &xcl_sensor);
 
 	vfree(mb_req);
