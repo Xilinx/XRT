@@ -90,6 +90,7 @@ typedef struct XmaHwKernel
     std::unique_ptr<std::atomic<bool>> reg_map_locked;
     int32_t         locked_by_session_id;
     XmaSessionType locked_by_session_type;
+    bool soft_kernel;
     void*   private_do_not_use;
 
     //bool             have_lock;
@@ -103,6 +104,7 @@ typedef struct XmaHwKernel
     cu_mask0 = 0;
     cu_mask1 = 0;
     kernel_complete_count = 0;
+    soft_kernel = false;
     //*kernel_complete_locked = false;
     *reg_map_locked = false;
     locked_by_session_id = -100;
