@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -24,9 +24,7 @@
 #include "xocl_plugin.h"
 #include "xocl_profile.h"
 #include "xdp/profile/core/rt_util.h"
-#include "xdp/profile/writer/csv_profile.h"
 #include "xdp/profile/writer/csv_trace.h"
-#include "xdp/profile/writer/unified_csv_profile.h"
 #include "xdp/profile/plugin/ocl/ocl_power_profile.h"
 
 namespace xdp {

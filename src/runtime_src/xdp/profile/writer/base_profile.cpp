@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,11 +16,18 @@
 
 #include "base_profile.h"
 
+#include "xdp/profile/core/rt_profile.h"
+
+
 namespace xdp {
   //********************
   // Base Profile Writer
   //********************
-  ProfileWriterI::ProfileWriterI()
+  ProfileWriterI::ProfileWriterI(XDPPluginI* Plugin,
+      const std::string& platformName, const std::string& fileName) :
+    mPluginHandle(Plugin),
+    mPlatformName(platformName),
+    mFileName(fileName)
   {
   }
   
