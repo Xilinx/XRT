@@ -4,13 +4,13 @@ level: 6
 owner: haeseung
 user:
   allowed_test_modes: [hw]
+  force_makefile: "--force"
   host_args: {all: -k kernel.xclbin}
   host_cflags: ' -DDSA64 -ldl -luuid'
   host_exe: host.exe
   host_src: main.cpp
   kernels:
-  - {cflags: ' -I.', file: vectorswizzle.xo, ksrc: kernel.cl, name: vectorswizzle,
-    type: C}
+  - {cflags: {add: ' -I.'}, file: vectorswizzle.xo, ksrc: kernel.cl, name: vectorswizzle, type: C}
   name: 04_swizzle
   xclbins:
   - files: 'vectorswizzle.xo '
@@ -18,5 +18,4 @@ user:
     - cus: [vectorswizzle]
       name: vectorswizzle
       num_cus: 1
-    lflags: ''
     name: kernel.xclbin

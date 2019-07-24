@@ -4,12 +4,13 @@ level: 6
 owner: sonals
 user:
   allowed_test_modes: [hw, sw_emu]
+  force_makefile: "--force"
   host_args: {all: -k kernel.xclbin -d acc}
   host_cflags: ' -DDSA64'
   host_exe: host.exe
   host_src: main.cpp oclErrorCodes.cpp oclHelper.cpp
   kernels:
-  - {cflags: ' -I.', file: loopback.xo, ksrc: kernel.cl, name: loopback, type: C}
+  - {cflags: {all: ' -I.'}, file: loopback.xo, ksrc: kernel.cl, name: loopback, type: C}
   name: 018_bringup3
   xclbins:
   - files: 'loopback.xo '
@@ -17,5 +18,4 @@ user:
     - cus: [loopback_cu0]
       name: loopback
       num_cus: 1
-    lflags: ''
     name: kernel.xclbin
