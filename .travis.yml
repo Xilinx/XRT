@@ -1,0 +1,25 @@
+sudo: enabled
+language: cpp
+
+env:
+  global:
+   - secure: "tThkybHy/0k4C/yIGWrr8mzRp48Q5SAHZsFTcZIYU1Ix9O/BBQh8RIBMp+I5Zf7wedG1AwcZsaELrvOS/+g1Z4NstfDdNnN/hfeNYASc/pCvZgK3aXWzgnSBR11Q28PCSh7qqfD+XJjBvywhvMBGh/UGOUVSH8s76fyoGLgUSpVmJxWMkX0Dc8PwuERrbVTAx2Wge8x/li9kX9C223zVYYlGdjvcQ5HmEn03jUL3W2hD3kMRY88yiPTV6Mf2xJOvLakrGnvUS42+c8OhtKqPVirN1i3HlGDsAjqyT39HLXprs1SwbrAA43fSFXjGVULk7EPnbtcKZgAzdBJzAWezTAcEIcHQFLnvjyrH99Y3LBIGZQOw7mPvNhoDcJuW6ABQzdbAPjJq9+0ojRAFYn/2/ZxiESge/tq0ZGk3j/Rf0eNPbQ3I84F6GkItCpSdHjJ1Oied8IlrYL+nipKku6naiyZYluaxL/RvftTHJOLazw7Yj+DeLhvtpJWwxtJysLomNlLI+43GSFZKxYHMPKh6B5C4+hLKlKN3HQGXsgFj7/WIVNBZRJlcA0sSvyl0qNS5G/d1iDUzHSJIlZMEctchnLXTKHpDEsFfLSlRtDhkuiv9tPJi9xck5SgOQd07IuhtHd+IOclB4ZirUZ6Talo0fekGriyADC/8muI1YGQnJPk="
+
+before_script:
+  - echo -n | openssl s_client -connect https://scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
+  - ./src/runtime_src/tools/scripts/xrtdeps.sh
+  - cd build
+
+before_install:
+  - sudo apt-get update
+
+addons:
+  coverity_scan:
+    project:
+      name: "Xilinx/XRT"
+      description: "Xilinx Runtime"
+    notification_email: sagarw@xilinx.com
+    build_command: "./build.sh"
+    branch_pattern: master
+
+script: if [ ${COVERITY_SCAN_BRANCH} != 1 ]; then ./build.sh ; fi
