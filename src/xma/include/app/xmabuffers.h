@@ -79,6 +79,21 @@ typedef struct XmaBufferRef
 } XmaBufferRef;
 
 /**
+ * enum XmaFrameSideDataType - ID describing type of side data
+*/
+typedef enum XmaFrameSideDataType
+{
+    XMA_FRAME_SIDE_DATA_START,
+    XMA_FRAME_QP_MAP = XMA_FRAME_SIDE_DATA_START,
+    XMA_FRAME_SIDE_DATA_MAX_COUNT
+} XmaFrameSideDataType;
+
+/**
+ * XmaSideDataHandle - A Handle to the Side Data Buffer.
+*/
+typedef void* XmaSideDataHandle;
+
+/**
  * enum XmaFormatType - ID describing fourcc format of video frame buffer
 */
 typedef enum XmaFormatType
@@ -108,6 +123,7 @@ typedef struct XmaFrameProperties
 typedef struct XmaFrame
 {
     XmaBufferRef       data[XMA_MAX_PLANES]; /**< data buffers */
+    XmaSideDataHandle  *side_data;
     XmaFrameProperties frame_props; /**< description of primary plane */
     XmaFraction        time_base; /**< time base as a fraction */
     XmaFraction        frame_rate; /**< frames per second as a fraction */
@@ -186,6 +202,7 @@ xma_frame_from_device_buffers(XmaFrameProperties *frame_props,
 
 /**
  * xma_frame_free() - Free frame data structure
+ * The associated side data handles, if any, are also cleared.
  *
  * @frame: frame instance to free
  *
@@ -195,6 +212,206 @@ xma_frame_from_device_buffers(XmaFrameProperties *frame_props,
 */
 void
 xma_frame_free(XmaFrame *frame);
+
+/**
+ * xma_side_data_alloc() - Allocates side data handle, with
+ * reference count equal to 1. The side data buffer 'side_data'
+ * can be re-used if 'use_buffer' is set to 1.
+ *
+ * @side_data: Buffer pointer containing the side data.
+ * If it is Null, then 'use_buffer' must be 0.
+ * @sd_type: side data to be set.
+ * @size: size of the side data buffer.
+ * @use_buffer: If it is set to 0, then a new buffer of size
+ * 'size' is allocated and the 'side_data' (if not NULL) provided
+ * by the user is copied into it.
+ * Else if, 'use_buffer' is set to 1, then 'side_data' buffer is
+ * used to create the buffer handle.
+ *
+ * RETURN: XmaSideDataHandle on success, which
+ * contains the side data buffer.
+ * In case of failure, NULL is returned.
+*/
+XmaSideDataHandle
+xma_side_data_alloc(void                      *side_data,
+                    enum XmaFrameSideDataType sd_type,
+                    size_t                    size,
+                    int32_t                   use_buffer);
+
+/**
+ * xma_side_data_free() - Decrements the reference count of the
+ * side_data by 1. If the refrence count is 0, then the buffer handle
+ * is deallocated. If the actual data buffer was also allocated,
+ * while creating the buffer handle then it is also released.
+ * In case, the actual side data buffer provided by the user was
+ * re-used while creating this buffer handle, then only the buffer
+ * handle is released.
+ *
+ * @side_data: The side data handle which needs to be freed
+ *
+*/
+void
+xma_side_data_free(XmaSideDataHandle side_data);
+
+/**
+ * xma_side_data_inc_ref() - The side data is reference
+ * counted. If any user wants to use this buffer, then,
+ * it should call this API to hold a reference to this buffer.
+ *
+ * @side_data: The side data handle whose refcount needs to be
+ * incremented.
+ *
+ * RETURN: The reference count of the side data buffer after
+ * incrementing it by 1. If the 'side_data' is NULL, then
+ * 'XMA_ERROR_INVALID' error is returned.
+*/
+int32_t
+xma_side_data_inc_ref(XmaSideDataHandle side_data);
+
+/**
+ * xma_side_data_dec_ref() - The side data is reference
+ * counted. If any user wants to free this buffer, then,
+ * it should call this API to release the reference to this buffer.
+ * If the refrence count is 0, then the buffer handle
+ * is deallocated. If the actual data buffer was also allocated,
+ * while creating the buffer handle then it is also released.
+ * In case, the actual side data buffer provided by the user was
+ * re-used while creating this buffer handle, then only the buffer
+ * handle is released.
+ *
+ * @side_data: The side data handle whose refcount needs to be
+ * decremented.
+ *
+ * RETURN: The reference count of the side data buffer after
+ * decrementing it by 1. If the 'side_data' is NULL, then
+ * 'XMA_ERROR_INVALID' error is returned.
+*/
+int32_t
+xma_side_data_dec_ref(XmaSideDataHandle side_data);
+
+/**
+ * xma_side_data_get_refcount() - The side data is reference
+ * counted. The user can get the current refrence count of the
+ * side data using this API.
+ *
+ * @side_data: The side data handle whose refcount is needed.
+ *
+ * RETURN: The reference count of the side data buffer after
+ * decrementing it by 1. If the 'side_data' is NULL, then
+ * 'XMA_ERROR_INVALID' error is returned.
+*/
+int32_t
+xma_side_data_get_refcount(XmaSideDataHandle side_data);
+
+/**
+ * xma_side_data_get_buffer() - Use this API to get the pointer
+ * to the side data buffer.
+ *
+ * @side_data: The side data handle which holds the side data buffer.
+ *
+ * RETURN: Pointer to the side data buffer.
+*/
+void*
+xma_side_data_get_buffer(XmaSideDataHandle side_data);
+
+/**
+ * xma_side_data_get_size() - Use this API to get the size of
+ * the side data buffer.
+ *
+ * @side_data: The side data handle which holds the side data buffer.
+ *
+ * RETURN: size of the side data buffer.
+*/
+size_t
+xma_side_data_get_size(XmaSideDataHandle side_data);
+
+/**
+ * xma_frame_add_side_data() - Sets the side data of the frame.
+ * In case, there is already same type of side data associated
+ * with the frame, it is removed and the new side data
+ * is set. The reference count of the side_data buffer is
+ * incremented by 1, on successful execution.
+ *
+ * @frame: Frame, with which, the side data needs to be associated.
+ * @side_data: The side data handle to be added to the XmaFrame.
+ *
+ * RETURN: XMA_ERROR_INVALID, if 'frame' or 'side_data' is NULL.
+ * XMA_ERROR, in case no memory is available.
+ * XMA_SUCCESS, on successful execution.
+*/
+int32_t
+xma_frame_add_side_data(XmaFrame          *frame,
+                        XmaSideDataHandle side_data);
+
+/**
+ * xma_frame_get_side_data() - Return the handle to the required
+ * type of side data buffer
+ *
+ * @frame: Frame, to which, the required side data is associated.
+ * @sd_type: type of side data buffer required
+ *
+ * RETURN: XmaSideDataHandle, a handle to the requested type of
+ * side data. If no side data of the requested type is present,
+ * then NULL is returned.
+*/
+XmaSideDataHandle
+xma_frame_get_side_data(XmaFrame                  *frame,
+                        enum XmaFrameSideDataType sd_type);
+
+/**
+ * xma_frame_remove_side_data() - Removes the side data handle
+ * from the frame. The side data buffer refrence count is
+ * decremented by 1. If, it results in zero, then, the side data
+ * handle is freed.
+ * Also, if the buffer handle owns the actual side data buffer,
+ * then, that is also freed.
+ *
+ * @frame: Frame, with which, the side data is associated.
+ * @side_data: The side data handle, to be removed from the XmaFrame.
+ *
+ * RETURN: XMA_ERROR_INVALID, if 'frame' does not have the specified
+ * 'side_data' buffer handle is NULL.
+ * XMA_SUCCESS, on successful execution.
+*/
+int32_t
+xma_frame_remove_side_data(XmaFrame          *frame,
+                           XmaSideDataHandle side_data);
+
+
+/**
+ * xma_frame_remove_side_data_type() - Removes the specified
+ * type of the side data handle reference from the frame.
+ * The side data buffer refrence count is decremented by 1.
+ * If, it results in zero, then the side data buffer handle is freed.
+ * Also, if the buffer handle owns the actual side data buffer,
+ * then, that is also freed.
+ *
+ * @frame: Frame, with which, the side data is associated.
+ * @side_data: The type of side data buffer to be removed.
+ *
+ * RETURN: XMA_ERROR_INVALID, if 'frame' does not have the specified
+ * 'side_data' buffer handle.
+ * XMA_SUCCESS, on successful execution.
+*/
+int32_t
+xma_frame_remove_side_data_type(XmaFrame                  *frame,
+                                enum XmaFrameSideDataType sd_type);
+
+/**
+ * xma_frame_clear_all_side_data() - Removes all types of
+ * the side data handle references from the frame.
+ * The refrence count of each side data buffer associated to the
+ * frame is decremented by 1. If, it results in zero, then
+ * the side data handle is freed.
+ * Also, if the buffer handle owns the actual side data buffer,
+ * then, that is also freed.
+ *
+ * @frame: Frame, with which, the side data is associated.
+ * @side_data: The type of side data buffer to be removed.
+ *
+*/
+void
+xma_frame_clear_all_side_data(XmaFrame *frame);
 
 /**
  * xma_data_buffer_alloc() - Allocate a single buffer and return as XmaDataBuffer pointer
