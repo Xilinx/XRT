@@ -4,12 +4,13 @@ level: 6
 owner: haeseung
 user:
   allowed_test_modes: [hw]
+  force_makefile: "--force"
   host_args: {all: -k verify.xclbin}
   host_cflags: ' -DDSA64 -ldl -luuid'
   host_exe: host.exe
   host_src: main.cpp
   kernels:
-  - {cflags: ' -I.', file: hello.xo, ksrc: hello.cl, name: hello, type: C}
+  - {cflags: {add: ' -I.'}, file: hello.xo, ksrc: hello.cl, name: hello, type: C}
   name: 22_verify
   xclbins:
   - files: 'hello.xo '
@@ -17,5 +18,4 @@ user:
     - cus: [hello]
       name: hello
       num_cus: 1
-    lflags: ''
     name: verify.xclbin
