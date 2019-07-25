@@ -20,6 +20,6 @@ addons:
       description: "Xilinx Runtime"
     notification_email: sagarw@xilinx.com
     build_command: "./build.sh"
-    branch_pattern: master
+    branch_pattern: travis
 
 script: if [ "$COVERITY_SCAN_BRANCH" != 1 ]; then ./build.sh ; fi
