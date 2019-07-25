@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -194,11 +194,17 @@ namespace xdp {
 
   void RTProfile::attach(ProfileWriterI* writer)
   {
+    if (writer == nullptr)
+      return;
+
     mWriter->attach(writer);
 
     // Gather data for RunSummary
-    if ((mFileFlags & RTUtil::FILE_SUMMARY) && (writer != nullptr)) {
-      mRunSummary->addFile(writer->getFileName(), RunSummary::FT_PROFILE);
+    if ((mFileFlags & RTUtil::FILE_SUMMARY)) {
+      const std::string fileName = writer->getFileName();
+      if (!fileName.empty()) {
+        mRunSummary->addFile(fileName, RunSummary::FT_PROFILE);
+      }
     }
   }
 
