@@ -3,15 +3,14 @@ language: cpp
 
 env:
   global:
-   - secure: "tThkybHy/0k4C/yIGWrr8mzRp48Q5SAHZsFTcZIYU1Ix9O/BBQh8RIBMp+I5Zf7wedG1AwcZsaELrvOS/+g1Z4NstfDdNnN/hfeNYASc/pCvZgK3aXWzgnSBR11Q28PCSh7qqfD+XJjBvywhvMBGh/UGOUVSH8s76fyoGLgUSpVmJxWMkX0Dc8PwuERrbVTAx2Wge8x/li9kX9C223zVYYlGdjvcQ5HmEn03jUL3W2hD3kMRY88yiPTV6Mf2xJOvLakrGnvUS42+c8OhtKqPVirN1i3HlGDsAjqyT39HLXprs1SwbrAA43fSFXjGVULk7EPnbtcKZgAzdBJzAWezTAcEIcHQFLnvjyrH99Y3LBIGZQOw7mPvNhoDcJuW6ABQzdbAPjJq9+0ojRAFYn/2/ZxiESge/tq0ZGk3j/Rf0eNPbQ3I84F6GkItCpSdHjJ1Oied8IlrYL+nipKku6naiyZYluaxL/RvftTHJOLazw7Yj+DeLhvtpJWwxtJysLomNlLI+43GSFZKxYHMPKh6B5C4+hLKlKN3HQGXsgFj7/WIVNBZRJlcA0sSvyl0qNS5G/d1iDUzHSJIlZMEctchnLXTKHpDEsFfLSlRtDhkuiv9tPJi9xck5SgOQd07IuhtHd+IOclB4ZirUZ6Talo0fekGriyADC/8muI1YGQnJPk="
-
-before_script:
-  - echo -n | openssl s_client -connect https://scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
-  - ./src/runtime_src/tools/scripts/xrtdeps.sh
-  - cd build
+   - secure: "QArScPRjURDEBNnqejIu+eE0bJaYhQ0LPnf8T1RFi69Fk/LmaeR6gFDz562FnuCCSDE0+I5M6osYrpjnBXuygMu4nX7qEqWxJ6mvXnONCfUBmHARf+l+adOfb0ZjTqJaLUZBnOx2wVnVaTey5IIROlvShGCdoehaB7njN4yzfl3MFBFEQz+drlx8VXnYJTJQWN560EHpf9T+KL/UgOVXCOs+S7ZQQSdCjToSDToodc9X5UCMw+y0EdPvN7eQ4GxSbsE1Gt1jCmbtLMKzSqEJI4HJuQTR/Mdz6ZF+5lPBmy4sRXqIbiy9bl5Et9LlQHo0r/g7JvTMees1QXytcmlCQoz8SV8KDVPpmKXIeF1z+/du8EO6l/KPP/X5sV1Rhxx57TrFqwNwpeF8pHa6/wni8viGD+gsyb95xDMQvUTNq/MrgqGlta0LbdQLWuS183OTZ/01FZnLpGeiFydNoLyHi1DJojX09zONlkKBGbhn3Fk/549jGIepRIy6+SbWTVAmkQnTEU3XjqSQbbQtV6f5so0EHl7XMisghNzwyl9s/8IYlslPHNzcQufwQCg6iP8KiBLGnXQF6LOVmgTNjA8Wby1pFl11dLHr6oDmtBylki0aGQAckzx74Yb/fXbm0+UWQGszTH1PNZeF4et7yAERfh8xjwCY/9Vn4852bE8ozDo="
 
 before_install:
   - sudo apt-get update
+
+before_script:
+  - ./src/runtime_src/tools/scripts/xrtdeps.sh
+  - cd build
 
 addons:
   coverity_scan:
@@ -22,4 +21,4 @@ addons:
     build_command: "./build.sh"
     branch_pattern: master
 
-script: if [ ${COVERITY_SCAN_BRANCH} != 1 ]; then ./build.sh ; fi
+script: echo -n | openssl s_client -connect https://scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
