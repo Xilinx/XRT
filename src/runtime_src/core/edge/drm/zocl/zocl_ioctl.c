@@ -23,7 +23,6 @@
 #include "xclbin.h"
 #include "sched_exec.h"
 
-#if defined(XCLBIN_DOWNLOAD)
 /**
  * Bitstream header information.
  */
@@ -36,10 +35,6 @@ typedef struct {
 	unsigned char *Time;           /* Bitstream creation time*/
 	unsigned int MagicLength;      /* Length of the magic numbers*/
 } XHwIcap_Bit_Header;
-
-struct zclmgmt_ioc_bitstream_axlf {
-	struct axlf *xclbin;
-};
 
 /* Used for parsing bitstream header */
 #define XHI_EVEN_MAGIC_BYTE     0x0f
@@ -55,10 +50,10 @@ struct zclmgmt_ioc_bitstream_axlf {
 #define DMA_HWICAP_BITFILE_BUFFER_SIZE 1024
 #define BITFILE_BUFFER_SIZE DMA_HWICAP_BITFILE_BUFFER_SIZE
 
-static struct axlf_section_header* get_axlf_section(struct axlf *top, enum axlf_section_kind kind);
-
+static struct axlf_section_header* get_axlf_section(struct axlf *top,
+						enum axlf_section_kind kind);
 int zocl_check_section(struct axlf_section_header *header, uint64_t xclbin_len,
-		enum axlf_section_kind kind);
+		       enum axlf_section_kind kind);
 
 static int bitstream_parse_header(const unsigned char *Data, unsigned int Size,
 				  XHwIcap_Bit_Header *Header)
@@ -210,6 +205,7 @@ static int zocl_pcap_download(struct drm_zocl_dev *zdev,
 	unsigned int i;
 	char temp;
 	int err;
+	void __iomem *map = NULL;
 
 	DRM_INFO("%s\n", __func__);
 	memset(&bit_header, 0, sizeof(bit_header));
@@ -248,6 +244,12 @@ static int zocl_pcap_download(struct drm_zocl_dev *zdev,
 		goto free_buffers;
 	}
 
+	if (zdev->pr_isolation_addr) {
+		map = ioremap(zdev->pr_isolation_addr, 0x1000);
+		if (!IS_ERR_OR_NULL(map))
+			iowrite32(0x0, map);
+	}
+
 	for (i = 0; i < bit_header.BitstreamLength ; i = i+4) {
 		temp = data[i];
 		data[i] = data[i+3];
@@ -274,9 +276,13 @@ static int zocl_pcap_download(struct drm_zocl_dev *zdev,
 
 	/* Load the buffer to the FPGA */
 	err = fpga_mgr_load(fpga_mgr, info);
-	DRM_INFO("%s : ret code %d\n", __func__, err);
+	if (err) {
+		DRM_ERROR("%s : ret code %d\n", __func__, err);
+		fpga_image_info_free(info);
+	}
 
-	goto free_buffers;
+	if (zdev->pr_isolation_addr && !IS_ERR_OR_NULL(map))
+		iowrite32(0x3, map);
 
 free_buffers:
 	kfree(buffer);
@@ -309,7 +315,8 @@ int zocl_pcap_download_ioctl(struct drm_device *dev, void *data,
 	if (primaryHeader == NULL)
 		return -EINVAL;
 
-	if (zocl_check_section(primaryHeader, bin_obj.m_header.m_length, BITSTREAM))
+	if (zocl_check_section(primaryHeader, bin_obj.m_header.m_length,
+			       BITSTREAM))
 		return -EINVAL;
 
 	primary_fw_off = primaryHeader->m_sectionOffset;
@@ -324,7 +331,6 @@ int zocl_pcap_download_ioctl(struct drm_device *dev, void *data,
 
 	return zocl_pcap_download(zdev, buffer, primary_fw_len);
 }
-#endif
 
 char *kind_to_string(enum axlf_section_kind kind)
 {
