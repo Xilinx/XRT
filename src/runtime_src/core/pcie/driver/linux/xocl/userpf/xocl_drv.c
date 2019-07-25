@@ -508,7 +508,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 			xdev->core.fdt_blob)
 		goto failed;
 
-	if (!blob && !xdev->core.fdt_blob)
+	if (!offset && !xdev->core.fdt_blob)
 		goto failed;
 
 	if (xdev->core.fdt_blob)
@@ -525,6 +525,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 			goto failed;
 		}
 	}
+
 	if (XOCL_DRM(xdev))
 		xocl_cleanup_mem(XOCL_DRM(xdev));
 
