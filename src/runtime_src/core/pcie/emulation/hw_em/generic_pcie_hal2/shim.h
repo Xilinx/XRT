@@ -183,6 +183,10 @@ using addr_type = uint64_t;
       uint32_t getPerfMonProperties(xclPerfMonType type, uint32_t slotnum);
       uint32_t getPerfMonNumberSlots(xclPerfMonType type);
 
+      int xclGetDebugIPlayoutPath(char* layoutPath, size_t size);
+      int xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
+      int xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
+
       //Utility Function
       void set_simulator_started(bool val){ simulator_started = val;}
       void fillDeviceInfo(xclDeviceInfo2* dest, xclDeviceInfo2* src);

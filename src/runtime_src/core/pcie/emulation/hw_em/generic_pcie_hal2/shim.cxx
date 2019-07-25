@@ -2223,6 +2223,38 @@ ssize_t HwEmShim::xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_
   return xclCopyBufferDevice2Host(buf, offset, count, 0 , 0);
 }
 
+
+int HwEmShim::xclGetDebugIPlayoutPath(char* layoutPath, size_t size)
+{
+  // get path of the debug_ip_layout
+  return 0;
+}
+
+int HwEmShim::xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
+{
+#if 0
+  /* Will this be same as HW flow ? */
+  uint32_t bytesPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 8);
+
+  traceBufSz = MAX_TRACE_NUMBER_SAMPLES * bytesPerSample;   /* Buffer size in bytes */
+  traceSamples = nSamples;
+#endif
+  return 0;
+}
+
+int HwEmShim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
+{
+#if 0
+   /* For PCIe devices (HW flow), trace data is read using unmanaged read.
+    * Would new HW Emulation need unmanaged read or xclread ?
+    */
+#endif
+
+   return 0;
+}
+
+
+
 /********************************************** QDMA APIs IMPLEMENTATION START **********************************************/
 
 /*
