@@ -639,6 +639,7 @@ int shim::p2pEnable(bool enable, bool force)
 
     if (force) {
         dev_fini();
+        mDev->devfs_close();
         /* remove root bus and rescan */
         mDev->sysfs_put("", "root_dev/remove", err, input);
 

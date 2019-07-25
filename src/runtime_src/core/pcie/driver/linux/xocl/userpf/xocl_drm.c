@@ -662,7 +662,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 
 	drm_p->mm = vzalloc(size);
 	drm_p->mm_usage_stat = vzalloc(size);
-	drm_p->mm_p2p_off = vzalloc(topo->m_count * sizeof(u64));
+	drm_p->mm_p2p_off = vzalloc((topo->m_count + 1) * sizeof(u64));
 	if (!drm_p->mm || !drm_p->mm_usage_stat || !drm_p->mm_p2p_off) {
 		err = -ENOMEM;
 		goto failed;
@@ -732,7 +732,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 
 		drm_mm_init(drm_p->mm[i], mem_data->m_base_address,
 				ddr_bank_size - reserved1 - reserved2);
-		drm_p->mm_p2p_off[i] = ddr_bank_size * i;
+		drm_p->mm_p2p_off[i + 1] = drm_p->mm_p2p_off[i] + ddr_bank_size;
 
 		xocl_info(drm_p->ddev->dev, "drm_mm_init called");
 	}
