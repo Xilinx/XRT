@@ -2,6 +2,12 @@
 Xilinx Runtime
 ==============
 
+.. image:: https://travis-ci.org/Xilinx/XRT.svg?branch=master
+    :target: https://travis-ci.org/Xilinx/XRT
+
+.. image:: https://scan.coverity.com/projects/17781/badge.svg
+    :target: https://scan.coverity.com/projects/xilinx-xrt-5f9a8a18-9d52-4cb2-b2ac-2d8d1b59477f
+
 .. image:: src/runtime_src/doc/toc/XRT-Layers.svg
    :align: center
 
