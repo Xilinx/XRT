@@ -110,7 +110,6 @@ static int scanDevices(bool verbose, bool json)
 
 static bool match_id(DSAInfo& dsa, std::string& id)
 {
-printf("DSA %s id %s, ts %lx\n", dsa.uuid.c_str(), id.c_str(), dsa.timestamp);
     if (dsa.uuid.empty())
     {
         uint64_t ts = strtoull(id.c_str(), nullptr, 16);
