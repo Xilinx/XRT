@@ -20,7 +20,7 @@
 #include <CL/opencl.h>
 
 /**
- * Extern declration of xocl::api function that are used 
+ * Extern declration of xocl::api function that are used
  * in implementation of OCL api functions.
  *
  * Calling functions in this API will bypass profile logging
@@ -97,6 +97,12 @@ clCreateKernel(cl_program      program,
                const char *    kernel_name,
                cl_int *        errcode_ret);
 
+cl_kernel
+clSetKernelArg(cl_kernel    kernel,
+               cl_uint      arg_index,
+               size_t       arg_size,
+               const void * arg_value);
+
 cl_int
 clEnqueueBarrierWithWaitList(cl_command_queue  command_queue ,
                              cl_uint            num_events_in_wait_list ,
@@ -109,5 +115,3 @@ clReleaseEvent(cl_event event);
 }} // api,xocl
 
 #endif
-
-

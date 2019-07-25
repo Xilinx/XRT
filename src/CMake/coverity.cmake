@@ -33,6 +33,17 @@ else ()
     )
 
   add_custom_target(
+    covanalyze-all
+    DEPENDS covbuild-user
+    COMMAND ${COVBIN}/cov-analyze
+    --all --dir imed --strip-path ${COVSRCDIR} --config config/conf.xml
+    --enable-constraint-fpp
+    --enable-callgraph-metrics
+    --enable-exceptions
+    --enable-fnptr
+    )
+
+  add_custom_target(
     covanalyze
     DEPENDS covbuild-user
     COMMAND ${COVBIN}/cov-analyze
@@ -115,5 +126,24 @@ else ()
   add_custom_target(
     coverity
     DEPENDS covcommit
+    )
+
+  add_custom_target(
+    covcommit-all
+    DEPENDS covanalyze-all
+    COMMAND ${COVBIN}/cov-commit-defects
+    --dir imed
+    --host xcocoverity04
+    --port 8081
+    --user $(COVUSER)
+    --password $(COVPW)
+    --stream XRTAll
+    --scm git
+    --description \"$(DATE)\"
+    )
+
+  add_custom_target(
+    coverity-all
+    DEPENDS covcommit-all
     )
 endif ()

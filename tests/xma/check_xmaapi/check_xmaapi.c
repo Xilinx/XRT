@@ -52,7 +52,7 @@ int main()
     hw_if.configure = check_xmaapi_hw_configure;
     hw_if.probe = check_xmaapi_probe;
 
-    rc = xma_initialize("../system_cfg/check_cfg.yaml");
+    rc = xma_initialize((char*)"../system_cfg/check_cfg.yaml");
     if (rc != 0) {
       number_failed++;
     }

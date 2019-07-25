@@ -20,7 +20,6 @@
 #include "xocl/core/pipe.h"
 #include "xocl/core/device.h"
 #include "xocl/core/error.h"
-#include "xrt/util/memory.h"
 
 #include "xocl/api/detail/device.h"
 
@@ -35,7 +34,7 @@ validOrError(cl_device_id device,
 {
   if (!config::api_checks())
     return;
-  
+
   xocl::detail::device::validOrError(device);
 
   cl_mem_flags f = CL_MEM_RTE_MBUF_READ_ONLY | CL_MEM_RTE_MBUF_WRITE_ONLY;
@@ -63,10 +62,8 @@ clCreateHostPipe(cl_device_id device,
   validOrError(device,flags,packet_size,max_packets,attributes);
 
   attributes++; // ???
-  if (!attributes)
-    throw error(CL_INVALID_VALUE);
 
-  auto pipe = xrt::make_unique<pmd::pipe>(nullptr,xocl::xocl(device),flags,max_packets,*attributes);
+  auto pipe = std::make_unique<pmd::pipe>(nullptr,xocl::xocl(device),flags,max_packets,*attributes);
   return pipe.release();
 }
 
@@ -95,5 +92,3 @@ clCreateHostPipe(cl_device_id device,
   }
   return nullptr;
 }
-
-

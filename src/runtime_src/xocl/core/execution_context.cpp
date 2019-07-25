@@ -21,10 +21,11 @@
 #include "xrt/scheduler/command.h"
 #include "xrt/scheduler/scheduler.h"
 
-#include "impl/spir.h"
+#include "core/common/xclbin_parser.h"
 
 #include <iostream>
 #include <fstream>
+#include <bitset>
 
 namespace {
 
@@ -238,24 +239,40 @@ execution_context(device* device
 
   // Compute units to use
   add_compute_units(device);
+
+  m_dataflow = xrt_core::xclbin::get_dataflow(device->get_axlf());
+  XOCL_DEBUGF("execution_context(%d) has dataflow(%d)\n",m_uid,m_dataflow);
 }
 
 void
 execution_context::
 add_compute_units(device* device)
 {
+  // Collect kernel's filtered CUs
+  std::bitset<128> kernel_cus;
+  for (auto cu : m_kernel->get_cus())
+    kernel_cus.set(cu->get_index());
+
+  // Targeted device CUs matching kernel CUs
   for (auto& scu : device->get_cus()) {
     auto cu = scu.get();
-    // Check that the kernel symbol is the same between the CU kernel and
-    // this context kernel.  There are test cases where two kernels share
-    // the same name but have different symbol from xclbin.  This will go
-    // away once we ensure that only one kernel per symbol is created in
-    // which case the kernel object address can be used from comparison.
-    if(cu->get_symbol()->uid==m_kernel.get()->get_symbol_uid()) {
-      XOCL_DEBUGF("execution_context(%d) adding cu(%d)\n",m_uid,cu->get_uid());
+    if (kernel_cus.test(cu->get_index())) {
+
+      // Check context creation
+      if (!device->acquire_context(cu))
+        continue;
+
+      XOCL_DEBUGF("execution_context(%d) added cu(%d)\n",m_uid,cu->get_uid());
       m_cus.push_back(cu);
     }
   }
+
+  if (m_cus.empty())
+    throw xrt::error(CL_INVALID_KERNEL,
+                     "kernel '"
+                     + m_kernel->get_name()
+                     + "' has no compute units to execute job '"
+                     + std::to_string(m_uid) + "'\n");
 }
 
 bool
@@ -379,6 +396,13 @@ start()
   auto offset = packet.size();  // start of regmap
   auto& regmap = packet;
 
+  // Ensure that S_AXI_CONTROL is created even when kernel
+  // has no arguments.
+  packet[offset]   = 0;  // control signals
+  packet[offset+1] = 0;  // gier
+  packet[offset+2] = 0;  // ier
+  packet[offset+3] = 0;  // isr
+
   size3 num_workgroups {0,0,0};
   for (auto d : {0,1,2}) {
     if (m_lsize[d]) // actually always true
@@ -395,14 +419,14 @@ start()
     }
 
     auto address_space = arg->get_address_space();
-    if (address_space == SPIR_ADDRSPACE_PRIVATE)
+    if (address_space == kernel::argument::addr_space_type::SPIR_ADDRSPACE_PRIVATE)
     {
       auto arginforange = arg->get_arginfo_range();
       fill_regmap(regmap,offset,arg->get_value(),arg->get_size(),arginforange);
-    } else if(address_space==SPIR_ADDRSPACE_PIPES) {
+    } else if(address_space == kernel::argument::addr_space_type::SPIR_ADDRSPACE_PIPES) {
 	//do nothing
-    } else if (address_space==SPIR_ADDRSPACE_GLOBAL
-             || address_space==SPIR_ADDRSPACE_CONSTANT)
+    } else if (address_space == kernel::argument::addr_space_type::SPIR_ADDRSPACE_GLOBAL
+            || address_space == kernel::argument::addr_space_type::SPIR_ADDRSPACE_CONSTANT)
     {
       uint64_t physaddr = 0;
       if (auto mem = arg->get_memory_object()) {
@@ -529,10 +553,11 @@ execute()
   // In order to keep scheduler busy, we need more than just one
   // workgroup at a time, so here we try to ensure that the scheduled
   // commands at any given time is twice the number of available CUs.
-  auto limit = 2*m_cus.size();
+  auto limit = m_dataflow ? 20*m_cus.size() : 2*m_cus.size();
   for (size_t i=m_active; !m_done && i<limit; ++i) {
     start();
     update_work();
+    XOCL_DEBUG(std::cout,"active=",m_active,"\n");
   }
 
   return m_done;
