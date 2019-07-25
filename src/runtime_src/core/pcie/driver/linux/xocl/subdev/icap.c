@@ -1287,59 +1287,6 @@ static int alloc_and_get_axlf_section(struct icap *icap,
 	return 0;
 }
 
-static long
-find_firmware_impl(struct platform_device *pdev, char *fw_name, size_t len,
-	u16 deviceid, const struct firmware **fw, char *suffix)
-{
-	struct icap *icap = platform_get_drvdata(pdev);
-	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(pdev);
-	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	u16 vendor = le16_to_cpu(pcidev->vendor);
-	u16 subdevice =	le16_to_cpu(pcidev->subsystem_device);
-	u64 timestamp = le64_to_cpu(xocl_get_timestamp(xdev));
-	long err = 0;
-
-	/* deviceid is arg, the others are from pdev) */
-
-	snprintf(fw_name, len, "xilinx/%04x-%04x-%04x-%016llx.%s",
-		vendor, deviceid, subdevice, timestamp, suffix);
-	ICAP_INFO(icap, "try load %s %s", suffix, fw_name);
-	err = request_firmware(fw, fw_name, &pcidev->dev);
-	if (err) {
-		snprintf(fw_name, len, "xilinx/%04x-%04x-%04x-%016llx.%s",
-			vendor, (deviceid + 1), subdevice, timestamp, suffix);
-		ICAP_INFO(icap, "try load %s %s", suffix, fw_name);
-		err = request_firmware(fw, fw_name, &pcidev->dev);
-	}
-
-	/* Retry with the legacy dsabin or xsabin. */
-	if (err) {
-		snprintf(fw_name, len, "xilinx/%04x-%04x-%04x-%016llx.%s",
-			vendor, le16_to_cpu(pcidev->device + 1), subdevice,
-			le64_to_cpu(0x0000000000000000), suffix);
-		ICAP_INFO(icap, "try load legacy %s %s", suffix, fw_name);
-		err = request_firmware(fw, fw_name, &pcidev->dev);
-	}
-
-	if (err)
-		ICAP_ERR(icap, "unable to find firmware of %s", suffix);
-
-	return err;
-}
-
-static long
-find_firmware(struct platform_device *pdev, char *fw_name, size_t len,
-	u16 deviceid, const struct firmware **fw)
-{
-	// try xsabin first, then dsabin
-	if (find_firmware_impl(pdev, fw_name, len, deviceid, fw, "xsabin")) {
-		return find_firmware_impl(pdev, fw_name, len, deviceid, fw,
-			"dsabin");
-	}
-
-	return 0;
-}
-
 static int icap_download_boot_firmware(struct platform_device *pdev)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
@@ -1382,7 +1329,8 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 			deviceid = pcidev_user->device;
 	}
 
-	err = find_firmware(pdev, fw_name, sizeof(fw_name), deviceid, &fw);
+	err = xocl_rom_find_firmware(xdev, fw_name, sizeof(fw_name),
+			deviceid, &fw);
 	if (err) {
 		/* Give up on finding xsabin and dsabin. */
 		ICAP_ERR(icap, "unable to find firmware, giving up");
