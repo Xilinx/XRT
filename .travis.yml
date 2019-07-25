@@ -6,7 +6,7 @@ env:
    - secure: "RE5juYZda9p8IDmSIjVJ4HmLpSRTbi7TVS/UDoMdqxTUFzocEAqG59stFaVNX07VcpB3kLXeo4V9hixLGEjPJud2aUHCM0L8PNbw0ur9Xjl/uvr+JNmoSIhV5o4uQnPmYQD4cdkOCWEIjUbhwL/RuHYj6xse2hiQS5UeFu8xnu4oF5mcMBH9Fu/Fone4kLwSybSsz1PH9b6cavLMCTNkF/W+LkAhdn8y1QFmbXDmrFeu/MsWTZ32Ud9FtK00dSpUWHB8GCysJs0yOq+ijGjQZIXkupISsAPTX3MDrx6iuNXmpeJK5BuRcwUOM035+G12FFpDgAujGUFfigrfeVOA988/JmIch2hoe7rEitGE52OS0tNg4A4fYECXJTOFOMK4uSnfiJ1beabtYT0L5xmP/iEYmu+GhktM0cegjGqwb+WSbxeTYa2jWNMUiZ3koKWG6pOvKDCJ6g5jXy1UAiGUhyyVCOt1QUsFEPq2m6XgwzDQN8wjuPjFNYQFt13Moi5RKbN9iTae6j27xJrvpe50jUtApZgbKZMIlEQ44y6iAc6GZS4yobuBI8cRYTLCLsn8bO0/qUaIqEQ8P9pEhtJ154St+WxfGuFw22IngB5MW61Z1jk/FUA/Cw5/0pNHh7YMttIwlE3oomYtRfkH+6iZP7ec2v3QYdPo6arYwNHAtP0="
 
 before_script:
-  - echo -n | openssl s_client -connect https://scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
+  - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
   - ./src/runtime_src/tools/scripts/xrtdeps.sh
   - cd build
 
