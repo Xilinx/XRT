@@ -11,7 +11,7 @@ before_install:
 before_script:
   - ./src/runtime_src/tools/scripts/xrtdeps.sh
   - cd build
-
+ 
 addons:
   coverity_scan:
     project:
