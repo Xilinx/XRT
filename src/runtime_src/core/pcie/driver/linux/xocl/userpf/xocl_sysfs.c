@@ -195,12 +195,13 @@ static ssize_t p2p_enable_store(struct device *dev,
 	size = (ffs(size) == fls(size)) ? (fls(size) - 1) : fls(size);
 	size = enable ? (size + 10) : (XOCL_PA_SECTION_SHIFT - 20);
 	if (xocl_pci_rebar_size_to_bytes(size) == curr_size) {
-		if (enable)
+		if (enable) {
 			xocl_info(&pdev->dev, "p2p is enabled, bar size %d M",
 				(1 << size));
-		else
+		} else {
 			xocl_info(&pdev->dev, "p2p is disabled, bar size %dM",
 				(1 << size));
+		}
 		return count;
 	}
 
