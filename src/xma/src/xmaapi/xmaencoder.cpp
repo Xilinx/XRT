@@ -317,6 +317,10 @@ xma_enc_session_send_frame(XmaEncoderSession *session,
     uint32_t frame_size;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_ENCODER_MOD, "%s()\n", __func__);
+    if (session->base.session_signature != (void*)(((uint64_t)session->base.hw_session.kernel_info) | ((uint64_t)session->base.hw_session.dev_handle))) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD, "XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
     clock_gettime(CLOCK_MONOTONIC, &ts);  
     timestamp = (ts.tv_sec * 1000000000) + ts.tv_nsec;
     rc = session->encoder_plugin->send_frame(session, frame);
@@ -341,6 +345,10 @@ xma_enc_session_recv_data(XmaEncoderSession *session,
     uint64_t timestamp;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_ENCODER_MOD, "%s()\n", __func__);
+    if (session->base.session_signature != (void*)(((uint64_t)session->base.hw_session.kernel_info) | ((uint64_t)session->base.hw_session.dev_handle))) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD, "XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
     rc = session->encoder_plugin->recv_data(session, data, data_size);
     if (*data_size)
     {
