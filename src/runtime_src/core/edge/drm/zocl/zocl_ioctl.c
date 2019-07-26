@@ -276,15 +276,17 @@ static int zocl_pcap_download(struct drm_zocl_dev *zdev,
 
 	/* Load the buffer to the FPGA */
 	err = fpga_mgr_load(fpga_mgr, info);
-	if (err) {
+	if (err)
 		DRM_ERROR("%s : ret code %d\n", __func__, err);
-		fpga_image_info_free(info);
-	}
 
 	if (zdev->pr_isolation_addr && !IS_ERR_OR_NULL(map))
 		iowrite32(0x3, map);
 
 free_buffers:
+	if (map)
+		iounmap(map);
+	if (info)
+		fpga_image_info_free(info);
 	kfree(buffer);
 	kfree(bit_header.DesignName);
 	kfree(bit_header.PartName);
