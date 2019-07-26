@@ -317,6 +317,12 @@ xma_enc_session_send_frame(XmaEncoderSession *session,
     uint32_t frame_size;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_ENCODER_MOD, "%s()\n", __func__);
+    if (frame == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
+                   "Frame is NULL\n");
+
+        return XMA_ERROR;
+    }
     clock_gettime(CLOCK_MONOTONIC, &ts);  
     timestamp = (ts.tv_sec * 1000000000) + ts.tv_nsec;
     rc = session->encoder_plugin->send_frame(session, frame);

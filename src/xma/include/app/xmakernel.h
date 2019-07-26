@@ -51,187 +51,6 @@ extern "C" {
  *  by the XMA from the application to the plugin.  As a result, it is up to
  *  the application and plugin to decide the meaning of the XmaParameter.
  *
- *  :: 
- * 
- *       #include <xma.h>
- *      
- *       int main(int argc, char *argv[])
- *       {
- *           int rc;
- *           char *yaml_filepath = argv[1];
- *      
- *           // Other media framework initialization
- *           ...
- *      
- *           rc = xma_initialize(yaml_filepath);
- *           if (rc != 0)
- *           {
- *               // Log message indicating XMA initialization failed
- *               printf("ERROR: Could not initialize XMA rc=%d\n\n", rc);
- *               return rc;
- *           }
- *      
- *           // Other media framework processing
- *           ...
- *      
- *           return 0;
- *       }
- *  
- *
- *  Assuming XMA initialization completes successfully, the kernel plugin
- *  must be initialized and optionally provided configuration data.  Once
- *  session initialization successfully completes, the application will
- *  send write requests, read requests or both during normal processing.
- *  Prior to ending the application, the session should be destroyed to
- *  gracefully clean-up any allocated resources.
- *
- *  The code snippet below demonstrates the creation of an XMA kernel
- *  session:
- *
- *  :: 
- * 
- *      // Code snippet for creating a kernel session
- *      ...
- *      #include <xma.h>
- *      ...
- *      XmaKernelProperties props;
- *      XmaParameter        params[2];
- *      int32_t             channel_num = 2;
- *      uint64_t            data = 0x123456789UL;
- *  
- *      // Setup kernel properties
- *      props.hwkernel_type = XMA_KERNEL_TYPE;
- *      strcpy(props.hwvendor_string, "Acme-widget-1");
- *  
- *      params[0].name = "channel";
- *      params[0].type = XMA_INT32;
- *      params[0].length = sizeof(channel_num);
- *      params[0].value = &channel_num;
- *      params[1].name = "data";
- *      params[1].type = XMA_UINT64;
- *      params[1].length = sizeof(data);
- *      params[1].value = &data;
- *      props.params = params;
- *      props.param_cnt = 2;
- *  
- *      // Create a kernel session based on the requested properties
- *      XmaKernelSession *session;
- *      session = xma_kernel_session_create(&props);
- *      if (!session)
- *      {
- *          // Log message indicating session could not be created
- *          // return from function
- *      }
- *      // Save returned session for subsequent calls.
- *      
- *  
- *      The code snippet that follows demonstrates how to send data
- *      to the kernel session and receive any available data in response:
- *
- *  :: 
- * 
- *       // Code snippet for sending data to the kernel and checking
- *       // if data is available.
- *      
- *       // Other non-XMA related includes
- *       ...
- *       #include <xma.h>
- *      
- *       // For this example it is assumed that session is a pointer to
- *       // a previously created kernel session and data is being sent to the
- *       // low-level plugin that triggers writing to registers or writing to
- *       // DDR device memory.  The handling of read and write requests is
- *       // left solely to the discretion of the low-level plugin implementation.
- *      
- *       XmaParameter params_in[2];
- *       XmaParameter *params_out;
- *       int32_t       channel_num = 1;
- *       uint64_t      data = 0xabcd12345UL;
- *       int32_t       param_cnt;
- *       int32_t rc;
- *      
- *       params[0].name = "channel";
- *       params[0].type = XMA_INT32;
- *       params[0].length = sizeof(channel_num);
- *       params[0].value = &channel_num;
- *       params[1].name = "data";
- *       params[1].type = XMA_UINT64;
- *       params[1].length = sizeof(data);
- *       params[1].value = &data;
- *       param_cnt = 2;
- *       rc = xma_kernel_session_write(session, params_in, param_cnt);
- *       if (rc != 0)
- *       {
- *           // Log error indicating write could not be accepted
- *           return rc;
- *       }
- *      
- *       // Read data if it is available.
- *       int32_t param_cnt;
- *       rc = xma_kernel_session_read(session, params_out, &param_cnt);
- *       if (rc != 0)
- *       {
- *           // No data to return at this time
- *           // This may not be an error - app needs to decide
- *           return rc;
- *       }
- *      
- *       // Iterate through returned parameters and do something with the data
- *       for (i=0; i<param_cnt; i++)
- *       {
- *           // Read returned data in params_out and print the value
- *           printf("name=%s, ", params_out[i].name);
- *           switch(params_out[i].type)
- *           {
- *               case XMA_STRING:
- *                   printf("type=XMA_STRING,value=%s\n",
- *                       (char*)params_out[i].value);
- *                   break;
- *               case XMA_INT32:
- *                   printf("type=XMA_INT32,value=%d\n",
- *                       (int32_t*)params_out[i].value);
- *                   break;
- *               case XMA_UINT32:
- *                   printf("type=XMA_UINT32,value=%lu\n",
- *                       (uint32_t*)params_out[i].value);
- *                   break;
- *               case XMA_INT64:
- *                   printf("type=XMA_INT64,value=%l\n",
- *                       (int64_t*)params_out[i].value);
- *                   break;
- *               case XMA_UINT64:
- *                   printf("type=XMA_UINT64,value=%lu\n",
- *                       (uint64_t*)params_out[i].value);
- *                   break;
- *           }
- *           ...
- *       }
- *       return rc;
- *  
- *
- *  This last code snippet demonstrates the interface for destroying the
- *  session.  This allows all allocated resources to be freed and made
- *  available to other processes.
- *
- *  :: 
- * 
- *      // Code snippet for destroying a session once a stream has ended
- *
- *      // Other non-XMA related includes
- *      ...
- *      #include <xma.h>
- *
- *      // This example assumes that the session is a pointer to a previously
- *      // created XmaKernelSession
- *      int32_t rc;
- *      rc = xma_kernel_session_destroy(session);
- *      if (rc != 0)
- *      {
- *          // TODO: Log message that the destroy function failed
- *          return rc;
- *      }
- *      return rc;
- *      
  */
 
 /**
@@ -306,7 +125,8 @@ int32_t
 xma_kernel_session_destroy(XmaKernelSession *session);
 
 /**
- *  xma_kernel_session_write() - This function writes data to the hardware accelerator kernel.
+ *  xma_kernel_session_write() - This function invokes plugin->write fucntion 
+ * assigned to this session which handles sending data to the hardware kernel.  
  *  The meaning of the data is managed by the caller and low-level
  *  XMA plugin. This means that the data provided could contain
  *  information about how kernel registers are programmed, how device
@@ -326,7 +146,8 @@ xma_kernel_session_write(XmaKernelSession  *session,
                          int32_t            param_cnt);
 
 /**
- *  xma_kernel_session_read() - This function reads data from the hardware accelerator kernel.
+ *  xma_kernel_session_read() - This function invokes plugin->read
+ * assigned to this session which handles obtaining output data from the hardware kernel.  
  *  The meaning of the data is managed by the caller and low-level
  *  XMA plugin.
  *
