@@ -30,6 +30,7 @@ typedef struct XmaIpLayout
 {
     uint8_t      kernel_name[MAX_KERNEL_NAME];
     uint64_t     base_addr;
+    bool         soft_kernel;
     uint32_t     reserved[16];
 } XmaIpLayout;
 
@@ -70,5 +71,5 @@ typedef struct XmaXclbinInfo
 
 char *xma_xclbin_file_open(const char *xclbin_name);
 int xma_xclbin_info_get(char *buffer, XmaXclbinInfo *info);
-int xma_xclbin_map2ddr(uint16_t bit_map, int* ddr_bank);
+int xma_xclbin_map2ddr(uint64_t bit_map, int* ddr_bank);
 #endif

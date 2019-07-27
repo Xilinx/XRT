@@ -24,6 +24,8 @@
 #include "core/common/scheduler.h"
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
+#include "core/common/AlignedAllocator.h"
+
 #include "xclbin.h"
 #include "ert.h"
 
@@ -65,6 +67,13 @@
 
 #define SHIM_QDMA_AIO_EVT_MAX   1024 * 64
 
+
+// Profiling
+#define AXI_FIFO_RDFD_AXI_FULL          0x1000
+#define MAX_TRACE_NUMBER_SAMPLES                        16384
+#define XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH            64
+
+
 inline bool
 is_multiprocess_mode()
 {
@@ -101,6 +110,7 @@ inline int io_getevents(aio_context_t ctx, long min_nr, long max_nr,
   return syscall(__NR_io_getevents, ctx, min_nr, max_nr, events, timeout);
 }
 
+
 namespace xocl {
 
 /*
@@ -117,7 +127,8 @@ shim::shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
     mAccelProfilingNumberSlots(0),
     mStallProfilingNumberSlots(0),
     mStreamProfilingNumberSlots(0),
-    mCmdBOCache(nullptr)
+    mCmdBOCache(nullptr),
+    mCuMaps(128, nullptr)
 {
     init(index, logfileName, verbosity);
 }
@@ -126,7 +137,7 @@ int shim::dev_init()
 {
     auto dev = pcidev::get_dev(mBoardNumber);
     if(dev == nullptr) {
-        std::cout << "Card [" << mBoardNumber << "] not found" << std::endl;
+        xclLog(XRT_ERROR, "XRT", "%s: Card [%d] not found", __func__, mBoardNumber);
         return -ENOENT;
     }
 
@@ -149,7 +160,7 @@ int shim::dev_init()
     // We're good now.
     mDev = dev;
     (void) xclGetDeviceInfo2(&mDeviceInfo);
-    mCmdBOCache = new xrt_core::bo_cache(this, xrt_core::config::get_cmdbo_cache());
+    mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
 
     mStreamHandle = mDev->devfs_open("dma.qdma", O_RDWR | O_SYNC);
     if (mStreamHandle == -1)
@@ -159,6 +170,16 @@ int shim::dev_init()
     mAioEnabled = (io_setup(SHIM_QDMA_AIO_EVT_MAX, &mAioContext) == 0);
 
     return 0;
+}
+
+inline int shim::xclLog(xrtLogMsgLevel level, const char* tag, const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    int ret = xclLogMsg(level, tag, format, args);
+    va_end(args);
+
+    return ret;
 }
 
 void shim::dev_fini()
@@ -172,9 +193,6 @@ void shim::dev_fini()
         io_destroy(mAioContext);
             mAioEnabled = false;
     }
-
-    delete mCmdBOCache;
-    mCmdBOCache = nullptr;
 }
 
 /*
@@ -183,13 +201,10 @@ void shim::dev_fini()
 void shim::init(unsigned index, const char *logfileName,
     xclVerbosityLevel verbosity)
 {
-    if( logfileName != nullptr ) {
-        mLogStream.open(logfileName);
-        mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
-        mLogStream << __func__ << ", " << std::this_thread::get_id()
-            << std::endl;
+    if(logfileName != nullptr) {
+        xclLog(XRT_WARNING, "XRT", "%s: logfileName is no longer supported", __func__);
     }
-
+    xclLog(XRT_INFO, "XRT", "%s", __func__);
     dev_init();
 
     // Profiling - defaults
@@ -205,18 +220,20 @@ void shim::init(unsigned index, const char *logfileName,
  */
 shim::~shim()
 {
-    if (mLogStream.is_open()) {
-        mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-        mLogStream.close();
-    }
+    xclLog(XRT_INFO, "XRT", "%s", __func__);
 
     dev_fini();
+
+    for (auto p : mCuMaps) {
+        if (p)
+            (void) munmap(p, mCuMapSize);
+    }
 }
 
 /*
  * xclLogMsg()
  */
-int shim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, va_list args)
+int shim::xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* format, va_list args)
 {
     va_list args_bak;
     // vsnprintf will mutate va_list so back it up
@@ -264,16 +281,13 @@ size_t shim::xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBu
         case XCL_ADDR_KERNEL_CTRL:
         {
             offset += mOffsets[XCL_ADDR_KERNEL_CTRL];
-            if (mLogStream.is_open()) {
-                const unsigned *reg = static_cast<const unsigned *>(hostBuf);
-                size_t regSize = size / 4;
-                if (regSize > 32)
-                regSize = 32;
-                for (unsigned i = 0; i < regSize; i++) {
-                    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << space << ", 0x"
-                               << std::hex << offset + i << ", 0x" << std::hex << std::setw(8)
-                               << std::setfill('0') << reg[i] << std::dec << std::endl;
-                }
+            const unsigned *reg = static_cast<const unsigned *>(hostBuf);
+            size_t regSize = size / 4;
+            if (regSize > 32)
+            regSize = 32;
+            for (unsigned i = 0; i < regSize; i++) {
+                xclLog(XRT_INFO, "XRT", "%s: space: %d, offset:0x%x, reg:%d", 
+                        __func__, space, offset+i, reg[i]);
             }
             if (mDev->pcieBarWrite(offset, hostBuf, size) == 0) {
                 return size;
@@ -293,10 +307,8 @@ size_t shim::xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBu
  */
 size_t shim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
 {
-    if (mLogStream.is_open()) {
-        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << space << ", "
-                   << offset << ", " << hostBuf << ", " << size << std::endl;
-    }
+    xclLog(XRT_INFO, "XRT", "%s, space: %d, offset: %d, hostBuf: %s, size: %d", 
+            __func__, space, offset, hostBuf, size);
 
     switch (space) {
         case XCL_ADDR_SPACE_DEVICE_PERFMON:
@@ -311,17 +323,13 @@ size_t shim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size
         {
             offset += mOffsets[XCL_ADDR_KERNEL_CTRL];
             int result = mDev->pcieBarRead(offset, hostBuf, size);
-            if (mLogStream.is_open()) {
-                const unsigned *reg = static_cast<const unsigned *>(hostBuf);
-                size_t regSize = size / 4;
-                if (regSize > 4)
-                regSize = 4;
-                for (unsigned i = 0; i < regSize; i++) {
-                    mLogStream << __func__ << ", " <<
-                        std::this_thread::get_id() << ", " << space << ", 0x" <<
-                        std::hex << offset + i << std::dec << ", 0x" <<
-                        std::hex << reg[i] << std::dec << std::endl;
-                }
+            const unsigned *reg = static_cast<const unsigned *>(hostBuf);
+            size_t regSize = size / 4;
+            if (regSize > 4)
+            regSize = 4;
+            for (unsigned i = 0; i < regSize; i++) {
+                xclLog(XRT_INFO, "XRT", "%s: space: %d, offset:0x%x, reg:%d", 
+                    __func__, space, offset+i, reg[i]);
             }
             return !result ? size : 0;
         }
@@ -431,12 +439,12 @@ int shim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, 
 /*
  * xclCopyBO()
  */
-int shim::xclCopyBO(unsigned int dst_boHandle,
-    unsigned int src_boHandle, size_t size, size_t dst_offset,
+int shim::xclCopyBO(unsigned int dst_bo_handle,
+    unsigned int src_bo_handle, size_t size, size_t dst_offset,
     size_t src_offset)
 {
-    std::pair<const unsigned int, ert_start_copybo_cmd *const> bo = mCmdBOCache->alloc<ert_start_copybo_cmd>();
-    ert_fill_copybo_cmd(bo.second, src_boHandle, dst_boHandle,
+    auto bo = mCmdBOCache->alloc<ert_start_copybo_cmd>();
+    ert_fill_copybo_cmd(bo.second, src_bo_handle, dst_bo_handle,
                         src_offset, dst_offset, size);
 
     int ret = xclExecBuf(bo.first);
@@ -554,6 +562,7 @@ void shim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     mDev->sysfs_get("", "link_speed", errmsg, info->mPCIeLinkSpeed);
     mDev->sysfs_get("", "link_speed_max", errmsg, info->mPCIeLinkSpeedMax);
     mDev->sysfs_get("", "link_width_max", errmsg, info->mPCIeLinkWidthMax);
+    mDev->sysfs_get("", "mig_calibration", errmsg, info->mMigCalib);
     std::vector<uint64_t> freqs;
     mDev->sysfs_get("icap", "clock_freqs", errmsg, freqs);
     for (unsigned i = 0;
@@ -619,6 +628,7 @@ int shim::p2pEnable(bool enable, bool force)
 
     if (force) {
         dev_fini();
+        mDev->devfs_close();
         /* remove root bus and rescan */
         mDev->sysfs_put("", "root_dev/remove", err, input);
 
@@ -635,7 +645,7 @@ int shim::p2pEnable(bool enable, bool force)
 
     int p2p_enable = EINVAL;
     mDev->sysfs_get("", "p2p_enable", err, p2p_enable);
-    if (p2p_enable)
+    if (p2p_enable < 0)
         return p2p_enable;
 
     return 0;
@@ -716,22 +726,12 @@ int shim::xclLoadXclBin(const xclBin *buffer)
         ret = xclLoadAxlf(reinterpret_cast<const axlf*>(xclbininmemory));
         if (ret != 0) {
             if (ret == -EINVAL) {
-                std::stringstream output;
-                output << "Xclbin does not match Shell on card or xrt version.\n"
-                    << "Please install compatible xrt or run xbutil flash -a all to flash card."
-                    << std::endl;
-                if (mLogStream.is_open()) {
-                    mLogStream << output.str();
-                } else {
-                    std::cout << output.str();
-                }
+                xclLog(XRT_ERROR, "XRT", "Xclbin does not match Shell on card or xrt version. \
+                        \nPlease install compatible xrt or run xbutil flash -a all to flash card.");
             }
         }
     } else {
-        if (mLogStream.is_open()) {
-            mLogStream << __func__ << ", " << std::this_thread::get_id() <<
-                ", Legacy xclbin no longer supported" << std::endl;
-        }
+        xclLog(XRT_ERROR, "XRT", "%s, Legacy xclbin no longer supported", __func__);
         return -EINVAL;
     }
 
@@ -745,13 +745,10 @@ int shim::xclLoadXclBin(const xclBin *buffer)
  */
 int shim::xclLoadAxlf(const axlf *buffer)
 {
-    if (mLogStream.is_open()) {
-        mLogStream << __func__ << ", " << std::this_thread::get_id() <<
-            ", " << buffer << std::endl;
-    }
+    xclLog(XRT_INFO, "XRT", "%s, buffer: %s", __func__, buffer);
 
     if (!mLocked) {
-         std::cout << __func__ << " ERROR: Device is not locked" << std::endl;
+        xclLog(XRT_ERROR, "XRT", "%s: Device is not locked", __func__);
         return -EPERM;
     }
 
@@ -766,15 +763,11 @@ int shim::xclLoadAxlf(const axlf *buffer)
     // reinitializes the DDR and results in ECC error.
     if(isXPR())
     {
-        if (mLogStream.is_open()) {
-            mLogStream << __func__ << "XPR Device found, zeroing out DDR again.." << std::endl;
-        }
+        xclLog(XRT_INFO, "XRT", "%s, XPR Device found, zeroing out DDR again..", __func__);
 
         if (zeroOutDDR() == false)
         {
-            if (mLogStream.is_open()) {
-                mLogStream <<  __func__ << "zeroing out DDR failed" << std::endl;
-            }
+            xclLog(XRT_ERROR, "XRT", "%s, zeroing out DDR again..", __func__);
             return -EIO;
         }
     }
@@ -799,7 +792,7 @@ unsigned int shim::xclImportBO(int fd, unsigned flags)
     drm_prime_handle info = {mNullBO, flags, fd};
     int result = mDev->ioctl(DRM_IOCTL_PRIME_FD_TO_HANDLE, &info);
     if (result) {
-        std::cout << __func__ << " ERROR: FD to handle IOCTL failed" << std::endl;
+        xclLog(XRT_ERROR, "XRT", "%s: FD to handle IOCTL failed", __func__);
     }
     return !result ? info.handle : mNullBO;
 }
@@ -832,7 +825,7 @@ int shim::xclGetSectionInfo(void* section_info, size_t * section_size,
     else if (kind == IP_LAYOUT)
         entry = "ip_layout";
     else {
-        std::cout << "Unhandled section found" << std::endl;
+        xclLog(XRT_ERROR, "XRT", "%s: Unhandled section found", __func__);
         return -EINVAL;
     }
 
@@ -840,7 +833,7 @@ int shim::xclGetSectionInfo(void* section_info, size_t * section_size,
     std::vector<char> buf;
     mDev->sysfs_get("icap", entry, err, buf);
     if (!err.empty()) {
-        std::cout << err << std::endl;
+        xclLog(XRT_ERROR, "XRT", "%s: %s", __func__, err);
         return -EINVAL;
     }
 
@@ -976,9 +969,7 @@ ssize_t shim::xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t of
 int shim::xclExecBuf(unsigned int cmdBO)
 {
     int ret;
-    if (mLogStream.is_open()) {
-        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << cmdBO << std::endl;
-    }
+    xclLog(XRT_INFO, "XRT", "%s, cmdBO: %d", __func__, cmdBO);
     drm_xocl_execbuf exec = {0, cmdBO, 0,0,0,0,0,0,0,0};
     ret = mDev->ioctl(DRM_IOCTL_XOCL_EXECBUF, &exec);
     return ret ? -errno : ret;
@@ -989,10 +980,8 @@ int shim::xclExecBuf(unsigned int cmdBO)
  */
 int shim::xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, unsigned int *bo_wait_list)
 {
-    if (mLogStream.is_open()) {
-        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", "
-                   << cmdBO << ", " << num_bo_in_wait_list << ", " << bo_wait_list << std::endl;
-    }
+    xclLog(XRT_INFO, "XRT", "%s, cmdBO: %d, num_bo_in_wait_list: %d, bo_wait_list: %d", 
+            __func__, cmdBO, num_bo_in_wait_list, bo_wait_list);
     int ret;
     unsigned int bwl[8] = {0};
     std::memcpy(bwl,bo_wait_list,num_bo_in_wait_list*sizeof(unsigned int));
@@ -1038,13 +1027,23 @@ int shim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool share
 /*
  * xclCloseContext
  */
-int shim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const
+int shim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
 {
-    int ret;
+    std::lock_guard<std::mutex> l(mCuMapLock);
+
+    if (ipIndex < mCuMaps.size()) {
+	    // Make sure no MMIO register space access when CU is released.
+	    uint32_t *p = mCuMaps[ipIndex];
+	    if (p) {
+		(void) munmap(p, mCuMapSize);
+		mCuMaps[ipIndex] = nullptr;
+	    }
+    }
+
     drm_xocl_ctx ctx = {XOCL_CTX_OP_FREE_CTX};
     std::memcpy(ctx.xclbin_id, xclbinId, sizeof(uuid_t));
     ctx.cu_index = ipIndex;
-    ret = mDev->ioctl(DRM_IOCTL_XOCL_CTX, &ctx);
+    int ret = mDev->ioctl(DRM_IOCTL_XOCL_CTX, &ctx);
     return ret ? -errno : ret;
 }
 
@@ -1072,7 +1071,7 @@ int shim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 
     rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_CREATE_QUEUE, &q_info);
     if (rc) {
-        std::cout << __func__ << " ERROR: Create Write Queue IOCTL failed" << std::endl;
+        xclLog(XRT_ERROR, "XRT", "%s: Create Write Queue IOCTL failed", __func__);
     } else
         *q_hdl = q_info.handle;
 
@@ -1095,7 +1094,7 @@ int shim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 
     rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_CREATE_QUEUE, &q_info);
     if (rc) {
-        std::cout << __func__ << " ERROR: Create Read Queue IOCTL failed" << std::endl;
+        xclLog(XRT_ERROR, "XRT", "%s: Create Read Queue IOCTL failed", __func__);
     } else
         *q_hdl = q_info.handle;
 
@@ -1111,7 +1110,7 @@ int shim::xclDestroyQueue(uint64_t q_hdl)
 
     rc = close((int)q_hdl);
     if (rc)
-        std::cout << __func__ << " ERROR: Destroy Queue failed" << std::endl;
+        xclLog(XRT_ERROR, "XRT", "%s: Destroy Queue failed", __func__);
 
     return rc;
 }
@@ -1130,13 +1129,14 @@ void *shim::xclAllocQDMABuf(size_t size, uint64_t *buf_hdl)
 
     rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_ALLOC_BUFFER, &req);
     if (rc) {
-        std::cout << __func__ << " ERROR: Alloc buffer IOCTL failed" << std::endl;
-    return NULL;
+        xclLog(XRT_ERROR, "XRT", "%s: Alloc buffer IOCTL failed", __func__);
+        return NULL;
     }
 
     buf = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, req.buf_fd, 0);
     if (!buf) {
-        std::cout << __func__ << " ERROR: Map buffer failed" << std::endl;
+        xclLog(XRT_ERROR, "XRT", "%s: Map buffer failed", __func__);
+
         close(req.buf_fd);
     } else {
         *buf_hdl = req.buf_fd;
@@ -1154,7 +1154,8 @@ int shim::xclFreeQDMABuf(uint64_t buf_hdl)
 
     rc = close((int)buf_hdl);
     if (rc)
-        std::cout << __func__ << " ERROR: Destroy Queue failed" << std::endl;
+        xclLog(XRT_ERROR, "XRT", "%s: Destory Queue failed", __func__);
+
 
     return rc;
 }
@@ -1171,7 +1172,7 @@ int shim::xclPollCompletion(int min_compl, int max_compl, struct xclReqCompletio
     *actual = 0;
     if (!mAioEnabled) {
         num_evt = -EINVAL;
-        std::cout << __func__ << "ERROR: async io is not enabled" << std::endl;
+        xclLog(XRT_ERROR, "XRT", "%s: async io is not enabled", __func__);
         goto done;
     }
     if (timeout > 0) {
@@ -1183,7 +1184,7 @@ int shim::xclPollCompletion(int min_compl, int max_compl, struct xclReqCompletio
 
     num_evt = io_getevents(mAioContext, min_compl, max_compl, (struct io_event *)comps, ptime);
     if (num_evt < min_compl) {
-        std::cout << __func__ << " ERROR: failed to poll Queue Completions" << std::endl;
+        xclLog(XRT_ERROR, "XRT", "%s: failed to poll Queue Completions", __func__);
         goto done;
     }
     *actual = num_evt;
@@ -1228,7 +1229,7 @@ ssize_t shim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
             struct iocb *cbs[1];
 
             if (!mAioEnabled) {
-                std::cout << __func__ << "ERROR: async io is not enabled" << std::endl;
+                xclLog(XRT_ERROR, "XRT", "%s: async io is not enabled", __func__);
                 break;
             }
 
@@ -1296,7 +1297,7 @@ ssize_t shim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr)
             struct iocb *cbs[1];
 
             if (!mAioEnabled) {
-                std::cout << __func__ << "ERROR: async io is not enabled" << std::endl;
+                xclLog(XRT_ERROR, "XRT", "%s: async io is not enabled", __func__);
                 break;
             }
 
@@ -1345,6 +1346,132 @@ uint shim::xclGetNumLiveProcesses()
     return 0;
 }
 
+int shim::xclGetDebugIPlayoutPath(char* layoutPath, size_t size)
+{
+  return xclGetSysfsPath("icap", "debug_ip_layout", layoutPath, size);
+}
+
+int shim::xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
+{
+  uint32_t bytesPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 8);
+
+  traceBufSz = MAX_TRACE_NUMBER_SAMPLES * bytesPerSample;   /* Buffer size in bytes */
+  traceSamples = nSamples;
+
+  return 0;  
+}
+
+int shim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
+{
+    // Create trace buffer on host (requires alignment)
+    const int traceBufWordSz = traceBufSz / 4;  // traceBufSz is in number of bytes
+
+    uint32_t size = 0;
+
+    wordsPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 32);
+    uint32_t numWords = numSamples * wordsPerSample;
+
+//    alignas is defined in c++11
+#if GCC_VERSION >= 40800
+    /* Alignment is limited to 16 by PPC64LE : so , should it be 
+    alignas(16) uint32_t hostbuf[traceBufSzInWords];
+    */
+    alignas(AXI_FIFO_RDFD_AXI_FULL) uint32_t hostbuf[traceBufWordSz];
+#else
+    xrt_core::AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, traceBufWordSz);
+    uint32_t* hostbuf = alignedBuffer.getBuffer();
+#endif
+
+    // Now read trace data
+    memset((void *)hostbuf, 0, traceBufSz);
+
+    // Iterate over chunks
+    // NOTE: AXI limits this to 4K bytes per transfer
+    uint32_t chunkSizeWords = 256 * wordsPerSample;
+    if (chunkSizeWords > 1024) chunkSizeWords = 1024;
+    uint32_t chunkSizeBytes = 4 * chunkSizeWords;
+    uint32_t words=0;
+
+    // Read trace a chunk of bytes at a time
+    if (numWords > chunkSizeWords) {
+      for (; words < (numWords-chunkSizeWords); words += chunkSizeWords) {
+          if(mLogStream.is_open())
+            mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
+                          << std::hex << (ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0] or AXI_FIFO_RDFD*/ << " and writing it to 0x"
+                          << (void *)(hostbuf + words) << std::dec << std::endl;
+
+        xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
+
+        size += chunkSizeBytes;
+      }
+    }
+
+    // Read remainder of trace not divisible by chunk size
+    if (words < numWords) {
+      chunkSizeBytes = 4 * (numWords - words);
+
+      if(mLogStream.is_open()) {
+        mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
+                      << std::hex << (ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0]*/ << " and writing it to 0x"
+                      << (void *)(hostbuf + words) << std::dec << std::endl;
+      }
+
+      xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
+
+      size += chunkSizeBytes;
+    }
+
+    if(mLogStream.is_open())
+        mLogStream << __func__ << ": done reading " << size << " bytes " << std::endl;
+
+    memcpy((char*)traceBuf, (char*)hostbuf, traceBufSz);
+
+    return size;
+}
+
+int shim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap)
+{
+    std::lock_guard<std::mutex> l(mCuMapLock);
+
+    if (cu_index >= mCuMaps.size()) {
+        xclLog(XRT_ERROR, "XRT", "%s: invalid CU index: %d", __func__, cu_index);
+        return -EINVAL;
+    }
+    if (offset >= mCuMapSize || (offset & (sizeof(uint32_t) - 1)) != 0) {
+        xclLog(XRT_ERROR, "XRT", "%s: invalid CU offset: %d", __func__, offset);
+        return -EINVAL;
+    }
+
+    if (mCuMaps[cu_index] == nullptr) {
+        void *p = mDev->mmap(mCuMapSize,
+            PROT_READ | PROT_WRITE, MAP_SHARED, (cu_index + 1) * getpagesize());
+        if (p != MAP_FAILED)
+            mCuMaps[cu_index] = (uint32_t *)p;
+    }
+
+    uint32_t *cumap = mCuMaps[cu_index];
+    if (cumap == nullptr) {
+        xclLog(XRT_ERROR, "XRT", "%s: can't map CU: %d", __func__, cu_index);
+        return -EINVAL;
+    }
+
+    if (rd)
+        *datap = cumap[offset / sizeof(uint32_t)];
+    else
+        cumap[offset / sizeof(uint32_t)] = *datap;
+    return 0;
+}
+
+int shim::xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap)
+{
+    return xclRegRW(true, cu_index, offset, datap);
+}
+
+int shim::xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data)
+{
+    return xclRegRW(false, cu_index, offset, &data);
+}
+
 } // namespace xocl
 
 /*******************************/
@@ -1390,8 +1517,8 @@ int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, con
 {
     va_list args;
     va_start(args, format);
-
-    int ret = xocl::shim::xclLogMsg(handle, level, tag, format, args);
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    int ret = drv ? drv->xclLogMsg(level, tag, format, args) : -ENODEV;
     va_end(args);
 
     return ret;
@@ -1406,9 +1533,20 @@ size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, 
 
 size_t xclRead(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
 {
-    //  std::cout << "xclRead called" << std::endl;
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclRead(space, offset, hostBuf, size) : -ENODEV;
+}
+
+int xclRegWrite(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t data)
+{
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return drv ? drv->xclRegWrite(cu_index, offset, data) : -ENODEV;
+}
+
+int xclRegRead(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t *datap)
+{
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return drv ? drv->xclRegRead(cu_index, offset, datap) : -ENODEV;
 }
 
 int xclGetErrorStatus(xclDeviceHandle handle, xclErrorStatus *info)
@@ -1486,7 +1624,6 @@ int xclCopyBO(xclDeviceHandle handle, unsigned int dst_boHandle,
 int xclReClock2(xclDeviceHandle handle, unsigned short region, const unsigned short *targetFreqMHz)
 {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
-    std::cout<<"xclReClock2"<<std::endl;
     return drv ? drv->xclReClock2(region, targetFreqMHz) : -ENODEV;
 }
 
@@ -1665,3 +1802,24 @@ uint xclGetNumLiveProcesses(xclDeviceHandle handle)
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclGetNumLiveProcesses() : 0;
 }
+
+int xclGetDebugIPlayoutPath(xclDeviceHandle handle, char* layoutPath, size_t size)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  return drv ? drv->xclGetDebugIPlayoutPath(layoutPath, size) : -ENODEV;
+}
+
+int xclGetTraceBufferInfo(xclDeviceHandle handle, uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  return (drv) ? drv->xclGetTraceBufferInfo(nSamples, traceSamples, traceBufSz) : -ENODEV;
+}
+
+int xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  return (drv) ? drv->xclReadTraceData(traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample) : -ENODEV;
+}
+
+
+

@@ -79,7 +79,8 @@ void zocl_free_sections(struct drm_zocl_dev *zdev)
 	}
 }
 
-static irqreturn_t zocl_h2c_isr(int irq, void *arg)
+/* Note: this function is not being used, mark it inline to make lint clean */
+static inline irqreturn_t zocl_h2c_isr(int irq, void *arg)
 {
 	void *mmio_sched = arg;
 
@@ -601,13 +602,14 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	}
 	zdev->cu_num = index;
 
-	zdev->host_mem = 0xFFFFFFFFFFFFFFFF;
+	/* set to 0xFFFFFFFF(32bit) or 0xFFFFFFFFFFFFFFFF(64bit) */
+	zdev->host_mem = (phys_addr_t) -1;
 	zdev->host_mem_len = 0;
 	/* If reserved memory region are not found, just keep going */
 	ret = get_reserved_mem_region(&pdev->dev, &res_mem);
 	if (!ret) {
-		DRM_INFO("Reserved memory for host at 0x%llx, size 0x%llx\n",
-			 res_mem.start, resource_size(&res_mem));
+		DRM_INFO("Reserved memory for host at 0x%lx, size 0x%lx\n",
+			 (unsigned long)res_mem.start, (unsigned long)resource_size(&res_mem));
 		zdev->host_mem = res_mem.start;
 		zdev->host_mem_len = resource_size(&res_mem);
 	}

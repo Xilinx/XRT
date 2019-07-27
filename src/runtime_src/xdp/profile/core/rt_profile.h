@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -83,6 +83,8 @@ namespace xdp {
     void writeProfileSummary();
     void addDeviceName(std::string deviceName) { mDeviceNames.push_back(deviceName); }
     std::string getDeviceNames(const std::string& sep) const;
+    // Intentionally not a reference to the underlying container.
+    std::vector<std::string> getDeviceNames() const { return mDeviceNames; }
     std::string getProjectName() const;
     const std::set<std::thread::id>& getThreadIds();
 

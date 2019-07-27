@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -22,14 +22,14 @@ namespace xdp {
   CSVTraceWriter::CSVTraceWriter( const std::string& traceFileName,
                                   const std::string& platformName,
                                   XDPPluginI* Plugin) :
-      TraceFileName(traceFileName),
+      TraceWriterI(traceFileName),
       PlatformName(platformName)
   {
     mPluginHandle = Plugin;
-    if (TraceFileName != "") {
+    if (mFileName != "") {
       assert(!Trace_ofs.is_open());
-      TraceFileName += FileExtension;
-      openStream(Trace_ofs, TraceFileName);
+      mFileName += FileExtension;
+      openStream(Trace_ofs, mFileName);
       writeDocumentHeader(Trace_ofs, "Timeline Trace");
       std::vector<std::string> TimelineTraceColumnLabels = {
           "Time_msec", "Name", "Event", "Address_Port", "Size",

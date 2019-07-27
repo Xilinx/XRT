@@ -29,55 +29,66 @@ using namespace std;
 
 #define XMAPLUGIN_MOD "xmapluginlib"
 
-constexpr std::uint64_t signature = 0xF42F1F8F4F2F1F0F;
-
-typedef struct XmaBufferObjPrivate
-{
-    void*    dummy;
-    uint64_t size;
-    uint64_t paddr;
-    int32_t  bank_index;
-    int32_t  dev_index;
-    uint64_t boHandle;
-    bool     device_only_buffer;
-    uint32_t reserved[4];
-
-  XmaBufferObjPrivate() {
-   dummy = NULL;
-   size = 0;
-   bank_index = -1;
-   dev_index = -1;
-   boHandle = 0;
-  }
-} XmaBufferObjPrivate;
-
 //Sarab: TODO .. Assign buffr object fields.. bank etc..
 //Add new API for allocating device only buffer object.. which will not have host mappped buffer.. This could be used for zero copy plugins..
 //NULL data pointer in buffer obj implies it is device only buffer..
 //Remove read/write before SyncBO.. As plugin should manage that using host mapped data pointer..
 
 XmaBufferObj
-xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer)
+xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, int32_t* return_code)
 {
     XmaBufferObj b_obj;
+    XmaBufferObj b_obj_error;
+    b_obj_error.data = NULL;
+    b_obj_error.size = 0;
+    b_obj_error.bank_index = -1;
+    b_obj_error.dev_index = -1;
+    b_obj_error.device_only_buffer = false;
+    b_obj_error.private_do_not_touch = NULL;
+    b_obj.data = NULL;
+    b_obj.device_only_buffer = false;
+    b_obj.private_do_not_touch = NULL;
+
     xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
     uint32_t ddr_bank = s_handle.hw_session.kernel_info->ddr_bank;
     b_obj.bank_index = s_handle.hw_session.kernel_info->ddr_bank;
     b_obj.size = size;
     b_obj.dev_index = s_handle.hw_session.dev_index;
 
-    //Sarab: TODO change for XRT device only buffer
-    uint64_t b_obj_handle = xclAllocBO(dev_handle, size, 0, ddr_bank);
-  
+    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
+        std::cout << "ERROR: xma_plg_buffer_alloc failed. XMASession is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc failed. XMASession is corrupted.\n");
+        if (return_code) *return_code = XMA_ERROR;
+        return b_obj_error;
+    }
+
+    /*
+    #define XRT_BO_FLAGS_MEMIDX_MASK        (0xFFFFFFUL)
+    #define XCL_BO_FLAGS_CACHEABLE          (1 << 24)
+    #define XCL_BO_FLAGS_SVM                (1 << 27)
+    #define XCL_BO_FLAGS_DEV_ONLY           (1 << 28)
+    #define XCL_BO_FLAGS_HOST_ONLY          (1 << 29)
+    #define XCL_BO_FLAGS_P2P                (1 << 30)
+    #define XCL_BO_FLAGS_EXECBUF            (1 << 31)
+    */
+    uint64_t b_obj_handle = 0;
+    if (device_only_buffer) {
+        b_obj_handle = xclAllocBO(dev_handle, size, 0, XCL_BO_FLAGS_DEV_ONLY | ddr_bank);
+        b_obj.device_only_buffer = true;
+    } else {
+        b_obj_handle = xclAllocBO(dev_handle, size, 0, ddr_bank);
+    }
+    /*BO handlk is uint64_t
     if (b_obj_handle < 0) {
         std::cout << "ERROR: xma_plg_buffer_alloc failed. handle=0x" << std::hex << b_obj_handle << std::endl;
         //printf("xclAllocBO failed. handle=0x%ullx\n", b_obj_handle);
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xclAllocBO failed.\n");
+        if (return_code) *return_code = XMA_ERROR;
+        return b_obj_error;
     }
+    */
     b_obj.paddr = xclGetDeviceAddr(dev_handle, b_obj_handle);
-    if (device_only_buffer) {
-        b_obj.device_only_buffer = true;
-    } else {
+    if (!device_only_buffer) {
         b_obj.data = (uint8_t*) xclMapBO(dev_handle, b_obj_handle, true);
     }
     XmaBufferObjPrivate* tmp1 = new XmaBufferObjPrivate;
@@ -89,22 +100,61 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer)
     tmp1->dev_index = b_obj.dev_index;
     tmp1->boHandle = b_obj_handle;
     tmp1->device_only_buffer = b_obj.device_only_buffer;
+    tmp1->dev_handle = dev_handle;
 
+    if (return_code) *return_code = XMA_SUCCESS;
     return b_obj;
+}
+
+int32_t xma_check_device_buffer(XmaBufferObj *b_obj) {
+    if (b_obj == NULL) {
+        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_device_buffer_free failed. XMABufferObj failed allocation\n");
+        return XMA_ERROR;
+    }
+
+    XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj->private_do_not_touch;
+    if (b_obj_priv == NULL) {
+        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_device_buffer_free failed. XMABufferObj failed allocation\n");
+        return XMA_ERROR;
+    }
+    if (b_obj_priv->dev_index < 0 || b_obj_priv->bank_index < 0 || b_obj_priv->size <= 0) {
+        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_device_buffer_free failed. XMABufferObj failed allocation\n");
+        return XMA_ERROR;
+    }
+    if (b_obj_priv->dummy != (void*)(((uint64_t)b_obj_priv) | signature)) {
+        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_device_buffer_free failed. XMABufferObj is corrupted.\n");
+        return XMA_ERROR;
+    }
+    if (b_obj_priv->dev_handle == NULL) {
+        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_device_buffer_free failed. XMABufferObj is corrupted.\n");
+        return XMA_ERROR;
+    }
+    return XMA_SUCCESS;
 }
 
 void
 xma_plg_buffer_free(XmaSession s_handle, XmaBufferObj b_obj)
 {
-    XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj.private_do_not_touch;
-    if (b_obj_priv->dummy != (void*)(((uint64_t)b_obj_priv) | signature)) {
-        std::cout << "ERROR: xma_plg_buffer_free failed. XMABufferObj is corrupted" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_free failed. XMABufferObj is corrupted.\n");
+    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
+        std::cout << "ERROR: xma_plg_buffer_free failed. XMASession is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_free failed. XMASession is corrupted.\n");
         return;
     }
-
-    xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
-    xclFreeBO(dev_handle, b_obj_priv->boHandle);
+    if (xma_check_device_buffer(&b_obj) != XMA_SUCCESS) {
+        return;
+    }
+    XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj.private_do_not_touch;
+    //xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
+    xclFreeBO(b_obj_priv->dev_handle, b_obj_priv->boHandle);
+    b_obj_priv->dummy = NULL;
+    b_obj_priv->size = -1;
+    b_obj_priv->bank_index = -1;
+    b_obj_priv->dev_index = -1;
     free(b_obj_priv);
 }
 
@@ -129,12 +179,15 @@ xma_plg_buffer_write(XmaSession s_handle,
                      size_t           offset)
 {
     int32_t rc;
-    XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj.private_do_not_touch;
-    if (b_obj_priv->dummy != (void*)(((uint64_t)b_obj_priv) | signature)) {
-        std::cout << "ERROR: xma_plg_buffer_write failed. XMABufferObj is corrupted" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. XMABufferObj is corrupted.\n");
+    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
+        std::cout << "ERROR: xma_plg_buffer_write failed. XMASession is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
+    if (xma_check_device_buffer(&b_obj) != XMA_SUCCESS) {
+        return XMA_ERROR;
+    }
+    XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj.private_do_not_touch;
     if (b_obj_priv->device_only_buffer) {
         xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write skipped as it is device only buffer.\n");
         return XMA_SUCCESS;
@@ -144,11 +197,10 @@ xma_plg_buffer_write(XmaSession s_handle,
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. Can not write past end of buffer.\n");
         return XMA_ERROR;
     }
-    xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
+    //xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
 
     //printf("xma_plg_buffer_write b_obj=%d,src=%p,size=%lu,offset=%lx\n", b_obj, src, size, offset);
-
-    rc = xclSyncBO(dev_handle, b_obj_priv->boHandle, XCL_BO_SYNC_BO_TO_DEVICE, size, offset);
+    rc = xclSyncBO(b_obj_priv->dev_handle, b_obj_priv->boHandle, XCL_BO_SYNC_BO_TO_DEVICE, size, offset);
     if (rc != 0) {
         std::cout << "ERROR: xma_plg_buffer_write xclSyncBO failed " << std::dec << rc << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xclSyncBO failed %d\n", rc);
@@ -164,12 +216,15 @@ xma_plg_buffer_read(XmaSession s_handle,
                     size_t           offset)
 {
     int32_t rc;
-    XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj.private_do_not_touch;
-    if (b_obj_priv->dummy != (void*)(((uint64_t)b_obj_priv) | signature)) {
-        std::cout << "ERROR: xma_plg_buffer_read failed. XMABufferObj is corrupted" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read failed. XMABufferObj is corrupted.\n");
+    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
+        std::cout << "ERROR: xma_plg_buffer_read failed. XMASession is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
+    if (xma_check_device_buffer(&b_obj) != XMA_SUCCESS) {
+        return XMA_ERROR;
+    }
+    XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj.private_do_not_touch;
     if (b_obj_priv->device_only_buffer) {
         xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read skipped as it is device only buffer.\n");
         return XMA_SUCCESS;
@@ -180,12 +235,11 @@ xma_plg_buffer_read(XmaSession s_handle,
         return XMA_ERROR;
     }
 
-    xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
+    //xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
 
     //printf("xma_plg_buffer_read b_obj=%d,dst=%p,size=%lu,offset=%lx\n",
     //       b_obj, dst, size, offset);
-
-    rc = xclSyncBO(dev_handle, b_obj_priv->boHandle, XCL_BO_SYNC_BO_FROM_DEVICE,
+    rc = xclSyncBO(b_obj_priv->dev_handle, b_obj_priv->boHandle, XCL_BO_SYNC_BO_FROM_DEVICE,
                    size, offset);
     if (rc != 0)
     {
@@ -202,10 +256,15 @@ xma_plg_register_prep_write(XmaSession  s_handle,
                        size_t        offset)
 {
     uint32_t *src_array = (uint32_t*)src;
-    size_t   cur_max = offset + size; 
+    int32_t   cur_max = offset + size; 
     uint32_t  entries = size / sizeof(uint32_t);
     uint32_t  start = offset / sizeof(uint32_t);
 
+    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
+        std::cout << "ERROR: xma_plg_register_prep_write failed. XMASession is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_register_prep_write failed. XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
     //Kernel regmap 4KB in xmahw.h; execBO size is 4096 = 4KB in xmahw_hal.cpp; But ERT uses some space for ert pkt so allow max of 4032 Bytes for regmap
     if (cur_max > MAX_KERNEL_REGMAP_SIZE) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Max kernel regmap size is 4032 Bytes\n");
@@ -220,7 +279,9 @@ xma_plg_register_prep_write(XmaSession  s_handle,
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Must lock kernel regamp before writing to it and submitting work item\n");
         return XMA_ERROR;
     }
-
+    if (s_handle.hw_session.kernel_info->regmap_max < cur_max) {
+        s_handle.hw_session.kernel_info->regmap_max = cur_max;
+    }
     for (uint32_t i = 0, tmp_idx = start; i < entries; i++, tmp_idx++) {
         s_handle.hw_session.kernel_info->reg_map[tmp_idx] = src_array[i];
     }
@@ -230,6 +291,11 @@ xma_plg_register_prep_write(XmaSession  s_handle,
 
 int32_t xma_plg_kernel_lock_regmap(XmaSession s_handle)
 {
+    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
+        std::cout << "ERROR: xma_plg_kernel_lock_regmap failed. XMASession is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_kernel_lock_regmap failed. XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
     /* Only acquire the lock if we don't already own it */
     if (*(s_handle.hw_session.kernel_info->reg_map_locked)) {
         if (s_handle.session_id == s_handle.hw_session.kernel_info->locked_by_session_id && s_handle.session_type == s_handle.hw_session.kernel_info->locked_by_session_type) {
@@ -253,6 +319,11 @@ int32_t xma_plg_kernel_lock_regmap(XmaSession s_handle)
 
 int32_t xma_plg_kernel_unlock_regmap(XmaSession s_handle)
 {
+    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
+        std::cout << "ERROR: xma_plg_kernel_unlock_regmap failed. XMASession is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_kernel_unlock_regmap failed. XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
     /* Only unlock if this session owns it */
     if (*(s_handle.hw_session.kernel_info->reg_map_locked)) {
         if (s_handle.session_id == s_handle.hw_session.kernel_info->locked_by_session_id && s_handle.session_type == s_handle.hw_session.kernel_info->locked_by_session_type) {
@@ -269,6 +340,7 @@ int32_t xma_plg_kernel_unlock_regmap(XmaSession s_handle)
 
 int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
 {
+    //std::cout << "Sarab: Debug - " << __func__ << "; " << __LINE__ << std::endl;
     XmaHwKernel* kernel_tmp1 = s_handle.hw_session.kernel_info;
     XmaHwDevice *dev_tmp1 = (XmaHwDevice*)kernel_tmp1->private_do_not_use;
     if (dev_tmp1 == NULL) {
@@ -319,15 +391,14 @@ int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
         else
             found = true;
 
-        if (found)
+        if (found) {
+            dev_tmp1->kernel_execbo_inuse[i] = true;
+            dev_tmp1->kernel_execbo_cu_index[i] = kernel_tmp1->cu_index;
+            rc = i;
             break;
+        }
     }
-    if (found)
-    {
-        dev_tmp1->kernel_execbo_inuse[i] = true;
-        dev_tmp1->kernel_execbo_cu_index[i] = kernel_tmp1->cu_index;
-        rc = i;
-    }
+    //std::cout << "Sarab: Debug - " << __func__ << "; " << __LINE__ << std::endl;
     //Release completion lock
     *(dev_tmp1->execbo_locked) = false;
 
@@ -337,15 +408,26 @@ int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
 int32_t
 xma_plg_schedule_work_item(XmaSession s_handle)
 {
+    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
+        std::cout << "ERROR: xma_plg_schedule_work_item failed. XMASession is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_work_item failed. XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
     XmaHwKernel* kernel_tmp1 = s_handle.hw_session.kernel_info;
     XmaHwDevice *dev_tmp1 = (XmaHwDevice*)kernel_tmp1->private_do_not_use;
     if (dev_tmp1 == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is NULL\n");
-        return -1;
+        return XMA_ERROR;
     }
     uint8_t *src = (uint8_t*)kernel_tmp1->reg_map;
-    //size_t  size = s_handle.hw_session.kernel_info->max_offset;
-    size_t  size = MAX_KERNEL_REGMAP_SIZE;//Max regmap in xmahw.h is 4KB; execBO size is 4096; Supported max regmap size is 4032 Bytes only
+    
+    //size_t  size = MAX_KERNEL_REGMAP_SIZE;//Max regmap in xmahw.h is 4KB; execBO size is 4096; Supported max regmap size is 4032 Bytes only
+    size_t  size = s_handle.hw_session.kernel_info->regmap_max;
+    if (size < 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Use xma_plg_register_prep_write to prepare regmap for CU before scheduling work item \n");
+        return XMA_ERROR;
+    }
+
     int32_t bo_idx;
     int32_t rc = XMA_SUCCESS;
     
@@ -364,48 +446,61 @@ xma_plg_schedule_work_item(XmaSession s_handle)
     if (bo_idx == -1) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unable to find free execbo to use\n");
         return XMA_ERROR;
+    }
+    // Setup ert_start_kernel_cmd 
+    ert_start_kernel_cmd *cu_cmd = 
+        (ert_start_kernel_cmd*)dev_tmp1->kernel_execbo_data[bo_idx];
+    cu_cmd->state = ERT_CMD_STATE_NEW;
+    if (kernel_tmp1->soft_kernel) {
+        cu_cmd->opcode = ERT_SK_START;
     } else {
-        // Setup ert_start_kernel_cmd 
-        ert_start_kernel_cmd *cu_cmd = 
-            (ert_start_kernel_cmd*)dev_tmp1->kernel_execbo_data[bo_idx];
-        cu_cmd->state = ERT_CMD_STATE_NEW;
         cu_cmd->opcode = ERT_START_CU;
-        cu_cmd->extra_cu_masks = 1;//XMA now supports 60 CUs
-        cu_cmd->cu_mask = kernel_tmp1->cu_mask0;
+    }
+    cu_cmd->extra_cu_masks = 1;//XMA now supports 60 CUs
 
-        cu_cmd->data[0] = kernel_tmp1->cu_mask1;
-        // Copy reg_map into execBO buffer 
-        memcpy(&cu_cmd->data[1], src, size);
+    cu_cmd->cu_mask = kernel_tmp1->cu_mask0;
 
-        // Set count to size in 32-bit words + 2; One extra_cu_mask is present
-        cu_cmd->count = (size >> 2) + 2;
-     
-        if (xclExecBuf(s_handle.hw_session.dev_handle, 
-                       dev_tmp1->kernel_execbo_handle[bo_idx]) != 0)
-        {
-            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
-                       "Failed to submit kernel start with xclExecBuf\n");
-            rc = XMA_ERROR;
-        }
+    cu_cmd->data[0] = kernel_tmp1->cu_mask1;
+    // Copy reg_map into execBO buffer 
+    memcpy(&cu_cmd->data[1], src, size);
+    if (kernel_tmp1->regmap_max >= 1024) {
+        xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "Dev# %d; Kernel: %s; Regmap size used is: %d\n", dev_tmp1->dev_index, kernel_tmp1->name, kernel_tmp1->regmap_max);
+    }
+
+    // Set count to size in 32-bit words + 2; One extra_cu_mask is present
+    cu_cmd->count = (size >> 2) + 2;
+    
+    if (xclExecBuf(s_handle.hw_session.dev_handle, 
+                    dev_tmp1->kernel_execbo_handle[bo_idx]) != 0)
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
+                    "Failed to submit kernel start with xclExecBuf\n");
+        rc = XMA_ERROR;
     }
     return rc;
 }
 
 int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
 {
+    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
+        std::cout << "ERROR: xma_plg_schedule_work_item failed. XMASession is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_work_item failed. XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
     XmaHwKernel* kernel_tmp1 = s_handle.hw_session.kernel_info;
     XmaHwDevice *dev_tmp1 = (XmaHwDevice*)kernel_tmp1->private_do_not_use;
     if (dev_tmp1 == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is NULL\n");
-        return -1;
+        return XMA_ERROR;
     }
     int32_t num_execbo = dev_tmp1->num_execbo_allocated;
     if (num_execbo <= 0) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private: No execbo allocated\n");
-        return -1;
+        return XMA_ERROR;
     }
 
     int32_t count = 0;
+    int32_t give_up = 0;
     // Keep track of the number of kernel completions
     while (count == 0)
     {
@@ -438,7 +533,8 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
             break;
 
         // Wait for a notification
-        if (xclExecWait(s_handle.hw_session.dev_handle, timeout_ms) <= 0)
+        give_up++;
+        if (xclExecWait(s_handle.hw_session.dev_handle, timeout_ms) <= 0 && give_up >= 3)
             break;
     }
 

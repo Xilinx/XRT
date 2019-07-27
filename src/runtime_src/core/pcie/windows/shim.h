@@ -18,6 +18,7 @@
 #define _XRT_CORE_PCIE_WINDOWS_SHIM_H
 
 #include "xrt.h"
+#include "core/common/xrt_profiling.h"
 
 namespace xocl { // shared implementation
 

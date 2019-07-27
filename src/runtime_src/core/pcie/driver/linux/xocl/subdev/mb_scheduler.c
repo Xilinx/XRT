@@ -421,11 +421,13 @@ static enum ert_cmd_state
 cmd_update_state(struct xocl_cmd *xcmd)
 {
 	if (xcmd->state != ERT_CMD_STATE_RUNNING && xcmd->client->abort) {
-		userpf_info(xcmd->xdev, "aborting stale client cmd(%lu)", xcmd->uid);
+		userpf_info(xcmd->xdev, "aborting stale client pid(%d) cmd(%lu)"
+			    ,pid_nr(xcmd->client->pid),xcmd->uid);
 		cmd_set_state(xcmd, ERT_CMD_STATE_ABORT);
 	}
 	if (exec_is_flush(xcmd->exec)) {
-		userpf_info(xcmd->xdev, "aborting stale exec cmd(%lu)", xcmd->uid);
+		userpf_info(xcmd->xdev, "aborting stale exec pid (%d) cmd(%lu)"
+			    ,pid_nr(xcmd->client->pid),xcmd->uid);
 		cmd_set_state(xcmd, ERT_CMD_STATE_ABORT);
 	}
 	return xcmd->state;
@@ -1792,6 +1794,14 @@ exec_mark_cmd_complete(struct exec_core *exec, struct xocl_cmd *xcmd)
 		scheduler_decr_poll(exec->scheduler);
 
 	exec_release_slot(exec, xcmd);
+
+	// This notification is problematic because it occurs before internal
+	// bookkeeping (outstanding cmds) is updated. Client could trigger exit
+	// at notification calling destroy_client which sees outstanding
+	// commands.  This should however be no big deal as destroy_client
+	// will simply wait for the commands to drain through complete_to_free.
+	// Decrementing the client outstanding count here is not simple as
+	// count management is currently consolidated for many paths in cmd_free.
 	exec_notify_host(exec);
 
 	// Deactivate command and trigger chain of waiting commands
@@ -2468,9 +2478,14 @@ scheduler_complete_to_free(struct xocl_scheduler *xs, struct xocl_cmd *xcmd)
 static void
 scheduler_error_to_free(struct xocl_scheduler *xs, struct xocl_cmd *xcmd)
 {
+	struct exec_core *exec = cmd_exec(xcmd);
 	SCHED_DEBUGF("-> %s(%lu)\n", __func__, xcmd->uid);
-	exec_notify_host(cmd_exec(xcmd));
+
+	// book keeping before notification.  client could potentially exit
+	// immediately after notification otherwise leaving outstanding cmds
 	scheduler_complete_to_free(xs, xcmd);
+	exec_notify_host(exec);
+
 	SCHED_DEBUGF("<- %s\n", __func__);
 }
 
@@ -2920,7 +2935,7 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 	unsigned int	outstanding;
 	unsigned int	timeout_loops = 20;
 	unsigned int	loops = 0;
-	int pid;
+	int pid = pid_nr(client->pid);
 	unsigned int bit;
 	struct ip_layout *layout;
 	xuid_t *xclbin_id;
@@ -2932,15 +2947,15 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 	while (outstanding) {
 		unsigned int new;
 
-		userpf_info(xdev, "waiting for %d outstanding execs to finish",
-			outstanding);
+		userpf_info(xdev, "pid(%d) waiting for %d outstanding execs to finish",
+			    pid,outstanding);
 		msleep(500);
 		new = atomic_read(&client->outstanding_execs);
 		loops = (new == outstanding ? (loops + 1) : 0);
 		if (loops == timeout_loops) {
 			userpf_err(xdev,
-				   "Giving up with %d outstanding execs.\n",
-				   outstanding);
+				   "pid(%d) gives up with %d outstanding execs.\n",
+				   pid,outstanding);
 			userpf_err(xdev,
 				   "Please reset device with 'xbutil reset'\n");
 			exec->needs_reset = true;
@@ -2952,8 +2967,6 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 	}
 
 	mutex_lock(&xdev->dev_lock);
-
-	pid = pid_nr(client->pid);
 	put_pid(client->pid);
 	client->pid = NULL;
 
@@ -2972,10 +2985,12 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 	layout = XOCL_IP_LAYOUT(xdev);
 	xclbin_id = XOCL_XCLBIN_ID(xdev);
 
+	client_release_implicit_cus(exec, client);
+	client->virt_cu_ref = 0;
+
 	bit = layout
 	  ? find_first_bit(client->cu_bitmap, layout->m_count)
 	  : MAX_CUS;
-
 	while (layout && (bit < layout->m_count)) {
 		if (rem_ip_ref(xdev, exec, bit) == 0) {
 			userpf_info(xdev, "CTX reclaim (%pUb, %d, %u)",
@@ -2983,9 +2998,6 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 		}
 		bit = find_next_bit(client->cu_bitmap, layout->m_count, bit + 1);
 	}
-
-	client->virt_cu_ref = 0;
-	client_release_implicit_cus(exec, client);
 	bitmap_zero(client->cu_bitmap, MAX_CUS);
 
 	(void) xocl_icap_unlock_bitstream(xdev, xclbin_id, pid);
@@ -3377,7 +3389,6 @@ reset(struct platform_device *pdev)
 {
 	struct exec_core *exec = platform_get_drvdata(pdev);
 
-	exec_stop(exec);   // remove when upstream explicitly calls stop()
 	exec_reset(exec);
 	exec->needs_reset = false;
 	return 0;
@@ -3468,6 +3479,40 @@ out:
 
 }
 
+int cu_map_addr(struct platform_device *pdev, u32 cu_idx, void *drm_filp,
+	u32 *addrp)
+{
+	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
+	struct exec_core *exec = platform_get_drvdata(pdev);
+	struct drm_file *filp = drm_filp;
+	struct client_ctx *client = filp->driver_priv;
+	struct xocl_cu *xcu = NULL;
+
+	mutex_lock(&xdev->dev_lock);
+
+	if (cu_idx >= MAX_CUS) {
+		userpf_err(xdev, "cu index (%d) is too big\n", cu_idx);
+		mutex_unlock(&xdev->dev_lock);
+		return -EINVAL;
+	}
+	if (!test_bit(cu_idx, client->cu_bitmap)) {
+		userpf_err(xdev, "cu(%d) isn't reserved\n", cu_idx);
+		mutex_unlock(&xdev->dev_lock);
+		return -EINVAL;
+	}
+	if (ip_excl_holder(exec, cu_idx) == 0) {
+		userpf_err(xdev, "cu(%d) isn't exclusively reserved\n", cu_idx);
+		mutex_unlock(&xdev->dev_lock);
+		return -EINVAL;
+	}
+
+	xcu = exec->cus[cu_idx];
+	BUG_ON(xcu == NULL);
+	*addrp = xcu->addr;
+	mutex_unlock(&xdev->dev_lock);
+	return 0;
+}
+
 struct xocl_mb_scheduler_funcs sche_ops = {
 	.create_client = create_client,
 	.destroy_client = destroy_client,
@@ -3476,6 +3521,7 @@ struct xocl_mb_scheduler_funcs sche_ops = {
 	.stop = stop,
 	.reset = reset,
 	.reconfig = reconfig,
+	.cu_map_addr = cu_map_addr,
 };
 
 /* sysfs */

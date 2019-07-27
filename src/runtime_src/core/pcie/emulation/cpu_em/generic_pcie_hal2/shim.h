@@ -29,6 +29,7 @@
 #include "xclbin.h"
 #include "core/common/scheduler.h"
 #include "core/common/message.h"
+#include "core/common/xrt_profiling.h"
 
 #include <stdarg.h>
 #include <sys/mman.h>

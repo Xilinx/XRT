@@ -41,6 +41,12 @@
 
 #define GB(x)   ((size_t) (x) << 30)
 
+static inline void errlog(std::string& errstr)
+{
+    xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR,
+        "XRT", errstr.c_str());
+}
+
 static std::string parseCUStatus(unsigned val) {
   char delim = '(';
   std::string status;
@@ -105,9 +111,10 @@ namespace ZYNQ {
 ZYNQShim::ZYNQShim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity) :
     profiling(nullptr),
     mBoardNumber(index),
-    mVerbosity(verbosity)
+    mVerbosity(verbosity),
+    mCuMaps(128, nullptr)
 {
-  profiling = new ZYNQShimProfiling(this);
+  profiling = std::make_unique<ZYNQShimProfiling>(this);
   //TODO: Use board number
   mKernelFD = open("/dev/dri/renderD128", O_RDWR);
   if (!mKernelFD) {
@@ -118,14 +125,12 @@ ZYNQShim::ZYNQShim(unsigned index, const char *logfileName, xclVerbosityLevel ve
     mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
     mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
   }
-  mCmdBOCache = new xrt_core::bo_cache(this, xrt_core::config::get_cmdbo_cache());
+  mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
 }
 
 #ifndef __HWEM__
 ZYNQShim::~ZYNQShim()
 {
-  delete mCmdBOCache;
-  delete profiling;
   //TODO
   if (mKernelFD > 0) {
     close(mKernelFD);
@@ -134,6 +139,11 @@ ZYNQShim::~ZYNQShim()
   if (mLogStream.is_open()) {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     mLogStream.close();
+  }
+
+  for (auto p : mCuMaps) {
+    if (p)
+      (void) munmap(p, mCuMapSize);
   }
 }
 #endif
@@ -386,11 +396,11 @@ int ZYNQShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
 {
   int ret = -EOPNOTSUPP;
 #ifdef __aarch64__
-    std::pair<const unsigned int, ert_start_copybo_cmd *const> bo = mCmdBOCache->alloc<ert_start_copybo_cmd>();
+    auto bo = mCmdBOCache->alloc<ert_start_copybo_cmd>();
     ert_fill_copybo_cmd(bo.second, src_boHandle, dst_boHandle,
                         src_offset, dst_offset, size);
 
-    int ret = xclExecBuf(bo.first);
+    ret = xclExecBuf(bo.first);
     if (ret) {
         mCmdBOCache->release(bo);
         return ret;
@@ -577,6 +587,31 @@ int ZYNQShim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfs
   return 0 ;
 }
 
+int ZYNQShim::xclGetDebugIPlayoutPath(char* layoutPath, size_t size)
+{
+  return xclGetSysfsPath("", "debug_ip_layout", layoutPath, size);
+}
+
+int ZYNQShim::xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
+{
+  // On Zynq, we are currently storing 2 samples per packet in the FIFO
+  traceSamples = nSamples/2;
+  traceBufSz = sizeof(uint32_t) * nSamples;
+  return 0;
+}
+
+int ZYNQShim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
+{
+  uint32_t *buffer = (uint32_t*)traceBuf;
+  for(uint32_t i = 0 ; i < numSamples; i++) {
+   // Read only one 32-bit value. Later (in xdp layer) assemble two 32-bit values to form one trace sample.
+   // Here numSamples is the total number of reads required
+   xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, ipBaseAddress + 0x1000, (buffer + i), sizeof(uint32_t));
+  }
+  wordsPerSample = 2; 
+  return 0; 
+}
+
 int ZYNQShim::xclSKGetCmd(xclSKCmd *cmd)
 {
   int ret;
@@ -624,6 +659,56 @@ int ZYNQShim::xclSKReport(uint32_t cu_idx, xrt_scu_state state)
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_SK_REPORT, &scmd);
 
   return ret;
+}
+
+int ZYNQShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset,
+  uint32_t *datap)
+{
+  std::lock_guard<std::mutex> l(mCuMapLock);
+
+  if (cu_index >= mCuMaps.size()) {
+    std::string err = "xclRegRW: invalid CU index: ";
+    err += std::to_string(cu_index);
+    errlog(err);
+    return -EINVAL;
+  }
+  if (offset >= mCuMapSize || (offset & (sizeof(uint32_t) - 1)) != 0) {
+    std::string err = "xclRegRW: invalid CU offset: ";
+    err += std::to_string(offset);
+    errlog(err);
+    return -EINVAL;
+  }
+
+  if (mCuMaps[cu_index] == nullptr) {
+    void *p = mmap(0, mCuMapSize, PROT_READ | PROT_WRITE, MAP_SHARED,
+      mKernelFD, cu_index * getpagesize());
+    if (p != MAP_FAILED)
+        mCuMaps[cu_index] = (uint32_t *)p;
+  }
+
+  uint32_t *cumap = mCuMaps[cu_index];
+  if (cumap == nullptr) {
+    std::string err = "xclRegRW: can't map CU ";
+    err += std::to_string(cu_index);
+    errlog(err);
+    return -EINVAL;
+  }
+
+  if (rd)
+    *datap = cumap[offset / sizeof(uint32_t)];
+  else
+    cumap[offset / sizeof(uint32_t)] = *datap;
+  return 0;
+}
+
+int ZYNQShim::xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap)
+{
+  return xclRegRW(true, cu_index, offset, datap);
+}
+
+int ZYNQShim::xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data)
+{
+  return xclRegRW(false, cu_index, offset, &data);
 }
 
 }
@@ -699,7 +784,7 @@ unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t siz
 
 unsigned int xclGetHostBO(xclDeviceHandle handle, uint64_t paddr, size_t size)
 {
-  std::cout << "xclGetHostBO called.. " << handle << std::endl;
+  //std::cout << "xclGetHostBO called.. " << handle << std::endl;
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
@@ -799,7 +884,6 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 
 size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
 {
-  //std::cout << "xclWrite called" << std::endl;
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
@@ -808,7 +892,6 @@ size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, 
 
 size_t xclRead(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
 {
-//  //std::cout << "xclRead called" << std::endl;
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
@@ -817,7 +900,6 @@ size_t xclRead(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, v
 
 int xclGetDeviceInfo2(xclDeviceHandle handle, xclDeviceInfo2 *info)
 {
-  //std::cout << "xclGetDeviceInfo2 called" << std::endl;
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
@@ -876,6 +958,26 @@ int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev,
   if (!drv)
     return -EINVAL;
   return drv->xclGetSysfsPath(subdev, entry, sysfsPath, size);
+}
+
+int xclGetDebugIPlayoutPath(xclDeviceHandle handle, char* layoutPath, size_t size)
+{
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  if (!drv)
+    return -EINVAL;
+  return drv->xclGetDebugIPlayoutPath(layoutPath, size);
+}
+
+int xclGetTraceBufferInfo(xclDeviceHandle handle, uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
+{
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  return (drv) ? drv->xclGetTraceBufferInfo(nSamples, traceSamples, traceBufSz) : -EINVAL;
+}
+
+int xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
+{
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  return (drv) ? drv->xclReadTraceData(traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample) : -EINVAL;
 }
 
 int xclSKGetCmd(xclDeviceHandle handle, xclSKCmd *cmd)
@@ -1105,7 +1207,7 @@ int xclRemoveAndScanFPGA()
 ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf,
                       size_t size, uint64_t offset)
 {
-  return 0;
+  return -ENOSYS;
 }
 ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf,
                        size_t size, uint64_t offset)
@@ -1147,4 +1249,18 @@ ssize_t xclWriteQueue(xclDeviceHandle handle, void *q_hdl, xclQueueRequest *wr_r
 ssize_t xclReadQueue(xclDeviceHandle handle, void *q_hdl, xclQueueRequest *wr_req)
 {
   return -ENOSYS;
+}
+
+int xclRegWrite(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset,
+  uint32_t data)
+{
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  return drv ? drv->xclRegWrite(cu_index, offset, data) : -ENODEV;
+}
+
+int xclRegRead(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset,
+  uint32_t *datap)
+{
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  return drv ? drv->xclRegRead(cu_index, offset, datap) : -ENODEV;
 }

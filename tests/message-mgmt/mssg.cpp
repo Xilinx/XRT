@@ -8,7 +8,7 @@
 
 void foo(int num, xclDeviceHandle handle)
 {
-    xclLogMsg(handle, NOTICE, "XRT", "(5) Running Thread number %d", num);
+    xclLogMsg(handle, XRT_NOTICE, "XRT", "(5) Running Thread number %d", num);
 }
 
 int main(int argc, char** argv) {
@@ -37,19 +37,19 @@ int main(int argc, char** argv) {
 
     handle = xclOpen(devIndex, "", XCL_INFO);
     if(!handle)
-        xclLogMsg(handle, EMERGENCY, "XRT", "(0) Unable to open device %d", devIndex);
+        xclLogMsg(handle, XRT_EMERGENCY, "XRT", "(0) Unable to open device %d", devIndex);
 
-    xclLogMsg(handle, INFO, "XRT", "(6) %s was passed in as an argument", bitFile);
+    xclLogMsg(handle, XRT_INFO, "XRT", "(6) %s was passed in as an argument", bitFile);
 
     if(debug_flag)
-        xclLogMsg(handle, DEBUG, "XRT","(7) Debug flag was set");
+        xclLogMsg(handle, XRT_DEBUG, "XRT","(7) Debug flag was set");
 
     if(xclGetDeviceInfo2(handle, &deviceInfo))
-        xclLogMsg(handle, ALERT,"XRT", "(1) Unable to obtain device information");
+        xclLogMsg(handle, XRT_ALERT,"XRT", "(1) Unable to obtain device information");
 
     const xclBin *blob =(const xclBin *) new char [1];
     if(xclLoadXclBin(handle, blob))
-        xclLogMsg(handle, CRITICAL, "XRT", "(2) Unable to load xclbin");
+        xclLogMsg(handle, XRT_CRITICAL, "XRT", "(2) Unable to load xclbin");
 
     std::cout << "~~~Multi threading~~~" <<  std::endl;
     std:: thread t1(foo, 1, handle);
@@ -59,8 +59,8 @@ int main(int argc, char** argv) {
     std::cout << "~~~~~~~~~~~~~~~~~~~~~" << std:: endl;
 
     std::cout << "Other messages: \n";
-    xclLogMsg(handle, ERROR,"XRT", "(3) Display when verbosity 3");
-    xclLogMsg(handle, WARNING, "XRT", "(4) Display when verbosity 2");
+    xclLogMsg(handle, XRT_ERROR,"XRT", "(3) Display when verbosity 3");
+    xclLogMsg(handle, XRT_WARNING, "XRT", "(4) Display when verbosity 2");
 
     return 0;
 }

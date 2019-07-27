@@ -342,6 +342,29 @@ fail:
 	return ERR_CAST(p);
 }
 
+static struct sg_table *alloc_onetime_sg_table(struct page **pages, uint64_t offset, uint64_t size)
+{
+	int ret;
+	unsigned int nr_pages;
+	struct sg_table *sgt = kmalloc(sizeof(struct sg_table), GFP_KERNEL);
+
+	if (!sgt)
+		return ERR_PTR(-ENOMEM);
+
+	pages += (offset >> PAGE_SHIFT);
+	offset &= (~PAGE_MASK);
+	nr_pages = PAGE_ALIGN(size + offset) >> PAGE_SHIFT;
+
+	ret = sg_alloc_table_from_pages(sgt, pages, nr_pages, offset, size, GFP_KERNEL);
+	if (ret)
+		goto cleanup;
+	return sgt;
+
+cleanup:
+	kfree(sgt);
+	return ERR_PTR(-ENOMEM);
+}
+
 int xocl_create_bo_ioctl(struct drm_device *dev,
 			 void *data,
 			 struct drm_file *filp)
@@ -391,7 +414,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 			ret = PTR_ERR(xobj->pages);
 			goto out_free;
 		}
-		xobj->sgt = drm_prime_pages_to_sg(xobj->pages, xobj->base.size >> PAGE_SHIFT);
+		xobj->sgt = alloc_onetime_sg_table(xobj->pages, 0, xobj->base.size);
 		if (IS_ERR(xobj->sgt)) {
 			ret = PTR_ERR(xobj->sgt);
 			goto out_free;
@@ -453,7 +476,7 @@ int xocl_userptr_bo_ioctl(struct drm_device *dev,
 	if (ret != page_count)
 		goto out0;
 
-	xobj->sgt = drm_prime_pages_to_sg(xobj->pages, page_count);
+	xobj->sgt = alloc_onetime_sg_table(xobj->pages, 0, page_count << PAGE_SHIFT);
 	if (IS_ERR(xobj->sgt)) {
 		ret = PTR_ERR(xobj->sgt);
 		goto out0;
@@ -513,29 +536,6 @@ int xocl_map_bo_ioctl(struct drm_device *dev,
 out:
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(obj);
 	return ret;
-}
-
-static struct sg_table *alloc_onetime_sg_table(struct page **pages, uint64_t offset, uint64_t size)
-{
-	int ret;
-	unsigned int nr_pages;
-	struct sg_table *sgt = kmalloc(sizeof(struct sg_table), GFP_KERNEL);
-
-	if (!sgt)
-		return ERR_PTR(-ENOMEM);
-
-	pages += (offset >> PAGE_SHIFT);
-	offset &= (~PAGE_MASK);
-	nr_pages = PAGE_ALIGN(size + offset) >> PAGE_SHIFT;
-
-	ret = sg_alloc_table_from_pages(sgt, pages, nr_pages, offset, size, GFP_KERNEL);
-	if (ret)
-		goto cleanup;
-	return sgt;
-
-cleanup:
-	kfree(sgt);
-	return ERR_PTR(-ENOMEM);
 }
 
 int xocl_sync_bo_ioctl(struct drm_device *dev,
@@ -656,6 +656,38 @@ int xocl_info_bo_ioctl(struct drm_device *dev,
 	return 0;
 }
 
+static int xocl_migrate_unmgd(struct xocl_dev *xdev, uint64_t data_ptr, uint64_t paddr, size_t size, bool dir)
+{
+	int channel;
+	struct drm_xocl_unmgd unmgd;
+	int ret;
+	size_t migrated;
+
+	ret = xocl_init_unmgd(&unmgd, data_ptr, size, dir);
+	if (ret) {
+		userpf_err(xdev, "init unmgd failed %d", ret);
+		return ret;
+	}
+
+	channel = xocl_acquire_channel(xdev, dir);
+
+	if (channel < 0) {
+		userpf_err(xdev, "acquire channel failed");
+		ret = -EINVAL;
+		goto clear;
+	}
+	/* Now perform DMA */
+	migrated = xocl_migrate_bo(xdev, unmgd.sgt, dir, paddr, channel,
+		size);
+	if (migrated >= 0)
+		ret = (migrated == size) ? 0 : -EIO;
+
+	xocl_release_channel(xdev, dir, channel);
+clear:
+	xocl_finish_unmgd(&unmgd);
+	return ret;
+}
+
 int xocl_pwrite_bo_ioctl(struct drm_device *dev, void *data,
 			 struct drm_file *filp)
 {
@@ -664,8 +696,11 @@ int xocl_pwrite_bo_ioctl(struct drm_device *dev, void *data,
 	struct drm_gem_object *gem_obj = xocl_gem_object_lookup(dev, filp,
 							       args->handle);
 	char __user *user_data = to_user_ptr(args->data_ptr);
+	struct xocl_drm *drm_p = dev->dev_private;
+	struct xocl_dev *xdev = drm_p->xdev;
 	int ret = 0;
 	void *kaddr;
+	uint64_t ep_addr;
 
 	if (!gem_obj) {
 		DRM_ERROR("Failed to look up GEM BO %d\n", args->handle);
@@ -695,11 +730,19 @@ int xocl_pwrite_bo_ioctl(struct drm_device *dev, void *data,
 		ret = -EPERM;
 		goto out;
 	}
+	if (xobj->flags == XOCL_BO_DEV_ONLY) {
+		ep_addr = xocl_bo_physical_addr(xobj);
+		if (ep_addr == INVALID_BO_PADDR) {
+			ret = -EINVAL;
+			goto out;
+		}
+		ret = xocl_migrate_unmgd(xdev, args->data_ptr, ep_addr, args->size, 1);
+	} else {
+		kaddr = xobj->vmapping ? xobj->vmapping : xobj->bar_vmapping;
+		kaddr += args->offset;
 
-	kaddr = xobj->vmapping ? xobj->vmapping : xobj->bar_vmapping;
-	kaddr += args->offset;
-
-	ret = copy_from_user(kaddr, user_data, args->size);
+		ret = copy_from_user(kaddr, user_data, args->size);
+	}
 out:
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
 
@@ -714,8 +757,11 @@ int xocl_pread_bo_ioctl(struct drm_device *dev, void *data,
 	struct drm_gem_object *gem_obj = xocl_gem_object_lookup(dev, filp,
 							       args->handle);
 	char __user *user_data = to_user_ptr(args->data_ptr);
+	struct xocl_drm *drm_p = dev->dev_private;
+	struct xocl_dev *xdev = drm_p->xdev;
 	int ret = 0;
 	void *kaddr;
+	uint64_t ep_addr;
 
 	if (!gem_obj) {
 		DRM_ERROR("Failed to look up GEM BO %d\n", args->handle);
@@ -745,10 +791,20 @@ int xocl_pread_bo_ioctl(struct drm_device *dev, void *data,
 
 	xobj = to_xocl_bo(gem_obj);
 	BO_ENTER("xobj %p", xobj);
-	kaddr = xobj->vmapping ? xobj->vmapping : xobj->bar_vmapping;
-	kaddr += args->offset;
 
-	ret = copy_to_user(user_data, kaddr, args->size);
+	if (xobj->flags == XOCL_BO_DEV_ONLY) {
+		ep_addr = xocl_bo_physical_addr(xobj);
+		if (ep_addr == INVALID_BO_PADDR) {
+			ret = -EINVAL;
+			goto out;
+		}
+		ret = xocl_migrate_unmgd(xdev, args->data_ptr, ep_addr, args->size, 0);
+
+	} else {
+		kaddr = xobj->vmapping ? xobj->vmapping : xobj->bar_vmapping;
+		kaddr += args->offset;		
+		ret = copy_to_user(user_data, kaddr, args->size);
+	}
 
 out:
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
@@ -888,7 +944,7 @@ struct sg_table *xocl_gem_prime_get_sg_table(struct drm_gem_object *obj)
 	struct drm_xocl_bo *xobj = to_xocl_bo(obj);
 
 	BO_ENTER("xobj %p", xobj);
-	return drm_prime_pages_to_sg(xobj->pages, xobj->base.size >> PAGE_SHIFT);
+	return alloc_onetime_sg_table(xobj->pages, 0, xobj->base.size);
 }
 
 struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
@@ -1051,13 +1107,10 @@ static bool xocl_validate_paddr(struct xocl_dev *xdev, u64 paddr, u64 size)
 int xocl_pwrite_unmgd_ioctl(struct drm_device *dev, void *data,
 			    struct drm_file *filp)
 {
-	int channel;
-	struct drm_xocl_unmgd unmgd;
 	const struct drm_xocl_pwrite_unmgd *args = data;
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
-	u32 dir = 1;
-	ssize_t ret = 0;
+	int ret = 0;
 
 	if (args->address_space != 0) {
 		userpf_err(xdev, "invalid addr space");
@@ -1077,39 +1130,18 @@ int xocl_pwrite_unmgd_ioctl(struct drm_device *dev, void *data,
 		 */
 	}
 
-	ret = xocl_init_unmgd(&unmgd, args->data_ptr, args->size, dir);
-	if (ret) {
-		userpf_err(xdev, "init unmgd failed %ld", ret);
-		return ret;
-	}
+	ret = xocl_migrate_unmgd(xdev, args->data_ptr, args->paddr, args->size, 1);
 
-	channel = xocl_acquire_channel(xdev, dir);
-	if (channel < 0) {
-		userpf_err(xdev, "acquire channel failed");
-		ret = -EINVAL;
-		goto clear;
-	}
-	/* Now perform DMA */
-	ret = xocl_migrate_bo(xdev, unmgd.sgt, dir, args->paddr, channel,
-		args->size);
-	if (ret >= 0)
-		ret = (ret == args->size) ? 0 : -EIO;
-	xocl_release_channel(xdev, dir, channel);
-clear:
-	xocl_finish_unmgd(&unmgd);
 	return ret;
 }
 
 int xocl_pread_unmgd_ioctl(struct drm_device *dev, void *data,
 			   struct drm_file *filp)
 {
-	int channel;
-	struct drm_xocl_unmgd unmgd;
 	const struct drm_xocl_pwrite_unmgd *args = data;
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
-	u32 dir = 0;  /* read */
-	ssize_t ret = 0;
+	int ret = 0;
 
 	if (args->address_space != 0) {
 		userpf_err(xdev, "invalid addr space");
@@ -1129,28 +1161,8 @@ int xocl_pread_unmgd_ioctl(struct drm_device *dev, void *data,
 		 */
 	}
 
-	ret = xocl_init_unmgd(&unmgd, args->data_ptr, args->size, dir);
-	if (ret) {
-		userpf_err(xdev, "init unmgd failed %ld", ret);
-		return ret;
-	}
+	ret = xocl_migrate_unmgd(xdev, args->data_ptr, args->paddr, args->size, 0);
 
-	channel = xocl_acquire_channel(xdev, dir);
-
-	if (channel < 0) {
-		userpf_err(xdev, "acquire channel failed");
-		ret = -EINVAL;
-		goto clear;
-	}
-	/* Now perform DMA */
-	ret = xocl_migrate_bo(xdev, unmgd.sgt, dir, args->paddr, channel,
-		args->size);
-	if (ret >= 0)
-		ret = (ret == args->size) ? 0 : -EIO;
-
-	xocl_release_channel(xdev, dir, channel);
-clear:
-	xocl_finish_unmgd(&unmgd);
 	return ret;
 }
 

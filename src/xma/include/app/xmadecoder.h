@@ -261,7 +261,7 @@ typedef struct XmaDecoderSession XmaDecoderSession;
  * 
  * NULL on failure
  *
- *  Note: Cannot be presumed to be thread safe.
+ *  Note: session create & destroy are thread safe APIs
 */
 XmaDecoderSession*
 xma_dec_session_create(XmaDecoderProperties *dec_props);
@@ -277,7 +277,7 @@ xma_dec_session_create(XmaDecoderProperties *dec_props);
  * 
  * XMA_ERROR on failure.
  *
- *  Note: Cannot be presumed to be thread safe.
+ *  Note: session create & destroy are thread safe APIs
 */
 int32_t
 xma_dec_session_destroy(XmaDecoderSession *session);
