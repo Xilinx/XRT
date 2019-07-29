@@ -277,28 +277,20 @@ public:
         lines.push_back(ss.str());
     }
 
-    void m_devinfo_stringize_inst_power(const xclDeviceInfo2& m_devinfo,
-        std::vector<std::string> &lines) const
+    unsigned m_devinfo_ins_power(const xclDeviceInfo2& m_devinfo) const
     {
-        std::stringstream ss;
-        unsigned long long power;
-        ss << std::left << "\n";
+        unsigned long long power = 0;
 
-        ss << std::setw(16) << "Inst Power" << "\n";
-        power = (m_devinfo.m12VPexCurrIns * m_devinfo.m12VPexIns) +
-		(m_devinfo.m3v3PexCurrIns * m_devinfo.m3v3PexIns);
         if(m_devinfo.m3v3PexIns != XCL_INVALID_SENSOR_VAL &&
             m_devinfo.m3v3PexIns != XCL_NO_SENSOR_DEV_LL &&
             m_devinfo.m12VPexIns != XCL_INVALID_SENSOR_VAL &&
             m_devinfo.m12VPexIns != XCL_NO_SENSOR_DEV_S){
-            ss << std::setw(16)
-                << std::to_string((float)power / 1000000).substr(0, 4) + "W"
-                << "\n";
-        } else {
-            ss << std::setw(16) << "Not support" << "\n";
+		power = (m_devinfo.m12VPexCurrIns * m_devinfo.m12VPexIns) +
+			(m_devinfo.m3v3PexCurrIns * m_devinfo.m3v3PexIns);
         }
 
-        lines.push_back(ss.str());
+        power /= 1000000;
+        return static_cast<unsigned>(power);
     }
 
     void m_mem_usage_bar(xclDeviceUsage &devstat,
@@ -713,6 +705,9 @@ public:
         // powerm_devinfo_power
         sensor_tree::put( "board.physical.power", m_devinfo_power(m_devinfo));
 
+        // Board instantaneous power
+        sensor_tree::put( "board.physical.ins_power", m_devinfo_ins_power(m_devinfo));
+
         // firewall
         unsigned i = m_errinfo.mFirewallLevel;
         sensor_tree::put( "board.error.firewall.firewall_level", m_errinfo.mFirewallLevel );
@@ -867,17 +862,22 @@ public:
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned>( "board.physical.electrical.vccint.current" )
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.dna", "N/A" ) << std::endl;
-        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-        ostr << "Instantaneous Electrical(mV|mA)\n";
-        ostr << std::setw(16) << "12V PEX INS" << std::setw(16) << "12V PEX CURR_INS" << std::setw(16) << "3V3 PEX INS" << std::setw(16) << "3V3 PEX Current INS" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.12v_pex_ins.voltage" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned long long>( "board.physical.electrical.12v_pex_ins.current" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.3v3_pex_ins.voltage" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned long long>( "board.physical.electrical.3v3_pex_ins.current" ) << std::endl;
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Card Power\n";
         ostr << sensor_tree::get_pretty<unsigned>( "board.physical.power" ) << " W" << std::endl;
+
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << "Instantaneous Electrical(mV|mA)\n";
+        ostr << std::setw(16) << "12VPEXINS" << std::setw(16) << "12VPEXCURRINS" << std::setw(16) << "3V3PEXINS" << std::setw(16) << "3V3PEXCurrINS" << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.12v_pex_ins.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned long long>( "board.physical.electrical.12v_pex_ins.current" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.3v3_pex_ins.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned long long>( "board.physical.electrical.3v3_pex_ins.current" ) << std::endl;
+        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        ostr << "Card Instantaneous Power\n";
+        ostr << sensor_tree::get_pretty<unsigned>( "board.physical.ins_power" ) << " W" << std::endl;
+
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Firewall Last Error Status\n";
         ostr << "Level " << std::setw(2) << sensor_tree::get( "board.error.firewall.firewall_level", -1 ) << ": 0x0"
