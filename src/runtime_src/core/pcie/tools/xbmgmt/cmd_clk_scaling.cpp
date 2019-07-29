@@ -25,19 +25,19 @@
 
 const char *subCmdClkScalingDesc = "Clock scaling feature configuration";
 const char *subCmdClkScalingUsage =
-    "[-status]\n"
-    "[-card bdf]\n"
-    "[-set_target_power numeric]\n"
-    "[-set_target_temp numeric]\n"
-    "[-set_governor power|temp]\n"
-    "[-scaling_force_en 1|0]\n";
+    "[--status]\n"
+    "[--card bdf]\n"
+    "[--set_target_power numeric]\n"
+    "[--set_target_temp numeric]\n"
+    "[--set_governor power|temp]\n"
+    "[--scaling_force_en 1|0]\n";
 
 static int getClkScalingStatus(std::shared_ptr<pcidev::pci_device> dev)
 {
     std::string errmsg;
     std::string mode;
     int enabled = 0;
-    int target = 0;
+    int target = 0, present = 0, threshold = 0;
 
     dev->sysfs_get("xmc", "scaling_enabled", errmsg, enabled);
     if (!errmsg.empty()) {
@@ -49,34 +49,48 @@ static int getClkScalingStatus(std::shared_ptr<pcidev::pci_device> dev)
         std::cout << "clock scaling feature is enabled" << std::endl;
     else
         std::cout << "clock scaling feature is not enabled" << std::endl;
+    std::cout << "----------------------------------------------------" << std::endl;
 
     dev->sysfs_get("xmc", "scaling_target_power", errmsg, target);
     if (!errmsg.empty()) {
         std::cout << errmsg << std::endl;
         return -EINVAL;
     }
-    std::cout << "Target power: " << target << " Watt" << std::endl;
+    dev->sysfs_get("xmc", "scaling_threshold_power", errmsg, threshold);
+    if (!errmsg.empty()) {
+        std::cout << errmsg << std::endl;
+        return -EINVAL;
+    }
+    dev->sysfs_get("xmc", "scaling_cur_power", errmsg, present);
+    if (!errmsg.empty()) {
+        std::cout << errmsg << std::endl;
+        return -EINVAL;
+    }
+    std::cout << "Power (Watts): " << std::endl;
+    std::cout << "Present\t" << "Target\t" << "Threshold" << std::endl;
+    std::cout << present << "\t" << target << "\t" << threshold << std::endl;
+    std::cout << "----------------------------------------------------" << std::endl;
 
+    target = 0; present = 0; threshold = 0;
     dev->sysfs_get("xmc", "scaling_target_temp", errmsg, target);
     if (!errmsg.empty()) {
         std::cout << errmsg << std::endl;
         return -EINVAL;
     }
-    std::cout << "Target temperature: " << target << " degree Celcius\n";
-
-    dev->sysfs_get("xmc", "scaling_threshold_power", errmsg, target);
+    dev->sysfs_get("xmc", "scaling_threshold_temp", errmsg, threshold);
     if (!errmsg.empty()) {
         std::cout << errmsg << std::endl;
         return -EINVAL;
     }
-    std::cout << "Threshold power: " << target << " Watt" << std::endl;
-
-    dev->sysfs_get("xmc", "scaling_threshold_temp", errmsg, target);
+    dev->sysfs_get("xmc", "scaling_cur_temp", errmsg, present);
     if (!errmsg.empty()) {
         std::cout << errmsg << std::endl;
         return -EINVAL;
     }
-    std::cout << "Threshold temperature: " << target << " degree Celcius\n";
+    std::cout << "Temperature (degree Celcius): " << std::endl;
+    std::cout << "Present\t" << "Target\t" << "Threshold" << std::endl;
+    std::cout << present << "\t" << target << "\t" << threshold << std::endl;
+    std::cout << "----------------------------------------------------" << std::endl;
 
     dev->sysfs_get("xmc", "scaling_governor", errmsg, mode);
     if (!errmsg.empty()) {
@@ -147,7 +161,7 @@ static int forceClkScalingEnable(std::shared_ptr<pcidev::pci_device> dev,
 
 int clockScalingHandler(int argc, char *argv[])
 {
-    if (argc < 1)
+    if (argc < 2)
         return -EINVAL;
 
     unsigned index = UINT_MAX;
