@@ -44,7 +44,7 @@
 #include "xcl_axi_checker_codes.h"
 #include "core/pcie/common/dmatest.h"
 #include "core/pcie/common/memaccess.h"
-#include "core/pcie/common/utils.h"
+#include "core/common/utils.h"
 #include "core/pcie/common/dd.h"
 
 #define TO_STRING(x) #x
