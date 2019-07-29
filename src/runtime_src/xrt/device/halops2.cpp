@@ -45,6 +45,7 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mMapBO(0)
   ,mWrite(0)
   ,mRead(0)
+  ,mUnmgdPread(0)
   ,mReClock2(0)
   ,mLockDevice(0)
   ,mUnlockDevice(0)
@@ -164,6 +165,14 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mReadTrace = (readTraceFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonReadTrace");
   mWriteHostEvent = (writeHostEventFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclWriteHostEvent");
   mDebugReadIPStatus = (debugReadIPStatusFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclDebugReadIPStatus");
+
+  mUnmgdPread = (unmgdPreadFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclUnmgdPread");
+  if(!mUnmgdPread)
+    return;
+
+  mGetDebugIPlayoutPath = (xclGetDebugIPlayoutPathFuncType)dlsym(const_cast<void*>(mDriverHandle), "xclGetDebugIPlayoutPath");
+  mGetTraceBufferInfo = (xclGetTraceBufferInfoFuncType)dlsym(const_cast<void*>(mDriverHandle), "xclGetTraceBufferInfo");
+  mReadTraceData = (xclReadTraceDataFuncType)dlsym(const_cast<void*>(mDriverHandle), "xclReadTraceData");
 
   // APIs using sysfs
   mGetNumLiveProcesses = (xclGetNumLiveProcessesFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetNumLiveProcesses");

@@ -37,6 +37,7 @@
 #include <memory>
 #include <map>
 #include <iomanip>
+#include "core/common/xrt_profiling.h"
 
 #include "scan.h"
 #include "xclbin.h"

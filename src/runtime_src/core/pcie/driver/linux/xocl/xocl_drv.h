@@ -32,6 +32,7 @@
 #include "mailbox_proto.h"
 #include <linux/libfdt_env.h>
 #include "lib/libfdt/libfdt.h"
+#include <linux/firmware.h>
 
 /* The fix for the y2k38 bug was introduced with Linux 3.17 and backported to
  * Red Hat 7.2.
@@ -410,7 +411,10 @@ struct xocl_rom_funcs {
 	u64 (*get_timestamp)(struct platform_device *pdev);
 	int (*get_raw_header)(struct platform_device *pdev, void *header);
 	bool (*runtime_clk_scale_on)(struct platform_device *pdev);
+	int (*find_firmware)(struct platform_device *pdev, char *fw_name,
+		size_t len, u16 deviceid, const struct firmware **fw);
 };
+
 #define ROM_DEV(xdev)	\
 	SUBDEV(xdev, XOCL_SUBDEV_FEATURE_ROM).pldev
 #define	ROM_OPS(xdev)	\
@@ -444,6 +448,9 @@ struct xocl_rom_funcs {
 #define	xocl_get_raw_header(xdev, header) \
 	(ROM_CB(xdev, get_raw_header) ? ROM_OPS(xdev)->get_raw_header(ROM_DEV(xdev), header) :\
 	-ENODEV)
+#define xocl_rom_find_firmware(xdev, fw_name, len, deviceid, fw)	\
+	(ROM_CB(xdev, find_firmware) ? ROM_OPS(xdev)->find_firmware(	\
+	ROM_DEV(xdev), fw_name, len, deviceid, fw) : -ENODEV)
 
 /* dma callbacks */
 struct xocl_dma_funcs {
@@ -758,7 +765,7 @@ struct xocl_mailbox_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	int (*request)(struct platform_device *pdev, void *req,
 		size_t reqlen, void *resp, size_t *resplen,
-		mailbox_msg_cb_t cb, void *cbarg);
+		mailbox_msg_cb_t cb, void *cbarg, u32 timeout);
 	int (*post_notify)(struct platform_device *pdev, void *req, size_t len);
 	int (*post_response)(struct platform_device *pdev,
 		enum mailbox_request req, u64 reqid, void *resp, size_t len);
@@ -772,9 +779,9 @@ struct xocl_mailbox_funcs {
 	((struct xocl_mailbox_funcs *)SUBDEV(xdev, XOCL_SUBDEV_MAILBOX).ops)
 #define MAILBOX_READY(xdev, cb)	\
 	(MAILBOX_DEV(xdev) && MAILBOX_OPS(xdev) && MAILBOX_OPS(xdev)->cb)
-#define	xocl_peer_request(xdev, req, reqlen, resp, resplen, cb, cbarg)		\
+#define	xocl_peer_request(xdev, req, reqlen, resp, resplen, cb, cbarg, timeout)	\
 	(MAILBOX_READY(xdev, request) ? MAILBOX_OPS(xdev)->request(MAILBOX_DEV(xdev), \
-	req, reqlen, resp, resplen, cb, cbarg) : -ENODEV)
+	req, reqlen, resp, resplen, cb, cbarg, timeout) : -ENODEV)
 #define	xocl_peer_response(xdev, req, reqid, buf, len)			\
 	(MAILBOX_READY(xdev, post_response) ? MAILBOX_OPS(xdev)->post_response(	\
 	MAILBOX_DEV(xdev), req, reqid, buf, len) : -ENODEV)
@@ -1062,6 +1069,8 @@ const char *xocl_fdt_get_prp_int_uuid(xdev_handle_t xdev_hdl, void *blob,
 		int *len);
 int xocl_fdt_add_pair(xdev_handle_t xdev_hdl, void *blob, char *name,
 		void *val, int size);
+const char *xocl_fdt_next_intf_uuid(xdev_handle_t xdev_hdl, void *blob,
+		        int offset);
 const struct axlf_section_header *xocl_axlf_section_header(
 	xdev_handle_t xdev_hdl, const struct axlf *top,
 	enum axlf_section_kind kind);

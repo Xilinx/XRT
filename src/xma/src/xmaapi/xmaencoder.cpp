@@ -251,6 +251,31 @@ xma_enc_session_destroy(XmaEncoderSession *session)
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_ENCODER_MOD, "%s()\n", __func__);
 
+    bool expected = false;
+    bool desired = true;
+    while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //Singleton lock acquired
+
+    if (session == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
+                   "Session is already released\n");
+
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+
+        return XMA_ERROR;
+    }
+    if (session->encoder_plugin == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
+                   "Session is corrupted\n");
+
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+
+        return XMA_ERROR;
+    }
     // Clean up the stats file, but don't delete it 
     xma_enc_session_statsfile_close(session);
 
@@ -265,7 +290,19 @@ xma_enc_session_destroy(XmaEncoderSession *session)
     // Free the session
     //Let's not chnage in_use and num of encoders
     //It is better to have different session_id for debugging
+    session->base.plugin_data = NULL;
+    session->base.stats = NULL;
+    session->encoder_plugin = NULL;
+    session->base.hw_session.dev_handle = NULL;
+    session->base.hw_session.kernel_info = NULL;
+    //do not change kernel in_use as it maybe in use by another plugin
+    session->base.hw_session.dev_index = -1;
+    session->base.session_signature = NULL;
     free(session);
+    session = NULL;
+
+    //Release singleton lock
+    g_xma_singleton->locked = false;
 
     return XMA_SUCCESS;
 }

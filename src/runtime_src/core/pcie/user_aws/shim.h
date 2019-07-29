@@ -36,6 +36,9 @@
 #include "fpga_mgmt.h"
 #endif
 
+#include "core/common/xrt_profiling.h"
+
+
 // Work around GCC 4.8 + XDMA BAR implementation bugs
 // With -O3 PCIe BAR read/write are not reliable hence force -O2 as max
 // optimization level for pcieBarRead() and pcieBarWrite()
@@ -46,33 +49,6 @@
 #endif
 
 namespace awsbwhal {
-
-
-
-// Memory alignment for DDR and AXI-MM trace access
-template <typename T> class AlignedAllocator
-{
-  void *mBuffer;
-  size_t mCount;
-public:
-  T *getBuffer() {
-    return (T *)mBuffer;
-  }
-
-  size_t size() const {
-    return mCount * sizeof(T);
-  }
-
-  AlignedAllocator(size_t alignment, size_t count) : mBuffer(0), mCount(count) {
-    if (posix_memalign(&mBuffer, alignment, count * sizeof(T))) {
-      mBuffer = 0;
-    }
-  }
-  ~AlignedAllocator() {
-    if (mBuffer)
-      free(mBuffer);
-  }
-};
 
 const uint64_t mNullAddr = 0xffffffffffffffffull;
 const uint64_t mNullBO = 0xffffffff;
@@ -169,6 +145,11 @@ public:
 
   // APIs using sysfs information
   int xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size);
+
+  int xclGetDebugIPlayoutPath(char* layoutPath, size_t size);
+  int xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
+  int xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
+
 
   // Execute and interrupt abstraction
   int xclExecBuf(unsigned int cmdBO);

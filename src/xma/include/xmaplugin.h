@@ -32,7 +32,6 @@
 #include "plg/xmascaler.h"
 #include "plg/xmafilter.h"
 #include "plg/xmakernel.h"
-//#include "app/xmahw.h"
 
 /**
  * DOC: XMA Plugin Interface
@@ -43,32 +42,14 @@
 extern "C" {
 #endif
 
-/*Declared in xmabuffers.h to allow device buffer object for XmaFrame as well
-//typedef uint32_t  XmaBufferHandle;
-typedef struct XmaBufferObj
-{
-   uint8_t* data;
-   uint64_t size;
-   uint64_t paddr;
-   int32_t  bank_index;
-   int32_t  dev_index;
-   bool     device_only_buffer;
-   void*    private_do_not_touch;
-  
-} XmaBufferObj;
-*/
-
-
-
 /**
  *  xma_plg_buffer_alloc)() - Allocate device memory
  *  This function allocates memory on the FPGA DDR and
- *  provides a handle to the memory that can be used for
+ *  provides a BufferObject to the memory that can be used for
  *  copying data from the host to device memory or from
- *  the device to the host.  In addition, the handle
- *  can be passed to the function @ref xma_plg_get_paddr()
- *  in order to obtain the physical address of the buffer.
- *  Obtaining the physical address is necessary for setting
+ *  the device to the host. 
+ *  BufferObject contains paddr, device index, ddr bank, etc.  
+ *  paddr (the physical address) is necessary for setting
  *  the AXI register map with physical pointers so that the
  *  kernel knows where key input and output buffers are located.
  *  This function knows which DDR bank is associated with this
@@ -77,8 +58,10 @@ typedef struct XmaBufferObj
  *
  *  @s_handle: The session handle associated with this plugin instance.
  *  @size:     Size in bytes of the device buffer to be allocated.
+ *  @device_only_buffer: Allocate device only buffer without any host space
+ *  @return_code:  XMA_SUCESS or XMA_ERROR.
  *
- *  RETURN:    Non-zero buffer handle on success
+ *  RETURN:    BufferObject on success;
  *
  */
 XmaBufferObj xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, int32_t* return_code);
@@ -89,34 +72,19 @@ XmaBufferObj xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_
  *  using the @ref xma_plg_buffer_alloc() function.
  *
  *  @s_handle:  The session handle associated with this plugin instance
- *  @b_obj:  The buffer handle returned from
+ *  @b_obj:  The BufferObject returned from
  *                   @ref xma_plg_buffer_alloc()
  *
  */
 void xma_plg_buffer_free(XmaSession s_handle, XmaBufferObj b_obj);
 
 /**
- *  xma_plg_buffer_free() - Get a physical address for a buffer handle
- *  This function returns the physical address of DDR memory on the FPGA
- *  used by a specific session
- *  @s_handle:  The session handle associated with this plugin instance
- *  @b_obj:  The buffer handle returned from
- *                   @ref xma_plg_buffer_alloc()
- *
- *  RETURN:          Physical address of DDR on the FPGA
- *
-uint64_t xma_plg_get_paddr(XmaHwSession s_handle, XmaBufferObj b_obj);
-paddr API not required with buffer object
- */
-
-/**
  *  xma_plg_buffer_write() - Write data from host to device buffer
- *  This function copies data from host to memory to device memory.
+ *  This function copies data from host memory to device memory.
  *
  *  @s_handle:  The session handle associated with this plugin instance
- *  @b_obj:  The buffer handle returned from
+ *  @b_obj:  The BufferObject returned from
  *                   @ref xma_plg_buffer_alloc()
- *  @src:       Source data pointer
  *  @size:      Size of data to copy
  *  @offset:    Offset from the beginning of the allocated device memory
  *
@@ -131,13 +99,10 @@ int32_t xma_plg_buffer_write(XmaSession     s_handle,
 
 /**
  *  xma_plg_buffer_read() - Read data from device memory and copy to host memory
- *  This function copies data from device memory and stores the result in
- *  the requested host memory
  *
  *  @s_handle:  The session handle associated with this plugin instance
- *  @b_obj:  The buffer handle returned from
+ *  @b_obj:  The BufferObject returned from
  *                   @ref xma_plg_buffer_alloc()
- *  @dst:       Destination data pointer
  *  @size:      Size of data to copy
  *  @offset:    Offset from the beginning of the allocated device memory
  *
@@ -184,7 +149,26 @@ int32_t xma_plg_schedule_work_item(XmaSession s_handle);
  */
 int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_in_ms);
 
+/**
+ * xma_plg_kernel_lock_regmap() - This function acquires register map lock
+ * so that prep_write & schedule_work_items can be called
+ *
+ * @s_handle:      The session handle associated with this plugin instance
+ *
+ * RETURN:         XMA_SUCCESS or XMA_ERROR
+ *
+ */
 int32_t xma_plg_kernel_lock_regmap(XmaSession s_handle);
+
+/**
+ * xma_plg_kernel_unlock_regmap() - This function releases register map lock
+ * so that other plugins can share same CU
+ *
+ * @s_handle:      The session handle associated with this plugin instance
+ *
+ * RETURN:         XMA_SUCCESS or XMA_ERROR
+ *
+ */
 int32_t xma_plg_kernel_unlock_regmap(XmaSession s_handle);
 
 /**

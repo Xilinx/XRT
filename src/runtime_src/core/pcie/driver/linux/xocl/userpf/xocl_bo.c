@@ -476,7 +476,7 @@ int xocl_userptr_bo_ioctl(struct drm_device *dev,
 	if (ret != page_count)
 		goto out0;
 
-	xobj->sgt = drm_prime_pages_to_sg(xobj->pages, page_count);
+	xobj->sgt = alloc_onetime_sg_table(xobj->pages, 0, page_count << PAGE_SHIFT);
 	if (IS_ERR(xobj->sgt)) {
 		ret = PTR_ERR(xobj->sgt);
 		goto out0;
@@ -944,7 +944,7 @@ struct sg_table *xocl_gem_prime_get_sg_table(struct drm_gem_object *obj)
 	struct drm_xocl_bo *xobj = to_xocl_bo(obj);
 
 	BO_ENTER("xobj %p", xobj);
-	return drm_prime_pages_to_sg(xobj->pages, xobj->base.size >> PAGE_SHIFT);
+	return alloc_onetime_sg_table(xobj->pages, 0, xobj->base.size);
 }
 
 struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,

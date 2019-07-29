@@ -35,44 +35,20 @@ extern "C" {
 */
 
 /**
- *  xma_initialize() - the system according to the layout specified in the
- *  YAML configuration file.
+ *  xma_initialize() - Initialie XMA Library and devices
  *
  *  This is the entry point routine for utilzing the XMA library and must be
  *  the first call within any application before calling any other XMA APIs.
- *  The YAML file is parsed and then verified for compatibility with the system
- *  hardware.  If deemed compatible, each device specified in the YAML file
- *  will be programmed with the xclbin(s) specified in the YAML.  A shared
- *  memory file will be created in /tmp  which will store the contents of
- *  the YAML file *  and serve as a resource database tracking allocation of
- *  kernels thus permitting multiple processes to share device resources.  If
- *  the system has already been configured by a prior process, then a successful
- *  return from this routine will map the *existing* resource database file to
- *  the calling processes; XMA will NOT attempt to reprogram any of the system
- *  devices if any device is in-use based on the prior configuration.
- *  In effect, programming and and configuration of the system will only occur
- *  when this routine is first invoked.  From the first invocation, so long as
- *  any running process is attached to and utilizing resources for an existing
- *  configuration, all subsequent invocations of this routine by any other
- *  process will be forced to use the existing configuration of the system;
- *  their configuration file argument will be ignored.
- *  When all currently running processes attached to a given resource file
- *  database have run to completion normally, the resource file will be deleted
- *  and a subsequent process invoking this routine will restart the parsing and
- *  programming of the system as would be true during initial invocation.
+ * Each device specified will be  programmed with 
+ * provided xclbin(s).
  *
- *  @cfgfile: a filepath to the YAML configuration file describing
- *      the layout of the xclbin(s) and the devices to which the xclbin(s) are
- *      to be deployed. If a NULL value is passed, the XMA will use a default
- *      name and location: /etc/xma/xma_def_sys_cfg.yaml.  In all cases, a
- *      properly defined yaml configuration file must exist.
- *
- * RETURN: XMA_SUCCESS after successfully initializing the system and/or (if not the first process to invoke)
- * mapping in the currently active system configuration.
+ *  @devXclbins: array of device index and full path of xclbin
+ * to program the device with.
  * 
- * XMA_ERROR_INVALID if the YAML file is incompatible with the system hardware.
+ *  @num_parms: Number of elements in above array input
  * 
- * XMA_ERROR for all other errors.
+ * RETURN: XMA_SUCCESS or XMa_ERROR
+ * 
 */
 int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms);
 

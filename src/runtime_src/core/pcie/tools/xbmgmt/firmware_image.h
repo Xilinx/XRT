@@ -44,9 +44,10 @@ public:
     std::string name;
     std::string file;
     uint64_t timestamp;
+    std::string uuid;
     std::string bmcVer;
 
-    DSAInfo(const std::string& filename, uint64_t ts, const std::string& bmc);
+    DSAInfo(const std::string& filename, uint64_t ts, const std::string& id, const std::string& bmc);
     DSAInfo(const std::string& filename);
     ~DSAInfo();
 };
@@ -70,6 +71,29 @@ private:
     static std::vector<DSAInfo> installedDSA;
     int mType;
     char *mBuf;
+};
+
+#define ALIGN(x, a)     (((x) + ((a) - 1)) & ~((a) - 1))
+#define PALIGN(p, a)    ((char *)(ALIGN((unsigned long)(p), (a))))
+#define GET_CELL(p)     (p += 4, *((const uint32_t *)(p-4)))
+
+#define FDT_BEGIN_NODE  0x1
+#define FDT_END_NODE    0x2
+#define FDT_PROP        0x3
+#define FDT_NOP         0x4
+#define FDT_END         0x9
+
+struct fdt_header {
+    uint32_t magic;
+    uint32_t totalsize;
+    uint32_t off_dt_struct;
+    uint32_t off_dt_strings;
+    uint32_t off_mem_rsvmap;
+    uint32_t version;
+    uint32_t last_comp_version;
+    uint32_t boot_cpuid_phys;
+    uint32_t size_dt_strings;
+    uint32_t size_dt_struct;
 };
 
 #endif

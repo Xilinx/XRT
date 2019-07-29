@@ -36,6 +36,7 @@
 #include "core/pcie/common/sensor.h"
 #include "core/pcie/linux/scan.h"
 #include "xclbin.h"
+#include "core/common/xrt_profiling.h"
 #include <version.h>
 
 #include <chrono>

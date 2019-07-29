@@ -284,7 +284,7 @@ typedef struct XmaEncoderSession XmaEncoderSession;
  * 
  * NULL on failure
  *
- *  Note: Cannot be presumed to be thread safe.
+ *  Note: session create & destroy are thread safe APIs
 */
 XmaEncoderSession*
 xma_enc_session_create(XmaEncoderProperties *enc_props);
@@ -300,7 +300,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props);
  *  
  * XMA_ERROR on failure.
  *
- *  Note: Cannot be presumed to be thread safe.
+ *  Note: session create & destroy are thread safe APIs
 */
 int32_t
 xma_enc_session_destroy(XmaEncoderSession *session);

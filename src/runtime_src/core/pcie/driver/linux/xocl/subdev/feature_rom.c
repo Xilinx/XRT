@@ -32,31 +32,8 @@ struct feature_rom {
 	bool			are_dev;
 	bool			aws_dev;
 	bool			runtime_clk_scale_en;
+	char			uuid[65];
 };
-
-/* TODO: replace this with .dtb driven */
-static int xocl_init_rom_v5(struct feature_rom *rom5)
-{
-	xdev_handle_t xdev = xocl_get_xdev(rom5->pdev);
-	struct FeatureRomHeader *header = &rom5->header;
-	const char *vbnv;
-	int i;
-
-	if (XDEV(xdev)->fdt_blob) {
-		vbnv = fdt_getprop(XDEV(xdev)->fdt_blob, 0, "vbnv", NULL);
-		if (vbnv)
-			strcpy(header->VBNVName, vbnv);
-		for (i = 0; i < strlen(header->VBNVName); i++)
-			if (header->VBNVName[i] == ':' ||
-					header->VBNVName[i] == '.')
-				header->VBNVName[i] = '_';
-	}
-	header->DDRChannelCount = 4;
-	header->DDRChannelSize = 16;
-	header->FeatureBitMap = UNIFIED_PLATFORM;
-
-	return 0;
-}
 
 static ssize_t VBNV_show(struct device *dev,
     struct device_attribute *attr, char *buf)
@@ -276,7 +253,7 @@ static bool verify_timestamp(struct platform_device *pdev, u64 timestamp)
 		rom->header.TimeSinceEpoch);
 	xocl_info(&pdev->dev, "Verify timestamp: 0x%llx", timestamp);
 
-	if (rom->header.MajorVersion == 5) {
+	if (strlen(rom->uuid) > 0) {
 		xocl_info(&pdev->dev, "2RP platform, skip timestamp check");
 		return true;
 	}
@@ -296,6 +273,58 @@ static int get_raw_header(struct platform_device *pdev, void *header)
 	return 0;
 }
 
+static int __find_firmware(struct platform_device *pdev, char *fw_name,
+	size_t len, u16 deviceid, const struct firmware **fw, char *suffix)
+{
+	struct feature_rom *rom = platform_get_drvdata(pdev);
+	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(pdev);
+	u16 vendor = le16_to_cpu(pcidev->vendor);
+	u16 subdevice = le16_to_cpu(pcidev->subsystem_device);
+	u64 timestamp = rom->header.TimeSinceEpoch;
+	char *uuid = NULL;
+	int err = 0;
+
+	/* For 2RP, only uuid is provided */
+	if (strlen(rom->uuid) > 0)
+		snprintf(fw_name, len, "xilinx/%s.%s", rom->uuid, suffix);
+	else
+		snprintf(fw_name, len, "xilinx/%04x-%04x-%04x-%016llx.%s",
+			vendor, deviceid, subdevice, timestamp, suffix);
+
+	/* deviceid is arg, the others are from pdev) */
+	xocl_info(&pdev->dev, "try load %s", fw_name);
+	err = request_firmware(fw, fw_name, &pcidev->dev);
+	if (err && !uuid) {
+		snprintf(fw_name, len, "xilinx/%04x-%04x-%04x-%016llx.%s",
+			vendor, (deviceid + 1), subdevice, timestamp, suffix);
+		xocl_info(&pdev->dev, "try load %s", fw_name);
+		err = request_firmware(fw, fw_name, &pcidev->dev);
+	}
+
+	/* Retry with the legacy dsabin */
+	if (err && !uuid) {
+		snprintf(fw_name, len, "xilinx/%04x-%04x-%04x-%016llx.%s",
+			vendor, le16_to_cpu(pcidev->device + 1), subdevice,
+			le64_to_cpu(0x0000000000000000), suffix);
+		xocl_info(&pdev->dev, "try load %s", fw_name);
+		err = request_firmware(fw, fw_name, &pcidev->dev);
+	}
+
+	return err;
+}
+
+static int find_firmware(struct platform_device *pdev, char *fw_name,
+	size_t len, u16 deviceid, const struct firmware **fw)
+{
+	// try xsabin first, then dsabin
+	if (__find_firmware(pdev, fw_name, len, deviceid, fw, "xsabin")) {
+		return __find_firmware(pdev, fw_name, len, deviceid, fw,
+			"dsabin");
+	}
+
+	return 0;
+}
+
 static struct xocl_rom_funcs rom_ops = {
 	.is_unified = is_unified,
 	.mb_mgmt_on = mb_mgmt_on,
@@ -309,6 +338,7 @@ static struct xocl_rom_funcs rom_ops = {
 	.get_timestamp = get_timestamp,
 	.get_raw_header = get_raw_header,
 	.runtime_clk_scale_on = runtime_clk_scale_on,
+	.find_firmware = find_firmware,
 };
 
 static int get_header_from_peer(struct feature_rom *rom)
@@ -320,6 +350,33 @@ static int get_header_from_peer(struct feature_rom *rom)
 		return -ENODEV;
 
 	memcpy(&rom->header, header, sizeof(*header));
+
+	return 0;
+}
+
+static int get_header_from_dtb(struct feature_rom *rom)
+{
+	xdev_handle_t xdev = xocl_get_xdev(rom->pdev);
+	struct FeatureRomHeader *header = &rom->header;
+	const char *vbnv;
+	int i, j = 0;
+
+	for (i = 31; i >= 0; i--, j+=2) {
+		sprintf(&rom->uuid[j], "%02x", *((uint8_t *)rom->base + i));
+	}
+	xocl_info(&rom->pdev->dev, "UUID %s", rom->uuid);
+
+	if (XDEV(xdev)->fdt_blob) {
+		vbnv = fdt_getprop(XDEV(xdev)->fdt_blob, 0, "vbnv", NULL);
+		if (vbnv)
+			strcpy(header->VBNVName, vbnv);
+		for (i = 0; i < strlen(header->VBNVName); i++)
+			if (header->VBNVName[i] == ':' ||
+					header->VBNVName[i] == '.')
+				header->VBNVName[i] = '_';
+	}
+	header->FeatureBitMap = UNIFIED_PLATFORM;
+	*(u32 *)header->EntryPointString = MAGIC_NUM;
 
 	return 0;
 }
@@ -375,9 +432,6 @@ static int get_header_from_iomem(struct feature_rom *rom)
 		xocl_memcpy_fromio(&rom->header, rom->base,
 				sizeof(rom->header));
 
-	if (rom->header.MajorVersion == 5)
-		xocl_init_rom_v5(rom);
-
 failed:
 	return ret;
 }
@@ -406,7 +460,10 @@ static int feature_rom_probe(struct platform_device *pdev)
 			goto failed;
 		}
 
-		ret = get_header_from_iomem(rom);
+		if (!strcmp(res->name, "uuid"))
+			ret = get_header_from_dtb(rom);
+		else
+			ret = get_header_from_iomem(rom);
 	}
 
 	if (strstr(rom->header.VBNVName, "-xare")) {

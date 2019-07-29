@@ -330,7 +330,7 @@ void xma_scaler_default_filter_coeff_set(XmaScalerFilterProperties *props);
  *        
  * NULL on failure
  *
- *  Note: Cannot be presumed to be thread safe.
+ *  Note: session create & destroy are thread safe APIs
 */
 XmaScalerSession*
 xma_scaler_session_create(XmaScalerProperties *props);
@@ -346,7 +346,7 @@ xma_scaler_session_create(XmaScalerProperties *props);
  *          
  * XMA_ERROR on failure.
  *
- *  Note: Cannot be presumed to be thread safe.
+ *  Note: session create & destroy are thread safe APIs
 */
 int32_t
 xma_scaler_session_destroy(XmaScalerSession *session);
