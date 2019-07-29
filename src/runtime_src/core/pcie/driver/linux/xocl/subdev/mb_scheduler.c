@@ -3000,7 +3000,7 @@ static void destroy_client(struct platform_device *pdev, void **priv)
 	}
 	bitmap_zero(client->cu_bitmap, MAX_CUS);
 
-	(void) xocl_icap_unlock_bitstream(xdev, xclbin_id, pid);
+	(void) xocl_icap_unlock_bitstream(xdev, xclbin_id);
 
 done:
 	mutex_unlock(&xdev->dev_lock);
@@ -3079,7 +3079,7 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 
 		// We just gave up the last context, unlock the xclbin
 		if (CLIENT_NUM_CU_CTX(client) == 0)
-			(void) xocl_icap_unlock_bitstream(xdev, xclbin_id, pid);
+			(void) xocl_icap_unlock_bitstream(xdev, xclbin_id);
 
 		goto out;
 	}
@@ -3118,7 +3118,7 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 	if (CLIENT_NUM_CU_CTX(client) == 0) {
 		// This is the first context on any CU for this process,
 		// lock the xclbin
-		ret = xocl_icap_lock_bitstream(xdev, xclbin_id, pid);
+		ret = xocl_icap_lock_bitstream(xdev, xclbin_id);
 		if (ret) {
 			if (cu_idx != XOCL_CTX_VIRT_CU_INDEX) {
 				(void) rem_ip_ref(xdev, exec, cu_idx);
