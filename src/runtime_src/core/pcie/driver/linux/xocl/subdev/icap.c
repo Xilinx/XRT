@@ -294,7 +294,7 @@ static void icap_read_from_peer(struct platform_device *pdev)
 	memcpy(mb_req->data, &subdev_peer, data_len);
 
 	(void) xocl_peer_request(xdev,
-		mb_req, reqlen, &xcl_hwicap, &resp_len, NULL, NULL);
+		mb_req, reqlen, &xcl_hwicap, &resp_len, NULL, NULL, 0);
 
 	icap_set_data(icap, &xcl_hwicap);
 
@@ -1287,59 +1287,6 @@ static int alloc_and_get_axlf_section(struct icap *icap,
 	return 0;
 }
 
-static long
-find_firmware_impl(struct platform_device *pdev, char *fw_name, size_t len,
-	u16 deviceid, const struct firmware **fw, char *suffix)
-{
-	struct icap *icap = platform_get_drvdata(pdev);
-	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(pdev);
-	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	u16 vendor = le16_to_cpu(pcidev->vendor);
-	u16 subdevice =	le16_to_cpu(pcidev->subsystem_device);
-	u64 timestamp = le64_to_cpu(xocl_get_timestamp(xdev));
-	long err = 0;
-
-	/* deviceid is arg, the others are from pdev) */
-
-	snprintf(fw_name, len, "xilinx/%04x-%04x-%04x-%016llx.%s",
-		vendor, deviceid, subdevice, timestamp, suffix);
-	ICAP_INFO(icap, "try load %s %s", suffix, fw_name);
-	err = request_firmware(fw, fw_name, &pcidev->dev);
-	if (err) {
-		snprintf(fw_name, len, "xilinx/%04x-%04x-%04x-%016llx.%s",
-			vendor, (deviceid + 1), subdevice, timestamp, suffix);
-		ICAP_INFO(icap, "try load %s %s", suffix, fw_name);
-		err = request_firmware(fw, fw_name, &pcidev->dev);
-	}
-
-	/* Retry with the legacy dsabin or xsabin. */
-	if (err) {
-		snprintf(fw_name, len, "xilinx/%04x-%04x-%04x-%016llx.%s",
-			vendor, le16_to_cpu(pcidev->device + 1), subdevice,
-			le64_to_cpu(0x0000000000000000), suffix);
-		ICAP_INFO(icap, "try load legacy %s %s", suffix, fw_name);
-		err = request_firmware(fw, fw_name, &pcidev->dev);
-	}
-
-	if (err)
-		ICAP_ERR(icap, "unable to find firmware of %s", suffix);
-
-	return err;
-}
-
-static long
-find_firmware(struct platform_device *pdev, char *fw_name, size_t len,
-	u16 deviceid, const struct firmware **fw)
-{
-	// try xsabin first, then dsabin
-	if (find_firmware_impl(pdev, fw_name, len, deviceid, fw, "xsabin")) {
-		return find_firmware_impl(pdev, fw_name, len, deviceid, fw,
-			"dsabin");
-	}
-
-	return 0;
-}
-
 static int icap_download_boot_firmware(struct platform_device *pdev)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
@@ -1382,7 +1329,8 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 			deviceid = pcidev_user->device;
 	}
 
-	err = find_firmware(pdev, fw_name, sizeof(fw_name), deviceid, &fw);
+	err = xocl_rom_find_firmware(xdev, fw_name, sizeof(fw_name),
+			deviceid, &fw);
 	if (err) {
 		/* Give up on finding xsabin and dsabin. */
 		ICAP_ERR(icap, "unable to find firmware, giving up");
@@ -1800,7 +1748,7 @@ static int __icap_lock_peer(struct platform_device *pdev, const xuid_t *id)
 		memcpy(mb_req->data, &bitstream_lock, data_len);
 
 		err = xocl_peer_request(xdev,
-			mb_req, reqlen, &resp, &resplen, NULL, NULL);
+			mb_req, reqlen, &resp, &resplen, NULL, NULL, 0);
 
 		if (err) {
 			err = -ENODEV;
@@ -1848,7 +1796,7 @@ static int __icap_unlock_peer(struct platform_device *pdev, const xuid_t *id)
 		mb_req->req = MAILBOX_REQ_UNLOCK_BITSTREAM;
 		memcpy(mb_req->data, &bitstream_lock, data_len);
 		err = xocl_peer_request(XOCL_PL_DEV_TO_XDEV(pdev),
-			mb_req, reqlen, &resp, &resplen, NULL, NULL);
+			mb_req, reqlen, &resp, &resplen, NULL, NULL, 0);
 		if (err) {
 			err = -ENODEV;
 			/*
@@ -1922,8 +1870,8 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	char *buffer;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	bool need_download;
-	int msg = -ETIMEDOUT;
-	size_t resplen = sizeof(msg);
+	int msgerr = -ETIMEDOUT;
+	size_t resplen = sizeof(msgerr);
 	int pid = pid_nr(task_tgid(current));
 	uint32_t data_len = 0;
 	struct mailbox_req *mb_req = NULL;
@@ -1946,7 +1894,8 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		if (!xocl_verify_timestamp(xdev,
 			xclbin->m_header.m_featureRomTimeStamp)) {
 			ICAP_ERR(icap, "timestamp of ROM not match Xclbin");
-			xocl_sysfs_error(xdev, "timestamp of ROM not match Xclbin");
+			xocl_sysfs_error(xdev,
+				"timestamp of ROM not match Xclbin");
 			return -EINVAL;
 		}
 
@@ -1999,7 +1948,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		mutex_lock(&icap->icap_lock);
 
 		if (icap_bitstream_in_use(icap, 0)) {
-			ICAP_ERR(icap, "bitstream is locked, can't download new one");
+			ICAP_ERR(icap, "bitstream is locked, can't download");
 			err = -EBUSY;
 			goto done;
 		}
@@ -2007,15 +1956,19 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		/* All clear, go ahead and start fiddling with hardware */
 
 		if (clockHeader != NULL) {
-			uint64_t clockFirmwareOffset = clockHeader->m_sectionOffset;
-			uint64_t clockFirmwareLength = clockHeader->m_sectionSize;
+			uint64_t clockFirmwareOffset =
+				clockHeader->m_sectionOffset;
+			uint64_t clockFirmwareLength =
+				clockHeader->m_sectionSize;
 
 			buffer = (char *)xclbin;
 			buffer += clockFirmwareOffset;
-			err = axlf_set_freqscaling(icap, pdev, buffer, clockFirmwareLength);
+			err = axlf_set_freqscaling(icap, pdev, buffer,
+				clockFirmwareLength);
 			if (err)
 				goto done;
-			err = icap_setup_clock_freq_topology(icap, buffer, clockFirmwareLength);
+			err = icap_setup_clock_freq_topology(icap, buffer,
+				clockFirmwareLength);
 			if (err)
 				goto done;
 		}
@@ -2028,7 +1981,8 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 
 		buffer = (char *)u_xclbin;
 		buffer += secondaryFirmwareOffset;
-		err = icap_setup_clear_bitstream(icap, buffer, secondaryFirmwareLength);
+		err = icap_setup_clear_bitstream(icap, buffer,
+			secondaryFirmwareLength);
 		if (err)
 			goto done;
 
@@ -2036,10 +1990,11 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 			err = calibrate_mig(icap);
 		if (err)
 			goto done;
-		/* Remember "this" bitstream, so avoid redownload the next time. */
+		/* Remember "this" bitstream, so avoid redownload next time. */
 		icap->icap_bitstream_id = xclbin->m_uniqueId;
 		if (!uuid_is_null(&xclbin->m_header.uuid)) {
-			uuid_copy(&icap->icap_bitstream_uuid, &xclbin->m_header.uuid);
+			uuid_copy(&icap->icap_bitstream_uuid,
+				&xclbin->m_header.uuid);
 		} else {
 			/* Legacy xclbin, convert legacy id to new id */
 			memcpy(&icap->icap_bitstream_uuid,
@@ -2050,7 +2005,8 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		mutex_lock(&icap->icap_lock);
 
 		if (icap_bitstream_in_use(icap, pid)) {
-			if (!uuid_equal(&xclbin->m_header.uuid, &icap->icap_bitstream_uuid)) {
+			if (!uuid_equal(&xclbin->m_header.uuid,
+				&icap->icap_bitstream_uuid)) {
 				err = -EBUSY;
 				goto done;
 			}
@@ -2061,37 +2017,48 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		if (!uuid_equal(peer_uuid, &xclbin->m_header.uuid)) {
 
 			/*
-			 * Clean up and expire cache if we need to download xclbin
+			 * Clean up and expire cache if we need to
+			 * download xclbin
 			 */
 			memset(&icap->cache, 0, sizeof(struct xcl_hwicap));
-			icap->cache_expires = ktime_sub(ktime_get_boottime(), ktime_set(1, 0));
+			icap->cache_expires = ktime_sub(ktime_get_boottime(),
+				ktime_set(1, 0));
 
 			if ((ch_state & MB_PEER_SAME_DOMAIN) != 0) {
-				data_len = sizeof(struct mailbox_req) + sizeof(struct mailbox_bitstream_kaddr);
+				data_len = sizeof(struct mailbox_req) +
+					sizeof(struct mailbox_bitstream_kaddr);
 				mb_req = vmalloc(data_len);
 				if (!mb_req) {
-					ICAP_ERR(icap, "Unable to create mb_req\n");
+					ICAP_ERR(icap, "can't create mb_req\n");
 					err = -ENOMEM;
 					goto done;
 				}
 				mb_req->req = MAILBOX_REQ_LOAD_XCLBIN_KADDR;
 				mb_addr.addr = (uint64_t)xclbin;
-				memcpy(mb_req->data, &mb_addr, sizeof(struct mailbox_bitstream_kaddr));
+				memcpy(mb_req->data, &mb_addr,
+					sizeof(struct mailbox_bitstream_kaddr));
 
 			} else {
 				data_len = sizeof(struct mailbox_req) +
 					xclbin->m_header.m_length;
 				mb_req = vmalloc(data_len);
 				if (!mb_req) {
-					ICAP_ERR(icap, "Unable to create mb_req\n");
+					ICAP_ERR(icap, "can't create mb_req\n");
 					err = -ENOMEM;
 					goto done;
 				}
-				memcpy(mb_req->data, u_xclbin, xclbin->m_header.m_length);
+				memcpy(mb_req->data, u_xclbin,
+					xclbin->m_header.m_length);
 				mb_req->req = MAILBOX_REQ_LOAD_XCLBIN;
 			}
-			(void) xocl_peer_request(xdev,
-				mb_req, data_len, &msg, &resplen, NULL, NULL);
+
+			/*
+			 * Set timeout to be 2MB/s for downloading
+			 * entire xclbin.
+			 */
+			(void) xocl_peer_request(xdev, mb_req, data_len,
+				&msgerr, &resplen, NULL, NULL,
+				xclbin->m_header.m_length / (2048 * 1024));
 
 			/* xclbin download changes PR region, make sure next
 			 * ERT configure cmd will go through */
@@ -2100,11 +2067,10 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 			/*
 			 *  Ignore fail if it's an AWS device
 			 */
-			if (msg != 0 && !xocl_is_aws(xdev)) {
-				ICAP_ERR(icap,
-					"%s peer failed to download xclbin",
-					__func__);
-				err = -EFAULT;
+			if (msgerr != 0 && !xocl_is_aws(xdev)) {
+				ICAP_ERR(icap, "peer xclbin download err: %d",
+					msgerr);
+				err = msgerr;
 			}
 		} else {
 			ICAP_INFO(icap, "Already downloaded xclbin ID: %016llx",
@@ -2114,7 +2080,8 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		if (!err) {
 			icap->icap_bitstream_id = xclbin->m_uniqueId;
 			if (!uuid_is_null(&xclbin->m_header.uuid)) {
-				uuid_copy(&icap->icap_bitstream_uuid, &xclbin->m_header.uuid);
+				uuid_copy(&icap->icap_bitstream_uuid,
+					&xclbin->m_header.uuid);
 			} else {
 				/* Legacy xclbin, convert legacy id to new id */
 				memcpy(&icap->icap_bitstream_uuid,

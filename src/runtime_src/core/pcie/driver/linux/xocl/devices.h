@@ -67,29 +67,30 @@ enum {
 	XOCL_SUBDEV_LEVEL_MAX,
 };
 struct xocl_subdev_info {
-        uint32_t		id;
-        const char		*name;
-        struct resource		*res;
-        int			num_res;
+	uint32_t		id;
+	const char		*name;
+	struct resource	*res;
+	int				num_res;
 	void			*priv_data;
-	int			data_len;
+	int				data_len;
 	bool			multi_inst;
-	int			level;
+	int				level;
 	char			*bar_idx;
-	int			dyn_ip;
+	int				dyn_ip;
 	const char		*override_name;
-	int			override_idx;
+	int				override_idx;
 };
 
 struct xocl_board_private {
-        uint64_t		flags;
-        struct xocl_subdev_info	*subdev_info;
-        uint32_t		subdev_num;
-        uint32_t		dsa_ver;
-        bool			xpr;
-        char			*flash_type; /* used by xbflash */
-        char			*board_name; /* used by xbflash */
+	uint64_t		flags;
+	struct xocl_subdev_info	*subdev_info;
+	uint32_t		subdev_num;
+	uint32_t		dsa_ver;
+	bool			xpr;
+	char			*flash_type; /* used by xbflash */
+	char			*board_name; /* used by xbflash */
 	bool			mpsoc;
+	uint64_t		p2p_bar_sz;
 };
 
 struct xocl_flash_privdata {
@@ -915,6 +916,14 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_AF_USER,				\
 		})
 
+#define USER_RES_SMARTN							\
+		((struct xocl_subdev_info []) {				\
+			XOCL_DEVINFO_ICAP_USER,				\
+			XOCL_DEVINFO_XMC_USER,				\
+			XOCL_DEVINFO_MAILBOX_USER_QDMA,			\
+		})
+
+
 #define	XOCL_BOARD_USER_XDMA_DSA50					\
 	(struct xocl_board_private){					\
 		.flags		= XOCL_DSAFLAG_MB_SCHE_OFF,		\
@@ -948,6 +957,21 @@ struct xocl_subdev_map {
 		.flags		= 0,					\
 		.subdev_info	= USER_RES_DSA52,			\
 		.subdev_num = ARRAY_SIZE(USER_RES_DSA52),		\
+	}
+
+#define	XOCL_BOARD_USER_DSA52_U280						\
+	(struct xocl_board_private){					\
+		.flags		= 0,					\
+		.subdev_info	= USER_RES_DSA52,			\
+		.subdev_num = ARRAY_SIZE(USER_RES_DSA52),		\
+		.p2p_bar_sz = 8,					\
+	}
+
+#define	XOCL_BOARD_USER_SMARTN						\
+	(struct xocl_board_private){					\
+		.flags		= 0,					\
+		.subdev_info	= USER_RES_SMARTN,			\
+		.subdev_num = ARRAY_SIZE(USER_RES_SMARTN),		\
 	}
 
 #define	XOCL_BOARD_USER_DSA_U250_NO_KDMA				\
@@ -1208,6 +1232,7 @@ struct xocl_subdev_map {
 		XOCL_DEVINFO_IORES_MGMT,			\
 		XOCL_DEVINFO_PRP_IORES_MGMT,			\
 		XOCL_DEVINFO_XMC,                               \
+		XOCL_DEVINFO_MAILBOX_MGMT_QDMA,			\
 		XOCL_DEVINFO_ICAP_MGMT,                    	\
 		XOCL_DEVINFO_FMGR,      			\
 	})
@@ -1283,6 +1308,7 @@ struct xocl_subdev_map {
 #define XOCL_RES_FEATURE_ROM_DYN			\
 	((struct resource []) {				\
 	 	{					\
+	 		.name = "uuid",			\
 	 		.start = 0x1f10000,		\
 	 		.end = 0x1f10fff,		\
 	 		.flags = IORESOURCE_MEM,	\
@@ -1328,6 +1354,8 @@ struct xocl_subdev_map {
 		XOCL_MAILBOX,				\
 		XOCL_RES_MAILBOX_MGMT_DYN,		\
 		ARRAY_SIZE(XOCL_RES_MAILBOX_MGMT_DYN),	\
+		.dyn_ip = 1,				\
+		.level = XOCL_SUBDEV_LEVEL_PRP,		\
 	}
 
 #define	XOCL_DEVINFO_MAILBOX_USER_DYN			\
@@ -1363,6 +1391,7 @@ struct xocl_subdev_map {
 #define MGMT_RES_DYNAMIC_IP						\
 		((struct xocl_subdev_info []) {				\
 		 	XOCL_DEVINFO_FEATURE_ROM_DYN,			\
+		 	XOCL_DEVINFO_MAILBOX_MGMT_DYN,			\
 			XOCL_DEVINFO_FMGR,      			\
 		})
 
@@ -1476,6 +1505,7 @@ struct xocl_subdev_map {
 		.flags		= XOCL_DSAFLAG_DYNAMIC_IP,		\
 		.subdev_info	= USER_RES_U50,				\
 		.subdev_num = ARRAY_SIZE(USER_RES_U50),			\
+		.p2p_bar_sz = 8, /* GB */				\
 	}
 
 
@@ -1554,8 +1584,8 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x7990, 0x4352, USER_DSA52) },		\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5001, PCI_ANY_ID, USER_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5005, PCI_ANY_ID, USER_DSA52) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x5009, PCI_ANY_ID, USER_DSA52) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x500D, PCI_ANY_ID, USER_DSA52) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x5009, PCI_ANY_ID, USER_DSA52_U280) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x500D, PCI_ANY_ID, USER_DSA52_U280) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x7021, PCI_ANY_ID, USER_DYNAMIC_IP) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0x5021, PCI_ANY_ID, USER_U50) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x0065, PCI_ANY_ID, USER_XDMA) },	\
@@ -1567,8 +1597,8 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x5011, PCI_ANY_ID, USER_QDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5015, PCI_ANY_ID, USER_QDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5019, PCI_ANY_ID, USER_QDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x501D, PCI_ANY_ID, USER_QDMA) }
-
+	{ XOCL_PCI_DEVID(0x10EE, 0x501D, PCI_ANY_ID, USER_QDMA) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x5031, PCI_ANY_ID, USER_SMARTN) }
 #define XOCL_DSA_VBNV_MAP						\
 	{ 0x10EE, 0x5001, PCI_ANY_ID, "xilinx_u200_xdma_201820_1",	\
 		&XOCL_BOARD_USER_XDMA },				\

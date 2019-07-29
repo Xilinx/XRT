@@ -24,7 +24,9 @@
 
 #include <string>
 #include <fstream>
+#include <memory>
 #include <vector>
+#include <boost/property_tree/ptree.hpp>
 
 // ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
 // Forward declarations - use these instead whenever possible...
@@ -45,7 +47,8 @@ class RunSummary {
     ~RunSummary();
 
   public:
-    void addFile(const std::string & fileName, FileType eFileType );
+    void addFile(const std::string & fileName, FileType eFileType);
+    void setProfileTree(std::shared_ptr<boost::property_tree::ptree> tree);
 
     void extractSystemProfileMetadata(const axlf * pXclbinImage, const std::string & xclbinBaseName);
     void writeContent();
@@ -57,6 +60,7 @@ class RunSummary {
     std::vector< std::pair< std::string, FileType> > mFiles;
     std::string mSystemMetadata;
     std::string mXclbinBaseName;
+    std::shared_ptr<boost::property_tree::ptree> mProfileTree;
 
   private:
     // Purposefully private and undefined ctors...

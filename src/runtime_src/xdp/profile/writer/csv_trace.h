@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -27,8 +27,6 @@ namespace xdp {
       CSVTraceWriter(const std::string& traceFileName, const std::string& platformName, XDPPluginI* Plugin);
       ~CSVTraceWriter();
 
-      virtual const std::string getFileName() { return TraceFileName; }
-
     protected:
       void writeDocumentHeader(std::ofstream& ofs, const std::string& docName) override;
       void writeTableHeader(std::ofstream& ofs, const std::string& caption,
@@ -41,7 +39,6 @@ namespace xdp {
       const char* cellEnd() override { return ","; } 
 
     private:
-      std::string TraceFileName;
       std::string PlatformName;
       const std::string FileExtension = ".csv";
     };
