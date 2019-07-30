@@ -1702,25 +1702,27 @@ static uint32_t convert_mem_type(const char *name)
 		mem_type = MEM_DRAM;
 	else if (!strncasecmp(name, "HBM", 3))
 		mem_type = MEM_HBM;
+	else if (!strncasecmp(name, "bank", 4))
+		mem_type = MEM_DDR4;
 
 	return mem_type;
 }
 
-static uint16_t icap_get_memidx(struct icap *icap, enum MEM_TYPE mem_type,
+static uint16_t icap_get_memidx(struct mem_topology *mem_topo, enum MEM_TYPE mem_type,
 	int idx)
 {
 	uint16_t memidx = INVALID_MEM_IDX, i, mem_idx = 0;
 	enum MEM_TYPE m_type;
 
-	if (!icap->mem_topo)
+	if (!mem_topo)
 		goto done;
 
-	for (i = 0; i < icap->mem_topo->m_count; ++i) {
+	for (i = 0; i < mem_topo->m_count; ++i) {
 		/* Don't trust m_type in xclbin, convert name to m_type instead.
 		 * m_tag[i] = "HBM[0]" -> m_type = MEM_HBM
 		 * m_tag[i] = "DDR[1]" -> m_type = MEM_DRAM
 		 */
-		m_type = convert_mem_type(icap->mem_topo->m_mem_data[i].m_tag);
+		m_type = convert_mem_type(mem_topo->m_mem_data[i].m_tag);
 		if (m_type == mem_type) {
 			if (idx == mem_idx)
 				return i;
@@ -1732,14 +1734,158 @@ done:
 	return memidx;
 }
 
+static int icap_create_subdev(struct platform_device *pdev, struct axlf *xclbin)
+{
+	struct icap *icap = platform_get_drvdata(pdev);
+	int err = 0, i = 0;
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	uint64_t section_size = 0;
+	struct ip_layout *ip_layout = NULL;
+	struct mem_topology *mem_topo = NULL;
+
+	if (alloc_and_get_axlf_section(icap, xclbin,
+		IP_LAYOUT,
+		(void **)&ip_layout, &section_size) != 0) {
+		err = -EFAULT;
+		goto done;
+	}
+
+	if (alloc_and_get_axlf_section(icap, xclbin,
+		MEM_TOPOLOGY,
+		(void **)&mem_topo, &section_size) != 0) {
+		err = -EFAULT;
+		goto done;
+	}
+
+	for (i = 0; i < ip_layout->m_count; ++i) {
+		struct ip_data *ip = &ip_layout->m_ip_data[i];
+		struct xocl_mig_label mig_label = { {0} };
+		uint32_t memidx = 0;
+
+		if (ip->m_type == IP_KERNEL)
+			continue;
+
+		if (ip->m_type == IP_DDR4_CONTROLLER || ip->m_type == IP_MEM_DDR4) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_MIG;
+			uint32_t target_m_type;
+			/*
+			 * Get global memory index by feeding desired memory type and index
+			 */
+			if (ip->m_type == IP_MEM_DDR4)
+				target_m_type = MEM_DRAM;
+			else if (ip->m_type == IP_DDR4_CONTROLLER)
+				target_m_type = MEM_DDR4;
+			else
+				continue;
+
+			memidx = icap_get_memidx(mem_topo, target_m_type, ip->properties);
+
+			if (memidx == INVALID_MEM_IDX) {
+				ICAP_ERR(icap, "INVALID_MEM_IDX: %u",
+					ip->properties);
+				continue;
+			}
+
+			if (!mem_topo || memidx >= mem_topo->m_count ||
+				mem_topo->m_mem_data[memidx].m_type !=
+				target_m_type) {
+				ICAP_ERR(icap, "bad ECC controller index: %u",
+					ip->properties);
+				continue;
+			}
+			if (!mem_topo->m_mem_data[memidx].m_used) {
+				ICAP_INFO(icap,
+					"ignore ECC controller for: %s",
+					mem_topo->m_mem_data[memidx].m_tag);
+				continue;
+			}
+
+			memcpy(&mig_label.tag, mem_topo->m_mem_data[memidx].m_tag, 16);
+			mig_label.mem_idx = i;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			subdev_info.priv_data = &mig_label;
+			subdev_info.data_len =
+				sizeof(struct xocl_mig_label);
+
+			if (!ICAP_PRIVILEGED(icap))
+				subdev_info.num_res = 0;
+
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create MIG subdev");
+				goto done;
+			}
+		} else if (ip->m_type == IP_MEM_HBM) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_MIG_HBM;
+			uint16_t memidx = icap_get_memidx(mem_topo, MEM_HBM, ip->indices.m_index);
+
+			if (memidx == INVALID_MEM_IDX)
+				continue;
+
+			if (!mem_topo || memidx >= mem_topo->m_count) {
+				ICAP_ERR(icap, "bad ECC controller index: %u",
+					ip->properties);
+				continue;
+			}
+
+			if (!mem_topo->m_mem_data[memidx].m_used) {
+				ICAP_INFO(icap,
+					"ignore ECC controller for: %s",
+					mem_topo->m_mem_data[memidx].m_tag);
+				continue;
+			}
+
+			memcpy(&mig_label.tag, mem_topo->m_mem_data[memidx].m_tag, 16);
+			mig_label.mem_idx = i;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			subdev_info.priv_data = &mig_label;
+			subdev_info.data_len =
+				sizeof(struct xocl_mig_label);
+
+			if (!ICAP_PRIVILEGED(icap))
+				subdev_info.num_res = 0;
+
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create MIG_HBM subdev");
+				goto done;
+			}
+		} else if (ip->m_type == IP_DNASC) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_DNA;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+
+			if (!ICAP_PRIVILEGED(icap))
+				subdev_info.num_res = 0;
+
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create DNA subdev");
+				goto done;
+			}
+		}
+	}
+done:
+	if (err) {
+		vfree(ip_layout);
+		vfree(mem_topo);
+	}
+	return err;
+}
+
 static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 	struct axlf *xclbin)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
-	int err = 0, i;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	bool dna_check = false;
+	int err = 0;
 	uint64_t section_size = 0;
+	bool is_axi;
 
 	/* Destroy all dynamically add sub-devices*/
 	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_DNA);
@@ -1755,150 +1901,13 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 	 *         "m_name": "slr0\/dna_self_check_0"
 	 */
 
-	if (!icap->ip_layout) {
-		err = -EFAULT;
+	err = icap_create_subdev(pdev, xclbin);
+	if (err)
 		goto done;
-	}
-	for (i = 0; i < icap->ip_layout->m_count; ++i) {
-		struct ip_data *ip = &icap->ip_layout->m_ip_data[i];
-		struct xocl_mig_label mig_label = { {0} };
 
-		if (ip->m_type == IP_KERNEL)
-			continue;
+	is_axi = ((xocl_dna_capability(xdev) & 0x1) != 0);
 
-		if (ip->m_type == IP_DDR4_CONTROLLER) {
-			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_MIG;
-			uint32_t memidx = ip->properties;
-
-			if (!icap->mem_topo || ip->properties >= icap->mem_topo->m_count ||
-				icap->mem_topo->m_mem_data[memidx].m_type !=
-				MEM_DDR4) {
-				ICAP_ERR(icap, "bad ECC controller index: %u",
-					ip->properties);
-				continue;
-			}
-			if (!icap->mem_topo->m_mem_data[memidx].m_used) {
-				ICAP_INFO(icap,
-					"ignore ECC controller for: %s",
-					icap->mem_topo->m_mem_data[memidx].m_tag);
-				continue;
-			}
-
-			memcpy(&mig_label.tag, icap->mem_topo->m_mem_data[memidx].m_tag, 16);
-			mig_label.mem_idx = i;
-
-
-			subdev_info.res[0].start += ip->m_base_address;
-			subdev_info.res[0].end += ip->m_base_address;
-			subdev_info.priv_data = &mig_label;
-			subdev_info.data_len =
-				sizeof(struct xocl_mig_label);
-
-			if (!ICAP_PRIVILEGED(icap))
-				subdev_info.num_res = 0;
-
-			err = xocl_subdev_create(xdev, &subdev_info);
-			if (err) {
-				ICAP_ERR(icap, "can't create MIG subdev");
-				goto done;
-			}
-		} else if (ip->m_type == IP_MEM_DDR4) {
-			/*
-			 * Get global memory index by feeding desired memory type and index
-			 */
-			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_MIG;
-			uint16_t memidx = icap_get_memidx(icap, MEM_DRAM, ip->properties);
-
-			if (memidx == INVALID_MEM_IDX)
-				continue;
-
-			if (!icap->mem_topo || memidx >= icap->mem_topo->m_count ||
-				icap->mem_topo->m_mem_data[memidx].m_type !=
-				MEM_DRAM) {
-				ICAP_ERR(icap, "bad ECC controller index: %u",
-					ip->properties);
-				continue;
-			}
-			if (!icap->mem_topo->m_mem_data[memidx].m_used) {
-				ICAP_INFO(icap,
-					"ignore ECC controller for: %s",
-					icap->mem_topo->m_mem_data[memidx].m_tag);
-				continue;
-			}
-
-			memcpy(&mig_label.tag, icap->mem_topo->m_mem_data[memidx].m_tag, 16);
-			mig_label.mem_idx = i;
-
-			subdev_info.res[0].start += ip->m_base_address;
-			subdev_info.res[0].end += ip->m_base_address;
-			subdev_info.priv_data = &mig_label;
-			subdev_info.data_len =
-				sizeof(struct xocl_mig_label);
-
-			if (!ICAP_PRIVILEGED(icap))
-				subdev_info.num_res = 0;
-			err = xocl_subdev_create(xdev, &subdev_info);
-			if (err) {
-				ICAP_ERR(icap, "can't create MIG subdev");
-				goto done;
-			}
-		} else if (ip->m_type == IP_MEM_HBM) {
-			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_MIG_HBM;
-			uint16_t memidx = icap_get_memidx(icap, MEM_HBM, ip->indices.m_index);
-
-			if (memidx == INVALID_MEM_IDX)
-				continue;
-
-			if (!icap->mem_topo || memidx >= icap->mem_topo->m_count) {
-				ICAP_ERR(icap, "bad ECC controller index: %u",
-					ip->properties);
-				continue;
-			}
-
-			if (!icap->mem_topo->m_mem_data[memidx].m_used) {
-				ICAP_INFO(icap,
-					"ignore ECC controller for: %s",
-					icap->mem_topo->m_mem_data[memidx].m_tag);
-				continue;
-			}
-
-			memcpy(&mig_label.tag, icap->mem_topo->m_mem_data[memidx].m_tag, 16);
-			mig_label.mem_idx = i;
-
-			subdev_info.res[0].start += ip->m_base_address;
-			subdev_info.res[0].end += ip->m_base_address;
-			subdev_info.priv_data = &mig_label;
-			subdev_info.data_len =
-				sizeof(struct xocl_mig_label);
-			if (!ICAP_PRIVILEGED(icap))
-				subdev_info.num_res = 0;
-			err = xocl_subdev_create(xdev, &subdev_info);
-			if (err) {
-				ICAP_ERR(icap, "can't create MIG_HBM subdev");
-				goto done;
-			}
-		} else if (ip->m_type == IP_DNASC) {
-			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_DNA;
-
-			dna_check = true;
-			subdev_info.res[0].start += ip->m_base_address;
-			subdev_info.res[0].end += ip->m_base_address;
-
-			if (!ICAP_PRIVILEGED(icap))
-				subdev_info.num_res = 0;
-
-			err = xocl_subdev_create(xdev, &subdev_info);
-			if (err) {
-				ICAP_ERR(icap, "can't create DNA subdev");
-				goto done;
-			}
-		}
-	}
-
-	if (dna_check) {
-
-		bool is_axi = ((xocl_dna_capability(xdev) & 0x1) != 0);
-
+	if (is_axi) {
 		if (0x1 & xocl_dna_status(xdev))
 			goto done;
 		/*
@@ -2459,7 +2468,7 @@ static void icap_refresh_addrs(struct platform_device *pdev)
 	icap->icap_axi_gate = xocl_iores_get_base(xdev, IORES_GATEPRPRP);
 	ICAP_INFO(icap, "axi_gate @ %lx", (unsigned long)icap->icap_axi_gate);
 	icap->icap_clock_bases[0] =
-	       	xocl_iores_get_base(xdev, IORES_CLKWIZKERNEL1);
+		xocl_iores_get_base(xdev, IORES_CLKWIZKERNEL1);
 	ICAP_INFO(icap, "clk0 @ %lx", (unsigned long)icap->icap_clock_bases[0]);
 	icap->icap_clock_bases[1] =
 		xocl_iores_get_base(xdev, IORES_CLKWIZKERNEL2);
