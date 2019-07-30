@@ -244,38 +244,31 @@ static int
 xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 {
 	long err = 0;
-	struct axlf *axlf = 0;
+	struct axlf *axlf = NULL;
 	struct axlf bin_obj;
-	size_t size;
+	size_t size = 0;
 	int preserve_mem = 0;
 	struct mem_topology *new_topology = NULL, *topology;
 	struct xocl_dev *xdev = drm_p->xdev;
 	xuid_t *xclbin_id;
 
-	userpf_info(xdev, "READ_AXLF IOCTL\n");
-
 	if (!xocl_is_unified(xdev)) {
-		printk(KERN_INFO "XOCL: not unified Shell");
-		return err;
+		userpf_err(xdev, "XOCL: not unified Shell\n");
+		return -EINVAL;
 	}
 
 	if (copy_from_user(&bin_obj, axlf_ptr->xclbin, sizeof(struct axlf)))
 		return -EFAULT;
-
-	if (memcmp(bin_obj.m_magic, "xclbin2", 8))
+	if (memcmp(bin_obj.m_magic, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2))) {
+		userpf_err(xdev, "invalid xclbin magic string\n");
 		return -EINVAL;
-
-	if (xocl_xrt_version_check(xdev, &bin_obj, true))
-		return -EINVAL;
-
-	if (uuid_is_null(&bin_obj.m_header.uuid)) {
-		/* Legacy xclbin, convert legacy id to new id */
-		memcpy(&bin_obj.m_header.uuid, &bin_obj.m_header.m_timeStamp, 8);
 	}
 
 	xclbin_id = XOCL_XCLBIN_ID(xdev);
-	if (!xclbin_id)
-		return -EINVAL;
+	if (uuid_equal(xclbin_id, &bin_obj.m_header.uuid)) {
+		userpf_info(xdev, "xclbin is already downloaded\n");
+		goto done;
+	}
 
 	/*
 	 * Support for multiple processes
@@ -289,38 +282,33 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	 * Note that icap subdevice also maintains xclbin ref count, which is
 	 * used to lock down xclbin on mgmt pf side.
 	 */
-	if (!uuid_equal(xclbin_id, &bin_obj.m_header.uuid)) {
-		if (live_clients(xdev, NULL) ||
-			atomic_read(&xdev->outstanding_execs)) {
-			printk(KERN_ERR "Current xclbin is busy, can't change\n");
-			return -EBUSY;
-		}
-	}
-
-	/* Ignore timestamp matching for AWS platform */
-	if (!xocl_is_aws(xdev) && !xocl_verify_timestamp(xdev,
-		bin_obj.m_header.m_featureRomTimeStamp)) {
-		printk(KERN_ERR "TimeStamp of ROM did not match Xclbin\n");
-		return -EINVAL;
-	}
-
-	printk(KERN_INFO "XOCL: VBNV and TimeStamps matched\n");
-
-	if (uuid_equal(xclbin_id, &bin_obj.m_header.uuid)) {
-		printk(KERN_INFO "Skipping repopulating topology, connectivity,ip_layout data\n");
+	if (live_clients(xdev, NULL) || atomic_read(&xdev->outstanding_execs)) {
+		userpf_err(xdev, " Current xclbin is in-use, can't change\n");
+		err = -EBUSY;
 		goto done;
 	}
 
-	/* Copy from user space and proceed. */
+	/* Really need to download, sanity check xclbin, first. */
+	if (xocl_xrt_version_check(xdev, &bin_obj, true)) {
+		userpf_err(xdev, "Xclbin isn't supported by current XRT\n");
+		err = -EINVAL;
+		goto done;
+	}
+	if (!xocl_verify_timestamp(xdev,
+		bin_obj.m_header.m_featureRomTimeStamp)) {
+		userpf_err(xdev, "TimeStamp of ROM did not match Xclbin\n");
+		err = -EINVAL;
+		goto done;
+	}
+
+	/* Copy bitstream from user space and proceed. */
 	axlf = vmalloc(bin_obj.m_header.m_length);
 	if (!axlf) {
-		DRM_ERROR("Unable to create axlf\n");
+		userpf_err(xdev, "Unable to alloc mem for xclbin, size=%llu\n",
+			bin_obj.m_header.m_length);
 		err = -ENOMEM;
 		goto done;
 	}
-
-	printk(KERN_INFO "XOCL: Marker 5\n");
-
 	if (copy_from_user(axlf, axlf_ptr->xclbin, bin_obj.m_header.m_length)) {
 		err = -EFAULT;
 		goto done;
@@ -345,10 +333,10 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	if (xocl_is_aws(xdev) && (topology != NULL)) {
 		if ((size == sizeof_sect(topology, m_mem_data)) &&
 		    !memcmp(new_topology, topology, size)) {
-			xocl_xdev_info(xdev, "MEM_TOPOLOGY match, preserve mem_topology.");
+			userpf_info(xdev, "preserving mem_topology.");
 			preserve_mem = 1;
 		} else {
-			xocl_xdev_info(xdev, "MEM_TOPOLOGY mismatch, do not preserve mem_topology.");
+			userpf_info(xdev, "not preserving mem_topology.");
 		}
 	}
 
@@ -361,16 +349,15 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 
 	err = xocl_icap_download_axlf(xdev, axlf);
 	if (err) {
-		DRM_ERROR("%s Fail to download\n", __func__);
+		/*
+		 * We have to clear uuid cached in scheduler here if
+		 * download xclbin failed
+		 */
+		(void) xocl_exec_reset(xdev);
 		/*
 		 * Don't just bail out here, always recreate drm mem
 		 * since we have cleaned it up before download.
 		 */
-
-		/*
-		 * We have to clear uuid cached in scheduler here if download xclbin failed
-		 */
-		(void) xocl_exec_reset(xdev);
 	}
 
 	if (!preserve_mem) {
@@ -383,7 +370,7 @@ done:
 	if (size < 0)
 		err = size;
 	if (err)
-		userpf_err(xdev, "err: %ld\n", err);
+		userpf_err(xdev, "Failed to download xclbin, err: %ld\n", err);
 	else
 		userpf_info(xdev, "Loaded xclbin %pUb", xclbin_id);
 	vfree(axlf);
