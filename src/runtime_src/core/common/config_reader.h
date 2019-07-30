@@ -284,6 +284,13 @@ get_cdma()
 }
 
 inline bool
+get_pr_enable()
+{
+  static unsigned int value = detail::get_bool_value("Runtime.enable_pr",false);
+  return value;
+}
+
+inline bool
 get_multiprocess()
 {
   static bool value = get_kds() && detail::get_bool_value("Runtime.multiprocess",true);

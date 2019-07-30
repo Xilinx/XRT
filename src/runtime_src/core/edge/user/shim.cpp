@@ -471,10 +471,13 @@ int ZYNQShim::xclLoadAxlf(const axlf *buffer)
 		mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << buffer << std::endl;
 	}
 
-#if defined(XCLBIN_DOWNLOAD)
-  drm_zocl_pcap_download obj = { const_cast<axlf *>(buffer) };
-  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_PCAP_DOWNLOAD, &obj);
-#endif
+	auto runtime_pr_en = xrt_core::config::get_pr_enable();
+	if (runtime_pr_en == true) {
+		drm_zocl_pcap_download obj = { const_cast<axlf *>(buffer) };
+		ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_PCAP_DOWNLOAD, &obj);
+		if (ret)
+			std::cout << __func__ << "Partial reconfig failed, err: " << ret << std::endl;
+	}
 
 	drm_zocl_axlf axlf_obj = { const_cast<axlf *>(buffer) };
 	ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_READ_AXLF, &axlf_obj);
