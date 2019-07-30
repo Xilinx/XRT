@@ -297,7 +297,7 @@ static DSAInfo selectShell(unsigned idx, std::string& dsa, std::string& id)
 
     if (candidateDSAIndex == UINT_MAX) {
         std::cout << "WARNING: Failed to flash Card["
-        << flasher.sGetDBDF() << "]: Specified shell is not applicable" << std::endl;
+                  << flasher.sGetDBDF() << "]: Specified shell is not applicable" << std::endl;
         return DSAInfo("");
     }
 
@@ -397,18 +397,22 @@ static int autoFlash(unsigned index, std::string& shell,
     }
 
     std::cout << std::endl;
-    std::cout << success << " Card(s) flashed successfully." << std::endl;
 
-    if(boardsToUpdate.size() != success)
-        std::cout << "WARNING:" << boardsToUpdate.size()-success << " Card(s) not flashed. " << std::endl;
+    if (success!=0) {
+        std::cout << success << " Card(s) flashed successfully." << std::endl; 
+    } else {
+        std::cout << "No cards were flashed." << std::endl; 
+    }
 
     if (needreboot) {
         std::cout << "Cold reboot machine to load the new image on card(s)."
             << std::endl;
     }
 
-    if (success != boardsToUpdate.size())
+    if (success != boardsToUpdate.size()) {
+        std::cout << "WARNING:" << boardsToUpdate.size()-success << " Card(s) not flashed. " << std::endl;
         exit(-EINVAL);
+    }
 
     return 0;
 }
