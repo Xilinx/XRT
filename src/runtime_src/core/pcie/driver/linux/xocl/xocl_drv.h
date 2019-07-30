@@ -145,7 +145,7 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 
 #define	XOCL_MODULE_NAME	"xocl"
 #define	XCLMGMT_MODULE_NAME	"xclmgmt"
-#define	ICAP_XCLBIN_V2			"xclbin2"
+#define	ICAP_XCLBIN_V2		"xclbin2"
 #define XOCL_CDEV_DIR		"xfpga"
 
 #define XOCL_MAX_DEVICES	16
@@ -812,63 +812,63 @@ struct xocl_icap_funcs {
 		unsigned int region, unsigned short *freqs, int num_freqs);
 	int (*ocl_update_clock_freq_topology)(struct platform_device *pdev, struct xclmgmt_ioc_freqscaling *freqs);
 	int (*ocl_lock_bitstream)(struct platform_device *pdev,
-		const xuid_t *uuid, pid_t pid);
+		const xuid_t *uuid);
 	int (*ocl_unlock_bitstream)(struct platform_device *pdev,
-		const xuid_t *uuid, pid_t pid);
+		const xuid_t *uuid);
 	uint64_t (*get_data)(struct platform_device *pdev,
 		enum data_kind kind);
 };
 #define	ICAP_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ICAP).pldev
 #define	ICAP_OPS(xdev)							\
 	((struct xocl_icap_funcs *)SUBDEV(xdev, XOCL_SUBDEV_ICAP).ops)
-#define ICAP_CB(xdev, cb)		\
+#define ICAP_CB(xdev, cb)						\
 	(ICAP_DEV(xdev) && ICAP_OPS(xdev) && ICAP_OPS(xdev)->cb)
 #define	xocl_icap_reset_axi_gate(xdev)					\
-	(ICAP_CB(xdev, reset_axi_gate) ?						\
+	(ICAP_CB(xdev, reset_axi_gate) ?				\
 	ICAP_OPS(xdev)->reset_axi_gate(ICAP_DEV(xdev)) :		\
-	 NULL)
+	NULL)
 #define	xocl_icap_reset_bitstream(xdev)					\
-	(ICAP_CB(xdev, reset_bitstream) ?						\
+	(ICAP_CB(xdev, reset_bitstream) ?				\
 	ICAP_OPS(xdev)->reset_bitstream(ICAP_DEV(xdev)) :		\
-	 -ENODEV)
+	-ENODEV)
 #define	xocl_icap_download_axlf(xdev, xclbin)				\
-	(ICAP_CB(xdev, download_bitstream_axlf) ?						\
+	(ICAP_CB(xdev, download_bitstream_axlf) ?			\
 	ICAP_OPS(xdev)->download_bitstream_axlf(ICAP_DEV(xdev), xclbin) : \
 	-ENODEV)
 #define	xocl_icap_download_boot_firmware(xdev)				\
-	(ICAP_CB(xdev, download_boot_firmware) ?						\
+	(ICAP_CB(xdev, download_boot_firmware) ?			\
 	ICAP_OPS(xdev)->download_boot_firmware(ICAP_DEV(xdev)) :	\
 	-ENODEV)
-#define xocl_icap_download_rp(xdev, level, force)				\
+#define xocl_icap_download_rp(xdev, level, force)			\
 	(ICAP_CB(xdev, download_rp) ?					\
 	ICAP_OPS(xdev)->download_rp(ICAP_DEV(xdev), level, force) :	\
 	-ENODEV)
 #define	xocl_icap_ocl_get_freq(xdev, region, freqs, num)		\
-	(ICAP_CB(xdev, ocl_get_freq) ?						\
+	(ICAP_CB(xdev, ocl_get_freq) ?					\
 	ICAP_OPS(xdev)->ocl_get_freq(ICAP_DEV(xdev), region, freqs, num) : \
-	 -ENODEV)
+	-ENODEV)
 #define	xocl_icap_ocl_update_clock_freq_topology(xdev, freqs)		\
-	(ICAP_CB(xdev, ocl_update_clock_freq_topology) ?						\
-	ICAP_OPS(xdev)->ocl_update_clock_freq_topology(ICAP_DEV(xdev), freqs) : \
-	 -ENODEV)
+	(ICAP_CB(xdev, ocl_update_clock_freq_topology) ?		\
+	ICAP_OPS(xdev)->ocl_update_clock_freq_topology(ICAP_DEV(xdev), freqs) :\
+	-ENODEV)
 #define	xocl_icap_ocl_set_freq(xdev, region, freqs, num)		\
-	(ICAP_CB(xdev, ocl_set_freq) ?						\
+	(ICAP_CB(xdev, ocl_set_freq) ?					\
 	ICAP_OPS(xdev)->ocl_set_freq(ICAP_DEV(xdev), region, freqs, num) : \
-	 -ENODEV)
-#define	xocl_icap_lock_bitstream(xdev, uuid, pid)			\
-	(ICAP_CB(xdev, ocl_lock_bitstream) ?						\
-	ICAP_OPS(xdev)->ocl_lock_bitstream(ICAP_DEV(xdev), uuid, pid) :	\
-	 -ENODEV)
-#define	xocl_icap_unlock_bitstream(xdev, uuid, pid)			\
-	(ICAP_CB(xdev, ocl_unlock_bitstream) ?						\
-	ICAP_OPS(xdev)->ocl_unlock_bitstream(ICAP_DEV(xdev), uuid, pid) : \
-	 -ENODEV)
-#define xocl_icap_refresh_addrs(xdev)				\
-	(ICAP_CB(xdev, refresh_addrs) ?				\
-	 ICAP_OPS(xdev)->refresh_addrs(ICAP_DEV(xdev)) : NULL)
-#define	xocl_icap_get_data(xdev, kind)				\
-	(ICAP_CB(xdev, get_data) ?				\
-	ICAP_OPS(xdev)->get_data(ICAP_DEV(xdev), kind) : \
+	-ENODEV)
+#define	xocl_icap_lock_bitstream(xdev, uuid)				\
+	(ICAP_CB(xdev, ocl_lock_bitstream) ?				\
+	ICAP_OPS(xdev)->ocl_lock_bitstream(ICAP_DEV(xdev), uuid) :	\
+	-ENODEV)
+#define	xocl_icap_unlock_bitstream(xdev, uuid)				\
+	(ICAP_CB(xdev, ocl_unlock_bitstream) ?				\
+	ICAP_OPS(xdev)->ocl_unlock_bitstream(ICAP_DEV(xdev), uuid) :	\
+	-ENODEV)
+#define xocl_icap_refresh_addrs(xdev)					\
+	(ICAP_CB(xdev, refresh_addrs) ?					\
+	ICAP_OPS(xdev)->refresh_addrs(ICAP_DEV(xdev)) : NULL)
+#define	xocl_icap_get_data(xdev, kind)					\
+	(ICAP_CB(xdev, get_data) ?					\
+	ICAP_OPS(xdev)->get_data(ICAP_DEV(xdev), kind) : 		\
 	0)
 
 struct xocl_mig_label {

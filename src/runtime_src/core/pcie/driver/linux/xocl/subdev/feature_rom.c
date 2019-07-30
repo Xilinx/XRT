@@ -246,6 +246,10 @@ static bool verify_timestamp(struct platform_device *pdev, u64 timestamp)
 {
 	struct feature_rom *rom;
 
+	/* Ignore timestamp matching for AWS platform */
+	if (is_aws(pdev))
+		return true;
+
 	rom = platform_get_drvdata(pdev);
 	BUG_ON(!rom);
 
