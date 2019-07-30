@@ -23,7 +23,7 @@
 
 #include "flasher.h"
 #include "core/pcie/linux/scan.h"
-#include "core/pcie/common/sensor.h"
+#include "core/common/sensor.h"
 #include "xbmgmt.h"
 
 const char *subCmdFlashDesc = "Update SC firmware or shell on the device";

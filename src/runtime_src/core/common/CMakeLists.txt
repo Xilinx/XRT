@@ -11,6 +11,8 @@ file(GLOB XRT_CORECOMMON_LIB_FILES
   "message.*"
   "t_time.*"
   "xclbin_parser.*"
+  "sensor.*"
+  "utils.*"
   )
 
 # Files to include in object list
