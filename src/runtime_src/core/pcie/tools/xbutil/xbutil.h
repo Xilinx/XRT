@@ -691,7 +691,7 @@ public:
         sensor_tree::put( "board.physical.electrical.12v_sw.voltage",            m_devinfo.m12vSW );
         sensor_tree::put( "board.physical.electrical.mgt_vtt.voltage",           m_devinfo.mMgtVtt );
         sensor_tree::put( "board.physical.electrical.vccint.voltage",            m_devinfo.mVccIntVol );
-        sensor_tree::put( "board.physical.electrical.3v3_pex.current",       m_devinfo.m3v3PexCurr );
+        sensor_tree::put( "board.physical.electrical.3v3_pex.current",		 m_devinfo.m3v3PexCurr );
         {
             unsigned short cur = 0;
             std::string errmsg;
@@ -702,7 +702,7 @@ public:
         // powerm_devinfo_power
         sensor_tree::put( "board.physical.power", m_devinfo_power(m_devinfo));
 
-        // Board instantaneous power
+        // Board PCIe power
         sensor_tree::put( "board.physical.pcie_power", m_devinfo_pcie_power(m_devinfo));
 
         // firewall

@@ -86,8 +86,7 @@ class xclDeviceInfo2(ctypes.Structure):
      ("mPCIeLinkSpeedMax", ctypes.c_ushort),
      ("mVccIntVol", ctypes.c_ushort),
      ("mVccIntCurr", ctypes.c_ushort),
-     ("mNumCDMA", ctypes.c_ushort),
-     ("m3v3PexCurr", ctypes.c_ulonglong)
+     ("mNumCDMA", ctypes.c_ushort)
     ]
 
 class xclMemoryDomains:
