@@ -722,17 +722,15 @@ int shim::xclLoadXclBin(const xclBin *buffer)
     int ret = 0;
     const char *xclbininmemory = reinterpret_cast<char*> (const_cast<xclBin*> (buffer));
 
-    if (!memcmp(xclbininmemory, "xclbin2", 8)) {
-        ret = xclLoadAxlf(reinterpret_cast<const axlf*>(xclbininmemory));
-        if (ret != 0) {
-            if (ret == -EINVAL) {
-                xclLog(XRT_ERROR, "XRT", "Xclbin does not match Shell on card or xrt version. \
-                        \nPlease install compatible xrt or run xbutil flash -a all to flash card.");
-            }
+    ret = xclLoadAxlf(reinterpret_cast<const axlf*>(xclbininmemory));
+    if (ret != 0) {
+        if (ret == -EOPNOTSUPP) {
+            xclLog(XRT_ERROR, "XRT", "Xclbin does not match Shell on card.");
+            xclLog(XRT_ERROR, "XRT", "Use 'xbmgmt flash' to update Shell.");
+        } else if (ret == -EBUSY) {
+            xclLog(XRT_ERROR, "XRT", "Xclbin on card is in use, can't change.");
         }
-    } else {
-        xclLog(XRT_ERROR, "XRT", "%s, Legacy xclbin no longer supported", __func__);
-        return -EINVAL;
+        xclLog(XRT_ERROR, "XRT", "Refer to dmesg log for details. err=%d", ret);
     }
 
     mIsDebugIpLayoutRead = false;
@@ -752,12 +750,10 @@ int shim::xclLoadAxlf(const axlf *buffer)
         return -EPERM;
     }
 
-    int ret;
-
     drm_xocl_axlf axlf_obj = {const_cast<axlf *>(buffer)};
-    ret = mDev->ioctl(DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
+    int ret = mDev->ioctl(DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
     if(ret)
-        return ret ? -errno : ret;
+        return -errno;
 
     // If it is an XPR DSA, zero out the DDR again as downloading the XCLBIN
     // reinitializes the DDR and results in ECC error.
