@@ -741,10 +741,7 @@ enum data_kind {
 	CAGE_TEMP2,
 	CAGE_TEMP3,
 	VCC_0V85,
-	VOL_12V_PEX_INS,
-	CUR_12V_PEX_INS,
-	VOL_3V3_PEX_INS,
-	CUR_3V3_PEX_INS,
+	CUR_3V3_PEX,
 };
 
 enum mb_kind {
