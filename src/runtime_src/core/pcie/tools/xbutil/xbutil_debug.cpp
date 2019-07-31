@@ -98,7 +98,7 @@ std::pair<size_t, size_t> xcldev::device::getCUNamePortName (std::vector<std::st
         else {
             aCUNamePortNames.emplace_back("Unknown", "Unknown");
         }
-        //Replace the name of the host-spm to something simple
+        //Replace the name of the host-AIM to something simple
         if (aCUNamePortNames.back().first.find("interconnect_host_aximm") != std::string::npos) {
             aCUNamePortNames.pop_back();
             aCUNamePortNames.emplace_back("XDMA", "N/A");
@@ -130,7 +130,7 @@ std::pair<size_t, size_t> xcldev::device::getStreamName (const std::vector<std::
     return std::pair<size_t, size_t>(max1, max2);
 }
 
-int xcldev::device::readSPMCounters() {
+int xcldev::device::readAIMCounters() {
     xclDebugCountersResults debugResults = {0};
     std::vector<std::string> slotNames;
     std::vector< std::pair<std::string, std::string> > cuNameportNames;
@@ -181,7 +181,7 @@ int xcldev::device::readSPMCounters() {
     return 0;
 }
 
-int xcldev::device::readSSPMCounters() {
+int xcldev::device::readASMCounters() {
     xclStreamingDebugCountersResults debugResults = {0};
     std::vector<std::string> slotNames;
     std::vector< std::pair<std::string, std::string> > cuNameportNames;
@@ -401,12 +401,12 @@ int xcldev::device::print_debug_ip_list (int aVerbose) {
         "unknown",
         "lapc",
         "ila",
-        "spm",
+        "aim",
         "tracefunnel",
         "monitorfifolite",
         "monitorfifofull",
         "accelmonitor",
-        "sspm"
+        "asm"
     };
     int available_ip [debug_ip_max_type] = {0};
     std::string errmsg;
@@ -420,7 +420,7 @@ int xcldev::device::print_debug_ip_list (int aVerbose) {
 
     if (buf.empty() || map->m_count <= 0) {
         std::cout << "INFO: Failed to find any debug IPs on the platform. "
-            << "Ensure that a valid bitstream with debug IPs (SPM, LAPC) is "
+            << "Ensure that a valid bitstream with debug IPs (AIM, LAPC) is "
             << "successfully downloaded. \n";
         return 0;
     }

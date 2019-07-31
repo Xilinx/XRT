@@ -40,13 +40,19 @@ uint32_t xcldev::device::getIPCountAddrNames(int type, std::vector<uint64_t> *ba
                                              std::vector<uint8_t> *properties) {
     debug_ip_layout *map;
 
+#if 0
     std::string devName = xcldev::pci_device_scanner::device_list[ m_idx ].user_name;
     std::string subdevStr("icap");
     std::string entryStr("debug_ip_layout");
 
     std::string sysfsPathStr = xcldev::get_sysfs_path(devName, subdevStr, entryStr);
+#endif
 
-    std::ifstream ifs(sysfsPathStr.c_str(), std::ifstream::binary);
+    size_t maxLen = 512;
+    char dbgPath[maxLen];
+    xclGetDebugIPlayoutPath(m_handle, dbgPath, maxLen);
+
+    std::ifstream ifs(dbgPath, std::ifstream::binary);
     uint32_t count = 0;
     char buffer[debug_ip_layout_max_size];
     if( ifs.good() ) {
@@ -247,13 +253,16 @@ int xcldev::device::print_debug_ip_list (int aVerbose) {
     };
     int available_ip [depug_ip_max_type] = {0};
     debug_ip_layout *map;
-
+#if 0
     std::string devName = xcldev::pci_device_scanner::device_list[ m_idx ].user_name;
     std::string subdevStr("icap");
     std::string entryStr("debug_ip_layout");
+#endif
+    size_t maxLen = 512;
+    char dbgPath[maxLen];
+    xclGetDebugIPlayoutPath(m_handle, dbgPath, maxLen);
 
-    std::string sysfsPathStr = xcldev::get_sysfs_path(devName, subdevStr, entryStr);
-    std::ifstream ifs(sysfsPathStr.c_str(), std::ifstream::binary);
+    std::ifstream ifs(dbgPath, std::ifstream::binary);
 
     char buffer[debug_ip_layout_max_size];
     std::stringstream sstr;
@@ -278,12 +287,12 @@ int xcldev::device::print_debug_ip_list (int aVerbose) {
                 ifs.close();
         }
         else {
-            std::cout << "INFO: Failed to find any debug IPs on the platform. Ensure that a valid bitstream with debug IPs (SPM, LAPC) is successfully downloaded. \n";
+            std::cout << "INFO: Failed to find any debug IPs on the platform. Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n";
             ifs.close();
             return 0;
         }
     } else {
-        std::cout << "INFO: Failed to find any debug IPs on the platform. Ensure that a valid bitstream with debug IPs (SPM, LAPC) is successfully downloaded. \n";
+        std::cout << "INFO: Failed to find any debug IPs on the platform. Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n";
         return 0;
     }
     std::cout << "IPs found [<ipname>(<count>)]: " << sstr.str() << std::endl;
