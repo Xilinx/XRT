@@ -225,6 +225,11 @@ using addr_type = uint64_t;
       void setXPR(bool _xpr) { bXPR = _xpr; }
       std::string deviceDirectory;
 
+      /* Path to the run directory for the current loaded bitstream for HW Emu
+       * This directory contains the debug_ip_layout binary and simulation launch directories
+       */
+      std::string mRunDeviceBinDir;
+
       //QDMA Support
       int xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
       int xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);

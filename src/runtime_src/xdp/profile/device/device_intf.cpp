@@ -239,7 +239,7 @@ DeviceIntf::~DeviceIntf()
                 << type << ", Start device counters..." << std::endl;
     }
 
-    std::cout << " In DeviceIntf::startCounters " << std::endl;
+//    std::cout << " In DeviceIntf::startCounters " << std::endl;
     // Update addresses for debug/profile IP
 //    readDebugIPlayout();
 
@@ -455,6 +455,7 @@ DeviceIntf::~DeviceIntf()
       mIsDebugIPlayoutRead = true;
       return;
     }
+std::cout << " debug_ip_layout path : " << path << std::endl;
 
     std::ifstream ifs(path.c_str(), std::ifstream::binary);
     if(!ifs) {
@@ -489,7 +490,7 @@ DeviceIntf::~DeviceIntf()
      }
     }
     ifs.close();
-#if 0
+
     for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
         (*itr)->showProperties();
     }
@@ -505,7 +506,7 @@ DeviceIntf::~DeviceIntf()
     if(fifoRead) fifoRead->showProperties();
     if(traceDMA) traceDMA->showProperties();
     if(traceFunnel) traceFunnel->showProperties();
-#endif
+
 
     mIsDebugIPlayoutRead = true;
   }

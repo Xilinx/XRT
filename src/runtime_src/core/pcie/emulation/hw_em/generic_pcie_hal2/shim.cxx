@@ -305,6 +305,8 @@ namespace xclhwemhal2 {
 
     systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::CREATE);
 
+    mRunDeviceBinDir = binaryDirectory;
+
     std::ofstream os(fileName.get());
     os.write(args.m_zipFile, args.m_zipFileSize);
     os.close();
@@ -325,7 +327,7 @@ namespace xclhwemhal2 {
 
     // Write and read debug IP layout (for debug & profiling)
     // NOTE: for now, let's do this file based so we can debug
-    std::string debugFileName = binaryDirectory + "/debug_ip_layout";
+    std::string debugFileName = mRunDeviceBinDir + "/debug_ip_layout";
     FILE *fp2 = fopen(debugFileName.c_str(), "wb");
     if (fp2 == NULL) {
       if (mLogStream.is_open())
@@ -2226,7 +2228,15 @@ ssize_t HwEmShim::xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_
 
 int HwEmShim::xclGetDebugIPlayoutPath(char* layoutPath, size_t size)
 {
-  // get path of the debug_ip_layout
+  // get path of the debug_ip_layout (in binary format) created in the HW Emu run directory
+  if(mRunDeviceBinDir.empty())
+    return -1;
+
+  std::string debugIPlayoutPath = mRunDeviceBinDir + "/debug_ip_layout";
+  if(debugIPlayoutPath.size() >= size)
+    return -1;
+  
+  strncpy(layoutPath, debugIPlayoutPath.c_str(), size);
   return 0;
 }
 
