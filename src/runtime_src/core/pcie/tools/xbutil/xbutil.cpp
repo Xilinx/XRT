@@ -902,7 +902,6 @@ int runShellCmd(const std::string& cmd, std::string& output)
     // Stop progress reporter
     quit = true;
     t.join();
-
     return ret;
 }
 
@@ -912,7 +911,7 @@ int searchXsaAndDsa(std::string xsaPath, std::string
     struct stat st;
     if (stat(xsaPath.c_str(), &st) != 0) {
             if (stat(dsaPath.c_str(), &st) != 0) {
-                output += "ERROR: Failed to find test in ";
+                output += "ERROR: Failed to find xclbin in ";
                 output += xsaPath;
                 output += " and ";
                 output += dsaPath;
@@ -930,30 +929,20 @@ int xcldev::device::runTestCase(const std::string& exe,
     const std::string& xclbin, std::string& output)
 {
     struct stat st;
-    bool isPython = false;
 
     std::string devInfoPath = std::string(m_devinfo.mName) + "/test/";
-    std::string xsaTestCasePath = xsaPath + devInfoPath;
-    std::string dsaTestCasePath = dsaPath + devInfoPath;
+    std::string xsaXclbinPath = xsaPath + devInfoPath;
+    std::string dsaXclbinPath = dsaPath + devInfoPath;
     std::string xrtTestCasePath = xrtPath + "test/" + exe;
-    std::string exePath;
 
     output.clear();
 
-    if (stat(xrtTestCasePath.c_str(), &st) == 0) {
-        exePath = xrtTestCasePath;
-        isPython = true;
-    } else {
-        searchXsaAndDsa(xsaTestCasePath, dsaTestCasePath, exePath, output);
-        exePath += exe;
-    }
-
     std::string xclbinPath;
-    searchXsaAndDsa(xsaTestCasePath, dsaTestCasePath, xclbinPath, output);
-    xclbinPath+= xclbin;
+    searchXsaAndDsa(xsaXclbinPath, dsaXclbinPath, xclbinPath, output);
+    xclbinPath += xclbin;
     std::string idxOption;
 
-    if (stat(exePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
+    if (stat(xrtTestCasePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
         output += "ERROR: Failed to find ";
         output += exe;
         output += " or ";
@@ -973,24 +962,15 @@ int xcldev::device::runTestCase(const std::string& exe,
     if (m_idx != 0)
         idxOption = "-d " + std::to_string(m_idx);
 
-    std::string cmd = "";
-    if (isPython) {
-        cmd = "python " + exePath + " -k " + xclbinPath + " " + idxOption;
-    } else {
-        cmd = exePath + " " + xclbinPath + " " + idxOption;
-    }
+    std::string cmd = "python " + xrtTestCasePath + " -k " + xclbinPath + " " + idxOption;
     return runShellCmd(cmd, output);
 }
 
 int xcldev::device::verifyKernelTest(void)
 {
     std::string output;
-    int ret = runTestCase(std::string("main.py"),
+    int ret = runTestCase(std::string("main.py"), //rename in natievLnx
         std::string("verify.xclbin"), output);
-    if (ret == -ENOENT) {
-        ret = runTestCase(std::string("validate.exe"),
-            std::string("verify.xclbin"), output);
-    }
 
     if (ret != 0)
         return ret;
@@ -1006,7 +986,7 @@ int xcldev::device::bandwidthKernelTest(void)
 {
     std::string output;
 
-    int ret = runTestCase(std::string("kernel_bw.exe"),
+    int ret = runTestCase(std::string("23_bandwidth.py"),
         std::string("bandwidth.xclbin"), output);
 
     if (ret != 0)
