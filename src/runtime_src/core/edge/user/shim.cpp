@@ -471,10 +471,13 @@ int ZYNQShim::xclLoadAxlf(const axlf *buffer)
 		mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << buffer << std::endl;
 	}
 
-#if defined(XCLBIN_DOWNLOAD)
-  drm_zocl_pcap_download obj = { const_cast<axlf *>(buffer) };
-  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_PCAP_DOWNLOAD, &obj);
-#endif
+	auto runtime_pr_en = xrt_core::config::get_pr_enable();
+	if (runtime_pr_en == true) {
+		drm_zocl_pcap_download obj = { const_cast<axlf *>(buffer) };
+		ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_PCAP_DOWNLOAD, &obj);
+		if (ret)
+			std::cout << __func__ << "Partial reconfig failed, err: " << ret << std::endl;
+	}
 
 	drm_zocl_axlf axlf_obj = { const_cast<axlf *>(buffer) };
 	ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_READ_AXLF, &axlf_obj);
@@ -585,6 +588,31 @@ int ZYNQShim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfs
   //  terminating byte.
   strncpy(sysfsPath, path.c_str(), size) ;
   return 0 ;
+}
+
+int ZYNQShim::xclGetDebugIPlayoutPath(char* layoutPath, size_t size)
+{
+  return xclGetSysfsPath("", "debug_ip_layout", layoutPath, size);
+}
+
+int ZYNQShim::xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
+{
+  // On Zynq, we are currently storing 2 samples per packet in the FIFO
+  traceSamples = nSamples/2;
+  traceBufSz = sizeof(uint32_t) * nSamples;
+  return 0;
+}
+
+int ZYNQShim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
+{
+  uint32_t *buffer = (uint32_t*)traceBuf;
+  for(uint32_t i = 0 ; i < numSamples; i++) {
+   // Read only one 32-bit value. Later (in xdp layer) assemble two 32-bit values to form one trace sample.
+   // Here numSamples is the total number of reads required
+   xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, ipBaseAddress + 0x1000, (buffer + i), sizeof(uint32_t));
+  }
+  wordsPerSample = 2; 
+  return 0; 
 }
 
 int ZYNQShim::xclSKGetCmd(xclSKCmd *cmd)
@@ -759,7 +787,7 @@ unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t siz
 
 unsigned int xclGetHostBO(xclDeviceHandle handle, uint64_t paddr, size_t size)
 {
-  std::cout << "xclGetHostBO called.. " << handle << std::endl;
+  //std::cout << "xclGetHostBO called.. " << handle << std::endl;
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
@@ -933,6 +961,26 @@ int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev,
   if (!drv)
     return -EINVAL;
   return drv->xclGetSysfsPath(subdev, entry, sysfsPath, size);
+}
+
+int xclGetDebugIPlayoutPath(xclDeviceHandle handle, char* layoutPath, size_t size)
+{
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  if (!drv)
+    return -EINVAL;
+  return drv->xclGetDebugIPlayoutPath(layoutPath, size);
+}
+
+int xclGetTraceBufferInfo(xclDeviceHandle handle, uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
+{
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  return (drv) ? drv->xclGetTraceBufferInfo(nSamples, traceSamples, traceBufSz) : -EINVAL;
+}
+
+int xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
+{
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  return (drv) ? drv->xclReadTraceData(traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample) : -EINVAL;
 }
 
 int xclSKGetCmd(xclDeviceHandle handle, xclSKCmd *cmd)
@@ -1162,7 +1210,7 @@ int xclRemoveAndScanFPGA()
 ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf,
                       size_t size, uint64_t offset)
 {
-  return 0;
+  return -ENOSYS;
 }
 ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf,
                        size_t size, uint64_t offset)

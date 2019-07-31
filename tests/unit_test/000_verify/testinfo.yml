@@ -4,12 +4,13 @@ level: 6
 owner: thuyp
 user:
   allowed_test_modes: [sw_emu, hw_emu, hw]
+  force_makefile: "--force"
   host_args: {all: verify.xclbin}
   host_cflags: ' -DDSA64 -DFPGA_DEVICE'
   host_exe: host.exe
   host_src: hello.cpp
   kernels:
-  - {cflags: ' -I.', file: hello.xo, ksrc: hello.cl, name: hello, type: C}
+  - {cflags: {all: ' -I.'}, file: hello.xo, ksrc: hello.cl, name: hello, type: C}
   name: 000_verify
   xclbins:
   - files: 'hello.xo '
@@ -17,5 +18,4 @@ user:
     - cus: [hello_cu0]
       name: hello
       num_cus: 1
-    lflags: ''
     name: verify.xclbin

@@ -16,6 +16,8 @@
 
 #include "run_summary.h"
 
+#include "xdp/profile/writer/base_profile.h"
+
 #include <iostream>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -42,6 +44,10 @@ void RunSummary::addFile(const std::string & fileName, RunSummary::FileType eFil
   mFiles.emplace_back(fileName, eFileType);
 }
 
+void RunSummary::setProfileTree(std::shared_ptr<boost::property_tree::ptree> tree)
+{
+  mProfileTree = tree;
+}
 
 const std::string  
 RunSummary::getFileTypeAsStr(enum RunSummary::FileType eFileType)
@@ -122,16 +128,20 @@ void RunSummary::writeContent()
     boost::property_tree::ptree ptFile;
   }
 
-  // Add the payload
+  // Add the system diagram payload.
   if (!mSystemMetadata.empty()) {
     boost::property_tree::ptree ptSystemDiagram;
     ptSystemDiagram.put("payload_16bitEnc", mSystemMetadata.c_str());
     ptRunSummary.add_child("system_diagram", ptSystemDiagram);
   }
+
+  // Add profile data if available.
+  if (mProfileTree) {
+    ptRunSummary.add_child("profile", *mProfileTree);
+  }
    
   // Open output file
   std::string outputFile = mXclbinBaseName + ".run_summary";
-
 
   std::fstream outputStream;
   outputStream.open(outputFile, std::ifstream::out | std::ifstream::binary);

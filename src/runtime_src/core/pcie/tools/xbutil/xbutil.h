@@ -32,10 +32,11 @@
 #include "core/pcie/common/dmatest.h"
 #include "core/pcie/common/memaccess.h"
 #include "core/pcie/common/dd.h"
-#include "core/pcie/common/utils.h"
-#include "core/pcie/common/sensor.h"
+#include "core/common/utils.h"
+#include "core/common/sensor.h"
 #include "core/pcie/linux/scan.h"
 #include "xclbin.h"
+#include "core/common/xrt_profiling.h"
 #include <version.h>
 
 #include <chrono>

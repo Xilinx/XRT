@@ -4,12 +4,13 @@ level: 6
 owner: haeseung
 user:
   allowed_test_modes: [hw]
+  force_makefile: "--force"
   host_args: {all: -k kernel.xclbin}
   host_cflags: ' -DDSA64 -ldl -luuid'
   host_exe: host.exe
   host_src: main.cpp
   kernels:
-  - {cflags: ' -I.', file: mysequence.xo, ksrc: kernel.cl, name: mysequence, type: C}
+  - {cflags: {add: ' -I.'}, file: mysequence.xo, ksrc: kernel.cl, name: mysequence, type: C}
   name: 07_sequence
   xclbins:
   - files: 'mysequence.xo '
@@ -17,5 +18,4 @@ user:
     - cus: [mysequence]
       name: mysequence
       num_cus: 1
-    lflags: ''
     name: kernel.xclbin

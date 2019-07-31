@@ -309,19 +309,22 @@ struct mailbox_pkt {
 	} body;
 } __attribute__((packed));
 
-/*
- * Mailbox communication channel.
- */
+/* Mailbox communication channel state. */
 #define MBXCS_BIT_READY		0
 #define MBXCS_BIT_STOP		1
 #define MBXCS_BIT_TICK		2
 #define MBXCS_BIT_POLL_MODE	3
 
+enum mailbox_chan_type {
+	MBXCT_RX,
+	MBXCT_TX
+};
+
 struct mailbox_channel;
 typedef	void (*chan_func_t)(struct mailbox_channel *ch);
 struct mailbox_channel {
 	struct mailbox		*mbc_parent;
-	char			*mbc_name;
+	enum mailbox_chan_type	mbc_type;
 
 	struct workqueue_struct	*mbc_wq;
 	struct work_struct	mbc_work;
@@ -418,7 +421,7 @@ static inline const char *reg2name(struct mailbox *mbx, u32 *reg)
 }
 
 int mailbox_request(struct platform_device *, void *, size_t,
-	void *, size_t *, mailbox_msg_cb_t, void *);
+	void *, size_t *, mailbox_msg_cb_t, void *, u32);
 int mailbox_post_notify(struct platform_device *, void *, size_t);
 int mailbox_get(struct platform_device *pdev, enum mb_kind kind, u64 *data);
 
@@ -448,6 +451,21 @@ static inline void reset_pkt(struct mailbox_pkt *pkt)
 static inline bool valid_pkt(struct mailbox_pkt *pkt)
 {
 	return (pkt->hdr.type != PKT_INVALID);
+}
+
+static inline bool is_rx_chan(struct mailbox_channel *ch)
+{
+	return ch->mbc_type == MBXCT_RX;
+}
+
+static inline char *ch_name(struct mailbox_channel *ch)
+{
+	return is_rx_chan(ch) ? "RX" : "TX";
+}
+
+static bool is_rx_msg(struct mailbox_msg *msg)
+{
+	return is_rx_chan(msg->mbm_ch);
 }
 
 irqreturn_t mailbox_isr(int irq, void *arg)
@@ -491,7 +509,7 @@ static void chan_timer(struct timer_list *t)
 	struct mailbox_channel *ch = from_timer(ch, t, mbc_timer);
 #endif
 
-	MBX_DBG(ch->mbc_parent, "%s tick", ch->mbc_name);
+	MBX_DBG(ch->mbc_parent, "%s tick", ch_name(ch));
 
 	set_bit(MBXCS_BIT_TICK, &ch->mbc_state);
 	complete(&ch->mbc_worker);
@@ -542,7 +560,7 @@ static void msg_done(struct mailbox_msg *msg, int err)
 	struct mailbox *mbx = ch->mbc_parent;
 
 	MBX_DBG(ch->mbc_parent, "%s finishing msg id=0x%llx err=%d",
-		ch->mbc_name, msg->mbm_req_id, err);
+		ch_name(ch), msg->mbm_req_id, err);
 
 	msg->mbm_error = err;
 
@@ -553,7 +571,7 @@ static void msg_done(struct mailbox_msg *msg, int err)
 		goto done;
 	}
 
-	if (msg->mbm_flags & MB_REQ_FLAG_RECV_REQ) {
+	if (is_rx_msg(msg) && (msg->mbm_flags & MB_REQ_FLAG_REQUEST)) {
 		if ((mbx->mbx_req_sz+msg->mbm_len) >= MAX_MSG_QUEUE_SZ ||
 			mbx->mbx_req_cnt >= MAX_MSG_QUEUE_LEN) {
 			goto done;
@@ -667,7 +685,7 @@ static void chann_worker(struct work_struct *work)
 			}
 		}
 
-		MBX_DBG(mbx, "%s worker start", ch->mbc_name);
+		MBX_DBG(mbx, "%s worker start", ch_name(ch));
 		ch->mbc_tran(ch);
 		wait_for_completion_interruptible(&ch->mbc_worker);
 	}
@@ -692,7 +710,7 @@ static int chan_msg_enqueue(struct mailbox_channel *ch, struct mailbox_msg *msg)
 	int rv = 0;
 
 	MBX_DBG(ch->mbc_parent, "%s enqueuing msg, id=0x%llx\n",
-		ch->mbc_name, msg->mbm_req_id);
+		ch_name(ch), msg->mbm_req_id);
 
 	BUG_ON(msg->mbm_req_id == INVALID_MSG_ID);
 
@@ -737,7 +755,7 @@ static struct mailbox_msg *chan_msg_dequeue(struct mailbox_channel *ch,
 
 	if (msg) {
 		MBX_DBG(ch->mbc_parent, "%s dequeued msg, id=0x%llx\n",
-			ch->mbc_name, msg->mbm_req_id);
+			ch_name(ch), msg->mbm_req_id);
 		list_del(&msg->mbm_list);
 	}
 
@@ -813,11 +831,11 @@ static void chan_fini(struct mailbox_channel *ch)
 	ch->mbc_parent = NULL;
 }
 
-static int chan_init(struct mailbox *mbx, char *nm,
+static int chan_init(struct mailbox *mbx, enum mailbox_chan_type type,
 	struct mailbox_channel *ch, chan_func_t fn)
 {
 	ch->mbc_parent = mbx;
-	ch->mbc_name = nm;
+	ch->mbc_type = type;
 	ch->mbc_tran = fn;
 	INIT_LIST_HEAD(&ch->mbc_msgs);
 	init_completion(&ch->mbc_worker);
@@ -975,7 +993,7 @@ static void dequeue_rx_msg(struct mailbox_channel *ch,
 		if (msg) {
 			msg->mbm_req_id = id;
 			msg->mbm_ch = ch;
-			msg->mbm_flags = MB_REQ_FLAG_RECV_REQ | flags;
+			msg->mbm_flags = flags;
 		} else {
 			MBX_ERR(mbx, "Failed to allocate msg len: %lu\n", sz);
 		}
@@ -1198,15 +1216,16 @@ static void do_hw_tx(struct mailbox_channel *ch)
 	chan_send_pkt(ch);
 }
 
-static void msg_timer_on(struct mailbox_msg *msg, bool is_tx)
+static void msg_timer_on(struct mailbox_msg *msg, u32 ttl)
 {
-	u32 ttl;
-
-	if (is_tx) {
-		ttl = max(BYTE_TO_MB(msg->mbm_len) * MSG_TX_PER_MB_TTL,
-			MSG_TX_DEFAULT_TTL);
-	} else {
-		ttl = MSG_RX_DEFAULT_TTL;
+	/* Set to default ttl if not provided. */
+	if (ttl == 0) {
+		if (is_rx_msg(msg)) {
+			ttl = MSG_RX_DEFAULT_TTL;
+		} else {
+			ttl = max(BYTE_TO_MB(msg->mbm_len) * MSG_TX_PER_MB_TTL,
+				MSG_TX_DEFAULT_TTL);
+		}
 	}
 
 	msg->mbm_ttl = MAILBOX_SEC2TIMER(ttl);
@@ -1222,7 +1241,7 @@ static void dequeue_tx_msg(struct mailbox_channel *ch)
 	if (!ch->mbc_cur_msg)
 		return;
 
-	msg_timer_on(ch->mbc_cur_msg, true);
+	msg_timer_on(ch->mbc_cur_msg, 0);
 }
 
 /* Check if TX channel is ready for next msg. */
@@ -1390,7 +1409,7 @@ static ssize_t mailbox_show(struct device *dev,
 
 	req.req = MAILBOX_REQ_TEST_READ;
 	ret = mailbox_request(to_platform_device(dev), &req, sizeof(req),
-		mbx->mbx_tst_rx_msg, &respsz, NULL, NULL);
+		mbx->mbx_tst_rx_msg, &respsz, NULL, NULL, 0);
 	if (ret) {
 		MBX_ERR(mbx, "failed to read test msg from peer: %d", ret);
 	} else if (respsz > 0) {
@@ -1471,7 +1490,8 @@ static bool req_is_sw(struct platform_device *pdev, enum mailbox_request req)
  * Msg will be sent to peer and reply will be received.
  */
 int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
-	void *resp, size_t *resplen, mailbox_msg_cb_t cb, void *cbarg)
+	void *resp, size_t *resplen, mailbox_msg_cb_t cb,
+	void *cbarg, u32 resp_ttl)
 {
 	int rv = -ENOMEM;
 	struct mailbox *mbx = platform_get_drvdata(pdev);
@@ -1531,7 +1551,7 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 		goto fail;
 	}
 	free_msg(reqmsg);
-	msg_timer_on(respmsg, false);
+	msg_timer_on(respmsg, resp_ttl);
 
 	if (cb)
 		return 0;
@@ -2169,12 +2189,12 @@ static int mailbox_probe(struct platform_device *pdev)
 	queue_work(mbx->mbx_listen_wq, &mbx->mbx_listen_worker);
 
 	/* Set up software communication channels, rx first, then tx. */
-	ret = chan_init(mbx, "RX", &mbx->mbx_rx, chan_do_rx);
+	ret = chan_init(mbx, MBXCT_RX, &mbx->mbx_rx, chan_do_rx);
 	if (ret != 0) {
 		MBX_ERR(mbx, "failed to init rx channel");
 		goto failed;
 	}
-	ret = chan_init(mbx, "TX", &mbx->mbx_tx, chan_do_tx);
+	ret = chan_init(mbx, MBXCT_TX, &mbx->mbx_tx, chan_do_tx);
 	if (ret != 0) {
 		MBX_ERR(mbx, "failed to init tx channel");
 		goto failed;

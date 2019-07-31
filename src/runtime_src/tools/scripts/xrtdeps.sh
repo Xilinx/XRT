@@ -71,6 +71,7 @@ RH_LIST=(\
      ocl-icd-devel \
      opencl-headers \
      opencv \
+     openssl-devel \
      pciutils \
      perl \
      pkgconfig \
@@ -105,6 +106,7 @@ UB_LIST=(\
      libopencv-core-dev \
      libpng-dev \
      libprotoc-dev \
+     libssl-dev \
      libtiff5-dev \
      libxml2-dev \
      libyaml-dev \

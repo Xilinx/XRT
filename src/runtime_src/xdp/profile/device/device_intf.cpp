@@ -17,6 +17,7 @@
 #include "device_intf.h"
 #include "xclperf.h"
 #include "xcl_perfmon_parameters.h"
+#include "xrt/device/device.h"
 
 #include <iostream>
 #include <cstdio>
@@ -41,45 +42,75 @@
 
 namespace xdp {
 
+DeviceIntf::~DeviceIntf()
+{
+    for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
+        delete (*itr);  // delete the object
+        (*itr) = nullptr;
+    }
+    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr) {
+        delete (*itr);  // delete the object
+        (*itr) = nullptr;
+    }
+    for(std::vector<ASM*>::iterator itr = asmList.begin(); itr != asmList.end(); ++itr) {
+        delete (*itr);  // delete the object
+        (*itr) = nullptr;
+    }
+    aimList.clear();
+    amList.clear();
+    asmList.clear();
+
+    delete fifoCtrl;
+    delete fifoRead;
+    delete traceFunnel;
+    delete traceDMA;
+}
+
   // ***************************************************************************
   // Read/Write
   // ***************************************************************************
 
+#if 0
   size_t DeviceIntf::write(uint64_t offset, const void *hostBuf, size_t size)
   {
-    if (mHandle == nullptr)
+    if (mDeviceHandle == nullptr)
       return 0;
-	return xclWrite(mHandle, XCL_ADDR_SPACE_DEVICE_PERFMON, offset, hostBuf, size);
+	return xclWrite(mDeviceHandle, XCL_ADDR_SPACE_DEVICE_PERFMON, offset, hostBuf, size);
   }
 
   size_t DeviceIntf::read(uint64_t offset, void *hostBuf, size_t size)
   {
-    if (mHandle == nullptr)
+    if (mDeviceHandle == nullptr)
       return 0;
-	return xclRead(mHandle, XCL_ADDR_SPACE_DEVICE_PERFMON, offset, hostBuf, size);
+	return xclRead(mDeviceHandle, XCL_ADDR_SPACE_DEVICE_PERFMON, offset, hostBuf, size);
   }
 
   size_t DeviceIntf::traceRead(void *buffer, size_t size, uint64_t addr)
   {
-    if (mHandle == nullptr)
+    if (mDeviceHandle == nullptr)
       return 0;
-    return xclUnmgdPread(mHandle, 0, buffer, size, addr);
+    return xclUnmgdPread(mDeviceHandle, 0, buffer, size, addr);
   }
+#endif
 
   // ***************************************************************************
   // Generic Helper functions
   // ***************************************************************************
 
+#if 0
   // Get host timestamp to write to monitors
   // IMPORTANT NOTE: this *must* be compatible with the method of generating
   // timestamps as defined in RTProfile::getTraceTime()
   uint64_t DeviceIntf::getHostTraceTimeNsec()
   {
+    return 0;
+#if 0
     using namespace std::chrono;
     typedef duration<uint64_t, std::ratio<1, 1000000000>> duration_ns;
     duration_ns time_span =
         duration_cast<duration_ns>(high_resolution_clock::now().time_since_epoch());
     return time_span.count();
+#endif
   }
 
   // Convert decimal to binary string
@@ -122,99 +153,78 @@ namespace xdp {
     if (type == XCL_PERF_MON_ACCEL) return XPAR_AXI_PERF_MON_2_TRACE_NUMBER_SAMPLES;
     return 0;
   }
+#endif
+
+
+  void DeviceIntf::setDeviceHandle(void* xrtDevice)
+  {
+    if(!mDeviceHandle) {
+      mDeviceHandle = xrtDevice;
+      return;
+    }
+    if(mDeviceHandle != xrtDevice) {
+      // ERROR : trying to set the device handle when it is already populated with some other device
+    }
+  }
+
 
   // ***************************************************************************
   // Debug IP Layout
   // ***************************************************************************
-
-  uint64_t DeviceIntf::getBaseAddress(xclPerfMonType type, uint32_t slotNum)
-  {
-    if (type == XCL_PERF_MON_MEMORY) return mBaseAddress[slotNum];
-    if (type == XCL_PERF_MON_ACCEL)  return mAccelMonBaseAddress[slotNum];
-    if (type == XCL_PERF_MON_STR)    return mStreamMonBaseAddress[slotNum];
-    return 0;
-  }
-
-  uint64_t DeviceIntf::getFifoBaseAddress(xclPerfMonType type, uint32_t fifonum)
-  {
-    if (type == XCL_PERF_MON_MEMORY || type == XCL_PERF_MON_ACCEL)
-        return mFifoCtrlBaseAddress;
-    else
-      return 0;
-  }
-
-  uint64_t DeviceIntf::getFifoReadBaseAddress(xclPerfMonType type, uint32_t fifonum)
-  {
-    if (type == XCL_PERF_MON_MEMORY || type == XCL_PERF_MON_ACCEL)
-        return mFifoReadBaseAddress;
-    else
-      return 0;
-  }
-
-  uint64_t DeviceIntf::getTraceFunnelAddress(xclPerfMonType type)
-  {
-    if (type == XCL_PERF_MON_MEMORY || type == XCL_PERF_MON_ACCEL)
-        return mTraceFunnelAddress;
-    else
-      return 0;
-  }
   
-  uint32_t DeviceIntf::getNumberSlots(xclPerfMonType type)
+  uint32_t DeviceIntf::getNumMonitors(xclPerfMonType type)
   {
     if (type == XCL_PERF_MON_MEMORY)
-      return mMemoryProfilingNumberSlots;
+      return aimList.size();
     if (type == XCL_PERF_MON_ACCEL)
-      return mAccelProfilingNumberSlots;
-    if (type == XCL_PERF_MON_STALL)
-      return mStallProfilingNumberSlots;
+      return amList.size();
     if (type == XCL_PERF_MON_STR)
-      return mStreamProfilingNumberSlots;
+      return asmList.size();
 
-    if (type == XCL_PERF_MON_HOST) {
+    if(type == XCL_PERF_MON_STALL) {
       uint32_t count = 0;
-      for (unsigned int i=0; i < mMemoryProfilingNumberSlots; i++) {
-        if (mProperties[i] & XSPM_HOST_PROPERTY_MASK) count++;
-      }
-      return count;
-    }
-    if (type == XCL_PERF_MON_SHELL) {
-      uint32_t count = 0;
-      for (unsigned int i=0; i < mMemoryProfilingNumberSlots; i++) {
-        if (mProperties[i] & XSPM_HOST_PROPERTY_MASK) {
-          std::string slotName = mSlotName[i];
-          if (slotName.find("HOST") == std::string::npos)
-            count++;
-        }
+      for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr) {
+        if((*itr)->hasStall())  count++;
       }
       return count;
     }
 
+    if(type == XCL_PERF_MON_HOST) {
+      uint32_t count = 0;
+      for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
+        if((*itr)->isHostMonitor())  count++;
+      }
+      return count;
+    }
+
+    // FIFO ?
+
+    if(type == XCL_PERF_MON_SHELL) {
+      uint32_t count = 0;
+      for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
+        if((*itr)->isShellMonitor())  count++;
+      }
+      return count;
+    }
     return 0;
   }
 
-  uint32_t DeviceIntf::getProperties(xclPerfMonType type, uint32_t slotnum)
-  {
-    if (type == XCL_PERF_MON_MEMORY && slotnum < XSPM_MAX_NUMBER_SLOTS)
-      return static_cast<uint32_t>(mProperties[slotnum]);
-    if (type == XCL_PERF_MON_STR && slotnum < XSSPM_MAX_NUMBER_SLOTS)
-      return static_cast<uint32_t>(mStreammonProperties[slotnum]);
-    return 0;
-  }
-
-  void DeviceIntf::getSlotName(xclPerfMonType type, uint32_t slotnum,
-		                       char* slotName, uint32_t length)
+  void DeviceIntf::getMonitorName(xclPerfMonType type, uint32_t index, char* name, uint32_t length)
   {
     std::string str = "";
-    if (type == XCL_PERF_MON_MEMORY) {
-      str = (slotnum < XSPM_MAX_NUMBER_SLOTS) ? mSlotName[slotnum] : "";
-    }
-    if (type == XCL_PERF_MON_ACCEL) {
-      str = (slotnum < XSAM_MAX_NUMBER_SLOTS) ? mAccelMonSlotName[slotnum] : "";
-    }
-    if (type == XCL_PERF_MON_STR) {
-      str = (slotnum < XSSPM_MAX_NUMBER_SLOTS) ? mStreamMonSlotName[slotnum] : "";
-    }
-    strncpy(slotName, str.c_str(), length);
+    if((type == XCL_PERF_MON_MEMORY) && (index < aimList.size())) { str = aimList[index]->getName(); }
+    if((type == XCL_PERF_MON_ACCEL)  && (index < amList.size()))  { str = amList[index]->getName(); }
+    if((type == XCL_PERF_MON_STR)    && (index < asmList.size())) { str = asmList[index]->getName(); }
+    strncpy(name, str.c_str(), length);
+    if(str.length() >= length) name[length-1] = '\0'; // required ??
+  }
+
+  uint32_t DeviceIntf::getMonitorProperties(xclPerfMonType type, uint32_t index)
+  {
+    if((type == XCL_PERF_MON_MEMORY) && (index < aimList.size())) { return aimList[index]->getProperties(); }
+    if((type == XCL_PERF_MON_ACCEL)  && (index < amList.size()))  { return amList[index]->getProperties(); }
+    if((type == XCL_PERF_MON_STR)    && (index < asmList.size())) { return asmList[index]->getProperties(); }
+    return 0;
   }
 
   // ***************************************************************************
@@ -229,35 +239,27 @@ namespace xdp {
                 << type << ", Start device counters..." << std::endl;
     }
 
+    std::cout << " In DeviceIntf::startCounters " << std::endl;
     // Update addresses for debug/profile IP
-    //readDebugIpLayout();
+//    readDebugIPlayout();
 
     if (!mIsDeviceProfiling)
    	  return 0;
 
     size_t size = 0;
-    uint32_t regValue;
-    uint64_t baseAddress;
-    uint32_t numSlots = getNumberSlots(type);
 
-    for (uint32_t i=0; i < numSlots; i++) {
-      baseAddress = getBaseAddress(type,i);
-      
-      // 1. Reset AXI - MM monitor metric counters
-      size += read(baseAddress + XSPM_CONTROL_OFFSET, &regValue, 4);
+    // AIM
+    for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
+        size += (*itr)->startCounter();
+    }
+    // AM
+    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr) {
+        size += (*itr)->startCounter();
+    }
 
-      regValue = regValue | XSPM_CR_COUNTER_RESET_MASK;
-      size += write(baseAddress + XSPM_CONTROL_OFFSET, &regValue, 4);
-
-      regValue = regValue & ~(XSPM_CR_COUNTER_RESET_MASK);
-      size += write(baseAddress + XSPM_CONTROL_OFFSET, &regValue, 4);
-
-      // 2. Start AXI-MM monitor metric counters
-      regValue = regValue | XSPM_CR_COUNTER_ENABLE_MASK;
-      size += write(baseAddress + XSPM_CONTROL_OFFSET, &regValue, 4);
-
-      // 3. Read from sample register to ensure total time is read again at end
-      size += read(baseAddress + XSPM_SAMPLE_OFFSET, &regValue, 4);
+    // ASM
+    for(std::vector<ASM*>::iterator itr = asmList.begin(); itr != asmList.end(); ++itr) {
+        size += (*itr)->startCounter();
     }
     return size;
   }
@@ -273,23 +275,29 @@ namespace xdp {
    	  return 0;
 
     size_t size = 0;
-    uint32_t regValue;
-    uint64_t baseAddress;
-    uint32_t numSlots = getNumberSlots(type);
 
-    for (uint32_t i=0; i < numSlots; i++) {
-    baseAddress = getBaseAddress(type,i);
-
-    // 1. Stop SPM metric counters
-    size += read(baseAddress + XSPM_CONTROL_OFFSET, &regValue, 4);
-
-    regValue = regValue & ~(XSPM_CR_COUNTER_ENABLE_MASK);
-    size += write(baseAddress + XSPM_CONTROL_OFFSET, &regValue, 4);
+    // AIM
+    for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
+        size += (*itr)->stopCounter();
     }
+
+
+#if 0
+    // why not these in the original code
+    // AM
+    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr) {
+        size += (*itr)->stopCounter();
+    }
+
+    // ASM
+    for(std::vector<ASM*>::iterator itr = asmList.begin(); itr != asmList.end(); ++itr) {
+        size += (*itr)->stopCounter();
+    }
+#endif
     return size;
   }
 
-  // Read SPM performance counters
+  // Read AIM performance counters
   size_t DeviceIntf::readCounters(xclPerfMonType type, xclCounterResults& counterResults) {
     if (mVerbose) {
       std::cout << __func__ << ", " << std::this_thread::get_id()
@@ -304,220 +312,31 @@ namespace xdp {
    	  return 0;
 
     size_t size = 0;
-    uint64_t baseAddress;
-    uint32_t sampleInterval;
-    uint32_t numSlots = 0;
-    
-    numSlots = getNumberSlots(XCL_PERF_MON_MEMORY);
-    for (uint32_t s=0; s < numSlots; s++) {
-      baseAddress = getBaseAddress(XCL_PERF_MON_MEMORY,s);
-      // Read sample interval register
-      // NOTE: this also latches the sampled metric counters
-      size += read(baseAddress + XSPM_SAMPLE_OFFSET, &sampleInterval, 4);
 
-      // Need to do this for every xilmon  
-      if (s==0){
-        counterResults.SampleIntervalUsec = sampleInterval / xclGetDeviceClockFreqMHz(mHandle);
-      }
-
-      size += read(baseAddress + XSPM_SAMPLE_WRITE_BYTES_OFFSET,
-                   &counterResults.WriteBytes[s], 4);
-      size += read(baseAddress + XSPM_SAMPLE_WRITE_TRANX_OFFSET,
-                   &counterResults.WriteTranx[s], 4);
-      size += read(baseAddress + XSPM_SAMPLE_WRITE_LATENCY_OFFSET,
-                   &counterResults.WriteLatency[s], 4);
-      size += read(baseAddress + XSPM_SAMPLE_READ_BYTES_OFFSET,
-                   &counterResults.ReadBytes[s], 4);
-      size += read(baseAddress + XSPM_SAMPLE_READ_TRANX_OFFSET,
-                   &counterResults.ReadTranx[s], 4);
-      size += read(baseAddress + XSPM_SAMPLE_READ_LATENCY_OFFSET,
-                   &counterResults.ReadLatency[s], 4);
-
-      // Read upper 32 bits (if available)
-      if (mProperties[s] & XSPM_64BIT_PROPERTY_MASK) {
-        uint64_t upper[6] = {};
-        size += read(baseAddress + XSPM_SAMPLE_WRITE_BYTES_UPPER_OFFSET,
-                     &upper[0], 4);
-        size += read(baseAddress + XSPM_SAMPLE_WRITE_TRANX_UPPER_OFFSET,
-                     &upper[1], 4);
-        size += read(baseAddress + XSPM_SAMPLE_WRITE_LATENCY_UPPER_OFFSET,
-                     &upper[2], 4);
-        size += read(baseAddress + XSPM_SAMPLE_READ_BYTES_UPPER_OFFSET,
-                     &upper[3], 4);
-        size += read(baseAddress + XSPM_SAMPLE_READ_TRANX_UPPER_OFFSET,
-                     &upper[4], 4);
-        size += read(baseAddress + XSPM_SAMPLE_READ_LATENCY_UPPER_OFFSET,
-                     &upper[5], 4);
-
-        counterResults.WriteBytes[s]   += (upper[0] << 32);
-        counterResults.WriteTranx[s]   += (upper[1] << 32);
-        counterResults.WriteLatency[s] += (upper[2] << 32);
-        counterResults.ReadBytes[s]    += (upper[3] << 32);
-        counterResults.ReadTranx[s]    += (upper[4] << 32);
-        counterResults.ReadLatency[s]  += (upper[5] << 32);
-
-        if (mVerbose) {
-          std::cout << "SPM Upper 32, slot " << s << std::endl;
-          std::cout << "  WriteBytes : " << upper[0] << std::endl;
-          std::cout << "  WriteTranx : " << upper[1] << std::endl;
-          std::cout << "  WriteLatency : " << upper[2] << std::endl;
-          std::cout << "  ReadBytes : " << upper[3] << std::endl;
-          std::cout << "  ReadTranx : " << upper[4] << std::endl;
-          std::cout << "  ReadLatency : " << upper[5] << std::endl;
-        }
-      }
-
-      if (mVerbose) {
-        std::cout << "Reading SPM ...SlotNum : " << s << std::endl;
-        std::cout << "Reading SPM ...WriteBytes : " << counterResults.WriteBytes[s] << std::endl;
-        std::cout << "Reading SPM ...WriteTranx : " << counterResults.WriteTranx[s] << std::endl;
-        std::cout << "Reading SPM ...WriteLatency : " << counterResults.WriteLatency[s] << std::endl;
-        std::cout << "Reading SPM ...ReadBytes : " << counterResults.ReadBytes[s] << std::endl;
-        std::cout << "Reading SPM ...ReadTranx : " << counterResults.ReadTranx[s] << std::endl;
-        std::cout << "Reading SPM ...ReadLatency : " << counterResults.ReadLatency[s] << std::endl;
-      }
+    // AIM
+    uint32_t idx = 0;
+    for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr, ++idx) {
+        size += (*itr)->readCounter(counterResults, idx);
     }
 
-    /*
-     * Read Accelerator Monitor Data
-     */
-    numSlots = getNumberSlots(XCL_PERF_MON_ACCEL);
-    for (uint32_t s=0; s < numSlots; s++) {
-      baseAddress = getBaseAddress(XCL_PERF_MON_ACCEL,s);
-      uint32_t version = 0;
-      size += read(baseAddress, &version, 4);
-      if (mVerbose) {
-        std::cout << "Accelerator Monitor Core Version : " << version << std::endl;
-      }
-
-      // Read sample interval register
-      // NOTE: this also latches the sampled metric counters
-      size += read(baseAddress + XSAM_SAMPLE_OFFSET,
-                   &sampleInterval, 4);
-      if (mVerbose) {
-        std::cout << "Accelerator Monitor Sample Interval : " << sampleInterval << std::endl;
-      }
-
-      size += read(baseAddress + XSAM_ACCEL_EXECUTION_COUNT_OFFSET,
-                   &counterResults.CuExecCount[s], 4);
-      size += read(baseAddress + XSAM_ACCEL_EXECUTION_CYCLES_OFFSET,
-                   &counterResults.CuExecCycles[s], 4);
-      size += read(baseAddress + XSAM_ACCEL_MIN_EXECUTION_CYCLES_OFFSET,
-                   &counterResults.CuMinExecCycles[s], 4);
-      size += read(baseAddress + XSAM_ACCEL_MAX_EXECUTION_CYCLES_OFFSET,
-                   &counterResults.CuMaxExecCycles[s], 4);
-
-      // Read upper 32 bits (if available)
-      if (mAccelmonProperties[s] & XSAM_64BIT_PROPERTY_MASK) {
-        uint64_t upper[4] = {};
-        size += read(baseAddress + XSAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET,
-                     &upper[0], 4);
-        size += read(baseAddress + XSAM_ACCEL_EXECUTION_CYCLES_UPPER_OFFSET,
-                     &upper[1], 4);
-        size += read(baseAddress + XSAM_ACCEL_MIN_EXECUTION_CYCLES_UPPER_OFFSET,
-                     &upper[2], 4);
-        size += read(baseAddress + XSAM_ACCEL_MAX_EXECUTION_CYCLES_UPPER_OFFSET,
-                     &upper[3], 4);
-
-        counterResults.CuExecCount[s]     += (upper[0] << 32);
-        counterResults.CuExecCycles[s]    += (upper[1] << 32);
-        counterResults.CuMinExecCycles[s] += (upper[2] << 32);
-        counterResults.CuMaxExecCycles[s] += (upper[3] << 32);
-
-        if (mVerbose) {
-          std::cout << "Accelerator Monitor Upper 32, slot " << s << std::endl;
-          std::cout << "  CuExecCount : " << upper[0] << std::endl;
-          std::cout << "  CuExecCycles : " << upper[1] << std::endl;
-          std::cout << "  CuMinExecCycles : " << upper[2] << std::endl;
-          std::cout << "  CuMaxExecCycles : " << upper[3] << std::endl;
-        }
-      }
-
-      if (mVerbose) {
-        std::cout << "Reading Accelerator Monitor... SlotNum : " << s << std::endl;
-        std::cout << "Reading Accelerator Monitor... CuExecCount : " << counterResults.CuExecCount[s] << std::endl;
-        std::cout << "Reading Accelerator Monitor... CuExecCycles : " << counterResults.CuExecCycles[s] << std::endl;
-        std::cout << "Reading Accelerator Monitor... CuMinExecCycles : " << counterResults.CuMinExecCycles[s] << std::endl;
-        std::cout << "Reading Accelerator Monitor... CuMaxExecCycles : " << counterResults.CuMaxExecCycles[s] << std::endl;
-      }
-
-      // Check Stall bit
-      if (mAccelmonProperties[s] & XSAM_STALL_PROPERTY_MASK) {
-        size += read(baseAddress + XSAM_ACCEL_STALL_INT_OFFSET,
-                     &counterResults.CuStallIntCycles[s], 4);
-        size += read(baseAddress + XSAM_ACCEL_STALL_STR_OFFSET,
-                     &counterResults.CuStallStrCycles[s], 4);
-        size += read(baseAddress + XSAM_ACCEL_STALL_EXT_OFFSET,
-                     &counterResults.CuStallExtCycles[s], 4);
-        if (mVerbose) {
-          std::cout << "Stall Counters enabled : " << std::endl;
-          std::cout << "Reading Accelerator Monitor... CuStallIntCycles : " << counterResults.CuStallIntCycles[s] << std::endl;
-          std::cout << "Reading Accelerator Monitor... CuStallStrCycles : " << counterResults.CuStallStrCycles[s] << std::endl;
-          std::cout << "Reading Accelerator Monitor... CuStallExtCycles : " << counterResults.CuStallExtCycles[s] << std::endl;
-        }
-      }
+    // AM
+    idx = 0;
+    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr, ++idx) {
+        size += (*itr)->readCounter(counterResults, idx);
     }
-    /*
-     * Read AXI Stream Monitor Data
-     */
-    if (mVerbose) {
-        std::cout << "Reading AXI Stream Monitors.." << std::endl;
+
+    // ASM
+    idx = 0;
+    for(std::vector<ASM*>::iterator itr = asmList.begin(); itr != asmList.end(); ++itr, ++idx) {
+        size += (*itr)->readCounter(counterResults, idx);
     }
-    numSlots = getNumberSlots(XCL_PERF_MON_STR);
-    for (uint32_t s=0; s < numSlots; s++) {
-      baseAddress = getBaseAddress(XCL_PERF_MON_STR,s);
-      // Sample Register
-      size += read(baseAddress + XSSPM_SAMPLE_OFFSET,
-                   &sampleInterval, 4);
-      size += read(baseAddress + XSSPM_NUM_TRANX_OFFSET,
-                   &counterResults.StrNumTranx[s], 8);
-      size += read(baseAddress + XSSPM_DATA_BYTES_OFFSET,
-                   &counterResults.StrDataBytes[s], 8);
-      size += read(baseAddress + XSSPM_BUSY_CYCLES_OFFSET,
-                   &counterResults.StrBusyCycles[s], 8);
-      size += read(baseAddress + XSSPM_STALL_CYCLES_OFFSET,
-                   &counterResults.StrStallCycles[s], 8);
-      size += read(baseAddress + XSSPM_STARVE_CYCLES_OFFSET,
-                   &counterResults.StrStarveCycles[s], 8);
-      if (mVerbose) {
-        std::cout << "Reading AXI Stream Monitor... SlotNum : " << s << std::endl;
-        std::cout << "Reading AXI Stream Monitor... NumTranx : " << counterResults.StrNumTranx[s] << std::endl;
-        std::cout << "Reading AXI Stream Monitor... DataBytes : " << counterResults.StrDataBytes[s] << std::endl;
-        std::cout << "Reading AXI Stream Monitor... BusyCycles : " << counterResults.StrBusyCycles[s] << std::endl;
-        std::cout << "Reading AXI Stream Monitor... StallCycles : " << counterResults.StrStallCycles[s] << std::endl;
-        std::cout << "Reading AXI Stream Monitor... StarveCycles : " << counterResults.StrStarveCycles[s] << std::endl;
-      }
-    }
+
     return size;
   }
 
   // ***************************************************************************
   // Timeline Trace
   // ***************************************************************************
-
-  // Reset trace AXI stream FIFO
-  size_t DeviceIntf::resetTraceFifo(xclPerfMonType type)
-  {
-    uint64_t resetCoreAddress = getFifoBaseAddress(type, 0) + AXI_FIFO_SRR;
-    uint64_t resetFifoAddress = getFifoBaseAddress(type, 0) + AXI_FIFO_RDFR;
-    size_t size = 0;
-    uint32_t regValue = AXI_FIFO_RESET_VALUE;
-
-    size += write(resetCoreAddress, &regValue, 4);
-    size += write(resetFifoAddress, &regValue, 4);
-    return size;
-  }
-
-  // Clock training used in converting device trace timestamps to host domain
-  size_t DeviceIntf::clockTraining(xclPerfMonType type)
-  {
-    if (mVerbose) {
-      std::cout << __func__ << ", " << std::this_thread::get_id() << ", "
-                << type << ", Send clock training..." << std::endl;
-    }
-    // This will be enabled later. We're snapping first event to start of cu.
-    return 1;
-  }
 
   // Start trace performance monitoring
   size_t DeviceIntf::startTrace(xclPerfMonType type, uint32_t startTrigger)
@@ -532,49 +351,32 @@ namespace xdp {
                 << ", Start device tracing..." << std::endl;
     }
     size_t size = 0;
-    uint32_t regValue;
-    uint64_t baseAddress;
-    uint32_t numSlots = getNumberSlots(XCL_PERF_MON_MEMORY);
 
-    // Update addresses for debug/profile IP
-    //readDebugIpLayout();
-
-    if (!mIsDeviceProfiling)
-   	  return 0;
-
-    for (uint32_t i=0; i < numSlots; i++) {
-      baseAddress = getBaseAddress(XCL_PERF_MON_MEMORY,i);
-      // Set SPM trace ctrl register bits
-      regValue = startTrigger & XSPM_TRACE_CTRL_MASK;
-      size += write(baseAddress + XSPM_TRACE_CTRL_OFFSET, &regValue, 4);
+    // check which of these IPs are trace enabled ?
+    // AIM
+    for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
+        size += (*itr)->triggerTrace(startTrigger);
+    }
+    // AM
+    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr) {
+        size += (*itr)->triggerTrace(startTrigger);
+    }
+    // ASM 
+    for(std::vector<ASM*>::iterator itr = asmList.begin(); itr != asmList.end(); ++itr) {
+        size += (*itr)->triggerTrace(startTrigger);
     }
 
-    numSlots = getNumberSlots(XCL_PERF_MON_ACCEL);
-    for (uint32_t i=0; i < numSlots; i++) {
-      baseAddress = getBaseAddress(XCL_PERF_MON_ACCEL,i);
-      // Set Stall trace control register bits
-      // Bit 1 : CU (Always ON)  Bit 2 : INT  Bit 3 : STR  Bit 4 : Ext 
-      regValue = ((startTrigger & XSAM_TRACE_STALL_SELECT_MASK) >> 1) | 0x1 ;
-      size += write(baseAddress + XSAM_TRACE_CTRL_OFFSET, &regValue, 4);
-    }
+// why is this done
 
-    getTraceCount(type);
-    size += resetTraceFifo(type);
-    getTraceCount(type);
+    // Get number of trace samples and reset fifo
+    getTraceCount(type /* does not matter */);  // get number of samples from Fifo Control
+    // reset fifo
+    fifoCtrl->reset();
+    // Get number of trace samples 
+    getTraceCount(type /* does not matter */);
 
-    for (uint32_t i = 0; i < 2; i++) {
-      baseAddress = getTraceFunnelAddress(XCL_PERF_MON_MEMORY);
-      uint64_t timeStamp = getHostTraceTimeNsec();
-      regValue = static_cast <uint32_t> (timeStamp & 0xFFFF);
-      size += write(baseAddress, &regValue, 4);
-      regValue = static_cast <uint32_t> (timeStamp >> 16 & 0xFFFF);
-      size += write(baseAddress, &regValue, 4);
-      regValue = static_cast <uint32_t> (timeStamp >> 32 & 0xFFFF); 
-      size += write(baseAddress, &regValue, 4);
-      regValue = static_cast <uint32_t> (timeStamp >> 48 & 0xFFFF);
-      size += write(baseAddress, &regValue, 4);
-      usleep(10);
-    }
+    // TraceFunnel
+    traceFunnel->initiateClockTraining();
     return size;
   }
 
@@ -590,8 +392,11 @@ namespace xdp {
    	  return 0;
 
     size_t size = 0;
-    getTraceCount(type);
-    size += resetTraceFifo(type);
+
+    getTraceCount(type /* does not matter */);
+    size += fifoCtrl->reset();
+    // fifoRead reset ?
+
     return size;
   }
 
@@ -602,28 +407,10 @@ namespace xdp {
                 << ", " << type << std::endl;
     }
 
-    uint64_t fifoBaseAddress = getFifoBaseAddress(type, 0);
-
-    if (!mIsDeviceProfiling || !fifoBaseAddress)
+    if (!mIsDeviceProfiling || !fifoCtrl)
    	  return 0;
 
-    //xclAddressSpace addressSpace = (type == XCL_PERF_MON_ACCEL) ?
-    //    XCL_ADDR_KERNEL_CTRL : XCL_ADDR_SPACE_DEVICE_PERFMON;
-
-    uint32_t fifoCount = 0;
-    uint32_t numSamples = 0;
-    uint32_t numBytes = 0;
-    read(fifoBaseAddress + AXI_FIFO_RLR, &fifoCount, 4);
-    // Read bits 22:0 per AXI-Stream FIFO product guide (PG080, 10/1/14)
-    numBytes = fifoCount & 0x7FFFFF;
-    numSamples = numBytes / (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH/8);
-
-    if (mVerbose) {
-      std::cout << "  No. of trace samples = " << std::dec << numSamples
-                << " (fifoCount = 0x" << std::hex << fifoCount << ")" << std::dec << std::endl;
-    }
-
-    return numSamples;
+    return fifoCtrl->getNumTraceSamples();
   }
 
   // Read all values from APM trace AXI stream FIFOs
@@ -639,165 +426,101 @@ namespace xdp {
     if (!mIsDeviceProfiling)
    	  return 0;
 
-    uint32_t numSamples = getTraceCount(type);
-    if (numSamples == 0)
-      return 0;
-
-    uint64_t fifoReadAddress[] = {0, 0, 0};
-    if (type == XCL_PERF_MON_MEMORY) {
-      fifoReadAddress[0] = getFifoReadBaseAddress(type, 0) + AXI_FIFO_RDFD_AXI_FULL;
-    }
-    else {
-      for (int i=0; i < 3; i++)
-        fifoReadAddress[i] = getFifoReadBaseAddress(type, i) + AXI_FIFO_RDFD;
-    }
-
     size_t size = 0;
-
-    // Limit to max number of samples so we don't overrun trace buffer on host
-    uint32_t maxSamples = getMaxSamples(type);
-    numSamples = (numSamples > maxSamples) ? maxSamples : numSamples;
-    traceVector.mLength = numSamples;
-
-    const uint32_t bytesPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 8);
-    const uint32_t wordsPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 32);
-    //uint32_t numBytes = numSamples * bytesPerSample;
-    uint32_t numWords = numSamples * wordsPerSample;
-
-    // Create trace buffer on host (requires alignment)
-    const int BUFFER_BYTES = MAX_TRACE_NUMBER_SAMPLES * bytesPerSample;
-    const int BUFFER_WORDS = MAX_TRACE_NUMBER_SAMPLES * wordsPerSample;
-#ifndef _WINDOWS
-// TODO: Windows build support
-//    alignas is defined in c++11
-//#if GCC_VERSION >= 40800
-    // Alignment is limited to 16 by PPC64LE
-    //alignas(AXI_FIFO_RDFD_AXI_FULL) uint32_t hostbuf[BUFFER_WORDS];
-    alignas(16) uint32_t hostbuf[BUFFER_WORDS];
-//#else
-//    AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, BUFFER_WORDS);
-//    uint32_t* hostbuf = alignedBuffer.getBuffer();
-//#endif
-#else
-    uint32_t hostbuf[BUFFER_WORDS];
-#endif
-
-    // ******************************
-    // Read all words from trace FIFO
-    // ******************************
-    if (type == XCL_PERF_MON_MEMORY) {
-      memset((void *)hostbuf, 0, BUFFER_BYTES);
-
-      // Iterate over chunks
-      // NOTE: AXI limits this to 4K bytes per transfer
-      uint32_t chunkSizeWords = 256 * wordsPerSample;
-      if (chunkSizeWords > 1024) chunkSizeWords = 1024;
-      uint32_t chunkSizeBytes = 4 * chunkSizeWords;
-      uint32_t words=0;
-
-      // Read trace a chunk of bytes at a time
-      if (numWords > chunkSizeWords) {
-        for (; words < (numWords-chunkSizeWords); words += chunkSizeWords) {
-          if (mVerbose) {
-            std::cout << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
-                << std::hex << fifoReadAddress[0] << " and writing it to 0x"
-                << (void *)(hostbuf + words) << std::dec << std::endl;
-          }
-
-          if (traceRead((void *)(hostbuf + words), chunkSizeBytes,  fifoReadAddress[0]) < 0)
-            return 0;
-
-          size += chunkSizeBytes;
-        }
-      }
-
-      // Read remainder of trace not divisible by chunk size
-      if (words < numWords) {
-        chunkSizeBytes = 4 * (numWords - words);
-
-        if (mVerbose) {
-          std::cout << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
-              << std::hex << fifoReadAddress[0] << " and writing it to 0x"
-              << (void *)(hostbuf + words) << std::dec << std::endl;
-        }
-
-        if (traceRead((void *)(hostbuf + words), chunkSizeBytes,  fifoReadAddress[0]) < 0)
-            return 0;
-
-        size += chunkSizeBytes;
-      }
-
-      if (mVerbose) {
-        std::cout << __func__ << ": done reading " << size << " bytes " << std::endl;
-      }
-    }
-
-    // ******************************
-    // Read & process all trace FIFOs
-    // ******************************
-    xclTraceResults results = {};
-    for (uint32_t wordnum=0; wordnum < numSamples; wordnum++) {
-      uint32_t index = wordsPerSample * wordnum;
-      uint64_t temp = 0;
-
-      temp = *(hostbuf + index) | (uint64_t)*(hostbuf + index + 1) << 32;
-      if (!temp)
-        continue;
-
-      // This section assumes that we write 8 timestamp packets in startTrace
-      int mod = (wordnum % 4);
-      unsigned int clockWordIndex = 7;
-      if (wordnum > clockWordIndex || mod == 0) {
-        memset(&results, 0, sizeof(xclTraceResults));
-      }
-      if (wordnum <= clockWordIndex) {
-        if (mod == 0) {
-          results.Timestamp = temp & 0x1FFFFFFFFFFF;
-        }
-        uint64_t partial = (((temp >> 45) & 0xFFFF) << (16 * mod));
-        results.HostTimestamp = results.HostTimestamp | partial;
-        if (mVerbose) {
-          std::cout << "Updated partial host timestamp : " << std::hex << partial << std::endl;
-        }
-        if (mod == 3) {
-          if (mVerbose) {
-            std::cout << "  Trace sample " << std::dec << wordnum << ": ";
-            std::cout << " Timestamp : " << results.Timestamp << "   ";
-            std::cout << " Host Timestamp : " << std::hex << results.HostTimestamp << std::endl;
-          }
-          traceVector.mArray[static_cast<int>(wordnum/4)] = results;
-        }
-        continue;
-      }
-
-      // Zynq Packet Format
-      results.Timestamp = temp & 0x1FFFFFFFFFFF;
-      results.EventType = ((temp >> 45) & 0xF) ? XCL_PERF_MON_END_EVENT : 
-          XCL_PERF_MON_START_EVENT;
-      results.TraceID = (temp >> 49) & 0xFFF;
-      results.Reserved = (temp >> 61) & 0x1;
-      results.Overflow = (temp >> 62) & 0x1;
-      results.Error = (temp >> 63) & 0x1;
-      results.EventID = XCL_PERF_MON_HW_EVENT;
-      results.EventFlags = ((temp >> 45) & 0xF) | ((temp >> 57) & 0x10) ;
-      traceVector.mArray[wordnum - clockWordIndex + 1] = results;
-
-      if (mVerbose) {
-        std::cout << "  Trace sample " << std::dec << wordnum << ": ";
-        std::cout << dec2bin(uint32_t(temp>>32)) << " " << dec2bin(uint32_t(temp&0xFFFFFFFF));
-        std::cout << std::endl;
-        std::cout << " Timestamp : " << results.Timestamp << "   ";
-        std::cout << "Event Type : " << results.EventType << "   ";
-        std::cout << "slotID : " << results.TraceID << "   ";
-        std::cout << "Start, Stop : " << static_cast<int>(results.Reserved) << "   ";
-        std::cout << "Overflow : " << static_cast<int>(results.Overflow) << "   ";
-        std::cout << "Error : " << static_cast<int>(results.Error) << "   ";
-        std::cout << "EventFlags : " << static_cast<int>(results.EventFlags) << "   ";
-        std::cout << std::endl;
-      }
-    }
+    size += fifoRead->readTrace(traceVector, getTraceCount(type /*does not matter*/));
 
     return size;
+  }
+
+  void DeviceIntf::readDebugIPlayout()
+  {
+    if(mIsDebugIPlayoutRead || !mDeviceHandle)
+        return;
+
+    xrt::device* xrtDevice = (xrt::device*)mDeviceHandle;
+    std::string path = xrtDevice->getDebugIPlayoutPath().get();
+    if(path.empty()) {
+        // error ? : for HW_emu this will be empty for now ; but as of current status should not have been called 
+        return;
+    }
+
+    uint32_t liveProcessesOnDevice = xrtDevice->getNumLiveProcesses().get();
+    if(liveProcessesOnDevice > 1) {
+      /* More than 1 process on device. Device Profiling for multi-process not supported yet.
+       */
+      std::string warnMsg = "Multiple live processes running on device. Hardware Debug and Profiling data will be unavailable for this process.";
+      std::cout << warnMsg << std::endl;
+//      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", warnMsg) ;
+      mIsDeviceProfiling = false;
+      mIsDebugIPlayoutRead = true;
+      return;
+    }
+
+    std::ifstream ifs(path.c_str(), std::ifstream::binary);
+    if(!ifs) {
+      return;
+    }
+    char buffer[65536];
+    // debug_ip_layout max size is 65536
+    ifs.read(buffer, 65536);
+    debug_ip_layout *map;
+    if (ifs.gcount() > 0) {
+      map = (debug_ip_layout*)(buffer);
+      for( unsigned int i = 0; i < map->m_count; i++ ) {
+      switch(map->m_debug_ip_data[i].m_type) {
+        case AXI_MM_MONITOR : aimList.push_back(new AIM(mDeviceHandle, i, &(map->m_debug_ip_data[i])));
+                              break;
+        case ACCEL_MONITOR  : amList.push_back(new AM(mDeviceHandle, i, &(map->m_debug_ip_data[i])));
+                              break;
+        case AXI_STREAM_MONITOR : asmList.push_back(new ASM(mDeviceHandle, i, &(map->m_debug_ip_data[i])));
+                                  break;
+        case AXI_MONITOR_FIFO_LITE : fifoCtrl = new TraceFifoLite(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
+                                     break;
+        case AXI_MONITOR_FIFO_FULL : fifoRead = new TraceFifoFull(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
+                                     break;
+        case AXI_TRACE_FUNNEL : traceFunnel = new TraceFunnel(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
+                                break;
+//        case TRACE_S2MM : traceDMA = new TraceS2MM(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
+//                          break;
+        default : break;
+        // case AXI_STREAM_PROTOCOL_CHECKER
+
+      }
+     }
+    }
+    ifs.close();
+#if 0
+    for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
+        (*itr)->showProperties();
+    }
+
+    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr) {
+        (*itr)->showProperties();
+    }
+
+    for(std::vector<ASM*>::iterator itr = asmList.begin(); itr != asmList.end(); ++itr) {
+        (*itr)->showProperties();
+    }
+    if(fifoCtrl) fifoCtrl->showProperties();
+    if(fifoRead) fifoRead->showProperties();
+    if(traceDMA) traceDMA->showProperties();
+    if(traceFunnel) traceFunnel->showProperties();
+#endif
+
+    mIsDebugIPlayoutRead = true;
+  }
+
+  void DeviceIntf::configureDataflow(bool* ipConfig)
+  {
+    // this ipConfig only tells whether the corresponding CU has ap_control_chain :
+    // could have been just a property on the monitor set at compile time (in debug_ip_layout)
+    if(!ipConfig)
+      return;
+
+    uint32_t i = 0;
+    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr, ++i) {
+        (*itr)->configureDataflow(ipConfig[i]);
+    }
   }
 
 } // namespace xdp

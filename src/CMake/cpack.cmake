@@ -43,7 +43,7 @@ if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian|pynqlinux)")
   # aws component dependencies
   SET(CPACK_DEBIAN_AWS_PACKAGE_DEPENDS "xrt (>= ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH})")
   # xrt component dependencies
-  SET(CPACK_DEBIAN_XRT_PACKAGE_DEPENDS "ocl-icd-opencl-dev (>= 2.2.0), libboost-dev (>= ${Boost_VER_STR}), libboost-dev (<< ${Boost_VER_STR_ONEGREATER}), libboost-filesystem-dev (>=${Boost_VER_STR}), libboost-filesystem-dev (<<${Boost_VER_STR_ONEGREATER}), uuid-dev (>= 2.27.1), dkms (>= 2.2.0), libprotoc-dev (>=2.6.1), protobuf-compiler (>=2.6.1), libncurses5-dev (>=6.0), lsb-release, libxml2-dev (>=2.9.1), libyaml-dev (>= 0.1.6), libc6 (>= ${GLIBC_VERSION}), libc6 (<< ${GLIBC_VERSION_ONEGREATER}), python (>= 2.7)")
+  SET(CPACK_DEBIAN_XRT_PACKAGE_DEPENDS "ocl-icd-opencl-dev (>= 2.2.0), libboost-dev (>= ${Boost_VER_STR}), libboost-dev (<< ${Boost_VER_STR_ONEGREATER}), libboost-filesystem-dev (>=${Boost_VER_STR}), libboost-filesystem-dev (<<${Boost_VER_STR_ONEGREATER}), uuid-dev (>= 2.27.1), dkms (>= 2.2.0), libprotoc-dev (>=2.6.1), libssl-dev (>=1.0.2), protobuf-compiler (>=2.6.1), libncurses5-dev (>=6.0), lsb-release, libxml2-dev (>=2.9.1), libyaml-dev (>= 0.1.6), libc6 (>= ${GLIBC_VERSION}), libc6 (<< ${GLIBC_VERSION_ONEGREATER}), python (>= 2.7)")
 
 elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS)")
   SET(CPACK_GENERATOR "RPM;TGZ")
@@ -60,7 +60,7 @@ elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS)")
   # aws component dependencies
   SET(CPACK_RPM_AWS_PACKAGE_REQUIRES "xrt >= ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH}")
   # xrt component dependencies
-  SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "ocl-icd-devel >= 2.2, boost-devel >= 1.53, boost-filesystem >= 1.53, libuuid-devel >= 2.23.2, dkms >= 2.5.0, protobuf-devel >= 2.5.0, protobuf-compiler >= 2.5.0, ncurses-devel >= 5.9, redhat-lsb-core, libxml2-devel >= 2.9.1, libyaml-devel >= 0.1.4, python >= 2.7 ")
+  SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "ocl-icd-devel >= 2.2, boost-devel >= 1.53, boost-filesystem >= 1.53, libuuid-devel >= 2.23.2, dkms >= 2.5.0, protobuf-devel >= 2.5.0, protobuf-compiler >= 2.5.0, ncurses-devel >= 5.9, redhat-lsb-core, libxml2-devel >= 2.9.1, libyaml-devel >= 0.1.4, python >= 2.7, openssl-devel >= 1.0.2 ")
 else ()
   SET (CPACK_GENERATOR "TGZ")
 endif()
