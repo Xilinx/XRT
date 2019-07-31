@@ -90,7 +90,7 @@ int xocl_init_mem(struct xocl_drm *drm_p);
 int xocl_cleanup_mem(struct xocl_drm *drm_p);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
-int xocl_gem_fault(struct vm_fault *vmf);
+unsigned int xocl_gem_fault(struct vm_fault *vmf);
 #else
 int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf);
 #endif

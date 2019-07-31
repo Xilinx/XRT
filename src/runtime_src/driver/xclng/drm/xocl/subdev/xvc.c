@@ -28,7 +28,7 @@
 #include <linux/ioctl.h>
 
 #include "../xocl_drv.h"
-
+#define mmiowb()
 /* IOCTL interfaces */
 #define XIL_XVC_MAGIC 0x58564344  // "XVCD"
 #define	MINOR_PUB_HIGH_BIT	0x00000

@@ -27,7 +27,7 @@
 #include "cdev_sgdma.h"
 
 /* SECTION: Module licensing */
-
+#define mmiowb()
 #ifdef __LIBXDMA_MOD__
 #include "version.h"
 #define DRV_MODULE_NAME		"libxdma"

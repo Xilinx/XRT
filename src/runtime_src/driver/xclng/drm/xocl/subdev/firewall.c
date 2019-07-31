@@ -191,7 +191,7 @@ static const struct attribute_group firewall_attrgroup = {
 static u32 check_firewall(struct platform_device *pdev, int *level)
 {
 	struct firewall	*fw;
-	struct timeval	time;
+	struct timespec64 time;
 	int	i;
 	u32	val = 0;
 
@@ -206,7 +206,7 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 			if (!fw->curr_status) {
 				fw->err_detected_status = val;
 				fw->err_detected_level = i;
-				do_gettimeofday(&time);
+				ktime_get_real_ts64(&time);
 				fw->err_detected_time = (u64)(time.tv_sec -
 					(sys_tz.tz_minuteswest * 60));
 			}

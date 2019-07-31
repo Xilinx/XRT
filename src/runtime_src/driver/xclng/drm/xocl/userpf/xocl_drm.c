@@ -157,7 +157,7 @@ static int xocl_mmap(struct file *filp, struct vm_area_struct *vma)
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
-int xocl_gem_fault(struct vm_fault *vmf)
+unsigned int xocl_gem_fault(struct vm_fault *vmf)
 {
 	struct vm_area_struct *vma = vmf->vma;
 #else
@@ -406,7 +406,7 @@ failed:
 	if (drm_registered)
 		drm_dev_unregister(ddev);
 	if (ddev)
-		drm_dev_unref(ddev);
+		drm_dev_put(ddev);
 	if (drm_p)
 		xocl_drvinst_free(drm_p);
 

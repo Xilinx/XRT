@@ -163,7 +163,15 @@ static int fmgr_probe(struct platform_device *pdev)
 
 #if defined(FPGA_MGR_SUPPORT)
 	obj->state = FPGA_MGR_STATE_UNKNOWN;
-	ret = fpga_mgr_register(&pdev->dev, obj->name, &xocl_pr_ops, obj);
+	struct fpga_manager *mgr = fpga_mgr_create(&pdev->dev, obj->name, &xocl_pr_ops, obj);
+	if (!mgr)
+	  return -ENOMEM;
+	platform_set_drvdata(pdev, obj);
+	ret = fpga_mgr_register(mgr);
+	if (ret)
+	  fpga_mgr_free(mgr);
+	  
+	//ret = fpga_mgr_register(&pdev->dev, obj->name, &xocl_pr_ops, obj);
 #else
 	platform_set_drvdata(pdev, obj);
 #endif
@@ -177,7 +185,7 @@ static int fmgr_remove(struct platform_device *pdev)
 	struct xfpga_klass *obj = mgr->priv;
 
 	obj->state = FPGA_MGR_STATE_UNKNOWN;
-	fpga_mgr_unregister(&pdev->dev);
+	fpga_mgr_unregister(mgr);
 #else
 	struct xfpga_klass *obj = platform_get_drvdata(pdev);
 #endif

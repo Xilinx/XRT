@@ -928,7 +928,7 @@ static int queue_req_complete(unsigned long priv, unsigned int done_bytes,
 			cb->queue->qconf.c2h ? DMA_FROM_DEVICE : DMA_TO_DEVICE);
 		xocl_finish_unmgd(&cb->unmgd);
 	} else {
-		drm_gem_object_unreference_unlocked(&cb->xobj->base);
+		drm_gem_object_put_unlocked(&cb->xobj->base);
 	}
 
 	spin_lock_bh(&cb->lock);
@@ -962,7 +962,7 @@ static ssize_t stream_post_bo(struct xocl_qdma *qdma,
 		goto out;
 	}
 
-	drm_gem_object_reference(gem_obj);
+	drm_gem_object_get(gem_obj);
 	xobj = to_xocl_bo(gem_obj);
 
 	io_req = queue_req_new(queue);
@@ -1010,7 +1010,7 @@ static ssize_t stream_post_bo(struct xocl_qdma *qdma,
 
 out:
 	if (!kiocb) {
-		drm_gem_object_unreference_unlocked(gem_obj);
+		drm_gem_object_put_unlocked(gem_obj);
 		if (io_req)
 			queue_req_free(queue, io_req, false);
 	} else {
@@ -1621,7 +1621,7 @@ static long stream_ioctl_alloc_buffer(struct xocl_qdma *qdma,
 
 	flags = O_CLOEXEC | O_RDWR;
 
-	drm_gem_object_reference(&xobj->base);
+	drm_gem_object_get(&xobj->base);
 	dmabuf = drm_gem_prime_export(XOCL_DRM(xdev)->ddev,
 		       	&xobj->base, flags);
 	if (IS_ERR(dmabuf)) {
@@ -1683,7 +1683,7 @@ static long stream_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	return result;
 }
 
-static int stream_open(struct inode *inode, struct file *file)
+static int qdma_stream_open(struct inode *inode, struct file *file)
 {
 	struct xocl_qdma *qdma;
 
@@ -1718,7 +1718,7 @@ static int stream_close(struct inode *inode, struct file *file)
  */
 static const struct file_operations stream_fops = {
 	.owner = THIS_MODULE,
-	.open = stream_open,
+	.open = qdma_stream_open,
 	.release = stream_close,
 	.unlocked_ioctl = stream_ioctl,
 };

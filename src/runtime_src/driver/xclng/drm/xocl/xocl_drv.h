@@ -29,6 +29,7 @@
 #include "mgmt-ioctl.h"
 #include "mailbox_proto.h"
 
+#define XOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(ADDR, SIZE)
 
 #if defined(RHEL_RELEASE_CODE)
 #if RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(7, 4)

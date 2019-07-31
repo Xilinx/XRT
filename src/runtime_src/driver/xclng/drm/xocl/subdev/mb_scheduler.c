@@ -429,7 +429,7 @@ static inline void
 cmd_release_gem_object_reference(struct xocl_cmd *xcmd)
 {
 	if (xcmd->bo)
-		drm_gem_object_unreference_unlocked(&xcmd->bo->base);
+		drm_gem_object_put_unlocked(&xcmd->bo->base);
 }
 
 /*
@@ -473,7 +473,7 @@ cmd_chain_dependencies(struct xocl_cmd *xcmd)
 		struct xocl_cmd *chain_to = dbo->metadata.active;
 		// release reference created in ioctl call when dependency was looked up
 		// see comments in xocl_ioctl.c:xocl_execbuf_ioctl()
-		drm_gem_object_unreference_unlocked(&dbo->base);
+		drm_gem_object_put_unlocked(&dbo->base);
 		xcmd->deps[didx] = NULL;
 		if (!chain_to) { // command may have completed already
 			--xcmd->wait_count;
@@ -3014,18 +3014,18 @@ get_bo_paddr(struct xocl_dev *xdev, struct drm_file *filp,
 	xobj = to_xocl_bo(obj);
 	if (!xobj->mm_node) {
 		/* Not a local BO */
-		drm_gem_object_unreference_unlocked(obj);
+		drm_gem_object_put_unlocked(obj);
 		return -EADDRNOTAVAIL;
 	}
 
 	if (obj->size <= off || obj->size < off + size) {
 		userpf_err(xdev, "Failed to get paddr for BO 0x%x\n", bo_hdl);
-		drm_gem_object_unreference_unlocked(obj);
+		drm_gem_object_put_unlocked(obj);
 		return -EINVAL;
 	}
 
 	*paddrp = xobj->mm_node->start + off;
-	drm_gem_object_unreference_unlocked(obj);
+	drm_gem_object_put_unlocked(obj);
 	return 0;
 }
 
@@ -3181,8 +3181,8 @@ client_ioctl_execbuf(struct platform_device *pdev,
 
 out:
 	for (--numdeps; numdeps >= 0; numdeps--)
-		drm_gem_object_unreference_unlocked(&deps[numdeps]->base);
-	drm_gem_object_unreference_unlocked(&xobj->base);
+		drm_gem_object_put_unlocked(&deps[numdeps]->base);
+	drm_gem_object_put_unlocked(&xobj->base);
 	return ret;
 }
 
