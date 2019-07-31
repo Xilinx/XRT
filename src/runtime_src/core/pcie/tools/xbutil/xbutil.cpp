@@ -940,7 +940,6 @@ int xcldev::device::runTestCase(const std::string& exe,
     std::string xclbinPath;
     searchXsaAndDsa(xsaXclbinPath, dsaXclbinPath, xclbinPath, output);
     xclbinPath += xclbin;
-    std::string idxOption;
 
     if (stat(xrtTestCasePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
         output += "ERROR: Failed to find ";
@@ -959,10 +958,7 @@ int xcldev::device::runTestCase(const std::string& exe,
         return -EINVAL;
     }
 
-    if (m_idx != 0)
-        idxOption = "-d " + std::to_string(m_idx);
-
-    std::string cmd = "python " + xrtTestCasePath + " -k " + xclbinPath + " " + idxOption;
+    std::string cmd = "python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
     return runShellCmd(cmd, output);
 }
 
