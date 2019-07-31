@@ -561,7 +561,6 @@ void shim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     mDev->sysfs_get("xmc", "xmc_vcc1v2_btm", errmsg, info->m1v2Bottom);
     mDev->sysfs_get("xmc", "xmc_vccint_vol", errmsg, info->mVccIntVol);
     mDev->sysfs_get("xmc", "xmc_fpga_temp", errmsg, info->mOnChipTemp);
-    mDev->sysfs_get("xmc", "xmc_3v3_pex_curr", errmsg, info->m3v3PexCurr);
 
     mDev->sysfs_get("", "link_width", errmsg, info->mPCIeLinkWidth);
     mDev->sysfs_get("", "link_speed", errmsg, info->mPCIeLinkSpeed);

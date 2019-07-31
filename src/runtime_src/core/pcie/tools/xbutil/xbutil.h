@@ -277,22 +277,6 @@ public:
         lines.push_back(ss.str());
     }
 
-    unsigned m_devinfo_pcie_power(const xclDeviceInfo2& m_devinfo) const
-    {
-        unsigned long long power = 0;
-
-        if(m_devinfo.mPexCurr != XCL_INVALID_SENSOR_VAL &&
-	   m_devinfo.mPexCurr != XCL_NO_SENSOR_DEV_LL &&
-	   m_devinfo.m12VPex != XCL_INVALID_SENSOR_VAL &&
-	   m_devinfo.m12VPex != XCL_NO_SENSOR_DEV_S) {
-		power = (m_devinfo.mPexCurr * m_devinfo.m12VPex) +
-			(m_devinfo.m3v3PexCurr * m_devinfo.m3v3Pex);
-        }
-
-        power /= 1000000;
-        return static_cast<unsigned>(power);
-    }
-
     void m_mem_usage_bar(xclDeviceUsage &devstat,
         std::vector<std::string> &lines) const
     {
@@ -691,7 +675,6 @@ public:
         sensor_tree::put( "board.physical.electrical.12v_sw.voltage",            m_devinfo.m12vSW );
         sensor_tree::put( "board.physical.electrical.mgt_vtt.voltage",           m_devinfo.mMgtVtt );
         sensor_tree::put( "board.physical.electrical.vccint.voltage",            m_devinfo.mVccIntVol );
-        sensor_tree::put( "board.physical.electrical.3v3_pex.current",		 m_devinfo.m3v3PexCurr );
         {
             unsigned short cur = 0;
             std::string errmsg;
@@ -701,9 +684,6 @@ public:
 
         // powerm_devinfo_power
         sensor_tree::put( "board.physical.power", m_devinfo_power(m_devinfo));
-
-        // Board PCIe power
-        sensor_tree::put( "board.physical.pcie_power", m_devinfo_pcie_power(m_devinfo));
 
         // firewall
         unsigned i = m_errinfo.mFirewallLevel;
@@ -840,10 +820,9 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.12v_aux.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned long long>( "board.physical.electrical.12v_pex.current" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned long long>( "board.physical.electrical.12v_aux.current" ) << std::endl;
-        ostr << std::setw(16) << "3V3 PEX" << std::setw(16) << "3V3 AUX" << std::setw(16) << "3V3 PEX Current" << std::setw(16) << "DDR VPP BOTTOM" << std::setw(16) << "DDR VPP TOP" << std::endl;
+        ostr << std::setw(16) << "3V3 PEX" << std::setw(16) << "3V3 AUX" << std::setw(16) << "DDR VPP BOTTOM" << std::setw(16) << "DDR VPP TOP" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.3v3_pex.voltage"        )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.3v3_aux.voltage"        )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned long long>( "board.physical.electrical.3v3_pex.current"    )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.ddr_vpp_bottom.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.ddr_vpp_top.voltage"    ) << std::endl;
         ostr << std::setw(16) << "SYS 5V5" << std::setw(16) << "1V2 TOP" << std::setw(16) << "1V8 TOP" << std::setw(16) << "0V85" << std::endl;
@@ -864,11 +843,6 @@ public:
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Card Power\n";
         ostr << sensor_tree::get_pretty<unsigned>( "board.physical.power" ) << " W" << std::endl;
-
-        ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-        ostr << "Board PCIe Power\n";
-        ostr << sensor_tree::get_pretty<unsigned>( "board.physical.pcie_power" ) << " W" << std::endl;
-
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Firewall Last Error Status\n";
         ostr << "Level " << std::setw(2) << sensor_tree::get( "board.error.firewall.firewall_level", -1 ) << ": 0x0"
