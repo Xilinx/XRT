@@ -146,6 +146,10 @@ namespace awsbwhal {
           axlf *axlfbuffer = reinterpret_cast<axlf*>(const_cast<xclBin*> (buffer));
           fpga_mgmt_image_info orig_info;
           char* afi_id = get_afi_from_axlf(axlfbuffer);
+
+		  if (!afi_id)
+			  return -EINVAL;
+
           std::memset(&orig_info, 0, sizeof(struct fpga_mgmt_image_info));
           fpga_mgmt_describe_local_image(mBoardNumber, &orig_info, 0);
 
