@@ -2,9 +2,12 @@
 import pyopencl as cl
 import numpy as np
 import sys
+import os
 from optparse import OptionParser
 
 def main():
+   logfile = open("/tmp/log.txt", "w")
+   os.dup2(logfile.fileno(), 2)
    platform_ID = None
    xclbin = None
    original = np.array(("Hello World"))

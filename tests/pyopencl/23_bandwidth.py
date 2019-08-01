@@ -1,6 +1,7 @@
 import pyopencl as cl
 import numpy as np
 import sys
+import os
 from optparse import OptionParser
 import time
 import math
@@ -8,6 +9,8 @@ import math
 current_micro_time = lambda: int(round(time.time() * 1000000))
 
 def main():
+    logfile = open("/tmp/log.txt", "w")
+    os.dup2(logfile.fileno(), 2)
     platform_ID = None
     xclbin = None
     globalbuffersize = 1024*1024*16    #16 MB

@@ -990,6 +990,9 @@ int xcldev::device::bandwidthKernelTest(void)
 
     if (output.find("PASS") == std::string::npos) {
         std::cout << output << std::endl;
+        std::ifstream f("/tmp/log.txt");
+        if (f.is_open())
+            std::cout << f.rdbuf();
         return -EINVAL;
     }
 
