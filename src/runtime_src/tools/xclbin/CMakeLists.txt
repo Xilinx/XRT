@@ -16,6 +16,8 @@ find_package(ZLIB REQUIRED)
 find_library(Z_LIB libz.a REQUIRED)
 
 find_library(DL_LIB libdl.a REQUIRED)
+
+find_library(PTHREAD_LIB libpthread.a)
 endif()
 
 # -----------------------------------------------------------------------------
@@ -140,6 +142,7 @@ else()
   target_link_libraries(xclbinutil ${CRYPTO_LIB})
   target_link_libraries(xclbinutil ${Z_LIB})       # OpenSSL supporting library
   target_link_libraries(xclbinutil ${DL_LIB})      # OpenSSL supporting library
+  target_link_libraries(xclbinutil ${PTHREAD_LIB})      # OpenSSL supporting library
   
   # On Ubuntu 18.04 CMake was appending '-Wl,-Bdynamic' to the command line which 
   # was causing the executable to reference 'linux-vdso.so.1' which would then 
