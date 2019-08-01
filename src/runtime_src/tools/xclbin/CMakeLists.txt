@@ -7,6 +7,13 @@ set(Boost_USE_STATIC_RUNTIME ON)            # This is how the boost libraries we
 find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 include_directories(${Boost_INCLUDE_DIRS})
 
+if(NOT WIN32) 
+set(OPENSSL_USE_STATIC_LIBS TRUE)
+find_package(OpenSSL REQUIRED)
+
+find_library(DL_LIB libdl.a REQUIRED)
+endif()
+
 # -----------------------------------------------------------------------------
 
 include_directories(${CMAKE_BINARY_DIR}/gen)
@@ -96,6 +103,7 @@ file(GLOB XCLBINUTIL_FILES
   "DTCStringsBlock.cxx"
   "FDTNode.cxx"
   "FDTProperty.cxx"
+  "XclBinSignature.cxx"
 )
 set(XCLBINUTIL_FILES_SRCS ${XCLBINUTIL_FILES})
 
@@ -123,6 +131,11 @@ if(WIN32)
   target_compile_options(xclbinutil PRIVATE /DBOOST_CONFIG_SUPPRESS_OUTDATED_MESSAGE)
 else()
   target_link_libraries(xclbinutil -static ${Boost_LIBRARIES})
+  # False warning: /usr/lib/x86_64-linux-gnu/libcrypto.a(dso_dlfcn.o): In function `dlfcn_globallookup':
+  #                (.text+0x11): warning: Using 'dlopen' in statically linked applications requires at runtime the shared libraries from the glibc version used for linking
+  target_link_libraries(xclbinutil -static OpenSSL::Crypto)
+  target_link_libraries(xclbinutil -static libdl.a)
+
 
   # On Ubuntu 18.04 CMake was appending '-Wl,-Bdynamic' to the command line which 
   # was causing the executable to reference 'linux-vdso.so.1' which would then 
@@ -154,6 +167,8 @@ if (GTEST_FOUND)
 
   message (STATUS "GTest libraries: '${Boost_LIBRARIES} ${GTEST_BOTH_LIBRARIES} pthread'")
   target_link_libraries(xclbintest ${Boost_LIBRARIES} ${GTEST_BOTH_LIBRARIES} pthread )
+  target_link_libraries(xclbintest OpenSSL::Crypto)
+  target_link_libraries(xclbintest ${CMAKE_DL_LIBS})
 
   message(STATUS "Configuring CMake to run unit test after building")
   set(UNIT_TEST_XCLBINUTIL xclbintest)
