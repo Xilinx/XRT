@@ -354,10 +354,10 @@ namespace xclcpuemhal2 {
       assert(pid >= 0);
       if (pid == 0)
       { 
-        //I am child
         std::string childProcessPath("");
         std::string xilinxInstall("");
 
+        //Added the latest ENV to get the install path
         char *vitisInstallEnvvar = getenv("XILINX_VITIS");
         if (vitisInstallEnvvar != NULL) {
           xilinxInstall = std::string(vitisInstallEnvvar);
