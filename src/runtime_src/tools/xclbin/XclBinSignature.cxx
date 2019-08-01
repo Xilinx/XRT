@@ -17,6 +17,7 @@
 #include "XclBinSignature.h"
 
 #include <iostream>
+#include <vector>
 
 #ifndef _WIN32
   #include <openssl/cms.h>
