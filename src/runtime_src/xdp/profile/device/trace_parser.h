@@ -159,7 +159,6 @@ namespace xdp {
       std::list<uint64_t> mAccelMonCuStarts[XSAM_MAX_NUMBER_SLOTS];
 
     private:
-      uint64_t mPacketFirstTs = 0; 
       bool mclockTrainingdone = false;
       uint64_t packets_parsed = 0;
 

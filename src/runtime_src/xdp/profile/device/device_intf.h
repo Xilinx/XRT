@@ -83,11 +83,27 @@ namespace xdp {
     // Enable Dataflow
     void configureDataflow(bool* ipConfig);
 
-    // Trace
+    // Trace FIFO Management
+    bool hasFIFO() {return (fifoCtrl != nullptr);};
     uint32_t getTraceCount(xclPerfMonType type);
     size_t startTrace(xclPerfMonType type, uint32_t startTrigger);
     size_t stopTrace(xclPerfMonType type);
     size_t readTrace(xclPerfMonType type, xclTraceResultsVector& traceVector);
+    /** Trace S2MM Management
+     * The BO is managed internal to device
+     */
+    bool hasTs2mm() {return (traceDMA != nullptr);};
+    bool initTs2mm(uint64_t bo_size);
+    /** 
+     * Takes the offset inside the mapped buffer
+     * and syncs it with device and returns its virtual address.
+     * We can read the entire buffer in one go if we want to
+     * or choose to read in chunks
+     */
+    uint64_t getWordCountTs2mm();
+    void* syncTraceBO(uint64_t offset, uint64_t bytes);
+    void readTs2mm(uint64_t offset, uint64_t bytes, xclTraceResultsVector& traceVector);
+    void finTs2mm();
 
   private:
     // Turn on/off debug messages to stdout
@@ -99,6 +115,8 @@ namespace xdp {
     // Device handle - xrt::device handle
     void* mDeviceHandle = nullptr;
 
+    uint64_t mTs2mmBoSize = 0;
+    xrt::hal::BufferObjectHandle mTs2mmBoHandle = nullptr;
 
     std::vector<AIM*> aimList;
     std::vector<AM*>  amList;

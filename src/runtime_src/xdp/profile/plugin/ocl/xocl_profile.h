@@ -131,6 +131,10 @@ isValidPerfMonTypeCounters(key k, xclPerfMonType type);
 bool
 is_ap_ctrl_chain(key k, const std::string& deviceName, const std::string& cu);
 
+// All devices have same buf size
+uint64_t
+get_ts2mm_buf_size();
+
 //
 // Device
 //
@@ -147,27 +151,6 @@ struct ts2mm_info
   uint64_t read_count;
 };
 
-void
-print_ts2mm_status(xrt::device* xdevice, uint64_t addr);
-
-uint64_t
-get_ts2mm_buf_size();
-
-void
-update_ts2mm_info(xrt::device* xdevice, ts2mm_info& info);
-
-bool
-get_ts2mm_debug_ip_layout(xrt::device* xdevice, ts2mm_info& info);
-
-bool
-init_ts2mm_offload(xrt::device* xdevice, ts2mm_info& info);
-
-void*
-read_buf_ts2mm(xrt::device* xdevice, uint64_t offset, uint64_t bytes, const ts2mm_info& info);
-
-void
-end_ts2mm_offload(xrt::device* xdevice, ts2mm_info& info);
-
 struct data
 {
   bool mPerformingFlush = false;
@@ -180,7 +163,6 @@ struct data
   std::chrono::steady_clock::time_point mLastCountersSampleTime;
   std::chrono::steady_clock::time_point mLastTraceTrainingTime[XCL_PERF_MON_TOTAL_PROFILE];
   DeviceIntf mDeviceIntf;
-  ts2mm_info traceinfo;
   bool ts2mm_en = false;
 };
 

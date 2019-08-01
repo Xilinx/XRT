@@ -28,6 +28,7 @@
 //#include <time.h>
 #include <string.h>
 #include <chrono>
+#include <sys/mman.h>
 
 #ifndef _WINDOWS
 // TODO: Windows build support
@@ -366,17 +367,12 @@ DeviceIntf::~DeviceIntf()
         size += (*itr)->triggerTrace(startTrigger);
     }
 
-// why is this done
+    if (fifoCtrl)
+      fifoCtrl->reset();
 
-    // Get number of trace samples and reset fifo
-    getTraceCount(type /* does not matter */);  // get number of samples from Fifo Control
-    // reset fifo
-    fifoCtrl->reset();
-    // Get number of trace samples 
-    getTraceCount(type /* does not matter */);
+    if (traceFunnel)
+      traceFunnel->initiateClockTraining();
 
-    // TraceFunnel
-    traceFunnel->initiateClockTraining();
     return size;
   }
 
@@ -388,16 +384,10 @@ DeviceIntf::~DeviceIntf()
                 << type << ", Stop and reset device tracing..." << std::endl;
     }
 
-    if (!mIsDeviceProfiling)
+    if (!mIsDeviceProfiling || !fifoCtrl)
    	  return 0;
 
-    size_t size = 0;
-
-    getTraceCount(type /* does not matter */);
-    size += fifoCtrl->reset();
-    // fifoRead reset ?
-
-    return size;
+    return fifoCtrl->reset();
   }
 
   // Get trace word count
@@ -450,7 +440,7 @@ DeviceIntf::~DeviceIntf()
        */
       std::string warnMsg = "Multiple live processes running on device. Hardware Debug and Profiling data will be unavailable for this process.";
       std::cout << warnMsg << std::endl;
-//      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", warnMsg) ;
+//      xrt_core::message::send(xrt_core::message:  :severity_level::XRT_WARNING, "XRT", warnMsg) ;
       mIsDeviceProfiling = false;
       mIsDebugIPlayoutRead = true;
       return;
@@ -468,20 +458,20 @@ DeviceIntf::~DeviceIntf()
       map = (debug_ip_layout*)(buffer);
       for( unsigned int i = 0; i < map->m_count; i++ ) {
       switch(map->m_debug_ip_data[i].m_type) {
-        case AXI_MM_MONITOR : aimList.push_back(new AIM(mDeviceHandle, i, &(map->m_debug_ip_data[i])));
-                              break;
-        case ACCEL_MONITOR  : amList.push_back(new AM(mDeviceHandle, i, &(map->m_debug_ip_data[i])));
-                              break;
-        case AXI_STREAM_MONITOR : asmList.push_back(new ASM(mDeviceHandle, i, &(map->m_debug_ip_data[i])));
-                                  break;
+        case AXI_MM_MONITOR :        aimList.push_back(new AIM(mDeviceHandle, i, &(map->m_debug_ip_data[i])));
+                                     break;
+        case ACCEL_MONITOR  :        amList.push_back(new AM(mDeviceHandle, i, &(map->m_debug_ip_data[i])));
+                                     break;
+        case AXI_STREAM_MONITOR :    asmList.push_back(new ASM(mDeviceHandle, i, &(map->m_debug_ip_data[i])));
+                                     break;
         case AXI_MONITOR_FIFO_LITE : fifoCtrl = new TraceFifoLite(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
                                      break;
         case AXI_MONITOR_FIFO_FULL : fifoRead = new TraceFifoFull(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
                                      break;
-        case AXI_TRACE_FUNNEL : traceFunnel = new TraceFunnel(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
-                                break;
-//        case TRACE_S2MM : traceDMA = new TraceS2MM(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
-//                          break;
+        case AXI_TRACE_FUNNEL :      traceFunnel = new TraceFunnel(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
+                                     break;
+        case TRACE_S2MM :            traceDMA = new TraceS2MM(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
+                                     break;
         default : break;
         // case AXI_STREAM_PROTOCOL_CHECKER
 
@@ -522,5 +512,65 @@ DeviceIntf::~DeviceIntf()
         (*itr)->configureDataflow(ipConfig[i]);
     }
   }
+
+  bool DeviceIntf::initTs2mm(uint64_t bo_size)
+  {
+    xrt::device* xrtDevice = (xrt::device*)mDeviceHandle;
+
+    if (mTs2mmBoHandle != nullptr) {
+      finTs2mm();
+    }
+
+    try {
+      // The buffer needs to be initialized because of an xrt bug
+      mTs2mmBoHandle = xrtDevice->alloc(bo_size, xrt::hal::device::Domain::XRT_DEVICE_RAM, 0, nullptr);
+      xrtDevice->sync(mTs2mmBoHandle, bo_size, 0, xrt::hal::device::direction::HOST2DEVICE, false);
+      mTs2mmBoSize = bo_size;
+    } catch (const std::exception& ex) {
+      return false;
+    }
+    // Data Mover will write input stream to this address
+    uint64_t bufaddr = xrtDevice->getDeviceAddr(mTs2mmBoHandle);
+
+    traceDMA->init(bo_size, bufaddr);
+    return true;
+  }
+
+  uint64_t DeviceIntf::getWordCountTs2mm()
+  {
+    return traceDMA->getWordCount();
+  }
+
+void* DeviceIntf::syncTraceBO(uint64_t offset, uint64_t bytes)
+{
+    xrt::device* xrtDevice = (xrt::device*)mDeviceHandle;
+    if (!mTs2mmBoHandle || bytes > mTs2mmBoSize)
+      return nullptr;
+    auto space = xrtDevice->map(mTs2mmBoHandle);
+    xrtDevice->sync(mTs2mmBoHandle, bytes, offset, xrt::hal::device::direction::DEVICE2HOST, false);
+    return static_cast<char*>(space) + offset;
+}
+
+void DeviceIntf::readTs2mm(uint64_t offset, uint64_t bytes, xclTraceResultsVector& traceVector)
+{
+  auto tracebuf = syncTraceBO(offset, bytes);
+  if (tracebuf) {
+    traceDMA->parseTraceBuf(tracebuf, bytes, traceVector);
+  }
+}
+
+void DeviceIntf::finTs2mm()
+{
+  xrt::device* xrtDevice = (xrt::device*)mDeviceHandle;
+  traceDMA->reset();
+
+  if (mTs2mmBoHandle) {
+    void* space = xrtDevice->map(mTs2mmBoHandle);
+    munmap(space, mTs2mmBoSize);
+    xrtDevice->free(mTs2mmBoHandle);
+    mTs2mmBoHandle = nullptr;
+    mTs2mmBoSize = 0;
+  }
+}
 
 } // namespace xdp

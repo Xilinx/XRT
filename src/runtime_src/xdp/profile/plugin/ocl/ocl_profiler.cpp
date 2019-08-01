@@ -27,6 +27,7 @@
 #include "ocl_profiler.h"
 #include "xdp/profile/config.h"
 #include "xdp/profile/core/rt_profile.h"
+#include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/writer/json_profile.h"
 #include "xdp/profile/writer/csv_profile.h"
 #include "xrt/util/config_reader.h"
@@ -123,6 +124,8 @@ namespace xdp {
       logFinalTrace(XCL_PERF_MON_STR);
     }
     logFinalTrace(XCL_PERF_MON_MEMORY);  // reads and logs trace data for all monitors in HW flow
+
+    endTrace();
 
     // Gather info for guidance
     // NOTE: this needs to be done here before the device clears its list of CUs
@@ -249,7 +252,12 @@ namespace xdp {
       XOCL_DEBUGF("Starting trace with option = 0x%x\n", traceOption);
 
       if(dInt) {
+        // Configure monitor IP and FIFO if present
         dInt->startTrace(XCL_PERF_MON_MEMORY, traceOption);
+        // Configure DMA if present
+        if (dInt->hasTs2mm()) {
+          info->ts2mm_en = dInt->initTs2mm(xdp::xoclp::platform::get_ts2mm_buf_size());
+        }
       } else {
         xdevice->startTrace(XCL_PERF_MON_MEMORY, traceOption);
         // for HW_EMU consider , 2 calls
@@ -270,6 +278,27 @@ namespace xdp {
       profileMgr->setLoggingTrace(XCL_PERF_MON_MEMORY, false);
     }
     return;
+  }
+
+  void OCLProfiler::endTrace()
+  {
+    auto platform = getclPlatformID();
+
+    for (auto device : platform->get_device_range()) {
+      if(!device->is_active()) {
+        continue;
+      }
+      auto itr = DeviceData.find(device);
+      if (itr==DeviceData.end()) {
+        return;
+      }
+      xdp::xoclp::platform::device::data* info = &(itr->second);
+      if (info->ts2mm_en) {
+        auto dInt  = &(info->mDeviceIntf);
+        dInt->finTs2mm();
+        info->ts2mm_en = false;
+      }
+    }
   }
 
   // Get device counters
@@ -598,12 +627,36 @@ namespace xdp {
         if (device->is_active())
           binary_name = device->get_xclbin().project_name();
 
-        if(dInt) {    // HW Device flow
-          dInt->readTrace(type, info->mTraceVector);
-          if(info->mTraceVector.mLength) {
-            profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector);
+        if (dInt) {    // HW Device flow
+          if (dInt->hasFIFO()) {
+              dInt->readTrace(type, info->mTraceVector);
+              if (info->mTraceVector.mLength) {
+                profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector);
+              }
+              info->mTraceVector.mLength= 0;
+          } else if (dInt->hasTs2mm()) {
+            uint64_t chunksize = MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE;
+            uint64_t space = 0;
+            bool endLog = false;
+            uint64_t total_bytes = dInt->getWordCountTs2mm() * TRACE_PACKET_SIZE;
+            total_bytes = (total_bytes > TS2MM_MAX_BUF_SIZE) ? TS2MM_MAX_BUF_SIZE : total_bytes;
+            while (space < total_bytes) {
+              auto  read_bytes = (space + chunksize > total_bytes) ? total_bytes - space : chunksize;
+              if (space + chunksize > total_bytes) {
+                read_bytes = total_bytes - space;
+                endLog = true;
+              } else {
+                read_bytes = chunksize;
+              }
+              dInt->readTs2mm(space, read_bytes, info->mTraceVector);
+              if (!info->mTraceVector.mLength)
+                break;
+              profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector, endLog);
+              info->mTraceVector = {};
+              //std::cout << "Done reading until " << (space + read_bytes)/8 << std::endl;
+              space += chunksize;
+            }
           }
-          info->mTraceVector.mLength= 0;
         } else {
           while(1) {
             xdevice->readTrace(type, info->mTraceVector);

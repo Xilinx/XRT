@@ -14,11 +14,12 @@
  * under the License.
  */
 
-#ifndef _XDP_DEVICE_TRACE_H_
-#define _XDP_DEVICE_TRACE_H_
+#ifndef _XDP_DEVICE_TRACEDEFS_H_
+#define _XDP_DEVICE_TRACEDEFS_H_
 
 #define TRACE_PACKET_SIZE       8
 
+// Offsets
 #define TS2MM_COUNT_LOW         0x10
 #define TS2MM_COUNT_HIGH        0x14
 #define TS2MM_RST               0x1c
@@ -26,6 +27,9 @@
 #define TS2MM_WRITE_OFFSET_HIGH 0x30
 #define TS2MM_WRITTEN_LOW       0x38
 #define TS2MM_WRITTEN_HIGH      0x3c
+#define TS2MM_AP_CTRL           0x0
+
+// Commands
 #define TS2MM_AP_START          0x1
 
 //15GB
