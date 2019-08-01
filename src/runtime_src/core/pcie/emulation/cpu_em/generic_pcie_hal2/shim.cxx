@@ -357,10 +357,17 @@ namespace xclcpuemhal2 {
         //I am child
         std::string childProcessPath("");
         std::string xilinxInstall("");
-        char *scoutInstallEnvvar =  getenv("XILINX_SCOUT");
-        if(scoutInstallEnvvar != NULL){
-            xilinxInstall = std::string(scoutInstallEnvvar);
+
+        char *vitisInstallEnvvar = getenv("XILINX_VITIS");
+        if (vitisInstallEnvvar != NULL) {
+          xilinxInstall = std::string(vitisInstallEnvvar);
         }
+
+        char *scoutInstallEnvvar =  getenv("XILINX_SCOUT");
+        if(scoutInstallEnvvar != NULL && xilinxInstall.empty() ){
+          xilinxInstall = std::string(scoutInstallEnvvar);
+        }
+
         char *installEnvvar = getenv("XILINX_SDX");
         if (installEnvvar != NULL && xilinxInstall.empty())
         {
