@@ -23,13 +23,13 @@
 
 #include "flasher.h"
 #include "core/pcie/linux/scan.h"
-#include "core/pcie/common/sensor.h"
+#include "core/common/sensor.h"
 #include "xbmgmt.h"
 
 const char *subCmdFlashDesc = "Update SC firmware or shell on the device";
 const char *subCmdFlashUsage =
     "--scan [--verbose|--json]\n"
-    "--update [--shell name [--timestamp timestamp]] [--card bdf] [--force]\n"
+    "--update [--shell name [--id id]] [--card bdf] [--force]\n"
     "--shell --path file [--card bdf] [--type flash_type]\n"
     "--sc_firmware --path file [--card bdf]\n"
     "--reset [--card bdf]";
@@ -106,6 +106,40 @@ static int scanDevices(bool verbose, bool json)
     }
 
     return 0;
+}
+
+static bool match_id(DSAInfo& dsa, std::string& id)
+{
+    if (dsa.uuid.empty())
+    {
+        uint64_t ts = strtoull(id.c_str(), nullptr, 16);
+        if (ts == dsa.timestamp)
+            return true;
+    } else {
+        std::string uuid(id.length(), 0);
+        std::transform(id.begin(), id.end(), uuid.begin(), ::tolower);
+        std::string::size_type i = uuid.find("0x");
+        if (i == 0)
+            uuid.erase(0, 2);
+        if (!strncmp(dsa.uuid.c_str(), uuid.c_str(), uuid.length()))
+            return true;
+    }
+    return false;
+}
+
+static bool match_id(DSAInfo& dsa1, DSAInfo& dsa2)
+{
+    if (dsa1.uuid.empty() != dsa2.uuid.empty())
+        return false;
+    else if (dsa1.uuid.empty())
+    {
+        if (dsa1.timestamp == dsa2.timestamp)
+            return true;
+    } else {
+        if (!strcmp(dsa1.uuid.c_str(), dsa2.uuid.c_str()))
+            return true;
+    }
+    return false;
 }
 
 // Update SC firmware on the board.
@@ -188,7 +222,7 @@ static int updateShellAndSC(unsigned boardIdx, DSAInfo& candidate, bool& reboot)
     DSAInfo current = flasher.getOnBoardDSA();
     if (!current.name.empty()) {
         same_dsa = (candidate.name == current.name &&
-            candidate.timestamp == current.timestamp);
+            match_id(candidate, current));
         same_bmc = (current.bmcVer.empty() ||
             candidate.bmcVer == current.bmcVer);
     }
@@ -224,7 +258,7 @@ static int updateShellAndSC(unsigned boardIdx, DSAInfo& candidate, bool& reboot)
     return 0;
 }
 
-static DSAInfo selectShell(unsigned idx, std::string& dsa, uint64_t ts)
+static DSAInfo selectShell(unsigned idx, std::string& dsa, std::string& id)
 {
     unsigned candidateDSAIndex = UINT_MAX;
 
@@ -232,12 +266,11 @@ static DSAInfo selectShell(unsigned idx, std::string& dsa, uint64_t ts)
     if(!flasher.isValid())
         return DSAInfo("");
 
-    std::cout << "Probing card [" << flasher.sGetDBDF() << "]: ";
-
     std::vector<DSAInfo> installedDSA = flasher.getInstalledDSA();
 
     // Find candidate DSA from installed DSA list.
     if (dsa.empty()) {
+        std::cout << "Probing card [" << flasher.sGetDBDF() << "]: ";
         if (installedDSA.empty()) {
             std::cout << "no shell is installed" << std::endl;
             return DSAInfo("");
@@ -252,7 +285,7 @@ static DSAInfo selectShell(unsigned idx, std::string& dsa, uint64_t ts)
             DSAInfo& idsa = installedDSA[i];
             if (dsa != idsa.name)
                 continue;
-            if (ts != NULL_TIMESTAMP && ts != idsa.timestamp)
+            if (!id.empty() && !match_id(idsa, id))
                 continue;
             if (candidateDSAIndex != UINT_MAX) {
                 std::cout << "multiple shells are installed" << std::endl;
@@ -263,7 +296,8 @@ static DSAInfo selectShell(unsigned idx, std::string& dsa, uint64_t ts)
     }
 
     if (candidateDSAIndex == UINT_MAX) {
-        std::cout << "specified shell is not applicable" << std::endl;
+        std::cout << "WARNING: Failed to flash Card["
+                  << flasher.sGetDBDF() << "]: Specified shell is not applicable" << std::endl;
         return DSAInfo("");
     }
 
@@ -274,7 +308,7 @@ static DSAInfo selectShell(unsigned idx, std::string& dsa, uint64_t ts)
     DSAInfo currentDSA = flasher.getOnBoardDSA();
     if (!currentDSA.name.empty()) {
         same_dsa = (candidate.name == currentDSA.name &&
-            candidate.timestamp == currentDSA.timestamp);
+            match_id(candidate, currentDSA));
         same_bmc = (currentDSA.bmcVer.empty() ||
             candidate.bmcVer == currentDSA.bmcVer);
     }
@@ -287,7 +321,7 @@ static DSAInfo selectShell(unsigned idx, std::string& dsa, uint64_t ts)
 }
 
 static int autoFlash(unsigned index, std::string& shell,
-    uint64_t timestamp, bool force)
+    std::string& id, bool force)
 {
     std::vector<unsigned int> boardsToCheck;
     std::vector<std::pair<unsigned, DSAInfo>> boardsToUpdate;
@@ -299,7 +333,7 @@ static int autoFlash(unsigned index, std::string& shell,
         auto installedDSAs = firmwareImage::getIntalledDSAs();
         for (DSAInfo& dsa : installedDSAs) {
             if (shell == dsa.name &&
-                (timestamp == NULL_TIMESTAMP || timestamp == dsa.timestamp)) {
+                (id.empty() || match_id(dsa, id))) {
                 if (!foundDSA)
                     foundDSA = true;
                 else
@@ -333,7 +367,7 @@ static int autoFlash(unsigned index, std::string& shell,
 
     // Collect all indexes of boards need updating
     for (unsigned i : boardsToCheck) {
-        DSAInfo dsa = selectShell(i, shell, timestamp);
+        DSAInfo dsa = selectShell(i, shell, id);
         if (dsa.DSAValid)
             boardsToUpdate.push_back(std::make_pair(i, dsa));
     }
@@ -354,21 +388,31 @@ static int autoFlash(unsigned index, std::string& shell,
         for (auto p : boardsToUpdate) {
             bool reboot;
             std::cout << std::endl;
-            if (updateShellAndSC(p.first, p.second, reboot) == 0)
+            if (updateShellAndSC(p.first, p.second, reboot) == 0) {
+                std::cout << "Successfully flashed Card[" << success << "]"<< std::endl;
                 success++;
+            }
             needreboot |= reboot;
         }
     }
 
     std::cout << std::endl;
-    std::cout << success << " Card(s) flashed successfully." << std::endl;
+
+    if (success!=0) {
+        std::cout << success << " Card(s) flashed successfully." << std::endl; 
+    } else {
+        std::cout << "No cards were flashed." << std::endl; 
+    }
+
     if (needreboot) {
         std::cout << "Cold reboot machine to load the new image on card(s)."
             << std::endl;
     }
 
-    if (success != boardsToUpdate.size())
+    if (success != boardsToUpdate.size()) {
+        std::cout << "WARNING:" << boardsToUpdate.size()-success << " Card(s) not flashed. " << std::endl;
         exit(-EINVAL);
+    }
 
     return 0;
 }
@@ -400,7 +444,7 @@ static int flashCompatibleMode(int argc, char *argv[])
     char *bmc = nullptr;
     std::string flashType;
     std::string dsa;
-    uint64_t timestamp = NULL_TIMESTAMP;
+    std::string id;
     bool force = false;
     bool reset = false;
 
@@ -434,9 +478,7 @@ static int flashCompatibleMode(int argc, char *argv[])
             bmc = optarg;
             break;
         case 't':
-            timestamp = strtoull(optarg, nullptr, 0);
-            if (timestamp == 0 || errno)
-                return -EINVAL;
+	    id = optarg;
             break;
         case 'r':
             reset = true;
@@ -473,7 +515,7 @@ static int flashCompatibleMode(int argc, char *argv[])
     if (!dsa.empty()) {
         if (dsa.compare("all") == 0)
             dsa.clear();
-        return autoFlash(devIdx, dsa, timestamp, force);
+        return autoFlash(devIdx, dsa, id, force);
     }
 
     return -EINVAL;
@@ -514,11 +556,11 @@ static int update(int argc, char *argv[])
     bool force = false;
     unsigned index = UINT_MAX;
     std::string shell;
-    uint64_t timestamp = NULL_TIMESTAMP;
+    std::string id;
     const option opts[] = {
         { "card", required_argument, nullptr, '0' },
         { "shell", required_argument, nullptr, '1' },
-        { "timestamp", required_argument, nullptr, '2' },
+        { "id", required_argument, nullptr, '2' },
         { "force", no_argument, nullptr, '3' },
     };
 
@@ -537,12 +579,7 @@ static int update(int argc, char *argv[])
             shell = std::string(optarg);
             break;
         case '2':
-            timestamp = strtoull(optarg, nullptr, 0);
-            if (timestamp == 0 || errno) {
-                std::cout << "ERROR: invalid timestamp: " << optarg <<
-                    std::endl;
-                return -EINVAL;
-            }
+	    id = std::string(optarg);
             break;
         case '3':
             force = true;
@@ -552,10 +589,10 @@ static int update(int argc, char *argv[])
         }
     }
 
-    if (shell.empty() && timestamp != NULL_TIMESTAMP)
+    if (shell.empty() && !id.empty())
         return -EINVAL;
 
-    return autoFlash(index, shell, timestamp, force);
+    return autoFlash(index, shell, id, force);
 }
 
 static int shell(int argc, char *argv[])

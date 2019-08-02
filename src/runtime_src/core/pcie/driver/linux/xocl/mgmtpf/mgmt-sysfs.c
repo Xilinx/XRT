@@ -279,6 +279,24 @@ static ssize_t rp_program_store(struct device *dev, struct device_attribute *da,
 }
 static DEVICE_ATTR_WO(rp_program);
 
+static ssize_t blp_interfaces_show(struct device *dev,
+        struct device_attribute *attr, char *buf)
+{
+        struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	const char *uuid;
+
+	if (!lro->bld_blob)
+		return -EINVAL;
+
+	uuid = xocl_fdt_next_intf_uuid(lro, lro->bld_blob, 0);
+	if (!uuid)
+		return -EINVAL;
+
+	return sprintf(buf, "%s\n", uuid);
+}
+
+static DEVICE_ATTR_RO(blp_interfaces);
+
 static struct attribute *mgmt_attrs[] = {
 	&dev_attr_instance.attr,
 	&dev_attr_error.attr,
@@ -300,6 +318,7 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_config_mailbox_channel_switch.attr,
 	&dev_attr_config_mailbox_comm_id.attr,
 	&dev_attr_rp_program.attr,
+	&dev_attr_blp_interfaces.attr,
 	NULL,
 };
 

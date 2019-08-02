@@ -4,12 +4,13 @@ level: 6
 owner: vallina
 user:
   allowed_test_modes: [sw_emu, hw_emu, hw]
+  force_makefile: "--force"
   host_args: {all: mmult2.xclbin}
   host_cflags: ' -DDSA64 -DFLOW_HLS_CSIM'
   host_exe: host.exe
   host_src: test-cl.cpp
   kernels:
-  - {cflags: ' -I.', file: mmult.xo, ksrc: mmult2.cl, name: mmult, type: C}
+  - {cflags: {all: ' -I.'}, file: mmult.xo, ksrc: mmult2.cl, name: mmult, type: C}
   name: 010_mmult2
   xclbins:
   - files: 'mmult.xo '
@@ -17,5 +18,4 @@ user:
     - cus: [mmult_cu0]
       name: mmult
       num_cus: 1
-    lflags: ''
     name: mmult2.xclbin

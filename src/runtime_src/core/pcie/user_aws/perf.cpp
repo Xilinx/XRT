@@ -21,6 +21,7 @@
 #include "core/pcie/driver/linux/include/xocl_ioctl.h"
 #include "core/pcie/driver/linux/include/mgmt-reg.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
+#include "core/common/AlignedAllocator.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -894,7 +895,7 @@ namespace awsbwhal {
 #if GCC_VERSION >= 40800
     alignas(AXI_FIFO_RDFD_AXI_FULL) uint32_t hostbuf[BUFFER_WORDS];
 #else
-    AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, BUFFER_WORDS);
+    xrt_core::AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, BUFFER_WORDS);
     uint32_t* hostbuf = alignedBuffer.getBuffer();
 #endif
 #else

@@ -47,6 +47,29 @@
  * @addtogroup xmahw
  * @{
  */
+constexpr std::uint64_t signature = 0xF42F1F8F4F2F1F0F;
+
+typedef struct XmaBufferObjPrivate
+{
+    void*    dummy;
+    uint64_t size;
+    uint64_t paddr;
+    int32_t  bank_index;
+    int32_t  dev_index;
+    uint64_t boHandle;
+    bool     device_only_buffer;
+    xclDeviceHandle dev_handle;
+    uint32_t reserved[4];
+
+  XmaBufferObjPrivate() {
+   dummy = NULL;
+   size = 0;
+   bank_index = -1;
+   dev_index = -1;
+   dev_handle = NULL;
+   boHandle = 0;
+  }
+} XmaBufferObjPrivate;
 
 typedef struct XmaHwKernel
 {
@@ -57,6 +80,8 @@ typedef struct XmaHwKernel
     int32_t    ddr_bank;
     uint32_t    cu_mask0;
     uint32_t    cu_mask1;
+    uint32_t    cu_mask2;
+    uint32_t    cu_mask3;
     int32_t    regmap_max;
     //For execbo:
     int32_t     kernel_complete_count;
@@ -67,6 +92,7 @@ typedef struct XmaHwKernel
     std::unique_ptr<std::atomic<bool>> reg_map_locked;
     int32_t         locked_by_session_id;
     XmaSessionType locked_by_session_type;
+    bool soft_kernel;
     void*   private_do_not_use;
 
     //bool             have_lock;
@@ -79,7 +105,10 @@ typedef struct XmaHwKernel
     ddr_bank = -1;
     cu_mask0 = 0;
     cu_mask1 = 0;
+    cu_mask2 = 0;
+    cu_mask3 = 0;
     kernel_complete_count = 0;
+    soft_kernel = false;
     //*kernel_complete_locked = false;
     *reg_map_locked = false;
     locked_by_session_id = -100;

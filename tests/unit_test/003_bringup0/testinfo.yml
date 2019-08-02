@@ -4,9 +4,10 @@ level: 6
 owner: sonals
 user:
   allowed_test_modes: [sw_emu, hw_emu, hw]
+  force_makefile: "--force"
   host_args: {all: -d acc}
   host_cflags: ' -DDSA64'
   host_exe: host.exe
   host_src: main.cpp oclErrorCodes.cpp oclHelper.cpp
   name: 003_bringup0
-  only_host_code: 1
+  only_host_code: 1 

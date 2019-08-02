@@ -205,6 +205,31 @@ xma_filter_session_destroy(XmaFilterSession *session)
     int32_t rc;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_FILTER_MOD, "%s()\n", __func__);
+    bool expected = false;
+    bool desired = true;
+    while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //Singleton lock acquired
+
+    if (session == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
+                   "Session is already released\n");
+
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+
+        return XMA_ERROR;
+    }
+    if (session->filter_plugin == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
+                   "Session is corrupted\n");
+
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+
+        return XMA_ERROR;
+    }
     rc  = session->filter_plugin->close(session);
     if (rc != 0)
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
@@ -214,7 +239,19 @@ xma_filter_session_destroy(XmaFilterSession *session)
     free(session->base.plugin_data);
 
     // Free the session
+    session->base.plugin_data = NULL;
+    session->base.stats = NULL;
+    session->filter_plugin = NULL;
+    session->base.hw_session.dev_handle = NULL;
+    session->base.hw_session.kernel_info = NULL;
+    //do not change kernel in_use as it maybe in use by another plugin
+    session->base.hw_session.dev_index = -1;
+    session->base.session_signature = NULL;
     free(session);
+    session = NULL;
+
+    //Release singleton lock
+    g_xma_singleton->locked = false;
 
     return XMA_SUCCESS;
 }
@@ -224,6 +261,10 @@ xma_filter_session_send_frame(XmaFilterSession  *session,
                               XmaFrame          *frame)
 {
     xma_logmsg(XMA_DEBUG_LOG, XMA_FILTER_MOD, "%s()\n", __func__);
+    if (session->base.session_signature != (void*)(((uint64_t)session->base.hw_session.kernel_info) | ((uint64_t)session->base.hw_session.dev_handle))) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD, "XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
 
     return session->filter_plugin->send_frame(session, frame);
 }
@@ -233,5 +274,9 @@ xma_filter_session_recv_frame(XmaFilterSession  *session,
                               XmaFrame          *frame)
 {
     xma_logmsg(XMA_DEBUG_LOG, XMA_FILTER_MOD, "%s()\n", __func__);
+    if (session->base.session_signature != (void*)(((uint64_t)session->base.hw_session.kernel_info) | ((uint64_t)session->base.hw_session.dev_handle))) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD, "XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
     return session->filter_plugin->recv_frame(session, frame);
 }

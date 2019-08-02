@@ -24,6 +24,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <stdint.h>
 #include "firmware_image.h"
 #include "xclbin.h"
 
@@ -74,9 +75,55 @@ void getTimestampFromFilename(std::string filename, uint64_t &ts)
         ts = NULL_TIMESTAMP;
 }
 
-DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& bmc) :
+static void uuid2ts(std::string& uuid, uint64_t& ts)
+{
+    std::string str(uuid, 0, 16);
+    ts = strtoull(str.c_str(), nullptr, 16);
+}
+
+void getIntUUIDFromDTB(void *blob, uint64_t &ts, std::string &uuid)
+{
+    struct fdt_header *bph = (struct fdt_header *)blob;
+    uint32_t version = be32toh(bph->version);
+    uint32_t off_dt = be32toh(bph->off_dt_struct);
+    const char *p_struct = (const char *)blob + off_dt;
+    uint32_t off_str = be32toh(bph->off_dt_strings);
+    const char *p_strings = (const char *)blob + off_str;
+    const char *p, *s;
+    uint32_t tag;
+    int sz;
+
+    p = p_struct;
+    while ((tag = be32toh(GET_CELL(p))) != FDT_END)
+    {
+        if (tag == FDT_BEGIN_NODE)
+        {
+            s = p;
+            p = PALIGN(p + strlen(s) + 1, 4);
+            continue;
+        }
+
+        if (tag != FDT_PROP)
+            continue;
+
+        sz = be32toh(GET_CELL(p));
+        s = p_strings + be32toh(GET_CELL(p));
+        if (version < 16 && sz >= 8)
+            p = PALIGN(p, 8);
+
+        if (!strcmp(s, "interface_uuid"))
+        {
+            uuid = std::string(p);
+	    uuid2ts(uuid, ts);
+            return;
+        }
+        p = PALIGN(p + sz, 4);
+    }
+}
+
+DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id, const std::string& bmc) :
     DSAValid(false), vendor(), board(), name(), file(filename),
-    timestamp(ts), bmcVer(bmc)
+    timestamp(ts), uuid(id), bmcVer(bmc)
 {
     if (filename.empty())
         return;
@@ -89,6 +136,8 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& bm
     {
         name = filename;
         getVendorBoardFromDSAName(name, vendor, board);
+        if (!uuid.empty() && !timestamp)
+            uuid2ts(uuid, timestamp);
         return;
     }
 
@@ -153,7 +202,17 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& bm
         std::replace_if(name.begin(), name.end(),
             [](const char &a){ return a == ':' || a == '.'; }, '_');
         getVendorBoardFromDSAName(name, vendor, board);
-	getTimestampFromFilename(filename, timestamp);
+        getTimestampFromFilename(filename, timestamp);
+        // For 2RP platform, only UUIDs are provided
+        // Assume there is only 1 interface UUID is provided for BLP,
+        // Show it as ID for flashing
+        const axlf_section_header* dtbSection = xclbin::get_axlf_section(ap, PARTITION_METADATA);
+        if (dtbSection && timestamp == NULL_TIMESTAMP) {
+            std::shared_ptr<char> dtbbuf(new char[dtbSection->m_sectionSize]);
+            in.seekg(dtbSection->m_sectionOffset);
+            in.read(dtbbuf.get(), dtbSection->m_sectionSize);
+	    getIntUUIDFromDTB(dtbbuf.get(), timestamp, uuid);
+        }
         //timestamp = ap->m_header.m_featureRomTimeStamp;
         DSAValid = (xclbin::get_axlf_section(ap, MCS) != nullptr);
 
@@ -176,7 +235,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& bm
     }
 }
 
-DSAInfo::DSAInfo(const std::string& filename) : DSAInfo(filename, NULL_TIMESTAMP, "")
+DSAInfo::DSAInfo(const std::string& filename) : DSAInfo(filename, NULL_TIMESTAMP, "", "")
 {
 }
 
@@ -230,7 +289,7 @@ std::ostream& operator<<(std::ostream& stream, const DSAInfo& dsa)
     stream << dsa.name;
     if (dsa.timestamp != NULL_TIMESTAMP)
     {
-        stream << ",[TS=0x" << std::hex << std::setw(16) << std::setfill('0')
+        stream << ",[ID=0x" << std::hex << std::setw(16) << std::setfill('0')
             << dsa.timestamp << "]";
     }
     if (!dsa.bmcVer.empty())

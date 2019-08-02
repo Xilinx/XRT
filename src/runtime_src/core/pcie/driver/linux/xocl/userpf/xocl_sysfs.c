@@ -185,14 +185,24 @@ static ssize_t p2p_enable_store(struct device *dev,
 		return -ENXIO;
 	}
 
-	size = xocl_get_ddr_channel_size(xdev) *
-		xocl_get_ddr_channel_count(xdev); /* GB */
+	if (xdev->core.priv.p2p_bar_sz > 0)
+		size = xdev->core.priv.p2p_bar_sz;
+	else {
+		size = xocl_get_ddr_channel_size(xdev) *
+			xocl_get_ddr_channel_count(xdev); /* GB */
+	}
+
 	size = (ffs(size) == fls(size)) ? (fls(size) - 1) : fls(size);
 	size = enable ? (size + 10) : (XOCL_PA_SECTION_SHIFT - 20);
 	if (xocl_pci_rebar_size_to_bytes(size) == curr_size) {
-		xocl_info(&pdev->dev, "p2p is enabled, bar size %d M",
+		if (enable) {
+			xocl_info(&pdev->dev, "p2p is enabled, bar size %d M",
 				(1 << size));
-		return 0;
+		} else {
+			xocl_info(&pdev->dev, "p2p is disabled, bar size %dM",
+				(1 << size));
+		}
+		return count;
 	}
 
 	xocl_info(&pdev->dev, "Resize p2p bar %d to %d M ", p2p_bar,

@@ -154,7 +154,7 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 
 	userpf_info(xdev, "request mgmtpf to program prp");
 	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct mailbox_req),
-		&ret, &resplen, NULL, NULL);
+		&ret, &resplen, NULL, NULL, 0);
 	if (mbret)
 		ret = mbret;
 	if (ret) {
@@ -200,7 +200,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 
 	/* Reset mgmt */
 	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct mailbox_req),
-		&ret, &resplen, NULL, NULL);
+		&ret, &resplen, NULL, NULL, 0);
 	if (mbret)
 		ret = mbret;
 
@@ -268,7 +268,7 @@ static void xocl_mb_connect(struct xocl_dev *xdev)
 	mb_conn->version = MB_PROTOCOL_VER;
 
 	ret = xocl_peer_request(xdev, mb_req, reqlen, resp, &resplen,
-		NULL, NULL);
+		NULL, NULL, 0);
 	(void) xocl_mailbox_set(xdev, CHAN_STATE, resp->conn_flags);
 	(void) xocl_mailbox_set(xdev, CHAN_SWITCH, resp->chan_switch);
 	(void) xocl_mailbox_set(xdev, COMM_ID, (u64)(uintptr_t)resp->comm_id);
@@ -306,15 +306,28 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 	req->req = MAILBOX_REQ_RECLOCK;
 	memcpy(req->data, data, data_len);
 
-	err = xocl_peer_request(xdev, req, reqlen,
-		&msg, &resplen, NULL, NULL);
+	mutex_lock(&xdev->dev_lock);
+
+	if (!list_is_singular(&xdev->ctx_list)) {
+		/* We should have one context for ourselves. */
+		BUG_ON(list_empty(&xdev->ctx_list));
+		userpf_err(xdev, "device is in use, can't reset");
+		err = -EBUSY;
+	}
+
+	if (err == 0) {
+		err = xocl_peer_request(xdev, req, reqlen,
+			&msg, &resplen, NULL, NULL, 0);
+		if (err == 0)
+			err = msg;
+	}
+
+	mutex_unlock(&xdev->dev_lock);
 
 	/* Re-clock changes PR region, make sure next ERT configure cmd will
 	 * go through */
-	(void) xocl_exec_reconfig(xdev);
-
-	if (msg != 0)
-		err = -ENODEV;
+	if (err == 0)
+		(void) xocl_exec_reconfig(xdev);
 
 	kfree(req);
 	return err;
@@ -389,7 +402,7 @@ static uint64_t xocl_read_from_peer(struct xocl_dev *xdev, enum data_kind kind)
 	size_t reqlen = sizeof(struct mailbox_req) + data_len;
 	int err = 0, ret = 0;
 
-	userpf_err(xdev, "reading from peer\n");
+	userpf_info(xdev, "reading from peer\n");
 	mb_req = vmalloc(reqlen);
 	if (!mb_req)
 		return ret;
@@ -403,7 +416,7 @@ static uint64_t xocl_read_from_peer(struct xocl_dev *xdev, enum data_kind kind)
 	memcpy(mb_req->data, &subdev_peer, data_len);
 
 	err = xocl_peer_request(xdev,
-		mb_req, reqlen, &resp, &resp_len, NULL, NULL);
+		mb_req, reqlen, &resp, &resp_len, NULL, NULL, 0);
 
 	if (err)
 		goto done;
@@ -475,7 +488,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 
 		subdev_peer.offset = offset;
 		ret = xocl_peer_request(xdev, mb_req, reqlen,
-			resp, &resp_len, NULL, NULL);
+			resp, &resp_len, NULL, NULL, 0);
 		if (ret)
 			goto failed;
 
@@ -495,7 +508,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 			xdev->core.fdt_blob)
 		goto failed;
 
-	if (!blob && !xdev->core.fdt_blob)
+	if (!offset && !xdev->core.fdt_blob)
 		goto failed;
 
 	if (xdev->core.fdt_blob)
@@ -512,6 +525,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 			goto failed;
 		}
 	}
+
 	if (XOCL_DRM(xdev))
 		xocl_cleanup_mem(XOCL_DRM(xdev));
 
