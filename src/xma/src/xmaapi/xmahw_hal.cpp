@@ -31,6 +31,7 @@
 #include "lib/xmahw_private.h"
 #include <dlfcn.h>
 #include <iostream>
+#include <bitset>
 #include "ert.h"
 
 //#define xma_logmsg(f_, ...) printf((f_), ##__VA_ARGS__)
@@ -207,7 +208,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         hwcfg->devices.emplace_back(XmaHwDevice{});
 
         XmaHwDevice& dev_tmp1 = hwcfg->devices.back();
-        dev_tmp1.kernels.reserve(MAX_KERNEL_CONFIGS);
+        //dev_tmp1.kernels.reserve(LIKELY_KERNEL_CONFIGS); Reserving below based on number of CUs
 
         dev_tmp1.handle = xclOpen(dev_index, NULL, XCL_QUIET);
         if (dev_tmp1.handle == NULL){
@@ -237,6 +238,14 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         uuid_copy(dev_tmp1.uuid, info.uuid); 
         dev_tmp1.number_of_cus = info.number_of_kernels;
         dev_tmp1.number_of_mem_banks = info.number_of_mem_banks;
+        if (dev_tmp1.number_of_cus > MAX_XILINX_KERNELS) {
+            free(buffer);
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not download xclbin file %s to device %d\n",
+                        xclbin.c_str(), dev_index);
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA & XRT supports max of %d CUs but xclbin has %d number of CUs\n", MAX_XILINX_KERNELS, dev_tmp1.number_of_cus);
+            return false;
+        }
+        dev_tmp1.kernels.reserve(dev_tmp1.number_of_cus);
 
         xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"For device id: %d; CUs are:\n", dev_index);
         for (uint32_t d = 0; d < info.number_of_kernels; d++) {
@@ -261,9 +270,14 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             tmp1.private_do_not_use = (void*) &hwcfg->devices[hwcfg->devices.size()-1];
         }
 
+        std::bitset<MAX_XILINX_KERNELS> cu_mask;
+        uint64_t base_addr1 = 0;
         for (uint32_t d1 = 0; d1 < info.number_of_kernels; d1++) {
-            uint64_t base_addr1 = dev_tmp1.kernels[d1].base_address;
-            uint64_t cu_mask = 1;
+            base_addr1 = dev_tmp1.kernels[d1].base_address;
+            //uint64_t cu_mask = 1;
+            cu_mask.reset();
+            cu_mask.set(0);
+
             for (uint32_t d2 = 0; d2 < info.number_of_kernels; d2++) {
                 if (d1 != d2) {
                     if (dev_tmp1.kernels[d2].base_address < base_addr1) {
@@ -271,8 +285,15 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
                     }
                 }
             }
-            dev_tmp1.kernels[d1].cu_mask0 = cu_mask & 0xFFFFFFFF;
-            dev_tmp1.kernels[d1].cu_mask1 = ((uint64_t)(cu_mask >> 32)) & 0xFFFFFFFF;
+            //dev_tmp1.kernels[d1].cu_mask0 = cu_mask & 0xFFFFFFFF;
+            //dev_tmp1.kernels[d1].cu_mask1 = ((uint64_t)(cu_mask >> 32)) & 0xFFFFFFFF;
+            dev_tmp1.kernels[d1].cu_mask0 = cu_mask.to_ulong();
+            cu_mask = cu_mask >> 32;
+            dev_tmp1.kernels[d1].cu_mask1 = cu_mask.to_ulong();
+            cu_mask = cu_mask >> 32;
+            dev_tmp1.kernels[d1].cu_mask2 = cu_mask.to_ulong();
+            cu_mask = cu_mask >> 32;
+            dev_tmp1.kernels[d1].cu_mask3 = cu_mask.to_ulong();
         }
 
         int32_t num_execbo = 0;
