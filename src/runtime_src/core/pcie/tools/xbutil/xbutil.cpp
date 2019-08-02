@@ -958,7 +958,7 @@ int xcldev::device::runTestCase(const std::string& exe,
         return -EINVAL;
     }
 
-    std::string cmd = "python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
+    std::string cmd = "python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx) + " 2>&1"; //catch stderr
     return runShellCmd(cmd, output);
 }
 
