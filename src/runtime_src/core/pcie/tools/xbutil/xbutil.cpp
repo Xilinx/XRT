@@ -925,7 +925,7 @@ int searchXsaAndDsa(std::string xsaPath, std::string
     }
 }
 
-int xcldev::device::runTestCase(const std::string& exe,
+int xcldev::device::runTestCase(const std::string& py,
     const std::string& xclbin, std::string& output)
 {
     struct stat st;
@@ -933,7 +933,7 @@ int xcldev::device::runTestCase(const std::string& exe,
     std::string devInfoPath = std::string(m_devinfo.mName) + "/test/";
     std::string xsaXclbinPath = xsaPath + devInfoPath;
     std::string dsaXclbinPath = dsaPath + devInfoPath;
-    std::string xrtTestCasePath = xrtPath + "test/" + exe;
+    std::string xrtTestCasePath = xrtPath + "test/" + py;
 
     output.clear();
 
@@ -943,7 +943,7 @@ int xcldev::device::runTestCase(const std::string& exe,
 
     if (stat(xrtTestCasePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
         output += "ERROR: Failed to find ";
-        output += exe;
+        output += py;
         output += " or ";
         output += xclbin;
         output += ", Shell package not installed properly.";
@@ -990,9 +990,6 @@ int xcldev::device::bandwidthKernelTest(void)
 
     if (output.find("PASS") == std::string::npos) {
         std::cout << output << std::endl;
-        std::ifstream f("log.txt");
-        if (f.is_open())
-            std::cout << f.rdbuf();
         return -EINVAL;
     }
 
