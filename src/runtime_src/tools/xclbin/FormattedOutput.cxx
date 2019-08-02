@@ -69,9 +69,9 @@ FormattedOutput::getMagicAsString(const axlf &_xclBinHeader) {
 }
 
 std::string 
-FormattedOutput::getCipherAsString(const axlf &_xclBinHeader) { 
+FormattedOutput::getSignatureLengthAsString(const axlf &_xclBinHeader) { 
   std::string sTemp("");
-  XUtil::binaryBufferToHexString((unsigned char*)&_xclBinHeader.m_cipher, sizeof(_xclBinHeader.m_cipher), sTemp);
+  XUtil::binaryBufferToHexString((unsigned char*)&_xclBinHeader.m_signature_length, sizeof(_xclBinHeader.m_signature_length), sTemp);
   return sTemp; // TBD: "0x" + sTemp; ? do the others too...
 }
 

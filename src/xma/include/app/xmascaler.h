@@ -52,175 +52,6 @@ extern "C" {
  *  function should be called from the main() function of the media framework
  *  in order to guarantee it is only called once.
  *
- *
- *  ::
- * 
- *       #include <xma.h>
- *      
- *       int main(int argc, char *argv[])
- *       {
- *           int rc;
- *      
- *           // Other media framework initialization
- *           ...
- *      
- *           rc = xma_initialize();
- *           if (rc != 0)
- *           {
- *               // Log message indicating XMA initialization failed
- *               printf("ERROR: Could not initialize XMA rc=%d\n\n", rc);
- *               return rc;
- *           }
- *      
- *           // Other media framework processing
- *           ...
- *      
- *           return 0;
- *       }
- *
- *  Assuming XMA initialization completes successfully, each scaler
- *  plugin must be initialized, provided frames to scale, requested to
- *  receive available scaled data and finally closed when the video stream
- *  ends.
- *
- *  The code snippet below demonstrates the creation of an XMA scaler
- *  session:
- *
- *
- *  ::
- * 
- *       // Code snippet for creating an scaler session
- *       ...
- *       #include <xma.h>
- *       ...
- *       // Setup scaler properties
- *       XmaScalerProperties props;
- *       props.hwencoder_type = XMA_POLYPHASE_SCALER_TYPE;
- *       strcpy(props.hwvendor_string, "Xilinx");
- *       props.num_outputs = 2;
- *       xma_scaler_default_filter_coeff_set(&props.filter_coefficients);
- *       props.input.format = XMA_YUV420_FMT_TYPE;
- *       props.input.bit_per_pixel = 8;
- *       props.input.width = 1920;
- *       props.input.height = 1080;
- *       props.input.stride = 1920;
- *       props.input.filter_idx = 0;
- *       props.output[0].format = XMA_YUV420_FMT_TYPE;
- *       props.output[0].bit_per_pixel = 8;
- *       props.output[0].width = 1280;
- *       props.output[0].height = 720;
- *       props.output[0].stride = 1280;
- *       props.output[0].filter_idx = 0;
- *       props.output[1].format = XMA_YUV420_FMT_TYPE;
- *       props.output[1].bit_per_pixel = 8;
- *       props.output[1].width = 640;
- *       props.output[1].height = 480;
- *       props.output[1].stride = 640;
- *       props.output[1].filter_idx = 0;
- *      
- *       // Create a scaler session based on the requested properties
- *       XmaScalerSession *session;
- *       session = xma_scaler_session_create(&props);
- *       if (!session)
- *       {
- *           // Log message indicating session could not be created
- *           // return from function
- *       }
- *       // Save returned session for subsequent calls.  In FFmpeg, the returned
- *       // session could be saved in the private_data of the AVCodecContext
- *
- *  The code snippet that follows demonstrates how to send a frame
- *  to the scaler session and receive any available scaled frames:
- *
- *  ::
- * 
- *       // Code snippet for sending a frame to the encoder and checking
- *       // if scaled frames are available.
- *      
- *       // Other non-XMA related includes
- *       ...
- *       #include <xma.h>
- *      
- *       // For this example it is assumed that session is a pointer to
- *       // a previously created scaler session and an XmaFrame has been
- *       // created using the @ref xma_frame_from_buffers_clone() function.
- *      
- *       // In presence of a scaler pipeline, XMA_SEND_MORE_DATA return code  
- *       // is sent by xma_scaler_session_send_frame() until the pipeline is filled.  
- *       // Subsequently  before closing scaler, NULL frames are sent to 
- *       // xma_scaler_session_send_frame()  until all the frames are flushed from 
- *       // pipeline with XMA_FLUSH_AGAIN.  
- *       // frame->data[0].buffer = NULL;
- *       // frame->data[1].buffer = NULL;
- *       // frame->data[2].buffer = NULL; 
- *       // And a final XMA_EOS return code ends the scaler processing. 
- *      
- *       int32_t send_rc;
- *       int32_t recv_rc;
- *       send_rc = xma_scaler_session_send_frame(session, frame);
- *       if (send_rc == XMA_EOS)
- *       {
- *           // destroy session and cleanup
- *           return 0;
- *       }
- *       
- *      
- *       // Get the scaled frame list if it is available. It is assumed that
- *       // the caller will provide a list of pointers to XmaFrame structures
- *       // that are large enough to hold the scaled output for each selected
- *       // resolution.
- *       // For XMA_SEND_MORE_DATA return code from xma_scaler_session_send_frame()
- *       // xma_scaler_session_recv_frame_list() is skipped as the output will not be available yet.
- *       // It will get the scaler outputs with a XMA_SUCCESS or a XMA_FLUSH_AGAIN return code.  
- *       
- *       XmaFrame *frame_list[2];
- *      
- *       XmaFrameProperties fprops;
- *       fprops.format = XMA_YUV420_FMT_TYPE;
- *       fprops.width = 1280;
- *       fprops.height = 720;
- *       fprops.bits_per_pixel = 8;
- *      
- *       frame_list[0] = xma_frame_alloc(&fprops);
- *       fprops.width = 640;
- *       fprops.height = 480;
- *       frame_list[1] = xma_frame_alloc(&fprops);
- *       if ((send_rc==XMA_SUCCESS)||(send_rc==XMA_FLUSH_AGAIN))
- *       {
- *            recv_rc = xma_scaler_session_recv_frame_list(session, frame_list);
- *            if (recv_rc != XMA_SUCCESS)
- *            {
- *               // No data to return at this time
- *               // Tell framework there is no available data
- *               return (-1);
- *            }
- *       }
- *       // Provide scaled frames to framework
- *       ...
- *       return rc;
- *
- *  This last code snippet demonstrates the interface for destroying the
- *  session when the stream is closed.  This allows all allocated resources
- *  to be freed and made available to other processes.
- *
- *  ::
- * 
- *       // Code snippet for destroying a session once a stream has ended
- *      
- *       // Other non-XMA related includes
- *       ...
- *       #include <xma.h>
- *      
- *       // This example assumes that the session is a pointer to a previously
- *       // created XmaScalerSession
- *       int32_t rc;
- *       rc = xma_scaler_session_destroy(session);
- *       if (rc != 0)
- *       {
- *           // TODO: Log message that the destroy function failed
- *           return rc;
- *       }
- *       return rc;
  */
 
 /**
@@ -352,8 +183,11 @@ int32_t
 xma_scaler_session_destroy(XmaScalerSession *session);
 
 /**
- *  xma_scaler_session_send_frame() - This function sends a frame to the hardware scaler.  If a frame
- *  buffer is not available and this interface will block.
+ *  xma_scaler_session_send_frame() - This function invokes plugin->send_frame fucntion 
+ * assigned to this session which handles sending data to the hardware scaler.  
+ * 
+ * This function sends a frame to the hardware scaler.  If a frame
+ *  buffer is not available, the plugin function should block.
  *
  *  @session:  Pointer to session created by xma_scaler_sesssion_create
  *  @frame:    Pointer to a frame to be scaled.  If the scaler is
@@ -381,10 +215,11 @@ xma_scaler_session_send_frame(XmaScalerSession *session,
                               XmaFrame         *frame);
 
 /**
- *  xma_scaler_session_recv_frame_list() - This function populates a list of XmaFrame buffers with the scaled
- *  data returned from the hardware accelerator. This function is called after
+ *  xma_scaler_session_recv_frame_list() - This function invokes plugin->recv_frame_list 
+ * assigned to this session which handles obtaining list of output frames from the hardware encoder.  
+ * This function is called after
  *  calling the function xma_scaler_session_send_frame.  If a data buffer is
- *  not ready to be returned, this function blocks.
+ *  not ready to be returned, the plugin function should blocks.
  *
  *  @session:    Pointer to session created by xma_scaler_sesssion_create
  *  @frame_list: Pointer to a list of XmaFrame structures

@@ -791,7 +791,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			break;
 		}
 		ret = xocl_icap_lock_bitstream(lro,
-			(xuid_t *)bitstm_lock->uuid, 0);
+			(xuid_t *)bitstm_lock->uuid);
 		(void) xocl_peer_response(lro, req->req, msgid,
 			&ret, sizeof(ret));
 		break;
@@ -804,7 +804,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			break;
 		}
 		ret = xocl_icap_unlock_bitstream(lro,
-			(xuid_t *)bitstm_lock->uuid, 0);
+			(xuid_t *)bitstm_lock->uuid);
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
 			sizeof(ret));
 		break;

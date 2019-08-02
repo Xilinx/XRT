@@ -23,10 +23,14 @@
 #define PROP_BAR_IDX "pcie_base_address_register"
 #define PROP_IO_OFFSET "reg"
 #define PROP_INTERRUPTS "interrupts"
+#define PROP_INTERFACE_UUID "interface_uuid"
+
+#define UUID_PROP_LEN 65 
 
 #define NODE_ENDPOINTS "addressable_endpoints"
 #define LEVEL0_DEV_PATH "/addressable_endpoints_0"
 #define LEVEL1_DEV_PATH "/addressable_endpoints_1"
+#define INTERFACES_PATH "/interfaces"
 
 #define NODE_FLASH "ep_card_flash_program_00"
 #define NODE_XVC_PUB "ep_debug_bscan_user_00"

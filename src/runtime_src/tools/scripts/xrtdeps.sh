@@ -71,6 +71,8 @@ RH_LIST=(\
      ocl-icd-devel \
      opencl-headers \
      opencv \
+     openssl-devel \
+     openssl-static \
      pciutils \
      perl \
      pkgconfig \
@@ -83,6 +85,7 @@ RH_LIST=(\
      rpm-build \
      strace \
      unzip \
+     zlib-static \
 )
 
 UB_LIST=(\
@@ -105,6 +108,7 @@ UB_LIST=(\
      libopencv-core-dev \
      libpng-dev \
      libprotoc-dev \
+     libssl-dev \
      libtiff5-dev \
      libxml2-dev \
      libyaml-dev \
