@@ -54,8 +54,8 @@
 #define XPAR_AXI_PERF_MON_0_OCL_REGION_SLOT             0
 #define XPAR_AXI_PERF_MON_0_HOST_SLOT                   1
 
-#define XPAR_SPM0_HOST_SLOT                             0
-#define XPAR_SPM0_FIRST_KERNEL_SLOT                     1
+#define XPAR_AIM0_HOST_SLOT                             0
+#define XPAR_AIM0_FIRST_KERNEL_SLOT                     1
 
 #define XPAR_AXI_PERF_MON_0_OCL_REGION_SLOT2            2
 #define XPAR_AXI_PERF_MON_0_OCL_REGION_SLOT3            3
@@ -195,10 +195,10 @@
 
 #define XAPM_MAX_NUMBER_SLOTS             8
 // Max slots = floor(max slots on trace funnel / 2) = floor(63 / 2) = 31
-// NOTE: SPM max slots += 3 to support XDMA/KDMA/P2P monitors on some 2018.3 platforms
-#define XSPM_MAX_NUMBER_SLOTS             34
-#define XSAM_MAX_NUMBER_SLOTS             31
-#define XSSPM_MAX_NUMBER_SLOTS            31
+// NOTE: AIM max slots += 3 to support XDMA/KDMA/P2P monitors on some 2018.3 platforms
+#define XAIM_MAX_NUMBER_SLOTS             34
+#define XAM_MAX_NUMBER_SLOTS             31
+#define XASM_MAX_NUMBER_SLOTS            31
 #define XAPM_METRIC_COUNTERS_PER_SLOT     8
 
 /* Metric counters per slot */
@@ -227,13 +227,13 @@
 
 /************************ Trace IDs ************************************/
 
-#define MIN_TRACE_ID_SPM        0
-#define MAX_TRACE_ID_SPM        61
-#define MIN_TRACE_ID_SAM        64
-#define MAX_TRACE_ID_SAM        544
-#define MAX_TRACE_ID_SAM_HWEM   94
-#define MIN_TRACE_ID_SSPM       576
-#define MAX_TRACE_ID_SSPM       607
+#define MIN_TRACE_ID_AIM        0
+#define MAX_TRACE_ID_AIM        61
+#define MIN_TRACE_ID_AM        64
+#define MAX_TRACE_ID_AM        544
+#define MAX_TRACE_ID_AM_HWEM   94
+#define MIN_TRACE_ID_ASM       576
+#define MAX_TRACE_ID_ASM       607
 
 /* Bit locations of trace flags */
 #define XAPM_READ_LAST                   6
@@ -255,7 +255,7 @@
 
 /* Cycles to add to timestamp if overflow occurs */
 #define LOOP_ADD_TIME                    (1<<16)
-#define LOOP_ADD_TIME_SPM                (1ULL<<44)
+#define LOOP_ADD_TIME_AIM                (1ULL<<44)
 
 /********************** Definitions: Enums, Structs ***************************/
 
@@ -310,10 +310,10 @@ enum xclPerfMonEventType {
 #define IS_WRITE(x) ((x) & 1)
 #define IS_READ(x) (!((x) & 1))
 
-#define XSAM_TRACE_CU_MASK         0x1
-#define XSAM_TRACE_STALL_INT_MASK  0x2
-#define XSAM_TRACE_STALL_STR_MASK  0x4
-#define XSAM_TRACE_STALL_EXT_MASK  0x8
+#define XAM_TRACE_CU_MASK         0x1
+#define XAM_TRACE_STALL_INT_MASK  0x2
+#define XAM_TRACE_STALL_STR_MASK  0x4
+#define XAM_TRACE_STALL_EXT_MASK  0x8
 
 /*
  * Performance monitor IDs for host SW events
@@ -372,32 +372,32 @@ enum xclPerfMonEventID {
 /* Performance monitor counter results */
 typedef struct {
   float              SampleIntervalUsec;
-  unsigned long long WriteBytes[XSPM_MAX_NUMBER_SLOTS];
-  unsigned long long WriteTranx[XSPM_MAX_NUMBER_SLOTS];
-  unsigned long long WriteLatency[XSPM_MAX_NUMBER_SLOTS];
-  unsigned short     WriteMinLatency[XSPM_MAX_NUMBER_SLOTS];
-  unsigned short     WriteMaxLatency[XSPM_MAX_NUMBER_SLOTS];
-  unsigned long long ReadBytes[XSPM_MAX_NUMBER_SLOTS];
-  unsigned long long ReadTranx[XSPM_MAX_NUMBER_SLOTS];
-  unsigned long long ReadLatency[XSPM_MAX_NUMBER_SLOTS];
-  unsigned short     ReadMinLatency[XSPM_MAX_NUMBER_SLOTS];
-  unsigned short     ReadMaxLatency[XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long WriteBytes[XAIM_MAX_NUMBER_SLOTS];
+  unsigned long long WriteTranx[XAIM_MAX_NUMBER_SLOTS];
+  unsigned long long WriteLatency[XAIM_MAX_NUMBER_SLOTS];
+  unsigned short     WriteMinLatency[XAIM_MAX_NUMBER_SLOTS];
+  unsigned short     WriteMaxLatency[XAIM_MAX_NUMBER_SLOTS];
+  unsigned long long ReadBytes[XAIM_MAX_NUMBER_SLOTS];
+  unsigned long long ReadTranx[XAIM_MAX_NUMBER_SLOTS];
+  unsigned long long ReadLatency[XAIM_MAX_NUMBER_SLOTS];
+  unsigned short     ReadMinLatency[XAIM_MAX_NUMBER_SLOTS];
+  unsigned short     ReadMaxLatency[XAIM_MAX_NUMBER_SLOTS];
   // Accelerator Monitor
-  unsigned long long CuExecCount[XSAM_MAX_NUMBER_SLOTS];
-  unsigned long long CuExecCycles[XSAM_MAX_NUMBER_SLOTS];
-  unsigned long long CuBusyCycles[XSAM_MAX_NUMBER_SLOTS];
-  unsigned long long CuMaxParallelIter[XSAM_MAX_NUMBER_SLOTS];
-  unsigned long long CuStallExtCycles[XSAM_MAX_NUMBER_SLOTS];
-  unsigned long long CuStallIntCycles[XSAM_MAX_NUMBER_SLOTS];
-  unsigned long long CuStallStrCycles[XSAM_MAX_NUMBER_SLOTS];
-  unsigned long long CuMinExecCycles[XSAM_MAX_NUMBER_SLOTS];
-  unsigned long long CuMaxExecCycles[XSAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuExecCount[XAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuExecCycles[XAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuBusyCycles[XAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuMaxParallelIter[XAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuStallExtCycles[XAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuStallIntCycles[XAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuStallStrCycles[XAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuMinExecCycles[XAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuMaxExecCycles[XAM_MAX_NUMBER_SLOTS];
   // AXI Stream Monitor
-  unsigned long long StrNumTranx[XSSPM_MAX_NUMBER_SLOTS];
-  unsigned long long StrDataBytes[XSSPM_MAX_NUMBER_SLOTS];
-  unsigned long long StrBusyCycles[XSSPM_MAX_NUMBER_SLOTS];
-  unsigned long long StrStallCycles[XSSPM_MAX_NUMBER_SLOTS];
-  unsigned long long StrStarveCycles[XSSPM_MAX_NUMBER_SLOTS];
+  unsigned long long StrNumTranx[XASM_MAX_NUMBER_SLOTS];
+  unsigned long long StrDataBytes[XASM_MAX_NUMBER_SLOTS];
+  unsigned long long StrBusyCycles[XASM_MAX_NUMBER_SLOTS];
+  unsigned long long StrStallCycles[XASM_MAX_NUMBER_SLOTS];
+  unsigned long long StrStarveCycles[XASM_MAX_NUMBER_SLOTS];
 } xclCounterResults;
 
 /* Performance monitor trace results */

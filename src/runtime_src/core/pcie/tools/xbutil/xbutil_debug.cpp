@@ -140,7 +140,7 @@ int xcldev::device::readAIMCounters() {
         return 0;
     }
     std::pair<size_t, size_t> widths = getCUNamePortName(slotNames, cuNameportNames);
-    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_SPM, &debugResults);
+    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_AIM, &debugResults);
 
     std::cout << "AXI Interface Monitor Counters\n";
     int col1 = std::max(widths.first, strlen("Region or CU")) + 4;
@@ -191,7 +191,7 @@ int xcldev::device::readASMCounters() {
         return 0;
     }
     std::pair<size_t, size_t> widths = getStreamName(slotNames, cuNameportNames);
-    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_SSPM, &debugResults);
+    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_ASM, &debugResults);
 
     std::cout << "AXI Stream Monitor Counters\n";
     int col1 = std::max(widths.first, strlen("Stream Master")) + 4;

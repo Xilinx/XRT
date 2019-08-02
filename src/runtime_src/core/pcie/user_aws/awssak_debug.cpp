@@ -103,7 +103,7 @@ std::pair<size_t, size_t> xcldev::device::getCUNamePortName (std::vector<std::st
         else {
             aCUNamePortNames.emplace_back("Unknown", "Unknown");
         }
-        //Replace the name of the host-spm to something simple
+        //Replace the name of the host-aim to something simple
         if (aCUNamePortNames.back().first.find("interconnect_host_aximm") != std::string::npos) {
             aCUNamePortNames.pop_back();
             aCUNamePortNames.emplace_back("XDMA", "N/A");
@@ -114,7 +114,7 @@ std::pair<size_t, size_t> xcldev::device::getCUNamePortName (std::vector<std::st
     return std::pair<size_t, size_t>(max1, max2);
 }
 
-int xcldev::device::readSPMCounters() {
+int xcldev::device::readAIMCounters() {
     xclDebugCountersResults debugResults = {0};
     std::vector<std::string> slotNames;
     std::vector<uint8_t> properties;
@@ -125,7 +125,7 @@ int xcldev::device::readSPMCounters() {
         return 0;
     }
     std::pair<size_t, size_t> widths = getCUNamePortName(slotNames, cuNameportNames);
-    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_SPM, &debugResults);
+    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_AIM, &debugResults);
 
     std::cout << "AXI Interface Monitor Counters\n";
     int col1 = std::max(widths.first, strlen("CU Name")) + 4;
@@ -145,7 +145,7 @@ int xcldev::device::readSPMCounters() {
             << "  " << std::setw(16)  << "Last Rd Data"
             << std::endl;
     for (unsigned int i = 0; i<debugResults.NumSlots; ++i) {
-        if(i < properties.size() && (properties[i] & XSPM_HOST_PROPERTY_MASK))
+        if(i < properties.size() && (properties[i] & XAIM_HOST_PROPERTY_MASK))
             continue;
         std::cout << std::left
             << std::setw(col1) << cuNameportNames[i].first
@@ -249,7 +249,7 @@ int xcldev::device::readLAPCheckers(int aVerbose) {
 
 int xcldev::device::print_debug_ip_list (int aVerbose) {
     static const char * debug_ip_names[depug_ip_max_type] = {
-        "unknown", "lapc", "ila", "spm", "tracefunnel", "monitorfifolite", "monitorfifofull", "accelmonitor"
+        "unknown", "lapc", "ila", "aim", "tracefunnel", "monitorfifolite", "monitorfifofull", "accelmonitor"
     };
     int available_ip [depug_ip_max_type] = {0};
     debug_ip_layout *map;
