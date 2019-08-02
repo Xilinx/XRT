@@ -416,11 +416,6 @@ namespace xdp {
     mLogger->logDependency(objKind, eventString, dependString);
   }
 
-  void RTProfile::parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& traceVector)
-  {
-    mLogger->parseTraceBuf(buf, size, traceVector);
-  }
-
   void RTProfile::logDeviceTrace(std::string deviceName, std::string binaryName, xclPerfMonType type,
       xclTraceResultsVector& traceVector, bool endLog)
   {

@@ -492,11 +492,6 @@ namespace xdp {
     writeTimelineTrace(traceTime, commandString, "", eventString, dependString);
   }
 
-   void TraceLogger::parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& traceVector)
-  {
-    mTraceParserHandle->parseTraceBuf(buf, size, traceVector);
-  }
-
   // ***************************************************************************
   // Log device trace
   // ***************************************************************************

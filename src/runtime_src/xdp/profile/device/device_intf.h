@@ -107,7 +107,7 @@ namespace xdp {
 
   private:
     // Turn on/off debug messages to stdout
-    bool mVerbose = true;
+    bool mVerbose = false;
     // Turns on/off all profiling functions in this class
     bool mIsDeviceProfiling = true;
     // Debug IP Layout has been read or not

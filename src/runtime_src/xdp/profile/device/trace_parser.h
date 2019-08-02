@@ -114,13 +114,6 @@ namespace xdp {
       }
       void ResetState();
 
-    //Raw Packet Parsers
-    private:
-      void parsePacketClockTrain(uint64_t packet, uint64_t firstTimestamp, unsigned mod, xclTraceResults &result);
-      void parsePacket(uint64_t packet, uint64_t firstTimestamp, xclTraceResults &result);
-    public:
-      void parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& traceVector);
-
     private:
       const double PCIE_DELAY_OFFSET_MSEC;
       uint32_t mCuEventID;

@@ -240,7 +240,6 @@ DeviceIntf::~DeviceIntf()
                 << type << ", Start device counters..." << std::endl;
     }
 
-    std::cout << " In DeviceIntf::startCounters " << std::endl;
     // Update addresses for debug/profile IP
 //    readDebugIPlayout();
 
@@ -523,10 +522,11 @@ DeviceIntf::~DeviceIntf()
 
     try {
       // The buffer needs to be initialized because of an xrt bug
-      mTs2mmBoHandle = xrtDevice->alloc(bo_size, xrt::hal::device::Domain::XRT_DEVICE_RAM, 0, nullptr);
+      mTs2mmBoHandle = xrtDevice->alloc(bo_size, xrt::hal::device::Domain::XRT_DEVICE_RAM, 1, nullptr);
       xrtDevice->sync(mTs2mmBoHandle, bo_size, 0, xrt::hal::device::direction::HOST2DEVICE, false);
       mTs2mmBoSize = bo_size;
     } catch (const std::exception& ex) {
+      std::cerr << ex.what() << std::endl;
       return false;
     }
     // Data Mover will write input stream to this address
@@ -544,8 +544,9 @@ DeviceIntf::~DeviceIntf()
 void* DeviceIntf::syncTraceBO(uint64_t offset, uint64_t bytes)
 {
     xrt::device* xrtDevice = (xrt::device*)mDeviceHandle;
-    if (!mTs2mmBoHandle || bytes > mTs2mmBoSize)
+    if (!mTs2mmBoHandle || bytes > mTs2mmBoSize) {
       return nullptr;
+    }
     auto space = xrtDevice->map(mTs2mmBoHandle);
     xrtDevice->sync(mTs2mmBoHandle, bytes, offset, xrt::hal::device::direction::DEVICE2HOST, false);
     return static_cast<char*>(space) + offset;

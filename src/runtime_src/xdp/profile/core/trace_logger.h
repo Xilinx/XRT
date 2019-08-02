@@ -79,7 +79,6 @@ namespace xdp {
     void logDependency(RTUtil::e_profile_command_kind objKind,
         const std::string eventString, const std::string dependString);
 
-    void parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& traceVector);
     // Log device trace
     void logDeviceTrace(std::string deviceName, std::string binaryName, xclPerfMonType type,
         xclTraceResultsVector& traceVector, bool endLog);
