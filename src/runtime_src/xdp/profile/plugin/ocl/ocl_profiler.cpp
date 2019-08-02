@@ -303,6 +303,7 @@ namespace xdp {
 
     XOCL_DEBUGF("getDeviceTrace: START (forceRead: %d)\n", forceReadTrace);
     if(deviceTraceProfilingOn()) {
+      logTrace(XCL_PERF_MON_MEMORY /* in new flow, type should not matter in HW or even HW Emu */, forceReadTrace, true);
 
     // With new XDP flow, HW Emu should be similar to Device flow. So, multiple calls to trace/counters should not be needed.
     // But needed for older flow
@@ -310,7 +311,6 @@ namespace xdp {
         xoclp::platform::log_device_trace(platform, XCL_PERF_MON_ACCEL, forceReadTrace);
         xoclp::platform::log_device_trace(platform, XCL_PERF_MON_STR, forceReadTrace);
       }
-      logTrace(XCL_PERF_MON_MEMORY /* in new flow, type should not matter in HW or even HW Emu */, forceReadTrace, true);
     }
 
     XOCL_DEBUGF("getDeviceTrace: END\n");
