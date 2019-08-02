@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -15,21 +15,20 @@
  */
 
 #include "csv_profile.h"
+
+#include "xdp/profile/core/rt_profile.h"
 #include "util.h"
 
 namespace xdp {
 
-  CSVProfileWriter::CSVProfileWriter( const std::string& summaryFileName,
-                                      const std::string& platformName,
-                                      XDPPluginI* Plugin) :
-      SummaryFileName(summaryFileName),
-      PlatformName(platformName)
+  CSVProfileWriter::CSVProfileWriter(XDPPluginI* Plugin,
+      const std::string& platformName, const std::string& summaryFileName) :
+    ProfileWriterI(Plugin, platformName, summaryFileName)
   {
-    mPluginHandle = Plugin;
-    if (SummaryFileName != "") {
+    if (mFileName != "") {
       assert(!Summary_ofs.is_open());
-      SummaryFileName += FileExtension;
-      openStream(Summary_ofs, SummaryFileName);
+      mFileName += FileExtension;
+      openStream(Summary_ofs, mFileName);
       writeDocumentHeader(Summary_ofs, "Profile Summary");
     }
   }

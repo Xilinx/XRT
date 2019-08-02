@@ -137,7 +137,7 @@ extern "C" {
         DNA_CERTIFICATE,
         PDI,
         BITSTREAM_PARTIAL_PDI,
-        DTC,
+        PARTITION_METADATA,
         EMULATION_DATA,
         SYSTEM_METADATA
     };
@@ -307,7 +307,9 @@ extern "C" {
         AXI_MONITOR_FIFO_FULL,
         ACCEL_MONITOR,
         AXI_STREAM_MONITOR,
-	AXI_STREAM_PROTOCOL_CHECKER
+        AXI_STREAM_PROTOCOL_CHECKER,
+        TRACE_S2MM,
+        AXI_DMA
     };
 
     struct debug_ip_data {

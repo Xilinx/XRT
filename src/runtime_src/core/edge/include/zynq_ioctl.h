@@ -27,8 +27,6 @@
 #include <uapi/drm/drm_mode.h>
 #endif /* !__KERNEL__ */
 
-//#define XCLBIN_DOWNLOAD
-
 enum {
 	DRM_ZOCL_CREATE_BO = 0,
 	DRM_ZOCL_USERPTR_BO,

@@ -27,6 +27,7 @@
 #include "xclhal2.h"
 #include "core/pcie/driver/linux/include/xocl_ioctl.h"
 #include "core/pcie/driver/linux/include/qdma_ioctl.h"
+#include "core/common/xrt_profiling.h"
 
 #include <linux/aio_abi.h>
 #include <libdrm/drm.h>
@@ -37,6 +38,7 @@
 #include <map>
 #include <cassert>
 #include <vector>
+#include <memory>
 
 // Forward declaration
 namespace xrt_core {
@@ -55,7 +57,8 @@ public:
     shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity);
     void init(unsigned index, const char *logfileName, xclVerbosityLevel verbosity);
     void readDebugIpLayout();
-    static int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, va_list args1);
+    static int xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* format, va_list args1);
+    int xclLog(xrtLogMsgLevel level, const char* tag, const char* format, ...);
     // Raw unmanaged read/write on the entire PCIE user BAR
     size_t xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size);
     size_t xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size);
@@ -138,6 +141,10 @@ public:
     uint xclGetNumLiveProcesses();
     int xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size);
 
+    int xclGetDebugIPlayoutPath(char* layoutPath, size_t size);
+    int xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
+    int xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
+
     // Experimental debug profile device data API
     int xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info);
 
@@ -179,7 +186,7 @@ private:
     uint32_t mStallProfilingNumberSlots;
     uint32_t mStreamProfilingNumberSlots;
     std::string mDevUserName;
-    xrt_core::bo_cache *mCmdBOCache;
+    std::unique_ptr<xrt_core::bo_cache> mCmdBOCache;
 
     /*
      * Mapped CU register space for xclRegRead/Write(). We support at most

@@ -71,13 +71,17 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
             if (ipl->m_ip_data[i].m_type != IP_KERNEL)
                 continue;
 
-            if (xclbin_info->number_of_kernels == MAX_KERNEL_CONFIGS) {
+            if (xclbin_info->number_of_kernels == MAX_XILINX_KERNELS) {
                 xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only %d kernels per device\n", xclbin_info->number_of_kernels);
                 return XMA_ERROR;
             }
             memcpy(xclbin_info->ip_layout[j].kernel_name,
                    ipl->m_ip_data[i].m_name, MAX_KERNEL_NAME);
             layout[j].base_addr = ipl->m_ip_data[i].m_base_address;
+            //Sarab: handle soft_kernel type here
+            //set some variable in ip_layout of xma struct
+            xclbin_info->ip_layout[j].soft_kernel = false;
+            
             xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index = %d, kernel name = %s, base_addr = %lx\n",
                     j, layout[j].kernel_name, layout[j].base_addr);
             j++;

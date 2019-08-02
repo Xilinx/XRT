@@ -20,6 +20,9 @@
 namespace XUtil = XclBinUtilities;
 
 #include "DTCStringsBlock.h"
+#include <boost/tuple/tuple.hpp>
+#include <boost/tokenizer.hpp>
+
 
 #include <limits.h>
 #include <stdint.h>
@@ -32,9 +35,90 @@ namespace XUtil = XclBinUtilities;
 #endif
 
 
+typedef struct {
+  FDTProperty::DataFormat eDataFormat;
+  unsigned int wordSize;
+  bool isArray;
+  std::string extension;
+  std::string prettyName;
+} DataFormatElement;
+
+static const std::vector< DataFormatElement > _DataFormatTable = {
+  { FDTProperty::DF_au8,     1,  true,  "_au8",  "array uint8_t" },
+  { FDTProperty::DF_au16,    2,  true,  "_au16", "array uint16_t" },
+  { FDTProperty::DF_au32,    4,  true,  "_au32", "array uint32_t" },
+  { FDTProperty::DF_au64,    8,  true,  "_au64", "array uint64_t" },
+  { FDTProperty::DF_asz,     1,  true,  "_asz",  "string" },
+  { FDTProperty::DF_u16,     2,  false, "_u16",  "uint16_t" },
+  { FDTProperty::DF_u32,     4,  false, "_u32",  "uint32_t" },
+  { FDTProperty::DF_u64,     8,  false, "_u64",  "uint64_t" },
+  { FDTProperty::DF_u128,    16, false, "_u128", "uint128_t" },
+  { FDTProperty::DF_sz,      1,  false,  "_sz",  "string" },
+  { FDTProperty::DF_unknown, 1,  true,  "", "Unknown (default array uint8_t)" }
+};
+
+FDTProperty::DataFormat
+FDTProperty::getDataFormat(const std::string & _variableName) const
+{
+  for (unsigned int index = 0; index < _DataFormatTable.size(); ++index) {
+    const std::string & extension = _DataFormatTable[index].extension;
+    // To handle the case where the table doesn't have an extension
+    if (extension.length() == 0) {
+      continue;
+    }
+  
+    // Do we have a match  
+    if (hasEnding(_variableName, extension) == true) {
+      return _DataFormatTable[index].eDataFormat;
+    }
+  }
+
+  return DF_unknown;
+}
+
+const std::string &
+FDTProperty::getDataFormatPrettyName(DataFormat _eDataFormat) const
+{
+  for (unsigned int index = 0; index < _DataFormatTable.size(); ++index) {
+    if (_DataFormatTable[index].eDataFormat == _eDataFormat) {
+      return _DataFormatTable[index].prettyName;
+    }
+  }
+
+  // Should never get here, but just in case we do 
+  return getDataFormatPrettyName(DF_unknown);
+}
+
+unsigned int 
+FDTProperty::getWordLength(DataFormat _eDataFormat) const
+{
+  for (unsigned int index = 0; index < _DataFormatTable.size(); ++index) {
+    if (_DataFormatTable[index].eDataFormat == _eDataFormat) {
+      return _DataFormatTable[index].wordSize;
+    }
+  }
+
+  std::string err = XUtil::format("ERROR: Unknown data format: %d", (unsigned int) _eDataFormat);
+  throw std::runtime_error(err);
+  return 0;
+}
+
+bool
+FDTProperty::isDataFormatArray(DataFormat _eDataFormat) const
+{
+  for (unsigned int index = 0; index < _DataFormatTable.size(); ++index) {
+    if (_DataFormatTable[index].eDataFormat == _eDataFormat) {
+      return _DataFormatTable[index].isArray;
+    }
+  }
+  return false;
+}
+
+
 FDTProperty::FDTProperty()
   : m_dataLength(0)
-  , m_pDataBuffer(NULL)
+  , m_pDataBuffer(nullptr)
+  , m_eDataFormat(DF_unknown)
 {
   // Empty
 }
@@ -68,7 +152,8 @@ struct FDTLenOffset {
 FDTProperty::FDTProperty(const char* _pBuffer, 
                          const unsigned int _size, 
                          const DTCStringsBlock & _dtcStringsBlock,
-                         unsigned int & _bytesExamined)
+                         unsigned int & _bytesExamined,
+                         const PropertyNameFormat & _propertyNameFormat)
   : FDTProperty()
 {
   XUtil::TRACE("Extracting FDT Property.");
@@ -91,7 +176,7 @@ FDTProperty::FDTProperty(const char* _pBuffer,
     throw std::runtime_error(err);
   }
 
-  // -- Get the len / offset values --
+  // -- Get the offset, length, and name values --
   unsigned int index = 0;
 
   const FDTLenOffset *pHdr = (const FDTLenOffset *) &_pBuffer[index];
@@ -101,7 +186,15 @@ FDTProperty::FDTProperty(const char* _pBuffer,
   m_name = _dtcStringsBlock.getString(ntohl(pHdr->nameoff));
   m_dataLength = ntohl(pHdr->len);
 
-  XUtil::TRACE(XUtil::format("Property Name: '%s', length: %d", m_name.c_str(), m_dataLength).c_str());
+  // -- Determine the type of data
+  DataFormat eDataType = getDataFormat(m_name);
+  if (_propertyNameFormat.find(m_name) != _propertyNameFormat.end()) {
+    eDataType = _propertyNameFormat.find(m_name)->second;
+  }
+
+  const std::string & prettyTypeName = getDataFormatPrettyName(eDataType);
+
+  XUtil::TRACE(XUtil::format("Property Name: '%s', length: %d, type: %s", m_name.c_str(), m_dataLength, prettyTypeName.c_str()).c_str());
 
   // Get the data (if any)
   if (m_dataLength != 0) {
@@ -140,6 +233,22 @@ FDTProperty::hasEnding(std::string const &_sFullString, std::string const & _sEn
 
 
 void
+FDTProperty::au8MarshalToJSON(boost::property_tree::ptree &_ptTree) const
+{
+  XUtil::TRACE("   Type: Array of 8 bits");
+
+  const uint8_t * uint8Array = (const uint8_t *) m_pDataBuffer;
+
+  boost::property_tree::ptree ptProperty;
+  for (unsigned int index = 0; index < m_dataLength; ++index) {
+    boost::property_tree::ptree ptChildArrayElement;
+    ptChildArrayElement.put("", XUtil::format("0x%x", uint8Array[index]).c_str());
+    ptProperty.push_back(std::make_pair("", ptChildArrayElement));
+  }
+  _ptTree.add_child(m_name.c_str(), ptProperty);
+}
+
+void
 FDTProperty::au16MarshalToJSON(boost::property_tree::ptree &_ptTree) const
 {
   XUtil::TRACE("   Type: Array of 16 bits");
@@ -164,16 +273,24 @@ FDTProperty::au16MarshalToJSON(boost::property_tree::ptree &_ptTree) const
 }
 
 void
-FDTProperty::au8MarshalToJSON(boost::property_tree::ptree &_ptTree) const
+FDTProperty::au32MarshalToJSON(boost::property_tree::ptree &_ptTree) const
 {
-  XUtil::TRACE("   Type: Array of 8 bits");
+  XUtil::TRACE("   Type: Array of 32 bits");
 
-  const uint8_t * uint8Array = (const uint8_t *) m_pDataBuffer;
+  // Check and make sure that all is good 
+  static unsigned int byteBoundary = 4;
+  if ((m_dataLength % byteBoundary) != 0) {
+    std::string err = XUtil::format("ERROR: Data length (%d) does not end on a 4-byte boundary.", m_dataLength);
+    throw std::runtime_error(err);
+  }
+
+  unsigned int numElements = m_dataLength / byteBoundary;
+  const uint32_t * uint32Array = (const uint32_t *) m_pDataBuffer;
 
   boost::property_tree::ptree ptProperty;
-  for (unsigned int index = 0; index < m_dataLength; ++index) {
+  for (unsigned int index = 0; index < numElements; ++index) {
     boost::property_tree::ptree ptChildArrayElement;
-    ptChildArrayElement.put("", XUtil::format("0x%x", uint8Array[index]).c_str());
+    ptChildArrayElement.put("", XUtil::format("0x%x", ntohl(uint32Array[index])).c_str());
     ptProperty.push_back(std::make_pair("", ptChildArrayElement));
   }
   _ptTree.add_child(m_name.c_str(), ptProperty);
@@ -229,6 +346,22 @@ FDTProperty::u128MarshalToJSON(boost::property_tree::ptree &_ptTree) const
 }
 
 void
+FDTProperty::u64MarshalToJSON(boost::property_tree::ptree &_ptTree) const
+{
+  XUtil::TRACE("   Type: 64 bits");
+
+  // Check and make sure that all is good 
+  if (m_dataLength != sizeof(uint64_t)) {
+    std::string err = XUtil::format("ERROR: Data length for a 64-bit word is invalid: Expected: %d, Actual: %d", sizeof(uint64_t), m_dataLength);
+    throw std::runtime_error(err);
+  }
+
+  std::string s64Hex;
+  XUtil::binaryBufferToHexString((const unsigned char *) m_pDataBuffer, sizeof(uint64_t), s64Hex);
+  _ptTree.put(m_name.c_str(), XUtil::format("0x%s", s64Hex.c_str()).c_str());
+}
+
+void
 FDTProperty::au64MarshalToJSON(boost::property_tree::ptree &_ptTree) const
 {
   XUtil::TRACE("   Type: Array 64 bits");
@@ -254,6 +387,42 @@ FDTProperty::au64MarshalToJSON(boost::property_tree::ptree &_ptTree) const
 
 
 void
+FDTProperty::aszMarshalToJSON(boost::property_tree::ptree &_ptTree) const
+{
+  XUtil::TRACE("   Type: Array String");
+
+  // Check and make sure that all is good 
+  if (m_dataLength == 0) {
+    throw std::runtime_error("ERROR: Malformed string.  Missing terminator.");
+  }
+
+  if (m_pDataBuffer[m_dataLength - 1] != '\0') {
+    throw std::runtime_error("ERROR: Missing string terminator.");
+  }
+
+  std::vector<std::string> arrayOfStrings;
+  unsigned int index = 0;
+  unsigned int lastIndex = 0;
+  for (index = 0; index < m_dataLength; ++index) {
+    if (m_pDataBuffer[index] == '\0') {
+      std::string sString = & m_pDataBuffer[lastIndex];
+      lastIndex = index + 1;
+      arrayOfStrings.push_back(sString);
+    }
+  }
+
+  boost::property_tree::ptree ptProperty;
+  for (auto sString : arrayOfStrings) {
+    boost::property_tree::ptree ptChildArrayElement;
+    ptChildArrayElement.put("", sString.c_str());
+    ptProperty.push_back(std::make_pair("", ptChildArrayElement));
+    XUtil::TRACE(XUtil::format("String: %s", sString.c_str()).c_str());
+  }
+
+  _ptTree.add_child(m_name.c_str(), ptProperty);
+}
+
+void
 FDTProperty::szMarshalToJSON(boost::property_tree::ptree &_ptTree) const
 {
   XUtil::TRACE("   Type: String");
@@ -271,96 +440,21 @@ FDTProperty::szMarshalToJSON(boost::property_tree::ptree &_ptTree) const
 }
 
 
-unsigned int 
-FDTProperty::getWordLength(enum DataFormat _eDataFormat)
-{
-  switch (_eDataFormat) {
-    case DF_au8:
-    case DF_sz:
-      return 1;
-      break;
 
-    case DF_au16: 
-    case DF_u16:
-      return 2;
-      break;
-
-    case DF_u32:
-      return 4;
-      break;
-
-    case DF_au64:
-      return 8;
-      break;
-
-    case DF_u128:
-      return 16;
-      break;
-
-    case DF_unknown:
-    default:
-      // Do nothing
-      break;
-  }
-
-  std::string err = XUtil::format("ERROR: Unknown data format: %d", (unsigned int) _eDataFormat);
-  throw std::runtime_error(err);
-  return 0;
-}
-
-FDTProperty::DataFormat 
-FDTProperty::getDataFormat(const std::string _sVariableName)
-{
-  if (hasEnding(m_name,"_au16")) {
-    return DF_au16;
-  } else if (hasEnding(m_name,"_u16")) {
-    return DF_u16;
-  } else if (hasEnding(m_name,"_u32")) {
-    return DF_u32;
-  } else if (hasEnding(m_name,"_u128")) {
-    return DF_u128;
-  } else if (hasEnding(m_name,"_sz")) {
-    return DF_sz;
-  } else if (hasEnding(m_name,"_au64")) {
-    return DF_au64;
-  } 
-
-  return DF_unknown;
-}
-
-bool
-FDTProperty::isDataFormatArray(enum DataFormat _eDataFormat)
-{
-  switch (_eDataFormat) {
-    case DF_au16:
-    case DF_au64:
-    case DF_au8:
-      return true;
-      break;
-
-    case DF_unknown:
-    case DF_u16:
-    case DF_u32:
-    case DF_u128:
-    case DF_sz:
-    default:
-      // Fall through
-      break;
-  }
-  return false;
-}
-
-void
-FDTProperty::writeDataWord(enum DataFormat _eDataFormat,
+unsigned int
+FDTProperty::writeDataWord(DataFormat _eDataFormat,
                            char * _buffer, 
                            const std::string & _sData)
 {
+  unsigned int bytesWritten = 0;
   XUtil::TRACE(XUtil::format("Storing property: '%s' with value: '%s'", m_name.c_str(), _sData.c_str()));
 
   switch (_eDataFormat) {
     case DF_sz:
+    case DF_asz:
       // Copy the string + the '\0' byte
       memcpy(_buffer, _sData.c_str(), (_sData.size() + 1));
+      bytesWritten = _sData.size() + 1;
       break;
 
     case DF_au8:
@@ -373,6 +467,7 @@ FDTProperty::writeDataWord(enum DataFormat _eDataFormat,
 
         uint8_t * pWord = (uint8_t *) _buffer;
         *pWord = (uint8_t) dataWord;
+        bytesWritten = sizeof(uint8_t);
       }
       break;
       
@@ -387,9 +482,12 @@ FDTProperty::writeDataWord(enum DataFormat _eDataFormat,
 
         uint16_t * pWord = (uint16_t *) _buffer;
         *pWord = htons((uint16_t) dataWord);
+
+        bytesWritten = sizeof(uint16_t);
       }
       break;
 
+    case DF_au32:
     case DF_u32:
       {
         uint64_t dataWord = std::strtoul(_sData.c_str(), NULL, 0);
@@ -400,10 +498,13 @@ FDTProperty::writeDataWord(enum DataFormat _eDataFormat,
 
         uint32_t * pWord = (uint32_t *) _buffer;
         *pWord = htonl((uint32_t) dataWord);
+
+        bytesWritten = sizeof(uint32_t);
       }
       break;
 
     case DF_au64:
+    case DF_u64:
       {
         uint64_t dataWord = std::strtoul(_sData.c_str(), NULL, 0);
         if (errno == ERANGE) {
@@ -417,6 +518,8 @@ FDTProperty::writeDataWord(enum DataFormat _eDataFormat,
 #else
         *pWord = __builtin_bswap64((uint64_t) dataWord);
 #endif
+
+        bytesWritten = sizeof(uint64_t);
       }
       break;
 
@@ -449,6 +552,8 @@ FDTProperty::writeDataWord(enum DataFormat _eDataFormat,
         XUtil::hexStringToBinaryBuffer(sHex, &dataWord[0], sizeWord);
 
         memcpy(_buffer, &dataWord[0], sizeWord);
+
+        bytesWritten = sizeWord;
       }
       break;
 
@@ -460,99 +565,111 @@ FDTProperty::writeDataWord(enum DataFormat _eDataFormat,
       }
       break;
   }
+  return bytesWritten;
 }
 
 void 
-FDTProperty::marshalDataFromJSON(boost::property_tree::ptree::const_iterator & _iter)
+FDTProperty::marshalDataFromJSON(boost::property_tree::ptree::const_iterator & _iter,
+                                 const PropertyNameFormat & _propertyNameFormat)
 {
+  // Get the name
   m_name = _iter->first;
 
-  DataFormat eDataFormat = getDataFormat(m_name);
-  unsigned int wordSizeBytes = getWordLength(eDataFormat);
+  m_eDataFormat = getDataFormat(m_name);
+
+  if (_propertyNameFormat.find(m_name) != _propertyNameFormat.end()) {
+    m_eDataFormat = _propertyNameFormat.find(m_name)->second;
+  }
+  unsigned int wordSizeBytes = getWordLength(m_eDataFormat);
   const boost::property_tree::ptree & ptData = _iter->second;
   unsigned int arraySize = (unsigned int) ptData.size();
 
   // Make sure that we are not dealing with an array of data for non arrays
-  if ((arraySize > 1) && !isDataFormatArray(eDataFormat)) {
+  if ((arraySize > 1) && !isDataFormatArray(m_eDataFormat)) {
     std::string err = XUtil::format("ERROR: Array of data found for the variable: '%s'", m_name.c_str());
     throw std::runtime_error(err);
   }
 
   // Address the non-array values first
-  if (isDataFormatArray(eDataFormat) == false) {
+  if (isDataFormatArray(m_eDataFormat) == false) {
     std::string sData = ptData.data();  
 
-    if (eDataFormat == DF_sz) {
+    if (m_eDataFormat == DF_sz) {
       m_dataLength = (unsigned int) sData.size() + 1; // Add room for the '\0' character
     } else {
       m_dataLength = wordSizeBytes;
     }
 
     m_pDataBuffer = new char[m_dataLength]();
-    writeDataWord(eDataFormat, m_pDataBuffer, sData);
+    writeDataWord(m_eDataFormat, m_pDataBuffer, sData);
     return;
   }
 
   // Just arrays are remaining
-  m_dataLength = wordSizeBytes * arraySize;
+  if (m_eDataFormat == DF_asz) {
+    m_dataLength = 0;
+    for (auto localIter : ptData) {
+      std::string sData = localIter.second.data();  
+      m_dataLength += sData.size() + 1;  // Add room for the string and the '\0' character
+    }
+  } else {
+    m_dataLength = wordSizeBytes * arraySize;
+  }
+
   m_pDataBuffer = new char[m_dataLength]();
 
-  int index = 0;
+  int byteIndex = 0;
   for (auto localIter : ptData) {
     std::string sData = localIter.second.data();
-    writeDataWord(eDataFormat, m_pDataBuffer + (index * wordSizeBytes), sData);
-    ++index;
+    byteIndex += writeDataWord(m_eDataFormat, m_pDataBuffer + byteIndex, sData);
   }
   return;
 }
 
 
-FDTProperty::FDTProperty(boost::property_tree::ptree::const_iterator & _iter)
+FDTProperty::FDTProperty(boost::property_tree::ptree::const_iterator & _iter, 
+                         const PropertyNameFormat & _propertyNameFormat)
   : FDTProperty()
 {
-  marshalDataFromJSON(_iter);
+  marshalDataFromJSON(_iter, _propertyNameFormat);
 }
 
 
 
 
-bool 
-FDTProperty::isProperty(const std::string &_sName)
-{
-  if ((hasEnding(_sName, "_au16")) ||
-      (hasEnding(_sName, "_u16")) ||
-      (hasEnding(_sName, "_u32")) ||
-      (hasEnding(_sName, "_u128")) ||
-      (hasEnding(_sName, "_sz")) ||
-      (hasEnding(_sName, "_au64")) ||
-      (hasEnding(_sName, "_au8"))) {
-    return true;
-  }
-  return false;
-}
 
 
 void 
-FDTProperty::marshalToJSON(boost::property_tree::ptree &_ptTree) const
+FDTProperty::marshalToJSON(boost::property_tree::ptree &_ptTree,
+                           const PropertyNameFormat & _propertyNameFormat) const
 {
-  XUtil::TRACE(XUtil::format("-- Examining Property: '%s'", m_name.c_str()));
+
+  DataFormat eDataFormat = getDataFormat(m_name);
+
+  if (_propertyNameFormat.find(m_name) != _propertyNameFormat.end()) {
+    eDataFormat = _propertyNameFormat.find(m_name)->second;
+  }
+
+  std::string sTypeName = getDataFormatPrettyName(eDataFormat);
+  XUtil::TRACE(XUtil::format("-- Serializing Property: '%s', Type: %s", m_name.c_str(), sTypeName.c_str()));
 
   boost::property_tree::ptree ptProperty;
 
-  if (hasEnding(m_name,"_au16")) {
-    au16MarshalToJSON(_ptTree);
-  } else if (hasEnding(m_name,"_u16")) {
-    u16MarshalToJSON(_ptTree);
-  } else if (hasEnding(m_name,"_u32")) {
-    u32MarshalToJSON(_ptTree);
-  } else if (hasEnding(m_name,"_u128")) {
-    u128MarshalToJSON(_ptTree);
-  } else if (hasEnding(m_name,"_sz")) {
-    szMarshalToJSON(_ptTree);
-  } else if (hasEnding(m_name,"_au64")) {
-    au64MarshalToJSON(_ptTree);
-  } else {
-    au8MarshalToJSON(_ptTree);
+  switch (eDataFormat) {
+    case DF_au8:  au8MarshalToJSON(_ptTree);  break;
+    case DF_au16: au16MarshalToJSON(_ptTree); break;
+    case DF_au32: au32MarshalToJSON(_ptTree); break;
+    case DF_au64: au64MarshalToJSON(_ptTree); break;
+
+    case DF_u16: u16MarshalToJSON(_ptTree); break;
+    case DF_u32: u32MarshalToJSON(_ptTree); break;
+    case DF_u64: u64MarshalToJSON(_ptTree); break;
+    case DF_u128: u128MarshalToJSON(_ptTree); break;
+
+    case DF_asz: aszMarshalToJSON(_ptTree); break;
+    case DF_sz: szMarshalToJSON(_ptTree); break;
+
+    default: au8MarshalToJSON(_ptTree); break;
   }
 }
 

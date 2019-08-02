@@ -579,6 +579,10 @@ void cb_reset(const axlf* xclbin)
 {
   auto profiler = OCLProfiler::Instance();
 
+  if(profiler) {
+    profiler->reset();
+  }
+
   // Extract and store the system profile metatdata
   auto pProfileMgr = profiler ? profiler->getProfileManager() : nullptr;
   auto pRunSummary = pProfileMgr ? pProfileMgr->getRunSummary() : nullptr;

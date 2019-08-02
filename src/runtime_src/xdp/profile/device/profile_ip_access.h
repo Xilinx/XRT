@@ -21,8 +21,9 @@
 #include <stdexcept>
 #include <fstream>
 #include <iostream>
-#include "xclhal2.h"
 #include "xclbin.h"
+#include "core/include/xclperf.h"
+#include "xrt/device/device.h"
 
 namespace xdp {
 
@@ -51,14 +52,14 @@ public:
      * During the construction, the exclusive access to this
      * IP will be requested, otherwise exception will be thrown.
      */
-    ProfileIP(xclDeviceHandle handle /** < [in] the xrt hal device handle */, 
-                int index /** < [in] the index of the IP in debug_ip_layout */);
+    ProfileIP(void* handle /** < [in] the xrt hal device handle */, 
+                int index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data *data = nullptr);
 
     /**
      * The exclusive access should be release in the destructor
      * to prevent potential card hang.
      */
-    ~ProfileIP();
+    virtual ~ProfileIP();
 
     /**
      * The request_exclusive_ip_access API tries to claim exclusive
@@ -66,21 +67,21 @@ public:
      * (driver) and set the exclusive flag if exclusive access is 
      * granted.
      */
-    void request_exclusive_ip_access(xclDeviceHandle handle, int index);
+    virtual void request_exclusive_ip_access(void* handle, int index);
 
     /**
      * The release_exclusive_ip_access API will release the exclusive
      * access granted to this IP to prevent potential card hang, and clear
      * the exclusive flag if success.
      */
-    void release_exclusive_ip_access(xclDeviceHandle handle, int index);
+    virtual void release_exclusive_ip_access(void* handle, int index);
 
     /**
      * The map API tries to map the IP specified into user space. The 
      * mapped_address and mapped will be set if success. Exception will
      * be thrown if it fails to map.
      */
-    void map();
+    virtual void map();
 
     /**
      * The unmap API tries to clean up the association between user space
@@ -88,7 +89,7 @@ public:
      * be cleared if success. Exception will be thrown if it fails to 
      * unmap.
      */
-    void unmap();
+    virtual void unmap();
 
     /**
      * The read method act the same way as xclRead with the 
@@ -102,7 +103,7 @@ public:
      *     without error, exclusive access to the ip specified 
      *     is guaranteed.
      */
-    int read(uint64_t offset, size_t size, void* data);
+    virtual int read(uint64_t offset, size_t size, void* data);
 
     /**
      * The write method act the same way as xclWrite with the 
@@ -116,23 +117,42 @@ public:
      *     without error, exclusive access to the ip specified 
      *     is guaranteed.
      */
-    int write(uint64_t offset, size_t size, void* data);
+    virtual int write(uint64_t offset, size_t size, void* data);
+
+    virtual int unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset);
 
     /**
      * Since this API as part of the profiling code should not
      * crash the rest of the code, it will need to simply warn
      * the user about the failure and move on.
      */
-    void show_warning(std::string reason);
+    virtual void showWarning(std::string reason);
+    virtual void showProperties();
+    virtual uint32_t getProperties()  { return 0; }
 
+    uint64_t    getBaseAddress() { return ip_base_address; }
+    std::string getName() { return ip_name; }
+
+    uint32_t setLogStream(std::ostream* oStream);
+    std::ostream* getLogStream() { return out_stream; }
+
+//    double getDeviceClock();
+
+//    bool   isOnEdgeDevice();
 private:
-    xclDeviceHandle device_handle; /** < the xrt device handle from the hal layer */
-    uint64_t mapped_address; /** < the mapped address in user space used 
-                                        to access the registers */
-    bool mapped; /** < a flag to keep track of if the ip has been mapped */
-    bool exclusive; /** < a flag indicating if the IP has exclusive access */
-    int ip_index; /** < the index of the IP in debug_ip_layout */
-    std::string ip_name; /** < the string name of the IP for better debuggability */ 
+    void* xrt_device_handle;  /* the xrt device handle from the hal layer */
+    bool  mapped;             /* flag to keep track of if the ip has been mapped */
+    bool  exclusive;          /* flag indicating if the IP has exclusive access */
+    uint64_t ip_index;        /* the index of the IP in debug_ip_layout */
+    uint64_t ip_base_address; /* Base address of the Monitor IP as given in debug_ip_layout ; Used with xclRead/xclWrite/xclUnmgdPread */
+    uint64_t mapped_address;  /* the mapped address in user space used to access the registers */
+    std::string ip_name;      /* the string name of the IP for better debuggability */ 
+
+protected:
+
+    std::ostream* out_stream = nullptr; /* Output stream for log */
+
+    xrt::device* getXRTDevice() { return (xrt::device*)xrt_device_handle; }
 
     /**
      * TODO: the exclusive context from hal

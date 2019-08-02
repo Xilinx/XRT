@@ -79,7 +79,8 @@ void zocl_free_sections(struct drm_zocl_dev *zdev)
 	}
 }
 
-static irqreturn_t zocl_h2c_isr(int irq, void *arg)
+/* Note: this function is not being used, mark it inline to make lint clean */
+static inline irqreturn_t zocl_h2c_isr(int irq, void *arg)
 {
 	void *mmio_sched = arg;
 
@@ -517,10 +518,8 @@ static const struct drm_ioctl_desc zocl_ioctls[] = {
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(ZOCL_SK_REPORT, zocl_sk_report_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
-#if defined(XCLBIN_DOWNLOAD)
 	DRM_IOCTL_DEF_DRV(ZOCL_PCAP_DOWNLOAD, zocl_pcap_download_ioctl,
-			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW)
-#endif
+			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(ZOCL_INFO_CU, zocl_info_cu_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 };
@@ -579,6 +578,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	struct platform_device *subdev;
 	struct resource res_mem;
 	struct resource *res;
+	struct device_node *fnode;
 	int index;
 	int irq;
 	int ret;
@@ -601,13 +601,14 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	}
 	zdev->cu_num = index;
 
-	zdev->host_mem = 0xFFFFFFFFFFFFFFFF;
+	/* set to 0xFFFFFFFF(32bit) or 0xFFFFFFFFFFFFFFFF(64bit) */
+	zdev->host_mem = (phys_addr_t) -1;
 	zdev->host_mem_len = 0;
 	/* If reserved memory region are not found, just keep going */
 	ret = get_reserved_mem_region(&pdev->dev, &res_mem);
 	if (!ret) {
-		DRM_INFO("Reserved memory for host at 0x%llx, size 0x%llx\n",
-			 res_mem.start, resource_size(&res_mem));
+		DRM_INFO("Reserved memory for host at 0x%lx, size 0x%lx\n",
+			 (unsigned long)res_mem.start, (unsigned long)resource_size(&res_mem));
 		zdev->host_mem = res_mem.start;
 		zdev->host_mem_len = resource_size(&res_mem);
 	}
@@ -629,20 +630,21 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 		zdev->ert = (struct zocl_ert_dev *)platform_get_drvdata(subdev);
 	}
 
-#if defined(XCLBIN_DOWNLOAD)
 	fnode = of_get_child_by_name(of_root, "pcap");
-	if (!fnode) {
+	if (fnode) {
+		zdev->fpga_mgr = of_fpga_mgr_get(fnode);
+		if (IS_ERR(zdev->fpga_mgr)) {
+			DRM_ERROR("FPGA Manager not found %ld\n",
+				  PTR_ERR(zdev->fpga_mgr));
+			zdev->fpga_mgr = NULL;
+		} else {
+			if (of_property_read_u32(pdev->dev.of_node, "xlnx,pr-isolation-addr",
+						 &zdev->pr_isolation_addr))
+				zdev->pr_isolation_addr = 0;
+		}
+	} else {
 		DRM_ERROR("FPGA programming device pcap not found\n");
-		return -ENODEV;
 	}
-
-	zdev->fpga_mgr = of_fpga_mgr_get(fnode);
-	if (IS_ERR(zdev->fpga_mgr)) {
-		DRM_ERROR("FPGA Manager not found %ld\n",
-				PTR_ERR(zdev->fpga_mgr));
-		return PTR_ERR(zdev->fpga_mgr);
-	}
-#endif
 
 	/* Initialzie IOMMU */
 	if (iommu_present(&platform_bus_type)) {
@@ -723,9 +725,8 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 		zdev->zdev_dma_chan = NULL;
 	}
 
-#if defined(XCLBIN_DOWNLOAD)
-	fpga_mgr_put(zdev->fpga_mgr);
-#endif
+	if (zdev->fpga_mgr)
+		fpga_mgr_put(zdev->fpga_mgr);
 
 	sched_fini_exec(drm);
 	zocl_clear_mem(zdev);
