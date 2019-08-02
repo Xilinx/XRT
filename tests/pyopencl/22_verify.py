@@ -6,7 +6,7 @@ import os
 from optparse import OptionParser
 
 def main():
-   logfile = open("log.txt", "w")
+   logfile = open("/tmp/log.txt", "w")
    os.dup2(logfile.fileno(), 2)
    platform_ID = None
    xclbin = None

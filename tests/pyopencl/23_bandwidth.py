@@ -9,7 +9,7 @@ import math
 current_micro_time = lambda: int(round(time.time() * 1000000))
 
 def main():
-    logfile = open("log.txt", "w")
+    logfile = open("/tmp/log.txt", "w")
     os.dup2(logfile.fileno(), 2)
     platform_ID = None
     xclbin = None

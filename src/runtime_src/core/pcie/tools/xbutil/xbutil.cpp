@@ -993,7 +993,6 @@ int xcldev::device::bandwidthKernelTest(void)
         std::ifstream f("log.txt");
         if (f.is_open())
             std::cout << f.rdbuf();
-        std::remove("log.txt");
         return -EINVAL;
     }
 
