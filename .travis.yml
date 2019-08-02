@@ -3,10 +3,10 @@ language: cpp
 
 env:
   global:
-   - secure: "tThkybHy/0k4C/yIGWrr8mzRp48Q5SAHZsFTcZIYU1Ix9O/BBQh8RIBMp+I5Zf7wedG1AwcZsaELrvOS/+g1Z4NstfDdNnN/hfeNYASc/pCvZgK3aXWzgnSBR11Q28PCSh7qqfD+XJjBvywhvMBGh/UGOUVSH8s76fyoGLgUSpVmJxWMkX0Dc8PwuERrbVTAx2Wge8x/li9kX9C223zVYYlGdjvcQ5HmEn03jUL3W2hD3kMRY88yiPTV6Mf2xJOvLakrGnvUS42+c8OhtKqPVirN1i3HlGDsAjqyT39HLXprs1SwbrAA43fSFXjGVULk7EPnbtcKZgAzdBJzAWezTAcEIcHQFLnvjyrH99Y3LBIGZQOw7mPvNhoDcJuW6ABQzdbAPjJq9+0ojRAFYn/2/ZxiESge/tq0ZGk3j/Rf0eNPbQ3I84F6GkItCpSdHjJ1Oied8IlrYL+nipKku6naiyZYluaxL/RvftTHJOLazw7Yj+DeLhvtpJWwxtJysLomNlLI+43GSFZKxYHMPKh6B5C4+hLKlKN3HQGXsgFj7/WIVNBZRJlcA0sSvyl0qNS5G/d1iDUzHSJIlZMEctchnLXTKHpDEsFfLSlRtDhkuiv9tPJi9xck5SgOQd07IuhtHd+IOclB4ZirUZ6Talo0fekGriyADC/8muI1YGQnJPk="
+   - secure: "lnoyS+cRbhWxwX/VrinmWA3GcUzcuCNWfN05Eu+FhoZJC4N01e35ZWQZGIZ2mtp/avqfL8DMwB7/9yin8QjmqqrLYVNIBNvYfviFk7VuqfbBAM42kqBtR7enzQMzfZhkPqBvkx5NBPN6Sk2sNTojgYj5o9iVpDOjX1xbb9DlyWZ72B1QzRtJKuSJ8bAxmJqqfrOnCGwCpR1ZPfXqUxAvJBjZd/24QXmVsX69aKP4nVOXM1lGXmxUSKWxdGRBr8DsPtW9lqad+MrpjDwFwvgS6Xc1idrkT309bwm+yMnhsqpdyKIJU2/oCJ4m5m5NbViiffAV7RtDOICRNIDXbtv5roCa+kKFgXyiknvlkUVBBqqwDwRGiryR5Iq5WSfx16PdppG7ZLuIzcREORXLw4p1quo8qDAuq81WruwfqGEUDoBM3jRmpa45CNcR1nfkroNwzSX9T2mRc8Rzz4XaInG/tYmWeE23AiMIQjGy1Ig1kkY1Qr7bo5BvlpvX0biG7C6UqC3GnLO2couZ7zbkqUFSmIPTqK841pwYRus9woAsCLvt6VKoRqfE260QUF9DibMwxdv8igBqHJ1t7CnWCfQv/ZR7im83gOvJRNGVwOD01+gMmbQl0gi876kV6vquP5bO+OzKXhoaB74Yk8LBXat9mfBvJEw6cVjawkV5nN4Bc6E="
 
 before_script:
-  - echo -n | openssl s_client -connect https://scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
+  - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
   - ./src/runtime_src/tools/scripts/xrtdeps.sh
   - cd build
 
@@ -22,4 +22,4 @@ addons:
     build_command: "./build.sh"
     branch_pattern: master
 
-script: if [ ${COVERITY_SCAN_BRANCH} != 1 ]; then ./build.sh ; fi
+script: if [ "$COVERITY_SCAN_BRANCH" != 1 ]; then ./build.sh ; fi

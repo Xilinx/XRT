@@ -99,7 +99,7 @@ static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 		goto failed;
 	}
 
-	if (!fdt_node_check_compatible(blob, node, "axi_qspi"))
+	if (!fdt_node_check_compatible(blob, node, "axi_quad_spi"))
 		flash_type = FLASH_TYPE_SPI;
 	else {
 		xocl_xdev_err(xdev_hdl, "UNKNOWN flash type");
@@ -326,6 +326,24 @@ static struct xocl_subdev_map		subdev_map[] = {
  */
 #define XOCL_FDT_ALL	-1
 
+static int get_next_prop_by_name(void *fdt, int node, char *name,
+	const void **val, int len)
+{
+	int prop_len;
+	int depth = 1;
+
+	do {
+		*val = fdt_getprop(fdt, node, name, &prop_len);
+		if (*val && (len == prop_len))
+			return node;
+		node = fdt_next_node(fdt, node, &depth);
+		if (node < 0 || depth < 1)
+			return -EFAULT;
+	} while (depth > 1);
+
+	return -ENOENT;
+}
+
 static bool get_userpf_info(void *fdt, int node, u32 pf)
 {
 	int len;
@@ -353,9 +371,9 @@ int xocl_fdt_overlay(void *fdt, int target,
 
 	if (pf != XOCL_FDT_ALL &&
 		!get_userpf_info(fdto, node, pf)) {
-			/* skip this node */
-			ret = fdt_del_node(fdt, target);
-			return ret;
+		/* skip this node */
+		ret = fdt_del_node(fdt, target);
+		return ret;
 	}
 
 	fdt_for_each_property_offset(property, fdto, node) {
@@ -675,6 +693,57 @@ static int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob,
 
 failed:
 	return dev_num;
+}
+
+const char *xocl_fdt_next_intf_uuid(xdev_handle_t xdev_hdl, void *blob,
+	int offset)
+{
+	const void *uuid = NULL;
+
+	get_next_prop_by_name(blob, offset, PROP_INTERFACE_UUID,
+			        &uuid, UUID_PROP_LEN);
+
+	return uuid;
+}
+
+int xocl_fdt_check_uuids(xdev_handle_t xdev_hdl, void *blob,
+	void *subset_blob)
+{
+	const char *subset_int_uuid = NULL;
+	const char *int_uuid = NULL;
+	int offset, subset_offset;
+
+	offset = fdt_path_offset(blob, INTERFACES_PATH);
+	subset_offset = fdt_path_offset(subset_blob, INTERFACES_PATH);
+
+	if (offset < 0 || subset_offset < 0) {
+		xocl_xdev_err(xdev_hdl, "Invalid offset %d, subset_offset %d",
+				offset, subset_offset);
+		return -EINVAL;
+	}
+
+	for (subset_offset = fdt_first_subnode(subset_blob, subset_offset);
+		subset_offset >= 0;
+		subset_offset = fdt_next_subnode(subset_blob, subset_offset)) {
+		subset_int_uuid = fdt_getprop(subset_blob, subset_offset,
+				"interface_uuid", NULL);
+		if (!subset_int_uuid)
+			return -EINVAL;
+		for (offset = fdt_first_subnode(blob, offset);
+			offset >= 0;
+			offset = fdt_next_subnode(blob, offset)) {
+			int_uuid = fdt_getprop(blob, offset, "interface_uuid",
+					NULL);
+			if (!int_uuid)
+				return -EINVAL;
+			if (!strcmp(int_uuid, subset_int_uuid))
+				break;
+		}
+		if (offset < 0)
+			return -ENOENT;
+	}
+
+	return 0;
 }
 
 int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob)

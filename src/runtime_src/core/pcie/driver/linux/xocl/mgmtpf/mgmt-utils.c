@@ -494,25 +494,18 @@ failed:
 
 int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 {
-	const struct firmware			*fw;
+	const struct firmware			*fw = NULL;
 	const struct axlf_section_header	*dtc_header;
 	struct axlf				*bin_axlf;
 	char					fw_name[128];
 	int					ret;
 
-	snprintf(fw_name, sizeof(fw_name),
-		"xilinx/%04x-%04x-%04x-%016llx.dsabin",
-		lro->core.pdev->vendor,
-		lro->core.pdev->device,
-		lro->core.pdev->subsystem_device,
-		xocl_get_timestamp(lro));
+        ret = xocl_rom_find_firmware(lro, fw_name, sizeof(fw_name),
+		lro->core.pdev->device, &fw);
+	if (ret)
+		goto failed;
 
 	mgmt_info(lro, "Load fdt from %s", fw_name);
-	ret = request_firmware(&fw, fw_name, &lro->core.pdev->dev);
-	if (ret) {
-		mgmt_err(lro, "unable to find firmware");
-		goto failed;
-	}
 
 	bin_axlf = (struct axlf *)fw->data;
 	dtc_header = xocl_axlf_section_header(lro, bin_axlf, PARTITION_METADATA);

@@ -662,7 +662,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 
 	drm_p->mm = vzalloc(size);
 	drm_p->mm_usage_stat = vzalloc(size);
-	drm_p->mm_p2p_off = vzalloc(topo->m_count * sizeof(u64));
+	drm_p->mm_p2p_off = vzalloc((topo->m_count + 1) * sizeof(u64));
 	if (!drm_p->mm || !drm_p->mm_usage_stat || !drm_p->mm_p2p_off) {
 		err = -ENOMEM;
 		goto failed;
@@ -684,13 +684,17 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	/* Currently only fixed sizes are supported */
 	for (i = 0; i < topo->m_count; i++) {
 		mem_data = &topo->m_mem_data[i];
+
+		ddr_bank_size = XOCL_IS_STREAM(topo, i) ? 0 :
+			mem_data->m_size * 1024;
+
+		drm_p->mm_p2p_off[i + 1] = drm_p->mm_p2p_off[i] + ddr_bank_size;
+
 		if (!mem_data->m_used)
 			continue;
 
 		if (XOCL_IS_STREAM(topo, i))
 			continue;
-
-		ddr_bank_size = mem_data->m_size * 1024;
 
 		xocl_info(drm_p->ddev->dev, "Allocating Memory Bank: %s", mem_data->m_tag);
 		xocl_info(drm_p->ddev->dev, "  base_addr:0x%llx, total size:0x%lx",
@@ -732,7 +736,6 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 
 		drm_mm_init(drm_p->mm[i], mem_data->m_base_address,
 				ddr_bank_size - reserved1 - reserved2);
-		drm_p->mm_p2p_off[i] = ddr_bank_size * i;
 
 		xocl_info(drm_p->ddev->dev, "drm_mm_init called");
 	}

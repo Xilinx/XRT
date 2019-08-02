@@ -21,6 +21,9 @@ usage()
     echo
     echo "[-help]                    List this help"
     echo "[clean|-clean]             Remove build directories"
+    echo "[-dbg]                     Build debug library only"
+    echo "[-opt]                     Build optimized library only"
+    echo "[-nocmake]                 Skip CMake call"
     echo "[-j <n>]                   Compile parallel (default: system cores)"
     echo "[-ccache]                  Build using RDI's compile cache"
     echo "[-driver]                  Include building driver code"
@@ -40,6 +43,9 @@ driver=0
 clangtidy=0
 checkpatch=0
 jcore=$CORE
+opt=1
+dbg=1
+nocmake=0
 while [ $# -gt 0 ]; do
     case "$1" in
         -help)
@@ -47,6 +53,20 @@ while [ $# -gt 0 ]; do
             ;;
         clean|-clean)
             clean=1
+            shift
+            ;;
+        -dbg)
+            dbg=1
+            opt=0
+            shift
+            ;;
+        -opt)
+            dbg=0
+            opt=1
+            shift
+            ;;
+        -nocmake)
+            nocmake=1
             shift
             ;;
         -j)
@@ -108,20 +128,29 @@ if [[ $ccache == 1 ]]; then
     fi
 fi
 
-mkdir -p Debug Release
-cd Debug
-echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
-time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
-time make -j $jcore $verbose DESTDIR=$PWD install
-time ctest --output-on-failure
-cd $BUILDDIR
+if [[ $dbg == 1 ]]; then
+  mkdir -p Debug
+  cd Debug
+  if [[ $nocmake == 0 ]]; then
+    echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
+    time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
+  fi
+  time make -j $jcore $verbose DESTDIR=$PWD install
+  time ctest --output-on-failure
+  cd $BUILDDIR
+fi
 
-cd Release
-echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
-time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
-time make -j $jcore $verbose DESTDIR=$PWD install
-time ctest --output-on-failure
-time make package
+if [[ $opt == 1 ]]; then
+  mkdir -p Release
+  cd Release
+  if [[ $nocmake == 0 ]]; then
+    echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
+    time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
+  fi
+  time make -j $jcore $verbose DESTDIR=$PWD install
+  time ctest --output-on-failure
+  time make package
+fi
 
 if [[ $driver == 1 ]]; then
     make -C usr/src/xrt-2.3.0/driver/xocl

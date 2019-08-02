@@ -262,6 +262,10 @@ xma_kernel_session_write(XmaKernelSession *session,
                          int32_t           param_cnt)
 {
     xma_logmsg(XMA_DEBUG_LOG, XMA_KERNEL_MOD, "%s()\n", __func__);
+    if (session->base.session_signature != (void*)(((uint64_t)session->base.hw_session.kernel_info) | ((uint64_t)session->base.hw_session.dev_handle))) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD, "XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
     return session->kernel_plugin->write(session, param, param_cnt);
 }
 
@@ -271,5 +275,9 @@ xma_kernel_session_read(XmaKernelSession *session,
                         int32_t           *param_cnt)
 {
     xma_logmsg(XMA_DEBUG_LOG, XMA_KERNEL_MOD, "%s()\n", __func__);
+    if (session->base.session_signature != (void*)(((uint64_t)session->base.hw_session.kernel_info) | ((uint64_t)session->base.hw_session.dev_handle))) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD, "XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
     return session->kernel_plugin->read(session, param, param_cnt);
 }

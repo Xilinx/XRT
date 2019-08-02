@@ -270,6 +270,10 @@ xma_dec_session_send_data(XmaDecoderSession *session,
 						  int32_t           *data_used)
 {
     xma_logmsg(XMA_DEBUG_LOG, XMA_DECODER_MOD, "%s()\n", __func__);
+    if (session->base.session_signature != (void*)(((uint64_t)session->base.hw_session.kernel_info) | ((uint64_t)session->base.hw_session.dev_handle))) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD, "XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
     return session->decoder_plugin->send_data(session, data, data_used);
 }
 
@@ -278,6 +282,10 @@ xma_dec_session_get_properties(XmaDecoderSession  *session,
 		                       XmaFrameProperties *fprops)
 {
     xma_logmsg(XMA_DEBUG_LOG, XMA_DECODER_MOD, "%s()\n", __func__);
+    if (session->base.session_signature != (void*)(((uint64_t)session->base.hw_session.kernel_info) | ((uint64_t)session->base.hw_session.dev_handle))) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD, "XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
     return session->decoder_plugin->get_properties(session, fprops);
 }
 
@@ -286,5 +294,9 @@ xma_dec_session_recv_frame(XmaDecoderSession *session,
                            XmaFrame           *frame)
 {
     xma_logmsg(XMA_DEBUG_LOG, XMA_DECODER_MOD, "%s()\n", __func__);
+    if (session->base.session_signature != (void*)(((uint64_t)session->base.hw_session.kernel_info) | ((uint64_t)session->base.hw_session.dev_handle))) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD, "XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
     return session->decoder_plugin->recv_frame(session, frame);
 }

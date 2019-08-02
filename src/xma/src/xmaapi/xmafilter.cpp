@@ -261,6 +261,10 @@ xma_filter_session_send_frame(XmaFilterSession  *session,
                               XmaFrame          *frame)
 {
     xma_logmsg(XMA_DEBUG_LOG, XMA_FILTER_MOD, "%s()\n", __func__);
+    if (session->base.session_signature != (void*)(((uint64_t)session->base.hw_session.kernel_info) | ((uint64_t)session->base.hw_session.dev_handle))) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD, "XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
 
     return session->filter_plugin->send_frame(session, frame);
 }
@@ -270,5 +274,9 @@ xma_filter_session_recv_frame(XmaFilterSession  *session,
                               XmaFrame          *frame)
 {
     xma_logmsg(XMA_DEBUG_LOG, XMA_FILTER_MOD, "%s()\n", __func__);
+    if (session->base.session_signature != (void*)(((uint64_t)session->base.hw_session.kernel_info) | ((uint64_t)session->base.hw_session.dev_handle))) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD, "XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
     return session->filter_plugin->recv_frame(session, frame);
 }
