@@ -6,7 +6,7 @@ import os
 from optparse import OptionParser
 
 def main():
-   logfile = open("/tmp/log.txt", "w")
+   logfile = open("log.txt", "w")
    os.dup2(logfile.fileno(), 2)
    platform_ID = None
    xclbin = None
@@ -25,6 +25,7 @@ def main():
 
    if(xclbin is None):
       print("No xclbin specified\nUsage: -k <path to xclbin>")
+      logfile.close()
       sys.exit()
 
    if index is None:
@@ -46,12 +47,14 @@ def main():
       #make sure xrt is sourced
       #run clinfo to make sure Xilinx platform is discoverable
       print("ERROR: Plaform not found")
+      logfile.close()
       sys.exit()
 
    # choose device
    devices = platforms[platform_ID].get_devices()
    if int(index) > len(devices)-1:
       print("\nERROR: Index out of range. %d devices were found" %len(devices))
+      logfile.close()
       sys.exit(1)
    else:
       dev = devices[int(index)]
@@ -59,12 +62,14 @@ def main():
    ctx = cl.Context(devices = [dev])
    if not ctx:
       print("ERROR: Failed to create context")
+      logfile.close()
       sys.exit()
 
    commands = cl.CommandQueue(ctx, dev)
 
    if not commands:
       print("ERROR: Failed to create command queue")
+      logfile.close()
       sys.exit()
 
    print("Loading xclbin")
@@ -76,6 +81,7 @@ def main():
    except:
       print("ERROR:")
       print(prg.get_build_info(ctx, cl.program_build_info.LOG))
+      logfile.close()
       raise
 
    # allocate memory on the device
@@ -85,6 +91,7 @@ def main():
       prg.hello(commands, (1, ), (1, ), d_buf)
    except:
       print("ERROR: Failed to execute the kernel")
+      logfile.close()
       raise
 
    # read the result
@@ -93,6 +100,7 @@ def main():
       cl.enqueue_copy(commands, h_buf, d_buf)
    except:
       print("ERROR: Failed to read the output")
+      logfile.close()
       raise
 
    print("Result: %s" % h_buf)
@@ -100,6 +108,7 @@ def main():
    # cleanup
    d_buf.release()
    del ctx
+   logfile.close()
 
 if __name__ == "__main__":
    main()

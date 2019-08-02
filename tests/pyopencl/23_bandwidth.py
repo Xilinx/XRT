@@ -9,7 +9,7 @@ import math
 current_micro_time = lambda: int(round(time.time() * 1000000))
 
 def main():
-    logfile = open("/tmp/log.txt", "w")
+    logfile = open("log.txt", "w")
     os.dup2(logfile.fileno(), 2)
     platform_ID = None
     xclbin = None
@@ -33,6 +33,7 @@ def main():
     
     if xclbin is None:
        print("No xclbin specified\nUsage: -k <path to xclbin>")
+       logfile.close()
        sys.exit(1)
     
     if index is None:
@@ -54,12 +55,14 @@ def main():
        #make sure xrt is sourced
        #run clinfo to make sure Xilinx platform is discoverable
        print("ERROR: Plaform not found")
+       logfile.close()
        sys.exit(1)
  
     # choose device
     devices = platforms[platform_ID].get_devices()
     if int(index) > len(devices)-1:
        print("\nERROR: Index out of range. %d devices were found" %len(devices))
+       logfile.close()
        sys.exit(1)
     else:
        dev = devices[int(index)]
@@ -67,12 +70,14 @@ def main():
     ctx = cl.Context(devices = [dev])
     if not ctx:
        print("ERROR: Failed to create context")
+       logfile.close()
        sys.exit(1)
  
     commands = cl.CommandQueue(ctx, dev, properties=cl.command_queue_properties.OUT_OF_ORDER_EXEC_MODE_ENABLE)
  
     if not commands:
        print("ERROR: Failed to create command queue")
+       logfile.close()
        sys.exit(1)
  
     print("Loading xclbin")
@@ -99,6 +104,7 @@ def main():
 
     if input_buf1.int_ptr is None or input_buf2.int_ptr is None:
        print("ERROR: Failed to allocate source buffer")
+       logfile.close()
        sys.exit(1)
     
     #output host and buffer
@@ -110,6 +116,7 @@ def main():
 
     if output_buf1.int_ptr is None or output_buf2.int_ptr is None:
        print("ERROR: Failed to allocate destination buffer")
+       logfile.close()
        sys.exit(1)
 
     #copy dataset to OpenCL buffer
@@ -164,6 +171,7 @@ def main():
                input_buf2.release()
                output_buf1.release()
                output_buf2.release()
+               logfile.close()
                sys.exit(1)
 
             # print("Reps = %d, Beats = %d, Duration = %lf us" %(reps, beats, usduration)) # for debug
@@ -194,9 +202,11 @@ def main():
     print("Maximum throughput: %d MB/s" %max(throughput))
     if max(throughput) < 40000:
         print("ERROR: Throughput is less than expected value of 40 GB/sec")
+        logfile.close()
         sys.exit(1)
     
     print("PASSED")
+    logfile.close()
 
 if __name__ == "__main__":
     main()
