@@ -39,6 +39,8 @@ namespace xclhwemhal2 {
   const unsigned HwEmShim::CONTROL_AP_IDLE  = 4;
   const unsigned HwEmShim::CONTROL_AP_CONTINUE  = 0x10;
 
+#define AXI_FIFO_RDFD_AXI_FULL          0x1000
+
   Event::Event()
   {
     awlen = 0;
@@ -843,6 +845,8 @@ namespace xclhwemhal2 {
         }
       case XCL_ADDR_SPACE_DEVICE_PERFMON:
         {
+          xclGetDebugMessages();
+          xclReadAddrKernelCtrl_RPC_CALL(xclReadAddrKernelCtrl,space,offset,hostBuf,size);
           PRINTENDFUNC;
           return -1;
         }
@@ -2242,13 +2246,12 @@ int HwEmShim::xclGetDebugIPlayoutPath(char* layoutPath, size_t size)
 
 int HwEmShim::xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
 {
-#if 0
   /* Will this be same as HW flow ? */
   uint32_t bytesPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 8);
 
   traceBufSz = MAX_TRACE_NUMBER_SAMPLES * bytesPerSample;   /* Buffer size in bytes */
   traceSamples = nSamples;
-#endif
+
   return 0;
 }
 
@@ -2260,7 +2263,74 @@ int HwEmShim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t num
     */
 #endif
 
+    // Create trace buffer on host (requires alignment)
+    const int traceBufWordSz = traceBufSz / 4;  // traceBufSz is in number of bytes
+
+    uint32_t size = 0;
+
+    wordsPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 32);
+    uint32_t numWords = numSamples * wordsPerSample;
+
+//    alignas is defined in c++11
+#if GCC_VERSION >= 40800
+    /* Alignment is limited to 16 by PPC64LE : so , should it be
+    alignas(16) uint32_t hostbuf[traceBufSzInWords];
+    */
+    alignas(AXI_FIFO_RDFD_AXI_FULL) uint32_t hostbuf[traceBufWordSz];
+#else
+    xrt_core::AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, traceBufWordSz);
+    uint32_t* hostbuf = alignedBuffer.getBuffer();
+#endif
+
+    // Now read trace data
+    memset((void *)hostbuf, 0, traceBufSz);
+
+    // Iterate over chunks
+    // NOTE: AXI limits this to 4K bytes per transfer
+    uint32_t chunkSizeWords = 256 * wordsPerSample;
+    if (chunkSizeWords > 1024) chunkSizeWords = 1024;
+    uint32_t chunkSizeBytes = 4 * chunkSizeWords;
+    uint32_t words=0;
+
+    // Read trace a chunk of bytes at a time
+    if (numWords > chunkSizeWords) {
+      for (; words < (numWords-chunkSizeWords); words += chunkSizeWords) {
+          if(mLogStream.is_open())
+            mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
+                          << std::hex << (ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0] or AXI_FIFO_RDFD*/ << " and writing it to 0x"
+                          << (void *)(hostbuf + words) << std::dec << std::endl;
+
+        xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
+
+        size += chunkSizeBytes;
+      }
+    }
+
+    // Read remainder of trace not divisible by chunk size
+    if (words < numWords) {
+      chunkSizeBytes = 4 * (numWords - words);
+
+      if(mLogStream.is_open()) {
+        mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
+                      << std::hex << (ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0]*/ << " and writing it to 0x"
+                      << (void *)(hostbuf + words) << std::dec << std::endl;
+      }
+
+      xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
+
+      size += chunkSizeBytes;
+    }
+
+    if(mLogStream.is_open())
+        mLogStream << __func__ << ": done reading " << size << " bytes " << std::endl;
+
+    memcpy((char*)traceBuf, (char*)hostbuf, traceBufSz);
+
+    return size;
+
+#if 0
    return 0;
+#endif
 }
 
 
