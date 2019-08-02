@@ -197,7 +197,9 @@ extern "C" {
 
     struct axlf {
         char m_magic[8];                            /* Should be "xclbin2\0"  */
-        unsigned char m_cipher[32];                 /* Hmac output digest */
+        int32_t m_signature_length;                 /* Length of the signature. -1 indicates no signature */
+        unsigned char reserved[28];                 /* Note: Initialized to 0xFFs */
+
         unsigned char m_keyBlock[256];              /* Signature for validation of binary */
         uint64_t m_uniqueId;                        /* axlf's uniqueId, use it to skip redownload etc */
         struct axlf_header m_header;                /* Inline header */

@@ -72,6 +72,7 @@ RH_LIST=(\
      opencl-headers \
      opencv \
      openssl-devel \
+     openssl-static \
      pciutils \
      perl \
      pkgconfig \
@@ -84,6 +85,7 @@ RH_LIST=(\
      rpm-build \
      strace \
      unzip \
+     zlib-static \
 )
 
 UB_LIST=(\
