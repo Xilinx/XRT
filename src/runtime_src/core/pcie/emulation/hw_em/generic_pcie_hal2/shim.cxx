@@ -2246,7 +2246,6 @@ int HwEmShim::xclGetDebugIPlayoutPath(char* layoutPath, size_t size)
 
 int HwEmShim::xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
 {
-  /* Will this be same as HW flow ? */
   uint32_t bytesPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 8);
 
   traceBufSz = MAX_TRACE_NUMBER_SAMPLES * bytesPerSample;   /* Buffer size in bytes */
@@ -2257,12 +2256,6 @@ int HwEmShim::xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, u
 
 int HwEmShim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
 {
-#if 0
-   /* For PCIe devices (HW flow), trace data is read using unmanaged read.
-    * Would new HW Emulation need unmanaged read or xclread ?
-    */
-#endif
-
     // Create trace buffer on host (requires alignment)
     const int traceBufWordSz = traceBufSz / 4;  // traceBufSz is in number of bytes
 
@@ -2327,10 +2320,6 @@ int HwEmShim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t num
     memcpy((char*)traceBuf, (char*)hostbuf, traceBufSz);
 
     return size;
-
-#if 0
-   return 0;
-#endif
 }
 
 

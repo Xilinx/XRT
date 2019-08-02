@@ -455,7 +455,6 @@ DeviceIntf::~DeviceIntf()
       mIsDebugIPlayoutRead = true;
       return;
     }
-std::cout << " debug_ip_layout path : " << path << std::endl;
 
     std::ifstream ifs(path.c_str(), std::ifstream::binary);
     if(!ifs) {
@@ -491,6 +490,7 @@ std::cout << " debug_ip_layout path : " << path << std::endl;
     }
     ifs.close();
 
+#if 0
     for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
         (*itr)->showProperties();
     }
@@ -506,7 +506,7 @@ std::cout << " debug_ip_layout path : " << path << std::endl;
     if(fifoRead) fifoRead->showProperties();
     if(traceDMA) traceDMA->showProperties();
     if(traceFunnel) traceFunnel->showProperties();
-
+#endif
 
     mIsDebugIPlayoutRead = true;
   }
