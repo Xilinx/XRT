@@ -518,10 +518,8 @@ static const struct drm_ioctl_desc zocl_ioctls[] = {
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(ZOCL_SK_REPORT, zocl_sk_report_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
-#if defined(XCLBIN_DOWNLOAD)
 	DRM_IOCTL_DEF_DRV(ZOCL_PCAP_DOWNLOAD, zocl_pcap_download_ioctl,
-			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW)
-#endif
+			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(ZOCL_INFO_CU, zocl_info_cu_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 };
@@ -580,6 +578,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	struct platform_device *subdev;
 	struct resource res_mem;
 	struct resource *res;
+	struct device_node *fnode;
 	int index;
 	int irq;
 	int ret;
@@ -631,20 +630,21 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 		zdev->ert = (struct zocl_ert_dev *)platform_get_drvdata(subdev);
 	}
 
-#if defined(XCLBIN_DOWNLOAD)
 	fnode = of_get_child_by_name(of_root, "pcap");
-	if (!fnode) {
+	if (fnode) {
+		zdev->fpga_mgr = of_fpga_mgr_get(fnode);
+		if (IS_ERR(zdev->fpga_mgr)) {
+			DRM_ERROR("FPGA Manager not found %ld\n",
+				  PTR_ERR(zdev->fpga_mgr));
+			zdev->fpga_mgr = NULL;
+		} else {
+			if (of_property_read_u32(pdev->dev.of_node, "xlnx,pr-isolation-addr",
+						 &zdev->pr_isolation_addr))
+				zdev->pr_isolation_addr = 0;
+		}
+	} else {
 		DRM_ERROR("FPGA programming device pcap not found\n");
-		return -ENODEV;
 	}
-
-	zdev->fpga_mgr = of_fpga_mgr_get(fnode);
-	if (IS_ERR(zdev->fpga_mgr)) {
-		DRM_ERROR("FPGA Manager not found %ld\n",
-				PTR_ERR(zdev->fpga_mgr));
-		return PTR_ERR(zdev->fpga_mgr);
-	}
-#endif
 
 	/* Initialzie IOMMU */
 	if (iommu_present(&platform_bus_type)) {
@@ -725,9 +725,8 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 		zdev->zdev_dma_chan = NULL;
 	}
 
-#if defined(XCLBIN_DOWNLOAD)
-	fpga_mgr_put(zdev->fpga_mgr);
-#endif
+	if (zdev->fpga_mgr)
+		fpga_mgr_put(zdev->fpga_mgr);
 
 	sched_fini_exec(drm);
 	zocl_clear_mem(zdev);

@@ -86,8 +86,8 @@ For example:
 # For zcu104_revmin. Please use <BSP> to build revmin platforms. Do not build revmin platform from template, unless you know what you are doing.
 # The -build-xsa options is Yes means build XSA. No means skip it.
 # The -full-peta-linux-build options is Yes means build PetaLinux from scratch. No means build xrt and zocl only.
-$ ertbuild.sh -platform zcu104_revmin -xrt <XRT_REPO_PATH> -vivado $XILINX_VIVADO/bin/vivado -xsct $XILINX_SDX/bin/xsct -petalinux $PETALINUX -bsp <BSP> -full-peta-linux-build Yes -build-xsa Yes
+$ ertbuild.sh -platform zcu104_revmin -xrt <XRT_REPO_PATH> -vivado <path to vivado executable> -xsct <path to xsct executable> -petalinux <path to petalinux> -bsp <BSP> -full-peta-linux-build Yes -build-xsa Yes
 
 # For zcu102ng. Do not build zcu102ng from bsp. Otherwise you will see device tree error in petalinux-build.
-$ ertbuild.sh -platform zcu102ng -xrt <XRT_REPO_PATH> -vivado $XILINX_VIVADO/bin/vivado -xsct $XILINX_SDX/bin/xsct -petalinux $PETALINUX -full-peta-linux-build Yes -build-xsa Yes
+$ ertbuild.sh -platform zcu102ng -xrt <XRT_REPO_PATH> -vivado <path to vivado> -xsct <path to xsct executable> -petalinux <path to petalinux> -bsp <BSP> -full-peta-linux-build Yes -build-xsa Yes
 ```

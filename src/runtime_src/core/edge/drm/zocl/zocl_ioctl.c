@@ -23,11 +23,10 @@
 #include "xclbin.h"
 #include "sched_exec.h"
 
-#if defined(XCLBIN_DOWNLOAD)
 /**
  * Bitstream header information.
  */
-struct {
+typedef struct {
 	unsigned int HeaderLength;     /* Length of header in 32 bit words */
 	unsigned int BitstreamLength;  /* Length of bitstream to read in bytes*/
 	unsigned char *DesignName;     /* Design name get from bitstream */
@@ -51,6 +50,11 @@ struct {
 #define DMA_HWICAP_BITFILE_BUFFER_SIZE 1024
 #define BITFILE_BUFFER_SIZE DMA_HWICAP_BITFILE_BUFFER_SIZE
 
+static struct axlf_section_header* get_axlf_section(struct axlf *top,
+						enum axlf_section_kind kind);
+int zocl_check_section(struct axlf_section_header *header, uint64_t xclbin_len,
+		       enum axlf_section_kind kind);
+
 static int bitstream_parse_header(const unsigned char *Data, unsigned int Size,
 				  XHwIcap_Bit_Header *Header)
 {
@@ -65,14 +69,14 @@ static int bitstream_parse_header(const unsigned char *Data, unsigned int Size,
 	/* Initialize HeaderLength.  If header returned early inidicates
 	 * failure.
 	 */
-	Header->Headerlength = XHI_BIT_HEADER_FAILURE;
+	Header->HeaderLength = XHI_BIT_HEADER_FAILURE;
 
 	/* Get "Magic" length */
-	Header->Magiclength = Data[idx++];
-	Header->Magiclength = (Header->Magiclength << 8) | Data[idx++];
+	Header->MagicLength = Data[idx++];
+	Header->MagicLength = (Header->MagicLength << 8) | Data[idx++];
 
 	/* Read in "magic" */
-	for (i = 0; i < Header->Magiclength - 1; i++) {
+	for (i = 0; i < Header->MagicLength - 1; i++) {
 		tmp = Data[idx++];
 		if (i%2 == 0 && tmp != XHI_EVEN_MAGIC_BYTE)
 			return -1;   /* INVALID_FILE_HEADER_ERROR */
@@ -195,11 +199,13 @@ static int zocl_pcap_download(struct drm_zocl_dev *zdev,
 {
 	struct fpga_manager *fpga_mgr = zdev->fpga_mgr;
 	XHwIcap_Bit_Header bit_header;
+	struct fpga_image_info *info;
 	char *buffer = NULL;
 	char *data = NULL;
 	unsigned int i;
 	char temp;
 	int err;
+	void __iomem *map = NULL;
 
 	DRM_INFO("%s\n", __func__);
 	memset(&bit_header, 0, sizeof(bit_header));
@@ -238,7 +244,12 @@ static int zocl_pcap_download(struct drm_zocl_dev *zdev,
 		goto free_buffers;
 	}
 
-#if 1
+	if (zdev->pr_isolation_addr) {
+		map = ioremap(zdev->pr_isolation_addr, 0x1000);
+		if (!IS_ERR_OR_NULL(map))
+			iowrite32(0x0, map);
+	}
+
 	for (i = 0; i < bit_header.BitstreamLength ; i = i+4) {
 		temp = data[i];
 		data[i] = data[i+3];
@@ -248,14 +259,34 @@ static int zocl_pcap_download(struct drm_zocl_dev *zdev,
 		data[i+1] = data[i+2];
 		data[i+2] = temp;
 	}
-#endif
 
-	err = fpga_mgr_buf_load(fpga_mgr, 0, data, bit_header.BitstreamLength);
-	DRM_INFO("%s : ret code %d\n", __func__, err);
+	/* struct with information about the FPGA image to program. */
+	info = fpga_image_info_alloc(&fpga_mgr->dev);
+	if (info == NULL) {
+		DRM_ERROR("%s : fpga_image_info_alloc ret NULL\n", __func__);
+		err = -ENOMEM;
+		goto free_buffers;
+	}
 
-	goto free_buffers;
+	info->buf = data;
+	info->count = bit_header.BitstreamLength;
+	info->sgt = NULL;
+	info->firmware_name = NULL;
+	info->flags = FPGA_MGR_PARTIAL_RECONFIG;
+
+	/* Load the buffer to the FPGA */
+	err = fpga_mgr_load(fpga_mgr, info);
+	if (err)
+		DRM_ERROR("%s : ret code %d\n", __func__, err);
+
+	if (zdev->pr_isolation_addr && !IS_ERR_OR_NULL(map))
+		iowrite32(0x3, map);
 
 free_buffers:
+	if (map)
+		iounmap(map);
+	if (info)
+		fpga_image_info_free(info);
 	kfree(buffer);
 	kfree(bit_header.DesignName);
 	kfree(bit_header.PartName);
@@ -268,36 +299,40 @@ free_buffers:
 int zocl_pcap_download_ioctl(struct drm_device *dev, void *data,
 			     struct drm_file *filp)
 {
-	struct xclBin bin_obj;
+	struct axlf bin_obj;
 	char __user *buffer;
 	struct drm_zocl_dev *zdev = dev->dev_private;
 	const struct drm_zocl_pcap_download *args = data;
 	uint64_t primary_fw_off;
 	uint64_t primary_fw_len;
+	struct axlf_section_header *primaryHeader;
 
-	if (copy_from_user(&bin_obj, args->xclbin, sizeof(struct xclBin)))
+	if (copy_from_user(&bin_obj, args->xclbin, sizeof(struct axlf)))
 		return -EFAULT;
-	if (memcmp(bin_obj.m_magic, "xclbin0", 8))
+
+	if (memcmp(bin_obj.m_magic, "xclbin2", 8))
 		return -EINVAL;
 
-	primary_fw_off = bin_obj.m_primaryFirmwareOffset;
-	primary_fw_len = bin_obj.m_primaryFirmwareLength;
-	if ((primary_fw_off + primary_fw_len) > bin_obj.m_length)
+	primaryHeader = get_axlf_section(&bin_obj, BITSTREAM);
+	if (primaryHeader == NULL)
 		return -EINVAL;
 
-	if (bin_obj.m_secondaryFirmwareLength)
+	if (zocl_check_section(primaryHeader, bin_obj.m_header.m_length,
+			       BITSTREAM))
 		return -EINVAL;
+
+	primary_fw_off = primaryHeader->m_sectionOffset;
+	primary_fw_len = primaryHeader->m_sectionSize;
 
 	buffer = (char __user *)args->xclbin;
 
-	if (!ZOCL_ACCESS_OK(VERIFY_READ, buffer, bin_obj.m_length))
+	if (!ZOCL_ACCESS_OK(VERIFY_READ, buffer, bin_obj.m_header.m_length))
 		return -EFAULT;
 
 	buffer += primary_fw_off;
 
 	return zocl_pcap_download(zdev, buffer, primary_fw_len);
 }
-#endif
 
 char *kind_to_string(enum axlf_section_kind kind)
 {

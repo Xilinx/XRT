@@ -394,9 +394,9 @@ namespace xclcpuemhal2 {
         }
         std::string modelDirectory("");
 #if defined(CONFIG_ARM64)
-        modelDirectory= xilinxInstall + "/data/emulation/unified/cpu_em/zynq/model/genericpciemodel";
-#else
         modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynqu/model/genericpciemodel";
+#else
+        modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynq/model/genericpciemodel";
 #endif
 
         const char* childArgv[6] = { NULL, NULL, NULL, NULL, NULL, NULL } ;

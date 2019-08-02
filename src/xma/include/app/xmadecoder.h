@@ -52,149 +52,7 @@ extern "C" {
  *  function should be called from the main() function of the media framework
  *  in order to guarantee it is only called once.
  *
- *
- *  ::
- * 
- *      #include <xma.h>
- *  
- *      int main(int argc, char *argv[])
- *      {
- *          int rc;
- *          char *yaml_filepath = argv[1];
- *  
- *          // Other media framework initialization
- *          ...
- *  
- *          rc = xma_initialize(yaml_filepath);
- *          if (rc != 0)
- *          {
- *              // Log message indicating XMA initialization failed
- *              printf("ERROR: Could not initialize XMA rc=%d\n\n", rc);
- *              return rc;
- *          }
- *  
- *          // Other media framework processing
- *          ...
- *  
- *          return 0;
- *      }
- *
- *  Assuming XMA initialization completes successfully, each decoder
- *  plugin must be initialized, provided data to decode, requested to
- *  receive available decoded frames and finally closed when the video stream
- *  ends.
- *
- *  The code snippet below demonstrates the creation of an XMA decoder
- *  session:
- *
- *
- *  ::
- * 
- *      // Code snippet for creating a decoder session
- *      ...
- *      #include <xma.h>
- *      ...
- *      // Setup decoder properties
- *      XmaDecoderProperties dec_props;
- *      dec_props.hwdecoder_type = XMA_H264_DECODER_TYPE;
- *      strcpy(dec_props.hwvendor_string, "Xilinx");
- *
- *      // Create a decoder session based on the requested properties
- *      XmaDecoderSession *dec_session;
- *      dec_session = xma_dec_session_create(&dec_props);
- *      if (!dec_session)
- *      {
- *          // Log message indicating session could not be created
- *          // return from function
- *      }
- *      // Save returned session for subsequent calls.  In FFmpeg, the returned
- *      // session could be saved in the private_data of the AVCodecContext
- *
- *  The code snippet that follows demonstrates how to send data
- *  to the decoder session and receive any available decoded frames:
- *
- *  ::
- * 
- *      // Code snippet for sending data to the decoder and checking
- *      // if decoded frames are available.
- *
- *      // Other non-XMA related includes
- *      ...
- *      #include <xma.h>
- *
- *      // For this example it is assumed that dec_session is a pointer to
- *      // a previously created decoder session and an XmaBuffer has been
- *      // created using the @ref xma_data_from_buffers_clone() function.
- *      int32_t rc;
- *      int32_t data_used = 0;
- *      rc = xma_dec_session_send_data(dec_session, data, &data_used);
- *      if (rc != 0)
- *      {
- *          // Log error indicating frame could not be accepted
- *          return rc;
- *      }
- *
- *  The code snippet that follows demonstrates how to get frame properties
- *  from the decoder session:
- *
- *  ::
- * 
- *       // Code snippet for getting frame properties from the decoder.
- *      
- *       // Other non-XMA related includes
- *       ...
- *       #include <xma.h>
- *      
- *       // For this example it is assumed that dec_session is a pointer to
- *       // a previously created decoder session.
- *       int32_t rc;
- *       XmaFrameProperties fprops;
- *       rc = xma_dec_session_get_properties(dec_session, &fprops);
- *       if (rc != 0)
- *       {
- *           // Log error indicating could not get frame properties
- *           return rc;
- *       }
- *      
- *       // Get the decoded frames if any are available.  This example assumes
- *       // that an XmaFrame has been created by cloning the frame
- *       // provided by the media framework using @ref xma_frame_from_buffer_clone()
- *      
- *       rc = xma_dec_session_recv_frame(dec_session, frame);
- *       if (rc != 0)
- *       {
- *           // No frames to return at this time
- *           // Tell framework there is no available frames
- *           return rc;
- *       }
- *       // Provide decoded frames to framework
- *       ...
- *       return rc;
- *
- *  This last code snippet demonstrates the interface for destroying the
- *  session when the stream is closed.  This allows all allocated resources
- *  to be freed and made available to other processes.
- *
- *  ::
- * 
- *       // Code snippet for destroying a session once a stream has ended
- *      
- *       // Other non-XMA related includes
- *       ...
- *       #include <xma.h>
- *      
- *       // This example assumes that the dec_session is a pointer to a previously
- *       // created XmaDecoderSession
- *       int32_t rc;
- *       rc = xma_dec_session_destroy(dec_session);
- *       if (rc != 0)
- *       {
- *           // TODO: Log message that the destroy function failed
- *           return rc;
- *       }
- *       return rc;
  */
-
 
 /**
  * enum XmaDecoderType - A decoder from this list forms part of a request for 
@@ -254,8 +112,7 @@ typedef struct XmaDecoderSession XmaDecoderSession;
  *  and the capabilities of the hardware accelerator.
  *
  *  @dec_props: Pointer to a XmaDecoderProperties structure that
- * contains the key configuration properties needed for
- * finding available hardware resource.
+ * contains the key configuration properties, device & cu index, etc
  *
  *  RETURN: Not NULL on success
  * 
@@ -283,11 +140,14 @@ int32_t
 xma_dec_session_destroy(XmaDecoderSession *session);
 
 /**
- *  xma_dec_session_send_data() - This function sends data to the hardware decoder.  
- * If a datae buffer is not available and the blocking flag is set to true, this
- *  function will block.  If a data buffer is not available and the
- *  blocking flag is set to false, this function will return -EAGAIN.
+ *  xma_dec_session_send_data() - This function invokes plugin->send_data fucntion 
+ * assigned to this session which handles sending data to the hardware decoder.  
  *
+ * Plugin and media framework (like FFMPEG) may handle events like 
+ * errors, no empty lookup buffer, no output data, end of input stream, etc using 
+ * XMA_FLUSH_AGAIN, XMA_TRY_AGAIN, XMA_SEND_MORE_DATA, XMA_EOS,
+ * XMA_ERROR, etc return codes
+ * 
  *  @session:   Pointer to session created by xma_dec_sesssion_create
  *  @data:      Pointer to a data buffer to be decoded
  *  @data_used: Pointer to an integer to receive the amount of data used
@@ -296,14 +156,15 @@ xma_dec_session_destroy(XmaDecoderSession *session);
  *  
  * XMA_ERROR on error.
 */
+
 int32_t
 xma_dec_session_send_data(XmaDecoderSession *session,
                           XmaDataBuffer     *data,
 						  int32_t           *data_used);
 
 /**
- *  xma_dec_session_get_properties() - This function gets frame properties from 
- * the hardware decoder.
+ *  xma_dec_session_get_properties() - This function invokes plugin->get_properties 
+ * assigned to this session which returns properties of the hardware decoder.  
  *
  *  @dec_session:  Pointer to session created by xma_dec_sesssion_create
  *  @fprops:   Pointer to a frame properties structure to be filled in
@@ -317,10 +178,13 @@ xma_dec_session_get_properties(XmaDecoderSession  *dec_session,
                                XmaFrameProperties *fprops);
 
 /**
- *  xma_dec_session_recv_frame() - This function returns a frame if one is available.  
+ *  xma_dec_session_recv_frame() - This function invokes plugin->recv_frame 
+ * assigned to this session which handles obtaining output frame from the hardware decoder.  
+ * This function returns a frame if one is available.  
+ * 
  * This function is called after calling the function xma_dec_session_send_data.  
- * If a frame is not ready to be returned, this function returns -1.  In addition, the
- *  frame pointer is set to NULL.  If a frame is ready, a pointer to the frame
+ * If a frame is not ready to be returned, plugin function should return -1.  In addition, the
+ *  frame pointer should be set to NULL.  If a frame is ready, a pointer to the frame
  *  will be set to a non-NULL value.
  *
  *  @session:     Pointer to session created by xma_dec_sesssion_create
