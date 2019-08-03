@@ -29,6 +29,7 @@
 #include <mutex>
 #include <memory>
 #include "core/common/bo_cache.h"
+#include "core/common/xrt_profiling.h"
 
 namespace ZYNQ {
 
@@ -81,6 +82,10 @@ public:
 
   int xclGetSysfsPath(const char *subdev, const char *entry, char *sysfPath,
                       size_t size);
+
+  int xclGetDebugIPlayoutPath(char* layoutPath, size_t size);
+  int xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
+  int xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
 
   // Bitstream/bin download
   int xclLoadXclBin(const xclBin *buffer);

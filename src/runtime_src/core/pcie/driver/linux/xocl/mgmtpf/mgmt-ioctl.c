@@ -70,7 +70,8 @@ static int version_ioctl(struct xclmgmt_dev *lro, void __user *arg)
 static long reset_ocl_ioctl(struct xclmgmt_dev *lro)
 {
 	xocl_icap_reset_axi_gate(lro);
-	return compute_unit_busy(lro) ? -EBUSY : 0;
+
+	return 0;
 }
 
 static int bitstream_ioctl_axlf(struct xclmgmt_dev *lro, const void __user *arg)
@@ -86,6 +87,8 @@ static int bitstream_ioctl_axlf(struct xclmgmt_dev *lro, const void __user *arg)
 	if (copy_from_user((void *)&xclbin_obj, ioc_obj.xclbin,
 		sizeof(xclbin_obj)))
 		return -EFAULT;
+	if (memcmp(xclbin_obj.m_magic, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2)))
+		return -EINVAL;
 
 	copy_buffer_size = xclbin_obj.m_header.m_length;
 	copy_buffer = vmalloc(copy_buffer_size);

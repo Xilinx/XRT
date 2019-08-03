@@ -454,7 +454,7 @@ namespace xclbincat1 {
       case DNA_CERTIFICATE: return "DNA_CERTIFICATE";
       case PDI: return "PDI";
       case BITSTREAM_PARTIAL_PDI: return "BITSTREAM_PARTIAL_PDI";
-      case DTC: return "DTC";
+      case PARTITION_METADATA: return "PARTITION_METADATA";
       case EMULATION_DATA: return "EMULATION_DATA";
       case SYSTEM_METADATA: return "SYSTEM_METADATA";
 
@@ -567,7 +567,8 @@ namespace xclbincat1 {
   {
     const char* magic = "xclbin2\0";
     memcpy( data.getHead().m_magic, magic, sizeof(data.getHead().m_magic) );
-    memset( data.getHead().m_cipher, 0xFF, sizeof(data.getHead().m_cipher) );
+    data.getHead().m_signature_length = -1;
+    memset( data.getHead().reserved, 0xFF, sizeof(data.getHead().reserved) );
     memset( data.getHead().m_keyBlock, 0xFF, sizeof(data.getHead().m_keyBlock) );
     data.getHead().m_uniqueId = time( nullptr );
     data.getHead().m_header.m_timeStamp = time( nullptr );
@@ -683,10 +684,10 @@ namespace xclbincat1 {
       ss.str("");
       ss.clear();
       XclBinUtil::hex2data( ss, (const unsigned char*)value.c_str(), value.size() ); 
-      if ( strcmp( key.c_str(), "cipher" ) == 0 ) {
-        memset( _data.getHead().m_cipher, 0, sizeof(_data.getHead().m_cipher) );
-        ss >> std::hex >> _data.getHead().m_cipher;
-      } else if ( strcmp( key.c_str(), "keyBlock" ) == 0 ) {
+//      if ( strcmp( key.c_str(), "cipher" ) == 0 ) {
+//        memset( _data.getHead().m_cipher, 0, sizeof(_data.getHead().m_cipher) );
+//        ss >> std::hex >> _data.getHead().m_cipher;
+      if ( strcmp( key.c_str(), "keyBlock" ) == 0 ) {
         memset( _data.getHead().m_keyBlock, 0, sizeof(_data.getHead().m_keyBlock) );
         ss >> std::hex >> _data.getHead().m_keyBlock;
       } else if ( strcmp( key.c_str(), "uniqueId" ) == 0 ) {

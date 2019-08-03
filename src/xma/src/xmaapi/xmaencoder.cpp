@@ -78,6 +78,11 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
                    "XMA session creation must be after initialization\n");
         return NULL;
     }
+    if (enc_props->plugin_lib == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
+                   "EncoderProperties must set plugin_lib\n");
+        return NULL;
+    }
 
     // Load the xmaplugin library as it is a dependency for all plugins
     void *xmahandle = dlopen("libxmaplugin.so",
@@ -106,6 +111,11 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
             "Failed to get encoder_plugin from %s\n Error msg: %s\n",
             enc_props->plugin_lib, dlerror());
+        return NULL;
+    }
+    if (plg->xma_version == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
+                   "EncoderPlugin library must have xma_version function\n");
         return NULL;
     }
 
@@ -241,6 +251,31 @@ xma_enc_session_destroy(XmaEncoderSession *session)
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_ENCODER_MOD, "%s()\n", __func__);
 
+    bool expected = false;
+    bool desired = true;
+    while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //Singleton lock acquired
+
+    if (session == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
+                   "Session is already released\n");
+
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+
+        return XMA_ERROR;
+    }
+    if (session->encoder_plugin == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
+                   "Session is corrupted\n");
+
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+
+        return XMA_ERROR;
+    }
     // Clean up the stats file, but don't delete it 
     xma_enc_session_statsfile_close(session);
 
@@ -252,22 +287,22 @@ xma_enc_session_destroy(XmaEncoderSession *session)
     // Clean up the private data
     free(session->base.plugin_data);
 
-    /*Sarab: Remove xma_connect stuff
-    // Free the receiver connection
-    xma_connect_free(session->conn_recv_handle,
-                        XMA_CONNECT_RECEIVER);
-    */
-   
-    /* Remove xma_res stuff free kernel/kernel-session *--/
-    rc = xma_res_free_kernel(g_xma_singleton->shm_res_cfg,
-                             session->base.kern_res);
-    if (rc)
-        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
-                   "Error freeing kernel session. Return code %d\n", rc);
-    */
     // Free the session
-    // TODO: (should also free the Hw sessions)
+    //Let's not chnage in_use and num of encoders
+    //It is better to have different session_id for debugging
+    session->base.plugin_data = NULL;
+    session->base.stats = NULL;
+    session->encoder_plugin = NULL;
+    session->base.hw_session.dev_handle = NULL;
+    session->base.hw_session.kernel_info = NULL;
+    //do not change kernel in_use as it maybe in use by another plugin
+    session->base.hw_session.dev_index = -1;
+    session->base.session_signature = NULL;
     free(session);
+    session = NULL;
+
+    //Release singleton lock
+    g_xma_singleton->locked = false;
 
     return XMA_SUCCESS;
 }
@@ -282,6 +317,17 @@ xma_enc_session_send_frame(XmaEncoderSession *session,
     uint32_t frame_size;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_ENCODER_MOD, "%s()\n", __func__);
+
+    if (frame == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
+                   "Frame is NULL\n");
+        return XMA_ERROR;
+    }
+    if (session->base.session_signature != (void*)(((uint64_t)session->base.hw_session.kernel_info) | ((uint64_t)session->base.hw_session.dev_handle))) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD, "XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
+  
     clock_gettime(CLOCK_MONOTONIC, &ts);  
     timestamp = (ts.tv_sec * 1000000000) + ts.tv_nsec;
     rc = session->encoder_plugin->send_frame(session, frame);
@@ -306,6 +352,10 @@ xma_enc_session_recv_data(XmaEncoderSession *session,
     uint64_t timestamp;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_ENCODER_MOD, "%s()\n", __func__);
+    if (session->base.session_signature != (void*)(((uint64_t)session->base.hw_session.kernel_info) | ((uint64_t)session->base.hw_session.dev_handle))) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD, "XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
     rc = session->encoder_plugin->recv_data(session, data, data_size);
     if (*data_size)
     {

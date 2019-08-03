@@ -30,7 +30,7 @@ usage() {
     echo "-petalinux <PATH>                Full path to petalinux folder"
     echo "-xrt <PATH>                      XRT github repo path"
     echo "[-full-peta-linux-build <Yes|No> Do a full peta-linux build or not. Full petalinux builds will take much longer time. Default=No" 
-    echo "[-build-dsa <Yes/No>]            Build DSA or not, if not then copy a pre-build DSA from a relative path to vivado executable. Default=Yes"
+    echo "[-build-xsa <Yes/No>]            Build XSA or not, if not then copy a pre-build XSA from a relative path to vivado executable. Default=Yes"
     echo "[-build-sysroot <Yes/No>]        Build SYSROOT or not, default=No"
     echo "[-bsp <PATH>]                    Optional, full path to the platform bsp file, if not supplied, then the PetaLinux project is created using --template" 
     echo "[-help]                          List this help"
@@ -38,7 +38,7 @@ usage() {
 }
 
 BSP_FILE="/null/null/fasan"
-GEN_DSA="Yes"
+GEN_XSA="Yes"
 BUILD_SYSROOT="No"
 FULL_PETA_BULD="No"
 while [ $# -gt 0 ]; do
@@ -46,9 +46,9 @@ while [ $# -gt 0 ]; do
 		-help)
 			usage 0
 			;;
-		-build-dsa)
+		-build-xsa)
 			shift
-			GEN_DSA=$1
+			GEN_XSA=$1
 			shift
 			;;
 		-build-sysroot)
@@ -163,17 +163,17 @@ addIfNoExists() {
   eval "$SAVED_OPTIONS"
 }
 
-if [ "${GEN_DSA}" == "Yes" ]; then
-  # Generate DSA and HDF
-  #  * ${XRT_REPO_DIR}/src/platform/${PLATFORM_NAME}/${PLATFORM_NAME}.dsa
-  if [ -d dsa_build/${PLATFORM_NAME} ]; then
-	  rm -rf ./dsa_build/${PLATFORM_NAME}
+if [ "${GEN_XSA}" == "Yes" ]; then
+  # Generate XSA and HDF
+  #  * ${XRT_REPO_DIR}/src/platform/${PLATFORM_NAME}/${PLATFORM_NAME}.xsa
+  if [ -d xsa_build/${PLATFORM_NAME} ]; then
+	  rm -rf ./xsa_build/${PLATFORM_NAME}
   fi
-  ${XRT_REPO_DIR}/src/runtime_src/tools/scripts/dsa_build.sh ${XRT_REPO_DIR}/src/platform/${PLATFORM_NAME}/${PLATFORM_NAME}_dsa.tcl
+  ${XRT_REPO_DIR}/src/runtime_src/tools/scripts/xsa_build.sh ${XRT_REPO_DIR}/src/platform/${PLATFORM_NAME}/${PLATFORM_NAME}_xsa.tcl
 fi
 
-if [ ! -f ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}/${PLATFORM_NAME}.dsa ]; then
-  echo "ERROR: Failed to create/locate DSA (it is missing): ${XRT_REPO_DIR}/dsa_build/${PLATFORM_NAME}/${PLATFORM_NAME}.dsa"
+if [ ! -f ${ORIGINAL_DIR}/xsa_build/${PLATFORM_NAME}/${PLATFORM_NAME}.xsa ]; then
+  echo "ERROR: Failed to create/locate XSA (it is missing): ${XRT_REPO_DIR}/xsa_build/${PLATFORM_NAME}/${PLATFORM_NAME}.xsa"
   exit 1
 fi
 
@@ -194,9 +194,9 @@ if [ $FULL_PETA_BULD == "Yes" ]; then
 	fi
 
 	if [ -f $BSP_FILE ]; then
-		${XRT_REPO_DIR}/src/runtime_src/tools/scripts/peta_build.sh --bsp $BSP_FILE ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}/${PLATFORM_NAME}.dsa
+		${XRT_REPO_DIR}/src/runtime_src/tools/scripts/peta_build.sh --bsp $BSP_FILE ${ORIGINAL_DIR}/xsa_build/${PLATFORM_NAME}/${PLATFORM_NAME}.xsa
 	else
-		${XRT_REPO_DIR}/src/runtime_src/tools/scripts/peta_build.sh ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}/${PLATFORM_NAME}.dsa
+		${XRT_REPO_DIR}/src/runtime_src/tools/scripts/peta_build.sh ${ORIGINAL_DIR}/xsa_build/${PLATFORM_NAME}/${PLATFORM_NAME}.xsa
 	fi
 else
 	if [ ! -d $PLATFORM_NAME ]; then
@@ -241,7 +241,7 @@ cd $ORIGINAL_DIR
 if [ -d platform/${PLATFORM_NAME} ]; then
 	rm -rf ./platform/${PLATFORM_NAME}
 fi
-${XRT_REPO_DIR}/src/runtime_src/tools/scripts/pfm_build.sh ${ORIGINAL_DIR}/dsa_build/${PLATFORM_NAME}/${PLATFORM_NAME}_pfm.tcl
+${XRT_REPO_DIR}/src/runtime_src/tools/scripts/pfm_build.sh ${ORIGINAL_DIR}/xsa_build/${PLATFORM_NAME}/${PLATFORM_NAME}_pfm.tcl
 
 # Go back to original directory
 cd $ORIGINAL_DIR
