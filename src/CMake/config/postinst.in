@@ -41,12 +41,12 @@ msd_active=`systemctl is-active msd`
 mpd_active=`systemctl is-active mpd`
 # Stopping existing daemons so that we could swap drivers and update daemons later
 if [ "$mpd_active" = "active" ]; then
-	echo "Stopping MPD daemon"
-	systemctl stop mpd > /dev/null 2>&1
+    echo "Stopping MPD daemon"
+    systemctl stop mpd > /dev/null 2>&1
 fi
 if [ "$msd_active" = "active" ]; then
-	echo "Stopping MSD daemon"
-	systemctl stop msd > /dev/null 2>&1
+    echo "Stopping MSD daemon"
+    systemctl stop msd > /dev/null 2>&1
 fi
 
 
@@ -68,9 +68,9 @@ elif [ -n "`dkms status -m xrt`" ]; then
 
     XRT_VERSION_STRING_OLD=`dkms status -m xrt | awk -F, '{print $2}'`
     for OLD in $XRT_VERSION_STRING_OLD; do
-	echo "Unregistering old XRT Linux kernel module sources $OLD from dkms"
-	dkms remove -m xrt -v $OLD --all
-	break
+    echo "Unregistering old XRT Linux kernel module sources $OLD from dkms"
+    dkms remove -m xrt -v $OLD --all
+    break
     done
 
     rmmodules
@@ -119,12 +119,36 @@ systemctl daemon-reload > /dev/null 2>&1
 
 # Start daemons only when it was started previously
 if [ "$msd_active" = "active" ]; then
-	echo "Starting MSD daemon"
-	systemctl start msd > /dev/null 2>&1
+    echo "Starting MSD daemon"
+    systemctl start msd > /dev/null 2>&1
 fi
 if [ "$mpd_active" = "active" ]; then
-	echo "Starting MPD daemon"
-	systemctl start mpd > /dev/null 2>&1
+    echo "Starting MPD daemon"
+    systemctl start mpd > /dev/null 2>&1
 fi
 
+#install pyopencl on centOS
+FLAVOR=`grep '^ID=' /etc/os-release | awk -F= '{print $2}'`
+FLAVOR=`echo $FLAVOR | tr -d '"'`
+if [ $FLAVOR = "centos" ] || [ $FLAVOR = "rhel" ] ; then
+    if python -c "import pyopencl" &> /dev/null; then
+        echo "Skipping pyopencl installation..."
+        exit 0
+    else
+        echo "Installing pyopencl..."
+        sudo pip install pyopencl
+        sudo pip install --ignore-installed numpy==1.8
+    fi
+
+    if python -c "import pyopencl" &> /dev/null; then
+        echo "Successfully installed pyopencl"
+    else
+        echo "***********************************************************************"
+        echo "* FAILED TO INSTALL PYOPENCL"
+        echo "*"
+        echo "* Please try to install pyopencl using the "
+        echo "* offical documentation: https://documen.tician.de/pyopencl/misc.html"
+        echo "***********************************************************************"
+    fi
+fi
 exit 0
