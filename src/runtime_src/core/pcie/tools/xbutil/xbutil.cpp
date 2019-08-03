@@ -903,7 +903,7 @@ int runShellCmd(const std::string& cmd, std::string& output)
     // Stop progress reporter
     quit = true;
     t.join();
-    
+
     return ret;
 }
 
