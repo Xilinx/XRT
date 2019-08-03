@@ -903,6 +903,7 @@ int runShellCmd(const std::string& cmd, std::string& output)
     // Stop progress reporter
     quit = true;
     t.join();
+    
     return ret;
 }
 
@@ -966,7 +967,7 @@ int xcldev::device::runTestCase(const std::string& py,
 int xcldev::device::verifyKernelTest(void)
 {
     std::string output;
-    int ret = runTestCase(std::string("main.py"), //rename in natievLnx
+    int ret = runTestCase(std::string("22_verify.py"),
         std::string("verify.xclbin"), output);
 
     if (ret != 0)
