@@ -1885,7 +1885,7 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	int err = 0;
 	uint64_t section_size = 0;
-	bool is_axi;
+	u32 capability;
 
 	/* Destroy all dynamically add sub-devices*/
 	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_DNA);
@@ -1905,9 +1905,19 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 	if (err)
 		goto done;
 
-	is_axi = ((xocl_dna_capability(xdev) & 0x1) != 0);
 
-	if (is_axi) {
+	/* Skip dna validation in userpf*/ 
+	if (!ICAP_PRIVILEGED(icap))
+		goto done;
+
+	/* capability BIT8 as DRM IP enable, BIT0 as AXI mode
+ 	 * We only check if anyone of them is set.
+	 */
+	capability = ((xocl_dna_capability(xdev) & 0x101) != 0);
+
+	if (capability) {
+		uint32_t *cert = NULL;
+
 		if (0x1 & xocl_dna_status(xdev))
 			goto done;
 		/*
@@ -1916,28 +1926,25 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 		 */
 		err = -EACCES;
 
-		ICAP_INFO(icap, "DNA version: %s", is_axi ? "AXI" : "BRAM");
+		ICAP_INFO(icap, "DNA version: %s", (capability & 0x1) ? "AXI" : "BRAM");
 
-		if (is_axi) {
-			uint32_t *cert = NULL;
+		if (alloc_and_get_axlf_section(icap, xclbin,
+			DNA_CERTIFICATE,
+			(void **)&cert, &section_size) != 0) {
 
-			if (alloc_and_get_axlf_section(icap, xclbin,
-				DNA_CERTIFICATE,
-				(void **)&cert, &section_size) != 0) {
-
-				/* We keep dna sub device if IP_DNASC presents */
-				ICAP_ERR(icap, "Can't get certificate section");
-				goto dna_cert_fail;
-			}
-
-			ICAP_INFO(icap, "DNA Certificate Size 0x%llx", section_size);
-			if (section_size % 64 || section_size < 576)
-				ICAP_ERR(icap, "Invalid certificate size");
-			else
-				xocl_dna_write_cert(xdev, cert, section_size);
-
-			vfree(cert);
+			/* We keep dna sub device if IP_DNASC presents */
+			ICAP_ERR(icap, "Can't get certificate section");
+			goto dna_cert_fail;
 		}
+
+		ICAP_INFO(icap, "DNA Certificate Size 0x%llx", section_size);
+		if (section_size % 64 || section_size < 576)
+			ICAP_ERR(icap, "Invalid certificate size");
+		else
+			xocl_dna_write_cert(xdev, cert, section_size);
+
+		vfree(cert);
+
 
 		/* Check DNA validation result. */
 		if (0x1 & xocl_dna_status(xdev))
