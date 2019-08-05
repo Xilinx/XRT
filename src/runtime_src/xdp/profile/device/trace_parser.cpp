@@ -108,16 +108,6 @@ namespace xdp {
       traceVector.mLength, mNumTraceEvents);
     mNumTraceEvents += traceVector.mLength;
 
-    // detect if FIFO is full
-    {
-      auto fifoProperty = mPluginHandle->getProfileSlotProperties(XCL_PERF_MON_FIFO, deviceName, 0);
-      auto fifoSize = RTUtil::getDevTraceBufferSize(fifoProperty);
-      if (traceVector.mLength >= fifoSize)
-        mPluginHandle->sendMessage(
-"Trace FIFO is full because of too many events. Timeline trace could be incomplete. \
-Please use 'coarse' option for data transfer trace or turn off Stall profiling");
-    }
-
     uint64_t timestamp = 0;
     uint64_t startTime = 0;
     // x, y coordinates used for clock training

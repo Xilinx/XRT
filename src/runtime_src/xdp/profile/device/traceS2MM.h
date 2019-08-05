@@ -75,7 +75,6 @@ private:
     uint8_t properties;
     uint8_t major_version;
     uint8_t minor_version;
-    uint64_t packets_parsed = 0;
     uint64_t mPacketFirstTs = 0;
     bool mclockTrainingdone = false;
 

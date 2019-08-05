@@ -37,4 +37,7 @@
 //8KB
 #define TS2MM_MIN_BUF_SIZE      0x2000
 
+#define FIFO_WARN_MSG "Trace FIFO is full because of too many events. Timeline trace could be incomplete. \
+Please use 'coarse' option for data transfer trace or turn off Stall profiling"
+
 #endif

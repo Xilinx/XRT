@@ -103,6 +103,13 @@ namespace xdp {
     uint64_t getWordCountTs2mm();
     void* syncTraceBO(uint64_t offset, uint64_t bytes);
     void readTs2mm(uint64_t offset, uint64_t bytes, xclTraceResultsVector& traceVector);
+    /**
+     * This reader needs to be initialized once and then
+     * returns data as long as it's available
+     * returns true if data equal to chunksize was read
+     */
+    bool readTs2mm(xclTraceResultsVector& traceVector);
+    void configReaderTs2mm(uint64_t chunksize);
     void finTs2mm();
 
   private:
@@ -114,6 +121,10 @@ namespace xdp {
     bool mIsDebugIPlayoutRead = false;
     // Device handle - xrt::device handle
     void* mDeviceHandle = nullptr;
+
+    uint64_t mBytesTs2mm = 0;
+    uint64_t mChunksizeTs2mm = 0;
+    uint64_t mOffsetTs2mm = 0;
 
     uint64_t mTs2mmBoSize = 0;
     xrt::hal::BufferObjectHandle mTs2mmBoHandle = nullptr;

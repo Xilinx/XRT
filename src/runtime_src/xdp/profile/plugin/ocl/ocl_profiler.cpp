@@ -632,29 +632,21 @@ namespace xdp {
               dInt->readTrace(type, info->mTraceVector);
               if (info->mTraceVector.mLength) {
                 profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector);
+                // detect if FIFO is full
+                auto fifoProperty = Plugin->getProfileSlotProperties(XCL_PERF_MON_FIFO, device_name, 0);
+                auto fifoSize = RTUtil::getDevTraceBufferSize(fifoProperty);
+                if (info->mTraceVector.mLength >= fifoSize)
+                  Plugin->sendMessage(FIFO_WARN_MSG);
               }
               info->mTraceVector.mLength= 0;
           } else if (dInt->hasTs2mm()) {
             uint64_t chunksize = MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE;
-            uint64_t space = 0;
+            dInt->configReaderTs2mm(chunksize);
             bool endLog = false;
-            uint64_t total_bytes = dInt->getWordCountTs2mm() * TRACE_PACKET_SIZE;
-            total_bytes = (total_bytes > TS2MM_MAX_BUF_SIZE) ? TS2MM_MAX_BUF_SIZE : total_bytes;
-            while (space < total_bytes) {
-              auto  read_bytes = (space + chunksize > total_bytes) ? total_bytes - space : chunksize;
-              if (space + chunksize > total_bytes) {
-                read_bytes = total_bytes - space;
-                endLog = true;
-              } else {
-                read_bytes = chunksize;
-              }
-              dInt->readTs2mm(space, read_bytes, info->mTraceVector);
-              if (!info->mTraceVector.mLength)
-                break;
+            while (!endLog) {
+              endLog = !(dInt->readTs2mm(info->mTraceVector));
               profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector, endLog);
               info->mTraceVector = {};
-              //std::cout << "Done reading until " << (space + read_bytes)/8 << std::endl;
-              space += chunksize;
             }
           }
         } else {

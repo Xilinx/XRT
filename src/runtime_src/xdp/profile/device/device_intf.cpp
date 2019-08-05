@@ -18,6 +18,7 @@
 #include "xclperf.h"
 #include "xcl_perfmon_parameters.h"
 #include "xrt/device/device.h"
+#include "tracedefs.h"
 
 #include <iostream>
 #include <cstdio>
@@ -558,6 +559,29 @@ void DeviceIntf::readTs2mm(uint64_t offset, uint64_t bytes, xclTraceResultsVecto
   if (tracebuf) {
     traceDMA->parseTraceBuf(tracebuf, bytes, traceVector);
   }
+}
+
+bool DeviceIntf::readTs2mm(xclTraceResultsVector& traceVector)
+{
+  if (mOffsetTs2mm >= mBytesTs2mm)
+    return false;
+  auto rbytes = mChunksizeTs2mm;
+  if (mOffsetTs2mm + mChunksizeTs2mm > mBytesTs2mm)
+    rbytes = mBytesTs2mm - mOffsetTs2mm;
+  auto tracebuf = syncTraceBO(mOffsetTs2mm, rbytes);
+  if (tracebuf) {
+    traceDMA->parseTraceBuf(tracebuf, rbytes, traceVector);
+    mOffsetTs2mm += rbytes;
+  }
+  return (rbytes == mChunksizeTs2mm && tracebuf);
+}
+
+void DeviceIntf::configReaderTs2mm(uint64_t chunksize)
+{
+  mBytesTs2mm = getWordCountTs2mm() * TRACE_PACKET_SIZE;
+  mBytesTs2mm = (mBytesTs2mm > TS2MM_MAX_BUF_SIZE) ? TS2MM_MAX_BUF_SIZE : mBytesTs2mm;
+  mOffsetTs2mm = 0;
+  mChunksizeTs2mm = chunksize;
 }
 
 void DeviceIntf::finTs2mm()

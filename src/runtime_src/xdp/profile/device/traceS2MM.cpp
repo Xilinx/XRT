@@ -77,6 +77,9 @@ void TraceS2MM::reset()
     write32(TS2MM_RST, 0x1);
     // Fin Sw Reset
     write32(TS2MM_RST, 0x0);
+
+    mPacketFirstTs = 0;
+    mclockTrainingdone = false;
 }
 
 uint64_t TraceS2MM::getWordCount()
