@@ -112,7 +112,7 @@ static bool match_id(DSAInfo& dsa, std::string& id)
 {
     if (dsa.uuid.empty())
     {
-        uint64_t ts = strtoull(id.c_str(), nullptr, 16);
+        uint64_t ts = strtoull(id.c_str(), nullptr, 0);
         if (ts == dsa.timestamp)
             return true;
     } else {
