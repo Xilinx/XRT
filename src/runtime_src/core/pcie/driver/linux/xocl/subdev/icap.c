@@ -2027,6 +2027,35 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	return 0;
 }
 
+static int icap_verify_signature(struct icap *icap,
+	const void *data, size_t data_len, const void *sig, size_t sig_len)
+{
+	int ret = 0;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
+#define	SYS_KEYS	((void *)1UL)
+	ret = verify_pkcs7_signature(data, data_len, sig, sig_len,
+		(icap->sec_level == ICAP_SEC_SYSTEM) ? SYS_KEYS : icap_keys,
+		VERIFYING_UNSPECIFIED_SIGNATURE, NULL, NULL);
+	if (ret) {
+		ICAP_ERR(icap, "signature verification failed: %d", ret);
+		if (icap->sec_level == ICAP_SEC_NONE) {
+			/* Ignore error to allow bitstream downloading. */
+			ret = 0;
+		} else {
+			ret = -EKEYREJECTED;
+		}
+	} else {
+		ICAP_INFO(icap, "signature verification is done successfully");
+	}
+#else
+	ret = -EOPNOTSUPP;
+	ICAP_ERR(icap,
+		"signature verification isn't supported with kernel < 4.7.0");
+#endif
+	return ret;
+}
+
 static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 {
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
@@ -2043,6 +2072,27 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	long err = 0;
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
+
+	if (xclbin->m_signature_length != -1) {
+		int siglen = xclbin->m_signature_length;
+		u64 origlen = xclbin->m_header.m_length - siglen;
+
+		ICAP_INFO(icap, "signed xclbin detected");
+		ICAP_INFO(icap, "original size: %llu, signature size: %d",
+			origlen, siglen);
+
+		/* restore original xclbin for verification */
+		xclbin->m_signature_length = -1;
+		xclbin->m_header.m_length = origlen;
+
+		err = icap_verify_signature(icap, xclbin, origlen,
+			((char *)xclbin) + origlen, siglen);
+		if (err)
+			return err;
+	} else if (icap->sec_level > ICAP_SEC_NONE) {
+		ICAP_ERR(icap, "xclbin is not signed, rejected");
+		return -EKEYREJECTED;
+	}
 
 	/* Set clock frequency. */
 	clockHeader = get_axlf_section_hdr(icap, xclbin, CLOCK_FREQ_TOPOLOGY);
@@ -2645,28 +2695,7 @@ static ssize_t cache_expire_secs_store(struct device *dev,
 }
 static DEVICE_ATTR_RW(cache_expire_secs);
 
-static int icap_verify_signature(struct icap *icap,
-	const void *data, size_t data_len, const void *sig, size_t sig_len)
-{
-	int ret = 0;
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
-#define	SYS_KEYS	((void *)1UL)
-	ret = verify_pkcs7_signature(data, data_len, sig, sig_len,
-		(icap->sec_level == ICAP_SEC_SYSTEM) ? SYS_KEYS : icap_keys,
-		VERIFYING_UNSPECIFIED_SIGNATURE, NULL, NULL);
-	if (ret && icap->sec_level == 0) {
-		ICAP_INFO(icap, "signature verification failed: %d", ret);
-		ret = 0;
-	}
-#else
-	ret = -EOPNOTSUPP;
-	ICAP_ERR(icap,
-		"signature verification is not supported with < 4.7.0 kernel");
-#endif
-	return ret;
-}
-
+#ifdef	KEY_DEBUG
 /* Test code for now, will remove later. */
 void icap_key_test(struct icap *icap)
 {
@@ -2701,6 +2730,7 @@ done:
 	if (text)
 		release_firmware(text);
 }
+#endif
 
 static ssize_t sec_level_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -2748,7 +2778,9 @@ static ssize_t sec_level_store(struct device *dev,
 				"can't lower security level from system level");
 			ret = -EINVAL;
 		}
+#ifdef	KEY_DEBUG
 		icap_key_test(icap);
+#endif
 	}
 
 	mutex_unlock(&icap->icap_lock);
@@ -3119,8 +3151,17 @@ static int icap_probe(struct platform_device *pdev)
 			ICAP_ERR(icap, "create icap keyring failed: %d", ret);
 			goto failed;
 		}
-		icap->sec_level = efi_enabled(EFI_SECURE_BOOT) ?
-			ICAP_SEC_SYSTEM : ICAP_SEC_NONE;
+#ifdef	EFI_SECURE_BOOT
+		if (efi_enabled(EFI_SECURE_BOOT)) {
+			ICAP_INFO(icap, "secure boot mode detected");
+			icap->sec_level = ICAP_SEC_SYSTEM;
+		} else {
+			icap->sec_level = ICAP_SEC_NONE;
+		}
+#else
+		ICAP_INFO(icap, "no support for detection of secure boot mode");
+		icap->sec_level = ICAP_SEC_NONE;
+#endif
 	}
 
 	icap->cache_expire_secs = ICAP_DEFAULT_EXPIRE_SECS;
