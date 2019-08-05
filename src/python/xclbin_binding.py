@@ -210,11 +210,24 @@ class IP_CONTROL:
     AP_CTRL_NONE  = 2
     AP_CTRL_ME    = 3
 
-class ip_data (ctypes.Structure): #TODO:
+class indices (ctypes.Structure):
+    _fields_ = [
+        ("m_index", ctypes.c_uint16),
+        ("m_pc_index", ctypes.c_uint8),
+        ("unused", ctypes.c_uint8)
+    ]
+
+class ip_u1 (ctypes.Union):
+    _fields_ = [
+        ("m_base_address", ctypes.c_int64),
+        ("indices", indices)
+    ]
+
+class ip_data (ctypes.Structure):
     _fields_ = [
         ("m_type", ctypes.c_uint32),
         ("properties", ctypes.c_uint32),
-        ("m_base_address", ctypes.c_uint64),
+        ("ip_u1", ip_u1),
         ("m_name", ctypes.c_uint8 * 64)
     ]
 

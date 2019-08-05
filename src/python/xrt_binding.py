@@ -401,7 +401,7 @@ def xclRemoveAndScanFPGA():
     libc.xclRemoveAndScanFPGA.restype = ctypes.c_int
     return libc.xclRemoveAndScanFPGA()
 
-def xclLogMsg(handle, level, tag, format, ...): #how does ... work in python
+def xclLogMsg(handle, level, tag, format, *args): #how does ... work in python
     """
     Send message to log file as per settings in ini file.
 
@@ -414,7 +414,7 @@ def xclLogMsg(handle, level, tag, format, ...): #how does ... work in python
     """
     libc.xclAllocBO.restype = ctypes.c_int
     libc.xclAllocBO.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p] #... type
-    return libc.xclLogMsg(handle, level, tag, format, ...)
+    return libc.xclLogMsg(handle, level, tag, format, *args)
 
 
 def xclAllocBO(handle, size, domain, flags):
