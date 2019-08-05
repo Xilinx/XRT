@@ -374,6 +374,13 @@ namespace xclcpuemhal2 {
             xilinxInstall = std::string(installEnvvar);
           }
         }
+
+        char *cpuTypeEnvVar = getenv("XILINX_CPU_TYPE");
+        std::string xilinxCpuType("");
+        if (cpuTypeEnvVar != NULL) {
+          xilinxCpuType = std::string(cpuTypeEnvVar);
+        }
+        
         char *xilinxVivadoEnvvar = getenv("XILINX_VIVADO");
         if(xilinxVivadoEnvvar)
         {
@@ -393,11 +400,16 @@ namespace xclcpuemhal2 {
           setenv("LD_LIBRARY_PATH",sLdLibs.c_str(),true);
         }
         std::string modelDirectory("");
-#if defined(CONFIG_ARM64)
         modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynqu/model/genericpciemodel";
-#else
-        modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynq/model/genericpciemodel";
-#endif
+        if (xilinxCpuType == "cortex-a9") {
+          modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynq/model/genericpciemodel";
+        }
+        
+//#if defined(CONFIG_ARM64)
+//        modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynqu/model/genericpciemodel";
+//#else
+//        modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynq/model/genericpciemodel";
+//#endif
 
         const char* childArgv[6] = { NULL, NULL, NULL, NULL, NULL, NULL } ;
         childArgv[0] = modelDirectory.c_str() ;
