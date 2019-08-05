@@ -76,6 +76,5 @@ install: all
 clean:
 	rm -rf *.o *.o.d *.o.cmd *~ core .depend .*.cmd *.ko *.ko.unsigned \
 	*.mod.c ../subdev/*.o ../subdev/.*.o.cmd ../*.o ../.*.o.cmd 	\
-	../lib/libfdt/*.o ../lib/libfdt/.*.o.cmd	\
+	../lib/libfdt/*.o ../lib/libfdt/.*.o.cmd ./.cache.mk		\
 	.tmp_versions *.symvers modules.order
-	#* *.save *.bak Modules.* modules.order Module.markers *.bin

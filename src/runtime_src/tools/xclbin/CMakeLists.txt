@@ -7,6 +7,22 @@ set(Boost_USE_STATIC_RUNTIME ON)            # This is how the boost libraries we
 find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 include_directories(${Boost_INCLUDE_DIRS})
 
+if(NOT WIN32) 
+set(OPENSSL_USE_STATIC_LIBS TRUE)
+find_package(OpenSSL REQUIRED)
+find_library(CRYPTO_LIB libcrypto.a REQUIRED)
+
+find_package(ZLIB REQUIRED)
+find_library(Z_LIB libz.a REQUIRED)
+
+find_library(DL_LIB libdl.a REQUIRED)
+
+find_library(PTHREAD_LIB libpthread.a)
+
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+endif()
+
 # -----------------------------------------------------------------------------
 
 include_directories(${CMAKE_BINARY_DIR}/gen)
@@ -96,6 +112,7 @@ file(GLOB XCLBINUTIL_FILES
   "DTCStringsBlock.cxx"
   "FDTNode.cxx"
   "FDTProperty.cxx"
+  "XclBinSignature.cxx"
 )
 set(XCLBINUTIL_FILES_SRCS ${XCLBINUTIL_FILES})
 
@@ -122,13 +139,43 @@ if(WIN32)
   # when BOOST was released
   target_compile_options(xclbinutil PRIVATE /DBOOST_CONFIG_SUPPRESS_OUTDATED_MESSAGE)
 else()
-  target_link_libraries(xclbinutil -static ${Boost_LIBRARIES})
 
-  # On Ubuntu 18.04 CMake was appending '-Wl,-Bdynamic' to the command line which 
-  # was causing the executable to reference 'linux-vdso.so.1' which would then 
-  # produce "Command not found" when running the executable.
-  #   Therefore, we direct CMake to end with static, so that it doesn't do that:
-  set_target_properties(xclbinutil PROPERTIES LINK_SEARCH_END_STATIC 1)
+  # For Ubuntu 18.04 we must link dynamic libraries.  This is because the static
+  # openssl library is linked to a dynamic library :-(
+  if ((${LINUX_FLAVOR} STREQUAL Ubuntu) AND (${LINUX_VERSION} STREQUAL 18.04))
+    # Note: The following Ubuntu 18.04 target results in a execution Segmentation Fault
+    #       due to dynamic library dependencies in the openssl static library.
+    #       
+    #       The offending library is: libdl.so.2
+    #
+    #   target_link_libraries(xclbinutil -static ${Boost_LIBRARIES})
+    #   target_link_libraries(xclbinutil ${CRYPTO_LIB})
+    #   target_link_libraries(xclbinutil ${Z_LIB})       # OpenSSL supporting library
+    #   target_link_libraries(xclbinutil ${DL_LIB})      # OpenSSL supporting library
+    #   target_link_libraries(xclbinutil ${PTHREAD_LIB})      # OpenSSL supporting library
+    #   target_link_libraries(xclbinutil -static-libgcc -static-libstdc++)
+    #   set_target_properties(xclbinutil PROPERTIES LINK_SEARCH_END_STATIC 1)
+
+    # Create an xclbinutil executable that is dependent on shared libraries
+    # Used the linux command 'ldd' to show the shared libraries used by the executable
+    target_link_libraries(xclbinutil ${Boost_LIBRARIES})
+    target_link_libraries(xclbinutil OpenSSL::Crypto)
+    target_link_libraries(xclbinutil -Bstatic ${PTHREAD_LIB})
+    target_link_libraries(xclbinutil ${CMAKE_DL_LIBS})   # Needs to be shared library
+    target_link_libraries(xclbinutil -static-libgcc -static-libstdc++)
+  else()
+    target_link_libraries(xclbinutil -static ${Boost_LIBRARIES})
+    target_link_libraries(xclbinutil ${CRYPTO_LIB})
+    target_link_libraries(xclbinutil ${Z_LIB})            # OpenSSL supporting library
+    target_link_libraries(xclbinutil ${DL_LIB})           # OpenSSL supporting library
+    target_link_libraries(xclbinutil ${PTHREAD_LIB})      # OpenSSL supporting library
+    
+    # On Ubuntu 18.04 CMake was appending '-Wl,-Bdynamic' to the command line which 
+    # was causing the executable to reference 'linux-vdso.so.1' which would then 
+    # produce "Command not found" when running the executable.
+    #   Therefore, we direct CMake to end with static, so that it doesn't do that:
+    set_target_properties(xclbinutil PROPERTIES LINK_SEARCH_END_STATIC 1)
+  endif()
 endif()
 
 install (TARGETS xclbinutil RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
@@ -154,6 +201,9 @@ if (GTEST_FOUND)
 
   message (STATUS "GTest libraries: '${Boost_LIBRARIES} ${GTEST_BOTH_LIBRARIES} pthread'")
   target_link_libraries(xclbintest ${Boost_LIBRARIES} ${GTEST_BOTH_LIBRARIES} pthread )
+  target_link_libraries(xclbintest OpenSSL::Crypto)
+  target_link_libraries(xclbintest ${ZLIB_LIBRARIES})     # OpenSSL supporting library
+  target_link_libraries(xclbintest ${CMAKE_DL_LIBS})      # OpenSSL supporting library
 
   message(STATUS "Configuring CMake to run unit test after building")
   set(UNIT_TEST_XCLBINUTIL xclbintest)

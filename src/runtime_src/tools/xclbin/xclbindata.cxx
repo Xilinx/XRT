@@ -460,9 +460,9 @@ bool
 XclBinData::reportHead() 
 {
   std::cout << "Magic: " << m_xclBinHead.m_magic << "\n";
-  std::cout << "Cipher: ";
-  XclBinUtil::data2hex( std::cout, (const unsigned char*)&m_xclBinHead.m_cipher, sizeof(m_xclBinHead.m_cipher) );
-  std::cout << "\n";
+//  std::cout << "Cipher: ";
+//  XclBinUtil::data2hex( std::cout, (const unsigned char*)&m_xclBinHead.m_cipher, sizeof(m_xclBinHead.m_cipher) );
+//  std::cout << "\n";
   std::cout << "Key Block: ";
   XclBinUtil::data2hex( std::cout, (const unsigned char*)&m_xclBinHead.m_keyBlock, sizeof(m_xclBinHead.m_keyBlock) );
   std::cout << "\n";
