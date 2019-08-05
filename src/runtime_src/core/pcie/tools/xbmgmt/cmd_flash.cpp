@@ -266,12 +266,11 @@ static DSAInfo selectShell(unsigned idx, std::string& dsa, std::string& id)
     if(!flasher.isValid())
         return DSAInfo("");
 
-    std::cout << "Probing card [" << flasher.sGetDBDF() << "]: ";
-
     std::vector<DSAInfo> installedDSA = flasher.getInstalledDSA();
 
     // Find candidate DSA from installed DSA list.
     if (dsa.empty()) {
+        std::cout << "Probing card [" << flasher.sGetDBDF() << "]: ";
         if (installedDSA.empty()) {
             std::cout << "no shell is installed" << std::endl;
             return DSAInfo("");
@@ -297,7 +296,8 @@ static DSAInfo selectShell(unsigned idx, std::string& dsa, std::string& id)
     }
 
     if (candidateDSAIndex == UINT_MAX) {
-        std::cout << "specified shell is not applicable" << std::endl;
+        std::cout << "WARNING: Failed to flash Card["
+                  << flasher.sGetDBDF() << "]: Specified shell is not applicable" << std::endl;
         return DSAInfo("");
     }
 
@@ -388,21 +388,31 @@ static int autoFlash(unsigned index, std::string& shell,
         for (auto p : boardsToUpdate) {
             bool reboot;
             std::cout << std::endl;
-            if (updateShellAndSC(p.first, p.second, reboot) == 0)
+            if (updateShellAndSC(p.first, p.second, reboot) == 0) {
+                std::cout << "Successfully flashed Card[" << success << "]"<< std::endl;
                 success++;
+            }
             needreboot |= reboot;
         }
     }
 
     std::cout << std::endl;
-    std::cout << success << " Card(s) flashed successfully." << std::endl;
+
+    if (success!=0) {
+        std::cout << success << " Card(s) flashed successfully." << std::endl; 
+    } else {
+        std::cout << "No cards were flashed." << std::endl; 
+    }
+
     if (needreboot) {
         std::cout << "Cold reboot machine to load the new image on card(s)."
             << std::endl;
     }
 
-    if (success != boardsToUpdate.size())
+    if (success != boardsToUpdate.size()) {
+        std::cout << "WARNING:" << boardsToUpdate.size()-success << " Card(s) not flashed. " << std::endl;
         exit(-EINVAL);
+    }
 
     return 0;
 }

@@ -21,6 +21,7 @@
 #include "XclBinClass.h"
 #include "ParameterSectionData.h"
 #include "FormattedOutput.h"
+#include "XclBinSignature.h"
 
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
@@ -101,6 +102,13 @@ int main_(int argc, char** argv) {
   bool bRemoveSignature = false;
   std::string sSignature;
   bool bGetSignature = false;
+  bool bSignatureDebug = false;
+  std::string sSignatureOutputFile;
+  std::string sDigestAlgorithm = "sha512";
+
+  std::string sPrivateKey;
+  std::string sCertificate;
+  bool bValidateSignature = false;
 
   std::string sInputFile;
   std::string sOutputFile;
@@ -122,6 +130,11 @@ int main_(int argc, char** argv) {
       ("help,h", "Print help messages")
       ("input,i", boost::program_options::value<std::string>(&sInputFile), "Input file name. Reads xclbin into memory.")
       ("output,o", boost::program_options::value<std::string>(&sOutputFile), "Output file name. Writes in memory xclbin image to a file.")
+
+      ("private-key", boost::program_options::value<std::string>(&sPrivateKey), "Private key used in signing the xclbin image.")
+      ("certificate", boost::program_options::value<std::string>(&sCertificate), "Certificate used in signing and validating the xclbin image.")
+      ("digest-algorithm", boost::program_options::value<std::string>(&sDigestAlgorithm), "Digest algorithm. Default: sha512")
+      ("validate-signature", boost::program_options::bool_switch(&bValidateSignature), "Validates the signature for the given xclbin archive.")
 
       ("verbose,v", boost::program_options::bool_switch(&bVerbose), "Display verbose/debug information.")
       ("quiet,q", boost::program_options::bool_switch(&bQuiet),     "Minimize reporting information.")
@@ -146,28 +159,16 @@ int main_(int argc, char** argv) {
       ("force", boost::program_options::bool_switch(&bForce), "Forces a file overwrite.")
  ;
 
-// --remove-section=section
-//    Remove the section matching the section name. Note that using this option inappropriately may make the output file unusable.
-//
-// --dump-section sectionname=filename
-//    Place the contents of section named sectionname into the file filename, overwriting any contents that may have been there previously.
-//    This option is the inverse of --add-section. This option is similar to the --only-section option except that it does not create a formatted file,
-//    it just dumps the contents as raw binary data, without applying any relocations. The option can be specified more than once.
-//
-// --add-section sectionname=filename
-//    Add a new section named sectionname while copying the file. The contents of the new section are taken from the file filename.
-//    The size of the section will be the size of the file. This option only works on file formats which can support sections with arbitrary names.
-//
-// --migrate-forward
-//    Migrates the xclbin forward to the new binary structure using the backup mirror metadata.
-
   // hidden options
   std::vector<std::string> badOptions;
   boost::program_options::options_description hidden("Hidden options");
+
   hidden.add_options()
     ("trace,t", boost::program_options::bool_switch(&bTrace), "Trace")
     ("skip-uuid-insertion", boost::program_options::bool_switch(&bSkipUUIDInsertion), "Do not update the xclbin's UUID")
     ("append-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAppend)->multitoken(), "Section to append to.")
+    ("signature-debug", boost::program_options::bool_switch(&bSignatureDebug), "Dump section debug data.")
+    ("dump-signature", boost::program_options::value<std::string>(&sSignatureOutputFile), "Dumps a sign xclbin image's signature.")
     ("BAD-DATA", boost::program_options::value<std::vector<std::string> >(&badOptions)->multitoken(), "Dummy Data." )
   ;
 
@@ -235,8 +236,6 @@ int main_(int argc, char** argv) {
   }
 
   // Examine the options
-  // TODO: Clean up this flow.  Currently, its flow is that of testing features
-  //       and not how the customer would use it.
   XUtil::setVerbose(bTrace);
 
   if (bVersion) {
@@ -249,7 +248,6 @@ int main_(int argc, char** argv) {
   }
 
   // Actions not requiring --input
-
   if (bListNames) {
     if (argc != 2) {
       std::string errMsg = "ERROR: The '--list-names' argument is a stand alone option.  No other options can be specified with it.";
@@ -259,6 +257,30 @@ int main_(int argc, char** argv) {
     return RC_SUCCESS;
   }
 
+  // Signing DRCs
+  if (bValidateSignature == true) {
+    if (sCertificate.empty()) {
+      throw std::runtime_error("ERROR: Validate signature specified with no certificate defined.");
+    }
+
+    if (sInputFile.empty()) {
+      throw std::runtime_error("ERROR: Validate signature specified with no input file defined.");
+    }
+  }
+
+  if (!sPrivateKey.empty() && sOutputFile.empty()) {
+    throw std::runtime_error("ERROR: Private key specified, but no output file defined.");
+  }
+
+  if (sCertificate.empty() && !sOutputFile.empty() && !sPrivateKey.empty()) {
+    throw std::runtime_error("ERROR: Private key specified, but no certificate defined.");
+  }
+
+  // Report option conflicts
+  if ((!sSignature.empty() && !sPrivateKey.empty())) {
+    throw std::runtime_error("ERROR: The options '-add-signature' (a private signature) and '-private-key' (a PKCS signature) are mutually exclusive.");
+  }
+
   // Actions requiring --input
   
   // Check to see if there any file conflicts
@@ -266,6 +288,14 @@ int main_(int argc, char** argv) {
   {
     if (!sInputFile.empty()) {
        inputFiles.push_back(sInputFile);
+    }
+
+    if (!sCertificate.empty()) {
+       inputFiles.push_back(sCertificate);
+    }
+
+    if (!sPrivateKey.empty()) {
+       inputFiles.push_back(sPrivateKey);
     }
 
     for (auto section : sectionsToAdd) {
@@ -298,6 +328,26 @@ int main_(int argc, char** argv) {
 
   drcCheckFiles(inputFiles, outputFiles, bForce);
 
+  if (sOutputFile.empty()) {
+    QUIET("------------------------------------------------------------------------------");
+    QUIET("Warning: The option '--output' has not been specified. All operations will    ");
+    QUIET("         be done in memory with the exception of the '--dump-section' command.");
+    QUIET("------------------------------------------------------------------------------");
+  }
+
+  // Dump the signature 
+  if (!sSignatureOutputFile.empty()) {
+    if (sInputFile.empty()) {
+      throw std::runtime_error("ERROR: Missing input file.");
+    }
+    dumpSignatureFile(sInputFile, sSignatureOutputFile);
+    return RC_SUCCESS;
+  }
+
+  // Validate signature for the input file
+  if (bValidateSignature == true) {
+    verifyXclBinImage(sInputFile, sCertificate, bSignatureDebug);
+  }
 
   if (!sSignature.empty()) {
     if (sInputFile.empty()) {
@@ -335,13 +385,6 @@ int main_(int argc, char** argv) {
     XUtil::removeSignature(sInputFile, sOutputFile);
     QUIET("Exiting");
     return RC_SUCCESS;
-  }
-
-  if (sOutputFile.empty()) {
-    QUIET("------------------------------------------------------------------------------");
-    QUIET("Warning: The option '--output' has not been specified. All operations will    ");
-    QUIET("         be done in memory with the exception of the '--dump-section' command.");
-    QUIET("------------------------------------------------------------------------------");
   }
 
   XclBin xclBin;
@@ -402,6 +445,10 @@ int main_(int argc, char** argv) {
 
   if (!sOutputFile.empty()) {
     xclBin.writeXclBinBinary(sOutputFile, bSkipUUIDInsertion);
+
+    if (!sPrivateKey.empty() && !sCertificate.empty()) {
+      signXclBinImage(sOutputFile, sPrivateKey, sCertificate, sDigestAlgorithm, bSignatureDebug);
+    }
   }
 
   if (!sInfoFile.empty()) {
