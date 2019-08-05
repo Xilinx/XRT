@@ -886,7 +886,18 @@ int runShellCmd(const std::string& cmd, std::string& output)
     setenv("PYTHONPATH", "/opt/xilinx/xrt/python", 0);
     setenv("LD_LIBRARY_PATH", "/opt/xilinx/xrt/lib", 1);
     unsetenv("XCL_EMULATION_MODE");
+    
+    int stderr_fds[2];
+    if (pipe(stderr_fds)== -1) {
+        perror("ERROR: Unable to create pipe");
+        ret = -EINVAL;
+    }
+
+    close(stderr_fds[0]);
+    dup2(stderr_fds[1], 2);
     std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
+    close(stderr_fds[1]);
+
     if (pipe == nullptr) {
         std::cout << "ERROR: Failed to run " << cmd << std::endl;
         ret = -EINVAL;
@@ -899,6 +910,7 @@ int runShellCmd(const std::string& cmd, std::string& output)
             output += buf;
         }
     }
+    close(stderr_fds[0]);
 
     // Stop progress reporter
     quit = true;
@@ -960,7 +972,7 @@ int xcldev::device::runTestCase(const std::string& py,
         return -EINVAL;
     }
 
-    std::string cmd = "python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx) + " 2>&1"; //catch stderr
+    std::string cmd = "python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
     return runShellCmd(cmd, output);
 }
 
