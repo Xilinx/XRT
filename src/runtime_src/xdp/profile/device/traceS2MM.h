@@ -66,6 +66,7 @@ public:
      * IP should support word packing if we want to support 512 bit words
      */
     uint64_t getWordCount();
+    uint8_t getMemIndex();
     void showStatus();
     virtual void showProperties();
     virtual uint32_t getProperties() { return properties; }

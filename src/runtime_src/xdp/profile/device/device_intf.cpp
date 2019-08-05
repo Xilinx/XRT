@@ -523,7 +523,7 @@ DeviceIntf::~DeviceIntf()
 
     try {
       // The buffer needs to be initialized because of an xrt bug
-      mTs2mmBoHandle = xrtDevice->alloc(bo_size, xrt::hal::device::Domain::XRT_DEVICE_RAM, 1, nullptr);
+      mTs2mmBoHandle = xrtDevice->alloc(bo_size, xrt::hal::device::Domain::XRT_DEVICE_RAM, traceDMA->getMemIndex(), nullptr);
       xrtDevice->sync(mTs2mmBoHandle, bo_size, 0, xrt::hal::device::direction::HOST2DEVICE, false);
       mTs2mmBoSize = bo_size;
     } catch (const std::exception& ex) {

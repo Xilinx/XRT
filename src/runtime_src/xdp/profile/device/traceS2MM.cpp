@@ -95,6 +95,11 @@ uint64_t TraceS2MM::getWordCount()
     return retValue;
 }
 
+uint8_t TraceS2MM::getMemIndex()
+{
+    return (properties >> 1);
+}
+
 void TraceS2MM::showProperties()
 {
     std::ostream *outputStream = (out_stream) ? out_stream : (&(std::cout));
