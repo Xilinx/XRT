@@ -28,7 +28,20 @@
 
 // ---------------------- F U N C T I O N S ----------------------------------
 
-void signXclBinImage(const std::string & _fileOnDisk, const std::string & _sPrivateKey, const std::string & _sCertificate);
-void verifyXclBinImage(const std::string & _fileOnDisk, const std::string & _sCertificate);
+void signXclBinImage(const std::string & _fileOnDisk, const std::string & _sPrivateKey, const std::string & _sCertificate, const std::string & _sDigestAlgorithm, bool _bEnableDebugOutput);
+void verifyXclBinImage(const std::string & _fileOnDisk, const std::string & _sCertificate, bool _bEnableDebugOutput);
+void dumpSignatureFile(const std::string & _fileOnDisk, const std::string & _signatureFile);
+
+// Status structure
+typedef struct {
+  bool is_valid_xclbin_image;
+  bool is_PKCS_signed;
+  uint64_t file_size;
+  uint64_t image_size;
+  uint64_t signature_size;
+  uint64_t signature_offset;
+} XclBinPKCSImageStats;
+
+void getXclBinPKCSStats( const std::string& _xclBinFile, XclBinPKCSImageStats& _xclBinPKCSImageStats);
 
 #endif
