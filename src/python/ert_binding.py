@@ -23,7 +23,6 @@ import os
 
 libc = ctypes.CDLL(os.environ['XILINX_XRT'] + "/lib/libxrt_core.so")
 
-
 ##  START OF ENUMS  ##
 
 class ert_cmd_state:
@@ -34,7 +33,7 @@ class ert_cmd_state:
     ERT_CMD_STATE_ERROR      = 5
     ERT_CMD_STATE_ABORT      = 6
     ERT_CMD_STATE_SUBMITTED  = 7
-    ERT_CMD_STATEIMEOUT    = 8
+    ERT_CMD_STATEIMEOUT      = 8
     ERT_CMD_STATE_NORESPONSE = 9
 
 class ert_cmd_opcode:
@@ -134,7 +133,7 @@ class ert_configure_cmd(ctypes.Structure):
 #
 # The packet payload is comprised of 1 mandatory CU mask plus
 # extra_cu_masks per header field, followed a CU register map of size
-# (count - (1 + extra_cu_masks)) uint32 words.
+# (count - (1 + extra_cu_masks)) uint32_t words.
 class ert_start_cmd_struct(ctypes.Structure):
     _fields_ = [
         ("state", ctypes.c_uint32, 4),

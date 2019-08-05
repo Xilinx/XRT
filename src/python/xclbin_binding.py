@@ -77,7 +77,6 @@ class MEM_TYPE:
     MEM_URAM                 = 8
     MEM_STREAMING_CONNECTION = 9
 
-
 class IP_TYPE:
     IP_MB              = 0
     IP_KERNEL          = 1
