@@ -142,8 +142,9 @@ int main(int argc, char *argv[])
      * down to xbflash.
      */
     if(std::string( argv[ 1 ] ).compare( "flash" ) == 0) {
-        std::cout << "WARNING: flash sub-command is obsolete. "
-            << "Use xbmgmt flash instead" << std::endl;
+        std::cout << "WARNING: The xbutil sub-command flash has been deprecated. "
+                  << "Please use the xbmgmt utility with flash sub-command for equivalent functionality.\n"
+                  << std::endl;
         // get self path, launch xbflash from self path
         char buf[ PATH_MAX ] = {0};
         auto len = readlink( "/proc/self/exe", buf, PATH_MAX );
