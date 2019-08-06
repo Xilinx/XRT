@@ -886,7 +886,18 @@ int runShellCmd(const std::string& cmd, std::string& output)
     setenv("PYTHONPATH", "/opt/xilinx/xrt/python", 0);
     setenv("LD_LIBRARY_PATH", "/opt/xilinx/xrt/lib", 1);
     unsetenv("XCL_EMULATION_MODE");
+    
+    int stderr_fds[2];
+    if (pipe(stderr_fds)== -1) {
+        perror("ERROR: Unable to create pipe");
+        ret = -EINVAL;
+    }
+
+    close(stderr_fds[0]);
+    dup2(stderr_fds[1], 2);
     std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
+    close(stderr_fds[1]);
+
     if (pipe == nullptr) {
         std::cout << "ERROR: Failed to run " << cmd << std::endl;
         ret = -EINVAL;
@@ -899,6 +910,7 @@ int runShellCmd(const std::string& cmd, std::string& output)
             output += buf;
         }
     }
+    close(stderr_fds[0]);
 
     // Stop progress reporter
     quit = true;
@@ -913,7 +925,7 @@ int searchXsaAndDsa(std::string xsaPath, std::string
     struct stat st;
     if (stat(xsaPath.c_str(), &st) != 0) {
             if (stat(dsaPath.c_str(), &st) != 0) {
-                output += "ERROR: Failed to find test in ";
+                output += "ERROR: Failed to find xclbin in ";
                 output += xsaPath;
                 output += " and ";
                 output += dsaPath;
@@ -927,36 +939,25 @@ int searchXsaAndDsa(std::string xsaPath, std::string
     }
 }
 
-int xcldev::device::runTestCase(const std::string& exe,
+int xcldev::device::runTestCase(const std::string& py,
     const std::string& xclbin, std::string& output)
 {
     struct stat st;
-    bool isPython = false;
 
     std::string devInfoPath = std::string(m_devinfo.mName) + "/test/";
-    std::string xsaTestCasePath = xsaPath + devInfoPath;
-    std::string dsaTestCasePath = dsaPath + devInfoPath;
-    std::string xrtTestCasePath = xrtPath + "test/" + exe;
-    std::string exePath;
+    std::string xsaXclbinPath = xsaPath + devInfoPath;
+    std::string dsaXclbinPath = dsaPath + devInfoPath;
+    std::string xrtTestCasePath = xrtPath + "test/" + py;
 
     output.clear();
 
-    if (stat(xrtTestCasePath.c_str(), &st) == 0) {
-        exePath = xrtTestCasePath;
-        isPython = true;
-    } else {
-        searchXsaAndDsa(xsaTestCasePath, dsaTestCasePath, exePath, output);
-        exePath += exe;
-    }
-
     std::string xclbinPath;
-    searchXsaAndDsa(xsaTestCasePath, dsaTestCasePath, xclbinPath, output);
-    xclbinPath+= xclbin;
-    std::string idxOption;
+    searchXsaAndDsa(xsaXclbinPath, dsaXclbinPath, xclbinPath, output);
+    xclbinPath += xclbin;
 
-    if (stat(exePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
+    if (stat(xrtTestCasePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
         output += "ERROR: Failed to find ";
-        output += exe;
+        output += py;
         output += " or ";
         output += xclbin;
         output += ", Shell package not installed properly.";
@@ -971,27 +972,15 @@ int xcldev::device::runTestCase(const std::string& exe,
         return -EINVAL;
     }
 
-    if (m_idx != 0)
-        idxOption = "-d " + std::to_string(m_idx);
-
-    std::string cmd = "";
-    if (isPython) {
-        cmd = "python " + exePath + " -k " + xclbinPath + " " + idxOption;
-    } else {
-        cmd = exePath + " " + xclbinPath + " " + idxOption;
-    }
+    std::string cmd = "/usr/bin/python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
     return runShellCmd(cmd, output);
 }
 
 int xcldev::device::verifyKernelTest(void)
 {
     std::string output;
-    int ret = runTestCase(std::string("main.py"),
+    int ret = runTestCase(std::string("22_verify.py"),
         std::string("verify.xclbin"), output);
-    if (ret == -ENOENT) {
-        ret = runTestCase(std::string("validate.exe"),
-            std::string("verify.xclbin"), output);
-    }
 
     if (ret != 0)
         return ret;
@@ -1007,7 +996,7 @@ int xcldev::device::bandwidthKernelTest(void)
 {
     std::string output;
 
-    int ret = runTestCase(std::string("kernel_bw.exe"),
+    int ret = runTestCase(std::string("23_bandwidth.py"),
         std::string("bandwidth.xclbin"), output);
 
     if (ret != 0)

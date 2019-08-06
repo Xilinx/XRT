@@ -136,8 +136,9 @@ if [ $FLAVOR = "centos" ] || [ $FLAVOR = "rhel" ] ; then
         exit 0
     else
         echo "Installing pyopencl..."
-        sudo pip install pyopencl
-        sudo pip install --ignore-installed numpy==1.8
+        pip install --upgrade setuptools
+        pip install pyopencl
+        pip install --ignore-installed numpy==1.8
     fi
 
     if python -c "import pyopencl" &> /dev/null; then
