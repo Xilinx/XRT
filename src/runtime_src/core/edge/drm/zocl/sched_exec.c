@@ -1352,16 +1352,6 @@ scu_unconfig_done(struct sched_cmd *cmd)
 	return true;
 }
 
-static inline int
-dma_done(struct sched_cmd *cmd)
-{
-	if (cmd->dma_handle.dma_flags & ZOCL_DMA_DONE) {
-		cmd->dma_handle.dma_flags &= ~ZOCL_DMA_DONE;
-		return true;
-	}
-	return false;
-}
-
 /**
  * notify_host() - Notify user space that a command is complete.
  */
@@ -2208,6 +2198,28 @@ fini_scheduler_thread(void)
 	return retval;
 }
 
+static inline int
+dma_done(struct sched_cmd *cmd)
+{
+	if (cmd->dma_handle.dma_flags & ZOCL_DMA_DONE) {
+		cmd->dma_handle.dma_flags &= ~ZOCL_DMA_DONE;
+		return true;
+	}
+	return false;
+}
+
+static inline bool
+dma_error(struct sched_cmd *cmd)
+{
+	return (cmd->dma_handle.dma_flags & ZOCL_DMA_ERROR) != 0;
+}
+
+static inline void
+dma_clear(struct sched_cmd *cmd)
+{
+	cmd->dma_handle.dma_flags = 0;
+}
+
 /**
  * penguin_query() - Check command status of argument command
  *
@@ -2224,11 +2236,10 @@ penguin_query(struct sched_cmd *cmd)
 	switch (opc) {
 	case ERT_START_COPYBO:
 		if (dma_done(cmd)) {
-			(cmd->dma_handle.dma_flags & ZOCL_DMA_ERROR) ?
+			dma_error(cmd) ?
 			    mark_cmd_complete(cmd, ERT_CMD_STATE_ERROR) :
 			    mark_cmd_complete(cmd, ERT_CMD_STATE_COMPLETED);
-			/* clean up dma_flags */
-			cmd->dma_handle.dma_flags = 0;
+			dma_clear(cmd);
 		}
 		break;
 	case ERT_START_CU:
