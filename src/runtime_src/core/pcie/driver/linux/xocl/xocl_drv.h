@@ -750,6 +750,17 @@ enum data_kind {
 	CAGE_TEMP2,
 	CAGE_TEMP3,
 	VCC_0V85,
+	SER_NUM,
+	MAC_ADDR0,
+	MAC_ADDR1,
+	MAC_ADDR2,
+	MAC_ADDR3,
+	REVISION,
+	CARD_NAME,
+	BMC_VER,
+	MAX_PWR,
+	FAN_NUM,
+	CFG_MODE,
 };
 
 enum mb_kind {
