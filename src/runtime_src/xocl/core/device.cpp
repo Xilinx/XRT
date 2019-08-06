@@ -312,6 +312,22 @@ alloc(memory* mem)
   return boh;
 }
 
+void*
+device::
+allocHostPtr(size_t sz)
+{
+  XOCL_DEBUG(std::cout,__FILE__,":",__func__,":",__LINE__,"\n");
+  return m_xdevice->allocHostPtr(sz);
+}
+
+void
+device::
+freeHostPtr(void* ptr)
+{
+  XOCL_DEBUG(std::cout,__FILE__,":",__func__,":",__LINE__,"\n");
+  return m_xdevice->freeHostPtr(ptr);
+}
+
 int
 device::
 get_stream(xrt::device::stream_flags flags, xrt::device::stream_attrs attrs, const cl_mem_ext_ptr_t* ext, xrt::device::stream_handle* stream, int32_t& conn)

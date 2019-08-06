@@ -204,6 +204,14 @@ public:
   alloc(size_t sz)
   { return m_hal->alloc(sz); }
 
+  void*
+  allocHostPtr(size_t sz)
+  { return m_hal->allocHostPtr(sz); }
+
+  void
+  freeHostPtr(void* ptr)
+  { m_hal->freeHostPtr(ptr); }
+
   BufferObjectHandle
   alloc(size_t sz, memoryDomain domain, uint64_t memoryIndex, void* user_ptr)
   { return m_hal->alloc(sz, domain, memoryIndex, user_ptr); }

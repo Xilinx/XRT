@@ -29,6 +29,8 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mClose(0)
   ,mLoadXclBin(0)
   ,mAllocBO(0)
+  ,mAllocHostPtr(0)
+  ,mFreeHostPtr(0)
   ,mAllocUserPtrBO(0)
   ,mImportBO(0)
   ,mExportBO(0)
@@ -98,6 +100,8 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   if(!mAllocBO)
     return;
 
+  mAllocHostPtr = (allocHostPtrFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclAllocHostPtr");
+  mFreeHostPtr = (freeHostPtrFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclFreeHostPtr");
   mAllocUserPtrBO = (allocUserPtrBOFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclAllocUserPtrBO");
   mImportBO = (importBOFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclImportBO");
   mExportBO = (exportBOFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclExportBO");

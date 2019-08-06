@@ -67,6 +67,8 @@ public:
     int xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap);
 
     unsigned int xclAllocBO(size_t size, int unused, unsigned flags);
+    void* xclAllocHostPtr(size_t size, unsigned flags);
+    void xclFreeHostPtr(void* ptr);
     unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
     void xclFreeBO(unsigned int boHandle);
     int xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek);

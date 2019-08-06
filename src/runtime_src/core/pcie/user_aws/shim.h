@@ -75,6 +75,8 @@ public:
   //int xclGetErrorStatus(xclErrorStatus *info); Not supported for AWS
   bool xclUnlockDevice();
   unsigned int xclAllocBO(size_t size, int unused, unsigned flags);
+  void* xclAllocHostPtr(size_t size, unsigned flags);
+  void xclFreeHostPtr(void* ptr);
   unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
   void xclFreeBO(unsigned int boHandle);
   int xclWriteBO(unsigned int boHandle,

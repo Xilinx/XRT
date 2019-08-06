@@ -56,6 +56,8 @@ private:
   typedef int (* loadBitstreamFuncType)(xclDeviceHandle handle, const char *fileName);
   typedef int (* loadXclBinFuncType)(xclDeviceHandle handle, const xclBin *buffer);
   typedef unsigned int (*allocBOFuncType) (xclDeviceHandle handle, size_t size, int unused, unsigned flags);
+  typedef void* (*allocHostPtrFuncType) (xclDeviceHandle handle, size_t size, unsigned flags);
+  typedef void (*freeHostPtrFuncType) (xclDeviceHandle handle, void* ptr);
   typedef unsigned int (*allocUserPtrBOFuncType) (xclDeviceHandle handle, void* userptr, size_t size, unsigned flags);
 
   typedef unsigned int (*importBOFuncType)(xclDeviceHandle handle, int fd, unsigned flags);
@@ -168,6 +170,8 @@ public:
   //loadBitstreamFuncType mLoadBitstream;
   loadXclBinFuncType mLoadXclBin;
   allocBOFuncType mAllocBO;
+  allocHostPtrFuncType mAllocHostPtr;
+  freeHostPtrFuncType mFreeHostPtr;
   allocUserPtrBOFuncType mAllocUserPtrBO;
   importBOFuncType mImportBO;
   exportBOFuncType mExportBO;

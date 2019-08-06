@@ -360,6 +360,29 @@ unsigned int shim::xclAllocBO(size_t size, int unused, unsigned flags)
 }
 
 /*
+ * xclAllocHostPtr()
+ *
+ * Ignoring the flags as well.
+ */
+void* shim::xclAllocHostPtr(size_t size, unsigned flags)
+{
+    void* ptr;
+    if(posix_memalign(&ptr,4096,size))
+        return nullptr;
+    else
+        return ptr;
+}
+
+/*
+ * xclFreeHostPtr()
+ *
+ */
+void shim::xclFreeHostPtr(void* ptr)
+{
+    free(ptr);
+}
+
+/*
  * xclAllocUserPtrBO()
  */
 unsigned int shim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
@@ -1573,6 +1596,19 @@ unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigne
 {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclAllocBO(size, unused, flags) : -ENODEV;
+}
+
+void* xclAllocHostPtr(xclDeviceHandle handle, size_t size, unsigned flags)
+{
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return drv ? drv->xclAllocHostPtr(size, flags) : nullptr;
+}
+
+void xclFreeHostPtr(xclDeviceHandle handle, void* ptr)
+{
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    if(drv) 
+        drv->xclFreeHostPtr(ptr);
 }
 
 unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)

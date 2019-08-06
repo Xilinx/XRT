@@ -272,6 +272,12 @@ public:
   virtual BufferObjectHandle
   alloc(size_t sz);
 
+  virtual void*
+  allocHostPtr(size_t sz);
+
+  virtual void
+  freeHostPtr(void* ptr);
+
   virtual BufferObjectHandle
   alloc(size_t sz,void* userptr);
 

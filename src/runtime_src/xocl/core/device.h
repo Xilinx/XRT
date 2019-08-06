@@ -274,6 +274,12 @@ public:
   xrt::device::BufferObjectHandle
   allocate_buffer_object(memory* mem);
 
+  void*
+  allocHostPtr(size_t sz);
+
+  void
+  freeHostPtr(void* ptr);
+
   /**
    * Allocate and return buffer object for argument cl_mem
    *

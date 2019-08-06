@@ -23,6 +23,8 @@ namespace xocl {
 
 static const std::map<const std::string, void *> extensionFunctionTable = {
   std::pair<const std::string, void *>("clCreateStream", (void *)clCreateStream),
+  std::pair<const std::string, void *>("clAllocHostPtr", (void *)clAllocHostPtr),
+  std::pair<const std::string, void *>("clFreeHostPtr", (void *)clFreeHostPtr),
   std::pair<const std::string, void *>("clReleaseStream", (void *)clReleaseStream),
   std::pair<const std::string, void *>("clWriteStream", (void *)clWriteStream),
   std::pair<const std::string, void *>("clReadStream", (void *)clReadStream),

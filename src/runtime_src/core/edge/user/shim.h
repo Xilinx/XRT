@@ -68,6 +68,8 @@ public:
                  size_t seek);
   int xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip);
   void *xclMapBO(unsigned int boHandle, bool write);
+  void *xclAllocHostPtr(size_t size, unsigned flags);
+  void xclFreeHostPtr(void* ptr);
   int xclExportBO(unsigned int boHandle);
   unsigned int xclImportBO(int fd, unsigned flags);
   unsigned int xclGetBOProperties(unsigned int boHandle,
@@ -109,7 +111,9 @@ private:
   std::ifstream mVBNV;
   xclVerbosityLevel mVerbosity;
   int mKernelFD;
+  std::mutex mBOMapLock;
   std::map<uint64_t, uint32_t *> mKernelControl;
+  std::map<uint64_t, unsigned int> mBoMap;
   std::unique_ptr<xrt_core::bo_cache> mCmdBOCache;
 
   /*

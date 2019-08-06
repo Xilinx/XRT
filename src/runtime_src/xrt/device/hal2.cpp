@@ -309,6 +309,20 @@ alloc(const BufferObjectHandle& boh, size_t sz, size_t offset)
 
 void*
 device::
+allocHostPtr(size_t sz)
+{
+  return m_ops->mAllocHostPtr(m_handle,sz,0);
+}
+
+void
+device::
+freeHostPtr(void* ptr)
+{
+  m_ops->mFreeHostPtr(m_handle,ptr);
+}
+
+void*
+device::
 alloc_svm(size_t sz)
 {
   auto boh = alloc(sz);

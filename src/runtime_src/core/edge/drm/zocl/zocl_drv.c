@@ -310,7 +310,7 @@ zocl_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 
 	if (rc)
 		drm_gem_vm_close(vma);
-
+	DRM_ERROR("%s: vma->start:%x paddr:%x\n",__func__,vma->vm_start,paddr);
 	return rc;
 }
 

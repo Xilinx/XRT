@@ -1060,6 +1060,9 @@ XCL_DRIVER_DLLESPEC int xclRegWrite(xclDeviceHandle handle, uint32_t cu_index, u
 XCL_DRIVER_DLLESPEC size_t xclDebugReadIPStatus(xclDeviceHandle handle, enum xclDebugReadType type,
                                                                            void* debugResults);
 
+XCL_DRIVER_DLLESPEC void *xclAllocHostPtr(xclDeviceHandle handle, size_t size, unsigned flags);
+
+XCL_DRIVER_DLLESPEC void xclFreeHostPtr(xclDeviceHandle handle, void* ptr);
 
 #ifdef __cplusplus
 }

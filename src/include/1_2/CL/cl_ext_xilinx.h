@@ -358,6 +358,17 @@ extern CL_API_ENTRY cl_uint CL_API_CALL
 	    cl_uint count,
 	    cl_int* errcode_ret) CL_API_SUFFIX__VERSION_1_0;
 
+
+extern CL_API_ENTRY void* CL_API_CALL
+	clAllocHostPtr(cl_device_id device,
+          size_t  size,
+          cl_int* errcode_ret) CL_API_SUFFIX__VERSION_1_0;
+
+extern CL_API_ENTRY void CL_API_CALL
+	clFreeHostPtr(cl_device_id device,
+          void* ptr,
+          cl_int* errcode_ret) CL_API_SUFFIX__VERSION_1_0;
+
 /*Use rte_pktmbuf_alloc to allocate a buffer from the same mempool used by the pipe.
  * This buffer is not yet bound to any descriptor in the RX/TX queue referred to by the pipe.
  */

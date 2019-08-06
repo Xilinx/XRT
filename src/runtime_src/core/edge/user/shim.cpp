@@ -267,14 +267,25 @@ unsigned int ZYNQShim::xclAllocBO(size_t size, int unused, unsigned flags) {
 }
 
 unsigned int ZYNQShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags) {
-    (void)flags;
-    drm_zocl_userptr_bo info = {reinterpret_cast<uint64_t>(userptr), size, 0xffffffff, DRM_ZOCL_BO_FLAGS_USERPTR};
-    int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_USERPTR_BO, &info);
-    if (mVerbosity == XCL_INFO) {
-        std::cout  << "xclAllocUserPtrBO result = " << result << std::endl;
-        std::cout << "Handle " << info.handle << std::endl;
-    }
-    return info.handle;
+  (void)flags;
+  std::lock_guard<std::mutex> l(mBOMapLock);
+  //for (auto itr = mBoMap.begin(); itr != mBoMap.end(); ++itr) { 
+  //  printf("%s:%d  f[%x] s[%u]\n",__func__,__LINE__,itr->first,itr->second);
+  //}
+  auto it = mBoMap.find(reinterpret_cast<uint64_t>(userptr));
+  if (it == mBoMap.end()) {
+    std::cout  << "xclAllocUserPtrBO Bad Host PTR" << std::endl;
+    return -EINVAL;
+  }
+  xclBOProperties properties;
+  int ret = xclGetBOProperties(it->second, &properties);    
+  drm_zocl_userptr_bo info = {properties.paddr, size, 0xffffffff, DRM_ZOCL_BO_FLAGS_USERPTR};
+  int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_USERPTR_BO, &info);
+  if (mVerbosity == XCL_INFO) {
+    std::cout  << "xclAllocUserPtrBO result = " << result << std::endl;
+    std::cout << "Handle " << info.handle << std::endl;
+  }
+  return info.handle;
 }
 
 unsigned int ZYNQShim::xclGetHostBO(uint64_t paddr, size_t size) {
@@ -336,6 +347,28 @@ void *ZYNQShim::xclMapBO(unsigned int boHandle, bool write)
           MAP_SHARED, mKernelFD, mapInfo.offset);
 
   return ptr;
+}
+
+void *ZYNQShim::xclAllocHostPtr(size_t size, unsigned flags)
+{
+  std::cout << "ZYNQShim::xclAllocHostPtr called" << std::endl;
+  unsigned int boHandle = xclAllocBO(size, 0, flags);
+  void* vaddr =  xclMapBO(boHandle, true);
+  //printf("%s:%d vaddr:%x\n",__func__,__LINE__,(uint64_t)vaddr);
+  if(vaddr) {
+    std::lock_guard<std::mutex> l(mBOMapLock);
+    auto it = mBoMap.find(reinterpret_cast<uint64_t>(vaddr));
+    if (it == mBoMap.end()) {
+      mBoMap.insert(it, std::pair<uint64_t, unsigned int>(reinterpret_cast<uint64_t>(vaddr), boHandle));
+    }
+  }
+  return vaddr;
+}
+
+void ZYNQShim::xclFreeHostPtr(void* ptr)
+{
+  std::cout << "ZYNQShim::xclFreeHostPtr called" << std::endl;
+  //TODO: unmap and FreeBO
 }
 
 int ZYNQShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
@@ -829,6 +862,21 @@ void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
   if (!drv)
     return NULL;
   return drv->xclMapBO(boHandle, write);
+}
+
+void *xclAllocHostPtr(xclDeviceHandle handle, size_t size, unsigned flags)
+{
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  if (!drv)
+    return NULL;
+  return drv->xclAllocHostPtr(size,flags);
+}
+
+void xclFreeHostPtr(xclDeviceHandle handle, void* ptr)
+{
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  if (drv)
+    drv->xclFreeHostPtr(ptr);
 }
 
 int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir,

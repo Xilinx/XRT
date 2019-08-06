@@ -1061,6 +1061,20 @@ namespace awsbwhal {
       return result ? mNullBO : info.handle;
     }
 
+    void* AwsXcl::xclAllocHostPtr(size_t size, unsigned flags)
+    {
+      void* ptr;
+      if(posix_memalign(&ptr,4096,size))
+        return nullptr;
+      else
+        return ptr;
+    }
+
+    void AwsXcl::xclFreeHostPtr(void* ptr)
+    {
+      free(ptr);
+    }
+
     unsigned int AwsXcl::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
     {
       drm_xocl_userptr_bo user = {reinterpret_cast<uint64_t>(userptr), size, mNullBO, flags};
@@ -1493,6 +1507,19 @@ unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigne
 {
   awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
   return drv ? drv->xclAllocBO(size, unused, flags) : -ENODEV;
+}
+
+void* xclAllocHostPtr(xclDeviceHandle handle, size_t size, unsigned flags)
+{
+    awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+    return drv ? drv->xclAllocHostPtr(size, flags) : nullptr;
+}
+
+void* xclFreeHostPtr(xclDeviceHandle handle, void* ptr)
+{
+    awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+    if(drv)
+        drv->xclFreeHostPtr(ptr);
 }
 
 unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)
