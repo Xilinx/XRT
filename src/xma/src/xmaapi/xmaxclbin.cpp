@@ -71,8 +71,8 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
             if (ipl->m_ip_data[i].m_type != IP_KERNEL)
                 continue;
 
-            if (xclbin_info->number_of_kernels == MAX_XILINX_KERNELS) {
-                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only %d kernels per device\n", xclbin_info->number_of_kernels);
+            if (j == MAX_XILINX_KERNELS) {
+                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only %d kernels per device\n", MAX_XILINX_KERNELS);
                 return XMA_ERROR;
             }
             memcpy(xclbin_info->ip_layout[j].kernel_name,
