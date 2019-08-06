@@ -2201,11 +2201,7 @@ fini_scheduler_thread(void)
 static inline int
 dma_done(struct sched_cmd *cmd)
 {
-	if (cmd->dma_handle.dma_flags & ZOCL_DMA_DONE) {
-		cmd->dma_handle.dma_flags &= ~ZOCL_DMA_DONE;
-		return true;
-	}
-	return false;
+	return (cmd->dma_handle.dma_flags & ZOCL_DMA_DONE) != 0;
 }
 
 static inline bool
