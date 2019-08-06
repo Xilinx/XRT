@@ -105,13 +105,15 @@
 
 #define	XMC_CLOCK_SCALING_POWER_REG	0x18
 #define	XMC_CLOCK_SCALING_POWER_TARGET_MASK 0xFF
-#define	XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK 0xFF00
-#define	XMC_CLOCK_SCALING_POWER_THRESHOLD_POS 8
 
 #define	XMC_CLOCK_SCALING_TEMP_REG	0x14
 #define	XMC_CLOCK_SCALING_TEMP_TARGET_MASK	0xFF
-#define	XMC_CLOCK_SCALING_TEMP_THRESHOLD_MASK	0xFF00
-#define	XMC_CLOCK_SCALING_TEMP_THRESHOLD_POS	8
+
+#define	XMC_CLOCK_SCALING_THRESHOLD_REG		0x2C
+#define	XMC_CLOCK_SCALING_TEMP_THRESHOLD_POS	0
+#define	XMC_CLOCK_SCALING_TEMP_THRESHOLD_MASK	0xFF
+#define	XMC_CLOCK_SCALING_POWER_THRESHOLD_POS	8
+#define	XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK	0xFF
 
 enum ctl_mask {
 	CTL_MASK_CLEAR_POW		= 0x1,
@@ -919,7 +921,8 @@ static ssize_t scaling_governor_show(struct device *dev,
 	char val[10];
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "%s: runtime clock scaling is not supported\n", __func__);
+		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+			 __func__);
 		return -EIO;
 	}
 	mutex_lock(&xmc->xmc_lock);
@@ -946,7 +949,8 @@ static ssize_t scaling_governor_store(struct device *dev,
 
 	/* Check if clock scaling feature enabled */
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "%s: runtime clock scaling is not supported\n", __func__);
+		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+			 __func__);
 		return -EIO;
 	}
 
@@ -997,7 +1001,8 @@ static ssize_t hwmon_scaling_target_power_show(struct device *dev,
 	u32 val;
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "%s: runtime clock scaling is not supported\n", __func__);
+		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+			 __func__);
 		return -EIO;
 	}
 	mutex_lock(&xmc->xmc_lock);
@@ -1012,10 +1017,11 @@ static ssize_t hwmon_scaling_target_power_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
-	u32 val, val2, threshold_val;
+	u32 val, val2, threshold;
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "%s: runtime clock scaling is not supported\n", __func__);
+		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+			 __func__);
 		return -EIO;
 	}
 
@@ -1026,17 +1032,18 @@ static ssize_t hwmon_scaling_target_power_store(struct device *dev,
 
 	mutex_lock(&xmc->xmc_lock);
 	val2 = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_POWER_REG);
-	threshold_val = (val2 & XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK) >>
-		XMC_CLOCK_SCALING_POWER_THRESHOLD_POS;
+	threshold = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
+	threshold = (threshold >> XMC_CLOCK_SCALING_POWER_THRESHOLD_POS) &
+		XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK;
 
 	//Check if the threshold power is in board spec limits.
-	if (val > threshold_val) {
+	if (val > threshold) {
 		mutex_unlock(&xmc->xmc_lock);
 		return -EINVAL;
 	}
 
 	val2 &= ~XMC_CLOCK_SCALING_POWER_TARGET_MASK;
-	val2 |= (val_arg & XMC_CLOCK_SCALING_POWER_TARGET_MASK);
+	val2 |= (val & XMC_CLOCK_SCALING_POWER_TARGET_MASK);
 	WRITE_RUNTIME_CS(xmc, val2, XMC_CLOCK_SCALING_POWER_REG);
 	mutex_unlock(&xmc->xmc_lock);
 
@@ -1050,7 +1057,8 @@ static ssize_t hwmon_scaling_target_temp_show(struct device *dev,
 	u32 val;
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "%s: runtime clock scaling is not supported\n", __func__);
+		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+			 __func__);
 		return -EIO;
 	}
 	mutex_lock(&xmc->xmc_lock);
@@ -1065,11 +1073,12 @@ static ssize_t hwmon_scaling_target_temp_store(struct device *dev,
 		struct device_attribute *da, const char *buf, size_t count)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
-	u32 val, val2, threshold_val;
+	u32 val, val2, threshold;
 
 	/* Check if clock scaling feature enabled */
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "%s: runtime clock scaling is not supported\n", __func__);
+		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+			 __func__);
 		return -EIO;
 	}
 
@@ -1078,11 +1087,12 @@ static ssize_t hwmon_scaling_target_temp_store(struct device *dev,
 
 	mutex_lock(&xmc->xmc_lock);
 	val2 = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_TEMP_REG);
-	threshold_val = (val2 & XMC_CLOCK_SCALING_TEMP_THRESHOLD_MASK) >>
-		XMC_CLOCK_SCALING_TEMP_THRESHOLD_POS;
+	threshold = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
+	threshold = (threshold >> XMC_CLOCK_SCALING_TEMP_THRESHOLD_POS) &
+		XMC_CLOCK_SCALING_TEMP_THRESHOLD_MASK;
 
 	//Check if the threshold temperature is in board spec limits.
-	if (val > threshold_val) {
+	if (val > threshold) {
 		mutex_unlock(&xmc->xmc_lock);
 		return -EINVAL;
 	}
@@ -1102,13 +1112,14 @@ static ssize_t hwmon_scaling_threshold_temp_show(struct device *dev,
 	u32 val;
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "%s: runtime clock scaling is not supported\n", __func__);
+		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+			 __func__);
 		return -EIO;
 	}
 	mutex_lock(&xmc->xmc_lock);
-	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_TEMP_REG);
-	val = (val & XMC_CLOCK_SCALING_TEMP_THRESHOLD_MASK) >>
-		XMC_CLOCK_SCALING_TEMP_THRESHOLD_POS;
+	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
+	val = (val >> XMC_CLOCK_SCALING_TEMP_THRESHOLD_POS) &
+		XMC_CLOCK_SCALING_TEMP_THRESHOLD_MASK;
 	mutex_unlock(&xmc->xmc_lock);
 
 	return sprintf(buf, "%uc\n", val);
@@ -1121,13 +1132,14 @@ static ssize_t hwmon_scaling_threshold_power_show(struct device *dev,
 	u32 val;
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "%s: runtime clock scaling is not supported\n", __func__);
+		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+			 __func__);
 		return -EIO;
 	}
 	mutex_lock(&xmc->xmc_lock);
-	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_POWER_REG);
-	val = (val & XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK) >>
-		XMC_CLOCK_SCALING_POWER_THRESHOLD_POS;
+	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
+	val = (val >> XMC_CLOCK_SCALING_POWER_THRESHOLD_POS) &
+		XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK;
 	mutex_unlock(&xmc->xmc_lock);
 
 	return sprintf(buf, "%uW\n", val);
@@ -1807,7 +1819,9 @@ static int load_sche_image(struct platform_device *pdev, const char *image,
 static void xmc_clk_scale_config(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc;
+	void *xdev_hdl;
 	u32 cntrl;
+	u16 spec_limits;
 
 	xmc = platform_get_drvdata(pdev);
 	if (!xmc) {
@@ -1818,6 +1832,10 @@ static void xmc_clk_scale_config(struct platform_device *pdev)
 	cntrl = READ_RUNTIME_CS(xmc, XMC_CLOCK_CONTROL_REG);
 	cntrl |= XMC_CLOCK_SCALING_EN;
 	WRITE_RUNTIME_CS(xmc, cntrl, XMC_CLOCK_CONTROL_REG);
+
+	xdev_hdl = xocl_get_xdev(pdev);
+	spec_limits = xocl_get_spec_limits(xdev_hdl);
+	WRITE_RUNTIME_CS(xmc, spec_limits, XMC_CLOCK_SCALING_THRESHOLD_REG);
 }
 
 static struct xocl_mb_funcs xmc_ops = {
