@@ -28,6 +28,14 @@
 
 #include <iostream>
 #include <stdint.h>
+
+// Custom exception with payloads
+typedef enum {
+  XET_RUNTIME = 1,           // Generic Runtime error (1)
+  XET_MISSING_SECTION = 100, // Section is missing
+} XclBinExceptionType;
+
+
 namespace XclBinUtilities {
 //
 template<typename ... Args>
@@ -39,6 +47,54 @@ std::string format(const std::string& format, Args ... args) {
   
   return std::string(buf.get(), buf.get() + size);
 }
+
+class XclBinUtilException : public std::runtime_error {
+  private:
+    std::string m_msg;
+    std::string m_file;
+    int m_line;
+    std::string m_function;
+    XclBinExceptionType m_eExceptionType;
+
+public:
+    XclBinUtilException(XclBinExceptionType _eExceptionType, const std::string & _msg, const char * _file, int _line, const char * _function) 
+    : std::runtime_error(_msg)
+    , m_msg(_msg)
+    , m_file(_file)
+    , m_line(_line)
+    , m_function(_function)
+    , m_eExceptionType(_eExceptionType) {
+      // Empty
+    }
+
+    ~XclBinUtilException() throw() 
+    {
+      // Empty
+    }
+
+    const char *msg() const throw() {
+      return m_msg.c_str();
+    }
+
+    const char *file() const throw() {
+      return m_file.c_str();
+    }
+
+    int line() const throw() {
+      return m_line;
+    }
+
+    const char *function() const throw() {
+      return m_function.c_str();
+    }
+
+    XclBinExceptionType exceptionType() const throw() {
+      return m_eExceptionType;
+    }
+};
+
+#define throw_xclbin_exception(exceptionType, msg) throw XclBinUtilities::XclBinUtilException(exceptionType, msg, __FILE__, __LINE__, __FUNCTION__);
+
 
 struct SignatureHeader {
    unsigned char magicValue[16];   // Magic Signature Value 5349474E-9DFF41C0-8CCB82A7-131CC9F3

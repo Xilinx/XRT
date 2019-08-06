@@ -148,10 +148,15 @@ SectionDebugIPLayout::marshalToJSON(char* _pDataSection,
   for (int index = 0; index < pHdr->m_count; ++index) {
     boost::property_tree::ptree debug_ip_data;
 
-    XUtil::TRACE(XUtil::format("[%d]: m_type: %d, m_index: %d, m_properties: %d, m_major: %d, m_minor: %d, m_base_address: 0x%lx, m_name: '%s'", 
+    // Reform the index value
+    uint16_t m_virtual_index = (((uint16_t) pHdr->m_debug_ip_data[index].m_index_highbyte) << 8) + (uint16_t) pHdr->m_debug_ip_data[index].m_index_lowbyte;
+
+    XUtil::TRACE(XUtil::format("[%d]: m_type: %d, index: %d (m_index_highbyte: 0x%x, m_index_lowbyte: 0x%x), m_properties: %d, m_major: %d, m_minor: %d, m_base_address: 0x%lx, m_name: '%s'", 
                              index,
                              getDebugIPTypeStr((enum DEBUG_IP_TYPE) pHdr->m_debug_ip_data[index].m_type).c_str(),
-                             (unsigned int) pHdr->m_debug_ip_data[index].m_index,
+                             (unsigned int) m_virtual_index,
+                             (unsigned int) pHdr->m_debug_ip_data[index].m_index_highbyte,
+                             (unsigned int) pHdr->m_debug_ip_data[index].m_index_lowbyte,
                              (unsigned int) pHdr->m_debug_ip_data[index].m_properties,
                              (unsigned int) pHdr->m_debug_ip_data[index].m_major,
                              (unsigned int) pHdr->m_debug_ip_data[index].m_minor,
@@ -162,7 +167,7 @@ SectionDebugIPLayout::marshalToJSON(char* _pDataSection,
     XUtil::TRACE_BUF("debug_ip_data", reinterpret_cast<const char*>(&pHdr->m_debug_ip_data[index]), sizeof(debug_ip_data));
 
     debug_ip_data.put("m_type", getDebugIPTypeStr((enum DEBUG_IP_TYPE)pHdr->m_debug_ip_data[index].m_type).c_str());
-    debug_ip_data.put("m_index", XUtil::format("%d", (unsigned int)pHdr->m_debug_ip_data[index].m_index).c_str());
+    debug_ip_data.put("m_index", XUtil::format("%d", (unsigned int) m_virtual_index).c_str());
     debug_ip_data.put("m_properties", XUtil::format("%d", (unsigned int)pHdr->m_debug_ip_data[index].m_properties).c_str());
     debug_ip_data.put("m_major", XUtil::format("%d", (unsigned int) pHdr->m_debug_ip_data[index].m_major).c_str());
     debug_ip_data.put("m_minor", XUtil::format("%d", (unsigned int) pHdr->m_debug_ip_data[index].m_minor).c_str());
@@ -211,7 +216,12 @@ SectionDebugIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSect
 
     std::string sm_type = ptDebugIPData.get<std::string>("m_type");
     debugIpDataHdr.m_type = (uint8_t) getDebugIPType(sm_type);
-    debugIpDataHdr.m_index = ptDebugIPData.get<int8_t>("m_index");
+
+    // The index value in 2019.2 was expanded to 2 bytes (a high and low byte)
+    uint16_t index = ptDebugIPData.get<uint16_t>("m_index");
+    debugIpDataHdr.m_index_lowbyte = index & 0x00FF;
+    debugIpDataHdr.m_index_highbyte = (index & 0xFF00) >> 8;
+
     debugIpDataHdr.m_properties = ptDebugIPData.get<int8_t>("m_properties");
 
     // Optional value, will set to 0 if not set (as it was initialized)
@@ -232,10 +242,12 @@ SectionDebugIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSect
     // We already know that there is enough room for this string
     memcpy(debugIpDataHdr.m_name, sm_name.c_str(), sm_name.length() + 1);
 
-    XUtil::TRACE(XUtil::format("[%d]: m_type: %d, m_index: %d, m_properties: %d, m_major: %d, m_minor: %d, m_base_address: 0x%lx, m_name: '%s'", 
+    XUtil::TRACE(XUtil::format("[%d]: m_type: %d, index: %d (m_index_highbyte: 0x%x, m_index_lowbyte: 0x%x), m_properties: %d, m_major: %d, m_minor: %d, m_base_address: 0x%lx, m_name: '%s'", 
                              count,
                              (unsigned int) debugIpDataHdr.m_type,
-                             (unsigned int) debugIpDataHdr.m_index,
+                             (unsigned int) index,
+                             (unsigned int) debugIpDataHdr.m_index_highbyte,
+                             (unsigned int) debugIpDataHdr.m_index_lowbyte,
                              (unsigned int) debugIpDataHdr.m_properties,
                              (unsigned int) debugIpDataHdr.m_major,
                              (unsigned int) debugIpDataHdr.m_minor,
