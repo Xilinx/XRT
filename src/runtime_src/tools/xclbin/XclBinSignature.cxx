@@ -27,21 +27,40 @@
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
 
-// Status structure
-typedef struct {
-  bool bIsXclImage;
-  bool bIsSigned;
-  uint64_t actualFileSize;
-  uint64_t headerFileLength;
-  int32_t signatureLength;
-} XclBinImageStats;
+static bool 
+copyFile(const std::string & _src, const std::string _dest)
+{
+  XUtil::TRACE(XUtil::format("Copying file '%s' to '%s'", _src.c_str(), _dest.c_str()).c_str());
 
+  std::ifstream src(_src.c_str(), std::ios::binary);
+  std::ofstream dest(_dest.c_str(), std::ios::binary);
+  dest << src.rdbuf();
+  return src && dest;
+}
 
 static void
-getXclBinStats(const std::string& _xclBinFile,
-               XclBinImageStats& _xclBinImageStats) {
-  // Initialize return values
-  _xclBinImageStats = { 0 };
+writeImageToFile(const char * _pBuffer, uint64_t _size, const std::string _sFile)
+{
+  XUtil::TRACE(XUtil::format("Writing 0x%lx bytes to the file: '%s'", _size, _sFile.c_str()).c_str());
+
+  std::fstream oFile;
+  oFile.open(_sFile, std::ifstream::out | std::ifstream::binary);
+  if (!oFile.is_open()) {
+    std::string errMsg = "ERROR: Unable to open the file for writing: " + _sFile;
+    throw std::runtime_error(errMsg);
+  }
+
+  oFile.write(_pBuffer, _size);
+  oFile.close();
+}
+
+
+
+void
+getXclBinPKCSStats( const std::string& _xclBinFile,
+                    XclBinPKCSImageStats& _xclBinPKCSImageStats) {
+  // -- Initialize return values --
+  _xclBinPKCSImageStats = { 0 };
 
   // Error checks
   if (_xclBinFile.empty()) {
@@ -49,7 +68,7 @@ getXclBinStats(const std::string& _xclBinFile,
     throw std::runtime_error(errMsg);
   }
 
-  // Open the file for consumption
+  // -- Open the file for consumption --
   XUtil::TRACE("Reading xclbin binary file: " + _xclBinFile);
   std::fstream ifXclBin;
   ifXclBin.open(_xclBinFile, std::ifstream::in | std::ifstream::binary);
@@ -60,7 +79,7 @@ getXclBinStats(const std::string& _xclBinFile,
 
   // Determine File Size
   ifXclBin.seekg(0, ifXclBin.end);
-  _xclBinImageStats.actualFileSize = ifXclBin.tellg();
+  _xclBinPKCSImageStats.file_size = ifXclBin.tellg();
 
   // Read in the header buffer
   axlf xclBinHeader;
@@ -69,11 +88,15 @@ getXclBinStats(const std::string& _xclBinFile,
   ifXclBin.seekg(0);
   ifXclBin.read((char*)&xclBinHeader, sizeof(axlf));
 
+  // -- Perform DRC checks
+
+  // Error reading in the header
   if (ifXclBin.gcount() != expectBufferSize) {
-    std::string errMsg = "ERROR: xclbin file is smaller than the header size.";
+    std::string errMsg = XUtil::format("ERROR: Occurred reading in the xclbin header.  Expected: 0x%lx, Actual: 0x%lx", expectBufferSize, ifXclBin.gcount());
     throw std::runtime_error(errMsg);
   }
 
+  // -- Validate magic number
   std::string sMagicValue = XUtil::format("%s", xclBinHeader.m_magic).c_str();
   if (sMagicValue.compare("xclbin2") != 0) {
     std::string errMsg = XUtil::format("ERROR: The XCLBIN appears to be corrupted.  Expected magic value: 'xclbin2', actual: '%s'", sMagicValue.c_str());
@@ -81,12 +104,13 @@ getXclBinStats(const std::string& _xclBinFile,
   }
 
   // We know it is an xclbin archive
-  _xclBinImageStats.bIsXclImage = true;
+  _xclBinPKCSImageStats.is_valid_xclbin_image = true;
 
   // Get signature information
   if (xclBinHeader.m_signature_length != -1) {
-    _xclBinImageStats.bIsSigned = true;
-    _xclBinImageStats.signatureLength = xclBinHeader.m_signature_length;
+    _xclBinPKCSImageStats.is_PKCS_signed = true;
+    _xclBinPKCSImageStats.signature_size = xclBinHeader.m_signature_length;
+    _xclBinPKCSImageStats.signature_offset = xclBinHeader.m_header.m_length - xclBinHeader.m_signature_length;
 
     if (xclBinHeader.m_signature_length < -1) {
       throw std::runtime_error("ERROR: xclbin recorded signature length is corrupted.");
@@ -94,17 +118,13 @@ getXclBinStats(const std::string& _xclBinFile,
   }
 
   // Get header file length
-  _xclBinImageStats.headerFileLength = xclBinHeader.m_header.m_length;
+  _xclBinPKCSImageStats.image_size = xclBinHeader.m_header.m_length - xclBinHeader.m_signature_length;
 
-  // Now do some simple DRC checks
-  uint64_t expectedFileSize = _xclBinImageStats.headerFileLength;
+  // Validate length
+  uint64_t expectedFileSize = xclBinHeader.m_header.m_length;
 
-  if (_xclBinImageStats.bIsSigned) {
-    expectedFileSize += _xclBinImageStats.signatureLength;
-  }
-
-  if (expectedFileSize != _xclBinImageStats.actualFileSize) {
-    std::string errMsg = XUtil::format("ERROR: Expected files size (0x%lx) does not match actual (0x%lx)", expectedFileSize, _xclBinImageStats.actualFileSize);
+  if (expectedFileSize != _xclBinPKCSImageStats.file_size) {
+    std::string errMsg = XUtil::format("ERROR: Expected files size (0x%lx) does not match actual (0x%lx)", expectedFileSize, _xclBinPKCSImageStats.file_size);
     throw std::runtime_error(errMsg);
   }
 
@@ -115,7 +135,9 @@ getXclBinStats(const std::string& _xclBinFile,
 
 void signXclBinImage(const std::string& _fileOnDisk,
                      const std::string& _sPrivateKey,
-                     const std::string& _sCertificate)
+                     const std::string& _sCertificate,
+                     const std::string& _sDigestAlgorithm,
+                     bool _bEnableDebugOutput)
 // Equivalent openssl command:
 //   openssl cms -md sha512 -nocerts -noattr -sign -signer certificate.cer -inkey private.key -binary -in u50.dts -outform der -out signature.openssl
 #ifdef _WIN32
@@ -128,6 +150,7 @@ void signXclBinImage(const std::string& _fileOnDisk,
   std::cout << "Signing the archive file: '" + _fileOnDisk + "'" << std::endl;
   std::cout << "        Private key file: '" + _sPrivateKey + "'" << std::endl;
   std::cout << "        Certificate file: '" + _sCertificate + "'" << std::endl;
+  std::cout << "        Digest Algorithm: '" + _sDigestAlgorithm + "'" << std::endl;
 
 
   XUtil::TRACE("SignXclBinImage");
@@ -137,16 +160,22 @@ void signXclBinImage(const std::string& _fileOnDisk,
 
   // -- Do some DRC checks on the image
   // Is the image on disk
-  XclBinImageStats xclBinStats = { 0 };
-  getXclBinStats(_fileOnDisk, xclBinStats);
+  XclBinPKCSImageStats xclBinPKCSStats = { 0 };
+  getXclBinPKCSStats(_fileOnDisk, xclBinPKCSStats);
 
-  if (xclBinStats.bIsSigned == true) {
+  if (xclBinPKCSStats.is_PKCS_signed == true) {
     throw std::runtime_error("ERROR: Xclbin image is already signed. File: '" + _fileOnDisk + "'");
   }
 
   // *** Calculate the signature **
 
   std::cout << "Calculating signature..." << std::endl;
+
+  // -- Dump intermediate file
+  if (_bEnableDebugOutput) {
+    std::string sDbgOriginalCopy = _fileOnDisk + ".sign_dbg.original";
+    copyFile(_fileOnDisk, sDbgOriginalCopy);
+  }
 
   // -- Have openssl point to the xclbin image on disk
   BIO* bmRead = BIO_new_file(_fileOnDisk.c_str(), "rb");
@@ -183,10 +212,11 @@ void signXclBinImage(const std::string& _fileOnDisk,
 
   // -- Obtain the digest algorithm --
   OpenSSL_add_all_digests();
-  const EVP_MD* digestAlgorithm = EVP_get_digestbyname("sha512");
+  const EVP_MD* digestAlgorithm = EVP_get_digestbyname(_sDigestAlgorithm.c_str());
 
   if (digestAlgorithm == nullptr) {
-    throw std::runtime_error("ERROR: Could not obtain the digest algorithm for 'sha512'");
+    std::string errMsg = XUtil::format("ERROR: Invalid digest algorithm: '%s'", _sDigestAlgorithm.c_str());
+    throw std::runtime_error(errMsg);
   }
 
   // -- Prepare CMS content and signer info --
@@ -223,40 +253,119 @@ void signXclBinImage(const std::string& _fileOnDisk,
   BIO_get_mem_ptr(bmMem, &bufMem);
   XUtil::TRACE_BUF("Signature", bufMem->data, bufMem->length);
 
-  // ** Now update the xclbin archive image **
-
-  XUtil::TRACE(XUtil::format("Setting the signature length to: 0x%x", bufMem->length).c_str());
-  std::fstream iofXclBin;
-  iofXclBin.open(_fileOnDisk, std::ios::in | std::ios::out | std::ios::binary);
-  if (!iofXclBin.is_open()) {
-    std::string errMsg = "ERROR: Unable to open the file for reading / writing: " + _fileOnDisk;
-    throw std::runtime_error(errMsg);
+  // -- Dump intermediate file
+  if (_bEnableDebugOutput) {
+    std::string sSignatureFile = _fileOnDisk + ".sign_dbg.signature";
+    XUtil::TRACE("Writing signature image");
+    writeImageToFile(bufMem->data, bufMem->length, sSignatureFile);
   }
 
-  // First the file signature length
+  // ** Now update the xclbin archive image **
   axlf xclBinHeader = {0};
-  iofXclBin.seekg(0);
-  iofXclBin.read((char*)&xclBinHeader, sizeof(axlf));
-  xclBinHeader.m_signature_length = bufMem->length;
+  {
+    std::fstream iofXclBin;
+    iofXclBin.open(_fileOnDisk, std::ios::in | std::ios::out | std::ios::binary);
+    if (!iofXclBin.is_open()) {
+      std::string errMsg = "ERROR: Unable to open the file for reading / writing: " + _fileOnDisk;
+      throw std::runtime_error(errMsg);
+    }
 
-  iofXclBin.seekg(0);
-  iofXclBin.write((char*)&xclBinHeader, sizeof(axlf));
+    // -- Update the header --
+    // Get the header
+    iofXclBin.seekg(0);
+    iofXclBin.read((char*)&xclBinHeader, sizeof(axlf));
   
+    // Update the signature length
+    xclBinHeader.m_signature_length = bufMem->length;
+    XUtil::TRACE(XUtil::format("Setting the signature length to: 0x%x", xclBinHeader.m_signature_length).c_str());
+    
+    // Update header
+    XUtil::TRACE(XUtil::format("Header length prior to signature: 0x%x", xclBinHeader.m_header.m_length ).c_str());
+    xclBinHeader.m_header.m_length += (uint64_t) xclBinHeader.m_signature_length;
+    XUtil::TRACE(XUtil::format("Header length with signature: 0x%x", xclBinHeader.m_header.m_length ).c_str());
+  
+    // All is good, write out the new header
+    iofXclBin.seekg(0);
+    iofXclBin.write((char*)&xclBinHeader, sizeof(axlf));
+    
+    iofXclBin.close();
+  }
+
+  // -- Dump intermediate file
+  if (_bEnableDebugOutput) {
+    std::string sDbgOriginalCopy = _fileOnDisk + ".sign_dbg.modified_header";
+    copyFile(_fileOnDisk, sDbgOriginalCopy);
+  }
+
   // Now add the signature
-  iofXclBin.seekg(0, iofXclBin.end);
-  iofXclBin.write(bufMem->data, bufMem->length);
+  {
+    std::fstream iofXclBin;
+    iofXclBin.open(_fileOnDisk, std::ios::in | std::ios::out | std::ios::binary);
+    if (!iofXclBin.is_open()) {
+      std::string errMsg = "ERROR: Unable to open the file for reading / writing: " + _fileOnDisk;
+      throw std::runtime_error(errMsg);
+    }
 
-  // And we are done
-  iofXclBin.close();
+    iofXclBin.seekg(0, iofXclBin.end);
+    iofXclBin.write(bufMem->data, bufMem->length);
+  
+    // Check header size with actual size of file
+    iofXclBin.seekg(0, iofXclBin.end);
+    uint64_t fileSize = iofXclBin.tellg();
+  
+    if (fileSize != xclBinHeader.m_header.m_length) {
+      std::string errMsg = XUtil::format("ERROR: xclbin file size (0x%lx) doesn't match expected header size length (0x%lx).", fileSize, xclBinHeader.m_header.m_length);
+      throw std::runtime_error(errMsg);
+    }
+  
+    // And we are done
+    iofXclBin.close();
+  }
 
-  std::cout << "Signature calculated and added successfully to the archive." << std::endl;
+  std::cout << "Signature calculated and added successfully to the file: '" << _fileOnDisk << "'" << std::endl;
   std::cout << "----------------------------------------------------------------------" << std::endl;
 }
 #endif
 
+void 
+dumpSignatureFile(const std::string & _fileOnDisk, 
+                  const std::string & _signatureFile)
+{
+  XUtil::TRACE("Dump signature from xclbin archive");
+  XUtil::TRACE("File On Disk: '" + _fileOnDisk + "'");
+  XUtil::TRACE("Signature File: '" + _signatureFile + "'");
+
+  // -- See if the image is signed
+  XclBinPKCSImageStats xclBinPKCSStats = { 0 };
+  getXclBinPKCSStats(_fileOnDisk, xclBinPKCSStats);
+
+  if (xclBinPKCSStats.is_PKCS_signed == false) {
+    throw std::runtime_error("ERROR: Xclbin image is not signed. File: '" + _fileOnDisk + "'");
+  }
+
+  XUtil::TRACE(XUtil::format("Signature offset: 0x%lx, length: 0x%lx", xclBinPKCSStats.signature_offset, xclBinPKCSStats.signature_size).c_str());
+
+  //-- Read just the signature
+  std::ifstream ifs(_fileOnDisk, std::ios::binary | std::ios::ate);
+
+  // Reserve memory for the signature
+  std::vector<char> memImage(xclBinPKCSStats.signature_size);
+
+  // Go to the start of the signature
+  ifs.seekg(xclBinPKCSStats.signature_offset, std::ios::beg);
+
+  // Read in the signature
+  ifs.read(memImage.data(), xclBinPKCSStats.signature_size);
+
+  // Now write it out
+  XUtil::TRACE("Writing signature file");
+  writeImageToFile(memImage.data(), xclBinPKCSStats.signature_size, _signatureFile);
+}
+
 
 void verifyXclBinImage(const std::string& _fileOnDisk,
-                       const std::string& _sCertificate)
+                       const std::string& _sCertificate,
+                       bool _bEnableDebugOutput)
 
 // Equivalent openssl command:
 // openssl smime -verify -in signature.openssl.small -inform DER -content u50.dts -noverify -certfile certificate.cer -binary > /dev/null
@@ -276,10 +385,10 @@ void verifyXclBinImage(const std::string& _fileOnDisk,
 
   // -- Do some DRC checks on the image
   // Is the image on disk
-  XclBinImageStats xclBinStats = { 0 };
-  getXclBinStats(_fileOnDisk, xclBinStats);
+  XclBinPKCSImageStats xclBinPKCSStats = { 0 };
+  getXclBinPKCSStats(_fileOnDisk, xclBinPKCSStats);
 
-  if (xclBinStats.bIsSigned == false) {
+  if (xclBinPKCSStats.is_PKCS_signed == false) {
     throw std::runtime_error("ERROR: Xclbin image is not signed. File: '" + _fileOnDisk + "'");
   }
 
@@ -291,17 +400,48 @@ void verifyXclBinImage(const std::string& _fileOnDisk,
   std::vector<char> memImage(pos);
   ifs.seekg(0, std::ios::beg);
   ifs.read(memImage.data(), pos);
+  ifs.close();
+
+  // -- Dump intermediate file
+  if (_bEnableDebugOutput) {
+    std::string sDbgModifiedImage = _fileOnDisk + ".ver_dbg.modified_header";
+    XUtil::TRACE("Writing verification modified header intermediate image");
+    writeImageToFile(memImage.data(), xclBinPKCSStats.image_size, sDbgModifiedImage);
+  }
+
+  // -- Dump intermediate file
+  if (_bEnableDebugOutput) {
+    std::string sDbgSignature = _fileOnDisk + ".ver_dbg.signature";
+    XUtil::TRACE("Writing signature image");
+    writeImageToFile(memImage.data() + xclBinPKCSStats.signature_offset, xclBinPKCSStats.signature_size, sDbgSignature);
+  }
+
+  // Update the header
+  axlf *pXclBinHeader = (axlf *) memImage.data();
+
+  // -- Change the header length to its original size when signed
+  uint32_t signatureSize = pXclBinHeader->m_signature_length;
+  XUtil::TRACE(XUtil::format("Signature length: 0x%x", pXclBinHeader->m_signature_length).c_str());
+
+  XUtil::TRACE(XUtil::format("Header length prior to signature length removal: 0x%x", pXclBinHeader->m_header.m_length).c_str());
+  pXclBinHeader->m_header.m_length -= pXclBinHeader->m_signature_length;
+  XUtil::TRACE(XUtil::format("Header length prior after signature length removal: 0x%x", pXclBinHeader->m_header.m_length).c_str());
 
   // -- Change the signature length to -1 (since this was its signed value)
-  axlf *pXclBinHeader = (axlf *) memImage.data();
   pXclBinHeader->m_signature_length = -1;
 
+  // -- Dump intermediate file
+  if (_bEnableDebugOutput) {
+    std::string sDbgModifiedImage = _fileOnDisk + ".ver_dbg.original";
+    XUtil::TRACE("Writing original image used for signing");
+    writeImageToFile(memImage.data(), xclBinPKCSStats.image_size, sDbgModifiedImage);
+  }
   // ** Calculate the signature
 
   std::cout << "Validating signature..." << std::endl;
 
-  BIO *bmImage = BIO_new_mem_buf(memImage.data(), xclBinStats.headerFileLength);
-  BIO *bmSignature = BIO_new_mem_buf((char *)(memImage.data() + xclBinStats.headerFileLength), xclBinStats.signatureLength);
+  BIO *bmImage = BIO_new_mem_buf(memImage.data(), pXclBinHeader->m_header.m_length);
+  BIO *bmSignature = BIO_new_mem_buf((char *)(memImage.data() + pXclBinHeader->m_header.m_length), signatureSize);
   
   // -- Obtain the digest algorithm --
   OpenSSL_add_all_digests();
@@ -329,16 +469,17 @@ void verifyXclBinImage(const std::string& _fileOnDisk,
   // -- Read in signature --
   PKCS7* p7 = d2i_PKCS7_bio(bmSignature, NULL);
   if (p7 == NULL) {
-    throw std::runtime_error("ERROR: P7 is null.");
+    std::string errMsg = XUtil::format("ERROR: Signature at offset 0x%lx is not valid.", pXclBinHeader->m_header.m_length);
+    throw std::runtime_error(errMsg);
   }
 
   STACK_OF(X509) * ca_stack = sk_X509_new_null();
   sk_X509_push(ca_stack, x509);
 
   if (!PKCS7_verify(p7, ca_stack, store, bmImage, NULL, PKCS7_DETACHED |  PKCS7_BINARY | PKCS7_NOINTERN)) {
-    std::cout << "Signed xclbin archive verification failed" << std::endl;
+    std::cout << "Signed xclbin archive verification [FAILED]" << std::endl;
   } else {
-    std::cout << "Signed xclbin archive verification successful" << std::endl;
+    std::cout << "Signed xclbin archive verification [SUCCESSFUL]" << std::endl;
   }
   std::cout << "----------------------------------------------------------------------" << std::endl;
 }
