@@ -207,6 +207,8 @@ else
 	echo ""
 	echo "* petalinux build (INCREMENTAL)"
 	cd $PLATFORM_NAME
+	echo "* petalinux-build mrprope"
+	petalinux-build -x mrproper
 	echo "* petalinux-build (XRT ONLY)"
 	petalinux-build -c xrt
 	echo "* petalinux-build (ZOCL Only)"
