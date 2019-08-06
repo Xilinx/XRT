@@ -524,9 +524,9 @@ public:
         return 0;
     }
 
-/*
- *      * program
- *           */
+/* 
+ * program    
+ */
     int program(const std::string& xclbin, unsigned region) {
         std::ifstream stream(xclbin.c_str());
 
