@@ -57,7 +57,11 @@ class XclBinUtilException : public std::runtime_error {
     XclBinExceptionType m_eExceptionType;
 
 public:
-    XclBinUtilException(XclBinExceptionType _eExceptionType, const std::string & _msg, const char * _file, int _line, const char * _function) 
+    XclBinUtilException(XclBinExceptionType _eExceptionType, 
+                        const std::string & _msg, 
+                        const char * _file = __FILE__, 
+                        int _line = __LINE__, 
+                        const char * _function = __FUNCTION__) 
     : std::runtime_error(_msg)
     , m_msg(_msg)
     , m_file(_file)
@@ -67,16 +71,17 @@ public:
       // Empty
     }
 
-    ~XclBinUtilException() throw() 
+    ~XclBinUtilException() 
     {
       // Empty
     }
 
-    const char *msg() const throw() {
+    // Use are version of what() and not runtime_error's
+    virtual const char* what() const noexcept {
       return m_msg.c_str();
     }
 
-    const char *file() const throw() {
+    const char *file() const {
       return m_file.c_str();
     }
 
@@ -84,17 +89,14 @@ public:
       return m_line;
     }
 
-    const char *function() const throw() {
+    const char *function() const {
       return m_function.c_str();
     }
 
-    XclBinExceptionType exceptionType() const throw() {
+    XclBinExceptionType exceptionType() const {
       return m_eExceptionType;
     }
 };
-
-#define throw_xclbin_exception(exceptionType, msg) throw XclBinUtilities::XclBinUtilException(exceptionType, msg, __FILE__, __LINE__, __FUNCTION__);
-
 
 struct SignatureHeader {
    unsigned char magicValue[16];   // Magic Signature Value 5349474E-9DFF41C0-8CCB82A7-131CC9F3
