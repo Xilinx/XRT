@@ -287,9 +287,9 @@ struct xocl_xmc {
 	char			mac_addr1[XMC_BDINFO_ENTRY_LEN];
 	char			mac_addr2[XMC_BDINFO_ENTRY_LEN];
 	char			mac_addr3[XMC_BDINFO_ENTRY_LEN];
-	char			revision[XMC_BDINFO_ENTRY_LEN];
+	char			revision[XMC_BDINFO_ENTRY_LEN_MAX];
 	char			name[XMC_BDINFO_ENTRY_LEN_MAX];
-	char			bmc_ver[XMC_BDINFO_ENTRY_LEN];
+	char			bmc_ver[XMC_BDINFO_ENTRY_LEN_MAX];
 	uint32_t		max_power;
 	uint32_t		fan_num;
 	uint32_t		config_mode;
@@ -503,13 +503,13 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 			memcpy(val, xmc->mac_addr3, XMC_BDINFO_ENTRY_LEN);
 			break;
 		case REVISION:
-			memcpy(val, xmc->revision, XMC_BDINFO_ENTRY_LEN);
+			memcpy(val, xmc->revision, XMC_BDINFO_ENTRY_LEN_MAX);
 			break;
 		case CARD_NAME:
 			memcpy(val, xmc->name, XMC_BDINFO_ENTRY_LEN_MAX);
 			break;
 		case BMC_VER:
-			memcpy(val, xmc->bmc_ver, XMC_BDINFO_ENTRY_LEN);
+			memcpy(val, xmc->bmc_ver, XMC_BDINFO_ENTRY_LEN_MAX);
 			break;
 		case MAX_PWR:
 			*val = xmc->max_power;
@@ -642,13 +642,13 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 			memcpy(val, xmc->cache->mac_addr3, XMC_BDINFO_ENTRY_LEN);
 			break;
 		case REVISION:
-			memcpy(val, xmc->cache->revision, XMC_BDINFO_ENTRY_LEN);
+			memcpy(val, xmc->cache->revision, XMC_BDINFO_ENTRY_LEN_MAX);
 			break;
 		case CARD_NAME:
 			memcpy(val, xmc->cache->name, XMC_BDINFO_ENTRY_LEN_MAX);
 			break;
 		case BMC_VER:
-			memcpy(val, xmc->cache->bmc_ver, XMC_BDINFO_ENTRY_LEN);
+			memcpy(val, xmc->cache->bmc_ver, XMC_BDINFO_ENTRY_LEN_MAX);
 			break;
 		case MAX_PWR:
 			*val = xmc->cache->max_power;
