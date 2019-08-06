@@ -45,53 +45,31 @@ getDeviceMemBaseAddrAlign(cl_device_id device)
 }
 
 inline size_t
-src_origin_in_bytes(const size_t* src_origin, 
-                    size_t        src_row_pitch,
-                    size_t        src_slice_pitch)
+origin_in_bytes(const size_t* origin,
+                size_t        row_pitch,
+                size_t        slice_pitch)
 {
-  return src_origin[2] * src_slice_pitch
-    + src_origin[1] * src_row_pitch
-    + src_origin[0];
+  return origin[2] * slice_pitch
+       + origin[1] * row_pitch
+       + origin[0];
 }
 
 inline size_t
-src_extent_in_bytes(const size_t* region, 
-                    const size_t* src_origin, 
-                    size_t        src_row_pitch, 
-                    size_t        src_slice_pitch)
+extent_in_bytes(const size_t* region,
+                const size_t* origin,
+                size_t        row_pitch,
+                size_t        slice_pitch)
 {
-  return src_origin_in_bytes(src_origin,src_row_pitch,src_slice_pitch)  
-    + region[2] * src_slice_pitch
-    + region[1] * src_row_pitch
-    + region[0];
-}
-
-inline size_t
-dst_origin_in_bytes(const size_t* dst_origin, 
-                    size_t        dst_row_pitch,
-                    size_t        dst_slice_pitch)
-{
-  return dst_origin[2] * dst_slice_pitch
-    + dst_origin[1] * dst_row_pitch
-    + dst_origin[0];
-}
-
-inline size_t
-dst_extent_in_bytes(const size_t* region, 
-                    const size_t* dst_origin, 
-                    size_t        dst_row_pitch, 
-                    size_t        dst_slice_pitch)
-{
-  return dst_origin_in_bytes(dst_origin,dst_row_pitch,dst_slice_pitch)  
-    + region[2] * dst_slice_pitch
-    + region[1] * dst_row_pitch
-    + region[0];
+  return origin_in_bytes(origin,row_pitch,slice_pitch)
+       + (region[2] - 1) * slice_pitch
+       + (region[1] - 1) * row_pitch
+       + region[0];
 }
 
 static void
-setIfZero(size_t& src_row_pitch, 
-          size_t& src_slice_pitch, 
-          size_t& dst_row_pitch, 
+setIfZero(size_t& src_row_pitch,
+          size_t& src_slice_pitch,
+          size_t& dst_row_pitch,
           size_t& dst_slice_pitch,
           const size_t* region)
 {
@@ -132,8 +110,6 @@ validOrError(cl_command_queue     command_queue ,
   if (!config::api_checks())
     return;
 
-  setIfZero(src_row_pitch,src_slice_pitch,dst_row_pitch,dst_slice_pitch,region);
-
   // CL_INVALID_COMMAND_QUEUE if command_queue is not a valid host
   // command-queue.
   detail::command_queue::validOrError(command_queue);
@@ -166,9 +142,9 @@ validOrError(cl_command_queue     command_queue ,
   // src_slice_pitch) or (dst_origin, region, dst_row_pitch,
   // dst_slice_pitch) require accessing elements outside the
   // src_buffer and dst_buffer objects respectively.
-  if (src_extent_in_bytes(region,src_origin,src_row_pitch,src_slice_pitch) > xocl(src_buffer)->get_size())
+  if (extent_in_bytes(region,src_origin,src_row_pitch,src_slice_pitch) > xocl(src_buffer)->get_size())
     throw error(CL_INVALID_VALUE,"src_origin,region,src_row_pitch,src_slice_pitch out of range");
-  if (dst_extent_in_bytes(region,dst_origin,dst_row_pitch,dst_slice_pitch) > xocl(dst_buffer)->get_size())
+  if (extent_in_bytes(region,dst_origin,dst_row_pitch,dst_slice_pitch) > xocl(dst_buffer)->get_size())
     throw error(CL_INVALID_VALUE,"dst_origin,region,dst_row_pitch,dst_slice_pitch out of range");
     
   // CL_INVALID_VALUE if src_row_pitch is not 0 and is less than
@@ -255,12 +231,12 @@ clEnqueueCopyBufferRect(cl_command_queue     command_queue ,
                         const cl_event *     event_wait_list ,
                         cl_event *           event_parameter)
 {
+  setIfZero(src_row_pitch,src_slice_pitch,dst_row_pitch,dst_slice_pitch,region);
+
   validOrError
     (command_queue,src_buffer,dst_buffer,src_origin,dst_origin,region,
      src_row_pitch,src_slice_pitch,dst_row_pitch,dst_slice_pitch,
      num_events_in_wait_list,event_wait_list,event_parameter);
-
-  setIfZero(src_row_pitch,src_slice_pitch,dst_row_pitch,dst_slice_pitch,region);
 
   // Soft event
   auto context = xocl(command_queue)->get_context();
@@ -270,32 +246,33 @@ clEnqueueCopyBufferRect(cl_command_queue     command_queue ,
   uevent->set_status(CL_RUNNING);
 
   //memcpy
-  {  
+  {
+    auto device = xocl(command_queue)->get_device();
+    auto xdevice = device->get_xrt_device();
+    auto src_boh = xocl(src_buffer)->get_buffer_object_or_error(device);
+    auto dst_boh = xocl(dst_buffer)->get_buffer_object_or_error(device);
+    void* host_ptr_src = xdevice->map(src_boh);
+    void* host_ptr_dst = xdevice->map(dst_boh);
+
     for(size_t zit=0;zit<region[2];++zit) {
       for(size_t yit=0;yit<region[1];++yit) {
-        size_t src_row_origin_in_bytes = 
-          src_origin_in_bytes(src_origin,src_row_pitch,src_slice_pitch)
+        size_t src_row_origin_in_bytes =
+          origin_in_bytes(src_origin,src_row_pitch,src_slice_pitch)
           + zit*src_slice_pitch
           + yit*src_row_pitch;
-                                  
-        size_t dst_row_origin_in_bytes = 
-          dst_origin_in_bytes(dst_origin,dst_row_pitch,dst_slice_pitch)
+
+        size_t dst_row_origin_in_bytes =
+          origin_in_bytes(dst_origin,dst_row_pitch,dst_slice_pitch)
           + zit*dst_slice_pitch
           + yit*dst_row_pitch;
 
-        auto device = xocl(command_queue)->get_device();
-        auto xdevice = device->get_xrt_device();
-        auto src_boh = xocl(src_buffer)->get_buffer_object_or_error(device);
-        auto dst_boh = xocl(dst_buffer)->get_buffer_object_or_error(device);
-        void* host_ptr_src = xdevice->map(src_boh);
-        void* host_ptr_dst = xdevice->map(dst_boh);
         std::memcpy( &((uint8_t *)(host_ptr_dst))[dst_row_origin_in_bytes],
                      &((uint8_t *)(host_ptr_src))[src_row_origin_in_bytes],
                      region[0]);
-        xdevice->unmap(src_boh);
-        xdevice->unmap(dst_boh);
       }
     }
+    xdevice->unmap(src_boh);
+    xdevice->unmap(dst_boh);
   }
 
   //set event CL_COMPLETE

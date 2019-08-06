@@ -13,7 +13,7 @@ RTS := $(SRCDIR)/../..
 MYCFLAGS := -I$(BSP)/include -I$(RTS)
 MYLFLAGS :=  -Wl,-T,$(SRCDIR)/lscript.ld
 
-$(OBJ): $(SRC) $(BSP).extracted $(RTS)/driver/include/ert.h
+$(OBJ): $(SRC) $(BSP).extracted $(RTS)/core/include/ert.h
 	$(CPP) $(MYCFLAGS) $<
 
 $(ELF): $(OBJ)

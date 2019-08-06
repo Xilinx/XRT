@@ -21,7 +21,6 @@
 #include "detail/device.h"
 #include "api.h"
 #include "plugin/xdp/profile.h"
-#include "xrt/util/memory.h"
 
 namespace {
 
@@ -117,7 +116,7 @@ clCreateSubDevices(cl_device_id                        in_device,
     cus.push_back(cuin);
     ++count;
     if (out_devices) {
-      auto sd  = xrt::make_unique<device>(xocl(in_device),cus);
+      auto sd  = std::make_unique<device>(xocl(in_device),cus);
       *out_devices = sd.release();
       ++out_devices;
     }

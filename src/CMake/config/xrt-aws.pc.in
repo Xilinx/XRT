@@ -1,0 +1,11 @@
+prefix=@XRT_INSTALL_DIR@
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: libxrt-aws
+Description: Xilinx AWS HAL Library
+Version: 2.1.0
+Requires: xrt >= 2.1.0
+Libs: -L${libdir} -lxrt-aws
+Cflags: -I${includedir}
