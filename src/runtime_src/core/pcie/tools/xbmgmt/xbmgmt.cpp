@@ -96,7 +96,7 @@ unsigned int bdf2index(const std::string& bdfStr)
         }
     }
 
-    std::cout << "ERROR: No card found for " << bdfStr << std::endl;
+    std::cout << "ERROR: No mgmt PF found for " << bdfStr << std::endl;
     return UINT_MAX;
 }
 

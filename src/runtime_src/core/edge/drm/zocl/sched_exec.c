@@ -1352,16 +1352,6 @@ scu_unconfig_done(struct sched_cmd *cmd)
 	return true;
 }
 
-static inline int
-dma_done(struct sched_cmd *cmd)
-{
-	if (cmd->dma_handle.dma_flags & ZOCL_DMA_DONE) {
-		cmd->dma_handle.dma_flags &= ~ZOCL_DMA_DONE;
-		return true;
-	}
-	return false;
-}
-
 /**
  * notify_host() - Notify user space that a command is complete.
  */
@@ -2208,6 +2198,24 @@ fini_scheduler_thread(void)
 	return retval;
 }
 
+static inline int
+dma_done(struct sched_cmd *cmd)
+{
+	return (cmd->dma_handle.dma_flags & ZOCL_DMA_DONE) != 0;
+}
+
+static inline bool
+dma_error(struct sched_cmd *cmd)
+{
+	return (cmd->dma_handle.dma_flags & ZOCL_DMA_ERROR) != 0;
+}
+
+static inline void
+dma_clear(struct sched_cmd *cmd)
+{
+	cmd->dma_handle.dma_flags = 0;
+}
+
 /**
  * penguin_query() - Check command status of argument command
  *
@@ -2219,29 +2227,28 @@ static void
 penguin_query(struct sched_cmd *cmd)
 {
 	u32 opc = opcode(cmd);
-	bool cmd_complete = false;
 
 	SCHED_DEBUG("-> penguin_queury() slot_idx=%d\n", cmd->slot_idx);
 	switch (opc) {
 	case ERT_START_COPYBO:
-		if (dma_done(cmd))
-			cmd_complete = true;
+		if (dma_done(cmd)) {
+			dma_error(cmd) ?
+			    mark_cmd_complete(cmd, ERT_CMD_STATE_ERROR) :
+			    mark_cmd_complete(cmd, ERT_CMD_STATE_COMPLETED);
+			dma_clear(cmd);
+		}
 		break;
 	case ERT_START_CU:
 		if (cu_done(cmd))
-			cmd_complete = true;
+			mark_cmd_complete(cmd, ERT_CMD_STATE_COMPLETED);
 		break;
 	case ERT_INIT_CU:
 	case ERT_CONFIGURE:
-		cmd_complete = true;
+		mark_cmd_complete(cmd, ERT_CMD_STATE_COMPLETED);
 		break;
 	default:
-		SCHED_DEBUG("unknown op");
+		DRM_ERROR("unknown opcode %d", opc);
 	}
-
-	if (cmd_complete)
-		mark_cmd_complete(cmd, ERT_CMD_STATE_COMPLETED);
-
 	SCHED_DEBUG("<- penguin_queury\n");
 }
 
@@ -2250,10 +2257,12 @@ penguin_query(struct sched_cmd *cmd)
  * this function will be called. scheduler should have the knowledge
  * to update its internal status.
  */
-static void zocl_dma_complete(void *arg)
+static void zocl_dma_complete(void *arg, int ret)
 {
 	struct sched_cmd *cmd = (struct sched_cmd *)arg;
 	cmd->dma_handle.dma_flags |= ZOCL_DMA_DONE;
+	if (ret != 0)
+		cmd->dma_handle.dma_flags |= ZOCL_DMA_ERROR;
 
 	wake_up_interruptible(&cmd->sched->wait_queue);
 }
@@ -2426,7 +2435,7 @@ ps_ert_query(struct sched_cmd *cmd)
 		break;
 
 	default:
-		SCHED_DEBUG("unknown op");
+		DRM_ERROR("unknown opcode %d", opc);
 	}
 	SCHED_DEBUG("<- ps_ert_queury\n");
 }

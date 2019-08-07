@@ -414,25 +414,33 @@ inline void check_volt_within_range(struct xclmgmt_dev *lro, u16 volt)
 static void check_sensor(struct xclmgmt_dev *lro)
 {
 	int ret;
-	struct xcl_sensor s = { 0 };
+	struct xcl_sensor *s = NULL;
 
-	ret = xocl_xmc_get_data(lro, &s);
-	if (ret == -ENODEV) {
-		(void) xocl_sysmon_get_prop(lro,
-			XOCL_SYSMON_PROP_TEMP, &s.fpga_temp);
-		s.fpga_temp /= 1000;
-		(void) xocl_sysmon_get_prop(lro,
-			XOCL_SYSMON_PROP_VCC_INT, &s.vccint_vol);
-		(void) xocl_sysmon_get_prop(lro,
-			XOCL_SYSMON_PROP_VCC_AUX, &s.vol_1v8);
-		(void) xocl_sysmon_get_prop(lro,
-			XOCL_SYSMON_PROP_VCC_BRAM, &s.vol_0v85);
+	s = vzalloc(sizeof(struct xcl_sensor));
+	if (!s) {
+		mgmt_err(lro, "%s out of memory", __func__);
+		return;	
 	}
 
-	check_temp_within_range(lro, s.fpga_temp);
-	check_volt_within_range(lro, s.vccint_vol);
-	check_volt_within_range(lro, s.vol_1v8);
-	check_volt_within_range(lro, s.vol_0v85);
+	ret = xocl_xmc_get_data(lro, s);
+	if (ret == -ENODEV) {
+		(void) xocl_sysmon_get_prop(lro,
+			XOCL_SYSMON_PROP_TEMP, &s->fpga_temp);
+		s->fpga_temp /= 1000;
+		(void) xocl_sysmon_get_prop(lro,
+			XOCL_SYSMON_PROP_VCC_INT, &s->vccint_vol);
+		(void) xocl_sysmon_get_prop(lro,
+			XOCL_SYSMON_PROP_VCC_AUX, &s->vol_1v8);
+		(void) xocl_sysmon_get_prop(lro,
+			XOCL_SYSMON_PROP_VCC_BRAM, &s->vol_0v85);
+	}
+
+	check_temp_within_range(lro, s->fpga_temp);
+	check_volt_within_range(lro, s->vccint_vol);
+	check_volt_within_range(lro, s->vol_1v8);
+	check_volt_within_range(lro, s->vol_0v85);
+
+	vfree(s);
 }
 
 static int health_check_cb(void *data)
