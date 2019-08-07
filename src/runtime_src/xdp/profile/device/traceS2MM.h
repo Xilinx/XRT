@@ -80,7 +80,6 @@ private:
     bool mclockTrainingdone = false;
 
     void write32(uint64_t offset, uint32_t val);
-    std::string dec2bin(uint32_t n);
     void parsePacketClockTrain(uint64_t packet, uint64_t firstTimestamp, uint32_t mod, xclTraceResults &result);
     void parsePacket(uint64_t packet, uint64_t firstTimestamp, xclTraceResults &result);
 };

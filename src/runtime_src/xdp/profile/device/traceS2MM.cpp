@@ -16,6 +16,7 @@
 
 #include "traceS2MM.h"
 #include "tracedefs.h"
+#include "xdp/profile/core/rt_util.h"
 
 namespace xdp {
 
@@ -167,7 +168,7 @@ inline void TraceS2MM::parsePacket(uint64_t packet, uint64_t firstTimestamp, xcl
     static uint64_t previousTimestamp = 0;
     (*out_stream) << std::dec << std::setw(5)
         << "  Trace sample " << ": "
-        << dec2bin(uint32_t(packet>>32)) << " " << dec2bin(uint32_t(packet&0xFFFFFFFF)) << std::endl
+        << RTUtil::dec2bin(uint32_t(packet>>32)) << " " << RTUtil::dec2bin(uint32_t(packet&0xFFFFFFFF)) << std::endl
         << " Timestamp : " << result.Timestamp << "   "
         << "Type : " << result.EventType << "   "
         << "ID : " << result.TraceID << "   "
@@ -211,20 +212,5 @@ void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& t
     } // For i < count
     mclockTrainingdone = true;
 }
-
-  // Convert decimal to binary string
-  // NOTE: length of string is always sizeof(uint32_t) * 8
-  std::string TraceS2MM::dec2bin(uint32_t n) {
-    uint32_t index = sizeof(uint32_t) * 8;
-    std::string result(index, 0);
-
-    do result[ --index ] = '0' + (n & 1);
-    while (n >>= 1);
-
-    for (int i=index-1; i >= 0; --i)
-        result[i] = '0';
-
-    return result;
-  }
 
 }   // namespace xdp
