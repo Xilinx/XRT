@@ -71,6 +71,8 @@ RH_LIST=(\
      ocl-icd-devel \
      opencl-headers \
      opencv \
+     openssl-devel \
+     openssl-static \
      pciutils \
      perl \
      pkgconfig \
@@ -83,6 +85,7 @@ RH_LIST=(\
      rpm-build \
      strace \
      unzip \
+     zlib-static \
 )
 
 UB_LIST=(\
@@ -105,6 +108,7 @@ UB_LIST=(\
      libopencv-core-dev \
      libpng-dev \
      libprotoc-dev \
+     libssl-dev \
      libtiff5-dev \
      libxml2-dev \
      libyaml-dev \
@@ -121,7 +125,6 @@ UB_LIST=(\
      pciutils \
      pkg-config \
      protobuf-compiler \
-     python-pip \
      python3-sphinx \
      python3-sphinx-rtd-theme \
      sphinx-common \
@@ -175,8 +178,6 @@ install()
     if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
         echo "Installing packages..."
         ${SUDO} apt install -y "${UB_LIST[@]}"
-        ${SUDO} -H pip install --upgrade setuptools 
-        ${SUDO} -H pip install pyopencl
     fi
 
     # Enable EPEL on CentOS/RHEL
@@ -207,8 +208,6 @@ install()
         echo "Installing RHEL/CentOS packages..."
         ${SUDO} yum install -y "${RH_LIST[@]}"
         ${SUDO} yum install -y devtoolset-6
-        ${SUDO} -H pip install pyopencl
-        ${SUDO} pip install --ignore-installed numpy==1.8
     fi
 }
 

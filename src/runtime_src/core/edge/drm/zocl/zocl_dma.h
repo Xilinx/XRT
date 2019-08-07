@@ -22,9 +22,10 @@
 #include <linux/dmaengine.h>
 #include <linux/dma-mapping.h>
 
-#define ZOCL_DMA_DONE (1 << 0)
+#define ZOCL_DMA_DONE	(1 << 0)
+#define ZOCL_DMA_ERROR	(1 << 1)
 
-typedef void (*zocl_dma_complete_cb)(void *arg);
+typedef void (*zocl_dma_complete_cb)(void *arg, int ret);
 
 typedef struct zocl_dma_handle {
 	int		 	dma_flags;

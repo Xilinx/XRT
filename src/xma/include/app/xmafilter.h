@@ -122,8 +122,8 @@ int32_t
 xma_filter_session_destroy(XmaFilterSession *session);
 
 /**
- *  xma_filter_session_send_frame() - This function sends a frame to the hardware filter.  If a frame
- *  buffer is not available and this interface will block.
+ *  xma_filter_session_send_frame() - This function invokes plugin->send_frame fucntion 
+ * assigned to this session which handles sending frames to the hardware decoder.  
  *
  *  @session:  Pointer to session created by xma_filter_session_create
  *  @frame:    Pointer to a frame to be filtered. If the filter is
@@ -151,10 +151,11 @@ xma_filter_session_send_frame(XmaFilterSession *session,
                               XmaFrame         *frame);
 
 /**
- *  xma_filter_session_recv_frame() - This function populates a list of XmaFrame buffers with the filtered
- *  data returned from the hardware accelerator. This function is called after
+ *  xma_filter_session_recv_frame() - This function invokes plugin->recv_frame 
+ * assigned to this session which handles obtaining output frame with filtered data from the hardware filter.  
+ * This function is called after
  *  calling the function xma_filter_session_send_frame.  If a data buffer is
- *  not ready to be returned, this function blocks.
+ *  not ready to be returned, the plugin function should block.
  *
  *  @session:    Pointer to session created by xma_filter_session_create
  *  @frame_list: Pointer to a list of XmaFrame structures

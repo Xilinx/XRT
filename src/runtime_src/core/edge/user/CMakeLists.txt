@@ -16,7 +16,16 @@ set(XRT_SRC
   ${XRT_USER_FILES}
   )
 
+add_library(core_edgeuser_objects OBJECT ${XRT_USER_FILES})
+
 add_library(xrt_core SHARED ${XRT_SRC}
+  $<TARGET_OBJECTS:core_common_objects>
+  #$<TARGET_OBJECTS:core_edgecommon_objects>
+  )
+
+add_library(xrt_core_static STATIC ""
+  $<TARGET_OBJECTS:core_edgeuser_objects>
+  #$<TARGET_OBJECTS:core_edgecommon_objects>
   $<TARGET_OBJECTS:core_common_objects>
   )
 

@@ -27,7 +27,7 @@
 #include <fcntl.h>
 #include <mutex>
 
-#define INVALID_ID 0xffff
+#define INVALID_ID      0xffff
 #define MFG_REV_OFFSET  0x131008 // For obtaining Golden image version number
 
 namespace pcidev {
@@ -47,7 +47,7 @@ public:
     uint16_t func =             INVALID_ID;
     uint32_t instance =         INVALID_ID;
     std::string sysfs_name =    ""; // dir name under /sys/bus/pci/devices
-    int user_bar =              0; // BAR mapped in by tools, default is BAR0
+    int user_bar =              0;  // BAR mapped in by tools, default is BAR0
     size_t user_bar_size =      0;
     bool is_mgmt =              false;
     bool is_ready =             false;

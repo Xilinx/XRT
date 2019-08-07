@@ -29,6 +29,10 @@
                      + __GNUC_MINOR__ * 100 \
                      + __GNUC_PATCHLEVEL__)
 
+#if ((GCC_VERSION >= 40800) && !defined(__PPC64__) && !defined(__aarch64__))
+#define SUPPORT_ALIGNAS
+#endif
+
 #ifdef INTERNAL_TESTING
 #define ACCELERATOR_BAR        0
 #define MMAP_SIZE_USER         0x400000
@@ -214,7 +218,7 @@ namespace awsbwhal {
                        << offset << ", " << hostBuf << ", " << size << std::endl;
         }
 
-#if ((GCC_VERSION >= 40800) && !defined(__PPC64__) && !defined(__aarch64__))
+#if defined(SUPPORT_ALIGNAS)
         alignas(DDR_BUFFER_ALIGNMENT) char buffer[DDR_BUFFER_ALIGNMENT];
 #else
         xrt_core::AlignedAllocator<char> alignedBuffer(DDR_BUFFER_ALIGNMENT, DDR_BUFFER_ALIGNMENT);
@@ -868,16 +872,16 @@ namespace awsbwhal {
         wordsPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 32);
         uint32_t numWords = numSamples * wordsPerSample;
 
-    //    alignas is defined in c++11
-    #if GCC_VERSION >= 40800
+        // alignas is defined in c++11
+#if defined(SUPPORT_ALIGNAS)
         /* Alignment is limited to 16 by PPC64LE : so , should it be 
         alignas(16) uint32_t hostbuf[traceBufSzInWords];
         */
         alignas(AXI_FIFO_RDFD_AXI_FULL) uint32_t hostbuf[traceBufWordSz];
-    #else
+#else
         xrt_core::AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, traceBufWordSz);
         uint32_t* hostbuf = alignedBuffer.getBuffer();
-    #endif
+#endif
 
         // Now read trace data
         memset((void *)hostbuf, 0, traceBufSz);
