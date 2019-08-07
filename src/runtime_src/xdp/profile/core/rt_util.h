@@ -116,7 +116,7 @@ namespace xdp {
     static void getFlowModeName(e_flow_mode flowMode, std::string& str);
     static uint32_t getDevTraceBufferSize(uint32_t property);
     static std::string dec2bin(uint32_t n);
-    static std::string dec2bin(uint32_t n, unsigned bits);
+    static std::string dec2bin(uint32_t n, unsigned int bits);
 
   };
 

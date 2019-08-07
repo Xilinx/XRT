@@ -247,8 +247,8 @@ namespace xdp {
   }
 
   // Convert decimal to binary string of length bits
-  std::string RTUtil::dec2bin(uint32_t n, unsigned bits) {
-    unsigned index = bits;
+  std::string RTUtil::dec2bin(uint32_t n, unsigned int bits) {
+    unsigned int index = bits;
     std::string result(index, 0);
 
     do result[ --index ] = '0' + (n & 1);
