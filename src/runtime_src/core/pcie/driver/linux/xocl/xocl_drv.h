@@ -206,6 +206,9 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_DSA_IS_MPSOC(xdev)                \
 	(XDEV(xdev)->priv.mpsoc)
 
+#define XOCL_DSA_IS_SMARTN(xdev)                \
+	(XDEV(xdev)->priv.flags & XOCL_DSAFLAG_SMARTN)
+
 #define	XOCL_DEV_ID(pdev)			\
 	((pci_domain_nr(pdev->bus) << 16) |	\
 	PCI_DEVID(pdev->bus->number, pdev->devfn))
@@ -647,6 +650,8 @@ struct xocl_mb_funcs {
 	int (*load_sche_image)(struct platform_device *pdev, const char *buf,
 		u32 len);
 	int (*get_data)(struct platform_device *pdev, void *buf);
+	int (*dr_freeze)(struct platform_device *pdev);
+	int (*dr_free)(struct platform_device *pdev);
 };
 
 #define	MB_DEV(xdev)		\
@@ -671,6 +676,11 @@ struct xocl_mb_funcs {
 
 #define xocl_xmc_get_data(xdev, buf)			\
 	(MB_CB(xdev, get_data) ? MB_OPS(xdev)->get_data(MB_DEV(xdev), buf) : -ENODEV)
+
+#define xocl_xmc_dr_freeze(xdev)		\
+	(MB_CB(xdev, dr_freeze) ? MB_OPS(xdev)->dr_freeze(MB_DEV(xdev)) : -ENODEV)
+#define xocl_xmc_dr_free(xdev)		\
+	(MB_CB(xdev, dr_free) ? MB_OPS(xdev)->dr_free(MB_DEV(xdev)) : -ENODEV)
 
 struct xocl_dna_funcs {
 	struct xocl_subdev_funcs common_funcs;
