@@ -160,7 +160,7 @@ namespace xdp {
         bool stallEvent =  trace.EventFlags & 0x4;
         bool starveEvent = trace.EventFlags & 0x2;
         bool isStart =     trace.EventFlags & 0x1;
-        unsigned ipInfo = mPluginHandle->getProfileSlotProperties(XCL_PERF_MON_STR, deviceName, s);
+        unsigned int ipInfo = mPluginHandle->getProfileSlotProperties(XCL_PERF_MON_STR, deviceName, s);
         bool isRead = (ipInfo & 0x2) ? true : false;
         if (isStart) {
           if (txEvent)
@@ -348,8 +348,8 @@ namespace xdp {
       return;
     DeviceTrace kernelTrace;
     bool warning = false;
-    unsigned numCu = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_ACCEL, deviceName);
-    for (unsigned i = 0; i < numCu; i++) {
+    unsigned int numCu = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_ACCEL, deviceName);
+    for (unsigned int i = 0; i < numCu; i++) {
       if (!mAccelMonCuStarts[i].empty()) {
         kernelTrace.SlotNum = i;
         kernelTrace.Name = "OCL Region";
@@ -363,8 +363,8 @@ namespace xdp {
         std::string cu;
         mPluginHandle->getProfileSlotName(XCL_PERF_MON_ACCEL, deviceName, i, cu);
         // Check if any memory port on current CU had a trace packet
-        unsigned numMem = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_MEMORY, deviceName);
-        for (unsigned j = 0; j < numMem; j++) {
+        unsigned int numMem = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_MEMORY, deviceName);
+        for (unsigned int j = 0; j < numMem; j++) {
           std::string port;
           mPluginHandle->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, j, port);
           auto found = port.find(cu);
@@ -372,8 +372,8 @@ namespace xdp {
             lastTimeStamp = mPerfMonLastTranx[j];
         }
         // Check if any streaming port on current CU had a trace packet
-        unsigned numStream = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_STR, deviceName);
-        for (unsigned j = 0; j < numStream; j++) {
+        unsigned int numStream = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_STR, deviceName);
+        for (unsigned int j = 0; j < numStream; j++) {
           std::string port;
           mPluginHandle->getProfileSlotName(XCL_PERF_MON_STR, deviceName, j, port);
           auto found = port.find(cu);
@@ -562,7 +562,7 @@ namespace xdp {
         uint64_t startTime = 0;
         uint64_t hostStartTime = 0;
 
-        unsigned ipInfo = mPluginHandle->getProfileSlotProperties(XCL_PERF_MON_STR, deviceName, s);
+        unsigned int ipInfo = mPluginHandle->getProfileSlotProperties(XCL_PERF_MON_STR, deviceName, s);
         bool isRead     = (ipInfo & 0x2) ? true : false;
         if (isStart) {
           if (txEvent) {
