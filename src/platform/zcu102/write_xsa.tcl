@@ -57,7 +57,7 @@ open_run impl_1
 #set_property SEVERITY {Warning} [get_drc_checks NSTD-1]
 #set_property SEVERITY {Warning} [get_drc_checks UCIO-1]
 
-
+set_property platform.EMU_OVERRIDE_DIR emu_overlay/emu_generated/emu/ [current_project]
 
 #write_hw_platform -force -include_bit -ext_metadata "${sourcesDir}/misc/ext_metadata.json" xilinx_zcu102_dynamic_0_1.xsa
 #validate_hw_platform xilinx_zcu102_dynamic_0_1.xsa -verbose
