@@ -2,5 +2,5 @@
 	"platforms_to_build": {
 		"zcu104_revmin": "zcu104"
 	},
-	"platforms_to_generate_sysroot": ["zcu104_revmin"]
+	"platforms_to_copy_sysroot": ["zcu104_revmin"]
 }
