@@ -109,24 +109,24 @@ void TraceS2MM::showProperties()
 
 void TraceS2MM::showStatus()
 {
-  uint32_t reg_read = 0;
-  std::ostream *outputStream = (out_stream) ? out_stream : (&(std::cout));
-  (*outputStream) <<"--------------TRACE DMA STATUS-------------" << std::endl;
-  read(0x0, 4, &reg_read);
-  (*outputStream) << "INFO Trace dma control reg status : " << std::hex << reg_read << std::endl;
-  read(TS2MM_COUNT_LOW, 4, &reg_read);
-  (*outputStream) << "INFO Trace dma count status : " << reg_read << std::endl;
-  read(TS2MM_WRITE_OFFSET_LOW, 4, &reg_read);
-  (*outputStream) << "INFO Trace low write offset : " << reg_read << std::endl;
-  read(TS2MM_WRITE_OFFSET_HIGH, 4, &reg_read);
-  (*outputStream) << "INFO Trace high write offset : " << reg_read << std::endl;
-  read(TS2MM_WRITTEN_LOW, 4, &reg_read);
-  (*outputStream) << "INFO Trace written low : " << reg_read << std::endl;
-  read(TS2MM_WRITTEN_HIGH, 4, &reg_read);
-  (*outputStream) << "INFO Trace written high: " << reg_read << std::dec << std::endl;
+    uint32_t reg_read = 0;
+    std::ostream *outputStream = (out_stream) ? out_stream : (&(std::cout));
+    (*outputStream) <<"--------------TRACE DMA STATUS-------------" << std::endl;
+    read(0x0, 4, &reg_read);
+    (*outputStream) << "INFO Trace dma control reg status : " << std::hex << reg_read << std::endl;
+    read(TS2MM_COUNT_LOW, 4, &reg_read);
+    (*outputStream) << "INFO Trace dma count status : " << reg_read << std::endl;
+    read(TS2MM_WRITE_OFFSET_LOW, 4, &reg_read);
+    (*outputStream) << "INFO Trace low write offset : " << reg_read << std::endl;
+    read(TS2MM_WRITE_OFFSET_HIGH, 4, &reg_read);
+    (*outputStream) << "INFO Trace high write offset : " << reg_read << std::endl;
+    read(TS2MM_WRITTEN_LOW, 4, &reg_read);
+    (*outputStream) << "INFO Trace written low : " << reg_read << std::endl;
+    read(TS2MM_WRITTEN_HIGH, 4, &reg_read);
+    (*outputStream) << "INFO Trace written high: " << reg_read << std::dec << std::endl;
 }
 
-inline void TraceS2MM::parsePacketClockTrain(uint64_t packet, uint64_t firstTimestamp, unsigned mod, xclTraceResults &result)
+inline void TraceS2MM::parsePacketClockTrain(uint64_t packet, uint64_t firstTimestamp, uint32_t mod, xclTraceResults &result)
 {
     if(out_stream)
         (*out_stream) << " TraceS2MM::parsePacketClockTrain " << std::endl;
@@ -182,8 +182,8 @@ inline void TraceS2MM::parsePacket(uint64_t packet, uint64_t firstTimestamp, xcl
 
 void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& traceVector)
 {
-    unsigned packetSizeBytes = 8;
-    unsigned tvindex = 0;
+    uint32_t packetSizeBytes = 8;
+    uint32_t tvindex = 0;
     traceVector.mLength = 0;
 
     auto count = size / packetSizeBytes;
@@ -191,7 +191,7 @@ void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& t
       count = MAX_TRACE_NUMBER_SAMPLES;
     }
     auto pos = static_cast<uint64_t*>(buf);
-    for (unsigned int i = 0; i < count; i++) {
+    for (uint32_t i = 0; i < count; i++) {
       auto currentPacket = pos[i];
       if (!currentPacket)
         return;
@@ -199,7 +199,7 @@ void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& t
       if (i == 0 && !mPacketFirstTs)
         mPacketFirstTs = currentPacket & 0x1FFFFFFFFFFF;
       if (i < 8 && !mclockTrainingdone) {
-        unsigned int mod = i % 4;
+        uint32_t mod = i % 4;
         parsePacketClockTrain(currentPacket, mPacketFirstTs, mod, traceVector.mArray[tvindex]);
         tvindex = (mod == 3) ? tvindex + 1 : tvindex;
       }
@@ -214,9 +214,8 @@ void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& t
   // Convert decimal to binary string
   // NOTE: length of string is always sizeof(uint32_t) * 8
   std::string TraceS2MM::dec2bin(uint32_t n) {
-    char result[(sizeof(uint32_t) * 8) + 1];
-    unsigned index = sizeof(uint32_t) * 8;
-    result[index] = '\0';
+    uint32_t index = sizeof(uint32_t) * 8;
+    std::string result(index, 0);
 
     do result[ --index ] = '0' + (n & 1);
     while (n >>= 1);
@@ -224,7 +223,7 @@ void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& t
     for (int i=index-1; i >= 0; --i)
         result[i] = '0';
 
-    return std::string( result );
+    return result;
   }
 
 }   // namespace xdp

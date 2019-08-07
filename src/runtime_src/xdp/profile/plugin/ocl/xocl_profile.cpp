@@ -158,7 +158,7 @@ init(key k)
 }
 
 unsigned
-get_profile_num_slots(key k, std::string& deviceName, xclPerfMonType type)
+get_profile_num_slots(key k, const std::string& deviceName, xclPerfMonType type)
 {
   auto platform = k;
   for (auto device : platform->get_device_range()) {
@@ -173,7 +173,7 @@ get_profile_num_slots(key k, std::string& deviceName, xclPerfMonType type)
 }
 
 cl_int
-get_profile_slot_name(key k, std::string& deviceName, xclPerfMonType type,
+get_profile_slot_name(key k, const std::string& deviceName, xclPerfMonType type,
 		              unsigned slotnum, std::string& slotName)
 {
   auto platform = k;
@@ -189,7 +189,7 @@ get_profile_slot_name(key k, std::string& deviceName, xclPerfMonType type,
 }
 
 unsigned
-get_profile_slot_properties(key k, std::string& deviceName, xclPerfMonType type,
+get_profile_slot_properties(key k, const std::string& deviceName, xclPerfMonType type,
 		              unsigned slotnum)
 {
   auto platform = k;
@@ -234,7 +234,7 @@ write_host_event(key k, xclPerfMonEventType type, xclPerfMonEventID id)
 }
 
 size_t 
-get_device_timestamp(key k, std::string& deviceName)
+get_device_timestamp(key k, const std::string& deviceName)
 {
   auto platform = k;
   for (auto device : platform->get_device_range()) {

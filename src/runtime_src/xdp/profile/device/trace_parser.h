@@ -58,7 +58,7 @@ namespace xdp {
         mStartTimeNsec = (uint64_t)((startTimeMsec + PCIE_DELAY_OFFSET_MSEC) * 1.0e6);
       }
 
-      void setKernelClockFreqMHz(const std::string &deviceName, unsigned int clockRateMHz) {
+      void setKernelClockFreqMHz(const std::string& deviceName, unsigned int clockRateMHz) {
     	  // In 2017.4, trace events are captured at the kernel clock
     	  setTraceClockFreqMHz(clockRateMHz);
       }
@@ -81,28 +81,19 @@ namespace xdp {
       }
 
       // log trace results
-      void logTrace(std::string& deviceName, xclPerfMonType type,
+      void logTrace(const std::string& deviceName, xclPerfMonType type,
           xclTraceResultsVector& traceVector, TraceResultVector& resultVector);
-      void endLogTrace(std::string& deviceName, xclPerfMonType type,
+      void endLogTrace(const std::string& deviceName, xclPerfMonType type,
           TraceResultVector& resultVector);
-      void logTraceHWEmu(std::string& deviceName,
+      void logTraceHWEmu(const std::string& deviceName,
           xclTraceResultsVector& traceVector, TraceResultVector& resultVector);
-
-      // Get slot name and kind
-      void getSlotName(int slotnum, std::string& slotName) const;
-      DeviceTrace::e_device_kind getSlotKind(std::string& slotName) const;
 
     private:
-      // Convert binary to decimal
-      uint32_t bin2dec(std::string str, int start, int number);
-      uint32_t bin2dec(const char * str, int start, int number);
-
       // Convert decimal to binary string
-      std::string dec2bin(uint32_t n);
       std::string dec2bin(uint32_t n, unsigned bits);
 
       // Device/host timestamps: training and conversion
-      void trainDeviceHostTimestamps(std::string deviceName, xclPerfMonType type);
+      void trainDeviceHostTimestamps(const std::string& deviceName, xclPerfMonType type);
       double convertDeviceToHostTimestamp(uint64_t deviceTimestamp, xclPerfMonType type,
           const std::string& deviceName);
 

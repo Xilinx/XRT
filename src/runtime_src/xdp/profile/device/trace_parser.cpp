@@ -92,7 +92,7 @@ namespace xdp {
   }
 
   // Log device trace results: store in queues and report events as they are completed
-  void TraceParser::logTrace(std::string& deviceName, xclPerfMonType type,
+  void TraceParser::logTrace(const std::string& deviceName, xclPerfMonType type,
       xclTraceResultsVector& traceVector, TraceResultVector& resultVector) {
     if (traceVector.mLength == 0)
       return;
@@ -343,7 +343,7 @@ namespace xdp {
 
   // Try to approximate CU Ends from residue state and reset
   // Only applicable to Device Trace State
-  void TraceParser::endLogTrace(std::string& deviceName, xclPerfMonType type, TraceResultVector& resultVector) {
+  void TraceParser::endLogTrace(const std::string& deviceName, xclPerfMonType type, TraceResultVector& resultVector) {
     if (mPluginHandle->getFlowMode() == xdp::RTUtil::HW_EM)
       return;
     DeviceTrace kernelTrace;
@@ -400,7 +400,7 @@ namespace xdp {
     ResetState();
   }
 
-  void TraceParser::logTraceHWEmu(std::string& deviceName,
+  void TraceParser::logTraceHWEmu(const std::string& deviceName,
           xclTraceResultsVector& traceVector, TraceResultVector& resultVector) {
     if (mNumTraceEvents >= mMaxTraceEventsHwEm)
       return;
@@ -626,95 +626,6 @@ namespace xdp {
     XDP_LOG("[profile_device] Done logging device trace samples\n");
   }
 
-  // ****************
-  // Helper functions
-  // ****************
-
-  // Get slot name
-  void TraceParser::getSlotName(int slotnum, std::string& slotName) const {
-    if (slotnum < 0 || slotnum >= XAPM_MAX_NUMBER_SLOTS) {
-      slotName = "Null";
-      return;
-    }
-
-    switch (slotnum) {
-    case 0:
-      slotName = XPAR_AXI_PERF_MON_0_SLOT0_NAME;
-      break;
-    case 1:
-      slotName = XPAR_AXI_PERF_MON_0_SLOT1_NAME;
-      break;
-    case 2:
-      slotName = XPAR_AXI_PERF_MON_0_SLOT2_NAME;
-      break;
-    case 3:
-      slotName = XPAR_AXI_PERF_MON_0_SLOT3_NAME;
-      break;
-    case 4:
-      slotName = XPAR_AXI_PERF_MON_0_SLOT4_NAME;
-      break;
-    case 5:
-      slotName = XPAR_AXI_PERF_MON_0_SLOT5_NAME;
-      break;
-    case 6:
-      slotName = XPAR_AXI_PERF_MON_0_SLOT6_NAME;
-      break;
-    case 7:
-      slotName = XPAR_AXI_PERF_MON_0_SLOT7_NAME;
-      break;
-    default:
-      slotName = "Null";
-      break;
-    }
-  }
-
-  // Get slot kind
-  DeviceTrace::e_device_kind
-  TraceParser::getSlotKind(std::string& slotName) const {
-    if (slotName == "Host") return DeviceTrace::DEVICE_BUFFER;
-    return DeviceTrace::DEVICE_KERNEL;
-  }
-
-  // Convert binary string to decimal
-  uint32_t TraceParser::bin2dec(std::string str, int start, int number) {
-    return bin2dec(str.c_str(), start, number);
-  }
-
-  // Convert binary char * to decimal
-  uint32_t TraceParser::bin2dec(const char* ptr, int start, int number) {
-    const char* temp_ptr = ptr + start;
-    uint32_t value = 0;
-    int i = 0;
-
-    do {
-      if (*temp_ptr != '0' && *temp_ptr!= '1')
-        return value;
-      value <<= 1;
-      if(*temp_ptr=='1')
-        value += 1;
-      i++;
-      temp_ptr++;
-    } while (i < number);
-
-    return value;
-  }
-
-  // Convert decimal to binary string
-  // NOTE: length of string is always sizeof(uint32_t) * 8
-  std::string TraceParser::dec2bin(uint32_t n) {
-    char result[(sizeof(uint32_t) * 8) + 1];
-    unsigned index = sizeof(uint32_t) * 8;
-    result[index] = '\0';
-
-    do result[ --index ] = '0' + (n & 1);
-    while (n >>= 1);
-
-    for (int i=index-1; i >= 0; --i)
-        result[i] = '0';
-
-    return std::string( result );
-  }
-
   // Convert decimal to binary string of length bits
   std::string TraceParser::dec2bin(uint32_t n, unsigned bits) {
 	  char result[bits + 1];
@@ -732,7 +643,7 @@ namespace xdp {
 
   // Complete training to convert device timestamp to host time domain
   // NOTE: see description of PTP @ http://en.wikipedia.org/wiki/Precision_Time_Protocol
-  void TraceParser::trainDeviceHostTimestamps(std::string deviceName, xclPerfMonType type) {
+  void TraceParser::trainDeviceHostTimestamps(const std::string& deviceName, xclPerfMonType type) {
     using namespace std::chrono;
     typedef duration<uint64_t, std::ratio<1, 1000000000>> duration_ns;
     duration_ns time_span =

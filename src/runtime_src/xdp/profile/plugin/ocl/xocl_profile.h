@@ -72,14 +72,14 @@ cl_int
 set_profile_num_slots(key k, xclPerfMonType type, unsigned numSlots);
 
 unsigned
-get_profile_num_slots(key k, std::string& deviceName, xclPerfMonType type);
+get_profile_num_slots(key k, const std::string& deviceName, xclPerfMonType type);
 
 cl_int
-get_profile_slot_name(key k, std::string& deviceName, xclPerfMonType type,
+get_profile_slot_name(key k, const std::string& deviceName, xclPerfMonType type,
 		              unsigned slotnum, std::string& slotName);
 
 unsigned
-get_profile_slot_properties(key k, std::string& deviceName, xclPerfMonType type,
+get_profile_slot_properties(key k, const std::string& deviceName, xclPerfMonType type,
 		              unsigned slotnum);
 
 cl_int
@@ -89,7 +89,7 @@ cl_int
 write_host_event(key k, xclPerfMonEventType type, xclPerfMonEventID id);
 
 size_t 
-get_device_timestamp(key k, std::string& deviceName);
+get_device_timestamp(key k, const std::string& deviceName);
 
 double 
 get_device_max_read(key k);
@@ -141,15 +141,6 @@ get_ts2mm_buf_size();
 namespace device {
 
 using key = const xocl::device*;
-
-struct ts2mm_info
-{
-  xrt::hal::BufferObjectHandle bo_handle;
-  uint64_t bo_size;
-  uint64_t ctrl_addr;
-  bool is_active = false;
-  uint64_t read_count;
-};
 
 struct data
 {

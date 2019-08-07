@@ -300,7 +300,7 @@ namespace xdp {
       mComputeUnitKernelTraceMap[cuName] = traceString;
   }
 
-  size_t XoclPlugin::getDeviceTimestamp(std::string& deviceName)
+  size_t XoclPlugin::getDeviceTimestamp(const std::string& deviceName)
   {
     return xoclp::platform::get_device_timestamp(mPlatformHandle,deviceName);
   }
@@ -315,21 +315,21 @@ namespace xdp {
     return xoclp::platform::get_device_max_write(mPlatformHandle);
   }
 
-  unsigned XoclPlugin::getProfileNumberSlots(xclPerfMonType type, std::string& deviceName)
+  unsigned XoclPlugin::getProfileNumberSlots(xclPerfMonType type, const std::string& deviceName)
   {
     unsigned numSlots = xoclp::platform::get_profile_num_slots(mPlatformHandle,
         deviceName, type);
     return numSlots;
   }
 
-  void XoclPlugin::getProfileSlotName(xclPerfMonType type, std::string& deviceName,
+  void XoclPlugin::getProfileSlotName(xclPerfMonType type, const std::string& deviceName,
                                        unsigned slotnum, std::string& slotName)
   {
     xoclp::platform::get_profile_slot_name(mPlatformHandle, deviceName,
         type, slotnum, slotName);
   }
 
-  unsigned XoclPlugin::getProfileSlotProperties(xclPerfMonType type, std::string& deviceName,
+  unsigned XoclPlugin::getProfileSlotProperties(xclPerfMonType type, const std::string& deviceName,
                                                 unsigned slotnum)
   {
     return xoclp::platform::get_profile_slot_properties(mPlatformHandle, deviceName, type, slotnum);

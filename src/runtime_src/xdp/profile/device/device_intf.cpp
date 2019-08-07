@@ -427,7 +427,7 @@ DeviceIntf::~DeviceIntf()
     if(mIsDebugIPlayoutRead || !mDeviceHandle)
         return;
 
-    xrt::device* xrtDevice = (xrt::device*)mDeviceHandle;
+    xrt::device* xrtDevice = static_cast<xrt::device*>(mDeviceHandle);
     std::string path = xrtDevice->getDebugIPlayoutPath().get();
     if(path.empty()) {
         // error ? : for HW_emu this will be empty for now ; but as of current status should not have been called 
@@ -440,7 +440,7 @@ DeviceIntf::~DeviceIntf()
        */
       std::string warnMsg = "Multiple live processes running on device. Hardware Debug and Profiling data will be unavailable for this process.";
       std::cout << warnMsg << std::endl;
-//      xrt_core::message::send(xrt_core::message:  :severity_level::XRT_WARNING, "XRT", warnMsg) ;
+//      xrt_core::message::send(xrt_core::message::severity_level::XRT_WARNING, "XRT", warnMsg) ;
       mIsDeviceProfiling = false;
       mIsDebugIPlayoutRead = true;
       return;
@@ -515,7 +515,7 @@ DeviceIntf::~DeviceIntf()
 
   bool DeviceIntf::initTs2mm(uint64_t bo_size)
   {
-    xrt::device* xrtDevice = (xrt::device*)mDeviceHandle;
+    xrt::device* xrtDevice = static_cast<xrt::device*>(mDeviceHandle);
 
     if (mTs2mmBoHandle != nullptr) {
       finTs2mm();
@@ -544,7 +544,7 @@ DeviceIntf::~DeviceIntf()
 
 void* DeviceIntf::syncTraceBO(uint64_t offset, uint64_t bytes)
 {
-    xrt::device* xrtDevice = (xrt::device*)mDeviceHandle;
+    xrt::device* xrtDevice = static_cast<xrt::device*>(mDeviceHandle);
     if (!mTs2mmBoHandle || bytes > mTs2mmBoSize) {
       return nullptr;
     }
@@ -586,7 +586,7 @@ void DeviceIntf::configReaderTs2mm(uint64_t chunksize)
 
 void DeviceIntf::finTs2mm()
 {
-  xrt::device* xrtDevice = (xrt::device*)mDeviceHandle;
+  xrt::device* xrtDevice = static_cast<xrt::device*>(mDeviceHandle);
   traceDMA->reset();
 
   if (mTs2mmBoHandle) {
