@@ -15,6 +15,7 @@
  */
 
 #include "xclbin_parser.h"
+#include "config_reader.h"
 
 // This is xclbin parser. Update this file if xclbin format has changed.
 
@@ -46,6 +47,33 @@ get_base_addr(const ip_data& ip)
   return addr;
 }
 
+static int
+kernel_max_ctx(const ip_data& ip)
+{
+  auto ctx = xrt_core::config::get_ctx_info();
+  if (ctx.empty())
+    return 0;
+  
+  std::string knm = reinterpret_cast<const char*>(ip.m_name);
+  knm = knm.substr(0,knm.find(":"));
+
+  auto pos1 = ctx.find("{"+knm+":");
+  if (pos1 == std::string::npos)
+    return 0;
+
+  auto pos2 = ctx.find("}",pos1);
+  if (pos2 == std::string::npos || pos2 < pos1+knm.size()+2)
+    return 0;
+
+  auto ctxid_str = ctx.substr(pos1+knm.size()+2,pos2);
+  auto ctxid = std::stoi(ctxid_str);
+
+  if (ctxid < 0 || ctxid > 31)
+    throw std::runtime_error("context id must be between 0 and 31");
+
+  return ctxid;
+}
+
 }
 
 namespace xrt_core { namespace xclbin {
@@ -64,7 +92,7 @@ memidx_to_name(const axlf* top,  int32_t midx)
 }
 
 std::vector<uint64_t>
-get_cus(const axlf* top, bool encoding)
+get_cus(const axlf* top, bool encode)
 {
   std::vector<uint64_t> cus;
   auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
@@ -75,9 +103,14 @@ get_cus(const axlf* top, bool encoding)
     const auto& ip_data = ip_layout->m_ip_data[count];
     if (is_valid_cu(ip_data)) {
       uint64_t addr = get_base_addr(ip_data);
-      if (encoding)
-          // encode handshaking control in lower unused address bits
-          addr |= ((ip_data.properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT);
+      if (encode) {
+        // encode handshaking control in lower unused address bits [2-0]
+        addr |= ((ip_data.properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT);
+
+        // encode max context in lower [7-3] bits of addr, assumes IP control
+        // takes three bits only.  This is a hack for now.
+        addr |= (kernel_max_ctx(ip_data) << 3);
+      }
       cus.push_back(addr);
     }
   }
