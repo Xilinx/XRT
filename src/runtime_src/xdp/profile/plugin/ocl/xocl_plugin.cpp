@@ -315,22 +315,22 @@ namespace xdp {
     return xoclp::platform::get_device_max_write(mPlatformHandle);
   }
 
-  unsigned XoclPlugin::getProfileNumberSlots(xclPerfMonType type, const std::string& deviceName)
+  unsigned int XoclPlugin::getProfileNumberSlots(xclPerfMonType type, const std::string& deviceName)
   {
-    unsigned numSlots = xoclp::platform::get_profile_num_slots(mPlatformHandle,
+    unsigned int numSlots = xoclp::platform::get_profile_num_slots(mPlatformHandle,
         deviceName, type);
     return numSlots;
   }
 
   void XoclPlugin::getProfileSlotName(xclPerfMonType type, const std::string& deviceName,
-                                       unsigned slotnum, std::string& slotName)
+                                       unsigned int slotnum, std::string& slotName)
   {
     xoclp::platform::get_profile_slot_name(mPlatformHandle, deviceName,
         type, slotnum, slotName);
   }
 
-  unsigned XoclPlugin::getProfileSlotProperties(xclPerfMonType type, const std::string& deviceName,
-                                                unsigned slotnum)
+  unsigned int XoclPlugin::getProfileSlotProperties(xclPerfMonType type, const std::string& deviceName,
+                                                unsigned int slotnum)
   {
     return xoclp::platform::get_profile_slot_properties(mPlatformHandle, deviceName, type, slotnum);
   }

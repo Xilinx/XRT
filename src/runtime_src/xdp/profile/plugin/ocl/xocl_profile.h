@@ -65,28 +65,19 @@ using key = const xocl::platform*;
 void
 init(key k);
 
-bool
-is_unified(key k);
-
-cl_int
-set_profile_num_slots(key k, xclPerfMonType type, unsigned numSlots);
-
-unsigned
+unsigned int
 get_profile_num_slots(key k, const std::string& deviceName, xclPerfMonType type);
 
 cl_int
 get_profile_slot_name(key k, const std::string& deviceName, xclPerfMonType type,
-		              unsigned slotnum, std::string& slotName);
+		              unsigned int slotnum, std::string& slotName);
 
-unsigned
+unsigned int
 get_profile_slot_properties(key k, const std::string& deviceName, xclPerfMonType type,
-		              unsigned slotnum);
+		              unsigned int slotnum);
 
 cl_int
 get_profile_kernel_name(key k, const std::string& deviceName, const std::string& cuName, std::string& kernelName);
-
-cl_int
-write_host_event(key k, xclPerfMonEventType type, xclPerfMonEventID id);
 
 size_t 
 get_device_timestamp(key k, const std::string& deviceName);
@@ -157,25 +148,14 @@ struct data
   bool ts2mm_en = false;
 };
 
-void
-init(key k);
-
-#if 0
-cl_int
-setProfileNumSlots(key k, xclPerfMonType type, unsigned numSlots);
-#endif
-
-unsigned
+unsigned int
 getProfileNumSlots(key k, xclPerfMonType type);
 
 cl_int
-getProfileSlotName(key k, xclPerfMonType type, unsigned slotnum, std::string& slotName);
+getProfileSlotName(key k, xclPerfMonType type, unsigned int slotnum, std::string& slotName);
 
-unsigned
-getProfileSlotProperties(key k, xclPerfMonType type, unsigned slotnum);
-
-cl_int 
-writeHostEvent(key k, xclPerfMonEventType type, xclPerfMonEventID id);
+unsigned int
+getProfileSlotProperties(key k, xclPerfMonType type, unsigned int slotnum);
 
 cl_int
 startTrace(key k, xclPerfMonType type, size_t numComputeUnits);

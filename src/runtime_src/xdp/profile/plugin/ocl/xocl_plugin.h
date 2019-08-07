@@ -80,10 +80,10 @@ namespace xdp {
       double getReadMaxBandwidthMBps() override;
       double getWriteMaxBandwidthMBps() override;
       void setTraceStringForComputeUnit(const std::string& cuName, std::string& traceString);
-      unsigned getProfileNumberSlots(xclPerfMonType type, const std::string& deviceName) override;
+      unsigned int getProfileNumberSlots(xclPerfMonType type, const std::string& deviceName) override;
       void getProfileSlotName(xclPerfMonType type, const std::string& deviceName,
-                            unsigned slotnum, std::string& slotName) override;
-      unsigned getProfileSlotProperties(xclPerfMonType type, const std::string& deviceName, unsigned slotnum) override;
+                            unsigned int slotnum, std::string& slotName) override;
+      unsigned int getProfileSlotProperties(xclPerfMonType type, const std::string& deviceName, unsigned int slotnum) override;
       bool isAPCtrlChain(const std::string& deviceName, const std::string& cu) override;
       void sendMessage(const std::string &msg) override;
     };

@@ -157,7 +157,7 @@ init(key k)
     mgr->setLoggingTrace(type, false);
 }
 
-unsigned
+unsigned int
 get_profile_num_slots(key k, const std::string& deviceName, xclPerfMonType type)
 {
   auto platform = k;
@@ -174,7 +174,7 @@ get_profile_num_slots(key k, const std::string& deviceName, xclPerfMonType type)
 
 cl_int
 get_profile_slot_name(key k, const std::string& deviceName, xclPerfMonType type,
-		              unsigned slotnum, std::string& slotName)
+		              unsigned int slotnum, std::string& slotName)
 {
   auto platform = k;
   for (auto device : platform->get_device_range()) {
@@ -188,9 +188,9 @@ get_profile_slot_name(key k, const std::string& deviceName, xclPerfMonType type,
   return device::getProfileSlotName(device.get(), type, slotnum, slotName);
 }
 
-unsigned
+unsigned int
 get_profile_slot_properties(key k, const std::string& deviceName, xclPerfMonType type,
-		              unsigned slotnum)
+		              unsigned int slotnum)
 {
   auto platform = k;
   for (auto device : platform->get_device_range()) {
@@ -219,17 +219,6 @@ get_profile_kernel_name(key k, const std::string& deviceName, const std::string&
       }
     }
   }
-  return 0;
-}
-
-cl_int
-write_host_event(key k, xclPerfMonEventType type, xclPerfMonEventID id)
-{
-  XDP_LOG("Writing host event: type = %d, ID = %d\n", type, id);
-
-  auto platform = k;
-  for (auto device : platform->get_device_range())
-    device::writeHostEvent(device, type, id);
   return 0;
 }
 
@@ -460,18 +449,6 @@ namespace device {
 data*
 get_data(key k);
 
-
-void
-init(key k)
-{
-  auto data = get_data(k);
-  data->mPerformingFlush = false;
-  auto nowTime = std::chrono::steady_clock::now();
-  data->mLastCountersSampleTime = nowTime;
-  for (int i=0; i < XCL_PERF_MON_TOTAL_PROFILE; ++i)
-    data->mLastTraceTrainingTime[i] = nowTime;
-}
-
 DeviceIntf* get_device_interface(key k)
 {
   if(OCLProfiler::Instance()->getPlugin()->getFlowMode() != xdp::RTUtil::DEVICE)
@@ -487,17 +464,7 @@ DeviceIntf* get_device_interface(key k)
   return  &(itr->second.mDeviceIntf);
 }
 
-#if 0  
-cl_int
-setProfileNumSlots(key k, xclPerfMonType type, unsigned numSlots)
-{
-  auto device = k;
-  device->get_xrt_device()->setProfilingSlots(type, numSlots);
-  return CL_SUCCESS;
-}
-#endif
-
-unsigned
+unsigned int
 getProfileNumSlots(key k, xclPerfMonType type)
 {
   auto device = k;
@@ -509,7 +476,7 @@ getProfileNumSlots(key k, xclPerfMonType type)
 }
 
 cl_int
-getProfileSlotName(key k, xclPerfMonType type, unsigned index,
+getProfileSlotName(key k, xclPerfMonType type, unsigned int index,
 		           std::string& slotName)
 {
   auto device = k;
@@ -525,8 +492,8 @@ getProfileSlotName(key k, xclPerfMonType type, unsigned index,
   return CL_SUCCESS;
 }
 
-unsigned
-getProfileSlotProperties(key k, xclPerfMonType type, unsigned index)
+unsigned int
+getProfileSlotProperties(key k, xclPerfMonType type, unsigned int index)
 {
   auto device = k;
   auto device_interface = get_device_interface(device);
@@ -534,21 +501,6 @@ getProfileSlotProperties(key k, xclPerfMonType type, unsigned index)
     return device_interface->getMonitorProperties(type, index);
   }
   return device->get_xrt_device()->getProfilingSlotProperties(type, index).get();
-}
-
-cl_int 
-writeHostEvent(key k, xclPerfMonEventType type, xclPerfMonEventID id)
-{
-  auto device = k;
-
-  // Only Zynq is supported in 2017.1
-  // NOTE: Zynq device names are currently blank
-  //std::string name = device->get_name();
-  //if (name.find("zcu102") != std::string::npos) {
-  //  XDP_LOG("  Writing host event to %s\n", name.c_str());
-    device->get_xrt_device()->writeHostEvent(type, id);
-  //}
-  return CL_SUCCESS;
 }
 
 cl_int
@@ -627,9 +579,9 @@ getMaxWrite(key k)
 
 void configureDataflow(key k, xclPerfMonType type)
 {
-  unsigned num_slots = getProfileNumSlots(k, type);
-  auto ip_config = std::make_unique <unsigned []>(num_slots);
-  for (unsigned i=0; i < num_slots; i++) {
+  unsigned int num_slots = getProfileNumSlots(k, type);
+  auto ip_config = std::make_unique <unsigned int []>(num_slots);
+  for (unsigned int i=0; i < num_slots; i++) {
     std::string slot;
     getProfileSlotName(k, type, i, slot);
     ip_config[i] = isAPCtrlChain(k, slot) ? 1 : 0;

@@ -146,14 +146,14 @@ namespace xdp {
       virtual double getReadMaxBandwidthMBps() = 0 ;
       virtual double getWriteMaxBandwidthMBps() = 0;
       // HAL APIS
-      virtual unsigned getProfileNumberSlots(xclPerfMonType type,
+      virtual unsigned int getProfileNumberSlots(xclPerfMonType type,
                                             const std::string& deviceName) = 0;
       virtual void getProfileSlotName(xclPerfMonType type,
                                       const std::string& deviceName,
-                                      unsigned slotnum, std::string& slotName) = 0;
-      virtual unsigned getProfileSlotProperties(xclPerfMonType type,
+                                      unsigned int slotnum, std::string& slotName) = 0;
+      virtual unsigned int getProfileSlotProperties(xclPerfMonType type,
                                                 const std::string& deviceName,
-                                                unsigned slotnum) = 0;
+                                                unsigned int slotnum) = 0;
       virtual bool isAPCtrlChain(const std::string& deviceName, const std::string& cu) = 0;
 
     protected:
