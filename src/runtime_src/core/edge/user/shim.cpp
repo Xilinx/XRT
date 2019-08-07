@@ -266,6 +266,9 @@ unsigned int ZYNQShim::xclAllocBO(size_t size, int unused, unsigned flags) {
   return info.handle;
 }
 
+
+std::map<uint64_t, ZYNQShim::BOData> ZYNQShim::mBoMap;
+
 unsigned int ZYNQShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags) {
   (void)flags;
   std::lock_guard<std::mutex> l(mBOMapLock);
@@ -277,9 +280,7 @@ unsigned int ZYNQShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned fl
     std::cout  << "xclAllocUserPtrBO Bad Host PTR" << std::endl;
     return -EINVAL;
   }
-  xclBOProperties properties;
-  int ret = xclGetBOProperties(it->second, &properties);    
-  drm_zocl_userptr_bo info = {properties.paddr, size, 0xffffffff, DRM_ZOCL_BO_FLAGS_USERPTR};
+  drm_zocl_userptr_bo info = {it->second.paddr, size, 0xffffffff, DRM_ZOCL_BO_FLAGS_USERPTR};
   int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_USERPTR_BO, &info);
   if (mVerbosity == XCL_INFO) {
     std::cout  << "xclAllocUserPtrBO result = " << result << std::endl;
@@ -355,11 +356,17 @@ void *ZYNQShim::xclAllocHostPtr(size_t size, unsigned flags)
   unsigned int boHandle = xclAllocBO(size, 0, flags);
   void* vaddr =  xclMapBO(boHandle, true);
   //printf("%s:%d vaddr:%x\n",__func__,__LINE__,(uint64_t)vaddr);
+  xclBOProperties properties;
+  int ret = xclGetBOProperties(boHandle, &properties);
   if(vaddr) {
+    BOData data;
+    data.boHandle = boHandle;
+    data.paddr = properties.paddr;
+    data.size = properties.size;
     std::lock_guard<std::mutex> l(mBOMapLock);
     auto it = mBoMap.find(reinterpret_cast<uint64_t>(vaddr));
     if (it == mBoMap.end()) {
-      mBoMap.insert(it, std::pair<uint64_t, unsigned int>(reinterpret_cast<uint64_t>(vaddr), boHandle));
+      mBoMap.insert(it, std::pair<uint64_t, BOData>(reinterpret_cast<uint64_t>(vaddr), data));
     }
   }
   return vaddr;
@@ -368,7 +375,15 @@ void *ZYNQShim::xclAllocHostPtr(size_t size, unsigned flags)
 void ZYNQShim::xclFreeHostPtr(void* ptr)
 {
   std::cout << "ZYNQShim::xclFreeHostPtr called" << std::endl;
-  //TODO: unmap and FreeBO
+  std::lock_guard<std::mutex> l(mBOMapLock);
+  auto it = mBoMap.find(reinterpret_cast<uint64_t>(ptr));
+  if (it == mBoMap.end()) {
+    std::cout  << "xclFreeHostPtr Bad Host PTR" << std::endl;
+    return;
+  }
+  munmap(ptr,it->second.size);  
+  xclFreeBO(it->second.boHandle);
+  mBoMap.erase(it);
 }
 
 int ZYNQShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)

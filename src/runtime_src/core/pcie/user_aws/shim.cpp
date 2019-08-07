@@ -1515,7 +1515,7 @@ void* xclAllocHostPtr(xclDeviceHandle handle, size_t size, unsigned flags)
     return drv ? drv->xclAllocHostPtr(size, flags) : nullptr;
 }
 
-void* xclFreeHostPtr(xclDeviceHandle handle, void* ptr)
+void xclFreeHostPtr(xclDeviceHandle handle, void* ptr)
 {
     awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
     if(drv)

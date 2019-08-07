@@ -113,7 +113,14 @@ private:
   int mKernelFD;
   std::mutex mBOMapLock;
   std::map<uint64_t, uint32_t *> mKernelControl;
-  std::map<uint64_t, unsigned int> mBoMap;
+
+  struct BOData {
+    unsigned int boHandle;
+    uint64_t paddr;
+    size_t size;
+  };
+
+  static std::map<uint64_t, BOData> mBoMap;
   std::unique_ptr<xrt_core::bo_cache> mCmdBOCache;
 
   /*
