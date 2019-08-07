@@ -208,9 +208,9 @@ enum xmc_packet_op {
 	XPO_MSP432_IMAGE_END,
 	XPO_BOARD_INFO,
 	XPO_MSP432_ERASE_FW,
-	XPO_DYNAMIC_REGION_FREEZE,
-	XPO_DYNAMIC_REGION_FREE,
-	XPO_NETWORK_KERNEL_METADATA,
+	XPO_DR_FREEZE,
+	XPO_DR_FREE,
+	XPO_XCLBIN_DATA,
 };
 
 /* Make sure hdr is multiple of u32 */
@@ -1906,12 +1906,17 @@ static void xmc_clk_scale_config(struct platform_device *pdev)
 	WRITE_RUNTIME_CS(xmc, cntrl, XMC_CLOCK_CONTROL_REG);
 }
 
+static int xmc_dynamic_region_free(struct platform_device *pdev);
+static int xmc_dynamic_region_freeze(struct platform_device *pdev);
+
 static struct xocl_mb_funcs xmc_ops = {
 	.load_mgmt_image	= load_mgmt_image,
 	.load_sche_image	= load_sche_image,
 	.reset			= xmc_reset,
 	.stop			= stop_xmc,
 	.get_data		= xmc_get_data,
+	.dr_freeze          	= xmc_dynamic_region_freeze,
+	.dr_free         	= xmc_dynamic_region_free,
 };
 
 static void xmc_unload_board_info(struct xocl_xmc *xmc)
@@ -2023,7 +2028,7 @@ static int xmc_probe(struct platform_device *pdev)
 	}
 
 	xdev_hdl = xocl_get_xdev(pdev);
-	if (xocl_mb_mgmt_on(xdev_hdl) || xocl_mb_sched_on(xdev_hdl)) {
+	if (xocl_mb_mgmt_on(xdev_hdl) || xocl_mb_sched_on(xdev_hdl) || autonomous_xmc(pdev)) {
 		xocl_info(&pdev->dev, "Microblaze is supported.");
 		xmc->enabled = true;
 	} else {
@@ -2147,7 +2152,7 @@ static int xmc_send_pkt(struct xocl_xmc *xmc)
 {
 	u32 *pkt = (u32 *)&xmc->mbx_pkt;
 	u32 len = XMC_PKT_SZ(&xmc->mbx_pkt.hdr);
-	int ret;
+	int ret = 0;
 	u32 i;
 	u32 val;
 
@@ -2172,7 +2177,7 @@ static int xmc_recv_pkt(struct xocl_xmc *xmc)
 	u32 *pkt;
 	u32 len;
 	u32 i;
-	int ret;
+	int ret = 0;
 
 	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
 
@@ -2209,6 +2214,9 @@ static bool is_sc_ready(struct xocl_xmc *xmc)
 {
 	u32 val;
 
+	if (autonomous_xmc(xmc->pdev))
+		return true;
+
 	safe_read32(xmc, XMC_STATUS_REG, &val);
 	val >>= 28;
 	if (val == 0x1)
@@ -2216,6 +2224,54 @@ static bool is_sc_ready(struct xocl_xmc *xmc)
 
 	xocl_err(&xmc->pdev->dev, "SC is not ready, state=%d\n", val);
 	return false;
+}
+
+static int xmc_dynamic_region_free(struct platform_device *pdev)
+{
+	int ret = 0;
+	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
+
+	mutex_lock(&xmc->mbx_lock);
+	if (!is_xmc_ready(xmc))
+		return -EINVAL;
+
+	/* Load new info from HW. */
+	memset(&xmc->mbx_pkt, 0, sizeof(xmc->mbx_pkt));
+	xmc->mbx_pkt.hdr.op = XPO_DR_FREE;
+	ret = xmc_send_pkt(xmc);
+	if (ret)
+		goto done;
+
+	
+	xocl_info(&xmc->pdev->dev, "xmc dynamic region free\n");
+
+done:
+	mutex_unlock(&xmc->mbx_lock);
+	return ret;
+}
+
+static int xmc_dynamic_region_freeze(struct platform_device *pdev)
+{
+	int ret = 0;
+	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
+
+	mutex_lock(&xmc->mbx_lock);
+
+	if (!is_xmc_ready(xmc))
+		return -EINVAL;
+
+	/* Load new info from HW. */
+	memset(&xmc->mbx_pkt, 0, sizeof(xmc->mbx_pkt));
+	xmc->mbx_pkt.hdr.op = XPO_DR_FREEZE;
+
+	ret = xmc_send_pkt(xmc);
+	if (ret)
+		goto done;
+
+	xocl_info(&xmc->pdev->dev, "xmc dynamic region freeze\n");
+done:
+	mutex_unlock(&xmc->mbx_lock);
+	return ret;
 }
 
 static void xmc_set_board_info(uint32_t *bdinfo_raw, uint32_t bd_info_sz,
