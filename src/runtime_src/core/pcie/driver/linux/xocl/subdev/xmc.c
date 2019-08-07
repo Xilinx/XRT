@@ -246,8 +246,8 @@ enum board_info_key {
 	BDINFO_REV,
 	BDINFO_NAME,
 	BDINFO_BMC_VER,
-	BDINFO_MAX_PWR,
 	BDINFO_FAN_PRESENCE,
+	BDINFO_MAX_PWR,
 	BDINFO_CONFIG_MODE,
 	/* lower and upper limit */
 	BDINFO_MIN_KEY = BDINFO_SN,
@@ -288,7 +288,7 @@ struct xocl_xmc {
 	char			mac_addr2[XMC_BDINFO_ENTRY_LEN];
 	char			mac_addr3[XMC_BDINFO_ENTRY_LEN];
 	char			revision[XMC_BDINFO_ENTRY_LEN_MAX];
-	char			name[XMC_BDINFO_ENTRY_LEN_MAX];
+	char			bd_name[XMC_BDINFO_ENTRY_LEN_MAX];
 	char			bmc_ver[XMC_BDINFO_ENTRY_LEN_MAX];
 	uint32_t		max_power;
 	uint32_t		fan_num;
@@ -506,7 +506,7 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 			memcpy(val, xmc->revision, XMC_BDINFO_ENTRY_LEN_MAX);
 			break;
 		case CARD_NAME:
-			memcpy(val, xmc->name, XMC_BDINFO_ENTRY_LEN_MAX);
+			memcpy(val, xmc->bd_name, XMC_BDINFO_ENTRY_LEN_MAX);
 			break;
 		case BMC_VER:
 			memcpy(val, xmc->bmc_ver, XMC_BDINFO_ENTRY_LEN_MAX);
@@ -645,7 +645,7 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 			memcpy(val, xmc->cache->revision, XMC_BDINFO_ENTRY_LEN_MAX);
 			break;
 		case CARD_NAME:
-			memcpy(val, xmc->cache->name, XMC_BDINFO_ENTRY_LEN_MAX);
+			memcpy(val, xmc->cache->bd_name, XMC_BDINFO_ENTRY_LEN_MAX);
 			break;
 		case BMC_VER:
 			memcpy(val, xmc->cache->bmc_ver, XMC_BDINFO_ENTRY_LEN_MAX);
@@ -724,7 +724,7 @@ static int xmc_get_data(struct platform_device *pdev, void *buf)
 	xmc_bdinfo(pdev, MAC_ADDR2, (u32 *)sensors->mac_addr2);
 	xmc_bdinfo(pdev, MAC_ADDR3, (u32 *)sensors->mac_addr3);
 	xmc_bdinfo(pdev, REVISION, (u32 *)sensors->revision);
-	xmc_bdinfo(pdev, CARD_NAME, (u32 *)sensors->name);
+	xmc_bdinfo(pdev, CARD_NAME, (u32 *)sensors->bd_name);
 	xmc_bdinfo(pdev, BMC_VER, (u32 *)sensors->bmc_ver);
 	xmc_bdinfo(pdev, MAX_PWR, &sensors->max_power);
 	xmc_bdinfo(pdev, FAN_NUM, &sensors->fan_num);
@@ -1236,7 +1236,7 @@ XMC_BDINFO_STRING_SYSFS_NODE(mac_addr1)
 XMC_BDINFO_STRING_SYSFS_NODE(mac_addr2)
 XMC_BDINFO_STRING_SYSFS_NODE(mac_addr3)
 XMC_BDINFO_STRING_SYSFS_NODE(revision)
-XMC_BDINFO_STRING_SYSFS_NODE(name)
+XMC_BDINFO_STRING_SYSFS_NODE(bd_name)
 XMC_BDINFO_STRING_SYSFS_NODE(bmc_ver)
 
 #define	XMC_BDINFO_STAT_SYSFS_NODE(name)		\
@@ -1270,7 +1270,7 @@ static struct attribute *xmc_attrs[] = {
 	&dev_attr_mac_addr2.attr,
 	&dev_attr_mac_addr3.attr,
 	&dev_attr_revision.attr,
-	&dev_attr_name.attr,
+	&dev_attr_bd_name.attr,
 	&dev_attr_bmc_ver.attr,
 	&dev_attr_max_power.attr,
 	&dev_attr_fan_num.attr,
@@ -2269,7 +2269,7 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_MAC2, xmc->mac_addr2);
 		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_MAC3, xmc->mac_addr3);
 		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_REV, xmc->revision);
-		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_NAME, xmc->name);
+		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_NAME, xmc->bd_name);
 		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_BMC_VER, xmc->bmc_ver);
 		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_MAX_PWR, (char *)&xmc->max_power);
 		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_FAN_PRESENCE, (char *)&xmc->fan_num);
@@ -2284,7 +2284,7 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		xmc_bdinfo(xmc->pdev, MAC_ADDR2, (u32 *)xmc->mac_addr2);
 		xmc_bdinfo(xmc->pdev, MAC_ADDR3, (u32 *)xmc->mac_addr3);
 		xmc_bdinfo(xmc->pdev, REVISION, (u32 *)xmc->revision);
-		xmc_bdinfo(xmc->pdev, CARD_NAME, (u32 *)xmc->name);
+		xmc_bdinfo(xmc->pdev, CARD_NAME, (u32 *)xmc->bd_name);
 		xmc_bdinfo(xmc->pdev, BMC_VER, (u32 *)xmc->bmc_ver);
 		xmc_bdinfo(xmc->pdev, MAX_PWR, &xmc->max_power);
 		xmc_bdinfo(xmc->pdev, FAN_NUM, &xmc->fan_num);
