@@ -343,7 +343,8 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
             (*out_stream) << "  Trace sample " << std::dec << i << ": "
                           << " Timestamp : " << results.Timestamp << "   "
                           << " Host Timestamp : " << std::hex << results.HostTimestamp << std::endl;
-          } 
+          }
+          results.isClockTrain = true;
           traceVector.mArray[static_cast<int>(i/4)] = results;    // save result
         }
         continue;
@@ -359,6 +360,7 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
       results.Error = (currentSample >> 63) & 0x1;
       results.EventID = XCL_PERF_MON_HW_EVENT;
       results.EventFlags = ((currentSample >> 45) & 0xF) | ((currentSample >> 57) & 0x10) ;
+      results.isClockTrain = false;
 
       traceVector.mArray[i - clockWordIndex + 1] = results;   // save result
 

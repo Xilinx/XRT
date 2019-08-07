@@ -161,6 +161,7 @@ inline void TraceS2MM::parsePacket(uint64_t packet, uint64_t firstTimestamp, xcl
     result.Error = (packet >> 63) & 0x1;
     result.EventID = XCL_PERF_MON_HW_EVENT;
     result.EventFlags = ((packet >> 45) & 0xF) | ((packet >> 57) & 0x10);
+    result.isClockTrain = false;
 
     if (out_stream) {
     static uint64_t previousTimestamp = 0;
