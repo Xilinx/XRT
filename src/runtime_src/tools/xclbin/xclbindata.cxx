@@ -1041,7 +1041,11 @@ XclBinData::createDebugIPLayoutBinaryImage( boost::property_tree::ptree &_pt,
 
     std::string sm_type = ptDebugIPData.get<std::string>("m_type");
     debugIpDataHdr.m_type = getDebugIPType( sm_type );
-    debugIpDataHdr.m_index = ptDebugIPData.get<uint8_t>("m_index");
+
+    uint16_t index = ptDebugIPData.get<uint16_t>("m_index");
+    debugIpDataHdr.m_index_lowbyte = index & 0x00FF;
+    debugIpDataHdr.m_index_highbyte = (index & 0xFF00) >> 8;
+
     debugIpDataHdr.m_properties = ptDebugIPData.get<uint8_t>("m_properties");
 
     // Optional value, will set to 0 if not set (as it was initialized)
@@ -1062,10 +1066,12 @@ XclBinData::createDebugIPLayoutBinaryImage( boost::property_tree::ptree &_pt,
     // We already know that there is enough room for this string
     memcpy( debugIpDataHdr.m_name, sm_name.c_str(), sm_name.length() + 1);
 
-    TRACE(XclBinUtil::format("[%d]: m_type: %d, m_index: %d, m_properties: %d, m_major: %d, m_minor: %d, m_base_address: 0x%lx, m_name: '%s'", 
+    TRACE(XclBinUtil::format("[%d]: m_type: %d, m_index: %d (m_index_highbyte: 0x%x, m_index_lowbyte: 0x%x), m_properties: %d, m_major: %d, m_minor: %d, m_base_address: 0x%lx, m_name: '%s'", 
                              count,
                              (unsigned int) debugIpDataHdr.m_type,
-                             (unsigned int) debugIpDataHdr.m_index,
+                             index,
+                             (unsigned int) debugIpDataHdr.m_index_highbyte,
+                             (unsigned int) debugIpDataHdr.m_index_lowbyte,
                              (unsigned int) debugIpDataHdr.m_properties,
                              (unsigned int) debugIpDataHdr.m_major,
                              (unsigned int) debugIpDataHdr.m_minor,
@@ -1619,10 +1625,14 @@ XclBinData::extractDebugIPLayoutData( char * _pDataSegment,
   for (int index = 0; index < pHdr->m_count; ++index) {
     boost::property_tree::ptree debug_ip_data;
 
-    TRACE(XclBinUtil::format("[%d]: m_type: %d, m_index: %d, m_properties: %d, m_major: %d, m_minor: %d, m_base_address: 0x%lx, m_name: '%s'", 
+    uint16_t m_virtual_index = (((uint16_t) pHdr->m_debug_ip_data[index].m_index_highbyte) << 8) + (uint16_t) pHdr->m_debug_ip_data[index].m_index_lowbyte;
+
+    TRACE(XclBinUtil::format("[%d]: m_type: %d, m_index: %d (m_index_highbyte: 0x%x, m_index_lowbyte: 0x%x), m_properties: %d, m_major: %d, m_minor: %d, m_base_address: 0x%lx, m_name: '%s'", 
                              index,
                              getDebugIPTypeStr((enum DEBUG_IP_TYPE) pHdr->m_debug_ip_data[index].m_type).c_str(),
-                             (unsigned int) pHdr->m_debug_ip_data[index].m_index,
+                             (unsigned int) m_virtual_index,
+                             (unsigned int) pHdr->m_debug_ip_data[index].m_index_highbyte,
+                             (unsigned int) pHdr->m_debug_ip_data[index].m_index_lowbyte,
                              (unsigned int) pHdr->m_debug_ip_data[index].m_properties,
                              (unsigned int) pHdr->m_debug_ip_data[index].m_major,
                              (unsigned int) pHdr->m_debug_ip_data[index].m_minor,
@@ -1633,7 +1643,7 @@ XclBinData::extractDebugIPLayoutData( char * _pDataSegment,
     TRACE_BUF("debug_ip_data", reinterpret_cast<const char*>(&pHdr->m_debug_ip_data[index]), sizeof(debug_ip_data));
 
     debug_ip_data.put("m_type", getDebugIPTypeStr((enum DEBUG_IP_TYPE) pHdr->m_debug_ip_data[index].m_type).c_str());
-    debug_ip_data.put("m_index", XclBinUtil::format("%d", (unsigned int) pHdr->m_debug_ip_data[index].m_index).c_str());
+    debug_ip_data.put("m_index", XclBinUtil::format("%d", (unsigned int) m_virtual_index).c_str());
     debug_ip_data.put("m_properties", XclBinUtil::format("%d", (unsigned int) pHdr->m_debug_ip_data[index].m_properties).c_str());
     debug_ip_data.put("m_major", XclBinUtil::format("%d", (unsigned int) pHdr->m_debug_ip_data[index].m_major).c_str());
     debug_ip_data.put("m_minor", XclBinUtil::format("%d", (unsigned int) pHdr->m_debug_ip_data[index].m_minor).c_str());
