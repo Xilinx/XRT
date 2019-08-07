@@ -74,14 +74,7 @@ set_property ip_repo_paths "${sourcesDir}/iprepo" [current_project]
 update_ip_catalog
 
 # Import HDL, XDC, and other files
-#import_files -norecurse ${sourcesDir}/hdl/CuDmaController.v
-#import_files -norecurse ${sourcesDir}/hdl/CuISR.v
-#import_files -norecurse ${sourcesDir}/hdl/embedded_scheduler_hw.v
-#import_files -norecurse ${sourcesDir}/hdl/iob_static.v
-#import_files -norecurse ${sourcesDir}/hdl/irq_handler.v
-#import_files -norecurse ${sourcesDir}/hdl/isr_irq_handler.sv
 import_files -norecurse ${sourcesDir}/hdl/freq_counter.v
-#import_files -norecurse ${sourcesDir}/misc/mb_bootloop_le.elf
 import_files -fileset constrs_1 -norecurse ${sourcesDir}/constraints/static_synth.xdc
 import_files -fileset constrs_1 -norecurse ${sourcesDir}/constraints/static_impl_early.xdc
 import_files -fileset constrs_1 -norecurse ${sourcesDir}/constraints/static_impl_normal.xdc
@@ -96,10 +89,6 @@ set_property platform.vendor                        "xilinx"     [current_projec
 set_property platform.board_id                      "ZCU102"    [current_project]
 set_property platform.name                          "dynamic"    [current_project]
 set_property platform.version                       "0.1"        [current_project]
-#set_property platform.board_interface_type          "gen3x4"    [current_project]
-#set_property platform.flash_interface_type          "spix1"      [current_project]
-#set_property platform.flash_size                    "1024"       [current_project]
-#set_property platform.flash_offset_address          "0x04000000" [current_project]
 set_property platform.description                   "This platform targets the ZCU102 Development Board. This platform features one PL and one PS channels of DDR4 SDRAM which are instantiated as required by the user kernels for high fabric resource availability ." [current_project]
 set_property platform.platform_state                "impl"       [current_project]
 set_property platform.uses_pr                       true         [current_project]
@@ -112,13 +101,8 @@ set_property platform.pre_sys_link_tcl_hook         ${sourcesDir}/misc/dynamic_p
 set_property platform.post_sys_link_tcl_hook        ${sourcesDir}/misc/dynamic_postlink.tcl                                 [current_project]
 set_property platform.run.steps.opt_design.tcl.post ${sourcesDir}/misc/dynamic_postopt.tcl                                  [current_project]
 
-#set_property platform.ip_cache_dir                  /proj/ipeng1-nobkup/spyla/IP3_spyla_storage_ipeng/IP3/DEV/hw/experiments_dsa/Samsung_DSA/samsung_dsa_prj/ipcache/                              [current_project]
 set_property platform.ip_cache_dir                  ${launchDir}/${projName}/${projName}.cache/ip                           [current_project]
 set_property platform.synth_constraint_files        [list "${sourcesDir}/constraints/dynamic_impl.xdc,NORMAL,implementation"] [current_project]
-
-#set_property platform.pcie_id_vendor                "0x10ee"                                                                [current_project]
-#set_property platform.pcie_id_device                "0xa984"                                                                [current_project]
-#set_property platform.pcie_id_subsystem             "0x1351"                                                                [current_project]
 
 # Set any other project properties
 set_property STEPS.OPT_DESIGN.TCL.POST ${sourcesDir}/misc/dynamic_postopt.tcl [get_runs impl_1]
@@ -126,7 +110,6 @@ set_property STEPS.PHYS_OPT_DESIGN.IS_ENABLED true [get_runs impl_1]
 set_property STEPS.PHYS_OPT_DESIGN.ARGS.DIRECTIVE Explore [get_runs impl_1]
 set_property STEPS.ROUTE_DESIGN.ARGS.DIRECTIVE Explore [get_runs impl_1]
 
-#set_property STEPS.WRITE_BITSTREAM.TCL.PRE /proj/ipeng1-nobkup/ravinde/SAMSUNG_DSA/X4_PS_INSTANCE/2018.1/SDx_MEMSS_PS_DDR_64GB_RETIMED/pre_bitfile.tcl [get_runs impl_1]
 # Construct reconfigurable BD and partition
 create_bd_design pfm_dynamic
 source ${sourcesDir}/misc/dynamic_prelink.tcl
@@ -139,15 +122,7 @@ create_bd_design pfm_top
 source ${sourcesDir}/bd/static.tcl
 close_bd_design [get_bd_designs pfm_top]
 open_bd_design  [get_files pfm_top.bd]
-#assign_bd_address [get_bd_addr_segs {static_region/memc/ddrmem_1/C0_DDR4_MEMORY_MAP/C0_DDR4_ADDRESS_BLOCK }]
-#assign_bd_address [get_bd_addr_segs {dynamic_region/regslice_data_M_AXI/Mem }] -offset 0x0 -range 64G
-#########assign_bd_address [get_bd_addr_segs {dynamic_region/regslice_data_M_AXI/Reg }] -offset 0x0800000000 -range 32G
-#########assign_bd_address [get_bd_addr_segs {dynamic_region/regslice_data_M_AXI/Reg }] -offset 0x0000000000 -range 128G
-#assign_bd_address [get_bd_addr_segs {dynamic_region/regslice_data_M_AXI/Mem }] -offset 0x0 -range 128G 
-#assign_bd_address [get_bd_addr_segs {dynamic_region/regslice_data_M_AXI/Mem }] -offset 0x0 -range 128G //error
 
-
-#assign_bd_address [get_bd_addr_segs {static_region/zynq_ultra_ps_e_0/SAXIGP5/HP3_DDR_HIGH }]
 # Regenerate layout, validate, and save the BD
 regenerate_bd_layout
 validate_bd_design -force

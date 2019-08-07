@@ -53,13 +53,6 @@
 # Define FPM NAME
 set_property PFM_NAME "xilinx.com:xd:xilinx_zcu102_dynamic_5_1:5.1" [get_files pfm_dynamic.bd]
 
-# Define MEMSS IP
-#set_property PFM.MEMSS {DDR4_MEM00    {bank0} } [get_bd_cells /memory_subsystem]
-
-####set_property PFM.MEMSS {DDR4_MEM00    {bank0} \
-####                        M00_AXI_MEM00 {bank1} \
-####                       } [get_bd_cells /memory_subsystem]
-####
 # Define AXI_PORT for AXI_LITE control
 set parVal []
 for {set i 3} {$i < 64} {incr i} {
@@ -89,28 +82,3 @@ set_property PFM.CLOCK {clkwiz_kernel_clk_out1 {id "0" is_default "true" proc_sy
 set_property PFM.CLOCK {clkwiz_kernel2_clk_out1 {id "1" is_default "false" proc_sys_reset "reset_controllers/psreset_gate_pr_kernel2"} \
                        } [get_bd_ports /clkwiz_kernel2_clk_out1]
 
-
-#########
-#########
-########## Define FPM NAME
-#########set_property PFM_NAME "xilinx.com:xd:xilinx_vcu1525_dynamic_5_1:5.1" [get_files pfm_dynamic.bd]
-#########
-########## Define MEMSS IP
-#########set_property PFM.MEMSS {DDR4_MEM00    {bank0} \
-#########                        M00_AXI_MEM00 {bank1} \
-#########                        DDR4_MEM01    {bank2} \
-#########                        DDR4_MEM02    {bank3} \
-#########                       } [get_bd_cells /memory_subsystem]
-#########
-########## Define AXI_PORT for AXI_LITE control
-#########set parVal []
-#########for {set i 3} {$i < 64} {incr i} {
-#########  lappend parVal M[format %02d $i]_AXI {memport "M_AXI_GP"}
-#########}
-#########set_property PFM.AXI_PORT $parVal [get_bd_cells /interconnect_axilite_user_slr1]
-#########
-########## Define CLOCK
-#########set_property PFM.CLOCK {clkwiz_kernel_clk_out1 {id "0" is_default "true" proc_sys_reset "reset_controllers/psreset_gate_pr_kernel"} \
-#########                       } [get_bd_ports /clkwiz_kernel_clk_out1]
-#########set_property PFM.CLOCK {clkwiz_kernel2_clk_out1 {id "1" is_default "false" proc_sys_reset "reset_controllers/psreset_gate_pr_kernel2"} \
-#########                       } [get_bd_ports /clkwiz_kernel2_clk_out1]
