@@ -95,68 +95,6 @@ DeviceIntf::~DeviceIntf()
   }
 #endif
 
-  // ***************************************************************************
-  // Generic Helper functions
-  // ***************************************************************************
-
-#if 0
-  // Get host timestamp to write to monitors
-  // IMPORTANT NOTE: this *must* be compatible with the method of generating
-  // timestamps as defined in RTProfile::getTraceTime()
-  uint64_t DeviceIntf::getHostTraceTimeNsec()
-  {
-    return 0;
-#if 0
-    using namespace std::chrono;
-    typedef duration<uint64_t, std::ratio<1, 1000000000>> duration_ns;
-    duration_ns time_span =
-        duration_cast<duration_ns>(high_resolution_clock::now().time_since_epoch());
-    return time_span.count();
-#endif
-  }
-
-  // Convert decimal to binary string
-  // NOTE: length of string is always sizeof(uint32_t) * 8
-  std::string DeviceIntf::dec2bin(uint32_t n) {
-    char result[(sizeof(uint32_t) * 8) + 1];
-    unsigned index = sizeof(uint32_t) * 8;
-    result[index] = '\0';
-
-    do {
-      result[ --index ] = '0' + (n & 1);
-    } while (n >>= 1);
-
-    for (int i=index-1; i >= 0; --i)
-      result[i] = '0';
-
-    return std::string( result );
-  }
-
-  // Convert decimal to binary string of length bits
-  std::string DeviceIntf::dec2bin(uint32_t n, unsigned bits) {
-    char result[bits + 1];
-    unsigned index = bits;
-    result[index] = '\0';
-
-    do result[ --index ] = '0' + (n & 1);
-    while (n >>= 1);
-
-    for (int i=index-1; i >= 0; --i)
-      result[i] = '0';
-
-    return std::string( result );
-  }
-
-  uint32_t DeviceIntf::getMaxSamples(xclPerfMonType type)
-  {
-    if (type == XCL_PERF_MON_MEMORY) return XPAR_AXI_PERF_MON_0_TRACE_NUMBER_SAMPLES;
-    if (type == XCL_PERF_MON_HOST) return XPAR_AXI_PERF_MON_1_TRACE_NUMBER_SAMPLES;
-    // TODO: get number of samples from metadata
-    if (type == XCL_PERF_MON_ACCEL) return XPAR_AXI_PERF_MON_2_TRACE_NUMBER_SAMPLES;
-    return 0;
-  }
-#endif
-
 
   void DeviceIntf::setDeviceHandle(void* xrtDevice)
   {

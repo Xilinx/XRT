@@ -89,9 +89,6 @@ namespace xdp {
           xclTraceResultsVector& traceVector, TraceResultVector& resultVector);
 
     private:
-      // Convert decimal to binary string
-      std::string dec2bin(uint32_t n, unsigned bits);
-
       // Device/host timestamps: training and conversion
       void trainDeviceHostTimestamps(const std::string& deviceName, xclPerfMonType type);
       double convertDeviceToHostTimestamp(uint64_t deviceTimestamp, xclPerfMonType type,

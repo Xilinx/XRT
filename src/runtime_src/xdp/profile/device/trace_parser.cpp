@@ -445,7 +445,7 @@ namespace xdp {
         s = trace.TraceID / 2;
         flags = trace.EventFlags;
         XDP_LOG("[profile_device] slot %d event flags = %s @ timestamp %d\n",
-              s, dec2bin(flags, 7).c_str(), timestamp);
+              s, RTUtil::dec2bin(flags, 7).c_str(), timestamp);
         
         // Write start
         if (getBit(flags, XAPM_WRITE_FIRST)) {
@@ -624,21 +624,6 @@ namespace xdp {
     }
     std::fill_n(mAccelMonStartedEvents,XSAM_MAX_NUMBER_SLOTS,0);
     XDP_LOG("[profile_device] Done logging device trace samples\n");
-  }
-
-  // Convert decimal to binary string of length bits
-  std::string TraceParser::dec2bin(uint32_t n, unsigned bits) {
-	  char result[bits + 1];
-	  unsigned index = bits;
-	  result[index] = '\0';
-
-	  do result[ --index ] = '0' + (n & 1);
-	  while (n >>= 1);
-
-	  for (int i=index-1; i >= 0; --i)
-		result[i] = '0';
-
-	  return std::string( result );
   }
 
   // Complete training to convert device timestamp to host time domain

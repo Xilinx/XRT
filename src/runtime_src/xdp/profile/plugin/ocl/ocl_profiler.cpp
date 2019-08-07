@@ -189,9 +189,9 @@ namespace xdp {
       // configureDataflow
       if(dInt) {
         /* If CU corresponding to Accel Monitors has AP Control Chain, then enable Dataflow on the Accel Monitors */
-        unsigned numMon = dInt->getNumMonitors(XCL_PERF_MON_ACCEL);
+        unsigned int numMon = dInt->getNumMonitors(XCL_PERF_MON_ACCEL);
         auto ip_config = std::make_unique <bool []>(numMon);
-        for (unsigned i=0; i < numMon; i++) {
+        for (unsigned int i=0; i < numMon; i++) {
           char name[128];
           dInt->getMonitorName(XCL_PERF_MON_ACCEL, i, name, 128);
           std::string cuName(name); // Assumption : For Accel Monitor, monitor instance is named as the corresponding CU
@@ -436,9 +436,9 @@ namespace xdp {
       setTraceFooterString();
     }
     // These tables are only enabled if a compatible monitor is present
-    unsigned numStallSlots = 0;
-    unsigned numStreamSlots = 0;
-    unsigned numShellSlots = 0;
+    unsigned int numStallSlots = 0;
+    unsigned int numStreamSlots = 0;
+    unsigned int numShellSlots = 0;
     if (applicationProfilingOn() && ProfileMgr->isDeviceProfileOn()) {
       if (Plugin->getFlowMode() == RTUtil::DEVICE) {
         for (auto device : Platform->get_device_range()) {

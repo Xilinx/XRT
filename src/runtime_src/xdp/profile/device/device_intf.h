@@ -61,14 +61,6 @@ namespace xdp {
     // NOTE: this is used by write, read, & traceRead
     void setDeviceHandle(void* xrtDevice);
 
-#if 0
-    // Generic helpers
-    uint64_t getHostTraceTimeNsec();
-    uint32_t getMaxSamples(xclPerfMonType type);
-    std::string dec2bin(uint32_t n);
-    std::string dec2bin(uint32_t n, unsigned bits);
-#endif
-
     // Debug IP layout
     void     readDebugIPlayout();
     uint32_t getNumMonitors(xclPerfMonType type);
