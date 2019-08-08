@@ -186,8 +186,8 @@ slot_idx_in_mask(unsigned int slot_idx)
 /**
  * Command data used by scheduler
  *
- * @list: command object moves from pending to commmand queue list
- * @cu_list: command object is added to CU list when running (penguin only)
+ * @cq_list: command object in scheduler command queue
+ * @cu_list: command object is executing (penguin and dataflow mode only)
  *
  * @bo: underlying drm buffer object
  * @exec: execution device associated with this command
@@ -206,7 +206,7 @@ slot_idx_in_mask(unsigned int slot_idx)
 
 struct xocl_cmd {
 	struct list_head cq_list; // scheduler command queue
-	struct list_head rq_list; // exec core running queue
+	struct list_head cu_list; // exec core running queue
 
 	/* command packet */
 	struct drm_xocl_bo *bo;
@@ -233,9 +233,10 @@ struct xocl_cmd {
 		struct drm_xocl_bo *deps[8];
 	};
 
-	unsigned long uid;     // unique id for this command
-	unsigned int cu_idx;   // index of CU running this cmd (penguin mode)
-	unsigned int slot_idx; // index in exec core submit queue
+	bool          aborted;  // set to true if CU aborts the command 
+	unsigned long uid;      // unique id for this command
+	unsigned int  cu_idx;   // index of CU running this cmd (penguin mode)
+	unsigned int  slot_idx; // index in exec core submit queue
 };
 
 /*
@@ -548,6 +549,9 @@ cmd_get(struct xocl_scheduler *xs, struct exec_core *exec, struct client_ctx *cl
 		xcmd = kmalloc(sizeof(struct xocl_cmd), GFP_KERNEL);
 	if (!xcmd)
 		return ERR_PTR(-ENOMEM);
+	INIT_LIST_HEAD(&xcmd->cq_list);
+	INIT_LIST_HEAD(&xcmd->cu_list);
+	xcmd->aborted = false;
 	xcmd->uid = count++;
 	xcmd->exec = exec;
 	xcmd->cu_idx = no_index;
@@ -664,10 +668,31 @@ cmd_has_cu(struct xocl_cmd *xcmd, unsigned int cuidx)
 	return test_bit(cuidx, xcmd->cu_bitmap);
 }
 
-/**
- * struct xocl_cu: Represents a compute unit in penguin mode
+
+/*
+ * cmd_ctx_in() - Get the context/queue ID from the command
  *
- * @running_queue: a fifo representing commands running on this CU
+ * Applicable only for ERT_CU commands when the command targets a CU
+ * that has context / queue feature enabled, this is checked by caller.
+ */
+static uint32_t
+cmd_ctx_read(struct xocl_cmd *xcmd)
+{
+	u32 *regmap = cmd_regmap(xcmd);
+
+	// ctx-in 0x10, ctx-out 0x14
+	if (cmd_regmap_size(xcmd) < 6) {
+		userpf_err(xcmd->xdev,"cmd(%lu) regmap size (%d) is too small for context/queue parameters\n",
+			   xcmd->uid,cmd_regmap_size(xcmd));
+		return 0;
+	}
+	return regmap[4];
+}
+
+/**
+ * struct xocl_cu: Represents a compute unit in penguin or dataflow mode
+ *
+ * @done_queue: a fifo of cmds completed by CU, popped off by scheduler
  * @xdev: the xrt device with this CU
  * @idx: index of this CU
  * @dataflow: true when running in dataflow mode
@@ -677,9 +702,40 @@ cmd_has_cu(struct xocl_cmd *xcmd, unsigned int cuidx)
  * @ctrlreg: state of the CU (value of AXI-lite control register)
  * @done_cnt: number of commands that have completed (<=running_queue.size())
  * @run_cnt: number of commands that have bee started (<=running_queue.size())
+ *
+ * A compute unit is configured with a number of context it supports.  Each 
+ * context manages command execution separate from other contexts.  A command
+ * started in some context finished in order in that context, but a context
+ * executes out of order with respect to another context.
+ *
+ * By default a compute unit supports one implicit context.  This one context
+ * is used always in AP_CTRL_HS and by default in AP_CTRL_CHAIN unless the
+ * kernel with the compute unit explicitly advertise suppport for contexts.
+ *
+ * When a kernel supports explicit context (only AP_CTRL_CHAIN has this
+ * option), then the command register map at offset 0x10 contains the context
+ * number identifying the context on which the command should execute. When
+ * the CU raises AP_DONE, cu_poll() reads the CU register map at offset 0x14
+ * to obtain the context number that corresponds to the AP_DONE.  After
+ * reading the context register at 0x14, then cu_poll() acknowledges AP_DONE
+ * by writing AP_CONTINUE.
+ *
+ * When a command finishes, it is moved from the ctx list to the done_queue
+ * in the CU.  The scheduler picks command off the done list in the order
+ * in which they are inserted into the list.
+ *
+ * A context error occurs in either of following cases
+ *  1. Command explicit context (ctx_in) exceeds CU configured contexts.
+ *     If this error occurs, the cmd is aborted (never started on CU)
+ *  2. CU output context (ctx_out) exceeds CU configured contexts
+ *     If this error occurs, then all cmds are aborted, the CU is put in 
+ *     error state and will not accept new commands, likely xbutil reset
+ *     will be necessary.
+ *  3. When ctx queue has no cmd for corresponding ctx_out
+ *     Same error handling as for case 2.
  */
 struct xocl_cu {
-	struct list_head   running_queue;
+	struct list_head   done_queue;
 	struct xocl_dev    *xdev;
 	unsigned int       idx;
 	unsigned int       uid;
@@ -688,28 +744,62 @@ struct xocl_cu {
 	u32                addr;
 	void __iomem       *polladdr;
 	u32                ap_check;
+	bool               error;
 
 	u32                ctrlreg;
 	unsigned int       done_cnt;
 	unsigned int       run_cnt;
+
+	// context handling
+	u16                ctx_cfg;  // configured contexts
+	u16                ctx_size;    // allocated contexts
+	struct list_head   *ctx;
 };
 
 /*
+ * Allocate queues for requested number of contexts
+ * By default all CUs have one context / queue
  */
-void
+static int
+cu_alloc_ctx(struct xocl_cu *xcu, unsigned int nctx)
+{
+	unsigned int idx;
+	if (xcu->ctx_size < nctx) {
+		kfree(xcu->ctx);
+		xcu->ctx = kmalloc(sizeof(struct list_head) * nctx, GFP_KERNEL);
+		xcu->ctx_size = xcu->ctx ? nctx : 0;
+	}
+	for (idx=0; idx < xcu->ctx_size; ++idx)
+		INIT_LIST_HEAD(&xcu->ctx[idx]);
+
+	// A CU must have at least one context even if it doesn't
+	// support context execution
+	xcu->error = xcu->error || (xcu->ctx_size == 0);
+
+	return xcu->error;
+}
+
+/*
+ */
+static int
 cu_reset(struct xocl_cu *xcu, unsigned int idx, void __iomem *base, u32 addr, void *polladdr)
 {
+	xcu->error = false;
+	xcu->ctx_cfg = ((addr & 0xF8) >> 3); // bits [7-3]
 	xcu->idx = idx;
-	xcu->control = (addr & 0xFF);
+	xcu->control = (addr & 0x7); // bits [2-0]
 	xcu->base = base;
-	xcu->addr = addr & ~(0xFF); // clear encoded handshake
+	xcu->addr = addr & ~(0xFF);  // clear encoded handshake and context
 	xcu->polladdr = polladdr;
 	xcu->ap_check = (xcu->control == AP_CTRL_CHAIN) ? (AP_DONE) : (AP_DONE | AP_IDLE);
 	xcu->ctrlreg = 0;
 	xcu->done_cnt = 0;
 	xcu->run_cnt = 0;
-	userpf_info(xcu->xdev, "configured cu(%d) base@0x%x poll@0x%p control(%d)\n",
-		    xcu->idx, xcu->addr, xcu->polladdr, xcu->control);
+	cu_alloc_ctx(xcu, xcu->ctx_cfg);
+	userpf_info(xcu->xdev, "configured cu(%d) base@0x%x poll@0x%p control(%d) ctx(%d)\n",
+		    xcu->idx, xcu->addr, xcu->polladdr, xcu->control, xcu->ctx_cfg);
+
+	return xcu->error;
 }
 
 /**
@@ -720,9 +810,13 @@ cu_create(struct xocl_dev *xdev)
 	struct xocl_cu *xcu = kmalloc(sizeof(struct xocl_cu), GFP_KERNEL);
 	static unsigned int uid;
 
-	INIT_LIST_HEAD(&xcu->running_queue);
+	INIT_LIST_HEAD(&xcu->done_queue);
 	xcu->xdev = xdev;
 	xcu->uid = uid++;
+	xcu->ctx_size = 0;
+	xcu->ctx_cfg = 0;
+	xcu->ctx = NULL;
+	cu_alloc_ctx(xcu, 1);  // one ctx by default
 	SCHED_DEBUGF("%s(uid:%d)\n", __func__, xcu->uid);
 	return xcu;
 }
@@ -745,13 +839,142 @@ cu_valid(struct xocl_cu *xcu)
 	return xcu->control != AP_CTRL_NONE;
 }
 
+static void
+cu_abort_cmd(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
+{
+	SCHED_DEBUGF("-> %s\n", __func__);
+	userpf_err(xcu->xdev,"aborting cu(%d) cmd(%lu)\n", xcu->uid, xcmd->uid);
+	list_move_tail(&xcmd->cu_list, &xcu->done_queue);
+	xcmd->aborted = true;
+	++xcu->done_cnt;  // cmd was moved to done queue
+	SCHED_DEBUGF("<- %s cu(%d) done(%d) run(%d)\n", __func__, xcu->uid, xcu->done_cnt, xcu->run_cnt);
+}
+
+static void
+cu_abort_ctx(struct xocl_cu *xcu, uint32_t ctxid)
+{
+	struct list_head *pos, *next;
+	SCHED_DEBUGF("-> %s\n", __func__);
+	list_for_each_safe(pos, next, &xcu->ctx[ctxid]) {
+		struct xocl_cmd *xcmd = list_entry(pos, struct xocl_cmd, cu_list);
+		cu_abort_cmd(xcu, xcmd);
+		--xcu->run_cnt; // cmd was moved from ctx queue
+	}
+	SCHED_DEBUGF("<- %s cu(%d) done(%d) run(%d)\n", __func__, xcu->uid, xcu->done_cnt, xcu->run_cnt);
+}
+
+static void
+cu_abort(struct xocl_cu *xcu)
+{
+	uint32_t ctxid;
+	SCHED_DEBUGF("-> %s\n", __func__);
+	for (ctxid = 0; ctxid < xcu->ctx_size; ++ctxid)
+		cu_abort_ctx(xcu,ctxid);
+	xcu->error = true;
+	SCHED_DEBUGF("<- %s cu marked in error\n", __func__);
+}
+
+/**
+ * cu_ctx_out() - Read back context from CU
+ *
+ * @return: If the CU is not configured with explicit context, then 
+ *   return the default ctx id (0), otherwise read CU @ 0x14 offset
+ */
+static inline uint32_t
+cu_ctx_out(struct xocl_cu *xcu)
+{
+	uint32_t ctxid;
+
+	if (!xcu->ctx_cfg)
+		return 0;  // default ctx
+
+	ctxid = ioread32(xcu->base + xcu->addr + 0x14);
+	if (ctxid < xcu->ctx_cfg) {
+		SCHED_DEBUGF("%s cu(%d) ctx_out(%d)\n",__func__, xcu->uid, ctxid);
+		return ctxid; // explicit context
+	}
+
+	userpf_err(xcu->xdev,"invalid output ctx(%d) for cu(%d) with max ctx(%d)\n",
+		   xcu->uid,ctxid,xcu->ctx_cfg);
+	cu_abort(xcu);
+	return no_index;
+}
+
+static inline uint32_t
+cu_ctx_in(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
+{
+	uint32_t ctxid;
+
+	if (!xcu->ctx_cfg) 
+		return 0;  // default ctx
+
+	ctxid = cmd_ctx_read(xcmd);
+	if (ctxid < xcu->ctx_cfg) {
+		SCHED_DEBUGF("%s cu(%d) cmd(%lu) ctx_in(%d)\n",__func__, xcu->uid, xcmd->uid, ctxid);
+		return ctxid;  // explicit context
+	}
+
+	userpf_err(xcu->xdev,"invalid input ctx(%d) in cmd(%lu) for cu(%d) with max ctx(%d)\n",
+		   ctxid, xcmd->uid, xcu->uid, xcu->ctx_cfg);
+	return no_index;
+}
+
 /**
  */
-void
+static void
 cu_destroy(struct xocl_cu *xcu)
 {
 	SCHED_DEBUGF("%s(uid:%d)\n", __func__, xcu->uid);
 	kfree(xcu);
+}
+
+/**
+ * cu_pop_ctx() - Move command from ctx list to CU end of done list
+ */
+static int
+cu_pop_ctx(struct xocl_cu *xcu)
+{
+	struct xocl_cmd *xcmd;
+	uint32_t ctxid = cu_ctx_out(xcu);
+
+	if (ctxid == no_index)
+		return 1;
+	
+	xcmd = list_first_entry_or_null(&xcu->ctx[ctxid], struct xocl_cmd, cu_list);
+	if (!xcmd) {
+		userpf_err(xcu->xdev,"missing cmd in cu(%d) for ctx(%d)\n",
+			   xcu->uid,ctxid);
+		cu_abort(xcu);
+		return 1;
+		
+	}
+
+        SCHED_DEBUGF("%s xcu(%d) ctx(%d) pops xcmd(%lu)\n"
+		     , __func__, xcu->uid, ctxid, xcmd->uid);
+	list_move_tail(&xcmd->cu_list, &xcu->done_queue);
+	++xcu->done_cnt; // assert done_cnt <= |running_queue|
+	--xcu->run_cnt;
+	return 0;
+}
+
+/**
+ * cu_push_ctx() - Save command on running queue
+ */
+static int
+cu_push_ctx(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
+{
+	uint32_t ctxid;
+	if (xcu->error || (ctxid = cu_ctx_in(xcu, xcmd)) == no_index) {
+		// immididately abort cmd, by marking it done
+		cu_abort_cmd(xcu, xcmd);
+		return 1;
+	}
+		
+	SCHED_DEBUGF("%s cu(%d) ctx(%d) pushes cmd(%lu)\n",
+		     __func__, xcu->uid, ctxid, xcmd->uid);
+	list_add_tail(&xcmd->cu_list, &xcu->ctx[ctxid]);
+	++xcu->run_cnt;
+	return 0;
 }
 
 /**
@@ -804,8 +1027,7 @@ cu_poll(struct xocl_cu *xcu)
 	SCHED_DEBUGF("+ ctrlreg(0x%x)\n", xcu->ctrlreg);
 
 	if (xcu->run_cnt && (xcu->ctrlreg & xcu->ap_check)) {
-		++xcu->done_cnt; // assert done_cnt <= |running_queue|
-		--xcu->run_cnt;
+		cu_pop_ctx(xcu);
 		cu_continue(xcu);
 	}
 
@@ -849,7 +1071,7 @@ cu_first_done(struct xocl_cu *xcu)
 	SCHED_DEBUGF("<- %s done(%d) run(%d)\n", __func__, xcu->done_cnt, xcu->run_cnt);
 
 	return xcu->done_cnt
-		? list_first_entry(&xcu->running_queue, struct xocl_cmd, rq_list)
+		? list_first_entry(&xcu->done_queue, struct xocl_cmd, cu_list)
 		: NULL;
 }
 
@@ -864,8 +1086,8 @@ cu_pop_done(struct xocl_cu *xcu)
 	if (!xcu->done_cnt)
 		return;
 
-	xcmd = list_first_entry(&xcu->running_queue, struct xocl_cmd, rq_list);
-	list_del(&xcmd->rq_list);
+	xcmd = list_first_entry(&xcu->done_queue, struct xocl_cmd, cu_list);
+	list_del(&xcmd->cu_list);
 	--xcu->done_cnt;
 
 	SCHED_DEBUGF("%s(%d) xcmd(%lu) done(%d) run(%d)\n", __func__,
@@ -873,7 +1095,7 @@ cu_pop_done(struct xocl_cu *xcu)
 }
 
 /**
- * cu_configure_ooo() - Configure a CU with {addr,val} pairs
+ * cu_configure_ooo() - Configure a CU with {addr,val} pairs (out-of-order)
  */
 static void
 cu_configure_ooo(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
@@ -883,18 +1105,19 @@ cu_configure_ooo(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
 	unsigned int idx;
 
 	SCHED_DEBUGF("-> %s cu(%d) xcmd(%lu)\n", __func__, xcu->idx, xcmd->uid);
-	for (idx = 4; idx < size - 1; idx += 2) {
+	// past reserved 4 ctrl + 2 ctx 
+	for (idx = 6; idx < size - 1; idx += 2) {
 		u32 offset = *(regmap + idx);
 		u32 val = *(regmap + idx + 1);
 
 		SCHED_DEBUGF("+ base[0x%x] = 0x%x\n", offset, val);
-		iowrite32(val, xcu->base + offset);
+		iowrite32(val, xcu->base + xcu->addr + offset);
 	}
 	SCHED_DEBUGF("<- %s\n", __func__);
 }
 
 /**
- * cu_configure_ino() - Configure a CU with consecutive layout
+ * cu_configure_ino() - Configure a CU with consecutive layout (in-order)
  */
 static void
 cu_configure_ino(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
@@ -920,6 +1143,11 @@ cu_start(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
 	// assert(!(ctrlreg & AP_START), "cu not ready");
 	SCHED_DEBUGF("-> %s cu(%d) cmd(%lu)\n", __func__, xcu->idx, xcmd->uid);
 
+	// Push command on context.  If bad cmd ctx, the command is
+	// immediately marked done so that cmd can be processed next
+	if (cu_push_ctx(xcu, xcmd))
+		return true;
+
 	// past header, past cumasks
 	SCHED_DEBUG_PACKET(cmd_regmap(xcmd), cmd_regmap_size(xcmd));
 
@@ -943,10 +1171,6 @@ cu_start(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
 		SCHED_DEBUGF("+ @0x%p\n", xcu->polladdr);
 		iowrite32(AP_START, xcu->polladdr);
 	}
-
-	// add cmd to end of running queue
-	list_add_tail(&xcmd->rq_list, &xcu->running_queue);
-	++xcu->run_cnt;
 
 	SCHED_DEBUGF("<- %s cu(%d) started xcmd(%lu) done(%d) run(%d)\n",
 		     __func__, xcu->idx, xcmd->uid, xcu->done_cnt, xcu->run_cnt);
@@ -1139,24 +1363,22 @@ struct exec_core {
 	DECLARE_BITMAP(slot_status, MAX_SLOTS);
 	unsigned int		   ctrl_busy;
 
-	// Status register pending complete.  Written by ISR,
-	// cleared by scheduler
+	// Status register pending complete.  Written by ISR, cleared by
+	// scheduler
 	atomic_t		   sr0;
 	atomic_t		   sr1;
 	atomic_t		   sr2;
 	atomic_t		   sr3;
 
-	// Operations for dynamic indirection dependt on MB
-	// or kernel scheduler
+	// Operations for dynamic indirection dependt on MB or kernel
+	// scheduler
 	struct exec_ops		   *ops;
 
 	unsigned int		   uid;
 
-	/*
-	 * For each CU, ip_reference contains either number of shared users
-	 * when the MSB is not set, or the PID of the process that exclusively
-	 * reserved it when MSB is set.
-	 */
+	// For each CU, ip_reference contains either number of shared users
+	// when the MSB is not set, or the PID of the process that exclusively
+	// reserved it when MSB is set.
 	unsigned int		   ip_reference[MAX_CUS];
 };
 
@@ -1782,13 +2004,14 @@ exec_notify_host(struct exec_core *exec)
  * is notified that some command has completed.
  */
 static void
-exec_mark_cmd_complete(struct exec_core *exec, struct xocl_cmd *xcmd)
+exec_mark_cmd_state(struct exec_core *exec, struct xocl_cmd *xcmd, enum ert_cmd_state state)
 {
-	SCHED_DEBUGF("-> %s(%d,%lu)\n", __func__, exec->uid, xcmd->uid);
+	SCHED_DEBUGF("-> %s exec(%d) xcmd(%lu) state(%d)\n",
+		     __func__, exec->uid, xcmd->uid, state);
 	if (cmd_type(xcmd) == ERT_CTRL)
 		exec_finish_cmd(exec, xcmd);
 
-	cmd_set_state(xcmd, ERT_CMD_STATE_COMPLETED);
+	cmd_set_state(xcmd, state);
 
 	if (exec->polling_mode)
 		scheduler_decr_poll(exec->scheduler);
@@ -1809,6 +2032,20 @@ exec_mark_cmd_complete(struct exec_core *exec, struct xocl_cmd *xcmd)
 	cmd_trigger_chain(xcmd);
 
 	SCHED_DEBUGF("<- %s\n", __func__);
+}
+
+inline static void
+exec_mark_cmd_complete(struct exec_core *exec, struct xocl_cmd *xcmd)
+{
+	exec_mark_cmd_state(exec, xcmd,
+			    xcmd->aborted ? ERT_CMD_STATE_ABORT : ERT_CMD_STATE_COMPLETED);
+}
+
+inline static void
+exec_mark_cmd_abort(struct exec_core *exec, struct xocl_cmd *xcmd)
+{
+	exec_mark_cmd_state(exec, xcmd,
+			    ERT_CMD_STATE_ABORT);
 }
 
 /**
@@ -1950,7 +2187,7 @@ exec_penguin_query_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	else if (cmdtype == ERT_CU) {
 		struct xocl_cu *xcu = exec->cus[xcmd->cu_idx];
 
-		if (cu_first_done(xcu) == xcmd) {
+		 if (cu_first_done(xcu) == xcmd) {
 			cu_pop_done(xcu);
 			exec_mark_cmd_complete(exec, xcmd);
 		}
@@ -2421,7 +2658,7 @@ scheduler_queued_to_submitted(struct xocl_scheduler *xs, struct xocl_cmd *xcmd)
 	if (cmd_wait_count(xcmd))
 		return false;
 
-	SCHED_DEBUGF("-> %s(%lu) opcode(%d)\n", __func__, xcmd->uid, cmd_opcode(xcmd));
+	SCHED_DEBUGF("-> %s cmd(%lu) opcode(%d)\n", __func__, xcmd->uid, cmd_opcode(xcmd));
 
 	// configure prior to using the core
 	if (cmd_opcode(xcmd) == ERT_CONFIGURE && exec_cfg_cmd(exec, xcmd)) {
@@ -2470,7 +2707,7 @@ scheduler_running_to_complete(struct xocl_scheduler *xs, struct xocl_cmd *xcmd)
 static void
 scheduler_complete_to_free(struct xocl_scheduler *xs, struct xocl_cmd *xcmd)
 {
-	SCHED_DEBUGF("-> %s(%lu)\n", __func__, xcmd->uid);
+	SCHED_DEBUGF("-> %s cmd(%lu)\n", __func__, xcmd->uid);
 	cmd_free(xcmd);
 	SCHED_DEBUGF("<- %s\n", __func__);
 }
@@ -2479,7 +2716,7 @@ static void
 scheduler_error_to_free(struct xocl_scheduler *xs, struct xocl_cmd *xcmd)
 {
 	struct exec_core *exec = cmd_exec(xcmd);
-	SCHED_DEBUGF("-> %s(%lu)\n", __func__, xcmd->uid);
+	SCHED_DEBUGF("-> %s cmd(%lu)\n", __func__, xcmd->uid);
 
 	// book keeping before notification.  client could potentially exit
 	// immediately after notification otherwise leaving outstanding cmds
@@ -2492,7 +2729,7 @@ scheduler_error_to_free(struct xocl_scheduler *xs, struct xocl_cmd *xcmd)
 static void
 scheduler_abort_to_free(struct xocl_scheduler *xs, struct xocl_cmd *xcmd)
 {
-	SCHED_DEBUGF("-> %s(%lu)\n", __func__, xcmd->uid);
+	SCHED_DEBUGF("-> %s cmd(%lu)\n", __func__, xcmd->uid);
 	scheduler_error_to_free(xs, xcmd);
 	SCHED_DEBUGF("<- %s\n", __func__);
 }
@@ -2647,7 +2884,7 @@ add_xcmd(struct xocl_cmd *xcmd)
 	// Prevent stop and reset
 	mutex_lock(&exec->exec_lock);
 
-	SCHED_DEBUGF("-> %s(%lu) pid(%d)\n", __func__, xcmd->uid, pid_nr(task_tgid(current)));
+	SCHED_DEBUGF("-> %s cmd(%lu) pid(%d)\n", __func__, xcmd->uid, pid_nr(task_tgid(current)));
 	SCHED_DEBUGF("+ exec stopped(%d) configured(%d)\n", exec->stopped, exec->configured);
 
 	if (exec->stopped || (!exec->configured && cmd_opcode(xcmd) != ERT_CONFIGURE))
@@ -2699,7 +2936,7 @@ add_bo_cmd(struct exec_core *exec, struct client_ctx *client, struct drm_xocl_bo
 	if (!xcmd)
 		return 1;
 
-	SCHED_DEBUGF("-> %s(%lu)\n", __func__, xcmd->uid);
+	SCHED_DEBUGF("-> %s cmd(%lu)\n", __func__, xcmd->uid);
 
 	cmd_bo_init(xcmd, bo, numdeps, deps, (exec_is_penguin(exec) || exec_is_ert_poll(exec)));
 
@@ -2722,7 +2959,7 @@ add_ctrl_cmd(struct exec_core *exec, struct client_ctx *client, struct ert_packe
 	if (!xcmd)
 		return 1;
 
-	SCHED_DEBUGF("-> %s(%lu)\n", __func__, xcmd->uid);
+	SCHED_DEBUGF("-> %s cmd(%lu)\n", __func__, xcmd->uid);
 
 	cmd_packet_init(xcmd, packet);
 
@@ -3441,7 +3678,7 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 	u32 cumasks = 0;
 	int err = 0;
 
-	SCHED_DEBUGF("-> %s(%d)\n", __func__, ecmd->opcode);
+	SCHED_DEBUGF("-> %s opcode(%d)\n", __func__, ecmd->opcode);
 
 	// cus for start kernel commands only
 	if (ecmd->type != ERT_CU)
@@ -3474,7 +3711,7 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 
 out:
 	mutex_unlock(&client->xdev->dev_lock);
-	SCHED_DEBUGF("<- %s(%d) cmd and ctx CUs match\n", __func__, err);
+	SCHED_DEBUGF("<- %s err(%d) cmd and ctx CUs match\n", __func__, err);
 	return err;
 
 }

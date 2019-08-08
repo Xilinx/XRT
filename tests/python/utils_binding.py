@@ -167,11 +167,11 @@ def initXRT(opt):
         for i in range(layout.m_count):
             if (ip[i].m_type != 1):
                 continue
-            opt.cu_base_addr = ip[i].m_base_address
+            opt.cu_base_addr = ip[i].ip_u1.m_base_address
             print("CU[%d] %s @0x%x") % (i, ctypes.cast(ip[i].m_name, ctypes.c_char_p).value, opt.cu_base_addr)
 
         head = wrap_get_axlf_section(blob, AXLF_SECTION_KIND.MEM_TOPOLOGY)
-        topo = mem_topology.from_buffer(data, head.contents.m_sectionOffset);
+        topo = mem_topology.from_buffer(data, head.contents.m_sectionOffset)
         mem = (mem_data * topo.m_count).from_buffer(data, head.contents.m_sectionOffset + 8)
 
         for i in range(topo.m_count):
