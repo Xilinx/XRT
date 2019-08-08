@@ -578,6 +578,7 @@ namespace ZYNQ {
       results.Error = (currentSample >> 63) & 0x1;
       results.EventID = XCL_PERF_MON_HW_EVENT;
       results.EventFlags = ((currentSample >> 45) & 0xF) | ((currentSample >> 57) & 0x10) ;
+      results.isClockTrain = false;
       traceVector.mArray[i - clockWordIndex + 1] = results;
       
     }
