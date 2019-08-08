@@ -12,6 +12,7 @@ def main():
     xclbin = None
     globalbuffersize = 1024*1024*16    #16 MB
     typesize = 512
+    threshold = 40000
     expected = np.array([[300,240,450,250,250,250],       # 32 bits
                          [600,500,1000,500,500,500],      # 64 bits
                          [1100,900,1500,1100,1100,1100],  #128 bits
@@ -60,7 +61,10 @@ def main():
        sys.exit(1)
     else:
        dev = devices[int(index)]
- 
+
+    if "qdma" in str(dev):
+       threshold = 30000
+
     ctx = cl.Context(devices = [dev])
     if not ctx:
        print("ERROR: Failed to create context")
@@ -189,7 +193,7 @@ def main():
 
     print("TTTT: %d" %throughput[0])
     print("Maximum throughput: %d MB/s" %max(throughput))
-    if max(throughput) < 40000:
+    if max(throughput) < threshold:
         print("ERROR: Throughput is less than expected value of 40 GB/sec")
         sys.exit(1)
     
