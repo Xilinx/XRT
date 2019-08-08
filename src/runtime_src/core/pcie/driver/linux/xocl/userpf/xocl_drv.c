@@ -979,14 +979,12 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	 * NOTE: We'll expose ourselves through device node and sysfs from now
 	 * on. Make sure we can handle incoming requests through them by now.
 	 */
-
 	xdev->core.drm = xocl_drm_init(xdev);
 	if (!xdev->core.drm) {
 		ret = -EFAULT;
 		xocl_err(&pdev->dev, "failed to init drm mm");
 		goto failed;
 	}
-
 	ret = xocl_init_sysfs(&pdev->dev);
 	if (ret) {
 		xocl_err(&pdev->dev, "failed to init sysfs");

@@ -611,7 +611,7 @@ XclBin::removeSection(const Section* _pSection)
   }
 
   std::string errMsg=XUtil::format("ERROR: Section '%s' (%d) not found", _pSection->getSectionKindAsString().c_str(), _pSection->getSectionKind());
-  throw std::runtime_error(errMsg);
+  throw XUtil::XclBinUtilException(XET_MISSING_SECTION, errMsg);
 }
 
 Section *
@@ -641,7 +641,7 @@ XclBin::removeSection(const std::string & _sSectionToRemove)
   const Section * pSection = findSection(_eKind);
   if (pSection == nullptr) {
     std::string errMsg = XUtil::format("ERROR: Section '%s' is not part of the xclbin archive.", _sSectionToRemove.c_str());
-    throw std::runtime_error(errMsg);
+    throw XUtil::XclBinUtilException(XET_MISSING_SECTION, errMsg);
   }
 
   removeSection(pSection);
@@ -663,7 +663,7 @@ XclBin::replaceSection(ParameterSectionData &_PSD)
   Section *pSection = findSection(eKind);
   if (pSection == nullptr) {
     std::string errMsg = XUtil::format("ERROR: Section '%s' does not exist.", _PSD.getSectionName().c_str());
-    throw std::runtime_error(errMsg);
+    throw XUtil::XclBinUtilException(XET_MISSING_SECTION, errMsg);
   }
 
   std::string sSectionFileName = _PSD.getFile();
@@ -1151,7 +1151,7 @@ XclBin::dumpSection(ParameterSectionData &_PSD)
   const Section *pSection = findSection(eKind);
   if (pSection == nullptr) {
     std::string errMsg = XUtil::format("ERROR: Section '%s' does not exists.", _PSD.getSectionName().c_str());
-    throw std::runtime_error(errMsg);
+    throw XUtil::XclBinUtilException(XET_MISSING_SECTION, errMsg);
   }
 
   if (_PSD.getFormatType() == Section::FT_UNKNOWN) {

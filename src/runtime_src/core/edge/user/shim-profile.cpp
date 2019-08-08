@@ -89,13 +89,13 @@ namespace ZYNQ {
     switch (type)
     {
     case XCL_PERF_MON_MEMORY:
-      str = (slotnum < XSPM_MAX_NUMBER_SLOTS) ? mPerfMonSlotName[slotnum] : "";
+      str = (slotnum < XAIM_MAX_NUMBER_SLOTS) ? mPerfMonSlotName[slotnum] : "";
       break ;
     case XCL_PERF_MON_ACCEL:
-      str = (slotnum < XSAM_MAX_NUMBER_SLOTS) ? mAccelMonSlotName[slotnum] : "";
+      str = (slotnum < XAM_MAX_NUMBER_SLOTS) ? mAccelMonSlotName[slotnum] : "";
       break ;
     case XCL_PERF_MON_STR:
-      str = (slotnum < XSSPM_MAX_NUMBER_SLOTS) ? mStreamMonSlotName[slotnum] : "";
+      str = (slotnum < XASM_MAX_NUMBER_SLOTS) ? mStreamMonSlotName[slotnum] : "";
       break ;
     default:
       str = "" ;
@@ -119,9 +119,9 @@ namespace ZYNQ {
         if (!ip_config[i]) continue;
         uint64_t baseAddress = getPerfMonBaseAddress(type,i);
         uint32_t regValue = 0;
-        shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
-        regValue = regValue | XSAM_DATAFLOW_EN_MASK;
-        shim->xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_CONTROL_OFFSET, &regValue, 4);
+        shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XAM_CONTROL_OFFSET, &regValue, 4);
+        regValue = regValue | XAM_DATAFLOW_EN_MASK;
+        shim->xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XAM_CONTROL_OFFSET, &regValue, 4);
       }
     }
   }
@@ -142,20 +142,20 @@ namespace ZYNQ {
       baseAddress = getPerfMonBaseAddress(type,i);
 
       // 1. Reset AXI - MM monitor metric counters
-      size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSPM_CONTROL_OFFSET, &regValue, 4);
+      size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XAIM_CONTROL_OFFSET, &regValue, 4);
       
-      regValue = regValue | XSPM_CR_COUNTER_RESET_MASK;
-      size += shim->xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSPM_CONTROL_OFFSET, &regValue, 4);
+      regValue = regValue | XAIM_CR_COUNTER_RESET_MASK;
+      size += shim->xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XAIM_CONTROL_OFFSET, &regValue, 4);
       
-      regValue = regValue & ~(XSPM_CR_COUNTER_RESET_MASK);
-      size += shim->xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSPM_CONTROL_OFFSET, &regValue, 4);
+      regValue = regValue & ~(XAIM_CR_COUNTER_RESET_MASK);
+      size += shim->xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XAIM_CONTROL_OFFSET, &regValue, 4);
       
       // 2. Start AXI-MM monitor metric counters
-      regValue = regValue | XSPM_CR_COUNTER_ENABLE_MASK;
-      size += shim->xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSPM_CONTROL_OFFSET, &regValue, 4);
+      regValue = regValue | XAIM_CR_COUNTER_ENABLE_MASK;
+      size += shim->xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XAIM_CONTROL_OFFSET, &regValue, 4);
       
       // 3. Read from sample register to ensure total time is read again at end
-      size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSPM_SAMPLE_OFFSET, &regValue, 4);
+      size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XAIM_SAMPLE_OFFSET, &regValue, 4);
       
     }
     return size;
@@ -175,10 +175,10 @@ namespace ZYNQ {
       baseAddress = getPerfMonBaseAddress(type,i);
 
       // 1. Stop SPM metric counters
-      size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSPM_CONTROL_OFFSET, &regValue, 4);
+      size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XAIM_CONTROL_OFFSET, &regValue, 4);
 
-      regValue = regValue & ~(XSPM_CR_COUNTER_ENABLE_MASK);
-      size += shim->xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSPM_CONTROL_OFFSET, &regValue, 4);
+      regValue = regValue & ~(XAIM_CR_COUNTER_ENABLE_MASK);
+      size += shim->xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XAIM_CONTROL_OFFSET, &regValue, 4);
     }
     return size;
   }
@@ -192,14 +192,14 @@ namespace ZYNQ {
     
     size_t size = 0;
 
-    size += readSPMRegisters(counterResults) ;
-    size += readSAMRegisters(counterResults) ;
-    size += readSSPMRegisters(counterResults) ;
+    size += readAIMRegisters(counterResults) ;
+    size += readAMRegisters(counterResults) ;
+    size += readASMRegisters(counterResults) ;
 
     return size;
 }
 
-  size_t ZYNQShimProfiling::readSPMRegisters(xclCounterResults& counterResults)
+  size_t ZYNQShimProfiling::readAIMRegisters(xclCounterResults& counterResults)
   {
     size_t size = 0 ;
     uint64_t baseAddress;
@@ -212,7 +212,7 @@ namespace ZYNQ {
       // Read sample interval register
       // NOTE: this also latches the sampled metric counters
       size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
-			    baseAddress + XSPM_SAMPLE_OFFSET, 
+			    baseAddress + XAIM_SAMPLE_OFFSET, 
 			    &sampleInterval, 4);
       
       // Need to do this for every xilmon  
@@ -221,44 +221,44 @@ namespace ZYNQ {
       }
       
       size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
-			    baseAddress + XSPM_SAMPLE_WRITE_BYTES_OFFSET, 
+			    baseAddress + XAIM_SAMPLE_WRITE_BYTES_OFFSET, 
 			    &counterResults.WriteBytes[s], 4); 
       size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
-			    baseAddress + XSPM_SAMPLE_WRITE_TRANX_OFFSET, 
+			    baseAddress + XAIM_SAMPLE_WRITE_TRANX_OFFSET, 
 			    &counterResults.WriteTranx[s], 4);
       size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
-			    baseAddress + XSPM_SAMPLE_WRITE_LATENCY_OFFSET, 
+			    baseAddress + XAIM_SAMPLE_WRITE_LATENCY_OFFSET, 
 			    &counterResults.WriteLatency[s], 4);
       size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
-			    baseAddress + XSPM_SAMPLE_READ_BYTES_OFFSET, 
+			    baseAddress + XAIM_SAMPLE_READ_BYTES_OFFSET, 
 			    &counterResults.ReadBytes[s], 4);
       size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
-			    baseAddress + XSPM_SAMPLE_READ_TRANX_OFFSET, 
+			    baseAddress + XAIM_SAMPLE_READ_TRANX_OFFSET, 
 			    &counterResults.ReadTranx[s], 4);
       size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
-			    baseAddress + XSPM_SAMPLE_READ_LATENCY_OFFSET, 
+			    baseAddress + XAIM_SAMPLE_READ_LATENCY_OFFSET, 
 			    &counterResults.ReadLatency[s], 4);
 
       // Read upper 32 bits (if available)
-      if (mPerfmonProperties[s] & XSPM_64BIT_PROPERTY_MASK) {
+      if (mPerfmonProperties[s] & XAIM_64BIT_PROPERTY_MASK) {
 	uint64_t upper[6] = {};
 	size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-			      baseAddress + XSPM_SAMPLE_WRITE_BYTES_UPPER_OFFSET,
+			      baseAddress + XAIM_SAMPLE_WRITE_BYTES_UPPER_OFFSET,
 			      &upper[0], 4);
 	size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-			      baseAddress + XSPM_SAMPLE_WRITE_TRANX_UPPER_OFFSET,
+			      baseAddress + XAIM_SAMPLE_WRITE_TRANX_UPPER_OFFSET,
 			      &upper[1], 4);
 	size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-			      baseAddress + XSPM_SAMPLE_WRITE_LATENCY_UPPER_OFFSET,
+			      baseAddress + XAIM_SAMPLE_WRITE_LATENCY_UPPER_OFFSET,
 			      &upper[2], 4);
 	size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-			      baseAddress + XSPM_SAMPLE_READ_BYTES_UPPER_OFFSET,
+			      baseAddress + XAIM_SAMPLE_READ_BYTES_UPPER_OFFSET,
 			      &upper[3], 4);
 	size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-			      baseAddress + XSPM_SAMPLE_READ_TRANX_UPPER_OFFSET,
+			      baseAddress + XAIM_SAMPLE_READ_TRANX_UPPER_OFFSET,
 			      &upper[4], 4);
 	size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-			      baseAddress + XSPM_SAMPLE_READ_LATENCY_UPPER_OFFSET,
+			      baseAddress + XAIM_SAMPLE_READ_LATENCY_UPPER_OFFSET,
 			      &upper[5], 4);
 	
 	counterResults.WriteBytes[s]   += (upper[0] << 32);
@@ -273,7 +273,7 @@ namespace ZYNQ {
     return size ;
   }
 
-  size_t ZYNQShimProfiling::readSAMRegisters(xclCounterResults& counterResults)
+  size_t ZYNQShimProfiling::readAMRegisters(xclCounterResults& counterResults)
   {
     size_t size = 0 ;
     uint32_t numSlots = getProfilingNumberSlots(XCL_PERF_MON_ACCEL);
@@ -290,36 +290,36 @@ namespace ZYNQ {
       // Read sample interval register
       // NOTE: this also latches the sampled metric counters
       size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
-			    baseAddress + XSAM_SAMPLE_OFFSET, 
+			    baseAddress + XAM_SAMPLE_OFFSET, 
 			    &sampleInterval, 4);
 
       size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
-			    baseAddress + XSAM_ACCEL_EXECUTION_COUNT_OFFSET, 
+			    baseAddress + XAM_ACCEL_EXECUTION_COUNT_OFFSET, 
 			    &counterResults.CuExecCount[s], 4); 
       size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
-			    baseAddress + XSAM_ACCEL_EXECUTION_CYCLES_OFFSET, 
+			    baseAddress + XAM_ACCEL_EXECUTION_CYCLES_OFFSET, 
 			    &counterResults.CuExecCycles[s], 4);
       size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
-			    baseAddress + XSAM_ACCEL_MIN_EXECUTION_CYCLES_OFFSET, 
+			    baseAddress + XAM_ACCEL_MIN_EXECUTION_CYCLES_OFFSET, 
 			    &counterResults.CuMinExecCycles[s], 4);
       size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
-			    baseAddress + XSAM_ACCEL_MAX_EXECUTION_CYCLES_OFFSET, 
+			    baseAddress + XAM_ACCEL_MAX_EXECUTION_CYCLES_OFFSET, 
 			    &counterResults.CuMaxExecCycles[s], 4);
       
       // Read upper 32 bits (if available)
-      if (mAccelmonProperties[s] & XSAM_64BIT_PROPERTY_MASK) {
+      if (mAccelmonProperties[s] & XAM_64BIT_PROPERTY_MASK) {
 	uint64_t upper[4] = {};
 	size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-			      baseAddress + XSAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET,
+			      baseAddress + XAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET,
 			      &upper[0], 4);
 	size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-			      baseAddress + XSAM_ACCEL_EXECUTION_CYCLES_UPPER_OFFSET,
+			      baseAddress + XAM_ACCEL_EXECUTION_CYCLES_UPPER_OFFSET,
 			      &upper[1], 4);
 	size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-			      baseAddress + XSAM_ACCEL_MIN_EXECUTION_CYCLES_UPPER_OFFSET,
+			      baseAddress + XAM_ACCEL_MIN_EXECUTION_CYCLES_UPPER_OFFSET,
 			      &upper[2], 4);
 	size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-			      baseAddress + XSAM_ACCEL_MAX_EXECUTION_CYCLES_UPPER_OFFSET,
+			      baseAddress + XAM_ACCEL_MAX_EXECUTION_CYCLES_UPPER_OFFSET,
 			      &upper[3], 4);
 	
 	counterResults.CuExecCount[s]     += (upper[0] << 32);
@@ -329,15 +329,15 @@ namespace ZYNQ {
       }
       
       // Check Stall bit
-      if (mAccelmonProperties[s] & XSAM_STALL_PROPERTY_MASK) {
+      if (mAccelmonProperties[s] & XAM_STALL_PROPERTY_MASK) {
 	size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
-			      baseAddress + XSAM_ACCEL_STALL_INT_OFFSET, 
+			      baseAddress + XAM_ACCEL_STALL_INT_OFFSET, 
 			      &counterResults.CuStallIntCycles[s], 4); 
 	size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
-			      baseAddress + XSAM_ACCEL_STALL_STR_OFFSET, 
+			      baseAddress + XAM_ACCEL_STALL_STR_OFFSET, 
 			      &counterResults.CuStallStrCycles[s], 4); 
 	size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, 
-			      baseAddress + XSAM_ACCEL_STALL_EXT_OFFSET, 
+			      baseAddress + XAM_ACCEL_STALL_EXT_OFFSET, 
 			      &counterResults.CuStallExtCycles[s], 4);
       }
 
@@ -345,18 +345,18 @@ namespace ZYNQ {
       if (cmpMonVersions(mAccelmonMajorVersions[s], mAccelmonMinorVersions[s], 1, 1) < 0)
       {	
 	size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-                        baseAddress + XSAM_BUSY_CYCLES_OFFSET,
+                        baseAddress + XAM_BUSY_CYCLES_OFFSET,
                         &counterResults.CuBusyCycles[s], 4);
         size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-                        baseAddress + XSAM_MAX_PARALLEL_ITER_OFFSET,
+                        baseAddress + XAM_MAX_PARALLEL_ITER_OFFSET,
                         &counterResults.CuMaxParallelIter[s], 4);
-	if (mAccelmonProperties[s] & XSAM_64BIT_PROPERTY_MASK) {
+	if (mAccelmonProperties[s] & XAM_64BIT_PROPERTY_MASK) {
 	  uint64_t upper[2] = {0};
           size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-			  baseAddress + XSAM_BUSY_CYCLES_UPPER_OFFSET,
+			  baseAddress + XAM_BUSY_CYCLES_UPPER_OFFSET,
 			  &upper[0], 4);
           size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-			  baseAddress + XSAM_MAX_PARALLEL_ITER_UPPER_OFFSET,
+			  baseAddress + XAM_MAX_PARALLEL_ITER_UPPER_OFFSET,
 			  &upper[1], 4);
           counterResults.CuBusyCycles[s]      += (upper[0] << 32);
           counterResults.CuMaxParallelIter[s] += (upper[1] << 32);
@@ -372,7 +372,7 @@ namespace ZYNQ {
     return size ;
   }
 
-  size_t ZYNQShimProfiling::readSSPMRegisters(xclCounterResults& counterResults)
+  size_t ZYNQShimProfiling::readASMRegisters(xclCounterResults& counterResults)
   {
     size_t size = 0 ;
     uint32_t numSlots = getProfilingNumberSlots(XCL_PERF_MON_STR);
@@ -383,22 +383,22 @@ namespace ZYNQ {
       baseAddress = getPerfMonBaseAddress(XCL_PERF_MON_STR,s);
       // Sample Register
       size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-			    baseAddress + XSSPM_SAMPLE_OFFSET, 
+			    baseAddress + XASM_SAMPLE_OFFSET, 
 			    &sampleInterval, 4);
       size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-			    baseAddress + XSSPM_NUM_TRANX_OFFSET, 
+			    baseAddress + XASM_NUM_TRANX_OFFSET, 
 			    &counterResults.StrNumTranx[s], 8);
       size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-			    baseAddress + XSSPM_DATA_BYTES_OFFSET, 
+			    baseAddress + XASM_DATA_BYTES_OFFSET, 
 			    &counterResults.StrDataBytes[s], 8);
       size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-			    baseAddress + XSSPM_BUSY_CYCLES_OFFSET, 
+			    baseAddress + XASM_BUSY_CYCLES_OFFSET, 
 			    &counterResults.StrBusyCycles[s], 8);
       size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-			    baseAddress + XSSPM_STALL_CYCLES_OFFSET, 
+			    baseAddress + XASM_STALL_CYCLES_OFFSET, 
 			    &counterResults.StrStallCycles[s], 8);
       size += shim->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-			    baseAddress + XSSPM_STARVE_CYCLES_OFFSET, 
+			    baseAddress + XASM_STARVE_CYCLES_OFFSET, 
 			    &counterResults.StrStarveCycles[s], 8);
     }
     return size;
@@ -427,8 +427,8 @@ namespace ZYNQ {
     for (uint32_t i=0; i < numSlots; i++) {
       baseAddress = getPerfMonBaseAddress(XCL_PERF_MON_MEMORY,i);
       // Set SPM trace ctrl register bits
-      regValue = startTrigger & XSPM_TRACE_CTRL_MASK;
-      size += shim->xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSPM_TRACE_CTRL_OFFSET, &regValue, 4);
+      regValue = startTrigger & XAIM_TRACE_CTRL_MASK;
+      size += shim->xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XAIM_TRACE_CTRL_OFFSET, &regValue, 4);
     }
 
     numSlots = getProfilingNumberSlots(XCL_PERF_MON_ACCEL);
@@ -436,8 +436,8 @@ namespace ZYNQ {
       baseAddress = getPerfMonBaseAddress(XCL_PERF_MON_ACCEL,i);
       // Set Stall trace control register bits
       // Bit 1 : CU (Always ON)  Bit 2 : INT  Bit 3 : STR  Bit 4 : Ext 
-      regValue = ((startTrigger & XSAM_TRACE_STALL_SELECT_MASK) >> 1) | 0x1 ;
-      size += shim->xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XSAM_TRACE_CTRL_OFFSET, &regValue, 4);
+      regValue = ((startTrigger & XAM_TRACE_STALL_SELECT_MASK) >> 1) | 0x1 ;
+      size += shim->xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress + XAM_TRACE_CTRL_OFFSET, &regValue, 4);
     }
 
     xclPerfMonGetTraceCount(type);
@@ -688,7 +688,7 @@ namespace ZYNQ {
 						      mPerfmonProperties, 
 						      mPerfmonMajorVersions, 
 						      mPerfmonMinorVersions, 
-						      XSPM_MAX_NUMBER_SLOTS);
+						      XAIM_MAX_NUMBER_SLOTS);
 
     mAccelProfilingNumberSlots = getIPCountAddrNames(ACCEL_MONITOR, 
 						     mAccelMonBaseAddress, 
@@ -696,7 +696,7 @@ namespace ZYNQ {
 						     mAccelmonProperties, 
 						     mAccelmonMajorVersions, 
 						     mAccelmonMinorVersions, 
-						     XSAM_MAX_NUMBER_SLOTS);
+						     XAM_MAX_NUMBER_SLOTS);
 
     mStreamProfilingNumberSlots = getIPCountAddrNames(AXI_STREAM_MONITOR, 
 						      mStreamMonBaseAddress, 
@@ -704,7 +704,7 @@ namespace ZYNQ {
 						      mStreammonProperties, 
 						      mStreammonMajorVersions, 
 						      mStreammonMinorVersions, 
-						      XSSPM_MAX_NUMBER_SLOTS);
+						      XASM_MAX_NUMBER_SLOTS);
 
     mIsDeviceProfiling = (mMemoryProfilingNumberSlots > 0 || mAccelProfilingNumberSlots > 0) ;
   

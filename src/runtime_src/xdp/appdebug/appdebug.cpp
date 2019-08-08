@@ -179,9 +179,9 @@ template class app_debug_view<std::vector<event_debug_view_base*>>;
 template class app_debug_view<clmem_debug_view>;
 template class app_debug_view<event_debug_view_base>;
 template class app_debug_view<std::vector<kernel_debug_view*>>;
-template class app_debug_view<spm_debug_view>;
-template class app_debug_view<sspm_debug_view>;
-template class app_debug_view<sam_debug_view>;
+template class app_debug_view<aim_debug_view>;
+template class app_debug_view<asm_debug_view>;
+template class app_debug_view<am_debug_view>;
 template class app_debug_view<lapc_debug_view>;
 template class app_debug_view<std::vector<cl_command_queue>>;
 template class app_debug_view<std::vector<cl_mem>>;
@@ -1070,7 +1070,7 @@ std::pair<size_t, size_t> getCUNamePortName (std::vector<std::string>& aSlotName
         else {
             aCUNamePortNames.emplace_back("Unknown", "Unknown");
         }
-        //Replace the name of the host-spm to something simple
+        //Replace the name of the host-aim to something simple
         if (aCUNamePortNames.back().first.find("interconnect_host_aximm") != std::string::npos) {
             aCUNamePortNames.pop_back();
             aCUNamePortNames.emplace_back("XDMA", "N/A");
@@ -1084,39 +1084,39 @@ std::pair<size_t, size_t> getCUNamePortName (std::vector<std::string>& aSlotName
     return std::pair<size_t, size_t>(max1, max2);
 }
 
-struct spm_debug_view {
-  unsigned long long int WriteBytes[XSPM_MAX_NUMBER_SLOTS];
-  unsigned long long int WriteTranx[XSPM_MAX_NUMBER_SLOTS];
-  unsigned long long int ReadBytes[XSPM_MAX_NUMBER_SLOTS];
-  unsigned long long int ReadTranx[XSPM_MAX_NUMBER_SLOTS];
+struct aim_debug_view {
+  unsigned long long int WriteBytes[XAIM_MAX_NUMBER_SLOTS];
+  unsigned long long int WriteTranx[XAIM_MAX_NUMBER_SLOTS];
+  unsigned long long int ReadBytes[XAIM_MAX_NUMBER_SLOTS];
+  unsigned long long int ReadTranx[XAIM_MAX_NUMBER_SLOTS];
 
-  unsigned long long int OutStandCnts[XSPM_MAX_NUMBER_SLOTS];
-  unsigned long long int LastWriteAddr[XSPM_MAX_NUMBER_SLOTS];
-  unsigned long long int LastWriteData[XSPM_MAX_NUMBER_SLOTS];
-  unsigned long long int LastReadAddr[XSPM_MAX_NUMBER_SLOTS];
-  unsigned long long int LastReadData[XSPM_MAX_NUMBER_SLOTS];
+  unsigned long long int OutStandCnts[XAIM_MAX_NUMBER_SLOTS];
+  unsigned long long int LastWriteAddr[XAIM_MAX_NUMBER_SLOTS];
+  unsigned long long int LastWriteData[XAIM_MAX_NUMBER_SLOTS];
+  unsigned long long int LastReadAddr[XAIM_MAX_NUMBER_SLOTS];
+  unsigned long long int LastReadData[XAIM_MAX_NUMBER_SLOTS];
   unsigned int   NumSlots;
   std::string    DevUserName;
   std::string    SysfsPath;
-  spm_debug_view () {
-    std::fill (WriteBytes, WriteBytes+XSPM_MAX_NUMBER_SLOTS, 0);
-    std::fill (WriteTranx, WriteTranx+XSPM_MAX_NUMBER_SLOTS, 0);
-    std::fill (ReadBytes, ReadBytes+XSPM_MAX_NUMBER_SLOTS, 0);
-    std::fill (ReadTranx, ReadTranx+XSPM_MAX_NUMBER_SLOTS, 0);
-    std::fill (OutStandCnts, OutStandCnts+XSPM_MAX_NUMBER_SLOTS, 0);
-    std::fill (LastWriteAddr, LastWriteAddr+XSPM_MAX_NUMBER_SLOTS, 0);
-    std::fill (LastWriteData, LastWriteData+XSPM_MAX_NUMBER_SLOTS, 0);
-    std::fill (LastReadAddr, LastReadAddr+XSPM_MAX_NUMBER_SLOTS, 0);
-    std::fill (LastReadData, LastReadData+XSPM_MAX_NUMBER_SLOTS, 0);
+  aim_debug_view () {
+    std::fill (WriteBytes, WriteBytes+XAIM_MAX_NUMBER_SLOTS, 0);
+    std::fill (WriteTranx, WriteTranx+XAIM_MAX_NUMBER_SLOTS, 0);
+    std::fill (ReadBytes, ReadBytes+XAIM_MAX_NUMBER_SLOTS, 0);
+    std::fill (ReadTranx, ReadTranx+XAIM_MAX_NUMBER_SLOTS, 0);
+    std::fill (OutStandCnts, OutStandCnts+XAIM_MAX_NUMBER_SLOTS, 0);
+    std::fill (LastWriteAddr, LastWriteAddr+XAIM_MAX_NUMBER_SLOTS, 0);
+    std::fill (LastWriteData, LastWriteData+XAIM_MAX_NUMBER_SLOTS, 0);
+    std::fill (LastReadAddr, LastReadAddr+XAIM_MAX_NUMBER_SLOTS, 0);
+    std::fill (LastReadData, LastReadData+XAIM_MAX_NUMBER_SLOTS, 0);
     NumSlots = 0;
     DevUserName = "";
   }
-  ~spm_debug_view() {}
+  ~aim_debug_view() {}
   std::string getstring(int aVerbose = 0, int aJSONFormat = 0);
 };
 
 std::string
-spm_debug_view::getstring(int aVerbose, int aJSONFormat) {
+aim_debug_view::getstring(int aVerbose, int aJSONFormat) {
   std::stringstream sstr;
   std::vector<std::string> slotNames;
   std::vector< std::pair<std::string, std::string> > cuNameportNames;
@@ -1202,22 +1202,22 @@ isEmulationMode()
   return val;
 }
 
-app_debug_view<spm_debug_view>*
+app_debug_view<aim_debug_view>*
 clGetDebugCounters() {
   xclDebugCountersResults debugResults = {0};
 
   if (isEmulationMode()) {
-    auto adv = new app_debug_view<spm_debug_view>(nullptr, nullptr, true, "xstatus is not supported in emulation flow");
+    auto adv = new app_debug_view<aim_debug_view>(nullptr, nullptr, true, "xstatus is not supported in emulation flow");
     return adv;
   }
 
   if (!xdp::active()) {
-    auto adv = new app_debug_view<spm_debug_view>(nullptr, nullptr, true, "Runtime instance not yet created");
+    auto adv = new app_debug_view<aim_debug_view>(nullptr, nullptr, true, "Runtime instance not yet created");
     return adv;
   }
   auto rts = xdp::RTSingleton::Instance();
   if (!rts) {
-    auto adv = new app_debug_view<spm_debug_view>(nullptr, nullptr, true, "Error: Runtime instance not available");
+    auto adv = new app_debug_view<aim_debug_view>(nullptr, nullptr, true, "Error: Runtime instance not available");
     return adv;
   }
 
@@ -1231,56 +1231,56 @@ clGetDebugCounters() {
     if (device->is_active()) {
       //memset(&debugResults,0, sizeof(xclDebugCountersResults));
       //At this point we deal with only one deviceyy
-      device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_SPM, &debugResults);
+      device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_AIM, &debugResults);
       sysfs_open_path = device->get_xrt_device()->getSysfsPath(subdev, entry).get();
-      //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SPM, &debugResults);
+      //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_AIM, &debugResults);
     }
   }
 
-  auto spm_view = new spm_debug_view ();
-  std::copy(debugResults.WriteBytes, debugResults.WriteBytes+XSPM_MAX_NUMBER_SLOTS, spm_view->WriteBytes);
-  std::copy(debugResults.WriteTranx, debugResults.WriteTranx+XSPM_MAX_NUMBER_SLOTS, spm_view->WriteTranx);
-  std::copy(debugResults.ReadBytes, debugResults.ReadBytes+XSPM_MAX_NUMBER_SLOTS, spm_view->ReadBytes);
-  std::copy(debugResults.ReadTranx, debugResults.ReadTranx+XSPM_MAX_NUMBER_SLOTS, spm_view->ReadTranx);
-  std::copy(debugResults.OutStandCnts, debugResults.OutStandCnts+XSPM_MAX_NUMBER_SLOTS, spm_view->OutStandCnts);
-  std::copy(debugResults.LastWriteAddr, debugResults.LastWriteAddr+XSPM_MAX_NUMBER_SLOTS, spm_view->LastWriteAddr);
-  std::copy(debugResults.LastWriteData, debugResults.LastWriteData+XSPM_MAX_NUMBER_SLOTS, spm_view->LastWriteData);
-  std::copy(debugResults.LastReadAddr, debugResults.LastReadAddr+XSPM_MAX_NUMBER_SLOTS, spm_view->LastReadAddr);
-  std::copy(debugResults.LastReadData, debugResults.LastReadData+XSPM_MAX_NUMBER_SLOTS, spm_view->LastReadData);
-  spm_view->NumSlots = debugResults.NumSlots;
-  spm_view->DevUserName = debugResults.DevUserName;
-  spm_view->SysfsPath = sysfs_open_path;
+  auto aim_view = new aim_debug_view ();
+  std::copy(debugResults.WriteBytes, debugResults.WriteBytes+XAIM_MAX_NUMBER_SLOTS, aim_view->WriteBytes);
+  std::copy(debugResults.WriteTranx, debugResults.WriteTranx+XAIM_MAX_NUMBER_SLOTS, aim_view->WriteTranx);
+  std::copy(debugResults.ReadBytes, debugResults.ReadBytes+XAIM_MAX_NUMBER_SLOTS, aim_view->ReadBytes);
+  std::copy(debugResults.ReadTranx, debugResults.ReadTranx+XAIM_MAX_NUMBER_SLOTS, aim_view->ReadTranx);
+  std::copy(debugResults.OutStandCnts, debugResults.OutStandCnts+XAIM_MAX_NUMBER_SLOTS, aim_view->OutStandCnts);
+  std::copy(debugResults.LastWriteAddr, debugResults.LastWriteAddr+XAIM_MAX_NUMBER_SLOTS, aim_view->LastWriteAddr);
+  std::copy(debugResults.LastWriteData, debugResults.LastWriteData+XAIM_MAX_NUMBER_SLOTS, aim_view->LastWriteData);
+  std::copy(debugResults.LastReadAddr, debugResults.LastReadAddr+XAIM_MAX_NUMBER_SLOTS, aim_view->LastReadAddr);
+  std::copy(debugResults.LastReadData, debugResults.LastReadData+XAIM_MAX_NUMBER_SLOTS, aim_view->LastReadData);
+  aim_view->NumSlots = debugResults.NumSlots;
+  aim_view->DevUserName = debugResults.DevUserName;
+  aim_view->SysfsPath = sysfs_open_path;
 
-  auto adv = new app_debug_view <spm_debug_view> (spm_view, [spm_view](){delete spm_view;}, false, "");
+  auto adv = new app_debug_view <aim_debug_view> (aim_view, [aim_view](){delete aim_view;}, false, "");
 
   return adv;
 }
 
 // Streaming counter view
 
-struct sspm_debug_view {
-  unsigned long long int StrNumTranx    [XSSPM_MAX_NUMBER_SLOTS];
-  unsigned long long int StrDataBytes   [XSSPM_MAX_NUMBER_SLOTS];
-  unsigned long long int StrBusyCycles  [XSSPM_MAX_NUMBER_SLOTS];
-  unsigned long long int StrStallCycles [XSSPM_MAX_NUMBER_SLOTS];
-  unsigned long long int StrStarveCycles[XSSPM_MAX_NUMBER_SLOTS];
+struct asm_debug_view {
+  unsigned long long int StrNumTranx    [XASM_MAX_NUMBER_SLOTS];
+  unsigned long long int StrDataBytes   [XASM_MAX_NUMBER_SLOTS];
+  unsigned long long int StrBusyCycles  [XASM_MAX_NUMBER_SLOTS];
+  unsigned long long int StrStallCycles [XASM_MAX_NUMBER_SLOTS];
+  unsigned long long int StrStarveCycles[XASM_MAX_NUMBER_SLOTS];
 
   unsigned int NumSlots ;
   std::vector<std::pair<std::string, std::string> > ConnectionNames;
   std::string  DevUserName ;
   std::string    SysfsPath;
 
-  sspm_debug_view() 
+  asm_debug_view() 
   {
-    std::fill(StrNumTranx,     StrNumTranx     + XSSPM_MAX_NUMBER_SLOTS, 0);
-    std::fill(StrDataBytes,    StrDataBytes    + XSSPM_MAX_NUMBER_SLOTS, 0);
-    std::fill(StrBusyCycles,   StrBusyCycles   + XSSPM_MAX_NUMBER_SLOTS, 0);
-    std::fill(StrStallCycles,  StrStallCycles  + XSSPM_MAX_NUMBER_SLOTS, 0);
-    std::fill(StrStarveCycles, StrStarveCycles + XSSPM_MAX_NUMBER_SLOTS, 0);
+    std::fill(StrNumTranx,     StrNumTranx     + XASM_MAX_NUMBER_SLOTS, 0);
+    std::fill(StrDataBytes,    StrDataBytes    + XASM_MAX_NUMBER_SLOTS, 0);
+    std::fill(StrBusyCycles,   StrBusyCycles   + XASM_MAX_NUMBER_SLOTS, 0);
+    std::fill(StrStallCycles,  StrStallCycles  + XASM_MAX_NUMBER_SLOTS, 0);
+    std::fill(StrStarveCycles, StrStarveCycles + XASM_MAX_NUMBER_SLOTS, 0);
 
     NumSlots = 0;
   }
-  ~sspm_debug_view() { }
+  ~asm_debug_view() { }
   std::string getstring(int aVerbose = 0, int aJSONFormat = 0);
   
   std::string getJSONString(bool aVerbose) ;
@@ -1288,13 +1288,13 @@ struct sspm_debug_view {
 } ;
 
 std::string
-sspm_debug_view::getstring(int aVerbose, int aJSONFormat) {
+asm_debug_view::getstring(int aVerbose, int aJSONFormat) {
   if (aJSONFormat) return getJSONString(aVerbose != 0 ? true : false) ;  
   else return getXGDBString(aVerbose != 0 ? true : false) ;
 }
 
 std::string
-sspm_debug_view::getJSONString(bool aVerbose) {
+asm_debug_view::getJSONString(bool aVerbose) {
   std::stringstream sstr ;
 
   sstr << "[" ;
@@ -1320,7 +1320,7 @@ sspm_debug_view::getJSONString(bool aVerbose) {
 }
 
 std::string
-sspm_debug_view::getXGDBString(bool aVerbose) {
+asm_debug_view::getXGDBString(bool aVerbose) {
   std::stringstream sstr;
 
   // Calculate the width for formatting the columns
@@ -1361,21 +1361,21 @@ sspm_debug_view::getXGDBString(bool aVerbose) {
   return sstr.str() ;
 }
 
-app_debug_view<sspm_debug_view>*
+app_debug_view<asm_debug_view>*
 clGetDebugStreamCounters()
 {
   // Check for error conditions where we cannot read the streaming counters
   if (isEmulationMode()) {
-    auto adv = new app_debug_view<sspm_debug_view>(nullptr, nullptr, true, "xstatus is not supported in emulation flow");
+    auto adv = new app_debug_view<asm_debug_view>(nullptr, nullptr, true, "xstatus is not supported in emulation flow");
     return adv;
   }
   if (!xdp::active()) {
-    auto adv = new app_debug_view<sspm_debug_view>(nullptr, nullptr, true, "Runtime instance not yet created");
+    auto adv = new app_debug_view<asm_debug_view>(nullptr, nullptr, true, "Runtime instance not yet created");
     return adv;
   }
   auto rts = xdp::RTSingleton::Instance();
   if (!rts) {
-    auto adv = new app_debug_view<sspm_debug_view>(nullptr, nullptr, true, "Error: Runtime instance not available");
+    auto adv = new app_debug_view<asm_debug_view>(nullptr, nullptr, true, "Error: Runtime instance not available");
     return adv;
   }
 
@@ -1390,33 +1390,33 @@ clGetDebugStreamCounters()
     if (device->is_active())
     {
       // At this point, we are dealing with only one device
-      device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_SSPM, &streamingDebugCounters);
+      device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_ASM, &streamingDebugCounters);
       sysfs_open_path = device->get_xrt_device()->getSysfsPath(subdev, entry).get();
-      //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SSPM, &streamingDebugCounters);
+      //ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_ASM, &streamingDebugCounters);
     }
   }
 
-  auto sspm_view = new sspm_debug_view () ;
+  auto asm_view = new asm_debug_view () ;
   
   std::copy(streamingDebugCounters.StrNumTranx,
-	    streamingDebugCounters.StrNumTranx+XSSPM_MAX_NUMBER_SLOTS,
-	    sspm_view->StrNumTranx);
+	    streamingDebugCounters.StrNumTranx+XASM_MAX_NUMBER_SLOTS,
+	    asm_view->StrNumTranx);
   std::copy(streamingDebugCounters.StrDataBytes,
-	    streamingDebugCounters.StrDataBytes+XSSPM_MAX_NUMBER_SLOTS,
-	    sspm_view->StrDataBytes);
+	    streamingDebugCounters.StrDataBytes+XASM_MAX_NUMBER_SLOTS,
+	    asm_view->StrDataBytes);
   std::copy(streamingDebugCounters.StrBusyCycles,
-	    streamingDebugCounters.StrBusyCycles+XSSPM_MAX_NUMBER_SLOTS,
-	    sspm_view->StrBusyCycles);
+	    streamingDebugCounters.StrBusyCycles+XASM_MAX_NUMBER_SLOTS,
+	    asm_view->StrBusyCycles);
   std::copy(streamingDebugCounters.StrStallCycles,
-	    streamingDebugCounters.StrStallCycles+XSSPM_MAX_NUMBER_SLOTS,
-	    sspm_view->StrStallCycles);
+	    streamingDebugCounters.StrStallCycles+XASM_MAX_NUMBER_SLOTS,
+	    asm_view->StrStallCycles);
   std::copy(streamingDebugCounters.StrStarveCycles,
-	    streamingDebugCounters.StrStarveCycles+XSSPM_MAX_NUMBER_SLOTS,
-	    sspm_view->StrStarveCycles);
+	    streamingDebugCounters.StrStarveCycles+XASM_MAX_NUMBER_SLOTS,
+	    asm_view->StrStarveCycles);
   
-  sspm_view->NumSlots    = streamingDebugCounters.NumSlots ;
-  sspm_view->DevUserName = streamingDebugCounters.DevUserName ;
-  sspm_view->SysfsPath = sysfs_open_path;
+  asm_view->NumSlots    = streamingDebugCounters.NumSlots ;
+  asm_view->DevUserName = streamingDebugCounters.DevUserName ;
+  asm_view->SysfsPath = sysfs_open_path;
 
   std::vector<std::string> slotNames;
   getIPCountAddrNames(sysfs_open_path, AXI_STREAM_MONITOR, nullptr, &slotNames);
@@ -1426,48 +1426,48 @@ clGetDebugStreamCounters()
     size_t found ;
     found = s.find(IP_LAYOUT_SEP, 0) ;
     if (found != std::string::npos)
-      sspm_view->ConnectionNames.push_back(std::make_pair(s.substr(0, found), s.substr(found+1)));
+      asm_view->ConnectionNames.push_back(std::make_pair(s.substr(0, found), s.substr(found+1)));
     else
-      sspm_view->ConnectionNames.push_back(std::make_pair("Unknown", "Unknown"));
+      asm_view->ConnectionNames.push_back(std::make_pair("Unknown", "Unknown"));
   }
 
-  auto adv = new app_debug_view<sspm_debug_view>(sspm_view, [sspm_view]() { delete sspm_view;}, false, "") ;
+  auto adv = new app_debug_view<asm_debug_view>(asm_view, [asm_view]() { delete asm_view;}, false, "") ;
   return adv ;
 }
 
 // Accel monitor
-struct sam_debug_view {
-  unsigned long long CuExecCount        [XSAM_MAX_NUMBER_SLOTS];
-  unsigned long long CuExecCycles       [XSAM_MAX_NUMBER_SLOTS];
-  unsigned long long CuBusyCycles       [XSAM_MAX_NUMBER_SLOTS];
-  unsigned long long CuMaxParallelIter  [XSAM_MAX_NUMBER_SLOTS];
-  unsigned long long CuStallExtCycles   [XSAM_MAX_NUMBER_SLOTS];
-  unsigned long long CuStallIntCycles   [XSAM_MAX_NUMBER_SLOTS];
-  unsigned long long CuStallStrCycles   [XSAM_MAX_NUMBER_SLOTS];
-  unsigned long long CuMinExecCycles    [XSAM_MAX_NUMBER_SLOTS];
-  unsigned long long CuMaxExecCycles    [XSAM_MAX_NUMBER_SLOTS];
-  unsigned long long CuStartCount       [XSAM_MAX_NUMBER_SLOTS];
+struct am_debug_view {
+  unsigned long long CuExecCount        [XAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuExecCycles       [XAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuBusyCycles       [XAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuMaxParallelIter  [XAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuStallExtCycles   [XAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuStallIntCycles   [XAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuStallStrCycles   [XAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuMinExecCycles    [XAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuMaxExecCycles    [XAM_MAX_NUMBER_SLOTS];
+  unsigned long long CuStartCount       [XAM_MAX_NUMBER_SLOTS];
 
   unsigned int NumSlots ;
   std::string DevUserName ;
   std::string SysfsPath;
 
-  sam_debug_view() 
+  am_debug_view() 
   {
-    std::fill(CuExecCount, CuExecCount + XSAM_MAX_NUMBER_SLOTS, 0);
-    std::fill(CuExecCycles, CuExecCycles + XSAM_MAX_NUMBER_SLOTS, 0);
-    std::fill(CuBusyCycles, CuBusyCycles + XSAM_MAX_NUMBER_SLOTS, 0);
-    std::fill(CuMaxParallelIter, CuMaxParallelIter + XSAM_MAX_NUMBER_SLOTS, 0);
-    std::fill(CuStallExtCycles, CuStallExtCycles + XSAM_MAX_NUMBER_SLOTS, 0);
-    std::fill(CuStallIntCycles, CuStallIntCycles + XSAM_MAX_NUMBER_SLOTS, 0);
-    std::fill(CuStallStrCycles, CuStallStrCycles + XSAM_MAX_NUMBER_SLOTS, 0);
-    std::fill(CuMinExecCycles, CuMinExecCycles + XSAM_MAX_NUMBER_SLOTS, 0);
-    std::fill(CuMaxExecCycles, CuMaxExecCycles + XSAM_MAX_NUMBER_SLOTS, 0);
-    std::fill(CuStartCount, CuStartCount + XSAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuExecCount, CuExecCount + XAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuExecCycles, CuExecCycles + XAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuBusyCycles, CuBusyCycles + XAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuMaxParallelIter, CuMaxParallelIter + XAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuStallExtCycles, CuStallExtCycles + XAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuStallIntCycles, CuStallIntCycles + XAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuStallStrCycles, CuStallStrCycles + XAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuMinExecCycles, CuMinExecCycles + XAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuMaxExecCycles, CuMaxExecCycles + XAM_MAX_NUMBER_SLOTS, 0);
+    std::fill(CuStartCount, CuStartCount + XAM_MAX_NUMBER_SLOTS, 0);
 
     NumSlots = 0;
   }
-  ~sam_debug_view() { }
+  ~am_debug_view() { }
   std::string getstring(int aVerbose = 0, int aJSONFormat = 0);
   
   std::string getJSONString(bool aVerbose) ;
@@ -1475,13 +1475,13 @@ struct sam_debug_view {
 } ;
 
 std::string
-sam_debug_view::getstring(int aVerbose, int aJSONFormat) {
+am_debug_view::getstring(int aVerbose, int aJSONFormat) {
   if (aJSONFormat) return getJSONString(aVerbose != 0 ? true : false) ;  
   else return getXGDBString(aVerbose != 0 ? true : false) ;
 }
 
 std::string
-sam_debug_view::getJSONString(bool aVerbose) {
+am_debug_view::getJSONString(bool aVerbose) {
   std::stringstream sstr ;
   std::vector<std::string> slotNames;
   getIPCountAddrNames(SysfsPath, ACCEL_MONITOR, nullptr, &slotNames);
@@ -1521,7 +1521,7 @@ sam_debug_view::getJSONString(bool aVerbose) {
 }
 
 std::string
-sam_debug_view::getXGDBString(bool aVerbose) {
+am_debug_view::getXGDBString(bool aVerbose) {
   std::stringstream sstr;
   std::vector<std::string> slotNames;
   getIPCountAddrNames(SysfsPath, ACCEL_MONITOR, nullptr, &slotNames);
@@ -1566,26 +1566,26 @@ sam_debug_view::getXGDBString(bool aVerbose) {
   return sstr.str() ;
 }
 
-app_debug_view<sam_debug_view>*
+app_debug_view<am_debug_view>*
 clGetDebugAccelMonitorCounters()
 {
   // Check for error conditions where we cannot read the streaming counters
   if (isEmulationMode()) {
-    auto adv = new app_debug_view<sam_debug_view>(nullptr, nullptr, true, "xstatus is not supported in emulation flow");
+    auto adv = new app_debug_view<am_debug_view>(nullptr, nullptr, true, "xstatus is not supported in emulation flow");
     return adv;
   }
   if (!xdp::active()) {
-    auto adv = new app_debug_view<sam_debug_view>(nullptr, nullptr, true, "Runtime instance not yet created");
+    auto adv = new app_debug_view<am_debug_view>(nullptr, nullptr, true, "Runtime instance not yet created");
     return adv;
   }
   auto rts = xdp::RTSingleton::Instance();
   if (!rts) {
-    auto adv = new app_debug_view<sam_debug_view>(nullptr, nullptr, true, "Error: Runtime instance not available");
+    auto adv = new app_debug_view<am_debug_view>(nullptr, nullptr, true, "Error: Runtime instance not available");
     return adv;
   }
 
-  xclAccelMonitorCounterResults samCounters;  
-  memset(&samCounters, 0, sizeof(xclAccelMonitorCounterResults));
+  xclAccelMonitorCounterResults amCounters;  
+  memset(&amCounters, 0, sizeof(xclAccelMonitorCounterResults));
 
   std::string subdev = "icap";
   std::string entry = "debug_ip_layout";
@@ -1596,50 +1596,50 @@ clGetDebugAccelMonitorCounters()
     if (device->is_active())
     {
       // At this point, we are dealing with only one device
-      device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_SAM, &samCounters);
+      device->get_xrt_device()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_AM, &amCounters);
       sysfs_open_path = device->get_xrt_device()->getSysfsPath(subdev, entry).get();
-      // ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_SAM, &samCounters);
+      // ret |= xdp::profile::device::debugReadIPStatus(device, XCL_DEBUG_READ_TYPE_AM, &amCounters);
     }
   }
 
-  auto sam_view = new sam_debug_view() ;
-  sam_view->SysfsPath = sysfs_open_path;
+  auto am_view = new am_debug_view() ;
+  am_view->SysfsPath = sysfs_open_path;
   
-  std::copy(samCounters.CuExecCount,
-	    samCounters.CuExecCount+XSAM_MAX_NUMBER_SLOTS,
-	    sam_view->CuExecCount);
-  std::copy(samCounters.CuExecCycles,
-	    samCounters.CuExecCycles+XSAM_MAX_NUMBER_SLOTS,
-	    sam_view->CuExecCycles);
-  std::copy(samCounters.CuBusyCycles,
-	    samCounters.CuBusyCycles+XSAM_MAX_NUMBER_SLOTS,
-	    sam_view->CuBusyCycles);
-  std::copy(samCounters.CuMaxParallelIter,
-	    samCounters.CuMaxParallelIter+XSAM_MAX_NUMBER_SLOTS,
-	    sam_view->CuMaxParallelIter);
-  std::copy(samCounters.CuStallExtCycles,
-	    samCounters.CuStallExtCycles+XSAM_MAX_NUMBER_SLOTS,
-	    sam_view->CuStallExtCycles);
-  std::copy(samCounters.CuStallIntCycles,
-	    samCounters.CuStallIntCycles+XSAM_MAX_NUMBER_SLOTS,
-	    sam_view->CuStallIntCycles);
-  std::copy(samCounters.CuStallStrCycles,
-	    samCounters.CuStallStrCycles+XSAM_MAX_NUMBER_SLOTS,
-	    sam_view->CuStallStrCycles);
-  std::copy(samCounters.CuMinExecCycles,
-	    samCounters.CuMinExecCycles+XSAM_MAX_NUMBER_SLOTS,
-	    sam_view->CuMinExecCycles);
-  std::copy(samCounters.CuMaxExecCycles,
-	    samCounters.CuMaxExecCycles+XSAM_MAX_NUMBER_SLOTS,
-	    sam_view->CuMaxExecCycles);
-  std::copy(samCounters.CuStartCount,
-	    samCounters.CuStartCount+XSAM_MAX_NUMBER_SLOTS,
-	    sam_view->CuStartCount);
+  std::copy(amCounters.CuExecCount,
+	    amCounters.CuExecCount+XAM_MAX_NUMBER_SLOTS,
+	    am_view->CuExecCount);
+  std::copy(amCounters.CuExecCycles,
+	    amCounters.CuExecCycles+XAM_MAX_NUMBER_SLOTS,
+	    am_view->CuExecCycles);
+  std::copy(amCounters.CuBusyCycles,
+	    amCounters.CuBusyCycles+XAM_MAX_NUMBER_SLOTS,
+	    am_view->CuBusyCycles);
+  std::copy(amCounters.CuMaxParallelIter,
+	    amCounters.CuMaxParallelIter+XAM_MAX_NUMBER_SLOTS,
+	    am_view->CuMaxParallelIter);
+  std::copy(amCounters.CuStallExtCycles,
+	    amCounters.CuStallExtCycles+XAM_MAX_NUMBER_SLOTS,
+	    am_view->CuStallExtCycles);
+  std::copy(amCounters.CuStallIntCycles,
+	    amCounters.CuStallIntCycles+XAM_MAX_NUMBER_SLOTS,
+	    am_view->CuStallIntCycles);
+  std::copy(amCounters.CuStallStrCycles,
+	    amCounters.CuStallStrCycles+XAM_MAX_NUMBER_SLOTS,
+	    am_view->CuStallStrCycles);
+  std::copy(amCounters.CuMinExecCycles,
+	    amCounters.CuMinExecCycles+XAM_MAX_NUMBER_SLOTS,
+	    am_view->CuMinExecCycles);
+  std::copy(amCounters.CuMaxExecCycles,
+	    amCounters.CuMaxExecCycles+XAM_MAX_NUMBER_SLOTS,
+	    am_view->CuMaxExecCycles);
+  std::copy(amCounters.CuStartCount,
+	    amCounters.CuStartCount+XAM_MAX_NUMBER_SLOTS,
+	    am_view->CuStartCount);
   
-  sam_view->NumSlots    = samCounters.NumSlots ;
-  sam_view->DevUserName = samCounters.DevUserName ;
+  am_view->NumSlots    = amCounters.NumSlots ;
+  am_view->DevUserName = amCounters.DevUserName ;
 
-  auto adv = new app_debug_view<sam_debug_view>(sam_view, [sam_view]() { delete sam_view;}, false, "") ;
+  auto adv = new app_debug_view<am_debug_view>(am_view, [am_view]() { delete am_view;}, false, "") ;
 
   return adv ;
 }

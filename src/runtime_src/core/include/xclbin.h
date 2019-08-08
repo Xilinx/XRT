@@ -316,11 +316,12 @@ extern "C" {
 
     struct debug_ip_data {
         uint8_t m_type; // type of enum DEBUG_IP_TYPE
-        uint8_t m_index;
+        uint8_t m_index_lowbyte;
         uint8_t m_properties;
         uint8_t m_major;
         uint8_t m_minor;
-        uint8_t m_reserved[3];
+        uint8_t m_index_highbyte;
+        uint8_t m_reserved[2];
         uint64_t m_base_address;
         char    m_name[128];
     };
