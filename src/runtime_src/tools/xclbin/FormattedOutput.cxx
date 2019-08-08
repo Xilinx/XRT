@@ -17,6 +17,7 @@
 #include "FormattedOutput.h"
 #include "Section.h"
 #include "SectionBitstream.h"
+#include "XclBinSignature.h"
 #include  <set>
 
 #include <iostream>
@@ -247,10 +248,25 @@ reportXclbinInfo( std::ostream & _ostream,
                   boost::property_tree::ptree &_ptMetaData,
                   const std::vector<Section*> _sections)
 {
+  std::string sSignatureState;
+
+  // Look for the PKCS signature first
+  if (!_sInputFile.empty()) {
+    try {
+      XclBinPKCSImageStats xclBinPKCSStats = {0};
+      getXclBinPKCSStats(_sInputFile, xclBinPKCSStats);
+  
+      if (xclBinPKCSStats.is_PKCS_signed) {
+        sSignatureState = XUtil::format("Present - Signed PKCS - Offset: 0x%lx, Size: 0x%lx", xclBinPKCSStats.signature_offset, xclBinPKCSStats.signature_size);
+      }
+    } catch (...) {
+      // Do nothing
+    }
+  }
+
   // Calculate if the signature is present or not because this is a slow
-  std::string sSignatureState = "Not Present";
   {
-    if (!_sInputFile.empty()) {
+    if (!_sInputFile.empty() && sSignatureState.empty()) {
       std::fstream inputStream;
       inputStream.open(_sInputFile, std::ifstream::in | std::ifstream::binary);
       if (inputStream.is_open()) {

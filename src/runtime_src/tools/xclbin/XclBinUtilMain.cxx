@@ -102,6 +102,9 @@ int main_(int argc, char** argv) {
   bool bRemoveSignature = false;
   std::string sSignature;
   bool bGetSignature = false;
+  bool bSignatureDebug = false;
+  std::string sSignatureOutputFile;
+  std::string sDigestAlgorithm = "sha512";
 
   std::string sPrivateKey;
   std::string sCertificate;
@@ -130,6 +133,7 @@ int main_(int argc, char** argv) {
 
       ("private-key", boost::program_options::value<std::string>(&sPrivateKey), "Private key used in signing the xclbin image.")
       ("certificate", boost::program_options::value<std::string>(&sCertificate), "Certificate used in signing and validating the xclbin image.")
+      ("digest-algorithm", boost::program_options::value<std::string>(&sDigestAlgorithm), "Digest algorithm. Default: sha512")
       ("validate-signature", boost::program_options::bool_switch(&bValidateSignature), "Validates the signature for the given xclbin archive.")
 
       ("verbose,v", boost::program_options::bool_switch(&bVerbose), "Display verbose/debug information.")
@@ -158,10 +162,13 @@ int main_(int argc, char** argv) {
   // hidden options
   std::vector<std::string> badOptions;
   boost::program_options::options_description hidden("Hidden options");
+
   hidden.add_options()
     ("trace,t", boost::program_options::bool_switch(&bTrace), "Trace")
     ("skip-uuid-insertion", boost::program_options::bool_switch(&bSkipUUIDInsertion), "Do not update the xclbin's UUID")
     ("append-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAppend)->multitoken(), "Section to append to.")
+    ("signature-debug", boost::program_options::bool_switch(&bSignatureDebug), "Dump section debug data.")
+    ("dump-signature", boost::program_options::value<std::string>(&sSignatureOutputFile), "Dumps a sign xclbin image's signature.")
     ("BAD-DATA", boost::program_options::value<std::vector<std::string> >(&badOptions)->multitoken(), "Dummy Data." )
   ;
 
@@ -269,6 +276,11 @@ int main_(int argc, char** argv) {
     throw std::runtime_error("ERROR: Private key specified, but no certificate defined.");
   }
 
+  // Report option conflicts
+  if ((!sSignature.empty() && !sPrivateKey.empty())) {
+    throw std::runtime_error("ERROR: The options '-add-signature' (a private signature) and '-private-key' (a PKCS signature) are mutually exclusive.");
+  }
+
   // Actions requiring --input
   
   // Check to see if there any file conflicts
@@ -323,9 +335,18 @@ int main_(int argc, char** argv) {
     QUIET("------------------------------------------------------------------------------");
   }
 
+  // Dump the signature 
+  if (!sSignatureOutputFile.empty()) {
+    if (sInputFile.empty()) {
+      throw std::runtime_error("ERROR: Missing input file.");
+    }
+    dumpSignatureFile(sInputFile, sSignatureOutputFile);
+    return RC_SUCCESS;
+  }
+
   // Validate signature for the input file
   if (bValidateSignature == true) {
-    verifyXclBinImage(sInputFile, sCertificate);
+    verifyXclBinImage(sInputFile, sCertificate, bSignatureDebug);
   }
 
   if (!sSignature.empty()) {
@@ -426,7 +447,7 @@ int main_(int argc, char** argv) {
     xclBin.writeXclBinBinary(sOutputFile, bSkipUUIDInsertion);
 
     if (!sPrivateKey.empty() && !sCertificate.empty()) {
-      signXclBinImage(sOutputFile, sPrivateKey, sCertificate);
+      signXclBinImage(sOutputFile, sPrivateKey, sCertificate, sDigestAlgorithm, bSignatureDebug);
     }
   }
 

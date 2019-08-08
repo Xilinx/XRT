@@ -70,15 +70,15 @@ namespace xdp {
   }
 
   void TraceParser::ResetState() {
-    std::fill_n(mAccelMonStartedEvents,XSAM_MAX_NUMBER_SLOTS,0);
+    std::fill_n(mAccelMonStartedEvents,XAM_MAX_NUMBER_SLOTS,0);
     // Clear queues
-    for (int i=0; i < XSPM_MAX_NUMBER_SLOTS; i++) {
+    for (int i=0; i < XAIM_MAX_NUMBER_SLOTS; i++) {
       mWriteStarts[i].clear();
       mHostWriteStarts[i].clear();
       mReadStarts[i].clear();
       mHostReadStarts[i].clear();
     }
-    for (int i=0; i< XSSPM_MAX_NUMBER_SLOTS; i++) {
+    for (int i=0; i< XASM_MAX_NUMBER_SLOTS; i++) {
       mStreamTxStarts[i].clear();
       mStreamStallStarts[i].clear();
       mStreamStarveStarts[i].clear();
@@ -86,7 +86,7 @@ namespace xdp {
       mStreamStallStartsHostTime[i].clear();
       mStreamStarveStartsHostTime[i].clear();
     }
-    for (int i=0; i< XSAM_MAX_NUMBER_SLOTS; i++) {
+    for (int i=0; i< XAM_MAX_NUMBER_SLOTS; i++) {
       mAccelMonCuStarts[i].clear();
     }
   }
@@ -149,17 +149,17 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
         trainDeviceHostTimestamps(deviceName, type);
       }
       if (trace.Overflow == 1)
-        timestamp += LOOP_ADD_TIME_SPM;
+        timestamp += LOOP_ADD_TIME_AIM;
 
       uint32_t s = 0;
-      bool SAMPacket = (trace.TraceID >= MIN_TRACE_ID_SAM && trace.TraceID <= MAX_TRACE_ID_SAM);
-      bool SPMPacket = (trace.TraceID >= MIN_TRACE_ID_SPM && trace.TraceID <= MAX_TRACE_ID_SPM);
-      bool SSPMPacket = (trace.TraceID >= MIN_TRACE_ID_SSPM && trace.TraceID < MAX_TRACE_ID_SSPM);
+      bool SAMPacket = (trace.TraceID >= MIN_TRACE_ID_AM && trace.TraceID <= MAX_TRACE_ID_AM);
+      bool SPMPacket = (trace.TraceID >= MIN_TRACE_ID_AIM && trace.TraceID <= MAX_TRACE_ID_AIM);
+      bool SSPMPacket = (trace.TraceID >= MIN_TRACE_ID_ASM && trace.TraceID < MAX_TRACE_ID_ASM);
       if (!SAMPacket && !SPMPacket && !SSPMPacket)
         continue;
 
       if (SSPMPacket) {
-        s = trace.TraceID - MIN_TRACE_ID_SSPM;
+        s = trace.TraceID - MIN_TRACE_ID_ASM;
         bool isSingle =    trace.EventFlags & 0x10;
         bool txEvent =     trace.EventFlags & 0x8;
         bool stallEvent =  trace.EventFlags & 0x4;
@@ -213,11 +213,11 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
           mStreamMonLastTranx[s] = timestamp;
         } // !isStart
       } else if (SAMPacket) {
-        s = ((trace.TraceID - MIN_TRACE_ID_SAM) / 16);
-        uint32_t cuEvent       = trace.TraceID & XSAM_TRACE_CU_MASK;
-        uint32_t stallIntEvent = trace.TraceID & XSAM_TRACE_STALL_INT_MASK;
-        uint32_t stallStrEvent = trace.TraceID & XSAM_TRACE_STALL_STR_MASK;
-        uint32_t stallExtEvent = trace.TraceID & XSAM_TRACE_STALL_EXT_MASK;
+        s = ((trace.TraceID - MIN_TRACE_ID_AM) / 16);
+        uint32_t cuEvent       = trace.TraceID & XAM_TRACE_CU_MASK;
+        uint32_t stallIntEvent = trace.TraceID & XAM_TRACE_STALL_INT_MASK;
+        uint32_t stallStrEvent = trace.TraceID & XAM_TRACE_STALL_STR_MASK;
+        uint32_t stallExtEvent = trace.TraceID & XAM_TRACE_STALL_EXT_MASK;
         // Common Params for all event types
         kernelTrace.SlotNum = s;
         kernelTrace.Name = "OCL Region";
@@ -227,7 +227,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
         kernelTrace.NumBytes = 0;
         kernelTrace.End = convertDeviceToHostTimestamp(timestamp, type, deviceName);
         if (cuEvent) {
-          if (!(trace.EventFlags & XSAM_TRACE_CU_MASK)) {
+          if (!(trace.EventFlags & XAM_TRACE_CU_MASK)) {
             kernelTrace.Type = "Kernel";
             if (!mAccelMonCuStarts[s].empty()) {
               startTime = mAccelMonCuStarts[s].front();
@@ -244,7 +244,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
           }
         }
         if (stallIntEvent) {
-          if (mAccelMonStartedEvents[s] & XSAM_TRACE_STALL_INT_MASK) {
+          if (mAccelMonStartedEvents[s] & XAM_TRACE_STALL_INT_MASK) {
             kernelTrace.Type = "Intra-Kernel Dataflow Stall";
             startTime = mAccelMonStallIntTime[s];
             kernelTrace.StartTime = startTime;
@@ -257,7 +257,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
           }
         }
         if (stallStrEvent) {
-          if (mAccelMonStartedEvents[s] & XSAM_TRACE_STALL_STR_MASK) {
+          if (mAccelMonStartedEvents[s] & XAM_TRACE_STALL_STR_MASK) {
             kernelTrace.Type = "Inter-Kernel Pipe Stall";
             startTime = mAccelMonStallStrTime[s];
             kernelTrace.StartTime = startTime;
@@ -270,7 +270,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
           }
         }
         if (stallExtEvent) {
-          if (mAccelMonStartedEvents[s] & XSAM_TRACE_STALL_EXT_MASK) {
+          if (mAccelMonStartedEvents[s] & XAM_TRACE_STALL_EXT_MASK) {
             kernelTrace.Type = "External Memory Stall";
             startTime = mAccelMonStallExtTime[s];
             kernelTrace.StartTime = startTime;
@@ -433,9 +433,9 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
       prevHostTimestamp = trace.HostTimestamp;
 
       uint32_t s = 0;
-      bool SPMPacket = (trace.TraceID < MAX_TRACE_ID_SPM);
-      bool SAMPacket = (trace.TraceID >= MIN_TRACE_ID_SAM && trace.TraceID <= MAX_TRACE_ID_SAM_HWEM);
-      bool SSPMPacket = (trace.TraceID >= MIN_TRACE_ID_SSPM && trace.TraceID < MAX_TRACE_ID_SSPM);
+      bool SPMPacket = (trace.TraceID < MAX_TRACE_ID_AIM);
+      bool SAMPacket = (trace.TraceID >= MIN_TRACE_ID_AM && trace.TraceID <= MAX_TRACE_ID_AM_HWEM);
+      bool SSPMPacket = (trace.TraceID >= MIN_TRACE_ID_ASM && trace.TraceID < MAX_TRACE_ID_ASM);
 
       if (SPMPacket) {
         uint8_t flags = 0;
@@ -520,7 +520,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
         }
       }
       else if (SAMPacket) {
-        uint32_t cuEvent = trace.EventFlags & XSAM_TRACE_CU_MASK;
+        uint32_t cuEvent = trace.EventFlags & XAM_TRACE_CU_MASK;
         s = trace.TraceID - 64;
         // Common Params for all event types
         kernelTrace.SlotNum = s;
@@ -531,7 +531,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
         kernelTrace.BurstLength = 0;
         kernelTrace.NumBytes = 0;
         if (cuEvent) {
-          if (mAccelMonStartedEvents[s] & XSAM_TRACE_CU_MASK) {
+          if (mAccelMonStartedEvents[s] & XAM_TRACE_CU_MASK) {
             kernelTrace.Type = "Kernel";
             kernelTrace.StartTime = mAccelMonCuTime[s];
             kernelTrace.Start = mAccelMonCuHostTime[s] / 1e6;
@@ -544,11 +544,11 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
             mAccelMonCuHostTime[s] = hostTimestampNsec;
             mAccelMonCuTime[s] = timestamp;
           }
-          mAccelMonStartedEvents[s] ^= XSAM_TRACE_CU_MASK;
+          mAccelMonStartedEvents[s] ^= XAM_TRACE_CU_MASK;
         }
       }
       else if (SSPMPacket) {
-        s = trace.TraceID - MIN_TRACE_ID_SSPM;
+        s = trace.TraceID - MIN_TRACE_ID_ASM;
         kernelTrace.Kind = DeviceTrace::DEVICE_STREAM;
 
         bool isSingle    = trace.EventFlags & 0x10;
@@ -619,7 +619,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
       }
       else continue;
     }
-    std::fill_n(mAccelMonStartedEvents,XSAM_MAX_NUMBER_SLOTS,0);
+    std::fill_n(mAccelMonStartedEvents,XAM_MAX_NUMBER_SLOTS,0);
     XDP_LOG("[profile_device] Done logging device trace samples\n");
   }
 

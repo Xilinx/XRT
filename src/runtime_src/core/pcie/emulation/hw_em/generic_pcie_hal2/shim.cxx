@@ -613,7 +613,9 @@ namespace xclhwemhal2 {
           //So far assuming that we will have only one AIE Kernel, need to 
           //update this logic when we have suport for multiple AIE Kernels
           launcherArgs += " -emuData " + binaryDirectory + "/" + kernels.at(0) + "/aieshim_solution.aiesol";
+          launcherArgs += " -emu-data " + binaryDirectory + "/" + kernels.at(0) + "/aieshim_solution.aiesol";
           launcherArgs += " -bootBH " + binaryDirectory + "/" + kernels.at(0) + "/boot_bh.bin";
+          launcherArgs += " -boot-bh " + binaryDirectory + "/" + kernels.at(0) + "/boot_bh.bin";
           launcherArgs += " -image " + binaryDirectory + "/" + kernels.at(0) + "/qemu_qspi.bin";
         }
 
@@ -1254,7 +1256,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     for(unsigned int counter = 0 ; counter < numSlots; counter++)
     {
       unsigned int samplessize = 0;
-      if (counter == XPAR_SPM0_HOST_SLOT)
+      if (counter == XPAR_AIM0_HOST_SLOT)
         continue;
 
       char slotname[128];

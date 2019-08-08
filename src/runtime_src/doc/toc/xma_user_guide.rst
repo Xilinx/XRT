@@ -292,7 +292,7 @@ The general initialization sequence that is common to all kernel classes is as f
 
 
 Runtime Frame and Data Processing
-~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Most kernel types include routines to consume data and then produce data from
 host memory buffers.  Depending on the nature of the kernel, you may be
 required to send a frame and then receive data or vice versa.
@@ -424,7 +424,7 @@ When a session has been created in response to an application request,
 XMA will allocate plugin data that
 is session-specific.
 
-XmaSession::plugin_data member is
+XmaSession->plugin_data member is
 available to plugin to store the necessary session-specific
 state as necessary. There is no need to free these data structures during
 termination; XMA frees this data for you.
@@ -475,7 +475,7 @@ When an XMA application has concluded data processing, it will destroy its
 kernel session.  Your close() callback will be invoked to perform the necessary
 cleanup.  Your close() implementation should free any buffers that were
 allocated in device memory during your init() via xma_plg_buffer_free().
-Freeing XmaSession::plugin_data is not necessary
+Freeing XmaSession->plugin_data is not necessary
 as this will be done by the XMA library.
 
 Zerocopy Special Case

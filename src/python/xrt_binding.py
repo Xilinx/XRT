@@ -89,6 +89,8 @@ class xclDeviceInfo2(ctypes.Structure):
      ("mNumCDMA", ctypes.c_ushort)
     ]
 
+# xclMemoryDomains is for support of legacy APIs
+# It is not used in BO APIs where we instead use xclBOKind
 class xclMemoryDomains:
     XCL_MEM_HOST_RAM    = 0
     XCL_MEM_DEVICE_RAM  = 1
@@ -97,12 +99,7 @@ class xclMemoryDomains:
     XCL_MEM_CMA         = 4
     XCL_MEM_DEVICE_REG  = 5
 
-class xclDDRFlags:
-    XCL_DEVICE_RAM_BANK0 = 0
-    XCL_DEVICE_RAM_BANK1 = 2
-    XCL_DEVICE_RAM_BANK2 = 4
-    XCL_DEVICE_RAM_BANK3 = 8
-
+# Unused, keep for backwards compatibility
 class xclBOKind:
     XCL_BO_SHARED_VIRTUAL           = 0
     XCL_BO_SHARED_PHYSICAL          = 1
@@ -123,6 +120,18 @@ class xclAddressSpace:
     XCL_ADDR_SPACE_DEVICE_CHECKER = 5  # Address space for protocol checker
     XCL_ADDR_SPACE_MAX = 8
 
+# Defines log message severity levels for messages sent to log file with xclLogMsg cmd
+class xrtLogMsgLevel:
+    XRT_EMERGENCY = 0
+    XRT_ALERT     = 1
+    XRT_CRITICAL  = 2
+    XRT_ERROR     = 3
+    XRT_WARNING   = 4
+    XRT_NOTICE    = 5
+    XRT_INFO      = 6
+    XRT_DEBUG     = 7
+
+# Defines log message severity levels for messages sent to log file with xclLogMsg cmd
 class xclVerbosityLevel:
     XCL_QUIET = 0
     XCL_INFO  = 1
@@ -153,7 +162,7 @@ class xclBOProperties (ctypes.Structure):
      ("flags" , ctypes.c_uint),
      ("size", ctypes.c_ulonglong),
      ("paddr", ctypes.c_ulonglong),
-     ("domain", ctypes.c_uint),
+     ("reserved", ctypes.c_uint), # not implemented
     ]
 
 def xclProbe():
@@ -392,6 +401,22 @@ def xclRemoveAndScanFPGA():
     libc.xclRemoveAndScanFPGA.restype = ctypes.c_int
     return libc.xclRemoveAndScanFPGA()
 
+def xclLogMsg(handle, level, tag, format, *args):
+    """
+    Send message to log file as per settings in ini file.
+
+    :param handle: (xclDeviceHandle) device handle
+    :param level: (xrtLogMsgLevel) Severity level of the msg
+    :param tag: (const char*) Tag supplied by the client, like "OCL", "XMA", etc.
+    :param format: (const char *) Format of Msg string to write to log file
+    :param ...: All other arguments as per the format
+    :return: 0 on success or appropriate error number
+    """
+    libc.xclAllocBO.restype = ctypes.c_int
+    libc.xclAllocBO.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p]
+    return libc.xclLogMsg(handle, level, tag, format, *args)
+
+
 def xclAllocBO(handle, size, domain, flags):
     """
     Allocate a BO of requested size with appropriate flags
@@ -561,6 +586,21 @@ def xclGetBOProperties(handle, boHandle, properties):
     libc.xclGetBOProperties.restype = ctypes.c_int
     libc.xclGetBOProperties.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.POINTER(xclBOProperties)]
     return libc.xclGetBOProperties(handle, boHandle, properties)
+
+def xclGetDeviceAddr(handle, boHandle):
+    """
+    Get the physical address on the device
+ 
+    This API is deprecated and will be removed in future release.
+    New clients should use xclGetBOProperties() instead.
+
+    :param handle: (xclDeviceHandle) device handle
+    :param boHandle: (unsigned int) BO handle
+    :return: uint64_t address of the BO on success
+    """
+    libc.xclGetBOProperties.restype = ctypes.c_uint64
+    libc.xclGetBOProperties.argtypes = [xclDeviceHandle, ctypes.c_uint]
+    return libc.xclGetBOProperties(handle, boHandle)
 
 def xclUnmgdPread(handle, flags, buf, size, offeset):
     """
@@ -937,152 +977,31 @@ def xclPollCompletion(handle, min_compl, max_compl, comps, actual_compl, timeout
                                        ctypes.POINTER(ctypes.c_int), ctypes.c_int]
     return libc.xclPollCompletion(handle, min_compl, max_compl, comps, actual_compl, timeout)
 
-def xclWriteHostEvent(handle, type,id):
+def xclRegRead(handle, cu_index, offset, datap):
     """
+    Read register in register space of a CU
+    :param handle: Device handle
+    :param cu_index: CU index
+    :param offset: Offset in the register space
+    :param datap: Pointer to where result will be saved
+    :return: 0 or appropriate error number
+    """
+    libc.xclRegRead.restype = ctypes.c_int
+    libc.xclRegRead.argtypes = [xclDeviceHandle, ctypes.uint32_t, ctypes.uint32_t, ctypes.POINTER(ctypes.c_uint32_t)]
+    return libc.xclRegRead(handle, cu_index, offset, datap)
 
-    :param handle:
-    :param type:
-    :param id:
-    :return:
+def xclRgWrite(handle, cu_index, offset, data):
     """
-    libc.xclWriteHostEvent.restype = None
-    libc.xclWriteHostEvent.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_int]
-    return libc.xclWriteHostEvent(handle, type, id)
-
-def xclGetDeviceTimestamp(handle):
+    Write register in register space of a CU
+    :param handle: Device handle
+    :param cu_index: CU index
+    :param offset: Offset in the register space
+    :param data: Pointer to where result will be saved
+    :return: 0 or appropriate error number
     """
-
-    :param handle:
-    :return:
-    """
-    libc.xclGetDeviceTimestamp.restype = ctypes.c_size_t
-    libc.xclGetDeviceTimestamp.argtype = xclDeviceHandle
-    return libc.xclGetDeviceTimestamp(handle)
-
-def xclGetDeviceClockFreqMHz(handle):
-    """
-
-    :param handle:
-    :return:
-    """
-    libc.xclGetDeviceClockFreqMHz.restype = ctypes.c_double
-    libc.xclGetDeviceClockFreqMHz.argtype = xclDeviceHandle
-    return libc.xclGetDeviceClockFreqMHz(handle)
-
-def xclGetReadMaxBandwidthMBps(handle):
-    """
-
-    :param handle:
-    :return:
-    """
-    libc.xclGetReadMaxBandwidthMBps.restype = ctypes.c_double
-    libc.xclGetReadMaxBandwidthMBps.argtype = xclDeviceHandle
-    return libc.xclGetReadMaxBandwidthMBps(handle)
-
-def xclGetWriteMaxBandwidthMBps(handle):
-    """
-
-    :param handle:
-    :return:
-    """
-    libc.xclGetWriteMaxBandwidthMBps.restype = ctypes.c_double
-    libc.xclGetWriteMaxBandwidthMBps.argtype = xclDeviceHandle
-    return libc.xclGetWriteMaxBandwidthMBps(handle)
-
-def xclSetProfilingNumberSlots(handle, type, numSlots):
-    """
-
-    :param handle:
-    :param type:
-    :param numSlots:
-    :return:
-    """
-    libc.xclSetProfilingNumberSlots.restype = None
-    libc.xclSetProfilingNumberSlots.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_uint32]
-    libc.xclSetProfilingNumberSlots(handle, type, numSlots)
-
-def xclGetProfilingNumberSlots(handle, type):
-    """
-
-    :param handle:
-    :param type:
-    :return:
-    """
-    libc.xclGetProfilingNumberSlots.restype = ctypes.c_uint32
-    libc.xclGetProfilingNumberSlots.argtypes = [xclDeviceHandle, ctypes.c_int]
-    return libc.xclGetProfilingNumberSlots(handle, type)
-
-def xclGetProfilingSlotName(handle, type, slotnum, slotName, length):
-    """
-
-    :param handle:
-    :param type:
-    :param slotnum:
-    :param slotName:
-    :param length:
-    :return:
-    """
-    libc.xclGetProfilingSlotName.restype = None
-    libc.xclGetProfilingSlotName.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_uint32,
-                                             ctypes.POINTER(ctypes.c_char), ctypes.c_uint32]
-    return libc.xclGetProfilingSlotName(handle, type, slotnum, slotName, length)
-
-def xclGetProfilingSlotProperties(handle, type, slotnum):
-    """
-
-    :param handle:
-    :param type:
-    :param slotnum:
-    :return:
-    """
-    libc.xclGetProfilingSlotProperties.restype = ctypes.c_uint32
-    libc.xclGetProfilingSlotProperties.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_uint32]
-    return libc.xclGetProfilingSlotProperties(handle, type, slotnum)
-
-def xclPerfMonClockTraining(handle, type):
-    """
-
-    :param handle:
-    :param type:
-    :return:
-    """
-    libc.xclPerfMonClockTraining.restype = ctypes.c_size_t
-    libc.xclPerfMonClockTraining.argtypes = [xclDeviceHandle, ctypes.c_int]
-    return libc.xclPerfMonClockTraining(handle, type)
-
-def xclPerfMonStartCounters(handle, type):
-    """
-
-    :param handle:
-    :param type:
-    :return:
-    """
-    libc.xclPerfMonStartCounters.restype = ctypes.c_size_t
-    libc.xclPerfMonStartCounters.argtypes = [xclDeviceHandle, ctypes.c_int]
-    return libc.xclPerfMonStartCounters(handle, type)
-
-def xclPerfMonStopCounters(handle, type):
-    """
-
-    :param handle:
-    :param type:
-    :return:
-    """
-    libc.xclPerfMonStopCounters.restype = ctypes.c_size_t
-    libc.xclPerfMonStopCounters.argtypes = [xclDeviceHandle, ctypes.c_int]
-    return libc.xclPerfMonStopCounters(handle, type)
-
-def xclPerfMonReadCounters(handle, type, counterResults):
-    """
-
-    :param handle:
-    :param type:
-    :param counterResults:
-    :return:
-    """
-    libc.xclPerfMonReadCounters.restype = ctypes.c_size_t
-    libc.xclPerfMonReadCounters.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.POINTER(xclcounterResults)]  # defined in xclperf.h not implemented in python yet
-    return libc.xclPerfMonReadCounters(handle, type, counterResults)
+    libc.xclRegRead.restype = ctypes.c_int
+    libc.xclRegRead.argtypes = [xclDeviceHandle, ctypes.uint32_t, ctypes.uint32_t, ctypes.c_uint32_t]
+    return libc.xclRegRead(handle, cu_index, offset, data)
 
 def xclDebugReadIPStatus(handle, type, debugResults):
     """
@@ -1092,72 +1011,6 @@ def xclDebugReadIPStatus(handle, type, debugResults):
     :param debugResults:
     :return:
     """
-    libc.xclDebugReadIPStatusrestype = ctypes.c_size_t
+    libc.xclDebugReadIPStatus.restype = ctypes.c_size_t
     libc.xclDebugReadIPStatus.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_void_p]
     return libc.xclDebugReadIPStatus(handle, type, debugResults)
-
-def xclPerfMonStartTrace(handle, type, startTrigger):
-    """
-
-    :param handle:
-    :param type:
-    :param startTrigger:
-    :return:
-    """
-    libc.xclPerfMonStartTrace.restype = ctypes.c_size_t
-    libc.xclPerfMonStartTrace.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_uint32]
-    return libc.xclPerfMonStartTrace(handle, type, startTrigger)
-
-def xclPerfMonStopTrace(handle, type):
-    """
-
-    :param handle:
-    :param type:
-    :return:
-    """
-    libc.xclPerfMonStopTrace.restype = ctypes.c_size_t
-    libc.xclPerfMonStopTrace.argtypes = [xclDeviceHandle, ctypes.c_int]
-    return libc.xclPerfMonStopTrace(handle, type)
-
-def xclPerfMonGetTraceCount(handle, type):
-    """
-
-    :param handle:
-    :param type:
-    :return:
-    """
-    libc.xclPerfMonGetTraceCount.restype = ctypes.c_size_t
-    libc.xclPerfMonGetTraceCount.argtypes = [xclDeviceHandle, ctypes.c_int]
-    return libc.xclPerfMonGetTraceCount(handle, type)
-
-def xclPerfMonReadTrace(handle, type, traceVector):
-    """
-
-    :param handle:
-    :param type:
-    :param traceVector:
-    :return:
-    """
-    libc.xclPerfMonReadTrace.restype = ctypes.c_size_t
-    libc.xclPerfMonReadTrace.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.POINTER(xclTraceResultsVector)]  # defined in xclperf.h not implemented in python yet
-    return libc.xclPerfMonReadTrace(handle, type, traceVector)
-
-def xclMapMgmt(handle):
-    """
-
-    :param handle:
-    :return:
-    """
-    libc.xclMapMgmt.restype = ctypes.POINTER(ctypes.c_char)
-    libc.xclMapMgmt.argtype = xclDeviceHandle
-    return libc.xclMapMgmt(handle)
-
-def xclOpenMgmt(deviceIndex):
-    """
-
-    :param deviceIndex:
-    :return:
-    """
-    libc.xclOpenMgmt.restype = xclDeviceHandle
-    libc.xclOpenMgmt.argtype = ctypes.c_uint
-    return libc.xclOpenMgmt(deviceIndex)

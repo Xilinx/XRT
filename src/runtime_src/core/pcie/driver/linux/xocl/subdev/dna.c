@@ -43,7 +43,9 @@
 
 #define DEV2XDEV(d) xocl_get_xdev(to_platform_device(d))
 
-#define XLNX_DNA_INVALID_CAPABILITY_MASK                            0xFFFFFFEE
+#define XLNX_DNA_CAPABILITY_AXI					    0x1
+#define XLNX_DNA_CAPABILITY_DRM_ENABLE				    0x100
+#define XLNX_DNA_INVALID_CAPABILITY_MASK			    0xFFFFFEEE
 #define XLNX_DNA_PRIVILEGED(xlnx_dna)				    ((xlnx_dna)->base != NULL)
 
 
@@ -437,6 +439,11 @@ static int xlnx_dna_probe(struct platform_device *pdev)
 	capability = dna_capability(pdev);
 	if (capability & XLNX_DNA_INVALID_CAPABILITY_MASK) {
 		xocl_err(&pdev->dev, "DNA IP not detected");
+		err = -EINVAL;
+		goto create_xlnx_dna_failed;
+	} else if (capability & XLNX_DNA_CAPABILITY_DRM_ENABLE &&
+		   !(capability & XLNX_DNA_CAPABILITY_AXI)) {
+		xocl_err(&pdev->dev, "BRAM version DRM IP is obsoleted, please update xclbin");
 		err = -EINVAL;
 		goto create_xlnx_dna_failed;
 	}
