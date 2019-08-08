@@ -20,6 +20,8 @@
 #include <errno.h>
 #include <unistd.h>
 
+#include "xcl_perfmon_parameters.h"
+
 namespace xclhwemhal2 {
 
   namespace pt = boost::property_tree;
@@ -38,8 +40,6 @@ namespace xclhwemhal2 {
   const unsigned HwEmShim::CONTROL_AP_DONE  = 2;
   const unsigned HwEmShim::CONTROL_AP_IDLE  = 4;
   const unsigned HwEmShim::CONTROL_AP_CONTINUE  = 0x10;
-
-#define AXI_FIFO_RDFD_AXI_FULL          0x1000
 
   Event::Event()
   {
