@@ -1250,7 +1250,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     for(unsigned int counter = 0 ; counter < numSlots; counter++)
     {
       unsigned int samplessize = 0;
-      if (counter == XPAR_SPM0_HOST_SLOT)
+      if (counter == XPAR_AIM0_HOST_SLOT)
         continue;
 
       char slotname[128];

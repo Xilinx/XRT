@@ -239,7 +239,6 @@ DeviceIntf::~DeviceIntf()
                 << type << ", Start device counters..." << std::endl;
     }
 
-    std::cout << " In DeviceIntf::startCounters " << std::endl;
     // Update addresses for debug/profile IP
 //    readDebugIPlayout();
 
