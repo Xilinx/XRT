@@ -620,6 +620,13 @@ public:
         sensor_tree::put( "board.info.subdevice", m_devinfo.mSubsystemId );
         sensor_tree::put( "board.info.subvendor", m_devinfo.mSubsystemVendorId );
         sensor_tree::put( "board.info.xmcversion", m_devinfo.mXMCVersion );
+        {
+            std::string ser_num, bmc_ver, errmsg;
+            pcidev::get_dev(m_idx)->sysfs_get("xmc", "serial_num", errmsg, ser_num);
+            pcidev::get_dev(m_idx)->sysfs_get("xmc", "bmc_ver", errmsg, bmc_ver);
+            sensor_tree::put( "board.info.serial_number", ser_num );
+            sensor_tree::put( "board.info.sc_version", bmc_ver );
+        }
         sensor_tree::put( "board.info.ddr_size", m_devinfo.mDDRSize );
         sensor_tree::put( "board.info.ddr_count", m_devinfo.mDDRBankCount );
         sensor_tree::put( "board.info.clock0", m_devinfo.mOCLFrequency[0] );
