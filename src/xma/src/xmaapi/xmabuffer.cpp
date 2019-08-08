@@ -161,9 +161,11 @@ xma_frame_from_device_buffers(XmaFrameProperties *frame_props,
         if (frame_data->dev_buf[i] == NULL) {
             xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD,
                     "%s(): dev_buf XmaBufferObj is NULL in frame_data\n", __func__);
+            free(frame);
             return NULL;
         }
         if (xma_check_device_buffer(frame_data->dev_buf[i]) != XMA_SUCCESS) {
+            free(frame);
             return NULL;
         }
         if (frame_data->dev_buf[i]->device_only_buffer) {
@@ -245,7 +247,7 @@ xma_side_data_alloc(void                      *side_data,
     XmaFrameSideData *sd;
     void *sdata = NULL;
     xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD,
-               "%s() frame %p side_data %p type %d size %zu use_buffer=%d\n",
+               "%s() frame side_data %p type %d size %zu use_buffer=%d\n",
                __func__, side_data, sd_type, size, use_buffer);
     sd = (XmaFrameSideData*)calloc(1, sizeof(XmaFrameSideData));
     if (!sd) {
@@ -398,8 +400,9 @@ xma_frame_remove_side_data(XmaFrame          *frame,
         return XMA_ERROR_INVALID;
     }
 
-    xma_side_data_dec_ref(side_data);
-    frame->side_data[in_sd->type] = NULL;
+    if (xma_side_data_dec_ref(side_data) != 0) {
+        frame->side_data[in_sd->type] = NULL;
+    }
 
     return XMA_SUCCESS;
 }
