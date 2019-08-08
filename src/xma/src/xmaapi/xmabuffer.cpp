@@ -400,8 +400,9 @@ xma_frame_remove_side_data(XmaFrame          *frame,
         return XMA_ERROR_INVALID;
     }
 
-    frame->side_data[in_sd->type] = NULL;
-    xma_side_data_dec_ref(side_data);
+    if (xma_side_data_dec_ref(side_data) != 0) {
+        frame->side_data[in_sd->type] = NULL;
+    }
 
     return XMA_SUCCESS;
 }
