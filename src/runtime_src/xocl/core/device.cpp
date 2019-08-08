@@ -316,7 +316,6 @@ void*
 device::
 allocHostPtr(size_t sz)
 {
-  XOCL_DEBUG(std::cout,__FILE__,":",__func__,":",__LINE__,"\n");
   return m_xdevice->allocHostPtr(sz);
 }
 
@@ -324,7 +323,6 @@ void
 device::
 freeHostPtr(void* ptr)
 {
-  XOCL_DEBUG(std::cout,__FILE__,":",__func__,":",__LINE__,"\n");
   return m_xdevice->freeHostPtr(ptr);
 }
 

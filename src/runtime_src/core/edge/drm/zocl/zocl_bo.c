@@ -379,7 +379,6 @@ zocl_userptr_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	struct drm_zocl_userptr_bo *args = data;
 	struct page **pages;
 	unsigned int sg_count;
-	DRM_INFO("%s:%d args->addr:%x\n",__func__,__LINE__,args->addr);
 
 	if (offset_in_page(args->addr)) {
 		DRM_ERROR("User ptr not PAGE aligned\n");
@@ -455,7 +454,6 @@ zocl_userptr_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&bo->cma_base.base);
 
 	kvfree(pages);
-	DRM_ERROR("HIMANSHU %s:%d \n",__func__,__LINE__);
 
 	return ret;
 
@@ -506,7 +504,6 @@ int zocl_sync_bo_ioctl(struct drm_device *dev,
 	dma_addr_t			bus_addr;
 	int				rc = 0;
 
-	DRM_ERROR("Himanshu zocl_sync_bo_ioctl GEM BO \n");
 	gem_obj = zocl_gem_object_lookup(dev, filp, args->handle);
 	if (!gem_obj) {
 		DRM_ERROR("Failed to look up GEM BO %d\n", args->handle);
