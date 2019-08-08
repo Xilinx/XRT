@@ -671,7 +671,7 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 			*val = xmc->cache->config_mode;
 			break;
 		case CUR_3V3_PEX:
-			*val = xmc->cache.cur_3v3_pex;
+			*val = xmc->cache->cur_3v3_pex;
 			break;
 		default:
 			break;
