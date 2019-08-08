@@ -91,8 +91,8 @@ def main():
     input_host1 = np.array(lst).astype(np.uint8)
     input_host2 = np.array(lst).astype(np.uint8)
 
-    input_buf1 = cl.Buffer(ctx, cl.mem_flags.READ_WRITE | cl.mem_flags.USE_HOST_PTR, hostbuf = input_host1)
-    input_buf2 = cl.Buffer(ctx, cl.mem_flags.READ_WRITE | cl.mem_flags.USE_HOST_PTR, hostbuf = input_host2)
+    input_buf1 = cl.Buffer(ctx, cl.mem_flags.READ_WRITE | cl.mem_flags.COPY_HOST_PTR, hostbuf = input_host1)
+    input_buf2 = cl.Buffer(ctx, cl.mem_flags.READ_WRITE | cl.mem_flags.COPY_HOST_PTR, hostbuf = input_host2)
 
     if input_buf1.int_ptr is None or input_buf2.int_ptr is None:
        print("ERROR: Failed to allocate source buffer")
