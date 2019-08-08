@@ -15,6 +15,7 @@
  */
 
 #include "XclBinUtilMain.h"
+#include "XclBinUtilities.h"
 
 #include <string>
 #include <iostream>
@@ -24,6 +25,9 @@ int main( int argc, char** argv )
 {
   try {
     return main_( argc, argv );
+  } catch( XclBinUtilities::XclBinUtilException &e) {
+    std::cerr << e.what() << std::endl;
+    return (int) e.exceptionType();
   } catch ( std::exception &e ) {
     std::string msg = e.what();
     if ( msg.empty() )

@@ -148,7 +148,7 @@ struct xcl_sensor {
 	char	 mac_addr2[32];
 	char	 mac_addr3[32];
 	char	 revision[256];
-	char	 name[256];
+	char	 bd_name[256];
 	char	 bmc_ver[256];
 	uint32_t max_power;
 	uint32_t fan_num;

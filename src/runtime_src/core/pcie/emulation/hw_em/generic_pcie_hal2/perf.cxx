@@ -123,11 +123,11 @@ namespace xclhwemhal2 {
 
  uint32_t HwEmShim::getPerfMonProperties(xclPerfMonType type, uint32_t slotnum)
  {
-   if (type == XCL_PERF_MON_MEMORY && slotnum < XSPM_MAX_NUMBER_SLOTS)
+   if (type == XCL_PERF_MON_MEMORY && slotnum < XAIM_MAX_NUMBER_SLOTS)
      return static_cast <uint32_t> (mPerfmonProperties[slotnum]);
-   if (type == XCL_PERF_MON_ACCEL && slotnum < XSAM_MAX_NUMBER_SLOTS)
+   if (type == XCL_PERF_MON_ACCEL && slotnum < XAM_MAX_NUMBER_SLOTS)
      return static_cast <uint32_t> (mAccelmonProperties[slotnum]);
-   if (type == XCL_PERF_MON_STR && slotnum < XSSPM_MAX_NUMBER_SLOTS)
+   if (type == XCL_PERF_MON_STR && slotnum < XASM_MAX_NUMBER_SLOTS)
      return static_cast <uint32_t> (mStreamMonProperties[slotnum]);
    return 0;
  }
@@ -137,13 +137,13 @@ namespace xclhwemhal2 {
    		                            char* slotName, uint32_t length) {
     std::string str = "";
     if (type == XCL_PERF_MON_MEMORY) {
-      str = (slotnum < XSPM_MAX_NUMBER_SLOTS) ? mPerfMonSlotName[slotnum] : "";
+      str = (slotnum < XAIM_MAX_NUMBER_SLOTS) ? mPerfMonSlotName[slotnum] : "";
     }
     if (type == XCL_PERF_MON_ACCEL) {
-      str = (slotnum < XSAM_MAX_NUMBER_SLOTS) ? mAccelMonSlotName[slotnum] : "";
+      str = (slotnum < XAM_MAX_NUMBER_SLOTS) ? mAccelMonSlotName[slotnum] : "";
     }
     if (type == XCL_PERF_MON_STR) {
-      str = (slotnum < XSSPM_MAX_NUMBER_SLOTS) ? mStreamMonSlotName[slotnum] : "";
+      str = (slotnum < XASM_MAX_NUMBER_SLOTS) ? mStreamMonSlotName[slotnum] : "";
     }
     strncpy(slotName, str.c_str(), length);
   }
@@ -213,7 +213,7 @@ namespace xclhwemhal2 {
       //counterResults.NumSlots = numSlots;
       for(; counter < numSlots; counter++)
       {
-        if (counter == XPAR_SPM0_HOST_SLOT && !accel && iptype != 3) // Ignore host slot
+        if (counter == XPAR_AIM0_HOST_SLOT && !accel && iptype != 3) // Ignore host slot
           continue;
         char slotname[128];
         getPerfMonSlotName(type,counter,slotname,128);
@@ -293,7 +293,7 @@ namespace xclhwemhal2 {
     bool ack = true;
     for(unsigned int counter = 0; counter < numSlots; counter++)
     {
-      if (counter == XPAR_SPM0_HOST_SLOT && !accel)
+      if (counter == XPAR_AIM0_HOST_SLOT && !accel)
         continue;
       uint32_t no_of_samples = 0;
 
@@ -341,7 +341,7 @@ namespace xclhwemhal2 {
     for(; counter < numSlots; counter++)
     {
       // Ignore host
-      if (counter == XPAR_SPM0_HOST_SLOT && !accel && 3 != iptype)
+      if (counter == XPAR_AIM0_HOST_SLOT && !accel && 3 != iptype)
         continue;
 
       unsigned int numberOfElementsAdded = 0;

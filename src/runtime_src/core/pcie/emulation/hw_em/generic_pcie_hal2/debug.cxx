@@ -68,18 +68,18 @@ namespace xclhwemhal2 {
       mLogStream << "debug_ip_layout: reading profile addresses and names..." << std::endl;
     }
 
-    memset(mPerfmonProperties, 0, sizeof(uint8_t)*XSPM_MAX_NUMBER_SLOTS);
-    memset(mAccelmonProperties, 0, sizeof(uint8_t)*XSAM_MAX_NUMBER_SLOTS);
-    memset(mStreamMonProperties, 0, sizeof(uint8_t)*XSSPM_MAX_NUMBER_SLOTS);
+    memset(mPerfmonProperties, 0, sizeof(uint8_t)*XAIM_MAX_NUMBER_SLOTS);
+    memset(mAccelmonProperties, 0, sizeof(uint8_t)*XAM_MAX_NUMBER_SLOTS);
+    memset(mStreamMonProperties, 0, sizeof(uint8_t)*XASM_MAX_NUMBER_SLOTS);
 
     mMemoryProfilingNumberSlots = getIPCountAddrNames(debugFileName, AXI_MM_MONITOR, mPerfMonBaseAddress,
-      mPerfMonSlotName, mPerfmonProperties, XSPM_MAX_NUMBER_SLOTS);
+      mPerfMonSlotName, mPerfmonProperties, XAIM_MAX_NUMBER_SLOTS);
     
     mAccelProfilingNumberSlots = getIPCountAddrNames(debugFileName, ACCEL_MONITOR, mAccelMonBaseAddress,
-      mAccelMonSlotName, mAccelmonProperties, XSAM_MAX_NUMBER_SLOTS);
+      mAccelMonSlotName, mAccelmonProperties, XAM_MAX_NUMBER_SLOTS);
 
     mStreamProfilingNumberSlots = getIPCountAddrNames(debugFileName, AXI_STREAM_MONITOR, mStreamMonBaseAddress,
-      mStreamMonSlotName, mStreamMonProperties, XSSPM_MAX_NUMBER_SLOTS);
+      mStreamMonSlotName, mStreamMonProperties, XASM_MAX_NUMBER_SLOTS);
     
     mIsDeviceProfiling = (mMemoryProfilingNumberSlots > 0 || mAccelProfilingNumberSlots > 0 || mStreamProfilingNumberSlots > 0);
 
@@ -128,7 +128,7 @@ namespace xclhwemhal2 {
 
     // NOTE: host is always index 0
     if (type == AXI_MM_MONITOR) {
-      properties[0] = XSPM_HOST_PROPERTY_MASK;
+      properties[0] = XAIM_HOST_PROPERTY_MASK;
       portNames[0] = "host/host";
       ++count;
     }
