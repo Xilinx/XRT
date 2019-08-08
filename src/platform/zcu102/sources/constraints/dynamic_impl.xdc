@@ -53,39 +53,5 @@
 # Floorplanning
 # ------------------------------------------------------------------------------
 
-###### Lower SLR pblock
-#####create_pblock pblock_dynamic_SLR0
-#####add_cells_to_pblock [get_pblocks pblock_dynamic_SLR0] [get_cells -hierarchical -filter {NAME =~ *interconnect_axilite_user_slr0}]
-#####resize_pblock [get_pblocks pblock_dynamic_SLR0] -add {CLOCKREGION_X0Y0:CLOCKREGION_X5Y4}
-#####set_property SNAPPING_MODE ON [get_pblocks pblock_dynamic_SLR0]
-#####set_property PARENT pblock_dynamic_region [get_pblocks pblock_dynamic_SLR0] -quiet
-#####
-################ Middle SLR pblock
-###############create_pblock pblock_dynamic_SLR1
-###############add_cells_to_pblock [get_pblocks pblock_dynamic_SLR1] [get_cells -hierarchical -filter {NAME =~ *interconnect_axilite_user_slr1*s00_couplers}]
-###############add_cells_to_pblock [get_pblocks pblock_dynamic_SLR1] [get_cells -hierarchical -filter {NAME =~ *interconnect_axilite_user_slr1*xbar}]
-###############resize_pblock [get_pblocks pblock_dynamic_SLR1] -add {CLOCKREGION_X0Y5:CLOCKREGION_X2Y9}
-###############set_property SNAPPING_MODE ON [get_pblocks pblock_dynamic_SLR1]
-###############set_property PARENT pblock_dynamic_region [get_pblocks pblock_dynamic_SLR1] -quiet
-
-###### Upper SLR pblock
-#####create_pblock pblock_dynamic_SLR2
-#####add_cells_to_pblock [get_pblocks pblock_dynamic_SLR2] [get_cells -hierarchical -filter {NAME =~ *interconnect_axilite_user_slr2}]
-#####resize_pblock [get_pblocks pblock_dynamic_SLR2] -add {CLOCKREGION_X0Y10:CLOCKREGION_X5Y14}
-#####set_property SNAPPING_MODE ON [get_pblocks pblock_dynamic_SLR2]
-#####set_property PARENT pblock_dynamic_region [get_pblocks pblock_dynamic_SLR2] -quiet
-#
-#
-
-
-# Middle SLR pblock
-##########create_pblock pblock_dynamic_SLR0
-##########add_cells_to_pblock [get_pblocks pblock_dynamic_SLR0] [get_cells -hierarchical -filter {NAME =~ *interconnect_axilite_user_slr1*s00_couplers}]
-###########add_cells_to_pblock [get_pblocks pblock_dynamic_SLR0] [get_cells -hierarchical -filter {NAME =~ *interconnect_axilite_user_slr1*xbar}]
-###########resize_pblock [get_pblocks pblock_dynamic_SLR0] -add {CLOCKREGION_X2Y0:CLOCKREGION_X2Y4}
-##########resize_pblock [get_pblocks pblock_dynamic_SLR0] -add {CLOCKREGION_X0Y4:CLOCKREGION_X3Y10}
-############resize_pblock [get_pblocks pblock_dynamic_SLR0] -remove {IOB_X2Y103}
-##########set_property SNAPPING_MODE ON [get_pblocks pblock_dynamic_SLR0]
-##########set_property PARENT pblock_dynamic_region [get_pblocks pblock_dynamic_SLR0] -quiet
-
+#placeholder
 

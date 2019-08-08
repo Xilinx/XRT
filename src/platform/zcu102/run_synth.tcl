@@ -49,7 +49,6 @@
 # FILE AT ALL TIMES.
 #
 # *************************************************************************
-#config_ip_cache -use_cache_location /proj/ipeng1-nobkup/spyla/IP3_spyla_storage_ipeng/IP3/DEV/hw/experiments_dsa/Samsung_DSA/samsung_dsa_prj/ipcache/
 
 update_compile_order -fileset sources_1
 update_compile_order -fileset sim_1

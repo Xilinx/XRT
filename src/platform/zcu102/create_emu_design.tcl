@@ -65,7 +65,6 @@ cd emu_overlay
 set projName "xilinx_zcu102_dynamic_0_1"
 set projPart "xczu9eg-ffvb1156-2-e"
 set projBoardPart "xilinx.com:zcu102:part0:3.2"
-#set_param board.RepoPaths ${sourcesDir}/boardrepo/samsung/1.0
 create_project $projName ./$projName -part $projPart
 set_property board_part $projBoardPart [current_project]
 
@@ -86,10 +85,6 @@ set_property dsa.vendor                        "xilinx"     [current_project]
 set_property dsa.board_id                      "ZCU102"    [current_project]
 set_property dsa.name                          "dynamic"    [current_project]
 set_property dsa.version                       "0.1"        [current_project]
-#set_property dsa.board_interface_type          "gen3x4"    [current_project]
-#set_property dsa.flash_interface_type          "spix1"      [current_project]
-#set_property dsa.flash_size                    "1024"       [current_project]
-#set_property dsa.flash_offset_address          "0x04000000" [current_project]
 set_property dsa.description                   "This platform targets the ZCU102 Development Board. This platform features one PL and one PS channels of DDR4 SDRAM which are instantiated as required by the user kernels for high fabric resource availability ." [current_project]
 set_property dsa.platform_state                "impl"       [current_project]
 set_property dsa.uses_pr                       true         [current_project]
@@ -102,15 +97,9 @@ set_property dsa.pre_sys_link_tcl_hook         ${sourcesDir}/misc/dynamic_prelin
 set_property dsa.post_sys_link_tcl_hook        ${sourcesDir}/misc/dynamic_postlink.tcl                                 [current_project]
 set_property dsa.run.steps.opt_design.tcl.post ${sourcesDir}/misc/dynamic_postopt.tcl                                  [current_project]
 
-#set_property dsa.ip_cache_dir                  /proj/ipeng1-nobkup/spyla/IP3_spyla_storage_ipeng/IP3/DEV/hw/experiments_dsa/Samsung_DSA/samsung_dsa_prj/ipcache/                              [current_project]
 set_property dsa.ip_cache_dir                  ${launchDir}/${projName}/${projName}.cache/ip                           [current_project]
 set_property dsa.synth_constraint_files        [list "${sourcesDir}/constraints/dynamic_impl.xdc,NORMAL,implementation"] [current_project]
 
-#set_property dsa.pcie_id_vendor                "0x10ee"                                                                [current_project]
-#set_property dsa.pcie_id_device                "0xa984"                                                                [current_project]
-#set_property dsa.pcie_id_subsystem             "0x1351"                                                                [current_project]
-
-#set_property STEPS.WRITE_BITSTREAM.TCL.PRE /proj/ipeng1-nobkup/ravinde/SAMSUNG_DSA/X4_PS_INSTANCE/2018.1/SDx_MEMSS_PS_DDR_64GB_RETIMED/pre_bitfile.tcl [get_runs impl_1]
 # Construct reconfigurable BD and partition
 create_bd_design pfm_dynamic
 source ${sourcesDir}/misc/dynamic_prelink.tcl

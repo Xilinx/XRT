@@ -52,29 +52,11 @@
 
 # Project
 puts "INFO: (Xilinx Acceleration Development Board Reference Design) generating hdf, fsbl,boot.bin files"
-#open_project /proj/XSJresults/arizona/sporwal/IP3_sporwal_Xilinx_SDx/DEV/sdx_platforms/xilinx_samsung_dynamic/xilinx_samsung_dynamic_v5_1/xresults/samsung_dynamic_5_1_DSA_build/sdaccel_dsa_board_test/000_samsung_dynamic_5_1_DSA_build/xilinx_samsung_dynamic_5_1/xilinx_samsung_dynamic_5_1.xpr
 #open_run impl_1
 #
 write_hwdef -force  -file pfm_top_wrapper.hdf
-#
-#exec xsct < /dev/null hsm_xsct.tcl pfm_top_wrapper.hdf psu_cortexa53_0 zynqmp_fsbl fsbl "" yes
-#
-#exec mv -force ./fsbl/executable.elf ./fsbl.elf
-#
-#exec xsct < /dev/null hsm_xsct.tcl pfm_top_wrapper.hdf psu_cortexa53_0 zynqmp_fsbl fsbl "" yes
-#
-#exec mv -force ./fsbl/executable.elf ./fsbl.elf
-#
-#exec cp -rf /proj/xbuilds/2018.3_daily_latest/internal_platforms/xilinx_samsung_dynamic_5_1/sw/a53_standalone/boot/fsbl.elf .
-#
-exec unzip -o xilinx_edge_dynamic_0_1.dsa
-#
 
-#exec cp -rf /proj/xbuilds/2018.3_daily_latest/internal_platforms/xilinx_samsung_dynamic_5_1/sw/a53_standalone/boot/standalone.bif .
+exec unzip -o xilinx_edge_dynamic_0_1.dsa
 
 exec bootgen -w -image standalone.bif -arch zynqmp -o ./BOOT.bin
 puts "INFO: (Xilinx Acceleration Development Board Reference Design) BOOT.bin generated"
-####puts "INFO: (Xilinx Acceleration Development Board Reference Design) opening implementation and writing bitfiles"
-####source write_bitfile.tcl
-##### Finish
-####puts "INFO: (Xilinx Acceleration Development Board Reference Design) done"
