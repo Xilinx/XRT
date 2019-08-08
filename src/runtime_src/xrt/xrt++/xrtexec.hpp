@@ -104,6 +104,21 @@ public:
   add_cu(value_type cuidx);
 
   /**
+   * Add context identifier for this command.
+   *
+   * A context is value between [0..maxctx[ identifying the kernel
+   * compute unit context that should be used when executing the
+   * command.
+   *
+   * Specifying a context targeting a kernel that does not support
+   * contexts is valid but has effect on execution.
+   *
+   * @ctx: context identifier
+   */
+  void
+  add_ctx(uint32_t ctx);
+
+  /**
    * Add {addr,value} pair to the command
    *
    * @addr: the address that will be written with @value

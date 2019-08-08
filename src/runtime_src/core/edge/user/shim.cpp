@@ -843,6 +843,15 @@ int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection 
   return drv->xclSyncBO(boHandle, dir, size, offset);
 }
 
+int xclCopyBO(xclDeviceHandle handle, unsigned int dst_boHandle,
+            unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)
+{
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  if (!drv)
+    return -EINVAL;
+  return drv->xclCopyBO(dst_boHandle, src_boHandle, size, dst_offset, src_offset);
+}
+
 int xclExportBO(xclDeviceHandle handle, unsigned int boHandle) {
   //std::cout << "xclExportBO called.. " << handle << std::endl;
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);

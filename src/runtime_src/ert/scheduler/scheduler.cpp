@@ -669,11 +669,12 @@ configure_cu(addr_type cu_addr, addr_type regmap_addr, size_type regmap_size)
 inline void
 configure_cu_ooo(addr_type cu_addr, addr_type regmap_addr, size_type regmap_size)
 {
-  // write register map addr, value pairs starting at 0x10
-  for (size_type idx = 4; idx < regmap_size; idx += 2) {
+  // write register map addr, value pairs starting 
+  // past reserved 4 ctrl + 2 ctx 
+  for (size_type idx = 6; idx < regmap_size; idx += 2) {
     addr_type offset = read_reg(regmap_addr + (idx << 2));
     value_type value = read_reg(regmap_addr + ((idx + 1) << 2));
-    write_reg(offset, value);
+    write_reg(cu_addr + offset, value);
   }
 
   // start kernel at base + 0x0
