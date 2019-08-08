@@ -229,6 +229,26 @@ struct xocl_subdev_map {
 		ARRAY_SIZE(XOCL_RES_FEATURE_ROM),	\
 	}
 
+
+#define	XOCL_RES_FEATURE_ROM_SMARTN			\
+		((struct resource []) {			\
+			{				\
+			.start	= 0x122000,		\
+			.end	= 0x122FFF,		\
+			.flags	= IORESOURCE_MEM,	\
+			}				\
+		})
+
+
+#define	XOCL_DEVINFO_FEATURE_ROM_SMARTN			\
+	{						\
+		XOCL_SUBDEV_FEATURE_ROM,		\
+		XOCL_FEATURE_ROM,			\
+		XOCL_RES_FEATURE_ROM_SMARTN,		\
+		ARRAY_SIZE(XOCL_RES_FEATURE_ROM_SMARTN),\
+	}
+
+
 #define	XOCL_RES_SYSMON					\
 		((struct resource []) {			\
 			{				\
@@ -547,6 +567,23 @@ struct xocl_subdev_map {
 		ARRAY_SIZE(XOCL_RES_ICAP_MGMT),		\
 	}
 
+#define	XOCL_RES_ICAP_MGMT_SMARTN				\
+	((struct resource []) {				\
+		{					\
+			.start	= 0x100000,		\
+			.end	= 0x100119,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+	})
+
+#define	XOCL_DEVINFO_ICAP_MGMT_SMARTN			\
+	{						\
+		XOCL_SUBDEV_ICAP,			\
+		XOCL_ICAP,				\
+		XOCL_RES_ICAP_MGMT_SMARTN,		\
+		ARRAY_SIZE(XOCL_RES_ICAP_MGMT_SMARTN),	\
+	}
+
 #define __RES_PRP_IORES_MGMT				\
 		{					\
 			.name	= RESNAME_MEMCALIB,	\
@@ -572,6 +609,21 @@ struct xocl_subdev_map {
 			.end	= 0x051fff,		\
 			.flags  = IORESOURCE_MEM,	\
 		}
+
+#define __RES_PRP_IORES_MGMT_SMARTN			\
+		{					\
+			.name	= RESNAME_MEMCALIB,	\
+			.start	= 0x135000,		\
+			.end	= 0x135003,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+		{					\
+			.name	= RESNAME_GATEPRPRP,	\
+			.start	= 0x134000,		\
+			.end	= 0x13400b,		\
+			.flags  = IORESOURCE_MEM,	\
+		}
+
 
 #define XOCL_RES_PRP_IORES_MGMT				\
 	((struct resource []) {				\
@@ -606,6 +658,21 @@ struct xocl_subdev_map {
 		XOCL_IORES2,				\
 		XOCL_RES_PRP_IORES_MGMT_U280,		\
 		ARRAY_SIZE(XOCL_RES_PRP_IORES_MGMT_U280),	\
+		.level = XOCL_SUBDEV_LEVEL_PRP,		\
+		.override_idx = XOCL_SUBDEV_LEVEL_PRP,	\
+	}
+
+#define XOCL_RES_PRP_IORES_MGMT_SMARTN			\
+	((struct resource []) {				\
+	 __RES_PRP_IORES_MGMT_SMARTN,			\
+	})
+
+#define XOCL_DEVINFO_PRP_IORES_MGMT_SMARTN		\
+	{						\
+		XOCL_SUBDEV_IORES,			\
+		XOCL_IORES2,				\
+		XOCL_RES_PRP_IORES_MGMT_SMARTN,		\
+		ARRAY_SIZE(XOCL_RES_PRP_IORES_MGMT_SMARTN),	\
 		.level = XOCL_SUBDEV_LEVEL_PRP,		\
 		.override_idx = XOCL_SUBDEV_LEVEL_PRP,	\
 	}
@@ -918,6 +985,8 @@ struct xocl_subdev_map {
 
 #define USER_RES_SMARTN							\
 		((struct xocl_subdev_info []) {				\
+			XOCL_DEVINFO_FEATURE_ROM_SMARTN,		\
+			XOCL_DEVINFO_SCHEDULER_DYN,			\
 			XOCL_DEVINFO_ICAP_USER,				\
 			XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_MAILBOX_USER_QDMA,			\
@@ -969,7 +1038,7 @@ struct xocl_subdev_map {
 
 #define	XOCL_BOARD_USER_SMARTN						\
 	(struct xocl_board_private){					\
-		.flags		= 0,					\
+		.flags		= XOCL_DSAFLAG_SMARTN,			\
 		.subdev_info	= USER_RES_SMARTN,			\
 		.subdev_num = ARRAY_SIZE(USER_RES_SMARTN),		\
 	}
@@ -1226,14 +1295,13 @@ struct xocl_subdev_map {
 		.flash_type = FLASH_TYPE_SPI				\
 	}
 
-#define MGMT_RES_XBB_SMARTN                                               \
+#define MGMT_RES_XBB_SMARTN                                     \
 	((struct xocl_subdev_info []) {                         \
-		XOCL_DEVINFO_FEATURE_ROM,                       \
-		XOCL_DEVINFO_IORES_MGMT,			\
-		XOCL_DEVINFO_PRP_IORES_MGMT,			\
+		XOCL_DEVINFO_FEATURE_ROM_SMARTN,		\
+		XOCL_DEVINFO_PRP_IORES_MGMT_SMARTN,		\
 		XOCL_DEVINFO_XMC,                               \
 		XOCL_DEVINFO_MAILBOX_MGMT_QDMA,			\
-		XOCL_DEVINFO_ICAP_MGMT,                    	\
+		XOCL_DEVINFO_ICAP_MGMT_SMARTN,                  \
 		XOCL_DEVINFO_FMGR,      			\
 	})
 

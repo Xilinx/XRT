@@ -729,7 +729,9 @@ int shim::xclLoadXclBin(const xclBin *buffer)
             xclLog(XRT_ERROR, "XRT", "Use 'xbmgmt flash' to update Shell.");
         } else if (ret == -EBUSY) {
             xclLog(XRT_ERROR, "XRT", "Xclbin on card is in use, can't change.");
-        }
+        } else if (ret == -EKEYREJECTED) {
+            xclLog(XRT_ERROR, "XRT", "Xclbin isn't signed properly");
+	}
         xclLog(XRT_ERROR, "XRT", "Refer to dmesg log for details. err=%d", ret);
     }
 

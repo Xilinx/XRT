@@ -199,7 +199,7 @@ static int zocl_pcap_download(struct drm_zocl_dev *zdev,
 {
 	struct fpga_manager *fpga_mgr = zdev->fpga_mgr;
 	XHwIcap_Bit_Header bit_header;
-	struct fpga_image_info *info;
+	struct fpga_image_info *info = NULL;
 	char *buffer = NULL;
 	char *data = NULL;
 	unsigned int i;
