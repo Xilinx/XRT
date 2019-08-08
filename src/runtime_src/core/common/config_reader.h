@@ -149,6 +149,13 @@ get_timeline_trace()
   return value;
 }
 
+inline std::string
+get_trace_buffer_size()
+{
+  static std::string value = detail::get_string_value("Debug.trace_buffer_size", "1M");
+  return value;
+}
+
 inline bool
 get_api_checks()
 {

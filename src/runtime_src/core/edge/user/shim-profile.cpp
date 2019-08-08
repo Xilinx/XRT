@@ -563,6 +563,7 @@ namespace ZYNQ {
         uint64_t partial = (((currentSample >> 45) & 0xFFFF) << (16 * mod));
         results.HostTimestamp = results.HostTimestamp | partial;
         if (mod == 3) {
+          results.isClockTrain = true;
           traceVector.mArray[static_cast<int>(i/4)] = results;
         }
         continue;
@@ -577,6 +578,7 @@ namespace ZYNQ {
       results.Error = (currentSample >> 63) & 0x1;
       results.EventID = XCL_PERF_MON_HW_EVENT;
       results.EventFlags = ((currentSample >> 45) & 0xF) | ((currentSample >> 57) & 0x10) ;
+      results.isClockTrain = false;
       traceVector.mArray[i - clockWordIndex + 1] = results;
       
     }

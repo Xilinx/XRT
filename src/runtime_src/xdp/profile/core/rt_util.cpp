@@ -246,4 +246,32 @@ namespace xdp {
     return 8192;
   }
 
+  // Convert decimal to binary string of length bits
+  std::string RTUtil::dec2bin(uint32_t n, unsigned int bits) {
+    unsigned int index = bits;
+    std::string result(index, 0);
+
+    do result[ --index ] = '0' + (n & 1);
+    while (n >>= 1);
+
+    for (int i=index-1; i >= 0; --i)
+      result[i] = '0';
+
+    return result;
+  }
+  // Convert decimal to binary string
+  // NOTE: length of string is always sizeof(uint32_t) * 8
+  std::string RTUtil::dec2bin(uint32_t n) {
+    uint32_t index = sizeof(uint32_t) * 8;
+    std::string result(index, 0);
+
+    do result[ --index ] = '0' + (n & 1);
+    while (n >>= 1);
+
+    for (int i=index-1; i >= 0; --i)
+      result[i] = '0';
+
+    return result;
+  }
+
 } // xdp

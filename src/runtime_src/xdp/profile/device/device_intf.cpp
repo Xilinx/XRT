@@ -18,6 +18,7 @@
 #include "xclperf.h"
 #include "xcl_perfmon_parameters.h"
 #include "xrt/device/device.h"
+#include "tracedefs.h"
 
 #include <iostream>
 #include <cstdio>
@@ -28,6 +29,7 @@
 //#include <time.h>
 #include <string.h>
 #include <chrono>
+#include <sys/mman.h>
 
 #ifndef _WINDOWS
 // TODO: Windows build support
@@ -90,68 +92,6 @@ DeviceIntf::~DeviceIntf()
     if (mDeviceHandle == nullptr)
       return 0;
     return xclUnmgdPread(mDeviceHandle, 0, buffer, size, addr);
-  }
-#endif
-
-  // ***************************************************************************
-  // Generic Helper functions
-  // ***************************************************************************
-
-#if 0
-  // Get host timestamp to write to monitors
-  // IMPORTANT NOTE: this *must* be compatible with the method of generating
-  // timestamps as defined in RTProfile::getTraceTime()
-  uint64_t DeviceIntf::getHostTraceTimeNsec()
-  {
-    return 0;
-#if 0
-    using namespace std::chrono;
-    typedef duration<uint64_t, std::ratio<1, 1000000000>> duration_ns;
-    duration_ns time_span =
-        duration_cast<duration_ns>(high_resolution_clock::now().time_since_epoch());
-    return time_span.count();
-#endif
-  }
-
-  // Convert decimal to binary string
-  // NOTE: length of string is always sizeof(uint32_t) * 8
-  std::string DeviceIntf::dec2bin(uint32_t n) {
-    char result[(sizeof(uint32_t) * 8) + 1];
-    unsigned index = sizeof(uint32_t) * 8;
-    result[index] = '\0';
-
-    do {
-      result[ --index ] = '0' + (n & 1);
-    } while (n >>= 1);
-
-    for (int i=index-1; i >= 0; --i)
-      result[i] = '0';
-
-    return std::string( result );
-  }
-
-  // Convert decimal to binary string of length bits
-  std::string DeviceIntf::dec2bin(uint32_t n, unsigned bits) {
-    char result[bits + 1];
-    unsigned index = bits;
-    result[index] = '\0';
-
-    do result[ --index ] = '0' + (n & 1);
-    while (n >>= 1);
-
-    for (int i=index-1; i >= 0; --i)
-      result[i] = '0';
-
-    return std::string( result );
-  }
-
-  uint32_t DeviceIntf::getMaxSamples(xclPerfMonType type)
-  {
-    if (type == XCL_PERF_MON_MEMORY) return XPAR_AXI_PERF_MON_0_TRACE_NUMBER_SAMPLES;
-    if (type == XCL_PERF_MON_HOST) return XPAR_AXI_PERF_MON_1_TRACE_NUMBER_SAMPLES;
-    // TODO: get number of samples from metadata
-    if (type == XCL_PERF_MON_ACCEL) return XPAR_AXI_PERF_MON_2_TRACE_NUMBER_SAMPLES;
-    return 0;
   }
 #endif
 
@@ -365,17 +305,12 @@ DeviceIntf::~DeviceIntf()
         size += (*itr)->triggerTrace(startTrigger);
     }
 
-// why is this done
+    if (fifoCtrl)
+      fifoCtrl->reset();
 
-    // Get number of trace samples and reset fifo
-    getTraceCount(type /* does not matter */);  // get number of samples from Fifo Control
-    // reset fifo
-    fifoCtrl->reset();
-    // Get number of trace samples 
-    getTraceCount(type /* does not matter */);
+    if (traceFunnel)
+      traceFunnel->initiateClockTraining();
 
-    // TraceFunnel
-    traceFunnel->initiateClockTraining();
     return size;
   }
 
@@ -387,16 +322,10 @@ DeviceIntf::~DeviceIntf()
                 << type << ", Stop and reset device tracing..." << std::endl;
     }
 
-    if (!mIsDeviceProfiling)
+    if (!mIsDeviceProfiling || !fifoCtrl)
    	  return 0;
 
-    size_t size = 0;
-
-    getTraceCount(type /* does not matter */);
-    size += fifoCtrl->reset();
-    // fifoRead reset ?
-
-    return size;
+    return fifoCtrl->reset();
   }
 
   // Get trace word count
@@ -436,7 +365,7 @@ DeviceIntf::~DeviceIntf()
     if(mIsDebugIPlayoutRead || !mDeviceHandle)
         return;
 
-    xrt::device* xrtDevice = (xrt::device*)mDeviceHandle;
+    xrt::device* xrtDevice = static_cast<xrt::device*>(mDeviceHandle);
     std::string path = xrtDevice->getDebugIPlayoutPath().get();
     if(path.empty()) {
         // error ? : for HW_emu this will be empty for now ; but as of current status should not have been called 
@@ -467,20 +396,20 @@ DeviceIntf::~DeviceIntf()
       map = (debug_ip_layout*)(buffer);
       for( unsigned int i = 0; i < map->m_count; i++ ) {
       switch(map->m_debug_ip_data[i].m_type) {
-        case AXI_MM_MONITOR : aimList.push_back(new AIM(mDeviceHandle, i, &(map->m_debug_ip_data[i])));
-                              break;
-        case ACCEL_MONITOR  : amList.push_back(new AM(mDeviceHandle, i, &(map->m_debug_ip_data[i])));
-                              break;
-        case AXI_STREAM_MONITOR : asmList.push_back(new ASM(mDeviceHandle, i, &(map->m_debug_ip_data[i])));
-                                  break;
+        case AXI_MM_MONITOR :        aimList.push_back(new AIM(mDeviceHandle, i, &(map->m_debug_ip_data[i])));
+                                     break;
+        case ACCEL_MONITOR  :        amList.push_back(new AM(mDeviceHandle, i, &(map->m_debug_ip_data[i])));
+                                     break;
+        case AXI_STREAM_MONITOR :    asmList.push_back(new ASM(mDeviceHandle, i, &(map->m_debug_ip_data[i])));
+                                     break;
         case AXI_MONITOR_FIFO_LITE : fifoCtrl = new TraceFifoLite(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
                                      break;
         case AXI_MONITOR_FIFO_FULL : fifoRead = new TraceFifoFull(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
                                      break;
-        case AXI_TRACE_FUNNEL : traceFunnel = new TraceFunnel(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
-                                break;
-//        case TRACE_S2MM : traceDMA = new TraceS2MM(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
-//                          break;
+        case AXI_TRACE_FUNNEL :      traceFunnel = new TraceFunnel(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
+                                     break;
+        case TRACE_S2MM :            traceDMA = new TraceS2MM(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
+                                     break;
         default : break;
         // case AXI_STREAM_PROTOCOL_CHECKER
 
@@ -521,5 +450,90 @@ DeviceIntf::~DeviceIntf()
         (*itr)->configureDataflow(ipConfig[i]);
     }
   }
+
+  bool DeviceIntf::initTs2mm(uint64_t bo_size)
+  {
+    xrt::device* xrtDevice = static_cast<xrt::device*>(mDeviceHandle);
+
+    if (mTs2mmBoHandle != nullptr) {
+      finTs2mm();
+    }
+
+    try {
+      // The buffer needs to be initialized because of an xrt bug
+      mTs2mmBoHandle = xrtDevice->alloc(bo_size, xrt::hal::device::Domain::XRT_DEVICE_RAM, traceDMA->getMemIndex(), nullptr);
+      xrtDevice->sync(mTs2mmBoHandle, bo_size, 0, xrt::hal::device::direction::HOST2DEVICE, false);
+      mTs2mmBoSize = bo_size;
+    } catch (const std::exception& ex) {
+      std::cerr << ex.what() << std::endl;
+      return false;
+    }
+    // Data Mover will write input stream to this address
+    uint64_t bufaddr = xrtDevice->getDeviceAddr(mTs2mmBoHandle);
+
+    traceDMA->init(bo_size, bufaddr);
+    return true;
+  }
+
+  uint64_t DeviceIntf::getWordCountTs2mm()
+  {
+    return traceDMA->getWordCount();
+  }
+
+void* DeviceIntf::syncTraceBO(uint64_t offset, uint64_t bytes)
+{
+    xrt::device* xrtDevice = static_cast<xrt::device*>(mDeviceHandle);
+    if (!mTs2mmBoHandle || bytes > mTs2mmBoSize) {
+      return nullptr;
+    }
+    auto space = xrtDevice->map(mTs2mmBoHandle);
+    xrtDevice->sync(mTs2mmBoHandle, bytes, offset, xrt::hal::device::direction::DEVICE2HOST, false);
+    return static_cast<char*>(space) + offset;
+}
+
+void DeviceIntf::readTs2mm(uint64_t offset, uint64_t bytes, xclTraceResultsVector& traceVector)
+{
+  auto tracebuf = syncTraceBO(offset, bytes);
+  if (tracebuf) {
+    traceDMA->parseTraceBuf(tracebuf, bytes, traceVector);
+  }
+}
+
+bool DeviceIntf::readTs2mm(xclTraceResultsVector& traceVector)
+{
+  if (mOffsetTs2mm >= mBytesTs2mm)
+    return false;
+  auto rbytes = mChunksizeTs2mm;
+  if (mOffsetTs2mm + mChunksizeTs2mm > mBytesTs2mm)
+    rbytes = mBytesTs2mm - mOffsetTs2mm;
+  auto tracebuf = syncTraceBO(mOffsetTs2mm, rbytes);
+  if (tracebuf) {
+    traceDMA->parseTraceBuf(tracebuf, rbytes, traceVector);
+    mOffsetTs2mm += rbytes;
+  }
+  return (rbytes == mChunksizeTs2mm && tracebuf);
+}
+
+void DeviceIntf::configReaderTs2mm(uint64_t chunksize)
+{
+  mBytesTs2mm = getWordCountTs2mm() * TRACE_PACKET_SIZE;
+  mBytesTs2mm = (mBytesTs2mm > TS2MM_MAX_BUF_SIZE) ? TS2MM_MAX_BUF_SIZE : mBytesTs2mm;
+  mOffsetTs2mm = 0;
+  mChunksizeTs2mm = chunksize;
+}
+
+void DeviceIntf::finTs2mm()
+{
+  xrt::device* xrtDevice = static_cast<xrt::device*>(mDeviceHandle);
+  traceDMA->reset();
+
+  if (mTs2mmBoHandle) {
+    void* space = xrtDevice->map(mTs2mmBoHandle);
+    munmap(space, mTs2mmBoSize);
+    xrtDevice->free(mTs2mmBoHandle);
+    mTs2mmBoHandle = nullptr;
+    mTs2mmBoSize = 0;
+  }
+}
 
 } // namespace xdp

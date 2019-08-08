@@ -18,7 +18,11 @@
 #include "ocl_profiler.h"
 #include "xdp/profile/core/rt_profile.h"
 #include "xdp/profile/config.h"
+#include "xdp/profile/device/tracedefs.h"
+#include "xrt/device/hal.h"
 #include "xclbin.h"
+#include <sys/mman.h>
+#include <regex>
 
 
 namespace xdp { namespace xoclp {
@@ -153,8 +157,8 @@ init(key k)
     mgr->setLoggingTrace(type, false);
 }
 
-unsigned
-get_profile_num_slots(key k, std::string& deviceName, xclPerfMonType type)
+unsigned int
+get_profile_num_slots(key k, const std::string& deviceName, xclPerfMonType type)
 {
   auto platform = k;
   for (auto device : platform->get_device_range()) {
@@ -169,8 +173,8 @@ get_profile_num_slots(key k, std::string& deviceName, xclPerfMonType type)
 }
 
 cl_int
-get_profile_slot_name(key k, std::string& deviceName, xclPerfMonType type,
-		              unsigned slotnum, std::string& slotName)
+get_profile_slot_name(key k, const std::string& deviceName, xclPerfMonType type,
+		              unsigned int slotnum, std::string& slotName)
 {
   auto platform = k;
   for (auto device : platform->get_device_range()) {
@@ -184,9 +188,9 @@ get_profile_slot_name(key k, std::string& deviceName, xclPerfMonType type,
   return device::getProfileSlotName(device.get(), type, slotnum, slotName);
 }
 
-unsigned
-get_profile_slot_properties(key k, std::string& deviceName, xclPerfMonType type,
-		              unsigned slotnum)
+unsigned int
+get_profile_slot_properties(key k, const std::string& deviceName, xclPerfMonType type,
+		              unsigned int slotnum)
 {
   auto platform = k;
   for (auto device : platform->get_device_range()) {
@@ -218,19 +222,8 @@ get_profile_kernel_name(key k, const std::string& deviceName, const std::string&
   return 0;
 }
 
-cl_int
-write_host_event(key k, xclPerfMonEventType type, xclPerfMonEventID id)
-{
-  XDP_LOG("Writing host event: type = %d, ID = %d\n", type, id);
-
-  auto platform = k;
-  for (auto device : platform->get_device_range())
-    device::writeHostEvent(device, type, id);
-  return 0;
-}
-
 size_t 
-get_device_timestamp(key k, std::string& deviceName)
+get_device_timestamp(key k, const std::string& deviceName)
 {
   auto platform = k;
   for (auto device : platform->get_device_range()) {
@@ -338,7 +331,7 @@ start_device_counters(key k, xclPerfMonType type)
       if (device->is_active()) {
         ret |= device::startCounters(device,type);
         // TODO: figure out why we need to start trace here for counters to always work (12/14/15, schuey)
-        ret |= device::startTrace(device,type, 1);
+        // ret |= device::startTrace(device,type, 1);
       }
     }
   }
@@ -417,6 +410,37 @@ is_ap_ctrl_chain(key k, const std::string& deviceName, const std::string& cu)
   return false;
 }
 
+uint64_t get_ts2mm_buf_size() {
+  std::string size_str = xrt::config::get_trace_buffer_size();
+  std::smatch pieces_match;
+  // Default is 1M
+  uint64_t bytes = 1048576;
+  // Regex can parse values like : "1024M" "1G" "8192k"
+  const std::regex size_regex("\\s*([0-9]+)\\s*(K|k|M|m|G|g|)\\s*");
+  if (std::regex_match(size_str, pieces_match, size_regex)) {
+    try {
+      if (pieces_match[2] == "K" || pieces_match[2] == "k") {
+        bytes = std::stoull(pieces_match[1]) * 1024;
+      } else if (pieces_match[2] == "M" || pieces_match[2] == "m") {
+        bytes = std::stoull(pieces_match[1]) * 1024 * 1024;
+      } else if (pieces_match[2] == "G" || pieces_match[2] == "g") {
+        bytes = std::stoull(pieces_match[1]) * 1024 * 1024 * 1024;
+      } else {
+        bytes = std::stoull(pieces_match[1]);
+      }
+    } catch (const std::exception& ex) {
+      // User specified number cannot be parsed
+    }
+  }
+  if (bytes > TS2MM_MAX_BUF_SIZE) {
+    bytes = TS2MM_MAX_BUF_SIZE;
+  }
+  if (bytes < TS2MM_MIN_BUF_SIZE) {
+    bytes = TS2MM_MIN_BUF_SIZE;
+  }
+  return bytes;
+}
+
 ////////////////////////////////////////////////////////////////
 // Device
 ////////////////////////////////////////////////////////////////
@@ -424,18 +448,6 @@ namespace device {
 
 data*
 get_data(key k);
-
-
-void
-init(key k)
-{
-  auto data = get_data(k);
-  data->mPerformingFlush = false;
-  auto nowTime = std::chrono::steady_clock::now();
-  data->mLastCountersSampleTime = nowTime;
-  for (int i=0; i < XCL_PERF_MON_TOTAL_PROFILE; ++i)
-    data->mLastTraceTrainingTime[i] = nowTime;
-}
 
 DeviceIntf* get_device_interface(key k)
 {
@@ -452,17 +464,7 @@ DeviceIntf* get_device_interface(key k)
   return  &(itr->second.mDeviceIntf);
 }
 
-#if 0  
-cl_int
-setProfileNumSlots(key k, xclPerfMonType type, unsigned numSlots)
-{
-  auto device = k;
-  device->get_xrt_device()->setProfilingSlots(type, numSlots);
-  return CL_SUCCESS;
-}
-#endif
-
-unsigned
+unsigned int
 getProfileNumSlots(key k, xclPerfMonType type)
 {
   auto device = k;
@@ -474,7 +476,7 @@ getProfileNumSlots(key k, xclPerfMonType type)
 }
 
 cl_int
-getProfileSlotName(key k, xclPerfMonType type, unsigned index,
+getProfileSlotName(key k, xclPerfMonType type, unsigned int index,
 		           std::string& slotName)
 {
   auto device = k;
@@ -490,8 +492,8 @@ getProfileSlotName(key k, xclPerfMonType type, unsigned index,
   return CL_SUCCESS;
 }
 
-unsigned
-getProfileSlotProperties(key k, xclPerfMonType type, unsigned index)
+unsigned int
+getProfileSlotProperties(key k, xclPerfMonType type, unsigned int index)
 {
   auto device = k;
   auto device_interface = get_device_interface(device);
@@ -499,21 +501,6 @@ getProfileSlotProperties(key k, xclPerfMonType type, unsigned index)
     return device_interface->getMonitorProperties(type, index);
   }
   return device->get_xrt_device()->getProfilingSlotProperties(type, index).get();
-}
-
-cl_int 
-writeHostEvent(key k, xclPerfMonEventType type, xclPerfMonEventID id)
-{
-  auto device = k;
-
-  // Only Zynq is supported in 2017.1
-  // NOTE: Zynq device names are currently blank
-  //std::string name = device->get_name();
-  //if (name.find("zcu102") != std::string::npos) {
-  //  XDP_LOG("  Writing host event to %s\n", name.c_str());
-    device->get_xrt_device()->writeHostEvent(type, id);
-  //}
-  return CL_SUCCESS;
 }
 
 cl_int
@@ -561,7 +548,8 @@ cl_int
 stopTrace(key k, xclPerfMonType type)
 {
   auto device = k;
-  device->get_xrt_device()->stopTrace(type);
+  auto xdevice = device->get_xrt_device();
+  xdevice->stopTrace(type);
   return CL_SUCCESS;
 }
 
@@ -591,9 +579,9 @@ getMaxWrite(key k)
 
 void configureDataflow(key k, xclPerfMonType type)
 {
-  unsigned num_slots = getProfileNumSlots(k, type);
-  auto ip_config = std::make_unique <unsigned []>(num_slots);
-  for (unsigned i=0; i < num_slots; i++) {
+  unsigned int num_slots = getProfileNumSlots(k, type);
+  auto ip_config = std::make_unique <unsigned int []>(num_slots);
+  for (unsigned int i=0; i < num_slots; i++) {
     std::string slot;
     getProfileSlotName(k, type, i, slot);
     ip_config[i] = isAPCtrlChain(k, slot) ? 1 : 0;
@@ -642,6 +630,13 @@ logTrace(key k, xclPerfMonType type, bool forceRead)
   auto data = get_data(k);
   auto device = k;
   auto xdevice = device->get_xrt_device();
+  auto profilemgr = OCLProfiler::Instance()->getProfileManager();
+
+  // Create unique name for device since system can have multiples of same device
+  std::string device_name = device->get_unique_name();
+  std::string binary_name = "binary";
+  if (device->is_active())
+    binary_name = device->get_xclbin().project_name();
 
   // Do clock training if enough time has passed
   // NOTE: once we start flushing FIFOs, we stop all training (no longer needed)
@@ -666,11 +661,6 @@ logTrace(key k, xclPerfMonType type, bool forceRead)
   data->mLastTraceNumSamples[type] = numSamples;
 
   if (forceRead || (numSamples > data->mSamplesThreshold)) {
-    // Create unique name for device since system can have multiples of same device
-    std::string device_name = device->get_unique_name();
-    std::string binary_name = "binary";
-    if (device->is_active())
-      binary_name = device->get_xclbin().project_name();
 
     // warning : reading from the accelerator device only
     // read the device trace
@@ -680,8 +670,8 @@ logTrace(key k, xclPerfMonType type, bool forceRead)
       if (data->mTraceVector.mLength == 0)
         break;
 
-      // log the device trace
-      OCLProfiler::Instance()->getProfileManager()->logDeviceTrace(device_name, binary_name, type, data->mTraceVector);
+      // log and write
+      profilemgr->logDeviceTrace(device_name, binary_name, type, data->mTraceVector);
       data->mTraceVector.mLength = 0;
 
       // Only check repeatedly for trace buffer flush if HW emulation

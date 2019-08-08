@@ -43,6 +43,7 @@
 #include<cstring>
 
 #include "core/common/memalign.h"
+#include "xdp/profile/core/rt_util.h"
 
 namespace xdp {
 
@@ -70,42 +71,6 @@ namespace xdp {
               free(mBuffer);
       }
   };
-
-
-
-
-// Convert decimal to binary string
-// NOTE: length of string is always sizeof(uint32_t) * 8
-std::string dec2bin(uint32_t n) {
-    char result[(sizeof(uint32_t) * 8) + 1];
-    unsigned index = sizeof(uint32_t) * 8;
-    result[index] = '\0';
-
-    do {
-      result[ --index ] = '0' + (n & 1);
-    } while (n >>= 1);
-
-    for (int i=index-1; i >= 0; --i)
-      result[i] = '0';
-
-    return std::string( result );
-}
-
-// Convert decimal to binary string of length bits
-std::string dec2bin(uint32_t n, unsigned bits) {
-    char result[bits + 1];
-    unsigned index = bits;
-    result[index] = '\0';
-
-    do result[ --index ] = '0' + (n & 1);
-    while (n >>= 1);
-
-    for (int i=index-1; i >= 0; --i)
-      result[i] = '0';
-
-    return std::string( result );
-}
-
 
 TraceFifoFull::TraceFifoFull(void* handle /** < [in] the xrt hal device handle */,
                 int index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data)
@@ -343,7 +308,8 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
             (*out_stream) << "  Trace sample " << std::dec << i << ": "
                           << " Timestamp : " << results.Timestamp << "   "
                           << " Host Timestamp : " << std::hex << results.HostTimestamp << std::endl;
-          } 
+          }
+          results.isClockTrain = true;
           traceVector.mArray[static_cast<int>(i/4)] = results;    // save result
         }
         continue;
@@ -359,12 +325,13 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
       results.Error = (currentSample >> 63) & 0x1;
       results.EventID = XCL_PERF_MON_HW_EVENT;
       results.EventFlags = ((currentSample >> 45) & 0xF) | ((currentSample >> 57) & 0x10) ;
+      results.isClockTrain = false;
 
       traceVector.mArray[i - clockWordIndex + 1] = results;   // save result
 
       if(out_stream) {
         (*out_stream) << "  Trace sample " << std::dec << std::setw(5) << i << ": "
-                      << dec2bin(uint32_t(currentSample>>32)) << " " << dec2bin(uint32_t(currentSample&0xFFFFFFFF))
+                      << RTUtil::dec2bin(uint32_t(currentSample>>32)) << " " << RTUtil::dec2bin(uint32_t(currentSample&0xFFFFFFFF))
                       << std::endl
                       << " Timestamp : " << results.Timestamp << "   "
                       << "Event Type : " << results.EventType << "   "

@@ -994,7 +994,8 @@ namespace awsbwhal {
             mLogStream << "  Trace sample " << std::dec << wordnum << ": ";
             mLogStream << " Timestamp : " << results.Timestamp << "   ";
             mLogStream << " Host Timestamp : " << std::hex << results.HostTimestamp << std::endl;
-          }    
+          }
+          results.isClockTrain = true;
           traceVector.mArray[static_cast<int>(wordnum/4)] = results;
         }    
         continue;
@@ -1014,6 +1015,7 @@ namespace awsbwhal {
       results.Error = (temp >> 63) & 0x1;
       results.EventID = XCL_PERF_MON_HW_EVENT;
       results.EventFlags = ((temp >> 45) & 0xF) | ((temp >> 57) & 0x10) ;
+      results.isClockTrain = false;
 //      traceVector.mArray[wordnum] = results;
       traceVector.mArray[wordnum - clockWordIndex + 1] = results;
 
