@@ -44,7 +44,7 @@ extern struct timezone sys_tz;
 #define	FIREWALL_STATUS_BUSY	(READ_RESPONSE_BUSY | WRITE_RESPONSE_BUSY)
 #define	CLEAR_RESET_GPIO		0
 
-#define	FW_PRIVILEGED(fw)		((fw)->max_level != -1)
+#define	FW_PRIVILEGED(fw)		((fw)->base_addrs[0] != NULL)
 #define	READ_STATUS(fw, id)			\
 	XOCL_READ_REG32(fw->base_addrs[id] + FAULT_STATUS)
 #define	WRITE_UNBLOCK_CTRL(fw, id, val)			\
@@ -161,7 +161,6 @@ static int get_prop(struct platform_device *pdev, u32 prop, void *val)
 			ret = -EINVAL;
 		}
 	} else {
-
 		get_fw_status(pdev);
 
 		switch (prop) {

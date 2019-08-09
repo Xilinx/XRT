@@ -246,8 +246,8 @@ enum board_info_key {
 	BDINFO_REV,
 	BDINFO_NAME,
 	BDINFO_BMC_VER,
-	BDINFO_FAN_PRESENCE,
 	BDINFO_MAX_PWR,
+	BDINFO_FAN_PRESENCE,
 	BDINFO_CONFIG_MODE,
 	/* lower and upper limit */
 	BDINFO_MIN_KEY = BDINFO_SN,
@@ -291,7 +291,7 @@ struct xocl_xmc {
 	char			bd_name[XMC_BDINFO_ENTRY_LEN_MAX];
 	char			bmc_ver[XMC_BDINFO_ENTRY_LEN_MAX];
 	uint32_t		max_power;
-	uint32_t		fan_num;
+	uint32_t		fan_presence;
 	uint32_t		config_mode;
 	bool			bdinfo_loaded;
 };
@@ -514,8 +514,8 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 		case MAX_PWR:
 			*val = xmc->max_power;
 			break;
-		case FAN_NUM:
-			*val = xmc->fan_num;
+		case FAN_PRESENCE:
+			*val = xmc->fan_presence;
 			break;
 		case CFG_MODE:
 			*val = xmc->config_mode;
@@ -653,8 +653,8 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 		case MAX_PWR:
 			*val = xmc->cache->max_power;
 			break;
-		case FAN_NUM:
-			*val = xmc->cache->fan_num;
+		case FAN_PRESENCE:
+			*val = xmc->cache->fan_presence;
 			break;
 		case CFG_MODE:
 			*val = xmc->cache->config_mode;
@@ -727,7 +727,7 @@ static int xmc_get_data(struct platform_device *pdev, void *buf)
 	xmc_bdinfo(pdev, CARD_NAME, (u32 *)sensors->bd_name);
 	xmc_bdinfo(pdev, BMC_VER, (u32 *)sensors->bmc_ver);
 	xmc_bdinfo(pdev, MAX_PWR, &sensors->max_power);
-	xmc_bdinfo(pdev, FAN_NUM, &sensors->fan_num);
+	xmc_bdinfo(pdev, FAN_PRESENCE, &sensors->fan_presence);
 	xmc_bdinfo(pdev, CFG_MODE, &sensors->config_mode);
 	return 0;
 }
@@ -1251,8 +1251,21 @@ XMC_BDINFO_STRING_SYSFS_NODE(bmc_ver)
 	static DEVICE_ATTR_RO(name);					\
 
 XMC_BDINFO_STAT_SYSFS_NODE(max_power);
-XMC_BDINFO_STAT_SYSFS_NODE(fan_num);
 XMC_BDINFO_STAT_SYSFS_NODE(config_mode);
+
+
+#define	XMC_BDINFO_CHAR_SYSFS_NODE(name)		\
+	static ssize_t name##_show(struct device *dev,		\
+		struct device_attribute *attr, char *buf) {		\
+		struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev)); \
+		mutex_lock(&xmc->mbx_lock);				\
+		xmc_load_board_info(xmc);				\
+		mutex_unlock(&xmc->mbx_lock);				\
+		return sprintf(buf, "%c\n", xmc->name);		\
+	}								\
+	static DEVICE_ATTR_RO(name);					\
+
+XMC_BDINFO_CHAR_SYSFS_NODE(fan_presence);
 
 static struct attribute *xmc_attrs[] = {
 	&dev_attr_pause.attr,
@@ -1273,7 +1286,7 @@ static struct attribute *xmc_attrs[] = {
 	&dev_attr_bd_name.attr,
 	&dev_attr_bmc_ver.attr,
 	&dev_attr_max_power.attr,
-	&dev_attr_fan_num.attr,
+	&dev_attr_fan_presence.attr,
 	&dev_attr_config_mode.attr,
 	&dev_attr_reg_base.attr,
 	SENSOR_SYSFS_NODE_ATTRS,
@@ -2328,7 +2341,7 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_NAME, xmc->bd_name);
 		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_BMC_VER, xmc->bmc_ver);
 		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_MAX_PWR, (char *)&xmc->max_power);
-		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_FAN_PRESENCE, (char *)&xmc->fan_num);
+		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_FAN_PRESENCE, (char *)&xmc->fan_presence);
 		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_CONFIG_MODE, (char *)&xmc->config_mode);
 		xocl_info(&xmc->pdev->dev, "board info reloaded\n");
 		xmc->bdinfo_loaded = true;
@@ -2343,7 +2356,7 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		xmc_bdinfo(xmc->pdev, CARD_NAME, (u32 *)xmc->bd_name);
 		xmc_bdinfo(xmc->pdev, BMC_VER, (u32 *)xmc->bmc_ver);
 		xmc_bdinfo(xmc->pdev, MAX_PWR, &xmc->max_power);
-		xmc_bdinfo(xmc->pdev, FAN_NUM, &xmc->fan_num);
+		xmc_bdinfo(xmc->pdev, FAN_PRESENCE, &xmc->fan_presence);
 		xmc_bdinfo(xmc->pdev, CFG_MODE, &xmc->config_mode);
 	}
 	return 0;
