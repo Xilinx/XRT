@@ -16,6 +16,7 @@
 
 #include <string>
 #include <iostream>
+#include <functional>
 #include <map>
 #include <fstream>
 #include <climits>
@@ -126,22 +127,18 @@ void scanPartitions(int index, std::vector<DSAInfo>& installedDSAs, bool verbose
     if (!f.isValid())
         return;
 
-    //DSAInfo board = f.getOnBoardDSA();
+    auto dev = pcidev::get_dev(index, false);
+    std::vector<std::string> uuids;
+    std::string errmsg;
+    dev->sysfs_get("", "logic_uuids", errmsg, uuids);
+    if (!errmsg.empty() || uuids.size() == 0)
+        return;
 
     std::cout << "Card [" << f.sGetDBDF() << "]" << std::endl;
     std::cout << fmt_str << "Programmable partition running on FPGA:" << std::endl;
+    DSAInfo dsa("", NULL_TIMESTAMP, uuids.back(), "");
+    std::cout << fmt_str << fmt_str << dsa << std::endl;
 
-    std::vector<std::string> uuids;
-    auto dev = pcidev::get_dev(index, false);
-    std::string errmsg;
-
-    dev->sysfs_get("", "logic_uuids", errmsg, uuids);
-    if (errmsg.empty())
-    {
-        DSAInfo dsa("", NULL_TIMESTAMP, uuids.back(), "");
-
-        std::cout << fmt_str << fmt_str << dsa << std::endl;
-    }
 
     std::cout << fmt_str << "Programmable partitions installed in system:" << std::endl;
     if (installedDSAs.empty())

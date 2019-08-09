@@ -276,7 +276,7 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
         std::cout << "Shell on FPGA is unknown" << std::endl;
         return DSAs;
     }
-    uint16_t vendor_id, device_id, subsystem_id;
+    uint16_t vendor_id, device_id;
     std::string err;
     mDev->sysfs_get("", "vendor", err, vendor_id);
     if (!err.empty())
@@ -290,31 +290,22 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
         std::cout << err << std::endl;
         return DSAs;
     }
-    mDev->sysfs_get("", "subsystem_device", err, subsystem_id);
-    if (!err.empty())
-    {
-        std::cout << err << std::endl;
-        return DSAs;
-    }
 
     // Obtain installed DSA info.
-    //std::cout << "ON Board: " << onBoard.vendor << " " << onBoard.board << " " << vendor_id << " " << device_id << " " << subsystem_id << std::endl;
+    //std::cout << "ON Board: " << onBoard.vendor << " " << onBoard.board << " " << vendor_id << " " << device_id << std::endl;
     auto installedDSAs = firmwareImage::getIntalledDSAs();
     for (DSAInfo& dsa : installedDSAs)
     {
-        //std::cout << "DSA " << dsa.name << ": " << dsa.vendor << " " << dsa.board << " " << dsa.vendor_id << " " << dsa.device_id << " "<< dsa.subsystem_id << "TS: " << dsa.timestamp << std::endl;
+        //std::cout << "DSA " << dsa.name << ": " << dsa.vendor << " " << dsa.board << " " << dsa.vendor_id << " " << dsa.device_id << "TS: " << dsa.timestamp << std::endl;
         if (!dsa.hasFlashImage || dsa.timestamp == NULL_TIMESTAMP)
 	       continue;
 
-        if ((!dsa.device_id && !dsa.device_id && !dsa.subsystem_id) && (
-            (onBoard.vendor != dsa.vendor) ||
+        if (!onBoard.vendor.empty() && !onBoard.board.empty() &&
+            ((onBoard.vendor != dsa.vendor) ||
             (onBoard.board != dsa.board)))
 	       continue;
 
-	if (!dsa.vendor.size() && !dsa.board.size() && (
-            (vendor_id != dsa.vendor_id) ||
-            (device_id != dsa.device_id) ||
-            (subsystem_id != dsa.subsystem_id)))
+	if ((vendor_id != dsa.vendor_id) || (device_id != dsa.device_id))
                 continue;
 
         DSAs.push_back(dsa);

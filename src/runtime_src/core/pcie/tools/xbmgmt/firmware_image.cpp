@@ -64,17 +64,21 @@ void getVendorBoardFromDSAName(std::string& dsa, std::string& vendor, std::strin
     board = tokens[1];
 }
 
-void getTimestampFromFilename(std::string filename, uint64_t &ts)
+void parseDSAFilename(std::string filename, uint16_t& vendor, uint16_t& device, uint16_t& subsystem, uint64_t &ts)
 {
     std::vector<std::string> suffix = { XSABIN_FILE_SUFFIX, DSABIN_FILE_SUFFIX};
 
     for (std::string t : suffix) {
-        std::regex e(".*-([0-9a-fA-F]+)." + t);
+        std::regex e(".*/([0-9a-fA-F]+)-([0-9a-fA-F]+)-([0-9a-fA-F]+)-([0-9a-fA-F]+)." + t);
         std::cmatch cm;
 
         std::regex_match(filename.c_str(), cm, e);
-        if (cm.size() == 2) {
-            ts = std::stoull(cm.str(1), 0, 16);
+        if (cm.size() == 5) {
+            vendor = std::stoull(cm.str(1), 0, 16);
+            device = std::stoull(cm.str(2), 0, 16);
+            subsystem = std::stoull(cm.str(3), 0, 16);
+            ts = std::stoull(cm.str(4), 0, 16);
+	    std::cout << "TS +++++++++++++++ " << ts << "\n";
         } else
             ts = NULL_TIMESTAMP;
     }
@@ -233,7 +237,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
         std::replace_if(name.begin(), name.end(),
             [](const char &a){ return a == ':' || a == '.'; }, '_');
         getVendorBoardFromDSAName(name, vendor, board);
-        getTimestampFromFilename(filename, timestamp);
+        parseDSAFilename(filename, vendor_id, device_id, subsystem_id, timestamp);
         // Assume there is only 1 interface UUID is provided for BLP,
         // Show it as ID for flashing
         const axlf_section_header* dtbSection = xclbin::get_axlf_section(ap, PARTITION_METADATA);
