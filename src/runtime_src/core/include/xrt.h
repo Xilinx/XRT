@@ -107,6 +107,8 @@ struct xclDeviceInfo2 {
   unsigned short mFanRpm;
   unsigned short mDimmTemp[4];
   unsigned short mSE98Temp[4];
+  unsigned short mHbmTemp1;
+  unsigned short mHbmTemp2;
   unsigned short m3v3Pex;
   unsigned short m3v3Aux;
   unsigned short mDDRVppBottom;
@@ -129,6 +131,12 @@ struct xclDeviceInfo2 {
   unsigned short mVccIntVol;
   unsigned short mVccIntCurr;
   unsigned short mNumCDMA;
+  unsigned short m3v3PexCurr;
+  unsigned short m0v85Curr;
+  unsigned short mVcc3v3;
+  unsigned short mHbm1v2Vol;
+  unsigned short mVpp2v5Vol;
+  unsigned short mVccIntBramVol;
 };
 
 /**

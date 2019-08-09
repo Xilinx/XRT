@@ -542,6 +542,8 @@ void shim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     mDev->sysfs_get("xmc", "xmc_se98_temp1", errmsg, info->mSE98Temp[1]);
     mDev->sysfs_get("xmc", "xmc_se98_temp2", errmsg, info->mSE98Temp[2]);
     mDev->sysfs_get("xmc", "xmc_fan_temp", errmsg, info->mFanTemp);
+    mDev->sysfs_get("xmc", "xmc_hbm_temp1", errmsg, info->mHbmTemp1);
+    mDev->sysfs_get("xmc", "xmc_hbm_temp2", errmsg, info->mHbmTemp2);
     mDev->sysfs_get("xmc", "xmc_fan_rpm", errmsg, info->mFanRpm);
     mDev->sysfs_get("xmc", "xmc_3v3_pex_vol", errmsg, info->m3v3Pex);
     mDev->sysfs_get("xmc", "xmc_3v3_aux_vol", errmsg, info->m3v3Aux);
@@ -557,6 +559,12 @@ void shim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     mDev->sysfs_get("xmc", "xmc_vcc1v2_btm", errmsg, info->m1v2Bottom);
     mDev->sysfs_get("xmc", "xmc_vccint_vol", errmsg, info->mVccIntVol);
     mDev->sysfs_get("xmc", "xmc_fpga_temp", errmsg, info->mOnChipTemp);
+    mDev->sysfs_get("xmc", "xmc_3v3_vcc_vol", errmsg, info->mVcc3v3);
+    mDev->sysfs_get("xmc", "xmc_3v3_pex_curr", errmsg, info->m3v3PexCurr);
+    mDev->sysfs_get("xmc", "xmc_0v85_curr", errmsg, info->m0v85Curr);
+    mDev->sysfs_get("xmc", "xmc_hbm_1v2_vol", errmsg, info->mHbm1v2Vol);
+    mDev->sysfs_get("xmc", "xmc_vpp2v5_vol", errmsg, info->mVpp2v5Vol);
+    mDev->sysfs_get("xmc", "xmc_vccint_bram_vol", errmsg, info->mVccIntBramVol);
 
     mDev->sysfs_get("", "link_width", errmsg, info->mPCIeLinkWidth);
     mDev->sysfs_get("", "link_speed", errmsg, info->mPCIeLinkSpeed);

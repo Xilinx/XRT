@@ -86,7 +86,15 @@ class xclDeviceInfo2(ctypes.Structure):
      ("mPCIeLinkSpeedMax", ctypes.c_ushort),
      ("mVccIntVol", ctypes.c_ushort),
      ("mVccIntCurr", ctypes.c_ushort),
-     ("mNumCDMA", ctypes.c_ushort)
+     ("mNumCDMA", ctypes.c_ushort),
+     ("mHbmTemp1", ctypes.c_ushort),
+     ("mHbmTemp2", ctypes.c_ushort),
+     ("mVcc3v3", ctypes.c_ushort),
+     ("m3v3PexCurr", ctypes.c_ushort),
+     ("m0v85Curr", ctypes.c_ushort),
+     ("mHbm1v2Vol", ctypes.c_ushort),
+     ("mVpp2v5Vol", ctypes.c_ushort),
+     ("mVccIntBramVol", ctypes.c_ushort)
     ]
 
 # xclMemoryDomains is for support of legacy APIs
