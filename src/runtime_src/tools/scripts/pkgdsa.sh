@@ -331,6 +331,8 @@ initBMCVar()
          prefix="AlveoGen2-"
       elif [ "${SatelliteControllerFamily}" == "Alveo-Gen3" ]; then
          prefix="AlveoGen3-"
+      elif [ "${SatelliteControllerFamily}" == "Alveo-Gen4" ]; then
+         prefix="AlveoGen4-"
       else
          echo "ERROR: Unknown satellite controller family: ${SatelliteControllerFamily}"
          exit 1
@@ -429,7 +431,12 @@ initDsaBinEnvAndVars()
       SatelliteControllerFamily="Alveo-Gen1"
     fi
 
-    if [ "${metaDataJSONFile}" != "" ]; then
+	# Work-around until ext_metadata is correct
+    if [[ ${opt_dsa} =~ "u50" ]]; then
+      CardMgmtControllerFamily="CMC-Gen2"
+      SatelliteControllerFamily="Alveo-Gen4"
+      SchedulerFamily="ERT-Gen2"
+    elif [ "${metaDataJSONFile}" != "" ]; then
        echo "Info: Extracting Metadata file: ${metaDataJSONFile}"
        unzip -q -d "." "${dsaFile}" "${metaDataJSONFile}"
 
@@ -466,6 +473,8 @@ initDsaBinEnvAndVars()
     if [ "${SchedulerFamily}" != "" ]; then
       if [ "${SchedulerFamily}" == "ERT-Gen1" ]; then
          fwScheduler="${XILINX_XRT}/share/fw/sched.bin"
+      elif [ "${SchedulerFamily}" == "ERT-Gen2" ]; then
+         fwScheduler="${XILINX_XRT}/share/fw/sched_u50.bin"
       else
          echo "ERROR: Unknown scheduler firmware family: ${SchedulerFamily}"
          exit 1
@@ -479,6 +488,8 @@ initDsaBinEnvAndVars()
          fwManagement="${XILINX_XRT}/share/fw/mgmt.bin"
       elif [ "${CardMgmtControllerFamily}" == "CMC-Gen1" ]; then
          fwManagement="${XILINX_XRT}/share/fw/cmc.bin"
+      elif [ "${CardMgmtControllerFamily}" == "CMC-Gen2" ]; then
+         fwManagement="${XILINX_XRT}/share/fw/cmc_u50.bin"
       else
          echo "ERROR: Unknown card management controller family: ${CardMgmtControllerFamily}"
          exit 1
