@@ -300,11 +300,12 @@ struct xocl_pci_funcs {
 	(XDEV_PCIOPS(xdev)->reset ? XDEV_PCIOPS(xdev)->reset(xdev) : \
 	-ENODEV)
 
-struct xocl_health_thread_arg {
-	int (*health_cb)(void *arg);
+struct xocl_thread_arg {
+	int (*thread_cb)(void *arg);
 	void		*arg;
 	u32		interval;    /* ms */
 	struct device	*dev;
+	char		*name;
 };
 
 struct xocl_drvinst_proc {
@@ -350,8 +351,8 @@ struct xocl_dev_core {
 	void __iomem		*intr_bar_addr;
 	resource_size_t		intr_bar_size;
 
-	struct task_struct      *health_thread;
-	struct xocl_health_thread_arg thread_arg;
+	struct task_struct      *poll_thread;
+	struct xocl_thread_arg thread_arg;
 
 	struct xocl_drm		*drm;
 
@@ -816,7 +817,7 @@ struct xocl_icap_funcs {
 	int (*download_bitstream_axlf)(struct platform_device *pdev,
 		const void __user *arg);
 	int (*download_boot_firmware)(struct platform_device *pdev);
-	int (*download_rp)(struct platform_device *pdev, int level, bool force);
+	int (*download_rp)(struct platform_device *pdev, int level, int flag);
 	int (*ocl_set_freq)(struct platform_device *pdev,
 		unsigned int region, unsigned short *freqs, int num_freqs);
 	int (*ocl_get_freq)(struct platform_device *pdev,
@@ -828,6 +829,11 @@ struct xocl_icap_funcs {
 		const xuid_t *uuid);
 	uint64_t (*get_data)(struct platform_device *pdev,
 		enum data_kind kind);
+};
+enum {
+	RP_DOWNLOAD_NORMAL,
+	RP_DOWNLOAD_DRY,
+	RP_DOWNLOAD_FORCE,
 };
 #define	ICAP_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ICAP).pldev
 #define	ICAP_OPS(xdev)							\
@@ -850,9 +856,9 @@ struct xocl_icap_funcs {
 	(ICAP_CB(xdev, download_boot_firmware) ?			\
 	ICAP_OPS(xdev)->download_boot_firmware(ICAP_DEV(xdev)) :	\
 	-ENODEV)
-#define xocl_icap_download_rp(xdev, level, force)			\
+#define xocl_icap_download_rp(xdev, level, flag)			\
 	(ICAP_CB(xdev, download_rp) ?					\
-	ICAP_OPS(xdev)->download_rp(ICAP_DEV(xdev), level, force) :	\
+	ICAP_OPS(xdev)->download_rp(ICAP_DEV(xdev), level, flag) :	\
 	-ENODEV)
 #define	xocl_icap_ocl_get_freq(xdev, region, freqs, num)		\
 	(ICAP_CB(xdev, ocl_get_freq) ?					\
@@ -1065,8 +1071,8 @@ int xocl_drvinst_get_offline(void *data, bool *offline);
 int xocl_drvinst_kill_proc(void *data);
 
 /* health thread functions */
-int health_thread_start(xdev_handle_t xdev);
-int health_thread_stop(xdev_handle_t xdev);
+int xocl_thread_start(xdev_handle_t xdev);
+int xocl_thread_stop(xdev_handle_t xdev);
 
 /* subdev blob functions */
 int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob);
@@ -1076,12 +1082,12 @@ int xocl_fdt_overlay(void *fdt, int target, void *fdto, int node, int pf);
 int xocl_fdt_build_priv_data(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev,
 		void **priv_data,  size_t *data_len);
 int xocl_fdt_get_userpf(xdev_handle_t xdev_hdl, void *blob);
-const char *xocl_fdt_get_prp_int_uuid(xdev_handle_t xdev_hdl, void *blob,
-		int *len);
 int xocl_fdt_add_pair(xdev_handle_t xdev_hdl, void *blob, char *name,
 		void *val, int size);
-const char *xocl_fdt_next_intf_uuid(xdev_handle_t xdev_hdl, void *blob,
-		        int offset);
+int xocl_fdt_get_next_prop_by_name(xdev_handle_t xdev_hdl, void *blob,
+    int offset, char *name, const void **prop, int *prop_len);
+int xocl_fdt_check_uuids(xdev_handle_t xdev_hdl, const void *blob,
+		        const void *subset_blob);
 const struct axlf_section_header *xocl_axlf_section_header(
 	xdev_handle_t xdev_hdl, const struct axlf *top,
 	enum axlf_section_kind kind);

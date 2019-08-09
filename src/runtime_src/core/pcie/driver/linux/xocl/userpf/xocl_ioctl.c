@@ -251,6 +251,8 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	struct mem_topology *new_topology = NULL, *topology;
 	struct xocl_dev *xdev = drm_p->xdev;
 	xuid_t *xclbin_id;
+	const struct axlf_section_header * dtbHeader = NULL;
+	void *ulp_blob;
 
 	if (!xocl_is_unified(xdev)) {
 		userpf_err(xdev, "XOCL: not unified Shell\n");
@@ -312,6 +314,43 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	if (copy_from_user(axlf, axlf_ptr->xclbin, bin_obj.m_header.m_length)) {
 		err = -EFAULT;
 		goto done;
+	}
+
+	dtbHeader = xocl_axlf_section_header(xdev, axlf,
+		PARTITION_METADATA);
+	if (dtbHeader) {
+		ulp_blob = (char*)axlf + dtbHeader->m_sectionOffset;
+		if (fdt_check_header(ulp_blob) || fdt_totalsize(ulp_blob) >
+				dtbHeader->m_sectionSize) {
+			userpf_err(xdev, "Invalid PARTITION_METADATA");
+			err = -EINVAL;
+			goto done;
+		}
+
+		if (xdev->ulp_blob)
+			vfree(xdev->ulp_blob);
+
+		xdev->ulp_blob = vmalloc(fdt_totalsize(ulp_blob));
+		if (!xdev->ulp_blob) {
+			err = -ENOMEM;
+			goto done;
+		}
+		memcpy(xdev->ulp_blob, ulp_blob, fdt_totalsize(ulp_blob));
+
+		xocl_xdev_info(xdev, "check interface uuid");
+		if (!XDEV(xdev)->fdt_blob) {
+			userpf_err(xdev, "did not find platform dtb");
+			err = -EINVAL;
+			goto done;
+		}
+		err = xocl_fdt_check_uuids(xdev,
+			(const void *)XDEV(xdev)->fdt_blob,
+			(const void *)((char*)xdev->ulp_blob));
+		if (err) {
+			userpf_err(xdev, "interface uuids do not match");
+			err = -EINVAL;
+			goto done;
+		}
 	}
 
 	/* Populating MEM_TOPOLOGY sections. */
@@ -416,6 +455,6 @@ int xocl_reclock_ioctl(struct drm_device *dev, void *data,
 	err = xocl_reclock(xdev, data);
 	xocl_drvinst_set_offline(xdev, false);
 
-	printk(KERN_INFO "%s err: %d\n", __func__, err);
+	userpf_info(xdev, "%s err: %d\n", __func__, err);
 	return err;
 }

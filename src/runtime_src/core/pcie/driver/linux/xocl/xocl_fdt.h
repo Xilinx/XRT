@@ -24,6 +24,7 @@
 #define PROP_IO_OFFSET "reg"
 #define PROP_INTERRUPTS "interrupts"
 #define PROP_INTERFACE_UUID "interface_uuid"
+#define PROP_LOGIC_UUID "logic_uuid"
 
 #define UUID_PROP_LEN 65 
 
@@ -49,8 +50,8 @@
 #define NODE_ERT_CQ_USER "ep_ert_command_queue_user_00"
 #define NODE_MAILBOX_MGMT "ep_mailbox_mgmt_00"
 #define NODE_MAILBOX_USER "ep_mailbox_user_00"
-#define NODE_GATE_BLP "ep_pr_isolate_prp_00"
-#define NODE_GATE_PRP "ep_pr_isolate_urp_00"
+#define NODE_GATE_BLP "ep_pr_isolate_plp_00"
+#define NODE_GATE_PRP "ep_pr_isolate_ulp_00"
 #define NODE_DDR_CALIB "ep_ddr_mem_calib_00"
 #define NODE_CLK_KERNEL1 "ep_aclk_kernel_00"
 #define NODE_CLK_KERNEL2 "ep_aclk_kernel_01"

@@ -414,25 +414,31 @@ inline void check_volt_within_range(struct xclmgmt_dev *lro, u16 volt)
 static void check_sensor(struct xclmgmt_dev *lro)
 {
 	int ret;
-	struct xcl_sensor s = { 0 };
+	struct xcl_sensor *s;
+       
+	s = vzalloc(sizeof *s);
+	if (!s)
+		return;
 
-	ret = xocl_xmc_get_data(lro, &s);
+	ret = xocl_xmc_get_data(lro, s);
 	if (ret == -ENODEV) {
 		(void) xocl_sysmon_get_prop(lro,
-			XOCL_SYSMON_PROP_TEMP, &s.fpga_temp);
-		s.fpga_temp /= 1000;
+			XOCL_SYSMON_PROP_TEMP, &s->fpga_temp);
+		s->fpga_temp /= 1000;
 		(void) xocl_sysmon_get_prop(lro,
-			XOCL_SYSMON_PROP_VCC_INT, &s.vccint_vol);
+			XOCL_SYSMON_PROP_VCC_INT, &s->vccint_vol);
 		(void) xocl_sysmon_get_prop(lro,
-			XOCL_SYSMON_PROP_VCC_AUX, &s.vol_1v8);
+			XOCL_SYSMON_PROP_VCC_AUX, &s->vol_1v8);
 		(void) xocl_sysmon_get_prop(lro,
-			XOCL_SYSMON_PROP_VCC_BRAM, &s.vol_0v85);
+			XOCL_SYSMON_PROP_VCC_BRAM, &s->vol_0v85);
 	}
 
-	check_temp_within_range(lro, s.fpga_temp);
-	check_volt_within_range(lro, s.vccint_vol);
-	check_volt_within_range(lro, s.vol_1v8);
-	check_volt_within_range(lro, s.vol_0v85);
+	check_temp_within_range(lro, s->fpga_temp);
+	check_volt_within_range(lro, s->vccint_vol);
+	check_volt_within_range(lro, s->vol_1v8);
+	check_volt_within_range(lro, s->vol_0v85);
+
+	vfree(s);
 }
 
 static int health_check_cb(void *data)
@@ -1008,10 +1014,11 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 		if (ret)
 			goto fail_all_subdev;
 	}
-	lro->core.thread_arg.health_cb = health_check_cb;
+	lro->core.thread_arg.thread_cb = health_check_cb;
 	lro->core.thread_arg.arg = lro;
 	lro->core.thread_arg.interval = health_interval * 1000;
-	health_thread_start(lro);
+	lro->core.thread_arg.name = "xclmgmt health thread";
+	xocl_thread_start(lro);
 
 	/* Launch the mailbox server. */
 	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
@@ -1123,8 +1130,10 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	xocl_info(&pdev->dev, "minimum initialization done\n");
 
 	/* No further initialization for MFG board. */
-	if (minimum_initialization ||
-		(dev_info->flags & XOCL_DSAFLAG_MFG) != 0) {
+	if (minimum_initialization)
+		return 0;
+	else if ((dev_info->flags & XOCL_DSAFLAG_MFG) != 0) {
+		xocl_subdev_create_all(lro);
 		return 0;
 	}
 
@@ -1167,7 +1176,7 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 
 	xclmgmt_connect_notify(lro, false);
 
-	health_thread_stop(lro);
+	xocl_thread_stop(lro);
 
 	mgmt_fini_sysfs(&pdev->dev);
 

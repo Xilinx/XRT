@@ -289,11 +289,13 @@ static int __find_firmware(struct platform_device *pdev, char *fw_name,
 	int err = 0;
 
 	/* For 2RP, only uuid is provided */
-	if (strlen(rom->uuid) > 0)
-		snprintf(fw_name, len, "xilinx/%s.%s", rom->uuid, suffix);
-	else
+	if (strlen(rom->uuid) > 0) {
+		snprintf(fw_name, len, "xilinx/%s/%s.%s", rom->uuid, rom->uuid,
+			suffix);
+	} else {
 		snprintf(fw_name, len, "xilinx/%04x-%04x-%04x-%016llx.%s",
 			vendor, deviceid, subdevice, timestamp, suffix);
+	}
 
 	/* deviceid is arg, the others are from pdev) */
 	xocl_info(&pdev->dev, "try load %s", fw_name);

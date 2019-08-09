@@ -30,6 +30,7 @@
 
 // directory where all MCS files are saved
 #define FIRMWARE_DIR        "/lib/firmware/xilinx/"
+#define FORMATTED_FW_DIR    "/opt/xilinx/firmware"
 #define DSA_FILE_SUFFIX     "mcs"
 #define DSABIN_FILE_SUFFIX  "dsabin"
 #define XSABIN_FILE_SUFFIX  "xsabin"
@@ -38,18 +39,30 @@
 class DSAInfo
 {
 public:
-    bool DSAValid;
+    bool hasFlashImage;
     std::string vendor;
     std::string board;
     std::string name;
     std::string file;
     uint64_t timestamp;
-    std::string uuid;
+    std::vector<std::string> uuids;
     std::string bmcVer;
+
+    uint16_t vendor_id;
+    uint16_t device_id;
+    uint16_t subsystem_id;
+    std::string partition_family_name;
+    std::string partition_name;
+    std::string build_ident;
 
     DSAInfo(const std::string& filename, uint64_t ts, const std::string& id, const std::string& bmc);
     DSAInfo(const std::string& filename);
+    DSAInfo(const std::string& filename, uint16_t vid, uint16_t did, uint16_t subsys_id, std::string& pr_family, std::string& pr_name, std::string& bld_ident);
     ~DSAInfo();
+
+    bool matchId(std::string& id);
+    bool matchId(DSAInfo& dsa);
+    bool matchIntId(std::string& id);
 };
 
 std::ostream& operator<<(std::ostream& stream, const DSAInfo& dsa);
