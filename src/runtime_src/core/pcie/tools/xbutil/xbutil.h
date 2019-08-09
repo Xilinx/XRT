@@ -262,8 +262,13 @@ public:
         ss << std::left << "\n";
 
         ss << std::setw(16) << "Power" << "\n";
-        power = m_devinfo.mPexCurr * m_devinfo.m12VPex +
-            m_devinfo.mAuxCurr * m_devinfo.m12VAux;
+		if (strstr(name(), "_u50_")) {
+			power = m_devinfo.mPexCurr * m_devinfo.m12VPex +
+				m_devinfo.m3v3PexCurr  * m_devinfo.m3v3Pex;
+		} else {
+			power = m_devinfo.mPexCurr * m_devinfo.m12VPex +
+				m_devinfo.mAuxCurr * m_devinfo.m12VAux;
+		}
         if(m_devinfo.mPexCurr != XCL_INVALID_SENSOR_VAL &&
             m_devinfo.mPexCurr != XCL_NO_SENSOR_DEV_LL &&
             m_devinfo.m12VPex != XCL_INVALID_SENSOR_VAL &&
@@ -646,7 +651,9 @@ public:
         sensor_tree::put( "board.physical.thermal.pcb.btm_front",                m_devinfo.mSE98Temp[ 2 ] );
         sensor_tree::put( "board.physical.thermal.fpga_temp",                    m_devinfo.mOnChipTemp );
         sensor_tree::put( "board.physical.thermal.tcrit_temp",                   m_devinfo.mFanTemp );
-        sensor_tree::put( "board.physical.thermal.fan_speed",                    m_devinfo.mFanRpm );
+        sensor_tree::put( "board.physical.thermal.hbm_temp1",                    m_devinfo.mHbmTemp1 );
+        sensor_tree::put( "board.physical.thermal.hbm_temp2",                    m_devinfo.mHbmTemp2 );
+	    sensor_tree::put( "board.physical.thermal.fan_speed",                    m_devinfo.mFanRpm );
         {
             unsigned short temp0 = 0, temp1 = 0, temp2 = 0, temp3 = 0;
             std::string errmsg;
@@ -676,6 +683,12 @@ public:
         sensor_tree::put( "board.physical.electrical.12v_sw.voltage",            m_devinfo.m12vSW );
         sensor_tree::put( "board.physical.electrical.mgt_vtt.voltage",           m_devinfo.mMgtVtt );
         sensor_tree::put( "board.physical.electrical.vccint.voltage",            m_devinfo.mVccIntVol );
+        sensor_tree::put( "board.physical.electrical.3v3_pex.current",           m_devinfo.m3v3PexCurr );
+        sensor_tree::put( "board.physical.electrical.0v85.current",              m_devinfo.m0v85Curr );
+        sensor_tree::put( "board.physical.electrical.vcc3v3.voltage",            m_devinfo.mVcc3v3 );
+        sensor_tree::put( "board.physical.electrical.hbm_1v2.voltage",           m_devinfo.mHbm1v2Vol );
+        sensor_tree::put( "board.physical.electrical.vpp2v5.voltage",            m_devinfo.mVpp2v5Vol );
+        sensor_tree::put( "board.physical.electrical.vccint_bram.voltage",       m_devinfo.mVccIntBramVol );
         {
             unsigned short cur = 0;
             std::string errmsg;
@@ -805,10 +818,12 @@ public:
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.pcb.top_front" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.pcb.top_rear"  )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.pcb.btm_front" ) << std::endl;
-        ostr << std::setw(16) << "FPGA TEMP" << std::setw(16) << "TCRIT Temp" << std::setw(16) << "FAN Speed(RPM)" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.fpga_temp")
+        ostr << std::setw(16) << "FPGA TEMP" << std::setw(16) << "TCRIT Temp" << std::setw(16) << "FAN Speed(RPM)" << std::endl;    ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.fpga_temp")
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.tcrit_temp")
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.fan_speed" ) << std::endl;
+        ostr << std::setw(16) << "HBM Temp 1" << std::setw(16) << "HBM Temp 2" << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.hbm_temp1") 
+			 << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.hbm_temp2") << std::endl;
         ostr << std::setw(16) << "QSFP 0" << std::setw(16) << "QSFP 1" << std::setw(16) << "QSFP 2" << std::setw(16) << "QSFP 3" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.cage.temp0" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.cage.temp1" )
@@ -836,10 +851,19 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.12v_sw.voltage"  )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.mgt_vtt.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.1v2_btm.voltage" ) << std::endl;
-        ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "DNA" << std::endl;
+        ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "DNA" << std::setw(16) << "VCC3V3 VOL"  << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned>( "board.physical.electrical.vccint.current" )
-             << std::setw(16) << sensor_tree::get<std::string>( "board.info.dna", "N/A" ) << std::endl;
+             << std::setw(16) << sensor_tree::get<std::string>( "board.info.dna", "N/A" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vcc3v3.voltage"  ) << std::endl;
+        ostr << std::setw(16) << "3V3 PEX CURR" << std::setw(16) << "VCC0V85 CURR" << std::setw(16) << "HBM1V2 VOL" << std::setw(16) << "VPP2V5 VOL"  << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.3v3_pex.current" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.0v85.current" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.hbm_1v2.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vpp2v5.voltage"  ) << std::endl;
+        ostr << std::setw(16) << "VCCINT BRAM VOL" << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint_bram.voltage" ) << std::endl;
+
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Card Power\n";
