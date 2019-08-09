@@ -939,12 +939,12 @@ int xcldev::device::runTestCase(const std::string& py,
     const std::string& xclbin, std::string& output)
 {
     struct stat st;
-	bool is_u50 = false;
+    bool is_u50 = false;
 
-	if (strstr(name(), "_u50_")) {
-		is_u50 = true;
-	}
-	
+    if (strstr(name(), "_u50_")) {
+        is_u50 = true;
+    }
+
     std::string devInfoPath = std::string(m_devinfo.mName) + "/test/";
     std::string xsaXclbinPath = xsaPath + devInfoPath;
     std::string dsaXclbinPath = dsaPath + devInfoPath;
@@ -965,25 +965,25 @@ int xcldev::device::runTestCase(const std::string& py,
         return -ENOENT;
     }
 
-	std::string cmd;
-	
-	if (is_u50) {
-		std::string exePath;
-		searchXsaAndDsa(xsaXclbinPath, dsaXclbinPath, exePath, output);
-		exePath += py;
-		cmd = exePath + " -j " + xclbinPath + " " + " -d " + std::to_string(m_idx);		
-	} else {
-		// Program xclbin first.
-		int ret = program(xclbinPath, 0);
-		if (ret != 0) {
-			output += "ERROR: Failed to download xclbin: ";
-			output += xclbin;
-			return -EINVAL;
-		}
+    std::string cmd;
 
-		cmd = "/usr/bin/python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
-	}
-	
+    if (is_u50) {
+        std::string exePath;
+        searchXsaAndDsa(xsaXclbinPath, dsaXclbinPath, exePath, output);
+        exePath += py;
+        cmd = exePath + " -j " + xclbinPath + " " + " -d " + std::to_string(m_idx);        
+    } else {
+        // Program xclbin first.
+        int ret = program(xclbinPath, 0);
+        if (ret != 0) {
+            output += "ERROR: Failed to download xclbin: ";
+            output += xclbin;
+            return -EINVAL;
+        }
+
+        cmd = "/usr/bin/python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
+    }
+    
     return runShellCmd(cmd, output);
 }
 
@@ -1073,12 +1073,12 @@ int xcldev::device::validate(bool quick)
     bool withWarning = false;
     int retVal = 0;
     std::string output;
-	bool is_u50 = false;
-	
-	if (strstr(name(), "_u50_")) {
-		is_u50 = true;
-	}
- 
+    bool is_u50 = false;
+
+    if (strstr(name(), "_u50_")) {
+        is_u50 = true;
+    }
+
     // Check pcie training
     retVal = runOneTest("PCIE link check",
             std::bind(&xcldev::device::pcieLinkTest, this));
@@ -1087,74 +1087,74 @@ int xcldev::device::validate(bool quick)
         return retVal;
 
     // Test verify kernel
-	if (is_u50) {
-		retVal = runTestCase(std::string("validate.exe"),
-			std::string("verify.xclbin"), output);
-		std::cout << std::endl;
-		if (retVal == -ENOENT) {
-			if (m_idx == 0) {
-				// Fall back to verify.exe
-				retVal = runTestCase(std::string("verify.exe"),
-					std::string("verify.xclbin"), output);
-			}
-		}
-		if (retVal != 0 || output.find("Hello World") == std::string::npos) {
-			std::cout << output << std::endl;
-			std::cout << "ERROR: verify kernel test FAILED" << std::endl;
-		} else {
-			std::cout << "INFO: verify kernel test PASSED" << std::endl;
-		}
-	} else {
-		retVal = runOneTest("verify kernel test",
-				std::bind(&xcldev::device::verifyKernelTest, this));
-	}
-	withWarning = withWarning || (retVal == 1);
-	if (retVal < 0)
-		return retVal;
+    if (is_u50) {
+        retVal = runTestCase(std::string("validate.exe"),
+            std::string("verify.xclbin"), output);
+        std::cout << std::endl;
+        if (retVal == -ENOENT) {
+            if (m_idx == 0) {
+                // Fall back to verify.exe
+                retVal = runTestCase(std::string("verify.exe"),
+                    std::string("verify.xclbin"), output);
+            }
+        }
+        if (retVal != 0 || output.find("Hello World") == std::string::npos) {
+            std::cout << output << std::endl;
+            std::cout << "ERROR: verify kernel test FAILED" << std::endl;
+        } else {
+            std::cout << "INFO: verify kernel test PASSED" << std::endl;
+        }
+    } else {
+        retVal = runOneTest("verify kernel test",
+                std::bind(&xcldev::device::verifyKernelTest, this));
+    }
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
 
     // Skip the rest of test cases for quicker turn around.
     if (quick)
         return withWarning ? 1 : 0;
 
     // Perform DMA test
-	if (is_u50) {
-		retVal = runTestCase(std::string("xbtest"), 
-				std::string("dma.json"), output);
-	} else {
-		retVal = runOneTest("DMA test",
-				std::bind(&xcldev::device::dmatest, this, 0, false));
-	}
-	withWarning = withWarning || (retVal == 1);
-	if (retVal < 0)
-		return retVal;
-
-    // Test bandwidth kernel
-	if (is_u50) {
-		retVal = runTestCase(std::string("xbtest"), 
-				std::string("memory.json"), output);
-	} else {
-		retVal = runOneTest("device memory bandwidth test",
-				std::bind(&xcldev::device::bandwidthKernelTest, this));
-	}
-	withWarning = withWarning || (retVal == 1);
+    if (is_u50) {
+        retVal = runTestCase(std::string("xbtest"),
+                std::string("dma.json"), output);
+    } else {
+        retVal = runOneTest("DMA test",
+                std::bind(&xcldev::device::dmatest, this, 0, false));
+    }
+    withWarning = withWarning || (retVal == 1);
     if (retVal < 0)
         return retVal;
 
-	if (!is_u50) {
-		// Perform P2P test
-		retVal = runOneTest("PCIE peer-to-peer test",
-				std::bind(&xcldev::device::testP2p, this));
-		withWarning = withWarning || (retVal == 1);
-		if (retVal < 0)
-			return retVal;
+    // Test bandwidth kernel
+    if (is_u50) {
+        retVal = runTestCase(std::string("xbtest"),
+                std::string("memory.json"), output);
+    } else {
+        retVal = runOneTest("device memory bandwidth test",
+                std::bind(&xcldev::device::bandwidthKernelTest, this));
+    }
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
 
-		//Perform M2M test
-		retVal = runOneTest("memory-to-memory DMA test",
-				std::bind(&xcldev::device::testM2m, this));
-		withWarning = withWarning || (retVal == 1);
-		if (retVal < 0)
-			return retVal;
-	}
+    if (!is_u50) {
+        // Perform P2P test
+        retVal = runOneTest("PCIE peer-to-peer test",
+                std::bind(&xcldev::device::testP2p, this));
+        withWarning = withWarning || (retVal == 1);
+        if (retVal < 0)
+            return retVal;
+
+        //Perform M2M test
+        retVal = runOneTest("memory-to-memory DMA test",
+                std::bind(&xcldev::device::testM2m, this));
+        withWarning = withWarning || (retVal == 1);
+        if (retVal < 0)
+            return retVal;
+    }
 
     return withWarning ? 1 : 0;
 }

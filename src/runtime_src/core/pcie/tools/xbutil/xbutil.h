@@ -262,13 +262,13 @@ public:
         ss << std::left << "\n";
 
         ss << std::setw(16) << "Power" << "\n";
-		if (strstr(name(), "_u50_")) {
-			power = m_devinfo.mPexCurr * m_devinfo.m12VPex +
-				m_devinfo.m3v3PexCurr  * m_devinfo.m3v3Pex;
-		} else {
-			power = m_devinfo.mPexCurr * m_devinfo.m12VPex +
-				m_devinfo.mAuxCurr * m_devinfo.m12VAux;
-		}
+        if (strstr(name(), "_u50_")) {
+            power = m_devinfo.mPexCurr * m_devinfo.m12VPex +
+                m_devinfo.m3v3PexCurr  * m_devinfo.m3v3Pex;
+        } else {
+            power = m_devinfo.mPexCurr * m_devinfo.m12VPex +
+                m_devinfo.mAuxCurr * m_devinfo.m12VAux;
+        }
         if(m_devinfo.mPexCurr != XCL_INVALID_SENSOR_VAL &&
             m_devinfo.mPexCurr != XCL_NO_SENSOR_DEV_LL &&
             m_devinfo.m12VPex != XCL_INVALID_SENSOR_VAL &&
@@ -653,7 +653,7 @@ public:
         sensor_tree::put( "board.physical.thermal.tcrit_temp",                   m_devinfo.mFanTemp );
         sensor_tree::put( "board.physical.thermal.hbm_temp1",                    m_devinfo.mHbmTemp1 );
         sensor_tree::put( "board.physical.thermal.hbm_temp2",                    m_devinfo.mHbmTemp2 );
-	    sensor_tree::put( "board.physical.thermal.fan_speed",                    m_devinfo.mFanRpm );
+        sensor_tree::put( "board.physical.thermal.fan_speed",                    m_devinfo.mFanRpm );
         {
             unsigned short temp0 = 0, temp1 = 0, temp2 = 0, temp3 = 0;
             std::string errmsg;
@@ -823,7 +823,7 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.fan_speed" ) << std::endl;
         ostr << std::setw(16) << "HBM Temp 1" << std::setw(16) << "HBM Temp 2" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.hbm_temp1") 
-			 << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.hbm_temp2") << std::endl;
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.hbm_temp2") << std::endl;
         ostr << std::setw(16) << "QSFP 0" << std::setw(16) << "QSFP 1" << std::setw(16) << "QSFP 2" << std::setw(16) << "QSFP 3" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.cage.temp0" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.cage.temp1" )
