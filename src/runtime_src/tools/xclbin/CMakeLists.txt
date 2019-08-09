@@ -108,6 +108,7 @@ file(GLOB XCLBINUTIL_FILES
   "SectionPartitionMetadata.cxx"
   "SectionEmulationData.cxx"
   "SectionSystemMetadata.cxx"
+  "SectionSoftKernel.cxx"
   "DTC.cxx"
   "DTCStringsBlock.cxx"
   "FDTNode.cxx"

@@ -76,14 +76,14 @@ namespace xdp {
       void getProfileKernelName(const std::string& deviceName, const std::string& cuName, std::string& kernelName) override;
       void getTraceStringFromComputeUnit(const std::string& deviceName,
         const std::string& cuName, std::string& traceString) override;
-      size_t getDeviceTimestamp(std::string& deviceName) override;
+      size_t getDeviceTimestamp(const std::string& deviceName) override;
       double getReadMaxBandwidthMBps() override;
       double getWriteMaxBandwidthMBps() override;
       void setTraceStringForComputeUnit(const std::string& cuName, std::string& traceString);
-      unsigned getProfileNumberSlots(xclPerfMonType type, std::string& deviceName) override;
-      void getProfileSlotName(xclPerfMonType type, std::string& deviceName,
-                            unsigned slotnum, std::string& slotName) override;
-      unsigned getProfileSlotProperties(xclPerfMonType type, std::string& deviceName, unsigned slotnum) override;
+      unsigned int getProfileNumberSlots(xclPerfMonType type, const std::string& deviceName) override;
+      void getProfileSlotName(xclPerfMonType type, const std::string& deviceName,
+                            unsigned int slotnum, std::string& slotName) override;
+      unsigned int getProfileSlotProperties(xclPerfMonType type, const std::string& deviceName, unsigned int slotnum) override;
       bool isAPCtrlChain(const std::string& deviceName, const std::string& cu) override;
       void sendMessage(const std::string &msg) override;
     };

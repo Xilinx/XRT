@@ -414,11 +414,13 @@ inline void check_volt_within_range(struct xclmgmt_dev *lro, u16 volt)
 static void check_sensor(struct xclmgmt_dev *lro)
 {
 	int ret;
-	struct xcl_sensor *s;
-       
-	s = vzalloc(sizeof *s);
-	if (!s)
-		return;
+	struct xcl_sensor *s = NULL;
+
+	s = vzalloc(sizeof(struct xcl_sensor));
+	if (!s) {
+		mgmt_err(lro, "%s out of memory", __func__);
+		return;	
+	}
 
 	ret = xocl_xmc_get_data(lro, s);
 	if (ret == -ENODEV) {
@@ -1002,7 +1004,6 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 		goto fail_all_subdev;
 	}
 	xocl_info(&pdev->dev, "created all sub devices");
-
 
 	if (!(dev_info->flags & XOCL_DSAFLAG_SMARTN)) {
 		/* return -ENODEV for 2RP platform */

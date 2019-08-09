@@ -55,8 +55,8 @@ namespace xdp {
     int getProfileFlags() { return mProfileFlags; }
     bool isDeviceProfileOn() const;
     bool isApplicationProfileOn() const { return mProfileFlags & RTUtil::PROFILE_APPLICATION; }
-    void setTransferTrace(const std::string traceStr);
-    void setStallTrace(const std::string traceStr);
+    void setTransferTrace(const std::string& traceStr);
+    void setStallTrace(const std::string& traceStr);
     RTUtil::e_device_trace getTransferTrace() { return mDeviceTraceOption; }
     RTUtil::e_stall_trace getStallTrace() { return mStallTraceOption; }
     RunSummary * getRunSummary() { return mRunSummary; }
@@ -81,7 +81,7 @@ namespace xdp {
 
   public:
     void writeProfileSummary();
-    void addDeviceName(std::string deviceName) { mDeviceNames.push_back(deviceName); }
+    void addDeviceName(const std::string& deviceName) { mDeviceNames.push_back(deviceName); }
     std::string getDeviceNames(const std::string& sep) const;
     // Intentionally not a reference to the underlying container.
     std::vector<std::string> getDeviceNames() const { return mDeviceNames; }
@@ -127,7 +127,7 @@ namespace xdp {
     // Log host buffer reads and writes
     void logDataTransfer(uint64_t objId, RTUtil::e_profile_command_kind objKind,
         RTUtil::e_profile_command_state objStage, size_t objSize, uint32_t contextId,
-        uint32_t numDevices, std::string deviceName, uint32_t commandQueueId,
+        uint32_t numDevices, const std::string& deviceName, uint32_t commandQueueId,
         uint64_t srcAddress, const std::string& srcBank,
         uint64_t dstAddress, const std::string& dstBank,
         std::thread::id threadId, const std::string eventString = "",
@@ -135,7 +135,7 @@ namespace xdp {
 
     // Log Kernel execution
     void logKernelExecution(uint64_t objId, uint32_t programId, uint64_t eventId,
-        RTUtil::e_profile_command_state objStage, std::string kernelName, std::string xclbinName,
+        RTUtil::e_profile_command_state objStage, const std::string& kernelName, const std::string& xclbinName,
         uint32_t contextId, uint32_t commandQueueId, const std::string& deviceName, uid_t uid,
         const size_t* globalWorkSize, size_t workGroupSize, const size_t* localWorkDim,
         const std::string& cu_name, const std::string eventString = "", const std::string dependString = "",
@@ -143,14 +143,13 @@ namespace xdp {
 
     // Log a dependency (e.g., a kernel waiting on a host write)
     void logDependency(RTUtil::e_profile_command_kind objKind,
-       const std::string eventString, const std::string dependString);
+       const std::string& eventString, const std::string& dependString);
 
-    // Log device trace
-    void logDeviceTrace(std::string deviceName, std::string binaryName, xclPerfMonType type,
-        xclTraceResultsVector& traceVector);
+    void logDeviceTrace(const std::string& deviceName, const std::string& binaryName, xclPerfMonType type,
+        xclTraceResultsVector& traceVector, bool endLog = true);
 
     // Log device counters (used in profile summary)
-    void logDeviceCounters(std::string deviceName, std::string binaryName, uint32_t programId, xclPerfMonType type,
+    void logDeviceCounters(const std::string& deviceName, const std::string& binaryName, uint32_t programId, xclPerfMonType type,
         xclCounterResults& counterResults, uint64_t timeNsec, bool firstReadAfterProgram);
 
   private:
