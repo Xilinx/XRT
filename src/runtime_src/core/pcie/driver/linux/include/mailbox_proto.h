@@ -141,7 +141,6 @@ struct xcl_sensor {
 	uint32_t cage_temp1;
 	uint32_t cage_temp2;
 	uint32_t cage_temp3;
-	uint32_t hbm_temp0;
 	char	 serial_num[256];
 	char	 mac_addr0[32];
 	char	 mac_addr1[32];
@@ -153,6 +152,14 @@ struct xcl_sensor {
 	uint32_t max_power;
 	uint32_t fan_num;
 	uint32_t config_mode;
+	uint32_t hbm_temp1;
+	uint32_t hbm_temp2;
+	uint64_t cur_3v3_pex;
+	uint64_t cur_0v85;
+	uint64_t vol_3v3_vcc;
+	uint64_t vol_1v2_hbm;
+	uint64_t vol_2v5_vpp;
+	uint64_t vccint_bram;
 };
 
 /**

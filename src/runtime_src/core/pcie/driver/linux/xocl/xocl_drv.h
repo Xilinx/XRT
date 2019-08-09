@@ -754,7 +754,8 @@ enum data_kind {
 	FREQ_COUNTER_2,
 	FREQ_COUNTER_3,
 	PEER_UUID,
-	HBM_TEMP,
+	HBM_TEMP1,
+	HBM_TEMP2,
 	CAGE_TEMP0,
 	CAGE_TEMP1,
 	CAGE_TEMP2,
@@ -771,6 +772,12 @@ enum data_kind {
 	MAX_PWR,
 	FAN_NUM,
 	CFG_MODE,
+	VOL_VCC_3V3,
+	CUR_3V3_PEX,
+	CUR_VCC_0V85,
+	VOL_HBM_1V2,
+	VOL_VPP_2V5,
+	VOL_VCCINT_BRAM,
 };
 
 enum mb_kind {
