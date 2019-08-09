@@ -677,14 +677,6 @@ static void chann_worker(struct work_struct *work)
 	struct mailbox *mbx = ch->mbc_parent;
 
 	while (!test_bit(MBXCS_BIT_STOP, &ch->mbc_state)) {
-		/* Peer is active, if we are woken up not by a timer. */
-		if (!test_bit(MBXCS_BIT_TICK, &ch->mbc_state)) {
-			if (mbx->mbx_peer_dead) {
-				MBX_ERR(mbx, "peer becomes active");
-				mbx->mbx_peer_dead = false;
-			}
-		}
-
 		MBX_DBG(mbx, "%s worker start", ch_name(ch));
 		ch->mbc_tran(ch);
 		wait_for_completion_interruptible(&ch->mbc_worker);
@@ -1699,6 +1691,10 @@ static void mailbox_recv_request(struct work_struct *work)
 			mbx->mbx_req_sz -= msg->mbm_len;
 			mutex_unlock(&mbx->mbx_lock);
 
+			if (mbx->mbx_peer_dead) {
+				MBX_ERR(mbx, "peer becomes active");
+				mbx->mbx_peer_dead = false;
+			}
 			/* Process msg without holding mutex. */
 			process_request(mbx, msg);
 			free_msg(msg);

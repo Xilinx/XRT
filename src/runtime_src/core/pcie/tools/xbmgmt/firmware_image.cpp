@@ -384,6 +384,11 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
         closedir(dp);
     }
 
+    dp = opendir(FORMATTED_FW_DIR);
+    if (!dp)
+        return installedDSA;
+    closedir(dp);
+
     path formatted_fw_dir(FORMATTED_FW_DIR);
     std::vector<std::string> suffix = { XSABIN_FILE_SUFFIX, DSABIN_FILE_SUFFIX};
 

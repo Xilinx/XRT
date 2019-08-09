@@ -307,7 +307,7 @@ static void xocl_mb_connect(struct xocl_dev *xdev)
 	(void) xocl_mailbox_set(xdev, CHAN_SWITCH, resp->chan_switch);
 	(void) xocl_mailbox_set(xdev, COMM_ID, (u64)(uintptr_t)resp->comm_id);
 
-	userpf_info(xdev, "ch_state 0x%llx\n", resp->conn_flags);
+	userpf_info(xdev, "ch_state 0x%llx, ret %d\n", resp->conn_flags, ret);
 
 	if (!ret)
 		xocl_queue_work(xdev, XOCL_WORK_REFRESH_SUBDEV, 1);
