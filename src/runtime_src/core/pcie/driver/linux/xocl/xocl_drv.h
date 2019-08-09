@@ -769,7 +769,7 @@ enum data_kind {
 	CARD_NAME,
 	BMC_VER,
 	MAX_PWR,
-	FAN_NUM,
+	FAN_PRESENCE,
 	CFG_MODE,
 };
 
