@@ -653,6 +653,11 @@ public:
         sensor_tree::put( "board.physical.thermal.pcb.btm_front",                m_devinfo.mSE98Temp[ 2 ] );
         sensor_tree::put( "board.physical.thermal.fpga_temp",                    m_devinfo.mOnChipTemp );
         sensor_tree::put( "board.physical.thermal.tcrit_temp",                   m_devinfo.mFanTemp );
+        {
+            std::string fan_presence, errmsg;
+            pcidev::get_dev(m_idx)->sysfs_get("xmc", "fan_presence", errmsg, fan_presence);
+            sensor_tree::put( "board.physical.thermal.fan_presence", fan_presence );
+        }
         sensor_tree::put( "board.physical.thermal.fan_speed",                    m_devinfo.mFanRpm );
         {
             unsigned short temp0 = 0, temp1 = 0, temp2 = 0, temp3 = 0;
