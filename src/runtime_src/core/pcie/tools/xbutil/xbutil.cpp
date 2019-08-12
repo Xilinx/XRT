@@ -191,6 +191,10 @@ int main(int argc, char *argv[])
         xcldev::printHelp(exe);
         return 1;
     }
+    if (cmd == xcldev::VERSION) {
+        xrt::version::print(std::cout);
+        return 1;
+    }
 
     argv[0] = const_cast<char *>(exe);
     static struct option long_options[] = {
@@ -627,6 +631,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  dump\n";
     std::cout << "  help\n";
     std::cout << "  m2mtest\n";
+    std::cout << "  version\n";
     std::cout << "  mem --read [-d card] [-a [0x]start_addr] [-i size_bytes] [-o output filename]\n";
     std::cout << "  mem --write [-d card] [-a [0x]start_addr] [-i size_bytes] [-e pattern_byte]\n";
     std::cout << "  program [-d card] [-r region] -p xclbin\n";
@@ -799,6 +804,8 @@ int xcldev::xclTop(int argc, char *argv[])
         switch (c) {
         case 'i':
             interval = std::atoi(optarg);
+            if (interval < 1)
+                interval = 1;
             break;
         case 'd': {
             int ret = str2index(optarg, index);

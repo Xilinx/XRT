@@ -77,7 +77,8 @@ enum command {
     DD,
     STATUS,
     CMD_MAX,
-    M2MTEST
+    M2MTEST, 
+    VERSION
 };
 enum subcommand {
     MEM_READ = 0,
@@ -117,7 +118,8 @@ static const std::pair<std::string, command> map_pairs[] = {
     std::make_pair("mem", MEM),
     std::make_pair("dd", DD),
     std::make_pair("status", STATUS),
-    std::make_pair("m2mtest", M2MTEST)
+    std::make_pair("m2mtest", M2MTEST),
+    std::make_pair("version", VERSION)
 
 };
 

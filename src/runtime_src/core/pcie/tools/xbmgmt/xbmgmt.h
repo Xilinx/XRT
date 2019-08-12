@@ -33,6 +33,10 @@ int helpHandler(int argc, char *argv[]);
 extern const char *subCmdHelpDesc;
 extern const char *subCmdHelpUsage;
 
+int versionHandler(int argc, char *argv[]);
+extern const char *subCmdVersionDesc;
+extern const char *subCmdVersionUsage;
+
 int scanHandler(int argc, char *argv[]);
 extern const char *subCmdScanDesc;
 extern const char *subCmdScanUsage;
