@@ -1965,9 +1965,7 @@ static int load_sche_image(struct platform_device *pdev, const char *image,
 static void xmc_clk_scale_config(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc;
-	void *xdev_hdl;
 	u32 cntrl;
-	u16 spec_limits;
 
 	xmc = platform_get_drvdata(pdev);
 	if (!xmc) {
@@ -1978,10 +1976,6 @@ static void xmc_clk_scale_config(struct platform_device *pdev)
 	cntrl = READ_RUNTIME_CS(xmc, XMC_CLOCK_CONTROL_REG);
 	cntrl |= XMC_CLOCK_SCALING_EN;
 	WRITE_RUNTIME_CS(xmc, cntrl, XMC_CLOCK_CONTROL_REG);
-
-	xdev_hdl = xocl_get_xdev(pdev);
-	spec_limits = xocl_get_spec_limits(xdev_hdl);
-	WRITE_RUNTIME_CS(xmc, spec_limits, XMC_CLOCK_SCALING_THRESHOLD_REG);
 }
 
 static int xmc_dynamic_region_free(struct platform_device *pdev);

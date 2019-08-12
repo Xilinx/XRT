@@ -140,8 +140,6 @@ struct FeatureRomHeader {
 	uint8_t HBMCount;		    // Number of HBMs
 	uint8_t HBMSize;		    // Size of (each) HBM in GB
 	uint32_t CDMABaseAddress[4];	    // CDMA base addresses
-	uint8_t MaxTempLimit;		    // Max Pemperature value, needed for runtime clock scaling
-	uint8_t MaxPowerLimit;		    // Max Power value, needed for runtime clock scaling
 };
 
 #endif // xclfeatures_h_

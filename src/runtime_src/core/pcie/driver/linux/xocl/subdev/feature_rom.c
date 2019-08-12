@@ -180,17 +180,6 @@ static bool runtime_clk_scale_on(struct platform_device *pdev)
 	return rom->runtime_clk_scale_en;
 }
 
-static uint16_t runtime_clkscaling_get_spec_limits(struct platform_device *pdev)
-{
-	struct feature_rom *rom;
-
-	rom = platform_get_drvdata(pdev);
-	BUG_ON(!rom);
-
-	return (rom->header.MaxTempLimit |
-		(rom->header.MaxPowerLimit << 8));
-}
-
 static uint32_t* get_cdma_base_addresses(struct platform_device *pdev)
 {
 	struct feature_rom *rom;
@@ -354,7 +343,6 @@ static struct xocl_rom_funcs rom_ops = {
 	.get_raw_header = get_raw_header,
 	.runtime_clk_scale_on = runtime_clk_scale_on,
 	.find_firmware = find_firmware,
-	.get_spec_limits = runtime_clkscaling_get_spec_limits,
 };
 
 static int get_header_from_peer(struct feature_rom *rom)
@@ -523,9 +511,6 @@ static int feature_rom_probe(struct platform_device *pdev)
 	xocl_info(&pdev->dev, "TimeSinceEpoch: %llx",
 		rom->header.TimeSinceEpoch);
 	xocl_info(&pdev->dev, "FeatureBitMap: %llx", rom->header.FeatureBitMap);
-	if (rom->runtime_clk_scale_en)
-		xocl_info(&pdev->dev, "MaxTempLimit: %d, MaxPowerLimit: %d",
-			  rom->header.MaxTempLimit, rom->header.MaxPowerLimit);
 
 	platform_set_drvdata(pdev, rom);
 
