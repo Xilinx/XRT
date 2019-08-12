@@ -198,7 +198,7 @@ int xma_xclbin_info_get(char *buffer, XmaXclbinInfo *info)
     xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\nCU DDR connections bitmap:\n");
     for(uint32_t i = 0; i < info->number_of_kernels; i++)
     {
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\t%s - 0x%04llx\n",info->ip_layout[i].kernel_name, info->ip_ddr_mapping[i]);
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\t%s - 0x%04llux\n",info->ip_layout[i].kernel_name, info->ip_ddr_mapping[i]);
     }
     //For execbo:
     //info->num_ips = info->number_of_kernels;
