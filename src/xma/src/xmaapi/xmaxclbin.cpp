@@ -83,8 +83,12 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
                    ipl->m_ip_data[i].m_name, MAX_KERNEL_NAME);
             */
             layout[j].base_addr = ipl->m_ip_data[i].m_base_address;
-            //Sarab: handle soft_kernel type here
-            //set some variable in ip_layout of xma struct
+            if (((ipl->m_ip_data[i].properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT) == AP_CTRL_CHAIN) {
+                xclbin_info->ip_layout[j].dataflow_kernel = true;
+            } else {
+                xclbin_info->ip_layout[j].dataflow_kernel = false;
+            }
+            //Sarab: TODO handle soft_kernels.. SK_LAYOUT
             xclbin_info->ip_layout[j].soft_kernel = false;
             
             xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index = %d, kernel name = %s, base_addr = %lx\n",

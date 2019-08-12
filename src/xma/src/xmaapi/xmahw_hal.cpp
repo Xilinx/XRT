@@ -258,6 +258,9 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             if (info.ip_layout[d].soft_kernel) {
                 tmp1.soft_kernel = true;
             }
+            if (info.ip_layout[d].dataflow_kernel) {
+                tmp1.dataflow_kernel = true;
+            }
             rc = xma_xclbin_map2ddr(info.ip_ddr_mapping[d], &tmp1.ddr_bank);
             //XMA supports only 1 Bank per Kernel
 
