@@ -1,6 +1,7 @@
 {
 	"platforms_to_build": {
-		"zcu104_revmin": "zcu104"
+		"zcu104_revmin": "zcu104",
+		"zc702": "zc702"
 	},
-	"platforms_to_copy_sysroot": ["zcu104_revmin"]
+	"platforms_to_copy_sysroot": ["zcu104_revmin", "zc702"]
 }
