@@ -20,6 +20,8 @@
 #include <errno.h>
 #include <unistd.h>
 
+#include "xcl_perfmon_parameters.h"
+
 namespace xclhwemhal2 {
 
   namespace pt = boost::property_tree;
@@ -305,6 +307,8 @@ namespace xclhwemhal2 {
 
     systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::CREATE);
 
+    mRunDeviceBinDir = binaryDirectory;
+
     std::ofstream os(fileName.get());
     os.write(args.m_zipFile, args.m_zipFileSize);
     os.close();
@@ -325,7 +329,7 @@ namespace xclhwemhal2 {
 
     // Write and read debug IP layout (for debug & profiling)
     // NOTE: for now, let's do this file based so we can debug
-    std::string debugFileName = binaryDirectory + "/debug_ip_layout";
+    std::string debugFileName = mRunDeviceBinDir + "/debug_ip_layout";
     FILE *fp2 = fopen(debugFileName.c_str(), "wb");
     if (fp2 == NULL) {
       if (mLogStream.is_open())
@@ -846,6 +850,8 @@ namespace xclhwemhal2 {
         }
       case XCL_ADDR_SPACE_DEVICE_PERFMON:
         {
+          xclGetDebugMessages();
+          xclReadAddrKernelCtrl_RPC_CALL(xclReadAddrKernelCtrl,space,offset,hostBuf,size);
           PRINTENDFUNC;
           return -1;
         }
@@ -2228,6 +2234,101 @@ ssize_t HwEmShim::xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_
     return -EINVAL;
   return xclCopyBufferDevice2Host(buf, offset, count, 0 , 0);
 }
+
+
+int HwEmShim::xclGetDebugIPlayoutPath(char* layoutPath, size_t size)
+{
+  // get path of the debug_ip_layout (in binary format) created in the HW Emu run directory
+  if(mRunDeviceBinDir.empty())
+    return -1;
+
+  std::string debugIPlayoutPath = mRunDeviceBinDir + "/debug_ip_layout";
+  if(debugIPlayoutPath.size() >= size)
+    return -1;
+  
+  strncpy(layoutPath, debugIPlayoutPath.c_str(), size);
+  return 0;
+}
+
+int HwEmShim::xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
+{
+  uint32_t bytesPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 8);
+
+  traceBufSz = MAX_TRACE_NUMBER_SAMPLES * bytesPerSample;   /* Buffer size in bytes */
+  traceSamples = nSamples;
+
+  return 0;
+}
+
+int HwEmShim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
+{
+    // Create trace buffer on host (requires alignment)
+    const int traceBufWordSz = traceBufSz / 4;  // traceBufSz is in number of bytes
+
+    uint32_t size = 0;
+
+    wordsPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 32);
+    uint32_t numWords = numSamples * wordsPerSample;
+
+//    alignas is defined in c++11
+#if GCC_VERSION >= 40800
+    /* Alignment is limited to 16 by PPC64LE : so , should it be
+    alignas(16) uint32_t hostbuf[traceBufSzInWords];
+    */
+    alignas(AXI_FIFO_RDFD_AXI_FULL) uint32_t hostbuf[traceBufWordSz];
+#else
+    xrt_core::AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, traceBufWordSz);
+    uint32_t* hostbuf = alignedBuffer.getBuffer();
+#endif
+
+    // Now read trace data
+    memset((void *)hostbuf, 0, traceBufSz);
+
+    // Iterate over chunks
+    // NOTE: AXI limits this to 4K bytes per transfer
+    uint32_t chunkSizeWords = 256 * wordsPerSample;
+    if (chunkSizeWords > 1024) chunkSizeWords = 1024;
+    uint32_t chunkSizeBytes = 4 * chunkSizeWords;
+    uint32_t words=0;
+
+    // Read trace a chunk of bytes at a time
+    if (numWords > chunkSizeWords) {
+      for (; words < (numWords-chunkSizeWords); words += chunkSizeWords) {
+          if(mLogStream.is_open())
+            mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
+                          << std::hex << (ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0] or AXI_FIFO_RDFD*/ << " and writing it to 0x"
+                          << (void *)(hostbuf + words) << std::dec << std::endl;
+
+        xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
+
+        size += chunkSizeBytes;
+      }
+    }
+
+    // Read remainder of trace not divisible by chunk size
+    if (words < numWords) {
+      chunkSizeBytes = 4 * (numWords - words);
+
+      if(mLogStream.is_open()) {
+        mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
+                      << std::hex << (ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0]*/ << " and writing it to 0x"
+                      << (void *)(hostbuf + words) << std::dec << std::endl;
+      }
+
+      xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
+
+      size += chunkSizeBytes;
+    }
+
+    if(mLogStream.is_open())
+        mLogStream << __func__ << ": done reading " << size << " bytes " << std::endl;
+
+    memcpy((char*)traceBuf, (char*)hostbuf, traceBufSz);
+
+    return size;
+}
+
+
 
 /********************************************** QDMA APIs IMPLEMENTATION START **********************************************/
 

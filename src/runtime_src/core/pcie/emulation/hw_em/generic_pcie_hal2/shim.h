@@ -183,6 +183,10 @@ using addr_type = uint64_t;
       uint32_t getPerfMonProperties(xclPerfMonType type, uint32_t slotnum);
       uint32_t getPerfMonNumberSlots(xclPerfMonType type);
 
+      int xclGetDebugIPlayoutPath(char* layoutPath, size_t size);
+      int xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
+      int xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
+
       //Utility Function
       void set_simulator_started(bool val){ simulator_started = val;}
       void fillDeviceInfo(xclDeviceInfo2* dest, xclDeviceInfo2* src);
@@ -220,6 +224,11 @@ using addr_type = uint64_t;
       bool isXPR()           { return bXPR; }
       void setXPR(bool _xpr) { bXPR = _xpr; }
       std::string deviceDirectory;
+
+      /* Path to the run directory for the current loaded bitstream for HW Emu
+       * This directory contains the debug_ip_layout binary and simulation launch directories
+       */
+      std::string mRunDeviceBinDir;
 
       //QDMA Support
       int xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);

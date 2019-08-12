@@ -451,7 +451,8 @@ get_data(key k);
 
 DeviceIntf* get_device_interface(key k)
 {
-  if(OCLProfiler::Instance()->getPlugin()->getFlowMode() != xdp::RTUtil::DEVICE)
+  if(!((OCLProfiler::Instance()->getPlugin()->getFlowMode() == xdp::RTUtil::DEVICE)
+            || (OCLProfiler::Instance()->getPlugin()->getFlowMode() == xdp::RTUtil::HW_EM && OCLProfiler::Instance()->getPlugin()->getSystemDPAEmulation())) )
     return nullptr;
 
   auto  device = k;
