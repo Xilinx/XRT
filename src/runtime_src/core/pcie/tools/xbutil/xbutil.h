@@ -620,6 +620,13 @@ public:
         sensor_tree::put( "board.info.subdevice", m_devinfo.mSubsystemId );
         sensor_tree::put( "board.info.subvendor", m_devinfo.mSubsystemVendorId );
         sensor_tree::put( "board.info.xmcversion", m_devinfo.mXMCVersion );
+        {
+            std::string ser_num, bmc_ver, errmsg;
+            pcidev::get_dev(m_idx)->sysfs_get("xmc", "serial_num", errmsg, ser_num);
+            pcidev::get_dev(m_idx)->sysfs_get("xmc", "bmc_ver", errmsg, bmc_ver);
+            sensor_tree::put( "board.info.serial_number", ser_num );
+            sensor_tree::put( "board.info.sc_version", bmc_ver );
+        }
         sensor_tree::put( "board.info.ddr_size", m_devinfo.mDDRSize );
         sensor_tree::put( "board.info.ddr_count", m_devinfo.mDDRBankCount );
         sensor_tree::put( "board.info.clock0", m_devinfo.mOCLFrequency[0] );
@@ -646,6 +653,11 @@ public:
         sensor_tree::put( "board.physical.thermal.pcb.btm_front",                m_devinfo.mSE98Temp[ 2 ] );
         sensor_tree::put( "board.physical.thermal.fpga_temp",                    m_devinfo.mOnChipTemp );
         sensor_tree::put( "board.physical.thermal.tcrit_temp",                   m_devinfo.mFanTemp );
+        {
+            std::string fan_presence, errmsg;
+            pcidev::get_dev(m_idx)->sysfs_get("xmc", "fan_presence", errmsg, fan_presence);
+            sensor_tree::put( "board.physical.thermal.fan_presence", fan_presence );
+        }
         sensor_tree::put( "board.physical.thermal.fan_speed",                    m_devinfo.mFanRpm );
         {
             unsigned short temp0 = 0, temp1 = 0, temp2 = 0, temp3 = 0;
