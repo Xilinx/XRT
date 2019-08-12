@@ -874,14 +874,14 @@ SENSOR_SYSFS_NODE(xmc_hbm_temp2, HBM_TEMP2);
 	&dev_attr_xmc_cage_temp0.attr,					\
 	&dev_attr_xmc_cage_temp1.attr,					\
 	&dev_attr_xmc_cage_temp2.attr,					\
-	&dev_attr_xmc_cage_temp3.attr					\
+	&dev_attr_xmc_cage_temp3.attr,					\
 	&dev_attr_xmc_3v3_vcc_vol.attr,					\
 	&dev_attr_xmc_3v3_pex_curr.attr,				\
 	&dev_attr_xmc_0v85_curr.attr,					\
 	&dev_attr_xmc_hbm_1v2_vol.attr,					\
 	&dev_attr_xmc_vpp2v5_vol.attr,					\
-	&dev_attr_xmc_vccint_bram_vol.attr				\
-	&dev_attr_xmc_hbm_temp1.attr					\
+	&dev_attr_xmc_vccint_bram_vol.attr,				\
+	&dev_attr_xmc_hbm_temp1.attr,					\
 	&dev_attr_xmc_hbm_temp2.attr
 
 /*
