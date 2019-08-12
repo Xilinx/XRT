@@ -158,7 +158,7 @@ struct xcl_sensor {
 /**
  * struct xcl_hwicap - Data structure used to fetch ICAP group
  */
-struct xcl_hwicap {
+struct xcl_pr_region {
 	uint64_t freq_0;
 	uint64_t freq_1;
 	uint64_t freq_2;
@@ -169,15 +169,8 @@ struct xcl_hwicap {
 	uint64_t freq_cntr_3;
 	uint64_t idcode;
 	uint8_t uuid[UUID_SZ];
-};
-
-/**
- * struct xcl_common - Data structure used to fetch MGMT group
- */
-struct xcl_common {
 	uint64_t mig_calib;
 };
-
 
 /**
  * struct xcl_mig_ecc -  Data structure used to fetch MIG_ECC group
