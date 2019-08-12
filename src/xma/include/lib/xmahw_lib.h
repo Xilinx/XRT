@@ -67,6 +67,7 @@ typedef struct XmaBufferObjPrivate
    bank_index = -1;
    dev_index = -1;
    dev_handle = NULL;
+   device_only_buffer = false;
    boHandle = 0;
   }
 } XmaBufferObjPrivate;

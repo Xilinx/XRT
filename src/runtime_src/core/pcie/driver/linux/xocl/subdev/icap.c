@@ -395,6 +395,9 @@ static unsigned int icap_get_clock_frequency_counter_khz(const struct icap *icap
 		if (uuid_is_null(&icap->icap_bitstream_uuid))
 			return freq;
 
+		if (!icap->icap_clock_freq_counter)
+			return freq;
+
 		if (idx < 2) {
 			reg_wr(icap->icap_clock_freq_counter, 0x1);
 			while (times != 0) {
@@ -540,26 +543,30 @@ static int icap_freeze_axi_gate(struct icap *icap)
 	ICAP_INFO(icap, "freezing CL AXI gate");
 	BUG_ON(icap->icap_axi_gate_frozen);
 
-	write_lock(&XDEV(xdev)->rwlock);
-	(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-	reg_wr(&icap->icap_axi_gate->iag_wr, GATE_FREEZE_USER);
-	(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-
-	if (!xocl_is_unified(xdev)) {
-		reg_wr(&icap->icap_regs->ir_cr, 0xc);
-		ndelay(20);
+	if (XOCL_DSA_IS_SMARTN(xdev)) {
+		xocl_xmc_dr_freeze(xdev);
 	} else {
-		/* New ICAP reset sequence applicable only to unified dsa. */
-		reg_wr(&icap->icap_regs->ir_cr, 0x8);
-		ndelay(2000);
-		reg_wr(&icap->icap_regs->ir_cr, 0x0);
-		ndelay(2000);
-		reg_wr(&icap->icap_regs->ir_cr, 0x4);
-		ndelay(2000);
-		reg_wr(&icap->icap_regs->ir_cr, 0x0);
-		ndelay(2000);
-	}
 
+		write_lock(&XDEV(xdev)->rwlock);
+		(void) reg_rd(&icap->icap_axi_gate->iag_rd);
+		reg_wr(&icap->icap_axi_gate->iag_wr, GATE_FREEZE_USER);
+		(void) reg_rd(&icap->icap_axi_gate->iag_rd);
+
+		if (!xocl_is_unified(xdev)) {
+			reg_wr(&icap->icap_regs->ir_cr, 0xc);
+			ndelay(20);
+		} else {
+			/* New ICAP reset sequence applicable only to unified dsa. */
+			reg_wr(&icap->icap_regs->ir_cr, 0x8);
+			ndelay(2000);
+			reg_wr(&icap->icap_regs->ir_cr, 0x0);
+			ndelay(2000);
+			reg_wr(&icap->icap_regs->ir_cr, 0x4);
+			ndelay(2000);
+			reg_wr(&icap->icap_regs->ir_cr, 0x0);
+			ndelay(2000);
+		}
+	}
 	icap->icap_axi_gate_frozen = true;
 
 	return 0;
@@ -579,17 +586,20 @@ static int icap_free_axi_gate(struct icap *icap)
 	if (!icap->icap_axi_gate_frozen)
 		return 0;
 
-	for (i = 0; i < ARRAY_SIZE(gate_free_user); i++) {
+	if (XOCL_DSA_IS_SMARTN(xdev)) {
+		xocl_xmc_dr_free(xdev);
+	} else {
+		for (i = 0; i < ARRAY_SIZE(gate_free_user); i++) {
+			(void) reg_rd(&icap->icap_axi_gate->iag_rd);
+			reg_wr(&icap->icap_axi_gate->iag_wr, gate_free_user[i]);
+			ndelay(500);
+		}
+
 		(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-		reg_wr(&icap->icap_axi_gate->iag_wr, gate_free_user[i]);
-		ndelay(500);
+
+		write_unlock(&XDEV(xdev)->rwlock);
 	}
-
-	(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-
 	icap->icap_axi_gate_frozen = false;
-	write_unlock(&XDEV(xdev)->rwlock);
-
 	return 0;
 }
 
@@ -2096,7 +2106,7 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 
 	/* Set clock frequency. */
 	clockHeader = get_axlf_section_hdr(icap, xclbin, CLOCK_FREQ_TOPOLOGY);
-	if (clockHeader != NULL) {
+	if (clockHeader != NULL && !XOCL_DSA_IS_SMARTN(xdev)) {
 		clockFirmwareOffset = clockHeader->m_sectionOffset;
 		clockFirmwareLength = clockHeader->m_sectionSize;
 

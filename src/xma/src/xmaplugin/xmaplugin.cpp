@@ -422,7 +422,7 @@ xma_plg_schedule_work_item(XmaSession s_handle)
     uint8_t *src = (uint8_t*)kernel_tmp1->reg_map;
     
     //size_t  size = MAX_KERNEL_REGMAP_SIZE;//Max regmap in xmahw.h is 4KB; execBO size is 4096; Supported max regmap size is 4032 Bytes only
-    size_t  size = s_handle.hw_session.kernel_info->regmap_max;
+    int32_t size = s_handle.hw_session.kernel_info->regmap_max;
     if (size < 0) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Use xma_plg_register_prep_write to prepare regmap for CU before scheduling work item \n");
         return XMA_ERROR;

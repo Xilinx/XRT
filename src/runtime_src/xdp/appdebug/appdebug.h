@@ -294,18 +294,18 @@ clGetKernelInfo();
 app_debug_view<event_debug_view_base>*
 clGetEventInfo(cl_event aEvent);
 
-//spm_debug_view requires xcl_app_debug.h, so don't include here
+//aim_debug_view requires xcl_app_debug.h, so don't include here
 //forward declare needed type
-struct spm_debug_view;
-app_debug_view<spm_debug_view>*
+struct aim_debug_view;
+app_debug_view<aim_debug_view>*
 clGetDebugCounters();
 
-struct sspm_debug_view;
-app_debug_view<sspm_debug_view>*
+struct asm_debug_view;
+app_debug_view<asm_debug_view>*
 clGetDebugStreamCounters();
 
-struct sam_debug_view;
-app_debug_view<sam_debug_view>*
+struct am_debug_view;
+app_debug_view<am_debug_view>*
 clGetDebugAccelMonitorCounters();
 
 struct lapc_debug_view;

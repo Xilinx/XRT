@@ -27,6 +27,7 @@
 #include "ocl_profiler.h"
 #include "xdp/profile/config.h"
 #include "xdp/profile/core/rt_profile.h"
+#include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/writer/json_profile.h"
 #include "xdp/profile/writer/csv_profile.h"
 #include "xrt/util/config_reader.h"
@@ -124,6 +125,8 @@ namespace xdp {
     }
     logFinalTrace(XCL_PERF_MON_MEMORY);  // reads and logs trace data for all monitors in HW flow
 
+    endTrace();
+
     // Gather info for guidance
     // NOTE: this needs to be done here before the device clears its list of CUs
     // See xocl::device::unload_program as called from xocl::program::~program
@@ -186,9 +189,9 @@ namespace xdp {
       // configureDataflow
       if(dInt) {
         /* If CU corresponding to Accel Monitors has AP Control Chain, then enable Dataflow on the Accel Monitors */
-        unsigned numMon = dInt->getNumMonitors(XCL_PERF_MON_ACCEL);
+        unsigned int numMon = dInt->getNumMonitors(XCL_PERF_MON_ACCEL);
         auto ip_config = std::make_unique <bool []>(numMon);
-        for (unsigned i=0; i < numMon; i++) {
+        for (unsigned int i=0; i < numMon; i++) {
           char name[128];
           dInt->getMonitorName(XCL_PERF_MON_ACCEL, i, name, 128);
           std::string cuName(name); // Assumption : For Accel Monitor, monitor instance is named as the corresponding CU
@@ -249,7 +252,12 @@ namespace xdp {
       XOCL_DEBUGF("Starting trace with option = 0x%x\n", traceOption);
 
       if(dInt) {
+        // Configure monitor IP and FIFO if present
         dInt->startTrace(XCL_PERF_MON_MEMORY, traceOption);
+        // Configure DMA if present
+        if (dInt->hasTs2mm()) {
+          info->ts2mm_en = dInt->initTs2mm(xdp::xoclp::platform::get_ts2mm_buf_size());
+        }
       } else {
         xdevice->startTrace(XCL_PERF_MON_MEMORY, traceOption);
         // for HW_EMU consider , 2 calls
@@ -270,6 +278,27 @@ namespace xdp {
       profileMgr->setLoggingTrace(XCL_PERF_MON_MEMORY, false);
     }
     return;
+  }
+
+  void OCLProfiler::endTrace()
+  {
+    auto platform = getclPlatformID();
+
+    for (auto device : platform->get_device_range()) {
+      if(!device->is_active()) {
+        continue;
+      }
+      auto itr = DeviceData.find(device);
+      if (itr==DeviceData.end()) {
+        return;
+      }
+      xdp::xoclp::platform::device::data* info = &(itr->second);
+      if (info->ts2mm_en) {
+        auto dInt  = &(info->mDeviceIntf);
+        dInt->finTs2mm();
+        info->ts2mm_en = false;
+      }
+    }
   }
 
   // Get device counters
@@ -407,9 +436,9 @@ namespace xdp {
       setTraceFooterString();
     }
     // These tables are only enabled if a compatible monitor is present
-    unsigned numStallSlots = 0;
-    unsigned numStreamSlots = 0;
-    unsigned numShellSlots = 0;
+    unsigned int numStallSlots = 0;
+    unsigned int numStreamSlots = 0;
+    unsigned int numShellSlots = 0;
     if (applicationProfilingOn() && ProfileMgr->isDeviceProfileOn()) {
       if (Plugin->getFlowMode() == RTUtil::DEVICE) {
         for (auto device : Platform->get_device_range()) {
@@ -598,12 +627,28 @@ namespace xdp {
         if (device->is_active())
           binary_name = device->get_xclbin().project_name();
 
-        if(dInt) {    // HW Device flow
-          dInt->readTrace(type, info->mTraceVector);
-          if(info->mTraceVector.mLength) {
-            profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector);
+        if (dInt) {    // HW Device flow
+          if (dInt->hasFIFO()) {
+              dInt->readTrace(type, info->mTraceVector);
+              if (info->mTraceVector.mLength) {
+                profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector);
+                // detect if FIFO is full
+                auto fifoProperty = Plugin->getProfileSlotProperties(XCL_PERF_MON_FIFO, device_name, 0);
+                auto fifoSize = RTUtil::getDevTraceBufferSize(fifoProperty);
+                if (info->mTraceVector.mLength >= fifoSize)
+                  Plugin->sendMessage(FIFO_WARN_MSG);
+              }
+              info->mTraceVector.mLength= 0;
+          } else if (dInt->hasTs2mm()) {
+            uint64_t chunksize = MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE;
+            dInt->configReaderTs2mm(chunksize);
+            bool endLog = false;
+            while (!endLog) {
+              endLog = !(dInt->readTs2mm(info->mTraceVector));
+              profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector, endLog);
+              info->mTraceVector = {};
+            }
           }
-          info->mTraceVector.mLength= 0;
         } else {
           while(1) {
             xdevice->readTrace(type, info->mTraceVector);
