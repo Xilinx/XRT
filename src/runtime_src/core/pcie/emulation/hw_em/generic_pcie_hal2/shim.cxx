@@ -472,6 +472,7 @@ namespace xclhwemhal2 {
             if (xml_remap.first != "addrRemap")
               continue;
             uint64_t base = convert(xml_remap.second.get<std::string>("<xmlattr>.base"));
+            mCuBaseAddress = base & 0xFFFFFFFF00000000;
             mKernelOffsetArgsInfoMap[base] = kernelArgInfo;
             if (xclemulation::config::getInstance()->isMemLogsEnabled())
             {
@@ -659,6 +660,7 @@ namespace xclhwemhal2 {
        mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << space << ", "
          << offset << ", " << hostBuf << ", " << size << std::endl;
      }
+     offset = offset | mCuBaseAddress;
      switch (space) {
        case XCL_ADDR_SPACE_DEVICE_RAM:
          {
@@ -803,6 +805,7 @@ namespace xclhwemhal2 {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << space << ", "
         << offset << ", " << hostBuf << ", " << size << std::endl;
     }
+    offset = offset | mCuBaseAddress;
     switch (space) {
       case XCL_ADDR_SPACE_DEVICE_RAM:
         {
@@ -1491,6 +1494,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     mPerfMonFifoCtrlBaseAddress = 0;
     mPerfMonFifoReadBaseAddress = 0;
     mDataSpace = new xclemulation::MemoryManager(0x10000000, 0, getpagesize());
+    mCuBaseAddress = 0x0;
   }
 
   bool HwEmShim::isMBSchedulerEnabled()

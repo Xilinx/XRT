@@ -320,6 +320,7 @@ using addr_type = uint64_t;
       uint64_t mReqCounter;
       FeatureRomHeader mFeatureRom;
       std::set<unsigned int > mImportedBOs;
+      uint64_t mCuBaseAddress;
   };
 
   extern std::map<unsigned int, HwEmShim*> devices;
