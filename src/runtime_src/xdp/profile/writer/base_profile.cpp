@@ -340,8 +340,7 @@ namespace xdp {
       double totalWriteTimeMsec, double totalReadTimeMsec,
       uint32_t maxBytesPerTransfer, double maxTransferRateMBps)
   {
-    double totalTimeMsec = (totalWriteTimeMsec > totalReadTimeMsec) ?
-        totalWriteTimeMsec : totalReadTimeMsec;
+    double totalTimeMsec = totalWriteTimeMsec + totalReadTimeMsec;
 
     double transferRateMBps = (totalTimeMsec == 0) ? 0.0 :
         (double)(totalReadBytes + totalWriteBytes) / (1000.0 * totalTimeMsec);

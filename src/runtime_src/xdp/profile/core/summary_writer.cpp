@@ -593,16 +593,10 @@ namespace xdp {
 
         // First do READ, then WRITE
         if (totalReadTranx > 0) {
-          if (!totalReadTimeMsec) {
-            totalReadTimeMsec = mProfileCounters->getComputeUnitTotalTime(deviceName, cuName);
-          }
           mProfileCounters->writeKernelTransferSummary(writer, deviceName, cuPortName, argNames, memoryName,
             true,  totalReadBytes, totalReadTranx, totalReadTimeMsec, totalReadLatencyMsec, maxTransferRateMBps);
         }
         if (totalWriteTranx > 0) {
-          if (!totalWriteTimeMsec) {
-            totalWriteTimeMsec = mProfileCounters->getComputeUnitTotalTime(deviceName, cuName);
-          }
           mProfileCounters->writeKernelTransferSummary(writer, deviceName, cuPortName, argNames, memoryName,
             false, totalWriteBytes, totalWriteTranx, totalWriteTimeMsec, totalWriteLatencyMsec, maxTransferRateMBps);
         }
@@ -708,6 +702,8 @@ namespace xdp {
         uint64_t totalWriteBytes = 0;
         uint64_t totalReadTranx  = 0;
         uint64_t totalWriteTranx = 0;
+        uint64_t totalReadBusyCycles = 0;
+        uint64_t totalWriteBusyCycles = 0;
         for (unsigned s=0; s < numSlots; ++s) {
           if (mDataSlotsPropertiesMap.at(key)[s] & XAIM_HOST_PROPERTY_MASK)
             continue;
@@ -724,13 +720,16 @@ namespace xdp {
                                + (rolloverCounts.ReadTranx[s] * 4294967296UL);
             totalWriteTranx += counterResults.WriteTranx[s] + rolloverResults.WriteTranx[s]
                                + (rolloverCounts.WriteTranx[s] * 4294967296UL);
+            totalReadBusyCycles += counterResults.ReadBusyCycles[s];
+            totalWriteBusyCycles += counterResults.WriteBusyCycles[s];
           }
         }
 
-        double totalCUTimeMsec = mProfileCounters->getComputeUnitTotalTime(deviceName, cuName);
+        double totalReadTimeMsec = totalReadBusyCycles / (1000.0 * mTraceParserHandle->getDeviceClockFreqMHz()) ;
+        double totalWriteTimeMsec = totalWriteBusyCycles / (1000.0 * mTraceParserHandle->getDeviceClockFreqMHz());
 
         mProfileCounters->writeTopKernelTransferSummary(writer, deviceName, cuName, totalWriteBytes,
-            totalReadBytes, totalWriteTranx, totalReadTranx, totalCUTimeMsec, totalCUTimeMsec,
+            totalReadBytes, totalWriteTranx, totalReadTranx, totalWriteTimeMsec, totalReadTimeMsec,
             maxBytesPerTransfer, maxTransferRateMBps);
       }
     }
