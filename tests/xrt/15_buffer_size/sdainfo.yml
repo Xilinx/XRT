@@ -2,7 +2,8 @@ args: -k kernel.xclbin
 copy: [Makefile, utils.h]
 devices:
 - [all_pcie]
-flags: -g -std=c++0x -ldl
+exclude_devices: [xilinx_u280-es1_xdma_201910_1]
+flags: -g -std=c++0x -ldl -luuid
 flows: [hw_all]
 hdrs: [utils.h]
 krnls:
@@ -18,3 +19,5 @@ xclbins:
   - {krnl: dummy, name: dummy}
   name: kernel
   region: OCL_REGION_0
+user:
+  sdx_type: [sdx_fast]

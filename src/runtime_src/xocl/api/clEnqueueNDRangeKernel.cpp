@@ -33,7 +33,6 @@
 #include "enqueue.h"
 #include "api.h"
 
-#include "xrt/util/memory.h"
 
 #include "printf/rt_printf.h"
 
@@ -70,15 +69,6 @@ getDeviceAddressBits(cl_device_id device)
     return bits;
   xocl::api::clGetDeviceInfo(device,CL_DEVICE_ADDRESS_BITS,sizeof(cl_uint),&bits,nullptr);
   return bits;
-}
-
-static bool
-is_sw_emulation()
-{
-// TODO check for only sw_emu. Some github examples are using "true", Remove this check once all github examples are updated
-  static auto xem = std::getenv("XCL_EMULATION_MODE");
-  static bool swem = xem ? (std::strcmp(xem,"sw_emu")==0) : false;
-  return swem;
 }
 
 static size_t
@@ -194,7 +184,7 @@ validOrError(cl_command_queue command_queue,
   // specified by global_work_size is not evenly divisible by size of
   // work-group given by local_work_size or by the required work-
   // group size specified in the kernel source.
-  auto compile_wgs_range = xocl::xocl(kernel)->get_compile_wg_size_range();
+  auto compile_wgs_range = xkernel->get_compile_wg_size_range();
   bool reqd_work_group_size_set =
     std::any_of(compile_wgs_range.begin(),compile_wgs_range.end(),[](size_t sz) { return sz!=0; });
   for (cl_uint work_dim_it=0; work_dim_it < work_dim; ++work_dim_it) {
@@ -242,43 +232,6 @@ validOrError(cl_command_queue command_queue,
   // CL_DEVICE_MAX_READ_WRITE_IMAGE_ARGS value for device or the
   // number of samplers used in kernel exceed CL_DEVICE_MAX_SAMPLERS
   // for device.
-
-  // CL_MEM_OBJECT_ALLOCATION_FAILURE if there is a failure to
-  // allocate memory for data store associated with image or buffer
-  // objects specified as arguments to kernel.
-  // XLNX: Check if kernel argument ddr match with cu(s) ddr connection
-  size_t argidx = 0;
-  for (auto& arg : xocl::xocl(kernel)->get_indexed_argument_range()) {
-    if (auto mem = arg->get_memory_object()) {
-      mem->get_buffer_object(xdevice); // make sure buffer is allocated on device
-      auto mem_memidx_mask = mem->get_memidx(xdevice);
-      for (auto& cu : xdevice->get_cu_range()) {
-        if (cu->get_symbol()->uid!=xkernel->get_symbol_uid())
-          continue;
-        auto cu_memidx_mask = cu->get_memidx(argidx);
-        if ((cu_memidx_mask & mem_memidx_mask).none()) {
-          std::stringstream ostr;
-          ostr << "Memory bank specified for kernel instance \""
-               << cu->get_name()
-               << "\" of kernel \""
-               << xkernel->get_name()
-               << "\" for argument name \"" << arg->get_name() << "\" "
-               << "does not match the connectivity from the xclbin.\n"
-               << "Memory bank mask specified for argument ";
-          if (mem_memidx_mask.any())
-            ostr << "is \"" << mem_memidx_mask << "\"";
-          else
-            ostr << "does not exist";
-          ostr << " while memory bank mask in xclbin is \"" << cu_memidx_mask << "\".";
-          XOCL_DEBUG(std::cout,ostr.str(),"\n");
-          if (!is_sw_emulation()) // pr Amit
-            throw xocl::error(CL_MEM_OBJECT_ALLOCATION_FAILURE,ostr.str());
-        }
-      }
-    }
-    ++argidx;
-  }
-
 
   // CL_INVALID_EVENT_WAIT_LIST if event_wait_list is NULL and
   // num_events_in_wait_list > 0, or event_wait_list is not NULL and
@@ -473,7 +426,7 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
   // execution context
   auto device = ueEvent->get_command_queue()->get_device();
     ueEvent->set_execution_context
-      (xrt::make_unique<execution_context>
+      (std::make_unique<execution_context>
        (device,xocl(kernel),xocl(eEvent),work_dim,global_work_offset_3D.data(),global_work_size_3D.data(),local_work_size_3D.data()));
     xocl::enqueue::set_event_action(ueEvent.get(),xocl::enqueue::action_ndrange_execute);
 
@@ -581,7 +534,7 @@ cl_event enqueueInitializePrintfBuffer(cl_kernel kernel, cl_command_queue queue,
 {
   cl_event event = nullptr;
   if ( XCL::Printf::kernelHasPrintf(kernel) ) {
-    std::unique_ptr<CallbackArgs> args = xrt::make_unique<CallbackArgs>();
+    std::unique_ptr<CallbackArgs> args = std::make_unique<CallbackArgs>();
     auto bufSize = xocl::xocl(mem)->get_size();
     args->kernel = xocl::xocl(kernel);
     args->mem = xocl::xocl(mem);
@@ -611,7 +564,7 @@ cl_int enqueueReadPrintfBuffer(cl_kernel kernel, cl_command_queue queue,
 {
   cl_int err = CL_SUCCESS;
   if ( XCL::Printf::kernelHasPrintf(kernel) ) {
-    std::unique_ptr<CallbackArgs> args = xrt::make_unique<CallbackArgs>();
+    std::unique_ptr<CallbackArgs> args = std::make_unique<CallbackArgs>();
     if ( !args ) {
       throw xocl::error(CL_OUT_OF_RESOURCES,"enqueueReadPrintfBuffer");
     }

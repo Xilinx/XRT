@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018 - 2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -26,18 +26,17 @@
 // ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
 // Forward declarations - use these instead whenever possible...
 
-// ------------------- C L A S S :   S e c t i o n ---------------------------
-
-/**
- *    This class represents the base class for a given Section in the xclbin
- *    archive.  
-*/
+// ------ C L A S S :   S e c t i o n D e b u g I P L a y o u t --------------
 
 class SectionDebugIPLayout : public Section {
  private:
   // Purposefully private and undefined ctors...
   SectionDebugIPLayout(const SectionDebugIPLayout& obj);
   SectionDebugIPLayout& operator=(const SectionDebugIPLayout& obj);
+
+ public:
+  virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;
+  virtual bool doesSupportDumpFormatType(FormatType _eFormatType) const;
 
  protected:
   virtual void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const;
@@ -55,7 +54,7 @@ class SectionDebugIPLayout : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(DEBUG_IP_LAYOUT, "DEBUG_IP_LAYOUT", boost::factory<SectionDebugIPLayout*>()); }
+    _init() { registerSectionCtor(DEBUG_IP_LAYOUT, "DEBUG_IP_LAYOUT", "debug_ip_layout", false, boost::factory<SectionDebugIPLayout*>()); }
   } _initializer;
 };
 

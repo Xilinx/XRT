@@ -21,10 +21,13 @@
 #include "xrt/util/task.h"
 #include "xrt/util/event.h"
 #include "xrt/util/range.h"
+#include "xrt/util/uuid.h"
+#include "core/include/xrt.h"
 
-#include "driver/include/xclperf.h"
-#include "driver/include/xcl_app_debug.h"
-#include "driver/include/stream.h"
+#include "xclperf.h"
+#include "xcl_app_debug.h"
+#include "stream.h"
+#include "ert.h"
 
 #include <memory>
 #include <string>
@@ -45,6 +48,8 @@ struct exec_buffer_object {};
 
 using BufferObjectHandle = std::shared_ptr<buffer_object>;
 using ExecBufferObjectHandle = std::shared_ptr<exec_buffer_object>;
+
+
 
 enum class verbosity_level : unsigned short
 {
@@ -151,7 +156,8 @@ public:
     ,XRT_DEVICE_PREALLOCATED_BRAM
     ,XRT_SHARED_VIRTUAL
     ,XRT_SHARED_PHYSICAL
-    ,XRT_DEVICE_P2P_RAM
+    ,XRT_DEVICE_ONLY_MEM_P2P
+    ,XRT_DEVICE_ONLY_MEM
   };
 
   virtual bool
@@ -159,6 +165,12 @@ public:
 
   virtual void
   close() = 0;
+
+  virtual void
+  acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared) {}
+
+  virtual void
+  release_cu_context(const uuid& uuid,size_t cuidx) {}
 
   // Hack to copy hw_em device info to sw_em device info
   // Should not be necessary when we move to sw_emu
@@ -236,6 +248,10 @@ public:
   copy(const BufferObjectHandle& dst_bo, const BufferObjectHandle& src_bo, size_t sz,
        size_t dst_offset, size_t src_offset) = 0;
 
+  virtual void
+  fill_copy_pkt(const BufferObjectHandle& dst_boh, const BufferObjectHandle& src_boh
+                ,size_t sz, size_t dst_offset, size_t src_offset,ert_start_copybo_cmd* pkt) = 0;
+
   virtual size_t
   read_register(size_t offset, void* buffer, size_t size) = 0;
 
@@ -283,15 +299,23 @@ public:
   freeStreamBuf(hal::StreamBufHandle buf) = 0;
 
   virtual ssize_t
-  writeStream(hal::StreamHandle stream, const void* ptr, size_t offset, size_t size, hal::StreamXferReq* req ) = 0;
+  writeStream(hal::StreamHandle stream, const void* ptr, size_t size, hal::StreamXferReq* req ) = 0;
 
   virtual ssize_t
-  readStream(hal::StreamHandle stream, void* ptr, size_t offset, size_t size, hal::StreamXferReq* req) = 0;
+  readStream(hal::StreamHandle stream, void* ptr, size_t size, hal::StreamXferReq* req) = 0;
 
   virtual int
   pollStreams(StreamXferCompletions* comps, int min, int max, int* actual, int timeout) = 0;
 
 public:
+  /**
+   * @returns
+   *   True of this buffer object is imported from another device,
+   *   false otherwise
+   */
+  virtual bool
+  is_imported(const BufferObjectHandle& boh) const = 0;
+
   /**
    * @returns
    *   The device address of a buffer object
@@ -452,22 +476,6 @@ public:
   }
 
   /**
-   * Reset device program
-   *
-   * @param kind
-   *   Type of set
-   * @returns
-   *   A pair <int,bool> where bool is set to true if
-   *   and only if the return int value is valid. The
-   *   return value is implementation dependent.
-   */
-  virtual operations_result<int>
-  resetKernel()
-  {
-    return operations_result<int>();
-  }
-
-  /**
    * Re-clock device at specified freq
    *
    * @param freqMHz
@@ -558,6 +566,24 @@ public:
   }
 
   virtual operations_result<void>
+  xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
+  {
+    return operations_result<void>();
+  }
+
+  virtual operations_result<void>
+  xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
+  {
+    return operations_result<void>();
+  }
+
+  virtual operations_result<ssize_t>
+  xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset)
+  {
+    return operations_result<ssize_t>();
+  }
+
+  virtual operations_result<void>
   setProfilingSlots(xclPerfMonType type, uint32_t)
   {
     return operations_result<void>();
@@ -576,8 +602,20 @@ public:
     return operations_result<void>();
   }
 
+  virtual operations_result<uint32_t>
+  getProfilingSlotProperties(xclPerfMonType type, uint32_t slotnum)
+  {
+    return operations_result<uint32_t>();
+  }
+
   virtual operations_result<void>
   writeHostEvent(xclPerfMonEventType type, xclPerfMonEventID id)
+  {
+    return operations_result<void>();
+  }
+
+  virtual operations_result<void>
+  configureDataflow(xclPerfMonType, unsigned *ip_config)
   {
     return operations_result<void>();
   }
@@ -606,8 +644,41 @@ public:
     return operations_result<size_t>();
   }
 
+  virtual operations_result<uint32_t>
+  getNumLiveProcesses()
+  {
+    return operations_result<uint32_t>();
+  }
+
+  virtual operations_result<std::string>
+  getSysfsPath(const std::string& subdev, const std::string& entry)
+  {
+    return operations_result<std::string>();
+  }
+
+  virtual operations_result<std::string>
+  getDebugIPlayoutPath()
+  {
+    return operations_result<std::string>();
+  }
+
+  virtual operations_result<int>
+  getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
+  {
+    return operations_result<int>();
+  }
+
+  virtual operations_result<int>
+  readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
+  {
+    return operations_result<int>();
+  }
+
   virtual task::queue*
   getQueue(hal::queue_type qt) {return nullptr; }
+
+  virtual void*
+  getHalDeviceHandle() {return nullptr;}
 };
 
 
