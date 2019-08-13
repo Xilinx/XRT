@@ -967,6 +967,11 @@ static void dequeue_rx_msg(struct mailbox_channel *ch,
 	struct mailbox_msg *msg = NULL;
 	int err = 0;
 
+	if (mbx->mbx_peer_dead) {
+		MBX_ERR(mbx, "peer becomes active");
+		mbx->mbx_peer_dead = false;
+	}
+
 	if (ch->mbc_cur_msg)
 		return;
 
@@ -1691,10 +1696,6 @@ static void mailbox_recv_request(struct work_struct *work)
 			mbx->mbx_req_sz -= msg->mbm_len;
 			mutex_unlock(&mbx->mbx_lock);
 
-			if (mbx->mbx_peer_dead) {
-				MBX_ERR(mbx, "peer becomes active");
-				mbx->mbx_peer_dead = false;
-			}
 			/* Process msg without holding mutex. */
 			process_request(mbx, msg);
 			free_msg(msg);
