@@ -648,10 +648,8 @@ int shim::p2pEnable(bool enable, bool force)
 
     int p2p_enable = EINVAL;
     mDev->sysfs_get("", "p2p_enable", err, p2p_enable);
-    if (p2p_enable < 0)
-        return p2p_enable;
 
-    return 0;
+    return p2p_enable;
 }
 
 /*
