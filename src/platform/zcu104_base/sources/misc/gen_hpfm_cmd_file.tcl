@@ -51,7 +51,7 @@
 # *************************************************************************
 
 # Define FPM NAME
-set_property PFM_NAME "xilinx.com:xd:xilinx_zcu102_dynamic_5_1:5.1" [get_files pfm_dynamic.bd]
+set_property PFM_NAME "xilinx.com:xd:xilinx_zcu104_dynamic_5_1:5.1" [get_files pfm_dynamic.bd]
 
 # Define AXI_PORT for AXI_LITE control
 set parVal []

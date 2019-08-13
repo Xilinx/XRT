@@ -7,7 +7,7 @@ BEGIN OS
  PARAMETER PROC_INSTANCE = psu_cortexa53_0
  PARAMETER console_device = psu_uart_0
  PARAMETER main_memory = PSU_DDR_0
- PARAMETER periph_type_overrides = {BOARD zcu102-rev1.0}
+ PARAMETER periph_type_overrides = {BOARD zcu104-revc}
 END
 
 

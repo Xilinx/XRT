@@ -42,8 +42,8 @@ if { [string first $scripts_vivado_version $current_vivado_version] == -1 } {
 
 set list_projs [get_projects -quiet]
 if { $list_projs eq "" } {
-   create_project project_1 myproj -part xczu9eg-ffvb1156-2-e
-   set_property BOARD_PART xilinx.com:zcu102:part0:3.2 [current_project]
+   create_project project_1 myproj -part xczu7ev-ffvc1156-2-e
+   set_property BOARD_PART xilinx.com:zcu104:part0:1.1 [current_project]
 }
 
 
@@ -841,7 +841,7 @@ proc create_root_design { parentCell } {
   current_bd_instance $oldCurInst
 
   # Create PFM attributes
-  set_property PFM_NAME {xilinx.com:xd:xilinx_zcu102_dynamic_5_1:5.1} [get_files [current_bd_design].bd]
+  set_property PFM_NAME {xilinx.com:xd:xilinx_zcu104_dynamic_5_1:5.1} [get_files [current_bd_design].bd]
   set_property PFM.CLOCK {clkwiz_kernel2_clk_out1 {id "1" is_default "false" proc_sys_reset "reset_controllers/psreset_gate_pr_kernel2"}  } [get_bd_ports /clkwiz_kernel2_clk_out1]
   set_property PFM.CLOCK {clkwiz_kernel_clk_out1 {id "0" is_default "true" proc_sys_reset "reset_controllers/psreset_gate_pr_kernel"}  } [get_bd_ports /clkwiz_kernel_clk_out1]
   set_property PFM.AXI_PORT {S01_AXI {memport "S_AXI_HP" sptag "bank0" memory "interconnect_aximm_ddrmem2_M00_AXI HP3_DDR_LOW"} S02_AXI {memport "S_AXI_HP" sptag "bank0" memory "interconnect_aximm_ddrmem2_M00_AXI HP3_DDR_LOW"} S03_AXI {memport "S_AXI_HP" sptag "bank0" memory "interconnect_aximm_ddrmem2_M00_AXI HP3_DDR_LOW"} S04_AXI {memport "S_AXI_HP" sptag "bank0" memory "interconnect_aximm_ddrmem2_M00_AXI HP3_DDR_LOW"} S05_AXI {memport "S_AXI_HP" sptag "bank0" memory "interconnect_aximm_ddrmem2_M00_AXI HP3_DDR_LOW"} S06_AXI {memport "S_AXI_HP" sptag "bank0" memory "interconnect_aximm_ddrmem2_M00_AXI HP3_DDR_LOW"} S07_AXI {memport "S_AXI_HP" sptag "bank0" memory "interconnect_aximm_ddrmem2_M00_AXI HP3_DDR_LOW"} S08_AXI {memport "S_AXI_HP" sptag "bank0" memory "interconnect_aximm_ddrmem2_M00_AXI HP3_DDR_LOW"} S09_AXI {memport "S_AXI_HP" sptag "bank0" memory "interconnect_aximm_ddrmem2_M00_AXI HP3_DDR_LOW"} S10_AXI {memport "S_AXI_HP" sptag "bank0" memory "interconnect_aximm_ddrmem2_M00_AXI HP3_DDR_LOW"} S11_AXI {memport "S_AXI_HP" sptag "bank0" memory "interconnect_aximm_ddrmem2_M00_AXI HP3_DDR_LOW"} S12_AXI {memport "S_AXI_HP" sptag "bank0" memory "interconnect_aximm_ddrmem2_M00_AXI HP3_DDR_LOW"} S13_AXI {memport "S_AXI_HP" sptag "bank0" memory "interconnect_aximm_ddrmem2_M00_AXI HP3_DDR_LOW"} S14_AXI {memport "S_AXI_HP" sptag "bank0" memory "interconnect_aximm_ddrmem2_M00_AXI HP3_DDR_LOW"} S15_AXI {memport "S_AXI_HP" sptag "bank0" memory "interconnect_aximm_ddrmem2_M00_AXI HP3_DDR_LOW"}} [get_bd_cells /interconnect_axifull_1_user_slr1]

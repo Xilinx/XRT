@@ -62,9 +62,9 @@ file mkdir emu_overlay
 cd emu_overlay
 
 # Create the project using board support
-set projName "xilinx_zcu102_dynamic_0_1"
-set projPart "xczu9eg-ffvb1156-2-e"
-set projBoardPart "xilinx.com:zcu102:part0:3.2"
+set projName "xilinx_zcu104_dynamic_0_1"
+set projPart "xczu7ev-ffvc1156-2-e"
+set projBoardPart "xilinx.com:zcu104:part0:1.1"
 create_project $projName ./$projName -part $projPart
 set_property board_part $projBoardPart [current_project]
 
@@ -82,10 +82,10 @@ update_ip_catalog
 
 # Set DSA project properties
 set_property dsa.vendor                        "xilinx"     [current_project]
-set_property dsa.board_id                      "ZCU102"    [current_project]
+set_property dsa.board_id                      "ZCU104"    [current_project]
 set_property dsa.name                          "dynamic"    [current_project]
 set_property dsa.version                       "0.1"        [current_project]
-set_property dsa.description                   "This platform targets the ZCU102 Development Board. This platform features one PL and one PS channels of DDR4 SDRAM which are instantiated as required by the user kernels for high fabric resource availability ." [current_project]
+set_property dsa.description                   "This platform targets the ZCU104 Development Board. This platform features one PL and one PS channels of DDR4 SDRAM which are instantiated as required by the user kernels for high fabric resource availability ." [current_project]
 set_property dsa.platform_state                "impl"       [current_project]
 set_property dsa.uses_pr                       true         [current_project]
 set_property dsa.ocl_inst_path                 {pfm_top_i/dynamic_region}                                              [current_project]
