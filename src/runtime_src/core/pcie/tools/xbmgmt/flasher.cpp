@@ -298,9 +298,11 @@ DSAInfo Flasher::getOnBoardDSA()
 
     std::string err;
     std::string board_name;
+    std::string uuid;
     bool is_mfg = false;
     mDev->sysfs_get("", "mfg", err, is_mfg);
     mDev->sysfs_get("", "board_name", err, board_name);
+    mDev->sysfs_get("", "blp_interfaces", err, uuid);
     if (is_mfg)
     {
         std::stringstream ss;
@@ -327,7 +329,7 @@ DSAInfo Flasher::getOnBoardDSA()
     else
         bmc = "UNKNOWN"; // BMC not ready, set it to an invalid version string
 
-    return DSAInfo(vbnv, ts, bmc);
+    return DSAInfo(vbnv, ts, uuid, bmc);
 }
 
 std::string Flasher::sGetDBDF()

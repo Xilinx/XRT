@@ -23,37 +23,8 @@
 # 3. When re-installing (say from 2.2.0 to 2.2.0) then prerm is NOT run but
 #    and postinst of 2.2.0 is run. The postinst is invoked with "2" argument.
 
-installdir=/opt/xilinx/xrt
-systemddir=/etc/systemd/system
-
-msd_active=`systemctl is-active msd`
-mpd_active=`systemctl is-active mpd`
-# Stopping existing daemons so that we could swap drivers and update daemons later
-if [ "$mpd_active" = "active" ]; then
-	echo "Stopping MPD daemon"
-	systemctl stop mpd > /dev/null 2>&1
-fi
-if [ "$msd_active" = "active" ]; then
-	echo "Stopping MSD daemon"
-	systemctl stop msd > /dev/null 2>&1
-fi
-
-
-# This snippet here to clean any previous XRT DKMS. This is always true for
-# RHEL/CentOS.
-
-if [ -n "`dkms status -m xrt`" ]; then
-    echo "Unloading old XRT Linux kernel modules"
-    modprobe -r xocl
-    modprobe -r xclmgmt
-
-    XRT_VERSION_STRING_OLD=`dkms status -m xrt | awk -F, '{print $2}'`
-    for OLD in $XRT_VERSION_STRING_OLD; do
-	echo "Unregistering old XRT Linux kernel module sources $OLD from dkms"
-	dkms remove -m xrt -v $OLD --all
-	break
-    done
-
+rmmodules()
+{
     find /lib/modules -type f -name xocl.ko -delete
     find /lib/modules -type f -name xclmgmt.ko -delete
     find /lib/modules -type f -name xocl.ko.kz -delete
@@ -61,6 +32,48 @@ if [ -n "`dkms status -m xrt`" ]; then
     find /lib/modules -type f -name xocl.ko.xz -delete
     find /lib/modules -type f -name xclmgmt.ko.xz -delete
     depmod -A
+}
+
+installdir=/opt/xilinx/xrt
+systemddir=/etc/systemd/system
+
+msd_active=`systemctl is-active msd`
+mpd_active=`systemctl is-active mpd`
+# Stopping existing daemons so that we could swap drivers and update daemons later
+if [ "$mpd_active" = "active" ]; then
+    echo "Stopping MPD daemon"
+    systemctl stop mpd > /dev/null 2>&1
+fi
+if [ "$msd_active" = "active" ]; then
+    echo "Stopping MSD daemon"
+    systemctl stop msd > /dev/null 2>&1
+fi
+
+
+lsb_release -si | grep -Eq "^Ubuntu|^Debian"
+
+if [ $? -eq 0 ] && [ "$1" = "configure" ]; then
+    # The older modules should already have been unregistered from dkms
+    # by the prerm
+    echo "Unloading old XRT Linux kernel modules on Ubuntu/Debian"
+    rmmod xocl
+    rmmod xclmgmt
+    rmmodules
+elif [ -n "`dkms status -m xrt`" ]; then
+    # This snippet here to clean any previous XRT DKMS. This is always true for
+    # RHEL/CentOS.
+    echo "Unloading old XRT Linux kernel modules on RHEL/CentOS"
+    rmmod xocl
+    rmmod xclmgmt
+
+    XRT_VERSION_STRING_OLD=`dkms status -m xrt | awk -F, '{print $2}'`
+    for OLD in $XRT_VERSION_STRING_OLD; do
+    echo "Unregistering old XRT Linux kernel module sources $OLD from dkms"
+    dkms remove -m xrt -v $OLD --all
+    break
+    done
+
+    rmmodules
 else
     echo "No previous XRT Linux kernel modules found"
 fi
@@ -97,7 +110,7 @@ fi
 echo "Installing MSD / MPD daemons"
 
 # Update msd configuration before start daemons
-${installdir}/bin/xbmgmt config --update
+${installdir}/bin/xbmgmt config --daemon
 
 # Install msd/mpd services
 cp -f ${installdir}/etc/msd.service ${systemddir}
@@ -106,12 +119,37 @@ systemctl daemon-reload > /dev/null 2>&1
 
 # Start daemons only when it was started previously
 if [ "$msd_active" = "active" ]; then
-	echo "Starting MSD daemon"
-	systemctl start msd > /dev/null 2>&1
+    echo "Starting MSD daemon"
+    systemctl start msd > /dev/null 2>&1
 fi
 if [ "$mpd_active" = "active" ]; then
-	echo "Starting MPD daemon"
-	systemctl start mpd > /dev/null 2>&1
+    echo "Starting MPD daemon"
+    systemctl start mpd > /dev/null 2>&1
 fi
 
+#install pyopencl on centOS
+FLAVOR=`grep '^ID=' /etc/os-release | awk -F= '{print $2}'`
+FLAVOR=`echo $FLAVOR | tr -d '"'`
+if [ $FLAVOR = "centos" ] || [ $FLAVOR = "rhel" ] ; then
+    if python -c "import pyopencl" &> /dev/null; then
+        echo "Skipping pyopencl installation..."
+        exit 0
+    else
+        echo "Installing pyopencl..."
+        pip install --upgrade setuptools
+        pip install --ignore-installed numpy==1.8
+        pip install pyopencl
+    fi
+
+    if python -c "import pyopencl" &> /dev/null; then
+        echo "Successfully installed pyopencl"
+    else
+        echo "***********************************************************************"
+        echo "* FAILED TO INSTALL PYOPENCL"
+        echo "*"
+        echo "* Please try to install pyopencl using the "
+        echo "* offical documentation: https://documen.tician.de/pyopencl/misc.html"
+        echo "***********************************************************************"
+    fi
+fi
 exit 0

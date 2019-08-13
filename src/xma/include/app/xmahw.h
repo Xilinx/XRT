@@ -21,7 +21,7 @@
 extern "C" {
 #endif
 
-typedef void * XmaKernelRes;
+//typedef void * XmaKernelRes;
 typedef struct XmaHwKernel XmaHwKernel;
 
 typedef struct XmaHwSession

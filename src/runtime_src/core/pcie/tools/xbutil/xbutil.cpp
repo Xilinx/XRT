@@ -27,7 +27,6 @@
 
 #include "xbutil.h"
 #include "base.h"
-#include "ert.h"
 #include "core/pcie/linux/shim.h"
 #include "core/common/memalign.h"
 
@@ -143,8 +142,9 @@ int main(int argc, char *argv[])
      * down to xbflash.
      */
     if(std::string( argv[ 1 ] ).compare( "flash" ) == 0) {
-        std::cout << "WARNING: flash sub-command is obsolete. "
-            << "Use xbmgmt flash instead" << std::endl;
+        std::cout << "WARNING: The xbutil sub-command flash has been deprecated. "
+                  << "Please use the xbmgmt utility with flash sub-command for equivalent functionality.\n"
+                  << std::endl;
         // get self path, launch xbflash from self path
         char buf[ PATH_MAX ] = {0};
         auto len = readlink( "/proc/self/exe", buf, PATH_MAX );
@@ -196,9 +196,9 @@ int main(int argc, char *argv[])
     static struct option long_options[] = {
         {"read", no_argument, 0, xcldev::MEM_READ},
         {"write", no_argument, 0, xcldev::MEM_WRITE},
-        {"spm", no_argument, 0, xcldev::STATUS_SPM},
+        {"aim", no_argument, 0, xcldev::STATUS_AIM},
         {"lapc", no_argument, 0, xcldev::STATUS_LAPC},
-        {"sspm", no_argument, 0, xcldev::STATUS_SSPM},
+        {"asm", no_argument, 0, xcldev::STATUS_ASM},
         {"spc", no_argument, 0, xcldev::STATUS_SPC},
         {"tracefunnel", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
         {"monitorfifolite", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
@@ -246,21 +246,21 @@ int main(int argc, char *argv[])
             ipmask |= static_cast<unsigned int>(xcldev::STATUS_LAPC_MASK);
             break;
         }
-        case xcldev::STATUS_SPM : {
-            //--spm
+        case xcldev::STATUS_AIM : {
+            //--aim
             if (cmd != xcldev::STATUS) {
                 std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
                 return -1;
             }
-            ipmask |= static_cast<unsigned int>(xcldev::STATUS_SPM_MASK);
+            ipmask |= static_cast<unsigned int>(xcldev::STATUS_AIM_MASK);
             break;
         }
-        case xcldev::STATUS_SSPM : {
+        case xcldev::STATUS_ASM : {
             if (cmd != xcldev::STATUS) {
                 std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n" ;
                 return -1 ;
             }
-            ipmask |= static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK);
+            ipmask |= static_cast<unsigned int>(xcldev::STATUS_ASM_MASK);
             break ;
         }
 	case xcldev::STATUS_SPC: {
@@ -586,21 +586,16 @@ int main(int argc, char *argv[])
         break;
     case xcldev::STATUS:
         if (ipmask == xcldev::STATUS_NONE_MASK) {
-            //if no ip specified then read all
-            //ipmask = static_cast<unsigned int>(xcldev::STATUS_SPM_MASK);
-            //if (!(getuid() && geteuid())) {
-            //  ipmask |= static_cast<unsigned int>(xcldev::STATUS_LAPC_MASK);
-            //}
             result = deviceVec[index]->print_debug_ip_list(0);
         }
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_LAPC_MASK)) {
             result = deviceVec[index]->readLAPCheckers(1);
         }
-        if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SPM_MASK)) {
-            result = deviceVec[index]->readSPMCounters();
+        if (ipmask & static_cast<unsigned int>(xcldev::STATUS_AIM_MASK)) {
+            result = deviceVec[index]->readAIMCounters();
         }
-        if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK)) {
-            result = deviceVec[index]->readSSPMCounters() ;
+        if (ipmask & static_cast<unsigned int>(xcldev::STATUS_ASM_MASK)) {
+            result = deviceVec[index]->readASMCounters() ;
         }
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SPC_MASK)) {
 	  result = deviceVec[index]->readStreamingCheckers(1);
@@ -862,6 +857,7 @@ int xcldev::xclTop(int argc, char *argv[])
 
 const std::string dsaPath("/opt/xilinx/dsa/");
 const std::string xsaPath("/opt/xilinx/xsa/");
+const std::string xrtPath("/opt/xilinx/xrt/");
 
 void testCaseProgressReporter(bool *quit)
 {    int i = 0;
@@ -883,9 +879,21 @@ int runShellCmd(const std::string& cmd, std::string& output)
 
     // Run test case
     setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
+    setenv("PYTHONPATH", "/opt/xilinx/xrt/python", 0);
     setenv("LD_LIBRARY_PATH", "/opt/xilinx/xrt/lib", 1);
     unsetenv("XCL_EMULATION_MODE");
+    
+    int stderr_fds[2];
+    if (pipe(stderr_fds)== -1) {
+        perror("ERROR: Unable to create pipe");
+        ret = -EINVAL;
+    }
+
+    close(stderr_fds[0]);
+    dup2(stderr_fds[1], 2);
     std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
+    close(stderr_fds[1]);
+
     if (pipe == nullptr) {
         std::cout << "ERROR: Failed to run " << cmd << std::endl;
         ret = -EINVAL;
@@ -898,6 +906,7 @@ int runShellCmd(const std::string& cmd, std::string& output)
             output += buf;
         }
     }
+    close(stderr_fds[0]);
 
     // Stop progress reporter
     quit = true;
@@ -906,38 +915,45 @@ int runShellCmd(const std::string& cmd, std::string& output)
     return ret;
 }
 
-int xcldev::device::runTestCase(const std::string& exe,
+int searchXsaAndDsa(std::string xsaPath, std::string 
+    dsaPath, std::string& path, std::string &output) 
+{
+    struct stat st;
+    if (stat(xsaPath.c_str(), &st) != 0) {
+            if (stat(dsaPath.c_str(), &st) != 0) {
+                output += "ERROR: Failed to find xclbin in ";
+                output += xsaPath;
+                output += " and ";
+                output += dsaPath;
+                return -ENOENT;
+            }
+            path =  dsaPath;
+            return EXIT_SUCCESS;
+    } else {
+        path = xsaPath;
+        return EXIT_SUCCESS;
+    }
+}
+
+int xcldev::device::runTestCase(const std::string& py,
     const std::string& xclbin, std::string& output)
 {
-    std::string testCasePath;
     struct stat st;
 
     std::string devInfoPath = std::string(m_devinfo.mName) + "/test/";
-    std::string xsaTestCasePath = xsaPath + devInfoPath;
-    std::string dsaTestCasePath = dsaPath + devInfoPath;
+    std::string xsaXclbinPath = xsaPath + devInfoPath;
+    std::string dsaXclbinPath = dsaPath + devInfoPath;
+    std::string xrtTestCasePath = xrtPath + "test/" + py;
 
     output.clear();
 
-    if (stat(xsaTestCasePath.c_str(), &st) != 0) {
-        if (stat(dsaTestCasePath.c_str(), &st) != 0) {
-            output += "ERROR: Failed to find test in ";
-            output += xsaTestCasePath;
-            output += " and ";
-            output += dsaTestCasePath;
-            return -ENOENT;
-        }
-        testCasePath = dsaTestCasePath;
-    } else {
-        testCasePath = xsaTestCasePath;
-    }
+    std::string xclbinPath;
+    searchXsaAndDsa(xsaXclbinPath, dsaXclbinPath, xclbinPath, output);
+    xclbinPath += xclbin;
 
-    std::string exePath = testCasePath + exe;
-    std::string xclbinPath = testCasePath + xclbin;
-    std::string idxOption;
-
-    if (stat(exePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
+    if (stat(xrtTestCasePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
         output += "ERROR: Failed to find ";
-        output += exe;
+        output += py;
         output += " or ";
         output += xclbin;
         output += ", Shell package not installed properly.";
@@ -952,18 +968,14 @@ int xcldev::device::runTestCase(const std::string& exe,
         return -EINVAL;
     }
 
-    if (m_idx != 0)
-        idxOption = "-d " + std::to_string(m_idx);
-
-    std::string cmd = exePath + " " + xclbinPath + " " + idxOption;
+    std::string cmd = "/usr/bin/python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
     return runShellCmd(cmd, output);
 }
 
 int xcldev::device::verifyKernelTest(void)
 {
     std::string output;
-
-    int ret = runTestCase(std::string("validate.exe"),
+    int ret = runTestCase(std::string("22_verify.py"),
         std::string("verify.xclbin"), output);
 
     if (ret != 0)
@@ -980,7 +992,7 @@ int xcldev::device::bandwidthKernelTest(void)
 {
     std::string output;
 
-    int ret = runTestCase(std::string("kernel_bw.exe"),
+    int ret = runTestCase(std::string("23_bandwidth.py"),
         std::string("bandwidth.xclbin"), output);
 
     if (ret != 0)
@@ -1511,6 +1523,7 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
     unsigned boTgt = NULLBO;
     char *boSrcPtr = nullptr;
     char *boTgtPtr = nullptr;
+    int ret = 0;
 
     const size_t boSize = 256L * 1024 * 1024;
     if (xclOpenContext(handle, uuid, -1, true)) {
@@ -1530,35 +1543,15 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
         xclCloseContext(handle, uuid, -1);
         return -EINVAL;
     }
-    //Allocate the exec_bo
-    unsigned execHandle = xclAllocBO(handle, sizeof (ert_start_copybo_cmd),
-        0, XCL_BO_FLAGS_EXECBUF);
-    struct ert_start_copybo_cmd *execData =
-        reinterpret_cast<struct ert_start_copybo_cmd *>(
-        xclMapBO(handle, execHandle, true));
-    ert_fill_copybo_cmd(execData, boSrc, boTgt, 0, 0, boSize);
 
     xcldev::Timer timer;
-    if(xclExecBuf(handle, execHandle)) {
-        m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
-        m2m_free_unmap_bo(handle, boTgt, boTgtPtr, boSize);
-        m2m_free_unmap_bo(handle, execHandle, execData, sizeof (ert_start_copybo_cmd));
-        xclCloseContext(handle, uuid, -1);
-        std::cout << "ERROR: Unable to issue xclExecBuf" << std::endl;
-        return -EINVAL;
-    }
-
-    while (execData->state < ERT_CMD_STATE_COMPLETED){
-        while (xclExecWait(handle, 1000) == 0) {
-            std::cout << "reentering wait...\n";
-        };
-    }
+    if ((ret = xclCopyBO(handle, boTgt, boSrc, boSize, 0, 0)))
+        return ret;
     double timer_stop = timer.stop();
 
     if(xclSyncBO(handle, boTgt, XCL_BO_SYNC_BO_FROM_DEVICE, boSize, 0)) {
         m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
         m2m_free_unmap_bo(handle, boTgt, boTgtPtr, boSize);
-        m2m_free_unmap_bo(handle, execHandle, execData, sizeof (ert_start_copybo_cmd));
         xclCloseContext(handle, uuid, -1);
         std::cout << "ERROR: Unable to sync target BO" << std::endl;
         return -EINVAL;
@@ -1569,7 +1562,6 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
     // Clean up
     m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
     m2m_free_unmap_bo(handle, boTgt, boTgtPtr, boSize);
-    m2m_free_unmap_bo(handle, execHandle, execData, sizeof (ert_start_copybo_cmd));
 
     xclCloseContext(handle, uuid, -1);
 

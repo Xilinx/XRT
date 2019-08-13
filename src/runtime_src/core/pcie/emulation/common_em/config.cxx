@@ -205,6 +205,10 @@ namespace xclemulation{
       {
         //Nothing to do
       }
+      else if(name == "system_dpa")
+      {
+        // nothing to do here. Handled in xrt::config::get_system_dpa_emulation method
+      }
       else if(name.find("Debug.") == std::string::npos)
       {
         std::cout<<"WARNING: [SDx-EM 08] Invalid option '"<<name<<"` specified in sdaccel.ini"<<std::endl;

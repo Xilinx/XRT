@@ -29,11 +29,29 @@ static void zocl_dma_irq_done(void *data)
 
 	status = dmaengine_tx_status(dma_handle->dma_chan,
 	    dma_handle->dma_cookie, NULL);
-	if (status == DMA_ERROR || status == DMA_COMPLETE) {
+
+	switch (status) {
+	case DMA_IN_PROGRESS:
+		DRM_DEBUG("%s: Received DMA_IN_PROGRESS", __func__);
+		break;
+	case DMA_PAUSED:
+		DRM_ERROR("Received DMA_PAUSED");
+		break;
+	case DMA_ERROR:
+		DRM_ERROR("Received DMA_ERROR");
 		complete(&dma_handle->dma_done);
-		//registered callback function from user
+		/* registered callback function from user */
 		if (dma_handle->dma_func)
-			dma_handle->dma_func(dma_handle->dma_arg);
+			dma_handle->dma_func(dma_handle->dma_arg, -EIO);
+		break;
+	case DMA_COMPLETE:
+		complete(&dma_handle->dma_done);
+		/* registered callback function from user */
+		if (dma_handle->dma_func)
+			dma_handle->dma_func(dma_handle->dma_arg, 0);
+		break;	
+	default:
+		DRM_ERROR("Received Unknown status: %d", status);
 	}
 }
 

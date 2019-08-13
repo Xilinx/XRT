@@ -579,6 +579,10 @@ void cb_reset(const axlf* xclbin)
 {
   auto profiler = OCLProfiler::Instance();
 
+  if(profiler) {
+    profiler->reset();
+  }
+
   // Extract and store the system profile metatdata
   auto pProfileMgr = profiler ? profiler->getProfileManager() : nullptr;
   auto pRunSummary = pProfileMgr ? pProfileMgr->getRunSummary() : nullptr;
@@ -602,6 +606,7 @@ void cb_reset(const axlf* xclbin)
     profiler->turnOffProfile(xdp::RTUtil::PROFILE_DEVICE);
   } else if (is_hw_emulation()) {
     profiler->getPlugin()->setFlowMode(xdp::RTUtil::HW_EM);
+    profiler->getPlugin()->setSystemDPAEmulation(xrt::config::get_system_dpa_emulation());
   } else {
     throw xocl::error(CL_INVALID_BINARY,"invalid xclbin region target");
   }

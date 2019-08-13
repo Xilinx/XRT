@@ -81,7 +81,7 @@ static int runKernel(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose
     try {
         int result = 0;
         for (auto &bo : dataBO) {
-            bo.first = xclAllocBO(handle, size, XCL_BO_DEVICE_RAM, 0x0);
+            bo.first = xclAllocBO(handle, size, 0, 0x0);
             bo.second = xclMapBO(handle, bo.first, true);
             std::memset(bo.second, 0, size);
             result += xclSyncBO(handle, bo.first, XCL_BO_SYNC_BO_TO_DEVICE, size, 0);
@@ -93,7 +93,7 @@ static int runKernel(xclDeviceHandle handle, uint64_t cu_base_addr, bool verbose
 
 
         for (auto &bo : cmdBO) {
-            bo.first = xclAllocBO(handle, 4096, xclBOKind(0), (1<<31));
+            bo.first = xclAllocBO(handle, 4096, 0, (1<<31));
             bo.second = xclMapBO(handle, bo.first, true);
             std::memset(bo.second, 0, 4096);
             ert_start_kernel_cmd *ecmd = reinterpret_cast<ert_start_kernel_cmd*>(bo.second);
@@ -149,7 +149,7 @@ static int runKernelLoop(xclDeviceHandle handle, uint64_t cu_base_addr, bool ver
     xclOpenContext(handle, xclbinId, 0, true);
 
     //Allocate the exec_bo
-    unsigned execHandle = xclAllocBO(handle, 1024, xclBOKind(0), (1<<31));
+    unsigned execHandle = xclAllocBO(handle, 1024, 0, (1<<31));
     void* execData = xclMapBO(handle, execHandle, true);
 
     std::cout << "Construct the exe buf cmd to confire FPGA" << std::endl;

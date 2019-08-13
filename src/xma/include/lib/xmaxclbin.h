@@ -30,6 +30,8 @@ typedef struct XmaIpLayout
 {
     uint8_t      kernel_name[MAX_KERNEL_NAME];
     uint64_t     base_addr;
+    bool         soft_kernel;
+    bool         dataflow_kernel;
     uint32_t     reserved[16];
 } XmaIpLayout;
 
@@ -53,22 +55,22 @@ typedef struct XmaXclbinInfo
 {
     char                xclbin_name[PATH_MAX + NAME_MAX];
     uint16_t            freq_list[MAX_KERNEL_FREQS];
-    XmaIpLayout         ip_layout[MAX_KERNEL_CONFIGS];
+    XmaIpLayout         ip_layout[MAX_XILINX_KERNELS];
     //TODO HHS Change the limits to be appropriate
     XmaMemTopology      mem_topology[MAX_DDR_MAP];
     XmaAXLFConnectivity connectivity[MAX_CONNECTION_ENTRIES];
     uint32_t            number_of_kernels;
     uint32_t            number_of_mem_banks;
     uint32_t            number_of_connections;
-    //uint16_t bitmap based on MAX_DDR_MAP=16
-    uint16_t            ip_ddr_mapping[MAX_KERNEL_CONFIGS];
+    //uint64_t bitmap based on MAX_DDR_MAP=64
+    uint64_t            ip_ddr_mapping[MAX_XILINX_KERNELS];
     //For execbo:
-    uint32_t    num_ips;
+    //uint32_t    num_ips;
     uuid_t      uuid;
     uint32_t    reserved[32];
 } XmaXclbinInfo;
 
 char *xma_xclbin_file_open(const char *xclbin_name);
 int xma_xclbin_info_get(char *buffer, XmaXclbinInfo *info);
-int xma_xclbin_map2ddr(uint16_t bit_map, int* ddr_banks, int* num_banks);
+int xma_xclbin_map2ddr(uint64_t bit_map, int* ddr_bank);
 #endif

@@ -36,6 +36,9 @@
 #include "fpga_mgmt.h"
 #endif
 
+#include "core/common/xrt_profiling.h"
+
+
 // Work around GCC 4.8 + XDMA BAR implementation bugs
 // With -O3 PCIe BAR read/write are not reliable hence force -O2 as max
 // optimization level for pcieBarRead() and pcieBarWrite()
@@ -46,33 +49,6 @@
 #endif
 
 namespace awsbwhal {
-
-
-
-// Memory alignment for DDR and AXI-MM trace access
-template <typename T> class AlignedAllocator
-{
-  void *mBuffer;
-  size_t mCount;
-public:
-  T *getBuffer() {
-    return (T *)mBuffer;
-  }
-
-  size_t size() const {
-    return mCount * sizeof(T);
-  }
-
-  AlignedAllocator(size_t alignment, size_t count) : mBuffer(0), mCount(count) {
-    if (posix_memalign(&mBuffer, alignment, count * sizeof(T))) {
-      mBuffer = 0;
-    }
-  }
-  ~AlignedAllocator() {
-    if (mBuffer)
-      free(mBuffer);
-  }
-};
 
 const uint64_t mNullAddr = 0xffffffffffffffffull;
 const uint64_t mNullBO = 0xffffffff;
@@ -169,6 +145,11 @@ public:
 
   // APIs using sysfs information
   int xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size);
+
+  int xclGetDebugIPlayoutPath(char* layoutPath, size_t size);
+  int xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
+  int xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
+
 
   // Execute and interrupt abstraction
   int xclExecBuf(unsigned int cmdBO);
@@ -300,21 +281,21 @@ private:
   uint64_t mPerfMonFifoCtrlBaseAddress;
   uint64_t mPerfMonFifoReadBaseAddress;
   uint64_t mTraceFunnelAddress = 0;
-  uint64_t mPerfMonBaseAddress[XSPM_MAX_NUMBER_SLOTS]     = {0};
-  uint64_t mAccelMonBaseAddress[XSAM_MAX_NUMBER_SLOTS]    = {0};
-  uint64_t mStreamMonBaseAddress[XSSPM_MAX_NUMBER_SLOTS]  = {0};
-  std::string mPerfMonSlotName[XSPM_MAX_NUMBER_SLOTS]     = {};
-  std::string mAccelMonSlotName[XSAM_MAX_NUMBER_SLOTS]    = {};
-  std::string mStreamMonSlotName[XSSPM_MAX_NUMBER_SLOTS]  = {};
-  uint8_t mPerfmonProperties[XSPM_MAX_NUMBER_SLOTS]       = {0};
-  uint8_t mAccelmonProperties[XSAM_MAX_NUMBER_SLOTS]      = {0};
-  uint8_t mStreammonProperties[XSSPM_MAX_NUMBER_SLOTS]    = {0};
-  uint8_t mPerfmonMajorVersions[XSPM_MAX_NUMBER_SLOTS]    = {0};
-  uint8_t mAccelmonMajorVersions[XSAM_MAX_NUMBER_SLOTS]   = {0};
-  uint8_t mStreammonMajorVersions[XSSPM_MAX_NUMBER_SLOTS] = {0};
-  uint8_t mPerfmonMinorVersions[XSPM_MAX_NUMBER_SLOTS]    = {0};
-  uint8_t mAccelmonMinorVersions[XSAM_MAX_NUMBER_SLOTS]   = {0};
-  uint8_t mStreammonMinorVersions[XSSPM_MAX_NUMBER_SLOTS] = {0};
+  uint64_t mPerfMonBaseAddress[XAIM_MAX_NUMBER_SLOTS]     = {0};
+  uint64_t mAccelMonBaseAddress[XAM_MAX_NUMBER_SLOTS]    = {0};
+  uint64_t mStreamMonBaseAddress[XASM_MAX_NUMBER_SLOTS]  = {0};
+  std::string mPerfMonSlotName[XAIM_MAX_NUMBER_SLOTS]     = {};
+  std::string mAccelMonSlotName[XAM_MAX_NUMBER_SLOTS]    = {};
+  std::string mStreamMonSlotName[XASM_MAX_NUMBER_SLOTS]  = {};
+  uint8_t mPerfmonProperties[XAIM_MAX_NUMBER_SLOTS]       = {0};
+  uint8_t mAccelmonProperties[XAM_MAX_NUMBER_SLOTS]      = {0};
+  uint8_t mStreammonProperties[XASM_MAX_NUMBER_SLOTS]    = {0};
+  uint8_t mPerfmonMajorVersions[XAIM_MAX_NUMBER_SLOTS]    = {0};
+  uint8_t mAccelmonMajorVersions[XAM_MAX_NUMBER_SLOTS]   = {0};
+  uint8_t mStreammonMajorVersions[XASM_MAX_NUMBER_SLOTS] = {0};
+  uint8_t mPerfmonMinorVersions[XAIM_MAX_NUMBER_SLOTS]    = {0};
+  uint8_t mAccelmonMinorVersions[XAM_MAX_NUMBER_SLOTS]   = {0};
+  uint8_t mStreammonMinorVersions[XASM_MAX_NUMBER_SLOTS] = {0};
 
   char *mUserMap;
   std::ofstream mLogStream;

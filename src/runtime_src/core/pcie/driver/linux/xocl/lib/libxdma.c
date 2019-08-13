@@ -3053,7 +3053,7 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 			xfer->sgt = sgt;
 		}
 
-		dbg_tfr("xfer, %u, ep 0x%llx, done %lu, sg %u/%u.\n",
+		dbg_tfr("xfer, %llu, ep 0x%llx, done %lu, sg %u/%u.\n",
 			xfer->len, req->ep_addr, done, req->sw_desc_idx,
 			req->sw_desc_cnt);
 
@@ -3098,13 +3098,13 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 		case TRANSFER_STATE_COMPLETED:
 			spin_unlock_irqrestore(&engine->lock, flags);
 
-			dbg_tfr("transfer %p, %u, ep 0x%llx compl, +%lu.\n",
+			dbg_tfr("transfer %p, %llu, ep 0x%llx compl, +%lu.\n",
 				xfer, xfer->len, req->ep_addr - xfer->len, done);
 			done += xfer->len;
 			rv = 0;
 			break;
 		case TRANSFER_STATE_FAILED:
-			pr_info("xfer 0x%p,%u, failed, ep 0x%llx.\n",
+			pr_info("xfer 0x%p,%llu, failed, ep 0x%llx.\n",
 				 xfer, xfer->len, req->ep_addr - xfer->len);
 			spin_unlock_irqrestore(&engine->lock, flags);
 
@@ -3116,7 +3116,7 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 			break;
 		default:
 			if (!poll_mode && rv == -ERESTARTSYS) {
-				pr_info("xfer 0x%p,%u, canceled, ep 0x%llx.\n",
+				pr_info("xfer 0x%p,%llu, canceled, ep 0x%llx.\n",
 					xfer, xfer->len,
 					req->ep_addr - xfer->len);
 				spin_unlock_irqrestore(&engine->lock, flags);
@@ -3127,7 +3127,7 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 				break;
 			}
 			/* transfer can still be in-flight */
-			pr_info("xfer 0x%p,%u, s 0x%x timed out, ep 0x%llx.\n",
+			pr_info("xfer 0x%p,%llu, s 0x%x timed out, ep 0x%llx.\n",
 				 xfer, xfer->len, xfer->state, req->ep_addr - xfer->len);
 			engine_status_read(engine, 0, 1);
 			//engine_status_dump(engine);

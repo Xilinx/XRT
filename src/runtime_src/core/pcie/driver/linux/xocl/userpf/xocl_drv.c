@@ -95,9 +95,13 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 		(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 		(void) xocl_mb_connect(xdev);
 	} else {
+		ret = xocl_subdev_offline_by_id(xdev, XOCL_SUBDEV_MAILBOX);
+		if (ret)
+			xocl_err(&pdev->dev, "Offline mailbox failed %d", ret);
 		ret = xocl_subdev_online_all(xdev);
 		if (ret)
 			xocl_err(&pdev->dev, "Online subdevs failed %d", ret);
+		(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 		xocl_exec_reset(xdev);
 	}
 }
@@ -150,7 +154,7 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 
 	userpf_info(xdev, "request mgmtpf to program prp");
 	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct mailbox_req),
-		&ret, &resplen, NULL, NULL);
+		&ret, &resplen, NULL, NULL, 0);
 	if (mbret)
 		ret = mbret;
 	if (ret) {
@@ -196,7 +200,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 
 	/* Reset mgmt */
 	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct mailbox_req),
-		&ret, &resplen, NULL, NULL);
+		&ret, &resplen, NULL, NULL, 0);
 	if (mbret)
 		ret = mbret;
 
@@ -222,7 +226,7 @@ static void xocl_work_cb(struct work_struct *work)
 		(void) xocl_program_shell(xdev, true);
 		break;
 	case XOCL_WORK_REFRESH_SUBDEV:
-		(void) xocl_refresh_prp_subdevs(xdev);
+		(void) xocl_refresh_subdevs(xdev);
 		break;
 	default:
 		xocl_xdev_err(xdev, "Invalid op code %d", _work->op);
@@ -264,7 +268,7 @@ static void xocl_mb_connect(struct xocl_dev *xdev)
 	mb_conn->version = MB_PROTOCOL_VER;
 
 	ret = xocl_peer_request(xdev, mb_req, reqlen, resp, &resplen,
-		NULL, NULL);
+		NULL, NULL, 0);
 	(void) xocl_mailbox_set(xdev, CHAN_STATE, resp->conn_flags);
 	(void) xocl_mailbox_set(xdev, CHAN_SWITCH, resp->chan_switch);
 	(void) xocl_mailbox_set(xdev, COMM_ID, (u64)(uintptr_t)resp->comm_id);
@@ -302,15 +306,28 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 	req->req = MAILBOX_REQ_RECLOCK;
 	memcpy(req->data, data, data_len);
 
-	err = xocl_peer_request(xdev, req, reqlen,
-		&msg, &resplen, NULL, NULL);
+	mutex_lock(&xdev->dev_lock);
+
+	if (!list_is_singular(&xdev->ctx_list)) {
+		/* We should have one context for ourselves. */
+		BUG_ON(list_empty(&xdev->ctx_list));
+		userpf_err(xdev, "device is in use, can't reset");
+		err = -EBUSY;
+	}
+
+	if (err == 0) {
+		err = xocl_peer_request(xdev, req, reqlen,
+			&msg, &resplen, NULL, NULL, 0);
+		if (err == 0)
+			err = msg;
+	}
+
+	mutex_unlock(&xdev->dev_lock);
 
 	/* Re-clock changes PR region, make sure next ERT configure cmd will
 	 * go through */
-	(void) xocl_exec_reconfig(xdev);
-
-	if (msg != 0)
-		err = -ENODEV;
+	if (err == 0)
+		(void) xocl_exec_reconfig(xdev);
 
 	kfree(req);
 	return err;
@@ -330,6 +347,7 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 
 	switch (req->req) {
 	case MAILBOX_REQ_FIREWALL:
+		userpf_info(xdev, "firewall tripped, request reset");
 		xocl_queue_work(xdev, XOCL_WORK_RESET, XOCL_RESET_DELAY);
 		break;
 	case MAILBOX_REQ_MGMT_STATE:
@@ -384,7 +402,7 @@ static uint64_t xocl_read_from_peer(struct xocl_dev *xdev, enum data_kind kind)
 	size_t reqlen = sizeof(struct mailbox_req) + data_len;
 	int err = 0, ret = 0;
 
-	userpf_err(xdev, "reading from peer\n");
+	userpf_info(xdev, "reading from peer\n");
 	mb_req = vmalloc(reqlen);
 	if (!mb_req)
 		return ret;
@@ -398,7 +416,7 @@ static uint64_t xocl_read_from_peer(struct xocl_dev *xdev, enum data_kind kind)
 	memcpy(mb_req->data, &subdev_peer, data_len);
 
 	err = xocl_peer_request(xdev,
-		mb_req, reqlen, &resp, &resp_len, NULL, NULL);
+		mb_req, reqlen, &resp, &resp_len, NULL, NULL, 0);
 
 	if (err)
 		goto done;
@@ -421,7 +439,7 @@ uint64_t xocl_get_data(struct xocl_dev *xdev, enum data_kind kind)
 	return xocl_read_from_peer(xdev, kind);
 }
 
-int xocl_refresh_prp_subdevs(struct xocl_dev *xdev)
+int xocl_refresh_subdevs(struct xocl_dev *xdev)
 {
 	struct mailbox_subdev_peer subdev_peer = {0};
 	size_t data_len = sizeof(struct mailbox_subdev_peer);
@@ -431,9 +449,6 @@ int xocl_refresh_prp_subdevs(struct xocl_dev *xdev)
 	size_t resp_len = sizeof(*resp) + XOCL_MSG_SUBDEV_DATA_LEN;
         char *blob = NULL, *tmp;
 	uint64_t checksum;
-	const char *cur_uuid, *new_uuid;
-	int cur_uuid_len, new_uuid_len;
-	bool skip_refresh = false;
 	size_t offset = 0;
 	int ret = 0;
 
@@ -473,7 +488,7 @@ int xocl_refresh_prp_subdevs(struct xocl_dev *xdev)
 
 		subdev_peer.offset = offset;
 		ret = xocl_peer_request(xdev, mb_req, reqlen,
-			resp, &resp_len, NULL, NULL);
+			resp, &resp_len, NULL, NULL, 0);
 		if (ret)
 			goto failed;
 
@@ -483,60 +498,47 @@ int xocl_refresh_prp_subdevs(struct xocl_dev *xdev)
 		if (offset != resp->offset) {
 			ret = -EINVAL;
 			goto failed;
-		} else if (resp->rtncode == XOCL_MSG_SUBDEV_RTN_EMPTY) {
-			if (xdev->core.fdt_blob)
-				vfree(xdev->core.fdt_blob);
-			xdev->core.fdt_blob = NULL;
-			goto failed;
 		}
 
 		memcpy(blob + offset, resp->data, resp->size);
 		offset += resp->size;
 	} while (resp->rtncode == XOCL_MSG_SUBDEV_RTN_PARTIAL);
 
-	if (xdev->core.fdt_blob) {
-		cur_uuid = xocl_fdt_get_prp_int_uuid(xdev,
-			xdev->core.fdt_blob, &cur_uuid_len);
-		new_uuid = xocl_fdt_get_prp_int_uuid(xdev, blob,
-			&new_uuid_len);
-		if (!new_uuid ||
-		    (cur_uuid && new_uuid &&
-		    cur_uuid_len == new_uuid_len &&
-		    !memcmp(cur_uuid, new_uuid, cur_uuid_len))) {
-			userpf_info(xdev, "same prp int uuid, skip refresh");
-			skip_refresh = true;
-		}
-		vfree(xdev->core.fdt_blob);
-	}
+	if (resp->rtncode == XOCL_MSG_SUBDEV_RTN_UNCHANGED &&
+			xdev->core.fdt_blob)
+		goto failed;
 
+	if (!offset && !xdev->core.fdt_blob)
+		goto failed;
+
+	if (xdev->core.fdt_blob)
+		vfree(xdev->core.fdt_blob);
 	xdev->core.fdt_blob = blob;
 	blob = NULL;
 
-	if (!skip_refresh) {
-		xocl_drvinst_set_offline(xdev, true);
-		if (xdev->core.fdt_blob) {
-			ret = xocl_fdt_blob_input(xdev, xdev->core.fdt_blob);
-			if (ret) {
-				userpf_err(xdev, "parse blob failed %d", ret);
-				goto failed;
-			}
-		}
-		if (XOCL_DRM(xdev))
-			xocl_cleanup_mem(XOCL_DRM(xdev));
 
-		ret = xocl_subdev_destroy_prp(xdev);
+	xocl_drvinst_set_offline(xdev, true);
+	if (xdev->core.fdt_blob) {
+		ret = xocl_fdt_blob_input(xdev, xdev->core.fdt_blob);
 		if (ret) {
-			userpf_err(xdev, "destroy prp subdev failed %d", ret);
+			userpf_err(xdev, "parse blob failed %d", ret);
 			goto failed;
 		}
-		ret = xocl_subdev_create_prp(xdev);
-		if (ret) {
-			userpf_err(xdev, "create prp subdev failed %d", ret);
-			goto failed;
-		}
-		(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
-		xocl_drvinst_set_offline(xdev, false);
 	}
+
+	if (XOCL_DRM(xdev))
+		xocl_cleanup_mem(XOCL_DRM(xdev));
+
+	xocl_subdev_destroy_all(xdev);
+	ret = xocl_subdev_create_all(xdev);
+	if (ret) {
+		userpf_err(xdev, "create subdev failed %d", ret);
+		goto failed;
+	}
+	(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
+	(void) xocl_mb_connect(xdev);
+	xocl_drvinst_set_offline(xdev, false);
+
 failed:
 	if (blob)
 		vfree(blob);
@@ -977,14 +979,12 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	 * NOTE: We'll expose ourselves through device node and sysfs from now
 	 * on. Make sure we can handle incoming requests through them by now.
 	 */
-
 	xdev->core.drm = xocl_drm_init(xdev);
 	if (!xdev->core.drm) {
 		ret = -EFAULT;
 		xocl_err(&pdev->dev, "failed to init drm mm");
 		goto failed;
 	}
-
 	ret = xocl_init_sysfs(&pdev->dev);
 	if (ret) {
 		xocl_err(&pdev->dev, "failed to init sysfs");

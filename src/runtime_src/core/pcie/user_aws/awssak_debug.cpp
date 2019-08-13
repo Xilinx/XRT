@@ -40,13 +40,19 @@ uint32_t xcldev::device::getIPCountAddrNames(int type, std::vector<uint64_t> *ba
                                              std::vector<uint8_t> *properties) {
     debug_ip_layout *map;
 
+#if 0
     std::string devName = xcldev::pci_device_scanner::device_list[ m_idx ].user_name;
     std::string subdevStr("icap");
     std::string entryStr("debug_ip_layout");
 
     std::string sysfsPathStr = xcldev::get_sysfs_path(devName, subdevStr, entryStr);
+#endif
 
-    std::ifstream ifs(sysfsPathStr.c_str(), std::ifstream::binary);
+    size_t maxLen = 512;
+    char dbgPath[maxLen];
+    xclGetDebugIPlayoutPath(m_handle, dbgPath, maxLen);
+
+    std::ifstream ifs(dbgPath, std::ifstream::binary);
     uint32_t count = 0;
     char buffer[debug_ip_layout_max_size];
     if( ifs.good() ) {
@@ -97,7 +103,7 @@ std::pair<size_t, size_t> xcldev::device::getCUNamePortName (std::vector<std::st
         else {
             aCUNamePortNames.emplace_back("Unknown", "Unknown");
         }
-        //Replace the name of the host-spm to something simple
+        //Replace the name of the host-aim to something simple
         if (aCUNamePortNames.back().first.find("interconnect_host_aximm") != std::string::npos) {
             aCUNamePortNames.pop_back();
             aCUNamePortNames.emplace_back("XDMA", "N/A");
@@ -108,7 +114,7 @@ std::pair<size_t, size_t> xcldev::device::getCUNamePortName (std::vector<std::st
     return std::pair<size_t, size_t>(max1, max2);
 }
 
-int xcldev::device::readSPMCounters() {
+int xcldev::device::readAIMCounters() {
     xclDebugCountersResults debugResults = {0};
     std::vector<std::string> slotNames;
     std::vector<uint8_t> properties;
@@ -119,7 +125,7 @@ int xcldev::device::readSPMCounters() {
         return 0;
     }
     std::pair<size_t, size_t> widths = getCUNamePortName(slotNames, cuNameportNames);
-    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_SPM, &debugResults);
+    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_AIM, &debugResults);
 
     std::cout << "AXI Interface Monitor Counters\n";
     int col1 = std::max(widths.first, strlen("CU Name")) + 4;
@@ -139,7 +145,7 @@ int xcldev::device::readSPMCounters() {
             << "  " << std::setw(16)  << "Last Rd Data"
             << std::endl;
     for (unsigned int i = 0; i<debugResults.NumSlots; ++i) {
-        if(i < properties.size() && (properties[i] & XSPM_HOST_PROPERTY_MASK))
+        if(i < properties.size() && (properties[i] & XAIM_HOST_PROPERTY_MASK))
             continue;
         std::cout << std::left
             << std::setw(col1) << cuNameportNames[i].first
@@ -243,17 +249,20 @@ int xcldev::device::readLAPCheckers(int aVerbose) {
 
 int xcldev::device::print_debug_ip_list (int aVerbose) {
     static const char * debug_ip_names[depug_ip_max_type] = {
-        "unknown", "lapc", "ila", "spm", "tracefunnel", "monitorfifolite", "monitorfifofull", "accelmonitor"
+        "unknown", "lapc", "ila", "aim", "tracefunnel", "monitorfifolite", "monitorfifofull", "accelmonitor"
     };
     int available_ip [depug_ip_max_type] = {0};
     debug_ip_layout *map;
-
+#if 0
     std::string devName = xcldev::pci_device_scanner::device_list[ m_idx ].user_name;
     std::string subdevStr("icap");
     std::string entryStr("debug_ip_layout");
+#endif
+    size_t maxLen = 512;
+    char dbgPath[maxLen];
+    xclGetDebugIPlayoutPath(m_handle, dbgPath, maxLen);
 
-    std::string sysfsPathStr = xcldev::get_sysfs_path(devName, subdevStr, entryStr);
-    std::ifstream ifs(sysfsPathStr.c_str(), std::ifstream::binary);
+    std::ifstream ifs(dbgPath, std::ifstream::binary);
 
     char buffer[debug_ip_layout_max_size];
     std::stringstream sstr;
@@ -278,12 +287,12 @@ int xcldev::device::print_debug_ip_list (int aVerbose) {
                 ifs.close();
         }
         else {
-            std::cout << "INFO: Failed to find any debug IPs on the platform. Ensure that a valid bitstream with debug IPs (SPM, LAPC) is successfully downloaded. \n";
+            std::cout << "INFO: Failed to find any debug IPs on the platform. Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n";
             ifs.close();
             return 0;
         }
     } else {
-        std::cout << "INFO: Failed to find any debug IPs on the platform. Ensure that a valid bitstream with debug IPs (SPM, LAPC) is successfully downloaded. \n";
+        std::cout << "INFO: Failed to find any debug IPs on the platform. Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n";
         return 0;
     }
     std::cout << "IPs found [<ipname>(<count>)]: " << sstr.str() << std::endl;

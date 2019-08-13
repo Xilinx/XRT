@@ -16,22 +16,39 @@
  */
 
 #include "profile_ip_access.h"
+#include "xrt/device/device.h"
 
 namespace xdp {
 
-ProfileIP::ProfileIP(xclDeviceHandle handle, int index) : 
-device_handle(nullptr),
-mapped_address(0),
-mapped(false),
-exclusive(false),
-ip_index(-1) {
+ProfileIP::ProfileIP(void* handle, int index, debug_ip_data* data)
+          : xrt_device_handle(nullptr),
+            mapped(false),
+            exclusive(false),
+            ip_index(-1),
+            ip_base_address(0),
+            mapped_address(0)
+{
     // check for exclusive access to this IP
     request_exclusive_ip_access(handle, index);
+
+    // For now, set these to true
+    mapped = true;  
+    exclusive = true;
+
     if (exclusive) {
-        device_handle = handle;
+        xrt_device_handle = handle;
         ip_index = index;
+        ip_base_address = data->m_base_address;
+        ip_name.assign(reinterpret_cast<const char*>(&data->m_name), 128);
+        // Strip away extraneous null characters
+        ip_name.assign(ip_name.c_str()); 
+
+        mapped_address = 0; 
+        /* 0 for now. This will be populated when XRT implements APIs to share the user-space address of Monitor IP registers.
+         * Then data can be directly read using those addresses instead of xclRead/xclWrite/xclUnmgdPread
+         */
     } else {
-        show_warning("Cannot get exclusive access");
+        showWarning("Cannot get exclusive access");
     }
 }
 
@@ -40,11 +57,11 @@ ProfileIP::~ProfileIP() {
         unmap();
     }
     if (exclusive) {
-        release_exclusive_ip_access(device_handle, ip_index);
+        release_exclusive_ip_access(xrt_device_handle, ip_index);
     }
 } 
 
-void ProfileIP::request_exclusive_ip_access(xclDeviceHandle handle, int index) {
+void ProfileIP::request_exclusive_ip_access(void* handle, int index) {
     /**
      * TODO: when the XRT implements the exclusive context hal API, this
      * method should try to open a exclusive context here and set the
@@ -56,7 +73,7 @@ void ProfileIP::request_exclusive_ip_access(xclDeviceHandle handle, int index) {
     return;
 }
 
-void ProfileIP::release_exclusive_ip_access(xclDeviceHandle handle, int index) {
+void ProfileIP::release_exclusive_ip_access(void* handle, int index) {
     /**
      * TODO: when the XRT implements the exclusive context hal API, this
      * method should close the previously requested exclusive context if
@@ -74,42 +91,6 @@ void ProfileIP::map() {
      * to one function call to the hal API and saves the result in a mapped_address and set mapped flag.
      */
     if (!exclusive) {
-        return;
-    }
-    std::string subdev = "icap";
-    std::string entry = "debug_ip_layout";
-    size_t max_path_size = 256;
-    char raw_debug_ip_layout_path[max_path_size] = {0};
-    int get_sysfs_ret = xclGetSysfsPath(device_handle, subdev.c_str(), entry.c_str(), raw_debug_ip_layout_path, max_path_size);
-    if (get_sysfs_ret < 0) {
-        show_warning("Get debug_ip_layout path failed");
-        return;
-    }
-    raw_debug_ip_layout_path[max_path_size - 1] = '\0';
-    std::string debug_ip_layout_path(raw_debug_ip_layout_path);
-    std::ifstream debug_ip_layout_fs(debug_ip_layout_path.c_str(), std::ifstream::binary);
-    size_t max_sysfs_size = 65536;
-    char buffer[max_sysfs_size] = {0};
-    if (debug_ip_layout_fs) {
-        debug_ip_layout_fs.read(buffer, max_sysfs_size);
-        if (debug_ip_layout_fs.gcount() > 0) {
-            debug_ip_layout* layout = reinterpret_cast<debug_ip_layout*>(buffer);
-            if (ip_index >= layout->m_count) {
-                show_warning("ip_index out of bound");
-                return;
-            }
-            debug_ip_data ip_data = layout->m_debug_ip_data[ip_index];
-            ip_name.assign(reinterpret_cast<const char*>(&ip_data.m_name), 64);
-            mapped_address = ip_data.m_base_address;
-            std::cout << "Mapping " << ip_name << " to address 0x" << std::hex << mapped_address << std::dec << std::endl;
-            mapped = true;
-            return;
-        } else {
-            show_warning("Reading from debug_ip_layout failed");
-            return;
-        }
-    } else {
-        show_warning("Cannot open debug_ip_layout");
         return;
     }
 }
@@ -136,10 +117,14 @@ int ProfileIP::read(uint64_t offset, size_t size, void* data) {
     if (!exclusive || !mapped) {
         return -1;
     }
-    uint64_t absolute_offset = mapped_address + offset;
-    size_t read_size = xclRead(device_handle, XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
+    uint64_t absolute_offset = ip_base_address + offset;
+    xrt::device* xrtDevice = (xrt::device*)xrt_device_handle;
+    
+    size_t read_size = 1;
+    xrtDevice->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
+//    size_t read_size = xDevice->xclRead(device_handle, XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
     if (read_size < 0) {
-        show_warning("xclRead failed");
+        showWarning("xclRead failed");
         return read_size;
     }
     return 0;
@@ -154,24 +139,63 @@ int ProfileIP::write(uint64_t offset, size_t size, void* data) {
     if (!exclusive || !mapped) {
         return -1;
     }
-    uint64_t absolute_offset = mapped_address + offset;
-    size_t write_size = xclWrite(device_handle, XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
+    uint64_t absolute_offset = ip_base_address + offset;
+    xrt::device* xrtDevice = (xrt::device*)xrt_device_handle;
+
+    size_t write_size = 1;
+    xrtDevice->xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
+//    size_t write_size = xclWrite(xrt_device_handle, XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
     if (write_size < 0) {
-        show_warning("xclWrite failed");
+        showWarning("xclWrite failed");
         return write_size;
     }
     return 0;
 }
 
-void ProfileIP::show_warning(std::string reason) {
+int ProfileIP::unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset)
+{
+    if (!exclusive || !mapped) {
+        return -1;
+    }
+    uint64_t absolute_offset = ip_base_address + offset;
+    xrt::device* xrtDevice = (xrt::device*)xrt_device_handle;
+    xrtDevice->xclUnmgdPread(flags, buf, count, absolute_offset);
+    // warning ?
+    return 0;
+}
+
+void ProfileIP::showWarning(std::string reason) {
     /**
      * TODO: we will need to discuss more on how xdp should
      * handle failure, and what are the effective ways of
      * notifying the user that there is a problem in xde and
      * do not expect any profiling information.
      */
-    std::cout << "Error: profiling will not be avaiable. Reason: " << reason << std::endl;
+    std::ostream* outputStream = (out_stream) ? out_stream : (&(std::cout));
+    (*outputStream) << "Error: profiling will not be avaiable. Reason: " << reason << std::endl;
     return;
+}
+
+void ProfileIP::showProperties()
+{
+    std::ostream* outputStream = (out_stream) ? out_stream : (&(std::cout));
+   
+    std::ios_base::fmtflags formatF = outputStream->flags();
+
+    (*outputStream) << "    IP Name : " << ip_name << std::endl
+                    << "    Index   : " << ip_index << std::endl
+                    << "    Base Address : " << std::hex << ip_base_address << std::endl
+                    << std::endl;
+    outputStream->flags(formatF);
+}
+
+uint32_t ProfileIP::setLogStream(std::ostream* oStream)
+{
+    if(!oStream)
+        return 0;
+
+    out_stream = oStream;
+    return 1;
 }
 
 } //  xdp

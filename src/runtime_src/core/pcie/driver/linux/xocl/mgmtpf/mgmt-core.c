@@ -204,6 +204,7 @@ void device_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj)
 {
 	u32 val, major, minor, patch;
 	struct FeatureRomHeader rom;
+	void __iomem *memcalib;
 
 	memset(obj, 0, sizeof(struct xclmgmt_ioc_info));
 	sscanf(XRT_DRIVER_VERSION, "%d.%d.%d", &major, &minor, &patch);
@@ -215,7 +216,8 @@ void device_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj)
 	obj->driver_version = XOCL_DRV_VER_NUM(major, minor, patch);
 	obj->pci_slot = PCI_SLOT(lro->core.pdev->devfn);
 
-	val = MGMT_READ_REG32(lro, GENERAL_STATUS_BASE);
+	memcalib = xocl_iores_get_base(lro, IORES_MEMCALIB);
+	val = memcalib ? XOCL_READ_REG32(memcalib) : 0;
 	mgmt_info(lro, "MIG Calibration: %d\n", val);
 
 	obj->mig_calibration[0] = (val & BIT(0)) ? true : false;
@@ -412,25 +414,33 @@ inline void check_volt_within_range(struct xclmgmt_dev *lro, u16 volt)
 static void check_sensor(struct xclmgmt_dev *lro)
 {
 	int ret;
-	struct xcl_sensor s = { 0 };
+	struct xcl_sensor *s = NULL;
 
-	ret = xocl_xmc_get_data(lro, &s);
-	if (ret == -ENODEV) {
-		(void) xocl_sysmon_get_prop(lro,
-			XOCL_SYSMON_PROP_TEMP, &s.fpga_temp);
-		s.fpga_temp /= 1000;
-		(void) xocl_sysmon_get_prop(lro,
-			XOCL_SYSMON_PROP_VCC_INT, &s.vccint_vol);
-		(void) xocl_sysmon_get_prop(lro,
-			XOCL_SYSMON_PROP_VCC_AUX, &s.vol_1v8);
-		(void) xocl_sysmon_get_prop(lro,
-			XOCL_SYSMON_PROP_VCC_BRAM, &s.vol_0v85);
+	s = vzalloc(sizeof(struct xcl_sensor));
+	if (!s) {
+		mgmt_err(lro, "%s out of memory", __func__);
+		return;	
 	}
 
-	check_temp_within_range(lro, s.fpga_temp);
-	check_volt_within_range(lro, s.vccint_vol);
-	check_volt_within_range(lro, s.vol_1v8);
-	check_volt_within_range(lro, s.vol_0v85);
+	ret = xocl_xmc_get_data(lro, s);
+	if (ret == -ENODEV) {
+		(void) xocl_sysmon_get_prop(lro,
+			XOCL_SYSMON_PROP_TEMP, &s->fpga_temp);
+		s->fpga_temp /= 1000;
+		(void) xocl_sysmon_get_prop(lro,
+			XOCL_SYSMON_PROP_VCC_INT, &s->vccint_vol);
+		(void) xocl_sysmon_get_prop(lro,
+			XOCL_SYSMON_PROP_VCC_AUX, &s->vol_1v8);
+		(void) xocl_sysmon_get_prop(lro,
+			XOCL_SYSMON_PROP_VCC_BRAM, &s->vol_0v85);
+	}
+
+	check_temp_within_range(lro, s->fpga_temp);
+	check_volt_within_range(lro, s->vccint_vol);
+	check_volt_within_range(lro, s->vol_1v8);
+	check_volt_within_range(lro, s->vol_0v85);
+
+	vfree(s);
 }
 
 static int health_check_cb(void *data)
@@ -606,9 +616,13 @@ static void xclmgmt_icap_get_data(struct xclmgmt_dev *lro, void *buf)
 static void xclmgmt_get_data(struct xclmgmt_dev *lro, void *buf)
 {
 	struct xcl_common *data = NULL;
+	void __iomem *memcalib;
 
 	data = (struct xcl_common *)buf;
-	data->mig_calib = lro->ready ? MGMT_READ_REG32(lro, GENERAL_STATUS_BASE) : 0;
+	memcalib = xocl_iores_get_base(lro, IORES_MEMCALIB);
+
+	data->mig_calib = (memcalib && lro->ready) ?
+		XOCL_READ_REG32(memcalib) : 0;
 
 }
 
@@ -637,6 +651,7 @@ static void xclmgmt_subdev_get_data(struct xclmgmt_dev *lro, size_t offset,
 	data_sz += fdt_sz > offset ? (fdt_sz - offset) : 0;
 
 	*actual_sz = min_t(size_t, buf_sz, data_sz);
+
 	*resp = vzalloc(*actual_sz);
 	if (!*resp) {
 		mgmt_err(lro, "allocate resp failed");
@@ -654,13 +669,17 @@ static void xclmgmt_subdev_get_data(struct xclmgmt_dev *lro, size_t offset,
 	hdr->size = *actual_sz - sizeof(*hdr);
 	hdr->offset = offset;
 	//hdr->checksum = csum_partial(hdr->data, hdr->size, 0);
-	memcpy(hdr->data, (char *)lro->userpf_blob + offset, hdr->size);
-	if (*actual_sz == sizeof(*hdr))
-		hdr->rtncode = XOCL_MSG_SUBDEV_RTN_EMPTY;
-	else if (hdr->size + offset < fdt_sz)
+	if (hdr->size > 0)
+		memcpy(hdr->data, (char *)lro->userpf_blob + offset, hdr->size);
+
+	if (hdr->size + offset < fdt_sz)
 		hdr->rtncode = XOCL_MSG_SUBDEV_RTN_PARTIAL;
+	else if (!lro->userpf_blob_updated)
+		hdr->rtncode = XOCL_MSG_SUBDEV_RTN_UNCHANGED;
 	else
 		hdr->rtncode = XOCL_MSG_SUBDEV_RTN_COMPLETE;
+
+	lro->userpf_blob_updated = false;
 }
 
 static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void **resp, size_t *sz)
@@ -780,7 +799,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			break;
 		}
 		ret = xocl_icap_lock_bitstream(lro,
-			(xuid_t *)bitstm_lock->uuid, 0);
+			(xuid_t *)bitstm_lock->uuid);
 		(void) xocl_peer_response(lro, req->req, msgid,
 			&ret, sizeof(ret));
 		break;
@@ -793,7 +812,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			break;
 		}
 		ret = xocl_icap_unlock_bitstream(lro,
-			(xuid_t *)bitstm_lock->uuid, 0);
+			(xuid_t *)bitstm_lock->uuid);
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
 			sizeof(ret));
 		break;
@@ -834,6 +853,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	case MAILBOX_REQ_LOAD_XCLBIN: {
 		uint64_t xclbin_len = 0;
 		struct axlf *xclbin = (struct axlf *)req->data;
+
 		if (payload_len < sizeof(*xclbin)) {
 			mgmt_err(lro, "peer request dropped, wrong size\n");
 			break;
@@ -976,7 +996,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 		goto fail_firewall;
 	}
 	if (dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
-			platform_axilite_flush(lro);
+		platform_axilite_flush(lro);
 
 	ret = xocl_subdev_create_all(lro);
 	if (ret) {
@@ -985,15 +1005,16 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	}
 	xocl_info(&pdev->dev, "created all sub devices");
 
-	/* return -ENODEV for 2RP platform */
-	ret = xocl_icap_download_boot_firmware(lro);
-	if (ret && ret != -ENODEV)
-		goto fail_all_subdev;
+	if (!(dev_info->flags & XOCL_DSAFLAG_SMARTN)) {
+		/* return -ENODEV for 2RP platform */
+		ret = xocl_icap_download_boot_firmware(lro);
+		if (ret && ret != -ENODEV)
+			goto fail_all_subdev;
 
-	ret = xclmgmt_load_fdt(lro);
-	if (ret)
-		goto fail_all_subdev;
-
+		ret = xclmgmt_load_fdt(lro);
+		if (ret)
+			goto fail_all_subdev;
+	}
 	lro->core.thread_arg.health_cb = health_check_cb;
 	lro->core.thread_arg.arg = lro;
 	lro->core.thread_arg.interval = health_interval * 1000;

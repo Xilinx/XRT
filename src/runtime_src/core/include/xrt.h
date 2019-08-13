@@ -144,6 +144,18 @@ enum xclMemoryDomains {
     XCL_MEM_DEVICE_REG  = 0x00000005
 };
 
+/**
+ *  Unused, keep for backwards compatibility
+ */
+enum xclBOKind {  
+    XCL_BO_SHARED_VIRTUAL = 0,  
+    XCL_BO_SHARED_PHYSICAL, 
+    XCL_BO_MIRRORED_VIRTUAL,  
+    XCL_BO_DEVICE_RAM,  
+    XCL_BO_DEVICE_BRAM, 
+    XCL_BO_DEVICE_PREALLOCATED_BRAM,  
+};
+
 enum xclBOSyncDirection {
     XCL_BO_SYNC_BO_TO_DEVICE = 0,
     XCL_BO_SYNC_BO_FROM_DEVICE,
@@ -1021,68 +1033,33 @@ XCL_DRIVER_DLLESPEC int xclPollCompletion(xclDeviceHandle handle, int min_compl,
 
 XCL_DRIVER_DLLESPEC const struct axlf_section_header* wrap_get_axlf_section(const struct axlf* top, enum axlf_section_kind kind);
 
-/* XRT Stream Queue APIs */
+/**
+ * xclRegRead() - Read register in register space of a CU
+ *
+ * @handle:        Device handle
+ * @cu_index:      CU index
+ * @offset:        Offset in the register space
+ * @datap:         Pointer to where result will be saved
+ * Return:         0 or appropriate error number
+ *
+ */
+XCL_DRIVER_DLLESPEC int xclRegRead(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t *datap);
 
 /**
- * DOC: Performance Monitoring Operations
+ * xclRegWRite() - Write to register in register space of a CU
  *
- * These functions are used to read and write to the performance monitoring infrastructure.
- * OpenCL runtime will be using the BUFFER MANAGEMNT APIs described above to manage OpenCL buffers.
- * It would use these functions to initialize and sample the performance monitoring on the card.
- * Note that the offset is wrt the address space
+ * @handle:        Device handle
+ * @cu_index:      CU index
+ * @offset:        Offset in the register space
+ * @datap:         Data to be written
+ * Return:         0 or appropriate error number
+ *
  */
-
-/* Write host event to device tracing (Zynq only) */
-
-XCL_DRIVER_DLLESPEC void xclWriteHostEvent(xclDeviceHandle handle, enum xclPerfMonEventType type,
-                                           enum xclPerfMonEventID id);
-
-XCL_DRIVER_DLLESPEC size_t xclGetDeviceTimestamp(xclDeviceHandle handle);
-
-XCL_DRIVER_DLLESPEC double xclGetDeviceClockFreqMHz(xclDeviceHandle handle);
-
-XCL_DRIVER_DLLESPEC double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle);
-
-XCL_DRIVER_DLLESPEC double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle);
-
-XCL_DRIVER_DLLESPEC void xclSetProfilingNumberSlots(xclDeviceHandle handle, enum xclPerfMonType type,
-                                                            uint32_t numSlots);
-
-XCL_DRIVER_DLLESPEC uint32_t xclGetProfilingNumberSlots(xclDeviceHandle handle, enum xclPerfMonType type);
-
-XCL_DRIVER_DLLESPEC void xclGetProfilingSlotName(xclDeviceHandle handle, enum xclPerfMonType type,
-                                                 uint32_t slotnum, char* slotName, uint32_t length);
-
-XCL_DRIVER_DLLESPEC uint32_t xclGetProfilingSlotProperties(xclDeviceHandle handle, enum xclPerfMonType type,
-                                                 uint32_t slotnum);
-
-XCL_DRIVER_DLLESPEC size_t xclPerfMonClockTraining(xclDeviceHandle handle, enum xclPerfMonType type);
-
-XCL_DRIVER_DLLESPEC void xclPerfMonConfigureDataflow(xclDeviceHandle handle, enum xclPerfMonType type, unsigned *ip_data);
-
-XCL_DRIVER_DLLESPEC size_t xclPerfMonStartCounters(xclDeviceHandle handle, enum xclPerfMonType type);
-
-XCL_DRIVER_DLLESPEC size_t xclPerfMonStopCounters(xclDeviceHandle handle, enum xclPerfMonType type);
-
-#ifdef __cplusplus
-XCL_DRIVER_DLLESPEC size_t xclPerfMonReadCounters(xclDeviceHandle handle, enum xclPerfMonType type,
-                                                          xclCounterResults& counterResults);
-#endif
+XCL_DRIVER_DLLESPEC int xclRegWrite(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t data);
 
 XCL_DRIVER_DLLESPEC size_t xclDebugReadIPStatus(xclDeviceHandle handle, enum xclDebugReadType type,
                                                                            void* debugResults);
 
-XCL_DRIVER_DLLESPEC size_t xclPerfMonStartTrace(xclDeviceHandle handle, enum xclPerfMonType type,
-                                                        uint32_t startTrigger);
-
-XCL_DRIVER_DLLESPEC size_t xclPerfMonStopTrace(xclDeviceHandle handle, enum xclPerfMonType type);
-
-XCL_DRIVER_DLLESPEC uint32_t xclPerfMonGetTraceCount(xclDeviceHandle handle, enum xclPerfMonType type);
-
-#ifdef __cplusplus
-XCL_DRIVER_DLLESPEC size_t xclPerfMonReadTrace(xclDeviceHandle handle, enum xclPerfMonType type,
-                                                       xclTraceResultsVector& traceVector);
-#endif
 
 #ifdef __cplusplus
 }

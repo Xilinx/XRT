@@ -47,11 +47,11 @@ static inline void
 zocl_bo_describe(const struct drm_zocl_bo *bo, uint64_t *size, uint64_t *paddr)
 {
 	if (bo->flags & (ZOCL_BO_FLAGS_CMA | ZOCL_BO_FLAGS_USERPTR)) {
-		*size = bo->cma_base.base.size;
-		*paddr = bo->cma_base.paddr;
+		*size = (uint64_t)bo->cma_base.base.size;
+		*paddr = (uint64_t)bo->cma_base.paddr;
 	} else {
-		*size = bo->gem_base.size;
-		*paddr = bo->mm_node->start;
+		*size = (uint64_t)bo->gem_base.size;
+		*paddr = (uint64_t)bo->mm_node->start;
 	}
 }
 
@@ -191,7 +191,7 @@ zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
 		err = drm_mm_insert_node_generic(zdev->mem[bank].zm_mm,
 		    bo->mm_node, size, PAGE_SIZE, 0, 0);
 		if (err) {
-			DRM_ERROR("Fail to allocate BO: size %ld\n", size);
+			DRM_ERROR("Fail to allocate BO: size %ld\n", (long)size);
 			mutex_unlock(&zdev->mm_lock);
 			kfree(bo->mm_node);
 			kfree(bo);
@@ -435,7 +435,7 @@ zocl_userptr_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		goto out0;
 	}
 
-	bo->cma_base.vaddr = (void *)args->addr;
+	bo->cma_base.vaddr = (void *)(uintptr_t)args->addr;
 
 	ret = drm_gem_handle_create(filp, &bo->cma_base.base, &args->handle);
 	if (ret) {
@@ -555,7 +555,7 @@ int zocl_copy_bo_async(struct drm_device *dev,
 {
 	struct drm_gem_object 		*dst_gem_obj, *src_gem_obj;
 	struct drm_zocl_bo 		*dst_bo, *src_bo;
-	dma_addr_t 			dst_paddr, src_paddr;
+	uint64_t 			dst_paddr, src_paddr;
 	uint64_t		        dst_size, src_size;
 	int 				unsupported_flags = 0;
 	int 				rc = 0;
@@ -619,7 +619,8 @@ int zocl_copy_bo_async(struct drm_device *dev,
 	dst_paddr += args->dst_offset;
 	src_paddr += args->src_offset;
 
-	rc = zocl_dma_memcpy_pre(dma_handle, dst_paddr, src_paddr, args->size);
+	rc = zocl_dma_memcpy_pre(dma_handle, (dma_addr_t)dst_paddr,
+	    (dma_addr_t)src_paddr, (size_t)args->size);
 	if (!rc)
 		zocl_dma_start(dma_handle);
 

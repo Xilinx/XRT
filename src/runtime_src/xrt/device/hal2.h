@@ -509,6 +509,32 @@ public:
   }
 
   virtual hal::operations_result<void>
+  xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
+  {
+    if (!m_ops->mRead)
+      return hal::operations_result<void>();
+    m_ops->mRead(m_handle, space, offset, hostBuf, size);
+    return hal::operations_result<void>(0);
+  }
+
+  virtual hal::operations_result<void>
+  xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
+  {
+    if (!m_ops->mWrite)
+      return hal::operations_result<void>();
+    m_ops->mWrite(m_handle, space, offset, hostBuf, size);
+    return hal::operations_result<void>(0);
+  }
+
+  virtual hal::operations_result<ssize_t>
+  xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset)
+  {
+    if (!m_ops->mUnmgdPread)
+      return hal::operations_result<ssize_t>();
+    return m_ops->mUnmgdPread(m_handle, flags, buf, count, offset);
+  }
+
+  virtual hal::operations_result<void>
   setProfilingSlots(xclPerfMonType type, uint32_t slots)
   {
     if (!m_ops->mSetProfilingSlots)
@@ -598,6 +624,14 @@ public:
     return m_handle;
   }
 
+  virtual hal::operations_result<uint32_t>
+  getNumLiveProcesses()
+  {
+    if(!m_ops->mGetNumLiveProcesses)
+      return hal::operations_result<uint32_t>();
+    return (uint32_t)(m_ops->mGetNumLiveProcesses(m_handle));
+  }
+
   virtual hal::operations_result<std::string>
   getSysfsPath(const std::string& subdev, const std::string& entry)
   {
@@ -612,6 +646,42 @@ public:
     std::string sysfs_path = std::string(path_buf);
     return sysfs_path;
   }
+
+  virtual hal::operations_result<std::string>
+  getDebugIPlayoutPath()
+  {
+    if(!m_ops->mGetDebugIPlayoutPath)
+      return hal::operations_result<std::string>();
+
+    size_t maxLen = 512;
+    char path[maxLen];
+    if(m_ops->mGetDebugIPlayoutPath(m_handle, path, maxLen)) {
+      return hal::operations_result<std::string>();
+    }
+    path[maxLen - 1] = '\0';
+    std::string pathStr(path);
+    return pathStr;
+  }
+
+  virtual hal::operations_result<int>
+  getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
+  {
+    if(!m_ops->mGetTraceBufferInfo)
+      return hal::operations_result<int>();
+    return m_ops->mGetTraceBufferInfo(m_handle, nSamples, traceSamples, traceBufSz);
+  }
+
+  hal::operations_result<int>
+  readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
+  {
+    if(!m_ops->mReadTraceData)
+      return hal::operations_result<int>();
+    return m_ops->mReadTraceData(m_handle, traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample);
+  }
+
+
+
+
 };
 
 }} // hal2,xrt

@@ -142,6 +142,17 @@ struct xcl_sensor {
 	uint32_t cage_temp2;
 	uint32_t cage_temp3;
 	uint32_t hbm_temp0;
+	char	 serial_num[256];
+	char	 mac_addr0[32];
+	char	 mac_addr1[32];
+	char	 mac_addr2[32];
+	char	 mac_addr3[32];
+	char	 revision[256];
+	char	 bd_name[256];
+	char	 bmc_ver[256];
+	uint32_t max_power;
+	uint32_t fan_presence;
+	uint32_t config_mode;
 };
 
 /**
@@ -290,7 +301,6 @@ struct mailbox_clock_freqscaling {
 
 #define MB_REQ_FLAG_RESPONSE	(1 << 0)
 #define MB_REQ_FLAG_REQUEST	(1 << 1)
-#define MB_REQ_FLAG_RECV_REQ	(1 << 2)
 /**
  * struct mailbox_req - mailbox request message header
  * @req: opcode
@@ -298,9 +308,9 @@ struct mailbox_clock_freqscaling {
  * @data: payload of variable length
  */
 struct mailbox_req {
-	enum mailbox_request req;
 	uint64_t flags;
-	char data[0];
+	enum mailbox_request req;
+	char data[1]; /* variable length of payload */
 };
 
 /**
@@ -320,7 +330,7 @@ struct sw_chan {
 	uint64_t sz;
 	uint64_t flags;
 	uint64_t id;
-	char data[0]; /* variable length of payload */
+	char data[1]; /* variable length of payload */
 };
 
 

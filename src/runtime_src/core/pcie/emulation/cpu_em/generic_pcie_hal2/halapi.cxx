@@ -497,6 +497,12 @@ int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclR
   return drv ? drv->xclPollCompletion(min_compl, max_compl, comps, actual, timeout) : -ENODEV;
 }
 
+ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t count, uint64_t offset)
+{
+  return 0;
+}
+
+
 /*
  * API to get number of live processes. 
  * Applicable only for System Flow as it supports Multiple processes on same device.
@@ -507,6 +513,23 @@ uint xclGetNumLiveProcesses(xclDeviceHandle handle)
   return 0;
 }
 
+int xclGetDebugIPlayoutPath(xclDeviceHandle handle, char* layoutPath, size_t size)
+{
+  return -1;
+}
+
+int xclGetTraceBufferInfo(xclDeviceHandle handle, uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
+{
+  return -1;
+}
+
+int xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
+{
+  return -1;
+}
+
+
+
 int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, ...)
 {
   va_list args;
@@ -516,3 +539,27 @@ int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, con
   return ret;
 }
 
+//Added below calls as a fix for CR-1034151
+int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
+{
+  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
+}
+
+int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
+{
+  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  return drv ? drv->xclExecWait(timeoutMilliSec) : -ENODEV;
+}
+
+int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
+{
+  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  return drv ? drv->xclExecBuf(cmdBO) : -ENODEV;
+}
+
+int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
+{
+  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
+}

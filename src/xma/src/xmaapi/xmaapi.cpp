@@ -27,8 +27,9 @@
 #include "app/xmalogger.h"
 #include "app/xmaparam.h"
 #include "lib/xmaapi.h"
-#include "lib/xmahw_hal.h"
+//#include "lib/xmahw_hal.h"
 #include "lib/xmasignal.h"
+#include <iostream>
 
 #define XMAAPI_MOD "xmaapi"
 
@@ -43,13 +44,32 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
     //bool    rc;
 
     if (g_xma_singleton == NULL) {
-        printf("XMA FATAL: Singleton is NULL\n");
+        std::cout << "XMA FATAL: Singleton is NULL" << std::endl;
         return XMA_ERROR;
     }
+    if (num_parms < 1) {
+        std::cout << "XMA FATAL: Must provide atleast one XmaXclbinParameter." << std::endl;
+        return XMA_ERROR;
+    }
+
     //Sarab: TODO initialize all elements of singleton
-    g_xma_singleton->locked = false;
+    bool expected = false;
+    bool desired = true;
+    while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //Singleton lock acquired
+
+    if (g_xma_singleton->xma_initialized) {
+        std::cout << "XMA FATAL: XMA is already initialized" << std::endl;
+
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        return XMA_ERROR;
+    }
     //g_xma_singleton->encoders.reserve(32);
     //g_xma_singleton->encoders.emplace_back(XmaEncoderPlugin{});
+    g_xma_singleton->hwcfg.devices.reserve(MAX_XILINX_DEVICES);
 
     /*Sarab: Remove yaml cfg stuff
     ret = xma_cfg_parse(cfgfile, &g_xma_singleton->systemcfg);
@@ -76,8 +96,17 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
    
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Probing hardware\n");
     ret = xma_hw_probe(&g_xma_singleton->hwcfg);
-    if (ret != XMA_SUCCESS)
+    if (ret != XMA_SUCCESS) {
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        for (XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
+            hw_device.kernels.clear();
+        }
+        g_xma_singleton->hwcfg.devices.clear();
+        g_xma_singleton->hwcfg.num_devices = -1;
+
         return ret;
+    }
 
     /*Sarab: Remove yaml cfg stuff
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Checking hardware compatibility\n");
@@ -88,13 +117,17 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
     */
 
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Configure hardware\n");
-    /*Sarab: Disable xma_res stuff
-    rc = xma_hw_configure(&g_xma_singleton->hwcfg,
-                          &g_xma_singleton->systemcfg,
-                          xma_res_xma_init_completed(g_xma_singleton->shm_res_cfg));
-    if (!rc)
-        goto error;
-        */
+    if (!xma_hw_configure(&g_xma_singleton->hwcfg, devXclbins, num_parms)) {
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        for (XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
+            hw_device.kernels.clear();
+        }
+        g_xma_singleton->hwcfg.devices.clear();
+        g_xma_singleton->hwcfg.num_devices = -1;
+
+        return XMA_ERROR;
+    }
 
     /*Sarab: Move plugin loading to session_create
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Load scaler plugins\n");
@@ -135,19 +168,28 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
 
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Init signal and exit handlers\n");
     ret = atexit(xma_exit);
-    if (ret)
-        goto error;
+    if (ret) {
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Error initalizing XMA\n");
+        //Sarab: Remove xmares stuff
+        //xma_res_shm_unmap(g_xma_singleton->shm_res_cfg);
+
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        for (XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
+            hw_device.kernels.clear();
+        }
+        g_xma_singleton->hwcfg.devices.clear();
+        g_xma_singleton->hwcfg.num_devices = -1;
+
+        return XMA_ERROR;
+    }
 
     xma_init_sighandlers();
     //xma_res_mark_xma_ready(g_xma_singleton->shm_res_cfg);
 
+    g_xma_singleton->locked = false;
+    g_xma_singleton->xma_initialized = true;
     return XMA_SUCCESS;
-
-error:
-    xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Error initalizing XMA\n");
-    //Sarab: Remove xmares stuff
-    //xma_res_shm_unmap(g_xma_singleton->shm_res_cfg);
-    return XMA_ERROR;
 }
 
 void xma_exit(void)

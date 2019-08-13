@@ -73,12 +73,19 @@ completed() const
   return m_impl->completed();
 }
 
+ert_cmd_state
+command::
+state() const
+{
+  return static_cast<ert_cmd_state>(m_impl->ecmd->state);
+}
+
 exec_write_command::
 exec_write_command(xrt_device* device)
   : command(device,ERT_EXEC_WRITE)
 {
   m_impl->ecmd->type = ERT_CU;
-  m_impl->ecmd->count = 1+4; // cumask + 4 ctrl
+  clear();
 }
 
 void
@@ -86,9 +93,19 @@ exec_write_command::
 add_cu(value_type cuidx)
 {
   if (cuidx>=32)
-    throw std::runtime_error("write_command supports at most 32 CUs");
+    throw std::runtime_error("write_exec supports at most 32 CUs");
   auto skcmd = reinterpret_cast<ert_start_kernel_cmd*>(m_impl->ecmd);
   skcmd->cu_mask |= 1<<cuidx;
+}
+
+void
+exec_write_command::
+add_ctx(uint32_t ctx)
+{
+  if (ctx >= 32)
+    throw std::runtime_error("write_exec supports at most 32 contexts numbered 0 through 31");
+  auto skcmd = reinterpret_cast<ert_start_kernel_cmd*>(m_impl->ecmd);
+  skcmd->data[0x10 >> 2] = ctx;
 }
 
 void
@@ -108,7 +125,7 @@ clear()
   skcmd->cu_mask = 0;
 
   // clear payload
-  m_impl->ecmd->count = 1+4; // cumask + 4 ctrl
+  m_impl->ecmd->count = 1 + 4 + 2; // cumask + 4 ctrl + 2 ctx
 }
 
 }} // exec,xrt

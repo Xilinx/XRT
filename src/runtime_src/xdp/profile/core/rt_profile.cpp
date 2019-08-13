@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -75,7 +75,7 @@ namespace xdp {
   // Runtime Settings
   // ***************************************************************************
 
-  void RTProfile::setTransferTrace(const std::string traceStr)
+  void RTProfile::setTransferTrace(const std::string& traceStr)
   {
     std::string option = traceStr;
     std::transform(option.begin(), option.end(), option.begin(), ::tolower);
@@ -95,7 +95,7 @@ namespace xdp {
     }
   }
 
-  void RTProfile::setStallTrace(const std::string traceStr) {
+  void RTProfile::setStallTrace(const std::string& traceStr) {
     std::string option = traceStr;
     std::transform(option.begin(), option.end(), option.begin(), ::tolower);
 
@@ -194,11 +194,17 @@ namespace xdp {
 
   void RTProfile::attach(ProfileWriterI* writer)
   {
+    if (writer == nullptr)
+      return;
+
     mWriter->attach(writer);
 
     // Gather data for RunSummary
-    if ((mProfileFlags & RTUtil::FILE_SUMMARY) && (writer != nullptr)) {
-      mRunSummary->addFile(writer->getFileName(), RunSummary::FT_PROFILE);
+    if ((mFileFlags & RTUtil::FILE_SUMMARY)) {
+      const std::string fileName = writer->getFileName();
+      if (!fileName.empty()) {
+        mRunSummary->addFile(fileName, RunSummary::FT_PROFILE);
+      }
     }
   }
 
@@ -207,7 +213,7 @@ namespace xdp {
     mLogger->attach(writer);
 
     // Gather data for TimingSummary
-    if ((mProfileFlags & RTUtil::FILE_TIMELINE_TRACE) && (writer != nullptr)) {
+    if ((mFileFlags & RTUtil::FILE_TIMELINE_TRACE) && (writer != nullptr)) {
       mRunSummary->addFile(writer->getFileName(), RunSummary::FT_TRACE);
     }
   }
@@ -302,7 +308,7 @@ namespace xdp {
   // External access to writer
   // ***************************************************************************
 
-  void RTProfile::logDeviceCounters(std::string deviceName, std::string binaryName, uint32_t programId,
+  void RTProfile::logDeviceCounters(const std::string& deviceName, const std::string& binaryName, uint32_t programId,
       xclPerfMonType type, xclCounterResults& counterResults, uint64_t timeNsec, bool firstReadAfterProgram)
   {
     mWriter->logDeviceCounters(deviceName, binaryName, programId, type, counterResults, timeNsec, firstReadAfterProgram);
@@ -381,7 +387,7 @@ namespace xdp {
 
   void RTProfile::logDataTransfer(uint64_t objId, RTUtil::e_profile_command_kind objKind,
       RTUtil::e_profile_command_state objStage, size_t objSize, uint32_t contextId,
-      uint32_t numDevices, std::string deviceName, uint32_t commandQueueId,
+      uint32_t numDevices, const std::string& deviceName, uint32_t commandQueueId,
       uint64_t srcAddress, const std::string& srcBank,
       uint64_t dstAddress, const std::string& dstBank,
       std::thread::id threadId, const std::string eventString,
@@ -393,7 +399,7 @@ namespace xdp {
   }
 
   void RTProfile::logKernelExecution(uint64_t objId, uint32_t programId, uint64_t eventId,
-      RTUtil::e_profile_command_state objStage, std::string kernelName, std::string xclbinName,
+      RTUtil::e_profile_command_state objStage, const std::string& kernelName, const std::string& xclbinName,
       uint32_t contextId, uint32_t commandQueueId, const std::string& deviceName, uid_t uid,
       const size_t* globalWorkSize, size_t workGroupSize, const size_t* localWorkDim,
       const std::string& cu_name, const std::string eventString, const std::string dependString,
@@ -405,15 +411,15 @@ namespace xdp {
   }
 
   void RTProfile::logDependency(RTUtil::e_profile_command_kind objKind,
-      const std::string eventString, const std::string dependString)
+      const std::string& eventString, const std::string& dependString)
   {
     mLogger->logDependency(objKind, eventString, dependString);
   }
 
-  void RTProfile::logDeviceTrace(std::string deviceName, std::string binaryName, xclPerfMonType type,
-      xclTraceResultsVector& traceVector)
+  void RTProfile::logDeviceTrace(const std::string& deviceName, const std::string& binaryName, xclPerfMonType type,
+      xclTraceResultsVector& traceVector, bool endLog)
   {
-    mLogger->logDeviceTrace(deviceName, binaryName, type, traceVector);
+    mLogger->logDeviceTrace(deviceName, binaryName, type, traceVector, endLog);
   }
 
 } // xdp

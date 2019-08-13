@@ -23,15 +23,21 @@
 //#include "lib/xmacfg.h"
 #include "lib/xmalimits_lib.h"
 #include "app/xmahw.h"
+#include "app/xmaparam.h"
+#include "plg/xmasess.h"
+#include "xrt.h"
+#include <atomic>
+#include <vector>
+#include <memory>
 
-#define MAX_EXECBO_POOL_SIZE      16
+#define MIN_EXECBO_POOL_SIZE      16
 #define MAX_EXECBO_BUFF_SIZE      4096// 4KB
 #define MAX_KERNEL_REGMAP_SIZE    4032//Some space used by ert pkt
 #define MAX_REGMAP_ENTRIES        1024//Int32 entries; So 4B x 1024 = 4K Bytes
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+//#ifdef __cplusplus
+//extern "C" {
+//#endif
 
 /**
  *  @file
@@ -41,42 +47,119 @@ extern "C" {
  * @addtogroup xmahw
  * @{
  */
+constexpr std::uint64_t signature = 0xF42F1F8F4F2F1F0F;
+
+typedef struct XmaBufferObjPrivate
+{
+    void*    dummy;
+    uint64_t size;
+    uint64_t paddr;
+    int32_t  bank_index;
+    int32_t  dev_index;
+    uint64_t boHandle;
+    bool     device_only_buffer;
+    xclDeviceHandle dev_handle;
+    uint32_t reserved[4];
+
+  XmaBufferObjPrivate() {
+   dummy = NULL;
+   size = 0;
+   bank_index = -1;
+   dev_index = -1;
+   dev_handle = NULL;
+   device_only_buffer = false;
+   boHandle = 0;
+  }
+} XmaBufferObjPrivate;
 
 typedef struct XmaHwKernel
 {
     uint8_t     name[MAX_KERNEL_NAME];
     bool        in_use;
-    int32_t     instance;
+    int32_t     cu_index;
     uint64_t    base_address;
-    uint32_t    ddr_bank;
+    int32_t    ddr_bank;
+    uint32_t    cu_mask0;
+    uint32_t    cu_mask1;
+    uint32_t    cu_mask2;
+    uint32_t    cu_mask3;
+    int32_t    regmap_max;
     //For execbo:
     int32_t     kernel_complete_count;
-    void*       kernel_cmd_queue;
-    void*       kernel_cmd_completion_queue;
-    uint32_t    kernel_execbo_handle[MAX_EXECBO_POOL_SIZE];
-    char*       kernel_execbo_data[MAX_EXECBO_POOL_SIZE];//execBO size is 4096 in xmahw_hal.cpp
-    bool        kernel_execbo_inuse[MAX_EXECBO_POOL_SIZE];
+    //std::unique_ptr<std::atomic<bool>> kernel_complete_locked;
+
     uint32_t    reg_map[MAX_REGMAP_ENTRIES];//4KB = 4B x 1024; Supported Max regmap of 4032 Bytes only in xmaplugin.cpp; execBO size is 4096 = 4KB in xmahw_hal.cpp
-    pthread_mutex_t *lock;
-    bool             have_lock;
+    //pthread_mutex_t *lock;
+    std::unique_ptr<std::atomic<bool>> reg_map_locked;
+    int32_t         locked_by_session_id;
+    XmaSessionType locked_by_session_type;
+    bool soft_kernel;
+    bool dataflow_kernel;
+    void*   private_do_not_use;
+
+    //bool             have_lock;
     uint32_t    reserved[16];
+
+  XmaHwKernel(): reg_map_locked(new std::atomic<bool>) {
+    in_use = false;
+    cu_index = -1;
+    regmap_max = -1;
+    ddr_bank = -1;
+    cu_mask0 = 0;
+    cu_mask1 = 0;
+    cu_mask2 = 0;
+    cu_mask3 = 0;
+    kernel_complete_count = 0;
+    soft_kernel = false;
+    dataflow_kernel = false;
+    //*kernel_complete_locked = false;
+    *reg_map_locked = false;
+    locked_by_session_id = -100;
+    private_do_not_use = NULL;
+  }
 } XmaHwKernel;
-
-
-typedef void   *XmaHwHandle;
 
 typedef struct XmaHwDevice
 {
-    char        dsa[MAX_DSA_NAME];
-    XmaHwHandle handle;
-    bool        in_use;
-    XmaHwKernel kernels[MAX_KERNEL_CONFIGS];
+    //char        dsa[MAX_DSA_NAME];
+    xclDeviceHandle    handle;
+    xclDeviceInfo2     info;
+    //For execbo:
+    uint32_t           dev_index;
+    uuid_t             uuid; 
+    uint32_t           number_of_cus;
+    uint32_t           number_of_mem_banks;
+    //bool        in_use;
+    //XmaHwKernel kernels[MAX_KERNEL_CONFIGS];
+    std::vector<XmaHwKernel> kernels;
+
+    std::unique_ptr<std::atomic<bool>> execbo_locked;
+    std::vector<uint32_t> kernel_execbo_handle;
+    std::vector<char*> kernel_execbo_data;//execBO size is 4096 in xmahw_hal.cpp
+    std::vector<bool> kernel_execbo_inuse;
+    std::vector<int32_t> kernel_execbo_cu_index;
+    int32_t    num_execbo_allocated;
+
+  XmaHwDevice(): execbo_locked(new std::atomic<bool>) {
+    //in_use = false;
+    dev_index = -1;
+    number_of_cus = 0;
+    *execbo_locked = false;
+    number_of_mem_banks = 0;
+    num_execbo_allocated = -1;
+    handle = NULL;
+  }
 } XmaHwDevice;
 
 typedef struct XmaHwCfg
 {
     int32_t     num_devices;
-    XmaHwDevice devices[MAX_XILINX_DEVICES];
+    //XmaHwDevice devices[MAX_XILINX_DEVICES];
+    std::vector<XmaHwDevice> devices;
+
+  XmaHwCfg() {
+    num_devices = -1;
+  }
 } XmaHwCfg;
 
 /**
@@ -115,7 +198,7 @@ int xma_hw_probe(XmaHwCfg *hwcfg);
  *                   FALSE on failure
 bool xma_hw_is_compatible(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg);
  */
-bool xma_hw_is_compatible(XmaHwCfg *hwcfg);
+bool xma_hw_is_compatible(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_parms);
 
 /**
  *  @brief Configure HW using system configuration
@@ -139,14 +222,14 @@ bool xma_hw_is_compatible(XmaHwCfg *hwcfg);
  *                   FALSE on failure
 bool xma_hw_configure(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg, bool hw_cfg_status);
  */
-bool xma_hw_configure(XmaHwCfg *hwcfg, bool hw_cfg_status);
+bool xma_hw_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_parms);
 
 /**
  *  @}
  */
 
-#ifdef __cplusplus
-}
-#endif
+//#ifdef __cplusplus
+//}
+//#endif
 
 #endif

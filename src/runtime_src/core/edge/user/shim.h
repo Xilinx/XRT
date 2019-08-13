@@ -26,6 +26,10 @@
 #include <fstream>
 #include <map>
 #include <vector>
+#include <mutex>
+#include <memory>
+#include "core/common/bo_cache.h"
+#include "core/common/xrt_profiling.h"
 
 namespace ZYNQ {
 
@@ -41,7 +45,7 @@ public:
            xclVerbosityLevel verbosity);
 
   // The entry of profiling functions
-  ZYNQShimProfiling* profiling;
+  std::unique_ptr<ZYNQShimProfiling> profiling;
 
   int mapKernelControl(const std::vector<std::pair<uint64_t, size_t>>& offsets);
   void *getVirtAddressOfApture(xclAddressSpace space, const uint64_t phy_addr, uint64_t& offset);
@@ -51,6 +55,10 @@ public:
                   size_t size);
   size_t xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf,
                  size_t size);
+  // Restricted read/write on IP register space
+  int xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data);
+  int xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap);
+
   unsigned int xclAllocBO(size_t size, int unused, unsigned flags);
   unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
   unsigned int xclGetHostBO(uint64_t paddr, size_t size);
@@ -75,12 +83,18 @@ public:
   int xclGetSysfsPath(const char *subdev, const char *entry, char *sysfPath,
                       size_t size);
 
+  int xclGetDebugIPlayoutPath(char* layoutPath, size_t size);
+  int xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
+  int xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
+
   // Bitstream/bin download
   int xclLoadXclBin(const xclBin *buffer);
   int xclLoadAxlf(const axlf *buffer);
 
   int xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size,
                 size_t offset);
+  int xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size,
+                size_t dst_offset, size_t src_offset);
 
   int xclGetDeviceInfo2(xclDeviceInfo2 *info);
 
@@ -96,7 +110,18 @@ private:
   xclVerbosityLevel mVerbosity;
   int mKernelFD;
   std::map<uint64_t, uint32_t *> mKernelControl;
+  std::unique_ptr<xrt_core::bo_cache> mCmdBOCache;
+
+  /*
+   * Mapped CU register space for xclRegRead/Write(). We support at most
+   * 128 CUs and each map is of 64k bytes. Does not support debug IP access.
+   */
+  std::vector<uint32_t*> mCuMaps;
+  const size_t mCuMapSize = 64 * 1024;
+  std::mutex mCuMapLock;
+  int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
 };
-};
+
+} // namespace ZYNQ
 
 #endif
