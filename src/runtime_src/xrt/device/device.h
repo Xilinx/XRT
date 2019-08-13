@@ -59,6 +59,7 @@ public:
 
   using stream_xfer_req = hal::StreamXferReq;
   using stream_xfer_completions = hal::StreamXferCompletions;
+  using device_handle = hal::device_handle;
 
   explicit
   device(std::unique_ptr<hal::device>&& hal)
@@ -166,6 +167,12 @@ public:
   close()
   {
     m_hal->close();
+  }
+
+  device_handle
+  get_handle() const
+  {
+    return m_hal->get_handle();
   }
 
   void
@@ -415,7 +422,8 @@ public:
    * @throws
    *   std::runtime_error if buffer object is unknown to this device
    */
-  uint64_t getDeviceAddr(const BufferObjectHandle& boh)
+  uint64_t
+  getDeviceAddr(const BufferObjectHandle& boh)
   {
     return m_hal->getDeviceAddr(boh);
   }
