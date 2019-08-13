@@ -185,26 +185,30 @@ fill_regmap(execution_context::regmap_type& regmap, size_t offset,
             const void* data, const size_t size,
             const xocl::kernel::argument::arginfo_range_type& arginforange)
 {
-  const size_t wordsize = sizeof(uint32_t);
+  using value_type = uint32_t;
+  using pointer_type = const uint32_t*;
+
+  const size_t wsize = sizeof(value_type);
   const char* host_data = reinterpret_cast<const char*>(data);
   auto bytes = size;
 
   // For each component of the argument
   for (auto arginfo : arginforange) {
     auto component = host_data + arginfo->hostoffset;
-    auto word = reinterpret_cast<const uint32_t*>(component);
+    auto word = reinterpret_cast<pointer_type>(component);
+    auto regmap_idx = arginfo->offset / wsize;
 
     // For each 32-bit word of the component
-    for (size_t wi=0, we=arginfo->size/wordsize; wi!=we; ++wi) {
-      // mask out uinitialized memory from casting from less uint32_t
-      uint32_t mask = (bytes < wordsize) ? (1 << (8 * bytes)) - 1 : (-1);
-      size_t device_offset = arginfo->offset + wi*wordsize;
-      uint32_t device_value = *word & mask;
-      size_t register_offset = device_offset / wordsize;
-      regmap[offset+register_offset] = device_value;
-      //      std::cout << "regmap[" << register_offset << "]=" << device_value << "\n";
-      ++word;
-      bytes -= 4;
+    for (size_t wi = 0, we = arginfo->size / wsize; wi < we; ++wi, ++word, bytes -= wsize) {
+      value_type device_value = 0;
+      if (bytes >= wsize)
+        device_value = *word;
+      else {
+        auto cword = reinterpret_cast<const char*>(word);
+        std::copy(cword,cword+bytes,reinterpret_cast<char*>(&device_value));
+      }
+      regmap[offset + regmap_idx + wi] = device_value;
+      //std::cout << "regmap[" << offset + regmap_idx + wi << "]=" << device_value << "\n";
     }
   }
   return 0;
