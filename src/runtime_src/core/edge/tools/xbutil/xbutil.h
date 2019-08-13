@@ -553,13 +553,12 @@ public:
         int length = stream.tellg();
         stream.seekg(0, stream.beg);
 
-        char *buffer = new char[length];
-        stream.read(buffer, length);
-        const xclBin *header = (const xclBin *)buffer;
+        std::vector<char> buffer(length);
+        stream.read(buffer.data(), length);
+        const xclBin *header = (const xclBin *)buffer.data();
         int result = xclLockDevice(m_handle);
         if (result == 0)
             result = xclLoadXclBin(m_handle, header);
-        delete [] buffer;
         (void) xclUnlockDevice(m_handle);
 
         return result;
