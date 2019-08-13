@@ -186,6 +186,7 @@ static int make_sw_context(struct qdma_descq *descq, u32 *data, int cnt)
 	data[3] = PCI_DMA_H(descq->desc_bus);
 	data[2] = PCI_DMA_L(descq->desc_bus);
 	data[1] = (1 << S_DESC_CTXT_W1_F_QEN) |
+			(1 << S_DESC_CTXT_W1_F_MRKR_DIS) |
 			(descq->conf.cmpl_status_pend_chk <<
 					S_DESC_CTXT_W1_F_CMPL_STATUS_PEND_CHK) |
 			(descq->conf.cmpl_status_acc_en <<

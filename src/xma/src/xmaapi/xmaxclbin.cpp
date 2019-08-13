@@ -75,11 +75,20 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
                 xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only %d kernels per device\n", MAX_XILINX_KERNELS);
                 return XMA_ERROR;
             }
+            memset(xclbin_info->ip_layout[j].kernel_name, 0, MAX_KERNEL_NAME);
+            std::string str_tmp1 = std::string((char*)ipl->m_ip_data[i].m_name);
+            str_tmp1.copy((char*)xclbin_info->ip_layout[j].kernel_name, MAX_KERNEL_NAME-1);
+            /*
             memcpy(xclbin_info->ip_layout[j].kernel_name,
                    ipl->m_ip_data[i].m_name, MAX_KERNEL_NAME);
+            */
             layout[j].base_addr = ipl->m_ip_data[i].m_base_address;
-            //Sarab: handle soft_kernel type here
-            //set some variable in ip_layout of xma struct
+            if (((ipl->m_ip_data[i].properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT) == AP_CTRL_CHAIN) {
+                xclbin_info->ip_layout[j].dataflow_kernel = true;
+            } else {
+                xclbin_info->ip_layout[j].dataflow_kernel = false;
+            }
+            //Sarab: TODO handle soft_kernels.. SK_LAYOUT
             xclbin_info->ip_layout[j].soft_kernel = false;
             
             xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index = %d, kernel name = %s, base_addr = %lx\n",
@@ -193,7 +202,7 @@ int xma_xclbin_info_get(char *buffer, XmaXclbinInfo *info)
     xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\nCU DDR connections bitmap:\n");
     for(uint32_t i = 0; i < info->number_of_kernels; i++)
     {
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\t%s - 0x%04x\n",info->ip_layout[i].kernel_name, info->ip_ddr_mapping[i]);
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\t%s - 0x%04llx\n",info->ip_layout[i].kernel_name, info->ip_ddr_mapping[i]);
     }
     //For execbo:
     //info->num_ips = info->number_of_kernels;

@@ -446,12 +446,13 @@ static void check_sensor(struct xclmgmt_dev *lro)
 static int health_check_cb(void *data)
 {
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)data;
-	struct mailbox_req mbreq = { MAILBOX_REQ_FIREWALL, };
+	struct mailbox_req mbreq = { 0 };
 	bool tripped;
 
 	if (!health_check)
 		return 0;
 
+	mbreq.req = MAILBOX_REQ_FIREWALL;
 	tripped = xocl_af_check(lro, NULL);
 
 	if (!tripped) {
@@ -1015,10 +1016,11 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 		if (ret)
 			goto fail_all_subdev;
 	}
-	lro->core.thread_arg.health_cb = health_check_cb;
+	lro->core.thread_arg.thread_cb = health_check_cb;
 	lro->core.thread_arg.arg = lro;
 	lro->core.thread_arg.interval = health_interval * 1000;
-	health_thread_start(lro);
+	lro->core.thread_arg.name = "xclmgmt health thread";
+	xocl_thread_start(lro);
 
 	/* Launch the mailbox server. */
 	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
@@ -1130,8 +1132,10 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	xocl_info(&pdev->dev, "minimum initialization done\n");
 
 	/* No further initialization for MFG board. */
-	if (minimum_initialization ||
-		(dev_info->flags & XOCL_DSAFLAG_MFG) != 0) {
+	if (minimum_initialization)
+		return 0;
+	else if ((dev_info->flags & XOCL_DSAFLAG_MFG) != 0) {
+		xocl_subdev_create_all(lro);
 		return 0;
 	}
 
@@ -1174,7 +1178,7 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 
 	xclmgmt_connect_notify(lro, false);
 
-	health_thread_stop(lro);
+	xocl_thread_stop(lro);
 
 	mgmt_fini_sysfs(&pdev->dev);
 

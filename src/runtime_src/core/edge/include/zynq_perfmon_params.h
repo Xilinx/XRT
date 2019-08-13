@@ -23,108 +23,108 @@
 /************************ AXI Interface Monitor (AIM, earlier SPM) ***********************/
 
 /* Address offsets in core */
-#define XSPM_CONTROL_OFFSET                          0x08
-#define XSPM_TRACE_CTRL_OFFSET                       0x10
-#define XSPM_EVENT_OFFSET                            0x18
-#define XSPM_SAMPLE_OFFSET                           0x20
-#define XSPM_FIFO_COUNTS_OFFSET                      0x28
-#define XSPM_FIFO_READ_COUNTS_OFFSET                 0x30
-#define XSPM_WRITE_BYTES_OFFSET                      0x40
-#define XSPM_WRITE_TRANX_OFFSET                      0x44
-#define XSPM_WRITE_LATENCY_OFFSET                    0x48
-#define XSPM_READ_BYTES_OFFSET                       0x4C
-#define XSPM_READ_TRANX_OFFSET                       0x50
-#define XSPM_READ_LATENCY_OFFSET                     0x54
-//#define XSPM_MIN_MAX_WRITE_LATENCY_OFFSET          0x58
-//#define XSPM_MIN_MAX_READ_LATENCY_OFFSET           0x5C
-#define XSPM_OUTSTANDING_COUNTS_OFFSET               0x58
-#define XSPM_LAST_WRITE_ADDRESS_OFFSET               0x5C
-#define XSPM_LAST_WRITE_DATA_OFFSET                  0x60
-#define XSPM_LAST_READ_ADDRESS_OFFSET                0x64
-#define XSPM_LAST_READ_DATA_OFFSET                   0x68
-#define XSPM_SAMPLE_WRITE_BYTES_OFFSET               0x80
-#define XSPM_SAMPLE_WRITE_TRANX_OFFSET               0x84
-#define XSPM_SAMPLE_WRITE_LATENCY_OFFSET             0x88
-#define XSPM_SAMPLE_READ_BYTES_OFFSET                0x8C
-#define XSPM_SAMPLE_READ_TRANX_OFFSET                0x90
-#define XSPM_SAMPLE_READ_LATENCY_OFFSET              0x94
+#define XAIM_CONTROL_OFFSET                          0x08
+#define XAIM_TRACE_CTRL_OFFSET                       0x10
+#define XAIM_EVENT_OFFSET                            0x18
+#define XAIM_SAMPLE_OFFSET                           0x20
+#define XAIM_FIFO_COUNTS_OFFSET                      0x28
+#define XAIM_FIFO_READ_COUNTS_OFFSET                 0x30
+#define XAIM_WRITE_BYTES_OFFSET                      0x40
+#define XAIM_WRITE_TRANX_OFFSET                      0x44
+#define XAIM_WRITE_LATENCY_OFFSET                    0x48
+#define XAIM_READ_BYTES_OFFSET                       0x4C
+#define XAIM_READ_TRANX_OFFSET                       0x50
+#define XAIM_READ_LATENCY_OFFSET                     0x54
+//#define XAIM_MIN_MAX_WRITE_LATENCY_OFFSET          0x58
+//#define XAIM_MIN_MAX_READ_LATENCY_OFFSET           0x5C
+#define XAIM_OUTSTANDING_COUNTS_OFFSET               0x58
+#define XAIM_LAST_WRITE_ADDRESS_OFFSET               0x5C
+#define XAIM_LAST_WRITE_DATA_OFFSET                  0x60
+#define XAIM_LAST_READ_ADDRESS_OFFSET                0x64
+#define XAIM_LAST_READ_DATA_OFFSET                   0x68
+#define XAIM_SAMPLE_WRITE_BYTES_OFFSET               0x80
+#define XAIM_SAMPLE_WRITE_TRANX_OFFSET               0x84
+#define XAIM_SAMPLE_WRITE_LATENCY_OFFSET             0x88
+#define XAIM_SAMPLE_READ_BYTES_OFFSET                0x8C
+#define XAIM_SAMPLE_READ_TRANX_OFFSET                0x90
+#define XAIM_SAMPLE_READ_LATENCY_OFFSET              0x94
 // The following two registers are still in the hardware,
 //  but are unused
-//#define XSPM_SAMPLE_MIN_MAX_WRITE_LATENCY_OFFSET   0x98
-//#define XSPM_SAMPLE_MIN_MAX_READ_LATENCY_OFFSET    0x9C
-#define XSPM_SAMPLE_OUTSTANDING_COUNTS_OFFSET        0xA0
-#define XSPM_SAMPLE_LAST_WRITE_ADDRESS_OFFSET        0xA4
-#define XSPM_SAMPLE_LAST_WRITE_DATA_OFFSET           0xA8
-#define XSPM_SAMPLE_LAST_READ_ADDRESS_OFFSET         0xAC
-#define XSPM_SAMPLE_LAST_READ_DATA_OFFSET            0xB0
-#define XSPM_SAMPLE_WRITE_BYTES_UPPER_OFFSET         0xC0
-#define XSPM_SAMPLE_WRITE_TRANX_UPPER_OFFSET         0xC4
-#define XSPM_SAMPLE_WRITE_LATENCY_UPPER_OFFSET       0xC8
-#define XSPM_SAMPLE_READ_BYTES_UPPER_OFFSET          0xCC
-#define XSPM_SAMPLE_READ_TRANX_UPPER_OFFSET          0xD0
-#define XSPM_SAMPLE_READ_LATENCY_UPPER_OFFSET        0xD4
+//#define XAIM_SAMPLE_MIN_MAX_WRITE_LATENCY_OFFSET   0x98
+//#define XAIM_SAMPLE_MIN_MAX_READ_LATENCY_OFFSET    0x9C
+#define XAIM_SAMPLE_OUTSTANDING_COUNTS_OFFSET        0xA0
+#define XAIM_SAMPLE_LAST_WRITE_ADDRESS_OFFSET        0xA4
+#define XAIM_SAMPLE_LAST_WRITE_DATA_OFFSET           0xA8
+#define XAIM_SAMPLE_LAST_READ_ADDRESS_OFFSET         0xAC
+#define XAIM_SAMPLE_LAST_READ_DATA_OFFSET            0xB0
+#define XAIM_SAMPLE_WRITE_BYTES_UPPER_OFFSET         0xC0
+#define XAIM_SAMPLE_WRITE_TRANX_UPPER_OFFSET         0xC4
+#define XAIM_SAMPLE_WRITE_LATENCY_UPPER_OFFSET       0xC8
+#define XAIM_SAMPLE_READ_BYTES_UPPER_OFFSET          0xCC
+#define XAIM_SAMPLE_READ_TRANX_UPPER_OFFSET          0xD0
+#define XAIM_SAMPLE_READ_LATENCY_UPPER_OFFSET        0xD4
 // Reserved for high 32-bits of MIN_MAX_WRITE_LATENCY - 0xD8
 // Reserved for high 32-bits of MIN_MAX_READ_LATENCY  - 0xDC
-#define XSPM_SAMPLE_OUTSTANDING_COUNTS_UPPER_OFFSET  0xE0
-#define XSPM_SAMPLE_LAST_WRITE_ADDRESS_UPPER_OFFSET  0xE4
-#define XSPM_SAMPLE_LAST_WRITE_DATA_UPPER_OFFSET     0xE8
-#define XSPM_SAMPLE_LAST_READ_ADDRESS_UPPER_OFFSET   0xEC
-#define XSPM_SAMPLE_LAST_READ_DATA_UPPER_OFFSET      0xF0
+#define XAIM_SAMPLE_OUTSTANDING_COUNTS_UPPER_OFFSET  0xE0
+#define XAIM_SAMPLE_LAST_WRITE_ADDRESS_UPPER_OFFSET  0xE4
+#define XAIM_SAMPLE_LAST_WRITE_DATA_UPPER_OFFSET     0xE8
+#define XAIM_SAMPLE_LAST_READ_ADDRESS_UPPER_OFFSET   0xEC
+#define XAIM_SAMPLE_LAST_READ_DATA_UPPER_OFFSET      0xF0
 
 /* SPM Control Register masks */
-#define XSPM_CR_RESET_ON_SAMPLE_MASK             0x00000010
-#define XSPM_CR_FIFO_RESET_MASK                  0x00000008
-#define XSPM_CR_COUNTER_RESET_MASK               0x00000002
-#define XSPM_CR_COUNTER_ENABLE_MASK              0x00000001
-#define XSPM_TRACE_CTRL_MASK                     0x00000003        
+#define XAIM_CR_RESET_ON_SAMPLE_MASK             0x00000010
+#define XAIM_CR_FIFO_RESET_MASK                  0x00000008
+#define XAIM_CR_COUNTER_RESET_MASK               0x00000002
+#define XAIM_CR_COUNTER_ENABLE_MASK              0x00000001
+#define XAIM_TRACE_CTRL_MASK                     0x00000003        
 
 /* Debug IP layout properties mask bits */
-#define XSPM_HOST_PROPERTY_MASK                  0x4
-#define XSPM_64BIT_PROPERTY_MASK                 0x8
+#define XAIM_HOST_PROPERTY_MASK                  0x4
+#define XAIM_64BIT_PROPERTY_MASK                 0x8
 
 /************************ Accelerator Monitor (AM, earlier SAM) ************************/
 
-#define XSAM_CONTROL_OFFSET                          0x08
-#define XSAM_TRACE_CTRL_OFFSET                       0x10
-#define XSAM_SAMPLE_OFFSET                           0x20
-#define XSAM_ACCEL_EXECUTION_COUNT_OFFSET            0x80
-#define XSAM_ACCEL_EXECUTION_CYCLES_OFFSET           0x84  
-#define XSAM_ACCEL_STALL_INT_OFFSET                  0x88
-#define XSAM_ACCEL_STALL_STR_OFFSET                  0x8c
-#define XSAM_ACCEL_STALL_EXT_OFFSET                  0x90
-#define XSAM_ACCEL_MIN_EXECUTION_CYCLES_OFFSET       0x94
-#define XSAM_ACCEL_MAX_EXECUTION_CYCLES_OFFSET       0x98
-#define XSAM_ACCEL_TOTAL_CU_START_OFFSET             0x9c
-#define XSAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET      0xA0
-#define XSAM_ACCEL_EXECUTION_CYCLES_UPPER_OFFSET     0xA4
-#define XSAM_ACCEL_STALL_INT_UPPER_OFFSET            0xA8
-#define XSAM_ACCEL_STALL_STR_UPPER_OFFSET            0xAc
-#define XSAM_ACCEL_STALL_EXT_UPPER_OFFSET            0xB0
-#define XSAM_ACCEL_MIN_EXECUTION_CYCLES_UPPER_OFFSET 0xB4
-#define XSAM_ACCEL_MAX_EXECUTION_CYCLES_UPPER_OFFSET 0xB8
-#define XSAM_ACCEL_TOTAL_CU_START_UPPER_OFFSET       0xbc
-#define XSAM_BUSY_CYCLES_OFFSET                      0xC0
-#define XSAM_BUSY_CYCLES_UPPER_OFFSET                0xC4
-#define XSAM_MAX_PARALLEL_ITER_OFFSET                0xC8
-#define XSAM_MAX_PARALLEL_ITER_UPPER_OFFSET          0xCC
+#define XAM_CONTROL_OFFSET                          0x08
+#define XAM_TRACE_CTRL_OFFSET                       0x10
+#define XAM_SAMPLE_OFFSET                           0x20
+#define XAM_ACCEL_EXECUTION_COUNT_OFFSET            0x80
+#define XAM_ACCEL_EXECUTION_CYCLES_OFFSET           0x84  
+#define XAM_ACCEL_STALL_INT_OFFSET                  0x88
+#define XAM_ACCEL_STALL_STR_OFFSET                  0x8c
+#define XAM_ACCEL_STALL_EXT_OFFSET                  0x90
+#define XAM_ACCEL_MIN_EXECUTION_CYCLES_OFFSET       0x94
+#define XAM_ACCEL_MAX_EXECUTION_CYCLES_OFFSET       0x98
+#define XAM_ACCEL_TOTAL_CU_START_OFFSET             0x9c
+#define XAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET      0xA0
+#define XAM_ACCEL_EXECUTION_CYCLES_UPPER_OFFSET     0xA4
+#define XAM_ACCEL_STALL_INT_UPPER_OFFSET            0xA8
+#define XAM_ACCEL_STALL_STR_UPPER_OFFSET            0xAc
+#define XAM_ACCEL_STALL_EXT_UPPER_OFFSET            0xB0
+#define XAM_ACCEL_MIN_EXECUTION_CYCLES_UPPER_OFFSET 0xB4
+#define XAM_ACCEL_MAX_EXECUTION_CYCLES_UPPER_OFFSET 0xB8
+#define XAM_ACCEL_TOTAL_CU_START_UPPER_OFFSET       0xbc
+#define XAM_BUSY_CYCLES_OFFSET                      0xC0
+#define XAM_BUSY_CYCLES_UPPER_OFFSET                0xC4
+#define XAM_MAX_PARALLEL_ITER_OFFSET                0xC8
+#define XAM_MAX_PARALLEL_ITER_UPPER_OFFSET          0xCC
 
 /* SAM Trace Control Masks */
-#define XSAM_TRACE_STALL_SELECT_MASK    0x0000001c
-#define XSAM_COUNTER_RESET_MASK         0x00000002
-#define XSAM_DATAFLOW_EN_MASK           0x00000008
+#define XAM_TRACE_STALL_SELECT_MASK    0x0000001c
+#define XAM_COUNTER_RESET_MASK         0x00000002
+#define XAM_DATAFLOW_EN_MASK           0x00000008
 
 /* Debug IP layout properties mask bits */
-#define XSAM_STALL_PROPERTY_MASK        0x4
-#define XSAM_64BIT_PROPERTY_MASK        0x8
+#define XAM_STALL_PROPERTY_MASK        0x4
+#define XAM_64BIT_PROPERTY_MASK        0x8
 
 /************************** AXI Stream Monitor (ASM, earlier SSPM) *********************/
 
-#define XSSPM_SAMPLE_OFFSET            0x20
-#define XSSPM_NUM_TRANX_OFFSET         0x80
-#define XSSPM_DATA_BYTES_OFFSET        0x88
-#define XSSPM_BUSY_CYCLES_OFFSET       0x90
-#define XSSPM_STALL_CYCLES_OFFSET      0x98
-#define XSSPM_STARVE_CYCLES_OFFSET     0xA0
+#define XASM_SAMPLE_OFFSET            0x20
+#define XASM_NUM_TRANX_OFFSET         0x80
+#define XASM_DATA_BYTES_OFFSET        0x88
+#define XASM_BUSY_CYCLES_OFFSET       0x90
+#define XASM_STALL_CYCLES_OFFSET      0x98
+#define XASM_STARVE_CYCLES_OFFSET     0xA0
 
 //Following status registers are available at each base
 #define LAPC_OVERALL_STATUS_OFFSET        0x0

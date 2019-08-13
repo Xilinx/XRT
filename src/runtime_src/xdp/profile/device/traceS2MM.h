@@ -25,17 +25,17 @@ namespace xdp {
 
 /**
  * TraceS2MM ProfileIP (IP with safe access) for AXI Interface Monitor
- * 
+ *
  * Description:
- * 
- * This class represents the high level exclusive and OS protected 
+ *
+ * This class represents the high level exclusive and OS protected
  * access to a profiling IP on the device.
- * 
+ *
  * Note:
- * 
+ *
  * This class only aims at providing interface for easy and
- * safe access to a single profiling IP. Managing the 
- * association between IPs and devices should be done in a 
+ * safe access to a single profiling IP. Managing the
+ * association between IPs and devices should be done in a
  * different data structure that is built on top of this class.
  */
 class TraceS2MM : public ProfileIP {
@@ -48,7 +48,7 @@ public:
      * During the construction, the exclusive access to this
      * IP will be requested, otherwise exception will be thrown.
      */
-    TraceS2MM(void* handle /** < [in] the xrt hal device handle */, 
+    TraceS2MM(void* handle /** < [in] the xrt hal device handle */,
                 int index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data = nullptr);
 
     /**
@@ -58,16 +58,30 @@ public:
     virtual ~TraceS2MM()
     {}
 
-    void initiateOffload();
-    void readBuffer();
-    void endOffload();
-
+    void init(uint64_t bo_size, int64_t bufaddr);
+    bool isActive();
+    void reset();
+    /** 
+     * One word is 64 bit with current implementation
+     * IP should support word packing if we want to support 512 bit words
+     */
+    uint64_t getWordCount();
+    uint8_t getMemIndex();
+    void showStatus();
     virtual void showProperties();
     virtual uint32_t getProperties() { return properties; }
+    void parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& traceVector);
+
 private:
     uint8_t properties;
     uint8_t major_version;
     uint8_t minor_version;
+    uint64_t mPacketFirstTs = 0;
+    bool mclockTrainingdone = false;
+
+    void write32(uint64_t offset, uint32_t val);
+    void parsePacketClockTrain(uint64_t packet, uint64_t firstTimestamp, uint32_t mod, xclTraceResults &result);
+    void parsePacket(uint64_t packet, uint64_t firstTimestamp, xclTraceResults &result);
 };
 
 } //  xdp
