@@ -109,10 +109,11 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 int xocl_program_shell(struct xocl_dev *xdev, bool force)
 {
 	int ret = 0, mbret = 0;
-	struct mailbox_req mbreq = { MAILBOX_REQ_PROGRAM_SHELL, };
+	struct mailbox_req mbreq = { 0 };
 	size_t resplen = sizeof(ret);
 	int i;
 
+	mbreq.req = MAILBOX_REQ_PROGRAM_SHELL;
 	mutex_lock(&xdev->dev_lock);
 	if (!force && !list_is_singular(&xdev->ctx_list)) {
 		/* We should have one context for ourselves. */
@@ -177,9 +178,10 @@ failed:
 int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 {
 	int ret = 0, mbret = 0;
-	struct mailbox_req mbreq = { MAILBOX_REQ_HOT_RESET, };
+	struct mailbox_req mbreq = { 0 };
 	size_t resplen = sizeof(ret);
 
+	mbreq.req = MAILBOX_REQ_HOT_RESET;
 	mutex_lock(&xdev->dev_lock);
 	if (!force && !list_is_singular(&xdev->ctx_list)) {
 		/* We should have one context for ourselves. */
