@@ -54,13 +54,13 @@ send(severity_level l, const char* tag, const char* format, Args ... args)
   int lev = static_cast<int>(l);
 
   if (ver >= lev) {
-    auto sz = snprintf(nullptr, 0, format, args ...) + 1;
+    auto sz = snprintf(nullptr, 0, format, args ...);
     if (sz < 0) {
       send(severity_level::XRT_ERROR, tag, "Illegal arguments in log format string");
       return;
     }
     
-    std::vector<char> buf(sz);
+    std::vector<char> buf(sz+1);
     snprintf(buf.data(), sz, format, args ...);
     send(l, tag, buf.data());
   }
