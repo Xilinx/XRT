@@ -119,6 +119,8 @@ namespace xdp {
         uint64_t prevReadTranx    = mFinalCounterResultsMap[key].ReadTranx[s];
         uint64_t prevWriteLatency = mFinalCounterResultsMap[key].WriteLatency[s];
         uint64_t prevReadLatency  = mFinalCounterResultsMap[key].ReadLatency[s];
+        uint64_t prevReadBusyCycles   = mFinalCounterResultsMap[key].ReadBusyCycles[s];
+        uint64_t prevWriteBusyCycles  = mFinalCounterResultsMap[key].WriteBusyCycles[s];
 
         // Check for rollover of byte counters; if detected, add 2^32
         // Otherwise, if first read after program with binary, then capture bytes from previous xclbin
@@ -135,6 +137,10 @@ namespace xdp {
             mRolloverCountsMap[key].WriteLatency[s]  += 1;
           if (counterResults.ReadLatency[s] < prevReadLatency)
             mRolloverCountsMap[key].ReadLatency[s]   += 1;
+          if (counterResults.ReadBusyCycles[s] < prevReadBusyCycles)
+            mRolloverCountsMap[key].ReadBusyCycles[s]  += 1;
+          if (counterResults.WriteBusyCycles[s] < prevWriteBusyCycles)
+            mRolloverCountsMap[key].WriteBusyCycles[s] += 1;
         }
         else {
           mRolloverCounterResultsMap[key].WriteBytes[s]    += prevWriteBytes;
@@ -143,6 +149,8 @@ namespace xdp {
           mRolloverCounterResultsMap[key].ReadTranx[s]     += prevReadTranx;
           mRolloverCounterResultsMap[key].WriteLatency[s]  += prevWriteLatency;
           mRolloverCounterResultsMap[key].ReadLatency[s]   += prevReadLatency;
+          mRolloverCounterResultsMap[key].ReadBusyCycles[s] += prevReadBusyCycles;
+          mRolloverCounterResultsMap[key].WriteBusyCycles[s] += prevWriteBusyCycles;
         }
       }
       /*
@@ -374,8 +382,10 @@ namespace xdp {
                             + (rolloverCounts.ReadLatency[s] * 4294967296UL);
         totalWriteLatency += counterResults.WriteLatency[s]
                             + (rolloverCounts.WriteLatency[s] * 4294967296UL);
-        totalReadBusyCycles += counterResults.ReadBusyCycles[s];
-        totalWriteBusyCycles += counterResults.WriteBusyCycles[s];
+        totalReadBusyCycles += counterResults.ReadBusyCycles[s]
+                              + (rolloverCounts.ReadBusyCycles[s] * 4294967296UL);
+        totalWriteBusyCycles += counterResults.WriteBusyCycles[s]
+                               + (rolloverCounts.WriteBusyCycles[s] * 4294967296UL);
       }
 
       double totalReadLatencyNsec  = (1000.0 * totalReadLatency)  / tp->getDeviceClockFreqMHz();
@@ -567,9 +577,6 @@ namespace xdp {
         std::string argNames;
         mPluginHandle->getArgumentsBank(deviceName, cuName, portName, argNames, memoryName);
 
-        double totalReadTimeMsec = counterResults.ReadBusyCycles[s] / (1000.0 * mTraceParserHandle->getDeviceClockFreqMHz()) ;
-        double totalWriteTimeMsec = counterResults.WriteBusyCycles[s] / (1000.0 * mTraceParserHandle->getDeviceClockFreqMHz());
-
         uint64_t totalReadBytes    = counterResults.ReadBytes[s] + rolloverResults.ReadBytes[s]
                                      + (rolloverCounts.ReadBytes[s] * 4294967296UL);
         uint64_t totalWriteBytes   = counterResults.WriteBytes[s] + rolloverResults.WriteBytes[s]
@@ -578,8 +585,15 @@ namespace xdp {
                                      + (rolloverCounts.ReadTranx[s] * 4294967296UL);
         uint64_t totalWriteTranx   = counterResults.WriteTranx[s] + rolloverResults.WriteTranx[s]
                                      + (rolloverCounts.WriteTranx[s] * 4294967296UL);
+        // Total tx times for write and read channels
+        uint64_t totalReadBusyCycles   = counterResults.ReadBusyCycles[s] + rolloverResults.ReadBusyCycles[s]
+                                     + (rolloverCounts.ReadBusyCycles[s] * 4294967296UL);
+        double totalReadTimeMsec = totalReadBusyCycles / (1000.0 * mTraceParserHandle->getDeviceClockFreqMHz());
+        uint64_t totalWriteBusyCycles   = counterResults.WriteBusyCycles[s] + rolloverResults.WriteBusyCycles[s]
+                                     + (rolloverCounts.WriteBusyCycles[s] * 4294967296UL);
+        double totalWriteTimeMsec = totalWriteBusyCycles / (1000.0 * mTraceParserHandle->getDeviceClockFreqMHz());
 
-        // Total transfer time = sum of all tranx latencies
+        // Total latency = sum of all tranx latencies
         // msec = cycles / (1000 * (Mcycles/sec))
         uint64_t totalReadLatency  = counterResults.ReadLatency[s] + rolloverResults.ReadLatency[s]
                                      + (rolloverCounts.ReadLatency[s] * 4294967296UL);
@@ -720,8 +734,10 @@ namespace xdp {
                                + (rolloverCounts.ReadTranx[s] * 4294967296UL);
             totalWriteTranx += counterResults.WriteTranx[s] + rolloverResults.WriteTranx[s]
                                + (rolloverCounts.WriteTranx[s] * 4294967296UL);
-            totalReadBusyCycles += counterResults.ReadBusyCycles[s];
-            totalWriteBusyCycles += counterResults.WriteBusyCycles[s];
+            totalReadBusyCycles += counterResults.ReadBusyCycles[s] + rolloverResults.ReadBusyCycles[s]
+                                  + (rolloverCounts.ReadBusyCycles[s] * 4294967296UL);
+            totalWriteBusyCycles += counterResults.WriteBusyCycles[s] + rolloverResults.WriteBusyCycles[s]
+                                  + (rolloverCounts.WriteBusyCycles[s] * 4294967296UL);
           }
         }
 
