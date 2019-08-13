@@ -153,7 +153,6 @@ struct xcl_sensor {
 	uint32_t max_power;
 	uint32_t fan_num;
 	uint32_t config_mode;
-	uint32_t cur_3v3_pex;
 };
 
 /**

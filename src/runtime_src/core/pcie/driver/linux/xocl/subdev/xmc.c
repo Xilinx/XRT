@@ -79,7 +79,6 @@
 #define	XMC_SNSR_CHKSUM_REG		0x1A4
 #define	XMC_SNSR_FLAGS_REG		0x1A8
 #define	XMC_HBM_TEMP_REG		0x260
-#define	XMC_3V3_PEX_I_REG		0x278
 #define	XMC_HOST_MSG_OFFSET_REG		0x300
 #define	XMC_HOST_MSG_ERROR_REG		0x304
 #define	XMC_HOST_MSG_HEADER_REG		0x308
@@ -444,9 +443,6 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 		case VOL_3V3_AUX:
 			READ_SENSOR(xmc, XMC_3V3_AUX_REG, val, val_kind);
 			break;
-		case CUR_3V3_PEX:
-			READ_SENSOR(xmc, XMC_3V3_PEX_I_REG, val, val_kind);
-			break;
 		case VPP_BTM:
 			READ_SENSOR(xmc, XMC_DDR4_VPP_BTM_REG, val, val_kind);
 			break;
@@ -670,9 +666,6 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 		case CFG_MODE:
 			*val = xmc->cache->config_mode;
 			break;
-		case CUR_3V3_PEX:
-			*val = xmc->cache->cur_3v3_pex;
-			break;
 		default:
 			break;
 		}
@@ -732,7 +725,6 @@ static int xmc_get_data(struct platform_device *pdev, void *buf)
 	xmc_sensor(pdev, CAGE_TEMP2, &sensors->cage_temp2, SENSOR_INS);
 	xmc_sensor(pdev, CAGE_TEMP3, &sensors->cage_temp3, SENSOR_INS);
 	xmc_sensor(pdev, HBM_TEMP, &sensors->hbm_temp0, SENSOR_INS);
-	xmc_sensor(pdev, CUR_3V3_PEX, &sensors->cur_3v3_pex, SENSOR_INS);
 	xmc_bdinfo(pdev, SER_NUM, (u32 *)sensors->serial_num);
 	xmc_bdinfo(pdev, MAC_ADDR0, (u32 *)sensors->mac_addr0);
 	xmc_bdinfo(pdev, MAC_ADDR1, (u32 *)sensors->mac_addr1);
@@ -792,7 +784,6 @@ SENSOR_SYSFS_NODE(xmc_cage_temp0, CAGE_TEMP0);
 SENSOR_SYSFS_NODE(xmc_cage_temp1, CAGE_TEMP1);
 SENSOR_SYSFS_NODE(xmc_cage_temp2, CAGE_TEMP2);
 SENSOR_SYSFS_NODE(xmc_cage_temp3, CAGE_TEMP3);
-SENSOR_SYSFS_NODE(xmc_3v3_pex_curr, CUR_3V3_PEX);
 
 #define	SENSOR_SYSFS_NODE_ATTRS						\
 	&dev_attr_xmc_12v_pex_vol.attr,					\
@@ -826,8 +817,7 @@ SENSOR_SYSFS_NODE(xmc_3v3_pex_curr, CUR_3V3_PEX);
 	&dev_attr_xmc_cage_temp0.attr,					\
 	&dev_attr_xmc_cage_temp1.attr,					\
 	&dev_attr_xmc_cage_temp2.attr,					\
-	&dev_attr_xmc_cage_temp3.attr,					\
-	&dev_attr_xmc_3v3_pex_curr.attr
+	&dev_attr_xmc_cage_temp3.attr
 
 /*
  * Defining sysfs nodes for reading some of xmc regisers.
@@ -1534,7 +1524,6 @@ HWMON_VOLT_CURR_SYSFS_NODE(in, 14, "DDR VPP TOP", VPP_TOP);
 HWMON_VOLT_CURR_SYSFS_NODE(curr, 1, "12V PEX Current", CUR_12V_PEX);
 HWMON_VOLT_CURR_SYSFS_NODE(curr, 2, "12V AUX Current", CUR_12V_AUX);
 HWMON_VOLT_CURR_SYSFS_NODE(curr, 3, "VCC INT Current", CUR_VCC_INT);
-HWMON_VOLT_CURR_SYSFS_NODE(curr, 4, "3V3 PEX Current", CUR_3V3_PEX);
 HWMON_TEMPERATURE_SYSFS_NODE(1, "PCB TOP FRONT", SE98_TEMP0);
 HWMON_TEMPERATURE_SYSFS_NODE(2, "PCB TOP REAR", SE98_TEMP1);
 HWMON_TEMPERATURE_SYSFS_NODE(3, "PCB BTM FRONT", SE98_TEMP2);

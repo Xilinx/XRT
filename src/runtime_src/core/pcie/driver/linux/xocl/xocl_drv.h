@@ -771,7 +771,6 @@ enum data_kind {
 	MAX_PWR,
 	FAN_NUM,
 	CFG_MODE,
-	CUR_3V3_PEX,
 };
 
 enum mb_kind {
