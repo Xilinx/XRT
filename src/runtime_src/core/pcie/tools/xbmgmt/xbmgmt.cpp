@@ -40,7 +40,7 @@ static const std::map<std::string, struct subCmd> subCmdList = {
     { "flash", {flashHandler, subCmdFlashDesc, subCmdFlashUsage} },
     { "reset", {resetHandler, subCmdResetDesc, subCmdResetUsage} },
     { "clock", {clockHandler, subCmdClockDesc, subCmdClockUsage} },
-    { "program", {progHandler, subCmdProgDesc, subCmdProgUsage} },
+    { "partition", {partHandler, subCmdPartDesc, subCmdPartUsage} },
     { "config", {configHandler, subCmdConfigDesc, subCmdConfigUsage} },
     { "nifd", {nifdHandler, subCmdNifdDesc, subCmdNifdUsage} },
 };

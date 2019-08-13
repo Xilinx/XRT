@@ -18,36 +18,39 @@
 #include <linux/kthread.h>
 #include "xocl_drv.h"
 
-int health_thread(void *data)
+static int xocl_thread(void *data)
 {
-	struct xocl_health_thread_arg *thread_arg = data;
+	struct xocl_thread_arg *thread_arg = data;
 
 	while (!kthread_should_stop()) {
 		msleep_interruptible(thread_arg->interval);
 
-		if (thread_arg->health_cb)
-			thread_arg->health_cb(thread_arg->arg);
+		if (thread_arg->thread_cb)
+			thread_arg->thread_cb(thread_arg->arg);
+
 	}
-	xocl_info(thread_arg->dev, "The health thread has terminated.");
+	xocl_info(thread_arg->dev, "%s exit.", thread_arg->name);
 	return 0;
 }
 
-int health_thread_start(xdev_handle_t xdev)
+int xocl_thread_start(xdev_handle_t xdev)
 {
 	struct xocl_dev_core *core = XDEV(xdev);
 
-	xocl_info(&core->pdev->dev, "init_health_thread");
-	if (core->health_thread) {
-		xocl_info(&core->pdev->dev, "health thread already started");
+	xocl_info(&core->pdev->dev, "init %s", core->thread_arg.name);
+	if (core->poll_thread) {
+		xocl_info(&core->pdev->dev, "%s already created",
+				core->thread_arg.name);
 		return 0;
 	}
 
-	core->health_thread = kthread_run(health_thread, &core->thread_arg,
-		"xocl_health_thread");
+	core->poll_thread = kthread_run(xocl_thread, &core->thread_arg,
+		core->thread_arg.name);
 
-	if(IS_ERR(core->health_thread)) {
-		xocl_err(&core->pdev->dev, "ERROR! health thread init");
-		core->health_thread = NULL;
+	if(IS_ERR(core->poll_thread)) {
+		xocl_err(&core->pdev->dev, "ERROR! %s create",
+				core->thread_arg.name);
+		core->poll_thread = NULL;
 		return -ENOMEM;
 	}
 
@@ -56,20 +59,22 @@ int health_thread_start(xdev_handle_t xdev)
 	return 0;
 }
 
-int health_thread_stop(xdev_handle_t xdev)
+int xocl_thread_stop(xdev_handle_t xdev)
 {
 	struct xocl_dev_core *core = XDEV(xdev);
 	int ret;
 
-	if (!core->health_thread)
+	if (!core->poll_thread)
 		return 0;
 
-	ret = kthread_stop(core->health_thread);
-	core->health_thread = NULL;
+	ret = kthread_stop(core->poll_thread);
+	core->poll_thread = NULL;
 
-	xocl_info(&core->pdev->dev, "fini_health_thread. ret = %d\n", ret);
+	xocl_info(&core->pdev->dev, "%s stop ret = %d\n",
+		       core->thread_arg.name, ret);
 	if(ret != -EINTR) {
-		xocl_err(&core->pdev->dev, "The health thread has terminated");
+		xocl_err(&core->pdev->dev, "%s has terminated",
+				core->thread_arg.name);
 		ret = 0;
 	}
 
