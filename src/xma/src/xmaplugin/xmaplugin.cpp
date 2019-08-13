@@ -422,7 +422,7 @@ xma_plg_schedule_work_item(XmaSession s_handle)
     uint8_t *src = (uint8_t*)kernel_tmp1->reg_map;
     
     //size_t  size = MAX_KERNEL_REGMAP_SIZE;//Max regmap in xmahw.h is 4KB; execBO size is 4096; Supported max regmap size is 4032 Bytes only
-    size_t  size = s_handle.hw_session.kernel_info->regmap_max;
+    int32_t size = s_handle.hw_session.kernel_info->regmap_max;
     if (size < 0) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Use xma_plg_register_prep_write to prepare regmap for CU before scheduling work item \n");
         return XMA_ERROR;
@@ -456,19 +456,29 @@ xma_plg_schedule_work_item(XmaSession s_handle)
     } else {
         cu_cmd->opcode = ERT_START_CU;
     }
-    cu_cmd->extra_cu_masks = 1;//XMA now supports 60 CUs
+    cu_cmd->extra_cu_masks = 3;//XMA now supports 128 CUs
 
     cu_cmd->cu_mask = kernel_tmp1->cu_mask0;
 
     cu_cmd->data[0] = kernel_tmp1->cu_mask1;
+    cu_cmd->data[1] = kernel_tmp1->cu_mask2;
+    cu_cmd->data[2] = kernel_tmp1->cu_mask3;
     // Copy reg_map into execBO buffer 
-    memcpy(&cu_cmd->data[1], src, size);
+    memcpy(&cu_cmd->data[3], src, size);
+    if (kernel_tmp1->dataflow_kernel) {
+        // XMA will write @ 0x10 and XRT read @ 0x14 to generate interupt and capture in execbo
+        cu_cmd->data[7] = s_handle.channel_id;//0x10 == 4th integer;
+        cu_cmd->data[8] = 0;//clear out the output
+        xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "Dev# %d; Kernel: %s; Regmap size used is: %d\n", dev_tmp1->dev_index, kernel_tmp1->name, kernel_tmp1->regmap_max);
+        xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "This is dataflow kernel. Using channel id: %d\n", s_handle.channel_id);
+    }
+    
     if (kernel_tmp1->regmap_max >= 1024) {
         xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "Dev# %d; Kernel: %s; Regmap size used is: %d\n", dev_tmp1->dev_index, kernel_tmp1->name, kernel_tmp1->regmap_max);
     }
 
-    // Set count to size in 32-bit words + 2; One extra_cu_mask is present
-    cu_cmd->count = (size >> 2) + 2;
+    // Set count to size in 32-bit words + 4; Three extra_cu_mask are present
+    cu_cmd->count = (size >> 2) + 4;
     
     if (xclExecBuf(s_handle.hw_session.dev_handle, 
                     dev_tmp1->kernel_execbo_handle[bo_idx]) != 0)

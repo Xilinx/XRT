@@ -395,6 +395,9 @@ static unsigned int icap_get_clock_frequency_counter_khz(const struct icap *icap
 		if (uuid_is_null(&icap->icap_bitstream_uuid))
 			return freq;
 
+		if (!icap->icap_clock_freq_counter)
+			return freq;
+
 		if (idx < 2) {
 			reg_wr(icap->icap_clock_freq_counter, 0x1);
 			while (times != 0) {
@@ -540,26 +543,30 @@ static int icap_freeze_axi_gate(struct icap *icap)
 	ICAP_INFO(icap, "freezing CL AXI gate");
 	BUG_ON(icap->icap_axi_gate_frozen);
 
-	write_lock(&XDEV(xdev)->rwlock);
-	(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-	reg_wr(&icap->icap_axi_gate->iag_wr, GATE_FREEZE_USER);
-	(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-
-	if (!xocl_is_unified(xdev)) {
-		reg_wr(&icap->icap_regs->ir_cr, 0xc);
-		ndelay(20);
+	if (XOCL_DSA_IS_SMARTN(xdev)) {
+		xocl_xmc_dr_freeze(xdev);
 	} else {
-		/* New ICAP reset sequence applicable only to unified dsa. */
-		reg_wr(&icap->icap_regs->ir_cr, 0x8);
-		ndelay(2000);
-		reg_wr(&icap->icap_regs->ir_cr, 0x0);
-		ndelay(2000);
-		reg_wr(&icap->icap_regs->ir_cr, 0x4);
-		ndelay(2000);
-		reg_wr(&icap->icap_regs->ir_cr, 0x0);
-		ndelay(2000);
-	}
 
+		write_lock(&XDEV(xdev)->rwlock);
+		(void) reg_rd(&icap->icap_axi_gate->iag_rd);
+		reg_wr(&icap->icap_axi_gate->iag_wr, GATE_FREEZE_USER);
+		(void) reg_rd(&icap->icap_axi_gate->iag_rd);
+
+		if (!xocl_is_unified(xdev)) {
+			reg_wr(&icap->icap_regs->ir_cr, 0xc);
+			ndelay(20);
+		} else {
+			/* New ICAP reset sequence applicable only to unified dsa. */
+			reg_wr(&icap->icap_regs->ir_cr, 0x8);
+			ndelay(2000);
+			reg_wr(&icap->icap_regs->ir_cr, 0x0);
+			ndelay(2000);
+			reg_wr(&icap->icap_regs->ir_cr, 0x4);
+			ndelay(2000);
+			reg_wr(&icap->icap_regs->ir_cr, 0x0);
+			ndelay(2000);
+		}
+	}
 	icap->icap_axi_gate_frozen = true;
 
 	return 0;
@@ -579,17 +586,20 @@ static int icap_free_axi_gate(struct icap *icap)
 	if (!icap->icap_axi_gate_frozen)
 		return 0;
 
-	for (i = 0; i < ARRAY_SIZE(gate_free_user); i++) {
+	if (XOCL_DSA_IS_SMARTN(xdev)) {
+		xocl_xmc_dr_free(xdev);
+	} else {
+		for (i = 0; i < ARRAY_SIZE(gate_free_user); i++) {
+			(void) reg_rd(&icap->icap_axi_gate->iag_rd);
+			reg_wr(&icap->icap_axi_gate->iag_wr, gate_free_user[i]);
+			ndelay(500);
+		}
+
 		(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-		reg_wr(&icap->icap_axi_gate->iag_wr, gate_free_user[i]);
-		ndelay(500);
+
+		write_unlock(&XDEV(xdev)->rwlock);
 	}
-
-	(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-
 	icap->icap_axi_gate_frozen = false;
-	write_unlock(&XDEV(xdev)->rwlock);
-
 	return 0;
 }
 
@@ -1200,7 +1210,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	unsigned short deviceid = pcidev->device;
 	struct axlf *bin_obj_axlf;
 	const struct firmware *fw;
-	char fw_name[128];
+	char fw_name[256];
 	XHwIcap_Bit_Header bit_header = { 0 };
 	long err = 0;
 	uint64_t length = 0;
@@ -1412,26 +1422,41 @@ static long icap_download_clear_bitstream(struct icap *icap)
 
 // DECLARE_WAIT_QUEUE_HEAD(mytestwait);
 
-static int icap_download_rp(struct platform_device *pdev, int level, bool force)
+static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct mailbox_req mbreq = { MAILBOX_REQ_CHG_SHELL, };
+	struct mailbox_req mbreq = { 0 };
 	int ret = 0;
 
-
-
+	mbreq.req = MAILBOX_REQ_CHG_SHELL;
 	mutex_lock(&icap->icap_lock);
 	if (!icap->rp_bit || !icap->rp_fdt) {
-		xocl_xdev_err(xdev, "Invalid reprogram request");
+		xocl_xdev_err(xdev, "Invalid reprogram request %p.%p",
+			icap->rp_bit, icap->rp_fdt);
 		ret = -EINVAL;
 		goto failed;
 	}
-	if (!force) {
+
+	if (!XDEV(xdev)->fdt_blob) {
+		xocl_xdev_err(xdev, "Empty fdt blob");
+		ret = -EINVAL;
+		goto failed;
+	}
+
+	ret = xocl_fdt_check_uuids(xdev, icap->rp_fdt, XDEV(xdev)->fdt_blob);
+	if (ret) {
+		xocl_xdev_err(xdev, "Incompatible uuids");
+		goto failed;
+	}
+
+	if (flag == RP_DOWNLOAD_DRY)
+		goto end;
+	else if (flag == RP_DOWNLOAD_NORMAL) {
 		(void) xocl_peer_notify(xocl_get_xdev(icap->icap_pdev), &mbreq,
 				sizeof(struct mailbox_req));
 		ICAP_INFO(icap, "Notified userpf to program rp");
-		goto failed;
+		goto end;
 	}
 
 	ret = xocl_fdt_blob_input(xdev, icap->rp_fdt);
@@ -1468,13 +1493,18 @@ static int icap_download_rp(struct platform_device *pdev, int level, bool force)
 		goto failed;
 	}
 
-	vfree(icap->rp_bit);
-	icap->rp_bit = NULL;
-	icap->rp_bit_len = 0;
-	vfree(icap->rp_fdt);
-	icap->rp_fdt = NULL;
-
 failed:
+	if (icap->rp_bit) {
+		vfree(icap->rp_bit);
+		icap->rp_bit = NULL;
+		icap->rp_bit_len = 0;
+	}
+	if (icap->rp_fdt) {
+		vfree(icap->rp_fdt);
+		icap->rp_fdt = NULL;
+	}
+
+end:
 	mutex_unlock(&icap->icap_lock);
 	return ret;
 }
@@ -1885,7 +1915,7 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	int err = 0;
 	uint64_t section_size = 0;
-	bool is_axi;
+	u32 capability;
 
 	/* Destroy all dynamically add sub-devices*/
 	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_DNA);
@@ -1905,9 +1935,19 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 	if (err)
 		goto done;
 
-	is_axi = ((xocl_dna_capability(xdev) & 0x1) != 0);
 
-	if (is_axi) {
+	/* Skip dna validation in userpf*/ 
+	if (!ICAP_PRIVILEGED(icap))
+		goto done;
+
+	/* capability BIT8 as DRM IP enable, BIT0 as AXI mode
+ 	 * We only check if anyone of them is set.
+	 */
+	capability = ((xocl_dna_capability(xdev) & 0x101) != 0);
+
+	if (capability) {
+		uint32_t *cert = NULL;
+
 		if (0x1 & xocl_dna_status(xdev))
 			goto done;
 		/*
@@ -1916,28 +1956,25 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 		 */
 		err = -EACCES;
 
-		ICAP_INFO(icap, "DNA version: %s", is_axi ? "AXI" : "BRAM");
+		ICAP_INFO(icap, "DNA version: %s", (capability & 0x1) ? "AXI" : "BRAM");
 
-		if (is_axi) {
-			uint32_t *cert = NULL;
+		if (alloc_and_get_axlf_section(icap, xclbin,
+			DNA_CERTIFICATE,
+			(void **)&cert, &section_size) != 0) {
 
-			if (alloc_and_get_axlf_section(icap, xclbin,
-				DNA_CERTIFICATE,
-				(void **)&cert, &section_size) != 0) {
-
-				/* We keep dna sub device if IP_DNASC presents */
-				ICAP_ERR(icap, "Can't get certificate section");
-				goto dna_cert_fail;
-			}
-
-			ICAP_INFO(icap, "DNA Certificate Size 0x%llx", section_size);
-			if (section_size % 64 || section_size < 576)
-				ICAP_ERR(icap, "Invalid certificate size");
-			else
-				xocl_dna_write_cert(xdev, cert, section_size);
-
-			vfree(cert);
+			/* We keep dna sub device if IP_DNASC presents */
+			ICAP_ERR(icap, "Can't get certificate section");
+			goto dna_cert_fail;
 		}
+
+		ICAP_INFO(icap, "DNA Certificate Size 0x%llx", section_size);
+		if (section_size % 64 || section_size < 576)
+			ICAP_ERR(icap, "Invalid certificate size");
+		else
+			xocl_dna_write_cert(xdev, cert, section_size);
+
+		vfree(cert);
+
 
 		/* Check DNA validation result. */
 		if (0x1 & xocl_dna_status(xdev))
@@ -2020,6 +2057,35 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	return 0;
 }
 
+static int icap_verify_signature(struct icap *icap,
+	const void *data, size_t data_len, const void *sig, size_t sig_len)
+{
+	int ret = 0;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
+#define	SYS_KEYS	((void *)1UL)
+	ret = verify_pkcs7_signature(data, data_len, sig, sig_len,
+		(icap->sec_level == ICAP_SEC_SYSTEM) ? SYS_KEYS : icap_keys,
+		VERIFYING_UNSPECIFIED_SIGNATURE, NULL, NULL);
+	if (ret) {
+		ICAP_ERR(icap, "signature verification failed: %d", ret);
+		if (icap->sec_level == ICAP_SEC_NONE) {
+			/* Ignore error to allow bitstream downloading. */
+			ret = 0;
+		} else {
+			ret = -EKEYREJECTED;
+		}
+	} else {
+		ICAP_INFO(icap, "signature verification is done successfully");
+	}
+#else
+	ret = -EOPNOTSUPP;
+	ICAP_ERR(icap,
+		"signature verification isn't supported with kernel < 4.7.0");
+#endif
+	return ret;
+}
+
 static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 {
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
@@ -2037,9 +2103,30 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
+	if (xclbin->m_signature_length != -1) {
+		int siglen = xclbin->m_signature_length;
+		u64 origlen = xclbin->m_header.m_length - siglen;
+
+		ICAP_INFO(icap, "signed xclbin detected");
+		ICAP_INFO(icap, "original size: %llu, signature size: %d",
+			origlen, siglen);
+
+		/* restore original xclbin for verification */
+		xclbin->m_signature_length = -1;
+		xclbin->m_header.m_length = origlen;
+
+		err = icap_verify_signature(icap, xclbin, origlen,
+			((char *)xclbin) + origlen, siglen);
+		if (err)
+			return err;
+	} else if (icap->sec_level > ICAP_SEC_NONE) {
+		ICAP_ERR(icap, "xclbin is not signed, rejected");
+		return -EKEYREJECTED;
+	}
+
 	/* Set clock frequency. */
 	clockHeader = get_axlf_section_hdr(icap, xclbin, CLOCK_FREQ_TOPOLOGY);
-	if (clockHeader != NULL) {
+	if (clockHeader != NULL && !XOCL_DSA_IS_SMARTN(xdev)) {
 		clockFirmwareOffset = clockHeader->m_sectionOffset;
 		clockFirmwareLength = clockHeader->m_sectionSize;
 
@@ -2092,12 +2179,31 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	struct axlf *xclbin = (struct axlf *)u_xclbin;
 	int err = 0;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	const struct axlf_section_header *dtbHeader = NULL;
 
 	/* Sanity check xclbin. */
 	if (memcmp(xclbin->m_magic, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2))) {
 		ICAP_ERR(icap, "invalid xclbin magic string");
 		return -EINVAL;
 	}
+
+	dtbHeader = get_axlf_section_hdr(icap, xclbin, PARTITION_METADATA);
+	if (dtbHeader) {
+		ICAP_INFO(icap, "check interface uuid");
+		if (!XDEV(xdev)->fdt_blob) {
+			ICAP_ERR(icap, "did not find platform dtb");
+			return -EINVAL;
+		}
+		err = xocl_fdt_check_uuids(xdev,
+				(const void *)XDEV(xdev)->fdt_blob,
+				(const void *)((char*)xclbin +
+				dtbHeader->m_sectionOffset));
+		if (err) {
+			ICAP_ERR(icap, "interface uuids do not match");
+			return -EINVAL;
+		}
+	}
+
 	if (xocl_xrt_version_check(xdev, xclbin, true)) {
 		ICAP_ERR(icap, "xclbin isn't supported by current XRT");
 		return -EINVAL;
@@ -2638,28 +2744,7 @@ static ssize_t cache_expire_secs_store(struct device *dev,
 }
 static DEVICE_ATTR_RW(cache_expire_secs);
 
-static int icap_verify_signature(struct icap *icap,
-	const void *data, size_t data_len, const void *sig, size_t sig_len)
-{
-	int ret = 0;
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
-#define	SYS_KEYS	((void *)1UL)
-	ret = verify_pkcs7_signature(data, data_len, sig, sig_len,
-		(icap->sec_level == ICAP_SEC_SYSTEM) ? SYS_KEYS : icap_keys,
-		VERIFYING_UNSPECIFIED_SIGNATURE, NULL, NULL);
-	if (ret && icap->sec_level == 0) {
-		ICAP_INFO(icap, "signature verification failed: %d", ret);
-		ret = 0;
-	}
-#else
-	ret = -EOPNOTSUPP;
-	ICAP_ERR(icap,
-		"signature verification is not supported with < 4.7.0 kernel");
-#endif
-	return ret;
-}
-
+#ifdef	KEY_DEBUG
 /* Test code for now, will remove later. */
 void icap_key_test(struct icap *icap)
 {
@@ -2694,6 +2779,7 @@ done:
 	if (text)
 		release_firmware(text);
 }
+#endif
 
 static ssize_t sec_level_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -2741,7 +2827,9 @@ static ssize_t sec_level_store(struct device *dev,
 				"can't lower security level from system level");
 			ret = -EINVAL;
 		}
+#ifdef	KEY_DEBUG
 		icap_key_test(icap);
+#endif
 	}
 
 	mutex_unlock(&icap->icap_lock);
@@ -3112,8 +3200,17 @@ static int icap_probe(struct platform_device *pdev)
 			ICAP_ERR(icap, "create icap keyring failed: %d", ret);
 			goto failed;
 		}
-		icap->sec_level = efi_enabled(EFI_SECURE_BOOT) ?
-			ICAP_SEC_SYSTEM : ICAP_SEC_NONE;
+#ifdef	EFI_SECURE_BOOT
+		if (efi_enabled(EFI_SECURE_BOOT)) {
+			ICAP_INFO(icap, "secure boot mode detected");
+			icap->sec_level = ICAP_SEC_SYSTEM;
+		} else {
+			icap->sec_level = ICAP_SEC_NONE;
+		}
+#else
+		ICAP_INFO(icap, "no support for detection of secure boot mode");
+		icap->sec_level = ICAP_SEC_NONE;
+#endif
 	}
 
 	icap->cache_expire_secs = ICAP_DEFAULT_EXPIRE_SECS;
@@ -3297,6 +3394,8 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 
 	memcpy(icap->rp_bit, header, icap->rp_bit_len);
 	vfree(axlf);
+
+	ICAP_INFO(icap, "write axlf to device successfully. len %ld", len);
 
 	mutex_unlock(&icap->icap_lock);
 

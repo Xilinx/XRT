@@ -25,9 +25,13 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <stdint.h>
+#include "boost/filesystem.hpp"
 #include "firmware_image.h"
 #include "xclbin.h"
 
+#define hex_digit "([0-9a-fA-F]+)"
+
+using namespace boost::filesystem;
 /*
  * Helper to parse DSA name string and retrieve all tokens
  * The DSA name string is passed in by value since it'll be modified inside.
@@ -60,28 +64,32 @@ void getVendorBoardFromDSAName(std::string& dsa, std::string& vendor, std::strin
     board = tokens[1];
 }
 
-void getTimestampFromFilename(std::string filename, uint64_t &ts)
+void parseDSAFilename(std::string filename, uint16_t& vendor, uint16_t& device, uint16_t& subsystem, uint64_t &ts)
 {
-    std::regex e(".*-([0-9a-fA-F]+)." DSABIN_FILE_SUFFIX);
-    std::cmatch cm;
+    std::vector<std::string> suffix = { XSABIN_FILE_SUFFIX, DSABIN_FILE_SUFFIX};
 
-    std::regex_match(filename.c_str(), cm, e);
-    if (cm.size() == 2) {
-        std::stringstream ss;
+    for (std::string t : suffix) {
+        std::regex e(".*/([0-9a-fA-F]+)-([0-9a-fA-F]+)-([0-9a-fA-F]+)-([0-9a-fA-F]+)." + t);
+        std::cmatch cm;
 
-        ss << std::hex << cm[1];
-	ss >> ts;
-    } else
-        ts = NULL_TIMESTAMP;
+        std::regex_match(filename.c_str(), cm, e);
+        if (cm.size() == 5) {
+            vendor = std::stoull(cm.str(1), 0, 16);
+            device = std::stoull(cm.str(2), 0, 16);
+            subsystem = std::stoull(cm.str(3), 0, 16);
+            ts = std::stoull(cm.str(4), 0, 16);
+        } else
+            ts = NULL_TIMESTAMP;
+    }
 }
 
-static void uuid2ts(std::string& uuid, uint64_t& ts)
+static void uuid2ts(const std::string& uuid, uint64_t& ts)
 {
     std::string str(uuid, 0, 16);
     ts = strtoull(str.c_str(), nullptr, 16);
 }
 
-void getIntUUIDFromDTB(void *blob, uint64_t &ts, std::string &uuid)
+void getUUIDFromDTB(void *blob, uint64_t &ts, std::vector<std::string> &uuids)
 {
     struct fdt_header *bph = (struct fdt_header *)blob;
     uint32_t version = be32toh(bph->version);
@@ -94,6 +102,7 @@ void getIntUUIDFromDTB(void *blob, uint64_t &ts, std::string &uuid)
     int sz;
 
     p = p_struct;
+    uuids.clear();
     while ((tag = be32toh(GET_CELL(p))) != FDT_END)
     {
         if (tag == FDT_BEGIN_NODE)
@@ -111,33 +120,58 @@ void getIntUUIDFromDTB(void *blob, uint64_t &ts, std::string &uuid)
         if (version < 16 && sz >= 8)
             p = PALIGN(p, 8);
 
-        if (!strcmp(s, "interface_uuid"))
+        if (!strcmp(s, "logic_uuid"))
         {
-            uuid = std::string(p);
-	    uuid2ts(uuid, ts);
-            return;
+            uuids.insert(uuids.begin(), std::string(p));
+        }
+	else if (!strcmp(s, "interface_uuid"))
+        {
+            uuids.push_back(std::string(p));
         }
         p = PALIGN(p + sz, 4);
     }
+    if (uuids.size() > 0)
+        uuid2ts(uuids[0], ts);
 }
 
 DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id, const std::string& bmc) :
-    DSAValid(false), vendor(), board(), name(), file(filename),
-    timestamp(ts), uuid(id), bmcVer(bmc)
+    hasFlashImage(false), vendor(), board(), name(), file(filename),
+    timestamp(ts), bmcVer(bmc),
+    vendor_id(0), device_id(0), subsystem_id(0)
 {
-    if (filename.empty())
-        return;
-
-    size_t dotpos = filename.rfind(".");
-    size_t slashpos = filename.rfind("/");
+    size_t dotpos;
+    size_t slashpos;
+    if (!filename.empty())
+    {
+        dotpos = filename.rfind(".");
+        slashpos = filename.rfind("/");
+    }
 
     // Just DSA name.
-    if (dotpos == std::string::npos)
+    if (filename.empty() || dotpos == std::string::npos)
     {
         name = filename;
         getVendorBoardFromDSAName(name, vendor, board);
-        if (!uuid.empty() && !timestamp)
-            uuid2ts(uuid, timestamp);
+        if (!id.empty() && !timestamp)
+        {
+            auto installedDSAs = firmwareImage::getIntalledDSAs();
+            for (DSAInfo& dsa: installedDSAs)
+	    {
+                if (dsa.uuids.size() > 0 && id.compare(dsa.uuids[0]) == 0)
+                {
+                    name = dsa.name;
+                    vendor_id = dsa.vendor_id;
+                    device_id = dsa.device_id;
+                    subsystem_id = dsa.subsystem_id;
+                    partition_family_name = dsa.partition_family_name;
+                    partition_name = dsa.partition_name;
+                    build_ident = dsa.build_ident;
+                    break;
+                }
+            }
+
+            uuid2ts(id, timestamp);
+        }
         return;
     }
 
@@ -156,7 +190,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
             dsa.erase(p - 1); // remove the delimiter too
         name = dsa;
         getVendorBoardFromDSAName(name, vendor, board);
-        DSAValid = true;
+        hasFlashImage = true;
     }
     // DSABIN file path.
     else if ((suffix.compare(XSABIN_FILE_SUFFIX) == 0) ||
@@ -202,8 +236,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
         std::replace_if(name.begin(), name.end(),
             [](const char &a){ return a == ':' || a == '.'; }, '_');
         getVendorBoardFromDSAName(name, vendor, board);
-        getTimestampFromFilename(filename, timestamp);
-        // For 2RP platform, only UUIDs are provided
+        parseDSAFilename(filename, vendor_id, device_id, subsystem_id, timestamp);
         // Assume there is only 1 interface UUID is provided for BLP,
         // Show it as ID for flashing
         const axlf_section_header* dtbSection = xclbin::get_axlf_section(ap, PARTITION_METADATA);
@@ -211,10 +244,11 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
             std::shared_ptr<char> dtbbuf(new char[dtbSection->m_sectionSize]);
             in.seekg(dtbSection->m_sectionOffset);
             in.read(dtbbuf.get(), dtbSection->m_sectionSize);
-	    getIntUUIDFromDTB(dtbbuf.get(), timestamp, uuid);
+	    getUUIDFromDTB(dtbbuf.get(), timestamp, uuids);
         }
+        // For 2RP platform, only UUIDs are provided
         //timestamp = ap->m_header.m_featureRomTimeStamp;
-        DSAValid = (xclbin::get_axlf_section(ap, MCS) != nullptr);
+        hasFlashImage = (xclbin::get_axlf_section(ap, MCS) != nullptr);
 
         // Find out BMC version
         // Obtain BMC section header.
@@ -239,8 +273,80 @@ DSAInfo::DSAInfo(const std::string& filename) : DSAInfo(filename, NULL_TIMESTAMP
 {
 }
 
+DSAInfo::DSAInfo(const std::string& filename, uint16_t vid, uint16_t did, uint16_t subsys_id, std::string& pr_family, std::string& pr_name, std::string& bld_ident) : DSAInfo(filename)
+{
+    vendor_id = vid;
+    device_id = did;
+    subsystem_id = subsys_id;
+    partition_family_name = pr_family;
+    partition_name = pr_name;
+    build_ident = bld_ident;
+
+    name = pr_family + "_" + pr_name + "_" + build_ident;
+}
+
 DSAInfo::~DSAInfo()
 {
+}
+
+bool DSAInfo::matchId(std::string &id)
+{
+    uint64_t ts = strtoull(id.c_str(), nullptr, 0);
+    if (ts != 0 && errno == 0 && ts == timestamp)
+        return true;
+
+    if (uuids.size() > 0)
+    {
+        std::string uuid(id.length(), 0);
+        std::transform(id.begin(), id.end(), uuid.begin(), ::tolower);
+        std::string::size_type i = uuid.find("0x");
+        if (i == 0)
+            uuid.erase(0, 2);
+        if (!strncmp(uuids[0].c_str(), uuid.c_str(), uuid.length()))
+            return true;
+    }
+
+    return false;
+}
+
+bool DSAInfo::matchIntId(std::string &id)
+{
+    uint64_t ts = strtoull(id.c_str(), nullptr, 0);
+
+    if (uuids.size() > 1)
+    {
+        std::string uuid(id.length(), 0);
+        std::transform(id.begin(), id.end(), uuid.begin(), ::tolower);
+        std::string::size_type i = uuid.find("0x");
+        if (i == 0)
+            uuid.erase(0, 2);
+        for(unsigned int j = 1; j < uuids.size(); j++)
+        {
+            if (!strncmp(uuids[j].c_str(), uuid.c_str(), uuid.length()))
+                return true;
+            uint64_t int_ts = 0;
+            uuid2ts(id, int_ts);
+	    if (int_ts == ts)
+                return true;
+        }
+    }
+    return false;
+}
+
+bool DSAInfo::matchId(DSAInfo& dsa)
+{
+    if (uuids.size() != dsa.uuids.size())
+        return false;
+    else if (uuids.size() == 0)
+    {
+        if (timestamp == dsa.timestamp)
+            return true;
+    }
+    else if (uuids[0].compare(dsa.uuids[0]) == 0)
+    {
+        return true;
+    }
+    return false;
 }
 
 std::vector<DSAInfo> firmwareImage::installedDSA;
@@ -273,11 +379,45 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
                 continue;
 
             DSAInfo dsa(d + e);
-            if (!dsa.DSAValid)
-                continue;
             installedDSA.push_back(dsa);
         }
         closedir(dp);
+    }
+
+    dp = opendir(FORMATTED_FW_DIR);
+    if (!dp)
+        return installedDSA;
+    closedir(dp);
+
+    path formatted_fw_dir(FORMATTED_FW_DIR);
+    std::vector<std::string> suffix = { XSABIN_FILE_SUFFIX, DSABIN_FILE_SUFFIX};
+
+    for (std::string t : suffix) {
+
+        std::regex e("^" FORMATTED_FW_DIR "/" hex_digit "-" hex_digit "-" hex_digit "/(.+)/(.+)/(.+)/" hex_digit "\\." + t);
+        std::cmatch cm;
+
+        for (recursive_directory_iterator iter(formatted_fw_dir), end;
+            iter != end;
+            ++iter)
+        {
+            std::string name = iter->path().string();
+            std::regex_match(name.c_str(), cm, e);
+            if (cm.size() > 0)
+            {
+                uint16_t vid;
+                uint16_t did;
+                uint16_t subsys_id;
+                vid = std::stoi(cm.str(1), 0, 16);
+                did = std::stoi(cm.str(2), 0, 16);
+                subsys_id = std::stoi(cm.str(3), 0, 16);
+                std::string pr_family = cm.str(4);
+                std::string pr_name = cm.str(5);
+                std::string build_ident = cm.str(6);
+                DSAInfo dsa(name, vid, did, subsys_id, pr_family, pr_name, build_ident);
+                installedDSA.push_back(dsa);
+            }
+        }
     }
 
     return installedDSA;

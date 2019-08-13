@@ -41,7 +41,7 @@ namespace FormattedOutput {
   std::string getFeatureRomTimeStampAsString(const axlf &_xclBinHeader);
   std::string getVersionAsString(const axlf &_xclBinHeader);
   std::string getMagicAsString(const axlf &_xclBinHeader);
-  std::string getCipherAsString(const axlf &_xclBinHeader);
+  std::string getSignatureLengthAsString(const axlf &_xclBinHeader);
   std::string getKeyBlockAsString(const axlf &_xclBinHeader);
   std::string getUniqueIdAsString(const axlf &_xclBinHeader);
   std::string getModeAsString(const axlf &_xclBinHeader);

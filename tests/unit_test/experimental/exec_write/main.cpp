@@ -167,10 +167,11 @@ struct job_type
     while (!stop) {
       m_cmd.clear();
       for (uint32_t offset = 0x10; offset < XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA; offset += 4)
-        m_cmd.add(m_cuaddr + offset,0);
-      m_cmd.add(m_cuaddr + XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA,m_bo_dev_addr); // low
-      m_cmd.add(m_cuaddr + XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA+4,(m_bo_dev_addr >> 32) & 0xFFFFFFFF); // high part of a
+        m_cmd.add(offset,0);
+      m_cmd.add(XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA,m_bo_dev_addr); // low
+      m_cmd.add(XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA+4,(m_bo_dev_addr >> 32) & 0xFFFFFFFF); // high part of a
       m_cmd.add_cu(m_cuidx);
+      //m_cmd.add_ctx(0);
       m_cmd.execute();
       m_cmd.wait();
       assert(m_cmd.state() == ERT_CMD_STATE_COMPLETED);

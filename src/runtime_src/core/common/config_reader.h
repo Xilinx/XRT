@@ -149,6 +149,13 @@ get_timeline_trace()
   return value;
 }
 
+inline std::string
+get_trace_buffer_size()
+{
+  static std::string value = detail::get_string_value("Debug.trace_buffer_size", "1M");
+  return value;
+}
+
 inline bool
 get_api_checks()
 {
@@ -279,7 +286,7 @@ get_ert_slotsize()
 inline bool
 get_cdma()
 {
-  static unsigned int value = detail::get_bool_value("Runtime.cdma",true);
+  static bool value = detail::get_bool_value("Runtime.cdma",true);
   return value;
 }
 
@@ -334,6 +341,24 @@ get_sw_em_driver()
   return value;
 }
 
-}}
+/* Indicate whether Block automation based Emulation Models are used. By default, it is turned off.
+ * This is used to turn on xclRead/Write based counter and trace data collection flow in ProfileIP objects in XDP.
+ * Otherwise, fall back on old HwEmuShim layer based RPC call mechanism.
+ */
+
+inline bool get_system_dpa_emulation()
+{
+  static bool value = detail::get_bool_value("Emulation.system_dpa", false);
+  return value;
+}
+
+inline std::string
+get_ctx_info()
+{
+  static std::string value = detail::get_string_value("Runtime.ctx_info","");
+  return value;
+}
+
+}} // config,xrt_core
 
 #endif

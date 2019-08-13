@@ -139,7 +139,8 @@ extern "C" {
         BITSTREAM_PARTIAL_PDI,
         PARTITION_METADATA,
         EMULATION_DATA,
-        SYSTEM_METADATA
+        SYSTEM_METADATA,
+        SOFT_KERNEL
     };
 
     enum MEM_TYPE {
@@ -197,7 +198,9 @@ extern "C" {
 
     struct axlf {
         char m_magic[8];                            /* Should be "xclbin2\0"  */
-        unsigned char m_cipher[32];                 /* Hmac output digest */
+        int32_t m_signature_length;                 /* Length of the signature. -1 indicates no signature */
+        unsigned char reserved[28];                 /* Note: Initialized to 0xFFs */
+
         unsigned char m_keyBlock[256];              /* Signature for validation of binary */
         uint64_t m_uniqueId;                        /* axlf's uniqueId, use it to skip redownload etc */
         struct axlf_header m_header;                /* Inline header */
@@ -314,11 +317,12 @@ extern "C" {
 
     struct debug_ip_data {
         uint8_t m_type; // type of enum DEBUG_IP_TYPE
-        uint8_t m_index;
+        uint8_t m_index_lowbyte;
         uint8_t m_properties;
         uint8_t m_major;
         uint8_t m_minor;
-        uint8_t m_reserved[3];
+        uint8_t m_index_highbyte;
+        uint8_t m_reserved[2];
         uint64_t m_base_address;
         char    m_name[128];
     };
@@ -374,6 +378,25 @@ extern "C" {
         char m_version[64];
         char m_md5value[33];               /* MD5 Expected Value(e.g., 56027182079c0bd621761b7dab5a27ca)*/
         char m_padding[7];                 /* Padding */
+    };
+
+    struct soft_kernel {                   /* soft kernel data section  */
+        // Prefix Syntax:
+        //   mpo - member, pointer, offset  
+        //     This variable represents a zero terminated string 
+        //     that is offseted from the beginning of the section. 
+        //   
+        //     The pointer to access the string is initialized as follows:
+        //     char * pCharString = (address_of_section) + (mpo value)
+        uint32_t mpo_name;         // Name of the soft kernel 
+        uint32_t m_image_offset;   // Image offset
+        uint32_t m_image_size;     // Image size
+        uint32_t mpo_version;      // Version
+        uint32_t mpo_md5_value;    // MD5 checksum
+        uint32_t mpo_symbol_name;  // Symbol name
+        uint32_t m_num_instances;  // Number of instances
+        uint8_t padding[36];       // Reserved for future use
+        uint8_t reservedExt[16];   // Reserved for future extended data
     };
 
     enum CHECKSUM_TYPE

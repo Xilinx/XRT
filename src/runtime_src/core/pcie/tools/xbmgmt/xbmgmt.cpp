@@ -35,11 +35,12 @@ struct subCmd {
 
 static const std::map<std::string, struct subCmd> subCmdList = {
     { "help", {helpHandler, subCmdHelpDesc, subCmdHelpUsage} },
+    { "version", {versionHandler, subCmdVersionDesc, subCmdVersionUsage} },
     { "scan", {scanHandler, subCmdScanDesc, subCmdScanUsage} },
     { "flash", {flashHandler, subCmdFlashDesc, subCmdFlashUsage} },
     { "reset", {resetHandler, subCmdResetDesc, subCmdResetUsage} },
     { "clock", {clockHandler, subCmdClockDesc, subCmdClockUsage} },
-    { "program", {progHandler, subCmdProgDesc, subCmdProgUsage} },
+    { "partition", {partHandler, subCmdPartDesc, subCmdPartUsage} },
     { "config", {configHandler, subCmdConfigDesc, subCmdConfigUsage} },
     { "nifd", {nifdHandler, subCmdNifdDesc, subCmdNifdUsage} },
 };
@@ -96,7 +97,7 @@ unsigned int bdf2index(const std::string& bdfStr)
         }
     }
 
-    std::cout << "ERROR: No card found for " << bdfStr << std::endl;
+    std::cout << "ERROR: No mgmt PF found for " << bdfStr << std::endl;
     return UINT_MAX;
 }
 

@@ -77,11 +77,11 @@ namespace xdp {
 
     // Log a dependency (e.g., a kernel waiting on a host write)
     void logDependency(RTUtil::e_profile_command_kind objKind,
-        const std::string eventString, const std::string dependString);
+        const std::string& eventString, const std::string& dependString);
 
     // Log device trace
-    void logDeviceTrace(std::string deviceName, std::string binaryName, xclPerfMonType type,
-        xclTraceResultsVector& traceVector);
+    void logDeviceTrace(const std::string& deviceName, const std::string& binaryName, xclPerfMonType type,
+        xclTraceResultsVector& traceVector, bool endLog);
 
   public:
     // Timeline trace writers
@@ -111,7 +111,7 @@ namespace xdp {
 
   private:
     // helpers
-    double getDeviceTimeStamp(double hostTimeStamp, std::string& deviceName);
+    double getDeviceTimeStamp(double hostTimeStamp, const std::string& deviceName);
     void addToThreadIds(const std::thread::id& threadId) {
       mThreadIdSet.insert(threadId);
     }
