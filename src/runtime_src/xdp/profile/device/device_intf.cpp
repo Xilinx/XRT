@@ -417,6 +417,7 @@ DeviceIntf::~DeviceIntf()
      }
     }
     ifs.close();
+
 #if 0
     for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
         (*itr)->showProperties();

@@ -90,7 +90,9 @@ namespace xdp {
       startTrace();
     }
 
-    if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM))
+    // With new XDP flow, HW Emu should be similar to Device flow. So, multiple calls to trace/counters should not be needed.
+    // But needed for older flow
+    if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM) && Plugin->getSystemDPAEmulation() == false)
       xoclp::platform::start_device_trace(platform, XCL_PERF_MON_ACCEL, numComputeUnits);
 
     if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE)) {
@@ -117,13 +119,16 @@ namespace xdp {
     // Log Counter Data
     logDeviceCounters(true, true, true);  // reads and logs device counters for all monitors in all flows
 
+    // With new XDP flow, HW Emu should be similar to Device flow. So, multiple calls to trace/counters should not be needed.
+    // But needed for older flow
     // Log Trace Data
     // Log accel trace before data trace as that is used for timestamp calculations
-    if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM)) {
+    if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM) && Plugin->getSystemDPAEmulation() == false) {
       logFinalTrace(XCL_PERF_MON_ACCEL);
       logFinalTrace(XCL_PERF_MON_STR);
     }
-    logFinalTrace(XCL_PERF_MON_MEMORY);  // reads and logs trace data for all monitors in HW flow
+
+    logFinalTrace(XCL_PERF_MON_MEMORY /* type should not matter */);  // reads and logs trace data for all monitors in HW flow
 
     endTrace();
 
@@ -162,7 +167,7 @@ namespace xdp {
       }
       DeviceIntf* dInt = nullptr;
       auto xdevice = device->get_xrt_device();
-      if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE)) {
+      if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
         dInt = &(itr->second.mDeviceIntf);
         // Find good place to set device handle
         dInt->setDeviceHandle(xdevice);
@@ -187,7 +192,7 @@ namespace xdp {
       info->mSampleIntervalMsec = getProfileManager()->getSampleIntervalMsec();
 
       // configureDataflow
-      if(dInt) {
+      if(dInt && (Plugin->getFlowMode() == xdp::RTUtil::DEVICE)) {
         /* If CU corresponding to Accel Monitors has AP Control Chain, then enable Dataflow on the Accel Monitors */
         unsigned int numMon = dInt->getNumMonitors(XCL_PERF_MON_ACCEL);
         auto ip_config = std::make_unique <bool []>(numMon);
@@ -226,7 +231,7 @@ namespace xdp {
 
       auto xdevice = device->get_xrt_device();
       DeviceIntf* dInt = nullptr;
-      if((Plugin->getFlowMode() == xdp::RTUtil::DEVICE)) {
+      if((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
         dInt = &(itr->second.mDeviceIntf);
         dInt->setDeviceHandle(xdevice);
         dInt->readDebugIPlayout();
@@ -260,7 +265,7 @@ namespace xdp {
         }
       } else {
         xdevice->startTrace(XCL_PERF_MON_MEMORY, traceOption);
-        // for HW_EMU consider , 2 calls
+        // for HW_EMU consider , 2 calls , with new XDP, all flow should be same
       }
 
       // Get/set clock freqs
@@ -327,8 +332,11 @@ namespace xdp {
 
     XOCL_DEBUGF("getDeviceTrace: START (forceRead: %d)\n", forceReadTrace);
     if(deviceTraceProfilingOn()) {
-      logTrace(XCL_PERF_MON_MEMORY, forceReadTrace, true);
-      if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM)) {
+      logTrace(XCL_PERF_MON_MEMORY /* in new flow, type should not matter in HW or even HW Emu */, forceReadTrace, true);
+
+    // With new XDP flow, HW Emu should be similar to Device flow. So, multiple calls to trace/counters should not be needed.
+    // But needed for older flow
+      if ((Plugin->getFlowMode() == xdp::RTUtil::HW_EM) && Plugin->getSystemDPAEmulation() == false) {
         xoclp::platform::log_device_trace(platform, XCL_PERF_MON_ACCEL, forceReadTrace);
         xoclp::platform::log_device_trace(platform, XCL_PERF_MON_STR, forceReadTrace);
       }
@@ -440,7 +448,7 @@ namespace xdp {
     unsigned int numStreamSlots = 0;
     unsigned int numShellSlots = 0;
     if (applicationProfilingOn() && ProfileMgr->isDeviceProfileOn()) {
-      if (Plugin->getFlowMode() == RTUtil::DEVICE) {
+      if (Plugin->getFlowMode() == RTUtil::DEVICE || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
         for (auto device : Platform->get_device_range()) {
           auto itr = DeviceData.find(device);
           if (itr==DeviceData.end()) {
@@ -505,7 +513,7 @@ namespace xdp {
       }
       xdp::xoclp::platform::device::data* info = &(itr->second);
       DeviceIntf* dInt = nullptr;
-      if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE)) {
+      if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
         dInt = &(itr->second.mDeviceIntf);
         dInt->setDeviceHandle(xdevice);
       }
@@ -537,7 +545,9 @@ namespace xdp {
         //update the last time sample
         info->mLastCountersSampleTime = nowTime;
       }
-      if(Plugin->getFlowMode() == xdp::RTUtil::HW_EM) {
+    // With new XDP flow, HW Emu should be similar to Device flow. So, multiple calls to trace/counters should not be needed.
+    // But needed for older flow
+      if(Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation() == false) {
           xoclp::platform::device::logCounters(device, XCL_PERF_MON_ACCEL, firstReadAfterProgram, forceReadCounters);
           xoclp::platform::device::logCounters(device, XCL_PERF_MON_STR, firstReadAfterProgram, forceReadCounters);
       }
@@ -554,7 +564,7 @@ namespace xdp {
     cl_int ret = -1;
 
     while (ret == -1 && iter < max_iter) {
-      if(Plugin->getFlowMode() == xdp::RTUtil::DEVICE) {
+      if(Plugin->getFlowMode() == xdp::RTUtil::DEVICE || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
         ret = (int)logTrace(type, true /* forceRead*/, true /* logAllMonitors */);
       } else {
         ret = xoclp::platform::log_device_trace(getclPlatformID(),type, true);
@@ -593,7 +603,7 @@ namespace xdp {
       }
       xdp::xoclp::platform::device::data* info = &(itr->second);
       DeviceIntf* dInt = nullptr;
-      if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE)) {
+      if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
         dInt = &(itr->second.mDeviceIntf);
         dInt->setDeviceHandle(device->get_xrt_device());
       }
@@ -659,6 +669,7 @@ namespace xdp {
             profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector);
             info->mTraceVector.mLength= 0;
 
+// With new emulation support, is this required ?
             // Only check repeatedly for trace buffer flush if HW emulation
             if(Plugin->getFlowMode() != xdp::RTUtil::HW_EM)
               break;

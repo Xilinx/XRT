@@ -94,7 +94,6 @@ struct xocl_board_private {
 };
 
 struct xocl_flash_privdata {
-	u64			bar_off;
 	u32			flash_type;
 	u32			properties;
 	uint64_t		data[1];
@@ -1365,6 +1364,59 @@ struct xocl_subdev_map {
 		.mpsoc = true,						\
 	}
 
+#define XOCL_RES_FLASH_MFG_U50				\
+	((struct resource []) {				\
+		{					\
+			.start = 0x1F50000,		\
+			.end = 0x1F5FFFF,		\
+			.flags = IORESOURCE_MEM,	\
+		},					\
+	 })
+
+#define XOCL_DEVINFO_FLASH_MFG_U50				\
+	{						\
+		XOCL_SUBDEV_FLASH,			\
+		XOCL_FLASH,				\
+		XOCL_RES_FLASH_MFG_U50,			\
+		ARRAY_SIZE(XOCL_RES_FLASH_MFG_U50),	\
+	}
+
+#define	XOCL_RES_XMC_MFG_U50					\
+		((struct resource []) {			\
+			{				\
+			.start	= 0x140000,		\
+			.end 	= 0x141FFF,		\
+			.flags  = IORESOURCE_MEM,	\
+			},				\
+			{				\
+			.start	= 0x180000,		\
+			.end 	= 0x181FFF,		\
+			.flags  = IORESOURCE_MEM,	\
+			},				\
+		})
+
+#define	XOCL_DEVINFO_XMC_MFG_U50			\
+	{						\
+		XOCL_SUBDEV_MB,				\
+		XOCL_XMC,				\
+		XOCL_RES_XMC_MFG_U50,			\
+		ARRAY_SIZE(XOCL_RES_XMC_MFG_U50),	\
+	}
+
+#define MFG_RES_U50							\
+	((struct xocl_subdev_info []) {					\
+	 	XOCL_DEVINFO_FLASH_MFG_U50,				\
+	 	XOCL_DEVINFO_XMC_MFG_U50,				\
+	 })
+
+#define	XOCL_BOARD_XBB_MFG_U50						\
+	(struct xocl_board_private){					\
+		.flags = XOCL_DSAFLAG_MFG,				\
+		.board_name = "u50",					\
+		.subdev_info	= MFG_RES_U50,				\
+		.subdev_num = ARRAY_SIZE(MFG_RES_U50),			\
+		.flash_type = FLASH_TYPE_SPI,				\
+	}
 
 #define	XOCL_BOARD_XBB_MFG(board)					\
 	(struct xocl_board_private){					\
@@ -1402,42 +1454,29 @@ struct xocl_subdev_map {
 		.level = XOCL_SUBDEV_LEVEL_PRP,		\
 	}
 
-#define	XOCL_RES_MAILBOX_MGMT_DYN				\
+#define XOCL_RES_MAILBOX_PRP				\
 	((struct resource []) {				\
 		{					\
-			.start	= 0x1e10000,		 \
-			.end	= 0x1e1002F,		\
+			.start	= 0x0,		\
+			.end	= 0x2F,		\
 			.flags  = IORESOURCE_MEM,	\
-		},					\
-		{					\
-			.start	= 11,			\
-			.end	= 11,			\
-			.flags  = IORESOURCE_IRQ,	\
 		},					\
 	})
 
-#define	XOCL_DEVINFO_MAILBOX_MGMT_DYN			\
+#define XOCL_DEVINFO_MAILBOX_PRP			\
 	{						\
 		XOCL_SUBDEV_MAILBOX,			\
 		XOCL_MAILBOX,				\
-		XOCL_RES_MAILBOX_MGMT_DYN,		\
-		ARRAY_SIZE(XOCL_RES_MAILBOX_MGMT_DYN),	\
-		.dyn_ip = 1,				\
+		XOCL_RES_MAILBOX_PRP,			\
+		ARRAY_SIZE(XOCL_RES_MAILBOX_PRP),	\
 		.level = XOCL_SUBDEV_LEVEL_PRP,		\
 	}
 
-#define	XOCL_DEVINFO_MAILBOX_USER_DYN			\
-	{						\
-		XOCL_SUBDEV_MAILBOX,			\
-		XOCL_MAILBOX,				\
-		XOCL_RES_MAILBOX_USER_DYN,		\
-		ARRAY_SIZE(XOCL_RES_MAILBOX_USER_DYN),	\
-	}
 
-#define	XOCL_RES_MAILBOX_USER_DYN			\
+#define	XOCL_RES_MAILBOX_USER_U50			\
 	((struct resource []) {				\
 		{					\
-			.start	= 0x1f20000,		 \
+			.start	= 0x1f20000,		\
 			.end	= 0x1f2002F,		\
 			.flags  = IORESOURCE_MEM,	\
 		},					\
@@ -1448,18 +1487,18 @@ struct xocl_subdev_map {
 		},					\
 	})
 
-#define	XOCL_DEVINFO_MAILBOX_USER_DYN			\
+#define	XOCL_DEVINFO_MAILBOX_USER_U50			\
 	{						\
 		XOCL_SUBDEV_MAILBOX,			\
 		XOCL_MAILBOX,				\
-		XOCL_RES_MAILBOX_USER_DYN,		\
-		ARRAY_SIZE(XOCL_RES_MAILBOX_USER_DYN),	\
+		XOCL_RES_MAILBOX_USER_U50,		\
+		ARRAY_SIZE(XOCL_RES_MAILBOX_USER_U50),	\
 	}
 
 #define MGMT_RES_DYNAMIC_IP						\
 		((struct xocl_subdev_info []) {				\
 		 	XOCL_DEVINFO_FEATURE_ROM_DYN,			\
-		 	XOCL_DEVINFO_MAILBOX_MGMT_DYN,			\
+		 	XOCL_DEVINFO_IORES_MGMT,			\
 			XOCL_DEVINFO_FMGR,      			\
 		})
 
@@ -1485,7 +1524,6 @@ struct xocl_subdev_map {
 #define USER_RES_DYNAMIC_IP						\
 		((struct xocl_subdev_info []) {				\
 		 	XOCL_DEVINFO_FEATURE_ROM_USER_DYN,		\
-		 	XOCL_DEVINFO_MAILBOX_USER_DYN,			\
 		 	XOCL_DEVINFO_SCHEDULER_DYN,			\
 		 	XOCL_DEVINFO_ICAP_USER,				\
 		 	XOCL_DEVINFO_XMC_USER,				\
@@ -1562,7 +1600,7 @@ struct xocl_subdev_map {
 #define USER_RES_U50							\
 		((struct xocl_subdev_info []) {				\
 		 	XOCL_DEVINFO_FEATURE_ROM_U50,			\
-		 	XOCL_DEVINFO_MAILBOX_USER_DYN,			\
+		 	XOCL_DEVINFO_MAILBOX_USER_U50,			\
 		 	XOCL_DEVINFO_ICAP_USER,				\
 		 	XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
@@ -1621,7 +1659,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0xD004, PCI_ANY_ID, XBB_MFG("u250")) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0xD008, PCI_ANY_ID, XBB_MFG("u280-es1")) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0xD00C, PCI_ANY_ID, XBB_MFG("u280")) },\
-	{ XOCL_PCI_DEVID(0x10EE, 0xD020, PCI_ANY_ID, XBB_MFG("u50")) }, \
+	{ XOCL_PCI_DEVID(0x10EE, 0xD020, PCI_ANY_ID, XBB_MFG_U50) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0xEB10, PCI_ANY_ID, XBB_MFG("twitch")) }, \
 	{ XOCL_PCI_DEVID(0x13FE, 0x806C, PCI_ANY_ID, XBB_MFG("advantech")) }
 

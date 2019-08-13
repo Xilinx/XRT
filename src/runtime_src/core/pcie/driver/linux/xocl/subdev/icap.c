@@ -1210,7 +1210,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	unsigned short deviceid = pcidev->device;
 	struct axlf *bin_obj_axlf;
 	const struct firmware *fw;
-	char fw_name[128];
+	char fw_name[256];
 	XHwIcap_Bit_Header bit_header = { 0 };
 	long err = 0;
 	uint64_t length = 0;
@@ -1422,26 +1422,41 @@ static long icap_download_clear_bitstream(struct icap *icap)
 
 // DECLARE_WAIT_QUEUE_HEAD(mytestwait);
 
-static int icap_download_rp(struct platform_device *pdev, int level, bool force)
+static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct mailbox_req mbreq = { MAILBOX_REQ_CHG_SHELL, };
+	struct mailbox_req mbreq = { 0 };
 	int ret = 0;
 
-
-
+	mbreq.req = MAILBOX_REQ_CHG_SHELL;
 	mutex_lock(&icap->icap_lock);
 	if (!icap->rp_bit || !icap->rp_fdt) {
-		xocl_xdev_err(xdev, "Invalid reprogram request");
+		xocl_xdev_err(xdev, "Invalid reprogram request %p.%p",
+			icap->rp_bit, icap->rp_fdt);
 		ret = -EINVAL;
 		goto failed;
 	}
-	if (!force) {
+
+	if (!XDEV(xdev)->fdt_blob) {
+		xocl_xdev_err(xdev, "Empty fdt blob");
+		ret = -EINVAL;
+		goto failed;
+	}
+
+	ret = xocl_fdt_check_uuids(xdev, icap->rp_fdt, XDEV(xdev)->fdt_blob);
+	if (ret) {
+		xocl_xdev_err(xdev, "Incompatible uuids");
+		goto failed;
+	}
+
+	if (flag == RP_DOWNLOAD_DRY)
+		goto end;
+	else if (flag == RP_DOWNLOAD_NORMAL) {
 		(void) xocl_peer_notify(xocl_get_xdev(icap->icap_pdev), &mbreq,
 				sizeof(struct mailbox_req));
 		ICAP_INFO(icap, "Notified userpf to program rp");
-		goto failed;
+		goto end;
 	}
 
 	ret = xocl_fdt_blob_input(xdev, icap->rp_fdt);
@@ -1478,13 +1493,18 @@ static int icap_download_rp(struct platform_device *pdev, int level, bool force)
 		goto failed;
 	}
 
-	vfree(icap->rp_bit);
-	icap->rp_bit = NULL;
-	icap->rp_bit_len = 0;
-	vfree(icap->rp_fdt);
-	icap->rp_fdt = NULL;
-
 failed:
+	if (icap->rp_bit) {
+		vfree(icap->rp_bit);
+		icap->rp_bit = NULL;
+		icap->rp_bit_len = 0;
+	}
+	if (icap->rp_fdt) {
+		vfree(icap->rp_fdt);
+		icap->rp_fdt = NULL;
+	}
+
+end:
 	mutex_unlock(&icap->icap_lock);
 	return ret;
 }
@@ -2159,12 +2179,31 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	struct axlf *xclbin = (struct axlf *)u_xclbin;
 	int err = 0;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	const struct axlf_section_header *dtbHeader = NULL;
 
 	/* Sanity check xclbin. */
 	if (memcmp(xclbin->m_magic, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2))) {
 		ICAP_ERR(icap, "invalid xclbin magic string");
 		return -EINVAL;
 	}
+
+	dtbHeader = get_axlf_section_hdr(icap, xclbin, PARTITION_METADATA);
+	if (dtbHeader) {
+		ICAP_INFO(icap, "check interface uuid");
+		if (!XDEV(xdev)->fdt_blob) {
+			ICAP_ERR(icap, "did not find platform dtb");
+			return -EINVAL;
+		}
+		err = xocl_fdt_check_uuids(xdev,
+				(const void *)XDEV(xdev)->fdt_blob,
+				(const void *)((char*)xclbin +
+				dtbHeader->m_sectionOffset));
+		if (err) {
+			ICAP_ERR(icap, "interface uuids do not match");
+			return -EINVAL;
+		}
+	}
+
 	if (xocl_xrt_version_check(xdev, xclbin, true)) {
 		ICAP_ERR(icap, "xclbin isn't supported by current XRT");
 		return -EINVAL;
@@ -3355,6 +3394,8 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 
 	memcpy(icap->rp_bit, header, icap->rp_bit_len);
 	vfree(axlf);
+
+	ICAP_INFO(icap, "write axlf to device successfully. len %ld", len);
 
 	mutex_unlock(&icap->icap_lock);
 
