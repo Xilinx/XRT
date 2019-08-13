@@ -193,6 +193,10 @@ int main(int argc, char *argv[])
     }
     if (cmd == xcldev::VERSION) {
         xrt::version::print(std::cout);
+        std::cout.width(26); std::cout << std::internal << "XOCL: " << sensor_tree::get<std::string>( "runtime.build.xocl", "N/A" ) 
+                                       << std:: endl;
+        std::cout.width(26); std::cout << std::internal << "XCLMGMT: " << sensor_tree::get<std::string>( "runtime.build.xclmgmt", "N/A" ) 
+                                       << std::endl;
         return 1;
     }
 
