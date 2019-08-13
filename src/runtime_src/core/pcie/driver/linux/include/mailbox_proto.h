@@ -151,7 +151,7 @@ struct xcl_sensor {
 	char	 bd_name[256];
 	char	 bmc_ver[256];
 	uint32_t max_power;
-	uint32_t fan_num;
+	uint32_t fan_presence;
 	uint32_t config_mode;
 };
 

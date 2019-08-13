@@ -29,8 +29,20 @@ static ssize_t bar_off_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_flash *flash = dev_get_drvdata(dev);
+	xdev_handle_t xdev = xocl_get_xdev(flash->pdev);
+	struct resource *res;
+	int ret, bar_idx;
+	resource_size_t bar_off;
 
-	return sprintf(buf, "%lld\n", flash->priv_data->bar_off);
+	res = platform_get_resource(to_platform_device(dev), IORESOURCE_MEM, 0);
+	if (!res)
+		return -ENODEV;
+
+	ret = xocl_ioaddr_to_baroff(xdev, res->start, &bar_idx, &bar_off);
+	if (ret)
+		return ret;
+
+	return sprintf(buf, "%lld\n", bar_off);
 }
 
 static DEVICE_ATTR_RO(bar_off);
@@ -39,9 +51,16 @@ static ssize_t flash_type_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_flash *flash = dev_get_drvdata(dev);
+	xdev_handle_t xdev = xocl_get_xdev(flash->pdev);
+	ssize_t ret;
 
-	return sprintf(buf, "%s\n", (char *)flash->priv_data +
+	if (flash->priv_data)
+		ret = sprintf(buf, "%s\n", (char *)flash->priv_data +
 			flash->priv_data->flash_type);
+	else
+		ret = sprintf(buf, "%s\n", XDEV(xdev)->priv.flash_type);
+
+	return ret;
 }
 
 static DEVICE_ATTR_RO(flash_type);
@@ -51,8 +70,10 @@ static ssize_t properties_show(struct device *dev,
 {
 	struct xocl_flash *flash = dev_get_drvdata(dev);
 
-	return sprintf(buf, "%s\n", (char *)flash->priv_data +
+	if (flash->priv_data)
+		return sprintf(buf, "%s\n", (char *)flash->priv_data +
 			flash->priv_data->properties);
+	return -EINVAL;
 }
 
 static DEVICE_ATTR_RO(properties);
@@ -105,10 +126,6 @@ static int flash_probe(struct platform_device *pdev)
 	}
 
 	flash->priv_data = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
-	if (!flash->priv_data) {
-		xocl_err(&pdev->dev, "Empty priv data");
-		return -EINVAL;
-	}
 
 	xocl_info(&pdev->dev, "Flash IO start: 0x%llx, end: 0x%llx",
 		flash->res->start, flash->res->end);

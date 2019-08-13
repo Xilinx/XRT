@@ -254,21 +254,21 @@ private:
     uint64_t mPerfMonFifoCtrlBaseAddress = 0;
     uint64_t mPerfMonFifoReadBaseAddress = 0;
     uint64_t mTraceFunnelAddress = 0;
-    uint64_t mPerfMonBaseAddress[XSPM_MAX_NUMBER_SLOTS] = {};
-    uint64_t mAccelMonBaseAddress[XSAM_MAX_NUMBER_SLOTS] = {};
-    uint64_t mStreamMonBaseAddress[XSSPM_MAX_NUMBER_SLOTS] = {};
-    std::string mPerfMonSlotName[XSPM_MAX_NUMBER_SLOTS] = {};
-    std::string mAccelMonSlotName[XSAM_MAX_NUMBER_SLOTS] = {};
-    std::string mStreamMonSlotName[XSSPM_MAX_NUMBER_SLOTS] = {};
-    uint8_t mPerfmonProperties[XSPM_MAX_NUMBER_SLOTS] = {};
-    uint8_t mAccelmonProperties[XSAM_MAX_NUMBER_SLOTS] = {};
-    uint8_t mStreammonProperties[XSSPM_MAX_NUMBER_SLOTS] = {};
-    uint8_t mPerfmonMajorVersions[XSPM_MAX_NUMBER_SLOTS] = {};
-    uint8_t mAccelmonMajorVersions[XSAM_MAX_NUMBER_SLOTS] = {};
-    uint8_t mStreammonMajorVersions[XSSPM_MAX_NUMBER_SLOTS] = {};
-    uint8_t mPerfmonMinorVersions[XSPM_MAX_NUMBER_SLOTS] = {};
-    uint8_t mAccelmonMinorVersions[XSAM_MAX_NUMBER_SLOTS] = {};
-    uint8_t mStreammonMinorVersions[XSSPM_MAX_NUMBER_SLOTS] = {};
+    uint64_t mPerfMonBaseAddress[XAIM_MAX_NUMBER_SLOTS] = {};
+    uint64_t mAccelMonBaseAddress[XAM_MAX_NUMBER_SLOTS] = {};
+    uint64_t mStreamMonBaseAddress[XASM_MAX_NUMBER_SLOTS] = {};
+    std::string mPerfMonSlotName[XAIM_MAX_NUMBER_SLOTS] = {};
+    std::string mAccelMonSlotName[XAM_MAX_NUMBER_SLOTS] = {};
+    std::string mStreamMonSlotName[XASM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mPerfmonProperties[XAIM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mAccelmonProperties[XAM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mStreammonProperties[XASM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mPerfmonMajorVersions[XAIM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mAccelmonMajorVersions[XAM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mStreammonMajorVersions[XASM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mPerfmonMinorVersions[XAIM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mAccelmonMinorVersions[XAM_MAX_NUMBER_SLOTS] = {};
+    uint8_t mStreammonMinorVersions[XASM_MAX_NUMBER_SLOTS] = {};
 
     // QDMA AIO
     aio_context_t mAioContext;

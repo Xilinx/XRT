@@ -76,10 +76,10 @@ static int scanDevices(bool verbose, bool json)
             std::cout << "Card [" << f.sGetDBDF() << "]" << std::endl;
             std::cout << "\tCard type:\t\t" << board.board << std::endl;
             std::cout << "\tFlash type:\t\t" << f.sGetFlashType() << std::endl;
-            std::cout << "\tShell running on FPGA:" << std::endl;
+            std::cout << "\tFlashable partition running on FPGA:" << std::endl;
             std::cout << "\t\t" << board << std::endl;
 
-            std::cout << "\tShell package installed in system:\t";
+            std::cout << "\tFlashable partitions installed in system:\t";
             if (!installedDSA.empty()) {
                 for (auto& d : installedDSA)
                     std::cout << std::endl << "\t\t" << d;
@@ -106,40 +106,6 @@ static int scanDevices(bool verbose, bool json)
     }
 
     return 0;
-}
-
-static bool match_id(DSAInfo& dsa, std::string& id)
-{
-    if (dsa.uuid.empty())
-    {
-        uint64_t ts = strtoull(id.c_str(), nullptr, 0);
-        if (ts == dsa.timestamp)
-            return true;
-    } else {
-        std::string uuid(id.length(), 0);
-        std::transform(id.begin(), id.end(), uuid.begin(), ::tolower);
-        std::string::size_type i = uuid.find("0x");
-        if (i == 0)
-            uuid.erase(0, 2);
-        if (!strncmp(dsa.uuid.c_str(), uuid.c_str(), uuid.length()))
-            return true;
-    }
-    return false;
-}
-
-static bool match_id(DSAInfo& dsa1, DSAInfo& dsa2)
-{
-    if (dsa1.uuid.empty() != dsa2.uuid.empty())
-        return false;
-    else if (dsa1.uuid.empty())
-    {
-        if (dsa1.timestamp == dsa2.timestamp)
-            return true;
-    } else {
-        if (!strcmp(dsa1.uuid.c_str(), dsa2.uuid.c_str()))
-            return true;
-    }
-    return false;
 }
 
 // Update SC firmware on the board.
@@ -222,7 +188,7 @@ static int updateShellAndSC(unsigned boardIdx, DSAInfo& candidate, bool& reboot)
     DSAInfo current = flasher.getOnBoardDSA();
     if (!current.name.empty()) {
         same_dsa = (candidate.name == current.name &&
-            match_id(candidate, current));
+            candidate.matchId(current));
         same_bmc = (current.bmcVer.empty() ||
             candidate.bmcVer == current.bmcVer);
     }
@@ -285,7 +251,7 @@ static DSAInfo selectShell(unsigned idx, std::string& dsa, std::string& id)
             DSAInfo& idsa = installedDSA[i];
             if (dsa != idsa.name)
                 continue;
-            if (!id.empty() && !match_id(idsa, id))
+            if (!id.empty() && !idsa.matchId(id))
                 continue;
             if (candidateDSAIndex != UINT_MAX) {
                 std::cout << "multiple shells are installed" << std::endl;
@@ -308,7 +274,7 @@ static DSAInfo selectShell(unsigned idx, std::string& dsa, std::string& id)
     DSAInfo currentDSA = flasher.getOnBoardDSA();
     if (!currentDSA.name.empty()) {
         same_dsa = (candidate.name == currentDSA.name &&
-            match_id(candidate, currentDSA));
+            candidate.matchId(currentDSA));
         same_bmc = (currentDSA.bmcVer.empty() ||
             candidate.bmcVer == currentDSA.bmcVer);
     }
@@ -333,7 +299,7 @@ static int autoFlash(unsigned index, std::string& shell,
         auto installedDSAs = firmwareImage::getIntalledDSAs();
         for (DSAInfo& dsa : installedDSAs) {
             if (shell == dsa.name &&
-                (id.empty() || match_id(dsa, id))) {
+                (id.empty() || dsa.matchId(id))) {
                 if (!foundDSA)
                     foundDSA = true;
                 else
@@ -368,7 +334,7 @@ static int autoFlash(unsigned index, std::string& shell,
     // Collect all indexes of boards need updating
     for (unsigned i : boardsToCheck) {
         DSAInfo dsa = selectShell(i, shell, id);
-        if (dsa.DSAValid)
+        if (dsa.hasFlashImage)
             boardsToUpdate.push_back(std::make_pair(i, dsa));
     }
 

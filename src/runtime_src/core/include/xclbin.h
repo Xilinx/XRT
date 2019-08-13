@@ -139,7 +139,8 @@ extern "C" {
         BITSTREAM_PARTIAL_PDI,
         PARTITION_METADATA,
         EMULATION_DATA,
-        SYSTEM_METADATA
+        SYSTEM_METADATA,
+        SOFT_KERNEL
     };
 
     enum MEM_TYPE {
@@ -377,6 +378,25 @@ extern "C" {
         char m_version[64];
         char m_md5value[33];               /* MD5 Expected Value(e.g., 56027182079c0bd621761b7dab5a27ca)*/
         char m_padding[7];                 /* Padding */
+    };
+
+    struct soft_kernel {                   /* soft kernel data section  */
+        // Prefix Syntax:
+        //   mpo - member, pointer, offset  
+        //     This variable represents a zero terminated string 
+        //     that is offseted from the beginning of the section. 
+        //   
+        //     The pointer to access the string is initialized as follows:
+        //     char * pCharString = (address_of_section) + (mpo value)
+        uint32_t mpo_name;         // Name of the soft kernel 
+        uint32_t m_image_offset;   // Image offset
+        uint32_t m_image_size;     // Image size
+        uint32_t mpo_version;      // Version
+        uint32_t mpo_md5_value;    // MD5 checksum
+        uint32_t mpo_symbol_name;  // Symbol name
+        uint32_t m_num_instances;  // Number of instances
+        uint8_t padding[36];       // Reserved for future use
+        uint8_t reservedExt[16];   // Reserved for future extended data
     };
 
     enum CHECKSUM_TYPE

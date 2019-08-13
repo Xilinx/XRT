@@ -33,6 +33,10 @@ int helpHandler(int argc, char *argv[]);
 extern const char *subCmdHelpDesc;
 extern const char *subCmdHelpUsage;
 
+int versionHandler(int argc, char *argv[]);
+extern const char *subCmdVersionDesc;
+extern const char *subCmdVersionUsage;
+
 int scanHandler(int argc, char *argv[]);
 extern const char *subCmdScanDesc;
 extern const char *subCmdScanUsage;
@@ -49,9 +53,9 @@ int clockHandler(int argc, char *argv[]);
 extern const char *subCmdClockDesc;
 extern const char *subCmdClockUsage;
 
-int progHandler(int argc, char *argv[]);
-extern const char *subCmdProgDesc;
-extern const char *subCmdProgUsage;
+int partHandler(int argc, char *argv[]);
+extern const char *subCmdPartDesc;
+extern const char *subCmdPartUsage;
 
 int configHandler(int argc, char *argv[]);
 extern const char *subCmdConfigDesc;

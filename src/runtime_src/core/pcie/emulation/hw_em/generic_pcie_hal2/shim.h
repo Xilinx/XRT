@@ -183,6 +183,10 @@ using addr_type = uint64_t;
       uint32_t getPerfMonProperties(xclPerfMonType type, uint32_t slotnum);
       uint32_t getPerfMonNumberSlots(xclPerfMonType type);
 
+      int xclGetDebugIPlayoutPath(char* layoutPath, size_t size);
+      int xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
+      int xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
+
       //Utility Function
       void set_simulator_started(bool val){ simulator_started = val;}
       void fillDeviceInfo(xclDeviceInfo2* dest, xclDeviceInfo2* src);
@@ -221,6 +225,11 @@ using addr_type = uint64_t;
       void setXPR(bool _xpr) { bXPR = _xpr; }
       std::string deviceDirectory;
 
+      /* Path to the run directory for the current loaded bitstream for HW Emu
+       * This directory contains the debug_ip_layout binary and simulation launch directories
+       */
+      std::string mRunDeviceBinDir;
+
       //QDMA Support
       int xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
       int xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
@@ -257,7 +266,7 @@ using addr_type = uint64_t;
       //mutex to control parellel RPC calls
       std::mutex mtx;
       std::mutex mApiMtx;
-      std::vector<Event> list_of_events[XSPM_MAX_NUMBER_SLOTS];
+      std::vector<Event> list_of_events[XAIM_MAX_NUMBER_SLOTS];
       unsigned int tracecount_calls;
       // In case support for different version DSAs is required
       int mDSAMajorVersion;
@@ -305,15 +314,15 @@ using addr_type = uint64_t;
       uint32_t mStallProfilingNumberSlots;
       uint64_t mPerfMonFifoCtrlBaseAddress;
       uint64_t mPerfMonFifoReadBaseAddress;
-      uint64_t mPerfMonBaseAddress[XSPM_MAX_NUMBER_SLOTS];
-      uint64_t mAccelMonBaseAddress[XSAM_MAX_NUMBER_SLOTS];
-      uint64_t mStreamMonBaseAddress[XSSPM_MAX_NUMBER_SLOTS];
-      std::string mPerfMonSlotName[XSPM_MAX_NUMBER_SLOTS];
-      std::string mAccelMonSlotName[XSAM_MAX_NUMBER_SLOTS];
-      std::string mStreamMonSlotName[XSSPM_MAX_NUMBER_SLOTS];
-      uint8_t mPerfmonProperties[XSPM_MAX_NUMBER_SLOTS];
-      uint8_t mAccelmonProperties[XSAM_MAX_NUMBER_SLOTS];
-      uint8_t mStreamMonProperties[XSSPM_MAX_NUMBER_SLOTS];
+      uint64_t mPerfMonBaseAddress[XAIM_MAX_NUMBER_SLOTS];
+      uint64_t mAccelMonBaseAddress[XAM_MAX_NUMBER_SLOTS];
+      uint64_t mStreamMonBaseAddress[XASM_MAX_NUMBER_SLOTS];
+      std::string mPerfMonSlotName[XAIM_MAX_NUMBER_SLOTS];
+      std::string mAccelMonSlotName[XAM_MAX_NUMBER_SLOTS];
+      std::string mStreamMonSlotName[XASM_MAX_NUMBER_SLOTS];
+      uint8_t mPerfmonProperties[XAIM_MAX_NUMBER_SLOTS];
+      uint8_t mAccelmonProperties[XAM_MAX_NUMBER_SLOTS];
+      uint8_t mStreamMonProperties[XASM_MAX_NUMBER_SLOTS];
       std::vector<membank> mMembanks;
       static std::map<int, std::tuple<std::string,int,void*> > mFdToFileNameMap;
       std::list<std::tuple<uint64_t ,void*, std::map<uint64_t , uint64_t> > > mReqList;
