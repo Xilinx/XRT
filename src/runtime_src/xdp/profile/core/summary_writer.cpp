@@ -341,6 +341,8 @@ namespace xdp {
       uint64_t totalWriteTranx   = 0;
       uint64_t totalReadLatency  = 0;
       uint64_t totalWriteLatency = 0;
+      uint64_t totalReadBusyCycles = 0;
+      uint64_t totalWriteBusyCycles = 0;
 
       // Traverse all slots to find shell monitors
       uint32_t numSlots = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_MEMORY, deviceName);
@@ -372,10 +374,19 @@ namespace xdp {
                             + (rolloverCounts.ReadLatency[s] * 4294967296UL);
         totalWriteLatency += counterResults.WriteLatency[s]
                             + (rolloverCounts.WriteLatency[s] * 4294967296UL);
+        totalReadBusyCycles += counterResults.ReadBusyCycles[s];
+        totalWriteBusyCycles += counterResults.WriteBusyCycles[s];
       }
 
       double totalReadLatencyNsec  = (1000.0 * totalReadLatency)  / tp->getDeviceClockFreqMHz();
       double totalWriteLatencyNsec = (1000.0 * totalWriteLatency) / tp->getDeviceClockFreqMHz();
+      // Use data from device if present
+      if (totalReadBusyCycles) {
+        totalReadTimeMsec = totalReadBusyCycles / (1000.0 * tp->getDeviceClockFreqMHz());
+      }
+      if (totalWriteBusyCycles) {
+        totalWriteTimeMsec = totalWriteBusyCycles / (1000.0 * tp->getDeviceClockFreqMHz());
+      }
 
       // Monitoring of KDMA/XDMA/P2P is reported on per-device basis
       // NOTE: don't show if no transfers were recorded
@@ -547,7 +558,7 @@ namespace xdp {
         if (mDataSlotsPropertiesMap.at(key)[s] & XAIM_HOST_PROPERTY_MASK)
           continue;
 
-         std::string cuPortName = mDeviceBinaryDataSlotsMap.at(key)[s];
+        std::string cuPortName = mDeviceBinaryDataSlotsMap.at(key)[s];
         std::string cuName = cuPortName.substr(0, cuPortName.find_first_of("/"));
         std::string portName = cuPortName.substr(cuPortName.find_first_of("/")+1);
         //std::transform(portName.begin(), portName.end(), portName.begin(), ::tolower);
@@ -556,7 +567,8 @@ namespace xdp {
         std::string argNames;
         mPluginHandle->getArgumentsBank(deviceName, cuName, portName, argNames, memoryName);
 
-        double totalCUTimeMsec = mProfileCounters->getComputeUnitTotalTime(deviceName, cuName);
+        double totalReadTimeMsec = counterResults.ReadBusyCycles[s] / (1000.0 * mTraceParserHandle->getDeviceClockFreqMHz()) ;
+        double totalWriteTimeMsec = counterResults.WriteBusyCycles[s] / (1000.0 * mTraceParserHandle->getDeviceClockFreqMHz());
 
         uint64_t totalReadBytes    = counterResults.ReadBytes[s] + rolloverResults.ReadBytes[s]
                                      + (rolloverCounts.ReadBytes[s] * 4294967296UL);
@@ -571,22 +583,28 @@ namespace xdp {
         // msec = cycles / (1000 * (Mcycles/sec))
         uint64_t totalReadLatency  = counterResults.ReadLatency[s] + rolloverResults.ReadLatency[s]
                                      + (rolloverCounts.ReadLatency[s] * 4294967296UL);
-        double totalReadTimeMsec   = totalReadLatency / (1000.0 * mTraceParserHandle->getDeviceClockFreqMHz());
+        double totalReadLatencyMsec   = totalReadLatency / (1000.0 * mTraceParserHandle->getDeviceClockFreqMHz());
         uint64_t totalWriteLatency = counterResults.WriteLatency[s] + rolloverResults.WriteLatency[s]
                                      + (rolloverCounts.WriteLatency[s] * 4294967296UL);
-        double totalWriteTimeMsec  = totalWriteLatency / (1000.0 * mTraceParserHandle->getDeviceClockFreqMHz());
+        double totalWriteLatencyMsec  = totalWriteLatency / (1000.0 * mTraceParserHandle->getDeviceClockFreqMHz());
 
         XDP_LOG("writeKernelTransferSummary: s=%d, reads=%d, writes=%d, %s time = %f msec\n",
             s, totalReadTranx, totalWriteTranx, cuName.c_str(), totalCUTimeMsec);
 
         // First do READ, then WRITE
         if (totalReadTranx > 0) {
+          if (!totalReadTimeMsec) {
+            totalReadTimeMsec = mProfileCounters->getComputeUnitTotalTime(deviceName, cuName);
+          }
           mProfileCounters->writeKernelTransferSummary(writer, deviceName, cuPortName, argNames, memoryName,
-            true,  totalReadBytes, totalReadTranx, totalCUTimeMsec, totalReadTimeMsec, maxTransferRateMBps);
+            true,  totalReadBytes, totalReadTranx, totalReadTimeMsec, totalReadLatencyMsec, maxTransferRateMBps);
         }
         if (totalWriteTranx > 0) {
+          if (!totalWriteTimeMsec) {
+            totalWriteTimeMsec = mProfileCounters->getComputeUnitTotalTime(deviceName, cuName);
+          }
           mProfileCounters->writeKernelTransferSummary(writer, deviceName, cuPortName, argNames, memoryName,
-            false, totalWriteBytes, totalWriteTranx, totalCUTimeMsec, totalWriteTimeMsec, maxTransferRateMBps);
+            false, totalWriteBytes, totalWriteTranx, totalWriteTimeMsec, totalWriteLatencyMsec, maxTransferRateMBps);
         }
       }
     }
