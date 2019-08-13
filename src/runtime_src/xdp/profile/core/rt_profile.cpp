@@ -426,5 +426,4 @@ namespace xdp {
     mLogger->logDeviceTrace(deviceName, binaryName, type, traceVector, endLog);
   }
 
-
 } // xdp
