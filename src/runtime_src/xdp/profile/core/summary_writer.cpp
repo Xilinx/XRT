@@ -482,7 +482,6 @@ namespace xdp {
       std::string slaveArgNames = FIELD_NOT_APPLICABLE;
       std::size_t cuFound = 0;
       std::size_t masterSlaveFound = 0;
-      double totalCUTimeMsec = 0.0;
       for (unsigned int s=0; s < numSlots; ++s) {
         cuPortName = mDeviceBinaryStrSlotsMap.at(key)[s];
         masterSlaveFound = cuPortName.find(IP_LAYOUT_SEP);
@@ -498,7 +497,6 @@ namespace xdp {
           auto port = masterPortName.substr(cuFound+1);
           std::string placeholder;
           mPluginHandle->getArgumentsBank(deviceName, cu, port, masterArgNames, placeholder);
-          totalCUTimeMsec = mProfileCounters->getComputeUnitTotalTime(deviceName, cu);
         }
         cuFound = slavePortName.find_first_of("/");
         if (cuFound != std::string::npos) {
@@ -506,7 +504,6 @@ namespace xdp {
           auto port = slavePortName.substr(cuFound+1);
           std::string placeholder;
           mPluginHandle->getArgumentsBank(deviceName, cu, port, slaveArgNames, placeholder);
-          totalCUTimeMsec = mProfileCounters->getComputeUnitTotalTime(deviceName, cu);
         }
 
         uint64_t strNumTranx =     counterResults.StrNumTranx[s];
@@ -518,8 +515,9 @@ namespace xdp {
         if (strBusyCycles <= 0 || strNumTranx == 0)
           continue;
 
-        double transferRateMBps = (totalCUTimeMsec == 0) ? 0.0 :
-            (strDataBytes / (1000.0 * totalCUTimeMsec));
+        double transferTimeUsec = strBusyCycles / mTraceParserHandle->getDeviceClockFreqMHz();
+        double transferRateMBps = (transferTimeUsec == 0) ? 0.0 :
+                                  (strDataBytes / transferTimeUsec);
 
         double avgSize    =  (double) strDataBytes / (double) strNumTranx * 0.001 ;
         double linkStarve = (double) strStarveCycles / (double) strBusyCycles * 100.0;

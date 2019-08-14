@@ -82,6 +82,7 @@
 
 
 #include "aim.h"
+#include <bitset>
 
 namespace xdp {
 
