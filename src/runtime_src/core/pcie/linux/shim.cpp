@@ -1515,13 +1515,14 @@ int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, con
 {
     va_list args;
     va_start(args, format);
-    xocl::shim *drv = xocl::shim::handleCheck(handle);
-    int ret = drv ? drv->xclLogMsg(level, tag, format, args) : -ENODEV;
+    //Do NOT add device handle check
+    //This is logging function independent of device
+    //XMA passes NULL device handle to this API
+    int ret = xocl::shim::xclLogMsg(level, tag, format, args);
     va_end(args);
 
     return ret;
 }
-
 
 size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
 {

@@ -106,6 +106,9 @@ public:
   int resetDevice(xclResetKind kind);
   int xclReClock2(unsigned short region, const unsigned short *targetFreqMHz);
 
+  static int xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* format, va_list args1);
+  int xclLog(xrtLogMsgLevel level, const char* tag, const char* format, ...);
+
   // Raw read/write
   size_t xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size);
   size_t xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size);

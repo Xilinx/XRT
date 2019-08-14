@@ -51,6 +51,7 @@
 #include <sys/file.h>
 
 #include <cstdio>
+#include <cstdarg>
 #include <cstring>
 #include <cassert>
 #include <algorithm>
@@ -76,12 +77,12 @@ extern char* get_afi_from_axlf(const axlf *);
 #endif
 
 #include "core/common/AlignedAllocator.h"
+#include "core/common/message.h"
 
 // Profiling
 #define AXI_FIFO_RDFD_AXI_FULL          0x1000
 #define MAX_TRACE_NUMBER_SAMPLES                        16384
 #define XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH            64
-
 
 namespace awsbwhal {
 
@@ -931,6 +932,51 @@ namespace awsbwhal {
     }
     
     /*
+    * xclLogMsg()
+    */
+    int AwsXcl::xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* format, va_list args)
+    {
+        va_list args_bak;
+        // vsnprintf will mutate va_list so back it up
+        va_copy(args_bak, args);
+        int len = std::vsnprintf(nullptr, 0, format, args_bak);
+        va_end(args_bak);
+
+        if (len < 0) {
+            //illegal arguments
+            std::string err_str = "ERROR: Illegal arguments in log format string. ";
+            err_str.append(std::string(format));
+            xrt_core::message::send((xrt_core::message::severity_level)level, tag, err_str.c_str());
+            return len;
+        }
+        ++len; //To include null terminator
+
+        std::vector<char> buf(len);
+        len = std::vsnprintf(buf.data(), len, format, args);
+
+        if (len < 0) {
+            //error processing arguments
+            std::string err_str = "ERROR: When processing arguments in log format string. ";
+            err_str.append(std::string(format));
+            xrt_core::message::send((xrt_core::message::severity_level)level, tag, err_str.c_str());
+            return len;
+        }
+        xrt_core::message::send((xrt_core::message::severity_level)level, tag, buf.data());
+
+        return 0;
+    }
+
+    inline int AwsXcl::xclLog(xrtLogMsgLevel level, const char* tag, const char* format, ...)
+    {
+        va_list args;
+        va_start(args, format);
+        int ret = xclLogMsg(level, tag, format, args);
+        va_end(args);
+
+        return ret;
+    }
+
+    /*
      * xclExecBuf()
      */
     int AwsXcl::xclExecBuf(unsigned int cmdBO)
@@ -1259,6 +1305,19 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
     if (!ret)
       ret = xrt_core::scheduler::init(handle, buffer);
+    return ret;
+}
+
+int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    //Do NOT add device handle check
+    //This is logging function independent of device
+    //XMA passes NULL device handle to this API
+    int ret = awsbwhal::AwsXcl::xclLogMsg(level, tag, format, args);
+    va_end(args);
+
     return ret;
 }
 
