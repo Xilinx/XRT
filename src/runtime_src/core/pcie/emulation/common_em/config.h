@@ -73,6 +73,14 @@ namespace xclemulation{
   const uint64_t MEMSIZE_256T =   0x0001000000000000;
   const uint64_t MEMSIZE_512T =   0x0002000000000000;
   
+  //For Profiling Offsets
+  const uint64_t FIFO_INFO_MESSAGES     = 0x0000000000100000;
+  const uint64_t FIFO_WARNING_MESSAGES  = 0x0000000000200000;
+  const uint64_t FIFO_ERROR_MESSAGES    = 0x0000000000400000;
+  const uint64_t FIFO_CTRL_INFO_SIZE    = 0x64;
+  const uint64_t FIFO_CTRL_WARNING_SIZE = 0x68;
+  const uint64_t FIFO_CTRL_ERROR_SIZE   = 0x6C;
+
   //this class has only one member now. This will be extended to use all the parameters specific to each ddr.
   class DDRBank 
   {
@@ -112,7 +120,8 @@ namespace xclemulation{
       inline void setVerbosityLevel(unsigned int verbosity)     { mVerbosity        = verbosity;     }
       inline void setServerPort(unsigned int serverPort)        { mServerPort       = serverPort;    }
       inline void setKeepRunDir(bool _mKeepRundir)              { mKeepRunDir = _mKeepRundir;        }    
-      inline void setLauncherArgs(std::string & _mLauncherArgs) { mLauncherArgs = _mLauncherArgs;    }    
+      inline void setLauncherArgs(std::string & _mLauncherArgs) { mLauncherArgs = _mLauncherArgs;    }
+      inline void setSystemDPA(bool _isDPAEnabled)              { mSystemDPA    = _isDPAEnabled;      }
       
       inline bool isDiagnosticsEnabled()        const { return mDiagnostics;    }
       inline bool isUMRChecksEnabled()          const { return mUMRChecks;      }
@@ -134,6 +143,7 @@ namespace xclemulation{
       inline bool isErrorsToBePrintedOnConsole()   const { return mPrintErrorsInConsole;  }
       inline bool isWarningsToBePrintedOnConsole() const { return mPrintWarningsInConsole;}
       inline std::string getLauncherArgs() const { return mLauncherArgs;}
+      inline bool isSystemDPAEnabled() const     {return mSystemDPA;              }
       
       void populateEnvironmentSetup(std::map<std::string,std::string>& mEnvironmentNameValueMap);
 
@@ -159,6 +169,7 @@ namespace xclemulation{
       unsigned int mServerPort;
       bool mKeepRunDir;
       std::string mLauncherArgs;
+      bool mSystemDPA;
       
      
       config();
