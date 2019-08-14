@@ -485,7 +485,8 @@ void shim::xclSysfsGetErrorStatus(xclErrorStatus& stat)
     mDev->sysfs_get("firewall", "detected_time", errmsg, time);
 
     stat.mNumFirewalls = XCL_FW_MAX_LEVEL;
-    stat.mFirewallLevel = level;
+    if (level < XCL_FW_MAX_LEVEL)
+        stat.mFirewallLevel = level;
     for (unsigned i = 0; i < stat.mNumFirewalls; i++) {
         stat.mAXIErrorStatus[i].mErrFirewallID = static_cast<xclFirewallID>(i);
     }
