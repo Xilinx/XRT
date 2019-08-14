@@ -373,8 +373,10 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	u64 msgid, int err, bool sw_ch)
 {
 	struct xocl_dev *xdev = (struct xocl_dev *)arg;
+	struct pci_dev *pdev = xdev->core.pdev;
 	struct mailbox_req *req = (struct mailbox_req *)data;
 	struct mailbox_peer_state *st = NULL;
+	struct mailbox_p2p_bar_addr_resp *resp = NULL;
 
 	if (err != 0)
 		return;
@@ -404,6 +406,18 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	case MAILBOX_REQ_CHG_SHELL:
 		xocl_queue_work(xdev, XOCL_WORK_PROGRAM_SHELL,
 				XOCL_PROGRAM_SHELL_DELAY);
+		break;
+	case MAILBOX_REQ_GET_P2P_BAR_ADDR:
+		resp = vzalloc(sizeof(*resp));
+		if (!resp)
+			break;
+		resp->p2p_bar_len = pci_resource_len(pdev, xdev->p2p_bar_idx);
+		resp->p2p_bar_addr = pci_resource_start(pdev, xdev->p2p_bar_idx);
+		userpf_info(xdev, "p2p_bar idx: %d, addr :%llx, len: %llx \n",
+					xdev->p2p_bar_idx, resp->p2p_bar_addr, resp->p2p_bar_len);
+		(void) xocl_peer_response(xdev, req->req, msgid, resp,
+			sizeof(struct mailbox_p2p_bar_addr_resp));
+		vfree(resp);
 		break;
 	default:
 		userpf_err(xdev, "dropped bad request (%d)\n", req->req);

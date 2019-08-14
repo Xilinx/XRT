@@ -967,6 +967,30 @@ void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online)
 	vfree(mb_req);
 }
 
+static int xocl_get_p2p_bar_addr(struct xclmgmt_dev *xdev,
+			resource_size_t *p2p_bar_addr, resource_size_t *p2p_bar_len)
+{
+	int mbret = 0;
+	struct mailbox_req mbreq = { MAILBOX_REQ_GET_P2P_BAR_ADDR };
+	struct mailbox_p2p_bar_addr_resp *resp = (struct mailbox_p2p_bar_addr_resp*)
+				vzalloc(sizeof(struct mailbox_p2p_bar_addr_resp));
+	size_t resplen = sizeof(struct mailbox_p2p_bar_addr_resp);
+
+	if (!resp)
+		return -EIO;
+
+	mgmt_info(xdev, "getting the p2p bar addr...\n");
+
+	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct mailbox_req), resp,
+				&resplen, NULL, NULL,0);
+	*p2p_bar_addr = resp->p2p_bar_addr;
+	*p2p_bar_len = resp->p2p_bar_len;
+
+	vfree(resp);
+
+	return 0;
+}
+
 /*
  * Called after minimum initialization is done. Should not return failure.
  * If something goes wrong, it should clean up and return back to minimum
@@ -977,6 +1001,8 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	int ret;
 	struct xocl_board_private *dev_info = &lro->core.priv;
 	struct pci_dev *pdev = lro->pci_dev;
+	resource_size_t p2p_bar_addr = 0, p2p_bar_len = 0, range = 0;
+	u32 p2p_addr_base, range_base, final_val;
 
 	/* We can only support MSI-X. */
 	ret = xclmgmt_setup_msix(lro);
@@ -1026,6 +1052,32 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
 	/* Notify our peer that we're listening. */
 	xclmgmt_connect_notify(lro, true);
+
+	/* Passthrough Virtualization feature configuration */
+	if (xocl_passthrough_virtualization_on(lro)) {
+		if (iommu_present(&platform_bus_type)) {
+			ret = xocl_get_p2p_bar_addr(lro, &p2p_bar_addr, &p2p_bar_len);
+			if (ret == 0) {
+				mgmt_info(lro, "got the p2p bar addr = %lld\n", p2p_bar_addr);
+				mgmt_info(lro, "got the p2p bar len = %lld\n", p2p_bar_len);
+				range = p2p_bar_addr + p2p_bar_len - 1;
+
+				range_base = range & 0xFFFF0000;
+				p2p_addr_base = p2p_bar_addr & 0xFFFF0000;
+				final_val = range_base | (p2p_addr_base >> 16);
+				mgmt_info(lro, "got final val = %d\n", final_val);
+				pci_write_config_byte(pdev, 0x188, 0x1);
+				pci_write_config_dword(pdev, 0x190, p2p_bar_addr >> 32);
+				pci_write_config_dword(pdev, 0x194, range >> 32);
+				pci_write_config_dword(pdev, 0x18c, final_val);
+				mgmt_info(lro, "Passthrough Virtualization configuration done\n");
+			} else {
+				xocl_err(&pdev->dev, "Passthrough virtualization error in getting p2p bar addr, ret: %d\n", ret);
+			}
+		} else {
+			xocl_err(&pdev->dev, "Passthrough virtualization supported, but IOMMU is not present\n");
+		}
+	}
 
 	lro->ready = true;
 	xocl_info(&pdev->dev, "device fully initialized\n");
@@ -1177,6 +1229,10 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 	BUG_ON(lro->core.pdev != pdev);
 
 	xclmgmt_connect_notify(lro, false);
+
+	if (xocl_passthrough_virtualization_on(lro) &&
+		iommu_present(&platform_bus_type))
+		pci_write_config_byte(pdev, 0x188, 0x0);
 
 	xocl_thread_stop(lro);
 
