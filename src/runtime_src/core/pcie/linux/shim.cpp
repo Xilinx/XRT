@@ -1523,6 +1523,15 @@ int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, con
     return ret;
 }
 
+int xclLog(xrtLogMsgLevel level, const char* tag, const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    int ret = xocl::shim::xclLogMsg(level, tag, format, args);
+    va_end(args);
+
+    return ret;
+}
 
 size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
 {

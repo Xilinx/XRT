@@ -74,7 +74,8 @@ xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...)
     vsnprintf(&msg_buff[hdr_offset], (XMA_MAX_LOGMSG_SIZE - hdr_offset), msg, ap);
     va_end(ap);
     //xclLogMsg(NULL, xrtLogMsgLevel::XRT_INFO, "XMA",logmsg);
-    xclLogMsg(NULL, (xrtLogMsgLevel)level, "XMA", msg_buff);
+    //xclLogMsg(NULL, (xrtLogMsgLevel)level, "XMA", msg_buff);
+    xclLog((xrtLogMsgLevel)level, "XMA", msg_buff);
 
 }
 

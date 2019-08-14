@@ -432,6 +432,7 @@ XCL_DRIVER_DLLESPEC unsigned int xclVersion();
 
 
 /**
+ * Deprecated API
  * xclLogMsg() - Send message to log file as per settings in ini file.
  *
  * @handle:        Device handle
@@ -442,7 +443,19 @@ XCL_DRIVER_DLLESPEC unsigned int xclVersion();
  *
  * Return:         0 on success or appropriate error number
  */
-XCL_DRIVER_DLLESPEC int xclLogMsg(xclDeviceHandle handle, enum xrtLogMsgLevel level, const char* tag, const char* format, ...);
+XCL_DRIVER_DLLESPEC int xclLogMsg(xclDeviceHandle handle, enum xrtLogMsgLevel level, const char* tag, const char* format, ...) __attribute__ ((deprecated));
+
+/**
+ * xclLog() - Send message to log file as per settings in ini file.
+ *
+ * @level:         Severity level of the msg
+ * @tag:           Tag supplied by the client, like "OCL", "XMA", etc.
+ * @format:        Format of Msg string to write to log file
+ * @...:           All other arguments as per the format
+ *
+ * Return:         0 on success or appropriate error number
+ */
+XCL_DRIVER_DLLESPEC int xclLog(enum xrtLogMsgLevel level, const char* tag, const char* format, ...);
 
 /**
  * DOC: XRT Buffer Management APIs
