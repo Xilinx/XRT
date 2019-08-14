@@ -420,7 +420,7 @@ static void check_sensor(struct xclmgmt_dev *lro)
 		return;	
 	}
 
-	ret = xocl_xmc_get_data(lro, s);
+	ret = xocl_xmc_get_data(lro, SENSOR, s);
 	if (ret == -ENODEV) {
 		(void) xocl_sysmon_get_prop(lro,
 			XOCL_SYSMON_PROP_TEMP, &s->fpga_temp);
@@ -678,7 +678,7 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 	case SENSOR:
 		current_sz = sizeof(struct xcl_sensor);
 		*resp = vzalloc(current_sz);
-		(void) xocl_xmc_get_data(lro, *resp);
+		(void) xocl_xmc_get_data(lro, SENSOR, *resp);
 		break;
 	case ICAP:
 		current_sz = sizeof(struct xcl_pr_region);
@@ -699,6 +699,11 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 		current_sz = sizeof(struct xcl_dna);
 		*resp = vzalloc(current_sz);
 		(void) xocl_dna_get_data(lro, *resp);
+		break;
+	case BDINFO:
+		current_sz = sizeof(struct xcl_board_info);
+		*resp = vzalloc(current_sz);
+		(void) xocl_xmc_get_data(lro, BDINFO, *resp);
 		break;
 	case SUBDEV:
 		xclmgmt_subdev_get_data(lro, subdev_req->offset,

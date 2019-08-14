@@ -669,8 +669,8 @@ struct xocl_mb_funcs {
 	(MB_CB(xdev, load_sche_image) ? MB_OPS(xdev)->load_sche_image(MB_DEV(xdev), buf, len) :\
 	-ENODEV)
 
-#define xocl_xmc_get_data(xdev, buf)			\
-	(MB_CB(xdev, get_data) ? MB_OPS(xdev)->get_data(MB_DEV(xdev), buf) : -ENODEV)
+#define xocl_xmc_get_data(xdev, kind, buf)			\
+	(MB_CB(xdev, get_data) ? MB_OPS(xdev)->get_data(MB_DEV(xdev), kind, buf) : -ENODEV)
 
 struct xocl_dna_funcs {
 	struct xocl_subdev_funcs common_funcs;
