@@ -93,16 +93,34 @@ struct mailbox_req_bitstream_lock {
  * enum group_kind - Groups of data that can be fetched from mgmt side
  * @SENSOR: all kinds of sensor readings
  * @ICAP: ICAP IP related information
- * @MGMT: mgmt side specific information
+ * @MIG_ECC: ECC statistics
+ * @FIREWALL: AF detected time, status
  */
 enum group_kind {
 	SENSOR = 0,
 	ICAP,
-	MGMT,
+	BDINFO,
 	MIG_ECC,
 	FIREWALL,
 	DNA,
 	SUBDEV,
+};
+
+/**
+ *
+ */
+struct xcl_board_info {
+	char	 serial_num[256];
+	char	 mac_addr0[32];
+	char	 mac_addr1[32];
+	char	 mac_addr2[32];
+	char	 mac_addr3[32];
+	char	 revision[256];
+	char	 bd_name[256];
+	char	 bmc_ver[256];
+	uint32_t max_power;
+	uint32_t fan_presence;
+	uint32_t config_mode;
 };
 
 /**
@@ -142,17 +160,6 @@ struct xcl_sensor {
 	uint32_t cage_temp2;
 	uint32_t cage_temp3;
 	uint32_t hbm_temp0;
-	char	 serial_num[256];
-	char	 mac_addr0[32];
-	char	 mac_addr1[32];
-	char	 mac_addr2[32];
-	char	 mac_addr3[32];
-	char	 revision[256];
-	char	 bd_name[256];
-	char	 bmc_ver[256];
-	uint32_t max_power;
-	uint32_t fan_presence;
-	uint32_t config_mode;
 };
 
 /**
@@ -216,8 +223,8 @@ struct xcl_subdev {
 	uint32_t ver;
 	int32_t rtncode;
 	uint64_t checksum;
-	size_t size;
-	size_t offset;
+	uint64_t size;
+	uint64_t offset;
 	uint64_t data[1];
 };
 /**
@@ -227,9 +234,10 @@ struct xcl_subdev {
  */
 struct mailbox_subdev_peer {
 	enum group_kind kind;
-	size_t size;
+	uint32_t padding;
+	uint64_t size;
 	uint64_t entries;
-	size_t offset;
+	uint64_t offset;
 };
 
 /**

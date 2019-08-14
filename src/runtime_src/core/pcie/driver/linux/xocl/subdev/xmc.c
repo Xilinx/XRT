@@ -281,7 +281,6 @@ struct xocl_xmc {
 	u32			mbx_offset;
 	struct xmc_pkt		mbx_pkt;
 	char			*bdinfo_raw;
-	u32			bdinfo_raw_sz;
 	char 			serial_num[XMC_BDINFO_ENTRY_LEN_MAX];
 	char			mac_addr0[XMC_BDINFO_ENTRY_LEN];
 	char			mac_addr1[XMC_BDINFO_ENTRY_LEN];
@@ -487,39 +486,6 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 		case VCC_0V85:
 			READ_SENSOR(xmc, XMC_VCC0V85_REG, val, val_kind);
 			break;
-		case SER_NUM:
-			memcpy(val, xmc->serial_num, XMC_BDINFO_ENTRY_LEN_MAX);
-			break;
-		case MAC_ADDR0:
-			memcpy(val, xmc->mac_addr0, XMC_BDINFO_ENTRY_LEN);
-			break;
-		case MAC_ADDR1:
-			memcpy(val, xmc->mac_addr1, XMC_BDINFO_ENTRY_LEN);
-			break;
-		case MAC_ADDR2:
-			memcpy(val, xmc->mac_addr2, XMC_BDINFO_ENTRY_LEN);
-			break;
-		case MAC_ADDR3:
-			memcpy(val, xmc->mac_addr3, XMC_BDINFO_ENTRY_LEN);
-			break;
-		case REVISION:
-			memcpy(val, xmc->revision, XMC_BDINFO_ENTRY_LEN_MAX);
-			break;
-		case CARD_NAME:
-			memcpy(val, xmc->bd_name, XMC_BDINFO_ENTRY_LEN_MAX);
-			break;
-		case BMC_VER:
-			memcpy(val, xmc->bmc_ver, XMC_BDINFO_ENTRY_LEN_MAX);
-			break;
-		case MAX_PWR:
-			*val = xmc->max_power;
-			break;
-		case FAN_PRESENCE:
-			*val = xmc->fan_presence;
-			break;
-		case CFG_MODE:
-			*val = xmc->config_mode;
-			break;
 		default:
 			break;
 		}
@@ -626,49 +592,145 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 		case VCC_0V85:
 			*val = xmc->cache->vol_0v85;
 			break;
-		case SER_NUM:
-			memcpy(val, xmc->cache->serial_num, XMC_BDINFO_ENTRY_LEN_MAX);
-			break;
-		case MAC_ADDR0:
-			memcpy(val, xmc->cache->mac_addr0, XMC_BDINFO_ENTRY_LEN);
-			break;
-		case MAC_ADDR1:
-			memcpy(val, xmc->cache->mac_addr1, XMC_BDINFO_ENTRY_LEN);
-			break;
-		case MAC_ADDR2:
-			memcpy(val, xmc->cache->mac_addr2, XMC_BDINFO_ENTRY_LEN);
-			break;
-		case MAC_ADDR3:
-			memcpy(val, xmc->cache->mac_addr3, XMC_BDINFO_ENTRY_LEN);
-			break;
-		case REVISION:
-			memcpy(val, xmc->cache->revision, XMC_BDINFO_ENTRY_LEN_MAX);
-			break;
-		case CARD_NAME:
-			memcpy(val, xmc->cache->bd_name, XMC_BDINFO_ENTRY_LEN_MAX);
-			break;
-		case BMC_VER:
-			memcpy(val, xmc->cache->bmc_ver, XMC_BDINFO_ENTRY_LEN_MAX);
-			break;
-		case MAX_PWR:
-			*val = xmc->cache->max_power;
-			break;
-		case FAN_PRESENCE:
-			*val = xmc->cache->fan_presence;
-			break;
-		case CFG_MODE:
-			*val = xmc->cache->config_mode;
-			break;
 		default:
 			break;
 		}
 	}
 }
 
+static void read_bdinfo_from_peer(struct platform_device *pdev)
+{
+	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
+	struct mailbox_subdev_peer subdev_peer = {0};
+	size_t resp_len = sizeof(struct xcl_board_info);
+	size_t data_len = sizeof(struct mailbox_subdev_peer);
+	struct mailbox_req *mb_req = NULL;
+	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	int ret = 0;
+
+	if (xmc->bdinfo_raw)
+		return;
+
+	mb_req = vmalloc(reqlen);
+	if (!mb_req)
+		goto done;
+
+	xmc->bdinfo_raw = vzalloc(resp_len);
+	if (!xmc->bdinfo_raw)
+		goto done;
+
+	mb_req->req = MAILBOX_REQ_PEER_DATA;
+	subdev_peer.size = resp_len;
+	subdev_peer.kind = BDINFO;
+	subdev_peer.entries = 1;
+
+	memcpy(mb_req->data, &subdev_peer, data_len);
+
+	ret = xocl_peer_request(xdev,
+		mb_req, reqlen, xmc->bdinfo_raw, &resp_len, NULL, NULL, 0);
+done:
+	if (ret) {
+		/* if we failed to get board info from peer, free it and 
+		 * try to retrieve next time
+		 */
+		vfree(xmc->bdinfo_raw);
+		xmc->bdinfo_raw = NULL;
+	}
+	vfree(mb_req);
+}
 static void xmc_bdinfo(struct platform_device *pdev, enum data_kind kind,
 	u32 *buf)
 {
-	xmc_sensor(pdev, kind, buf, 0);
+	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
+	struct xcl_board_info *bdinfo = NULL;
+
+	if (XMC_PRIVILEGED(xmc)) {
+
+		switch (kind) {
+		case SER_NUM:
+			memcpy(buf, xmc->serial_num, XMC_BDINFO_ENTRY_LEN_MAX);
+			break;
+		case MAC_ADDR0:
+			memcpy(buf, xmc->mac_addr0, XMC_BDINFO_ENTRY_LEN);
+			break;
+		case MAC_ADDR1:
+			memcpy(buf, xmc->mac_addr1, XMC_BDINFO_ENTRY_LEN);
+			break;
+		case MAC_ADDR2:
+			memcpy(buf, xmc->mac_addr2, XMC_BDINFO_ENTRY_LEN);
+			break;
+		case MAC_ADDR3:
+			memcpy(buf, xmc->mac_addr3, XMC_BDINFO_ENTRY_LEN);
+			break;
+		case REVISION:
+			memcpy(buf, xmc->revision, XMC_BDINFO_ENTRY_LEN_MAX);
+			break;
+		case CARD_NAME:
+			memcpy(buf, xmc->bd_name, XMC_BDINFO_ENTRY_LEN_MAX);
+			break;
+		case BMC_VER:
+			memcpy(buf, xmc->bmc_ver, XMC_BDINFO_ENTRY_LEN_MAX);
+			break;
+		case MAX_PWR:
+			*buf = xmc->max_power;
+			break;
+		case FAN_PRESENCE:
+			*buf = xmc->fan_presence;
+			break;
+		case CFG_MODE:
+			*buf = xmc->config_mode;
+			break;
+		default:
+			break;
+		}
+
+	} else {
+		
+		read_bdinfo_from_peer(pdev);
+		if (!xmc->bdinfo_raw)
+			return;
+
+		bdinfo = (struct xcl_board_info *)xmc->bdinfo_raw;
+
+		switch (kind) {
+		case SER_NUM:
+			memcpy(buf, bdinfo->serial_num, XMC_BDINFO_ENTRY_LEN_MAX);
+			break;
+		case MAC_ADDR0:
+			memcpy(buf, bdinfo->mac_addr0, XMC_BDINFO_ENTRY_LEN);
+			break;
+		case MAC_ADDR1:
+			memcpy(buf, bdinfo->mac_addr1, XMC_BDINFO_ENTRY_LEN);
+			break;
+		case MAC_ADDR2:
+			memcpy(buf, bdinfo->mac_addr2, XMC_BDINFO_ENTRY_LEN);
+			break;
+		case MAC_ADDR3:
+			memcpy(buf, bdinfo->mac_addr3, XMC_BDINFO_ENTRY_LEN);
+			break;
+		case REVISION:
+			memcpy(buf, bdinfo->revision, XMC_BDINFO_ENTRY_LEN_MAX);
+			break;
+		case CARD_NAME:
+			memcpy(buf, bdinfo->bd_name, XMC_BDINFO_ENTRY_LEN_MAX);
+			break;
+		case BMC_VER:
+			memcpy(buf, bdinfo->bmc_ver, XMC_BDINFO_ENTRY_LEN_MAX);
+			break;
+		case MAX_PWR:
+			*buf = bdinfo->max_power;
+			break;
+		case FAN_PRESENCE:
+			*buf = bdinfo->fan_presence;
+			break;
+		case CFG_MODE:
+			*buf = bdinfo->config_mode;
+			break;
+		default:
+			break;
+		}
+	}
 }
 static bool autonomous_xmc(struct platform_device *pdev)
 {
@@ -677,58 +739,71 @@ static bool autonomous_xmc(struct platform_device *pdev)
 	return core->priv.flags & XOCL_DSAFLAG_SMARTN;
 }
 
-static int xmc_get_data(struct platform_device *pdev, void *buf)
+static int xmc_get_data(struct platform_device *pdev, enum group_kind kind, void *buf)
 {
-	struct xcl_sensor *sensors = (struct xcl_sensor *)buf;
+	struct xcl_sensor *sensors = NULL;
+	struct xcl_board_info *bdinfo = NULL;
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
 
 	if (XMC_PRIVILEGED(xmc) && !xmc->mgmt_binary)
 		return -ENODEV;
 
-	xmc_sensor(pdev, VOL_12V_PEX, &sensors->vol_12v_pex, SENSOR_INS);
-	xmc_sensor(pdev, VOL_12V_AUX, &sensors->vol_12v_aux, SENSOR_INS);
-	xmc_sensor(pdev, CUR_12V_PEX, &sensors->cur_12v_pex, SENSOR_INS);
-	xmc_sensor(pdev, CUR_12V_AUX, &sensors->cur_12v_aux, SENSOR_INS);
-	xmc_sensor(pdev, VOL_3V3_PEX, &sensors->vol_3v3_pex, SENSOR_INS);
-	xmc_sensor(pdev, VOL_3V3_AUX, &sensors->vol_3v3_aux, SENSOR_INS);
-	xmc_sensor(pdev, VPP_BTM, &sensors->ddr_vpp_btm, SENSOR_INS);
-	xmc_sensor(pdev, VOL_5V5_SYS, &sensors->sys_5v5, SENSOR_INS);
-	xmc_sensor(pdev, VOL_1V2_TOP, &sensors->top_1v2, SENSOR_INS);
-	xmc_sensor(pdev, VOL_1V8, &sensors->vol_1v8, SENSOR_INS);
-	xmc_sensor(pdev, VCC_0V85, &sensors->vol_0v85, SENSOR_INS);
-	xmc_sensor(pdev, VPP_TOP, &sensors->ddr_vpp_top, SENSOR_INS);
-	xmc_sensor(pdev, VCC_0V9A, &sensors->mgt0v9avcc, SENSOR_INS);
-	xmc_sensor(pdev, VOL_12V_SW, &sensors->vol_12v_sw, SENSOR_INS);
-	xmc_sensor(pdev, VTT_MGTA, &sensors->mgtavtt, SENSOR_INS);
-	xmc_sensor(pdev, VOL_1V2_BTM, &sensors->vcc1v2_btm, SENSOR_INS);
-	xmc_sensor(pdev, FPGA_TEMP, &sensors->fpga_temp, SENSOR_INS);
-	xmc_sensor(pdev, FAN_TEMP, &sensors->fan_temp, SENSOR_INS);
-	xmc_sensor(pdev, FAN_RPM, &sensors->fan_rpm, SENSOR_INS);
-	xmc_sensor(pdev, DIMM0_TEMP, &sensors->dimm_temp0, SENSOR_INS);
-	xmc_sensor(pdev, DIMM1_TEMP, &sensors->dimm_temp1, SENSOR_INS);
-	xmc_sensor(pdev, DIMM2_TEMP, &sensors->dimm_temp2, SENSOR_INS);
-	xmc_sensor(pdev, DIMM3_TEMP, &sensors->dimm_temp3, SENSOR_INS);
-	xmc_sensor(pdev, VOL_VCC_INT, &sensors->vccint_vol, SENSOR_INS);
-	xmc_sensor(pdev, CUR_VCC_INT, &sensors->vccint_curr, SENSOR_INS);
-	xmc_sensor(pdev, SE98_TEMP0, &sensors->se98_temp0, SENSOR_INS);
-	xmc_sensor(pdev, SE98_TEMP1, &sensors->se98_temp1, SENSOR_INS);
-	xmc_sensor(pdev, SE98_TEMP2, &sensors->se98_temp2, SENSOR_INS);
-	xmc_sensor(pdev, CAGE_TEMP0, &sensors->cage_temp0, SENSOR_INS);
-	xmc_sensor(pdev, CAGE_TEMP1, &sensors->cage_temp1, SENSOR_INS);
-	xmc_sensor(pdev, CAGE_TEMP2, &sensors->cage_temp2, SENSOR_INS);
-	xmc_sensor(pdev, CAGE_TEMP3, &sensors->cage_temp3, SENSOR_INS);
-	xmc_sensor(pdev, HBM_TEMP, &sensors->hbm_temp0, SENSOR_INS);
-	xmc_bdinfo(pdev, SER_NUM, (u32 *)sensors->serial_num);
-	xmc_bdinfo(pdev, MAC_ADDR0, (u32 *)sensors->mac_addr0);
-	xmc_bdinfo(pdev, MAC_ADDR1, (u32 *)sensors->mac_addr1);
-	xmc_bdinfo(pdev, MAC_ADDR2, (u32 *)sensors->mac_addr2);
-	xmc_bdinfo(pdev, MAC_ADDR3, (u32 *)sensors->mac_addr3);
-	xmc_bdinfo(pdev, REVISION, (u32 *)sensors->revision);
-	xmc_bdinfo(pdev, CARD_NAME, (u32 *)sensors->bd_name);
-	xmc_bdinfo(pdev, BMC_VER, (u32 *)sensors->bmc_ver);
-	xmc_bdinfo(pdev, MAX_PWR, &sensors->max_power);
-	xmc_bdinfo(pdev, FAN_PRESENCE, &sensors->fan_presence);
-	xmc_bdinfo(pdev, CFG_MODE, &sensors->config_mode);
+	switch (kind) {
+	case SENSOR:
+		sensors = (struct xcl_sensor *)buf;
+
+		xmc_sensor(pdev, VOL_12V_PEX, &sensors->vol_12v_pex, SENSOR_INS);
+		xmc_sensor(pdev, VOL_12V_AUX, &sensors->vol_12v_aux, SENSOR_INS);
+		xmc_sensor(pdev, CUR_12V_PEX, &sensors->cur_12v_pex, SENSOR_INS);
+		xmc_sensor(pdev, CUR_12V_AUX, &sensors->cur_12v_aux, SENSOR_INS);
+		xmc_sensor(pdev, VOL_3V3_PEX, &sensors->vol_3v3_pex, SENSOR_INS);
+		xmc_sensor(pdev, VOL_3V3_AUX, &sensors->vol_3v3_aux, SENSOR_INS);
+		xmc_sensor(pdev, VPP_BTM, &sensors->ddr_vpp_btm, SENSOR_INS);
+		xmc_sensor(pdev, VOL_5V5_SYS, &sensors->sys_5v5, SENSOR_INS);
+		xmc_sensor(pdev, VOL_1V2_TOP, &sensors->top_1v2, SENSOR_INS);
+		xmc_sensor(pdev, VOL_1V8, &sensors->vol_1v8, SENSOR_INS);
+		xmc_sensor(pdev, VCC_0V85, &sensors->vol_0v85, SENSOR_INS);
+		xmc_sensor(pdev, VPP_TOP, &sensors->ddr_vpp_top, SENSOR_INS);
+		xmc_sensor(pdev, VCC_0V9A, &sensors->mgt0v9avcc, SENSOR_INS);
+		xmc_sensor(pdev, VOL_12V_SW, &sensors->vol_12v_sw, SENSOR_INS);
+		xmc_sensor(pdev, VTT_MGTA, &sensors->mgtavtt, SENSOR_INS);
+		xmc_sensor(pdev, VOL_1V2_BTM, &sensors->vcc1v2_btm, SENSOR_INS);
+		xmc_sensor(pdev, FPGA_TEMP, &sensors->fpga_temp, SENSOR_INS);
+		xmc_sensor(pdev, FAN_TEMP, &sensors->fan_temp, SENSOR_INS);
+		xmc_sensor(pdev, FAN_RPM, &sensors->fan_rpm, SENSOR_INS);
+		xmc_sensor(pdev, DIMM0_TEMP, &sensors->dimm_temp0, SENSOR_INS);
+		xmc_sensor(pdev, DIMM1_TEMP, &sensors->dimm_temp1, SENSOR_INS);
+		xmc_sensor(pdev, DIMM2_TEMP, &sensors->dimm_temp2, SENSOR_INS);
+		xmc_sensor(pdev, DIMM3_TEMP, &sensors->dimm_temp3, SENSOR_INS);
+		xmc_sensor(pdev, VOL_VCC_INT, &sensors->vccint_vol, SENSOR_INS);
+		xmc_sensor(pdev, CUR_VCC_INT, &sensors->vccint_curr, SENSOR_INS);
+		xmc_sensor(pdev, SE98_TEMP0, &sensors->se98_temp0, SENSOR_INS);
+		xmc_sensor(pdev, SE98_TEMP1, &sensors->se98_temp1, SENSOR_INS);
+		xmc_sensor(pdev, SE98_TEMP2, &sensors->se98_temp2, SENSOR_INS);
+		xmc_sensor(pdev, CAGE_TEMP0, &sensors->cage_temp0, SENSOR_INS);
+		xmc_sensor(pdev, CAGE_TEMP1, &sensors->cage_temp1, SENSOR_INS);
+		xmc_sensor(pdev, CAGE_TEMP2, &sensors->cage_temp2, SENSOR_INS);
+		xmc_sensor(pdev, CAGE_TEMP3, &sensors->cage_temp3, SENSOR_INS);
+		xmc_sensor(pdev, HBM_TEMP, &sensors->hbm_temp0, SENSOR_INS);
+		break;
+	case BDINFO:
+		bdinfo = (struct xcl_board_info *)buf;
+
+		xmc_bdinfo(pdev, SER_NUM, (u32 *)bdinfo->serial_num);
+		xmc_bdinfo(pdev, MAC_ADDR0, (u32 *)bdinfo->mac_addr0);
+		xmc_bdinfo(pdev, MAC_ADDR1, (u32 *)bdinfo->mac_addr1);
+		xmc_bdinfo(pdev, MAC_ADDR2, (u32 *)bdinfo->mac_addr2);
+		xmc_bdinfo(pdev, MAC_ADDR3, (u32 *)bdinfo->mac_addr3);
+		xmc_bdinfo(pdev, REVISION, (u32 *)bdinfo->revision);
+		xmc_bdinfo(pdev, CARD_NAME, (u32 *)bdinfo->bd_name);
+		xmc_bdinfo(pdev, BMC_VER, (u32 *)bdinfo->bmc_ver);
+		xmc_bdinfo(pdev, MAX_PWR, &bdinfo->max_power);
+		xmc_bdinfo(pdev, FAN_PRESENCE, &bdinfo->fan_presence);
+		xmc_bdinfo(pdev, CFG_MODE, &bdinfo->config_mode);
+		break;
+	default:
+		break;
+	}
 	return 0;
 }
 
@@ -1937,7 +2012,6 @@ static void xmc_unload_board_info(struct xocl_xmc *xmc)
 	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
 	vfree(xmc->bdinfo_raw);
 	xmc->bdinfo_raw = NULL;
-	xmc->bdinfo_raw_sz = 0;
 }
 
 static int xmc_remove(struct platform_device *pdev)
@@ -2088,11 +2162,9 @@ static int xmc_probe(struct platform_device *pdev)
 		xocl_info(&pdev->dev, "XMC mailbox offset: 0x%x.\n", val);
 	}
 
-
 	mutex_lock(&xmc->mbx_lock);
 	xmc_load_board_info(xmc);
 	mutex_unlock(&xmc->mbx_lock);
-
 	return 0;
 
 failed:
@@ -2308,10 +2380,10 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 
 	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
 
-	if (XMC_PRIVILEGED(xmc)) {
+	if (xmc->bdinfo_loaded)
+		return 0;
 
-		if (xmc->bdinfo_loaded)
-			return 0;
+	if (XMC_PRIVILEGED(xmc)) {
 
 		if ((!is_xmc_ready(xmc) || !is_sc_ready(xmc)))
 			return -EINVAL;
@@ -2347,6 +2419,12 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		xmc->bdinfo_loaded = true;
 		vfree(bdinfo_raw);
 	} else {
+
+		if (xmc->bdinfo_raw) {
+			xocl_info(&xmc->pdev->dev, "board info loaded, skip\n");
+			return 0;
+		}
+
 		xmc_bdinfo(xmc->pdev, SER_NUM, (u32 *)xmc->serial_num);
 		xmc_bdinfo(xmc->pdev, MAC_ADDR0, (u32 *)xmc->mac_addr0);
 		xmc_bdinfo(xmc->pdev, MAC_ADDR1, (u32 *)xmc->mac_addr1);
@@ -2358,6 +2436,9 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		xmc_bdinfo(xmc->pdev, MAX_PWR, &xmc->max_power);
 		xmc_bdinfo(xmc->pdev, FAN_PRESENCE, &xmc->fan_presence);
 		xmc_bdinfo(xmc->pdev, CFG_MODE, &xmc->config_mode);
+
+		if (xmc->bdinfo_raw)
+			xmc->bdinfo_loaded = true;
 	}
 	return 0;
 }
