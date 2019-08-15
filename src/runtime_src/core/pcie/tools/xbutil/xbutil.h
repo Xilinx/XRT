@@ -1201,23 +1201,16 @@ public:
     int dmatest(size_t blockSize, bool verbose) {
         if (blockSize == 0)
             blockSize = 256 * 1024 * 1024; // Default block size
-
-        std::string errmsg;
-        long long ddr_size = 0;
-        int ddr_bank_count = 0;
-        pcidev::get_dev(m_idx)->sysfs_get("rom", "ddr_bank_size", errmsg, ddr_size);
-        pcidev::get_dev(m_idx)->sysfs_get("rom", "ddr_bank_count_max", errmsg, ddr_bank_count);
-
-        if (!errmsg.empty()) {
-            std::cout << errmsg << std::endl;
+        
+        int ddr_mem_size = get_ddr_mem_size();
+        if (ddr_mem_size == -EINVAL)
             return -EINVAL;
-        }
-        int ddr_mem_size = GB(ddr_size)*ddr_bank_count / (1024 * 1024);
+
         if (verbose)
             std::cout << "Total DDR size: " << ddr_mem_size << " MB\n";
 
         bool isAREDevice = false;
-        std::string name;
+        std::string name, errmsg;
         pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV", errmsg, name );
 
         if (!errmsg.empty()) {
@@ -1414,6 +1407,20 @@ public:
         return memaccess(m_handle, m_devinfo.mDDRSize, getpagesize(),
             pcidev::get_dev(m_idx)->sysfs_name).writeQuiet(
             aStartAddr, aSize, aPattern);
+    }
+
+    int get_ddr_mem_size() {
+        std::string errmsg;
+        long long ddr_size = 0;
+        int ddr_bank_count = 0;
+        pcidev::get_dev(m_idx)->sysfs_get("rom", "ddr_bank_size", errmsg, ddr_size);
+        pcidev::get_dev(m_idx)->sysfs_get("rom", "ddr_bank_count_max", errmsg, ddr_bank_count);
+
+        if (!errmsg.empty()) {
+            std::cout << errmsg << std::endl;
+            return -EINVAL;
+        }
+        return GB(ddr_size)*ddr_bank_count / (1024 * 1024);
     }
 
 
