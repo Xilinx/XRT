@@ -457,6 +457,7 @@ namespace xclbincat1 {
       case PARTITION_METADATA: return "PARTITION_METADATA";
       case EMULATION_DATA: return "EMULATION_DATA";
       case SYSTEM_METADATA: return "SYSTEM_METADATA";
+      case SOFT_KERNEL: return "SOFT_KERNEL";
 
         break;
     }

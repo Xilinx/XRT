@@ -41,42 +41,49 @@ libc = ctypes.CDLL(os.environ['XILINX_XRT'] + "/lib/libxrt_core.so")
 
 
 class AXLF_SECTION_KIND:
-    BITSTREAM            = 0
-    CLEARING_BITSTREAM   = 1
-    EMBEDDED_METADATA    = 2
-    FIRMWARE             = 3
-    DEBUG_DATA           = 4
-    SCHED_FIRMWARE       = 5
-    MEM_TOPOLOGY         = 6
-    CONNECTIVITY         = 7
-    IP_LAYOUT            = 8
-    DEBUG_IP_LAYOUT      = 9
-    DESIGN_CHECK_POINT  = 10
-    CLOCK_FREQ_TOPOLOGY = 11
-    MCS                 = 12
-    BMC                 = 13
-    BUILD_METADATA      = 14
-    KEYVALUE_METADATA   = 15
-    USER_METADATA       = 16
-    DNA_CERTIFICATE     = 17
+    BITSTREAM             = 0
+    CLEARING_BITSTREAM    = 1
+    EMBEDDED_METADATA     = 2
+    FIRMWARE              = 3
+    DEBUG_DATA            = 4
+    SCHED_FIRMWARE        = 5
+    MEM_TOPOLOGY          = 6
+    CONNECTIVITY          = 7
+    IP_LAYOUT             = 8
+    DEBUG_IP_LAYOUT       = 9
+    DESIGN_CHECK_POINT    = 10
+    CLOCK_FREQ_TOPOLOGY   = 11
+    MCS                   = 12
+    BMC                   = 13
+    BUILD_METADATA        = 14
+    KEYVALUE_METADATA     = 15
+    USER_METADATA         = 16
+    DNA_CERTIFICATE       = 17
+    PDI                   = 18
+    BITSTREAM_PARTIAL_PDI = 19
+    PARTITION_METADATA    = 20
+    EMULATION_DATA        = 21
+    SYSTEM_METADATA       = 22
 
 class MEM_TYPE:
-    MEM_DDR3              = 0
-    MEM_DDR4              = 1
-    MEM_DRAM              = 2
-    MEM_STREAMING         = 3
-    MEM_PREALLOCATED_GLOB = 4
-    MEM_ARE               = 5
-    MEM_HBM               = 6
-    MEM_BRAM              = 7
-    MEM_URAM              = 8
+    MEM_DDR3                 = 0
+    MEM_DDR4                 = 1
+    MEM_DRAM                 = 2
+    MEM_STREAMING            = 3
+    MEM_PREALLOCATED_GLOB    = 4
+    MEM_ARE                  = 5
+    MEM_HBM                  = 6
+    MEM_BRAM                 = 7
+    MEM_URAM                 = 8
+    MEM_STREAMING_CONNECTION = 9
 
 class IP_TYPE:
     IP_MB              = 0
     IP_KERNEL          = 1
-    instance           = 2
-    IP_DNASC           = 3
-    IP_DDR4_CONTROLLER = 4
+    IP_DNASC           = 2
+    IP_DDR4_CONTROLLER = 3
+    IP_MEM_DDR4        = 4
+    IP_MEM_HBM         = 5
 
 class XCLBIN_MODE:
     XCLBIN_FLAT                  = 1
@@ -196,11 +203,30 @@ class connectivity(ctypes.Structure):
 
 """   IP_LAYOUT SECTION   """
 
+class IP_CONTROL:
+    AP_CTRL_HS    = 0
+    AP_CTRL_CHAIN = 1
+    AP_CTRL_NONE  = 2
+    AP_CTRL_ME    = 3
+
+class indices (ctypes.Structure):
+    _fields_ = [
+        ("m_index", ctypes.c_uint16),
+        ("m_pc_index", ctypes.c_uint8),
+        ("unused", ctypes.c_uint8)
+    ]
+
+class ip_u1 (ctypes.Union):
+    _fields_ = [
+        ("m_base_address", ctypes.c_int64),
+        ("indices", indices)
+    ]
+
 class ip_data (ctypes.Structure):
     _fields_ = [
         ("m_type", ctypes.c_uint32),
         ("properties", ctypes.c_uint32),
-        ("m_base_address", ctypes.c_uint64),
+        ("ip_u1", ip_u1),
         ("m_name", ctypes.c_uint8 * 64)
     ]
 
@@ -214,15 +240,19 @@ class ip_layout (ctypes.Structure):
 """ Debug IP section layout """
 
 class DEBUG_IP_TYPE:
-    UNDEFINED = 0
-    LAPC = 1
-    ILA = 2
-    AXI_MM_MONITOR = 3
-    AXI_TRACE_FUNNEL = 4
-    AXI_MONITOR_FIFO_LITE = 5
-    AXI_MONITOR_FIFO_FULL = 6
-    ACCEL_MONITOR = 7
-    AXI_STREAM_MONITOR = 8
+    UNDEFINED                   = 0
+    LAPC                        = 1
+    ILA                         = 2
+    AXI_MM_MONITOR              = 3
+    AXI_TRACE_FUNNEL            = 4
+    AXI_MONITOR_FIFO_LITE       = 5
+    AXI_MONITOR_FIFO_FULL       = 6
+    ACCEL_MONITOR               = 7
+    AXI_STREAM_MONITOR          = 8
+    AXI_STREAM_MONITOR          = 9
+    AXI_STREAM_PROTOCOL_CHECKER = 10
+    TRACE_S2MM                  = 11
+    AXI_DMA                     = 12
 
 class debug_ip_data(ctypes.Structure):
     _fields_ = [
@@ -263,8 +293,8 @@ class clock_freq_topology(ctypes.Structure):
     ]
 
 class MCS_TYPE:
-    MCS_UNKNOWN = 0
-    MCS_PRIMARY = 1
+    MCS_UNKNOWN   = 0
+    MCS_PRIMARY   = 1
     MCS_SECONDARY = 2
 
 class mcs_chunk(ctypes.Structure):

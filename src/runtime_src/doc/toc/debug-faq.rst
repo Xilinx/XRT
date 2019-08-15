@@ -16,13 +16,14 @@ Tools of the Trade
    Enumerate Xilinx PCIe devices
 ``xbutil``
    Query status of Xilinx PCIe device
-``xclbinsplit``
-   Unpack an ``xclbin``
+``xclbinutil``
+   Retrieve info from an xclbin
 XRT API Trace
-   Run failing application with XRT logging enabled in ``sdaccel.ini`` ::
+   Run failing application with HAL logging enabled in ``xrt.ini`` ::
 
      [Runtime]
      hal_log=myfail.log
+     runtime_log=my_run.log
 
 Validating a Working Setup
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -40,10 +41,9 @@ Board Enumeration
     xbutil query
 
 XSA Sanity Test
-  Check if verify kernel works ::
+  Card validation on kernel, bandwidth, dmatest and etc. (-d for pointing a specific board) ::
 
-    cd test
-    ./verify.exe verify.xclbin
+    xbutil validate -d 0
 
   Check DDR and PCIe bandwidth ::
 
@@ -55,26 +55,14 @@ Common Reasons For Failures
 Incorrect Memory Topology Usage
 ...............................
 
-5.0+ XSAs are considered dynamic platforms which use sparse
-connectivity between acceleration kernels and memory controllers
-(MIGs). This means that a kernel port can only read/write from/to a
-specific MIG. This connectivity is frozen at ``xclbin`` generation
-time in specified in ``mem_topology`` section of ``xclbin``. The host
-application needs to ensure that it uses the correct memory banks for
-buffer allocation using ``cl_mem_ext_ptr_t`` for OpenCL
-applications. For XRT native applications the bank is specified in
-flags to ``xclAllocBO()`` and ``xclAllocUserPtr()``.
+5.0+ XSAs are considered dynamic platforms which use sparse connectivity between acceleration kernels and memory controllers (MIGs). This means that a kernel port can only read/write from/to a specific MIG. This connectivity is frozen at xclbin generation time in specified in mem_topology section of xclbin. The host application needs to ensure that it uses the correct memory banks for buffer allocation using cl_mem_ext_ptr_t for OpenCL applications. For XRT native applications the bank is specified in flags to xclAllocBO() and xclAllocUserPtr().
 
-If an application is producing incorrect results it is important to
-review the host code to ensure that host application and ``xclbin``
-agree on memory topology. One way to validate this at runtime is to
-enable XRT logging in ``sdaccel.ini`` and then carefully go through
-all buffer allocation requests.
+If an application is producing incorrect results it is important to review the host code to ensure that host application and xclbin agree on memory topology. One way to validate this at runtime is to enable HAL logging in xrt.ini and then carefully go through all buffer allocation requests.
 
 Memory Read Before Write
 ........................
 
-Read-Before-Write in 5.0+ XSAs will cause MIG *ECC* error. This is typically a user error. For example if user expects a kernel to write 4KB of data in DDR but it produced only 1KB of data and now the user tries to transfer full 4KB of data to host. It can also happen if user supplied 1KB sized buffer to a kernel but the kernel tries to read 4KB of data. Note ECC read-before-write error occurs if — since the last bitstream download which results in MIG initialization — no data has been written to a memory location but a read request is made for that same memory location. ECC errors stall the affected MIG since usually kernels are not able to handle this error. This can manifest in two different ways:
+Read-Before-Write in 5.0+ XSAs will cause MIG *ECC* error. This is typically a user error. For example if user expects a kernel to write 4KB of data in DDR but it produced only 1KB of data and now the user tries to transfer full 4KB of data to host. It can also happen if user supplied 1KB sized buffer to a kernel but the kernel tries to read 4KB of data. Note ECC read-before-write error occurs if -- since the last bitstream download which results in MIG initialization -- no data has been written to a memory location but a read request is made for that same memory location. ECC errors stall the affected MIG since usually kernels are not able to handle this error. This can manifest in two different ways:
 
 1. CU may hang or stall because it does not know how to handle this error while reading/writing to/from the affected MIG. ``xbutil query`` will show that the CU is stuck in *BUSY* state and not making progress.
 2. AXI Firewall may trip if PCIe DMA request is made to the affected MIG as the DMA engine will be unable to complete request. AXI Firewall trips result in the Linux kernel driver killing all processes which have opened the device node with *SIGBUS* signal. ``xbutil query`` will show if an AXI Firewall has indeed tripped including its timestamp.
@@ -96,19 +84,13 @@ kernels will demonstrate weird behavior.
 3. When run several times, a CU may produce correct results a few times and incorrect results rest of the time
 4. A single CU run may produce a pattern of correct and incorrect result segments. Hence for a CU which produces a very long vector output (e.g. vector add), a pattern of correct — typically 64 bytes or one AXI burst — segment followed by incorrect segments are generated.
 
-Users should check the frequency of the board with ``xbutil query``
-and compare it against the metadata in ``xclbin``. ``xclbincat`` may
-be used to extract metadata from ``xclbin``.
+Users should check the frequency of the board with ``xbutil query`` and compare it against the metadata in xclbin. ``xclbinutil`` may be used to extract metadata from xclbin.
 
 CU Deadlock
 ...........
 
 HLS scheduler bugs can also result in CU hangs. CU deadlocks AXI data bus at which point neither read nor write operation can make progress. The deadlocks can be observed with ``xbutil query`` where the CU will appear stuck in *START* or *---* state. Note this deadlock can cause other CUs which read/write from/to the same MIG to also hang.
 
-Multiple CU DDR Access Deadlock
-...............................
-
-TODO
 
 AXI Bus Deadlock
 ................
@@ -147,14 +129,7 @@ If this does not recover the board perform a warm reboot. After reset/reboot ple
 XRT Scheduling Options
 ~~~~~~~~~~~~~~~~~~~~~~
 
-XRT has three kernel execution schedulers today: ERT, KDS and
-legacy. By default XRT uses ERT which runs on Microblaze. ERT is
-accessed through KDS which runs inside ``xocl`` Linux kernel
-driver. If ERT is not available KDS uses its own built-in
-scheduler. From 2018.2 release onward KDS (together with ERT if
-available in the XSA) is enabled by default. Users can optionally
-switch to legacy scheduler which runs in userspace. Switching
-scheduler will help isolate any scheduler related XRT bugs ::
+XRT has three kernel execution schedulers today: ERT, KDS and legacy. By default XRT uses ERT which runs on Microblaze. ERT is accessed through KDS which runs inside xocl Linux kernel driver. If ERT is not available KDS uses its own built-in scheduler. From 2018.2 release onwards KDS (tgether with ERT if available in the XSA) is enabled by default. Users can optionally switch to legacy scheduler which runs in userspace. Switching scheduler will help isolate any scheduler related XRT bugs ::
 
   [Runtime]
   ert=false

@@ -61,11 +61,11 @@ namespace awsbwhal {
       mLogStream << "debug_ip_layout: reading profile addresses and names..." << std::endl;
     }
     mMemoryProfilingNumberSlots = getIPCountAddrNames(AXI_MM_MONITOR, mPerfMonBaseAddress,
-      mPerfMonSlotName, mPerfmonProperties, mPerfmonMajorVersions, mPerfmonMinorVersions, XSPM_MAX_NUMBER_SLOTS);
+      mPerfMonSlotName, mPerfmonProperties, mPerfmonMajorVersions, mPerfmonMinorVersions, XAIM_MAX_NUMBER_SLOTS);
     mAccelProfilingNumberSlots = getIPCountAddrNames(ACCEL_MONITOR, mAccelMonBaseAddress,
-      mAccelMonSlotName, mAccelmonProperties, mAccelmonMajorVersions, mAccelmonMinorVersions, XSAM_MAX_NUMBER_SLOTS);
+      mAccelMonSlotName, mAccelmonProperties, mAccelmonMajorVersions, mAccelmonMinorVersions, XAM_MAX_NUMBER_SLOTS);
     mStreamProfilingNumberSlots = getIPCountAddrNames(AXI_STREAM_MONITOR, mStreamMonBaseAddress,
-      mStreamMonSlotName, mStreammonProperties, mStreammonMajorVersions, mStreammonMinorVersions, XSSPM_MAX_NUMBER_SLOTS);
+      mStreamMonSlotName, mStreammonProperties, mStreammonMajorVersions, mStreammonMinorVersions, XASM_MAX_NUMBER_SLOTS);
 
     mIsDeviceProfiling = (mMemoryProfilingNumberSlots > 0 || mAccelProfilingNumberSlots > 0 || mStreamProfilingNumberSlots > 0);
 
@@ -206,22 +206,22 @@ namespace awsbwhal {
     size_t size = 0;
 
     uint64_t spm_offsets[] = {
-        XSPM_SAMPLE_WRITE_BYTES_OFFSET,
-        XSPM_SAMPLE_WRITE_TRANX_OFFSET,
-        XSPM_SAMPLE_READ_BYTES_OFFSET,
-        XSPM_SAMPLE_READ_TRANX_OFFSET,
-        XSPM_SAMPLE_OUTSTANDING_COUNTS_OFFSET,
-        XSPM_SAMPLE_LAST_WRITE_ADDRESS_OFFSET,
-        XSPM_SAMPLE_LAST_WRITE_DATA_OFFSET,
-        XSPM_SAMPLE_LAST_READ_ADDRESS_OFFSET,
-        XSPM_SAMPLE_LAST_READ_DATA_OFFSET
+        XAIM_SAMPLE_WRITE_BYTES_OFFSET,
+        XAIM_SAMPLE_WRITE_TRANX_OFFSET,
+        XAIM_SAMPLE_READ_BYTES_OFFSET,
+        XAIM_SAMPLE_READ_TRANX_OFFSET,
+        XAIM_SAMPLE_OUTSTANDING_COUNTS_OFFSET,
+        XAIM_SAMPLE_LAST_WRITE_ADDRESS_OFFSET,
+        XAIM_SAMPLE_LAST_WRITE_DATA_OFFSET,
+        XAIM_SAMPLE_LAST_READ_ADDRESS_OFFSET,
+        XAIM_SAMPLE_LAST_READ_DATA_OFFSET
     };
 
     // Read all metric counters
-    uint64_t baseAddress[XSPM_MAX_NUMBER_SLOTS];
-    uint32_t numSlots = getIPCountAddrNames(AXI_MM_MONITOR, baseAddress, nullptr, nullptr, nullptr, nullptr, XSPM_MAX_NUMBER_SLOTS);
+    uint64_t baseAddress[XAIM_MAX_NUMBER_SLOTS];
+    uint32_t numSlots = getIPCountAddrNames(AXI_MM_MONITOR, baseAddress, nullptr, nullptr, nullptr, nullptr, XAIM_MAX_NUMBER_SLOTS);
 
-    uint32_t temp[XSPM_DEBUG_SAMPLE_COUNTERS_PER_SLOT];
+    uint32_t temp[XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT];
 
     aCounterResults->NumSlots = numSlots;
     snprintf(aCounterResults->DevUserName, 256, "%s", mDevUserName.c_str());
@@ -229,10 +229,10 @@ namespace awsbwhal {
       uint32_t sampleInterval;
       // Read sample interval register to latch the sampled metric counters
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-                    baseAddress[s] + XSPM_SAMPLE_OFFSET,
+                    baseAddress[s] + XAIM_SAMPLE_OFFSET,
                     &sampleInterval, 4);
 
-      for (int c=0; c < XSPM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++)
+      for (int c=0; c < XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++)
         size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s]+spm_offsets[c], &temp[c], 4);
 
       aCounterResults->WriteBytes[s]      = temp[0];
@@ -263,11 +263,11 @@ namespace awsbwhal {
     }
 
     // Get the base addresses of all the SSPM IPs in the debug IP layout
-    uint64_t baseAddress[XSSPM_MAX_NUMBER_SLOTS];
+    uint64_t baseAddress[XASM_MAX_NUMBER_SLOTS];
     uint32_t numSlots = getIPCountAddrNames(AXI_STREAM_MONITOR,
                         baseAddress,
                         nullptr, nullptr, nullptr, nullptr,
-                        XSSPM_MAX_NUMBER_SLOTS);
+                        XASM_MAX_NUMBER_SLOTS);
 
     // Fill up the portions of the return struct that are known by the runtime
     aCounterResults->NumSlots = numSlots ;
@@ -275,11 +275,11 @@ namespace awsbwhal {
 
     // Fill up the return structure with the values read from the hardware
     uint64_t sspm_offsets[] = {
-      XSSPM_NUM_TRANX_OFFSET,
-      XSSPM_DATA_BYTES_OFFSET,
-      XSSPM_BUSY_CYCLES_OFFSET,
-      XSSPM_STALL_CYCLES_OFFSET,
-      XSSPM_STARVE_CYCLES_OFFSET
+      XASM_NUM_TRANX_OFFSET,
+      XASM_DATA_BYTES_OFFSET,
+      XASM_BUSY_CYCLES_OFFSET,
+      XASM_STALL_CYCLES_OFFSET,
+      XASM_STARVE_CYCLES_OFFSET
     };
 
     for (unsigned int i = 0 ; i < numSlots ; ++i)
@@ -287,13 +287,13 @@ namespace awsbwhal {
       uint32_t sampleInterval ;
       // Read sample interval register to latch the sampled metric counters
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-              baseAddress[i] + XSSPM_SAMPLE_OFFSET,
+              baseAddress[i] + XASM_SAMPLE_OFFSET,
               &sampleInterval, sizeof(uint32_t));
 
       // Then read all the individual 64-bit counters
-      unsigned long long int tmp[XSSPM_DEBUG_SAMPLE_COUNTERS_PER_SLOT] ;
+      unsigned long long int tmp[XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT] ;
 
-      for (unsigned int j = 0 ; j < XSSPM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; ++j)
+      for (unsigned int j = 0 ; j < XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; ++j)
       {
     size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
             baseAddress[i] + sspm_offsets[j],
@@ -369,37 +369,37 @@ namespace awsbwhal {
     }
 
     uint64_t sam_offsets[] = {
-        XSAM_ACCEL_EXECUTION_COUNT_OFFSET,
-        XSAM_ACCEL_EXECUTION_CYCLES_OFFSET,
-        XSAM_ACCEL_STALL_INT_OFFSET,
-        XSAM_ACCEL_STALL_STR_OFFSET,
-        XSAM_ACCEL_STALL_EXT_OFFSET,
-        XSAM_ACCEL_MIN_EXECUTION_CYCLES_OFFSET,
-        XSAM_ACCEL_MAX_EXECUTION_CYCLES_OFFSET,
-        XSAM_ACCEL_TOTAL_CU_START_OFFSET
+        XAM_ACCEL_EXECUTION_COUNT_OFFSET,
+        XAM_ACCEL_EXECUTION_CYCLES_OFFSET,
+        XAM_ACCEL_STALL_INT_OFFSET,
+        XAM_ACCEL_STALL_STR_OFFSET,
+        XAM_ACCEL_STALL_EXT_OFFSET,
+        XAM_ACCEL_MIN_EXECUTION_CYCLES_OFFSET,
+        XAM_ACCEL_MAX_EXECUTION_CYCLES_OFFSET,
+        XAM_ACCEL_TOTAL_CU_START_OFFSET
     };
 
     uint64_t sam_upper_offsets[] = {
-        XSAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET,
-        XSAM_ACCEL_EXECUTION_CYCLES_UPPER_OFFSET,
-        XSAM_ACCEL_STALL_INT_UPPER_OFFSET,
-        XSAM_ACCEL_STALL_STR_UPPER_OFFSET,
-        XSAM_ACCEL_STALL_EXT_UPPER_OFFSET,
-        XSAM_ACCEL_MIN_EXECUTION_CYCLES_UPPER_OFFSET,
-        XSAM_ACCEL_MAX_EXECUTION_CYCLES_UPPER_OFFSET,
-        XSAM_ACCEL_TOTAL_CU_START_UPPER_OFFSET
+        XAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET,
+        XAM_ACCEL_EXECUTION_CYCLES_UPPER_OFFSET,
+        XAM_ACCEL_STALL_INT_UPPER_OFFSET,
+        XAM_ACCEL_STALL_STR_UPPER_OFFSET,
+        XAM_ACCEL_STALL_EXT_UPPER_OFFSET,
+        XAM_ACCEL_MIN_EXECUTION_CYCLES_UPPER_OFFSET,
+        XAM_ACCEL_MAX_EXECUTION_CYCLES_UPPER_OFFSET,
+        XAM_ACCEL_TOTAL_CU_START_UPPER_OFFSET
     };
 
     // Read all metric counters
-    uint64_t baseAddress[XSAM_MAX_NUMBER_SLOTS] = {0};
-    uint8_t  accelmonProperties[XSAM_MAX_NUMBER_SLOTS] = {0};
-    uint8_t  accelmonMajorVersions[XSAM_MAX_NUMBER_SLOTS] = {0};
-    uint8_t  accelmonMinorVersions[XSAM_MAX_NUMBER_SLOTS] = {0};
+    uint64_t baseAddress[XAM_MAX_NUMBER_SLOTS] = {0};
+    uint8_t  accelmonProperties[XAM_MAX_NUMBER_SLOTS] = {0};
+    uint8_t  accelmonMajorVersions[XAM_MAX_NUMBER_SLOTS] = {0};
+    uint8_t  accelmonMinorVersions[XAM_MAX_NUMBER_SLOTS] = {0};
 
     uint32_t numSlots = getIPCountAddrNames(ACCEL_MONITOR, baseAddress, nullptr, accelmonProperties,
-                                            accelmonMajorVersions, accelmonMinorVersions, XSAM_MAX_NUMBER_SLOTS);
+                                            accelmonMajorVersions, accelmonMinorVersions, XAM_MAX_NUMBER_SLOTS);
 
-    uint32_t temp[XSAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT] = {0};
+    uint32_t temp[XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT] = {0};
 
     samResult->NumSlots = numSlots;
     snprintf(samResult->DevUserName, 256, "%s", mDevUserName.c_str());
@@ -407,14 +407,14 @@ namespace awsbwhal {
       uint32_t sampleInterval;
       // Read sample interval register to latch the sampled metric counters
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-                    baseAddress[s] + XSAM_SAMPLE_OFFSET,
+                    baseAddress[s] + XAM_SAMPLE_OFFSET,
                     &sampleInterval, 4);
 
       bool hasDataflow = (cmpMonVersions(accelmonMajorVersions[s],accelmonMinorVersions[s],1,1) < 0) ? true : false;
 
       // If applicable, read the upper 32-bits of the 64-bit debug counters
-      if (accelmonProperties[s] & XSAM_64BIT_PROPERTY_MASK) {
-        for (int c = 0 ; c < XSAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT ; ++c) {
+      if (accelmonProperties[s] & XAM_64BIT_PROPERTY_MASK) {
+        for (int c = 0 ; c < XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT ; ++c) {
           xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
             baseAddress[s] + sam_upper_offsets[c],
             &temp[c], 4) ;
@@ -430,15 +430,15 @@ namespace awsbwhal {
 
         if(hasDataflow) {
           uint64_t dfTmp[2] = {0};
-          xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + XSAM_BUSY_CYCLES_UPPER_OFFSET, &dfTmp[0], 4);
-          xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + XSAM_MAX_PARALLEL_ITER_UPPER_OFFSET, &dfTmp[1], 4);
+          xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + XAM_BUSY_CYCLES_UPPER_OFFSET, &dfTmp[0], 4);
+          xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + XAM_MAX_PARALLEL_ITER_UPPER_OFFSET, &dfTmp[1], 4);
 
           samResult->CuBusyCycles[s]      = dfTmp[0] << 32;
           samResult->CuMaxParallelIter[s] = dfTmp[1] << 32;
         }
       }
 
-      for (int c=0; c < XSAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++)
+      for (int c=0; c < XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++)
         size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s]+sam_offsets[c], &temp[c], 4);
 
       samResult->CuExecCount[s]      |= temp[0];
@@ -452,8 +452,8 @@ namespace awsbwhal {
 
       if(hasDataflow) {
         uint64_t dfTmp[2] = {0};
-        xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + XSAM_BUSY_CYCLES_OFFSET, &dfTmp[0], 4);
-        xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + XSAM_MAX_PARALLEL_ITER_OFFSET, &dfTmp[1], 4);
+        xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + XAM_BUSY_CYCLES_OFFSET, &dfTmp[0], 4);
+        xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + XAM_MAX_PARALLEL_ITER_OFFSET, &dfTmp[1], 4);
 
         samResult->CuBusyCycles[s]      |= dfTmp[0];
         samResult->CuMaxParallelIter[s] |= dfTmp[1];
@@ -476,11 +476,11 @@ size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void*
   switch (type) {
     case XCL_DEBUG_READ_TYPE_LAPC :
       return drv->xclDebugReadCheckers(reinterpret_cast<xclDebugCheckersResults*>(debugResults));
-    case XCL_DEBUG_READ_TYPE_SPM :
+    case XCL_DEBUG_READ_TYPE_AIM :
       return drv->xclDebugReadCounters(reinterpret_cast<xclDebugCountersResults*>(debugResults));
-    case XCL_DEBUG_READ_TYPE_SAM :
+    case XCL_DEBUG_READ_TYPE_AM :
       return drv->xclDebugReadAccelMonitorCounters(reinterpret_cast<xclAccelMonitorCounterResults*>(debugResults));
-    case XCL_DEBUG_READ_TYPE_SSPM :
+    case XCL_DEBUG_READ_TYPE_ASM :
       return drv->xclDebugReadStreamingCounters(reinterpret_cast<xclStreamingDebugCountersResults*>(debugResults));
     case XCL_DEBUG_READ_TYPE_SPC:
       return drv->xclDebugReadStreamingCheckers(reinterpret_cast<xclDebugStreamingCheckersResults*>(debugResults));

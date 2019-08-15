@@ -98,7 +98,7 @@ std::pair<size_t, size_t> xcldev::device::getCUNamePortName (std::vector<std::st
         else {
             aCUNamePortNames.emplace_back("Unknown", "Unknown");
         }
-        //Replace the name of the host-spm to something simple
+        //Replace the name of the host-AIM to something simple
         if (aCUNamePortNames.back().first.find("interconnect_host_aximm") != std::string::npos) {
             aCUNamePortNames.pop_back();
             aCUNamePortNames.emplace_back("XDMA", "N/A");
@@ -130,7 +130,7 @@ std::pair<size_t, size_t> xcldev::device::getStreamName (const std::vector<std::
     return std::pair<size_t, size_t>(max1, max2);
 }
 
-int xcldev::device::readSPMCounters() {
+int xcldev::device::readAIMCounters() {
     xclDebugCountersResults debugResults = {0};
     std::vector<std::string> slotNames;
     std::vector< std::pair<std::string, std::string> > cuNameportNames;
@@ -140,7 +140,7 @@ int xcldev::device::readSPMCounters() {
         return 0;
     }
     std::pair<size_t, size_t> widths = getCUNamePortName(slotNames, cuNameportNames);
-    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_SPM, &debugResults);
+    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_AIM, &debugResults);
 
     std::cout << "AXI Interface Monitor Counters\n";
     int col1 = std::max(widths.first, strlen("Region or CU")) + 4;
@@ -181,7 +181,7 @@ int xcldev::device::readSPMCounters() {
     return 0;
 }
 
-int xcldev::device::readSSPMCounters() {
+int xcldev::device::readASMCounters() {
     xclStreamingDebugCountersResults debugResults = {0};
     std::vector<std::string> slotNames;
     std::vector< std::pair<std::string, std::string> > cuNameportNames;
@@ -191,7 +191,7 @@ int xcldev::device::readSSPMCounters() {
         return 0;
     }
     std::pair<size_t, size_t> widths = getStreamName(slotNames, cuNameportNames);
-    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_SSPM, &debugResults);
+    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_ASM, &debugResults);
 
     std::cout << "AXI Stream Monitor Counters\n";
     int col1 = std::max(widths.first, strlen("Stream Master")) + 4;
@@ -401,12 +401,12 @@ int xcldev::device::print_debug_ip_list (int aVerbose) {
         "unknown",
         "lapc",
         "ila",
-        "spm",
+        "aim",
         "tracefunnel",
         "monitorfifolite",
         "monitorfifofull",
         "accelmonitor",
-        "sspm"
+        "asm"
     };
     int available_ip [debug_ip_max_type] = {0};
     std::string errmsg;
@@ -420,7 +420,7 @@ int xcldev::device::print_debug_ip_list (int aVerbose) {
 
     if (buf.empty() || map->m_count <= 0) {
         std::cout << "INFO: Failed to find any debug IPs on the platform. "
-            << "Ensure that a valid bitstream with debug IPs (SPM, LAPC) is "
+            << "Ensure that a valid bitstream with debug IPs (AIM, LAPC) is "
             << "successfully downloaded. \n";
         return 0;
     }

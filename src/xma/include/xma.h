@@ -40,11 +40,9 @@ extern "C" {
  *
  *  This is the entry point routine for utilzing the XMA library and must be
  *  the first call within any application before calling any other XMA APIs.
- * Each device specified will be  programmed with 
- * provided xclbin(s).
+ *  Each device specified will be  programmed with provided xclbin(s).
  *
- *  @devXclbins: array of device index and full path of xclbin
- * to program the device with.
+ *  @devXclbins: array of device index and full path of xclbin to program the device with.
  * 
  *  @num_parms: Number of elements in above array input
  * 

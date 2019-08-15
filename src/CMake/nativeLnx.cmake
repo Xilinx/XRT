@@ -128,8 +128,9 @@ add_subdirectory(python)
 
 # --- Python tests ---
 set(PY_TEST_SRC
-  ../tests/python/22_verify/main.py
-  ../tests/python/utils_binding.py)
+  ../tests/python/22_verify/22_verify.py
+  ../tests/python/utils_binding.py
+  ../tests/pyopencl/23_bandwidth.py)
 install (FILES ${PY_TEST_SRC} DESTINATION ${XRT_INSTALL_DIR}/test)
 
 message("-- XRT version: ${XRT_VERSION_STRING}")

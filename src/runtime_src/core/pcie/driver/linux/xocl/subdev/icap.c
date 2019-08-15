@@ -156,7 +156,7 @@ struct icap {
 	char			*icap_clock_freq_counter_hbm;
 
 	uint64_t		cache_expire_secs;
-	struct xcl_hwicap	cache;
+	struct xcl_pr_region	cache;
 	ktime_t			cache_expires;
 
 	enum icap_sec_level	sec_level;
@@ -229,7 +229,7 @@ const static struct xclmgmt_ocl_clockwiz {
 
 static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
 	const struct axlf *xclbin, enum axlf_section_kind kind);
-static void icap_set_data(struct icap *icap, struct xcl_hwicap *hwicap);
+static void icap_set_data(struct icap *icap, struct xcl_pr_region *hwicap);
 static uint64_t icap_get_data_nolock(struct platform_device *pdev, enum data_kind kind);
 static uint64_t icap_get_data(struct platform_device *pdev, enum data_kind kind);
 
@@ -237,8 +237,8 @@ static void icap_read_from_peer(struct platform_device *pdev)
 {
 	struct mailbox_subdev_peer subdev_peer = {0};
 	struct icap *icap = platform_get_drvdata(pdev);
-	struct xcl_hwicap xcl_hwicap = {0};
-	size_t resp_len = sizeof(struct xcl_hwicap);
+	struct xcl_pr_region xcl_hwicap = {0};
+	size_t resp_len = sizeof(struct xcl_pr_region);
 	size_t data_len = sizeof(struct mailbox_subdev_peer);
 	struct mailbox_req *mb_req = NULL;
 	size_t reqlen = sizeof(struct mailbox_req) + data_len;
@@ -266,9 +266,9 @@ static void icap_read_from_peer(struct platform_device *pdev)
 	vfree(mb_req);
 }
 
-static void icap_set_data(struct icap *icap, struct xcl_hwicap *hwicap)
+static void icap_set_data(struct icap *icap, struct xcl_pr_region *hwicap)
 {
-	memcpy(&icap->cache, hwicap, sizeof(struct xcl_hwicap));
+	memcpy(&icap->cache, hwicap, sizeof(struct xcl_pr_region));
 	icap->cache_expires = ktime_add(ktime_get_boottime(), ktime_set(icap->cache_expire_secs, 0));
 }
 
@@ -393,6 +393,9 @@ static unsigned int icap_get_clock_frequency_counter_khz(const struct icap *icap
 	 */
 	if (ICAP_PRIVILEGED(icap)) {
 		if (uuid_is_null(&icap->icap_bitstream_uuid))
+			return freq;
+
+		if (!icap->icap_clock_freq_counter)
 			return freq;
 
 		if (idx < 2) {
@@ -540,26 +543,30 @@ static int icap_freeze_axi_gate(struct icap *icap)
 	ICAP_INFO(icap, "freezing CL AXI gate");
 	BUG_ON(icap->icap_axi_gate_frozen);
 
-	write_lock(&XDEV(xdev)->rwlock);
-	(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-	reg_wr(&icap->icap_axi_gate->iag_wr, GATE_FREEZE_USER);
-	(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-
-	if (!xocl_is_unified(xdev)) {
-		reg_wr(&icap->icap_regs->ir_cr, 0xc);
-		ndelay(20);
+	if (XOCL_DSA_IS_SMARTN(xdev)) {
+		xocl_xmc_dr_freeze(xdev);
 	} else {
-		/* New ICAP reset sequence applicable only to unified dsa. */
-		reg_wr(&icap->icap_regs->ir_cr, 0x8);
-		ndelay(2000);
-		reg_wr(&icap->icap_regs->ir_cr, 0x0);
-		ndelay(2000);
-		reg_wr(&icap->icap_regs->ir_cr, 0x4);
-		ndelay(2000);
-		reg_wr(&icap->icap_regs->ir_cr, 0x0);
-		ndelay(2000);
-	}
 
+		write_lock(&XDEV(xdev)->rwlock);
+		(void) reg_rd(&icap->icap_axi_gate->iag_rd);
+		reg_wr(&icap->icap_axi_gate->iag_wr, GATE_FREEZE_USER);
+		(void) reg_rd(&icap->icap_axi_gate->iag_rd);
+
+		if (!xocl_is_unified(xdev)) {
+			reg_wr(&icap->icap_regs->ir_cr, 0xc);
+			ndelay(20);
+		} else {
+			/* New ICAP reset sequence applicable only to unified dsa. */
+			reg_wr(&icap->icap_regs->ir_cr, 0x8);
+			ndelay(2000);
+			reg_wr(&icap->icap_regs->ir_cr, 0x0);
+			ndelay(2000);
+			reg_wr(&icap->icap_regs->ir_cr, 0x4);
+			ndelay(2000);
+			reg_wr(&icap->icap_regs->ir_cr, 0x0);
+			ndelay(2000);
+		}
+	}
 	icap->icap_axi_gate_frozen = true;
 
 	return 0;
@@ -579,17 +586,20 @@ static int icap_free_axi_gate(struct icap *icap)
 	if (!icap->icap_axi_gate_frozen)
 		return 0;
 
-	for (i = 0; i < ARRAY_SIZE(gate_free_user); i++) {
+	if (XOCL_DSA_IS_SMARTN(xdev)) {
+		xocl_xmc_dr_free(xdev);
+	} else {
+		for (i = 0; i < ARRAY_SIZE(gate_free_user); i++) {
+			(void) reg_rd(&icap->icap_axi_gate->iag_rd);
+			reg_wr(&icap->icap_axi_gate->iag_wr, gate_free_user[i]);
+			ndelay(500);
+		}
+
 		(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-		reg_wr(&icap->icap_axi_gate->iag_wr, gate_free_user[i]);
-		ndelay(500);
+
+		write_unlock(&XDEV(xdev)->rwlock);
 	}
-
-	(void) reg_rd(&icap->icap_axi_gate->iag_rd);
-
 	icap->icap_axi_gate_frozen = false;
-	write_unlock(&XDEV(xdev)->rwlock);
-
 	return 0;
 }
 
@@ -757,7 +767,7 @@ static int icap_ocl_get_freqscaling(struct platform_device *pdev,
 
 static inline bool mig_calibration_done(struct icap *icap)
 {
-	return (reg_rd(&icap->icap_state->igs_state) & BIT(0)) != 0;
+	return icap->icap_state ? (reg_rd(&icap->icap_state->igs_state) & BIT(0)) != 0 : 0;
 }
 
 /* Check for MIG calibration. */
@@ -1200,7 +1210,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	unsigned short deviceid = pcidev->device;
 	struct axlf *bin_obj_axlf;
 	const struct firmware *fw;
-	char fw_name[128];
+	char fw_name[256];
 	XHwIcap_Bit_Header bit_header = { 0 };
 	long err = 0;
 	uint64_t length = 0;
@@ -1412,26 +1422,41 @@ static long icap_download_clear_bitstream(struct icap *icap)
 
 // DECLARE_WAIT_QUEUE_HEAD(mytestwait);
 
-static int icap_download_rp(struct platform_device *pdev, int level, bool force)
+static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct mailbox_req mbreq = { MAILBOX_REQ_CHG_SHELL, };
+	struct mailbox_req mbreq = { 0 };
 	int ret = 0;
 
-
-
+	mbreq.req = MAILBOX_REQ_CHG_SHELL;
 	mutex_lock(&icap->icap_lock);
 	if (!icap->rp_bit || !icap->rp_fdt) {
-		xocl_xdev_err(xdev, "Invalid reprogram request");
+		xocl_xdev_err(xdev, "Invalid reprogram request %p.%p",
+			icap->rp_bit, icap->rp_fdt);
 		ret = -EINVAL;
 		goto failed;
 	}
-	if (!force) {
+
+	if (!XDEV(xdev)->fdt_blob) {
+		xocl_xdev_err(xdev, "Empty fdt blob");
+		ret = -EINVAL;
+		goto failed;
+	}
+
+	ret = xocl_fdt_check_uuids(xdev, icap->rp_fdt, XDEV(xdev)->fdt_blob);
+	if (ret) {
+		xocl_xdev_err(xdev, "Incompatible uuids");
+		goto failed;
+	}
+
+	if (flag == RP_DOWNLOAD_DRY)
+		goto end;
+	else if (flag == RP_DOWNLOAD_NORMAL) {
 		(void) xocl_peer_notify(xocl_get_xdev(icap->icap_pdev), &mbreq,
 				sizeof(struct mailbox_req));
 		ICAP_INFO(icap, "Notified userpf to program rp");
-		goto failed;
+		goto end;
 	}
 
 	ret = xocl_fdt_blob_input(xdev, icap->rp_fdt);
@@ -1468,13 +1493,18 @@ static int icap_download_rp(struct platform_device *pdev, int level, bool force)
 		goto failed;
 	}
 
-	vfree(icap->rp_bit);
-	icap->rp_bit = NULL;
-	icap->rp_bit_len = 0;
-	vfree(icap->rp_fdt);
-	icap->rp_fdt = NULL;
-
 failed:
+	if (icap->rp_bit) {
+		vfree(icap->rp_bit);
+		icap->rp_bit = NULL;
+		icap->rp_bit_len = 0;
+	}
+	if (icap->rp_fdt) {
+		vfree(icap->rp_fdt);
+		icap->rp_fdt = NULL;
+	}
+
+end:
 	mutex_unlock(&icap->icap_lock);
 	return ret;
 }
@@ -2022,7 +2052,7 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	}
 
 	/* Clean up and expire cache after download xclbin */
-	memset(&icap->cache, 0, sizeof(struct xcl_hwicap));
+	memset(&icap->cache, 0, sizeof(struct xcl_pr_region));
 	icap->cache_expires = ktime_sub(ktime_get_boottime(), ktime_set(1, 0));
 	return 0;
 }
@@ -2096,7 +2126,7 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 
 	/* Set clock frequency. */
 	clockHeader = get_axlf_section_hdr(icap, xclbin, CLOCK_FREQ_TOPOLOGY);
-	if (clockHeader != NULL) {
+	if (clockHeader != NULL && !XOCL_DSA_IS_SMARTN(xdev)) {
 		clockFirmwareOffset = clockHeader->m_sectionOffset;
 		clockFirmwareLength = clockHeader->m_sectionSize;
 
@@ -2149,12 +2179,31 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	struct axlf *xclbin = (struct axlf *)u_xclbin;
 	int err = 0;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	const struct axlf_section_header *dtbHeader = NULL;
 
 	/* Sanity check xclbin. */
 	if (memcmp(xclbin->m_magic, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2))) {
 		ICAP_ERR(icap, "invalid xclbin magic string");
 		return -EINVAL;
 	}
+
+	dtbHeader = get_axlf_section_hdr(icap, xclbin, PARTITION_METADATA);
+	if (dtbHeader) {
+		ICAP_INFO(icap, "check interface uuid");
+		if (!XDEV(xdev)->fdt_blob) {
+			ICAP_ERR(icap, "did not find platform dtb");
+			return -EINVAL;
+		}
+		err = xocl_fdt_check_uuids(xdev,
+				(const void *)XDEV(xdev)->fdt_blob,
+				(const void *)((char*)xclbin +
+				dtbHeader->m_sectionOffset));
+		if (err) {
+			ICAP_ERR(icap, "interface uuids do not match");
+			return -EINVAL;
+		}
+	}
+
 	if (xocl_xrt_version_check(xdev, xclbin, true)) {
 		ICAP_ERR(icap, "xclbin isn't supported by current XRT");
 		return -EINVAL;
@@ -2454,6 +2503,10 @@ static uint64_t icap_get_data_nolock(struct platform_device *pdev,
 			break;
 		case PEER_UUID:
 			target = (uint64_t)&icap->cache.uuid;
+			break;
+		case MIG_CALIB:
+			target = (uint64_t)icap->cache.mig_calib;
+			break;
 		default:
 			break;
 		}
@@ -2496,6 +2549,9 @@ static uint64_t icap_get_data_nolock(struct platform_device *pdev,
 			break;
 		case FREQ_COUNTER_2:
 			target = icap_get_clock_frequency_counter_khz(icap, 2);
+			break;
+		case MIG_CALIB:
+			target = mig_calibration_done(icap);
 			break;
 		default:
 			break;
@@ -3345,6 +3401,8 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 
 	memcpy(icap->rp_bit, header, icap->rp_bit_len);
 	vfree(axlf);
+
+	ICAP_INFO(icap, "write axlf to device successfully. len %ld", len);
 
 	mutex_unlock(&icap->icap_lock);
 

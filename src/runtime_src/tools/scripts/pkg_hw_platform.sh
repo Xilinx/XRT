@@ -268,7 +268,7 @@ readXsaMetaData()
     fi    
 
     # Record the top level XSA information, including FeatureRomTimestamp
-    if [ "${ENTITY_NAME}" == "XSA" ]; then
+    if [ "${ENTITY_NAME}" == "DSA" ]; then
       createEntityAttributeArray
 
       featureRomTimestamp="${ENTITY_ATTRIBUTES_ARRAY[FeatureRomTimestamp]}"

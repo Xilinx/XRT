@@ -204,7 +204,6 @@ void device_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj)
 {
 	u32 val, major, minor, patch;
 	struct FeatureRomHeader rom;
-	void __iomem *memcalib;
 
 	memset(obj, 0, sizeof(struct xclmgmt_ioc_info));
 	sscanf(XRT_DRIVER_VERSION, "%d.%d.%d", &major, &minor, &patch);
@@ -216,8 +215,7 @@ void device_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj)
 	obj->driver_version = XOCL_DRV_VER_NUM(major, minor, patch);
 	obj->pci_slot = PCI_SLOT(lro->core.pdev->devfn);
 
-	memcalib = xocl_iores_get_base(lro, IORES_MEMCALIB);
-	val = memcalib ? XOCL_READ_REG32(memcalib) : 0;
+	val = xocl_icap_get_data(lro, MIG_CALIB);
 	mgmt_info(lro, "MIG Calibration: %d\n", val);
 
 	obj->mig_calibration[0] = (val & BIT(0)) ? true : false;
@@ -414,36 +412,45 @@ inline void check_volt_within_range(struct xclmgmt_dev *lro, u16 volt)
 static void check_sensor(struct xclmgmt_dev *lro)
 {
 	int ret;
-	struct xcl_sensor s = { 0 };
+	struct xcl_sensor *s = NULL;
 
-	ret = xocl_xmc_get_data(lro, &s);
-	if (ret == -ENODEV) {
-		(void) xocl_sysmon_get_prop(lro,
-			XOCL_SYSMON_PROP_TEMP, &s.fpga_temp);
-		s.fpga_temp /= 1000;
-		(void) xocl_sysmon_get_prop(lro,
-			XOCL_SYSMON_PROP_VCC_INT, &s.vccint_vol);
-		(void) xocl_sysmon_get_prop(lro,
-			XOCL_SYSMON_PROP_VCC_AUX, &s.vol_1v8);
-		(void) xocl_sysmon_get_prop(lro,
-			XOCL_SYSMON_PROP_VCC_BRAM, &s.vol_0v85);
+	s = vzalloc(sizeof(struct xcl_sensor));
+	if (!s) {
+		mgmt_err(lro, "%s out of memory", __func__);
+		return;	
 	}
 
-	check_temp_within_range(lro, s.fpga_temp);
-	check_volt_within_range(lro, s.vccint_vol);
-	check_volt_within_range(lro, s.vol_1v8);
-	check_volt_within_range(lro, s.vol_0v85);
+	ret = xocl_xmc_get_data(lro, SENSOR, s);
+	if (ret == -ENODEV) {
+		(void) xocl_sysmon_get_prop(lro,
+			XOCL_SYSMON_PROP_TEMP, &s->fpga_temp);
+		s->fpga_temp /= 1000;
+		(void) xocl_sysmon_get_prop(lro,
+			XOCL_SYSMON_PROP_VCC_INT, &s->vccint_vol);
+		(void) xocl_sysmon_get_prop(lro,
+			XOCL_SYSMON_PROP_VCC_AUX, &s->vol_1v8);
+		(void) xocl_sysmon_get_prop(lro,
+			XOCL_SYSMON_PROP_VCC_BRAM, &s->vol_0v85);
+	}
+
+	check_temp_within_range(lro, s->fpga_temp);
+	check_volt_within_range(lro, s->vccint_vol);
+	check_volt_within_range(lro, s->vol_1v8);
+	check_volt_within_range(lro, s->vol_0v85);
+
+	vfree(s);
 }
 
 static int health_check_cb(void *data)
 {
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)data;
-	struct mailbox_req mbreq = { MAILBOX_REQ_FIREWALL, };
+	struct mailbox_req mbreq = { 0 };
 	bool tripped;
 
 	if (!health_check)
 		return 0;
 
+	mbreq.req = MAILBOX_REQ_FIREWALL;
 	tripped = xocl_af_check(lro, NULL);
 
 	if (!tripped) {
@@ -587,12 +594,11 @@ struct xocl_pci_funcs xclmgmt_pci_ops = {
 	.reset = xclmgmt_reset,
 };
 
-
 static void xclmgmt_icap_get_data(struct xclmgmt_dev *lro, void *buf)
 {
-	struct xcl_hwicap *hwicap = NULL;
+	struct xcl_pr_region *hwicap = NULL;
 
-	hwicap = (struct xcl_hwicap *)buf;
+	hwicap = (struct xcl_pr_region *)buf;
 	hwicap->idcode = xocl_icap_get_data(lro, IDCODE);
 	if (XOCL_XCLBIN_ID(lro))
 		uuid_copy((xuid_t *)hwicap->uuid, XOCL_XCLBIN_ID(lro));
@@ -602,20 +608,7 @@ static void xclmgmt_icap_get_data(struct xclmgmt_dev *lro, void *buf)
 	hwicap->freq_cntr_0 = xocl_icap_get_data(lro, FREQ_COUNTER_0);
 	hwicap->freq_cntr_1 = xocl_icap_get_data(lro, FREQ_COUNTER_1);
 	hwicap->freq_cntr_2 = xocl_icap_get_data(lro, FREQ_COUNTER_2);
-
-}
-
-static void xclmgmt_get_data(struct xclmgmt_dev *lro, void *buf)
-{
-	struct xcl_common *data = NULL;
-	void __iomem *memcalib;
-
-	data = (struct xcl_common *)buf;
-	memcalib = xocl_iores_get_base(lro, IORES_MEMCALIB);
-
-	data->mig_calib = (memcalib && lro->ready) ?
-		XOCL_READ_REG32(memcalib) : 0;
-
+	hwicap->mig_calib = lro->ready ? xocl_icap_get_data(lro, MIG_CALIB) : 0;
 }
 
 static void xclmgmt_mig_get_data(struct xclmgmt_dev *lro, void *mig_ecc, size_t entry_sz)
@@ -686,17 +679,12 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 	case SENSOR:
 		current_sz = sizeof(struct xcl_sensor);
 		*resp = vzalloc(current_sz);
-		(void) xocl_xmc_get_data(lro, *resp);
+		(void) xocl_xmc_get_data(lro, SENSOR, *resp);
 		break;
 	case ICAP:
-		current_sz = sizeof(struct xcl_hwicap);
+		current_sz = sizeof(struct xcl_pr_region);
 		*resp = vzalloc(current_sz);
 		(void) xclmgmt_icap_get_data(lro, *resp);
-		break;
-	case MGMT:
-		current_sz = sizeof(struct xcl_common);
-		*resp = vzalloc(current_sz);
-		(void) xclmgmt_get_data(lro, *resp);
 		break;
 	case MIG_ECC:
 		current_sz = sizeof(struct xcl_mig_ecc)*MAX_M_COUNT;
@@ -712,6 +700,11 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 		current_sz = sizeof(struct xcl_dna);
 		*resp = vzalloc(current_sz);
 		(void) xocl_dna_get_data(lro, *resp);
+		break;
+	case BDINFO:
+		current_sz = sizeof(struct xcl_board_info);
+		*resp = vzalloc(current_sz);
+		(void) xocl_xmc_get_data(lro, BDINFO, *resp);
 		break;
 	case SUBDEV:
 		xclmgmt_subdev_get_data(lro, subdev_req->offset,
@@ -997,7 +990,6 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	}
 	xocl_info(&pdev->dev, "created all sub devices");
 
-
 	if (!(dev_info->flags & XOCL_DSAFLAG_SMARTN)) {
 		/* return -ENODEV for 2RP platform */
 		ret = xocl_icap_download_boot_firmware(lro);
@@ -1008,10 +1000,11 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 		if (ret)
 			goto fail_all_subdev;
 	}
-	lro->core.thread_arg.health_cb = health_check_cb;
+	lro->core.thread_arg.thread_cb = health_check_cb;
 	lro->core.thread_arg.arg = lro;
 	lro->core.thread_arg.interval = health_interval * 1000;
-	health_thread_start(lro);
+	lro->core.thread_arg.name = "xclmgmt health thread";
+	xocl_thread_start(lro);
 
 	/* Launch the mailbox server. */
 	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
@@ -1123,8 +1116,10 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	xocl_info(&pdev->dev, "minimum initialization done\n");
 
 	/* No further initialization for MFG board. */
-	if (minimum_initialization ||
-		(dev_info->flags & XOCL_DSAFLAG_MFG) != 0) {
+	if (minimum_initialization)
+		return 0;
+	else if ((dev_info->flags & XOCL_DSAFLAG_MFG) != 0) {
+		xocl_subdev_create_all(lro);
 		return 0;
 	}
 
@@ -1167,7 +1162,7 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 
 	xclmgmt_connect_notify(lro, false);
 
-	health_thread_stop(lro);
+	xocl_thread_stop(lro);
 
 	mgmt_fini_sysfs(&pdev->dev);
 

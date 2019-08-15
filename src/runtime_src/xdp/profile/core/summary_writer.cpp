@@ -349,7 +349,7 @@ namespace xdp {
         // Make sure it's the shell monitor we're looking for
         // NOTE: properties and name must match
         uint32_t properties = mPluginHandle->getProfileSlotProperties(XCL_PERF_MON_MEMORY, deviceName, s);
-        if (!(properties & XSPM_HOST_PROPERTY_MASK))
+        if (!(properties & XAIM_HOST_PROPERTY_MASK))
           continue;
 
         std::string slotName;
@@ -544,7 +544,7 @@ namespace xdp {
       double maxTransferRateMBps = getGlobalMemoryMaxBandwidthMBps();
 
       for (unsigned s = 0; s < numSlots; ++s) {
-        if (mDataSlotsPropertiesMap.at(key)[s] & XSPM_HOST_PROPERTY_MASK)
+        if (mDataSlotsPropertiesMap.at(key)[s] & XAIM_HOST_PROPERTY_MASK)
           continue;
 
          std::string cuPortName = mDeviceBinaryDataSlotsMap.at(key)[s];
@@ -641,7 +641,7 @@ namespace xdp {
       // Gather unique names of monitored CUs on this device
       std::map<std::string, uint64_t> cuNameTranxMap;
       for (unsigned s=0; s < numSlots; ++s) {
-        if (mDataSlotsPropertiesMap.at(key)[s] & XSPM_HOST_PROPERTY_MASK)
+        if (mDataSlotsPropertiesMap.at(key)[s] & XAIM_HOST_PROPERTY_MASK)
           continue;
 
         std::string cuPortName = mDeviceBinaryDataSlotsMap.at(key)[s];
@@ -657,7 +657,7 @@ namespace xdp {
         uint64_t totalReadTranx  = 0;
         uint64_t totalWriteTranx = 0;
         for (unsigned s=0; s < numSlots; ++s) {
-          if (mDataSlotsPropertiesMap.at(key)[s] & XSPM_HOST_PROPERTY_MASK)
+          if (mDataSlotsPropertiesMap.at(key)[s] & XAIM_HOST_PROPERTY_MASK)
             continue;
 
           std::string cuPortName = mDeviceBinaryDataSlotsMap.at(key)[s];
@@ -691,7 +691,7 @@ namespace xdp {
         uint64_t totalReadTranx  = 0;
         uint64_t totalWriteTranx = 0;
         for (unsigned s=0; s < numSlots; ++s) {
-          if (mDataSlotsPropertiesMap.at(key)[s] & XSPM_HOST_PROPERTY_MASK)
+          if (mDataSlotsPropertiesMap.at(key)[s] & XAIM_HOST_PROPERTY_MASK)
             continue;
 
           std::string cuPortName = mDeviceBinaryDataSlotsMap.at(key)[s];

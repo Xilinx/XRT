@@ -84,7 +84,7 @@ static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 {
 	struct xocl_dev_core *core = XDEV(xdev_hdl);
 	struct xocl_flash_privdata *priv = NULL;
-	const char *prop, *flash_type;
+	const char *flash_type;
 	void *blob;
 	int node, proplen;
 
@@ -115,9 +115,6 @@ static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 	priv->flash_type = offsetof(struct xocl_flash_privdata, data);
 	priv->properties = priv->flash_type + strlen(flash_type) + 1;
 	strcpy((char *)priv + priv->flash_type, flash_type);
-
-	prop = fdt_getprop(blob, node, PROP_IO_OFFSET, NULL);
-	priv->bar_off = be64_to_cpu(*((u64 *)prop));
 
 	*len = proplen;
 
@@ -326,19 +323,32 @@ static struct xocl_subdev_map		subdev_map[] = {
  */
 #define XOCL_FDT_ALL	-1
 
-static int get_next_prop_by_name(void *fdt, int node, char *name,
-	const void **val, int len)
+int xocl_fdt_get_next_prop_by_name(xdev_handle_t xdev_hdl, void *blob,
+	    int offset, char *name, const void **prop, int *prop_len)
 {
-	int prop_len;
-	int depth = 1;
+	int depth = 1, len;
+	const char *pname;
+	const void *p;
+	int node = offset;
 
 	do {
-		*val = fdt_getprop(fdt, node, name, &prop_len);
-		if (*val && (len == prop_len))
-			return node;
-		node = fdt_next_node(fdt, node, &depth);
+		node = fdt_next_node(blob, node, &depth);
 		if (node < 0 || depth < 1)
 			return -EFAULT;
+
+		for (offset = fdt_first_property_offset(blob, node);
+		    offset >= 0;
+		    offset = fdt_next_property_offset(blob, offset)) {
+			pname = NULL;
+			p = fdt_getprop_by_offset(blob, offset,
+					&pname, &len);
+			if (p && pname && !strcmp(name, pname)) {
+				*prop = p;
+				if (prop_len)
+					*prop_len = len;
+				return offset;
+			}
+		}
 	} while (depth > 1);
 
 	return -ENOENT;
@@ -351,6 +361,8 @@ static bool get_userpf_info(void *fdt, int node, u32 pf)
 	int depth = 1;
 
 	do {
+		if (fdt_getprop(fdt, node, PROP_INTERFACE_UUID, NULL))
+			return true;
 		val = fdt_getprop(fdt, node, PROP_PF_NUM, &len);
 		if (val && (len == sizeof(pf)) && htonl(*(u32 *)val) == pf)
 			return true;
@@ -695,30 +707,27 @@ failed:
 	return dev_num;
 }
 
-const char *xocl_fdt_next_intf_uuid(xdev_handle_t xdev_hdl, void *blob,
-	int offset)
-{
-	const void *uuid = NULL;
-
-	get_next_prop_by_name(blob, offset, PROP_INTERFACE_UUID,
-			        &uuid, UUID_PROP_LEN);
-
-	return uuid;
-}
-
-int xocl_fdt_check_uuids(xdev_handle_t xdev_hdl, void *blob,
-	void *subset_blob)
+int xocl_fdt_check_uuids(xdev_handle_t xdev_hdl, const void *blob,
+	const void *subset_blob)
 {
 	const char *subset_int_uuid = NULL;
 	const char *int_uuid = NULL;
 	int offset, subset_offset;
 
-	offset = fdt_path_offset(blob, INTERFACES_PATH);
-	subset_offset = fdt_path_offset(subset_blob, INTERFACES_PATH);
+	if (!blob || !subset_blob) {
+		xocl_xdev_err(xdev_hdl, "blob is NULL");
+		return -EINVAL;
+	}
 
-	if (offset < 0 || subset_offset < 0) {
-		xocl_xdev_err(xdev_hdl, "Invalid offset %d, subset_offset %d",
-				offset, subset_offset);
+	if (fdt_check_header(blob) || fdt_check_header(subset_blob)) {
+		xocl_xdev_err(xdev_hdl, "Invalid fdt blob");
+		return -EINVAL;
+	}
+
+	subset_offset = fdt_path_offset(subset_blob, INTERFACES_PATH);
+	if (subset_offset < 0) {
+		xocl_xdev_err(xdev_hdl, "Invalid subset_offset %d",
+			       	subset_offset);
 		return -EINVAL;
 	}
 
@@ -727,20 +736,34 @@ int xocl_fdt_check_uuids(xdev_handle_t xdev_hdl, void *blob,
 		subset_offset = fdt_next_subnode(subset_blob, subset_offset)) {
 		subset_int_uuid = fdt_getprop(subset_blob, subset_offset,
 				"interface_uuid", NULL);
-		if (!subset_int_uuid)
+		if (!subset_int_uuid) {
+			xocl_xdev_err(xdev_hdl, "failed to get subset uuid");
 			return -EINVAL;
+		}
+		offset = fdt_path_offset(blob, INTERFACES_PATH);
+		if (offset < 0) {
+			xocl_xdev_err(xdev_hdl, "Invalid offset %d",
+			       	offset);
+			return -EINVAL;
+		}
+
 		for (offset = fdt_first_subnode(blob, offset);
 			offset >= 0;
 			offset = fdt_next_subnode(blob, offset)) {
 			int_uuid = fdt_getprop(blob, offset, "interface_uuid",
 					NULL);
-			if (!int_uuid)
+			if (!int_uuid) {
+				xocl_xdev_err(xdev_hdl, "failed to get uuid");
 				return -EINVAL;
+			}
 			if (!strcmp(int_uuid, subset_int_uuid))
 				break;
 		}
-		if (offset < 0)
+		if (offset < 0) {
+			xocl_xdev_err(xdev_hdl, "Can not find uuid %s",
+				subset_int_uuid);
 			return -ENOENT;
+		}
 	}
 
 	return 0;
