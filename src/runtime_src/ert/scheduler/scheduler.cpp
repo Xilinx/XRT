@@ -536,7 +536,20 @@ setup()
     write_reg(ERT_CU_BASE_ADDRESS_ADDR,cu_base_address/4);
 
   // Command queue base address
+#ifndef ERT_BUILD_U50
   write_reg(ERT_CQ_BASE_ADDRESS_ADDR,ERT_CQ_BASE_ADDR/4);
+#else
+  // The HW has changed so that the CQ is accessed at a different
+  // address by the cudma_controller (which is internal to the ERT
+  // subsystem) than the address it is accessed to my masters which
+  // are external to the ERT subsystem e.g.XRT.
+  //
+  // So the cudma_controller has the CQ BRAM mapped at address
+  // 0x0000_0000, but it will be at address ERT_CQ_BASE_ADDR
+  // (i.e. 0x0034_0000) for XRT. And the code above was updated to
+  // reflect this.
+  write_reg(ERT_CQ_BASE_ADDRESS_ADDR,0x0);
+#endif
 
   // Number of CUs
   write_reg(ERT_NUMBER_OF_CU_ADDR,num_cus);
@@ -669,11 +682,12 @@ configure_cu(addr_type cu_addr, addr_type regmap_addr, size_type regmap_size)
 inline void
 configure_cu_ooo(addr_type cu_addr, addr_type regmap_addr, size_type regmap_size)
 {
-  // write register map addr, value pairs starting at 0x10
-  for (size_type idx = 4; idx < regmap_size; idx += 2) {
+  // write register map addr, value pairs starting 
+  // past reserved 4 ctrl + 2 ctx 
+  for (size_type idx = 6; idx < regmap_size; idx += 2) {
     addr_type offset = read_reg(regmap_addr + (idx << 2));
     value_type value = read_reg(regmap_addr + ((idx + 1) << 2));
-    write_reg(offset, value);
+    write_reg(cu_addr + offset, value);
   }
 
   // start kernel at base + 0x0

@@ -84,6 +84,7 @@ namespace xdp {
     void logDeviceCounters(bool firstReadAfterProgram, bool forceReadCounters, bool logAllMonitors, xclPerfMonType type = XCL_PERF_MON_MEMORY);
     void startCounters();
     void startTrace();
+    void endTrace();
     int  logTrace(xclPerfMonType type, bool forceRead, bool logAllMonitors = true);
     void logFinalTrace(xclPerfMonType type);
     void setTraceFooterString();

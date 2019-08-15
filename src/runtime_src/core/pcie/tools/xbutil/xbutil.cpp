@@ -142,8 +142,9 @@ int main(int argc, char *argv[])
      * down to xbflash.
      */
     if(std::string( argv[ 1 ] ).compare( "flash" ) == 0) {
-        std::cout << "WARNING: flash sub-command is obsolete. "
-            << "Use xbmgmt flash instead" << std::endl;
+        std::cout << "WARNING: The xbutil sub-command flash has been deprecated. "
+                  << "Please use the xbmgmt utility with flash sub-command for equivalent functionality.\n"
+                  << std::endl;
         // get self path, launch xbflash from self path
         char buf[ PATH_MAX ] = {0};
         auto len = readlink( "/proc/self/exe", buf, PATH_MAX );
@@ -190,14 +191,22 @@ int main(int argc, char *argv[])
         xcldev::printHelp(exe);
         return 1;
     }
+    if (cmd == xcldev::VERSION) {
+        xrt::version::print(std::cout);
+        std::cout.width(26); std::cout << std::internal << "XOCL: " << sensor_tree::get<std::string>( "runtime.build.xocl", "N/A" ) 
+                                       << std:: endl;
+        std::cout.width(26); std::cout << std::internal << "XCLMGMT: " << sensor_tree::get<std::string>( "runtime.build.xclmgmt", "N/A" ) 
+                                       << std::endl;
+        return 1;
+    }
 
     argv[0] = const_cast<char *>(exe);
     static struct option long_options[] = {
         {"read", no_argument, 0, xcldev::MEM_READ},
         {"write", no_argument, 0, xcldev::MEM_WRITE},
-        {"spm", no_argument, 0, xcldev::STATUS_SPM},
+        {"aim", no_argument, 0, xcldev::STATUS_AIM},
         {"lapc", no_argument, 0, xcldev::STATUS_LAPC},
-        {"sspm", no_argument, 0, xcldev::STATUS_SSPM},
+        {"asm", no_argument, 0, xcldev::STATUS_ASM},
         {"spc", no_argument, 0, xcldev::STATUS_SPC},
         {"tracefunnel", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
         {"monitorfifolite", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
@@ -245,21 +254,21 @@ int main(int argc, char *argv[])
             ipmask |= static_cast<unsigned int>(xcldev::STATUS_LAPC_MASK);
             break;
         }
-        case xcldev::STATUS_SPM : {
-            //--spm
+        case xcldev::STATUS_AIM : {
+            //--aim
             if (cmd != xcldev::STATUS) {
                 std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
                 return -1;
             }
-            ipmask |= static_cast<unsigned int>(xcldev::STATUS_SPM_MASK);
+            ipmask |= static_cast<unsigned int>(xcldev::STATUS_AIM_MASK);
             break;
         }
-        case xcldev::STATUS_SSPM : {
+        case xcldev::STATUS_ASM : {
             if (cmd != xcldev::STATUS) {
                 std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n" ;
                 return -1 ;
             }
-            ipmask |= static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK);
+            ipmask |= static_cast<unsigned int>(xcldev::STATUS_ASM_MASK);
             break ;
         }
 	case xcldev::STATUS_SPC: {
@@ -585,21 +594,16 @@ int main(int argc, char *argv[])
         break;
     case xcldev::STATUS:
         if (ipmask == xcldev::STATUS_NONE_MASK) {
-            //if no ip specified then read all
-            //ipmask = static_cast<unsigned int>(xcldev::STATUS_SPM_MASK);
-            //if (!(getuid() && geteuid())) {
-            //  ipmask |= static_cast<unsigned int>(xcldev::STATUS_LAPC_MASK);
-            //}
             result = deviceVec[index]->print_debug_ip_list(0);
         }
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_LAPC_MASK)) {
             result = deviceVec[index]->readLAPCheckers(1);
         }
-        if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SPM_MASK)) {
-            result = deviceVec[index]->readSPMCounters();
+        if (ipmask & static_cast<unsigned int>(xcldev::STATUS_AIM_MASK)) {
+            result = deviceVec[index]->readAIMCounters();
         }
-        if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK)) {
-            result = deviceVec[index]->readSSPMCounters() ;
+        if (ipmask & static_cast<unsigned int>(xcldev::STATUS_ASM_MASK)) {
+            result = deviceVec[index]->readASMCounters() ;
         }
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SPC_MASK)) {
 	  result = deviceVec[index]->readStreamingCheckers(1);
@@ -631,6 +635,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  dump\n";
     std::cout << "  help\n";
     std::cout << "  m2mtest\n";
+    std::cout << "  version\n";
     std::cout << "  mem --read [-d card] [-a [0x]start_addr] [-i size_bytes] [-o output filename]\n";
     std::cout << "  mem --write [-d card] [-a [0x]start_addr] [-i size_bytes] [-e pattern_byte]\n";
     std::cout << "  program [-d card] [-r region] -p xclbin\n";
@@ -803,6 +808,8 @@ int xcldev::xclTop(int argc, char *argv[])
         switch (c) {
         case 'i':
             interval = std::atoi(optarg);
+            if (interval < 1)
+                interval = 1;
             break;
         case 'd': {
             int ret = str2index(optarg, index);
@@ -886,7 +893,18 @@ int runShellCmd(const std::string& cmd, std::string& output)
     setenv("PYTHONPATH", "/opt/xilinx/xrt/python", 0);
     setenv("LD_LIBRARY_PATH", "/opt/xilinx/xrt/lib", 1);
     unsetenv("XCL_EMULATION_MODE");
+    
+    int stderr_fds[2];
+    if (pipe(stderr_fds)== -1) {
+        perror("ERROR: Unable to create pipe");
+        ret = -EINVAL;
+    }
+
+    close(stderr_fds[0]);
+    dup2(stderr_fds[1], 2);
     std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
+    close(stderr_fds[1]);
+
     if (pipe == nullptr) {
         std::cout << "ERROR: Failed to run " << cmd << std::endl;
         ret = -EINVAL;
@@ -899,6 +917,7 @@ int runShellCmd(const std::string& cmd, std::string& output)
             output += buf;
         }
     }
+    close(stderr_fds[0]);
 
     // Stop progress reporter
     quit = true;
@@ -913,7 +932,7 @@ int searchXsaAndDsa(std::string xsaPath, std::string
     struct stat st;
     if (stat(xsaPath.c_str(), &st) != 0) {
             if (stat(dsaPath.c_str(), &st) != 0) {
-                output += "ERROR: Failed to find test in ";
+                output += "ERROR: Failed to find xclbin in ";
                 output += xsaPath;
                 output += " and ";
                 output += dsaPath;
@@ -927,36 +946,25 @@ int searchXsaAndDsa(std::string xsaPath, std::string
     }
 }
 
-int xcldev::device::runTestCase(const std::string& exe,
+int xcldev::device::runTestCase(const std::string& py,
     const std::string& xclbin, std::string& output)
 {
     struct stat st;
-    bool isPython = false;
 
     std::string devInfoPath = std::string(m_devinfo.mName) + "/test/";
-    std::string xsaTestCasePath = xsaPath + devInfoPath;
-    std::string dsaTestCasePath = dsaPath + devInfoPath;
-    std::string xrtTestCasePath = xrtPath + "test/" + exe;
-    std::string exePath;
+    std::string xsaXclbinPath = xsaPath + devInfoPath;
+    std::string dsaXclbinPath = dsaPath + devInfoPath;
+    std::string xrtTestCasePath = xrtPath + "test/" + py;
 
     output.clear();
 
-    if (stat(xrtTestCasePath.c_str(), &st) == 0) {
-        exePath = xrtTestCasePath;
-        isPython = true;
-    } else {
-        searchXsaAndDsa(xsaTestCasePath, dsaTestCasePath, exePath, output);
-        exePath += exe;
-    }
-
     std::string xclbinPath;
-    searchXsaAndDsa(xsaTestCasePath, dsaTestCasePath, xclbinPath, output);
-    xclbinPath+= xclbin;
-    std::string idxOption;
+    searchXsaAndDsa(xsaXclbinPath, dsaXclbinPath, xclbinPath, output);
+    xclbinPath += xclbin;
 
-    if (stat(exePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
+    if (stat(xrtTestCasePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
         output += "ERROR: Failed to find ";
-        output += exe;
+        output += py;
         output += " or ";
         output += xclbin;
         output += ", Shell package not installed properly.";
@@ -971,27 +979,15 @@ int xcldev::device::runTestCase(const std::string& exe,
         return -EINVAL;
     }
 
-    if (m_idx != 0)
-        idxOption = "-d " + std::to_string(m_idx);
-
-    std::string cmd = "";
-    if (isPython) {
-        cmd = "python " + exePath + " -k " + xclbinPath + " " + idxOption;
-    } else {
-        cmd = exePath + " " + xclbinPath + " " + idxOption;
-    }
+    std::string cmd = "/usr/bin/python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
     return runShellCmd(cmd, output);
 }
 
 int xcldev::device::verifyKernelTest(void)
 {
     std::string output;
-    int ret = runTestCase(std::string("main.py"),
+    int ret = runTestCase(std::string("22_verify.py"),
         std::string("verify.xclbin"), output);
-    if (ret == -ENOENT) {
-        ret = runTestCase(std::string("validate.exe"),
-            std::string("verify.xclbin"), output);
-    }
 
     if (ret != 0)
         return ret;
@@ -1007,7 +1003,7 @@ int xcldev::device::bandwidthKernelTest(void)
 {
     std::string output;
 
-    int ret = runTestCase(std::string("kernel_bw.exe"),
+    int ret = runTestCase(std::string("23_bandwidth.py"),
         std::string("bandwidth.xclbin"), output);
 
     if (ret != 0)
@@ -1491,6 +1487,8 @@ int xcldev::xclP2p(int argc, char *argv[])
         std::cout << "Please check BIOS settings" << std::endl;
     } else if (ret == EBUSY) {
         std::cout << "ERROR: P2P is enabled. But there is not enough iomem space, please warm reboot." << std::endl;
+    } else if (ret == ENXIO) {
+        std::cout << "ERROR: P2P is not supported on this platform" << std::endl;
     } else if (ret)
         std::cout << "ERROR: " << strerror(ret) << std::endl;
 

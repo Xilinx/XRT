@@ -354,13 +354,20 @@ namespace xclcpuemhal2 {
       assert(pid >= 0);
       if (pid == 0)
       { 
-        //I am child
         std::string childProcessPath("");
         std::string xilinxInstall("");
-        char *scoutInstallEnvvar =  getenv("XILINX_SCOUT");
-        if(scoutInstallEnvvar != NULL){
-            xilinxInstall = std::string(scoutInstallEnvvar);
+
+        //Added the latest ENV to get the install path
+        char *vitisInstallEnvvar = getenv("XILINX_VITIS");
+        if (vitisInstallEnvvar != NULL) {
+          xilinxInstall = std::string(vitisInstallEnvvar);
         }
+
+        char *scoutInstallEnvvar =  getenv("XILINX_SCOUT");
+        if(scoutInstallEnvvar != NULL && xilinxInstall.empty() ){
+          xilinxInstall = std::string(scoutInstallEnvvar);
+        }
+
         char *installEnvvar = getenv("XILINX_SDX");
         if (installEnvvar != NULL && xilinxInstall.empty())
         {
@@ -374,6 +381,13 @@ namespace xclcpuemhal2 {
             xilinxInstall = std::string(installEnvvar);
           }
         }
+
+        char *pcieModelEnvVar = getenv("XILINX_PCIE_MODEL");
+        std::string pcieModelPath("");
+        if (pcieModelEnvVar != NULL) {
+          pcieModelPath = std::string(pcieModelEnvVar);
+        }
+        
         char *xilinxVivadoEnvvar = getenv("XILINX_VIVADO");
         if(xilinxVivadoEnvvar)
         {
@@ -393,11 +407,16 @@ namespace xclcpuemhal2 {
           setenv("LD_LIBRARY_PATH",sLdLibs.c_str(),true);
         }
         std::string modelDirectory("");
-#if defined(CONFIG_ARM64)
         modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynqu/model/genericpciemodel";
-#else
-        modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynq/model/genericpciemodel";
-#endif
+        if (!pcieModelPath.empty()) {
+          modelDirectory = xilinxInstall + pcieModelPath;
+        }
+        
+//#if defined(CONFIG_ARM64)
+//        modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynqu/model/genericpciemodel";
+//#else
+//        modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynq/model/genericpciemodel";
+//#endif
 
         const char* childArgv[6] = { NULL, NULL, NULL, NULL, NULL, NULL } ;
         childArgv[0] = modelDirectory.c_str() ;

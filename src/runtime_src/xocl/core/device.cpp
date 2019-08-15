@@ -777,14 +777,14 @@ import_buffer_object(const device* src_device, const xrt::device::BufferObjectHa
 
 void*
 device::
-map_buffer(memory* buffer, cl_map_flags map_flags, size_t offset, size_t size, void* assert_result)
+map_buffer(memory* buffer, cl_map_flags map_flags, size_t offset, size_t size, void* assert_result, bool nosync)
 {
   auto xdevice = get_xrt_device();
   xrt::device::BufferObjectHandle boh;
 
   // If buffer is resident it must be refreshed unless CL_MAP_INVALIDATE_REGION
   // is specified in which case host will discard current content
-  if (!(map_flags & CL_MAP_WRITE_INVALIDATE_REGION) && buffer->is_resident(this)) {
+  if (!nosync && !(map_flags & CL_MAP_WRITE_INVALIDATE_REGION) && buffer->is_resident(this)) {
     boh = buffer->get_buffer_object_or_error(this);
     xdevice->sync(boh,size,offset,xrt::hal::device::direction::DEVICE2HOST,false);
   }
@@ -798,12 +798,12 @@ map_buffer(memory* buffer, cl_map_flags map_flags, size_t offset, size_t size, v
     auto hbuf = xdevice->map(boh);
     xdevice->unmap(boh);
     assert(ubuf!=hbuf);
-    if (ubuf) {
+    if (ubuf && !nosync) {
       auto dst = static_cast<char*>(ubuf) + offset;
       auto src = static_cast<char*>(hbuf) + offset;
       memcpy(dst,src,size);
     }
-    else
+    else if (!ubuf)
       ubuf = hbuf;
   }
 
