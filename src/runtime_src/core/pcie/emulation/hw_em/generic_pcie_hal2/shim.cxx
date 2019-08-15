@@ -40,7 +40,7 @@ namespace xclhwemhal2 {
   const unsigned HwEmShim::CONTROL_AP_DONE  = 2;
   const unsigned HwEmShim::CONTROL_AP_IDLE  = 4;
   const unsigned HwEmShim::CONTROL_AP_CONTINUE  = 0x10;
-
+  void messagesThread(xclhwemhal2::HwEmShim* inst);
   Event::Event()
   {
     awlen = 0;
@@ -492,6 +492,10 @@ namespace xclhwemhal2 {
 
     std::string xclBinName = xml_project.get<std::string>("project.<xmlattr>.name", "");
     set_simulator_started(true);
+
+    //Thread to fetch messages from Device to display on host
+    mMessengerThread = std::thread(xclhwemhal2::messagesThread,this);
+
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     std::string launcherArgs = xclemulation::config::getInstance()->getLauncherArgs();
     std::string wdbFileName("");
@@ -704,8 +708,11 @@ namespace xclhwemhal2 {
          }
        case XCL_ADDR_SPACE_DEVICE_PERFMON:
          {
+           const char *curr = (const char *)hostBuf;
+           std::map<uint64_t,std::pair<std::string,unsigned int>> offsetArgInfo;
+           xclWriteAddrKernelCtrl_RPC_CALL(xclWriteAddrKernelCtrl ,space,offset,curr,size,offsetArgInfo);
            PRINTENDFUNC;
-           return -1;
+           return size;
          }
        case XCL_ADDR_SPACE_DEVICE_CHECKER:
          {
@@ -1296,6 +1303,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     }
 
     xclGetDebugMessages(true);
+    fetchAndPrintMessages();
     simulator_started = false;
     std::string socketName = sock->get_name();
     if(socketName.empty() == false)// device is active if socketName is non-empty
@@ -1499,6 +1507,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     mStreamProfilingNumberSlots = 0;
     mPerfMonFifoCtrlBaseAddress = 0;
     mPerfMonFifoReadBaseAddress = 0;
+    mTraceFunnelAddress = 0;
     mDataSpace = new xclemulation::MemoryManager(0x10000000, 0, getpagesize());
     mCuBaseAddress = 0x0;
   }
@@ -2596,7 +2605,6 @@ int HwEmShim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char
     xrt_core::message::send((xrt_core::message::severity_level)level, tag, buf.data());
     return 0;
 }
-
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/
 /**********************************************HAL2 API's END HERE **********************************************/
 }  // end namespace xclhwemhal2
