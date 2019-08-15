@@ -412,9 +412,23 @@ def xclLogMsg(handle, level, tag, format, *args):
     :param ...: All other arguments as per the format
     :return: 0 on success or appropriate error number
     """
-    libc.xclAllocBO.restype = ctypes.c_int
-    libc.xclAllocBO.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p]
+    libc.xclLogMsg.restype = ctypes.c_int
+    libc.xclLogMsg.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p]
     return libc.xclLogMsg(handle, level, tag, format, *args)
+
+def xclLog(level, tag, format, *args):
+    """
+    Send message to log file as per settings in ini file.
+
+    :param level: (xrtLogMsgLevel) Severity level of the msg
+    :param tag: (const char*) Tag supplied by the client, like "OCL", "XMA", etc.
+    :param format: (const char *) Format of Msg string to write to log file
+    :param ...: All other arguments as per the format
+    :return: 0 on success or appropriate error number
+    """
+    libc.xclLog.restype = ctypes.c_int
+    libc.xclLog.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p]
+    return libc.xclLog(level, tag, format, *args)
 
 
 def xclAllocBO(handle, size, domain, flags):

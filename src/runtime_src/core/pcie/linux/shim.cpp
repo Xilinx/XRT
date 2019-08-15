@@ -1514,23 +1514,33 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 
 int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, ...)
 {
-    va_list args;
-    va_start(args, format);
-    xocl::shim *drv = xocl::shim::handleCheck(handle);
-    int ret = drv ? drv->xclLogMsg(level, tag, format, args) : -ENODEV;
-    va_end(args);
+    static auto verbosity = xrt_core::config::get_verbosity();
+    if (level <= verbosity) {
+        va_list args;
+        va_start(args, format);
+        xocl::shim *drv = xocl::shim::handleCheck(handle);
+        int ret = drv ? drv->xclLogMsg(level, tag, format, args) : -ENODEV;
+        va_end(args);
 
-    return ret;
+        return ret;
+    } else {
+        return 0;
+    }
 }
 
 int xclLog(xrtLogMsgLevel level, const char* tag, const char* format, ...)
 {
-    va_list args;
-    va_start(args, format);
-    int ret = xocl::shim::xclLogMsg(level, tag, format, args);
-    va_end(args);
+    static auto verbosity = xrt_core::config::get_verbosity();
+    if (level <= verbosity) {
+        va_list args;
+        va_start(args, format);
+        int ret = xocl::shim::xclLogMsg(level, tag, format, args);
+        va_end(args);
 
-    return ret;
+        return ret;
+    } else {
+        return 0;
+    }
 }
 
 size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
