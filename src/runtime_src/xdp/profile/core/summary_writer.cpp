@@ -310,6 +310,10 @@ namespace xdp {
 
     double totalReadTimeMsec  = 0;
     double totalWriteTimeMsec = 0;
+
+    /** Old way of calculating bandwidth is not compatible with AIM hw registers
+     * We show N/A in Summary if these registers are absent
+
     if (monitorType == RTUtil::MON_SHELL_KDMA) {
       totalReadTimeMsec  += mProfileCounters->getBufferTransferTotalTime(RTUtil::COPY_BUFFER);
       totalWriteTimeMsec += mProfileCounters->getBufferTransferTotalTime(RTUtil::COPY_BUFFER);
@@ -324,6 +328,8 @@ namespace xdp {
       totalReadTimeMsec  += mProfileCounters->getBufferTransferTotalTime(RTUtil::READ_BUFFER);
       totalWriteTimeMsec += mProfileCounters->getBufferTransferTotalTime(RTUtil::WRITE_BUFFER);
     }
+
+    */
 
     //
     // Shell monitors: KDMA/XDMA/P2P
@@ -390,13 +396,8 @@ namespace xdp {
 
       double totalReadLatencyNsec  = (1000.0 * totalReadLatency)  / tp->getDeviceClockFreqMHz();
       double totalWriteLatencyNsec = (1000.0 * totalWriteLatency) / tp->getDeviceClockFreqMHz();
-      // Use data from device if present
-      if (totalReadBusyCycles) {
-        totalReadTimeMsec = totalReadBusyCycles / (1000.0 * tp->getDeviceClockFreqMHz());
-      }
-      if (totalWriteBusyCycles) {
-        totalWriteTimeMsec = totalWriteBusyCycles / (1000.0 * tp->getDeviceClockFreqMHz());
-      }
+      totalReadTimeMsec = totalReadBusyCycles / (1000.0 * tp->getDeviceClockFreqMHz());
+      totalWriteTimeMsec = totalWriteBusyCycles / (1000.0 * tp->getDeviceClockFreqMHz());
 
       // Monitoring of KDMA/XDMA/P2P is reported on per-device basis
       // NOTE: don't show if no transfers were recorded
