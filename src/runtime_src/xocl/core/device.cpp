@@ -1152,7 +1152,7 @@ load_program(program* program)
   // binary it does not have sdaccel.ini attribute. If there is
   // debug_data then make sure xdp is loaded
   if (binary.debug_data().first)
-    xrt::hal::load_xdp();
+//    xrt::hal::load_xdp();
 
   xocl::debug::reset(get_axlf());
   xocl::profile::reset(get_axlf());

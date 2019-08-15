@@ -371,12 +371,12 @@ DeviceIntf::~DeviceIntf()
     // Get number of trace samples and reset fifo
     getTraceCount(type /* does not matter */);  // get number of samples from Fifo Control
     // reset fifo
-    fifoCtrl->reset();
+    if(fifoCtrl) fifoCtrl->reset();
     // Get number of trace samples 
     getTraceCount(type /* does not matter */);
 
     // TraceFunnel
-    traceFunnel->initiateClockTraining();
+    if(traceFunnel) traceFunnel->initiateClockTraining();
     return size;
   }
 
@@ -388,7 +388,7 @@ DeviceIntf::~DeviceIntf()
                 << type << ", Stop and reset device tracing..." << std::endl;
     }
 
-    if (!mIsDeviceProfiling)
+    if (!mIsDeviceProfiling || !fifoCtrl)
    	  return 0;
 
     size_t size = 0;
@@ -423,7 +423,7 @@ DeviceIntf::~DeviceIntf()
     }
 
     traceVector.mLength = 0;
-    if (!mIsDeviceProfiling)
+    if (!mIsDeviceProfiling || !fifoRead)
    	  return 0;
 
     size_t size = 0;
@@ -489,7 +489,7 @@ DeviceIntf::~DeviceIntf()
      }
     }
     ifs.close();
-#if 0
+
     for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
         (*itr)->showProperties();
     }
@@ -505,7 +505,7 @@ DeviceIntf::~DeviceIntf()
     if(fifoRead) fifoRead->showProperties();
     if(traceDMA) traceDMA->showProperties();
     if(traceFunnel) traceFunnel->showProperties();
-#endif
+
 
     mIsDebugIPlayoutRead = true;
   }
