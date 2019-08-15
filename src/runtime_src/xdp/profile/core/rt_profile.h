@@ -30,6 +30,7 @@
 #include <thread>
 #include <iostream>
 #include <memory>
+#include <chrono>
 
 namespace xdp {
   class SummaryWriter;
@@ -78,6 +79,10 @@ namespace xdp {
     uint32_t getGlobalMemoryBitWidth();
     uint32_t getTraceSamplesThreshold();
     uint32_t getSampleIntervalMsec();
+
+    // Record wall-clock time points for start and end of profiling. Used to get an approximate total host time
+    void setProfileStartTime(std::chrono::steady_clock::time_point t);
+    void setProfileEndTime(std::chrono::steady_clock::time_point t);
 
   public:
     void writeProfileSummary();
