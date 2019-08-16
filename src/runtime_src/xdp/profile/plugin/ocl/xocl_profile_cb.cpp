@@ -606,6 +606,7 @@ void cb_reset(const axlf* xclbin)
     profiler->turnOffProfile(xdp::RTUtil::PROFILE_DEVICE);
   } else if (is_hw_emulation()) {
     profiler->getPlugin()->setFlowMode(xdp::RTUtil::HW_EM);
+    profiler->getPlugin()->setSystemDPAEmulation(xrt::config::get_system_dpa_emulation());
   } else {
     throw xocl::error(CL_INVALID_BINARY,"invalid xclbin region target");
   }

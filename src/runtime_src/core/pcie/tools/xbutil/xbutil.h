@@ -77,23 +77,24 @@ enum command {
     DD,
     STATUS,
     CMD_MAX,
-    M2MTEST
+    M2MTEST, 
+    VERSION
 };
 enum subcommand {
     MEM_READ = 0,
     MEM_WRITE,
-    STATUS_SPM,
+    STATUS_AIM,
     STATUS_LAPC,
-    STATUS_SSPM,
+    STATUS_ASM,
     STATUS_SPC,
     STREAM,
     STATUS_UNSUPPORTED,
 };
 enum statusmask {
     STATUS_NONE_MASK = 0x0,
-    STATUS_SPM_MASK = 0x1,
+    STATUS_AIM_MASK = 0x1,
     STATUS_LAPC_MASK = 0x2,
-    STATUS_SSPM_MASK = 0x4,
+    STATUS_ASM_MASK = 0x4,
     STATUS_SPC_MASK = 0x8
 };
 enum p2pcommand {
@@ -117,16 +118,17 @@ static const std::pair<std::string, command> map_pairs[] = {
     std::make_pair("mem", MEM),
     std::make_pair("dd", DD),
     std::make_pair("status", STATUS),
-    std::make_pair("m2mtest", M2MTEST)
+    std::make_pair("m2mtest", M2MTEST),
+    std::make_pair("version", VERSION)
 
 };
 
 static const std::pair<std::string, subcommand> subcmd_pairs[] = {
     std::make_pair("read", MEM_READ),
     std::make_pair("write", MEM_WRITE),
-    std::make_pair("spm", STATUS_SPM),
+    std::make_pair("aim", STATUS_AIM),
     std::make_pair("lapc", STATUS_LAPC),
-    std::make_pair("sspm", STATUS_SSPM),
+    std::make_pair("asm", STATUS_ASM),
     std::make_pair("stream", STREAM)
 };
 
@@ -620,6 +622,13 @@ public:
         sensor_tree::put( "board.info.subdevice", m_devinfo.mSubsystemId );
         sensor_tree::put( "board.info.subvendor", m_devinfo.mSubsystemVendorId );
         sensor_tree::put( "board.info.xmcversion", m_devinfo.mXMCVersion );
+        {
+            std::string ser_num, bmc_ver, errmsg;
+            pcidev::get_dev(m_idx)->sysfs_get("xmc", "serial_num", errmsg, ser_num);
+            pcidev::get_dev(m_idx)->sysfs_get("xmc", "bmc_ver", errmsg, bmc_ver);
+            sensor_tree::put( "board.info.serial_number", ser_num );
+            sensor_tree::put( "board.info.sc_version", bmc_ver );
+        }
         sensor_tree::put( "board.info.ddr_size", m_devinfo.mDDRSize );
         sensor_tree::put( "board.info.ddr_count", m_devinfo.mDDRBankCount );
         sensor_tree::put( "board.info.clock0", m_devinfo.mOCLFrequency[0] );
@@ -646,6 +655,11 @@ public:
         sensor_tree::put( "board.physical.thermal.pcb.btm_front",                m_devinfo.mSE98Temp[ 2 ] );
         sensor_tree::put( "board.physical.thermal.fpga_temp",                    m_devinfo.mOnChipTemp );
         sensor_tree::put( "board.physical.thermal.tcrit_temp",                   m_devinfo.mFanTemp );
+        {
+            std::string fan_presence, errmsg;
+            pcidev::get_dev(m_idx)->sysfs_get("xmc", "fan_presence", errmsg, fan_presence);
+            sensor_tree::put( "board.physical.thermal.fan_presence", fan_presence );
+        }
         sensor_tree::put( "board.physical.thermal.fan_speed",                    m_devinfo.mFanRpm );
         {
             unsigned short temp0 = 0, temp1 = 0, temp2 = 0, temp3 = 0;
@@ -1310,8 +1324,8 @@ public:
                              std::vector< std::pair<std::string, std::string> >& aCUNamePortNames);
     std::pair<size_t, size_t> getStreamName (const std::vector<std::string>& aSlotNames,
                              std::vector< std::pair<std::string, std::string> >& aStreamNames);
-    int readSPMCounters();
-    int readSSPMCounters();
+    int readAIMCounters();
+    int readASMCounters();
     int readLAPCheckers(int aVerbose);
     int readStreamingCheckers(int aVerbose);
     int print_debug_ip_list (int aVerbose);

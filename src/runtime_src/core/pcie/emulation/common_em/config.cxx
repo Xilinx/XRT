@@ -66,6 +66,7 @@ namespace xclemulation{
     mServerPort = 0;
     mKeepRunDir=false;
     mLauncherArgs = "";
+    mSystemDPA = false;
   }
 
   static bool getBoolValue(std::string& value,bool defaultValue)
@@ -204,6 +205,10 @@ namespace xclemulation{
       else if(name == "enable_arbitration")
       {
         //Nothing to do
+      }
+      else if(name == "system_dpa")
+      {
+        setSystemDPA(getBoolValue(value,false));
       }
       else if(name.find("Debug.") == std::string::npos)
       {

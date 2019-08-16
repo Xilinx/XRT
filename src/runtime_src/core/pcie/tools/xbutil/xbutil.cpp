@@ -191,14 +191,22 @@ int main(int argc, char *argv[])
         xcldev::printHelp(exe);
         return 1;
     }
+    if (cmd == xcldev::VERSION) {
+        xrt::version::print(std::cout);
+        std::cout.width(26); std::cout << std::internal << "XOCL: " << sensor_tree::get<std::string>( "runtime.build.xocl", "N/A" ) 
+                                       << std:: endl;
+        std::cout.width(26); std::cout << std::internal << "XCLMGMT: " << sensor_tree::get<std::string>( "runtime.build.xclmgmt", "N/A" ) 
+                                       << std::endl;
+        return 1;
+    }
 
     argv[0] = const_cast<char *>(exe);
     static struct option long_options[] = {
         {"read", no_argument, 0, xcldev::MEM_READ},
         {"write", no_argument, 0, xcldev::MEM_WRITE},
-        {"spm", no_argument, 0, xcldev::STATUS_SPM},
+        {"aim", no_argument, 0, xcldev::STATUS_AIM},
         {"lapc", no_argument, 0, xcldev::STATUS_LAPC},
-        {"sspm", no_argument, 0, xcldev::STATUS_SSPM},
+        {"asm", no_argument, 0, xcldev::STATUS_ASM},
         {"spc", no_argument, 0, xcldev::STATUS_SPC},
         {"tracefunnel", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
         {"monitorfifolite", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
@@ -246,21 +254,21 @@ int main(int argc, char *argv[])
             ipmask |= static_cast<unsigned int>(xcldev::STATUS_LAPC_MASK);
             break;
         }
-        case xcldev::STATUS_SPM : {
-            //--spm
+        case xcldev::STATUS_AIM : {
+            //--aim
             if (cmd != xcldev::STATUS) {
                 std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
                 return -1;
             }
-            ipmask |= static_cast<unsigned int>(xcldev::STATUS_SPM_MASK);
+            ipmask |= static_cast<unsigned int>(xcldev::STATUS_AIM_MASK);
             break;
         }
-        case xcldev::STATUS_SSPM : {
+        case xcldev::STATUS_ASM : {
             if (cmd != xcldev::STATUS) {
                 std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n" ;
                 return -1 ;
             }
-            ipmask |= static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK);
+            ipmask |= static_cast<unsigned int>(xcldev::STATUS_ASM_MASK);
             break ;
         }
 	case xcldev::STATUS_SPC: {
@@ -586,21 +594,16 @@ int main(int argc, char *argv[])
         break;
     case xcldev::STATUS:
         if (ipmask == xcldev::STATUS_NONE_MASK) {
-            //if no ip specified then read all
-            //ipmask = static_cast<unsigned int>(xcldev::STATUS_SPM_MASK);
-            //if (!(getuid() && geteuid())) {
-            //  ipmask |= static_cast<unsigned int>(xcldev::STATUS_LAPC_MASK);
-            //}
             result = deviceVec[index]->print_debug_ip_list(0);
         }
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_LAPC_MASK)) {
             result = deviceVec[index]->readLAPCheckers(1);
         }
-        if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SPM_MASK)) {
-            result = deviceVec[index]->readSPMCounters();
+        if (ipmask & static_cast<unsigned int>(xcldev::STATUS_AIM_MASK)) {
+            result = deviceVec[index]->readAIMCounters();
         }
-        if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK)) {
-            result = deviceVec[index]->readSSPMCounters() ;
+        if (ipmask & static_cast<unsigned int>(xcldev::STATUS_ASM_MASK)) {
+            result = deviceVec[index]->readASMCounters() ;
         }
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SPC_MASK)) {
 	  result = deviceVec[index]->readStreamingCheckers(1);
@@ -632,6 +635,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  dump\n";
     std::cout << "  help\n";
     std::cout << "  m2mtest\n";
+    std::cout << "  version\n";
     std::cout << "  mem --read [-d card] [-a [0x]start_addr] [-i size_bytes] [-o output filename]\n";
     std::cout << "  mem --write [-d card] [-a [0x]start_addr] [-i size_bytes] [-e pattern_byte]\n";
     std::cout << "  program [-d card] [-r region] -p xclbin\n";
@@ -804,6 +808,8 @@ int xcldev::xclTop(int argc, char *argv[])
         switch (c) {
         case 'i':
             interval = std::atoi(optarg);
+            if (interval < 1)
+                interval = 1;
             break;
         case 'd': {
             int ret = str2index(optarg, index);
@@ -1481,6 +1487,8 @@ int xcldev::xclP2p(int argc, char *argv[])
         std::cout << "Please check BIOS settings" << std::endl;
     } else if (ret == EBUSY) {
         std::cout << "ERROR: P2P is enabled. But there is not enough iomem space, please warm reboot." << std::endl;
+    } else if (ret == ENXIO) {
+        std::cout << "ERROR: P2P is not supported on this platform" << std::endl;
     } else if (ret)
         std::cout << "ERROR: " << strerror(ret) << std::endl;
 

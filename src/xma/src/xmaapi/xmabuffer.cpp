@@ -109,29 +109,29 @@ xma_frame_from_buffers_clone(XmaFrameProperties *frame_props,
 
 int32_t xma_check_device_buffer(XmaBufferObj *b_obj) {
     if (b_obj == NULL) {
-        std::cout << "ERROR: xma_check_device_buffer failed. XMABufferObj failed allocation" << std::endl;
+        //std::cout << "ERROR: xma_check_device_buffer failed. XMABufferObj failed allocation" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_check_device_buffer failed. XMABufferObj failed allocation\n");
         return XMA_ERROR;
     }
 
     XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj->private_do_not_touch;
     if (b_obj_priv == NULL) {
-        std::cout << "ERROR: xma_check_device_buffer failed. XMABufferObj failed allocation" << std::endl;
+        //std::cout << "ERROR: xma_check_device_buffer failed. XMABufferObj failed allocation" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_check_device_buffer failed. XMABufferObj failed allocation\n");
         return XMA_ERROR;
     }
     if (b_obj_priv->dev_index < 0 || b_obj_priv->bank_index < 0 || b_obj_priv->size <= 0) {
-        std::cout << "ERROR: xma_check_device_buffer failed. XMABufferObj failed allocation" << std::endl;
+        //std::cout << "ERROR: xma_check_device_buffer failed. XMABufferObj failed allocation" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_check_device_buffer failed. XMABufferObj failed allocation\n");
         return XMA_ERROR;
     }
     if (b_obj_priv->dummy != (void*)(((uint64_t)b_obj_priv) | signature)) {
-        std::cout << "ERROR: xma_check_device_buffer failed. XMABufferObj is corrupted" << std::endl;
+        //std::cout << "ERROR: xma_check_device_buffer failed. XMABufferObj is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_check_device_buffer failed. XMABufferObj is corrupted.\n");
         return XMA_ERROR;
     }
     if (b_obj_priv->dev_handle == NULL) {
-        std::cout << "ERROR: xma_check_device_buffer failed. XMABufferObj is corrupted" << std::endl;
+        //std::cout << "ERROR: xma_check_device_buffer failed. XMABufferObj is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_check_device_buffer failed. XMABufferObj is corrupted.\n");
         return XMA_ERROR;
     }
@@ -161,9 +161,11 @@ xma_frame_from_device_buffers(XmaFrameProperties *frame_props,
         if (frame_data->dev_buf[i] == NULL) {
             xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD,
                     "%s(): dev_buf XmaBufferObj is NULL in frame_data\n", __func__);
+            free(frame);
             return NULL;
         }
         if (xma_check_device_buffer(frame_data->dev_buf[i]) != XMA_SUCCESS) {
+            free(frame);
             return NULL;
         }
         if (frame_data->dev_buf[i]->device_only_buffer) {
@@ -245,7 +247,7 @@ xma_side_data_alloc(void                      *side_data,
     XmaFrameSideData *sd;
     void *sdata = NULL;
     xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD,
-               "%s() frame %p side_data %p type %d size %zu use_buffer=%d\n",
+               "%s() frame side_data %p type %d size %zu use_buffer=%d\n",
                __func__, side_data, sd_type, size, use_buffer);
     sd = (XmaFrameSideData*)calloc(1, sizeof(XmaFrameSideData));
     if (!sd) {
@@ -398,8 +400,9 @@ xma_frame_remove_side_data(XmaFrame          *frame,
         return XMA_ERROR_INVALID;
     }
 
-    xma_side_data_dec_ref(side_data);
-    frame->side_data[in_sd->type] = NULL;
+    if (xma_side_data_dec_ref(side_data) != 0) {
+        frame->side_data[in_sd->type] = NULL;
+    }
 
     return XMA_SUCCESS;
 }
