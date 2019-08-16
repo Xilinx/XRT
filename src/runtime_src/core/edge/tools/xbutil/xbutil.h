@@ -524,7 +524,46 @@ public:
         return 0;
     }
 
-    int program(const std::string& xclbin, unsigned region) { std::cout << "Unsupported API " << std::endl; return -1; }
+/* 
+ * program    
+ */
+    int program(const std::string& xclbin, unsigned region) {
+        std::ifstream stream(xclbin.c_str());
+
+        if(!stream.is_open()) {
+            std::cout << "ERROR: Cannot open " << xclbin << ". Check that it exists and is readable." << std::endl;
+            return -ENOENT;
+        }
+
+        if(region) {
+            std::cout << "ERROR: Not support other than -r 0 " << std::endl;
+            return -EINVAL;
+        }
+
+        char temp[8];
+        stream.read(temp, 8);
+
+        if (std::strncmp(temp, "xclbin0", 8)) {
+            if (std::strncmp(temp, "xclbin2", 8))
+                return -EINVAL;
+        }
+
+
+        stream.seekg(0, stream.end);
+        int length = stream.tellg();
+        stream.seekg(0, stream.beg);
+
+        std::vector<char> buffer(length);
+        stream.read(buffer.data(), length);
+        const xclBin *header = (const xclBin *)buffer.data();
+        int result = xclLockDevice(m_handle);
+        if (result == 0)
+            result = xclLoadXclBin(m_handle, header);
+        (void) xclUnlockDevice(m_handle);
+
+        return result;
+    }
+
     int boot() { std::cout << "Unsupported API " << std::endl; return -1; }
     int fan(unsigned speed) { std::cout << "Unsupported API " << std::endl; return -1; }
     int run(unsigned region, unsigned cu) { std::cout << "Unsupported API " << std::endl; return -1; }

@@ -16,10 +16,23 @@
 
 #include <string>
 #include <version.h>
+#include <fstream>
 #include "xbmgmt.h"
 
 const char *subCmdVersionDesc = "Print out xrt build version";
 const char *subCmdVersionUsage = "(no options supported)";
+
+static std::string driver_version(std::string driver)
+{
+    std::string line("unknown");
+    std::string path("/sys/bus/pci/drivers/");
+    path += driver;
+    path += "/module/version";
+    std::ifstream ver(path);
+    if (ver.is_open())
+        getline(ver, line);
+    return line;
+}
 
 int versionHandler(int argc, char *argv[])
 {
@@ -27,5 +40,7 @@ int versionHandler(int argc, char *argv[])
         return -EINVAL;
 
     xrt::version::print(std::cout);
+    std::cout.width(26); std::cout << std::internal << "XOCL: " << driver_version("xocl") << std:: endl;
+    std::cout.width(26); std::cout << std::internal << "XCLMGMT: " << driver_version("xclmgmt") << std::endl;    
     return 0;
 }

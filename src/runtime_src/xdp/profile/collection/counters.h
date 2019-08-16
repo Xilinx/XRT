@@ -25,6 +25,8 @@
 #include <map>
 #include <list>
 #include <string>
+#include <chrono>
+#include <ratio>
 
 // Use this class to build run time user services functions
 // such as debugging and profiling
@@ -93,6 +95,15 @@ namespace xdp {
                         double duration, uint32_t bitWidth, double clockFreqMhz,
                         bool isKernel, bool isRead, bool isKernelTransfer);
 
+    void setProfileStartTime(std::chrono::steady_clock::time_point startTime) { m_profileStartTime = startTime; }
+    void setProfileEndTime(std::chrono::steady_clock::time_point endTime)     { m_profileEndTime = endTime; }
+
+    double getTotalHostTimeInMilliSec()
+    {
+      auto totalTimeInMilliSec = std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1, 1000>>>(m_profileEndTime - m_profileStartTime);
+      return totalTimeInMilliSec.count();
+    }
+
   public:
     void pushToSortedTopUsage(KernelTrace* trace);
     void pushToSortedTopUsage(BufferTrace* trace, bool isRead);
@@ -153,6 +164,11 @@ namespace xdp {
     TimeTraceSortedTopUsage<DeviceTrace> TopKernelWriteTimes;
     TimeTraceSortedTopUsage<DeviceTrace> TopDeviceBufferReadTimes;
     TimeTraceSortedTopUsage<DeviceTrace> TopDeviceBufferWriteTimes;
+
+    // Record wall-clock time for start and end of profiling.
+    // This is used to get an approximate total host time
+    std::chrono::steady_clock::time_point m_profileStartTime;    
+    std::chrono::steady_clock::time_point m_profileEndTime;    
   };
 
 } // xdp

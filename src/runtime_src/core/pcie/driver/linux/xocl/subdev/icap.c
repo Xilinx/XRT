@@ -156,7 +156,7 @@ struct icap {
 	char			*icap_clock_freq_counter_hbm;
 
 	uint64_t		cache_expire_secs;
-	struct xcl_hwicap	cache;
+	struct xcl_pr_region	cache;
 	ktime_t			cache_expires;
 
 	enum icap_sec_level	sec_level;
@@ -229,7 +229,7 @@ const static struct xclmgmt_ocl_clockwiz {
 
 static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
 	const struct axlf *xclbin, enum axlf_section_kind kind);
-static void icap_set_data(struct icap *icap, struct xcl_hwicap *hwicap);
+static void icap_set_data(struct icap *icap, struct xcl_pr_region *hwicap);
 static uint64_t icap_get_data_nolock(struct platform_device *pdev, enum data_kind kind);
 static uint64_t icap_get_data(struct platform_device *pdev, enum data_kind kind);
 
@@ -237,8 +237,8 @@ static void icap_read_from_peer(struct platform_device *pdev)
 {
 	struct mailbox_subdev_peer subdev_peer = {0};
 	struct icap *icap = platform_get_drvdata(pdev);
-	struct xcl_hwicap xcl_hwicap = {0};
-	size_t resp_len = sizeof(struct xcl_hwicap);
+	struct xcl_pr_region xcl_hwicap = {0};
+	size_t resp_len = sizeof(struct xcl_pr_region);
 	size_t data_len = sizeof(struct mailbox_subdev_peer);
 	struct mailbox_req *mb_req = NULL;
 	size_t reqlen = sizeof(struct mailbox_req) + data_len;
@@ -266,9 +266,9 @@ static void icap_read_from_peer(struct platform_device *pdev)
 	vfree(mb_req);
 }
 
-static void icap_set_data(struct icap *icap, struct xcl_hwicap *hwicap)
+static void icap_set_data(struct icap *icap, struct xcl_pr_region *hwicap)
 {
-	memcpy(&icap->cache, hwicap, sizeof(struct xcl_hwicap));
+	memcpy(&icap->cache, hwicap, sizeof(struct xcl_pr_region));
 	icap->cache_expires = ktime_add(ktime_get_boottime(), ktime_set(icap->cache_expire_secs, 0));
 }
 
@@ -767,7 +767,7 @@ static int icap_ocl_get_freqscaling(struct platform_device *pdev,
 
 static inline bool mig_calibration_done(struct icap *icap)
 {
-	return (reg_rd(&icap->icap_state->igs_state) & BIT(0)) != 0;
+	return icap->icap_state ? (reg_rd(&icap->icap_state->igs_state) & BIT(0)) != 0 : 0;
 }
 
 /* Check for MIG calibration. */
@@ -2052,7 +2052,7 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	}
 
 	/* Clean up and expire cache after download xclbin */
-	memset(&icap->cache, 0, sizeof(struct xcl_hwicap));
+	memset(&icap->cache, 0, sizeof(struct xcl_pr_region));
 	icap->cache_expires = ktime_sub(ktime_get_boottime(), ktime_set(1, 0));
 	return 0;
 }
@@ -2503,6 +2503,10 @@ static uint64_t icap_get_data_nolock(struct platform_device *pdev,
 			break;
 		case PEER_UUID:
 			target = (uint64_t)&icap->cache.uuid;
+			break;
+		case MIG_CALIB:
+			target = (uint64_t)icap->cache.mig_calib;
+			break;
 		default:
 			break;
 		}
@@ -2545,6 +2549,9 @@ static uint64_t icap_get_data_nolock(struct platform_device *pdev,
 			break;
 		case FREQ_COUNTER_2:
 			target = icap_get_clock_frequency_counter_khz(icap, 2);
+			break;
+		case MIG_CALIB:
+			target = mig_calibration_done(icap);
 			break;
 		default:
 			break;

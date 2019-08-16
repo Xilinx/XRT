@@ -80,8 +80,21 @@ namespace xclhwemhal2 {
 
     mStreamProfilingNumberSlots = getIPCountAddrNames(debugFileName, AXI_STREAM_MONITOR, mStreamMonBaseAddress,
       mStreamMonSlotName, mStreamMonProperties, XASM_MAX_NUMBER_SLOTS);
-    
+
     mIsDeviceProfiling = (mMemoryProfilingNumberSlots > 0 || mAccelProfilingNumberSlots > 0 || mStreamProfilingNumberSlots > 0);
+
+    std::string fifoName;
+    uint64_t fifoCtrlBaseAddr = 0x0;
+    getIPCountAddrNames(debugFileName, AXI_MONITOR_FIFO_LITE, &fifoCtrlBaseAddr, &fifoName, nullptr, 1);
+    mPerfMonFifoCtrlBaseAddress = fifoCtrlBaseAddr;
+
+    uint64_t fifoReadBaseAddr = 0x0;
+    getIPCountAddrNames(debugFileName, AXI_MONITOR_FIFO_FULL, &fifoReadBaseAddr, &fifoName, nullptr, 1);
+    mPerfMonFifoReadBaseAddress = fifoReadBaseAddr;
+
+    uint64_t traceFunnelAddr = 0x0;
+    getIPCountAddrNames(debugFileName, AXI_TRACE_FUNNEL, &traceFunnelAddr, &fifoName, nullptr, 1);
+    mTraceFunnelAddress = traceFunnelAddr;
 
     // Count accel monitors with stall monitoring turned on
     mStallProfilingNumberSlots = 0;
@@ -154,4 +167,111 @@ namespace xclhwemhal2 {
     return count;
   }
 
+  //To get and print the debug messages
+  void HwEmShim::fetchAndPrintMessages() {
+	  if(xclemulation::config::getInstance()->isSystemDPAEnabled() == false) {
+		  return;
+	  }
+	  if(mPerfMonFifoCtrlBaseAddress == 0 || mPerfMonFifoReadBaseAddress == 0) {//If live support not available
+		  return;
+	  }
+	  std::string info_msgs("");
+	  std::string warning_msgs("");
+	  std::string error_msgs("");
+	  //Read Fifo for size of Info Messages available
+	  char buffer[4] = "0";
+	  xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,mPerfMonFifoCtrlBaseAddress+xclemulation::FIFO_CTRL_INFO_SIZE, buffer, 4);
+
+	  unsigned int msg_size_bytes;
+	  memcpy(&msg_size_bytes,buffer,4);
+	  if(msg_size_bytes > 0) {
+		  char info_buffer[msg_size_bytes];
+		  xclUnmgdPread(0, info_buffer, msg_size_bytes, mPerfMonFifoReadBaseAddress+xclemulation::FIFO_INFO_MESSAGES);
+		  info_msgs = std::string(info_buffer);
+	  }
+
+	  strncpy(buffer,"0",4);
+	  //Read Fifo for size of Warning Messages available
+	  xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,mPerfMonFifoCtrlBaseAddress+xclemulation::FIFO_CTRL_WARNING_SIZE, buffer, 4);
+
+	  memcpy(&msg_size_bytes,buffer,4);
+	  if(msg_size_bytes > 0) {
+		  char warning_buffer[msg_size_bytes];
+	      xclUnmgdPread(0, warning_buffer, msg_size_bytes, mPerfMonFifoReadBaseAddress+xclemulation::FIFO_WARNING_MESSAGES);
+		  warning_msgs = warning_buffer;
+	  }
+
+	  strncpy(buffer,"0",4);
+	  //Read Fifo for size of Info Messages available
+	  xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,mPerfMonFifoCtrlBaseAddress+xclemulation::FIFO_CTRL_ERROR_SIZE, buffer, 4);
+
+	  memcpy(&msg_size_bytes,buffer,4);
+
+	  if(msg_size_bytes > 0) {
+		  char error_buffer[msg_size_bytes];
+		  xclUnmgdPread(0, error_buffer, msg_size_bytes, mPerfMonFifoReadBaseAddress+xclemulation::FIFO_ERROR_MESSAGES);
+		  error_msgs = error_buffer;
+	  }
+
+	  if(mDebugLogStream.is_open() && info_msgs.empty() == false) {
+		mDebugLogStream << info_msgs;
+		mDebugLogStream.flush();
+	  }
+
+	  if(mDebugLogStream.is_open() && warning_msgs.empty() == false) {
+		mDebugLogStream << warning_msgs;
+		mDebugLogStream.flush();
+	  }
+
+	  if(mDebugLogStream.is_open() && error_msgs.empty() == false) {
+		mDebugLogStream << error_msgs;
+		mDebugLogStream.flush();
+	  }
+
+	  if(info_msgs.empty() == false)
+	  {
+	    std::cout<<info_msgs;
+	    std::cout.flush();
+	  }
+
+	  if(warning_msgs.empty() == false)
+	  {
+	    std::cout<<warning_msgs;
+	    std::cout.flush();
+	  }
+
+	  if(error_msgs.empty() == false)
+	  {
+	    std::cout<<error_msgs;
+	    std::cout.flush();
+	  }
+  }
+
+  /*
+   * messagesThread()
+   */
+  void messagesThread(xclhwemhal2::HwEmShim* inst) {
+	if(xclemulation::config::getInstance()->isSystemDPAEnabled() == false) {
+		return;
+	}
+  	static clock_t l_time = clock();
+  	time_t currentTime;
+  	std::stringstream msg;
+  	std::ios::fmtflags f(msg.flags());
+  	bool childAlive = true;
+  	while (inst && childAlive) {
+  		if (!(inst->get_simulator_started())) {
+  			childAlive = false;
+  		} else {
+  			sleep(10);
+  		}
+  		time(&currentTime);
+  		msg.flags(f);
+  		if (((clock() - l_time) / CLOCKS_PER_SEC > 300)//todo make it configurable
+  				|| childAlive == false) {
+  			l_time = clock();
+  			inst->fetchAndPrintMessages();
+  		}
+  	}
+  }
 } // namespace xclhwemhal2

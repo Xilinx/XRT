@@ -193,6 +193,10 @@ int main(int argc, char *argv[])
     }
     if (cmd == xcldev::VERSION) {
         xrt::version::print(std::cout);
+        std::cout.width(26); std::cout << std::internal << "XOCL: " << sensor_tree::get<std::string>( "runtime.build.xocl", "N/A" ) 
+                                       << std:: endl;
+        std::cout.width(26); std::cout << std::internal << "XCLMGMT: " << sensor_tree::get<std::string>( "runtime.build.xclmgmt", "N/A" ) 
+                                       << std::endl;
         return 1;
     }
 
@@ -1483,6 +1487,8 @@ int xcldev::xclP2p(int argc, char *argv[])
         std::cout << "Please check BIOS settings" << std::endl;
     } else if (ret == EBUSY) {
         std::cout << "ERROR: P2P is enabled. But there is not enough iomem space, please warm reboot." << std::endl;
+    } else if (ret == ENXIO) {
+        std::cout << "ERROR: P2P is not supported on this platform" << std::endl;
     } else if (ret)
         std::cout << "ERROR: " << strerror(ret) << std::endl;
 

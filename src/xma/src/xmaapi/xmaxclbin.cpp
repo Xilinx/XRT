@@ -23,6 +23,7 @@
 #include "app/xmaerror.h"
 #include "app/xmalogger.h"
 #include "lib/xmaxclbin.h"
+#include "core/common/config_reader.h"
 
 #define XMAAPI_MOD "xmaxclbin"
 
@@ -65,6 +66,7 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
         const ip_layout *ipl = reinterpret_cast<ip_layout *>(data);
         XmaIpLayout* layout = xclbin_info->ip_layout;
         xclbin_info->number_of_kernels = 0;
+        bool dataflow_ini = xrt_core::config::get_feature_toggle("Runtime.kernel_channels");
         uint32_t j = 0;
         for (int i = 0; i < ipl->m_count; i++)
         {
@@ -84,8 +86,15 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
             */
             layout[j].base_addr = ipl->m_ip_data[i].m_base_address;
             if (((ipl->m_ip_data[i].properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT) == AP_CTRL_CHAIN) {
-                xclbin_info->ip_layout[j].dataflow_kernel = true;
+                if (dataflow_ini) {
+                    xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "kernel \"%s\" is a dataflow kernel. channel_id will be handled by XMA. host app and plugins should not use reserved channle_id registers\n", str_tmp1.c_str());
+                    xclbin_info->ip_layout[j].dataflow_kernel = true;
+                } else {
+                    xma_logmsg(XMA_WARNING_LOG, XMAAPI_MOD, "kernel \"%s\" is a dataflow kernel. Use dataflow xrt.ini setting to enable handling of channel_id by XMA. Treatng it as legacy dataflow kernel and channels to be managed by host app and plugins\n", str_tmp1.c_str());
+                    xclbin_info->ip_layout[j].dataflow_kernel = false;
+                }
             } else {
+                xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "kernel \"%s\" is a legacy kernel. Channels to be managed by host app and plugins\n", str_tmp1.c_str());
                 xclbin_info->ip_layout[j].dataflow_kernel = false;
             }
             //Sarab: TODO handle soft_kernels.. SK_LAYOUT

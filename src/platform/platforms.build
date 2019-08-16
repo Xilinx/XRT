@@ -1,7 +1,20 @@
 {
+	"_comment": [
+		"########################################################## ",
+		"# platforms_to_build section",
+		"#   platforms_to_build section is a Map of platform_name and platform_key",
+		"#     Structure:",
+		"#       platform_name: platform_key",
+		"#         platform_name - Name of the platform to be built",
+		"#         platform_key  - Name in the platform bsp Ex: xilinx-<platform_key>-v<release>-final.bsp ",
+		"# platforms_to_copy_sysroot section is the list for platforms for which sysroot needs to be copied to TA",
+		"#",
+		"###########################################################"
+	],
 	"platforms_to_build": {
-		"zcu104_revmin": "zcu104",
 		"zc702": "zc702"
 	},
-	"platforms_to_copy_sysroot": ["zcu104_revmin", "zc702"]
+	"platforms_to_copy_sysroot": [
+		"zc702"
+	]
 }
