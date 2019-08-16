@@ -51,6 +51,8 @@
 #define XAIM_SAMPLE_LAST_WRITE_DATA_OFFSET           0xA8
 #define XAIM_SAMPLE_LAST_READ_ADDRESS_OFFSET         0xAC
 #define XAIM_SAMPLE_LAST_READ_DATA_OFFSET            0xB0
+#define XAIM_SAMPLE_READ_BUSY_CYCLES_OFFSET          0xB4
+#define XAIM_SAMPLE_WRITE_BUSY_CYCLES_OFFSET         0xB8
 #define XAIM_SAMPLE_WRITE_BYTES_UPPER_OFFSET         0xC0
 #define XAIM_SAMPLE_WRITE_TRANX_UPPER_OFFSET         0xC4
 #define XAIM_SAMPLE_WRITE_LATENCY_UPPER_OFFSET       0xC8
@@ -64,6 +66,8 @@
 #define XAIM_SAMPLE_LAST_WRITE_DATA_UPPER_OFFSET     0xE8
 #define XAIM_SAMPLE_LAST_READ_ADDRESS_UPPER_OFFSET   0xEC
 #define XAIM_SAMPLE_LAST_READ_DATA_UPPER_OFFSET      0xF0
+#define XAIM_SAMPLE_READ_BUSY_CYCLES_UPPER_OFFSET    0xF4
+#define XAIM_SAMPLE_WRITE_BUSY_CYCLES_UPPER_OFFSET   0xF8
 
 /* SPM Control Register masks */
 #define XAIM_CR_RESET_ON_SAMPLE_MASK             0x00000010
@@ -78,6 +82,7 @@
 
 
 #include "aim.h"
+#include <bitset>
 
 namespace xdp {
 
@@ -163,23 +168,29 @@ size_t AIM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
     size += read(XAIM_SAMPLE_READ_BYTES_OFFSET, 4, &counterResults.ReadBytes[s]);
     size += read(XAIM_SAMPLE_READ_TRANX_OFFSET, 4, &counterResults.ReadTranx[s]);
     size += read(XAIM_SAMPLE_READ_LATENCY_OFFSET, 4, &counterResults.ReadLatency[s]);
+    size += read(XAIM_SAMPLE_READ_BUSY_CYCLES_OFFSET, 4, &counterResults.ReadBusyCycles[s]);
+    size += read(XAIM_SAMPLE_WRITE_BUSY_CYCLES_OFFSET, 4, &counterResults.WriteBusyCycles[s]);
 
     // Read upper 32 bits (if available)
     if(has64bit()) {
-        uint64_t upper[6] = {};
+        uint64_t upper[8] = {};
         size += read(XAIM_SAMPLE_WRITE_BYTES_UPPER_OFFSET, 4, &upper[0]);
         size += read(XAIM_SAMPLE_WRITE_TRANX_UPPER_OFFSET, 4, &upper[1]);
         size += read(XAIM_SAMPLE_WRITE_LATENCY_UPPER_OFFSET, 4, &upper[2]);
         size += read(XAIM_SAMPLE_READ_BYTES_UPPER_OFFSET, 4, &upper[3]);
         size += read(XAIM_SAMPLE_READ_TRANX_UPPER_OFFSET, 4, &upper[4]);
         size += read(XAIM_SAMPLE_READ_LATENCY_UPPER_OFFSET, 4, &upper[5]);
+        size += read(XAIM_SAMPLE_READ_BUSY_CYCLES_UPPER_OFFSET, 4, &upper[6]);
+        size += read(XAIM_SAMPLE_WRITE_BUSY_CYCLES_UPPER_OFFSET, 4, &upper[7]);
 
-        counterResults.WriteBytes[s]   += (upper[0] << 32);
-        counterResults.WriteTranx[s]   += (upper[1] << 32);
-        counterResults.WriteLatency[s] += (upper[2] << 32);
-        counterResults.ReadBytes[s]    += (upper[3] << 32);
-        counterResults.ReadTranx[s]    += (upper[4] << 32);
-        counterResults.ReadLatency[s]  += (upper[5] << 32);
+        counterResults.WriteBytes[s]      += (upper[0] << 32);
+        counterResults.WriteTranx[s]      += (upper[1] << 32);
+        counterResults.WriteLatency[s]    += (upper[2] << 32);
+        counterResults.ReadBytes[s]       += (upper[3] << 32);
+        counterResults.ReadTranx[s]       += (upper[4] << 32);
+        counterResults.ReadLatency[s]     += (upper[5] << 32);
+        counterResults.ReadBusyCycles[s]  += (upper[6] << 32);
+        counterResults.WriteBusyCycles[s] += (upper[7] << 32);
 
         if(out_stream) {
           (*out_stream) << "AXI Interface Monitor Upper 32, slot " << s << std::endl
@@ -188,7 +199,9 @@ size_t AIM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
                         << "  WriteLatency : " << upper[2] << std::endl
                         << "  ReadBytes : " << upper[3] << std::endl
                         << "  ReadTranx : " << upper[4] << std::endl
-                        << "  ReadLatency : " << upper[5] << std::endl;
+                        << "  ReadLatency : " << upper[5] << std::endl
+                        << "  ReadBusyCycles : " << upper[6] << std::endl
+                        << "  WriteBusyCycles : " << upper[7] << std::endl;
         }
     }
 
@@ -200,7 +213,9 @@ size_t AIM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
                       << "Reading AXI Interface Monitor... WriteLatency : " << counterResults.WriteLatency[s] << std::endl
                       << "Reading AXI Interface Monitor... ReadBytes : " << counterResults.ReadBytes[s] << std::endl
                       << "Reading AXI Interface Monitor... ReadTranx : " << counterResults.ReadTranx[s] << std::endl
-                      << "Reading AXI Interface Monitor... ReadLatency : " << counterResults.ReadLatency[s] << std::endl;
+                      << "Reading AXI Interface Monitor... ReadLatency : " << counterResults.ReadLatency[s] << std::endl
+                      << "Reading AXI Interface Monitor... ReadBusyCycles : " << counterResults.ReadBusyCycles[s] << std::endl
+                      << "Reading AXI Interface Monitor... WriteBusyCycles : " << counterResults.WriteBusyCycles[s] << std::endl;
     }
 
     return size;
