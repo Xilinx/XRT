@@ -150,7 +150,8 @@ private:
 
 protected:
 
-    std::ostream* out_stream = nullptr; /* Output stream for log */
+    std::ostream* out_stream = &(std::cout); /* Output stream for log */
+//    std::ostream* out_stream = nullptr; /* Output stream for log */
 
     xrt::device* getXRTDevice() { return (xrt::device*)xrt_device_handle; }
 
