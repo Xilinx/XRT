@@ -703,16 +703,15 @@ struct topThreadCtrl {
     int status;
 };
 
-static void topPrintUsage(const xcldev::device *dev, xclDeviceUsage& devstat,
-    xclDeviceInfo2 &devinfo)
+static void topPrintUsage(const xcldev::device *dev, xclDeviceUsage& devstat)
 {
     std::vector<std::string> lines;
 
     dev->m_mem_usage_bar(devstat, lines);
 
-    dev->m_devinfo_stringize_power(devinfo, lines);
+    dev->sysfs_stringize_power(lines);
 
-    dev->m_mem_usage_stringize_dynamics(devstat, devinfo, lines);
+    dev->m_mem_usage_stringize_dynamics(devstat, lines);
 
     dev->m_stream_usage_stringize_dynamics(lines);
 
@@ -723,7 +722,7 @@ static void topPrintUsage(const xcldev::device *dev, xclDeviceUsage& devstat,
     }
 }
 
-static void topPrintStreamUsage(const xcldev::device *dev, xclDeviceInfo2 &devinfo)
+static void topPrintStreamUsage(const xcldev::device *dev)
 {
     std::vector<std::string> lines;
 
@@ -754,7 +753,7 @@ static void topThreadFunc(struct topThreadCtrl *ctrl)
                 return;
             }
             clear();
-            topPrintUsage(ctrl->dev.get(), devstat, devinfo);
+            topPrintUsage(ctrl->dev.get(), devstat);
             refresh();
         }
         std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -781,7 +780,7 @@ static void topThreadStreamFunc(struct topThreadCtrl *ctrl)
                 return;
             }
             clear();
-            topPrintStreamUsage(ctrl->dev.get(), devinfo);
+            topPrintStreamUsage(ctrl->dev.get());
             refresh();
         }
         std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -951,7 +950,14 @@ int xcldev::device::runTestCase(const std::string& py,
 {
     struct stat st;
 
-    std::string devInfoPath = std::string(m_devinfo.mName) + "/test/";
+    std::string name, errmsg;
+    pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV", errmsg, name );
+    if (!errmsg.empty()) {
+        std::cout << errmsg << std::endl;
+        return -EINVAL;
+    }
+
+    std::string devInfoPath = name + "/test/";
     std::string xsaXclbinPath = xsaPath + devInfoPath;
     std::string dsaXclbinPath = dsaPath + devInfoPath;
     std::string xrtTestCasePath = xrtPath + "test/" + py;
@@ -1026,15 +1032,24 @@ int xcldev::device::bandwidthKernelTest(void)
 
 int xcldev::device::pcieLinkTest(void)
 {
-    if (m_devinfo.mPCIeLinkSpeed != m_devinfo.mPCIeLinkSpeedMax ||
-        m_devinfo.mPCIeLinkWidth != m_devinfo.mPCIeLinkWidthMax) {
+    unsigned int pcie_speed, pcie_speed_max, pcie_width, pcie_width_max;
+    std::string errmsg;
+
+    if (!errmsg.empty()) {
+        std::cout << errmsg << std::endl;
+        return -EINVAL;
+    }
+
+    pcidev::get_dev(m_idx)->sysfs_get( "", "link_speed",     errmsg, pcie_speed );
+    pcidev::get_dev(m_idx)->sysfs_get( "", "link_speed_max", errmsg, pcie_speed_max );
+    pcidev::get_dev(m_idx)->sysfs_get( "", "link_width",     errmsg, pcie_width );
+    pcidev::get_dev(m_idx)->sysfs_get( "", "link_width_max", errmsg, pcie_width_max );
+    if (pcie_speed != pcie_speed_max || pcie_width != pcie_width_max) {
         std::cout << "LINK ACTIVE, ATTENTION" << std::endl;
         std::cout << "Ensure Card is plugged in to Gen"
-            << m_devinfo.mPCIeLinkSpeedMax << "x" << m_devinfo.mPCIeLinkWidthMax
-            << ", instead of Gen" << m_devinfo.mPCIeLinkSpeed << "x"
-            << m_devinfo.mPCIeLinkWidth << std::endl
-            << "Lower performance may be experienced"
-            << std::endl;
+            << pcie_speed_max << "x" << pcie_width_max << ", instead of Gen" 
+            << pcie_speed << "x" << pcie_width << std::endl
+            << "Lower performance may be experienced" << std::endl;
         return 1;
     }
     return 0;

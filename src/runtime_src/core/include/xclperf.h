@@ -382,6 +382,8 @@ typedef struct {
   unsigned long long ReadLatency[XAIM_MAX_NUMBER_SLOTS];
   unsigned short     ReadMinLatency[XAIM_MAX_NUMBER_SLOTS];
   unsigned short     ReadMaxLatency[XAIM_MAX_NUMBER_SLOTS];
+  unsigned long long ReadBusyCycles[XAIM_MAX_NUMBER_SLOTS];
+  unsigned long long WriteBusyCycles[XAIM_MAX_NUMBER_SLOTS];
   // Accelerator Monitor
   unsigned long long CuExecCount[XAM_MAX_NUMBER_SLOTS];
   unsigned long long CuExecCycles[XAM_MAX_NUMBER_SLOTS];

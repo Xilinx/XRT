@@ -188,6 +188,10 @@ namespace xdp {
     return mTraceParser->getSampleIntervalMsec();
   }
 
+  // Record wall-clock time points for start and end of profiling. Used to get an approximate total host time
+  void RTProfile::setProfileStartTime(std::chrono::steady_clock::time_point t) { mProfileCounters->setProfileStartTime(t); }
+  void RTProfile::setProfileEndTime(std::chrono::steady_clock::time_point t)   { mProfileCounters->setProfileEndTime(t); }
+
   // ***************************************************************************
   // Profile & Trace Writers
   // ***************************************************************************

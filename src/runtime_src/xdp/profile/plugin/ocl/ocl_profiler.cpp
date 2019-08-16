@@ -362,6 +362,8 @@ namespace xdp {
     if (xrt::config::get_profile() == false)
       return;
 
+    ProfileMgr->setProfileStartTime(std::chrono::steady_clock::now());
+
     // Turn on device profiling (as requested)
     std::string data_transfer_trace = xrt::config::get_data_transfer_trace();
     std::string stall_trace = xrt::config::get_stall_trace();
@@ -421,6 +423,8 @@ namespace xdp {
   // Wrap up profiling by writing files
   void OCLProfiler::endProfiling()
   {
+    ProfileMgr->setProfileEndTime(std::chrono::steady_clock::now());
+
     configureWriters();
     if (applicationProfilingOn()) {
       // Write out reports
