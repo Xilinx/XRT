@@ -35,7 +35,6 @@
 #include <thread>
 #include <iosfwd>
 
-//struct xclBin;
 struct axlf;
 
 namespace xrt {
@@ -48,8 +47,7 @@ struct exec_buffer_object {};
 
 using BufferObjectHandle = std::shared_ptr<buffer_object>;
 using ExecBufferObjectHandle = std::shared_ptr<exec_buffer_object>;
-
-
+using device_handle = xclDeviceHandle;
 
 enum class verbosity_level : unsigned short
 {
@@ -165,6 +163,9 @@ public:
 
   virtual void
   close() = 0;
+
+  virtual device_handle
+  get_handle() const = 0;
 
   virtual void
   acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared) {}
