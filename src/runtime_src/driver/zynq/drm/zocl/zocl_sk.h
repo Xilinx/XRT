@@ -54,7 +54,7 @@ struct soft_kernel {
 
 struct soft_kernel_cmd {
 	struct list_head	skc_list;
-	struct sched_packet	*skc_packet;
+	struct ert_packet	*skc_packet;
 };
 
 int zocl_init_soft_kernel(struct drm_device *drm);
