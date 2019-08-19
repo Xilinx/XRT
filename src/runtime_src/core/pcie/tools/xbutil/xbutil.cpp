@@ -989,6 +989,44 @@ int xcldev::device::runTestCase(const std::string& py,
     return runShellCmd(cmd, output);
 }
 
+int xcldev::device::runXbTestCase(const std::string& test)
+{
+    struct stat st;
+    int retVal;
+    std::string output;
+
+    std::string devInfoPath = std::string(m_devinfo.mName) + "/test/";
+    std::string xsaTestPath = xsaPath + devInfoPath;
+    std::string dsaTestPath = dsaPath + devInfoPath;
+
+    output.clear();
+
+    std::string testPath;
+    searchXsaAndDsa(xsaTestPath, dsaTestPath, testPath, output);
+    std::string exePath = testPath + "xbtest";
+    testPath += test + ".json";
+
+    if (stat(testPath.c_str(), &st) != 0) {
+        std::cout << output << std::endl;
+        std::cout << "ERROR: Failed to find ";
+        std::cout << test;
+        std::cout << ", Shell package not installed properly.";
+        return -ENOENT;
+    }
+
+    std::string cmd = exePath + " -j " + testPath + " -d " + std::to_string(m_idx);
+    retVal = runShellCmd(cmd, output);
+
+    if (retVal != 0 || output.find("RESULT: ALL TESTS PASSED") == std::string::npos) {
+        std::cout << output << std::endl;
+        std::cout << "ERROR: == " << test << " kernel test FAILED" << std::endl;
+        return retVal == 0 ? -EINVAL : retVal;
+    }
+    std::cout << std::endl;
+    std::cout << "INFO: == " << test << " kernel test PASSED" << std::endl;
+    return retVal;
+}
+
 int xcldev::device::verifyKernelTest(void)
 {
     std::string output;
@@ -1090,6 +1128,28 @@ int xcldev::device::validate(bool quick)
     withWarning = withWarning || (retVal == 1);
     if (retVal < 0)
         return retVal;
+
+    if (isXbTestPlatform()) {
+        retVal = runXbTestCase(std::string("verify"));
+        withWarning = withWarning || (retVal == 1);
+        if (retVal < 0)
+            return retVal;
+
+        // Skip the rest of test cases for quicker turn around.
+        if (quick)
+            return withWarning ? 1 : 0;
+
+        retVal = runXbTestCase(std::string("dma"));
+        withWarning = withWarning || (retVal == 1);
+        if (retVal < 0)
+            return retVal;
+
+        retVal = runXbTestCase(std::string("memory"));
+        withWarning = withWarning || (retVal == 1);
+        if (retVal < 0)
+            return retVal;
+        return withWarning ? 1 : 0;
+    }
 
     // Test verify kernel
     retVal = runOneTest("verify kernel test",
