@@ -17,6 +17,7 @@
 #include "traceS2MM.h"
 #include "tracedefs.h"
 #include "xdp/profile/core/rt_util.h"
+#include <bitset>
 
 namespace xdp {
 
@@ -163,12 +164,12 @@ inline void TraceS2MM::parsePacket(uint64_t packet, uint64_t firstTimestamp, xcl
     result.EventID = XCL_PERF_MON_HW_EVENT;
     result.EventFlags = ((packet >> 45) & 0xF) | ((packet >> 57) & 0x10);
     result.isClockTrain = false;
-
     if (out_stream) {
-    static uint64_t previousTimestamp = 0;
-    (*out_stream) << std::dec << std::setw(5)
+      static uint64_t previousTimestamp = 0;
+      auto packet_dec = std::bitset<64>(packet).to_string();
+      (*out_stream) << std::dec << std::setw(5)
         << "  Trace sample " << ": "
-        << RTUtil::dec2bin(uint32_t(packet>>32)) << " " << RTUtil::dec2bin(uint32_t(packet&0xFFFFFFFF)) << std::endl
+        <<  packet_dec.substr(0,19) << " : " << packet_dec.substr(19) << std::endl
         << " Timestamp : " << result.Timestamp << "   "
         << "Type : " << result.EventType << "   "
         << "ID : " << result.TraceID << "   "

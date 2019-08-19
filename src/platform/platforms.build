@@ -12,9 +12,8 @@
 		"###########################################################"
 	],
 	"platforms_to_build": {
+		"zcu102_base": "zcu102",
 		"zc702": "zc702"
 	},
-	"platforms_to_copy_sysroot": [
-		"zc702"
-	]
+	"platforms_to_copy_sysroot": ["zcu102_base", "zc702"]
 }
