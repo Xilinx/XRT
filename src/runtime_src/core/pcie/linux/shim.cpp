@@ -1514,19 +1514,17 @@ int shim::xclCuName2Index(const char *name, uint32_t& index)
         return -EINVAL;
     }
 
-    int idx = -1;
-    for (auto line : custat) {
-        ++idx;
-        size_t openpos = line.find('@');
-        size_t closepos = line.rfind(']');
-        if (openpos == std::string::npos || closepos == std::string::npos)
+    uint32_t idx = 0;
+    for (auto& line : custat) {
+        // convert and compare parsed hex address CU[@0x[0-9]+]
+        size_t pos = line.find("0x");
+        if (pos == std::string::npos)
             continue;
-        int base = std::stoi(line.substr(openpos + 1, closepos - openpos - 1),
-            0, 0);
-        if ((int)addr == base) {
+        if (static_cast<int>(addr) == std::stoi(line.substr(pos), 0, 16)) {
             index = idx;
             return 0;
         }
+        ++idx;
     }
 
     return -ENOENT;
