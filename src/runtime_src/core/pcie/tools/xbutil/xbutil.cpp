@@ -741,13 +741,7 @@ static void topThreadFunc(struct topThreadCtrl *ctrl)
     while (!ctrl->quit) {
         if ((i % ctrl->interval) == 0) {
             xclDeviceUsage devstat;
-            xclDeviceInfo2 devinfo;
             int result = ctrl->dev->usageInfo(devstat);
-            if (result) {
-                ctrl->status = result;
-                return;
-            }
-            result = ctrl->dev->deviceInfo(devinfo);
             if (result) {
                 ctrl->status = result;
                 return;
@@ -768,13 +762,7 @@ static void topThreadStreamFunc(struct topThreadCtrl *ctrl)
     while (!ctrl->quit) {
         if ((i % ctrl->interval) == 0) {
             xclDeviceUsage devstat;
-            xclDeviceInfo2 devinfo;
             int result = ctrl->dev->usageInfo(devstat);
-            if (result) {
-                ctrl->status = result;
-                return;
-            }
-            result = ctrl->dev->deviceInfo(devinfo);
             if (result) {
                 ctrl->status = result;
                 return;

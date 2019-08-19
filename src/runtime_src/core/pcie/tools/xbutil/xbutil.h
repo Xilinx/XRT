@@ -151,8 +151,6 @@ static const std::map<std::string, command> commandTable(map_pairs, map_pairs + 
 class device {
     unsigned int m_idx;
     xclDeviceHandle m_handle;
-    xclDeviceInfo2 m_devinfo;
-    xclErrorStatus m_errinfo;
 
 public:
     int domain() {
@@ -167,20 +165,14 @@ public:
     int userFunc() {
         return pcidev::get_dev(m_idx)->func;
     }
-    device(unsigned int idx, const char* log) : m_idx(idx), m_handle(nullptr), m_devinfo{} {
+    device(unsigned int idx, const char* log) : m_idx(idx), m_handle(nullptr){
         std::string devstr = "device[" + std::to_string(m_idx) + "]";
-        m_handle = xclOpen(m_idx, log, XCL_QUIET);
+        m_handle = xclOpen(m_idx, nullptr, XCL_QUIET);
         if (!m_handle)
             throw std::runtime_error("Failed to open " + devstr);
-        if (xclGetDeviceInfo2(m_handle, &m_devinfo))
-            throw std::runtime_error("Unable to obtain info from " + devstr);
-#ifdef AXI_FIREWALL
-        if (xclGetErrorStatus(m_handle, &m_errinfo))
-            throw std::runtime_error("Unable to obtain AXI error from " + devstr);
-#endif
     }
 
-    device(device&& rhs) : m_idx(rhs.m_idx), m_handle(rhs.m_handle), m_devinfo(std::move(rhs.m_devinfo)) {
+    device(device&& rhs) : m_idx(rhs.m_idx), m_handle(rhs.m_handle){
     }
 
     device(const device &dev) = delete;
@@ -190,8 +182,10 @@ public:
         xclClose(m_handle);
     }
 
-    const char *name() const {
-        return m_devinfo.mName;
+    std::string name() const {
+        std::string name, errmsg;
+        pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV", errmsg, name );
+        return name;
     }
 
     int reclock2(unsigned regionIndex, const unsigned short *freq) {
@@ -622,12 +616,11 @@ public:
     int readSensors( void ) const
     {
         // board info
-        std::string name, vendor, device, subsystem, subvendor, xmc_ver, ser_num, bmc_ver, idcode, fpga, dna, errmsg;
+        std::string vendor, device, subsystem, subvendor, xmc_ver, ser_num, bmc_ver, idcode, fpga, dna, errmsg;
         int ddr_size = 0, ddr_count = 0, pcie_speed = 0, pcie_width = 0, p2p_enabled = 0;
         std::vector<std::string> clock_freqs;
         bool mig_calibration;
         
-        pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV",               errmsg, name ); 
         pcidev::get_dev(m_idx)->sysfs_get( "", "vendor",                errmsg, vendor );
         pcidev::get_dev(m_idx)->sysfs_get( "", "device",                errmsg, device );
         pcidev::get_dev(m_idx)->sysfs_get( "", "subsystem_device",      errmsg, subsystem );
@@ -645,7 +638,7 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "icap", "idcode",            errmsg, idcode );
         pcidev::get_dev(m_idx)->sysfs_get( "dna", "dna",                errmsg, dna );
         pcidev::get_dev(m_idx)->sysfs_get("", "p2p_enable",             errmsg, p2p_enabled);
-        sensor_tree::put( "board.info.dsa_name",       name );
+        sensor_tree::put( "board.info.dsa_name",       name() );
         sensor_tree::put( "board.info.vendor",         vendor );
         sensor_tree::put( "board.info.device",         device );
         sensor_tree::put( "board.info.subdevice",      subsystem );
@@ -1190,15 +1183,9 @@ public:
             std::cout << "Total DDR size: " << ddr_mem_size << " MB\n";
 
         bool isAREDevice = false;
-        std::string name, errmsg;
-        pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV", errmsg, name );
 
-        if (!errmsg.empty()) {
-            std::cout << errmsg << std::endl;
-            return -EINVAL;
-        }
 
-        if (strstr(name.c_str(), "-xare")) {//This is ARE device
+        if (strstr(name().c_str(), "-xare")) {//This is ARE device
             isAREDevice = true;
         }
 
@@ -1209,6 +1196,7 @@ public:
 
         // get DDR bank count from mem_topology if possible
         std::vector<char> buf;
+        std::string errmsg;
 
         auto dev = pcidev::get_dev(m_idx);
         dev->sysfs_get("icap", "mem_topology", errmsg, buf);
@@ -1292,66 +1280,52 @@ public:
 
     int memread(std::string aFilename, unsigned long long aStartAddr = 0, unsigned long long aSize = 0) {
         std::ios_base::fmtflags f(std::cout.flags());
-        std::string name, errmsg;
-        pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV", errmsg, name );
 
-        if (!errmsg.empty()) {
-            std::cout << errmsg << std::endl;
-            return -EINVAL;
-        }
-
-        if (strstr(name.c_str(), "-xare")) {//This is ARE device
-          if (aStartAddr > m_devinfo.mDDRSize) {
+        if (strstr(name().c_str(), "-xare")) {//This is ARE device
+          if (aStartAddr > get_ddr_mem_size()) {
               std::cout << "Start address " << std::hex << aStartAddr <<
                            " is over ARE" << std::endl;
           }
-          if (aSize > m_devinfo.mDDRSize || aStartAddr+aSize > m_devinfo.mDDRSize) {
+          if (aSize > get_ddr_mem_size() || aStartAddr+aSize > get_ddr_mem_size()) {
               std::cout << "Read size " << std::dec << aSize << " from address 0x" << std::hex << aStartAddr <<
                            " is over ARE" << std::endl;
           }
         }
         std::cout.flags(f);
 
-        return memaccess(m_handle, m_devinfo.mDDRSize, getpagesize(),
+        return memaccess(m_handle, get_ddr_mem_size(), getpagesize(),
             pcidev::get_dev(m_idx)->sysfs_name).read(
             aFilename, aStartAddr, aSize);
     }
 
 
     int memDMATest(size_t blocksize, unsigned int aPattern = 'J') {
-        return memaccess(m_handle, m_devinfo.mDDRSize, getpagesize(),
+        return memaccess(m_handle, get_ddr_mem_size(), getpagesize(),
             pcidev::get_dev(m_idx)->sysfs_name).runDMATest(
             blocksize, aPattern);
     }
 
     int memreadCompare(unsigned long long aStartAddr = 0, unsigned long long aSize = 0, unsigned int aPattern = 'J', bool checks = true) {
-        return memaccess(m_handle, m_devinfo.mDDRSize, getpagesize(),
+        return memaccess(m_handle, get_ddr_mem_size(), getpagesize(),
             pcidev::get_dev(m_idx)->sysfs_name).readCompare(
             aStartAddr, aSize, aPattern, checks);
     }
 
     int memwrite(unsigned long long aStartAddr, unsigned long long aSize, unsigned int aPattern = 'J') {
         std::ios_base::fmtflags f(std::cout.flags());
-        std::string name, errmsg;
-        pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV", errmsg, name );
 
-        if (!errmsg.empty()) {
-            std::cout << errmsg << std::endl;
-            return -EINVAL;
-        }
-
-        if (strstr(name.c_str(), "-xare")) {//This is ARE device
-            if (aStartAddr > m_devinfo.mDDRSize) {
+        if (strstr(name().c_str(), "-xare")) {//This is ARE device
+            if (aStartAddr > get_ddr_mem_size()) {
                 std::cout << "Start address " << std::hex << aStartAddr <<
                              " is over ARE" << std::endl;
             }
-            if (aSize > m_devinfo.mDDRSize || aStartAddr+aSize > m_devinfo.mDDRSize) {
+            if (aSize > get_ddr_mem_size() || aStartAddr+aSize > get_ddr_mem_size()) {
                 std::cout << "Write size " << std::dec << aSize << " from address 0x" << std::hex << aStartAddr <<
                              " is over ARE" << std::endl;
             }
         }
         std::cout.flags(f);
-        return memaccess(m_handle, m_devinfo.mDDRSize, getpagesize(),
+        return memaccess(m_handle, get_ddr_mem_size(), getpagesize(),
             pcidev::get_dev(m_idx)->sysfs_name).write(
             aStartAddr, aSize, aPattern);
     }
@@ -1359,37 +1333,30 @@ public:
     int memwrite( unsigned long long aStartAddr, unsigned long long aSize, char *srcBuf )
     {
         std::ios_base::fmtflags f(std::cout.flags());
-        std::string name, errmsg;
-        pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV", errmsg, name );
 
-        if (!errmsg.empty()) {
-            std::cout << errmsg << std::endl;
-            return -EINVAL;
-        }
-
-        if( strstr( name.c_str(), "-xare" ) ) { //This is ARE device
-            if( aStartAddr > m_devinfo.mDDRSize ) {
+        if( strstr( name().c_str(), "-xare" ) ) { //This is ARE device
+            if( aStartAddr > get_ddr_mem_size() ) {
                 std::cout << "Start address " << std::hex << aStartAddr <<
                              " is over ARE" << std::endl;
             }
-            if( aSize > m_devinfo.mDDRSize || aStartAddr + aSize > m_devinfo.mDDRSize ) {
+            if( aSize > get_ddr_mem_size() || aStartAddr + aSize > get_ddr_mem_size() ) {
                 std::cout << "Write size " << std::dec << aSize << " from address 0x" << std::hex << aStartAddr <<
                              " is over ARE" << std::endl;
             }
         }
         std::cout.flags(f);
-        return memaccess(m_handle, m_devinfo.mDDRSize, getpagesize(),
+        return memaccess(m_handle, get_ddr_mem_size(), getpagesize(),
             pcidev::get_dev(m_idx)->sysfs_name).write(
             aStartAddr, aSize, srcBuf);
     }
 
     int memwriteQuiet(unsigned long long aStartAddr, unsigned long long aSize, unsigned int aPattern = 'J') {
-        return memaccess(m_handle, m_devinfo.mDDRSize, getpagesize(),
+        return memaccess(m_handle, get_ddr_mem_size(), getpagesize(),
             pcidev::get_dev(m_idx)->sysfs_name).writeQuiet(
             aStartAddr, aSize, aPattern);
     }
 
-    int get_ddr_mem_size() {
+    size_t get_ddr_mem_size() {
         std::string errmsg;
         long long ddr_size = 0;
         int ddr_bank_count = 0;
@@ -1494,10 +1461,6 @@ public:
 
     int usageInfo(xclDeviceUsage& devstat) const {
         return xclGetUsageInfo(m_handle, &devstat);
-    }
-
-    int deviceInfo(xclDeviceInfo2& devinfo) const {
-        return xclGetDeviceInfo2(m_handle, &devinfo);
     }
 
     int validate(bool quick);
