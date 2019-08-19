@@ -44,7 +44,8 @@ namespace xdp {
   class DeviceIntf {
   public:
     DeviceIntf() {}
-    ~DeviceIntf();
+  // Adding destructor deletes move constr
+  //  ~DeviceIntf();
 
   public:
 
@@ -72,7 +73,8 @@ namespace xdp {
     size_t stopCounters(xclPerfMonType type);
     size_t readCounters(xclPerfMonType type, xclCounterResults& counterResults);
 
-    // Enable Dataflow
+    // Accelerator Monitor Controls
+    void configureCtx();
     void configureDataflow(bool* ipConfig);
 
     // Trace FIFO Management
@@ -121,15 +123,15 @@ namespace xdp {
     uint64_t mTs2mmBoSize = 0;
     xrt::hal::BufferObjectHandle mTs2mmBoHandle = nullptr;
 
-    std::vector<AIM*> aimList;
-    std::vector<AM*>  amList;
-    std::vector<ASM*> asmList;
+    std::vector<std::unique_ptr<AIM>> aimList;
+    std::vector<std::unique_ptr<AM>>  amList;
+    std::vector<std::unique_ptr<ASM>> asmList;
 
-    TraceFifoLite* fifoCtrl  = nullptr;
-    TraceFifoFull* fifoRead  = nullptr;
-    TraceFunnel*   traceFunnel = nullptr;
+    std::unique_ptr<TraceFifoLite> fifoCtrl;
+    std::unique_ptr<TraceFifoFull> fifoRead;;
+    std::unique_ptr<TraceFunnel>   traceFunnel;
 
-    TraceS2MM* traceDMA = nullptr;
+    std::unique_ptr<TraceS2MM> traceDMA;
 
 // lapc ip data holder
 //

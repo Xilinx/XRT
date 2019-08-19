@@ -25,17 +25,17 @@ namespace xdp {
 
 /**
  * AM ProfileIP (IP with safe access) for Accelerator Monitor
- * 
+ *
  * Description:
- * 
- * This class represents the high level exclusive and OS protected 
+ *
+ * This class represents the high level exclusive and OS protected
  * access to a profiling IP on the device.
- * 
+ *
  * Note:
- * 
+ *
  * This class only aims at providing interface for easy and
- * safe access to a single profiling IP. Managing the 
- * association between IPs and devices should be done in a 
+ * safe access to a single profiling IP. Managing the
+ * association between IPs and devices should be done in a
  * different data structure that is built on top of this class.
  */
 class AM : public ProfileIP {
@@ -48,7 +48,7 @@ public:
      * During the construction, the exclusive access to this
      * IP will be requested, otherwise exception will be thrown.
      */
-    AM(void* handle /** < [in] the xrt hal device handle */, 
+    AM(void* handle /** < [in] the xrt hal device handle */,
                 int index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data = nullptr);
 
     /**
@@ -63,6 +63,8 @@ public:
     size_t readCounter(xclCounterResults& counterResult, uint32_t index);
 
     void configureDataflow(bool cuHasApCtrlChain);
+    void enable();
+    void disable();
 
     bool has64bit() const;
     bool hasDataflow() const;
@@ -79,6 +81,7 @@ private:
     uint8_t properties;
     uint8_t major_version;
     uint8_t minor_version;
+    bool m_enabled = true;
 };
 
 } //  xdp

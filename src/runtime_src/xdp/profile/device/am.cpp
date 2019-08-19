@@ -102,17 +102,20 @@ size_t AM::stopCounter()
 
 size_t AM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
 {
-    if(out_stream)
+    if (out_stream)
         (*out_stream) << " AM::readCounter " << std::endl;
+
+    if (!m_enabled)
+        return 0;
 
     size_t size = 0;
     uint32_t sampleInterval = 0;
 
     uint32_t version = 0;
-    if(s==0)
+    if (s==0)
     size += read(0, 4, &version);
 
-    if(out_stream) {
+    if (out_stream) {
         (*out_stream) << "Accelerator Monitor Core vlnv : " << version
                       << " Major " << static_cast<int>(major_version)
                       << " Minor " << static_cast<int>(minor_version)
@@ -128,7 +131,7 @@ size_t AM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
     // NOTE: this also latches the sampled metric counters
     size += read(XAM_SAMPLE_OFFSET, 4, &sampleInterval);
 
-    if(out_stream) {
+    if (out_stream) {
         (*out_stream) << "Accelerator Monitor Sample Interval : " << sampleInterval << std::endl;
     }
 
@@ -138,7 +141,7 @@ size_t AM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
     size += read(XAM_ACCEL_MAX_EXECUTION_CYCLES_OFFSET, 4, &counterResults.CuMaxExecCycles[s]);
 
     // Read upper 32 bits (if available)
-    if(has64bit()) {
+    if (has64bit()) {
         uint64_t upper[4] = {};
         size += read(XAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET, 4, &upper[0]);
         size += read(XAM_ACCEL_EXECUTION_CYCLES_UPPER_OFFSET, 4, &upper[1]);
@@ -150,7 +153,7 @@ size_t AM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
         counterResults.CuMinExecCycles[s] += (upper[2] << 32);
         counterResults.CuMaxExecCycles[s] += (upper[3] << 32);
 
-        if(out_stream)
+        if (out_stream)
           (*out_stream) << "Accelerator Monitor Upper 32, slot " << s << std::endl
                         << "  CuExecCount : " << upper[0] << std::endl
                         << "  CuExecCycles : " << upper[1] << std::endl
@@ -227,7 +230,20 @@ size_t AM::triggerTrace(uint32_t traceOption /* starttrigger*/)
     regValue = ((traceOption & XAM_TRACE_STALL_SELECT_MASK) >> 1) | 0x1 ;
     size += write(XAM_TRACE_CTRL_OFFSET, 4, &regValue); 
 
-    return size;    
+    return size;
+}
+
+void AM::disable()
+{
+    m_enabled = false;
+    // Disable all trace
+    uint32_t regValue = 0;
+    write(XAM_TRACE_CTRL_OFFSET, 4, &regValue);
+}
+
+void AM::enable()
+{
+    m_enabled = true;
 }
 
 void AM::configureDataflow(bool cuHasApCtrlChain)

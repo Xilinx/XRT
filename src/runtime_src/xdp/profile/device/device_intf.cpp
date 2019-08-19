@@ -44,30 +44,6 @@
 
 namespace xdp {
 
-DeviceIntf::~DeviceIntf()
-{
-    for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
-        delete (*itr);  // delete the object
-        (*itr) = nullptr;
-    }
-    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr) {
-        delete (*itr);  // delete the object
-        (*itr) = nullptr;
-    }
-    for(std::vector<ASM*>::iterator itr = asmList.begin(); itr != asmList.end(); ++itr) {
-        delete (*itr);  // delete the object
-        (*itr) = nullptr;
-    }
-    aimList.clear();
-    amList.clear();
-    asmList.clear();
-
-    delete fifoCtrl;
-    delete fifoRead;
-    delete traceFunnel;
-    delete traceDMA;
-}
-
   // ***************************************************************************
   // Read/Write
   // ***************************************************************************
@@ -98,11 +74,11 @@ DeviceIntf::~DeviceIntf()
 
   void DeviceIntf::setDeviceHandle(void* xrtDevice)
   {
-    if(!mDeviceHandle) {
+    if (!mDeviceHandle) {
       mDeviceHandle = xrtDevice;
       return;
     }
-    if(mDeviceHandle != xrtDevice) {
+    if (mDeviceHandle != xrtDevice) {
       // ERROR : trying to set the device handle when it is already populated with some other device
     }
   }
@@ -121,18 +97,18 @@ DeviceIntf::~DeviceIntf()
     if (type == XCL_PERF_MON_STR)
       return asmList.size();
 
-    if(type == XCL_PERF_MON_STALL) {
+    if (type == XCL_PERF_MON_STALL) {
       uint32_t count = 0;
-      for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr) {
-        if((*itr)->hasStall())  count++;
+      for (auto& mon : amList) {
+        if(mon->hasStall())  count++;
       }
       return count;
     }
 
-    if(type == XCL_PERF_MON_HOST) {
+    if (type == XCL_PERF_MON_HOST) {
       uint32_t count = 0;
-      for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
-        if((*itr)->isHostMonitor())  count++;
+      for (auto& mon : aimList) {
+        if (mon->isHostMonitor())  count++;
       }
       return count;
     }
@@ -141,8 +117,8 @@ DeviceIntf::~DeviceIntf()
 
     if(type == XCL_PERF_MON_SHELL) {
       uint32_t count = 0;
-      for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
-        if((*itr)->isShellMonitor())  count++;
+      for (auto& mon : aimList) {
+        if (mon->isShellMonitor())  count++;
       }
       return count;
     }
@@ -152,18 +128,18 @@ DeviceIntf::~DeviceIntf()
   void DeviceIntf::getMonitorName(xclPerfMonType type, uint32_t index, char* name, uint32_t length)
   {
     std::string str = "";
-    if((type == XCL_PERF_MON_MEMORY) && (index < aimList.size())) { str = aimList[index]->getName(); }
-    if((type == XCL_PERF_MON_ACCEL)  && (index < amList.size()))  { str = amList[index]->getName(); }
-    if((type == XCL_PERF_MON_STR)    && (index < asmList.size())) { str = asmList[index]->getName(); }
+    if ((type == XCL_PERF_MON_MEMORY) && (index < aimList.size())) { str = aimList[index]->getName(); }
+    if ((type == XCL_PERF_MON_ACCEL)  && (index < amList.size()))  { str = amList[index]->getName(); }
+    if ((type == XCL_PERF_MON_STR)    && (index < asmList.size())) { str = asmList[index]->getName(); }
     strncpy(name, str.c_str(), length);
-    if(str.length() >= length) name[length-1] = '\0'; // required ??
+    if (str.length() >= length) name[length-1] = '\0'; // required ??
   }
 
   uint32_t DeviceIntf::getMonitorProperties(xclPerfMonType type, uint32_t index)
   {
-    if((type == XCL_PERF_MON_MEMORY) && (index < aimList.size())) { return aimList[index]->getProperties(); }
-    if((type == XCL_PERF_MON_ACCEL)  && (index < amList.size()))  { return amList[index]->getProperties(); }
-    if((type == XCL_PERF_MON_STR)    && (index < asmList.size())) { return asmList[index]->getProperties(); }
+    if ((type == XCL_PERF_MON_MEMORY) && (index < aimList.size())) { return aimList[index]->getProperties(); }
+    if ((type == XCL_PERF_MON_ACCEL)  && (index < amList.size()))  { return amList[index]->getProperties(); }
+    if ((type == XCL_PERF_MON_STR)    && (index < asmList.size())) { return asmList[index]->getProperties(); }
     return 0;
   }
 
@@ -186,19 +162,14 @@ DeviceIntf::~DeviceIntf()
    	  return 0;
 
     size_t size = 0;
-
-    // AIM
-    for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
-        size += (*itr)->startCounter();
+    for (auto& mon : aimList) {
+      size += mon->startCounter();
     }
-    // AM
-    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr) {
-        size += (*itr)->startCounter();
+    for (auto& mon : amList) {
+      size += mon->startCounter();
     }
-
-    // ASM
-    for(std::vector<ASM*>::iterator itr = asmList.begin(); itr != asmList.end(); ++itr) {
-        size += (*itr)->startCounter();
+    for (auto& mon : asmList) {
+        size += mon->startCounter();
     }
     return size;
   }
@@ -215,24 +186,11 @@ DeviceIntf::~DeviceIntf()
 
     size_t size = 0;
 
-    // AIM
-    for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
-        size += (*itr)->stopCounter();
+    // Stop counters not used for other IP
+    for (auto& mon : aimList) {
+        size += mon->stopCounter();
     }
 
-
-#if 0
-    // why not these in the original code
-    // AM
-    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr) {
-        size += (*itr)->stopCounter();
-    }
-
-    // ASM
-    for(std::vector<ASM*>::iterator itr = asmList.begin(); itr != asmList.end(); ++itr) {
-        size += (*itr)->stopCounter();
-    }
-#endif
     return size;
   }
 
@@ -252,22 +210,19 @@ DeviceIntf::~DeviceIntf()
 
     size_t size = 0;
 
-    // AIM
     uint32_t idx = 0;
-    for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr, ++idx) {
-        size += (*itr)->readCounter(counterResults, idx);
+    for (auto& mon : aimList) {
+      size += mon->readCounter(counterResults, idx++);
     }
 
-    // AM
     idx = 0;
-    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr, ++idx) {
-        size += (*itr)->readCounter(counterResults, idx);
+    for (auto& mon : amList) {
+      size += mon->readCounter(counterResults, idx++);
     }
 
-    // ASM
     idx = 0;
-    for(std::vector<ASM*>::iterator itr = asmList.begin(); itr != asmList.end(); ++itr, ++idx) {
-        size += (*itr)->readCounter(counterResults, idx);
+    for (auto& mon : asmList) {
+      size += mon->readCounter(counterResults, idx++);
     }
 
     return size;
@@ -291,18 +246,15 @@ DeviceIntf::~DeviceIntf()
     }
     size_t size = 0;
 
-    // check which of these IPs are trace enabled ?
-    // AIM
-    for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
-        size += (*itr)->triggerTrace(startTrigger);
+    // This just writes to trace control register
+    for (auto& mon : aimList) {
+      size += mon->triggerTrace(startTrigger);
     }
-    // AM
-    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr) {
-        size += (*itr)->triggerTrace(startTrigger);
+    for (auto& mon : amList) {
+      size += mon->triggerTrace(startTrigger);
     }
-    // ASM 
-    for(std::vector<ASM*>::iterator itr = asmList.begin(); itr != asmList.end(); ++itr) {
-        size += (*itr)->triggerTrace(startTrigger);
+    for (auto& mon : asmList) {
+      size += mon->triggerTrace(startTrigger);
     }
 
     if (fifoCtrl)
@@ -396,19 +348,19 @@ DeviceIntf::~DeviceIntf()
       map = (debug_ip_layout*)(buffer);
       for( unsigned int i = 0; i < map->m_count; i++ ) {
       switch(map->m_debug_ip_data[i].m_type) {
-        case AXI_MM_MONITOR :        aimList.push_back(new AIM(mDeviceHandle, i, &(map->m_debug_ip_data[i])));
+        case AXI_MM_MONITOR :        aimList.push_back(std::move(std::make_unique<AIM>(mDeviceHandle, i, &(map->m_debug_ip_data[i]))));
                                      break;
-        case ACCEL_MONITOR  :        amList.push_back(new AM(mDeviceHandle, i, &(map->m_debug_ip_data[i])));
+        case ACCEL_MONITOR  :        amList.push_back(std::move(std::make_unique<AM>(mDeviceHandle, i, &(map->m_debug_ip_data[i]))));
                                      break;
-        case AXI_STREAM_MONITOR :    asmList.push_back(new ASM(mDeviceHandle, i, &(map->m_debug_ip_data[i])));
+        case AXI_STREAM_MONITOR :    asmList.push_back(std::move(std::make_unique<ASM>(mDeviceHandle, i, &(map->m_debug_ip_data[i]))));
                                      break;
-        case AXI_MONITOR_FIFO_LITE : fifoCtrl = new TraceFifoLite(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
+        case AXI_MONITOR_FIFO_LITE : fifoCtrl = std::make_unique<TraceFifoLite>(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
                                      break;
-        case AXI_MONITOR_FIFO_FULL : fifoRead = new TraceFifoFull(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
+        case AXI_MONITOR_FIFO_FULL : fifoRead = std::make_unique<TraceFifoFull>(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
                                      break;
-        case AXI_TRACE_FUNNEL :      traceFunnel = new TraceFunnel(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
+        case AXI_TRACE_FUNNEL :      traceFunnel = std::make_unique<TraceFunnel>(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
                                      break;
-        case TRACE_S2MM :            traceDMA = new TraceS2MM(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
+        case TRACE_S2MM :            traceDMA = std::make_unique<TraceS2MM>(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
                                      break;
         default : break;
         // case AXI_STREAM_PROTOCOL_CHECKER
@@ -419,16 +371,16 @@ DeviceIntf::~DeviceIntf()
     ifs.close();
 
 #if 0
-    for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
-        (*itr)->showProperties();
+    for (auto& mon : aimList) {
+      mon->showProperties();
     }
 
-    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr) {
-        (*itr)->showProperties();
+    for (auto& mon : amList) {
+      mon->showProperties();
     }
 
-    for(std::vector<ASM*>::iterator itr = asmList.begin(); itr != asmList.end(); ++itr) {
-        (*itr)->showProperties();
+    for (auto& mon : asmList) {
+      mon->showProperties();
     }
     if(fifoCtrl) fifoCtrl->showProperties();
     if(fifoRead) fifoRead->showProperties();
@@ -439,16 +391,22 @@ DeviceIntf::~DeviceIntf()
     mIsDebugIPlayoutRead = true;
   }
 
+  void DeviceIntf::configureCtx()
+  {
+    for (auto& mon : amList) {
+      mon->disable();
+    }
+  }
+
   void DeviceIntf::configureDataflow(bool* ipConfig)
   {
-    // this ipConfig only tells whether the corresponding CU has ap_control_chain :
-    // could have been just a property on the monitor set at compile time (in debug_ip_layout)
+    // we don't know dataflow at compile time
     if(!ipConfig)
       return;
 
     uint32_t i = 0;
-    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr, ++i) {
-        (*itr)->configureDataflow(ipConfig[i]);
+    for (auto& mon : amList) {
+      mon->configureDataflow(ipConfig[i++]);
     }
   }
 
