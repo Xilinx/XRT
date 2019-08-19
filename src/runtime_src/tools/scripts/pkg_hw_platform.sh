@@ -460,6 +460,8 @@ initXsaBinEnvAndVars()
          fwManagement="${XILINX_XRT}/share/fw/mgmt.bin"
       elif [ "${CardMgmtControllerFamily}" == "CMC-Gen1" ]; then
          fwManagement="${XILINX_XRT}/share/fw/cmc.bin"
+      elif [ "${CardMgmtControllerFamily}" == "CMC-NO-SC" ]; then
+	 fwManagement="${XILINX_XRT}/share/fw/cmc_no_sc.bin"
       else
          echo "ERROR: Unknown card management controller family: ${CardMgmtControllerFamily}"
          exit 1
