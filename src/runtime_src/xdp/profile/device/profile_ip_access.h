@@ -29,14 +29,14 @@ namespace xdp {
 
 /**
  * ProfileIP (IP with safe access)
- * 
+ *
  * Description:
- * 
+ *
  * This class represents the high level exclusive and OS protected 
  * access to a profiling IP on the device.
- * 
+ *
  * Note:
- * 
+ *
  * This class only aims at providing interface for easy and
  * safe access to a single profiling IP. Managing the 
  * association between IPs and devices should be done in a 

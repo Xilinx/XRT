@@ -32,7 +32,7 @@ ProfileIP::ProfileIP(void* handle, int index, debug_ip_data* data)
     request_exclusive_ip_access(handle, index);
 
     // For now, set these to true
-    mapped = true;  
+    mapped = true;
     exclusive = true;
 
     if (exclusive) {
@@ -41,9 +41,9 @@ ProfileIP::ProfileIP(void* handle, int index, debug_ip_data* data)
         ip_base_address = data->m_base_address;
         ip_name.assign(reinterpret_cast<const char*>(&data->m_name), 128);
         // Strip away extraneous null characters
-        ip_name.assign(ip_name.c_str()); 
+        ip_name.assign(ip_name.c_str());
 
-        mapped_address = 0; 
+        mapped_address = 0;
         /* 0 for now. This will be populated when XRT implements APIs to share the user-space address of Monitor IP registers.
          * Then data can be directly read using those addresses instead of xclRead/xclWrite/xclUnmgdPread
          */
@@ -59,7 +59,7 @@ ProfileIP::~ProfileIP() {
     if (exclusive) {
         release_exclusive_ip_access(xrt_device_handle, ip_index);
     }
-} 
+}
 
 void ProfileIP::request_exclusive_ip_access(void* handle, int index) {
     /**
@@ -119,7 +119,7 @@ int ProfileIP::read(uint64_t offset, size_t size, void* data) {
     }
     uint64_t absolute_offset = ip_base_address + offset;
     xrt::device* xrtDevice = (xrt::device*)xrt_device_handle;
-    
+
     size_t read_size = 1;
     xrtDevice->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
 //    size_t read_size = xDevice->xclRead(device_handle, XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
@@ -179,7 +179,7 @@ void ProfileIP::showWarning(std::string reason) {
 void ProfileIP::showProperties()
 {
     std::ostream* outputStream = (out_stream) ? out_stream : (&(std::cout));
-   
+
     std::ios_base::fmtflags formatF = outputStream->flags();
 
     (*outputStream) << "    IP Name : " << ip_name << std::endl
