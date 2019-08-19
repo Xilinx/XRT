@@ -4,13 +4,14 @@ level: 6
 owner: thuyp
 user:
   allowed_test_modes: [hw]
+  force_makefile: "--force"
   host_args: {all: bandwidth.xclbin}
   host_cflags: ' -DDSA64 -DTYPESIZE=512 -DTYPE=uint16 -DTYPEISVECTOR=1 -DRUNMODE=2'
   host_exe: host.exe
   host_src: main.c
   kernels:
-  - {cflags: ' -I.', file: bandwidth1.xo, ksrc: kernel.cl, name: bandwidth1, type: C}
-  - {cflags: ' -I.', file: bandwidth2.xo, ksrc: kernel.cl, name: bandwidth2, type: C}
+  - {cflags: {all: ' -I.'}, file: bandwidth1.xo, ksrc: kernel.cl, name: bandwidth1, type: C}
+  - {cflags: {all: ' -I.'}, file: bandwidth2.xo, ksrc: kernel.cl, name: bandwidth2, type: C}
   name: 2kernelglobal_002_rw_4ddr_512
   xclbins:
   - files: 'bandwidth1.xo bandwidth2.xo '
@@ -21,5 +22,4 @@ user:
     - cus: [kernel_1]
       name: bandwidth1
       num_cus: 1
-    lflags: ''
     name: bandwidth.xclbin

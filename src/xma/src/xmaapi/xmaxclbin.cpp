@@ -23,6 +23,7 @@
 #include "app/xmaerror.h"
 #include "app/xmalogger.h"
 #include "lib/xmaxclbin.h"
+#include "core/common/config_reader.h"
 
 #define XMAAPI_MOD "xmaxclbin"
 
@@ -65,19 +66,40 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
         const ip_layout *ipl = reinterpret_cast<ip_layout *>(data);
         XmaIpLayout* layout = xclbin_info->ip_layout;
         xclbin_info->number_of_kernels = 0;
+        bool dataflow_ini = xrt_core::config::get_feature_toggle("Runtime.kernel_channels");
         uint32_t j = 0;
         for (int i = 0; i < ipl->m_count; i++)
         {
             if (ipl->m_ip_data[i].m_type != IP_KERNEL)
                 continue;
 
-            if (xclbin_info->number_of_kernels == MAX_KERNEL_CONFIGS) {
-                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only %d kernels per device\n", xclbin_info->number_of_kernels);
+            if (j == MAX_XILINX_KERNELS) {
+                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only %d kernels per device\n", MAX_XILINX_KERNELS);
                 return XMA_ERROR;
             }
+            memset(xclbin_info->ip_layout[j].kernel_name, 0, MAX_KERNEL_NAME);
+            std::string str_tmp1 = std::string((char*)ipl->m_ip_data[i].m_name);
+            str_tmp1.copy((char*)xclbin_info->ip_layout[j].kernel_name, MAX_KERNEL_NAME-1);
+            /*
             memcpy(xclbin_info->ip_layout[j].kernel_name,
                    ipl->m_ip_data[i].m_name, MAX_KERNEL_NAME);
+            */
             layout[j].base_addr = ipl->m_ip_data[i].m_base_address;
+            if (((ipl->m_ip_data[i].properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT) == AP_CTRL_CHAIN) {
+                if (dataflow_ini) {
+                    xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "kernel \"%s\" is a dataflow kernel. channel_id will be handled by XMA. host app and plugins should not use reserved channle_id registers\n", str_tmp1.c_str());
+                    xclbin_info->ip_layout[j].dataflow_kernel = true;
+                } else {
+                    xma_logmsg(XMA_WARNING_LOG, XMAAPI_MOD, "kernel \"%s\" is a dataflow kernel. Use dataflow xrt.ini setting to enable handling of channel_id by XMA. Treatng it as legacy dataflow kernel and channels to be managed by host app and plugins\n", str_tmp1.c_str());
+                    xclbin_info->ip_layout[j].dataflow_kernel = false;
+                }
+            } else {
+                xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "kernel \"%s\" is a legacy kernel. Channels to be managed by host app and plugins\n", str_tmp1.c_str());
+                xclbin_info->ip_layout[j].dataflow_kernel = false;
+            }
+            //Sarab: TODO handle soft_kernels.. SK_LAYOUT
+            xclbin_info->ip_layout[j].soft_kernel = false;
+            
             xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index = %d, kernel name = %s, base_addr = %lx\n",
                     j, layout[j].kernel_name, layout[j].base_addr);
             j++;
@@ -189,7 +211,7 @@ int xma_xclbin_info_get(char *buffer, XmaXclbinInfo *info)
     xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\nCU DDR connections bitmap:\n");
     for(uint32_t i = 0; i < info->number_of_kernels; i++)
     {
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\t%s - 0x%04x\n",info->ip_layout[i].kernel_name, info->ip_ddr_mapping[i]);
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\t%s - 0x%04llx\n",info->ip_layout[i].kernel_name, info->ip_ddr_mapping[i]);
     }
     //For execbo:
     //info->num_ips = info->number_of_kernels;

@@ -20,7 +20,8 @@ namespace xdp {
   //******************
   // Base Trace Writer
   //******************
-  TraceWriterI::TraceWriterI()
+  TraceWriterI::TraceWriterI(const std::string& fileName) :
+    mFileName(fileName)
   {
     // Reset previous values of device profile counters
     memset(&CountersPrev, 0, sizeof(xclCounterResults));

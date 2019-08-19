@@ -268,7 +268,8 @@ static ssize_t rp_program_store(struct device *dev, struct device_attribute *da,
 	if (kstrtou32(buf, 10, &val) == -EINVAL)
 		return -EINVAL;
 	else if (val == 1)
-		ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP, false);
+		ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP,
+				RP_DOWNLOAD_NORMAL);
 	else if (val == 2) {
 		ret = xclmgmt_program_shell(lro);
 		(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
@@ -278,6 +279,60 @@ static ssize_t rp_program_store(struct device *dev, struct device_attribute *da,
 	return ret ? ret : count;
 }
 static DEVICE_ATTR_WO(rp_program);
+
+static ssize_t interface_uuids_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	const void *uuid;
+	int node = -1, off = 0;
+
+	if (!lro->core.fdt_blob)
+		return -EINVAL;
+
+	node = xocl_fdt_get_next_prop_by_name(lro, lro->bld_blob,
+		-1, PROP_INTERFACE_UUID, &uuid, NULL);
+	if (!uuid || node < 0)
+		return -EINVAL;
+
+	off += sprintf(buf + off, "%s\n", (char *)uuid);
+
+	for (node = xocl_fdt_get_next_prop_by_name(lro, lro->core.fdt_blob,
+		-1, PROP_INTERFACE_UUID, &uuid, NULL);
+	    uuid && node > 0;
+	    node = xocl_fdt_get_next_prop_by_name(lro, lro->core.fdt_blob,
+		node, PROP_INTERFACE_UUID, &uuid, NULL))
+		off += sprintf(buf + off, "%s\n", (char *)uuid);
+
+	return off;
+}
+
+static DEVICE_ATTR_RO(interface_uuids);
+
+static ssize_t logic_uuids_show(struct device *dev,
+        struct device_attribute *attr, char *buf)
+{
+        struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	const void *uuid = NULL;
+	int node = -1, off = 0;
+
+	if (!lro->bld_blob)
+		return -EINVAL;
+
+	node = xocl_fdt_get_next_prop_by_name(lro, lro->bld_blob,
+		-1, PROP_LOGIC_UUID, &uuid, NULL);
+	if (uuid && node >= 0)
+		off += sprintf(buf + off, "%s\n", (char *)uuid);
+
+	node = xocl_fdt_get_next_prop_by_name(lro, lro->core.fdt_blob,
+		-1, PROP_LOGIC_UUID, &uuid, NULL);
+	if (uuid && node >= 0)
+		off += sprintf(buf + off, "%s\n", (char *)uuid);
+
+	return off;
+}
+
+static DEVICE_ATTR_RO(logic_uuids);
 
 static struct attribute *mgmt_attrs[] = {
 	&dev_attr_instance.attr,
@@ -300,6 +355,8 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_config_mailbox_channel_switch.attr,
 	&dev_attr_config_mailbox_comm_id.attr,
 	&dev_attr_rp_program.attr,
+	&dev_attr_interface_uuids.attr,
+	&dev_attr_logic_uuids.attr,
 	NULL,
 };
 

@@ -270,21 +270,47 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
 
     // Obtain board info.
     DSAInfo onBoard = getOnBoardDSA();
-    if (onBoard.vendor.empty() || onBoard.board.empty())
+
+    if (onBoard.name.empty())
     {
         std::cout << "Shell on FPGA is unknown" << std::endl;
         return DSAs;
     }
+    uint16_t vendor_id, device_id;
+    std::string err;
+    mDev->sysfs_get("", "vendor", err, vendor_id);
+    if (!err.empty())
+    {
+        std::cout << err << std::endl;
+        return DSAs;
+    }
+    mDev->sysfs_get("", "device", err, device_id);
+    if (!err.empty())
+    {
+        std::cout << err << std::endl;
+        return DSAs;
+    }
 
     // Obtain installed DSA info.
+    //std::cout << "ON Board: " << onBoard.vendor << " " << onBoard.board << " " << vendor_id << " " << device_id << std::endl;
     auto installedDSAs = firmwareImage::getIntalledDSAs();
     for (DSAInfo& dsa : installedDSAs)
     {
-        if (onBoard.vendor != dsa.vendor ||
-            onBoard.board != dsa.board ||
-            dsa.timestamp == NULL_TIMESTAMP)
-            continue;
-        DSAs.push_back(dsa);
+        //std::cout << "DSA " << dsa.name << ": " << dsa.vendor << " " << dsa.board << " " << dsa.vendor_id << " " << dsa.device_id << "TS: " << dsa.timestamp << std::endl;
+        if (!dsa.hasFlashImage || dsa.timestamp == NULL_TIMESTAMP)
+	       continue;
+
+        if (!onBoard.vendor.empty() && !onBoard.board.empty() &&
+            (onBoard.vendor == dsa.vendor) &&
+            (onBoard.board == dsa.board))
+        {
+            DSAs.push_back(dsa);
+        }
+	else if (!dsa.name.empty() && (vendor_id == dsa.vendor_id) && (device_id == dsa.device_id))
+        {
+            DSAs.push_back(dsa);
+        }
+
     }
 
     return DSAs;
@@ -298,9 +324,11 @@ DSAInfo Flasher::getOnBoardDSA()
 
     std::string err;
     std::string board_name;
+    std::string uuid;
     bool is_mfg = false;
     mDev->sysfs_get("", "mfg", err, is_mfg);
     mDev->sysfs_get("", "board_name", err, board_name);
+    mDev->sysfs_get("", "logic_uuids", err, uuid);
     if (is_mfg)
     {
         std::stringstream ss;
@@ -313,9 +341,9 @@ DSAInfo Flasher::getOnBoardDSA()
         vbnv = std::string(reinterpret_cast<char *>(mFRHeader.VBNVName));
         ts = mFRHeader.TimeSinceEpoch;
     }
-    else
+    else if (!uuid.size())
     {
-        std::cout << "ERROR: No Feature ROM found" << std::endl;
+        std::cout << "ERROR: Platform name not found" << std::endl;
     }
 
     BoardInfo info;
@@ -327,7 +355,7 @@ DSAInfo Flasher::getOnBoardDSA()
     else
         bmc = "UNKNOWN"; // BMC not ready, set it to an invalid version string
 
-    return DSAInfo(vbnv, ts, bmc);
+    return DSAInfo(vbnv, ts, uuid, bmc);
 }
 
 std::string Flasher::sGetDBDF()

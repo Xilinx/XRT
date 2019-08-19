@@ -91,7 +91,8 @@ XclBin::initializeHeader(axlf &_xclBinHeader)
 
   std::string sMagic = "xclbin2";
   XUtil::safeStringCopy(_xclBinHeader.m_magic, sMagic, sizeof(_xclBinHeader.m_magic));
-  memset( _xclBinHeader.m_cipher, 0xFF, sizeof(_xclBinHeader.m_cipher) );
+  _xclBinHeader.m_signature_length = -1;  // Initialize to 0xFFs
+  memset( _xclBinHeader.reserved, 0xFF, sizeof(_xclBinHeader.reserved) );
   memset( _xclBinHeader.m_keyBlock, 0xFF, sizeof(_xclBinHeader.m_keyBlock) );
   _xclBinHeader.m_uniqueId = time( nullptr );
   _xclBinHeader.m_header.m_timeStamp = time( nullptr );
@@ -204,7 +205,7 @@ XclBin::addHeaderMirrorData(boost::property_tree::ptree& _pt_header) {
   // Axlf structure
   {
     _pt_header.put("Magic", FormattedOutput::getMagicAsString(m_xclBinHeader).c_str());
-    _pt_header.put("Cipher", FormattedOutput::getCipherAsString(m_xclBinHeader).c_str());
+    _pt_header.put("SignatureLength", FormattedOutput::getSignatureLengthAsString(m_xclBinHeader).c_str());
     _pt_header.put("KeyBlock", FormattedOutput::getKeyBlockAsString(m_xclBinHeader).c_str());
     _pt_header.put("UniqueID", FormattedOutput::getUniqueIdAsString(m_xclBinHeader).c_str());
   }
@@ -506,8 +507,7 @@ XclBin::readXclBinHeader(const boost::property_tree::ptree& _ptHeader,
 
   std::string sMagic = _ptHeader.get<std::string>("Magic");
   XUtil::safeStringCopy((char*)&_axlfHeader.m_magic, sMagic, sizeof(axlf::m_magic));
-  std::string sCipher = _ptHeader.get<std::string>("Cipher");
-  XUtil::hexStringToBinaryBuffer(sCipher, (unsigned char*)&_axlfHeader.m_cipher, sizeof(axlf::m_cipher));
+  _axlfHeader.m_signature_length = _ptHeader.get<int32_t>("SignatureLength", -1);
   std::string sKeyBlock = _ptHeader.get<std::string>("KeyBlock");
   XUtil::hexStringToBinaryBuffer(sKeyBlock, (unsigned char*)&_axlfHeader.m_keyBlock, sizeof(axlf::m_keyBlock));
   _axlfHeader.m_uniqueId = XUtil::stringToUInt64(_ptHeader.get<std::string>("UniqueID"));
@@ -611,7 +611,7 @@ XclBin::removeSection(const Section* _pSection)
   }
 
   std::string errMsg=XUtil::format("ERROR: Section '%s' (%d) not found", _pSection->getSectionKindAsString().c_str(), _pSection->getSectionKind());
-  throw std::runtime_error(errMsg);
+  throw XUtil::XclBinUtilException(XET_MISSING_SECTION, errMsg);
 }
 
 Section *
@@ -641,7 +641,7 @@ XclBin::removeSection(const std::string & _sSectionToRemove)
   const Section * pSection = findSection(_eKind);
   if (pSection == nullptr) {
     std::string errMsg = XUtil::format("ERROR: Section '%s' is not part of the xclbin archive.", _sSectionToRemove.c_str());
-    throw std::runtime_error(errMsg);
+    throw XUtil::XclBinUtilException(XET_MISSING_SECTION, errMsg);
   }
 
   removeSection(pSection);
@@ -663,7 +663,7 @@ XclBin::replaceSection(ParameterSectionData &_PSD)
   Section *pSection = findSection(eKind);
   if (pSection == nullptr) {
     std::string errMsg = XUtil::format("ERROR: Section '%s' does not exist.", _PSD.getSectionName().c_str());
-    throw std::runtime_error(errMsg);
+    throw XUtil::XclBinUtilException(XET_MISSING_SECTION, errMsg);
   }
 
   std::string sSectionFileName = _PSD.getFile();
@@ -1151,7 +1151,7 @@ XclBin::dumpSection(ParameterSectionData &_PSD)
   const Section *pSection = findSection(eKind);
   if (pSection == nullptr) {
     std::string errMsg = XUtil::format("ERROR: Section '%s' does not exists.", _PSD.getSectionName().c_str());
-    throw std::runtime_error(errMsg);
+    throw XUtil::XclBinUtilException(XET_MISSING_SECTION, errMsg);
   }
 
   if (_PSD.getFormatType() == Section::FT_UNKNOWN) {

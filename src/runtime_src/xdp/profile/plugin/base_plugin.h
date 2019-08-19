@@ -142,29 +142,34 @@ namespace xdp {
       virtual void getTraceStringFromComputeUnit(const std::string& deviceName,
                                                  const std::string& cuName,
                                                  std::string& traceString) = 0;
-      virtual size_t getDeviceTimestamp(std::string& deviceName) = 0;
+      virtual size_t getDeviceTimestamp(const std::string& deviceName) = 0;
       virtual double getReadMaxBandwidthMBps() = 0 ;
       virtual double getWriteMaxBandwidthMBps() = 0;
       // HAL APIS
-      virtual unsigned getProfileNumberSlots(xclPerfMonType type,
-                                             std::string& deviceName) = 0;
+      virtual unsigned int getProfileNumberSlots(xclPerfMonType type,
+                                            const std::string& deviceName) = 0;
       virtual void getProfileSlotName(xclPerfMonType type,
-                                      std::string& deviceName,
-                                      unsigned slotnum, std::string& slotName) = 0;
-      virtual unsigned getProfileSlotProperties(xclPerfMonType type,
-                                                std::string& deviceName,
-                                                unsigned slotnum) = 0;
+                                      const std::string& deviceName,
+                                      unsigned int slotnum, std::string& slotName) = 0;
+      virtual unsigned int getProfileSlotProperties(xclPerfMonType type,
+                                                const std::string& deviceName,
+                                                unsigned int slotnum) = 0;
       virtual bool isAPCtrlChain(const std::string& deviceName, const std::string& cu) = 0;
 
     protected:
       std::map<std::string, std::string> mComputeUnitKernelTraceMap;
       std::map<std::string, unsigned int> mDeviceKernelClockFreqMap;
       xdp::RTUtil::e_flow_mode FlowMode = xdp::RTUtil::CPU;
+      bool mSystemDPAEmulation = false;
       std::string mTraceFooterString;
 
     public:
       inline xdp::RTUtil::e_flow_mode getFlowMode() { return FlowMode; }
       inline void setFlowMode(xdp::RTUtil::e_flow_mode mode) { FlowMode = mode;}
+
+      inline bool getSystemDPAEmulation()           { return mSystemDPAEmulation; }
+      inline void setSystemDPAEmulation(bool value) { mSystemDPAEmulation = value; }
+
       inline void setTraceFooterString(std::string traceFooterString) {
         mTraceFooterString = traceFooterString;
       };

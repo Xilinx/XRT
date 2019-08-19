@@ -60,8 +60,8 @@ static int zocl_ert_probe(struct platform_device *pdev)
 		return PTR_ERR(map);
 	}
 	ert->hw_ioremap = map;
-	ert_info(pdev, "IP(embedded_scheduler_hw) IO start %llx, end %llx",
-			      res->start, res->end);
+	ert_info(pdev, "IP(embedded_scheduler_hw) IO start %lx, end %lx",
+	      (unsigned long)res->start, (unsigned long)res->end);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, ZOCL_ERT_CQ_RES);
 	map = devm_ioremap_resource(&pdev->dev, res);
@@ -71,8 +71,8 @@ static int zocl_ert_probe(struct platform_device *pdev)
 		return PTR_ERR(map);
 	}
 	ert->cq_ioremap = map;
-	ert_info(pdev, "Command Queue IO start %llx, end %llx",
-			res->start, res->end);
+	ert_info(pdev, "Command Queue IO start %lx, end %lx",
+		(unsigned long)res->start, (unsigned long)res->end);
 
 	ert->irq[ZOCL_ERT_CQ_IRQ] = platform_get_irq(pdev, ZOCL_ERT_CQ_IRQ);
 	ert->irq[ZOCL_ERT_CU_IRQ] = platform_get_irq(pdev, ZOCL_ERT_CU_IRQ);

@@ -22,6 +22,7 @@
 #include "xrt/util/event.h"
 #include "xrt/util/range.h"
 #include "xrt/util/uuid.h"
+#include "core/include/xrt.h"
 
 #include "xclperf.h"
 #include "xcl_app_debug.h"
@@ -34,7 +35,6 @@
 #include <thread>
 #include <iosfwd>
 
-//struct xclBin;
 struct axlf;
 
 namespace xrt {
@@ -47,6 +47,7 @@ struct exec_buffer_object {};
 
 using BufferObjectHandle = std::shared_ptr<buffer_object>;
 using ExecBufferObjectHandle = std::shared_ptr<exec_buffer_object>;
+using device_handle = xclDeviceHandle;
 
 enum class verbosity_level : unsigned short
 {
@@ -162,6 +163,9 @@ public:
 
   virtual void
   close() = 0;
+
+  virtual device_handle
+  get_handle() const = 0;
 
   virtual void
   acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared) {}
@@ -563,6 +567,24 @@ public:
   }
 
   virtual operations_result<void>
+  xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
+  {
+    return operations_result<void>();
+  }
+
+  virtual operations_result<void>
+  xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
+  {
+    return operations_result<void>();
+  }
+
+  virtual operations_result<ssize_t>
+  xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset)
+  {
+    return operations_result<ssize_t>();
+  }
+
+  virtual operations_result<void>
   setProfilingSlots(xclPerfMonType type, uint32_t)
   {
     return operations_result<void>();
@@ -623,10 +645,34 @@ public:
     return operations_result<size_t>();
   }
 
+  virtual operations_result<uint32_t>
+  getNumLiveProcesses()
+  {
+    return operations_result<uint32_t>();
+  }
+
   virtual operations_result<std::string>
   getSysfsPath(const std::string& subdev, const std::string& entry)
   {
     return operations_result<std::string>();
+  }
+
+  virtual operations_result<std::string>
+  getDebugIPlayoutPath()
+  {
+    return operations_result<std::string>();
+  }
+
+  virtual operations_result<int>
+  getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
+  {
+    return operations_result<int>();
+  }
+
+  virtual operations_result<int>
+  readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
+  {
+    return operations_result<int>();
   }
 
   virtual task::queue*

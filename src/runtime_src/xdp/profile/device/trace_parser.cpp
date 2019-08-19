@@ -25,6 +25,7 @@
 #include <cstring>
 #include <iomanip>
 #include <chrono>
+#include <bitset>
 
 #define getBit(word, bit) (((word) >> bit) & 0x1)
 
@@ -39,7 +40,7 @@ namespace xdp {
     mNumTraceEvents = 0;
     // NOTE: setting this to 0x80000 causes runtime crash when running
     // HW emulation on 070_max_wg_size or 079_median1
-    mMaxTraceEvents = 0x40000;
+    mMaxTraceEventsHwEm = 0x40000;
     mEmuTraceMsecOneCycle = 0.0;
 
     mTraceSamplesThreshold = MAX_TRACE_NUMBER_SAMPLES / 4;
@@ -70,15 +71,15 @@ namespace xdp {
   }
 
   void TraceParser::ResetState() {
-    std::fill_n(mAccelMonStartedEvents,XSAM_MAX_NUMBER_SLOTS,0);
+    std::fill_n(mAccelMonStartedEvents,XAM_MAX_NUMBER_SLOTS,0);
     // Clear queues
-    for (int i=0; i < XSPM_MAX_NUMBER_SLOTS; i++) {
+    for (int i=0; i < XAIM_MAX_NUMBER_SLOTS; i++) {
       mWriteStarts[i].clear();
       mHostWriteStarts[i].clear();
       mReadStarts[i].clear();
       mHostReadStarts[i].clear();
     }
-    for (int i=0; i< XSSPM_MAX_NUMBER_SLOTS; i++) {
+    for (int i=0; i< XASM_MAX_NUMBER_SLOTS; i++) {
       mStreamTxStarts[i].clear();
       mStreamStallStarts[i].clear();
       mStreamStarveStarts[i].clear();
@@ -86,15 +87,15 @@ namespace xdp {
       mStreamStallStartsHostTime[i].clear();
       mStreamStarveStartsHostTime[i].clear();
     }
-    for (int i=0; i< XSAM_MAX_NUMBER_SLOTS; i++) {
+    for (int i=0; i< XAM_MAX_NUMBER_SLOTS; i++) {
       mAccelMonCuStarts[i].clear();
     }
   }
 
   // Log device trace results: store in queues and report events as they are completed
-  void TraceParser::logTrace(std::string& deviceName, xclPerfMonType type,
+  void TraceParser::logTrace(const std::string& deviceName, xclPerfMonType type,
       xclTraceResultsVector& traceVector, TraceResultVector& resultVector) {
-    if (mNumTraceEvents >= mMaxTraceEvents || traceVector.mLength == 0)
+    if (traceVector.mLength == 0)
       return;
 
     // Hardware Emulation Trace
@@ -108,16 +109,6 @@ namespace xdp {
       traceVector.mLength, mNumTraceEvents);
     mNumTraceEvents += traceVector.mLength;
 
-    // detect if FIFO is full
-    {
-      auto fifoProperty = mPluginHandle->getProfileSlotProperties(XCL_PERF_MON_FIFO, deviceName, 0);
-      auto fifoSize = RTUtil::getDevTraceBufferSize(fifoProperty);
-      if (traceVector.mLength >= fifoSize)
-        mPluginHandle->sendMessage(
-"Trace FIFO is full because of too many events. Timeline trace could be incomplete. \
-Please use 'coarse' option for data transfer trace or turn off Stall profiling");
-    }
-
     uint64_t timestamp = 0;
     uint64_t startTime = 0;
     // x, y coordinates used for clock training
@@ -125,47 +116,52 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
     double y2=0;
     double x1=0;
     double x2=0;
+    bool clockTrainingSelect = true;
     DeviceTrace kernelTrace;
     // Parse Start
     for (unsigned int i=0; i < traceVector.mLength; i++) {
       auto& trace = traceVector.mArray[i];
       XDP_LOG("[profile_device] Parsing trace sample %d...\n", i);
+      packets_parsed++;
 
       timestamp = trace.Timestamp;
-      // ***************
-      // Clock Training
-      // ***************
       // clock training relation is linear within small durations (1 sec)
-      if (i == 0) {
-        y1 = static_cast <double> (trace.HostTimestamp);
-        x1 = static_cast <double> (timestamp);
+      // Assume clock training packets come in pairs
+      if (trace.isClockTrain) {
+        if (clockTrainingSelect) {
+          y1 = static_cast <double> (trace.HostTimestamp);
+          x1 = static_cast <double> (timestamp);
+          clockTrainingSelect = false;
+        } else {
+          y2 = static_cast <double> (trace.HostTimestamp);
+          x2 = static_cast <double> (timestamp);
+          mTrainSlope[type] = (y2 - y1) / (x2 - x1);
+          mTrainOffset[type] = y2 - mTrainSlope[type] * x2;
+          trainDeviceHostTimestamps(deviceName, type);
+          clockTrainingSelect = true;
+        }
         continue;
       }
-      if (i == 1) {
-        y2 = static_cast <double> (trace.HostTimestamp);
-        x2 = static_cast <double> (timestamp);
-        mTrainSlope[type] = (y2 - y1) / (x2 - x1);
-        mTrainOffset[type] = y2 - mTrainSlope[type] * x2;
-        trainDeviceHostTimestamps(deviceName, type);
-      }
+
       if (trace.Overflow == 1)
-        timestamp += LOOP_ADD_TIME_SPM;
+        timestamp += LOOP_ADD_TIME_AIM;
 
       uint32_t s = 0;
-      bool SAMPacket = (trace.TraceID >= MIN_TRACE_ID_SAM && trace.TraceID <= MAX_TRACE_ID_SAM);
-      bool SPMPacket = (trace.TraceID >= MIN_TRACE_ID_SPM && trace.TraceID <= MAX_TRACE_ID_SPM);
-      bool SSPMPacket = (trace.TraceID >= MIN_TRACE_ID_SSPM && trace.TraceID < MAX_TRACE_ID_SSPM);
-      if (!SAMPacket && !SPMPacket && !SSPMPacket)
+      bool SAMPacket = (trace.TraceID >= MIN_TRACE_ID_AM && trace.TraceID <= MAX_TRACE_ID_AM);
+      bool SPMPacket = (trace.TraceID >= MIN_TRACE_ID_AIM && trace.TraceID <= MAX_TRACE_ID_AIM);
+      bool SSPMPacket = (trace.TraceID >= MIN_TRACE_ID_ASM && trace.TraceID < MAX_TRACE_ID_ASM);
+      if (!SAMPacket && !SPMPacket && !SSPMPacket) {
         continue;
+      }
 
       if (SSPMPacket) {
-        s = trace.TraceID - MIN_TRACE_ID_SSPM;
+        s = trace.TraceID - MIN_TRACE_ID_ASM;
         bool isSingle =    trace.EventFlags & 0x10;
         bool txEvent =     trace.EventFlags & 0x8;
         bool stallEvent =  trace.EventFlags & 0x4;
         bool starveEvent = trace.EventFlags & 0x2;
         bool isStart =     trace.EventFlags & 0x1;
-        unsigned ipInfo = mPluginHandle->getProfileSlotProperties(XCL_PERF_MON_STR, deviceName, s);
+        unsigned int ipInfo = mPluginHandle->getProfileSlotProperties(XCL_PERF_MON_STR, deviceName, s);
         bool isRead = (ipInfo & 0x2) ? true : false;
         if (isStart) {
           if (txEvent)
@@ -213,11 +209,11 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
           mStreamMonLastTranx[s] = timestamp;
         } // !isStart
       } else if (SAMPacket) {
-        s = ((trace.TraceID - MIN_TRACE_ID_SAM) / 16);
-        uint32_t cuEvent       = trace.TraceID & XSAM_TRACE_CU_MASK;
-        uint32_t stallIntEvent = trace.TraceID & XSAM_TRACE_STALL_INT_MASK;
-        uint32_t stallStrEvent = trace.TraceID & XSAM_TRACE_STALL_STR_MASK;
-        uint32_t stallExtEvent = trace.TraceID & XSAM_TRACE_STALL_EXT_MASK;
+        s = ((trace.TraceID - MIN_TRACE_ID_AM) / 16);
+        uint32_t cuEvent       = trace.TraceID & XAM_TRACE_CU_MASK;
+        uint32_t stallIntEvent = trace.TraceID & XAM_TRACE_STALL_INT_MASK;
+        uint32_t stallStrEvent = trace.TraceID & XAM_TRACE_STALL_STR_MASK;
+        uint32_t stallExtEvent = trace.TraceID & XAM_TRACE_STALL_EXT_MASK;
         // Common Params for all event types
         kernelTrace.SlotNum = s;
         kernelTrace.Name = "OCL Region";
@@ -227,7 +223,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
         kernelTrace.NumBytes = 0;
         kernelTrace.End = convertDeviceToHostTimestamp(timestamp, type, deviceName);
         if (cuEvent) {
-          if (!(trace.EventFlags & XSAM_TRACE_CU_MASK)) {
+          if (!(trace.EventFlags & XAM_TRACE_CU_MASK)) {
             kernelTrace.Type = "Kernel";
             if (!mAccelMonCuStarts[s].empty()) {
               startTime = mAccelMonCuStarts[s].front();
@@ -244,7 +240,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
           }
         }
         if (stallIntEvent) {
-          if (mAccelMonStartedEvents[s] & XSAM_TRACE_STALL_INT_MASK) {
+          if (mAccelMonStartedEvents[s] & XAM_TRACE_STALL_INT_MASK) {
             kernelTrace.Type = "Intra-Kernel Dataflow Stall";
             startTime = mAccelMonStallIntTime[s];
             kernelTrace.StartTime = startTime;
@@ -257,7 +253,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
           }
         }
         if (stallStrEvent) {
-          if (mAccelMonStartedEvents[s] & XSAM_TRACE_STALL_STR_MASK) {
+          if (mAccelMonStartedEvents[s] & XAM_TRACE_STALL_STR_MASK) {
             kernelTrace.Type = "Inter-Kernel Pipe Stall";
             startTime = mAccelMonStallStrTime[s];
             kernelTrace.StartTime = startTime;
@@ -270,7 +266,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
           }
         }
         if (stallExtEvent) {
-          if (mAccelMonStartedEvents[s] & XSAM_TRACE_STALL_EXT_MASK) {
+          if (mAccelMonStartedEvents[s] & XAM_TRACE_STALL_EXT_MASK) {
             kernelTrace.Type = "External Memory Stall";
             startTime = mAccelMonStallExtTime[s];
             kernelTrace.StartTime = startTime;
@@ -343,11 +339,18 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
         }
       }
     } // for i
+    XDP_LOG("[profile_device] Done logging device trace samples\n");
+  }
 
-    // Try to approximate CU Ends from cu port events
+  // Try to approximate CU Ends from residue state and reset
+  // Only applicable to Device Trace State
+  void TraceParser::endLogTrace(const std::string& deviceName, xclPerfMonType type, TraceResultVector& resultVector) {
+    if (mPluginHandle->getFlowMode() == xdp::RTUtil::HW_EM)
+      return;
+    DeviceTrace kernelTrace;
     bool warning = false;
-    unsigned numCu = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_ACCEL, deviceName);
-    for (unsigned i = 0; i < numCu; i++) {
+    unsigned int numCu = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_ACCEL, deviceName);
+    for (unsigned int i = 0; i < numCu; i++) {
       if (!mAccelMonCuStarts[i].empty()) {
         kernelTrace.SlotNum = i;
         kernelTrace.Name = "OCL Region";
@@ -361,8 +364,8 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
         std::string cu;
         mPluginHandle->getProfileSlotName(XCL_PERF_MON_ACCEL, deviceName, i, cu);
         // Check if any memory port on current CU had a trace packet
-        unsigned numMem = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_MEMORY, deviceName);
-        for (unsigned j = 0; j < numMem; j++) {
+        unsigned int numMem = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_MEMORY, deviceName);
+        for (unsigned int j = 0; j < numMem; j++) {
           std::string port;
           mPluginHandle->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, j, port);
           auto found = port.find(cu);
@@ -370,8 +373,8 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
             lastTimeStamp = mPerfMonLastTranx[j];
         }
         // Check if any streaming port on current CU had a trace packet
-        unsigned numStream = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_STR, deviceName);
-        for (unsigned j = 0; j < numStream; j++) {
+        unsigned int numStream = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_STR, deviceName);
+        for (unsigned int j = 0; j < numStream; j++) {
           std::string port;
           mPluginHandle->getProfileSlotName(XCL_PERF_MON_STR, deviceName, j, port);
           auto found = port.find(cu);
@@ -396,11 +399,12 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
       }
     }
     ResetState();
-    XDP_LOG("[profile_device] Done logging device trace samples\n");
   }
 
-  void TraceParser::logTraceHWEmu(std::string& deviceName,
+  void TraceParser::logTraceHWEmu(const std::string& deviceName,
           xclTraceResultsVector& traceVector, TraceResultVector& resultVector) {
+    if (mNumTraceEvents >= mMaxTraceEventsHwEm)
+      return;
     XDP_LOG("[profile_device] Logging %u device trace samples (total = %ld)...\n",
         traceVector.mLength, mNumTraceEvents);
     mNumTraceEvents += traceVector.mLength;
@@ -433,16 +437,16 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
       prevHostTimestamp = trace.HostTimestamp;
 
       uint32_t s = 0;
-      bool SPMPacket = (trace.TraceID < MAX_TRACE_ID_SPM);
-      bool SAMPacket = (trace.TraceID >= MIN_TRACE_ID_SAM && trace.TraceID <= MAX_TRACE_ID_SAM_HWEM);
-      bool SSPMPacket = (trace.TraceID >= MIN_TRACE_ID_SSPM && trace.TraceID < MAX_TRACE_ID_SSPM);
+      bool SPMPacket = (trace.TraceID < MAX_TRACE_ID_AIM);
+      bool SAMPacket = (trace.TraceID >= MIN_TRACE_ID_AM && trace.TraceID <= MAX_TRACE_ID_AM_HWEM);
+      bool SSPMPacket = (trace.TraceID >= MIN_TRACE_ID_ASM && trace.TraceID < MAX_TRACE_ID_ASM);
 
       if (SPMPacket) {
         uint8_t flags = 0;
         s = trace.TraceID / 2;
         flags = trace.EventFlags;
         XDP_LOG("[profile_device] slot %d event flags = %s @ timestamp %d\n",
-              s, dec2bin(flags, 7).c_str(), timestamp);
+              s, std::bitset<8>(flags).to_string().c_str(), timestamp);
         
         // Write start
         if (getBit(flags, XAPM_WRITE_FIRST)) {
@@ -520,7 +524,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
         }
       }
       else if (SAMPacket) {
-        uint32_t cuEvent = trace.EventFlags & XSAM_TRACE_CU_MASK;
+        uint32_t cuEvent = trace.EventFlags & XAM_TRACE_CU_MASK;
         s = trace.TraceID - 64;
         // Common Params for all event types
         kernelTrace.SlotNum = s;
@@ -531,7 +535,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
         kernelTrace.BurstLength = 0;
         kernelTrace.NumBytes = 0;
         if (cuEvent) {
-          if (mAccelMonStartedEvents[s] & XSAM_TRACE_CU_MASK) {
+          if (mAccelMonStartedEvents[s] & XAM_TRACE_CU_MASK) {
             kernelTrace.Type = "Kernel";
             kernelTrace.StartTime = mAccelMonCuTime[s];
             kernelTrace.Start = mAccelMonCuHostTime[s] / 1e6;
@@ -544,11 +548,11 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
             mAccelMonCuHostTime[s] = hostTimestampNsec;
             mAccelMonCuTime[s] = timestamp;
           }
-          mAccelMonStartedEvents[s] ^= XSAM_TRACE_CU_MASK;
+          mAccelMonStartedEvents[s] ^= XAM_TRACE_CU_MASK;
         }
       }
       else if (SSPMPacket) {
-        s = trace.TraceID - MIN_TRACE_ID_SSPM;
+        s = trace.TraceID - MIN_TRACE_ID_ASM;
         kernelTrace.Kind = DeviceTrace::DEVICE_STREAM;
 
         bool isSingle    = trace.EventFlags & 0x10;
@@ -559,7 +563,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
         uint64_t startTime = 0;
         uint64_t hostStartTime = 0;
 
-        unsigned ipInfo = mPluginHandle->getProfileSlotProperties(XCL_PERF_MON_STR, deviceName, s);
+        unsigned int ipInfo = mPluginHandle->getProfileSlotProperties(XCL_PERF_MON_STR, deviceName, s);
         bool isRead     = (ipInfo & 0x2) ? true : false;
         if (isStart) {
           if (txEvent) {
@@ -619,117 +623,13 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
       }
       else continue;
     }
-    std::fill_n(mAccelMonStartedEvents,XSAM_MAX_NUMBER_SLOTS,0);
+    std::fill_n(mAccelMonStartedEvents,XAM_MAX_NUMBER_SLOTS,0);
     XDP_LOG("[profile_device] Done logging device trace samples\n");
-  }
-
-  // ****************
-  // Helper functions
-  // ****************
-
-  // Get slot name
-  void TraceParser::getSlotName(int slotnum, std::string& slotName) const {
-    if (slotnum < 0 || slotnum >= XAPM_MAX_NUMBER_SLOTS) {
-      slotName = "Null";
-      return;
-    }
-
-    switch (slotnum) {
-    case 0:
-      slotName = XPAR_AXI_PERF_MON_0_SLOT0_NAME;
-      break;
-    case 1:
-      slotName = XPAR_AXI_PERF_MON_0_SLOT1_NAME;
-      break;
-    case 2:
-      slotName = XPAR_AXI_PERF_MON_0_SLOT2_NAME;
-      break;
-    case 3:
-      slotName = XPAR_AXI_PERF_MON_0_SLOT3_NAME;
-      break;
-    case 4:
-      slotName = XPAR_AXI_PERF_MON_0_SLOT4_NAME;
-      break;
-    case 5:
-      slotName = XPAR_AXI_PERF_MON_0_SLOT5_NAME;
-      break;
-    case 6:
-      slotName = XPAR_AXI_PERF_MON_0_SLOT6_NAME;
-      break;
-    case 7:
-      slotName = XPAR_AXI_PERF_MON_0_SLOT7_NAME;
-      break;
-    default:
-      slotName = "Null";
-      break;
-    }
-  }
-
-  // Get slot kind
-  DeviceTrace::e_device_kind
-  TraceParser::getSlotKind(std::string& slotName) const {
-    if (slotName == "Host") return DeviceTrace::DEVICE_BUFFER;
-    return DeviceTrace::DEVICE_KERNEL;
-  }
-
-  // Convert binary string to decimal
-  uint32_t TraceParser::bin2dec(std::string str, int start, int number) {
-    return bin2dec(str.c_str(), start, number);
-  }
-
-  // Convert binary char * to decimal
-  uint32_t TraceParser::bin2dec(const char* ptr, int start, int number) {
-    const char* temp_ptr = ptr + start;
-    uint32_t value = 0;
-    int i = 0;
-
-    do {
-      if (*temp_ptr != '0' && *temp_ptr!= '1')
-        return value;
-      value <<= 1;
-      if(*temp_ptr=='1')
-        value += 1;
-      i++;
-      temp_ptr++;
-    } while (i < number);
-
-    return value;
-  }
-
-  // Convert decimal to binary string
-  // NOTE: length of string is always sizeof(uint32_t) * 8
-  std::string TraceParser::dec2bin(uint32_t n) {
-    char result[(sizeof(uint32_t) * 8) + 1];
-    unsigned index = sizeof(uint32_t) * 8;
-    result[index] = '\0';
-
-    do result[ --index ] = '0' + (n & 1);
-    while (n >>= 1);
-
-    for (int i=index-1; i >= 0; --i)
-        result[i] = '0';
-
-    return std::string( result );
-  }
-
-  // Convert decimal to binary string of length bits
-  std::string TraceParser::dec2bin(uint32_t n, unsigned bits) {
-	  char result[bits + 1];
-	  unsigned index = bits;
-	  result[index] = '\0';
-
-	  do result[ --index ] = '0' + (n & 1);
-	  while (n >>= 1);
-
-	  for (int i=index-1; i >= 0; --i)
-		result[i] = '0';
-
-	  return std::string( result );
   }
 
   // Complete training to convert device timestamp to host time domain
   // NOTE: see description of PTP @ http://en.wikipedia.org/wiki/Precision_Time_Protocol
-  void TraceParser::trainDeviceHostTimestamps(std::string deviceName, xclPerfMonType type) {
+  void TraceParser::trainDeviceHostTimestamps(const std::string& deviceName, xclPerfMonType type) {
     using namespace std::chrono;
     typedef duration<uint64_t, std::ratio<1, 1000000000>> duration_ns;
     duration_ns time_span =
@@ -741,7 +641,7 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling")
 
   // Convert device timestamp to host time domain (in msec)
   double TraceParser::convertDeviceToHostTimestamp(uint64_t deviceTimestamp, xclPerfMonType type,
-      const std::string& deviceName) { 
+      const std::string& deviceName) {
     // Return y = m*x + b with b relative to program start
     return (mTrainSlope[type] * (double)deviceTimestamp)/1e6 + (mTrainOffset[type]-mTrainProgramStart[type])/1e6;
   }

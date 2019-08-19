@@ -188,7 +188,7 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 		lro->instance, ep_name,
 		PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
 
-	health_thread_stop(lro);
+	xocl_thread_stop(lro);
 
 	/* request XMC/ERT to stop */
 	xocl_mb_stop(lro);
@@ -236,7 +236,7 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 	/* restart XMC/ERT */
 	xocl_mb_reset(lro);
 
-	health_thread_start(lro);
+	xocl_thread_start(lro);
 
 #endif
 done:
@@ -458,10 +458,33 @@ failed:
 int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 {
 	int ret;
+	char *blob = NULL;
+	int len;
+
+	blob = lro->core.fdt_blob;
+	len = fdt_totalsize(lro->bld_blob);
+	lro->core.fdt_blob = vmalloc(len);
+	if (!lro->core.fdt_blob) {
+		ret = -ENOMEM;
+		lro->core.fdt_blob = blob;
+		goto failed;
+	}
+	memcpy(lro->core.fdt_blob, lro->bld_blob, len);
+	ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP,
+			RP_DOWNLOAD_DRY);
+	if (ret) {
+		vfree(lro->core.fdt_blob);
+		lro->core.fdt_blob = blob;
+		goto failed;
+	}
+
+	vfree(blob);
+
+	/* dry run passed, any failure below will cause device offline */
 
 	xocl_drvinst_set_offline(lro, true);
 
-	health_thread_stop(lro);
+	xocl_thread_stop(lro);
 
 	ret = xocl_subdev_destroy_prp(lro);
 	if (ret) {
@@ -469,7 +492,8 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 		goto failed;
 	}
 
-	ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP, true);
+	ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP,
+			RP_DOWNLOAD_FORCE);
 	if (ret) {
 		mgmt_err(lro, "program shell failed %d", ret);
 		goto failed;
@@ -481,7 +505,7 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 		goto failed;
 	}
 
-	health_thread_start(lro);
+	xocl_thread_start(lro);
 
 	xclmgmt_update_userpf_blob(lro);
 	xocl_drvinst_set_offline(lro, false);
@@ -494,25 +518,18 @@ failed:
 
 int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 {
-	const struct firmware			*fw;
+	const struct firmware			*fw = NULL;
 	const struct axlf_section_header	*dtc_header;
 	struct axlf				*bin_axlf;
-	char					fw_name[128];
+	char					fw_name[256];
 	int					ret;
 
-	snprintf(fw_name, sizeof(fw_name),
-		"xilinx/%04x-%04x-%04x-%016llx.dsabin",
-		lro->core.pdev->vendor,
-		lro->core.pdev->device,
-		lro->core.pdev->subsystem_device,
-		xocl_get_timestamp(lro));
+        ret = xocl_rom_find_firmware(lro, fw_name, sizeof(fw_name),
+		lro->core.pdev->device, &fw);
+	if (ret)
+		goto failed;
 
 	mgmt_info(lro, "Load fdt from %s", fw_name);
-	ret = request_firmware(&fw, fw_name, &lro->core.pdev->dev);
-	if (ret) {
-		mgmt_err(lro, "unable to find firmware");
-		goto failed;
-	}
 
 	bin_axlf = (struct axlf *)fw->data;
 	dtc_header = xocl_axlf_section_header(lro, bin_axlf, PARTITION_METADATA);
@@ -526,13 +543,21 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 		goto failed;
 	}
 
+#if 0
 	/* temp support for lack of VBNV */
 	xocl_fdt_add_pair(lro, lro->core.fdt_blob, "vbnv",
 			bin_axlf->m_header.m_platformVBNV,
 			strlen(bin_axlf->m_header.m_platformVBNV) + 1);
+#endif
 
 	release_firmware(fw);
 	fw = NULL;
+
+	if (lro->core.priv.flags & XOCL_DSAFLAG_MFG) {
+		(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FLASH);
+		(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_MB);
+		goto failed;
+	}
 
 	lro->bld_blob = vmalloc(fdt_totalsize(lro->core.fdt_blob));
 	if (!lro->bld_blob) {
@@ -552,8 +577,6 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 		goto failed;
 
 	xclmgmt_update_userpf_blob(lro);
-	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
-	xclmgmt_connect_notify(lro, true);
 
 failed:
 	if (fw)

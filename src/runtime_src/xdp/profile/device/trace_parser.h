@@ -58,7 +58,7 @@ namespace xdp {
         mStartTimeNsec = (uint64_t)((startTimeMsec + PCIE_DELAY_OFFSET_MSEC) * 1.0e6);
       }
 
-      void setKernelClockFreqMHz(const std::string &deviceName, unsigned int clockRateMHz) {
+      void setKernelClockFreqMHz(const std::string& deviceName, unsigned int clockRateMHz) {
     	  // In 2017.4, trace events are captured at the kernel clock
     	  setTraceClockFreqMHz(clockRateMHz);
       }
@@ -81,26 +81,16 @@ namespace xdp {
       }
 
       // log trace results
-      void logTrace(std::string& deviceName, xclPerfMonType type,
+      void logTrace(const std::string& deviceName, xclPerfMonType type,
           xclTraceResultsVector& traceVector, TraceResultVector& resultVector);
-      void logTraceHWEmu(std::string& deviceName,
+      void endLogTrace(const std::string& deviceName, xclPerfMonType type,
+          TraceResultVector& resultVector);
+      void logTraceHWEmu(const std::string& deviceName,
           xclTraceResultsVector& traceVector, TraceResultVector& resultVector);
-
-      // Get slot name and kind
-      void getSlotName(int slotnum, std::string& slotName) const;
-      DeviceTrace::e_device_kind getSlotKind(std::string& slotName) const;
 
     private:
-      // Convert binary to decimal
-      uint32_t bin2dec(std::string str, int start, int number);
-      uint32_t bin2dec(const char * str, int start, int number);
-
-      // Convert decimal to binary string
-      std::string dec2bin(uint32_t n);
-      std::string dec2bin(uint32_t n, unsigned bits);
-
       // Device/host timestamps: training and conversion
-      void trainDeviceHostTimestamps(std::string deviceName, xclPerfMonType type);
+      void trainDeviceHostTimestamps(const std::string& deviceName, xclPerfMonType type);
       double convertDeviceToHostTimestamp(uint64_t deviceTimestamp, xclPerfMonType type,
           const std::string& deviceName);
 
@@ -119,8 +109,8 @@ namespace xdp {
       uint32_t mTraceSamplesThreshold;
       uint32_t mSampleIntervalMsec;
       uint64_t mStartTimeNsec;
-      long mNumTraceEvents;
-      long mMaxTraceEvents;
+      uint64_t mNumTraceEvents;
+      uint64_t mMaxTraceEventsHwEm;
       double mTraceClockRateMHz;
       double mDeviceClockRateMHz;
       double mGlobalMemoryClockRateMHz;
@@ -128,26 +118,30 @@ namespace xdp {
       double mTrainSlope[XCL_PERF_MON_TOTAL_PROFILE];
       double mTrainOffset[XCL_PERF_MON_TOTAL_PROFILE];
       double mTrainProgramStart[XCL_PERF_MON_TOTAL_PROFILE];
-      uint64_t mAccelMonCuTime[XSAM_MAX_NUMBER_SLOTS]       = { 0 };
-      uint64_t mAccelMonCuHostTime[XSAM_MAX_NUMBER_SLOTS]   = { 0 };
-      uint64_t mAccelMonStallIntTime[XSAM_MAX_NUMBER_SLOTS] = { 0 };
-      uint64_t mAccelMonStallStrTime[XSAM_MAX_NUMBER_SLOTS] = { 0 };
-      uint64_t mAccelMonStallExtTime[XSAM_MAX_NUMBER_SLOTS] = { 0 };
-      uint8_t mAccelMonStartedEvents[XSAM_MAX_NUMBER_SLOTS] = { 0 };
-      uint64_t mPerfMonLastTranx[XSPM_MAX_NUMBER_SLOTS]     = { 0 };
-      uint64_t mAccelMonLastTranx[XSAM_MAX_NUMBER_SLOTS]    = { 0 };
-      uint64_t mStreamMonLastTranx[XSSPM_MAX_NUMBER_SLOTS]  = { 0 };
-      std::list<uint64_t> mWriteStarts[XSPM_MAX_NUMBER_SLOTS];
-      std::list<uint64_t> mHostWriteStarts[XSPM_MAX_NUMBER_SLOTS];
-      std::list<uint64_t> mReadStarts[XSPM_MAX_NUMBER_SLOTS];
-      std::list<uint64_t> mHostReadStarts[XSPM_MAX_NUMBER_SLOTS];
-      std::list<uint64_t> mStreamTxStarts[XSSPM_MAX_NUMBER_SLOTS];
-      std::list<uint64_t> mStreamStallStarts[XSSPM_MAX_NUMBER_SLOTS];
-      std::list<uint64_t> mStreamStarveStarts[XSSPM_MAX_NUMBER_SLOTS];
-      std::list<uint64_t> mStreamTxStartsHostTime[XSSPM_MAX_NUMBER_SLOTS];
-      std::list<uint64_t> mStreamStallStartsHostTime[XSSPM_MAX_NUMBER_SLOTS];
-      std::list<uint64_t> mStreamStarveStartsHostTime[XSSPM_MAX_NUMBER_SLOTS];
-      std::list<uint64_t> mAccelMonCuStarts[XSAM_MAX_NUMBER_SLOTS];
+      uint64_t mAccelMonCuTime[XAM_MAX_NUMBER_SLOTS]       = { 0 };
+      uint64_t mAccelMonCuHostTime[XAM_MAX_NUMBER_SLOTS]   = { 0 };
+      uint64_t mAccelMonStallIntTime[XAM_MAX_NUMBER_SLOTS] = { 0 };
+      uint64_t mAccelMonStallStrTime[XAM_MAX_NUMBER_SLOTS] = { 0 };
+      uint64_t mAccelMonStallExtTime[XAM_MAX_NUMBER_SLOTS] = { 0 };
+      uint8_t mAccelMonStartedEvents[XAM_MAX_NUMBER_SLOTS] = { 0 };
+      uint64_t mPerfMonLastTranx[XAIM_MAX_NUMBER_SLOTS]     = { 0 };
+      uint64_t mAccelMonLastTranx[XAM_MAX_NUMBER_SLOTS]    = { 0 };
+      uint64_t mStreamMonLastTranx[XASM_MAX_NUMBER_SLOTS]  = { 0 };
+      std::list<uint64_t> mWriteStarts[XAIM_MAX_NUMBER_SLOTS];
+      std::list<uint64_t> mHostWriteStarts[XAIM_MAX_NUMBER_SLOTS];
+      std::list<uint64_t> mReadStarts[XAIM_MAX_NUMBER_SLOTS];
+      std::list<uint64_t> mHostReadStarts[XAIM_MAX_NUMBER_SLOTS];
+      std::list<uint64_t> mStreamTxStarts[XASM_MAX_NUMBER_SLOTS];
+      std::list<uint64_t> mStreamStallStarts[XASM_MAX_NUMBER_SLOTS];
+      std::list<uint64_t> mStreamStarveStarts[XASM_MAX_NUMBER_SLOTS];
+      std::list<uint64_t> mStreamTxStartsHostTime[XASM_MAX_NUMBER_SLOTS];
+      std::list<uint64_t> mStreamStallStartsHostTime[XASM_MAX_NUMBER_SLOTS];
+      std::list<uint64_t> mStreamStarveStartsHostTime[XASM_MAX_NUMBER_SLOTS];
+      std::list<uint64_t> mAccelMonCuStarts[XAM_MAX_NUMBER_SLOTS];
+
+    private:
+      bool mclockTrainingdone = false;
+      uint64_t packets_parsed = 0;
 
     private:
       XDPPluginI* mPluginHandle;

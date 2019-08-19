@@ -23,10 +23,15 @@
 #define PROP_BAR_IDX "pcie_base_address_register"
 #define PROP_IO_OFFSET "reg"
 #define PROP_INTERRUPTS "interrupts"
+#define PROP_INTERFACE_UUID "interface_uuid"
+#define PROP_LOGIC_UUID "logic_uuid"
+
+#define UUID_PROP_LEN 65 
 
 #define NODE_ENDPOINTS "addressable_endpoints"
 #define LEVEL0_DEV_PATH "/addressable_endpoints_0"
 #define LEVEL1_DEV_PATH "/addressable_endpoints_1"
+#define INTERFACES_PATH "/interfaces"
 
 #define NODE_FLASH "ep_card_flash_program_00"
 #define NODE_XVC_PUB "ep_debug_bscan_user_00"
@@ -45,8 +50,8 @@
 #define NODE_ERT_CQ_USER "ep_ert_command_queue_user_00"
 #define NODE_MAILBOX_MGMT "ep_mailbox_mgmt_00"
 #define NODE_MAILBOX_USER "ep_mailbox_user_00"
-#define NODE_GATE_BLP "ep_pr_isolate_prp_00"
-#define NODE_GATE_PRP "ep_pr_isolate_urp_00"
+#define NODE_GATE_BLP "ep_pr_isolate_plp_00"
+#define NODE_GATE_PRP "ep_pr_isolate_ulp_00"
 #define NODE_DDR_CALIB "ep_ddr_mem_calib_00"
 #define NODE_CLK_KERNEL1 "ep_aclk_kernel_00"
 #define NODE_CLK_KERNEL2 "ep_aclk_kernel_01"

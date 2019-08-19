@@ -67,6 +67,7 @@ typedef struct XmaBufferObjPrivate
    bank_index = -1;
    dev_index = -1;
    dev_handle = NULL;
+   device_only_buffer = false;
    boHandle = 0;
   }
 } XmaBufferObjPrivate;
@@ -80,6 +81,8 @@ typedef struct XmaHwKernel
     int32_t    ddr_bank;
     uint32_t    cu_mask0;
     uint32_t    cu_mask1;
+    uint32_t    cu_mask2;
+    uint32_t    cu_mask3;
     int32_t    regmap_max;
     //For execbo:
     int32_t     kernel_complete_count;
@@ -90,6 +93,8 @@ typedef struct XmaHwKernel
     std::unique_ptr<std::atomic<bool>> reg_map_locked;
     int32_t         locked_by_session_id;
     XmaSessionType locked_by_session_type;
+    bool soft_kernel;
+    bool dataflow_kernel;
     void*   private_do_not_use;
 
     //bool             have_lock;
@@ -102,7 +107,11 @@ typedef struct XmaHwKernel
     ddr_bank = -1;
     cu_mask0 = 0;
     cu_mask1 = 0;
+    cu_mask2 = 0;
+    cu_mask3 = 0;
     kernel_complete_count = 0;
+    soft_kernel = false;
+    dataflow_kernel = false;
     //*kernel_complete_locked = false;
     *reg_map_locked = false;
     locked_by_session_id = -100;

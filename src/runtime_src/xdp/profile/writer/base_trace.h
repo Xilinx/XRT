@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -39,13 +39,12 @@ namespace xdp {
     class TraceWriterI {
 
     public:
-      TraceWriterI();
-	  virtual ~TraceWriterI() {};
+      TraceWriterI(const std::string& fileName = "");
+	    virtual ~TraceWriterI() {};
 
     public:
-            // Returns the output file name for the writer
-            virtual const std::string getFileName() { return ""; }
-
+      // Returns the output file name for the writer
+      virtual const std::string getFileName() { return mFileName; }
 
 	    // Functions for timeline trace log
 	    // Write timeline trace of a function call such as cl API call
@@ -120,7 +119,8 @@ namespace xdp {
         virtual const char* newLine()  { return "\n"; }
 
 	protected:
-	    std::ofstream Trace_ofs;
+      std::string mFileName; // Could be empty.
+      std::ofstream Trace_ofs;
 	    xclCounterResults CountersPrev;
 
     protected:

@@ -59,6 +59,7 @@ public:
 
   using stream_xfer_req = hal::StreamXferReq;
   using stream_xfer_completions = hal::StreamXferCompletions;
+  using device_handle = hal::device_handle;
 
   explicit
   device(std::unique_ptr<hal::device>&& hal)
@@ -166,6 +167,12 @@ public:
   close()
   {
     m_hal->close();
+  }
+
+  device_handle
+  get_handle() const
+  {
+    return m_hal->get_handle();
   }
 
   void
@@ -415,7 +422,8 @@ public:
    * @throws
    *   std::runtime_error if buffer object is unknown to this device
    */
-  uint64_t getDeviceAddr(const BufferObjectHandle& boh)
+  uint64_t
+  getDeviceAddr(const BufferObjectHandle& boh)
   {
     return m_hal->getDeviceAddr(boh);
   }
@@ -787,6 +795,24 @@ public:
   }
 
   hal::operations_result<void>
+  xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
+  {
+    return m_hal->xclRead(space, offset, hostBuf, size);
+  }
+
+  hal::operations_result<void>
+  xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
+  {
+    return m_hal->xclWrite(space, offset, hostBuf, size);
+  }
+
+  hal::operations_result<ssize_t>
+  xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset)
+  {
+    return m_hal->xclUnmgdPread(flags, buf, count, offset);
+  }
+
+  hal::operations_result<void>
   setProfilingSlots(xclPerfMonType type, uint32_t slots)
   {
     return m_hal->setProfilingSlots(type, slots);
@@ -847,10 +873,34 @@ public:
     return m_hal->stopTrace(type);
   }
 
+  hal::operations_result<uint32_t>
+  getNumLiveProcesses()
+  {
+    return m_hal->getNumLiveProcesses();
+  }
+
   hal::operations_result<std::string>
   getSysfsPath(const std::string& subdev, const std::string& entry)
   {
     return m_hal->getSysfsPath(subdev, entry);
+  }
+
+  hal::operations_result<std::string>
+  getDebugIPlayoutPath()
+  {
+    return m_hal->getDebugIPlayoutPath();
+  }
+
+  hal::operations_result<int>
+  getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
+  {
+    return m_hal->getTraceBufferInfo(nSamples, traceSamples, traceBufSz);
+  }
+
+  hal::operations_result<int>
+  readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
+  {
+    return m_hal->readTraceData(traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample);
   }
 
   /**

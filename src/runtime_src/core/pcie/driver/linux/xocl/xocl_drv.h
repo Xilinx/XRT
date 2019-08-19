@@ -32,6 +32,7 @@
 #include "mailbox_proto.h"
 #include <linux/libfdt_env.h>
 #include "lib/libfdt/libfdt.h"
+#include <linux/firmware.h>
 
 /* The fix for the y2k38 bug was introduced with Linux 3.17 and backported to
  * Red Hat 7.2.
@@ -144,7 +145,7 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 
 #define	XOCL_MODULE_NAME	"xocl"
 #define	XCLMGMT_MODULE_NAME	"xclmgmt"
-#define	ICAP_XCLBIN_V2			"xclbin2"
+#define	ICAP_XCLBIN_V2		"xclbin2"
 #define XOCL_CDEV_DIR		"xfpga"
 
 #define XOCL_MAX_DEVICES	16
@@ -204,6 +205,9 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 
 #define XOCL_DSA_IS_MPSOC(xdev)                \
 	(XDEV(xdev)->priv.mpsoc)
+
+#define XOCL_DSA_IS_SMARTN(xdev)                \
+	(XDEV(xdev)->priv.flags & XOCL_DSAFLAG_SMARTN)
 
 #define	XOCL_DEV_ID(pdev)			\
 	((pci_domain_nr(pdev->bus) << 16) |	\
@@ -299,11 +303,12 @@ struct xocl_pci_funcs {
 	(XDEV_PCIOPS(xdev)->reset ? XDEV_PCIOPS(xdev)->reset(xdev) : \
 	-ENODEV)
 
-struct xocl_health_thread_arg {
-	int (*health_cb)(void *arg);
+struct xocl_thread_arg {
+	int (*thread_cb)(void *arg);
 	void		*arg;
 	u32		interval;    /* ms */
 	struct device	*dev;
+	char		*name;
 };
 
 struct xocl_drvinst_proc {
@@ -349,8 +354,8 @@ struct xocl_dev_core {
 	void __iomem		*intr_bar_addr;
 	resource_size_t		intr_bar_size;
 
-	struct task_struct      *health_thread;
-	struct xocl_health_thread_arg thread_arg;
+	struct task_struct      *poll_thread;
+	struct xocl_thread_arg thread_arg;
 
 	struct xocl_drm		*drm;
 
@@ -410,7 +415,10 @@ struct xocl_rom_funcs {
 	u64 (*get_timestamp)(struct platform_device *pdev);
 	int (*get_raw_header)(struct platform_device *pdev, void *header);
 	bool (*runtime_clk_scale_on)(struct platform_device *pdev);
+	int (*find_firmware)(struct platform_device *pdev, char *fw_name,
+		size_t len, u16 deviceid, const struct firmware **fw);
 };
+
 #define ROM_DEV(xdev)	\
 	SUBDEV(xdev, XOCL_SUBDEV_FEATURE_ROM).pldev
 #define	ROM_OPS(xdev)	\
@@ -444,6 +452,9 @@ struct xocl_rom_funcs {
 #define	xocl_get_raw_header(xdev, header) \
 	(ROM_CB(xdev, get_raw_header) ? ROM_OPS(xdev)->get_raw_header(ROM_DEV(xdev), header) :\
 	-ENODEV)
+#define xocl_rom_find_firmware(xdev, fw_name, len, deviceid, fw)	\
+	(ROM_CB(xdev, find_firmware) ? ROM_OPS(xdev)->find_firmware(	\
+	ROM_DEV(xdev), fw_name, len, deviceid, fw) : -ENODEV)
 
 /* dma callbacks */
 struct xocl_dma_funcs {
@@ -639,7 +650,9 @@ struct xocl_mb_funcs {
 		u32 len);
 	int (*load_sche_image)(struct platform_device *pdev, const char *buf,
 		u32 len);
-	int (*get_data)(struct platform_device *pdev, void *buf);
+	int (*get_data)(struct platform_device *pdev, enum group_kind kind, void *buf);
+	int (*dr_freeze)(struct platform_device *pdev);
+	int (*dr_free)(struct platform_device *pdev);
 };
 
 #define	MB_DEV(xdev)		\
@@ -662,8 +675,13 @@ struct xocl_mb_funcs {
 	(MB_CB(xdev, load_sche_image) ? MB_OPS(xdev)->load_sche_image(MB_DEV(xdev), buf, len) :\
 	-ENODEV)
 
-#define xocl_xmc_get_data(xdev, buf)			\
-	(MB_CB(xdev, get_data) ? MB_OPS(xdev)->get_data(MB_DEV(xdev), buf) : -ENODEV)
+#define xocl_xmc_get_data(xdev, kind, buf)			\
+	(MB_CB(xdev, get_data) ? MB_OPS(xdev)->get_data(MB_DEV(xdev), kind, buf) : -ENODEV)
+
+#define xocl_xmc_dr_freeze(xdev)		\
+	(MB_CB(xdev, dr_freeze) ? MB_OPS(xdev)->dr_freeze(MB_DEV(xdev)) : -ENODEV)
+#define xocl_xmc_dr_free(xdev)		\
+	(MB_CB(xdev, dr_free) ? MB_OPS(xdev)->dr_free(MB_DEV(xdev)) : -ENODEV)
 
 struct xocl_dna_funcs {
 	struct xocl_subdev_funcs common_funcs;
@@ -743,6 +761,17 @@ enum data_kind {
 	CAGE_TEMP2,
 	CAGE_TEMP3,
 	VCC_0V85,
+	SER_NUM,
+	MAC_ADDR0,
+	MAC_ADDR1,
+	MAC_ADDR2,
+	MAC_ADDR3,
+	REVISION,
+	CARD_NAME,
+	BMC_VER,
+	MAX_PWR,
+	FAN_PRESENCE,
+	CFG_MODE,
 };
 
 enum mb_kind {
@@ -758,7 +787,7 @@ struct xocl_mailbox_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	int (*request)(struct platform_device *pdev, void *req,
 		size_t reqlen, void *resp, size_t *resplen,
-		mailbox_msg_cb_t cb, void *cbarg);
+		mailbox_msg_cb_t cb, void *cbarg, u32 timeout);
 	int (*post_notify)(struct platform_device *pdev, void *req, size_t len);
 	int (*post_response)(struct platform_device *pdev,
 		enum mailbox_request req, u64 reqid, void *resp, size_t len);
@@ -772,9 +801,9 @@ struct xocl_mailbox_funcs {
 	((struct xocl_mailbox_funcs *)SUBDEV(xdev, XOCL_SUBDEV_MAILBOX).ops)
 #define MAILBOX_READY(xdev, cb)	\
 	(MAILBOX_DEV(xdev) && MAILBOX_OPS(xdev) && MAILBOX_OPS(xdev)->cb)
-#define	xocl_peer_request(xdev, req, reqlen, resp, resplen, cb, cbarg)		\
+#define	xocl_peer_request(xdev, req, reqlen, resp, resplen, cb, cbarg, timeout)	\
 	(MAILBOX_READY(xdev, request) ? MAILBOX_OPS(xdev)->request(MAILBOX_DEV(xdev), \
-	req, reqlen, resp, resplen, cb, cbarg) : -ENODEV)
+	req, reqlen, resp, resplen, cb, cbarg, timeout) : -ENODEV)
 #define	xocl_peer_response(xdev, req, reqid, buf, len)			\
 	(MAILBOX_READY(xdev, post_response) ? MAILBOX_OPS(xdev)->post_response(	\
 	MAILBOX_DEV(xdev), req, reqid, buf, len) : -ENODEV)
@@ -798,70 +827,75 @@ struct xocl_icap_funcs {
 	int (*download_bitstream_axlf)(struct platform_device *pdev,
 		const void __user *arg);
 	int (*download_boot_firmware)(struct platform_device *pdev);
-	int (*download_rp)(struct platform_device *pdev, int level, bool force);
+	int (*download_rp)(struct platform_device *pdev, int level, int flag);
 	int (*ocl_set_freq)(struct platform_device *pdev,
 		unsigned int region, unsigned short *freqs, int num_freqs);
 	int (*ocl_get_freq)(struct platform_device *pdev,
 		unsigned int region, unsigned short *freqs, int num_freqs);
 	int (*ocl_update_clock_freq_topology)(struct platform_device *pdev, struct xclmgmt_ioc_freqscaling *freqs);
 	int (*ocl_lock_bitstream)(struct platform_device *pdev,
-		const xuid_t *uuid, pid_t pid);
+		const xuid_t *uuid);
 	int (*ocl_unlock_bitstream)(struct platform_device *pdev,
-		const xuid_t *uuid, pid_t pid);
+		const xuid_t *uuid);
 	uint64_t (*get_data)(struct platform_device *pdev,
 		enum data_kind kind);
+};
+enum {
+	RP_DOWNLOAD_NORMAL,
+	RP_DOWNLOAD_DRY,
+	RP_DOWNLOAD_FORCE,
 };
 #define	ICAP_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ICAP).pldev
 #define	ICAP_OPS(xdev)							\
 	((struct xocl_icap_funcs *)SUBDEV(xdev, XOCL_SUBDEV_ICAP).ops)
-#define ICAP_CB(xdev, cb)		\
+#define ICAP_CB(xdev, cb)						\
 	(ICAP_DEV(xdev) && ICAP_OPS(xdev) && ICAP_OPS(xdev)->cb)
 #define	xocl_icap_reset_axi_gate(xdev)					\
-	(ICAP_CB(xdev, reset_axi_gate) ?						\
+	(ICAP_CB(xdev, reset_axi_gate) ?				\
 	ICAP_OPS(xdev)->reset_axi_gate(ICAP_DEV(xdev)) :		\
-	 NULL)
+	NULL)
 #define	xocl_icap_reset_bitstream(xdev)					\
-	(ICAP_CB(xdev, reset_bitstream) ?						\
+	(ICAP_CB(xdev, reset_bitstream) ?				\
 	ICAP_OPS(xdev)->reset_bitstream(ICAP_DEV(xdev)) :		\
-	 -ENODEV)
+	-ENODEV)
 #define	xocl_icap_download_axlf(xdev, xclbin)				\
-	(ICAP_CB(xdev, download_bitstream_axlf) ?						\
+	(ICAP_CB(xdev, download_bitstream_axlf) ?			\
 	ICAP_OPS(xdev)->download_bitstream_axlf(ICAP_DEV(xdev), xclbin) : \
 	-ENODEV)
 #define	xocl_icap_download_boot_firmware(xdev)				\
-	(ICAP_CB(xdev, download_boot_firmware) ?						\
+	(ICAP_CB(xdev, download_boot_firmware) ?			\
 	ICAP_OPS(xdev)->download_boot_firmware(ICAP_DEV(xdev)) :	\
 	-ENODEV)
-#define xocl_icap_download_rp(xdev, level, force)				\
+#define xocl_icap_download_rp(xdev, level, flag)			\
 	(ICAP_CB(xdev, download_rp) ?					\
-	ICAP_OPS(xdev)->download_rp(ICAP_DEV(xdev), level, force) :	\
+	ICAP_OPS(xdev)->download_rp(ICAP_DEV(xdev), level, flag) :	\
 	-ENODEV)
 #define	xocl_icap_ocl_get_freq(xdev, region, freqs, num)		\
-	(ICAP_CB(xdev, ocl_get_freq) ?						\
+	(ICAP_CB(xdev, ocl_get_freq) ?					\
 	ICAP_OPS(xdev)->ocl_get_freq(ICAP_DEV(xdev), region, freqs, num) : \
-	 -ENODEV)
+	-ENODEV)
 #define	xocl_icap_ocl_update_clock_freq_topology(xdev, freqs)		\
-	(ICAP_CB(xdev, ocl_update_clock_freq_topology) ?						\
-	ICAP_OPS(xdev)->ocl_update_clock_freq_topology(ICAP_DEV(xdev), freqs) : \
-	 -ENODEV)
+	(ICAP_CB(xdev, ocl_update_clock_freq_topology) ?		\
+	ICAP_OPS(xdev)->ocl_update_clock_freq_topology(ICAP_DEV(xdev), freqs) :\
+	-ENODEV)
 #define	xocl_icap_ocl_set_freq(xdev, region, freqs, num)		\
-	(ICAP_CB(xdev, ocl_set_freq) ?						\
+	(ICAP_CB(xdev, ocl_set_freq) ?					\
 	ICAP_OPS(xdev)->ocl_set_freq(ICAP_DEV(xdev), region, freqs, num) : \
-	 -ENODEV)
-#define	xocl_icap_lock_bitstream(xdev, uuid, pid)			\
-	(ICAP_CB(xdev, ocl_lock_bitstream) ?						\
-	ICAP_OPS(xdev)->ocl_lock_bitstream(ICAP_DEV(xdev), uuid, pid) :	\
-	 -ENODEV)
-#define	xocl_icap_unlock_bitstream(xdev, uuid, pid)			\
-	(ICAP_CB(xdev, ocl_unlock_bitstream) ?						\
-	ICAP_OPS(xdev)->ocl_unlock_bitstream(ICAP_DEV(xdev), uuid, pid) : \
-	 -ENODEV)
-#define xocl_icap_refresh_addrs(xdev)				\
-	(ICAP_CB(xdev, refresh_addrs) ?				\
-	 ICAP_OPS(xdev)->refresh_addrs(ICAP_DEV(xdev)) : NULL)
-#define	xocl_icap_get_data(xdev, kind)				\
-	(ICAP_CB(xdev, get_data) ?				\
-	ICAP_OPS(xdev)->get_data(ICAP_DEV(xdev), kind) : \
+	-ENODEV)
+#define	xocl_icap_lock_bitstream(xdev, uuid)				\
+	(ICAP_CB(xdev, ocl_lock_bitstream) ?				\
+	ICAP_OPS(xdev)->ocl_lock_bitstream(ICAP_DEV(xdev), uuid) :	\
+	-ENODEV)
+#define	xocl_icap_unlock_bitstream(xdev, uuid)				\
+	(ICAP_CB(xdev, ocl_unlock_bitstream) ?				\
+	ICAP_OPS(xdev)->ocl_unlock_bitstream(ICAP_DEV(xdev), uuid) :	\
+	-ENODEV)
+#define xocl_icap_refresh_addrs(xdev)					\
+	(ICAP_CB(xdev, refresh_addrs) ?					\
+	ICAP_OPS(xdev)->refresh_addrs(ICAP_DEV(xdev)) : NULL)
+#define	xocl_icap_get_data(xdev, kind)					\
+	(ICAP_CB(xdev, get_data) ?					\
+	ICAP_OPS(xdev)->get_data(ICAP_DEV(xdev), kind) : 		\
 	0)
 
 struct xocl_mig_label {
@@ -1047,8 +1081,8 @@ int xocl_drvinst_get_offline(void *data, bool *offline);
 int xocl_drvinst_kill_proc(void *data);
 
 /* health thread functions */
-int health_thread_start(xdev_handle_t xdev);
-int health_thread_stop(xdev_handle_t xdev);
+int xocl_thread_start(xdev_handle_t xdev);
+int xocl_thread_stop(xdev_handle_t xdev);
 
 /* subdev blob functions */
 int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob);
@@ -1058,10 +1092,12 @@ int xocl_fdt_overlay(void *fdt, int target, void *fdto, int node, int pf);
 int xocl_fdt_build_priv_data(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev,
 		void **priv_data,  size_t *data_len);
 int xocl_fdt_get_userpf(xdev_handle_t xdev_hdl, void *blob);
-const char *xocl_fdt_get_prp_int_uuid(xdev_handle_t xdev_hdl, void *blob,
-		int *len);
 int xocl_fdt_add_pair(xdev_handle_t xdev_hdl, void *blob, char *name,
 		void *val, int size);
+int xocl_fdt_get_next_prop_by_name(xdev_handle_t xdev_hdl, void *blob,
+    int offset, char *name, const void **prop, int *prop_len);
+int xocl_fdt_check_uuids(xdev_handle_t xdev_hdl, const void *blob,
+		        const void *subset_blob);
 const struct axlf_section_header *xocl_axlf_section_header(
 	xdev_handle_t xdev_hdl, const struct axlf *top,
 	enum axlf_section_kind kind);
