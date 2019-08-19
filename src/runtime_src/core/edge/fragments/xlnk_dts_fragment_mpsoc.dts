@@ -4,16 +4,17 @@
 		#interrupt-cells = <2>;
 		compatible = "xlnx,xps-intc-1.00.a";
 		interrupt-controller;
-		reg = <0x0 0xA8000000 0x0 0x1000>;
+		reg = <0x0 0x80020000 0x0 0x1000>;
 		xlnx,kind-of-intr = <0x0>;
 		xlnx,num-intr-inputs = <0x20>;
 		interrupt-parent = <&gic>;
-		interrupts = <0 89 1>;
+		interrupts = <0 89 4>;
 	};
 
 	zyxclmm_drm {
 		compatible = "xlnx,zocl";
 		status = "okay";
+		xlnx,pr-isolation-addr = <0x80070000>;
 		interrupt-parent = <&axi_intc_0>;
 		interrupts = <0  4>, <1  4>, <2  4>, <3  4>,
 			     <4  4>, <5  4>, <6  4>, <7  4>,

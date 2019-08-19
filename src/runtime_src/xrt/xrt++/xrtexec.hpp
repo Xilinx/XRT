@@ -22,11 +22,13 @@
 #define _XRT_XRTEXEC_H_
 #include <memory>
 #include "ert.h"
+#include "xrt.h"
 
 struct xrt_device;
 
 namespace xrtcpp {
 
+using index_type = uint32_t;
 using value_type = uint32_t;
 using addr_type = uint32_t;
 
@@ -35,15 +37,27 @@ using addr_type = uint32_t;
  *
  * A context on a CU can only be opened once for a given process
  * and should be released when process is done with the CU
+ *
+ * Throws on error
  */
 void
 acquire_cu_context(xrt_device* device, value_type cuidx);
 
 /**
  * Release a context previously acquired
+ *
+ * Throws on error
  */
 void
 release_cu_context(xrt_device* device, value_type cuidx);
+
+/**
+ * Get underlying device handle from an xrt device
+ *
+ * This allows swithcing from OCL APIs to shim layer XRT APIs
+ */
+xclDeviceHandle
+get_device_handle(const xrt_device* device);
 
 namespace exec {
 
@@ -79,6 +93,49 @@ public:
 
   ert_cmd_state
   state() const;
+
+};
+
+/**
+ * class exec_cu_command : concrete class for ERT_START_CU
+ *
+ * The CU register map is programmed by writing specific locations
+ * in the command.   The register
+ */
+class exec_cu_command : public command
+{
+public:
+  exec_cu_command(xrt_device* dev);
+
+  /**
+   * Add cu to command package pair to the command
+   *
+   * @cuidx: index of cu to execute
+   * @value: the value to write to @addr
+   *
+   * Supports max 32 CUs indexed [0..31]
+   */
+  void
+  add_cu(value_type cuidx);
+
+  /**
+   * Add command payload at index
+   *
+   * @index: register map index.  The index is offset from beginning 
+   *   of CU register map such that index 0 is for AP ctrl.
+   * @value: value to write
+   */
+  void
+  add(index_type idx, value_type value);
+
+  /**
+   * Clear current CUs and payload if any
+   *
+   * This allows for reuse of this command, all entries
+   * currently written will be 0'ed out as part of clear.
+   */
+  void
+  clear();
 };
 
 /**

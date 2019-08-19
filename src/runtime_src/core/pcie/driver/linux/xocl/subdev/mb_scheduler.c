@@ -84,11 +84,13 @@
 # define SCHED_DEBUGF(format, ...) DRM_INFO(format, ##__VA_ARGS__)
 # define SCHED_PRINTF(format, ...) DRM_INFO(format, ##__VA_ARGS__)
 # define SCHED_DEBUG_PACKET(packet, size) sched_debug_packet(packet, size)
+# define SCHED_PRINT_PACKET(packet, size) sched_debug_packet(packet, size)
 #else
 # define SCHED_DEBUG(msg)
 # define SCHED_DEBUGF(format, ...)
 # define SCHED_PRINTF(format, ...) DRM_INFO(format, ##__VA_ARGS__)
 # define SCHED_DEBUG_PACKET(packet, size)
+# define SCHED_PRINT_PACKET(packet, size) sched_debug_packet(packet, size)
 #endif
 
 #define csr_read32(base, r_off)			\

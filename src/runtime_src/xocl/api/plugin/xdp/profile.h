@@ -143,14 +143,8 @@ template <typename F, typename ...Args>
 inline void
 set_event_action(xocl::event* event, F&& f, Args&&... args)
 {
-  // if profiling is off, then avoid creating the lambdas
-#if 0 // For the time being, to preserve old log profile data behavior, 
-      // always store the profile action, see comments in xocl/core/event.h
-  if (!event->get_command_queue()->is_profiling_enabled())
-    return;
-#endif
-
-  event->set_profile_action(f(std::forward<Args>(args)...));
+  if (xrt::config::get_profile())
+    event->set_profile_action(f(std::forward<Args>(args)...));
 }
 
 void

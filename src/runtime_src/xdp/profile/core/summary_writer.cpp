@@ -119,6 +119,8 @@ namespace xdp {
         uint64_t prevReadTranx    = mFinalCounterResultsMap[key].ReadTranx[s];
         uint64_t prevWriteLatency = mFinalCounterResultsMap[key].WriteLatency[s];
         uint64_t prevReadLatency  = mFinalCounterResultsMap[key].ReadLatency[s];
+        uint64_t prevReadBusyCycles   = mFinalCounterResultsMap[key].ReadBusyCycles[s];
+        uint64_t prevWriteBusyCycles  = mFinalCounterResultsMap[key].WriteBusyCycles[s];
 
         // Check for rollover of byte counters; if detected, add 2^32
         // Otherwise, if first read after program with binary, then capture bytes from previous xclbin
@@ -135,6 +137,10 @@ namespace xdp {
             mRolloverCountsMap[key].WriteLatency[s]  += 1;
           if (counterResults.ReadLatency[s] < prevReadLatency)
             mRolloverCountsMap[key].ReadLatency[s]   += 1;
+          if (counterResults.ReadBusyCycles[s] < prevReadBusyCycles)
+            mRolloverCountsMap[key].ReadBusyCycles[s]  += 1;
+          if (counterResults.WriteBusyCycles[s] < prevWriteBusyCycles)
+            mRolloverCountsMap[key].WriteBusyCycles[s] += 1;
         }
         else {
           mRolloverCounterResultsMap[key].WriteBytes[s]    += prevWriteBytes;
@@ -143,6 +149,8 @@ namespace xdp {
           mRolloverCounterResultsMap[key].ReadTranx[s]     += prevReadTranx;
           mRolloverCounterResultsMap[key].WriteLatency[s]  += prevWriteLatency;
           mRolloverCounterResultsMap[key].ReadLatency[s]   += prevReadLatency;
+          mRolloverCounterResultsMap[key].ReadBusyCycles[s] += prevReadBusyCycles;
+          mRolloverCounterResultsMap[key].WriteBusyCycles[s] += prevWriteBusyCycles;
         }
       }
       /*
@@ -302,6 +310,10 @@ namespace xdp {
 
     double totalReadTimeMsec  = 0;
     double totalWriteTimeMsec = 0;
+
+    /** Old way of calculating bandwidth is not compatible with AIM hw registers
+     * We show N/A in Summary if these registers are absent
+
     if (monitorType == RTUtil::MON_SHELL_KDMA) {
       totalReadTimeMsec  += mProfileCounters->getBufferTransferTotalTime(RTUtil::COPY_BUFFER);
       totalWriteTimeMsec += mProfileCounters->getBufferTransferTotalTime(RTUtil::COPY_BUFFER);
@@ -316,6 +328,8 @@ namespace xdp {
       totalReadTimeMsec  += mProfileCounters->getBufferTransferTotalTime(RTUtil::READ_BUFFER);
       totalWriteTimeMsec += mProfileCounters->getBufferTransferTotalTime(RTUtil::WRITE_BUFFER);
     }
+
+    */
 
     //
     // Shell monitors: KDMA/XDMA/P2P
@@ -341,6 +355,8 @@ namespace xdp {
       uint64_t totalWriteTranx   = 0;
       uint64_t totalReadLatency  = 0;
       uint64_t totalWriteLatency = 0;
+      uint64_t totalReadBusyCycles = 0;
+      uint64_t totalWriteBusyCycles = 0;
 
       // Traverse all slots to find shell monitors
       uint32_t numSlots = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_MEMORY, deviceName);
@@ -372,10 +388,16 @@ namespace xdp {
                             + (rolloverCounts.ReadLatency[s] * 4294967296UL);
         totalWriteLatency += counterResults.WriteLatency[s]
                             + (rolloverCounts.WriteLatency[s] * 4294967296UL);
+        totalReadBusyCycles += counterResults.ReadBusyCycles[s]
+                              + (rolloverCounts.ReadBusyCycles[s] * 4294967296UL);
+        totalWriteBusyCycles += counterResults.WriteBusyCycles[s]
+                               + (rolloverCounts.WriteBusyCycles[s] * 4294967296UL);
       }
 
       double totalReadLatencyNsec  = (1000.0 * totalReadLatency)  / tp->getDeviceClockFreqMHz();
       double totalWriteLatencyNsec = (1000.0 * totalWriteLatency) / tp->getDeviceClockFreqMHz();
+      totalReadTimeMsec = totalReadBusyCycles / (1000.0 * tp->getDeviceClockFreqMHz());
+      totalWriteTimeMsec = totalWriteBusyCycles / (1000.0 * tp->getDeviceClockFreqMHz());
 
       // Monitoring of KDMA/XDMA/P2P is reported on per-device basis
       // NOTE: don't show if no transfers were recorded
@@ -461,7 +483,6 @@ namespace xdp {
       std::string slaveArgNames = FIELD_NOT_APPLICABLE;
       std::size_t cuFound = 0;
       std::size_t masterSlaveFound = 0;
-      double totalCUTimeMsec = 0.0;
       for (unsigned int s=0; s < numSlots; ++s) {
         cuPortName = mDeviceBinaryStrSlotsMap.at(key)[s];
         masterSlaveFound = cuPortName.find(IP_LAYOUT_SEP);
@@ -477,7 +498,6 @@ namespace xdp {
           auto port = masterPortName.substr(cuFound+1);
           std::string placeholder;
           mPluginHandle->getArgumentsBank(deviceName, cu, port, masterArgNames, placeholder);
-          totalCUTimeMsec = mProfileCounters->getComputeUnitTotalTime(deviceName, cu);
         }
         cuFound = slavePortName.find_first_of("/");
         if (cuFound != std::string::npos) {
@@ -485,7 +505,6 @@ namespace xdp {
           auto port = slavePortName.substr(cuFound+1);
           std::string placeholder;
           mPluginHandle->getArgumentsBank(deviceName, cu, port, slaveArgNames, placeholder);
-          totalCUTimeMsec = mProfileCounters->getComputeUnitTotalTime(deviceName, cu);
         }
 
         uint64_t strNumTranx =     counterResults.StrNumTranx[s];
@@ -497,8 +516,9 @@ namespace xdp {
         if (strBusyCycles <= 0 || strNumTranx == 0)
           continue;
 
-        double transferRateMBps = (totalCUTimeMsec == 0) ? 0.0 :
-            (strDataBytes / (1000.0 * totalCUTimeMsec));
+        double transferTimeUsec = strBusyCycles / mTraceParserHandle->getDeviceClockFreqMHz();
+        double transferRateMBps = (transferTimeUsec == 0) ? 0.0 :
+                                  (strDataBytes / transferTimeUsec);
 
         double avgSize    =  (double) strDataBytes / (double) strNumTranx * 0.001 ;
         double linkStarve = (double) strStarveCycles / (double) strBusyCycles * 100.0;
@@ -547,7 +567,7 @@ namespace xdp {
         if (mDataSlotsPropertiesMap.at(key)[s] & XAIM_HOST_PROPERTY_MASK)
           continue;
 
-         std::string cuPortName = mDeviceBinaryDataSlotsMap.at(key)[s];
+        std::string cuPortName = mDeviceBinaryDataSlotsMap.at(key)[s];
         std::string cuName = cuPortName.substr(0, cuPortName.find_first_of("/"));
         std::string portName = cuPortName.substr(cuPortName.find_first_of("/")+1);
         //std::transform(portName.begin(), portName.end(), portName.begin(), ::tolower);
@@ -555,8 +575,6 @@ namespace xdp {
         std::string memoryName;
         std::string argNames;
         mPluginHandle->getArgumentsBank(deviceName, cuName, portName, argNames, memoryName);
-
-        double totalCUTimeMsec = mProfileCounters->getComputeUnitTotalTime(deviceName, cuName);
 
         uint64_t totalReadBytes    = counterResults.ReadBytes[s] + rolloverResults.ReadBytes[s]
                                      + (rolloverCounts.ReadBytes[s] * 4294967296UL);
@@ -566,15 +584,22 @@ namespace xdp {
                                      + (rolloverCounts.ReadTranx[s] * 4294967296UL);
         uint64_t totalWriteTranx   = counterResults.WriteTranx[s] + rolloverResults.WriteTranx[s]
                                      + (rolloverCounts.WriteTranx[s] * 4294967296UL);
+        // Total tx times for write and read channels
+        uint64_t totalReadBusyCycles   = counterResults.ReadBusyCycles[s] + rolloverResults.ReadBusyCycles[s]
+                                     + (rolloverCounts.ReadBusyCycles[s] * 4294967296UL);
+        double totalReadTimeMsec = totalReadBusyCycles / (1000.0 * mTraceParserHandle->getDeviceClockFreqMHz());
+        uint64_t totalWriteBusyCycles   = counterResults.WriteBusyCycles[s] + rolloverResults.WriteBusyCycles[s]
+                                     + (rolloverCounts.WriteBusyCycles[s] * 4294967296UL);
+        double totalWriteTimeMsec = totalWriteBusyCycles / (1000.0 * mTraceParserHandle->getDeviceClockFreqMHz());
 
-        // Total transfer time = sum of all tranx latencies
+        // Total latency = sum of all tranx latencies
         // msec = cycles / (1000 * (Mcycles/sec))
         uint64_t totalReadLatency  = counterResults.ReadLatency[s] + rolloverResults.ReadLatency[s]
                                      + (rolloverCounts.ReadLatency[s] * 4294967296UL);
-        double totalReadTimeMsec   = totalReadLatency / (1000.0 * mTraceParserHandle->getDeviceClockFreqMHz());
+        double totalReadLatencyMsec   = totalReadLatency / (1000.0 * mTraceParserHandle->getDeviceClockFreqMHz());
         uint64_t totalWriteLatency = counterResults.WriteLatency[s] + rolloverResults.WriteLatency[s]
                                      + (rolloverCounts.WriteLatency[s] * 4294967296UL);
-        double totalWriteTimeMsec  = totalWriteLatency / (1000.0 * mTraceParserHandle->getDeviceClockFreqMHz());
+        double totalWriteLatencyMsec  = totalWriteLatency / (1000.0 * mTraceParserHandle->getDeviceClockFreqMHz());
 
         XDP_LOG("writeKernelTransferSummary: s=%d, reads=%d, writes=%d, %s time = %f msec\n",
             s, totalReadTranx, totalWriteTranx, cuName.c_str(), totalCUTimeMsec);
@@ -582,11 +607,11 @@ namespace xdp {
         // First do READ, then WRITE
         if (totalReadTranx > 0) {
           mProfileCounters->writeKernelTransferSummary(writer, deviceName, cuPortName, argNames, memoryName,
-            true,  totalReadBytes, totalReadTranx, totalCUTimeMsec, totalReadTimeMsec, maxTransferRateMBps);
+            true,  totalReadBytes, totalReadTranx, totalReadTimeMsec, totalReadLatencyMsec, maxTransferRateMBps);
         }
         if (totalWriteTranx > 0) {
           mProfileCounters->writeKernelTransferSummary(writer, deviceName, cuPortName, argNames, memoryName,
-            false, totalWriteBytes, totalWriteTranx, totalCUTimeMsec, totalWriteTimeMsec, maxTransferRateMBps);
+            false, totalWriteBytes, totalWriteTranx, totalWriteTimeMsec, totalWriteLatencyMsec, maxTransferRateMBps);
         }
       }
     }
@@ -690,6 +715,8 @@ namespace xdp {
         uint64_t totalWriteBytes = 0;
         uint64_t totalReadTranx  = 0;
         uint64_t totalWriteTranx = 0;
+        uint64_t totalReadBusyCycles = 0;
+        uint64_t totalWriteBusyCycles = 0;
         for (unsigned s=0; s < numSlots; ++s) {
           if (mDataSlotsPropertiesMap.at(key)[s] & XAIM_HOST_PROPERTY_MASK)
             continue;
@@ -706,13 +733,18 @@ namespace xdp {
                                + (rolloverCounts.ReadTranx[s] * 4294967296UL);
             totalWriteTranx += counterResults.WriteTranx[s] + rolloverResults.WriteTranx[s]
                                + (rolloverCounts.WriteTranx[s] * 4294967296UL);
+            totalReadBusyCycles += counterResults.ReadBusyCycles[s] + rolloverResults.ReadBusyCycles[s]
+                                  + (rolloverCounts.ReadBusyCycles[s] * 4294967296UL);
+            totalWriteBusyCycles += counterResults.WriteBusyCycles[s] + rolloverResults.WriteBusyCycles[s]
+                                  + (rolloverCounts.WriteBusyCycles[s] * 4294967296UL);
           }
         }
 
-        double totalCUTimeMsec = mProfileCounters->getComputeUnitTotalTime(deviceName, cuName);
+        double totalReadTimeMsec = totalReadBusyCycles / (1000.0 * mTraceParserHandle->getDeviceClockFreqMHz()) ;
+        double totalWriteTimeMsec = totalWriteBusyCycles / (1000.0 * mTraceParserHandle->getDeviceClockFreqMHz());
 
         mProfileCounters->writeTopKernelTransferSummary(writer, deviceName, cuName, totalWriteBytes,
-            totalReadBytes, totalWriteTranx, totalReadTranx, totalCUTimeMsec, totalCUTimeMsec,
+            totalReadBytes, totalWriteTranx, totalReadTranx, totalWriteTimeMsec, totalReadTimeMsec,
             maxBytesPerTransfer, maxTransferRateMBps);
       }
     }

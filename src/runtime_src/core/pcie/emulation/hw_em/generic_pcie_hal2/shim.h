@@ -189,6 +189,7 @@ using addr_type = uint64_t;
 
       //Utility Function
       void set_simulator_started(bool val){ simulator_started = val;}
+      bool get_simulator_started() {return simulator_started;}
       void fillDeviceInfo(xclDeviceInfo2* dest, xclDeviceInfo2* src);
       void saveWaveDataBase();
 
@@ -245,7 +246,8 @@ using addr_type = uint64_t;
           return true;
         return false;
       }
-        
+
+      void fetchAndPrintMessages();
 
     private:
       //hw_em_profile* _profile_inst;
@@ -314,6 +316,7 @@ using addr_type = uint64_t;
       uint32_t mStallProfilingNumberSlots;
       uint64_t mPerfMonFifoCtrlBaseAddress;
       uint64_t mPerfMonFifoReadBaseAddress;
+      uint64_t mTraceFunnelAddress;
       uint64_t mPerfMonBaseAddress[XAIM_MAX_NUMBER_SLOTS];
       uint64_t mAccelMonBaseAddress[XAM_MAX_NUMBER_SLOTS];
       uint64_t mStreamMonBaseAddress[XASM_MAX_NUMBER_SLOTS];
@@ -330,6 +333,9 @@ using addr_type = uint64_t;
       FeatureRomHeader mFeatureRom;
       std::set<unsigned int > mImportedBOs;
       uint64_t mCuBaseAddress;
+
+      //For Emulation specific messages on host from Device
+      std::thread mMessengerThread;
   };
 
   extern std::map<unsigned int, HwEmShim*> devices;

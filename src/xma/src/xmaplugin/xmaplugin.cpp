@@ -56,7 +56,7 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
     b_obj.dev_index = s_handle.hw_session.dev_index;
 
     if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
-        std::cout << "ERROR: xma_plg_buffer_alloc failed. XMASession is corrupted" << std::endl;
+        //std::cout << "ERROR: xma_plg_buffer_alloc failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc failed. XMASession is corrupted.\n");
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
@@ -108,29 +108,29 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
 
 int32_t xma_check_device_buffer(XmaBufferObj *b_obj) {
     if (b_obj == NULL) {
-        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
+        //std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_device_buffer_free failed. XMABufferObj failed allocation\n");
         return XMA_ERROR;
     }
 
     XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj->private_do_not_touch;
     if (b_obj_priv == NULL) {
-        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
+        //std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_device_buffer_free failed. XMABufferObj failed allocation\n");
         return XMA_ERROR;
     }
     if (b_obj_priv->dev_index < 0 || b_obj_priv->bank_index < 0 || b_obj_priv->size <= 0) {
-        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
+        //std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_device_buffer_free failed. XMABufferObj failed allocation\n");
         return XMA_ERROR;
     }
     if (b_obj_priv->dummy != (void*)(((uint64_t)b_obj_priv) | signature)) {
-        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj is corrupted" << std::endl;
+        //std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_device_buffer_free failed. XMABufferObj is corrupted.\n");
         return XMA_ERROR;
     }
     if (b_obj_priv->dev_handle == NULL) {
-        std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj is corrupted" << std::endl;
+        //std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_device_buffer_free failed. XMABufferObj is corrupted.\n");
         return XMA_ERROR;
     }
@@ -141,7 +141,7 @@ void
 xma_plg_buffer_free(XmaSession s_handle, XmaBufferObj b_obj)
 {
     if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
-        std::cout << "ERROR: xma_plg_buffer_free failed. XMASession is corrupted" << std::endl;
+        //std::cout << "ERROR: xma_plg_buffer_free failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_free failed. XMASession is corrupted.\n");
         return;
     }
@@ -180,7 +180,7 @@ xma_plg_buffer_write(XmaSession s_handle,
 {
     int32_t rc;
     if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
-        std::cout << "ERROR: xma_plg_buffer_write failed. XMASession is corrupted" << std::endl;
+        //std::cout << "ERROR: xma_plg_buffer_write failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
@@ -193,7 +193,7 @@ xma_plg_buffer_write(XmaSession s_handle,
         return XMA_SUCCESS;
     }
     if (size + offset > b_obj_priv->size) {
-        std::cout << "ERROR: xma_plg_buffer_write failed. Can not write past end of buffer" << std::endl;
+        //std::cout << "ERROR: xma_plg_buffer_write failed. Can not write past end of buffer" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. Can not write past end of buffer.\n");
         return XMA_ERROR;
     }
@@ -202,7 +202,7 @@ xma_plg_buffer_write(XmaSession s_handle,
     //printf("xma_plg_buffer_write b_obj=%d,src=%p,size=%lu,offset=%lx\n", b_obj, src, size, offset);
     rc = xclSyncBO(b_obj_priv->dev_handle, b_obj_priv->boHandle, XCL_BO_SYNC_BO_TO_DEVICE, size, offset);
     if (rc != 0) {
-        std::cout << "ERROR: xma_plg_buffer_write xclSyncBO failed " << std::dec << rc << std::endl;
+        //std::cout << "ERROR: xma_plg_buffer_write xclSyncBO failed " << std::dec << rc << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xclSyncBO failed %d\n", rc);
     }
 
@@ -217,7 +217,7 @@ xma_plg_buffer_read(XmaSession s_handle,
 {
     int32_t rc;
     if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
-        std::cout << "ERROR: xma_plg_buffer_read failed. XMASession is corrupted" << std::endl;
+        //std::cout << "ERROR: xma_plg_buffer_read failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
@@ -230,7 +230,7 @@ xma_plg_buffer_read(XmaSession s_handle,
         return XMA_SUCCESS;
     }
     if (size + offset > b_obj_priv->size) {
-        std::cout << "ERROR: xma_plg_buffer_read failed. Can not read past end of buffer" << std::endl;
+        //std::cout << "ERROR: xma_plg_buffer_read failed. Can not read past end of buffer" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read failed. Can not read past end of buffer.\n");
         return XMA_ERROR;
     }
@@ -243,7 +243,9 @@ xma_plg_buffer_read(XmaSession s_handle,
                    size, offset);
     if (rc != 0)
     {
-        std::cout << "ERROR: xma_plg_buffer_read xclSyncBO failed " << std::dec << rc << std::endl;
+        //std::cout << "ERROR: xma_plg_buffer_read xclSyncBO failed " << std::dec << rc << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read xclSyncBO failed. Check device status with \"xbutil/awssak query\" cmmand\n");
+        return XMA_ERROR;
     }
 
     return XMA_SUCCESS;
@@ -261,7 +263,7 @@ xma_plg_register_prep_write(XmaSession  s_handle,
     uint32_t  start = offset / sizeof(uint32_t);
 
     if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
-        std::cout << "ERROR: xma_plg_register_prep_write failed. XMASession is corrupted" << std::endl;
+        //std::cout << "ERROR: xma_plg_register_prep_write failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_register_prep_write failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
@@ -292,7 +294,7 @@ xma_plg_register_prep_write(XmaSession  s_handle,
 int32_t xma_plg_kernel_lock_regmap(XmaSession s_handle)
 {
     if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
-        std::cout << "ERROR: xma_plg_kernel_lock_regmap failed. XMASession is corrupted" << std::endl;
+        //std::cout << "ERROR: xma_plg_kernel_lock_regmap failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_kernel_lock_regmap failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
@@ -320,7 +322,7 @@ int32_t xma_plg_kernel_lock_regmap(XmaSession s_handle)
 int32_t xma_plg_kernel_unlock_regmap(XmaSession s_handle)
 {
     if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
-        std::cout << "ERROR: xma_plg_kernel_unlock_regmap failed. XMASession is corrupted" << std::endl;
+        //std::cout << "ERROR: xma_plg_kernel_unlock_regmap failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_kernel_unlock_regmap failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
@@ -409,7 +411,7 @@ int32_t
 xma_plg_schedule_work_item(XmaSession s_handle)
 {
     if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
-        std::cout << "ERROR: xma_plg_schedule_work_item failed. XMASession is corrupted" << std::endl;
+        //std::cout << "ERROR: xma_plg_schedule_work_item failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_work_item failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
@@ -493,7 +495,7 @@ xma_plg_schedule_work_item(XmaSession s_handle)
 int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
 {
     if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
-        std::cout << "ERROR: xma_plg_schedule_work_item failed. XMASession is corrupted" << std::endl;
+        //std::cout << "ERROR: xma_plg_schedule_work_item failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_work_item failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
