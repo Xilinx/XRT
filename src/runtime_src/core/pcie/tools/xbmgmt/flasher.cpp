@@ -301,14 +301,16 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
 	       continue;
 
         if (!onBoard.vendor.empty() && !onBoard.board.empty() &&
-            ((onBoard.vendor != dsa.vendor) ||
-            (onBoard.board != dsa.board)))
-	       continue;
+            (onBoard.vendor == dsa.vendor) &&
+            (onBoard.board == dsa.board))
+        {
+            DSAs.push_back(dsa);
+        }
+	else if (!dsa.name.empty() && (vendor_id == dsa.vendor_id) && (device_id == dsa.device_id))
+        {
+            DSAs.push_back(dsa);
+        }
 
-	if ((vendor_id != dsa.vendor_id) || (device_id != dsa.device_id))
-                continue;
-
-        DSAs.push_back(dsa);
     }
 
     return DSAs;
