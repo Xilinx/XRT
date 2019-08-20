@@ -96,7 +96,9 @@ namespace xdp {
         P2P_HOST_TRANSFERS,
         PORT_BIT_WIDTH,
         KERNEL_COUNT,
-        OBJECTS_RELEASED
+        OBJECTS_RELEASED,
+        CU_CONTEXT_EN,
+        TRACE_MEMORY
       };
 
     public:
@@ -117,6 +119,11 @@ namespace xdp {
       // Device that supports P2P
       void setP2PDevice(bool p2pDevice) {IsP2PDevice = p2pDevice;}
       bool isP2PDevice() {return IsP2PDevice;}
+      //Profiling infrastructure metadata
+      void setCtxEn(bool ctxEn) {IsCtxEn = ctxEn;}
+      bool isCtxEn() {return IsCtxEn;}
+      void setTraceMemory(const std::string& traceMemory) {TraceMemory = traceMemory;}
+      std::string getTraceMemory() {return TraceMemory;}
       // Get maps of metadata results used for guidance
       inline GuidanceMap& getDeviceExecTimesMap() {return mDeviceExecTimesMap;}
       inline GuidanceMap& getComputeUnitCallsMap() {return mComputeUnitCallsMap;}
@@ -131,6 +138,8 @@ namespace xdp {
       bool IsHbmDevice = false;
       bool IsKdmaDevice = false;
       bool IsP2PDevice = false;
+      bool IsCtxEn = false;
+      std::string TraceMemory = "NA";
 
     // ****************************************
     // Platform Metadata required by profiler

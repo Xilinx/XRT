@@ -391,8 +391,10 @@ namespace xdp {
     mIsDebugIPlayoutRead = true;
   }
 
-  void DeviceIntf::configureCtx()
+  void DeviceIntf::configAmCtx(const std::string& ctx_info)
   {
+    if (ctx_info.empty())
+      return;
     for (auto& mon : amList) {
       mon->disable();
     }
