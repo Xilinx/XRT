@@ -1202,6 +1202,27 @@ public:
             isAREDevice = true;
         }
 
+        std::string xclbinid;
+        uuid_t uuid;
+        pcidev::get_dev(m_idx)->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
+        if (!errmsg.empty()) {
+            std::cout << errmsg << std::endl;
+            return -EINVAL;
+        }
+
+        uuid_parse(xclbinid.c_str(), uuid);
+
+        if (uuid_is_null(uuid)) {
+            std::cout << "WARNING: 'uuid' invalid, "
+                << "unable to perform dmatest, please re-program xclbin " << std::endl;
+            return -EINVAL;
+        }
+
+        if (xclOpenContext(m_handle, uuid, -1, true)) {
+            std::cout << "ERROR: Unable to lockdown xclbin" << std::endl;
+            return -EINVAL;
+        }
+
         int result = 0;
         unsigned long long addr = 0x0;
         unsigned long long sz = 0x1;
@@ -1215,6 +1236,7 @@ public:
 
         if (!errmsg.empty()) {
             std::cout << errmsg << std::endl;
+            xclCloseContext(m_handle, uuid, -1);
             return -EINVAL;
         }
         const mem_topology *map = (mem_topology *)buf.data();
@@ -1223,6 +1245,7 @@ public:
             std::cout << "WARNING: 'mem_topology' invalid, "
                 << "unable to perform DMA Test. Has the bitstream been loaded? "
                 << "See 'xbutil program'." << std::endl;
+            xclCloseContext(m_handle, uuid, -1);
             return -EINVAL;
         }
 
@@ -1242,11 +1265,15 @@ public:
 
                 for(unsigned sz = 1; sz <= 256; sz *= 2) {
                     result = memwriteQuiet(addr, sz, pattern);
-                    if( result < 0 )
+                    if( result < 0 ) {
+                        xclCloseContext(m_handle, uuid, -1);
                         return result;
+                    }
                     result = memreadCompare(addr, sz, pattern , false);
-                    if( result < 0 )
+                    if( result < 0 ) {
+                        xclCloseContext(m_handle, uuid, -1);
                         return result;
+                    }
                 }
                 DMARunner runner( m_handle, blockSize, i);
                 result = runner.run();
@@ -1287,6 +1314,7 @@ public:
             std::cout << "Latency per ARE hop for 128KB: " << delayPerHop << " ns\n";
             std::cout << "Total latency over ARE: " << (timeARE - timeDDR) << " ns\n";
         }
+        xclCloseContext(m_handle, uuid, -1);
         return result;
     }
 

@@ -1638,10 +1638,15 @@ int xcldev::device::testM2m()
     }
 
     dev->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
+    if (!errmsg.empty()) {
+        std::cout << errmsg << std::endl;
+        return -EINVAL;
+    }
+
     uuid_parse(xclbinid.c_str(), uuid);
 
-    if(xclbinid.empty()) {
-        std::cout << "WARNING: 'xclbinuuid' invalid, "
+    if (uuid_is_null(uuid)) {
+        std::cout << "WARNING: 'uuid' invalid, "
             << "unable to perform M2M Test. Bad xclbin. " << std::endl;
         return -EINVAL;
     }
