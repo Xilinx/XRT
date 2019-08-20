@@ -32,7 +32,7 @@ XRT Linux kernel driver *xclmgmt* binds to mgmt pf. The driver is organized into
 the following functionality:
 
 1.  ICAP programming
-2.  CLock scaling
+2.  Clock scaling
 3.  Loading firmware container, dsabin(renamed to xsabin since 2019.2) (RL Shell for 2 RP solution, embedded Microblaze firmware: ERT, XMC)
 4.  In-band sensors: Temperature, Voltage, Current, etc
 5.  AXI Firewall management
