@@ -57,41 +57,6 @@ static void xocl_free_object(struct drm_gem_object *obj)
 	xocl_drm_free_bo(obj);
 }
 
-static int xocl_open(struct inode *inode, struct file *filp)
-{
-	struct xocl_drm *drm_p;
-	struct drm_file *priv;
-	struct drm_device *ddev;
-	int ret;
-
-	ret = drm_open(inode, filp);
-	if (ret)
-		return ret;
-
-	priv = filp->private_data;
-	ddev = priv->minor->dev;
-	drm_p = xocl_drvinst_open(ddev);
-	if (!drm_p) {
-		drm_release(inode, filp);
-		return -ENXIO;
-	}
-
-	return 0;
-}
-
-static int xocl_release(struct inode *inode, struct file *filp)
-{
-	struct drm_file *priv = filp->private_data;
-	struct drm_device *ddev = priv->minor->dev;
-	struct xocl_drm	*drm_p = ddev->dev_private;
-	int ret;
-
-	ret = drm_release(inode, filp);
-	xocl_drvinst_close(drm_p);
-
-	return ret;
-}
-
 static int xocl_bo_mmap(struct file *filp, struct vm_area_struct *vma)
 {
 	int ret;
@@ -270,7 +235,7 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 
 static int xocl_client_open(struct drm_device *dev, struct drm_file *filp)
 {
-	struct xocl_drm	*drm_p = dev->dev_private;
+	struct xocl_drm	*drm_p;
 	int	ret = 0;
 
 	DRM_ENTER("");
@@ -281,9 +246,16 @@ static int xocl_client_open(struct drm_device *dev, struct drm_file *filp)
 	if (drm_is_primary_client(filp))
 		return -EPERM;
 
+	drm_p = xocl_drvinst_open(dev);
+	if (!drm_p) {
+		return -ENXIO;
+	}
+
 	ret = xocl_exec_create_client(drm_p->xdev, &filp->driver_priv);
-	if (ret)
+	if (ret) {
+		xocl_drvinst_close(drm_p);
 		goto failed;
+	}
 
 	return 0;
 
@@ -296,6 +268,7 @@ static void xocl_client_release(struct drm_device *dev, struct drm_file *filp)
 	struct xocl_drm	*drm_p = dev->dev_private;
 
 	xocl_exec_destroy_client(drm_p->xdev, &filp->driver_priv);
+	xocl_drvinst_close(drm_p);
 }
 
 static uint xocl_poll(struct file *filp, poll_table *wait)
@@ -355,12 +328,12 @@ static long xocl_drm_ioctl(struct file *filp,
 
 static const struct file_operations xocl_driver_fops = {
 	.owner		= THIS_MODULE,
-	.open		= xocl_open,
+	.open		= drm_open,
 	.mmap		= xocl_mmap,
 	.poll		= xocl_poll,
 	.read		= drm_read,
 	.unlocked_ioctl = xocl_drm_ioctl,
-	.release	= xocl_release,
+	.release	= drm_release,
 };
 
 static const struct vm_operations_struct xocl_vm_ops = {
