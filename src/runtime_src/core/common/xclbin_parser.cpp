@@ -145,6 +145,20 @@ get_debug_ips(const axlf* top)
   return ips;
 }
 
+uint32_t
+get_cu_control(const axlf* top, uint64_t cuaddr)
+{
+  auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
+  if (!ip_layout)
+    throw std::runtime_error("No such CU at address: " + std::to_string(cuaddr));
+  for (int32_t count=0; count <ip_layout->m_count; ++count) {
+    const auto& ip_data = ip_layout->m_ip_data[count];
+    if (ip_data.m_base_address == cuaddr)
+      return ((ip_data.properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT);
+  }
+  throw std::runtime_error("No such CU at address: " + std::to_string(cuaddr));
+}
+
 uint64_t
 get_cu_base_offset(const axlf* top)
 {
