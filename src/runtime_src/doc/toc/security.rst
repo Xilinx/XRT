@@ -16,14 +16,14 @@ The Shell peripherals shaded blue can only be accessed from physical function 0.
 peripheral shaded violet can be accessed from physical function 1. The Shell provides a
 control path and a data path to the user compiled image loaded on DFX partition. The Firewalls
 protect the Shell from DFX partition. For example if a slave in DFX has a bug or is malicious
-the firewalls step in and protect the Shell from the failing slave.
+the appropriate firewall will step in and protect the Shell from the failing slave.
 
 
 Shell
 =====
 
 The Shell provides core infrastructure to the Alveo platform. It provides connectivity
-to the host PCIe Bus via two physical functions as described in :ref:`platforms.rst`.
+to the host PCIe bus via two physical functions as described in :ref:`platforms.rst`.
 The Shell is *trusted* partition of the Alveo platform and can almost be treated as a
 fixed ASIC of the accelerator. The Shell is loaded on system boot from PROM. The Shell
 cannot be changed once the system is up.
@@ -45,9 +45,9 @@ Dynamic Function eXchange
 
 User compiled image packaged as xclbin is loaded on the Dynamic Functional eXchange
 partition by the Shell. The image may be signed with a private key and its public
-key should be registered with Linux kernel keyring. The signature is validated by xmgmt
+key should be registered with Linux kernel keyring. The signature is validated by xclmgmt
 driver. This guarantees that only known good user compiled images are loaded by the Shell.
-The image load is itself effected by xmgmt driver which binds to the Physical Function 0.
+The image load is itself effected by xclmgmt driver which binds to the mgPhysical Function 0.
 
 xclbin is a container which packs FPGA bitstream for the DFX partition and host of related
 metadata like clock frequencies, information about instantiated compute units, etc. The
@@ -100,7 +100,7 @@ Pass-through Virtualization
 In Pass-through Virtualization deployment model, management physical function is only visible to the host
 but user physical function is visible to the guest VM. Users in guest VM cannot perform any privileged
 operation like updating flash image or device reset. Since xclbin downloads are done by xclmgmt driver
-xclbins are passed on to the host via a plugin based MPD/MSD framework :ref:`mailbox.main.rst`. Host can
+xclbins are passed on to the host via a plugin based MPD/MSD defined in :ref:`mailbox.main.rst`. Host can
 add any extra checks necessary to validate xclbins received from guest VM. This deployment model is ideal
 for public cloud where host does not trust the guest VM. This is the prevalent deployment model for FaaS
 operators.
@@ -110,8 +110,11 @@ Signing of Xclbins
 
 xclbin signing process is similar to signing of Linux kernel modules. xclbins can be signed by XRT utility,
 ``xclbinutil``. The signing adds a PKCS7 signature at the end of xclbin. The signing certificate is then
-registered with system key-ring. When xclbin is provided to xclmgmt driver it validates the signature
-of xclbin against the certificates in its key ring.
+registered with system key-ring. When xclbin is provided to xclmgmt driver it will refuse to load xclbin
+if xclbin signature valiation fails against the certificates in its key ring.
 
 Mailbox
-======
+=======
+
+Mailbox is used for communication between user physical function driver, xocl and management physical
+function driver, xclmgmt. :ref:`mailbox.main.rst` has details on mailbox usage.
