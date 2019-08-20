@@ -36,6 +36,7 @@ struct subCmd {
 static const std::map<std::string, struct subCmd> subCmdList = {
     { "help", {helpHandler, subCmdHelpDesc, subCmdHelpUsage} },
     { "version", {versionHandler, subCmdVersionDesc, subCmdVersionUsage} },
+    { "--version", {versionHandler, subCmdVersionDesc, subCmdVersionUsage} },
     { "scan", {scanHandler, subCmdScanDesc, subCmdScanUsage} },
     { "flash", {flashHandler, subCmdFlashDesc, subCmdFlashUsage} },
     { "reset", {resetHandler, subCmdResetDesc, subCmdResetUsage} },

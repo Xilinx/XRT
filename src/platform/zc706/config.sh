@@ -41,16 +41,17 @@ config_kernel()
 
 # The first argument is the rootfs configure file
 #  config_rootfs project-spec/configs/rootfs_config
-#config_rootfs()
-#{
-#	ROOTFS_CONFIG_FILE=$1
-#	echo 'CONFIG_xrt=y'                 >> $ROOTFS_CONFIG_FILE
-#	echo 'CONFIG_mnt-sd=y'              >> $ROOTFS_CONFIG_FILE
-#	echo 'CONFIG_xrt-dev=y'             >> $ROOTFS_CONFIG_FILE
-#	echo 'CONFIG_zocl=y'                >> $ROOTFS_CONFIG_FILE
-#	echo 'CONFIG_opencl-headers-dev=y'  >> $ROOTFS_CONFIG_FILE
-#	echo 'CONFIG_opencl-clhpp-dev=y'    >> $ROOTFS_CONFIG_FILE
-#}
+config_rootfs()
+{
+	ROOTFS_CONFIG_FILE=$1
+	echo 'CONFIG_xrt=y' 				>> $ROOTFS_CONFIG_FILE
+	echo 'CONFIG_mnt-sd=y' 				>> $ROOTFS_CONFIG_FILE
+	echo 'CONFIG_xrt-dev=y' 			>> $ROOTFS_CONFIG_FILE
+	echo 'CONFIG_zocl=y' 				>> $ROOTFS_CONFIG_FILE
+	echo 'CONFIG_opencl-headers-dev=y' 	>> $ROOTFS_CONFIG_FILE
+	echo 'CONFIG_opencl-clhpp-dev=y' 	>> $ROOTFS_CONFIG_FILE
+	echo 'CONFIG_packagegroup-petalinux-opencv=y'    >> $ROOTFS_CONFIG_FILE
+}
 
 # The first argument is the rootfs configure file
 #  config_dts recipes-bsp/device-tree/files/system-user.dtsi

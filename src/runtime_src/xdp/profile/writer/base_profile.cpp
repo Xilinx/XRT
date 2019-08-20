@@ -295,33 +295,20 @@ namespace xdp {
   void ProfileWriterI::writeKernelTransferSummary(const std::string& deviceName,
       const std::string& cuPortName, const std::string& argNames, const std::string& memoryName,
 	  const std::string& transferType, uint64_t totalBytes, uint64_t totalTranx,
-	  double totalKernelTimeMsec, double totalTransferTimeMsec, double maxTransferRateMBps)
+	  double totalTxTimeMsec, double totalTxLatencyMsec, double maxTransferRateMBps)
   {
-    //double aveTimeMsec = stats.getAveTime();
-    double aveTimeMsec = (totalTranx == 0) ? 0.0 : totalTransferTimeMsec / totalTranx;
-
-    // Get min/average/max bytes per transaction
-    // NOTE: to remove the dependency on trace, we calculate it based on counter values
-    //       also, v1.1 of Alpha Data DSA has incorrect AXI lengths so these will always be 16K
-#if 0
-    double minBytes = (double)(stats.getMin());
-    double aveBytes = (double)(stats.getAverage());
-    double maxBytes = (double)(stats.getMax());
-#else
+    double aveLatencyMsec = (totalTranx == 0) ? 0.0 : totalTxLatencyMsec / totalTranx;
     double aveBytes = (totalTranx == 0) ? 0.0 : (double)(totalBytes) / totalTranx;
-    //double minBytes = aveBytes;
-    //double maxBytes = aveBytes;
-#endif
 
-    double transferRateMBps = (totalKernelTimeMsec == 0) ? 0.0 :
-        totalBytes / (1000.0 * totalKernelTimeMsec);
+    double transferRateMBps = (totalTxTimeMsec == 0) ? 0.0 :
+        totalBytes / (1000.0 * totalTxTimeMsec);
     double aveBWUtil = (100.0 * transferRateMBps) / maxTransferRateMBps;
     if (aveBWUtil > 100.0)
       aveBWUtil = 100.0;
 
     if (aveBWUtil > 0) {
       XDP_LOG("Kernel %s: Transfered %u bytes in %.3f msec (device: %s)\n",
-          transferType.c_str(), totalBytes, totalKernelTimeMsec, deviceName.c_str());
+          transferType.c_str(), totalBytes, totalTxTimeMsec, deviceName.c_str());
       XDP_LOG("  AveBWUtil = %.3f = %.3f / %.3f\n",
           aveBWUtil, transferRateMBps, maxTransferRateMBps);
     }
@@ -338,7 +325,7 @@ namespace xdp {
     writeTableRowStart(getStream());
     writeTableCells(getStream(), deviceName, cuPortName2, argNames, memoryName2,
     	transferType, totalTranx, transferRateMBps, aveBWUtil,
-        aveBytes/1000.0, 1.0e6*aveTimeMsec);
+        aveBytes/1000.0, 1.0e6*aveLatencyMsec);
 
     writeTableRowEnd(getStream());
   }
@@ -353,8 +340,7 @@ namespace xdp {
       double totalWriteTimeMsec, double totalReadTimeMsec,
       uint32_t maxBytesPerTransfer, double maxTransferRateMBps)
   {
-    double totalTimeMsec = (totalWriteTimeMsec > totalReadTimeMsec) ?
-        totalWriteTimeMsec : totalReadTimeMsec;
+    double totalTimeMsec = totalWriteTimeMsec + totalReadTimeMsec;
 
     double transferRateMBps = (totalTimeMsec == 0) ? 0.0 :
         (double)(totalReadBytes + totalWriteBytes) / (1000.0 * totalTimeMsec);

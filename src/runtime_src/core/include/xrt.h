@@ -1057,6 +1057,17 @@ XCL_DRIVER_DLLESPEC int xclRegRead(xclDeviceHandle handle, uint32_t cu_index, ui
  */
 XCL_DRIVER_DLLESPEC int xclRegWrite(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t data);
 
+/**
+ * xclCuName2Index() - Obtain CU index by CU name
+ *
+ * @handle:        Device handle
+ * @cu_name:       CU name
+ * @cu_index:      Pointer to CU index
+ * Return:         0 or appropriate error number
+ *
+ */
+XCL_DRIVER_DLLESPEC int xclCuName2Index(xclDeviceHandle handle, const char *cu_name, uint32_t *cu_index);
+
 XCL_DRIVER_DLLESPEC size_t xclDebugReadIPStatus(xclDeviceHandle handle, enum xclDebugReadType type,
                                                                            void* debugResults);
 

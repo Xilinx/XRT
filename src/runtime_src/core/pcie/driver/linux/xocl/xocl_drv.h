@@ -650,7 +650,7 @@ struct xocl_mb_funcs {
 		u32 len);
 	int (*load_sche_image)(struct platform_device *pdev, const char *buf,
 		u32 len);
-	int (*get_data)(struct platform_device *pdev, void *buf);
+	int (*get_data)(struct platform_device *pdev, enum group_kind kind, void *buf);
 	int (*dr_freeze)(struct platform_device *pdev);
 	int (*dr_free)(struct platform_device *pdev);
 };
@@ -675,8 +675,8 @@ struct xocl_mb_funcs {
 	(MB_CB(xdev, load_sche_image) ? MB_OPS(xdev)->load_sche_image(MB_DEV(xdev), buf, len) :\
 	-ENODEV)
 
-#define xocl_xmc_get_data(xdev, buf)			\
-	(MB_CB(xdev, get_data) ? MB_OPS(xdev)->get_data(MB_DEV(xdev), buf) : -ENODEV)
+#define xocl_xmc_get_data(xdev, kind, buf)			\
+	(MB_CB(xdev, get_data) ? MB_OPS(xdev)->get_data(MB_DEV(xdev), kind, buf) : -ENODEV)
 
 #define xocl_xmc_dr_freeze(xdev)		\
 	(MB_CB(xdev, dr_freeze) ? MB_OPS(xdev)->dr_freeze(MB_DEV(xdev)) : -ENODEV)

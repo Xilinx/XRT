@@ -428,51 +428,20 @@ void get_pcie_link_info(struct xocl_dev *xdev,
 	*link_speed = stat & PCI_EXP_LNKSTA_CLS;
 }
 
-static uint64_t xocl_read_from_peer(struct xocl_dev *xdev, enum data_kind kind)
+uint64_t xocl_get_data(struct xocl_dev *xdev, enum data_kind kind)
 {
-	struct mailbox_subdev_peer subdev_peer = {0};
-	struct xcl_common resp = {0};
-	size_t resp_len = sizeof(resp);
-	size_t data_len = sizeof(struct mailbox_subdev_peer);
-	struct mailbox_req *mb_req = NULL;
-	size_t reqlen = sizeof(struct mailbox_req) + data_len;
-	int err = 0, ret = 0;
-
-	userpf_info(xdev, "reading from peer\n");
-	mb_req = vmalloc(reqlen);
-	if (!mb_req)
-		return ret;
-
-	mb_req->req = MAILBOX_REQ_PEER_DATA;
-
-	subdev_peer.size = resp_len;
-	subdev_peer.kind = MGMT;
-	subdev_peer.entries = 1;
-
-	memcpy(mb_req->data, &subdev_peer, data_len);
-
-	err = xocl_peer_request(xdev,
-		mb_req, reqlen, &resp, &resp_len, NULL, NULL, 0);
-
-	if (err)
-		goto done;
+	uint64_t ret = 0;
 
 	switch (kind) {
 	case MIG_CALIB:
-		ret = resp.mig_calib;
+		ret = xocl_icap_get_data(xdev, MIG_CALIB);
 		break;
 	default:
 		userpf_err(xdev, "dropped bad request (%d)\n", kind);
 		break;
 	}
-done:
-	vfree(mb_req);
-	return ret;
-}
 
-uint64_t xocl_get_data(struct xocl_dev *xdev, enum data_kind kind)
-{
-	return xocl_read_from_peer(xdev, kind);
+	return ret;
 }
 
 int xocl_refresh_subdevs(struct xocl_dev *xdev)
