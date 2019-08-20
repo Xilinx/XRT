@@ -1472,6 +1472,65 @@ int shim::xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data)
     return xclRegRW(false, cu_index, offset, &data);
 }
 
+int shim::xclCuName2Index(const char *name, uint32_t& index)
+{
+    std::string errmsg;
+    std::vector<char> buf;
+    const uint64_t bad_addr = 0xffffffffffffffff;
+
+    mDev->sysfs_get("icap", "ip_layout", errmsg, buf);
+    if (!errmsg.empty()) {
+        xclLog(XRT_ERROR, "XRT", "can't read ip_layout sysfs node: %s",
+            errmsg.c_str());
+        return -EINVAL;
+    }
+    if (buf.empty())
+        return -ENOENT;
+    
+    const ip_layout *map = (ip_layout *)buf.data();
+    if(map->m_count < 0) {
+        xclLog(XRT_ERROR, "XRT", "invalid ip_layout sysfs node content");
+        return -EINVAL;
+    }
+
+    uint64_t addr = bad_addr;
+    int i;
+    for(i = 0; i < map->m_count; i++) {
+        if (strncmp((char *)map->m_ip_data[i].m_name, name,
+                sizeof(map->m_ip_data[i].m_name)) == 0) {
+            addr = map->m_ip_data[i].m_base_address;
+            break;
+        }
+    }
+    if (i == map->m_count)
+        return -ENOENT;
+    if (addr == bad_addr)
+        return -EINVAL;
+
+    std::vector<std::string> custat;
+    mDev->sysfs_get("mb_scheduler", "kds_custat", errmsg, custat);
+    if (!errmsg.empty()) {
+        xclLog(XRT_ERROR, "XRT", "can't read kds_custat sysfs node: %s",
+            errmsg.c_str());
+        return -EINVAL;
+    }
+
+    uint32_t idx = 0;
+    for (auto& line : custat) {
+        // convert and compare parsed hex address CU[@0x[0-9]+]
+        size_t pos = line.find("0x");
+        if (pos == std::string::npos)
+            continue;
+        if (static_cast<int>(addr) == std::stoi(line.substr(pos), 0, 16)) {
+            index = idx;
+            return 0;
+        }
+        ++idx;
+    }
+
+    return -ENOENT;
+}
+
 } // namespace xocl
 
 /*******************************/
@@ -1821,5 +1880,8 @@ int xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz
   return (drv) ? drv->xclReadTraceData(traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample) : -ENODEV;
 }
 
-
-
+int xclCuName2Index(xclDeviceHandle handle, const char *name, uint32_t *indexp)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  return (drv) ? drv->xclCuName2Index(name, *indexp) : -ENODEV;
+}
