@@ -27,7 +27,7 @@
 #include <sstream>
 #include <string>
 
-#include "xclhal2.h"
+#include "xrt.h"
 #include "xclperf.h"
 #include "xcl_axi_checker_codes.h"
 #include "core/pcie/common/dmatest.h"
