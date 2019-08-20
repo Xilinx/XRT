@@ -191,8 +191,11 @@ zocl_hls_configure(void *core, u32 *data, size_t sz, int type)
 		 * The data in the command is 32 bits.
 		 * Obviously, it could not support CU at outside of 4GB.
 		 * One solution is use resgiter {offset, value} pairs instead.
+		 *
+		 * Skip 6 data, since this is how user layer construct the
+		 * command.
 		 */
-		for (i = 4; i < sz - 1; i += 2) {
+		for (i = 6; i < sz - 1; i += 2) {
 			/* TODO: Need clearly define the CU address in the
 			 * XCLBIN.
 			 * For DC, the address is the PCIe BAR offset
@@ -359,6 +362,10 @@ zocl_acc_configure(void *core, u32 *data, size_t sz, int type)
 	if (type != PAIRS)
 		return;
 
+	/*
+	 * Same open issue like HLS adapter
+	 * Skip 6 data,this is how user layer construct the command.
+	 */
 	for (i = 4; i < sz - 1; i += 2) {
 		offset = *(data + i) - cu_core->paddr;
 		val = *(data + i + 1);
