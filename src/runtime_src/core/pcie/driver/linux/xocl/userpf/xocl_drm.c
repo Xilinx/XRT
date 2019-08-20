@@ -64,16 +64,17 @@ static int xocl_open(struct inode *inode, struct file *filp)
 	struct drm_device *ddev;
 	int ret;
 
-	ret = drm_open(inode, filp);
-	if (ret)
-		return ret;
-
 	priv = filp->private_data;
 	ddev = priv->minor->dev;
 	drm_p = xocl_drvinst_open(ddev);
 	if (!drm_p) {
-		drm_release(inode, filp);
 		return -ENXIO;
+	}
+
+	ret = drm_open(inode, filp);
+	if (ret) {
+		xocl_drvinst_close(drm_p);
+		return ret;
 	}
 
 	return 0;
