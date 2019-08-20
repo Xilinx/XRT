@@ -1056,25 +1056,29 @@ public:
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Compute Unit Status\n";
         try {
-          int cu_i = 0;
           for (auto& v : sensor_tree::get_child( "board.compute_unit" )) {
             int index = std::stoi(v.first);
             if( index >= 0 ) {
+              uint32_t cu_i;
               std::string cu_n, cu_s, cu_ba;
               for (auto& subv : v.second) {
-                if( subv.first == "name" )
+                if( subv.first == "name" ) {
                   cu_n = subv.second.get_value<std::string>();
-                else if( subv.first == "base_address" ) {
+                } else if( subv.first == "base_address" ) {
                   auto addr = subv.second.get_value<uint64_t>();
-		  cu_ba = (addr == (uint64_t)-1) ? "N/A" : sensor_tree::pretty<uint64_t>(addr, "N/A", true);
-		} else if( subv.first == "status" )
+                  cu_ba = (addr == (uint64_t)-1) ? "N/A" : sensor_tree::pretty<uint64_t>(addr, "N/A", true);
+                } else if( subv.first == "status" ) {
                   cu_s = subv.second.get_value<std::string>();
+                }
               }
-              ostr << "CU[" << std::right << std::setw(2) << cu_i << "]: "
-                   << std::left << std::setw(32) << cu_n
+              if (xclCuName2Index(m_handle, cu_n.c_str(), &cu_i) != 0) {
+                ostr << "CU: ";
+              } else {
+                ostr << "CU[" << std::right << std::setw(2) << cu_i << "]: ";
+              }
+              ostr << std::left << std::setw(32) << cu_n
                    << "@" << std::setw(18) << std::hex << cu_ba
                    << cu_s << std::endl;
-	      cu_i++;
             }
           }
         }
