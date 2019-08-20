@@ -713,7 +713,6 @@ configure(struct sched_cmd *cmd)
 	exec->num_slots       = CQ_SIZE / cfg->slot_size;
 	write_lock(&zdev->attr_rwlock);
 	exec->num_cus         = cfg->num_cus;
-	write_unlock(&zdev->attr_rwlock);
 	exec->cu_shift_offset = cfg->cu_shift;
 	exec->cu_base_addr    = cfg->cu_base_addr;
 	exec->num_cu_masks    = ((exec->num_cus - 1)>>5) + 1;
@@ -740,6 +739,7 @@ configure(struct sched_cmd *cmd)
 		setup_ert_hw(zdev);
 		exec->configured = 1;
 	}
+	write_unlock(&zdev->attr_rwlock);
 
 	exec->zcu = vzalloc(sizeof(struct zocl_cu_new) * exec->num_cus);
 	if (!exec->zcu) {
@@ -748,7 +748,7 @@ configure(struct sched_cmd *cmd)
 	}
 
 	for (i = 0; i < exec->num_cus; i++) {
-		if (cfg->data[i] & ~ZOCL_KDS_MASK == ACCEL_ADAPTER) {
+		if (cfg->data[i] & (~ZOCL_KDS_MASK == ACCEL_ADAPTER)) {
 			/* If the ACCEL adapter is used */
 			acc_cu = 1;
 			if (has_acc_cu == 0)
