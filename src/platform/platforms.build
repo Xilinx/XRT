@@ -12,9 +12,63 @@
 		"###########################################################"
 	],
 	"platforms_to_build": {
-
 		"zcu102_base": "zcu102",
 		"zc702": "zc702"
 	},
-	"platforms_to_copy_sysroot": ["zcu102_base", "zc702"]
+	"platforms_to_copy_sysroot": [
+		"zcu102_base",
+		"zc702"
+	],
+	"platforms_to_build_new": {
+		"zcu104_revmin": {
+			"bsp_key": "zcu104",
+			"package": {
+				"dsabin": false,
+				"dsadev": false,
+				"ta_locations": [""]
+			},
+			"copy": {
+				"from": "${XRT_EMBEDDED_ROOT}",
+				"to": ["${TA_ROOT}/internal_platforms"]
+			}
+		},
+		"zcu102_base": {
+			"bsp_key": "zcu102",
+			"pullrequest_build": true,
+			"sysroot": {
+				"copy": {
+					"from": "${XRT_EMBEDDED_STAGING_ROOT}/sw",
+					"to": "${XRT_EMBEDDED_ROOT}/sw"
+				}
+			},
+			"package": {
+				"dsabin": false,
+				"dsadev": false,
+				"ta_locations": [""]
+			},
+			"copy": {
+				"from": "${XRT_EMBEDDED_ROOT}",
+				"to": ["${TA_ROOT}/internal_platforms"]
+			}
+		},
+		"zc702": {
+			"bsp_key": "zc702",
+			"pullrequest_build": true,
+			"sysroot": {
+				"copy": {
+					"from": "${XRT_EMBEDDED_STAGING_ROOT}/sw",
+					"to": "${XRT_EMBEDDED_ROOT}/sw"
+				}
+			},
+			"package": {
+				"dsabin": false,
+				"dsadev": false,
+				"ta_locations": [""]
+			},
+			"copy": {
+				"from": "${XRT_EMBEDDED_ROOT}",
+				"to": ["${TA_ROOT}/internal_platforms"]
+			}
+		}
+	}
 }
