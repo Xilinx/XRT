@@ -512,13 +512,13 @@ namespace xdp {
 
   void ProfileCounters::writeKernelTransferSummary(ProfileWriterI* writer, std::string& deviceName,
       std::string& cuPortName, const std::string& argNames, const std::string& memoryName,
-      bool isRead, uint64_t totalBytes, uint64_t totalTranx, double totalKernelTimeMsec,
-	  double totalTransferTimeMsec, double maxTransferRateMBps) const
+    bool isRead, uint64_t totalBytes, uint64_t totalTranx, double totalTxTimeMsec,
+    double totalTxLatencyMsec, double maxTransferRateMBps) const
   {
     std::string transferType = (isRead) ? "READ" : "WRITE";
 
     writer->writeKernelTransferSummary(deviceName, cuPortName, argNames, memoryName, transferType,
-    	totalBytes, totalTranx, totalKernelTimeMsec, totalTransferTimeMsec, maxTransferRateMBps);
+      totalBytes, totalTranx, totalTxTimeMsec, totalTxLatencyMsec, maxTransferRateMBps);
   }
 
   void ProfileCounters::writeTopKernelTransferSummary(

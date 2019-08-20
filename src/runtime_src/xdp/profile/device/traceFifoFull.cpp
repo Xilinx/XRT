@@ -41,6 +41,7 @@
 
 #include<iomanip>
 #include<cstring>
+#include <bitset>
 
 #include "core/common/memalign.h"
 #include "xdp/profile/core/rt_util.h"
@@ -330,8 +331,9 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
       traceVector.mArray[i - clockWordIndex + 1] = results;   // save result
 
       if(out_stream) {
+        auto packet_dec = std::bitset<64>(currentSample).to_string();
         (*out_stream) << "  Trace sample " << std::dec << std::setw(5) << i << ": "
-                      << RTUtil::dec2bin(uint32_t(currentSample>>32)) << " " << RTUtil::dec2bin(uint32_t(currentSample&0xFFFFFFFF))
+                      <<  packet_dec.substr(0,19) << " : " << packet_dec.substr(19)
                       << std::endl
                       << " Timestamp : " << results.Timestamp << "   "
                       << "Event Type : " << results.EventType << "   "

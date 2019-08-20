@@ -10,11 +10,11 @@ BIN := $(BLDDIR)/sched.bin
 BSP := $(BLDDIR)/bsp
 RTS := $(SRCDIR)/../..
 
-MYCFLAGS := -I$(BSP)/include -I$(RTS)
-MYLFLAGS :=  -Wl,-T,$(SRCDIR)/lscript.ld
+MYCFLAGS := -I$(BSP)/include -I$(RTS) $(DEFINES)
+MYLFLAGS :=  -Wl,-T,$(BLDDIR)/lscript.ld
 
 $(OBJ): $(SRC) $(BSP).extracted $(RTS)/core/include/ert.h
-	$(CPP) $(MYCFLAGS) $<
+	$(CPP) $(MYCFLAGS) -c -o $@ $<
 
 $(ELF): $(OBJ)
 	$(LINK) $(MYLFLAGS) -o $@ $< -L$(BSP)/lib -lxil

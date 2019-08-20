@@ -235,32 +235,35 @@ shim::~shim()
  */
 int shim::xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* format, va_list args)
 {
-    va_list args_bak;
-    // vsnprintf will mutate va_list so back it up
-    va_copy(args_bak, args);
-    int len = std::vsnprintf(nullptr, 0, format, args_bak);
-    va_end(args_bak);
+    static auto verbosity = xrt_core::config::get_verbosity();
+    if (level <= verbosity) {
+        va_list args_bak;
+        // vsnprintf will mutate va_list so back it up
+        va_copy(args_bak, args);
+        int len = std::vsnprintf(nullptr, 0, format, args_bak);
+        va_end(args_bak);
 
-    if (len < 0) {
-        //illegal arguments
-        std::string err_str = "ERROR: Illegal arguments in log format string. ";
-        err_str.append(std::string(format));
-        xrt_core::message::send((xrt_core::message::severity_level)level, tag, err_str.c_str());
-        return len;
+        if (len < 0) {
+          //illegal arguments
+          std::string err_str = "ERROR: Illegal arguments in log format string. ";
+          err_str.append(std::string(format));
+          xrt_core::message::send((xrt_core::message::severity_level)level, tag, err_str);
+          return len;
+        }
+        ++len; //To include null terminator
+
+        std::vector<char> buf(len);
+        len = std::vsnprintf(buf.data(), len, format, args);
+
+        if (len < 0) {
+          //error processing arguments
+          std::string err_str = "ERROR: When processing arguments in log format string. ";
+          err_str.append(std::string(format));
+          xrt_core::message::send((xrt_core::message::severity_level)level, tag, err_str.c_str());
+          return len;
+        }
+        xrt_core::message::send((xrt_core::message::severity_level)level, tag, buf.data());
     }
-    ++len; //To include null terminator
-
-    std::vector<char> buf(len);
-    len = std::vsnprintf(buf.data(), len, format, args);
-
-    if (len < 0) {
-        //error processing arguments
-        std::string err_str = "ERROR: When processing arguments in log format string. ";
-        err_str.append(std::string(format));
-        xrt_core::message::send((xrt_core::message::severity_level)level, tag, err_str.c_str());
-        return len;
-    }
-    xrt_core::message::send((xrt_core::message::severity_level)level, tag, buf.data());
 
     return 0;
 }
@@ -482,7 +485,8 @@ void shim::xclSysfsGetErrorStatus(xclErrorStatus& stat)
     mDev->sysfs_get("firewall", "detected_time", errmsg, time);
 
     stat.mNumFirewalls = XCL_FW_MAX_LEVEL;
-    stat.mFirewallLevel = level;
+    if (level < XCL_FW_MAX_LEVEL)
+        stat.mFirewallLevel = level;
     for (unsigned i = 0; i < stat.mNumFirewalls; i++) {
         stat.mAXIErrorStatus[i].mErrFirewallID = static_cast<xclFirewallID>(i);
     }
@@ -645,10 +649,8 @@ int shim::p2pEnable(bool enable, bool force)
 
     int p2p_enable = EINVAL;
     mDev->sysfs_get("", "p2p_enable", err, p2p_enable);
-    if (p2p_enable < 0)
-        return p2p_enable;
 
-    return 0;
+    return p2p_enable;
 }
 
 /*
