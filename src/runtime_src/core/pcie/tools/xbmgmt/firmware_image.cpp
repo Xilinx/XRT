@@ -397,7 +397,7 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
         std::regex e("^" FORMATTED_FW_DIR "/" hex_digit "-" hex_digit "-" hex_digit "/(.+)/(.+)/(.+)/" hex_digit "\\." + t);
         std::cmatch cm;
 
-        for (recursive_directory_iterator iter(formatted_fw_dir), end;
+        for (recursive_directory_iterator iter(formatted_fw_dir, symlink_option::recurse), end;
             iter != end;
             ++iter)
         {
@@ -416,6 +416,9 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
                 std::string build_ident = cm.str(6);
                 DSAInfo dsa(name, vid, did, subsys_id, pr_family, pr_name, build_ident);
                 installedDSA.push_back(dsa);
+                iter.pop();
+                if (iter == end)
+                    break;
             }
         }
     }
