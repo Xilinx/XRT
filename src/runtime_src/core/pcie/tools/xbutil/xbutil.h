@@ -245,30 +245,16 @@ public:
 
     float sysfs_power() const
     {
-        unsigned short m12v_pex_vol = 0, m12v_aux_curr = 0;
-        unsigned long long power = 0, m12v_pex_curr = 0, m12v_aux_vol = 0;
+        unsigned long long power = 0;
         std::string errmsg;
 
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_pex_vol",  errmsg, m12v_pex_vol );
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_pex_curr", errmsg, m12v_pex_curr );
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_aux_vol",  errmsg, m12v_aux_vol ); 
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_aux_curr", errmsg, m12v_aux_curr );
-        sensor_tree::put( "board.physical.electrical.12v_pex.voltage", m12v_pex_vol ); 
-        sensor_tree::put( "board.physical.electrical.12v_pex.current", m12v_pex_curr );
-        sensor_tree::put( "board.physical.electrical.12v_aux.voltage", m12v_aux_vol ); 
-        sensor_tree::put( "board.physical.electrical.12v_aux.current", m12v_aux_curr );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_power",  errmsg, power);
 
         if (!errmsg.empty()) {
             std::cout << errmsg << std::endl;
-            return -EINVAL;
+            return 0;
         }
 
-        if (m12v_pex_curr != XCL_INVALID_SENSOR_VAL && m12v_pex_curr != XCL_NO_SENSOR_DEV_LL &&
-            m12v_pex_vol  != XCL_INVALID_SENSOR_VAL && m12v_pex_vol  != XCL_NO_SENSOR_DEV_S) {
-            power = m12v_pex_curr * m12v_pex_vol + m12v_aux_curr * m12v_aux_vol;
-        } else {
-            return -EINVAL;
-        }
         return (float)power / 1000000;
     }
 
@@ -279,7 +265,7 @@ public:
         ss << std::left << "\n";
         ss << std::setw(16) << "Power" << "\n";
 
-        if(power != -EINVAL) {
+        if (power) {
             ss << std::to_string(power).substr(0, 4) + "W" << "\n";
         } else {
             ss << std::setw(16) << "Not support" << "\n";
@@ -702,9 +688,16 @@ public:
         sensor_tree::put( "board.physical.thermal.cage.temp3", temp3);
 
         //electrical
+        unsigned long long m12v_pex_curr = 0, m12v_aux_vol = 0;
         unsigned short m3v3_pex_vol = 0, m3v3_aux_vol = 0, ddr_vpp_btm = 0, ddr_vpp_top = 0, 
                        sys_5v5 = 0, m1v2_top = 0, m1v2_btm = 0, m1v8 = 0, m0v85 = 0, mgt0v9avcc = 0, 
-                       m12v_sw = 0, mgtavtt = 0, vccint_vol = 0, vccint_curr = 0;
+                       m12v_sw = 0, mgtavtt = 0, vccint_vol = 0, vccint_curr = 0,  
+                       m12v_pex_vol = 0, m12v_aux_curr = 0;
+
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_pex_vol",  errmsg, m12v_pex_vol );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_pex_curr", errmsg, m12v_pex_curr );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_aux_vol",  errmsg, m12v_aux_vol ); 
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_aux_curr", errmsg, m12v_aux_curr );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_3v3_pex_vol", errmsg, m3v3_pex_vol );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_3v3_aux_vol", errmsg, m3v3_aux_vol ); 
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_ddr_vpp_btm", errmsg, ddr_vpp_btm ); 
@@ -719,6 +712,10 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_mgtavtt",     errmsg, mgtavtt );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_vccint_vol",  errmsg, vccint_vol );
         pcidev::get_dev(m_idx)->sysfs_get("xmc", "xmc_vccint_curr",  errmsg, vccint_curr);
+        sensor_tree::put( "board.physical.electrical.12v_pex.voltage",        m12v_pex_vol ); 
+        sensor_tree::put( "board.physical.electrical.12v_pex.current",        m12v_pex_curr );
+        sensor_tree::put( "board.physical.electrical.12v_aux.voltage",        m12v_aux_vol ); 
+        sensor_tree::put( "board.physical.electrical.12v_aux.current",        m12v_aux_curr );
         sensor_tree::put( "board.physical.electrical.3v3_pex.voltage",        m3v3_pex_vol );
         sensor_tree::put( "board.physical.electrical.3v3_aux.voltage",        m3v3_aux_vol );
         sensor_tree::put( "board.physical.electrical.ddr_vpp_bottom.voltage", ddr_vpp_btm );
@@ -742,7 +739,7 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "firewall", "detected_level",  errmsg, level );
         pcidev::get_dev(m_idx)->sysfs_get( "firewall", "detected_status", errmsg, status ); 
         sensor_tree::put( "board.error.firewall.firewall_level", level );
-        sensor_tree::put( "board.error.firewall.status",         parseFirewallStatus(status) );
+        sensor_tree::put( "board.error.firewall.status",         parseFirewallStatus(status));
         
         // memory
         xclDeviceUsage devstat = { 0 };

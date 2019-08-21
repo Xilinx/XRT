@@ -916,6 +916,26 @@ SENSOR_SYSFS_NODE(xmc_vpp2v5_vol, VOL_VPP_2V5);
 SENSOR_SYSFS_NODE(xmc_vccint_bram_vol, VOL_VCCINT_BRAM);
 SENSOR_SYSFS_NODE(xmc_hbm_temp, HBM_TEMP);
 
+static ssize_t xmc_power_show(struct device *dev,
+	struct device_attribute *da, char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 v_pex, v_aux, v_3v3, c_pex, c_aux, c_3v3;
+	u64 val;
+
+	xmc_sensor(xmc->pdev, VOL_12V_PEX, &v_pex, SENSOR_INS);
+	xmc_sensor(xmc->pdev, VOL_12V_AUX, &v_aux, SENSOR_INS);
+	xmc_sensor(xmc->pdev, CUR_12V_PEX, &c_pex, SENSOR_INS);
+	xmc_sensor(xmc->pdev, CUR_12V_AUX, &c_aux, SENSOR_INS);
+	xmc_sensor(xmc->pdev, VOL_3V3_PEX, &v_3v3, SENSOR_INS);
+	xmc_sensor(xmc->pdev, CUR_3V3_PEX, &c_3v3, SENSOR_INS);
+
+	val = (u64)v_pex * c_pex + (u64)v_aux * c_aux + (u64)v_3v3 * c_3v3;
+
+	return sprintf(buf, "%lld\n", val);
+}
+static DEVICE_ATTR_RO(xmc_power);
+
 #define	SENSOR_SYSFS_NODE_ATTRS						\
 	&dev_attr_xmc_12v_pex_vol.attr,					\
 	&dev_attr_xmc_12v_aux_vol.attr,					\
@@ -955,7 +975,8 @@ SENSOR_SYSFS_NODE(xmc_hbm_temp, HBM_TEMP);
 	&dev_attr_xmc_hbm_1v2_vol.attr,					\
 	&dev_attr_xmc_vpp2v5_vol.attr,					\
 	&dev_attr_xmc_vccint_bram_vol.attr,				\
-	&dev_attr_xmc_hbm_temp.attr
+	&dev_attr_xmc_hbm_temp.attr,					\
+	&dev_attr_xmc_power.attr
 
 /*
  * Defining sysfs nodes for reading some of xmc regisers.
@@ -1613,14 +1634,17 @@ static ssize_t hwmon_power_show(struct device *dev,
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	int index = to_sensor_dev_attr(da)->index;
-	u32 v_pex, v_aux, c_pex, c_aux;
+	u32 v_pex, v_aux, v_3v3, c_pex, c_aux, c_3v3;
 	u64 val;
 
 	xmc_sensor(pdev, VOL_12V_PEX, &v_pex, HWMON_INDEX2VAL_KIND(index));
 	xmc_sensor(pdev, VOL_12V_AUX, &v_aux, HWMON_INDEX2VAL_KIND(index));
 	xmc_sensor(pdev, CUR_12V_PEX, &c_pex, HWMON_INDEX2VAL_KIND(index));
 	xmc_sensor(pdev, CUR_12V_AUX, &c_aux, HWMON_INDEX2VAL_KIND(index));
-	val = (u64)v_pex * c_pex + (u64)v_aux * c_aux;
+	xmc_sensor(pdev, VOL_3V3_PEX, &v_3v3, HWMON_INDEX2VAL_KIND(index));
+	xmc_sensor(pdev, CUR_3V3_PEX, &c_3v3, HWMON_INDEX2VAL_KIND(index));
+
+	val = (u64)v_pex * c_pex + (u64)v_aux * c_aux + (u64)v_3v3 * c_3v3;
 	return sprintf(buf, "%lld\n", val);
 }
 
