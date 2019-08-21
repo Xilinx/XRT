@@ -3,12 +3,32 @@ XRT can support a few well-defined kernel execution models.  In HLS flow, depend
 
 At the low level, the kernels are controlled by the XRT through the control and status register that lies on the AXI4-Lite Slave interface. The control and status register is mapped at the address 0x0 of the AXI4-Lite Slave interface. 
 
-Below we will discuss the excution models in detail.
+The list of primary supported excution models are:
 
 1. AP_CTRL_HS
 2. AP_CTRL_CHAIN
 3. AP_CTRL_NONE
 
+The IP_LAYOUT section of the kernel xclbin metadata contains the kernel execution model information. The xclbinutil utility command can be used to retrieve the information from a xclbin file. 
+
+.. code-block::
+    
+   xclbinutil --info --input binary_container_1.xclbin --dump-section IP_LAYOUT:json:ip_layout_info.json
+
+.. code-block:: json
+
+   {
+    "ip_layout": {
+        "m_count": "5",
+        "m_ip_data": {
+            "ip_data": {
+                "m_type": "IP_KERNEL",
+                "m_int_enable": "0",
+                "m_interrupt_id": "0",
+                "m_ip_control": "AP_CTRL_HS",
+                
+                
+Below we will discuss each kernel execution model in detail. 
 
 =========================================
 AP_CTRL_HS (Sequentially Executed Kernel)
