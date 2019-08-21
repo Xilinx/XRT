@@ -792,8 +792,13 @@ configure(struct sched_cmd *cmd)
 		 */
 		if (!acc_cu)
 			zocl_cu_init(&exec->zcu[i], MODEL_HLS, cu_addr);
-		else
+		else {
 			zocl_cu_init(&exec->zcu[i], MODEL_ACC, cu_addr);
+			/* ACCEL adapter CU initial finished.
+			 * The next CU might be HLS CU.
+			 */
+			acc_cu = 0;
+		}
 	}
 
 	/* If ERT mode or ACC adapters is used, only support polling mode */
@@ -1037,7 +1042,7 @@ set_cmd_ext_timestamp(struct sched_cmd *cmd, enum zocl_ts_type ts)
 
 	sk = (struct ert_start_kernel_cmd *)cmd->packet;
 
-	/* Simply skip if it is not start CU command */
+	/* Simply skip if it is not start CU and exec write command */
 	if (opc != ERT_START_CU && opc != ERT_EXEC_WRITE)
 		return;
 	/* Use the first 4 32bits in the regmap to record CU start/end time.
@@ -1154,7 +1159,7 @@ cu_done(struct sched_cmd *cmd)
 		if (zdev->exec->cu_status[mask_idx] & 1<<pos)
 			zdev->exec->cu_status[mask_idx] ^= 1<<pos;
 
-		/* This command is completed, refune credit and delete it */
+		/* This command is completed, refund credit and delete it */
 		zocl_cu_refund_credit(cu, 1);
 		list_del(&cmd->rq_list);
 		cu->done_cnt--;
