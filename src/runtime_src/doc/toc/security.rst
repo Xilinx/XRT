@@ -47,7 +47,7 @@ User compiled image packaged as xclbin is loaded on the Dynamic Functional eXcha
 partition by the Shell. The image may be signed with a private key and its public
 key should be registered with Linux kernel keyring. The signature is validated by xclmgmt
 driver. This guarantees that only known good user compiled images are loaded by the Shell.
-The image load is itself effected by xclmgmt driver which binds to the mgPhysical Function 0.
+The image load is itself effected by xclmgmt driver which binds to the Physical Function 0.
 
 xclbin is a container which packs FPGA bitstream for the DFX partition and host of related
 metadata like clock frequencies, information about instantiated compute units, etc. The
@@ -110,8 +110,24 @@ Signing of Xclbins
 
 xclbin signing process is similar to signing of Linux kernel modules. xclbins can be signed by XRT utility,
 ``xclbinutil``. The signing adds a PKCS7 signature at the end of xclbin. The signing certificate is then
-registered with system key-ring. When xclbin is provided to xclmgmt driver it will refuse to load xclbin
-if xclbin signature valiation fails against the certificates in its key ring.
+registered with appropriate key-ring. XRT supports one of three levels of security which can be configured
+with xbmgmt utility running with root privileges.
+
+Level 0
+-------
+
+In this configuration xclmgmt driver does not perform any signature verification
+
+Level 1
+-------
+
+In this configuration xclmgmt driver looks for signing certificate in *.xilinx_fpga_xclbin_keys* key-ring
+
+Level 2
+-------
+
+In this configuration xclmgmt driver is running in UEFI secure mode and only trusts *system* key-ring.
+
 
 Mailbox
 =======

@@ -68,6 +68,8 @@ following functionality:
 14. Hardware mailbox for communication with xclmgmt driver
 
 
+Another section discusses :ref:`security.rst`.
+
 Zynq Ultrascale+ MPSoC Based Embedded Platforms
 ===============================================
 
