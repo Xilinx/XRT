@@ -63,6 +63,7 @@ Assume there are five concurrent kernel execution requests from the host and the
 
 |START1|=>|START2|=>|START3|=>|DONE1|=>|START4|=>|DONE2|=>|START5|=>|DONE3|=>|DONE4|=>|DONE5|
 
+**Note:** As noted in the above sequence, the AP_CTRL_CHAIN only applicable when the kernel produces the outputs for the pending requests in-order. Kernel servicing the requests out-of-order cannot be supported by AP_CTRL_CHAIN execution model. 
 
 **Output synchronization**
 
@@ -101,5 +102,15 @@ Sometimes the kernel does not need to be controlled by the host. For example, if
 1. Consider a kernel with AP_CTRL_NONE only when it has no Memory input and output.
 2. There is no need to start the kernel by *clEnqueueTask* or *clEnqueueNDRangeKernel* from the host. 
 3. Host comminucates with a continuously running kernel by the stream read and write requests, if necessary. 
-4. Dont use clSetKernelArg to pass scalar argument to ap_ctrl_none kernel, only use *xclRegWrite* (API to be implemented in 19.2) API. 
+4. Dont use *clSetKernelArg* to pass scalar argument to ap_ctrl_none kernel, only use *xclRegWrite* (API to be implemented in 19.2) API.
+5. In general, for the purpose of read and write register values from AXI4-Lite Slave interface, the new APIs *xclRegRead/xclRegWrite* are recommended (replacing obsolated APIs *xclRead/xclWrite*). As shown in the code sample below, these APIs requires exclusive CU context reservation via API *xclOpenContext*. 
+
+.. code-block:: c
+    
+   xclOpenContext(device_handle, xclbin_id, cu_index, false);
+   xclRegRead(device_handle, cu_index, offset, &data);
+   xclRegWrite(device_handle, cu_index, offset, data);
+   xclCloseContext(device_handle, xclbin_id, cu_index);
+
+   
 
