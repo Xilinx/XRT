@@ -129,14 +129,22 @@ void scanPartitions(int index, std::vector<DSAInfo>& installedDSAs, bool verbose
 
     auto dev = pcidev::get_dev(index, false);
     std::vector<std::string> uuids;
+    std::vector<std::string> int_uuids;
     std::string errmsg;
     dev->sysfs_get("", "logic_uuids", errmsg, uuids);
     if (!errmsg.empty() || uuids.size() == 0)
         return;
 
+    dev->sysfs_get("", "interface_uuids", errmsg, int_uuids);
+    if (!errmsg.empty() || int_uuids.size() == 0)
+        return;
+
+    DSAInfo dsa("", NULL_TIMESTAMP, uuids.back(), "");
+    if (dsa.name.empty())
+        return;
+
     std::cout << "Card [" << f.sGetDBDF() << "]" << std::endl;
     std::cout << fmt_str << "Programmable partition running on FPGA:" << std::endl;
-    DSAInfo dsa("", NULL_TIMESTAMP, uuids.back(), "");
     std::cout << fmt_str << fmt_str << dsa << std::endl;
 
 
@@ -150,6 +158,8 @@ void scanPartitions(int index, std::vector<DSAInfo>& installedDSAs, bool verbose
     for (auto& dsa : installedDSAs)
     {
         if (dsa.hasFlashImage || dsa.uuids.empty())
+            continue;
+        if (int_uuids[0].compare(dsa.uuids[1]) != 0)
             continue;
 	std::cout << fmt_str << fmt_str << dsa << std::endl;
         if (dsa.uuids.size() > 2)
