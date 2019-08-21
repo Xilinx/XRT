@@ -117,19 +117,12 @@ post_build_hook()
 {
 	PETA_DIR=$1
 	PLATFORM_NAME=`basename ${PETA_DIR}`
-	ORIGINAL_DIR=`pwd`
-
-	mkdir ${PETA_DIR}/tmp
-	unzip -q ${XRT_REPO_DIR}/src/runtime_src/tools/scripts/xsa_build/${PLATFORM_NAME}/${PLATFORM_NAME}.xsa -d ${PETA_DIR}/tmp
-
-	cd $PETA_DIR
 	echo "create boot.bin in `pwd`"
 
-	petalinux-package --boot --fsbl ${PETA_DIR}/images/linux/zynqmp_fsbl.elf --fpga ${PETA_DIR}/tmp/${PLATFORM_NAME}.bit --u-boot ${PETA_DIR}/images/linux/u-boot.elf --pmufw ${PETA_DIR}/images/linux/pmufw.elf --atf ${PETA_DIR}/images/linux/bl31.elf
-	cd $ORIGINAL_DIR
+	cd $PETA_DIR
 
-	rm -rf ${PETA_DIR}/tmp
+	petalinux-package --boot --fsbl ${PETA_DIR}/images/linux/zynqmp_fsbl.elf --fpga ${PETA_DIR}/project-spec/hw-description/${PLATFORM_NAME}.bit --u-boot ${PETA_DIR}/images/linux/u-boot.elf --pmufw ${PETA_DIR}/images/linux/pmufw.elf --atf ${PETA_DIR}/images/linux/bl31.elf
 
-	cp -f ${PETA_DIR}/images/linux/BOOT.BIN ${XRT_REPO_DIR}/src/runtime_src/tools/scripts/xsa_build/${PLATFORM_NAME}/src/${CPU_ARCH}//xrt/image/
+	cp -f ${PETA_DIR}/images/linux/BOOT.BIN ${THIS_CONFIG_SCRIPT_DIR}/src/${CPU_ARCH}/xrt/image/
 }
 
