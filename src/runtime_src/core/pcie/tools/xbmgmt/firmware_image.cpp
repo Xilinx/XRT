@@ -399,7 +399,7 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
 
         for (recursive_directory_iterator iter(formatted_fw_dir, symlink_option::recurse), end;
             iter != end;
-            ++iter)
+            )
         {
             std::string name = iter->path().string();
             std::regex_match(name.c_str(), cm, e);
@@ -417,9 +417,10 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
                 DSAInfo dsa(name, vid, did, subsys_id, pr_family, pr_name, build_ident);
                 installedDSA.push_back(dsa);
                 iter.pop();
-                if (iter == end)
-                    break;
-            }
+            } else if (iter.level() > 4)
+                iter.pop();
+            else
+                ++iter;
         }
     }
 
