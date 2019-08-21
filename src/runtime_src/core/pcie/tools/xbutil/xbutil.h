@@ -177,7 +177,7 @@ public:
 
             uuid_copy(m_uuid, uuid);
 
-            if (xclOpenContext(m_handle, uuid, m_cuidx, true))
+            if (xclOpenContext(m_handle, m_uuid, m_cuidx, true))
                 throw std::runtime_error("ERROR: Unable to lockdown xclbin.");
        
         } catch (std::runtime_error) {
