@@ -30,8 +30,7 @@
 	],
 	"platforms_to_build": {
 		"zcu102_base": "zcu102",
-		"zc702": "zc702"
-		"zc706": "zc706"
+		"zc702": "zc702",
 		"zed": "zed"
 	},
 	"platforms_to_copy_sysroot": [
