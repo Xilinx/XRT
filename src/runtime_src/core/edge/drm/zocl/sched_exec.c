@@ -1701,6 +1701,7 @@ ert_configure_cu(struct sched_cmd *cmd, int cu_idx)
 	zocl_cu_configure(cu, sk->data + sk->extra_cu_masks, size, type);
 
 	zocl_cu_start(cu);
+	list_add_tail(&cmd->rq_list, &cu->running_queue);
 
 	SCHED_DEBUG("<- ert_configure_cu\n");
 }
