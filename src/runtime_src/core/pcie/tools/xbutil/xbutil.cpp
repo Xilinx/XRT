@@ -1395,6 +1395,7 @@ int xcldev::device::testP2p()
     std::vector<char> buf;
     int ret = 0;
     int p2p_enabled = 0;
+    xclbin xclbin(m_idx, -1);
 
     auto dev = pcidev::get_dev(m_idx);
     if (dev == nullptr)
@@ -1545,7 +1546,7 @@ static int m2m_alloc_init_bo(xclDeviceHandle handle, unsigned &boh,
     return 0;
 }
 
-static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int bank_b)
+static int m2mtest_bank(xclDeviceHandle handle, int bank_a, int bank_b)
 {
     unsigned boSrc = NULLBO;
     unsigned boTgt = NULLBO;
@@ -1554,21 +1555,14 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
     int ret = 0;
 
     const size_t boSize = 256L * 1024 * 1024;
-    if (xclOpenContext(handle, uuid, -1, true)) {
-        std::cout << "ERROR: Unable to lockdown xclbin" << std::endl;
-        return -EINVAL;
-    }
 
     //Allocate and init boSrc
-    if(m2m_alloc_init_bo(handle, boSrc, boSrcPtr, boSize, bank_a, 'A')) {
-        xclCloseContext(handle, uuid, -1);
+    if(m2m_alloc_init_bo(handle, boSrc, boSrcPtr, boSize, bank_a, 'A'))
         return -EINVAL;
-    }
 
     //Allocate and init boTgt
     if(m2m_alloc_init_bo(handle, boTgt, boTgtPtr, boSize, bank_b, 'B')) {
         m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
-        xclCloseContext(handle, uuid, -1);
         return -EINVAL;
     }
 
@@ -1580,7 +1574,6 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
     if(xclSyncBO(handle, boTgt, XCL_BO_SYNC_BO_FROM_DEVICE, boSize, 0)) {
         m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
         m2m_free_unmap_bo(handle, boTgt, boTgtPtr, boSize);
-        xclCloseContext(handle, uuid, -1);
         std::cout << "ERROR: Unable to sync target BO" << std::endl;
         return -EINVAL;
     }
@@ -1590,8 +1583,6 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
     // Clean up
     m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
     m2m_free_unmap_bo(handle, boTgt, boTgtPtr, boSize);
-
-    xclCloseContext(handle, uuid, -1);
 
     if (!match) {
         std::cout << "Memory comparison failed" << std::endl;
@@ -1611,11 +1602,10 @@ int xcldev::device::testM2m()
 {
     std::string errmsg;
     std::vector<char> buf;
-    std::string xclbinid;
     int m2m_enabled = 0;
     std::vector<mem_data> usedBanks;
-    uuid_t uuid;
     int ret = 0;
+    xclbin xclbin(m_idx, -1);
 
     auto dev = pcidev::get_dev(m_idx);
     if (dev == nullptr)
@@ -1637,15 +1627,6 @@ int xcldev::device::testM2m()
         return -EINVAL;
     }
 
-    dev->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
-    uuid_parse(xclbinid.c_str(), uuid);
-
-    if(xclbinid.empty()) {
-        std::cout << "WARNING: 'xclbinuuid' invalid, "
-            << "unable to perform M2M Test. Bad xclbin. " << std::endl;
-        return -EINVAL;
-    }
-
     for(int32_t i = 0; i < map->m_count; i++) {
         if(map->m_mem_data[i].m_used)
             usedBanks.insert(usedBanks.end(), map->m_mem_data[i]);
@@ -1660,7 +1641,7 @@ int xcldev::device::testM2m()
         for(uint j = i+1; j < usedBanks.size(); j++) {
             std::cout << usedBanks[i].m_tag << " -> "
                 << usedBanks[j].m_tag << " M2M bandwidth: ";
-            ret = m2mtest_bank(m_handle, uuid, i, j);
+            ret = m2mtest_bank(m_handle, i, j);
             if(ret != 0)
                 return ret;
         }

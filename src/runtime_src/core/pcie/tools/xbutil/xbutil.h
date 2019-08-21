@@ -148,6 +148,53 @@ static const std::map<MEM_TYPE, std::string> memtype_map = {
 
 static const std::map<std::string, command> commandTable(map_pairs, map_pairs + sizeof(map_pairs) / sizeof(map_pairs[0]));
 
+class xclbin {
+public:
+        xclbin(unsigned index, unsigned cu_idx)
+        try 
+        {
+
+            m_idx = index;
+            m_cuidx = cu_idx;
+            m_handle = nullptr;
+
+            std::string devstr = "device[" + std::to_string(m_idx) + "]";
+            m_handle = xclOpen(m_idx, NULL, XCL_QUIET);
+            if (!m_handle)
+                throw std::runtime_error("Failed to open " + devstr);
+
+            std::string xclbinid, errmsg;
+            uuid_t uuid;
+            pcidev::get_dev(m_idx)->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
+
+            if (!errmsg.empty())
+                throw std::runtime_error(errmsg);
+
+            uuid_parse(xclbinid.c_str(), uuid);
+
+            if (uuid_is_null(uuid))
+                throw std::runtime_error("'uuid' invalid, please re-program xclbin.");
+
+            uuid_copy(m_uuid, uuid);
+
+            if (xclOpenContext(m_handle, uuid, m_cuidx, true))
+                throw std::runtime_error("ERROR: Unable to lockdown xclbin.");
+       
+        } catch (std::runtime_error) {
+            xclCloseContext(m_handle, m_uuid, m_cuidx);
+            xclClose(m_handle);
+        }
+        ~xclbin() {
+            xclCloseContext(m_handle, m_uuid, m_cuidx);
+            xclClose(m_handle);
+        }
+private:
+    unsigned m_idx;
+    unsigned m_cuidx;
+    xclDeviceHandle m_handle;
+    uuid_t m_uuid;
+};
+
 class device {
     unsigned int m_idx;
     xclDeviceHandle m_handle;
@@ -1179,6 +1226,8 @@ public:
      * TODO: Refactor this function to be much shorter.
      */
     int dmatest(size_t blockSize, bool verbose) {
+        xclbin xclbin(m_idx, -1);
+
         if (blockSize == 0)
             blockSize = 256 * 1024 * 1024; // Default block size
         
