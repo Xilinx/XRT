@@ -79,6 +79,13 @@
 #define	XMC_SNSR_CHKSUM_REG		0x1A4
 #define	XMC_SNSR_FLAGS_REG		0x1A8
 #define	XMC_HBM_TEMP_REG		0x260
+#define	XMC_VCC3V3_REG			0x26C
+#define	XMC_3V3_PEX_I_REG		0x278
+#define	XMC_VCC0V85_I_REG		0x284
+#define	XMC_HBM_1V2_REG			0x290
+#define	XMC_VPP2V5_REG			0x29C
+#define	XMC_VCCINT_BRAM_REG		0x2A8
+#define	XMC_HBM_TEMP2_REG		0x2B4
 #define	XMC_HOST_MSG_OFFSET_REG		0x300
 #define	XMC_HOST_MSG_ERROR_REG		0x304
 #define	XMC_HOST_MSG_HEADER_REG		0x308
@@ -493,6 +500,24 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 		case VCC_0V85:
 			READ_SENSOR(xmc, XMC_VCC0V85_REG, val, val_kind);
 			break;
+		case VOL_VCC_3V3:
+			READ_SENSOR(xmc, XMC_VCC3V3_REG, val, val_kind);
+			break;
+		case CUR_3V3_PEX:
+			READ_SENSOR(xmc, XMC_3V3_PEX_I_REG, val, val_kind);
+			break;
+		case CUR_VCC_0V85:
+			READ_SENSOR(xmc, XMC_VCC0V85_I_REG, val, val_kind);
+			break;
+		case VOL_HBM_1V2:
+			READ_SENSOR(xmc, XMC_HBM_1V2_REG, val, val_kind);
+			break;
+		case VOL_VPP_2V5:
+			READ_SENSOR(xmc, XMC_VPP2V5_REG, val, val_kind);
+			break;
+		case VOL_VCCINT_BRAM:
+			READ_SENSOR(xmc, XMC_VCCINT_BRAM_REG, val, val_kind);
+			break;
 		default:
 			break;
 		}
@@ -598,6 +623,24 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 			break;
 		case VCC_0V85:
 			*val = xmc->cache->vol_0v85;
+			break;
+		case VOL_VCC_3V3:
+			*val = xmc->cache->vol_3v3_vcc;
+			break;
+		case CUR_3V3_PEX:
+			*val = xmc->cache->cur_3v3_pex;
+			break;
+		case CUR_VCC_0V85:
+			*val = xmc->cache->cur_0v85;
+			break;
+		case VOL_HBM_1V2:
+			*val = xmc->cache->vol_1v2_hbm;
+			break;
+		case VOL_VPP_2V5:
+			*val = xmc->cache->vol_2v5_vpp;
+			break;
+		case VOL_VCCINT_BRAM:
+			*val = xmc->cache->vccint_bram;
 			break;
 		default:
 			break;
@@ -792,6 +835,12 @@ static int xmc_get_data(struct platform_device *pdev, enum group_kind kind, void
 		xmc_sensor(pdev, CAGE_TEMP2, &sensors->cage_temp2, SENSOR_INS);
 		xmc_sensor(pdev, CAGE_TEMP3, &sensors->cage_temp3, SENSOR_INS);
 		xmc_sensor(pdev, HBM_TEMP, &sensors->hbm_temp0, SENSOR_INS);
+		xmc_sensor(pdev, VOL_VCC_3V3, &sensors->vol_3v3_vcc, SENSOR_INS);
+		xmc_sensor(pdev, CUR_3V3_PEX, &sensors->cur_3v3_pex, SENSOR_INS);
+		xmc_sensor(pdev, CUR_VCC_0V85, &sensors->cur_0v85, SENSOR_INS);
+		xmc_sensor(pdev, VOL_HBM_1V2, &sensors->vol_1v2_hbm, SENSOR_INS);
+		xmc_sensor(pdev, VOL_VPP_2V5, &sensors->vol_2v5_vpp, SENSOR_INS);
+		xmc_sensor(pdev, VOL_VCCINT_BRAM, &sensors->vccint_bram, SENSOR_INS);
 		break;
 	case BDINFO:
 		bdinfo = (struct xcl_board_info *)buf;
@@ -859,6 +908,13 @@ SENSOR_SYSFS_NODE(xmc_cage_temp0, CAGE_TEMP0);
 SENSOR_SYSFS_NODE(xmc_cage_temp1, CAGE_TEMP1);
 SENSOR_SYSFS_NODE(xmc_cage_temp2, CAGE_TEMP2);
 SENSOR_SYSFS_NODE(xmc_cage_temp3, CAGE_TEMP3);
+SENSOR_SYSFS_NODE(xmc_3v3_vcc_vol, VOL_VCC_3V3);
+SENSOR_SYSFS_NODE(xmc_3v3_pex_curr, CUR_3V3_PEX);
+SENSOR_SYSFS_NODE(xmc_0v85_curr, CUR_VCC_0V85);
+SENSOR_SYSFS_NODE(xmc_hbm_1v2_vol, VOL_HBM_1V2);
+SENSOR_SYSFS_NODE(xmc_vpp2v5_vol, VOL_VPP_2V5);
+SENSOR_SYSFS_NODE(xmc_vccint_bram_vol, VOL_VCCINT_BRAM);
+SENSOR_SYSFS_NODE(xmc_hbm_temp, HBM_TEMP);
 
 #define	SENSOR_SYSFS_NODE_ATTRS						\
 	&dev_attr_xmc_12v_pex_vol.attr,					\
@@ -892,7 +948,14 @@ SENSOR_SYSFS_NODE(xmc_cage_temp3, CAGE_TEMP3);
 	&dev_attr_xmc_cage_temp0.attr,					\
 	&dev_attr_xmc_cage_temp1.attr,					\
 	&dev_attr_xmc_cage_temp2.attr,					\
-	&dev_attr_xmc_cage_temp3.attr
+	&dev_attr_xmc_cage_temp3.attr,					\
+	&dev_attr_xmc_3v3_vcc_vol.attr,					\
+	&dev_attr_xmc_3v3_pex_curr.attr,				\
+	&dev_attr_xmc_0v85_curr.attr,					\
+	&dev_attr_xmc_hbm_1v2_vol.attr,					\
+	&dev_attr_xmc_vpp2v5_vol.attr,					\
+	&dev_attr_xmc_vccint_bram_vol.attr,				\
+	&dev_attr_xmc_hbm_temp.attr
 
 /*
  * Defining sysfs nodes for reading some of xmc regisers.
@@ -1609,9 +1672,15 @@ HWMON_VOLT_CURR_SYSFS_NODE(in, 11, "0V85", VCC_0V85);
 HWMON_VOLT_CURR_SYSFS_NODE(in, 12, "MGT VTT", VTT_MGTA);
 HWMON_VOLT_CURR_SYSFS_NODE(in, 13, "DDR VPP BOTTOM", VPP_BTM);
 HWMON_VOLT_CURR_SYSFS_NODE(in, 14, "DDR VPP TOP", VPP_TOP);
+HWMON_VOLT_CURR_SYSFS_NODE(in, 15, "VCC 3V3", VOL_VCC_3V3);
+HWMON_VOLT_CURR_SYSFS_NODE(in, 16, "1V2 HBM", VOL_HBM_1V2);
+HWMON_VOLT_CURR_SYSFS_NODE(in, 17, "2V5 VPP", VOL_VPP_2V5);
+HWMON_VOLT_CURR_SYSFS_NODE(in, 18, "VCC INT BRAM", VOL_VCCINT_BRAM);
 HWMON_VOLT_CURR_SYSFS_NODE(curr, 1, "12V PEX Current", CUR_12V_PEX);
 HWMON_VOLT_CURR_SYSFS_NODE(curr, 2, "12V AUX Current", CUR_12V_AUX);
 HWMON_VOLT_CURR_SYSFS_NODE(curr, 3, "VCC INT Current", CUR_VCC_INT);
+HWMON_VOLT_CURR_SYSFS_NODE(curr, 4, "3V3 PEX Current", CUR_3V3_PEX);
+HWMON_VOLT_CURR_SYSFS_NODE(curr, 5, "VCC 0V85 Current", CUR_VCC_0V85);
 HWMON_TEMPERATURE_SYSFS_NODE(1, "PCB TOP FRONT", SE98_TEMP0);
 HWMON_TEMPERATURE_SYSFS_NODE(2, "PCB TOP REAR", SE98_TEMP1);
 HWMON_TEMPERATURE_SYSFS_NODE(3, "PCB BTM FRONT", SE98_TEMP2);
@@ -1647,9 +1716,15 @@ static struct attribute *hwmon_xmc_attributes[] = {
 	HWMON_VOLT_CURR_ATTRS(in, 12),
 	HWMON_VOLT_CURR_ATTRS(in, 13),
 	HWMON_VOLT_CURR_ATTRS(in, 14),
+	HWMON_VOLT_CURR_ATTRS(in, 15),
+	HWMON_VOLT_CURR_ATTRS(in, 16),
+	HWMON_VOLT_CURR_ATTRS(in, 17),
+	HWMON_VOLT_CURR_ATTRS(in, 18),
 	HWMON_VOLT_CURR_ATTRS(curr, 1),
 	HWMON_VOLT_CURR_ATTRS(curr, 2),
 	HWMON_VOLT_CURR_ATTRS(curr, 3),
+	HWMON_VOLT_CURR_ATTRS(curr, 4),
+	HWMON_VOLT_CURR_ATTRS(curr, 5),
 	HWMON_TEMPERATURE_ATTRS(1),
 	HWMON_TEMPERATURE_ATTRS(2),
 	HWMON_TEMPERATURE_ATTRS(3),
