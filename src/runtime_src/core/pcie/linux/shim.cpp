@@ -1520,7 +1520,7 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
     if (!ret) {
       ret = xrt_core::scheduler::init(handle, buffer);
-      START_DEVICE_PROFILING_CB;
+      START_DEVICE_PROFILING_CB(handle);
     }
     return ret;
 }

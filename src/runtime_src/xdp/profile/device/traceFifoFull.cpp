@@ -73,7 +73,7 @@ namespace xdp {
       }
   };
 
-TraceFifoFull::TraceFifoFull(void* handle /** < [in] the xrt hal device handle */,
+TraceFifoFull::TraceFifoFull(Device* handle /** < [in] the xrt or hal device handle */,
                 int index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data)
     : ProfileIP(handle, index, data),
       properties(0),
@@ -128,18 +128,16 @@ uint32_t TraceFifoFull::readTrace(xclTraceResultsVector& traceVector, uint32_t n
     uint32_t traceBufSz = 0;
     uint32_t traceSamples = 0; 
 
-    xrt::device* xrtDevice = getXRTDevice();
-
     /* Get the trace buffer size and actual number of samples for the specific device
      * On Zynq, we store 2 samples per packet in the FIFO. So, actual number of samples
      * will be different from the already calculated "numSamples".
      */
-    xrtDevice->getTraceBufferInfo(numSamples, traceSamples /*actual no. of samples for specific device*/, traceBufSz);
+    getDevice()->getTraceBufferInfo(numSamples, traceSamples /*actual no. of samples for specific device*/, traceBufSz);
     traceVector.mLength = traceSamples;
 
     uint32_t traceBuf[traceBufSz];
     uint32_t wordsPerSample = 1;
-    xrtDevice->readTraceData(traceBuf, traceBufSz, numSamples/* use numSamples */, getBaseAddress(), wordsPerSample);
+    getDevice()->readTraceData(traceBuf, traceBufSz, numSamples/* use numSamples */, getBaseAddress(), wordsPerSample);
 
     processTraceData(traceVector, numSamples, traceBuf, wordsPerSample); 
 

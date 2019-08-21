@@ -171,6 +171,7 @@ enum xclAddressSpace {
     XCL_ADDR_SPACE_DEVICE_RAM = 1,      // Address space for the DDR memory
     XCL_ADDR_KERNEL_CTRL = 2,           // Address space for the OCL Region control port
     XCL_ADDR_SPACE_DEVICE_PERFMON = 3,  // Address space for the Performance monitors
+    XCL_ADDR_SPACE_DEVICE_REG     = 4,  // Address space for device registers.
     XCL_ADDR_SPACE_DEVICE_CHECKER = 5,  // Address space for protocol checker
     XCL_ADDR_SPACE_MAX = 8
 };

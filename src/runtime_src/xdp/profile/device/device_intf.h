@@ -59,7 +59,7 @@ namespace xdp {
 
     // Set device handle
     // NOTE: this is used by write, read, & traceRead
-    void setDeviceHandle(void* xrtDevice);
+    void setDevice(void* devHandle, bool isXrtDevice);
 
     // Debug IP layout
     void     readDebugIPlayout();
@@ -81,18 +81,27 @@ namespace xdp {
     size_t startTrace(xclPerfMonType type, uint32_t startTrigger);
     size_t stopTrace(xclPerfMonType type);
     size_t readTrace(xclPerfMonType type, xclTraceResultsVector& traceVector);
+
     /** Trace S2MM Management
-     * The BO is managed internal to device
      */
     bool hasTs2mm() {return (traceDMA != nullptr);};
-    bool initTs2mm(uint64_t bo_size);
+    void initTS2MM(uint64_t bufferSz, uint64_t bufferAddr);
+    void resetTS2MM();
+    uint8_t  getTS2MmMemIndex();
+    uint64_t getWordCountTs2mm();
+
+    void parseTraceData(void* traceData, uint64_t bytes, xclTraceResultsVector& traceVector);
+
+#if 0
+
+
+//    bool initTs2mm(uint64_t bo_size);
     /** 
      * Takes the offset inside the mapped buffer
      * and syncs it with device and returns its virtual address.
      * We can read the entire buffer in one go if we want to
      * or choose to read in chunks
      */
-    uint64_t getWordCountTs2mm();
     void* syncTraceBO(uint64_t offset, uint64_t bytes);
     void readTs2mm(uint64_t offset, uint64_t bytes, xclTraceResultsVector& traceVector);
     /**
@@ -103,6 +112,7 @@ namespace xdp {
     bool readTs2mm(xclTraceResultsVector& traceVector);
     void configReaderTs2mm(uint64_t chunksize);
     void finTs2mm();
+#endif
 
   private:
     // Turn on/off debug messages to stdout
@@ -111,16 +121,18 @@ namespace xdp {
     bool mIsDeviceProfiling = true;
     // Debug IP Layout has been read or not
     bool mIsDebugIPlayoutRead = false;
-    // Device handle - xrt::device handle
-    void* mDeviceHandle = nullptr;
 
+    // Depending on OpenCL or HAL flow, "mDevice" is populated with xrt::device handle or HAL handle
+    xdp::Device* mDevice = nullptr;
+
+#if 0
     uint64_t mBytesTs2mm = 0;
     uint64_t mChunksizeTs2mm = 0;
     uint64_t mOffsetTs2mm = 0;
 
     uint64_t mTs2mmBoSize = 0;
-    xrt::hal::BufferObjectHandle mTs2mmBoHandle = nullptr;
-
+//    xrt::hal::BufferObjectHandle mTs2mmBoHandle = nullptr;
+#endif
     std::vector<AIM*> aimList;
     std::vector<AM*>  amList;
     std::vector<ASM*> asmList;
