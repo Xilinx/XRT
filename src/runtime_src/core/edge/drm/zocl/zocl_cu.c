@@ -23,25 +23,25 @@
 #include "zocl_cu.h"
 
 void
-zocl_cu_disable_intr(struct zocl_cu_new *cu, u32 type)
+zocl_cu_disable_intr(struct zocl_cu *cu, u32 type)
 {
 	cu->funcs->disable_intr(cu->core, type);
 }
 
 void
-zocl_cu_enable_intr(struct zocl_cu_new *cu, u32 type)
+zocl_cu_enable_intr(struct zocl_cu *cu, u32 type)
 {
 	cu->funcs->enable_intr(cu->core, type);
 }
 
 u32
-zocl_cu_clear_intr(struct zocl_cu_new *cu)
+zocl_cu_clear_intr(struct zocl_cu *cu)
 {
 	return cu->funcs->clear_intr(cu->core);
 }
 
 int
-zocl_cu_get_credit(struct zocl_cu_new *cu)
+zocl_cu_get_credit(struct zocl_cu *cu)
 {
 	struct zcu_core *cu_core = cu->core;
 
@@ -50,7 +50,7 @@ zocl_cu_get_credit(struct zocl_cu_new *cu)
 }
 
 void
-zocl_cu_refund_credit(struct zocl_cu_new *cu, u32 count)
+zocl_cu_refund_credit(struct zocl_cu *cu, u32 count)
 {
 	struct zcu_core *cu_core = cu->core;
 
@@ -58,19 +58,19 @@ zocl_cu_refund_credit(struct zocl_cu_new *cu, u32 count)
 }
 
 void
-zocl_cu_configure(struct zocl_cu_new *cu, u32 *data, size_t sz, int type)
+zocl_cu_configure(struct zocl_cu *cu, u32 *data, size_t sz, int type)
 {
 	cu->funcs->configure(cu->core, data, sz, type);
 }
 
 void
-zocl_cu_start(struct zocl_cu_new *cu)
+zocl_cu_start(struct zocl_cu *cu)
 {
 	cu->funcs->start(cu->core);
 }
 
 void
-zocl_cu_check(struct zocl_cu_new *cu)
+zocl_cu_check(struct zocl_cu *cu)
 {
 	struct zcu_tasks_info tasks;
 
@@ -80,13 +80,13 @@ zocl_cu_check(struct zocl_cu_new *cu)
 }
 
 void
-zocl_cu_reset(struct zocl_cu_new *cu)
+zocl_cu_reset(struct zocl_cu *cu)
 {
 	cu->funcs->reset(cu->core);
 }
 
 int
-zocl_cu_reset_done(struct zocl_cu_new *cu)
+zocl_cu_reset_done(struct zocl_cu *cu)
 {
 	return cu->funcs->reset_done(cu->core);
 }
@@ -290,7 +290,7 @@ static struct zcu_funcs hls_adapter_ops = {
 };
 
 static int
-zocl_hls_cu_init(struct zocl_cu_new *cu, phys_addr_t paddr)
+zocl_hls_cu_init(struct zocl_cu *cu, phys_addr_t paddr)
 {
 	struct zcu_core *core;
 	u32 ctrl_reg;
@@ -339,7 +339,7 @@ zocl_hls_cu_init(struct zocl_cu_new *cu, phys_addr_t paddr)
 }
 
 static int
-zocl_hls_cu_fini(struct zocl_cu_new *cu)
+zocl_hls_cu_fini(struct zocl_cu *cu)
 {
 	struct zcu_core *core = cu->core;
 
@@ -414,7 +414,7 @@ static struct zcu_funcs acc_adapter_ops = {
 };
 
 static int
-zocl_acc_cu_init(struct zocl_cu_new *cu, phys_addr_t paddr)
+zocl_acc_cu_init(struct zocl_cu *cu, phys_addr_t paddr)
 {
 	struct zcu_core *core;
 
@@ -453,7 +453,7 @@ zocl_acc_cu_init(struct zocl_cu_new *cu, phys_addr_t paddr)
 }
 
 static int
-zocl_acc_cu_fini(struct zocl_cu_new *cu)
+zocl_acc_cu_fini(struct zocl_cu *cu)
 {
 	struct zcu_core *core = cu->core;
 
@@ -465,7 +465,7 @@ zocl_acc_cu_fini(struct zocl_cu_new *cu)
 }
 /* -- ACC adapter end -- */
 
-int zocl_cu_init(struct zocl_cu_new *cu, enum zcu_model m, u64 paddr)
+int zocl_cu_init(struct zocl_cu *cu, enum zcu_model m, u64 paddr)
 {
 	cu->model = m;
 	switch (cu->model) {
@@ -479,7 +479,7 @@ int zocl_cu_init(struct zocl_cu_new *cu, enum zcu_model m, u64 paddr)
 	}
 }
 
-int zocl_cu_fini(struct zocl_cu_new *cu)
+int zocl_cu_fini(struct zocl_cu *cu)
 {
 	switch (cu->model) {
 	case MODEL_HLS:

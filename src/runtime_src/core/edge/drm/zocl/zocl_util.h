@@ -113,7 +113,7 @@ struct drm_zocl_dev {
 	 */
 	rwlock_t		attr_rwlock;
 
-	struct soft_kernel	*soft_kernel;
+	struct soft_krnl	*soft_kernel;
 	struct dma_chan		*zdev_dma_chan;
 	u32			pr_isolation_addr;
 };

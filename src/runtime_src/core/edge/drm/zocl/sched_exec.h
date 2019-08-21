@@ -138,7 +138,7 @@ struct sched_exec_core {
 	/* Bitmap tracks valid CU valid(1)/invalid(0) */
 	u32			   cu_valid[MAX_U32_CU_MASKS];
 
-	struct zocl_cu_new        *zcu;
+	struct zocl_cu		  *zcu;
 
 	struct sched_ops          *ops;
 	struct task_struct        *cq_thread;

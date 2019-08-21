@@ -553,7 +553,7 @@ init_cu_by_idx(struct sched_cmd *cmd, int cu_idx)
 {
 	u32 size = regmap_size(cmd);
 	struct ert_init_kernel_cmd *ik;
-	struct zocl_cu_new *cu = &cmd->exec->zcu[cu_idx];
+	struct zocl_cu *cu = &cmd->exec->zcu[cu_idx];
 
 	ik = (struct ert_init_kernel_cmd *)cmd->packet;
 
@@ -741,7 +741,7 @@ configure(struct sched_cmd *cmd)
 	}
 	write_unlock(&zdev->attr_rwlock);
 
-	exec->zcu = vzalloc(sizeof(struct zocl_cu_new) * exec->num_cus);
+	exec->zcu = vzalloc(sizeof(struct zocl_cu) * exec->num_cus);
 	if (!exec->zcu) {
 		DRM_ERROR("Cound not allocate CU objects\n");
 		return -ENOMEM;
@@ -872,10 +872,10 @@ static int
 configure_soft_kernel(struct sched_cmd *cmd)
 {
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
-	struct soft_kernel *sk = zdev->soft_kernel;
+	struct soft_krnl *sk = zdev->soft_kernel;
 	struct ert_configure_sk_cmd *cfg;
 	u32 i;
-	struct soft_kernel_cmd *scmd;
+	struct soft_krnl_cmd *scmd;
 	int ret;
 
 	SCHED_DEBUG("-> configure_soft_kernel ");
@@ -908,7 +908,7 @@ configure_soft_kernel(struct sched_cmd *cmd)
 	/* NOTE: any failure after this point needs to resume sk_ncus */
 
 	/* Fill up a soft kernel command and add to soft kernel command list */
-	scmd = kmalloc(sizeof (struct soft_kernel_cmd), GFP_KERNEL);
+	scmd = kmalloc(sizeof(struct soft_krnl_cmd), GFP_KERNEL);
 	if (!scmd) {
 		ret = -ENOMEM;
 		goto fail;
@@ -938,7 +938,7 @@ static int
 unconfigure_soft_kernel(struct sched_cmd *cmd)
 {
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
-	struct soft_kernel *sk = zdev->soft_kernel;
+	struct soft_krnl *sk = zdev->soft_kernel;
 	struct soft_cu *scu;
 	struct ert_unconfigure_sk_cmd *cfg;
 	u32 i;
@@ -1131,7 +1131,7 @@ cu_done(struct sched_cmd *cmd)
 {
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
 	int cu_idx = cmd->cu_idx;
-	struct zocl_cu_new *cu = &cmd->exec->zcu[cu_idx];
+	struct zocl_cu *cu = &cmd->exec->zcu[cu_idx];
 	struct sched_cmd *fc;
 
 	SCHED_DEBUG("-> cu_done(,%d)\n", cu_idx);
@@ -1171,7 +1171,7 @@ scu_done(struct sched_cmd *cmd)
 {
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
 	int cu_idx = cmd->cu_idx;
-	struct soft_kernel *sk = zdev->soft_kernel;
+	struct soft_krnl *sk = zdev->soft_kernel;
 	u32 *virt_addr = sk->sk_cu[cu_idx]->sc_vregs;
 
 	SCHED_DEBUG("-> scu_done(,%d) checks scu at address 0x%p\n",
@@ -1202,7 +1202,7 @@ scu_configure_done(struct sched_cmd *cmd)
 {
 	struct drm_device *dev = cmd->ddev;
 	struct drm_zocl_dev *zdev = dev->dev_private;
-	struct soft_kernel *sk = zdev->soft_kernel;
+	struct soft_krnl *sk = zdev->soft_kernel;
 	struct ert_configure_sk_cmd *cfg;
 	int i;
 
@@ -1230,7 +1230,7 @@ scu_unconfig_done(struct sched_cmd *cmd)
 {
 	struct drm_device *dev = cmd->ddev;
 	struct drm_zocl_dev *zdev = dev->dev_private;
-	struct soft_kernel *sk = zdev->soft_kernel;
+	struct soft_krnl *sk = zdev->soft_kernel;
 	struct ert_unconfigure_sk_cmd *cfg;
 	int i;
 
@@ -1641,7 +1641,7 @@ configure_cu(struct sched_cmd *cmd, int cu_idx)
 {
 	u32 size = regmap_size(cmd);
 	struct ert_start_kernel_cmd *sk;
-	struct zocl_cu_new *cu = &cmd->exec->zcu[cu_idx];
+	struct zocl_cu *cu = &cmd->exec->zcu[cu_idx];
 	int type;
 
 	SCHED_DEBUG("-> configure_cu cu_idx=%d, regmap_size=%d\n",
@@ -1685,7 +1685,7 @@ ert_configure_cu(struct sched_cmd *cmd, int cu_idx)
 {
 	u32 size = regmap_size(cmd);
 	struct ert_start_kernel_cmd *sk;
-	struct zocl_cu_new *cu = &cmd->exec->zcu[cu_idx];
+	struct zocl_cu *cu = &cmd->exec->zcu[cu_idx];
 	int type = CONSECUTIVE;
 
 	SCHED_DEBUG("-> ert_configure_cu cu_idx=%d, regmap_size=%d\n",
@@ -1704,7 +1704,7 @@ static int
 ert_configure_scu(struct sched_cmd *cmd, int cu_idx)
 {
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
-	struct soft_kernel *sk = zdev->soft_kernel;
+	struct soft_krnl *sk = zdev->soft_kernel;
 	struct soft_cu *scu;
 	u32 i, size = regmap_size(cmd);
 	u32 *cu_regfile;

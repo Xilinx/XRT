@@ -35,7 +35,7 @@
 #define CU_READY_CNT_MASK       0x00FF0000
 #define CU_DONE_CNT_MASK        0xFF000000
 
-struct zocl_cu_new;
+struct zocl_cu;
 
 /* Supported CU models */
 enum zcu_model {
@@ -141,7 +141,7 @@ struct zcu_funcs {
 	u32 (*clear_intr)(void *core);
 };
 
-struct zocl_cu_new {
+struct zocl_cu {
 	enum zcu_model	          model;
 	struct list_head	  running_queue;
 	void                     *core;
@@ -158,20 +158,20 @@ struct zocl_cu_new {
 	struct zcu_funcs          *funcs;
 };
 
-int zocl_cu_init(struct zocl_cu_new *cu, enum zcu_model m, phys_addr_t paddr);
-int zocl_cu_fini(struct zocl_cu_new *cu);
+int zocl_cu_init(struct zocl_cu *cu, enum zcu_model m, phys_addr_t paddr);
+int zocl_cu_fini(struct zocl_cu *cu);
 
-int  zocl_cu_get_credit(struct zocl_cu_new *cu);
-void zocl_cu_refund_credit(struct zocl_cu_new *cu, u32 count);
-void zocl_cu_configure(struct zocl_cu_new *cu, u32 *data, size_t sz, int type);
-void zocl_cu_start(struct zocl_cu_new *cu);
-void zocl_cu_check(struct zocl_cu_new *cu);
-void zocl_cu_reset(struct zocl_cu_new *cu);
-int  zocl_cu_reset_done(struct zocl_cu_new *cu);
-void zocl_cu_enable_intr(struct zocl_cu_new *cu, u32 intr_type);
-void zocl_cu_disable_intr(struct zocl_cu_new *cu, u32 intr_type);
-u32  zocl_cu_clear_intr(struct zocl_cu_new *cu);
+int  zocl_cu_get_credit(struct zocl_cu *cu);
+void zocl_cu_refund_credit(struct zocl_cu *cu, u32 count);
+void zocl_cu_configure(struct zocl_cu *cu, u32 *data, size_t sz, int type);
+void zocl_cu_start(struct zocl_cu *cu);
+void zocl_cu_check(struct zocl_cu *cu);
+void zocl_cu_reset(struct zocl_cu *cu);
+int  zocl_cu_reset_done(struct zocl_cu *cu);
+void zocl_cu_enable_intr(struct zocl_cu *cu, u32 intr_type);
+void zocl_cu_disable_intr(struct zocl_cu *cu, u32 intr_type);
+u32  zocl_cu_clear_intr(struct zocl_cu *cu);
 
-phys_addr_t zocl_cu_get_paddr(struct zocl_cu_new *cu);
+phys_addr_t zocl_cu_get_paddr(struct zocl_cu *cu);
 
 #endif /* _ZOCL_CU_H_ */
