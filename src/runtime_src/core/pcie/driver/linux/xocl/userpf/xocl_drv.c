@@ -59,6 +59,49 @@ static void xocl_mb_connect(struct xocl_dev *xdev);
 static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	u64 msgid, int err, bool sw_ch);
 
+static void xocl_mb_read_p2p_addr(struct xocl_dev *xdev)
+{
+	struct pci_dev *pdev = xdev->core.pdev;
+	struct mailbox_req *mb_req = NULL;
+	struct mailbox_p2p_bar_addr *mb_p2p = NULL;
+	size_t mb_p2p_len, reqlen;
+	int ret = 0;
+	size_t resplen = sizeof(ret);
+
+	mb_p2p_len = sizeof(struct mailbox_p2p_bar_addr);
+	reqlen = sizeof(struct mailbox_req) + mb_p2p_len;
+	mb_req = vzalloc(reqlen);
+	if (!mb_req) {
+		userpf_err(xdev, "dropped request (%d), mem alloc issue\n",
+				MAILBOX_REQ_READ_P2P_BAR_ADDR);
+		return;
+	}
+
+	mb_req->req = MAILBOX_REQ_READ_P2P_BAR_ADDR;
+	mb_p2p = (struct mailbox_p2p_bar_addr *)mb_req->data;
+	mb_p2p->p2p_bar_len = pci_resource_len(pdev, xdev->p2p_bar_idx);
+	mb_p2p->p2p_bar_addr = pci_resource_start(pdev, xdev->p2p_bar_idx);
+
+	mutex_lock(&xdev->dev_lock);
+	if (!list_is_singular(&xdev->ctx_list)) {
+		/* We should have one context for ourselves. */
+		BUG_ON(list_empty(&xdev->ctx_list));
+		userpf_err(xdev, "device is in use, can't update p2p in mgmtpf\n");
+		ret = -EBUSY;
+	}
+	mutex_unlock(&xdev->dev_lock);
+	if (ret < 0)
+		return;
+
+	ret = xocl_peer_request(xdev, mb_req, sizeof(struct mailbox_req),
+					&ret, &resplen, NULL, NULL, 0);
+	if (ret) {
+		userpf_info(xdev, "request update p2p addr failed %d\n", ret);
+		return;
+	}
+	vfree(mb_req);
+}
+
 static int userpf_intr_config(xdev_handle_t xdev_hdl, u32 intr, bool en)
 {
 	return xocl_dma_intr_config(xdev_hdl, intr, en);
@@ -373,10 +416,8 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	u64 msgid, int err, bool sw_ch)
 {
 	struct xocl_dev *xdev = (struct xocl_dev *)arg;
-	struct pci_dev *pdev = xdev->core.pdev;
 	struct mailbox_req *req = (struct mailbox_req *)data;
 	struct mailbox_peer_state *st = NULL;
-	struct mailbox_p2p_bar_addr_resp *resp = NULL;
 
 	if (err != 0)
 		return;
@@ -394,6 +435,7 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 			/* Mgmt is online, try to probe peer */
 			userpf_info(xdev, "mgmt driver online\n");
 			(void) xocl_mb_connect(xdev);
+			(void) xocl_mb_read_p2p_addr(xdev);
 		} else if (st->state_flags & MB_STATE_OFFLINE) {
 			/* Mgmt is offline, mark peer as not ready */
 			userpf_info(xdev, "mgmt driver offline\n");
@@ -406,18 +448,6 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	case MAILBOX_REQ_CHG_SHELL:
 		xocl_queue_work(xdev, XOCL_WORK_PROGRAM_SHELL,
 				XOCL_PROGRAM_SHELL_DELAY);
-		break;
-	case MAILBOX_REQ_GET_P2P_BAR_ADDR:
-		resp = vzalloc(sizeof(*resp));
-		if (!resp)
-			break;
-		resp->p2p_bar_len = pci_resource_len(pdev, xdev->p2p_bar_idx);
-		resp->p2p_bar_addr = pci_resource_start(pdev, xdev->p2p_bar_idx);
-		userpf_info(xdev, "p2p_bar idx: %d, addr :%llx, len: %llx \n",
-					xdev->p2p_bar_idx, resp->p2p_bar_addr, resp->p2p_bar_len);
-		(void) xocl_peer_response(xdev, req->req, msgid, resp,
-			sizeof(struct mailbox_p2p_bar_addr_resp));
-		vfree(resp);
 		break;
 	default:
 		userpf_err(xdev, "dropped bad request (%d)\n", req->req);

@@ -76,7 +76,7 @@ enum mailbox_request {
 	MAILBOX_REQ_MGMT_STATE =	12,
 	MAILBOX_REQ_CHG_SHELL =		13,
 	MAILBOX_REQ_PROGRAM_SHELL =	14,
-	MAILBOX_REQ_GET_P2P_BAR_ADDR =	15,
+	MAILBOX_REQ_READ_P2P_BAR_ADDR =	15,
 	/* Version 0 OP code ends */
 };
 
@@ -337,11 +337,11 @@ struct sw_chan {
 };
 
 /**
- * struct mailbox_p2p_bar_addr_resp
+ * struct mailbox_p2p_bar_addr
  * @bar_addr: p2p bar address
  * @bar_len: p2p bar length
  */
-struct mailbox_p2p_bar_addr_resp {
+struct mailbox_p2p_bar_addr {
 	uint64_t  p2p_bar_addr;
 	uint64_t  p2p_bar_len;
 };
