@@ -87,6 +87,18 @@
 				"from": "${XRT_EMBEDDED_ROOT}",
 				"to": ["${TA_ROOT}/internal_platforms"]
 			}
+		},
+		"zed": {
+			"bsp_key": "zed",
+			"package": {
+				"dsabin": false,
+				"dsadev": false,
+				"ta_locations": [""]
+			},
+			"copy": {
+				"from": "${XRT_EMBEDDED_ROOT}",
+				"to": ["${TA_ROOT}/internal_platforms"]
+			}
 		}
 	}
 }
