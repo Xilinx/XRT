@@ -93,6 +93,7 @@ struct mailbox_req_bitstream_lock {
  * enum group_kind - Groups of data that can be fetched from mgmt side
  * @SENSOR: all kinds of sensor readings
  * @ICAP: ICAP IP related information
+ * @BDINFO: Board Info, serial_num, mac_address
  * @MIG_ECC: ECC statistics
  * @FIREWALL: AF detected time, status
  */
@@ -107,7 +108,7 @@ enum group_kind {
 };
 
 /**
- *
+ * struct xcl_board_info - Data structure used to fetch BDINFO group
  */
 struct xcl_board_info {
 	char	 serial_num[256];

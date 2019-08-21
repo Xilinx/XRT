@@ -394,7 +394,7 @@ void get_pcie_link_info(struct xocl_dev *xdev,
 
 uint64_t xocl_get_data(struct xocl_dev *xdev, enum data_kind kind)
 {
-	uint64_t ret;
+	uint64_t ret = 0;
 
 	switch (kind) {
 	case MIG_CALIB:

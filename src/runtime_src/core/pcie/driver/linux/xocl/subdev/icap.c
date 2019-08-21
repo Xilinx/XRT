@@ -2020,7 +2020,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 			 * Clean up and expire cache if we need to
 			 * download xclbin
 			 */
-			memset(&icap->cache, 0, sizeof(struct xcl_hwicap));
+			memset(&icap->cache, 0, sizeof(struct xcl_pr_region));
 			icap->cache_expires = ktime_sub(ktime_get_boottime(),
 				ktime_set(1, 0));
 

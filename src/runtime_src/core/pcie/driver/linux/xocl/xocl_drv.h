@@ -646,7 +646,7 @@ struct xocl_mb_funcs {
 		u32 len);
 	int (*load_sche_image)(struct platform_device *pdev, const char *buf,
 		u32 len);
-	int (*get_data)(struct platform_device *pdev, void *buf);
+	int (*get_data)(struct platform_device *pdev, enum group_kind kind, void *buf);
 };
 
 #define	MB_DEV(xdev)		\
