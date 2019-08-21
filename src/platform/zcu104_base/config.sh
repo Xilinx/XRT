@@ -113,9 +113,16 @@ pre_build_hook()
 # The first argument is the petalinux project path
 #  post_build_hook <PETALINUX_PROJECT_DIR>
 #
-#post_build_hook()
-#{
-#	PETA_DIR=$1
-#	# Nothing needs to do
-#}
+post_build_hook()
+{
+	PETA_DIR=$1
+	PLATFORM_NAME=`basename ${PETA_DIR}`
+	echo "create boot.bin in `pwd`"
+
+	cd $PETA_DIR
+
+	petalinux-package --boot --fsbl ${PETA_DIR}/images/linux/zynqmp_fsbl.elf --fpga ${PETA_DIR}/project-spec/hw-description/${PLATFORM_NAME}.bit --u-boot ${PETA_DIR}/images/linux/u-boot.elf --pmufw ${PETA_DIR}/images/linux/pmufw.elf --atf ${PETA_DIR}/images/linux/bl31.elf
+
+	cp -f ${PETA_DIR}/images/linux/BOOT.BIN ${THIS_CONFIG_SCRIPT_DIR}/src/${CPU_ARCH}/xrt/image/
+}
 
