@@ -471,14 +471,14 @@ int ZYNQShim::xclLoadAxlf(const axlf *buffer)
 		mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << buffer << std::endl;
 	}
 
-  // If platform is a non-PR-platform, Following check will fail. Dont download the partial bitstream
-  // if Platform is a PR-platform, Following check passes as enable_pr value is true by default. Download the partial bitstream
-  // If platform is a PR-platform, but v++ generated a full bitstream (using some v++ param). User need to add enable_pr=false in xrt.ini.
+	// If platform is a non-PR-platform, Following check will fail. Dont download the partial bitstream
+	// if Platform is a PR-platform, Following check passes as enable_pr value is true by default. Download the partial bitstream
+	// If platform is a PR-platform, but v++ generated a full bitstream (using some v++ param). User need to add enable_pr=false in xrt.ini.
 
-  auto is_pr_platform = (buffer->m_header.m_mode == XCLBIN_PR ) ? true : false;
+	auto is_pr_platform = (buffer->m_header.m_mode == XCLBIN_PR ) ? true : false;
 	auto runtime_pr_en = xrt_core::config::get_enable_pr(); //default value is true
-	
-  if (is_pr_platform && runtime_pr_en) {
+
+	if (is_pr_platform && runtime_pr_en) {
 		drm_zocl_pcap_download obj = { const_cast<axlf *>(buffer) };
 		ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_PCAP_DOWNLOAD, &obj);
 		if (ret)
