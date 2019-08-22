@@ -119,9 +119,9 @@ Sometimes the kernel does not need to be controlled by the host. For example, if
 
 **Important points to remember**
 
-1. Consider a kernel with AP_CTRL_NONE only when it has no Memory input and output.
+1. Consider a kernel with AP_CTRL_NONE only when it has no memory mapped input and output.
 2. There is no need to start the kernel by *clEnqueueTask* or *clEnqueueNDRangeKernel* from the host. 
-3. Host comminucates with a continuously running kernel by the stream read and write requests, if necessary. 
+3. Host communicates with a continuously running kernel by the stream read and write requests, if necessary. 
 4. Dont use *clSetKernelArg* to pass scalar argument to ap_ctrl_none kernel, only use *xclRegWrite* (API to be implemented in 19.2) API.
 5. In general, for the purpose of read and write register values from AXI4-Lite Slave interface, the new APIs *xclRegRead/xclRegWrite* are recommended (replacing obsolated APIs *xclRead/xclWrite*). As shown in the code sample below, these APIs requires exclusive CU context reservation via API *xclOpenContext*. 
 
