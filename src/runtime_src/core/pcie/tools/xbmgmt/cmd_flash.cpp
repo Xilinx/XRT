@@ -344,11 +344,6 @@ static int autoFlash(unsigned index, std::string& shell,
     unsigned success = 0;
     bool needreboot = false;
     if (!boardsToUpdate.empty()) {
-        // std::cout << "Below card(s) will be updated:" << std::endl;
-        // for (auto p : boardsToUpdate) {
-        //     std::cout << pcidev::get_dev(p.first, false) << std::endl;
-            
-        // }
 
         // Prompt user about what boards will be updated and ask for permission.
         if(!force && !canProceed())
@@ -368,7 +363,12 @@ static int autoFlash(unsigned index, std::string& shell,
 
     std::cout << std::endl;
 
-    if (success!=0) {
+    if (boardsToUpdate.size() == 0) {
+        std::cout << "Card(s) up-to-date and do not need to be flashed." << std::endl;
+        return 0;
+    }
+
+    if (success != 0) {
         std::cout << success << " Card(s) flashed successfully." << std::endl; 
     } else {
         std::cout << "No cards were flashed." << std::endl; 
