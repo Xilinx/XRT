@@ -250,20 +250,10 @@ public:
 
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_pex_vol",  errmsg, m12v_pex_vol );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_pex_curr", errmsg, m12v_pex_curr );
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_aux_vol",  errmsg, m12v_aux_vol ); 
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_aux_vol",  errmsg, m12v_aux_vol );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_aux_curr", errmsg, m12v_aux_curr );
-        sensor_tree::put( "board.physical.electrical.12v_pex.voltage", m12v_pex_vol ); 
-        sensor_tree::put( "board.physical.electrical.12v_pex.current", m12v_pex_curr );
-        sensor_tree::put( "board.physical.electrical.12v_aux.voltage", m12v_aux_vol ); 
-        sensor_tree::put( "board.physical.electrical.12v_aux.current", m12v_aux_curr );
-
-        // U50 has different power rails, so different calculation
-        if (strstr(name(), "_u50_")) {
-            pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_3v3_pex_vol", errmsg, m3v3_pex_vol );
-            pcidev::get_dev(m_idx)->sysfs_get("xmc", "xmc_3v3_pex_curr", errmsg, m3v3_pex_curr);
-            sensor_tree::put( "board.physical.electrical.3v3_pex.voltage", m3v3_pex_vol );
-            sensor_tree::put( "board.physical.electrical.3v3_pex.current", m3v3_pex_curr);
-        }
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_3v3_pex_vol",  errmsg, m3v3_pex_vol );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_3v3_pex_curr", errmsg, m3v3_pex_curr );
 
         if (!errmsg.empty()) {
             std::cout << errmsg << std::endl;
@@ -272,11 +262,7 @@ public:
 
         if (m12v_pex_curr != XCL_INVALID_SENSOR_VAL && m12v_pex_curr != XCL_NO_SENSOR_DEV_LL &&
             m12v_pex_vol  != XCL_INVALID_SENSOR_VAL && m12v_pex_vol  != XCL_NO_SENSOR_DEV_S) {
-            if (strstr(name(), "_u50_")) {
-                power = m12v_pex_curr * m12v_pex_vol + m3v3_pex_curr * m3v3_pex_vol;
-            } else {
-                power = m12v_pex_curr * m12v_pex_vol + m12v_aux_curr * m12v_aux_vol;
-            }
+            power = m12v_pex_curr * m12v_pex_vol + m12v_aux_curr * m12v_aux_vol + m3v3_pex_curr * m3v3_pex_vol;
         } else {
             return -EINVAL;
         }
@@ -689,19 +675,17 @@ public:
         sensor_tree::put( "board.physical.thermal.pcb.btm_front", xmc_se98_temp2 );
 
         // physical.thermal
-        unsigned short fan_rpm = 0, xmc_fpga_temp = 0, xmc_fan_temp = 0, hbm_temp = 0;
+        unsigned short fan_rpm = 0, xmc_fpga_temp = 0, xmc_fan_temp = 0;
         std::string fan_presence;
         
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_fpga_temp", errmsg, xmc_fpga_temp );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_fan_temp",  errmsg, xmc_fan_temp );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "fan_presence",  errmsg, fan_presence );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_fan_rpm",   errmsg, fan_rpm );
-        pcidev::get_dev(m_idx)->sysfs_get("xmc", "xmc_hbm_temp", errmsg, hbm_temp);
         sensor_tree::put( "board.physical.thermal.fpga_temp",    xmc_fpga_temp );
         sensor_tree::put( "board.physical.thermal.tcrit_temp",   xmc_fan_temp );
         sensor_tree::put( "board.physical.thermal.fan_presence", fan_presence );
         sensor_tree::put( "board.physical.thermal.fan_speed",    fan_rpm );
-        sensor_tree::put( "board.physical.thermal.hbm_temp", hbm_temp);
 
         // physical.thermal.cage
         unsigned short temp0 = 0, temp1 = 0, temp2 = 0, temp3 = 0;
@@ -715,10 +699,16 @@ public:
         sensor_tree::put( "board.physical.thermal.cage.temp3", temp3);
 
         //electrical
+        unsigned long long m12v_pex_curr = 0, m12v_aux_vol = 0;
         unsigned short m3v3_pex_vol = 0, m3v3_aux_vol = 0, ddr_vpp_btm = 0, ddr_vpp_top = 0, 
                        sys_5v5 = 0, m1v2_top = 0, m1v2_btm = 0, m1v8 = 0, m0v85 = 0, mgt0v9avcc = 0, 
                        m12v_sw = 0, mgtavtt = 0, vccint_vol = 0, vccint_curr = 0, m3v3_pex_curr = 0,
-                       m0v85_curr = 0, m3v3_vcc_vol = 0, hbm_1v2_vol = 0, vpp2v5_vol = 0, vccint_bram_vol = 0;
+                       m0v85_curr = 0, m3v3_vcc_vol = 0, hbm_1v2_vol = 0, vpp2v5_vol = 0,
+                       vccint_bram_vol = 0, m12v_pex_vol = 0, m12v_aux_curr = 0;
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_pex_vol",  errmsg, m12v_pex_vol );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_pex_curr", errmsg, m12v_pex_curr );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_aux_vol",  errmsg, m12v_aux_vol );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_aux_curr", errmsg, m12v_aux_curr );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_3v3_pex_vol", errmsg, m3v3_pex_vol );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_3v3_aux_vol", errmsg, m3v3_aux_vol ); 
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_ddr_vpp_btm", errmsg, ddr_vpp_btm ); 
@@ -739,6 +729,10 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get("xmc", "xmc_hbm_1v2_vol",  errmsg, hbm_1v2_vol);
         pcidev::get_dev(m_idx)->sysfs_get("xmc", "xmc_vpp2v5_vol",   errmsg, vpp2v5_vol);
         pcidev::get_dev(m_idx)->sysfs_get("xmc", "xmc_vccint_bram_vol", errmsg, vccint_bram_vol);
+        sensor_tree::put( "board.physical.electrical.12v_pex.voltage",        m12v_pex_vol );
+        sensor_tree::put( "board.physical.electrical.12v_pex.current",        m12v_pex_curr );
+        sensor_tree::put( "board.physical.electrical.12v_aux.voltage",        m12v_aux_vol );
+        sensor_tree::put( "board.physical.electrical.12v_aux.current",        m12v_aux_curr );
         sensor_tree::put( "board.physical.electrical.3v3_pex.voltage",        m3v3_pex_vol );
         sensor_tree::put( "board.physical.electrical.3v3_aux.voltage",        m3v3_aux_vol );
         sensor_tree::put( "board.physical.electrical.ddr_vpp_bottom.voltage", ddr_vpp_btm );
@@ -883,8 +877,6 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.tcrit_temp")
              << std::setw(16) << sensor_tree::get<std::string>( "board.physical.thermal.fan_presence")
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.fan_speed" ) << std::endl;
-        ostr << std::setw(16) << "HBM Temp" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.hbm_temp") << std::endl;
         ostr << std::setw(16) << "QSFP 0" << std::setw(16) << "QSFP 1" << std::setw(16) << "QSFP 2" << std::setw(16) << "QSFP 3" 
              << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.thermal.cage.temp0" )
@@ -1539,8 +1531,17 @@ public:
 
     // Currently only u50 uses xbtest
     bool isXbTestPlatform(void) {
-        if (strstr(name(), "_u50_"))
+        std::string name, errmsg;
+        pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV", errmsg, name );
+
+        if (!errmsg.empty()) {
+            std::cout << errmsg << std::endl;
+            return false;
+        }
+
+        if( strstr( name.c_str(), "_u50_" ) ) { //This is U50 device
             return true;
+        }
         return false;
     }
 
@@ -1557,9 +1558,14 @@ private:
     // Note: exe should assume index to be 0 without -d
     int runTestCase(const std::string& exe, const std::string& xclbin, std::string& output);
 
-    // Run a test case using the xbtest external program.
+    // Run a test case using the xbtest external program and collect
+    // all output from the run into "output"
     // Note: test is the name of a json file containing the test description
-    int runXbTestCase(const std::string& test);
+    int runXbTestCase(const std::string& test, std::string& output);
+
+    int bandwidthKernelXbtest(void);
+    int verifyKernelXbtest(void);
+    int dmaXbtest(void);
 
     int pcieLinkTest(void);
     int verifyKernelTest(void);
