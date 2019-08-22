@@ -577,3 +577,12 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
 
     return XMA_SUCCESS;
 }
+
+int32_t xma_plg_channel_id(XmaSession s_handle) {
+    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
+        //std::cout << "ERROR: xma_plg_schedule_work_item failed. XMASession is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_channel_id failed. XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
+    return s_handle.channel_id;
+}
