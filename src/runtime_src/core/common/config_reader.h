@@ -291,9 +291,9 @@ get_cdma()
 }
 
 inline bool
-get_pr_enable()
+get_enable_pr()
 {
-  static unsigned int value = detail::get_bool_value("Runtime.enable_pr",false);
+  static unsigned int value = detail::get_bool_value("Runtime.enable_pr",true);
   return value;
 }
 
