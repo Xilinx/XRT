@@ -78,6 +78,7 @@ void parseDSAFilename(std::string filename, uint16_t& vendor, uint16_t& device, 
             device = std::stoull(cm.str(2), 0, 16);
             subsystem = std::stoull(cm.str(3), 0, 16);
             ts = std::stoull(cm.str(4), 0, 16);
+            break;
         } else
             ts = NULL_TIMESTAMP;
     }

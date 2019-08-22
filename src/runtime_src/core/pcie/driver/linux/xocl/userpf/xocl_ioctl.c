@@ -437,7 +437,7 @@ int xocl_hot_reset_ioctl(struct drm_device *dev, void *data,
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
 
-	xocl_drvinst_set_offline(xdev, true);
+	xocl_drvinst_set_offline(xdev->core.drm, true);
 	xocl_queue_work(xdev, XOCL_WORK_RESET, XOCL_RESET_DELAY);
 	xocl_xdev_info(xdev, "Scheduled reset");
 
@@ -451,9 +451,9 @@ int xocl_reclock_ioctl(struct drm_device *dev, void *data,
 	struct xocl_dev *xdev = drm_p->xdev;
 	int err;
 
-	xocl_drvinst_set_offline(xdev, true);
+	xocl_drvinst_set_offline(xdev->core.drm, true);
 	err = xocl_reclock(xdev, data);
-	xocl_drvinst_set_offline(xdev, false);
+	xocl_drvinst_set_offline(xdev->core.drm, false);
 
 	userpf_info(xdev, "%s err: %d\n", __func__, err);
 	return err;

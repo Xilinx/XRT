@@ -170,6 +170,7 @@ public:
     ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
     ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
     int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int * actual, int timeout /*ms*/);
+    int xclCuName2Index(const char *name, uint32_t& index);
 
 private:
     std::shared_ptr<pcidev::pci_device> mDev;

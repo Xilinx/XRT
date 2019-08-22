@@ -128,9 +128,9 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 	userpf_info(xdev, "program shell...");
 
 
-	xocl_drvinst_set_offline(xdev, true);
+	xocl_drvinst_set_offline(xdev->core.drm, true);
 	if (force)
-		xocl_drvinst_kill_proc(xdev);
+		xocl_drvinst_kill_proc(xdev->core.drm);
 
 	if (XOCL_DRM(xdev))
 		xocl_cleanup_mem(XOCL_DRM(xdev));
@@ -196,7 +196,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 	userpf_info(xdev, "resetting device...");
 
 	if (force)
-		xocl_drvinst_kill_proc(xdev);
+		xocl_drvinst_kill_proc(xdev->core.drm);
 
 	xocl_reset_notify(xdev->core.pdev, true);
 
@@ -208,7 +208,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 
 	xocl_reset_notify(xdev->core.pdev, false);
 
-	xocl_drvinst_set_offline(xdev, false);
+	xocl_drvinst_set_offline(xdev->core.drm, false);
 
 	return ret;
 }
@@ -384,6 +384,7 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	switch (req->req) {
 	case MAILBOX_REQ_FIREWALL:
 		userpf_info(xdev, "firewall tripped, request reset");
+		xocl_drvinst_set_offline(xdev->core.drm, true);
 		xocl_queue_work(xdev, XOCL_WORK_RESET, XOCL_RESET_DELAY);
 		break;
 	case MAILBOX_REQ_MGMT_STATE:
@@ -428,51 +429,20 @@ void get_pcie_link_info(struct xocl_dev *xdev,
 	*link_speed = stat & PCI_EXP_LNKSTA_CLS;
 }
 
-static uint64_t xocl_read_from_peer(struct xocl_dev *xdev, enum data_kind kind)
+uint64_t xocl_get_data(struct xocl_dev *xdev, enum data_kind kind)
 {
-	struct mailbox_subdev_peer subdev_peer = {0};
-	struct xcl_common resp = {0};
-	size_t resp_len = sizeof(resp);
-	size_t data_len = sizeof(struct mailbox_subdev_peer);
-	struct mailbox_req *mb_req = NULL;
-	size_t reqlen = sizeof(struct mailbox_req) + data_len;
-	int err = 0, ret = 0;
-
-	userpf_info(xdev, "reading from peer\n");
-	mb_req = vmalloc(reqlen);
-	if (!mb_req)
-		return ret;
-
-	mb_req->req = MAILBOX_REQ_PEER_DATA;
-
-	subdev_peer.size = resp_len;
-	subdev_peer.kind = MGMT;
-	subdev_peer.entries = 1;
-
-	memcpy(mb_req->data, &subdev_peer, data_len);
-
-	err = xocl_peer_request(xdev,
-		mb_req, reqlen, &resp, &resp_len, NULL, NULL, 0);
-
-	if (err)
-		goto done;
+	uint64_t ret = 0;
 
 	switch (kind) {
 	case MIG_CALIB:
-		ret = resp.mig_calib;
+		ret = xocl_icap_get_data(xdev, MIG_CALIB);
 		break;
 	default:
 		userpf_err(xdev, "dropped bad request (%d)\n", kind);
 		break;
 	}
-done:
-	vfree(mb_req);
-	return ret;
-}
 
-uint64_t xocl_get_data(struct xocl_dev *xdev, enum data_kind kind)
-{
-	return xocl_read_from_peer(xdev, kind);
+	return ret;
 }
 
 int xocl_refresh_subdevs(struct xocl_dev *xdev)
@@ -553,7 +523,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	blob = NULL;
 
 
-	xocl_drvinst_set_offline(xdev, true);
+	xocl_drvinst_set_offline(xdev->core.drm, true);
 	if (xdev->core.fdt_blob) {
 		ret = xocl_fdt_blob_input(xdev, xdev->core.fdt_blob);
 		if (ret) {
@@ -574,7 +544,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	}
 	(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 	(void) xocl_mb_connect(xdev);
-	xocl_drvinst_set_offline(xdev, false);
+	xocl_drvinst_set_offline(xdev->core.drm, false);
 
 failed:
 	if (blob)

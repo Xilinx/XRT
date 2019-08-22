@@ -25,6 +25,7 @@
 #include <cstring>
 #include <iomanip>
 #include <chrono>
+#include <bitset>
 
 #define getBit(word, bit) (((word) >> bit) & 0x1)
 
@@ -445,7 +446,7 @@ namespace xdp {
         s = trace.TraceID / 2;
         flags = trace.EventFlags;
         XDP_LOG("[profile_device] slot %d event flags = %s @ timestamp %d\n",
-              s, RTUtil::dec2bin(flags, 7).c_str(), timestamp);
+              s, std::bitset<8>(flags).to_string().c_str(), timestamp);
         
         // Write start
         if (getBit(flags, XAPM_WRITE_FIRST)) {

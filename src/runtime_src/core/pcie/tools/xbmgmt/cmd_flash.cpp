@@ -307,7 +307,7 @@ static int autoFlash(unsigned index, std::string& shell,
             }
         }
         if (!foundDSA) {
-            std::cout << "Specified shell not installed." << std::endl;
+            std::cout << "Specified shell not found." << std::endl;
             return -ENOENT;
         }
         if (multiDSA) {

@@ -33,6 +33,13 @@ release_cu_context(xrt_device* device, value_type cuidx)
   xdevice->release_cu_context(cuidx);
 }
 
+xrt::device::device_handle
+get_device_handle(const xrt_device* device)
+{
+  auto xdevice = static_cast<const xrt::device*>(device);
+  return xdevice->get_handle();
+}
+
 namespace exec {
 
 struct command::impl : xrt::command
@@ -78,6 +85,48 @@ command::
 state() const
 {
   return static_cast<ert_cmd_state>(m_impl->ecmd->state);
+}
+
+exec_cu_command::
+exec_cu_command(xrt_device* device)
+  : command(device,ERT_START_CU)
+{
+  m_impl->ecmd->type = ERT_CU;
+  clear();
+}
+
+void
+exec_cu_command::
+clear()
+{
+  // clear cu
+  auto skcmd = reinterpret_cast<ert_start_kernel_cmd*>(m_impl->ecmd);
+  skcmd->cu_mask = 0;
+
+  // clear payload since this command type is random write
+  std::memset(m_impl->ecmd->data,0,m_impl->ecmd->count);
+
+  // clear payload count
+  m_impl->ecmd->count = 1 + 4; // cumask + 4 ctrl
+}
+
+void
+exec_cu_command::
+add_cu(value_type cuidx)
+{
+  if (cuidx>=32)
+    throw std::runtime_error("write_exec supports at most 32 CUs");
+  auto skcmd = reinterpret_cast<ert_start_kernel_cmd*>(m_impl->ecmd);
+  skcmd->cu_mask |= 1<<cuidx;
+}
+
+void
+exec_cu_command::
+add(index_type idx, value_type value)
+{
+  const auto skip = 2; // header and cumask
+  (*m_impl)[skip+idx] = value;
+  m_impl->ecmd->count = std::max(m_impl->ecmd->count,skip+idx);
 }
 
 exec_write_command::
