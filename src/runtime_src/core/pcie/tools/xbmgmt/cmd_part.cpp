@@ -59,6 +59,18 @@ int program_prp(unsigned index, const std::string& xclbin, bool force)
 
     char *buffer = new char[length];
     stream.read(buffer, length);
+
+    std::string errmsg;
+    if (force)
+    {
+        dev->sysfs_put("", "rp_program", errmsg, "3");
+        if (!errmsg.empty())
+        {
+            std::cout << errmsg << std::endl;
+            return -EINVAL;
+        }
+    }
+
     ssize_t ret = write(fd, buffer, length);
     delete [] buffer;
 
@@ -69,7 +81,6 @@ int program_prp(unsigned index, const std::string& xclbin, bool force)
     }
     close(fd);
 
-    std::string errmsg;
     if (force)
     {
         std::cout << "CAUTION: Force downloading PRP. " <<
@@ -79,7 +90,7 @@ int program_prp(unsigned index, const std::string& xclbin, bool force)
 
         dev->sysfs_put("", "rp_program", errmsg, "2");
         if (!errmsg.empty())
-	{
+        {
             std::cout << errmsg << std::endl;
             return -EINVAL;
         }

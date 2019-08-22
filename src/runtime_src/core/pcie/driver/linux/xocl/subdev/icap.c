@@ -1431,6 +1431,18 @@ static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 
 	mbreq.req = MAILBOX_REQ_CHG_SHELL;
 	mutex_lock(&icap->icap_lock);
+	if (flag == RP_DOWNLOAD_CLEAR) {
+		pr_info("Clear rpfdt\n");
+		if (icap->rp_bit) {
+			vfree(icap->rp_bit);
+			icap->rp_bit = NULL;
+		}
+		if (icap->rp_fdt) {
+			vfree(icap->rp_fdt);
+			icap->rp_fdt = NULL;
+		}
+		goto end;
+	}
 	if (!icap->rp_bit || !icap->rp_fdt) {
 		xocl_xdev_err(xdev, "Invalid reprogram request %p.%p",
 			icap->rp_bit, icap->rp_fdt);
