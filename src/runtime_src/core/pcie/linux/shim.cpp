@@ -1582,15 +1582,12 @@ int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, con
         if (handle) {
             xocl::shim *drv = xocl::shim::handleCheck(handle);
             ret = drv ? drv->xclLogMsg(level, tag, format, args) : -ENODEV;
-            va_end(args);
-
-            return ret;
         } else {
             ret = xocl::shim::xclLogMsg(level, tag, format, args);
-            va_end(args);
-
-            return ret;
         }
+        va_end(args);
+
+        return ret;
     }
 
     return 0;
