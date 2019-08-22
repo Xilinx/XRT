@@ -263,7 +263,7 @@ namespace xdp {
         dInt->startTrace(XCL_PERF_MON_MEMORY, traceOption);
         // Configure DMA if present
         if (dInt->hasTs2mm()) {
-          info->ts2mm_en = allocateDDRBufferForTrace(dInt, xdevice);
+          info->ts2mm_en = allocateDeviceDDRBufferForTrace(dInt, xdevice);
         }
       } else {
         xdevice->startTrace(XCL_PERF_MON_MEMORY, traceOption);
@@ -303,7 +303,7 @@ namespace xdp {
       xdp::xoclp::platform::device::data* info = &(itr->second);
       if (info->ts2mm_en) {
         auto dInt  = &(info->mDeviceIntf);
-        clearDDRBufferForTrace(dInt, xdevice);
+        clearDeviceDDRBufferForTrace(dInt, xdevice);
         info->ts2mm_en = false;
       }
     }
@@ -657,7 +657,7 @@ namespace xdp {
               }
               info->mTraceVector.mLength= 0;
           } else if (dInt->hasTs2mm()) {
-            configureDDRTraceReader(dInt);
+            configureDDRTraceReader(dInt->getWordCountTs2mm());
             bool endLog = false;
             while (!endLog) {
               endLog = !(readTraceDataFromDDR(dInt, xdevice, info->mTraceVector));
@@ -692,17 +692,13 @@ namespace xdp {
   }
 
 
-  bool OCLProfiler::allocateDDRBufferForTrace(DeviceIntf* dInt, xrt::device* xrtDevice)
+  bool OCLProfiler::allocateDeviceDDRBufferForTrace(DeviceIntf* dInt, xrt::device* xrtDevice)
   {
-    if(!dInt || !dInt->hasTs2mm()) {
-      return false;
-    }
-
     /* If buffer is already allocated and still attempting to initialize again, 
      * then reset the TS2MM IP and free the old buffer
      */
     if(mDDRBufferForTrace) {
-      clearDDRBufferForTrace(dInt, xrtDevice);
+      clearDeviceDDRBufferForTrace(dInt, xrtDevice);
     }
 
     try {
@@ -722,7 +718,7 @@ namespace xdp {
 
 
   // Reset DDR Trace : reset TS2MM IP and clear buffer on Device DDR
-  void OCLProfiler::clearDDRBufferForTrace(DeviceIntf* dInt, xrt::device* xrtDevice)
+  void OCLProfiler::clearDeviceDDRBufferForTrace(DeviceIntf* dInt, xrt::device* xrtDevice)
   {
     if(!mDDRBufferForTrace)
       return;
@@ -737,9 +733,9 @@ namespace xdp {
     mDDRBufferSz = 0;
   }
 
-  void OCLProfiler::configureDDRTraceReader(DeviceIntf* dIntf)
+  void OCLProfiler::configureDDRTraceReader(uint64_t wordCount)
   {
-    mTraceReadBufSz = dIntf->getWordCountTs2mm() * TRACE_PACKET_SIZE;
+    mTraceReadBufSz = wordCount * TRACE_PACKET_SIZE;
     mTraceReadBufSz = (mTraceReadBufSz > TS2MM_MAX_BUF_SIZE) ? TS2MM_MAX_BUF_SIZE : mTraceReadBufSz;
 
     mTraceReadBufOffset = 0;

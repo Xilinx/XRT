@@ -100,6 +100,7 @@ DeviceIntf::~DeviceIntf()
   {
     if(mDevice && mDevice != devHandle) {
       // ERROR : trying to set device when it is already populated with some other device
+      return;
     }
 
     if(isXrtDevice) {
