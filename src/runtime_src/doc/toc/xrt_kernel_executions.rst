@@ -107,7 +107,7 @@ The signals ap_start, ap_ready, ap_done, ap_continue must be connected to the AX
 
 Host Code Consideration
 -----------------------
-The host code exercising a AP_CTRL_CHAIN kernel should be able to fill the input queue with multiple execution requests well ahead to take the advantage of pipelined nature of the kernel. For example, considering OpenCL host code, it should use out-of-order command queue for multiple kernel execution requests. The host code should also use API *clEnqueueMigrateMemObjects* to explicitly migrate the buffer before the kernel execution. 
+The host code exercising a AP_CTRL_CHAIN kernel should be able to fill the input queue with multiple execution requests well ahead to take the advantage of pipelined nature of the kernel. For example, considering OpenCL host code, it should use out-of-order command queue for multiple kernel execution requests. The host code should also use API ``clEnqueueMigrateMemObjects`` to explicitly migrate the buffer before the kernel execution. 
 
 
 
