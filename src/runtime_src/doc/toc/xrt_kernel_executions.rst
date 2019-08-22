@@ -5,9 +5,9 @@ At the low level, the kernels are controlled by the XRT through the control and 
 
 The list of primary supported excution models are:
 
-1. `AP_CTRL_HS`
-2. `AP_CTRL_CHAIN`
-3. `AP_CTRL_NONE`
+1. ``AP_CTRL_HS``
+2. ``AP_CTRL_CHAIN``
+3. ``AP_CTRL_NONE``
 
 The `IP_LAYOUT` section of the kernel `xclbin` metadata contains the kernel execution model information. The `xclbinutil` utility command can be used to retrieve the execution model information from a `.xclbin` file. 
 
