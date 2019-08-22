@@ -465,7 +465,7 @@ zocl_acc_cu_fini(struct zocl_cu *cu)
 }
 /* -- ACC adapter end -- */
 
-int zocl_cu_init(struct zocl_cu *cu, enum zcu_model m, u64 paddr)
+int zocl_cu_init(struct zocl_cu *cu, enum zcu_model m, phys_addr_t paddr)
 {
 	cu->model = m;
 	switch (cu->model) {
