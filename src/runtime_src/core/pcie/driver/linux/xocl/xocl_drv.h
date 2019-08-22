@@ -850,6 +850,7 @@ enum {
 	RP_DOWNLOAD_NORMAL,
 	RP_DOWNLOAD_DRY,
 	RP_DOWNLOAD_FORCE,
+	RP_DOWNLOAD_CLEAR,
 };
 #define	ICAP_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ICAP).pldev
 #define	ICAP_OPS(xdev)							\
