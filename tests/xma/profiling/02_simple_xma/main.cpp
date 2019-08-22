@@ -28,7 +28,7 @@
 #include "xsimple_hw.h"  
 #endif
 
-#include "xperf.h"
+#include "xma_profile.h"
 
 static const int count = 1024;
 int foo;

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018 - 2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -22,21 +22,21 @@
 // #includes here - please keep these to a bare minimum!
 #include "Section.h"
 #include <boost/functional/factory.hpp>
+#include <boost/property_tree/ptree.hpp>
 
 // ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
 // Forward declarations - use these instead whenever possible...
 
-// ------------------- C L A S S :   S e c t i o n ---------------------------
-
-/**
- *    This class represents the base class for a given Section in the xclbin
- *    archive.  
-*/
+// ----- C L A S S :   S e c t i o n B u i l d M e t a d a t a ---------------
 
 class SectionBuildMetadata : public Section {
  public:
   SectionBuildMetadata();
   virtual ~SectionBuildMetadata();
+
+ public:
+  virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;
+  virtual bool doesSupportDumpFormatType(FormatType _eFormatType) const;
 
  protected:
   virtual void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const;
@@ -51,7 +51,7 @@ class SectionBuildMetadata : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(BUILD_METADATA, "BUILD_METADATA", boost::factory<SectionBuildMetadata*>()); }
+    _init() { registerSectionCtor(BUILD_METADATA, "BUILD_METADATA", "build_metadata", false, boost::factory<SectionBuildMetadata*>()); }
   } _initializer;
 };
 

@@ -25,10 +25,8 @@
 namespace xocl {
 
 static void
-validOrError(cl_device_id        device_id,
-             cl_stream           stream,
+validOrError(cl_stream           stream,
 	     void*               ptr,
-	     size_t              offset,
 	     size_t              size,
 	     cl_stream_xfer_req* attributes,
 	     cl_int*             errcode_ret)
@@ -37,26 +35,22 @@ validOrError(cl_device_id        device_id,
 }
 
 static cl_int 
-clReadStream(cl_device_id          device,
-	      cl_stream            stream,
+clReadStream(cl_stream            stream,
 	      void*                ptr,
-	      size_t               offset,
 	      size_t               size,
 	      cl_stream_xfer_req*  attributes,
 	      cl_int*              errcode_ret)
 {
-  validOrError(device,stream,ptr,offset,size,attributes,errcode_ret);
-  return xocl::xocl(stream)->read(xocl::xocl(device), ptr, offset, size, attributes);
+  validOrError(stream,ptr,size,attributes,errcode_ret);
+  return xocl::xocl(stream)->read(ptr, size, attributes);
   //return -1;
 }
 
 } //xocl
 
 CL_API_ENTRY cl_int CL_API_CALL
-clReadStream(cl_device_id         device,
-	      cl_stream           stream,
+clReadStream(cl_stream           stream,
 	      void*               ptr,
-	      size_t              offset,
 	      size_t              size,
 	      cl_stream_xfer_req* attributes,
 	      cl_int*             errcode_ret) CL_API_SUFFIX__VERSION_1_0
@@ -64,7 +58,7 @@ clReadStream(cl_device_id         device,
   try {
     PROFILE_LOG_FUNCTION_CALL;
     return xocl::clReadStream
-      (device,stream,ptr,offset,size,attributes,errcode_ret);
+      (stream,ptr,size,attributes,errcode_ret);
   }
   catch (const xrt::error& ex) {
     xocl::send_exception_message(ex.what());

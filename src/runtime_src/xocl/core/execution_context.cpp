@@ -21,10 +21,11 @@
 #include "xrt/scheduler/command.h"
 #include "xrt/scheduler/scheduler.h"
 
-#include "impl/spir.h"
+#include "core/common/xclbin_parser.h"
 
 #include <iostream>
 #include <fstream>
+#include <bitset>
 
 namespace {
 
@@ -184,31 +185,34 @@ fill_regmap(execution_context::regmap_type& regmap, size_t offset,
             const void* data, const size_t size,
             const xocl::kernel::argument::arginfo_range_type& arginforange)
 {
-  // scale raw data input to specified size so that the
-  // value when cast to uint32_t* doesn't carry junk in case
-  // size is less than sizeof(uint32_t). Fill host_data
-  // conservative with an additional sizeof(uint32_t) bytes.
-  const char* cdata = reinterpret_cast<const char*>(data);
-  std::vector<char> host_data(cdata,cdata+size);
-  host_data.resize(size+sizeof(uint32_t));
+  using value_type = uint32_t;
+  using pointer_type = const uint32_t*;
+
+  const size_t wsize = sizeof(value_type);
+  const char* host_data = reinterpret_cast<const char*>(data);
+  auto bytes = size;
 
   // For each component of the argument
   for (auto arginfo : arginforange) {
-    const char* component = host_data.data() + arginfo->hostoffset;
-    const uint32_t* word = reinterpret_cast<const uint32_t*>(component);
+    auto component = host_data + arginfo->hostoffset;
+    auto word = reinterpret_cast<pointer_type>(component);
+    auto regmap_idx = arginfo->offset / wsize;
+
     // For each 32-bit word of the component
-    for (size_t wi=0, we=arginfo->size/sizeof(uint32_t); wi!=we; ++wi) {
-      size_t device_offset = arginfo->offset + wi*sizeof(uint32_t);
-      uint32_t device_value = *word;
-      size_t register_offset = device_offset / sizeof(uint32_t);
-      regmap[offset+register_offset] = device_value;
-      //      std::cout << "regmap[" << register_offset << "]=" << device_value << "\n";
-      ++word;
+    for (size_t wi = 0, we = arginfo->size / wsize; wi < we; ++wi, ++word, bytes -= wsize) {
+      value_type device_value = 0;
+      if (bytes >= wsize)
+        device_value = *word;
+      else {
+        auto cword = reinterpret_cast<const char*>(word);
+        std::copy(cword,cword+bytes,reinterpret_cast<char*>(&device_value));
+      }
+      regmap[offset + regmap_idx + wi] = device_value;
+      //std::cout << "regmap[" << offset + regmap_idx + wi << "]=" << device_value << "\n";
     }
   }
   return 0;
 }
-
 
 execution_context::
 execution_context(device* device
@@ -238,24 +242,40 @@ execution_context(device* device
 
   // Compute units to use
   add_compute_units(device);
+
+  m_dataflow = xrt_core::xclbin::get_dataflow(device->get_axlf());
+  XOCL_DEBUGF("execution_context(%d) has dataflow(%d)\n",m_uid,m_dataflow);
 }
 
 void
 execution_context::
 add_compute_units(device* device)
 {
+  // Collect kernel's filtered CUs
+  std::bitset<128> kernel_cus;
+  for (auto cu : m_kernel->get_cus())
+    kernel_cus.set(cu->get_index());
+
+  // Targeted device CUs matching kernel CUs
   for (auto& scu : device->get_cus()) {
     auto cu = scu.get();
-    // Check that the kernel symbol is the same between the CU kernel and
-    // this context kernel.  There are test cases where two kernels share
-    // the same name but have different symbol from xclbin.  This will go
-    // away once we ensure that only one kernel per symbol is created in
-    // which case the kernel object address can be used from comparison.
-    if(cu->get_symbol()->uid==m_kernel.get()->get_symbol_uid()) {
-      XOCL_DEBUGF("execution_context(%d) adding cu(%d)\n",m_uid,cu->get_uid());
+    if (kernel_cus.test(cu->get_index())) {
+
+      // Check context creation
+      if (!device->acquire_context(cu))
+        continue;
+
+      XOCL_DEBUGF("execution_context(%d) added cu(%d)\n",m_uid,cu->get_uid());
       m_cus.push_back(cu);
     }
   }
+
+  if (m_cus.empty())
+    throw xrt::error(CL_INVALID_KERNEL,
+                     "kernel '"
+                     + m_kernel->get_name()
+                     + "' has no compute units to execute job '"
+                     + std::to_string(m_uid) + "'\n");
 }
 
 bool
@@ -379,6 +399,13 @@ start()
   auto offset = packet.size();  // start of regmap
   auto& regmap = packet;
 
+  // Ensure that S_AXI_CONTROL is created even when kernel
+  // has no arguments.
+  packet[offset]   = 0;  // control signals
+  packet[offset+1] = 0;  // gier
+  packet[offset+2] = 0;  // ier
+  packet[offset+3] = 0;  // isr
+
   size3 num_workgroups {0,0,0};
   for (auto d : {0,1,2}) {
     if (m_lsize[d]) // actually always true
@@ -395,14 +422,14 @@ start()
     }
 
     auto address_space = arg->get_address_space();
-    if (address_space == SPIR_ADDRSPACE_PRIVATE)
+    if (address_space == kernel::argument::addr_space_type::SPIR_ADDRSPACE_PRIVATE)
     {
       auto arginforange = arg->get_arginfo_range();
       fill_regmap(regmap,offset,arg->get_value(),arg->get_size(),arginforange);
-    } else if(address_space==SPIR_ADDRSPACE_PIPES) {
+    } else if(address_space == kernel::argument::addr_space_type::SPIR_ADDRSPACE_PIPES) {
 	//do nothing
-    } else if (address_space==SPIR_ADDRSPACE_GLOBAL
-             || address_space==SPIR_ADDRSPACE_CONSTANT)
+    } else if (address_space == kernel::argument::addr_space_type::SPIR_ADDRSPACE_GLOBAL
+            || address_space == kernel::argument::addr_space_type::SPIR_ADDRSPACE_CONSTANT)
     {
       uint64_t physaddr = 0;
       if (auto mem = arg->get_memory_object()) {
@@ -529,10 +556,11 @@ execute()
   // In order to keep scheduler busy, we need more than just one
   // workgroup at a time, so here we try to ensure that the scheduled
   // commands at any given time is twice the number of available CUs.
-  auto limit = 2*m_cus.size();
+  auto limit = m_dataflow ? 20*m_cus.size() : 2*m_cus.size();
   for (size_t i=m_active; !m_done && i<limit; ++i) {
     start();
     update_work();
+    XOCL_DEBUG(std::cout,"active=",m_active,"\n");
   }
 
   return m_done;
