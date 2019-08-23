@@ -1991,7 +1991,7 @@ mailbox_read(struct file *file, char __user *buf, size_t n, loff_t *ignored)
 	}
 
 	/* Copy payload to user. */
-	if (copy_to_user(buf + sizeof(struct sw_chan),
+	if (copy_to_user(((struct sw_chan *)buf)->data,
 		ch->sw_chan_buf, ch->sw_chan_buf_sz) != 0) {
 		mutex_unlock(&ch->sw_chan_mutex);
 		return -EFAULT;
@@ -2069,7 +2069,7 @@ mailbox_write(struct file *file, const char __user *buf, size_t n,
 		mutex_unlock(&ch->sw_chan_mutex);
 		return -ENOMEM;
 	}
-	if (copy_from_user(payload, buf + sizeof(struct sw_chan),
+	if (copy_from_user(payload, ((struct sw_chan *)buf)->data,
 		args.sz) != 0) {
 		mutex_unlock(&ch->sw_chan_mutex);
 		vfree(payload);

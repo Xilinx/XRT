@@ -29,12 +29,13 @@
 #include <thread>
 #include <cstdlib>
 #include <csignal>
+#include <cstring>
 #include <dlfcn.h>
 
 #include "pciefunc.h"
-#include "msd_plugin.h"
 #include "sw_msg.h"
 #include "common.h"
+#include "msd_plugin.h"
 #include "xclbin.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
@@ -44,48 +45,47 @@ bool quit = false;
 uint64_t chanSwitch = (1UL<<MAILBOX_REQ_TEST_READY) |
                       (1UL<<MAILBOX_REQ_TEST_READ)  |
                       (1UL<<MAILBOX_REQ_LOAD_XCLBIN);
-
-// Suppport for msd plugin
+// Support for msd plugin
 void *plugin_handle;
 init_fn plugin_init;
 fini_fn plugin_fini;
 struct msd_plugin_callbacks plugin_cbs;
-static const std::string plugin_path("/lib/firmware/xilinx/msd_plugin.so");
+static const std::string plugin_path("/opt/xilinx/xrt/lib/libmsd_plugin.so");
 
 // Init plugin callbacks
 static void init_plugin()
 {
-    plugin_handle = dlopen(plugin_path.c_str(), RTLD_LAZY | RTLD_GLOBAL);
-    if (plugin_handle == nullptr)
-        return;
-
-    syslog(LOG_INFO, "found msd plugin: %s", plugin_path.c_str());
-    plugin_init = (init_fn) dlsym(plugin_handle, INIT_FN_NAME);
-    plugin_fini = (fini_fn) dlsym(plugin_handle, FINI_FN_NAME);
-    if (plugin_init == nullptr || plugin_fini == nullptr)
-        syslog(LOG_ERR, "failed to find init/fini symbols in plugin");
+	plugin_handle = dlopen(plugin_path.c_str(), RTLD_LAZY | RTLD_GLOBAL);
+	if (plugin_handle == nullptr)
+		return;
+	
+	syslog(LOG_INFO, "found msd plugin: %s", plugin_path.c_str());
+	plugin_init = (init_fn) dlsym(plugin_handle, INIT_FN_NAME);
+	plugin_fini = (fini_fn) dlsym(plugin_handle, FINI_FN_NAME);
+	if (plugin_init == nullptr || plugin_fini == nullptr)
+		syslog(LOG_ERR, "failed to find init/fini symbols in msd plugin");
 }
 
 // Get host configured in config file
 static std::string getHost()
 {
-    std::ifstream cfile(configFile);
-    if (!cfile.good()) {
-        syslog(LOG_ERR, "failed to open config file: %s", configFile.c_str());
-        return "";
-    }
-
-    for (std::string line; std::getline(cfile, line);) {
-        std::string key, value;
-        int ret = splitLine(line, key, value);
-        if (ret != 0)
-            break;
-        if (key.compare("host") == 0)
-            return value;
-    }
-
-    syslog(LOG_ERR, "failed to read hostname from: %s", configFile.c_str());
-    return "";
+	std::ifstream cfile(configFile);
+	if (!cfile.good()) {
+		syslog(LOG_ERR, "failed to open config file: %s", configFile.c_str());
+		return "";
+	}
+	
+	for (std::string line; std::getline(cfile, line);) {
+		std::string key, value;
+		int ret = splitLine(line, key, value);
+		if (ret != 0)
+			break;
+		if (key.compare("host") == 0)
+			return value;
+	}
+	
+	syslog(LOG_ERR, "failed to read hostname from: %s", configFile.c_str());
+	return "";
 }
 
 static void createSocket(pcieFunc& dev, int& sockfd, uint16_t& port)
@@ -182,7 +182,7 @@ static int download_xclbin(pcieFunc& dev, char *xclbin)
     int ret = 0;
 
     xclmgmt_ioc_bitstream_axlf x = {reinterpret_cast<axlf *>(xclbin)};
-    if (plugin_cbs.retrieve_xclbin) {
+	if (plugin_cbs.retrieve_xclbin) {
         ret = (*plugin_cbs.retrieve_xclbin)(xclbin,
             x.xclbin->m_header.m_length, &newxclbin, &newlen, &done, &done_arg);
         if (ret)
@@ -197,7 +197,7 @@ static int download_xclbin(pcieFunc& dev, char *xclbin)
         return -EINVAL;
 
     xclmgmt_ioc_bitstream_axlf obj = {reinterpret_cast<axlf *>(newxclbin)};
-    ret = dev.ioctl(XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
+    ret = dev.getDev()->ioctl(XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
 
     if (done)
         (*done)(done_arg, newxclbin, newlen);
@@ -247,13 +247,14 @@ static int remoteMsgHandler(pcieFunc& dev, std::shared_ptr<sw_msg>& orig,
 
 // Server serving MPD. Any error from socket fd, re-accept, don't quit.
 // Will quit on any error from local mailbox fd.
-static void msd(std::shared_ptr<pcidev::pci_device> d, std::string host)
+static void msd(size_t index, std::string host)
 {
     uint16_t port;
     int sockfd = -1, mpdfd = -1, mbxfd = -1;
     int ret;
+	struct queue_msg msg = {0};
 
-    pcieFunc dev(d);
+    pcieFunc dev(index, false);
 
     mbxfd = dev.getMailbox();
     if (mbxfd == -1)
@@ -295,11 +296,19 @@ static void msd(std::shared_ptr<pcidev::pci_device> d, std::string host)
                 break;
         }
 
+		msg.localFd = mbxfd;
+		msg.remoteFd = mpdfd;
+
         // Process msg.
-        if (ret == mbxfd)
-            ret = processLocalMsg(dev, mbxfd, mpdfd);
-        else
-            ret = processRemoteMsg(dev, mbxfd, mpdfd, remoteMsgHandler);
+        if (ret == mbxfd) {
+			msg.type = LOCAL_MSG;
+            msg.data = getLocalMsg(dev, mbxfd);
+		} else {
+			msg.type = REMOTE_MSG;
+			msg.cb = remoteMsgHandler;
+            msg.data = getRemoteMsg(dev, mpdfd);
+		}
+		ret = handleMsg(dev, msg);
         if (ret == -EAGAIN) { // Socket connection was lost, retry
             close(mpdfd);
             mpdfd = -1;
@@ -323,50 +332,50 @@ void signalHandler(int signum)
 
 int main(void)
 {
-    // Daemon has no connection to terminal.
-    fcloseall();
-    // Start logging ASAP.
-    openlog("msd", LOG_PID|LOG_CONS, LOG_USER);
-    syslog(LOG_INFO, "started");
-
-    init_plugin();
-
-    if (plugin_init) {
-        int ret = (*plugin_init)(&plugin_cbs);
-        if (ret != 0) {
-            syslog(LOG_ERR, "plugin_init failed: %d", ret);
-            dlclose(plugin_handle);
-            return 0;
-        }
-    }
-
-    // Fetching host name from config file.
-    std::string host = getHost();
-    if (host.empty())
-        return 0;
-
-    // Handle sigterm from systemd to shutdown gracefully.
-    signal(SIGTERM, signalHandler);
-
-    // Fire up one thread for each board.
-    auto total = pcidev::get_dev_total(false);
-    if (total == 0)
-        syslog(LOG_INFO, "no device found");
-
-    std::vector<std::thread> threads;
-    for (size_t i = 0; i < total; i++)
-        threads.emplace_back(msd, pcidev::get_dev(i, false), host);
-
-    // Wait for all threads to finish before quit.
-    for (auto& t : threads)
-        t.join();
-
-    if (plugin_fini)
-        (*plugin_fini)(plugin_cbs.mpc_cookie);
-    if (plugin_handle)
-        dlclose(plugin_handle);
-
-    syslog(LOG_INFO, "ended");
-    closelog();         
-    return 0;
+	// Daemon has no connection to terminal.
+	fcloseall();
+	// Start logging ASAP.
+	openlog("msd", LOG_PID|LOG_CONS, LOG_USER);
+	syslog(LOG_INFO, "started");
+	
+	init_plugin();
+	
+	if (plugin_init) {
+		int ret = (*plugin_init)(&plugin_cbs);
+		if (ret != 0) {
+			syslog(LOG_ERR, "msd plugin_init failed: %d", ret);
+			dlclose(plugin_handle);
+			return 0;
+		}
+	}
+	
+	// Fetching host name from config file.
+	std::string host = getHost();
+	if (host.empty())
+		return 0;
+	
+	// Handle sigterm from systemd to shutdown gracefully.
+	signal(SIGTERM, signalHandler);
+	
+	// Fire up one thread for each board.
+	auto total = pcidev::get_dev_total(false);
+	if (total == 0)
+		syslog(LOG_INFO, "no device found");
+	
+	std::vector<std::thread> threads;
+	for (size_t i = 0; i < total; i++)
+		threads.emplace_back(msd, i, host);
+	
+	// Wait for all threads to finish before quit.
+	for (auto& t : threads)
+		t.join();
+	
+	if (plugin_fini)
+		(*plugin_fini)(plugin_cbs.mpc_cookie);
+	if (plugin_handle)
+		dlclose(plugin_handle);
+	
+	syslog(LOG_INFO, "ended");
+	closelog();         
+	return 0;
 }
