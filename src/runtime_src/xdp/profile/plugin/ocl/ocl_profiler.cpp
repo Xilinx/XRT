@@ -29,6 +29,7 @@
 #include "ocl_profiler.h"
 #include "xdp/profile/config.h"
 #include "xdp/profile/core/rt_profile.h"
+#include "xdp/profile/device/xdp_xrt_device.h"
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/writer/json_profile.h"
 #include "xdp/profile/writer/csv_profile.h"
@@ -171,8 +172,7 @@ namespace xdp {
       auto xdevice = device->get_xrt_device();
       if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
         dInt = &(itr->second.mDeviceIntf);
-        // Find good place to set device handle
-        dInt->setDevice(xdevice, true /* xrt device is used here*/);
+        dInt->setDevice(new xdp::XrtDevice(xdevice));
         dInt->readDebugIPlayout();
       }       
       xdp::xoclp::platform::device::data* info = &(itr->second);
@@ -235,7 +235,7 @@ namespace xdp {
       DeviceIntf* dInt = nullptr;
       if((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
         dInt = &(itr->second.mDeviceIntf);
-        dInt->setDevice(xdevice, true /* xrt device is used here*/);
+        dInt->setDevice(new xdp::XrtDevice(xdevice));
         dInt->readDebugIPlayout();
       }
       xdp::xoclp::platform::device::data* info = &(itr->second);
@@ -522,7 +522,7 @@ namespace xdp {
       DeviceIntf* dInt = nullptr;
       if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
         dInt = &(itr->second.mDeviceIntf);
-        dInt->setDevice(xdevice, true /* xrt device is used here*/);
+        dInt->setDevice(new xdp::XrtDevice(xdevice));
       }
 
       std::chrono::steady_clock::time_point nowTime = std::chrono::steady_clock::now();
@@ -612,7 +612,7 @@ namespace xdp {
       DeviceIntf* dInt = nullptr;
       if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
         dInt = &(itr->second.mDeviceIntf);
-        dInt->setDevice(xdevice, true /* xrt device is used here*/);
+        dInt->setDevice(new xdp::XrtDevice(xdevice));
       }
 
       // Do clock training if enough time has passed

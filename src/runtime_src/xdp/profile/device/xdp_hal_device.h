@@ -29,7 +29,7 @@ class HalDevice : public xdp::Device
 
 public:
   HalDevice(void* halDeviceHandle);
-  ~HalDevice();
+  virtual ~HalDevice();
 
   virtual std::string getDebugIPlayoutPath();
   virtual uint32_t getNumLiveProcesses();

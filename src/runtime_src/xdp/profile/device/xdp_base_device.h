@@ -29,7 +29,7 @@ class Device
 {
 public:
   Device() {}
-  ~Device() {}
+  virtual ~Device() {}
 
   virtual std::string getDebugIPlayoutPath() = 0;
   virtual uint32_t getNumLiveProcesses() = 0;

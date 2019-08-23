@@ -59,7 +59,7 @@ namespace xdp {
 
     // Set device handle
     // NOTE: this is used by write, read, & traceRead
-    void setDevice(void* devHandle, bool isXrtDevice);
+    void setDevice(xdp::Device* );
 
     // Debug IP layout
     void     readDebugIPlayout();

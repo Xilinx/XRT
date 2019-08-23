@@ -15,8 +15,6 @@
  */
 
 #include "device_intf.h"
-#include "xdp_xrt_device.h"
-#include "xdp_hal_device.h"
 
 #include "xclperf.h"
 #include "xcl_perfmon_parameters.h"
@@ -67,6 +65,8 @@ DeviceIntf::~DeviceIntf()
     delete fifoRead;
     delete traceFunnel;
     delete traceDMA;
+
+    delete mDevice;
 }
 
   // ***************************************************************************
@@ -96,18 +96,13 @@ DeviceIntf::~DeviceIntf()
   }
 #endif
 
-  void DeviceIntf::setDevice(void* devHandle, bool isXrtDevice)
+  void DeviceIntf::setDevice(xdp::Device* devHandle)
   {
     if(mDevice && mDevice != devHandle) {
       // ERROR : trying to set device when it is already populated with some other device
       return;
     }
-
-    if(isXrtDevice) {
-      mDevice = new xdp::XrtDevice(devHandle);
-    } else {
-      mDevice = new xdp::HalDevice(devHandle);
-    }
+    mDevice = devHandle; 
   }
 
 

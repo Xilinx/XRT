@@ -30,7 +30,7 @@ class XrtDevice : public xdp::Device
    
 public:
   XrtDevice(void* xrtDevice);
-  ~XrtDevice();
+  virtual ~XrtDevice();
 
   virtual std::string getDebugIPlayoutPath();
   virtual uint32_t getNumLiveProcesses();
