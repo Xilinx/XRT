@@ -20,7 +20,7 @@
 
 #define PROP_COMPATIBLE "compatible"
 #define PROP_PF_NUM "pcie_physical_function"
-#define PROP_BAR_IDX "pcie_base_address_register"
+#define PROP_BAR_IDX "pcie_bar_mapping"
 #define PROP_IO_OFFSET "reg"
 #define PROP_INTERRUPTS "interrupts"
 #define PROP_INTERFACE_UUID "interface_uuid"

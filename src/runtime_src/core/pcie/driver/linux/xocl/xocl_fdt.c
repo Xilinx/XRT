@@ -155,7 +155,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 	},
 	{
 		XOCL_SUBDEV_DMA,
-		XOCL_XDMA,
+		XOCL_DMA_MSIX,
 		{ NODE_MSIX, NULL },
 		1,
 		0,

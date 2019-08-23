@@ -272,7 +272,11 @@ static ssize_t rp_program_store(struct device *dev, struct device_attribute *da,
 				RP_DOWNLOAD_NORMAL);
 	else if (val == 2) {
 		ret = xclmgmt_program_shell(lro);
-		(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
+		(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv,
+				(void *)lro);
+	} else if (val == 3) {
+		ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP,
+				RP_DOWNLOAD_CLEAR);
 	} else
 		return -EINVAL;
 

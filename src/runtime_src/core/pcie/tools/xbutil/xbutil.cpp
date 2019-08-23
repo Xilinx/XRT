@@ -110,6 +110,25 @@ void print_pci_info(std::ostream &ostr)
     }
 }
 
+int xrt_xbutil_version_cmp() 
+{
+    /*check xbutil tools and xrt versions*/
+    std::string xrt = sensor_tree::get<std::string>( "runtime.build.version", "N/A" ) + "," 
+        + sensor_tree::get<std::string>( "runtime.build.hash", "N/A" );
+    if ( xrt.compare(xcldev::driver_version("xocl") ) != 0 ) {
+        std::cout << "\nERROR: Mixed versions of XRT and xbutil are not supported. \
+            \nPlease install matching versions of XRT and xbutil or  \
+            \ndefine env variable INTERNAL_BUILD to disable this check\n" << std::endl;
+        return -1;
+    }
+    return 0;
+}
+
+inline bool getenv_or_null(const char* env)
+{ 
+    return getenv(env) ? true : false; 
+}
+
 int main(int argc, char *argv[])
 {
     unsigned index = 0xffffffff;
@@ -197,7 +216,15 @@ int main(int argc, char *argv[])
                                        << std:: endl;
         std::cout.width(26); std::cout << std::internal << "XCLMGMT: " << sensor_tree::get<std::string>( "runtime.build.xclmgmt", "N/A" ) 
                                        << std::endl;
-        return 1;
+        
+        if ( !getenv_or_null("INTERNAL_BUILD") )
+            return xrt_xbutil_version_cmp();
+        return 0;
+    }
+
+    if ( !getenv_or_null("INTERNAL_BUILD") ) {
+        if ( xrt_xbutil_version_cmp() != 0 )
+            return -1;
     }
 
     argv[0] = const_cast<char *>(exe);
