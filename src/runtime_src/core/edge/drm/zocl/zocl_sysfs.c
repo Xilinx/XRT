@@ -54,6 +54,8 @@ static ssize_t kds_custat_show(struct device *dev,
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
 	ssize_t size = 0;
+	phys_addr_t paddr;
+	u32 usage;
 	int i;
 
 	if (!zdev || !zdev->exec)
@@ -61,9 +63,14 @@ static ssize_t kds_custat_show(struct device *dev,
 
 	read_lock(&zdev->attr_rwlock);
 
-	for (i = 0; i < zdev->exec->num_cus; i++)
-		size += sprintf(buf + size, "CU[@0x%x] : %d\n",
-		    zdev->exec->cu_addr_phy[i], zdev->exec->cu_usage[i]);
+	for (i = 0; i < zdev->exec->num_cus; i++) {
+		paddr = zocl_cu_get_paddr(&zdev->exec->zcu[i]);
+		usage = zdev->exec->zcu[i].usage;
+		/* Use %x for now. Needs to use a better approach when support
+		 * CU at higher than 4GB address range.
+		 */
+		size += sprintf(buf + size, "CU[@0x%x] : %d\n", paddr, usage);
+	}
 
 	read_unlock(&zdev->attr_rwlock);
 

@@ -425,6 +425,9 @@ int mailbox_request(struct platform_device *, void *, size_t,
 int mailbox_post_notify(struct platform_device *, void *, size_t);
 int mailbox_get(struct platform_device *pdev, enum mb_kind kind, u64 *data);
 
+static int mailbox_enable_intr_mode(struct mailbox *mbx);
+static void mailbox_disable_intr_mode(struct mailbox *mbx);
+
 static inline u32 mailbox_reg_rd(struct mailbox *mbx, u32 *reg)
 {
 	u32 val = ioread32(reg);
@@ -1452,12 +1455,32 @@ static ssize_t connection_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(connection);
 
+static ssize_t intr_mode_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct mailbox *mbx = platform_get_drvdata(pdev);
+	u32 enable;
+
+	if (kstrtou32(buf, 10, &enable) == -EINVAL || enable > 1)
+		return -EINVAL;
+
+	if (enable)
+		mailbox_enable_intr_mode(mbx);
+	else
+		mailbox_disable_intr_mode(mbx);
+
+	return count;
+}
+
+static DEVICE_ATTR_WO(intr_mode);
 
 static struct attribute *mailbox_attrs[] = {
 	&dev_attr_mailbox.attr,
 	&dev_attr_mailbox_ctl.attr,
 	&dev_attr_mailbox_pkt.attr,
 	&dev_attr_connection.attr,
+	&dev_attr_intr_mode.attr,
 	NULL,
 };
 
