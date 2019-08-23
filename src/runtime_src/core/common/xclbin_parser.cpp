@@ -16,10 +16,19 @@
 
 #include "xclbin_parser.h"
 #include "config_reader.h"
+#include <cstring>
 
 // This is xclbin parser. Update this file if xclbin format has changed.
 
 namespace {
+
+static bool
+is_sw_emulation()
+{
+  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static bool swem = xem ? std::strcmp(xem,"sw_emu")==0 : false;
+  return swem;
+}
 
 // Filter out IPs with invalid base address (streaming kernel)
 static bool
@@ -148,6 +157,9 @@ get_debug_ips(const axlf* top)
 uint32_t
 get_cu_control(const axlf* top, uint64_t cuaddr)
 {
+  if (is_sw_emulation())
+    return AP_CTRL_HS;
+  
   auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
   if (!ip_layout)
     throw std::runtime_error("No such CU at address: " + std::to_string(cuaddr));
