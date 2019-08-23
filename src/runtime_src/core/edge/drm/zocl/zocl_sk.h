@@ -38,7 +38,7 @@ struct soft_cu {
 	uint32_t		sc_flags;
 };
 
-struct soft_kernel {
+struct soft_krnl {
 	struct list_head	sk_cmd_list;
 	struct mutex		sk_lock;
 	struct soft_cu		*sk_cu[MAX_SOFT_KERNEL];
@@ -52,7 +52,7 @@ struct soft_kernel {
 	wait_queue_head_t	sk_wait_queue;
 };
 
-struct soft_kernel_cmd {
+struct soft_krnl_cmd {
 	struct list_head	skc_list;
 	struct ert_packet	*skc_packet;
 };

@@ -43,7 +43,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
 
 
 .. toctree::
-   :caption: XRT developer's space 
+   :caption: XRT developer's space
    :maxdepth: 1
 
    sysfs.rst
@@ -53,7 +53,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
 
 
 .. toctree::
-   :caption: Tools and Utilities  
+   :caption: Tools and Utilities
    :maxdepth: 1
 
    tools.rst
@@ -61,7 +61,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
 
 
 .. toctree::
-   :caption: Platform Building  
+   :caption: Platform Building
    :maxdepth: 1
 
    yocto.rst
@@ -71,7 +71,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
 
 
 .. toctree::
-   :caption: Cloud Support   
+   :caption: Cloud Support
    :maxdepth: 1
 
    mailbox.main.rst
@@ -79,7 +79,14 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
 
 
 .. toctree::
-   :caption: Debug and Faqs  
+   :caption: Security
+   :maxdepth: 1
+
+   security.rst
+
+
+.. toctree::
+   :caption: Debug and Faqs
    :maxdepth: 1
 
    debug-faq.rst

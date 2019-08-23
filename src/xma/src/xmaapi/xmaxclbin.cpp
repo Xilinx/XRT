@@ -64,8 +64,9 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
     {
         char *data = &buffer[ip_hdr->m_sectionOffset];
         const ip_layout *ipl = reinterpret_cast<ip_layout *>(data);
-        XmaIpLayout* layout = xclbin_info->ip_layout;
+        //XmaIpLayout* layout = xclbin_info->ip_layout;
         xclbin_info->number_of_kernels = 0;
+        xclbin_info->number_of_hardware_kernels = 0;
         bool dataflow_ini = xrt_core::config::get_feature_toggle("Runtime.kernel_channels");
         uint32_t j = 0;
         for (int i = 0; i < ipl->m_count; i++)
@@ -84,7 +85,8 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
             memcpy(xclbin_info->ip_layout[j].kernel_name,
                    ipl->m_ip_data[i].m_name, MAX_KERNEL_NAME);
             */
-            layout[j].base_addr = ipl->m_ip_data[i].m_base_address;
+            //layout[j].base_addr = ipl->m_ip_data[i].m_base_address;
+            xclbin_info->ip_layout[j].base_addr = ipl->m_ip_data[i].m_base_address;
             if (((ipl->m_ip_data[i].properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT) == AP_CTRL_CHAIN) {
                 if (dataflow_ini) {
                     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "kernel \"%s\" is a dataflow kernel. channel_id will be handled by XMA. host app and plugins should not use reserved channle_id registers\n", str_tmp1.c_str());
@@ -97,15 +99,51 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
                 xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "kernel \"%s\" is a legacy kernel. Channels to be managed by host app and plugins\n", str_tmp1.c_str());
                 xclbin_info->ip_layout[j].dataflow_kernel = false;
             }
-            //Sarab: TODO handle soft_kernels.. SK_LAYOUT
             xclbin_info->ip_layout[j].soft_kernel = false;
-            
+
+            /*            
             xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index = %d, kernel name = %s, base_addr = %lx\n",
                     j, layout[j].kernel_name, layout[j].base_addr);
+            */
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index = %d, kernel name = %s, base_addr = %lx\n",
+                    j, xclbin_info->ip_layout[j].kernel_name, xclbin_info->ip_layout[j].base_addr);
             j++;
         }
+        xclbin_info->number_of_hardware_kernels = j;
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Num of hardware kernels on this device = %d\n", j);
+        uint32_t num_soft_kernels = 0;
+        //Handle soft kernels just like another hardware IP_Layout kernel
+        //soft kernels to follow hardware kernels. so soft kenrel index will start after hardware kernels
+        //const axlf_section_header *soft_kernel_hdr = nullptr;
+        for (const axlf_section_header *soft_kernel_hdr = xclbin::get_axlf_section(xclbin, SOFT_KERNEL); soft_kernel_hdr != nullptr; soft_kernel_hdr = xclbin::get_axlf_section_next(xclbin, soft_kernel_hdr, SOFT_KERNEL)) {
+            char *data = &buffer[soft_kernel_hdr->m_sectionOffset];
+            const soft_kernel *sk_data = reinterpret_cast<soft_kernel *>(data);
+            if (num_soft_kernels + sk_data->m_num_instances == MAX_XILINX_SOFT_KERNELS) {
+                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only %d soft kernels per device\n", MAX_XILINX_SOFT_KERNELS);
+                return XMA_ERROR;
+            }
+
+            std::string str_tmp1 = std::string((char*)&buffer[soft_kernel_hdr->m_sectionOffset + sk_data->mpo_name]);
+            std::string str_tmp2 = std::string((char*)&buffer[soft_kernel_hdr->m_sectionOffset + sk_data->mpo_version]);
+            std::string str_tmp3 = std::string((char*)&buffer[soft_kernel_hdr->m_sectionOffset + sk_data->mpo_symbol_name]);
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "soft kernel name = %s, version = %d, symbol name = %s, num of instances = %d\n", str_tmp1.c_str(), str_tmp2.c_str(), str_tmp3.c_str(), sk_data->m_num_instances);
+            for (uint32_t i = 0; i < sk_data->m_num_instances; i++) {
+                memset(xclbin_info->ip_layout[j].kernel_name, 0, MAX_KERNEL_NAME);
+                str_tmp1 = std::string((char*)&buffer[soft_kernel_hdr->m_sectionOffset + sk_data->mpo_name]);
+                str_tmp1.copy((char*)xclbin_info->ip_layout[j].kernel_name, MAX_KERNEL_NAME-1);
+                xclbin_info->ip_layout[j].soft_kernel = true;
+                xclbin_info->ip_layout[j].base_addr = 0;
+
+                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index = %d, soft kernel name = %s\n", j, xclbin_info->ip_layout[j].kernel_name);
+
+                j++;
+                num_soft_kernels++;
+            }
+        }
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Num of soft kernels on this device = %d\n", num_soft_kernels);
+
         xclbin_info->number_of_kernels = j;
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "IP LAYOUT - %d kernels\n", xclbin_info->number_of_kernels);
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Num of total kernels on this device = %d\n", xclbin_info->number_of_kernels);
     }
     else
     {
@@ -209,7 +247,7 @@ int xma_xclbin_info_get(char *buffer, XmaXclbinInfo *info)
         info->ip_ddr_mapping[xma_conn->m_ip_layout_index] |= 1 << (xma_conn->mem_data_index);
     }
     xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\nCU DDR connections bitmap:\n");
-    for(uint32_t i = 0; i < info->number_of_kernels; i++)
+    for(uint32_t i = 0; i < info->number_of_hardware_kernels; i++)
     {
         xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\t%s - 0x%04llx\n",info->ip_layout[i].kernel_name, info->ip_ddr_mapping[i]);
     }

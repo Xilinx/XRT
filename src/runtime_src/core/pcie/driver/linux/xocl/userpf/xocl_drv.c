@@ -171,9 +171,9 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 	userpf_info(xdev, "program shell...");
 
 
-	xocl_drvinst_set_offline(xdev, true);
+	xocl_drvinst_set_offline(xdev->core.drm, true);
 	if (force)
-		xocl_drvinst_kill_proc(xdev);
+		xocl_drvinst_kill_proc(xdev->core.drm);
 
 	if (XOCL_DRM(xdev))
 		xocl_cleanup_mem(XOCL_DRM(xdev));
@@ -239,7 +239,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 	userpf_info(xdev, "resetting device...");
 
 	if (force)
-		xocl_drvinst_kill_proc(xdev);
+		xocl_drvinst_kill_proc(xdev->core.drm);
 
 	xocl_reset_notify(xdev->core.pdev, true);
 
@@ -251,7 +251,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 
 	xocl_reset_notify(xdev->core.pdev, false);
 
-	xocl_drvinst_set_offline(xdev, false);
+	xocl_drvinst_set_offline(xdev->core.drm, false);
 
 	return ret;
 }
@@ -427,6 +427,7 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	switch (req->req) {
 	case MAILBOX_REQ_FIREWALL:
 		userpf_info(xdev, "firewall tripped, request reset");
+		xocl_drvinst_set_offline(xdev->core.drm, true);
 		xocl_queue_work(xdev, XOCL_WORK_RESET, XOCL_RESET_DELAY);
 		break;
 	case MAILBOX_REQ_MGMT_STATE:
@@ -566,7 +567,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	blob = NULL;
 
 
-	xocl_drvinst_set_offline(xdev, true);
+	xocl_drvinst_set_offline(xdev->core.drm, true);
 	if (xdev->core.fdt_blob) {
 		ret = xocl_fdt_blob_input(xdev, xdev->core.fdt_blob);
 		if (ret) {
@@ -587,7 +588,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	}
 	(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 	(void) xocl_mb_connect(xdev);
-	xocl_drvinst_set_offline(xdev, false);
+	xocl_drvinst_set_offline(xdev->core.drm, false);
 
 failed:
 	if (blob)

@@ -1,3 +1,5 @@
+.. _mailbox.main.rst:
+
 Mailbox Subdevice Driver
 ------------------------
 

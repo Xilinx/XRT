@@ -27,8 +27,8 @@ int
 zocl_sk_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 {
 	struct drm_zocl_dev *zdev = dev->dev_private;
-	struct soft_kernel *sk = zdev->soft_kernel;
-	struct soft_kernel_cmd *scmd;
+	struct soft_krnl *sk = zdev->soft_kernel;
+	struct soft_krnl_cmd *scmd;
 	struct drm_zocl_sk_getcmd *kdata = data;
 
 	/* If no command, the process who calls this ioctl will block here */
@@ -41,7 +41,7 @@ zocl_sk_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		mutex_lock(&sk->sk_lock);
 	}
 
-	scmd = list_first_entry(&sk->sk_cmd_list, struct soft_kernel_cmd,
+	scmd = list_first_entry(&sk->sk_cmd_list, struct soft_krnl_cmd,
 	    skc_list);
 	list_del(&scmd->skc_list);
 	mutex_unlock(&sk->sk_lock);
@@ -71,12 +71,12 @@ zocl_sk_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	return 0;
 }
 
-int 
+int
 zocl_sk_create_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 {
 	struct drm_zocl_dev *zdev = dev->dev_private;
-	struct soft_kernel *sk = zdev->soft_kernel;
-	struct drm_zocl_sk_create *args = data; 
+	struct soft_krnl *sk = zdev->soft_kernel;
+	struct drm_zocl_sk_create *args = data;
 	struct drm_gem_object *gem_obj;
 	struct drm_zocl_bo *bo;
 	uint32_t cu_idx = args->cu_idx;
@@ -90,12 +90,11 @@ zocl_sk_create_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		return -EINVAL;
 	}
 
-	sk->sk_cu[cu_idx] = kzalloc(sizeof (struct soft_kernel), GFP_KERNEL);
+	sk->sk_cu[cu_idx] = kzalloc(sizeof(struct soft_krnl), GFP_KERNEL);
 	if (!sk->sk_cu[cu_idx]) {
 		DRM_ERROR("Fail to create soft kernel: no memory.\n");
 		mutex_unlock(&sk->sk_lock);
 		return -ENOMEM;
-	
 	}
 
 	mutex_unlock(&sk->sk_lock);
@@ -117,11 +116,11 @@ zocl_sk_create_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 
 int
 zocl_sk_report_ioctl(struct drm_device *dev, void *data,
-   		struct drm_file *filp)
+		struct drm_file *filp)
 {
 	struct drm_zocl_dev *zdev = dev->dev_private;
-	struct soft_kernel *sk = zdev->soft_kernel;
-	struct drm_zocl_sk_report *args = data; 
+	struct soft_krnl *sk = zdev->soft_kernel;
+	struct drm_zocl_sk_report *args = data;
 	struct soft_cu *scu;
 	uint32_t cu_idx = args->cu_idx;
 	uint32_t *vaddr;
@@ -188,8 +187,8 @@ zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 int
 zocl_init_soft_kernel(struct drm_device *drm)
 {
-        struct drm_zocl_dev *zdev = drm->dev_private;
-        struct soft_kernel *sk;
+	struct drm_zocl_dev *zdev = drm->dev_private;
+	struct soft_krnl *sk;
 
 	sk = devm_kzalloc(drm->dev, sizeof (*sk), GFP_KERNEL);
 	if (!sk)
