@@ -4,6 +4,8 @@ include_directories(
   )
 
 file(GLOB XRT_USER_FILES
+  "zynq_dev.h"
+  "zynq_dev.cpp"
   "*.h"
   "*.cpp"
   "*.c"

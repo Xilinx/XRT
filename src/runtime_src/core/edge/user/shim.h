@@ -22,6 +22,7 @@
 
 #include "core/edge/include/xclhal2_mpsoc.h"
 #include "core/edge/include/zynq_ioctl.h"
+#include "zynq_dev.h"
 #include <cstdint>
 #include <fstream>
 #include <map>
@@ -80,8 +81,7 @@ public:
 
   uint xclGetNumLiveProcesses();
 
-  int xclGetSysfsPath(const char *subdev, const char *entry, char *sysfPath,
-                      size_t size);
+  std::string xclGetSysfsPath(const std::string& entry);
 
   int xclGetDebugIPlayoutPath(char* layoutPath, size_t size);
   int xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
@@ -111,6 +111,7 @@ private:
   int mKernelFD;
   std::map<uint64_t, uint32_t *> mKernelControl;
   std::unique_ptr<xrt_core::bo_cache> mCmdBOCache;
+  zynq_device *mDev = nullptr;
 
   /*
    * Mapped CU register space for xclRegRead/Write(). We support at most

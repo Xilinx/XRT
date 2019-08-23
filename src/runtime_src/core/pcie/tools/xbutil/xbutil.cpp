@@ -27,8 +27,6 @@
 
 #include "xbutil.h"
 #include "base.h"
-#include "core/pcie/linux/shim.h"
-#include "core/common/memalign.h"
 
 int bdf2index(std::string& bdfStr, unsigned& index)
 {
