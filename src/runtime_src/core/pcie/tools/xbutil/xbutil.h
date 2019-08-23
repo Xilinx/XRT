@@ -158,10 +158,9 @@ class device {
     struct xclbin_lock
     {
         xclDeviceHandle m_handle;
-        uuid_t  m_uuid;
+        uuid_t m_uuid;
         xclbin_lock(xclDeviceHandle handle, unsigned int m_idx) : m_handle(handle) {
             std::string errmsg, xclbinid;
-            uuid_t uuid;
 
             pcidev::get_dev(m_idx)->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
 
@@ -170,12 +169,11 @@ class device {
                 throw std::runtime_error("Failed to lockdown xclbin.");
             }
 
-            uuid_parse(xclbinid.c_str(), uuid);
+            uuid_parse(xclbinid.c_str(), m_uuid);
 
-            if (uuid_is_null(uuid))
+            if (uuid_is_null(m_uuid))
                    throw std::runtime_error("'uuid' invalid, please re-program xclbin.");
 
-            uuid_copy(m_uuid, uuid);
             if (xclOpenContext(m_handle, m_uuid, -1, true))
                    throw std::runtime_error("'uuid' invalid, please re-program xclbin.");
         }
@@ -1210,7 +1208,7 @@ public:
      * TODO: Refactor this function to be much shorter.
      */
     int dmatest(size_t blockSize, bool verbose) {
-        struct xclbin_lock xclbin_lock(m_handle, m_idx);
+        xclbin_lock xclbin_lock(m_handle, m_idx);
 
         if (blockSize == 0)
             blockSize = 256 * 1024 * 1024; // Default block size

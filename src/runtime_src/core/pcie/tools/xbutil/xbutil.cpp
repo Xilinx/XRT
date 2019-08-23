@@ -1392,7 +1392,7 @@ int xcldev::device::testP2p()
     std::vector<char> buf;
     int ret = 0;
     int p2p_enabled = 0;
-    struct xclbin_lock xclbin_lock(m_handle, m_idx);
+    xclbin_lock xclbin_lock(m_handle, m_idx);
     auto dev = pcidev::get_dev(m_idx);
 
     if (dev == nullptr)
@@ -1602,7 +1602,7 @@ int xcldev::device::testM2m()
     int m2m_enabled = 0;
     std::vector<mem_data> usedBanks;
     int ret = 0;
-    struct xclbin_lock xclbin_lock(m_handle, m_idx);
+    xclbin_lock xclbin_lock(m_handle, m_idx);
     auto dev = pcidev::get_dev(m_idx);
 
     if (dev == nullptr)
