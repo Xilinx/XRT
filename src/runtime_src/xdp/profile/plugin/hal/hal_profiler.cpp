@@ -15,6 +15,7 @@
  */
 
 #include "hal_profiler.h"
+#include "xdp/profile/device/hal_device/xdp_hal_device.h"
 // xclShim methods header file
 
 namespace xdp {
@@ -45,7 +46,7 @@ void HALProfiler::startProfiling(xclDeviceHandle handle)
   DeviceIntf* dev = new DeviceIntf();
   deviceList.push_back(dev);
 
-  dev->setDevice(handle, false /* HAL device handle is used here*/);
+  dev->setDevice(new xdp::HalDevice(handle));
   dev->readDebugIPlayout();
 
   // check the flags 
