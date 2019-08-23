@@ -2240,8 +2240,6 @@ static int xmc_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, xmc);
 
 	for (i = 0; i < NUM_IOADDR; i++) {
-		if ((i == IO_CLK_SCALING) && xmc->runtime_cs_enabled)
-			continue;
 		res = platform_get_resource(pdev, IORESOURCE_MEM, i);
 		if (res) {
 			xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx",
