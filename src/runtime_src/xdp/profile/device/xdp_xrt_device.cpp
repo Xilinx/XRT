@@ -19,9 +19,9 @@
 
 namespace xdp {
 
-XrtDevice::XrtDevice(void* xrtDev)
+XrtDevice::XrtDevice(xrt::device* xrtDev)
           : Device(),
-            mXrtDevice((xrt::device*)xrtDev)
+            mXrtDevice(xrtDev)
 {}
 
 XrtDevice::~XrtDevice()
