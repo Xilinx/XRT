@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0" xmlns:number="urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0" xmlns:presentation="urn:oasis:names:tc:opendocument:xmlns:presentation:1.0" xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0" xmlns:chart="urn:oasis:names:tc:opendocument:xmlns:chart:1.0" xmlns:dr3d="urn:oasis:names:tc:opendocument:xmlns:dr3d:1.0" xmlns:math="http://www.w3.org/1998/Math/MathML" xmlns:form="urn:oasis:names:tc:opendocument:xmlns:form:1.0" xmlns:script="urn:oasis:names:tc:opendocument:xmlns:script:1.0" xmlns:config="urn:oasis:names:tc:opendocument:xmlns:config:1.0" xmlns:ooo="http://openoffice.org/2004/office" xmlns:ooow="http://openoffice.org/2004/writer" xmlns:oooc="http://openoffice.org/2004/calc" xmlns:dom="http://www.w3.org/2001/xml-events" xmlns:xforms="http://www.w3.org/2002/xforms" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:smil="urn:oasis:names:tc:opendocument:xmlns:smil-compatible:1.0" xmlns:anim="urn:oasis:names:tc:opendocument:xmlns:animation:1.0" xmlns:rpt="http://openoffice.org/2005/report" xmlns:of="urn:oasis:names:tc:opendocument:xmlns:of:1.2" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:grddl="http://www.w3.org/2003/g/data-view#" xmlns:officeooo="http://openoffice.org/2009/office" xmlns:tableooo="http://openoffice.org/2009/table" xmlns:drawooo="http://openoffice.org/2010/draw" xmlns:calcext="urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0" xmlns:loext="urn:org:documentfoundation:names:experimental:office:xmlns:loext:1.0" xmlns:field="urn:openoffice:names:experimental:ooo-ms-interop:xmlns:field:1.0" xmlns:formx="urn:openoffice:names:experimental:ooxml-odf-interop:xmlns:form:1.0" xmlns:css3t="http://www.w3.org/TR/css3-text/" office:version="1.2" office:mimetype="application/vnd.oasis.opendocument.graphics">
- <office:meta><meta:creation-date>2018-12-02T17:38:26.314939138</meta:creation-date><dc:date>2019-07-14T17:25:54.854257174</dc:date><meta:editing-duration>P2DT21M38S</meta:editing-duration><meta:editing-cycles>35</meta:editing-cycles><meta:generator>LibreOffice/6.0.3.2$Linux_X86_64 LibreOffice_project/00m0$Build-2</meta:generator><meta:document-statistic meta:object-count="29"/></office:meta>
+ <office:meta><meta:creation-date>2018-12-02T17:38:26.314939138</meta:creation-date><dc:date>2019-08-13T03:30:33.130150150</dc:date><meta:editing-duration>P2DT31M8S</meta:editing-duration><meta:editing-cycles>39</meta:editing-cycles><meta:generator>LibreOffice/6.0.3.2$Linux_X86_64 LibreOffice_project/00m0$Build-2</meta:generator><meta:document-statistic meta:object-count="30"/></office:meta>
  <office:settings>
   <config:config-item-set config:name="ooo:view-settings">
    <config:config-item config:name="VisibleAreaTop" config:type="int">-646</config:config-item>
@@ -35,10 +35,10 @@
      <config:config-item config:name="IsClickChangeRotation" config:type="boolean">true</config:config-item>
      <config:config-item config:name="SlidesPerRow" config:type="short">4</config:config-item>
      <config:config-item config:name="EditMode" config:type="int">0</config:config-item>
-     <config:config-item config:name="VisibleAreaTop" config:type="int">-646</config:config-item>
-     <config:config-item config:name="VisibleAreaLeft" config:type="int">-346</config:config-item>
-     <config:config-item config:name="VisibleAreaWidth" config:type="int">21609</config:config-item>
-     <config:config-item config:name="VisibleAreaHeight" config:type="int">12364</config:config-item>
+     <config:config-item config:name="VisibleAreaTop" config:type="int">-218</config:config-item>
+     <config:config-item config:name="VisibleAreaLeft" config:type="int">-1959</config:config-item>
+     <config:config-item config:name="VisibleAreaWidth" config:type="int">25036</config:config-item>
+     <config:config-item config:name="VisibleAreaHeight" config:type="int">11589</config:config-item>
      <config:config-item config:name="GridCoarseWidth" config:type="int">1270</config:config-item>
      <config:config-item config:name="GridCoarseHeight" config:type="int">1270</config:config-item>
      <config:config-item config:name="GridFineWidth" config:type="int">127</config:config-item>
@@ -90,8 +90,8 @@
    <config:config-item config:name="ParagraphSummation" config:type="boolean">false</config:config-item>
    <config:config-item config:name="PrintQuality" config:type="int">0</config:config-item>
    <config:config-item config:name="PrinterIndependentLayout" config:type="string">low-resolution</config:config-item>
-   <config:config-item config:name="PrinterName" config:type="string"/>
-   <config:config-item config:name="PrinterSetup" config:type="base64Binary"/>
+   <config:config-item config:name="PrinterName" config:type="string">Samsung-SCX-3400-Series</config:config-item>
+   <config:config-item config:name="PrinterSetup" config:type="base64Binary">sgH+/1NhbXN1bmctU0NYLTM0MDAtU2VyaWVzAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQ1VQUzpTYW1zdW5nLVNDWC0zNDAwLVNlcmllcwAAAAAWAAMAzwAAAAAAAAAIAFZUAAAkbQAASm9iRGF0YSAxCnByaW50ZXI9U2Ftc3VuZy1TQ1gtMzQwMC1TZXJpZXMKb3JpZW50YXRpb249UG9ydHJhaXQKY29waWVzPTEKY29sbGF0ZT1mYWxzZQptYXJnaW5kYWp1c3RtZW50PTAsMCwwLDAKY29sb3JkZXB0aD0yNApwc2xldmVsPTAKcGRmZGV2aWNlPTEKY29sb3JkZXZpY2U9MApQUERDb250ZXhEYXRhCklucHV0U2xvdDpBdXRvAFBhZ2VTaXplOkxldHRlcgAAEgBDT01QQVRfRFVQTEVYX01PREUTAER1cGxleE1vZGU6OlVua25vd24=</config:config-item>
    <config:config-item config:name="SaveVersionOnClose" config:type="boolean">false</config:config-item>
    <config:config-item config:name="ScaleDenominator" config:type="int">1</config:config-item>
    <config:config-item config:name="ScaleNumerator" config:type="int">1</config:config-item>
@@ -107,18 +107,11 @@
  </office:scripts>
  <office:font-face-decls>
   <style:font-face style:name="Arial" svg:font-family="Arial" style:font-family-generic="swiss"/>
-  <style:font-face style:name="Liberation Mono" svg:font-family="&apos;Liberation Mono&apos;" style:font-adornments="Regular" style:font-family-generic="modern" style:font-pitch="fixed"/>
   <style:font-face style:name="Liberation Sans" svg:font-family="&apos;Liberation Sans&apos;" style:font-family-generic="roman" style:font-pitch="variable"/>
-  <style:font-face style:name="Liberation Serif1" svg:font-family="&apos;Liberation Serif&apos;" style:font-family-generic="roman" style:font-pitch="variable"/>
-  <style:font-face style:name="Liberation Serif" svg:font-family="&apos;Liberation Serif&apos;" style:font-adornments="Regular" style:font-family-generic="roman" style:font-pitch="variable"/>
-  <style:font-face style:name="Bitstream Vera Sans" svg:font-family="&apos;Bitstream Vera Sans&apos;" style:font-adornments="Roman" style:font-family-generic="swiss" style:font-pitch="variable"/>
-  <style:font-face style:name="DejaVu Sans" svg:font-family="&apos;DejaVu Sans&apos;" style:font-adornments="Bold" style:font-family-generic="swiss" style:font-pitch="variable"/>
-  <style:font-face style:name="DejaVu Sans1" svg:font-family="&apos;DejaVu Sans&apos;" style:font-adornments="Book" style:font-family-generic="swiss" style:font-pitch="variable"/>
-  <style:font-face style:name="Liberation Sans2" svg:font-family="&apos;Liberation Sans&apos;" style:font-adornments="Bold" style:font-family-generic="swiss" style:font-pitch="variable"/>
-  <style:font-face style:name="Liberation Sans1" svg:font-family="&apos;Liberation Sans&apos;" style:font-adornments="Regular" style:font-family-generic="swiss" style:font-pitch="variable"/>
-  <style:font-face style:name="Liberation Sans Narrow1" svg:font-family="&apos;Liberation Sans Narrow&apos;" style:font-adornments="Bold" style:font-family-generic="swiss" style:font-pitch="variable"/>
-  <style:font-face style:name="Liberation Sans Narrow" svg:font-family="&apos;Liberation Sans Narrow&apos;" style:font-adornments="Regular" style:font-family-generic="swiss" style:font-pitch="variable"/>
-  <style:font-face style:name="DejaVu Sans2" svg:font-family="&apos;DejaVu Sans&apos;" style:font-family-generic="system" style:font-pitch="variable"/>
+  <style:font-face style:name="Liberation Serif" svg:font-family="&apos;Liberation Serif&apos;" style:font-family-generic="roman" style:font-pitch="variable"/>
+  <style:font-face style:name="Liberation Sans1" svg:font-family="&apos;Liberation Sans&apos;" style:font-adornments="Bold" style:font-family-generic="swiss" style:font-pitch="variable"/>
+  <style:font-face style:name="Liberation Sans2" svg:font-family="&apos;Liberation Sans&apos;" style:font-adornments="Regular" style:font-family-generic="swiss" style:font-pitch="variable"/>
+  <style:font-face style:name="DejaVu Sans" svg:font-family="&apos;DejaVu Sans&apos;" style:font-family-generic="system" style:font-pitch="variable"/>
   <style:font-face style:name="FreeSans" svg:font-family="FreeSans" style:font-family-generic="system" style:font-pitch="variable"/>
   <style:font-face style:name="Noto Sans CJK SC Regular" svg:font-family="&apos;Noto Sans CJK SC Regular&apos;" style:font-family-generic="system" style:font-pitch="variable"/>
  </office:font-face-decls>
@@ -132,7 +125,7 @@
    <style:paragraph-properties style:text-autospace="ideograph-alpha" style:punctuation-wrap="simple" style:line-break="strict" style:font-independent-line-spacing="false">
     <style:tab-stops/>
    </style:paragraph-properties>
-   <style:text-properties style:use-window-font-color="true" style:font-name="Liberation Serif1" fo:font-size="24pt" fo:language="en" fo:country="US" style:font-name-asian="DejaVu Sans2" style:font-size-asian="24pt" style:language-asian="zh" style:country-asian="CN" style:font-name-complex="DejaVu Sans2" style:font-size-complex="24pt" style:language-complex="hi" style:country-complex="IN"/>
+   <style:text-properties style:use-window-font-color="true" style:font-name="Liberation Serif" fo:font-size="24pt" fo:language="en" fo:country="US" style:font-name-asian="DejaVu Sans" style:font-size-asian="24pt" style:language-asian="zh" style:country-asian="CN" style:font-name-complex="DejaVu Sans" style:font-size-complex="24pt" style:language-complex="hi" style:country-complex="IN"/>
   </style:default-style>
   <style:style style:name="standard" style:family="graphic">
    <style:graphic-properties draw:stroke="solid" draw:stroke-dash="Dashed_20__28_var_29__20_1" svg:stroke-width="0cm" svg:stroke-color="#3465a4" draw:marker-start-width="0.2cm" draw:marker-start-center="false" draw:marker-end-width="0.2cm" draw:marker-end-center="false" draw:fill="none" draw:fill-color="#729fcf" draw:textarea-horizontal-align="justify" fo:padding-top="0.125cm" fo:padding-bottom="0.125cm" fo:padding-left="0.25cm" fo:padding-right="0.25cm" draw:shadow="hidden" draw:shadow-offset-x="0.2cm" draw:shadow-offset-y="0.2cm" draw:shadow-color="#808080">
@@ -252,73 +245,73 @@
   </style:style>
   <style:style style:name="dp2" style:family="drawing-page"/>
   <style:style style:name="gr1" style:family="graphic" style:parent-style-name="standard">
-   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.071cm" svg:stroke-color="#0c0c0c" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#1c3687" draw:textarea-vertical-align="top" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="1.516cm" fo:min-width="2.481cm" fo:padding-top="0.095cm" fo:padding-bottom="0.095cm" fo:padding-left="0.191cm" fo:padding-right="0.191cm" fo:wrap-option="wrap"/>
+   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.051cm" svg:stroke-color="#0c0c0c" draw:marker-start-width="0.148cm" draw:marker-end-width="0.148cm" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#1c3687" draw:textarea-vertical-align="top" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="1.516cm" fo:min-width="2.481cm" fo:padding-top="0.085cm" fo:padding-bottom="0.085cm" fo:padding-left="0.181cm" fo:padding-right="0.181cm" fo:wrap-option="wrap"/>
   </style:style>
   <style:style style:name="gr2" style:family="graphic" style:parent-style-name="standard">
-   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.071cm" svg:stroke-color="#0c0c0c" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#faa61a" draw:textarea-vertical-align="top" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="1.416cm" fo:min-width="5.923cm" fo:padding-top="0.095cm" fo:padding-bottom="0.095cm" fo:padding-left="0.191cm" fo:padding-right="0.191cm" fo:wrap-option="wrap"/>
+   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.051cm" svg:stroke-color="#0c0c0c" draw:marker-start-width="0.148cm" draw:marker-end-width="0.148cm" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#faa61a" draw:textarea-vertical-align="top" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="1.416cm" fo:min-width="5.923cm" fo:padding-top="0.085cm" fo:padding-bottom="0.085cm" fo:padding-left="0.181cm" fo:padding-right="0.181cm" fo:wrap-option="wrap"/>
   </style:style>
   <style:style style:name="gr3" style:family="graphic" style:parent-style-name="standard">
-   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.071cm" svg:stroke-color="#0c0c0c" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#89c765" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.342cm" fo:min-width="1.975cm" fo:padding-top="0.095cm" fo:padding-bottom="0.095cm" fo:padding-left="0.191cm" fo:padding-right="0.191cm" fo:wrap-option="wrap"/>
+   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.051cm" svg:stroke-color="#0c0c0c" draw:marker-start-width="0.148cm" draw:marker-end-width="0.148cm" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#89c765" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.342cm" fo:min-width="1.975cm" fo:padding-top="0.085cm" fo:padding-bottom="0.085cm" fo:padding-left="0.181cm" fo:padding-right="0.181cm" fo:wrap-option="wrap"/>
   </style:style>
   <style:style style:name="gr4" style:family="graphic" style:parent-style-name="standard">
-   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.071cm" svg:stroke-color="#0c0c0c" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#cf3834" draw:textarea-vertical-align="top" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="1.273cm" fo:min-width="10.509cm" fo:padding-top="0.095cm" fo:padding-bottom="0.095cm" fo:padding-left="0.191cm" fo:padding-right="0.191cm" fo:wrap-option="wrap"/>
+   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.051cm" svg:stroke-color="#0c0c0c" draw:marker-start-width="0.148cm" draw:marker-end-width="0.148cm" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#cf3834" draw:textarea-vertical-align="top" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="1.273cm" fo:min-width="10.509cm" fo:padding-top="0.085cm" fo:padding-bottom="0.085cm" fo:padding-left="0.181cm" fo:padding-right="0.181cm" fo:wrap-option="wrap"/>
   </style:style>
   <style:style style:name="gr5" style:family="graphic" style:parent-style-name="standard">
-   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.071cm" svg:stroke-color="#0c0c0c" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#f68e76" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.85cm" fo:min-width="1.141cm" fo:padding-top="0.095cm" fo:padding-bottom="0.095cm" fo:padding-left="0.191cm" fo:padding-right="0.191cm" fo:wrap-option="wrap"/>
+   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.051cm" svg:stroke-color="#0c0c0c" draw:marker-start-width="0.148cm" draw:marker-end-width="0.148cm" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#f68e76" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.85cm" fo:min-width="1.141cm" fo:padding-top="0.085cm" fo:padding-bottom="0.085cm" fo:padding-left="0.181cm" fo:padding-right="0.181cm" fo:wrap-option="wrap"/>
   </style:style>
   <style:style style:name="gr6" style:family="graphic" style:parent-style-name="standard">
-   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.071cm" svg:stroke-color="#0c0c0c" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#f68e76" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.85cm" fo:min-width="3.145cm" fo:padding-top="0.095cm" fo:padding-bottom="0.095cm" fo:padding-left="0.191cm" fo:padding-right="0.191cm" fo:wrap-option="wrap"/>
+   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.051cm" svg:stroke-color="#0c0c0c" draw:marker-start-width="0.148cm" draw:marker-end-width="0.148cm" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#f68e76" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.85cm" fo:min-width="3.145cm" fo:padding-top="0.085cm" fo:padding-bottom="0.085cm" fo:padding-left="0.181cm" fo:padding-right="0.181cm" fo:wrap-option="wrap"/>
   </style:style>
   <style:style style:name="gr7" style:family="graphic" style:parent-style-name="standard">
-   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.071cm" svg:stroke-color="#0c0c0c" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#f68e76" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.85cm" fo:min-width="0.899cm" fo:padding-top="0.095cm" fo:padding-bottom="0.095cm" fo:padding-left="0.191cm" fo:padding-right="0.191cm" fo:wrap-option="wrap"/>
+   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.051cm" svg:stroke-color="#0c0c0c" draw:marker-start-width="0.148cm" draw:marker-end-width="0.148cm" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#f68e76" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.85cm" fo:min-width="0.899cm" fo:padding-top="0.085cm" fo:padding-bottom="0.085cm" fo:padding-left="0.181cm" fo:padding-right="0.181cm" fo:wrap-option="wrap"/>
   </style:style>
   <style:style style:name="gr8" style:family="graphic" style:parent-style-name="standard">
-   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.071cm" svg:stroke-color="#0c0c0c" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#f68e76" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.85cm" fo:min-width="1.593cm" fo:padding-top="0.095cm" fo:padding-bottom="0.095cm" fo:padding-left="0.191cm" fo:padding-right="0.191cm" fo:wrap-option="wrap"/>
+   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.051cm" svg:stroke-color="#0c0c0c" draw:marker-start-width="0.148cm" draw:marker-end-width="0.148cm" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#f68e76" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.85cm" fo:min-width="1.593cm" fo:padding-top="0.085cm" fo:padding-bottom="0.085cm" fo:padding-left="0.181cm" fo:padding-right="0.181cm" fo:wrap-option="wrap"/>
   </style:style>
   <style:style style:name="gr9" style:family="graphic" style:parent-style-name="standard">
    <style:graphic-properties draw:stroke="none" svg:stroke-color="#000000" draw:fill="none" draw:fill-color="#89c765" draw:textarea-horizontal-align="center" draw:textarea-vertical-align="middle" draw:auto-grow-height="true" draw:auto-grow-width="true" fo:min-height="0.421cm" fo:min-width="3.744cm"/>
   </style:style>
   <style:style style:name="gr10" style:family="graphic" style:parent-style-name="standard">
-   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.071cm" svg:stroke-color="#0c0c0c" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#89c765" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.31cm" fo:min-width="1.508cm" fo:padding-top="0.095cm" fo:padding-bottom="0.095cm" fo:padding-left="0.191cm" fo:padding-right="0.191cm" fo:wrap-option="wrap"/>
+   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.051cm" svg:stroke-color="#0c0c0c" draw:marker-start-width="0.148cm" draw:marker-end-width="0.148cm" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#89c765" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.31cm" fo:min-width="1.508cm" fo:padding-top="0.085cm" fo:padding-bottom="0.085cm" fo:padding-left="0.181cm" fo:padding-right="0.181cm" fo:wrap-option="wrap"/>
   </style:style>
   <style:style style:name="gr11" style:family="graphic" style:parent-style-name="standard">
-   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.071cm" svg:stroke-color="#0c0c0c" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#89c765" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.362cm" fo:min-width="1.819cm" fo:padding-top="0.095cm" fo:padding-bottom="0.095cm" fo:padding-left="0.191cm" fo:padding-right="0.191cm" fo:wrap-option="wrap"/>
+   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.051cm" svg:stroke-color="#0c0c0c" draw:marker-start-width="0.148cm" draw:marker-end-width="0.148cm" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#89c765" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.337cm" fo:min-width="1.821cm" fo:padding-top="0.085cm" fo:padding-bottom="0.085cm" fo:padding-left="0.181cm" fo:padding-right="0.181cm" fo:wrap-option="wrap"/>
   </style:style>
   <style:style style:name="gr12" style:family="graphic" style:parent-style-name="standard">
-   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.071cm" svg:stroke-color="#0c0c0c" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#89c765" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.315cm" fo:min-width="1.199cm" fo:padding-top="0.095cm" fo:padding-bottom="0.095cm" fo:padding-left="0.191cm" fo:padding-right="0.191cm" fo:wrap-option="wrap"/>
+   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.051cm" svg:stroke-color="#0c0c0c" draw:marker-start-width="0.148cm" draw:marker-end-width="0.148cm" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#89c765" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.315cm" fo:min-width="1.199cm" fo:padding-top="0.085cm" fo:padding-bottom="0.085cm" fo:padding-left="0.181cm" fo:padding-right="0.181cm" fo:wrap-option="wrap"/>
   </style:style>
   <style:style style:name="gr13" style:family="graphic" style:parent-style-name="standard">
-   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.071cm" svg:stroke-color="#0c0c0c" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#faa61a" draw:textarea-vertical-align="top" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="1.367cm" fo:min-width="3.744cm" fo:padding-top="0.102cm" fo:padding-bottom="0.095cm" fo:padding-left="0.191cm" fo:padding-right="0.191cm" fo:wrap-option="wrap"/>
+   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.051cm" svg:stroke-color="#0c0c0c" draw:marker-start-width="0.148cm" draw:marker-end-width="0.148cm" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#faa61a" draw:textarea-vertical-align="top" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="1.387cm" fo:min-width="3.661cm" fo:padding-top="0.092cm" fo:padding-bottom="0.085cm" fo:padding-left="0.181cm" fo:padding-right="0.181cm" fo:wrap-option="wrap"/>
   </style:style>
   <style:style style:name="gr14" style:family="graphic" style:parent-style-name="standard">
-   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.071cm" svg:stroke-color="#0c0c0c" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#89c765" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.316cm" fo:min-width="1.199cm" fo:padding-top="0.095cm" fo:padding-bottom="0.095cm" fo:padding-left="0.191cm" fo:padding-right="0.191cm" fo:wrap-option="wrap"/>
+   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.051cm" svg:stroke-color="#0c0c0c" draw:marker-start-width="0.148cm" draw:marker-end-width="0.148cm" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#89c765" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.316cm" fo:min-width="1.199cm" fo:padding-top="0.085cm" fo:padding-bottom="0.085cm" fo:padding-left="0.181cm" fo:padding-right="0.181cm" fo:wrap-option="wrap"/>
   </style:style>
   <style:style style:name="gr15" style:family="graphic" style:parent-style-name="standard">
-   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.071cm" svg:stroke-color="#0c0c0c" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#89c765" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.345cm" fo:min-width="1.699cm" fo:padding-top="0.095cm" fo:padding-bottom="0.095cm" fo:padding-left="0.191cm" fo:padding-right="0.191cm" fo:wrap-option="wrap"/>
+   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.051cm" svg:stroke-color="#0c0c0c" draw:marker-start-width="0.148cm" draw:marker-end-width="0.148cm" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#89c765" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.345cm" fo:min-width="1.699cm" fo:padding-top="0.085cm" fo:padding-bottom="0.085cm" fo:padding-left="0.181cm" fo:padding-right="0.181cm" fo:wrap-option="wrap"/>
   </style:style>
   <style:style style:name="gr16" style:family="graphic" style:parent-style-name="standard">
-   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.071cm" svg:stroke-color="#0c0c0c" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#89c765" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.345cm" fo:min-width="2.483cm" fo:padding-top="0.095cm" fo:padding-bottom="0.095cm" fo:padding-left="0.191cm" fo:padding-right="0.191cm" fo:wrap-option="wrap"/>
+   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.051cm" svg:stroke-color="#0c0c0c" draw:marker-start-width="0.148cm" draw:marker-end-width="0.148cm" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#89c765" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.345cm" fo:min-width="2.483cm" fo:padding-top="0.085cm" fo:padding-bottom="0.085cm" fo:padding-left="0.181cm" fo:padding-right="0.181cm" fo:wrap-option="wrap"/>
   </style:style>
   <style:style style:name="gr17" style:family="graphic" style:parent-style-name="standard">
-   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.071cm" svg:stroke-color="#0c0c0c" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#1c3687" draw:textarea-vertical-align="top" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="1.516cm" fo:min-width="2.71cm" fo:padding-top="0.095cm" fo:padding-bottom="0.095cm" fo:padding-left="0.191cm" fo:padding-right="0.191cm" fo:wrap-option="wrap"/>
+   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.051cm" svg:stroke-color="#0c0c0c" draw:marker-start-width="0.148cm" draw:marker-end-width="0.148cm" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#1c3687" draw:textarea-vertical-align="top" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="1.516cm" fo:min-width="2.71cm" fo:padding-top="0.085cm" fo:padding-bottom="0.085cm" fo:padding-left="0.181cm" fo:padding-right="0.181cm" fo:wrap-option="wrap"/>
   </style:style>
   <style:style style:name="gr18" style:family="graphic" style:parent-style-name="standard">
-   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.071cm" svg:stroke-color="#0c0c0c" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#89c765" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.341cm" fo:min-width="2.037cm" fo:padding-top="0.095cm" fo:padding-bottom="0.095cm" fo:padding-left="0.191cm" fo:padding-right="0.191cm" fo:wrap-option="wrap"/>
+   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.051cm" svg:stroke-color="#0c0c0c" draw:marker-start-width="0.148cm" draw:marker-end-width="0.148cm" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#89c765" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.341cm" fo:min-width="2.037cm" fo:padding-top="0.085cm" fo:padding-bottom="0.085cm" fo:padding-left="0.181cm" fo:padding-right="0.181cm" fo:wrap-option="wrap"/>
   </style:style>
   <style:style style:name="gr19" style:family="graphic" style:parent-style-name="standard">
-   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.071cm" svg:stroke-color="#0c0c0c" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#1c3687" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="1.515cm" fo:min-width="3.752cm" fo:padding-top="0.095cm" fo:padding-bottom="0.095cm" fo:padding-left="0.191cm" fo:padding-right="0.191cm" fo:wrap-option="wrap"/>
+   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.051cm" svg:stroke-color="#0c0c0c" draw:marker-start-width="0.148cm" draw:marker-end-width="0.148cm" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#1c3687" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="1.515cm" fo:min-width="3.752cm" fo:padding-top="0.085cm" fo:padding-bottom="0.085cm" fo:padding-left="0.181cm" fo:padding-right="0.181cm" fo:wrap-option="wrap"/>
   </style:style>
   <style:style style:name="gr20" style:family="graphic" style:parent-style-name="objectwithoutfill">
    <style:graphic-properties draw:stroke="dash" draw:stroke-dash="Fine_20_Dashed" svg:stroke-color="#000000" draw:fill="none" draw:textarea-vertical-align="middle"/>
   </style:style>
   <style:style style:name="gr21" style:family="graphic" style:parent-style-name="standard">
-   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.071cm" svg:stroke-color="#0c0c0c" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#89c765" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.327cm" fo:min-width="1.059cm" fo:padding-top="0.095cm" fo:padding-bottom="0.095cm" fo:padding-left="0.191cm" fo:padding-right="0.191cm" fo:wrap-option="wrap"/>
+   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.051cm" svg:stroke-color="#0c0c0c" draw:marker-start-width="0.148cm" draw:marker-end-width="0.148cm" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#89c765" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.327cm" fo:min-width="1.059cm" fo:padding-top="0.085cm" fo:padding-bottom="0.085cm" fo:padding-left="0.181cm" fo:padding-right="0.181cm" fo:wrap-option="wrap"/>
   </style:style>
   <style:style style:name="gr22" style:family="graphic" style:parent-style-name="standard">
-   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.071cm" svg:stroke-color="#0c0c0c" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#89c765" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.327cm" fo:min-width="1.625cm" fo:padding-top="0.095cm" fo:padding-bottom="0.095cm" fo:padding-left="0.191cm" fo:padding-right="0.191cm" fo:wrap-option="wrap"/>
+   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.051cm" svg:stroke-color="#0c0c0c" draw:marker-start-width="0.148cm" draw:marker-end-width="0.148cm" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#89c765" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.327cm" fo:min-width="1.625cm" fo:padding-top="0.085cm" fo:padding-bottom="0.085cm" fo:padding-left="0.181cm" fo:padding-right="0.181cm" fo:wrap-option="wrap"/>
   </style:style>
   <style:style style:name="gr23" style:family="graphic" style:parent-style-name="standard">
-   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.071cm" svg:stroke-color="#0c0c0c" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#89c765" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.327cm" fo:min-width="1.418cm" fo:padding-top="0.095cm" fo:padding-bottom="0.095cm" fo:padding-left="0.191cm" fo:padding-right="0.191cm" fo:wrap-option="wrap"/>
+   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.051cm" svg:stroke-color="#0c0c0c" draw:marker-start-width="0.148cm" draw:marker-end-width="0.148cm" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#89c765" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.327cm" fo:min-width="1.418cm" fo:padding-top="0.085cm" fo:padding-bottom="0.085cm" fo:padding-left="0.181cm" fo:padding-right="0.181cm" fo:wrap-option="wrap"/>
   </style:style>
   <style:style style:name="gr24" style:family="graphic" style:parent-style-name="standard">
    <style:graphic-properties draw:stroke="dash" draw:stroke-dash="Ultrafine_20_Dotted_20__28_var_29_" svg:stroke-color="#3465a4" draw:fill-color="#fffbcc" draw:textarea-horizontal-align="justify" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" fo:min-height="0.792cm" fo:min-width="3.183cm"/>
@@ -333,7 +326,7 @@
    <style:graphic-properties draw:stroke="dash" draw:stroke-dash="Ultrafine_20_Dotted_20__28_var_29_" svg:stroke-color="#3465a4" draw:fill="none" draw:fill-color="#ffffff" draw:textarea-horizontal-align="justify" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" fo:min-height="1.393cm" fo:min-width="4.072cm"/>
   </style:style>
   <style:style style:name="gr28" style:family="graphic" style:parent-style-name="standard">
-   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.071cm" svg:stroke-color="#0c0c0c" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#89c765" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.327cm" fo:min-width="1.741cm" fo:padding-top="0.095cm" fo:padding-bottom="0.095cm" fo:padding-left="0.191cm" fo:padding-right="0.191cm" fo:wrap-option="wrap"/>
+   <style:graphic-properties draw:stroke="solid" svg:stroke-width="0.051cm" svg:stroke-color="#0c0c0c" draw:marker-start-width="0.148cm" draw:marker-end-width="0.148cm" draw:stroke-linejoin="round" draw:fill="solid" draw:fill-color="#89c765" draw:textarea-vertical-align="middle" draw:auto-grow-height="false" draw:fit-to-size="false" style:shrink-to-fit="false" fo:min-height="0.327cm" fo:min-width="1.741cm" fo:padding-top="0.085cm" fo:padding-bottom="0.085cm" fo:padding-left="0.181cm" fo:padding-right="0.181cm" fo:wrap-option="wrap"/>
   </style:style>
   <style:style style:name="P1" style:family="paragraph">
    <style:paragraph-properties fo:text-align="center"/>
@@ -377,31 +370,22 @@
    <style:paragraph-properties fo:text-align="center"/>
   </style:style>
   <style:style style:name="P10" style:family="paragraph">
-   <style:paragraph-properties fo:text-align="center"/>
-   <style:text-properties style:font-name="Liberation Sans2" fo:font-size="8pt" fo:font-weight="bold" style:font-size-asian="18pt" style:font-weight-asian="bold" style:font-size-complex="18pt" style:font-weight-complex="600"/>
-  </style:style>
-  <style:style style:name="P11" style:family="paragraph">
    <loext:graphic-properties draw:fill-color="#fffbcc"/>
    <style:paragraph-properties fo:text-align="center"/>
-   <style:text-properties style:font-name="Liberation Sans2" fo:font-size="8pt" fo:font-weight="bold" style:font-size-asian="18pt" style:font-weight-asian="bold" style:font-size-complex="18pt" style:font-weight-complex="600"/>
+   <style:text-properties style:font-name="Liberation Sans1" fo:font-size="8pt" fo:font-weight="bold" style:font-size-asian="18pt" style:font-weight-asian="bold" style:font-size-complex="18pt" style:font-weight-complex="600"/>
+  </style:style>
+  <style:style style:name="P11" style:family="paragraph">
+   <style:paragraph-properties fo:margin-left="0cm" fo:margin-right="0cm" fo:margin-top="0cm" fo:margin-bottom="0cm" fo:line-height="100%" fo:text-align="center" fo:text-indent="0cm"/>
   </style:style>
   <style:style style:name="P12" style:family="paragraph">
-   <style:paragraph-properties fo:margin-left="0cm" fo:margin-right="0cm" fo:margin-top="0cm" fo:margin-bottom="0cm" fo:line-height="100%" fo:text-align="center" fo:text-indent="0cm"/>
-   <style:text-properties style:font-name="Liberation Sans1"/>
-  </style:style>
-  <style:style style:name="P13" style:family="paragraph">
-   <style:paragraph-properties fo:text-align="center"/>
-   <style:text-properties style:font-name="Liberation Sans1"/>
-  </style:style>
-  <style:style style:name="P14" style:family="paragraph">
    <loext:graphic-properties draw:fill-color="#ffffff"/>
    <style:paragraph-properties fo:margin-left="0cm" fo:margin-right="0cm" fo:margin-top="0cm" fo:margin-bottom="0cm" fo:line-height="100%" fo:text-align="center" fo:text-indent="0cm"/>
-   <style:text-properties style:font-name="Liberation Sans1"/>
+   <style:text-properties style:font-name="Liberation Sans2"/>
   </style:style>
-  <style:style style:name="P15" style:family="paragraph">
+  <style:style style:name="P13" style:family="paragraph">
    <loext:graphic-properties draw:fill="none" draw:fill-color="#ffffff"/>
    <style:paragraph-properties fo:margin-left="0cm" fo:margin-right="0cm" fo:margin-top="0cm" fo:margin-bottom="0cm" fo:line-height="100%" fo:text-align="center" fo:text-indent="0cm"/>
-   <style:text-properties style:font-name="Liberation Sans1"/>
+   <style:text-properties style:font-name="Liberation Sans2"/>
   </style:style>
   <style:style style:name="T1" style:family="text">
    <style:text-properties fo:color="#ffffff" style:font-name="Arial" fo:font-size="11pt" fo:font-weight="bold" style:font-size-asian="12pt" style:font-weight-asian="bold" style:font-size-complex="12pt" style:font-weight-complex="600"/>
@@ -419,16 +403,16 @@
    <style:text-properties fo:color="#000000" fo:font-size="11pt" style:text-underline-style="none" fo:font-weight="bold" fo:background-color="transparent" style:font-size-asian="12pt" style:font-size-complex="12pt"/>
   </style:style>
   <style:style style:name="T6" style:family="text">
-   <style:text-properties fo:font-size="8pt" fo:font-weight="bold" style:font-size-asian="18pt" style:font-weight-asian="bold" style:font-size-complex="18pt"/>
+   <style:text-properties style:font-name="Liberation Sans1" fo:font-size="8pt" fo:font-weight="bold" style:font-size-asian="18pt" style:font-weight-asian="bold" style:font-size-complex="18pt" style:font-weight-complex="600"/>
   </style:style>
   <style:style style:name="T7" style:family="text">
-   <style:text-properties fo:font-size="8pt" fo:font-weight="bold" style:font-size-asian="18pt" style:font-weight-asian="bold" style:font-size-complex="18pt" style:font-weight-complex="bold"/>
+   <style:text-properties style:font-name="Liberation Sans2" fo:font-size="8pt" fo:font-weight="bold" style:font-size-asian="18pt" style:font-weight-asian="bold" style:font-size-complex="18pt" style:font-weight-complex="bold"/>
   </style:style>
   <style:style style:name="T8" style:family="text">
-   <style:text-properties fo:font-size="8pt" style:font-size-asian="18pt" style:font-size-complex="18pt"/>
+   <style:text-properties style:font-name="Liberation Sans2" fo:font-size="8pt" style:font-size-asian="18pt" style:font-size-complex="18pt"/>
   </style:style>
   <style:style style:name="T9" style:family="text">
-   <style:text-properties fo:font-size="8pt" fo:font-weight="normal" style:font-size-asian="18pt" style:font-weight-asian="normal" style:font-size-complex="18pt" style:font-weight-complex="normal"/>
+   <style:text-properties style:font-name="Liberation Sans2" fo:font-size="8pt" fo:font-weight="normal" style:font-size-asian="18pt" style:font-weight-asian="normal" style:font-size-complex="18pt" style:font-weight-complex="normal"/>
   </style:style>
   <text:list-style style:name="L1">
    <text:list-level-style-bullet text:level="1" text:bullet-char="●">
@@ -486,639 +470,641 @@
  <office:body>
   <office:drawing>
    <draw:page draw:name="page1" draw:style-name="dp2" draw:master-page-name="Default">
-    <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr1" draw:text-style-name="P2" draw:layer="layout" svg:width="3.047cm" svg:height="1.89cm" svg:x="1.001cm" svg:y="6.195cm">
-     <text:p text:style-name="P1"><text:span text:style-name="T1">Ult</text:span><text:span text:style-name="T1">ra</text:span><text:span text:style-name="T1">Sc</text:span><text:span text:style-name="T1">ale </text:span><text:span text:style-name="T1">PC</text:span><text:span text:style-name="T1">Ie </text:span><text:span text:style-name="T1">De</text:span><text:span text:style-name="T1">vic</text:span><text:span text:style-name="T1">e</text:span></text:p>
-     <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
-      <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
-      <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
-      <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
-      <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
-      <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
-      <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
-      <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
-      <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
-      <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
-      <draw:equation draw:name="f9" draw:formula="logheight/2"/>
-      <draw:equation draw:name="f10" draw:formula="logheight"/>
-      <draw:equation draw:name="f11" draw:formula="logwidth"/>
-      <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
-      <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
-      <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
-      <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
-      <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
-     </draw:enhanced-geometry>
-    </draw:custom-shape>
-    <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr2" draw:text-style-name="P3" draw:layer="layout" svg:width="6.477cm" svg:height="1.778cm" svg:x="1cm" svg:y="4.194cm">
-     <text:p text:style-name="P1"><text:span text:style-name="T1">Li</text:span><text:span text:style-name="T1">nu</text:span><text:span text:style-name="T1">x </text:span><text:span text:style-name="T1">PC</text:span><text:span text:style-name="T1">Ie </text:span><text:span text:style-name="T1">Dri</text:span><text:span text:style-name="T1">ve</text:span><text:span text:style-name="T1">rs</text:span></text:p>
-     <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
-      <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
-      <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
-      <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
-      <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
-      <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
-      <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
-      <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
-      <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
-      <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
-      <draw:equation draw:name="f9" draw:formula="logheight/2"/>
-      <draw:equation draw:name="f10" draw:formula="logheight"/>
-      <draw:equation draw:name="f11" draw:formula="logwidth"/>
-      <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
-      <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
-      <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
-      <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
-      <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
-     </draw:enhanced-geometry>
-    </draw:custom-shape>
-    <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr3" draw:text-style-name="P4" draw:layer="layout" svg:width="2.413cm" svg:height="0.588cm" svg:x="1.254cm" svg:y="7.372cm">
-     <text:p text:style-name="P1"><text:span text:style-name="T2">MB </text:span><text:span text:style-name="T3">sched</text:span></text:p>
-     <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
-      <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
-      <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
-      <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
-      <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
-      <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
-      <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
-      <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
-      <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
-      <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
-      <draw:equation draw:name="f9" draw:formula="logheight/2"/>
-      <draw:equation draw:name="f10" draw:formula="logheight"/>
-      <draw:equation draw:name="f11" draw:formula="logwidth"/>
-      <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
-      <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
-      <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
-      <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
-      <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
-     </draw:enhanced-geometry>
-    </draw:custom-shape>
-    <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr4" draw:text-style-name="P5" draw:layer="layout" svg:width="11.049cm" svg:height="1.621cm" svg:x="1cm" svg:y="2.4cm">
-     <text:p text:style-name="P1"><text:span text:style-name="T4">User </text:span><text:span text:style-name="T4">Space</text:span></text:p>
-     <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
-      <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
-      <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
-      <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
-      <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
-      <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
-      <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
-      <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
-      <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
-      <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
-      <draw:equation draw:name="f9" draw:formula="logheight/2"/>
-      <draw:equation draw:name="f10" draw:formula="logheight"/>
-      <draw:equation draw:name="f11" draw:formula="logwidth"/>
-      <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
-      <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
-      <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
-      <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
-      <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
-     </draw:enhanced-geometry>
-    </draw:custom-shape>
-    <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr5" draw:text-style-name="P6" draw:layer="layout" svg:width="1.635cm" svg:height="1.152cm" svg:x="1cm" svg:y="1.1cm">
-     <text:p text:style-name="P1"><text:span text:style-name="T1">OCL</text:span></text:p>
-     <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
-      <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
-      <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
-      <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
-      <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
-      <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
-      <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
-      <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
-      <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
-      <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
-      <draw:equation draw:name="f9" draw:formula="logheight/2"/>
-      <draw:equation draw:name="f10" draw:formula="logheight"/>
-      <draw:equation draw:name="f11" draw:formula="logwidth"/>
-      <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
-      <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
-      <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
-      <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
-      <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
-     </draw:enhanced-geometry>
-    </draw:custom-shape>
-    <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr5" draw:text-style-name="P6" draw:layer="layout" svg:width="1.635cm" svg:height="1.152cm" svg:x="2.8cm" svg:y="1.101cm">
-     <text:p text:style-name="P1"><text:span text:style-name="T1">Video</text:span></text:p>
-     <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
-      <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
-      <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
-      <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
-      <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
-      <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
-      <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
-      <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
-      <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
-      <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
-      <draw:equation draw:name="f9" draw:formula="logheight/2"/>
-      <draw:equation draw:name="f10" draw:formula="logheight"/>
-      <draw:equation draw:name="f11" draw:formula="logwidth"/>
-      <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
-      <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
-      <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
-      <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
-      <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
-     </draw:enhanced-geometry>
-    </draw:custom-shape>
-    <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr6" draw:text-style-name="P6" draw:layer="layout" svg:width="3.639cm" svg:height="1.152cm" svg:x="4.6cm" svg:y="1.102cm">
-     <text:p text:style-name="P1"><text:span text:style-name="T1">Python/C/C++</text:span></text:p>
-     <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
-      <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
-      <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
-      <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
-      <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
-      <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
-      <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
-      <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
-      <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
-      <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
-      <draw:equation draw:name="f9" draw:formula="logheight/2"/>
-      <draw:equation draw:name="f10" draw:formula="logheight"/>
-      <draw:equation draw:name="f11" draw:formula="logwidth"/>
-      <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
-      <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
-      <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
-      <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
-      <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
-     </draw:enhanced-geometry>
-    </draw:custom-shape>
-    <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr7" draw:text-style-name="P6" draw:layer="layout" svg:width="1.393cm" svg:height="1.152cm" svg:x="8.342cm" svg:y="1.104cm">
-     <text:p text:style-name="P1"><text:span text:style-name="T1">ML</text:span></text:p>
-     <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
-      <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
-      <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
-      <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
-      <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
-      <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
-      <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
-      <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
-      <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
-      <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
-      <draw:equation draw:name="f9" draw:formula="logheight/2"/>
-      <draw:equation draw:name="f10" draw:formula="logheight"/>
-      <draw:equation draw:name="f11" draw:formula="logwidth"/>
-      <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
-      <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
-      <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
-      <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
-      <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
-     </draw:enhanced-geometry>
-    </draw:custom-shape>
-    <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr8" draw:text-style-name="P6" draw:layer="layout" svg:width="2.087cm" svg:height="1.152cm" svg:x="9.9cm" svg:y="1.104cm">
-     <text:p text:style-name="P1"><text:span text:style-name="T1">Storage</text:span></text:p>
-     <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
-      <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
-      <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
-      <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
-      <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
-      <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
-      <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
-      <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
-      <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
-      <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
-      <draw:equation draw:name="f9" draw:formula="logheight/2"/>
-      <draw:equation draw:name="f10" draw:formula="logheight"/>
-      <draw:equation draw:name="f11" draw:formula="logwidth"/>
-      <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
-      <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
-      <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
-      <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
-      <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
-     </draw:enhanced-geometry>
-    </draw:custom-shape>
-    <draw:frame draw:style-name="gr9" draw:text-style-name="P7" draw:layer="layout" svg:width="4.244cm" svg:height="0.671cm" svg:x="4.63cm" svg:y="8.503cm">
-     <draw:text-box>
-      <text:p><text:span text:style-name="T5">XRT </text:span><text:span text:style-name="T5">Software </text:span><text:span text:style-name="T5">Stack</text:span></text:p>
-     </draw:text-box>
-    </draw:frame>
-    <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr10" draw:text-style-name="P8" draw:layer="layout" svg:width="1.944cm" svg:height="0.554cm" svg:x="5.028cm" svg:y="5.164cm">
-     <text:p text:style-name="P1"><text:span text:style-name="T3">xmgmt</text:span></text:p>
-     <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
-      <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
-      <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
-      <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
-      <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
-      <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
-      <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
-      <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
-      <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
-      <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
-      <draw:equation draw:name="f9" draw:formula="logheight/2"/>
-      <draw:equation draw:name="f10" draw:formula="logheight"/>
-      <draw:equation draw:name="f11" draw:formula="logwidth"/>
-      <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
-      <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
-      <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
-      <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
-      <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
-     </draw:enhanced-geometry>
-    </draw:custom-shape>
-    <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr11" draw:text-style-name="P8" draw:layer="layout" svg:width="2.259cm" svg:height="0.61cm" svg:x="1.281cm" svg:y="3.259cm">
-     <text:p text:style-name="P1"><text:span text:style-name="T3">libxrt_core</text:span></text:p>
-     <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
-      <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
-      <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
-      <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
-      <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
-      <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
-      <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
-      <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
-      <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
-      <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
-      <draw:equation draw:name="f9" draw:formula="logheight/2"/>
-      <draw:equation draw:name="f10" draw:formula="logheight"/>
-      <draw:equation draw:name="f11" draw:formula="logwidth"/>
-      <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
-      <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
-      <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
-      <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
-      <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
-     </draw:enhanced-geometry>
-    </draw:custom-shape>
-    <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr12" draw:text-style-name="P8" draw:layer="layout" svg:width="1.635cm" svg:height="0.559cm" svg:x="1.327cm" svg:y="5.164cm">
-     <text:p text:style-name="P1"><text:span text:style-name="T3">xocl</text:span></text:p>
-     <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
-      <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
-      <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
-      <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
-      <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
-      <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
-      <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
-      <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
-      <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
-      <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
-      <draw:equation draw:name="f9" draw:formula="logheight/2"/>
-      <draw:equation draw:name="f10" draw:formula="logheight"/>
-      <draw:equation draw:name="f11" draw:formula="logwidth"/>
-      <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
-      <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
-      <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
-      <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
-      <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
-     </draw:enhanced-geometry>
-    </draw:custom-shape>
-    <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr13" draw:text-style-name="P3" draw:layer="layout" svg:width="4.294cm" svg:height="1.732cm" svg:x="7.731cm" svg:y="4.194cm">
-     <text:p text:style-name="P1"><text:span text:style-name="T1">Linux MPSoC Driver</text:span></text:p>
-     <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
-      <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
-      <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
-      <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
-      <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
-      <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
-      <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
-      <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
-      <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
-      <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
-      <draw:equation draw:name="f9" draw:formula="logheight/2"/>
-      <draw:equation draw:name="f10" draw:formula="logheight"/>
-      <draw:equation draw:name="f11" draw:formula="logwidth"/>
-      <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
-      <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
-      <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
-      <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
-      <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
-     </draw:enhanced-geometry>
-    </draw:custom-shape>
-    <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr14" draw:text-style-name="P8" draw:layer="layout" svg:width="1.635cm" svg:height="0.56cm" svg:x="9.027cm" svg:y="5.164cm">
-     <text:p text:style-name="P1"><text:span text:style-name="T3">zocl</text:span></text:p>
-     <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
-      <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
-      <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
-      <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
-      <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
-      <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
-      <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
-      <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
-      <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
-      <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
-      <draw:equation draw:name="f9" draw:formula="logheight/2"/>
-      <draw:equation draw:name="f10" draw:formula="logheight"/>
-      <draw:equation draw:name="f11" draw:formula="logwidth"/>
-      <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
-      <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
-      <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
-      <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
-      <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
-     </draw:enhanced-geometry>
-    </draw:custom-shape>
-    <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr15" draw:text-style-name="P8" draw:layer="layout" svg:width="2.137cm" svg:height="0.591cm" svg:x="7.172cm" svg:y="3.259cm">
-     <text:p text:style-name="P1"><text:span text:style-name="T3">libxmaapi</text:span></text:p>
-     <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
-      <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
-      <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
-      <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
-      <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
-      <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
-      <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
-      <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
-      <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
-      <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
-      <draw:equation draw:name="f9" draw:formula="logheight/2"/>
-      <draw:equation draw:name="f10" draw:formula="logheight"/>
-      <draw:equation draw:name="f11" draw:formula="logwidth"/>
-      <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
-      <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
-      <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
-      <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
-      <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
-     </draw:enhanced-geometry>
-    </draw:custom-shape>
-    <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr16" draw:text-style-name="P8" draw:layer="layout" svg:width="2.921cm" svg:height="0.591cm" svg:x="3.883cm" svg:y="3.259cm">
-     <text:p text:style-name="P1"><text:span text:style-name="T3">libxilinxopencl</text:span></text:p>
-     <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
-      <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
-      <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
-      <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
-      <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
-      <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
-      <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
-      <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
-      <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
-      <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
-      <draw:equation draw:name="f9" draw:formula="logheight/2"/>
-      <draw:equation draw:name="f10" draw:formula="logheight"/>
-      <draw:equation draw:name="f11" draw:formula="logwidth"/>
-      <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
-      <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
-      <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
-      <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
-      <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
-     </draw:enhanced-geometry>
-    </draw:custom-shape>
-    <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr17" draw:text-style-name="P2" draw:layer="layout" svg:width="3.276cm" svg:height="1.89cm" svg:x="4.201cm" svg:y="6.195cm">
-     <text:p text:style-name="P1"><text:span text:style-name="T1">MPSoC PCIe Device</text:span></text:p>
-     <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
-      <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
-      <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
-      <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
-      <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
-      <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
-      <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
-      <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
-      <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
-      <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
-      <draw:equation draw:name="f9" draw:formula="logheight/2"/>
-      <draw:equation draw:name="f10" draw:formula="logheight"/>
-      <draw:equation draw:name="f11" draw:formula="logwidth"/>
-      <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
-      <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
-      <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
-      <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
-      <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
-     </draw:enhanced-geometry>
-    </draw:custom-shape>
-    <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr18" draw:text-style-name="P8" draw:layer="layout" svg:width="2.475cm" svg:height="0.587cm" svg:x="4.594cm" svg:y="7.371cm">
-     <text:p text:style-name="P1"><text:span text:style-name="T3">ARM sched</text:span></text:p>
-     <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
-      <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
-      <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
-      <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
-      <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
-      <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
-      <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
-      <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
-      <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
-      <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
-      <draw:equation draw:name="f9" draw:formula="logheight/2"/>
-      <draw:equation draw:name="f10" draw:formula="logheight"/>
-      <draw:equation draw:name="f11" draw:formula="logwidth"/>
-      <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
-      <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
-      <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
-      <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
-      <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
-     </draw:enhanced-geometry>
-    </draw:custom-shape>
-    <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr19" draw:text-style-name="P2" draw:layer="layout" svg:width="4.318cm" svg:height="1.889cm" svg:x="7.731cm" svg:y="6.196cm">
-     <text:p text:style-name="P1"><text:span text:style-name="T1">MPSoC Edge Device</text:span></text:p>
-     <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
-      <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
-      <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
-      <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
-      <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
-      <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
-      <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
-      <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
-      <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
-      <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
-      <draw:equation draw:name="f9" draw:formula="logheight/2"/>
-      <draw:equation draw:name="f10" draw:formula="logheight"/>
-      <draw:equation draw:name="f11" draw:formula="logwidth"/>
-      <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
-      <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
-      <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
-      <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
-      <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
-     </draw:enhanced-geometry>
-    </draw:custom-shape>
-    <draw:line draw:style-name="gr20" draw:text-style-name="P9" draw:layer="layout" svg:x1="7.61cm" svg:y1="4.18cm" svg:x2="7.604cm" svg:y2="7.958cm">
-     <text:p/>
-    </draw:line>
-    <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr21" draw:text-style-name="P8" draw:layer="layout" svg:width="1.497cm" svg:height="0.573cm" svg:x="1.281cm" svg:y="2.497cm">
-     <text:p text:style-name="P1"><text:span text:style-name="T3">xbutil</text:span></text:p>
-     <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
-      <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
-      <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
-      <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
-      <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
-      <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
-      <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
-      <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
-      <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
-      <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
-      <draw:equation draw:name="f9" draw:formula="logheight/2"/>
-      <draw:equation draw:name="f10" draw:formula="logheight"/>
-      <draw:equation draw:name="f11" draw:formula="logwidth"/>
-      <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
-      <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
-      <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
-      <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
-      <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
-     </draw:enhanced-geometry>
-    </draw:custom-shape>
-    <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr22" draw:text-style-name="P8" draw:layer="layout" svg:width="2.063cm" svg:height="0.573cm" svg:x="8.781cm" svg:y="2.497cm">
-     <text:p text:style-name="P1"><text:span text:style-name="T3">xclbinutil</text:span></text:p>
-     <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
-      <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
-      <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
-      <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
-      <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
-      <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
-      <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
-      <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
-      <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
-      <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
-      <draw:equation draw:name="f9" draw:formula="logheight/2"/>
-      <draw:equation draw:name="f10" draw:formula="logheight"/>
-      <draw:equation draw:name="f11" draw:formula="logwidth"/>
-      <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
-      <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
-      <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
-      <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
-      <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
-     </draw:enhanced-geometry>
-    </draw:custom-shape>
-    <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr23" draw:text-style-name="P8" draw:layer="layout" svg:width="1.856cm" svg:height="0.573cm" svg:x="3.081cm" svg:y="2.497cm">
-     <text:p text:style-name="P1"><text:span text:style-name="T3">xbmgmt</text:span></text:p>
-     <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
-      <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
-      <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
-      <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
-      <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
-      <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
-      <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
-      <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
-      <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
-      <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
-      <draw:equation draw:name="f9" draw:formula="logheight/2"/>
-      <draw:equation draw:name="f10" draw:formula="logheight"/>
-      <draw:equation draw:name="f11" draw:formula="logwidth"/>
-      <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
-      <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
-      <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
-      <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
-      <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
-     </draw:enhanced-geometry>
-    </draw:custom-shape>
-    <draw:custom-shape draw:style-name="gr24" draw:text-style-name="P11" draw:layer="layout" svg:width="3.683cm" svg:height="1.042cm" svg:x="12.603cm" svg:y="1.174cm">
-     <text:p text:style-name="P10"><text:span text:style-name="T6">Application</text:span></text:p>
-     <draw:enhanced-geometry svg:viewBox="0 0 21600 21600" draw:type="rectangle" draw:enhanced-path="M 0 0 L 21600 0 21600 21600 0 21600 0 0 Z N"/>
-    </draw:custom-shape>
-    <draw:custom-shape draw:style-name="gr25" draw:text-style-name="P14" draw:layer="layout" svg:width="4.064cm" svg:height="1.651cm" svg:x="12.451cm" svg:y="2.397cm">
-     <text:p text:style-name="P12"><text:span text:style-name="T7">Libraries &amp; Tools</text:span></text:p>
-     <text:p text:style-name="P12"><text:span text:style-name="T8">Core APIs, Emulation, </text:span><text:span text:style-name="T8">Profiler, </text:span></text:p>
-     <text:p text:style-name="P13"><text:span text:style-name="T8">Debugger, Board Tools, </text:span></text:p>
-     <text:p text:style-name="P13"><text:span text:style-name="T8">Virtualization plugin</text:span></text:p>
-     <draw:enhanced-geometry svg:viewBox="0 0 21600 21600" draw:type="rectangle" draw:enhanced-path="M 0 0 L 21600 0 21600 21600 0 21600 0 0 Z N"/>
-    </draw:custom-shape>
-    <draw:custom-shape draw:style-name="gr26" draw:text-style-name="P14" draw:layer="layout" svg:width="4.572cm" svg:height="1.643cm" svg:x="12.203cm" svg:y="4.274cm">
-     <text:p text:style-name="P12"><text:span text:style-name="T7">Linux Kernel</text:span></text:p>
-     <text:p text:style-name="P12"><text:span text:style-name="T9">Memory </text:span><text:span text:style-name="T9">management, </text:span></text:p>
-     <text:p text:style-name="P12"><text:span text:style-name="T9">Execution </text:span><text:span text:style-name="T9">control, DMA </text:span><text:span text:style-name="T9">operations</text:span></text:p>
-     <text:p text:style-name="P12"><text:span text:style-name="T9">Device </text:span><text:span text:style-name="T9">management/m</text:span><text:span text:style-name="T9">onitoring,</text:span></text:p>
-     <text:p text:style-name="P12"><text:span text:style-name="T9">Compiled image </text:span><text:span text:style-name="T9">download</text:span></text:p>
-     <draw:enhanced-geometry svg:viewBox="0 0 21600 21600" draw:type="rectangle" draw:enhanced-path="M 0 0 L 21600 0 21600 21600 0 21600 0 0 Z N"/>
-    </draw:custom-shape>
-    <draw:custom-shape draw:style-name="gr27" draw:text-style-name="P15" draw:layer="layout" svg:width="4.572cm" svg:height="1.643cm" svg:x="12.265cm" svg:y="6.236cm">
-     <text:p text:style-name="P12"><text:span text:style-name="T7">HW &amp; Firmware</text:span></text:p>
-     <text:p text:style-name="P12"><text:span text:style-name="T9">Platform shell, DMA engine</text:span></text:p>
-     <text:p text:style-name="P12"><text:span text:style-name="T9">HW scheduler, Download engine </text:span></text:p>
-     <text:p text:style-name="P12"><text:span text:style-name="T9">Memory controller, Mailbox</text:span></text:p>
-     <text:p text:style-name="P12"><text:span text:style-name="T9">Security / Firewall </text:span></text:p>
-     <draw:enhanced-geometry svg:viewBox="0 0 21600 21600" draw:type="rectangle" draw:enhanced-path="M 0 0 L 21600 0 21600 21600 0 21600 0 0 Z N"/>
-    </draw:custom-shape>
-    <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr28" draw:text-style-name="P8" draw:layer="layout" svg:width="2.179cm" svg:height="0.573cm" svg:x="9.634cm" svg:y="3.281cm">
-     <text:p text:style-name="P1"><text:span text:style-name="T3">MPD/</text:span><text:span text:style-name="T3">MSD</text:span></text:p>
-     <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
-      <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
-      <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
-      <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
-      <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
-      <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
-      <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
-      <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
-      <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
-      <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
-      <draw:equation draw:name="f9" draw:formula="logheight/2"/>
-      <draw:equation draw:name="f10" draw:formula="logheight"/>
-      <draw:equation draw:name="f11" draw:formula="logwidth"/>
-      <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
-      <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
-      <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
-      <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
-      <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
-      <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
-     </draw:enhanced-geometry>
-    </draw:custom-shape>
+    <draw:g>
+     <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr1" draw:text-style-name="P2" draw:layer="layout" svg:width="3.047cm" svg:height="1.89cm" svg:x="1.001cm" svg:y="6.195cm">
+      <text:p text:style-name="P1"><text:span text:style-name="T1">UltraScale PCIe Device</text:span></text:p>
+      <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
+       <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
+       <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
+       <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
+       <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
+       <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
+       <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
+       <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
+       <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
+       <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
+       <draw:equation draw:name="f9" draw:formula="logheight/2"/>
+       <draw:equation draw:name="f10" draw:formula="logheight"/>
+       <draw:equation draw:name="f11" draw:formula="logwidth"/>
+       <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
+       <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
+       <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
+       <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
+       <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
+      </draw:enhanced-geometry>
+     </draw:custom-shape>
+     <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr2" draw:text-style-name="P3" draw:layer="layout" svg:width="6.477cm" svg:height="1.778cm" svg:x="1cm" svg:y="4.194cm">
+      <text:p text:style-name="P1"><text:span text:style-name="T1">Linux PCIe Drivers</text:span></text:p>
+      <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
+       <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
+       <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
+       <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
+       <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
+       <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
+       <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
+       <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
+       <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
+       <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
+       <draw:equation draw:name="f9" draw:formula="logheight/2"/>
+       <draw:equation draw:name="f10" draw:formula="logheight"/>
+       <draw:equation draw:name="f11" draw:formula="logwidth"/>
+       <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
+       <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
+       <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
+       <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
+       <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
+      </draw:enhanced-geometry>
+     </draw:custom-shape>
+     <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr3" draw:text-style-name="P4" draw:layer="layout" svg:width="2.413cm" svg:height="0.588cm" svg:x="1.254cm" svg:y="7.372cm">
+      <text:p text:style-name="P1"><text:span text:style-name="T2">MB </text:span><text:span text:style-name="T3">sched</text:span></text:p>
+      <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
+       <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
+       <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
+       <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
+       <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
+       <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
+       <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
+       <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
+       <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
+       <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
+       <draw:equation draw:name="f9" draw:formula="logheight/2"/>
+       <draw:equation draw:name="f10" draw:formula="logheight"/>
+       <draw:equation draw:name="f11" draw:formula="logwidth"/>
+       <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
+       <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
+       <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
+       <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
+       <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
+      </draw:enhanced-geometry>
+     </draw:custom-shape>
+     <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr4" draw:text-style-name="P5" draw:layer="layout" svg:width="11.049cm" svg:height="1.621cm" svg:x="1cm" svg:y="2.4cm">
+      <text:p text:style-name="P1"><text:span text:style-name="T4">User Space</text:span></text:p>
+      <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
+       <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
+       <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
+       <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
+       <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
+       <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
+       <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
+       <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
+       <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
+       <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
+       <draw:equation draw:name="f9" draw:formula="logheight/2"/>
+       <draw:equation draw:name="f10" draw:formula="logheight"/>
+       <draw:equation draw:name="f11" draw:formula="logwidth"/>
+       <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
+       <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
+       <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
+       <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
+       <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
+      </draw:enhanced-geometry>
+     </draw:custom-shape>
+     <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr5" draw:text-style-name="P6" draw:layer="layout" svg:width="1.635cm" svg:height="1.152cm" svg:x="1cm" svg:y="1.1cm">
+      <text:p text:style-name="P1"><text:span text:style-name="T1">OCL</text:span></text:p>
+      <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
+       <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
+       <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
+       <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
+       <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
+       <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
+       <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
+       <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
+       <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
+       <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
+       <draw:equation draw:name="f9" draw:formula="logheight/2"/>
+       <draw:equation draw:name="f10" draw:formula="logheight"/>
+       <draw:equation draw:name="f11" draw:formula="logwidth"/>
+       <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
+       <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
+       <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
+       <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
+       <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
+      </draw:enhanced-geometry>
+     </draw:custom-shape>
+     <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr5" draw:text-style-name="P6" draw:layer="layout" svg:width="1.635cm" svg:height="1.152cm" svg:x="2.8cm" svg:y="1.101cm">
+      <text:p text:style-name="P1"><text:span text:style-name="T1">Video</text:span></text:p>
+      <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
+       <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
+       <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
+       <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
+       <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
+       <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
+       <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
+       <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
+       <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
+       <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
+       <draw:equation draw:name="f9" draw:formula="logheight/2"/>
+       <draw:equation draw:name="f10" draw:formula="logheight"/>
+       <draw:equation draw:name="f11" draw:formula="logwidth"/>
+       <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
+       <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
+       <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
+       <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
+       <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
+      </draw:enhanced-geometry>
+     </draw:custom-shape>
+     <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr6" draw:text-style-name="P6" draw:layer="layout" svg:width="3.639cm" svg:height="1.152cm" svg:x="4.6cm" svg:y="1.102cm">
+      <text:p text:style-name="P1"><text:span text:style-name="T1">Python/C/C++</text:span></text:p>
+      <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
+       <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
+       <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
+       <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
+       <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
+       <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
+       <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
+       <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
+       <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
+       <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
+       <draw:equation draw:name="f9" draw:formula="logheight/2"/>
+       <draw:equation draw:name="f10" draw:formula="logheight"/>
+       <draw:equation draw:name="f11" draw:formula="logwidth"/>
+       <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
+       <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
+       <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
+       <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
+       <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
+      </draw:enhanced-geometry>
+     </draw:custom-shape>
+     <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr7" draw:text-style-name="P6" draw:layer="layout" svg:width="1.393cm" svg:height="1.152cm" svg:x="8.342cm" svg:y="1.104cm">
+      <text:p text:style-name="P1"><text:span text:style-name="T1">ML</text:span></text:p>
+      <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
+       <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
+       <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
+       <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
+       <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
+       <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
+       <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
+       <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
+       <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
+       <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
+       <draw:equation draw:name="f9" draw:formula="logheight/2"/>
+       <draw:equation draw:name="f10" draw:formula="logheight"/>
+       <draw:equation draw:name="f11" draw:formula="logwidth"/>
+       <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
+       <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
+       <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
+       <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
+       <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
+      </draw:enhanced-geometry>
+     </draw:custom-shape>
+     <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr8" draw:text-style-name="P6" draw:layer="layout" svg:width="2.087cm" svg:height="1.152cm" svg:x="9.9cm" svg:y="1.104cm">
+      <text:p text:style-name="P1"><text:span text:style-name="T1">Storage</text:span></text:p>
+      <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
+       <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
+       <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
+       <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
+       <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
+       <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
+       <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
+       <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
+       <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
+       <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
+       <draw:equation draw:name="f9" draw:formula="logheight/2"/>
+       <draw:equation draw:name="f10" draw:formula="logheight"/>
+       <draw:equation draw:name="f11" draw:formula="logwidth"/>
+       <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
+       <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
+       <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
+       <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
+       <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
+      </draw:enhanced-geometry>
+     </draw:custom-shape>
+     <draw:frame draw:style-name="gr9" draw:text-style-name="P7" draw:layer="layout" svg:width="4.244cm" svg:height="0.671cm" svg:x="4.63cm" svg:y="8.503cm">
+      <draw:text-box>
+       <text:p><text:span text:style-name="T5">XRT Software Stack</text:span></text:p>
+      </draw:text-box>
+     </draw:frame>
+     <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr10" draw:text-style-name="P8" draw:layer="layout" svg:width="1.944cm" svg:height="0.554cm" svg:x="5.028cm" svg:y="5.164cm">
+      <text:p text:style-name="P1"><text:span text:style-name="T3">xmgmt</text:span></text:p>
+      <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
+       <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
+       <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
+       <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
+       <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
+       <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
+       <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
+       <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
+       <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
+       <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
+       <draw:equation draw:name="f9" draw:formula="logheight/2"/>
+       <draw:equation draw:name="f10" draw:formula="logheight"/>
+       <draw:equation draw:name="f11" draw:formula="logwidth"/>
+       <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
+       <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
+       <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
+       <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
+       <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
+      </draw:enhanced-geometry>
+     </draw:custom-shape>
+     <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr11" draw:text-style-name="P8" draw:layer="layout" svg:width="2.259cm" svg:height="0.583cm" svg:x="1.281cm" svg:y="3.286cm">
+      <text:p text:style-name="P1"><text:span text:style-name="T3">libxrt_core</text:span></text:p>
+      <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
+       <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
+       <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
+       <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
+       <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
+       <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
+       <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
+       <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
+       <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
+       <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
+       <draw:equation draw:name="f9" draw:formula="logheight/2"/>
+       <draw:equation draw:name="f10" draw:formula="logheight"/>
+       <draw:equation draw:name="f11" draw:formula="logwidth"/>
+       <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
+       <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
+       <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
+       <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
+       <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
+      </draw:enhanced-geometry>
+     </draw:custom-shape>
+     <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr12" draw:text-style-name="P8" draw:layer="layout" svg:width="1.635cm" svg:height="0.559cm" svg:x="1.327cm" svg:y="5.164cm">
+      <text:p text:style-name="P1"><text:span text:style-name="T3">xocl</text:span></text:p>
+      <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
+       <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
+       <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
+       <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
+       <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
+       <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
+       <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
+       <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
+       <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
+       <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
+       <draw:equation draw:name="f9" draw:formula="logheight/2"/>
+       <draw:equation draw:name="f10" draw:formula="logheight"/>
+       <draw:equation draw:name="f11" draw:formula="logwidth"/>
+       <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
+       <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
+       <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
+       <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
+       <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
+      </draw:enhanced-geometry>
+     </draw:custom-shape>
+     <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr13" draw:text-style-name="P3" draw:layer="layout" svg:width="4.191cm" svg:height="1.732cm" svg:x="7.731cm" svg:y="4.175cm">
+      <text:p text:style-name="P1"><text:span text:style-name="T1">Linux MPSoC Driver</text:span></text:p>
+      <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
+       <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
+       <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
+       <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
+       <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
+       <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
+       <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
+       <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
+       <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
+       <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
+       <draw:equation draw:name="f9" draw:formula="logheight/2"/>
+       <draw:equation draw:name="f10" draw:formula="logheight"/>
+       <draw:equation draw:name="f11" draw:formula="logwidth"/>
+       <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
+       <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
+       <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
+       <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
+       <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
+      </draw:enhanced-geometry>
+     </draw:custom-shape>
+     <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr14" draw:text-style-name="P8" draw:layer="layout" svg:width="1.635cm" svg:height="0.56cm" svg:x="9.027cm" svg:y="5.164cm">
+      <text:p text:style-name="P1"><text:span text:style-name="T3">zocl</text:span></text:p>
+      <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
+       <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
+       <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
+       <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
+       <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
+       <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
+       <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
+       <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
+       <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
+       <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
+       <draw:equation draw:name="f9" draw:formula="logheight/2"/>
+       <draw:equation draw:name="f10" draw:formula="logheight"/>
+       <draw:equation draw:name="f11" draw:formula="logwidth"/>
+       <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
+       <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
+       <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
+       <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
+       <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
+      </draw:enhanced-geometry>
+     </draw:custom-shape>
+     <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr15" draw:text-style-name="P8" draw:layer="layout" svg:width="2.137cm" svg:height="0.591cm" svg:x="7.172cm" svg:y="3.259cm">
+      <text:p text:style-name="P1"><text:span text:style-name="T3">libxmaapi</text:span></text:p>
+      <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
+       <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
+       <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
+       <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
+       <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
+       <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
+       <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
+       <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
+       <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
+       <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
+       <draw:equation draw:name="f9" draw:formula="logheight/2"/>
+       <draw:equation draw:name="f10" draw:formula="logheight"/>
+       <draw:equation draw:name="f11" draw:formula="logwidth"/>
+       <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
+       <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
+       <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
+       <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
+       <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
+      </draw:enhanced-geometry>
+     </draw:custom-shape>
+     <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr16" draw:text-style-name="P8" draw:layer="layout" svg:width="2.921cm" svg:height="0.591cm" svg:x="3.883cm" svg:y="3.259cm">
+      <text:p text:style-name="P1"><text:span text:style-name="T3">libxilinxopencl</text:span></text:p>
+      <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
+       <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
+       <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
+       <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
+       <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
+       <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
+       <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
+       <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
+       <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
+       <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
+       <draw:equation draw:name="f9" draw:formula="logheight/2"/>
+       <draw:equation draw:name="f10" draw:formula="logheight"/>
+       <draw:equation draw:name="f11" draw:formula="logwidth"/>
+       <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
+       <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
+       <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
+       <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
+       <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
+      </draw:enhanced-geometry>
+     </draw:custom-shape>
+     <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr17" draw:text-style-name="P2" draw:layer="layout" svg:width="3.276cm" svg:height="1.89cm" svg:x="4.201cm" svg:y="6.195cm">
+      <text:p text:style-name="P1"><text:span text:style-name="T1">MPSoC PCIe Device</text:span></text:p>
+      <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
+       <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
+       <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
+       <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
+       <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
+       <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
+       <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
+       <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
+       <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
+       <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
+       <draw:equation draw:name="f9" draw:formula="logheight/2"/>
+       <draw:equation draw:name="f10" draw:formula="logheight"/>
+       <draw:equation draw:name="f11" draw:formula="logwidth"/>
+       <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
+       <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
+       <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
+       <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
+       <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
+      </draw:enhanced-geometry>
+     </draw:custom-shape>
+     <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr18" draw:text-style-name="P8" draw:layer="layout" svg:width="2.475cm" svg:height="0.587cm" svg:x="4.594cm" svg:y="7.371cm">
+      <text:p text:style-name="P1"><text:span text:style-name="T3">ARM sched</text:span></text:p>
+      <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
+       <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
+       <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
+       <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
+       <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
+       <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
+       <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
+       <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
+       <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
+       <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
+       <draw:equation draw:name="f9" draw:formula="logheight/2"/>
+       <draw:equation draw:name="f10" draw:formula="logheight"/>
+       <draw:equation draw:name="f11" draw:formula="logwidth"/>
+       <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
+       <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
+       <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
+       <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
+       <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
+      </draw:enhanced-geometry>
+     </draw:custom-shape>
+     <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr19" draw:text-style-name="P2" draw:layer="layout" svg:width="4.318cm" svg:height="1.889cm" svg:x="7.731cm" svg:y="6.196cm">
+      <text:p text:style-name="P1"><text:span text:style-name="T1">MPSoC Edge Device</text:span></text:p>
+      <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
+       <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
+       <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
+       <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
+       <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
+       <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
+       <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
+       <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
+       <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
+       <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
+       <draw:equation draw:name="f9" draw:formula="logheight/2"/>
+       <draw:equation draw:name="f10" draw:formula="logheight"/>
+       <draw:equation draw:name="f11" draw:formula="logwidth"/>
+       <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
+       <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
+       <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
+       <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
+       <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
+      </draw:enhanced-geometry>
+     </draw:custom-shape>
+     <draw:line draw:style-name="gr20" draw:text-style-name="P9" draw:layer="layout" svg:x1="7.61cm" svg:y1="4.18cm" svg:x2="7.604cm" svg:y2="7.958cm">
+      <text:p/>
+     </draw:line>
+     <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr21" draw:text-style-name="P8" draw:layer="layout" svg:width="1.497cm" svg:height="0.573cm" svg:x="1.281cm" svg:y="2.497cm">
+      <text:p text:style-name="P1"><text:span text:style-name="T3">xbutil</text:span></text:p>
+      <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
+       <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
+       <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
+       <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
+       <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
+       <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
+       <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
+       <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
+       <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
+       <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
+       <draw:equation draw:name="f9" draw:formula="logheight/2"/>
+       <draw:equation draw:name="f10" draw:formula="logheight"/>
+       <draw:equation draw:name="f11" draw:formula="logwidth"/>
+       <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
+       <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
+       <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
+       <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
+       <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
+      </draw:enhanced-geometry>
+     </draw:custom-shape>
+     <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr22" draw:text-style-name="P8" draw:layer="layout" svg:width="2.063cm" svg:height="0.573cm" svg:x="8.781cm" svg:y="2.497cm">
+      <text:p text:style-name="P1"><text:span text:style-name="T3">xclbinutil</text:span></text:p>
+      <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
+       <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
+       <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
+       <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
+       <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
+       <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
+       <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
+       <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
+       <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
+       <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
+       <draw:equation draw:name="f9" draw:formula="logheight/2"/>
+       <draw:equation draw:name="f10" draw:formula="logheight"/>
+       <draw:equation draw:name="f11" draw:formula="logwidth"/>
+       <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
+       <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
+       <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
+       <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
+       <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
+      </draw:enhanced-geometry>
+     </draw:custom-shape>
+     <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr23" draw:text-style-name="P8" draw:layer="layout" svg:width="1.856cm" svg:height="0.573cm" svg:x="3.081cm" svg:y="2.497cm">
+      <text:p text:style-name="P1"><text:span text:style-name="T3">xbmgmt</text:span></text:p>
+      <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
+       <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
+       <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
+       <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
+       <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
+       <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
+       <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
+       <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
+       <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
+       <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
+       <draw:equation draw:name="f9" draw:formula="logheight/2"/>
+       <draw:equation draw:name="f10" draw:formula="logheight"/>
+       <draw:equation draw:name="f11" draw:formula="logwidth"/>
+       <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
+       <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
+       <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
+       <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
+       <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
+      </draw:enhanced-geometry>
+     </draw:custom-shape>
+     <draw:custom-shape draw:style-name="gr24" draw:text-style-name="P10" draw:layer="layout" svg:width="3.683cm" svg:height="1.042cm" svg:x="12.603cm" svg:y="1.174cm">
+      <text:p text:style-name="P1"><text:span text:style-name="T6">Application</text:span></text:p>
+      <draw:enhanced-geometry svg:viewBox="0 0 21600 21600" draw:type="rectangle" draw:enhanced-path="M 0 0 L 21600 0 21600 21600 0 21600 0 0 Z N"/>
+     </draw:custom-shape>
+     <draw:custom-shape draw:style-name="gr25" draw:text-style-name="P12" draw:layer="layout" svg:width="4.064cm" svg:height="1.651cm" svg:x="12.451cm" svg:y="2.397cm">
+      <text:p text:style-name="P11"><text:span text:style-name="T7">Libraries &amp; Tools</text:span></text:p>
+      <text:p text:style-name="P11"><text:span text:style-name="T8">Core APIs, Emulation, Profiler, </text:span></text:p>
+      <text:p text:style-name="P1"><text:span text:style-name="T8">Debugger, Board Tools, </text:span></text:p>
+      <text:p text:style-name="P1"><text:span text:style-name="T8">Virtualization plugin</text:span></text:p>
+      <draw:enhanced-geometry svg:viewBox="0 0 21600 21600" draw:type="rectangle" draw:enhanced-path="M 0 0 L 21600 0 21600 21600 0 21600 0 0 Z N"/>
+     </draw:custom-shape>
+     <draw:custom-shape draw:style-name="gr26" draw:text-style-name="P12" draw:layer="layout" svg:width="4.572cm" svg:height="1.643cm" svg:x="12.203cm" svg:y="4.274cm">
+      <text:p text:style-name="P11"><text:span text:style-name="T7">Linux Kernel</text:span></text:p>
+      <text:p text:style-name="P11"><text:span text:style-name="T9">Memory management, </text:span></text:p>
+      <text:p text:style-name="P11"><text:span text:style-name="T9">Execution control, DMA operations</text:span></text:p>
+      <text:p text:style-name="P11"><text:span text:style-name="T9">Device management/monitoring,</text:span></text:p>
+      <text:p text:style-name="P11"><text:span text:style-name="T9">Compiled image download</text:span></text:p>
+      <draw:enhanced-geometry svg:viewBox="0 0 21600 21600" draw:type="rectangle" draw:enhanced-path="M 0 0 L 21600 0 21600 21600 0 21600 0 0 Z N"/>
+     </draw:custom-shape>
+     <draw:custom-shape draw:style-name="gr27" draw:text-style-name="P13" draw:layer="layout" svg:width="4.572cm" svg:height="1.643cm" svg:x="12.265cm" svg:y="6.236cm">
+      <text:p text:style-name="P11"><text:span text:style-name="T7">HW &amp; Firmware</text:span></text:p>
+      <text:p text:style-name="P11"><text:span text:style-name="T9">Platform shell, DMA engine</text:span></text:p>
+      <text:p text:style-name="P11"><text:span text:style-name="T9">HW scheduler, Download engine </text:span></text:p>
+      <text:p text:style-name="P11"><text:span text:style-name="T9">Memory controller, Mailbox</text:span></text:p>
+      <text:p text:style-name="P11"><text:span text:style-name="T9">Security / Firewall </text:span></text:p>
+      <draw:enhanced-geometry svg:viewBox="0 0 21600 21600" draw:type="rectangle" draw:enhanced-path="M 0 0 L 21600 0 21600 21600 0 21600 0 0 Z N"/>
+     </draw:custom-shape>
+     <draw:custom-shape draw:name="Rounded Rectangle 56" draw:style-name="gr28" draw:text-style-name="P8" draw:layer="layout" svg:width="2.179cm" svg:height="0.573cm" svg:x="9.634cm" svg:y="3.281cm">
+      <text:p text:style-name="P1"><text:span text:style-name="T3">MPD/MSD</text:span></text:p>
+      <draw:enhanced-geometry draw:mirror-horizontal="false" draw:mirror-vertical="false" svg:viewBox="0 0 0 0" draw:text-areas="?f5 ?f5 ?f6 ?f7" draw:type="ooxml-roundRect" draw:modifiers="16667" draw:enhanced-path="M 0 ?f2 L ?f3 0 L ?f11 ?f4 L ?f2 ?f10 Z N" drawooo:enhanced-path="M 0 ?f2 G ?f2 ?f2 ?f12 ?f13 L ?f3 0 G ?f2 ?f2 ?f14 ?f15 L ?f11 ?f4 G ?f2 ?f2 ?f16 ?f17 L ?f2 ?f10 G ?f2 ?f2 ?f18 ?f19 Z N">
+       <draw:equation draw:name="f0" draw:formula="if(0-$0 ,0,if(50000-$0 ,$0 ,50000))"/>
+       <draw:equation draw:name="f1" draw:formula="min(logwidth,logheight)"/>
+       <draw:equation draw:name="f2" draw:formula="?f1 *?f0 /100000"/>
+       <draw:equation draw:name="f3" draw:formula="logwidth+0-?f2 "/>
+       <draw:equation draw:name="f4" draw:formula="logheight+0-?f2 "/>
+       <draw:equation draw:name="f5" draw:formula="?f2 *29289/100000"/>
+       <draw:equation draw:name="f6" draw:formula="logwidth+0-?f5 "/>
+       <draw:equation draw:name="f7" draw:formula="logheight+0-?f5 "/>
+       <draw:equation draw:name="f8" draw:formula="logwidth/2"/>
+       <draw:equation draw:name="f9" draw:formula="logheight/2"/>
+       <draw:equation draw:name="f10" draw:formula="logheight"/>
+       <draw:equation draw:name="f11" draw:formula="logwidth"/>
+       <draw:equation draw:name="f12" draw:formula="(10800000)/60000.0"/>
+       <draw:equation draw:name="f13" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f14" draw:formula="(16200000)/60000.0"/>
+       <draw:equation draw:name="f15" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f16" draw:formula="(0)/60000.0"/>
+       <draw:equation draw:name="f17" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f18" draw:formula="(5400000)/60000.0"/>
+       <draw:equation draw:name="f19" draw:formula="(5400000)/60000.0"/>
+       <draw:handle draw:handle-position="?f2 0" draw:handle-range-x-maximum="50000" draw:handle-range-x-minimum="0"/>
+      </draw:enhanced-geometry>
+     </draw:custom-shape>
+    </draw:g>
    </draw:page>
   </office:drawing>
  </office:body>

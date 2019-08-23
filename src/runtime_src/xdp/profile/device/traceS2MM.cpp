@@ -16,7 +16,7 @@
 
 #include "traceS2MM.h"
 #include "tracedefs.h"
-#include "xdp/profile/core/rt_util.h"
+//#include "xdp/profile/core/rt_util.h"
 #include <bitset>
 #include <iomanip>
 

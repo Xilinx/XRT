@@ -419,6 +419,36 @@ extern "C" {
         auto itr = std::find_if(begin,end,[kind](const axlf_section_header& sec) { return sec.m_sectionKind==(const uint32_t) kind; });
         return (itr!=end) ? &(*itr) : nullptr;
       }
+
+      // Helper C++ section iteration
+      // To keep with with the current "coding" them, the function get_axlf_section_next() was
+      // introduced find 'next' common section names.  
+      // 
+      // Future TODO: Create a custom iterator and refactor the code base to use it. 
+      // 
+      // Example on how this function may be used:
+      // 
+      // const axlf_section_header * pSection;
+      // const axlf* top = <xclbin image in memory>;
+      // for (pSection = xclbin::get_axlf_section( top, SOFT_KERNEL);
+      //      pSection != nullptr;
+      //      pSection = xclbin::get_axlf_section_next( top, pSection, SOFT_KERNEL)) {
+      //   <code to do work>
+      // }
+      inline const axlf_section_header*
+      get_axlf_section_next(const axlf* top, const axlf_section_header* current_section, axlf_section_kind kind)
+      {
+        if (top == nullptr) { return nullptr; }
+        if (current_section == nullptr) { return nullptr; }
+
+        auto end = top->m_sections + top->m_header.m_numSections;
+
+        auto begin = current_section + 1;        // Point to the next section
+        if (begin == end) { return nullptr; }
+
+        auto itr = std::find_if(begin, end, [kind](const axlf_section_header &sec) {return sec.m_sectionKind == (const uint32_t)kind;});
+        return (itr!=end) ? &(*itr) : nullptr;
+      }
     }
 # endif
 

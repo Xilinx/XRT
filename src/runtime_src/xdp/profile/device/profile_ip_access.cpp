@@ -28,7 +28,7 @@ ProfileIP::ProfileIP(Device* handle, int index, debug_ip_data* data)
             mapped_address(0)
 {
     // check for exclusive access to this IP
-    request_exclusive_ip_access(handle, index);
+    request_exclusive_ip_access(index);
 
     // For now, set these to true
     mapped = true;  
@@ -56,11 +56,11 @@ ProfileIP::~ProfileIP() {
         unmap();
     }
     if (exclusive) {
-        release_exclusive_ip_access(device, ip_index);
+        release_exclusive_ip_access(ip_index);
     }
 } 
 
-void ProfileIP::request_exclusive_ip_access(void* handle, int index) {
+void ProfileIP::request_exclusive_ip_access(int index) {
     /**
      * TODO: when the XRT implements the exclusive context hal API, this
      * method should try to open a exclusive context here and set the
@@ -72,7 +72,7 @@ void ProfileIP::request_exclusive_ip_access(void* handle, int index) {
     return;
 }
 
-void ProfileIP::release_exclusive_ip_access(void* handle, int index) {
+void ProfileIP::release_exclusive_ip_access(int index) {
     /**
      * TODO: when the XRT implements the exclusive context hal API, this
      * method should close the previously requested exclusive context if

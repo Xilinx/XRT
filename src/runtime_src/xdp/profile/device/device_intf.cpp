@@ -15,8 +15,6 @@
  */
 
 #include "device_intf.h"
-#include "xdp_xrt_device.h"
-#include "xdp_hal_device.h"
 #include "xclperf.h"
 #include "xcl_perfmon_parameters.h"
 #include "tracedefs.h"
@@ -30,7 +28,6 @@
 //#include <time.h>
 #include <string.h>
 #include <chrono>
-#include <sys/mman.h>
 
 #ifndef _WINDOWS
 // TODO: Windows build support
@@ -67,6 +64,8 @@ DeviceIntf::~DeviceIntf()
     delete fifoRead;
     delete traceFunnel;
     delete traceDMA;
+
+    delete mDevice;
 }
 
   // ***************************************************************************
@@ -96,18 +95,13 @@ DeviceIntf::~DeviceIntf()
   }
 #endif
 
-
-  void DeviceIntf::setDevice(void* devHandle, bool isXrtDevice)
+  void DeviceIntf::setDevice(xdp::Device* devHandle)
   {
     if(mDevice && mDevice != devHandle) {
       // ERROR : trying to set device when it is already populated with some other device
+      return;
     }
-
-    if(isXrtDevice) {
-      mDevice = new xdp::XrtDevice(devHandle); 
-    } else {
-      mDevice = new xdp::HalDevice(devHandle); 
-    }
+    mDevice = devHandle; 
   }
 
   // ***************************************************************************
@@ -372,8 +366,8 @@ DeviceIntf::~DeviceIntf()
         // error ? : for HW_emu this will be empty for now ; but as of current status should not have been called 
         return;
     }
-    uint32_t liveProcessesOnDevice = mDevice->getNumLiveProcesses();
 
+    uint32_t liveProcessesOnDevice = mDevice->getNumLiveProcesses();
     if(liveProcessesOnDevice > 1) {
       /* More than 1 process on device. Device Profiling for multi-process not supported yet.
        */
@@ -454,144 +448,29 @@ DeviceIntf::~DeviceIntf()
     }
   }
 
-
-#if 0
-  bool DeviceIntf::initTs2mm(uint64_t bo_size)
+  void DeviceIntf::initTS2MM(uint64_t bufSz, uint64_t bufAddr)
   {
-    if(!traceDMA)
-      return false;
-
-    if(mDevice->getTS2MmBOHandle()) {
-      finTs2mm();
-// Do we need to return from here or continue initializing ?
-    }
-
-    uint64_t bufAddr = 0;
-
-    try {
-      /* Allocate BO on Device DDR, sync it with Host DDR and get the address of BO.
-       * Data Mover will write input stream to this address
-       */
-      bufAddr = mDevice->allocAndSyncBO(bo_size, traceDMA->getMemIndex());
-    } catch (const std::exception& ex) {
-      std::cerr << ex.what() << std::endl;
-      return false;
-    }
-    traceDMA->init(bo_size, bufAddr); 
-    return true;
-
-#if 0
-    xrt::device* xrtDevice = static_cast<xrt::device*>(mXrtDevice);
-
-    if (mTs2mmBoHandle != nullptr) {
-      finTs2mm();
-    }
-
-    try {
-      // The buffer needs to be initialized because of an xrt bug
-      mTs2mmBoHandle = xrtDevice->alloc(bo_size, xrt::hal::device::Domain::XRT_DEVICE_RAM, traceDMA->getMemIndex(), nullptr);
-      xrtDevice->sync(mTs2mmBoHandle, bo_size, 0, xrt::hal::device::direction::HOST2DEVICE, false);
-      mTs2mmBoSize = bo_size;
-    } catch (const std::exception& ex) {
-      std::cerr << ex.what() << std::endl;
-      return false;
-    }
-    // Data Mover will write input stream to this address
-    uint64_t bufaddr = xrtDevice->getDeviceAddr(mTs2mmBoHandle);
-
-    traceDMA->init(bo_size, bufaddr);
-    return true;
-#endif
+    traceDMA->init(bufSz, bufAddr);
   }
 
-void* DeviceIntf::syncTraceBO(uint64_t offset, uint64_t bytes)
-{
-#if 0
-    xrt::device* xrtDevice = static_cast<xrt::device*>(mXrtDevice);
-    if (!mTs2mmBoHandle || bytes > mTs2mmBoSize) {
-      return nullptr;
-    }
-    auto space = xrtDevice->map(mTs2mmBoHandle);
-    xrtDevice->sync(mTs2mmBoHandle, bytes, offset, xrt::hal::device::direction::DEVICE2HOST, false);
-    return static_cast<char*>(space) + offset;
-#endif
-    return nullptr;
-}
-
-void DeviceIntf::readTs2mm(uint64_t offset, uint64_t bytes, xclTraceResultsVector& traceVector)
-{
-//  auto tracebuf = syncTraceBO(offset, bytes);
-
-  auto traceBuf = mDevice->readTraceFromDeviceToHostDDR(bytes, offset);
-  if (tracebuf) {
-    traceDMA->parseTraceBuf(tracebuf, bytes, traceVector);
+  uint64_t DeviceIntf::getWordCountTs2mm()
+  {
+    return traceDMA->getWordCount();
   }
-}
 
-bool DeviceIntf::readTs2mm(xclTraceResultsVector& traceVector)
-{
-  if (mOffsetTs2mm >= mBytesTs2mm)
-    return false;
-  auto rbytes = mChunksizeTs2mm;
-  if (mOffsetTs2mm + mChunksizeTs2mm > mBytesTs2mm)
-    rbytes = mBytesTs2mm - mOffsetTs2mm;
-  auto tracebuf = syncTraceBO(mOffsetTs2mm, rbytes);
-  auto tracebuf = syncTraceBO(mOffsetTs2mm, rbytes);
-  if (tracebuf) {
-    traceDMA->parseTraceBuf(tracebuf, rbytes, traceVector);
-    mOffsetTs2mm += rbytes;
+  uint8_t DeviceIntf::getTS2MmMemIndex()
+  {
+    return traceDMA->getMemIndex();
   }
-  return (rbytes == mChunksizeTs2mm && tracebuf);
-}
 
-void DeviceIntf::configReaderTs2mm(uint64_t chunksize)
-{
-  mBytesTs2mm = getWordCountTs2mm() * TRACE_PACKET_SIZE;
-  mBytesTs2mm = (mBytesTs2mm > TS2MM_MAX_BUF_SIZE) ? TS2MM_MAX_BUF_SIZE : mBytesTs2mm;
-  mOffsetTs2mm = 0;
-  mChunksizeTs2mm = chunksize;
-}
-
-void DeviceIntf::finTs2mm()
-{
-#if 0
-  xrt::device* xrtDevice = static_cast<xrt::device*>(mXrtDevice);
-  traceDMA->reset();
-
-  if (mTs2mmBoHandle) {
-    void* space = xrtDevice->map(mTs2mmBoHandle);
-    munmap(space, mTs2mmBoSize);
-    xrtDevice->free(mTs2mmBoHandle);
-    mTs2mmBoHandle = nullptr;
-    mTs2mmBoSize = 0;
+  void DeviceIntf::resetTS2MM()
+  {
+    traceDMA->reset();
   }
-#endif
-}
-#endif
 
-void DeviceIntf::initTS2MM(uint64_t bufSz, uint64_t bufAddr)
-{
-  traceDMA->init(bufSz, bufAddr);
-}
-
-uint64_t DeviceIntf::getWordCountTs2mm()
-{
-  return traceDMA->getWordCount();
-}
-
-uint8_t DeviceIntf::getTS2MmMemIndex()
-{
-  return traceDMA->getMemIndex();
-}
-
-void DeviceIntf::resetTS2MM()
-{
-  traceDMA->reset();
-}
-
-void DeviceIntf::parseTraceData(void* traceData, uint64_t bytes, xclTraceResultsVector& traceVector)
-{
-  traceDMA->parseTraceBuf(traceData, bytes, traceVector);
-}
+  void DeviceIntf::parseTraceData(void* traceData, uint64_t bytes, xclTraceResultsVector& traceVector)
+  {
+    traceDMA->parseTraceBuf(traceData, bytes, traceVector);
+  }
 
 } // namespace xdp
