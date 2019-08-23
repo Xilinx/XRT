@@ -174,7 +174,7 @@ SectionDebugIPLayout::marshalToJSON(char* _pDataSection,
     debug_ip_data.put("m_base_address", XUtil::format("0x%lx",  pHdr->m_debug_ip_data[index].m_base_address).c_str());
     debug_ip_data.put("m_name", XUtil::format("%s", pHdr->m_debug_ip_data[index].m_name).c_str());
 
-    m_debug_ip_data.add_child("debug_ip_data", debug_ip_data);
+    m_debug_ip_data.push_back(std::make_pair("", debug_ip_data));   // Used to make an array of objects
   }
 
   debug_ip_layout.add_child("m_debug_ip_data", m_debug_ip_data);

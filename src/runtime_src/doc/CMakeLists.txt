@@ -17,11 +17,14 @@ file(COPY ${XRT_DOC_TOC_DIR} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 set(KERNELDOC "kernel-doc")
 set(KERNELDOC_URL "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/plain/scripts/kernel-doc?h=v4.14.52")
-MESSAGE(STATUS "${KERNELDOC} downloading")
-file(DOWNLOAD ${KERNELDOC_URL} "./${KERNELDOC}")
-execute_process(COMMAND chmod +x ${KERNELDOC})
-find_program(KERNELDOC_EXECUTABLE ${KERNELDOC} PATHS ${CMAKE_BINARY_DIR})
 
+if (NOT EXISTS ${CMAKE_BINARY_DIR}/${KERNELDOC})
+  MESSAGE(STATUS "${KERNELDOC} downloading")
+  file(DOWNLOAD ${KERNELDOC_URL} "./${KERNELDOC}")
+  execute_process(COMMAND chmod +x ${KERNELDOC})
+endif ()
+
+find_program(KERNELDOC_EXECUTABLE ${KERNELDOC} PATHS ${CMAKE_BINARY_DIR})
 find_program(SPHINX_EXECUTABLE sphinx-build)
 
 if (NOT KERNELDOC_EXECUTABLE OR NOT SPHINX_EXECUTABLE)

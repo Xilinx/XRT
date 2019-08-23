@@ -34,4 +34,16 @@ FILE(DOWNLOAD ${URL_MSP432_GEN3}/BMC-MSP432.txt ${CMAKE_CURRENT_BINARY_DIR}/${AL
 
 list(APPEND ALVEO_FW_FILES ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN3}-${ALVEOGEN3_FILENAME})
 
+# =============== ALVEO GEN4 =====================
+# Get and rename the files from the repository
+set (ALVEOGEN4 "AlveoGen4")
+set (URL_MSP432_GEN4 "https://raw.gitenterprise.xilinx.com/XBB/BMC-firmware-binaries/U50/BMC-card-firmware")
+
+# Download the file name, retrieve the file name, and download the FW image with the new file name
+FILE(DOWNLOAD ${URL_MSP432_GEN4}/BMC-MSP432.txt.filename ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN4}-BMC-MSP432.txt.filename STATUS mystatus)
+FILE(STRINGS ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN4}-BMC-MSP432.txt.filename ALVEOGEN4_FILENAME)
+FILE(DOWNLOAD ${URL_MSP432_GEN4}/BMC-MSP432.txt ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN4}-${ALVEOGEN4_FILENAME} STATUS mystatus)
+
+list(APPEND ALVEO_FW_FILES ${CMAKE_CURRENT_BINARY_DIR}/${ALVEOGEN4}-${ALVEOGEN4_FILENAME})
+
 install (FILES ${ALVEO_FW_FILES} DESTINATION ${ERT_INSTALL_PREFIX})
