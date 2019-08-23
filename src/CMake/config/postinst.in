@@ -48,6 +48,7 @@ if [ "$msd_active" = "active" ]; then
 	echo "Stopping MSD daemon"
 	systemctl stop msd > /dev/null 2>&1
 fi
+rm -rf ${installdir}/lib/libmpd_plugin.so > /dev/null 2>&1
 
 
 lsb_release -si | grep -Eq "^Ubuntu|^Debian"
@@ -116,6 +117,7 @@ ${installdir}/bin/xbmgmt config --update
 cp -f ${installdir}/etc/msd.service ${systemddir}
 cp -f ${installdir}/etc/mpd.service ${systemddir}
 systemctl daemon-reload > /dev/null 2>&1
+ln -s ${installdir}/lib/libazure_mpd_plugin.so ${installdir}/lib/libmpd_plugin.so
 
 # Start daemons only when it was started previously
 if [ "$msd_active" = "active" ]; then

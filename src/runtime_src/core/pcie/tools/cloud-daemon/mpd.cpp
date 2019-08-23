@@ -20,6 +20,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <unistd.h>
 #include <syslog.h>
 #include <netdb.h>
@@ -30,10 +31,41 @@
 #include <fstream>
 #include <vector>
 #include <thread>
+#include <chrono>
+#include <mutex>
+#include <condition_variable>
+#include <queue>
+#include <atomic>
 #include <cstdlib>
+#include <cstring>
+#include <dlfcn.h>
 
 #include "pciefunc.h"
+#include "sw_msg.h"
 #include "common.h"
+#include "mpd_plugin.h"
+
+static bool quit = false;
+// Support for msd plugin
+static void *plugin_handle;
+static init_fn plugin_init;
+static fini_fn plugin_fini;
+static struct mpd_plugin_callbacks plugin_cbs;
+static const std::string plugin_path("/opt/xilinx/xrt/lib/libmpd_plugin.so");
+
+// Init plugin callbacks
+static void init_plugin()
+{
+    plugin_handle = dlopen(plugin_path.c_str(), RTLD_LAZY | RTLD_GLOBAL);
+    if (plugin_handle == nullptr)
+        return;
+
+    syslog(LOG_INFO, "found mpd plugin: %s", plugin_path.c_str());
+    plugin_init = (init_fn) dlsym(plugin_handle, INIT_FN_NAME);
+    plugin_fini = (fini_fn) dlsym(plugin_handle, FINI_FN_NAME);
+    if (plugin_init == nullptr || plugin_fini == nullptr)
+        syslog(LOG_ERR, "failed to find init/fini symbols in mpd plugin");
+}
 
 std::string getIP(std::string host)
 {
@@ -86,73 +118,474 @@ static int connectMsd(pcieFunc& dev, std::string ip, uint16_t port, int id)
     return msdfd;
 }
 
-// Client of MSD. Will quit on any error from either local mailbox or socket fd.
-// No retry is ever conducted.
-static void mpd(std::shared_ptr<pcidev::pci_device> d)
+/*
+ * Local mailbox msg handler which is used to interpret the msg and handle it.
+ * If libmpd_plugin.so is found, which means the users don't need the software
+ * mailbox in the mgmt side, instead, users want to inperpret and handle the
+ * the mailbox msg from user PF themselves, this local mailbox msg handler is
+ * required. A typecal use case is, xclbin download, when the users want have
+ * their own control.
+ */ 
+int local_msg_handler(pcieFunc& dev, std::shared_ptr<sw_msg>& orig,
+    std::shared_ptr<sw_msg>& processed)
 {
-    int msdfd = -1, mbxfd = -1;
-    std::string ip;
-
-    pcieFunc dev(d);
-
-    mbxfd = dev.getMailbox();
-    if (mbxfd == -1)
-        return;
-
-    if (!dev.loadConf())
-        return;
-
-    ip = getIP(dev.getHost());
-    if (ip.empty()) {
-        dev.log(LOG_ERR, "Can't find out IP from host: %s", dev.getHost());
-        return;
+	int ret = 0;
+    mailbox_req *req = reinterpret_cast<mailbox_req *>(orig->payloadData());
+    size_t reqSize;
+    if (orig->payloadSize() < sizeof(mailbox_req)) {
+        dev.log(LOG_ERR, "local request dropped, wrong size");
+        ret = -EINVAL;
+		goto out;
     }
+    reqSize = orig->payloadSize() - sizeof(mailbox_req);
+    
+    dev.log(LOG_INFO, "mpd daemon: request %d received", req->req);
+	
+	switch (req->req) {
+	case MAILBOX_REQ_LOAD_XCLBIN: {//mandatory for every plugin
+	    const axlf *xclbin = reinterpret_cast<axlf *>(req->data);
+	    if (reqSize < sizeof(*xclbin)) {
+	        dev.log(LOG_ERR, "local request(%d) dropped, wrong size", req->req);
+	        ret = -EINVAL;
+	        break;
+	    }
+	    if (!plugin_cbs.load_xclbin) {
+        	ret = -ENOTSUP;
+			break;
+		}
+		ret = (*plugin_cbs.load_xclbin)(dev.getIndex(), xclbin);
+	    break;
+	}
+	case MAILBOX_REQ_PEER_DATA: {//optional. aws plugin need to implement this. 
+		void *resp;
+		size_t resp_len = 0;
+		struct mailbox_subdev_peer *subdev_req =
+			reinterpret_cast<struct mailbox_subdev_peer *>(req->data);
+		if (reqSize < sizeof(*subdev_req)) {
+	    	dev.log(LOG_ERR, "local request(%d) dropped, wrong size", req->req);
+	    	ret = -EINVAL;
+	    	break;
+		}
+		switch (subdev_req->kind) {
+		case ICAP: {
+	    	if (!plugin_cbs.get_icap_data) {
+        		ret = -ENOTSUP;
+				break;
+			}
+			std::shared_ptr<struct xcl_hwicap> data;
+			ret = (*plugin_cbs.get_icap_data)(dev.getIndex(),
+				data, resp_len);
+			resp = data.get();
+			break;
+		}
+		case SENSOR: {
+	    	if (!plugin_cbs.get_sensor_data) {
+        		ret = -ENOTSUP;
+				break;
+			}
+			std::shared_ptr<struct xcl_sensor> data;
+			ret = (*plugin_cbs.get_sensor_data)(dev.getIndex(),
+				data, resp_len);
+			resp = data.get();
+			break;
+		}
+		case MGMT: {
+	    	if (!plugin_cbs.get_mgmt_data) {
+        		ret = -ENOTSUP;
+				break;
+			}
+			std::shared_ptr<struct xcl_common> data;
+			ret = (*plugin_cbs.get_mgmt_data)(dev.getIndex(),
+				data, resp_len);
+			resp = data.get();
+			break;
+		}
+		case MIG_ECC: {
+	    	if (!plugin_cbs.get_mig_data) {
+        		ret = -ENOTSUP;
+				break;
+			}
+			std::shared_ptr<struct xcl_mig_ecc> data;
+			ret = (*plugin_cbs.get_mig_data)(dev.getIndex(),
+				data, resp_len);
+			resp = data.get();
+			break;
+		}
+		case FIREWALL: {
+	    	if (!plugin_cbs.get_firewall_data) {
+        		ret = -ENOTSUP;
+				break;
+			}
+			std::shared_ptr<struct xcl_mig_ecc> data;
+			ret = (*plugin_cbs.get_firewall_data)(dev.getIndex(),
+				data, resp_len);
+			resp = data.get();
+			break;
+		}
+		case DNA: {
+	    	if (!plugin_cbs.get_dna_data) {
+        		ret = -ENOTSUP;
+				break;
+			}
+			std::shared_ptr<struct xcl_dna> data;
+			ret = (*plugin_cbs.get_dna_data)(dev.getIndex(),
+				data, resp_len);
+			resp = data.get();
+			break;
+		}
+		case SUBDEV: {
+	    	if (!plugin_cbs.get_subdev_data) {
+        		ret = -ENOTSUP;
+				break;
+			}
+			std::shared_ptr<void> data;
+			ret = (*plugin_cbs.get_subdev_data)(dev.getIndex(),
+				data, resp_len);
+			resp = data.get();
+			break;
+		}
+		default:
+			ret = -ENOTSUP;	   
+			break;
+		}
 
-    dev.log(LOG_INFO, "peer msd ip=%s, port=%d, id=0x%x",
-        ip.c_str(), dev.getPort(), dev.getId());
+		if (!ret) {
+			processed = std::make_shared<sw_msg>(resp, resp_len, orig->id(),
+				   MB_REQ_FLAG_RESPONSE);
+			dev.log(LOG_INFO, "mpd daemon: response %d sent", req->req);
+			return FOR_LOCAL;
+		}
+		break;
+	}
+	case MAILBOX_REQ_USER_PROBE: {//useful for aws plugin
+		struct mailbox_conn_resp resp = {0};
+		size_t resp_len = sizeof(struct mailbox_conn_resp);
+		resp.conn_flags |= MB_PEER_READY;
+		processed = std::make_shared<sw_msg>(&resp, resp_len, orig->id(),
+			MB_REQ_FLAG_RESPONSE);
+		dev.log(LOG_INFO, "mpd daemon: response %d sent", req->req);
+		return FOR_LOCAL;
+	}
+	case MAILBOX_REQ_LOCK_BITSTREAM: {//optional
+	    if (!plugin_cbs.lock_bitstream) {
+        	ret = -ENOTSUP;
+			break;
+		}
+		ret = (*plugin_cbs.lock_bitstream)(dev.getIndex());
+		break;
+	}
+	case MAILBOX_REQ_UNLOCK_BITSTREAM: { //optional
+	    if (!plugin_cbs.unlock_bitstream) {
+        	ret = -ENOTSUP;
+			break;
+		}
+		ret = (*plugin_cbs.unlock_bitstream)(dev.getIndex());
+		break;
+	}
+	case MAILBOX_REQ_HOT_RESET: {//optional
+	    if (!plugin_cbs.hot_reset) {
+        	ret = -ENOTSUP;
+			break;
+		}
+		ret = (*plugin_cbs.hot_reset)(dev.getIndex());
+		break;
+	}
+	case MAILBOX_REQ_RECLOCK: {//optional
+		struct xclmgmt_ioc_freqscaling *obj =
+			reinterpret_cast<struct xclmgmt_ioc_freqscaling *>(req->data);
+	    if (!plugin_cbs.hot_reset) {
+        	ret = -ENOTSUP;
+			break;
+		}
+		ret = (*plugin_cbs.reclock2)(dev.getIndex(), obj);
+		break;
+	}
+	default:
+	    break;
+	}
+out:	
+	processed = std::make_shared<sw_msg>(&ret, sizeof(ret), orig->id(),
+		MB_REQ_FLAG_RESPONSE);
+    dev.log(LOG_INFO, "mpd daemon: response %d sent ret = %d", req->req, ret);
+    return FOR_LOCAL;
+}
 
-    if ((msdfd = connectMsd(dev, ip, dev.getPort(), dev.getId())) < 0)
-        return;
+/*
+ * Function to notify sofeware mailbox online/offline.
+ * This is usefull for aws. Since there is no mgmt, when xocl driver is loaded,
+ * and before the mpd daemon is running, sending MAILBOX_REQ_USER_PROBE msg
+ * will timeout and get no response, so there is no chance to know the card is
+ * ready. 
+ * A workaround is, when the mpd open/close the mailbox instance, a fake
+ * MAILBOX_REQ_MGMT_STATE msg is sent to mailbox in xocl, pretending a mgmt is
+ * ready, then xocl will send a MAILBOX_REQ_USER_PROBE again. This time, mpd
+ * will get and msg and send back a MB_PEER_READY response.
+ *
+ * For other cloud vendors, as long as they want to handle mailbox msg themselves,
+ * eg. load xclbin, mpd and plugin is required. mpd exiting will send a offline
+ * notification to xocl, which will mark the card as not ready.
+ */
+int mb_notify(pcieFunc &dev, int &fd, bool online)
+{
+	struct queue_msg msg;
+	std::shared_ptr<sw_msg> swmsg;
+	std::shared_ptr<std::vector<char>> buf;
+	struct mailbox_req *mb_req = NULL;
+	struct mailbox_peer_state mb_conn = { 0 };
+	size_t data_len = sizeof(struct mailbox_peer_state) + sizeof(struct mailbox_req);
+   
+	buf	= std::make_unique<std::vector<char>>(data_len, 0);
+	if (buf == nullptr)
+		return -ENOMEM;
+    mb_req = reinterpret_cast<struct mailbox_req *>(buf->data());
 
-    for ( ;; ) {
-        int ret = waitForMsg(dev, mbxfd, msdfd, 0);
-        if (ret < 0)
-            break;
+	mb_req->req = MAILBOX_REQ_MGMT_STATE;
+	if (online)
+		mb_conn.state_flags |= MB_STATE_ONLINE;
+	else
+		mb_conn.state_flags |= MB_STATE_OFFLINE;
+	memcpy(mb_req->data, &mb_conn, sizeof(mb_conn));
 
+	swmsg = std::make_shared<sw_msg>(mb_req, data_len, 0x1234, MB_REQ_FLAG_REQUEST);
+	if (swmsg == nullptr)
+		return -ENOMEM;
+
+	msg.localFd = fd;
+	msg.type = REMOTE_MSG;
+	msg.cb = nullptr;
+	msg.data = swmsg;
+
+	return handleMsg(dev, msg);	
+}
+
+
+// Client of MPD getting msg. Will quit on any error from either local mailbox or socket fd.
+// No retry is ever conducted.
+static void mpd_getMsg(size_t index, std::mutex *mtx,
+	   std::condition_variable *cv,
+	   std::queue<struct queue_msg> *msgq,
+	   std::atomic<bool> *is_handling)
+{
+	int msdfd = -1, mbxfd = -1;
+	int ret = 0;
+	std::string ip;
+	msgHandler cb = nullptr;
+	
+	pcieFunc dev(index);
+
+	/*
+     * If there is user plugin, then we assume the users either don't want to
+	 * use the communication channel we setup by default, or they even don't
+	 * want to use the software mailbox at all. In this case, we interpret the
+	 * mailbox msg and process the msg with the hook function the plugin provides.
+     */	 
+	if (plugin_cbs.get_remote_msd_fd) {
+		ret = (*plugin_cbs.get_remote_msd_fd)(dev.getIndex(), msdfd);
+		if (ret) {
+			syslog(LOG_ERR, "failed to get remote fd in plugin");
+			quit = true;
+			return;
+		}
+		cb = local_msg_handler;
+	} else {
+		if (!dev.loadConf()) {
+			quit = true;
+			return;
+		}
+		
+		ip = getIP(dev.getHost());
+		if (ip.empty()) {
+			dev.log(LOG_ERR, "Can't find out IP from host: %s", dev.getHost());
+			quit = true;
+			return;
+		}
+		
+		dev.log(LOG_INFO, "peer msd ip=%s, port=%d, id=0x%x",
+			ip.c_str(), dev.getPort(), dev.getId());
+		
+		if ((msdfd = connectMsd(dev, ip, dev.getPort(), dev.getId())) < 0) {
+			quit = true;
+			return;
+		}
+	}
+	
+	mbxfd = dev.getMailbox();
+	if (mbxfd == -1) {
+		quit = true;
+		return;
+	}
+
+	/*
+	 * notify mailbox driver the daemon is ready.
+	 * when mpd daemon is required, it will also notify mailbox driver when it
+	 * exits, which to the mailbox acts as if the mgmt is down. Then the card
+	 * will be marked not ready 
+	 */
+	mb_notify(dev, mbxfd, true);
+
+	struct queue_msg msg = {
+		.localFd = mbxfd,
+		.remoteFd = msdfd,
+		.cb = cb,
+		.data = nullptr,
+	};
+	for ( ;; ) {
+		int ret = waitForMsg(dev, mbxfd, msdfd, 3);
+
+		if (quit)
+			break;
+		if (!(*is_handling)) //handleMsg thread exits
+			break;
+
+		if (ret < 0) {
+			if (ret == -EAGAIN)
+				continue;
+			else
+				break;
+		}
         if (ret == mbxfd) {
-            if (processLocalMsg(dev, mbxfd, msdfd) != 0)
-                break;
+			msg.type = LOCAL_MSG;
+			msg.data = getLocalMsg(dev, mbxfd);
         } else {
-            if (processRemoteMsg(dev, mbxfd, msdfd) != 0)
-                break;
-        }
+			msg.type = REMOTE_MSG;
+			msg.data = getRemoteMsg(dev, msdfd);
+		}
+
+		if (msg.data == nullptr) {
+			break;
+		} else {
+			std::unique_lock<std::mutex> lck(*mtx);
+			msgq->push(msg);
+			(*cv).notify_all();
+		}
     }
 
-    close(msdfd);
+	msg.type = ILLEGAL_MSG;
+	std::unique_lock<std::mutex> lck(*mtx);
+	msgq->push(msg);
+	(*cv).notify_all();
+
+	//notify mailbox driver the daemon is offline 
+	mb_notify(dev, mbxfd, false);
+
+	if (msdfd > 0)	 
+		close(msdfd);
+	dev.log(LOG_INFO, "mpd_getMsg thread %d exit!!", index);
+}
+
+// Client of MPD handling msg. Will quit on any error from either local mailbox or socket fd.
+// No retry is ever conducted.
+static void mpd_handleMsg(size_t index, std::mutex *mtx,
+	   std::condition_variable *cv,
+	   std::queue<struct queue_msg> *msgq,
+	   std::atomic<bool> *is_handling)
+{
+	pcieFunc dev(index);
+	*is_handling = true;
+	std::unique_lock<std::mutex> lck(*mtx, std::defer_lock);
+	for ( ;; ) {
+		lck.lock();
+		while (msgq->empty()) {
+			(*cv).wait_for(lck, std::chrono::seconds(3));
+			if (quit) {
+				lck.unlock();
+				goto out;
+			}
+		}
+
+		struct queue_msg msg = msgq->front();
+		msgq->pop();
+		lck.unlock();
+		if (msg.type == ILLEGAL_MSG) //getMsg thread exits
+			break;
+		if (!handleMsg(dev, msg))
+			break;
+	}
+out:	
+	*is_handling = false;
+	dev.log(LOG_INFO, "mpd_handleMsg thread %d exit!!", index);
+}
+
+/*
+ * mpd daemon will gracefully exit(eg notify mailbox driver) when
+ * 'kill -15' is sent. or 'crtl c' on the terminal for debug.
+ * so far 'kill -9' is not handled.
+ */
+static void signalHandler(int signum)
+{
+	if (signum == SIGINT || signum == SIGTERM) {
+    	syslog(LOG_INFO, "mpd caught signal %d", signum);
+    	quit = true;
+	}
 }
 
 int main(void)
 {
-    // Daemon has no connection to terminal.
-    fcloseall();
-        
-    // Start logging ASAP.
-    openlog("mpd", LOG_PID|LOG_CONS, LOG_USER);
-    syslog(LOG_INFO, "started");
+	signal(SIGINT, signalHandler);
+	signal(SIGTERM, signalHandler);
 
-    // Fire up one thread for each board.
-    auto total = pcidev::get_dev_total();
-    if (total == 0)
-        syslog(LOG_INFO, "no device found");
-    std::vector<std::thread> threads;
-    for (size_t i = 0; i < total; i++)
-        threads.emplace_back(mpd, pcidev::get_dev(i));
-
-    // Wait for all threads to finish before quit.
-    for (auto& t : threads)
-        t.join();
-
-    syslog(LOG_INFO, "ended");
-    closelog();         
-    return 0;
+	// Daemon has no connection to terminal.
+	fcloseall();
+	    
+	// Start logging ASAP.
+	openlog("mpd", LOG_PID|LOG_CONS, LOG_USER);
+	syslog(LOG_INFO, "started");
+	
+	init_plugin();
+	
+	if (plugin_init) {
+		int ret = (*plugin_init)(&plugin_cbs);
+		if (ret != 0) {
+			syslog(LOG_ERR, "mpd plugin_init failed: %d", ret);
+			dlclose(plugin_handle);
+			return 0;
+		}
+	}
+	
+	// Fire up one thread for each board.
+	auto total = pcidev::get_dev_total();
+	if (total == 0)
+		syslog(LOG_INFO, "no device found");
+	
+	std::vector<std::thread> threads_getMsg;
+	std::vector<std::thread> threads_handleMsg;
+	std::vector<std::mutex *> v_mtx;
+	std::vector<std::condition_variable *> v_cv;
+	std::vector<std::queue<struct queue_msg> *> v_msgq;
+	std::vector<std::atomic<bool> *> v_is_handling;
+	for (size_t i = 0; i < total; i++) {
+		std::mutex *mtx = new std::mutex();
+		v_mtx.emplace_back(mtx);
+		std::condition_variable *cv = new std::condition_variable();
+		v_cv.emplace_back(cv);
+		std::queue<struct queue_msg> *msgq = new std::queue<struct queue_msg>();
+		v_msgq.emplace_back(msgq);
+		std::atomic<bool> *is_handling = new std::atomic<bool>(true);
+		v_is_handling.emplace_back(is_handling);
+		threads_getMsg.emplace_back(mpd_getMsg, i, mtx, cv, msgq, is_handling);
+		threads_handleMsg.emplace_back(mpd_handleMsg, i, mtx, cv, msgq, is_handling);
+	}
+	
+	// Wait for all threads to finish before quit.
+	for (auto& t : threads_handleMsg)
+		t.join();
+	for (auto& t : threads_getMsg)
+		t.join();
+	for (auto& m : v_mtx)
+		delete m;
+	for (auto& v : v_cv)
+		delete v;
+	for (auto& q : v_msgq)
+		delete q;
+	for (auto& a: v_is_handling)
+		delete a;
+	
+	if (plugin_fini)
+		(*plugin_fini)(plugin_cbs.mpc_cookie);
+	if (plugin_handle)
+		dlclose(plugin_handle);
+	
+	syslog(LOG_INFO, "ended");
+	closelog();         
+	return 0;
 }
