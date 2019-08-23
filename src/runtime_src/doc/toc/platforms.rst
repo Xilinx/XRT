@@ -14,37 +14,40 @@ application from one class of platform to another.
 PCIe Based Platforms
 ====================
 
-We support below devices:
+XRT supports below devices:
 
 1. U200
 2. U250
 3. U280
-4. AWS F1
-5. Advantech VEGA-4000/4002
+4. U50
+5. AWS F1
+6. Advantech VEGA-4000/4002
 
 PCIe based platforms are supported on x86_64, PPC64LE and AARCH64 host architectures.
-The shell (previously known as DSA) has two physical functions: *mgmt pf* and *user pf*.
+The shell (previously known as DSA) has two physical functions: PF0 also called *mgmt pf* and PF1 also
+called *user pf*.
 
-MGMT PF
--------
+MGMT PF (PF0)
+-------------
 
 XRT Linux kernel driver *xclmgmt* binds to mgmt pf. The driver is organized into subdevices and handles
 the following functionality:
 
 1.  ICAP programming
-2.  CLock scaling
-3.  Loading firmware container, dsabin(renamed to xsabin since 2019.2) (RL Shell for 2 RP solution, embedded Microblaze firmware: ERT, XMC)
-4.  In-band sensors: Temperature, Voltage, Current, etc
+2.  Clock scaling
+3.  Loading firmware container called dsabin (renamed to xsabin since 2019.2). Dsabin contains RL Shell (for 2 RP solution)
+    and embedded Microblaze firmware for ERT and XMC.
+4.  Access to in-band sensors: Temperature, Voltage, Current, etc.
 5.  AXI Firewall management
 6.  Access to flash programmer
 7.  Device reset and rescan
-8.  Hardware mailbox
+8.  Hardware mailbox for communication with xocl driver
 9.  Interrupt handling for AXI Firewall and Mailbox
 10. Device DNA discovery and validation
 11. ECC handling
 
-USER PF
--------
+USER PF (PF1)
+-------------
 
 XRT Linux kernel driver *xocl* binds to user pf. The driver is organized into subdevices and handles the
 following functionality:
@@ -57,11 +60,15 @@ following functionality:
 6.  Standardized compute unit execution management (optionally with help of ERT) for client processes
 7.  Interrupt handling for DMA, Compute unit completion and Mailbox
 8.  Buffer object migration between device and host as DMA operation
-9.  Queue creation/deletion read/write operation for sreaming DMA operation
+9.  Queue creation/deletion read/write operation for streaming DMA operation
 10. AIO support for the streaming queues
 11. Buffer import and export via DMA-BUF
 12. PCIe peer-to-peer buffer mapping and sharing
+13. Access to in-band sensors
+14. Hardware mailbox for communication with xclmgmt driver
 
+
+Another section discusses :ref:`security.rst`.
 
 Zynq Ultrascale+ MPSoC Based Embedded Platforms
 ===============================================

@@ -238,11 +238,11 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         uuid_copy(dev_tmp1.uuid, info.uuid); 
         dev_tmp1.number_of_cus = info.number_of_kernels;
         dev_tmp1.number_of_mem_banks = info.number_of_mem_banks;
-        if (dev_tmp1.number_of_cus > MAX_XILINX_KERNELS) {
+        if (dev_tmp1.number_of_cus > MAX_XILINX_KERNELS + MAX_XILINX_SOFT_KERNELS) {
             free(buffer);
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not download xclbin file %s to device %d\n",
                         xclbin.c_str(), dev_index);
-            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA & XRT supports max of %d CUs but xclbin has %d number of CUs\n", MAX_XILINX_KERNELS, dev_tmp1.number_of_cus);
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA & XRT supports max of %d CUs but xclbin has %d number of CUs\n", MAX_XILINX_KERNELS + MAX_XILINX_SOFT_KERNELS, dev_tmp1.number_of_cus);
             return false;
         }
         dev_tmp1.kernels.reserve(dev_tmp1.number_of_cus);
@@ -257,25 +257,27 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             tmp1.cu_index = (int32_t)d;
             if (info.ip_layout[d].soft_kernel) {
                 tmp1.soft_kernel = true;
-            }
-            if (info.ip_layout[d].dataflow_kernel) {
-                tmp1.dataflow_kernel = true;
-            }
-            rc = xma_xclbin_map2ddr(info.ip_ddr_mapping[d], &tmp1.ddr_bank);
-            //XMA supports only 1 Bank per Kernel
+                tmp1.ddr_bank = 0;
+            } else {
+                if (info.ip_layout[d].dataflow_kernel) {
+                    tmp1.dataflow_kernel = true;
+                }
+                rc = xma_xclbin_map2ddr(info.ip_ddr_mapping[d], &tmp1.ddr_bank);
+                //XMA supports only 1 Bank per Kernel
 
-            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - DDR bank:%d\n", d, tmp1.name, tmp1.ddr_bank);
-            if (xclOpenContext(dev_tmp1.handle, info.uuid, d, true) != 0) {
-                free(buffer);
-                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Failed to open context to this CU\n");
-                return false;
+                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - DDR bank:%d\n", d, tmp1.name, tmp1.ddr_bank);
+                if (xclOpenContext(dev_tmp1.handle, info.uuid, d, true) != 0) {
+                    free(buffer);
+                    xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Failed to open context to this CU\n");
+                    return false;
+                }
             }
             tmp1.private_do_not_use = (void*) &hwcfg->devices[hwcfg->devices.size()-1];
         }
 
         std::bitset<MAX_XILINX_KERNELS> cu_mask;
         uint64_t base_addr1 = 0;
-        for (uint32_t d1 = 0; d1 < info.number_of_kernels; d1++) {
+        for (uint32_t d1 = 0; d1 < info.number_of_hardware_kernels; d1++) {
             base_addr1 = dev_tmp1.kernels[d1].base_address;
             //uint64_t cu_mask = 1;
             cu_mask.reset();
@@ -297,6 +299,22 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             dev_tmp1.kernels[d1].cu_mask2 = cu_mask.to_ulong();
             cu_mask = cu_mask >> 32;
             dev_tmp1.kernels[d1].cu_mask3 = cu_mask.to_ulong();
+        }
+
+        cu_mask.reset();
+        cu_mask.set(0);
+        std::bitset<MAX_XILINX_KERNELS> cu_mask_tmp;
+        for (uint32_t d1 = info.number_of_hardware_kernels; d1 < info.number_of_kernels; d1++) {
+            cu_mask_tmp = cu_mask;
+            dev_tmp1.kernels[d1].cu_mask0 = cu_mask_tmp.to_ulong();
+            cu_mask_tmp = cu_mask_tmp >> 32;
+            dev_tmp1.kernels[d1].cu_mask1 = cu_mask_tmp.to_ulong();
+            cu_mask_tmp = cu_mask_tmp >> 32;
+            dev_tmp1.kernels[d1].cu_mask2 = cu_mask_tmp.to_ulong();
+            cu_mask_tmp = cu_mask_tmp >> 32;
+            dev_tmp1.kernels[d1].cu_mask3 = cu_mask_tmp.to_ulong();
+
+            cu_mask = cu_mask << 1;
         }
 
         int32_t num_execbo = 0;
