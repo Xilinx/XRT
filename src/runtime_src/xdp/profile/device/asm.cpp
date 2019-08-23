@@ -50,7 +50,7 @@
 
 namespace xdp {
 
-ASM::ASM(void* handle /** < [in] the xrt hal device handle */,
+ASM::ASM(Device* handle /** < [in] the xrt or hal device handle */,
                 int index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data)
     : ProfileIP(handle, index, data),
       properties(0),

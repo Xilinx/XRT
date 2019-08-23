@@ -78,6 +78,7 @@ void parseDSAFilename(std::string filename, uint16_t& vendor, uint16_t& device, 
             device = std::stoull(cm.str(2), 0, 16);
             subsystem = std::stoull(cm.str(3), 0, 16);
             ts = std::stoull(cm.str(4), 0, 16);
+            break;
         } else
             ts = NULL_TIMESTAMP;
     }
@@ -397,9 +398,9 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
         std::regex e("^" FORMATTED_FW_DIR "/" hex_digit "-" hex_digit "-" hex_digit "/(.+)/(.+)/(.+)/" hex_digit "\\." + t);
         std::cmatch cm;
 
-        for (recursive_directory_iterator iter(formatted_fw_dir), end;
+        for (recursive_directory_iterator iter(formatted_fw_dir, symlink_option::recurse), end;
             iter != end;
-            ++iter)
+            )
         {
             std::string name = iter->path().string();
             std::regex_match(name.c_str(), cm, e);
@@ -416,7 +417,11 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
                 std::string build_ident = cm.str(6);
                 DSAInfo dsa(name, vid, did, subsys_id, pr_family, pr_name, build_ident);
                 installedDSA.push_back(dsa);
-            }
+                iter.pop();
+            } else if (iter.level() > 4)
+                iter.pop();
+            else
+                ++iter;
         }
     }
 

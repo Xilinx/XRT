@@ -52,11 +52,11 @@
 
 
 #include "am.h"
-
+#include <bitset>
 
 namespace xdp {
 
-AM::AM(void* handle /** < [in] the xrt hal device handle */,
+AM::AM(Device* handle /** < [in] the xrt or hal device handle */,
                 int index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data)
     : ProfileIP(handle, index, data),
       properties(0),
@@ -255,7 +255,7 @@ bool AM::has64bit() const
 
 bool AM::hasDataflow() const
 {
-    return ((compareVersion(1, 1) < 0) ? true : false);
+    return ((compareVersion(1, 0) <= 0) ? true : false);
 }
 
 bool AM::hasStall() const

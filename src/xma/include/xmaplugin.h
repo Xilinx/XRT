@@ -116,6 +116,17 @@ int32_t xma_plg_buffer_read(XmaSession     s_handle,
                             size_t           offset);
 
 /**
+ *  xma_plg_channel_id() - Query channel_id assigned to this plugin session
+ *
+ *  @s_handle:  The session handle associated with this plugin instance
+ *
+ *  RETURN:     Assigned channel_id on success
+ * XMA_ERROR on failure
+ *
+ */
+int32_t xma_plg_channel_id(XmaSession     s_handle);
+
+/**
  * xma_plg_schedule_work_item() - This function schedules a request to the XRT
  * scheduler for execution of a kernel based on the saved state of the kernel registers
  * supplied by the xma_plg_register_prep_write() function call.  The prep_write() keeps a

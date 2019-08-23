@@ -41,6 +41,7 @@
 
 #include<iomanip>
 #include<cstring>
+#include <bitset>
 
 #include "core/common/memalign.h"
 #include "xdp/profile/core/rt_util.h"
@@ -72,7 +73,7 @@ namespace xdp {
       }
   };
 
-TraceFifoFull::TraceFifoFull(void* handle /** < [in] the xrt hal device handle */,
+TraceFifoFull::TraceFifoFull(Device* handle /** < [in] the xrt or hal device handle */,
                 int index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data)
     : ProfileIP(handle, index, data),
       properties(0),
@@ -127,18 +128,16 @@ uint32_t TraceFifoFull::readTrace(xclTraceResultsVector& traceVector, uint32_t n
     uint32_t traceBufSz = 0;
     uint32_t traceSamples = 0; 
 
-    xrt::device* xrtDevice = getXRTDevice();
-
     /* Get the trace buffer size and actual number of samples for the specific device
      * On Zynq, we store 2 samples per packet in the FIFO. So, actual number of samples
      * will be different from the already calculated "numSamples".
      */
-    xrtDevice->getTraceBufferInfo(numSamples, traceSamples /*actual no. of samples for specific device*/, traceBufSz);
+    getDevice()->getTraceBufferInfo(numSamples, traceSamples /*actual no. of samples for specific device*/, traceBufSz);
     traceVector.mLength = traceSamples;
 
     uint32_t traceBuf[traceBufSz];
     uint32_t wordsPerSample = 1;
-    xrtDevice->readTraceData(traceBuf, traceBufSz, numSamples/* use numSamples */, getBaseAddress(), wordsPerSample);
+    getDevice()->readTraceData(traceBuf, traceBufSz, numSamples/* use numSamples */, getBaseAddress(), wordsPerSample);
 
     processTraceData(traceVector, numSamples, traceBuf, wordsPerSample); 
 
@@ -330,8 +329,9 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
       traceVector.mArray[i - clockWordIndex + 1] = results;   // save result
 
       if(out_stream) {
+        auto packet_dec = std::bitset<64>(currentSample).to_string();
         (*out_stream) << "  Trace sample " << std::dec << std::setw(5) << i << ": "
-                      << RTUtil::dec2bin(uint32_t(currentSample>>32)) << " " << RTUtil::dec2bin(uint32_t(currentSample&0xFFFFFFFF))
+                      <<  packet_dec.substr(0,19) << " : " << packet_dec.substr(19)
                       << std::endl
                       << " Timestamp : " << results.Timestamp << "   "
                       << "Event Type : " << results.EventType << "   "
