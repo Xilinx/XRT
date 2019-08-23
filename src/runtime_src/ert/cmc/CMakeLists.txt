@@ -5,7 +5,7 @@ set (URL_MSP432 "https://raw.gitenterprise.xilinx.com/CMC/CMC/master/release")
 
 FILE(DOWNLOAD ${URL_MSP432}/${CMC} ${CMAKE_CURRENT_BINARY_DIR}/${CMC} STATUS mystatus)
 
-list(APPEND CMC_FW_FILES ${CMAKE_CURRENT_BINARY_DIR}/${CMC}-${CMC_FILENAME})
+list(APPEND CMC_FW_FILES ${CMAKE_CURRENT_BINARY_DIR}/${CMC}
 
 # =============== CMC GEN2 =====================
 # Get and rename the files from the repository
