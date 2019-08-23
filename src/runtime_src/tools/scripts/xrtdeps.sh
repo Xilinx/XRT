@@ -83,6 +83,7 @@ RH_LIST=(\
      rpm-build \
      strace \
      unzip \
+     curl-devel \
 )
 
 UB_LIST=(\
@@ -128,6 +129,7 @@ UB_LIST=(\
      strace \
      unzip \
      uuid-dev \
+     libcurl4-openssl-dev \
 )
 
 if [[ $docker == 0 ]]; then

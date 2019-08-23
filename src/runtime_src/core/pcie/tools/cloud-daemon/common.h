@@ -33,7 +33,23 @@ using msgHandler = int(*)(pcieFunc& dev, std::shared_ptr<sw_msg>&,
 #define FOR_REMOTE 0
 #define FOR_LOCAL  1
 
-int splitLine(std::string line, std::string& key, std::string& value);
+enum MSG_TYPE {
+	LOCAL_MSG = 0,
+	REMOTE_MSG,
+	ILLEGAL_MSG,
+};
+
+struct queue_msg {
+	int localFd;
+	int remoteFd;
+	msgHandler cb;
+	std::shared_ptr<sw_msg> data;
+	enum MSG_TYPE type;
+};
+
+std::string str_trim(const std::string &str);
+int splitLine(std::string line, std::string& key, std::string& value,
+	   const std::string& delim = "=");
 sw_chan *allocmsg(pcieFunc& dev, size_t payloadSize);
 void freemsg(sw_chan *msg);
 size_t getSockMsgSize(pcieFunc& dev, int sockfd);
@@ -41,9 +57,8 @@ size_t getMailboxMsgSize(pcieFunc& dev, int mbxfd);
 bool readMsg(pcieFunc& dev, int fd, sw_chan *sc);
 bool sendMsg(pcieFunc& dev, int fd, sw_chan *sc);
 int waitForMsg(pcieFunc& dev, int localfd, int remotefd, long interval);
-int processLocalMsg(pcieFunc& dev, int localfd, int remotefd,
-    msgHandler cb = nullptr);
-int processRemoteMsg(pcieFunc& dev, int localfd, int remotefd,
-    msgHandler cb = nullptr);
+std::shared_ptr<sw_msg> getLocalMsg(pcieFunc& dev, int localfd);
+std::shared_ptr<sw_msg> getRemoteMsg(pcieFunc& dev, int remotefd);
+int handleMsg(pcieFunc& dev, struct queue_msg& msg);
 
 #endif	// COMMON_H

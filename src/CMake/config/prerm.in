@@ -52,6 +52,8 @@ systemctl stop mpd > /dev/null 2>&1
 systemctl disable mpd > /dev/null 2>&1
 rm -rf /etc/systemd/system/msd.service
 rm -rf /etc/systemd/system/mpd.service
+rm -rf /etc/mpd.conf
+rm -rf /opt/xilinx/xrt/lib/libmpd_plugin.so
 systemctl daemon-reload
 # Remove config file for MSD as well
 /opt/xilinx/xrt/bin/xbmgmt config --purge 2>&1 > /dev/null
