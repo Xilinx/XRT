@@ -77,8 +77,7 @@ set_property PFM.AXI_PORT $hpc0Val [get_bd_cells /interconnect_axifull_2_user_sl
 
 
 # Define CLOCK
-set_property PFM.CLOCK {clkwiz_kernel_clk_out1 {id "0" is_default "true" proc_sys_reset "reset_controllers/psreset_gate_pr_kernel"} \
+set_property PFM.CLOCK {clkwiz_kernel_clk_out1 {id "0" is_default "true" proc_sys_reset "reset_controllers/psreset_gate_pr_kernel"  status "changeable"} \
                        } [get_bd_ports /clkwiz_kernel_clk_out1]
-set_property PFM.CLOCK {clkwiz_kernel2_clk_out1 {id "1" is_default "false" proc_sys_reset "reset_controllers/psreset_gate_pr_kernel2"} \
+set_property PFM.CLOCK {clkwiz_kernel2_clk_out1 {id "1" is_default "false" proc_sys_reset "reset_controllers/psreset_gate_pr_kernel2"  status "fixed"} \
                        } [get_bd_ports /clkwiz_kernel2_clk_out1]
-
