@@ -94,10 +94,10 @@ namespace xdp {
     uint32_t getTimeDiffUsec(std::chrono::steady_clock::time_point start,
                              std::chrono::steady_clock::time_point end);
 
-    bool allocateDDRBufferForTrace(DeviceIntf* , xrt::device*);
-    void clearDDRBufferForTrace(DeviceIntf* , xrt::device* );
+    bool allocateDeviceDDRBufferForTrace(DeviceIntf* , xrt::device*);
+    void clearDeviceDDRBufferForTrace(DeviceIntf* , xrt::device* );
 
-    void configureDDRTraceReader(DeviceIntf*);
+    void configureDDRTraceReader(uint64_t wordCount);
     void readTraceDataFromDDR(DeviceIntf* dIntf, xrt::device* xrtDevice, xclTraceResultsVector& traceVector, uint64_t offset, uint64_t bytes);
     bool readTraceDataFromDDR(DeviceIntf* dIntf, xrt::device* xrtDevice, xclTraceResultsVector& traceVector);
     void* syncDeviceDDRToHostForTrace(xrt::device* xrtDevice, uint64_t offset, uint64_t bytes);

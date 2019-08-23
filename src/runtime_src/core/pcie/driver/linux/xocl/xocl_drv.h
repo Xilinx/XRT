@@ -772,6 +772,12 @@ enum data_kind {
 	MAX_PWR,
 	FAN_PRESENCE,
 	CFG_MODE,
+	VOL_VCC_3V3,
+	CUR_3V3_PEX,
+	CUR_VCC_0V85,
+	VOL_HBM_1V2,
+	VOL_VPP_2V5,
+	VOL_VCCINT_BRAM,
 };
 
 enum mb_kind {
@@ -844,6 +850,7 @@ enum {
 	RP_DOWNLOAD_NORMAL,
 	RP_DOWNLOAD_DRY,
 	RP_DOWNLOAD_FORCE,
+	RP_DOWNLOAD_CLEAR,
 };
 #define	ICAP_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ICAP).pldev
 #define	ICAP_OPS(xdev)							\
@@ -1155,8 +1162,8 @@ void xocl_fini_dna(void);
 int __init xocl_init_fmgr(void);
 void xocl_fini_fmgr(void);
 
-int __init xocl_init_xdma_mgmt(void);
-void xocl_fini_xdma_mgmt(void);
+int __init xocl_init_mgmt_msix(void);
+void xocl_fini_mgmt_msix(void);
 
 int __init xocl_init_flash(void);
 void xocl_fini_flash(void);

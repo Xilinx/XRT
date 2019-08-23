@@ -141,7 +141,7 @@ static int identify_bar(struct xocl_dev_core *core, int bar)
 	 * And reading VBNV name needs to bring up Feature ROM.
 	 * So we are not able to specify BARs in devices.h
 	 */
-	if (bar_len < 1024 * 1024 && bar > 0) {
+	if (bar_len < 1024 * 1024) {
 		core->intr_bar_idx = bar;
 		core->intr_bar_addr = bar_addr;
 		core->intr_bar_size = bar_len;
@@ -463,122 +463,25 @@ static int health_check_cb(void *data)
 	return 0;
 }
 
-static inline bool xclmgmt_support_intr(struct xclmgmt_dev *lro)
-{
-	struct xocl_board_private *dev_info = &lro->core.priv;
-
-	if (dev_info->flags & XOCL_DSAFLAG_DYNAMIC_IP)
-		return false;
-
-	return (dev_info->flags & XOCL_DSAFLAG_FIXED_INTR) ||
-		lro->core.intr_bar_addr != NULL;
-}
-
-static int xclmgmt_setup_msix(struct xclmgmt_dev *lro)
-{
-	struct xocl_board_private *dev_info = &lro->core.priv;
-	int total, rv, i;
-
-	if (!xclmgmt_support_intr(lro))
-		return -EOPNOTSUPP;
-
-	if (dev_info->flags & XOCL_DSAFLAG_FIXED_INTR) {
-		lro->msix_user_start_vector = 0;
-		total = 8;
-	} else {
-		/*
-		 * Get start vector (index into msi-x table) of msi-x usr intr
-		 * on this device.
-		 *
-		 * The device has XCLMGMT_MAX_USER_INTR number of usr intrs,
-		 * the last half of them belongs to mgmt pf, and the first
-		 * half to user pf. All vectors are hard-wired.
-		 *
-		 * The device also has some number of DMA intrs whose vectors
-		 * come before usr ones.
-		 *
-		 * This means that mgmt pf needs to allocate msi-x table big
-		 * enough to cover its own usr vectors. So, only the last
-		 * chunk of the table will ever be used for mgmt pf.
-		 */
-		lro->msix_user_start_vector =
-			XOCL_READ_REG32(lro->core.intr_bar_addr +
-			XCLMGMT_INTR_USER_VECTOR) & 0x0f;
-		total = lro->msix_user_start_vector + XCLMGMT_MAX_USER_INTR;
-	}
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
-	/* Suppress warning about unused variable */
-	i = 0;
-	rv = pci_alloc_irq_vectors(lro->core.pdev, total, total, PCI_IRQ_MSIX);
-	if (rv == total)
-		rv = 0;
-#else
-	for (i = 0; i < total; i++)
-		lro->msix_irq_entries[i].entry = i;
-	rv = pci_enable_msix(lro->core.pdev, lro->msix_irq_entries, total);
-#endif
-	mgmt_info(lro, "setting up msix, total irqs: %d, rv=%d\n", total, rv);
-	return rv;
-}
-
-static void xclmgmt_teardown_msix(struct xclmgmt_dev *lro)
-{
-	if (xclmgmt_support_intr(lro))
-		pci_disable_msix(lro->core.pdev);
-}
-
 static int xclmgmt_intr_config(xdev_handle_t xdev_hdl, u32 intr, bool en)
 {
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)xdev_hdl;
-	struct xocl_board_private *dev_info = &lro->core.priv;
 	int ret;
 
 	ret = xocl_dma_intr_config(lro, intr, en);
-	if (!ret)
-		return ret;
-
-	if (!xclmgmt_support_intr(lro))
-		return -EOPNOTSUPP;
-
-	if (!(dev_info->flags & XOCL_DSAFLAG_FIXED_INTR))
-		XOCL_WRITE_REG32(1 << intr, lro->core.intr_bar_addr +
-			(en ? XCLMGMT_INTR_USER_ENABLE :
-			XCLMGMT_INTR_USER_DISABLE));
-	return 0;
+	return ret;
 }
 
 static int xclmgmt_intr_register(xdev_handle_t xdev_hdl, u32 intr,
 	irq_handler_t handler, void *arg)
 {
-	u32 vec;
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)xdev_hdl;
 	int ret;
 
 	ret = handler ?
 		xocl_dma_intr_register(lro, intr, handler, arg, -1) :
 		xocl_dma_intr_unreg(lro, intr);
-	if (!ret)
-		return ret;
-
-	if (!xclmgmt_support_intr(lro))
-		return -EOPNOTSUPP;
-
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
-	vec = pci_irq_vector(lro->core.pdev,
-		lro->msix_user_start_vector + intr);
-#else
-	vec = lro->msix_irq_entries[
-		lro->msix_user_start_vector + intr].vector;
-#endif
-
-	if (handler)
-		return request_irq(vec, handler, 0, DRV_NAME, arg);
-
-	free_irq(vec, arg);
-
-	return 0;
+	return ret;
 }
 
 static int xclmgmt_reset(xdev_handle_t xdev_hdl)
@@ -961,13 +864,29 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	int ret;
 	struct xocl_board_private *dev_info = &lro->core.priv;
 	struct pci_dev *pdev = lro->pci_dev;
+	int i;
 
-	/* We can only support MSI-X. */
-	ret = xclmgmt_setup_msix(lro);
-	if (ret && (ret != -EOPNOTSUPP)) {
-		xocl_err(&pdev->dev, "set up MSI-X failed\n");
-		goto fail;
+	for (i = 0; i < dev_info->subdev_num; i++) {
+		if (dev_info->subdev_info[i].id == XOCL_SUBDEV_DMA)
+			break;
 	}
+
+	if (!(dev_info->flags & XOCL_DSAFLAG_DYNAMIC_IP) &&
+			i == dev_info->subdev_num &&
+			lro->core.intr_bar_addr != NULL) {
+		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_DMA_MSIX;
+		struct xocl_msix_privdata priv = { 0, 8 };
+
+		if (dev_info->flags & XOCL_DSAFLAG_FIXED_INTR) {
+			subdev_info.priv_data = &priv;
+			subdev_info.data_len = sizeof(priv);
+		}
+
+		ret = xocl_subdev_create(lro, &subdev_info);
+		if (ret)
+			goto fail;
+	}
+
 	lro->core.pci_ops = &xclmgmt_pci_ops;
 	lro->core.pdev = pdev;
 
@@ -978,7 +897,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	ret = xocl_subdev_create_by_id(lro, XOCL_SUBDEV_AF);
 	if (ret && ret != -ENODEV) {
 		xocl_err(&pdev->dev, "failed to register firewall\n");
-		goto fail_firewall;
+		goto fail_all_subdev;
 	}
 	if (dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
 		platform_axilite_flush(lro);
@@ -1017,8 +936,6 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 
 fail_all_subdev:
 	xocl_subdev_destroy_all(lro);
-fail_firewall:
-	xclmgmt_teardown_msix(lro);
 fail:
 	xocl_err(&pdev->dev, "failed to fully probe device, err: %d\n", ret);
 }
@@ -1169,7 +1086,6 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 	xocl_subdev_destroy_all(lro);
 	xocl_subdev_fini(lro);
 
-	xclmgmt_teardown_msix(lro);
 	/* remove user character device */
 	destroy_sg_char(&lro->user_char_dev);
 
@@ -1231,7 +1147,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_feature_rom,
 	xocl_init_iores,
 	xocl_init_flash,
-	xocl_init_xdma_mgmt,
+	xocl_init_mgmt_msix,
 	xocl_init_sysmon,
 	xocl_init_mb,
 	xocl_init_xvc,
@@ -1251,7 +1167,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_feature_rom,
 	xocl_fini_iores,
 	xocl_fini_flash,
-	xocl_fini_xdma_mgmt,
+	xocl_fini_mgmt_msix,
 	xocl_fini_sysmon,
 	xocl_fini_mb,
 	xocl_fini_xvc,
