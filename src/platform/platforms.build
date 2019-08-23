@@ -100,6 +100,18 @@
 				"from": "${XRT_EMBEDDED_ROOT}",
 				"to": ["${TA_ROOT}/internal_platforms"]
 			}
+		},
+		"zc706": {
+			"bsp_key": "zc706",
+			"package": {
+				"dsabin": false,
+				"dsadev": false,
+				"ta_locations": [""]
+			},
+			"copy": {
+				"from": "${XRT_EMBEDDED_ROOT}",
+				"to": ["${TA_ROOT}/internal_platforms"]
+			}
 		}
 	}
 }
