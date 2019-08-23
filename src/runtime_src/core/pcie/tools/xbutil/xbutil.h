@@ -246,7 +246,7 @@ public:
     float sysfs_power() const
     {
         unsigned short power = 0, m12v_pex_curr = 0, m12v_aux_vol = 0, 
-                       m12v_pex_vol = 0, m12v_aux_curr = 0;
+                       m12v_pex_vol = 0, m12v_aux_curr = 0, m3v3_pex_vol = 0, m3v3_pex_curr = 0;
         std::string errmsg;
 
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_pex_vol",  errmsg, m12v_pex_vol );
@@ -695,12 +695,11 @@ public:
         sensor_tree::put( "board.physical.thermal.cage.temp3", temp3);
 
         //electrical
-        unsigned long long m12v_pex_curr = 0, m12v_aux_vol = 0;
         unsigned short m3v3_pex_vol = 0, m3v3_aux_vol = 0, ddr_vpp_btm = 0, ddr_vpp_top = 0, 
                        sys_5v5 = 0, m1v2_top = 0, m1v2_btm = 0, m1v8 = 0, m0v85 = 0, mgt0v9avcc = 0, 
                        m12v_sw = 0, mgtavtt = 0, vccint_vol = 0, vccint_curr = 0, m3v3_pex_curr = 0,
                        m0v85_curr = 0, m3v3_vcc_vol = 0, hbm_1v2_vol = 0, vpp2v5_vol = 0,
-                       vccint_bram_vol = 0, m12v_pex_vol = 0, m12v_aux_curr = 0;
+                       vccint_bram_vol = 0, m12v_pex_vol = 0, m12v_aux_curr = 0, m12v_pex_curr = 0, m12v_aux_vol = 0;
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_pex_vol",  errmsg, m12v_pex_vol );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_pex_curr", errmsg, m12v_pex_curr );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_aux_vol",  errmsg, m12v_aux_vol );
