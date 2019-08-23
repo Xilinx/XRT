@@ -186,7 +186,7 @@ SectionIPLayout::marshalToJSON(char* _pDataSection,
     }
     ip_data.put("m_name", XUtil::format("%s", pHdr->m_ip_data[index].m_name).c_str());
 
-    m_ip_data.add_child("ip_data", ip_data);
+    m_ip_data.push_back(std::make_pair("", ip_data));   // Used to make an array of objects
   }
 
   ip_layout.add_child("m_ip_data", m_ip_data);

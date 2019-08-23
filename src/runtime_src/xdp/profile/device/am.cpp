@@ -52,7 +52,7 @@
 
 
 #include "am.h"
-
+#include <bitset>
 
 namespace xdp {
 
@@ -255,7 +255,7 @@ bool AM::has64bit() const
 
 bool AM::hasDataflow() const
 {
-    return ((compareVersion(1, 1) < 0) ? true : false);
+    return ((compareVersion(1, 0) <= 0) ? true : false);
 }
 
 bool AM::hasStall() const

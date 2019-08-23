@@ -99,6 +99,11 @@ struct xocl_flash_privdata {
 	uint64_t		data[1];
 };
 
+struct xocl_msix_privdata {
+	u32			start;
+	u32			total;
+};
+
 #ifdef __KERNEL__
 #define XOCL_PCI_DEVID(ven, dev, subsysid, priv)        \
          .vendor = ven, .device=dev, .subvendor = PCI_ANY_ID, \
@@ -173,6 +178,7 @@ enum {
 #define	XOCL_DNA		"dna"
 #define	XOCL_FMGR		"fmgr"
 #define	XOCL_FLASH		"flash"
+#define XOCL_DMA_MSIX		"dma_msix"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
@@ -838,6 +844,12 @@ struct xocl_subdev_map {
 		0,					\
 	}
 
+#define	XOCL_DEVINFO_DMA_MSIX				\
+	{						\
+		.id = XOCL_SUBDEV_DMA,			\
+		.name = XOCL_DMA_MSIX,			\
+	}
+
 #define XOCL_RES_SCHEDULER				\
 		((struct resource []) {			\
 		/*
@@ -1367,8 +1379,8 @@ struct xocl_subdev_map {
 #define XOCL_RES_FLASH_MFG_U50				\
 	((struct resource []) {				\
 		{					\
-			.start = 0x1F50000,		\
-			.end = 0x1F5FFFF,		\
+			.start = 0x1f50000,		\
+			.end = 0x1f5FFFF,		\
 			.flags = IORESOURCE_MEM,	\
 		},					\
 	 })
@@ -1626,6 +1638,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0xA983, 0x1351, MGMT_MPSOC) },		\
 	{ XOCL_PCI_DEVID(0x10EE, 0x688F, PCI_ANY_ID, MGMT_DEFAULT) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x694F, PCI_ANY_ID, MGMT_DEFAULT) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x6987, PCI_ANY_ID, MGMT_DEFAULT) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x698F, PCI_ANY_ID, MGMT_DEFAULT) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6A4F, PCI_ANY_ID, MGMT_DEFAULT) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6A8F, 0x4350, MGMT_6A8F_DSA50) },	\
@@ -1672,6 +1685,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x6850, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6890, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6950, PCI_ANY_ID, USER_XDMA) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x6988, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0xA884, 0x1351, USER_XDMA_MPSOC) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0xA984, 0x1351, USER_XDMA_MPSOC) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6990, PCI_ANY_ID, USER_XDMA) },	\
