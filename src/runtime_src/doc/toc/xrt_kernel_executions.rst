@@ -39,7 +39,7 @@ The AP_CTRL_HS style kernel is the oldest supported model through XRT (before 19
 Mode of operation
 -----------------
 
-.. image:: ap_ctrl_hs_1.png
+.. image:: ap_ctrl_hs_2.PNG
    :align: center
 
 1.	The XRT driver writes a 1 in ap_start to start the kernel 
@@ -70,7 +70,7 @@ AP_CTRL_CHAIN is an improved version of AP_CTRL_HS where the kernel is designed 
 Mode of operation
 -----------------
 
-.. image:: ap_ctrl_chain_1.png
+.. image:: ap_ctrl_chain_2.PNG
    :align: center
 
 **Input synchronization**
