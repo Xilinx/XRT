@@ -102,6 +102,9 @@ public:
 
   bool isGood() const;
   static ZYNQShim *handleCheck(void *handle);
+  int xclCuName2Index(const char *name, uint32_t& index);
+  static int xclLogMsg(xrtLogMsgLevel level, const char* tag,
+		       const char* format, va_list args);
 
 private:
   const int mBoardNumber = -1;
@@ -121,6 +124,7 @@ private:
   const size_t mCuMapSize = 64 * 1024;
   std::mutex mCuMapLock;
   int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
+  int xclLog(xrtLogMsgLevel level, const char* tag, const char* format, ...);
 };
 
 } // namespace ZYNQ

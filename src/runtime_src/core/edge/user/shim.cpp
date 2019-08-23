@@ -39,14 +39,9 @@
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
 #include <assert.h>
+#include <cstdarg>
 
 #define GB(x)   ((size_t) (x) << 30)
-
-static inline void errlog(std::string& errstr)
-{
-    xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR,
-        "XRT", errstr.c_str());
-}
 
 static std::string parseCUStatus(unsigned val) {
   char delim = '(';
@@ -671,15 +666,11 @@ int ZYNQShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset,
   std::lock_guard<std::mutex> l(mCuMapLock);
 
   if (cu_index >= mCuMaps.size()) {
-    std::string err = "xclRegRW: invalid CU index: ";
-    err += std::to_string(cu_index);
-    errlog(err);
+    xclLog(XRT_ERROR, "XRT", "%s: invalid CU index: %d", __func__, cu_index);
     return -EINVAL;
   }
   if (offset >= mCuMapSize || (offset & (sizeof(uint32_t) - 1)) != 0) {
-    std::string err = "xclRegRW: invalid CU offset: ";
-    err += std::to_string(offset);
-    errlog(err);
+    xclLog(XRT_ERROR, "XRT", "%s: invalid CU offset: %d", __func__, offset);
     return -EINVAL;
   }
 
@@ -687,14 +678,12 @@ int ZYNQShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset,
     void *p = mmap(0, mCuMapSize, PROT_READ | PROT_WRITE, MAP_SHARED,
       mKernelFD, cu_index * getpagesize());
     if (p != MAP_FAILED)
-        mCuMaps[cu_index] = (uint32_t *)p;
+      mCuMaps[cu_index] = (uint32_t *)p;
   }
 
   uint32_t *cumap = mCuMaps[cu_index];
   if (cumap == nullptr) {
-    std::string err = "xclRegRW: can't map CU ";
-    err += std::to_string(cu_index);
-    errlog(err);
+    xclLog(XRT_ERROR, "XRT", "%s: can't map CU: %d", __func__, cu_index);
     return -EINVAL;
   }
 
@@ -717,61 +706,113 @@ int ZYNQShim::xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data)
 
 int ZYNQShim::xclCuName2Index(const char *name, uint32_t& index)
 {
-    std::string errmsg;
-    std::vector<char> buf;
-    const uint64_t bad_addr = 0xffffffffffffffff;
+  std::string errmsg;
+  std::vector<char> buf;
+  const uint64_t bad_addr = 0xffffffffffffffff;
 
-    mDev->sysfs_get("ip_layout", errmsg, buf);
-    if (!errmsg.empty()) {
-        xclLog(XRT_ERROR, "XRT", "can't read ip_layout sysfs node: %s",
-            errmsg.c_str());
-        return -EINVAL;
-    }
-    if (buf.empty())
-        return -ENOENT;
-    
-    const ip_layout *map = (ip_layout *)buf.data();
-    if(map->m_count < 0) {
-        xclLog(XRT_ERROR, "XRT", "invalid ip_layout sysfs node content");
-        return -EINVAL;
-    }
-
-    uint64_t addr = bad_addr;
-    int i;
-    for(i = 0; i < map->m_count; i++) {
-        if (strncmp((char *)map->m_ip_data[i].m_name, name,
-                sizeof(map->m_ip_data[i].m_name)) == 0) {
-            addr = map->m_ip_data[i].m_base_address;
-            break;
-        }
-    }
-    if (i == map->m_count)
-        return -ENOENT;
-    if (addr == bad_addr)
-        return -EINVAL;
-
-    std::vector<std::string> custat;
-    mDev->sysfs_get("kds_custat", errmsg, custat);
-    if (!errmsg.empty()) {
-        xclLog(XRT_ERROR, "XRT", "can't read kds_custat sysfs node: %s",
-            errmsg.c_str());
-        return -EINVAL;
-    }
-
-    uint32_t idx = 0;
-    for (auto& line : custat) {
-        // convert and compare parsed hex address CU[@0x[0-9]+]
-        size_t pos = line.find("0x");
-        if (pos == std::string::npos)
-            continue;
-        if (static_cast<int>(addr) == std::stoi(line.substr(pos), 0, 16)) {
-            index = idx;
-            return 0;
-        }
-        ++idx;
-    }
-
+  mDev->sysfs_get("ip_layout", errmsg, buf);
+  if (!errmsg.empty()) {
+    xclLog(XRT_ERROR, "XRT", "can't read ip_layout sysfs node: %s",
+      errmsg.c_str());
+    return -EINVAL;
+  }
+  if (buf.empty())
     return -ENOENT;
+   
+  const ip_layout *map = (ip_layout *)buf.data();
+  if(map->m_count < 0) {
+    xclLog(XRT_ERROR, "XRT", "invalid ip_layout sysfs node content");
+    return -EINVAL;
+  }
+
+  uint64_t addr = bad_addr;
+  int i;
+  for(i = 0; i < map->m_count; i++) {
+    if (strncmp((char *)map->m_ip_data[i].m_name, name,
+                sizeof(map->m_ip_data[i].m_name)) == 0) {
+      addr = map->m_ip_data[i].m_base_address;
+      break;
+    }
+  }
+  if (i == map->m_count)
+    return -ENOENT;
+  if (addr == bad_addr)
+    return -EINVAL;
+
+  std::vector<std::string> custat;
+  mDev->sysfs_get("kds_custat", errmsg, custat);
+  if (!errmsg.empty()) {
+    xclLog(XRT_ERROR, "XRT", "can't read kds_custat sysfs node: %s",
+           errmsg.c_str());
+    return -EINVAL;
+  }
+
+  uint32_t idx = 0;
+  for (auto& line : custat) {
+    // convert and compare parsed hex address CU[@0x[0-9]+]
+    size_t pos = line.find("0x");
+    if (pos == std::string::npos)
+      continue;
+    if (static_cast<unsigned long>(addr) ==
+        std::stoul(line.substr(pos).c_str(), 0, 16)) {
+      index = idx;
+      return 0;
+    }
+    ++idx;
+  }
+
+  return -ENOENT;
+}
+
+inline int ZYNQShim::xclLog(xrtLogMsgLevel level, const char* tag,
+                            const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    int ret = xclLogMsg(level, tag, format, args);
+    va_end(args);
+
+    return ret;
+}
+
+int ZYNQShim::xclLogMsg(xrtLogMsgLevel level, const char* tag,
+    const char* format, va_list args)
+{
+  static auto verbosity = xrt_core::config::get_verbosity();
+  if (level <= verbosity) {
+    va_list args_bak;
+    // vsnprintf will mutate va_list so back it up
+    va_copy(args_bak, args);
+    int len = std::vsnprintf(nullptr, 0, format, args_bak);
+    va_end(args_bak);
+
+    if (len < 0) {
+      //illegal arguments
+      std::string err_str = "ERROR: Illegal arguments in log format string. ";
+      err_str.append(std::string(format));
+      xrt_core::message::send((xrt_core::message::severity_level)level, tag,
+                              err_str);
+      return len;
+    }
+    ++len; //To include null terminator
+
+    std::vector<char> buf(len);
+    len = std::vsnprintf(buf.data(), len, format, args);
+
+    if (len < 0) {
+      //error processing arguments
+      std::string err_str =
+        "ERROR: When processing arguments in log format string. ";
+      err_str.append(std::string(format));
+      xrt_core::message::send((xrt_core::message::severity_level)level, tag,
+                              err_str.c_str());
+      return len;
+    }
+    xrt_core::message::send((xrt_core::message::severity_level)level, tag,
+                            buf.data());
+  }
+
+  return 0;
 }
 
 }
@@ -1347,4 +1388,26 @@ int xclCuName2Index(xclDeviceHandle handle, const char *name, uint32_t *indexp)
 {
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
   return (drv) ? drv->xclCuName2Index(name, *indexp) : -ENODEV;
+}
+
+int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag,
+              const char* format, ...)
+{
+    static auto verbosity = xrt_core::config::get_verbosity();
+    if (level <= verbosity) {
+        va_list args;
+        va_start(args, format);
+        int ret = -1;
+        if (handle) {
+            ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+            ret = drv ? drv->xclLogMsg(level, tag, format, args) : -ENODEV;
+        } else {
+            ret = ZYNQ::ZYNQShim::xclLogMsg(level, tag, format, args);
+        }
+        va_end(args);
+
+        return ret;
+    }
+
+    return 0;
 }
