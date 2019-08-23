@@ -1067,10 +1067,10 @@ int xcldev::device::pcieLinkTest(void)
         return -EINVAL;
     }
 
-    pcidev::get_dev(m_idx)->sysfs_get( "", "link_speed",     errmsg, pcie_speed );
-    pcidev::get_dev(m_idx)->sysfs_get( "", "link_speed_max", errmsg, pcie_speed_max );
-    pcidev::get_dev(m_idx)->sysfs_get( "", "link_width",     errmsg, pcie_width );
-    pcidev::get_dev(m_idx)->sysfs_get( "", "link_width_max", errmsg, pcie_width_max );
+    pcidev::get_dev(m_idx)->sysfs_get<unsigned int>( "", "link_speed",     errmsg, pcie_speed );
+    pcidev::get_dev(m_idx)->sysfs_get<unsigned int>( "", "link_speed_max", errmsg, pcie_speed_max );
+    pcidev::get_dev(m_idx)->sysfs_get<unsigned int>( "", "link_width",     errmsg, pcie_width );
+    pcidev::get_dev(m_idx)->sysfs_get<unsigned int>( "", "link_width_max", errmsg, pcie_width_max );
     if (pcie_speed != pcie_speed_max || pcie_width != pcie_width_max) {
         std::cout << "LINK ACTIVE, ATTENTION" << std::endl;
         std::cout << "Ensure Card is plugged in to Gen"

@@ -235,19 +235,6 @@ void pcidev::pci_device::sysfs_get(
         s = ""; // default value
 }
 
-void pcidev::pci_device::sysfs_get(
-    const std::string& subdev, const std::string& entry,
-    std::string& err_msg, bool& b)
-{
-    std::vector<uint64_t> iv;
-
-    sysfs_get(subdev, entry, err_msg, iv);
-    if (!iv.empty())
-        b = (iv[0] == 1);
-    else
-        b = false; // default value
-}
-
 int pcidev::pci_device::devfs_open(const std::string& subdev, int flag)
 {
     std::string file("/dev/xfpga/");

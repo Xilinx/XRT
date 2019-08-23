@@ -62,19 +62,17 @@ public:
     void sysfs_get(const std::string& subdev, const std::string& entry,
         std::string& err_msg, std::string& s);
     void sysfs_get(const std::string& subdev, const std::string& entry,
-        std::string& err_msg, bool& b);
-    void sysfs_get(const std::string& subdev, const std::string& entry,
         std::string& err_msg, std::vector<char>& buf);
     template <typename T>
     void sysfs_get(const std::string& subdev, const std::string& entry,
-        std::string& err_msg, T& i) {
+        std::string& err_msg, T& i, const int& default_val = -1) {
         std::vector<uint64_t> iv;
 
         sysfs_get(subdev, entry, err_msg, iv);
         if (!iv.empty())
             i = static_cast<T>(iv[0]);
         else
-            i = static_cast<T>(-1); // default value
+            i = static_cast<T>(default_val); // default value
     }
     void sysfs_put(const std::string& subdev, const std::string& entry,
         std::string& err_msg, const std::string& input);
