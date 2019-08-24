@@ -33,7 +33,6 @@ struct feature_rom {
 	bool			aws_dev;
 	bool			runtime_clk_scale_en;
 	char			uuid[65];
-	u64			flash_off;
 };
 
 static ssize_t VBNV_show(struct device *dev,
