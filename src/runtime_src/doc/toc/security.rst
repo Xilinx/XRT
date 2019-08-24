@@ -43,7 +43,7 @@ bug or is malicious the appropriate firewall will step in and protect the Shell 
 failing slave.
 
 The shell image is itself distributed as signed RPM and DEB package files by Xilinx.
-Shells may be upgraded using XRT ``xbmgmt`` tool by system administrators. The upgrade
+Shells may be upgraded using XRT **xbmgmt** tool by system administrators. The upgrade
 process will update the PROM.
 
 
@@ -92,8 +92,8 @@ Baremetal
 ---------
 
 In Baremetal deployment model, both physical functions are visible to the end user who *does not*
-have root privileges. End user have access to both XRT xclmgmt and XRT xocl drivers. The system administrator
-trusts both drivers which provide well defined :ref:`mgmt-ioctl.main.rst` and :ref:`xocl_ioctl.main.rst`.
+have root privileges. End user have access to both XRT **xclmgmt** and XRT **xocl** drivers. The system
+administrator trusts both drivers which provide well defined :ref:`mgmt-ioctl.main.rst` and :ref:`xocl_ioctl.main.rst`.
 End user does have the privilege to load xclbins which should be signed for maximum security. This
 will ensure that only known good xclbins are loaded by end users.
 
@@ -105,8 +105,8 @@ Pass-through Virtualization
 
 In Pass-through Virtualization deployment model, management physical function is only visible to the host
 but user physical function is visible to the guest VM. Host considers the guest VM a *hostile* environment.
-End users in guest VM may be root and may be running modified implementation of XRT xocl driver -- XRT
-xclmgmt driver does not trust XRT xocl driver. xclmgmt as described before exposes well defined
+End users in guest VM may be root and may be running modified implementation of XRT **xocl** driver -- XRT
+**xclmgmt** driver does not trust XRT xocl driver. xclmgmt as described before exposes well defined
 :ref:`mgmt-ioctl.main.rst` to the host. In a good and clean deployment end users in guest VM interact with
 standard xocl using well defined :ref:`xocl_ioctl.main.rst`.
 
@@ -128,28 +128,36 @@ deployment model for FaaS operators.
 Summary
 -------
 
-+--------------+-----------------+-----------------+--------------+--------------+--------------+
-| Deployment   | System admin    | End user root   | End user can | End user can | End user with|
-|              | trusted driver  | access          | crash device | crash PCIe   | root access  |
-|              +--------+--------+--------+--------+              | bus          | can crash    |
-|              | xocl   |xclmgmt | xocl   |xclmgmt |              |              | PCIe bus     |
-+==============+========+========+========+========+==============+==============+==============+
-| Bare Metal   | Yes    | Yes    | No     | No     | Yes          | No           | Yes          |
-+--------------+--------+--------+--------+--------+--------------+--------------+--------------+
-| Pass-through | No     | Yes    | Maybe  | No     | Yes          | No           | No           |
-+--------------+--------+--------+--------+--------+--------------+--------------+--------------+
-
-
++------------------------------+---------------------------+
+| Behavior                     |     Deployment Model      |
+|                              +------------+--------------+
+|                              | Bare Metal | Pass-through |
++=================+============+============+==============+
+| System admin    | xocl       | Yes        | No           |
+| trusted driver  +------------+------------+--------------+
+|                 | xclmgmt    | Yes        | Yes          |
++-----------------+------------+------------+--------------+
+| End user root   | xocl       | No         | Maybe        |
+| access          +------------+------------+--------------+
+|                 | xclmgmt    | No         | No           |
++-----------------+------------+------------+--------------+
+| End user can crash device    | Yes        | Yes          |
++------------------------------+------------+--------------+
+| End user can crash PCIe bus  | No         | No           |
++------------------------------+------------+--------------+
+| End user with root access    | Yes        | No           |
+| can crash PCIe bus           |            |              |
++------------------------------+------------+--------------+
 
 
 
 Signing of Xclbins
 ==================
 
-xclbin signing process is similar to signing of Linux kernel modules. xclbins can be signed by XRT utility,
-``xclbinutil``. The signing adds a PKCS7 signature at the end of xclbin. The signing certificate is then
+xclbin signing process is similar to signing of Linux kernel modules. xclbins can be signed by XRT tool,
+**xclbinutil**. The signing adds a PKCS7 signature at the end of xclbin. The signing certificate is then
 registered with appropriate key-ring. XRT supports one of three levels of security which can be configured
-with xbmgmt utility running with root privileges.
+with xbmgmt tool running with root privileges.
 
 =============== =================================================================
 Security level  xclmgmt driver xclbin signature verification behavior
@@ -174,7 +182,7 @@ Device Reset and Recovery
 
 Device reset and recovery is a privileged operation and can only be performed by xclmgmt driver. xocl
 driver can request device reset by sending a message to xclmgmt driver over the Mailbox. An end user
-can reset a device by using XRT xbutil utility. This utility talks to xocl driver which uses the reset
+can reset a device by using XRT **xbutil** tool. This tool talks to xocl driver which uses the reset
 message as defined in :ref:`mailbox.main.rst`
 
 Currently Alveo boards are reset by using PCIe bus *hot reset* mechanism. This resets the board peripherals
