@@ -21,7 +21,7 @@ list(APPEND CMC_FW_FILES ${CMAKE_CURRENT_BINARY_DIR}/${CMCGEN2}-${CMCGEN2_FILENA
 
 # =============== CMC NOSC GEN1 for U2 boards =====================
 set (CMC_NOSC_GEN1 "CmcNoSCGen1")
-set (URL_NOSC_GEN1 "https://raw.gitenterprise.xilinx.com/CMC/CMC/tree/U2/release")
+set (URL_NOSC_GEN1 "https://raw.gitenterprise.xilinx.com/CMC/CMC/U2/release")
 
 FILE(DOWNLOAD ${URL_NOSC_GEN1}/cmc.bin.filename ${CMAKE_CURRENT_BINARY_DIR}/${CMC_NOSC_GEN1}-CMC.filename STATUS mystatus)
 FILE(STRINGS ${CMAKE_CURRENT_BINARY_DIR}/${CMC_NOSC_GEN1}-CMC.filename CMC_NOSC_GEN1_FILENAME)
