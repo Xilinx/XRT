@@ -34,9 +34,22 @@ fi
 
 INTERFACE_UUID=`xclbinutil -i $PATH_TO_XCLBIN --dump-section PARTITION_METADATA:JSON:/tmp/dt.json --force >/dev/null && cat /tmp/dt.json | grep interface_ | awk -F: '{print $2}' | awk -F\" '{print $2}'`
 
-if [ "foo${UUID}" == "foo" ] ; then
+if [ "foo${INTERFACE_UUID}" == "foo" ] ; then
 	echo "failed to get interface uuid by xclbinutil"
+	exit 1
 fi
+
+# workaround mailbox
+RP_DEVICE=`xbutil scan | grep user | grep -v xilinx | sed 's/.*\[//' | sed 's/].*//'`
+if [ "foo${RP_DEVICE}" == "foo" ] ; then
+	echo "No board!"
+	exit 1;
+fi
+
+echo 0 >/sys/bus/pci/devices/$RP_DEVICE/mbx_offset
 
 echo "xbmgmt partition --program --id $INTERFACE_UUID --force"
 xbmgmt partition --program --id $INTERFACE_UUID --force
+
+echo 0x1f20000 >/sys/bus/pci/devices/$RP_DEVICE/mbx_offset
+sleep 5
