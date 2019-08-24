@@ -58,10 +58,10 @@ static void
 userptr_bad_alloc_message(void* addr)
 {
   xrt::message::send(xrt::message::severity_level::XRT_WARNING,
-                     "The bad alloc on host pointer '"
+                     "bad alloc on host pointer '"
                      + to_hex(addr)
                      + "' detected, check dmesg for more information."
-                     + " This leads to extra memcpy.");
+                     + " This could lead to extra memcpy.");
 }
 
 static void
@@ -133,9 +133,6 @@ static void
 sync_to_ubuf(xocl::memory* buffer, size_t offset, size_t size,
              xrt::device* xdevice, const xrt::device::BufferObjectHandle& boh)
 {
-  if (buffer->is_aligned())
-    return;
-
   auto ubuf = buffer->get_host_ptr();
   if (ubuf) {
     auto hbuf = xdevice->map(boh);
@@ -153,9 +150,6 @@ static void
 sync_to_hbuf(xocl::memory* buffer, size_t offset, size_t size,
              xrt::device* xdevice, const xrt::device::BufferObjectHandle& boh)
 {
-  if (buffer->is_aligned())
-    return;
-
   auto ubuf = buffer->get_host_ptr();
   if (ubuf) {
     auto hbuf = xdevice->map(boh);
@@ -299,8 +293,11 @@ alloc(memory* mem, memidx_type memidx)
   if (host_ptr) {
     if (!aligned_flag)
       unaligned_message(host_ptr);
+
     auto bo_host_ptr = m_xdevice->map(boh);
-    memcpy(bo_host_ptr, host_ptr, sz);
+    if (!(mem->get_flags() & CL_MEM_WRITE_ONLY))
+        memcpy(bo_host_ptr, host_ptr, sz);
+
     m_xdevice->unmap(boh);
   }
   return boh;
@@ -331,8 +328,11 @@ alloc(memory* mem)
   if (host_ptr) {
     if (!aligned_flag)
       unaligned_message(host_ptr);
+
     auto bo_host_ptr = m_xdevice->map(boh);
-    memcpy(bo_host_ptr, host_ptr, sz);
+    if (!(mem->get_flags() & CL_MEM_WRITE_ONLY))
+        memcpy(bo_host_ptr, host_ptr, sz);
+
     m_xdevice->unmap(boh);
   }
   track(mem);
@@ -924,7 +924,7 @@ write_buffer(memory* buffer, size_t offset, size_t size, const void* ptr)
   // Write data to buffer object at offset
   xdevice->write(boh,ptr,size,offset,false);
 
-  // Update unaligned ubuf if necessary
+  // Update unaligned ubuf or bad alloc ubuf if necessary
   sync_to_ubuf(buffer,offset,size,xdevice,boh);
 
   if (buffer->is_resident(this))
@@ -948,7 +948,7 @@ read_buffer(memory* buffer, size_t offset, size_t size, void* ptr)
   // Read data from buffer object at offset
   xdevice->read(boh,ptr,size,offset,false);
 
-  // Update unaligned ubuf if necessary
+  // Update unaligned ubuf or bad alloc ubuf if necessary
   sync_to_ubuf(buffer,offset,size,xdevice,boh);
 }
 
