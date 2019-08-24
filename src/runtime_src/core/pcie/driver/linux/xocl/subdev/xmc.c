@@ -1239,6 +1239,7 @@ static ssize_t hwmon_scaling_target_power_show(struct device *dev,
 	mutex_lock(&xmc->xmc_lock);
 	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_POWER_REG);
 	val &= XMC_CLOCK_SCALING_POWER_TARGET_MASK;
+	val = val * 1000000;
 	mutex_unlock(&xmc->xmc_lock);
 
 	return sprintf(buf, "%uW\n", val);
@@ -1295,6 +1296,7 @@ static ssize_t hwmon_scaling_target_temp_show(struct device *dev,
 	mutex_lock(&xmc->xmc_lock);
 	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_TEMP_REG);
 	val &= XMC_CLOCK_SCALING_TEMP_TARGET_MASK;
+	val = val * 1000;
 	mutex_unlock(&xmc->xmc_lock);
 
 	return sprintf(buf, "%uc\n", val);
@@ -1351,6 +1353,7 @@ static ssize_t hwmon_scaling_threshold_temp_show(struct device *dev,
 	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
 	val = (val >> XMC_CLOCK_SCALING_TEMP_THRESHOLD_POS) &
 		XMC_CLOCK_SCALING_TEMP_THRESHOLD_MASK;
+	val = val * 1000;
 	mutex_unlock(&xmc->xmc_lock);
 
 	return sprintf(buf, "%uc\n", val);
@@ -1371,6 +1374,7 @@ static ssize_t hwmon_scaling_threshold_power_show(struct device *dev,
 	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
 	val = (val >> XMC_CLOCK_SCALING_POWER_THRESHOLD_POS) &
 		XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK;
+	val = val * 1000000;
 	mutex_unlock(&xmc->xmc_lock);
 
 	return sprintf(buf, "%uW\n", val);
@@ -2037,6 +2041,10 @@ static int load_xmc(struct xocl_xmc *xmc)
 	xmc->state = XMC_STATE_ENABLED;
 
 	xmc->cap = READ_REG32(xmc, XMC_FEATURE_REG);
+
+	if (XMC_PRIVILEGED(xmc) && xocl_clk_scale_on(xdev_hdl))
+		xmc_clk_scale_config(xmc->pdev);
+
 out:
 	mutex_unlock(&xmc->xmc_lock);
 
@@ -2232,8 +2240,6 @@ static int xmc_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, xmc);
 
 	for (i = 0; i < NUM_IOADDR; i++) {
-		if ((i == IO_CLK_SCALING) && !xmc->runtime_cs_enabled)
-			continue;
 		res = platform_get_resource(pdev, IORESOURCE_MEM, i);
 		if (res) {
 			xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx",
@@ -2284,7 +2290,6 @@ static int xmc_probe(struct platform_device *pdev)
 	 */
 	if (XMC_PRIVILEGED(xmc) && xocl_clk_scale_on(xdev_hdl)) {
 		xmc->runtime_cs_enabled = true;
-		xmc_clk_scale_config(pdev);
 		xocl_info(&pdev->dev, "Runtime clock scaling is supported.\n");
 	}
 

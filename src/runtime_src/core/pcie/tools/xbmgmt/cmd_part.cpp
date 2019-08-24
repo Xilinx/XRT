@@ -36,6 +36,7 @@ const char *subCmdPartUsage =
     "--program --path xclbin [--card bdf] [--force]\n"
     "--scan [--verbose]";
 
+#define fmt_str "    "
 int program_prp(unsigned index, const std::string& xclbin, bool force)
 {
     std::ifstream stream(xclbin.c_str(), std::ios_base::binary);
@@ -131,7 +132,6 @@ int program_urp(unsigned index, const std::string& xclbin)
     return ret ? -errno : ret;
 }
 
-#define fmt_str "    "
 void scanPartitions(int index, std::vector<DSAInfo>& installedDSAs, bool verbose)
 {
     Flasher f(index);
@@ -168,15 +168,22 @@ void scanPartitions(int index, std::vector<DSAInfo>& installedDSAs, bool verbose
 
     for (auto& dsa : installedDSAs)
     {
+        unsigned int i;
         if (dsa.hasFlashImage || dsa.uuids.empty())
             continue;
-        if (int_uuids[0].compare(dsa.uuids[1]) != 0)
-            continue;
+	for (i = 0; dsa.uuids.size(); i++)
+        {
+            if (int_uuids[0].compare(dsa.uuids[i]) == 0)
+                break;
+        }
+	if (i == dsa.uuids.size())
+            continue;	
+	dsa.uuids.erase(dsa.uuids.begin()+i);
 	std::cout << fmt_str << fmt_str << dsa << std::endl;
-        if (dsa.uuids.size() > 2)
+        if (dsa.uuids.size() > 1)
         {
             std::cout << fmt_str << fmt_str << fmt_str << "Interface UUID:" << std::endl;
-            for (unsigned int i = 2; i < dsa.uuids.size(); i++)
+            for (i = 1; i < dsa.uuids.size(); i++)
             {
                std::cout << fmt_str << fmt_str << fmt_str  << dsa.uuids[i] << std::endl;
             } 
