@@ -34,6 +34,8 @@ const char *subCmdFlashUsage =
     "--sc_firmware --path file [--card bdf]\n"
     "--reset [--card bdf]";
 
+#define fmt_str		"    "
+
 static int scanDevices(bool verbose, bool json)
 {
     unsigned total = pcidev::get_dev_total(false);
@@ -74,32 +76,41 @@ static int scanDevices(bool verbose, bool json)
             sensor_tree::json_dump( std::cout );
         } else {
             std::cout << "Card [" << f.sGetDBDF() << "]" << std::endl;
-            std::cout << "\tCard type:\t\t" << board.board << std::endl;
-            std::cout << "\tFlash type:\t\t" << f.sGetFlashType() << std::endl;
-            std::cout << "\tFlashable partition running on FPGA:" << std::endl;
-            std::cout << "\t\t" << board << std::endl;
+            std::cout << fmt_str << "Card type:\t\t" << board.board << std::endl;
+            std::cout << fmt_str << "Flash type:\t\t" << f.sGetFlashType() << std::endl;
+            std::cout << fmt_str << "Flashable partition running on FPGA:" << std::endl;
+            std::cout << fmt_str << fmt_str << board << std::endl;
 
-            std::cout << "\tFlashable partitions installed in system:\t";
+            auto dev = pcidev::get_dev(i, false);
+            std::vector<std::string> uuids;
+            std::string errmsg;
+            dev->sysfs_get("", "logic_uuids", errmsg, uuids);
+            if (errmsg.empty() && uuids.size() > 0 && verbose)
+            {
+                std::cout << fmt_str << fmt_str << fmt_str << "Logic UUID:" << std::endl;
+                std::cout << fmt_str << fmt_str << fmt_str << uuids[0] << std::endl;
+            }
+            std::cout << fmt_str << "Flashable partitions installed in system:\t";
             if (!installedDSA.empty()) {
                 for (auto& d : installedDSA)
-                    std::cout << std::endl << "\t\t" << d;
+                    std::cout << std::endl << fmt_str << fmt_str << d;
             } else {
                 std::cout << "(None)";
             }
             std::cout << std::endl;
             if (verbose && getinfo_res == 0) {
-                std::cout << "\tCard name\t\t" << info.mName << std::endl;
+                std::cout << fmt_str << "Card name\t\t\t" << info.mName << std::endl;
 #if 0   // Do not print out rev until further notice
                 std::cout << "\tCard rev\t\t" << info.mRev << std::endl;
 #endif
-                std::cout << "\tCard S/N: \t\t" << info.mSerialNum << std::endl;
-                std::cout << "\tConfig mode: \t\t" << info.mConfigMode << std::endl;
-                std::cout << "\tFan presence:\t\t" << info.mFanPresence << std::endl;
-                std::cout << "\tMax power level:\t" << info.mMaxPower << std::endl;
-                std::cout << "\tMAC address0:\t\t" << info.mMacAddr0 << std::endl;
-                std::cout << "\tMAC address1:\t\t" << info.mMacAddr1 << std::endl;
-                std::cout << "\tMAC address2:\t\t" << info.mMacAddr2 << std::endl;
-                std::cout << "\tMAC address3:\t\t" << info.mMacAddr3 << std::endl;
+                std::cout << fmt_str << "Card S/N: \t\t\t" << info.mSerialNum << std::endl;
+                std::cout << fmt_str << "Config mode: \t\t" << info.mConfigMode << std::endl;
+                std::cout << fmt_str << "Fan presence:\t\t" << info.mFanPresence << std::endl;
+                std::cout << fmt_str << "Max power level:\t\t" << info.mMaxPower << std::endl;
+                std::cout << fmt_str << "MAC address0:\t\t" << info.mMacAddr0 << std::endl;
+                std::cout << fmt_str << "MAC address1:\t\t" << info.mMacAddr1 << std::endl;
+                std::cout << fmt_str << "MAC address2:\t\t" << info.mMacAddr2 << std::endl;
+                std::cout << fmt_str << "MAC address3:\t\t" << info.mMacAddr3 << std::endl;
             }
             std::cout << std::endl;
         }

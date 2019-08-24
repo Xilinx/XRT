@@ -55,6 +55,16 @@ unaligned_message(void* addr)
 }
 
 static void
+userptr_bad_alloc_message(void* addr)
+{
+  xrt::message::send(xrt::message::severity_level::XRT_WARNING,
+                     "The bad alloc on host pointer '"
+                     + to_hex(addr)
+                     + "' detected, check dmesg for more information."
+                     + " This leads to extra memcpy.");
+}
+
+static void
 default_allocation_message(const xocl::device* device,const xocl::memory* mem,
                            const xrt::device::BufferObjectHandle& boh)
 {
@@ -266,10 +276,18 @@ alloc(memory* mem, memidx_type memidx)
 {
   auto host_ptr = mem->get_host_ptr();
   auto sz = mem->get_size();
+  bool aligned_flag = false;
+
   if (is_aligned_ptr(host_ptr)) {
-    auto boh = m_xdevice->alloc(sz,xrt::device::memoryDomain::XRT_DEVICE_RAM,memidx,host_ptr);
-    track(mem);
-    return boh;
+    aligned_flag = true;
+    try {
+      auto boh = m_xdevice->alloc(sz,xrt::device::memoryDomain::XRT_DEVICE_RAM,memidx,host_ptr);
+      track(mem);
+      return boh;
+    }
+    catch (const std::bad_alloc& ba) {
+      userptr_bad_alloc_message(host_ptr);
+    }
   }
 
   auto domain = get_mem_domain(mem);
@@ -279,7 +297,8 @@ alloc(memory* mem, memidx_type memidx)
 
   // Handle unaligned user ptr
   if (host_ptr) {
-    unaligned_message(host_ptr);
+    if (!aligned_flag)
+      unaligned_message(host_ptr);
     auto bo_host_ptr = m_xdevice->map(boh);
     memcpy(bo_host_ptr, host_ptr, sz);
     m_xdevice->unmap(boh);
@@ -293,17 +312,25 @@ alloc(memory* mem)
 {
   auto host_ptr = mem->get_host_ptr();
   auto sz = mem->get_size();
+  bool aligned_flag = false;
 
   if (is_aligned_ptr(host_ptr)) {
-    auto boh = m_xdevice->alloc(sz,host_ptr);
-    track(mem);
-    return boh;
+    aligned_flag = true;
+    try {
+      auto boh = m_xdevice->alloc(sz,host_ptr);
+      track(mem);
+      return boh;
+    }
+    catch (const std::bad_alloc& ba) {
+      userptr_bad_alloc_message(host_ptr);
+    }
   }
 
   auto boh = m_xdevice->alloc(sz);
   // Handle unaligned user ptr
   if (host_ptr) {
-    unaligned_message(host_ptr);
+    if (!aligned_flag)
+      unaligned_message(host_ptr);
     auto bo_host_ptr = m_xdevice->map(boh);
     memcpy(bo_host_ptr, host_ptr, sz);
     m_xdevice->unmap(boh);
