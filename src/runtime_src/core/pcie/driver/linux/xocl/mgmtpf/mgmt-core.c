@@ -1048,6 +1048,17 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	 */
 	(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FEATURE_ROM);
 
+	/*
+	 * if can not find BLP metadata, it has to bring up flash to
+	 * allow user switch BLP
+	 */
+	if ((dev_info->flags & XOCL_DSAFLAG_DYNAMIC_IP) && !lro->bld_blob) {
+		struct xocl_subdev_info flash_info = XOCL_DEVINFO_FLASH_BLP;
+
+		xocl_subdev_create(lro, &flash_info);
+	}
+
+
 	return 0;
 
 err_cdev:
