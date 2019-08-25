@@ -96,7 +96,7 @@ struct xocl_board_private {
 struct xocl_flash_privdata {
 	u32			flash_type;
 	u32			properties;
-	uint64_t		data[1];
+	char			data[128];
 };
 
 struct xocl_msix_privdata {
@@ -1505,6 +1505,32 @@ struct xocl_subdev_map {
 		XOCL_RES_MAILBOX_PRP,			\
 		ARRAY_SIZE(XOCL_RES_MAILBOX_PRP),	\
 		.level = XOCL_SUBDEV_LEVEL_PRP,		\
+	}
+
+#define XOCL_RES_FLASH_BLP				\
+	((struct resource []) {				\
+		{					\
+			.start	= 0x1f50000,		\
+			.end	= 0x1f5ffff,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+	})
+
+#define XOCL_PRIV_FLASH_BLP				\
+	((struct xocl_flash_privdata) {			\
+		offsetof(struct xocl_flash_privdata, data), \
+		0,	\
+		FLASH_TYPE_SPI,\
+	 })
+
+#define XOCL_DEVINFO_FLASH_BLP				\
+	{						\
+		XOCL_SUBDEV_FLASH,			\
+		XOCL_FLASH,				\
+		XOCL_RES_FLASH_BLP,			\
+		ARRAY_SIZE(XOCL_RES_FLASH_BLP),		\
+		.level = XOCL_SUBDEV_LEVEL_BLD,		\
+		.priv_data = &XOCL_PRIV_FLASH_BLP	\
 	}
 
 

@@ -155,6 +155,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
         getVendorBoardFromDSAName(name, vendor, board);
         if (!id.empty() && !timestamp)
         {
+            uuids.push_back(id);
             auto installedDSAs = firmwareImage::getIntalledDSAs();
             for (DSAInfo& dsa: installedDSAs)
 	    {

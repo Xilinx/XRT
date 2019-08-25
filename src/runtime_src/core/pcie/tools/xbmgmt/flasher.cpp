@@ -270,14 +270,15 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
 
     // Obtain board info.
     DSAInfo onBoard = getOnBoardDSA();
+    std::string err;
 
-    if (onBoard.name.empty())
+    if (onBoard.name.empty() && onBoard.uuids.empty())
     {
         std::cout << "Shell on FPGA is unknown" << std::endl;
         return DSAs;
     }
+
     uint16_t vendor_id, device_id;
-    std::string err;
     mDev->sysfs_get("", "vendor", err, vendor_id);
     if (!err.empty())
     {
@@ -328,7 +329,7 @@ DSAInfo Flasher::getOnBoardDSA()
     bool is_mfg = false;
     mDev->sysfs_get("", "mfg", err, is_mfg);
     mDev->sysfs_get("", "board_name", err, board_name);
-    mDev->sysfs_get("", "logic_uuids", err, uuid);
+    mDev->sysfs_get("rom", "uuid", err, uuid);
     if (is_mfg)
     {
         std::stringstream ss;

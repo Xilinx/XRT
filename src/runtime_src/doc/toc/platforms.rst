@@ -14,7 +14,7 @@ application from one class of platform to another.
 PCIe Based Platforms
 ====================
 
-XRT supports below devices:
+XRT supports following PCIe based devices:
 
 1. U200
 2. U250
@@ -73,7 +73,7 @@ Another section discusses :ref:`security.rst`.
 Zynq Ultrascale+ MPSoC Based Embedded Platforms
 ===============================================
 
-We support below platforms:
+XRT supports following embedded platforms:
 
 1. ZCU19
 2. ZCU102
