@@ -149,11 +149,40 @@ static const std::map<MEM_TYPE, std::string> memtype_map = {
 
 static const std::map<std::string, command> commandTable(map_pairs, map_pairs + sizeof(map_pairs) / sizeof(map_pairs[0]));
 
+
 class device {
     unsigned int m_idx;
     xclDeviceHandle m_handle;
     xclDeviceInfo2 m_devinfo;
     xclErrorStatus m_errinfo;
+
+    struct xclbin_lock
+    {
+        xclDeviceHandle m_handle;
+        uuid_t m_uuid;
+        xclbin_lock(xclDeviceHandle handle, unsigned int m_idx) : m_handle(handle) {
+            std::string errmsg, xclbinid;
+
+            pcidev::get_dev(m_idx)->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
+
+            if (!errmsg.empty()) {
+                std::cout<<errmsg<<std::endl;
+                throw std::runtime_error("Failed to lockdown xclbin.");
+            }
+
+            uuid_parse(xclbinid.c_str(), m_uuid);
+
+            if (uuid_is_null(m_uuid))
+                   throw std::runtime_error("'uuid' invalid, please re-program xclbin.");
+
+            if (xclOpenContext(m_handle, m_uuid, -1, true))
+                   throw std::runtime_error("'uuid' invalid, please re-program xclbin.");
+        }
+        ~xclbin_lock(){
+            xclCloseContext(m_handle, m_uuid, -1);
+        }
+    };
+
 
 public:
     int domain() {
@@ -1213,6 +1242,8 @@ public:
      * TODO: Refactor this function to be much shorter.
      */
     int dmatest(size_t blockSize, bool verbose) {
+        xclbin_lock xclbin_lock(m_handle, m_idx);
+
         if (blockSize == 0)
             blockSize = 256 * 1024 * 1024; // Default block size
         
