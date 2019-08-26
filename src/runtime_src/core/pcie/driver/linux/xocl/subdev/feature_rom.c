@@ -84,6 +84,15 @@ static ssize_t timestamp_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(timestamp);
 
+static ssize_t uuid_show(struct device *dev,
+    struct device_attribute *attr, char *buf)
+{
+	struct feature_rom *rom = platform_get_drvdata(to_platform_device(dev));
+
+	return sprintf(buf, "%s\n", rom->uuid);
+}
+static DEVICE_ATTR_RO(uuid);
+
 static ssize_t FPGA_show(struct device *dev,
     struct device_attribute *attr, char *buf)
 {
@@ -100,6 +109,7 @@ static struct attribute *rom_attrs[] = {
 	&dev_attr_ddr_bank_size.attr,
 	&dev_attr_timestamp.attr,
 	&dev_attr_FPGA.attr,
+	&dev_attr_uuid.attr,
 	NULL,
 };
 
