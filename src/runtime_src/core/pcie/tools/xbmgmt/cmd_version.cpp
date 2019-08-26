@@ -43,9 +43,7 @@ int versionHandler(int argc, char *argv[])
     std::cout.width(26); std::cout << std::internal << "XOCL: " << driver_version("xocl") << std:: endl;
     std::cout.width(26); std::cout << std::internal << "XCLMGMT: " << driver_version("xclmgmt") << std::endl;    
 
-    if ( !getenv_or_null("INTERNAL_BUILD") ) {
-        if ( xrt_xbmgmt_version_cmp() != 0 )
-        return 0;
-    }
+    if ( !getenv_or_null("INTERNAL_BUILD") )
+        xrt_xbmgmt_version_cmp();
     return 0;
 }
