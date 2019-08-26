@@ -241,11 +241,6 @@ void AM::disable()
     write(XAM_TRACE_CTRL_OFFSET, 4, &regValue);
 }
 
-void AM::enable()
-{
-    m_enabled = true;
-}
-
 void AM::configureDataflow(bool cuHasApCtrlChain)
 {
     // this ipConfig only tells whether the corresponding CU has ap_control_chain :
