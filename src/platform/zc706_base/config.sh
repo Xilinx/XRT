@@ -64,8 +64,8 @@ config_dts()
 	echo "cat ${XRT_REPO_DIR}/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_zynq.dts >> recipes-bsp/device-tree/files/system-user.dtsi"
 	cat ${XRT_REPO_DIR}/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_zynq.dts >> recipes-bsp/device-tree/files/system-user.dtsi
 	# Attach platform special device tree node
-	#echo "cat ${THIS_CONFIG_SCRIPT_DIR}/zc702_fragment.dts >> $DTS_FILE"
-	#cat ${THIS_CONFIG_SCRIPT_DIR}/zc702_fragment.dtsi >> $DTS_FILE
+	#echo "cat ${THIS_CONFIG_SCRIPT_DIR}/zc706_fragment.dts >> $DTS_FILE"
+	#cat ${THIS_CONFIG_SCRIPT_DIR}/zc706_fragment.dtsi >> $DTS_FILE
 }
 
 # The first argument is the rootfs configure file
@@ -100,8 +100,10 @@ rootfs_menu()
 pre_build_hook()
 {
 	PETA_DIR=$1
+	echo "[cmd] inside pre_build_hook of config.sh file.........."
 	# Replace the original pl.dtsi. Remove axi intc IP.
 	cp -f ${THIS_CONFIG_SCRIPT_DIR}/pl.dtsi ${PETA_DIR}/components/plnx_workspace/device-tree/device-tree/pl.dtsi
+	echo "THIS_CONFIG_SCRIPT_DIR = $THIS_CONFIG_SCRIPT_DIR, PETA_DIR=$PETA_DIR.........."
 }
 
 # The first argument is the petalinux project path
