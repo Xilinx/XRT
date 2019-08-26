@@ -29,6 +29,7 @@
 #include <atomic>
 #include <vector>
 #include <memory>
+#include <bitset>
 
 #define MIN_EXECBO_POOL_SIZE      16
 #define MAX_EXECBO_BUFF_SIZE      4096// 4KB
@@ -79,6 +80,7 @@ typedef struct XmaHwKernel
     int32_t     cu_index;
     uint64_t    base_address;
     int32_t    ddr_bank;
+    std::bitset<MAX_DDR_MAP> ip_ddr_mapping;
     uint32_t    cu_mask0;
     uint32_t    cu_mask1;
     uint32_t    cu_mask2;
@@ -105,6 +107,7 @@ typedef struct XmaHwKernel
     cu_index = -1;
     regmap_max = -1;
     ddr_bank = -1;
+    ip_ddr_mapping.reset();
     cu_mask0 = 0;
     cu_mask1 = 0;
     cu_mask2 = 0;

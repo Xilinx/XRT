@@ -23,6 +23,8 @@
 #include "lib/xmahw_lib.h"
 #include "lib/xmalimits_lib.h"
 #include "xclbin.h"
+
+#include <bitset>
 //#include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
 
@@ -64,7 +66,8 @@ typedef struct XmaXclbinInfo
     uint32_t            number_of_mem_banks;
     uint32_t            number_of_connections;
     //uint64_t bitmap based on MAX_DDR_MAP=64
-    uint64_t            ip_ddr_mapping[MAX_XILINX_KERNELS];
+    //uint64_t            ip_ddr_mapping[MAX_XILINX_KERNELS];
+    std::bitset<MAX_DDR_MAP> ip_ddr_mapping[MAX_XILINX_KERNELS];
     //For execbo:
     //uint32_t    num_ips;
     uuid_t      uuid;

@@ -152,8 +152,26 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     filter_session->base.hw_session.kernel_info = &hwcfg->devices[hwcfg_dev_index].kernels[cu_index];
 
     filter_session->base.hw_session.dev_index = hwcfg->devices[hwcfg_dev_index].dev_index;
-    xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,
-                "XMA session ddr_bank: %d\n", filter_session->base.hw_session.kernel_info->ddr_bank);
+    if (filter_props->ddr_bank_index < 0) {
+        xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,
+                    "XMA session ddr_bank: %d\n", filter_session->base.hw_session.kernel_info->ddr_bank);
+    } else {
+        if (filter_props->ddr_bank_index >= MAX_DDR_MAP) {
+            xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,
+                        "User selected ddr_bank is outside the valid range. XMA session ddr_bank: %d\n", filter_session->base.hw_session.kernel_info->ddr_bank);
+        } else {
+            if (filter_session->base.hw_session.kernel_info->ip_ddr_mapping[filter_props->ddr_bank_index]) {
+                xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,
+                            "Will use user selected ddr bank. XMA (automatic) ddr_bank: %d\n", filter_session->base.hw_session.kernel_info->ddr_bank);
+                filter_session->base.hw_session.kernel_info->ddr_bank = filter_props->ddr_bank_index;
+                xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,
+                            "Using user selected ddr_bank. XMA session ddr_bank: %d\n", filter_session->base.hw_session.kernel_info->ddr_bank);
+            } else {
+                xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,
+                            "User selected ddr_bank is invalid for this CU. XMA session ddr_bank: %d\n", filter_session->base.hw_session.kernel_info->ddr_bank);
+            }
+        }
+    }
 
     // Call the plugins initialization function with this session data
     //Sarab: Check plugin compatibility to XMA

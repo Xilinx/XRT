@@ -262,7 +262,8 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
                 if (info.ip_layout[d].dataflow_kernel) {
                     tmp1.dataflow_kernel = true;
                 }
-                rc = xma_xclbin_map2ddr(info.ip_ddr_mapping[d], &tmp1.ddr_bank);
+                tmp1.ip_ddr_mapping = info.ip_ddr_mapping[d];
+                rc = xma_xclbin_map2ddr(info.ip_ddr_mapping[d].to_ulong(), &tmp1.ddr_bank);
                 //XMA supports only 1 Bank per Kernel
 
                 xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - DDR bank:%d\n", d, tmp1.name, tmp1.ddr_bank);
