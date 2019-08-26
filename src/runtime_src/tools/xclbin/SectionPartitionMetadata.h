@@ -56,7 +56,7 @@ class SectionPartitionMetadata : public Section {
   // Static initializer helper class
   static class _init {
    public:
-      _init() { registerSectionCtor(PARTITION_METADATA, "PARTITION_METADATA", "partition_metadata", false, boost::factory<SectionPartitionMetadata *>()); }
+      _init() { registerSectionCtor(PARTITION_METADATA, "PARTITION_METADATA", "partition_metadata", false, false, boost::factory<SectionPartitionMetadata *>()); }
   } _initializer;
 };
 
