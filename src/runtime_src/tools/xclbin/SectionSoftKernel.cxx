@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -76,6 +76,8 @@ SectionSoftKernel::subSectionExists(const std::string& _sSubSectionName) const {
 
     std::stringstream ss;
     const std::string& sBuffer = buffer.str();
+    XUtil::TRACE_BUF("String Image", sBuffer.c_str(), sBuffer.size());
+
     ss.write((char*)sBuffer.c_str(), sBuffer.size());
 
     // Create a property tree and determine if the variables are all default values
@@ -84,8 +86,8 @@ SectionSoftKernel::subSectionExists(const std::string& _sSubSectionName) const {
 
     boost::property_tree::ptree& ptSoftKernel = pt.get_child("soft_kernel_metadata");
 
-    if ((ptSoftKernel.get<std::string>("mpo_name") == "") &&
-        (ptSoftKernel.get<std::string>("mpo_version") == "") &&
+    XUtil::TRACE_PrintTree("Current SOFT_KERNEL contents", pt);
+    if ((ptSoftKernel.get<std::string>("mpo_version") == "") &&
         (ptSoftKernel.get<std::string>("mpo_md5_value") == "") &&
         (ptSoftKernel.get<std::string>("mpo_symbol_name") == "") &&
         (ptSoftKernel.get<std::string>("m_num_instances") == "0")) {
@@ -189,6 +191,12 @@ SectionSoftKernel::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   {
     std::string sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(soft_kernel) + pHdr->mpo_name;
     std::string sValue = ptSK.get<std::string>("mpo_name", sDefault);
+
+    if (sValue.compare(getSectionIndexName()) != 0) {
+      std::string errMsg = XUtil::format("ERROR: Metadata data mpo_name '%s' does not match expected section name '%s'", sValue.c_str(), getSectionIndexName().c_str());
+      throw std::runtime_error(errMsg);
+    }
+
     softKernelHdr.mpo_name = sizeof(soft_kernel) + stringBlock.tellp();
     stringBlock << sValue << '\0';   
     XUtil::TRACE(XUtil::format("  mpo_name (0x%lx): '%s'", softKernelHdr.mpo_name, sValue.c_str()).c_str());
@@ -256,23 +264,27 @@ SectionSoftKernel::createDefaultImage(std::fstream& _istream, std::ostringstream
   XUtil::TRACE("SOFT_KERNEL-OBJ");
 
   soft_kernel softKernelHdr = soft_kernel{0};
+  std::ostringstream stringBlock;       // String block (stored immediately after the header)
 
   // Initialize default values
   {
-    uint32_t mpo_emptyChar = sizeof(soft_kernel);   // Point to the end of the structure
-
     // Have all of the mpo (member, point, offset) values point to the zero length terminate string
-    softKernelHdr.mpo_name = mpo_emptyChar;
+    softKernelHdr.mpo_name = sizeof(soft_kernel) + stringBlock.tellp();
+    stringBlock << getSectionIndexName() << '\0';   
+
+    uint32_t mpo_emptyChar = sizeof(soft_kernel) + stringBlock.tellp();   
+    stringBlock << '\0';   
+
     softKernelHdr.mpo_version = mpo_emptyChar;
     softKernelHdr.mpo_md5_value = mpo_emptyChar;
     softKernelHdr.mpo_symbol_name = mpo_emptyChar;
   }
 
-  // Initialize the object image values
+  // Initialize the object image values (last)
   {
     _istream.seekg(0, _istream.end);
     softKernelHdr.m_image_size = _istream.tellg();
-    softKernelHdr.m_image_offset = sizeof(soft_kernel) + sizeof(uint32_t);
+    softKernelHdr.m_image_offset = sizeof(soft_kernel) + stringBlock.tellp();
   }
 
   XUtil::TRACE_BUF("soft_kernel", reinterpret_cast<const char*>(&softKernelHdr), sizeof(soft_kernel));
@@ -280,9 +292,9 @@ SectionSoftKernel::createDefaultImage(std::fstream& _istream, std::ostringstream
   // Write the header information
   _buffer.write(reinterpret_cast<const char*>(&softKernelHdr), sizeof(soft_kernel));
 
-  // Write empty zero bytes
-  uint32_t zeros = 0;
-  _buffer.write(reinterpret_cast<const char*>(&zeros), sizeof(uint32_t));
+  // String block
+  std::string sStringBlock = stringBlock.str();
+  _buffer.write(sStringBlock.c_str(), sStringBlock.size());
 
   // Write Data
   {
@@ -454,4 +466,31 @@ SectionSoftKernel::writeSubPayload(const std::string& _sSubSectionName,
       }
       break;
   }
+}
+
+
+void
+SectionSoftKernel::readXclBinBinary(std::fstream& _istream, const axlf_section_header& _sectionHeader) {
+  Section::readXclBinBinary(_istream, _sectionHeader);
+
+  // Extract the binary data as a JSON string
+  std::ostringstream buffer;
+  writeMetadata(buffer);
+
+  std::stringstream ss;
+  const std::string& sBuffer = buffer.str();
+  XUtil::TRACE_BUF("String Image", sBuffer.c_str(), sBuffer.size());
+
+  ss.write((char*)sBuffer.c_str(), sBuffer.size());
+
+  // Create a property tree and determine if the variables are all default values
+  boost::property_tree::ptree pt;
+  boost::property_tree::read_json(ss, pt);
+
+  boost::property_tree::ptree& ptSoftKernel = pt.get_child("soft_kernel_metadata");
+
+  XUtil::TRACE_PrintTree("Current SOFT_KERNEL contents", pt);
+  std::string sName = ptSoftKernel.get<std::string>("mpo_name"); 
+
+  Section::m_sIndexName = sName;
 }

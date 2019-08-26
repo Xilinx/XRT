@@ -44,6 +44,8 @@ public:
   virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;
   virtual bool supportsSubSection(const std::string &_sSubSectionName) const;
   virtual bool subSectionExists(const std::string &_sSubSectionName) const;
+  virtual void readXclBinBinary(std::fstream& _istream, const struct axlf_section_header& _sectionHeader);
+
 
  protected:
   virtual void readSubPayload(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::fstream& _istream, const std::string & _sSubSection, enum Section::FormatType _eFormatType, std::ostringstream &_buffer) const;
@@ -65,7 +67,7 @@ public:
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(SOFT_KERNEL, "SOFT_KERNEL", "", true, boost::factory<SectionSoftKernel*>()); }
+    _init() { registerSectionCtor(SOFT_KERNEL, "SOFT_KERNEL", "", true, true, boost::factory<SectionSoftKernel*>()); }
   } _initializer;
 };
 

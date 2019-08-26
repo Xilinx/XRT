@@ -65,7 +65,7 @@ public:
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(BMC, "BMC", "", true, boost::factory<SectionBMC*>()); }
+    _init() { registerSectionCtor(BMC, "BMC", "", true, false, boost::factory<SectionBMC*>()); }
   } _initializer;
 };
 
