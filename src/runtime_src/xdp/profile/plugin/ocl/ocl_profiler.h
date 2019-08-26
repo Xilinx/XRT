@@ -93,6 +93,14 @@ namespace xdp {
     uint32_t getTimeDiffUsec(std::chrono::steady_clock::time_point start,
                              std::chrono::steady_clock::time_point end);
 
+    bool allocateDeviceDDRBufferForTrace(DeviceIntf* , xrt::device*);
+    void clearDeviceDDRBufferForTrace(DeviceIntf* , xrt::device* );
+
+    void configureDDRTraceReader(uint64_t wordCount);
+    void readTraceDataFromDDR(DeviceIntf* dIntf, xrt::device* xrtDevice, xclTraceResultsVector& traceVector, uint64_t offset, uint64_t bytes);
+    bool readTraceDataFromDDR(DeviceIntf* dIntf, xrt::device* xrtDevice, xclTraceResultsVector& traceVector);
+    void* syncDeviceDDRToHostForTrace(xrt::device* xrtDevice, uint64_t offset, uint64_t bytes);
+
   private:
     // Flags
     int ProfileFlags;
@@ -107,6 +115,16 @@ namespace xdp {
     std::shared_ptr<XoclPlugin> Plugin;
     std::unique_ptr<RTProfile> ProfileMgr;
     std::vector<std::unique_ptr<OclPowerProfile>> PowerProfileList;
+
+    // Buffer on Device DDR for Trace
+    uint64_t mDDRBufferSz = 0;
+    xrt::hal::BufferObjectHandle mDDRBufferForTrace = nullptr;
+
+    // Buffer on Host for reading Trace Data
+    uint64_t mTraceReadBufSz = 0;
+    uint64_t mTraceReadBufOffset = 0;
+    uint64_t mTraceReadBufChunkSz = 0;
+
   };
 
   /*

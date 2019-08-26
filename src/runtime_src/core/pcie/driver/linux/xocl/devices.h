@@ -96,7 +96,7 @@ struct xocl_board_private {
 struct xocl_flash_privdata {
 	u32			flash_type;
 	u32			properties;
-	uint64_t		data[1];
+	char			data[128];
 };
 
 struct xocl_msix_privdata {
@@ -1091,6 +1091,22 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_FMGR,      			\
 		})
 
+#define	MGMT_RES_U2						\
+		((struct xocl_subdev_info []) {				\
+			XOCL_DEVINFO_FEATURE_ROM,			\
+			XOCL_DEVINFO_IORES_MGMT,			\
+			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_SYSMON,				\
+			XOCL_DEVINFO_AF,				\
+			XOCL_DEVINFO_MB,				\
+			XOCL_DEVINFO_XVC_PUB,				\
+			XOCL_DEVINFO_XIIC,				\
+			XOCL_DEVINFO_MAILBOX_MGMT,			\
+			XOCL_DEVINFO_ICAP_MGMT,				\
+			XOCL_DEVINFO_FMGR,				\
+			XOCL_DEVINFO_XMC,				\
+		})
+
 #define	XOCL_BOARD_MGMT_DEFAULT						\
 	(struct xocl_board_private){					\
 		.flags		= 0,					\
@@ -1105,6 +1121,13 @@ struct xocl_subdev_map {
 			XOCL_DSAFLAG_MB_SCHE_OFF,			\
 		.subdev_info	= MGMT_RES_DSA50,			\
 		.subdev_num = ARRAY_SIZE(MGMT_RES_DSA50),		\
+	}
+
+#define	XOCL_BOARD_MGMT_U2						\
+	(struct xocl_board_private){					\
+		.flags		= 0,					\
+		.subdev_info	= MGMT_RES_U2,				\
+		.subdev_num = ARRAY_SIZE(MGMT_RES_U2),			\
 	}
 
 #define	MGMT_RES_6A8F							\
@@ -1484,6 +1507,32 @@ struct xocl_subdev_map {
 		.level = XOCL_SUBDEV_LEVEL_PRP,		\
 	}
 
+#define XOCL_RES_FLASH_BLP				\
+	((struct resource []) {				\
+		{					\
+			.start	= 0x1f50000,		\
+			.end	= 0x1f5ffff,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+	})
+
+#define XOCL_PRIV_FLASH_BLP				\
+	((struct xocl_flash_privdata) {			\
+		offsetof(struct xocl_flash_privdata, data), \
+		0,	\
+		FLASH_TYPE_SPI,\
+	 })
+
+#define XOCL_DEVINFO_FLASH_BLP				\
+	{						\
+		XOCL_SUBDEV_FLASH,			\
+		XOCL_FLASH,				\
+		XOCL_RES_FLASH_BLP,			\
+		ARRAY_SIZE(XOCL_RES_FLASH_BLP),		\
+		.level = XOCL_SUBDEV_LEVEL_BLD,		\
+		.priv_data = &XOCL_PRIV_FLASH_BLP	\
+	}
+
 
 #define	XOCL_RES_MAILBOX_USER_U50			\
 	((struct resource []) {				\
@@ -1638,7 +1687,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0xA983, 0x1351, MGMT_MPSOC) },		\
 	{ XOCL_PCI_DEVID(0x10EE, 0x688F, PCI_ANY_ID, MGMT_DEFAULT) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x694F, PCI_ANY_ID, MGMT_DEFAULT) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6987, PCI_ANY_ID, MGMT_DEFAULT) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x6987, PCI_ANY_ID, MGMT_U2) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x698F, PCI_ANY_ID, MGMT_DEFAULT) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6A4F, PCI_ANY_ID, MGMT_DEFAULT) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6A8F, 0x4350, MGMT_6A8F_DSA50) },	\

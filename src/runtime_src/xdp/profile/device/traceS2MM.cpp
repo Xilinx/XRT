@@ -16,12 +16,13 @@
 
 #include "traceS2MM.h"
 #include "tracedefs.h"
-#include "xdp/profile/core/rt_util.h"
+//#include "xdp/profile/core/rt_util.h"
 #include <bitset>
+#include <iomanip>
 
 namespace xdp {
 
-TraceS2MM::TraceS2MM(void* handle /** < [in] the xrt hal device handle */,
+TraceS2MM::TraceS2MM(Device* handle /** < [in] the xrt or hal device handle */,
                 int index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data)
     : ProfileIP(handle, index, data),
       properties(0),

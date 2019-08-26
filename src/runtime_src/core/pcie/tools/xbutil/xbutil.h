@@ -149,11 +149,40 @@ static const std::map<MEM_TYPE, std::string> memtype_map = {
 
 static const std::map<std::string, command> commandTable(map_pairs, map_pairs + sizeof(map_pairs) / sizeof(map_pairs[0]));
 
+
 class device {
     unsigned int m_idx;
     xclDeviceHandle m_handle;
     xclDeviceInfo2 m_devinfo;
     xclErrorStatus m_errinfo;
+
+    struct xclbin_lock
+    {
+        xclDeviceHandle m_handle;
+        uuid_t m_uuid;
+        xclbin_lock(xclDeviceHandle handle, unsigned int m_idx) : m_handle(handle) {
+            std::string errmsg, xclbinid;
+
+            pcidev::get_dev(m_idx)->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
+
+            if (!errmsg.empty()) {
+                std::cout<<errmsg<<std::endl;
+                throw std::runtime_error("Failed to lockdown xclbin.");
+            }
+
+            uuid_parse(xclbinid.c_str(), m_uuid);
+
+            if (uuid_is_null(m_uuid))
+                   throw std::runtime_error("'uuid' invalid, please re-program xclbin.");
+
+            if (xclOpenContext(m_handle, m_uuid, -1, true))
+                   throw std::runtime_error("'uuid' invalid, please re-program xclbin.");
+        }
+        ~xclbin_lock(){
+            xclCloseContext(m_handle, m_uuid, -1);
+        }
+    };
+
 
 public:
     int domain() {
@@ -245,30 +274,11 @@ public:
 
     float sysfs_power() const
     {
-        unsigned short m12v_pex_vol = 0, m12v_aux_curr = 0;
-        unsigned long long power = 0, m12v_pex_curr = 0, m12v_aux_vol = 0;
+        unsigned long long power = 0;
         std::string errmsg;
 
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_pex_vol",  errmsg, m12v_pex_vol );
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_pex_curr", errmsg, m12v_pex_curr );
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_aux_vol",  errmsg, m12v_aux_vol ); 
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_aux_curr", errmsg, m12v_aux_curr );
-        sensor_tree::put( "board.physical.electrical.12v_pex.voltage", m12v_pex_vol ); 
-        sensor_tree::put( "board.physical.electrical.12v_pex.current", m12v_pex_curr );
-        sensor_tree::put( "board.physical.electrical.12v_aux.voltage", m12v_aux_vol ); 
-        sensor_tree::put( "board.physical.electrical.12v_aux.current", m12v_aux_curr );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_power",  errmsg, power);
 
-        if (!errmsg.empty()) {
-            std::cout << errmsg << std::endl;
-            return -EINVAL;
-        }
-
-        if (m12v_pex_curr != XCL_INVALID_SENSOR_VAL && m12v_pex_curr != XCL_NO_SENSOR_DEV_LL &&
-            m12v_pex_vol  != XCL_INVALID_SENSOR_VAL && m12v_pex_vol  != XCL_NO_SENSOR_DEV_S) {
-            power = m12v_pex_curr * m12v_pex_vol + m12v_aux_curr * m12v_aux_vol;
-        } else {
-            return -EINVAL;
-        }
         return (float)power / 1000000;
     }
 
@@ -279,7 +289,7 @@ public:
         ss << std::left << "\n";
         ss << std::setw(16) << "Power" << "\n";
 
-        if(power != -EINVAL) {
+        if (power) {
             ss << std::to_string(power).substr(0, 4) + "W" << "\n";
         } else {
             ss << std::setw(16) << "Not support" << "\n";
@@ -704,21 +714,37 @@ public:
         //electrical
         unsigned short m3v3_pex_vol = 0, m3v3_aux_vol = 0, ddr_vpp_btm = 0, ddr_vpp_top = 0, 
                        sys_5v5 = 0, m1v2_top = 0, m1v2_btm = 0, m1v8 = 0, m0v85 = 0, mgt0v9avcc = 0, 
-                       m12v_sw = 0, mgtavtt = 0, vccint_vol = 0, vccint_curr = 0;
-        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_3v3_pex_vol", errmsg, m3v3_pex_vol );
-        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_3v3_aux_vol", errmsg, m3v3_aux_vol ); 
-        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_ddr_vpp_btm", errmsg, ddr_vpp_btm ); 
-        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_ddr_vpp_top", errmsg, ddr_vpp_top ); 
-        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_sys_5v5",     errmsg, sys_5v5 );
-        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_1v2_top",     errmsg, m1v2_top );
-        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_vcc1v2_btm",  errmsg, m1v2_btm );
-        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_1v8",         errmsg, m1v8 );
-        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_0v85",        errmsg, m0v85 );
-        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_mgt0v9avcc",  errmsg, mgt0v9avcc );
-        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_12v_sw",      errmsg, m12v_sw );
-        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_mgtavtt",     errmsg, mgtavtt );
-        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_vccint_vol",  errmsg, vccint_vol );
-        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>("xmc", "xmc_vccint_curr",  errmsg, vccint_curr);
+                       m12v_sw = 0, mgtavtt = 0, vccint_vol = 0, vccint_curr = 0, m3v3_pex_curr = 0,
+                       m0v85_curr = 0, m3v3_vcc_vol = 0, hbm_1v2_vol = 0, vpp2v5_vol = 0, vccint_bram_vol = 0, 
+                       m12v_pex_vol = 0, m12v_aux_curr = 0, m12v_pex_curr = 0, m12v_aux_vol = 0;
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_12v_pex_vol",    errmsg, m12v_pex_vol );
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_12v_pex_curr",   errmsg, m12v_pex_curr );
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_12v_aux_vol",    errmsg, m12v_aux_vol );
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_12v_aux_curr",   errmsg, m12v_aux_curr );
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_3v3_pex_vol",    errmsg, m3v3_pex_vol );
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_3v3_aux_vol",    errmsg, m3v3_aux_vol ); 
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_ddr_vpp_btm",    errmsg, ddr_vpp_btm ); 
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_ddr_vpp_top",    errmsg, ddr_vpp_top ); 
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_sys_5v5",        errmsg, sys_5v5 );
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_1v2_top",        errmsg, m1v2_top );
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_vcc1v2_btm",     errmsg, m1v2_btm );
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_1v8",            errmsg, m1v8 );
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_0v85",           errmsg, m0v85 );
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_mgt0v9avcc",     errmsg, mgt0v9avcc );
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_12v_sw",         errmsg, m12v_sw );
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_mgtavtt",        errmsg, mgtavtt );
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>( "xmc", "xmc_vccint_vol",     errmsg, vccint_vol );
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>("xmc", "xmc_vccint_curr",     errmsg, vccint_curr);
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>("xmc", "xmc_3v3_pex_curr",    errmsg, m3v3_pex_curr);
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>("xmc", "xmc_0v85_curr",       errmsg, m0v85_curr);
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>("xmc", "xmc_3v3_vcc_vol",     errmsg, m3v3_vcc_vol);
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>("xmc", "xmc_hbm_1v2_vol",     errmsg, hbm_1v2_vol);
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>("xmc", "xmc_vpp2v5_vol",      errmsg, vpp2v5_vol);
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned short>("xmc", "xmc_vccint_bram_vol", errmsg, vccint_bram_vol);
+        sensor_tree::put( "board.physical.electrical.12v_pex.voltage",        m12v_pex_vol );
+        sensor_tree::put( "board.physical.electrical.12v_pex.current",        m12v_pex_curr );
+        sensor_tree::put( "board.physical.electrical.12v_aux.voltage",        m12v_aux_vol );
+        sensor_tree::put( "board.physical.electrical.12v_aux.current",        m12v_aux_curr );
         sensor_tree::put( "board.physical.electrical.3v3_pex.voltage",        m3v3_pex_vol );
         sensor_tree::put( "board.physical.electrical.3v3_aux.voltage",        m3v3_aux_vol );
         sensor_tree::put( "board.physical.electrical.ddr_vpp_bottom.voltage", ddr_vpp_btm );
@@ -733,6 +759,12 @@ public:
         sensor_tree::put( "board.physical.electrical.mgt_vtt.voltage",        mgtavtt );
         sensor_tree::put( "board.physical.electrical.vccint.voltage",         vccint_vol );
         sensor_tree::put( "board.physical.electrical.vccint.current",         vccint_curr);
+        sensor_tree::put( "board.physical.electrical.3v3_pex.current",        m3v3_pex_curr);
+        sensor_tree::put( "board.physical.electrical.0v85.current",           m0v85_curr);
+        sensor_tree::put( "board.physical.electrical.vcc3v3.voltage",         m3v3_vcc_vol);
+        sensor_tree::put( "board.physical.electrical.hbm_1v2.voltage",        hbm_1v2_vol);
+        sensor_tree::put( "board.physical.electrical.vpp2v5.voltage",         vpp2v5_vol);
+        sensor_tree::put( "board.physical.electrical.vccint_bram.voltage",    vccint_bram_vol);
 
         // physical.power
         sensor_tree::put( "board.physical.power", static_cast<unsigned>(sysfs_power())); 
@@ -889,10 +921,18 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.12v_sw.voltage"  )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.mgt_vtt.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.1v2_btm.voltage" ) << std::endl;
-        ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "DNA" << std::endl;
+        ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "DNA" << std::setw(16) << "VCC3V3 VOL"  << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned>( "board.physical.electrical.vccint.current" )
-             << std::setw(16) << sensor_tree::get<std::string>( "board.info.dna", "N/A" ) << std::endl;
+             << std::setw(16) << sensor_tree::get<std::string>( "board.info.dna", "N/A" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vcc3v3.voltage"  ) << std::endl;
+        ostr << std::setw(16) << "3V3 PEX CURR" << std::setw(16) << "VCC0V85 CURR" << std::setw(16) << "HBM1V2 VOL" << std::setw(16) << "VPP2V5 VOL"  << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.3v3_pex.current" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.0v85.current" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.hbm_1v2.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vpp2v5.voltage"  ) << std::endl;
+        ostr << std::setw(16) << "VCCINT BRAM VOL" << std::endl;
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint_bram.voltage" ) << std::endl;
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Card Power\n";
@@ -1184,6 +1224,8 @@ public:
      * TODO: Refactor this function to be much shorter.
      */
     int dmatest(size_t blockSize, bool verbose) {
+        xclbin_lock xclbin_lock(m_handle, m_idx);
+
         if (blockSize == 0)
             blockSize = 256 * 1024 * 1024; // Default block size
         
@@ -1505,6 +1547,22 @@ public:
         return xclGetDeviceInfo2(m_handle, &devinfo);
     }
 
+    // Currently only u50 uses xbtest
+    bool isXbTestPlatform(void) {
+        std::string name, errmsg;
+        pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV", errmsg, name );
+
+        if (!errmsg.empty()) {
+            std::cout << errmsg << std::endl;
+            return false;
+        }
+
+        if( strstr( name.c_str(), "_u50_" ) ) { //This is U50 device
+            return true;
+        }
+        return false;
+    }
+
     int validate(bool quick);
 
     int reset(xclResetKind kind);
@@ -1517,6 +1575,15 @@ private:
     // all output from the run into "output"
     // Note: exe should assume index to be 0 without -d
     int runTestCase(const std::string& exe, const std::string& xclbin, std::string& output);
+
+    // Run a test case using the xbtest external program and collect
+    // all output from the run into "output"
+    // Note: test is the name of a json file containing the test description
+    int runXbTestCase(const std::string& test, std::string& output);
+
+    int bandwidthKernelXbtest(void);
+    int verifyKernelXbtest(void);
+    int dmaXbtest(void);
 
     int pcieLinkTest(void);
     int verifyKernelTest(void);
