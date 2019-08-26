@@ -30,7 +30,9 @@
 	],
 	"platforms_to_build": {
 		"zcu102_base": "zcu102",
+		"zcu104_base": "zcu104",
 		"zc702": "zc702",
+		"zc702_base": "zc702",
 		"zc706": "zc706",
 		"zed": "zed"
 	},
@@ -70,6 +72,26 @@
 				"to": ["${TA_ROOT}/internal_platforms"]
 			}
 		},
+		"zcu104_base": {
+			"bsp_key": "zcu104",
+			"pullrequest_build": true,
+			"sysroot": {
+				"copy": {
+					"from": "${XRT_EMBEDDED_STAGING_ROOT}/sw",
+					"to": "${XRT_EMBEDDED_ROOT}/sw"
+				}
+			},
+			"package": {
+				"dsabin": false,
+				"dsadev": false,
+				"ta_locations": [""]
+			},
+			"copy": {
+				"from": "${XRT_EMBEDDED_ROOT}",
+				"to": ["${TA_ROOT}/internal_platforms"]
+			}
+		},
+
 		"zc702": {
 			"bsp_key": "zc702",
 			"pullrequest_build": true,
@@ -89,6 +111,27 @@
 				"to": ["${TA_ROOT}/internal_platforms"]
 			}
 		},
+
+		"zc702_base": {
+			"bsp_key": "zc702",
+			"pullrequest_build": true,
+			"sysroot": {
+				"copy": {
+					"from": "${XRT_EMBEDDED_STAGING_ROOT}/sw",
+					"to": "${XRT_EMBEDDED_ROOT}/sw"
+				}
+			},
+			"package": {
+				"dsabin": false,
+				"dsadev": false,
+				"ta_locations": [""]
+			},
+			"copy": {
+				"from": "${XRT_EMBEDDED_ROOT}",
+				"to": ["${TA_ROOT}/internal_platforms"]
+			}
+		},
+
 		"zed": {
 			"bsp_key": "zed",
 			"package": {
