@@ -274,28 +274,16 @@ public:
 
     float sysfs_power() const
     {
-        unsigned short m12v_pex_vol = 0, m12v_aux_curr = 0, m3v3_pex_vol = 0, m3v3_pex_curr;
-        unsigned long long power = 0, m12v_pex_curr = 0, m12v_aux_vol = 0;
+        unsigned long long power = 0;
         std::string errmsg;
 
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_pex_vol",  errmsg, m12v_pex_vol );
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_pex_curr", errmsg, m12v_pex_curr );
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_aux_vol",  errmsg, m12v_aux_vol );
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_aux_curr", errmsg, m12v_aux_curr );
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_3v3_pex_vol",  errmsg, m3v3_pex_vol );
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_3v3_pex_curr", errmsg, m3v3_pex_curr );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_power",  errmsg, power);
 
         if (!errmsg.empty()) {
             std::cout << errmsg << std::endl;
-            return -EINVAL;
+            return 0;
         }
 
-        if (m12v_pex_curr != XCL_INVALID_SENSOR_VAL && m12v_pex_curr != XCL_NO_SENSOR_DEV_LL &&
-            m12v_pex_vol  != XCL_INVALID_SENSOR_VAL && m12v_pex_vol  != XCL_NO_SENSOR_DEV_S) {
-            power = m12v_pex_curr * m12v_pex_vol + m12v_aux_curr * m12v_aux_vol + m3v3_pex_curr * m3v3_pex_vol;
-        } else {
-            return -EINVAL;
-        }
         return (float)power / 1000000;
     }
 
@@ -306,7 +294,7 @@ public:
         ss << std::left << "\n";
         ss << std::setw(16) << "Power" << "\n";
 
-        if(power != -EINVAL) {
+        if (power) {
             ss << std::to_string(power).substr(0, 4) + "W" << "\n";
         } else {
             ss << std::setw(16) << "Not support" << "\n";
