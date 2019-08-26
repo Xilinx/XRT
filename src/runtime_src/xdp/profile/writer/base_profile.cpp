@@ -615,6 +615,21 @@ namespace xdp {
     XDPPluginI::getGuidanceName(XDPPluginI::OBJECTS_RELEASED, checkName8);
     int numReleased = (mPluginHandle->isObjectsReleased()) ? 1 : 0;
     writeTableCells(getStream(), checkName8, "all", numReleased);
+    writeTableRowEnd(getStream());
+
+    // 9. Trace memory
+    std::string checkName9;
+    XDPPluginI::getGuidanceName(XDPPluginI::TRACE_MEMORY, checkName9);
+    std::string traceMem = mPluginHandle->getTraceMemory();
+    writeTableCells(getStream(), checkName9, "all", traceMem);
+    writeTableRowEnd(getStream());
+
+    // Context Enabled in CU
+    std::string checkName10;
+    XDPPluginI::getGuidanceName(XDPPluginI::CU_CONTEXT_EN, checkName10);
+    int ctxUsed = mPluginHandle->isCtxEn() ? 1 : 0;
+    writeTableCells(getStream(), checkName10, "all", ctxUsed);
+    writeTableRowEnd(getStream());
   }
 
 } // xdp
