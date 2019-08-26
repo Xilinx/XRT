@@ -840,6 +840,115 @@ proc create_root_design { parentCell } {
   set_property HDL_ATTRIBUTE.DPA_TRACE_MASTER true [get_bd_intf_pins interconnect_axifull_2_user_slr1/S01_AXI]
   set_property HDL_ATTRIBUTE.DPA_TRACE_SLAVE true [get_bd_intf_pins interconnect_axilite_user_slr1/M03_AXI]
 
+  startgroup
+  create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 axi_interconnect_0
+  endgroup
+  set_property -dict [list CONFIG.NUM_MI {1}] [get_bd_cells axi_interconnect_0]
+  connect_bd_net [get_bd_ports clkwiz_kernel_clk_out1] [get_bd_pins axi_interconnect_0/ACLK]
+  connect_bd_net [get_bd_ports clkwiz_kernel_clk_out1] [get_bd_pins axi_interconnect_0/S00_ACLK]
+  connect_bd_net [get_bd_ports clkwiz_kernel_clk_out1] [get_bd_pins axi_interconnect_0/M00_ACLK]
+  connect_bd_net [get_bd_pins axi_interconnect_0/ARESETN] [get_bd_pins reset_controllers/psreset_gate_pr_kernel_interconnect_aresetn] -boundary_type upper
+  connect_bd_net [get_bd_pins axi_interconnect_0/S00_ARESETN] [get_bd_pins reset_controllers/psreset_gate_pr_kernel_interconnect_aresetn] -boundary_type upper
+  connect_bd_net [get_bd_pins axi_interconnect_0/M00_ARESETN] [get_bd_pins reset_controllers/psreset_gate_pr_kernel_interconnect_aresetn] -boundary_type upper
+  
+  set interconnect_aximm_ddrmem4_M00_AXI [ create_bd_intf_port -mode Master -vlnv xilinx.com:interface:aximm_rtl:1.0 interconnect_aximm_ddrmem4_M00_AXI ]
+  set_property -dict [ list \
+   CONFIG.ADDR_WIDTH {32} \
+   CONFIG.DATA_WIDTH {128} \
+   CONFIG.FREQ_HZ {150000000} \
+   CONFIG.HAS_REGION {1} \
+   CONFIG.NUM_READ_OUTSTANDING {2} \
+   CONFIG.NUM_WRITE_OUTSTANDING {2} \
+   CONFIG.PROTOCOL {AXI4} \
+   ] $interconnect_aximm_ddrmem4_M00_AXI
+  connect_bd_intf_net [get_bd_intf_ports interconnect_aximm_ddrmem4_M00_AXI] -boundary_type upper [get_bd_intf_pins axi_interconnect_0/M00_AXI]
+  
+  set axi_vip_4 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_vip axi_vip_4 ]
+  set_property -dict [ list \
+   CONFIG.ADDR_WIDTH {32} \
+   CONFIG.ARUSER_WIDTH {0} \
+   CONFIG.AWUSER_WIDTH {0} \
+   CONFIG.BUSER_WIDTH {0} \
+   CONFIG.DATA_WIDTH {128} \
+   CONFIG.HAS_BRESP {1} \
+   CONFIG.HAS_BURST {1} \
+   CONFIG.HAS_CACHE {1} \
+   CONFIG.HAS_LOCK {1} \
+   CONFIG.HAS_PROT {1} \
+   CONFIG.HAS_QOS {1} \
+   CONFIG.HAS_REGION {1} \
+   CONFIG.HAS_RRESP {1} \
+   CONFIG.HAS_WSTRB {1} \
+   CONFIG.ID_WIDTH {0} \
+   CONFIG.INTERFACE_MODE {MASTER} \
+   CONFIG.PROTOCOL {AXI4} \
+   CONFIG.READ_WRITE_MODE {READ_WRITE} \
+   CONFIG.RUSER_BITS_PER_BYTE {0} \
+   CONFIG.RUSER_WIDTH {0} \
+   CONFIG.SUPPORTS_NARROW {1} \
+   CONFIG.WUSER_BITS_PER_BYTE {0} \
+   CONFIG.WUSER_WIDTH {0} \
+  ] $axi_vip_4
+  connect_bd_net [get_bd_ports clkwiz_kernel_clk_out1] [get_bd_pins axi_vip_4/aclk]
+  connect_bd_net [get_bd_pins axi_vip_4/aresetn] [get_bd_pins reset_controllers/psreset_gate_pr_kernel_interconnect_aresetn]
+  connect_bd_intf_net [get_bd_intf_pins axi_vip_4/M_AXI] -boundary_type upper [get_bd_intf_pins axi_interconnect_0/S00_AXI]
+  
+  startgroup
+  create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 axi_interconnect_1
+  endgroup
+  set_property -dict [list CONFIG.NUM_MI {1}] [get_bd_cells axi_interconnect_1]
+  connect_bd_net [get_bd_ports clkwiz_kernel_clk_out1] [get_bd_pins axi_interconnect_1/ACLK]
+  connect_bd_net [get_bd_ports clkwiz_kernel_clk_out1] [get_bd_pins axi_interconnect_1/S00_ACLK]
+  connect_bd_net [get_bd_ports clkwiz_kernel_clk_out1] [get_bd_pins axi_interconnect_1/M00_ACLK]
+  connect_bd_net [get_bd_pins axi_interconnect_1/ARESETN] [get_bd_pins reset_controllers/psreset_gate_pr_kernel_interconnect_aresetn] -boundary_type upper
+  connect_bd_net [get_bd_pins axi_interconnect_1/S00_ARESETN] [get_bd_pins reset_controllers/psreset_gate_pr_kernel_interconnect_aresetn] -boundary_type upper
+  connect_bd_net [get_bd_pins axi_interconnect_1/M00_ARESETN] [get_bd_pins reset_controllers/psreset_gate_pr_kernel_interconnect_aresetn] -boundary_type upper
+  
+  set interconnect_aximm_ddrmem5_M00_AXI [ create_bd_intf_port -mode Master -vlnv xilinx.com:interface:aximm_rtl:1.0 interconnect_aximm_ddrmem5_M00_AXI ]
+  set_property -dict [ list \
+   CONFIG.ADDR_WIDTH {32} \
+   CONFIG.DATA_WIDTH {128} \
+   CONFIG.FREQ_HZ {150000000} \
+   CONFIG.HAS_REGION {1} \
+   CONFIG.NUM_READ_OUTSTANDING {2} \
+   CONFIG.NUM_WRITE_OUTSTANDING {2} \
+   CONFIG.PROTOCOL {AXI4} \
+   ] $interconnect_aximm_ddrmem5_M00_AXI
+   connect_bd_intf_net [get_bd_intf_ports interconnect_aximm_ddrmem5_M00_AXI] -boundary_type upper [get_bd_intf_pins axi_interconnect_1/M00_AXI]
+   
+  set axi_vip_5 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_vip axi_vip_5 ]
+  set_property -dict [ list \
+   CONFIG.ADDR_WIDTH {32} \
+   CONFIG.ARUSER_WIDTH {0} \
+   CONFIG.AWUSER_WIDTH {0} \
+   CONFIG.BUSER_WIDTH {0} \
+   CONFIG.DATA_WIDTH {128} \
+   CONFIG.HAS_BRESP {1} \
+   CONFIG.HAS_BURST {1} \
+   CONFIG.HAS_CACHE {1} \
+   CONFIG.HAS_LOCK {1} \
+   CONFIG.HAS_PROT {1} \
+   CONFIG.HAS_QOS {1} \
+   CONFIG.HAS_REGION {1} \
+   CONFIG.HAS_RRESP {1} \
+   CONFIG.HAS_WSTRB {1} \
+   CONFIG.ID_WIDTH {0} \
+   CONFIG.INTERFACE_MODE {MASTER} \
+   CONFIG.PROTOCOL {AXI4} \
+   CONFIG.READ_WRITE_MODE {READ_WRITE} \
+   CONFIG.RUSER_BITS_PER_BYTE {0} \
+   CONFIG.RUSER_WIDTH {0} \
+   CONFIG.SUPPORTS_NARROW {1} \
+   CONFIG.WUSER_BITS_PER_BYTE {0} \
+   CONFIG.WUSER_WIDTH {0} \
+  ] $axi_vip_5
+  connect_bd_net [get_bd_ports clkwiz_kernel_clk_out1] [get_bd_pins axi_vip_5/aclk]
+  connect_bd_net [get_bd_pins axi_vip_5/aresetn] [get_bd_pins reset_controllers/psreset_gate_pr_kernel_interconnect_aresetn]
+  connect_bd_intf_net [get_bd_intf_pins axi_vip_5/M_AXI] -boundary_type upper [get_bd_intf_pins axi_interconnect_1/S00_AXI]
+
+  create_bd_addr_seg -range 0x80000000 -offset 0x00000000 [get_bd_addr_spaces axi_vip_4/Master_AXI] [get_bd_addr_segs interconnect_aximm_ddrmem4_M00_AXI/Reg] SEG_interconnect_aximm_ddrmem4_M00_AXI_Reg
+  create_bd_addr_seg -range 0x80000000 -offset 0x00000000 [get_bd_addr_spaces axi_vip_5/Master_AXI] [get_bd_addr_segs interconnect_aximm_ddrmem5_M00_AXI/Reg] SEG_interconnect_aximm_ddrmem5_M00_AXI_Reg
+
   # Restore current instance
   current_bd_instance $oldCurInst
 

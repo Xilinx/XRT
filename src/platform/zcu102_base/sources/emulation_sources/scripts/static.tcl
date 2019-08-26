@@ -1518,6 +1518,46 @@ proc create_hier_cell_static_region { parentCell nameHier } {
   connect_bd_net -net zynq_ultra_ps_e_0_pl_clk0 [get_bd_pins base_clocking/pl_clk] [get_bd_pins zynq_ultra_ps_e_0/pl_clk0]
   connect_bd_net -net zynq_ultra_ps_e_0_pl_resetn0 [get_bd_pins base_clocking/pl_resetn] [get_bd_pins zynq_ultra_ps_e_0/pl_resetn0]
 
+  startgroup
+  set_property -dict [list CONFIG.PSU__USE__S_AXI_GP3 {1} CONFIG.PSU__USE__S_AXI_GP4 {1}] [get_bd_cells zynq_ultra_ps_e_0]
+  endgroup
+
+  startgroup
+  create_bd_cell -type ip -vlnv xilinx.com:ip:axi_register_slice:2.1 axi_register_slice_0
+  endgroup
+  move_bd_cells [get_bd_cells pr_isolation_expanded] [get_bd_cells axi_register_slice_0]
+  connect_bd_net [get_bd_pins pr_isolation_expanded/clkwiz_kernel_clk_out1] [get_bd_pins pr_isolation_expanded/axi_register_slice_0/aclk]
+  connect_bd_net [get_bd_pins pr_isolation_expanded/axi_register_slice_0/aresetn] [get_bd_pins pr_isolation_expanded/psreset_regslice_data_pr/interconnect_aresetn]
+
+  startgroup
+  create_bd_cell -type ip -vlnv xilinx.com:ip:axi_vip:1.1 axi_vip_1
+  endgroup
+#  move_bd_cells [get_bd_cells static_region] [get_bd_cells axi_vip_1]
+  connect_bd_net [get_bd_pins axi_vip_1/aclk] [get_bd_pins base_clocking/clkwiz_kernel_clk_out1]
+  connect_bd_net [get_bd_pins axi_vip_1/aresetn] [get_bd_pins pr_isolation_expanded/psreset_regslice_data_pr_interconnect_aresetn]
+  connect_bd_intf_net [get_bd_intf_pins axi_vip_1/M_AXI] [get_bd_intf_pins pr_isolation_expanded/axi_register_slice_0/S_AXI]
+
+  startgroup
+  create_bd_cell -type ip -vlnv xilinx.com:ip:axi_register_slice:2.1 axi_register_slice_1
+  endgroup
+  move_bd_cells [get_bd_cells pr_isolation_expanded] [get_bd_cells axi_register_slice_1]
+  connect_bd_net [get_bd_pins pr_isolation_expanded/clkwiz_kernel_clk_out1] [get_bd_pins pr_isolation_expanded/axi_register_slice_1/aclk]
+  connect_bd_net [get_bd_pins pr_isolation_expanded/axi_register_slice_1/aresetn] [get_bd_pins pr_isolation_expanded/psreset_regslice_data_pr/interconnect_aresetn]
+
+  startgroup
+  create_bd_cell -type ip -vlnv xilinx.com:ip:axi_vip:1.1 axi_vip_2
+  endgroup
+#  move_bd_cells [get_bd_cells static_region] [get_bd_cells axi_vip_2]
+  connect_bd_net [get_bd_pins axi_vip_2/aclk] [get_bd_pins base_clocking/clkwiz_kernel_clk_out1]
+  connect_bd_net [get_bd_pins axi_vip_2/aresetn] [get_bd_pins pr_isolation_expanded/psreset_regslice_data_pr_interconnect_aresetn]
+  connect_bd_intf_net [get_bd_intf_pins axi_vip_2/M_AXI] [get_bd_intf_pins pr_isolation_expanded/axi_register_slice_1/S_AXI]
+
+  connect_bd_intf_net [get_bd_intf_pins zynq_ultra_ps_e_0/S_AXI_HP1_FPD] [get_bd_intf_pins pr_isolation_expanded/axi_register_slice_0/M_AXI]
+  connect_bd_intf_net [get_bd_intf_pins zynq_ultra_ps_e_0/S_AXI_HP2_FPD] [get_bd_intf_pins pr_isolation_expanded/axi_register_slice_1/M_AXI]
+
+  connect_bd_net [get_bd_pins zynq_ultra_ps_e_0/saxihp1_fpd_aclk] [get_bd_pins base_clocking/clkwiz_kernel_clk_out1]
+  connect_bd_net [get_bd_pins zynq_ultra_ps_e_0/saxihp2_fpd_aclk] [get_bd_pins base_clocking/clkwiz_kernel_clk_out1]
+
   # Restore current instance
   current_bd_instance $oldCurInst
 }
@@ -1596,6 +1636,8 @@ proc create_root_design { parentCell } {
   # Create address segments
   create_bd_addr_seg -range 0x80000000 -offset 0x00000000 [get_bd_addr_spaces dynamic_region/interconnect_aximm_ddrmem3_M00_AXI] [get_bd_addr_segs static_region/zynq_ultra_ps_e_0/SAXIGP2/HP0_DDR_LOW] SEG_zynq_ultra_ps_e_0_HP0_DDR_LOW
   create_bd_addr_seg -range 0x80000000 -offset 0x00000000 [get_bd_addr_spaces dynamic_region/interconnect_aximm_ddrmem2_M00_AXI] [get_bd_addr_segs static_region/zynq_ultra_ps_e_0/SAXIGP5/HP3_DDR_LOW] SEG_zynq_ultra_ps_e_0_HP3_DDR_LOW
+#  create_bd_addr_seg -range 0x80000000 -offset 0x00000000 [get_bd_addr_spaces dynamic_region/interconnect_aximm_ddrmem4_M00_AXI] [get_bd_addr_segs static_region/zynq_ultra_ps_e_0/SAXIGP3/HP1_DDR_LOW] SEG_zynq_ultra_ps_e_0_HP1_DDR_LOW
+#  create_bd_addr_seg -range 0x80000000 -offset 0x00000000 [get_bd_addr_spaces dynamic_region/interconnect_aximm_ddrmem5_M00_AXI] [get_bd_addr_segs static_region/zynq_ultra_ps_e_0/SAXIGP4/HP2_DDR_LOW] SEG_zynq_ultra_ps_e_0_HP2_DDR_LOW
   create_bd_addr_seg -range 0x00010000 -offset 0x80010000 [get_bd_addr_spaces static_region/zynq_ultra_ps_e_0/Data] [get_bd_addr_segs static_region/axi_hwicap/S_AXI_LITE/Reg] SEG_axi_hwicap_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x80020000 [get_bd_addr_spaces static_region/zynq_ultra_ps_e_0/Data] [get_bd_addr_segs static_region/axi_intc_0/S_AXI/Reg] SEG_axi_intc_0_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x80040000 [get_bd_addr_spaces static_region/zynq_ultra_ps_e_0/Data] [get_bd_addr_segs static_region/base_clocking/clkwiz_kernel2/s_axi_lite/Reg] SEG_clkwiz_kernel2_Reg

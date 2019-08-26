@@ -73,7 +73,17 @@ for {set i 2} {$i < 16} {incr i} {
 }
 set_property PFM.AXI_PORT $hpc0Val [get_bd_cells /interconnect_axifull_2_user_slr1]
 
+set hp1Val []
+for {set i 1} {$i < 16} {incr i} {
+  lappend hp1Val S[format %02d $i]_AXI {memport "S_AXI_HP" sptag "bank0" memory "interconnect_aximm_ddrmem4_M00_AXI HP1_DDR_LOW"}
+}
+set_property PFM.AXI_PORT $hp1Val [get_bd_cells /axi_interconnect_0]
 
+set hp2Val []
+for {set i 1} {$i < 16} {incr i} {
+  lappend hp2Val S[format %02d $i]_AXI {memport "S_AXI_HP" sptag "bank0" memory "interconnect_aximm_ddrmem5_M00_AXI HP2_DDR_LOW"}
+}
+set_property PFM.AXI_PORT $hp1Val [get_bd_cells /axi_interconnect_1]
 
 
 # Define CLOCK
