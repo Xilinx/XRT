@@ -450,6 +450,15 @@ DeviceIntf::~DeviceIntf()
     }
   }
 
+  void DeviceIntf::configAmContext(const std::string& ctx_info)
+  {
+    if (ctx_info.empty())
+      return;
+    for (auto mon : amList) {
+      mon->disable();
+    }
+  }
+
   void DeviceIntf::initTS2MM(uint64_t bufSz, uint64_t bufAddr)
   {
     traceDMA->init(bufSz, bufAddr);

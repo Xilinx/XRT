@@ -72,8 +72,9 @@ namespace xdp {
     size_t stopCounters(xclPerfMonType type);
     size_t readCounters(xclPerfMonType type, xclCounterResults& counterResults);
 
-    // Enable Dataflow
+    // Accelerator Monitor
     void configureDataflow(bool* ipConfig);
+    void configAmContext(const std::string& ctx_info);
 
     // Trace FIFO Management
     bool hasFIFO() {return (fifoCtrl != nullptr);};

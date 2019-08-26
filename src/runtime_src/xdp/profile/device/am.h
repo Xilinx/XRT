@@ -62,6 +62,8 @@ public:
     size_t stopCounter();
     size_t readCounter(xclCounterResults& counterResult, uint32_t index);
 
+    void disable();
+    void enable();
     void configureDataflow(bool cuHasApCtrlChain);
 
     bool has64bit() const;
@@ -79,6 +81,7 @@ private:
     uint8_t properties;
     uint8_t major_version;
     uint8_t minor_version;
+    bool m_enabled = true;
 };
 
 } //  xdp
