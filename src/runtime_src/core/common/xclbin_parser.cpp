@@ -59,7 +59,7 @@ get_base_addr(const ip_data& ip)
 static int
 kernel_max_ctx(const ip_data& ip)
 {
-  auto ctx = xrt_core::config::get_ctx_info();
+  auto ctx = xrt_core::config::get_kernel_channel_info();
   if (ctx.empty())
     return 0;
   
