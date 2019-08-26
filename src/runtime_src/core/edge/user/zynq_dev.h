@@ -33,7 +33,7 @@ public:
         std::vector<char>& buf);
     template <typename T>
     void sysfs_get(const std::string& entry, std::string& err_msg,
-        T& i, T def = static_cast<T>(-1)) {
+        T& i, T def) {
         std::vector<uint64_t> iv;
 
         sysfs_get(entry, err_msg, iv);
