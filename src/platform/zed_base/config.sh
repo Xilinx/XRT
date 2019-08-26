@@ -100,8 +100,10 @@ rootfs_menu()
 pre_build_hook()
 {
 	PETA_DIR=$1
+	echo "[cmd] inside pre_build_hook of config.sh file.........."
 	# Replace the original pl.dtsi. Remove axi intc IP.
 	cp -f ${THIS_CONFIG_SCRIPT_DIR}/pl.dtsi ${PETA_DIR}/components/plnx_workspace/device-tree/device-tree/pl.dtsi
+	echo "THIS_CONFIG_SCRIPT_DIR = $THIS_CONFIG_SCRIPT_DIR, PETA_DIR=$PETA_DIR.........."
 }
 
 # The first argument is the petalinux project path
