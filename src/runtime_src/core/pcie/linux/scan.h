@@ -65,7 +65,7 @@ public:
         std::string& err_msg, std::vector<char>& buf);
     template <typename T>
     void sysfs_get(const std::string& subdev, const std::string& entry,
-        std::string& err_msg, T& i, const int& default_val = -1) {
+        std::string& err_msg, T& i, const int& default_val) {
         std::vector<uint64_t> iv;
 
         sysfs_get(subdev, entry, err_msg, iv);
@@ -73,6 +73,10 @@ public:
             i = static_cast<T>(iv[0]);
         else
             i = static_cast<T>(default_val); // default value
+    }
+    void sysfs_get_sensor(const std::string& subdev, const std::string& entry,
+        std::string& err_msg, uint32_t& i) {
+        sysfs_get<uint32_t>(subdev, entry, err_msg, i, -1);
     }
     void sysfs_put(const std::string& subdev, const std::string& entry,
         std::string& err_msg, const std::string& input);
