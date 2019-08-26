@@ -122,6 +122,12 @@ private:
   encode_compute_units(packet_type& pkt);
 
   /**
+   * Control type, IP_CONTROL per xclbin ip_layout
+   */
+  uint32_t
+  cu_control_type() const;
+
+  /**
    * Update workgroup accounting.
    */
   void

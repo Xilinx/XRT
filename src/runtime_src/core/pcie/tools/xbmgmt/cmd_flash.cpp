@@ -81,19 +81,23 @@ static int scanDevices(bool verbose, bool json)
             std::cout << fmt_str << "Flashable partition running on FPGA:" << std::endl;
             std::cout << fmt_str << fmt_str << board << std::endl;
 
-            auto dev = pcidev::get_dev(i, false);
-            std::vector<std::string> uuids;
-            std::string errmsg;
-            dev->sysfs_get("", "logic_uuids", errmsg, uuids);
-            if (errmsg.empty() && uuids.size() > 0 && verbose)
+            if (!board.uuids.empty() && verbose)
             {
                 std::cout << fmt_str << fmt_str << fmt_str << "Logic UUID:" << std::endl;
-                std::cout << fmt_str << fmt_str << fmt_str << uuids[0] << std::endl;
+                std::cout << fmt_str << fmt_str << fmt_str << board.uuids[0] << std::endl;
             }
             std::cout << fmt_str << "Flashable partitions installed in system:\t";
             if (!installedDSA.empty()) {
                 for (auto& d : installedDSA)
+                {
                     std::cout << std::endl << fmt_str << fmt_str << d;
+                    if (!d.uuids.empty() && verbose)
+                    {
+                        std::cout << std::endl;
+                        std::cout << fmt_str << fmt_str << fmt_str << "Logic UUID:" << std::endl;
+                        std::cout << fmt_str << fmt_str << fmt_str << d.uuids[0];
+                    }
+                }
             } else {
                 std::cout << "(None)";
             }

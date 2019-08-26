@@ -149,11 +149,40 @@ static const std::map<MEM_TYPE, std::string> memtype_map = {
 
 static const std::map<std::string, command> commandTable(map_pairs, map_pairs + sizeof(map_pairs) / sizeof(map_pairs[0]));
 
+
 class device {
     unsigned int m_idx;
     xclDeviceHandle m_handle;
     xclDeviceInfo2 m_devinfo;
     xclErrorStatus m_errinfo;
+
+    struct xclbin_lock
+    {
+        xclDeviceHandle m_handle;
+        uuid_t m_uuid;
+        xclbin_lock(xclDeviceHandle handle, unsigned int m_idx) : m_handle(handle) {
+            std::string errmsg, xclbinid;
+
+            pcidev::get_dev(m_idx)->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
+
+            if (!errmsg.empty()) {
+                std::cout<<errmsg<<std::endl;
+                throw std::runtime_error("Failed to lockdown xclbin.");
+            }
+
+            uuid_parse(xclbinid.c_str(), m_uuid);
+
+            if (uuid_is_null(m_uuid))
+                   throw std::runtime_error("'uuid' invalid, please re-program xclbin.");
+
+            if (xclOpenContext(m_handle, m_uuid, -1, true))
+                   throw std::runtime_error("'uuid' invalid, please re-program xclbin.");
+        }
+        ~xclbin_lock(){
+            xclCloseContext(m_handle, m_uuid, -1);
+        }
+    };
+
 
 public:
     int domain() {
@@ -245,28 +274,16 @@ public:
 
     float sysfs_power() const
     {
-        unsigned short m12v_pex_vol = 0, m12v_aux_curr = 0, m3v3_pex_vol = 0, m3v3_pex_curr;
-        unsigned long long power = 0, m12v_pex_curr = 0, m12v_aux_vol = 0;
+        unsigned long long power = 0;
         std::string errmsg;
 
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_pex_vol",  errmsg, m12v_pex_vol );
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_pex_curr", errmsg, m12v_pex_curr );
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_aux_vol",  errmsg, m12v_aux_vol );
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_aux_curr", errmsg, m12v_aux_curr );
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_3v3_pex_vol",  errmsg, m3v3_pex_vol );
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_3v3_pex_curr", errmsg, m3v3_pex_curr );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_power",  errmsg, power);
 
         if (!errmsg.empty()) {
             std::cout << errmsg << std::endl;
-            return -EINVAL;
+            return 0;
         }
 
-        if (m12v_pex_curr != XCL_INVALID_SENSOR_VAL && m12v_pex_curr != XCL_NO_SENSOR_DEV_LL &&
-            m12v_pex_vol  != XCL_INVALID_SENSOR_VAL && m12v_pex_vol  != XCL_NO_SENSOR_DEV_S) {
-            power = m12v_pex_curr * m12v_pex_vol + m12v_aux_curr * m12v_aux_vol + m3v3_pex_curr * m3v3_pex_vol;
-        } else {
-            return -EINVAL;
-        }
         return (float)power / 1000000;
     }
 
@@ -277,7 +294,7 @@ public:
         ss << std::left << "\n";
         ss << std::setw(16) << "Power" << "\n";
 
-        if(power != -EINVAL) {
+        if (power) {
             ss << std::to_string(power).substr(0, 4) + "W" << "\n";
         } else {
             ss << std::setw(16) << "Not support" << "\n";
@@ -1213,6 +1230,8 @@ public:
      * TODO: Refactor this function to be much shorter.
      */
     int dmatest(size_t blockSize, bool verbose) {
+        xclbin_lock xclbin_lock(m_handle, m_idx);
+
         if (blockSize == 0)
             blockSize = 256 * 1024 * 1024; // Default block size
         

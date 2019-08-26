@@ -130,6 +130,8 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
             for (uint32_t i = 0; i < sk_data->m_num_instances; i++) {
                 memset(xclbin_info->ip_layout[j].kernel_name, 0, MAX_KERNEL_NAME);
                 str_tmp1 = std::string((char*)&buffer[soft_kernel_hdr->m_sectionOffset + sk_data->mpo_name]);
+                str_tmp1 += "_";
+                str_tmp1 += std::to_string(i);
                 str_tmp1.copy((char*)xclbin_info->ip_layout[j].kernel_name, MAX_KERNEL_NAME-1);
                 xclbin_info->ip_layout[j].soft_kernel = true;
                 xclbin_info->ip_layout[j].base_addr = 0;

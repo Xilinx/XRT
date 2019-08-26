@@ -366,7 +366,7 @@ zocl_acc_configure(void *core, u32 *data, size_t sz, int type)
 	 * Same open issue like HLS adapter
 	 * Skip 6 data,this is how user layer construct the command.
 	 */
-	for (i = 4; i < sz - 1; i += 2) {
+	for (i = 6; i < sz - 1; i += 2) {
 		offset = *(data + i) - cu_core->paddr;
 		val = *(data + i + 1);
 
