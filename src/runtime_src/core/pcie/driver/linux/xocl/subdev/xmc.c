@@ -863,6 +863,22 @@ static int xmc_get_data(struct platform_device *pdev, enum group_kind kind, void
 	return 0;
 }
 
+uint64_t xmc_get_power(struct platform_device *pdev, enum sensor_val_kind kind)
+{
+	u32 v_pex, v_aux, v_3v3, c_pex, c_aux, c_3v3;
+	u64 val = 0;
+
+	xmc_sensor(pdev, VOL_12V_PEX, &v_pex, kind);
+	xmc_sensor(pdev, VOL_12V_AUX, &v_aux, kind);
+	xmc_sensor(pdev, CUR_12V_PEX, &c_pex, kind);
+	xmc_sensor(pdev, CUR_12V_AUX, &c_aux, kind);
+	xmc_sensor(pdev, VOL_3V3_PEX, &v_3v3, kind);
+	xmc_sensor(pdev, CUR_3V3_PEX, &c_3v3, kind);
+
+	val = (u64)v_pex * c_pex + (u64)v_aux * c_aux + (u64)v_3v3 * c_3v3;
+
+	return val;
+}
 /*
  * Defining sysfs nodes for all sensor readings.
  */
@@ -916,6 +932,16 @@ SENSOR_SYSFS_NODE(xmc_vpp2v5_vol, VOL_VPP_2V5);
 SENSOR_SYSFS_NODE(xmc_vccint_bram_vol, VOL_VCCINT_BRAM);
 SENSOR_SYSFS_NODE(xmc_hbm_temp, HBM_TEMP);
 
+static ssize_t xmc_power_show(struct device *dev,
+	struct device_attribute *da, char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u64 val = xmc_get_power(xmc->pdev, SENSOR_INS);
+
+	return sprintf(buf, "%lld\n", val);
+}
+static DEVICE_ATTR_RO(xmc_power);
+
 #define	SENSOR_SYSFS_NODE_ATTRS						\
 	&dev_attr_xmc_12v_pex_vol.attr,					\
 	&dev_attr_xmc_12v_aux_vol.attr,					\
@@ -955,7 +981,8 @@ SENSOR_SYSFS_NODE(xmc_hbm_temp, HBM_TEMP);
 	&dev_attr_xmc_hbm_1v2_vol.attr,					\
 	&dev_attr_xmc_vpp2v5_vol.attr,					\
 	&dev_attr_xmc_vccint_bram_vol.attr,				\
-	&dev_attr_xmc_hbm_temp.attr
+	&dev_attr_xmc_hbm_temp.attr,					\
+	&dev_attr_xmc_power.attr
 
 /*
  * Defining sysfs nodes for reading some of xmc regisers.
@@ -1239,6 +1266,7 @@ static ssize_t hwmon_scaling_target_power_show(struct device *dev,
 	mutex_lock(&xmc->xmc_lock);
 	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_POWER_REG);
 	val &= XMC_CLOCK_SCALING_POWER_TARGET_MASK;
+	val = val * 1000000;
 	mutex_unlock(&xmc->xmc_lock);
 
 	return sprintf(buf, "%uW\n", val);
@@ -1295,6 +1323,7 @@ static ssize_t hwmon_scaling_target_temp_show(struct device *dev,
 	mutex_lock(&xmc->xmc_lock);
 	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_TEMP_REG);
 	val &= XMC_CLOCK_SCALING_TEMP_TARGET_MASK;
+	val = val * 1000;
 	mutex_unlock(&xmc->xmc_lock);
 
 	return sprintf(buf, "%uc\n", val);
@@ -1351,6 +1380,7 @@ static ssize_t hwmon_scaling_threshold_temp_show(struct device *dev,
 	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
 	val = (val >> XMC_CLOCK_SCALING_TEMP_THRESHOLD_POS) &
 		XMC_CLOCK_SCALING_TEMP_THRESHOLD_MASK;
+	val = val * 1000;
 	mutex_unlock(&xmc->xmc_lock);
 
 	return sprintf(buf, "%uc\n", val);
@@ -1371,6 +1401,7 @@ static ssize_t hwmon_scaling_threshold_power_show(struct device *dev,
 	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
 	val = (val >> XMC_CLOCK_SCALING_POWER_THRESHOLD_POS) &
 		XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK;
+	val = val * 1000000;
 	mutex_unlock(&xmc->xmc_lock);
 
 	return sprintf(buf, "%uW\n", val);
@@ -1613,14 +1644,8 @@ static ssize_t hwmon_power_show(struct device *dev,
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	int index = to_sensor_dev_attr(da)->index;
-	u32 v_pex, v_aux, c_pex, c_aux;
-	u64 val;
+	u64 val = xmc_get_power(pdev, HWMON_INDEX2VAL_KIND(index));
 
-	xmc_sensor(pdev, VOL_12V_PEX, &v_pex, HWMON_INDEX2VAL_KIND(index));
-	xmc_sensor(pdev, VOL_12V_AUX, &v_aux, HWMON_INDEX2VAL_KIND(index));
-	xmc_sensor(pdev, CUR_12V_PEX, &c_pex, HWMON_INDEX2VAL_KIND(index));
-	xmc_sensor(pdev, CUR_12V_AUX, &c_aux, HWMON_INDEX2VAL_KIND(index));
-	val = (u64)v_pex * c_pex + (u64)v_aux * c_aux;
 	return sprintf(buf, "%lld\n", val);
 }
 
@@ -2037,6 +2062,10 @@ static int load_xmc(struct xocl_xmc *xmc)
 	xmc->state = XMC_STATE_ENABLED;
 
 	xmc->cap = READ_REG32(xmc, XMC_FEATURE_REG);
+
+	if (XMC_PRIVILEGED(xmc) && xocl_clk_scale_on(xdev_hdl))
+		xmc_clk_scale_config(xmc->pdev);
+
 out:
 	mutex_unlock(&xmc->xmc_lock);
 
@@ -2232,8 +2261,6 @@ static int xmc_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, xmc);
 
 	for (i = 0; i < NUM_IOADDR; i++) {
-		if ((i == IO_CLK_SCALING) && !xmc->runtime_cs_enabled)
-			continue;
 		res = platform_get_resource(pdev, IORESOURCE_MEM, i);
 		if (res) {
 			xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx",
@@ -2284,7 +2311,6 @@ static int xmc_probe(struct platform_device *pdev)
 	 */
 	if (XMC_PRIVILEGED(xmc) && xocl_clk_scale_on(xdev_hdl)) {
 		xmc->runtime_cs_enabled = true;
-		xmc_clk_scale_config(pdev);
 		xocl_info(&pdev->dev, "Runtime clock scaling is supported.\n");
 	}
 

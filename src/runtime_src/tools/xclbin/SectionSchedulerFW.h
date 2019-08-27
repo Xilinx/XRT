@@ -42,7 +42,7 @@ class SectionSchedulerFW : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(SCHED_FIRMWARE, "SCHED_FIRMWARE", "", false, boost::factory<SectionSchedulerFW*>()); }
+    _init() { registerSectionCtor(SCHED_FIRMWARE, "SCHED_FIRMWARE", "", false, false, boost::factory<SectionSchedulerFW*>()); }
   } _initializer;
 };
 

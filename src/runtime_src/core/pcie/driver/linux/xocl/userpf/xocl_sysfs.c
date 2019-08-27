@@ -394,6 +394,10 @@ static ssize_t mbx_offset_store(struct device *dev,
 		return -EINVAL;
 
 	xdev->mbx_offset = val;
+	if (val == 0) {
+		xocl_subdev_destroy_all(xdev);
+		xocl_queue_work(xdev, XOCL_WORK_POLL_MAILBOX, 1000);
+	}
 
 	return count;
 }

@@ -15,9 +15,9 @@
  */
 
 #include "device_intf.h"
+
 #include "xclperf.h"
 #include "xcl_perfmon_parameters.h"
-#include "xrt/device/device.h"
 #include "tracedefs.h"
 
 #include <iostream>
@@ -29,7 +29,6 @@
 //#include <time.h>
 #include <string.h>
 #include <chrono>
-#include <sys/mman.h>
 
 #ifndef _WINDOWS
 // TODO: Windows build support
@@ -46,17 +45,14 @@ namespace xdp {
 
 DeviceIntf::~DeviceIntf()
 {
-    for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
-        delete (*itr);  // delete the object
-        (*itr) = nullptr;
+    for(auto mon : aimList) {
+        delete mon;
     }
-    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr) {
-        delete (*itr);  // delete the object
-        (*itr) = nullptr;
+    for(auto mon : amList) {
+        delete mon;
     }
-    for(std::vector<ASM*>::iterator itr = asmList.begin(); itr != asmList.end(); ++itr) {
-        delete (*itr);  // delete the object
-        (*itr) = nullptr;
+    for(auto mon : asmList) {
+        delete mon;
     }
     aimList.clear();
     amList.clear();
@@ -66,6 +62,8 @@ DeviceIntf::~DeviceIntf()
     delete fifoRead;
     delete traceFunnel;
     delete traceDMA;
+
+    delete mDevice;
 }
 
   // ***************************************************************************
@@ -95,17 +93,15 @@ DeviceIntf::~DeviceIntf()
   }
 #endif
 
-
-  void DeviceIntf::setDeviceHandle(void* xrtDevice)
+  void DeviceIntf::setDevice(xdp::Device* devHandle)
   {
-    if(!mDeviceHandle) {
-      mDeviceHandle = xrtDevice;
+    if(mDevice && mDevice != devHandle) {
+      // ERROR : trying to set device when it is already populated with some other device
       return;
     }
-    if(mDeviceHandle != xrtDevice) {
-      // ERROR : trying to set the device handle when it is already populated with some other device
-    }
+    mDevice = devHandle; 
   }
+
 
 
   // ***************************************************************************
@@ -123,16 +119,16 @@ DeviceIntf::~DeviceIntf()
 
     if(type == XCL_PERF_MON_STALL) {
       uint32_t count = 0;
-      for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr) {
-        if((*itr)->hasStall())  count++;
+      for(auto mon : amList) {
+        if(mon->hasStall())  count++;
       }
       return count;
     }
 
     if(type == XCL_PERF_MON_HOST) {
       uint32_t count = 0;
-      for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
-        if((*itr)->isHostMonitor())  count++;
+      for(auto mon : aimList) {
+        if(mon->isHostMonitor())  count++;
       }
       return count;
     }
@@ -141,8 +137,8 @@ DeviceIntf::~DeviceIntf()
 
     if(type == XCL_PERF_MON_SHELL) {
       uint32_t count = 0;
-      for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
-        if((*itr)->isShellMonitor())  count++;
+      for(auto mon : aimList) {
+        if(mon->isShellMonitor())  count++;
       }
       return count;
     }
@@ -187,18 +183,18 @@ DeviceIntf::~DeviceIntf()
 
     size_t size = 0;
 
-    // AIM
-    for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
-        size += (*itr)->startCounter();
+    // Axi Interface Mons
+    for(auto mon : aimList) {
+        size += mon->startCounter();
     }
-    // AM
-    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr) {
-        size += (*itr)->startCounter();
+    // Accelerator Mons
+    for(auto mon : amList) {
+        size += mon->startCounter();
     }
 
-    // ASM
-    for(std::vector<ASM*>::iterator itr = asmList.begin(); itr != asmList.end(); ++itr) {
-        size += (*itr)->startCounter();
+    // Axi Stream Mons
+    for(auto mon : asmList) {
+        size += mon->startCounter();
     }
     return size;
   }
@@ -215,22 +211,22 @@ DeviceIntf::~DeviceIntf()
 
     size_t size = 0;
 
-    // AIM
-    for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
-        size += (*itr)->stopCounter();
+    // Axi Interface Mons
+    for(auto mon : aimList) {
+        size += mon->stopCounter();
     }
 
 
 #if 0
-    // why not these in the original code
-    // AM
-    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr) {
-        size += (*itr)->stopCounter();
+    // These aren't enabled in IP
+    // Accelerator Mons
+    for(auto mon : amList) {
+        size += mon->stopCounter();
     }
 
-    // ASM
-    for(std::vector<ASM*>::iterator itr = asmList.begin(); itr != asmList.end(); ++itr) {
-        size += (*itr)->stopCounter();
+    // Axi Stream Mons
+    for(auto mon : asmList) {
+        size += mon->stopCounter();
     }
 #endif
     return size;
@@ -252,22 +248,22 @@ DeviceIntf::~DeviceIntf()
 
     size_t size = 0;
 
-    // AIM
+    // Read all Axi Interface Mons
     uint32_t idx = 0;
-    for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr, ++idx) {
-        size += (*itr)->readCounter(counterResults, idx);
+    for(auto mon : aimList) {
+        size += mon->readCounter(counterResults, idx++);
     }
 
-    // AM
+    // Read all Accelerator Mons
     idx = 0;
-    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr, ++idx) {
-        size += (*itr)->readCounter(counterResults, idx);
+    for(auto mon : amList) {
+        size += mon->readCounter(counterResults, idx++);
     }
 
-    // ASM
+    // Read all Axi Stream Mons
     idx = 0;
-    for(std::vector<ASM*>::iterator itr = asmList.begin(); itr != asmList.end(); ++itr, ++idx) {
-        size += (*itr)->readCounter(counterResults, idx);
+    for(auto mon : asmList) {
+        size += mon->readCounter(counterResults, idx++);
     }
 
     return size;
@@ -291,18 +287,18 @@ DeviceIntf::~DeviceIntf()
     }
     size_t size = 0;
 
-    // check which of these IPs are trace enabled ?
-    // AIM
-    for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
-        size += (*itr)->triggerTrace(startTrigger);
+    // This just writes to trace control register
+    // Axi Interface Mons
+    for(auto mon : aimList) {
+        size += mon->triggerTrace(startTrigger);
     }
-    // AM
-    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr) {
-        size += (*itr)->triggerTrace(startTrigger);
+    // Accelerator Mons
+    for(auto mon : amList) {
+        size += mon->triggerTrace(startTrigger);
     }
-    // ASM 
-    for(std::vector<ASM*>::iterator itr = asmList.begin(); itr != asmList.end(); ++itr) {
-        size += (*itr)->triggerTrace(startTrigger);
+    // Axi Stream Mons
+    for(auto mon : asmList) {
+        size += mon->triggerTrace(startTrigger);
     }
 
     if (fifoCtrl)
@@ -362,17 +358,16 @@ DeviceIntf::~DeviceIntf()
 
   void DeviceIntf::readDebugIPlayout()
   {
-    if(mIsDebugIPlayoutRead || !mDeviceHandle)
+    if(mIsDebugIPlayoutRead || !mDevice)
         return;
 
-    xrt::device* xrtDevice = static_cast<xrt::device*>(mDeviceHandle);
-    std::string path = xrtDevice->getDebugIPlayoutPath().get();
+    std::string path = mDevice->getDebugIPlayoutPath();
     if(path.empty()) {
         // error ? : for HW_emu this will be empty for now ; but as of current status should not have been called 
         return;
     }
 
-    uint32_t liveProcessesOnDevice = xrtDevice->getNumLiveProcesses().get();
+    uint32_t liveProcessesOnDevice = mDevice->getNumLiveProcesses();
     if(liveProcessesOnDevice > 1) {
       /* More than 1 process on device. Device Profiling for multi-process not supported yet.
        */
@@ -396,19 +391,19 @@ DeviceIntf::~DeviceIntf()
       map = (debug_ip_layout*)(buffer);
       for( unsigned int i = 0; i < map->m_count; i++ ) {
       switch(map->m_debug_ip_data[i].m_type) {
-        case AXI_MM_MONITOR :        aimList.push_back(new AIM(mDeviceHandle, i, &(map->m_debug_ip_data[i])));
+        case AXI_MM_MONITOR :        aimList.push_back(new AIM(mDevice, i, &(map->m_debug_ip_data[i])));
                                      break;
-        case ACCEL_MONITOR  :        amList.push_back(new AM(mDeviceHandle, i, &(map->m_debug_ip_data[i])));
+        case ACCEL_MONITOR  :        amList.push_back(new AM(mDevice, i, &(map->m_debug_ip_data[i])));
                                      break;
-        case AXI_STREAM_MONITOR :    asmList.push_back(new ASM(mDeviceHandle, i, &(map->m_debug_ip_data[i])));
+        case AXI_STREAM_MONITOR :    asmList.push_back(new ASM(mDevice, i, &(map->m_debug_ip_data[i])));
                                      break;
-        case AXI_MONITOR_FIFO_LITE : fifoCtrl = new TraceFifoLite(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
+        case AXI_MONITOR_FIFO_LITE : fifoCtrl = new TraceFifoLite(mDevice, i, &(map->m_debug_ip_data[i]));
                                      break;
-        case AXI_MONITOR_FIFO_FULL : fifoRead = new TraceFifoFull(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
+        case AXI_MONITOR_FIFO_FULL : fifoRead = new TraceFifoFull(mDevice, i, &(map->m_debug_ip_data[i]));
                                      break;
-        case AXI_TRACE_FUNNEL :      traceFunnel = new TraceFunnel(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
+        case AXI_TRACE_FUNNEL :      traceFunnel = new TraceFunnel(mDevice, i, &(map->m_debug_ip_data[i]));
                                      break;
-        case TRACE_S2MM :            traceDMA = new TraceS2MM(mDeviceHandle, i, &(map->m_debug_ip_data[i]));
+        case TRACE_S2MM :            traceDMA = new TraceS2MM(mDevice, i, &(map->m_debug_ip_data[i]));
                                      break;
         default : break;
         // case AXI_STREAM_PROTOCOL_CHECKER
@@ -419,16 +414,16 @@ DeviceIntf::~DeviceIntf()
     ifs.close();
 
 #if 0
-    for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
-        (*itr)->showProperties();
+    for(auto mon : aimList) {
+        mon->showProperties();
     }
 
-    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr) {
-        (*itr)->showProperties();
+    for(auto mon : amList) {
+        mon->showProperties();
     }
 
-    for(std::vector<ASM*>::iterator itr = asmList.begin(); itr != asmList.end(); ++itr) {
-        (*itr)->showProperties();
+    for(auto mon : asmList) {
+        mon->showProperties();
     }
     if(fifoCtrl) fifoCtrl->showProperties();
     if(fifoRead) fifoRead->showProperties();
@@ -447,94 +442,43 @@ DeviceIntf::~DeviceIntf()
       return;
 
     uint32_t i = 0;
-    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr, ++i) {
-        (*itr)->configureDataflow(ipConfig[i]);
+    for(auto mon: amList) {
+        mon->configureDataflow(ipConfig[i++]);
     }
   }
 
-  bool DeviceIntf::initTs2mm(uint64_t bo_size)
+  void DeviceIntf::configAmContext(const std::string& ctx_info)
   {
-    xrt::device* xrtDevice = static_cast<xrt::device*>(mDeviceHandle);
-
-    if (mTs2mmBoHandle != nullptr) {
-      finTs2mm();
+    if (ctx_info.empty())
+      return;
+    for (auto mon : amList) {
+      mon->disable();
     }
-
-    try {
-      // The buffer needs to be initialized because of an xrt bug
-      mTs2mmBoHandle = xrtDevice->alloc(bo_size, xrt::hal::device::Domain::XRT_DEVICE_RAM, traceDMA->getMemIndex(), nullptr);
-      xrtDevice->sync(mTs2mmBoHandle, bo_size, 0, xrt::hal::device::direction::HOST2DEVICE, false);
-      mTs2mmBoSize = bo_size;
-    } catch (const std::exception& ex) {
-      std::cerr << ex.what() << std::endl;
-      return false;
-    }
-    // Data Mover will write input stream to this address
-    uint64_t bufaddr = xrtDevice->getDeviceAddr(mTs2mmBoHandle);
-
-    traceDMA->init(bo_size, bufaddr);
-    return true;
   }
 
+  void DeviceIntf::initTS2MM(uint64_t bufSz, uint64_t bufAddr)
+  {
+    traceDMA->init(bufSz, bufAddr);
+  }
+  
   uint64_t DeviceIntf::getWordCountTs2mm()
   {
     return traceDMA->getWordCount();
   }
 
-void* DeviceIntf::syncTraceBO(uint64_t offset, uint64_t bytes)
-{
-    xrt::device* xrtDevice = static_cast<xrt::device*>(mDeviceHandle);
-    if (!mTs2mmBoHandle || bytes > mTs2mmBoSize) {
-      return nullptr;
-    }
-    auto space = xrtDevice->map(mTs2mmBoHandle);
-    xrtDevice->sync(mTs2mmBoHandle, bytes, offset, xrt::hal::device::direction::DEVICE2HOST, false);
-    return static_cast<char*>(space) + offset;
-}
-
-void DeviceIntf::readTs2mm(uint64_t offset, uint64_t bytes, xclTraceResultsVector& traceVector)
-{
-  auto tracebuf = syncTraceBO(offset, bytes);
-  if (tracebuf) {
-    traceDMA->parseTraceBuf(tracebuf, bytes, traceVector);
+  uint8_t DeviceIntf::getTS2MmMemIndex()
+  {
+    return traceDMA->getMemIndex();
   }
-}
 
-bool DeviceIntf::readTs2mm(xclTraceResultsVector& traceVector)
-{
-  if (mOffsetTs2mm >= mBytesTs2mm)
-    return false;
-  auto rbytes = mChunksizeTs2mm;
-  if (mOffsetTs2mm + mChunksizeTs2mm > mBytesTs2mm)
-    rbytes = mBytesTs2mm - mOffsetTs2mm;
-  auto tracebuf = syncTraceBO(mOffsetTs2mm, rbytes);
-  if (tracebuf) {
-    traceDMA->parseTraceBuf(tracebuf, rbytes, traceVector);
-    mOffsetTs2mm += rbytes;
+  void DeviceIntf::resetTS2MM()
+  {
+    traceDMA->reset();
   }
-  return (rbytes == mChunksizeTs2mm && tracebuf);
-}
 
-void DeviceIntf::configReaderTs2mm(uint64_t chunksize)
-{
-  mBytesTs2mm = getWordCountTs2mm() * TRACE_PACKET_SIZE;
-  mBytesTs2mm = (mBytesTs2mm > TS2MM_MAX_BUF_SIZE) ? TS2MM_MAX_BUF_SIZE : mBytesTs2mm;
-  mOffsetTs2mm = 0;
-  mChunksizeTs2mm = chunksize;
-}
-
-void DeviceIntf::finTs2mm()
-{
-  xrt::device* xrtDevice = static_cast<xrt::device*>(mDeviceHandle);
-  traceDMA->reset();
-
-  if (mTs2mmBoHandle) {
-    void* space = xrtDevice->map(mTs2mmBoHandle);
-    munmap(space, mTs2mmBoSize);
-    xrtDevice->free(mTs2mmBoHandle);
-    mTs2mmBoHandle = nullptr;
-    mTs2mmBoSize = 0;
+  void DeviceIntf::parseTraceData(void* traceData, uint64_t bytes, xclTraceResultsVector& traceVector)
+  {
+    traceDMA->parseTraceBuf(traceData, bytes, traceVector);
   }
-}
 
 } // namespace xdp

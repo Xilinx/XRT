@@ -42,7 +42,7 @@ class SectionEmulationData : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(EMULATION_DATA, "EMULATION_DATA", "", false, boost::factory<SectionEmulationData*>()); }
+    _init() { registerSectionCtor(EMULATION_DATA, "EMULATION_DATA", "", false, false, boost::factory<SectionEmulationData*>()); }
   } _initializer;
 };
 
