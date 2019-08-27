@@ -3268,11 +3268,13 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		size_t data_len, loff_t *off)
 {
 	struct icap *icap = filp->private_data;
+	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	struct axlf *axlf = NULL;
 	const struct axlf_section_header *section;
 	void *header;
 	XHwIcap_Bit_Header bit_header = { 0 };
 	ssize_t ret, len;
+	bool load_mbs = false;
 
 	mutex_lock(&icap->icap_lock);
 	if (icap->rp_fdt) {
@@ -3412,6 +3414,21 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 	}
 
 	memcpy(icap->rp_bit, header, icap->rp_bit_len);
+
+	if (xocl_mb_mgmt_on(xdev)) {
+		/* Try locating the board mgmt binary. */
+		section = get_axlf_section_hdr(icap, axlf, FIRMWARE);
+		if (section) {
+			header = (char *)axlf + section->m_sectionOffset;
+			xocl_mb_load_mgmt_image(xdev, header, section->m_sectionSize);
+			ICAP_INFO(icap, "stashed mb mgmt binary");
+			load_mbs = true;
+		}
+	}
+
+	if (load_mbs)
+		xocl_mb_reset(xdev);
+
 	vfree(axlf);
 
 	ICAP_INFO(icap, "write axlf to device successfully. len %ld", len);
