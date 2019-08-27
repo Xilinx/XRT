@@ -54,7 +54,7 @@ class SectionMemTopology : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(MEM_TOPOLOGY, "MEM_TOPOLOGY", "mem_topology", false, boost::factory<SectionMemTopology*>()); }
+    _init() { registerSectionCtor(MEM_TOPOLOGY, "MEM_TOPOLOGY", "mem_topology", false, false, boost::factory<SectionMemTopology*>()); }
   } _initializer;
 };
 

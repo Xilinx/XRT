@@ -1521,7 +1521,8 @@ int shim::xclCuName2Index(const char *name, uint32_t& index)
         size_t pos = line.find("0x");
         if (pos == std::string::npos)
             continue;
-        if (static_cast<int>(addr) == std::stoi(line.substr(pos), 0, 16)) {
+        if (static_cast<unsigned long>(addr) ==
+            std::stoul(line.substr(pos), 0, 16)) {
             index = idx;
             return 0;
         }

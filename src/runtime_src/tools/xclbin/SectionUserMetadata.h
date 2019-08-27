@@ -42,7 +42,7 @@ class SectionUserMetadata : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(USER_METADATA, "USER_METADATA", "", false, boost::factory<SectionUserMetadata*>()); }
+    _init() { registerSectionCtor(USER_METADATA, "USER_METADATA", "", false, false, boost::factory<SectionUserMetadata*>()); }
   } _initializer;
 };
 
