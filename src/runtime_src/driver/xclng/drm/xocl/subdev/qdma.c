@@ -69,7 +69,7 @@
 
 static dev_t	str_dev;
 
-struct stream_async_req;
+struct qdma_stream_async_req;
 
 struct qdma_irq {
 	struct eventfd_ctx	*event_ctx;
@@ -79,22 +79,22 @@ struct qdma_irq {
 	void			*arg;
 };
 
-struct stream_async_arg {
-	struct stream_queue	*queue;
+struct qdma_stream_async_arg {
+	struct qdma_stream_queue	*queue;
 	struct drm_xocl_unmgd	unmgd;
 	u32			nsg;
 	struct drm_xocl_bo	*xobj;
 	bool			is_unmgd;
 	bool			cancel;
 	struct kiocb		*kiocb;
-	struct stream_async_req *io_req;
+	struct qdma_stream_async_req *io_req;
 	spinlock_t		lock;
 	struct work_struct	work;
 };
 
-struct stream_async_req {
+struct qdma_stream_async_req {
 	struct list_head list;
-	struct stream_async_arg cb;
+	struct qdma_stream_async_arg cb;
 	struct qdma_request req;
 };
 
@@ -103,12 +103,15 @@ enum {
 	QUEUE_STATE_CLEANUP,
 };
 
-struct stream_queue {
+struct qdma_stream_queue {
 	struct device		dev;
 	struct xocl_qdma	*qdma;
 	unsigned long		queue;
 	struct qdma_queue_conf  qconf;
 	u32			state;
+	spinlock_t		qlock;
+	unsigned long		refcnt;
+	wait_queue_head_t 	wq;
 	int			flowid;
 	int			routeid;
 	struct file		*file;
@@ -117,7 +120,7 @@ struct stream_queue {
 	spinlock_t		req_lock;
 	struct list_head	req_pend_list;
 	struct list_head	req_free_list;
-	struct stream_async_req *req_cache;
+	struct qdma_stream_async_req *req_cache;
 	/* stats */
 	unsigned int 		req_pend_cnt;
 	unsigned int 		req_free_cnt;
@@ -160,7 +163,7 @@ struct xocl_qdma {
 	u32			user_msix_mask;
 	spinlock_t		user_msix_table_lock;
 
-	struct stream_queue	*queues[QDMA_QSETS_MAX * 2];
+	struct qdma_stream_queue	*queues[QDMA_QSETS_MAX * 2];
 };
 
 struct mm_channel {
@@ -321,7 +324,7 @@ failed:
 	return ret;
 }
 
-static void stream_sysfs_destroy(struct stream_queue *queue)
+static void qdma_stream_sysfs_destroy(struct qdma_stream_queue *queue)
 {
 	struct platform_device	*pdev = queue->qdma->pdev;
 	char			name[32];
@@ -339,15 +342,15 @@ static void stream_sysfs_destroy(struct stream_queue *queue)
 	}
 }
 
-static void stream_device_release(struct device *dev)
+static void qdma_stream_device_release(struct device *dev)
 {
 	xocl_dbg(dev, "dummy device release callback");
 }
 
-static int stream_sysfs_create(struct stream_queue *queue)
+static int qdma_stream_sysfs_create(struct qdma_stream_queue *queue)
 {
 	struct platform_device	*pdev = queue->qdma->pdev;
-	struct stream_queue	*temp_q;
+	struct qdma_stream_queue	*temp_q;
 	char			name[32];
 	int			ret, i;
 
@@ -377,7 +380,7 @@ static int stream_sysfs_create(struct stream_queue *queue)
 	}
 
 	queue->dev.parent = &pdev->dev;
-	queue->dev.release = stream_device_release;
+	queue->dev.release = qdma_stream_device_release;
 	dev_set_drvdata(&queue->dev, queue);
 	dev_set_name(&queue->dev, "%sq%d",
 		queue->qconf.c2h ? "r" : "w",
@@ -573,7 +576,7 @@ static void free_channels(struct platform_device *pdev)
 		qidx = i % qdma->channel;
 		chan = &qdma->chans[write][qidx];
 
-		if (!chan || !chan->queue)
+		if (!chan)
 			continue;
 
 		channel_sysfs_destroy(chan);
@@ -583,16 +586,13 @@ static void free_channels(struct platform_device *pdev)
 		if (ret < 0) {
 			xocl_err(&pdev->dev, "Stopping queue for "
 				"channel %d failed, ret %x", qidx, ret);
-			return;
 		}
 		ret = qdma_queue_remove((unsigned long)qdma->dma_handle,
 				chan->queue, NULL, 0);
 		if (ret < 0) {
 			xocl_err(&pdev->dev, "Destroy queue for "
 				"channel %d failed, ret %x", qidx, ret);
-			return;
 		}
-		chan->queue = 0UL;
 	}
 	if (qdma->chans[0])
 		devm_kfree(&pdev->dev, qdma->chans[0]);
@@ -829,15 +829,15 @@ static struct xocl_dma_funcs qdma_ops = {
 };
 
 /* stream queue file operations */
-static const struct vm_operations_struct stream_vm_ops = {
+static const struct vm_operations_struct qdma_stream_vm_ops = {
 	.fault = xocl_gem_fault,
 	.open = drm_gem_vm_open,
 	.close = drm_gem_vm_close,
 };
 
-static struct stream_async_req *queue_req_new(struct stream_queue *queue)
+static struct qdma_stream_async_req *queue_req_new(struct qdma_stream_queue *queue)
 {
-	struct stream_async_req *io_req;
+	struct qdma_stream_async_req *io_req;
 
 	spin_lock_bh(&queue->req_lock);
 	if (list_empty(&queue->req_free_list)) {
@@ -846,19 +846,19 @@ static struct stream_async_req *queue_req_new(struct stream_queue *queue)
 	}
 
 	io_req = list_first_entry(&queue->req_free_list,
-		struct stream_async_req, list);
+		struct qdma_stream_async_req, list);
 	list_del(&io_req->list);
 	queue->req_free_cnt--;
 	spin_unlock_bh(&queue->req_lock);
 
-	memset(io_req, 0, sizeof(struct stream_async_req));
+	memset(io_req, 0, sizeof(struct qdma_stream_async_req));
 	spin_lock_init(&io_req->cb.lock);
 
 	return io_req;
 }
 
-static void queue_req_free(struct stream_queue *queue,
-			struct stream_async_req *io_req,
+static void queue_req_free(struct qdma_stream_queue *queue,
+			struct qdma_stream_async_req *io_req,
 			bool completed)
 {
 	spin_lock_bh(&queue->req_lock);
@@ -876,8 +876,8 @@ static void queue_req_free(struct stream_queue *queue,
 	spin_unlock_bh(&queue->req_lock);
 }
 
-static void queue_req_pending(struct stream_queue *queue,
-	struct stream_async_req *io_req)
+static void queue_req_pending(struct qdma_stream_queue *queue,
+	struct qdma_stream_async_req *io_req)
 {
 	spin_lock_bh(&queue->req_lock);
 	queue->req_pend_cnt++;
@@ -898,8 +898,8 @@ static void inline cmpl_aio(struct kiocb *kiocb, unsigned int done_bytes,
 
 static void cmpl_aio_cancel(struct work_struct *work)
 {
-	struct stream_async_arg *cb = container_of(work,
-				struct stream_async_arg, work);
+	struct qdma_stream_async_arg *cb = container_of(work,
+				struct qdma_stream_async_arg, work);
 
 	spin_lock_bh(&cb->lock);
 	if (cb->kiocb) {
@@ -912,9 +912,9 @@ static void cmpl_aio_cancel(struct work_struct *work)
 static int queue_req_complete(unsigned long priv, unsigned int done_bytes,
 	int error)
 {
-	struct stream_async_arg *cb = (struct stream_async_arg *)priv;
-	struct stream_async_req *io_req = cb->io_req;
-	struct stream_queue *queue = cb->queue;
+	struct qdma_stream_async_arg *cb = (struct qdma_stream_async_arg *)priv;
+	struct qdma_stream_async_req *io_req = cb->io_req;
+	struct qdma_stream_queue *queue = cb->queue;
 
 	pr_debug("%s, q 0x%lx, req 0x%p,err %d, %u,%u, %u,%u, mem %u,%u.\n",
 		__func__, queue->queue, &io_req->req, error,
@@ -944,23 +944,22 @@ static int queue_req_complete(unsigned long priv, unsigned int done_bytes,
 	return 0;
 }
 
-static ssize_t stream_post_bo(struct xocl_qdma *qdma,
-	struct stream_queue *queue, struct drm_gem_object *gem_obj,
+static ssize_t qdma_stream_post_bo(struct xocl_qdma *qdma,
+	struct qdma_stream_queue *queue, struct drm_gem_object *gem_obj,
 	loff_t offset, size_t len, bool write,
 	struct xocl_qdma_req_header *header, struct kiocb *kiocb)
 {
 	struct drm_xocl_bo *xobj;
-	struct stream_async_req  *io_req = NULL;
+	struct qdma_stream_async_req  *io_req = NULL;
 	struct qdma_request *req;
-	struct stream_async_arg *cb;
+	struct qdma_stream_async_arg *cb;
 	ssize_t ret;
 
 	if (gem_obj->size < offset + len) {
 		xocl_err(&qdma->pdev->dev, "Invalid request, buf size: %ld, "
 			"request size %ld, offset %lld",
 			gem_obj->size, len, offset);
-		ret = -EINVAL;
-		goto out;
+		return -EINVAL;
 	}
 
 	XOCL_DRM_GEM_OBJECT_GET(gem_obj);
@@ -970,7 +969,7 @@ static ssize_t stream_post_bo(struct xocl_qdma *qdma,
 	if (!io_req) {
 		xocl_err(&qdma->pdev->dev, "io request list full");
 		ret = -ENOMEM;
-		goto out;
+		goto failed;
 	}
 
 	cb = &io_req->cb;
@@ -1004,16 +1003,13 @@ static ssize_t stream_post_bo(struct xocl_qdma *qdma,
 	ret = qdma_request_submit((unsigned long)qdma->dma_handle, queue->queue,
 		req);
 	if (ret < 0) {
-		xocl_err(&qdma->pdev->dev, "post wr failed ret=%ld", ret);
-		queue_req_free(queue, io_req, false);
-		io_req = NULL;
+		xocl_err(&qdma->pdev->dev, "submit request failed %ld", ret);
+		goto failed;
 	}
 
-out:
 	if (!kiocb) {
 		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
-		if (io_req)
-			queue_req_free(queue, io_req, false);
+		queue_req_free(queue, io_req, false);
 	} else {
 		spin_lock_bh(&queue->req_lock);
 		queue->req_submit_cnt++;
@@ -1021,9 +1017,16 @@ out:
 	}
 
 	return ret;
+failed:
+	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
+	if (io_req)
+		queue_req_free(queue, io_req, false);
+
+	return ret;
+
 }
 
-static ssize_t queue_rw(struct xocl_qdma *qdma, struct stream_queue *queue,
+static ssize_t queue_rw(struct xocl_qdma *qdma, struct qdma_stream_queue *queue,
 	char __user *buf, size_t sz, bool write, char __user *u_header,
 	struct kiocb *kiocb)
 {
@@ -1034,9 +1037,9 @@ static ssize_t queue_rw(struct xocl_qdma *qdma, struct stream_queue *queue,
 	struct xocl_qdma_req_header header;
 	u32 nents;
 	xdev_handle_t xdev;
-	struct stream_async_req  *io_req = NULL;
+	struct qdma_stream_async_req  *io_req = NULL;
 	struct qdma_request *req;
-	struct stream_async_arg *cb;
+	struct qdma_stream_async_arg *cb;
 	long	ret = 0;
 
 	xocl_dbg(&qdma->pdev->dev, "Read / Write Queue 0x%lx",
@@ -1045,17 +1048,28 @@ static ssize_t queue_rw(struct xocl_qdma *qdma, struct stream_queue *queue,
 	if (sz == 0)
 		return 0;
 
+	spin_lock(&queue->qlock);
+	if (queue->state == QUEUE_STATE_CLEANUP) {
+		xocl_err(&qdma->pdev->dev, "Invalid queue state");
+		spin_unlock(&queue->qlock);
+		return -EINVAL;
+	}
+	queue->refcnt++;
+	spin_unlock(&queue->qlock);
+
 	if (((uint64_t)(buf) & ~PAGE_MASK) && queue->qconf.c2h) {
 		xocl_err(&qdma->pdev->dev,
 			"C2H buffer has to be page aligned, buf %p", buf);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto failed;
 	}
 
 	memset (&header, 0, sizeof (header));
 	if (u_header &&  copy_from_user((void *)&header, u_header,
 		sizeof (struct xocl_qdma_req_header))) {
 		xocl_err(&qdma->pdev->dev, "copy header failed.");
-		return -EFAULT;
+		ret = -EFAULT;
+		goto failed;
 	}
 
 	if (!queue->qconf.c2h &&
@@ -1064,23 +1078,27 @@ static ssize_t queue_rw(struct xocl_qdma *qdma, struct stream_queue *queue,
 		xocl_err(&qdma->pdev->dev,
 			"H2C without EOT has to be multiple of 4k, sz 0x%lx",
 			sz);
+		ret = -EINVAL;
+		goto failed;
 	}
 
 	vma = find_vma(current->mm, buf_addr);
-	if (vma && (vma->vm_ops == &stream_vm_ops)) {
+	if (vma && (vma->vm_ops == &qdma_stream_vm_ops)) {
 		if (vma->vm_start > buf_addr || vma->vm_end <= buf_addr + sz) {
-			return -EINVAL;
+			xocl_err(&qdma->pdev->dev, "invalid BO address");
+			ret = -EINVAL;
+			goto failed;
 		}
-		ret = stream_post_bo(qdma, queue, vma->vm_private_data,
+		ret = qdma_stream_post_bo(qdma, queue, vma->vm_private_data,
 			(buf_addr - vma->vm_start), sz, write, &header, kiocb);
-		return ret;
+		goto failed;
 	}
 
 	ret = xocl_init_unmgd(&unmgd, (uint64_t)buf, sz, write);
 	if (ret) {
 		xocl_err(&qdma->pdev->dev, "Init unmgd buf failed, "
 			"ret=%ld", ret);
-		return ret;
+		goto failed;
 	}
 
 	xdev = xocl_get_xdev(qdma->pdev);
@@ -1090,7 +1108,8 @@ static ssize_t queue_rw(struct xocl_qdma *qdma, struct stream_queue *queue,
 	if (!nents) {
 		xocl_err(&qdma->pdev->dev, "map sgl failed");
 		xocl_finish_unmgd(&unmgd);
-		return -EFAULT;
+		ret = -EFAULT;
+		goto failed;
 	}
 
 	io_req = queue_req_new(queue);
@@ -1099,7 +1118,9 @@ static ssize_t queue_rw(struct xocl_qdma *qdma, struct stream_queue *queue,
 			"%s, queue 0x%lx io request OOM, %s, sz 0x%lx",
 			dev_name(&qdma->pdev->dev), queue->queue,
 			write ? "W":"R", sz);
-		return -ENOMEM;
+		xocl_finish_unmgd(&unmgd);
+		ret = -ENOMEM;
+		goto failed;
 	}
 
 	req = &io_req->req;
@@ -1134,37 +1155,45 @@ static ssize_t queue_rw(struct xocl_qdma *qdma, struct stream_queue *queue,
 	ret = qdma_request_submit((unsigned long)qdma->dma_handle, queue->queue,
 		req);
 	if (ret < 0) {
-		queue_req_free(queue, io_req, false);
-		io_req = NULL;
 		xocl_err(&qdma->pdev->dev, "post wr failed ret=%ld", ret);
+		xocl_finish_unmgd(&unmgd);
+		goto failed;
 	}
 
 	if (!kiocb) {
 		pci_unmap_sg(XDEV(xdev)->pdev, unmgd.sgt->sgl, nents, dir);
 		xocl_finish_unmgd(&unmgd);
-		if (io_req)
-			queue_req_free(queue, io_req, false);
+		queue_req_free(queue, io_req, false);
 	} else {
 		spin_lock_bh(&queue->req_lock);
 		queue->req_submit_cnt++;
 		spin_unlock_bh(&queue->req_lock);
 	}
 
-	if (ret < 0)
+failed:
+
+	if (ret < 0) {
+		if (io_req)
+			queue_req_free(queue, io_req, false);
 		return ret;
-	else if (kiocb)
-		return -EIOCBQUEUED;
-	else
-		return ret;
+	} else if (kiocb)
+		ret = -EIOCBQUEUED;
+
+	spin_lock(&queue->qlock);
+	queue->refcnt--;
+	spin_unlock(&queue->qlock);
+	wake_up(&queue->wq);
+
+	return ret;
 }
 
 static int queue_wqe_cancel(struct kiocb *kiocb)
 {
-	struct stream_async_req *io_req =
-	(struct stream_async_req *)kiocb->private;
-	struct stream_queue *queue = io_req->cb.queue;
+	struct qdma_stream_async_req *io_req =
+	(struct qdma_stream_async_req *)kiocb->private;
+	struct qdma_stream_queue *queue = io_req->cb.queue;
 	struct xocl_qdma *qdma = queue->qdma;
-	struct stream_async_arg *cb = &io_req->cb;
+	struct qdma_stream_async_arg *cb = &io_req->cb;
 
 	pr_debug("%s, %s cancel ST req 0x%p hndl 0x%lx,0x%lx, %s %u.\n",
 		__func__, dev_name(&queue->qdma->pdev->dev),
@@ -1189,10 +1218,10 @@ static int queue_wqe_cancel(struct kiocb *kiocb)
 static ssize_t queue_aio_read(struct kiocb *kiocb, const struct iovec *iov,
 			unsigned long nr, loff_t off)
 {
-	struct stream_queue	*queue;
+	struct qdma_stream_queue	*queue;
 	struct xocl_qdma	*qdma;
 
-	queue = (struct stream_queue *)kiocb->ki_filp->private_data;
+	queue = (struct qdma_stream_queue *)kiocb->ki_filp->private_data;
 	qdma = queue->qdma;
 
 	if (nr != 2) {
@@ -1214,10 +1243,10 @@ static ssize_t queue_aio_read(struct kiocb *kiocb, const struct iovec *iov,
 static ssize_t queue_aio_write(struct kiocb *kiocb, const struct iovec *iov,
 			unsigned long nr, loff_t off)
 {
-	struct stream_queue	*queue;
+	struct qdma_stream_queue	*queue;
 	struct xocl_qdma	*qdma;
 
-	queue = (struct stream_queue *)kiocb->ki_filp->private_data;
+	queue = (struct qdma_stream_queue *)kiocb->ki_filp->private_data;
 	qdma = queue->qdma;
 
 	if (nr != 2) {
@@ -1239,11 +1268,11 @@ static ssize_t queue_aio_write(struct kiocb *kiocb, const struct iovec *iov,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,16,0)
 static ssize_t queue_write_iter(struct kiocb *kiocb, struct iov_iter *io)
 {
-	struct stream_queue	*queue;
+	struct qdma_stream_queue	*queue;
 	struct xocl_qdma	*qdma;
 	unsigned long		nr;
 
-	queue = (struct stream_queue *)kiocb->ki_filp->private_data;
+	queue = (struct qdma_stream_queue *)kiocb->ki_filp->private_data;
 	qdma = queue->qdma;
 
 	nr = io->nr_segs;
@@ -1262,11 +1291,11 @@ static ssize_t queue_write_iter(struct kiocb *kiocb, struct iov_iter *io)
 
 static ssize_t queue_read_iter(struct kiocb *kiocb, struct iov_iter *io)
 {
-	struct stream_queue	*queue;
+	struct qdma_stream_queue	*queue;
 	struct xocl_qdma	*qdma;
 	unsigned long		nr;
 
-	queue = (struct stream_queue *)kiocb->ki_filp->private_data;
+	queue = (struct qdma_stream_queue *)kiocb->ki_filp->private_data;
 	qdma = queue->qdma;
 
 	nr = io->nr_segs;
@@ -1284,29 +1313,28 @@ static ssize_t queue_read_iter(struct kiocb *kiocb, struct iov_iter *io)
 }
 #endif
 
-static int queue_flush(struct file *file, fl_owner_t id)
+static int queue_flush(struct qdma_stream_queue *queue)
 {
 	struct xocl_qdma *qdma;
-	struct stream_queue *queue;
 	long	ret = 0;
-
-	queue = (struct stream_queue *)file->private_data;
-	if (!queue)
-		return 0;
 
 	qdma = queue->qdma;
 
-	mutex_lock(&qdma->str_dev_lock);
 	xocl_info(&qdma->pdev->dev, "Release Queue 0x%lx", queue->queue);
+	spin_lock(&queue->qlock);
 	if (queue->state != QUEUE_STATE_INITIALIZED) {
 		xocl_info(&qdma->pdev->dev, "Already released 0x%lx",
 			queue->queue);
-		mutex_unlock(&qdma->str_dev_lock);
+		spin_unlock(&queue->qlock);
 		return 0;
 	}
 	queue->state = QUEUE_STATE_CLEANUP;
+	spin_unlock(&queue->qlock);
 
-	stream_sysfs_destroy(queue);
+	wait_event(queue->wq, queue->refcnt == 0);
+
+	mutex_lock(&qdma->str_dev_lock);
+	qdma_stream_sysfs_destroy(queue);
 	if (queue->qconf.c2h)
 		qdma->queues[queue->qconf.qidx] = NULL;
 	else
@@ -1330,9 +1358,9 @@ static int queue_flush(struct file *file, fl_owner_t id)
 
 	spin_lock_bh(&queue->req_lock);
 	while (!list_empty(&queue->req_pend_list)) {
-		struct stream_async_req *io_req = list_first_entry(
+		struct qdma_stream_async_req *io_req = list_first_entry(
 			&queue->req_pend_list,
-			struct stream_async_req,
+			struct qdma_stream_async_req,
 			list);
 
 		spin_unlock_bh(&queue->req_lock);
@@ -1343,8 +1371,6 @@ static int queue_flush(struct file *file, fl_owner_t id)
 	}
 	spin_unlock_bh(&queue->req_lock);
 
-	if (queue->req_cache)
-		vfree(queue->req_cache);
 failed:
 	return ret;
 }
@@ -1352,14 +1378,18 @@ failed:
 static int queue_close(struct inode *inode, struct file *file)
 {
 	struct xocl_qdma *qdma;
-	struct stream_queue *queue;
+	struct qdma_stream_queue *queue;
 
-	queue = (struct stream_queue *)file->private_data;
+	queue = (struct qdma_stream_queue *)file->private_data;
 	if (!queue) 
 		return 0;
 
-	qdma = queue->qdma;
+	queue_flush(queue);
 
+	if (queue->req_cache)
+		vfree(queue->req_cache);
+
+	qdma = queue->qdma;
 	devm_kfree(&qdma->pdev->dev, queue);
 	file->private_data = NULL;
 
@@ -1375,17 +1405,16 @@ static struct file_operations queue_fops = {
 		.aio_read = queue_aio_read,
 		.aio_write = queue_aio_write,
 #endif
-		.flush = queue_flush,
 		.release = queue_close,
 };
 
 /* stream device file operations */
-static long stream_ioctl_create_queue(struct xocl_qdma *qdma,
+static long qdma_stream_ioctl_create_queue(struct xocl_qdma *qdma,
 			void __user *arg)
 {
 	struct xocl_qdma_ioc_create_queue req;
 	struct qdma_queue_conf *qconf;
-	struct stream_queue *queue;
+	struct qdma_stream_queue *queue;
 	long	ret;
 
 	if (copy_from_user((void *)&req, arg,
@@ -1403,6 +1432,8 @@ static long stream_ioctl_create_queue(struct xocl_qdma *qdma,
 	INIT_LIST_HEAD(&queue->req_pend_list);
 	INIT_LIST_HEAD(&queue->req_free_list);
 	spin_lock_init(&queue->req_lock);
+	spin_lock_init(&queue->qlock);
+	init_waitqueue_head(&queue->wq);
 
 	qconf = &queue->qconf;
 	qconf->st = 1; /* stream queue */
@@ -1474,13 +1505,13 @@ static long stream_ioctl_create_queue(struct xocl_qdma *qdma,
 
 	/* pre-allocate 2x io request struct */
 	queue->req_cache = vzalloc((qconf->rngsz << 1) *
-		sizeof(struct stream_async_req));
+		sizeof(struct qdma_stream_async_req));
 	if (!queue->req_cache) {
 		xocl_err(&qdma->pdev->dev, "req. cache OOM %u", qconf->rngsz);
 		goto failed;
 	} else {
 		int i;
-		struct stream_async_req *io_req = queue->req_cache;
+		struct qdma_stream_async_req *io_req = queue->req_cache;
 		unsigned int max = qconf->rngsz << 1;
 
 		for (i = 0; i < max; i++, io_req++)
@@ -1518,7 +1549,7 @@ static long stream_ioctl_create_queue(struct xocl_qdma *qdma,
 	queue->qdma = qdma;
 
 	mutex_lock(&qdma->str_dev_lock);
-	ret = stream_sysfs_create(queue);
+	ret = qdma_stream_sysfs_create(queue);
 	if (ret) {
 		mutex_unlock(&qdma->str_dev_lock);
 		xocl_err(&qdma->pdev->dev, "sysfs create failed");
@@ -1561,7 +1592,7 @@ failed:
 	return ret;
 }
 
-static long stream_ioctl_alloc_buffer(struct xocl_qdma *qdma,
+static long qdma_stream_ioctl_alloc_buffer(struct xocl_qdma *qdma,
 			void __user *arg)
 {
 	struct xocl_qdma_ioc_alloc_buf req;
@@ -1631,7 +1662,7 @@ static long stream_ioctl_alloc_buffer(struct xocl_qdma *qdma,
 		goto failed;
 	}
 	xobj->dmabuf = dmabuf;
-	xobj->dmabuf_vm_ops = &stream_vm_ops;
+	xobj->dmabuf_vm_ops = &qdma_stream_vm_ops;
 
 	req.buf_fd = dma_buf_fd(dmabuf, flags);
 	if (req.buf_fd < 0) {
@@ -1661,7 +1692,7 @@ failed:
 	return ret;
 }
 
-static long stream_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+static long qdma_stream_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct xocl_qdma *qdma;
 	long result = 0;
@@ -1670,10 +1701,10 @@ static long stream_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	switch (cmd) {
 	case XOCL_QDMA_IOC_CREATE_QUEUE:
-		result = stream_ioctl_create_queue(qdma, (void __user *)arg);
+		result = qdma_stream_ioctl_create_queue(qdma, (void __user *)arg);
 		break;
 	case XOCL_QDMA_IOC_ALLOC_BUFFER:
-		result = stream_ioctl_alloc_buffer(qdma, (void __user *)arg);
+		result = qdma_stream_ioctl_alloc_buffer(qdma, (void __user *)arg);
 		break;
 	default:
 		xocl_err(&qdma->pdev->dev, "Invalid request %u", cmd & 0xff);
@@ -1684,7 +1715,7 @@ static long stream_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	return result;
 }
 
-static int stream_open(struct inode *inode, struct file *file)
+static int qdma_stream_open(struct inode *inode, struct file *file)
 {
 	struct xocl_qdma *qdma;
 
@@ -1700,7 +1731,7 @@ static int stream_open(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static int stream_close(struct inode *inode, struct file *file)
+static int qdma_stream_close(struct inode *inode, struct file *file)
 {
 	struct xocl_qdma *qdma;
 
@@ -1717,11 +1748,11 @@ static int stream_close(struct inode *inode, struct file *file)
 /*
  * char device for QDMA
  */
-static const struct file_operations stream_fops = {
+static const struct file_operations qdma_stream_fops = {
 	.owner = THIS_MODULE,
-	.open = stream_open,
-	.release = stream_close,
-	.unlocked_ioctl = stream_ioctl,
+	.open = qdma_stream_open,
+	.release = qdma_stream_close,
+	.unlocked_ioctl = qdma_stream_ioctl,
 };
 
 static int qdma_probe(struct platform_device *pdev)
@@ -1775,7 +1806,7 @@ static int qdma_probe(struct platform_device *pdev)
 	}
 
 	qdma->cdev = cdev_alloc();
-	qdma->cdev->ops = &stream_fops;
+	qdma->cdev->ops = &qdma_stream_fops;
 	qdma->cdev->owner = THIS_MODULE;
 	qdma->instance = XOCL_DEV_ID(XDEV(xdev)->pdev);
 	qdma->cdev->dev = MKDEV(MAJOR(str_dev), qdma->instance);
