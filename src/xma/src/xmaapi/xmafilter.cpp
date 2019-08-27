@@ -22,6 +22,7 @@
 //#include "lib/xmahw_hal.h"
 //#include "lib/xmares.h"
 #include "xmaplugin.h"
+#include <bitset>
 
 #define XMA_FILTER_MOD "xmafilter"
 
@@ -130,7 +131,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         free(filter_session);
         return NULL;
     }
-    if ((uint32_t)cu_index >= hwcfg->devices[hwcfg_dev_index].number_of_cus || cu_index < 0) {
+    if ((uint32_t)cu_index >= hwcfg->devices[hwcfg_dev_index].number_of_cus || (cu_index < 0 && filter_props->cu_name == NULL)) {
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
                    "XMA session creation failed. Invalid cu_index = %d\n", cu_index);
         //Release singleton lock
@@ -138,6 +139,26 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         free(filter_session);
         return NULL;
     }
+    if (cu_index < 0) {
+        std::string cu_name = std::string(filter_props->cu_name);
+        found = false;
+        for (XmaHwKernel& kernel: g_xma_singleton->hwcfg.devices[hwcfg_dev_index].kernels) {
+            if (std::string((char*)kernel.name) == cu_name) {
+                found = true;
+                cu_index = kernel.cu_index;
+                break;
+            }
+        }
+        if (!found) {
+            xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
+                    "XMA session creation failed. cu %s not found\n", cu_name.c_str());
+            //Release singleton lock
+            g_xma_singleton->locked = false;
+            free(filter_session);
+            return NULL;
+        }
+    }
+
     if (hwcfg->devices[hwcfg_dev_index].kernels[cu_index].in_use) {
         xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,
                    "XMA session sharing CU: %s\n", hwcfg->devices[hwcfg_dev_index].kernels[cu_index].name);
@@ -152,8 +173,47 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     filter_session->base.hw_session.kernel_info = &hwcfg->devices[hwcfg_dev_index].kernels[cu_index];
 
     filter_session->base.hw_session.dev_index = hwcfg->devices[hwcfg_dev_index].dev_index;
-    xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,
-                "XMA session ddr_bank: %d\n", filter_session->base.hw_session.kernel_info->ddr_bank);
+
+    //Allow user selected default ddr bank per XMA session
+    if (filter_props->ddr_bank_index < 0) {
+        if (hwcfg->devices[hwcfg_dev_index].kernels[cu_index].soft_kernel) {
+            //Only allow ddr_bank == 0;
+            filter_session->base.hw_session.bank_index = 0;
+            xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,
+                "XMA session with soft_kernel default ddr_bank: %d\n", filter_session->base.hw_session.bank_index);
+        } else {
+            filter_session->base.hw_session.bank_index = filter_session->base.hw_session.kernel_info->default_ddr_bank;
+            xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,
+                "XMA session default ddr_bank: %d\n", filter_session->base.hw_session.bank_index);
+        }
+    } else {
+        if (hwcfg->devices[hwcfg_dev_index].kernels[cu_index].soft_kernel) {
+            if (filter_props->ddr_bank_index != 0) {
+                xma_logmsg(XMA_WARNING_LOG, XMA_FILTER_MOD,
+                    "XMA session with soft_kernel only allows ddr bank of zero\n");
+            }
+            //Only allow ddr_bank == 0;
+            filter_session->base.hw_session.bank_index = 0;
+            xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,
+                "XMA session with soft_kernel default ddr_bank: %d\n", filter_session->base.hw_session.bank_index);
+        } else {
+            std::bitset<MAX_DDR_MAP> tmp_bset;
+            tmp_bset = filter_session->base.hw_session.kernel_info->ip_ddr_mapping;
+            if (tmp_bset[filter_props->ddr_bank_index]) {
+                filter_session->base.hw_session.bank_index = filter_props->ddr_bank_index;
+                xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,
+                    "Using user supplied default ddr_bank. XMA session default ddr_bank: %d\n", filter_session->base.hw_session.bank_index);
+            } else {
+                xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
+                    "User supplied default ddr_bank is invalid. Valid ddr_bank mapping for this CU: %s\n", tmp_bset.to_string());
+                
+                //Release singleton lock
+                g_xma_singleton->locked = false;
+                free(filter_session);
+                return NULL;
+            }
+        }
+    }
 
     // Call the plugins initialization function with this session data
     //Sarab: Check plugin compatibility to XMA

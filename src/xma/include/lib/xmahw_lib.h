@@ -29,6 +29,7 @@
 #include <atomic>
 #include <vector>
 #include <memory>
+#include <map>
 
 #define MIN_EXECBO_POOL_SIZE      16
 #define MAX_EXECBO_BUFF_SIZE      4096// 4KB
@@ -78,7 +79,11 @@ typedef struct XmaHwKernel
     bool        in_use;
     int32_t     cu_index;
     uint64_t    base_address;
-    int32_t    ddr_bank;
+    //uint64_t bitmap based on MAX_DDR_MAP=64
+    uint64_t    ip_ddr_mapping;
+    int32_t     default_ddr_bank;
+    std::map<int32_t, int32_t> CU_arg_to_mem_info;// arg# -> ddr_bank#
+
     uint32_t    cu_mask0;
     uint32_t    cu_mask1;
     uint32_t    cu_mask2;
@@ -104,7 +109,8 @@ typedef struct XmaHwKernel
     in_use = false;
     cu_index = -1;
     regmap_max = -1;
-    ddr_bank = -1;
+    default_ddr_bank = -1;
+    ip_ddr_mapping = 0;
     cu_mask0 = 0;
     cu_mask1 = 0;
     cu_mask2 = 0;

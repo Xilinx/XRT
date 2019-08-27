@@ -257,15 +257,28 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             tmp1.cu_index = (int32_t)d;
             if (info.ip_layout[d].soft_kernel) {
                 tmp1.soft_kernel = true;
-                tmp1.ddr_bank = 0;
+                tmp1.default_ddr_bank = 0;
             } else {
                 if (info.ip_layout[d].dataflow_kernel) {
                     tmp1.dataflow_kernel = true;
                 }
-                rc = xma_xclbin_map2ddr(info.ip_ddr_mapping[d], &tmp1.ddr_bank);
-                //XMA supports only 1 Bank per Kernel
+                rc = xma_xclbin_map2ddr(info.ip_ddr_mapping[d], &tmp1.default_ddr_bank);
 
-                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - DDR bank:%d\n", d, tmp1.name, tmp1.ddr_bank);
+                //XMA now supports multiple DDR Banks per Kernel
+                tmp1.ip_ddr_mapping = info.ip_ddr_mapping[d];
+                for(uint32_t c = 0; c < info.number_of_connections; c++)
+                {
+                    XmaAXLFConnectivity *xma_conn = &info.connectivity[c];
+                    if (xma_conn->m_ip_layout_index == (int32_t)d) {
+                        tmp1.CU_arg_to_mem_info.emplace(xma_conn->arg_index, xma_conn->mem_data_index);
+                    }
+                }
+
+                if (tmp1.default_ddr_bank < 0) {
+                    xma_logmsg(XMA_WARNING_LOG, XMAAPI_MOD,"\tCU# %d - %s - DDR bank: NONE\n", d, tmp1.name);
+                } else {
+                    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - DDR bank:%d\n", d, tmp1.name, tmp1.default_ddr_bank);
+                }
                 if (xclOpenContext(dev_tmp1.handle, info.uuid, d, true) != 0) {
                     free(buffer);
                     xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Failed to open context to this CU\n");
