@@ -834,7 +834,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 
 		/* Passthrough Virtualization feature configuration */
 		if (xocl_passthrough_virtualization_on(lro)) {
-			if (iommu_present(&pci_bus_type)) {
+			if (!iommu_present(&pci_bus_type)) {
 				p2p_bar_addr = mb_p2p->p2p_bar_addr;
 				p2p_bar_len = mb_p2p->p2p_bar_len;
 				mgmt_info(lro, "got the p2p bar addr = %lld\n", p2p_bar_addr);
@@ -852,7 +852,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 				pci_write_config_dword(pdev, 0x18c, final_val);
 				mgmt_info(lro, "Passthrough Virtualization config done\n");
 			} else {
-				mgmt_err(lro, "request (%d) dropped, IOMMU is not present\n",
+				mgmt_err(lro, "request (%d) dropped, IOMMU is enabled\n",
 						 MAILBOX_REQ_READ_P2P_BAR_ADDR);
 			}
 		}

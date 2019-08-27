@@ -82,23 +82,14 @@ static void xocl_mb_read_p2p_addr(struct xocl_dev *xdev)
 	mb_p2p->p2p_bar_len = pci_resource_len(pdev, xdev->p2p_bar_idx);
 	mb_p2p->p2p_bar_addr = pci_resource_start(pdev, xdev->p2p_bar_idx);
 
-	mutex_lock(&xdev->dev_lock);
-	if (!list_is_singular(&xdev->ctx_list)) {
-		/* We should have one context for ourselves. */
-		BUG_ON(list_empty(&xdev->ctx_list));
-		userpf_err(xdev, "device is in use, can't update p2p in mgmtpf\n");
-		ret = -EBUSY;
-	}
-	mutex_unlock(&xdev->dev_lock);
-	if (ret < 0)
-		return;
-
-	ret = xocl_peer_request(xdev, mb_req, sizeof(struct mailbox_req),
-					&ret, &resplen, NULL, NULL, 0);
+	ret = xocl_peer_request(xdev, mb_req, reqlen, &ret, &resplen, NULL,
+							NULL, 0);
 	if (ret) {
-		userpf_info(xdev, "request update p2p addr failed %d\n", ret);
+		userpf_info(xdev, "dropped request (%d), failed with err: %d %d\n",
+					MAILBOX_REQ_READ_P2P_BAR_ADDR, ret);
 		return;
 	}
+
 	vfree(mb_req);
 }
 
@@ -436,7 +427,6 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 			/* Mgmt is online, try to probe peer */
 			userpf_info(xdev, "mgmt driver online\n");
 			(void) xocl_mb_connect(xdev);
-			(void) xocl_mb_read_p2p_addr(xdev);
 		} else if (st->state_flags & MB_STATE_OFFLINE) {
 			/* Mgmt is offline, mark peer as not ready */
 			userpf_info(xdev, "mgmt driver offline\n");
@@ -761,6 +751,9 @@ int xocl_p2p_mem_reserve(struct xocl_dev *xdev)
 	}
 #endif
 	devres_close_group(&pdev->dev, xdev->p2p_res_grp);
+
+	//Pass P2P bar address and len to mgmtpf
+	(void) xocl_mb_read_p2p_addr(xdev);
 
 	return 0;
 
