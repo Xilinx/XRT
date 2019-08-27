@@ -11,6 +11,7 @@ set(XRT_HEADER_SRC
   xcl_macros.h
   xcl_app_debug.h
   xclperf.h
+  profile_results.h
   xclhal2_mem.h
   xrt_mem.h)
 

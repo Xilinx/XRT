@@ -66,6 +66,7 @@ namespace xdp {
     uint32_t getNumMonitors(xclPerfMonType type);
     uint32_t getMonitorProperties(xclPerfMonType type, uint32_t index);
     void     getMonitorName(xclPerfMonType type, uint32_t index, char* name, uint32_t length);
+    std::string  getMonitorName(xclPerfMonType type, uint32_t index);
     
     // Counters
     size_t startCounters(xclPerfMonType type);

@@ -155,6 +155,14 @@ DeviceIntf::~DeviceIntf()
     if(str.length() >= length) name[length-1] = '\0'; // required ??
   }
 
+  std::string DeviceIntf::getMonitorName(xclPerfMonType type, uint32_t index)
+  {
+    if((type == XCL_PERF_MON_MEMORY) && (index < aimList.size())) { return aimList[index]->getName(); }
+    if((type == XCL_PERF_MON_ACCEL)  && (index < amList.size()))  { return amList[index]->getName(); }
+    if((type == XCL_PERF_MON_STR)    && (index < asmList.size())) { return asmList[index]->getName(); }
+    return std::string("");
+  }
+
   uint32_t DeviceIntf::getMonitorProperties(xclPerfMonType type, uint32_t index)
   {
     if((type == XCL_PERF_MON_MEMORY) && (index < aimList.size())) { return aimList[index]->getProperties(); }

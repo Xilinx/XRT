@@ -14,7 +14,7 @@ namespace xdp {
 
 
 void alloc_bo_start(void* payload) {
-    std::cout << "alloc_bo_start" << std::endl;
+//    std::cout << "alloc_bo_start" << std::endl;
 //    CallbackMarker* payload_content = reinterpret_cast<CallbackMarker*>(payload);
  //   std::cout << "idcode: " << payload_content->idcode << std::endl;
  //   std::cout << "devcode: " << payload_content->devcode << std::endl;
@@ -22,62 +22,62 @@ void alloc_bo_start(void* payload) {
 }
 
 void alloc_bo_end(void* payload) {
-    std::cout << "alloc_bo_end" << std::endl;
+//    std::cout << "alloc_bo_end" << std::endl;
     return;
 }
 
 void free_bo_start(void* payload) {
-    std::cout << "free_bo_start" << std::endl;
+//    std::cout << "free_bo_start" << std::endl;
     return;
 }
 
 void free_bo_end(void* payload) {
-    std::cout << "free_bo_end" << std::endl;
+//    std::cout << "free_bo_end" << std::endl;
     return;
 }
 
 void write_bo_start(void* payload) {
-    std::cout << "write_bo_start" << std::endl;
+//    std::cout << "write_bo_start" << std::endl;
     return;
 }
 
 void write_bo_end(void* payload) {
-    std::cout << "write_bo_end" << std::endl;
+//    std::cout << "write_bo_end" << std::endl;
     return;
 }
 
 void read_bo_start(void* payload) {
-    std::cout << "read_bo_start" << std::endl;
+//    std::cout << "read_bo_start" << std::endl;
     return;
 }
 
 void read_bo_end(void* payload) {
-    std::cout << "read_bo_end" << std::endl;
+//    std::cout << "read_bo_end" << std::endl;
     return;
 }
 
 void map_bo_start(void* payload) {
-    std::cout << "map_bo_start" << std::endl;
+//    std::cout << "map_bo_start" << std::endl;
     return;
 }
 
 void map_bo_end(void* payload) {
-    std::cout << "map_bo_end" << std::endl;
+//    std::cout << "map_bo_end" << std::endl;
     return;
 }
 
 void sync_bo_start(void* payload) {
-    std::cout << "sync_bo_start" << std::endl;
+//    std::cout << "sync_bo_start" << std::endl;
     return;
 }
 
 void sync_bo_end(void* payload) {
-    std::cout << "sync_bo_end" << std::endl;
+//    std::cout << "sync_bo_end" << std::endl;
     return;
 }
 
 void unmgd_read_start(void* payload) {
-  std::cout << "unmgd_read_start" << std::endl;
+//  std::cout << "unmgd_read_start" << std::endl;
 
   UnmgdPreadPwriteCBPayload* pLoad = reinterpret_cast<UnmgdPreadPwriteCBPayload*>(payload);
   (void)pLoad;
@@ -85,31 +85,31 @@ void unmgd_read_start(void* payload) {
 }
 
 void unmgd_read_end(void* payload) {
-  std::cout << "unmgd_read_end" << std::endl;
+//  std::cout << "unmgd_read_end" << std::endl;
   return;
 }
 
 void unmgd_write_start(void* payload) {
-  std::cout << "unmgd_write_start" << std::endl;
+//  std::cout << "unmgd_write_start" << std::endl;
   UnmgdPreadPwriteCBPayload* pLoad = reinterpret_cast<UnmgdPreadPwriteCBPayload*>(payload);
   (void)pLoad;
   return;
 }
 
 void unmgd_write_end(void* payload) {
-  std::cout << "unmgd_write_end" << std::endl;
+//  std::cout << "unmgd_write_end" << std::endl;
   return;
 }
 
 void read_start(void* payload) {
-  std::cout << "read_start" << std::endl;
+//  std::cout << "read_start" << std::endl;
   ReadWriteCBPayload* pLoad = reinterpret_cast<ReadWriteCBPayload*>(payload);
   (void)pLoad; 
   return;
 }
 
 void read_end(void* payload) {
-  std::cout << "read_end" << std::endl;
+//  std::cout << "read_end" << std::endl;
   return;
 }
 
@@ -117,7 +117,7 @@ void write_start(void* payload) {
 //  if(!isProfilingOn())
 //    return;
 
-  std::cout << "write_start" << std::endl;
+//  std::cout << "write_start" << std::endl;
 
   ReadWriteCBPayload* pLoad = reinterpret_cast<ReadWriteCBPayload*>(payload);
   (void)pLoad; 
@@ -126,7 +126,7 @@ void write_start(void* payload) {
 
 
 void write_end(void* payload) {
-    std::cout << "write_end" << std::endl;
+//    std::cout << "write_end" << std::endl;
     return;
 }
 
@@ -163,8 +163,32 @@ void start_device_profiling_from_hal(void* payload)
 #endif
 }
 
+void get_profile_results(void* payload)
+{
+  std::cout << " get_profiling_result " << std::endl;
+
+  ProfileResultsCBPayload* payld = (ProfileResultsCBPayload*)payload;
+  // HAL pointer
+  xclDeviceHandle handle = (xclDeviceHandle)(payld->basePayload.devcode);
+  void* results = payld->results;
+
+  HALProfiler::Instance()->getProfileResults(handle, results);
+}
+
+void clear_profile_results(void* payload)
+{
+  std::cout << " clear_profiling_result " << std::endl;
+
+  ProfileResultsCBPayload* payld = (ProfileResultsCBPayload*)payload;
+  // HAL pointer
+  xclDeviceHandle handle = (xclDeviceHandle)(payld->basePayload.devcode);
+  void* results = payld->results;
+
+  HALProfiler::Instance()->clearProfileResults(handle, results);
+}
+
 void unknown_cb_type(void* payload) {
-    std::cout << "unknown_cb_type" << std::endl;
+//    std::cout << "unknown_cb_type" << std::endl;
     return;
 }
 
@@ -191,6 +215,15 @@ void hal_level_xdp_cb_func(HalCallbackType cb_type, void* payload)
 //    xdp::initialize_xdp();
 
     switch (cb_type) {
+        case HalCallbackType::START_DEVICE_PROFILING:
+            xdp::start_device_profiling_from_hal(payload);
+            break;
+        case HalCallbackType::GET_PROFILE_RESULTS:
+            xdp::get_profile_results(payload);
+            break;
+        case HalCallbackType::CLEAR_PROFILE_RESULTS:
+            xdp::clear_profile_results(payload);
+            break;
         case HalCallbackType::ALLOC_BO_START:
             xdp::alloc_bo_start(payload);
             break;
@@ -250,9 +283,6 @@ void hal_level_xdp_cb_func(HalCallbackType cb_type, void* payload)
             break;
         case HalCallbackType::WRITE_END:
             xdp::write_end(payload);
-            break;
-        case HalCallbackType::START_DEVICE_PROFILING:
-            xdp::start_device_profiling_from_hal(payload);
             break;
         default: 
             xdp::unknown_cb_type(payload);

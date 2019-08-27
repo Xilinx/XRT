@@ -25,6 +25,7 @@
 
 #include "scan.h"
 #include "xclhal2.h"
+#include "profile_results.h"
 #include "core/pcie/driver/linux/include/xocl_ioctl.h"
 #include "core/pcie/driver/linux/include/qdma_ioctl.h"
 #include "core/common/xrt_profiling.h"
@@ -149,6 +150,8 @@ public:
     int xclGetDebugIPlayoutPath(char* layoutPath, size_t size);
     int xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
     int xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
+
+//    int xclGetProfileResults(xclDeviceHandle handle, ProfileResults* results);
 
     // Experimental debug profile device data API
     int xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info);

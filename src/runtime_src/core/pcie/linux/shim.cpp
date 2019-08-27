@@ -27,6 +27,7 @@
 #include "core/common/AlignedAllocator.h"
 
 #include "plugin/xdp/hal_profile.h"
+#include "core/include/profile_results.h"
 
 
 #include "xclbin.h"
@@ -1432,6 +1433,7 @@ int shim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamp
     return size;
 }
 
+
 #if 0
 int shim::xclConfigPlugin(HalPluginConfig* config) {
   xdphal::load_xdp_plugin_library(config);
@@ -1909,6 +1911,26 @@ int xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz
 {
   xocl::shim *drv = xocl::shim::handleCheck(handle);
   return (drv) ? drv->xclReadTraceData(traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample) : -ENODEV;
+}
+
+int xclGetProfileResults(xclDeviceHandle handle, ProfileResults* results) 
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  if(!drv)
+    return -ENODEV;
+
+  GET_PROFILE_RESULTS_CB(handle, results);
+  return 0;
+}
+
+int xclClearProfileResults(xclDeviceHandle handle, ProfileResults* results) 
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  if(!drv)
+    return -ENODEV;
+
+  CLEAR_PROFILE_RESULTS_CB(handle, results);
+  return 0;
 }
 
 

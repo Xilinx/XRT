@@ -485,6 +485,9 @@ struct HalPluginConfig {
 };
 
 enum HalCallbackType {
+  START_DEVICE_PROFILING,
+  GET_PROFILE_RESULTS,
+  CLEAR_PROFILE_RESULTS,
   ALLOC_BO_START,
   ALLOC_BO_END,
   FREE_BO_START,
@@ -504,8 +507,7 @@ enum HalCallbackType {
   READ_START,
   READ_END,
   WRITE_START,
-  WRITE_END,
-  START_DEVICE_PROFILING
+  WRITE_END
 };
 
 #include<cstdint>
@@ -540,6 +542,12 @@ struct UnmgdPreadPwriteCBPayload
   unsigned flags;
   size_t   count;
   uint64_t offset;
+};
+
+struct ProfileResultsCBPayload
+{
+  CBPayload basePayload;
+  void* results;
 };
 
 /**

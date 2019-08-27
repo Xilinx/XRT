@@ -10,6 +10,7 @@
 #include <boost/filesystem/path.hpp>
 #include "core/include/xclperf.h"
 #include "core/include/xclhal2.h"
+#include "core/include/profile_results.h"
 
 namespace xdphal {
 
@@ -120,6 +121,20 @@ public:
   ~StartDeviceProfilingCls();
 };
 
+class GetProfileResultsCls
+{
+public:
+  GetProfileResultsCls(xclDeviceHandle handle, ProfileResults*);
+  ~GetProfileResultsCls();
+};
+
+class ClearProfileResultsCls
+{
+public:
+  ClearProfileResultsCls(xclDeviceHandle handle, ProfileResults*);
+  ~ClearProfileResultsCls();
+};
+
 void load_xdp_plugin_library(HalPluginConfig* config);
 
 } //  xdphal
@@ -139,5 +154,7 @@ void load_xdp_plugin_library(HalPluginConfig* config);
 #define READ_CB xdphal::ReadCallLogger read_call_logger(handle, space, offset, hostBuf, size);
 
 #define START_DEVICE_PROFILING_CB(handle) xdphal::StartDeviceProfilingCls start_device_profiling_inst(handle);
+#define GET_PROFILE_RESULTS_CB(handle, results) xdphal::GetProfileResultsCls get_profile_results_inst(handle, results);
+#define CLEAR_PROFILE_RESULTS_CB(handle, results) xdphal::ClearProfileResultsCls clear_profile_results_inst(handle, results);
 
 #endif

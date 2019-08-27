@@ -206,15 +206,39 @@ StartDeviceProfilingCls::StartDeviceProfilingCls(xclDeviceHandle handle)
 StartDeviceProfilingCls::~StartDeviceProfilingCls()
 {}
 
+GetProfileResultsCls::GetProfileResultsCls(xclDeviceHandle handle, ProfileResults* results)
+{
+  load_xdp_plugin_library(nullptr);
+  if(!cb_valid()) return;
+  // payload ?
+  ProfileResultsCBPayload payload = {{0, (unsigned long)handle}, results};
+  cb(HalCallbackType::GET_PROFILE_RESULTS, &payload);
+}
+
+GetProfileResultsCls::~GetProfileResultsCls()
+{}
+
+ClearProfileResultsCls::ClearProfileResultsCls(xclDeviceHandle handle, ProfileResults* results)
+{
+  load_xdp_plugin_library(nullptr);
+  if(!cb_valid()) return;
+  // payload ?
+  ProfileResultsCBPayload payload = {{0, (unsigned long)handle}, results};
+  cb(HalCallbackType::CLEAR_PROFILE_RESULTS, &payload);
+}
+
+ClearProfileResultsCls::~ClearProfileResultsCls()
+{}
+
 void load_xdp_plugin_library(HalPluginConfig* config)
 {
     (void)config;
 
-    std::cout << "Loading xdp plugins ..." << std::endl;
     std::lock_guard<std::mutex> loader_guard(lock);
     if (loaded) {
         return;
     }
+    std::cout << "Loading xdp plugins ..." << std::endl;
     bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
     bfs::path libname("libxdp_hal_plugin.so");
     if (xrt.empty()) {

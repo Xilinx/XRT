@@ -19,7 +19,7 @@
 
 
 #include "xdp/profile/device/device_intf.h"
-
+#include "core/include/profile_results.h"
 
 namespace xdp {
 
@@ -27,11 +27,21 @@ namespace xdp {
 class HALProfiler
 {
   std::vector<DeviceIntf*> deviceList;
+    std::map<std::string, xclCounterResults> mFinalCounterResultsMap;
+    std::map<std::string, xclCounterResults> mRolloverCounterResultsMap;
+    std::map<std::string, xclCounterResults> mRolloverCountsMap;
 
 // flags  : profile modes 
 
 private:
   HALProfiler() {}
+
+  void calculateAIMRolloverResult(std::string key, unsigned int numAIM, xclCounterResults& counterResult, bool firstReadAfterProgram);
+  void calculateAMRolloverResult(std::string key, unsigned int numAM, xclCounterResults& counterResults, bool firstReadAfterProgram);
+  void recordAMResult(ProfileResults* results, DeviceIntf* currDevice, std::string key);
+  void recordAIMResult(ProfileResults* results, DeviceIntf* currDevice, std::string key);
+  void recordASMResult(ProfileResults* results, DeviceIntf* currDevice, std::string key);
+
 
 public:
   static HALProfiler* Instance();
@@ -39,11 +49,13 @@ public:
   ~HALProfiler();
 
   void startProfiling(xclDeviceHandle);
+  void getProfileResults(xclDeviceHandle, void*);
+  void clearProfileResults(xclDeviceHandle, void*);
   void endProfiling();
 
   void startCounters();
   void stopCounters();
-  void readCounters();
+  void readCounters(xclCounterResults& counterResults);
 
   void startTrace();
   void stopTrace();
