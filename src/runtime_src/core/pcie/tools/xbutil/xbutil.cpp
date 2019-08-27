@@ -1056,8 +1056,10 @@ int xcldev::device::verifyKernelTest(void)
     int ret = runTestCase(std::string("22_verify.py"),
         std::string("verify.xclbin"), output);
 
-    if (ret != 0)
+    if (ret != 0) {
+        std::cout << output << std::endl;
         return ret;
+    }
 
     if (output.find("Hello World") == std::string::npos) {
         std::cout << output << std::endl;
@@ -1073,8 +1075,10 @@ int xcldev::device::bandwidthKernelTest(void)
     int ret = runTestCase(std::string("23_bandwidth.py"),
         std::string("bandwidth.xclbin"), output);
 
-    if (ret != 0)
+    if (ret != 0) {
+        std::cout << output << std::endl;
         return ret;
+    }
 
     if (output.find("PASS") == std::string::npos) {
         std::cout << output << std::endl;
@@ -1122,8 +1126,10 @@ int xcldev::device::bandwidthKernelXbtest(void)
 
     int ret = runXbTestCase(std::string("memory.json"), output);
 
-    if (ret != 0)
+    if (ret != 0) {
+        std::cout << output << std::endl;
         return ret;
+    }
 
     if (output.find("RESULT: ALL TESTS PASSED") == std::string::npos) {
         std::cout << output << std::endl;
@@ -1151,8 +1157,10 @@ int xcldev::device::verifyKernelXbtest(void)
 
     int ret = runXbTestCase(std::string("verify.json"), output);
 
-    if (ret != 0)
+    if (ret != 0) {
+        std::cout << output << std::endl;
         return ret;
+    }
 
     if (output.find("RESULT: ALL TESTS PASSED") == std::string::npos) {
         std::cout << output << std::endl;
@@ -1168,8 +1176,10 @@ int xcldev::device::dmaXbtest(void)
 
     int ret = runXbTestCase(std::string("dma.json"), output);
 
-    if (ret != 0)
+    if (ret != 0) {
+        std::cout << output << std::endl;
         return ret;
+    }
 
     if (output.find("RESULT: ALL TESTS PASSED") == std::string::npos) {
         std::cout << output << std::endl;
