@@ -563,6 +563,7 @@ namespace ZYNQ {
         uint64_t partial = (((currentSample >> 45) & 0xFFFF) << (16 * mod));
         results.HostTimestamp = results.HostTimestamp | partial;
         if (mod == 3) {
+          results.isClockTrain = true;
           traceVector.mArray[static_cast<int>(i/4)] = results;
         }
         continue;
@@ -577,6 +578,7 @@ namespace ZYNQ {
       results.Error = (currentSample >> 63) & 0x1;
       results.EventID = XCL_PERF_MON_HW_EVENT;
       results.EventFlags = ((currentSample >> 45) & 0xF) | ((currentSample >> 57) & 0x10) ;
+      results.isClockTrain = false;
       traceVector.mArray[i - clockWordIndex + 1] = results;
       
     }
@@ -636,11 +638,8 @@ namespace ZYNQ {
 
   uint32_t ZYNQShimProfiling::getIPCountAddrNames(int type, uint64_t *baseAddress, std::string *portNames, uint8_t *properties, uint8_t *majorVersions, uint8_t *minorVersions, size_t size)
   {
-    char sysfsPath[512] ;
-
     debug_ip_layout* layout ;
-    
-    shim->xclGetSysfsPath("", "debug_ip_layout", sysfsPath, 512);
+    std::string sysfsPath = shim->xclGetSysfsPath("debug_ip_layout");
     
     std::ifstream ifs(sysfsPath, std::ifstream::binary);
     uint32_t count = 0 ;

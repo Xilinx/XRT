@@ -8,7 +8,7 @@ using std::string;
 
 TEST(MetaData, AddingMissingFile) {
   XclBin xclBin;
-  const std::string formattedString = "BUILD_METADATA:junk.json:json";
+  const std::string formattedString = "BUILD_METADATA:JSON:junk.json";
   ParameterSectionData psd(formattedString);
 
   ASSERT_THROW (xclBin.addSection(psd), std::runtime_error);

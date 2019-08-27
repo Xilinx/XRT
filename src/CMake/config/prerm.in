@@ -78,4 +78,8 @@ rm -f /etc/dracut.conf.d/xclmgmt.dracut.conf
 echo "Cleaning up XMA..."
 rm -f /tmp/xma_shm_db
 
+echo "Cleaning up python..."
+rm -f /opt/xilinx/xrt/python/*.pyc
+rm -f /opt/xilinx/xrt/test/*.pyc
+
 exit 0

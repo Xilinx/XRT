@@ -96,7 +96,9 @@ namespace xdp {
         P2P_HOST_TRANSFERS,
         PORT_BIT_WIDTH,
         KERNEL_COUNT,
-        OBJECTS_RELEASED
+        OBJECTS_RELEASED,
+        CU_CONTEXT_EN,
+        TRACE_MEMORY
       };
 
     public:
@@ -121,6 +123,11 @@ namespace xdp {
       inline GuidanceMap& getDeviceExecTimesMap() {return mDeviceExecTimesMap;}
       inline GuidanceMap& getComputeUnitCallsMap() {return mComputeUnitCallsMap;}
       inline GuidanceMap2& getKernelCountsMap() {return mKernelCountsMap;}
+      //Profiling infrastructure metadata
+      void setCtxEn(bool ctxEn) {IsCtxEn = ctxEn;}
+      bool isCtxEn() {return IsCtxEn;}
+      void setTraceMemory(const std::string& traceMemory) {TraceMemory = traceMemory;}
+      std::string getTraceMemory() {return TraceMemory;}
 
     protected:
       GuidanceMap  mDeviceExecTimesMap;
@@ -131,6 +138,8 @@ namespace xdp {
       bool IsHbmDevice = false;
       bool IsKdmaDevice = false;
       bool IsP2PDevice = false;
+      bool IsCtxEn = false;
+      std::string TraceMemory = "NA";
 
     // ****************************************
     // Platform Metadata required by profiler
@@ -142,18 +151,18 @@ namespace xdp {
       virtual void getTraceStringFromComputeUnit(const std::string& deviceName,
                                                  const std::string& cuName,
                                                  std::string& traceString) = 0;
-      virtual size_t getDeviceTimestamp(std::string& deviceName) = 0;
+      virtual size_t getDeviceTimestamp(const std::string& deviceName) = 0;
       virtual double getReadMaxBandwidthMBps() = 0 ;
       virtual double getWriteMaxBandwidthMBps() = 0;
       // HAL APIS
-      virtual unsigned getProfileNumberSlots(xclPerfMonType type,
-                                             std::string& deviceName) = 0;
+      virtual unsigned int getProfileNumberSlots(xclPerfMonType type,
+                                            const std::string& deviceName) = 0;
       virtual void getProfileSlotName(xclPerfMonType type,
-                                      std::string& deviceName,
-                                      unsigned slotnum, std::string& slotName) = 0;
-      virtual unsigned getProfileSlotProperties(xclPerfMonType type,
-                                                std::string& deviceName,
-                                                unsigned slotnum) = 0;
+                                      const std::string& deviceName,
+                                      unsigned int slotnum, std::string& slotName) = 0;
+      virtual unsigned int getProfileSlotProperties(xclPerfMonType type,
+                                                const std::string& deviceName,
+                                                unsigned int slotnum) = 0;
       virtual bool isAPCtrlChain(const std::string& deviceName, const std::string& cu) = 0;
 
     protected:

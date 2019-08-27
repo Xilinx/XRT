@@ -149,6 +149,13 @@ get_timeline_trace()
   return value;
 }
 
+inline std::string
+get_trace_buffer_size()
+{
+  static std::string value = detail::get_string_value("Debug.trace_buffer_size", "1M");
+  return value;
+}
+
 inline bool
 get_api_checks()
 {
@@ -284,9 +291,9 @@ get_cdma()
 }
 
 inline bool
-get_pr_enable()
+get_enable_pr()
 {
-  static unsigned int value = detail::get_bool_value("Runtime.enable_pr",false);
+  static unsigned int value = detail::get_bool_value("Runtime.enable_pr",true);
   return value;
 }
 
@@ -346,9 +353,9 @@ inline bool get_system_dpa_emulation()
 }
 
 inline std::string
-get_ctx_info()
+get_kernel_channel_info()
 {
-  static std::string value = detail::get_string_value("Runtime.ctx_info","");
+  static std::string value = detail::get_string_value("Runtime.kernel_channels","");
   return value;
 }
 

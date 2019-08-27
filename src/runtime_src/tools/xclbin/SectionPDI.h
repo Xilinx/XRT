@@ -42,7 +42,7 @@ class SectionPDI : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(PDI, "PDI", "", false, boost::factory<SectionPDI*>()); }
+    _init() { registerSectionCtor(PDI, "PDI", "", false, false, boost::factory<SectionPDI*>()); }
   } _initializer;
 };
 

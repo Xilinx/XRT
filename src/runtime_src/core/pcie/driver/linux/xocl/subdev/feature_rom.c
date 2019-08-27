@@ -84,6 +84,15 @@ static ssize_t timestamp_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(timestamp);
 
+static ssize_t uuid_show(struct device *dev,
+    struct device_attribute *attr, char *buf)
+{
+	struct feature_rom *rom = platform_get_drvdata(to_platform_device(dev));
+
+	return sprintf(buf, "%s\n", rom->uuid);
+}
+static DEVICE_ATTR_RO(uuid);
+
 static ssize_t FPGA_show(struct device *dev,
     struct device_attribute *attr, char *buf)
 {
@@ -100,6 +109,7 @@ static struct attribute *rom_attrs[] = {
 	&dev_attr_ddr_bank_size.attr,
 	&dev_attr_timestamp.attr,
 	&dev_attr_FPGA.attr,
+	&dev_attr_uuid.attr,
 	NULL,
 };
 
@@ -289,11 +299,13 @@ static int __find_firmware(struct platform_device *pdev, char *fw_name,
 	int err = 0;
 
 	/* For 2RP, only uuid is provided */
-	if (strlen(rom->uuid) > 0)
-		snprintf(fw_name, len, "xilinx/%s.%s", rom->uuid, suffix);
-	else
+	if (strlen(rom->uuid) > 0) {
+		snprintf(fw_name, len, "xilinx/%s/%s.%s", rom->uuid, rom->uuid,
+			suffix);
+	} else {
 		snprintf(fw_name, len, "xilinx/%04x-%04x-%04x-%016llx.%s",
 			vendor, deviceid, subdevice, timestamp, suffix);
+	}
 
 	/* deviceid is arg, the others are from pdev) */
 	xocl_info(&pdev->dev, "try load %s", fw_name);

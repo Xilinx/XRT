@@ -1784,7 +1784,7 @@ static int qdma_probe(struct platform_device *pdev)
 	memset(conf, 0, sizeof(*conf));
 	conf->pdev = XDEV(xdev)->pdev;
 	conf->intr_rngsz = QDMA_INTR_COAL_RING_SIZE;
-	conf->master_pf = 1;
+	conf->master_pf = XOCL_DSA_IS_SMARTN(xdev) ? 0 : 1;
 	conf->qsets_max = QDMA_QSETS_MAX;
 	conf->bar_num_config = dma_bar;
 	conf->bar_num_stm = XDEV(xdev)->bar_idx;
@@ -1799,10 +1799,12 @@ static int qdma_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	ret = set_max_chan(qdma, 2);
-	if (ret) {
-		xocl_err(&pdev->dev, "Set max channel failed");
-		goto failed;
+	if (!XOCL_DSA_IS_SMARTN(xdev)) {
+		ret = set_max_chan(qdma, 2);
+		if (ret) {
+			xocl_err(&pdev->dev, "Set max channel failed");
+			goto failed;
+		}
 	}
 
 	ret = qdma_device_get_config((unsigned long)qdma->dma_handle,

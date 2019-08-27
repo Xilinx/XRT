@@ -79,7 +79,7 @@ SectionConnectivity::marshalToJSON(char* _pDataSection,
     connection.put("m_ip_layout_index", XUtil::format("%d", (unsigned int)pHdr->m_connection[index].m_ip_layout_index).c_str());
     connection.put("mem_data_index", XUtil::format("%d", (unsigned int)pHdr->m_connection[index].mem_data_index).c_str());
 
-    m_connection.add_child("connection", connection);
+    m_connection.push_back(std::make_pair("", connection));   // Used to make an array of objects
   }
 
   connectivity.add_child("m_connection", m_connection);

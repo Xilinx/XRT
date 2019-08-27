@@ -24,9 +24,13 @@
 #include <iomanip>
 #include <chrono>
 
+#include <sys/mman.h>
+
 #include "ocl_profiler.h"
 #include "xdp/profile/config.h"
 #include "xdp/profile/core/rt_profile.h"
+#include "xdp/profile/device/xdp_xrt_device.h"
+#include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/writer/json_profile.h"
 #include "xdp/profile/writer/csv_profile.h"
 #include "xrt/util/config_reader.h"
@@ -129,6 +133,8 @@ namespace xdp {
 
     logFinalTrace(XCL_PERF_MON_MEMORY /* type should not matter */);  // reads and logs trace data for all monitors in HW flow
 
+    endTrace();
+
     // Gather info for guidance
     // NOTE: this needs to be done here before the device clears its list of CUs
     // See xocl::device::unload_program as called from xocl::program::~program
@@ -166,8 +172,7 @@ namespace xdp {
       auto xdevice = device->get_xrt_device();
       if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
         dInt = &(itr->second.mDeviceIntf);
-        // Find good place to set device handle
-        dInt->setDeviceHandle(xdevice);
+        dInt->setDevice(new xdp::XrtDevice(xdevice));
         dInt->readDebugIPlayout();
       }       
       xdp::xoclp::platform::device::data* info = &(itr->second);
@@ -182,6 +187,12 @@ namespace xdp {
       // Reset and Start counters
       if(dInt) {
         dInt->startCounters(XCL_PERF_MON_MEMORY);
+        /* Configure AMs if context monitoring is supported
+         * else disable alll AM data
+         */
+        std::string ctx_info = xrt_core::config::get_kernel_channel_info();
+        dInt->configAmContext(ctx_info);
+        Plugin->setCtxEn(!ctx_info.empty());
       } else {
         xdevice->startCounters(XCL_PERF_MON_MEMORY);
       }
@@ -191,9 +202,9 @@ namespace xdp {
       // configureDataflow
       if(dInt && (Plugin->getFlowMode() == xdp::RTUtil::DEVICE)) {
         /* If CU corresponding to Accel Monitors has AP Control Chain, then enable Dataflow on the Accel Monitors */
-        unsigned numMon = dInt->getNumMonitors(XCL_PERF_MON_ACCEL);
+        unsigned int numMon = dInt->getNumMonitors(XCL_PERF_MON_ACCEL);
         auto ip_config = std::make_unique <bool []>(numMon);
-        for (unsigned i=0; i < numMon; i++) {
+        for (unsigned int i=0; i < numMon; i++) {
           char name[128];
           dInt->getMonitorName(XCL_PERF_MON_ACCEL, i, name, 128);
           std::string cuName(name); // Assumption : For Accel Monitor, monitor instance is named as the corresponding CU
@@ -216,6 +227,7 @@ namespace xdp {
   void OCLProfiler::startTrace()
   {
     auto platform = getclPlatformID();
+    std::string trace_memory = "FIFO";
 
     for (auto device : platform->get_device_range()) {
       if(!device->is_active()) {
@@ -230,7 +242,7 @@ namespace xdp {
       DeviceIntf* dInt = nullptr;
       if((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
         dInt = &(itr->second.mDeviceIntf);
-        dInt->setDeviceHandle(xdevice);
+        dInt->setDevice(new xdp::XrtDevice(xdevice));
         dInt->readDebugIPlayout();
       }
       xdp::xoclp::platform::device::data* info = &(itr->second);
@@ -254,7 +266,14 @@ namespace xdp {
       XOCL_DEBUGF("Starting trace with option = 0x%x\n", traceOption);
 
       if(dInt) {
+        // Configure monitor IP and FIFO if present
         dInt->startTrace(XCL_PERF_MON_MEMORY, traceOption);
+        // Configure DMA if present
+        if (dInt->hasTs2mm()) {
+          info->ts2mm_en = allocateDeviceDDRBufferForTrace(dInt, xdevice);
+          /* Todo: Write user specified memory bank here */
+          trace_memory = "TS2MM";
+        }
       } else {
         xdevice->startTrace(XCL_PERF_MON_MEMORY, traceOption);
         // for HW_EMU consider , 2 calls , with new XDP, all flow should be same
@@ -274,7 +293,31 @@ namespace xdp {
       info->mTrainingIntervalUsec = (uint32_t)(pow(2, 17) / deviceClockMHz);
       profileMgr->setLoggingTrace(XCL_PERF_MON_MEMORY, false);
     }
-    return;
+
+    if(Plugin->getFlowMode() == xdp::RTUtil::DEVICE)
+      Plugin->setTraceMemory(trace_memory);
+  }
+
+  void OCLProfiler::endTrace()
+  {
+    auto platform = getclPlatformID();
+
+    for (auto device : platform->get_device_range()) {
+      if(!device->is_active()) {
+        continue;
+      }
+      auto itr = DeviceData.find(device);
+      if (itr==DeviceData.end()) {
+        return;
+      }
+      auto xdevice = device->get_xrt_device();
+      xdp::xoclp::platform::device::data* info = &(itr->second);
+      if (info->ts2mm_en) {
+        auto dInt  = &(info->mDeviceIntf);
+        clearDeviceDDRBufferForTrace(dInt, xdevice);
+        info->ts2mm_en = false;
+      }
+    }
   }
 
   // Get device counters
@@ -332,6 +375,8 @@ namespace xdp {
   void OCLProfiler::startProfiling() {
     if (xrt::config::get_profile() == false)
       return;
+
+    ProfileMgr->setProfileStartTime(std::chrono::steady_clock::now());
 
     // Turn on device profiling (as requested)
     std::string data_transfer_trace = xrt::config::get_data_transfer_trace();
@@ -392,6 +437,8 @@ namespace xdp {
   // Wrap up profiling by writing files
   void OCLProfiler::endProfiling()
   {
+    ProfileMgr->setProfileEndTime(std::chrono::steady_clock::now());
+
     configureWriters();
     if (applicationProfilingOn()) {
       // Write out reports
@@ -415,9 +462,9 @@ namespace xdp {
       setTraceFooterString();
     }
     // These tables are only enabled if a compatible monitor is present
-    unsigned numStallSlots = 0;
-    unsigned numStreamSlots = 0;
-    unsigned numShellSlots = 0;
+    unsigned int numStallSlots = 0;
+    unsigned int numStreamSlots = 0;
+    unsigned int numShellSlots = 0;
     if (applicationProfilingOn() && ProfileMgr->isDeviceProfileOn()) {
       if (Plugin->getFlowMode() == RTUtil::DEVICE || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
         for (auto device : Platform->get_device_range()) {
@@ -486,7 +533,7 @@ namespace xdp {
       DeviceIntf* dInt = nullptr;
       if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
         dInt = &(itr->second.mDeviceIntf);
-        dInt->setDeviceHandle(xdevice);
+        dInt->setDevice(new xdp::XrtDevice(xdevice));
       }
 
       std::chrono::steady_clock::time_point nowTime = std::chrono::steady_clock::now();
@@ -576,7 +623,7 @@ namespace xdp {
       DeviceIntf* dInt = nullptr;
       if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
         dInt = &(itr->second.mDeviceIntf);
-        dInt->setDeviceHandle(device->get_xrt_device());
+        dInt->setDevice(new xdp::XrtDevice(xdevice));
       }
 
       // Do clock training if enough time has passed
@@ -608,12 +655,27 @@ namespace xdp {
         if (device->is_active())
           binary_name = device->get_xclbin().project_name();
 
-        if(dInt) {    // HW Device flow
-          dInt->readTrace(type, info->mTraceVector);
-          if(info->mTraceVector.mLength) {
-            profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector);
+        if (dInt) {    // HW Device flow
+          if (dInt->hasFIFO()) {
+              dInt->readTrace(type, info->mTraceVector);
+              if (info->mTraceVector.mLength) {
+                profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector);
+                // detect if FIFO is full
+                auto fifoProperty = Plugin->getProfileSlotProperties(XCL_PERF_MON_FIFO, device_name, 0);
+                auto fifoSize = RTUtil::getDevTraceBufferSize(fifoProperty);
+                if (info->mTraceVector.mLength >= fifoSize)
+                  Plugin->sendMessage(FIFO_WARN_MSG);
+              }
+              info->mTraceVector.mLength= 0;
+          } else if (dInt->hasTs2mm()) {
+            configureDDRTraceReader(dInt->getWordCountTs2mm());
+            bool endLog = false;
+            while (!endLog) {
+              endLog = !(readTraceDataFromDDR(dInt, xdevice, info->mTraceVector));
+              profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector, endLog);
+              info->mTraceVector = {};
+            }
           }
-          info->mTraceVector.mLength= 0;
         } else {
           while(1) {
             xdevice->readTrace(type, info->mTraceVector);
@@ -638,6 +700,104 @@ namespace xdp {
     } // for all devices
     profileMgr->setLoggingTrace(type, false);
     return 0;
+  }
+
+
+  bool OCLProfiler::allocateDeviceDDRBufferForTrace(DeviceIntf* dInt, xrt::device* xrtDevice)
+  {
+    /* If buffer is already allocated and still attempting to initialize again, 
+     * then reset the TS2MM IP and free the old buffer
+     */
+    if(mDDRBufferForTrace) {
+      clearDeviceDDRBufferForTrace(dInt, xrtDevice);
+    }
+
+    try {
+      mDDRBufferSz = xdp::xoclp::platform::get_ts2mm_buf_size();
+      mDDRBufferForTrace = xrtDevice->alloc(mDDRBufferSz, xrt::hal::device::Domain::XRT_DEVICE_RAM, dInt->getTS2MmMemIndex(), nullptr);
+      xrtDevice->sync(mDDRBufferForTrace, mDDRBufferSz, 0, xrt::hal::device::direction::HOST2DEVICE, false);
+    } catch (const std::exception& ex) {
+      std::cerr << ex.what() << std::endl;
+      return false;
+    }
+    // Data Mover will write input stream to this address
+    uint64_t bufAddr = xrtDevice->getDeviceAddr(mDDRBufferForTrace);
+
+    dInt->initTS2MM(mDDRBufferSz, bufAddr);
+    return true;
+  }
+
+
+  // Reset DDR Trace : reset TS2MM IP and clear buffer on Device DDR
+  void OCLProfiler::clearDeviceDDRBufferForTrace(DeviceIntf* dInt, xrt::device* xrtDevice)
+  {
+    if(!mDDRBufferForTrace)
+      return;
+
+    dInt->resetTS2MM();
+
+    auto addr = xrtDevice->map(mDDRBufferForTrace);
+    munmap(addr, mDDRBufferSz);
+    xrtDevice->free(mDDRBufferForTrace);
+
+    mDDRBufferForTrace = nullptr;
+    mDDRBufferSz = 0;
+  }
+
+  void OCLProfiler::configureDDRTraceReader(uint64_t wordCount)
+  {
+    mTraceReadBufSz = wordCount * TRACE_PACKET_SIZE;
+    mTraceReadBufSz = (mTraceReadBufSz > TS2MM_MAX_BUF_SIZE) ? TS2MM_MAX_BUF_SIZE : mTraceReadBufSz;
+
+    mTraceReadBufOffset = 0;
+    mTraceReadBufChunkSz = MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE;
+  }
+
+  /** 
+   * Takes the offset inside the mapped buffer
+   * and syncs it with device and returns its virtual address.
+   * We can read the entire buffer in one go if we want to
+   * or choose to read in chunks
+   */
+  void* OCLProfiler::syncDeviceDDRToHostForTrace(xrt::device* xrtDevice, uint64_t offset, uint64_t bytes)
+  {
+    if(!mDDRBufferSz || !mDDRBufferForTrace)
+      return nullptr;
+
+    auto addr = xrtDevice->map(mDDRBufferForTrace);
+    xrtDevice->sync(mDDRBufferForTrace, bytes, offset, xrt::hal::device::direction::DEVICE2HOST, false);
+
+    return static_cast<char*>(addr) + offset;
+  }
+
+  void OCLProfiler::readTraceDataFromDDR(DeviceIntf* dIntf, xrt::device* xrtDevice, xclTraceResultsVector& traceVector, uint64_t offset, uint64_t bytes)
+  {
+    void* hostBuf = syncDeviceDDRToHostForTrace(xrtDevice, offset, bytes);
+    if(hostBuf) {
+      dIntf->parseTraceData(hostBuf, bytes, traceVector);
+    }
+  }
+
+  /**
+   * This reader needs to be initialized once and then
+   * returns data as long as it's available
+   * returns true if data equal to chunksize was read
+   */
+  bool OCLProfiler::readTraceDataFromDDR(DeviceIntf* dIntf, xrt::device* xrtDevice, xclTraceResultsVector& traceVector)
+  {
+    if(mTraceReadBufOffset >= mTraceReadBufSz)
+      return false;
+
+    uint64_t nBytes = mTraceReadBufChunkSz;
+    if((mTraceReadBufOffset + mTraceReadBufChunkSz) > mTraceReadBufSz)
+      nBytes = mTraceReadBufSz - mTraceReadBufOffset;
+
+    void* hostBuf = syncDeviceDDRToHostForTrace(xrtDevice, mTraceReadBufOffset, nBytes);
+    if(hostBuf) {
+      dIntf->parseTraceData(hostBuf, nBytes, traceVector);
+      mTraceReadBufOffset += nBytes;
+    }
+    return (nBytes == (mTraceReadBufChunkSz && hostBuf));
   }
 
   void OCLProfiler::setTraceFooterString() {

@@ -268,7 +268,7 @@ readXsaMetaData()
     fi    
 
     # Record the top level XSA information, including FeatureRomTimestamp
-    if [ "${ENTITY_NAME}" == "XSA" ]; then
+    if [ "${ENTITY_NAME}" == "DSA" ]; then
       createEntityAttributeArray
 
       featureRomTimestamp="${ENTITY_ATTRIBUTES_ARRAY[FeatureRomTimestamp]}"
@@ -300,6 +300,61 @@ readXsaMetaData()
     fi    
 
   done < "${xsaXmlFile}"
+}
+
+initCMCVar()
+{
+    fwManagement=""
+    prefix=""
+    if [ "${CardMgmtControllerFamily}" != "" ]; then
+      if [ "${CardMgmtControllerFamily}" == "Legacy" ]; then
+         fwManagement="${XILINX_XRT}/share/fw/mgmt.bin"
+         return
+      elif [ "${CardMgmtControllerFamily}" == "CMC-Gen1" ]; then
+         fwManagement="${XILINX_XRT}/share/fw/cmc.bin"
+         return
+      elif [ "${CardMgmtControllerFamily}" == "CMC-Gen2" ]; then
+         prefix="CmcGen2-"
+      elif [ "${CardMgmtControllerFamily}" == "CMC-NoSC-Gen1" ]; then
+         prefix="CmcNoSCGen1-"
+      else
+         echo "ERROR: Unknown card management controller family: ${CardMgmtControllerFamily}"
+         exit 1
+      fi
+    fi
+
+    # Looking for the CMC firmware image
+    for file in ${XILINX_XRT}/share/fw/${prefix}*.bin; do
+      [ -e "$file" ] || continue
+
+      # Found "something" break it down into the basic parts
+      baseFileName="${file%.*bin}"        # Remove suffix
+      baseFileName="${baseFileName##*/}"  # Remove Path
+      baseFileName=${baseFileName#"$prefix"}  # Remove prefix
+
+      set -- `echo ${baseFileName} | tr '-' ' '`
+      cmcImageName="${1}"
+      cmcVersion="${2}"
+      cmcMd5Expected="${3}"
+
+      # Calculate the md5 checksum
+      set -- $(md5sum $file)
+      cmcMd5Actual="${1}"
+
+      if [ "${cmcMd5Expected}" == "${cmcMd5Actual}" ]; then
+         echo "Info: Validated ${prefix}:${baseFileName} image MD5 value"
+         fwManagement="${file}"
+      else
+         echo "ERROR: CMC image failed MD5 varification."
+         echo "       Expected: ${cmcMd5Expected}"
+         echo "       Actual  : ${cmcMd5Actual}"
+         echo "       File:   : $file"
+         exit 1
+      fi
+
+      # We only go through this loop once
+      return
+    done
 }
 
 initBMCVar()
@@ -454,17 +509,7 @@ initXsaBinEnvAndVars()
     fi
 
     # -- Determine management firmware --
-    fwManagement=""
-    if [ "${CardMgmtControllerFamily}" != "" ]; then
-      if [ "${CardMgmtControllerFamily}" == "Legacy" ]; then
-         fwManagement="${XILINX_XRT}/share/fw/mgmt.bin"
-      elif [ "${CardMgmtControllerFamily}" == "CMC-Gen1" ]; then
-         fwManagement="${XILINX_XRT}/share/fw/cmc.bin"
-      else
-         echo "ERROR: Unknown card management controller family: ${CardMgmtControllerFamily}"
-         exit 1
-      fi
-    fi
+    initCMCVar
 
     # -- MSP432 --
     initBMCVar

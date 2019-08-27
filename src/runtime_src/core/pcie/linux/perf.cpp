@@ -1045,6 +1045,7 @@ namespace xocl {
             mLogStream << " Timestamp : " << results.Timestamp << "   ";
             mLogStream << " Host Timestamp : " << std::hex << results.HostTimestamp << std::endl;
           }
+          results.isClockTrain = true;
           traceVector.mArray[static_cast<int>(wordnum/4)] = results;
         }
         continue;
@@ -1059,6 +1060,7 @@ namespace xocl {
       results.Overflow = (temp >> 62) & 0x1;
       results.Error = (temp >> 63) & 0x1;
       results.EventID = XCL_PERF_MON_HW_EVENT;
+      results.isClockTrain = false;
       results.EventFlags = ((temp >> 45) & 0xF) | ((temp >> 57) & 0x10) ;
       traceVector.mArray[wordnum - clockWordIndex + 1] = results;
       if (mLogStream.is_open()) {

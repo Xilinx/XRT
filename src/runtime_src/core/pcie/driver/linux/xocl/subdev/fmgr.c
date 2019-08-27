@@ -167,11 +167,11 @@ static int fmgr_probe(struct platform_device *pdev)
 	 */
 #if defined(FPGA_MGR_SUPPORT)
 	obj->state = FPGA_MGR_STATE_UNKNOWN;
-	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,18,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,18,0)
 	struct fpga_manager *mgr = fpga_mgr_create(&pdev->dev,
-											   obj->name,
-											   &xocl_pr_ops,
-											   obj);
+						   obj->name,
+						   &xocl_pr_ops,
+						   obj);
 	if (!mgr)
 		return -ENOMEM;
 
@@ -183,9 +183,9 @@ static int fmgr_probe(struct platform_device *pdev)
 	ret = fpga_mgr_register(mgr);
 	if (ret)
 		fpga_mgr_free(mgr);
-	#else
+#else
 	ret = fpga_mgr_register(&pdev->dev, obj->name, &xocl_pr_ops, obj);
-	#endif
+#endif
 #else
 	platform_set_drvdata(pdev, obj);
 #endif
