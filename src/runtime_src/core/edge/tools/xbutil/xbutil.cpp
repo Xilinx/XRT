@@ -28,8 +28,6 @@
 #include "xbutil.h"
 #include "base.h"
 #include "ert.h"
-#include "core/edge/user/shim.h"
-#include "core/common/memalign.h"
 
 int main(int argc, char *argv[])
 {

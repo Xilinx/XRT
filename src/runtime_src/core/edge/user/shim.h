@@ -22,6 +22,7 @@
 
 #include "core/edge/include/xclhal2_mpsoc.h"
 #include "core/edge/include/zynq_ioctl.h"
+#include "zynq_dev.h"
 #include <cstdint>
 #include <fstream>
 #include <map>
@@ -80,8 +81,7 @@ public:
 
   uint xclGetNumLiveProcesses();
 
-  int xclGetSysfsPath(const char *subdev, const char *entry, char *sysfPath,
-                      size_t size);
+  std::string xclGetSysfsPath(const std::string& entry);
 
   int xclGetDebugIPlayoutPath(char* layoutPath, size_t size);
   int xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
@@ -102,6 +102,9 @@ public:
 
   bool isGood() const;
   static ZYNQShim *handleCheck(void *handle);
+  int xclCuName2Index(const char *name, uint32_t& index);
+  static int xclLogMsg(xrtLogMsgLevel level, const char* tag,
+		       const char* format, va_list args);
 
 private:
   const int mBoardNumber = -1;
@@ -111,6 +114,7 @@ private:
   int mKernelFD;
   std::map<uint64_t, uint32_t *> mKernelControl;
   std::unique_ptr<xrt_core::bo_cache> mCmdBOCache;
+  zynq_device *mDev = nullptr;
 
   /*
    * Mapped CU register space for xclRegRead/Write(). We support at most
@@ -120,6 +124,7 @@ private:
   const size_t mCuMapSize = 64 * 1024;
   std::mutex mCuMapLock;
   int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
+  int xclLog(xrtLogMsgLevel level, const char* tag, const char* format, ...);
 };
 
 } // namespace ZYNQ

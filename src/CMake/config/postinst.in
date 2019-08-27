@@ -50,33 +50,16 @@ if [ "$msd_active" = "active" ]; then
 fi
 
 
-lsb_release -si | grep -Eq "^Ubuntu|^Debian"
-
-if [ $? -eq 0 ] && [ "$1" = "configure" ]; then
-    # The older modules should already have been unregistered from dkms
-    # by the prerm
-    echo "Unloading old XRT Linux kernel modules on Ubuntu/Debian"
-    rmmod xocl
-    rmmod xclmgmt
-    rmmodules
-elif [ -n "`dkms status -m xrt`" ]; then
-    # This snippet here to clean any previous XRT DKMS. This is always true for
-    # RHEL/CentOS.
-    echo "Unloading old XRT Linux kernel modules on RHEL/CentOS"
-    rmmod xocl
-    rmmod xclmgmt
-
-    XRT_VERSION_STRING_OLD=`dkms status -m xrt | awk -F, '{print $2}'`
-    for OLD in $XRT_VERSION_STRING_OLD; do
+echo "Unloading old XRT Linux kernel modules"
+rmmod xocl
+rmmod xclmgmt
+XRT_VERSION_STRING_OLD=`dkms status -m xrt | awk -F, '{print $2}'`
+for OLD in $XRT_VERSION_STRING_OLD; do
     echo "Unregistering old XRT Linux kernel module sources $OLD from dkms"
     dkms remove -m xrt -v $OLD --all
     break
-    done
-
-    rmmodules
-else
-    echo "No previous XRT Linux kernel modules found"
-fi
+done
+rmmodules
 
 DRACUT_CONF_PATH=/etc/dracut.conf.d
 if [ -e $DRACUT_CONF_PATH ]; then

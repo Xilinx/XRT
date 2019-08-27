@@ -91,6 +91,14 @@ zocl_cu_reset_done(struct zocl_cu *cu)
 	return cu->funcs->reset_done(cu->core);
 }
 
+phys_addr_t
+zocl_cu_get_paddr(struct zocl_cu *cu)
+{
+	struct zcu_core *cu_core = cu->core;
+
+	return cu_core->paddr;
+}
+
 /* -- HLS adapter start -- */
 /* HLS adapter implementation realted code. */
 static void
