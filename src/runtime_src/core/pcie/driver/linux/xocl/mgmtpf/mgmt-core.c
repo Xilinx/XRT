@@ -1125,7 +1125,7 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 	xclmgmt_connect_notify(lro, false);
 
 	if (xocl_passthrough_virtualization_on(lro) &&
-		iommu_present(&platform_bus_type))
+		!iommu_present(&platform_bus_type))
 		pci_write_config_byte(pdev, 0x188, 0x0);
 
 	xocl_thread_stop(lro);
