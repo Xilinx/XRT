@@ -656,6 +656,9 @@ void xocl_p2p_mem_release(struct xocl_dev *xdev, bool recov_bar_sz)
 		xocl_info(&pdev->dev, "Resize p2p bar %d to %d M ", p2p_bar,
 			(1 << XOCL_PA_SECTION_SHIFT));
 	}
+
+	//Reset Virtualization registers
+	(void) xocl_mb_read_p2p_addr(xdev);
 }
 
 int xocl_p2p_mem_reserve(struct xocl_dev *xdev)

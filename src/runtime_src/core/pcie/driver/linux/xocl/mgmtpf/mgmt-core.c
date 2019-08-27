@@ -839,6 +839,13 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 				p2p_bar_len = mb_p2p->p2p_bar_len;
 				mgmt_info(lro, "got the p2p bar addr = %lld\n", p2p_bar_addr);
 				mgmt_info(lro, "got the p2p bar len = %lld\n", p2p_bar_len);
+				if (!p2p_bar_addr) {
+					pci_write_config_byte(pdev, 0x188, 0x0);
+					ret = 0;
+					(void) xocl_peer_response(lro, req->req, msgid, &ret,
+										  sizeof(ret));
+					break;
+				}
 				range = p2p_bar_addr + p2p_bar_len - 1;
 				range_base = range & 0xFFFF0000;
 				p2p_addr_base = p2p_bar_addr & 0xFFFF0000;
@@ -856,6 +863,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 						 MAILBOX_REQ_READ_P2P_BAR_ADDR);
 			}
 		}
+		ret = 0;
 		(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
 		break;
 	}
