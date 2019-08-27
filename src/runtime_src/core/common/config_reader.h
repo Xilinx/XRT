@@ -348,7 +348,7 @@ get_sw_em_driver()
 
 inline bool get_system_dpa_emulation()
 {
-  static bool value = detail::get_bool_value("Emulation.system_dpa", false);
+  static bool value = detail::get_bool_value("Emulation.system_dpa", true);
   return value;
 }
 
