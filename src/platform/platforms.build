@@ -1,19 +1,12 @@
 {
 	"_comment": [
 		"########################################################## ",
-		"# platforms_to_build section",
-		"#   platforms_to_build section is a Map of platform_name and platform_key",
-		"#     Structure:",
-		"#       platform_name: platform_key",
-		"#         platform_name - Name of the platform to be built",
-		"#         platform_key  - Name in the platform bsp Ex: xilinx-<platform_key>-v<release>-final.bsp ",
-		"# platforms_to_copy_sysroot section is the list for platforms for which sysroot needs to be copied to TA",
-		"#  ",
 		"# platforms_to_build_new section",
 		"#    Structure:",
 		"#      Platform_name: Name of the platform to be built",
 		"#      bsp_key: Name in the platform bsp Ex: xilinx-<bsp_key>-v<release>-final.bsp",
 		"#        pullrequest_build: Whether to build this platform in pull request pipleine - true|false?",
+        "#                           please set pullrequest_build:true when enabling new platforms",
 		"#        sysroot:",
 		"#          copy:",
 		"#            from: where should the sysroot be copied from",
@@ -28,29 +21,7 @@
 		"#",
 		"###########################################################"
 	],
-	"platforms_to_build": {
-		"zcu102_base": "zcu102",
-		"zc702": "zc702",
-		"zc706": "zc706",
-		"zed": "zed"
-	},
-	"platforms_to_copy_sysroot": [
-		"zcu102_base",
-		"zc702"
-	],
 	"platforms_to_build_new": {
-		"zcu104_revmin": {
-			"bsp_key": "zcu104",
-			"package": {
-				"dsabin": false,
-				"dsadev": false,
-				"ta_locations": [""]
-			},
-			"copy": {
-				"from": "${XRT_EMBEDDED_ROOT}",
-				"to": ["${TA_ROOT}/internal_platforms"]
-			}
-		},
 		"zcu102_base": {
 			"bsp_key": "zcu102",
 			"pullrequest_build": true,
@@ -91,6 +62,18 @@
 		},
 		"zed": {
 			"bsp_key": "zed",
+			"package": {
+				"dsabin": false,
+				"dsadev": false,
+				"ta_locations": [""]
+			},
+			"copy": {
+				"from": "${XRT_EMBEDDED_ROOT}",
+				"to": ["${TA_ROOT}/internal_platforms"]
+			}
+		},
+		"zc706": {
+			"bsp_key": "zc706",
 			"package": {
 				"dsabin": false,
 				"dsadev": false,
