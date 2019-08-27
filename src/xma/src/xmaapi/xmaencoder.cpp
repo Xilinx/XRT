@@ -27,6 +27,7 @@
 //#include "lib/xmahw_hal.h"
 //#include "lib/xmares.h"
 #include "xmaplugin.h"
+#include <bitset>
 
 char    g_stat_fmt[] = "last_pid_in_use          :%d\n"
                        "last_received_input_ts   :%lu\n"
@@ -212,10 +213,48 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
 
     //For execbo:
     enc_session->base.hw_session.kernel_info = &hwcfg->devices[hwcfg_dev_index].kernels[cu_index];
-
     enc_session->base.hw_session.dev_index = hwcfg->devices[hwcfg_dev_index].dev_index;
-    xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,
-                "XMA session ddr_bank: %d\n", enc_session->base.hw_session.kernel_info->ddr_bank);
+
+    //Allow user selected default ddr bank per XMA session
+    if (enc_props->ddr_bank_index < 0) {
+        if (hwcfg->devices[hwcfg_dev_index].kernels[cu_index].soft_kernel) {
+            //Only allow ddr_bank == 0;
+            enc_session->base.hw_session.bank_index = 0;
+            xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,
+                "XMA session with soft_kernel default ddr_bank: %d\n", enc_session->base.hw_session.bank_index);
+        } else {
+            enc_session->base.hw_session.bank_index = enc_session->base.hw_session.kernel_info->default_ddr_bank;
+            xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,
+                "XMA session default ddr_bank: %d\n", enc_session->base.hw_session.bank_index);
+        }
+    } else {
+        if (hwcfg->devices[hwcfg_dev_index].kernels[cu_index].soft_kernel) {
+            if (enc_props->ddr_bank_index != 0) {
+                xma_logmsg(XMA_WARNING_LOG, XMA_ENCODER_MOD,
+                    "XMA session with soft_kernel only allows ddr bank of zero\n");
+            }
+            //Only allow ddr_bank == 0;
+            enc_session->base.hw_session.bank_index = 0;
+            xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,
+                "XMA session with soft_kernel default ddr_bank: %d\n", enc_session->base.hw_session.bank_index);
+        } else {
+            std::bitset<MAX_DDR_MAP> tmp_bset;
+            tmp_bset = enc_session->base.hw_session.kernel_info->ip_ddr_mapping;
+            if (tmp_bset[enc_props->ddr_bank_index]) {
+                enc_session->base.hw_session.bank_index = enc_props->ddr_bank_index;
+                xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,
+                    "Using user supplied default ddr_bank. XMA session default ddr_bank: %d\n", enc_session->base.hw_session.bank_index);
+            } else {
+                xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
+                    "User supplied default ddr_bank is invalid. Valid ddr_bank mapping for this CU: %s\n", tmp_bset.to_string());
+                
+                //Release singleton lock
+                g_xma_singleton->locked = false;
+                free(enc_session);
+                return NULL;
+            }
+        }
+    }
 
     // Call the plugins initialization function with this session data
     //Sarab: Check plugin compatibility to XMA

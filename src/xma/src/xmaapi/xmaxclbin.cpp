@@ -258,7 +258,7 @@ int xma_xclbin_info_get(char *buffer, XmaXclbinInfo *info)
     return XMA_SUCCESS;
 }
 
-int xma_xclbin_map2ddr(uint64_t bit_map, int* ddr_bank)
+int xma_xclbin_map2ddr(uint64_t bit_map, int32_t* ddr_bank)
 {
     //64 bits based on MAX_DDR_MAP = 64
     int ddr_bank_idx = 0;
@@ -272,5 +272,6 @@ int xma_xclbin_map2ddr(uint64_t bit_map, int* ddr_bank)
         ddr_bank_idx++;
         bit_map = bit_map >> 1;
     }
+    *ddr_bank = -1;
     return XMA_ERROR;
 }

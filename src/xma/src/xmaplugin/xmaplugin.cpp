@@ -50,8 +50,8 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
     b_obj.private_do_not_touch = NULL;
 
     xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
-    uint32_t ddr_bank = s_handle.hw_session.kernel_info->ddr_bank;
-    b_obj.bank_index = s_handle.hw_session.kernel_info->ddr_bank;
+    uint32_t ddr_bank = s_handle.hw_session.bank_index;
+    b_obj.bank_index = ddr_bank;
     b_obj.size = size;
     b_obj.dev_index = s_handle.hw_session.dev_index;
 
