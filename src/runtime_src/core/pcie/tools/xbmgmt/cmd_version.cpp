@@ -22,7 +22,7 @@
 const char *subCmdVersionDesc = "Print out xrt build version";
 const char *subCmdVersionUsage = "(no options supported)";
 
-static std::string driver_version(std::string driver)
+std::string driver_version(std::string driver)
 {
     std::string line("unknown");
     std::string path("/sys/bus/pci/drivers/");
@@ -42,5 +42,8 @@ int versionHandler(int argc, char *argv[])
     xrt::version::print(std::cout);
     std::cout.width(26); std::cout << std::internal << "XOCL: " << driver_version("xocl") << std:: endl;
     std::cout.width(26); std::cout << std::internal << "XCLMGMT: " << driver_version("xclmgmt") << std::endl;    
+
+    if ( !getenv_or_null("INTERNAL_BUILD") )
+        xrt_xbmgmt_version_cmp();
     return 0;
 }

@@ -172,7 +172,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
         free(enc_session);
         return NULL;
     }
-    if ((uint32_t)cu_index >= hwcfg->devices[hwcfg_dev_index].number_of_cus || cu_index < 0) {
+    if ((uint32_t)cu_index >= hwcfg->devices[hwcfg_dev_index].number_of_cus || (cu_index < 0 && enc_props->cu_name == NULL)) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
                    "XMA session creation failed. Invalid cu_index = %d\n", cu_index);
         //Release singleton lock
@@ -180,6 +180,26 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
         free(enc_session);
         return NULL;
     }
+    if (cu_index < 0) {
+        std::string cu_name = std::string(enc_props->cu_name);
+        found = false;
+        for (XmaHwKernel& kernel: g_xma_singleton->hwcfg.devices[hwcfg_dev_index].kernels) {
+            if (std::string((char*)kernel.name) == cu_name) {
+                found = true;
+                cu_index = kernel.cu_index;
+                break;
+            }
+        }
+        if (!found) {
+            xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
+                    "XMA session creation failed. cu %s not found\n", cu_name.c_str());
+            //Release singleton lock
+            g_xma_singleton->locked = false;
+            free(enc_session);
+            return NULL;
+        }
+    }
+
     if (hwcfg->devices[hwcfg_dev_index].kernels[cu_index].in_use) {
         xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,
                    "XMA session sharing CU: %s\n", hwcfg->devices[hwcfg_dev_index].kernels[cu_index].name);

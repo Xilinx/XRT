@@ -126,6 +126,12 @@ public:
     return m_context_type;
   }
 
+  uint32_t
+  get_control_type() const
+  {
+    return m_control;
+  }
+
   const device*
   get_device() const
   {
@@ -170,6 +176,7 @@ private:
   const device* m_device = nullptr;
   size_t m_address = 0;
   size_t m_index = 0;
+  uint32_t m_control = 0;  // IP_CONTROL type per xclbin ip_layout
   mutable context_type m_context_type = context_type::none;
 
   // Map CU arg to memory bank indicies. An argument can

@@ -353,9 +353,9 @@ inline bool get_system_dpa_emulation()
 }
 
 inline std::string
-get_ctx_info()
+get_kernel_channel_info()
 {
-  static std::string value = detail::get_string_value("Runtime.ctx_info","");
+  static std::string value = detail::get_string_value("Runtime.kernel_channels","");
   return value;
 }
 

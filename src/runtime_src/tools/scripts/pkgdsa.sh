@@ -397,6 +397,8 @@ initCMCVar()
          return
       elif [ "${CardMgmtControllerFamily}" == "CMC-Gen2" ]; then
          prefix="CmcGen2-"
+      elif [ "${CardMgmtControllerFamily}" == "CMC-NoSC-Gen1" ]; then
+         prefix="CmcNoSCGen1-"
       else
          echo "ERROR: Unknown card management controller family: ${CardMgmtControllerFamily}"
          exit 1
