@@ -59,15 +59,7 @@ namespace xdp {
 
     // Set device handle
     // NOTE: this is used by write, read, & traceRead
-    void setDeviceHandle(void* xrtDevice);
-
-#if 0
-    // Generic helpers
-    uint64_t getHostTraceTimeNsec();
-    uint32_t getMaxSamples(xclPerfMonType type);
-    std::string dec2bin(uint32_t n);
-    std::string dec2bin(uint32_t n, unsigned bits);
-#endif
+    void setDevice(xdp::Device* );
 
     // Debug IP layout
     void     readDebugIPlayout();
@@ -80,25 +72,37 @@ namespace xdp {
     size_t stopCounters(xclPerfMonType type);
     size_t readCounters(xclPerfMonType type, xclCounterResults& counterResults);
 
-    // Enable Dataflow
+    // Accelerator Monitor
     void configureDataflow(bool* ipConfig);
+    void configAmContext(const std::string& ctx_info);
 
-    // Trace
+    // Trace FIFO Management
+    bool hasFIFO() {return (fifoCtrl != nullptr);};
     uint32_t getTraceCount(xclPerfMonType type);
     size_t startTrace(xclPerfMonType type, uint32_t startTrigger);
     size_t stopTrace(xclPerfMonType type);
     size_t readTrace(xclPerfMonType type, xclTraceResultsVector& traceVector);
 
+    /** Trace S2MM Management
+     */
+    bool hasTs2mm() {return (traceDMA != nullptr);};
+    void initTS2MM(uint64_t bufferSz, uint64_t bufferAddr);
+    void resetTS2MM();
+    uint8_t  getTS2MmMemIndex();
+    uint64_t getWordCountTs2mm();
+
+    void parseTraceData(void* traceData, uint64_t bytes, xclTraceResultsVector& traceVector);
+
   private:
     // Turn on/off debug messages to stdout
-    bool mVerbose = true;
+    bool mVerbose = false;
     // Turns on/off all profiling functions in this class
     bool mIsDeviceProfiling = true;
     // Debug IP Layout has been read or not
     bool mIsDebugIPlayoutRead = false;
-    // Device handle - xrt::device handle
-    void* mDeviceHandle = nullptr;
 
+    // Depending on OpenCL or HAL flow, "mDevice" is populated with xrt::device handle or HAL handle
+    xdp::Device* mDevice = nullptr;
 
     std::vector<AIM*> aimList;
     std::vector<AM*>  amList;

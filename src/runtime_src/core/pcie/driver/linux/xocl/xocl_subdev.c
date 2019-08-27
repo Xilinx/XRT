@@ -586,9 +586,12 @@ int xocl_subdev_create_all(xdev_handle_t xdev_hdl)
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
 	struct FeatureRomHeader rom;
 	int	i, ret = 0, subdev_num = 0;
-	struct xocl_subdev_info *subdev_info;
+	struct xocl_subdev_info *subdev_info = NULL;
 
 	xocl_lock_xdev(xdev_hdl);
+	if (core->dyn_subdev_num + core->priv.subdev_num == 0)
+		goto failed;
+
 	/* lookup update table */
 	ret = __xocl_subdev_create_by_id(xdev_hdl, XOCL_SUBDEV_FEATURE_ROM);
 	if (!ret) {

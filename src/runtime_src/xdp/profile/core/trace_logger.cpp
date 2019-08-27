@@ -59,7 +59,7 @@ namespace xdp {
   // ***************************************************************************
 
   // Get a device timestamp
-  double TraceLogger::getDeviceTimeStamp(double hostTimeStamp, std::string& deviceName)
+  double TraceLogger::getDeviceTimeStamp(double hostTimeStamp, const std::string& deviceName)
   {
     double deviceTimeStamp = hostTimeStamp;
 
@@ -482,7 +482,7 @@ namespace xdp {
   // ***************************************************************************
 
   void TraceLogger::logDependency(RTUtil::e_profile_command_kind objKind,
-      const std::string eventString, const std::string dependString)
+      const std::string& eventString, const std::string& dependString)
   {
     std::string commandString;
     std::lock_guard < std::mutex > lock(mLogMutex);
@@ -496,8 +496,8 @@ namespace xdp {
   // Log device trace
   // ***************************************************************************
 
-  void TraceLogger::logDeviceTrace(std::string deviceName, std::string binaryName,
-      xclPerfMonType type, xclTraceResultsVector& traceVector) {
+  void TraceLogger::logDeviceTrace(const std::string& deviceName, const std::string& binaryName,
+      xclPerfMonType type, xclTraceResultsVector& traceVector, bool endLog) {
     auto tp = mTraceParserHandle;
     if (tp == NULL || traceVector.mLength == 0)
       return;
@@ -505,6 +505,8 @@ namespace xdp {
     std::lock_guard<std::mutex> lock(mLogMutex);
     TraceParser::TraceResultVector resultVector;
     tp->logTrace(deviceName, type, traceVector, resultVector);
+    if (endLog)
+      tp->endLogTrace(deviceName, type, resultVector);
 
     if (resultVector.empty())
       return;

@@ -149,7 +149,7 @@ void RTDebug::reset(const axlf* xclbin)
   }
 
   for (unsigned int i = 0 ; i < header->numSections ; ++i) {
-    auto sh = reinterpret_cast<const SectionHeader*>(header + sizeof(FileHeader) + sizeof(SectionHeader) * i) ;
+    auto sh = reinterpret_cast<const SectionHeader*>(reinterpret_cast<const char*>(header) + sizeof(FileHeader) + sizeof(SectionHeader) * i) ;
     if (sh->type == DWARF_SECTION)
       dwarfOut.write(reinterpret_cast<const char*>(header) + sh->offset, sh->size) ;
     if (sh->type == JSON_SECTION)

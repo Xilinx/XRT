@@ -48,7 +48,7 @@ public:
      * During the construction, the exclusive access to this
      * IP will be requested, otherwise exception will be thrown.
      */
-    AM(void* handle /** < [in] the xrt hal device handle */, 
+    AM(Device* handle /** < [in] the xrt or hal device handle */, 
                 int index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data = nullptr);
 
     /**
@@ -62,6 +62,8 @@ public:
     size_t stopCounter();
     size_t readCounter(xclCounterResults& counterResult, uint32_t index);
 
+    // Used to explicitly disable the monitor when kernel channels are used
+    void disable();
     void configureDataflow(bool cuHasApCtrlChain);
 
     bool has64bit() const;
@@ -79,6 +81,7 @@ private:
     uint8_t properties;
     uint8_t major_version;
     uint8_t minor_version;
+    bool m_enabled = true;
 };
 
 } //  xdp

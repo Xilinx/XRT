@@ -77,6 +77,8 @@ SectionIPLayout::getIPControlTypeStr(enum IP_CONTROL _ipControlType) const {
       return "AP_CTRL_ME";
     case AP_CTRL_NONE:
       return "AP_CTRL_NONE";
+    case ACCEL_ADAPTER:
+      return "ACCEL_ADAPTER";
   }
 
   return XUtil::format("UNKNOWN (%d)", (unsigned int) _ipControlType);
@@ -89,6 +91,7 @@ SectionIPLayout::getIPControlType(std::string& _sIPControlType) const {
   if (_sIPControlType == "AP_CTRL_CHAIN") return AP_CTRL_CHAIN;
   if (_sIPControlType == "AP_CTRL_ME") return AP_CTRL_ME;
   if (_sIPControlType == "AP_CTRL_NONE") return AP_CTRL_NONE;
+  if (_sIPControlType == "ACCEL_ADAPTER") return ACCEL_ADAPTER;
 
   std::string errMsg = "ERROR: Unknown IP Control type: '" + _sIPControlType + "'";
   throw std::runtime_error(errMsg);
@@ -183,7 +186,7 @@ SectionIPLayout::marshalToJSON(char* _pDataSection,
     }
     ip_data.put("m_name", XUtil::format("%s", pHdr->m_ip_data[index].m_name).c_str());
 
-    m_ip_data.add_child("ip_data", ip_data);
+    m_ip_data.push_back(std::make_pair("", ip_data));   // Used to make an array of objects
   }
 
   ip_layout.add_child("m_ip_data", m_ip_data);

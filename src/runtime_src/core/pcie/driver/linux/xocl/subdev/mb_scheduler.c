@@ -84,11 +84,13 @@
 # define SCHED_DEBUGF(format, ...) DRM_INFO(format, ##__VA_ARGS__)
 # define SCHED_PRINTF(format, ...) DRM_INFO(format, ##__VA_ARGS__)
 # define SCHED_DEBUG_PACKET(packet, size) sched_debug_packet(packet, size)
+# define SCHED_PRINT_PACKET(packet, size) sched_debug_packet(packet, size)
 #else
 # define SCHED_DEBUG(msg)
 # define SCHED_DEBUGF(format, ...)
 # define SCHED_PRINTF(format, ...) DRM_INFO(format, ##__VA_ARGS__)
 # define SCHED_DEBUG_PACKET(packet, size)
+# define SCHED_PRINT_PACKET(packet, size) sched_debug_packet(packet, size)
 #endif
 
 #define csr_read32(base, r_off)			\
@@ -98,6 +100,9 @@
 
 /* Highest bit in ip_reference indicate if it's exclusively reserved. */
 #define	IP_EXCL_RSVD_MASK	(~(1 << 31))
+
+#define	CU_ADDR_HANDSHAKE_MASK	(0xff)
+#define	CU_ADDR_VALID(addr)	(((addr) | CU_ADDR_HANDSHAKE_MASK) != -1)
 
 /* constants */
 static const unsigned int no_index = -1;
@@ -789,7 +794,7 @@ cu_reset(struct xocl_cu *xcu, unsigned int idx, void __iomem *base, u32 addr, vo
 	xcu->idx = idx;
 	xcu->control = (addr & 0x7); // bits [2-0]
 	xcu->base = base;
-	xcu->addr = addr & ~(0xFF);  // clear encoded handshake and context
+	xcu->addr = addr & ~CU_ADDR_HANDSHAKE_MASK;  // clear encoded handshake and context
 	xcu->polladdr = polladdr;
 	xcu->ap_check = (xcu->control == AP_CTRL_CHAIN) ? (AP_DONE) : (AP_DONE | AP_IDLE);
 	xcu->ctrlreg = 0;
@@ -836,7 +841,7 @@ cu_dataflow(struct xocl_cu *xcu)
 static inline bool
 cu_valid(struct xocl_cu *xcu)
 {
-	return xcu->control != AP_CTRL_NONE;
+	return CU_ADDR_VALID(xcu->addr);
 }
 
 static void

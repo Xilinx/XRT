@@ -15,8 +15,6 @@
  * GNU General Public License for more details.
  */
 
-/* XDMA version Memory Mapped DMA */
-
 #include <linux/version.h>
 #include <linux/eventfd.h>
 #include "../xocl_drv.h"
@@ -33,13 +31,13 @@
 #define XCLMGMT_MAILBOX_INTR            11
 
 
-struct xdma_irq {
+struct mgmt_msix_irq {
 	bool			in_use;
 	bool			enabled;
 	irq_handler_t		handler;
 	void			*arg;
 };
-struct xocl_xdma {
+struct xocl_mgmt_msix {
 	struct platform_device	*pdev;
 	void __iomem		*base;
 	int			msix_user_start_vector;
@@ -49,72 +47,76 @@ struct xocl_xdma {
 #endif
 
 	int			max_user_intr;
-	struct xdma_irq		*user_msix_table;
+	struct mgmt_msix_irq		*user_msix_table;
 	struct mutex		user_msix_table_lock;
+
+	struct xocl_msix_privdata *privdata;
 };
 
 static int user_intr_config(struct platform_device *pdev, u32 intr, bool en)
 {
-	struct xocl_xdma *xdma;
+	struct xocl_mgmt_msix *mgmt_msix;
 
-	xdma= platform_get_drvdata(pdev);
+	mgmt_msix = platform_get_drvdata(pdev);
 
-	if (intr >= xdma->max_user_intr) {
+	if (intr >= mgmt_msix->max_user_intr) {
 		xocl_err(&pdev->dev, "Invalid intr %d, max %d",
-			intr, xdma->max_user_intr);
+			intr, mgmt_msix->max_user_intr);
 		return -EINVAL;
 	}
 
 	xocl_info(&pdev->dev, "configure intr at 0x%lx",
-			(unsigned long)xdma->base);
-	mutex_lock(&xdma->user_msix_table_lock);
-	if (xdma->user_msix_table[intr].enabled == en)
+			(unsigned long)mgmt_msix->base);
+	mutex_lock(&mgmt_msix->user_msix_table_lock);
+	if (mgmt_msix->user_msix_table[intr].enabled == en)
 		goto end;
 
-	XOCL_WRITE_REG32(1 << intr, xdma->base +
+	if (!mgmt_msix->privdata) {
+		XOCL_WRITE_REG32(1 << intr, mgmt_msix->base +
 			(en ? XCLMGMT_INTR_USER_ENABLE :
 			 XCLMGMT_INTR_USER_DISABLE));
+	}
 
-	xdma->user_msix_table[intr].enabled = en;
+	mgmt_msix->user_msix_table[intr].enabled = en;
 end:
-	mutex_unlock(&xdma->user_msix_table_lock);
+	mutex_unlock(&mgmt_msix->user_msix_table_lock);
 
 	return 0;
 }
 
 static int user_intr_unreg(struct platform_device *pdev, u32 intr)
 {
-	struct xocl_xdma *xdma;
+	struct xocl_mgmt_msix *mgmt_msix;
 	struct xocl_dev_core *core;
 	u32 vec;
 	int ret;
 
-	xdma= platform_get_drvdata(pdev);
+	mgmt_msix = platform_get_drvdata(pdev);
 
-	if (intr >= xdma->max_user_intr)
+	if (intr >= mgmt_msix->max_user_intr)
 		return -EINVAL;
 
-	mutex_lock(&xdma->user_msix_table_lock);
-	if (!xdma->user_msix_table[intr].in_use) {
+	mutex_lock(&mgmt_msix->user_msix_table_lock);
+	if (!mgmt_msix->user_msix_table[intr].in_use) {
 		ret = -EINVAL;
 		goto failed;
 	}
 	core = xocl_get_xdev(pdev);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
-	vec = pci_irq_vector(core->pdev, xdma->msix_user_start_vector + intr);
+	vec = pci_irq_vector(core->pdev, mgmt_msix->msix_user_start_vector + intr);
 #else
-	vec = xdma->msix_irq_entries[xdma->msix_user_start_vector+intr].vector;
+	vec = mgmt_msix->msix_irq_entries[mgmt_msix->msix_user_start_vector+intr].vector;
 #endif
 
-	free_irq(vec, xdma->user_msix_table[intr].arg);
+	free_irq(vec, mgmt_msix->user_msix_table[intr].arg);
 
-	xdma->user_msix_table[intr].handler = NULL;
-	xdma->user_msix_table[intr].arg = NULL;
-	xdma->user_msix_table[intr].in_use = false;
+	mgmt_msix->user_msix_table[intr].handler = NULL;
+	mgmt_msix->user_msix_table[intr].arg = NULL;
+	mgmt_msix->user_msix_table[intr].in_use = false;
 	xocl_info(&pdev->dev, "intr %d unreg success, start vec %d",
-		intr, xdma->msix_user_start_vector);
+		intr, mgmt_msix->msix_user_start_vector);
 failed:
-	mutex_unlock(&xdma->user_msix_table_lock);
+	mutex_unlock(&mgmt_msix->user_msix_table_lock);
 
 	return ret;
 }
@@ -122,18 +124,18 @@ failed:
 static int user_intr_register(struct platform_device *pdev, u32 intr,
 	irq_handler_t handler, void *arg, int event_fd)
 {
-	struct xocl_xdma *xdma;
+	struct xocl_mgmt_msix *mgmt_msix;
 	struct xocl_dev_core *core;
 	u32 vec;
 	int ret;
 
-	xdma= platform_get_drvdata(pdev);
+	mgmt_msix = platform_get_drvdata(pdev);
 
-	if (intr >= xdma->max_user_intr)
+	if (intr >= mgmt_msix->max_user_intr)
 		return -EINVAL;
 
-	mutex_lock(&xdma->user_msix_table_lock);
-	if (xdma->user_msix_table[intr].in_use) {
+	mutex_lock(&mgmt_msix->user_msix_table_lock);
+	if (mgmt_msix->user_msix_table[intr].in_use) {
 		xocl_err(&pdev->dev, "IRQ %d is in use", intr);
 		ret = -EPERM;
 		goto failed;
@@ -141,9 +143,9 @@ static int user_intr_register(struct platform_device *pdev, u32 intr,
 
 	core = xocl_get_xdev(pdev);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
-	vec = pci_irq_vector(core->pdev, xdma->msix_user_start_vector + intr);
+	vec = pci_irq_vector(core->pdev, mgmt_msix->msix_user_start_vector + intr);
 #else
-	vec = xdma->msix_irq_entries[xdma->msix_user_start_vector+intr].vector;
+	vec = mgmt_msix->msix_irq_entries[mgmt_msix->msix_user_start_vector+intr].vector;
 #endif
 
 	ret = request_irq(vec, handler, 0, XCLMGMT_MODULE_NAME, arg);
@@ -152,35 +154,35 @@ static int user_intr_register(struct platform_device *pdev, u32 intr,
 		goto failed;
 	}
 
-	xdma->user_msix_table[intr].handler = handler;
-	xdma->user_msix_table[intr].arg = arg;
-	xdma->user_msix_table[intr].in_use = true;
+	mgmt_msix->user_msix_table[intr].handler = handler;
+	mgmt_msix->user_msix_table[intr].arg = arg;
+	mgmt_msix->user_msix_table[intr].in_use = true;
 
 	xocl_info(&pdev->dev, "intr %d register success, start vec %d",
-		       intr, xdma->msix_user_start_vector);
+		       intr, mgmt_msix->msix_user_start_vector);
 
 failed:
-	mutex_unlock(&xdma->user_msix_table_lock);
+	mutex_unlock(&mgmt_msix->user_msix_table_lock);
 
 	return ret;
 }
 
-static struct xocl_dma_funcs xdma_ops = {
+static struct xocl_dma_funcs mgmt_msix_ops = {
 	.user_intr_register = user_intr_register,
 	.user_intr_config = user_intr_config,
 	.user_intr_unreg = user_intr_unreg,
 };
 
-static int identify_intr_bar(struct xocl_xdma *xdma)
+static int identify_intr_bar(struct xocl_mgmt_msix *mgmt_msix)
 {
-	struct pci_dev *pdev = XOCL_PL_TO_PCI_DEV(xdma->pdev);
+	struct pci_dev *pdev = XOCL_PL_TO_PCI_DEV(mgmt_msix->pdev);
 	int	i;
 	resource_size_t bar_len;
 
 	for (i = PCI_STD_RESOURCES; i <= PCI_STD_RESOURCE_END; i++) {
 		bar_len = pci_resource_len(pdev, i);
 		if (bar_len < 1024 * 1024 && bar_len > 0) {
-			xdma->base = ioremap_nocache(
+			mgmt_msix->base = ioremap_nocache(
 				pci_resource_start(pdev, i), bar_len);
 			return i;
 		}
@@ -189,9 +191,9 @@ static int identify_intr_bar(struct xocl_xdma *xdma)
 	return -1;
 }
 
-static int xdma_mgmt_probe(struct platform_device *pdev)
+static int mgmt_msix_probe(struct platform_device *pdev)
 {
-	struct xocl_xdma	*xdma = NULL;
+	struct xocl_mgmt_msix *mgmt_msix= NULL;
 	int	i, ret = 0, total = 0, bar;
 	xdev_handle_t		xdev;
 	struct resource *res;
@@ -199,20 +201,20 @@ static int xdma_mgmt_probe(struct platform_device *pdev)
 	xdev = xocl_get_xdev(pdev);
 	BUG_ON(!xdev);
 
-	xdma = devm_kzalloc(&pdev->dev, sizeof(*xdma), GFP_KERNEL);
-	if (!xdma) {
-		xocl_err(&pdev->dev, "alloc xdma dev failed");
+	mgmt_msix = devm_kzalloc(&pdev->dev, sizeof(*mgmt_msix), GFP_KERNEL);
+	if (!mgmt_msix) {
+		xocl_err(&pdev->dev, "alloc mgmt_msix dev failed");
 		ret = -ENOMEM;
 		goto failed;
 	}
 
-	xdma->pdev = pdev;
+	mgmt_msix->pdev = pdev;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
 		xocl_err(&pdev->dev,
 			"legacy platform, identify intr bar by size");
-		bar = identify_intr_bar(xdma);
+		bar = identify_intr_bar(mgmt_msix);
 		if (bar < 0) {
 			xocl_err(&pdev->dev, "Can not find intr bar");
 			ret = -ENXIO;
@@ -220,9 +222,9 @@ static int xdma_mgmt_probe(struct platform_device *pdev)
 		}
 
 	} else
-		xdma->base = ioremap_nocache(res->start,
+		mgmt_msix->base = ioremap_nocache(res->start,
 				res->end - res->start + 1);
-	if (!xdma->base) {
+	if (!mgmt_msix->base) {
 		ret = -EIO;
 		xocl_err(&pdev->dev, "Map iomem failed");
 		goto failed;
@@ -243,9 +245,15 @@ static int xdma_mgmt_probe(struct platform_device *pdev)
 	 * enough to cover its own usr vectors. So, only the last
 	 * chunk of the table will ever be used for mgmt pf.
 	 */
-	xdma->msix_user_start_vector =
-		XOCL_READ_REG32(xdma->base + XCLMGMT_INTR_USER_VECTOR) & 0xf;
-	total = xdma->msix_user_start_vector + XCLMGMT_MAX_USER_INTR;
+	mgmt_msix->privdata = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+	if (mgmt_msix->privdata) {
+		mgmt_msix->msix_user_start_vector = mgmt_msix->privdata->start;
+		total = mgmt_msix->privdata->total;
+	} else {
+		mgmt_msix->msix_user_start_vector =
+			XOCL_READ_REG32(mgmt_msix->base + XCLMGMT_INTR_USER_VECTOR) & 0xf;
+		total = mgmt_msix->msix_user_start_vector + XCLMGMT_MAX_USER_INTR;
+	}
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
 	i = 0;
@@ -257,34 +265,34 @@ static int xdma_mgmt_probe(struct platform_device *pdev)
 	}
 #else
 	for (i = 0; i < total; i++)
-		xdma->msix_irq_entries[i].entry = i;
+		mgmt_msix->msix_irq_entries[i].entry = i;
 
-	ret = pci_enable_msix(XDEV(xdev)->pdev, xdma->msix_irq_entries, total);
+	ret = pci_enable_msix(XDEV(xdev)->pdev, mgmt_msix->msix_irq_entries, total);
 #endif
-	xdma->max_user_intr = total;
+	mgmt_msix->max_user_intr = total;
 
-	xdma->user_msix_table = devm_kzalloc(&pdev->dev,
-			xdma->max_user_intr *
-			sizeof(struct xdma_irq), GFP_KERNEL);
-	if (!xdma->user_msix_table) {
+	mgmt_msix->user_msix_table = devm_kzalloc(&pdev->dev,
+			mgmt_msix->max_user_intr *
+			sizeof(struct mgmt_msix_irq), GFP_KERNEL);
+	if (!mgmt_msix->user_msix_table) {
 		xocl_err(&pdev->dev, "alloc user_msix_table failed");
 		ret = -ENOMEM;
 		goto failed;
 	}
-	mutex_init(&xdma->user_msix_table_lock);
+	mutex_init(&mgmt_msix->user_msix_table_lock);
 
-	platform_set_drvdata(pdev, xdma);
+	platform_set_drvdata(pdev, mgmt_msix);
 
 	return 0;
 
 failed:
 	pci_disable_msix(XDEV(xdev)->pdev);
 
-	if (xdma) {
-		if (xdma->user_msix_table) {
-			devm_kfree(&pdev->dev, xdma->user_msix_table);
+	if (mgmt_msix) {
+		if (mgmt_msix->user_msix_table) {
+			devm_kfree(&pdev->dev, mgmt_msix->user_msix_table);
 		}
-		devm_kfree(&pdev->dev, xdma);
+		devm_kfree(&pdev->dev, mgmt_msix);
 	}
 
 	platform_set_drvdata(pdev, NULL);
@@ -292,15 +300,15 @@ failed:
 	return ret;
 }
 
-static int xdma_mgmt_remove(struct platform_device *pdev)
+static int mgmt_msix_remove(struct platform_device *pdev)
 {
 	xdev_handle_t xdev;
-	struct xocl_xdma *xdma;
-	struct xdma_irq *irq_entry;
+	struct xocl_mgmt_msix *mgmt_msix;
+	struct mgmt_msix_irq *irq_entry;
 	int i;
 
-	xdma= platform_get_drvdata(pdev);
-	if (!xdma) {
+	mgmt_msix = platform_get_drvdata(pdev);
+	if (!mgmt_msix) {
 		xocl_err(&pdev->dev, "driver data is NULL");
 		return -EINVAL;
 	}
@@ -308,8 +316,8 @@ static int xdma_mgmt_remove(struct platform_device *pdev)
 	xdev = xocl_get_xdev(pdev);
 	BUG_ON(!xdev);
 
-	for (i = 0; i < xdma->max_user_intr; i++) {
-		irq_entry = &xdma->user_msix_table[i];
+	for (i = 0; i < mgmt_msix->max_user_intr; i++) {
+		irq_entry = &mgmt_msix->user_msix_table[i];
 		if (irq_entry->in_use && irq_entry->enabled) {
 			xocl_err(&pdev->dev,
 				"ERROR: Interrupt %d is still on", i);
@@ -318,39 +326,39 @@ static int xdma_mgmt_remove(struct platform_device *pdev)
 
 	pci_disable_msix(XDEV(xdev)->pdev);
 
-	mutex_destroy(&xdma->user_msix_table_lock);
+	mutex_destroy(&mgmt_msix->user_msix_table_lock);
 
-	devm_kfree(&pdev->dev, xdma->user_msix_table);
+	devm_kfree(&pdev->dev, mgmt_msix->user_msix_table);
 	platform_set_drvdata(pdev, NULL);
-	devm_kfree(&pdev->dev, xdma);
+	devm_kfree(&pdev->dev, mgmt_msix);
 
 	return 0;
 }
 
-struct xocl_drv_private xdma_mgmt_priv = {
-	.ops = &xdma_ops,
+struct xocl_drv_private mgmt_msix_priv = {
+	.ops = &mgmt_msix_ops,
 };
 
-static struct platform_device_id xdma_id_table[] = {
-	{ XOCL_DEVNAME(XOCL_XDMA), (kernel_ulong_t)&xdma_mgmt_priv },
+static struct platform_device_id mgmt_msix_id_table[] = {
+	{ XOCL_DEVNAME(XOCL_DMA_MSIX), (kernel_ulong_t)&mgmt_msix_priv },
 	{ },
 };
 
-static struct platform_driver	xdma_driver = {
-	.probe		= xdma_mgmt_probe,
-	.remove		= xdma_mgmt_remove,
+static struct platform_driver	mgmt_msix_driver = {
+	.probe		= mgmt_msix_probe,
+	.remove		= mgmt_msix_remove,
 	.driver		= {
-		.name = "xclmgmt_xdma",
+		.name = "mgmt_msix",
 	},
-	.id_table	= xdma_id_table,
+	.id_table	= mgmt_msix_id_table,
 };
 
-int __init xocl_init_xdma_mgmt(void)
+int __init xocl_init_mgmt_msix(void)
 {
-	return platform_driver_register(&xdma_driver);
+	return platform_driver_register(&mgmt_msix_driver);
 }
 
-void xocl_fini_xdma_mgmt(void)
+void xocl_fini_mgmt_msix(void)
 {
-	return platform_driver_unregister(&xdma_driver);
+	return platform_driver_unregister(&mgmt_msix_driver);
 }

@@ -57,7 +57,7 @@ public:
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(IP_LAYOUT, "IP_LAYOUT", "ip_layout", false, boost::factory<SectionIPLayout*>()); }
+    _init() { registerSectionCtor(IP_LAYOUT, "IP_LAYOUT", "ip_layout", false, false, boost::factory<SectionIPLayout*>()); }
   } _initializer;
 };
 

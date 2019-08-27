@@ -24,17 +24,14 @@
 #include <linux/init_task.h>
 #include <linux/list.h>
 #include <linux/wait.h>
-#include "ert.h"
 #include "zocl_drv.h"
+#include "zocl_cu.h"
+#include "ert.h"
 
 #define MAX_SLOTS 128
 #define MAX_U32_SLOT_MASKS (((MAX_SLOTS-1)>>5) + 1)
 /* MAX_CU_NUM are defined in zocl_util.h */
 #define MAX_U32_CU_MASKS (((MAX_CU_NUM-1)>>5) + 1)
-#define U32_MASK 0xFFFFFFFF
-
-#define ZOCL_KDS_MASK		(~0xFF)
-#define ZOCL_CU_FREE_RUNNING	(U32_MASK & ZOCL_KDS_MASK)
 
 /* Timer thread wake up interval in Millisecond */
 #define	ZOCL_CU_TIMER_INTERVAL		(500)
@@ -49,6 +46,13 @@
 #define CQ_SIZE                       0x10000    /* 64K */
 #define CQ_BASE_ADDR                  0x190000
 #define CSR_ADDR                      0x180000
+
+/*
+ * For zocl cu version 1. The done counter will have risk to overflow
+ * if more than 31 commands done but kds still not able to read done counter.
+ * TBD. This is related to the hardware implementation.
+ */
+#define MAX_PENDING_CMD         31
 
 /**
  * Timestamp only use in set_cmd_ext_timestamp()
@@ -72,11 +76,6 @@ struct sched_client_ctx {
 	struct mutex        lock;
 };
 
-struct zocl_cu {
-	uint32_t            zc_timeout;
-	uint32_t            zc_reset_timeout;
-};
-
 /**
  * struct sched_exec_core: Core data structure for command execution on a device
  *
@@ -97,7 +96,6 @@ struct zocl_cu {
  * @cu_status: Status (busy(1)/free(0)) of CUs. Unused in ERT mode.
  * @num_cu_masks: Number of CU masks used (computed from @num_cus)
  * @cu_addr_phy: Physical address of CUs.
- * @cu_usage: How many times the CUs are excecuted.
  * @cu: Per CU structure.
  * @ops: Scheduler operations vtable
  * @cq_thread: Kernel thread to check the ert command queue.
@@ -138,13 +136,9 @@ struct sched_exec_core {
 	u32                        scu_status[MAX_U32_CU_MASKS];
 
 	/* Bitmap tracks valid CU valid(1)/invalid(0) */
-	u32 			   cu_valid[MAX_U32_CU_MASKS];
+	u32			   cu_valid[MAX_U32_CU_MASKS];
 
-	u32                        cu_addr_phy[MAX_CU_NUM];
-	void __iomem              *cu_addr_virt[MAX_CU_NUM];
-	u32                        cu_usage[MAX_CU_NUM];
-
-	struct zocl_cu            *cu;
+	struct zocl_cu		  *zcu;
 
 	struct sched_ops          *ops;
 	struct task_struct        *cq_thread;
@@ -195,6 +189,7 @@ struct scheduler {
  */
 struct sched_cmd {
 	struct list_head list;
+	struct list_head rq_list;
 	struct drm_device *ddev;
 	struct scheduler *sched;
 	struct sched_exec_core *exec;
