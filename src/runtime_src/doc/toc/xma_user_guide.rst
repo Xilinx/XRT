@@ -505,5 +505,11 @@ Plugins may use dev_index, bank_index & device_only info from BufferObject to en
 
 See XMA copy_encoder & copy_filter examples for more info.
 
+For stateful/multi-channel kernels (eg decodre, encoder):
+    - Use dataflow kernels with context/channels for best performance. Use HLS/RTL Wizard with appropriate settings to generate these kernels in 2019.2 release toolset.
+    - All work items within a channel are treated as FIFO. Kernel must maintain this order for a channel.
+    - See spec for kernels with dataflow with channels. Kernel regamp registers at offset 0x10 (channel_id input to kernel) and 0x14 (channel_id output from kernel) must be supported by kernels.
+    - Use xrt.ini settings (dataflow; kernel_channels) to enable dataflow kernel with channels
+
 Using DRM (Digital Right Management) IPs:
     - TBD
