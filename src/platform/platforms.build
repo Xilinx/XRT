@@ -6,7 +6,7 @@
 		"#      Platform_name: Name of the platform to be built",
 		"#      bsp_key: Name in the platform bsp Ex: xilinx-<bsp_key>-v<release>-final.bsp",
 		"#        pullrequest_build: Whether to build this platform in pull request pipleine - true|false?",
-        "#                           please set pullrequest_build:true when enabling new platforms",
+		"#                           please set pullrequest_build:true when enabling new platforms",
 		"#        sysroot:",
 		"#          copy:",
 		"#            from: where should the sysroot be copied from",
@@ -21,7 +21,7 @@
 		"#",
 		"###########################################################"
 	],
-	"platforms_to_build_new": {
+	"platforms_to_build": {
 		"zcu102_base": {
 			"bsp_key": "zcu102",
 			"pullrequest_build": true,
