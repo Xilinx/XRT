@@ -159,7 +159,7 @@ size_t AIM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
     // Samples are taken almost immediately and it is assumed that the intervals are close to each other.
     // So, only one sample interval reading is okay.
     if (s==0 && getDevice()) {
-      counterResults.SampleIntervalUsec = sampleInterval / (getDevice()->getDeviceClock());
+       counterResults.SampleIntervalUsec = sampleInterval / (getDevice()->getDeviceClock());
     }
 
     size += read(XAIM_SAMPLE_WRITE_BYTES_OFFSET, 4, &counterResults.WriteBytes[s]);
