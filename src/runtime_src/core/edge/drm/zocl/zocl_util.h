@@ -49,6 +49,15 @@
  */
 #define	GET_MEM_BANK(x)		((x) & 0xFFFF)
 
+/* This is to identify what kind of hardware in PL
+ * to interact with host, like notify host.
+ * RTL is dedicated RTL IP is used.
+ * Mailbox is Receieve/Send message from/to Host via mailbox IP.
+ * Use this in struct zocl_ert_info.
+ */
+#define ERT_MOD_RTL     0
+#define ERT_MOD_MAILBOX 1
+
 struct drm_zocl_mm_stat {
 	size_t memory_usage;
 	unsigned int bo_count;
