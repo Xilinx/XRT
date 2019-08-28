@@ -56,7 +56,6 @@
 		},
 		"zc702_base": {
 			"bsp_key": "zc702",
-			"pullrequest_build": true,
 			"sysroot": {
 				"copy": {
 					"from": "${XRT_EMBEDDED_STAGING_ROOT}/sw",
