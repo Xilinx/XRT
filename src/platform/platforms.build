@@ -34,15 +34,11 @@
 			"package": {
 				"dsabin": false,
 				"dsadev": false,
-				"ta_locations": [
-					""
-				]
+				"ta_locations": [""]
 			},
 			"copy": {
 				"from": "${XRT_EMBEDDED_ROOT}",
-				"to": [
-					"${TA_ROOT}/internal_platforms"
-				]
+				"to": ["${TA_ROOT}/internal_platforms"]
 			}
 		},
 		"zcu104_base": {
@@ -51,15 +47,11 @@
 			"package": {
 				"dsabin": false,
 				"dsadev": false,
-				"ta_locations": [
-					""
-				]
+				"ta_locations": [""]
 			},
 			"copy": {
 				"from": "${XRT_EMBEDDED_ROOT}",
-				"to": [
-					"${TA_ROOT}/internal_platforms"
-				]
+				"to": ["${TA_ROOT}/internal_platforms"]
 			}
 		},
 		"zc702_base": {
@@ -74,15 +66,11 @@
 			"package": {
 				"dsabin": false,
 				"dsadev": false,
-				"ta_locations": [
-					""
-				]
+				"ta_locations": [""]
 			},
 			"copy": {
 				"from": "${XRT_EMBEDDED_ROOT}",
-				"to": [
-					"${TA_ROOT}/internal_platforms"
-				]
+				"to": ["${TA_ROOT}/internal_platforms"]
 			}
 		},
 		"zed_base": {
@@ -91,15 +79,11 @@
 			"package": {
 				"dsabin": false,
 				"dsadev": false,
-				"ta_locations": [
-					""
-				]
+				"ta_locations": [""]
 			},
 			"copy": {
 				"from": "${XRT_EMBEDDED_ROOT}",
-				"to": [
-					"${TA_ROOT}/internal_platforms"
-				]
+				"to": ["${TA_ROOT}/internal_platforms"]
 			}
 		},
 		"zc706_base": {
@@ -108,15 +92,11 @@
 			"package": {
 				"dsabin": false,
 				"dsadev": false,
-				"ta_locations": [
-					""
-				]
+				"ta_locations": [""]
 			},
 			"copy": {
 				"from": "${XRT_EMBEDDED_ROOT}",
-				"to": [
-					"${TA_ROOT}/internal_platforms"
-				]
+				"to": ["${TA_ROOT}/internal_platforms"]
 			}
 		}
 	}
