@@ -43,7 +43,6 @@
 		},
 		"zcu104_base": {
 			"bsp_key": "zcu104",
-			"pullrequest_build": true,
 			"package": {
 				"dsabin": false,
 				"dsadev": false,
@@ -74,7 +73,6 @@
 		},
 		"zed_base": {
 			"bsp_key": "zed",
-			"pullrequest_build": true,
 			"package": {
 				"dsabin": false,
 				"dsadev": false,
