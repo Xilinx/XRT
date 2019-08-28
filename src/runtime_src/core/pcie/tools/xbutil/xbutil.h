@@ -898,7 +898,7 @@ public:
         }
 
         pcidev::get_dev(m_idx)->sysfs_get( "", "logic_uuids", errmsg, logic_uuids);
-        if (interface_uuids.size())
+        if (logic_uuids.size())
         {
             ostr << "Logic UUID" << std::endl;
             for (auto uuid : logic_uuids)

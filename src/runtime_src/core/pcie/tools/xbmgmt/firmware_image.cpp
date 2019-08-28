@@ -423,7 +423,7 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
                 iter.pop();
             else
             {
-                dp = opendir(iter->path().string().c_str()); 
+                dp = opendir(name.c_str());
 		if (!dp)
                 {
                     iter.no_push();
