@@ -161,9 +161,9 @@ namespace xdp {
     auto platform = getclPlatformID();
 
     for (auto device : platform->get_device_range()) {
-//      if(!device->is_active()) {
-//        continue;
-//      }
+      if(!device->is_active()) {
+        continue;
+      }
       auto itr = DeviceData.find(device);
       if (itr==DeviceData.end()) {
         itr = DeviceData.emplace(device,xdp::xoclp::platform::device::data()).first;
@@ -208,7 +208,7 @@ namespace xdp {
            * Currently, isApCtrlChain retrieves info from xocl::device and conpute_unit. So, could not be moved
            * into DeviceIntf as it uses xrt::device
            */
-//          ip_config[i] = xoclp::platform::device::isAPCtrlChain(device, cuName) ? true : false;
+          ip_config[i] = xoclp::platform::device::isAPCtrlChain(device, cuName) ? true : false;
         }
 
         dInt->configureDataflow(ip_config.get());
@@ -223,9 +223,9 @@ namespace xdp {
     auto platform = getclPlatformID();
 
     for (auto device : platform->get_device_range()) {
-//      if(!device->is_active()) {
-//        continue;
-//      }
+      if(!device->is_active()) {
+        continue;
+      }
       auto itr = DeviceData.find(device);
       if (itr==DeviceData.end()) {
         itr = DeviceData.emplace(device,xdp::xoclp::platform::device::data()).first;
@@ -509,9 +509,9 @@ namespace xdp {
 
     auto platform = getclPlatformID();
     for (auto device : platform->get_device_range()) {
-//      if(!device->is_active()) {
-//        continue;
-//      }
+      if(!device->is_active()) {
+        continue;
+      }
       auto xdevice = device->get_xrt_device();
 
       auto itr = DeviceData.find(device);
@@ -541,14 +541,10 @@ namespace xdp {
         uint64_t timeNsec = (err < 0) ? 0 : (uint64_t) now.tv_sec * 1000000000UL + (uint64_t) now.tv_nsec;
 
         // Create unique name for device since currently all devices are called fpga0
-        std::string device_name = "unique_device";
-        std::string binary_name = "fpga0";
-        uint32_t program_id = 0;
-#if 0
         std::string device_name = device->get_unique_name();
         std::string binary_name = device->get_xclbin().project_name();
         uint32_t program_id = (device->get_program()) ? (device->get_program()->get_uid()) : 0;
-#endif 
+
         getProfileManager()->logDeviceCounters(device_name, binary_name, program_id,
                                      XCL_PERF_MON_MEMORY /*For HW flow all types handled together */,
                                      info->mCounterResults, timeNsec, firstReadAfterProgram);
@@ -603,9 +599,9 @@ namespace xdp {
     auto platform = getclPlatformID();
     profileMgr->setLoggingTrace(type, true);
     for (auto device : platform->get_device_range()) {
-//      if(!device->is_active()) {
-//        continue;
-//      }
+      if(!device->is_active()) {
+        continue;
+      }
       auto xdevice = device->get_xrt_device();
 
       auto itr = DeviceData.find(device);
@@ -645,8 +641,8 @@ namespace xdp {
         // Create unique name for device since system can have multiples of same device
         std::string device_name = device->get_unique_name();
         std::string binary_name = "binary";
-//        if (device->is_active())
-//          binary_name = device->get_xclbin().project_name();
+        if (device->is_active())
+          binary_name = device->get_xclbin().project_name();
 
         if (dInt) {    // HW Device flow
           if (dInt->hasFIFO()) {
@@ -694,6 +690,7 @@ namespace xdp {
     profileMgr->setLoggingTrace(type, false);
     return 0;
   }
+
 
   bool OCLProfiler::allocateDeviceDDRBufferForTrace(DeviceIntf* dInt, xrt::device* xrtDevice)
   {
