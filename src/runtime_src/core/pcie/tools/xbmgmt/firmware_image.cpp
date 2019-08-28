@@ -422,7 +422,18 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
             } else if (iter.level() > 4)
                 iter.pop();
             else
+            {
+                dp = opendir(name.c_str());
+		if (!dp)
+                {
+                    iter.no_push();
+                }
+		else
+                {
+                    closedir(dp);
+                }
                 ++iter;
+            }
         }
     }
 

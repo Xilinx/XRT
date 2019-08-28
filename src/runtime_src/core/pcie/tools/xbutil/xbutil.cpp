@@ -21,12 +21,17 @@
 #include <curses.h>
 #include <sstream>
 #include <climits>
+#include <regex>
 #include <algorithm>
 #include <getopt.h>
 #include <sys/mman.h>
+#include <boost/filesystem.hpp>
 
 #include "xbutil.h"
 #include "base.h"
+
+#define FORMATTED_FW_DIR    "/opt/xilinx/firmware"
+#define hex_digit "[0-9a-fA-F]+"
 
 int bdf2index(std::string& bdfStr, unsigned& index)
 {
@@ -947,24 +952,82 @@ int runShellCmd(const std::string& cmd, std::string& output)
     return ret;
 }
 
-int searchXsaAndDsa(std::string xsaPath, std::string 
+int searchXsaAndDsa(int index, std::string xsaPath, std::string
     dsaPath, std::string& path, std::string &output) 
 {
     struct stat st;
-    if (stat(xsaPath.c_str(), &st) != 0) {
-            if (stat(dsaPath.c_str(), &st) != 0) {
-                output += "ERROR: Failed to find xclbin in ";
-                output += xsaPath;
-                output += " and ";
-                output += dsaPath;
-                return -ENOENT;
-            }
-            path =  dsaPath;
-            return EXIT_SUCCESS;
-    } else {
-        path = xsaPath;
+    if (stat(xsaPath.c_str(), &st) == 0) {
+        path =  xsaPath;
+        return EXIT_SUCCESS;
+    } else if (stat(dsaPath.c_str(), &st) == 0) {
+        path = dsaPath;
         return EXIT_SUCCESS;
     }
+    // Check if it is 2rp platform
+    std::string logic_uuid;
+    std::string errmsg;
+    pcidev::get_dev(index)->sysfs_get( "", "logic_uuids", errmsg, logic_uuid);
+    if (!logic_uuid.empty()) {
+        DIR *dp;
+
+	dp = opendir(FORMATTED_FW_DIR);
+	if (!dp) {
+            output += "ERROR: Failed to find firmware installation dir ";
+	    output += FORMATTED_FW_DIR;
+	    output += "\n";
+	    return -ENOENT;
+	}
+	closedir(dp);
+
+        boost::filesystem::path formatted_fw_dir(FORMATTED_FW_DIR);
+        std::vector<std::string> suffix = { "dsabin", "xsabin" };
+        for (std::string t : suffix) {
+            std::regex e("(^" FORMATTED_FW_DIR "/" hex_digit "-" hex_digit "-" hex_digit "/.+/.+/.+/)(" hex_digit ")\\." + t);
+            for (boost::filesystem::recursive_directory_iterator iter(formatted_fw_dir, boost::filesystem::symlink_option::recurse), end;
+                iter != end;
+            )
+            {
+                std::string name = iter->path().string();
+                std::cmatch cm;
+
+                std::regex_match(name.c_str(), cm, e);
+                if (cm.size() > 0)
+                {
+                    std::string uuid = cm.str(2);
+                    if (uuid.compare(logic_uuid) == 0)
+                    {
+                        path = cm.str(1) + "test/";
+                        return EXIT_SUCCESS;
+                    }
+                }
+                else if (iter.level() > 4)
+                {
+                    iter.pop();
+                    continue;
+                }
+                dp = opendir(name.c_str());
+                if (!dp)
+                {
+                    iter.no_push();
+                }
+                else
+                {
+                    closedir(dp);
+                }
+                ++iter;
+            }
+        }
+        output += "ERROR: Failed to find xclbin in ";
+        output += FORMATTED_FW_DIR;
+        output += "\n";
+        return -ENOENT;
+    }
+    
+    output += "ERROR: Failed to find xclbin in ";
+    output += xsaPath;
+    output += " and ";
+    output += dsaPath;
+    return -ENOENT;
 }
 
 int xcldev::device::runTestCase(const std::string& py,
@@ -987,7 +1050,7 @@ int xcldev::device::runTestCase(const std::string& py,
     output.clear();
 
     std::string xclbinPath;
-    searchXsaAndDsa(xsaXclbinPath, dsaXclbinPath, xclbinPath, output);
+    searchXsaAndDsa(m_idx, xsaXclbinPath, dsaXclbinPath, xclbinPath, output);
     xclbinPath += xclbin;
 
     if (stat(xrtTestCasePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
@@ -1030,7 +1093,7 @@ int xcldev::device::runXbTestCase(const std::string& test, std::string& output)
     output.clear();
 
     std::string testPath;
-    searchXsaAndDsa(xsaTestPath, dsaTestPath, testPath, output);
+    searchXsaAndDsa(m_idx, xsaTestPath, dsaTestPath, testPath, output);
     std::string exePath = testPath + "xbtest";
     testPath += test;
 

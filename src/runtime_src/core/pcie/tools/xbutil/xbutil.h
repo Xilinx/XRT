@@ -882,6 +882,32 @@ public:
                  ostr << std::setw(16) << "no iomem" << std::endl;
              break;
         }
+
+	std::vector<std::string> interface_uuids;
+	std::vector<std::string> logic_uuids;
+	std::string errmsg;
+        pcidev::get_dev(m_idx)->sysfs_get( "", "interface_uuids", errmsg, interface_uuids);
+        if (interface_uuids.size())
+        {
+            ostr << "Interface UUID" << std::endl;
+            for (auto uuid : interface_uuids)
+            {
+                ostr << uuid;
+            }
+            ostr << std::endl;
+        }
+
+        pcidev::get_dev(m_idx)->sysfs_get( "", "logic_uuids", errmsg, logic_uuids);
+        if (logic_uuids.size())
+        {
+            ostr << "Logic UUID" << std::endl;
+            for (auto uuid : logic_uuids)
+            {
+                ostr << uuid;
+            }
+            ostr << std::endl;
+        }
+
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Temperature(C)\n";
         ostr << std::setw(16) << "PCB TOP FRONT" << std::setw(16) << "PCB TOP REAR" << std::setw(16) << "PCB BTM FRONT" << std::endl;
