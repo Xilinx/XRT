@@ -486,8 +486,9 @@ struct HalPluginConfig {
 
 enum HalCallbackType {
   START_DEVICE_PROFILING,
+  CREATE_PROFILE_RESULTS,
   GET_PROFILE_RESULTS,
-  CLEAR_PROFILE_RESULTS,
+  DESTROY_PROFILE_RESULTS,
   ALLOC_BO_START,
   ALLOC_BO_END,
   FREE_BO_START,
@@ -520,7 +521,7 @@ enum HalCallbackType {
  */
 struct CBPayload {
   unsigned idcode;
-  unsigned long devcode;
+  void* deviceHandle;
 };
 
 /**

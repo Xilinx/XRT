@@ -49,7 +49,7 @@ AllocBOCallLogger::AllocBOCallLogger(xclDeviceHandle handle, size_t size, int un
 {
     if (!cb_valid()) return;
     global_idcode++;    // increment only if valid calllback
-    CBPayload payload = {m_local_idcode, (unsigned long)handle};
+    CBPayload payload = {m_local_idcode, handle};
     cb(HalCallbackType::ALLOC_BO_START, &payload);
 }
 
@@ -64,7 +64,7 @@ FreeBOCallLogger::FreeBOCallLogger(xclDeviceHandle handle, unsigned int boHandle
 {
     if (!cb_valid()) return;
     global_idcode++;    // increment only if valid calllback
-    CBPayload payload = {m_local_idcode, (unsigned long)handle};
+    CBPayload payload = {m_local_idcode, handle};
     cb(HalCallbackType::FREE_BO_START, &payload);
 }
 
@@ -79,7 +79,7 @@ WriteBOCallLogger::WriteBOCallLogger(xclDeviceHandle handle, unsigned int boHand
 {
     if (!cb_valid()) return;
     global_idcode++;    // increment only if valid calllback
-    CBPayload payload = {m_local_idcode, (unsigned long)handle};
+    CBPayload payload = {m_local_idcode, handle};
     cb(HalCallbackType::WRITE_BO_START, &payload);
 }
 
@@ -94,7 +94,7 @@ ReadBOCallLogger::ReadBOCallLogger(xclDeviceHandle handle, unsigned int boHandle
 {
     if (!cb_valid()) return;
     global_idcode++;    // increment only if valid calllback
-    CBPayload payload = {m_local_idcode, (unsigned long)handle};
+    CBPayload payload = {m_local_idcode, handle};
     cb(HalCallbackType::READ_BO_START, &payload);
 }
 
@@ -109,7 +109,7 @@ MapBOCallLogger::MapBOCallLogger(xclDeviceHandle handle, unsigned int boHandle, 
 {
     if (!cb_valid()) return;
     global_idcode++;    // increment only if valid calllback
-    CBPayload payload = {m_local_idcode, (unsigned long)handle};
+    CBPayload payload = {m_local_idcode, handle};
     cb(HalCallbackType::MAP_BO_START, &payload);
 }
 
@@ -124,7 +124,7 @@ SyncBOCallLogger::SyncBOCallLogger(xclDeviceHandle handle, unsigned int boHandle
 {
     if (!cb_valid()) return;
     global_idcode++;    // increment only if valid calllback
-    CBPayload payload = {m_local_idcode, (unsigned long)handle};
+    CBPayload payload = {m_local_idcode, handle};
     cb(HalCallbackType::SYNC_BO_START, &payload);
 }
 
@@ -139,7 +139,7 @@ UnmgdPwriteCallLogger::UnmgdPwriteCallLogger(xclDeviceHandle handle, unsigned fl
 {
     if (!cb_valid()) return;
     global_idcode++;    // increment only if valid calllback
-    UnmgdPreadPwriteCBPayload payload = {{m_local_idcode, (unsigned long)handle}, flags, count, offset};
+    UnmgdPreadPwriteCBPayload payload = {{m_local_idcode, handle}, flags, count, offset};
     cb(HalCallbackType::UNMGD_WRITE_START, &payload);
 }
 
@@ -154,7 +154,7 @@ UnmgdPreadCallLogger::UnmgdPreadCallLogger(xclDeviceHandle handle, unsigned flag
 {
     if (!cb_valid()) return;
     global_idcode++;    // increment only if valid calllback
-    UnmgdPreadPwriteCBPayload payload = {{m_local_idcode, (unsigned long)handle}, flags, count, offset};
+    UnmgdPreadPwriteCBPayload payload = {{m_local_idcode, handle}, flags, count, offset};
     cb(HalCallbackType::UNMGD_READ_START, &payload);
 }
 
@@ -169,7 +169,7 @@ ReadCallLogger::ReadCallLogger(xclDeviceHandle handle, xclAddressSpace space, ui
 {
     if (!cb_valid()) return;
     global_idcode++;    // increment only if valid calllback
-    ReadWriteCBPayload payload = {{m_local_idcode, (unsigned long)handle}, space, offset, size};
+    ReadWriteCBPayload payload = {{m_local_idcode, handle}, space, offset, size};
     cb(HalCallbackType::READ_START, &payload);
 }
 
@@ -184,7 +184,7 @@ WriteCallLogger::WriteCallLogger(xclDeviceHandle handle, xclAddressSpace space, 
 {
     if (!cb_valid()) return;
     global_idcode++;    // increment only if valid calllback
-    ReadWriteCBPayload payload = { {m_local_idcode, (unsigned long)handle}, space, offset, size};
+    ReadWriteCBPayload payload = { {m_local_idcode, handle}, space, offset, size};
     cb(HalCallbackType::WRITE_START, (void*)(&payload));
 }
 
@@ -199,36 +199,44 @@ StartDeviceProfilingCls::StartDeviceProfilingCls(xclDeviceHandle handle)
 {
   load_xdp_plugin_library(nullptr);
   if(!cb_valid()) return;
-  // payload ?
-  CBPayload payload = {0, (unsigned long)handle};
+  CBPayload payload = {0, handle};
   cb(HalCallbackType::START_DEVICE_PROFILING, &payload);
 }
 
 StartDeviceProfilingCls::~StartDeviceProfilingCls()
 {}
 
+CreateProfileResultsCls::CreateProfileResultsCls(xclDeviceHandle handle, ProfileResults** results)
+{
+  load_xdp_plugin_library(nullptr);
+  if(!cb_valid()) return;
+  ProfileResultsCBPayload payload = {{0, handle}, static_cast<void*>(results)};   // pass ProfileResults** as void*
+  cb(HalCallbackType::CREATE_PROFILE_RESULTS, &payload);
+}
+
+CreateProfileResultsCls::~CreateProfileResultsCls()
+{}
+
 GetProfileResultsCls::GetProfileResultsCls(xclDeviceHandle handle, ProfileResults* results)
 {
   load_xdp_plugin_library(nullptr);
   if(!cb_valid()) return;
-  // payload ?
-  ProfileResultsCBPayload payload = {{0, (unsigned long)handle}, results};
+  ProfileResultsCBPayload payload = {{0, handle}, static_cast<void*>(results)};
   cb(HalCallbackType::GET_PROFILE_RESULTS, &payload);
 }
 
 GetProfileResultsCls::~GetProfileResultsCls()
 {}
 
-ClearProfileResultsCls::ClearProfileResultsCls(xclDeviceHandle handle, ProfileResults* results)
+DestroyProfileResultsCls::DestroyProfileResultsCls(xclDeviceHandle handle, ProfileResults* results)
 {
   load_xdp_plugin_library(nullptr);
   if(!cb_valid()) return;
-  // payload ?
-  ProfileResultsCBPayload payload = {{0, (unsigned long)handle}, results};
-  cb(HalCallbackType::CLEAR_PROFILE_RESULTS, &payload);
+  ProfileResultsCBPayload payload = {{0, handle}, static_cast<void*>(results)};
+  cb(HalCallbackType::DESTROY_PROFILE_RESULTS, &payload);
 }
 
-ClearProfileResultsCls::~ClearProfileResultsCls()
+DestroyProfileResultsCls::~DestroyProfileResultsCls()
 {}
 
 void load_xdp_plugin_library(HalPluginConfig* config)

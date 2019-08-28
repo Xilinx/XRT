@@ -10,7 +10,6 @@
 #include <boost/filesystem/path.hpp>
 #include "core/include/xclperf.h"
 #include "core/include/xclhal2.h"
-#include "core/include/profile_results.h"
 
 namespace xdphal {
 
@@ -121,6 +120,13 @@ public:
   ~StartDeviceProfilingCls();
 };
 
+class CreateProfileResultsCls
+{
+public:
+  CreateProfileResultsCls(xclDeviceHandle handle, ProfileResults**);
+  ~CreateProfileResultsCls();
+};
+
 class GetProfileResultsCls
 {
 public:
@@ -128,11 +134,11 @@ public:
   ~GetProfileResultsCls();
 };
 
-class ClearProfileResultsCls
+class DestroyProfileResultsCls
 {
 public:
-  ClearProfileResultsCls(xclDeviceHandle handle, ProfileResults*);
-  ~ClearProfileResultsCls();
+  DestroyProfileResultsCls(xclDeviceHandle handle, ProfileResults*);
+  ~DestroyProfileResultsCls();
 };
 
 void load_xdp_plugin_library(HalPluginConfig* config);
@@ -154,7 +160,8 @@ void load_xdp_plugin_library(HalPluginConfig* config);
 #define READ_CB xdphal::ReadCallLogger read_call_logger(handle, space, offset, hostBuf, size);
 
 #define START_DEVICE_PROFILING_CB(handle) xdphal::StartDeviceProfilingCls start_device_profiling_inst(handle);
+#define CREATE_PROFILE_RESULTS_CB(handle, results) xdphal::CreateProfileResultsCls create_profile_results_inst(handle, results);
 #define GET_PROFILE_RESULTS_CB(handle, results) xdphal::GetProfileResultsCls get_profile_results_inst(handle, results);
-#define CLEAR_PROFILE_RESULTS_CB(handle, results) xdphal::ClearProfileResultsCls clear_profile_results_inst(handle, results);
+#define DESTROY_PROFILE_RESULTS_CB(handle, results) xdphal::DestroyProfileResultsCls destroy_profile_results_inst(handle, results);
 
 #endif

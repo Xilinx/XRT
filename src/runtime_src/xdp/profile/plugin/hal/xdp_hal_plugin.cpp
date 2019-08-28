@@ -15,9 +15,6 @@ namespace xdp {
 
 void alloc_bo_start(void* payload) {
 //    std::cout << "alloc_bo_start" << std::endl;
-//    CallbackMarker* payload_content = reinterpret_cast<CallbackMarker*>(payload);
- //   std::cout << "idcode: " << payload_content->idcode << std::endl;
- //   std::cout << "devcode: " << payload_content->devcode << std::endl;
     return;
 }
 
@@ -134,11 +131,8 @@ void start_device_profiling_from_hal(void* payload)
 {
   std::cout << " start_device_profiling_from_hal " << std::endl;
 
-//  return;
-
   // HAL pointer
-  xclDeviceHandle handle = ((xclDeviceHandle)((CBPayload*)payload)->devcode);
-
+  xclDeviceHandle handle = ((CBPayload*)payload)->deviceHandle;
 
   HALProfiler::Instance()->startProfiling(handle);
 
@@ -163,28 +157,34 @@ void start_device_profiling_from_hal(void* payload)
 #endif
 }
 
+void create_profile_results(void* payload)
+{
+  std::cout << " create_profiling_result " << std::endl;
+
+  ProfileResultsCBPayload* payld = (ProfileResultsCBPayload*)payload;
+  xclDeviceHandle handle = payld->basePayload.deviceHandle; // HAL pointer
+
+  HALProfiler::Instance()->createProfileResults(handle, payld->results);
+}
+
 void get_profile_results(void* payload)
 {
   std::cout << " get_profiling_result " << std::endl;
 
   ProfileResultsCBPayload* payld = (ProfileResultsCBPayload*)payload;
-  // HAL pointer
-  xclDeviceHandle handle = (xclDeviceHandle)(payld->basePayload.devcode);
-  void* results = payld->results;
+  xclDeviceHandle handle = payld->basePayload.deviceHandle; // HAL pointer
 
-  HALProfiler::Instance()->getProfileResults(handle, results);
+  HALProfiler::Instance()->getProfileResults(handle, payld->results);
 }
 
-void clear_profile_results(void* payload)
+void destroy_profile_results(void* payload)
 {
-  std::cout << " clear_profiling_result " << std::endl;
+  std::cout << " destroy_profiling_result " << std::endl;
 
   ProfileResultsCBPayload* payld = (ProfileResultsCBPayload*)payload;
-  // HAL pointer
-  xclDeviceHandle handle = (xclDeviceHandle)(payld->basePayload.devcode);
-  void* results = payld->results;
+  xclDeviceHandle handle = payld->basePayload.deviceHandle; // HAL pointer
 
-  HALProfiler::Instance()->clearProfileResults(handle, results);
+  HALProfiler::Instance()->destroyProfileResults(handle, payld->results);
 }
 
 void unknown_cb_type(void* payload) {
@@ -192,37 +192,22 @@ void unknown_cb_type(void* payload) {
     return;
 }
 
-void initialize_xdp()
-{
-#if 0
-  try {
-    (void)xdp::RTSingleton::Instance();
-    (void)xdp::OCLProfiler::Instance();
-  } catch (std::runtime_error& e) {
-    xrt::message::send(xrt::message::severity_level::XRT_WARNING, e.what());
-    return ;
-  }
-#endif
-}
-
 } //  xdp
 
 void hal_level_xdp_cb_func(HalCallbackType cb_type, void* payload)
 {
-//  static bool xdpInitialized = false;
-
-//  if(!xdpInitialized)
-//    xdp::initialize_xdp();
-
     switch (cb_type) {
         case HalCallbackType::START_DEVICE_PROFILING:
             xdp::start_device_profiling_from_hal(payload);
             break;
+        case HalCallbackType::CREATE_PROFILE_RESULTS:
+            xdp::create_profile_results(payload);
+            break;
         case HalCallbackType::GET_PROFILE_RESULTS:
             xdp::get_profile_results(payload);
             break;
-        case HalCallbackType::CLEAR_PROFILE_RESULTS:
-            xdp::clear_profile_results(payload);
+        case HalCallbackType::DESTROY_PROFILE_RESULTS:
+            xdp::destroy_profile_results(payload);
             break;
         case HalCallbackType::ALLOC_BO_START:
             xdp::alloc_bo_start(payload);

@@ -19,7 +19,8 @@
 
 
 #include "xdp/profile/device/device_intf.h"
-#include "core/include/profile_results.h"
+//#include "core/include/profile_results.h"
+#include "core/include/experimental/xrt-next.h"
 
 namespace xdp {
 
@@ -27,9 +28,9 @@ namespace xdp {
 class HALProfiler
 {
   std::vector<DeviceIntf*> deviceList;
-    std::map<std::string, xclCounterResults> mFinalCounterResultsMap;
-    std::map<std::string, xclCounterResults> mRolloverCounterResultsMap;
-    std::map<std::string, xclCounterResults> mRolloverCountsMap;
+  std::map<std::string, xclCounterResults> mFinalCounterResultsMap;
+  std::map<std::string, xclCounterResults> mRolloverCounterResultsMap;
+  std::map<std::string, xclCounterResults> mRolloverCountsMap;
 
 // flags  : profile modes 
 
@@ -49,9 +50,11 @@ public:
   ~HALProfiler();
 
   void startProfiling(xclDeviceHandle);
-  void getProfileResults(xclDeviceHandle, void*);
-  void clearProfileResults(xclDeviceHandle, void*);
   void endProfiling();
+
+  void createProfileResults(xclDeviceHandle, void*);
+  void getProfileResults(xclDeviceHandle, void*);
+  void destroyProfileResults(xclDeviceHandle, void*);
 
   void startCounters();
   void stopCounters();

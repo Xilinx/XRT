@@ -59,7 +59,11 @@ void HALProfiler::startProfiling(xclDeviceHandle handle)
 
   // check the flags 
   startCounters();
+
+#if 0
+  // Not supported now
   startTrace();
+#endif
 }
 
 void HALProfiler::endProfiling()
@@ -67,11 +71,13 @@ void HALProfiler::endProfiling()
   std::cout << " In HALProfiler::endProfiling" << std::endl;
   // check the flags 
   stopCounters();
+#if 0
   stopTrace();
 
   xclCounterResults counterResults;
   readCounters(counterResults);
   readTrace();
+#endif
 }
 
 void HALProfiler::startCounters()
@@ -120,6 +126,67 @@ void HALProfiler::readTrace()
     (*itr)->readTrace((xclPerfMonType)0, traceVector);
   }
 }
+#if 0
+void HALProfiler::createProfileResults(xclDeviceHandle, void* ret)
+{
+  ProfileResults** retResults = static_cast<ProfileResults**>(ret);
+
+  // create profile result
+  ProfileResults* results = (ProfileResults*)malloc(sizeof(ProfileResults));
+  *retResults = results;
+
+  // Initialise profile monitor numbers in ProfileResult and allocate memory
+  // Use 1 device now
+  DeviceIntf* currDevice = deviceList[0];
+// readDebugIPlayout called from startProfiling : check other scenaria
+
+  results->numAIM = currDevice->getNumMonitors(XCL_PERF_MON_MEMORY);
+  results->numAM  = currDevice->getNumMonitors(XCL_PERF_MON_ACCEL);
+  results->numASM = currDevice->getNumMonitors(XCL_PERF_MON_STR);
+
+  if(results->numAIM)
+    results->kernelTransferData = (KernelTransferData*)malloc(results->numAIM * sizeof(KernelTransferData));
+
+  if(results->numAM)
+    results->cuExecData = (CuExecData*)malloc(results->numAM * sizeof(CuExecData));
+
+  if(results->numASM)
+    results->streamData = (StreamTransferData*)malloc(results->numASM * sizeof(StreamTransferData));
+
+  // populate the names
+}
+#endif
+
+
+void HALProfiler::createProfileResults(xclDeviceHandle, void* ret)
+{
+  ProfileResults** retResults = static_cast<ProfileResults**>(ret);
+
+  // create profile result
+  ProfileResults* results = (ProfileResults*)calloc(1, sizeof(ProfileResults));
+  *retResults = results;
+
+  // Initialise profile monitor numbers in ProfileResult and allocate memory
+  // Use 1 device now
+  DeviceIntf* currDevice = deviceList[0];
+// readDebugIPlayout called from startProfiling : check other scenaria
+
+  results->numAIM = currDevice->getNumMonitors(XCL_PERF_MON_MEMORY);
+  results->numAM  = currDevice->getNumMonitors(XCL_PERF_MON_ACCEL);
+  results->numASM = currDevice->getNumMonitors(XCL_PERF_MON_STR);
+
+  if(results->numAIM)
+    results->kernelTransferData = (KernelTransferData*)calloc(results->numAIM, sizeof(KernelTransferData));
+
+  if(results->numAM)
+    results->cuExecData = (CuExecData*)calloc(results->numAM, sizeof(CuExecData));
+
+  if(results->numASM)
+    results->streamData = (StreamTransferData*)calloc(results->numASM, sizeof(StreamTransferData));
+
+  // populate the names
+}
+
 
 void HALProfiler::calculateAIMRolloverResult(std::string key, unsigned int numAIM, xclCounterResults& counterResult, bool firstReadAfterProgram)
 {
@@ -284,7 +351,11 @@ void HALProfiler::getProfileResults(xclDeviceHandle, void* res)
   xclCounterResults counterResults;
   readCounters(counterResults); // read from device, done
 
+  ProfileResults* results = static_cast<ProfileResults*>(res);
+  // Use 1 device now
+  DeviceIntf* currDevice = deviceList[0];
 
+#if 0
   // Step 2: Initialise profile monitor numbers in ProfileResult and allocate memory
   // Use 1 device now
   DeviceIntf* currDevice = deviceList[0];
@@ -297,7 +368,7 @@ void HALProfiler::getProfileResults(xclDeviceHandle, void* res)
   results->kernelTransferData = (KernelTransferData*)malloc(results->numAIM * sizeof(KernelTransferData));
   results->cuExecData = (CuExecData*)malloc(results->numAM * sizeof(CuExecData));
   results->streamData = (StreamTransferData*)malloc(results->numASM * sizeof(StreamTransferData));
-   
+#endif   
   // Record the counter data 
 //  auto timeSinceEpoch = (std::chrono::steady_clock::now()).time_since_epoch();
 //  auto value = std::chrono::duration_cast<std::chrono::nanoseconds>(timeSinceEpoch);
@@ -343,9 +414,9 @@ void HALProfiler::getProfileResults(xclDeviceHandle, void* res)
    recordASMResult(results, currDevice, key);
 }
 
-void HALProfiler::clearProfileResults(xclDeviceHandle, void* res)
+void HALProfiler::destroyProfileResults(xclDeviceHandle, void* ret)
 {
-  ProfileResults* results = static_cast<ProfileResults*>(res);
+  ProfileResults* results = static_cast<ProfileResults*>(ret);
 
   // clear AIM data
   for(unsigned int i = 0; i < results->numAIM ; ++i) {
@@ -375,7 +446,7 @@ void HALProfiler::clearProfileResults(xclDeviceHandle, void* res)
   results->cuExecData = '\0';
 
   // clear ASM data
-  for(unsigned int i = 0; i < results->numAIM ; ++i) {
+  for(unsigned int i = 0; i < results->numASM ; ++i) {
     free(results->streamData[i].deviceName);
     free(results->streamData[i].masterPortName);
     free(results->streamData[i].slavePortName);

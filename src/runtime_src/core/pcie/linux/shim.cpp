@@ -27,7 +27,6 @@
 #include "core/common/AlignedAllocator.h"
 
 #include "plugin/xdp/hal_profile.h"
-#include "core/include/profile_results.h"
 
 
 #include "xclbin.h"
@@ -1913,6 +1912,16 @@ int xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz
   return (drv) ? drv->xclReadTraceData(traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample) : -ENODEV;
 }
 
+int xclCreateProfileResults(xclDeviceHandle handle, ProfileResults** results) 
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  if(!drv)
+    return -ENODEV;
+
+  CREATE_PROFILE_RESULTS_CB(handle, results);
+  return 0;
+}
+
 int xclGetProfileResults(xclDeviceHandle handle, ProfileResults* results) 
 {
   xocl::shim *drv = xocl::shim::handleCheck(handle);
@@ -1923,13 +1932,13 @@ int xclGetProfileResults(xclDeviceHandle handle, ProfileResults* results)
   return 0;
 }
 
-int xclClearProfileResults(xclDeviceHandle handle, ProfileResults* results) 
+int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results) 
 {
   xocl::shim *drv = xocl::shim::handleCheck(handle);
   if(!drv)
     return -ENODEV;
 
-  CLEAR_PROFILE_RESULTS_CB(handle, results);
+  DESTROY_PROFILE_RESULTS_CB(handle, results);
   return 0;
 }
 
