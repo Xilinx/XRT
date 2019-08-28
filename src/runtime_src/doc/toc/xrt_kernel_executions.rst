@@ -39,7 +39,7 @@ AP_CTRL_HS (Sequentially Executed Kernel)
 The AP_CTRL_HS style kernel is the oldest supported model through XRT (before 19.1, this was the only supported kernel type by XRT). The idea of AP_CTRL_HS is the simple one-point synchronization scheme between the host and the kernel using two signals: **ap_start** and **ap_done**. This execution mode allows the kernel only be restarted after it is completed the current execution. So when there are multiple kernel execution requests from the host, the kernel gets executed in sequential order, serving only one execution request at a time. 
 
 Mode of operation
------------------
+~~~~~~~~~~~~~~~~~
 
 .. image:: ap_ctrl_hs_2.PNG
    :align: center
@@ -50,10 +50,10 @@ Mode of operation
 
 Assume there are three concurrent kernel execution requests from the host. The kernel executions will happen sequentially as below, serving one request at a time
 
-|START1|=>|DONE1|=>|START2|=>|DONE2|=>|START3|=>|DONE3|
+START1=>DONE1=>START2=>DONE2=>START3=>DONE3
 
 Control Signal Topology
------------------------
+~~~~~~~~~~~~~~~~~~~~~~~
 The signals ap_start and ap_done must be connected to the AXI_LITE control and status register (at the address 0x0 of the AXI4-Lite Slave interface) section to specific bits.  
 
 ====== ===================== =======================================================================
@@ -70,7 +70,7 @@ AP_CTRL_CHAIN (Pipelined Kernel)
 AP_CTRL_CHAIN is an improved version of AP_CTRL_HS where the kernel is designed in such a way it can allow multiple kernel executions to get overlapped and running in a pipelined fashion. To achieve this host to kernel synchronization point is broken into two places: input synchronization (dictated by the signals **ap_start** and **ap_ready**) and output synchronization (**ap_done** and **ap_continue**). This execution mode allows the kernel to be restarted even if the kernel is working on the current (one or more) execution(s). So when there are multiple kernel execution requests from the host, the kernel gets executed in a pipelined or overlapping fashion, serving multiple execution requests at a time. 
 
 Mode of operation
------------------
+~~~~~~~~~~~~~~~~~
 
 .. image:: ap_ctrl_chain_2.PNG
    :align: center
@@ -83,7 +83,7 @@ Mode of operation
 
 Assume there are five concurrent kernel execution requests from the host and the kernel can work on three execution requests in a pipelined fashion. The kernel executions will happen sequentially as below, serving maximum three requests at a time. 
 
-|START1|=>|START2|=>|START3|=>|DONE1|=>|START4|=>|DONE2|=>|START5|=>|DONE3|=>|DONE4|=>|DONE5|
+START1=>START2=>START3=>DONE1=>START4=>DONE2=>START5=>DONE3=>DONE4=>DONE5
 
 **Note:** As noted in the above sequence, the AP_CTRL_CHAIN only applicable when the kernel produces the outputs for the pending requests in-order. Kernel servicing the requests out-of-order cannot be supported by AP_CTRL_CHAIN execution model. 
 
@@ -95,7 +95,7 @@ Assume there are five concurrent kernel execution requests from the host and the
 The input and output synchronization occurs asynchronously, as a result, multiple executions are performed by the kernel in an overlapping or pipelined fashion.
 
 Control Signal Topology
------------------------
+~~~~~~~~~~~~~~~~~~~~~~~
 The signals ap_start, ap_ready, ap_done, ap_continue must be connected to the AXI_LITE control and status register (at the address 0x0 of the AXI4-Lite Slave interface) section to specific bits.  
 
 ====== ===================== =======================================================================
@@ -108,14 +108,14 @@ The signals ap_start, ap_ready, ap_done, ap_continue must be connected to the AX
 ====== ===================== =======================================================================
 
 Host Code Consideration
------------------------
+~~~~~~~~~~~~~~~~~~~~~~~
 The host code exercising a AP_CTRL_CHAIN kernel should be able to fill the input queue with multiple execution requests well ahead to take the advantage of pipelined nature of the kernel. For example, considering OpenCL host code, it should use out-of-order command queue for multiple kernel execution requests. The host code should also use API ``clEnqueueMigrateMemObjects`` to explicitly migrate the buffer before the kernel execution. 
 
 
 
-=====================================
+==========================================
 AP_CTRL_NONE (Continuously Running Kernel)
-=====================================
+==========================================
 
 Sometimes the kernel does not need to be controlled by the host. For example, if the kernel is only communicating through the stream, it only works when the data is available at its input through the stream, and the kernel stalls when there is no data to process, waiting for new data to arrive through the stream to start working again. These type of kernels has no control signal connected to the AXI4-Lite Slave interface. 
 
