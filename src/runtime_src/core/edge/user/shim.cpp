@@ -897,6 +897,7 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
         printf("Map Debug IPs Failed\n");
         return ret;
     }
+    START_DEVICE_PROFILING_CB(handle);
     return 0;
 }
 
@@ -1268,6 +1269,37 @@ ssize_t xclReadQueue(xclDeviceHandle handle, void *q_hdl, xclQueueRequest *wr_re
 {
   return -ENOSYS;
 }
+
+int xclCreateProfileResults(xclDeviceHandle handle, ProfileResults** results)
+{
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  if(!drv)
+    return -ENODEV;
+
+  CREATE_PROFILE_RESULTS_CB(handle, results);
+  return 0;
+}
+
+int xclGetProfileResults(xclDeviceHandle handle, ProfileResults* results)
+{
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  if(!drv)
+    return -ENODEV;
+
+  GET_PROFILE_RESULTS_CB(handle, results);
+  return 0;
+}
+
+int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results)
+{
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  if(!drv)
+    return -ENODEV;
+
+  DESTROY_PROFILE_RESULTS_CB(handle, results);
+  return 0;
+}
+
 
 int xclRegWrite(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset,
   uint32_t data)
