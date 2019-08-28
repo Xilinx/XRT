@@ -1,4 +1,5 @@
 #include "plugin/xdp/hal_profile.h"
+#include "core/common/config_reader.h"
 
 namespace bfs = boost::filesystem;
 
@@ -238,6 +239,22 @@ void load_xdp_plugin_library(HalPluginConfig* config)
     if (loaded) {
         return;
     }
+
+    if(!xrt_core::config::get_hal_profile()) {
+      // hal_profile is not set to correct configuration. Skip loading xdp_hal_plugin.
+      // There will be no profile support in this run.
+      std::cout << "\"hal_profile\" is not set to true in xrt.ini Debug configuration. So, no HAL profiling is available." << std::endl;
+      return;
+    }
+
+    // hal_profile is set to "true". Try to load xdp_hal_plugin library
+    if(xrt_core::config::get_profile()) {
+      // "profile=true" is also set. This enables OpenCL based flow for profiling. 
+      // Currently, mix of OpenCL and HAL based profiling is not supported.
+      // So, give error and skip loading of xdp_hal_plugin library
+      throw std::runtime_error("Both profile=true and hal_profile=true set in xrt.ini config. Currently, these flows are not supported to work together. Hence, profiling will not be available in this run. Please set only one of the configuration depending on type of application and re-run");
+    }
+
     std::cout << "Loading xdp plugins ..." << std::endl;
     bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
     bfs::path libname("libxdp_hal_plugin.so");
