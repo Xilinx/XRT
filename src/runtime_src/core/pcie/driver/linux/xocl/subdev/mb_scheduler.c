@@ -631,6 +631,23 @@ cmd_abort(struct xocl_cmd *xcmd)
 	SCHED_DEBUGF("xcmd(%lu) [-> abort]\n", xcmd->uid);
 }
 
+static inline bool
+can_enable_timestamps(struct xocl_cmd *xcmd)
+{
+	struct ert_start_kernel_cmd *pkt = xcmd->ert_cu;
+
+	if (cmd_type(xcmd) != ERT_CU || !xcmd->ert_cu->stat_enabled)
+		return false;
+
+	if ((char *)ert_start_kernel_timestamps(pkt) +
+		sizeof(struct cu_cmd_state_timestamps) >
+		(char *)pkt + xcmd->bo->base.size) {
+		userpf_err(xcmd->xdev, "no space for timestamps in exec buf");
+		return false;
+	}
+	return true;
+}
+
 /*
  * cmd_bo_init() - Initialize a command object with an exec BO
  *
@@ -646,16 +663,7 @@ cmd_bo_init(struct xocl_cmd *xcmd, struct drm_xocl_bo *bo,
 	xcmd->bo = bo;
 	xcmd->ert_pkt = (struct ert_packet *)bo->vmapping;
 
-	// Check if we need to enable timestamp recording
-	if (cmd_type(xcmd) == ERT_CU && xcmd->ert_cu->stat_enabled) {
-		if (sizeof(struct cu_cmd_state_timestamps) +
-			cmd_packet_size(xcmd) * sizeof(u32) > bo->base.size) {
-			userpf_err(xcmd->xdev,
-				"not enough space for timestamps in exec buf");
-		} else {
-			xcmd->timestamp_enabled = true;
-		}
-	}
+	xcmd->timestamp_enabled = can_enable_timestamps(xcmd);
 
 	// in kds mode copy pkt cus to command object cu bitmap
 	if (penguin && cmd_type(xcmd) == ERT_CU) {

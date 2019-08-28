@@ -580,11 +580,14 @@ ert_copybo_size(struct ert_start_copybo_cmd *pkt)
   return pkt->size;
 }
 
+#define P2ROUNDUP(x, align)     (-(-(x) & -(align)))
 static inline struct cu_cmd_state_timestamps *
 ert_start_kernel_timestamps(struct ert_start_kernel_cmd *pkt)
 {
+  size_t offset = pkt->count * sizeof(uint32_t) + sizeof(pkt->header);
+  /* Make sure the offset of timestamps are properly aligned. */
   return (struct cu_cmd_state_timestamps *)
-    ((char *)pkt + pkt->count * sizeof(uint32_t) + sizeof(pkt->header));
+    ((char *)pkt + P2ROUNDUP(offset, sizeof(uint64_t)));
 }
 
 #endif
