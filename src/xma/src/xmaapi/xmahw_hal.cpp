@@ -259,8 +259,9 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
                 tmp1.soft_kernel = true;
                 tmp1.default_ddr_bank = 0;
             } else {
-                if (info.ip_layout[d].dataflow_kernel) {
-                    tmp1.dataflow_kernel = true;
+                if (info.ip_layout[d].kernel_channels) {
+                    tmp1.kernel_channels = true;
+                    tmp1.max_channel_id = info.ip_layout[d].max_channel_id;
                 }
                 rc = xma_xclbin_map2ddr(info.ip_ddr_mapping[d], &tmp1.default_ddr_bank);
 
