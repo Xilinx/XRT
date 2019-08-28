@@ -957,10 +957,10 @@ int searchXsaAndDsa(int index, std::string xsaPath, std::string
 {
     struct stat st;
     if (stat(xsaPath.c_str(), &st) == 0) {
-        path =  dsaPath;
+        path =  xsaPath;
         return EXIT_SUCCESS;
     } else if (stat(dsaPath.c_str(), &st) == 0) {
-        path = xsaPath;
+        path = dsaPath;
         return EXIT_SUCCESS;
     }
     // Check if it is 2rp platform
