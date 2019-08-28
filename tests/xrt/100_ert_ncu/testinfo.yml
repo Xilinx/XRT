@@ -6,7 +6,7 @@ user:
   allowed_test_modes: [hw]
   force_makefile: "--force"
   host_args: {all: -k kernel.xclbin --jobs 1024 --seconds 1 --cus 8 --ert}
-  host_cflags: ' -DDSA64 -ldl -luuid'
+  host_cflags: ' -DDSA64 -ldl -luuid -I${HOST_SRC_PATH} '
   host_exe: host.exe
   host_src: main.cpp
   kernels:
