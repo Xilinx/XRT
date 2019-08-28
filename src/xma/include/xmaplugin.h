@@ -67,6 +67,33 @@ extern "C" {
 XmaBufferObj xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, int32_t* return_code);
 
 /**
+ *  xma_plg_buffer_alloc_arg_num() - Allocate device memory
+ *  This function allocates memory on the FPGA DDR bank 
+ *  connected to the supplied kernel argument number and
+ *  provides a BufferObject to the memory that can be used for
+ *  copying data from the host to device memory or from
+ *  the device to the host. 
+ *  BufferObject contains paddr, device index, ddr bank, etc.  
+ *  paddr (the physical address) is necessary for setting
+ *  the AXI register map with physical pointers so that the
+ *  kernel knows where key input and output buffers are located.
+ *  This function knows which DDR bank is associated with this
+ *  session and therefore automatically selects the correct
+ *  DDR bank.
+ *
+ *  @s_handle: The session handle associated with this plugin instance.
+ *  @size:     Size in bytes of the device buffer to be allocated.
+ *  @device_only_buffer: Allocate device only buffer without any host space
+ *  @arg_num: kernel argumnet num. Buffer is allocated on DDR bank connected to this kernel argument
+ *  @return_code:  XMA_SUCESS or XMA_ERROR.
+ *
+ *  RETURN:    BufferObject on success;
+ *
+ */
+XmaBufferObj xma_plg_buffer_alloc_arg_num(XmaSession s_handle, size_t size, bool device_only_buffer, int32_t arg_num, int32_t* return_code);
+
+
+/**
  *  xma_plg_buffer_free() - Free a device buffer
  *  This function frees a previous allocated buffer that was obtained
  *  using the @ref xma_plg_buffer_alloc() function.

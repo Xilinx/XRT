@@ -106,6 +106,81 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
     return b_obj;
 }
 
+XmaBufferObj xma_plg_buffer_alloc_arg_num(XmaSession s_handle, size_t size, bool device_only_buffer, int32_t arg_num, int32_t* return_code)
+{
+    XmaBufferObj b_obj;
+    XmaBufferObj b_obj_error;
+    b_obj_error.data = NULL;
+    b_obj_error.size = 0;
+    b_obj_error.bank_index = -1;
+    b_obj_error.dev_index = -1;
+    b_obj_error.device_only_buffer = false;
+    b_obj_error.private_do_not_touch = NULL;
+    b_obj.data = NULL;
+    b_obj.device_only_buffer = false;
+    b_obj.private_do_not_touch = NULL;
+
+    xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
+    uint32_t ddr_bank = s_handle.hw_session.bank_index;
+    b_obj.bank_index = ddr_bank;
+    b_obj.size = size;
+    b_obj.dev_index = s_handle.hw_session.dev_index;
+
+    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
+        //std::cout << "ERROR: xma_plg_buffer_alloc failed. XMASession is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_arg_num failed. XMASession is corrupted.\n");
+        if (return_code) *return_code = XMA_ERROR;
+        return b_obj_error;
+    }
+    XmaHwKernel* kernel_info = s_handle.hw_session.kernel_info;
+    if (arg_num < 0) {
+        xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_arg_num: arg_num is invalid, using default session ddr_bank.\n");
+    } else {
+        auto arg_to_mem_itr1 = kernel_info->CU_arg_to_mem_info.find(arg_num);
+        if (arg_to_mem_itr1 == kernel_info->CU_arg_to_mem_info.end()) {
+            xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_arg_num: arg_num is not connected to any DDR bank, using default session ddr_bank.\n");
+        } else {
+            ddr_bank = arg_to_mem_itr1->second;
+            b_obj.bank_index = ddr_bank;
+            xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_arg_num: Using ddr_bank# %d connected to arg_num# %d.\n", ddr_bank, arg_num);
+        }
+    }
+
+    /*
+    #define XRT_BO_FLAGS_MEMIDX_MASK        (0xFFFFFFUL)
+    #define XCL_BO_FLAGS_CACHEABLE          (1 << 24)
+    #define XCL_BO_FLAGS_SVM                (1 << 27)
+    #define XCL_BO_FLAGS_DEV_ONLY           (1 << 28)
+    #define XCL_BO_FLAGS_HOST_ONLY          (1 << 29)
+    #define XCL_BO_FLAGS_P2P                (1 << 30)
+    #define XCL_BO_FLAGS_EXECBUF            (1 << 31)
+    */
+    uint64_t b_obj_handle = 0;
+    if (device_only_buffer) {
+        b_obj_handle = xclAllocBO(dev_handle, size, 0, XCL_BO_FLAGS_DEV_ONLY | ddr_bank);
+        b_obj.device_only_buffer = true;
+    } else {
+        b_obj_handle = xclAllocBO(dev_handle, size, 0, ddr_bank);
+    }
+    b_obj.paddr = xclGetDeviceAddr(dev_handle, b_obj_handle);
+    if (!device_only_buffer) {
+        b_obj.data = (uint8_t*) xclMapBO(dev_handle, b_obj_handle, true);
+    }
+    XmaBufferObjPrivate* tmp1 = new XmaBufferObjPrivate;
+    b_obj.private_do_not_touch = (void*) tmp1;
+    tmp1->dummy = (void*)(((uint64_t)tmp1) | signature);
+    tmp1->size = size;
+    tmp1->paddr = b_obj.paddr;
+    tmp1->bank_index = b_obj.bank_index;
+    tmp1->dev_index = b_obj.dev_index;
+    tmp1->boHandle = b_obj_handle;
+    tmp1->device_only_buffer = b_obj.device_only_buffer;
+    tmp1->dev_handle = dev_handle;
+
+    if (return_code) *return_code = XMA_SUCCESS;
+    return b_obj;
+}
+
 int32_t xma_check_device_buffer(XmaBufferObj *b_obj) {
     if (b_obj == NULL) {
         //std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
@@ -269,7 +344,7 @@ xma_plg_register_prep_write(XmaSession  s_handle,
     }
     //Kernel regmap 4KB in xmahw.h; execBO size is 4096 = 4KB in xmahw_hal.cpp; But ERT uses some space for ert pkt so allow max of 4032 Bytes for regmap
     if (cur_max > MAX_KERNEL_REGMAP_SIZE) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Max kernel regmap size is 4032 Bytes\n");
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Max kernel regmap size is %d Bytes\n", MAX_KERNEL_REGMAP_SIZE);
         return XMA_ERROR;
     }
     if (*(s_handle.hw_session.kernel_info->reg_map_locked)) {
