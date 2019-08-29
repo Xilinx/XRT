@@ -706,7 +706,7 @@ configure(struct sched_cmd *cmd)
 		}
 	} else {
 		/* In CQ polling mode now */
-		if (zdev->exec->cq_thread)
+		if (!zdev->exec->cq_thread)
 			exec->cq_thread = kthread_run(cq_check, zdev, name);
 	}
 
