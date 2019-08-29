@@ -156,14 +156,12 @@ static struct zocl_ert_ops mpsoc_ops = {
 };
 
 static const struct zocl_ert_info mpsoc_ert_info = {
-	.model = ERT_MOD_RTL,
 	.ops   = &mpsoc_ops,
 };
 
 /* Place holder for Versal */
 /*
 static const struct zocl_ert_info versal_ert_info = {
-	.model = ERT_MOD_MAILBOX;
 	.ops   = &versal_ops;
 };
 */
@@ -198,8 +196,7 @@ static int zocl_ert_probe(struct platform_device *pdev)
 	ert->pdev = pdev;
 
 	info = of_device_get_match_data(&pdev->dev);
-	if (info->model == ERT_MOD_RTL)
-		ert->ops = info->ops;
+	ert->ops = info->ops;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, ZOCL_ERT_HW_RES);
 	map = devm_ioremap_resource(&pdev->dev, res);
