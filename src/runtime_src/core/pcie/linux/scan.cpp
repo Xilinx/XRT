@@ -635,7 +635,7 @@ std::ostream& operator<<(std::ostream& stream,
 {
     std::ios_base::fmtflags f(stream.flags());
 
-    stream << std::hex << std::setfill('0');
+    stream << std::hex << std::right << std::setfill('0');
 
     // [dddd:bb:dd.f]
     stream << "[" << std::setw(4) << dev->domain << ":"
