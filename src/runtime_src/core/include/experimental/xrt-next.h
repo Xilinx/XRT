@@ -80,7 +80,6 @@ XCL_DRIVER_DLLESPEC int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xcl
 
 struct KernelTransferData
 {
-   char* deviceName;
    char* cuPortName;
    char* argName;
    char* memoryName;
@@ -120,7 +119,6 @@ struct CuExecData
 
 struct StreamTransferData
 {
-  char* deviceName;
   char* masterPortName;
   char* slavePortName;
 
@@ -133,11 +131,15 @@ struct StreamTransferData
 
 struct ProfileResults
 {
-  unsigned int   numAIM;
+  char* deviceName;
+
+  uint64_t numAIM;
   KernelTransferData* kernelTransferData;
-  unsigned int   numAM;
+
+  uint64_t numAM;
   CuExecData* cuExecData;
-  unsigned int   numASM;
+
+  uint64_t numASM;
   StreamTransferData* streamData;
 
   // total Transfer data ?

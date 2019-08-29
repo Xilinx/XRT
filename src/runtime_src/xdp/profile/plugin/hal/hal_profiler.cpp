@@ -169,14 +169,17 @@ void HALProfiler::createProfileResults(xclDeviceHandle deviceHandle, void* ret)
   // Initialise profile monitor numbers in ProfileResult and allocate memory
   // Use 1 device now
   DeviceIntf* currDevice = deviceList[0];
-// readDebugIPlayout called from startProfiling : check other scenaria
+
+// readDebugIPlayout called from startProfiling : check other cases
 
 
   xclDeviceInfo2 devInfo;
   xclGetDeviceInfo2(deviceHandle, &devInfo);
 
-  int deviceNameSz = strlen(devInfo.mName);
-  
+  auto deviceNameSz = strlen(devInfo.mName);
+  results->deviceName = (char*)malloc(deviceNameSz+1);
+  memcpy(results->deviceName, devInfo.mName, deviceNameSz);
+  results->deviceName[deviceNameSz] = '\0';
 
   results->numAIM = currDevice->getNumMonitors(XCL_PERF_MON_MEMORY);
   results->numAM  = currDevice->getNumMonitors(XCL_PERF_MON_ACCEL);
@@ -186,9 +189,6 @@ void HALProfiler::createProfileResults(xclDeviceHandle deviceHandle, void* ret)
     results->kernelTransferData = (KernelTransferData*)calloc(results->numAIM, sizeof(KernelTransferData));
 
     for(unsigned int i=0; i < results->numAIM ; ++i) {
-      results->kernelTransferData[i].deviceName = (char*)malloc(deviceNameSz+1);
-      strcpy(results->kernelTransferData[i].deviceName, devInfo.mName);
-
       std::string monName = currDevice->getMonitorName(XCL_PERF_MON_MEMORY, i);
       results->kernelTransferData[i].cuPortName = (char*)malloc(monName.length()+1);
       strcpy(results->kernelTransferData[i].cuPortName, monName.c_str());
@@ -198,8 +198,16 @@ void HALProfiler::createProfileResults(xclDeviceHandle deviceHandle, void* ret)
     }
   }
 
-  if(results->numAM)
+  if(results->numAM) {
     results->cuExecData = (CuExecData*)calloc(results->numAM, sizeof(CuExecData));
+
+    for(unsigned int i=0; i < results->numAM ; ++i) {
+      std::string monName = currDevice->getMonitorName(XCL_PERF_MON_ACCEL, i);
+      results->cuExecData[i].cuName = (char*)malloc((monName.length()+1)*sizeof(char));
+      strcpy(results->cuExecData[i].cuName, monName.c_str());
+    }
+  }      
+
 
   if(results->numASM)
     results->streamData = (StreamTransferData*)calloc(results->numASM, sizeof(StreamTransferData));
@@ -351,16 +359,11 @@ void HALProfiler::recordASMResult(ProfileResults* results, DeviceIntf* currDevic
   } // end for
 }
 
-  // Step 1: read counters from device
-  // Step 2: Initialise profile monitor numbers in ProfileResult and allocate memory
-  // Step 3: log the data into counter and rollover results data-structure
-  // Step 4: populate ProfileResults
 void HALProfiler::getProfileResults(xclDeviceHandle, void* res)
 {
   // Step 1: read counters from device
-  // Step 2: Initialise profile monitor numbers in ProfileResult and allocate memory
-  // Step 3: log the data into counter and rollover results data-structure
-  // Step 4: populate ProfileResults
+  // Step 2: log the data into counter and rollover results data-structure
+  // Step 3: populate ProfileResults
 
   std::cout << " In HALProfiler::getProfileResults" << std::endl;
 
@@ -375,20 +378,6 @@ void HALProfiler::getProfileResults(xclDeviceHandle, void* res)
   // Use 1 device now
   DeviceIntf* currDevice = deviceList[0];
 
-#if 0
-  // Step 2: Initialise profile monitor numbers in ProfileResult and allocate memory
-  // Use 1 device now
-  DeviceIntf* currDevice = deviceList[0];
-  ProfileResults* results = static_cast<ProfileResults*>(res);
-
-  results->numAIM = currDevice->getNumMonitors(XCL_PERF_MON_MEMORY);
-  results->numAM  = currDevice->getNumMonitors(XCL_PERF_MON_ACCEL);
-  results->numASM = currDevice->getNumMonitors(XCL_PERF_MON_STR);
-
-  results->kernelTransferData = (KernelTransferData*)malloc(results->numAIM * sizeof(KernelTransferData));
-  results->cuExecData = (CuExecData*)malloc(results->numAM * sizeof(CuExecData));
-  results->streamData = (StreamTransferData*)malloc(results->numASM * sizeof(StreamTransferData));
-#endif   
   // Record the counter data 
 //  auto timeSinceEpoch = (std::chrono::steady_clock::now()).time_since_epoch();
 //  auto value = std::chrono::duration_cast<std::chrono::nanoseconds>(timeSinceEpoch);
@@ -438,20 +427,21 @@ void HALProfiler::destroyProfileResults(xclDeviceHandle, void* ret)
 {
   ProfileResults* results = static_cast<ProfileResults*>(ret);
 
+  free(results->deviceName);
+  results->deviceName = NULL;
+
   // clear AIM data
   for(unsigned int i = 0; i < results->numAIM ; ++i) {
-    free(results->kernelTransferData[i].deviceName);
     free(results->kernelTransferData[i].cuPortName);
     free(results->kernelTransferData[i].argName);
     free(results->kernelTransferData[i].memoryName);
 
-    results->kernelTransferData[i].deviceName = '\0';
-    results->kernelTransferData[i].cuPortName = '\0';
-    results->kernelTransferData[i].argName = '\0';
-    results->kernelTransferData[i].memoryName = '\0';
+    results->kernelTransferData[i].cuPortName = NULL;
+    results->kernelTransferData[i].argName = NULL;
+    results->kernelTransferData[i].memoryName = NULL;
   }
   free(results->kernelTransferData);
-  results->kernelTransferData = '\0';
+  results->kernelTransferData = NULL;
 
 
   // clear AM data
@@ -459,24 +449,24 @@ void HALProfiler::destroyProfileResults(xclDeviceHandle, void* ret)
     free(results->cuExecData[i].cuName);
     free(results->cuExecData[i].kernelName);
 
-    results->cuExecData[i].cuName = '\0';
-    results->cuExecData[i].kernelName = '\0';
+    results->cuExecData[i].cuName = NULL;
+    results->cuExecData[i].kernelName = NULL;
   }
   free(results->cuExecData);
-  results->cuExecData = '\0';
+  results->cuExecData = NULL;
 
   // clear ASM data
   for(unsigned int i = 0; i < results->numASM ; ++i) {
-    free(results->streamData[i].deviceName);
     free(results->streamData[i].masterPortName);
     free(results->streamData[i].slavePortName);
 
-    results->streamData[i].deviceName = '\0';
-    results->streamData[i].masterPortName = '\0';
-    results->streamData[i].slavePortName = '\0';
+    results->streamData[i].masterPortName = NULL;
+    results->streamData[i].slavePortName = NULL;
   }
   free(results->streamData);
-  results->streamData = '\0';
+  results->streamData = NULL;
+
+  free(results);
 }
 
 }
