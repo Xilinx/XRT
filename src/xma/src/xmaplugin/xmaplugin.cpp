@@ -542,7 +542,7 @@ xma_plg_schedule_work_item(XmaSession s_handle)
     cu_cmd->data[2] = kernel_tmp1->cu_mask3;
     // Copy reg_map into execBO buffer 
     memcpy(&cu_cmd->data[3], src, size);
-    if (kernel_tmp1->dataflow_kernel) {
+    if (kernel_tmp1->kernel_channels) {
         // XMA will write @ 0x10 and XRT read @ 0x14 to generate interupt and capture in execbo
         cu_cmd->data[7] = s_handle.channel_id;//0x10 == 4th integer;
         cu_cmd->data[8] = 0;//clear out the output

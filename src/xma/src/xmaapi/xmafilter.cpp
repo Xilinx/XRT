@@ -215,6 +215,18 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         }
     }
 
+    if (filter_session->base.hw_session.kernel_info->kernel_channels) {
+        if (filter_session->base.channel_id > (int32_t)filter_session->base.hw_session.kernel_info->max_channel_id) {
+            xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
+                "Selected dataflow CU with channels has ini setting with max channel_id of %d. Cannot create session with higher channel_id of %d\n", filter_session->base.hw_session.kernel_info->max_channel_id, filter_session->base.channel_id);
+            
+            //Release singleton lock
+            g_xma_singleton->locked = false;
+            free(filter_session);
+            return NULL;
+        }
+    }
+
     // Call the plugins initialization function with this session data
     //Sarab: Check plugin compatibility to XMA
     int32_t xma_main_ver = -1;
