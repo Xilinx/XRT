@@ -302,6 +302,10 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
                     XmaAXLFConnectivity *xma_conn = &info.connectivity[c];
                     if (xma_conn->m_ip_layout_index == (int32_t)d) {
                         tmp1.CU_arg_to_mem_info.emplace(xma_conn->arg_index, xma_conn->mem_data_index);
+                        //Assume that this mem is definetly in use
+                        if ((uint32_t)xma_conn->mem_data_index < dev_tmp1.number_of_mem_banks && xma_conn->mem_data_index > 0) {
+                            dev_tmp1.ddrs[xma_conn->mem_data_index].in_use = true;
+                        }
                     }
                 }
 
