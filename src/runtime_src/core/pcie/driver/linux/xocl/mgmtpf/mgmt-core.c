@@ -915,9 +915,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 		if (ret && ret != -ENODEV)
 			goto fail_all_subdev;
 
-		ret = xclmgmt_load_fdt(lro);
-		if (ret)
-			goto fail_all_subdev;
+		(void) xclmgmt_load_fdt(lro);
 	}
 	lro->core.thread_arg.thread_cb = health_check_cb;
 	lro->core.thread_arg.arg = lro;
