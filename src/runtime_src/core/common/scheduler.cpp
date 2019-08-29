@@ -163,7 +163,7 @@ init(xclDeviceHandle handle, const axlf* top)
     scmd = reinterpret_cast<ert_configure_sk_cmd*>(execbo->data);
 
     uint32_t start_cuidx = 0;
-    for (auto sk:sks) {
+    for (const auto& sk:sks) {
       auto skbo = create_data_bo(handle, sk.size, flags);
 
       std::memset(scmd, 0, 0x1000);
