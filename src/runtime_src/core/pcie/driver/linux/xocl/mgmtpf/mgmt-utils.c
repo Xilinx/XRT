@@ -463,6 +463,7 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 
 	if (!lro->core.fdt_blob && xocl_get_timestamp(lro) == 0)
 		xclmgmt_load_fdt(lro);
+
 	blob = lro->core.fdt_blob;
 	if (!blob) {
 		mgmt_err(lro, "Can not get dtb");
@@ -585,6 +586,13 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 		goto failed;
 
 	xclmgmt_update_userpf_blob(lro);
+
+	xocl_thread_start(lro);
+
+	/* Launch the mailbox server. */
+	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
+
+	lro->ready = true;
 
 failed:
 	if (fw)
