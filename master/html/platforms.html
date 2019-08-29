@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Platform Overview &mdash; Xilinx Runtime 2019.1 documentation</title>
+  <title>Platform Overview &mdash; Xilinx Runtime 2019.2 documentation</title>
   
 
   
@@ -61,7 +61,7 @@
             
             
               <div class="version">
-                2019.1
+                2019.2
               </div>
             
           
@@ -89,8 +89,8 @@
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Platform Overview</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#pcie-based-platforms">PCIe Based Platforms</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#mgmt-pf">MGMT PF</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#user-pf">USER PF</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mgmt-pf-pf0">MGMT PF (PF0)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#user-pf-pf1">USER PF (PF1)</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#zynq-ultrascale-mpsoc-based-embedded-platforms">Zynq Ultrascale+ MPSoC Based Embedded Platforms</a></li>
@@ -103,10 +103,11 @@
 <p class="caption"><span class="caption-text">XRT Use Model and Features</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Supported Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator (XMA)</a></li>
 </ul>
 <p class="caption"><span class="caption-text">XRT API Library</span></p>
 <ul>
@@ -137,6 +138,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Security</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
@@ -213,35 +218,39 @@ From user perspective there is very little porting effort when migrating an
 application from one class of platform to another.</p>
 <div class="section" id="pcie-based-platforms">
 <h2>PCIe Based Platforms<a class="headerlink" href="#pcie-based-platforms" title="Permalink to this headline">¶</a></h2>
+<p>XRT supports following PCIe based devices:</p>
 <ol class="arabic simple">
-<li><p>VCU1525</p></li>
 <li><p>U200</p></li>
 <li><p>U250</p></li>
 <li><p>U280</p></li>
+<li><p>U50</p></li>
 <li><p>AWS F1</p></li>
+<li><p>Advantech VEGA-4000/4002</p></li>
 </ol>
 <p>PCIe based platforms are supported on x86_64, PPC64LE and AARCH64 host architectures.
-The shell (previously known as DSA) has two physical functions: <em>mgmt pf</em> and <em>user pf</em>.</p>
-<div class="section" id="mgmt-pf">
-<h3>MGMT PF<a class="headerlink" href="#mgmt-pf" title="Permalink to this headline">¶</a></h3>
+The shell (previously known as DSA) has two physical functions: PF0 also called <em>mgmt pf</em> and PF1 also
+called <em>user pf</em>.</p>
+<div class="section" id="mgmt-pf-pf0">
+<h3>MGMT PF (PF0)<a class="headerlink" href="#mgmt-pf-pf0" title="Permalink to this headline">¶</a></h3>
 <p>XRT Linux kernel driver <em>xclmgmt</em> binds to mgmt pf. The driver is organized into subdevices and handles
 the following functionality:</p>
 <ol class="arabic simple">
 <li><p>ICAP programming</p></li>
-<li><p>CLock scaling</p></li>
-<li><p>Loading firmware container, dsabin(renamed to xsabin since 2019.2) (RL Shell for 2 RP solution, embedded Microblaze firmware: ERT, XMC)</p></li>
-<li><p>In-band sensors: Temp, Voltage, Power, etc</p></li>
+<li><p>Clock scaling</p></li>
+<li><p>Loading firmware container called dsabin (renamed to xsabin since 2019.2). Dsabin contains RL Shell (for 2 RP solution)
+and embedded Microblaze firmware for ERT and XMC.</p></li>
+<li><p>Access to in-band sensors: Temperature, Voltage, Current, etc.</p></li>
 <li><p>AXI Firewall management</p></li>
 <li><p>Access to flash programmer</p></li>
 <li><p>Device reset and rescan</p></li>
-<li><p>Hardware mailbox</p></li>
+<li><p>Hardware mailbox for communication with xocl driver</p></li>
 <li><p>Interrupt handling for AXI Firewall and Mailbox</p></li>
 <li><p>Device DNA discovery and validation</p></li>
 <li><p>ECC handling</p></li>
 </ol>
 </div>
-<div class="section" id="user-pf">
-<h3>USER PF<a class="headerlink" href="#user-pf" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="user-pf-pf1">
+<h3>USER PF (PF1)<a class="headerlink" href="#user-pf-pf1" title="Permalink to this headline">¶</a></h3>
 <p>XRT Linux kernel driver <em>xocl</em> binds to user pf. The driver is organized into subdevices and handles the
 following functionality:</p>
 <ol class="arabic simple">
@@ -253,15 +262,19 @@ following functionality:</p>
 <li><p>Standardized compute unit execution management (optionally with help of ERT) for client processes</p></li>
 <li><p>Interrupt handling for DMA, Compute unit completion and Mailbox</p></li>
 <li><p>Buffer object migration between device and host as DMA operation</p></li>
-<li><p>Queue creation/deletion read/write operation for sreaming DMA operation</p></li>
+<li><p>Queue creation/deletion read/write operation for streaming DMA operation</p></li>
 <li><p>AIO support for the streaming queues</p></li>
 <li><p>Buffer import and export via DMA-BUF</p></li>
 <li><p>PCIe peer-to-peer buffer mapping and sharing</p></li>
+<li><p>Access to in-band sensors</p></li>
+<li><p>Hardware mailbox for communication with xclmgmt driver</p></li>
 </ol>
+<p>Another section discusses <a class="reference internal" href="security.html#security-rst"><span class="std std-ref">Security of Alveo Platform</span></a>.</p>
 </div>
 </div>
 <div class="section" id="zynq-ultrascale-mpsoc-based-embedded-platforms">
 <h2>Zynq Ultrascale+ MPSoC Based Embedded Platforms<a class="headerlink" href="#zynq-ultrascale-mpsoc-based-embedded-platforms" title="Permalink to this headline">¶</a></h2>
+<p>XRT supports following embedded platforms:</p>
 <ol class="arabic simple">
 <li><p>ZCU19</p></li>
 <li><p>ZCU102</p></li>

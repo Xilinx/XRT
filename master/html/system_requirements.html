@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>System Requirements &mdash; Xilinx Runtime 2019.1 documentation</title>
+  <title>System Requirements &mdash; Xilinx Runtime 2019.2 documentation</title>
   
 
   
@@ -61,7 +61,7 @@
             
             
               <div class="version">
-                2019.1
+                2019.2
               </div>
             
           
@@ -89,15 +89,15 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">System Requirements</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#host-platform">Host Platform</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#xilinx-accelerator-card">Xilinx Accelerator Card</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#software-platform">Software Platform</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#host-platform-for-pcie-accelerator-cards">Host Platform for PCIe Accelerator Cards</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#software-platform-for-pcie-accelerator-cards">Software Platform for PCIe Accelerator Cards</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#centos-rhel-7-4-7-5-7-6">CentOS/RHEL 7.4, 7.5, 7.6</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#switching-to-c-14-build-environment">Switching to C++14 build environment</a></li>
 </ul>
 </li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="#mpsoc-based-embedded-platforms">MPSoC Based Embedded Platforms</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
@@ -106,10 +106,11 @@
 <p class="caption"><span class="caption-text">XRT Use Model and Features</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Supported Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator (XMA)</a></li>
 </ul>
 <p class="caption"><span class="caption-text">XRT API Library</span></p>
 <ul>
@@ -140,6 +141,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Security</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
@@ -210,26 +215,17 @@
             
   <div class="section" id="system-requirements">
 <span id="system-requirements-rst"></span><h1>System Requirements<a class="headerlink" href="#system-requirements" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="host-platform">
-<h2>Host Platform<a class="headerlink" href="#host-platform" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="host-platform-for-pcie-accelerator-cards">
+<h2>Host Platform for PCIe Accelerator Cards<a class="headerlink" href="#host-platform-for-pcie-accelerator-cards" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic simple">
 <li><p>x86_64</p></li>
 <li><p>AARCH64</p></li>
 <li><p>PPC64LE</p></li>
 </ol>
+<p>Supported Xilinx Accelerator Cards are listed in <a class="reference internal" href="platforms.html#platforms-rst"><span class="std std-ref">Platform Overview</span></a>.</p>
 </div>
-<div class="section" id="xilinx-accelerator-card">
-<h2>Xilinx Accelerator Card<a class="headerlink" href="#xilinx-accelerator-card" title="Permalink to this headline">¶</a></h2>
-<ol class="arabic simple">
-<li><p>VCU1525</p></li>
-<li><p>U200</p></li>
-<li><p>U250</p></li>
-<li><p>U280</p></li>
-<li><p>AWS F1</p></li>
-</ol>
-</div>
-<div class="section" id="software-platform">
-<h2>Software Platform<a class="headerlink" href="#software-platform" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="software-platform-for-pcie-accelerator-cards">
+<h2>Software Platform for PCIe Accelerator Cards<a class="headerlink" href="#software-platform-for-pcie-accelerator-cards" title="Permalink to this headline">¶</a></h2>
 <p>XRT and OpenCL runtime require Linux kernel 3.10+ and GCC with C++14 features. The stack has been tested on RHEL/CentOS 7.4, 7.5, 7.6 and Ubuntu 16.04.4 LTS, 18.04.1 LTS. CentOS/RHEL 7.4, 7.5, 7.6 require additional steps to install C++14 tool set and a few dependent libraries. Please use the provided script <code class="docutils literal notranslate"><span class="pre">src/runtime_src/tools/scripts/xrtdeps.sh</span></code> to install the dependencies for both CentOS/RHEL and Ubuntu distributions. Additional information for RHEL/CentOS is below.</p>
 <div class="section" id="centos-rhel-7-4-7-5-7-6">
 <h3>CentOS/RHEL 7.4, 7.5, 7.6<a class="headerlink" href="#centos-rhel-7-4-7-5-7-6" title="Permalink to this headline">¶</a></h3>
@@ -241,6 +237,10 @@
 </div>
 </div>
 </div>
+</div>
+<div class="section" id="mpsoc-based-embedded-platforms">
+<h2>MPSoC Based Embedded Platforms<a class="headerlink" href="#mpsoc-based-embedded-platforms" title="Permalink to this headline">¶</a></h2>
+<p>For building embedded platforms please refer to <a class="reference internal" href="yocto.html#yocto-rst"><span class="std std-ref">Yocto Recipes For Embedded Flow</span></a></p>
 </div>
 </div>
 

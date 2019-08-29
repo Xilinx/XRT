@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Index &mdash; Xilinx Runtime 2019.1 documentation</title>
+  <title>Index &mdash; Xilinx Runtime 2019.2 documentation</title>
   
 
   
@@ -60,7 +60,7 @@
             
             
               <div class="version">
-                2019.1
+                2019.2
               </div>
             
           
@@ -94,10 +94,11 @@
 <p class="caption"><span class="caption-text">XRT Use Model and Features</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Supported Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator (XMA)</a></li>
 </ul>
 <p class="caption"><span class="caption-text">XRT API Library</span></p>
 <ul>
@@ -128,6 +129,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Security</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
@@ -343,15 +348,15 @@
 <h2 id="X">X</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="mailbox.proto.html#c.xcl_common">xcl_common (C type)</a>
+      <li><a href="mailbox.proto.html#c.xcl_board_info">xcl_board_info (C type)</a>
 </li>
       <li><a href="mailbox.proto.html#c.xcl_dna">xcl_dna (C type)</a>
 </li>
       <li><a href="mailbox.proto.html#c.xcl_firewall">xcl_firewall (C type)</a>
 </li>
-      <li><a href="mailbox.proto.html#c.xcl_hwicap">xcl_hwicap (C type)</a>
-</li>
       <li><a href="mailbox.proto.html#c.xcl_mig_ecc">xcl_mig_ecc (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_pr_region">xcl_pr_region (C type)</a>
 </li>
       <li><a href="mailbox.proto.html#c.xcl_sensor">xcl_sensor (C type)</a>
 </li>
@@ -366,6 +371,8 @@
       <li><a href="xrt.main.html#c.xclCloseContext">xclCloseContext (C function)</a>
 </li>
       <li><a href="xrt.main.html#c.xclCopyBO">xclCopyBO (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclCuName2Index">xclCuName2Index (C function)</a>
 </li>
       <li><a href="xrt.main.html#c.xclDeviceHandle">xclDeviceHandle (C type)</a>
 </li>
@@ -397,12 +404,12 @@
 </li>
       <li><a href="xrt.main.html#c.xclLogMsg">xclLogMsg (C function)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="xrt.main.html#c.xclMapBO">xclMapBO (C function)</a>
 </li>
       <li><a href="mgmt-ioctl.main.html#c.xclmgmt_ioc_bitstream_axlf">xclmgmt_ioc_bitstream_axlf (C type)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="mgmt-ioctl.main.html#c.xclmgmt_ioc_freqscaling">xclmgmt_ioc_freqscaling (C type)</a>
 </li>
       <li><a href="mgmt-ioctl.main.html#c.xclmgmt_ioc_info">xclmgmt_ioc_info (C type)</a>
@@ -420,6 +427,10 @@
       <li><a href="xrt.main.html#c.xclReClock2">xclReClock2 (C function)</a>
 </li>
       <li><a href="xrt.main.html#c.xclRegisterInterruptNotify">xclRegisterInterruptNotify (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclRegRead">xclRegRead (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclRegWrite">xclRegWrite (C function)</a>
 </li>
       <li><a href="xrt.main.html#c.xclResetDevice">xclResetDevice (C function)</a>
 </li>
@@ -439,15 +450,21 @@
 </li>
       <li><a href="xma.main.html#c.xma_plg_buffer_alloc">xma_plg_buffer_alloc (C function)</a>
 </li>
+      <li><a href="xma.main.html#c.xma_plg_buffer_alloc_arg_num">xma_plg_buffer_alloc_arg_num (C function)</a>
+</li>
       <li><a href="xma.main.html#c.xma_plg_buffer_free">xma_plg_buffer_free (C function)</a>
 </li>
       <li><a href="xma.main.html#c.xma_plg_buffer_read">xma_plg_buffer_read (C function)</a>
 </li>
       <li><a href="xma.main.html#c.xma_plg_buffer_write">xma_plg_buffer_write (C function)</a>
 </li>
-      <li><a href="xma.main.html#c.xma_plg_get_paddr">xma_plg_get_paddr (C function)</a>
+      <li><a href="xma.main.html#c.xma_plg_channel_id">xma_plg_channel_id (C function)</a>
 </li>
       <li><a href="xma.main.html#c.xma_plg_is_work_item_done">xma_plg_is_work_item_done (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_kernel_lock_regmap">xma_plg_kernel_lock_regmap (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_kernel_unlock_regmap">xma_plg_kernel_unlock_regmap (C function)</a>
 </li>
       <li><a href="xma.main.html#c.xma_plg_register_prep_write">xma_plg_register_prep_write (C function)</a>
 </li>
