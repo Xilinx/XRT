@@ -134,7 +134,7 @@ sync_to_ubuf(xocl::memory* buffer, size_t offset, size_t size,
              xrt::device* xdevice, const xrt::device::BufferObjectHandle& boh)
 {
   if (!buffer->need_extra_sync())
-      return;
+    return;
 
   auto ubuf = buffer->get_host_ptr();
   if (ubuf) {
@@ -154,7 +154,7 @@ sync_to_hbuf(xocl::memory* buffer, size_t offset, size_t size,
              xrt::device* xdevice, const xrt::device::BufferObjectHandle& boh)
 {
   if (!buffer->need_extra_sync())
-      return;
+    return;
 
   auto ubuf = buffer->get_host_ptr();
   if (ubuf) {
