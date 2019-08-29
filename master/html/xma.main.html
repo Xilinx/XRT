@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>XMA Core Library &mdash; Xilinx Runtime 2019.1 documentation</title>
+  <title>XMA Core Library &mdash; Xilinx Runtime 2019.2 documentation</title>
   
 
   
@@ -61,7 +61,7 @@
             
             
               <div class="version">
-                2019.1
+                2019.2
               </div>
             
           
@@ -95,10 +95,11 @@
 <p class="caption"><span class="caption-text">XRT Use Model and Features</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Supported Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator (XMA)</a></li>
 </ul>
 <p class="caption"><span class="caption-text">XRT API Library</span></p>
 <ul class="current">
@@ -133,6 +134,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Security</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
@@ -209,49 +214,25 @@
 <p>The interface used by stand-alone XMA applications or plugins</p>
 <dl class="function">
 <dt id="c.xma_initialize">
-int32_t <code class="descname">xma_initialize</code><span class="sig-paren">(</span>char *<em> cfgfile</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_initialize" title="Permalink to this definition">¶</a></dt>
-<dd><p>the system according to the layout specified in the YAML configuration file.</p>
+int32_t <code class="descname">xma_initialize</code><span class="sig-paren">(</span>XmaXclbinParameter *<em> devXclbins</em>, int32_t<em> num_parms</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_initialize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialie XMA Library and devices</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
 <dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">char</span> <span class="pre">*</span> <span class="pre">cfgfile</span></code></dt><dd><p>a filepath to the YAML configuration file describing
-the layout of the xclbin(s) and the devices to which the xclbin(s) are
-to be deployed. If a NULL value is passed, the XMA will use a default
-name and location: /etc/xma/xma_def_sys_cfg.yaml.  In all cases, a
-properly defined yaml configuration file must exist.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaXclbinParameter</span> <span class="pre">*</span> <span class="pre">devXclbins</span></code></dt><dd><p>array of device index and full path of xclbin to program the device with.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">int32_t</span> <span class="pre">num_parms</span></code></dt><dd><p>Number of elements in above array input</p>
 </dd>
 </dl>
 <p><strong>Description</strong></p>
 <blockquote>
 <div><p>This is the entry point routine for utilzing the XMA library and must be
 the first call within any application before calling any other XMA APIs.
-The YAML file is parsed and then verified for compatibility with the system
-hardware.  If deemed compatible, each device specified in the YAML file
-will be programmed with the xclbin(s) specified in the YAML.  A shared
-memory file will be created in /tmp  which will store the contents of
-the YAML file *  and serve as a resource database tracking allocation of
-kernels thus permitting multiple processes to share device resources.  If
-the system has already been configured by a prior process, then a successful
-return from this routine will map the <em>existing</em> resource database file to
-the calling processes; XMA will NOT attempt to reprogram any of the system
-devices if any device is in-use based on the prior configuration.
-In effect, programming and and configuration of the system will only occur
-when this routine is first invoked.  From the first invocation, so long as
-any running process is attached to and utilizing resources for an existing
-configuration, all subsequent invocations of this routine by any other
-process will be forced to use the existing configuration of the system;
-their configuration file argument will be ignored.
-When all currently running processes attached to a given resource file
-database have run to completion normally, the resource file will be deleted
-and a subsequent process invoking this routine will restart the parsing and
-programming of the system as would be true during initial invocation.</p>
+Each device specified will be  programmed with provided xclbin(s).</p>
 </div></blockquote>
 <p><strong>Return</strong></p>
-<p>XMA_SUCCESS after successfully initializing the system and/or (if not the first process to invoke)
-mapping in the currently active system configuration.</p>
-<p>XMA_ERROR_INVALID if the YAML file is incompatible with the system hardware.</p>
-<p>XMA_ERROR for all other errors.</p>
+<p>XMA_SUCCESS or XMa_ERROR</p>
 </div>
 <div class="section" id="xmaplugin">
 <h2>xmaplugin<a class="headerlink" href="#xmaplugin" title="Permalink to this headline">¶</a></h2>
@@ -263,63 +244,70 @@ mapping in the currently active system configuration.</p>
 <p>The interface used by XMA kernel plugin developers</p>
 <dl class="function">
 <dt id="c.xma_plg_buffer_alloc">
-XmaBufferHandle <code class="descname">xma_plg_buffer_alloc</code><span class="sig-paren">(</span>XmaHwSession<em> s_handle</em>, size_t<em> size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_alloc" title="Permalink to this definition">¶</a></dt>
-<dd><p>Allocate device memory This function allocates memory on the FPGA DDR and provides a handle to the memory that can be used for copying data from the host to device memory or from the device to the host. In addition, the handle can be passed to the function <strong>ref</strong> <a class="reference internal" href="#c.xma_plg_get_paddr" title="xma_plg_get_paddr"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_get_paddr()</span></code></a> in order to obtain the physical address of the buffer. Obtaining the physical address is necessary for setting the AXI register map with physical pointers so that the kernel knows where key input and output buffers are located. This function knows which DDR bank is associated with this session and therefore automatically selects the correct DDR bank.</p>
+XmaBufferObj <code class="descname">xma_plg_buffer_alloc</code><span class="sig-paren">(</span>XmaSession<em> s_handle</em>, size_t<em> size</em>, bool<em> device_only_buffer</em>, int32_t *<em> return_code</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_alloc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Allocate device memory This function allocates memory on the FPGA DDR and provides a BufferObject to the memory that can be used for copying data from the host to device memory or from the device to the host. BufferObject contains paddr, device index, ddr bank, etc. paddr (the physical address) is necessary for setting the AXI register map with physical pointers so that the kernel knows where key input and output buffers are located. This function knows which DDR bank is associated with this session and therefore automatically selects the correct DDR bank.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
 <dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaHwSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt><dd><p>Size in bytes of the device buffer to be allocated.</p>
 </dd>
+<dt><code class="docutils literal notranslate"><span class="pre">bool</span> <span class="pre">device_only_buffer</span></code></dt><dd><p>Allocate device only buffer without any host space</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">int32_t</span> <span class="pre">*</span> <span class="pre">return_code</span></code></dt><dd><p>XMA_SUCESS or XMA_ERROR.</p>
+</dd>
 </dl>
 <p><strong>Return</strong></p>
-<p>Non-zero buffer handle on success</p>
+<p>BufferObject on success;</p>
+<dl class="function">
+<dt id="c.xma_plg_buffer_alloc_arg_num">
+XmaBufferObj <code class="descname">xma_plg_buffer_alloc_arg_num</code><span class="sig-paren">(</span>XmaSession<em> s_handle</em>, size_t<em> size</em>, bool<em> device_only_buffer</em>, int32_t<em> arg_num</em>, int32_t *<em> return_code</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_alloc_arg_num" title="Permalink to this definition">¶</a></dt>
+<dd><p>Allocate device memory This function allocates memory on the FPGA DDR bank connected to the supplied kernel argument number and provides a BufferObject to the memory that can be used for copying data from the host to device memory or from the device to the host. BufferObject contains paddr, device index, ddr bank, etc. paddr (the physical address) is necessary for setting the AXI register map with physical pointers so that the kernel knows where key input and output buffers are located. This function knows which DDR bank is associated with this session and therefore automatically selects the correct DDR bank.</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt><dd><p>Size in bytes of the device buffer to be allocated.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">bool</span> <span class="pre">device_only_buffer</span></code></dt><dd><p>Allocate device only buffer without any host space</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">int32_t</span> <span class="pre">arg_num</span></code></dt><dd><p>kernel argumnet num. Buffer is allocated on DDR bank connected to this kernel argument</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">int32_t</span> <span class="pre">*</span> <span class="pre">return_code</span></code></dt><dd><p>XMA_SUCESS or XMA_ERROR.</p>
+</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>BufferObject on success;</p>
 <dl class="function">
 <dt id="c.xma_plg_buffer_free">
-void <code class="descname">xma_plg_buffer_free</code><span class="sig-paren">(</span>XmaHwSession<em> s_handle</em>, XmaBufferHandle<em> b_handle</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_free" title="Permalink to this definition">¶</a></dt>
+void <code class="descname">xma_plg_buffer_free</code><span class="sig-paren">(</span>XmaSession<em> s_handle</em>, XmaBufferObj<em> b_obj</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_free" title="Permalink to this definition">¶</a></dt>
 <dd><p>Free a device buffer This function frees a previous allocated buffer that was obtained using the <strong>ref</strong> <a class="reference internal" href="#c.xma_plg_buffer_alloc" title="xma_plg_buffer_alloc"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_buffer_alloc()</span></code></a> function.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
 <dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaHwSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance</p>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XmaBufferHandle</span> <span class="pre">b_handle</span></code></dt><dd><p>The buffer handle returned from
+<dt><code class="docutils literal notranslate"><span class="pre">XmaBufferObj</span> <span class="pre">b_obj</span></code></dt><dd><p>The BufferObject returned from
 <strong>ref</strong> <a class="reference internal" href="#c.xma_plg_buffer_alloc" title="xma_plg_buffer_alloc"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_buffer_alloc()</span></code></a></p>
 </dd>
 </dl>
-<dl class="function">
-<dt id="c.xma_plg_get_paddr">
-uint64_t <code class="descname">xma_plg_get_paddr</code><span class="sig-paren">(</span>XmaHwSession<em> s_handle</em>, XmaBufferHandle<em> b_handle</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_get_paddr" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get a physical address for a buffer handle This function returns the physical address of DDR memory on the FPGA used by a specific session</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaHwSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XmaBufferHandle</span> <span class="pre">b_handle</span></code></dt><dd><p>The buffer handle returned from
-<strong>ref</strong> <a class="reference internal" href="#c.xma_plg_buffer_alloc" title="xma_plg_buffer_alloc"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_buffer_alloc()</span></code></a></p>
-</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>Physical address of DDR on the FPGA</p>
 <dl class="function">
 <dt id="c.xma_plg_buffer_write">
-int32_t <code class="descname">xma_plg_buffer_write</code><span class="sig-paren">(</span>XmaHwSession<em> s_handle</em>, XmaBufferHandle<em> b_handle</em>, const void *<em> src</em>, size_t<em> size</em>, size_t<em> offset</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_write" title="Permalink to this definition">¶</a></dt>
-<dd><p>Write data from host to device buffer This function copies data from host to memory to device memory.</p>
+int32_t <code class="descname">xma_plg_buffer_write</code><span class="sig-paren">(</span>XmaSession<em> s_handle</em>, XmaBufferObj<em> b_obj</em>, size_t<em> size</em>, size_t<em> offset</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_write" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write data from host to device buffer This function copies data from host memory to device memory.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
 <dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaHwSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance</p>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XmaBufferHandle</span> <span class="pre">b_handle</span></code></dt><dd><p>The buffer handle returned from
+<dt><code class="docutils literal notranslate"><span class="pre">XmaBufferObj</span> <span class="pre">b_obj</span></code></dt><dd><p>The BufferObject returned from
 <strong>ref</strong> <a class="reference internal" href="#c.xma_plg_buffer_alloc" title="xma_plg_buffer_alloc"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_buffer_alloc()</span></code></a></p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">src</span></code></dt><dd><p>Source data pointer</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt><dd><p>Size of data to copy</p>
 </dd>
@@ -331,18 +319,16 @@ int32_t <code class="descname">xma_plg_buffer_write</code><span class="sig-paren
 XMA_ERROR on failure</p>
 <dl class="function">
 <dt id="c.xma_plg_buffer_read">
-int32_t <code class="descname">xma_plg_buffer_read</code><span class="sig-paren">(</span>XmaHwSession<em> s_handle</em>, XmaBufferHandle<em> b_handle</em>, void *<em> dst</em>, size_t<em> size</em>, size_t<em> offset</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_read" title="Permalink to this definition">¶</a></dt>
-<dd><p>Read data from device memory and copy to host memory This function copies data from device memory and stores the result in the requested host memory</p>
+int32_t <code class="descname">xma_plg_buffer_read</code><span class="sig-paren">(</span>XmaSession<em> s_handle</em>, XmaBufferObj<em> b_obj</em>, size_t<em> size</em>, size_t<em> offset</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_read" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read data from device memory and copy to host memory</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
 <dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaHwSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance</p>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XmaBufferHandle</span> <span class="pre">b_handle</span></code></dt><dd><p>The buffer handle returned from
+<dt><code class="docutils literal notranslate"><span class="pre">XmaBufferObj</span> <span class="pre">b_obj</span></code></dt><dd><p>The BufferObject returned from
 <strong>ref</strong> <a class="reference internal" href="#c.xma_plg_buffer_alloc" title="xma_plg_buffer_alloc"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_buffer_alloc()</span></code></a></p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">dst</span></code></dt><dd><p>Destination data pointer</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt><dd><p>Size of data to copy</p>
 </dd>
@@ -353,14 +339,28 @@ int32_t <code class="descname">xma_plg_buffer_read</code><span class="sig-paren"
 <p>XMA_SUCCESS on success
 XMA_ERROR on failure</p>
 <dl class="function">
+<dt id="c.xma_plg_channel_id">
+int32_t <code class="descname">xma_plg_channel_id</code><span class="sig-paren">(</span>XmaSession<em> s_handle</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_channel_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>Query channel_id assigned to this plugin session</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance</p>
+</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>Assigned channel_id on success
+XMA_ERROR on failure</p>
+<dl class="function">
 <dt id="c.xma_plg_schedule_work_item">
-int32_t <code class="descname">xma_plg_schedule_work_item</code><span class="sig-paren">(</span>XmaHwSession<em> s_handle</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_schedule_work_item" title="Permalink to this definition">¶</a></dt>
+int32_t <code class="descname">xma_plg_schedule_work_item</code><span class="sig-paren">(</span>XmaSession<em> s_handle</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_schedule_work_item" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function schedules a request to the XRT scheduler for execution of a kernel based on the saved state of the kernel registers supplied by the <a class="reference internal" href="#c.xma_plg_register_prep_write" title="xma_plg_register_prep_write"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_register_prep_write()</span></code></a> function call. The <code class="xref c c-func docutils literal notranslate"><span class="pre">prep_write()</span></code> keeps a shadow register map so that the <code class="xref c c-func docutils literal notranslate"><span class="pre">schedule_work_item()</span></code> can gather all registers and push a new work item onto the scheduler queue. Work items are processed in FIFO order. After calling <code class="xref c c-func docutils literal notranslate"><span class="pre">schedule_work_item()</span></code> one or more times, the caller can invoke <a class="reference internal" href="#c.xma_plg_is_work_item_done" title="xma_plg_is_work_item_done"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_is_work_item_done()</span></code></a> to wait for one item of work to complete.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
 <dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaHwSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance</p>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance</p>
 </dd>
 </dl>
 <p><strong>Return</strong></p>
@@ -368,13 +368,13 @@ int32_t <code class="descname">xma_plg_schedule_work_item</code><span class="sig
 <p>XMA_ERROR on failure</p>
 <dl class="function">
 <dt id="c.xma_plg_is_work_item_done">
-int32_t <code class="descname">xma_plg_is_work_item_done</code><span class="sig-paren">(</span>XmaHwSession<em> s_handle</em>, int32_t<em> timeout_in_ms</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_is_work_item_done" title="Permalink to this definition">¶</a></dt>
+int32_t <code class="descname">xma_plg_is_work_item_done</code><span class="sig-paren">(</span>XmaSession<em> s_handle</em>, int32_t<em> timeout_in_ms</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_is_work_item_done" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function checks if at least one work item previously submitted via <a class="reference internal" href="#c.xma_plg_schedule_work_item" title="xma_plg_schedule_work_item"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_schedule_work_item()</span></code></a> has completed. If the supplied timeout expires before a work item has completed, this function returns an error.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
 <dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaHwSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance</p>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">int32_t</span> <span class="pre">timeout_in_ms</span></code></dt><dd><p>A timeout value in milliseconds</p>
 </dd>
@@ -383,14 +383,40 @@ int32_t <code class="descname">xma_plg_is_work_item_done</code><span class="sig-
 <p>XMA_SUCCESS on success</p>
 <p>XMA_ERROR on timeout</p>
 <dl class="function">
+<dt id="c.xma_plg_kernel_lock_regmap">
+int32_t <code class="descname">xma_plg_kernel_lock_regmap</code><span class="sig-paren">(</span>XmaSession<em> s_handle</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_kernel_lock_regmap" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function acquires register map lock so that prep_write &amp; schedule_work_items can be called</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance</p>
+</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>XMA_SUCCESS or XMA_ERROR</p>
+<dl class="function">
+<dt id="c.xma_plg_kernel_unlock_regmap">
+int32_t <code class="descname">xma_plg_kernel_unlock_regmap</code><span class="sig-paren">(</span>XmaSession<em> s_handle</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_kernel_unlock_regmap" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function releases register map lock so that other plugins can share same CU</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance</p>
+</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>XMA_SUCCESS or XMA_ERROR</p>
+<dl class="function">
 <dt id="c.xma_plg_register_prep_write">
-int32_t <code class="descname">xma_plg_register_prep_write</code><span class="sig-paren">(</span>XmaHwSession<em> s_handle</em>, void *<em> dst</em>, size_t<em> size</em>, size_t<em> offset</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_register_prep_write" title="Permalink to this definition">¶</a></dt>
+int32_t <code class="descname">xma_plg_register_prep_write</code><span class="sig-paren">(</span>XmaSession<em> s_handle</em>, void *<em> dst</em>, size_t<em> size</em>, size_t<em> offset</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_register_prep_write" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function writes the data provided and sets the specified AXI_Lite register(s) exposed by a kernel. The base offset of 0 is the beginning of the kernels AXI_Lite memory map as this function adds the required offsets internally for the kernel and PCIe.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
 <dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaHwSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance</p>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaSession</span> <span class="pre">s_handle</span></code></dt><dd><p>The session handle associated with this plugin instance</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">dst</span></code></dt><dd><p>Destination data pointer</p>
 </dd>
