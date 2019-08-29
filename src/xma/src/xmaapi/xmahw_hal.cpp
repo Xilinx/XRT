@@ -245,7 +245,37 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA & XRT supports max of %d CUs but xclbin has %d number of CUs\n", MAX_XILINX_KERNELS + MAX_XILINX_SOFT_KERNELS, dev_tmp1.number_of_cus);
             return false;
         }
+        if (dev_tmp1.number_of_mem_banks > MAX_DDR_MAP) {
+            free(buffer);
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only %d mem banks\n", MAX_DDR_MAP);
+            return false;
+        }
         dev_tmp1.kernels.reserve(dev_tmp1.number_of_cus);
+        dev_tmp1.ddrs.reserve(dev_tmp1.number_of_mem_banks);
+
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"For device id: %d; DDRs are:\n", dev_index);
+        for (uint32_t d = 0; d < info.number_of_mem_banks; d++) {
+            dev_tmp1.ddrs.emplace_back(XmaHwMem{});
+            XmaHwMem& tmp1 = dev_tmp1.ddrs.back();
+            tmp1.name = std::string((char*)info.mem_topology[d].m_tag);
+            tmp1.base_address = info.mem_topology[d].m_base_address;
+            tmp1.size_kb = info.mem_topology[d].m_size;
+            tmp1.size_mb = tmp1.size_kb / 1024;
+            tmp1.size_gb = tmp1.size_mb / 1024;
+            if (info.mem_topology[d].m_used == 1 &&
+                tmp1.size_kb != 0 &&
+                (info.mem_topology[d].m_type == MEM_TYPE::MEM_DDR3 || 
+                info.mem_topology[d].m_type == MEM_TYPE::MEM_DDR4 ||
+                info.mem_topology[d].m_type == MEM_TYPE::MEM_DRAM ||
+                info.mem_topology[d].m_type == MEM_TYPE::MEM_HBM)
+                ) {
+                tmp1.in_use = true;
+                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tMEM# %d - %s - size: %d KB\n", d, tmp1.name.c_str(), tmp1.size_kb);
+            } else {
+                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tMEM# %d - %s - Unused/Unused Type\n", d, tmp1.name.c_str());
+
+            }
+        }
 
         xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"For device id: %d; CUs are:\n", dev_index);
         for (uint32_t d = 0; d < info.number_of_kernels; d++) {

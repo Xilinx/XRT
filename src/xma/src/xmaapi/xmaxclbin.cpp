@@ -206,7 +206,7 @@ static int get_xclbin_mem_topology(char *buffer, XmaXclbinInfo *xclbin_info)
         xclbin_info->number_of_mem_banks = mem_topo->m_count;
         xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "MEM TOPOLOGY - %d banks\n",xclbin_info->number_of_mem_banks);
         if (xclbin_info->number_of_mem_banks > MAX_DDR_MAP) {
-            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only 64 mem banks\n");
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only %d mem banks\n", MAX_DDR_MAP);
             return XMA_ERROR;
         }
         for (int i = 0; i < mem_topo->m_count; i++)
