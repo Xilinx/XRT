@@ -567,6 +567,89 @@ xma_plg_schedule_work_item(XmaSession s_handle)
     return rc;
 }
 
+int32_t xma_plg_schedule_work_item_with_args(XmaSession s_handle,
+                                 void            *regmap,
+                                 int32_t           regmap_size)
+{
+    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_work_item failed. XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
+    XmaHwKernel* kernel_tmp1 = s_handle.hw_session.kernel_info;
+    XmaHwDevice *dev_tmp1 = (XmaHwDevice*)kernel_tmp1->private_do_not_use;
+    if (dev_tmp1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is NULL\n");
+        return XMA_ERROR;
+    }
+    if (regmap_size <= 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regmap_size of %d is invalid\n", regmap_size);
+        return XMA_ERROR;
+    }
+    //Kernel regmap 4KB in xmahw.h; execBO size is 4096 = 4KB in xmahw_hal.cpp; But ERT uses some space for ert pkt so allow max of 4032 Bytes for regmap
+    if (regmap_size > MAX_KERNEL_REGMAP_SIZE) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Max kernel regmap size is %d Bytes\n", MAX_KERNEL_REGMAP_SIZE);
+        return XMA_ERROR;
+    }
+    if (regmap_size != (regmap_size && 0xFFFFFFFC)) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regmap_size of %d is not a multiple of four bytes\n", regmap_size);
+        return XMA_ERROR;
+    }
+    /* Not doing below as regmap_max is used to decide what all args to copy from stored regmap with prep_write
+    Keeping this new API completly independent
+    if (s_handle.hw_session.kernel_info->regmap_max < regmap_size) {
+        s_handle.hw_session.kernel_info->regmap_max = regmap_size;
+    }
+    */
+
+    uint8_t *src = (uint8_t*)regmap;
+    int32_t bo_idx;
+    int32_t rc = XMA_SUCCESS;
+    
+    // Find an available execBO buffer
+    bo_idx = xma_plg_execbo_avail_get(s_handle);
+    if (bo_idx == -1) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unable to find free execbo to use\n");
+        return XMA_ERROR;
+    }
+    // Setup ert_start_kernel_cmd 
+    ert_start_kernel_cmd *cu_cmd = 
+        (ert_start_kernel_cmd*)dev_tmp1->kernel_execbo_data[bo_idx];
+    cu_cmd->state = ERT_CMD_STATE_NEW;
+    if (kernel_tmp1->soft_kernel) {
+        cu_cmd->opcode = ERT_SK_START;
+    } else {
+        cu_cmd->opcode = ERT_START_CU;
+    }
+    cu_cmd->extra_cu_masks = 3;//XMA now supports 128 CUs
+
+    cu_cmd->cu_mask = kernel_tmp1->cu_mask0;
+
+    cu_cmd->data[0] = kernel_tmp1->cu_mask1;
+    cu_cmd->data[1] = kernel_tmp1->cu_mask2;
+    cu_cmd->data[2] = kernel_tmp1->cu_mask3;
+    // Copy reg_map into execBO buffer 
+    memcpy(&cu_cmd->data[3], src, regmap_size);
+    if (kernel_tmp1->kernel_channels) {
+        // XMA will write @ 0x10 and XRT read @ 0x14 to generate interupt and capture in execbo
+        cu_cmd->data[7] = s_handle.channel_id;//0x10 == 4th integer;
+        cu_cmd->data[8] = 0;//clear out the output
+        xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "Dev# %d; Kernel: %s; Regmap size used is: %d\n", dev_tmp1->dev_index, kernel_tmp1->name, regmap_size);
+        xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "This is dataflow kernel. Using channel id: %d\n", s_handle.channel_id);
+    }
+    
+    // Set count to size in 32-bit words + 4; Three extra_cu_mask are present
+    cu_cmd->count = (regmap_size >> 2) + 4;
+    
+    if (xclExecBuf(s_handle.hw_session.dev_handle, 
+                    dev_tmp1->kernel_execbo_handle[bo_idx]) != 0)
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
+                    "Failed to submit kernel start with xclExecBuf\n");
+        rc = XMA_ERROR;
+    }
+    return rc;
+}
+
 int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
 {
     if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
