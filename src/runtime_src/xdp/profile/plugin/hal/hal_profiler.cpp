@@ -158,7 +158,7 @@ void HALProfiler::createProfileResults(xclDeviceHandle, void* ret)
 #endif
 
 
-void HALProfiler::createProfileResults(xclDeviceHandle, void* ret)
+void HALProfiler::createProfileResults(xclDeviceHandle deviceHandle, void* ret)
 {
   ProfileResults** retResults = static_cast<ProfileResults**>(ret);
 
@@ -171,12 +171,32 @@ void HALProfiler::createProfileResults(xclDeviceHandle, void* ret)
   DeviceIntf* currDevice = deviceList[0];
 // readDebugIPlayout called from startProfiling : check other scenaria
 
+
+  xclDeviceInfo2 devInfo;
+  xclGetDeviceInfo2(deviceHandle, &devInfo);
+
+  int deviceNameSz = strlen(devInfo.mName);
+  
+
   results->numAIM = currDevice->getNumMonitors(XCL_PERF_MON_MEMORY);
   results->numAM  = currDevice->getNumMonitors(XCL_PERF_MON_ACCEL);
   results->numASM = currDevice->getNumMonitors(XCL_PERF_MON_STR);
 
-  if(results->numAIM)
+  if(results->numAIM) {
     results->kernelTransferData = (KernelTransferData*)calloc(results->numAIM, sizeof(KernelTransferData));
+
+    for(unsigned int i=0; i < results->numAIM ; ++i) {
+      results->kernelTransferData[i].deviceName = (char*)malloc(deviceNameSz+1);
+      strcpy(results->kernelTransferData[i].deviceName, devInfo.mName);
+
+      std::string monName = currDevice->getMonitorName(XCL_PERF_MON_MEMORY, i);
+      results->kernelTransferData[i].cuPortName = (char*)malloc(monName.length()+1);
+      strcpy(results->kernelTransferData[i].cuPortName, monName.c_str());
+      
+      // argname
+      // memoryname
+    }
+  }
 
   if(results->numAM)
     results->cuExecData = (CuExecData*)calloc(results->numAM, sizeof(CuExecData));

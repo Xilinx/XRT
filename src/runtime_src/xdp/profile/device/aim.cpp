@@ -192,6 +192,7 @@ size_t AIM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
         counterResults.ReadBusyCycles[s]  += (upper[6] << 32);
         counterResults.WriteBusyCycles[s] += (upper[7] << 32);
 
+#if 0
         if(out_stream) {
           (*out_stream) << "AXI Interface Monitor Upper 32, slot " << s << std::endl
                         << "  WriteBytes : " << upper[0] << std::endl
@@ -203,6 +204,7 @@ size_t AIM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
                         << "  ReadBusyCycles : " << upper[6] << std::endl
                         << "  WriteBusyCycles : " << upper[7] << std::endl;
         }
+#endif
     }
 
 
