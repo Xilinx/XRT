@@ -118,7 +118,8 @@ int xrt_xbutil_version_cmp()
     /*check xbutil tools and xrt versions*/
     std::string xrt = sensor_tree::get<std::string>( "runtime.build.version", "N/A" ) + "," 
         + sensor_tree::get<std::string>( "runtime.build.hash", "N/A" );
-    if ( xrt.compare(xcldev::driver_version("xocl") ) != 0 ) {
+    if ( xcldev::driver_version("xocl") != "unknown" &&
+        xrt.compare(xcldev::driver_version("xocl") ) != 0 ) {
         std::cout << "\nERROR: Mixed versions of XRT and xbutil are not supported. \
             \nPlease install matching versions of XRT and xbutil or  \
             \ndefine env variable INTERNAL_BUILD to disable this check\n" << std::endl;
