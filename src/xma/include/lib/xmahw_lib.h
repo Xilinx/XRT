@@ -140,6 +140,10 @@ typedef struct XmaHwMem
 
   XmaHwMem() {
     in_use = false;
+    base_address = 0;
+    size_kb = 0;
+    size_mb = 0;
+    size_gb = 0;
   }
 } XmaHwMem;
 
