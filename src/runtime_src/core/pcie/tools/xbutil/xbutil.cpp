@@ -1289,6 +1289,26 @@ int xcldev::device::runOneTest(std::string testName,
     return ret;
 }
 
+int xcldev::device::getXclbinuuid(uuid_t &uuid) {
+    std::string errmsg, xclbinid;
+
+    pcidev::get_dev(m_idx)->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
+
+    if (!errmsg.empty()) {
+        std::cout<<errmsg<<std::endl;
+        return -ENODEV;
+    }
+
+    uuid_parse(xclbinid.c_str(), uuid);
+
+    if (uuid_is_null(uuid)) {
+        std::cout<<"  WARNING: 'uuid' invalid, unable to find uuid. \n"
+                << "  Has the bitstream been loaded? See 'xbutil program'.\n";
+        return -ENODEV;
+    }
+
+    return 0;
+}
 /*
  * validate
  */
