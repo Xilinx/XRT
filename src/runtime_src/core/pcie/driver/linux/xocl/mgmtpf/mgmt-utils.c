@@ -461,7 +461,14 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 	char *blob = NULL;
 	int len;
 
+	if (!lro->core.fdt_blob && xocl_get_timestamp(lro) == 0)
+		xclmgmt_load_fdt(lro);
 	blob = lro->core.fdt_blob;
+	if (!blob) {
+		mgmt_err(lro, "Can not get dtb");
+		ret = -EINVAL;
+		goto failed;
+	}
 	len = fdt_totalsize(lro->bld_blob);
 	lro->core.fdt_blob = vmalloc(len);
 	if (!lro->core.fdt_blob) {
@@ -524,6 +531,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	char					fw_name[256];
 	int					ret;
 
+	mutex_lock(&lro->busy_mutex);
         ret = xocl_rom_find_firmware(lro, fw_name, sizeof(fw_name),
 		lro->core.pdev->device, &fw);
 	if (ret)
@@ -581,6 +589,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 failed:
 	if (fw)
 		release_firmware(fw);
+	mutex_unlock(&lro->busy_mutex);
 
 	return ret;
 }
