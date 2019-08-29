@@ -25,6 +25,11 @@
 #include "ert.h"
 #include "sched_exec.h"
 #include "zocl_sk.h"
+/* Including xclbin.h in the scheduler is not good.
+ * But let us do this for now. Should add zocl_xclbin.c later
+ * and move all XCLBIN related code there.
+ */
+#include "xclbin.h"
 
 /* #define SCHED_VERBOSE */
 
@@ -284,7 +289,8 @@ cu_masks(struct sched_cmd *cmd)
 	struct ert_start_kernel_cmd *sk;
 	u32 op = opcode(cmd);
 
-	if (op != ERT_START_KERNEL && op != ERT_SK_START && op != ERT_INIT_CU)
+	if (op != ERT_START_KERNEL && op != ERT_SK_START &&
+	    op != ERT_INIT_CU && op != ERT_EXEC_WRITE)
 		return 0;
 	sk = (struct ert_start_kernel_cmd *)cmd->packet;
 	return 1 + sk->extra_cu_masks;
@@ -311,6 +317,7 @@ regmap_size(struct sched_cmd *cmd)
 		    cu_masks(cmd);
 
 	case ERT_START_CU:
+	case ERT_EXEC_WRITE:
 	case ERT_SK_START:
 		return
 		    payload_size(cmd) + 1 -
@@ -339,7 +346,7 @@ cu_idx_to_timeout(struct drm_device *dev, unsigned int cu_idx)
 {
 	struct drm_zocl_dev *zdev = dev->dev_private;
 
-	return zdev->exec->cu[cu_idx].zc_timeout /
+	return zdev->exec->zcu[cu_idx].run_timeout /
 	    (ZOCL_CU_TIMER_INTERVAL * 1000) + 1;
 }
 
@@ -358,23 +365,8 @@ cu_idx_to_reset_timeout(struct drm_device *dev, unsigned int cu_idx)
 {
 	struct drm_zocl_dev *zdev = dev->dev_private;
 
-	return zdev->exec->cu[cu_idx].zc_reset_timeout /
+	return zdev->exec->zcu[cu_idx].reset_timeout /
 	    (ZOCL_CU_RESET_TIMER_INTERVAL) + 1;
-}
-
-/**
- * cu_idx_to_addr() - Convert CU idx into it virtual address.
- *
- * @dev: Device handle
- * @cu_idx: Global CU idx
- * Return: Virturl address of the CU
- */
-inline void __iomem *
-cu_idx_to_addr(struct drm_device *dev, unsigned int cu_idx)
-{
-	struct drm_zocl_dev *zdev = dev->dev_private;
-
-	return zdev->exec->cu_addr_virt[cu_idx];
 }
 
 /**
@@ -389,28 +381,6 @@ set_cmd_int_state(struct sched_cmd *cmd, enum ert_cmd_state state)
 	SCHED_DEBUG("-> set_cmd_int_state(,%d)\n", state);
 	cmd->state = state;
 	SCHED_DEBUG("<- set_cmd_int_state\n");
-}
-
-/**
- * write_cu_regmap - Write CU regmap
- *
- * @reg_data: start address of regmap data
- * @base_addr: CU regmap base virtual address
- */
-static inline void
-write_cu_regmap(u32 *reg_data, u32 *base_addr, u32 size)
-{
-	u32 i;
-
-	/* Write register map, starting at base_addr + 0x10 (byte)
-	 * This based on the fact that kernel used
-	 *	0x00 -- Control Register
-	 *	0x04 and 0x08 -- Interrupt Enable Registers
-	 *	0x0C -- Interrupt Status Register
-	 * Skip the first 4 words in user regmap.
-	 */
-	for (i = 4; i < size; ++i)
-		iowrite32(reg_data[i], base_addr + i);
 }
 
 /*
@@ -529,38 +499,10 @@ void setup_ert_hw(struct drm_zocl_dev *zdev)
 		iowrite32(0x0, ert_hw + ERT_HOST_INT_ENABLE);
 }
 
-inline void
-disable_interrupts(struct drm_device *dev, int cu_idx)
-{
-	u32 __iomem *virt_addr = cu_idx_to_addr(dev, cu_idx);
-
-	/* 0x04 and 0x08 -- Interrupt Enable Registers */
-	iowrite32(0x0, virt_addr + 1);
-	/* bit 0 is ap_done, bit 1 is ap_ready, disable both of interrupts */
-	iowrite32(0x0, virt_addr + 2);
-}
-
-inline void
-enable_interrupts(struct drm_device *dev, int cu_idx)
-{
-	u32 __iomem *virt_addr = cu_idx_to_addr(dev, cu_idx);
-
-	/* 0x04 and 0x08 -- Interrupt Enable Registers */
-	iowrite32(0x1, virt_addr + 1);
-	/*
-	 * bit 0 is ap_done, bit 1 is ap_ready
-	 * only enable ap_done before dataflow support, interrupts are handled
-	 * in sched_exec_isr, please see dataflow comments for more information.
-	 */
-	iowrite32(0x1, virt_addr + 2);
-}
-
 static irqreturn_t sched_exec_isr(int irq, void *arg)
 {
 	struct drm_zocl_dev *zdev = arg;
 	int cu_idx;
-	volatile u32 __iomem *virt_addr;
-	u32 isr;
 
 	SCHED_DEBUG("-> sched_exe_isr irq %d", irq);
 	for (cu_idx = 0; cu_idx < zdev->cu_num; cu_idx++) {
@@ -576,33 +518,10 @@ static irqreturn_t sched_exec_isr(int irq, void *arg)
 		return IRQ_NONE;
 	}
 
-	virt_addr = cu_idx_to_addr(zdev->ddev, cu_idx);
-	/* Clear all interrupts of the CU
-	 *
-	 * HLS style kernel has Interrupt Status Register at offset 0x0C
-	 * It has two interrupt bits, bit[0] is ap_done, bit[1] is ap_ready.
-	 *
-	 * The ap_done interrupt means this CU is complete.
-	 * The ap_ready interrupt means all inputs have been read.
-	 *
-	 * TODO: Need to handle ap_done and ap_ready interrupt separately
-	 * after supporting dataflow execution model.
-	 *
-	 * NOTE: Before dataflow support, we clearly toggle ap_done and
-	 * ap_ready to all ZERO.
-	 *
-	 * The Interrupt Status Register is Toggle On Write
-	 * RegData = RegData ^ WriteData
-	 *
-	 * So, the reliable way to clear this register is read
-	 * then write the same value back.
-	 *
-	 * Do not write 1 to this register. If, somehow, the status register
-	 * is 0, write 1 to this register will trigger interrupt.
-	 *
+	/* This function returns the value of the interrupt status register
+	 * No need to check the interrupt type for now.
 	 */
-	isr = ioread32(virt_addr + 3);
-	iowrite32(isr, virt_addr + 3);
+	zocl_cu_clear_intr(&zdev->exec->zcu[cu_idx]);
 
 	/* wake up all scheduler ... currently one only
 	 *
@@ -633,12 +552,13 @@ static void
 init_cu_by_idx(struct sched_cmd *cmd, int cu_idx)
 {
 	u32 size = regmap_size(cmd);
-	u32 *virt_addr = cu_idx_to_addr(cmd->ddev, cu_idx);
 	struct ert_init_kernel_cmd *ik;
+	struct zocl_cu *cu = &cmd->exec->zcu[cu_idx];
 
 	ik = (struct ert_init_kernel_cmd *)cmd->packet;
 
-	write_cu_regmap(ik->data + ik->extra_cu_masks, virt_addr, size);
+	zocl_cu_configure(cu, ik->data + ik->extra_cu_masks, size, CONSECUTIVE);
+
 }
 
 /**
@@ -723,8 +643,8 @@ init_cus(struct sched_cmd *cmd)
 				goto done;
 			}
 
-			zdev->exec->cu[cu_idx].zc_timeout = run_timeout;
-			zdev->exec->cu[cu_idx].zc_reset_timeout = reset_timeout;
+			zdev->exec->zcu[cu_idx].run_timeout = run_timeout;
+			zdev->exec->zcu[cu_idx].reset_timeout = reset_timeout;
 
 			init_cu_by_idx(cmd, cu_idx);
 
@@ -764,7 +684,9 @@ configure(struct sched_cmd *cmd)
 	struct sched_exec_core *exec = zdev->exec;
 	struct ert_configure_cmd *cfg;
 	unsigned int i, j;
-	u32 cu_addr;
+	phys_addr_t cu_addr;
+	int acc_cu = 0;
+	int has_acc_cu = 0;
 	int ret;
 
 	if (sched_error_on(exec, opcode(cmd) != ERT_CONFIGURE))
@@ -789,12 +711,11 @@ configure(struct sched_cmd *cmd)
 
 	SCHED_DEBUG("Configuring scheduler\n");
 	exec->num_slots       = CQ_SIZE / cfg->slot_size;
+	write_lock(&zdev->attr_rwlock);
 	exec->num_cus         = cfg->num_cus;
 	exec->cu_shift_offset = cfg->cu_shift;
 	exec->cu_base_addr    = cfg->cu_base_addr;
 	exec->num_cu_masks    = ((exec->num_cus - 1)>>5) + 1;
-
-	write_lock(&zdev->attr_rwlock);
 
 	if (!zdev->ert) {
 		if (cfg->ert)
@@ -818,22 +739,33 @@ configure(struct sched_cmd *cmd)
 		setup_ert_hw(zdev);
 		exec->configured = 1;
 	}
+	write_unlock(&zdev->attr_rwlock);
 
-	exec->cu = vzalloc(sizeof(struct zocl_cu) * exec->num_cus);
+	exec->zcu = vzalloc(sizeof(struct zocl_cu) * exec->num_cus);
+	if (!exec->zcu) {
+		DRM_ERROR("Cound not allocate CU objects\n");
+		return -ENOMEM;
+	}
 
 	for (i = 0; i < exec->num_cus; i++) {
+		if (cfg->data[i] & (~ZOCL_KDS_MASK == ACCEL_ADAPTER)) {
+			/* If the ACCEL adapter is used */
+			acc_cu = 1;
+			if (has_acc_cu == 0)
+				has_acc_cu = 1;
+		}
+
 		/* CU address should be masked by encoded handshake for KDS. */
 		cu_addr = cfg->data[i] & ZOCL_KDS_MASK;
 		if (cu_addr == ZOCL_CU_FREE_RUNNING) {
 			DRM_INFO("CU %x is free-running.", cfg->data[i]);
 			continue;
-		} else {
-			/*
-			 * Explicity set cu is valid,
-			 * only valid cu will be processed below.
-			 */
-			zocl_cu_set_valid(exec, i);
 		}
+		/*
+		 * Explicity set cu is valid,
+		 * only valid cu will be processed below.
+		 */
+		zocl_cu_set_valid(exec, i);
 
 		/* If it is in ert mode, there is no XCLBIN parsed now
 		 * Trust configuration from host. Once host download XCLBIN to
@@ -845,7 +777,6 @@ configure(struct sched_cmd *cmd)
 		if (!zdev->ert && get_apt_index(zdev, cu_addr) < 0) {
 			DRM_ERROR("CU address %x is not found in XCLBIN\n",
 				  cfg->data[i]);
-			write_unlock(&zdev->attr_rwlock);
 			return 1;
 		}
 		/* For MPSoC as PCIe device, the CU address for PS = base
@@ -853,19 +784,31 @@ configure(struct sched_cmd *cmd)
 		 *
 		 * For Pure MPSoC device, the base address is always 0
 		 */
-		exec->cu_addr_phy[i] = zdev->res_start + cu_addr;
-		exec->cu_addr_virt[i] = ioremap(exec->cu_addr_phy[i], CU_SIZE);
-		if (!exec->cu_addr_virt[i]) {
-			DRM_ERROR("Mapping CU failed\n");
-			write_unlock(&zdev->attr_rwlock);
-			return 1;
+		cu_addr = zdev->res_start + cu_addr;
+		SCHED_DEBUG("++ configure cu(%d)\n", i);
+
+		/* If XCLBIN provide enough info, we could support CU use any
+		 * supported adapter together.
+		 */
+		if (!acc_cu)
+			zocl_cu_init(&exec->zcu[i], MODEL_HLS, cu_addr);
+		else {
+			zocl_cu_init(&exec->zcu[i], MODEL_ACC, cu_addr);
+			/* ACCEL adapter CU initial finished.
+			 * The next CU might be HLS CU.
+			 */
+			acc_cu = 0;
 		}
-		SCHED_DEBUG("++ configure cu(%d) at 0x%x map to 0x%p\n", i,
-		    exec->cu_addr_phy[i], exec->cu_addr_virt[i]);
 	}
 
-	if (zdev->ert)
+	/* If ERT mode or ACC adapters is used, only support polling mode */
+	if (zdev->ert || has_acc_cu) {
+		if (has_acc_cu)
+			DRM_WARN("Interrupt is not support for ACC adapter. "
+				 "Fall back to polling mode\n");
+		exec->polling_mode = 1;
 		goto print_and_out;
+	}
 
 	/* Right now only support 32 CUs interrupts
 	 * If there are more than 32 CUs, fall back to polling mode
@@ -914,13 +857,12 @@ set_cu_and_print:
 			continue;
 
 		if (exec->polling_mode)
-			disable_interrupts(cmd->ddev, i);
+			zocl_cu_disable_intr(&exec->zcu[i], CU_INTR_DONE);
 		else
-			enable_interrupts(cmd->ddev, i);
+			zocl_cu_enable_intr(&exec->zcu[i], CU_INTR_DONE);
 	}
 
 print_and_out:
-	write_unlock(&zdev->attr_rwlock);
 	DRM_INFO("scheduler config ert(%d)", is_ert(cmd->ddev));
 	DRM_INFO("  cus(%d)", exec->num_cus);
 	DRM_INFO("  slots(%d)", exec->num_slots);
@@ -935,10 +877,10 @@ static int
 configure_soft_kernel(struct sched_cmd *cmd)
 {
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
-	struct soft_kernel *sk = zdev->soft_kernel;
+	struct soft_krnl *sk = zdev->soft_kernel;
 	struct ert_configure_sk_cmd *cfg;
 	u32 i;
-	struct soft_kernel_cmd *scmd;
+	struct soft_krnl_cmd *scmd;
 	int ret;
 
 	SCHED_DEBUG("-> configure_soft_kernel ");
@@ -971,7 +913,7 @@ configure_soft_kernel(struct sched_cmd *cmd)
 	/* NOTE: any failure after this point needs to resume sk_ncus */
 
 	/* Fill up a soft kernel command and add to soft kernel command list */
-	scmd = kmalloc(sizeof (struct soft_kernel_cmd), GFP_KERNEL);
+	scmd = kmalloc(sizeof(struct soft_krnl_cmd), GFP_KERNEL);
 	if (!scmd) {
 		ret = -ENOMEM;
 		goto fail;
@@ -1001,7 +943,7 @@ static int
 unconfigure_soft_kernel(struct sched_cmd *cmd)
 {
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
-	struct soft_kernel *sk = zdev->soft_kernel;
+	struct soft_krnl *sk = zdev->soft_kernel;
 	struct soft_cu *scu;
 	struct ert_unconfigure_sk_cmd *cfg;
 	u32 i;
@@ -1100,8 +1042,8 @@ set_cmd_ext_timestamp(struct sched_cmd *cmd, enum zocl_ts_type ts)
 
 	sk = (struct ert_start_kernel_cmd *)cmd->packet;
 
-	/* Simply skip if it is not start CU command */
-	if (opc != ERT_START_CU)
+	/* Simply skip if it is not start CU and exec write command */
+	if (opc != ERT_START_CU && opc != ERT_EXEC_WRITE)
 		return;
 	/* Use the first 4 32bits in the regmap to record CU start/end time.
 	 * To let user application know the CU start/end time.
@@ -1173,59 +1115,10 @@ release_slot_idx(struct drm_device *dev, unsigned int slot_idx)
 	zdev->exec->slot_status[mask_idx] ^= (1<<pos);
 }
 
-/**
- * reset_cu() - reset a given CU pointed by a command
- *
- * @cmd: submitted command
- *
- * This function is called to reset a given CU at the cmd->cu_idx by
- * setting bit 5 of CU's Control Register.
- */
-static inline void
-reset_cu(struct sched_cmd *cmd)
+inline struct cu_ctrl_reg *
+to_cu_ctrl_reg(u32 *reg)
 {
-	int cu_idx = cmd->cu_idx;
-	u32 *virt_addr = cu_idx_to_addr(cmd->ddev, cu_idx);
-
-	SCHED_DEBUG("-> reset_cu cu_idx=%d, cu_addr=0x%p\n", cu_idx, virt_addr);
-
-	/* Bit 5 AP_RESET */
-	iowrite32(1 << 5, virt_addr);
-
-	SCHED_DEBUG("<- reset_cu \n");
-}
-
-/**
- * reset_cu_done() - check reset status of CU
- *
- * @cmd: submitted command
- *
- * This function is called to check if the reset of a given CU in the
- * cmd->cu_idx is done. If bit 6 of the Control Register is set, the
- * reset is done.
- *
- * Return: %true if cu reset done, %false otherwise
- */
-static inline int
-reset_cu_done(struct sched_cmd *cmd)
-{
-	int cu_idx = cmd->cu_idx;
-	u32 *virt_addr = cu_idx_to_addr(cmd->ddev, cu_idx);
-	u32 status;
-
-	SCHED_DEBUG("-> reset_cu_done(,%d) checks cu at address 0x%p\n",
-	    cu_idx, virt_addr);
-	status = ioread32(virt_addr);
-
-	/* reset done is indicated by AP_RESET_DONE, bit 6 */
-	if (status & (1 << 6)) {
-		SCHED_DEBUG("<- reset_cu_done returns 1\n");
-		return true;
-	}
-
-	SCHED_DEBUG("<- reset_cu_done returns 0\n");
-
-	return false;
+	return (struct cu_ctrl_reg *)reg;
 }
 
 /**
@@ -1243,22 +1136,34 @@ cu_done(struct sched_cmd *cmd)
 {
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
 	int cu_idx = cmd->cu_idx;
-	u32 *virt_addr = cu_idx_to_addr(cmd->ddev, cu_idx);
-	u32 status;
+	struct zocl_cu *cu = &cmd->exec->zcu[cu_idx];
+	struct sched_cmd *fc;
 
-	SCHED_DEBUG("-> cu_done(,%d) checks cu at address 0x%p\n",
-		    cu_idx, virt_addr);
-	/* done is indicated by AP_DONE(2) alone or by AP_DONE(2) | AP_IDLE(4)
-	 * but not by AP_IDLE itself.  Since 0x10 | (0x10 | 0x100) = 0x110
-	 * checking for 0x10 is sufficient.
-	 */
-	status = ioread32(virt_addr);
-	if (status & 2) {
+	SCHED_DEBUG("-> cu_done(,%d)\n", cu_idx);
+
+	fc = list_first_entry(&cu->running_queue, struct sched_cmd, rq_list);
+	/* Check if this cmd is the first one running on the CU */
+	if (fc != cmd) {
+		SCHED_DEBUG("<- cu_done returns 0\n");
+		return false;
+	}
+
+	zocl_cu_check(cu);
+
+	if (cu->done_cnt > 0) {
 		unsigned int mask_idx = cu_mask_idx(cu_idx);
 		unsigned int pos = cu_idx_in_mask(cu_idx);
 
 		set_cmd_ext_timestamp(cmd, CU_DONE_TIME);
-		zdev->exec->cu_status[mask_idx] ^= 1<<pos;
+		/* if cu is busy, change the status to free */
+		if (zdev->exec->cu_status[mask_idx] & 1<<pos)
+			zdev->exec->cu_status[mask_idx] ^= 1<<pos;
+
+		/* This command is completed, refund credit and delete it */
+		zocl_cu_refund_credit(cu, 1);
+		list_del(&cmd->rq_list);
+		cu->done_cnt--;
+
 		SCHED_DEBUG("<- cu_done returns 1\n");
 		return true;
 	}
@@ -1271,7 +1176,7 @@ scu_done(struct sched_cmd *cmd)
 {
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
 	int cu_idx = cmd->cu_idx;
-	struct soft_kernel *sk = zdev->soft_kernel;
+	struct soft_krnl *sk = zdev->soft_kernel;
 	u32 *virt_addr = sk->sk_cu[cu_idx]->sc_vregs;
 
 	SCHED_DEBUG("-> scu_done(,%d) checks scu at address 0x%p\n",
@@ -1302,7 +1207,7 @@ scu_configure_done(struct sched_cmd *cmd)
 {
 	struct drm_device *dev = cmd->ddev;
 	struct drm_zocl_dev *zdev = dev->dev_private;
-	struct soft_kernel *sk = zdev->soft_kernel;
+	struct soft_krnl *sk = zdev->soft_kernel;
 	struct ert_configure_sk_cmd *cfg;
 	int i;
 
@@ -1330,7 +1235,7 @@ scu_unconfig_done(struct sched_cmd *cmd)
 {
 	struct drm_device *dev = cmd->ddev;
 	struct drm_zocl_dev *zdev = dev->dev_private;
-	struct soft_kernel *sk = zdev->soft_kernel;
+	struct soft_krnl *sk = zdev->soft_kernel;
 	struct ert_unconfigure_sk_cmd *cfg;
 	int i;
 
@@ -1703,21 +1608,25 @@ get_free_cu(struct sched_cmd *cmd, enum zocl_cu_type cu_type)
 		    exec->scu_status[mask_idx]
 		    : exec->cu_status[mask_idx];
 		u32 free_mask = (cmd_mask | busy_mask) ^ busy_mask;
+
 		/* For hardware cu, we have to search on valid CUs only. */
 		if (cu_type == ZOCL_HARD_CU)
 			free_mask &= exec->cu_valid[mask_idx];
 
 		cu_idx = ffs_or_neg_one(free_mask);
 
-		if (cu_idx >= 0) {
-			if (cu_type == ZOCL_SOFT_CU)
-				zdev->exec->scu_status[mask_idx] ^= 1 << cu_idx;
-			else
-				zdev->exec->cu_status[mask_idx] ^= 1 << cu_idx;
-			SCHED_DEBUG("<- get_free_cu returns %d\n",
-				    cu_idx_from_mask(cu_idx, mask_idx));
-			return cu_idx_from_mask(cu_idx, mask_idx);
-		}
+		if (cu_idx < 0)
+			continue;
+
+		if (cu_type == ZOCL_HARD_CU) {
+			 /* KDS should not over spending credits */
+			if (!zocl_cu_get_credit(&exec->zcu[cu_idx]))
+				exec->cu_status[mask_idx] ^= 1 << cu_idx;
+		} else
+			exec->scu_status[mask_idx] ^= 1 << cu_idx;
+		SCHED_DEBUG("<- get_free_cu returns %d\n",
+			    cu_idx_from_mask(cu_idx, mask_idx));
+		return cu_idx_from_mask(cu_idx, mask_idx);
 	}
 	SCHED_DEBUG("<- get_free_cu returns -1\n");
 	return -1;
@@ -1736,15 +1645,21 @@ static void
 configure_cu(struct sched_cmd *cmd, int cu_idx)
 {
 	u32 size = regmap_size(cmd);
-	u32 *virt_addr = cu_idx_to_addr(cmd->ddev, cu_idx);
 	struct ert_start_kernel_cmd *sk;
+	struct zocl_cu *cu = &cmd->exec->zcu[cu_idx];
+	int type;
 
-	SCHED_DEBUG("-> configure_cu cu_idx=%d, cu_addr=0x%p, regmap_size=%d\n",
-		    cu_idx, virt_addr, size);
+	SCHED_DEBUG("-> configure_cu cu_idx=%d, regmap_size=%d\n",
+		    cu_idx, size);
 
 	sk = (struct ert_start_kernel_cmd *)cmd->packet;
 
-	write_cu_regmap(sk->data + sk->extra_cu_masks, virt_addr, size);
+	if (opcode(cmd) == ERT_EXEC_WRITE)
+		type = PAIRS;
+	else
+		type = CONSECUTIVE;
+
+	zocl_cu_configure(cu, sk->data + sk->extra_cu_masks, size, type);
 
 	/* Let user know which CU execute this command */
 	set_cmd_ext_cu_idx(cmd, cu_idx);
@@ -1755,8 +1670,8 @@ configure_cu(struct sched_cmd *cmd, int cu_idx)
 	cmd->exectime = cu_idx_to_timeout(cmd->ddev, cmd->cu_idx);
 	cmd->check_timeout = cmd->exectime > 0 ? 1 : 0;
 
-	/* start CU at base + 0x0 */
-	iowrite32(0x1, virt_addr);
+	zocl_cu_start(cu);
+	list_add_tail(&cmd->rq_list, &cu->running_queue);
 
 	SCHED_DEBUG("<- configure_cu\n");
 }
@@ -1773,21 +1688,20 @@ configure_cu(struct sched_cmd *cmd, int cu_idx)
 static void
 ert_configure_cu(struct sched_cmd *cmd, int cu_idx)
 {
-	u32 i, size = regmap_size(cmd);
-	u32 *virt_addr = cu_idx_to_addr(cmd->ddev, cu_idx);
+	u32 size = regmap_size(cmd);
 	struct ert_start_kernel_cmd *sk;
+	struct zocl_cu *cu = &cmd->exec->zcu[cu_idx];
+	int type = CONSECUTIVE;
 
-	SCHED_DEBUG("-> ert_configure_cu ");
-	SCHED_DEBUG("cu_idx=%d, cu_addr=0x%p, regmap_size=%d\n",
-		    cu_idx, virt_addr, size);
+	SCHED_DEBUG("-> ert_configure_cu cu_idx=%d, regmap_size=%d\n",
+		    cu_idx, size);
 
 	sk = (struct ert_start_kernel_cmd *)cmd->packet;
 
-	for (i = 1; i < size; ++i)
-		iowrite32(*(sk->data + sk->extra_cu_masks + i), virt_addr + i);
+	zocl_cu_configure(cu, sk->data + sk->extra_cu_masks, size, type);
 
-	/* start CU at base + 0x0 */
-	iowrite32(0x1, virt_addr);
+	zocl_cu_start(cu);
+	list_add_tail(&cmd->rq_list, &cu->running_queue);
 
 	SCHED_DEBUG("<- ert_configure_cu\n");
 }
@@ -1796,7 +1710,7 @@ static int
 ert_configure_scu(struct sched_cmd *cmd, int cu_idx)
 {
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
-	struct soft_kernel *sk = zdev->soft_kernel;
+	struct soft_krnl *sk = zdev->soft_kernel;
 	struct soft_cu *scu;
 	u32 i, size = regmap_size(cmd);
 	u32 *cu_regfile;
@@ -1832,7 +1746,7 @@ ert_configure_scu(struct sched_cmd *cmd, int cu_idx)
 }
 
 /**
- * zocl_cu_reset() - Reset a running command and CU.
+ * zocl_reset_cu() - Reset a running command and CU.
  *
  * @cmd: Command to reset. CU is pointed by cmd->cu_idx.
  *
@@ -1843,7 +1757,7 @@ ert_configure_scu(struct sched_cmd *cmd, int cu_idx)
  * cmd state to NORESPONSE to indicate the CU timeout and reset fails.
  */
 static void
-zocl_cu_reset(struct sched_cmd *cmd)
+zocl_reset_cu(struct sched_cmd *cmd)
 {
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
 	int cu_idx = cmd->cu_idx;
@@ -1852,11 +1766,11 @@ zocl_cu_reset(struct sched_cmd *cmd)
 	unsigned int pos = cu_idx_in_mask(cu_idx);
 	enum ert_cmd_state cmd_state;
 
-	SCHED_DEBUG("-> zocl_cu_reset (,%d)\n", cmd->slot_idx);
+	SCHED_DEBUG("-> zocl_reset_cu (,%d)\n", cmd->slot_idx);
 
-	reset_cu(cmd);
+	zocl_cu_reset(&zdev->exec->zcu[cu_idx]);
 	while (reset_timeout) {
-		if (reset_cu_done(cmd))
+		if (zocl_cu_reset_done(&zdev->exec->zcu[cu_idx]))
 			break;
 		udelay(ZOCL_CU_RESET_TIMER_INTERVAL);
 		reset_timeout--;
@@ -1874,7 +1788,7 @@ zocl_cu_reset(struct sched_cmd *cmd)
 	zdev->exec->cu_status[mask_idx] ^= 1<<pos;
 	mark_cmd_complete(cmd, cmd_state);
 
-	SCHED_DEBUG("<- zocl_cu_reset (,%d)\n", cmd->slot_idx);
+	SCHED_DEBUG("<- zocl_reset_cu (,%d)\n", cmd->slot_idx);
 }
 
 /**
@@ -2028,7 +1942,7 @@ scheduler_iterate_cmds(struct scheduler *sched)
 		if (cmd->state == ERT_CMD_STATE_RUNNING)
 			running_to_complete(cmd);
 		if (cmd->state == ERT_CMD_STATE_TIMEOUT)
-			zocl_cu_reset(cmd);
+			zocl_reset_cu(cmd);
 		if (cmd->state == ERT_CMD_STATE_COMPLETED ||
 		    cmd->state == ERT_CMD_STATE_TIMEOUT ||
 		    cmd->state == ERT_CMD_STATE_ERROR ||
@@ -2239,6 +2153,7 @@ penguin_query(struct sched_cmd *cmd)
 		}
 		break;
 	case ERT_START_CU:
+	case ERT_EXEC_WRITE:
 		if (cu_done(cmd))
 			mark_cmd_complete(cmd, ERT_CMD_STATE_COMPLETED);
 		break;
@@ -2363,7 +2278,7 @@ penguin_submit(struct sched_cmd *cmd)
 		return true;
 	}
 
-	if (opcode(cmd) != ERT_START_CU)
+	if (opcode(cmd) != ERT_START_CU && opcode(cmd) != ERT_EXEC_WRITE)
 		return false;
 
 	/* extract cu list */
@@ -2372,7 +2287,7 @@ penguin_submit(struct sched_cmd *cmd)
 		return false;
 
 	/* track cu executions */
-	++cmd->exec->cu_usage[cmd->cu_idx];
+	++(cmd->exec->zcu[cmd->cu_idx].usage);
 
 	cmd->slot_idx = acquire_slot_idx(cmd->ddev);
 	if (cmd->slot_idx < 0)
@@ -2426,6 +2341,7 @@ ps_ert_query(struct sched_cmd *cmd)
 		break;
 
 	case ERT_START_CU:
+	case ERT_EXEC_WRITE:
 		if (!cu_done(cmd))
 			break;
 		/* pass through */
@@ -2499,6 +2415,7 @@ ps_ert_submit(struct sched_cmd *cmd)
 		break;
 
 	case ERT_START_CU:
+	case ERT_EXEC_WRITE:
 		/* extract cu list */
 		cmd->cu_idx = get_free_cu(cmd, ZOCL_HARD_CU);
 		if (cmd->cu_idx < 0) {
@@ -2883,7 +2800,7 @@ int sched_fini_exec(struct drm_device *drm)
 		kthread_stop(zdev->exec->cq_thread);
 
 	fini_scheduler_thread();
-	vfree(zdev->exec->cu);
+	vfree(zdev->exec->zcu);
 	zocl_cleanup_cu_timer(zdev);
 	SCHED_DEBUG("<- sched_fini_exec\n");
 

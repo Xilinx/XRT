@@ -772,6 +772,12 @@ enum data_kind {
 	MAX_PWR,
 	FAN_PRESENCE,
 	CFG_MODE,
+	VOL_VCC_3V3,
+	CUR_3V3_PEX,
+	CUR_VCC_0V85,
+	VOL_HBM_1V2,
+	VOL_VPP_2V5,
+	VOL_VCCINT_BRAM,
 };
 
 enum mb_kind {
@@ -844,6 +850,7 @@ enum {
 	RP_DOWNLOAD_NORMAL,
 	RP_DOWNLOAD_DRY,
 	RP_DOWNLOAD_FORCE,
+	RP_DOWNLOAD_CLEAR,
 };
 #define	ICAP_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ICAP).pldev
 #define	ICAP_OPS(xdev)							\
@@ -925,6 +932,7 @@ struct xocl_iores_funcs {
 	int (*read32)(struct platform_device *pdev, u32 id, u32 off, u32 *val);
 	int (*write32)(struct platform_device *pdev, u32 id, u32 off, u32 val);
 	void __iomem *(*get_base)(struct platform_device *pdev, u32 id);
+	uint64_t (*get_offset)(struct platform_device *pdev, u32 id);
 };
 
 #define IORES_DEV(xdev, idx)  SUBDEV_MULTI(xdev, XOCL_SUBDEV_IORES, idx).pldev
@@ -957,6 +965,23 @@ static inline void __iomem *xocl_iores_get_base(xdev_handle_t xdev, int id)
 
 	return NULL;
 }
+#define __get_offset(xdev, level, id)				\
+	(IORES_CB(xdev, level, get_offset) ?				\
+	IORES_OPS(xdev, level)->get_offset(IORES_DEV(xdev, level), id) : -1)
+static inline uint64_t xocl_iores_get_offset(xdev_handle_t xdev, int id)
+{
+	uint64_t offset;
+	int i;
+
+	for (i = XOCL_SUBDEV_LEVEL_MAX - 1; i >= 0; i--) {
+		offset = __get_offset(xdev, i, id);
+		if (offset != (uint64_t)-1)
+			return offset;
+	}
+
+	return -1;
+}
+
 
 struct xocl_axigate_funcs {
 	struct xocl_subdev_funcs common_funcs;
@@ -984,9 +1009,12 @@ struct xocl_axigate_funcs {
 static inline void __iomem *xocl_cdma_addr(xdev_handle_t xdev)
 {
 	void	__iomem *ioaddr;
+	static uint32_t cdma[4];
 
-	ioaddr = xocl_iores_get_base(xdev, IORES_KDMA);
-	if (!ioaddr)
+	cdma[0] = (uint32_t)xocl_iores_get_offset(xdev, IORES_KDMA);
+	if (cdma[0] != (uint32_t)-1)
+		ioaddr = cdma;
+	else
 		ioaddr = xocl_rom_cdma_addr(xdev);
 
 	return ioaddr;
@@ -1155,8 +1183,8 @@ void xocl_fini_dna(void);
 int __init xocl_init_fmgr(void);
 void xocl_fini_fmgr(void);
 
-int __init xocl_init_xdma_mgmt(void);
-void xocl_fini_xdma_mgmt(void);
+int __init xocl_init_mgmt_msix(void);
+void xocl_fini_mgmt_msix(void);
 
 int __init xocl_init_flash(void);
 void xocl_fini_flash(void);

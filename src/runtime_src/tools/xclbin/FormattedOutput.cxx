@@ -360,6 +360,10 @@ reportXclbinInfo( std::ostream & _ostream,
       }
 
       sSections += sKindStr;
+
+      if (!pSection->getSectionIndexName().empty()) {
+        sSections += "[" + pSection->getSectionIndexName() + "]";
+      }
     }
 
     std::vector<std::string> sections;

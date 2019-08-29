@@ -138,13 +138,19 @@ public:
   {
     static size_type count = 0;
     m_uid = count++;
-    if (m_ecmd->opcode==ERT_START_KERNEL) {
+    if (m_ecmd->type==ERT_CU) {
       m_cus |= m_kcmd->cu_mask;
       for (size_type i=0; i<m_kcmd->extra_cu_masks; ++i) {
         cu_bitset_type mask(m_kcmd->data[i]);
         m_cus |= (mask<<sizeof(value_type)*8*i);
       }
     }
+  }
+
+  value_type
+  opcode() const
+  {
+    return m_ecmd->opcode;
   }
 
   size_type
@@ -417,13 +423,21 @@ public:
   {
     XRT_ASSERT(!(ctrlreg & AP_START),"cu not ready");
 
-    // data past header and cu_masks
     auto size = xcmd->regmap_size();
     auto regmap = xcmd->regmap_data();
 
-    // write register map, starting at base + 0xC
-    // 0x4, 0x8 used for interrupt, which is initialized in setu
-    xdev->write_register(addr,regmap,size*4);
+    if (xcmd->opcode() == ERT_EXEC_WRITE) {
+      // write address value pairs
+      for (size_type idx = 6; idx < size - 1; idx+=2) {
+        addr_type offset = *(regmap + idx);
+        value_type value = *(regmap + idx + 1);
+        xdev->write_register(addr + offset,&value,4);
+      }
+    }
+    else {
+      // write register map consecutively from CU base
+      xdev->write_register(addr,regmap,size*4);
+    }
 
     // invoke callback for starting cu
     xcmd->notify_start(idx);

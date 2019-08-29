@@ -153,8 +153,8 @@ run_done_callbacks(const xrt::command* cmd, const execution_context* ctx)
 struct execution_context::start_kernel : xrt::command
 {
 public:
-  start_kernel(xrt::device* xdevice, xocl::execution_context* ec)
-    : xrt::command(xdevice,ERT_START_KERNEL), m_ec(ec)
+  start_kernel(xrt::device* xdevice, xocl::execution_context* ec, ert_cmd_opcode opcode)
+    : xrt::command(xdevice,opcode), m_ec(ec)
   {}
   virtual void start() const
   {
@@ -170,8 +170,8 @@ public:
 
 struct execution_context::start_kernel_conformance : start_kernel
 {
-  start_kernel_conformance(xrt::device* xdevice, xocl::execution_context* ec)
-    : start_kernel(xdevice,ec)
+  start_kernel_conformance(xrt::device* xdevice, xocl::execution_context* ec, ert_cmd_opcode opcode)
+    : start_kernel(xdevice,ec,opcode)
   {}
   virtual void done() const
   {
@@ -182,6 +182,7 @@ struct execution_context::start_kernel_conformance : start_kernel
 
 static int
 fill_regmap(execution_context::regmap_type& regmap, size_t offset,
+            ert_cmd_opcode opcode, uint32_t ctrl,
             const void* data, const size_t size,
             const xocl::kernel::argument::arginfo_range_type& arginforange)
 {
@@ -196,7 +197,6 @@ fill_regmap(execution_context::regmap_type& regmap, size_t offset,
   for (auto arginfo : arginforange) {
     auto component = host_data + arginfo->hostoffset;
     auto word = reinterpret_cast<pointer_type>(component);
-    auto regmap_idx = arginfo->offset / wsize;
 
     // For each 32-bit word of the component
     for (size_t wi = 0, we = arginfo->size / wsize; wi < we; ++wi, ++word, bytes -= wsize) {
@@ -207,7 +207,19 @@ fill_regmap(execution_context::regmap_type& regmap, size_t offset,
         auto cword = reinterpret_cast<const char*>(word);
         std::copy(cword,cword+bytes,reinterpret_cast<char*>(&device_value));
       }
-      regmap[offset + regmap_idx + wi] = device_value;
+
+      if (opcode == ERT_EXEC_WRITE) {
+        // write addr value pair at current end of regmap
+        auto idx = regmap.size();
+        regmap[idx++] = (ctrl == ACCEL_ADAPTER) ? arginfo->offset : arginfo->offset + wi*wsize;
+        regmap[idx++] = device_value;
+        assert(idx == regmap.size());
+      }
+      else {
+        // write relative to start of register map
+        auto idx = offset + arginfo->offset / wsize + wi;
+        regmap[idx] = device_value;
+      }
       //std::cout << "regmap[" << offset + regmap_idx + wi << "]=" << device_value << "\n";
     }
   }
@@ -278,6 +290,13 @@ add_compute_units(device* device)
                      + std::to_string(m_uid) + "'\n");
 }
 
+uint32_t
+execution_context::
+cu_control_type() const
+{
+  return m_cus.front()->get_control_type();
+}
+
 bool
 execution_context::
 write(const command_type& cmd)
@@ -288,6 +307,7 @@ write(const command_type& cmd)
   // Construct command header
   auto epacket = xrt::command_cast<ert_packet*>(cmd.get());
   epacket->count = data_size;
+  epacket->type  = ERT_CU;
 
   // Max number size is 4KB
   auto size = packet.bytes();
@@ -385,9 +405,11 @@ start()
   auto xdevice = m_device->get_xrt_device();
 
   // Construct command packet and send to hardware
+  auto ctrl = cu_control_type();
+  auto opcode = (ctrl == ACCEL_ADAPTER) ? ERT_EXEC_WRITE : ERT_START_KERNEL;
   auto cmd = conformance::on()
-    ? std::make_shared<start_kernel_conformance>(xdevice,this)
-    : std::make_shared<start_kernel>(xdevice,this);
+    ? std::make_shared<start_kernel_conformance>(xdevice,this,opcode)
+    : std::make_shared<start_kernel>(xdevice,this,opcode);
   ++m_active;
   auto& packet = cmd->get_packet();
 
@@ -405,6 +427,14 @@ start()
   packet[offset+1] = 0;  // gier
   packet[offset+2] = 0;  // ier
   packet[offset+3] = 0;  // isr
+
+  if (opcode == ERT_EXEC_WRITE) {
+    // scheduler relies on exec_write addr,value pair
+    // starting at offset+6 (4 ctrl + 2 ctx)
+    // this is a mess, need separate exec_write packet.
+    packet[offset+4] = 0; // ctx-in
+    packet[offset+5] = 0; // ctx-out
+  }
 
   size3 num_workgroups {0,0,0};
   for (auto d : {0,1,2}) {
@@ -425,7 +455,7 @@ start()
     if (address_space == kernel::argument::addr_space_type::SPIR_ADDRSPACE_PRIVATE)
     {
       auto arginforange = arg->get_arginfo_range();
-      fill_regmap(regmap,offset,arg->get_value(),arg->get_size(),arginforange);
+      fill_regmap(regmap,offset,opcode,ctrl,arg->get_value(),arg->get_size(),arginforange);
     } else if(address_space == kernel::argument::addr_space_type::SPIR_ADDRSPACE_PIPES) {
 	//do nothing
     } else if (address_space == kernel::argument::addr_space_type::SPIR_ADDRSPACE_GLOBAL
@@ -441,7 +471,7 @@ start()
       }
       auto arginforange = arg->get_arginfo_range();
       assert(arginforange.size()==1);
-      fill_regmap(regmap,offset,&physaddr, arg->get_size(), arginforange);
+      fill_regmap(regmap,offset,opcode,ctrl,&physaddr, arg->get_size(), arginforange);
     }
   }
 
@@ -452,7 +482,7 @@ start()
       physaddr = xdevice->getDeviceAddr(boh);
     }
     assert(arg->get_arginfo_range().size()==1);
-    fill_regmap(regmap,offset,&physaddr,arg->get_size(),arg->get_arginfo_range());
+    fill_regmap(regmap,offset,opcode,ctrl,&physaddr,arg->get_size(),arg->get_arginfo_range());
   }
 
   // Set runtime arguments as required
@@ -484,23 +514,23 @@ start()
     auto nm = arg->get_name();
     XOCL_DEBUGF("execution_context(%d) sets rtinfo(%s)\n",get_uid(),nm.c_str());
     if (nm=="work_dim")
-      fill_regmap(regmap,offset,&m_dim,sizeof(cl_uint),arg->get_arginfo_range());
+      fill_regmap(regmap,offset,opcode,ctrl,&m_dim,sizeof(cl_uint),arg->get_arginfo_range());
     else if (nm=="global_offset")
-      fill_regmap(regmap,offset,m_goffset.data(),3*sizeof(size_t),arg->get_arginfo_range());
+      fill_regmap(regmap,offset,opcode,ctrl,m_goffset.data(),3*sizeof(size_t),arg->get_arginfo_range());
     else if (nm=="global_size")
-      fill_regmap(regmap,offset,m_gsize.data(),3*sizeof(size_t),arg->get_arginfo_range());
+      fill_regmap(regmap,offset,opcode,ctrl,m_gsize.data(),3*sizeof(size_t),arg->get_arginfo_range());
     else if (nm=="local_size")
-      fill_regmap(regmap,offset,m_lsize.data(),3*sizeof(size_t),arg->get_arginfo_range());
+      fill_regmap(regmap,offset,opcode,ctrl,m_lsize.data(),3*sizeof(size_t),arg->get_arginfo_range());
     else if (nm=="num_groups")
-      fill_regmap(regmap,offset,num_workgroups.data(),3*sizeof(size_t),arg->get_arginfo_range());
+      fill_regmap(regmap,offset,opcode,ctrl,num_workgroups.data(),3*sizeof(size_t),arg->get_arginfo_range());
     else if (nm=="global_id")
-      fill_regmap(regmap,offset,m_cu_global_id.data(),3*sizeof(size_t),arg->get_arginfo_range());
+      fill_regmap(regmap,offset,opcode,ctrl,m_cu_global_id.data(),3*sizeof(size_t),arg->get_arginfo_range());
     else if (nm=="local_id")
-      fill_regmap(regmap,offset,local_id.data(),3*sizeof(size_t),arg->get_arginfo_range());
+      fill_regmap(regmap,offset,opcode,ctrl,local_id.data(),3*sizeof(size_t),arg->get_arginfo_range());
     else if (nm=="group_id")
-      fill_regmap(regmap,offset,m_cu_group_id.data(),3*sizeof(size_t),arg->get_arginfo_range());
+      fill_regmap(regmap,offset,opcode,ctrl,m_cu_group_id.data(),3*sizeof(size_t),arg->get_arginfo_range());
     else if (nm=="printf_buffer")
-      fill_regmap(regmap,offset,&printf_buffer_addr,sizeof(printf_buffer_addr),arg->get_arginfo_range());
+      fill_regmap(regmap,offset,opcode,ctrl,&printf_buffer_addr,sizeof(printf_buffer_addr),arg->get_arginfo_range());
   }
 
   // send command to mbs

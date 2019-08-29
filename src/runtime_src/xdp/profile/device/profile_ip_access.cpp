@@ -16,12 +16,11 @@
  */
 
 #include "profile_ip_access.h"
-#include "xrt/device/device.h"
 
 namespace xdp {
 
-ProfileIP::ProfileIP(void* handle, int index, debug_ip_data* data)
-          : xrt_device_handle(nullptr),
+ProfileIP::ProfileIP(Device* handle, int index, debug_ip_data* data)
+          : device(nullptr),
             mapped(false),
             exclusive(false),
             ip_index(-1),
@@ -29,14 +28,14 @@ ProfileIP::ProfileIP(void* handle, int index, debug_ip_data* data)
             mapped_address(0)
 {
     // check for exclusive access to this IP
-    request_exclusive_ip_access(handle, index);
+    request_exclusive_ip_access(index);
 
     // For now, set these to true
     mapped = true;  
     exclusive = true;
 
     if (exclusive) {
-        xrt_device_handle = handle;
+        device = handle;
         ip_index = index;
         ip_base_address = data->m_base_address;
         ip_name.assign(reinterpret_cast<const char*>(&data->m_name), 128);
@@ -57,11 +56,11 @@ ProfileIP::~ProfileIP() {
         unmap();
     }
     if (exclusive) {
-        release_exclusive_ip_access(xrt_device_handle, ip_index);
+        release_exclusive_ip_access(ip_index);
     }
 } 
 
-void ProfileIP::request_exclusive_ip_access(void* handle, int index) {
+void ProfileIP::request_exclusive_ip_access(int index) {
     /**
      * TODO: when the XRT implements the exclusive context hal API, this
      * method should try to open a exclusive context here and set the
@@ -73,7 +72,7 @@ void ProfileIP::request_exclusive_ip_access(void* handle, int index) {
     return;
 }
 
-void ProfileIP::release_exclusive_ip_access(void* handle, int index) {
+void ProfileIP::release_exclusive_ip_access(int index) {
     /**
      * TODO: when the XRT implements the exclusive context hal API, this
      * method should close the previously requested exclusive context if
@@ -118,10 +117,9 @@ int ProfileIP::read(uint64_t offset, size_t size, void* data) {
         return -1;
     }
     uint64_t absolute_offset = ip_base_address + offset;
-    xrt::device* xrtDevice = (xrt::device*)xrt_device_handle;
     
     size_t read_size = 1;
-    xrtDevice->xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
+    device->read(XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
 //    size_t read_size = xDevice->xclRead(device_handle, XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
     if (read_size < 0) {
         showWarning("xclRead failed");
@@ -140,10 +138,9 @@ int ProfileIP::write(uint64_t offset, size_t size, void* data) {
         return -1;
     }
     uint64_t absolute_offset = ip_base_address + offset;
-    xrt::device* xrtDevice = (xrt::device*)xrt_device_handle;
 
     size_t write_size = 1;
-    xrtDevice->xclWrite(XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
+    device->write(XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
 //    size_t write_size = xclWrite(xrt_device_handle, XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
     if (write_size < 0) {
         showWarning("xclWrite failed");
@@ -158,8 +155,7 @@ int ProfileIP::unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offse
         return -1;
     }
     uint64_t absolute_offset = ip_base_address + offset;
-    xrt::device* xrtDevice = (xrt::device*)xrt_device_handle;
-    xrtDevice->xclUnmgdPread(flags, buf, count, absolute_offset);
+    device->unmgdRead(flags, buf, count, absolute_offset);
     // warning ?
     return 0;
 }

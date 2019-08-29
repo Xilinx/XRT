@@ -141,9 +141,9 @@ if(WIN32)
   target_compile_options(xclbinutil PRIVATE /DBOOST_CONFIG_SUPPRESS_OUTDATED_MESSAGE)
 else()
 
-  # For Ubuntu 18.04 we must link dynamic libraries.  This is because the static
+  # For Ubuntu 18.04 and later versions we must link dynamic libraries.  This is because the static
   # openssl library is linked to a dynamic library :-(
-  if ((${LINUX_FLAVOR} STREQUAL Ubuntu) AND (${LINUX_VERSION} STREQUAL 18.04))
+  if ((${LINUX_FLAVOR} STREQUAL Ubuntu) AND (${LINUX_VERSION} VERSION_GREATER 17.10))
     # Note: The following Ubuntu 18.04 target results in a execution Segmentation Fault
     #       due to dynamic library dependencies in the openssl static library.
     #       

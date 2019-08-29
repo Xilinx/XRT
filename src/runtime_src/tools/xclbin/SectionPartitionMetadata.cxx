@@ -151,8 +151,8 @@ SchemaTransformUniversal_firmware( const boost::property_tree::ptree& _ptOrigina
   SchemaTransform_nameValue("firmware_product_name", "", true  /*required*/, _ptOriginal, _ptTransformed);
   SchemaTransform_nameValue("firmware_branch_name", "", true  /*required*/, _ptOriginal, _ptTransformed);
   SchemaTransform_nameValue("firmware_version_major", "", true  /*required*/, _ptOriginal, _ptTransformed);
-  SchemaTransform_nameValue("firmware_version_minor", "", true  /*required*/, _ptOriginal, _ptTransformed);
-  SchemaTransform_nameValue("firmware_version_revision", "", true  /*required*/, _ptOriginal, _ptTransformed);
+  SchemaTransform_nameValue("firmware_version_minor", "", false  /*required*/, _ptOriginal, _ptTransformed);
+  SchemaTransform_nameValue("firmware_version_revision", "", false  /*required*/, _ptOriginal, _ptTransformed);
 }
 
 /**

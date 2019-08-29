@@ -1521,7 +1521,8 @@ int shim::xclCuName2Index(const char *name, uint32_t& index)
         size_t pos = line.find("0x");
         if (pos == std::string::npos)
             continue;
-        if (static_cast<int>(addr) == std::stoi(line.substr(pos), 0, 16)) {
+        if (static_cast<unsigned long>(addr) ==
+            std::stoul(line.substr(pos), 0, 16)) {
             index = idx;
             return 0;
         }
@@ -1574,13 +1575,23 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 
 int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, ...)
 {
-    va_list args;
-    va_start(args, format);
-    xocl::shim *drv = xocl::shim::handleCheck(handle);
-    int ret = drv ? drv->xclLogMsg(level, tag, format, args) : -ENODEV;
-    va_end(args);
+    static auto verbosity = xrt_core::config::get_verbosity();
+    if (level <= verbosity) {
+        va_list args;
+        va_start(args, format);
+        int ret = -1;
+        if (handle) {
+            xocl::shim *drv = xocl::shim::handleCheck(handle);
+            ret = drv ? drv->xclLogMsg(level, tag, format, args) : -ENODEV;
+        } else {
+            ret = xocl::shim::xclLogMsg(level, tag, format, args);
+        }
+        va_end(args);
 
-    return ret;
+        return ret;
+    }
+
+    return 0;
 }
 
 
