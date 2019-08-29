@@ -825,6 +825,48 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 				sizeof(ret));
 		break;
 	}
+	case MAILBOX_REQ_READ_P2P_BAR_ADDR: {
+		struct pci_dev *pdev = lro->pci_dev;
+		struct mailbox_p2p_bar_addr *mb_p2p =
+			(struct mailbox_p2p_bar_addr*)req->data;
+		resource_size_t p2p_bar_addr = 0, p2p_bar_len = 0, range = 0;
+		u32 p2p_addr_base, range_base, final_val;
+
+		/* Passthrough Virtualization feature configuration */
+		if (xocl_passthrough_virtualization_on(lro)) {
+			if (!iommu_present(&pci_bus_type)) {
+				p2p_bar_addr = mb_p2p->p2p_bar_addr;
+				p2p_bar_len = mb_p2p->p2p_bar_len;
+				mgmt_info(lro, "got the p2p bar addr = %lld\n", p2p_bar_addr);
+				mgmt_info(lro, "got the p2p bar len = %lld\n", p2p_bar_len);
+				if (!p2p_bar_addr) {
+					pci_write_config_byte(pdev, 0x188, 0x0);
+					ret = 0;
+					(void) xocl_peer_response(lro, req->req, msgid, &ret,
+										  sizeof(ret));
+					break;
+				}
+				range = p2p_bar_addr + p2p_bar_len - 1;
+				range_base = range & 0xFFFF0000;
+				p2p_addr_base = p2p_bar_addr & 0xFFFF0000;
+				final_val = range_base | (p2p_addr_base >> 16);
+				//Translation enable bit
+				pci_write_config_byte(pdev, 0x188, 0x1);
+				//Bar base address
+				pci_write_config_dword(pdev, 0x190, p2p_bar_addr >> 32);
+				//Bar base address + range
+				pci_write_config_dword(pdev, 0x194, range >> 32);
+				pci_write_config_dword(pdev, 0x18c, final_val);
+				mgmt_info(lro, "Passthrough Virtualization config done\n");
+			} else {
+				mgmt_err(lro, "request (%d) dropped, IOMMU is enabled\n",
+						 MAILBOX_REQ_READ_P2P_BAR_ADDR);
+			}
+		}
+		ret = 0;
+		(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
+		break;
+	}
 	default:
 		mgmt_err(lro, "unknown peer request opcode: %d\n", req->req);
 		break;
@@ -1089,6 +1131,10 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 	BUG_ON(lro->core.pdev != pdev);
 
 	xclmgmt_connect_notify(lro, false);
+
+	if (xocl_passthrough_virtualization_on(lro) &&
+		!iommu_present(&pci_bus_type))
+		pci_write_config_byte(pdev, 0x188, 0x0);
 
 	xocl_thread_stop(lro);
 
