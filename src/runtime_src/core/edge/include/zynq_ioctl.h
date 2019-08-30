@@ -192,6 +192,11 @@ struct drm_zocl_execbuf {
   uint32_t exec_bo_handle;
 };
 
+enum drm_zocl_axlf_flags {
+	DRM_ZOCL_AXLF_FLAGS_NONE 	= 0,
+	DRM_ZOCL_AXLF_FLAGS_PDI_LOAD 	= (1 << 0),
+};
+
 /**
  * struct drm_xocl_axlf - load xclbin (AXLF) device image
  * used with DRM_IOCTL_ZOCL_READ_AXLF ioctl
@@ -199,7 +204,8 @@ struct drm_zocl_execbuf {
  * @axlf
  **/
 struct drm_zocl_axlf {
-	struct axlf *xclbin;
+	struct axlf 	*za_xclbin_ptr;
+	uint32_t 	za_flags;
 };
 
 #define	ZOCL_MAX_NAME_LENGTH		32

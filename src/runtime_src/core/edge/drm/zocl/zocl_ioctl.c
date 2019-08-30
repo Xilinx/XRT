@@ -194,10 +194,37 @@ static int bitstream_parse_header(const unsigned char *Data, unsigned int Size,
 	return 0;
 }
 
+static int
+zocl_fpga_mgr_load(struct drm_device *ddev, char *data, int size)
+{
+	struct drm_zocl_dev *zdev = ddev->dev_private;
+	struct device *dev = ddev->dev;
+	struct fpga_manager *fpga_mgr = zdev->fpga_mgr;
+	struct fpga_image_info *info;
+	int err = 0;
+
+	info = fpga_image_info_alloc(dev);
+	if (!info)
+		return -ENOMEM;
+
+	info->flags = FPGA_MGR_PARTIAL_RECONFIG;
+	info->buf = data;
+	info->count = size;
+
+	err = fpga_mgr_load(fpga_mgr, info);
+	if (err == 0)
+		DRM_INFO("FPGA Manager load DONE.");
+	else
+		DRM_ERROR("FPGA Manager load FAILED: %d", err);
+
+	fpga_image_info_free(info);
+
+	return err;
+}
+
 static int zocl_pcap_download(struct drm_zocl_dev *zdev,
 			      const void __user *bit_buf, unsigned long length)
 {
-	struct fpga_manager *fpga_mgr = zdev->fpga_mgr;
 	XHwIcap_Bit_Header bit_header;
 	struct fpga_image_info *info = NULL;
 	char *buffer = NULL;
@@ -207,7 +234,6 @@ static int zocl_pcap_download(struct drm_zocl_dev *zdev,
 	int err;
 	void __iomem *map = NULL;
 
-	DRM_INFO("%s\n", __func__);
 	memset(&bit_header, 0, sizeof(bit_header));
 	buffer = kmalloc(BITFILE_BUFFER_SIZE, GFP_KERNEL);
 
@@ -260,22 +286,7 @@ static int zocl_pcap_download(struct drm_zocl_dev *zdev,
 		data[i+2] = temp;
 	}
 
-	/* struct with information about the FPGA image to program. */
-	info = fpga_image_info_alloc(&fpga_mgr->dev);
-	if (info == NULL) {
-		DRM_ERROR("%s : fpga_image_info_alloc ret NULL\n", __func__);
-		err = -ENOMEM;
-		goto free_buffers;
-	}
-
-	info->buf = data;
-	info->count = bit_header.BitstreamLength;
-	info->sgt = NULL;
-	info->firmware_name = NULL;
-	info->flags = FPGA_MGR_PARTIAL_RECONFIG;
-
-	/* Load the buffer to the FPGA */
-	err = fpga_mgr_load(fpga_mgr, info);
+	err = zocl_fpga_mgr_load(zdev->ddev, data, bit_header.BitstreamLength);
 	if (err)
 		DRM_ERROR("%s : ret code %d\n", __func__, err);
 
@@ -349,6 +360,17 @@ char *kind_to_string(enum axlf_section_kind kind)
 	case 9:  return "DEBUG_IP_LAYOUT";
 	case 10: return "DESIGN_CHECK_POINT";
 	case 11: return "CLOCK_FREQ_TOPOLOGY";
+	case 12: return "MCS";
+	case 13: return "BMC";
+	case 14: return "BUILD_METADATA";
+	case 15: return "KEYVALUE_METADATA";
+	case 16: return "USER_METADATA";
+	case 17: return "DNA_CERTIFICATE";
+	case 18: return "PDI";
+	case 19: return "BITSTREAM_PARTIAL_PDI";
+	case 20: return "DTC";
+	case 21: return "EMULATION_DATA";
+	case 22: return "SYSTEM_METADATA";
 	default: return "UNKNOWN";
 	}
 }
@@ -389,28 +411,60 @@ zocl_check_section(struct axlf_section_header *header, uint64_t xclbin_len,
 	return 0;
 }
 
-int
-zocl_read_sect(enum axlf_section_kind kind, void *sect,
-		struct axlf *axlf_full, char __user *xclbin_ptr)
+static int
+zocl_section_info(enum axlf_section_kind kind, struct axlf *axlf_full,
+	uint64_t *offset, uint64_t *size)
 {
 	struct axlf_section_header *memHeader = NULL;
 	uint64_t xclbin_len;
-	uint64_t offset;
-	uint64_t size;
-	void **sect_tmp = (void *)sect;
 	int err = 0;
 
 	memHeader = get_axlf_section(axlf_full, kind);
 	if (!memHeader)
-		return 0;
+		return -ENODEV;
 
 	xclbin_len = axlf_full->m_header.m_length;
 	err = zocl_check_section(memHeader, xclbin_len, kind);
 	if (err)
 		return err;
 
-	offset = memHeader->m_sectionOffset;
-	size = memHeader->m_sectionSize;
+	*offset = memHeader->m_sectionOffset;
+	*size = memHeader->m_sectionSize;
+
+	return 0;
+}
+
+int
+zocl_offsetof_sect(enum axlf_section_kind kind, void *sect,
+		struct axlf *axlf_full, char __user *xclbin_ptr)
+{
+	uint64_t offset;
+	uint64_t size;
+	void **sect_tmp = (void *)sect;
+	int err = 0;
+
+	err = zocl_section_info(kind, axlf_full, &offset, &size);
+	if (err)
+		return 0;
+
+	*sect_tmp = &xclbin_ptr[offset];
+
+	return size;
+}
+
+int
+zocl_read_sect(enum axlf_section_kind kind, void *sect,
+		struct axlf *axlf_full, char __user *xclbin_ptr)
+{
+	uint64_t offset;
+	uint64_t size;
+	void **sect_tmp = (void *)sect;
+	int err = 0;
+
+	err = zocl_section_info(kind, axlf_full, &offset, &size);
+	if (err)
+		return 0;
+
 	*sect_tmp = vmalloc(size);
 	err = copy_from_user(*sect_tmp, &xclbin_ptr[offset], size);
 	if (err) {
@@ -491,10 +545,60 @@ zocl_update_apertures(struct drm_zocl_dev *zdev)
 }
 
 int
-zocl_read_axlf_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
+zocl_load_pdi(struct drm_device *ddev, void *data)
+{
+	struct drm_zocl_dev *zdev = ddev->dev_private;
+	struct axlf *axlf = data;
+	struct axlf *axlf_head = axlf;
+	char *xclbin = NULL;
+	char *pdi_buffer = NULL;
+	size_t size_of_header;
+	size_t num_of_sections;
+	uint64_t size = 0;
+	int ret = 0;
+
+	if (memcmp(axlf_head->m_magic, "xclbin2", 8)) {
+		DRM_INFO("Invalid xclbin magic string.");
+		return -EINVAL;
+	}
+
+	/* Check unique ID */
+	if (axlf_head->m_uniqueId == zdev->unique_id_last_bitstream) {
+		DRM_INFO("The XCLBIN already loaded. Don't need to reload.");
+		return ret;
+	}
+
+	write_lock(&zdev->attr_rwlock);
+
+	/* Get full axlf header */
+	size_of_header = sizeof(struct axlf_section_header);
+	num_of_sections = axlf_head->m_header.m_numSections-1;
+	xclbin = (char __user *)axlf;
+	ret = !ZOCL_ACCESS_OK(VERIFY_READ, xclbin, axlf_head->m_header.m_length);
+	if (ret) {
+		ret = -EFAULT;
+		goto out;
+	}
+
+	size = zocl_offsetof_sect(PDI, &pdi_buffer, axlf, xclbin);
+	if (size > 0) {
+		ret = zocl_fpga_mgr_load(ddev, pdi_buffer, size);
+	} else {
+		DRM_WARN("Found PDI Section but size is %lld", size);
+	}
+	/* preserve uuid before supporting context switch */
+	zdev->unique_id_last_bitstream = axlf_head->m_uniqueId;
+
+out:
+	write_unlock(&zdev->attr_rwlock);
+	return ret;
+}
+
+int
+zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 {
 	struct drm_zocl_axlf *axlf_obj = data;
-	struct drm_zocl_dev *zdev = dev->dev_private;
+	struct drm_zocl_dev *zdev = ddev->dev_private;
 	struct axlf axlf_head;
 	struct axlf *axlf;
 	long axlf_size;
@@ -503,19 +607,23 @@ zocl_read_axlf_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	size_t num_of_sections;
 	uint64_t size = 0;
 	int ret = 0;
+	char *pdi_buffer = NULL;
 
-	if (copy_from_user(&axlf_head, axlf_obj->xclbin, sizeof(struct axlf)))
+	if (copy_from_user(&axlf_head, axlf_obj->za_xclbin_ptr, sizeof(struct axlf))) {
+		DRM_WARN("copy_from_user failed for za_xclbin_ptr");
 		return -EFAULT;
+	}
 
-	if (memcmp(axlf_head.m_magic, "xclbin2", 8))
+	if (memcmp(axlf_head.m_magic, "xclbin2", 8)) {
+		DRM_WARN("xclbin magic is invalid %s", axlf_head.m_magic);
 		return -EINVAL;
+	}
 
 	/* Check unique ID */
 	if (axlf_head.m_uniqueId == zdev->unique_id_last_bitstream) {
 		DRM_INFO("The XCLBIN already loaded. Don't need to reload.");
 		return ret;
 	}
-
 	write_lock(&zdev->attr_rwlock);
 
 	zocl_free_sections(zdev);
@@ -530,16 +638,28 @@ zocl_read_axlf_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		return -ENOMEM;
 	}
 
-	if (copy_from_user(axlf, axlf_obj->xclbin, axlf_size)) {
+	if (copy_from_user(axlf, axlf_obj->za_xclbin_ptr, axlf_size)) {
 		ret = -EFAULT;
 		goto out0;
 	}
 
-	xclbin = (char __user *)axlf_obj->xclbin;
+	xclbin = (char __user *)axlf_obj->za_xclbin_ptr;
 	ret = !ZOCL_ACCESS_OK(VERIFY_READ, xclbin, axlf_head.m_header.m_length);
 	if (ret) {
 		ret = -EFAULT;
 		goto out0;
+	}
+
+	if (axlf_obj->za_flags & DRM_ZOCL_AXLF_FLAGS_PDI_LOAD) {
+		/* If PDI section is available, load PDI */
+		size = zocl_read_sect(PDI, &pdi_buffer, axlf, xclbin);
+		if (size > 0) {
+			ret = zocl_fpga_mgr_load(ddev, pdi_buffer, size);
+			if (ret)
+				goto out0;
+		} else if (size < 0) {
+			goto out0;
+		}
 	}
 
 	/* Populating IP_LAYOUT sections */
