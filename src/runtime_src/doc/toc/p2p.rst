@@ -20,7 +20,7 @@ BIOS Setup
 
 Note
 .......
-It may be necessary to update to the latest BIOS release before enabling P2P.  Not doing so may cause the system to continuously reboot during the boot process.  If this occurs, power-cycle the system to disable p2p and allow the system to boot normally.
+It may be necessary to update to the latest BIOS release before enabling P2P.  Not doing so may cause the system to continuously reboot during the boot process.  If this occurs, power-cycle the system to disable P2P and allow the system to boot normally.
 
 
 Warning
@@ -167,14 +167,14 @@ Consider the example situation as below:
 
 Typical coding style:
 
-  1. In the OpenCL host create separate `cl_context` for each `cl_device_id`
+  1. In the OpenCL host code, create separate `cl_context` for each `cl_device_id`
   2. Define `buf_src` as regular buffer
-  3. Define `buf_dst` as p2p buffer
-  4. Import the p2p buffer or buf_dst to the context of buf_src. Use the following APIs
+  3. Define `buf_dst` as P2P buffer
+  4. Import the P2P buffer or buf_dst to the context of buf_src. Use the following APIs
 
        - `xclGetMemObjectFd`
        - `xclGetMemObjectFromFd`
-  5. Perform Copy from `buf_src` to `imported_dst_buf`
+  5. Perform the copy operation from `buf_src` to `imported_dst_buf`
 
 .. code-block:: cpp
 
@@ -184,13 +184,13 @@ Typical coding style:
    src_buf = clCreateBuffer(src_context, CL_MEM_WRITE_ONLY | CL_MEM_EXT_PTR_XILINX, buffersize, &src_buf_ext, &err);
 
 
-   cl_mem dst_buf;  // Destination buffer (p2p) allocated in DDR bank0 of destination context
+   cl_mem dst_buf;  // Destination buffer (P2P) allocated in DDR bank0 of destination context
    cl_mem_ext_ptr_t dst_buf_ext = {0};
 
    dst_buf_ext.flags = XCL_MEM_DDR_BANK0 | XCL_MEM_EXT_P2P_BUFFER;
    dst_buf = clCreateBuffer(dst_context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX, buffersize, &dst_buf_ext, &err);
 
-   // Import Destination p2p buffer to the source context
+   // Import Destination P2P buffer to the source context
    err = xclGetMemObjectFd(dst_buf, &fd);
 
    cl_mem imported_dst_buf;
@@ -205,7 +205,7 @@ Typical coding style:
 Profile Report
 ..............
 
-In the profile_summary_report.rpt file the p2p transfer is shown under a new category as below
+In the Profile Summary report file the P2P transfer is shown under **Data Transfer: DMA Bypass** 
 
 **Data Transfer: DMA Bypass**
 
@@ -216,13 +216,13 @@ In the profile_summary_report.rpt file the p2p transfer is shown under a new cat
 | ...   |     IN         |     4096  |    N/A     |    0.262  |    N/A   |   0.064  |      N/A    |
 +-------+----------------+-----------+------------+-----------+----------+----------+-------------+
 
-In the profile report the p2p transfer is shown corresponds to receiving device (i.e. transfer type IN).
+The report shows the P2P transfer corresponds to the receiving device (i.e. transfer type IN).
 
 
 P2P Card to NVMe Device Data Transfer
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Using the P2P enabled devices the data can be transferred between the FPGA device and another NVMe Devices, such as SMART SSD, without migrating the data via host memory space.
+Using the P2P enabled device the data can be transferred between the FPGA device and another NVMe Device, such as SMART SSD, without migrating the data via host memory space.
 
 OpenCL coding style
 ...................
@@ -230,7 +230,7 @@ OpenCL coding style
 Typical coding style 
 
    1. Create P2P buffer
-   2. Map p2p buffer to the host space
+   2. Map P2P buffer to the host space
    3. Access the SSD location through Linux File function
    4. Read/Write through Linux pread/pwrite function
 
@@ -245,7 +245,7 @@ Typical coding style
 
    clSetKernelArg(kernel, 0, sizeof(cl_mem),p2pBO),
 
-   // Map p2p Buffer into the host space
+   // Map P2P Buffer into the host space
 
    p2pPtr = (char *) clEnqueueMapBuffer(command_queue, p2pBo, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, chunk_size, 0, NULL, NULL, NULL);
 
@@ -254,7 +254,7 @@ Typical coding style
    fd = open(filename, O_RDWR | O_DIRECT);
    pread(fd, p2pPtr, chunk_size, 0);
 
-   // Similarly write to the buffer
+   // Write 
    pwrite(fd,p2pPtr, chunk_size,0); 
 
 Profile Report
