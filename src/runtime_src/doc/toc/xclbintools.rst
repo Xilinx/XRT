@@ -23,6 +23,7 @@ Xclbin sections controlling
 This include various operations on xclbin sections, like extracting the bitstream image, extracting the build metadata, removing a section and so on.
 
   Extracting the bitstream image :: 
+  
     xclbinutil --dump-section BITSTREAM:RAW:bitstream.bit --input binary_container_1.xclbin
 
   Extracting the build metadata ::
