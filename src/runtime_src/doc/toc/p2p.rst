@@ -229,11 +229,12 @@ Using the P2P enabled devices the data can be transferred between the FPGA devic
 OpenCL coding style
 ...................
 
-The recommended coding style should be as follows
-   - Create P2P buffer
-   - Map p2p buffer to the host space
-   - Access the SSD location through Linux File function
-   - Read/Write through Linux pread/pwrite function
+Typical coding style 
+
+   1. Create P2P buffer
+   2. Map p2p buffer to the host space
+   3. Access the SSD location through Linux File function
+   4. Read/Write through Linux pread/pwrite function
 
 .. code-block:: cpp
 
@@ -257,3 +258,28 @@ The recommended coding style should be as follows
 
    // Similarly write to the buffer
    pwrite(fd,p2pPtr, chunk_size,0); 
+
+Profile Report
+..............
+
+Sample Profile report from FPGA to NVMe Device transfer via P2P
+
+**Data Transfer: DMA Bypass**
+
++------+----------------+----------+------------+------------+----------+----------+------------+
+|Device|  Transfer Type | Number of| Transfer   | Total Data | Total    | Average  | Average    |
+|      |                |  Transfer|  Rate(MB/s)|  Transfer  | Time (ms)| Size (Kb)| Latency(ns)|
++======+================+==========+============+============+==========+==========+============+
+| ...  |      OUT       |  8388608 |   N/A      |  1073.740  |    N/A   |  0.128   |  297.141   |
++------+----------------+----------+------------+------------+----------+----------+------------+
+
+Sample Profile report from NVMe Device to FPGA transfer via P2P
+
+**Data Transfer: DMA Bypass**
+
++------+----------------+----------+------------+------------+----------+----------+------------+
+|Device|  Transfer Type | Number of| Transfer   | Total Data | Total    | Average  | Average    |
+|      |                |  Transfer|  Rate(MB/s)|  Transfer  | Time (ms)| Size (Kb)| Latency(ns)|
++======+================+==========+============+============+==========+==========+============+
+| ...  |      IN        |  4194304 |    N/A     |  1073.740  |    N/A   |  0.256   |  237.344   |
++------+----------------+----------+------------+------------+----------+----------+------------+
