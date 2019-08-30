@@ -27,12 +27,12 @@
 #include <sstream>
 #include <string>
 #include <sys/ioctl.h>
-#include "xclhal2.h"
+#include "xrt.h"
 #include "xclperf.h"
-//#include "core/common/dd.h"
 #include "core/common/utils.h"
 #include "core/common/sensor.h"
 #include "core/edge/include/zynq_ioctl.h"
+#include "core/edge/user/zynq_dev.h"
 #include "xclbin.h"
 #include <version.h>
 #include <fcntl.h>
@@ -137,47 +137,6 @@ static const std::map<MEM_TYPE, std::string> memtype_map = {
 
 static const std::map<std::string, command> commandTable(map_pairs, map_pairs + sizeof(map_pairs) / sizeof(map_pairs[0]));
 
-static void readsysfd(std::string path,std::vector<std::string> &buf,std::string& errmsg)
-{
-    std::fstream fs(path,std::ios::in| std::ios::binary);
-    std::string line;
-    if (fs.is_open()) {
-        while(std::getline(fs,line))
-            buf.push_back(line);
-    }else {
-        std::stringstream ss;
-        ss << "Failed to open " << path << " "
-            << strerror(errno) << std::endl;
-        errmsg = ss.str();
-    }
-}
-
-static void readsysfd(std::string path,std::string &buf,std::string& errmsg)
-{
-    std::vector<std::string> s;
-    readsysfd(path,s,errmsg);
-    if(!s.empty())
-        buf = s[0];
-    else
-        buf = "";
-}
-
-static void readsysfd(std::string path,std::vector<char> &buf,std::string& errmsg)
-{
-    std::fstream fs(path,std::ios::in| std::ios::binary);
-    char c;
-    if (fs.is_open()) {
-        while(fs.get(c))
-            buf.push_back(c);
-        fs.close();
-    }else {
-        std::stringstream ss;
-        ss << "Failed to open " << path << " "
-            << strerror(errno) << std::endl;
-        errmsg = ss.str();
-    }
-}
-
 class device {
     unsigned int m_idx;
     xclDeviceHandle m_handle;
@@ -213,8 +172,7 @@ public:
         std::string errmsg;
         std::vector<char> buf;
 
-        readsysfd("/sys/devices/platform/amba/amba\:zyxclmm_drm/ip_layout",buf,errmsg);
-
+        zynq_device::get_dev()->sysfs_get("ip_layout", errmsg, buf);
         if (!errmsg.empty()) {
             std::cout << errmsg << std::endl;
             return -EINVAL;
@@ -274,7 +232,7 @@ public:
                 }
                 ptr = mmap(0, 0x10000, PROT_READ | PROT_WRITE, MAP_SHARED, mKernelFD, info.apt_idx*getpagesize());
                 if (!ptr) {
-                    printf("Map failed for aperture 0x%lx, size 0x%lx\n", computeUnits.at( i ).m_base_address, 0x10000);
+                    printf("Map failed for aperture 0x%lx, size 0x%x\n", computeUnits.at( i ).m_base_address, 0x10000);
                     return -1;
                 }
                 uint64_t mask = 0xFFFF;
@@ -295,8 +253,8 @@ public:
         std::vector<char> buf, temp_buf;
         std::vector<std::string> mm_buf, stream_stat;
         uint64_t memoryUsage, boCount;
-        readsysfd("/sys/devices/platform/amba/amba\:zyxclmm_drm/mem_topology",buf,errmsg);
-        readsysfd("/sys/devices/platform/amba/amba\:zyxclmm_drm/memstat_raw",mm_buf,errmsg);
+        zynq_device::get_dev()->sysfs_get("mem_topology", errmsg, buf);
+        zynq_device::get_dev()->sysfs_get("memstat_raw", errmsg, mm_buf);
 
         const mem_topology *map = (mem_topology *)buf.data();
 
@@ -352,7 +310,7 @@ public:
 
         // xclbin
         std::string errmsg, xclbinid;
-        readsysfd("/sys/devices/platform/amba/amba\:zyxclmm_drm/xclbinid",xclbinid,errmsg);
+        zynq_device::get_dev()->sysfs_get("xclbinid", errmsg, xclbinid);
         if(errmsg.empty()) {
             sensor_tree::put( "board.xclbin.uuid", xclbinid );
         }
@@ -498,26 +456,31 @@ public:
           int cu_i = 0;
           for (auto& v : sensor_tree::get_child( "board.compute_unit" )) {
             int index = std::stoi(v.first);
-            if( index >= 0 ) {
+            if ( index >= 0 ) {
+              uint32_t cu_i;
               std::string cu_n, cu_s, cu_ba;
               for (auto& subv : v.second) {
-                if( subv.first == "name" )
+                if ( subv.first == "name" ) {
                   cu_n = subv.second.get_value<std::string>();
-                else if( subv.first == "base_address" ) {
+                } else if ( subv.first == "base_address" ) {
                   auto addr = subv.second.get_value<uint64_t>();
-		  cu_ba = (addr == (uint64_t)-1) ? "N/A" : sensor_tree::pretty<uint64_t>(addr, "N/A", true);
-		} else if( subv.first == "status" )
+                  cu_ba = (addr == (uint64_t)-1) ? "N/A" : sensor_tree::pretty<uint64_t>(addr, "N/A", true);
+                } else if ( subv.first == "status" ) {
                   cu_s = subv.second.get_value<std::string>();
+                }
               }
-              ostr << "CU[" << std::right << std::setw(2) << cu_i << "]: "
-                   << std::left << std::setw(32) << cu_n
+              if (xclCuName2Index(m_handle, cu_n.c_str(), &cu_i) != 0) {
+                ostr << "CU: ";
+              } else {
+                ostr << "CU[" << std::right << std::setw(2) << cu_i << "]: ";
+              }
+              ostr << std::left << std::setw(32) << cu_n
                    << "@" << std::setw(18) << std::hex << cu_ba
                    << cu_s << std::endl;
-	      cu_i++;
             }
           }
         }
-        catch( std::exception const& e) {
+        catch(std::exception const& e) {
             // eat the exception, probably bad path
         }
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";

@@ -27,6 +27,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    :caption: XRT Use Model and Features
 
    execution-model.rst
+   xrt_kernel_executions.rst
    multiprocess.rst
    p2p.rst
    m2m.rst

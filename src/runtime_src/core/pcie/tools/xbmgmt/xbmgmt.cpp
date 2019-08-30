@@ -132,7 +132,8 @@ int xrt_xbmgmt_version_cmp()
 {
     /*check xbutil tools and xrt versions*/
     std::string xrt = std::string(xrt_build_version) + "," + std::string(xrt_build_version_hash);
-    if ( xrt.compare(driver_version("xocl") ) != 0 ) {
+    if ( driver_version("xclmgmt") != "unknown" &&
+        xrt.compare(driver_version("xclmgmt") ) != 0 ) {
         std::cout << "\nERROR: Mixed versions of XRT and xbmgmt are not supported. \
             \nPlease install matching versions of XRT and xbmgmt or  \
             \ndefine env variable INTERNAL_BUILD to disable this check\n" << std::endl;

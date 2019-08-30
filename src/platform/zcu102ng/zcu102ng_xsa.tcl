@@ -89,6 +89,7 @@ set_property PFM.IRQ $intVar [get_bd_cells /xlconcat_1]
 ##spit out a XSA
 generate_target all [get_files ./zcu102ng_vivado/zcu102ng.srcs/sources_1/bd/zcu102ng/zcu102ng.bd]
 set_property platform.post_sys_link_tcl_hook        ./dynamic_postlink.tcl       [current_project]
+set_property platform.default_output_type "sd_card" [current_project]
 write_hw_platform -force ./zcu102ng.xsa
 
 #generate hdf
