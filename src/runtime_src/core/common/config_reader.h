@@ -348,6 +348,13 @@ get_sw_em_driver()
   return value;
 }
 
+inline bool
+get_pdi_load()
+{
+  static bool value = detail::get_bool_value("Runtime.pdi_load",true);
+  return value;
+}
+
 /* Indicate whether Block automation based Emulation Models are used. By default, it is turned off.
  * This is used to turn on xclRead/Write based counter and trace data collection flow in ProfileIP objects in XDP.
  * Otherwise, fall back on old HwEmuShim layer based RPC call mechanism.
