@@ -417,6 +417,7 @@ struct xocl_rom_funcs {
 	bool (*runtime_clk_scale_on)(struct platform_device *pdev);
 	int (*find_firmware)(struct platform_device *pdev, char *fw_name,
 		size_t len, u16 deviceid, const struct firmware **fw);
+	bool (*passthrough_virtualization_on)(struct platform_device *pdev);
 };
 
 #define ROM_DEV(xdev)	\
@@ -455,6 +456,9 @@ struct xocl_rom_funcs {
 #define xocl_rom_find_firmware(xdev, fw_name, len, deviceid, fw)	\
 	(ROM_CB(xdev, find_firmware) ? ROM_OPS(xdev)->find_firmware(	\
 	ROM_DEV(xdev), fw_name, len, deviceid, fw) : -ENODEV)
+#define xocl_passthrough_virtualization_on(xdev)		\
+	(ROM_CB(xdev, passthrough_virtualization_on) ?		\
+	ROM_OPS(xdev)->passthrough_virtualization_on(ROM_DEV(xdev)) : false)
 
 /* dma callbacks */
 struct xocl_dma_funcs {
