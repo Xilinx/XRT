@@ -153,8 +153,8 @@ For best performance peer devices wanting to exchange data should be under the s
 If IOMMU is enabled then all peer-to-peer transfers are routed through the root complex which will degrade performance significantly.
 
 
-P2P Card to Card Data Transfer
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+P2P Data Transfer between FPGA Cards
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 OpenCL coding style
 ...................
@@ -219,8 +219,8 @@ In the Profile Summary report file the P2P transfer is shown under **Data Transf
 The report shows the P2P transfer corresponds to the receiving device (i.e. transfer type IN).
 
 
-P2P Card to NVMe Device Data Transfer
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+P2P Data Transfer between FPGA Card and NVMe Device 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Using the P2P enabled device the data can be transferred between the FPGA device and another NVMe Device, such as SMART SSD, without migrating the data via host memory space.
 
