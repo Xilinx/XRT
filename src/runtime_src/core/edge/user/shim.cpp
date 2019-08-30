@@ -39,6 +39,9 @@
 #include "core/common/config_reader.h"
 #include <assert.h>
 
+#include "plugin/xdp/hal_profile.h"
+
+
 #define GB(x)   ((size_t) (x) << 30)
 
 static inline void errlog(std::string& errstr)

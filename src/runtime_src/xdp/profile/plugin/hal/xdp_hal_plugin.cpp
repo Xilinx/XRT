@@ -135,26 +135,6 @@ void start_device_profiling_from_hal(void* payload)
   xclDeviceHandle handle = ((CBPayload*)payload)->deviceHandle;
 
   HALProfiler::Instance()->startProfiling(handle);
-
-#if 0
-  auto profiler = OCLProfiler::Instance();
-
-  if(profiler) {
-    profiler->reset();
-  }
-
-  // Extract and store the system profile metatdata
-//  auto pProfileMgr = profiler ? profiler->getProfileManager() : nullptr;
-//  auto pRunSummary = pProfileMgr ? pProfileMgr->getRunSummary() : nullptr;
-
- // if (pRunSummary != nullptr) {
-  //  pRunSummary->extractSystemProfileMetadata(xclbin, "xclbin");
-  //}
-    profiler->getPlugin()->setFlowMode(xdp::RTUtil::DEVICE);
-
-  xdp::OCLProfiler::Instance()->startDeviceProfiling(0 /* ignore for now*/);
-  return;
-#endif
 }
 
 void create_profile_results(void* payload)
