@@ -21,7 +21,11 @@ set(XRT_SRC
   ${XRT_USER_FILES}
   )
 
+add_library(core_edgeuser_plugin_xdp_no_dl_load_objects OBJECT ${XRT_EDGE_USER_PLUGIN_XDP_FILES})
+
+add_compile_options("-DXRT_LOAD_XDP_HAL_PLUGIN")
 add_library(core_edgeuser_plugin_xdp_objects OBJECT ${XRT_EDGE_USER_PLUGIN_XDP_FILES})
+
 add_library(core_edgeuser_objects OBJECT ${XRT_USER_FILES})
 
 add_library(xrt_core SHARED ${XRT_SRC}
@@ -31,7 +35,7 @@ add_library(xrt_core SHARED ${XRT_SRC}
   )
 
 add_library(xrt_core_static STATIC ""
-  $<TARGET_OBJECTS:core_edgeuser_plugin_xdp_objects>
+  $<TARGET_OBJECTS:core_edgeuser_plugin_xdp_no_dl_load_objects>
   $<TARGET_OBJECTS:core_edgeuser_objects>
   #$<TARGET_OBJECTS:core_edgecommon_objects>
   $<TARGET_OBJECTS:core_common_objects>

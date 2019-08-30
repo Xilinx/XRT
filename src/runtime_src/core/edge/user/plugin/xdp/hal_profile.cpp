@@ -239,9 +239,9 @@ DestroyProfileResultsCls::DestroyProfileResultsCls(xclDeviceHandle handle, Profi
 DestroyProfileResultsCls::~DestroyProfileResultsCls()
 {}
 
-void load_xdp_plugin_library(HalPluginConfig* config)
+void load_xdp_plugin_library(HalPluginConfig* )
 {
-    (void)config;
+#ifdef XRT_LOAD_XDP_HAL_PLUGIN
 
     std::lock_guard<std::mutex> loader_guard(lock);
     if (loaded) {
@@ -281,6 +281,7 @@ void load_xdp_plugin_library(HalPluginConfig* config)
     const std::string cb_func_name = "hal_level_xdp_cb_func";
     cb = cb_func_type(reinterpret_cast<cb_load_func_type>(dlsym(handle, cb_func_name.c_str())));
     loaded = true;
+#endif
 }
 
 }
