@@ -40,7 +40,9 @@
 #include <assert.h>
 #include <cstdarg>
 
+#ifndef __HWEM__
 #include "plugin/xdp/hal_profile.h"
+#endif
 
 
 #define GB(x)   ((size_t) (x) << 30)
@@ -994,7 +996,9 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
         printf("Map Debug IPs Failed\n");
         return ret;
     }
+#ifndef __HWEM__
     START_DEVICE_PROFILING_CB(handle);
+#endif
     return 0;
 }
 
@@ -1375,31 +1379,37 @@ ssize_t xclReadQueue(xclDeviceHandle handle, void *q_hdl, xclQueueRequest *wr_re
 
 int xclCreateProfileResults(xclDeviceHandle handle, ProfileResults** results)
 {
+#ifndef __HWEM__
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
   if(!drv)
     return -ENODEV;
 
   CREATE_PROFILE_RESULTS_CB(handle, results);
+#endif
   return 0;
 }
 
 int xclGetProfileResults(xclDeviceHandle handle, ProfileResults* results)
 {
+#ifndef __HWEM__
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
   if(!drv)
     return -ENODEV;
 
   GET_PROFILE_RESULTS_CB(handle, results);
+#endif
   return 0;
 }
 
 int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results)
 {
+#ifndef __HWEM__
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
   if(!drv)
     return -ENODEV;
 
   DESTROY_PROFILE_RESULTS_CB(handle, results);
+#endif
   return 0;
 }
 
