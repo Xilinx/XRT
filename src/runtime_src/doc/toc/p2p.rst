@@ -159,20 +159,24 @@ P2P Card to Card Data Transfer
 OpenCL coding style
 ...................
 
-Consider the example situation as below
+Consider the example situation as below:
+
   - P2P data transfer from Card1 to Card2
   - Source buffer (buf_src) is OpenCL buffer resident of Card1's DDR
   - Destination buffer (buf_dst) is OpenCL buffer resident of Card2's DDR
 
-The recommended coding style should be as follows
-  - In the OpenCL host code consider each card as a OpenCL device (cl_device_id) in different OpenCL context (cl_context)
+The recommended coding style should be as follows:
+
+  1. In the OpenCL host code consider each card as a OpenCL device (cl_device_id) in different OpenCL context (cl_context)
+
        - Create separate cl_context for each cl_device_id
-  - Define buf_src as regular buffer
-  - Define buf_dst as p2p buffer
-  - Import the p2p buffer (buf_dst) to the context of buf_src. Use the following APIs
+  2. Define buf_src as regular buffer
+  3. Define buf_dst as p2p buffer
+  4. Import the p2p buffer (buf_dst) to the context of buf_src. Use the following APIs
+
        - xclGetMemObjectFd
        - xclGetMemObjectFromFd
-  - Perform Copy from `buf_src` to `imported_buf_dst`
+  5. Perform Copy from `buf_src` to `imported_buf_dst`
 
 .. code-block:: cpp
 
@@ -205,10 +209,10 @@ Profile Report
 
 In the profile_summary_report.rpt file the p2p transfer is shown under a new category as below
 
-*Data Transfer: DMA Bypass*
+**Data Transfer: DMA Bypass**
 
 +-------+----------------+-----------+------------+-----------+----------+----------+-------------+
-| Device|  Transfer Type | Number of |   Transfer | Total Data| Total    | Average  | Average     |
+| Device|  Transfer Type | Number of |  Transfer  | Total Data| Total    | Average  | Average     |
 |       |                | Transfer  |  Rate(MB/s)| Transfer  | Time (ms)| Size (Kb)| Latency(ns) |     
 +=======+================+===========+============+===========+==========+==========+=============+
 | ...   |     IN         |     4096  |    N/A     |    0.262  |    N/A   |   0.064  |      N/A    |
