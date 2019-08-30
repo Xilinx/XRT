@@ -26,7 +26,7 @@ namespace xdp {
     
 class HALProfiler
 {
-  std::vector<DeviceIntf*> deviceList;
+  std::map<xclDeviceHandle, DeviceIntf*> devices;
   std::map<std::string, xclCounterResults> mFinalCounterResultsMap;
   std::map<std::string, xclCounterResults> mRolloverCounterResultsMap;
   std::map<std::string, xclCounterResults> mRolloverCountsMap;

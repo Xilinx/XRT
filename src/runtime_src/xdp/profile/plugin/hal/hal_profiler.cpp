@@ -38,10 +38,11 @@ HALProfiler::~HALProfiler()
   // check if already dead ?
   endProfiling();
 
-  for(std::vector<DeviceIntf*>::iterator itr = deviceList.begin() ; itr != deviceList.end() ; ++itr) {
-    delete (*itr);
-    (*itr) = nullptr;
+  for(auto &itr : devices) {
+     delete itr.second;
+     itr.second = nullptr;
   }
+  devices.clear();  
 }
 
 void HALProfiler::startProfiling(xclDeviceHandle handle)
@@ -52,7 +53,7 @@ void HALProfiler::startProfiling(xclDeviceHandle handle)
   // find device for handle ; if not found then create and add device
   // for now directly create the device
   DeviceIntf* dev = new DeviceIntf();
-  deviceList.push_back(dev);
+  devices[handle] = dev;
 
   dev->setDevice(new xdp::HalDevice(handle));
   dev->readDebugIPlayout();
@@ -80,16 +81,16 @@ void HALProfiler::endProfiling()
 void HALProfiler::startCounters()
 {
   //std::cout << " In HALProfiler::startCounters" << std::endl;
-  for(std::vector<DeviceIntf*>::iterator itr = deviceList.begin() ; itr != deviceList.end() ; ++itr) {
-    (*itr)->startCounters((xclPerfMonType)0);
+  for(auto itr : devices) {
+    itr.second->startCounters((xclPerfMonType)0);
   }
 }
 
 void HALProfiler::stopCounters()
 {
   //std::cout << " In HALProfiler::stopCounters" << std::endl;
-  for(std::vector<DeviceIntf*>::iterator itr = deviceList.begin() ; itr != deviceList.end() ; ++itr) {
-    (*itr)->stopCounters((xclPerfMonType)0);
+  for(auto itr : devices) {
+    itr.second->stopCounters((xclPerfMonType)0);
   }
 }
 
@@ -97,30 +98,30 @@ void HALProfiler::readCounters()
 {
   //std::cout << " In HALProfiler::readCounters" << std::endl;
   xclCounterResults counterResults;
-  for(std::vector<DeviceIntf*>::iterator itr = deviceList.begin() ; itr != deviceList.end() ; ++itr) {
-    (*itr)->readCounters((xclPerfMonType)0, counterResults);
+  for(auto itr : devices) {
+    itr.second->readCounters((xclPerfMonType)0, counterResults);
   }
 }
 
 void HALProfiler::startTrace()
 {
-  for(std::vector<DeviceIntf*>::iterator itr = deviceList.begin() ; itr != deviceList.end() ; ++itr) {
-    (*itr)->startTrace((xclPerfMonType)0, 0);
+  for(auto itr : devices) {
+    itr.second->startTrace((xclPerfMonType)0, 0);
   }
 }
 
 void HALProfiler::stopTrace()
 {
-  for(std::vector<DeviceIntf*>::iterator itr = deviceList.begin() ; itr != deviceList.end() ; ++itr) {
-    (*itr)->stopTrace((xclPerfMonType)0);
+  for(auto itr : devices) {
+    itr.second->stopTrace((xclPerfMonType)0);
   }
 }
 
 void HALProfiler::readTrace()
 {
   xclTraceResultsVector traceVector;
-  for(std::vector<DeviceIntf*>::iterator itr = deviceList.begin() ; itr != deviceList.end() ; ++itr) {
-    (*itr)->readTrace((xclPerfMonType)0, traceVector);
+  for(auto itr : devices) {
+    itr.second->readTrace((xclPerfMonType)0, traceVector);
   }
 }
 #if 0
@@ -165,7 +166,15 @@ void HALProfiler::createProfileResults(xclDeviceHandle deviceHandle, void* ret)
 
   // Initialise profile monitor numbers in ProfileResult and allocate memory
   // Use 1 device now
-  DeviceIntf* currDevice = deviceList[0];
+  DeviceIntf* currDevice = nullptr;
+
+  try {
+    currDevice = devices[deviceHandle];
+  } catch (std::exception &) {
+    // device not found
+    // For now, just return
+    return;
+  }
 
 // readDebugIPlayout called from startProfiling : check other cases
 
@@ -355,7 +364,7 @@ void HALProfiler::recordASMResult(ProfileResults* results, DeviceIntf* currDevic
   }
 }
 
-void HALProfiler::getProfileResults(xclDeviceHandle, void* res)
+void HALProfiler::getProfileResults(xclDeviceHandle deviceHandle, void* res)
 {
   // Step 1: read counters from device
   // Step 2: log the data into counter and rollover results data-structure
@@ -364,7 +373,15 @@ void HALProfiler::getProfileResults(xclDeviceHandle, void* res)
   //std::cout << " In HALProfiler::getProfileResults" << std::endl;
 
   // check one device for now
-  DeviceIntf* currDevice = deviceList[0];
+  DeviceIntf* currDevice = nullptr;
+
+  try {
+    currDevice = devices[deviceHandle];
+  } catch (std::exception &) {
+    // device not found
+    // For now, just return
+    return;
+  }
 
   // Step 1: read counters from device
 
