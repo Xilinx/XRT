@@ -52,13 +52,25 @@ void HALProfiler::startProfiling(xclDeviceHandle handle)
   // create the devices
   // find device for handle ; if not found then create and add device
   // for now directly create the device
+
   DeviceIntf* dev = new DeviceIntf();
-  devices[handle] = dev;
+
+  auto ret = devices.insert(std::pair<xclDeviceHandle, DeviceIntf*>(handle, dev));
+  if(false == ret.second) {
+    // HAL handle already exists. New xclbin is being loaded on the device.
+    // So, reset and clear old DeviceIntf and add the new device
+    DeviceIntf* oldDeviceIntf = ret.first->second;
+    delete oldDeviceIntf;
+    devices.erase(handle);
+
+    // add new entry for the handle and DeviceIntf
+    devices[handle] = dev;
+  }
 
   dev->setDevice(new xdp::HalDevice(handle));
   dev->readDebugIPlayout();
 
-  startCounters();
+  dev->startCounters((xclPerfMonType)0);
 
 #if 0
   // Not supported now
