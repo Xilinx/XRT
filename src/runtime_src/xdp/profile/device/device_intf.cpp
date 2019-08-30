@@ -423,6 +423,7 @@ DeviceIntf::~DeviceIntf()
 
     ifs.close();
 
+#if 0
     for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
         (*itr)->showProperties();
     }
@@ -438,7 +439,7 @@ DeviceIntf::~DeviceIntf()
     if(fifoRead) fifoRead->showProperties();
     if(traceDMA) traceDMA->showProperties();
     if(traceFunnel) traceFunnel->showProperties();
-
+#endif
 
     mIsDebugIPlayoutRead = true;
   }
