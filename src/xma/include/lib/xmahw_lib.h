@@ -127,6 +127,27 @@ typedef struct XmaHwKernel
   }
 } XmaHwKernel;
 
+typedef struct XmaHwMem
+{
+    bool        in_use;
+    uint64_t    base_address;
+    uint64_t    size_kb;
+    uint32_t    size_mb;
+    uint32_t    size_gb;
+    std::string name;
+
+    uint32_t    reserved[16];
+
+  XmaHwMem() {
+    in_use = false;
+    base_address = 0;
+    size_kb = 0;
+    size_mb = 0;
+    size_gb = 0;
+  }
+} XmaHwMem;
+
+
 typedef struct XmaHwDevice
 {
     //char        dsa[MAX_DSA_NAME];
@@ -140,6 +161,7 @@ typedef struct XmaHwDevice
     //bool        in_use;
     //XmaHwKernel kernels[MAX_KERNEL_CONFIGS];
     std::vector<XmaHwKernel> kernels;
+    std::vector<XmaHwMem> ddrs;
 
     std::unique_ptr<std::atomic<bool>> execbo_locked;
     std::vector<uint32_t> kernel_execbo_handle;
@@ -147,6 +169,8 @@ typedef struct XmaHwDevice
     std::vector<bool> kernel_execbo_inuse;
     std::vector<int32_t> kernel_execbo_cu_index;
     int32_t    num_execbo_allocated;
+
+    uint32_t    reserved[16];
 
   XmaHwDevice(): execbo_locked(new std::atomic<bool>) {
     //in_use = false;
@@ -164,6 +188,8 @@ typedef struct XmaHwCfg
     int32_t     num_devices;
     //XmaHwDevice devices[MAX_XILINX_DEVICES];
     std::vector<XmaHwDevice> devices;
+
+    uint32_t    reserved[16];
 
   XmaHwCfg() {
     num_devices = -1;
