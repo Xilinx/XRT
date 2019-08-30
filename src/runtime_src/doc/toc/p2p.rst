@@ -268,7 +268,7 @@ Sample Profile report from FPGA to NVMe Device transfer via P2P
 
 +------+----------------+----------+------------+------------+----------+----------+------------+
 |Device|  Transfer Type | Number of| Transfer   | Total Data | Total    | Average  | Average    |
-|      |                |  Transfer|  Rate(MB/s)|  Transfer  | Time (ms)| Size (Kb)| Latency(ns)|
+|      |                | Transfer | Rate(MB/s) | Transfer   | Time (ms)| Size (Kb)| Latency(ns)|
 +======+================+==========+============+============+==========+==========+============+
 | ...  |      OUT       |  8388608 |   N/A      |  1073.740  |    N/A   |  0.128   |  297.141   |
 +------+----------------+----------+------------+------------+----------+----------+------------+
@@ -279,7 +279,7 @@ Sample Profile report from NVMe Device to FPGA transfer via P2P
 
 +------+----------------+----------+------------+------------+----------+----------+------------+
 |Device|  Transfer Type | Number of| Transfer   | Total Data | Total    | Average  | Average    |
-|      |                |  Transfer|  Rate(MB/s)|  Transfer  | Time (ms)| Size (Kb)| Latency(ns)|
+|      |                | Transfer | Rate(MB/s) | Transfer   | Time (ms)| Size (Kb)| Latency(ns)|
 +======+================+==========+============+============+==========+==========+============+
 | ...  |      IN        |  4194304 |    N/A     |  1073.740  |    N/A   |  0.256   |  237.344   |
 +------+----------------+----------+------------+------------+----------+----------+------------+
