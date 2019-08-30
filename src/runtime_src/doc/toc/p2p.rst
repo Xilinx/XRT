@@ -152,11 +152,12 @@ For best performance peer devices wanting to exchange data should be under the s
 
 If IOMMU is enabled then all peer-to-peer transfers are routed through the root complex which will degrade performance significantly.
 
+
 P2P Card to Card Data Transfer
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 OpenCL coding style
--------------------
+...................
 
 Consider the example situation as below
   - P2P data transfer from Card1 to Card2
@@ -200,19 +201,20 @@ The recommended coding style should be as follows
 
 
 Profile Report
---------------
+..............
 
 In the profile_summary_report.rpt file the p2p transfer is shown under a new category as below
 
 *Data Transfer: DMA Bypass*
-======= ================ =========== ============ ============ ========== =========== ===========
- Device  Transfer Type    Number of    Transfer   Total Data   Total      Average     Average 
-                          Transfer    Rate(MB/s)  Transfer     Time (ms)  Size (Kb)   Latency(ns)      
-======= ================ =========== ============ ============ ========== =========== ===========
- ...        IN              4096          N/A         0.262         N/A      0.064        N/A
-====== ================= =========== ============ ============ ========== =========== ===========
 
-As shown in the above table p2p transfer is shown corresponds to receiving device (i.e. transfer type IN).
++-------+----------------+-----------+------------+-----------+----------+----------+-------------+
+| Device|  Transfer Type | Number of |   Transfer | Total Data| Total    | Average  | Average     |
+|       |                | Transfer  |  Rate(MB/s)| Transfer  | Time (ms)| Size (Kb)| Latency(ns) |     
++=======+================+===========+============+===========+==========+==========+=============+
+| ...   |     IN         |     4096  |    N/A     |    0.262  |    N/A   |   0.064  |      N/A    |
++-------+----------------+-----------+------------+-----------+----------+----------+-------------+
+
+In the profile report the p2p transfer is shown corresponds to receiving device (i.e. transfer type IN).
 
 
 P2P Card to NVMe Device Data Transfer
@@ -221,7 +223,7 @@ P2P Card to NVMe Device Data Transfer
 Using the P2P enabled devices the data can be transferred between the FPGA device and another NVMe Devices, such as SMART SSD, without migrating via host server. 
 
 OpenCL coding style
--------------------
+...................
 
 The recommended coding style should be as follows
    - Create P2P buffer
