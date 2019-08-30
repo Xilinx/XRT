@@ -7,12 +7,6 @@
 
 namespace xdp {
 
-//bool isProfilingOn() {
-//  auto profiler = OCLProfiler::Instance();
-//  return (profiler == nullptr) ? false : profiler->applicationProfilingOn();
-//}
-
-
 void alloc_bo_start(void* payload) {
 //    std::cout << "alloc_bo_start" << std::endl;
     return;
@@ -111,8 +105,6 @@ void read_end(void* payload) {
 }
 
 void write_start(void* payload) {
-//  if(!isProfilingOn())
-//    return;
 
 //  std::cout << "write_start" << std::endl;
 
@@ -129,7 +121,7 @@ void write_end(void* payload) {
 
 void start_device_profiling_from_hal(void* payload)
 {
-  std::cout << " start_device_profiling_from_hal " << std::endl;
+  //std::cout << " start_device_profiling_from_hal " << std::endl;
 
   // HAL pointer
   xclDeviceHandle handle = ((CBPayload*)payload)->deviceHandle;
@@ -139,7 +131,7 @@ void start_device_profiling_from_hal(void* payload)
 
 void create_profile_results(void* payload)
 {
-  std::cout << " create_profiling_result " << std::endl;
+  //std::cout << " create_profiling_result " << std::endl;
 
   ProfileResultsCBPayload* payld = (ProfileResultsCBPayload*)payload;
   xclDeviceHandle handle = payld->basePayload.deviceHandle; // HAL pointer
@@ -149,7 +141,7 @@ void create_profile_results(void* payload)
 
 void get_profile_results(void* payload)
 {
-  std::cout << " get_profiling_result " << std::endl;
+  //std::cout << " get_profiling_result " << std::endl;
 
   ProfileResultsCBPayload* payld = (ProfileResultsCBPayload*)payload;
   xclDeviceHandle handle = payld->basePayload.deviceHandle; // HAL pointer
@@ -159,7 +151,7 @@ void get_profile_results(void* payload)
 
 void destroy_profile_results(void* payload)
 {
-  std::cout << " destroy_profiling_result " << std::endl;
+  //std::cout << " destroy_profiling_result " << std::endl;
 
   ProfileResultsCBPayload* payld = (ProfileResultsCBPayload*)payload;
   xclDeviceHandle handle = payld->basePayload.deviceHandle; // HAL pointer

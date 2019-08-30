@@ -26,7 +26,7 @@ namespace xdp {
 
 HALProfiler* HALProfiler::Instance()
 {
-  std::cout << " In HALProfiler::Instance " << std::endl;
+  //std::cout << " In HALProfiler::Instance " << std::endl;
   // check validity
   static HALProfiler instance;
   return &instance;
@@ -34,7 +34,7 @@ HALProfiler* HALProfiler::Instance()
 
 HALProfiler::~HALProfiler()
 {
-  std::cout << " In HALProfiler::HALProfile dest " << std::endl;
+  //std::cout << " In HALProfiler::HALProfile dest " << std::endl;
   // check if already dead ?
   endProfiling();
 
@@ -46,7 +46,7 @@ HALProfiler::~HALProfiler()
 
 void HALProfiler::startProfiling(xclDeviceHandle handle)
 {
-  std::cout << " In HALProfiler::startProfiling" << std::endl;
+  //std::cout << " In HALProfiler::startProfiling" << std::endl;
 
   // create the devices
   // find device for handle ; if not found then create and add device
@@ -67,7 +67,7 @@ void HALProfiler::startProfiling(xclDeviceHandle handle)
 
 void HALProfiler::endProfiling()
 {
-  std::cout << " In HALProfiler::endProfiling" << std::endl;
+  //std::cout << " In HALProfiler::endProfiling" << std::endl;
   stopCounters();
 
 #if 0
@@ -79,7 +79,7 @@ void HALProfiler::endProfiling()
 
 void HALProfiler::startCounters()
 {
-  std::cout << " In HALProfiler::startCounters" << std::endl;
+  //std::cout << " In HALProfiler::startCounters" << std::endl;
   for(std::vector<DeviceIntf*>::iterator itr = deviceList.begin() ; itr != deviceList.end() ; ++itr) {
     (*itr)->startCounters((xclPerfMonType)0);
   }
@@ -87,7 +87,7 @@ void HALProfiler::startCounters()
 
 void HALProfiler::stopCounters()
 {
-  std::cout << " In HALProfiler::stopCounters" << std::endl;
+  //std::cout << " In HALProfiler::stopCounters" << std::endl;
   for(std::vector<DeviceIntf*>::iterator itr = deviceList.begin() ; itr != deviceList.end() ; ++itr) {
     (*itr)->stopCounters((xclPerfMonType)0);
   }
@@ -95,7 +95,7 @@ void HALProfiler::stopCounters()
 
 void HALProfiler::readCounters()
 {
-  std::cout << " In HALProfiler::readCounters" << std::endl;
+  //std::cout << " In HALProfiler::readCounters" << std::endl;
   xclCounterResults counterResults;
   for(std::vector<DeviceIntf*>::iterator itr = deviceList.begin() ; itr != deviceList.end() ; ++itr) {
     (*itr)->readCounters((xclPerfMonType)0, counterResults);
@@ -361,7 +361,7 @@ void HALProfiler::getProfileResults(xclDeviceHandle, void* res)
   // Step 2: log the data into counter and rollover results data-structure
   // Step 3: populate ProfileResults
 
-  std::cout << " In HALProfiler::getProfileResults" << std::endl;
+  //std::cout << " In HALProfiler::getProfileResults" << std::endl;
 
   // check one device for now
   DeviceIntf* currDevice = deviceList[0];
