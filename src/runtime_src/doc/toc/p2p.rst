@@ -152,12 +152,12 @@ For best performance peer devices wanting to exchange data should be under the s
 
 If IOMMU is enabled then all peer-to-peer transfers are routed through the root complex which will degrade performance significantly.
 
-==============================
 P2P Card to Card Data Transfer
-==============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 OpenCL coding style
-~~~~~~~~~~~~~~~~~~~
+-------------------
+
 Consider the example situation as below
   - P2P data transfer from Card1 to Card2
   - Source buffer (buf_src) is OpenCL buffer resident of Card1's DDR
@@ -197,3 +197,57 @@ The recommended coding style should be as follows
    // Copy Operation: Local Source buffer -> Imported Destination Buffer
 
    err = clEnqueueCopyBuffer(src_command_queue, src_buf, imported_dst_buf, 0, 0, sizeof(data_t)*LENGTH, 0, NULL, &event); 
+
+
+Profile Report
+--------------
+
+In the profile_summary_report.rpt file the p2p transfer is shown under a new category as below
+
+*Data Transfer: DMA Bypass*
+======= ================ =========== ============ ============ ========== =========== ===========
+ Device  Transfer Type    Number of    Transfer   Total Data   Total      Average     Average 
+                          Transfer    Rate(MB/s)  Transfer     Time (ms)  Size (Kb)   Latency(ns)      
+======= ================ =========== ============ ============ ========== =========== ===========
+ ...        IN              4096          N/A         0.262         N/A      0.064        N/A
+====== ================= =========== ============ ============ ========== =========== ===========
+
+As shown in the above table p2p transfer is shown corresponds to receiving device (i.e. transfer type IN).
+
+
+P2P Card to NVMe Device Data Transfer
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Using the P2P enabled devices the data can be transferred between the FPGA device and another NVMe Devices, such as SMART SSD, without migrating via host server. 
+
+OpenCL coding style
+-------------------
+
+The recommended coding style should be as follows
+   - Create P2P buffer
+   - Map p2p buffer to the host space
+   - Access the SSD location through Linux File function
+   - Read/Write through Linux pread/pwrite function
+
+.. code-block:: cpp
+
+   // Creating P2P buffer
+   cl_mem_ext_ptr_t p2pBoExt = {0};
+
+   p2pBOExt.flags = XCL_MEM_EXT_P2P_BUFFER; 
+
+   p2pBo = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX, chunk_size, &p2pBoExt, NULL);
+
+   clSetKernelArg(kernel, 0, sizeof(cl_mem),p2pBO),
+
+   // Map p2p Buffer into the host space
+
+   p2pPtr = (char *) clEnqueueMapBuffer(command_queue, p2pBo, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, chunk_size, 0, NULL, NULL, NULL);
+
+   // Read
+   filename = <full path to SSD>
+   fd = open(filename, O_RDWR | O_DIRECT);
+   pread(fd, p2pPtr, chunk_size, 0);
+
+   // Similarly write to the buffer
+   pwrite(fd,p2pPtr, chunk_size,0); 
