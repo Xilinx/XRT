@@ -44,20 +44,14 @@ clReleaseMemObject(cl_mem memobj)
   if (!xocl(memobj)->release())
     return CL_SUCCESS;
 
-  // Host Accessible Prorgam Scope Globals 
-  // Progrvars are deleted via kernel argument destruction through
+  // Host Accessible Prorgam Scope Globals
+  // Progvars are deleted via kernel argument destruction through
   // regular reference counting.  Here we just make sure progvars
-  // are not deleted via clReleaseMemObject.   
-  //
-  // The memobj is a progvar only if CL_MEM_EXT_PTR_XILINX is set.
-  // and it is not a bank assigned mem object.   If CL_MEM_EXT_PTR_XILINX
-  // is set, then the ext flags are stored with the memobj so it is
-  // sufficient to check that the ext flags if set are not bank specific.
-  auto ext_flags = xocl(memobj)->get_ext_flags();
-  //if (ext_flags && !((ext_flags >> 8) & 0xff)) {
-  if (ext_flags && !((ext_flags ) & 0xffffff)) {
+  // are not deleted via clReleaseMemObject.
+  auto flags = xocl(memobj)->get_flags();
+  if (flags & CL_MEM_PROGVAR) {
     XOCL_DEBUG(std::cout,"clReleaseMemObject on user buffer backed by external progvar, mem obj not deleted\n");
-    return CL_SUCCESS; 
+    return CL_SUCCESS;
   }
 
 #if 0
@@ -92,5 +86,3 @@ clReleaseMemObject(cl_mem memobj)
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

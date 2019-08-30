@@ -29,6 +29,42 @@
 
 namespace xocl {
 
+inline size_t
+origin_in_bytes(const size_t* origin,
+                size_t        row_pitch,
+                size_t        slice_pitch)
+{
+  return origin[2] * slice_pitch
+       + origin[1] * row_pitch
+       + origin[0];
+}
+
+static void
+setIfZero(size_t& src_row_pitch,
+          size_t& src_slice_pitch,
+          size_t& dst_row_pitch,
+          size_t& dst_slice_pitch,
+          const size_t* region)
+{
+  // If src_row_pitch is 0, src_row_pitch is computed as region[0].
+  if (!src_row_pitch)
+    src_row_pitch = region[0];
+
+  // If src_slice_pitch is 0, src_slice_pitch is computed as region[1]
+  // * src_row_pitch.
+  if (!src_slice_pitch)
+    src_slice_pitch = region[1]*src_row_pitch;
+
+  // If dst_row_pitch is 0, dst_row_pitch is computed as region[0].
+  if (!dst_row_pitch)
+    dst_row_pitch = region[0];
+
+  // If dst_slice_pitch is 0, dst_slice_pitch is computed as region[1]
+  // * dst_row_pitch.
+  if (!dst_slice_pitch)
+    dst_slice_pitch = region[1]*dst_row_pitch;
+}
+
 static void
 validOrError(cl_command_queue     command_queue ,
              cl_mem               buffer ,
@@ -80,19 +116,19 @@ clEnqueueReadBufferRect(cl_command_queue     command_queue ,
                          const cl_event *     event_wait_list ,
                          cl_event *           event )
 {
+  setIfZero(buffer_row_pitch,buffer_slice_pitch,host_row_pitch,host_slice_pitch,region);
+
   validOrError(command_queue,buffer,blocking
                ,buffer_origin,host_origin,region
                ,buffer_row_pitch,buffer_slice_pitch,host_row_pitch,host_slice_pitch
                ,ptr,num_events_in_wait_list ,event_wait_list,event);
 
-  size_t buffer_origin_in_bytes = 
-    buffer_origin[2]*buffer_slice_pitch+
-    buffer_origin[1]*buffer_row_pitch+
-    buffer_origin[0];
-  size_t host_origin_in_bytes = 
-    host_origin[2]*host_slice_pitch+
-    host_origin[1]*host_row_pitch+
-    host_origin[0];
+  size_t buffer_origin_in_bytes = origin_in_bytes(buffer_origin,
+                                                  buffer_row_pitch,
+                                                  buffer_slice_pitch);
+
+  size_t host_origin_in_bytes = origin_in_bytes(host_origin,host_row_pitch,
+                                                host_slice_pitch);
 
   //allocate and aggregate event
   if(event) {

@@ -33,23 +33,6 @@
 
 namespace {
 
-// Command based enqueue needs to manage event state
-struct enqueue_command : xrt::command
-{
-  xocl::event* m_ev;
-  enqueue_command(xocl::device* device, xocl::event* event,ert_cmd_opcode opcode)
-    : xrt::command(device->get_xrt_device(),opcode), m_ev(event)
-  {}
-  virtual void start() const
-  {
-    m_ev->set_status(CL_RUNNING);
-  }
-  virtual void done() const
-  {
-    m_ev->set_status(CL_COMPLETE);
-  }
-};
-
 // Exception pointer for device exceptions during enqueue tasks.  The
 // pointer is set with the exception thrown by the task.
 static std::exception_ptr s_exception_ptr;
@@ -93,6 +76,27 @@ throw_if_error()
     throw xocl::error(CL_OUT_OF_RESOURCES,std::string("Operation failed due to earlier error '") + ex.what() + "'");
   }
 }
+
+// Command based enqueue needs to manage event state
+struct enqueue_command : xrt::command
+{
+  xocl::event* m_ev;
+  enqueue_command(xocl::device* device, xocl::event* event,ert_cmd_opcode opcode)
+    : xrt::command(device->get_xrt_device(),opcode), m_ev(event)
+  {}
+  virtual void start() const
+  {
+    m_ev->set_status(CL_RUNNING);
+  }
+  virtual void done() const
+  {
+    m_ev->set_status(CL_COMPLETE);
+  }
+  virtual void error(const std::exception& ex) const
+  {
+    handle_device_exception(m_ev,ex);
+  }
+};
 
 using async_type = xrt::device::queue_type;
 
@@ -395,26 +399,12 @@ xocl::event::action_enqueue_type
 action_map_buffer(cl_event event,cl_mem buffer,cl_map_flags map_flags,size_t offset,size_t size,void** hostbase)
 {
   throw_if_error();
+
   // Compute mapped host pointer in host thread
-  char *result = nullptr;
-
-  // Return type "user_ptr" even if its unaligned, as we will map+memcpy to it
-  if (xocl::xocl(buffer)->get_host_ptr()) {
-    result = static_cast<char*>(xocl::xocl(buffer)->get_host_ptr());
-  }
-  else {
-    // Create buffer object if necessary
-    auto command_queue = xocl::xocl(event)->get_command_queue();
-    auto device = command_queue->get_device();
-    auto xdevice = device->get_xrt_device();
-    auto boh = xocl::xocl(buffer)->get_buffer_object(device);
-    result = static_cast<char*>(xdevice->map(boh));
-    xdevice->unmap(boh);
-  }
-
-  // The ptr returned to user from clEnqueueMapBuffer
-  void* userptr = result+offset;
-  (*hostbase) = userptr;
+  auto command_queue = xocl::xocl(event)->get_command_queue();
+  auto device = command_queue->get_device();
+  auto userptr = device->map_buffer(xocl(buffer),map_flags,offset,size,nullptr,true/*nosync*/);
+  *hostbase = userptr;
 
   // Event scheduler schedules the actual map copy through this lambda
   // stored as an event action.   We pass in the ptr computed for user
