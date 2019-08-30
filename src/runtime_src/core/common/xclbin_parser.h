@@ -63,6 +63,12 @@ std::vector<std::pair<uint64_t, size_t>>
 get_debug_ips(const axlf* top);
 
 /**
+ * get_cu_control() - Get the IP_CONTROL type of CU at specified address
+ */
+uint32_t
+get_cu_control(const axlf* top, uint64_t cuaddr);
+
+/**
  * get_cu_base_offset() - Get minimum base offset of all IP_KERNEL objects
  */
 uint64_t

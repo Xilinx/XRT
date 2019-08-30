@@ -48,7 +48,7 @@ class SectionDNACertificate : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(DNA_CERTIFICATE, "DNA_CERTIFICATE", "", false, boost::factory<SectionDNACertificate*>()); }
+    _init() { registerSectionCtor(DNA_CERTIFICATE, "DNA_CERTIFICATE", "", false, false, boost::factory<SectionDNACertificate*>()); }
   } _initializer;
 };
 

@@ -104,6 +104,8 @@ set_property platform.run.steps.opt_design.tcl.post ${sourcesDir}/misc/dynamic_p
 set_property platform.ip_cache_dir                  ${launchDir}/${projName}/${projName}.cache/ip                           [current_project]
 set_property platform.synth_constraint_files        [list "${sourcesDir}/constraints/dynamic_impl.xdc,NORMAL,implementation"] [current_project]
 
+set_property platform.design_intent.embedded "true" [current_project]
+
 # Set any other project properties
 set_property STEPS.OPT_DESIGN.TCL.POST ${sourcesDir}/misc/dynamic_postopt.tcl [get_runs impl_1]
 set_property STEPS.PHYS_OPT_DESIGN.IS_ENABLED true [get_runs impl_1]

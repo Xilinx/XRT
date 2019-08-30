@@ -106,6 +106,12 @@ namespace xdp {
       case OBJECTS_RELEASED:
         name = "OBJECTS_RELEASED";
         break;
+      case CU_CONTEXT_EN:
+        name = "CU_CONTEXT_EN";
+        break;
+      case TRACE_MEMORY:
+        name = "TRACE_MEMORY";
+        break;
       default:
         assert(0);
         break;

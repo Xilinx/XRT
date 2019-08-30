@@ -44,17 +44,14 @@ namespace xdp {
 
 DeviceIntf::~DeviceIntf()
 {
-    for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
-        delete (*itr);  // delete the object
-        (*itr) = nullptr;
+    for(auto mon : aimList) {
+        delete mon;
     }
-    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr) {
-        delete (*itr);  // delete the object
-        (*itr) = nullptr;
+    for(auto mon : amList) {
+        delete mon;
     }
-    for(std::vector<ASM*>::iterator itr = asmList.begin(); itr != asmList.end(); ++itr) {
-        delete (*itr);  // delete the object
-        (*itr) = nullptr;
+    for(auto mon : asmList) {
+        delete mon;
     }
     aimList.clear();
     amList.clear();
@@ -119,16 +116,16 @@ DeviceIntf::~DeviceIntf()
 
     if(type == XCL_PERF_MON_STALL) {
       uint32_t count = 0;
-      for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr) {
-        if((*itr)->hasStall())  count++;
+      for(auto mon : amList) {
+        if(mon->hasStall())  count++;
       }
       return count;
     }
 
     if(type == XCL_PERF_MON_HOST) {
       uint32_t count = 0;
-      for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
-        if((*itr)->isHostMonitor())  count++;
+      for(auto mon : aimList) {
+        if(mon->isHostMonitor())  count++;
       }
       return count;
     }
@@ -137,8 +134,8 @@ DeviceIntf::~DeviceIntf()
 
     if(type == XCL_PERF_MON_SHELL) {
       uint32_t count = 0;
-      for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
-        if((*itr)->isShellMonitor())  count++;
+      for(auto mon : aimList) {
+        if(mon->isShellMonitor())  count++;
       }
       return count;
     }
@@ -191,18 +188,18 @@ DeviceIntf::~DeviceIntf()
 
     size_t size = 0;
 
-    // AIM
-    for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
-        size += (*itr)->startCounter();
+    // Axi Interface Mons
+    for(auto mon : aimList) {
+        size += mon->startCounter();
     }
-    // AM
-    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr) {
-        size += (*itr)->startCounter();
+    // Accelerator Mons
+    for(auto mon : amList) {
+        size += mon->startCounter();
     }
 
-    // ASM
-    for(std::vector<ASM*>::iterator itr = asmList.begin(); itr != asmList.end(); ++itr) {
-        size += (*itr)->startCounter();
+    // Axi Stream Mons
+    for(auto mon : asmList) {
+        size += mon->startCounter();
     }
     return size;
   }
@@ -219,22 +216,22 @@ DeviceIntf::~DeviceIntf()
 
     size_t size = 0;
 
-    // AIM
-    for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
-        size += (*itr)->stopCounter();
+    // Axi Interface Mons
+    for(auto mon : aimList) {
+        size += mon->stopCounter();
     }
 
 
 #if 0
-    // why not these in the original code
-    // AM
-    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr) {
-        size += (*itr)->stopCounter();
+    // These aren't enabled in IP
+    // Accelerator Mons
+    for(auto mon : amList) {
+        size += mon->stopCounter();
     }
 
-    // ASM
-    for(std::vector<ASM*>::iterator itr = asmList.begin(); itr != asmList.end(); ++itr) {
-        size += (*itr)->stopCounter();
+    // Axi Stream Mons
+    for(auto mon : asmList) {
+        size += mon->stopCounter();
     }
 #endif
     return size;
@@ -256,22 +253,22 @@ DeviceIntf::~DeviceIntf()
 
     size_t size = 0;
 
-    // AIM
+    // Read all Axi Interface Mons
     uint32_t idx = 0;
-    for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr, ++idx) {
-        size += (*itr)->readCounter(counterResults, idx);
+    for(auto mon : aimList) {
+        size += mon->readCounter(counterResults, idx++);
     }
 
-    // AM
+    // Read all Accelerator Mons
     idx = 0;
-    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr, ++idx) {
-        size += (*itr)->readCounter(counterResults, idx);
+    for(auto mon : amList) {
+        size += mon->readCounter(counterResults, idx++);
     }
 
-    // ASM
+    // Read all Axi Stream Mons
     idx = 0;
-    for(std::vector<ASM*>::iterator itr = asmList.begin(); itr != asmList.end(); ++itr, ++idx) {
-        size += (*itr)->readCounter(counterResults, idx);
+    for(auto mon : asmList) {
+        size += mon->readCounter(counterResults, idx++);
     }
 
     return size;
@@ -295,18 +292,18 @@ DeviceIntf::~DeviceIntf()
     }
     size_t size = 0;
 
-    // check which of these IPs are trace enabled ?
-    // AIM
-    for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
-        size += (*itr)->triggerTrace(startTrigger);
+    // This just writes to trace control register
+    // Axi Interface Mons
+    for(auto mon : aimList) {
+        size += mon->triggerTrace(startTrigger);
     }
-    // AM
-    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr) {
-        size += (*itr)->triggerTrace(startTrigger);
+    // Accelerator Mons
+    for(auto mon : amList) {
+        size += mon->triggerTrace(startTrigger);
     }
-    // ASM 
-    for(std::vector<ASM*>::iterator itr = asmList.begin(); itr != asmList.end(); ++itr) {
-        size += (*itr)->triggerTrace(startTrigger);
+    // Axi Stream Mons
+    for(auto mon : asmList) {
+        size += mon->triggerTrace(startTrigger);
     }
 
     if (fifoCtrl)
@@ -424,16 +421,16 @@ DeviceIntf::~DeviceIntf()
     ifs.close();
 
 #if 0
-    for(std::vector<AIM*>::iterator itr = aimList.begin(); itr != aimList.end(); ++itr) {
-        (*itr)->showProperties();
+    for(auto mon : aimList) {
+        mon->showProperties();
     }
 
-    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr) {
-        (*itr)->showProperties();
+    for(auto mon : amList) {
+        mon->showProperties();
     }
 
-    for(std::vector<ASM*>::iterator itr = asmList.begin(); itr != asmList.end(); ++itr) {
-        (*itr)->showProperties();
+    for(auto mon : asmList) {
+        mon->showProperties();
     }
     if(fifoCtrl) fifoCtrl->showProperties();
     if(fifoRead) fifoRead->showProperties();
@@ -452,8 +449,17 @@ DeviceIntf::~DeviceIntf()
       return;
 
     uint32_t i = 0;
-    for(std::vector<AM*>::iterator itr = amList.begin(); itr != amList.end(); ++itr, ++i) {
-        (*itr)->configureDataflow(ipConfig[i]);
+    for(auto mon: amList) {
+        mon->configureDataflow(ipConfig[i++]);
+    }
+  }
+
+  void DeviceIntf::configAmContext(const std::string& ctx_info)
+  {
+    if (ctx_info.empty())
+      return;
+    for (auto mon : amList) {
+      mon->disable();
     }
   }
 

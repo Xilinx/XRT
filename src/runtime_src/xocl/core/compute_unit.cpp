@@ -20,6 +20,8 @@
 #include "device.h"
 #include "program.h"
 
+#include "core/common/xclbin_parser.h"
+
 #include <algorithm>
 #include <iostream>
 #include <limits>
@@ -29,6 +31,7 @@ namespace xocl {
 compute_unit::
 compute_unit(const xclbin::symbol* s, const std::string& n, size_t base, size_t idx, const device* d)
   : m_symbol(s), m_name(n), m_device(d), m_address(base), m_index(idx)
+  , m_control(xrt_core::xclbin::get_cu_control(d->get_axlf(),base))
 {
   static unsigned int count = 0;
   m_uid = count++;

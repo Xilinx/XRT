@@ -59,6 +59,40 @@ static void xocl_mb_connect(struct xocl_dev *xdev);
 static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	u64 msgid, int err, bool sw_ch);
 
+static void xocl_mb_read_p2p_addr(struct xocl_dev *xdev)
+{
+	struct pci_dev *pdev = xdev->core.pdev;
+	struct mailbox_req *mb_req = NULL;
+	struct mailbox_p2p_bar_addr *mb_p2p = NULL;
+	size_t mb_p2p_len, reqlen;
+	int ret = 0;
+	size_t resplen = sizeof(ret);
+
+	mb_p2p_len = sizeof(struct mailbox_p2p_bar_addr);
+	reqlen = sizeof(struct mailbox_req) + mb_p2p_len;
+	mb_req = vzalloc(reqlen);
+	if (!mb_req) {
+		userpf_err(xdev, "dropped request (%d), mem alloc issue\n",
+				MAILBOX_REQ_READ_P2P_BAR_ADDR);
+		return;
+	}
+
+	mb_req->req = MAILBOX_REQ_READ_P2P_BAR_ADDR;
+	mb_p2p = (struct mailbox_p2p_bar_addr *)mb_req->data;
+	mb_p2p->p2p_bar_len = pci_resource_len(pdev, xdev->p2p_bar_idx);
+	mb_p2p->p2p_bar_addr = pci_resource_start(pdev, xdev->p2p_bar_idx);
+
+	ret = xocl_peer_request(xdev, mb_req, reqlen, &ret, &resplen, NULL,
+							NULL, 0);
+	if (ret) {
+		userpf_info(xdev, "dropped request (%d), failed with err: %d %d\n",
+					MAILBOX_REQ_READ_P2P_BAR_ADDR, ret);
+		return;
+	}
+
+	vfree(mb_req);
+}
+
 static int userpf_intr_config(xdev_handle_t xdev_hdl, u32 intr, bool en)
 {
 	return xocl_dma_intr_config(xdev_hdl, intr, en);
@@ -622,6 +656,9 @@ void xocl_p2p_mem_release(struct xocl_dev *xdev, bool recov_bar_sz)
 		xocl_info(&pdev->dev, "Resize p2p bar %d to %d M ", p2p_bar,
 			(1 << XOCL_PA_SECTION_SHIFT));
 	}
+
+	//Reset Virtualization registers
+	(void) xocl_mb_read_p2p_addr(xdev);
 }
 
 int xocl_p2p_mem_reserve(struct xocl_dev *xdev)
@@ -717,6 +754,9 @@ int xocl_p2p_mem_reserve(struct xocl_dev *xdev)
 	}
 #endif
 	devres_close_group(&pdev->dev, xdev->p2p_res_grp);
+
+	//Pass P2P bar address and len to mgmtpf
+	(void) xocl_mb_read_p2p_addr(xdev);
 
 	return 0;
 

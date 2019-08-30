@@ -91,6 +91,14 @@ zocl_cu_reset_done(struct zocl_cu *cu)
 	return cu->funcs->reset_done(cu->core);
 }
 
+phys_addr_t
+zocl_cu_get_paddr(struct zocl_cu *cu)
+{
+	struct zcu_core *cu_core = cu->core;
+
+	return cu_core->paddr;
+}
+
 /* -- HLS adapter start -- */
 /* HLS adapter implementation realted code. */
 static void
@@ -366,7 +374,7 @@ zocl_acc_configure(void *core, u32 *data, size_t sz, int type)
 	 * Same open issue like HLS adapter
 	 * Skip 6 data,this is how user layer construct the command.
 	 */
-	for (i = 4; i < sz - 1; i += 2) {
+	for (i = 6; i < sz - 1; i += 2) {
 		offset = *(data + i) - cu_core->paddr;
 		val = *(data + i + 1);
 

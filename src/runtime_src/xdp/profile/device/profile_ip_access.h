@@ -22,7 +22,6 @@
 #include <fstream>
 #include <iostream>
 #include "xclbin.h"
-#include "xdp_base_device.h"
 #include "core/include/xclperf.h"
 #include "xdp_base_device.h"
 
@@ -137,6 +136,9 @@ public:
     uint32_t setLogStream(std::ostream* oStream);
     std::ostream* getLogStream() { return out_stream; }
 
+//    double getDeviceClock();
+
+//    bool   isOnEdgeDevice();
 private:
     xdp::Device* device;      /* device handle */
     bool  mapped;             /* flag to keep track of if the ip has been mapped */
@@ -160,4 +162,3 @@ protected:
 } //  xdp
 
 #endif
-
