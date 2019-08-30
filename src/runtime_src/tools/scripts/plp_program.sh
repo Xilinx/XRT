@@ -48,6 +48,10 @@ fi
 
 echo 1 >/sys/bus/pci/devices/$RP_DEVICE/remove
 sleep 5
+if [ -f "/sys/bus/pci/devices/$RP_DEVICE" ]; then
+	echo "Shutdown userpf failed!"
+	exit 1;
+fi
 
 echo "xbmgmt partition --program --id $INTERFACE_UUID --force"
 xbmgmt partition --program --id $INTERFACE_UUID --force
