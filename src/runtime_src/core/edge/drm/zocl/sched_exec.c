@@ -54,6 +54,9 @@
 # define SCHED_DEBUG(format, ...)
 #endif
 
+static int cq_check(void *data);
+static irqreturn_t sched_cq_isr(int irq, void *arg);
+
 /* Scheduler call schedule() every MAX_SCHED_LOOP loop*/
 #define MAX_SCHED_LOOP 8
 static int    sched_loop_cnt;
@@ -606,9 +609,6 @@ done:
 	if (warn_flag)
 		DRM_INFO("CU can only be initialized once.\n");
 }
-
-static int cq_check(void *data);
-static irqreturn_t sched_cq_isr(int irq, void *arg);
 
 /**
  * configure() - Configure the scheduler from user space command
