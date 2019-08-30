@@ -165,18 +165,16 @@ Consider the example situation as below:
   - Source buffer (buf_src) is OpenCL buffer resident of Card1's DDR
   - Destination buffer (buf_dst) is OpenCL buffer resident of Card2's DDR
 
-The recommended coding style should be as follows:
+Typical coding style:
 
-  1. In the OpenCL host code consider each card as a OpenCL device (cl_device_id) in different OpenCL context (cl_context)
+  1. In the OpenCL host create separate `cl_context` for each `cl_device_id`
+  2. Define `buf_src` as regular buffer
+  3. Define `buf_dst` as p2p buffer
+  4. Import the p2p buffer or buf_dst to the context of buf_src. Use the following APIs
 
-       - Create separate cl_context for each cl_device_id
-  2. Define buf_src as regular buffer
-  3. Define buf_dst as p2p buffer
-  4. Import the p2p buffer (buf_dst) to the context of buf_src. Use the following APIs
-
-       - xclGetMemObjectFd
-       - xclGetMemObjectFromFd
-  5. Perform Copy from `buf_src` to `imported_buf_dst`
+       - `xclGetMemObjectFd`
+       - `xclGetMemObjectFromFd`
+  5. Perform Copy from `buf_src` to `imported_dst_buf`
 
 .. code-block:: cpp
 
@@ -224,7 +222,7 @@ In the profile report the p2p transfer is shown corresponds to receiving device 
 P2P Card to NVMe Device Data Transfer
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Using the P2P enabled devices the data can be transferred between the FPGA device and another NVMe Devices, such as SMART SSD, without migrating via host server. 
+Using the P2P enabled devices the data can be transferred between the FPGA device and another NVMe Devices, such as SMART SSD, without migrating the data via host memory space.
 
 OpenCL coding style
 ...................
