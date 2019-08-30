@@ -19,7 +19,6 @@
 
 
 #include "xdp/profile/device/device_intf.h"
-//#include "core/include/profile_results.h"
 #include "core/include/experimental/xrt-next.h"
 
 namespace xdp {
@@ -58,7 +57,7 @@ public:
 
   void startCounters();
   void stopCounters();
-  void readCounters(xclCounterResults& counterResults);
+  void readCounters();
 
   void startTrace();
   void stopTrace();

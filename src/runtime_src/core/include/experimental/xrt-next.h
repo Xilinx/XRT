@@ -97,7 +97,6 @@ struct KernelTransferData
    uint64_t totalWriteBusyCycles; 
    uint64_t minWriteLatency; 
    uint64_t maxWriteLatency; 
-
 };
 
 struct CuExecData
@@ -141,8 +140,6 @@ struct ProfileResults
 
   uint64_t numASM;
   StreamTransferData* streamData;
-
-  // total Transfer data ?
 };
 
 

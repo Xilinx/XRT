@@ -12,7 +12,7 @@ std::atomic<unsigned> global_idcode(0);
 std::mutex lock;
 
 static bool cb_valid() {
-    return loaded && cb;
+  return loaded && cb;
 }
 
 static boost::filesystem::path& dllExt() {
@@ -251,11 +251,10 @@ void load_xdp_plugin_library(HalPluginConfig* config)
     if(!xrt_core::config::get_hal_profile()) {
       // hal_profile is not set to correct configuration. Skip loading xdp_hal_plugin.
       // There will be no profile support in this run.
-      std::cout << "\"hal_profile\" is not set to true in xrt.ini Debug configuration. So, no HAL profiling is available." << std::endl;
+//      std::cout << "\"hal_profile\" is not set to true in xrt.ini Debug configuration. So, no HAL profiling is available." << std::endl;
       return;
     }
 
-    // hal_profile is set to "true". Try to load xdp_hal_plugin library
     if(xrt_core::config::get_profile()) {
       // "profile=true" is also set. This enables OpenCL based flow for profiling. 
       // Currently, mix of OpenCL and HAL based profiling is not supported.
@@ -263,7 +262,8 @@ void load_xdp_plugin_library(HalPluginConfig* config)
       throw std::runtime_error("Both profile=true and hal_profile=true set in xrt.ini config. Currently, these flows are not supported to work together. Hence, profiling will not be available in this run. Please set only one of the configuration depending on type of application and re-run");
     }
 
-    std::cout << "Loading xdp plugins ..." << std::endl;
+    // hal_profile is set to "true" and other configurations are good. Try to load xdp_hal_plugin library
+//    std::cout << "Loading xdp plugins ..." << std::endl;
     bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
     bfs::path libname("libxdp_hal_plugin.so");
     if (xrt.empty()) {
@@ -279,7 +279,11 @@ void load_xdp_plugin_library(HalPluginConfig* config)
     if (!handle)
         throw std::runtime_error("Failed to open XDP hal plugin library '" + p.string() + "'\n" + dlerror());
     const std::string cb_func_name = "hal_level_xdp_cb_func";
+    dlerror();
     cb = cb_func_type(reinterpret_cast<cb_load_func_type>(dlsym(handle, cb_func_name.c_str())));
+    if(dlerror() != NULL) {
+      cb = nullptr;
+    }
     loaded = true;
 }
 

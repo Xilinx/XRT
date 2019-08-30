@@ -57,7 +57,6 @@ void HALProfiler::startProfiling(xclDeviceHandle handle)
   dev->setDevice(new xdp::HalDevice(handle));
   dev->readDebugIPlayout();
 
-  // check the flags 
   startCounters();
 
 #if 0
@@ -69,13 +68,11 @@ void HALProfiler::startProfiling(xclDeviceHandle handle)
 void HALProfiler::endProfiling()
 {
   std::cout << " In HALProfiler::endProfiling" << std::endl;
-  // check the flags 
   stopCounters();
+
 #if 0
   stopTrace();
-
-  xclCounterResults counterResults;
-  readCounters(counterResults);
+  readCounters();
   readTrace();
 #endif
 }
@@ -96,10 +93,10 @@ void HALProfiler::stopCounters()
   }
 }
 
-void HALProfiler::readCounters(xclCounterResults& counterResults)
+void HALProfiler::readCounters()
 {
   std::cout << " In HALProfiler::readCounters" << std::endl;
-//  xclCounterResults counterResults;
+  xclCounterResults counterResults;
   for(std::vector<DeviceIntf*>::iterator itr = deviceList.begin() ; itr != deviceList.end() ; ++itr) {
     (*itr)->readCounters((xclPerfMonType)0, counterResults);
   }
@@ -205,34 +202,40 @@ void HALProfiler::createProfileResults(xclDeviceHandle deviceHandle, void* ret)
       std::string monName = currDevice->getMonitorName(XCL_PERF_MON_ACCEL, i);
       results->cuExecData[i].cuName = (char*)malloc((monName.length()+1)*sizeof(char));
       strcpy(results->cuExecData[i].cuName, monName.c_str());
+    // kernel name
     }
   }      
 
 
-  if(results->numASM)
+  if(results->numASM) {
     results->streamData = (StreamTransferData*)calloc(results->numASM, sizeof(StreamTransferData));
 
-  // populate the names
+    for(unsigned int i=0; i < results->numASM ; ++i) {
+      std::string monName = currDevice->getMonitorName(XCL_PERF_MON_STR, i);
+      std::size_t sepPos  = monName.find(IP_LAYOUT_SEP);
+      if(sepPos == std::string::npos)
+        continue;
+
+      std::string masterPort = monName.substr(0, sepPos);
+      std::string slavePort  = monName.substr(sepPos + 1);
+
+      results->streamData[i].masterPortName = (char*)malloc((masterPort.length()+1));
+      strcpy(results->streamData[i].masterPortName, masterPort.c_str());
+
+      results->streamData[i].slavePortName = (char*)malloc((slavePort.length()+1));
+      strcpy(results->streamData[i].slavePortName, slavePort.c_str());
+    }
+  }
 }
 
 
 void HALProfiler::calculateAIMRolloverResult(std::string key, unsigned int numAIM, xclCounterResults& counterResult, bool firstReadAfterProgram)
 {
-      // Traverse all monitor slots (host and all CU ports)
-//      bool deviceDataExists = (mDeviceBinaryDataSlotsMap.find(key) == mDeviceBinaryDataSlotsMap.end()) ? false : true;
   xclCounterResults& loggedResult = mFinalCounterResultsMap[key];
   xclCounterResults& rollOverCount = mRolloverCountsMap[key];
   xclCounterResults& rollOverCounterResult = mRolloverCounterResultsMap[key];
 
   for(unsigned int i=0; i < numAIM ; ++i) {
-#if 0
-        mPluginHandle->getProfileSlotName(XCL_PERF_MON_MEMORY, deviceName, s, slotName);
-        if (!deviceDataExists) {
-          mDeviceBinaryDataSlotsMap[key].push_back(slotName);
-          auto p = mPluginHandle->getProfileSlotProperties(XCL_PERF_MON_MEMORY, deviceName, s);
-          mDataSlotsPropertiesMap[key].push_back(p);
-        }
-#endif
     // Check for rollover of byte counters; if detected, add 2^32
     // Otherwise, if first read after program with binary, then capture bytes from previous xclbin
     if (!firstReadAfterProgram) {
@@ -298,14 +301,7 @@ void HALProfiler::recordAMResult(ProfileResults* results, DeviceIntf* currDevice
   for(unsigned int i = 0; i < results->numAM ; ++i) {
 
 // if counterResults.CuMaxParallelIter[i] > 0)
-    std::string monName = currDevice->getMonitorName(XCL_PERF_MON_ACCEL, i); // cu name ?
-// get profile kernel name getProfileKernelName
-    auto len = monName.length();
-    results->cuExecData[i].cuName = (char*)malloc((len+1)*sizeof(char));
-    memcpy(results->cuExecData[i].cuName, monName.c_str(), len);
-    results->cuExecData[i].cuName[len] = '\0';
 
-    // kernel name
     results->cuExecData[i].cuExecCount = counterResults.CuExecCount[i] + rollOverCounterResult.CuExecCount[i];
     results->cuExecData[i].cuExecCycles = counterResults.CuExecCycles[i] + rollOverCounterResult.CuExecCycles[i]
                                                + (rollOverCount.CuExecCycles[i] * 4294967296UL);
@@ -324,10 +320,12 @@ void HALProfiler::recordAMResult(ProfileResults* results, DeviceIntf* currDevice
 void HALProfiler::recordAIMResult(ProfileResults* results, DeviceIntf* currDevice, std::string key)
 {
   xclCounterResults& counterResults = mFinalCounterResultsMap[key];
-  xclCounterResults& rollOverCount = mRolloverCountsMap[key];
-//  xclCounterResults& rollOverCounterResult = mRolloverCounterResultsMap[key];
+  xclCounterResults& rollOverCount  = mRolloverCountsMap[key];
+
   for(unsigned int i = 0; i < results->numAIM ; ++i) {
-    // skip XAIM_HOST_PROPERTY_MASK and no monitor name
+    if(currDevice->isHostAIM(i)) {
+      continue;
+    }
 
     results->kernelTransferData[i].totalReadBytes = counterResults.ReadBytes[i] + (rollOverCount.ReadBytes[i] * 4294967296UL);
     results->kernelTransferData[i].totalReadTranx = counterResults.ReadTranx[i] + (rollOverCount.ReadTranx[i] * 4294967296UL);
@@ -340,23 +338,21 @@ void HALProfiler::recordAIMResult(ProfileResults* results, DeviceIntf* currDevic
     results->kernelTransferData[i].totalWriteLatency = counterResults.WriteLatency[i] + (rollOverCount.WriteLatency[i] * 4294967296UL);
     results->kernelTransferData[i].totalWriteBusyCycles = counterResults.WriteBusyCycles[i] + (rollOverCount.WriteBusyCycles[i] * 4294967296UL);
 // min max readLatency
-  } // end for
+  }
 }
 
 void HALProfiler::recordASMResult(ProfileResults* results, DeviceIntf* currDevice, std::string key)
 {
   xclCounterResults& counterResults = mFinalCounterResultsMap[key];
-// populate the names etc. 
-  for(unsigned int i = 0; i < results->numASM ; ++i) {
-    // skip XAIM_HOST_PROPERTY_MASK and no monitor name
 
+  for(unsigned int i = 0; i < results->numASM ; ++i) {
     results->streamData[i].strmNumTranx = counterResults.StrNumTranx[i];
     results->streamData[i].strmBusyCycles = counterResults.StrBusyCycles[i];
     results->streamData[i].strmDataBytes = counterResults.StrDataBytes[i];
     results->streamData[i].strmStallCycles = counterResults.StrStallCycles[i];
     results->streamData[i].strmStarveCycles = counterResults.StrStarveCycles[i];
 
-  } // end for
+  }
 }
 
 void HALProfiler::getProfileResults(xclDeviceHandle, void* res)
@@ -368,15 +364,15 @@ void HALProfiler::getProfileResults(xclDeviceHandle, void* res)
   std::cout << " In HALProfiler::getProfileResults" << std::endl;
 
   // check one device for now
+  DeviceIntf* currDevice = deviceList[0];
 
   // Step 1: read counters from device
 
   xclCounterResults counterResults;
-  readCounters(counterResults); // read from device, done
+  currDevice->readCounters((xclPerfMonType)0 /* does not matter*/, counterResults);  // read from device
 
   ProfileResults* results = static_cast<ProfileResults*>(res);
   // Use 1 device now
-  DeviceIntf* currDevice = deviceList[0];
 
   // Record the counter data 
 //  auto timeSinceEpoch = (std::chrono::steady_clock::now()).time_since_epoch();
@@ -384,13 +380,13 @@ void HALProfiler::getProfileResults(xclDeviceHandle, void* res)
 //  uint64_t timeNsec = value.count();
 
   // Create unique name for device since currently all devices are called fpga0
-  std::string deviceName = "unique_device";
+  std::string deviceName(results->deviceName);
   std::string binaryName = "fpga0";
 //  uint32_t program_id = 0;
 
   std::string key = deviceName + "|" + binaryName;
 
-  // Step 3: log the data into counter and rollover results data-structure
+  // Step 2: log the data into counter and rollover results data-structure
 
   // If not already defined, zero out rollover values for this device
   if (mFinalCounterResultsMap.find(key) == mFinalCounterResultsMap.end()) {
@@ -398,7 +394,6 @@ void HALProfiler::getProfileResults(xclDeviceHandle, void* res)
 
     xclCounterResults rolloverResults;
     memset(&rolloverResults, 0, sizeof(xclCounterResults));
-    //rolloverResults.NumSlots = counterResults.NumSlots;
     mRolloverCounterResultsMap[key] = rolloverResults;
     mRolloverCountsMap[key] = rolloverResults;
   } else {
@@ -406,21 +401,18 @@ void HALProfiler::getProfileResults(xclDeviceHandle, void* res)
     calculateAIMRolloverResult(key, results->numAIM, counterResults, true /*firstReadAfterProgram*/);
     calculateAMRolloverResult (key, results->numAM,  counterResults, true /*firstReadAfterProgram*/);
 
-    // for stream counters only properties need to be populated : check
+    // Streaming IP Counters are 64 bit and unlikely to roll over
 
     // Log current counter result
     mFinalCounterResultsMap[key] = counterResults;
   }
 
-// record is per device
+  // record is per device
 
-   // log AM into result
-   recordAMResult(results, currDevice, key);
-   recordAIMResult(results, currDevice, key);
-// record total AIM data over all the slots ? : i guess no
-
-
-   recordASMResult(results, currDevice, key);
+  // log AM into result
+  recordAMResult(results, currDevice, key);
+  recordAIMResult(results, currDevice, key);
+  recordASMResult(results, currDevice, key);
 }
 
 void HALProfiler::destroyProfileResults(xclDeviceHandle, void* ret)
