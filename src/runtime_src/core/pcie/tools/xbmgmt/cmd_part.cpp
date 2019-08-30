@@ -171,7 +171,7 @@ void scanPartitions(int index, std::vector<DSAInfo>& installedDSAs, bool verbose
         unsigned int i;
         if (dsa.hasFlashImage || dsa.uuids.empty())
             continue;
-	for (i = 0; dsa.uuids.size(); i++)
+	for (i = 0; i < dsa.uuids.size(); i++)
         {
             if (int_uuids[0].compare(dsa.uuids[i]) == 0)
                 break;
