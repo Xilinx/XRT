@@ -151,3 +151,126 @@ PCIe Topology Considerations
 For best performance peer devices wanting to exchange data should be under the same PCIe switch.
 
 If IOMMU is enabled then all peer-to-peer transfers are routed through the root complex which will degrade performance significantly.
+
+==============================
+P2P Card to Card Data Transfer
+==============================
+
+OpenCL coding style
+~~~~~~~~~~~~~~~~~~~
+Consider the example situation as below
+  - P2P data transfer from Card1 to Card2
+  - Source buffer (buf_src) is OpenCL buffer resident of Card1's DDR
+  - Destination buffer (buf_dst) is OpenCL buffer resident of Card2's DDR
+
+The recommended coding style should be as follows
+  - In the OpenCL host code consider each card as a OpenCL device (cl_device_id) in different OpenCL context (cl_context)
+       - Create separate cl_context for each cl_device_id
+  - Define buf_src as regular buffer
+  - Define buf_dst as p2p buffer
+  - Import the p2p buffer (buf_dst) to the context of buf_src. Use the following APIs
+       - xclGetMemObjectFd
+       - xclGetMemObjectFromFd
+  - Perform Copy from `buf_src` to `imported_buf_dst`
+
+.. code-block:: cpp
+
+   cl_mem src_buf; // Source Buffer (regular) allocated in DDR bank0
+   cl_mem_ext_ptr_t src_buf_ext = {0};
+   src_buf_ext.flags = XCL_MEM_DDR_BANK0;
+   src_buf = clCreateBuffer(src_context, CL_MEM_WRITE_ONLY | CL_MEM_EXT_PTR_XILINX, buffersize, &src_buf_ext, &err);
+
+
+   cl_mem dst_buf;  // Destination buffer (p2p) allocated in DDR bank0 of destination context
+   cl_mem_ext_ptr_t dst_buf_ext = {0};
+
+   dst_buf_ext.flags = XCL_MEM_DDR_BANK0 | XCL_MEM_EXT_P2P_BUFFER;
+   dst_buf = clCreateBuffer(dst_context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX, buffersize, &dst_buf_ext, &err);
+
+   // Import Destination p2p buffer to the source context
+   err = xclGetMemObjectFd(dst_buf, &fd);
+
+   cl_mem imported_dst_buf;
+
+   err = xclGetMemObjectFromFd(src_context, device_id[0], 0, fd, &imported_dst_buf); // Import
+
+   // Copy Operation: Local Source buffer -> Imported Destination Buffer
+
+   err = clEnqueueCopyBuffer(src_command_queue, src_buf, imported_dst_buf, 0, 0, sizeof(data_t)*LENGTH, 0, NULL, &event); 
+
+Profile Report
+~~~~~~~~~~~~~~
+
+In the profile_summary_report.rpt file the p2p transfer is shown under a new category as below
+
+*Data Transfer: DMA Bypass*
+======= ================ =========== ============ ============ ========== =========== ===========
+ Device  Transfer Type    Number of    Transfer   Total Data   Total      Average     Average 
+                          Transfer    Rate(MB/s)  Transfer     Time (ms)  Size (Kb)   Latency(ns)      
+======= ================ =========== ============ ============ ========== =========== ===========
+ ...        IN              4096          N/A         0.262         N/A      0.064        N/A
+====== ================= =========== ============ ============ ========== =========== ===========
+
+As shown in the above table p2p transfer is shown corresponds to receiving device (i.e. transfer type IN).
+
+
+======================================
+P2P Card to NVMe Device Data Transfer
+======================================
+
+Using the P2P enabled devices the data can be transferred between the FPGA device and another NVMe Devices, such as SMART SSD, without migrating via host server. 
+
+OpenCL coding style
+~~~~~~~~~~~~~~~~~~~
+
+The recommended coding style should be as follows
+   - Create P2P buffer
+   - Map p2p buffer to the host space
+   - Access the SSD location through Linux File function
+   - Read/Write through Linux pread/pwrite function
+
+.. code-block:: cpp
+
+   // Creating P2P buffer
+   cl_mem_ext_ptr_t p2pBoExt = {0};
+
+   p2pBOExt.flags = XCL_MEM_EXT_P2P_BUFFER; 
+
+   p2pBo = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX, chunk_size, &p2pBoExt, NULL);
+
+   clSetKernelArg(kernel, 0, sizeof(cl_mem),p2pBO),
+
+   // Map p2p Buffer into the host space
+
+   p2pPtr = (char *) clEnqueueMapBuffer(command_queue, p2pBo, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, chunk_size, 0, NULL, NULL, NULL);
+
+   // Read
+   filename = <full path to SSD>
+   fd = open(filename, O_RDWR | O_DIRECT);
+   pread(fd, p2pPtr, chunk_size, 0);
+
+   // Similarly write to the buffer
+   pwrite(fd,p2pPtr, chunk_size,0); 
+
+Profile Report
+~~~~~~~~~~~~~~
+
+Sample Profile report from FPGA to NVMe Device transfer via P2P
+
+*Data Transfer: DMA Bypass*
+======= ================ =========== ============ ============ ========== =========== ===========
+ Device  Transfer Type    Number of    Transfer   Total Data   Total      Average     Average 
+                          Transfer    Rate(MB/s)  Transfer     Time (ms)  Size (Kb)   Latency(ns)      
+======= ================ =========== ============ ============ ========== =========== ===========
+ ...        OUT            8388608       N/A        1073.740      N/A      0.128       297.141
+====== ================= =========== ============ ============ ========== =========== ===========
+
+Sample Profile report from NVMe Device to FPGA transfer via P2P
+
+*Data Transfer: DMA Bypass*
+======= ================ =========== ============ ============ ========== =========== ===========
+ Device  Transfer Type    Number of    Transfer   Total Data   Total      Average     Average 
+                          Transfer    Rate(MB/s)  Transfer     Time (ms)  Size (Kb)   Latency(ns)      
+======= ================ =========== ============ ============ ========== =========== ===========
+ ...        IN             4194304       N/A        1073.740      N/A      0.256       237.344
+====== ================= =========== ============ ============ ========== =========== ===========
