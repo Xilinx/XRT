@@ -29,6 +29,7 @@
 #include <atomic>
 #include <vector>
 #include <memory>
+#include <map>
 
 #define MIN_EXECBO_POOL_SIZE      16
 #define MAX_EXECBO_BUFF_SIZE      4096// 4KB
@@ -78,7 +79,11 @@ typedef struct XmaHwKernel
     bool        in_use;
     int32_t     cu_index;
     uint64_t    base_address;
-    int32_t    ddr_bank;
+    //uint64_t bitmap based on MAX_DDR_MAP=64
+    uint64_t    ip_ddr_mapping;
+    int32_t     default_ddr_bank;
+    std::map<int32_t, int32_t> CU_arg_to_mem_info;// arg# -> ddr_bank#
+
     uint32_t    cu_mask0;
     uint32_t    cu_mask1;
     uint32_t    cu_mask2;
@@ -94,7 +99,8 @@ typedef struct XmaHwKernel
     int32_t         locked_by_session_id;
     XmaSessionType locked_by_session_type;
     bool soft_kernel;
-    bool dataflow_kernel;
+    bool kernel_channels;
+    uint32_t     max_channel_id;
     void*   private_do_not_use;
 
     //bool             have_lock;
@@ -104,20 +110,43 @@ typedef struct XmaHwKernel
     in_use = false;
     cu_index = -1;
     regmap_max = -1;
-    ddr_bank = -1;
+    default_ddr_bank = -1;
+    ip_ddr_mapping = 0;
     cu_mask0 = 0;
     cu_mask1 = 0;
     cu_mask2 = 0;
     cu_mask3 = 0;
     kernel_complete_count = 0;
     soft_kernel = false;
-    dataflow_kernel = false;
+    kernel_channels = false;
+    max_channel_id = 0;
     //*kernel_complete_locked = false;
     *reg_map_locked = false;
     locked_by_session_id = -100;
     private_do_not_use = NULL;
   }
 } XmaHwKernel;
+
+typedef struct XmaHwMem
+{
+    bool        in_use;
+    uint64_t    base_address;
+    uint64_t    size_kb;
+    uint32_t    size_mb;
+    uint32_t    size_gb;
+    std::string name;
+
+    uint32_t    reserved[16];
+
+  XmaHwMem() {
+    in_use = false;
+    base_address = 0;
+    size_kb = 0;
+    size_mb = 0;
+    size_gb = 0;
+  }
+} XmaHwMem;
+
 
 typedef struct XmaHwDevice
 {
@@ -132,6 +161,7 @@ typedef struct XmaHwDevice
     //bool        in_use;
     //XmaHwKernel kernels[MAX_KERNEL_CONFIGS];
     std::vector<XmaHwKernel> kernels;
+    std::vector<XmaHwMem> ddrs;
 
     std::unique_ptr<std::atomic<bool>> execbo_locked;
     std::vector<uint32_t> kernel_execbo_handle;
@@ -139,6 +169,8 @@ typedef struct XmaHwDevice
     std::vector<bool> kernel_execbo_inuse;
     std::vector<int32_t> kernel_execbo_cu_index;
     int32_t    num_execbo_allocated;
+
+    uint32_t    reserved[16];
 
   XmaHwDevice(): execbo_locked(new std::atomic<bool>) {
     //in_use = false;
@@ -156,6 +188,8 @@ typedef struct XmaHwCfg
     int32_t     num_devices;
     //XmaHwDevice devices[MAX_XILINX_DEVICES];
     std::vector<XmaHwDevice> devices;
+
+    uint32_t    reserved[16];
 
   XmaHwCfg() {
     num_devices = -1;

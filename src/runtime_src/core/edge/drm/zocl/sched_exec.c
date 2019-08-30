@@ -54,6 +54,9 @@
 # define SCHED_DEBUG(format, ...)
 #endif
 
+static int cq_check(void *data);
+static irqreturn_t sched_cq_isr(int irq, void *arg);
+
 /* Scheduler call schedule() every MAX_SCHED_LOOP loop*/
 #define MAX_SCHED_LOOP 8
 static int    sched_loop_cnt;
@@ -442,63 +445,6 @@ void zocl_cleanup_cu_timer(struct drm_zocl_dev *zdev)
 	kthread_stop(exec->timer_task);
 }
 
-/**
- * setup_ert_hw() - Setup Embedded Hardware HW IP
- *
- * This function will be called by configure()
- */
-void setup_ert_hw(struct drm_zocl_dev *zdev)
-{
-	char *ert_hw = zdev->ert->hw_ioremap;
-	struct sched_exec_core *exec = zdev->exec;
-
-	SCHED_DEBUG("slot_size = 0x%x\n", slot_size(zdev->ddev));
-	SCHED_DEBUG("num_slots = %d\n", exec->num_slots);
-	SCHED_DEBUG("num_slot_masks = %d\n", exec->num_slot_masks);
-	SCHED_DEBUG("num_cus = %d\n", exec->num_cus);
-	SCHED_DEBUG("num_cu_masks = %d\n", exec->num_cu_masks);
-	SCHED_DEBUG("cu_offset = %d\n", exec->cu_shift_offset);
-	SCHED_DEBUG("cu_base_address = 0x%x\n", exec->cu_base_addr);
-	SCHED_DEBUG("cu_dma = %d\n", exec->cu_dma);
-	SCHED_DEBUG("cu_isr = %d\n", exec->cu_isr);
-	SCHED_DEBUG("cq_interrupt = %d\n", exec->cq_interrupt);
-	SCHED_DEBUG("polling_mode = %d\n", exec->polling_mode);
-
-	/* Set slot size(4K) */
-	iowrite32(slot_size(zdev->ddev)/4, ert_hw + ERT_CQ_SLOT_SIZE_REG);
-
-	/* CU offset in shift value */
-	iowrite32(exec->cu_shift_offset, ert_hw + ERT_CU_OFFSET_REG);
-
-	/* Number of command slots */
-	iowrite32(exec->num_slots, ert_hw + ERT_CQ_NUM_OF_SLOTS_REG);
-
-	/* CU physical address */
-	/* TODO: Think about how to make the address mapping correct */
-	iowrite32(0x81800000/4, ert_hw + ERT_CU_BASE_ADDR_REG);
-
-	/* Command queue physical address */
-	iowrite32(0x80190000/4, ert_hw + ERT_CQ_BASE_ADDR_REG);
-
-	/* Number of CUs */
-	iowrite32(exec->num_cus, ert_hw + ERT_NUM_OF_CU_REG);
-
-	/* Enable/Disable CU_DMA module */
-	iowrite32(exec->cu_dma, ert_hw + ERT_CU_DMA_ENABLE);
-
-	/* For cu dma 5.2, need to configure cuisr. Ignore it for Fidus 5.1 */
-
-	/* Enable cu interrupts (cu -> cu_isr -> PS interrupt) */
-
-	/* Enable interrupt from host to PS when new commands are ready */
-
-	/* Enable C2H interrupts */
-	if (!exec->polling_mode)
-		iowrite32(0x1, ert_hw + ERT_HOST_INT_ENABLE);
-	else
-		iowrite32(0x0, ert_hw + ERT_HOST_INT_ENABLE);
-}
-
 static irqreturn_t sched_exec_isr(int irq, void *arg)
 {
 	struct drm_zocl_dev *zdev = arg;
@@ -685,6 +631,8 @@ configure(struct sched_cmd *cmd)
 	struct ert_configure_cmd *cfg;
 	unsigned int i, j;
 	phys_addr_t cu_addr;
+	char name[256] = "zocl-ert-thread";
+	int cq_irq;
 	int acc_cu = 0;
 	int has_acc_cu = 0;
 	int ret;
@@ -736,10 +684,31 @@ configure(struct sched_cmd *cmd)
 		DRM_INFO("  cu_isr(%d)", exec->cu_isr);
 		DRM_INFO("  host_polling_mode(%d)", exec->polling_mode);
 		DRM_INFO("  cq_interrupt(%d)", exec->cq_interrupt);
-		setup_ert_hw(zdev);
+		zdev->ert->ops->config(zdev->ert, cfg);
 		exec->configured = 1;
 	}
 	write_unlock(&zdev->attr_rwlock);
+
+	/* Enable interrupt from host to PS when new commands are ready */
+	if (exec->cq_interrupt) {
+		/* Stop CQ check thread */
+		if (zdev->exec->cq_thread)
+			kthread_stop(zdev->exec->cq_thread);
+
+		/* At this point we are good. No one is polling CQ */
+		cq_irq = zdev->ert->irq[ERT_CQ_IRQ];
+		ret = request_irq(cq_irq, sched_cq_isr, 0, "zocl_cq", zdev);
+		if (ret) {
+			DRM_WARN("Failed to initial CQ interrupt. "
+				 "Fall back to polling\n");
+			exec->cq_interrupt = 0;
+			exec->cq_thread = kthread_run(cq_check, zdev, name);
+		}
+	} else {
+		/* In CQ polling mode now */
+		if (!zdev->exec->cq_thread)
+			exec->cq_thread = kthread_run(cq_check, zdev, name);
+	}
 
 	exec->zcu = vzalloc(sizeof(struct zocl_cu) * exec->num_cus);
 	if (!exec->zcu) {
@@ -787,9 +756,6 @@ configure(struct sched_cmd *cmd)
 		cu_addr = zdev->res_start + cu_addr;
 		SCHED_DEBUG("++ configure cu(%d)\n", i);
 
-		/* If XCLBIN provide enough info, we could support CU use any
-		 * supported adapter together.
-		 */
 		if (!acc_cu)
 			zocl_cu_init(&exec->zcu[i], MODEL_HLS, cu_addr);
 		else {
@@ -1279,13 +1245,9 @@ notify_host(struct sched_cmd *cmd)
 		spin_unlock_irqrestore(&zdev->exec->ctx_list_lock, flags);
 		/* wake up all the clients */
 		wake_up_interruptible(&zdev->exec->poll_wait_queue);
-	} else {
-		uint32_t cmd_mask_idx = slot_mask_idx(cmd->cq_slot_idx);
-		uint32_t csr_offset = ERT_STATUS_REG + (cmd_mask_idx<<2);
-		uint32_t pos = slot_idx_in_mask(cmd->cq_slot_idx);
+	} else
+		zdev->ert->ops->notify_host(zdev->ert, cmd->cq_slot_idx);
 
-		iowrite32(1<<pos, zdev->ert->hw_ioremap + csr_offset);
-	}
 	SCHED_DEBUG("<- notify_host\n");
 }
 
@@ -2710,6 +2672,37 @@ cq_check(void *data)
 	return 0;
 }
 
+static irqreturn_t sched_cq_isr(int irq, void *arg)
+{
+	struct drm_zocl_dev *zdev = arg;
+	struct ert_packet *pkg;
+	int slot_sz, slot_idx = 0;
+	int good_pkg;
+	void *buffer;
+
+	good_pkg = 1;
+	slot_sz = slot_size(zdev->ddev);
+	pkg = zdev->ert->ops->get_next_cmd(zdev->ert, NULL, &slot_idx);
+	while (pkg) {
+		/* Usually, if the status of the pkg is not NEW. We think it is
+		 * not 'good' at this point.
+		 */
+		buffer = create_cmd_buffer(pkg, slot_sz);
+		if (IS_ERR(buffer))
+			good_pkg = 0;
+
+		if (good_pkg)
+			if (add_ert_cq_cmd(zdev->ddev, buffer, slot_idx))
+				kfree(buffer);
+
+		pkg = zdev->ert->ops->get_next_cmd(zdev->ert, pkg, &slot_idx);
+		/* No harm to assume the next pkg is good */
+		good_pkg = 1;
+	}
+
+	return IRQ_HANDLED;
+}
+
 /**
  * sched_init_exec() - Initialize the command execution for device
  *
@@ -2798,6 +2791,9 @@ int sched_fini_exec(struct drm_device *drm)
 
 	if (zdev->exec->cq_thread)
 		kthread_stop(zdev->exec->cq_thread);
+
+	if (zdev->exec->cq_interrupt)
+		free_irq(zdev->ert->irq[ERT_CQ_IRQ], zdev);
 
 	fini_scheduler_thread();
 	vfree(zdev->exec->zcu);

@@ -167,7 +167,7 @@ class device {
 
             if (!errmsg.empty()) {
                 std::cout<<errmsg<<std::endl;
-                throw std::runtime_error("Failed to lockdown xclbin.");
+                throw std::runtime_error("Failed to get uuid.");
             }
 
             uuid_parse(xclbinid.c_str(), m_uuid);
@@ -176,7 +176,7 @@ class device {
                    throw std::runtime_error("'uuid' invalid, please re-program xclbin.");
 
             if (xclOpenContext(m_handle, m_uuid, -1, true))
-                   throw std::runtime_error("'uuid' invalid, please re-program xclbin.");
+                   throw std::runtime_error("'Failed to lock down xclbin");
         }
         ~xclbin_lock(){
             xclCloseContext(m_handle, m_uuid, -1);
@@ -226,6 +226,31 @@ public:
 
     int reclock2(unsigned regionIndex, const unsigned short *freq) {
         const unsigned short targetFreqMHz[4] = {freq[0], freq[1], freq[2], 0};
+        std::vector<std::string> clock_freqs_max, clock_freqs_min;
+        unsigned int num_clocks = 4;
+        std::string errmsg;
+        uuid_t uuid;
+        int ret;
+
+        ret = getXclbinuuid(uuid);
+        if (ret)
+            return ret;
+
+        pcidev::get_dev(m_idx)->sysfs_get( "icap", "clock_freqs_max", errmsg, clock_freqs_max ); 
+        pcidev::get_dev(m_idx)->sysfs_get( "icap", "clock_freqs_min", errmsg, clock_freqs_min );
+
+        for (unsigned int i = 0; i < num_clocks; ++i) {
+            if (!targetFreqMHz[i])
+                continue;
+
+            if (targetFreqMHz[i] > std::stoi(clock_freqs_max[i]) || targetFreqMHz[i] < std::stoi(clock_freqs_min[i])) {
+                std::cout<<"  Unable to program clock frequency!\n"
+                         <<"  Frequency max : "<<clock_freqs_max[i]<<", min : "<<clock_freqs_min[i]<<" \n";
+                std::cout<<"  Requested frequency : "<<targetFreqMHz[i]<<std::endl;
+                return -EINVAL;
+            }
+        }
+
         return xclReClock2(m_handle, 0, targetFreqMHz);
     }
 
@@ -882,6 +907,32 @@ public:
                  ostr << std::setw(16) << "no iomem" << std::endl;
              break;
         }
+
+	std::vector<std::string> interface_uuids;
+	std::vector<std::string> logic_uuids;
+	std::string errmsg;
+        pcidev::get_dev(m_idx)->sysfs_get( "", "interface_uuids", errmsg, interface_uuids);
+        if (interface_uuids.size())
+        {
+            ostr << "Interface UUID" << std::endl;
+            for (auto uuid : interface_uuids)
+            {
+                ostr << uuid;
+            }
+            ostr << std::endl;
+        }
+
+        pcidev::get_dev(m_idx)->sysfs_get( "", "logic_uuids", errmsg, logic_uuids);
+        if (logic_uuids.size())
+        {
+            ostr << "Logic UUID" << std::endl;
+            for (auto uuid : logic_uuids)
+            {
+                ostr << uuid;
+            }
+            ostr << std::endl;
+        }
+
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Temperature(C)\n";
         ostr << std::setw(16) << "PCB TOP FRONT" << std::setw(16) << "PCB TOP REAR" << std::setw(16) << "PCB BTM FRONT" << std::endl;
@@ -1595,6 +1646,8 @@ private:
     int bandwidthKernelTest(void);
     // testFunc must return 0 for success, 1 for warning, and < 0 for error
     int runOneTest(std::string testName, std::function<int(void)> testFunc);
+
+    int getXclbinuuid(uuid_t &uuid);
 };
 
 void printHelp(const std::string& exe);
