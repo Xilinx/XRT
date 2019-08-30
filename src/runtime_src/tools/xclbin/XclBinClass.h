@@ -56,7 +56,7 @@ class XclBin {
   void removeKey(const std::string & _keyValue);
 
  public:
-  Section *findSection(enum axlf_section_kind _eKind);
+  Section *findSection(enum axlf_section_kind _eKind, const std::string _indexName = "");
 
  private:
   void updateHeaderFromSection(Section *_pSection);
