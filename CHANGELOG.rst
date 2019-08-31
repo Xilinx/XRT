@@ -7,10 +7,18 @@ XRT ChangeLog
 Added
 .....
 
-* Production support for standalone user pf in private cloud use case.
-* Added ``xbmgmt`` for managing mgmt pf.
-* Device Memory Only Buffer support.
-* HWMON support in CMC.
+* Resource management has been moved out of XMA library.
+* ``xclRead()`` and ``xclWrite()`` have been marked as deprecated in this release and will be removed in a future release. For direct register access please use replacement APIs ``xclRegRead()`` and ``xclRegWrite()`` which are more secure and multi-process aware.
+* Edge platforms can now use DFX also known as Partial Reconfiguration.
+* Support for U50 board has been added to XRT.
+* Support for signing xclbins using xclbinutil and validating xclbin signature in xclbin driver has been added to XRT. Please refer to XRT Security documentation for more details.
+* Edge platforms based on MPSoC now support M2M feature via **Zynqmp built-in DMA engine**. M2M for both PCIe and edge platforms can be performed using ``xclCopyBO()`` XRT API or ``clEnqueueCopyBuffers()`` OCL API.
+* For edge platforms XRT now supports ACC (adapter execution model)
+* XRT documentation has been reorganized and significantly updated
+* XRT now natively supports fully virtualized environments where management physical function (PF0) is completely hidden in host and only user physical function (PF1) is exported to the guest. End-user applications based on libxrt_core and xbutil command line utility do not need directly interact with xclmgmt driver. Communication between xocl driver and xclmgmt driver is done over hardware mailbox and MPD/MSD framework. For more information refer to MPD/MSD and Mailbox sections in XRT documentation.
+* Management Physical Function (PF0) should now be managed using ``xbmgmt`` utility. ``xbutil`` continues to be end-user facing utility.
+* Support has been added for device memory only buffer with no backing shadow buffer in host on PCIe platforms. Use ``XCL_BO_FLAGS_DEV_ONLY`` in flags field of xclAllocBO() to allocate such Buffers.
+* XRT now have integrated support for HWMON. Run Linux sensors utility to see all the sensor values exported by Alveo/XRT.
 
 2.2.0 (201910.2.2)
 ~~~~~~~~~~~~~~~~~~
