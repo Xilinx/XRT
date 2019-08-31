@@ -253,7 +253,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         dev_tmp1.kernels.reserve(dev_tmp1.number_of_cus);
         dev_tmp1.ddrs.reserve(dev_tmp1.number_of_mem_banks);
 
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"For device id: %d; DDRs are:\n", dev_index);
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\nFor device id: %d; DDRs are:", dev_index);
         for (uint32_t d = 0; d < info.number_of_mem_banks; d++) {
             dev_tmp1.ddrs.emplace_back(XmaHwMem{});
             XmaHwMem& tmp1 = dev_tmp1.ddrs.back();
@@ -270,14 +270,14 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
                 info.mem_topology[d].m_type == MEM_TYPE::MEM_HBM)
                 ) {
                 tmp1.in_use = true;
-                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tMEM# %d - %s - size: %d KB\n", d, tmp1.name.c_str(), tmp1.size_kb);
+                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tMEM# %d - %s - size: %d KB", d, tmp1.name.c_str(), tmp1.size_kb);
             } else {
-                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tMEM# %d - %s - Unused/Unused Type\n", d, tmp1.name.c_str());
+                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tMEM# %d - %s - Unused/Unused Type", d, tmp1.name.c_str());
 
             }
         }
 
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"For device id: %d; CUs are:\n", dev_index);
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\nFor device id: %d; CUs are:", dev_index);
         for (uint32_t d = 0; d < info.number_of_kernels; d++) {
             dev_tmp1.kernels.emplace_back(XmaHwKernel{});
             XmaHwKernel& tmp1 = dev_tmp1.kernels.back();
@@ -311,9 +311,9 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
                 }
 
                 if (tmp1.default_ddr_bank < 0) {
-                    xma_logmsg(XMA_WARNING_LOG, XMAAPI_MOD,"\tCU# %d - %s - DDR bank: NONE\n", d, tmp1.name);
+                    xma_logmsg(XMA_WARNING_LOG, XMAAPI_MOD,"\tCU# %d - %s - default DDR bank: NONE", d, tmp1.name);
                 } else {
-                    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - DDR bank:%d\n", d, tmp1.name, tmp1.default_ddr_bank);
+                    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - default DDR bank:%d", d, tmp1.name, tmp1.default_ddr_bank);
                 }
                 if (xclOpenContext(dev_tmp1.handle, info.uuid, d, true) != 0) {
                     free(buffer);
@@ -372,10 +372,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         } else {
             num_execbo = MIN_EXECBO_POOL_SIZE;
         }
-        dev_tmp1.kernel_execbo_handle.reserve(num_execbo);
-        dev_tmp1.kernel_execbo_data.reserve(num_execbo);
-        dev_tmp1.kernel_execbo_inuse.reserve(num_execbo);
-        dev_tmp1.kernel_execbo_cu_index.reserve(num_execbo);
+        dev_tmp1.kernel_execbos.reserve(num_execbo);
         dev_tmp1.num_execbo_allocated = num_execbo;
         for (int32_t d = 0; d < num_execbo; d++) {
             uint32_t  bo_handle;
@@ -394,10 +391,11 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             }
             bo_data = (char*)xclMapBO(dev_tmp1.handle, bo_handle, true);
             memset((void*)bo_data, 0x0, execBO_size);
-            dev_tmp1.kernel_execbo_handle.emplace_back(bo_handle);
-            dev_tmp1.kernel_execbo_data.emplace_back(bo_data);
-            dev_tmp1.kernel_execbo_inuse.emplace_back(false);
-            dev_tmp1.kernel_execbo_cu_index.emplace_back(-1);
+
+            dev_tmp1.kernel_execbos.emplace_back(XmaHwExecBO{});
+            XmaHwExecBO& dev_execbo = dev_tmp1.kernel_execbos.back();
+            dev_execbo.handle = bo_handle;
+            dev_execbo.data = bo_data;
         }
 
         free(buffer);

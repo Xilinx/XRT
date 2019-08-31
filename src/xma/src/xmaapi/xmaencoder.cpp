@@ -209,10 +209,8 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
                    "XMA session with CU: %s\n", hwcfg->devices[hwcfg_dev_index].kernels[cu_index].name);
     }
 
-    enc_session->base.hw_session.dev_handle = hwcfg->devices[hwcfg_dev_index].handle;
-
-    //For execbo:
-    enc_session->base.hw_session.kernel_info = &hwcfg->devices[hwcfg_dev_index].kernels[cu_index];
+    void* dev_handle = hwcfg->devices[hwcfg_dev_index].handle;
+    XmaHwKernel* kernel_info = &hwcfg->devices[hwcfg_dev_index].kernels[cu_index];
     enc_session->base.hw_session.dev_index = hwcfg->devices[hwcfg_dev_index].dev_index;
 
     //Allow user selected default ddr bank per XMA session
@@ -223,7 +221,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
             xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,
                 "XMA session with soft_kernel default ddr_bank: %d\n", enc_session->base.hw_session.bank_index);
         } else {
-            enc_session->base.hw_session.bank_index = enc_session->base.hw_session.kernel_info->default_ddr_bank;
+            enc_session->base.hw_session.bank_index = kernel_info->default_ddr_bank;
             xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,
                 "XMA session default ddr_bank: %d\n", enc_session->base.hw_session.bank_index);
         }
@@ -239,7 +237,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
                 "XMA session with soft_kernel default ddr_bank: %d\n", enc_session->base.hw_session.bank_index);
         } else {
             std::bitset<MAX_DDR_MAP> tmp_bset;
-            tmp_bset = enc_session->base.hw_session.kernel_info->ip_ddr_mapping;
+            tmp_bset = kernel_info->ip_ddr_mapping;
             if (tmp_bset[enc_props->ddr_bank_index]) {
                 enc_session->base.hw_session.bank_index = enc_props->ddr_bank_index;
                 xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,
@@ -256,10 +254,10 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
         }
     }
 
-    if (enc_session->base.hw_session.kernel_info->kernel_channels) {
-        if (enc_session->base.channel_id > (int32_t)enc_session->base.hw_session.kernel_info->max_channel_id) {
+    if (kernel_info->kernel_channels) {
+        if (enc_session->base.channel_id > (int32_t)kernel_info->max_channel_id) {
             xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
-                "Selected dataflow CU with channels has ini setting with max channel_id of %d. Cannot create session with higher channel_id of %d\n", enc_session->base.hw_session.kernel_info->max_channel_id, enc_session->base.channel_id);
+                "Selected dataflow CU with channels has ini setting with max channel_id of %d. Cannot create session with higher channel_id of %d\n", kernel_info->max_channel_id, enc_session->base.channel_id);
             
             //Release singleton lock
             g_xma_singleton->locked = false;
@@ -286,11 +284,16 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
     enc_session->base.plugin_data =
         calloc(enc_session->encoder_plugin->plugin_data_size, sizeof(uint8_t));
 
-    enc_session->base.session_id = g_xma_singleton->num_encoders + 1;
-    enc_session->base.session_signature = (void*)(((uint64_t)enc_session->base.hw_session.kernel_info) | ((uint64_t)enc_session->base.hw_session.dev_handle));
+    enc_session->base.session_id = g_xma_singleton->num_of_sessions + 1;
+    enc_session->base.session_signature = (void*)(((uint64_t)kernel_info) | ((uint64_t)dev_handle));
     xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,
                 "XMA session channel_id: %d; encoder_id: %d\n", enc_session->base.channel_id, enc_session->base.session_id);
 
+    XmaHwSessionPrivate *priv1 = new XmaHwSessionPrivate();
+    priv1->dev_handle = dev_handle;
+    priv1->kernel_info = kernel_info;
+    priv1->kernel_complete_count = 0;
+    enc_session->base.hw_session.private_do_not_use = (void*) priv1;
     rc = enc_session->encoder_plugin->init(enc_session);
     if (rc) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
@@ -300,14 +303,18 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
         g_xma_singleton->locked = false;
         free(enc_session->base.plugin_data);
         free(enc_session);
+        delete priv1;
         return NULL;
     }
 
     // Create encoder file if it does not exist and initialize all fields 
     xma_enc_session_statsfile_init(enc_session);
 
-    enc_session->base.hw_session.kernel_info->in_use = true;
-    g_xma_singleton->num_encoders = enc_session->base.session_id;
+    kernel_info->in_use = true;
+    g_xma_singleton->num_encoders++;
+    g_xma_singleton->num_of_sessions = enc_session->base.session_id;
+
+    g_xma_singleton->all_sessions.emplace(g_xma_singleton->num_of_sessions, enc_session->base);
 
     //Release singleton lock
     g_xma_singleton->locked = false;
@@ -338,6 +345,15 @@ xma_enc_session_destroy(XmaEncoderSession *session)
 
         return XMA_ERROR;
     }
+    if (session->base.hw_session.private_do_not_use == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
+                   "Session is corrupted\n");
+
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+
+        return XMA_ERROR;
+    }
     if (session->encoder_plugin == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
                    "Session is corrupted\n");
@@ -361,11 +377,11 @@ xma_enc_session_destroy(XmaEncoderSession *session)
     // Free the session
     //Let's not chnage in_use and num of encoders
     //It is better to have different session_id for debugging
+    delete (XmaHwSessionPrivate*)session->base.hw_session.private_do_not_use;
+    session->base.hw_session.private_do_not_use = NULL;
     session->base.plugin_data = NULL;
     session->base.stats = NULL;
     session->encoder_plugin = NULL;
-    session->base.hw_session.dev_handle = NULL;
-    session->base.hw_session.kernel_info = NULL;
     //do not change kernel in_use as it maybe in use by another plugin
     session->base.hw_session.dev_index = -1;
     session->base.session_signature = NULL;
@@ -391,10 +407,20 @@ xma_enc_session_send_frame(XmaEncoderSession *session,
 
     if (frame == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
-                   "Frame is NULL\n");
+                   "xma_enc_session_send_frame failed. Frame is NULL\n");
         return XMA_ERROR;
     }
-    if (session->base.session_signature != (void*)(((uint64_t)session->base.hw_session.kernel_info) | ((uint64_t)session->base.hw_session.dev_handle))) {
+    if (session == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
+                   "xma_enc_session_send_frame failed. Session is already released\n");
+        return XMA_ERROR;
+    }
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) session->base.hw_session.private_do_not_use;
+    if (priv1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD, "xma_enc_session_send_frame failed. XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
+    if (session->base.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD, "XMASession is corrupted.\n");
         return XMA_ERROR;
     }
@@ -423,7 +449,17 @@ xma_enc_session_recv_data(XmaEncoderSession *session,
     uint64_t timestamp;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_ENCODER_MOD, "%s()\n", __func__);
-    if (session->base.session_signature != (void*)(((uint64_t)session->base.hw_session.kernel_info) | ((uint64_t)session->base.hw_session.dev_handle))) {
+    if (session == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
+                   "xma_enc_session_recv_data failed. Session is already released\n");
+        return XMA_ERROR;
+    }
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) session->base.hw_session.private_do_not_use;
+    if (priv1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD, "xma_enc_session_recv_data failed. XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
+    if (session->base.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD, "XMASession is corrupted.\n");
         return XMA_ERROR;
     }

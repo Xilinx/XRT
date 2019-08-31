@@ -167,10 +167,8 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
                    "XMA session with CU: %s\n", hwcfg->devices[hwcfg_dev_index].kernels[cu_index].name);
     }
 
-    filter_session->base.hw_session.dev_handle = hwcfg->devices[hwcfg_dev_index].handle;
-
-    //For execbo:
-    filter_session->base.hw_session.kernel_info = &hwcfg->devices[hwcfg_dev_index].kernels[cu_index];
+    void* dev_handle = hwcfg->devices[hwcfg_dev_index].handle;
+    XmaHwKernel* kernel_info = &hwcfg->devices[hwcfg_dev_index].kernels[cu_index];
 
     filter_session->base.hw_session.dev_index = hwcfg->devices[hwcfg_dev_index].dev_index;
 
@@ -182,7 +180,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
             xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,
                 "XMA session with soft_kernel default ddr_bank: %d\n", filter_session->base.hw_session.bank_index);
         } else {
-            filter_session->base.hw_session.bank_index = filter_session->base.hw_session.kernel_info->default_ddr_bank;
+            filter_session->base.hw_session.bank_index = kernel_info->default_ddr_bank;
             xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,
                 "XMA session default ddr_bank: %d\n", filter_session->base.hw_session.bank_index);
         }
@@ -198,7 +196,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
                 "XMA session with soft_kernel default ddr_bank: %d\n", filter_session->base.hw_session.bank_index);
         } else {
             std::bitset<MAX_DDR_MAP> tmp_bset;
-            tmp_bset = filter_session->base.hw_session.kernel_info->ip_ddr_mapping;
+            tmp_bset = kernel_info->ip_ddr_mapping;
             if (tmp_bset[filter_props->ddr_bank_index]) {
                 filter_session->base.hw_session.bank_index = filter_props->ddr_bank_index;
                 xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,
@@ -215,10 +213,10 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         }
     }
 
-    if (filter_session->base.hw_session.kernel_info->kernel_channels) {
-        if (filter_session->base.channel_id > (int32_t)filter_session->base.hw_session.kernel_info->max_channel_id) {
+    if (kernel_info->kernel_channels) {
+        if (filter_session->base.channel_id > (int32_t)kernel_info->max_channel_id) {
             xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
-                "Selected dataflow CU with channels has ini setting with max channel_id of %d. Cannot create session with higher channel_id of %d\n", filter_session->base.hw_session.kernel_info->max_channel_id, filter_session->base.channel_id);
+                "Selected dataflow CU with channels has ini setting with max channel_id of %d. Cannot create session with higher channel_id of %d\n", kernel_info->max_channel_id, filter_session->base.channel_id);
             
             //Release singleton lock
             g_xma_singleton->locked = false;
@@ -245,11 +243,16 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     filter_session->base.plugin_data =
         calloc(filter_session->filter_plugin->plugin_data_size, sizeof(uint8_t));
 
-    filter_session->base.session_id = g_xma_singleton->num_filters + 1;
-    filter_session->base.session_signature = (void*)(((uint64_t)filter_session->base.hw_session.kernel_info) | ((uint64_t)filter_session->base.hw_session.dev_handle));
+    filter_session->base.session_id = g_xma_singleton->num_of_sessions + 1;
+    filter_session->base.session_signature = (void*)(((uint64_t)kernel_info) | ((uint64_t)dev_handle));
     xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,
                 "XMA session channel_id: %d; filter_id: %d\n", filter_session->base.channel_id, filter_session->base.session_id);
 
+    XmaHwSessionPrivate *priv1 = new XmaHwSessionPrivate();
+    priv1->dev_handle = dev_handle;
+    priv1->kernel_info = kernel_info;
+    priv1->kernel_complete_count = 0;
+    filter_session->base.hw_session.private_do_not_use = (void*) priv1;
     rc = filter_session->filter_plugin->init(filter_session);
     if (rc) {
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
@@ -259,11 +262,15 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         g_xma_singleton->locked = false;
         free(filter_session->base.plugin_data);
         free(filter_session);
+        delete priv1;
         return NULL;
     }
 
-    g_xma_singleton->num_filters = filter_session->base.session_id;
-    filter_session->base.hw_session.kernel_info->in_use = true;
+    g_xma_singleton->num_filters++;
+    g_xma_singleton->num_of_sessions = filter_session->base.session_id;
+    kernel_info->in_use = true;
+
+    g_xma_singleton->all_sessions.emplace(g_xma_singleton->num_of_sessions, filter_session->base);
 
     //Release singleton lock
     g_xma_singleton->locked = false;
@@ -293,6 +300,15 @@ xma_filter_session_destroy(XmaFilterSession *session)
 
         return XMA_ERROR;
     }
+    if (session->base.hw_session.private_do_not_use == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
+                   "Session is corrupted\n");
+
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+
+        return XMA_ERROR;
+    }
     if (session->filter_plugin == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
                    "Session is corrupted\n");
@@ -311,11 +327,11 @@ xma_filter_session_destroy(XmaFilterSession *session)
     free(session->base.plugin_data);
 
     // Free the session
+    delete (XmaHwSessionPrivate*)session->base.hw_session.private_do_not_use;
+    session->base.hw_session.private_do_not_use = NULL;
     session->base.plugin_data = NULL;
     session->base.stats = NULL;
     session->filter_plugin = NULL;
-    session->base.hw_session.dev_handle = NULL;
-    session->base.hw_session.kernel_info = NULL;
     //do not change kernel in_use as it maybe in use by another plugin
     session->base.hw_session.dev_index = -1;
     session->base.session_signature = NULL;
@@ -333,7 +349,17 @@ xma_filter_session_send_frame(XmaFilterSession  *session,
                               XmaFrame          *frame)
 {
     xma_logmsg(XMA_DEBUG_LOG, XMA_FILTER_MOD, "%s()\n", __func__);
-    if (session->base.session_signature != (void*)(((uint64_t)session->base.hw_session.kernel_info) | ((uint64_t)session->base.hw_session.dev_handle))) {
+    if (session == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
+                   "xma_filter_session_send_frame failed. Session is already released\n");
+        return XMA_ERROR;
+    }
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) session->base.hw_session.private_do_not_use;
+    if (priv1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD, "xma_filter_session_send_frame failed. XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
+    if (session->base.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD, "XMASession is corrupted.\n");
         return XMA_ERROR;
     }
@@ -346,7 +372,17 @@ xma_filter_session_recv_frame(XmaFilterSession  *session,
                               XmaFrame          *frame)
 {
     xma_logmsg(XMA_DEBUG_LOG, XMA_FILTER_MOD, "%s()\n", __func__);
-    if (session->base.session_signature != (void*)(((uint64_t)session->base.hw_session.kernel_info) | ((uint64_t)session->base.hw_session.dev_handle))) {
+    if (session == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
+                   "xma_filter_session_recv_frame failed. Session is already released\n");
+        return XMA_ERROR;
+    }
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) session->base.hw_session.private_do_not_use;
+    if (priv1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD, "xma_filter_session_recv_frame failed. XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
+    if (session->base.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD, "XMASession is corrupted.\n");
         return XMA_ERROR;
     }
