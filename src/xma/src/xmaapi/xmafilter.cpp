@@ -248,6 +248,11 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,
                 "XMA session channel_id: %d; filter_id: %d\n", filter_session->base.channel_id, filter_session->base.session_id);
 
+    XmaHwSessionPrivate *priv1 = new XmaHwSessionPrivate();
+    priv1->dev_handle = dev_handle;
+    priv1->kernel_info = kernel_info;
+    priv1->kernel_complete_count = 0;
+    filter_session->base.hw_session.private_do_not_use = (void*) priv1;
     rc = filter_session->filter_plugin->init(filter_session);
     if (rc) {
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
@@ -257,16 +262,14 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         g_xma_singleton->locked = false;
         free(filter_session->base.plugin_data);
         free(filter_session);
+        delete priv1;
         return NULL;
     }
 
     g_xma_singleton->num_filters++;
     g_xma_singleton->num_of_sessions = filter_session->base.session_id;
     kernel_info->in_use = true;
-    XmaHwSessionPrivate *priv1 = new XmaHwSessionPrivate();
-    priv1->dev_handle = dev_handle;
-    priv1->kernel_info = kernel_info;
-    filter_session->base.hw_session.private_do_not_use = (void*) priv1;
+
     g_xma_singleton->all_sessions.emplace(g_xma_singleton->num_of_sessions, filter_session->base);
 
     //Release singleton lock

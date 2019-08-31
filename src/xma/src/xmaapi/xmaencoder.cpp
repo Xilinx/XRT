@@ -289,6 +289,11 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
     xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,
                 "XMA session channel_id: %d; encoder_id: %d\n", enc_session->base.channel_id, enc_session->base.session_id);
 
+    XmaHwSessionPrivate *priv1 = new XmaHwSessionPrivate();
+    priv1->dev_handle = dev_handle;
+    priv1->kernel_info = kernel_info;
+    priv1->kernel_complete_count = 0;
+    enc_session->base.hw_session.private_do_not_use = (void*) priv1;
     rc = enc_session->encoder_plugin->init(enc_session);
     if (rc) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
@@ -298,6 +303,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
         g_xma_singleton->locked = false;
         free(enc_session->base.plugin_data);
         free(enc_session);
+        delete priv1;
         return NULL;
     }
 
@@ -307,10 +313,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
     kernel_info->in_use = true;
     g_xma_singleton->num_encoders++;
     g_xma_singleton->num_of_sessions = enc_session->base.session_id;
-    XmaHwSessionPrivate *priv1 = new XmaHwSessionPrivate();
-    priv1->dev_handle = dev_handle;
-    priv1->kernel_info = kernel_info;
-    enc_session->base.hw_session.private_do_not_use = (void*) priv1;
+
     g_xma_singleton->all_sessions.emplace(g_xma_singleton->num_of_sessions, enc_session->base);
 
     //Release singleton lock

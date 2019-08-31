@@ -402,12 +402,14 @@ int32_t xma_plg_kernel_lock_regmap(XmaSession s_handle)
 {
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
     if (priv1 == NULL) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_kernel_lock_regmap failed. XMASession is corrupted.\n");
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_kernel_lock_regmap failed1. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
+    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD,
+                "XMA session signature is: 0x%04llx", s_handle.session_signature);
     if (s_handle.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
         //std::cout << "ERROR: xma_plg_kernel_lock_regmap failed. XMASession is corrupted" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_kernel_lock_regmap failed. XMASession is corrupted.\n");
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_kernel_lock_regmap failed2. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
     /* Only acquire the lock if we don't already own it */

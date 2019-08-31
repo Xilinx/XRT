@@ -251,6 +251,11 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
     xma_logmsg(XMA_INFO_LOG, XMA_DECODER_MOD,
                 "XMA session channel_id: %d; decoder_id: %d\n", dec_session->base.channel_id, dec_session->base.session_id);
 
+    XmaHwSessionPrivate *priv1 = new XmaHwSessionPrivate();
+    priv1->dev_handle = dev_handle;
+    priv1->kernel_info = kernel_info;
+    priv1->kernel_complete_count = 0;
+    dec_session->base.hw_session.private_do_not_use = (void*) priv1;
     if (dec_session->decoder_plugin->init(dec_session)) {
         xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
                    "Initalization of plugin failed\n");
@@ -258,15 +263,13 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
         g_xma_singleton->locked = false;
         free(dec_session->base.plugin_data);
         free(dec_session);
+        delete priv1;
         return NULL;
     }
     kernel_info->in_use = true;
     g_xma_singleton->num_decoders++;
     g_xma_singleton->num_of_sessions = dec_session->base.session_id;
-    XmaHwSessionPrivate *priv1 = new XmaHwSessionPrivate();
-    priv1->dev_handle = dev_handle;
-    priv1->kernel_info = kernel_info;
-    dec_session->base.hw_session.private_do_not_use = (void*) priv1;
+
     g_xma_singleton->all_sessions.emplace(g_xma_singleton->num_of_sessions, dec_session->base);
 
     //Release singleton lock

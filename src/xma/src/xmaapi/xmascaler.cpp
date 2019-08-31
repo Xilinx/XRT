@@ -339,8 +339,16 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
 
     sc_session->base.session_id = g_xma_singleton->num_of_sessions + 1;
     sc_session->base.session_signature = (void*)(((uint64_t)kernel_info) | ((uint64_t)dev_handle));
+    xma_logmsg(XMA_DEBUG_LOG, XMA_SCALER_MOD,
+                "XMA session signature is: 0x%04llx", sc_session->base.session_signature);
     xma_logmsg(XMA_INFO_LOG, XMA_SCALER_MOD,
-                "XMA session channel_id: %d; scaler_id: %d\n", sc_session->base.channel_id, sc_session->base.session_id);
+                "XMA session channel_id: %d; scaler_id: %d", sc_session->base.channel_id, sc_session->base.session_id);
+
+    XmaHwSessionPrivate *priv1 = new XmaHwSessionPrivate();
+    priv1->dev_handle = dev_handle;
+    priv1->kernel_info = kernel_info;
+    priv1->kernel_complete_count = 0;
+    sc_session->base.hw_session.private_do_not_use = (void*) priv1;
 
     rc = sc_session->scaler_plugin->init(sc_session);
     if (rc) {
@@ -351,15 +359,13 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
         g_xma_singleton->locked = false;
         free(sc_session->base.plugin_data);
         free(sc_session);
+        delete priv1;
         return NULL;
     }
     kernel_info->in_use = true;
     g_xma_singleton->num_scalers++;
     g_xma_singleton->num_of_sessions = sc_session->base.session_id;
-    XmaHwSessionPrivate *priv1 = new XmaHwSessionPrivate();
-    priv1->dev_handle = dev_handle;
-    priv1->kernel_info = kernel_info;
-    sc_session->base.hw_session.private_do_not_use = (void*) priv1;
+
     g_xma_singleton->all_sessions.emplace(g_xma_singleton->num_of_sessions, sc_session->base);
 
     //Release singleton lock
