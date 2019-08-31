@@ -1,5 +1,6 @@
 #include "plugin/xdp/hal_profile.h"
 #include "core/common/config_reader.h"
+#include "core/common/message.h"
 
 namespace bfs = boost::filesystem;
 
@@ -26,9 +27,13 @@ inline bool isDLL(const bfs::path& path) {
           && path.extension()==dllExt());
 }
 
-static void directoryOrError(const bfs::path& path) {
-  if (!bfs::is_directory(path))
-    throw std::runtime_error("No such directory '" + path.string() + "'");
+static int directoryOrError(const bfs::path& path) {
+  if (!bfs::is_directory(path)) {
+//    throw std::runtime_error("No such directory '" + path.string() + "'");
+    xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", std::string("No such directory '" + path.string() + "'"));
+    return -1;
+  }
+  return 0;
 }
 
 static const char* emptyOrValue(const char* cstr) {
@@ -251,7 +256,7 @@ void load_xdp_plugin_library(HalPluginConfig* )
     if(!xrt_core::config::get_hal_profile()) {
       // hal_profile is not set to correct configuration. Skip loading xdp_hal_plugin.
       // There will be no profile support in this run.
-      std::cout << "\"hal_profile\" is not set to true in xrt.ini Debug configuration. So, no HAL profiling is available." << std::endl;
+//      std::cout << "\"hal_profile\" is not set to true in xrt.ini Debug configuration. So, no HAL profiling is available." << std::endl;
       return;
     }
 
@@ -260,26 +265,41 @@ void load_xdp_plugin_library(HalPluginConfig* )
       // "profile=true" is also set. This enables OpenCL based flow for profiling. 
       // Currently, mix of OpenCL and HAL based profiling is not supported.
       // So, give error and skip loading of xdp_hal_plugin library
-      throw std::runtime_error("Both profile=true and hal_profile=true set in xrt.ini config. Currently, these flows are not supported to work together. Hence, profiling will not be available in this run. Please set only one of the configuration depending on type of application and re-run");
+//      throw std::runtime_error("Both profile=true and hal_profile=true set in xrt.ini config. Currently, these flows are not supported to work together. Hence, profiling will not be available in this run. Please set only one of the configuration depending on type of application and re-run");
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", std::string("Both profile=true and hal_profile=true set in xrt.ini config. Currently, these flows are not supported to work together. Hence, HAL level profiling will not be available in this run. To enable HAL level profiling, please set hal_profile=true only and re-run."));
+      return;
     }
 
-    std::cout << "Loading xdp plugins ..." << std::endl;
+//    std::cout << "Loading xdp plugins ..." << std::endl;
     bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
     bfs::path libname("libxdp_hal_plugin.so");
     if (xrt.empty()) {
-        throw std::runtime_error("Library " + libname.string() + " not found! XILINX_XRT not set");
+//        throw std::runtime_error("Library " + libname.string() + " not found! XILINX_XRT not set");
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", std::string("Library " + libname.string() + " not found! XILINX_XRT not set"));
+      return;
     }
     bfs::path p(xrt / "lib");
-    directoryOrError(p);
+    if(directoryOrError(p)) {
+      return;
+    }
     p /= libname;
     if (!isDLL(p)) {
-        throw std::runtime_error("Library " + p.string() + " not found!");
+//        throw std::runtime_error("Library " + p.string() + " not found!");
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", std::string("Library " + p.string() + " not found!"));
+      return;
     }
     auto handle = dlopen(p.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
-    if (!handle)
-        throw std::runtime_error("Failed to open XDP hal plugin library '" + p.string() + "'\n" + dlerror());
+    if (!handle) {
+//        throw std::runtime_error("Failed to open XDP hal plugin library '" + p.string() + "'\n" + dlerror());
+      xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR, "XRT", std::string("Failed to open XDP hal plugin library '" + p.string() + "'\n" + dlerror()));
+      return;
+    }
     const std::string cb_func_name = "hal_level_xdp_cb_func";
+    dlerror();
     cb = cb_func_type(reinterpret_cast<cb_load_func_type>(dlsym(handle, cb_func_name.c_str())));
+    if(dlerror() != NULL) { // check if dlsym was successful
+      cb = nullptr;
+    }
     loaded = true;
 #endif
 }
