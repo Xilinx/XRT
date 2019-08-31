@@ -102,11 +102,6 @@ public:
 
     int xclGetSectionInfo(void *section_info, size_t *section_size, enum axlf_section_kind, int index);
 
-#if 0
-    // Experimental hal level profiling on/off API
-    int xclConfigPlugin(HalPluginConfig* config);
-#endif
-
     // Performance monitoring
     // Control
     double xclGetDeviceClockFreqMHz();

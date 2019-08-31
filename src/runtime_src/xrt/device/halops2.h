@@ -118,8 +118,6 @@ private:
                                       bool shared);
   typedef int (* closeContextFuncType)(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIndex);
 
-  // xdp hal plugin switch
-//  typedef int (* switchProfilingFuncType)(xclDeviceHandle handle);
 
   //Streaming
   typedef int     (*createWriteQueueFuncType)(xclDeviceHandle handle,xclQueueContext *q_ctx, uint64_t *q_hdl);

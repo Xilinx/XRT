@@ -1433,13 +1433,6 @@ int shim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamp
 }
 
 
-#if 0
-int shim::xclConfigPlugin(HalPluginConfig* config) {
-  xdphal::load_xdp_plugin_library(config);
-  return 0;
-}
-#endif
-
 int shim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap)
 {
     std::lock_guard<std::mutex> l(mCuMapLock);
@@ -1942,15 +1935,6 @@ int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results)
   DESTROY_PROFILE_RESULTS_CB(handle, results);
   return 0;
 }
-
-
-#if 0
-int xclConfigPlugin(xclDeviceHandle handle, HalPluginConfig* config) {
-  xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return drv ? drv->xclConfigPlugin(config) : -ENODEV;
-}
-#endif
-
 
 int xclCuName2Index(xclDeviceHandle handle, const char *name, uint32_t *indexp)
 {
