@@ -339,8 +339,10 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
 
     sc_session->base.session_id = g_xma_singleton->num_of_sessions + 1;
     sc_session->base.session_signature = (void*)(((uint64_t)kernel_info) | ((uint64_t)dev_handle));
+    /*
     xma_logmsg(XMA_DEBUG_LOG, XMA_SCALER_MOD,
                 "XMA session signature is: 0x%04llx", sc_session->base.session_signature);
+    */
     xma_logmsg(XMA_INFO_LOG, XMA_SCALER_MOD,
                 "XMA session channel_id: %d; scaler_id: %d", sc_session->base.channel_id, sc_session->base.session_id);
 
