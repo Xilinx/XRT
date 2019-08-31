@@ -35,6 +35,7 @@
 // Supported vendors
 #define XILINX_ID    0x10ee
 #define ADVANTECH_ID 0x13fe
+#define AWS_ID    0x1d0f
 
 static const std::string sysfs_root = "/sys/bus/pci/devices/";
 
@@ -339,7 +340,7 @@ pcidev::pci_device::pci_device(const std::string& sysfs) : sysfs_name(sysfs)
         std::cout << err << std::endl;
         return;
     }
-    if((vendor != XILINX_ID) && (vendor != ADVANTECH_ID))
+    if((vendor != XILINX_ID) && (vendor != ADVANTECH_ID) && (vendor != AWS_ID))
         return;
 
     // Determine if the device is mgmt or user pf.

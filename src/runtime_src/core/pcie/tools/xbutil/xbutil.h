@@ -675,7 +675,7 @@ public:
         sensor_tree::put( "board.info.clock2",         clock_freqs[2] );
         sensor_tree::put( "board.info.pcie_speed",     pcie_speed );
         sensor_tree::put( "board.info.pcie_width",     pcie_width );
-        sensor_tree::put( "board.info.dma_threads",    2 );
+        sensor_tree::put( "board.info.dma_threads",    ddr_count );
         sensor_tree::put( "board.info.mig_calibrated", mig_calibration );
         sensor_tree::put( "board.info.idcode",         idcode );
         sensor_tree::put( "board.info.fpga_name",      fpga );

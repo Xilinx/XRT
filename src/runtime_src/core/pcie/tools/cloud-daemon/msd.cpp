@@ -29,12 +29,13 @@
 #include <thread>
 #include <cstdlib>
 #include <csignal>
+#include <cstring>
 #include <dlfcn.h>
 
 #include "pciefunc.h"
-#include "msd_plugin.h"
 #include "sw_msg.h"
 #include "common.h"
+#include "msd_plugin.h"
 #include "xclbin.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
@@ -44,13 +45,12 @@ bool quit = false;
 uint64_t chanSwitch = (1UL<<MAILBOX_REQ_TEST_READY) |
                       (1UL<<MAILBOX_REQ_TEST_READ)  |
                       (1UL<<MAILBOX_REQ_LOAD_XCLBIN);
-
-// Suppport for msd plugin
+// Support for msd plugin
 void *plugin_handle;
 init_fn plugin_init;
 fini_fn plugin_fini;
 struct msd_plugin_callbacks plugin_cbs;
-static const std::string plugin_path("/lib/firmware/xilinx/msd_plugin.so");
+static const std::string plugin_path("/opt/xilinx/xrt/lib/libmsd_plugin.so");
 
 // Init plugin callbacks
 static void init_plugin()
@@ -63,7 +63,7 @@ static void init_plugin()
     plugin_init = (init_fn) dlsym(plugin_handle, INIT_FN_NAME);
     plugin_fini = (fini_fn) dlsym(plugin_handle, FINI_FN_NAME);
     if (plugin_init == nullptr || plugin_fini == nullptr)
-        syslog(LOG_ERR, "failed to find init/fini symbols in plugin");
+        syslog(LOG_ERR, "failed to find init/fini symbols in msd plugin");
 }
 
 // Get host configured in config file
@@ -197,7 +197,7 @@ static int download_xclbin(pcieFunc& dev, char *xclbin)
         return -EINVAL;
 
     xclmgmt_ioc_bitstream_axlf obj = {reinterpret_cast<axlf *>(newxclbin)};
-    ret = dev.ioctl(XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
+    ret = dev.getDev()->ioctl(XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
 
     if (done)
         (*done)(done_arg, newxclbin, newlen);
@@ -247,13 +247,15 @@ static int remoteMsgHandler(pcieFunc& dev, std::shared_ptr<sw_msg>& orig,
 
 // Server serving MPD. Any error from socket fd, re-accept, don't quit.
 // Will quit on any error from local mailbox fd.
-static void msd(std::shared_ptr<pcidev::pci_device> d, std::string host)
+static void msd(size_t index, std::string host)
 {
     uint16_t port;
     int sockfd = -1, mpdfd = -1, mbxfd = -1;
+    int retfd[2];
     int ret;
+    struct queue_msg msg = {0};
 
-    pcieFunc dev(d);
+    pcieFunc dev(index, false);
 
     mbxfd = dev.getMailbox();
     if (mbxfd == -1)
@@ -286,8 +288,9 @@ static void msd(std::shared_ptr<pcidev::pci_device> d, std::string host)
             }
         }
 
+        retfd[0] = retfd[1] = -100;
         // Waiting for msg to show up, interval is 3 seconds.
-        ret = waitForMsg(dev, mbxfd, mpdfd, 3);
+        ret = waitForMsg(dev, mbxfd, mpdfd, 3, retfd);
         if (ret < 0) {
             if (ret == -EAGAIN) // MPD has been quiet, retry.
                 continue;
@@ -295,17 +298,29 @@ static void msd(std::shared_ptr<pcidev::pci_device> d, std::string host)
                 break;
         }
 
+        msg.localFd = mbxfd;
+        msg.remoteFd = mpdfd;
+
         // Process msg.
-        if (ret == mbxfd)
-            ret = processLocalMsg(dev, mbxfd, mpdfd);
-        else
-            ret = processRemoteMsg(dev, mbxfd, mpdfd, remoteMsgHandler);
-        if (ret == -EAGAIN) { // Socket connection was lost, retry
-            close(mpdfd);
-            mpdfd = -1;
-            continue;
-        } else if (ret != 0) {
-            break;
+        for (int i = 0; i < 2; i++) {
+            if (retfd[i] == mbxfd) {
+                msg.type = LOCAL_MSG;
+                msg.data = getLocalMsg(dev, mbxfd);
+            } else if (retfd[i] == mpdfd) {
+                msg.type = REMOTE_MSG;
+                msg.cb = remoteMsgHandler;
+            } else
+                continue;
+            if (msg.data == nullptr)
+                goto done;
+            ret = handleMsg(dev, msg);
+            if (ret == -EAGAIN) { // Socket connection was lost, retry
+                close(mpdfd);
+                mpdfd = -1;
+                continue;
+            } else if (ret != 0) {
+                goto done;
+            }
         }
     }
 
@@ -334,7 +349,7 @@ int main(void)
     if (plugin_init) {
         int ret = (*plugin_init)(&plugin_cbs);
         if (ret != 0) {
-            syslog(LOG_ERR, "plugin_init failed: %d", ret);
+            syslog(LOG_ERR, "msd plugin_init failed: %d", ret);
             dlclose(plugin_handle);
             return 0;
         }
@@ -355,7 +370,7 @@ int main(void)
 
     std::vector<std::thread> threads;
     for (size_t i = 0; i < total; i++)
-        threads.emplace_back(msd, pcidev::get_dev(i, false), host);
+        threads.emplace_back(msd, i, host);
 
     // Wait for all threads to finish before quit.
     for (auto& t : threads)
