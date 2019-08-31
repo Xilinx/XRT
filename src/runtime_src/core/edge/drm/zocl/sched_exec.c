@@ -2333,6 +2333,8 @@ ps_ert_query(struct sched_cmd *cmd)
 static int
 ps_ert_submit(struct sched_cmd *cmd)
 {
+	int ret;
+
 	SCHED_DEBUG("-> ps_ert_submit()\n");
 
 	cmd->slot_idx = acquire_slot_idx(cmd->ddev);
@@ -2346,8 +2348,11 @@ ps_ert_submit(struct sched_cmd *cmd)
 
 	case ERT_SK_CONFIG:
 		SCHED_DEBUG("<- ps_ert_submit (configure soft kernel)\n");
-		if (configure_soft_kernel(cmd)) {
+		ret = configure_soft_kernel(cmd);
+		if (ret) {
 			release_slot_idx(cmd->ddev, cmd->slot_idx);
+			if (ret != -ENOMEM)
+				mark_cmd_submit_error(cmd);
 			return false;
 		}
 		break;
@@ -2356,6 +2361,7 @@ ps_ert_submit(struct sched_cmd *cmd)
 		SCHED_DEBUG("<- ps_ert_submit (unconfigure soft kernel)\n");
 		if (unconfigure_soft_kernel(cmd)) {
 			release_slot_idx(cmd->ddev, cmd->slot_idx);
+			mark_cmd_submit_error(cmd);
 			return false;
 		}
 		break;
