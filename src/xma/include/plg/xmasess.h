@@ -43,7 +43,9 @@ typedef enum {
     XMA_DECODER,    /**< 2 */
     XMA_FILTER,     /**< 3 */
     XMA_KERNEL,     /**< 4 */
-} XmaSessionType;   /**< 5 */
+    XMA_NON_KERNEL,  /**< 5 */
+    XMA_INVALID
+} XmaSessionType;
 
 /**
  * typedef struct XmaChannel - This is the output parameter for the alloc_chan_mp function. The

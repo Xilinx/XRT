@@ -45,13 +45,10 @@ typedef struct XmaSingleton
     std::atomic<uint32_t> num_scalers;
     std::atomic<uint32_t> num_filters;
     std::atomic<uint32_t> num_kernels;
-    //std::vector<XmaDecoderPlugin*> decoders;
-    //std::vector<XmaEncoderPlugin*> encoders;
-    //std::vector<XmaScalerPlugin*> scalers;
-    //std::vector<XmaFilterPlugin*> filters;
-    //std::vector<XmaKernelPlugin*> kernels;
-    //XmaResources      shm_res_cfg;
-    //bool              shm_freed;
+    std::atomic<uint32_t> num_non_kernels;
+    std::atomic<uint32_t> num_of_sessions;
+    std::map<uint32_t, XmaSession> all_sessions;// XMASessions
+
     uint32_t          reserved[4];
 
   XmaSingleton() {
@@ -62,6 +59,8 @@ typedef struct XmaSingleton
     num_scalers = 0;
     num_filters = 0;
     num_kernels = 0;
+    num_non_kernels = 0;
+    num_of_sessions = 0;
   }
 } XmaSingleton;
 

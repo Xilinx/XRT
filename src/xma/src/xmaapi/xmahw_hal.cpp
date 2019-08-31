@@ -372,10 +372,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         } else {
             num_execbo = MIN_EXECBO_POOL_SIZE;
         }
-        dev_tmp1.kernel_execbo_handle.reserve(num_execbo);
-        dev_tmp1.kernel_execbo_data.reserve(num_execbo);
-        dev_tmp1.kernel_execbo_inuse.reserve(num_execbo);
-        dev_tmp1.kernel_execbo_cu_index.reserve(num_execbo);
+        dev_tmp1.kernel_execbos.reserve(num_execbo);
         dev_tmp1.num_execbo_allocated = num_execbo;
         for (int32_t d = 0; d < num_execbo; d++) {
             uint32_t  bo_handle;
@@ -394,10 +391,11 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             }
             bo_data = (char*)xclMapBO(dev_tmp1.handle, bo_handle, true);
             memset((void*)bo_data, 0x0, execBO_size);
-            dev_tmp1.kernel_execbo_handle.emplace_back(bo_handle);
-            dev_tmp1.kernel_execbo_data.emplace_back(bo_data);
-            dev_tmp1.kernel_execbo_inuse.emplace_back(false);
-            dev_tmp1.kernel_execbo_cu_index.emplace_back(-1);
+
+            dev_tmp1.kernel_execbos.emplace_back(XmaHwExecBO{});
+            XmaHwExecBO& dev_execbo = dev_tmp1.kernel_execbos.back();
+            dev_execbo.handle = bo_handle;
+            dev_execbo.data = bo_data;
         }
 
         free(buffer);
