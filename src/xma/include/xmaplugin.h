@@ -32,6 +32,7 @@
 #include "plg/xmascaler.h"
 #include "plg/xmafilter.h"
 #include "plg/xmakernel.h"
+#include "plg/xmaadmin.h"
 
 /**
  * DOC: XMA Plugin Interface

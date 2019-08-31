@@ -61,7 +61,7 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
     b_obj.size = size;
     b_obj.dev_index = s_handle.hw_session.dev_index;
 
-    if (s_handle.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
+    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.plugin_data) | ((uint64_t)priv1->dev_handle))) {
         //std::cout << "ERROR: xma_plg_buffer_alloc failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc failed. XMASession is corrupted.\n");
         if (return_code) *return_code = XMA_ERROR;
@@ -138,7 +138,7 @@ XmaBufferObj xma_plg_buffer_alloc_arg_num(XmaSession s_handle, size_t size, bool
     b_obj.size = size;
     b_obj.dev_index = s_handle.hw_session.dev_index;
 
-    if (s_handle.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
+    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.plugin_data) | ((uint64_t)priv1->dev_handle))) {
         //std::cout << "ERROR: xma_plg_buffer_alloc failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_arg_num failed. XMASession is corrupted.\n");
         if (return_code) *return_code = XMA_ERROR;
@@ -232,7 +232,7 @@ xma_plg_buffer_free(XmaSession s_handle, XmaBufferObj b_obj)
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_free failed. XMASession is corrupted.\n");
         return;
     }
-    if (s_handle.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
+    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.plugin_data) | ((uint64_t)priv1->dev_handle))) {
         //std::cout << "ERROR: xma_plg_buffer_free failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_free failed. XMASession is corrupted.\n");
         return;
@@ -276,7 +276,7 @@ xma_plg_buffer_write(XmaSession s_handle,
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
-    if (s_handle.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
+    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.plugin_data) | ((uint64_t)priv1->dev_handle))) {
         //std::cout << "ERROR: xma_plg_buffer_write failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. XMASession is corrupted.\n");
         return XMA_ERROR;
@@ -318,7 +318,7 @@ xma_plg_buffer_read(XmaSession s_handle,
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
-    if (s_handle.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
+    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.plugin_data) | ((uint64_t)priv1->dev_handle))) {
         //std::cout << "ERROR: xma_plg_buffer_read failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read failed. XMASession is corrupted.\n");
         return XMA_ERROR;
@@ -369,7 +369,7 @@ xma_plg_register_prep_write(XmaSession  s_handle,
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_register_prep_write failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
-    if (s_handle.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
+    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.plugin_data) | ((uint64_t)priv1->dev_handle))) {
         //std::cout << "ERROR: xma_plg_register_prep_write failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_register_prep_write failed. XMASession is corrupted.\n");
         return XMA_ERROR;
@@ -405,7 +405,7 @@ int32_t xma_plg_kernel_lock_regmap(XmaSession s_handle)
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_kernel_lock_regmap failed1. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
-    if (s_handle.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
+    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.plugin_data) | ((uint64_t)priv1->dev_handle))) {
         //std::cout << "ERROR: xma_plg_kernel_lock_regmap failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_kernel_lock_regmap failed2. XMASession is corrupted.\n");
         return XMA_ERROR;
@@ -438,7 +438,7 @@ int32_t xma_plg_kernel_unlock_regmap(XmaSession s_handle)
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_kernel_unlock_regmap failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
-    if (s_handle.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
+    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.plugin_data) | ((uint64_t)priv1->dev_handle))) {
         //std::cout << "ERROR: xma_plg_kernel_unlock_regmap failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_kernel_unlock_regmap failed. XMASession is corrupted.\n");
         return XMA_ERROR;
@@ -534,7 +534,7 @@ xma_plg_schedule_work_item(XmaSession s_handle)
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_work_item failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
-    if (s_handle.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
+    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.plugin_data) | ((uint64_t)priv1->dev_handle))) {
         //std::cout << "ERROR: xma_plg_schedule_work_item failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_work_item failed. XMASession is corrupted.\n");
         return XMA_ERROR;
@@ -625,7 +625,7 @@ int32_t xma_plg_schedule_work_item_with_args(XmaSession s_handle,
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_work_item_with_args failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
-    if (s_handle.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
+    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.plugin_data) | ((uint64_t)priv1->dev_handle))) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_work_item failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
@@ -711,7 +711,7 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_is_work_item_done failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
-    if (s_handle.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
+    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.plugin_data) | ((uint64_t)priv1->dev_handle))) {
         //std::cout << "ERROR: xma_plg_schedule_work_item failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_work_item failed. XMASession is corrupted.\n");
         return XMA_ERROR;
@@ -801,7 +801,7 @@ int32_t xma_plg_channel_id(XmaSession s_handle) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_channel_id failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
-    if (s_handle.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
+    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.plugin_data) | ((uint64_t)priv1->dev_handle))) {
         //std::cout << "ERROR: xma_plg_schedule_work_item failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_channel_id failed. XMASession is corrupted.\n");
         return XMA_ERROR;

@@ -90,6 +90,8 @@ xma_kernel_session_create(XmaKernelProperties *props)
     session->base.channel_id = props->channel_id;
     session->base.session_type = XMA_KERNEL;
     session->base.stats = NULL;
+    session->private_session_data = NULL;//Managed by host video application
+    session->private_session_data_size = -1;//Managed by host video application
     session->kernel_plugin = plg;
 
     bool expected = false;
@@ -242,12 +244,10 @@ xma_kernel_session_create(XmaKernelProperties *props)
         calloc(session->kernel_plugin->plugin_data_size, sizeof(uint8_t));
 
     session->base.session_id = g_xma_singleton->num_of_sessions + 1;
-    session->base.session_signature = (void*)(((uint64_t)kernel_info) | ((uint64_t)dev_handle));
-    //Sarab: TODO Allow user selected ddr bank per XMA session
-    session->base.hw_session.bank_index = -1;
+    session->base.session_signature = (void*)(((uint64_t)session->base.plugin_data) | ((uint64_t)dev_handle));
 
     xma_logmsg(XMA_INFO_LOG, XMA_KERNEL_MOD,
-                "XMA session channel_id: %d; kernel_id: %d\n", session->base.channel_id, session->base.session_id);
+                "XMA session channel_id: %d; session_id: %d\n", session->base.channel_id, session->base.session_id);
 
     XmaHwSessionPrivate *priv1 = new XmaHwSessionPrivate();
     priv1->dev_handle = dev_handle;
@@ -351,7 +351,7 @@ xma_kernel_session_write(XmaKernelSession *session,
 {
     xma_logmsg(XMA_DEBUG_LOG, XMA_KERNEL_MOD, "%s()\n", __func__);
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) session->base.hw_session.private_do_not_use;
-    if (session->base.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
+    if (session->base.session_signature != (void*)(((uint64_t)session->base.plugin_data) | ((uint64_t)priv1->dev_handle))) {
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD, "XMASession is corrupted.\n");
         return XMA_ERROR;
     }
@@ -365,7 +365,7 @@ xma_kernel_session_read(XmaKernelSession *session,
 {
     xma_logmsg(XMA_DEBUG_LOG, XMA_KERNEL_MOD, "%s()\n", __func__);
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) session->base.hw_session.private_do_not_use;
-    if (session->base.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
+    if (session->base.session_signature != (void*)(((uint64_t)session->base.plugin_data) | ((uint64_t)priv1->dev_handle))) {
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD, "XMASession is corrupted.\n");
         return XMA_ERROR;
     }

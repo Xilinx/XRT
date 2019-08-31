@@ -132,6 +132,9 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
     enc_session->base.channel_id = enc_props->channel_id;
     enc_session->base.session_type = XMA_ENCODER;
     enc_session->base.stats = NULL;
+    enc_session->private_session_data = NULL;//Managed by host video application
+    enc_session->private_session_data_size = -1;//Managed by host video application
+
     enc_session->encoder_plugin = plg;
 
     bool expected = false;
@@ -285,9 +288,9 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
         calloc(enc_session->encoder_plugin->plugin_data_size, sizeof(uint8_t));
 
     enc_session->base.session_id = g_xma_singleton->num_of_sessions + 1;
-    enc_session->base.session_signature = (void*)(((uint64_t)kernel_info) | ((uint64_t)dev_handle));
+    enc_session->base.session_signature = (void*)(((uint64_t)enc_session->base.plugin_data) | ((uint64_t)dev_handle));
     xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,
-                "XMA session channel_id: %d; encoder_id: %d\n", enc_session->base.channel_id, enc_session->base.session_id);
+                "XMA session channel_id: %d; session_id: %d\n", enc_session->base.channel_id, enc_session->base.session_id);
 
     XmaHwSessionPrivate *priv1 = new XmaHwSessionPrivate();
     priv1->dev_handle = dev_handle;
@@ -420,7 +423,7 @@ xma_enc_session_send_frame(XmaEncoderSession *session,
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD, "xma_enc_session_send_frame failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
-    if (session->base.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
+    if (session->base.session_signature != (void*)(((uint64_t)session->base.plugin_data) | ((uint64_t)priv1->dev_handle))) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD, "XMASession is corrupted.\n");
         return XMA_ERROR;
     }
@@ -459,7 +462,7 @@ xma_enc_session_recv_data(XmaEncoderSession *session,
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD, "xma_enc_session_recv_data failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
-    if (session->base.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
+    if (session->base.session_signature != (void*)(((uint64_t)session->base.plugin_data) | ((uint64_t)priv1->dev_handle))) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD, "XMASession is corrupted.\n");
         return XMA_ERROR;
     }

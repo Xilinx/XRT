@@ -43,7 +43,7 @@ typedef enum {
     XMA_DECODER,    /**< 2 */
     XMA_FILTER,     /**< 3 */
     XMA_KERNEL,     /**< 4 */
-    XMA_NON_KERNEL,  /**< 5 */
+    XMA_ADMIN,      /**< 5 */
     XMA_INVALID
 } XmaSessionType;
 

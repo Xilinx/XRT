@@ -94,6 +94,9 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
     dec_session->base.stats = NULL;
     dec_session->base.channel_id = dec_props->channel_id;
     dec_session->base.session_type = XMA_DECODER;
+    dec_session->private_session_data = NULL;//Managed by host video application
+    dec_session->private_session_data_size = -1;//Managed by host video application
+
     dec_session->decoder_plugin = plg;
 
     bool expected = false;
@@ -247,9 +250,9 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
         calloc(dec_session->decoder_plugin->plugin_data_size, sizeof(uint8_t));
 
     dec_session->base.session_id = g_xma_singleton->num_of_sessions + 1;
-    dec_session->base.session_signature = (void*)(((uint64_t)kernel_info) | ((uint64_t)dev_handle));
+    dec_session->base.session_signature = (void*)(((uint64_t)dec_session->base.plugin_data) | ((uint64_t)dev_handle));
     xma_logmsg(XMA_INFO_LOG, XMA_DECODER_MOD,
-                "XMA session channel_id: %d; decoder_id: %d\n", dec_session->base.channel_id, dec_session->base.session_id);
+                "XMA session channel_id: %d; session_id: %d\n", dec_session->base.channel_id, dec_session->base.session_id);
 
     XmaHwSessionPrivate *priv1 = new XmaHwSessionPrivate();
     priv1->dev_handle = dev_handle;
@@ -368,7 +371,7 @@ xma_dec_session_send_data(XmaDecoderSession *session,
         xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD, "xma_dec_session_send_data failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
-    if (session->base.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
+    if (session->base.session_signature != (void*)(((uint64_t)session->base.plugin_data) | ((uint64_t)priv1->dev_handle))) {
         xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD, "XMASession is corrupted.\n");
         return XMA_ERROR;
     }
@@ -390,7 +393,7 @@ xma_dec_session_get_properties(XmaDecoderSession  *session,
         xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD, "xma_dec_session_get_properties failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
-    if (session->base.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
+    if (session->base.session_signature != (void*)(((uint64_t)session->base.plugin_data) | ((uint64_t)priv1->dev_handle))) {
         xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD, "XMASession is corrupted.\n");
         return XMA_ERROR;
     }
@@ -412,7 +415,7 @@ xma_dec_session_recv_frame(XmaDecoderSession *session,
         xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD, "xma_dec_session_recv_frame failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
-    if (session->base.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
+    if (session->base.session_signature != (void*)(((uint64_t)session->base.plugin_data) | ((uint64_t)priv1->dev_handle))) {
         xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD, "XMASession is corrupted.\n");
         return XMA_ERROR;
     }

@@ -26,6 +26,7 @@
 #include "app/xmascaler.h"
 #include "app/xmafilter.h"
 #include "app/xmakernel.h"
+#include "app/xmaadmin.h"
 
 #ifdef __cplusplus
 extern "C" {
