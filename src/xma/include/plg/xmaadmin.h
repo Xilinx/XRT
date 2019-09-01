@@ -14,8 +14,8 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#ifndef _XMAPLG_KERNEL_H_
-#define _XMAPLG_KERNEL_H_
+#ifndef _XMAPLG_ADMIN_H_
+#define _XMAPLG_ADMIN_H_
 
 #include "xma.h"
 #include "plg/xmasess.h"
@@ -27,28 +27,28 @@ extern "C" {
 /**
  * typedef XmaKernelPlugin - XmaKernel plugin interface
 */
-typedef struct XmaKernelSession XmaKernelSession;
+typedef struct XmaAdminSession XmaAdminSession;
 
 /**
- * struct XmaKernelPlugin - XmaKernel plugin interface
+ * struct XmaAdminPlugin - XmaAdmin plugin interface
 */
-typedef struct XmaKernelPlugin
+typedef struct XmaAdminPlugin
 {
-    XmaKernelType   hwkernel_type; /**< specific kernel function of instance */
+    XmaAdminType   hwkernel_type; /**< specific kernel function of instance */
     const char     *hwvendor_string; /**< vendor of kernel */
-    size_t          plugin_data_size; /**< session-specific private data */
+    size_t          plugin_data_size; /**< session-specific plugin private data */
     /** init callback used to perpare kernel and allocate device buffers */
-    int32_t         (*init)(XmaKernelSession  *session);
+    int32_t         (*init)(XmaAdminSession  *session);
     /** write callback used for general purpose write/send data operations */
-    int32_t         (*write)(XmaKernelSession *session,
+    int32_t         (*write)(XmaAdminSession *session,
                              XmaParameter     *param,
                              int32_t           param_cnt);
     /** read callback used for general purpose read/recv data operations */
-    int32_t         (*read)(XmaKernelSession   *session,
+    int32_t         (*read)(XmaAdminSession   *session,
                             XmaParameter       *param,
                             int32_t            *param_cnt);
     /** close callback used to preform cleanup when application terminates session*/
-    int32_t         (*close)(XmaKernelSession *session);
+    int32_t         (*close)(XmaAdminSession *session);
 
     /** Callback invoked at start to check compatibility with XMA version */
     int32_t         (*xma_version)(int32_t *main_version, int32_t *sub_version);
@@ -56,36 +56,36 @@ typedef struct XmaKernelPlugin
     /** Reserved */
     uint32_t        reserved[4];
 
-} XmaKernelPlugin;
+} XmaAdminPlugin;
 
 /**
  * struct XmaKernelSession - An instance of an XmaKernel
 */
-typedef struct XmaKernelSession
+typedef struct XmaAdminSession
 {
     XmaSession            base; /**< base class of XmaKernelSession */
-    XmaKernelProperties   kernel_props; /**< application supplied properites */
-    XmaKernelPlugin      *kernel_plugin; /**< pointer to plugin driver */
+    XmaAdminProperties   admin_props; /**< application supplied properites */
+    XmaAdminPlugin      *admin_plugin; /**< pointer to plugin driver */
     void                 *private_session_data; //Managed by host video application
     int32_t              private_session_data_size; //Managed by host video application
     /** Reserved */
     uint32_t        reserved[4];
-} XmaKernelSession;
+} XmaAdminSession;
 
 /**
- * to_xma_kernel() - Unpack XmaSession to XmaKernelSession subclass pointer
+ * to_xma_admin() - Unpack XmaSession to XmaAdminSession subclass pointer
  *
  * @s: XmaSession parent instance
  *
- * RETURN:  pointer to XmaKernelSession container
+ * RETURN:  pointer to XmaAdminSession container
  *
  * Note: caller must have checked if XmaSession represents a member
- * of XmaKernelSession by calling is_xma_kernel() prior to ensure
+ * of XmaAdminSession by calling is_xma_admin() prior to ensure
  * this unpacking is safe
 */
-static inline XmaKernelSession *to_xma_kernel(XmaSession *s)
+static inline XmaAdminSession *to_xma_admin(XmaSession *s)
 {
-    return (XmaKernelSession *)s;
+    return (XmaAdminSession *)s;
 }
 
 #ifdef __cplusplus

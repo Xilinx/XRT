@@ -90,6 +90,9 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     filter_session->base.channel_id = filter_props->channel_id;
     filter_session->base.session_type = XMA_FILTER;
     filter_session->base.stats = NULL;
+    filter_session->private_session_data = NULL;//Managed by host video application
+    filter_session->private_session_data_size = -1;//Managed by host video application
+
     filter_session->filter_plugin = plg;
 
     bool expected = false;
@@ -244,9 +247,9 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         calloc(filter_session->filter_plugin->plugin_data_size, sizeof(uint8_t));
 
     filter_session->base.session_id = g_xma_singleton->num_of_sessions + 1;
-    filter_session->base.session_signature = (void*)(((uint64_t)kernel_info) | ((uint64_t)dev_handle));
+    filter_session->base.session_signature = (void*)(((uint64_t)filter_session->base.plugin_data) | ((uint64_t)dev_handle));
     xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,
-                "XMA session channel_id: %d; filter_id: %d\n", filter_session->base.channel_id, filter_session->base.session_id);
+                "XMA session channel_id: %d; session_id: %d\n", filter_session->base.channel_id, filter_session->base.session_id);
 
     XmaHwSessionPrivate *priv1 = new XmaHwSessionPrivate();
     priv1->dev_handle = dev_handle;
@@ -359,7 +362,7 @@ xma_filter_session_send_frame(XmaFilterSession  *session,
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD, "xma_filter_session_send_frame failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
-    if (session->base.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
+    if (session->base.session_signature != (void*)(((uint64_t)session->base.plugin_data) | ((uint64_t)priv1->dev_handle))) {
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD, "XMASession is corrupted.\n");
         return XMA_ERROR;
     }
@@ -382,7 +385,7 @@ xma_filter_session_recv_frame(XmaFilterSession  *session,
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD, "xma_filter_session_recv_frame failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
-    if (session->base.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
+    if (session->base.session_signature != (void*)(((uint64_t)session->base.plugin_data) | ((uint64_t)priv1->dev_handle))) {
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD, "XMASession is corrupted.\n");
         return XMA_ERROR;
     }

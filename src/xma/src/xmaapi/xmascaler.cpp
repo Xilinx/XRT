@@ -185,6 +185,9 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     sc_session->base.channel_id = sc_props->channel_id;
     sc_session->base.session_type = XMA_SCALER;
     sc_session->base.stats = NULL;
+    sc_session->private_session_data = NULL;//Managed by host video application
+    sc_session->private_session_data_size = -1;//Managed by host video application
+
     sc_session->scaler_plugin = plg;
 
     bool expected = false;
@@ -338,13 +341,13 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
         calloc(sc_session->scaler_plugin->plugin_data_size, sizeof(uint8_t));
 
     sc_session->base.session_id = g_xma_singleton->num_of_sessions + 1;
-    sc_session->base.session_signature = (void*)(((uint64_t)kernel_info) | ((uint64_t)dev_handle));
+    sc_session->base.session_signature = (void*)(((uint64_t)sc_session->base.plugin_data) | ((uint64_t)dev_handle));
     /*
     xma_logmsg(XMA_DEBUG_LOG, XMA_SCALER_MOD,
                 "XMA session signature is: 0x%04llx", sc_session->base.session_signature);
     */
     xma_logmsg(XMA_INFO_LOG, XMA_SCALER_MOD,
-                "XMA session channel_id: %d; scaler_id: %d", sc_session->base.channel_id, sc_session->base.session_id);
+                "XMA session channel_id: %d; session_id: %d", sc_session->base.channel_id, sc_session->base.session_id);
 
     XmaHwSessionPrivate *priv1 = new XmaHwSessionPrivate();
     priv1->dev_handle = dev_handle;
@@ -459,7 +462,7 @@ xma_scaler_session_send_frame(XmaScalerSession  *session,
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD, "xma_scaler_session_send_frame failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
-    if (session->base.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
+    if (session->base.session_signature != (void*)(((uint64_t)session->base.plugin_data) | ((uint64_t)priv1->dev_handle))) {
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD, "XMASession is corrupted.\n");
         return XMA_ERROR;
     }
@@ -482,7 +485,7 @@ xma_scaler_session_recv_frame_list(XmaScalerSession  *session,
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD, "xma_scaler_session_recv_frame_list failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
-    if (session->base.session_signature != (void*)(((uint64_t)priv1->kernel_info) | ((uint64_t)priv1->dev_handle))) {
+    if (session->base.session_signature != (void*)(((uint64_t)session->base.plugin_data) | ((uint64_t)priv1->dev_handle))) {
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD, "XMASession is corrupted.\n");
         return XMA_ERROR;
     }
