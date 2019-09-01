@@ -24,9 +24,6 @@
 extern "C" {
 #endif
 
-/**
- * typedef XmaKernelPlugin - XmaKernel plugin interface
-*/
 typedef struct XmaKernelSession XmaKernelSession;
 
 /**

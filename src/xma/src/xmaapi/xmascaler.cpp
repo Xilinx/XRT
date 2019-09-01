@@ -341,7 +341,6 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
         calloc(sc_session->scaler_plugin->plugin_data_size, sizeof(uint8_t));
 
     sc_session->base.session_id = g_xma_singleton->num_of_sessions + 1;
-    sc_session->base.session_signature = (void*)(((uint64_t)sc_session->base.plugin_data) | ((uint64_t)dev_handle));
     /*
     xma_logmsg(XMA_DEBUG_LOG, XMA_SCALER_MOD,
                 "XMA session signature is: 0x%04llx", sc_session->base.session_signature);
@@ -353,6 +352,9 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     priv1->dev_handle = dev_handle;
     priv1->kernel_info = kernel_info;
     priv1->kernel_complete_count = 0;
+    priv1->device = &hwcfg->devices[hwcfg_dev_index];
+    sc_session->base.session_signature = (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved));
+
     sc_session->base.hw_session.private_do_not_use = (void*) priv1;
 
     rc = sc_session->scaler_plugin->init(sc_session);
@@ -462,7 +464,7 @@ xma_scaler_session_send_frame(XmaScalerSession  *session,
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD, "xma_scaler_session_send_frame failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
-    if (session->base.session_signature != (void*)(((uint64_t)session->base.plugin_data) | ((uint64_t)priv1->dev_handle))) {
+    if (session->base.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD, "XMASession is corrupted.\n");
         return XMA_ERROR;
     }
@@ -485,7 +487,7 @@ xma_scaler_session_recv_frame_list(XmaScalerSession  *session,
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD, "xma_scaler_session_recv_frame_list failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
-    if (session->base.session_signature != (void*)(((uint64_t)session->base.plugin_data) | ((uint64_t)priv1->dev_handle))) {
+    if (session->base.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD, "XMASession is corrupted.\n");
         return XMA_ERROR;
     }

@@ -153,8 +153,6 @@ xma_admin_session_create(XmaAdminProperties *props)
         calloc(session->admin_plugin->plugin_data_size, sizeof(uint8_t));
 
     session->base.session_id = g_xma_singleton->num_of_sessions + 1;
-    session->base.session_signature = (void*)(((uint64_t)session->base.plugin_data) | ((uint64_t)dev_handle));
-
     xma_logmsg(XMA_INFO_LOG, XMA_ADMIN_MOD,
                 "XMA session_id: %d\n", session->base.session_id);
 
@@ -162,7 +160,11 @@ xma_admin_session_create(XmaAdminProperties *props)
     priv1->dev_handle = dev_handle;
     priv1->kernel_info = NULL;
     priv1->kernel_complete_count = 0;
+    priv1->device = &hwcfg->devices[hwcfg_dev_index];
     session->base.hw_session.private_do_not_use = (void*) priv1;
+
+    session->base.session_signature = (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved));
+
     rc = session->admin_plugin->init(session);
     if (rc) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ADMIN_MOD,
@@ -259,7 +261,7 @@ xma_admin_session_write(XmaAdminSession *session,
 {
     xma_logmsg(XMA_DEBUG_LOG, XMA_ADMIN_MOD, "%s()\n", __func__);
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) session->base.hw_session.private_do_not_use;
-    if (session->base.session_signature != (void*)(((uint64_t)session->base.plugin_data) | ((uint64_t)priv1->dev_handle))) {
+    if (session->base.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ADMIN_MOD, "XMASession is corrupted.\n");
         return XMA_ERROR;
     }
@@ -273,7 +275,7 @@ xma_admin_session_read(XmaAdminSession *session,
 {
     xma_logmsg(XMA_DEBUG_LOG, XMA_ADMIN_MOD, "%s()\n", __func__);
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) session->base.hw_session.private_do_not_use;
-    if (session->base.session_signature != (void*)(((uint64_t)session->base.plugin_data) | ((uint64_t)priv1->dev_handle))) {
+    if (session->base.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ADMIN_MOD, "XMASession is corrupted.\n");
         return XMA_ERROR;
     }

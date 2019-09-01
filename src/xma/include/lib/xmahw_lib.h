@@ -30,6 +30,7 @@
 #include <vector>
 #include <memory>
 #include <map>
+#include <array>
 
 #define MIN_EXECBO_POOL_SIZE      16
 #define MAX_EXECBO_BUFF_SIZE      4096// 4KB
@@ -50,19 +51,32 @@
  */
 constexpr std::uint64_t signature = 0xF42F1F8F4F2F1F0F;
 
+/* Forward declaration */
+typedef struct XmaHwDevice XmaHwDevice;
+
 typedef struct XmaHwSessionPrivate
 {
     void            *dev_handle;
     XmaHwKernel     *kernel_info;
     //For execbo:
-    uint32_t     kernel_complete_count;
+    std::array<uint32_t, MAX_REGMAP_ENTRIES> reg_map;//4KB = 4B x 1024; Supported Max regmap of 4032 Bytes only in xmaplugin.cpp; execBO size is 4096 = 4KB in xmahw_hal.cpp
+    //pthread_mutex_t *lock;
+    int32_t    regmap_max;
+    std::unique_ptr<std::atomic<bool>> reg_map_locked;
+    uint32_t        kernel_complete_count;
+    XmaHwDevice     *device;
 
     uint32_t reserved[4];
 
-  XmaHwSessionPrivate() {
+  XmaHwSessionPrivate(): reg_map_locked(new std::atomic<bool>)  {
    dev_handle = NULL;
    kernel_info = NULL;
+   //std::memset(reg_map, 0, sizeof(reg_map));
+   reg_map.fill(0);
+   *reg_map_locked = false;
    kernel_complete_count = 0;
+   regmap_max = -1;
+   device = NULL;
   }
 } XmaHwSessionPrivate;
 
@@ -104,26 +118,19 @@ typedef struct XmaHwKernel
     uint32_t    cu_mask1;
     uint32_t    cu_mask2;
     uint32_t    cu_mask3;
-    int32_t    regmap_max;
     //For execbo:
 
-    uint32_t    reg_map[MAX_REGMAP_ENTRIES];//4KB = 4B x 1024; Supported Max regmap of 4032 Bytes only in xmaplugin.cpp; execBO size is 4096 = 4KB in xmahw_hal.cpp
-    //pthread_mutex_t *lock;
-    std::unique_ptr<std::atomic<bool>> reg_map_locked;
-    int32_t         locked_by_session_id;
-    XmaSessionType locked_by_session_type;
     bool soft_kernel;
     bool kernel_channels;
     uint32_t     max_channel_id;
-    void*   private_do_not_use;
 
     //bool             have_lock;
     uint32_t    reserved[16];
 
-  XmaHwKernel(): reg_map_locked(new std::atomic<bool>) {
+  XmaHwKernel() {
+    //name = std::string("Yet-to-Initialize");
     in_use = false;
     cu_index = -1;
-    regmap_max = -1;
     default_ddr_bank = -1;
     ip_ddr_mapping = 0;
     cu_mask0 = 0;
@@ -133,10 +140,6 @@ typedef struct XmaHwKernel
     soft_kernel = false;
     kernel_channels = false;
     max_channel_id = 0;
-    //*kernel_complete_locked = false;
-    *reg_map_locked = false;
-    locked_by_session_id = -100;
-    private_do_not_use = NULL;
   }
 } XmaHwKernel;
 
@@ -147,7 +150,7 @@ typedef struct XmaHwMem
     uint64_t    size_kb;
     uint32_t    size_mb;
     uint32_t    size_gb;
-    std::string name;
+    uint8_t     name[MAX_KERNEL_NAME];
 
     uint32_t    reserved[16];
 
