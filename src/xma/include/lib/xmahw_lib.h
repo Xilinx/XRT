@@ -29,7 +29,8 @@
 #include <atomic>
 #include <vector>
 #include <memory>
-#include <map>
+#include <unordered_map>
+#include <cstring>
 #include <array>
 
 #define MIN_EXECBO_POOL_SIZE      16
@@ -54,6 +55,19 @@ constexpr std::uint64_t signature = 0xF42F1F8F4F2F1F0F;
 /* Forward declaration */
 typedef struct XmaHwDevice XmaHwDevice;
 
+typedef struct XmaCUCmdObjPrivate
+{
+    //uint32_t cmd_id1;//Serial roll-over counter;
+    //cmd1 is key of the map
+    uint32_t cmd_id2;//Random number
+    int32_t   cu_id;
+
+  XmaCUCmdObjPrivate() {
+    cmd_id2 = 0;
+    cu_id = false;
+  }
+} XmaCUCmdObjPrivate;
+
 typedef struct XmaHwSessionPrivate
 {
     void            *dev_handle;
@@ -65,6 +79,7 @@ typedef struct XmaHwSessionPrivate
     std::unique_ptr<std::atomic<bool>> reg_map_locked;
     uint32_t        kernel_complete_count;
     XmaHwDevice     *device;
+    std::unordered_map<uint32_t, XmaCUCmdObjPrivate> CU_cmds;//Use execbo lock when accessing this map
 
     uint32_t reserved[4];
 
@@ -112,7 +127,7 @@ typedef struct XmaHwKernel
     //uint64_t bitmap based on MAX_DDR_MAP=64
     uint64_t    ip_ddr_mapping;
     int32_t     default_ddr_bank;
-    std::map<int32_t, int32_t> CU_arg_to_mem_info;// arg# -> ddr_bank#
+    std::unordered_map<int32_t, int32_t> CU_arg_to_mem_info;// arg# -> ddr_bank#
 
     uint32_t    cu_mask0;
     uint32_t    cu_mask1;
@@ -129,6 +144,7 @@ typedef struct XmaHwKernel
 
   XmaHwKernel() {
     //name = std::string("Yet-to-Initialize");
+   std::memset(name, 0, sizeof(name));
     in_use = false;
     cu_index = -1;
     default_ddr_bank = -1;
@@ -155,6 +171,7 @@ typedef struct XmaHwMem
     uint32_t    reserved[16];
 
   XmaHwMem() {
+    std::memset(name, 0, sizeof(name));
     in_use = false;
     base_address = 0;
     size_kb = 0;
