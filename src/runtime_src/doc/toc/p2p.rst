@@ -178,17 +178,17 @@ Typical coding style:
 
 .. code-block:: cpp
 
-   cl_mem src_buf; // Source Buffer (regular) allocated in DDR bank0
-   cl_mem_ext_ptr_t src_buf_ext = {0};
-   src_buf_ext.flags = XCL_MEM_DDR_BANK0;
-   src_buf = clCreateBuffer(src_context, CL_MEM_WRITE_ONLY | CL_MEM_EXT_PTR_XILINX, buffersize, &src_buf_ext, &err);
+   // Source Buffer (regular) in source context
+   cl_mem src_buf;
+   src_buf = clCreateBuffer(src_context, CL_MEM_WRITE_ONLY, buffersize, NULL,  &err);
+   clSetKernelArg(kernel_1,0,sizeof(cl_mem),&src_buf);
 
-
-   cl_mem dst_buf;  // Destination buffer (P2P) allocated in DDR bank0 of destination context
+   // Destination buffer (P2P) in destination context
+   cl_mem dst_buf; 
    cl_mem_ext_ptr_t dst_buf_ext = {0};
-
-   dst_buf_ext.flags = XCL_MEM_DDR_BANK0 | XCL_MEM_EXT_P2P_BUFFER;
+   dst_buf_ext.flags = XCL_MEM_EXT_P2P_BUFFER;
    dst_buf = clCreateBuffer(dst_context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX, buffersize, &dst_buf_ext, &err);
+   clSetKernelArg(kernel_2,0,sizeof(cl_mem),&dst_buf);
 
    // Import Destination P2P buffer to the source context
    err = xclGetMemObjectFd(dst_buf, &fd);
@@ -231,7 +231,7 @@ Typical coding style
 
    1. Create P2P buffer
    2. Map P2P buffer to the host space
-   3. Access the SSD location through Linux File function
+   3. Access the SSD location through Linux File System, the file needs to be opened with O_DIRECT.
    4. Read/Write through Linux pread/pwrite function
 
 .. code-block:: cpp
