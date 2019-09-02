@@ -632,7 +632,7 @@ cmd_abort(struct xocl_cmd *xcmd)
 }
 
 static inline bool
-can_enable_timestamps(struct xocl_cmd *xcmd)
+cmd_can_enable_timestamps(struct xocl_cmd *xcmd)
 {
 	struct ert_start_kernel_cmd *pkt = xcmd->ert_cu;
 
@@ -663,7 +663,7 @@ cmd_bo_init(struct xocl_cmd *xcmd, struct drm_xocl_bo *bo,
 	xcmd->bo = bo;
 	xcmd->ert_pkt = (struct ert_packet *)bo->vmapping;
 
-	xcmd->timestamp_enabled = can_enable_timestamps(xcmd);
+	xcmd->timestamp_enabled = cmd_can_enable_timestamps(xcmd);
 
 	// in kds mode copy pkt cus to command object cu bitmap
 	if (penguin && cmd_type(xcmd) == ERT_CU) {
