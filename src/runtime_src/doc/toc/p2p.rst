@@ -162,15 +162,15 @@ OpenCL coding style
 Consider the example situation as below:
 
   - P2P data transfer from Card1 to Card2
-  - Source buffer (buf_src) is OpenCL buffer resident of Card1's DDR
-  - Destination buffer (buf_dst) is OpenCL buffer resident of Card2's DDR
+  - Source buffer (`buf_src`) is OpenCL buffer resident of Card1's DDR
+  - Destination buffer (`buf_dst`) is OpenCL buffer resident of Card2's DDR
 
 Typical coding style:
 
   1. In the OpenCL host code, create separate `cl_context` for each `cl_device_id`
   2. Define `buf_src` as regular buffer
   3. Define `buf_dst` as P2P buffer
-  4. Import the P2P buffer or buf_dst to the context of buf_src. Use the following APIs
+  4. Import the P2P buffer or `buf_dst` to the context of `buf_src`. Use the following APIs
 
        - `xclGetMemObjectFd`
        - `xclGetMemObjectFromFd`
@@ -180,15 +180,15 @@ Typical coding style:
 
    // Source Buffer (regular) in source context
    cl_mem src_buf;
-   src_buf = clCreateBuffer(src_context, CL_MEM_WRITE_ONLY, buffersize, NULL,  &err);
-   clSetKernelArg(kernel_1,0,sizeof(cl_mem),&src_buf);
+   src_buf = clCreateBuffer(src_context, CL_MEM_WRITE_ONLY, buffersize, NULL, &err);
+   clSetKernelArg(kernel_1, 0, sizeof(cl_mem), &src_buf);
 
    // Destination buffer (P2P) in destination context
    cl_mem dst_buf; 
    cl_mem_ext_ptr_t dst_buf_ext = {0};
    dst_buf_ext.flags = XCL_MEM_EXT_P2P_BUFFER;
    dst_buf = clCreateBuffer(dst_context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX, buffersize, &dst_buf_ext, &err);
-   clSetKernelArg(kernel_2,0,sizeof(cl_mem),&dst_buf);
+   clSetKernelArg(kernel_2, 0, sizeof(cl_mem), &dst_buf);
 
    // Import Destination P2P buffer to the source context
    err = xclGetMemObjectFd(dst_buf, &fd);
@@ -216,7 +216,7 @@ In the Profile Summary report file the P2P transfer is shown under **Data Transf
 | ...   |     IN         |     4096  |    N/A     |    0.262  |    N/A   |   0.064  |      N/A    |
 +-------+----------------+-----------+------------+-----------+----------+----------+-------------+
 
-The report shows the P2P transfer corresponds to the receiving device (i.e. transfer type IN).
+The report shows the P2P transfer corresponding to the receiving device (i.e. transfer type IN).
 
 
 P2P Data Transfer between FPGA Card and NVMe Device 
@@ -231,31 +231,32 @@ Typical coding style
 
    1. Create P2P buffer
    2. Map P2P buffer to the host space
-   3. Access the SSD location through Linux File System, the file needs to be opened with O_DIRECT.
-   4. Read/Write through Linux pread/pwrite function
+   3. Access the SSD location through Linux File System, the file needs to be opened with `O_DIRECT`.
+   4. Read/Write through Linux `pread`/`pwrite` function
 
 .. code-block:: cpp
 
    // Creating P2P buffer
-   cl_mem_ext_ptr_t p2pBoExt = {0};
+   cl_mem_ext_ptr_t p2pBOExt = {0};
 
    p2pBOExt.flags = XCL_MEM_EXT_P2P_BUFFER; 
 
-   p2pBo = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX, chunk_size, &p2pBoExt, NULL);
+   p2pBO = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX, chunk_size, &p2pBOExt, NULL);
 
-   clSetKernelArg(kernel, 0, sizeof(cl_mem),p2pBO),
+   clSetKernelArg(kernel, 0, sizeof(cl_mem), p2pBO);
 
    // Map P2P Buffer into the host space
 
-   p2pPtr = (char *) clEnqueueMapBuffer(command_queue, p2pBo, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, chunk_size, 0, NULL, NULL, NULL);
+   p2pPtr = (char *) clEnqueueMapBuffer(command_queue, p2pBO CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, chunk_size, 0, NULL, NULL, NULL);
 
-   // Read
    filename = <full path to SSD>
    fd = open(filename, O_RDWR | O_DIRECT);
+
+   // Read chunk_size bytes starting at offset 0 from fd into p2pPtr
    pread(fd, p2pPtr, chunk_size, 0);
 
-   // Write 
-   pwrite(fd,p2pPtr, chunk_size,0); 
+   // Wrtie chunk_size bytes starting at offset 0 from p2pPtr into fd
+   pwrite(fd, p2pPtr, chunk_size, 0); 
 
 Profile Report
 ..............
