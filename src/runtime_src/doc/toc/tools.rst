@@ -1,3 +1,5 @@
+.. _tools.rst:
+
 xbutil
 ------
 
