@@ -247,7 +247,6 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         calloc(filter_session->filter_plugin->plugin_data_size, sizeof(uint8_t));
 
     filter_session->base.session_id = g_xma_singleton->num_of_sessions + 1;
-    filter_session->base.session_signature = (void*)(((uint64_t)filter_session->base.plugin_data) | ((uint64_t)dev_handle));
     xma_logmsg(XMA_INFO_LOG, XMA_FILTER_MOD,
                 "XMA session channel_id: %d; session_id: %d\n", filter_session->base.channel_id, filter_session->base.session_id);
 
@@ -255,7 +254,10 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     priv1->dev_handle = dev_handle;
     priv1->kernel_info = kernel_info;
     priv1->kernel_complete_count = 0;
+    priv1->device = &hwcfg->devices[hwcfg_dev_index];
     filter_session->base.hw_session.private_do_not_use = (void*) priv1;
+    filter_session->base.session_signature = (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved));
+
     rc = filter_session->filter_plugin->init(filter_session);
     if (rc) {
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
@@ -362,7 +364,7 @@ xma_filter_session_send_frame(XmaFilterSession  *session,
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD, "xma_filter_session_send_frame failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
-    if (session->base.session_signature != (void*)(((uint64_t)session->base.plugin_data) | ((uint64_t)priv1->dev_handle))) {
+    if (session->base.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD, "XMASession is corrupted.\n");
         return XMA_ERROR;
     }
@@ -385,7 +387,7 @@ xma_filter_session_recv_frame(XmaFilterSession  *session,
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD, "xma_filter_session_recv_frame failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
-    if (session->base.session_signature != (void*)(((uint64_t)session->base.plugin_data) | ((uint64_t)priv1->dev_handle))) {
+    if (session->base.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD, "XMASession is corrupted.\n");
         return XMA_ERROR;
     }

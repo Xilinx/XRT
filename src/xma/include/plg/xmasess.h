@@ -178,6 +178,15 @@ typedef struct XmaSession {
   
 } XmaSession;
 
+typedef struct XmaCUCmdObj
+{
+    uint32_t    cmd_id1;
+    uint32_t    cmd_id2;
+    int32_t     cu_index;
+} XmaCUCmdObj;
+
+
+
 /**
  * is_xma_decoder() - Determine if XmaSession is a member of XmaDecoderSession
 */

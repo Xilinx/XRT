@@ -24,9 +24,6 @@
 extern "C" {
 #endif
 
-/**
- * typedef XmaKernelPlugin - XmaKernel plugin interface
-*/
 typedef struct XmaAdminSession XmaAdminSession;
 
 /**
@@ -59,11 +56,11 @@ typedef struct XmaAdminPlugin
 } XmaAdminPlugin;
 
 /**
- * struct XmaKernelSession - An instance of an XmaKernel
+ * struct XmaAdminSession - An instance of an XmaAdmin
 */
 typedef struct XmaAdminSession
 {
-    XmaSession            base; /**< base class of XmaKernelSession */
+    XmaSession            base; /**< base class of XmaAdminSession */
     XmaAdminProperties   admin_props; /**< application supplied properites */
     XmaAdminPlugin      *admin_plugin; /**< pointer to plugin driver */
     void                 *private_session_data; //Managed by host video application

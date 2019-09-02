@@ -257,7 +257,11 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         for (uint32_t d = 0; d < info.number_of_mem_banks; d++) {
             dev_tmp1.ddrs.emplace_back(XmaHwMem{});
             XmaHwMem& tmp1 = dev_tmp1.ddrs.back();
-            tmp1.name = std::string((char*)info.mem_topology[d].m_tag);
+            //tmp1.name = std::string((char*)info.mem_topology[d].m_tag);
+            memset((void*)tmp1.name, 0x0, MAX_KERNEL_NAME);
+            std::string str_tmp1 = std::string((char*)info.mem_topology[d].m_tag);
+            str_tmp1.copy((char*)tmp1.name, MAX_KERNEL_NAME-1);
+
             tmp1.base_address = info.mem_topology[d].m_base_address;
             tmp1.size_kb = info.mem_topology[d].m_size;
             tmp1.size_mb = tmp1.size_kb / 1024;
@@ -270,9 +274,9 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
                 info.mem_topology[d].m_type == MEM_TYPE::MEM_HBM)
                 ) {
                 tmp1.in_use = true;
-                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tMEM# %d - %s - size: %d KB", d, tmp1.name.c_str(), tmp1.size_kb);
+                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tMEM# %d - %s - size: %d KB", d, (char*)tmp1.name, tmp1.size_kb);
             } else {
-                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tMEM# %d - %s - Unused/Unused Type", d, tmp1.name.c_str());
+                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tMEM# %d - %s - Unused/Unused Type", d, (char*)tmp1.name);
 
             }
         }
@@ -281,8 +285,10 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         for (uint32_t d = 0; d < info.number_of_kernels; d++) {
             dev_tmp1.kernels.emplace_back(XmaHwKernel{});
             XmaHwKernel& tmp1 = dev_tmp1.kernels.back();
-            strcpy((char*)tmp1.name,
-                (const char*)info.ip_layout[d].kernel_name);
+            memset((void*)tmp1.name, 0x0, MAX_KERNEL_NAME);
+            std::string str_tmp1 = std::string((char*)info.ip_layout[d].kernel_name);
+            str_tmp1.copy((char*)tmp1.name, MAX_KERNEL_NAME-1);
+
             tmp1.base_address = info.ip_layout[d].base_addr;
             tmp1.cu_index = (int32_t)d;
             if (info.ip_layout[d].soft_kernel) {
@@ -311,9 +317,9 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
                 }
 
                 if (tmp1.default_ddr_bank < 0) {
-                    xma_logmsg(XMA_WARNING_LOG, XMAAPI_MOD,"\tCU# %d - %s - default DDR bank: NONE", d, tmp1.name);
+                    xma_logmsg(XMA_WARNING_LOG, XMAAPI_MOD,"\tCU# %d - %s - default DDR bank: NONE", d, (char*)tmp1.name);
                 } else {
-                    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - default DDR bank:%d", d, tmp1.name, tmp1.default_ddr_bank);
+                    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - default DDR bank:%d", d, (char*)tmp1.name, tmp1.default_ddr_bank);
                 }
                 if (xclOpenContext(dev_tmp1.handle, info.uuid, d, true) != 0) {
                     free(buffer);
@@ -321,7 +327,6 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
                     return false;
                 }
             }
-            tmp1.private_do_not_use = (void*) &hwcfg->devices[hwcfg->devices.size()-1];
         }
 
         std::bitset<MAX_XILINX_KERNELS> cu_mask;

@@ -25,6 +25,7 @@
 #include "lib/xmalogger.h"
 #include <atomic>
 #include <vector>
+#include <unordered_map>
 
 typedef struct XmaSingleton
 {
@@ -47,7 +48,7 @@ typedef struct XmaSingleton
     std::atomic<uint32_t> num_kernels;
     std::atomic<uint32_t> num_non_kernels;
     std::atomic<uint32_t> num_of_sessions;
-    std::map<uint32_t, XmaSession> all_sessions;// XMASessions
+    std::unordered_map<uint32_t, XmaSession> all_sessions;// XMASessions
 
     uint32_t          reserved[4];
 
