@@ -218,9 +218,9 @@ as data does not need to be transferred via host while moving from one DDR bank 
 <p>The output of the K1 is consumed by K2 for its input. So there has to be data transfer from DDR bank0 to DDR bank1.</p>
 <div align="center" class="align-center"><img alt="_images/M2M-transfer.svg" src="_images/M2M-transfer.svg" /></div>
 <p>In OpenCL host code, let’s assume four buffers: Buf1, Buf2, Buf3, Buf4.</p>
-<dl class="simple">
-<dt>So the data transfer from the host follow the order</dt><dd><p>Buf1 -&gt; K1 -&gt; Buf2 -&gt; Buf3 -&gt; K2 -&gt; Buf4</p>
-</dd>
+<dl class="docutils">
+<dt>So the data transfer from the host follow the order</dt>
+<dd>Buf1 -&gt; K1 -&gt; Buf2 -&gt; Buf3 -&gt; K2 -&gt; Buf4</dd>
 </dl>
 <p>We can perform a copy from Buf2 to Buf3 using standard OpenCL API <code class="docutils literal notranslate"><span class="pre">clEnqueueCopyBuffer</span></code>. See below a code segment.</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>clEnqueueTask(queue, K1 ,0,nullptr,&amp;events1);
@@ -232,10 +232,10 @@ clEnqueueTask(queue,K2,1,&amp;event2,nullptr);
 <div class="section" id="some-limitations">
 <h2>Some limitations<a class="headerlink" href="#some-limitations" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic simple">
-<li><p>Hardware supports M2M between two DDR banks, not other memory types such as HBM or PLRAM</p></li>
-<li><p>The data being copied has to be 64 bit aligned. Otherwise, XRT will do copy via host using the same API</p></li>
-<li><p>Not all the cards are M2M capable, in that case, XRT will do copy via host using the same API</p></li>
-<li><p>M2M copy of OpenCL sub-buffers is not properly supported</p></li>
+<li>Hardware supports M2M between two DDR banks, not other memory types such as HBM or PLRAM</li>
+<li>The data being copied has to be 64 bit aligned. Otherwise, XRT will do copy via host using the same API</li>
+<li>Not all the cards are M2M capable, in that case, XRT will do copy via host using the same API</li>
+<li>M2M copy of OpenCL sub-buffers is not properly supported</li>
 </ol>
 </div>
 </div>

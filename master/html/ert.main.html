@@ -220,11 +220,11 @@ struct <code class="descname">ert_packet</code><a class="headerlink" href="#c.er
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt><dd><p>anonymous</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt><dd><p>count number of words representing packet payload</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt>
+<dd>anonymous</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt>
+<dd>count number of words representing packet payload</dd>
 </dl>
 <dl class="type">
 <dt id="c.ert_start_kernel_cmd">
@@ -240,13 +240,13 @@ struct <code class="descname">ert_start_kernel_cmd</code><a class="headerlink" h
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt><dd><p>anonymous</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">cu_mask</span></code></dt><dd><p>first mandatory CU mask</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt><dd><p>count-1 number of words representing interpreted payload</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt>
+<dd>anonymous</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_mask</span></code></dt>
+<dd>first mandatory CU mask</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt>
+<dd>count-1 number of words representing interpreted payload</dd>
 </dl>
 <p><strong>Description</strong></p>
 <p>The packet payload is comprised of reserved id field, a mandatory CU mask,
@@ -266,24 +266,24 @@ struct <code class="descname">ert_init_kernel_cmd</code><a class="headerlink" hr
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt><dd><p>anonymous</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">cu_mask</span></code></dt><dd><p>first mandatory CU mask</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt><dd><p>count-9 number of words representing interpreted payload</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt>
+<dd>anonymous</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_mask</span></code></dt>
+<dd>first mandatory CU mask</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt>
+<dd>count-9 number of words representing interpreted payload</dd>
 </dl>
 <p><strong>Description</strong></p>
 <p>this command initializes CUs by writing CU registers. CUs are
 represented by cu_mask and extra_cu_masks.</p>
-<dl class="simple">
-<dt><strong>cu_run_timeout</strong>   the configured CU timeout value in Microseconds</dt><dd><p>setting to 0 means CU should not timeout</p>
-</dd>
-<dt><strong>cu_reset_timeout</strong> the configured CU reset timeout value in Microseconds</dt><dd><p>when CU timeout, CU will be reset. this indicates
+<dl class="docutils">
+<dt><strong>cu_run_timeout</strong>   the configured CU timeout value in Microseconds</dt>
+<dd>setting to 0 means CU should not timeout</dd>
+<dt><strong>cu_reset_timeout</strong> the configured CU reset timeout value in Microseconds</dt>
+<dd>when CU timeout, CU will be reset. this indicates
 CU reset should be completed within the timeout value.
-if cu_run_timeout is set to 0, this field is undefined.</p>
-</dd>
+if cu_run_timeout is set to 0, this field is undefined.</dd>
 </dl>
 <p>The packet payload is comprised of reserved id field, 8 reserved fields,
 a mandatory CU mask, and extra_cu_masks per header field, followed by a
@@ -312,33 +312,33 @@ struct <code class="descname">ert_configure_cmd</code><a class="headerlink" href
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt><dd><p>anonymous</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">slot_size</span></code></dt><dd><p>command queue slot size</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">num_cus</span></code></dt><dd><p>number of compute units in program</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">cu_shift</span></code></dt><dd><p>shift value to convert CU idx to CU addr</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">cu_base_addr</span></code></dt><dd><p>base address to add to CU addr for actual physical address</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">ert</span></code></dt><dd><p>1            enable embedded HW scheduler</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">polling</span></code></dt><dd><p>1        poll for command completion</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">cu_dma</span></code></dt><dd><p>1         enable CUDMA custom module for HW scheduler</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">cu_isr</span></code></dt><dd><p>1         enable CUISR custom module for HW scheduler</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">cq_int</span></code></dt><dd><p>1         enable interrupt from host to HW scheduler</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">cdma</span></code></dt><dd><p>1           enable CDMA kernel</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">dsa52</span></code></dt><dd><p>1          reserved for internal use</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt><dd><p>addresses of <strong>num_cus</strong> CUs</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt>
+<dd>anonymous</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">slot_size</span></code></dt>
+<dd>command queue slot size</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">num_cus</span></code></dt>
+<dd>number of compute units in program</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_shift</span></code></dt>
+<dd>shift value to convert CU idx to CU addr</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_base_addr</span></code></dt>
+<dd>base address to add to CU addr for actual physical address</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">ert</span></code></dt>
+<dd>1            enable embedded HW scheduler</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">polling</span></code></dt>
+<dd>1        poll for command completion</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_dma</span></code></dt>
+<dd>1         enable CUDMA custom module for HW scheduler</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_isr</span></code></dt>
+<dd>1         enable CUISR custom module for HW scheduler</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cq_int</span></code></dt>
+<dd>1         enable interrupt from host to HW scheduler</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cdma</span></code></dt>
+<dd>1           enable CDMA kernel</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">dsa52</span></code></dt>
+<dd>1          reserved for internal use</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt>
+<dd>addresses of <strong>num_cus</strong> CUs</dd>
 </dl>
 <dl class="type">
 <dt id="c.ert_configure_sk_cmd">
@@ -357,19 +357,19 @@ struct <code class="descname">ert_configure_sk_cmd</code><a class="headerlink" h
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt><dd><p>anonymous</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">start_cuidx</span></code></dt><dd><p>start index of compute units</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">num_cus</span></code></dt><dd><p>number of compute units in program</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">sk_size</span></code></dt><dd><p>size in bytes of soft kernel image</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">sk_name</span></code></dt><dd><p>symbol name of soft kernel</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">sk_addr</span></code></dt><dd><p>soft kernel image’s physical address (little endian)</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt>
+<dd>anonymous</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">start_cuidx</span></code></dt>
+<dd>start index of compute units</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">num_cus</span></code></dt>
+<dd>number of compute units in program</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">sk_size</span></code></dt>
+<dd>size in bytes of soft kernel image</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">sk_name</span></code></dt>
+<dd>symbol name of soft kernel</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">sk_addr</span></code></dt>
+<dd>soft kernel image’s physical address (little endian)</dd>
 </dl>
 <dl class="type">
 <dt id="c.ert_unconfigure_sk_cmd">
@@ -385,13 +385,13 @@ struct <code class="descname">ert_unconfigure_sk_cmd</code><a class="headerlink"
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt><dd><p>anonymous</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">start_cuidx</span></code></dt><dd><p>start index of compute units</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">num_cus</span></code></dt><dd><p>number of compute units in program</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt>
+<dd>anonymous</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">start_cuidx</span></code></dt>
+<dd>start index of compute units</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">num_cus</span></code></dt>
+<dd>number of compute units in program</dd>
 </dl>
 <dl class="type">
 <dt id="c.ert_abort_cmd">
@@ -405,9 +405,9 @@ struct <code class="descname">ert_abort_cmd</code><a class="headerlink" href="#c
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt><dd><p>anonymous</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt>
+<dd>anonymous</dd>
 </dl>
 <dl class="function">
 <dt id="c.ERT_WORD_SIZE">

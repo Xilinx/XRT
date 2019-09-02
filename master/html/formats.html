@@ -210,23 +210,26 @@
 <span id="formats-rst"></span><h1>Binary Formats<a class="headerlink" href="#binary-formats" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="xclbin">
 <h2>xclbin<a class="headerlink" href="#xclbin" title="Permalink to this headline">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">xclbin</span></code> container format is defined in file <code class="docutils literal notranslate"><span class="pre">xclbin.h</span></code>. Since
-2017.1, tools use <code class="docutils literal notranslate"><span class="pre">xclbin2</span></code> format also known as AXLF format. AXLF is
-an extensible, future-proof container of (bitstream/platform) hardware
-as well as software (MPSoC/Microblaze ELF files) design data.  This
-unified container can hold outputs of our hardware compilers (SDAccel
-<code class="docutils literal notranslate"><span class="pre">xocc</span></code>) as well as software compilers (processor ELF formats for
-MPSoc/Microblaze). This allows for easier integration of embedded
-processors and SDx on the same device. It also has structures to
-describe the memory topology, acceleration kernel instantiations and
-kernel connectivity for each kernel.</p>
-<p>The compiler generates unique <code class="docutils literal notranslate"><span class="pre">xclbin</span></code> file for every design
-compiled. The Vivado front-end tools programmatically
-populate this file (layout described in <code class="docutils literal notranslate"><span class="pre">core/include/xclbin.h</span></code>,
-attached) and then the runtime &amp; device drivers read the information and apply
-it accordingly.</p>
-<p>The path to <code class="docutils literal notranslate"><span class="pre">xclbin.h</span></code> is <code class="docutils literal notranslate"><span class="pre">runtime/core/include/xclbin.h</span></code> under
-SDx installation directory.</p>
+<p><strong>xclbin</strong> container format (also known as AXLF) is defined in file
+<code class="docutils literal notranslate"><span class="pre">xclbin.h</span></code>. The file uses <strong>xclbin2</strong> as the magic word. AXLF is
+sections based extensible container. Different sections store different
+parts of compiled application like bitstreams for PL (FPGA fabric), ELF
+for AIE tiles and embedded processors like Microblaze. It also contains
+well structured metadata to define memory topology, IP layout of instantiated
+peripherals and compute kernels, clocking details and kernel connectivity
+for each compute kernel.</p>
+<p>The compiler generates unique xclbin file tagged with UUID for every application
+compiled. Each xclbin also has a another UUID which defines its compatbility to
+the Shell. Scout compiler generates this file as part of xocc and end-users
+load this file via XRT xclLoadXclbin() API. XRT userspace and kernel space
+components consume different sections of xclbin by programming the hardware
+and initializing key data structures in XRT userspace libraries and XRT
+kernel drivers.</p>
+<p>xclbins can also be signed. More information can be found in <a class="reference internal" href="security.html#security-rst"><span class="std std-ref">Security of Alveo Platform</span></a>.</p>
+<p>The path to <code class="docutils literal notranslate"><span class="pre">xclbin.h</span></code> is <code class="docutils literal notranslate"><span class="pre">xrt/include/xclbin.h</span></code> inside XRT
+installation directory.</p>
+<p>XRT provides a very powerful utility, <strong>xclbinutil</strong> which can be used to read/write/change
+xclbins. More information can be found in the section on <a class="reference internal" href="xclbintools.html#xclbintools-rst"><span class="std std-ref">xclbinutil</span></a></p>
 </div>
 <div class="section" id="feature-rom">
 <h2>Feature ROM<a class="headerlink" href="#feature-rom" title="Permalink to this headline">¶</a></h2>
@@ -240,9 +243,8 @@ programmatically capture and populate BRAM memory in the platform
 during platform creation time. Runtime components like drivers read it
 and enable functionality in driver and also use the information to
 perform hardware/software compatibility checks.</p>
-<p>The path to <code class="docutils literal notranslate"><span class="pre">xclfeatures.h</span></code> is
-<code class="docutils literal notranslate"><span class="pre">runtime/core/include/xclfeatures.h</span></code> under SDx installation
-directory.</p>
+<p>The path to <code class="docutils literal notranslate"><span class="pre">xclfeatures.h</span></code> is <code class="docutils literal notranslate"><span class="pre">xrt/include/xclfeatures.h</span></code> inside
+XRT installation directory.</p>
 </div>
 </div>
 

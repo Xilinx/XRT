@@ -214,8 +214,8 @@
 architecture and application context. We provide a few scripts and
 some basic source files as an example to create a custom MPSoC platform.</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">src/platform/zcu102ng</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">src/platform/zcu102ng_svm</span></code></p></li>
+<li><code class="docutils literal notranslate"><span class="pre">src/platform/zcu102ng</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">src/platform/zcu102ng_svm</span></code></li>
 </ul>
 <p>Before creating platform, make sure to properly set up environment
 for vivado. It takes same procedures to create platform for
@@ -239,11 +239,11 @@ Please read the Hardware Platform section of Xilinx Document UG1146.</p>
 platform with the Hardware Definition File we created. <a class="reference internal" href="yocto.html#yocto-rst"><span class="std std-ref">Yocto Recipes For Embedded Flow</span></a>.</p>
 <p>The boot image files required include</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">image.ub</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">bl31.elf</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fsbl.elf</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">pmufw.elf</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">u-boot.elf</span></code></p></li>
+<li><code class="docutils literal notranslate"><span class="pre">image.ub</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">bl31.elf</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">fsbl.elf</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">pmufw.elf</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">u-boot.elf</span></code></li>
 </ul>
 <p>Copy image.ub to <code class="docutils literal notranslate"><span class="pre">platform/zcu102ng/src/a53/xrt/image/</span></code> and copy other elf
 files to <code class="docutils literal notranslate"><span class="pre">platform/zcu102ng/src/boot/</span></code></p>
@@ -264,7 +264,7 @@ cp u-boot.elf       platform/zcu102ng/src/boot/u-boot.elf
 </div>
 <p>The created zcu102ng platform will be posted at</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">platform/zcu102ng/output/zcu102ng/export/zcu102ng</span></code></p></li>
+<li><code class="docutils literal notranslate"><span class="pre">platform/zcu102ng/output/zcu102ng/export/zcu102ng</span></code></li>
 </ul>
 </div>
 <div class="section" id="make-use-of-platform">

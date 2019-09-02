@@ -212,85 +212,88 @@
             
   <div class="section" id="platform-overview">
 <span id="platforms-rst"></span><h1>Platform Overview<a class="headerlink" href="#platform-overview" title="Permalink to this headline">¶</a></h1>
-<div align="center" class="align-center"><img alt="_images/XRT-Architecture.svg" src="_images/XRT-Architecture.svg" /></div>
-<p>XRT exports a common stack across PCIe based platforms and MPSoC based platforms.
+<p>XRT exports a common stack across PCIe based platforms and MPSoC based edge platforms.
 From user perspective there is very little porting effort when migrating an
 application from one class of platform to another.</p>
 <div class="section" id="pcie-based-platforms">
 <h2>PCIe Based Platforms<a class="headerlink" href="#pcie-based-platforms" title="Permalink to this headline">¶</a></h2>
+<div align="center" class="align-center"><img alt="_images/XRT-Architecture-PCIe.svg" src="_images/XRT-Architecture-PCIe.svg" /></div>
 <p>XRT supports following PCIe based devices:</p>
 <ol class="arabic simple">
-<li><p>U200</p></li>
-<li><p>U250</p></li>
-<li><p>U280</p></li>
-<li><p>U50</p></li>
-<li><p>AWS F1</p></li>
-<li><p>Advantech VEGA-4000/4002</p></li>
+<li>U200</li>
+<li>U250</li>
+<li>U280</li>
+<li>U50</li>
+<li>AWS F1</li>
+<li>Advantech VEGA-4000/4002</li>
 </ol>
 <p>PCIe based platforms are supported on x86_64, PPC64LE and AARCH64 host architectures.
-The shell (previously known as DSA) has two physical functions: PF0 also called <em>mgmt pf</em> and PF1 also
+The <em>Shell</em> (previously known as DSA) has two physical functions: PF0 also called <em>mgmt pf</em> and PF1 also
 called <em>user pf</em>.</p>
 <div class="section" id="mgmt-pf-pf0">
 <h3>MGMT PF (PF0)<a class="headerlink" href="#mgmt-pf-pf0" title="Permalink to this headline">¶</a></h3>
-<p>XRT Linux kernel driver <em>xclmgmt</em> binds to mgmt pf. The driver is organized into subdevices and handles
-the following functionality:</p>
+<p>XRT Linux kernel driver <em>xclmgmt</em> binds to management physical function. Management physical function
+provides access to Shell components responsible for privileged operations. xclmgmt driver is organized
+into subdevices and handles the following functionality:</p>
 <ol class="arabic simple">
-<li><p>ICAP programming</p></li>
-<li><p>Clock scaling</p></li>
-<li><p>Loading firmware container called dsabin (renamed to xsabin since 2019.2). Dsabin contains RL Shell (for 2 RP solution)
-and embedded Microblaze firmware for ERT and XMC.</p></li>
-<li><p>Access to in-band sensors: Temperature, Voltage, Current, etc.</p></li>
-<li><p>AXI Firewall management</p></li>
-<li><p>Access to flash programmer</p></li>
-<li><p>Device reset and rescan</p></li>
-<li><p>Hardware mailbox for communication with xocl driver</p></li>
-<li><p>Interrupt handling for AXI Firewall and Mailbox</p></li>
-<li><p>Device DNA discovery and validation</p></li>
-<li><p>ECC handling</p></li>
+<li>ICAP programming</li>
+<li>Clock scaling</li>
+<li>Loading firmware container called dsabin (renamed to xsabin since 2019.2). Dsabin contains RL Shell (for 2 RP solution)
+and embedded Microblaze firmware for ERT and XMC.</li>
+<li>Access to in-band sensors: Temperature, Voltage, Current, etc.</li>
+<li>AXI Firewall management</li>
+<li>Access to flash programmer</li>
+<li>Device reset and rescan</li>
+<li>Hardware mailbox for communication with xocl driver</li>
+<li>Interrupt handling for AXI Firewall and Mailbox</li>
+<li>Device DNA discovery and validation</li>
+<li>ECC handling</li>
 </ol>
 </div>
 <div class="section" id="user-pf-pf1">
 <h3>USER PF (PF1)<a class="headerlink" href="#user-pf-pf1" title="Permalink to this headline">¶</a></h3>
-<p>XRT Linux kernel driver <em>xocl</em> binds to user pf. The driver is organized into subdevices and handles the
-following functionality:</p>
+<p>XRT Linux kernel driver <em>xocl</em> binds to user physical function. User physical function provides access
+to Shell components responsible for non privileged operations. It also provides access to compute units
+in DFX partition. xocl driver is organized into subdevices and handles the following functionality:</p>
 <ol class="arabic simple">
-<li><p>Device memory topology discovery and memory management</p></li>
-<li><p>Device memory management as abstracted buffer objects</p></li>
-<li><p>XDMA memory mapped PCIe DMA engine programming</p></li>
-<li><p>QDMA streaming DMA engine programming</p></li>
-<li><p>Multi-process aware context management</p></li>
-<li><p>Standardized compute unit execution management (optionally with help of ERT) for client processes</p></li>
-<li><p>Interrupt handling for DMA, Compute unit completion and Mailbox</p></li>
-<li><p>Buffer object migration between device and host as DMA operation</p></li>
-<li><p>Queue creation/deletion read/write operation for streaming DMA operation</p></li>
-<li><p>AIO support for the streaming queues</p></li>
-<li><p>Buffer import and export via DMA-BUF</p></li>
-<li><p>PCIe peer-to-peer buffer mapping and sharing</p></li>
-<li><p>Access to in-band sensors</p></li>
-<li><p>Hardware mailbox for communication with xclmgmt driver</p></li>
+<li>Device memory topology discovery and memory management</li>
+<li>Device memory management as abstracted buffer objects</li>
+<li>XDMA memory mapped PCIe DMA engine programming</li>
+<li>QDMA streaming DMA engine programming</li>
+<li>Multi-process aware context management</li>
+<li>Standardized compute unit execution management (optionally with help of ERT) for client processes</li>
+<li>Interrupt handling for DMA, Compute unit completion and Mailbox</li>
+<li>Buffer object migration between device and host as DMA operation</li>
+<li>Queue creation/deletion read/write operation for streaming DMA operation</li>
+<li>AIO support for the streaming queues</li>
+<li>Buffer import and export via DMA-BUF</li>
+<li>PCIe peer-to-peer buffer mapping and sharing</li>
+<li>Access to in-band sensors via MailBox proxy into xclmgmt</li>
+<li>Hardware mailbox for communication with xclmgmt driver</li>
 </ol>
-<p>Another section discusses <a class="reference internal" href="security.html#security-rst"><span class="std std-ref">Security of Alveo Platform</span></a>.</p>
+<p>Platform security and robustness is described in section <a class="reference internal" href="security.html#security-rst"><span class="std std-ref">Security of Alveo Platform</span></a>.</p>
 </div>
 </div>
 <div class="section" id="zynq-ultrascale-mpsoc-based-embedded-platforms">
 <h2>Zynq Ultrascale+ MPSoC Based Embedded Platforms<a class="headerlink" href="#zynq-ultrascale-mpsoc-based-embedded-platforms" title="Permalink to this headline">¶</a></h2>
+<div align="center" class="align-center"><img alt="_images/XRT-Architecture-Edge.svg" src="_images/XRT-Architecture-Edge.svg" /></div>
 <p>XRT supports following embedded platforms:</p>
 <ol class="arabic simple">
-<li><p>ZCU19</p></li>
-<li><p>ZCU102</p></li>
-<li><p>ZCU104</p></li>
-<li><p>ZCU106</p></li>
+<li>ZCU19</li>
+<li>ZCU102</li>
+<li>ZCU104</li>
+<li>ZCU106</li>
 </ol>
 <p>MPSoC based platforms are supported with PetaLinux base stack. XRT Linux kernel
 driver <em>zocl</em> does the heavy lifting for the embedded platform. It handles the
 following functionality</p>
 <ol class="arabic simple">
-<li><p>CMA buffer management</p></li>
-<li><p>SMMU programming for SVM platforms</p></li>
-<li><p>Standardized compute unit execution management on behalf of client processes</p></li>
-<li><p>xclbin download for platforms with Partial Reconfiguration support</p></li>
-<li><p>Buffer import and export via DMA-BUF</p></li>
-<li><p>Interrupt handling for compute unit completion</p></li>
+<li>CMA buffer management and cache management</li>
+<li>SMMU programming for SVM platforms</li>
+<li>Standardized compute unit execution management on behalf of client processes</li>
+<li>xclbin download for platforms with Partial Reconfiguration support</li>
+<li>Buffer import and export via DMA-BUF</li>
+<li>Interrupt handling for compute unit completion</li>
 </ol>
 </div>
 </div>
