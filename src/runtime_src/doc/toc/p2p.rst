@@ -183,6 +183,9 @@ Typical coding style:
    src_buf = clCreateBuffer(src_context, CL_MEM_WRITE_ONLY, buffersize, NULL, &err);
    clSetKernelArg(kernel_1, 0, sizeof(cl_mem), &src_buf);
 
+   // Note: Handling of err is not shown throughout the code example. However, it is recommended
+   // to check error for most of the OpenCL APIs
+
    // Destination buffer (P2P) in destination context
    cl_mem dst_buf; 
    cl_mem_ext_ptr_t dst_buf_ext = {0};
@@ -247,7 +250,7 @@ Typical coding style
 
    // Map P2P Buffer into the host space
 
-   p2pPtr = (char *) clEnqueueMapBuffer(command_queue, p2pBO CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, chunk_size, 0, NULL, NULL, NULL);
+   p2pPtr = (char *) clEnqueueMapBuffer(command_queue, p2pBO, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, chunk_size, 0, NULL, NULL, NULL);
 
    filename = <full path to SSD>
    fd = open(filename, O_RDWR | O_DIRECT);
