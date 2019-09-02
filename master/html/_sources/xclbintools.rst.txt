@@ -1,2 +1,4 @@
+.. _xclbintools.rst:
+
 xclbinutil
 ----------

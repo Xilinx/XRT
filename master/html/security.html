@@ -147,6 +147,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#signing-of-xclbins">Signing of Xclbins</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#mailbox">Mailbox</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#device-reset-and-recovery">Device Reset and Recovery</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#shell-update">Shell Update</a></li>
 </ul>
 </li>
 </ul>
@@ -221,27 +222,27 @@
 <span id="security-rst"></span><h1>Security of Alveo Platform<a class="headerlink" href="#security-of-alveo-platform" title="Permalink to this headline">¶</a></h1>
 <div align="center" class="align-center"><img alt="_images/XSA-shell.svg" src="_images/XSA-shell.svg" /></div>
 <p>Security is built into Alveo platform hardware and software architecture. The platform
-is made up of
-two physical partitions: an immutable Shell and user compiled DFX partition. This
-design allows end users to perform Dynamic Function eXchange (Partial Reconfiguration
+is made up of two fixed physical partitions: an immutable Shell and user compiled DFX partition.
+This design allows end users to perform Dynamic Function eXchange (Partial Reconfiguration
 in classic FPGA terminology) in the well defined DFX partition while the static Shell
-provides key services.</p>
+provides key infrastructure services.</p>
 <div class="section" id="shell">
 <h2>Shell<a class="headerlink" href="#shell" title="Permalink to this headline">¶</a></h2>
 <p>The Shell provides core infrastructure to the Alveo platform. It includes hardened PCIe
 block which provides physical connectivity to the host PCIe bus via two physical functions
 as described in <a class="reference internal" href="platforms.html#platforms-rst"><span class="std std-ref">Platform Overview</span></a>.
 The Shell is <em>trusted</em> partition of the Alveo platform and for all practical purposes
-should be treated as an ASIC. The Shell is loaded on system boot from PROM. The Shell
+should be treated like an ASIC. The Shell is loaded on system boot from PROM. The Shell
 cannot be changed once the system is up.</p>
 <p>In the figure above, the Shell peripherals shaded blue can only be accessed from physical
 function 0 (PF0). The Shell peripherals shaded violet can be accessed from physical
-function 1 (PF1). From PCIe topology point of view PF0 <strong>owns</strong> the device and performs
+function 1 (PF1). From PCIe topology point of view PF0 <em>owns</em> the device and performs
 supervisory actions on the device. Peripherals shaded blue are trusted but peripherals
-shaded violet are not. A malicious actor who has direct access to blue shaded peripherals
-can crash the device and PCIe bus. However, a malicious actor who has direct access to
-violet shaded peripherals cannot crash the device or PCIe bus. This is particularly
-significant in pass-through virtualization deployment as discussed later.</p>
+shaded violet are not. A malicious actor with root privileges who has direct access to blue
+shaded peripherals can potentially crash both the device and PCIe bus. However, a malicious
+actor with root privileges who has direct access to only violet shaded peripherals cannot
+crash the PCIe bus. This is particularly significant in pass-through virtualization deployment
+as discussed later. Ordinary users without root privileges can never crash the PCIe bus.</p>
 <p>All peripherals in the shell except XDMA are slaves from PCIe point of view and cannot
 initiate PCIe transactions. <a class="reference external" href="https://www.xilinx.com/support/documentation/ip_documentation/xdma/v4_1/pg195-pcie-dma.pdf">XDMA</a>
 is a regular PCIe scatter gather DMA engine with a well defined programming model.</p>
@@ -249,23 +250,26 @@ is a regular PCIe scatter gather DMA engine with a well defined programming mode
 path to the user compiled image loaded on DFX partition. The Firewalls in control and data
 paths protect the Shell from un-trusted DFX partition. For example if a slave in DFX has a
 bug or is malicious the appropriate firewall will step in and protect the Shell from the
-failing slave.</p>
-<p>The shell image is itself distributed as signed RPM and DEB package files by Xilinx.
-Shells may be upgraded using XRT <strong>xbmgmt</strong> tool by system administrators. The upgrade
-process will update the PROM.</p>
+failing slave as soon as a non compiant AXI transaction is placed on AXI bus..</p>
+<p>For shell update see <a class="reference internal" href="#shell-update">Shell Update</a> section below.</p>
 </div>
 <div class="section" id="dynamic-function-exchange">
 <h2>Dynamic Function eXchange<a class="headerlink" href="#dynamic-function-exchange" title="Permalink to this headline">¶</a></h2>
 <p>User compiled image packaged as xclbin is loaded on the Dynamic Functional eXchange
 partition by the Shell. The image may be signed with a private key and its public
-key should be registered with Linux kernel keyring. The xclbin signature is validated by
-xclmgmt driver. This guarantees that only known good user compiled images are loaded by the
-Shell. The image load is itself effected by xclmgmt driver which binds to the PF0.</p>
+key registered with Linux kernel keyring. The xclbin signature is validated by
+xclmgmt driver. This guarantees that only known good user compiled images are loaded by
+the Shell. The image load is itself effected by xclmgmt driver which binds to PF0.
+xclmgmt driver downloads the bitstream packaged in the bitstream section of xclbin by
+programming the ICAP peripheral. The management driver also discovers the target frequency
+of the DFX partition by reading the xclbin clock section and then programs the clocks
+which are also part of the Shell.</p>
 <p>xclbin is a container which packs FPGA bitstream for the DFX partition and host of related
 metadata like clock frequencies, information about instantiated compute units, etc. The
 compute units typically expose a well defined register space on the PCIe BAR for access by
 XRT. An user compiled image does not have any physical path to directly interact with PCIe
 Bus. Compiled images do have access to device DDR.</p>
+<p>More information on xclbin can be found in <a class="reference internal" href="formats.html#formats-rst"><span class="std std-ref">Binary Formats</span></a>.</p>
 </div>
 <div class="section" id="xclbin-generation">
 <h2>Xclbin Generation<a class="headerlink" href="#xclbin-generation" title="Permalink to this headline">¶</a></h2>
@@ -273,7 +277,8 @@ Bus. Compiled images do have access to device DDR.</p>
 the shell specification as a second input. By construction the SDx compiler generates image
 compatible with DFX partition of the shell. The compiler uses a technology called <em>PR Verify</em>
 to ensure that the user design physically confines itself to DFX partition and does not attempt
-to overwrite portions of the Shell.</p>
+to overwrite portions of the Shell. It also validates that all the IOs between the DFX and
+Shell are going through fixed pins exposed by Shell.</p>
 </div>
 <div class="section" id="firewall">
 <h2>Firewall<a class="headerlink" href="#firewall" title="Permalink to this headline">¶</a></h2>
@@ -284,7 +289,8 @@ partition is not fully AXI-compliant or deadlocks/stalls/hangs during operation.
 partition fails AXI Firewall <em>trips</em> – it starts completing AXI transactions on behalf of the slave so the
 master and the specific AXI bus is not impacted – to protect the Shell. The AXI Firewall starts completing
 all transactions on behalf of misbehaving slave while also notifying the mgmt driver about the trip. The
-mgmt driver then starts taking recovery action.</p>
+xclmgmt driver then starts taking recovery action. xclmgmt posts a message to xocl using MailBox to inform
+the peer about FireWall trip. xocl can suggest a reset by sending a reset command to xclmgmt on MailBox.</p>
 </div>
 <div class="section" id="deployment-models">
 <h2>Deployment Models<a class="headerlink" href="#deployment-models" title="Permalink to this headline">¶</a></h2>
@@ -320,54 +326,54 @@ deployment model for FaaS operators.</p>
 </div>
 <div class="section" id="summary">
 <h3>Summary<a class="headerlink" href="#summary" title="Permalink to this headline">¶</a></h3>
-<table class="docutils align-center">
+<table border="1" class="docutils">
 <colgroup>
-<col style="width: 31%" />
-<col style="width: 22%" />
-<col style="width: 22%" />
-<col style="width: 25%" />
+<col width="31%" />
+<col width="22%" />
+<col width="22%" />
+<col width="25%" />
 </colgroup>
-<thead>
-<tr class="row-odd"><th class="head" colspan="2" rowspan="2"><p>Behavior</p></th>
-<th class="head" colspan="2"><p>Deployment Model</p></th>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head" colspan="2" rowspan="2">Behavior</th>
+<th class="head" colspan="2">Deployment Model</th>
 </tr>
-<tr class="row-even"><th class="head"><p>Bare Metal</p></th>
-<th class="head"><p>Pass-through</p></th>
+<tr class="row-even"><th class="head">Bare Metal</th>
+<th class="head">Pass-through</th>
 </tr>
 </thead>
-<tbody>
-<tr class="row-odd"><td rowspan="2"><p>System admin
-trusted driver</p></td>
-<td><p>xocl</p></td>
-<td><p>Yes</p></td>
-<td><p>No</p></td>
+<tbody valign="top">
+<tr class="row-odd"><td rowspan="2">System admin
+trusts drivers</td>
+<td>xocl</td>
+<td>Yes</td>
+<td>No</td>
 </tr>
-<tr class="row-even"><td><p>xclmgmt</p></td>
-<td><p>Yes</p></td>
-<td><p>Yes</p></td>
+<tr class="row-even"><td>xclmgmt</td>
+<td>Yes</td>
+<td>Yes</td>
 </tr>
-<tr class="row-odd"><td rowspan="2"><p>End user root
-access</p></td>
-<td><p>xocl</p></td>
-<td><p>No</p></td>
-<td><p>Maybe</p></td>
+<tr class="row-odd"><td rowspan="2">End user has
+root access</td>
+<td>xocl</td>
+<td>No</td>
+<td>Maybe</td>
 </tr>
-<tr class="row-even"><td><p>xclmgmt</p></td>
-<td><p>No</p></td>
-<td><p>No</p></td>
+<tr class="row-even"><td>xclmgmt</td>
+<td>No</td>
+<td>No</td>
 </tr>
-<tr class="row-odd"><td colspan="2"><p>End user can crash device</p></td>
-<td><p>Yes</p></td>
-<td><p>Yes</p></td>
+<tr class="row-odd"><td colspan="2">End user can crash device</td>
+<td>Yes</td>
+<td>Yes</td>
 </tr>
-<tr class="row-even"><td colspan="2"><p>End user can crash PCIe bus</p></td>
-<td><p>No</p></td>
-<td><p>No</p></td>
+<tr class="row-even"><td colspan="2">End user can crash PCIe bus</td>
+<td>No</td>
+<td>No</td>
 </tr>
-<tr class="row-odd"><td colspan="2"><p>End user with root access
-can crash PCIe bus</p></td>
-<td><p>Yes</p></td>
-<td><p>No</p></td>
+<tr class="row-odd"><td colspan="2">End user with root access
+can crash PCIe bus</td>
+<td>Yes</td>
+<td>No</td>
 </tr>
 </tbody>
 </table>
@@ -379,27 +385,27 @@ can crash PCIe bus</p></td>
 <strong>xclbinutil</strong>. The signing adds a PKCS7 signature at the end of xclbin. The signing certificate is then
 registered with appropriate key-ring. XRT supports one of three levels of security which can be configured
 with xbmgmt tool running with root privileges.</p>
-<table class="docutils align-center">
+<table border="1" class="docutils">
 <colgroup>
-<col style="width: 19%" />
-<col style="width: 81%" />
+<col width="19%" />
+<col width="81%" />
 </colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Security level</p></th>
-<th class="head"><p>xclmgmt driver xclbin signature verification behavior</p></th>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Security level</th>
+<th class="head">Xclbin signature verification behavior of xclmgmt driver</th>
 </tr>
 </thead>
-<tbody>
-<tr class="row-even"><td><p>0</p></td>
-<td><p>No verification</p></td>
+<tbody valign="top">
+<tr class="row-even"><td>0</td>
+<td>No verification</td>
 </tr>
-<tr class="row-odd"><td><p>1</p></td>
-<td><p>Signature verification enforced using signing certificate in
-<em>.xilinx_fpga_xclbin_keys</em> key-ring</p></td>
+<tr class="row-odd"><td>1</td>
+<td>Signature verification enforced using signing certificate in
+<em>.xilinx_fpga_xclbin_keys</em> key-ring</td>
 </tr>
-<tr class="row-even"><td><p>2</p></td>
-<td><p>Linux is running in UEFI secure mode and signature verification
-is enforced using signing certificate in <em>system</em> key-ring</p></td>
+<tr class="row-even"><td>2</td>
+<td>Linux is running in UEFI secure mode and signature verification
+is enforced using signing certificate in <em>system</em> key-ring</td>
 </tr>
 </tbody>
 </table>
@@ -420,6 +426,13 @@ message as defined in <a class="reference internal" href="mailbox.main.html#mail
 <p>Currently Alveo boards are reset by using PCIe bus <em>hot reset</em> mechanism. This resets the board peripherals
 and also the PCIe link. The drivers reset their platform devices and kill all the clients which have opened
 the device node by sending them a SIGBUS.</p>
+</div>
+<div class="section" id="shell-update">
+<h2>Shell Update<a class="headerlink" href="#shell-update" title="Permalink to this headline">¶</a></h2>
+<p>Shell update is like firmware update in conventional PCIe devices. Shell updates are distributed as signed
+RPM/DEB package files by Xilinx. Shells may be upgraded using XRT <strong>xbmgmt</strong> tool by system administrators
+only. The upgrade process will update the PROM. A cold reboot of host is required in In order to boot the
+platform from the updated image.</p>
 </div>
 </div>
 

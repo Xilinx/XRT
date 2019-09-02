@@ -273,9 +273,9 @@ API.</p>
 <h2>XMA Application Interface Overview<a class="headerlink" href="#xma-application-interface-overview" title="Permalink to this headline">¶</a></h2>
 <p>The API for the libxmaapi can be categorized into three areas:</p>
 <ol class="arabic simple">
-<li><p>Initialization</p></li>
-<li><p>Video frame processing</p></li>
-<li><p>Termination</p></li>
+<li>Initialization</li>
+<li>Video frame processing</li>
+<li>Termination</li>
 </ol>
 <p>From an interface perspective, the high-level or upper edge interface and the
 low-level or plugin interface are organized as follows:</p>
@@ -378,11 +378,11 @@ diagram only calls out the initialization and processing stages:</p>
 <img alt="_images/XMA-Sequence-Diagram.png" class="align-center" src="_images/XMA-Sequence-Diagram.png" />
 <p>As shown in the diagram above, the system is comprised of five blocks:</p>
 <ul class="simple">
-<li><p>The FFmpeg Command Line application that is used to create a processing graph</p></li>
-<li><p>The FFmpeg encoder plugin that interfaces with the XMA Upper Edge Interface to manage a video session</p></li>
-<li><p>The XMA Upper Edge library interface responsible for initialization, resource allocation, and dispatching of the XMA plugin</p></li>
-<li><p>The XMA Lower Edge plugin responsible for interfacing with the SDAccel Video Kernel</p></li>
-<li><p>The XMA Video Kernel responsible for accelerating the encoding function</p></li>
+<li>The FFmpeg Command Line application that is used to create a processing graph</li>
+<li>The FFmpeg encoder plugin that interfaces with the XMA Upper Edge Interface to manage a video session</li>
+<li>The XMA Upper Edge library interface responsible for initialization, resource allocation, and dispatching of the XMA plugin</li>
+<li>The XMA Lower Edge plugin responsible for interfacing with the SDAccel Video Kernel</li>
+<li>The XMA Video Kernel responsible for accelerating the encoding function</li>
 </ul>
 <p>While this sequence diagram only shows five components, more complex systems
 can be developed that include multiple accelerators with the associated XMA
@@ -439,11 +439,11 @@ code examples to help illustrate usage of the XMA.</p>
 <p>The APIs are:</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>xma_plg_kernel_lock_regmap</p></li>
-<li><p>xma_plg_register_prep_write</p></li>
-<li><p>xma_plg_schedule_work_item</p></li>
-<li><p>xma_plg_kernel_unlock_regmap</p></li>
-<li><p>xma_plg_is_work_item_done</p></li>
+<li>xma_plg_kernel_lock_regmap</li>
+<li>xma_plg_register_prep_write</li>
+<li>xma_plg_schedule_work_item</li>
+<li>xma_plg_kernel_unlock_regmap</li>
+<li>xma_plg_is_work_item_done</li>
 </ul>
 </div></blockquote>
 <p>Lets consider the various purposes where the above APIs would be useful.</p>
@@ -459,10 +459,10 @@ should be used to start the kernel with kernel arguments set earlier with xma_pl
 be used to control video accelerators.  The XMA API operations
 fall into four categories:</p>
 <ul class="simple">
-<li><p>Initialization</p></li>
-<li><p>Create session</p></li>
-<li><p>Runtime frame/data processing</p></li>
-<li><p>Cleanup</p></li>
+<li>Initialization</li>
+<li>Create session</li>
+<li>Runtime frame/data processing</li>
+<li>Cleanup</li>
 </ul>
 <div class="section" id="initialization">
 <h3>Initialization<a class="headerlink" href="#initialization" title="Permalink to this headline">¶</a></h3>
@@ -483,8 +483,8 @@ kernel type:
 - xmakernel</p>
 <p>The general initialization sequence that is common to all kernel classes is as follows:</p>
 <ul class="simple">
-<li><p>define key type-specific properties of the kernel to be initialized</p></li>
-<li><p>call the_session_create() routine corresponding to the kernel (e.g. xma_enc_session_create())</p></li>
+<li>define key type-specific properties of the kernel to be initialized</li>
+<li>call the_session_create() routine corresponding to the kernel (e.g. xma_enc_session_create())</li>
 </ul>
 </div>
 <div class="section" id="runtime-frame-and-data-processing">
@@ -515,11 +515,11 @@ each session.  Doing so will free the session to be used by another thread or
 process and ensure that the kernel plugin has the opportunity to perform
 proper cleanup/closing procedures.</p>
 <ul class="simple">
-<li><p>xma_enc_session_destroy()</p></li>
-<li><p>xma_dec_session_destroy()</p></li>
-<li><p>xma_scaler_session_destroy()</p></li>
-<li><p>xma_filter_session_destroy()</p></li>
-<li><p>xma_kernel_session_destroy()</p></li>
+<li>xma_enc_session_destroy()</li>
+<li>xma_dec_session_destroy()</li>
+<li>xma_scaler_session_destroy()</li>
+<li>xma_filter_session_destroy()</li>
+<li>xma_kernel_session_destroy()</li>
 </ul>
 <p>See XMA copy_encoder &amp; copy_filter examples for more info.</p>
 </div>
@@ -539,31 +539,31 @@ software ‘driver’ in this regard.</p>
 <p>The first step in developing an XMA plugin requires you to decide which XMA
 kernel interface accurately represents the type of hardware kernel for which
 you seek to provide support:</p>
-<table class="docutils align-center">
+<table border="1" class="docutils">
 <colgroup>
-<col style="width: 49%" />
-<col style="width: 51%" />
+<col width="49%" />
+<col width="51%" />
 </colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Kernel Type</p></th>
-<th class="head"><p>XMA Plugin Interface</p></th>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Kernel Type</th>
+<th class="head">XMA Plugin Interface</th>
 </tr>
 </thead>
-<tbody>
-<tr class="row-even"><td><p>Encoders (VP9, H.264, H.265)</p></td>
-<td><p>xmaplgenc</p></td>
+<tbody valign="top">
+<tr class="row-even"><td>Encoders (VP9, H.264, H.265)</td>
+<td>xmaplgenc</td>
 </tr>
-<tr class="row-odd"><td><p>Decoders (VP9, H.264, H.265)</p></td>
-<td><p>xmaplgdec</p></td>
+<tr class="row-odd"><td>Decoders (VP9, H.264, H.265)</td>
+<td>xmaplgdec</td>
 </tr>
-<tr class="row-even"><td><p>Filters (colorspace converter, scalers)</p></td>
-<td><p>xmaplgfilter or xmaplgscaler</p></td>
+<tr class="row-even"><td>Filters (colorspace converter, scalers)</td>
+<td>xmaplgfilter or xmaplgscaler</td>
 </tr>
-<tr class="row-odd"><td><p>Scalers</p></td>
-<td><p>xmaplgscaler</p></td>
+<tr class="row-odd"><td>Scalers</td>
+<td>xmaplgscaler</td>
 </tr>
-<tr class="row-even"><td><p>Other (embedded cpu)</p></td>
-<td><p>xmaplgkernel</p></td>
+<tr class="row-even"><td>Other (embedded cpu)</td>
+<td>xmaplgkernel</td>
 </tr>
 </tbody>
 </table>
@@ -585,37 +585,37 @@ response to the xma_app_intf.</p>
 <p>From the application perspective, the following operations
 will be peformed:</p>
 <ol class="arabic simple">
-<li><p>Create session</p></li>
-<li><p>Send data/frame or write**</p></li>
-<li><p>Receive data/frame or read**</p></li>
-<li><p>Destroy</p></li>
+<li>Create session</li>
+<li>Send data/frame or write**</li>
+<li>Receive data/frame or read**</li>
+<li>Destroy</li>
 </ol>
 <p>** in the case of a non-video kernel</p>
 <p>Steps 2 and 3 will form the runtime processing of frames/data and likely
 repeated for as long as there is data to be processed.</p>
 <p>A general mapping between the application interface and plugin interface:</p>
-<table class="docutils align-center">
+<table border="1" class="docutils">
 <colgroup>
-<col style="width: 40%" />
-<col style="width: 60%" />
+<col width="40%" />
+<col width="60%" />
 </colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Application Call</p></th>
-<th class="head"><p>Plugin Callbacks Invoked</p></th>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Application Call</th>
+<th class="head">Plugin Callbacks Invoked</th>
 </tr>
 </thead>
-<tbody>
-<tr class="row-even"><td><p>session_create()</p></td>
-<td><p>init()</p></td>
+<tbody valign="top">
+<tr class="row-even"><td>session_create()</td>
+<td>init()</td>
 </tr>
-<tr class="row-odd"><td><p>send_(data|frame)()</p></td>
-<td><p>send_(data|frame)()</p></td>
+<tr class="row-odd"><td>send_(data|frame)()</td>
+<td>send_(data|frame)()</td>
 </tr>
-<tr class="row-even"><td><p>recv_(data|frame)()</p></td>
-<td><p>recv_(data|frame)()</p></td>
+<tr class="row-even"><td>recv_(data|frame)()</td>
+<td>recv_(data|frame)()</td>
 </tr>
-<tr class="row-odd"><td><p>destroy()</p></td>
-<td><p>close()</p></td>
+<tr class="row-odd"><td>destroy()</td>
+<td>close()</td>
 </tr>
 </tbody>
 </table>
@@ -688,16 +688,18 @@ buffer for the encoder. This optimization is known as ‘zerocopy’.</p>
 XmaFrame with device only buffer can be output of plugins supporting zero-copy and feeding zero-copy enabled plugin/s
 Plugins may use dev_index, bank_index &amp; device_only info from BufferObject to enable or disable zero-copy</p>
 <p>See XMA copy_encoder &amp; copy_filter examples for more info.</p>
-<dl class="simple">
-<dt>For stateful/multi-channel kernels (eg decodre, encoder):</dt><dd><ul class="simple">
-<li><p>Use dataflow kernels with context/channels for best performance. Use HLS/RTL Wizard with appropriate settings to generate these kernels in 2019.2 release toolset.</p></li>
-<li><p>All work items within a channel are treated as FIFO. Kernel must maintain this order for a channel.</p></li>
-<li><p>See spec for kernels with dataflow with channels. Kernel regamp registers at offset 0x10 (channel_id input to kernel) and 0x14 (channel_id output from kernel) must be supported by kernels.</p></li>
-<li><p>Use xrt.ini settings (dataflow; kernel_channels) to enable dataflow kernel with channels</p></li>
+<dl class="docutils">
+<dt>For stateful/multi-channel kernels (eg decodre, encoder):</dt>
+<dd><ul class="first last simple">
+<li>Use dataflow kernels with context/channels for best performance. Use HLS/RTL Wizard with appropriate settings to generate these kernels in 2019.2 release toolset.</li>
+<li>All work items within a channel are treated as FIFO. Kernel must maintain this order for a channel.</li>
+<li>See spec for kernels with dataflow with channels. Kernel regamp registers at offset 0x10 (channel_id input to kernel) and 0x14 (channel_id output from kernel) must be supported by kernels.</li>
+<li>Use xrt.ini settings (dataflow; kernel_channels) to enable dataflow kernel with channels</li>
 </ul>
 </dd>
-<dt>Using DRM (Digital Right Management) IPs:</dt><dd><ul class="simple">
-<li><p>TBD</p></li>
+<dt>Using DRM (Digital Right Management) IPs:</dt>
+<dd><ul class="first last simple">
+<li>TBD</li>
 </ul>
 </dd>
 </dl>

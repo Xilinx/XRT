@@ -222,9 +222,9 @@
 <p>At the low level, the kernels are controlled by the XRT through the control and status register that lies on the AXI4-Lite Slave interface. The control and status register is mapped at the address 0x0 of the AXI4-Lite Slave interface.</p>
 <p>The list of primary supported excution models are:</p>
 <ol class="arabic simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">AP_CTRL_HS</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">AP_CTRL_CHAIN</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">AP_CTRL_NONE</span></code></p></li>
+<li><code class="docutils literal notranslate"><span class="pre">AP_CTRL_HS</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">AP_CTRL_CHAIN</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">AP_CTRL_NONE</span></code></li>
 </ol>
 <p>The <code class="docutils literal notranslate"><span class="pre">IP_LAYOUT</span></code> section of the kernel <code class="docutils literal notranslate"><span class="pre">xclbin</span></code> metadata contains the kernel execution model information. The <code class="docutils literal notranslate"><span class="pre">xclbinutil</span></code> utility command can be used to retrieve the execution model information from a <code class="docutils literal notranslate"><span class="pre">.xclbin</span></code> file.</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xclbinutil --info --input binary_container_1.xclbin --dump-section IP_LAYOUT:json:ip_layout_info.json
@@ -249,9 +249,9 @@
 <h3>Mode of operation<a class="headerlink" href="#mode-of-operation" title="Permalink to this headline">¶</a></h3>
 <img alt="_images/ap_ctrl_hs_2.PNG" class="align-center" src="_images/ap_ctrl_hs_2.PNG" />
 <ol class="arabic simple">
-<li><p>The XRT driver writes a 1 in ap_start to start the kernel</p></li>
-<li><p>The XRT driver waits for ap_done to be asserted by the kernel (guaranteeing the output data is fully produced by the kernel).</p></li>
-<li><p>Repeat 1-2 for next kernel execution</p></li>
+<li>The XRT driver writes a 1 in ap_start to start the kernel</li>
+<li>The XRT driver waits for ap_done to be asserted by the kernel (guaranteeing the output data is fully produced by the kernel).</li>
+<li>Repeat 1-2 for next kernel execution</li>
 </ol>
 <p>Assume there are three concurrent kernel execution requests from the host. The kernel executions will happen sequentially as below, serving one request at a time</p>
 <p>START1=&gt;DONE1=&gt;START2=&gt;DONE2=&gt;START3=&gt;DONE3</p>
@@ -259,26 +259,26 @@
 <div class="section" id="control-signal-topology">
 <h3>Control Signal Topology<a class="headerlink" href="#control-signal-topology" title="Permalink to this headline">¶</a></h3>
 <p>The signals ap_start and ap_done must be connected to the AXI_LITE control and status register (at the address 0x0 of the AXI4-Lite Slave interface) section to specific bits.</p>
-<table class="docutils align-center">
+<table border="1" class="docutils">
 <colgroup>
-<col style="width: 6%" />
-<col style="width: 21%" />
-<col style="width: 72%" />
+<col width="6%" />
+<col width="21%" />
+<col width="72%" />
 </colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Bit</p></th>
-<th class="head"><p>Signal name</p></th>
-<th class="head"><p>Description</p></th>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Bit</th>
+<th class="head">Signal name</th>
+<th class="head">Description</th>
 </tr>
 </thead>
-<tbody>
-<tr class="row-even"><td><p>0</p></td>
-<td><p>ap_start</p></td>
-<td><p>Asserted by the XRT when kernel can process the new data</p></td>
+<tbody valign="top">
+<tr class="row-even"><td>0</td>
+<td>ap_start</td>
+<td>Asserted by the XRT when kernel can process the new data</td>
 </tr>
-<tr class="row-odd"><td><p>1</p></td>
-<td><p>ap_done</p></td>
-<td><p>Asserted by the kernel when it is finished producing the output data</p></td>
+<tr class="row-odd"><td>1</td>
+<td>ap_done</td>
+<td>Asserted by the kernel when it is finished producing the output data</td>
 </tr>
 </tbody>
 </table>
@@ -292,51 +292,51 @@
 <img alt="_images/ap_ctrl_chain_2.PNG" class="align-center" src="_images/ap_ctrl_chain_2.PNG" />
 <p><strong>Input synchronization</strong></p>
 <ol class="arabic simple">
-<li><p>The XRT driver writes a 1 in ap_start to start the kernel</p></li>
-<li><p>The XRT driver waits for ap_ready to be asserted by the kernel (guaranteeing the kernel is ready to accept new data for next execution, even if it is still working on the previous execution request).</p></li>
-<li><p>The XRT driver writes 1 in ap_start to start the kernel operation again</p></li>
+<li>The XRT driver writes a 1 in ap_start to start the kernel</li>
+<li>The XRT driver waits for ap_ready to be asserted by the kernel (guaranteeing the kernel is ready to accept new data for next execution, even if it is still working on the previous execution request).</li>
+<li>The XRT driver writes 1 in ap_start to start the kernel operation again</li>
 </ol>
 <p>Assume there are five concurrent kernel execution requests from the host and the kernel can work on three execution requests in a pipelined fashion. The kernel executions will happen sequentially as below, serving maximum three requests at a time.</p>
 <p>START1=&gt;START2=&gt;START3=&gt;DONE1=&gt;START4=&gt;DONE2=&gt;START5=&gt;DONE3=&gt;DONE4=&gt;DONE5</p>
 <p><strong>Note:</strong> As noted in the above sequence, the AP_CTRL_CHAIN only applicable when the kernel produces the outputs for the pending requests in-order. Kernel servicing the requests out-of-order cannot be supported by AP_CTRL_CHAIN execution model.</p>
 <p><strong>Output synchronization</strong></p>
 <ol class="arabic simple">
-<li><p>The XRT driver waits for ap_done to be asserted by the kernel (guaranteeing the output data is fully produced by the kernel).</p></li>
-<li><p>The XRT driver writes a 1 in ap_continue to keep kernel running</p></li>
+<li>The XRT driver waits for ap_done to be asserted by the kernel (guaranteeing the output data is fully produced by the kernel).</li>
+<li>The XRT driver writes a 1 in ap_continue to keep kernel running</li>
 </ol>
 <p>The input and output synchronization occurs asynchronously, as a result, multiple executions are performed by the kernel in an overlapping or pipelined fashion.</p>
 </div>
 <div class="section" id="id2">
 <h3>Control Signal Topology<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
 <p>The signals ap_start, ap_ready, ap_done, ap_continue must be connected to the AXI_LITE control and status register (at the address 0x0 of the AXI4-Lite Slave interface) section to specific bits.</p>
-<table class="docutils align-center">
+<table border="1" class="docutils">
 <colgroup>
-<col style="width: 6%" />
-<col style="width: 21%" />
-<col style="width: 72%" />
+<col width="6%" />
+<col width="21%" />
+<col width="72%" />
 </colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Bit</p></th>
-<th class="head"><p>Signal name</p></th>
-<th class="head"><p>Description</p></th>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Bit</th>
+<th class="head">Signal name</th>
+<th class="head">Description</th>
 </tr>
 </thead>
-<tbody>
-<tr class="row-even"><td><p>0</p></td>
-<td><p>ap_start</p></td>
-<td><p>Asserted by the XRT when kernel can process the new data</p></td>
+<tbody valign="top">
+<tr class="row-even"><td>0</td>
+<td>ap_start</td>
+<td>Asserted by the XRT when kernel can process the new data</td>
 </tr>
-<tr class="row-odd"><td><p>1</p></td>
-<td><p>ap_done</p></td>
-<td><p>Asserted by the kernel when it is finished producing the output data</p></td>
+<tr class="row-odd"><td>1</td>
+<td>ap_done</td>
+<td>Asserted by the kernel when it is finished producing the output data</td>
 </tr>
-<tr class="row-even"><td><p>3</p></td>
-<td><p>ap_ready</p></td>
-<td><p>Asserted by the kernel when it is ready to accept the new data</p></td>
+<tr class="row-even"><td>3</td>
+<td>ap_ready</td>
+<td>Asserted by the kernel when it is ready to accept the new data</td>
 </tr>
-<tr class="row-odd"><td><p>4</p></td>
-<td><p>ap_continue</p></td>
-<td><p>Asserted by the XRT to allow kernel keep running</p></td>
+<tr class="row-odd"><td>4</td>
+<td>ap_continue</td>
+<td>Asserted by the XRT to allow kernel keep running</td>
 </tr>
 </tbody>
 </table>
@@ -351,10 +351,10 @@
 <p>Sometimes the kernel does not need to be controlled by the host. For example, if the kernel is only communicating through the stream, it only works when the data is available at its input through the stream, and the kernel stalls when there is no data to process, waiting for new data to arrive through the stream to start working again. These type of kernels has no control signal connected to the AXI4-Lite Slave interface.</p>
 <p><strong>Important points to remember</strong></p>
 <ol class="arabic simple">
-<li><p>Consider a kernel with AP_CTRL_NONE only when it has no memory mapped input and output.</p></li>
-<li><p>There is no need to start the kernel by <code class="docutils literal notranslate"><span class="pre">clEnqueueTask</span></code> or <code class="docutils literal notranslate"><span class="pre">clEnqueueNDRangeKernel</span></code> from the host.</p></li>
-<li><p>Host communicates with a continuously running kernel by the stream read and write requests, if necessary.</p></li>
-<li><p>Dont use <code class="docutils literal notranslate"><span class="pre">clSetKernelArg</span></code> to pass scalar argument to ap_ctrl_none kernel, only use <code class="docutils literal notranslate"><span class="pre">xclRegWrite</span></code> (API to be implemented in 19.2) API.</p></li>
+<li>Consider a kernel with AP_CTRL_NONE only when it has no memory mapped input and output.</li>
+<li>There is no need to start the kernel by <code class="docutils literal notranslate"><span class="pre">clEnqueueTask</span></code> or <code class="docutils literal notranslate"><span class="pre">clEnqueueNDRangeKernel</span></code> from the host.</li>
+<li>Host communicates with a continuously running kernel by the stream read and write requests, if necessary.</li>
+<li>Dont use <code class="docutils literal notranslate"><span class="pre">clSetKernelArg</span></code> to pass scalar argument to ap_ctrl_none kernel, only use <code class="docutils literal notranslate"><span class="pre">xclRegWrite</span></code> (API to be implemented in 19.2) API.</li>
 </ol>
 <p><strong>Note:</strong> To read and write register values from the AXI4-Lite Slave interface, the new APIs <code class="docutils literal notranslate"><span class="pre">xclRegRead</span></code>/<code class="docutils literal notranslate"><span class="pre">xclRegWrite</span></code> must be used (replacing obsolated APIs <code class="docutils literal notranslate"><span class="pre">xclRead</span></code>/<code class="docutils literal notranslate"><span class="pre">xclWrite</span></code>). These APIs require exclusive CU context reservation via API <code class="docutils literal notranslate"><span class="pre">xclOpenContext</span></code> as shown in the code sample below.</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">xclOpenContext</span><span class="p">(</span><span class="n">device_handle</span><span class="p">,</span> <span class="n">xclbin_id</span><span class="p">,</span> <span class="n">cu_index</span><span class="p">,</span> <span class="nb">false</span><span class="p">);</span>

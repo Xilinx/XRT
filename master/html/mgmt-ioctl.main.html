@@ -207,57 +207,57 @@
 <p><strong>PCIe Kernel Driver for Managament Physical Function</strong></p>
 <p>Interfaces exposed by <em>xclmgmt</em> driver are defined in file, <em>mgmt-ioctl.h</em>.
 Core functionality provided by <em>xclmgmt</em> driver is described in the following table:</p>
-<table class="docutils align-center">
+<table border="1" class="docutils">
 <colgroup>
-<col style="width: 4%" />
-<col style="width: 36%" />
-<col style="width: 28%" />
-<col style="width: 32%" />
+<col width="4%" />
+<col width="36%" />
+<col width="28%" />
+<col width="32%" />
 </colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>#</p></th>
-<th class="head"><p>Functionality</p></th>
-<th class="head"><p>ioctl request code</p></th>
-<th class="head"><p>data format</p></th>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">#</th>
+<th class="head">Functionality</th>
+<th class="head">ioctl request code</th>
+<th class="head">data format</th>
 </tr>
 </thead>
-<tbody>
-<tr class="row-even"><td><p>1</p></td>
-<td><p>FPGA image download</p></td>
-<td><p>XCLMGMT_IOCICAPDOWNLOAD_AXLF</p></td>
-<td><p>xclmgmt_ioc_bitstream_axlf</p></td>
+<tbody valign="top">
+<tr class="row-even"><td>1</td>
+<td>FPGA image download</td>
+<td>XCLMGMT_IOCICAPDOWNLOAD_AXLF</td>
+<td>xclmgmt_ioc_bitstream_axlf</td>
 </tr>
-<tr class="row-odd"><td><p>2</p></td>
-<td><p>CL frequency scaling</p></td>
-<td><p>XCLMGMT_IOCFREQSCALE</p></td>
-<td><p>xclmgmt_ioc_freqscaling</p></td>
+<tr class="row-odd"><td>2</td>
+<td>CL frequency scaling</td>
+<td>XCLMGMT_IOCFREQSCALE</td>
+<td>xclmgmt_ioc_freqscaling</td>
 </tr>
-<tr class="row-even"><td><p>3</p></td>
-<td><p>PCIe hot reset</p></td>
-<td><p>XCLMGMT_IOCHOTRESET</p></td>
-<td><p>NA</p></td>
+<tr class="row-even"><td>3</td>
+<td>PCIe hot reset</td>
+<td>XCLMGMT_IOCHOTRESET</td>
+<td>NA</td>
 </tr>
-<tr class="row-odd"><td><p>4</p></td>
-<td><p>CL reset</p></td>
-<td><p>XCLMGMT_IOCOCLRESET</p></td>
-<td><p>NA</p></td>
+<tr class="row-odd"><td>4</td>
+<td>CL reset</td>
+<td>XCLMGMT_IOCOCLRESET</td>
+<td>NA</td>
 </tr>
-<tr class="row-even"><td><p>5</p></td>
-<td><p>Live boot FPGA from PROM</p></td>
-<td><p>XCLMGMT_IOCREBOOT</p></td>
-<td><p>NA</p></td>
+<tr class="row-even"><td>5</td>
+<td>Live boot FPGA from PROM</td>
+<td>XCLMGMT_IOCREBOOT</td>
+<td>NA</td>
 </tr>
-<tr class="row-odd"><td><p>6</p></td>
-<td><p>Device sensors (current, voltage and
-temperature)</p></td>
-<td><p>NA</p></td>
-<td><p><em>hwmon</em> (xclmgmt_microblaze and
-xclmgmt_sysmon) interface on sysfs</p></td>
+<tr class="row-odd"><td>6</td>
+<td>Device sensors (current, voltage and
+temperature)</td>
+<td>NA</td>
+<td><em>hwmon</em> (xclmgmt_microblaze and
+xclmgmt_sysmon) interface on sysfs</td>
 </tr>
-<tr class="row-even"><td><p>7</p></td>
-<td><p>Querying device errors</p></td>
-<td><p>XCLMGMT_IOCERRINFO</p></td>
-<td><p>xclErrorStatus</p></td>
+<tr class="row-even"><td>7</td>
+<td>Querying device errors</td>
+<td>XCLMGMT_IOCERRINFO</td>
+<td>xclErrorStatus</td>
 </tr>
 </tbody>
 </table>
@@ -288,9 +288,9 @@ struct <code class="descname">xclmgmt_ioc_bitstream_axlf</code><a class="headerl
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclbin</span></code></dt><dd><p>Pointer to user’s xclbin structure in memory</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclbin</span></code></dt>
+<dd>Pointer to user’s xclbin structure in memory</dd>
 </dl>
 <dl class="type">
 <dt id="c.xclmgmt_ioc_freqscaling">
@@ -306,11 +306,11 @@ struct <code class="descname">xclmgmt_ioc_freqscaling</code><a class="headerlink
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">ocl_region</span></code></dt><dd><p>PR region (currently only 0 is supported)</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">ocl_target_freq</span></code></dt><dd><p>Array of requested frequencies, a value o zero in the array indicates leave untouched</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">ocl_region</span></code></dt>
+<dd>PR region (currently only 0 is supported)</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">ocl_target_freq</span></code></dt>
+<dd>Array of requested frequencies, a value o zero in the array indicates leave untouched</dd>
 </dl>
 </div>
 
