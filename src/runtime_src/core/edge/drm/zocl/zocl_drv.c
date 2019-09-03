@@ -639,7 +639,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 
 	subdev = find_pdev("ert_hw");
 	if (subdev) {
-		DRM_INFO("ert_hw found -> 0x%llx\n", (uint64_t)subdev);
+		DRM_INFO("ert_hw found -> 0x%llx\n", (uint64_t)(uintptr_t)subdev);
 		/* Trust device tree for now, but a better place should be
 		 * feature rom.
 		 */
