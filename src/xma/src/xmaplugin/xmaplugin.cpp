@@ -564,6 +564,62 @@ int32_t xma_plg_kernel_unlock_regmap(XmaSession s_handle)
     }
 }
 
+
+int32_t xma_plg_check_all_execbo(XmaSession s_handle) {
+    //NOTE: execbo lock must be already obtained
+
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
+    XmaHwDevice *dev_tmp1 = priv1->device;
+
+    int32_t num_execbo = dev_tmp1->num_execbo_allocated;
+    for (int32_t i = 0; i < num_execbo; i++)
+    {
+        XmaHwExecBO* execbo_tmp1 = &dev_tmp1->kernel_execbos[i];
+        if (execbo_tmp1->in_use && execbo_tmp1->session_id == s_handle.session_id)
+        {
+            ert_start_kernel_cmd *cu_cmd = 
+                (ert_start_kernel_cmd*)execbo_tmp1->data;
+            if (cu_cmd->state == ERT_CMD_STATE_COMPLETED)
+            {
+                if (s_handle.session_type < XMA_ADMIN) {
+                    priv1->kernel_complete_count++;
+                }
+                execbo_tmp1->in_use = false;
+
+                auto itr_tmp1 = priv1->CU_cmds.find(execbo_tmp1->cu_cmd_id1);
+                if (itr_tmp1 == priv1->CU_cmds.end()) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_check_all_execbo: Unexpected error-1. Please report this to sarabjee@xilinx.com\n");
+                    //Release completion lock
+                    *(dev_tmp1->execbo_locked) = false;
+                    return XMA_ERROR;
+                }
+                if (itr_tmp1->second.cmd_id2 != execbo_tmp1->cu_cmd_id2) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_check_all_execbo: Unexpected error-2. Please report this to sarabjee@xilinx.com\n");
+                    //Release completion lock
+                    *(dev_tmp1->execbo_locked) = false;
+                    return XMA_ERROR;
+                }
+                if (itr_tmp1->second.cu_id != execbo_tmp1->cu_index) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_check_all_execbo: Unexpected error-3. Please report this to sarabjee@xilinx.com\n");
+                    //Release completion lock
+                    *(dev_tmp1->execbo_locked) = false;
+                    return XMA_ERROR;
+                }
+                if (itr_tmp1->second.execbo_id != i) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_check_all_execbo: Unexpected error-4. Please report this to sarabjee@xilinx.com\n");
+                    //Release completion lock
+                    *(dev_tmp1->execbo_locked) = false;
+                    return XMA_ERROR;
+                }
+                priv1->CU_cmds.erase(itr_tmp1);
+            } 
+        }
+    }
+
+    return XMA_SUCCESS;
+}
+
+
 int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
 {
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
@@ -582,18 +638,19 @@ int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
     int32_t i;
     int32_t rc = -1;
     bool    found = false;
-    bool expected = false;
-    bool desired = true;
-    while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
-        expected = false;
-    }
-    //kernel completion lock acquired
+    //NOTE: execbo lock must be already acquired
 
+    if (xma_plg_check_all_execbo(s_handle) != XMA_SUCCESS) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unexpected error\n");
+        return -1;
+    }
     for (i = 0; i < num_execbo; i++) {
+        XmaHwExecBO* execbo_tmp1 = &dev_tmp1->kernel_execbos[i];
         ert_start_kernel_cmd *cu_cmd = 
-            (ert_start_kernel_cmd*)dev_tmp1->kernel_execbos[i].data;
-        if (dev_tmp1->kernel_execbos[i].in_use) {
-            if (dev_tmp1->kernel_execbos[i].cu_index == kernel_tmp1->cu_index && dev_tmp1->kernel_execbos[i].session_id == s_handle.session_id) {
+            (ert_start_kernel_cmd*)execbo_tmp1->data;
+        if (execbo_tmp1->in_use) {
+            if (execbo_tmp1->cu_index == kernel_tmp1->cu_index && execbo_tmp1->session_id == s_handle.session_id) {
+                auto itr_tmp1 = priv1->CU_cmds.find(execbo_tmp1->cu_cmd_id1);
                 switch(cu_cmd->state)
                 {
                     case ERT_CMD_STATE_NEW:
@@ -605,6 +662,32 @@ int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
                         found = true;
                         // Update count of completed work items
                         priv1->kernel_complete_count++;
+
+                        if (itr_tmp1 == priv1->CU_cmds.end()) {
+                            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_execbo_avail_get: Unexpected error-1. Please report this to sarabjee@xilinx.com\n");
+                            //Release completion lock
+                            *(dev_tmp1->execbo_locked) = false;
+                            return XMA_ERROR;
+                        }
+                        if (itr_tmp1->second.cmd_id2 != execbo_tmp1->cu_cmd_id2) {
+                            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_execbo_avail_get: Unexpected error-2. Please report this to sarabjee@xilinx.com\n");
+                            //Release completion lock
+                            *(dev_tmp1->execbo_locked) = false;
+                            return XMA_ERROR;
+                        }
+                        if (itr_tmp1->second.cu_id != execbo_tmp1->cu_index) {
+                            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_execbo_avail_get: Unexpected error-3. Please report this to sarabjee@xilinx.com\n");
+                            //Release completion lock
+                            *(dev_tmp1->execbo_locked) = false;
+                            return XMA_ERROR;
+                        }
+                        if (itr_tmp1->second.execbo_id != i) {
+                            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_execbo_avail_get: Unexpected error-4. Please report this to sarabjee@xilinx.com\n");
+                            //Release completion lock
+                            *(dev_tmp1->execbo_locked) = false;
+                            return XMA_ERROR;
+                        }
+                        priv1->CU_cmds.erase(itr_tmp1);
 
                     break;
                     case ERT_CMD_STATE_ERROR:
@@ -619,16 +702,14 @@ int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
             found = true;
 
         if (found) {
-            dev_tmp1->kernel_execbos[i].in_use = true;
-            dev_tmp1->kernel_execbos[i].cu_index = kernel_tmp1->cu_index;
-            dev_tmp1->kernel_execbos[i].session_id = s_handle.session_id;
+            execbo_tmp1->in_use = true;
+            execbo_tmp1->cu_index = kernel_tmp1->cu_index;
+            execbo_tmp1->session_id = s_handle.session_id;
             rc = i;
             break;
         }
     }
     //std::cout << "Sarab: Debug - " << __func__ << "; " << __LINE__ << std::endl;
-    //Release completion lock
-    *(dev_tmp1->execbo_locked) = false;
 
     return rc;
 }
@@ -667,17 +748,24 @@ xma_plg_schedule_work_item(XmaSession s_handle)
     }
 
     int32_t bo_idx;
-    int32_t rc = XMA_SUCCESS;
     
     if (!(*(priv1->reg_map_locked))) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Must lock kernel regamp before writing to it and submitting work item\n");
         return XMA_ERROR;
     }
 
+    bool expected = false;
+    bool desired = true;
+    while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //kernel completion lock acquired
+
     // Find an available execBO buffer
     bo_idx = xma_plg_execbo_avail_get(s_handle);
     if (bo_idx == -1) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unable to find free execbo to use\n");
+        *(dev_tmp1->execbo_locked) = false;
         return XMA_ERROR;
     }
     // Setup ert_start_kernel_cmd 
@@ -714,14 +802,51 @@ xma_plg_schedule_work_item(XmaSession s_handle)
     {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
                     "Failed to submit kernel start with xclExecBuf\n");
-        rc = XMA_ERROR;
+        *(dev_tmp1->execbo_locked) = false;
+        return XMA_ERROR;
     }
-    return rc;
+
+    XmaCUCmdObj cmd_obj;
+    cmd_obj.cmd_id1 = 0;
+    cmd_obj.cmd_id2 = 0;
+    cmd_obj.cmd_finished = false;
+    cmd_obj.cu_index = kernel_tmp1->cu_index;
+    cmd_obj.do_not_use1 = s_handle.session_signature;
+
+    bool found = false;
+    while(!found) {
+        dev_tmp1->cu_cmd_id++;
+        uint32_t tmp_int1 = dev_tmp1->cu_cmd_id;
+        if (tmp_int1 == 0) {
+            tmp_int1 = 1;
+            dev_tmp1->cu_cmd_id = tmp_int1;
+            //Change seed of random_generator
+            std::random_device rd;
+            uint32_t tmp_int = time(0);
+            std::seed_seq seed_seq{rd(), tmp_int};
+            dev_tmp1->mt_gen = std::mt19937(seed_seq);
+        }
+        auto itr_tmp1 = priv1->CU_cmds.emplace(tmp_int1, XmaCUCmdObjPrivate{});
+        if (itr_tmp1.second) {//It is newly inserted item;
+            found = true;
+            cmd_obj.cmd_id1 = tmp_int1;
+            cmd_obj.cmd_id2 = dev_tmp1->rnd_dis(dev_tmp1->mt_gen);
+            itr_tmp1.first->second.cmd_id2 = cmd_obj.cmd_id2;
+            itr_tmp1.first->second.cu_id = cmd_obj.cu_index;
+            itr_tmp1.first->second.execbo_id = bo_idx;
+
+            dev_tmp1->kernel_execbos[bo_idx].cu_cmd_id1 = tmp_int1;
+            dev_tmp1->kernel_execbos[bo_idx].cu_cmd_id2 = cmd_obj.cmd_id2;
+        }
+    }
+
+    *(dev_tmp1->execbo_locked) = false;
+    return XMA_SUCCESS;
 }
 
 int32_t xma_plg_schedule_work_item_with_args(XmaSession s_handle,
                                  void            *regmap,
-                                 int32_t           regmap_size)
+                                 int32_t         regmap_size)
 {
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
     if (priv1 == NULL) {
@@ -741,6 +866,10 @@ int32_t xma_plg_schedule_work_item_with_args(XmaSession s_handle,
     XmaHwDevice *dev_tmp1 = priv1->device;
     if (dev_tmp1 == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is NULL\n");
+        return XMA_ERROR;
+    }
+    if (regmap == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regmap is NULL\n");
         return XMA_ERROR;
     }
     if (regmap_size <= 0) {
@@ -765,12 +894,19 @@ int32_t xma_plg_schedule_work_item_with_args(XmaSession s_handle,
 
     uint8_t *src = (uint8_t*)regmap;
     int32_t bo_idx;
-    int32_t rc = XMA_SUCCESS;
     
+    bool expected = false;
+    bool desired = true;
+    while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //kernel completion lock acquired
+
     // Find an available execBO buffer
     bo_idx = xma_plg_execbo_avail_get(s_handle);
     if (bo_idx == -1) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unable to find free execbo to use\n");
+        *(dev_tmp1->execbo_locked) = false;
         return XMA_ERROR;
     }
     // Setup ert_start_kernel_cmd 
@@ -807,9 +943,363 @@ int32_t xma_plg_schedule_work_item_with_args(XmaSession s_handle,
     {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
                     "Failed to submit kernel start with xclExecBuf\n");
-        rc = XMA_ERROR;
+        *(dev_tmp1->execbo_locked) = false;
+        return XMA_ERROR;
     }
-    return rc;
+    
+    XmaCUCmdObj cmd_obj;
+    cmd_obj.cmd_id1 = 0;
+    cmd_obj.cmd_id2 = 0;
+    cmd_obj.cmd_finished = false;
+    cmd_obj.cu_index = kernel_tmp1->cu_index;
+    cmd_obj.do_not_use1 = s_handle.session_signature;
+
+    bool found = false;
+    while(!found) {
+        dev_tmp1->cu_cmd_id++;
+        uint32_t tmp_int1 = dev_tmp1->cu_cmd_id;
+        if (tmp_int1 == 0) {
+            tmp_int1 = 1;
+            dev_tmp1->cu_cmd_id = tmp_int1;
+            //Change seed of random_generator
+            std::random_device rd;
+            uint32_t tmp_int = time(0);
+            std::seed_seq seed_seq{rd(), tmp_int};
+            dev_tmp1->mt_gen = std::mt19937(seed_seq);
+        }
+        auto itr_tmp1 = priv1->CU_cmds.emplace(tmp_int1, XmaCUCmdObjPrivate{});
+        if (itr_tmp1.second) {//It is newly inserted item;
+            found = true;
+            cmd_obj.cmd_id1 = tmp_int1;
+            cmd_obj.cmd_id2 = dev_tmp1->rnd_dis(dev_tmp1->mt_gen);
+            itr_tmp1.first->second.cmd_id2 = cmd_obj.cmd_id2;
+            itr_tmp1.first->second.cu_id = cmd_obj.cu_index;
+            itr_tmp1.first->second.execbo_id = bo_idx;
+
+            dev_tmp1->kernel_execbos[bo_idx].cu_cmd_id1 = tmp_int1;
+            dev_tmp1->kernel_execbos[bo_idx].cu_cmd_id2 = cmd_obj.cmd_id2;
+        }
+    }
+
+    *(dev_tmp1->execbo_locked) = false;
+    return XMA_SUCCESS;
+}
+
+XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
+                                 void       *regmap,
+                                 int32_t    regmap_size,
+                                 int32_t    cu_index,
+                                 int32_t*   return_code)
+{
+    XmaCUCmdObj cmd_obj_error;
+    cmd_obj_error.cmd_id1 = 0;
+    cmd_obj_error.cmd_id2 = 0;
+    cmd_obj_error.cmd_finished = false;
+    cmd_obj_error.cu_index = -1;
+    cmd_obj_error.do_not_use1 = NULL;
+
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
+    if (priv1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_cu_cmd failed. XMASession is corrupted.\n");
+        if (return_code) *return_code = XMA_ERROR;
+        return cmd_obj_error;
+    }
+    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_cu_cmd failed. XMASession is corrupted.\n");
+        if (return_code) *return_code = XMA_ERROR;
+        return cmd_obj_error;
+    }
+    XmaHwKernel* kernel_tmp1 = priv1->kernel_info;
+    if (s_handle.session_type < XMA_ADMIN) {
+        xma_logmsg(XMA_INFO_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_cu_cmd: cu_index ignored for this session type\n");
+    } else {
+        //Get the kernel_info
+        if (cu_index < 0 || (uint32_t)cu_index > priv1->device->kernels.size()) {
+            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_cu_cmd failed. Invalud cu_index.\n");
+            if (return_code) *return_code = XMA_ERROR;
+            return cmd_obj_error;
+        }
+        kernel_tmp1 = &priv1->device->kernels[cu_index];
+    }
+
+    XmaHwDevice *dev_tmp1 = priv1->device;
+    if (dev_tmp1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is NULL\n");
+        if (return_code) *return_code = XMA_ERROR;
+        return cmd_obj_error;
+    }
+    if (regmap == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regmap is NULL\n");
+        if (return_code) *return_code = XMA_ERROR;
+        return cmd_obj_error;
+    }
+    if (regmap_size <= 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regmap_size of %d is invalid\n", regmap_size);
+        if (return_code) *return_code = XMA_ERROR;
+        return cmd_obj_error;
+    }
+    //Kernel regmap 4KB in xmahw.h; execBO size is 4096 = 4KB in xmahw_hal.cpp; But ERT uses some space for ert pkt so allow max of 4032 Bytes for regmap
+    if (regmap_size > MAX_KERNEL_REGMAP_SIZE) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Max kernel regmap size is %d Bytes\n", MAX_KERNEL_REGMAP_SIZE);
+        if (return_code) *return_code = XMA_ERROR;
+        return cmd_obj_error;
+    }
+    if (regmap_size != (regmap_size && 0xFFFFFFFC)) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regmap_size of %d is not a multiple of four bytes\n", regmap_size);
+        if (return_code) *return_code = XMA_ERROR;
+        return cmd_obj_error;
+    }
+
+    uint8_t *src = (uint8_t*)regmap;
+    int32_t bo_idx;
+    
+    bool expected = false;
+    bool desired = true;
+    while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //kernel completion lock acquired
+
+    // Find an available execBO buffer
+    bo_idx = xma_plg_execbo_avail_get(s_handle);
+    if (bo_idx == -1) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unable to find free execbo to use\n");
+        *(dev_tmp1->execbo_locked) = false;
+        if (return_code) *return_code = XMA_ERROR;
+        return cmd_obj_error;
+    }
+    // Setup ert_start_kernel_cmd 
+    ert_start_kernel_cmd *cu_cmd = 
+        (ert_start_kernel_cmd*)dev_tmp1->kernel_execbos[bo_idx].data;
+    cu_cmd->state = ERT_CMD_STATE_NEW;
+    if (kernel_tmp1->soft_kernel) {
+        cu_cmd->opcode = ERT_SK_START;
+    } else {
+        cu_cmd->opcode = ERT_START_CU;
+    }
+    cu_cmd->extra_cu_masks = 3;//XMA now supports 128 CUs
+
+    cu_cmd->cu_mask = kernel_tmp1->cu_mask0;
+
+    cu_cmd->data[0] = kernel_tmp1->cu_mask1;
+    cu_cmd->data[1] = kernel_tmp1->cu_mask2;
+    cu_cmd->data[2] = kernel_tmp1->cu_mask3;
+    // Copy reg_map into execBO buffer 
+    memcpy(&cu_cmd->data[3], src, regmap_size);
+    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "Dev# %d; Kernel: %s; Regmap size used is: %d\n", dev_tmp1->dev_index, kernel_tmp1->name, regmap_size);
+    if (kernel_tmp1->kernel_channels) {
+        // XMA will write @ 0x10 and XRT read @ 0x14 to generate interupt and capture in execbo
+        cu_cmd->data[7] = s_handle.channel_id;//0x10 == 4th integer;
+        cu_cmd->data[8] = 0;//clear out the output
+        xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "This is dataflow kernel. Using channel id: %d\n", s_handle.channel_id);
+    }
+    
+    // Set count to size in 32-bit words + 4; Three extra_cu_mask are present
+    cu_cmd->count = (regmap_size >> 2) + 4;
+    
+    if (xclExecBuf(priv1->dev_handle, 
+                    dev_tmp1->kernel_execbos[bo_idx].handle) != 0)
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
+                    "Failed to submit kernel start with xclExecBuf\n");
+        *(dev_tmp1->execbo_locked) = false;
+        if (return_code) *return_code = XMA_ERROR;
+        return cmd_obj_error;
+    }
+
+    XmaCUCmdObj cmd_obj;
+    cmd_obj.cmd_id1 = 0;
+    cmd_obj.cmd_id2 = 0;
+    cmd_obj.cmd_finished = false;
+    cmd_obj.cu_index = kernel_tmp1->cu_index;
+    cmd_obj.do_not_use1 = s_handle.session_signature;
+
+    bool found = false;
+    while(!found) {
+        dev_tmp1->cu_cmd_id++;
+        uint32_t tmp_int1 = dev_tmp1->cu_cmd_id;
+        if (tmp_int1 == 0) {
+            tmp_int1 = 1;
+            dev_tmp1->cu_cmd_id = tmp_int1;
+            //Change seed of random_generator
+            std::random_device rd;
+            uint32_t tmp_int = time(0);
+            std::seed_seq seed_seq{rd(), tmp_int};
+            dev_tmp1->mt_gen = std::mt19937(seed_seq);
+        }
+        auto itr_tmp1 = priv1->CU_cmds.emplace(tmp_int1, XmaCUCmdObjPrivate{});
+        if (itr_tmp1.second) {//It is newly inserted item;
+            found = true;
+            cmd_obj.cmd_id1 = tmp_int1;
+            cmd_obj.cmd_id2 = dev_tmp1->rnd_dis(dev_tmp1->mt_gen);
+            itr_tmp1.first->second.cmd_id2 = cmd_obj.cmd_id2;
+            itr_tmp1.first->second.cu_id = cmd_obj.cu_index;
+            itr_tmp1.first->second.execbo_id = bo_idx;
+
+            dev_tmp1->kernel_execbos[bo_idx].cu_cmd_id1 = tmp_int1;
+            dev_tmp1->kernel_execbos[bo_idx].cu_cmd_id2 = cmd_obj.cmd_id2;
+        }
+    }
+
+    *(dev_tmp1->execbo_locked) = false;
+    if (return_code) *return_code = XMA_SUCCESS;
+    return cmd_obj;
+}
+
+int32_t xma_plg_cu_cmd_status(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, int32_t num_cu_objs, bool wait_for_cu_cmds)
+{
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
+    if (priv1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_cu_cmd_status failed. XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
+    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
+        //std::cout << "ERROR: xma_plg_schedule_work_item failed. XMASession is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_cu_cmd_status failed. XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
+
+    XmaHwKernel* kernel_tmp1 = priv1->kernel_info;
+    XmaHwDevice *dev_tmp1 = priv1->device;
+    if (dev_tmp1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is NULL-1\n");
+        return XMA_ERROR;
+    }
+    if (s_handle.session_type != XMA_ADMIN && kernel_tmp1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is NULL-2\n");
+        return XMA_ERROR;
+    }
+
+    int32_t num_execbo = dev_tmp1->num_execbo_allocated;
+    if (num_execbo <= 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private: No execbo allocated\n");
+        return XMA_ERROR;
+    }
+    if (cmd_obj_array == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is NULL\n");
+        return XMA_ERROR;
+    }
+    if (num_cu_objs <= 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "num_cu_objs of %d is invalid\n", num_cu_objs);
+        return XMA_ERROR;
+    }
+
+    bool expected = false;
+    bool desired = true;
+    bool all_done = true;
+    std::vector<XmaCUCmdObj> cmd_vector(cmd_obj_array, cmd_obj_array+num_cu_objs);
+    do {
+        while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
+            expected = false;
+        }
+        //kernel completion lock acquired
+
+        if (xma_plg_check_all_execbo(s_handle) != XMA_SUCCESS) {
+            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unexpected error\n");
+            //Release completion lock
+            *(dev_tmp1->execbo_locked) = false;
+            return XMA_ERROR;
+        }
+        all_done = true;
+        for (auto& cmd: cmd_vector) {
+            if (s_handle.session_type < XMA_ADMIN && cmd.cu_index != kernel_tmp1->cu_index) {
+                xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-1\n");
+                //Release completion lock
+                *(dev_tmp1->execbo_locked) = false;
+                return XMA_ERROR;
+            }
+            auto itr_tmp1 = priv1->CU_cmds.find(cmd.cmd_id1);
+            if (itr_tmp1 == priv1->CU_cmds.end()) {
+                cmd.cmd_finished = true;
+            } else {
+                if (itr_tmp1->second.cmd_id2 != cmd.cmd_id2) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-2\n");
+                    //Release completion lock
+                    *(dev_tmp1->execbo_locked) = false;
+                    return XMA_ERROR;
+                }
+                if (itr_tmp1->second.cu_id != cmd.cu_index) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-3\n");
+                    //Release completion lock
+                    *(dev_tmp1->execbo_locked) = false;
+                    return XMA_ERROR;
+                }
+            }
+
+            if (cmd.do_not_use1 != s_handle.session_signature) {
+                xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-5\n");
+                //Release completion lock
+                *(dev_tmp1->execbo_locked) = false;
+                return XMA_ERROR;
+            }
+            int32_t execbo_idx = itr_tmp1->second.execbo_id;
+            if (!cmd.cmd_finished) {
+                XmaHwExecBO* execbo_tmp1 = &dev_tmp1->kernel_execbos[execbo_idx];
+                if (execbo_tmp1->session_id != s_handle.session_id) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unexpected error-1. Please report to sarabjee@xilinx.com\n");
+                    //Release completion lock
+                    *(dev_tmp1->execbo_locked) = false;
+                    return XMA_ERROR;
+                }
+                if (execbo_tmp1->cu_cmd_id1 != cmd.cmd_id1) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unexpected error-2. Please report to sarabjee@xilinx.com\n");
+                    //Release completion lock
+                    *(dev_tmp1->execbo_locked) = false;
+                    return XMA_ERROR;
+                }
+                if (execbo_tmp1->cu_cmd_id2 != cmd.cmd_id2) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unexpected error-3. Please report to sarabjee@xilinx.com\n");
+                    //Release completion lock
+                    *(dev_tmp1->execbo_locked) = false;
+                    return XMA_ERROR;
+                }
+                if (execbo_tmp1->cu_index != cmd.cu_index) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unexpected error-4. Please report to sarabjee@xilinx.com\n");
+                    //Release completion lock
+                    *(dev_tmp1->execbo_locked) = false;
+                    return XMA_ERROR;
+                }
+                if (!execbo_tmp1->in_use) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unexpected error-5. Please report to sarabjee@xilinx.com\n");
+                    //Release completion lock
+                    *(dev_tmp1->execbo_locked) = false;
+                    return XMA_ERROR;
+                }
+                ert_start_kernel_cmd *execbo_cu_cmd = 
+                    (ert_start_kernel_cmd*)execbo_tmp1->data;
+                if (execbo_cu_cmd->state == ERT_CMD_STATE_COMPLETED)
+                {
+                    // Increment completed kernel count and make BO buffer available
+                    //completion count is valid only for regular video session types
+                    if (s_handle.session_type < XMA_ADMIN) {
+                        priv1->kernel_complete_count++;
+                    }
+                    execbo_tmp1->in_use = false;
+                    cmd.cmd_finished = true;
+                    priv1->CU_cmds.erase(itr_tmp1);
+                } else {
+                    all_done = false;
+                }
+
+            }
+        }
+
+        //Release completion lock
+        *(dev_tmp1->execbo_locked) = false;
+
+        if (!wait_for_cu_cmds) {
+            //Don't wait for all cu_cmds to finsh
+            all_done = true;
+        } else if (!all_done) {
+            xclExecWait(priv1->dev_handle, 10000);
+        }
+    } while(!all_done);
+
+    for(int32_t i = 0; i < num_cu_objs; i++) {
+        cmd_obj_array[i].cmd_finished = cmd_vector[i].cmd_finished;
+    }
+
+    return XMA_SUCCESS;
 }
 
 int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
@@ -856,18 +1346,47 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
         // Look for inuse commands that have completed and increment the count
         for (int32_t i = 0; i < num_execbo; i++)
         {
-            if (dev_tmp1->kernel_execbos[i].in_use && dev_tmp1->kernel_execbos[i].cu_index == kernel_tmp1->cu_index && dev_tmp1->kernel_execbos[i].session_id == s_handle.session_id)
+            XmaHwExecBO* execbo_tmp1 = &dev_tmp1->kernel_execbos[i];
+            if (execbo_tmp1->in_use && execbo_tmp1->cu_index == kernel_tmp1->cu_index && execbo_tmp1->session_id == s_handle.session_id)
             {
                 ert_start_kernel_cmd *cu_cmd = 
-                    (ert_start_kernel_cmd*)dev_tmp1->kernel_execbos[i].data;
+                    (ert_start_kernel_cmd*)execbo_tmp1->data;
                 if (cu_cmd->state == ERT_CMD_STATE_COMPLETED)
                 {
                     // Increment completed kernel count and make BO buffer available
                     count++;
-                    dev_tmp1->kernel_execbos[i].in_use = false;
+                    execbo_tmp1->in_use = false;
+
+                    auto itr_tmp1 = priv1->CU_cmds.find(execbo_tmp1->cu_cmd_id1);
+                    if (itr_tmp1 == priv1->CU_cmds.end()) {
+                        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_is_work_item_done: Unexpected error-1. Please report this to sarabjee@xilinx.com\n");
+                        //Release completion lock
+                        *(dev_tmp1->execbo_locked) = false;
+                        return XMA_ERROR;
+                    }
+                    if (itr_tmp1->second.cmd_id2 != execbo_tmp1->cu_cmd_id2) {
+                        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_is_work_item_done: Unexpected error-2. Please report this to sarabjee@xilinx.com\n");
+                        //Release completion lock
+                        *(dev_tmp1->execbo_locked) = false;
+                        return XMA_ERROR;
+                    }
+                    if (itr_tmp1->second.cu_id != execbo_tmp1->cu_index) {
+                        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_is_work_item_done: Unexpected error-3. Please report this to sarabjee@xilinx.com\n");
+                        //Release completion lock
+                        *(dev_tmp1->execbo_locked) = false;
+                        return XMA_ERROR;
+                    }
+                    if (itr_tmp1->second.execbo_id != i) {
+                        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_is_work_item_done: Unexpected error-4. Please report this to sarabjee@xilinx.com\n");
+                        //Release completion lock
+                        *(dev_tmp1->execbo_locked) = false;
+                        return XMA_ERROR;
+                    }
+                    priv1->CU_cmds.erase(itr_tmp1);
                 } 
             }
         }
+
         //Release completion lock
         *(dev_tmp1->execbo_locked) = false;
 

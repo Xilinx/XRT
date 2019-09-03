@@ -182,6 +182,16 @@ int32_t xma_plg_buffer_read(XmaSession     s_handle,
  */
 int32_t xma_plg_channel_id(XmaSession     s_handle);
 
+//Sarab: TODO
+XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
+                                 void       *regmap,
+                                 int32_t    regmap_size,
+                                 int32_t    cu_index,
+                                 int32_t*   return_code);
+
+
+
+
 /**
  * xma_plg_schedule_work_item() - This function schedules a request to the XRT
  * scheduler for execution of a kernel based on the saved state of the kernel registers
