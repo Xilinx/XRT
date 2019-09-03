@@ -838,6 +838,7 @@ struct xocl_icap_funcs {
 		const void __user *arg);
 	int (*download_boot_firmware)(struct platform_device *pdev);
 	int (*download_rp)(struct platform_device *pdev, int level, int flag);
+	int (*post_download_rp)(struct platform_device *pdev);
 	int (*ocl_set_freq)(struct platform_device *pdev,
 		unsigned int region, unsigned short *freqs, int num_freqs);
 	int (*ocl_get_freq)(struct platform_device *pdev,
@@ -880,6 +881,10 @@ enum {
 #define xocl_icap_download_rp(xdev, level, flag)			\
 	(ICAP_CB(xdev, download_rp) ?					\
 	ICAP_OPS(xdev)->download_rp(ICAP_DEV(xdev), level, flag) :	\
+	-ENODEV)
+#define xocl_icap_post_download_rp(xdev)				\
+	(ICAP_CB(xdev, post_download_rp) ?				\
+	ICAP_OPS(xdev)->post_download_rp(ICAP_DEV(xdev)) :		\
 	-ENODEV)
 #define	xocl_icap_ocl_get_freq(xdev, region, freqs, num)		\
 	(ICAP_CB(xdev, ocl_get_freq) ?					\

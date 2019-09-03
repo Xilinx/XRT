@@ -152,6 +152,12 @@ struct icap {
 	void			*rp_bit;
 	unsigned long		rp_bit_len;
 	void			*rp_fdt;
+	void			*rp_mgmt_bin;
+	unsigned long		rp_mgmt_bin_len;
+	void			*rp_sche_bin;
+	unsigned long		rp_sche_bin_len;
+	void			*rp_sc_bin;
+	unsigned long		*rp_sc_bin_len;
 
 	char			*icap_clock_freq_counter_hbm;
 
@@ -234,6 +240,29 @@ static uint64_t icap_get_data_nolock(struct platform_device *pdev, enum data_kin
 static uint64_t icap_get_data(struct platform_device *pdev, enum data_kind kind);
 static const struct axlf_section_header *get_axlf_section_hdr(
 	struct icap *icap, const struct axlf *top, enum axlf_section_kind kind);
+
+static void icap_free_bins(struct icap *icap)
+{
+	if (icap->rp_bit) {
+		vfree(icap->rp_bit);
+		icap->rp_bit = NULL;
+		icap->rp_bit_len = 0;
+	}
+	if (icap->rp_fdt) {
+		vfree(icap->rp_fdt);
+		icap->rp_fdt = NULL;
+	}
+	if (icap->rp_mgmt_bin) {
+		vfree(icap->rp_mgmt_bin);
+		icap->rp_mgmt_bin = NULL;
+		icap->rp_mgmt_bin_len = 0;
+	}
+	if (icap->rp_sche_bin) {
+		vfree(icap->rp_sche_bin);
+		icap->rp_sche_bin = NULL;
+		icap->rp_sche_bin_len = 0;
+	}
+}
 
 static void icap_read_from_peer(struct platform_device *pdev)
 {
@@ -1327,7 +1356,6 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	if (load_mbs)
 		xocl_mb_reset(xdev);
 
-
 	if (memcmp(fw->data, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2)) != 0) {
 		ICAP_ERR(icap, "invalid firmware %s", fw_name);
 		err = -EINVAL;
@@ -1462,7 +1490,35 @@ static long icap_download_clear_bitstream(struct icap *icap)
 	return err;
 }
 
-// DECLARE_WAIT_QUEUE_HEAD(mytestwait);
+static int icap_post_download_rp(struct platform_device *pdev)
+{
+	struct icap *icap = platform_get_drvdata(pdev);
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	bool load_mbs = false;
+
+	if (icap->rp_mgmt_bin) {
+		xocl_mb_load_mgmt_image(xdev, icap->rp_mgmt_bin,
+			icap->rp_mgmt_bin_len);
+		ICAP_INFO(icap, "stashed mb mgmt binary");
+		vfree(icap->rp_mgmt_bin);
+		icap->rp_mgmt_bin_len = 0;
+		load_mbs = true;
+	}
+
+	if (icap->rp_sche_bin) {
+		xocl_mb_load_sche_image(xdev, icap->rp_sche_bin,
+			icap->rp_sche_bin_len);
+		ICAP_INFO(icap, "stashed mb sche binary");
+		vfree(icap->rp_sche_bin);
+		icap->rp_sche_bin_len =0;
+		load_mbs = true;
+	}
+
+	if (load_mbs)
+		xocl_mb_reset(xdev);
+
+	return 0;
+}
 
 static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 {
@@ -1474,15 +1530,8 @@ static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 	mbreq.req = MAILBOX_REQ_CHG_SHELL;
 	mutex_lock(&icap->icap_lock);
 	if (flag == RP_DOWNLOAD_CLEAR) {
-		pr_info("Clear rpfdt\n");
-		if (icap->rp_bit) {
-			vfree(icap->rp_bit);
-			icap->rp_bit = NULL;
-		}
-		if (icap->rp_fdt) {
-			vfree(icap->rp_fdt);
-			icap->rp_fdt = NULL;
-		}
+		xocl_xdev_info(xdev, "Clear firmware bins");
+		icap_free_bins(icap);
 		goto end;
 	}
 	if (!icap->rp_bit || !icap->rp_fdt) {
@@ -2686,6 +2735,7 @@ static struct xocl_icap_funcs icap_ops = {
 	.download_boot_firmware = icap_download_boot_firmware,
 	.download_bitstream_axlf = icap_download_bitstream_axlf,
 	.download_rp = icap_download_rp,
+	.post_download_rp = icap_post_download_rp,
 	.ocl_set_freq = icap_ocl_set_freqscaling,
 	.ocl_get_freq = icap_ocl_get_freqscaling,
 	.ocl_update_clock_freq_topology = icap_ocl_update_clock_freq_topology,
@@ -3222,10 +3272,7 @@ static int icap_remove(struct platform_device *pdev)
 
 	BUG_ON(icap == NULL);
 
-	if (icap->rp_bit)
-		vfree(icap->rp_bit);
-	if (icap->rp_fdt)
-		vfree(icap->rp_fdt);
+	icap_free_bins(icap);
 
 	icap_release_keyring();
 
@@ -3379,7 +3426,6 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 	void *header;
 	XHwIcap_Bit_Header bit_header = { 0 };
 	ssize_t ret, len;
-	bool load_mbs = false;
 
 	mutex_lock(&icap->icap_lock);
 	if (icap->rp_fdt) {
@@ -3525,14 +3571,31 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		section = get_axlf_section_hdr(icap, axlf, FIRMWARE);
 		if (section) {
 			header = (char *)axlf + section->m_sectionOffset;
-			xocl_mb_load_mgmt_image(xdev, header, section->m_sectionSize);
-			ICAP_INFO(icap, "stashed mb mgmt binary");
-			load_mbs = true;
+			icap->rp_mgmt_bin = vmalloc(section->m_sectionSize);
+			if (!icap->rp_mgmt_bin) {
+				ICAP_ERR(icap, "Not enough memory for cmc bin");
+				ret = -ENOMEM;
+				goto failed;
+			}
+			memcpy(icap->rp_mgmt_bin, header, section->m_sectionSize);
+			icap->rp_mgmt_bin_len = section->m_sectionSize;
 		}
 	}
 
-	if (load_mbs)
-		xocl_mb_reset(xdev);
+	if (xocl_mb_sched_on(xdev)) {
+		section = get_axlf_section_hdr(icap, axlf, SCHED_FIRMWARE);
+		if (section) {
+			header = (char *)axlf + section->m_sectionOffset;
+			icap->rp_sche_bin = vmalloc(section->m_sectionSize);
+			if (!icap->rp_sche_bin) {
+				ICAP_ERR(icap, "Not enough memory for cmc bin");
+				ret = -ENOMEM;
+				goto failed;
+			}
+			memcpy(icap->rp_sche_bin, header, section->m_sectionSize);
+			icap->rp_sche_bin_len = section->m_sectionSize;
+		}
+	}
 
 	vfree(axlf);
 
@@ -3543,17 +3606,9 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 	return len;
 
 failed:
+	icap_free_bins(icap);
 
 	mutex_lock(&icap->icap_lock);
-	if (icap->rp_bit) {
-		vfree(icap->rp_bit);
-		icap->rp_bit = NULL;
-		icap->rp_bit_len = 0;
-	}
-	if (icap->rp_fdt) {
-		vfree(icap->rp_fdt);
-		icap->rp_fdt = NULL;
-	}
 	if (axlf)
 		vfree(axlf);
 	mutex_unlock(&icap->icap_lock);
