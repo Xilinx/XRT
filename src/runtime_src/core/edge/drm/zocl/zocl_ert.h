@@ -24,13 +24,23 @@
 #include <linux/interrupt.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
+#include "ert.h"
 
 /* DSA and/or Device tree related */
-#define ZOCL_ERT_IRQ_NUMBER 2
-#define ZOCL_ERT_CQ_IRQ     0
-#define ZOCL_ERT_CU_IRQ     1
+#define ERT_IRQ_NUMBER 2
+#define ERT_CQ_IRQ     0
+#define ERT_CU_IRQ     1
+
 #define ZOCL_ERT_HW_RES     0
 #define ZOCL_ERT_CQ_RES     1
+
+/**
+ * Address constants per spec
+ */
+#define WORD_SIZE                     4          /* 4 bytes */
+#define CQ_SIZE                       0x10000    /* 64K */
+#define CQ_BASE_ADDR                  0x190000
+#define CSR_ADDR                      0x180000
 
 /**
  * The STATUS REGISTER is for communicating completed CQ slot indices
@@ -131,14 +141,55 @@
 #define ZOCL_ERT_NAME "zocl_ert"
 
 extern struct platform_driver zocl_ert_driver;
+struct zocl_ert_ops;
 
 struct zocl_ert_dev {
-	struct platform_device *pdev;
-	void __iomem           *hw_ioremap;
-	void __iomem           *cq_ioremap;
-	unsigned int            irq[ZOCL_ERT_IRQ_NUMBER];
-	int (*register_irq_handler)(struct platform_device *pdev,
-			unsigned int irq, irq_handler_t handler);
+	struct platform_device       *pdev;
+	void __iomem                 *hw_ioremap;
+	void __iomem                 *cq_ioremap;
+	unsigned int                  irq[ERT_IRQ_NUMBER];
+	const struct zocl_ert_ops    *ops;
+};
+
+struct zocl_ert_ops {
+	/**
+	 * @init:
+	 *
+	 * Initial ERT dedicated FPGA module
+	 */
+	void (*init)(struct zocl_ert_dev *ert);
+	/**
+	 * @fini:
+	 *
+	 * Finish ERT dedicated FPGA module
+	 * */
+	void (*fini)(struct zocl_ert_dev *ert);
+	/**
+	 * @config:
+	 *
+	 * Configure command could configure ERT dedicated module
+	 */
+	void (*config)(struct zocl_ert_dev *ert,
+		       struct ert_configure_cmd *cfg);
+	/**
+	 * @get_next_cmd:
+	 *
+	 * Return next cmd. If no command found, return NULL.
+	 */
+	struct ert_packet *
+	(*get_next_cmd)(struct zocl_ert_dev *ert,
+			struct ert_packet *pkg, int *idx_ret);
+	/**
+	 * @notify_host:
+	 *
+	 * Notify host the status of a command is changed.
+	 */
+	void (*notify_host)(struct zocl_ert_dev *ert, int slot_idx);
+};
+
+struct zocl_ert_info {
+	int			model;
+	struct zocl_ert_ops    *ops;
 };
 
 #endif

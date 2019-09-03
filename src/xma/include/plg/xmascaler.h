@@ -74,6 +74,8 @@ typedef struct XmaScalerSession
     //bool                  zerocopy_dests[MAX_SCALER_OUTPUTS]; /**< map of downstream connections supporting zerocopy */
     //int8_t                current_pipe; /**< current_pipe */
     //int8_t                first_frame; /**< first_frame */
+    void                 *private_session_data; //Managed by host video application
+    int32_t              private_session_data_size; //Managed by host video application
 
     /** Reserved */
     uint32_t        reserved[4];

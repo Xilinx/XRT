@@ -22,11 +22,12 @@ TEMPLATE=zynq
 # The first argument is the petalinux configure file
 #  config_peta <petalinux_project>/project-pec/configs/config
 #
-#config_peta()
-#{
-#	PETA_CONFIG_FILE=$1
-#	echo "CONFIG_YOCTO_ENABLE_DEBUG_TWEAKS=y" >> $PETA_CONFIG_FILE
-#}
+config_peta()
+{
+	PETA_CONFIG_FILE=$1
+	echo "CONFIG_YOCTO_ENABLE_DEBUG_TWEAKS=y" >> $PETA_CONFIG_FILE
+	echo "CONFIG_SUBSYSTEM_REMOVE_PL_DTB=y" >> $PETA_CONFIG_FILE
+}
 
 # The first argument is the linux kernel configure file
 #  config_kernel recipes-kernel/linux/linux-xlnx/user.cfg
@@ -81,16 +82,17 @@ config_dts()
 # The first argument is the rootfsconfig file
 #  rootfs_menu conf/user-rootfsconfig
 #
-#rootfs_menu()
-#{
-#	ROOTFSCONFIG=$1
-#	echo 'CONFIG_xrt'                                   >> $ROOTFSCONFIG
-#	echo 'CONFIG_mnt-sd'                                >> $ROOTFSCONFIG
-#	echo 'CONFIG_xrt-dev'                               >> $ROOTFSCONFIG
-#	echo 'CONFIG_zocl'                                  >> $ROOTFSCONFIG
-#	echo 'CONFIG_opencl-clhpp-dev'                      >> $ROOTFSCONFIG
-#	echo 'CONFIG_opencl-headers-dev'                    >> $ROOTFSCONFIG
-#}
+rootfs_menu()
+{
+	ROOTFSCONFIG=$1
+	echo 'CONFIG_xrt'                                   >> $ROOTFSCONFIG
+	echo 'CONFIG_mnt-sd'                                >> $ROOTFSCONFIG
+	echo 'CONFIG_xrt-dev'                               >> $ROOTFSCONFIG
+	echo 'CONFIG_zocl'                                  >> $ROOTFSCONFIG
+	echo 'CONFIG_opencl-clhpp-dev'                      >> $ROOTFSCONFIG
+	echo 'CONFIG_opencl-headers-dev'                    >> $ROOTFSCONFIG
+	echo 'CONFIG_packagegroup-petalinux-opencv'	        >> $ROOTFSCONFIG
+}
 
 # The first argument is the petalinux project path
 #  pre_build_hook <PETALINUX_PROJECT_DIR>

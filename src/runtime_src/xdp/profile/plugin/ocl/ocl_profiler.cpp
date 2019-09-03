@@ -187,6 +187,12 @@ namespace xdp {
       // Reset and Start counters
       if(dInt) {
         dInt->startCounters(XCL_PERF_MON_MEMORY);
+        /* Configure AMs if context monitoring is supported
+         * else disable alll AM data
+         */
+        std::string ctx_info = xrt_core::config::get_kernel_channel_info();
+        dInt->configAmContext(ctx_info);
+        Plugin->setCtxEn(!ctx_info.empty());
       } else {
         xdevice->startCounters(XCL_PERF_MON_MEMORY);
       }
@@ -221,6 +227,7 @@ namespace xdp {
   void OCLProfiler::startTrace()
   {
     auto platform = getclPlatformID();
+    std::string trace_memory = "FIFO";
 
     for (auto device : platform->get_device_range()) {
       if(!device->is_active()) {
@@ -264,6 +271,8 @@ namespace xdp {
         // Configure DMA if present
         if (dInt->hasTs2mm()) {
           info->ts2mm_en = allocateDeviceDDRBufferForTrace(dInt, xdevice);
+          /* Todo: Write user specified memory bank here */
+          trace_memory = "TS2MM";
         }
       } else {
         xdevice->startTrace(XCL_PERF_MON_MEMORY, traceOption);
@@ -284,7 +293,9 @@ namespace xdp {
       info->mTrainingIntervalUsec = (uint32_t)(pow(2, 17) / deviceClockMHz);
       profileMgr->setLoggingTrace(XCL_PERF_MON_MEMORY, false);
     }
-    return;
+
+    if(Plugin->getFlowMode() == xdp::RTUtil::DEVICE)
+      Plugin->setTraceMemory(trace_memory);
   }
 
   void OCLProfiler::endTrace()

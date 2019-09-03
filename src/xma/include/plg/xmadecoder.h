@@ -72,6 +72,9 @@ typedef struct XmaDecoderSession
     XmaDecoderProperties  decoder_props; /**< session decoder properties */
     XmaDecoderPlugin     *decoder_plugin; /**< pointer to plugin instance */
     //int32_t               conn_recv_handle; /**< connection handle to encoder */
+    void                 *private_session_data; //Managed by host video application
+    int32_t              private_session_data_size; //Managed by host video application
+
     /** Reserved */
     uint32_t        reserved[4];
 } XmaDecoderSession;

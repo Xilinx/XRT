@@ -16,10 +16,19 @@
 
 #include "xclbin_parser.h"
 #include "config_reader.h"
+#include <cstring>
 
 // This is xclbin parser. Update this file if xclbin format has changed.
 
 namespace {
+
+static bool
+is_sw_emulation()
+{
+  static auto xem = std::getenv("XCL_EMULATION_MODE");
+  static bool swem = xem ? std::strcmp(xem,"sw_emu")==0 : false;
+  return swem;
+}
 
 // Filter out IPs with invalid base address (streaming kernel)
 static bool
@@ -50,7 +59,7 @@ get_base_addr(const ip_data& ip)
 static int
 kernel_max_ctx(const ip_data& ip)
 {
-  auto ctx = xrt_core::config::get_ctx_info();
+  auto ctx = xrt_core::config::get_kernel_channel_info();
   if (ctx.empty())
     return 0;
   
@@ -89,6 +98,21 @@ memidx_to_name(const axlf* top,  int32_t midx)
 
   auto& md = mem_topology->m_mem_data[midx];
   return std::string(reinterpret_cast<const char*>(md.m_tag));
+}
+
+int32_t
+get_first_used_mem(const axlf* top)
+{
+  auto mem_topology = axlf_section_type<const ::mem_topology*>::get(top,axlf_section_kind::MEM_TOPOLOGY);
+  if (!mem_topology)
+    return -1;
+
+  for (int32_t i=0; i<mem_topology->m_count; ++i) {
+    if (mem_topology->m_mem_data[i].m_used)
+      return i;
+  }
+
+  return -1;
 }
 
 std::vector<uint64_t>
@@ -143,6 +167,23 @@ get_debug_ips(const axlf* top)
 
   std::sort(ips.begin(), ips.end());
   return ips;
+}
+
+uint32_t
+get_cu_control(const axlf* top, uint64_t cuaddr)
+{
+  if (is_sw_emulation())
+    return AP_CTRL_HS;
+  
+  auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
+  if (!ip_layout)
+    throw std::runtime_error("No such CU at address: " + std::to_string(cuaddr));
+  for (int32_t count=0; count <ip_layout->m_count; ++count) {
+    const auto& ip_data = ip_layout->m_ip_data[count];
+    if (ip_data.m_base_address == cuaddr)
+      return ((ip_data.properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT);
+  }
+  throw std::runtime_error("No such CU at address: " + std::to_string(cuaddr));
 }
 
 uint64_t
@@ -212,6 +253,31 @@ get_dbg_ips_pair(const axlf* top)
 {
   return get_debug_ips(top);
 }
+
+std::vector<softkernel_object>
+get_softkernels(const axlf* top)
+{
+  std::vector<softkernel_object> sks;
+  const axlf_section_header *pSection;
+
+  for (pSection = ::xclbin::get_axlf_section(top, SOFT_KERNEL);
+    pSection != nullptr;
+    pSection = ::xclbin::get_axlf_section_next(top, pSection, SOFT_KERNEL)) {
+      auto begin = reinterpret_cast<const char*>(top) + pSection->m_sectionOffset;
+      auto soft = reinterpret_cast<const soft_kernel*>(begin);
+
+      softkernel_object sko;
+      sko.ninst = soft->m_num_instances;
+      sko.symbol_name = const_cast<char*>(begin + soft->mpo_symbol_name);
+      sko.size = soft->m_image_size;
+      sko.sk_buf = const_cast<char*>(begin + soft->m_image_offset);
+
+      sks.push_back(sko);
+  }
+
+  return sks;
+}
+
 
 } // namespace xclbin
 } // namespace xrt_core

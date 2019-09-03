@@ -417,6 +417,7 @@ struct xocl_rom_funcs {
 	bool (*runtime_clk_scale_on)(struct platform_device *pdev);
 	int (*find_firmware)(struct platform_device *pdev, char *fw_name,
 		size_t len, u16 deviceid, const struct firmware **fw);
+	bool (*passthrough_virtualization_on)(struct platform_device *pdev);
 };
 
 #define ROM_DEV(xdev)	\
@@ -455,6 +456,9 @@ struct xocl_rom_funcs {
 #define xocl_rom_find_firmware(xdev, fw_name, len, deviceid, fw)	\
 	(ROM_CB(xdev, find_firmware) ? ROM_OPS(xdev)->find_firmware(	\
 	ROM_DEV(xdev), fw_name, len, deviceid, fw) : -ENODEV)
+#define xocl_passthrough_virtualization_on(xdev)		\
+	(ROM_CB(xdev, passthrough_virtualization_on) ?		\
+	ROM_OPS(xdev)->passthrough_virtualization_on(ROM_DEV(xdev)) : false)
 
 /* dma callbacks */
 struct xocl_dma_funcs {
@@ -932,6 +936,7 @@ struct xocl_iores_funcs {
 	int (*read32)(struct platform_device *pdev, u32 id, u32 off, u32 *val);
 	int (*write32)(struct platform_device *pdev, u32 id, u32 off, u32 val);
 	void __iomem *(*get_base)(struct platform_device *pdev, u32 id);
+	uint64_t (*get_offset)(struct platform_device *pdev, u32 id);
 };
 
 #define IORES_DEV(xdev, idx)  SUBDEV_MULTI(xdev, XOCL_SUBDEV_IORES, idx).pldev
@@ -964,6 +969,23 @@ static inline void __iomem *xocl_iores_get_base(xdev_handle_t xdev, int id)
 
 	return NULL;
 }
+#define __get_offset(xdev, level, id)				\
+	(IORES_CB(xdev, level, get_offset) ?				\
+	IORES_OPS(xdev, level)->get_offset(IORES_DEV(xdev, level), id) : -1)
+static inline uint64_t xocl_iores_get_offset(xdev_handle_t xdev, int id)
+{
+	uint64_t offset;
+	int i;
+
+	for (i = XOCL_SUBDEV_LEVEL_MAX - 1; i >= 0; i--) {
+		offset = __get_offset(xdev, i, id);
+		if (offset != (uint64_t)-1)
+			return offset;
+	}
+
+	return -1;
+}
+
 
 struct xocl_axigate_funcs {
 	struct xocl_subdev_funcs common_funcs;
@@ -991,9 +1013,12 @@ struct xocl_axigate_funcs {
 static inline void __iomem *xocl_cdma_addr(xdev_handle_t xdev)
 {
 	void	__iomem *ioaddr;
+	static uint32_t cdma[4];
 
-	ioaddr = xocl_iores_get_base(xdev, IORES_KDMA);
-	if (!ioaddr)
+	cdma[0] = (uint32_t)xocl_iores_get_offset(xdev, IORES_KDMA);
+	if (cdma[0] != (uint32_t)-1)
+		ioaddr = cdma;
+	else
 		ioaddr = xocl_rom_cdma_addr(xdev);
 
 	return ioaddr;

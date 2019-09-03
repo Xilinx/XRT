@@ -389,7 +389,7 @@ public:
    * Map buffer (clEnqueueMapBuffer) implementation
    */
   void*
-    map_buffer(memory* mem, cl_map_flags map_flags, size_t offset, size_t size, void* assert_result, bool nosync=false);
+  map_buffer(memory* mem, cl_map_flags map_flags, size_t offset, size_t size, void* assert_result, bool nosync=false);
 
   /**
    * Unmap buffer (clEnqueueUnmapMemObjects) implementation

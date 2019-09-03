@@ -105,6 +105,9 @@ size_t AM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
     if(out_stream)
         (*out_stream) << " AM::readCounter " << std::endl;
 
+    if (!m_enabled)
+        return 0;
+
     size_t size = 0;
     uint32_t sampleInterval = 0;
 
@@ -228,6 +231,14 @@ size_t AM::triggerTrace(uint32_t traceOption /* starttrigger*/)
     size += write(XAM_TRACE_CTRL_OFFSET, 4, &regValue); 
 
     return size;    
+}
+
+void AM::disable()
+{
+    m_enabled = false;
+    // Disable all trace
+    uint32_t regValue = 0;
+    write(XAM_TRACE_CTRL_OFFSET, 4, &regValue);
 }
 
 void AM::configureDataflow(bool cuHasApCtrlChain)

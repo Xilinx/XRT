@@ -39,14 +39,6 @@
 /* Reset timer interval in Microsecond */
 #define	ZOCL_CU_RESET_TIMER_INTERVAL	(1000)
 
-/**
- * Address constants per spec
- */
-#define WORD_SIZE                     4          /* 4 bytes */
-#define CQ_SIZE                       0x10000    /* 64K */
-#define CQ_BASE_ADDR                  0x190000
-#define CSR_ADDR                      0x180000
-
 /*
  * For zocl cu version 1. The done counter will have risk to overflow
  * if more than 31 commands done but kds still not able to read done counter.
@@ -238,7 +230,6 @@ struct sched_ops {
 	int (*submit)(struct sched_cmd *xcmd);
 	void (*query)(struct sched_cmd *xcmd);
 };
-
 
 int sched_init_exec(struct drm_device *drm);
 int sched_fini_exec(struct drm_device *drm);
