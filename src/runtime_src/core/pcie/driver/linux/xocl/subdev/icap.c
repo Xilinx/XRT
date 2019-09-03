@@ -232,6 +232,8 @@ static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
 static void icap_set_data(struct icap *icap, struct xcl_pr_region *hwicap);
 static uint64_t icap_get_data_nolock(struct platform_device *pdev, enum data_kind kind);
 static uint64_t icap_get_data(struct platform_device *pdev, enum data_kind kind);
+static const struct axlf_section_header *get_axlf_section_hdr(
+	struct icap *icap, const struct axlf *top, enum axlf_section_kind kind);
 
 static void icap_read_from_peer(struct platform_device *pdev)
 {
@@ -707,6 +709,33 @@ static int icap_ocl_set_freqscaling(struct platform_device *pdev,
 	return err;
 }
 
+static void icap_get_ocl_frequency_max_min(struct icap *icap,
+	int idx, unsigned short *freq_max, unsigned short *freq_min)
+{
+	struct clock_freq_topology *topology = 0;
+	int num_clocks = 0;
+
+	BUG_ON(!mutex_is_locked(&icap->icap_lock));
+
+	if (!uuid_is_null(&icap->icap_bitstream_uuid)) {
+		topology = icap->icap_clock_freq_topology;
+		if (!topology)
+			return;
+
+		num_clocks = topology->m_count;
+
+		if (idx >= num_clocks)
+			return;
+
+		if (freq_max)
+			*freq_max = topology->m_clock_freq[idx].m_freq_Mhz;
+
+		if (freq_min)
+			*freq_min = frequency_table[0].ocl;
+	}
+
+}
+
 static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev, struct xclmgmt_ioc_freqscaling *freq_obj)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
@@ -714,21 +743,27 @@ static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev, str
 	int num_clocks = 0;
 	int i = 0;
 	int err = 0;
+	unsigned short freq_max;
 
 	mutex_lock(&icap->icap_lock);
 	if (!uuid_is_null(&icap->icap_bitstream_uuid)) {
 		topology = icap->icap_clock_freq_topology;
+		if (!topology) {
+			err = -EDOM;
+			goto done;
+		}
+
 		num_clocks = topology->m_count;
 		ICAP_INFO(icap, "Num clocks is %d", num_clocks);
 		for (i = 0; i < ARRAY_SIZE(freq_obj->ocl_target_freq); i++) {
+			icap_get_ocl_frequency_max_min(icap, i, &freq_max, NULL);
 			ICAP_INFO(icap, "requested frequency is : %d xclbin freq is: %d",
 				freq_obj->ocl_target_freq[i],
-				topology->m_clock_freq[i].m_freq_Mhz);
-			if (freq_obj->ocl_target_freq[i] >
-				topology->m_clock_freq[i].m_freq_Mhz) {
+				freq_max);
+			if (freq_obj->ocl_target_freq[i] > freq_max) {
 				ICAP_ERR(icap, "Unable to set frequency as requested frequency %d is greater than set by xclbin %d",
 					freq_obj->ocl_target_freq[i],
-					topology->m_clock_freq[i].m_freq_Mhz);
+					freq_max);
 				err = -EDOM;
 				goto done;
 			}
@@ -802,21 +837,26 @@ static void icap_write_clock_freq(struct clock_freq *dst, struct clock_freq *src
 }
 
 
-static int icap_setup_clock_freq_topology(struct icap *icap,
-	const char *buffer, unsigned long length)
+static int icap_setup_clock_freq_topology(struct icap *icap, const struct axlf *xclbin)
 {
 	int i;
-	struct clock_freq_topology *topology = (struct clock_freq_topology *)buffer;
+	struct clock_freq_topology *topology;
 	struct clock_freq *clk_freq = NULL;
+	const struct axlf_section_header *hdr =
+		get_axlf_section_hdr(icap, xclbin, CLOCK_FREQ_TOPOLOGY);
 
-	if (length == 0)
+	/* Can't find CLOCK_FREQ_TOPOLOGY, just return*/
+	if (!hdr)
 		return 0;
 
 	free_clock_freq_topology(icap);
 
-	icap->icap_clock_freq_topology = vmalloc(length);
+	icap->icap_clock_freq_topology = vzalloc(hdr->m_sectionSize);
 	if (!icap->icap_clock_freq_topology)
 		return -ENOMEM;
+
+	topology = (struct clock_freq_topology *)(((char *)xclbin) + hdr->m_sectionOffset);
+
 	/*
 	 *  icap->icap_clock_freq_topology->m_clock_freq
 	 *  must follow the order
@@ -839,7 +879,6 @@ static int icap_setup_clock_freq_topology(struct icap *icap,
 
 		icap_write_clock_freq(clk_freq, &topology->m_clock_freq[i]);
 	}
-	icap->icap_clock_freq_topology_length = length;
 
 	return 0;
 }
@@ -925,6 +964,9 @@ static uint64_t icap_get_section_size(struct icap *icap, enum axlf_section_kind 
 		break;
 	case CONNECTIVITY:
 		size = sizeof_sect(icap->connectivity, m_connection);
+		break;
+	case CLOCK_FREQ_TOPOLOGY:
+		size = sizeof_sect(icap->icap_clock_freq_topology, m_clock_freq);
 		break;
 	default:
 		break;
@@ -1521,8 +1563,7 @@ end:
 	return ret;
 }
 
-static long axlf_set_freqscaling(struct icap *icap,
-	const char *clk_buf, unsigned long length)
+static long axlf_set_freqscaling(struct icap *icap)
 {
 	struct clock_freq_topology *freqs = NULL;
 	int clock_type_count = 0;
@@ -1535,7 +1576,10 @@ static long axlf_set_freqscaling(struct icap *icap,
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
-	freqs = (struct clock_freq_topology *)clk_buf;
+	if (!icap->icap_clock_freq_topology)
+		return 0;
+
+	freqs = icap->icap_clock_freq_topology;
 	if (freqs->m_count > 4) {
 		ICAP_ERR(icap, "More than 4 clocks found in clock topology");
 		return -EDOM;
@@ -1948,12 +1992,12 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 		goto done;
 
 
-	/* Skip dna validation in userpf*/ 
+	/* Skip dna validation in userpf*/
 	if (!ICAP_PRIVILEGED(icap))
 		goto done;
 
 	/* capability BIT8 as DRM IP enable, BIT0 as AXI mode
- 	 * We only check if anyone of them is set.
+	 * We only check if anyone of them is set.
 	 */
 	capability = ((xocl_dna_capability(xdev) & 0x101) != 0);
 
@@ -2103,13 +2147,10 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	const struct axlf_section_header *primaryHeader = NULL;
 	const struct axlf_section_header *clearHeader = NULL;
-	const struct axlf_section_header *clockHeader = NULL;
 	uint64_t primaryFirmwareOffset = 0;
 	uint64_t primaryFirmwareLength = 0;
 	uint64_t clearFirmwareOffset = 0;
 	uint64_t clearFirmwareLength = 0;
-	uint64_t clockFirmwareOffset = 0;
-	uint64_t clockFirmwareLength = 0;
 	char *buffer = NULL;
 	long err = 0;
 
@@ -2136,23 +2177,14 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 		return -EKEYREJECTED;
 	}
 
-	/* Set clock frequency. */
-	clockHeader = get_axlf_section_hdr(icap, xclbin, CLOCK_FREQ_TOPOLOGY);
-	if (clockHeader != NULL && !XOCL_DSA_IS_SMARTN(xdev)) {
-		clockFirmwareOffset = clockHeader->m_sectionOffset;
-		clockFirmwareLength = clockHeader->m_sectionSize;
-
-		buffer = (char *)xclbin;
-		buffer += clockFirmwareOffset;
-		err = axlf_set_freqscaling(icap, buffer, clockFirmwareLength);
+	if (!XOCL_DSA_IS_SMARTN(xdev)) {
+		err = icap_setup_clock_freq_topology(icap, xclbin);
 		if (err)
 			return err;
-		err = icap_setup_clock_freq_topology(icap, buffer,
-			clockFirmwareLength);
+		err = axlf_set_freqscaling(icap);
 		if (err)
 			return err;
 	}
-
 	/* Download bitstream */
 	primaryHeader = get_axlf_section_hdr(icap, xclbin, BITSTREAM);
 	if (primaryHeader == NULL)
@@ -2208,7 +2240,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		}
 		err = xocl_fdt_check_uuids(xdev,
 				(const void *)XDEV(xdev)->fdt_blob,
-				(const void *)((char*)xclbin +
+				(const void *)((char *)xclbin +
 				dtbHeader->m_sectionOffset));
 		if (err) {
 			ICAP_ERR(icap, "interface uuids do not match");
@@ -2260,6 +2292,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		icap_parse_bitstream_axlf_section(pdev, xclbin, CONNECTIVITY);
 		icap_parse_bitstream_axlf_section(pdev, xclbin,
 			DEBUG_IP_LAYOUT);
+		icap_setup_clock_freq_topology(icap, xclbin);
 		/* not really doing verification, but just create subdevs */
 		(void) icap_verify_bitstream_axlf(pdev, xclbin);
 	}
@@ -2358,6 +2391,7 @@ static int icap_lock_bitstream(struct platform_device *pdev, const xuid_t *id)
 
 	if (icap->icap_bitstream_ref == 0 && !ICAP_PRIVILEGED(icap)) {
 		int err = __icap_peer_lock(pdev, id, true);
+
 		if (err < 0) {
 			ICAP_ERR(icap, "can't lock bitstream %pUb on peer: %d",
 				id, err);
@@ -2439,6 +2473,8 @@ static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
 	case CONNECTIVITY:
 		target = (void **)&icap->connectivity;
 		break;
+	case CLOCK_FREQ_TOPOLOGY:
+		target = (void **)&icap->icap_clock_freq_topology;
 	default:
 		break;
 	}
@@ -2446,6 +2482,7 @@ static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
 		vfree(*target);
 		*target = NULL;
 	}
+
 	err = alloc_and_get_axlf_section(icap, xclbin, kind,
 		target, &section_size);
 	if (err != 0)
@@ -2455,6 +2492,7 @@ static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
 		err = -EINVAL;
 		goto done;
 	}
+
 done:
 	if (err) {
 		vfree(*target);
@@ -2656,25 +2694,6 @@ static struct xocl_icap_funcs icap_ops = {
 	.get_data = icap_get_data,
 };
 
-static ssize_t clock_freq_topology_show(struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
-	ssize_t cnt = 0;
-
-	mutex_lock(&icap->icap_lock);
-	if (ICAP_PRIVILEGED(icap)) {
-		memcpy(buf, icap->icap_clock_freq_topology, icap->icap_clock_freq_topology_length);
-		cnt = icap->icap_clock_freq_topology_length;
-	}
-	mutex_unlock(&icap->icap_lock);
-
-	return cnt;
-
-}
-
-static DEVICE_ATTR_RO(clock_freq_topology);
-
 static ssize_t clock_freqs_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -2705,6 +2724,49 @@ static ssize_t clock_freqs_show(struct device *dev,
 	return cnt;
 }
 static DEVICE_ATTR_RO(clock_freqs);
+
+static ssize_t clock_freqs_max_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
+	ssize_t cnt = 0;
+	int i;
+	unsigned short freq;
+
+	mutex_lock(&icap->icap_lock);
+
+	for (i = 0; i < ICAP_MAX_NUM_CLOCKS; i++) {
+		freq = 0;
+		icap_get_ocl_frequency_max_min(icap, i, &freq, NULL);
+		cnt += sprintf(buf + cnt, "%d\n", freq);
+	}
+
+	mutex_unlock(&icap->icap_lock);
+
+	return cnt;
+}
+static DEVICE_ATTR_RO(clock_freqs_max);
+
+static ssize_t clock_freqs_min_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
+	ssize_t cnt = 0;
+	int i;
+	unsigned short freq;
+
+	mutex_lock(&icap->icap_lock);
+
+	for (i = 0; i < ICAP_MAX_NUM_CLOCKS; i++) {
+		freq = 0;
+		icap_get_ocl_frequency_max_min(icap, i, NULL, &freq);
+		cnt += sprintf(buf + cnt, "%d\n", freq);
+	}
+	mutex_unlock(&icap->icap_lock);
+
+	return cnt;
+}
+static DEVICE_ATTR_RO(clock_freqs_min);
 
 static ssize_t idcode_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -2859,11 +2921,12 @@ static ssize_t sec_level_store(struct device *dev,
 static DEVICE_ATTR_RW(sec_level);
 
 static struct attribute *icap_attrs[] = {
-	&dev_attr_clock_freq_topology.attr,
 	&dev_attr_clock_freqs.attr,
 	&dev_attr_idcode.attr,
 	&dev_attr_cache_expire_secs.attr,
 	&dev_attr_sec_level.attr,
+	&dev_attr_clock_freqs_max.attr,
+	&dev_attr_clock_freqs_min.attr,
 	NULL,
 };
 
@@ -3031,6 +3094,47 @@ static struct bin_attribute mem_topology_attr = {
 	.size = 0
 };
 
+/* -Mem_topology-- */
+static ssize_t icap_read_clock_freqs(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+{
+	struct icap *icap;
+	u32 nread = 0;
+	size_t size = 0;
+
+	icap = (struct icap *)dev_get_drvdata(container_of(kobj, struct device, kobj));
+
+	if (!icap || !icap->icap_clock_freq_topology)
+		return 0;
+
+	mutex_lock(&icap->icap_lock);
+
+	size = sizeof_sect(icap->icap_clock_freq_topology, m_clock_freq);
+	if (offset >= size)
+		goto unlock;
+
+	if (count < size - offset)
+		nread = count;
+	else
+		nread = size - offset;
+
+	memcpy(buffer, ((char *)icap->icap_clock_freq_topology) + offset, nread);
+unlock:
+	mutex_unlock(&icap->icap_lock);
+	return nread;
+}
+
+
+static struct bin_attribute clock_freq_topology_attr = {
+	.attr = {
+		.name = "clock_freq_topology",
+		.mode = 0444
+	},
+	.read = icap_read_clock_freqs,
+	.write = NULL,
+	.size = 0
+};
+
 static ssize_t rp_bit_output(struct file *filp, struct kobject *kobj,
 		struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
@@ -3071,6 +3175,7 @@ static struct bin_attribute *icap_bin_attrs[] = {
 	&connectivity_attr,
 	&mem_topology_attr,
 	&rp_bit_attr,
+	&clock_freq_topology_attr,
 	NULL,
 };
 

@@ -21,12 +21,17 @@
 #include <curses.h>
 #include <sstream>
 #include <climits>
+#include <regex>
 #include <algorithm>
 #include <getopt.h>
 #include <sys/mman.h>
+#include <boost/filesystem.hpp>
 
 #include "xbutil.h"
 #include "base.h"
+
+#define FORMATTED_FW_DIR    "/opt/xilinx/firmware"
+#define hex_digit "[0-9a-fA-F]+"
 
 int bdf2index(std::string& bdfStr, unsigned& index)
 {
@@ -113,7 +118,8 @@ int xrt_xbutil_version_cmp()
     /*check xbutil tools and xrt versions*/
     std::string xrt = sensor_tree::get<std::string>( "runtime.build.version", "N/A" ) + "," 
         + sensor_tree::get<std::string>( "runtime.build.hash", "N/A" );
-    if ( xrt.compare(xcldev::driver_version("xocl") ) != 0 ) {
+    if ( xcldev::driver_version("xocl") != "unknown" &&
+        xrt.compare(xcldev::driver_version("xocl") ) != 0 ) {
         std::cout << "\nERROR: Mixed versions of XRT and xbutil are not supported. \
             \nPlease install matching versions of XRT and xbutil or  \
             \ndefine env variable INTERNAL_BUILD to disable this check\n" << std::endl;
@@ -157,15 +163,15 @@ int main(int argc, char *argv[])
 
     try {
     /*
-     * Call xbflash if first argument is "flash". This calls
-     * xbflash and never returns. All arguments will be passed
-     * down to xbflash.
+     * Call xbmgmt flash if first argument is "flash". This calls
+     * xbmgmt flash and never returns. All arguments will be passed
+     * down to xbmgmt flash.
      */
     if(std::string( argv[ 1 ] ).compare( "flash" ) == 0) {
         std::cout << "WARNING: The xbutil sub-command flash has been deprecated. "
                   << "Please use the xbmgmt utility with flash sub-command for equivalent functionality.\n"
                   << std::endl;
-        // get self path, launch xbflash from self path
+        // get self path, launch xbmgmt from self path
         char buf[ PATH_MAX ] = {0};
         auto len = readlink( "/proc/self/exe", buf, PATH_MAX );
         if( len == -1 ) {
@@ -177,9 +183,12 @@ int main(int argc, char *argv[])
         // remove exe name from this to get the parent path
         size_t found = std::string( buf ).find_last_of( "/\\" ); // finds the last backslash char
         std::string path = std::string( buf ).substr( 0, found );
-        // coverity[TAINTED_STRING] argv will be validated inside xbflash
+        // coverity[TAINTED_STRING] argv will be validated inside xbmgmt flash
+        // Let xbmgmt know that this call is from xbutil for backward
+        // compatibility behavior in xbmgmt flash
+        argv[1][0] = '-';
         return execv( std::string( path + "/xbmgmt" ).c_str(), argv );
-    } /* end of call to xbflash */
+    } /* end of call to xbmgmt flash */
 
     optind++;
     if( std::strcmp( argv[1], "validate" ) == 0 ) {
@@ -666,11 +675,15 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  scan\n";
     std::cout << "  top [-i seconds]\n";
     std::cout << "  validate [-d card]\n";
-    std::cout << " Requires root privileges:\n";
     std::cout << "  reset  [-d card]\n";
+    std::cout << " Requires root privileges:\n";
     std::cout << "  p2p    [-d card] --enable\n";
     std::cout << "  p2p    [-d card] --disable\n";
     std::cout << "  p2p    [-d card] --validate\n";
+    std::cout << "  flash   [-d card] -m primary_mcs [-n secondary_mcs] [-o bpi|spi]\n";
+    std::cout << "  flash   [-d card] -a <all | shell> [-t timestamp]\n";
+    std::cout << "  flash   [-d card] -p msp432_firmware\n";
+    std::cout << "  flash   scan [-v]\n";
     std::cout << "\nExamples:\n";
     std::cout << "Print JSON file to stdout\n";
     std::cout << "  " << exe << " dump\n";
@@ -947,24 +960,82 @@ int runShellCmd(const std::string& cmd, std::string& output)
     return ret;
 }
 
-int searchXsaAndDsa(std::string xsaPath, std::string 
+int searchXsaAndDsa(int index, std::string xsaPath, std::string
     dsaPath, std::string& path, std::string &output) 
 {
     struct stat st;
-    if (stat(xsaPath.c_str(), &st) != 0) {
-            if (stat(dsaPath.c_str(), &st) != 0) {
-                output += "ERROR: Failed to find xclbin in ";
-                output += xsaPath;
-                output += " and ";
-                output += dsaPath;
-                return -ENOENT;
-            }
-            path =  dsaPath;
-            return EXIT_SUCCESS;
-    } else {
-        path = xsaPath;
+    if (stat(xsaPath.c_str(), &st) == 0) {
+        path =  xsaPath;
+        return EXIT_SUCCESS;
+    } else if (stat(dsaPath.c_str(), &st) == 0) {
+        path = dsaPath;
         return EXIT_SUCCESS;
     }
+    // Check if it is 2rp platform
+    std::string logic_uuid;
+    std::string errmsg;
+    pcidev::get_dev(index)->sysfs_get( "", "logic_uuids", errmsg, logic_uuid);
+    if (!logic_uuid.empty()) {
+        DIR *dp;
+
+	dp = opendir(FORMATTED_FW_DIR);
+	if (!dp) {
+            output += "ERROR: Failed to find firmware installation dir ";
+	    output += FORMATTED_FW_DIR;
+	    output += "\n";
+	    return -ENOENT;
+	}
+	closedir(dp);
+
+        boost::filesystem::path formatted_fw_dir(FORMATTED_FW_DIR);
+        std::vector<std::string> suffix = { "dsabin", "xsabin" };
+        for (std::string t : suffix) {
+            std::regex e("(^" FORMATTED_FW_DIR "/" hex_digit "-" hex_digit "-" hex_digit "/.+/.+/.+/)(" hex_digit ")\\." + t);
+            for (boost::filesystem::recursive_directory_iterator iter(formatted_fw_dir, boost::filesystem::symlink_option::recurse), end;
+                iter != end;
+            )
+            {
+                std::string name = iter->path().string();
+                std::cmatch cm;
+
+                std::regex_match(name.c_str(), cm, e);
+                if (cm.size() > 0)
+                {
+                    std::string uuid = cm.str(2);
+                    if (uuid.compare(logic_uuid) == 0)
+                    {
+                        path = cm.str(1) + "test/";
+                        return EXIT_SUCCESS;
+                    }
+                }
+                else if (iter.level() > 4)
+                {
+                    iter.pop();
+                    continue;
+                }
+                dp = opendir(name.c_str());
+                if (!dp)
+                {
+                    iter.no_push();
+                }
+                else
+                {
+                    closedir(dp);
+                }
+                ++iter;
+            }
+        }
+        output += "ERROR: Failed to find xclbin in ";
+        output += FORMATTED_FW_DIR;
+        output += "\n";
+        return -ENOENT;
+    }
+    
+    output += "ERROR: Failed to find xclbin in ";
+    output += xsaPath;
+    output += " and ";
+    output += dsaPath;
+    return -ENOENT;
 }
 
 int xcldev::device::runTestCase(const std::string& py,
@@ -987,7 +1058,7 @@ int xcldev::device::runTestCase(const std::string& py,
     output.clear();
 
     std::string xclbinPath;
-    searchXsaAndDsa(xsaXclbinPath, dsaXclbinPath, xclbinPath, output);
+    searchXsaAndDsa(m_idx, xsaXclbinPath, dsaXclbinPath, xclbinPath, output);
     xclbinPath += xclbin;
 
     if (stat(xrtTestCasePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
@@ -1030,7 +1101,7 @@ int xcldev::device::runXbTestCase(const std::string& test, std::string& output)
     output.clear();
 
     std::string testPath;
-    searchXsaAndDsa(xsaTestPath, dsaTestPath, testPath, output);
+    searchXsaAndDsa(m_idx, xsaTestPath, dsaTestPath, testPath, output);
     std::string exePath = testPath + "xbtest";
     testPath += test;
 
@@ -1226,6 +1297,26 @@ int xcldev::device::runOneTest(std::string testName,
     return ret;
 }
 
+int xcldev::device::getXclbinuuid(uuid_t &uuid) {
+    std::string errmsg, xclbinid;
+
+    pcidev::get_dev(m_idx)->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
+
+    if (!errmsg.empty()) {
+        std::cout<<errmsg<<std::endl;
+        return -ENODEV;
+    }
+
+    uuid_parse(xclbinid.c_str(), uuid);
+
+    if (uuid_is_null(uuid)) {
+        std::cout<<"  WARNING: 'uuid' invalid, unable to find uuid. \n"
+                << "  Has the bitstream been loaded? See 'xbutil program'.\n";
+        return -ENODEV;
+    }
+
+    return 0;
+}
 /*
  * validate
  */

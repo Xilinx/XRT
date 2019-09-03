@@ -49,15 +49,26 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
     b_obj.device_only_buffer = false;
     b_obj.private_do_not_touch = NULL;
 
-    xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
+    if (priv1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc failed. XMASession is corrupted.\n");
+        if (return_code) *return_code = XMA_ERROR;
+        return b_obj_error;
+    }
+    xclDeviceHandle dev_handle = priv1->dev_handle;
     uint32_t ddr_bank = s_handle.hw_session.bank_index;
     b_obj.bank_index = ddr_bank;
     b_obj.size = size;
     b_obj.dev_index = s_handle.hw_session.dev_index;
 
-    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
+    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
         //std::cout << "ERROR: xma_plg_buffer_alloc failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc failed. XMASession is corrupted.\n");
+        if (return_code) *return_code = XMA_ERROR;
+        return b_obj_error;
+    }
+    if (s_handle.session_type >= XMA_ADMIN) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc can not be used for this XMASession type\n");
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
     }
@@ -120,19 +131,31 @@ XmaBufferObj xma_plg_buffer_alloc_arg_num(XmaSession s_handle, size_t size, bool
     b_obj.device_only_buffer = false;
     b_obj.private_do_not_touch = NULL;
 
-    xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
+    if (priv1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_arg_num failed. XMASession is corrupted.\n");
+        if (return_code) *return_code = XMA_ERROR;
+        return b_obj_error;
+    }
+    xclDeviceHandle dev_handle = priv1->dev_handle;
     uint32_t ddr_bank = s_handle.hw_session.bank_index;
     b_obj.bank_index = ddr_bank;
     b_obj.size = size;
     b_obj.dev_index = s_handle.hw_session.dev_index;
 
-    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
+    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
         //std::cout << "ERROR: xma_plg_buffer_alloc failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_arg_num failed. XMASession is corrupted.\n");
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
     }
-    XmaHwKernel* kernel_info = s_handle.hw_session.kernel_info;
+    if (s_handle.session_type >= XMA_ADMIN) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_arg_num can not be used for this XMASession type\n");
+        if (return_code) *return_code = XMA_ERROR;
+        return b_obj_error;
+    }
+
+    XmaHwKernel* kernel_info = priv1->kernel_info;
     if (arg_num < 0) {
         xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_arg_num: arg_num is invalid, using default session ddr_bank.\n");
     } else {
@@ -162,6 +185,116 @@ XmaBufferObj xma_plg_buffer_alloc_arg_num(XmaSession s_handle, size_t size, bool
     } else {
         b_obj_handle = xclAllocBO(dev_handle, size, 0, ddr_bank);
     }
+    b_obj.paddr = xclGetDeviceAddr(dev_handle, b_obj_handle);
+    if (!device_only_buffer) {
+        b_obj.data = (uint8_t*) xclMapBO(dev_handle, b_obj_handle, true);
+    }
+    XmaBufferObjPrivate* tmp1 = new XmaBufferObjPrivate;
+    b_obj.private_do_not_touch = (void*) tmp1;
+    tmp1->dummy = (void*)(((uint64_t)tmp1) | signature);
+    tmp1->size = size;
+    tmp1->paddr = b_obj.paddr;
+    tmp1->bank_index = b_obj.bank_index;
+    tmp1->dev_index = b_obj.dev_index;
+    tmp1->boHandle = b_obj_handle;
+    tmp1->device_only_buffer = b_obj.device_only_buffer;
+    tmp1->dev_handle = dev_handle;
+
+    if (return_code) *return_code = XMA_SUCCESS;
+    return b_obj;
+}
+
+XmaBufferObj
+xma_plg_buffer_alloc_ddr(XmaSession s_handle, size_t size, bool device_only_buffer, int32_t ddr_index, int32_t* return_code)
+{
+    XmaBufferObj b_obj;
+    XmaBufferObj b_obj_error;
+    b_obj_error.data = NULL;
+    b_obj_error.size = 0;
+    b_obj_error.bank_index = -1;
+    b_obj_error.dev_index = -1;
+    b_obj_error.device_only_buffer = false;
+    b_obj_error.private_do_not_touch = NULL;
+    b_obj.data = NULL;
+    b_obj.device_only_buffer = false;
+    b_obj.private_do_not_touch = NULL;
+
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
+    if (priv1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_ddr failed. XMASession is corrupted.\n");
+        if (return_code) *return_code = XMA_ERROR;
+        return b_obj_error;
+    }
+    xclDeviceHandle dev_handle = priv1->dev_handle;
+    uint32_t ddr_bank = ddr_index;
+    b_obj.bank_index = ddr_bank;
+    b_obj.size = size;
+    b_obj.dev_index = s_handle.hw_session.dev_index;
+
+    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
+        //std::cout << "ERROR: xma_plg_buffer_alloc failed. XMASession is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_ddr failed. XMASession is corrupted.\n");
+        if (return_code) *return_code = XMA_ERROR;
+        return b_obj_error;
+    }
+    if (s_handle.session_type != XMA_ADMIN) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_ddr can be used only for XMA_ADMIN session type\n");
+        if (return_code) *return_code = XMA_ERROR;
+        return b_obj_error;
+    }
+
+    //Use this lambda func to print ddr info
+    auto print_ddrs = [&](XmaLogLevelType log_level, XmaHwDevice     *device) {
+        uint32_t tmp_int1 = 0;
+        for (auto& ddr: device->ddrs) {
+            if (ddr.in_use) {
+                xma_logmsg(log_level, XMAPLUGIN_MOD,"\tMEM# %d - %s - size: %d KB", tmp_int1, (char*)ddr.name, ddr.size_kb);
+            } else {
+                xma_logmsg(log_level, XMAPLUGIN_MOD,"\tMEM# %d - %s - size: UnUsed", tmp_int1, (char*)ddr.name);
+            }
+            tmp_int1++;
+        }
+        return; 
+    };
+
+    if ((uint32_t)ddr_index >= priv1->device->ddrs.size() || ddr_index < 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_ddr failed. Invalid DDR index.\nAvailable DDRs are:");
+        print_ddrs(XMA_ERROR_LOG, priv1->device);
+        if (return_code) *return_code = XMA_ERROR;
+        return b_obj_error;
+    }
+    if (!priv1->device->ddrs[ddr_bank].in_use) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_ddr failed. This DDR is UnUsed.\nAvailable DDRs are:");
+        print_ddrs(XMA_ERROR_LOG, priv1->device);
+        if (return_code) *return_code = XMA_ERROR;
+        return b_obj_error;
+    }
+
+    /*
+    #define XRT_BO_FLAGS_MEMIDX_MASK        (0xFFFFFFUL)
+    #define XCL_BO_FLAGS_CACHEABLE          (1 << 24)
+    #define XCL_BO_FLAGS_SVM                (1 << 27)
+    #define XCL_BO_FLAGS_DEV_ONLY           (1 << 28)
+    #define XCL_BO_FLAGS_HOST_ONLY          (1 << 29)
+    #define XCL_BO_FLAGS_P2P                (1 << 30)
+    #define XCL_BO_FLAGS_EXECBUF            (1 << 31)
+    */
+    uint64_t b_obj_handle = 0;
+    if (device_only_buffer) {
+        b_obj_handle = xclAllocBO(dev_handle, size, 0, XCL_BO_FLAGS_DEV_ONLY | ddr_bank);
+        b_obj.device_only_buffer = true;
+    } else {
+        b_obj_handle = xclAllocBO(dev_handle, size, 0, ddr_bank);
+    }
+    /*BO handlk is uint64_t
+    if (b_obj_handle < 0) {
+        std::cout << "ERROR: xma_plg_buffer_alloc failed. handle=0x" << std::hex << b_obj_handle << std::endl;
+        //printf("xclAllocBO failed. handle=0x%ullx\n", b_obj_handle);
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xclAllocBO failed.\n");
+        if (return_code) *return_code = XMA_ERROR;
+        return b_obj_error;
+    }
+    */
     b_obj.paddr = xclGetDeviceAddr(dev_handle, b_obj_handle);
     if (!device_only_buffer) {
         b_obj.data = (uint8_t*) xclMapBO(dev_handle, b_obj_handle, true);
@@ -215,7 +348,12 @@ int32_t xma_check_device_buffer(XmaBufferObj *b_obj) {
 void
 xma_plg_buffer_free(XmaSession s_handle, XmaBufferObj b_obj)
 {
-    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
+    if (priv1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_free failed. XMASession is corrupted.\n");
+        return;
+    }
+    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
         //std::cout << "ERROR: xma_plg_buffer_free failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_free failed. XMASession is corrupted.\n");
         return;
@@ -233,20 +371,6 @@ xma_plg_buffer_free(XmaSession s_handle, XmaBufferObj b_obj)
     free(b_obj_priv);
 }
 
-/*Sarab: padd API not required with buffer Object
-uint64_t
-xma_plg_get_paddr(XmaHwSession s_handle, XmaBufferObj b_obj)
-{
-    uint64_t paddr;
-    xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
-    paddr = xclGetDeviceAddr(dev_handle, b_obj);
-#if 0
-    printf("xma_plg_get_paddr b_obj = %d, paddr = %lx\n", b_obj, paddr);
-#endif
-    return paddr;
-}
-*/
-
 int32_t
 xma_plg_buffer_write(XmaSession s_handle,
                      XmaBufferObj  b_obj,
@@ -254,7 +378,12 @@ xma_plg_buffer_write(XmaSession s_handle,
                      size_t           offset)
 {
     int32_t rc;
-    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
+    if (priv1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
+    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
         //std::cout << "ERROR: xma_plg_buffer_write failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. XMASession is corrupted.\n");
         return XMA_ERROR;
@@ -291,7 +420,12 @@ xma_plg_buffer_read(XmaSession s_handle,
                     size_t           offset)
 {
     int32_t rc;
-    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
+    if (priv1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read failed. XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
+    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
         //std::cout << "ERROR: xma_plg_buffer_read failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read failed. XMASession is corrupted.\n");
         return XMA_ERROR;
@@ -337,30 +471,35 @@ xma_plg_register_prep_write(XmaSession  s_handle,
     uint32_t  entries = size / sizeof(uint32_t);
     uint32_t  start = offset / sizeof(uint32_t);
 
-    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
+    if (priv1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_register_prep_write failed. XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
+    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
         //std::cout << "ERROR: xma_plg_register_prep_write failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_register_prep_write failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
+    if (s_handle.session_type >= XMA_ADMIN) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_register_prep_write can not be used for this XMASession type\n");
+        return XMA_ERROR;
+    }
+
     //Kernel regmap 4KB in xmahw.h; execBO size is 4096 = 4KB in xmahw_hal.cpp; But ERT uses some space for ert pkt so allow max of 4032 Bytes for regmap
     if (cur_max > MAX_KERNEL_REGMAP_SIZE) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Max kernel regmap size is %d Bytes\n", MAX_KERNEL_REGMAP_SIZE);
         return XMA_ERROR;
     }
-    if (*(s_handle.hw_session.kernel_info->reg_map_locked)) {
-        if (s_handle.session_id != s_handle.hw_session.kernel_info->locked_by_session_id || s_handle.session_type != s_handle.hw_session.kernel_info->locked_by_session_type) {
-            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regamp is locked by another session\n");
-            return XMA_ERROR;
-        }
-    } else {
+    if (!(*(priv1->reg_map_locked))) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Must lock kernel regamp before writing to it and submitting work item\n");
         return XMA_ERROR;
     }
-    if (s_handle.hw_session.kernel_info->regmap_max < cur_max) {
-        s_handle.hw_session.kernel_info->regmap_max = cur_max;
+    if (priv1->regmap_max < cur_max) {
+        priv1->regmap_max = cur_max;
     }
     for (uint32_t i = 0, tmp_idx = start; i < entries; i++, tmp_idx++) {
-        s_handle.hw_session.kernel_info->reg_map[tmp_idx] = src_array[i];
+        priv1->reg_map[tmp_idx] = src_array[i];
     }
 
     return XMA_SUCCESS;
@@ -368,58 +507,125 @@ xma_plg_register_prep_write(XmaSession  s_handle,
 
 int32_t xma_plg_kernel_lock_regmap(XmaSession s_handle)
 {
-    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
-        //std::cout << "ERROR: xma_plg_kernel_lock_regmap failed. XMASession is corrupted" << std::endl;
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_kernel_lock_regmap failed. XMASession is corrupted.\n");
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
+    if (priv1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_kernel_lock_regmap failed1. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
-    /* Only acquire the lock if we don't already own it */
-    if (*(s_handle.hw_session.kernel_info->reg_map_locked)) {
-        if (s_handle.session_id == s_handle.hw_session.kernel_info->locked_by_session_id && s_handle.session_type == s_handle.hw_session.kernel_info->locked_by_session_type) {
-            return XMA_SUCCESS;
-        } else {
-            return XMA_ERROR;
-        }
+    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
+        //std::cout << "ERROR: xma_plg_kernel_lock_regmap failed. XMASession is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_kernel_lock_regmap failed2. XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
+    if (s_handle.session_type >= XMA_ADMIN) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_kernel_lock_regmap can not be used for this XMASession type\n");
+        return XMA_ERROR;
+    }
+
+    if (*(priv1->reg_map_locked)) {
+        //If already locked then assume it is locked by another thread with same session_id
+        //so give WARNING and wait for it to be released
+        xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "xma_plg_kernel_lock_regmap Regmap is already locked. Will wait to acquire the lock.\n");
     }
     bool expected = false;
     bool desired = true;
-    while (!(*(s_handle.hw_session.kernel_info->reg_map_locked)).compare_exchange_weak(expected, desired)) {
+    while (!(*(priv1->reg_map_locked)).compare_exchange_weak(expected, desired)) {
         expected = false;
     }
     //reg map lock acquired
-
-    s_handle.hw_session.kernel_info->locked_by_session_id = s_handle.session_id;
-    s_handle.hw_session.kernel_info->locked_by_session_type = s_handle.session_type;
 
     return XMA_SUCCESS;
 }
 
 int32_t xma_plg_kernel_unlock_regmap(XmaSession s_handle)
 {
-    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
+    if (priv1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_kernel_unlock_regmap failed. XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
+    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
         //std::cout << "ERROR: xma_plg_kernel_unlock_regmap failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_kernel_unlock_regmap failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
-    /* Only unlock if this session owns it */
-    if (*(s_handle.hw_session.kernel_info->reg_map_locked)) {
-        if (s_handle.session_id == s_handle.hw_session.kernel_info->locked_by_session_id && s_handle.session_type == s_handle.hw_session.kernel_info->locked_by_session_type) {
-            *(s_handle.hw_session.kernel_info->reg_map_locked) = false;
-            s_handle.hw_session.kernel_info->locked_by_session_id = -1;
+    if (s_handle.session_type >= XMA_ADMIN) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_kernel_unlock_regmap can not be used for this XMASession type\n");
+        return XMA_ERROR;
+    }
 
-            return XMA_SUCCESS;
-        } else {
-            return XMA_ERROR;
+    /* Only unlock if this session owns it */
+    if (*(priv1->reg_map_locked)) {
+        *(priv1->reg_map_locked) = false;
+        return XMA_SUCCESS;
+    } else {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_kernel_unlock_regmap failed. Regmap is already unlocked.\n");
+        return XMA_ERROR;
+    }
+}
+
+
+int32_t xma_plg_check_all_execbo(XmaSession s_handle) {
+    //NOTE: execbo lock must be already obtained
+
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
+    XmaHwDevice *dev_tmp1 = priv1->device;
+
+    int32_t num_execbo = dev_tmp1->num_execbo_allocated;
+    for (int32_t i = 0; i < num_execbo; i++)
+    {
+        XmaHwExecBO* execbo_tmp1 = &dev_tmp1->kernel_execbos[i];
+        if (execbo_tmp1->in_use && execbo_tmp1->session_id == s_handle.session_id)
+        {
+            ert_start_kernel_cmd *cu_cmd = 
+                (ert_start_kernel_cmd*)execbo_tmp1->data;
+            if (cu_cmd->state == ERT_CMD_STATE_COMPLETED)
+            {
+                if (s_handle.session_type < XMA_ADMIN) {
+                    priv1->kernel_complete_count++;
+                }
+                execbo_tmp1->in_use = false;
+
+                auto itr_tmp1 = priv1->CU_cmds.find(execbo_tmp1->cu_cmd_id1);
+                if (itr_tmp1 == priv1->CU_cmds.end()) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_check_all_execbo: Unexpected error-1. Please report this to sarabjee@xilinx.com\n");
+                    //Release completion lock
+                    *(dev_tmp1->execbo_locked) = false;
+                    return XMA_ERROR;
+                }
+                if (itr_tmp1->second.cmd_id2 != execbo_tmp1->cu_cmd_id2) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_check_all_execbo: Unexpected error-2. Please report this to sarabjee@xilinx.com\n");
+                    //Release completion lock
+                    *(dev_tmp1->execbo_locked) = false;
+                    return XMA_ERROR;
+                }
+                if (itr_tmp1->second.cu_id != execbo_tmp1->cu_index) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_check_all_execbo: Unexpected error-3. Please report this to sarabjee@xilinx.com\n");
+                    //Release completion lock
+                    *(dev_tmp1->execbo_locked) = false;
+                    return XMA_ERROR;
+                }
+                if (itr_tmp1->second.execbo_id != i) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_check_all_execbo: Unexpected error-4. Please report this to sarabjee@xilinx.com\n");
+                    //Release completion lock
+                    *(dev_tmp1->execbo_locked) = false;
+                    return XMA_ERROR;
+                }
+                priv1->CU_cmds.erase(itr_tmp1);
+            } 
         }
     }
+
     return XMA_SUCCESS;
 }
 
+
 int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
 {
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
     //std::cout << "Sarab: Debug - " << __func__ << "; " << __LINE__ << std::endl;
-    XmaHwKernel* kernel_tmp1 = s_handle.hw_session.kernel_info;
-    XmaHwDevice *dev_tmp1 = (XmaHwDevice*)kernel_tmp1->private_do_not_use;
+    XmaHwKernel* kernel_tmp1 = priv1->kernel_info;
+    XmaHwDevice *dev_tmp1 = priv1->device;
     if (dev_tmp1 == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is NULL\n");
         return -1;
@@ -432,18 +638,19 @@ int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
     int32_t i;
     int32_t rc = -1;
     bool    found = false;
-    bool expected = false;
-    bool desired = true;
-    while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
-        expected = false;
-    }
-    //kernel completion lock acquired
+    //NOTE: execbo lock must be already acquired
 
+    if (xma_plg_check_all_execbo(s_handle) != XMA_SUCCESS) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unexpected error\n");
+        return -1;
+    }
     for (i = 0; i < num_execbo; i++) {
+        XmaHwExecBO* execbo_tmp1 = &dev_tmp1->kernel_execbos[i];
         ert_start_kernel_cmd *cu_cmd = 
-            (ert_start_kernel_cmd*)dev_tmp1->kernel_execbo_data[i];
-        if (dev_tmp1->kernel_execbo_inuse[i]) {
-            if (dev_tmp1->kernel_execbo_cu_index[i] == kernel_tmp1->cu_index) {
+            (ert_start_kernel_cmd*)execbo_tmp1->data;
+        if (execbo_tmp1->in_use) {
+            if (execbo_tmp1->cu_index == kernel_tmp1->cu_index && execbo_tmp1->session_id == s_handle.session_id) {
+                auto itr_tmp1 = priv1->CU_cmds.find(execbo_tmp1->cu_cmd_id1);
                 switch(cu_cmd->state)
                 {
                     case ERT_CMD_STATE_NEW:
@@ -454,7 +661,33 @@ int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
                     case ERT_CMD_STATE_COMPLETED:
                         found = true;
                         // Update count of completed work items
-                        kernel_tmp1->kernel_complete_count++;
+                        priv1->kernel_complete_count++;
+
+                        if (itr_tmp1 == priv1->CU_cmds.end()) {
+                            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_execbo_avail_get: Unexpected error-1. Please report this to sarabjee@xilinx.com\n");
+                            //Release completion lock
+                            *(dev_tmp1->execbo_locked) = false;
+                            return XMA_ERROR;
+                        }
+                        if (itr_tmp1->second.cmd_id2 != execbo_tmp1->cu_cmd_id2) {
+                            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_execbo_avail_get: Unexpected error-2. Please report this to sarabjee@xilinx.com\n");
+                            //Release completion lock
+                            *(dev_tmp1->execbo_locked) = false;
+                            return XMA_ERROR;
+                        }
+                        if (itr_tmp1->second.cu_id != execbo_tmp1->cu_index) {
+                            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_execbo_avail_get: Unexpected error-3. Please report this to sarabjee@xilinx.com\n");
+                            //Release completion lock
+                            *(dev_tmp1->execbo_locked) = false;
+                            return XMA_ERROR;
+                        }
+                        if (itr_tmp1->second.execbo_id != i) {
+                            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_execbo_avail_get: Unexpected error-4. Please report this to sarabjee@xilinx.com\n");
+                            //Release completion lock
+                            *(dev_tmp1->execbo_locked) = false;
+                            return XMA_ERROR;
+                        }
+                        priv1->CU_cmds.erase(itr_tmp1);
 
                     break;
                     case ERT_CMD_STATE_ERROR:
@@ -469,15 +702,14 @@ int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
             found = true;
 
         if (found) {
-            dev_tmp1->kernel_execbo_inuse[i] = true;
-            dev_tmp1->kernel_execbo_cu_index[i] = kernel_tmp1->cu_index;
+            execbo_tmp1->in_use = true;
+            execbo_tmp1->cu_index = kernel_tmp1->cu_index;
+            execbo_tmp1->session_id = s_handle.session_id;
             rc = i;
             break;
         }
     }
     //std::cout << "Sarab: Debug - " << __func__ << "; " << __LINE__ << std::endl;
-    //Release completion lock
-    *(dev_tmp1->execbo_locked) = false;
 
     return rc;
 }
@@ -485,48 +717,60 @@ int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
 int32_t
 xma_plg_schedule_work_item(XmaSession s_handle)
 {
-    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
+    if (priv1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_work_item failed. XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
+    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
         //std::cout << "ERROR: xma_plg_schedule_work_item failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_work_item failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
-    XmaHwKernel* kernel_tmp1 = s_handle.hw_session.kernel_info;
-    XmaHwDevice *dev_tmp1 = (XmaHwDevice*)kernel_tmp1->private_do_not_use;
+    if (s_handle.session_type >= XMA_ADMIN) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_work_item can not be used for this XMASession type\n");
+        return XMA_ERROR;
+    }
+
+    XmaHwKernel* kernel_tmp1 = priv1->kernel_info;
+    XmaHwDevice *dev_tmp1 = priv1->device;
     if (dev_tmp1 == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is NULL\n");
         return XMA_ERROR;
     }
-    uint8_t *src = (uint8_t*)kernel_tmp1->reg_map;
+    uint8_t *src = (uint8_t*)priv1->reg_map.data();
     
     //size_t  size = MAX_KERNEL_REGMAP_SIZE;//Max regmap in xmahw.h is 4KB; execBO size is 4096; Supported max regmap size is 4032 Bytes only
-    int32_t size = s_handle.hw_session.kernel_info->regmap_max;
+    int32_t size = priv1->regmap_max;
     if (size < 0) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Use xma_plg_register_prep_write to prepare regmap for CU before scheduling work item \n");
         return XMA_ERROR;
     }
 
     int32_t bo_idx;
-    int32_t rc = XMA_SUCCESS;
     
-    if (*(kernel_tmp1->reg_map_locked)) {
-        if (s_handle.session_id != kernel_tmp1->locked_by_session_id || s_handle.session_type != kernel_tmp1->locked_by_session_type) {
-            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regamp is locked by another session\n");
-            return XMA_ERROR;
-        }
-    } else {
+    if (!(*(priv1->reg_map_locked))) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Must lock kernel regamp before writing to it and submitting work item\n");
         return XMA_ERROR;
     }
+
+    bool expected = false;
+    bool desired = true;
+    while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //kernel completion lock acquired
 
     // Find an available execBO buffer
     bo_idx = xma_plg_execbo_avail_get(s_handle);
     if (bo_idx == -1) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unable to find free execbo to use\n");
+        *(dev_tmp1->execbo_locked) = false;
         return XMA_ERROR;
     }
     // Setup ert_start_kernel_cmd 
     ert_start_kernel_cmd *cu_cmd = 
-        (ert_start_kernel_cmd*)dev_tmp1->kernel_execbo_data[bo_idx];
+        (ert_start_kernel_cmd*)dev_tmp1->kernel_execbos[bo_idx].data;
     cu_cmd->state = ERT_CMD_STATE_NEW;
     if (kernel_tmp1->soft_kernel) {
         cu_cmd->opcode = ERT_SK_START;
@@ -542,40 +786,541 @@ xma_plg_schedule_work_item(XmaSession s_handle)
     cu_cmd->data[2] = kernel_tmp1->cu_mask3;
     // Copy reg_map into execBO buffer 
     memcpy(&cu_cmd->data[3], src, size);
-    if (kernel_tmp1->dataflow_kernel) {
+    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "Dev# %d; Kernel: %s; Regmap size used is: %d\n", dev_tmp1->dev_index, kernel_tmp1->name, priv1->regmap_max);
+    if (kernel_tmp1->kernel_channels) {
         // XMA will write @ 0x10 and XRT read @ 0x14 to generate interupt and capture in execbo
         cu_cmd->data[7] = s_handle.channel_id;//0x10 == 4th integer;
         cu_cmd->data[8] = 0;//clear out the output
-        xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "Dev# %d; Kernel: %s; Regmap size used is: %d\n", dev_tmp1->dev_index, kernel_tmp1->name, kernel_tmp1->regmap_max);
         xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "This is dataflow kernel. Using channel id: %d\n", s_handle.channel_id);
     }
     
-    if (kernel_tmp1->regmap_max >= 1024) {
-        xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "Dev# %d; Kernel: %s; Regmap size used is: %d\n", dev_tmp1->dev_index, kernel_tmp1->name, kernel_tmp1->regmap_max);
-    }
-
     // Set count to size in 32-bit words + 4; Three extra_cu_mask are present
     cu_cmd->count = (size >> 2) + 4;
     
-    if (xclExecBuf(s_handle.hw_session.dev_handle, 
-                    dev_tmp1->kernel_execbo_handle[bo_idx]) != 0)
+    if (xclExecBuf(priv1->dev_handle, 
+                    dev_tmp1->kernel_execbos[bo_idx].handle) != 0)
     {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
                     "Failed to submit kernel start with xclExecBuf\n");
-        rc = XMA_ERROR;
+        *(dev_tmp1->execbo_locked) = false;
+        return XMA_ERROR;
     }
-    return rc;
+
+    XmaCUCmdObj cmd_obj;
+    cmd_obj.cmd_id1 = 0;
+    cmd_obj.cmd_id2 = 0;
+    cmd_obj.cmd_finished = false;
+    cmd_obj.cu_index = kernel_tmp1->cu_index;
+    cmd_obj.do_not_use1 = s_handle.session_signature;
+
+    bool found = false;
+    while(!found) {
+        dev_tmp1->cu_cmd_id++;
+        uint32_t tmp_int1 = dev_tmp1->cu_cmd_id;
+        if (tmp_int1 == 0) {
+            tmp_int1 = 1;
+            dev_tmp1->cu_cmd_id = tmp_int1;
+            //Change seed of random_generator
+            std::random_device rd;
+            uint32_t tmp_int = time(0);
+            std::seed_seq seed_seq{rd(), tmp_int};
+            dev_tmp1->mt_gen = std::mt19937(seed_seq);
+        }
+        auto itr_tmp1 = priv1->CU_cmds.emplace(tmp_int1, XmaCUCmdObjPrivate{});
+        if (itr_tmp1.second) {//It is newly inserted item;
+            found = true;
+            cmd_obj.cmd_id1 = tmp_int1;
+            cmd_obj.cmd_id2 = dev_tmp1->rnd_dis(dev_tmp1->mt_gen);
+            itr_tmp1.first->second.cmd_id2 = cmd_obj.cmd_id2;
+            itr_tmp1.first->second.cu_id = cmd_obj.cu_index;
+            itr_tmp1.first->second.execbo_id = bo_idx;
+
+            dev_tmp1->kernel_execbos[bo_idx].cu_cmd_id1 = tmp_int1;
+            dev_tmp1->kernel_execbos[bo_idx].cu_cmd_id2 = cmd_obj.cmd_id2;
+        }
+    }
+
+    *(dev_tmp1->execbo_locked) = false;
+    return XMA_SUCCESS;
+}
+
+int32_t xma_plg_schedule_work_item_with_args(XmaSession s_handle,
+                                 void            *regmap,
+                                 int32_t         regmap_size)
+{
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
+    if (priv1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_work_item_with_args failed. XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
+    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_work_item failed. XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
+    if (s_handle.session_type >= XMA_ADMIN) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_work_item_with_args can not be used for this XMASession type\n");
+        return XMA_ERROR;
+    }
+
+    XmaHwKernel* kernel_tmp1 = priv1->kernel_info;
+    XmaHwDevice *dev_tmp1 = priv1->device;
+    if (dev_tmp1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is NULL\n");
+        return XMA_ERROR;
+    }
+    if (regmap == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regmap is NULL\n");
+        return XMA_ERROR;
+    }
+    if (regmap_size <= 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regmap_size of %d is invalid\n", regmap_size);
+        return XMA_ERROR;
+    }
+    //Kernel regmap 4KB in xmahw.h; execBO size is 4096 = 4KB in xmahw_hal.cpp; But ERT uses some space for ert pkt so allow max of 4032 Bytes for regmap
+    if (regmap_size > MAX_KERNEL_REGMAP_SIZE) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Max kernel regmap size is %d Bytes\n", MAX_KERNEL_REGMAP_SIZE);
+        return XMA_ERROR;
+    }
+    if (regmap_size != (regmap_size && 0xFFFFFFFC)) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regmap_size of %d is not a multiple of four bytes\n", regmap_size);
+        return XMA_ERROR;
+    }
+    /* Not doing below as regmap_max is used to decide what all args to copy from stored regmap with prep_write
+    Keeping this new API completly independent
+    if (s_handle.hw_session.kernel_info->regmap_max < regmap_size) {
+        s_handle.hw_session.kernel_info->regmap_max = regmap_size;
+    }
+    */
+
+    uint8_t *src = (uint8_t*)regmap;
+    int32_t bo_idx;
+    
+    bool expected = false;
+    bool desired = true;
+    while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //kernel completion lock acquired
+
+    // Find an available execBO buffer
+    bo_idx = xma_plg_execbo_avail_get(s_handle);
+    if (bo_idx == -1) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unable to find free execbo to use\n");
+        *(dev_tmp1->execbo_locked) = false;
+        return XMA_ERROR;
+    }
+    // Setup ert_start_kernel_cmd 
+    ert_start_kernel_cmd *cu_cmd = 
+        (ert_start_kernel_cmd*)dev_tmp1->kernel_execbos[bo_idx].data;
+    cu_cmd->state = ERT_CMD_STATE_NEW;
+    if (kernel_tmp1->soft_kernel) {
+        cu_cmd->opcode = ERT_SK_START;
+    } else {
+        cu_cmd->opcode = ERT_START_CU;
+    }
+    cu_cmd->extra_cu_masks = 3;//XMA now supports 128 CUs
+
+    cu_cmd->cu_mask = kernel_tmp1->cu_mask0;
+
+    cu_cmd->data[0] = kernel_tmp1->cu_mask1;
+    cu_cmd->data[1] = kernel_tmp1->cu_mask2;
+    cu_cmd->data[2] = kernel_tmp1->cu_mask3;
+    // Copy reg_map into execBO buffer 
+    memcpy(&cu_cmd->data[3], src, regmap_size);
+    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "Dev# %d; Kernel: %s; Regmap size used is: %d\n", dev_tmp1->dev_index, kernel_tmp1->name, regmap_size);
+    if (kernel_tmp1->kernel_channels) {
+        // XMA will write @ 0x10 and XRT read @ 0x14 to generate interupt and capture in execbo
+        cu_cmd->data[7] = s_handle.channel_id;//0x10 == 4th integer;
+        cu_cmd->data[8] = 0;//clear out the output
+        xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "This is dataflow kernel. Using channel id: %d\n", s_handle.channel_id);
+    }
+    
+    // Set count to size in 32-bit words + 4; Three extra_cu_mask are present
+    cu_cmd->count = (regmap_size >> 2) + 4;
+    
+    if (xclExecBuf(priv1->dev_handle, 
+                    dev_tmp1->kernel_execbos[bo_idx].handle) != 0)
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
+                    "Failed to submit kernel start with xclExecBuf\n");
+        *(dev_tmp1->execbo_locked) = false;
+        return XMA_ERROR;
+    }
+    
+    XmaCUCmdObj cmd_obj;
+    cmd_obj.cmd_id1 = 0;
+    cmd_obj.cmd_id2 = 0;
+    cmd_obj.cmd_finished = false;
+    cmd_obj.cu_index = kernel_tmp1->cu_index;
+    cmd_obj.do_not_use1 = s_handle.session_signature;
+
+    bool found = false;
+    while(!found) {
+        dev_tmp1->cu_cmd_id++;
+        uint32_t tmp_int1 = dev_tmp1->cu_cmd_id;
+        if (tmp_int1 == 0) {
+            tmp_int1 = 1;
+            dev_tmp1->cu_cmd_id = tmp_int1;
+            //Change seed of random_generator
+            std::random_device rd;
+            uint32_t tmp_int = time(0);
+            std::seed_seq seed_seq{rd(), tmp_int};
+            dev_tmp1->mt_gen = std::mt19937(seed_seq);
+        }
+        auto itr_tmp1 = priv1->CU_cmds.emplace(tmp_int1, XmaCUCmdObjPrivate{});
+        if (itr_tmp1.second) {//It is newly inserted item;
+            found = true;
+            cmd_obj.cmd_id1 = tmp_int1;
+            cmd_obj.cmd_id2 = dev_tmp1->rnd_dis(dev_tmp1->mt_gen);
+            itr_tmp1.first->second.cmd_id2 = cmd_obj.cmd_id2;
+            itr_tmp1.first->second.cu_id = cmd_obj.cu_index;
+            itr_tmp1.first->second.execbo_id = bo_idx;
+
+            dev_tmp1->kernel_execbos[bo_idx].cu_cmd_id1 = tmp_int1;
+            dev_tmp1->kernel_execbos[bo_idx].cu_cmd_id2 = cmd_obj.cmd_id2;
+        }
+    }
+
+    *(dev_tmp1->execbo_locked) = false;
+    return XMA_SUCCESS;
+}
+
+XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
+                                 void       *regmap,
+                                 int32_t    regmap_size,
+                                 int32_t    cu_index,
+                                 int32_t*   return_code)
+{
+    XmaCUCmdObj cmd_obj_error;
+    cmd_obj_error.cmd_id1 = 0;
+    cmd_obj_error.cmd_id2 = 0;
+    cmd_obj_error.cmd_finished = false;
+    cmd_obj_error.cu_index = -1;
+    cmd_obj_error.do_not_use1 = NULL;
+
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
+    if (priv1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_cu_cmd failed. XMASession is corrupted.\n");
+        if (return_code) *return_code = XMA_ERROR;
+        return cmd_obj_error;
+    }
+    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_cu_cmd failed. XMASession is corrupted.\n");
+        if (return_code) *return_code = XMA_ERROR;
+        return cmd_obj_error;
+    }
+    XmaHwKernel* kernel_tmp1 = priv1->kernel_info;
+    if (s_handle.session_type < XMA_ADMIN) {
+        xma_logmsg(XMA_INFO_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_cu_cmd: cu_index ignored for this session type\n");
+    } else {
+        //Get the kernel_info
+        if (cu_index < 0 || (uint32_t)cu_index > priv1->device->kernels.size()) {
+            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_cu_cmd failed. Invalud cu_index.\n");
+            if (return_code) *return_code = XMA_ERROR;
+            return cmd_obj_error;
+        }
+        kernel_tmp1 = &priv1->device->kernels[cu_index];
+    }
+
+    XmaHwDevice *dev_tmp1 = priv1->device;
+    if (dev_tmp1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is NULL\n");
+        if (return_code) *return_code = XMA_ERROR;
+        return cmd_obj_error;
+    }
+    if (regmap == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regmap is NULL\n");
+        if (return_code) *return_code = XMA_ERROR;
+        return cmd_obj_error;
+    }
+    if (regmap_size <= 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regmap_size of %d is invalid\n", regmap_size);
+        if (return_code) *return_code = XMA_ERROR;
+        return cmd_obj_error;
+    }
+    //Kernel regmap 4KB in xmahw.h; execBO size is 4096 = 4KB in xmahw_hal.cpp; But ERT uses some space for ert pkt so allow max of 4032 Bytes for regmap
+    if (regmap_size > MAX_KERNEL_REGMAP_SIZE) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Max kernel regmap size is %d Bytes\n", MAX_KERNEL_REGMAP_SIZE);
+        if (return_code) *return_code = XMA_ERROR;
+        return cmd_obj_error;
+    }
+    if (regmap_size != (regmap_size && 0xFFFFFFFC)) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regmap_size of %d is not a multiple of four bytes\n", regmap_size);
+        if (return_code) *return_code = XMA_ERROR;
+        return cmd_obj_error;
+    }
+
+    uint8_t *src = (uint8_t*)regmap;
+    int32_t bo_idx;
+    
+    bool expected = false;
+    bool desired = true;
+    while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //kernel completion lock acquired
+
+    // Find an available execBO buffer
+    bo_idx = xma_plg_execbo_avail_get(s_handle);
+    if (bo_idx == -1) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unable to find free execbo to use\n");
+        *(dev_tmp1->execbo_locked) = false;
+        if (return_code) *return_code = XMA_ERROR;
+        return cmd_obj_error;
+    }
+    // Setup ert_start_kernel_cmd 
+    ert_start_kernel_cmd *cu_cmd = 
+        (ert_start_kernel_cmd*)dev_tmp1->kernel_execbos[bo_idx].data;
+    cu_cmd->state = ERT_CMD_STATE_NEW;
+    if (kernel_tmp1->soft_kernel) {
+        cu_cmd->opcode = ERT_SK_START;
+    } else {
+        cu_cmd->opcode = ERT_START_CU;
+    }
+    cu_cmd->extra_cu_masks = 3;//XMA now supports 128 CUs
+
+    cu_cmd->cu_mask = kernel_tmp1->cu_mask0;
+
+    cu_cmd->data[0] = kernel_tmp1->cu_mask1;
+    cu_cmd->data[1] = kernel_tmp1->cu_mask2;
+    cu_cmd->data[2] = kernel_tmp1->cu_mask3;
+    // Copy reg_map into execBO buffer 
+    memcpy(&cu_cmd->data[3], src, regmap_size);
+    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "Dev# %d; Kernel: %s; Regmap size used is: %d\n", dev_tmp1->dev_index, kernel_tmp1->name, regmap_size);
+    if (kernel_tmp1->kernel_channels) {
+        // XMA will write @ 0x10 and XRT read @ 0x14 to generate interupt and capture in execbo
+        cu_cmd->data[7] = s_handle.channel_id;//0x10 == 4th integer;
+        cu_cmd->data[8] = 0;//clear out the output
+        xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "This is dataflow kernel. Using channel id: %d\n", s_handle.channel_id);
+    }
+    
+    // Set count to size in 32-bit words + 4; Three extra_cu_mask are present
+    cu_cmd->count = (regmap_size >> 2) + 4;
+    
+    if (xclExecBuf(priv1->dev_handle, 
+                    dev_tmp1->kernel_execbos[bo_idx].handle) != 0)
+    {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
+                    "Failed to submit kernel start with xclExecBuf\n");
+        *(dev_tmp1->execbo_locked) = false;
+        if (return_code) *return_code = XMA_ERROR;
+        return cmd_obj_error;
+    }
+
+    XmaCUCmdObj cmd_obj;
+    cmd_obj.cmd_id1 = 0;
+    cmd_obj.cmd_id2 = 0;
+    cmd_obj.cmd_finished = false;
+    cmd_obj.cu_index = kernel_tmp1->cu_index;
+    cmd_obj.do_not_use1 = s_handle.session_signature;
+
+    bool found = false;
+    while(!found) {
+        dev_tmp1->cu_cmd_id++;
+        uint32_t tmp_int1 = dev_tmp1->cu_cmd_id;
+        if (tmp_int1 == 0) {
+            tmp_int1 = 1;
+            dev_tmp1->cu_cmd_id = tmp_int1;
+            //Change seed of random_generator
+            std::random_device rd;
+            uint32_t tmp_int = time(0);
+            std::seed_seq seed_seq{rd(), tmp_int};
+            dev_tmp1->mt_gen = std::mt19937(seed_seq);
+        }
+        auto itr_tmp1 = priv1->CU_cmds.emplace(tmp_int1, XmaCUCmdObjPrivate{});
+        if (itr_tmp1.second) {//It is newly inserted item;
+            found = true;
+            cmd_obj.cmd_id1 = tmp_int1;
+            cmd_obj.cmd_id2 = dev_tmp1->rnd_dis(dev_tmp1->mt_gen);
+            itr_tmp1.first->second.cmd_id2 = cmd_obj.cmd_id2;
+            itr_tmp1.first->second.cu_id = cmd_obj.cu_index;
+            itr_tmp1.first->second.execbo_id = bo_idx;
+
+            dev_tmp1->kernel_execbos[bo_idx].cu_cmd_id1 = tmp_int1;
+            dev_tmp1->kernel_execbos[bo_idx].cu_cmd_id2 = cmd_obj.cmd_id2;
+        }
+    }
+
+    *(dev_tmp1->execbo_locked) = false;
+    if (return_code) *return_code = XMA_SUCCESS;
+    return cmd_obj;
+}
+
+int32_t xma_plg_cu_cmd_status(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, int32_t num_cu_objs, bool wait_for_cu_cmds)
+{
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
+    if (priv1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_cu_cmd_status failed. XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
+    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
+        //std::cout << "ERROR: xma_plg_schedule_work_item failed. XMASession is corrupted" << std::endl;
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_cu_cmd_status failed. XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
+
+    XmaHwKernel* kernel_tmp1 = priv1->kernel_info;
+    XmaHwDevice *dev_tmp1 = priv1->device;
+    if (dev_tmp1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is NULL-1\n");
+        return XMA_ERROR;
+    }
+    if (s_handle.session_type != XMA_ADMIN && kernel_tmp1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is NULL-2\n");
+        return XMA_ERROR;
+    }
+
+    int32_t num_execbo = dev_tmp1->num_execbo_allocated;
+    if (num_execbo <= 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private: No execbo allocated\n");
+        return XMA_ERROR;
+    }
+    if (cmd_obj_array == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is NULL\n");
+        return XMA_ERROR;
+    }
+    if (num_cu_objs <= 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "num_cu_objs of %d is invalid\n", num_cu_objs);
+        return XMA_ERROR;
+    }
+
+    bool expected = false;
+    bool desired = true;
+    bool all_done = true;
+    std::vector<XmaCUCmdObj> cmd_vector(cmd_obj_array, cmd_obj_array+num_cu_objs);
+    do {
+        while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
+            expected = false;
+        }
+        //kernel completion lock acquired
+
+        if (xma_plg_check_all_execbo(s_handle) != XMA_SUCCESS) {
+            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unexpected error\n");
+            //Release completion lock
+            *(dev_tmp1->execbo_locked) = false;
+            return XMA_ERROR;
+        }
+        all_done = true;
+        for (auto& cmd: cmd_vector) {
+            if (s_handle.session_type < XMA_ADMIN && cmd.cu_index != kernel_tmp1->cu_index) {
+                xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-1\n");
+                //Release completion lock
+                *(dev_tmp1->execbo_locked) = false;
+                return XMA_ERROR;
+            }
+            auto itr_tmp1 = priv1->CU_cmds.find(cmd.cmd_id1);
+            if (itr_tmp1 == priv1->CU_cmds.end()) {
+                cmd.cmd_finished = true;
+            } else {
+                if (itr_tmp1->second.cmd_id2 != cmd.cmd_id2) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-2\n");
+                    //Release completion lock
+                    *(dev_tmp1->execbo_locked) = false;
+                    return XMA_ERROR;
+                }
+                if (itr_tmp1->second.cu_id != cmd.cu_index) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-3\n");
+                    //Release completion lock
+                    *(dev_tmp1->execbo_locked) = false;
+                    return XMA_ERROR;
+                }
+            }
+
+            if (cmd.do_not_use1 != s_handle.session_signature) {
+                xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-5\n");
+                //Release completion lock
+                *(dev_tmp1->execbo_locked) = false;
+                return XMA_ERROR;
+            }
+            int32_t execbo_idx = itr_tmp1->second.execbo_id;
+            if (!cmd.cmd_finished) {
+                XmaHwExecBO* execbo_tmp1 = &dev_tmp1->kernel_execbos[execbo_idx];
+                if (execbo_tmp1->session_id != s_handle.session_id) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unexpected error-1. Please report to sarabjee@xilinx.com\n");
+                    //Release completion lock
+                    *(dev_tmp1->execbo_locked) = false;
+                    return XMA_ERROR;
+                }
+                if (execbo_tmp1->cu_cmd_id1 != cmd.cmd_id1) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unexpected error-2. Please report to sarabjee@xilinx.com\n");
+                    //Release completion lock
+                    *(dev_tmp1->execbo_locked) = false;
+                    return XMA_ERROR;
+                }
+                if (execbo_tmp1->cu_cmd_id2 != cmd.cmd_id2) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unexpected error-3. Please report to sarabjee@xilinx.com\n");
+                    //Release completion lock
+                    *(dev_tmp1->execbo_locked) = false;
+                    return XMA_ERROR;
+                }
+                if (execbo_tmp1->cu_index != cmd.cu_index) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unexpected error-4. Please report to sarabjee@xilinx.com\n");
+                    //Release completion lock
+                    *(dev_tmp1->execbo_locked) = false;
+                    return XMA_ERROR;
+                }
+                if (!execbo_tmp1->in_use) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unexpected error-5. Please report to sarabjee@xilinx.com\n");
+                    //Release completion lock
+                    *(dev_tmp1->execbo_locked) = false;
+                    return XMA_ERROR;
+                }
+                ert_start_kernel_cmd *execbo_cu_cmd = 
+                    (ert_start_kernel_cmd*)execbo_tmp1->data;
+                if (execbo_cu_cmd->state == ERT_CMD_STATE_COMPLETED)
+                {
+                    // Increment completed kernel count and make BO buffer available
+                    //completion count is valid only for regular video session types
+                    if (s_handle.session_type < XMA_ADMIN) {
+                        priv1->kernel_complete_count++;
+                    }
+                    execbo_tmp1->in_use = false;
+                    cmd.cmd_finished = true;
+                    priv1->CU_cmds.erase(itr_tmp1);
+                } else {
+                    all_done = false;
+                }
+
+            }
+        }
+
+        //Release completion lock
+        *(dev_tmp1->execbo_locked) = false;
+
+        if (!wait_for_cu_cmds) {
+            //Don't wait for all cu_cmds to finsh
+            all_done = true;
+        } else if (!all_done) {
+            xclExecWait(priv1->dev_handle, 10000);
+        }
+    } while(!all_done);
+
+    for(int32_t i = 0; i < num_cu_objs; i++) {
+        cmd_obj_array[i].cmd_finished = cmd_vector[i].cmd_finished;
+    }
+
+    return XMA_SUCCESS;
 }
 
 int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
 {
-    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
+    if (priv1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_is_work_item_done failed. XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
+    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
         //std::cout << "ERROR: xma_plg_schedule_work_item failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_work_item failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
-    XmaHwKernel* kernel_tmp1 = s_handle.hw_session.kernel_info;
-    XmaHwDevice *dev_tmp1 = (XmaHwDevice*)kernel_tmp1->private_do_not_use;
+    if (s_handle.session_type >= XMA_ADMIN) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_is_work_item_done can not be used for this XMASession type\n");
+        return XMA_ERROR;
+    }
+
+    XmaHwKernel* kernel_tmp1 = priv1->kernel_info;
+    XmaHwDevice *dev_tmp1 = priv1->device;
     if (dev_tmp1 == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is NULL\n");
         return XMA_ERROR;
@@ -601,18 +1346,47 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
         // Look for inuse commands that have completed and increment the count
         for (int32_t i = 0; i < num_execbo; i++)
         {
-            if (dev_tmp1->kernel_execbo_inuse[i] && (dev_tmp1->kernel_execbo_cu_index[i] == kernel_tmp1->cu_index))
+            XmaHwExecBO* execbo_tmp1 = &dev_tmp1->kernel_execbos[i];
+            if (execbo_tmp1->in_use && execbo_tmp1->cu_index == kernel_tmp1->cu_index && execbo_tmp1->session_id == s_handle.session_id)
             {
                 ert_start_kernel_cmd *cu_cmd = 
-                    (ert_start_kernel_cmd*)dev_tmp1->kernel_execbo_data[i];
+                    (ert_start_kernel_cmd*)execbo_tmp1->data;
                 if (cu_cmd->state == ERT_CMD_STATE_COMPLETED)
                 {
                     // Increment completed kernel count and make BO buffer available
                     count++;
-                    dev_tmp1->kernel_execbo_inuse[i] = false;
+                    execbo_tmp1->in_use = false;
+
+                    auto itr_tmp1 = priv1->CU_cmds.find(execbo_tmp1->cu_cmd_id1);
+                    if (itr_tmp1 == priv1->CU_cmds.end()) {
+                        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_is_work_item_done: Unexpected error-1. Please report this to sarabjee@xilinx.com\n");
+                        //Release completion lock
+                        *(dev_tmp1->execbo_locked) = false;
+                        return XMA_ERROR;
+                    }
+                    if (itr_tmp1->second.cmd_id2 != execbo_tmp1->cu_cmd_id2) {
+                        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_is_work_item_done: Unexpected error-2. Please report this to sarabjee@xilinx.com\n");
+                        //Release completion lock
+                        *(dev_tmp1->execbo_locked) = false;
+                        return XMA_ERROR;
+                    }
+                    if (itr_tmp1->second.cu_id != execbo_tmp1->cu_index) {
+                        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_is_work_item_done: Unexpected error-3. Please report this to sarabjee@xilinx.com\n");
+                        //Release completion lock
+                        *(dev_tmp1->execbo_locked) = false;
+                        return XMA_ERROR;
+                    }
+                    if (itr_tmp1->second.execbo_id != i) {
+                        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_is_work_item_done: Unexpected error-4. Please report this to sarabjee@xilinx.com\n");
+                        //Release completion lock
+                        *(dev_tmp1->execbo_locked) = false;
+                        return XMA_ERROR;
+                    }
+                    priv1->CU_cmds.erase(itr_tmp1);
                 } 
             }
         }
+
         //Release completion lock
         *(dev_tmp1->execbo_locked) = false;
 
@@ -621,7 +1395,7 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
 
         // Wait for a notification
         give_up++;
-        if (xclExecWait(s_handle.hw_session.dev_handle, timeout_ms) <= 0 && give_up >= 3)
+        if (xclExecWait(priv1->dev_handle, timeout_ms) <= 0 && give_up >= 3)
             break;
     }
 
@@ -632,10 +1406,10 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
     }
     //kernel completion lock acquired
 
-    kernel_tmp1->kernel_complete_count += count;
-    if (kernel_tmp1->kernel_complete_count)
+    priv1->kernel_complete_count += count;
+    if (priv1->kernel_complete_count)
     {
-        kernel_tmp1->kernel_complete_count--;
+        priv1->kernel_complete_count--;
         
         //Release completion lock
         *(dev_tmp1->execbo_locked) = false;
@@ -654,9 +1428,18 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
 }
 
 int32_t xma_plg_channel_id(XmaSession s_handle) {
-    if (s_handle.session_signature != (void*)(((uint64_t)s_handle.hw_session.kernel_info) | ((uint64_t)s_handle.hw_session.dev_handle))) {
+    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
+    if (priv1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_channel_id failed. XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
+    if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
         //std::cout << "ERROR: xma_plg_schedule_work_item failed. XMASession is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_channel_id failed. XMASession is corrupted.\n");
+        return XMA_ERROR;
+    }
+    if (s_handle.session_type >= XMA_ADMIN) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_channel_id can not be used for this XMASession type\n");
         return XMA_ERROR;
     }
     return s_handle.channel_id;
