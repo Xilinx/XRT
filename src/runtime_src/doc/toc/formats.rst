@@ -6,25 +6,30 @@ Binary Formats
 xclbin
 ~~~~~~
 
-``xclbin`` container format is defined in file ``xclbin.h``. Since
-2017.1, tools use ``xclbin2`` format also known as AXLF format. AXLF is
-an extensible, future-proof container of (bitstream/platform) hardware
-as well as software (MPSoC/Microblaze ELF files) design data.  This
-unified container can hold outputs of our hardware compilers (SDAccel
-``xocc``) as well as software compilers (processor ELF formats for
-MPSoc/Microblaze). This allows for easier integration of embedded
-processors and SDx on the same device. It also has structures to
-describe the memory topology, acceleration kernel instantiations and
-kernel connectivity for each kernel.
+**xclbin** container format (also known as AXLF) is defined in file
+``xclbin.h``. The file uses **xclbin2** as the magic word. AXLF is
+sections based extensible container. Different sections store different
+parts of compiled application like bitstreams for PL (FPGA fabric), ELF
+for AIE tiles and embedded processors like Microblaze. It also contains
+well structured metadata to define memory topology, IP layout of instantiated
+peripherals and compute kernels, clocking details and kernel connectivity
+for each compute kernel.
 
-The compiler generates unique ``xclbin`` file for every design
-compiled. The Vivado front-end tools programmatically
-populate this file (layout described in ``core/include/xclbin.h``,
-attached) and then the runtime & device drivers read the information and apply
-it accordingly.
+The compiler generates unique xclbin file tagged with UUID for every application
+compiled. Each xclbin also has a another UUID which defines its compatbility to
+the Shell. Scout compiler generates this file as part of xocc and end-users
+load this file via XRT xclLoadXclbin() API. XRT userspace and kernel space
+components consume different sections of xclbin by programming the hardware
+and initializing key data structures in XRT userspace libraries and XRT
+kernel drivers.
 
-The path to ``xclbin.h`` is ``runtime/core/include/xclbin.h`` under
-SDx installation directory.
+xclbins can also be signed. More information can be found in :ref:`security.rst`.
+
+The path to ``xclbin.h`` is ``xrt/include/xclbin.h`` inside XRT
+installation directory.
+
+XRT provides a very powerful utility, **xclbinutil** which can be used to read/write/change
+xclbins. More information can be found in the section on :ref:`xclbintools.rst`
 
 Feature ROM
 ~~~~~~~~~~~
@@ -40,6 +45,5 @@ during platform creation time. Runtime components like drivers read it
 and enable functionality in driver and also use the information to
 perform hardware/software compatibility checks.
 
-The path to ``xclfeatures.h`` is
-``runtime/core/include/xclfeatures.h`` under SDx installation
-directory.
+The path to ``xclfeatures.h`` is ``xrt/include/xclfeatures.h`` inside
+XRT installation directory.

@@ -167,7 +167,7 @@ class device {
 
             if (!errmsg.empty()) {
                 std::cout<<errmsg<<std::endl;
-                throw std::runtime_error("Failed to lockdown xclbin.");
+                throw std::runtime_error("Failed to get uuid.");
             }
 
             uuid_parse(xclbinid.c_str(), m_uuid);
@@ -176,7 +176,7 @@ class device {
                    throw std::runtime_error("'uuid' invalid, please re-program xclbin.");
 
             if (xclOpenContext(m_handle, m_uuid, -1, true))
-                   throw std::runtime_error("'uuid' invalid, please re-program xclbin.");
+                   throw std::runtime_error("'Failed to lock down xclbin");
         }
         ~xclbin_lock(){
             xclCloseContext(m_handle, m_uuid, -1);
@@ -226,6 +226,31 @@ public:
 
     int reclock2(unsigned regionIndex, const unsigned short *freq) {
         const unsigned short targetFreqMHz[4] = {freq[0], freq[1], freq[2], 0};
+        std::vector<std::string> clock_freqs_max, clock_freqs_min;
+        unsigned int num_clocks = 4;
+        std::string errmsg;
+        uuid_t uuid;
+        int ret;
+
+        ret = getXclbinuuid(uuid);
+        if (ret)
+            return ret;
+
+        pcidev::get_dev(m_idx)->sysfs_get( "icap", "clock_freqs_max", errmsg, clock_freqs_max ); 
+        pcidev::get_dev(m_idx)->sysfs_get( "icap", "clock_freqs_min", errmsg, clock_freqs_min );
+
+        for (unsigned int i = 0; i < num_clocks; ++i) {
+            if (!targetFreqMHz[i])
+                continue;
+
+            if (targetFreqMHz[i] > std::stoi(clock_freqs_max[i]) || targetFreqMHz[i] < std::stoi(clock_freqs_min[i])) {
+                std::cout<<"  Unable to program clock frequency!\n"
+                         <<"  Frequency max : "<<clock_freqs_max[i]<<", min : "<<clock_freqs_min[i]<<" \n";
+                std::cout<<"  Requested frequency : "<<targetFreqMHz[i]<<std::endl;
+                return -EINVAL;
+            }
+        }
+
         return xclReClock2(m_handle, 0, targetFreqMHz);
     }
 
@@ -280,8 +305,7 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_power",  errmsg, power);
 
         if (!errmsg.empty()) {
-            std::cout << errmsg << std::endl;
-            return 0;
+            return -1;
         }
 
         return (float)power / 1000000;
@@ -717,7 +741,7 @@ public:
         sensor_tree::put( "board.physical.thermal.cage.temp3", temp3);
 
         //electrical
-        unsigned long long m12v_pex_curr = 0, m12v_aux_vol = 0;
+        unsigned short m12v_pex_curr = 0, m12v_aux_vol = 0;
         unsigned short m3v3_pex_vol = 0, m3v3_aux_vol = 0, ddr_vpp_btm = 0, ddr_vpp_top = 0, 
                        sys_5v5 = 0, m1v2_top = 0, m1v2_btm = 0, m1v8 = 0, m0v85 = 0, mgt0v9avcc = 0, 
                        m12v_sw = 0, mgtavtt = 0, vccint_vol = 0, vccint_curr = 0, m3v3_pex_curr = 0,
@@ -883,6 +907,32 @@ public:
                  ostr << std::setw(16) << "no iomem" << std::endl;
              break;
         }
+
+	std::vector<std::string> interface_uuids;
+	std::vector<std::string> logic_uuids;
+	std::string errmsg;
+        pcidev::get_dev(m_idx)->sysfs_get( "", "interface_uuids", errmsg, interface_uuids);
+        if (interface_uuids.size())
+        {
+            ostr << "Interface UUID" << std::endl;
+            for (auto uuid : interface_uuids)
+            {
+                ostr << uuid;
+            }
+            ostr << std::endl;
+        }
+
+        pcidev::get_dev(m_idx)->sysfs_get( "", "logic_uuids", errmsg, logic_uuids);
+        if (logic_uuids.size())
+        {
+            ostr << "Logic UUID" << std::endl;
+            for (auto uuid : logic_uuids)
+            {
+                ostr << uuid;
+            }
+            ostr << std::endl;
+        }
+
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Temperature(C)\n";
         ostr << std::setw(16) << "PCB TOP FRONT" << std::setw(16) << "PCB TOP REAR" << std::setw(16) << "PCB BTM FRONT" << std::endl;
@@ -907,8 +957,8 @@ public:
              << "12V AUX Current" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.12v_pex.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.12v_aux.voltage" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned long long>( "board.physical.electrical.12v_pex.current" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned long long>( "board.physical.electrical.12v_aux.current" ) << std::endl;
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.12v_pex.current" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.12v_aux.current" ) << std::endl;
         ostr << std::setw(16) << "3V3 PEX" << std::setw(16) << "3V3 AUX" << std::setw(16) << "DDR VPP BOTTOM" << std::setw(16) 
              << "DDR VPP TOP" << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.3v3_pex.voltage"        )
@@ -929,7 +979,7 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.1v2_btm.voltage" ) << std::endl;
         ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "DNA" << std::setw(16) << "VCC3V3 VOL"  << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.voltage" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned>( "board.physical.electrical.vccint.current" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.current" )
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.dna", "N/A" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vcc3v3.voltage"  ) << std::endl;
         ostr << std::setw(16) << "3V3 PEX CURR" << std::setw(16) << "VCC0V85 CURR" << std::setw(16) << "HBM1V2 VOL" << std::setw(16) << "VPP2V5 VOL"  << std::endl;
@@ -941,8 +991,8 @@ public:
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint_bram.voltage" ) << std::endl;
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-        ostr << "Card Power\n";
-        ostr << sensor_tree::get_pretty<unsigned>( "board.physical.power" ) << " W" << std::endl;
+        ostr << "Card Power(W)\n";
+        ostr << sensor_tree::get_pretty<unsigned>( "board.physical.power" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Firewall Last Error Status\n";
         ostr << "Level " << std::setw(2) << sensor_tree::get( "board.error.firewall.firewall_level", -1 ) << ": 0x0"
@@ -1596,6 +1646,8 @@ private:
     int bandwidthKernelTest(void);
     // testFunc must return 0 for success, 1 for warning, and < 0 for error
     int runOneTest(std::string testName, std::function<int(void)> testFunc);
+
+    int getXclbinuuid(uuid_t &uuid);
 };
 
 void printHelp(const std::string& exe);

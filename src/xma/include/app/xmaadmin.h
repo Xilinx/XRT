@@ -14,8 +14,8 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#ifndef _XMAAPP_KERNEL_H_
-#define _XMAAPP_KERNEL_H_
+#ifndef _XMAAPP_ADMIN_H_
+#define _XMAAPP_ADMIN_H_
 
 #include "app/xmabuffers.h"
 #include "app/xmaparam.h"
@@ -26,9 +26,9 @@ extern "C" {
 
 /**
  * DOC:
- *  The kernel interface provides a generic method for controlling a kernel
- *  that does not need to send and receive video frame data.  While it is
- *  possible to use the kernel plugin class for video, the class is intended
+ *  The admin interface provides a generic method for controlling multiple kernels on a device
+ *  which do not need to send and receive video frame data.  While it is
+ *  possible to use the admin plugin class for video, the class is intended
  *  for cases where only control information is required or the data is not
  *  readily classified as typical video frame data.
  *
@@ -43,7 +43,7 @@ extern "C" {
  *  Each of the classes above expect frame data as input/output or both.  As a
  *  result, these APIs provide a convenient way to send and/or receive frame
  *  data.  In cases where frame data is not needed or more control over the
- *  type of data sent/recevied is needed, the kernel class of plugin may be a
+ *  type of data sent/recevied is needed, the admin class of plugin may be a
  *  better fit.  In this case, data is transferred between the host application
  *  and the plugin via private_session_data. private_session_data is managed by host application. As a result, it is up to
  *  the host application and plugin to decide the meaning/structure of the private_session_data.
@@ -53,22 +53,22 @@ extern "C" {
 /**
  * enum XmaKernelType - Description of kernel represented by XmaKernel
 */
-typedef enum XmaKernelType
+typedef enum XmaAdminType
 {
-    XMA_KERNEL_TYPE = 1, /**< 1 */
-} XmaKernelType;
+    XMA_ADMIN_TYPE = 1, /**< 1 */
+} XmaAdminType;
 
 /**
- * struct XmaKernelProperties - XmaKernels represent unspecified or custom kernels that may not necessarily
+ * struct XmaAdminProperties - XmaAdmin represent unspecified or custom kernels that may not necessarily
  * fit an existing video kernel type.  As such, they may take custom parameters
  * as properties.  You should consult the documentation for the kernel plugin
  * to get a list of XmaParameter parameters needed to specify how the kernel
  * should be initalized.
 */
-typedef struct XmaKernelProperties
+typedef struct XmaAdminProperties
 {
     /** requested kernel type */
-    XmaKernelType   hwkernel_type;
+    XmaAdminType   hwkernel_type;
     /** requested vendor */
     char            hwvendor_string[MAX_VENDOR_NAME];
     /** array of kernel-specific custom initialization parameters */
@@ -76,26 +76,22 @@ typedef struct XmaKernelProperties
     /** count of custom parameters for port */
     uint32_t        param_cnt;
     int32_t         dev_index;
-    int32_t         cu_index;
-    char            *cu_name;
-    int32_t         ddr_bank_index;//Used for allocating device buffers. Used only if valid index is provide (>= 0); value of -1 imples that XMA should select automatically and then XMA will set it with bank index used automatically
-    int32_t         channel_id;
     char            *plugin_lib;
     int32_t         reserved[4];
-} XmaKernelProperties;
+} XmaAdminProperties;
 
 
 /* Forward declaration */
-typedef struct XmaKernelSession XmaKernelSession;
+typedef struct XmaAdminSession XmaAdminSession;
 
 /**
- *  xma_kernel_session_create() - This function creates a kernel session and must be called prior to
- *  invoking other kernel session functions.  A session reserves hardware
- *  resources until session destroy function is called.
+ *  xma_admin_session_create() - This function creates a admin session and must be called prior to
+ *  invoking other admin session functions.  This session does not reserves hardware. 
+ *  However resources only on mentioned dev_index can used in this session.
  *
- *  @props:  Pointer to a XmaKernelProperties structure that
+ *  @props:  Pointer to a XmaAdminProperties structure that
  * contains the key configuration properties needed for
- * finding available hardware resource.
+ * finding available dev_index.
  *
  *  RETURN:       Not NULL on success
  * 
@@ -103,15 +99,15 @@ typedef struct XmaKernelSession XmaKernelSession;
  *
  *  Note: session create & destroy are thread safe APIs
 */
-XmaKernelSession*
-xma_kernel_session_create(XmaKernelProperties *props);
+XmaAdminSession*
+xma_admin_session_create(XmaAdminProperties *props);
 
 /**
- *  xma_kernel_session_destroy() - This function destroys a kernel session that was previously created
- *  with the xma_kernel_session_create function.
+ *  xma_admin_session_destroy() - This function destroys an admin session that was previously created
+ *  with the xma_admin_session_create function.
  *
- *  @session:  Pointer to XmaKernelSession created with
- *                  xma_kernel_session_create
+ *  @session:  Pointer to XmaAdminSession created with
+ *                  xma_admin_session_create
  *
  *  RETURN:        XMA_SUCCESS on success
  *          
@@ -120,17 +116,17 @@ xma_kernel_session_create(XmaKernelProperties *props);
  *  Note: session create & destroy are thread safe APIs
 */
 int32_t
-xma_kernel_session_destroy(XmaKernelSession *session);
+xma_admin_session_destroy(XmaAdminSession *session);
 
 /**
- *  xma_kernel_session_write() - This function invokes plugin->write fucntion 
+ *  xma_admin_session_write() - This function invokes plugin->write fucntion 
  * assigned to this session which handles sending data to the hardware kernel.  
  *  The meaning of the data is managed by the caller and low-level
  *  XMA plugin. This means that the data provided could contain
  *  information about how kernel registers are programmed, how device
  *  DDR memory is set, or some combination of both.
  *
- *  @session:    Pointer to session created by xm_enc_sesssion_create
+ *  @session:    Pointer to session created by xma_admin_sesssion_create
  *  @param:      Pointer to an XmaParameter list
  *  @param_cnt:  Number of parameters provided in the list
  *
@@ -139,17 +135,17 @@ xma_kernel_session_destroy(XmaKernelSession *session);
  * XMA_ERROR on error.
 */
 int32_t
-xma_kernel_session_write(XmaKernelSession  *session,
+xma_admin_session_write(XmaAdminSession    *session,
                          XmaParameter      *param,
                          int32_t            param_cnt);
 
 /**
- *  xma_kernel_session_read() - This function invokes plugin->read
+ *  xma_admin_session_read() - This function invokes plugin->read
  * assigned to this session which handles obtaining output data from the hardware kernel.  
  *  The meaning of the data is managed by the caller and low-level
  *  XMA plugin.
  *
- *  @session:   Pointer to session created by xm_enc_sesssion_create
+ *  @session:   Pointer to session created by xma_admin_sesssion_create
  *  @param:     Pointer to an XmaParameter
  *  @param_cnt: Pointer number of parameters in the list
  *
@@ -158,7 +154,7 @@ xma_kernel_session_write(XmaKernelSession  *session,
  * XMA_ERROR on error.
 */
 int32_t
-xma_kernel_session_read(XmaKernelSession  *session,
+xma_admin_session_read(XmaAdminSession  *session,
                         XmaParameter      *param,
                         int32_t           *param_cnt);
 

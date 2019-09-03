@@ -33,6 +33,7 @@ struct feature_rom {
 	bool			aws_dev;
 	bool			runtime_clk_scale_en;
 	char			uuid[65];
+	bool			passthrough_virt_en;
 };
 
 static ssize_t VBNV_show(struct device *dev,
@@ -188,6 +189,16 @@ static bool runtime_clk_scale_on(struct platform_device *pdev)
 	BUG_ON(!rom);
 
 	return rom->runtime_clk_scale_en;
+}
+
+static bool passthrough_virtualization_on(struct platform_device *pdev)
+{
+	struct feature_rom *rom;
+
+	rom = platform_get_drvdata(pdev);
+	BUG_ON(!rom);
+
+	return rom->passthrough_virt_en;
 }
 
 static uint32_t* get_cdma_base_addresses(struct platform_device *pdev)
@@ -355,6 +366,7 @@ static struct xocl_rom_funcs rom_ops = {
 	.get_raw_header = get_raw_header,
 	.runtime_clk_scale_on = runtime_clk_scale_on,
 	.find_firmware = find_firmware,
+	.passthrough_virtualization_on = passthrough_virtualization_on,
 };
 
 static int get_header_from_peer(struct feature_rom *rom)
@@ -502,6 +514,9 @@ static int feature_rom_probe(struct platform_device *pdev)
 
 	if(rom->header.FeatureBitMap & RUNTIME_CLK_SCALE)
 		rom->runtime_clk_scale_en = true;
+
+	if(rom->header.FeatureBitMap & PASSTHROUGH_VIRTUALIZATION)
+		rom->passthrough_virt_en = true;
 
 	ret = sysfs_create_group(&pdev->dev.kobj, &rom_attr_group);
 	if (ret) {
