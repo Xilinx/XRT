@@ -147,13 +147,13 @@ enum xclMemoryDomains {
 /**
  *  Unused, keep for backwards compatibility
  */
-enum xclBOKind {  
-    XCL_BO_SHARED_VIRTUAL = 0,  
-    XCL_BO_SHARED_PHYSICAL, 
-    XCL_BO_MIRRORED_VIRTUAL,  
-    XCL_BO_DEVICE_RAM,  
-    XCL_BO_DEVICE_BRAM, 
-    XCL_BO_DEVICE_PREALLOCATED_BRAM,  
+enum xclBOKind {
+    XCL_BO_SHARED_VIRTUAL = 0,
+    XCL_BO_SHARED_PHYSICAL,
+    XCL_BO_MIRRORED_VIRTUAL,
+    XCL_BO_DEVICE_RAM,
+    XCL_BO_DEVICE_BRAM,
+    XCL_BO_DEVICE_PREALLOCATED_BRAM,
 };
 
 enum xclBOSyncDirection {
@@ -320,8 +320,8 @@ XCL_DRIVER_DLLESPEC int xclLoadXclBin(xclDeviceHandle handle, const struct axlf 
  * @handle:        Device handle
  * @info:          Pointer to preallocated memory which will store the return value.
  * @size:          Pointer to preallocated memory which will store the return size.
- * kind:           axlf_section_kind for which info is being queried
- * index:          The (sub)section index for the "kind" type.
+ * @kind:          axlf_section_kind for which info is being queried
+ * @index:         The (sub)section index for the "kind" type.
  * Return:         0 on success or appropriate error number
  *
  * Get the section information from sysfs. The index corrresponds to the (section) entry
@@ -457,6 +457,7 @@ XCL_DRIVER_DLLESPEC int xclLogMsg(xclDeviceHandle handle, enum xrtLogMsgLevel le
  *
  * @handle:        Device handle
  * @size:          Size of buffer
+ * @unused:        This argument is ignored
  * @flags:         Specify bank information, etc
  * Return:         BO handle
  */
@@ -1051,7 +1052,7 @@ XCL_DRIVER_DLLESPEC int xclRegRead(xclDeviceHandle handle, uint32_t cu_index, ui
  * @handle:        Device handle
  * @cu_index:      CU index
  * @offset:        Offset in the register space
- * @datap:         Data to be written
+ * @data:          Data to be written
  * Return:         0 or appropriate error number
  *
  */

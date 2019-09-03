@@ -206,7 +206,7 @@ static int get_xclbin_mem_topology(char *buffer, XmaXclbinInfo *xclbin_info)
         xclbin_info->number_of_mem_banks = mem_topo->m_count;
         xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "MEM TOPOLOGY - %d banks\n",xclbin_info->number_of_mem_banks);
         if (xclbin_info->number_of_mem_banks > MAX_DDR_MAP) {
-            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only 64 mem banks\n");
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only %d mem banks\n", MAX_DDR_MAP);
             return XMA_ERROR;
         }
         for (int i = 0; i < mem_topo->m_count; i++)
@@ -282,7 +282,7 @@ int xma_xclbin_info_get(char *buffer, XmaXclbinInfo *info)
         XmaAXLFConnectivity *xma_conn = &info->connectivity[c];
         info->ip_ddr_mapping[xma_conn->m_ip_layout_index] |= 1 << (xma_conn->mem_data_index);
     }
-    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\nCU DDR connections bitmap:\n");
+    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "CU DDR connections bitmap:");
     for(uint32_t i = 0; i < info->number_of_hardware_kernels; i++)
     {
         xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\t%s - 0x%04llx\n",info->ip_layout[i].kernel_name, info->ip_ddr_mapping[i]);

@@ -247,36 +247,6 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 	return ret;
 }
 
-static int xocl_poll_mailbox(struct xocl_dev *xdev)
-{
-	int ret;
-
-	/* TODO: should replace with checking pci register after hw is ready */
-	if (xdev->mbx_offset) {
-		struct xocl_subdev_info mbx_info = XOCL_DEVINFO_MAILBOX_PRP;
-
-		mbx_info.res[0].start += xdev->mbx_offset;
-		mbx_info.res[0].end += xdev->mbx_offset;
-		ret = xocl_subdev_create(xdev, &mbx_info);
-		if (ret) {
-			xocl_xdev_err(xdev, "failed to create mailbox %d", ret);
-			return ret;
-		}
-
-		ret = xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
-		if (ret) {
-			xocl_xdev_err(xdev, "failed xocl_peer_listen %d", ret);
-			return ret;
-		}
-		xocl_mb_connect(xdev);
-	} else  {
-		xocl_xdev_dbg(xdev, "polling mbx offset");
-		xocl_queue_work(xdev, XOCL_WORK_POLL_MAILBOX, 1000);
-	}
-
-	return 0;
-}
-
 /* pci driver callbacks */
 static void xocl_work_cb(struct work_struct *work)
 {
@@ -294,9 +264,6 @@ static void xocl_work_cb(struct work_struct *work)
 		break;
 	case XOCL_WORK_REFRESH_SUBDEV:
 		(void) xocl_refresh_subdevs(xdev);
-		break;
-	case XOCL_WORK_POLL_MAILBOX:
-		(void) xocl_poll_mailbox(xdev);
 		break;
 	default:
 		xocl_xdev_err(xdev, "Invalid op code %d", _work->op);
@@ -1035,13 +1002,12 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 
 	/* Launch the mailbox server. */
 	ret = xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
-	if (!ret) {
-		/* Say hi to peer via mailbox. */
-		(void) xocl_mb_connect(xdev);
-	} else if (ret == -ENODEV) {
-		/* 2RP workaround: Mailbox is in PRP, polling mbx address */
-		xocl_queue_work(xdev, XOCL_WORK_POLL_MAILBOX, 1000);
+	if (ret) {
+		xocl_err(&pdev->dev, "mailbox subdev is not created");
+		goto failed;
 	}
+	/* Say hi to peer via mailbox. */
+	(void) xocl_mb_connect(xdev);
 
 	return 0;
 

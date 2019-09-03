@@ -908,6 +908,11 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	struct pci_dev *pdev = lro->pci_dev;
 	int i;
 
+	lro->core.thread_arg.thread_cb = health_check_cb;
+	lro->core.thread_arg.arg = lro;
+	lro->core.thread_arg.interval = health_interval * 1000;
+	lro->core.thread_arg.name = "xclmgmt health thread";
+
 	for (i = 0; i < dev_info->subdev_num; i++) {
 		if (dev_info->subdev_info[i].id == XOCL_SUBDEV_DMA)
 			break;
@@ -954,25 +959,24 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	if (!(dev_info->flags & XOCL_DSAFLAG_SMARTN)) {
 		/* return -ENODEV for 2RP platform */
 		ret = xocl_icap_download_boot_firmware(lro);
-		if (ret && ret != -ENODEV)
+		if (!ret) {
+			xocl_thread_start(lro);
+
+			/* Launch the mailbox server. */
+			(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv,
+				(void *)lro);
+
+			lro->ready = true;
+		} else if (ret == -ENODEV) {
+			ret = xclmgmt_load_fdt(lro);
+			if (ret)
+				goto fail_all_subdev;
+		} else
 			goto fail_all_subdev;
 
-		ret = xclmgmt_load_fdt(lro);
-		if (ret)
-			goto fail_all_subdev;
 	}
-	lro->core.thread_arg.thread_cb = health_check_cb;
-	lro->core.thread_arg.arg = lro;
-	lro->core.thread_arg.interval = health_interval * 1000;
-	lro->core.thread_arg.name = "xclmgmt health thread";
-	xocl_thread_start(lro);
-
-	/* Launch the mailbox server. */
-	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
 	/* Notify our peer that we're listening. */
 	xclmgmt_connect_notify(lro, true);
-
-	lro->ready = true;
 	xocl_info(&pdev->dev, "device fully initialized\n");
 	return;
 

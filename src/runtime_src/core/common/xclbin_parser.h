@@ -24,6 +24,22 @@
 namespace xrt_core { namespace xclbin {
 
 /**
+ * struct buffer_object - wrapper for a soft kernel object
+ *
+ * @ninst: number of instances
+ * @symbol_name: soft kernel symbol name
+ * @size: size of soft kernel image
+ * @sk_buf: pointer to the soft kernel buffer 
+ */
+struct softkernel_object
+{
+  uint32_t ninst;
+  char *symbol_name;
+  size_t size;
+  char *sk_buf;
+};
+
+/**
  * Get specific binary section of the axlf structure
  *
  * auto data = axlf_section_type::get<const ip_layout*>(top,axlf_section_kind::IP_LAYOUT);
@@ -50,6 +66,12 @@ struct axlf_section_type<SectionType*>
  */
 std::string
 memidx_to_name(const axlf* top, int32_t midx);
+ 
+/**
+ * get_first_used_mem() - Get the first used memory bank index
+ */
+int32_t
+get_first_used_mem(const axlf* top);
 
 /**
  * get_cus() - Get sorted list of CU base addresses in xclbin.
@@ -97,6 +119,12 @@ get_cus_pair(const axlf* top);
  */
 std::vector<std::pair<uint64_t, size_t>>
 get_dbg_ips_pair(const axlf* top);
+
+/**
+ * get_softkernel() - Get soft kernels.
+ */
+std::vector<softkernel_object>
+get_softkernels(const axlf* top);
 
 } // xclbin
 } // xrt_core
