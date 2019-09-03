@@ -45,6 +45,7 @@
 #include <vector>
 #include <ctime>
 #include <string>
+#include <chrono>
 
 #ifndef _WINDOWS
 // TODO: Windows build support
@@ -188,6 +189,7 @@ namespace xclhwemhal2 {
 		  char info_buffer[msg_size_bytes];
 		  xclUnmgdPread(0, info_buffer, msg_size_bytes, mPerfMonFifoReadBaseAddress+xclemulation::FIFO_INFO_MESSAGES);
 		  info_msgs = std::string(info_buffer);
+		  info_msgs.erase(info_msgs.find_last_of('\n')+1);
 	  }
 
 	  strncpy(buffer,"0",4);
@@ -198,7 +200,8 @@ namespace xclhwemhal2 {
 	  if(msg_size_bytes > 0) {
 		  char warning_buffer[msg_size_bytes];
 	      xclUnmgdPread(0, warning_buffer, msg_size_bytes, mPerfMonFifoReadBaseAddress+xclemulation::FIFO_WARNING_MESSAGES);
-		  warning_msgs = warning_buffer;
+		  warning_msgs = std::string(warning_buffer);
+		  warning_msgs.erase(warning_msgs.find_last_of('\n')+1);
 	  }
 
 	  strncpy(buffer,"0",4);
@@ -210,7 +213,8 @@ namespace xclhwemhal2 {
 	  if(msg_size_bytes > 0) {
 		  char error_buffer[msg_size_bytes];
 		  xclUnmgdPread(0, error_buffer, msg_size_bytes, mPerfMonFifoReadBaseAddress+xclemulation::FIFO_ERROR_MESSAGES);
-		  error_msgs = error_buffer;
+		  error_msgs = std::string(error_buffer);
+		  error_msgs.erase(error_msgs.find_last_of('\n')+1);
 	  }
 
 	  if(mDebugLogStream.is_open() && info_msgs.empty() == false) {
@@ -254,8 +258,7 @@ namespace xclhwemhal2 {
 	if(xclemulation::config::getInstance()->isSystemDPAEnabled() == false) {
 		return;
 	}
-  	static clock_t l_time = clock();
-  	time_t currentTime;
+  	static auto l_time = std::chrono::high_resolution_clock::now();
   	std::stringstream msg;
   	std::ios::fmtflags f(msg.flags());
   	bool childAlive = true;
@@ -265,11 +268,11 @@ namespace xclhwemhal2 {
   		} else {
   			sleep(10);
   		}
-  		time(&currentTime);
   		msg.flags(f);
-  		if (((clock() - l_time) / CLOCKS_PER_SEC > 300)//todo make it configurable
+  		auto l_time_end = std::chrono::high_resolution_clock::now();
+  		if ((std::chrono::duration<double>(l_time_end - l_time).count() > 300)//todo make it configurable
   				|| childAlive == false) {
-  			l_time = clock();
+  			l_time = std::chrono::high_resolution_clock::now();
   			inst->fetchAndPrintMessages();
   		}
   	}

@@ -1397,6 +1397,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       delete mDataSpace;
       mDataSpace = NULL;
     }
+    mMessengerThread.join();
   }
 
   void HwEmShim::initMemoryManager(std::list<xclemulation::DDRBank>& DDRBankList)
@@ -1588,6 +1589,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
   void HwEmShim::xclGetDebugMessages(bool force)
   {
+    if(xclemulation::config::getInstance()->isSystemDPAEnabled() == true) {
+      return;
+    }
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
