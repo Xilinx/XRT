@@ -78,9 +78,13 @@ struct ert_packet {
 /**
  * struct ert_start_kernel_cmd: ERT start kernel command format
  *
- * @state:           [3-0] current state of a command
+ * @state:           [3-0]   current state of a command
+ * @stat_enabled:    [4]     enabled driver to record timestamp for various
+ *                           states cmd has gone through. The stat data
+ *                           is appended after cmd data.
  * @extra_cu_masks:  [11-10] extra CU masks in addition to mandatory mask
- * @count:           [22-12] number of words following header
+ * @count:           [22-12] number of words following header for cmd data. Not
+ *                           include stat data.
  * @opcode:          [27-23] 0, opcode for start_kernel
  * @type:            [31-27] 0, type of start_kernel
  *
@@ -95,8 +99,9 @@ struct ert_start_kernel_cmd {
   union {
     struct {
       uint32_t state:4;          /* [3-0]   */
-      uint32_t unused:6;         /* [9-4]  */
-      uint32_t extra_cu_masks:2; /* [11-10]  */
+      uint32_t stat_enabled:1;   /* [4]     */
+      uint32_t unused:5;         /* [9-5]   */
+      uint32_t extra_cu_masks:2; /* [11-10] */
       uint32_t count:11;         /* [22-12] */
       uint32_t opcode:5;         /* [27-23] */
       uint32_t type:4;           /* [31-27] */
@@ -338,6 +343,11 @@ enum ert_cmd_state {
   ERT_CMD_STATE_SUBMITTED = 7,
   ERT_CMD_STATE_TIMEOUT = 8,
   ERT_CMD_STATE_NORESPONSE = 9,
+  ERT_CMD_STATE_MAX, // Always the last one
+};
+
+struct cu_cmd_state_timestamps {
+  uint64_t skc_timestamps[ERT_CMD_STATE_MAX]; // In nano-second
 };
 
 /**
@@ -568,6 +578,16 @@ static inline uint64_t
 ert_copybo_size(struct ert_start_copybo_cmd *pkt)
 {
   return pkt->size;
+}
+
+#define P2ROUNDUP(x, align)     (-(-(x) & -(align)))
+static inline struct cu_cmd_state_timestamps *
+ert_start_kernel_timestamps(struct ert_start_kernel_cmd *pkt)
+{
+  uint64_t offset = pkt->count * sizeof(uint32_t) + sizeof(pkt->header);
+  /* Make sure the offset of timestamps are properly aligned. */
+  return (struct cu_cmd_state_timestamps *)
+    ((char *)pkt + P2ROUNDUP(offset, sizeof(uint64_t)));
 }
 
 #endif

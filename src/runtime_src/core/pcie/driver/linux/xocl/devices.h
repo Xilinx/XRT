@@ -1533,6 +1533,22 @@ struct xocl_subdev_map {
 		.priv_data = &XOCL_PRIV_FLASH_BLP	\
 	}
 
+#define	XOCL_RES_MAILBOX_USER_DYN			\
+	((struct resource []) {				\
+		{					\
+			.start	= 0x1f20000,		\
+			.end	= 0x1f2002F,		\
+			.flags  = IORESOURCE_MEM,	\
+		}					\
+	})
+#define	XOCL_DEVINFO_MAILBOX_USER_DYN			\
+	{						\
+		XOCL_SUBDEV_MAILBOX,			\
+		XOCL_MAILBOX,				\
+		XOCL_RES_MAILBOX_USER_DYN,		\
+		ARRAY_SIZE(XOCL_RES_MAILBOX_USER_DYN),	\
+	}
+
 
 #define	XOCL_RES_MAILBOX_USER_U50			\
 	((struct resource []) {				\
@@ -1585,6 +1601,7 @@ struct xocl_subdev_map {
 #define USER_RES_DYNAMIC_IP						\
 		((struct xocl_subdev_info []) {				\
 		 	XOCL_DEVINFO_FEATURE_ROM_USER_DYN,		\
+		 	XOCL_DEVINFO_MAILBOX_USER_DYN,			\
 		 	XOCL_DEVINFO_SCHEDULER_DYN,			\
 		 	XOCL_DEVINFO_ICAP_USER,				\
 		 	XOCL_DEVINFO_XMC_USER,				\

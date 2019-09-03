@@ -417,35 +417,6 @@ static ssize_t ulp_uuids_show(struct device *dev,
 
 static DEVICE_ATTR_RO(ulp_uuids);
 
-/* TODO: remove this after hw is ready */
-static ssize_t mbx_offset_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct xocl_dev *xdev = dev_get_drvdata(dev);
-
-	return sprintf(buf, "0x%x\n", xdev->mbx_offset);
-}
-
-static ssize_t mbx_offset_store(struct device *dev,
-		struct device_attribute *da, const char *buf, size_t count)
-{
-	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	u32 val;
-
-	if (!xdev || kstrtou32(buf, 16, &val) == -EINVAL)
-		return -EINVAL;
-
-	xdev->mbx_offset = val;
-	if (val == 0) {
-		xocl_subdev_destroy_all(xdev);
-		xocl_queue_work(xdev, XOCL_WORK_POLL_MAILBOX, 1000);
-	}
-
-	return count;
-}
-
-static DEVICE_ATTR_RW(mbx_offset);
-
 /* - End attributes-- */
 static struct attribute *xocl_attrs[] = {
 	&dev_attr_xclbinuuid.attr,
@@ -468,7 +439,6 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_interface_uuids.attr,
 	&dev_attr_logic_uuids.attr,
 	&dev_attr_ulp_uuids.attr,
-	&dev_attr_mbx_offset.attr,
 	NULL,
 };
 

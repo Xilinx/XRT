@@ -7,11 +7,10 @@ Security of Alveo Platform
    :align: center
 
 Security is built into Alveo platform hardware and software architecture. The platform
-is made up of
-two physical partitions: an immutable Shell and user compiled DFX partition. This
-design allows end users to perform Dynamic Function eXchange (Partial Reconfiguration
+is made up of two fixed physical partitions: an immutable Shell and user compiled DFX partition.
+This design allows end users to perform Dynamic Function eXchange (Partial Reconfiguration
 in classic FPGA terminology) in the well defined DFX partition while the static Shell
-provides key services.
+provides key infrastructure services.
 
 Shell
 =====
@@ -20,17 +19,18 @@ The Shell provides core infrastructure to the Alveo platform. It includes harden
 block which provides physical connectivity to the host PCIe bus via two physical functions
 as described in :ref:`platforms.rst`.
 The Shell is *trusted* partition of the Alveo platform and for all practical purposes
-should be treated as an ASIC. The Shell is loaded on system boot from PROM. The Shell
+should be treated like an ASIC. The Shell is loaded on system boot from PROM. The Shell
 cannot be changed once the system is up.
 
 In the figure above, the Shell peripherals shaded blue can only be accessed from physical
 function 0 (PF0). The Shell peripherals shaded violet can be accessed from physical
-function 1 (PF1). From PCIe topology point of view PF0 **owns** the device and performs
+function 1 (PF1). From PCIe topology point of view PF0 *owns* the device and performs
 supervisory actions on the device. Peripherals shaded blue are trusted but peripherals
-shaded violet are not. A malicious actor who has direct access to blue shaded peripherals
-can crash the device and PCIe bus. However, a malicious actor who has direct access to
-violet shaded peripherals cannot crash the device or PCIe bus. This is particularly
-significant in pass-through virtualization deployment as discussed later.
+shaded violet are not. A malicious actor with root privileges who has direct access to blue
+shaded peripherals can potentially crash both the device and PCIe bus. However, a malicious
+actor with root privileges who has direct access to only violet shaded peripherals cannot
+crash the PCIe bus. This is particularly significant in pass-through virtualization deployment
+as discussed later. Ordinary users without root privileges can never crash the PCIe bus.
 
 All peripherals in the shell except XDMA are slaves from PCIe point of view and cannot
 initiate PCIe transactions. `XDMA <https://www.xilinx.com/support/documentation/ip_documentation/xdma/v4_1/pg195-pcie-dma.pdf>`_
@@ -40,21 +40,22 @@ The Shell provides a *control* path and a *data*
 path to the user compiled image loaded on DFX partition. The Firewalls in control and data
 paths protect the Shell from un-trusted DFX partition. For example if a slave in DFX has a
 bug or is malicious the appropriate firewall will step in and protect the Shell from the
-failing slave.
+failing slave as soon as a non compiant AXI transaction is placed on AXI bus..
 
-The shell image is itself distributed as signed RPM and DEB package files by Xilinx.
-Shells may be upgraded using XRT **xbmgmt** tool by system administrators. The upgrade
-process will update the PROM.
-
+For shell update see `Shell Update`_ section below.
 
 Dynamic Function eXchange
 =========================
 
 User compiled image packaged as xclbin is loaded on the Dynamic Functional eXchange
 partition by the Shell. The image may be signed with a private key and its public
-key should be registered with Linux kernel keyring. The xclbin signature is validated by
-xclmgmt driver. This guarantees that only known good user compiled images are loaded by the
-Shell. The image load is itself effected by xclmgmt driver which binds to the PF0.
+key registered with Linux kernel keyring. The xclbin signature is validated by
+xclmgmt driver. This guarantees that only known good user compiled images are loaded by
+the Shell. The image load is itself effected by xclmgmt driver which binds to PF0.
+xclmgmt driver downloads the bitstream packaged in the bitstream section of xclbin by
+programming the ICAP peripheral. The management driver also discovers the target frequency
+of the DFX partition by reading the xclbin clock section and then programs the clocks
+which are also part of the Shell.
 
 xclbin is a container which packs FPGA bitstream for the DFX partition and host of related
 metadata like clock frequencies, information about instantiated compute units, etc. The
@@ -62,6 +63,7 @@ compute units typically expose a well defined register space on the PCIe BAR for
 XRT. An user compiled image does not have any physical path to directly interact with PCIe
 Bus. Compiled images do have access to device DDR.
 
+More information on xclbin can be found in :ref:`formats.rst`.
 
 Xclbin Generation
 =================
@@ -70,7 +72,8 @@ Users compile their Verilog/VHDL/OpenCL/C/C++ design using SDx compiler which al
 the shell specification as a second input. By construction the SDx compiler generates image
 compatible with DFX partition of the shell. The compiler uses a technology called *PR Verify*
 to ensure that the user design physically confines itself to DFX partition and does not attempt
-to overwrite portions of the Shell.
+to overwrite portions of the Shell. It also validates that all the IOs between the DFX and
+Shell are going through fixed pins exposed by Shell.
 
 
 Firewall
@@ -83,7 +86,9 @@ partition is not fully AXI-compliant or deadlocks/stalls/hangs during operation.
 partition fails AXI Firewall *trips* -- it starts completing AXI transactions on behalf of the slave so the
 master and the specific AXI bus is not impacted -- to protect the Shell. The AXI Firewall starts completing
 all transactions on behalf of misbehaving slave while also notifying the mgmt driver about the trip. The
-mgmt driver then starts taking recovery action.
+xclmgmt driver then starts taking recovery action. xclmgmt posts a message to xocl using MailBox to inform
+the peer about FireWall trip. xocl can suggest a reset by sending a reset command to xclmgmt on MailBox.
+
 
 Deployment Models
 =================
@@ -134,11 +139,11 @@ Summary
 |                              | Bare Metal | Pass-through |
 +=================+============+============+==============+
 | System admin    | xocl       | Yes        | No           |
-| trusted driver  +------------+------------+--------------+
+| trusts drivers  +------------+------------+--------------+
 |                 | xclmgmt    | Yes        | Yes          |
 +-----------------+------------+------------+--------------+
-| End user root   | xocl       | No         | Maybe        |
-| access          +------------+------------+--------------+
+| End user has    | xocl       | No         | Maybe        |
+| root access     +------------+------------+--------------+
 |                 | xclmgmt    | No         | No           |
 +-----------------+------------+------------+--------------+
 | End user can crash device    | Yes        | Yes          |
@@ -160,7 +165,7 @@ registered with appropriate key-ring. XRT supports one of three levels of securi
 with xbmgmt tool running with root privileges.
 
 =============== =================================================================
-Security level  xclmgmt driver xclbin signature verification behavior
+Security level  Xclbin signature verification behavior of xclmgmt driver
 =============== =================================================================
 0               No verification
 1               Signature verification enforced using signing certificate in
@@ -188,3 +193,11 @@ message as defined in :ref:`mailbox.main.rst`
 Currently Alveo boards are reset by using PCIe bus *hot reset* mechanism. This resets the board peripherals
 and also the PCIe link. The drivers reset their platform devices and kill all the clients which have opened
 the device node by sending them a SIGBUS.
+
+Shell Update
+============
+
+Shell update is like firmware update in conventional PCIe devices. Shell updates are distributed as signed
+RPM/DEB package files by Xilinx. Shells may be upgraded using XRT **xbmgmt** tool by system administrators
+only. The upgrade process will update the PROM. A cold reboot of host is required in In order to boot the
+platform from the updated image.
