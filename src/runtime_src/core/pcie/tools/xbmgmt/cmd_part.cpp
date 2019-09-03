@@ -36,6 +36,7 @@ const char *subCmdPartUsage =
     "--program --path xclbin [--card bdf] [--force]\n"
     "--scan [--verbose]";
 
+#define fmt_str "    "
 int program_prp(unsigned index, const std::string& xclbin, bool force)
 {
     std::ifstream stream(xclbin.c_str(), std::ios_base::binary);
@@ -59,6 +60,18 @@ int program_prp(unsigned index, const std::string& xclbin, bool force)
 
     char *buffer = new char[length];
     stream.read(buffer, length);
+
+    std::string errmsg;
+    if (force)
+    {
+        dev->sysfs_put("", "rp_program", errmsg, "3");
+        if (!errmsg.empty())
+        {
+            std::cout << errmsg << std::endl;
+            return -EINVAL;
+        }
+    }
+
     ssize_t ret = write(fd, buffer, length);
     delete [] buffer;
 
@@ -69,7 +82,6 @@ int program_prp(unsigned index, const std::string& xclbin, bool force)
     }
     close(fd);
 
-    std::string errmsg;
     if (force)
     {
         std::cout << "CAUTION: Force downloading PRP. " <<
@@ -79,7 +91,7 @@ int program_prp(unsigned index, const std::string& xclbin, bool force)
 
         dev->sysfs_put("", "rp_program", errmsg, "2");
         if (!errmsg.empty())
-	{
+        {
             std::cout << errmsg << std::endl;
             return -EINVAL;
         }
@@ -93,6 +105,7 @@ int program_prp(unsigned index, const std::string& xclbin, bool force)
             return -EINVAL;
         }
     }
+    std::cout << "Program successfully" << std::endl;
 
     return 0;
 }
@@ -120,7 +133,6 @@ int program_urp(unsigned index, const std::string& xclbin)
     return ret ? -errno : ret;
 }
 
-#define fmt_str "    "
 void scanPartitions(int index, std::vector<DSAInfo>& installedDSAs, bool verbose)
 {
     Flasher f(index);
@@ -129,14 +141,22 @@ void scanPartitions(int index, std::vector<DSAInfo>& installedDSAs, bool verbose
 
     auto dev = pcidev::get_dev(index, false);
     std::vector<std::string> uuids;
+    std::vector<std::string> int_uuids;
     std::string errmsg;
     dev->sysfs_get("", "logic_uuids", errmsg, uuids);
     if (!errmsg.empty() || uuids.size() == 0)
         return;
 
+    dev->sysfs_get("", "interface_uuids", errmsg, int_uuids);
+    if (!errmsg.empty() || int_uuids.size() == 0)
+        return;
+
+    DSAInfo dsa("", NULL_TIMESTAMP, uuids.back(), "");
+    if (dsa.name.empty())
+        return;
+
     std::cout << "Card [" << f.sGetDBDF() << "]" << std::endl;
     std::cout << fmt_str << "Programmable partition running on FPGA:" << std::endl;
-    DSAInfo dsa("", NULL_TIMESTAMP, uuids.back(), "");
     std::cout << fmt_str << fmt_str << dsa << std::endl;
 
 
@@ -149,13 +169,22 @@ void scanPartitions(int index, std::vector<DSAInfo>& installedDSAs, bool verbose
 
     for (auto& dsa : installedDSAs)
     {
+        unsigned int i;
         if (dsa.hasFlashImage || dsa.uuids.empty())
             continue;
+	for (i = 0; i < dsa.uuids.size(); i++)
+        {
+            if (int_uuids[0].compare(dsa.uuids[i]) == 0)
+                break;
+        }
+	if (i == dsa.uuids.size())
+            continue;	
+	dsa.uuids.erase(dsa.uuids.begin()+i);
 	std::cout << fmt_str << fmt_str << dsa << std::endl;
-        if (dsa.uuids.size() > 2)
+        if (dsa.uuids.size() > 1)
         {
             std::cout << fmt_str << fmt_str << fmt_str << "Interface UUID:" << std::endl;
-            for (unsigned int i = 2; i < dsa.uuids.size(); i++)
+            for (i = 1; i < dsa.uuids.size(); i++)
             {
                std::cout << fmt_str << fmt_str << fmt_str  << dsa.uuids[i] << std::endl;
             } 
@@ -280,12 +309,12 @@ int program(int argc, char *argv[])
         index = 0;
 
     DSAInfo dsa(file);
-    std::string blp_uuid;
+    std::string blp_uuid, logic_uuid;
     auto dev = pcidev::get_dev(index, false);
     std::string errmsg;
 
-    dev->sysfs_get("", "interface_uuids", errmsg, blp_uuid);
-    if (!errmsg.empty())
+    dev->sysfs_get("rom", "uuid", errmsg, logic_uuid);
+    if (!errmsg.empty() || logic_uuid.empty())
     {
         // 1RP platform
     	/* Get permission from user. */
@@ -296,20 +325,32 @@ int program(int argc, char *argv[])
                 return -ECANCELED;
         }
 
-        std::cout << "Programming URP..." << std::endl;
+        std::cout << "Programming ULP..." << std::endl;
         return program_urp(index, file);
+    }
+
+    dev->sysfs_get("", "interface_uuids", errmsg, blp_uuid);
+    if (!errmsg.empty() || blp_uuid.empty())
+    {
+        std::cout << "ERROR: Can not get BLP interface uuid. Please make sure corresponding BLP package is installed." << std::endl;
+	return -EINVAL;
+    }
+    if (dsa.uuids.size() == 0)
+    {
+        std::cout << "ERROR: Can not get uuids in " << file << std::endl;
+	return -EINVAL;
     }
 
     for (std::string uuid : dsa.uuids)
     {
         if (blp_uuid.compare(uuid) == 0)
         {
-            std::cout << "Programming PRP..." << std::endl;
+            std::cout << "Programming PLP..." << std::endl;
             return program_prp(index, file, force);
         }
     }
 
-    std::cout << "Programming URP..." << std::endl;
+    std::cout << "Programming ULP..." << std::endl;
     return program_urp(index, file);
 }
 

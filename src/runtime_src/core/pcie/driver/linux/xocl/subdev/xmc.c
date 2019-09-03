@@ -79,10 +79,16 @@
 #define	XMC_SNSR_CHKSUM_REG		0x1A4
 #define	XMC_SNSR_FLAGS_REG		0x1A8
 #define	XMC_HBM_TEMP_REG		0x260
+#define	XMC_VCC3V3_REG			0x26C
+#define	XMC_3V3_PEX_I_REG		0x278
+#define	XMC_VCC0V85_I_REG		0x284
+#define	XMC_HBM_1V2_REG			0x290
+#define	XMC_VPP2V5_REG			0x29C
+#define	XMC_VCCINT_BRAM_REG		0x2A8
+#define	XMC_HBM_TEMP2_REG		0x2B4
 #define	XMC_HOST_MSG_OFFSET_REG		0x300
 #define	XMC_HOST_MSG_ERROR_REG		0x304
 #define	XMC_HOST_MSG_HEADER_REG		0x308
-
 
 #define	VALID_ID			0x74736574
 
@@ -97,15 +103,23 @@
 //Clock scaling registers
 #define	XMC_CLOCK_CONTROL_REG		0x24
 #define	XMC_CLOCK_SCALING_EN		0x1
+#define	XMC_CLOCK_SCALING_EN_MASK	0x1
 
 #define	XMC_CLOCK_SCALING_MODE_REG	0x10
 #define	XMC_CLOCK_SCALING_MODE_POWER	0x0
 #define	XMC_CLOCK_SCALING_MODE_TEMP	0x1
 
 #define	XMC_CLOCK_SCALING_POWER_REG	0x18
-#define	XMC_CLOCK_SCALING_POWER_REG_MASK 0xFFFF
+#define	XMC_CLOCK_SCALING_POWER_TARGET_MASK 0xFF
+
 #define	XMC_CLOCK_SCALING_TEMP_REG	0x14
-#define	XMC_CLOCK_SCALING_TEMP_REG_MASK	0xFFFF
+#define	XMC_CLOCK_SCALING_TEMP_TARGET_MASK	0xFF
+
+#define	XMC_CLOCK_SCALING_THRESHOLD_REG		0x2C
+#define	XMC_CLOCK_SCALING_TEMP_THRESHOLD_POS	0
+#define	XMC_CLOCK_SCALING_TEMP_THRESHOLD_MASK	0xFF
+#define	XMC_CLOCK_SCALING_POWER_THRESHOLD_POS	8
+#define	XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK	0xFF
 
 enum ctl_mask {
 	CTL_MASK_CLEAR_POW		= 0x1,
@@ -281,7 +295,6 @@ struct xocl_xmc {
 	u32			mbx_offset;
 	struct xmc_pkt		mbx_pkt;
 	char			*bdinfo_raw;
-	u32			bdinfo_raw_sz;
 	char 			serial_num[XMC_BDINFO_ENTRY_LEN_MAX];
 	char			mac_addr0[XMC_BDINFO_ENTRY_LEN];
 	char			mac_addr1[XMC_BDINFO_ENTRY_LEN];
@@ -487,38 +500,23 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 		case VCC_0V85:
 			READ_SENSOR(xmc, XMC_VCC0V85_REG, val, val_kind);
 			break;
-		case SER_NUM:
-			memcpy(val, xmc->serial_num, XMC_BDINFO_ENTRY_LEN_MAX);
+		case VOL_VCC_3V3:
+			READ_SENSOR(xmc, XMC_VCC3V3_REG, val, val_kind);
 			break;
-		case MAC_ADDR0:
-			memcpy(val, xmc->mac_addr0, XMC_BDINFO_ENTRY_LEN);
+		case CUR_3V3_PEX:
+			READ_SENSOR(xmc, XMC_3V3_PEX_I_REG, val, val_kind);
 			break;
-		case MAC_ADDR1:
-			memcpy(val, xmc->mac_addr1, XMC_BDINFO_ENTRY_LEN);
+		case CUR_VCC_0V85:
+			READ_SENSOR(xmc, XMC_VCC0V85_I_REG, val, val_kind);
 			break;
-		case MAC_ADDR2:
-			memcpy(val, xmc->mac_addr2, XMC_BDINFO_ENTRY_LEN);
+		case VOL_HBM_1V2:
+			READ_SENSOR(xmc, XMC_HBM_1V2_REG, val, val_kind);
 			break;
-		case MAC_ADDR3:
-			memcpy(val, xmc->mac_addr3, XMC_BDINFO_ENTRY_LEN);
+		case VOL_VPP_2V5:
+			READ_SENSOR(xmc, XMC_VPP2V5_REG, val, val_kind);
 			break;
-		case REVISION:
-			memcpy(val, xmc->revision, XMC_BDINFO_ENTRY_LEN_MAX);
-			break;
-		case CARD_NAME:
-			memcpy(val, xmc->bd_name, XMC_BDINFO_ENTRY_LEN_MAX);
-			break;
-		case BMC_VER:
-			memcpy(val, xmc->bmc_ver, XMC_BDINFO_ENTRY_LEN_MAX);
-			break;
-		case MAX_PWR:
-			*val = xmc->max_power;
-			break;
-		case FAN_PRESENCE:
-			*val = xmc->fan_presence;
-			break;
-		case CFG_MODE:
-			*val = xmc->config_mode;
+		case VOL_VCCINT_BRAM:
+			READ_SENSOR(xmc, XMC_VCCINT_BRAM_REG, val, val_kind);
 			break;
 		default:
 			break;
@@ -626,38 +624,23 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 		case VCC_0V85:
 			*val = xmc->cache->vol_0v85;
 			break;
-		case SER_NUM:
-			memcpy(val, xmc->cache->serial_num, XMC_BDINFO_ENTRY_LEN_MAX);
+		case VOL_VCC_3V3:
+			*val = xmc->cache->vol_3v3_vcc;
 			break;
-		case MAC_ADDR0:
-			memcpy(val, xmc->cache->mac_addr0, XMC_BDINFO_ENTRY_LEN);
+		case CUR_3V3_PEX:
+			*val = xmc->cache->cur_3v3_pex;
 			break;
-		case MAC_ADDR1:
-			memcpy(val, xmc->cache->mac_addr1, XMC_BDINFO_ENTRY_LEN);
+		case CUR_VCC_0V85:
+			*val = xmc->cache->cur_0v85;
 			break;
-		case MAC_ADDR2:
-			memcpy(val, xmc->cache->mac_addr2, XMC_BDINFO_ENTRY_LEN);
+		case VOL_HBM_1V2:
+			*val = xmc->cache->vol_1v2_hbm;
 			break;
-		case MAC_ADDR3:
-			memcpy(val, xmc->cache->mac_addr3, XMC_BDINFO_ENTRY_LEN);
+		case VOL_VPP_2V5:
+			*val = xmc->cache->vol_2v5_vpp;
 			break;
-		case REVISION:
-			memcpy(val, xmc->cache->revision, XMC_BDINFO_ENTRY_LEN_MAX);
-			break;
-		case CARD_NAME:
-			memcpy(val, xmc->cache->bd_name, XMC_BDINFO_ENTRY_LEN_MAX);
-			break;
-		case BMC_VER:
-			memcpy(val, xmc->cache->bmc_ver, XMC_BDINFO_ENTRY_LEN_MAX);
-			break;
-		case MAX_PWR:
-			*val = xmc->cache->max_power;
-			break;
-		case FAN_PRESENCE:
-			*val = xmc->cache->fan_presence;
-			break;
-		case CFG_MODE:
-			*val = xmc->cache->config_mode;
+		case VOL_VCCINT_BRAM:
+			*val = xmc->cache->vccint_bram;
 			break;
 		default:
 			break;
@@ -665,10 +648,139 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 	}
 }
 
+static void read_bdinfo_from_peer(struct platform_device *pdev)
+{
+	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
+	struct mailbox_subdev_peer subdev_peer = {0};
+	size_t resp_len = sizeof(struct xcl_board_info);
+	size_t data_len = sizeof(struct mailbox_subdev_peer);
+	struct mailbox_req *mb_req = NULL;
+	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	int ret = 0;
+
+	if (xmc->bdinfo_raw)
+		return;
+
+	mb_req = vmalloc(reqlen);
+	if (!mb_req)
+		goto done;
+
+	xmc->bdinfo_raw = vzalloc(resp_len);
+	if (!xmc->bdinfo_raw)
+		goto done;
+
+	mb_req->req = MAILBOX_REQ_PEER_DATA;
+	subdev_peer.size = resp_len;
+	subdev_peer.kind = BDINFO;
+	subdev_peer.entries = 1;
+
+	memcpy(mb_req->data, &subdev_peer, data_len);
+
+	ret = xocl_peer_request(xdev,
+		mb_req, reqlen, xmc->bdinfo_raw, &resp_len, NULL, NULL, 0);
+done:
+	if (ret) {
+		/* if we failed to get board info from peer, free it and 
+		 * try to retrieve next time
+		 */
+		vfree(xmc->bdinfo_raw);
+		xmc->bdinfo_raw = NULL;
+	}
+	vfree(mb_req);
+}
 static void xmc_bdinfo(struct platform_device *pdev, enum data_kind kind,
 	u32 *buf)
 {
-	xmc_sensor(pdev, kind, buf, 0);
+	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
+	struct xcl_board_info *bdinfo = NULL;
+
+	if (XMC_PRIVILEGED(xmc)) {
+
+		switch (kind) {
+		case SER_NUM:
+			memcpy(buf, xmc->serial_num, XMC_BDINFO_ENTRY_LEN_MAX);
+			break;
+		case MAC_ADDR0:
+			memcpy(buf, xmc->mac_addr0, XMC_BDINFO_ENTRY_LEN);
+			break;
+		case MAC_ADDR1:
+			memcpy(buf, xmc->mac_addr1, XMC_BDINFO_ENTRY_LEN);
+			break;
+		case MAC_ADDR2:
+			memcpy(buf, xmc->mac_addr2, XMC_BDINFO_ENTRY_LEN);
+			break;
+		case MAC_ADDR3:
+			memcpy(buf, xmc->mac_addr3, XMC_BDINFO_ENTRY_LEN);
+			break;
+		case REVISION:
+			memcpy(buf, xmc->revision, XMC_BDINFO_ENTRY_LEN_MAX);
+			break;
+		case CARD_NAME:
+			memcpy(buf, xmc->bd_name, XMC_BDINFO_ENTRY_LEN_MAX);
+			break;
+		case BMC_VER:
+			memcpy(buf, xmc->bmc_ver, XMC_BDINFO_ENTRY_LEN_MAX);
+			break;
+		case MAX_PWR:
+			*buf = xmc->max_power;
+			break;
+		case FAN_PRESENCE:
+			*buf = xmc->fan_presence;
+			break;
+		case CFG_MODE:
+			*buf = xmc->config_mode;
+			break;
+		default:
+			break;
+		}
+
+	} else {
+		
+		read_bdinfo_from_peer(pdev);
+		if (!xmc->bdinfo_raw)
+			return;
+
+		bdinfo = (struct xcl_board_info *)xmc->bdinfo_raw;
+
+		switch (kind) {
+		case SER_NUM:
+			memcpy(buf, bdinfo->serial_num, XMC_BDINFO_ENTRY_LEN_MAX);
+			break;
+		case MAC_ADDR0:
+			memcpy(buf, bdinfo->mac_addr0, XMC_BDINFO_ENTRY_LEN);
+			break;
+		case MAC_ADDR1:
+			memcpy(buf, bdinfo->mac_addr1, XMC_BDINFO_ENTRY_LEN);
+			break;
+		case MAC_ADDR2:
+			memcpy(buf, bdinfo->mac_addr2, XMC_BDINFO_ENTRY_LEN);
+			break;
+		case MAC_ADDR3:
+			memcpy(buf, bdinfo->mac_addr3, XMC_BDINFO_ENTRY_LEN);
+			break;
+		case REVISION:
+			memcpy(buf, bdinfo->revision, XMC_BDINFO_ENTRY_LEN_MAX);
+			break;
+		case CARD_NAME:
+			memcpy(buf, bdinfo->bd_name, XMC_BDINFO_ENTRY_LEN_MAX);
+			break;
+		case BMC_VER:
+			memcpy(buf, bdinfo->bmc_ver, XMC_BDINFO_ENTRY_LEN_MAX);
+			break;
+		case MAX_PWR:
+			*buf = bdinfo->max_power;
+			break;
+		case FAN_PRESENCE:
+			*buf = bdinfo->fan_presence;
+			break;
+		case CFG_MODE:
+			*buf = bdinfo->config_mode;
+			break;
+		default:
+			break;
+		}
+	}
 }
 static bool autonomous_xmc(struct platform_device *pdev)
 {
@@ -677,61 +789,96 @@ static bool autonomous_xmc(struct platform_device *pdev)
 	return core->priv.flags & XOCL_DSAFLAG_SMARTN;
 }
 
-static int xmc_get_data(struct platform_device *pdev, void *buf)
+static int xmc_get_data(struct platform_device *pdev, enum group_kind kind, void *buf)
 {
-	struct xcl_sensor *sensors = (struct xcl_sensor *)buf;
+	struct xcl_sensor *sensors = NULL;
+	struct xcl_board_info *bdinfo = NULL;
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
 
 	if (XMC_PRIVILEGED(xmc) && !xmc->mgmt_binary)
 		return -ENODEV;
 
-	xmc_sensor(pdev, VOL_12V_PEX, &sensors->vol_12v_pex, SENSOR_INS);
-	xmc_sensor(pdev, VOL_12V_AUX, &sensors->vol_12v_aux, SENSOR_INS);
-	xmc_sensor(pdev, CUR_12V_PEX, &sensors->cur_12v_pex, SENSOR_INS);
-	xmc_sensor(pdev, CUR_12V_AUX, &sensors->cur_12v_aux, SENSOR_INS);
-	xmc_sensor(pdev, VOL_3V3_PEX, &sensors->vol_3v3_pex, SENSOR_INS);
-	xmc_sensor(pdev, VOL_3V3_AUX, &sensors->vol_3v3_aux, SENSOR_INS);
-	xmc_sensor(pdev, VPP_BTM, &sensors->ddr_vpp_btm, SENSOR_INS);
-	xmc_sensor(pdev, VOL_5V5_SYS, &sensors->sys_5v5, SENSOR_INS);
-	xmc_sensor(pdev, VOL_1V2_TOP, &sensors->top_1v2, SENSOR_INS);
-	xmc_sensor(pdev, VOL_1V8, &sensors->vol_1v8, SENSOR_INS);
-	xmc_sensor(pdev, VCC_0V85, &sensors->vol_0v85, SENSOR_INS);
-	xmc_sensor(pdev, VPP_TOP, &sensors->ddr_vpp_top, SENSOR_INS);
-	xmc_sensor(pdev, VCC_0V9A, &sensors->mgt0v9avcc, SENSOR_INS);
-	xmc_sensor(pdev, VOL_12V_SW, &sensors->vol_12v_sw, SENSOR_INS);
-	xmc_sensor(pdev, VTT_MGTA, &sensors->mgtavtt, SENSOR_INS);
-	xmc_sensor(pdev, VOL_1V2_BTM, &sensors->vcc1v2_btm, SENSOR_INS);
-	xmc_sensor(pdev, FPGA_TEMP, &sensors->fpga_temp, SENSOR_INS);
-	xmc_sensor(pdev, FAN_TEMP, &sensors->fan_temp, SENSOR_INS);
-	xmc_sensor(pdev, FAN_RPM, &sensors->fan_rpm, SENSOR_INS);
-	xmc_sensor(pdev, DIMM0_TEMP, &sensors->dimm_temp0, SENSOR_INS);
-	xmc_sensor(pdev, DIMM1_TEMP, &sensors->dimm_temp1, SENSOR_INS);
-	xmc_sensor(pdev, DIMM2_TEMP, &sensors->dimm_temp2, SENSOR_INS);
-	xmc_sensor(pdev, DIMM3_TEMP, &sensors->dimm_temp3, SENSOR_INS);
-	xmc_sensor(pdev, VOL_VCC_INT, &sensors->vccint_vol, SENSOR_INS);
-	xmc_sensor(pdev, CUR_VCC_INT, &sensors->vccint_curr, SENSOR_INS);
-	xmc_sensor(pdev, SE98_TEMP0, &sensors->se98_temp0, SENSOR_INS);
-	xmc_sensor(pdev, SE98_TEMP1, &sensors->se98_temp1, SENSOR_INS);
-	xmc_sensor(pdev, SE98_TEMP2, &sensors->se98_temp2, SENSOR_INS);
-	xmc_sensor(pdev, CAGE_TEMP0, &sensors->cage_temp0, SENSOR_INS);
-	xmc_sensor(pdev, CAGE_TEMP1, &sensors->cage_temp1, SENSOR_INS);
-	xmc_sensor(pdev, CAGE_TEMP2, &sensors->cage_temp2, SENSOR_INS);
-	xmc_sensor(pdev, CAGE_TEMP3, &sensors->cage_temp3, SENSOR_INS);
-	xmc_sensor(pdev, HBM_TEMP, &sensors->hbm_temp0, SENSOR_INS);
-	xmc_bdinfo(pdev, SER_NUM, (u32 *)sensors->serial_num);
-	xmc_bdinfo(pdev, MAC_ADDR0, (u32 *)sensors->mac_addr0);
-	xmc_bdinfo(pdev, MAC_ADDR1, (u32 *)sensors->mac_addr1);
-	xmc_bdinfo(pdev, MAC_ADDR2, (u32 *)sensors->mac_addr2);
-	xmc_bdinfo(pdev, MAC_ADDR3, (u32 *)sensors->mac_addr3);
-	xmc_bdinfo(pdev, REVISION, (u32 *)sensors->revision);
-	xmc_bdinfo(pdev, CARD_NAME, (u32 *)sensors->bd_name);
-	xmc_bdinfo(pdev, BMC_VER, (u32 *)sensors->bmc_ver);
-	xmc_bdinfo(pdev, MAX_PWR, &sensors->max_power);
-	xmc_bdinfo(pdev, FAN_PRESENCE, &sensors->fan_presence);
-	xmc_bdinfo(pdev, CFG_MODE, &sensors->config_mode);
+	switch (kind) {
+	case SENSOR:
+		sensors = (struct xcl_sensor *)buf;
+
+		xmc_sensor(pdev, VOL_12V_PEX, &sensors->vol_12v_pex, SENSOR_INS);
+		xmc_sensor(pdev, VOL_12V_AUX, &sensors->vol_12v_aux, SENSOR_INS);
+		xmc_sensor(pdev, CUR_12V_PEX, &sensors->cur_12v_pex, SENSOR_INS);
+		xmc_sensor(pdev, CUR_12V_AUX, &sensors->cur_12v_aux, SENSOR_INS);
+		xmc_sensor(pdev, VOL_3V3_PEX, &sensors->vol_3v3_pex, SENSOR_INS);
+		xmc_sensor(pdev, VOL_3V3_AUX, &sensors->vol_3v3_aux, SENSOR_INS);
+		xmc_sensor(pdev, VPP_BTM, &sensors->ddr_vpp_btm, SENSOR_INS);
+		xmc_sensor(pdev, VOL_5V5_SYS, &sensors->sys_5v5, SENSOR_INS);
+		xmc_sensor(pdev, VOL_1V2_TOP, &sensors->top_1v2, SENSOR_INS);
+		xmc_sensor(pdev, VOL_1V8, &sensors->vol_1v8, SENSOR_INS);
+		xmc_sensor(pdev, VCC_0V85, &sensors->vol_0v85, SENSOR_INS);
+		xmc_sensor(pdev, VPP_TOP, &sensors->ddr_vpp_top, SENSOR_INS);
+		xmc_sensor(pdev, VCC_0V9A, &sensors->mgt0v9avcc, SENSOR_INS);
+		xmc_sensor(pdev, VOL_12V_SW, &sensors->vol_12v_sw, SENSOR_INS);
+		xmc_sensor(pdev, VTT_MGTA, &sensors->mgtavtt, SENSOR_INS);
+		xmc_sensor(pdev, VOL_1V2_BTM, &sensors->vcc1v2_btm, SENSOR_INS);
+		xmc_sensor(pdev, FPGA_TEMP, &sensors->fpga_temp, SENSOR_INS);
+		xmc_sensor(pdev, FAN_TEMP, &sensors->fan_temp, SENSOR_INS);
+		xmc_sensor(pdev, FAN_RPM, &sensors->fan_rpm, SENSOR_INS);
+		xmc_sensor(pdev, DIMM0_TEMP, &sensors->dimm_temp0, SENSOR_INS);
+		xmc_sensor(pdev, DIMM1_TEMP, &sensors->dimm_temp1, SENSOR_INS);
+		xmc_sensor(pdev, DIMM2_TEMP, &sensors->dimm_temp2, SENSOR_INS);
+		xmc_sensor(pdev, DIMM3_TEMP, &sensors->dimm_temp3, SENSOR_INS);
+		xmc_sensor(pdev, VOL_VCC_INT, &sensors->vccint_vol, SENSOR_INS);
+		xmc_sensor(pdev, CUR_VCC_INT, &sensors->vccint_curr, SENSOR_INS);
+		xmc_sensor(pdev, SE98_TEMP0, &sensors->se98_temp0, SENSOR_INS);
+		xmc_sensor(pdev, SE98_TEMP1, &sensors->se98_temp1, SENSOR_INS);
+		xmc_sensor(pdev, SE98_TEMP2, &sensors->se98_temp2, SENSOR_INS);
+		xmc_sensor(pdev, CAGE_TEMP0, &sensors->cage_temp0, SENSOR_INS);
+		xmc_sensor(pdev, CAGE_TEMP1, &sensors->cage_temp1, SENSOR_INS);
+		xmc_sensor(pdev, CAGE_TEMP2, &sensors->cage_temp2, SENSOR_INS);
+		xmc_sensor(pdev, CAGE_TEMP3, &sensors->cage_temp3, SENSOR_INS);
+		xmc_sensor(pdev, HBM_TEMP, &sensors->hbm_temp0, SENSOR_INS);
+		xmc_sensor(pdev, VOL_VCC_3V3, &sensors->vol_3v3_vcc, SENSOR_INS);
+		xmc_sensor(pdev, CUR_3V3_PEX, &sensors->cur_3v3_pex, SENSOR_INS);
+		xmc_sensor(pdev, CUR_VCC_0V85, &sensors->cur_0v85, SENSOR_INS);
+		xmc_sensor(pdev, VOL_HBM_1V2, &sensors->vol_1v2_hbm, SENSOR_INS);
+		xmc_sensor(pdev, VOL_VPP_2V5, &sensors->vol_2v5_vpp, SENSOR_INS);
+		xmc_sensor(pdev, VOL_VCCINT_BRAM, &sensors->vccint_bram, SENSOR_INS);
+		break;
+	case BDINFO:
+		bdinfo = (struct xcl_board_info *)buf;
+
+		xmc_bdinfo(pdev, SER_NUM, (u32 *)bdinfo->serial_num);
+		xmc_bdinfo(pdev, MAC_ADDR0, (u32 *)bdinfo->mac_addr0);
+		xmc_bdinfo(pdev, MAC_ADDR1, (u32 *)bdinfo->mac_addr1);
+		xmc_bdinfo(pdev, MAC_ADDR2, (u32 *)bdinfo->mac_addr2);
+		xmc_bdinfo(pdev, MAC_ADDR3, (u32 *)bdinfo->mac_addr3);
+		xmc_bdinfo(pdev, REVISION, (u32 *)bdinfo->revision);
+		xmc_bdinfo(pdev, CARD_NAME, (u32 *)bdinfo->bd_name);
+		xmc_bdinfo(pdev, BMC_VER, (u32 *)bdinfo->bmc_ver);
+		xmc_bdinfo(pdev, MAX_PWR, &bdinfo->max_power);
+		xmc_bdinfo(pdev, FAN_PRESENCE, &bdinfo->fan_presence);
+		xmc_bdinfo(pdev, CFG_MODE, &bdinfo->config_mode);
+		break;
+	default:
+		break;
+	}
 	return 0;
 }
 
+uint64_t xmc_get_power(struct platform_device *pdev, enum sensor_val_kind kind)
+{
+	u32 v_pex, v_aux, v_3v3, c_pex, c_aux, c_3v3;
+	u64 val = 0;
+
+	xmc_sensor(pdev, VOL_12V_PEX, &v_pex, kind);
+	xmc_sensor(pdev, VOL_12V_AUX, &v_aux, kind);
+	xmc_sensor(pdev, CUR_12V_PEX, &c_pex, kind);
+	xmc_sensor(pdev, CUR_12V_AUX, &c_aux, kind);
+	xmc_sensor(pdev, VOL_3V3_PEX, &v_3v3, kind);
+	xmc_sensor(pdev, CUR_3V3_PEX, &c_3v3, kind);
+
+	val = (u64)v_pex * c_pex + (u64)v_aux * c_aux + (u64)v_3v3 * c_3v3;
+
+	return val;
+}
 /*
  * Defining sysfs nodes for all sensor readings.
  */
@@ -777,6 +924,24 @@ SENSOR_SYSFS_NODE(xmc_cage_temp0, CAGE_TEMP0);
 SENSOR_SYSFS_NODE(xmc_cage_temp1, CAGE_TEMP1);
 SENSOR_SYSFS_NODE(xmc_cage_temp2, CAGE_TEMP2);
 SENSOR_SYSFS_NODE(xmc_cage_temp3, CAGE_TEMP3);
+SENSOR_SYSFS_NODE(xmc_3v3_vcc_vol, VOL_VCC_3V3);
+SENSOR_SYSFS_NODE(xmc_3v3_pex_curr, CUR_3V3_PEX);
+SENSOR_SYSFS_NODE(xmc_0v85_curr, CUR_VCC_0V85);
+SENSOR_SYSFS_NODE(xmc_hbm_1v2_vol, VOL_HBM_1V2);
+SENSOR_SYSFS_NODE(xmc_vpp2v5_vol, VOL_VPP_2V5);
+SENSOR_SYSFS_NODE(xmc_vccint_bram_vol, VOL_VCCINT_BRAM);
+SENSOR_SYSFS_NODE(xmc_hbm_temp, HBM_TEMP);
+
+static ssize_t xmc_power_show(struct device *dev,
+	struct device_attribute *da, char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u64 val = xmc_get_power(xmc->pdev, SENSOR_INS);
+
+	return sprintf(buf, "%lld\n", val);
+}
+static DEVICE_ATTR_RO(xmc_power);
+
 #define	SENSOR_SYSFS_NODE_ATTRS						\
 	&dev_attr_xmc_12v_pex_vol.attr,					\
 	&dev_attr_xmc_12v_aux_vol.attr,					\
@@ -809,7 +974,15 @@ SENSOR_SYSFS_NODE(xmc_cage_temp3, CAGE_TEMP3);
 	&dev_attr_xmc_cage_temp0.attr,					\
 	&dev_attr_xmc_cage_temp1.attr,					\
 	&dev_attr_xmc_cage_temp2.attr,					\
-	&dev_attr_xmc_cage_temp3.attr
+	&dev_attr_xmc_cage_temp3.attr,					\
+	&dev_attr_xmc_3v3_vcc_vol.attr,					\
+	&dev_attr_xmc_3v3_pex_curr.attr,				\
+	&dev_attr_xmc_0v85_curr.attr,					\
+	&dev_attr_xmc_hbm_1v2_vol.attr,					\
+	&dev_attr_xmc_vpp2v5_vol.attr,					\
+	&dev_attr_xmc_vccint_bram_vol.attr,				\
+	&dev_attr_xmc_hbm_temp.attr,					\
+	&dev_attr_xmc_power.attr
 
 /*
  * Defining sysfs nodes for reading some of xmc regisers.
@@ -1006,7 +1179,8 @@ static ssize_t scaling_governor_show(struct device *dev,
 	char val[10];
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "runtime clock scaling is not supported\n");
+		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+			 __func__);
 		return -EIO;
 	}
 	mutex_lock(&xmc->xmc_lock);
@@ -1033,7 +1207,8 @@ static ssize_t scaling_governor_store(struct device *dev,
 
 	/* Check if clock scaling feature enabled */
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "runtime clock scaling is not supported\n");
+		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+			 __func__);
 		return -EIO;
 	}
 
@@ -1053,36 +1228,6 @@ static ssize_t scaling_governor_store(struct device *dev,
 	return count;
 }
 static DEVICE_ATTR_RW(scaling_governor);
-
-static ssize_t scaling_cur_temp_show(struct device *dev,
-	struct device_attribute *da, char *buf)
-{
-	struct platform_device *pdev = to_platform_device(dev);
-	u32 board_temp;
-
-	xmc_sensor(pdev, FPGA_TEMP, &board_temp, SENSOR_INS);
-
-	return sprintf(buf, "%d\n", board_temp);
-}
-static DEVICE_ATTR_RO(scaling_cur_temp);
-
-static ssize_t scaling_cur_power_show(struct device *dev,
-	struct device_attribute *da, char *buf)
-{
-	struct platform_device *pdev = to_platform_device(dev);
-	u32 mPexCurr, m12VPex, mAuxCurr, m12VAux, board_power;
-
-	//Measure board power in terms of Watts and store it in register
-	xmc_sensor(pdev, VOL_12V_PEX, &m12VPex, SENSOR_INS);
-	xmc_sensor(pdev, VOL_12V_AUX, &m12VAux, SENSOR_INS);
-	xmc_sensor(pdev, CUR_12V_PEX, &mPexCurr, SENSOR_INS);
-	xmc_sensor(pdev, CUR_12V_AUX, &mAuxCurr, SENSOR_INS);
-
-	board_power = ((mPexCurr * m12VPex) + (mAuxCurr * m12VAux)) / 1000000;
-
-	return sprintf(buf, "%d\n", board_power);
-}
-static DEVICE_ATTR_RO(scaling_cur_power);
 
 static ssize_t scaling_enabled_show(struct device *dev,
 	struct device_attribute *da, char *buf)
@@ -1107,94 +1252,160 @@ static ssize_t scaling_enabled_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(scaling_enabled);
 
-static ssize_t scaling_target_power_show(struct device *dev,
+static ssize_t hwmon_scaling_target_power_show(struct device *dev,
 	struct device_attribute *da, char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "runtime clock scaling is not supported\n");
+		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+			 __func__);
 		return -EIO;
 	}
 	mutex_lock(&xmc->xmc_lock);
 	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_POWER_REG);
-	val &= XMC_CLOCK_SCALING_POWER_REG_MASK;
+	val &= XMC_CLOCK_SCALING_POWER_TARGET_MASK;
+	val = val * 1000000;
 	mutex_unlock(&xmc->xmc_lock);
 
 	return sprintf(buf, "%uW\n", val);
 }
 
-static ssize_t scaling_target_power_store(struct device *dev,
+static ssize_t hwmon_scaling_target_power_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
-	u32 val, val2;
+	u32 val, val2, threshold;
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "runtime clock scaling is not supported\n");
+		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+			 __func__);
 		return -EIO;
 	}
 
 	if (kstrtou32(buf, 10, &val) == -EINVAL)
 		return -EINVAL;
 
-	//TODO: Check if the threshold power is in board spec limits.
+	val = val / 1000000;
+
 	mutex_lock(&xmc->xmc_lock);
 	val2 = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_POWER_REG);
-	val2 &= ~XMC_CLOCK_SCALING_POWER_REG_MASK;
-	val2 |= (val & XMC_CLOCK_SCALING_POWER_REG_MASK);
+	threshold = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
+	threshold = (threshold >> XMC_CLOCK_SCALING_POWER_THRESHOLD_POS) &
+		XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK;
+
+	//Check if the threshold power is in board spec limits.
+	if (val > threshold) {
+		mutex_unlock(&xmc->xmc_lock);
+		return -EINVAL;
+	}
+
+	val2 &= ~XMC_CLOCK_SCALING_POWER_TARGET_MASK;
+	val2 |= (val & XMC_CLOCK_SCALING_POWER_TARGET_MASK);
 	WRITE_RUNTIME_CS(xmc, val2, XMC_CLOCK_SCALING_POWER_REG);
 	mutex_unlock(&xmc->xmc_lock);
 
 	return count;
 }
-static DEVICE_ATTR_RW(scaling_target_power);
 
-static ssize_t scaling_target_temp_show(struct device *dev,
+static ssize_t hwmon_scaling_target_temp_show(struct device *dev,
 	struct device_attribute *da, char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 val;
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "runtime clock scaling is not supported\n");
+		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+			 __func__);
 		return -EIO;
 	}
 	mutex_lock(&xmc->xmc_lock);
 	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_TEMP_REG);
-	val &= XMC_CLOCK_SCALING_TEMP_REG_MASK;
+	val &= XMC_CLOCK_SCALING_TEMP_TARGET_MASK;
+	val = val * 1000;
 	mutex_unlock(&xmc->xmc_lock);
 
 	return sprintf(buf, "%uc\n", val);
 }
 
-static ssize_t scaling_target_temp_store(struct device *dev,
+static ssize_t hwmon_scaling_target_temp_store(struct device *dev,
 		struct device_attribute *da, const char *buf, size_t count)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
-	u32 val, val2;
+	u32 val, val2, threshold;
 
 	/* Check if clock scaling feature enabled */
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "runtime clock scaling is not supported\n");
+		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+			 __func__);
 		return -EIO;
 	}
 
 	if (kstrtou32(buf, 10, &val) == -EINVAL)
 		return -EINVAL;
 
-	//TODO: Check if the threshold temperature is in board spec limits.
 	mutex_lock(&xmc->xmc_lock);
 	val2 = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_TEMP_REG);
-	val2 &= ~XMC_CLOCK_SCALING_TEMP_REG_MASK;
-	val2 |= (val & XMC_CLOCK_SCALING_TEMP_REG_MASK);
+	threshold = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
+	threshold = (threshold >> XMC_CLOCK_SCALING_TEMP_THRESHOLD_POS) &
+		XMC_CLOCK_SCALING_TEMP_THRESHOLD_MASK;
+
+	//Check if the threshold temperature is in board spec limits.
+	if (val > threshold) {
+		mutex_unlock(&xmc->xmc_lock);
+		return -EINVAL;
+	}
+
+	val2 &= ~XMC_CLOCK_SCALING_TEMP_TARGET_MASK;
+	val2 |= (val & XMC_CLOCK_SCALING_TEMP_TARGET_MASK);
 	WRITE_RUNTIME_CS(xmc, val2, XMC_CLOCK_SCALING_TEMP_REG);
 	mutex_unlock(&xmc->xmc_lock);
 
 	return count;
 }
-static DEVICE_ATTR_RW(scaling_target_temp);
+
+static ssize_t hwmon_scaling_threshold_temp_show(struct device *dev,
+	struct device_attribute *da, char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	if (!xmc->runtime_cs_enabled) {
+		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+			 __func__);
+		return -EIO;
+	}
+	mutex_lock(&xmc->xmc_lock);
+	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
+	val = (val >> XMC_CLOCK_SCALING_TEMP_THRESHOLD_POS) &
+		XMC_CLOCK_SCALING_TEMP_THRESHOLD_MASK;
+	val = val * 1000;
+	mutex_unlock(&xmc->xmc_lock);
+
+	return sprintf(buf, "%uc\n", val);
+}
+
+static ssize_t hwmon_scaling_threshold_power_show(struct device *dev,
+	struct device_attribute *da, char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val;
+
+	if (!xmc->runtime_cs_enabled) {
+		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+			 __func__);
+		return -EIO;
+	}
+	mutex_lock(&xmc->xmc_lock);
+	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
+	val = (val >> XMC_CLOCK_SCALING_POWER_THRESHOLD_POS) &
+		XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK;
+	val = val * 1000000;
+	mutex_unlock(&xmc->xmc_lock);
+
+	return sprintf(buf, "%uW\n", val);
+}
 
 static ssize_t reg_base_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -1272,10 +1483,6 @@ static struct attribute *xmc_attrs[] = {
 	&dev_attr_reset.attr,
 	&dev_attr_cache_expire_secs.attr,
 	&dev_attr_scaling_enabled.attr,
-	&dev_attr_scaling_cur_temp.attr,
-	&dev_attr_scaling_cur_power.attr,
-	&dev_attr_scaling_target_temp.attr,
-	&dev_attr_scaling_target_power.attr,
 	&dev_attr_scaling_governor.attr,
 	&dev_attr_serial_num.attr,
 	&dev_attr_mac_addr0.attr,
@@ -1437,14 +1644,8 @@ static ssize_t hwmon_power_show(struct device *dev,
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	int index = to_sensor_dev_attr(da)->index;
-	u32 v_pex, v_aux, c_pex, c_aux;
-	u64 val;
+	u64 val = xmc_get_power(pdev, HWMON_INDEX2VAL_KIND(index));
 
-	xmc_sensor(pdev, VOL_12V_PEX, &v_pex, HWMON_INDEX2VAL_KIND(index));
-	xmc_sensor(pdev, VOL_12V_AUX, &v_aux, HWMON_INDEX2VAL_KIND(index));
-	xmc_sensor(pdev, CUR_12V_PEX, &c_pex, HWMON_INDEX2VAL_KIND(index));
-	xmc_sensor(pdev, CUR_12V_AUX, &c_aux, HWMON_INDEX2VAL_KIND(index));
-	val = (u64)v_pex * c_pex + (u64)v_aux * c_aux;
 	return sprintf(buf, "%lld\n", val);
 }
 
@@ -1464,6 +1665,23 @@ static ssize_t hwmon_power_show(struct device *dev,
 	&sensor_dev_attr_power##id##_input.dev_attr.attr,		\
 	&sensor_dev_attr_power##id##_label.dev_attr.attr
 
+#define HWMON_CLOCKSCALING_SYSFS_NODE(type, id, name)			\
+	static ssize_t type##id##_label(struct device *dev,		\
+		struct device_attribute *attr, char *buf) {		\
+		return sprintf(buf, "%s\n", name);			\
+	}								\
+	static SENSOR_DEVICE_ATTR(type##id##_max, 0444,			\
+		hwmon_scaling_threshold_##type##_show, NULL, 0);	\
+	static SENSOR_DEVICE_ATTR(type##id##_input, 0644,		\
+		hwmon_scaling_target_##type##_show,			\
+		hwmon_scaling_target_##type##_store, 0);		\
+	static SENSOR_DEVICE_ATTR(type##id##_label, 0444,		\
+		type##id##_label, NULL, HWMON_INDEX(0, SENSOR_INS))
+#define HWMON_CLOCKSCALING_ATTRS(type, id)				\
+	&sensor_dev_attr_##type##id##_max.dev_attr.attr,		\
+	&sensor_dev_attr_##type##id##_input.dev_attr.attr,		\
+	&sensor_dev_attr_##type##id##_label.dev_attr.attr
+
 HWMON_VOLT_CURR_SYSFS_NODE(in, 0, "12V PEX", VOL_12V_PEX);
 HWMON_VOLT_CURR_SYSFS_NODE(in, 1, "12V AUX", VOL_12V_AUX);
 HWMON_VOLT_CURR_SYSFS_NODE(in, 2, "3V3 PEX", VOL_3V3_PEX);
@@ -1479,9 +1697,15 @@ HWMON_VOLT_CURR_SYSFS_NODE(in, 11, "0V85", VCC_0V85);
 HWMON_VOLT_CURR_SYSFS_NODE(in, 12, "MGT VTT", VTT_MGTA);
 HWMON_VOLT_CURR_SYSFS_NODE(in, 13, "DDR VPP BOTTOM", VPP_BTM);
 HWMON_VOLT_CURR_SYSFS_NODE(in, 14, "DDR VPP TOP", VPP_TOP);
+HWMON_VOLT_CURR_SYSFS_NODE(in, 15, "VCC 3V3", VOL_VCC_3V3);
+HWMON_VOLT_CURR_SYSFS_NODE(in, 16, "1V2 HBM", VOL_HBM_1V2);
+HWMON_VOLT_CURR_SYSFS_NODE(in, 17, "2V5 VPP", VOL_VPP_2V5);
+HWMON_VOLT_CURR_SYSFS_NODE(in, 18, "VCC INT BRAM", VOL_VCCINT_BRAM);
 HWMON_VOLT_CURR_SYSFS_NODE(curr, 1, "12V PEX Current", CUR_12V_PEX);
 HWMON_VOLT_CURR_SYSFS_NODE(curr, 2, "12V AUX Current", CUR_12V_AUX);
 HWMON_VOLT_CURR_SYSFS_NODE(curr, 3, "VCC INT Current", CUR_VCC_INT);
+HWMON_VOLT_CURR_SYSFS_NODE(curr, 4, "3V3 PEX Current", CUR_3V3_PEX);
+HWMON_VOLT_CURR_SYSFS_NODE(curr, 5, "VCC 0V85 Current", CUR_VCC_0V85);
 HWMON_TEMPERATURE_SYSFS_NODE(1, "PCB TOP FRONT", SE98_TEMP0);
 HWMON_TEMPERATURE_SYSFS_NODE(2, "PCB TOP REAR", SE98_TEMP1);
 HWMON_TEMPERATURE_SYSFS_NODE(3, "PCB BTM FRONT", SE98_TEMP2);
@@ -1498,6 +1722,9 @@ HWMON_TEMPERATURE_SYSFS_NODE(13, "QSPF 2", CAGE_TEMP2);
 HWMON_TEMPERATURE_SYSFS_NODE(14, "QSPF 3", CAGE_TEMP3);
 HWMON_FAN_SPEED_SYSFS_NODE(1, "FAN SPEED", FAN_RPM);
 HWMON_POWER_SYSFS_NODE(1, "POWER");
+HWMON_CLOCKSCALING_SYSFS_NODE(power, 2, "CS_TARGET_POWER");
+HWMON_CLOCKSCALING_SYSFS_NODE(temp, 15, "CS_TARGET_TEMP");
+
 static struct attribute *hwmon_xmc_attributes[] = {
 	HWMON_VOLT_CURR_ATTRS(in, 0),
 	HWMON_VOLT_CURR_ATTRS(in, 1),
@@ -1514,9 +1741,15 @@ static struct attribute *hwmon_xmc_attributes[] = {
 	HWMON_VOLT_CURR_ATTRS(in, 12),
 	HWMON_VOLT_CURR_ATTRS(in, 13),
 	HWMON_VOLT_CURR_ATTRS(in, 14),
+	HWMON_VOLT_CURR_ATTRS(in, 15),
+	HWMON_VOLT_CURR_ATTRS(in, 16),
+	HWMON_VOLT_CURR_ATTRS(in, 17),
+	HWMON_VOLT_CURR_ATTRS(in, 18),
 	HWMON_VOLT_CURR_ATTRS(curr, 1),
 	HWMON_VOLT_CURR_ATTRS(curr, 2),
 	HWMON_VOLT_CURR_ATTRS(curr, 3),
+	HWMON_VOLT_CURR_ATTRS(curr, 4),
+	HWMON_VOLT_CURR_ATTRS(curr, 5),
 	HWMON_TEMPERATURE_ATTRS(1),
 	HWMON_TEMPERATURE_ATTRS(2),
 	HWMON_TEMPERATURE_ATTRS(3),
@@ -1533,6 +1766,8 @@ static struct attribute *hwmon_xmc_attributes[] = {
 	HWMON_TEMPERATURE_ATTRS(14),
 	HWMON_FAN_SPEED_ATTRS(1),
 	HWMON_POWER_ATTRS(1),
+	HWMON_CLOCKSCALING_ATTRS(power, 2),
+	HWMON_CLOCKSCALING_ATTRS(temp, 15),
 	NULL
 };
 
@@ -1827,6 +2062,10 @@ static int load_xmc(struct xocl_xmc *xmc)
 	xmc->state = XMC_STATE_ENABLED;
 
 	xmc->cap = READ_REG32(xmc, XMC_FEATURE_REG);
+
+	if (XMC_PRIVILEGED(xmc) && xocl_clk_scale_on(xdev_hdl))
+		xmc_clk_scale_config(xmc->pdev);
+
 out:
 	mutex_unlock(&xmc->xmc_lock);
 
@@ -1937,7 +2176,6 @@ static void xmc_unload_board_info(struct xocl_xmc *xmc)
 	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
 	vfree(xmc->bdinfo_raw);
 	xmc->bdinfo_raw = NULL;
-	xmc->bdinfo_raw_sz = 0;
 }
 
 static int xmc_remove(struct platform_device *pdev)
@@ -2023,8 +2261,6 @@ static int xmc_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, xmc);
 
 	for (i = 0; i < NUM_IOADDR; i++) {
-		if ((i == IO_CLK_SCALING) && !xmc->runtime_cs_enabled)
-			continue;
 		res = platform_get_resource(pdev, IORESOURCE_MEM, i);
 		if (res) {
 			xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx",
@@ -2075,7 +2311,6 @@ static int xmc_probe(struct platform_device *pdev)
 	 */
 	if (XMC_PRIVILEGED(xmc) && xocl_clk_scale_on(xdev_hdl)) {
 		xmc->runtime_cs_enabled = true;
-		xmc_clk_scale_config(pdev);
 		xocl_info(&pdev->dev, "Runtime clock scaling is supported.\n");
 	}
 
@@ -2088,11 +2323,9 @@ static int xmc_probe(struct platform_device *pdev)
 		xocl_info(&pdev->dev, "XMC mailbox offset: 0x%x.\n", val);
 	}
 
-
 	mutex_lock(&xmc->mbx_lock);
 	xmc_load_board_info(xmc);
 	mutex_unlock(&xmc->mbx_lock);
-
 	return 0;
 
 failed:
@@ -2308,10 +2541,10 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 
 	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
 
-	if (XMC_PRIVILEGED(xmc)) {
+	if (xmc->bdinfo_loaded)
+		return 0;
 
-		if (xmc->bdinfo_loaded)
-			return 0;
+	if (XMC_PRIVILEGED(xmc)) {
 
 		if ((!is_xmc_ready(xmc) || !is_sc_ready(xmc)))
 			return -EINVAL;
@@ -2347,6 +2580,12 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		xmc->bdinfo_loaded = true;
 		vfree(bdinfo_raw);
 	} else {
+
+		if (xmc->bdinfo_raw) {
+			xocl_info(&xmc->pdev->dev, "board info loaded, skip\n");
+			return 0;
+		}
+
 		xmc_bdinfo(xmc->pdev, SER_NUM, (u32 *)xmc->serial_num);
 		xmc_bdinfo(xmc->pdev, MAC_ADDR0, (u32 *)xmc->mac_addr0);
 		xmc_bdinfo(xmc->pdev, MAC_ADDR1, (u32 *)xmc->mac_addr1);
@@ -2358,6 +2597,9 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		xmc_bdinfo(xmc->pdev, MAX_PWR, &xmc->max_power);
 		xmc_bdinfo(xmc->pdev, FAN_PRESENCE, &xmc->fan_presence);
 		xmc_bdinfo(xmc->pdev, CFG_MODE, &xmc->config_mode);
+
+		if (xmc->bdinfo_raw)
+			xmc->bdinfo_loaded = true;
 	}
 	return 0;
 }

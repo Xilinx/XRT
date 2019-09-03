@@ -76,6 +76,7 @@ enum mailbox_request {
 	MAILBOX_REQ_MGMT_STATE =	12,
 	MAILBOX_REQ_CHG_SHELL =		13,
 	MAILBOX_REQ_PROGRAM_SHELL =	14,
+	MAILBOX_REQ_READ_P2P_BAR_ADDR =	15,
 	/* Version 0 OP code ends */
 };
 
@@ -93,16 +94,35 @@ struct mailbox_req_bitstream_lock {
  * enum group_kind - Groups of data that can be fetched from mgmt side
  * @SENSOR: all kinds of sensor readings
  * @ICAP: ICAP IP related information
- * @MGMT: mgmt side specific information
+ * @BDINFO: Board Info, serial_num, mac_address
+ * @MIG_ECC: ECC statistics
+ * @FIREWALL: AF detected time, status
  */
 enum group_kind {
 	SENSOR = 0,
 	ICAP,
-	MGMT,
+	BDINFO,
 	MIG_ECC,
 	FIREWALL,
 	DNA,
 	SUBDEV,
+};
+
+/**
+ * struct xcl_board_info - Data structure used to fetch BDINFO group
+ */
+struct xcl_board_info {
+	char	 serial_num[256];
+	char	 mac_addr0[32];
+	char	 mac_addr1[32];
+	char	 mac_addr2[32];
+	char	 mac_addr3[32];
+	char	 revision[256];
+	char	 bd_name[256];
+	char	 bmc_ver[256];
+	uint32_t max_power;
+	uint32_t fan_presence;
+	uint32_t config_mode;
 };
 
 /**
@@ -142,23 +162,18 @@ struct xcl_sensor {
 	uint32_t cage_temp2;
 	uint32_t cage_temp3;
 	uint32_t hbm_temp0;
-	char	 serial_num[256];
-	char	 mac_addr0[32];
-	char	 mac_addr1[32];
-	char	 mac_addr2[32];
-	char	 mac_addr3[32];
-	char	 revision[256];
-	char	 bd_name[256];
-	char	 bmc_ver[256];
-	uint32_t max_power;
-	uint32_t fan_presence;
-	uint32_t config_mode;
+	uint32_t cur_3v3_pex;
+	uint32_t cur_0v85;
+	uint32_t vol_3v3_vcc;
+	uint32_t vol_1v2_hbm;
+	uint32_t vol_2v5_vpp;
+	uint32_t vccint_bram;
 };
 
 /**
  * struct xcl_hwicap - Data structure used to fetch ICAP group
  */
-struct xcl_hwicap {
+struct xcl_pr_region {
 	uint64_t freq_0;
 	uint64_t freq_1;
 	uint64_t freq_2;
@@ -169,15 +184,8 @@ struct xcl_hwicap {
 	uint64_t freq_cntr_3;
 	uint64_t idcode;
 	uint8_t uuid[UUID_SZ];
-};
-
-/**
- * struct xcl_common - Data structure used to fetch MGMT group
- */
-struct xcl_common {
 	uint64_t mig_calib;
 };
-
 
 /**
  * struct xcl_mig_ecc -  Data structure used to fetch MIG_ECC group
@@ -223,8 +231,8 @@ struct xcl_subdev {
 	uint32_t ver;
 	int32_t rtncode;
 	uint64_t checksum;
-	size_t size;
-	size_t offset;
+	uint64_t size;
+	uint64_t offset;
 	uint64_t data[1];
 };
 /**
@@ -234,9 +242,10 @@ struct xcl_subdev {
  */
 struct mailbox_subdev_peer {
 	enum group_kind kind;
-	size_t size;
+	uint32_t padding;
+	uint64_t size;
 	uint64_t entries;
-	size_t offset;
+	uint64_t offset;
 };
 
 /**
@@ -333,5 +342,14 @@ struct sw_chan {
 	char data[1]; /* variable length of payload */
 };
 
+/**
+ * struct mailbox_p2p_bar_addr
+ * @bar_addr: p2p bar address
+ * @bar_len: p2p bar length
+ */
+struct mailbox_p2p_bar_addr {
+	uint64_t  p2p_bar_addr;
+	uint64_t  p2p_bar_len;
+};
 
 #endif /* _XCL_MB_PROTOCOL_H_ */

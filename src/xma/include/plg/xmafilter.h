@@ -65,6 +65,9 @@ typedef struct XmaFilterSession
     //int32_t               conn_send_handle; /**< downstream kernel */
     //uint64_t              out_dev_addr; /**< paddr of device output buffer */
     //bool                  zerocopy_dest; /**< flag indicating destination supports zerocopy */
+    void                 *private_session_data; //Managed by host video application
+    int32_t              private_session_data_size; //Managed by host video application
+
     /** Reserved */
     uint32_t        reserved[4];
 } XmaFilterSession;

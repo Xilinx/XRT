@@ -119,7 +119,7 @@ SectionClockFrequencyTopology::marshalToJSON(char* _pDataSection,
     clock_freq.put("m_type", getClockTypeStr((enum CLOCK_TYPE)pHdr->m_clock_freq[index].m_type).c_str());
     clock_freq.put("m_name", XUtil::format("%s", pHdr->m_clock_freq[index].m_name).c_str());
 
-    m_clock_freq.add_child("clock_freq", clock_freq);
+    m_clock_freq.push_back(std::make_pair("", clock_freq));   // Used to make an array of objects
   }
 
   clock_freq_topology.add_child("m_clock_freq", m_clock_freq);

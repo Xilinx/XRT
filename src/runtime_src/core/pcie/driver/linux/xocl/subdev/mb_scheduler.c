@@ -61,6 +61,7 @@
 #include <linux/list.h>
 #include <linux/eventfd.h>
 #include <linux/kthread.h>
+#include <linux/ktime.h>
 #include <ert.h>
 #include "../xocl_drv.h"
 #include "../userpf/common.h"
@@ -84,11 +85,13 @@
 # define SCHED_DEBUGF(format, ...) DRM_INFO(format, ##__VA_ARGS__)
 # define SCHED_PRINTF(format, ...) DRM_INFO(format, ##__VA_ARGS__)
 # define SCHED_DEBUG_PACKET(packet, size) sched_debug_packet(packet, size)
+# define SCHED_PRINT_PACKET(packet, size) sched_debug_packet(packet, size)
 #else
 # define SCHED_DEBUG(msg)
 # define SCHED_DEBUGF(format, ...)
 # define SCHED_PRINTF(format, ...) DRM_INFO(format, ##__VA_ARGS__)
 # define SCHED_DEBUG_PACKET(packet, size)
+# define SCHED_PRINT_PACKET(packet, size) sched_debug_packet(packet, size)
 #endif
 
 #define csr_read32(base, r_off)			\
@@ -98,6 +101,9 @@
 
 /* Highest bit in ip_reference indicate if it's exclusively reserved. */
 #define	IP_EXCL_RSVD_MASK	(~(1 << 31))
+
+#define	CU_ADDR_HANDSHAKE_MASK	(0xff)
+#define	CU_ADDR_VALID(addr)	(((addr) | CU_ADDR_HANDSHAKE_MASK) != -1)
 
 /* constants */
 static const unsigned int no_index = -1;
@@ -237,6 +243,8 @@ struct xocl_cmd {
 	unsigned long uid;      // unique id for this command
 	unsigned int  cu_idx;   // index of CU running this cmd (penguin mode)
 	unsigned int  slot_idx; // index in exec core submit queue
+
+	bool timestamp_enabled;
 };
 
 /*
@@ -335,12 +343,13 @@ cmd_payload_size(struct xocl_cmd *xcmd)
  * cmd_packet_size() - Command packet size
  *
  * @xcmd: Command object
- * Return: Size in number of words of command packet
+ * Return: Size in number of uint32_t of command packet
  */
 static inline unsigned int
 cmd_packet_size(struct xocl_cmd *xcmd)
 {
-	return cmd_payload_size(xcmd) + 1;
+	return cmd_payload_size(xcmd) +
+		sizeof(xcmd->ert_pkt->header) / sizeof(uint32_t);
 }
 
 /**
@@ -383,6 +392,16 @@ cmd_regmap(struct xocl_cmd *xcmd)
 	return xcmd->ert_cu->data + xcmd->ert_cu->extra_cu_masks;
 }
 
+static inline void
+cmd_record_timestamp(struct xocl_cmd *xcmd, enum ert_cmd_state state)
+{
+	if (!xcmd->timestamp_enabled)
+		return;
+
+	ert_start_kernel_timestamps(xcmd->ert_cu)->
+		skc_timestamps[state] = ktime_to_ns(ktime_get());
+}
+
 /**
  * cmd_set_int_state() - Set internal command state used by scheduler only
  *
@@ -393,6 +412,7 @@ static inline void
 cmd_set_int_state(struct xocl_cmd *xcmd, enum ert_cmd_state state)
 {
 	SCHED_DEBUGF("-> %s(%lu,%d)\n", __func__, xcmd->uid, state);
+	cmd_record_timestamp(xcmd, state);
 	xcmd->state = state;
 	SCHED_DEBUGF("<- %s\n", __func__);
 }
@@ -410,6 +430,7 @@ static inline void
 cmd_set_state(struct xocl_cmd *xcmd, enum ert_cmd_state state)
 {
 	SCHED_DEBUGF("->%s(%lu,%d)\n", __func__, xcmd->uid, state);
+	cmd_record_timestamp(xcmd, state);
 	xcmd->state = state;
 	xcmd->ert_pkt->state = state;
 	SCHED_DEBUGF("<-%s\n", __func__);
@@ -563,6 +584,7 @@ cmd_get(struct xocl_scheduler *xs, struct exec_core *exec, struct client_ctx *cl
 	xcmd->ert_pkt = NULL;
 	xcmd->chain_count = 0;
 	xcmd->wait_count = 0;
+	xcmd->timestamp_enabled = false;
 	atomic_inc(&client->outstanding_execs);
 	SCHED_DEBUGF("xcmd(%lu) xcmd(%p) [-> new ]\n", xcmd->uid, xcmd);
 	return xcmd;
@@ -609,6 +631,23 @@ cmd_abort(struct xocl_cmd *xcmd)
 	SCHED_DEBUGF("xcmd(%lu) [-> abort]\n", xcmd->uid);
 }
 
+static inline bool
+cmd_can_enable_timestamps(struct xocl_cmd *xcmd)
+{
+	struct ert_start_kernel_cmd *pkt = xcmd->ert_cu;
+
+	if (cmd_type(xcmd) != ERT_CU || !xcmd->ert_cu->stat_enabled)
+		return false;
+
+	if ((char *)ert_start_kernel_timestamps(pkt) +
+		sizeof(struct cu_cmd_state_timestamps) >
+		(char *)pkt + xcmd->bo->base.size) {
+		userpf_err(xcmd->xdev, "no space for timestamps in exec buf");
+		return false;
+	}
+	return true;
+}
+
 /*
  * cmd_bo_init() - Initialize a command object with an exec BO
  *
@@ -623,6 +662,8 @@ cmd_bo_init(struct xocl_cmd *xcmd, struct drm_xocl_bo *bo,
 	SCHED_DEBUGF("%s(%lu,bo,%d,deps,%d)\n", __func__, xcmd->uid, numdeps, penguin);
 	xcmd->bo = bo;
 	xcmd->ert_pkt = (struct ert_packet *)bo->vmapping;
+
+	xcmd->timestamp_enabled = cmd_can_enable_timestamps(xcmd);
 
 	// in kds mode copy pkt cus to command object cu bitmap
 	if (penguin && cmd_type(xcmd) == ERT_CU) {
@@ -789,7 +830,7 @@ cu_reset(struct xocl_cu *xcu, unsigned int idx, void __iomem *base, u32 addr, vo
 	xcu->idx = idx;
 	xcu->control = (addr & 0x7); // bits [2-0]
 	xcu->base = base;
-	xcu->addr = addr & ~(0xFF);  // clear encoded handshake and context
+	xcu->addr = addr & ~CU_ADDR_HANDSHAKE_MASK;  // clear encoded handshake and context
 	xcu->polladdr = polladdr;
 	xcu->ap_check = (xcu->control == AP_CTRL_CHAIN) ? (AP_DONE) : (AP_DONE | AP_IDLE);
 	xcu->ctrlreg = 0;
@@ -836,7 +877,7 @@ cu_dataflow(struct xocl_cu *xcu)
 static inline bool
 cu_valid(struct xocl_cu *xcu)
 {
-	return xcu->control != AP_CTRL_NONE;
+	return CU_ADDR_VALID(xcu->addr);
 }
 
 static void
@@ -3677,8 +3718,16 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 	u32 ctx_cus[4] = {0};
 	u32 cumasks = 0;
 	int err = 0;
+	u64 bo_size = bo->base.size;
 
 	SCHED_DEBUGF("-> %s opcode(%d)\n", __func__, ecmd->opcode);
+
+	// Before accessing content of exec buf, make sure the size makes sense
+	if (bo_size < sizeof(*ecmd) ||
+		bo_size < sizeof(ecmd->header) + ecmd->count * sizeof(u32)) {
+		userpf_err(xocl_get_xdev(pdev), "exec buf is too small\n");
+		return 1;
+	}
 
 	// cus for start kernel commands only
 	if (ecmd->type != ERT_CU)

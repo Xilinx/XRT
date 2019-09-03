@@ -24,9 +24,6 @@
 extern "C" {
 #endif
 
-/**
- * typedef XmaKernelPlugin - XmaKernel plugin interface
-*/
 typedef struct XmaKernelSession XmaKernelSession;
 
 /**
@@ -66,6 +63,8 @@ typedef struct XmaKernelSession
     XmaSession            base; /**< base class of XmaKernelSession */
     XmaKernelProperties   kernel_props; /**< application supplied properites */
     XmaKernelPlugin      *kernel_plugin; /**< pointer to plugin driver */
+    void                 *private_session_data; //Managed by host video application
+    int32_t              private_session_data_size; //Managed by host video application
     /** Reserved */
     uint32_t        reserved[4];
 } XmaKernelSession;

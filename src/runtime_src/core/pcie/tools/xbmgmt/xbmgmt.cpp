@@ -26,6 +26,8 @@
 #include <sstream>
 #include <algorithm>
 #include <climits>
+#include <version.h>
+#include <fstream>
 
 struct subCmd {
     std::function<int(int, char **)> handler;
@@ -36,6 +38,7 @@ struct subCmd {
 static const std::map<std::string, struct subCmd> subCmdList = {
     { "help", {helpHandler, subCmdHelpDesc, subCmdHelpUsage} },
     { "version", {versionHandler, subCmdVersionDesc, subCmdVersionUsage} },
+    { "--version", {versionHandler, subCmdVersionDesc, subCmdVersionUsage} },
     { "scan", {scanHandler, subCmdScanDesc, subCmdScanUsage} },
     { "flash", {flashHandler, subCmdFlashDesc, subCmdFlashUsage} },
     { "reset", {resetHandler, subCmdResetDesc, subCmdResetUsage} },
@@ -125,6 +128,25 @@ void printSubCmdHelp(const std::string& subCmd)
     }
 }
 
+int xrt_xbmgmt_version_cmp() 
+{
+    /*check xbutil tools and xrt versions*/
+    std::string xrt = std::string(xrt_build_version) + "," + std::string(xrt_build_version_hash);
+    if ( driver_version("xclmgmt") != "unknown" &&
+        xrt.compare(driver_version("xclmgmt") ) != 0 ) {
+        std::cout << "\nERROR: Mixed versions of XRT and xbmgmt are not supported. \
+            \nPlease install matching versions of XRT and xbmgmt or  \
+            \ndefine env variable INTERNAL_BUILD to disable this check\n" << std::endl;
+        return -1;
+    }
+    return 0;
+}
+
+bool getenv_or_null(const char* env)
+{ 
+    return getenv(env) ? true : false; 
+}
+
 int main(int argc, char *argv[])
 {
     if (argc < 2) {
@@ -134,6 +156,15 @@ int main(int argc, char *argv[])
 
     std::string subCmd(argv[1]);
     auto cmd = subCmdList.find(subCmd);
+
+    //do not proceed if xbmgmt and xrt versions don't match 
+    //unless cmd is version or help or INTERNAL_BUILD is set
+    if ( subCmd.find("version") == std::string::npos && subCmd.compare("help") != 0 
+            && !getenv_or_null("INTERNAL_BUILD") ) { 
+        if ( xrt_xbmgmt_version_cmp() != 0 )
+        return -EINVAL;
+    }
+
     if (cmd == subCmdList.end()) {
         printHelp();
         return -EINVAL;

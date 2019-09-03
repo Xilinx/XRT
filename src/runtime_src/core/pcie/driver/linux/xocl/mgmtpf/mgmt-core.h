@@ -22,6 +22,7 @@
 #include <linux/signal.h>
 #include <linux/init_task.h>
 #include <linux/mutex.h>
+#include <linux/iommu.h>
 #include <linux/pci.h>
 #include <linux/delay.h>
 #include <linux/time.h>

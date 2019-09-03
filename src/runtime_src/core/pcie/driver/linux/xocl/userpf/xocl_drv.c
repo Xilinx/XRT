@@ -59,6 +59,40 @@ static void xocl_mb_connect(struct xocl_dev *xdev);
 static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	u64 msgid, int err, bool sw_ch);
 
+static void xocl_mb_read_p2p_addr(struct xocl_dev *xdev)
+{
+	struct pci_dev *pdev = xdev->core.pdev;
+	struct mailbox_req *mb_req = NULL;
+	struct mailbox_p2p_bar_addr *mb_p2p = NULL;
+	size_t mb_p2p_len, reqlen;
+	int ret = 0;
+	size_t resplen = sizeof(ret);
+
+	mb_p2p_len = sizeof(struct mailbox_p2p_bar_addr);
+	reqlen = sizeof(struct mailbox_req) + mb_p2p_len;
+	mb_req = vzalloc(reqlen);
+	if (!mb_req) {
+		userpf_err(xdev, "dropped request (%d), mem alloc issue\n",
+				MAILBOX_REQ_READ_P2P_BAR_ADDR);
+		return;
+	}
+
+	mb_req->req = MAILBOX_REQ_READ_P2P_BAR_ADDR;
+	mb_p2p = (struct mailbox_p2p_bar_addr *)mb_req->data;
+	mb_p2p->p2p_bar_len = pci_resource_len(pdev, xdev->p2p_bar_idx);
+	mb_p2p->p2p_bar_addr = pci_resource_start(pdev, xdev->p2p_bar_idx);
+
+	ret = xocl_peer_request(xdev, mb_req, reqlen, &ret, &resplen, NULL,
+							NULL, 0);
+	if (ret) {
+		userpf_info(xdev, "dropped request (%d), failed with err: %d %d\n",
+					MAILBOX_REQ_READ_P2P_BAR_ADDR, ret);
+		return;
+	}
+
+	vfree(mb_req);
+}
+
 static int userpf_intr_config(xdev_handle_t xdev_hdl, u32 intr, bool en)
 {
 	return xocl_dma_intr_config(xdev_hdl, intr, en);
@@ -128,9 +162,9 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 	userpf_info(xdev, "program shell...");
 
 
-	xocl_drvinst_set_offline(xdev, true);
+	xocl_drvinst_set_offline(xdev->core.drm, true);
 	if (force)
-		xocl_drvinst_kill_proc(xdev);
+		xocl_drvinst_kill_proc(xdev->core.drm);
 
 	if (XOCL_DRM(xdev))
 		xocl_cleanup_mem(XOCL_DRM(xdev));
@@ -196,7 +230,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 	userpf_info(xdev, "resetting device...");
 
 	if (force)
-		xocl_drvinst_kill_proc(xdev);
+		xocl_drvinst_kill_proc(xdev->core.drm);
 
 	xocl_reset_notify(xdev->core.pdev, true);
 
@@ -208,39 +242,9 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 
 	xocl_reset_notify(xdev->core.pdev, false);
 
-	xocl_drvinst_set_offline(xdev, false);
+	xocl_drvinst_set_offline(xdev->core.drm, false);
 
 	return ret;
-}
-
-static int xocl_poll_mailbox(struct xocl_dev *xdev)
-{
-	int ret;
-
-	/* TODO: should replace with checking pci register after hw is ready */
-	if (xdev->mbx_offset) {
-		struct xocl_subdev_info mbx_info = XOCL_DEVINFO_MAILBOX_PRP;
-
-		mbx_info.res[0].start += xdev->mbx_offset;
-		mbx_info.res[0].end += xdev->mbx_offset;
-		ret = xocl_subdev_create(xdev, &mbx_info);
-		if (ret) {
-			xocl_xdev_err(xdev, "failed to create mailbox %d", ret);
-			return ret;
-		}
-
-		ret = xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
-		if (ret) {
-			xocl_xdev_err(xdev, "failed xocl_peer_listen %d", ret);
-			return ret;
-		}
-		xocl_mb_connect(xdev);
-	} else  {
-		xocl_xdev_dbg(xdev, "polling mbx offset");
-		xocl_queue_work(xdev, XOCL_WORK_POLL_MAILBOX, 1000);
-	}
-
-	return 0;
 }
 
 /* pci driver callbacks */
@@ -260,9 +264,6 @@ static void xocl_work_cb(struct work_struct *work)
 		break;
 	case XOCL_WORK_REFRESH_SUBDEV:
 		(void) xocl_refresh_subdevs(xdev);
-		break;
-	case XOCL_WORK_POLL_MAILBOX:
-		(void) xocl_poll_mailbox(xdev);
 		break;
 	default:
 		xocl_xdev_err(xdev, "Invalid op code %d", _work->op);
@@ -384,6 +385,7 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	switch (req->req) {
 	case MAILBOX_REQ_FIREWALL:
 		userpf_info(xdev, "firewall tripped, request reset");
+		xocl_drvinst_set_offline(xdev->core.drm, true);
 		xocl_queue_work(xdev, XOCL_WORK_RESET, XOCL_RESET_DELAY);
 		break;
 	case MAILBOX_REQ_MGMT_STATE:
@@ -428,51 +430,20 @@ void get_pcie_link_info(struct xocl_dev *xdev,
 	*link_speed = stat & PCI_EXP_LNKSTA_CLS;
 }
 
-static uint64_t xocl_read_from_peer(struct xocl_dev *xdev, enum data_kind kind)
+uint64_t xocl_get_data(struct xocl_dev *xdev, enum data_kind kind)
 {
-	struct mailbox_subdev_peer subdev_peer = {0};
-	struct xcl_common resp = {0};
-	size_t resp_len = sizeof(resp);
-	size_t data_len = sizeof(struct mailbox_subdev_peer);
-	struct mailbox_req *mb_req = NULL;
-	size_t reqlen = sizeof(struct mailbox_req) + data_len;
-	int err = 0, ret = 0;
-
-	userpf_info(xdev, "reading from peer\n");
-	mb_req = vmalloc(reqlen);
-	if (!mb_req)
-		return ret;
-
-	mb_req->req = MAILBOX_REQ_PEER_DATA;
-
-	subdev_peer.size = resp_len;
-	subdev_peer.kind = MGMT;
-	subdev_peer.entries = 1;
-
-	memcpy(mb_req->data, &subdev_peer, data_len);
-
-	err = xocl_peer_request(xdev,
-		mb_req, reqlen, &resp, &resp_len, NULL, NULL, 0);
-
-	if (err)
-		goto done;
+	uint64_t ret = 0;
 
 	switch (kind) {
 	case MIG_CALIB:
-		ret = resp.mig_calib;
+		ret = xocl_icap_get_data(xdev, MIG_CALIB);
 		break;
 	default:
 		userpf_err(xdev, "dropped bad request (%d)\n", kind);
 		break;
 	}
-done:
-	vfree(mb_req);
-	return ret;
-}
 
-uint64_t xocl_get_data(struct xocl_dev *xdev, enum data_kind kind)
-{
-	return xocl_read_from_peer(xdev, kind);
+	return ret;
 }
 
 int xocl_refresh_subdevs(struct xocl_dev *xdev)
@@ -553,7 +524,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	blob = NULL;
 
 
-	xocl_drvinst_set_offline(xdev, true);
+	xocl_drvinst_set_offline(xdev->core.drm, true);
 	if (xdev->core.fdt_blob) {
 		ret = xocl_fdt_blob_input(xdev, xdev->core.fdt_blob);
 		if (ret) {
@@ -574,7 +545,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	}
 	(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 	(void) xocl_mb_connect(xdev);
-	xocl_drvinst_set_offline(xdev, false);
+	xocl_drvinst_set_offline(xdev->core.drm, false);
 
 failed:
 	if (blob)
@@ -652,6 +623,9 @@ void xocl_p2p_mem_release(struct xocl_dev *xdev, bool recov_bar_sz)
 		xocl_info(&pdev->dev, "Resize p2p bar %d to %d M ", p2p_bar,
 			(1 << XOCL_PA_SECTION_SHIFT));
 	}
+
+	//Reset Virtualization registers
+	(void) xocl_mb_read_p2p_addr(xdev);
 }
 
 int xocl_p2p_mem_reserve(struct xocl_dev *xdev)
@@ -747,6 +721,9 @@ int xocl_p2p_mem_reserve(struct xocl_dev *xdev)
 	}
 #endif
 	devres_close_group(&pdev->dev, xdev->p2p_res_grp);
+
+	//Pass P2P bar address and len to mgmtpf
+	(void) xocl_mb_read_p2p_addr(xdev);
 
 	return 0;
 
@@ -1025,13 +1002,12 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 
 	/* Launch the mailbox server. */
 	ret = xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
-	if (!ret) {
-		/* Say hi to peer via mailbox. */
-		(void) xocl_mb_connect(xdev);
-	} else if (ret == -ENODEV) {
-		/* 2RP workaround: Mailbox is in PRP, polling mbx address */
-		xocl_queue_work(xdev, XOCL_WORK_POLL_MAILBOX, 1000);
+	if (ret) {
+		xocl_err(&pdev->dev, "mailbox subdev is not created");
+		goto failed;
 	}
+	/* Say hi to peer via mailbox. */
+	(void) xocl_mb_connect(xdev);
 
 	return 0;
 

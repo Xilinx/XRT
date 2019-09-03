@@ -242,7 +242,7 @@ static ssize_t dev_offline_show(struct device *dev,
 	bool offline;
 	int val;
 
-	val = xocl_drvinst_get_offline(xdev, &offline);
+	val = xocl_drvinst_get_offline(xdev->core.drm, &offline);
 	if (!val)
 		val = offline ? 1 : 0;
 
@@ -353,6 +353,48 @@ static ssize_t ready_show(struct device *dev,
 
 static DEVICE_ATTR_RO(ready);
 
+static ssize_t interface_uuids_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	const void *uuid;
+	int node = -1, off = 0;
+
+	if (!xdev->core.fdt_blob)
+		return -EINVAL;
+
+	for (node = xocl_fdt_get_next_prop_by_name(xdev, xdev->core.fdt_blob,
+		-1, PROP_INTERFACE_UUID, &uuid, NULL);
+		uuid && node > 0;
+		node = xocl_fdt_get_next_prop_by_name(xdev, xdev->core.fdt_blob,
+		node, PROP_INTERFACE_UUID, &uuid, NULL))
+		off += sprintf(buf + off, "%s\n", (char *)uuid);
+
+	return off;
+}
+
+static DEVICE_ATTR_RO(interface_uuids);
+
+static ssize_t logic_uuids_show(struct device *dev,
+		        struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	const void *uuid = NULL;
+	int node = -1, off = 0;
+
+	if (!xdev->core.fdt_blob)
+		return -EINVAL;
+
+	node = xocl_fdt_get_next_prop_by_name(xdev, xdev->core.fdt_blob,
+		-1, PROP_LOGIC_UUID, &uuid, NULL);
+	if (uuid && node >= 0)
+		off += sprintf(buf + off, "%s\n", (char *)uuid);
+
+	return off;
+}
+
+static DEVICE_ATTR_RO(logic_uuids);
+
 static ssize_t ulp_uuids_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -375,31 +417,6 @@ static ssize_t ulp_uuids_show(struct device *dev,
 
 static DEVICE_ATTR_RO(ulp_uuids);
 
-/* TODO: remove this after hw is ready */
-static ssize_t mbx_offset_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct xocl_dev *xdev = dev_get_drvdata(dev);
-
-	return sprintf(buf, "0x%x\n", xdev->mbx_offset);
-}
-
-static ssize_t mbx_offset_store(struct device *dev,
-		struct device_attribute *da, const char *buf, size_t count)
-{
-	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	u32 val;
-
-	if (!xdev || kstrtou32(buf, 16, &val) == -EINVAL)
-		return -EINVAL;
-
-	xdev->mbx_offset = val;
-
-	return count;
-}
-
-static DEVICE_ATTR_RW(mbx_offset);
-
 /* - End attributes-- */
 static struct attribute *xocl_attrs[] = {
 	&dev_attr_xclbinuuid.attr,
@@ -419,8 +436,9 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_config_mailbox_channel_switch.attr,
 	&dev_attr_config_mailbox_comm_id.attr,
 	&dev_attr_ready.attr,
+	&dev_attr_interface_uuids.attr,
+	&dev_attr_logic_uuids.attr,
 	&dev_attr_ulp_uuids.attr,
-	&dev_attr_mbx_offset.attr,
 	NULL,
 };
 

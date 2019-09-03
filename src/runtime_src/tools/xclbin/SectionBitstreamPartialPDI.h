@@ -42,7 +42,7 @@ class SectionBitstreamPartialPDI : public Section {
   // Static initializer helper class
   static class _init {
    public:
-    _init() { registerSectionCtor(BITSTREAM_PARTIAL_PDI, "BITSTREAM_PARTIAL_PDI", "", false, boost::factory<SectionBitstreamPartialPDI*>()); }
+    _init() { registerSectionCtor(BITSTREAM_PARTIAL_PDI, "BITSTREAM_PARTIAL_PDI", "", false, false, boost::factory<SectionBitstreamPartialPDI*>()); }
   } _initializer;
 };
 

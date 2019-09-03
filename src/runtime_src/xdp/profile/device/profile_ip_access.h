@@ -23,7 +23,7 @@
 #include <iostream>
 #include "xclbin.h"
 #include "core/include/xclperf.h"
-#include "xrt/device/device.h"
+#include "xdp_base_device.h"
 
 namespace xdp {
 
@@ -52,7 +52,7 @@ public:
      * During the construction, the exclusive access to this
      * IP will be requested, otherwise exception will be thrown.
      */
-    ProfileIP(void* handle /** < [in] the xrt hal device handle */, 
+    ProfileIP(Device* handle /** < [in] the xrt or hal device handle */, 
                 int index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data *data = nullptr);
 
     /**
@@ -67,14 +67,14 @@ public:
      * (driver) and set the exclusive flag if exclusive access is 
      * granted.
      */
-    virtual void request_exclusive_ip_access(void* handle, int index);
+    virtual void request_exclusive_ip_access(int index);
 
     /**
      * The release_exclusive_ip_access API will release the exclusive
      * access granted to this IP to prevent potential card hang, and clear
      * the exclusive flag if success.
      */
-    virtual void release_exclusive_ip_access(void* handle, int index);
+    virtual void release_exclusive_ip_access(int index);
 
     /**
      * The map API tries to map the IP specified into user space. The 
@@ -140,7 +140,7 @@ public:
 
 //    bool   isOnEdgeDevice();
 private:
-    void* xrt_device_handle;  /* the xrt device handle from the hal layer */
+    xdp::Device* device;      /* device handle */
     bool  mapped;             /* flag to keep track of if the ip has been mapped */
     bool  exclusive;          /* flag indicating if the IP has exclusive access */
     uint64_t ip_index;        /* the index of the IP in debug_ip_layout */
@@ -152,7 +152,7 @@ protected:
 
     std::ostream* out_stream = nullptr; /* Output stream for log */
 
-    xrt::device* getXRTDevice() { return (xrt::device*)xrt_device_handle; }
+    xdp::Device* getDevice() { return device; }
 
     /**
      * TODO: the exclusive context from hal

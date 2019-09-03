@@ -43,7 +43,9 @@ typedef enum {
     XMA_DECODER,    /**< 2 */
     XMA_FILTER,     /**< 3 */
     XMA_KERNEL,     /**< 4 */
-} XmaSessionType;   /**< 5 */
+    XMA_ADMIN,      /**< 5 */
+    XMA_INVALID
+} XmaSessionType;
 
 /**
  * typedef struct XmaChannel - This is the output parameter for the alloc_chan_mp function. The
@@ -175,6 +177,19 @@ typedef struct XmaSession {
     void          *stats;
   
 } XmaSession;
+
+typedef struct XmaCUCmdObj
+{
+    int32_t     cu_index;
+    bool        cmd_finished;
+
+    //Below is private area
+    uint32_t    cmd_id1;
+    int32_t     cmd_id2;
+    void        *do_not_use1;
+} XmaCUCmdObj;
+
+
 
 /**
  * is_xma_decoder() - Determine if XmaSession is a member of XmaDecoderSession

@@ -148,7 +148,7 @@ SectionMemTopology::marshalToJSON(char* _pDataSection,
     mem_data.put("m_tag", XUtil::format("%s", pHdr->m_mem_data[index].m_tag).c_str());
     mem_data.put("m_base_address", XUtil::format("0x%lx", pHdr->m_mem_data[index].m_base_address).c_str());
 
-    m_mem_data.add_child("mem_data", mem_data);
+    m_mem_data.push_back(std::make_pair("", mem_data));   // Used to make an array of objects
   }
 
   mem_topology.add_child("m_mem_data", m_mem_data);
