@@ -32,6 +32,8 @@
 #include <unordered_map>
 #include <cstring>
 #include <array>
+#include <random>
+#include <chrono>
 
 #define MIN_EXECBO_POOL_SIZE      16
 #define MAX_EXECBO_BUFF_SIZE      4096// 4KB
@@ -59,12 +61,14 @@ typedef struct XmaCUCmdObjPrivate
 {
     //uint32_t cmd_id1;//Serial roll-over counter;
     //cmd1 is key of the map
-    uint32_t cmd_id2;//Random number
+    int32_t cmd_id2;//Random number
     int32_t   cu_id;
+    int32_t   execbo_id;
 
   XmaCUCmdObjPrivate() {
     cmd_id2 = 0;
-    cu_id = false;
+    cu_id = -1;
+    execbo_id = -1;
   }
 } XmaCUCmdObjPrivate;
 
@@ -83,7 +87,7 @@ typedef struct XmaHwSessionPrivate
 
     uint32_t reserved[4];
 
-  XmaHwSessionPrivate(): reg_map_locked(new std::atomic<bool>)  {
+  XmaHwSessionPrivate(): reg_map_locked(new std::atomic<bool>) {
    dev_handle = NULL;
    kernel_info = NULL;
    //std::memset(reg_map, 0, sizeof(reg_map));
@@ -187,6 +191,8 @@ typedef struct XmaHwExecBO
     bool        in_use;
     int32_t     cu_index;
     int32_t     session_id;
+    uint32_t    cu_cmd_id1;//Counter
+    int32_t     cu_cmd_id2;//Random num
 
     uint32_t    reserved[16];
 
@@ -218,9 +224,14 @@ typedef struct XmaHwDevice
     std::vector<XmaHwExecBO> kernel_execbos;
     int32_t    num_execbo_allocated;
 
+    uint32_t    cu_cmd_id;//Counter
+    std::mt19937 mt_gen;
+    std::uniform_int_distribution<int32_t> rnd_dis;
+
     uint32_t    reserved[16];
 
-  XmaHwDevice(): execbo_locked(new std::atomic<bool>) {
+//  XmaHwDevice(): execbo_locked(new std::atomic<bool>), mt_gen(std::mt19937(std::seed_seq(static_cast<long unsigned int>(time(0)), std::random_device()))), rnd_dis(-97986387, 97986387) {
+  XmaHwDevice(): execbo_locked(new std::atomic<bool>), rnd_dis(-97986387, 97986387) {
     //in_use = false;
     dev_index = -1;
     number_of_cus = 0;
@@ -228,6 +239,13 @@ typedef struct XmaHwDevice
     number_of_mem_banks = 0;
     num_execbo_allocated = -1;
     handle = NULL;
+    cu_cmd_id = 0;
+    //mt = std::mt19937(std::random_device{}());
+    std::random_device rd;
+    uint32_t tmp_int = time(0);
+    std::seed_seq seed_seq{rd(), tmp_int};
+    mt_gen = std::mt19937(seed_seq);
+    //mt_gen = std::mt19937(std::seed_seq(static_cast<long unsigned int>(time(0)), std::random_device()));
   }
 } XmaHwDevice;
 

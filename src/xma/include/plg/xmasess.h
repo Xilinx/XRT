@@ -180,9 +180,13 @@ typedef struct XmaSession {
 
 typedef struct XmaCUCmdObj
 {
-    uint32_t    cmd_id1;
-    uint32_t    cmd_id2;
     int32_t     cu_index;
+    bool        cmd_finished;
+
+    //Below is private area
+    uint32_t    cmd_id1;
+    int32_t     cmd_id2;
+    void        *do_not_use1;
 } XmaCUCmdObj;
 
 
