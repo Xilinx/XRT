@@ -384,7 +384,7 @@ proc create_root_design { parentCell } {
 
   # Create PFM attributes
   set_property PFM_NAME {xilinx.com:zc706:zc706_base:1.0} [get_files [current_bd_design].bd]
-  set_property PFM.CLOCK {clk_out1 {id "0" is_default "true" proc_sys_reset "proc_sys_reset_0" status "fixed"} clk_out2 {id "1" is_default "false" proc_sys_reset "proc_sys_reset_1" status "changeable"} } [get_bd_cells /clk_wiz_0]
+  set_property PFM.CLOCK {clk_out1 {id "0" is_default "true" proc_sys_reset "proc_sys_reset_0" status "fixed"} clk_out2 {id "1" is_default "false" proc_sys_reset "proc_sys_reset_1" status "fixed"} } [get_bd_cells /clk_wiz_0]
   set_property PFM.AXI_PORT {S02_AXI {memport "MIG" sptag "" memory ""} S03_AXI {memport "MIG" sptag "" memory ""} S04_AXI {memport "MIG" sptag "" memory ""} S05_AXI {memport "MIG" sptag "" memory ""} S06_AXI {memport "MIG" sptag "" memory ""} S07_AXI {memport "MIG" sptag "" memory ""} S08_AXI {memport "MIG" sptag "" memory ""} S09_AXI {memport "MIG" sptag "" memory ""} S10_AXI {memport "MIG" sptag "" memory ""} S11_AXI {memport "MIG" sptag "" memory ""} S12_AXI {memport "MIG" sptag "" memory ""} S13_AXI {memport "MIG" sptag "" memory ""} S14_AXI {memport "MIG" sptag "" memory ""} S15_AXI {memport "MIG" sptag "" memory ""}} [get_bd_cells /interconnect_axifull]
   set_property PFM.AXI_PORT {M_AXI_GP1 {memport "M_AXI_GP" sptag "GP" memory ""} S_AXI_HP1 {memport "S_AXI_HP" sptag "HP" memory "ps7 HP1_DDR_LOWOCM"} S_AXI_HP2 {memport "S_AXI_HP" sptag "HP" memory "ps7 HP2_DDR_LOWOCM"} S_AXI_HP3 {memport "S_AXI_HP" sptag "HP" memory "ps7 HP3_DDR_LOWOCM"}} [get_bd_cells /ps7]
   set_property PFM.AXI_PORT {M02_AXI {memport "M_AXI_GP" sptag "" memory ""} M03_AXI {memport "M_AXI_GP" sptag "" memory ""} M04_AXI {memport "M_AXI_GP" sptag "" memory ""} M05_AXI {memport "M_AXI_GP" sptag "" memory ""} M06_AXI {memport "M_AXI_GP" sptag "" memory ""} M07_AXI {memport "M_AXI_GP" sptag "" memory ""} M08_AXI {memport "M_AXI_GP" sptag "" memory ""} M09_AXI {memport "M_AXI_GP" sptag "" memory ""} M10_AXI {memport "M_AXI_GP" sptag "" memory ""} M11_AXI {memport "M_AXI_GP" sptag "" memory ""} M12_AXI {memport "M_AXI_GP" sptag "" memory ""} M13_AXI {memport "M_AXI_GP" sptag "" memory ""} M14_AXI {memport "M_AXI_GP" sptag "" memory ""} M15_AXI {memport "M_AXI_GP" sptag "" memory ""} M16_AXI {memport "M_AXI_GP" sptag "" memory ""} M17_AXI {memport "M_AXI_GP" sptag "" memory ""} M18_AXI {memport "M_AXI_GP" sptag "" memory ""} M19_AXI {memport "M_AXI_GP" sptag "" memory ""} M20_AXI {memport "M_AXI_GP" sptag "" memory ""} M21_AXI {memport "M_AXI_GP" sptag "" memory ""} M22_AXI {memport "M_AXI_GP" sptag "" memory ""} M23_AXI {memport "M_AXI_GP" sptag "" memory ""} M24_AXI {memport "M_AXI_GP" sptag "" memory ""} M25_AXI {memport "M_AXI_GP" sptag "" memory ""} M26_AXI {memport "M_AXI_GP" sptag "" memory ""} M27_AXI {memport "M_AXI_GP" sptag "" memory ""} M28_AXI {memport "M_AXI_GP" sptag "" memory ""} M29_AXI {memport "M_AXI_GP" sptag "" memory ""} M30_AXI {memport "M_AXI_GP" sptag "" memory ""} M31_AXI {memport "M_AXI_GP" sptag "" memory ""}} [get_bd_cells /ps7_axi_periph]
@@ -409,6 +409,9 @@ set_property platform.post_sys_link_tcl_hook        ./dynamic_postlink.tcl      
 
 set_property platform.default_output_type "sd_card" [current_project]
 set_property platform.design_intent.embedded "true" [current_project]
+set_property platform.design_intent.server_managed "false" [current_project]
+set_property platform.design_intent.external_host "false" [current_project]
+set_property platform.design_intent.datacenter "false" [current_project]
 
 write_hw_platform -force ./zc706_base.xsa
 

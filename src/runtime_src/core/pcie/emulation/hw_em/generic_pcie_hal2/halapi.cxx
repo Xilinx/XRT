@@ -571,3 +571,18 @@ int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, con
   return ret;
 }
 
+int xclCreateProfileResults(xclDeviceHandle handle, ProfileResults** results)
+{
+  return 0;
+}
+
+int xclGetProfileResults(xclDeviceHandle handle, ProfileResults* results)
+{
+  return 0;
+}
+
+int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results)
+{
+  return 0;
+}
+

@@ -555,7 +555,6 @@ namespace xdp {
         std::string device_name = device->get_unique_name();
         std::string binary_name = device->get_xclbin().project_name();
         uint32_t program_id = (device->get_program()) ? (device->get_program()->get_uid()) : 0;
- 
         getProfileManager()->logDeviceCounters(device_name, binary_name, program_id,
                                      XCL_PERF_MON_MEMORY /*For HW flow all types handled together */,
                                      info->mCounterResults, timeNsec, firstReadAfterProgram);

@@ -189,6 +189,7 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
                                  int32_t    cu_index,
                                  int32_t*   return_code);
 
+int32_t xma_plg_cu_cmd_status(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, int32_t num_cu_objs, bool wait_for_cu_cmds);
 
 
 

@@ -457,5 +457,103 @@ typedef struct {
   char nifd_name[MAX_NAME_LEN];
 } xclDebugProfileDeviceInfo;
 
+/**
+ * hal level xdp plugin types
+ * 
+ * The data structures for hal level xdp plugins
+ * that will be interpreted by both the shim and
+ * xdp
+ * 
+ * custom plugin requirements:
+ *  1. has a method called hal_level_xdp_cb_func
+ *      that takes a enume type and a void pointer
+ *      payload which can be casted to one of the
+ *      structs listed below.
+ *  2. config through initialization by setting the
+ *      plugin path attribute to the dynamic library.
+ */ 
+
+struct HalPluginConfig {
+  bool state; /** < [unused] indicates if on or off */
+  char plugin_path[256]; /** < [unused] indicates which dynamic library to load */
+  /**
+   * The switches for what to profile and what
+   * not to should go here. The attibutes will
+   * be added once settle down on what kind of
+   * swtiches make sense for the plugins.
+   */
+};
+
+enum HalCallbackType {
+  START_DEVICE_PROFILING,
+  CREATE_PROFILE_RESULTS,
+  GET_PROFILE_RESULTS,
+  DESTROY_PROFILE_RESULTS,
+  ALLOC_BO_START,
+  ALLOC_BO_END,
+  FREE_BO_START,
+  FREE_BO_END,
+  WRITE_BO_START,
+  WRITE_BO_END,
+  READ_BO_START,
+  READ_BO_END,
+  MAP_BO_START,
+  MAP_BO_END,
+  SYNC_BO_START,
+  SYNC_BO_END,
+  UNMGD_READ_START,
+  UNMGD_READ_END,
+  UNMGD_WRITE_START,
+  UNMGD_WRITE_END,
+  READ_START,
+  READ_END,
+  WRITE_START,
+  WRITE_END
+};
+
+#include<cstdint>
+#include<cstddef>
+
+/**
+ * This is an example of the struct that callback
+ * functions can take. Eventually, different API
+ * callbacks are likely to take different structs.
+ */
+struct CBPayload {
+  unsigned idcode;
+  void* deviceHandle;
+};
+
+/**
+ * More callback payload struct should be declared 
+ * here for the users to include.
+ */
+
+struct ReadWriteCBPayload
+{
+  CBPayload basePayload;  
+  uint32_t  addressSpace;
+  uint64_t  offset;
+  size_t    size;
+};
+
+struct UnmgdPreadPwriteCBPayload
+{
+  CBPayload basePayload;
+  unsigned flags;
+  size_t   count;
+  uint64_t offset;
+};
+
+struct ProfileResultsCBPayload
+{
+  CBPayload basePayload;
+  void* results;
+};
+
+/**
+ * end hal level xdp plugin types
+ */
+
 
 #endif

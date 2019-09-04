@@ -153,12 +153,14 @@ size_t AM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
         counterResults.CuMinExecCycles[s] += (upper[2] << 32);
         counterResults.CuMaxExecCycles[s] += (upper[3] << 32);
 
+#if 0
         if(out_stream)
           (*out_stream) << "Accelerator Monitor Upper 32, slot " << s << std::endl
                         << "  CuExecCount : " << upper[0] << std::endl
                         << "  CuExecCycles : " << upper[1] << std::endl
                         << "  CuMinExecCycles : " << upper[2] << std::endl
                         << "  CuMaxExecCycles : " << upper[3] << std::endl;
+#endif
     }
 
     if(hasDataflow()) {
