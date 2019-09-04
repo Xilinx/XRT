@@ -78,7 +78,7 @@ XMA Initialize Function: ``xma_initlialize``
 
 In **19.1**, the API ``xma_initlialize`` used to take YAML configuration file. 
 
-In **19.2**, the usage of **YAML file has been obsolated**. The API ``xma_initlialize`` takes device information and XCLBIN through new datatype: ``XmaXclbinParameter``   
+In **19.2**, the usage of **YAML file has been obsoleted**. The API ``xma_initlialize`` takes device information and XCLBIN through new datatype: ``XmaXclbinParameter``   
 
 Expanded Plugin Properties
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -87,7 +87,7 @@ Plugin properties have been expanded in **19.2** to contain more information.
 
 For example, compare ``XmaEncoderProperties`` between 19.1 and 19.2 XRT versions.      
 
-Now in **19.2** more fields have been added.                                
+Now in **19.2**, more fields have been added.                                
 
      - Device index (Should be passed from the application level)                
      - Compute Unit index (Should be determined at the application level)                                      
