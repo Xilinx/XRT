@@ -27,6 +27,12 @@ add_library(oclxdp SHARED ${OPENCL_SRC}
   )
 add_dependencies(oclxdp xdp xilinxopencl)
 
+add_library(xdp_hal_plugin SHARED 
+  $<TARGET_OBJECTS:xdp_hal_plugin_obj>
+  $<TARGET_OBJECTS:xdpobj>
+  )
+add_dependencies(xdp_hal_plugin xdp)
+
 option(XOCL_VERBOSE "Enable xocl verbosity" OFF)
 option(XRT_VERBOSE "Enable xrt verbosity" OFF)
 
@@ -78,6 +84,11 @@ target_link_libraries(oclxdp
   xilinxopencl
  )
 
+target_link_libraries(xdp_hal_plugin xdp)
+
+set_target_properties(xdp_hal_plugin PROPERTIES VERSION ${XRT_VERSION_STRING}
+  SOVERSION ${XRT_SOVERSION})
+
 set_target_properties(oclxdp PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
@@ -95,10 +106,9 @@ target_link_libraries(xilinxopencl
   rt
   )
 
-install (TARGETS xilinxopencl oclxdp LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
+install (TARGETS xilinxopencl oclxdp xdp_hal_plugin LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
 
 add_subdirectory(core)
-
 
 else()
 # = WINDOWS ===================================================================
