@@ -403,7 +403,7 @@ static int get_header_from_dtb(struct feature_rom *rom)
 					header->VBNVName[i] == '.')
 				header->VBNVName[i] = '_';
 	}
-	header->FeatureBitMap = UNIFIED_PLATFORM;
+	header->FeatureBitMap = UNIFIED_PLATFORM | BOARD_MGMT_ENBLD;
 	*(u32 *)header->EntryPointString = MAGIC_NUM;
 
 	return 0;
