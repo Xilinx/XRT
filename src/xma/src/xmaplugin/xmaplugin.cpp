@@ -881,7 +881,7 @@ int32_t xma_plg_schedule_work_item_with_args(XmaSession s_handle,
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Max kernel regmap size is %d Bytes\n", MAX_KERNEL_REGMAP_SIZE);
         return XMA_ERROR;
     }
-    if (regmap_size != (regmap_size && 0xFFFFFFFC)) {
+    if ((uint32_t)regmap_size != ((uint32_t)regmap_size & 0xFFFFFFFC)) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regmap_size of %d is not a multiple of four bytes\n", regmap_size);
         return XMA_ERROR;
     }
@@ -901,6 +901,7 @@ int32_t xma_plg_schedule_work_item_with_args(XmaSession s_handle,
         expected = false;
     }
     //kernel completion lock acquired
+    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "1. Num of cmds in-progress = %d\n", priv1->CU_cmds.size());
 
     // Find an available execBO buffer
     bo_idx = xma_plg_execbo_avail_get(s_handle);
@@ -981,6 +982,7 @@ int32_t xma_plg_schedule_work_item_with_args(XmaSession s_handle,
         }
     }
 
+    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "2. Num of cmds in-progress = %d\n", priv1->CU_cmds.size());
     *(dev_tmp1->execbo_locked) = false;
     return XMA_SUCCESS;
 }
@@ -1044,7 +1046,7 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
         if (return_code) *return_code = XMA_ERROR;
         return cmd_obj_error;
     }
-    if (regmap_size != (regmap_size && 0xFFFFFFFC)) {
+    if ((uint32_t)regmap_size != ((uint32_t)regmap_size & 0xFFFFFFFC)) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regmap_size of %d is not a multiple of four bytes\n", regmap_size);
         if (return_code) *return_code = XMA_ERROR;
         return cmd_obj_error;
@@ -1059,6 +1061,9 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
         expected = false;
     }
     //kernel completion lock acquired
+
+    
+    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "1. Num of cmds in-progress = %d\n", priv1->CU_cmds.size());
 
     // Find an available execBO buffer
     bo_idx = xma_plg_execbo_avail_get(s_handle);
@@ -1141,6 +1146,7 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
         }
     }
 
+    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "2. Num of cmds in-progress = %d\n", priv1->CU_cmds.size());
     *(dev_tmp1->execbo_locked) = false;
     if (return_code) *return_code = XMA_SUCCESS;
     return cmd_obj;
