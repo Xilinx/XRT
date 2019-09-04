@@ -888,15 +888,16 @@ void
 device::
 migrate_buffer(memory* buffer,cl_mem_migration_flags flags)
 {
+
+  if (buffer->no_host_memory())
+    throw xocl::error(CL_INVALID_OPERATION,"buffer flags do not allow migrate_buffer");
   // Support clEnqueueMigrateMemObjects device->host
   if (flags & CL_MIGRATE_MEM_OBJECT_HOST) {
     buffer_resident_or_error(buffer,this);
     auto boh = buffer->get_buffer_object_or_error(this);
     auto xdevice = get_xrt_device();
-    if(!buffer->no_host_memory()){
-      xdevice->sync(boh,buffer->get_size(),0,xrt::hal::device::direction::DEVICE2HOST,false);
-      sync_to_ubuf(buffer,0,buffer->get_size(),xdevice,boh);
-    }
+    xdevice->sync(boh,buffer->get_size(),0,xrt::hal::device::direction::DEVICE2HOST,false);
+    sync_to_ubuf(buffer,0,buffer->get_size(),xdevice,boh);
     return;
   }
 
@@ -905,11 +906,9 @@ migrate_buffer(memory* buffer,cl_mem_migration_flags flags)
   auto xdevice = get_xrt_device();
   xrt::device::BufferObjectHandle boh = buffer->get_buffer_object(this);
 
-  if(!buffer->no_host_memory()){
-    // Sync from host to device to make make buffer resident of this device
-    sync_to_hbuf(buffer,0,buffer->get_size(),xdevice,boh);
-    xdevice->sync(boh,buffer->get_size(), 0, xrt::hal::device::direction::HOST2DEVICE,false);
-  }
+  // Sync from host to device to make make buffer resident of this device
+  sync_to_hbuf(buffer,0,buffer->get_size(),xdevice,boh);
+  xdevice->sync(boh,buffer->get_size(), 0, xrt::hal::device::direction::HOST2DEVICE,false);
   // Now buffer is resident on this device and migrate is complete
   buffer->set_resident(this);
 }
