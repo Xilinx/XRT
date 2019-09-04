@@ -944,6 +944,10 @@ struct sg_table *xocl_gem_prime_get_sg_table(struct drm_gem_object *obj)
 	struct drm_xocl_bo *xobj = to_xocl_bo(obj);
 
 	BO_ENTER("xobj %p", xobj);
+	
+	if (!xobj->pages)
+		return ERR_PTR(-EINVAL);
+
 	return alloc_onetime_sg_table(xobj->pages, 0, xobj->base.size);
 }
 
