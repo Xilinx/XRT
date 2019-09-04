@@ -1034,6 +1034,18 @@ int xocl_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma)
 	return 0;
 }
 
+struct dma_buf *xocl_drm_gem_prime_export(struct drm_device *dev,
+				     struct drm_gem_object *obj,
+				     int flags)
+{
+	struct drm_xocl_bo *xobj = to_xocl_bo(obj);
+
+	if (xobj->flags == XOCL_BO_DEV_ONLY)
+		return ERR_PTR(-EINVAL);
+
+	return drm_gem_prime_export(dev, obj, flags);
+}
+
 int xocl_init_unmgd(struct drm_xocl_unmgd *unmgd, uint64_t data_ptr,
 	uint64_t size, u32 write)
 {

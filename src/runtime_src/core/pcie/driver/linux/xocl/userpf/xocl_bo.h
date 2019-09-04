@@ -159,5 +159,7 @@ void xocl_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr);
 int xocl_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma);
 int xocl_copy_import_bo(struct drm_device *dev, struct drm_file *filp,
 	struct ert_start_copybo_cmd *cmd);
-
+struct dma_buf *xocl_drm_gem_prime_export(struct drm_device *dev,
+				     struct drm_gem_object *obj,
+				     int flags);
 #endif
