@@ -821,7 +821,8 @@ XCL_DRIVER_DLLESPEC int xclRegisterInterruptNotify(xclDeviceHandle handle, unsig
  * data between host memory and kernel directly. XDMA memory mapped DMA APIs are also supported on
  * QDMA. New stream APIs are provided here for preview and may be revised in a future release. These
  * can only be used with platforms with QDMA engine under the hood. The higher level OpenCL based
- * streaming APIs offer more refined interfaces and compatibility between releases.
+ * streaming APIs offer more refined interfaces and compatibility between releases and each stream maps
+ * to a QDMA queue underneath.
  */
 
 enum xclStreamContextFlags {
@@ -842,48 +843,63 @@ struct xclQueueContext {
     uint64_t	flags;	   /* isr en, wb en, etc */
 };
 
-/*
+/**
  * xclCreateWriteQueue - Create Write Queue
- * xclCreateReadQueue - Create Read Queue
  *
- * @handle:		Device handle
- * @q_ctx:		Queue Context
- * @q_hdl:		Queue handle
+ * @handle:        Device handle
+ * @q_ctx:         Queue Context
+ * @q_hdl:         Queue handle
+ * Return:         0 or appropriate error number
  *
- * This is used to create queue based on information provided in Queue context. Queue handle is generated if creation
- * successes.
- * This feature will be enabled in a future release.
+ * Create write queue based on information provided in Queue context. Queue handle is generated if creation successes.
  */
 XCL_DRIVER_DLLESPEC int xclCreateWriteQueue(xclDeviceHandle handle, struct xclQueueContext *q_ctx,  uint64_t *q_hdl);
+
+/**
+ * xclCreateReadQueue - Create Read Queue
+ *
+ * @handle:        Device handle
+ * @q_ctx:         Queue Context
+ * @q_hdl:         Queue handle
+ * Return:         0 or appropriate error number
+ *
+ * Create read queue based on information provided in Queue context. Queue handle is generated if creation successes.
+ */
 XCL_DRIVER_DLLESPEC int xclCreateReadQueue(xclDeviceHandle handle, struct xclQueueContext *q_ctx, uint64_t *q_hdl);
 
-/*
- * xclAllocQDMABuf - Allocate DMA buffer
- * xclFreeQDMABuf - Free DMA buffer
- *
- * @handle:		Device handle
- * @buf_hdl:		Buffer handle
- * @size:		Buffer size
- *
- * return val: buffer pointer
- *
- * These functions allocate and free DMA buffers which is used for queue read and write.
- * This feature will be enabled in a future release.
- */
-XCL_DRIVER_DLLESPEC void *xclAllocQDMABuf(xclDeviceHandle handle, size_t size, uint64_t *buf_hdl);
-XCL_DRIVER_DLLESPEC int xclFreeQDMABuf(xclDeviceHandle handle, uint64_t buf_hdl);
-
-
-/*
+/**
  * xclDestroyQueue - Destroy Queue
  *
- * @handle:		Device handle
- * @q_hdl:		Queue handle
+ * @handle:        Device handle
+ * @q_hdl:         Queue handle
+ * Return:         0 or appropriate error number
  *
- * This function destroy Queue and release all resources. It returns -EBUSY if Queue is in running state.
- * This feature will be enabled in a future release.
+ * Destroy read or write queue and release all queue resources.
  */
 XCL_DRIVER_DLLESPEC int xclDestroyQueue(xclDeviceHandle handle, uint64_t q_hdl);
+
+/**
+ * xclAllocQDMABuf - Allocate DMA buffer
+ *
+ * @handle:        Device handle
+ * @size:          Buffer size
+ * @buf_hdl:       Buffer handle
+ * Return:         0 or appropriate error number
+ *
+ * Allocate DMA buffer which is used for queue read and write.
+ */
+XCL_DRIVER_DLLESPEC void *xclAllocQDMABuf(xclDeviceHandle handle, size_t size, uint64_t *buf_hdl);
+
+/**
+ * xclFreeQDMABuf - Free DMA buffer
+ *
+ * @handle:        Device handle
+ * @buf_hdl:       Buffer handle
+ * Return:         0 or appropriate error number
+ *
+ * Free DMA buffer allocated by xclAllocQDMABuf.
+ */
+XCL_DRIVER_DLLESPEC int xclFreeQDMABuf(xclDeviceHandle handle, uint64_t buf_hdl);
 
 /*
  * xclModifyQueue - Modify Queue
@@ -946,7 +962,7 @@ enum xclQueueRequestFlag {
     XCL_QUEUE_REQ_EOT			= 1 << 0,
     XCL_QUEUE_REQ_CDH			= 1 << 1,
     XCL_QUEUE_REQ_NONBLOCKING		= 1 << 2,
-    XCL_QUEUE_REQ_SILENT		= 1 << 3,
+    XCL_QUEUE_REQ_SILENT		= 1 << 3, /* not supp. not generate event for non-blocking req */
 };
 
 /*
@@ -975,63 +991,44 @@ struct xclReqCompletion {
     int				err_code;
 };
 
-/*
+/**
  * xclWriteQueue - write data to queue
- * @handle:             Device handle
- * @q_hdl:              Queue handle
- * @wr_req:		write request
+ * @handle:        Device handle
+ * @q_hdl:         Queue handle
+ * @wr_req:        Queue request
+ * Return:         Number of bytes been written or appropriate error number
  *
- * This function moves data from host memory. Based on the Queue type, data is written as stream or packet.
- * Return: number of bytes been written or error code.
- *     stream Queue:
- *         There is not any Flag been added to mark the end of buffer.
- *         The bytes been written should equal to bytes been requested unless error happens.
- *     Packet Queue:
- *         There is Flag been added for end of buffer. Thus kernel may recognize that a packet is receviced.
- *
- * This function supports blocking and non-blocking write
- *     blocking:
- *         return only when the entire buf has been written, or error.
- *     non-blocking:
- *         return 0 immediatly.
- *     EOT:
- *         end of transmit signal will be added at last
- *     silent: (only used with non-blocking);
- *         No event generated after write completes
+ * Move data from host memory to board. The destination is determined by flow id and route id which are provided to xclCreateWriteQueue. it returns number of bytes been moved or error code.
+ * By default, this function returns only when the entire buf has been written, or error. If XCL_QUEUE_REQ_NONBLOCKING flag is used, it returns immediately and xclPollCompletion needs to be used to determine if the data transmission is completed.
+ * If XCL_QUEUE_REQ_EOT flag is used, end of transmit signal will be added at the end of this tranmission.
  */
 XCL_DRIVER_DLLESPEC ssize_t xclWriteQueue(xclDeviceHandle handle, uint64_t q_hdl, struct xclQueueRequest *wr_req);
 
-/*
+/**
  * xclReadQueue - read data from queue
- * @handle:             Device handle
- * @q_hdl:              Queue handle
- * @rd_req:             read request
+ * @handle:        Device handle
+ * @q_hdl:         Queue handle
+ * @rd_req:        read request
+ * Return:         Number of bytes been read or appropriate error number
  *
- * This function moves data to host memory. Based on the Queue type, data is read as stream or packet.
- * Return: number of bytes been read or error code.
- *     stream Queue:
- *         read until all the requested bytes is read or error happens.
- *     blocking:
- *         return only when the requested bytes are read (stream) or the entire packet is read (packet)
- *     non-blocking:
- *         return 0 immediatly.
- *     TODO:
- *         EOT
- *
+ * Move data from board to host memory. The source is determined by flow id and route id which are provided to xclCreateReadQueue. It returns number of bytes been moved or error code.
+ * This function returns until all the requested bytes is read or error happens. If XCL_QUEUE_REQ_NONBLOCKING flag is used, it returns immediately and xclPollCompletion needs to be used to determine if the data trasmission is completed.
+ * If XCL_QUEUE_REQ_EOT flag is used, data transmission for the current read request completes immediatly once end of transmit signal is received.
  */
-XCL_DRIVER_DLLESPEC ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, struct xclQueueRequest *wr_req);
+XCL_DRIVER_DLLESPEC ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, struct xclQueueRequest *rd_req);
 
-/*
- * xclPollCompletion - for non-blocking read/write, check if there is any request been completed.
- * @min_compl		unblock only when receiving min_compl completions
- * @max_compl		Max number of completion with one poll
- * @req:		Completed requests
- * @timeout:		timeout
+/**
+ * xclPollCompletion - poll read/write queue completion
+ * @min_compl:     Unblock only when receiving min_compl completions
+ * @max_compl:     Max number of completion with one poll
+ * @comps:         Completed request array
+ * @actual_compl:  Number of requests been completed
+ * @timeout:       Timeout
+ * Return:         Number of events or appropriate error number
  *
- * return number of requests been completed.
+ * Poll completion events of non-blocking read/write requests. Once this function returns, an array of completed requests is returned.
  */
-XCL_DRIVER_DLLESPEC int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl,
-                                          struct xclReqCompletion *comps, int* actual_compl, int timeout);
+XCL_DRIVER_DLLESPEC int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, struct xclReqCompletion *comps, int* actual_compl, int timeout);
 
 XCL_DRIVER_DLLESPEC const struct axlf_section_header* wrap_get_axlf_section(const struct axlf* top, enum axlf_section_kind kind);
 
