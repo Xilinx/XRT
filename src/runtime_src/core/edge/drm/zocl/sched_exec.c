@@ -713,6 +713,9 @@ configure(struct sched_cmd *cmd)
 	      exec->cq_thread = kthread_run(cq_check, zdev, name);
 	  }
 	}
+	/* TODO: let's consider how to support reconfigurable KDS/ERT later.
+	 * At that time, ERT should be able to change back to CQ polling mode.
+	 */
 
 	exec->zcu = vzalloc(sizeof(struct zocl_cu) * exec->num_cus);
 	if (!exec->zcu) {
@@ -721,7 +724,7 @@ configure(struct sched_cmd *cmd)
 	}
 
 	for (i = 0; i < exec->num_cus; i++) {
-		if (cfg->data[i] & (~ZOCL_KDS_MASK == ACCEL_ADAPTER)) {
+		if ((cfg->data[i] & ~ZOCL_KDS_MASK) == ACCEL_ADAPTER) {
 			/* If the ACCEL adapter is used */
 			acc_cu = 1;
 			if (has_acc_cu == 0)
