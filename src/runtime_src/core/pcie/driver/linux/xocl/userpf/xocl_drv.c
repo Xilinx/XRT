@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@xilinx.com
  *
@@ -1000,6 +1000,10 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		goto failed;
 	}
 
+	/* Don't check mailbox on versal for now. */
+	if (XOCL_DSA_IS_VERSAL(xdev))
+		return 0;
+
 	/* Launch the mailbox server. */
 	ret = xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 	if (ret) {
@@ -1085,6 +1089,7 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_firewall,
 	xocl_init_mig,
 	xocl_init_dna,
+	xocl_init_mailbox_versal,
 };
 
 static void (*xocl_drv_unreg_funcs[])(void) = {
@@ -1100,6 +1105,7 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_firewall,
 	xocl_fini_mig,
 	xocl_fini_dna,
+	xocl_fini_mailbox_versal,
 };
 
 static int __init xocl_init(void)

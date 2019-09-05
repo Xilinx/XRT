@@ -247,6 +247,7 @@ struct ert_configure_cmd {
  * @type:            [31-27] 0, type of configure
  *
  * @start_cuidx:     start index of compute units
+ * @sk_type:         type of soft kernel.
  * @num_cus:         number of compute units in program
  * @sk_size:         size in bytes of soft kernel image
  * @sk_name:         symbol name of soft kernel
@@ -398,6 +399,17 @@ enum ert_cmd_type {
   ERT_KDS_LOCAL = 1,
   ERT_CTRL = 2,
   ERT_CU = 3,
+};
+
+/**
+ * Soft kernel types
+ *
+ * @SOFTKERNEL_TYPE_EXEC:       executable
+ * @SOFTKERNEL_TYPE_XCLBIN:     XCLBIN data file
+ */
+enum softkernel_type {
+  SOFTKERNEL_TYPE_EXEC = 0,
+  SOFTKERNEL_TYPE_XCLBIN = 1,
 };
 
 /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@Xilinx.com
  *          Jan Stephan <j.stephan@hzdr.de>
@@ -196,6 +196,9 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_PL_DEV_TO_XDEV(pldev) \
 	pci_get_drvdata(XOCL_PL_TO_PCI_DEV(pldev))
 
+#define XOCL_PCI_DEV_TO_XDEV(pcidev) \
+	pci_get_drvdata(pcidev)
+
 #define XOCL_PCI_FUNC(xdev_hdl)		\
 	PCI_FUNC(XDEV(xdev_hdl)->pdev->devfn)
 
@@ -208,6 +211,9 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 
 #define XOCL_DSA_IS_SMARTN(xdev)                \
 	(XDEV(xdev)->priv.flags & XOCL_DSAFLAG_SMARTN)
+
+#define XOCL_DSA_IS_VERSAL(xdev)                \
+	(XDEV(xdev)->priv.flags & XOCL_DSAFLAG_VERSAL)
 
 #define	XOCL_DEV_ID(pdev)			\
 	((pci_domain_nr(pdev->bus) << 16) |	\
@@ -1015,6 +1021,28 @@ struct xocl_axigate_funcs {
 	AXIGATE_OPS(xdev, level)->free(AXIGATE_DEV(xdev, level)) :	\
 	-ENODEV)
 
+struct xocl_mailbox_versal_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (*set)(struct platform_device *pdev, u32 data);
+	int (*get)(struct platform_device *pdev, u32 *data);
+};
+#define	MAILBOX_VERSAL_DEV(xdev)	\
+	SUBDEV(xdev, XOCL_SUBDEV_MAILBOX_VERSAL).pldev
+#define	MAILBOX_VERSAL_OPS(xdev)	\
+	((struct xocl_mailbox_versal_funcs *)SUBDEV(xdev,	\
+	XOCL_SUBDEV_MAILBOX_VERSAL).ops)
+#define MAILBOX_VERSAL_READY(xdev, cb)	\
+	(MAILBOX_VERSAL_DEV(xdev) && MAILBOX_VERSAL_OPS(xdev) &&	\
+	 MAILBOX_VERSAL_OPS(xdev)->cb)
+#define	xocl_mailbox_versal_set(xdev, data)	\
+	(MAILBOX_VERSAL_READY(xdev, set) ?	\
+	MAILBOX_VERSAL_OPS(xdev)->set(MAILBOX_VERSAL_DEV(xdev), \
+	data) : -ENODEV)
+#define	xocl_mailbox_versal_get(xdev, data)	\
+	(MAILBOX_VERSAL_READY(xdev, get)	\
+	? MAILBOX_VERSAL_OPS(xdev)->get(MAILBOX_VERSAL_DEV(xdev), \
+	data) : -ENODEV)
+
 static inline void __iomem *xocl_cdma_addr(xdev_handle_t xdev)
 {
 	void	__iomem *ioaddr;
@@ -1203,4 +1231,7 @@ void xocl_fini_axigate(void);
 
 int __init xocl_init_iores(void);
 void xocl_fini_iores(void);
+
+int __init xocl_init_mailbox_versal(void);
+void xocl_fini_mailbox_versal(void);
 #endif
