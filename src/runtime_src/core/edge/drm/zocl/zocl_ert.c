@@ -90,6 +90,7 @@ ert_mpsoc_next(struct zocl_ert_dev *ert, struct ert_packet *pkg, int *idx_ret)
 	int slot_idx, mask_idx, slot_tmp;
 	int slot_sz;
 	int i, found;
+	u64 slot_info;
 
 	slot_sz = ioread32(ert_hw + ERT_CQ_SLOT_SIZE_REG) * 4;
 	/* Calculate current slot index */
@@ -105,7 +106,9 @@ ert_mpsoc_next(struct zocl_ert_dev *ert, struct ert_packet *pkg, int *idx_ret)
 		cq_status[3] = ioread32(ert_hw + ERT_CQ_STATUS_REG3);
 	} else {
 		/* ERT mode is only for 64 bits system */
-		slot_idx = ((u64)pkg - (u64)ert->cq_ioremap) / slot_sz;
+	  	slot_info = ((u64)pkg - (u64)ert->cq_ioremap) ;
+		do_div(slot_info,slot_sz);
+		slot_idx = slot_info;
 	}
 
 	/* Get mask index and local slot index for the next commmand */
