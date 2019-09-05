@@ -1000,6 +1000,10 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		goto failed;
 	}
 
+	/* Don't check mailbox on versal for now. */
+	if (XOCL_DSA_IS_VERSAL(xdev))
+		return 0;
+
 	/* Launch the mailbox server. */
 	ret = xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 	if (ret) {

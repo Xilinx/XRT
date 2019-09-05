@@ -196,6 +196,9 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_PL_DEV_TO_XDEV(pldev) \
 	pci_get_drvdata(XOCL_PL_TO_PCI_DEV(pldev))
 
+#define XOCL_PCI_DEV_TO_XDEV(pcidev) \
+	pci_get_drvdata(pcidev)
+
 #define XOCL_PCI_FUNC(xdev_hdl)		\
 	PCI_FUNC(XDEV(xdev_hdl)->pdev->devfn)
 

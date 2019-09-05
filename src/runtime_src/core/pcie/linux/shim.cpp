@@ -1536,79 +1536,6 @@ int shim::xclCuName2Index(const char *name, uint32_t& index)
     return -ENOENT;
 }
 
-int shim::xclLoadXclBinPS(const xclBin *buffer)
-{
-    int ret;
-    int first_mem;
-    uuid_t uuid;
-
-    auto axlfHeader = xclbin::get_axlf_section(buffer, PDI);
-    if (axlfHeader == nullptr)
-        return 0;
-
-    auto topo = xclbin::get_axlf_section(buffer, MEM_TOPOLOGY);
-    if (topo == nullptr) {
-        xclLog(XRT_ERROR, "XRT", "Load PDI fail, no mem topology.");
-        return -ENOMEM; 
-    }
-    struct mem_topology *topology =
-        (mem_topology *)((char *)buffer + topo->m_sectionOffset);
-    for (first_mem = 0; first_mem < topology->m_count; ++first_mem)
-        if (topology->m_mem_data[first_mem].m_used)
-            break;
-    if (first_mem == topology->m_count) {
-	xclLog(XRT_ERROR, "XRT", "Load PDI fail, no usable memory bank.");
-        return -ENOMEM;
-    }
-
-    uint64_t len = buffer->m_header.m_length;
-    unsigned int xclbinBoHdl = xclAllocBO(len, 0, first_mem); 
-    char *xclbinBo = (char *)xclMapBO(xclbinBoHdl, true);
-    xclBOProperties xclbinBoProp;
-    ret = xclGetBOProperties(xclbinBoHdl, &xclbinBoProp);
-    if (ret)
-        return ret;
-    uint64_t xBoAddr = xclbinBoProp.paddr;
-    uint64_t xBoSize = xclbinBoProp.size;
-    std::memcpy(xclbinBo, buffer, len); 
-    ret = xclSyncBO(xclbinBoHdl, XCL_BO_SYNC_BO_TO_DEVICE, len, 0);
-    if (ret)
-        return ret;
-
-    unsigned execHandle = xclAllocBO(sizeof (ert_configure_sk_cmd),
-        0, (1<<31));
-    struct ert_configure_sk_cmd *ecmd =
-        reinterpret_cast<ert_configure_sk_cmd *>(
-	xclMapBO(execHandle, true));
-
-    ecmd->state = ERT_CMD_STATE_NEW;
-    ecmd->opcode = ERT_SK_CONFIG;
-    ecmd->count = 13;
-    ecmd->start_cuidx = 0;
-    ecmd->sk_type = SOFTKERNEL_TYPE_XCLBIN;
-    ecmd->num_cus = 0;
-    ecmd->sk_size = xBoSize;
-    ecmd->sk_addr = xBoAddr;
-
-    uuid_copy(uuid, buffer->m_header.uuid);
-    ret = xclOpenContext(uuid, -1, true);
-    if (ret) {
-        std::cout << "unable to reserve virtual CU." << std::endl;
-	goto done;
-    }
-
-    ret = xclExecBuf(execHandle);
-    if (ret == 0)
-        while (xclExecWait(1000) == 0);
-
-done:
-    (void) xclCloseContext(uuid, -1);
-    (void) munmap(ecmd, sizeof (ert_configure_sk_cmd));
-    xclFreeBO(execHandle);
-
-    return ret;
-}
-
 } // namespace xocl
 
 /*******************************/
@@ -1649,8 +1576,10 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
       ret = xrt_core::scheduler::init(handle, buffer);
       START_DEVICE_PROFILING_CB(handle);
     }
-    if (!ret && xrt_core::config::get_ert() && xrt_core::config::get_pdi_load())
-      ret = drv->xclLoadXclBinPS(buffer);
+    if (!ret && xrt_core::config::get_ert() &&
+      xclbin::get_axlf_section(buffer, PDI) &&
+      xrt_core::config::get_pdi_load())
+        ret = xrt_core::scheduler::loadXclbinToPS(handle, buffer);
     return ret;
 }
 

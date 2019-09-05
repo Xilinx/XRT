@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2019, Xilinx Inc
+ *  Copyright (C) 2018-2019, Xilinx Inc
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -1854,7 +1854,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x5019, PCI_ANY_ID, USER_QDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x501D, PCI_ANY_ID, USER_QDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5031, PCI_ANY_ID, USER_SMARTN) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x5028, PCI_ANY_ID, USER_XDMA_VERSAL) }
+	{ XOCL_PCI_DEVID(0x10EE, 0x5029, PCI_ANY_ID, USER_XDMA_VERSAL) }
 #define XOCL_DSA_VBNV_MAP						\
 	{ 0x10EE, 0x5001, PCI_ANY_ID, "xilinx_u200_xdma_201820_1",	\
 		&XOCL_BOARD_USER_XDMA },				\
