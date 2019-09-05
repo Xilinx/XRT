@@ -689,25 +689,28 @@ configure(struct sched_cmd *cmd)
 	}
 	write_unlock(&zdev->attr_rwlock);
 
-	/* Enable interrupt from host to PS when new commands are ready */
-	if (exec->cq_interrupt) {
-		/* Stop CQ check thread */
-		if (zdev->exec->cq_thread)
-			kthread_stop(zdev->exec->cq_thread);
+	if(zdev->ert)
+	{
+	  /* Enable interrupt from host to PS when new commands are ready */
+	  if (exec->cq_interrupt) {
+	    /* Stop CQ check thread */
+	    if (zdev->exec->cq_thread)
+	      kthread_stop(zdev->exec->cq_thread);
 
-		/* At this point we are good. No one is polling CQ */
-		cq_irq = zdev->ert->irq[ERT_CQ_IRQ];
-		ret = request_irq(cq_irq, sched_cq_isr, 0, "zocl_cq", zdev);
-		if (ret) {
-			DRM_WARN("Failed to initial CQ interrupt. "
-				 "Fall back to polling\n");
-			exec->cq_interrupt = 0;
-			exec->cq_thread = kthread_run(cq_check, zdev, name);
-		}
-	} else {
-		/* In CQ polling mode now */
-		if (!zdev->exec->cq_thread)
-			exec->cq_thread = kthread_run(cq_check, zdev, name);
+	    /* At this point we are good. No one is polling CQ */
+	    cq_irq = zdev->ert->irq[ERT_CQ_IRQ];
+	    ret = request_irq(cq_irq, sched_cq_isr, 0, "zocl_cq", zdev);
+	    if (ret) {
+	      DRM_WARN("Failed to initial CQ interrupt. "
+		  "Fall back to polling\n");
+	      exec->cq_interrupt = 0;
+	      exec->cq_thread = kthread_run(cq_check, zdev, name);
+	    }
+	  } else {
+	    /* In CQ polling mode now */
+	    if (!zdev->exec->cq_thread)
+	      exec->cq_thread = kthread_run(cq_check, zdev, name);
+	  }
 	}
 
 	exec->zcu = vzalloc(sizeof(struct zocl_cu) * exec->num_cus);
