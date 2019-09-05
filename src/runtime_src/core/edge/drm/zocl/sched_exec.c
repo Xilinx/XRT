@@ -707,10 +707,6 @@ configure(struct sched_cmd *cmd)
 	      exec->cq_interrupt = 0;
 	      exec->cq_thread = kthread_run(cq_check, zdev, name);
 	    }
-	  } else {
-	    /* In CQ polling mode now */
-	    if (!zdev->exec->cq_thread)
-	      exec->cq_thread = kthread_run(cq_check, zdev, name);
 	  }
 	}
 	/* TODO: let's consider how to support reconfigurable KDS/ERT later.
