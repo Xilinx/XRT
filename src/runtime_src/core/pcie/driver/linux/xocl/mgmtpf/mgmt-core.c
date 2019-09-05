@@ -919,6 +919,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	}
 
 	if (!(dev_info->flags & XOCL_DSAFLAG_DYNAMIC_IP) &&
+	    !(dev_info->flags & XOCL_DSAFLAG_SMARTN) &&
 			i == dev_info->subdev_num &&
 			lro->core.intr_bar_addr != NULL) {
 		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_DMA_MSIX;
@@ -956,25 +957,25 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	}
 	xocl_info(&pdev->dev, "created all sub devices");
 
-	if (!(dev_info->flags & XOCL_DSAFLAG_SMARTN)) {
-		/* return -ENODEV for 2RP platform */
+	if (!(dev_info->flags & XOCL_DSAFLAG_SMARTN))
 		ret = xocl_icap_download_boot_firmware(lro);
-		if (!ret) {
-			xocl_thread_start(lro);
 
-			/* Launch the mailbox server. */
-			(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv,
-				(void *)lro);
+	/* return -ENODEV for 2RP platform */
+	if (!ret) {
+		xocl_thread_start(lro);
 
-			lro->ready = true;
-		} else if (ret == -ENODEV) {
-			ret = xclmgmt_load_fdt(lro);
-			if (ret)
-				goto fail_all_subdev;
-		} else
+		/* Launch the mailbox server. */
+		(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv,
+			(void *)lro);
+
+		lro->ready = true;
+	} else if (ret == -ENODEV) {
+		ret = xclmgmt_load_fdt(lro);
+		if (ret)
 			goto fail_all_subdev;
+	} else
+		goto fail_all_subdev;
 
-	}
 	/* Notify our peer that we're listening. */
 	xclmgmt_connect_notify(lro, true);
 	xocl_info(&pdev->dev, "device fully initialized\n");
