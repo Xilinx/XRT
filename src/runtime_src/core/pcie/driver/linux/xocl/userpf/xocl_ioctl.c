@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
  *
  * Authors: Sonal Santan
  *
@@ -253,8 +253,9 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	xuid_t *xclbin_id;
 	const struct axlf_section_header * dtbHeader = NULL;
 	void *ulp_blob;
+	int rc;
 
-	if (!xocl_is_unified(xdev)) {
+	if (!XOCL_DSA_IS_VERSAL(xdev) && !xocl_is_unified(xdev)) {
 		userpf_err(xdev, "XOCL: not unified Shell\n");
 		return -EINVAL;
 	}
@@ -267,7 +268,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	}
 
 	xclbin_id = XOCL_XCLBIN_ID(xdev);
-	if (uuid_equal(xclbin_id, &bin_obj.m_header.uuid)) {
+	if (xclbin_id && uuid_equal(xclbin_id, &bin_obj.m_header.uuid)) {
 		userpf_info(xdev, "xclbin is already downloaded\n");
 		goto done;
 	}
@@ -296,7 +297,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		err = -EINVAL;
 		goto done;
 	}
-	if (!xocl_verify_timestamp(xdev,
+	if (!XOCL_DSA_IS_VERSAL(xdev) && !xocl_verify_timestamp(xdev,
 		bin_obj.m_header.m_featureRomTimeStamp)) {
 		userpf_err(xdev, "TimeStamp of ROM did not match Xclbin\n");
 		err = -EOPNOTSUPP;
@@ -380,27 +381,35 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	}
 
 	/* Switching the xclbin, make sure none of the buffers are used. */
-	if (!preserve_mem) {
+	if (!preserve_mem && !XOCL_DSA_IS_VERSAL(xdev)) {
 		err = xocl_cleanup_mem(drm_p);
 		if (err)
 			goto done;
 	}
 
-	err = xocl_icap_download_axlf(xdev, axlf);
-	if (err) {
-		/*
-		 * We have to clear uuid cached in scheduler here if
-		 * download xclbin failed
-		 */
-		(void) xocl_exec_reset(xdev);
-		/*
-		 * Don't just bail out here, always recreate drm mem
-		 * since we have cleaned it up before download.
-		 */
+	if (!XOCL_DSA_IS_VERSAL(xdev)) {
+		err = xocl_icap_download_axlf(xdev, axlf);
+		if (err) {
+			/*
+			 * We have to clear uuid cached in scheduler here if
+			 * download xclbin failed
+			 */
+			(void) xocl_exec_reset(xdev);
+			/*
+			 * Don't just bail out here, always recreate drm mem
+			 * since we have cleaned it up before download.
+			 */
+		}
 	}
 
-	if (!preserve_mem) {
-		int rc = xocl_init_mem(drm_p);
+	if (XOCL_DSA_IS_VERSAL(xdev)) {
+		if (drm_p->mm == NULL) {
+			rc = xocl_init_mem(drm_p, new_topology);
+			if (err == 0)
+				err = rc;
+		}
+	} else if (!preserve_mem) {
+		rc = xocl_init_mem(drm_p, NULL);
 		if (err == 0)
 			err = rc;
 	}

@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@xilinx.com
  *
@@ -344,9 +344,14 @@ static ssize_t ready_show(struct device *dev,
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	uint64_t ch_state, ret;
 
-	xocl_mailbox_get(xdev, CHAN_STATE, &ch_state);
+	/* Bypass this check for versal for now */
+	if (XOCL_DSA_IS_VERSAL(xdev))
+		ret = 1;
+	else {
+		xocl_mailbox_get(xdev, CHAN_STATE, &ch_state);
 
-	ret = (ch_state & MB_PEER_READY) ? 1 : 0;
+		ret = (ch_state & MB_PEER_READY) ? 1 : 0;
+	}
 
 	return sprintf(buf, "0x%llx\n", ret);
 }

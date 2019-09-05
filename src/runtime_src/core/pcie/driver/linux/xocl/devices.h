@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2018, Xilinx Inc
+ *  Copyright (C) 2018-2019, Xilinx Inc
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -50,6 +50,7 @@ enum {
 	XOCL_DSAFLAG_CUDMA_OFF			= 0x100,
 	XOCL_DSAFLAG_DYNAMIC_IP			= 0x200,
 	XOCL_DSAFLAG_SMARTN			= 0x400,
+	XOCL_DSAFLAG_VERSAL			= 0x800,
 };
 
 #define	FLASH_TYPE_SPI	"spi"
@@ -179,6 +180,7 @@ enum {
 #define	XOCL_FMGR		"fmgr"
 #define	XOCL_FLASH		"flash"
 #define XOCL_DMA_MSIX		"dma_msix"
+#define	XOCL_MAILBOX_VERSAL	"mailbox_versal"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
@@ -202,6 +204,7 @@ enum subdev_id {
 	XOCL_SUBDEV_DNA,
 	XOCL_SUBDEV_FMGR,
 	XOCL_SUBDEV_MIG_HBM,
+	XOCL_SUBDEV_MAILBOX_VERSAL,
 	XOCL_SUBDEV_NUM
 };
 
@@ -553,6 +556,26 @@ struct xocl_subdev_map {
 		XOCL_MAILBOX,				\
 		XOCL_RES_MAILBOX_USER_QDMA,		\
 		ARRAY_SIZE(XOCL_RES_MAILBOX_USER_QDMA),	\
+	}
+
+#define	XOCL_MAILBOX_OFFSET_USER_VERSAL	0x6040000
+#define	XOCL_MAILBOX_USER_VERSAL_SIZE	0x2f
+#define	XOCL_RES_MAILBOX_USER_VERSAL			\
+	((struct resource []) {				\
+		{					\
+			.start	= XOCL_MAILBOX_OFFSET_USER_VERSAL, \
+			.end	= XOCL_MAILBOX_OFFSET_USER_VERSAL +	\
+	 			XOCL_MAILBOX_USER_VERSAL_SIZE,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+	})
+
+#define	XOCL_DEVINFO_MAILBOX_USER_VERSAL		\
+	{						\
+		XOCL_SUBDEV_MAILBOX_VERSAL,		\
+		XOCL_MAILBOX_VERSAL,			\
+		XOCL_RES_MAILBOX_USER_VERSAL,		\
+		ARRAY_SIZE(XOCL_RES_MAILBOX_USER_VERSAL),	\
 	}
 
 #define	XOCL_RES_ICAP_MGMT				\
@@ -926,6 +949,38 @@ struct xocl_subdev_map {
 		1					\
 	}
 
+#define	ERT_CQ_BASE_ADDR_VERSAL            0x4000000
+#define ERT_CSR_ADDR_VERSAL                0x6040000
+#define XOCL_RES_SCHEDULER_VERSAL			\
+		((struct resource []) {			\
+		/*
+ 		 * map entire bar for now because scheduler directly
+		 * programs CUs
+		 */					\
+			{				\
+			.start	= ERT_CSR_ADDR_VERSAL,		\
+			.end	= ERT_CSR_ADDR_VERSAL + 0xffff,	\
+			.flags	= IORESOURCE_MEM,	\
+			},				\
+			{				\
+			.start	= ERT_CQ_BASE_ADDR_VERSAL,	\
+			.end	= ERT_CQ_BASE_ADDR_VERSAL +	\
+		       		ERT_CQ_SIZE - 1,		\
+			.flags	= IORESOURCE_MEM,	\
+			}				\
+		})
+
+#define	XOCL_DEVINFO_SCHEDULER_VERSAL			\
+	{						\
+		XOCL_SUBDEV_MB_SCHEDULER,		\
+		XOCL_MB_SCHEDULER,			\
+		XOCL_RES_SCHEDULER_VERSAL,			\
+		ARRAY_SIZE(XOCL_RES_SCHEDULER_VERSAL),		\
+		&(char []){0},		\
+		1,					\
+		.bar_idx = (char []){ 2, 2 },		\
+	}
+
 #define	XOCL_DEVINFO_FMGR				\
 	{						\
 		XOCL_SUBDEV_FMGR,			\
@@ -974,6 +1029,13 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_AF_USER,				\
 		})
 
+#define	USER_RES_XDMA_VERSAL						\
+		((struct xocl_subdev_info []) {				\
+			XOCL_DEVINFO_XDMA,				\
+		 	XOCL_DEVINFO_SCHEDULER_VERSAL,			\
+		 	XOCL_DEVINFO_MAILBOX_USER_VERSAL,		\
+		})
+
 #define USER_RES_AWS							\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
@@ -1016,6 +1078,13 @@ struct xocl_subdev_map {
 		.flags		= 0,					\
 		.subdev_info	= USER_RES_XDMA,			\
 		.subdev_num = ARRAY_SIZE(USER_RES_XDMA),		\
+	}
+
+#define	XOCL_BOARD_USER_XDMA_VERSAL					\
+	(struct xocl_board_private){					\
+		.flags		= XOCL_DSAFLAG_VERSAL,			\
+		.subdev_info	= USER_RES_XDMA_VERSAL,			\
+		.subdev_num = ARRAY_SIZE(USER_RES_XDMA_VERSAL),		\
 	}
 
 #define	XOCL_BOARD_USER_XDMA_ERT_OFF					\
@@ -1784,7 +1853,8 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x5015, PCI_ANY_ID, USER_QDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5019, PCI_ANY_ID, USER_QDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x501D, PCI_ANY_ID, USER_QDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x5031, PCI_ANY_ID, USER_SMARTN) }
+	{ XOCL_PCI_DEVID(0x10EE, 0x5031, PCI_ANY_ID, USER_SMARTN) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x5029, PCI_ANY_ID, USER_XDMA_VERSAL) }
 #define XOCL_DSA_VBNV_MAP						\
 	{ 0x10EE, 0x5001, PCI_ANY_ID, "xilinx_u200_xdma_201820_1",	\
 		&XOCL_BOARD_USER_XDMA },				\
