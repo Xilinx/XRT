@@ -690,8 +690,7 @@ configure(struct sched_cmd *cmd)
 	}
 	write_unlock(&zdev->attr_rwlock);
 
-	if(zdev->ert)
-	{
+	if(zdev->ert) {
 	  /* Enable interrupt from host to PS when new commands are ready */
 	  if (exec->cq_interrupt) {
 	    /* Stop CQ check thread */
