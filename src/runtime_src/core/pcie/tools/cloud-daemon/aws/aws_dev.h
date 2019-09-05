@@ -80,7 +80,7 @@ private:
 #ifdef INTERNAL_TESTING_FOR_AWS
     int mMgtHandle;
 #else
-    int sleepUntilLoaded( std::string &afi );
+    int sleepUntilLoaded( const std::string &afi );
     int checkAndSkipReload( char *afi_id, fpga_mgmt_image_info *info );
     int loadDefaultAfiIfCleared( void );
     char* get_afi_from_axlf(const axlf * buffer);
