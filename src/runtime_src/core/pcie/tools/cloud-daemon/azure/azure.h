@@ -27,10 +27,19 @@
 #include "../common.h"
 #include "../mpd_plugin.h"
 
+/*
+ * This class is for azure xclbin download handling.
+ *
+ * Azure uses a http wireserver, which provides RESTful APIs, to handle xclbin
+ * download. 3 steps are required to download the xclbin
+ * 1. upload the xclbin to wireserver(in 4M chunks) -- POST
+ * 2. start async reimage -- GET (this should be a POST, but the API is a GET)
+ * 3. query reimage statue -- GET
+ */ 
 class AzureDev
 {
 public:
-    AzureDev(size_t index);
+    explicit AzureDev(size_t index);
     ~AzureDev();
 
     // Bitstreams
@@ -68,17 +77,17 @@ private:
     static const int REIMAGE_TIMEOUT { 5 }; //in second
     std::shared_ptr<pcidev::pci_device> dev;
     int UploadToWireServer(
-        std::string ip,
-        std::string endpoint,
-        std::string target,
-        std::string &data,
+        const std::string &ip,
+        const std::string &endpoint,
+        const std::string &target,
+        const std::string &data,
         int index,
         int total,
-        std::string hash);
+        const std::string &hash);
     std::string REST_Get(
-        std::string ip,
-        std::string endpoint,
-        std::string target);
+        const std::string &ip,
+        const std::string &endpoint,
+        const std::string &target);
     int Sha256AndSplit(
         const std::string &input,
         std::vector<std::string> &output,

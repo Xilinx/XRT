@@ -47,28 +47,96 @@
 #include "mpd_plugin.h"
 
 static bool quit = false;
-// Support for msd plugin
-static void *plugin_handle;
-static init_fn plugin_init;
-static fini_fn plugin_fini;
 static struct mpd_plugin_callbacks plugin_cbs;
 static const std::string plugin_path("/opt/xilinx/xrt/lib/libmpd_plugin.so");
 
-// Init plugin callbacks
-static void init_plugin()
-{
-    plugin_handle = dlopen(plugin_path.c_str(), RTLD_LAZY | RTLD_GLOBAL);
-    if (plugin_handle == nullptr)
-        return;
+static std::string getIP(std::string host);
+static int connectMsd(const pcieFunc& dev, std::string &ip,
+    uint16_t port, int id);
+static int localMsgHandler(const pcieFunc& dev,
+    std::unique_ptr<sw_msg>& orig,
+    std::unique_ptr<sw_msg>& processed);
+static int mb_notify(const pcieFunc &dev, int &fd, bool online);
+void mpd_getMsg(size_t index,
+    std::shared_ptr<Msgq> &msgq,
+    std::shared_ptr<std::atomic<bool>> &is_handling);
+void mpd_handleMsg(size_t index,
+    std::shared_ptr<Msgq> &msgq,
+    std::shared_ptr<std::atomic<bool>> &is_handling);
 
-    syslog(LOG_INFO, "found mpd plugin: %s", plugin_path.c_str());
-    plugin_init = (init_fn) dlsym(plugin_handle, INIT_FN_NAME);
-    plugin_fini = (fini_fn) dlsym(plugin_handle, FINI_FN_NAME);
-    if (plugin_init == nullptr || plugin_fini == nullptr)
-        syslog(LOG_ERR, "failed to find init/fini symbols in mpd plugin");
+class Mpd : public Common
+{
+public:
+    Mpd(std::string name, std::string plugin_path) :
+        Common(name, plugin_path)
+    {
+    }
+
+    ~Mpd()
+    {
+    }
+
+    void start();
+    void run();
+    void stop();
+    init_fn plugin_init;
+    fini_fn plugin_fini;
+    std::vector<std::thread> threads_getMsg;
+    std::vector<std::thread> threads_handleMsg;
+
+private:
+};
+
+void Mpd::start()
+{
+    if (plugin_handle != nullptr) {
+        plugin_init = (init_fn) dlsym(plugin_handle, INIT_FN_NAME);
+        plugin_fini = (fini_fn) dlsym(plugin_handle, FINI_FN_NAME);
+        if (plugin_init == nullptr || plugin_fini == nullptr) {
+            syslog(LOG_ERR, "failed to find init/fini symbols in mpd plugin");
+            return;
+        }
+        int ret = (*plugin_init)(&plugin_cbs);
+        if (ret != 0)
+            syslog(LOG_ERR, "mpd plugin_init failed: %d", ret);
+    }
 }
 
-std::string getIP(std::string host)
+void Mpd::run()
+{
+    /*
+     * Fire up 2 threads for each board - one is to get msg and the other is to
+     * handle msg. The reason is, in some cases, handle msg may take a relative
+     * long time, eg. downloading a large xclbin, and in this case, one thead
+     * implementation makes the next mailbox msg not read out promptly and ends
+     * up a tx timeout
+     */
+    if (total == 0)
+        syslog(LOG_INFO, "no device found");
+    for (size_t i = 0; i < total; i++) {
+        std::shared_ptr<Msgq> msgq= std::make_shared<Msgq>();
+        std::shared_ptr<std::atomic<bool>> is_handling =
+            std::make_shared<std::atomic<bool>>(true);
+        auto t0 = std::bind(&mpd_getMsg, i, msgq, is_handling);
+        threads_getMsg.emplace_back(t0);
+        auto t1 = std::bind(&mpd_handleMsg, i, msgq, is_handling);
+        threads_handleMsg.emplace_back(t1);
+    }
+}
+
+void Mpd::stop()
+{
+    // Wait for all threads to finish before quit.
+    for (auto& t : threads_handleMsg)
+        t.join();
+    for (auto& t : threads_getMsg)
+        t.join();
+
+    if (plugin_fini)
+        (*plugin_fini)(plugin_cbs.mpc_cookie);
+}
+
+static std::string getIP(std::string host)
 {
     struct hostent *hp = gethostbyname(host.c_str());
 
@@ -81,7 +149,7 @@ std::string getIP(std::string host)
     return d;
 }
 
-static int connectMsd(pcieFunc& dev, std::string ip, uint16_t port, int id)
+static int connectMsd(const pcieFunc& dev, std::string &ip, uint16_t port, int id)
 {
     int msdfd;
     struct sockaddr_in msdaddr = { 0 };
@@ -127,8 +195,8 @@ static int connectMsd(pcieFunc& dev, std::string ip, uint16_t port, int id)
  * required. A typical use case is, xclbin download, when the users want have
  * their own control.
  */
-int local_msg_handler(pcieFunc& dev, std::shared_ptr<sw_msg>& orig,
-    std::shared_ptr<sw_msg>& processed)
+static int localMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
+    std::unique_ptr<sw_msg>& processed)
 {
     int ret = 0;
     mailbox_req *req = reinterpret_cast<mailbox_req *>(orig->payloadData());
@@ -136,7 +204,10 @@ int local_msg_handler(pcieFunc& dev, std::shared_ptr<sw_msg>& orig,
     if (orig->payloadSize() < sizeof(mailbox_req)) {
         dev.log(LOG_ERR, "local request dropped, wrong size");
         ret = -EINVAL;
-        goto out;
+        processed = std::make_unique<sw_msg>(&ret, sizeof(ret), orig->id(),
+            MB_REQ_FLAG_RESPONSE);
+        dev.log(LOG_INFO, "mpd daemon: response %d sent ret = %d", req->req, ret);
+        return FOR_LOCAL;
     }
     reqSize = orig->payloadSize() - sizeof(mailbox_req);
 
@@ -161,7 +232,7 @@ int local_msg_handler(pcieFunc& dev, std::shared_ptr<sw_msg>& orig,
         void *resp;
         size_t resp_len = 0;
         struct mailbox_subdev_peer *subdev_req =
-            reinterpret_cast<struct mailbox_subdev_peer *>(req->data);
+            reinterpret_cast<mailbox_subdev_peer *>(req->data);
         if (reqSize < sizeof(*subdev_req)) {
             dev.log(LOG_ERR, "local request(%d) dropped, wrong size", req->req);
             ret = -EINVAL;
@@ -173,9 +244,9 @@ int local_msg_handler(pcieFunc& dev, std::shared_ptr<sw_msg>& orig,
                 ret = -ENOTSUP;
                 break;
             }
-            std::shared_ptr<struct xcl_pr_region> data;
-            ret = (*plugin_cbs.get_icap_data)(dev.getIndex(),
-                data, resp_len);
+            std::unique_ptr<xcl_pr_region> data;
+            resp_len = sizeof(xcl_pr_region);
+            ret = (*plugin_cbs.get_icap_data)(dev.getIndex(), data);
             resp = data.get();
             break;
         }
@@ -184,9 +255,9 @@ int local_msg_handler(pcieFunc& dev, std::shared_ptr<sw_msg>& orig,
                 ret = -ENOTSUP;
                 break;
             }
-            std::shared_ptr<struct xcl_sensor> data;
-            ret = (*plugin_cbs.get_sensor_data)(dev.getIndex(),
-                data, resp_len);
+            std::unique_ptr<xcl_sensor> data;
+            resp_len = sizeof(xcl_sensor);
+            ret = (*plugin_cbs.get_sensor_data)(dev.getIndex(), data);
             resp = data.get();
             break;
         }
@@ -195,9 +266,9 @@ int local_msg_handler(pcieFunc& dev, std::shared_ptr<sw_msg>& orig,
                 ret = -ENOTSUP;
                 break;
             }
-            std::shared_ptr<struct xcl_board_info> data;
-            ret = (*plugin_cbs.get_board_info)(dev.getIndex(),
-                data, resp_len);
+            std::unique_ptr<xcl_board_info> data;
+            resp_len = sizeof(xcl_board_info);
+            ret = (*plugin_cbs.get_board_info)(dev.getIndex(), data);
             resp = data.get();
             break;
         }
@@ -206,10 +277,9 @@ int local_msg_handler(pcieFunc& dev, std::shared_ptr<sw_msg>& orig,
                 ret = -ENOTSUP;
                 break;
             }
-            std::shared_ptr<struct xcl_mig_ecc> data;
-            ret = (*plugin_cbs.get_mig_data)(dev.getIndex(),
-                data, resp_len);
-            resp = data.get();
+            std::unique_ptr<std::vector<char>> data;
+            ret = (*plugin_cbs.get_mig_data)(dev.getIndex(), data, resp_len);
+            resp = data->data();
             break;
         }
         case FIREWALL: {
@@ -217,9 +287,9 @@ int local_msg_handler(pcieFunc& dev, std::shared_ptr<sw_msg>& orig,
                 ret = -ENOTSUP;
                 break;
             }
-            std::shared_ptr<struct xcl_mig_ecc> data;
-            ret = (*plugin_cbs.get_firewall_data)(dev.getIndex(),
-                data, resp_len);
+            std::unique_ptr<xcl_mig_ecc> data;
+            resp_len = sizeof(xcl_mig_ecc);
+            ret = (*plugin_cbs.get_firewall_data)(dev.getIndex(), data);
             resp = data.get();
             break;
         }
@@ -228,9 +298,9 @@ int local_msg_handler(pcieFunc& dev, std::shared_ptr<sw_msg>& orig,
                 ret = -ENOTSUP;
                 break;
             }
-            std::shared_ptr<struct xcl_dna> data;
-            ret = (*plugin_cbs.get_dna_data)(dev.getIndex(),
-                data, resp_len);
+            std::unique_ptr<xcl_dna> data;
+            resp_len = sizeof(xcl_dna);
+            ret = (*plugin_cbs.get_dna_data)(dev.getIndex(), data);
             resp = data.get();
             break;
         }
@@ -239,10 +309,9 @@ int local_msg_handler(pcieFunc& dev, std::shared_ptr<sw_msg>& orig,
                 ret = -ENOTSUP;
                 break;
             }
-            std::shared_ptr<void> data;
-            ret = (*plugin_cbs.get_subdev_data)(dev.getIndex(),
-                data, resp_len);
-            resp = data.get();
+            std::unique_ptr<std::vector<char>> data;
+            ret = (*plugin_cbs.get_subdev_data)(dev.getIndex(), data, resp_len);
+            resp = data->data();
             break;
         }
         default:
@@ -251,7 +320,7 @@ int local_msg_handler(pcieFunc& dev, std::shared_ptr<sw_msg>& orig,
         }
 
         if (!ret) {
-            processed = std::make_shared<sw_msg>(resp, resp_len, orig->id(),
+            processed = std::make_unique<sw_msg>(resp, resp_len, orig->id(),
                    MB_REQ_FLAG_RESPONSE);
             dev.log(LOG_INFO, "mpd daemon: response %d sent", req->req);
             return FOR_LOCAL;
@@ -262,7 +331,7 @@ int local_msg_handler(pcieFunc& dev, std::shared_ptr<sw_msg>& orig,
         struct mailbox_conn_resp resp = {0};
         size_t resp_len = sizeof(struct mailbox_conn_resp);
         resp.conn_flags |= MB_PEER_READY;
-        processed = std::make_shared<sw_msg>(&resp, resp_len, orig->id(),
+        processed = std::make_unique<sw_msg>(&resp, resp_len, orig->id(),
             MB_REQ_FLAG_RESPONSE);
         dev.log(LOG_INFO, "mpd daemon: response %d sent", req->req);
         return FOR_LOCAL;
@@ -304,8 +373,8 @@ int local_msg_handler(pcieFunc& dev, std::shared_ptr<sw_msg>& orig,
     default:
         break;
     }
-out:
-    processed = std::make_shared<sw_msg>(&ret, sizeof(ret), orig->id(),
+
+    processed = std::make_unique<sw_msg>(&ret, sizeof(ret), orig->id(),
         MB_REQ_FLAG_RESPONSE);
     dev.log(LOG_INFO, "mpd daemon: response %d sent ret = %d", req->req, ret);
     return FOR_LOCAL;
@@ -326,19 +395,15 @@ out:
  * eg. load xclbin, mpd and plugin is required. mpd exiting will send a offline
  * notification to xocl, which will mark the card as not ready.
  */
-int mb_notify(pcieFunc &dev, int &fd, bool online)
+static int mb_notify(const pcieFunc &dev, int &fd, bool online)
 {
-    struct queue_msg msg;
-    std::shared_ptr<sw_msg> swmsg;
-    std::shared_ptr<std::vector<char>> buf;
+    std::unique_ptr<sw_msg> swmsg;
     struct mailbox_req *mb_req = NULL;
     struct mailbox_peer_state mb_conn = { 0 };
     size_t data_len = sizeof(struct mailbox_peer_state) + sizeof(struct mailbox_req);
    
-    buf = std::make_unique<std::vector<char>>(data_len, 0);
-    if (buf == nullptr)
-        return -ENOMEM;
-    mb_req = reinterpret_cast<struct mailbox_req *>(buf->data());
+    std::vector<char> buf(data_len, 0);
+    mb_req = reinterpret_cast<struct mailbox_req *>(buf.data());
 
     mb_req->req = MAILBOX_REQ_MGMT_STATE;
     if (online)
@@ -347,24 +412,23 @@ int mb_notify(pcieFunc &dev, int &fd, bool online)
         mb_conn.state_flags |= MB_STATE_OFFLINE;
     memcpy(mb_req->data, &mb_conn, sizeof(mb_conn));
 
-    swmsg = std::make_shared<sw_msg>(mb_req, data_len, 0x1234, MB_REQ_FLAG_REQUEST);
+    swmsg = std::make_unique<sw_msg>(mb_req, data_len, 0x1234, MB_REQ_FLAG_REQUEST);
     if (swmsg == nullptr)
         return -ENOMEM;
 
+    struct queue_msg msg;
     msg.localFd = fd;
     msg.type = REMOTE_MSG;
     msg.cb = nullptr;
-    msg.data = swmsg;
+    msg.data = std::move(swmsg);
 
     return handleMsg(dev, msg);    
 }
 
 // Client of MPD getting msg. Will quit on any error from either local mailbox or socket fd.
 // No retry is ever conducted.
-static void mpd_getMsg(size_t index,
-       std::shared_ptr<std::mutex> &mtx,
-       std::shared_ptr<std::condition_variable> &cv,
-       std::shared_ptr<std::queue<struct queue_msg>> &msgq,
+void mpd_getMsg(size_t index,
+       std::shared_ptr<Msgq> &msgq,
        std::shared_ptr<std::atomic<bool>> &is_handling)
 {
     int msdfd = -1, mbxfd = -1;
@@ -387,7 +451,7 @@ static void mpd_getMsg(size_t index,
             quit = true;
             return;
         }
-        cb = local_msg_handler;
+        cb = localMsgHandler;
     } else {
         if (!dev.loadConf()) {
             quit = true;
@@ -447,29 +511,36 @@ static void mpd_getMsg(size_t index,
             else
                 break;
         }
+
+        bool broken = false;
         for (int i = 0; i < 2; i++) {
             if (retfd[i] == mbxfd) {
                 msg.type = LOCAL_MSG;
-                msg.data = getLocalMsg(dev, mbxfd);
+                msg.data = std::move(getLocalMsg(dev, mbxfd));
             } else if (retfd[i] == msdfd) {
                 msg.type = REMOTE_MSG;
-                msg.data = getRemoteMsg(dev, msdfd);
+                msg.data = std::move(getRemoteMsg(dev, msdfd));
             } else
                 continue;
 
-            if (msg.data == nullptr)
-                goto out;
+            if (msg.data == nullptr) {
+                broken = true;
+                break;
+            }
             
-            std::unique_lock<std::mutex> lck(*mtx);
-            msgq->push(msg);
-            (*cv).notify_all();
+            std::lock_guard<std::mutex> lck(msgq->mtx);
+            msgq->q.push(std::move(msg));
+            (msgq->cv).notify_all();
         }
+
+        if (broken)
+            break;
     }
-out:
+
     msg.type = ILLEGAL_MSG;
-    std::unique_lock<std::mutex> lck(*mtx);
-    msgq->push(msg);
-    (*cv).notify_all();
+    std::lock_guard<std::mutex> lck(msgq->mtx);
+    msgq->q.push(std::move(msg));
+    (msgq->cv).notify_all();
 
     //notify mailbox driver the daemon is offline 
     mb_notify(dev, mbxfd, false);
@@ -481,40 +552,39 @@ out:
 
 // Client of MPD handling msg. Will quit on any error from either local mailbox or socket fd.
 // No retry is ever conducted.
-static void mpd_handleMsg(size_t index,
-       std::shared_ptr<std::mutex> &mtx,
-       std::shared_ptr<std::condition_variable> &cv,
-       std::shared_ptr<std::queue<struct queue_msg>> &msgq,
+void mpd_handleMsg(size_t index,
+       std::shared_ptr<Msgq> &msgq,
        std::shared_ptr<std::atomic<bool>> &is_handling)
 {
     pcieFunc dev(index);
     *is_handling = true;
-    std::unique_lock<std::mutex> lck(*mtx, std::defer_lock);
+    std::unique_lock<std::mutex> lck(msgq->mtx, std::defer_lock);
     for ( ;; ) {
         lck.lock();
-        while (msgq->empty()) {
-            (*cv).wait_for(lck, std::chrono::seconds(3));
+        while (msgq->q.empty()) {
+            (msgq->cv).wait_for(lck, std::chrono::seconds(3));
             if (quit) {
-                lck.unlock();
-                goto out;
+                *is_handling = false;
+                dev.log(LOG_INFO, "mpd_handleMsg thread %d exit!!", index);
+                return;
             }
         }
 
-        struct queue_msg msg = msgq->front();
-        msgq->pop();
+        struct queue_msg msg = std::move(msgq->q.front());
+        msgq->q.pop();
         lck.unlock();
         if (msg.type == ILLEGAL_MSG) //getMsg thread exits
             break;
         if (handleMsg(dev, msg) != 0)
             break;
     }
-out:
+
     *is_handling = false;
     dev.log(LOG_INFO, "mpd_handleMsg thread %d exit!!", index);
 }
 
 /*
- * mpd daemon will gracefully exit(eg notify mailbox driver) when
+ * daemon will gracefully exit(eg notify mailbox driver) when
  * 'kill -15' is sent. or 'crtl c' on the terminal for debug.
  * so far 'kill -9' is not handled.
  */
@@ -531,63 +601,11 @@ int main(void)
     signal(SIGINT, signalHandler);
     signal(SIGTERM, signalHandler);
 
-    // Daemon has no connection to terminal.
-    fcloseall();
-
-    // Start logging ASAP.
-    openlog("mpd", LOG_PID|LOG_CONS, LOG_USER);
-    syslog(LOG_INFO, "started");
-
-    init_plugin();
-
-    if (plugin_init) {
-        int ret = (*plugin_init)(&plugin_cbs);
-        if (ret != 0) {
-            syslog(LOG_ERR, "mpd plugin_init failed: %d", ret);
-            dlclose(plugin_handle);
-            return 0;
-        }
-    }
-
-    /*
-     * Fire up 2 threads for each board - one is to get msg and the other is to
-     * handle msg. The reason is, in some cases, handle msg may take a relative
-     * long time, eg. downloading a large xclbin, and in this case, one thead
-     * implementation makes the next mailbox msg not read out promptly and ends
-     * up a tx timeout
-     */
-    auto total = pcidev::get_dev_total();
-    if (total == 0)
-        syslog(LOG_INFO, "no device found");
-
-    std::vector<std::thread> threads_getMsg;
-    std::vector<std::thread> threads_handleMsg;
-    for (size_t i = 0; i < total; i++) {
-        std::shared_ptr<std::mutex> mtx = std::make_shared<std::mutex>();
-        std::shared_ptr<std::condition_variable> cv =
-            std::make_shared<std::condition_variable>();
-        std::shared_ptr<std::queue<struct queue_msg>> msgq =
-            std::make_shared<std::queue<struct queue_msg>>();
-        std::shared_ptr<std::atomic<bool>> is_handling =
-            std::make_shared<std::atomic<bool>>(true);
-        auto t0 = std::bind(&mpd_getMsg, i, mtx, cv, msgq, is_handling);
-        threads_getMsg.emplace_back(t0);
-        auto t1 = std::bind(&mpd_handleMsg, i, mtx, cv, msgq, is_handling);
-        threads_handleMsg.emplace_back(t1);
-    }
-
-    // Wait for all threads to finish before quit.
-    for (auto& t : threads_handleMsg)
-        t.join();
-    for (auto& t : threads_getMsg)
-        t.join();
-
-    if (plugin_fini)
-        (*plugin_fini)(plugin_cbs.mpc_cookie);
-    if (plugin_handle)
-        dlclose(plugin_handle);
-
-    syslog(LOG_INFO, "ended");
-    closelog();
+    Mpd mpd("mpd", plugin_path);
+    mpd.preStart();
+    mpd.start();
+    mpd.run();
+    mpd.stop();
+    mpd.postStop();
     return 0;
 }

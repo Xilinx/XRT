@@ -31,6 +31,7 @@ target_link_libraries(azure_mpd_plugin
   boost_system
   pthread
   rt
+  dl
   curl
   crypto
   )

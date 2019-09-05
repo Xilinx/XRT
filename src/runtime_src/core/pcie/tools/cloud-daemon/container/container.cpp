@@ -32,6 +32,7 @@
 #include <thread>
 #include <chrono>
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <uuid/uuid.h>
 #include <openssl/md5.h>
@@ -106,14 +107,14 @@ int get_remote_msd_fd(size_t index, int& fd)
  *        none
  * Return value:
  *        0: success
- *        1: failure
+ *        others: error code
  */ 
 int xclLoadXclBin(size_t index, const axlf *&xclbin)
 {
-    auto d = std::make_unique<Container>(index);
-    if (!d->isGood())
+    Container d(index);
+    if (!d.isGood())
         return 1;
-    return d->xclLoadXclBin(xclbin);
+    return d.xclLoadXclBin(xclbin);
 }
 
 int Container::xclLoadXclBin(const xclBin *&buffer)
@@ -133,10 +134,10 @@ int Container::xclLoadXclBin(const xclBin *&buffer)
     xclmgmt_ioc_bitstream_axlf obj = { const_cast<axlf *>(buffer) };
 #else
     //add vendor specific code here
-    std::shared_ptr<std::vector<char>> real_xclbin;
+    std::vector<char> real_xclbin;
     if (retrieve_xclbin(buffer, real_xclbin) != 0)
         return -EINVAL;
-    xclmgmt_ioc_bitstream_axlf obj = {reinterpret_cast<axlf *>(real_xclbin.get()->data())};    
+    xclmgmt_ioc_bitstream_axlf obj = {reinterpret_cast<axlf *>(real_xclbin.data())};    
 #endif
     return mgmtDev->ioctl(XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
 }
@@ -159,8 +160,10 @@ Container::Container(size_t index)
 /*
  * This file also gives examples how users add customized xclbin protection
  * leveraging the mpd/msd framework.
- * 
- * Entry in the xclbin repository.
+ *
+ * The example here maintains a database in memory. The primary of the database
+ * is the md5sum of the fake xclbin, and the path column saves the path to the
+ * real xclbin file.
  * This is only for the sample code usage. Cloud vendor has freedom to define
  * its own in terms of their own implementations
  */ 
@@ -189,22 +192,32 @@ static struct xclbin_repo repo[2] = {
     },
 }; // there are only 2 xclbins in the sample code
 
-int Container::retrieve_xclbin(const xclBin *&orig,
-       std::shared_ptr<std::vector<char>> &real_xclbin)
+/*
+ * Sample code for user reference to get the real xclbin file from fake xclbin
+ * container cloud vendor (Nimbix) need to implement this function according to
+ * their mechanism to save the real xclbin files
+ * This code is just for reference and for internal test purpose
+ */ 
+int Container::retrieve_xclbin(const xclBin *&orig, std::vector<char> &real_xclbin)
 {
-    //go get the real_xclbin yourself
-    char md5[33];
-    calculate_md5(md5, reinterpret_cast<char *>(const_cast<xclBin *>(orig)),
+    std::string md5 = calculate_md5(reinterpret_cast<char *>(const_cast<xclBin *>(orig)),
         orig->m_header.m_length);
-    for (unsigned i= 0; i < sizeof(repo)/sizeof(struct xclbin_repo); i++) {
-        if (strcmp(md5, repo[i].md5) == 0) {
-            return read_file(repo[i].path, real_xclbin);
+    for (const auto entry : repo) {
+        if (strcmp(md5.c_str(), entry.md5) == 0) {
+            real_xclbin = read_file(entry.path);
+            return 0;
         }
     }
     return 1;
 }
 
-void Container::calculate_md5(char *md5, char *buf, size_t len)
+/*
+ * Sample code to calculate the md5sum of the fake xclbin
+ * the md5sum is the primary key for the retrieve_xclbin() to
+ * get the real xclbin.
+ * This code is just for reference and for internal test purpose
+ */ 
+std::string Container::calculate_md5(char *buf, size_t len)
 {
     unsigned char s[16];
     MD5_CTX context;
@@ -212,24 +225,29 @@ void Container::calculate_md5(char *md5, char *buf, size_t len)
     MD5_Update(&context, buf, len);
     MD5_Final(s, &context);
 
-    for (int i = 0; i < 16; i++)
-        snprintf(&(md5[i*2]), 3,"%02x", s[i]);
-    md5[33] = 0;
+    std::stringstream md5;
+    md5 << std::hex << std::setfill('0');
+    for (auto &byte: s)
+    {
+        md5 << std::setw(2) << (int)byte;
+    }
+
+    return md5.str();
 }
 
-int Container::read_file(const char *filename, std::shared_ptr<std::vector<char>> &sp)
+/*
+ * Sample code to get the real xclbin file.
+ * This code is just for reference and for internal test purpose
+ */ 
+std::vector<char> Container::read_file(const char *filename)
 {
-    std::ifstream t;
-    t.open(filename, std::ios::binary | std::ios::in);
-    if (!t)
-        return 1;
+    std::ifstream t(filename, std::ios::binary | std::ios::in);
     t.seekg(0, std::ios::end);
     int len = t.tellg();
     t.seekg(0, std::ios::beg);    
-    sp = std::make_shared<std::vector<char>>(len, 0);
-    char *buf = sp.get()->data();
-    t.read(buf, len);
-    t.close();
-    return 0;
+    std::vector<char> buf;
+    buf.resize(len);
+    t.read(buf.data(), len);
+    return buf;
 }
 

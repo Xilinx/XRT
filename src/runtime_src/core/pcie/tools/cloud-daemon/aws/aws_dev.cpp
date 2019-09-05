@@ -33,6 +33,7 @@
 #include <chrono>
 #include <iostream>
 #include <fstream>
+#include <exception>
 #include <uuid/uuid.h>
 #include "xclbin.h"
 #include "aws_dev.h"
@@ -116,14 +117,14 @@ int get_remote_msd_fd(size_t index, int& fd)
  *        none    
  * Return value:
  *        0: success
- *        1: failure
+ *        others: err code
  */
 int awsLoadXclBin(size_t index, const axlf *&xclbin)
 {
-    auto d = std::make_unique<AwsDev>(index, nullptr);
-    if (!d->isGood())
-        return 1;
-    return d->awsLoadXclBin(xclbin);
+    AwsDev d(index, nullptr);
+    if (!d.isGood())
+        return -1;
+    return d.awsLoadXclBin(xclbin);
 }
 
 /*
@@ -134,18 +135,16 @@ int awsLoadXclBin(size_t index, const axlf *&xclbin)
  *        index: index of the FPGA device
  * Output:
  *        resp: response msg
- *        resp_len: length of response msg 
  * Return value:
  *        0: success
- *        1: failure
+ *        others: err code
  */
-int awsGetIcap(size_t index, std::shared_ptr<struct xcl_pr_region> &resp,
-       size_t &resp_len)
+int awsGetIcap(size_t index, std::unique_ptr<xcl_pr_region> &resp)
 {
-    auto d = std::make_unique<AwsDev>(index, nullptr);
-    if (!d->isGood())
-        return 1;
-    return d->awsGetIcap(resp, resp_len);
+    AwsDev d(index, nullptr);
+    if (!d.isGood())
+        return -1;
+    return d.awsGetIcap(resp);
 }
 
 /*
@@ -156,18 +155,16 @@ int awsGetIcap(size_t index, std::shared_ptr<struct xcl_pr_region> &resp,
  *        index: index of the FPGA device
  * Output:
  *        resp: response msg
- *        resp_len: length of response msg 
  * Return value:
  *        0: success
- *        1: failure
+ *        others: err code
  */
-int awsGetSensor(size_t index, std::shared_ptr<struct xcl_sensor> &resp,
-       size_t &resp_len)
+int awsGetSensor(size_t index, std::unique_ptr<xcl_sensor> &resp)
 {
-    auto d = std::make_unique<AwsDev>(index, nullptr);
-    if (!d->isGood())
-        return 1;
-    return d->awsGetSensor(resp, resp_len);
+    AwsDev d(index, nullptr);
+    if (!d.isGood())
+        return -1;
+    return d.awsGetSensor(resp);
 }
 
 /*
@@ -181,15 +178,14 @@ int awsGetSensor(size_t index, std::shared_ptr<struct xcl_sensor> &resp,
  *        resp_len: length of response msg 
  * Return value:
  *        0: success
- *        1: failure
+ *        others: err code
  */
-int awsGetBdinfo(size_t index, std::shared_ptr<struct xcl_board_info> &resp,
-       size_t &resp_len)
+int awsGetBdinfo(size_t index, std::unique_ptr<xcl_board_info> &resp)
 {
-    auto d = std::make_unique<AwsDev>(index, nullptr);
-    if (!d->isGood())
-        return 1;
-    return d->awsGetBdinfo(resp, resp_len);
+    AwsDev d(index, nullptr);
+    if (!d.isGood())
+        return -1;
+    return d.awsGetBdinfo(resp);
 }
 
 /*
@@ -200,18 +196,16 @@ int awsGetBdinfo(size_t index, std::shared_ptr<struct xcl_board_info> &resp,
  *        index: index of the FPGA device
  * Output:
  *        resp: response msg
- *        resp_len: length of response msg 
  * Return value:
  *        0: success
- *        1: failure
+ *        others: err code
  */
-int awsGetMig(size_t index, std::shared_ptr<struct xcl_mig_ecc> &resp,
-       size_t &resp_len)
+int awsGetMig(size_t index, std::unique_ptr<std::vector<char>> &resp, size_t &resp_len)
 {
-    auto d = std::make_unique<AwsDev>(index, nullptr);
-    if (!d->isGood())
-        return 1;
-    return d->awsGetMig(resp, resp_len);
+    AwsDev d(index, nullptr);
+    if (!d.isGood())
+        return -1;
+    return d.awsGetMig(resp, resp_len);
 }
 
 /*
@@ -222,18 +216,16 @@ int awsGetMig(size_t index, std::shared_ptr<struct xcl_mig_ecc> &resp,
  *        index: index of the FPGA device
  * Output:
  *        resp: response msg
- *        resp_len: length of response msg 
  * Return value:
  *        0: success
- *        1: failure
+ *        others: err code
  */
-int awsGetFirewall(size_t index, std::shared_ptr<struct xcl_mig_ecc> &resp,
-       size_t &resp_len)
+int awsGetFirewall(size_t index, std::unique_ptr<xcl_mig_ecc> &resp)
 {
-    auto d = std::make_unique<AwsDev>(index, nullptr);
-    if (!d->isGood())
-        return 1;
-    return d->awsGetFirewall(resp, resp_len);
+    AwsDev d(index, nullptr);
+    if (!d.isGood())
+        return -1;
+    return d.awsGetFirewall(resp);
 }
 
 /*
@@ -244,18 +236,16 @@ int awsGetFirewall(size_t index, std::shared_ptr<struct xcl_mig_ecc> &resp,
  *        index: index of the FPGA device
  * Output:
  *        resp: response msg
- *        resp_len: length of response msg 
  * Return value:
  *        0: success
- *        1: failure
+ *        others: err code
  */
-int awsGetDna(size_t index, std::shared_ptr<struct xcl_dna> &resp,
-       size_t &resp_len)
+int awsGetDna(size_t index, std::unique_ptr<xcl_dna> &resp)
 {
-    auto d = std::make_unique<AwsDev>(index, nullptr);
-    if (!d->isGood())
-        return 1;
-    return d->awsGetDna(resp, resp_len);
+    AwsDev d(index, nullptr);
+    if (!d.isGood())
+        return -1;
+    return d.awsGetDna(resp);
 }
 
 /*
@@ -266,18 +256,16 @@ int awsGetDna(size_t index, std::shared_ptr<struct xcl_dna> &resp,
  *        index: index of the FPGA device
  * Output:
  *        resp: response msg
- *        resp_len: length of response msg 
  * Return value:
  *        0: success
- *        1: failure
+ *        others: err code
  */
-int awsGetSubdev(size_t index, std::shared_ptr<void> &resp,
-       size_t &resp_len)
+int awsGetSubdev(size_t index, std::unique_ptr<std::vector<char>> &resp, size_t &resp_len)
 {
-    auto d = std::make_unique<AwsDev>(index, nullptr);
-    if (!d->isGood())
-        return 1;
-    return d->awsGetSubdev(resp, resp_len);
+    AwsDev d(index, nullptr);
+    if (!d.isGood())
+        return -1;
+    return d.awsGetSubdev(resp, resp_len);
 }
 
 /*
@@ -289,14 +277,14 @@ int awsGetSubdev(size_t index, std::shared_ptr<void> &resp,
  *        none
  * Return value:
  *        0: success
- *        1: failure
+ *        others: err code
  */
 int awsLockDevice(size_t index)
 {
-    auto d = std::make_unique<AwsDev>(index, nullptr);
-    if (!d->isGood())
-        return 1;
-    return d->awsLockDevice();
+    AwsDev d(index, nullptr);
+    if (!d.isGood())
+        return -1;
+    return d.awsLockDevice();
 }
 
 /*
@@ -308,14 +296,14 @@ int awsLockDevice(size_t index)
  *        none
  * Return value:
  *        0: success
- *        1: failure
+ *        others: err code
  */
 int awsUnlockDevice(size_t index)
 {
-    auto d = std::make_unique<AwsDev>(index, nullptr);
-    if (!d->isGood())
-        return 1;
-    return d->awsUnlockDevice();
+    AwsDev d(index, nullptr);
+    if (!d.isGood())
+        return -1;
+    return d.awsUnlockDevice();
 }
 
 /*
@@ -327,14 +315,14 @@ int awsUnlockDevice(size_t index)
  *        none
  * Return value:
  *        0: success
- *        1: failure
+ *        others: err code
  */
 int awsResetDevice(size_t index)
 {
-    auto d = std::make_unique<AwsDev>(index, nullptr);
-    if (!d->isGood())
-        return 1;
-    return d->awsResetDevice();
+    AwsDev d(index, nullptr);
+    if (!d.isGood())
+        return -1;
+    return d.awsResetDevice();
 }
 
 /*
@@ -347,14 +335,14 @@ int awsResetDevice(size_t index)
  *        none
  * Return value:
  *        0: success
- *        1: failure
+ *        others: err code
  */
 int awsReClock2(size_t index, struct xclmgmt_ioc_freqscaling *&obj)
 {
-    auto d = std::make_unique<AwsDev>(index, nullptr);
-    if (!d->isGood())
-        return 1;
-    return d->awsReClock2(obj);
+    AwsDev d(index, nullptr);
+    if (!d.isGood())
+        return -1;
+    return d.awsReClock2(obj);
 }
 
 int AwsDev::awsLoadXclBin(const xclBin *&buffer)
@@ -406,9 +394,8 @@ int AwsDev::awsLoadXclBin(const xclBin *&buffer)
 #endif
 }
 
-int AwsDev::awsGetIcap(std::shared_ptr<struct xcl_pr_region> &hwicap, size_t &resp_sz)
+int AwsDev::awsGetIcap(std::unique_ptr<xcl_pr_region> &hwicap)
 {
-    resp_sz = sizeof(struct xcl_pr_region);
     struct xcl_pr_region data = {0};
 #define FIELD(var, field, index) (var.field##_##index)
 #ifdef INTERNAL_TESTING_FOR_AWS
@@ -437,52 +424,49 @@ int AwsDev::awsGetIcap(std::shared_ptr<struct xcl_pr_region> &hwicap, size_t &re
     //do we need to save uuid of xclbin loaded so that we can return xclbin uuid here?
     //seems not. we check afi before load new xclbin.
 
-    hwicap = std::make_shared<struct xcl_pr_region>(data);
+    hwicap = std::make_unique<xcl_pr_region>(data);
     return 0;
 }
 
-int AwsDev::awsGetSensor(std::shared_ptr<struct xcl_sensor> &sensor, size_t &resp_sz)
+int AwsDev::awsGetSensor(std::unique_ptr<xcl_sensor> &sensor)
 {
-    resp_sz = sizeof(struct xcl_sensor);
     struct xcl_sensor data = {0};
-    sensor = std::make_shared<struct xcl_sensor>(data);
+    sensor = std::make_unique<xcl_sensor>(data);
     return -ENOTSUP;
 }
 
-int AwsDev::awsGetBdinfo(std::shared_ptr<struct xcl_board_info> &bdinfo, size_t &resp_sz)
+int AwsDev::awsGetBdinfo(std::unique_ptr<xcl_board_info> &bdinfo)
 {
-    resp_sz = sizeof(struct xcl_board_info);
     struct xcl_board_info data = {0};
-    bdinfo = std::make_shared<struct xcl_board_info>(data);
+    bdinfo = std::make_unique<xcl_board_info>(data);
     return -ENOTSUP;
 }
 
-int AwsDev::awsGetMig(std::shared_ptr<struct xcl_mig_ecc> &mig, size_t &resp_sz)
+int AwsDev::awsGetMig(std::unique_ptr<std::vector<char>> &mig, size_t &resp_len)
 {
-    resp_sz = sizeof(struct xcl_mig_ecc) * 64; //MAX_M_COUNT in xocl_drv.h
+    resp_len = sizeof (struct xcl_mig_ecc) * 64; //MAX_M_COUNT defined in xocl_drv.h
+    mig = std::make_unique<std::vector<char>>(resp_len, 0); 
+    return -ENOTSUP;
+}
+
+int AwsDev::awsGetFirewall(std::unique_ptr<xcl_mig_ecc> &firewall)
+{
     struct xcl_mig_ecc data = {0};
-    mig = std::make_shared<struct xcl_mig_ecc>(data);
+    firewall = std::make_unique<xcl_mig_ecc>(data);
     return -ENOTSUP;
 }
 
-int AwsDev::awsGetFirewall(std::shared_ptr<struct xcl_mig_ecc> &firewall, size_t &resp_sz)
+int AwsDev::awsGetDna(std::unique_ptr<xcl_dna> &dna)
 {
-    resp_sz = sizeof(struct xcl_mig_ecc);
-    struct xcl_mig_ecc data = {0};
-    firewall = std::make_shared<struct xcl_mig_ecc>(data);
-    return -ENOTSUP;
-}
-
-int AwsDev::awsGetDna(std::shared_ptr<struct xcl_dna> &dna, size_t &resp_sz)
-{
-    resp_sz = sizeof(struct xcl_dna);
     struct xcl_dna data = {0};
-    dna = std::make_shared<struct xcl_dna>(data);
+    dna = std::make_unique<xcl_dna>(data);
     return -ENOTSUP;
 }
 
-int AwsDev::awsGetSubdev(std::shared_ptr<void> &subdev, size_t &resp_sz)
+int AwsDev::awsGetSubdev(std::unique_ptr<std::vector<char>> &subdev, size_t &resp_len)
 {
+    resp_len = sizeof (struct xcl_subdev) + 0; //stub code. 0 may be any number in the future
+    subdev = std::make_unique<std::vector<char>>(resp_len, 0);
     return -ENOTSUP;
 }
 
@@ -496,18 +480,18 @@ bool AwsDev::isGood() {
     return true;
 }
 
-bool AwsDev::awsLockDevice()
+int AwsDev::awsLockDevice()
 {
     // AWS FIXME - add lockDevice
     mLocked = true;
-    return true;
+    return 0;
 }
 
-bool AwsDev::awsUnlockDevice()
+int AwsDev::awsUnlockDevice()
 {
     // AWS FIXME - add unlockDevice
     mLocked = false;
-    return true;
+    return 0;
 }
 
 int AwsDev::awsResetDevice() {
@@ -553,7 +537,8 @@ AwsDev::AwsDev(size_t index, const char *logfileName) : mBoardNumber(index), mLo
     if(mMgtHandle > 0)
         std::cout << "opened /dev/awsmgmt" << mBoardNumber << std::endl;
     else
-        std::cout << "Cannot open /dev/awsmgmt" << mBoardNumber << std::endl;
+        throw std::runtime_error("Can't open /dev/awsmgmt");
+
 #else
     loadDefaultAfiIfCleared();
     //bar0 is mapped already. seems other 2 bars are not required.
@@ -580,7 +565,7 @@ int AwsDev::loadDefaultAfiIfCleared( void )
     return 0;
 }
 
-int AwsDev::sleepUntilLoaded( const std::string afi )
+int AwsDev::sleepUntilLoaded( const std::string &afi )
 {
     for( int i = 0; i < 20; i++ ) {
         std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );

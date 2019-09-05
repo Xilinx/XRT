@@ -35,6 +35,7 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+#include <exception>
 #include <regex>
 #include "xclbin.h"
 #include "azure.h"
@@ -47,7 +48,7 @@ int init(mpd_plugin_callbacks *cbs);
 void fini(void *mpc_cookie);
 }
 
-std::string RESTIP_ENDPOINT;
+static std::string RESTIP_ENDPOINT;
 /*
  * Init function of the plugin that is used to hook the required functions.
  * The cookie is used by fini (see below). Can be NULL if not required.
@@ -110,12 +111,12 @@ int get_remote_msd_fd(size_t index, int& fd)
  *        none    
  * Return value:
  *        0: success
- *        1: failure
+ *        others: error code
  */
 int azureLoadXclBin(size_t index, const axlf *&xclbin)
 {
-    auto d = std::make_unique<AzureDev>(index);
-    return d->azureLoadXclBin(xclbin);
+    AzureDev d(index);
+    return d.azureLoadXclBin(xclbin);
 }
 
 //azure specific parts 
@@ -165,10 +166,9 @@ int AzureDev::azureLoadXclBin(const xclBin *&buffer)
     }
     std::cout << "xclbin file sha256: " << imageSHA << std::endl;
 
-    for (std::vector<std::string>::iterator it = chunks.begin(); it != chunks.end(); it++)
+    for (auto &chunk: chunks)
     {
         //upload each segment individually
-        std::string chunk = *it;
         std::cout << "upload segment: " << index << " size: " << chunk.size() << std::endl;
         UploadToWireServer(
             RESTIP_ENDPOINT,
@@ -231,13 +231,13 @@ AzureDev::AzureDev(size_t index)
 //private methods
 //REST operations using libcurl (-lcurl)
 int AzureDev::UploadToWireServer(
-    std::string ip,
-    std::string endpoint,
-    std::string target,
-    std::string &data,
+    const std::string &ip,
+    const std::string &endpoint,
+    const std::string &target,
+    const std::string &data,
     int index,
     int total,
-    std::string hash)
+    const std::string &hash)
 {
     CURL *curl;
     CURLcode res;
@@ -296,9 +296,9 @@ int AzureDev::UploadToWireServer(
 }
 
 std::string AzureDev::REST_Get(
-    std::string ip,
-    std::string endpoint,
-    std::string target
+    const std::string &ip,
+    const std::string &endpoint,
+    const std::string &target
 )
 {
     CURL *curl;

@@ -55,15 +55,13 @@ uint64_t pcieFunc::getSwitch()
     return chanSwitch;
 }
 
-int pcieFunc::getIndex()
+int pcieFunc::getIndex() const
 {
-    std::lock_guard<std::mutex> l(lock);
     return index;
 }
 
-std::shared_ptr<pcidev::pci_device> pcieFunc::getDev()
+std::shared_ptr<pcidev::pci_device> pcieFunc::getDev() const
 {
-    std::lock_guard<std::mutex> l(lock);
     return dev;
 }
 
@@ -132,7 +130,7 @@ bool pcieFunc::loadConf()
     return validConf();
 }
 
-void pcieFunc::log(int priority, const char *format, ...)
+void pcieFunc::log(int priority, const char *format, ...) const
 {
     va_list args;
     std::ostringstream ss;
