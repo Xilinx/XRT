@@ -1576,6 +1576,10 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
       ret = xrt_core::scheduler::init(handle, buffer);
       START_DEVICE_PROFILING_CB(handle);
     }
+    if (!ret && xrt_core::config::get_ert() &&
+      xclbin::get_axlf_section(buffer, PDI) &&
+      xrt_core::config::get_pdi_load())
+        ret = xrt_core::scheduler::loadXclbinToPS(handle, buffer);
     return ret;
 }
 

@@ -92,6 +92,17 @@ static inline irqreturn_t zocl_h2c_isr(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
+static int
+match_name(struct device *dev, void *data)
+{
+	const char *name = data;
+	/*
+	 * check if given name is substring inside dev.
+	 * the dev_name is like: 20300030000.ert_hw
+	 */
+	return strstr(dev_name(dev), name) != NULL;
+}
+
 /**
  * find_pdev - Find platform device by name
  *
@@ -104,7 +115,8 @@ static struct platform_device *find_pdev(char *name)
 	struct device *dev;
 	struct platform_device *pdev;
 
-	dev = bus_find_device_by_name(&platform_bus_type, NULL, name);
+	dev = bus_find_device(&platform_bus_type, NULL, (void *)name,
+	    match_name);
 	if (!dev)
 		return NULL;
 
@@ -561,10 +573,19 @@ static struct drm_driver zocl_driver = {
 	.patchlevel                = ZOCL_DRIVER_PATCHLEVEL,
 };
 
+static const struct zdev_data zdev_data_mpsoc = {
+	.fpga_driver_name = "pcap",
+};
+
+static const struct zdev_data zdev_data_versal = {
+	.fpga_driver_name = "versal_fpga"
+};
+
 static const struct of_device_id zocl_drm_of_match[] = {
-	{ .compatible = "xlnx,zocl", },
-	{ .compatible = "xlnx,zoclsvm", },
-	{ .compatible = "xlnx,zocl-ert", },
+	{ .compatible = "xlnx,zocl", .data = &zdev_data_mpsoc},
+	{ .compatible = "xlnx,zoclsvm", .data = &zdev_data_mpsoc},
+	{ .compatible = "xlnx,zocl-ert", .data = &zdev_data_mpsoc},
+	{ .compatible = "xlnx,zocl-versal", .data = &zdev_data_versal},
 	{ /* end of table */ },
 };
 MODULE_DEVICE_TABLE(of, zocl_drm_of_match);
@@ -591,6 +612,8 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	if (!zdev)
 		return -ENOMEM;
 
+	zdev->zdev_data_info = id->data;
+
 	/* Record and get IRQ number */
 	for (index = 0; index < MAX_CU_NUM; index++) {
 		irq = platform_get_irq(pdev, index);
@@ -614,9 +637,9 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	}
 	mutex_init(&zdev->mm_lock);
 
-	subdev = find_pdev("80180000.ert_hw");
+	subdev = find_pdev("ert_hw");
 	if (subdev) {
-		DRM_INFO("ert_hw found -> %p\n", subdev);
+		DRM_INFO("ert_hw found -> 0x%llx\n", (uint64_t)(uintptr_t)subdev);
 		/* Trust device tree for now, but a better place should be
 		 * feature rom.
 		 */
@@ -630,21 +653,25 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 		zdev->ert = (struct zocl_ert_dev *)platform_get_drvdata(subdev);
 	}
 
-	fnode = of_get_child_by_name(of_root, "pcap");
+	fnode = of_get_child_by_name(of_root,
+	    zdev->zdev_data_info->fpga_driver_name);
 	if (fnode) {
 		zdev->fpga_mgr = of_fpga_mgr_get(fnode);
 		if (IS_ERR(zdev->fpga_mgr)) {
 			DRM_ERROR("FPGA Manager not found %ld\n",
-				  PTR_ERR(zdev->fpga_mgr));
+			    PTR_ERR(zdev->fpga_mgr));
 			zdev->fpga_mgr = NULL;
-		} else {
-			if (of_property_read_u32(pdev->dev.of_node, "xlnx,pr-isolation-addr",
-						 &zdev->pr_isolation_addr))
-				zdev->pr_isolation_addr = 0;
 		}
+		DRM_INFO("FPGA programming device %s founded.\n",
+		    zdev->zdev_data_info->fpga_driver_name);
 	} else {
-		DRM_ERROR("FPGA programming device pcap not found\n");
+		DRM_ERROR("FPGA programming device %s not found\n",
+		    zdev->zdev_data_info->fpga_driver_name);
 	}
+
+	if (of_property_read_u32(pdev->dev.of_node, "xlnx,pr-isolation-addr",
+	    &zdev->pr_isolation_addr))
+		zdev->pr_isolation_addr = 0;
 
 	/* Initialzie IOMMU */
 	if (iommu_present(&platform_bus_type)) {
