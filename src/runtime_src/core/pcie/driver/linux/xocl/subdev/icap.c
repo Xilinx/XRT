@@ -1501,6 +1501,7 @@ static int icap_post_download_rp(struct platform_device *pdev)
 			icap->rp_mgmt_bin_len);
 		ICAP_INFO(icap, "stashed mb mgmt binary");
 		vfree(icap->rp_mgmt_bin);
+		icap->rp_mgmt_bin = NULL;
 		icap->rp_mgmt_bin_len = 0;
 		load_mbs = true;
 	}
@@ -1510,6 +1511,7 @@ static int icap_post_download_rp(struct platform_device *pdev)
 			icap->rp_sche_bin_len);
 		ICAP_INFO(icap, "stashed mb sche binary");
 		vfree(icap->rp_sche_bin);
+		icap->rp_sche_bin = NULL;
 		icap->rp_sche_bin_len =0;
 		load_mbs = true;
 	}
@@ -3451,6 +3453,13 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 			vfree(axlf);
 			mutex_unlock(&icap->icap_lock);
 			ICAP_ERR(icap, "copy header buffer failed %ld", ret);
+			goto failed;
+		}
+
+		if (memcmp(axlf->m_magic, ICAP_XCLBIN_V2,
+					sizeof(ICAP_XCLBIN_V2))) {
+			ICAP_ERR(icap, "Incorrect magic string");
+			ret = -EINVAL;
 			goto failed;
 		}
 

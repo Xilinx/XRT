@@ -85,7 +85,7 @@ static void xocl_mb_read_p2p_addr(struct xocl_dev *xdev)
 	ret = xocl_peer_request(xdev, mb_req, reqlen, &ret, &resplen, NULL,
 							NULL, 0);
 	if (ret) {
-		userpf_info(xdev, "dropped request (%d), failed with err: %d %d\n",
+		userpf_info(xdev, "dropped request (%d), failed with err: %d",
 					MAILBOX_REQ_READ_P2P_BAR_ADDR, ret);
 		return;
 	}
