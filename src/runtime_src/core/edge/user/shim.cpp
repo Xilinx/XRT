@@ -35,6 +35,7 @@
 #include "core/common/message.h"
 #include "core/common/scheduler.h"
 #include "core/common/xclbin_parser.h"
+#include "core/common/config_reader.h"
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
 #include <assert.h>
@@ -436,7 +437,7 @@ int ZYNQShim::xclLoadXclBin(const xclBin *buffer)
     ret = xclLoadAxlf(reinterpret_cast<const axlf*> (xclbininmemory));
   } else {
     if (mLogStream.is_open()) {
-      mLogStream << "xclLoadXclBin don't support legacy xclbin format." << std::endl;
+      mLogStream << "xclLoadXclBin doesn't support legacy xclbin format." << std::endl;
     }
   }
 
@@ -472,10 +473,16 @@ int ZYNQShim::xclLoadAxlf(const axlf *buffer)
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << buffer << std::endl;
   }
 
-  // If platform is a non-PR-platform, Following check will fail. Dont download the partial bitstream
-  // if Platform is a PR-platform, Following check passes as enable_pr value is true by default. Download the partial bitstream
-  // If platform is a PR-platform, but v++ generated a full bitstream (using some v++ param). User need to add enable_pr=false in xrt.ini.
-
+  /*
+   * If platform is a non-PR-platform, Following check will fail. Dont download
+   * the partial bitstream
+   *
+   * If Platform is a PR-platform, Following check passes as enable_pr value is
+   * true by default. Download the partial bitstream.
+   *
+   * If platform is a PR-platform, but v++ generated a full bitstream (using
+   * some v++ param).  User need to add enable_pr=false in xrt.ini.
+   */
   auto is_pr_platform = (buffer->m_header.m_mode == XCLBIN_PR ) ? true : false;
   auto runtime_pr_en = xrt_core::config::get_enable_pr(); //default value is true
 
@@ -486,7 +493,12 @@ int ZYNQShim::xclLoadAxlf(const axlf *buffer)
       std::cout << __func__ << "Partial reconfig failed, err: " << ret << std::endl;
   }
 
-  drm_zocl_axlf axlf_obj = { const_cast<axlf *>(buffer) };
+  drm_zocl_axlf axlf_obj = {
+      .za_xclbin_ptr = const_cast<axlf *>(buffer),
+      .za_flags = xrt_core::config::get_pdi_load() ?
+          DRM_ZOCL_AXLF_FLAGS_PDI_LOAD :
+          DRM_ZOCL_AXLF_FLAGS_NONE,
+  };
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_READ_AXLF, &axlf_obj);
 
   return ret;

@@ -265,11 +265,17 @@ struct ert_configure_sk_cmd {
   };
 
   /* payload */
-  uint32_t start_cuidx;
+  uint32_t start_cuidx:16;
+  uint32_t sk_type:16;
   uint32_t num_cus;
   uint32_t sk_size;		/* soft kernel size */
   uint32_t sk_name[8];		/* soft kernel name */
   uint64_t sk_addr;
+};
+
+enum softkernel_type {
+	SOFTKERNEL_TYPE_EXEC = 0,
+	  SOFTKERNEL_TYPE_XCLBIN = 1,
 };
 
 /**

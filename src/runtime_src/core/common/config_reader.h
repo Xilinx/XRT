@@ -366,6 +366,13 @@ get_kernel_channel_info()
   return value;
 }
 
+inline bool
+get_pdi_load()
+{
+  static bool value = detail::get_bool_value("Runtime.pdi_load",true);
+  return value;
+}
+
 }} // config,xrt_core
 
 #endif
