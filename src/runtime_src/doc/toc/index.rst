@@ -51,6 +51,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    formats.rst
    mgmt-ioctl.main.rst
    xocl_ioctl.main.rst
+   zocl_design.rst
 
 
 .. toctree::

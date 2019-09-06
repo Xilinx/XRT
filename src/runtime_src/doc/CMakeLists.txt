@@ -12,6 +12,8 @@ file(GLOB XRT_XMA_PLUGIN_H ${XRT_RUNTIME_SRC_DIR}/../xma/include/xmaplugin.h)
 file(GLOB XRT_MAILBOX_PROTO_H ${XRT_RUNTIME_SRC_DIR}/core/pcie/driver/linux/include/mailbox_proto.h)
 file(GLOB XRT_MAILBOX_C    ${XRT_RUNTIME_SRC_DIR}/core/pcie/driver/linux/xocl/subdev/mailbox.c)
 
+file(GLOB XRT_ZOCL_DMA_H ${XRT_RUNTIME_SRC_DIR}/core/edge/drm/zocl/zocl_dma.h)
+
 file(MAKE_DIRECTORY ${DOC_CORE_DIR})
 file(COPY ${XRT_DOC_TOC_DIR} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -78,9 +80,15 @@ else ()
     VERBATIM
     )
 
+  add_custom_command(OUTPUT core/zocl_dma.rst
+    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_ZOCL_DMA_H} > core/zocl_dma.rst
+    DEPENDS ${XRT_ZOCL_DMA_H}
+    VERBATIM
+    )
+
   add_custom_target(
     xrt_docs ALL
-    DEPENDS core/mgmt-ioctl.rst core/xocl_ioctl.rst core/xrt.rst core/ert.rst core/xma.rst core/xmaplugin.rst core/mailbox_proto.rst core/mailbox.rst
+    DEPENDS core/mgmt-ioctl.rst core/xocl_ioctl.rst core/xrt.rst core/ert.rst core/xma.rst core/xmaplugin.rst core/mailbox_proto.rst core/mailbox.rst core/zocl_dma.rst
     COMMENT "Generating documentation with Sphinx"
     COMMAND ${CMAKE_COMMAND} -E make_directory  html
     COMMAND rm -rf ${DOC_TOC_DIR}/*
