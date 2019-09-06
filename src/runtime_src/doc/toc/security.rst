@@ -184,8 +184,8 @@ Mailbox
 
 Mailbox is used for communication between user physical function driver, xocl and management physical
 function driver, xclmgmt. The Mailbox hardware design and xclmgmt driver mailbox handling implementation
-has the ability to throttle requests coming from xocl which
-protects it from DoS initiated by a malicious xocl. :ref:`mailbox.main.rst` has details on mailbox usage.
+has the ability to throttle requests coming from xocl driver which protects it from a potential DoS
+initiated by a malicious xocl driver. :ref:`mailbox.main.rst` has details on mailbox usage.
 
 Device Reset and Recovery
 =========================
@@ -207,8 +207,8 @@ RPM/DEB package files by Xilinx. Shells may be upgraded using XRT **xbmgmt** uti
 only. The upgrade process will update the PROM. A cold reboot of host is required in In order to boot the
 platform from the updated image.
 
-Execution Models
-================
+Compute Kernel Execution Models
+===============================
 
 XRT and Alveo support software defined compute kernel execution models having standard AXI hardware
 interfaces. More details on :ref:`xrt_kernel_executions.rst`. These well understood models do not require
