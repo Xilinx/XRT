@@ -27,3 +27,5 @@ user:
       name: adder_stage
       num_cus: 1
     name: kernels.xclbin
+  labels:
+    test_type: ['regression']

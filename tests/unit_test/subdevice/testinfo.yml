@@ -22,3 +22,5 @@ user:
       --sp addone_2.b:DDR[2] --sp addone_3.a:DDR[2] --sp addone_3.b:DDR[3] --sp addone_4.a:DDR[3]
       --sp addone_4.b:DDR[0]'}
     name: addone.xclbin
+  labels:
+    test_type: ['regression']

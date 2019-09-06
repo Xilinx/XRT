@@ -19,3 +19,5 @@ user:
       name: mmult
       num_cus: 1
     name: mmult4.xclbin
+  labels:
+    test_type: ['regression']

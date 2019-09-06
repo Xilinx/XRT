@@ -20,7 +20,7 @@ BIOS Setup
 
 Note
 .......
-It may be necessary to update to the latest BIOS release before enabling P2P.  Not doing so may cause the system to continuously reboot during the boot process.  If this occurs, power-cycle the system to disable p2p and allow the system to boot normally.
+It may be necessary to update to the latest BIOS release before enabling P2P.  Not doing so may cause the system to continuously reboot during the boot process.  If this occurs, power-cycle the system to disable P2P and allow the system to boot normally.
 
 
 Warning
@@ -151,3 +151,137 @@ PCIe Topology Considerations
 For best performance peer devices wanting to exchange data should be under the same PCIe switch.
 
 If IOMMU is enabled then all peer-to-peer transfers are routed through the root complex which will degrade performance significantly.
+
+
+P2P Data Transfer between FPGA Cards
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+OpenCL coding style
+...................
+
+Consider the example situation as below:
+
+  - P2P data transfer from Card1 to Card2
+  - Source buffer (`buf_src`) is OpenCL buffer resident of Card1's DDR
+  - Destination buffer (`buf_dst`) is OpenCL buffer resident of Card2's DDR
+
+Typical coding style:
+
+  1. In the OpenCL host code, create separate `cl_context` for each `cl_device_id`
+  2. Define `buf_src` as regular buffer
+  3. Define `buf_dst` as P2P buffer
+  4. Import the P2P buffer or `buf_dst` to the context of `buf_src`. Use the following APIs
+
+       - `xclGetMemObjectFd`
+       - `xclGetMemObjectFromFd`
+  5. Perform the copy operation from `buf_src` to `imported_dst_buf`
+
+.. code-block:: cpp
+
+   // Source Buffer (regular) in source context
+   cl_mem src_buf;
+   src_buf = clCreateBuffer(src_context, CL_MEM_WRITE_ONLY, buffersize, NULL, &err);
+   clSetKernelArg(kernel_1, 0, sizeof(cl_mem), &src_buf);
+
+   // Note: Handling of err is not shown throughout the code example. However, it is recommended
+   // to check error for most of the OpenCL APIs
+
+   // Destination buffer (P2P) in destination context
+   cl_mem dst_buf; 
+   cl_mem_ext_ptr_t dst_buf_ext = {0};
+   dst_buf_ext.flags = XCL_MEM_EXT_P2P_BUFFER;
+   dst_buf = clCreateBuffer(dst_context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX, buffersize, &dst_buf_ext, &err);
+   clSetKernelArg(kernel_2, 0, sizeof(cl_mem), &dst_buf);
+
+   // Import Destination P2P buffer to the source context
+   err = xclGetMemObjectFd(dst_buf, &fd);
+
+   cl_mem imported_dst_buf;
+
+   err = xclGetMemObjectFromFd(src_context, device_id[0], 0, fd, &imported_dst_buf); // Import
+
+   // Copy Operation: Local Source buffer -> Imported Destination Buffer
+
+   err = clEnqueueCopyBuffer(src_command_queue, src_buf, imported_dst_buf, 0, 0, sizeof(data_t)*LENGTH, 0, NULL, &event); 
+
+
+Profile Report
+..............
+
+In the Profile Summary report file the P2P transfer is shown under **Data Transfer: DMA Bypass** 
+
+**Data Transfer: DMA Bypass**
+
++-------+----------------+-----------+------------+-----------+----------+----------+-------------+
+| Device|  Transfer Type | Number of |  Transfer  | Total Data| Total    | Average  | Average     |
+|       |                | Transfer  |  Rate(MB/s)| Transfer  | Time (ms)| Size (Kb)| Latency(ns) |     
++=======+================+===========+============+===========+==========+==========+=============+
+| ...   |     IN         |     4096  |    N/A     |    0.262  |    N/A   |   0.064  |      N/A    |
++-------+----------------+-----------+------------+-----------+----------+----------+-------------+
+
+The report shows the P2P transfer corresponding to the receiving device (i.e. transfer type IN).
+
+
+P2P Data Transfer between FPGA Card and NVMe Device 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Using the P2P enabled device the data can be transferred between the FPGA device and another NVMe Device, such as SMART SSD, without migrating the data via host memory space.
+
+OpenCL coding style
+...................
+
+Typical coding style 
+
+   1. Create P2P buffer
+   2. Map P2P buffer to the host space
+   3. Access the SSD location through Linux File System, the file needs to be opened with `O_DIRECT`.
+   4. Read/Write through Linux `pread`/`pwrite` function
+
+.. code-block:: cpp
+
+   // Creating P2P buffer
+   cl_mem_ext_ptr_t p2pBOExt = {0};
+
+   p2pBOExt.flags = XCL_MEM_EXT_P2P_BUFFER; 
+
+   p2pBO = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX, chunk_size, &p2pBOExt, NULL);
+
+   clSetKernelArg(kernel, 0, sizeof(cl_mem), p2pBO);
+
+   // Map P2P Buffer into the host space
+
+   p2pPtr = (char *) clEnqueueMapBuffer(command_queue, p2pBO, CL_TRUE, CL_MAP_WRITE | CL_MAP_READ, 0, chunk_size, 0, NULL, NULL, NULL);
+
+   filename = <full path to SSD>
+   fd = open(filename, O_RDWR | O_DIRECT);
+
+   // Read chunk_size bytes starting at offset 0 from fd into p2pPtr
+   pread(fd, p2pPtr, chunk_size, 0);
+
+   // Wrtie chunk_size bytes starting at offset 0 from p2pPtr into fd
+   pwrite(fd, p2pPtr, chunk_size, 0); 
+
+Profile Report
+..............
+
+Sample Profile report from FPGA to NVMe Device transfer via P2P
+
+**Data Transfer: DMA Bypass**
+
++------+----------------+----------+------------+------------+----------+----------+------------+
+|Device|  Transfer Type | Number of| Transfer   | Total Data | Total    | Average  | Average    |
+|      |                | Transfer | Rate(MB/s) | Transfer   | Time (ms)| Size (Kb)| Latency(ns)|
++======+================+==========+============+============+==========+==========+============+
+| ...  |      OUT       |  8388608 |   N/A      |  1073.740  |    N/A   |  0.128   |  297.141   |
++------+----------------+----------+------------+------------+----------+----------+------------+
+
+Sample Profile report from NVMe Device to FPGA transfer via P2P
+
+**Data Transfer: DMA Bypass**
+
++------+----------------+----------+------------+------------+----------+----------+------------+
+|Device|  Transfer Type | Number of| Transfer   | Total Data | Total    | Average  | Average    |
+|      |                | Transfer | Rate(MB/s) | Transfer   | Time (ms)| Size (Kb)| Latency(ns)|
++======+================+==========+============+============+==========+==========+============+
+| ...  |      IN        |  4194304 |    N/A     |  1073.740  |    N/A   |  0.256   |  237.344   |
++------+----------------+----------+------------+------------+----------+----------+------------+

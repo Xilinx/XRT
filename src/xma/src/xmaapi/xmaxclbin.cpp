@@ -24,6 +24,8 @@
 #include "app/xmalogger.h"
 #include "lib/xmaxclbin.h"
 #include "core/common/config_reader.h"
+#include <boost/iostreams/stream.hpp>
+#include <iostream>
 
 #define XMAAPI_MOD "xmaxclbin"
 
@@ -180,6 +182,44 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
 
         xclbin_info->number_of_kernels = j;
         xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Num of total kernels on this device = %d\n", xclbin_info->number_of_kernels);
+
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "  ");
+        const axlf_section_header *xml_hdr = xclbin::get_axlf_section(xclbin, EMBEDDED_METADATA);
+        if (xml_hdr) {
+            char *xml_data = &buffer[xml_hdr->m_sectionOffset];
+            uint64_t xml_size = buffer[xml_hdr->m_sectionSize];
+            if (xml_size > 0 && xml_size < 500000) {
+                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "XML MetaData is:");
+                namespace io = boost::iostreams;
+                io::array_source arr_src(xml_data, xml_size);
+                io::stream<io::array_source> xml_stream(arr_src);
+                std::string line;
+                while(std::getline(xml_stream, line)) {
+                    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "%s", line.c_str());
+                }
+            }
+        } else {
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "XML MetaData is missing");
+        }
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "  ");
+        const axlf_section_header *kv_hdr = xclbin::get_axlf_section(xclbin, KEYVALUE_METADATA);
+        if (kv_hdr) {
+            char *kv_data = &buffer[kv_hdr->m_sectionOffset];
+            uint64_t kv_size = buffer[kv_hdr->m_sectionSize];
+            if (kv_size > 0 && kv_size < 200000) {
+                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Key-Value MetaData is:");
+                namespace io = boost::iostreams;
+                io::array_source arr_src(kv_data, kv_size);
+                io::stream<io::array_source> kv_stream(arr_src);
+                std::string line;
+                while(std::getline(kv_stream, line)) {
+                    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "%s", line.c_str());
+                }
+            }
+        } else {
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Key-Value Data is not present in xclbin");
+        }
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "  ");
     }
     else
     {

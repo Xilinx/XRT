@@ -319,7 +319,7 @@ zocl_hls_cu_init(struct zocl_cu *cu, phys_addr_t paddr)
 		return -ENOMEM;
 	}
 
-	DRM_DEBUG("CU 0x%llx map to 0x%p\n", core->paddr, core->vaddr);
+	DRM_DEBUG("CU 0x%llx map to 0x%p\n", (u64)core->paddr, core->vaddr);
 	ctrl_reg = ioread32(core->vaddr);
 	version = (ctrl_reg & CU_VERSION_MASK) >> 8;
 	max_cap = (ctrl_reg & CU_MAX_CAP_MASK) >> 12;
@@ -440,7 +440,7 @@ zocl_acc_cu_init(struct zocl_cu *cu, phys_addr_t paddr)
 		return -ENOMEM;
 	}
 
-	DRM_DEBUG("CU 0x%llx map to 0x%p\n", core->paddr, core->vaddr);
+	DRM_DEBUG("CU 0x%llx map to 0x%p\n", (u64)core->paddr, core->vaddr);
 	/* Unless otherwise configured, the adapter IP has space for 16
 	 * outstanding computations.
 	 */

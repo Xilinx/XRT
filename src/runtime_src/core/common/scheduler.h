@@ -35,6 +35,9 @@ namespace xrt_core { namespace scheduler {
 int
 init(xclDeviceHandle handle, const axlf* top);
 
+int
+loadXclbinToPS(xclDeviceHandle handle, const axlf* top);
+
 }} // utils,xrt
 
 #endif

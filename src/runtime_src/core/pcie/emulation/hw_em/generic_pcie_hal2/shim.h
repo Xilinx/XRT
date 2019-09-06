@@ -51,6 +51,7 @@
 #endif
 
 namespace xclhwemhal2 {
+
 using addr_type = uint64_t;
 #define PRINTENDFUNC if (mLogStream.is_open()) mLogStream << __func__ << " ended " << std::endl;
 
@@ -65,7 +66,7 @@ using addr_type = uint64_t;
       uint16_t writeBytes;
       Event();
   };
- 
+
   struct membank
   {
     addr_type base_addr; // base address of bank
@@ -89,7 +90,7 @@ using addr_type = uint64_t;
     size_t m_emuDataSize;
   } bitStreamArg;
 
- typedef struct 
+ typedef struct
  {
    std::string name;
    unsigned int size;
@@ -103,7 +104,7 @@ using addr_type = uint64_t;
       unsigned int xclAllocBO(size_t size, int unused, unsigned flags);
       uint64_t xoclCreateBo(xclemulation::xocl_create_bo *info);
       void* xclMapBO(unsigned int boHandle, bool write);
-      int xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset); 
+      int xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset);
       unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
       int xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties);
       size_t xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek);
@@ -114,7 +115,7 @@ using addr_type = uint64_t;
       static int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, va_list args1);
 
       //P2P Support
-      int xclExportBO(unsigned int boHandle); 
+      int xclExportBO(unsigned int boHandle);
       unsigned int xclImportBO(int boGlobalHandle, unsigned flags);
       int xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset);
 
@@ -128,8 +129,8 @@ using addr_type = uint64_t;
       xclemulation::drm_xocl_bo* xclGetBoByHandle(unsigned int boHandle);
       inline unsigned short xocl_ddr_channel_count();
       inline unsigned long long xocl_ddr_channel_size();
-      // HAL2 RELATED member functions end 
-      
+      // HAL2 RELATED member functions end
+
       // Bitstreams
       int xclLoadXclBin(const xclBin *buffer);
       //int xclLoadBitstream(const char *fileName);
@@ -240,7 +241,7 @@ using addr_type = uint64_t;
       ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
       ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
       int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout);
-      bool isImported(unsigned int _bo) 
+      bool isImported(unsigned int _bo)
       {
         if (mImportedBOs.find(_bo) != mImportedBOs.end())
           return true;
@@ -303,10 +304,10 @@ using addr_type = uint64_t;
       // HAL2 RELATED member variables start
       std::map<int, xclemulation::drm_xocl_bo*> mXoclObjMap;
       static unsigned int mBufferCount;
-      // HAL2 RELATED member variables end 
+      // HAL2 RELATED member variables end
       exec_core* mCore;
       MBScheduler* mMBSch;
-      
+
       // Information extracted from platform linker (for profile/debug)
       bool mIsDebugIpLayoutRead = false;
       bool mIsDeviceProfiling = false;
@@ -341,5 +342,3 @@ using addr_type = uint64_t;
   extern std::map<unsigned int, HwEmShim*> devices;
  }
 #endif
-
-
