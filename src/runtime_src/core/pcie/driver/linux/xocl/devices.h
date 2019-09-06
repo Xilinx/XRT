@@ -1041,6 +1041,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_XDMA,				\
 			XOCL_DEVINFO_SCHEDULER_51,			\
+			XOCL_DEVINFO_MAILBOX_USER_SOFTWARE,		\
 			XOCL_DEVINFO_ICAP_USER,				\
 		})
 
@@ -1639,6 +1640,14 @@ struct xocl_subdev_map {
 		XOCL_MAILBOX,				\
 		XOCL_RES_MAILBOX_USER_U50,		\
 		ARRAY_SIZE(XOCL_RES_MAILBOX_USER_U50),	\
+	}
+
+#define	XOCL_DEVINFO_MAILBOX_USER_SOFTWARE		\
+	{						\
+		XOCL_SUBDEV_MAILBOX,			\
+		XOCL_MAILBOX,				\
+		NULL,		\
+		0,	\
 	}
 
 #define MGMT_RES_DYNAMIC_IP						\

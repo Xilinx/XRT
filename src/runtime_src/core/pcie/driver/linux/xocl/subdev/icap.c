@@ -1780,13 +1780,8 @@ static int __icap_peer_lock(struct platform_device *pdev,
 	memcpy(mb_req->data, &bitstream_lock, data_len);
 	err = xocl_peer_request(xdev,
 		mb_req, reqlen, &resp, &resplen, NULL, NULL, 0);
-	if (err) {
-		/* ignore error if aws */
-		if (xocl_is_aws(xdev))
-			err = 0;
-	} else {
+	if (!err)
 		err = resp;
-	}
 
 	vfree(mb_req);
 	return err;
@@ -2152,8 +2147,7 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 		xclbin->m_header.m_length / (2048 * 1024));
 	vfree(mb_req);
 
-	/* Ignore failure if it's an AWS device */
-	if (msgerr != 0 && !xocl_is_aws(xdev)) {
+	if (msgerr != 0) {
 		ICAP_ERR(icap, "peer xclbin download err: %d", msgerr);
 		return msgerr;
 	}
