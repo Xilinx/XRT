@@ -83,6 +83,7 @@ namespace xdp {
     // Record wall-clock time points for start and end of profiling. Used to get an approximate total host time
     void setProfileStartTime(std::chrono::steady_clock::time_point t);
     void setProfileEndTime(std::chrono::steady_clock::time_point t);
+    double getTotalHostTimeInMilliSec();
 
   public:
     void writeProfileSummary();
