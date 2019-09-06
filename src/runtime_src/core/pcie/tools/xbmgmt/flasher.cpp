@@ -222,7 +222,7 @@ Flasher::Flasher(unsigned int index) : mFRHeader{}
         // character. Using "<" will check for a match that EntryPointString
         // starts with magic char sequence "xlnx".
         if(std::string(reinterpret_cast<const char*>(mFRHeader.EntryPointString))
-            .compare(MAGIC_XLNX_STRING) < 0)
+            .compare(0, 4, MAGIC_XLNX_STRING) != 0)
         {
             std::cout << "ERROR: Failed to detect feature ROM." << std::endl;
         }

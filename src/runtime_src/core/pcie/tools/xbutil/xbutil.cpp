@@ -1880,9 +1880,10 @@ int xcldev::xclP2p(int argc, char *argv[])
         std::cout << "ERROR: Not enough iomem space." << std::endl;
         std::cout << "Please check BIOS settings" << std::endl;
     } else if (ret == EBUSY) {
-        std::cout << "ERROR: P2P is enabled. But there is not enough iomem space, please warm reboot." << std::endl;
+        std::cout << "Please WARM reboot to enable p2p now." << std::endl;
     } else if (ret == ENXIO) {
-        std::cout << "ERROR: P2P is not supported on this platform" << std::endl;
+        std::cout << "ERROR: P2P is not supported on this platform"
+            << std::endl;
     } else if (ret == 1) {
         std::cout << "P2P is enabled" << std::endl;
     } else if (ret == 0) {
