@@ -26,6 +26,8 @@
 #include "core/common/config_reader.h"
 #include <boost/iostreams/stream.hpp>
 #include <iostream>
+//#include <regex>//Doesn't work on CentOS with older c++ lib
+//#include <boost/regex.hpp>
 
 #define XMAAPI_MOD "xmaxclbin"
 
@@ -112,6 +114,83 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
                    ipl->m_ip_data[i].m_name, MAX_KERNEL_NAME);
             */
             //layout[j].base_addr = ipl->m_ip_data[i].m_base_address;
+
+            xclbin_info->ip_layout[j].arg_start = -1;
+            xclbin_info->ip_layout[j].regmap_size = -1;
+            /*
+            const axlf_section_header *xml_hdr = xclbin::get_axlf_section(xclbin, EMBEDDED_METADATA);
+            if (xml_hdr) {
+                char *xml_data = &buffer[xml_hdr->m_sectionOffset];
+                uint64_t xml_size = xml_hdr->m_sectionSize;
+                if (xml_size > 0 && xml_size < 500000) {
+                    namespace io = boost::iostreams;
+                    io::array_source arr_src(xml_data, xml_size);
+                    io::stream<io::array_source> xml_stream(arr_src);
+                    std::string line;
+                    bool found_kernel = false;
+                    while(std::getline(xml_stream, line)) {
+                        try {
+                            if (!found_kernel) {
+                                std::regex rgx1(R"(.*<kernel name=\"([^\s]+)\" .*>)");
+                                std::smatch match1;
+                                if (std::regex_match(line, match1, rgx1)) {
+                                    std::string str_tmp2 = str_tmp1.substr(0,str_tmp1.find(":"));
+                                    if (match1.size() == 2) {
+                                        if (str_tmp2 == std::string(match1.str(1))) {
+                                            found_kernel = true;
+                                        }
+                                    }
+                                }
+                            } else {
+                                boost::regex rgx1(R"(.*<arg name=\".*id=\"([0-9]+)\".*size=\"([xXa-fA-F0-9]+)\".*offset=\"([xXa-fA-F0-9]+)\".*>)");
+                                boost::smatch match1;
+
+
+                                //std::regex rgx1(R"(.*<arg name=\".*id=\"([0-9]+)\".*size=\"([xXa-fA-F0-9]+)\".*offset=\"([xXa-fA-F0-9]+)\".*>)");
+                                //std::smatch match1;
+                                std::transform(line.begin(), line.end(), line.begin(), ::tolower);
+                                //if (std::regex_match(line, match1, rgx1)) {
+                                if (boost::regex_match(line, match1, rgx1)) {
+                                    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Sarab2: %s", line.c_str());
+                                    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Sarab2: %s - %s", match1.str(2), match1.str(3));
+                                    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Sarab2: %x - %x", std::stoi(match1.str(2), 0, 16), std::stoi(match1.str(3), 0, 16));
+                                    if (match1.size() == 4) {
+                                        if (stoi(match1.str(1)) == 0) {
+                                            xclbin_info->ip_layout[j].arg_start = std::stoi(match1.str(3), 0, 16);
+                                            xclbin_info->ip_layout[j].regmap_size = xclbin_info->ip_layout[j].arg_start;
+                                            xclbin_info->ip_layout[j].regmap_size += std::stoi(match1.str(2), 0, 16);
+                                        } else {
+                                            int32_t tmp_int1 = std::stoi(match1.str(3), 0, 16) + std::stoi(match1.str(2), 0, 16);
+                                            if (tmp_int1 > xclbin_info->ip_layout[j].regmap_size) {
+                                                xclbin_info->ip_layout[j].regmap_size = tmp_int1;
+                                            }
+                                        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Sarab2: 1- regmap_size: %d - %d", xclbin_info->ip_layout[j].regmap_size, tmp_int1);
+                                        }
+                                    }
+                                } else {
+                                    std::regex rgx1(R"(.*(</kernel>).*)");
+                                    std::smatch match1;
+                                    if (std::regex_match(line, match1, rgx1)) {
+                                        if (match1.size() == 2) {
+                                            found_kernel = false;
+                                            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "%s: arg_start: %x, regmap_size: %x", str_tmp1.c_str(), xclbin_info->ip_layout[j].arg_start, xclbin_info->ip_layout[j].regmap_size);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (std::regex_error& e) {
+                            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "%s", line.c_str());
+                            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "regex exception parsing above string", e.what());
+                            found_kernel = false;
+                            xclbin_info->ip_layout[j].arg_start = -1;
+                            xclbin_info->ip_layout[j].regmap_size = -1;
+                        }
+                    }
+                }
+            }
+            */
+
             xclbin_info->ip_layout[j].base_addr = ipl->m_ip_data[i].m_base_address;
             if (((ipl->m_ip_data[i].properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT) == AP_CTRL_CHAIN) {
                 int32_t max_channel_id = kernel_max_channel_id(ipl->m_ip_data[i], kernel_channels_info);
@@ -187,7 +266,7 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
         const axlf_section_header *xml_hdr = xclbin::get_axlf_section(xclbin, EMBEDDED_METADATA);
         if (xml_hdr) {
             char *xml_data = &buffer[xml_hdr->m_sectionOffset];
-            uint64_t xml_size = buffer[xml_hdr->m_sectionSize];
+            uint64_t xml_size = xml_hdr->m_sectionSize;
             if (xml_size > 0 && xml_size < 500000) {
                 xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "XML MetaData is:");
                 namespace io = boost::iostreams;
@@ -205,7 +284,7 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
         const axlf_section_header *kv_hdr = xclbin::get_axlf_section(xclbin, KEYVALUE_METADATA);
         if (kv_hdr) {
             char *kv_data = &buffer[kv_hdr->m_sectionOffset];
-            uint64_t kv_size = buffer[kv_hdr->m_sectionSize];
+            uint64_t kv_size = kv_hdr->m_sectionSize;
             if (kv_size > 0 && kv_size < 200000) {
                 xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Key-Value MetaData is:");
                 namespace io = boost::iostreams;
