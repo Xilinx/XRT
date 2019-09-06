@@ -40,4 +40,9 @@
 #define FIFO_WARN_MSG "Trace FIFO is full because of too many events. Timeline trace could be incomplete. \
 Please use 'coarse' option for data transfer trace or turn off Stall profiling"
 
+//Clock Training Constants
+#define CLK_TRAIN_NUM_PACKETS       3
+#define CLK_TRAIN_LINEAR_USECS      10
+#define CLK_TRAIN_NON_LINEAR_USECS  500
+
 #endif

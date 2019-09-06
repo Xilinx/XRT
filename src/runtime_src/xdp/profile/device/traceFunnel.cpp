@@ -15,8 +15,9 @@
  */
 
 #include "traceFunnel.h"
-#include<chrono>
+#include "tracedefs.h"
 #include <unistd.h>
+#include <chrono>
 
 namespace xdp {
 
@@ -37,35 +38,29 @@ TraceFunnel::TraceFunnel(Device* handle /** < [in] the xrt or hal device handle 
 size_t TraceFunnel::initiateClockTraining()
 {
     size_t size = 0;
-    uint32_t regValue = 0;    
+    uint32_t regValue = 0;
+    useconds_t useconds_interval = CLK_TRAIN_LINEAR_USECS;
+    for(int i = 0; i < CLK_TRAIN_NUM_PACKETS ; i++) {
+      // IMPORTANT NOTE: this *must* be compatible with the method of generating
+      // timestamps as defined in RTProfile::getTraceTime()
+      using namespace std::chrono;
+      typedef duration<uint64_t, std::ratio<1, 1000000000>> duration_ns;
+      duration_ns time_span =
+        duration_cast<duration_ns>(high_resolution_clock::now().time_since_epoch());
+      uint64_t hostTimeStamp = time_span.count();
 
-
-    for(int i = 0; i < 2 ; i++) {
- // Get host timestamp to write to APM
- // IMPORTANT NOTE: this *must* be compatible with the method of generating
- // timestamps as defined in RTProfile::getTraceTime()
-// uint64_t shim::getHostTraceTimeNsec() {
-   using namespace std::chrono;
-   typedef duration<uint64_t, std::ratio<1, 1000000000>> duration_ns;
-   duration_ns time_span =
-       duration_cast<duration_ns>(high_resolution_clock::now().time_since_epoch());
-   uint64_t hostTimeStamp = time_span.count();
-// }
-
-   regValue = static_cast <uint32_t> (hostTimeStamp & 0xFFFF);
-   size += write(0, 4, &regValue);
-   regValue = static_cast <uint32_t> (hostTimeStamp >> 16 & 0xFFFF);
-   size += write(0, 4, &regValue);
-   regValue = static_cast <uint32_t> (hostTimeStamp >> 32 & 0xFFFF);
-   size += write(0, 4, &regValue);
-   regValue = static_cast <uint32_t> (hostTimeStamp >> 48 & 0xFFFF);
-   size += write(0, 4, &regValue);
-   usleep(10);  // Linux specific
+      regValue = static_cast <uint32_t> (hostTimeStamp & 0xFFFF);
+      size += write(0, 4, &regValue);
+      regValue = static_cast <uint32_t> (hostTimeStamp >> 16 & 0xFFFF);
+      size += write(0, 4, &regValue);
+      regValue = static_cast <uint32_t> (hostTimeStamp >> 32 & 0xFFFF);
+      size += write(0, 4, &regValue);
+      regValue = static_cast <uint32_t> (hostTimeStamp >> 48 & 0xFFFF);
+      size += write(0, 4, &regValue);
+      if (i == 1) {useconds_interval = CLK_TRAIN_NON_LINEAR_USECS;}
+      usleep(useconds_interval);
     }
-
     return size;
-
-
 }
 
 void TraceFunnel::showProperties()

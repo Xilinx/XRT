@@ -15,6 +15,7 @@
  */
 
 #include "traceFifoFull.h"
+#include "tracedefs.h"
 
 #define AXI_FIFO_RLR                    0x24
 #define AXI_FIFO_RESET_VALUE            0xA5
@@ -284,7 +285,8 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
 
       // This section assumes that we write 8 timestamp packets in startTrace
       int mod = (i % 4);
-      unsigned int clockWordIndex = 7;
+      // Each packet is Always writtn in 4 chunks
+      unsigned int clockWordIndex = 4 * CLK_TRAIN_NUM_PACKETS - 1;
       if (i > clockWordIndex || mod == 0) {
         memset(&results, 0, sizeof(xclTraceResults));
       }

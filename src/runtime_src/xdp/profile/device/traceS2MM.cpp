@@ -195,6 +195,8 @@ void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& t
       count = MAX_TRACE_NUMBER_SAMPLES;
     }
     auto pos = static_cast<uint64_t*>(buf);
+    // Each packet is Always writtn in 4 chunks
+    unsigned int clockWordIndex = 4 * CLK_TRAIN_NUM_PACKETS - 1;
     for (uint32_t i = 0; i < count; i++) {
       auto currentPacket = pos[i];
       if (!currentPacket)
@@ -202,7 +204,7 @@ void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, xclTraceResultsVector& t
       // Poor man's reset
       if (i == 0 && !mPacketFirstTs)
         mPacketFirstTs = currentPacket & 0x1FFFFFFFFFFF;
-      if (i < 8 && !mclockTrainingdone) {
+      if (i <= clockWordIndex && !mclockTrainingdone) {
         uint32_t mod = i % 4;
         parsePacketClockTrain(currentPacket, mPacketFirstTs, mod, traceVector.mArray[tvindex]);
         tvindex = (mod == 3) ? tvindex + 1 : tvindex;

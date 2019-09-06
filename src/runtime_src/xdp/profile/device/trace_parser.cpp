@@ -111,12 +111,6 @@ namespace xdp {
 
     uint64_t timestamp = 0;
     uint64_t startTime = 0;
-    // x, y coordinates used for clock training
-    double y1=0;
-    double y2=0;
-    double x1=0;
-    double x2=0;
-    bool clockTrainingSelect = true;
     DeviceTrace kernelTrace;
     // Parse Start
     for (unsigned int i=0; i < traceVector.mLength; i++) {
@@ -125,26 +119,14 @@ namespace xdp {
       packets_parsed++;
 
       timestamp = trace.Timestamp;
-      // clock training relation is linear within small durations (1 sec)
-      // Assume clock training packets come in pairs
       if (trace.isClockTrain) {
-        if (clockTrainingSelect) {
-          y1 = static_cast <double> (trace.HostTimestamp);
-          x1 = static_cast <double> (timestamp);
-          clockTrainingSelect = false;
-        } else {
-          y2 = static_cast <double> (trace.HostTimestamp);
-          x2 = static_cast <double> (timestamp);
-          mTrainSlope[type] = (y2 - y1) / (x2 - x1);
-          mTrainOffset[type] = y2 - mTrainSlope[type] * x2;
-          trainDeviceHostTimestamps(deviceName, type);
-          clockTrainingSelect = true;
-        }
+        trainDeviceHostTimestamps(deviceName, type, timestamp, trace.HostTimestamp);
         continue;
       }
 
-      if (trace.Overflow == 1)
-        timestamp += LOOP_ADD_TIME_AIM;
+      // Not needed currently because of poor man's reset in trace parser
+      //if (trace.Overflow == 1)
+      //  timestamp += LOOP_ADD_TIME_AIM;
 
       uint32_t s = 0;
       bool SAMPacket = (trace.TraceID >= MIN_TRACE_ID_AM && trace.TraceID <= MAX_TRACE_ID_AM);
@@ -629,21 +611,51 @@ namespace xdp {
 
   // Complete training to convert device timestamp to host time domain
   // NOTE: see description of PTP @ http://en.wikipedia.org/wiki/Precision_Time_Protocol
-  void TraceParser::trainDeviceHostTimestamps(const std::string& deviceName, xclPerfMonType type) {
+  void TraceParser::trainDeviceHostTimestamps(const std::string& deviceName, xclPerfMonType type, uint64_t deviceTs, uint64_t hostTs) {
+    // x, y coordinates for slope and offset and drift calculations
+    static double y1 = 0.0;
+    static double y2 = 0.0;
+    static double x1 = 0.0;
+    static double x2 = 0.0;
     using namespace std::chrono;
-    typedef duration<uint64_t, std::ratio<1, 1000000000>> duration_ns;
-    duration_ns time_span =
-        duration_cast<duration_ns>(high_resolution_clock::now().time_since_epoch());
-    uint64_t currentOffset = static_cast<uint64_t>(xrt::time_ns());
-    uint64_t currentTime = time_span.count();
-    mTrainProgramStart[type] = static_cast<double>(currentTime - currentOffset);
+    if (!x1 && !y1) {
+      y1 = static_cast <double> (hostTs);
+      x1 = static_cast <double> (deviceTs);
+    } else if (!x2 && !y2) {
+      y2 = static_cast <double> (hostTs);
+      x2 = static_cast <double> (deviceTs);
+      mTrainSlope[type] = (y2 - y1) / (x2 - x1);
+      mTrainOffset[type] = y2 - mTrainSlope[type] * x2;
+    // Clock training relation is linear within small durations (1 sec)
+    // Drift calculations try to correct clock non-linearity
+    } else {
+      double y3 = static_cast <double> (hostTs);
+      double x3 = static_cast <double> (deviceTs);
+      double x3th = (y3 - mTrainOffset[type]) / mTrainSlope[type];
+      double drift = x3 - x3th;
+      double driftCyclesNs = (drift / (y3 - y1));
+      // Time (ns) = Cycles * Time per cycle
+      mTrainDrift[type] = driftCyclesNs * (1000.0 / mDeviceClockRateMHz);
+      mTrainDriftStart[type] = y1;
+    }
+    if (!mTrainProgramStart[type]) {
+      typedef duration<uint64_t, std::ratio<1, 1000000000>> duration_ns;
+      duration_ns time_span =
+          duration_cast<duration_ns>(high_resolution_clock::now().time_since_epoch());
+      uint64_t currentOffset = static_cast<uint64_t>(xrt::time_ns());
+      uint64_t currentTime = time_span.count();
+      mTrainProgramStart[type] = static_cast<double>(currentTime - currentOffset);
+    }
   }
 
   // Convert device timestamp to host time domain (in msec)
   double TraceParser::convertDeviceToHostTimestamp(uint64_t deviceTimestamp, xclPerfMonType type,
       const std::string& deviceName) {
-    // Return y = m*x + b with b relative to program start
-    return (mTrainSlope[type] * (double)deviceTimestamp)/1e6 + (mTrainOffset[type]-mTrainProgramStart[type])/1e6;
+    // y = m*x + b
+    double offset = mTrainSlope[type] * (double)deviceTimestamp + mTrainOffset[type];
+    double drift = (offset - mTrainDriftStart[type]) * mTrainDrift[type];
+    // Apply drift, program start shifts and return time in Ms
+    return (offset - drift - mTrainProgramStart[type]) / 1e6;
   }
 
 } // xdp
