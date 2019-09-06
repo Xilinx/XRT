@@ -20,3 +20,5 @@ user:
       name: globalbandwidth
       num_cus: 1
     name: globalbandwidth.xclbin
+  labels:
+    test_type: ['regression']
