@@ -973,7 +973,7 @@ namespace xocl {
 
           drm_xocl_pread_unmgd unmgd = {0, 0, fifoReadAddress[0], chunkSizeBytes,
             reinterpret_cast<uint64_t>((void *)(hostbuf + words))};
-          if (mDev->ioctl(DRM_IOCTL_XOCL_PREAD_UNMGD, &unmgd) < 0)
+          if (mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_PREAD_UNMGD, &unmgd) < 0)
             return 0;
 
           size += chunkSizeBytes;
@@ -992,7 +992,7 @@ namespace xocl {
 
         drm_xocl_pread_unmgd unmgd = {0, 0, fifoReadAddress[0], chunkSizeBytes,
           reinterpret_cast<uint64_t>((void *)(hostbuf + words))};
-        if (mDev->ioctl(DRM_IOCTL_XOCL_PREAD_UNMGD, &unmgd) < 0)
+        if (mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_PREAD_UNMGD, &unmgd) < 0)
           return 0;
 
         size += chunkSizeBytes;

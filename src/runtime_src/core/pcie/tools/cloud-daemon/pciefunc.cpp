@@ -152,9 +152,8 @@ pcieFunc::pcieFunc(size_t index, bool user) : index(index)
 
 pcieFunc::~pcieFunc()
 {
-    dev->devfs_close();
     clearConf();
-    close(mbxfd);
+    dev->close(mbxfd);
     mbxfd = -1;
 }
 
@@ -193,7 +192,7 @@ int pcieFunc::updateConf(std::string hostname, uint16_t hostport, uint64_t swch)
 
 int pcieFunc::mailboxOpen()
 {
-    const int fd = dev->devfs_open("mailbox", O_RDWR);
+    const int fd = dev->open("mailbox", O_RDWR);
     if (fd == -1) {
         log(LOG_ERR, "failed to open mailbox: %m");
         return -1;
