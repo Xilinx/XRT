@@ -10,7 +10,13 @@ Security is built into Alveo platform hardware and software architecture. The pl
 is made up of two fixed physical partitions: an immutable Shell and user compiled DFX partition.
 This design allows end users to perform Dynamic Function eXchange (Partial Reconfiguration
 in classic FPGA terminology) in the well defined DFX partition while the static Shell
-provides key infrastructure services.
+provides key infrastructure services. The following features reinforce security of the platform:
+
+1. 2 physical function shell design
+2. Trusted vs untrusted peripherals
+3. Signing of xclbins
+4. AXI Firewall
+5. Well-defined compute kernel execution model
 
 Shell
 =====
@@ -19,13 +25,13 @@ The Shell provides core infrastructure to the Alveo platform. It includes harden
 block which provides physical connectivity to the host PCIe bus via two physical functions
 as described in :ref:`platforms.rst`.
 The Shell is *trusted* partition of the Alveo platform and for all practical purposes
-should be treated like an ASIC. The Shell is loaded on system boot from PROM. The Shell
-cannot be changed once the system is up.
+should be treated like an ASIC. During system boot, the shell is loaded from the PROM.
+Once loaded, the Shell cannot be changed.
 
 In the figure above, the Shell peripherals shaded blue can only be accessed from physical
-function 0 (PF0). The Shell peripherals shaded violet can be accessed from physical
+function 0 (PF0) while those shaded violet can be accessed from physical
 function 1 (PF1). From PCIe topology point of view PF0 *owns* the device and performs
-supervisory actions on the device. Peripherals shaded blue are trusted but peripherals
+supervisory actions on the device. Peripherals shaded blue are trusted while those
 shaded violet are not. A malicious actor with root privileges who has direct access to blue
 shaded peripherals can potentially crash both the device and PCIe bus. However, a malicious
 actor with root privileges who has direct access to only violet shaded peripherals cannot
@@ -55,7 +61,8 @@ the Shell. The image load is itself effected by xclmgmt driver which binds to PF
 xclmgmt driver downloads the bitstream packaged in the bitstream section of xclbin by
 programming the ICAP peripheral. The management driver also discovers the target frequency
 of the DFX partition by reading the xclbin clock section and then programs the clocks
-which are also part of the Shell.
+which are also part of the Shell. These operations are exposed as one atomic ioctl by
+xclmgmt driver.
 
 xclbin is a container which packs FPGA bitstream for the DFX partition and host of related
 metadata like clock frequencies, information about instantiated compute units, etc. The
@@ -75,6 +82,23 @@ to ensure that the user design physically confines itself to DFX partition and d
 to overwrite portions of the Shell. It also validates that all the IOs between the DFX and
 Shell are going through fixed pins exposed by Shell.
 
+Signing of Xclbins
+==================
+
+xclbin signing process is similar to signing of Linux kernel modules. xclbins can be signed by
+XRT **xclbinutil** utility. The signing adds a PKCS7 signature at the end of xclbin. The signing
+certificate is then registered with appropriate key-ring. XRT supports one of three levels of
+security which can be configured with XRT **xbmgmt** utility running with root privileges.
+
+=============== =================================================================
+Security level  Xclbin signature verification behavior of xclmgmt driver
+=============== =================================================================
+0               No verification
+1               Signature verification enforced using signing certificate in
+                *.xilinx_fpga_xclbin_keys* key-ring
+2               Linux is running in UEFI secure mode and signature verification
+                is enforced using signing certificate in *system* key-ring
+=============== =================================================================
 
 Firewall
 ========
@@ -155,39 +179,20 @@ Summary
 +------------------------------+------------+--------------+
 
 
-
-Signing of Xclbins
-==================
-
-xclbin signing process is similar to signing of Linux kernel modules. xclbins can be signed by XRT tool,
-**xclbinutil**. The signing adds a PKCS7 signature at the end of xclbin. The signing certificate is then
-registered with appropriate key-ring. XRT supports one of three levels of security which can be configured
-with xbmgmt tool running with root privileges.
-
-=============== =================================================================
-Security level  Xclbin signature verification behavior of xclmgmt driver
-=============== =================================================================
-0               No verification
-1               Signature verification enforced using signing certificate in
-                *.xilinx_fpga_xclbin_keys* key-ring
-2               Linux is running in UEFI secure mode and signature verification
-                is enforced using signing certificate in *system* key-ring
-=============== =================================================================
-
 Mailbox
 =======
 
 Mailbox is used for communication between user physical function driver, xocl and management physical
 function driver, xclmgmt. The Mailbox hardware design and xclmgmt driver mailbox handling implementation
-has the ability to throttle requests coming from xocl which
-protects it from DoS initiated by a malicious xocl. :ref:`mailbox.main.rst` has details on mailbox usage.
+has the ability to throttle requests coming from xocl driver which protects it from a potential DoS
+initiated by a malicious xocl driver. :ref:`mailbox.main.rst` has details on mailbox usage.
 
 Device Reset and Recovery
 =========================
 
 Device reset and recovery is a privileged operation and can only be performed by xclmgmt driver. xocl
 driver can request device reset by sending a message to xclmgmt driver over the Mailbox. An end user
-can reset a device by using XRT **xbutil** tool. This tool talks to xocl driver which uses the reset
+can reset a device by using XRT **xbutil** utility. This utility talks to xocl driver which uses the reset
 message as defined in :ref:`mailbox.main.rst`
 
 Currently Alveo boards are reset by using PCIe bus *hot reset* mechanism. This resets the board peripherals
@@ -198,6 +203,14 @@ Shell Update
 ============
 
 Shell update is like firmware update in conventional PCIe devices. Shell updates are distributed as signed
-RPM/DEB package files by Xilinx. Shells may be upgraded using XRT **xbmgmt** tool by system administrators
+RPM/DEB package files by Xilinx. Shells may be upgraded using XRT **xbmgmt** utility by system administrators
 only. The upgrade process will update the PROM. A cold reboot of host is required in In order to boot the
 platform from the updated image.
+
+Compute Kernel Execution Models
+===============================
+
+XRT and Alveo support software defined compute kernel execution models having standard AXI hardware
+interfaces. More details on :ref:`xrt_kernel_executions.rst`. These well understood models do not require
+direct register access from user space. To execute a compute kernel XRT has a well defined *exec command buffer*
+API and a *wait for exec completion* API. These operations are exposed as ioctls by the xocl driver.

@@ -19,3 +19,5 @@ user:
       name: hello
       num_cus: 1
     name: verify.xclbin
+  labels:
+    test_type: ['regression']

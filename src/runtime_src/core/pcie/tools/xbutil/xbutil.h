@@ -665,6 +665,7 @@ public:
         std::string name, vendor, device, subsystem, subvendor, xmc_ver, ser_num, bmc_ver, idcode, fpga, dna, errmsg;
         int ddr_size = 0, ddr_count = 0, pcie_speed = 0, pcie_width = 0, p2p_enabled = 0;
         std::vector<std::string> clock_freqs;
+        std::vector<std::string> dma_threads;
         bool mig_calibration;
         
         pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV",               errmsg, name ); 
@@ -678,6 +679,7 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get("rom", "ddr_bank_size",       errmsg, ddr_size);
         pcidev::get_dev(m_idx)->sysfs_get( "rom", "ddr_bank_count_max", errmsg, ddr_count );
         pcidev::get_dev(m_idx)->sysfs_get( "icap", "clock_freqs",       errmsg, clock_freqs ); 
+        pcidev::get_dev(m_idx)->sysfs_get( "dma", "channel_stat_raw",   errmsg, dma_threads ); 
         pcidev::get_dev(m_idx)->sysfs_get( "", "link_speed",            errmsg, pcie_speed );
         pcidev::get_dev(m_idx)->sysfs_get( "", "link_width",            errmsg, pcie_width );
         pcidev::get_dev(m_idx)->sysfs_get( "", "mig_calibration",       errmsg, mig_calibration );
@@ -700,7 +702,7 @@ public:
         sensor_tree::put( "board.info.clock2",         clock_freqs[2] );
         sensor_tree::put( "board.info.pcie_speed",     pcie_speed );
         sensor_tree::put( "board.info.pcie_width",     pcie_width );
-        sensor_tree::put( "board.info.dma_threads",    2 );
+        sensor_tree::put( "board.info.dma_threads",    dma_threads.size() );
         sensor_tree::put( "board.info.mig_calibrated", mig_calibration );
         sensor_tree::put( "board.info.idcode",         idcode );
         sensor_tree::put( "board.info.fpga_name",      fpga );

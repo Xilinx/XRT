@@ -11,3 +11,5 @@ user:
   host_src: main.cpp oclErrorCodes.cpp oclHelper.cpp
   name: 005_bringup2
   only_host_code: 1
+  labels:
+    test_type: ['regression']
