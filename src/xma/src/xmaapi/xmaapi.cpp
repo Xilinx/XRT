@@ -30,6 +30,7 @@
 //#include "lib/xmahw_hal.h"
 #include "lib/xmasignal.h"
 #include <iostream>
+#include <thread>
 
 #define XMAAPI_MOD "xmaapi"
 
@@ -37,6 +38,36 @@
 XmaSingleton xma_singleton_internal;
 
 XmaSingleton *g_xma_singleton = &xma_singleton_internal;
+
+void xma_thread1() {
+    bool expected = false;
+    bool desired = true;
+    std::list<XmaLogMsg> list1;
+    while (!g_xma_singleton->xma_exit) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        while (!g_xma_singleton->log_msg_list_locked.compare_exchange_weak(expected, desired)) {
+            expected = false;
+        }
+        //log msg list lock acquired
+
+        if (!g_xma_singleton->log_msg_list.empty()) {
+            auto itr1 = list1.end();
+            list1.splice(itr1, g_xma_singleton->log_msg_list);
+        }
+
+        //Release log msg list lock
+        g_xma_singleton->log_msg_list_locked = false;
+
+        while (!list1.empty()) {
+            auto itr1 = list1.begin();
+            xclLogMsg(NULL, (xrtLogMsgLevel)itr1->level, "XMA", itr1->msg.c_str());
+            list1.pop_front();
+        }
+    }
+    //Print all stats here
+    //Sarab: TODO
+    xclLogMsg(NULL, XMA_INFO_LOG, "XMA", "CU Usage Stats: ");
+}
 
 int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
 {
@@ -184,6 +215,10 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
         return XMA_ERROR;
     }
 
+    std::thread threadObjSystem(xma_thread1);
+    //Detach threads to let them run independently
+    threadObjSystem.detach();
+
     xma_init_sighandlers();
     //xma_res_mark_xma_ready(g_xma_singleton->shm_res_cfg);
 
@@ -194,11 +229,9 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
 
 void xma_exit(void)
 {
-/*
-    extern XmaSingleton *g_xma_singleton;
-    if (!g_xma_singleton->shm_freed)
-        xma_res_shm_unmap(g_xma_singleton->shm_res_cfg);
-*/
+    if (g_xma_singleton) {
+        g_xma_singleton->xma_exit = true;
+    }
 }
 
 /*Sarab: Remove yaml system cfg stuff
