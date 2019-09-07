@@ -19,3 +19,5 @@ user:
       name: addone
       num_cus: 8
     name: kernel.xclbin
+  labels:
+    test_type: ['regression']

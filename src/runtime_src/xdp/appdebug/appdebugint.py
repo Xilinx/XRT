@@ -11,13 +11,13 @@ class printSPMInfo (infCallUtil):
 	"Print the Performance Monitor counters"
 	def invoke (self, arg, jsonformat):
 		fargs = []
-		free_args,spm_ptr,errmsg = self.callfunc_verify("appdebug::clGetDebugCounters",fargs, "SPM")
+		free_args,spm_ptr,errmsg = self.callfunc_verify("appdebug::clGetDebugCounters",fargs, "AIM")
 
 		if (spm_ptr == 0):
 			if (jsonformat == True):
 				print ("[{{\"info\": \"{}\"}}]".format (errmsg))
 			else :
-				print ("Error reading SPMs : " + (errmsg))
+				print ("Error reading AIMs : " + (errmsg))
 			return 
 
 		if (jsonformat):
@@ -38,13 +38,13 @@ class printSSPMInfo (infCallUtil):
 	"Print the Streaming Performance Monitor counters"
 	def invoke (self, arg, jsonformat):
 		fargs = []
-		free_args,sspm_ptr,errmsg = self.callfunc_verify("appdebug::clGetDebugStreamCounters",fargs, "SSPM")
+		free_args,sspm_ptr,errmsg = self.callfunc_verify("appdebug::clGetDebugStreamCounters",fargs, "ASM")
 
 		if (sspm_ptr == 0):
 			if (jsonformat == True):
 				print ("[{{\"info\": \"{}\"}}]".format (errmsg))
 			else :
-				print ("Error reading SSPMs: " + (errmsg))
+				print ("Error reading ASMs: " + (errmsg))
 			return				
 
 		if (jsonformat):
@@ -61,16 +61,16 @@ class printSSPMInfo (infCallUtil):
 obj_sspm = printSSPMInfo()
 
 class printSAMInfo (infCallUtil):
-	"Print the SDx Streaming Performance Monitor counters"
+	"Print the Accelerator Monitor counters"
 	def invoke (self, arg, jsonformat):
 		fargs = []
-		free_args,sam_ptr,errmsg = self.callfunc_verify("appdebug::clGetDebugAccelMonitorCounters",fargs, "SAM")
+		free_args,sam_ptr,errmsg = self.callfunc_verify("appdebug::clGetDebugAccelMonitorCounters",fargs, "AM")
 
 		if (sam_ptr == 0):
 			if (jsonformat == True):
 				print ("[{{\"info\": \"{}\"}}]".format (errmsg))
 			else :
-				print ("Error reading SAMs : " + (errmsg))
+				print ("Error reading AMs : " + (errmsg))
 			return				
 
 		if (jsonformat):
@@ -126,7 +126,7 @@ xstatusPrefix()
 class xstatusSPMInfo (gdb.Command,infCallUtil):
 	"Print the Performance Monitor counters when available"
 	def __init__ (self):
-		super (xstatusSPMInfo, self).__init__ ("xstatus spm", 
+		super (xstatusSPMInfo, self).__init__ ("xstatus aim", 
                          gdb.COMMAND_USER)
 	def invoke (self, arg, from_tty):
 		try:
@@ -139,7 +139,7 @@ xstatusSPMInfo()
 class xstatusSSPMInfo (gdb.Command,infCallUtil):
 	"Print the Streaming Performance Monitor counters when available"
 	def __init__ (self):
-		super (xstatusSSPMInfo, self).__init__ ("xstatus sspm", 
+		super (xstatusSSPMInfo, self).__init__ ("xstatus asm", 
                          gdb.COMMAND_USER)
 	def invoke (self, arg, from_tty):
 		try:
@@ -151,9 +151,9 @@ class xstatusSSPMInfo (gdb.Command,infCallUtil):
 xstatusSSPMInfo()
 
 class xstatusSAMInfo (gdb.Command,infCallUtil):
-	"Print the SDx Streaming Performance Monitor counters when available"
+	"Print the Accelerator Monitor counters when available"
 	def __init__ (self):
-		super (xstatusSAMInfo, self).__init__ ("xstatus sam", 
+		super (xstatusSAMInfo, self).__init__ ("xstatus am", 
                          gdb.COMMAND_USER)
 	def invoke (self, arg, from_tty):
 		try:
@@ -211,7 +211,7 @@ class xstatusJSONAllInfo (gdb.Command,infCallUtil):
 		super (xstatusJSONAllInfo, self).__init__ ("xstatus_json all", 
                          gdb.COMMAND_USER)
 	def invoke (self, arg, from_tty):
-		print "{ \"spm\" : "
+		print "{ \"aim\" : "
 		obj_spm.invoke(arg,1)
 		print ","
 		print "\"lapc\" : "

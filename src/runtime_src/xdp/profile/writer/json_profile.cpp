@@ -165,6 +165,7 @@ void JSONProfileWriter::writeDocumentSubHeader(std::ofstream& ofs, RTProfile* pr
     devices.push_back(std::make_pair("", child));
   }
   header.add_child("devices", devices);
+  header.put("totalTime", profile->getTotalHostTimeInMilliSec());
 }
 
 

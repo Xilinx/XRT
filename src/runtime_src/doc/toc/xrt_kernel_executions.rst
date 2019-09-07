@@ -1,3 +1,5 @@
+.. _xrt_kernel_executions.rst:
+
 XRT Supported Kernel Execution Models
 -------------------------------------
 

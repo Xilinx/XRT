@@ -87,7 +87,7 @@ static DEFINE_MUTEX(free_cmds_mutex);
  * Scheduler copies pending commands to its private queue when necessary
  */
 static LIST_HEAD(pending_cmds);
-static DEFINE_MUTEX(pending_cmds_mutex);
+static DEFINE_SPINLOCK(pending_cmds_lock);
 static atomic_t num_pending = ATOMIC_INIT(0);
 
 /**
@@ -690,26 +690,27 @@ configure(struct sched_cmd *cmd)
 	}
 	write_unlock(&zdev->attr_rwlock);
 
-	/* Enable interrupt from host to PS when new commands are ready */
-	if (exec->cq_interrupt) {
-		/* Stop CQ check thread */
-		if (zdev->exec->cq_thread)
-			kthread_stop(zdev->exec->cq_thread);
+	if(zdev->ert) {
+	  /* Enable interrupt from host to PS when new commands are ready */
+	  if (exec->cq_interrupt) {
+	    /* Stop CQ check thread */
+	    if (zdev->exec->cq_thread)
+	      kthread_stop(zdev->exec->cq_thread);
 
-		/* At this point we are good. No one is polling CQ */
-		cq_irq = zdev->ert->irq[ERT_CQ_IRQ];
-		ret = request_irq(cq_irq, sched_cq_isr, 0, "zocl_cq", zdev);
-		if (ret) {
-			DRM_WARN("Failed to initial CQ interrupt. "
-				 "Fall back to polling\n");
-			exec->cq_interrupt = 0;
-			exec->cq_thread = kthread_run(cq_check, zdev, name);
-		}
-	} else {
-		/* In CQ polling mode now */
-		if (!zdev->exec->cq_thread)
-			exec->cq_thread = kthread_run(cq_check, zdev, name);
+	    /* At this point we are good. No one is polling CQ */
+	    cq_irq = zdev->ert->irq[ERT_CQ_IRQ];
+	    ret = request_irq(cq_irq, sched_cq_isr, 0, "zocl_cq", zdev);
+	    if (ret) {
+	      DRM_WARN("Failed to initial CQ interrupt. "
+		  "Fall back to polling\n");
+	      exec->cq_interrupt = 0;
+	      exec->cq_thread = kthread_run(cq_check, zdev, name);
+	    }
+	  }
 	}
+	/* TODO: let's consider how to support reconfigurable KDS/ERT later.
+	 * At that time, ERT should be able to change back to CQ polling mode.
+	 */
 
 	exec->zcu = vzalloc(sizeof(struct zocl_cu) * exec->num_cus);
 	if (!exec->zcu) {
@@ -718,7 +719,7 @@ configure(struct sched_cmd *cmd)
 	}
 
 	for (i = 0; i < exec->num_cus; i++) {
-		if (cfg->data[i] & (~ZOCL_KDS_MASK == ACCEL_ADAPTER)) {
+		if ((cfg->data[i] & ~ZOCL_KDS_MASK) == ACCEL_ADAPTER) {
 			/* If the ACCEL adapter is used */
 			acc_cu = 1;
 			if (has_acc_cu == 0)
@@ -1394,6 +1395,7 @@ static int
 add_cmd(struct sched_cmd *cmd)
 {
 	int ret = 0;
+	unsigned long flags;
 
 	SCHED_DEBUG("-> add_cmd\n");
 
@@ -1402,9 +1404,9 @@ add_cmd(struct sched_cmd *cmd)
 	DRM_DEBUG("packet header 0x%08x, data 0x%08x\n",
 		  cmd->packet->header, cmd->packet->data[0]);
 	set_cmd_state(cmd, ERT_CMD_STATE_NEW);
-	mutex_lock(&pending_cmds_mutex);
+	spin_lock_irqsave(&pending_cmds_lock, flags);
 	list_add_tail(&cmd->list, &pending_cmds);
-	mutex_unlock(&pending_cmds_mutex);
+	spin_unlock_irqrestore(&pending_cmds_lock, flags);
 
 	/* wake scheduler */
 	atomic_inc(&num_pending);
@@ -1882,9 +1884,10 @@ scheduler_queue_cmds(struct scheduler *sched)
 {
 	struct sched_cmd *cmd;
 	struct list_head *pos, *next;
+	unsigned long flags;
 
 	SCHED_DEBUG("-> scheduler_queue_cmds\n");
-	mutex_lock(&pending_cmds_mutex);
+	spin_lock_irqsave(&pending_cmds_lock, flags);
 	list_for_each_safe(pos, next, &pending_cmds) {
 		cmd = list_entry(pos, struct sched_cmd, list);
 		if (cmd->sched != sched)
@@ -1894,7 +1897,7 @@ scheduler_queue_cmds(struct scheduler *sched)
 		set_cmd_int_state(cmd, ERT_CMD_STATE_QUEUED);
 		atomic_dec(&num_pending);
 	}
-	mutex_unlock(&pending_cmds_mutex);
+	spin_unlock_irqrestore(&pending_cmds_lock, flags);
 	SCHED_DEBUG("<- scheduler_queue_cmds\n");
 }
 

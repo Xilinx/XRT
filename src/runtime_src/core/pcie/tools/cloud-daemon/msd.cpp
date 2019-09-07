@@ -29,41 +29,95 @@
 #include <thread>
 #include <cstdlib>
 #include <csignal>
+#include <cstring>
 #include <dlfcn.h>
 
 #include "pciefunc.h"
-#include "msd_plugin.h"
 #include "sw_msg.h"
 #include "common.h"
+#include "msd_plugin.h"
 #include "xclbin.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
+static bool quit = false;
 static const std::string configFile("/etc/msd.conf");
-bool quit = false;
 // We'd like to only handle below request through daemons.
-uint64_t chanSwitch = (1UL<<MAILBOX_REQ_TEST_READY) |
+static uint64_t chanSwitch = (1UL<<MAILBOX_REQ_TEST_READY) |
                       (1UL<<MAILBOX_REQ_TEST_READ)  |
                       (1UL<<MAILBOX_REQ_LOAD_XCLBIN);
+static struct msd_plugin_callbacks plugin_cbs;
+static const std::string plugin_path("/opt/xilinx/xrt/lib/libmsd_plugin.so");
 
-// Suppport for msd plugin
-void *plugin_handle;
-init_fn plugin_init;
-fini_fn plugin_fini;
-struct msd_plugin_callbacks plugin_cbs;
-static const std::string plugin_path("/lib/firmware/xilinx/msd_plugin.so");
+static std::string getHost();
+static void createSocket(const pcieFunc& dev, int& sockfd, uint16_t& port);
+static int verifyMpd(const pcieFunc& dev, int mpdfd, int id);
+static int connectMpd(const pcieFunc& dev, int sockfd, int id, int& mpdfd);
+void msd_thread(size_t index, std::string host);
+int remoteMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
+    std::unique_ptr<sw_msg>& processed);
 
-// Init plugin callbacks
-static void init_plugin()
+class Msd : public Common
 {
-    plugin_handle = dlopen(plugin_path.c_str(), RTLD_LAZY | RTLD_GLOBAL);
-    if (plugin_handle == nullptr)
-        return;
+public:
+    Msd(std::string name, std::string plugin_path) :
+        Common(name, plugin_path)
+    {
+    }
 
-    syslog(LOG_INFO, "found msd plugin: %s", plugin_path.c_str());
-    plugin_init = (init_fn) dlsym(plugin_handle, INIT_FN_NAME);
-    plugin_fini = (fini_fn) dlsym(plugin_handle, FINI_FN_NAME);
-    if (plugin_init == nullptr || plugin_fini == nullptr)
-        syslog(LOG_ERR, "failed to find init/fini symbols in plugin");
+    ~Msd()
+    {
+    }
+
+    void start();
+    void run();
+    void stop();
+    init_fn plugin_init;
+    fini_fn plugin_fini;
+    std::vector<std::thread> threads;
+
+private:
+};
+
+
+void Msd::start()
+{
+    if (plugin_handle != nullptr) {
+        plugin_init = (init_fn) dlsym(plugin_handle, INIT_FN_NAME);
+        plugin_fini = (fini_fn) dlsym(plugin_handle, FINI_FN_NAME);
+        if (plugin_init == nullptr || plugin_fini == nullptr) {
+            syslog(LOG_ERR, "failed to find init/fini symbols in mpd plugin");
+            return;
+        }
+        int ret = (*plugin_init)(&plugin_cbs);
+        if (ret != 0)
+            syslog(LOG_ERR, "msd plugin_init failed: %d", ret);
+    }
+}
+
+void Msd::run()
+{
+    // Fetching host name from config file.
+    std::string host = getHost();
+    if (host.empty()) {
+        syslog(LOG_INFO, "msd: can't get host info");
+        return;
+    }
+
+    // Fire one thread for each board.
+    if (total == 0)
+        syslog(LOG_INFO, "no device found");
+    for (size_t i = 0; i < total; i++)
+        threads.emplace_back(msd_thread, i, host);
+}
+
+void Msd::stop()
+{
+    // Wait for all threads to finish before quit.
+    for (auto& t : threads)
+        t.join();
+
+    if (plugin_fini)
+        (*plugin_fini)(plugin_cbs.mpc_cookie);
 }
 
 // Get host configured in config file
@@ -88,7 +142,7 @@ static std::string getHost()
     return "";
 }
 
-static void createSocket(pcieFunc& dev, int& sockfd, uint16_t& port)
+static void createSocket(const pcieFunc& dev, int& sockfd, uint16_t& port)
 {
     struct sockaddr_in saddr = { 0 };
 
@@ -124,7 +178,7 @@ static void createSocket(pcieFunc& dev, int& sockfd, uint16_t& port)
     port = ntohs(saddr.sin_port); // Retrieve allocated port by kernel
 }
 
-static int verifyMpd(pcieFunc& dev, int mpdfd, int id)
+static int verifyMpd(const pcieFunc& dev, int mpdfd, int id)
 {
     int mpdid;
 
@@ -148,7 +202,7 @@ static int verifyMpd(pcieFunc& dev, int mpdfd, int id)
     return 0;
 }
 
-static int connectMpd(pcieFunc& dev, int sockfd, int id, int& mpdfd)
+static int connectMpd(const pcieFunc& dev, int sockfd, int id, int& mpdfd)
 {
     struct sockaddr_in mpdaddr = { 0 };
 
@@ -173,7 +227,7 @@ static int connectMpd(pcieFunc& dev, int sockfd, int id, int& mpdfd)
     return 0;
 }
 
-static int download_xclbin(pcieFunc& dev, char *xclbin)
+int download_xclbin(const pcieFunc& dev, char *xclbin)
 {
     retrieve_xclbin_fini_fn done = nullptr;
     void *done_arg = nullptr;
@@ -197,7 +251,7 @@ static int download_xclbin(pcieFunc& dev, char *xclbin)
         return -EINVAL;
 
     xclmgmt_ioc_bitstream_axlf obj = {reinterpret_cast<axlf *>(newxclbin)};
-    ret = dev.ioctl(XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
+    ret = dev.getDev()->ioctl(XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
 
     if (done)
         (*done)(done_arg, newxclbin, newlen);
@@ -205,8 +259,8 @@ static int download_xclbin(pcieFunc& dev, char *xclbin)
     return ret;
 }
 
-static int remoteMsgHandler(pcieFunc& dev, std::shared_ptr<sw_msg>& orig,
-    std::shared_ptr<sw_msg>& processed)
+int remoteMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
+    std::unique_ptr<sw_msg>& processed)
 {
     int pass = FOR_LOCAL;
     mailbox_req *req = reinterpret_cast<mailbox_req *>(orig->payloadData());
@@ -233,13 +287,13 @@ static int remoteMsgHandler(pcieFunc& dev, std::shared_ptr<sw_msg>& orig,
 
         int ret = download_xclbin(dev, req->data);
         dev.log(LOG_INFO, "xclbin download, ret=%d", ret);
-        processed = std::make_shared<sw_msg>(&ret, sizeof(ret), orig->id(),
+        processed = std::make_unique<sw_msg>(&ret, sizeof(ret), orig->id(),
             MB_REQ_FLAG_RESPONSE);
         pass = FOR_REMOTE;
         break;
     }
     default:
-        processed = orig;
+        processed = std::move(orig);
         break;
     }
     return pass;
@@ -247,13 +301,15 @@ static int remoteMsgHandler(pcieFunc& dev, std::shared_ptr<sw_msg>& orig,
 
 // Server serving MPD. Any error from socket fd, re-accept, don't quit.
 // Will quit on any error from local mailbox fd.
-static void msd(std::shared_ptr<pcidev::pci_device> d, std::string host)
+void msd_thread(size_t index, std::string host)
 {
     uint16_t port;
     int sockfd = -1, mpdfd = -1, mbxfd = -1;
+    int retfd[2];
     int ret;
+    struct queue_msg msg = {0};
 
-    pcieFunc dev(d);
+    pcieFunc dev(index, false);
 
     mbxfd = dev.getMailbox();
     if (mbxfd == -1)
@@ -286,8 +342,9 @@ static void msd(std::shared_ptr<pcidev::pci_device> d, std::string host)
             }
         }
 
+        retfd[0] = retfd[1] = -100;
         // Waiting for msg to show up, interval is 3 seconds.
-        ret = waitForMsg(dev, mbxfd, mpdfd, 3);
+        ret = waitForMsg(dev, mbxfd, mpdfd, 3, retfd);
         if (ret < 0) {
             if (ret == -EAGAIN) // MPD has been quiet, retry.
                 continue;
@@ -295,17 +352,30 @@ static void msd(std::shared_ptr<pcidev::pci_device> d, std::string host)
                 break;
         }
 
+        msg.localFd = mbxfd;
+        msg.remoteFd = mpdfd;
+
         // Process msg.
-        if (ret == mbxfd)
-            ret = processLocalMsg(dev, mbxfd, mpdfd);
-        else
-            ret = processRemoteMsg(dev, mbxfd, mpdfd, remoteMsgHandler);
-        if (ret == -EAGAIN) { // Socket connection was lost, retry
-            close(mpdfd);
-            mpdfd = -1;
-            continue;
-        } else if (ret != 0) {
-            break;
+        for (int i = 0; i < 2; i++) {
+            if (retfd[i] == mbxfd) {
+                msg.type = LOCAL_MSG;
+                msg.data = std::move(getLocalMsg(dev, mbxfd));
+            } else if (retfd[i] == mpdfd) {
+                msg.type = REMOTE_MSG;
+                msg.data = std::move(getRemoteMsg(dev, mpdfd));
+                msg.cb = remoteMsgHandler;
+            } else
+                continue;
+            if (msg.data == nullptr)
+                goto done;
+            ret = handleMsg(dev, msg);
+            if (ret == -EAGAIN) { // Socket connection was lost, retry
+                close(mpdfd);
+                mpdfd = -1;
+                continue;
+            } else if (ret != 0) {
+                goto done;
+            }
         }
     }
 
@@ -315,58 +385,29 @@ done:
     close(sockfd);
 }
 
-void signalHandler(int signum)
+/*
+ * daemon will gracefully exit(eg notify mailbox driver) when
+ * 'kill -15' is sent. or 'crtl c' on the terminal for debug.
+ * so far 'kill -9' is not handled.
+ */
+static void signalHandler(int signum)
 {
-    syslog(LOG_INFO, "Caught SIGTERM! Leaving!");
-    quit = true;
+    if (signum == SIGINT || signum == SIGTERM) {
+        syslog(LOG_INFO, "msd caught signal %d", signum);
+        quit = true;
+    }
 }
 
 int main(void)
 {
-    // Daemon has no connection to terminal.
-    fcloseall();
-    // Start logging ASAP.
-    openlog("msd", LOG_PID|LOG_CONS, LOG_USER);
-    syslog(LOG_INFO, "started");
-
-    init_plugin();
-
-    if (plugin_init) {
-        int ret = (*plugin_init)(&plugin_cbs);
-        if (ret != 0) {
-            syslog(LOG_ERR, "plugin_init failed: %d", ret);
-            dlclose(plugin_handle);
-            return 0;
-        }
-    }
-
-    // Fetching host name from config file.
-    std::string host = getHost();
-    if (host.empty())
-        return 0;
-
-    // Handle sigterm from systemd to shutdown gracefully.
+    signal(SIGINT, signalHandler);
     signal(SIGTERM, signalHandler);
 
-    // Fire up one thread for each board.
-    auto total = pcidev::get_dev_total(false);
-    if (total == 0)
-        syslog(LOG_INFO, "no device found");
-
-    std::vector<std::thread> threads;
-    for (size_t i = 0; i < total; i++)
-        threads.emplace_back(msd, pcidev::get_dev(i, false), host);
-
-    // Wait for all threads to finish before quit.
-    for (auto& t : threads)
-        t.join();
-
-    if (plugin_fini)
-        (*plugin_fini)(plugin_cbs.mpc_cookie);
-    if (plugin_handle)
-        dlclose(plugin_handle);
-
-    syslog(LOG_INFO, "ended");
-    closelog();         
+    Msd msd("msd", plugin_path);
+    msd.preStart();
+    msd.start();
+    msd.run();
+    msd.stop();
+    msd.postStop();
     return 0;
 }

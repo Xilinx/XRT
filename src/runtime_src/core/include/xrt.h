@@ -132,19 +132,6 @@ struct xclDeviceInfo2 {
 };
 
 /**
- * xclMemoryDomains is for support of legacy APIs
- * It is not used in BO APIs where we instead use xclBOKind
- */
-enum xclMemoryDomains {
-    XCL_MEM_HOST_RAM =    0x00000000,
-    XCL_MEM_DEVICE_RAM =  0x00000001,
-    XCL_MEM_DEVICE_BRAM = 0x00000002,
-    XCL_MEM_SVM =         0x00000003,
-    XCL_MEM_CMA =         0x00000004,
-    XCL_MEM_DEVICE_REG  = 0x00000005
-};
-
-/**
  *  Unused, keep for backwards compatibility
  */
 enum xclBOKind {

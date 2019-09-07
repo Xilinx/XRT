@@ -19,3 +19,5 @@ user:
       name: vectorswizzle
       num_cus: 1
     name: vectorswizzle.xclbin
+  labels:
+    test_type: ['regression']

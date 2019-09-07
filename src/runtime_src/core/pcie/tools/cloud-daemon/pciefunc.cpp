@@ -55,6 +55,16 @@ uint64_t pcieFunc::getSwitch()
     return chanSwitch;
 }
 
+int pcieFunc::getIndex() const
+{
+    return index;
+}
+
+std::shared_ptr<pcidev::pci_device> pcieFunc::getDev() const
+{
+    return dev;
+}
+
 bool pcieFunc::validConf()
 {
     return (!host.empty() && port && devId);
@@ -120,7 +130,7 @@ bool pcieFunc::loadConf()
     return validConf();
 }
 
-void pcieFunc::log(int priority, const char *format, ...)
+void pcieFunc::log(int priority, const char *format, ...) const
 {
     va_list args;
     std::ostringstream ss;
@@ -135,9 +145,9 @@ void pcieFunc::log(int priority, const char *format, ...)
     va_end(args);
 }
 
-pcieFunc::pcieFunc(std::shared_ptr<pcidev::pci_device> d)
+pcieFunc::pcieFunc(size_t index, bool user) : index(index)
 {
-    dev = d;
+    dev = pcidev::get_dev(index, user);
 }
 
 pcieFunc::~pcieFunc()
@@ -179,12 +189,6 @@ int pcieFunc::updateConf(std::string hostname, uint16_t hostport, uint64_t swch)
     chanSwitch = swch;
     log(LOG_INFO, "pushed switch: 0x%llx, config: %s", swch, config.c_str());
     return 0;
-}
-
-int pcieFunc::ioctl(unsigned long cmd, void *arg)
-{
-    int ret = dev->ioctl(cmd, arg);
-    return ret;
 }
 
 int pcieFunc::mailboxOpen()

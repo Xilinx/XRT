@@ -1,0 +1,11 @@
+#!/bin/sh
+
+#create sym link to /opt/xilinx/xrt/lib/libmpd_plugin and restart mpd service
+#stop msd service anyway
+systemctl stop msd > /dev/null 2>&1
+echo "Install container mpd plugin"
+ln -s /opt/xilinx/xrt/lib/libcontainer_mpd_plugin.so /opt/xilinx/xrt/lib/libmpd_plugin.so
+echo "Restart mpd service"
+systemctl restart mpd
+
+exit 0

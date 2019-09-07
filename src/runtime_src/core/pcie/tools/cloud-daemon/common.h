@@ -16,10 +16,13 @@
 
 /* Declaring interfaces to helper functions for all daemons. */
 
-#ifndef	COMMON_H
-#define	COMMON_H
+#ifndef COMMON_H
+#define COMMON_H
 
 #include <string>
+#include <mutex>
+#include <condition_variable>
+#include <queue>
 #include "pciefunc.h"
 #include "sw_msg.h"
 #include "core/pcie/driver/linux/include/mailbox_proto.h"
@@ -28,22 +31,61 @@
 // is passed in. The output would be a new msg ready to pass to either
 // local mailbox or remote socket for further handling. The return value
 // will indicate where to pass.
-using msgHandler = int(*)(pcieFunc& dev, std::shared_ptr<sw_msg>&,
-    std::shared_ptr<sw_msg>&);
+using msgHandler = int(*)(const pcieFunc& dev, std::unique_ptr<sw_msg>&,
+    std::unique_ptr<sw_msg>&);
 #define FOR_REMOTE 0
 #define FOR_LOCAL  1
 
-int splitLine(std::string line, std::string& key, std::string& value);
-sw_chan *allocmsg(pcieFunc& dev, size_t payloadSize);
-void freemsg(sw_chan *msg);
-size_t getSockMsgSize(pcieFunc& dev, int sockfd);
-size_t getMailboxMsgSize(pcieFunc& dev, int mbxfd);
-bool readMsg(pcieFunc& dev, int fd, sw_chan *sc);
-bool sendMsg(pcieFunc& dev, int fd, sw_chan *sc);
-int waitForMsg(pcieFunc& dev, int localfd, int remotefd, long interval);
-int processLocalMsg(pcieFunc& dev, int localfd, int remotefd,
-    msgHandler cb = nullptr);
-int processRemoteMsg(pcieFunc& dev, int localfd, int remotefd,
-    msgHandler cb = nullptr);
+enum MSG_TYPE {
+    LOCAL_MSG = 0,
+    REMOTE_MSG,
+    ILLEGAL_MSG,
+};
 
-#endif	// COMMON_H
+struct queue_msg {
+    int localFd;
+    int remoteFd;
+    msgHandler cb;
+    std::unique_ptr<sw_msg> data;
+    enum MSG_TYPE type;
+};
+
+struct Msgq {
+    std::mutex mtx;
+    std::condition_variable cv;
+    std::queue<queue_msg> q;
+};
+
+std::string str_trim(const std::string &str);
+int splitLine(const std::string &line, std::string& key,
+    std::string& value, const std::string& delim = "=");
+int waitForMsg(const pcieFunc& dev, int localfd, int remotefd, long interval,
+    int retfd[2]);
+std::unique_ptr<sw_msg> getLocalMsg(const pcieFunc& dev, int localfd);
+std::unique_ptr<sw_msg> getRemoteMsg(const pcieFunc& dev, int remotefd);
+int handleMsg(const pcieFunc& dev, queue_msg &msg);
+size_t getSockMsgSize(const pcieFunc& dev, int sockfd);
+size_t getMailboxMsgSize(const pcieFunc& dev, int mbxfd);
+bool readMsg(const pcieFunc& dev, int fd, sw_msg *swmsg);
+bool sendMsg(const pcieFunc& dev, int fd, sw_msg *swmsg);
+
+class Common;
+
+class Common
+{
+public:
+    Common(std::string &name, std::string &plugin_path);
+    ~Common();
+    void *plugin_handle;
+    size_t total;
+    void preStart();
+    void postStop();
+    virtual void start() = 0;
+    virtual void run() = 0;
+    virtual void stop() = 0;
+
+private:
+    std::string name;
+    std::string plugin_path;
+};
+#endif // COMMON_H

@@ -274,11 +274,6 @@ struct ert_configure_sk_cmd {
   uint64_t sk_addr;
 };
 
-enum softkernel_type {
-	SOFTKERNEL_TYPE_EXEC = 0,
-	  SOFTKERNEL_TYPE_XCLBIN = 1,
-};
-
 /**
  * struct ert_unconfigure_sk_cmd: ERT unconfigure soft kernel command format
  *
