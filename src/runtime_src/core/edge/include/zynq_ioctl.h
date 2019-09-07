@@ -27,7 +27,8 @@
  * For each bo, Contiguous memory is allocated in PS-DDRs/PL-DDRs/PL-BRAMs. 
  * CPU and Accelerators shares the same physical memory if buffer is allocated in PS-DDRs
  * Support for SMMU based virtual memory and CMA based contiguous physical buffers
- * PL DDRs are always accessed as CMA buffers. Both Linux and PL logic can access PL-DDRs
+ * PS DDRs are always accessed as CMA buffers. 
+ * PL DDR is reserved by zocl driver in device tree. Both Linux and PL logic can access PL-DDRs
  *
  * Execution model is asynchronous where execute commands are submitted using command buffers and POSIX poll
  * is used to wait for finished commands. Commands for a compute unit can only be submitted after an explicit
@@ -55,7 +56,7 @@
  * 9    Update device view with a specific     DRM_IOCTL_ZOCL_PCAP_DOWNLOAD   drm_zocl_pcap_download
  *      xclbin image
  * 10   Read the xclbin and map the compute    DRM_IOCTL_ZOCL_READ_AXLF       drm_zocl_axlf 
- *      units. Used in non-PR platforms
+ *      units.
  * 11   Send an execute job to a compute unit  DRM_IOCTL_ZOCL_EXECBUF         drm_zocl_execbuf
  * 12   Get the soft kernel command            DRM_IOCTL_ZOCL_SK_GETCMD       drm_zocl_sk_getcmd
  * 13   Create the soft kernel                 DRM_IOCTL_ZOCL_SK_CREATE       drm_zocl_sk_create
@@ -96,9 +97,9 @@ enum drm_zocl_ops {
 	DRM_ZOCL_PREAD_BO,
 	/* Program the Device with specific xclbin image */
 	DRM_ZOCL_PCAP_DOWNLOAD,
-	/* Send a execute job to a compute unit */
+	/* Send an execute job to a compute unit */
 	DRM_ZOCL_EXECBUF,
-	/* Read the xclbin and map CUs. Used in non-PR platform */
+	/* Read the xclbin and map CUs */
 	DRM_ZOCL_READ_AXLF,
 	/* Get the soft kernel command */
 	DRM_ZOCL_SK_GETCMD,
