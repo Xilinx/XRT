@@ -23,9 +23,9 @@
 #include "utils.h"
 
 #if defined(DSA64)
-#include "xsimple_hw_64.h"     
+#include "xsimple_hw_64.h"
 #else
-#include "xsimple_hw.h"  
+#include "xsimple_hw.h"
 #endif
 
 #include "xma_profile.h"
@@ -64,11 +64,11 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
 {
     const size_t DATA_SIZE = count * sizeof(int);
 
-    unsigned boHandle1 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, 0x0); //output s1
-    unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, 0x0); // input s2
+    unsigned boHandle1 = xclAllocBO(handle, DATA_SIZE, 0, 0x0); //output s1
+    unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE, 0, 0x0); // input s2
     int *bo2 = (int*)xclMapBO(handle, boHandle2, true);
-    int *bo1 = (int*)xclMapBO(handle, boHandle1, true); 
-    
+    int *bo1 = (int*)xclMapBO(handle, boHandle1, true);
+
     int bufReference[count];
 
     memset(bo2, 0, DATA_SIZE);
@@ -84,7 +84,7 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
     if(xclSyncBOWithProfile(handle, boHandle2, XCL_BO_SYNC_BO_TO_DEVICE , count * sizeof(int), 0)) {
         return 1;
     }
-    
+
     if(xclSyncBOWithProfile(handle, boHandle1, XCL_BO_SYNC_BO_TO_DEVICE , count * sizeof(int), 0)) {
         return 1;
     }
@@ -97,9 +97,9 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
     if( (bo2devAddr == (uint64_t)(-1)) || (bo1devAddr == (uint64_t)(-1)))
         return 1;
     //Allocate the exec_bo
-    unsigned execHandle = xclAllocBO(handle, DATA_SIZE, xclBOKind(0), (1<<31));
+    unsigned execHandle = xclAllocBO(handle, DATA_SIZE, 0, (1<<31));
     void* execData = xclMapBO(handle, execHandle, true);
- 
+
     std::cout << "Construct the exe buf cmd to confire FPGA" << std::endl;
 	//construct the exec buffer cmd to configure.
 	{
@@ -112,7 +112,7 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
 	    ecmd->slot_size = 1024;
 	    ecmd->num_cus = 1;
 	    ecmd->cu_shift = 16;
-	    ecmd->cu_base_addr = cu_base_addr; 
+	    ecmd->cu_base_addr = cu_base_addr;
 
 	    ecmd->ert = ert;
 	    if (ert) {
@@ -133,7 +133,7 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
 	}
 
     std::cout << "Wait until the command finish" << std::endl;
-	//Wait on the command finish	
+	//Wait on the command finish
 	while (xclExecWait(handle,1000) == 0);
 
 
@@ -150,7 +150,7 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
             ecmd->opcode = ERT_START_CU;
             ecmd->count = 1 + rsz;
             ecmd->cu_mask = 0x1;
-            
+
             ecmd->data[XSIMPLE_CONTROL_ADDR_AP_CTRL] = 0x0; // ap_start
             ecmd->data[XSIMPLE_CONTROL_ADDR_GROUP_ID_X_DATA/4] = id; // group id
             ecmd->data[XSIMPLE_CONTROL_ADDR_S1_DATA/4] = bo1devAddr & 0xFFFFFFFF;
@@ -159,7 +159,7 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
             ecmd->data[XSIMPLE_CONTROL_ADDR_S1_DATA/4 + 1] = (bo1devAddr >> 32) & 0xFFFFFFFF; // output
             ecmd->data[XSIMPLE_CONTROL_ADDR_S2_DATA/4 + 1] = (bo2devAddr >> 32) & 0xFFFFFFFF; // input
 #endif
-            ecmd->data[XSIMPLE_CONTROL_ADDR_FOO_DATA/4] = 0x10; //foo 
+            ecmd->data[XSIMPLE_CONTROL_ADDR_FOO_DATA/4] = 0x10; //foo
         }
 
         //Send the "start kernel" command.
@@ -175,7 +175,7 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
             std::cout << "Now wait until the kernel finish" << std::endl;
         }
         */
-    
+
         //Wait on the command finish
         while (xclExecWait(handle,100) == 0) {
             std::cout << "reentering wait...\n";
@@ -183,11 +183,11 @@ static int runKernel(xclDeviceHandle &handle, uint64_t cu_base_addr, size_t alig
 
 
     }
-    
+
 
     //Get the output;
     std::cout << "Get the output data from the device" << std::endl;
-    if(xclSyncBOWithProfile(handle, boHandle1, XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE, 0)) { 
+    if(xclSyncBOWithProfile(handle, boHandle1, XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE, 0)) {
         return 1;
     }
 
@@ -254,7 +254,7 @@ while ((c = getopt_long(argc, argv, "s:k:l:d:vh", long_options, &option_index)) 
             return 1;
         }
     }
- 
+
     (void)verbose;
 
     if (bitstreamFile.size() == 0) {
@@ -286,7 +286,7 @@ while ((c = getopt_long(argc, argv, "s:k:l:d:vh", long_options, &option_index)) 
         }
         profile_stop(handle);
         profile_finalize(handle);
-        
+
     }
     catch (std::exception const& e)
     {
