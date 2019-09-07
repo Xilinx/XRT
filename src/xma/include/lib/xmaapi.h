@@ -24,8 +24,18 @@
 //#include "lib/xmares.h"
 #include "lib/xmalogger.h"
 #include <atomic>
-#include <vector>
+#include <list>
 #include <unordered_map>
+
+typedef struct XmaLogMsg
+{
+    XmaLogLevelType level;
+    std::string msg;
+
+  XmaLogMsg() {
+    level = XMA_DEBUG_LOG;
+  }
+} XmaLogMsg;
 
 typedef struct XmaSingleton
 {
@@ -49,6 +59,10 @@ typedef struct XmaSingleton
     std::atomic<uint32_t> num_non_kernels;
     std::atomic<uint32_t> num_of_sessions;
     std::unordered_map<uint32_t, XmaSession> all_sessions;// XMASessions
+    std::list<XmaLogMsg>   log_msg_list;
+    std::atomic<bool> log_msg_list_locked;
+
+    std::atomic<bool> xma_exit;
 
     uint32_t          reserved[4];
 
@@ -62,6 +76,8 @@ typedef struct XmaSingleton
     num_kernels = 0;
     num_non_kernels = 0;
     num_of_sessions = 0;
+    log_msg_list_locked = false;
+    xma_exit = false;
   }
 } XmaSingleton;
 

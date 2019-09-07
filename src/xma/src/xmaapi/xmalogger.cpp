@@ -73,8 +73,23 @@ xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...)
     va_start(ap, msg);
     vsnprintf(&msg_buff[hdr_offset], (XMA_MAX_LOGMSG_SIZE - hdr_offset), msg, ap);
     va_end(ap);
-    //xclLogMsg(NULL, xrtLogMsgLevel::XRT_INFO, "XMA",logmsg);
-    xclLogMsg(NULL, (xrtLogMsgLevel)level, "XMA", msg_buff);
+    if (g_xma_singleton) {
+        bool expected = false;
+        bool desired = true;
+        while (!g_xma_singleton->log_msg_list_locked.compare_exchange_weak(expected, desired)) {
+            expected = false;
+        }
+        //log msg list lock acquired
 
+        g_xma_singleton->log_msg_list.emplace_back(XmaLogMsg{});
+        auto& tmp1 = g_xma_singleton->log_msg_list.back();
+        tmp1.level = level;
+        tmp1.msg = std::string(msg_buff);
+
+        //Release log msg list lock
+        g_xma_singleton->log_msg_list_locked = false;
+    } else {
+        xclLogMsg(NULL, (xrtLogMsgLevel)level, "XMA", msg_buff);
+    }
 }
 
