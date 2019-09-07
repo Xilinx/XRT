@@ -142,6 +142,8 @@ typedef struct XmaHwKernel
     bool soft_kernel;
     bool kernel_channels;
     uint32_t     max_channel_id;
+    int32_t      arg_start;
+    int32_t      regmap_size;
 
     //bool             have_lock;
     uint32_t    reserved[16];
@@ -160,6 +162,8 @@ typedef struct XmaHwKernel
     soft_kernel = false;
     kernel_channels = false;
     max_channel_id = 0;
+    arg_start = -1;
+    regmap_size = -1;
   }
 } XmaHwKernel;
 
