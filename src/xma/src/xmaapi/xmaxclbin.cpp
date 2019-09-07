@@ -26,8 +26,7 @@
 #include "core/common/config_reader.h"
 #include <boost/iostreams/stream.hpp>
 #include <iostream>
-//#include <regex>//Doesn't work on CentOS with older c++ lib
-//#include <boost/regex.hpp>
+#include <regex>//Doesn't work on CentOS with older c++ lib
 
 #define XMAAPI_MOD "xmaxclbin"
 
@@ -117,7 +116,7 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
 
             xclbin_info->ip_layout[j].arg_start = -1;
             xclbin_info->ip_layout[j].regmap_size = -1;
-            /*
+            
             const axlf_section_header *xml_hdr = xclbin::get_axlf_section(xclbin, EMBEDDED_METADATA);
             if (xml_hdr) {
                 char *xml_data = &buffer[xml_hdr->m_sectionOffset];
@@ -142,29 +141,24 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
                                     }
                                 }
                             } else {
-                                boost::regex rgx1(R"(.*<arg name=\".*id=\"([0-9]+)\".*size=\"([xXa-fA-F0-9]+)\".*offset=\"([xXa-fA-F0-9]+)\".*>)");
-                                boost::smatch match1;
-
-
-                                //std::regex rgx1(R"(.*<arg name=\".*id=\"([0-9]+)\".*size=\"([xXa-fA-F0-9]+)\".*offset=\"([xXa-fA-F0-9]+)\".*>)");
-                                //std::smatch match1;
-                                std::transform(line.begin(), line.end(), line.begin(), ::tolower);
-                                //if (std::regex_match(line, match1, rgx1)) {
-                                if (boost::regex_match(line, match1, rgx1)) {
-                                    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Sarab2: %s", line.c_str());
-                                    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Sarab2: %s - %s", match1.str(2), match1.str(3));
-                                    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Sarab2: %x - %x", std::stoi(match1.str(2), 0, 16), std::stoi(match1.str(3), 0, 16));
+                                std::regex rgx1(R"(.*<arg name=\".*id=\"([0-9]+)\".*size=\"([xXa-fA-F0-9]+)\".*offset=\"([xXa-fA-F0-9]+)\".*>)");
+                                std::smatch match1;
+                                if (std::regex_match(line, match1, rgx1)) {
                                     if (match1.size() == 4) {
-                                        if (stoi(match1.str(1)) == 0) {
+                                        if (std::stoi(match1.str(1)) == 0) {
                                             xclbin_info->ip_layout[j].arg_start = std::stoi(match1.str(3), 0, 16);
                                             xclbin_info->ip_layout[j].regmap_size = xclbin_info->ip_layout[j].arg_start;
                                             xclbin_info->ip_layout[j].regmap_size += std::stoi(match1.str(2), 0, 16);
+
+                                            if (xclbin_info->ip_layout[j].arg_start < 0x10) {
+                                                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel %s doesn't meet argument register map spec of HLS/RTL Wizard kernels\n", str_tmp1.c_str());
+                                                return XMA_ERROR;
+                                            }
                                         } else {
                                             int32_t tmp_int1 = std::stoi(match1.str(3), 0, 16) + std::stoi(match1.str(2), 0, 16);
                                             if (tmp_int1 > xclbin_info->ip_layout[j].regmap_size) {
                                                 xclbin_info->ip_layout[j].regmap_size = tmp_int1;
                                             }
-                                        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Sarab2: 1- regmap_size: %d - %d", xclbin_info->ip_layout[j].regmap_size, tmp_int1);
                                         }
                                     }
                                 } else {
@@ -173,7 +167,12 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
                                     if (std::regex_match(line, match1, rgx1)) {
                                         if (match1.size() == 2) {
                                             found_kernel = false;
-                                            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "%s: arg_start: %x, regmap_size: %x", str_tmp1.c_str(), xclbin_info->ip_layout[j].arg_start, xclbin_info->ip_layout[j].regmap_size);
+                                            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "%s:- arg_start: 0x%x, regmap_size: 0x%x", str_tmp1.c_str(), xclbin_info->ip_layout[j].arg_start, xclbin_info->ip_layout[j].regmap_size);
+
+                                            if (xclbin_info->ip_layout[j].regmap_size > MAX_KERNEL_REGMAP_SIZE) {
+                                                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel %s register map size exceeds max limit. regmap_size: %d, max regmap_size: %d\n", xclbin_info->ip_layout[j].regmap_size, MAX_KERNEL_REGMAP_SIZE);
+                                                return XMA_ERROR;
+                                            }
                                             break;
                                         }
                                     }
@@ -189,7 +188,6 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
                     }
                 }
             }
-            */
 
             xclbin_info->ip_layout[j].base_addr = ipl->m_ip_data[i].m_base_address;
             if (((ipl->m_ip_data[i].properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT) == AP_CTRL_CHAIN) {
@@ -250,6 +248,8 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
                 str_tmp1.copy((char*)xclbin_info->ip_layout[j].kernel_name, MAX_KERNEL_NAME-1);
                 xclbin_info->ip_layout[j].soft_kernel = true;
                 xclbin_info->ip_layout[j].base_addr = 0;
+                xclbin_info->ip_layout[j].arg_start = -1;
+                xclbin_info->ip_layout[j].regmap_size = -1;
 
                 xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index = %d, soft kernel name = %s\n", j, xclbin_info->ip_layout[j].kernel_name);
 

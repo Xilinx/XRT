@@ -746,6 +746,12 @@ xma_plg_schedule_work_item(XmaSession s_handle)
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Use xma_plg_register_prep_write to prepare regmap for CU before scheduling work item \n");
         return XMA_ERROR;
     }
+    if (kernel_tmp1->regmap_size > 0) {
+        if (size > kernel_tmp1->regmap_size) {
+            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Can not exceed kernel register_map size. Kernel regamp_size: %d, trying to use size: %d\n", kernel_tmp1->regmap_size, size);
+            return XMA_ERROR;
+        }
+    }
 
     int32_t bo_idx;
     
@@ -787,6 +793,13 @@ xma_plg_schedule_work_item(XmaSession s_handle)
     // Copy reg_map into execBO buffer 
     memcpy(&cu_cmd->data[3], src, size);
     xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "Dev# %d; Kernel: %s; Regmap size used is: %d\n", dev_tmp1->dev_index, kernel_tmp1->name, priv1->regmap_max);
+
+    if (kernel_tmp1->arg_start > 0) {
+        uint32_t tmp_int1 = 3 + (kernel_tmp1->arg_start / 4);
+        for (uint32_t i = 3; i < tmp_int1; i++) {
+            cu_cmd->data[i] = 0;
+        }
+    }
     if (kernel_tmp1->kernel_channels) {
         // XMA will write @ 0x10 and XRT read @ 0x14 to generate interupt and capture in execbo
         cu_cmd->data[7] = s_handle.channel_id;//0x10 == 4th integer;
@@ -885,6 +898,12 @@ int32_t xma_plg_schedule_work_item_with_args(XmaSession s_handle,
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regmap_size of %d is not a multiple of four bytes\n", regmap_size);
         return XMA_ERROR;
     }
+    if (kernel_tmp1->regmap_size > 0) {
+        if (regmap_size > kernel_tmp1->regmap_size) {
+            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Can not exceed kernel register_map size. Kernel regamp_size: %d, trying to use size: %d\n", kernel_tmp1->regmap_size, regmap_size);
+            return XMA_ERROR;
+        }
+    }
     /* Not doing below as regmap_max is used to decide what all args to copy from stored regmap with prep_write
     Keeping this new API completly independent
     if (s_handle.hw_session.kernel_info->regmap_max < regmap_size) {
@@ -929,6 +948,13 @@ int32_t xma_plg_schedule_work_item_with_args(XmaSession s_handle,
     // Copy reg_map into execBO buffer 
     memcpy(&cu_cmd->data[3], src, regmap_size);
     xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "Dev# %d; Kernel: %s; Regmap size used is: %d\n", dev_tmp1->dev_index, kernel_tmp1->name, regmap_size);
+
+    if (kernel_tmp1->arg_start > 0) {
+        uint32_t tmp_int1 = 3 + (kernel_tmp1->arg_start / 4);
+        for (uint32_t i = 3; i < tmp_int1; i++) {
+            cu_cmd->data[i] = 0;
+        }
+    }
     if (kernel_tmp1->kernel_channels) {
         // XMA will write @ 0x10 and XRT read @ 0x14 to generate interupt and capture in execbo
         cu_cmd->data[7] = s_handle.channel_id;//0x10 == 4th integer;
@@ -1051,6 +1077,13 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
         if (return_code) *return_code = XMA_ERROR;
         return cmd_obj_error;
     }
+    if (kernel_tmp1->regmap_size > 0) {
+        if (regmap_size > kernel_tmp1->regmap_size) {
+            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Can not exceed kernel register_map size. Kernel regamp_size: %d, trying to use size: %d\n", kernel_tmp1->regmap_size, regmap_size);
+            if (return_code) *return_code = XMA_ERROR;
+            return cmd_obj_error;
+        }
+    }
 
     uint8_t *src = (uint8_t*)regmap;
     int32_t bo_idx;
@@ -1092,6 +1125,13 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
     // Copy reg_map into execBO buffer 
     memcpy(&cu_cmd->data[3], src, regmap_size);
     xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "Dev# %d; Kernel: %s; Regmap size used is: %d\n", dev_tmp1->dev_index, kernel_tmp1->name, regmap_size);
+
+    if (kernel_tmp1->arg_start > 0) {
+        uint32_t tmp_int1 = 3 + (kernel_tmp1->arg_start / 4);
+        for (uint32_t i = 3; i < tmp_int1; i++) {
+            cu_cmd->data[i] = 0;
+        }
+    }
     if (kernel_tmp1->kernel_channels) {
         // XMA will write @ 0x10 and XRT read @ 0x14 to generate interupt and capture in execbo
         cu_cmd->data[7] = s_handle.channel_id;//0x10 == 4th integer;
