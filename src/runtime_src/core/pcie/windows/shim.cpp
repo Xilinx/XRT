@@ -28,7 +28,7 @@ namespace xocl {  // shared implementation
 unsigned int
 xclProbe()
 {
-  
+
 }
 
 xclDeviceHandle
@@ -45,7 +45,7 @@ xclClose(xclDeviceHandle handle)
 
 // XRT Buffer Management APIs
 unsigned int
-xclAllocBO(xclDeviceHandle handle, size_t size, enum xclBOKind domain, unsigned int flags)
+xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned int flags)
 {
   return 0;
 }
@@ -96,4 +96,3 @@ xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
 {
   return 0;
 }
-  

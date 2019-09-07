@@ -136,7 +136,7 @@ create_exec_bo(const device& device, size_t sz)
 
   auto ubo = std::make_unique<buffer_object>();
   ubo->dev = device->handle;
-  ubo->bo = xclAllocBO(ubo->dev,sz,xclBOKind(0),(1<<31));
+  ubo->bo = xclAllocBO(ubo->dev,sz,0,(1<<31));
   ubo->data = xclMapBO(ubo->dev,ubo->bo,true /*write*/);
   ubo->size = sz;
   std::memset(reinterpret_cast<ert_packet*>(ubo->data),0,sz);

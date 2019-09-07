@@ -135,7 +135,7 @@ int main(int argc, char** argv)
     std::cout << "Host buffer alignment = " << alignment << " bytes\n";
     std::cout << "Compiled kernel = " << bitstreamFile << "\n" << std::endl;
 
-    try 
+    try
     {
 	xclDeviceHandle handle;
 	uint64_t cu_base_addr = 0;
@@ -143,9 +143,9 @@ int main(int argc, char** argv)
 	    return 1;
 
     profile_initialize(handle, 1, 1, "coarse", "all");
-    profile_start(handle);	
+    profile_start(handle);
 
-	unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, 0x0);
+	unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE, 0, 0x0);
 	char* bo2 = (char*)xclMapBO(handle, boHandle2, true);
 	memset(bo2, 0, DATA_SIZE);
 	std::string testVector =  "hello\nthis is Xilinx OpenCL memory read write test\n:-)\n";
@@ -154,11 +154,11 @@ int main(int argc, char** argv)
 	if(xclSyncBOWithProfile(handle, boHandle2, XCL_BO_SYNC_BO_TO_DEVICE , DATA_SIZE,0))
 	    return 1;
 
-	unsigned boHandle1 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, 0x0);
+	unsigned boHandle1 = xclAllocBO(handle, DATA_SIZE, 0, 0x0);
 
 
 	//Allocate the exec_bo
-	unsigned execHandle = xclAllocBO(handle, DATA_SIZE, xclBOKind(0), (1<<31));
+	unsigned execHandle = xclAllocBO(handle, DATA_SIZE, 0, (1<<31));
 	void* execData = xclMapBO(handle, execHandle, true);
 
 	//construct the exec buffer cmd to configure.
@@ -172,7 +172,7 @@ int main(int argc, char** argv)
 	    ecmd->slot_size = 1024;
 	    ecmd->num_cus = 1;
 	    ecmd->cu_shift = 16;
-	    ecmd->cu_base_addr = cu_base_addr; 
+	    ecmd->cu_base_addr = cu_base_addr;
 
 	    ecmd->ert = ert;
 	    if (ert) {
@@ -191,7 +191,7 @@ int main(int argc, char** argv)
 	    return 1;
 	}
 
-        //Wait on the command finish	
+        //Wait on the command finish
 	while (xclExecWait(handle,1000) == 0);
 
 	xclBOProperties p;
@@ -236,7 +236,7 @@ int main(int argc, char** argv)
 	    return 1;
 	}
 
-        //Wait on the command finish	
+        //Wait on the command finish
 	while (xclExecWait(handle,1000) == 0) {
 	    std::cout << "reentering wait...\n";
 	};
@@ -259,7 +259,7 @@ int main(int argc, char** argv)
 	xclFreeBO(handle,boHandle2);
 	xclFreeBO(handle,execHandle);
     profile_stop(handle);
-    profile_finalize(handle);	
+    profile_finalize(handle);
     }
     catch (std::exception const& e)
     {

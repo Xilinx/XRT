@@ -35,7 +35,7 @@ namespace utils {
 static std::mutex s_debug_mutex;
 
 MAYBE_UNUSED
-static void 
+static void
 debugf(const char* format,...)
 {
   std::lock_guard<std::mutex> lk(s_debug_mutex);
@@ -135,7 +135,7 @@ create_exec_bo(const device& device, size_t sz)
 
   auto ubo = std::make_unique<buffer_object>();
   ubo->dev = device->handle;
-  ubo->bo = xclAllocBO(ubo->dev,sz,xclBOKind(0),(1<<31));
+  ubo->bo = xclAllocBO(ubo->dev,sz,0,(1<<31));
   ubo->data = xclMapBO(ubo->dev,ubo->bo,true /*write*/);
   ubo->size = sz;
   std::memset(reinterpret_cast<ert_packet*>(ubo->data),0,sz);
@@ -177,9 +177,9 @@ get_exec_buffer(const device& device, size_t sz)
   return create_exec_bo(device,sz);
 }
 
-/**  
+/**
  * recycle_exec_buffer() - recycle a used exec buffer object
- * 
+ *
  * @ebo: Exec buffer object to recycle
  */
 MAYBE_UNUSED
@@ -209,8 +209,8 @@ create_bo(const device& device, size_t sz, int bank=-1)
   auto ubo = std::make_unique<buffer_object>();
   ubo->dev = device->handle;
   ubo->bo = bank>=0
-    ? xclAllocBO(ubo->dev,sz,XCL_BO_DEVICE_RAM,(1<<bank))
-    : xclAllocBO(ubo->dev,sz,XCL_BO_DEVICE_RAM,0);
+    ? xclAllocBO(ubo->dev,sz,0,(1<<bank))
+    : xclAllocBO(ubo->dev,sz,0,0);
   ubo->data = xclMapBO(ubo->dev,ubo->bo,true /*write*/);
   ubo->size = sz;
   return buffer(ubo.release(),delBO);
@@ -223,7 +223,7 @@ create_bo(const device& device, size_t sz, int bank=-1)
  * @device_index: Index of device to open
  * @log: Log file
  * Return: Shared pointer to device object
- */  
+ */
 MAYBE_UNUSED
 static device
 init(const std::string& bit, unsigned int deviceIndex, const std::string& log)
@@ -237,7 +237,7 @@ init(const std::string& bit, unsigned int deviceIndex, const std::string& log)
 
   auto udo = std::make_unique<device_object>();
   udo->handle = xclOpen(deviceIndex, log.c_str(), XCL_INFO);
-  
+
   xclDeviceInfo2 deviceInfo;
   if (xclGetDeviceInfo2(udo->handle, &deviceInfo))
     throw std::runtime_error("Unable to obtain device information");
@@ -263,7 +263,7 @@ init(const std::string& bit, unsigned int deviceIndex, const std::string& log)
 
   if (std::strncmp(header.data(), "xclbin2", 8))
     throw std::runtime_error("Invalid bitstream");
-  
+
   auto xclbin = reinterpret_cast<const xclBin*>(header.data());
   if (xclLoadXclBin(udo->handle, xclbin))
     throw std::runtime_error("Bitstream download failed");
