@@ -105,6 +105,10 @@
 #define	CU_ADDR_HANDSHAKE_MASK	(0xff)
 #define	CU_ADDR_VALID(addr)	(((addr) | CU_ADDR_HANDSHAKE_MASK) != -1)
 
+#if defined(XOCL_UUID)
+static xuid_t uuid_null = NULL_UUID_LE;
+#endif
+
 /* constants */
 static const unsigned int no_index = -1;
 

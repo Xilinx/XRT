@@ -144,7 +144,7 @@ int shim::dev_init()
         xclLog(XRT_ERROR, "XRT", "%s: Card [%d] not found", __func__, mBoardNumber);
         return -ENOENT;
     }
- 
+
     drm_version version;
     const std::unique_ptr<char[]> name(new char[128]);
     const std::unique_ptr<char[]> desc(new char[512]);
