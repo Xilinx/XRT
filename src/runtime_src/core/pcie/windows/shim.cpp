@@ -45,7 +45,7 @@ xclClose(xclDeviceHandle handle)
 
 // XRT Buffer Management APIs
 unsigned int
-xclAllocBO(xclDeviceHandle handle, size_t size, int used, unsigned int flags)
+xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned int flags)
 {
   return 0;
 }
