@@ -200,7 +200,7 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
     */
 
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Init signal and exit handlers\n");
-    ret = atexit(xma_exit);
+    ret = std::atexit(xma_exit);
     if (ret) {
         xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Error initalizing XMA\n");
         //Sarab: Remove xmares stuff
@@ -235,47 +235,6 @@ void xma_exit(void)
 {
     if (g_xma_singleton) {
         g_xma_singleton->xma_exit = true;
-        g_xma_singleton->xma_thread1.join();
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 }
-
-/*Sarab: Remove yaml system cfg stuff
-int32_t xma_cfg_img_cnt_get()
-{
-    if (!g_xma_singleton)
-        return XMA_ERROR_INVALID;
-
-    return g_xma_singleton->systemcfg.num_images;
-}
-
-int32_t xma_cfg_dev_cnt_get()
-{
-    int32_t i, dev_cnt, img_cnt;
-
-    if (!g_xma_singleton)
-        return XMA_ERROR_INVALID;
-
-    dev_cnt = 0;
-    img_cnt = xma_cfg_img_cnt_get();
-    for (i = 0; i < img_cnt; i++)
-        dev_cnt += g_xma_singleton->systemcfg.imagecfg[i].num_devices;
-
-    return dev_cnt;
-}
-
-void xma_cfg_dev_ids_get(uint32_t dev_ids[])
-{
-    int32_t img_cnt = xma_cfg_img_cnt_get();
-    int i, dev_ids_idx = 0;
-
-    for (i = 0; i < img_cnt; i++)
-    {
-        int j, img_dev_cnt;
-        img_dev_cnt = g_xma_singleton->systemcfg.imagecfg[i].num_devices;
-
-        for (j = 0; j < img_dev_cnt; j++)
-            dev_ids[dev_ids_idx++] =
-                g_xma_singleton->systemcfg.imagecfg[i].device_id_map[j];
-    }
-}
-*/
