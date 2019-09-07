@@ -1654,14 +1654,11 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
  *	 rather than relying of cfg command
  */
 static void
-exec_reset(struct exec_core *exec)
+exec_reset(struct exec_core *exec, const xuid_t *xclbin_id)
 {
 	struct xocl_dev *xdev = exec_get_xdev(exec);
-	xuid_t *xclbin_id;
 
 	mutex_lock(&exec->exec_lock);
-
-	xclbin_id = XOCL_XCLBIN_ID(xdev);
 
 	userpf_info(xdev, "%s(%d) cfg(%d)\n", __func__, exec->uid, exec->configured);
 
@@ -1858,7 +1855,7 @@ exec_create(struct platform_device *pdev, struct xocl_scheduler *xs)
 		xocl_user_interrupt_config(xdev, i + exec->intr_base, true);
 	}
 
-	exec_reset(exec);
+	exec_reset(exec, &uuid_null);
 	platform_set_drvdata(pdev, exec);
 
 	SCHED_DEBUGF("%s(%d)\n", __func__, exec->uid);
@@ -3736,11 +3733,11 @@ int client_ioctl(struct platform_device *pdev,
  *  Pre-condition: new bitstream has been downloaded and AXI has been reset
  */
 static int
-reset(struct platform_device *pdev)
+reset(struct platform_device *pdev, const xuid_t *xclbin_id)
 {
 	struct exec_core *exec = platform_get_drvdata(pdev);
 
-	exec_reset(exec);
+	exec_reset(exec, xclbin_id);
 	exec->needs_reset = false;
 	return 0;
 }

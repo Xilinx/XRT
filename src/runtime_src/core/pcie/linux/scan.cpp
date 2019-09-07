@@ -400,14 +400,13 @@ int pcidev::pci_device::map_usr_bar()
 
         user_bar_map = (char *)::mmap(0, user_bar_size,
             PROT_READ | PROT_WRITE, MAP_SHARED, dev_handle, 0);
+
         // Mapping should stay valid after handle is closed
         // (according to man page)
         (void)close(dev_handle);
 
-        if (user_bar_map == MAP_FAILED) {
-            dev_handle = -1;
+        if (user_bar_map == MAP_FAILED)
             return -errno;
-        }
 
         return 0;
 }
@@ -466,8 +465,10 @@ int pcidev::pci_device::pcieBarWrite(uint64_t offset,
 
 int pcidev::pci_device::ioctl(int dev_handle, unsigned long cmd, void *arg)
 {
-    if (dev_handle == -1)
-        return -EINVAL;
+    if (dev_handle == -1) {
+        errno = -EINVAL;
+        return -1;
+    }
     return ::ioctl(dev_handle, cmd, arg);
 }
 
@@ -480,15 +481,19 @@ int pcidev::pci_device::poll(int dev_handle, short events, int timeoutMilliSec)
 void *pcidev::pci_device::mmap(int dev_handle,
     size_t len, int prot, int flags, off_t offset)
 {
-    if (dev_handle == -1)
+    if (dev_handle == -1) {
+        errno = -EINVAL;
         return MAP_FAILED;
+    }
     return ::mmap(0, len, prot, flags, dev_handle, offset);
 }
 
 int pcidev::pci_device::flock(int dev_handle, int op)
 {
-    if (dev_handle == -1)
-        return -EINVAL;
+    if (dev_handle == -1) {
+        errno = -EINVAL;
+        return -1;
+    }
     return ::flock(dev_handle, op);
 }
 

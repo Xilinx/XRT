@@ -173,11 +173,6 @@ int shim::dev_init()
     mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
 
     mStreamHandle = mDev->open("dma.qdma", O_RDWR | O_SYNC);
-    if (mStreamHandle == -1) {
-        dev->close(mUserHandle);
-	    return -errno;
-    }
-
     memset(&mAioContext, 0, sizeof(mAioContext));
     mAioEnabled = (io_setup(SHIM_QDMA_AIO_EVT_MAX, &mAioContext) == 0);
 
@@ -219,8 +214,12 @@ void shim::init(unsigned index, const char *logfileName,
     if(logfileName != nullptr) {
         xclLog(XRT_WARNING, "XRT", "%s: logfileName is no longer supported", __func__);
     }
+
     xclLog(XRT_INFO, "XRT", "%s", __func__);
-    dev_init();
+
+    int ret = dev_init();
+    if (ret)
+        xclLog(XRT_WARNING, "XRT", "dev_init failed: %d", ret);
 
     // Profiling - defaults
     // Class-level defaults: mIsDebugIpLayoutRead = mIsDeviceProfiling = false
@@ -749,7 +748,7 @@ int shim::xclLoadXclBin(const xclBin *buffer)
         } else if (ret == -EKEYREJECTED) {
             xclLog(XRT_ERROR, "XRT", "Xclbin isn't signed properly");
         }
-        xclLog(XRT_ERROR, "XRT", "Refer to dmesg log for details. err=%d", ret);
+        xclLog(XRT_ERROR, "XRT", "See dmesg log for details. err=%d", ret);
     }
 
     mIsDebugIpLayoutRead = false;
