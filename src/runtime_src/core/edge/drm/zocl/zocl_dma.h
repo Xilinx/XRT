@@ -47,7 +47,7 @@ typedef void (*zocl_dma_complete_cb)(void *arg, int ret);
  *
  * Caller can set dma_func and dma_arg for handling subsequent asynchronous
  * operations, when DMA is completed dma_func will be called with dma_arg. DMA
- * errors is being returned via zocl_dma_complet_cb argument ret.
+ * errors is being returned via zocl_dma_complete_cb argument ret.
  * 
  */
 typedef struct zocl_dma_handle {
