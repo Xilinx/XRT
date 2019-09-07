@@ -67,6 +67,8 @@ void xma_thread1() {
     //Print all stats here
     //Sarab: TODO
     xclLogMsg(NULL, XMA_INFO_LOG, "XMA", "CU Usage Stats: ");
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 }
 
 int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
@@ -215,9 +217,11 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
         return XMA_ERROR;
     }
 
-    std::thread threadObjSystem(xma_thread1);
+    //std::thread threadObjSystem(xma_thread1);
+    g_xma_singleton->xma_thread1 = std::thread(xma_thread1);
     //Detach threads to let them run independently
-    threadObjSystem.detach();
+    //threadObjSystem.detach();
+    g_xma_singleton->xma_thread1.detach();
 
     xma_init_sighandlers();
     //xma_res_mark_xma_ready(g_xma_singleton->shm_res_cfg);
@@ -231,6 +235,7 @@ void xma_exit(void)
 {
     if (g_xma_singleton) {
         g_xma_singleton->xma_exit = true;
+        g_xma_singleton->xma_thread1.join();
     }
 }
 
