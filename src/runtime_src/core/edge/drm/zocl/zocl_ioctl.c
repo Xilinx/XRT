@@ -292,6 +292,7 @@ static int zocl_pcap_download(struct drm_zocl_dev *zdev,
 
 	if (zdev->pr_isolation_addr && !IS_ERR_OR_NULL(map))
 		iowrite32(0x3, map);
+	zdev->exec->configured = 0;
 
 free_buffers:
 	if (map)
