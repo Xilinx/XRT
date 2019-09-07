@@ -23,17 +23,17 @@
  * This file defines ioctl command codes and associated structures for interacting with
  * *zocl* driver for Xilinx FPGA platforms(Zynq/ZynqMP/Versal).
  *
- * Device memory allocation is modeled as buffer objects (bo). For each bo driver tracks the host pointer
- * backed by scatter gather list -- which provides backing storage on host -- and the corresponding device
- * side allocation of contiguous buffer in one of the memory mapped RAM/DDRs/BRAMs, etc.
+ * Accelerator memory allocation is modeled as buffer objects (bo). 
+ * For each bo, Contiguous memory is allocated in PS-DDRs/PL-DDRs/PL-BRAMs. 
+ * CPU and Accelerators shares the same physical memory if buffer is allocated in PS-DDRs
+ * Support for SMMU based virtual memory and CMA based contiguous physical buffers
+ * PL DDRs are always accessed as CMA buffers. Both Linux and PL logic can access PL-DDRs
  *
- * Exection model is asynchronous where execute commands are submitted using command buffers and POSIX poll
+ * Execution model is asynchronous where execute commands are submitted using command buffers and POSIX poll
  * is used to wait for finished commands. Commands for a compute unit can only be submitted after an explicit
  * context has been opened by the client.
  *
- * *zocl* driver functionality is described in the following table. All the APIs are multi-threading and
- * multi-process safe.
- *
+ * *zocl* driver functionality is described in the following table.
  *
  * ==== ====================================== ============================== ==================================
  * #    Functionality                          ioctl request code             data format
@@ -60,8 +60,7 @@
  * 12   Get the soft kernel command            DRM_IOCTL_ZOCL_SK_GETCMD       drm_zocl_sk_getcmd
  * 13   Create the soft kernel                 DRM_IOCTL_ZOCL_SK_CREATE       drm_zocl_sk_create
  * 14   Report the soft kernel state           DRM_IOCTL_ZOCL_SK_REPORT       drm_zocl_sk_report
- * 15   Get the CU physical address and        DRM_IOCTL_ZOCL_INFO_CU         drm_zocl_info_cu
- *      apperture index
+ * 15   Get Information about Compute Unit     DRM_IOCTL_ZOCL_INFO_CU         drm_zocl_info_cu
  *     
  * ==== ====================================== ============================== ==================================
  */
@@ -87,7 +86,7 @@ enum drm_zocl_ops {
 	DRM_ZOCL_GET_HOST_BO,
 	/* Map buffer into application user space (no DMA is performed) */
 	DRM_ZOCL_MAP_BO,
-	/* Sync buffer (like fsync) in the desired direction by using DMA */
+	/* Sync buffer (like fsync) in the desired direction by using CPU cache flushing/invalidation */
 	DRM_ZOCL_SYNC_BO,
 	/* Get information about the buffer such as physical address in the device, etc */
 	DRM_ZOCL_INFO_BO,
@@ -107,7 +106,7 @@ enum drm_zocl_ops {
 	DRM_ZOCL_SK_CREATE,
 	/* Report the soft kernel state */
 	DRM_ZOCL_SK_REPORT,
-	/* Get the physical address and apt index */
+	/* Get the information about Compute Unit such as physical address in the device */
 	DRM_ZOCL_INFO_CU,
 	DRM_ZOCL_NUM_IOCTLS
 };
@@ -258,7 +257,7 @@ struct drm_zocl_pcap_download {
 };
 
 /**
- * struct drm_zocl_info_cu - Get the Cu Physical Address and apt_index
+ * struct drm_zocl_info_cu - Get information about Compute Unit
  * used with DRM_IOCTL_ZOCL_INFO_CU ioctl
  *
  *  @paddr: Physical address 
