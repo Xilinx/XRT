@@ -1129,7 +1129,7 @@ aim_debug_view::getstring(int aVerbose, int aJSONFormat) {
       return "[]";
     }
     else {
-      sstr << "No SPM found on the platform \n";
+      sstr << "No AIM found on the platform \n";
       return sstr.str();
     }
   }

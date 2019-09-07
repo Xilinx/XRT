@@ -239,6 +239,7 @@ MODULE_PARM_DESC(mailbox_no_intr,
 
 #define	BYTE_TO_MB(x)		((x)>>20)
 
+#define MB_SW_ONLY(mbx) ((mbx)->mbx_regs == NULL)
 /*
  * Mailbox IP register layout
  */
@@ -1137,8 +1138,10 @@ static void handle_timer_event(struct mailbox_channel *ch)
  */
 static void chan_do_rx(struct mailbox_channel *ch)
 {
+	struct mailbox *mbx = ch->mbc_parent;
 	do_sw_rx(ch);
-	do_hw_rx(ch);
+	if (!MB_SW_ONLY(mbx))
+		do_hw_rx(ch);
 	handle_timer_event(ch);
 }
 
@@ -1248,9 +1251,15 @@ static void dequeue_tx_msg(struct mailbox_channel *ch)
 static bool is_tx_chan_ready(struct mailbox_channel *ch)
 {
 	struct mailbox *mbx = ch->mbc_parent;
-	u32 st = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_status);
-	bool hw_ready = ((st != 0xffffffff) && ((st & STATUS_STA) != 0));
-	bool sw_ready = (ch->sw_chan_msg_id == 0);
+	bool sw_ready, hw_ready;
+	u32 st;
+
+	sw_ready = (ch->sw_chan_msg_id == 0);
+	if (MB_SW_ONLY(mbx))
+		return sw_ready;
+
+	st = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_status);
+	hw_ready = ((st != 0xffffffff) && ((st & STATUS_STA) != 0));
 
 	/*
 	 * TX channel is ready when both sw and hw channel are ready.
@@ -1277,11 +1286,11 @@ static void chan_do_tx(struct mailbox_channel *ch)
 
 		if (ch->mbc_cur_msg) {
 			/* Sending msg. */
-			if (ch->mbc_cur_msg->mbm_chan_sw)
+			if (ch->mbc_cur_msg->mbm_chan_sw || MB_SW_ONLY(mbx))
 				do_sw_tx(ch);
 			else
 				do_hw_tx(ch);
-		} else if (valid_pkt(&mbx->mbx_tst_pkt)) {
+		} else if (valid_pkt(&mbx->mbx_tst_pkt) && !(MB_SW_ONLY(mbx))) {
 			/* Sending test pkt. */
 			(void) memcpy(&ch->mbc_packet, &mbx->mbx_tst_pkt,
 				sizeof(struct mailbox_pkt));
@@ -1312,6 +1321,9 @@ static ssize_t mailbox_ctl_show(struct device *dev,
 	u32 *reg = (u32 *)mbx->mbx_regs;
 	int r, n;
 	int nreg = sizeof(struct mailbox_reg) / sizeof(u32);
+
+	if (MB_SW_ONLY(mbx))
+		return 0;
 
 	for (r = 0, n = 0; r < nreg; r++, reg++) {
 		/* Non-status registers. */
@@ -1344,6 +1356,9 @@ static ssize_t mailbox_ctl_store(struct device *dev,
 	int nreg = sizeof(struct mailbox_reg) / sizeof(u32);
 	u32 *reg = (u32 *)mbx->mbx_regs;
 
+	if (MB_SW_ONLY(mbx))
+		return count;
+
 	if (sscanf(buf, "%d:%d", &off, &val) != 2 || (off % sizeof(u32)) ||
 		!(off >= 0 && off < nreg * sizeof(u32))) {
 		MBX_ERR(mbx, "input should be <reg_offset:reg_val>");
@@ -1365,6 +1380,9 @@ static ssize_t mailbox_pkt_show(struct device *dev,
 	struct mailbox_pkt *pkt = &mbx->mbx_tst_pkt;
 	u32 sz = pkt->hdr.payload_size;
 
+	if (MB_SW_ONLY(mbx))
+		return 0;
+
 	if (!valid_pkt(pkt))
 		return 0;
 
@@ -1381,6 +1399,9 @@ static ssize_t mailbox_pkt_store(struct device *dev,
 	struct mailbox *mbx = platform_get_drvdata(pdev);
 	struct mailbox_pkt *pkt = &mbx->mbx_tst_pkt;
 	size_t maxlen = sizeof(mbx->mbx_tst_pkt.body.data);
+
+	if (MB_SW_ONLY(mbx))
+		return 0;
 
 	if (count > maxlen) {
 		MBX_ERR(mbx, "max input length is %ld", maxlen);
@@ -1501,6 +1522,10 @@ static void dft_post_msg_cb(void *arg, void *buf, size_t len, u64 id, int err,
 static bool req_is_sw(struct platform_device *pdev, enum mailbox_request req)
 {
 	uint64_t ch_switch = 0;
+	struct mailbox *mbx = platform_get_drvdata(pdev);
+
+	if (MB_SW_ONLY(mbx))
+		return true;
 
 	(void) mailbox_get(pdev, CHAN_SWITCH, &ch_switch);
 	return (ch_switch & (1 << req));
@@ -1759,6 +1784,9 @@ static int mailbox_enable_intr_mode(struct mailbox *mbx)
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	u32 is;
 
+	if (MB_SW_ONLY(mbx))
+		return 0;
+
 	if (mbx->mbx_irq != -1)
 		return 0;
 
@@ -1802,6 +1830,8 @@ static void mailbox_disable_intr_mode(struct mailbox *mbx)
 	struct platform_device *pdev = mbx->mbx_pdev;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
+	if (MB_SW_ONLY(mbx))
+		return;
 	/*
 	 * No need to turn on polling mode for TX, which has
 	 * a channel stall checking timer always on when there is
@@ -2011,7 +2041,7 @@ mailbox_read(struct file *file, char __user *buf, size_t n, loff_t *ignored)
 	}
 
 	/* Copy payload to user. */
-	if (copy_to_user(buf + sizeof(struct sw_chan),
+	if (copy_to_user(((struct sw_chan *)buf)->data,
 		ch->sw_chan_buf, ch->sw_chan_buf_sz) != 0) {
 		mutex_unlock(&ch->sw_chan_mutex);
 		return -EFAULT;
@@ -2089,7 +2119,7 @@ mailbox_write(struct file *file, const char __user *buf, size_t n,
 		mutex_unlock(&ch->sw_chan_mutex);
 		return -ENOMEM;
 	}
-	if (copy_from_user(payload, buf + sizeof(struct sw_chan),
+	if (copy_from_user(payload, ((struct sw_chan *)buf)->data,
 		args.sz) != 0) {
 		mutex_unlock(&ch->sw_chan_mutex);
 		vfree(payload);
@@ -2106,7 +2136,7 @@ mailbox_write(struct file *file, const char __user *buf, size_t n,
 
 	mutex_unlock(&ch->sw_chan_mutex);
 
-	/* Wake up tx worker. */
+	/* Wake up rx worker. */
 	complete(&ch->mbc_worker);
 
 	return args.sz + sizeof(struct sw_chan);
@@ -2188,14 +2218,16 @@ static int mailbox_probe(struct platform_device *pdev)
 	mbx->mbx_prot_ver = MB_PROTOCOL_VER;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	mbx->mbx_regs = ioremap_nocache(res->start, res->end - res->start + 1);
-	if (!mbx->mbx_regs) {
-		MBX_ERR(mbx, "failed to map in registers");
-		ret = -EIO;
-		goto failed;
-	}
-	/* Reset both TX channel and RX channel */
-	mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_ctrl, 0x3);
+    if (res != NULL) {
+	    mbx->mbx_regs = ioremap_nocache(res->start, res->end - res->start + 1);
+	    if (!mbx->mbx_regs) {
+		    MBX_ERR(mbx, "failed to map in registers");
+		    ret = -EIO;
+		    goto failed;
+	    }
+	    /* Reset both TX channel and RX channel */
+	    mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_ctrl, 0x3);
+    }
 
 	/* Dedicated thread for listening to peer request. */
 	mbx->mbx_listen_wq =

@@ -513,6 +513,8 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 		goto failed;
 	}
 
+	xocl_icap_post_download_rp(lro);
+
 	xocl_thread_start(lro);
 
 	xclmgmt_update_userpf_blob(lro);

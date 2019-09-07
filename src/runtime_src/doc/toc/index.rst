@@ -31,8 +31,13 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    multiprocess.rst
    p2p.rst
    m2m.rst
-   xma_user_guide.rst
 
+.. toctree::
+   :maxdepth: 1
+   :caption: Video Acceleration Using XMA
+
+   xma_user_guide.rst
+   xma_19.2.rst
 
 .. toctree::
    :maxdepth: 1
