@@ -191,27 +191,6 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
 
 int32_t xma_plg_cu_cmd_status(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, int32_t num_cu_objs, bool wait_for_cu_cmds);
 
-
-
-/**
- * xma_plg_schedule_work_item() - This function schedules a request to the XRT
- * scheduler for execution of a kernel based on the saved state of the kernel registers
- * supplied by the xma_plg_register_prep_write() function call.  The prep_write() keeps a
- * shadow register map so that the schedule_work_item() can gather all registers
- * and push a new work item onto the scheduler queue.  Work items are processed
- * in FIFO order.  After calling schedule_work_item() one or more times, the caller
- * can invoke xma_plg_is_work_item_done() to wait for one item of work to complete.
- * Register map must be locked with xma_plg_kernel_lock_regmap used before this call
- *
- * @s_handle: The session handle associated with this plugin instance
- *
- * RETURN:     XMA_SUCCESS on success
- *
- * XMA_ERROR on failure
- *
- */
-int32_t xma_plg_schedule_work_item(XmaSession s_handle);
-
 /**
  * xma_plg_is_work_item_done() - This function checks if at least one work item
  * previously submitted via xma_plg_schedule_work_item() has completed.  If the
@@ -227,51 +206,6 @@ int32_t xma_plg_schedule_work_item(XmaSession s_handle);
  *
  */
 int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_in_ms);
-
-/**
- * xma_plg_kernel_lock_regmap() - This function acquires register map lock
- * so that prep_write & schedule_work_items can be called
- *
- * @s_handle:      The session handle associated with this plugin instance
- *
- * RETURN:         XMA_SUCCESS or XMA_ERROR
- *
- */
-int32_t xma_plg_kernel_lock_regmap(XmaSession s_handle);
-
-/**
- * xma_plg_kernel_unlock_regmap() - This function releases register map lock
- * so that other plugins can share same CU
- *
- * @s_handle:      The session handle associated with this plugin instance
- *
- * RETURN:         XMA_SUCCESS or XMA_ERROR
- *
- */
-int32_t xma_plg_kernel_unlock_regmap(XmaSession s_handle);
-
-/**
- *  xma_plg_register_prep_write() - This function writes the data provided and sets
- * the specified AXI_Lite register(s) exposed by a kernel. The base offset of 0
- * is the beginning of the kernels AXI_Lite memory map as this function adds the required
- * offsets internally for the kernel and PCIe.
- * Register map must be locked with xma_plg_kernel_lock_regmap used before this call
- *
- *  @s_handle:  The session handle associated with this plugin instance
- *  @dst:       Destination data pointer
- *  @size:      Size of data to copy
- *  @offset:    Offset from the beginning of the kernel AXI_Lite register
- *                   register map
- *
- *  RETURN:          >=0 number of bytes written
- *
- * <0 on failure
- *
- */
-int32_t xma_plg_register_prep_write(XmaSession     s_handle,
-                                    void            *dst,
-                                    size_t           size,
-                                    size_t           offset);
 
 /**
  * xma_plg_schedule_work_item_with_args() - This function schedules a request to the XRT
@@ -290,14 +224,17 @@ int32_t xma_plg_register_prep_write(XmaSession     s_handle,
  *  @regmap:    pointer to register map to use for kernel arguments. regmap must start from offset 0 of register map of a kernel
  *  @regmap_size:   Size of above regmap (in bytes) to copy
  *
- * RETURN:     XMA_SUCCESS on success
+ *  @return_code:   XMA_SUCCESS or XMA_ERROR
+ *
+ * RETURN:     CuCmd Object
  *
  * XMA_ERROR on failure
  *
  */
-int32_t xma_plg_schedule_work_item_with_args(XmaSession s_handle,
+XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
                                  void            *regmap,
-                                 int32_t          regmap_size);
+                                 int32_t          regmap_size,
+                                 int32_t*   return_code);
 
 
 

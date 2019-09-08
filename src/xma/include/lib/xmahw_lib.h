@@ -77,24 +77,16 @@ typedef struct XmaHwSessionPrivate
     void            *dev_handle;
     XmaHwKernel     *kernel_info;
     //For execbo:
-    std::array<uint32_t, MAX_REGMAP_ENTRIES> reg_map;//4KB = 4B x 1024; Supported Max regmap of 4032 Bytes only in xmaplugin.cpp; execBO size is 4096 = 4KB in xmahw_hal.cpp
-    //pthread_mutex_t *lock;
-    int32_t    regmap_max;
-    std::unique_ptr<std::atomic<bool>> reg_map_locked;
     uint32_t        kernel_complete_count;
     XmaHwDevice     *device;
     std::unordered_map<uint32_t, XmaCUCmdObjPrivate> CU_cmds;//Use execbo lock when accessing this map
 
     uint32_t reserved[4];
 
-  XmaHwSessionPrivate(): reg_map_locked(new std::atomic<bool>) {
+  XmaHwSessionPrivate() {
    dev_handle = NULL;
    kernel_info = NULL;
-   //std::memset(reg_map, 0, sizeof(reg_map));
-   reg_map.fill(0);
-   *reg_map_locked = false;
    kernel_complete_count = 0;
-   regmap_max = -1;
    device = NULL;
   }
 } XmaHwSessionPrivate;
