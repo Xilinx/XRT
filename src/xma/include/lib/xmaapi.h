@@ -26,6 +26,7 @@
 #include <atomic>
 #include <list>
 #include <unordered_map>
+#include <thread>
 
 typedef struct XmaLogMsg
 {
@@ -63,6 +64,7 @@ typedef struct XmaSingleton
     std::atomic<bool> log_msg_list_locked;
 
     std::atomic<bool> xma_exit;
+    std::thread       xma_thread1;
 
     uint32_t          reserved[4];
 
