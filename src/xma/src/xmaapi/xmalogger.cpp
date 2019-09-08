@@ -38,6 +38,7 @@
 #include "app/xmalogger.h"
 #include "lib/xmalogger.h"
 #include "xrt.h"
+#include "core/common/config_reader.h"
 
 #ifdef XMA_DEBUG
 #define XMA_DBG_PRINTF(format, ...) \
@@ -51,45 +52,48 @@ extern XmaSingleton *g_xma_singleton;
 void
 xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...)
 {
-    /* Handle variable arguments */
-    va_list ap;
+    static auto verbosity = xrt_core::config::get_verbosity();
+    if (level <= verbosity) {
+        /* Handle variable arguments */
+        va_list ap;
 
-    /* Create message buffer on the stack */
-    char            msg_buff[XMA_MAX_LOGMSG_SIZE];
-    char            log_name[40] = {0};
-    int32_t         hdr_offset;
+        /* Create message buffer on the stack */
+        char            msg_buff[XMA_MAX_LOGMSG_SIZE];
+        char            log_name[40] = {0};
+        int32_t         hdr_offset;
 
-    memset(msg_buff, 0, sizeof(msg_buff));
+        memset(msg_buff, 0, sizeof(msg_buff));
 
-    /* Set component name */
-    if (name == NULL)
-        strncpy(log_name, "XMA-default", sizeof(log_name));
-    else
-        strncpy(log_name, name, sizeof(log_name)-1);
+        /* Set component name */
+        if (name == NULL)
+            strncpy(log_name, "XMA-default", sizeof(log_name));
+        else
+            strncpy(log_name, name, sizeof(log_name)-1);
 
 
-    sprintf(msg_buff, "%s %s ", program_invocation_short_name, log_name);
-    hdr_offset = strlen(msg_buff);
-    va_start(ap, msg);
-    vsnprintf(&msg_buff[hdr_offset], (XMA_MAX_LOGMSG_SIZE - hdr_offset), msg, ap);
-    va_end(ap);
-    if (g_xma_singleton) {
-        bool expected = false;
-        bool desired = true;
-        while (!g_xma_singleton->log_msg_list_locked.compare_exchange_weak(expected, desired)) {
-            expected = false;
+        sprintf(msg_buff, "%s %s ", program_invocation_short_name, log_name);
+        hdr_offset = strlen(msg_buff);
+        va_start(ap, msg);
+        vsnprintf(&msg_buff[hdr_offset], (XMA_MAX_LOGMSG_SIZE - hdr_offset), msg, ap);
+        va_end(ap);
+        if (g_xma_singleton) {
+            bool expected = false;
+            bool desired = true;
+            while (!g_xma_singleton->log_msg_list_locked.compare_exchange_weak(expected, desired)) {
+                expected = false;
+            }
+            //log msg list lock acquired
+
+            g_xma_singleton->log_msg_list.emplace_back(XmaLogMsg{});
+            auto& tmp1 = g_xma_singleton->log_msg_list.back();
+            tmp1.level = level;
+            tmp1.msg = std::string(msg_buff);
+
+            //Release log msg list lock
+            g_xma_singleton->log_msg_list_locked = false;
+        } else {
+            xclLogMsg(NULL, (xrtLogMsgLevel)level, "XMA", msg_buff);
         }
-        //log msg list lock acquired
-
-        g_xma_singleton->log_msg_list.emplace_back(XmaLogMsg{});
-        auto& tmp1 = g_xma_singleton->log_msg_list.back();
-        tmp1.level = level;
-        tmp1.msg = std::string(msg_buff);
-
-        //Release log msg list lock
-        g_xma_singleton->log_msg_list_locked = false;
-    } else {
-        xclLogMsg(NULL, (xrtLogMsgLevel)level, "XMA", msg_buff);
     }
 }
 
