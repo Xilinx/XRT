@@ -95,7 +95,7 @@ HLS scheduler bugs can also result in CU hangs. CU deadlocks AXI data bus at whi
 AXI Bus Deadlock
 ................
 
-AXI Bus deadlocks can be caused by `Memory Read Before Write`_ or `CU Deadlock`_ as described above. These usually show up as CU hang and sometimes may cause AXI FireWall to trip. Run ``xbutil query`` to check if CU is stuck in *START* or *--* state or if one of the AXI Firewall has tripped. If CU seems stuck we can confirm the deadlock by running ``xbutil status`` which should list and performance counter values. Optionally run ``xbutil dmatest`` which will force transfer over the deadlocked bus causing either DMA timeout or AXI Firewall trip.
+In general, AXI Bus deadlocks can be caused by `Memory Read Before Write`_ or `CU Deadlock`_ as described above. These usually show up as CU hang and sometimes may cause AXI FireWall to trip. Run ``xbutil query`` to check if CU is stuck in *START* or *--* state or if one of the AXI Firewall has tripped. If CU seems stuck we can confirm the deadlock by running ``xbutil status`` which should list and performance counter values. Optionally run ``xbutil dmatest`` which will force transfer over the deadlocked bus causing either DMA timeout or AXI Firewall trip.
 
 
 Platform Bugs
