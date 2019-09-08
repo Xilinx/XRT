@@ -23,16 +23,14 @@
  * This file defines ioctl command codes and associated structures for interacting with
  * *zocl* driver for Xilinx FPGA platforms(Zynq/ZynqMP/Versal).
  *
- * Accelerator memory allocation is modeled as buffer objects (bo). 
- * For each bo, Contiguous memory is allocated in PS-DDRs/PL-DDRs/PL-BRAMs. 
- * CPU and Accelerators shares the same physical memory if buffer is allocated in PS-DDRs
- * Support for SMMU based virtual memory and CMA based contiguous physical buffers
- * PS DDRs are always accessed as CMA buffers. 
- * PL DDR is reserved by zocl driver in device tree. Both Linux and PL logic can access PL-DDRs
+ * Accelerator memory allocation is modeled as buffer objects (bo). zocl
+ * supports both SMMU based shared virtual memory and CMA based shared physical memory
+ * between PS and PL. zocl also supports memory management of PL-DDRs and PL-BRAMs.
+ * PL-DDR is reserved by zocl driver via device tree. Both PS Linux and PL logic can access PL-DDRs
  *
- * Execution model is asynchronous where execute commands are submitted using command buffers and POSIX poll
- * is used to wait for finished commands. Commands for a compute unit can only be submitted after an explicit
- * context has been opened by the client.
+ * Execution model is asynchronous where execute commands are submitted using command buffers and
+ * POSIX poll is used to wait for finished commands. Commands for a compute unit can only be submitted
+ * after an explicit context has been opened by the client for that compute unit.
  *
  * *zocl* driver functionality is described in the following table.
  *
@@ -55,14 +53,18 @@
  * 8    Read back data in bo backing storage   DRM_IOCTL_ZOCL_PREAD_BO        drm_zocl_pread_bo
  * 9    Update device view with a specific     DRM_IOCTL_ZOCL_PCAP_DOWNLOAD   drm_zocl_pcap_download
  *      xclbin image
- * 10   Read the xclbin and map the compute    DRM_IOCTL_ZOCL_READ_AXLF       drm_zocl_axlf 
+ * 10   Read the xclbin and map the compute    DRM_IOCTL_ZOCL_READ_AXLF       drm_zocl_axlf
  *      units.
  * 11   Send an execute job to a compute unit  DRM_IOCTL_ZOCL_EXECBUF         drm_zocl_execbuf
  * 12   Get the soft kernel command            DRM_IOCTL_ZOCL_SK_GETCMD       drm_zocl_sk_getcmd
+ *      (experimental)
  * 13   Create the soft kernel                 DRM_IOCTL_ZOCL_SK_CREATE       drm_zocl_sk_create
+ *      (experimental)
  * 14   Report the soft kernel state           DRM_IOCTL_ZOCL_SK_REPORT       drm_zocl_sk_report
+ *      (experimental)
  * 15   Get Information about Compute Unit     DRM_IOCTL_ZOCL_INFO_CU         drm_zocl_info_cu
- *     
+ *      (experimental)
+ *
  * ==== ====================================== ============================== ==================================
  */
 
@@ -168,8 +170,9 @@ struct drm_zocl_map_bo {
 };
 
 /**
- * struct drm_zocl_sync_bo - Synchronize the buffer in the requested direction 
- * used with DRM_ZOCL_SYNC_BO ioctl
+ * struct drm_zocl_sync_bo - Synchronize the buffer in the requested direction
+ * via cache flush/invalidation.
+ * used with DRM_ZOCL_SYNC_BO ioctl.
  *
  * @handle:	GEM object handle
  * @dir:	DRM_ZOCL_SYNC_DIR_XXX
@@ -184,7 +187,7 @@ struct drm_zocl_sync_bo {
 };
 
 /**
- * struct drm_zocl_info_bo - Obtain information about buffer object 
+ * struct drm_zocl_info_bo - Obtain information about buffer object
  * used with DRM_IOCTL_ZOCL_INFO_BO ioctl
  *
  * @handle:	GEM object handle
@@ -198,7 +201,7 @@ struct drm_zocl_info_bo {
 };
 
 /**
- * struct drm_zocl_host_bo - Get the buffer handle of given physical address 
+ * struct drm_zocl_host_bo - Get the buffer handle of given physical address
  * used with DRM_IOCTL_ZOCL_GET_HOST_BO ioctl
  *
  * @paddr:	physical address
@@ -258,10 +261,10 @@ struct drm_zocl_pcap_download {
 };
 
 /**
- * struct drm_zocl_info_cu - Get information about Compute Unit
+ * struct drm_zocl_info_cu - Get information about Compute Unit (experimental)
  * used with DRM_IOCTL_ZOCL_INFO_CU ioctl
  *
- *  @paddr: Physical address 
+ *  @paddr: Physical address
  *  @apt_idx: Aperture index
  */
 struct drm_zocl_info_cu {
@@ -292,7 +295,7 @@ enum drm_zocl_execbuf_state {
 };
 
 /**
- * struct drm_zocl_execbuf - Submit a command buffer for execution on a compute unit
+ * struct drm_zocl_execbuf - Submit a command buffer for execution on a compute unit  (experimental)
  * used with DRM_IOCTL_ZOCL_EXECBUF ioctl
  *
  * @ctx_id:         Pass 0
@@ -309,7 +312,7 @@ enum drm_zocl_axlf_flags {
 };
 
 /**
- * struct drm_zocl_axlf - Read xclbin (AXLF) device image and map CUs
+ * struct drm_zocl_axlf - Read xclbin (AXLF) device image and map CUs (experimental)
  * used with DRM_IOCTL_ZOCL_READ_AXLF ioctl
  *
  * @axlf  : Pointer to xclbin (AXLF) object
@@ -323,7 +326,7 @@ struct drm_zocl_axlf {
 #define	ZOCL_MAX_PATH_LENGTH		255
 
 /**
- * struct drm_zocl_sk_getcmd - Get the soft kernel command
+ * struct drm_zocl_sk_getcmd - Get the soft kernel command  (experimental)
  * used with DRM_IOCTL_ZOCL_SK_GETCMD ioctl
  *
  * @opcode       : opcode for the Soft Kernel Command Packet
@@ -343,7 +346,7 @@ struct drm_zocl_sk_getcmd {
 };
 
 /**
- * struct drm_zocl_sk_create - Create a soft kernel
+ * struct drm_zocl_sk_create - Create a soft kernel  (experimental)
  * used with DRM_IOCTL_ZOCL_SK_CREATE ioctl
  *
  * @cu_idx     : Compute unit index
@@ -362,7 +365,7 @@ enum drm_zocl_scu_state {
 };
 
 /**
- * struct drm_zocl_sk_report- Report the Soft Kernel State
+ * struct drm_zocl_sk_report- Report the Soft Kernel State  (experimental)
  * used with DRM_IOCTL_ZOCL_SK_REPORT ioctl
  *
  * @cu_idx     : Compute unit index
