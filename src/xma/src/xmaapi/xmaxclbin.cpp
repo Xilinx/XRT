@@ -173,8 +173,6 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
                                                 xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel %s register map size exceeds max limit. regmap_size: %d, max regmap_size: %d\n", xclbin_info->ip_layout[j].regmap_size, MAX_KERNEL_REGMAP_SIZE);
                                                 return XMA_ERROR;
                                             }
-                                            //TODO Sarab Remove it
-                                            xclbin_info->ip_layout[j].regmap_size = MAX_KERNEL_REGMAP_SIZE;
                                             break;
                                         }
                                     }

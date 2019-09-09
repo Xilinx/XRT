@@ -205,10 +205,10 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
     }
 
     if (hwcfg->devices[hwcfg_dev_index].kernels[cu_index].in_use) {
-        xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,
+        xma_logmsg(XMA_DEBUG_LOG, XMA_ENCODER_MOD,
                    "XMA session sharing CU: %s\n", hwcfg->devices[hwcfg_dev_index].kernels[cu_index].name);
     } else {
-        xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,
+        xma_logmsg(XMA_DEBUG_LOG, XMA_ENCODER_MOD,
                    "XMA session with CU: %s\n", hwcfg->devices[hwcfg_dev_index].kernels[cu_index].name);
     }
 
@@ -221,11 +221,11 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
         if (hwcfg->devices[hwcfg_dev_index].kernels[cu_index].soft_kernel) {
             //Only allow ddr_bank == 0;
             enc_session->base.hw_session.bank_index = 0;
-            xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,
+            xma_logmsg(XMA_DEBUG_LOG, XMA_ENCODER_MOD,
                 "XMA session with soft_kernel default ddr_bank: %d\n", enc_session->base.hw_session.bank_index);
         } else {
             enc_session->base.hw_session.bank_index = kernel_info->default_ddr_bank;
-            xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,
+            xma_logmsg(XMA_DEBUG_LOG, XMA_ENCODER_MOD,
                 "XMA session default ddr_bank: %d\n", enc_session->base.hw_session.bank_index);
         }
     } else {
@@ -236,14 +236,14 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
             }
             //Only allow ddr_bank == 0;
             enc_session->base.hw_session.bank_index = 0;
-            xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,
+            xma_logmsg(XMA_DEBUG_LOG, XMA_ENCODER_MOD,
                 "XMA session with soft_kernel default ddr_bank: %d\n", enc_session->base.hw_session.bank_index);
         } else {
             std::bitset<MAX_DDR_MAP> tmp_bset;
             tmp_bset = kernel_info->ip_ddr_mapping;
             if (tmp_bset[enc_props->ddr_bank_index]) {
                 enc_session->base.hw_session.bank_index = enc_props->ddr_bank_index;
-                xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,
+                xma_logmsg(XMA_DEBUG_LOG, XMA_ENCODER_MOD,
                     "Using user supplied default ddr_bank. XMA session default ddr_bank: %d\n", enc_session->base.hw_session.bank_index);
             } else {
                 xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
