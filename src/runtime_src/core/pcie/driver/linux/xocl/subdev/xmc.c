@@ -1873,6 +1873,7 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 	int retry = 0;
 	u32 reg_val = 0;
 	void *xdev_hdl;
+	u32 magic = 0;
 
 	xmc = platform_get_drvdata(pdev);
 	if (!xmc)
@@ -1882,6 +1883,12 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 
 	xdev_hdl = xocl_get_xdev(xmc->pdev);
 
+	magic = READ_REG32(xmc, XMC_MAGIC_REG);
+	if (!magic) {
+		xocl_info(&xmc->pdev->dev, "Image is not loaded");
+		return 0;
+	}
+
 	reg_val = READ_GPIO(xmc, 0);
 	xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
 
@@ -1890,8 +1897,7 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 		xocl_info(&xmc->pdev->dev,
 			"XMC info, version 0x%x, status 0x%x, id 0x%x",
 			READ_REG32(xmc, XMC_VERSION_REG),
-			READ_REG32(xmc, XMC_STATUS_REG),
-			READ_REG32(xmc, XMC_MAGIC_REG));
+			READ_REG32(xmc, XMC_STATUS_REG), magic);
 
 		reg_val = READ_REG32(xmc, XMC_STATUS_REG);
 		if (!(reg_val & STATUS_MASK_STOPPED)) {

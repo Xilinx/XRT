@@ -295,6 +295,9 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
                 tmp1.soft_kernel = true;
                 tmp1.default_ddr_bank = 0;
             } else {
+                tmp1.arg_start = info.ip_layout[d].arg_start;
+                tmp1.regmap_size = info.ip_layout[d].regmap_size;
+
                 if (info.ip_layout[d].kernel_channels) {
                     tmp1.kernel_channels = true;
                     tmp1.max_channel_id = info.ip_layout[d].max_channel_id;

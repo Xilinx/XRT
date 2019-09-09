@@ -10,6 +10,7 @@ file(GLOB MPD_FILES
   "common.h"
   "sw_msg.cpp"
   "sw_msg.h"
+  "mpd_plugin.h"
   )
 set(MPD_SRC ${MPD_FILES})
 add_executable(mpd ${MPD_SRC})
@@ -20,6 +21,7 @@ target_link_libraries(mpd
   boost_filesystem
   boost_system
   uuid
+  dl
   )
 install (TARGETS mpd RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
 
@@ -67,7 +69,8 @@ install (
   )
 
 # depoly header files
-set(XRT_HEADER_SRC                                                              
+set(XRT_HEADER_SRC
+  mpd_plugin.h                                                              
   msd_plugin.h)                                                              
                                                                                 
 install (FILES ${XRT_HEADER_SRC} DESTINATION ${XRT_INSTALL_INCLUDE_DIR})        
@@ -76,3 +79,6 @@ message("-- XRT header files")
 foreach (header ${XRT_HEADER_SRC})                                              
   message("-- ${header}")                                                       
 endforeach() 
+add_subdirectory(aws)
+add_subdirectory(azure)
+add_subdirectory(container)

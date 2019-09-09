@@ -104,7 +104,10 @@ set_property platform.run.steps.opt_design.tcl.post ${sourcesDir}/misc/dynamic_p
 set_property platform.ip_cache_dir                  ${launchDir}/${projName}/${projName}.cache/ip                           [current_project]
 set_property platform.synth_constraint_files        [list "${sourcesDir}/constraints/dynamic_impl.xdc,NORMAL,implementation"] [current_project]
 
+set_property platform.design_intent.server_managed "false" [current_project]
+set_property platform.design_intent.external_host "false" [current_project]
 set_property platform.design_intent.embedded "true" [current_project]
+set_property platform.design_intent.datacenter "false" [current_proj]
 
 # Set any other project properties
 set_property STEPS.OPT_DESIGN.TCL.POST ${sourcesDir}/misc/dynamic_postopt.tcl [get_runs impl_1]

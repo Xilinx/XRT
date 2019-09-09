@@ -33,8 +33,8 @@ def runKernel(opt):
     count = 1024
     DATA_SIZE = ctypes.sizeof(ctypes.c_int64) * count
 
-    boHandle1 = xclAllocBO(opt.handle, DATA_SIZE, xclBOKind.XCL_BO_DEVICE_RAM, opt.first_mem)
-    boHandle2 = xclAllocBO(opt.handle, DATA_SIZE, xclBOKind.XCL_BO_DEVICE_RAM, opt.first_mem)
+    boHandle1 = xclAllocBO(opt.handle, DATA_SIZE, 0, opt.first_mem)
+    boHandle2 = xclAllocBO(opt.handle, DATA_SIZE, 0, opt.first_mem)
 
     bo1 = xclMapBO(opt.handle, boHandle1, True, 'int')
     bo2 = xclMapBO(opt.handle, boHandle2, True, 'int')
@@ -69,7 +69,7 @@ def runKernel(opt):
         return 1
 
     # Allocate the exec_bo
-    execHandle = xclAllocBO(opt.handle, DATA_SIZE, xclBOKind.XCL_BO_SHARED_VIRTUAL, (1 << 31))
+    execHandle = xclAllocBO(opt.handle, DATA_SIZE, 0, (1 << 31))
     execData = xclMapBO(opt.handle, execHandle, True, 'int', 32)  # required buffer size = 128
 
     if execData is None:

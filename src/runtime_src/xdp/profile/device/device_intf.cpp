@@ -15,7 +15,6 @@
  */
 
 #include "device_intf.h"
-
 #include "xclperf.h"
 #include "xcl_perfmon_parameters.h"
 #include "tracedefs.h"
@@ -73,23 +72,23 @@ DeviceIntf::~DeviceIntf()
 #if 0
   size_t DeviceIntf::write(uint64_t offset, const void *hostBuf, size_t size)
   {
-    if (mDeviceHandle == nullptr)
+    if (mDevice == nullptr)
       return 0;
-	return xclWrite(mDeviceHandle, XCL_ADDR_SPACE_DEVICE_PERFMON, offset, hostBuf, size);
+	return xclWrite(mDevice, XCL_ADDR_SPACE_DEVICE_PERFMON, offset, hostBuf, size);
   }
 
   size_t DeviceIntf::read(uint64_t offset, void *hostBuf, size_t size)
   {
-    if (mDeviceHandle == nullptr)
+    if (mDevice == nullptr)
       return 0;
-	return xclRead(mDeviceHandle, XCL_ADDR_SPACE_DEVICE_PERFMON, offset, hostBuf, size);
+	return xclRead(mDevice, XCL_ADDR_SPACE_DEVICE_PERFMON, offset, hostBuf, size);
   }
 
   size_t DeviceIntf::traceRead(void *buffer, size_t size, uint64_t addr)
   {
-    if (mDeviceHandle == nullptr)
+    if (mDevice == nullptr)
       return 0;
-    return xclUnmgdPread(mDeviceHandle, 0, buffer, size, addr);
+    return xclUnmgdPread(mDevice, 0, buffer, size, addr);
   }
 #endif
 
@@ -101,8 +100,6 @@ DeviceIntf::~DeviceIntf()
     }
     mDevice = devHandle; 
   }
-
-
 
   // ***************************************************************************
   // Debug IP Layout
@@ -153,6 +150,14 @@ DeviceIntf::~DeviceIntf()
     if((type == XCL_PERF_MON_STR)    && (index < asmList.size())) { str = asmList[index]->getName(); }
     strncpy(name, str.c_str(), length);
     if(str.length() >= length) name[length-1] = '\0'; // required ??
+  }
+
+  std::string DeviceIntf::getMonitorName(xclPerfMonType type, uint32_t index)
+  {
+    if((type == XCL_PERF_MON_MEMORY) && (index < aimList.size())) { return aimList[index]->getName(); }
+    if((type == XCL_PERF_MON_ACCEL)  && (index < amList.size()))  { return amList[index]->getName(); }
+    if((type == XCL_PERF_MON_STR)    && (index < asmList.size())) { return asmList[index]->getName(); }
+    return std::string("");
   }
 
   uint32_t DeviceIntf::getMonitorProperties(xclPerfMonType type, uint32_t index)
@@ -347,7 +352,7 @@ DeviceIntf::~DeviceIntf()
     }
 
     traceVector.mLength = 0;
-    if (!mIsDeviceProfiling)
+    if (!mIsDeviceProfiling || !fifoRead)
    	  return 0;
 
     size_t size = 0;
@@ -383,6 +388,7 @@ DeviceIntf::~DeviceIntf()
     if(!ifs) {
       return;
     }
+
     char buffer[65536];
     // debug_ip_layout max size is 65536
     ifs.read(buffer, 65536);
@@ -411,6 +417,7 @@ DeviceIntf::~DeviceIntf()
       }
      }
     }
+
     ifs.close();
 
 #if 0
@@ -460,7 +467,7 @@ DeviceIntf::~DeviceIntf()
   {
     traceDMA->init(bufSz, bufAddr);
   }
-  
+
   uint64_t DeviceIntf::getWordCountTs2mm()
   {
     return traceDMA->getWordCount();

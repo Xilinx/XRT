@@ -25,7 +25,7 @@ XVECTORSWIZZLE_CONTROL_ADDR_A_DATA = 0x40
 def runKernel(opt):
     elem_num = 4096
     DATA_SIZE = ctypes.sizeof(ctypes.c_int) * elem_num
-    boHandle = xclAllocBO(opt.handle, DATA_SIZE, xclBOKind.XCL_BO_DEVICE_RAM, opt.first_mem)
+    boHandle = xclAllocBO(opt.handle, DATA_SIZE, 0, opt.first_mem)
     bo = xclMapBO(opt.handle, boHandle, True)
     ctypes.memset(bo, 0, DATA_SIZE)
     bo_arr = ctypes.cast(bo, ctypes.POINTER(ctypes.c_int))
@@ -53,7 +53,7 @@ def runKernel(opt):
         return 1
 
     # Allocate the exec_bo
-    execHandle = xclAllocBO(opt.handle, DATA_SIZE, xclBOKind.XCL_BO_SHARED_VIRTUAL, (1 << 31))
+    execHandle = xclAllocBO(opt.handle, DATA_SIZE, 0, (1 << 31))
     execData = xclMapBO(opt.handle, execHandle, True)  # returns mmap()
 
     print("Construct the exec command to run the kernel on FPGA")
@@ -83,7 +83,7 @@ def runKernel(opt):
         print("Global range: %d " % global_dim[0])
         print("Group size  : %d " % local_dim[0])
         print("Starting kernel...\n")
-        
+
 
     for id in range(groupSize):
         if opt.verbose == 1:
@@ -102,7 +102,7 @@ def runKernel(opt):
 
         while xclExecWait(opt.handle, 1000) == 0:
             print(".")
-    
+
     # get the output xclSyncBO
     print("Get the output data from the device")
     if xclSyncBO(opt.handle, boHandle, xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE, 0):

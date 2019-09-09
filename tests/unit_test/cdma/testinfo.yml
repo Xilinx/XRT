@@ -33,3 +33,5 @@ user:
     lflags: {all: ' --sp add00.m_axi_gmem:DDR[0] --sp add10.m_axi_gmem:DDR[1] --sp add20.m_axi_gmem:DDR[2]
       --sp add30.m_axi_gmem:DDR[3]'}
     name: addone.xclbin
+  labels:
+    test_type: ['regression']

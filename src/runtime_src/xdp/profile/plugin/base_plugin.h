@@ -169,7 +169,7 @@ namespace xdp {
       std::map<std::string, std::string> mComputeUnitKernelTraceMap;
       std::map<std::string, unsigned int> mDeviceKernelClockFreqMap;
       xdp::RTUtil::e_flow_mode FlowMode = xdp::RTUtil::CPU;
-      bool mSystemDPAEmulation = false;
+      bool mSystemDPAEmulation = true;
       std::string mTraceFooterString;
 
     public:

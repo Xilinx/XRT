@@ -43,6 +43,9 @@ int scanHandler(int argc, char *argv[]);
 extern const char *subCmdScanDesc;
 extern const char *subCmdScanUsage;
 
+int flashXbutilFlashHandler(int argc, char *argv[]);
+extern const char *subCmdXbutilFlashDesc;
+extern const char *subCmdXbutilFlashUsage;
 int flashHandler(int argc, char *argv[]);
 extern const char *subCmdFlashDesc;
 extern const char *subCmdFlashUsage;

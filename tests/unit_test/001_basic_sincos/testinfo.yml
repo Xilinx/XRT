@@ -19,3 +19,5 @@ user:
       name: test_sincos
       num_cus: 1
     name: sincos.xclbin
+  labels:
+    test_type: ['regression']

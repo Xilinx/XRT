@@ -41,6 +41,8 @@ static const std::map<std::string, struct subCmd> subCmdList = {
     { "--version", {versionHandler, subCmdVersionDesc, subCmdVersionUsage} },
     { "scan", {scanHandler, subCmdScanDesc, subCmdScanUsage} },
     { "flash", {flashHandler, subCmdFlashDesc, subCmdFlashUsage} },
+    // for xbutil flash
+    { "-lash", {flashXbutilFlashHandler, subCmdXbutilFlashDesc, subCmdXbutilFlashUsage} },
     { "reset", {resetHandler, subCmdResetDesc, subCmdResetUsage} },
     { "clock", {clockHandler, subCmdClockDesc, subCmdClockUsage} },
     { "partition", {partHandler, subCmdPartDesc, subCmdPartUsage} },
@@ -104,10 +106,17 @@ unsigned int bdf2index(const std::string& bdfStr)
     return UINT_MAX;
 }
 
+static inline bool isHiddenSubcmd(const std::string& cmd)
+{
+    return cmd[0] == '-';
+}
+
 static void printHelp(void)
 {
     std::cout << "Supported sub-commands are:" << std::endl;
     for (auto& c : subCmdList) {
+        if (isHiddenSubcmd(c.first))
+            continue;
         std::cout << "\t" << c.first << " - " << c.second.description <<
             std::endl;
     }
@@ -123,14 +132,15 @@ void printSubCmdHelp(const std::string& subCmd)
     if (cmd == subCmdList.end()) {
         std::cout << "Unknown sub-command: " << subCmd << std::endl;
     } else {
-        std::cout << "'" << subCmd << "' sub-command usage:" << std::endl;
+        if (!isHiddenSubcmd(subCmd))
+            std::cout << "'" << subCmd << "' sub-command usage:" << std::endl;
         std::cout << cmd->second.usage << std::endl;
     }
 }
 
 int xrt_xbmgmt_version_cmp() 
 {
-    /*check xbutil tools and xrt versions*/
+    /* Check XRT libs and driver versions. */
     std::string xrt = std::string(xrt_build_version) + "," + std::string(xrt_build_version_hash);
     if ( driver_version("xclmgmt") != "unknown" &&
         xrt.compare(driver_version("xclmgmt") ) != 0 ) {

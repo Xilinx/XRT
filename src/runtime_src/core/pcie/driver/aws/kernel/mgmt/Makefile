@@ -12,7 +12,7 @@ KERNELDIR ?= /lib/modules/$(shell uname -r)/build
 
 PWD       := $(shell pwd)
 ROOT := $(dir $(M))
-XILINXINCLUDE := -I$(ROOT)/../include
+XILINXINCLUDE := -I$(ROOT)/../include -I$(ROOT)/../../linux/include -I$(ROOT)/../../../../include
 
 GCCVERSION := $(shell gcc -dumpversion | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$$/&00/')
 

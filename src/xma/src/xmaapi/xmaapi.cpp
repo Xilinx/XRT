@@ -30,6 +30,7 @@
 //#include "lib/xmahw_hal.h"
 #include "lib/xmasignal.h"
 #include <iostream>
+#include <thread>
 
 #define XMAAPI_MOD "xmaapi"
 
@@ -37,6 +38,38 @@
 XmaSingleton xma_singleton_internal;
 
 XmaSingleton *g_xma_singleton = &xma_singleton_internal;
+
+void xma_thread1() {
+    bool expected = false;
+    bool desired = true;
+    std::list<XmaLogMsg> list1;
+    while (!g_xma_singleton->xma_exit) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        while (!g_xma_singleton->log_msg_list_locked.compare_exchange_weak(expected, desired)) {
+            expected = false;
+        }
+        //log msg list lock acquired
+
+        if (!g_xma_singleton->log_msg_list.empty()) {
+            auto itr1 = list1.end();
+            list1.splice(itr1, g_xma_singleton->log_msg_list);
+        }
+
+        //Release log msg list lock
+        g_xma_singleton->log_msg_list_locked = false;
+
+        while (!list1.empty()) {
+            auto itr1 = list1.begin();
+            xclLogMsg(NULL, (xrtLogMsgLevel)itr1->level, "XMA", itr1->msg.c_str());
+            list1.pop_front();
+        }
+    }
+    //Print all stats here
+    //Sarab: TODO
+    xclLogMsg(NULL, XMA_INFO_LOG, "XMA", "CU Usage Stats: ");
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+}
 
 int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
 {
@@ -167,7 +200,7 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
     */
 
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Init signal and exit handlers\n");
-    ret = atexit(xma_exit);
+    ret = std::atexit(xma_exit);
     if (ret) {
         xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Error initalizing XMA\n");
         //Sarab: Remove xmares stuff
@@ -184,6 +217,12 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
         return XMA_ERROR;
     }
 
+    //std::thread threadObjSystem(xma_thread1);
+    g_xma_singleton->xma_thread1 = std::thread(xma_thread1);
+    //Detach threads to let them run independently
+    //threadObjSystem.detach();
+    g_xma_singleton->xma_thread1.detach();
+
     xma_init_sighandlers();
     //xma_res_mark_xma_ready(g_xma_singleton->shm_res_cfg);
 
@@ -194,50 +233,8 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
 
 void xma_exit(void)
 {
-/*
-    extern XmaSingleton *g_xma_singleton;
-    if (!g_xma_singleton->shm_freed)
-        xma_res_shm_unmap(g_xma_singleton->shm_res_cfg);
-*/
-}
-
-/*Sarab: Remove yaml system cfg stuff
-int32_t xma_cfg_img_cnt_get()
-{
-    if (!g_xma_singleton)
-        return XMA_ERROR_INVALID;
-
-    return g_xma_singleton->systemcfg.num_images;
-}
-
-int32_t xma_cfg_dev_cnt_get()
-{
-    int32_t i, dev_cnt, img_cnt;
-
-    if (!g_xma_singleton)
-        return XMA_ERROR_INVALID;
-
-    dev_cnt = 0;
-    img_cnt = xma_cfg_img_cnt_get();
-    for (i = 0; i < img_cnt; i++)
-        dev_cnt += g_xma_singleton->systemcfg.imagecfg[i].num_devices;
-
-    return dev_cnt;
-}
-
-void xma_cfg_dev_ids_get(uint32_t dev_ids[])
-{
-    int32_t img_cnt = xma_cfg_img_cnt_get();
-    int i, dev_ids_idx = 0;
-
-    for (i = 0; i < img_cnt; i++)
-    {
-        int j, img_dev_cnt;
-        img_dev_cnt = g_xma_singleton->systemcfg.imagecfg[i].num_devices;
-
-        for (j = 0; j < img_dev_cnt; j++)
-            dev_ids[dev_ids_idx++] =
-                g_xma_singleton->systemcfg.imagecfg[i].device_id_map[j];
+    if (g_xma_singleton) {
+        g_xma_singleton->xma_exit = true;
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 }
-*/
