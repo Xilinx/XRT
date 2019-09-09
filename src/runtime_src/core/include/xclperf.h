@@ -411,7 +411,7 @@ typedef struct {
   unsigned int TraceID;
   unsigned char Error;
   unsigned char Reserved;
-  bool isClockTrain;
+  int isClockTrain;
   // Used in HW Emulation
   unsigned long long  HostTimestamp;
   unsigned char  EventFlags;
@@ -474,7 +474,7 @@ typedef struct {
  */ 
 
 struct HalPluginConfig {
-  bool state; /** < [unused] indicates if on or off */
+  int state; /** < [unused] indicates if on or off */
   char plugin_path[256]; /** < [unused] indicates which dynamic library to load */
   /**
    * The switches for what to profile and what
@@ -511,18 +511,23 @@ enum HalCallbackType {
   WRITE_END
 };
 
-#include<cstdint>
-#include<cstddef>
+#ifdef __cplusplus
+#include <cstdint>
+#include <cstddef>
+#else
+#include <stdlib.h>
+#include <stdint.h>
+#endif
 
 /**
  * This is an example of the struct that callback
  * functions can take. Eventually, different API
  * callbacks are likely to take different structs.
  */
-struct CBPayload {
-  unsigned idcode;
+typedef struct CBPayload {
+  unsigned int idcode;
   void* deviceHandle;
-};
+} CBPayload;
 
 /**
  * More callback payload struct should be declared 
@@ -531,7 +536,7 @@ struct CBPayload {
 
 struct ReadWriteCBPayload
 {
-  CBPayload basePayload;  
+  struct CBPayload basePayload;  
   uint32_t  addressSpace;
   uint64_t  offset;
   size_t    size;
@@ -539,15 +544,15 @@ struct ReadWriteCBPayload
 
 struct UnmgdPreadPwriteCBPayload
 {
-  CBPayload basePayload;
-  unsigned flags;
+  struct CBPayload basePayload;
+  unsigned int flags;
   size_t   count;
   uint64_t offset;
 };
 
 struct ProfileResultsCBPayload
 {
-  CBPayload basePayload;
+  struct CBPayload basePayload;
   void* results;
 };
 
