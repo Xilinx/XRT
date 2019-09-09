@@ -199,10 +199,17 @@ zocl_fpga_mgr_load(struct drm_device *ddev, char *data, int size)
 {
 	struct drm_zocl_dev *zdev = ddev->dev_private;
 	struct device *dev = ddev->dev;
-	/* zocl_pcap_download_ioctl() has checked if fpga_mgr is NULL */
 	struct fpga_manager *fpga_mgr = zdev->fpga_mgr;
 	struct fpga_image_info *info;
 	int err = 0;
+
+	 /* On Non PR platform, it shouldn't never go to this point.
+	  * On PR platform, the fpga_mgr should be alive.
+	  */
+	if (!zdev->fpga_mgr) {
+		DRM_ERROR("FPGA manager is not found.\n");
+		return -ENXIO;
+	}
 
 	info = fpga_image_info_alloc(dev);
 	if (!info)
@@ -318,14 +325,6 @@ int zocl_pcap_download_ioctl(struct drm_device *dev, void *data,
 	uint64_t primary_fw_off;
 	uint64_t primary_fw_len;
 	struct axlf_section_header *primaryHeader;
-
-	 /* On Non PR platform, it shouldn't never go to this point.
-	  * On PR platform, the fpga_mgr should be alive.
-	 */
-	if (!zdev->fpga_mgr) {
-		DRM_ERROR("FPGA manager is not found.\n");
-		return -EFAULT;
-	}
 
 	if (copy_from_user(&bin_obj, args->xclbin, sizeof(struct axlf)))
 		return -EFAULT;
