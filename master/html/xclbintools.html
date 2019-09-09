@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>xclbinutil &mdash; Xilinx Runtime 2019.2 documentation</title>
+  <title>xclbinutil &mdash; XRT 2019.2 documentation</title>
   
 
   
@@ -51,7 +51,7 @@
           
 
           
-            <a href="index.html" class="icon icon-home"> Xilinx Runtime
+            <a href="index.html" class="icon icon-home"> XRT
           
 
           
@@ -85,44 +85,57 @@
               
             
             
-              <p class="caption"><span class="caption-text">XRT Introduction</span></p>
+              <p class="caption"><span class="caption-text">Introduction</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
-<li class="toctree-l1"><a class="reference internal" href="test.html">XRT Developer Build and Test Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
-<p class="caption"><span class="caption-text">XRT Use Model and Features</span></p>
+<p class="caption"><span class="caption-text">Use Model and Features</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Supported Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator (XMA)</a></li>
 </ul>
-<p class="caption"><span class="caption-text">XRT API Library</span></p>
+<p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">Xilinx Runtime (XRT) Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator (XMA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">XMA 19.2 Migration</a></li>
+</ul>
+<p class="caption"><span class="caption-text">USER API Library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
 </ul>
-<p class="caption"><span class="caption-text">XRT developer's space</span></p>
+<p class="caption"><span class="caption-text">XRT DEVELOPER'S SPACE</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="tools.html">xbutil</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">xclbinutil</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">xclbinutil</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#common-use-cases">Common Use Cases</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#get-information-from-xclbin-file">Get information from xclbin file</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#xclbin-sections-controlling">Xclbin sections controlling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#migrate-xclbin-file-forward-from-older-version">Migrate xclbin file forward from older version</a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 <p class="caption"><span class="caption-text">Platform Building</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
-<li class="toctree-l1"><a class="reference internal" href="test.html">XRT Developer Build and Test Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="newxsa-bringup.html">New XSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
 </ul>
@@ -152,7 +165,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">Xilinx Runtime</a>
+          <a href="index.html">XRT</a>
         
       </nav>
 
@@ -204,6 +217,49 @@
             
   <div class="section" id="xclbinutil">
 <span id="xclbintools-rst"></span><h1>xclbinutil<a class="headerlink" href="#xclbinutil" title="Permalink to this headline">¶</a></h1>
+<p><a class="reference external" href="https://www.xilinx.com/support/documentation/sw_manuals/xilinx2019_1/ug1279-sdx-command-utility-reference-guide.pdf">XCLBIN Utility Tool</a></p>
+<p><code class="docutils literal notranslate"><span class="pre">xclbinutil</span></code> can create, modify and report xclbin content information.</p>
+<div class="section" id="common-use-cases">
+<h2>Common Use Cases<a class="headerlink" href="#common-use-cases" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="get-information-from-xclbin-file">
+<h3>Get information from xclbin file<a class="headerlink" href="#get-information-from-xclbin-file" title="Permalink to this headline">¶</a></h3>
+<p>Various information can be obtained through the –info option, including information on the creation date, hardware platform, clocks, memory configuration, kernel, tool generation options, and etc. Note that optionally an output file can be specified. If none is specified, then the output will go to the console.</p>
+<blockquote>
+<div><p>Getting Information from xclbin</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xclbinutil -i binary_container_1.xclbin [--info=&lt;FILE_NAME&gt;]
+</pre></div>
+</div>
+</div></blockquote>
+</div>
+<div class="section" id="xclbin-sections-controlling">
+<h3>Xclbin sections controlling<a class="headerlink" href="#xclbin-sections-controlling" title="Permalink to this headline">¶</a></h3>
+<p>This include various operations on xclbin sections, like extracting the bitstream image, extracting the build metadata, removing a section and so on.</p>
+<blockquote>
+<div><p>Extracting the bitstream image</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xclbinutil --dump-section BITSTREAM:RAW:bitstream.bit --input binary_container_1.xclbin
+</pre></div>
+</div>
+<p>Extracting the build metadata</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xclbinutil --dump-section BUILD_METADATA:HTML:buildMetadata.json --input binary_container_1.xclbin
+</pre></div>
+</div>
+<p>Removing a section</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xclbinutil --remove-section BITSTREAM --input binary_container_1.xclbin --output binary_container_modified.xclbin
+</pre></div>
+</div>
+</div></blockquote>
+</div>
+<div class="section" id="migrate-xclbin-file-forward-from-older-version">
+<h3>Migrate xclbin file forward from older version<a class="headerlink" href="#migrate-xclbin-file-forward-from-older-version" title="Permalink to this headline">¶</a></h3>
+<p>This is to migrate an older xclbin binary format (via the mirror JSON data) forward to the current binary format (compatible with new xclbin.h).</p>
+<blockquote>
+<div><p>Migrating forward</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xclbinutil --migrate-forward -i binary_container_1.xclbin -o output.xclbin
+</pre></div>
+</div>
+</div></blockquote>
+</div>
+</div>
 </div>
 
 

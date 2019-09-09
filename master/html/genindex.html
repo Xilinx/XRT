@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Index &mdash; Xilinx Runtime 2019.2 documentation</title>
+  <title>Index &mdash; XRT 2019.2 documentation</title>
   
 
   
@@ -50,7 +50,7 @@
           
 
           
-            <a href="index.html" class="icon icon-home"> Xilinx Runtime
+            <a href="index.html" class="icon icon-home"> XRT
           
 
           
@@ -84,34 +84,39 @@
               
             
             
-              <p class="caption"><span class="caption-text">XRT Introduction</span></p>
+              <p class="caption"><span class="caption-text">Introduction</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
-<li class="toctree-l1"><a class="reference internal" href="test.html">XRT Developer Build and Test Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
-<p class="caption"><span class="caption-text">XRT Use Model and Features</span></p>
+<p class="caption"><span class="caption-text">Use Model and Features</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Supported Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator (XMA)</a></li>
 </ul>
-<p class="caption"><span class="caption-text">XRT API Library</span></p>
+<p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">Xilinx Runtime (XRT) Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator (XMA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">XMA 19.2 Migration</a></li>
+</ul>
+<p class="caption"><span class="caption-text">USER API Library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
 </ul>
-<p class="caption"><span class="caption-text">XRT developer's space</span></p>
+<p class="caption"><span class="caption-text">XRT DEVELOPER'S SPACE</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
@@ -121,7 +126,7 @@
 <p class="caption"><span class="caption-text">Platform Building</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
-<li class="toctree-l1"><a class="reference internal" href="test.html">XRT Developer Build and Test Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="newxsa-bringup.html">New XSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
 </ul>
@@ -151,7 +156,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">Xilinx Runtime</a>
+          <a href="index.html">XRT</a>
         
       </nav>
 
@@ -228,8 +233,6 @@
 </li>
       <li><a href="xocl_ioctl.main.html#c.drm_xocl_pread_bo">drm_xocl_pread_bo (C type)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="xocl_ioctl.main.html#c.drm_xocl_pread_unmgd">drm_xocl_pread_unmgd (C type)</a>
 </li>
       <li><a href="xocl_ioctl.main.html#c.drm_xocl_pwrite_bo">drm_xocl_pwrite_bo (C type)</a>
@@ -243,6 +246,38 @@
       <li><a href="xocl_ioctl.main.html#c.drm_xocl_user_intr">drm_xocl_user_intr (C type)</a>
 </li>
       <li><a href="xocl_ioctl.main.html#c.drm_xocl_userptr_bo">drm_xocl_userptr_bo (C type)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_axlf">drm_zocl_axlf (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_create_bo">drm_zocl_create_bo (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_execbuf">drm_zocl_execbuf (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_host_bo">drm_zocl_host_bo (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_info_bo">drm_zocl_info_bo (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_info_cu">drm_zocl_info_cu (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_map_bo">drm_zocl_map_bo (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_pcap_download">drm_zocl_pcap_download (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_pread_bo">drm_zocl_pread_bo (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_pwrite_bo">drm_zocl_pwrite_bo (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_sk_create">drm_zocl_sk_create (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_sk_getcmd">drm_zocl_sk_getcmd (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_sk_report">drm_zocl_sk_report (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_sync_bo">drm_zocl_sync_bo (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_userptr_bo">drm_zocl_userptr_bo (C type)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -364,6 +399,8 @@
 </li>
       <li><a href="xrt.main.html#c.xclAllocBO">xclAllocBO (C function)</a>
 </li>
+      <li><a href="xrt.main.html#c.xclAllocQDMABuf">xclAllocQDMABuf (C function)</a>
+</li>
       <li><a href="xrt.main.html#c.xclAllocUserPtrBO">xclAllocUserPtrBO (C function)</a>
 </li>
       <li><a href="xrt.main.html#c.xclBootFPGA">xclBootFPGA (C function)</a>
@@ -374,7 +411,13 @@
 </li>
       <li><a href="xrt.main.html#c.xclCopyBO">xclCopyBO (C function)</a>
 </li>
+      <li><a href="xrt.main.html#c.xclCreateReadQueue">xclCreateReadQueue (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclCreateWriteQueue">xclCreateWriteQueue (C function)</a>
+</li>
       <li><a href="xrt.main.html#c.xclCuName2Index">xclCuName2Index (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclDestroyQueue">xclDestroyQueue (C function)</a>
 </li>
       <li><a href="xrt.main.html#c.xclDeviceHandle">xclDeviceHandle (C type)</a>
 </li>
@@ -387,6 +430,8 @@
       <li><a href="xrt.main.html#c.xclExportBO">xclExportBO (C function)</a>
 </li>
       <li><a href="xrt.main.html#c.xclFreeBO">xclFreeBO (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclFreeQDMABuf">xclFreeQDMABuf (C function)</a>
 </li>
       <li><a href="xrt.main.html#c.xclGetBOProperties">xclGetBOProperties (C function)</a>
 </li>
@@ -406,25 +451,29 @@
 </li>
       <li><a href="xrt.main.html#c.xclLogMsg">xclLogMsg (C function)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="xrt.main.html#c.xclMapBO">xclMapBO (C function)</a>
 </li>
       <li><a href="mgmt-ioctl.main.html#c.xclmgmt_ioc_bitstream_axlf">xclmgmt_ioc_bitstream_axlf (C type)</a>
 </li>
       <li><a href="mgmt-ioctl.main.html#c.xclmgmt_ioc_freqscaling">xclmgmt_ioc_freqscaling (C type)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="mgmt-ioctl.main.html#c.xclmgmt_ioc_info">xclmgmt_ioc_info (C type)</a>
 </li>
       <li><a href="xrt.main.html#c.xclOpen">xclOpen (C function)</a>
 </li>
       <li><a href="xrt.main.html#c.xclOpenContext">xclOpenContext (C function)</a>
 </li>
+      <li><a href="xrt.main.html#c.xclPollCompletion">xclPollCompletion (C function)</a>
+</li>
       <li><a href="xrt.main.html#c.xclProbe">xclProbe (C function)</a>
 </li>
       <li><a href="xrt.main.html#c.xclRead">xclRead (C function)</a>
 </li>
       <li><a href="xrt.main.html#c.xclReadBO">xclReadBO (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclReadQueue">xclReadQueue (C function)</a>
 </li>
       <li><a href="xrt.main.html#c.xclReClock2">xclReClock2 (C function)</a>
 </li>
@@ -448,6 +497,8 @@
 </li>
       <li><a href="xrt.main.html#c.xclWriteBO">xclWriteBO (C function)</a>
 </li>
+      <li><a href="xrt.main.html#c.xclWriteQueue">xclWriteQueue (C function)</a>
+</li>
       <li><a href="xma.main.html#c.xma_initialize">xma_initialize (C function)</a>
 </li>
       <li><a href="xma.main.html#c.xma_plg_buffer_alloc">xma_plg_buffer_alloc (C function)</a>
@@ -466,15 +517,7 @@
 </li>
       <li><a href="xma.main.html#c.xma_plg_is_work_item_done">xma_plg_is_work_item_done (C function)</a>
 </li>
-      <li><a href="xma.main.html#c.xma_plg_kernel_lock_regmap">xma_plg_kernel_lock_regmap (C function)</a>
-</li>
-      <li><a href="xma.main.html#c.xma_plg_kernel_unlock_regmap">xma_plg_kernel_unlock_regmap (C function)</a>
-</li>
-      <li><a href="xma.main.html#c.xma_plg_register_prep_write">xma_plg_register_prep_write (C function)</a>
-</li>
       <li><a href="xma.main.html#c.xma_plg_schedule_work_item">xma_plg_schedule_work_item (C function)</a>
-</li>
-      <li><a href="xma.main.html#c.xma_plg_schedule_work_item_with_args">xma_plg_schedule_work_item_with_args (C function)</a>
 </li>
   </ul></td>
 </tr></table>
