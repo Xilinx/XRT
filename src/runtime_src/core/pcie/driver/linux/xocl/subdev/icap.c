@@ -2450,12 +2450,13 @@ static int icap_lock_bitstream(struct platform_device *pdev, const xuid_t *id)
 	ICAP_INFO(icap, "bitstream %pUb locked, ref=%d", id,
 		icap->icap_bitstream_ref);
 
-	mutex_unlock(&icap->icap_lock);
-
 	if (ref == 0) {
 		/* reset on first reference */
-		xocl_exec_reset(xocl_get_xdev(pdev));
+		xocl_exec_reset(xocl_get_xdev(pdev), id);
 	}
+
+	mutex_unlock(&icap->icap_lock);
+
 	return 0;
 }
 
