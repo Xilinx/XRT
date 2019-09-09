@@ -258,23 +258,17 @@ namespace xclhwemhal2 {
 	if(xclemulation::config::getInstance()->isSystemDPAEnabled() == false) {
 		return;
 	}
-  	static auto l_time = std::chrono::high_resolution_clock::now();
-  	std::stringstream msg;
-  	std::ios::fmtflags f(msg.flags());
-  	bool childAlive = true;
-  	while (inst && childAlive) {
-  		if (!(inst->get_simulator_started())) {
-  			childAlive = false;
-  		} else {
-  			sleep(10);
-  		}
-  		msg.flags(f);
-  		auto l_time_end = std::chrono::high_resolution_clock::now();
-  		if ((std::chrono::duration<double>(l_time_end - l_time).count() > 300)//todo make it configurable
-  				|| childAlive == false) {
-  			l_time = std::chrono::high_resolution_clock::now();
-  			inst->fetchAndPrintMessages();
-  		}
-  	}
+	static auto l_time = std::chrono::high_resolution_clock::now();
+	while (inst && inst->get_simulator_started()) {
+		sleep(10);
+		if (inst->get_simulator_started() == false) {
+			return;
+		}
+		auto l_time_end = std::chrono::high_resolution_clock::now();
+		if (std::chrono::duration<double>(l_time_end - l_time).count() > 300) {
+			l_time = std::chrono::high_resolution_clock::now();
+			inst->fetchAndPrintMessages();
+		}
+	}
   }
 } // namespace xclhwemhal2
