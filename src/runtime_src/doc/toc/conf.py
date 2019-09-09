@@ -48,7 +48,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'Xilinx Runtime'
+project = 'XRT'
 copyright = '2017-2019, Xilinx, Inc'
 author = 'Xilinx, Inc'
 

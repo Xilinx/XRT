@@ -1,7 +1,7 @@
 .. _xrt_kernel_executions.rst:
 
-XRT Supported Kernel Execution Models
--------------------------------------
+Supported Kernel Execution Models
+---------------------------------
 
 XRT can support a few well-defined kernel execution models.  In HLS flow, depending on the pragma embedded inside the kernel code, the HLS generates RTL that resonates with XRT supported models. However, for RTL kernel, as the user has the flexibility to create kernel the way they want, it is important for RTL user to understand the XRT supported execution model and design their RTL kernel interface accordingly.
 
