@@ -120,7 +120,7 @@ void xma_thread1() {
     //Print all stats here
     //Sarab TODO don't print for single session
     //if (g_xma_singleton->all_sessions.size() > 1) {
-        xclLogMsg(NULL, XMA_INFO_LOG, "XMA", "Session CU Command Relative Loads: ");
+        xclLogMsg(NULL, XMA_INFO_LOG, "XMA-Session-Load", "Session CU Command Relative Loads: ");
         for (auto& itr1: g_xma_singleton->all_sessions) {
             XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.second.hw_session.private_do_not_use;
             xclLogMsg(NULL, XMA_INFO_LOG, "XMA-Session-Load", "Session id: %d, type: %d, load: %d", itr1.first, itr1.second.session_type, (uint32_t)priv1->cmd_load);
