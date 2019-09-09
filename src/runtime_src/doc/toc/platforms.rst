@@ -4,17 +4,17 @@
 Platform Overview
 *****************
 
-.. image:: XRT-Architecture.svg
-   :align: center
-
-XRT exports a common stack across PCIe based platforms and MPSoC based platforms.
+XRT exports a common stack across PCIe based platforms and MPSoC based edge platforms.
 From user perspective there is very little porting effort when migrating an
 application from one class of platform to another.
 
 PCIe Based Platforms
 ====================
 
-XRT supports below devices:
+.. image:: XRT-Architecture-PCIe.svg
+   :align: center
+
+XRT supports following PCIe based devices:
 
 1. U200
 2. U250
@@ -24,14 +24,15 @@ XRT supports below devices:
 6. Advantech VEGA-4000/4002
 
 PCIe based platforms are supported on x86_64, PPC64LE and AARCH64 host architectures.
-The shell (previously known as DSA) has two physical functions: PF0 also called *mgmt pf* and PF1 also
+The *Shell* (previously known as DSA) has two physical functions: PF0 also called *mgmt pf* and PF1 also
 called *user pf*.
 
 MGMT PF (PF0)
 -------------
 
-XRT Linux kernel driver *xclmgmt* binds to mgmt pf. The driver is organized into subdevices and handles
-the following functionality:
+XRT Linux kernel driver *xclmgmt* binds to management physical function. Management physical function
+provides access to Shell components responsible for privileged operations. xclmgmt driver is organized
+into subdevices and handles the following functionality:
 
 1.  ICAP programming
 2.  Clock scaling
@@ -49,8 +50,9 @@ the following functionality:
 USER PF (PF1)
 -------------
 
-XRT Linux kernel driver *xocl* binds to user pf. The driver is organized into subdevices and handles the
-following functionality:
+XRT Linux kernel driver *xocl* binds to user physical function. User physical function provides access
+to Shell components responsible for non privileged operations. It also provides access to compute units
+in DFX partition. xocl driver is organized into subdevices and handles the following functionality:
 
 1.  Device memory topology discovery and memory management
 2.  Device memory management as abstracted buffer objects
@@ -64,16 +66,19 @@ following functionality:
 10. AIO support for the streaming queues
 11. Buffer import and export via DMA-BUF
 12. PCIe peer-to-peer buffer mapping and sharing
-13. Access to in-band sensors
+13. Access to in-band sensors via MailBox proxy into xclmgmt
 14. Hardware mailbox for communication with xclmgmt driver
 
 
-Another section discusses :ref:`security.rst`.
+Platform security and robustness is described in section :ref:`security.rst`.
 
 Zynq Ultrascale+ MPSoC Based Embedded Platforms
 ===============================================
 
-We support below platforms:
+.. image:: XRT-Architecture-Edge.svg
+   :align: center
+
+XRT supports following embedded platforms:
 
 1. ZCU19
 2. ZCU102
@@ -84,7 +89,7 @@ MPSoC based platforms are supported with PetaLinux base stack. XRT Linux kernel
 driver *zocl* does the heavy lifting for the embedded platform. It handles the
 following functionality
 
-1.  CMA buffer management
+1.  CMA buffer management and cache management
 2.  SMMU programming for SVM platforms
 3.  Standardized compute unit execution management on behalf of client processes
 4.  xclbin download for platforms with Partial Reconfiguration support

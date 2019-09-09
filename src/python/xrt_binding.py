@@ -89,16 +89,6 @@ class xclDeviceInfo2(ctypes.Structure):
      ("mNumCDMA", ctypes.c_ushort)
     ]
 
-# xclMemoryDomains is for support of legacy APIs
-# It is not used in BO APIs where we instead use xclBOKind
-class xclMemoryDomains:
-    XCL_MEM_HOST_RAM    = 0
-    XCL_MEM_DEVICE_RAM  = 1
-    XCL_MEM_DEVICE_BRAM = 2
-    XCL_MEM_SVM         = 3
-    XCL_MEM_CMA         = 4
-    XCL_MEM_DEVICE_REG  = 5
-
 # Unused, keep for backwards compatibility
 class xclBOKind:
     XCL_BO_SHARED_VIRTUAL           = 0
@@ -417,19 +407,19 @@ def xclLogMsg(handle, level, tag, format, *args):
     return libc.xclLogMsg(handle, level, tag, format, *args)
 
 
-def xclAllocBO(handle, size, domain, flags):
+def xclAllocBO(handle, size, unused, flags):
     """
     Allocate a BO of requested size with appropriate flags
 
     :param handle: (xclDeviceHandle) device handle
     :param size: (size_t) Size of buffer
-    :param domain: (xclBOKind) Memory domain
+    :param unused: (int) unused parameter present for legacy reasons
     :param flags: (unsigned int) Specify bank information, etc
     :return: BO handle
     """
     libc.xclAllocBO.restype = ctypes.c_uint
     libc.xclAllocBO.argtypes = [xclDeviceHandle, ctypes.c_size_t, ctypes.c_int, ctypes.c_uint]
-    return libc.xclAllocBO(handle, size, domain, flags)
+    return libc.xclAllocBO(handle, size, unused, flags)
 
 def xclAllocUserPtrBO(handle, userptr, size, flags):
     """
@@ -590,7 +580,7 @@ def xclGetBOProperties(handle, boHandle, properties):
 def xclGetDeviceAddr(handle, boHandle):
     """
     Get the physical address on the device
- 
+
     This API is deprecated and will be removed in future release.
     New clients should use xclGetBOProperties() instead.
 

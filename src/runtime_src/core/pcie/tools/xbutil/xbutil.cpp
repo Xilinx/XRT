@@ -21,14 +21,17 @@
 #include <curses.h>
 #include <sstream>
 #include <climits>
+#include <regex>
 #include <algorithm>
 #include <getopt.h>
 #include <sys/mman.h>
+#include <boost/filesystem.hpp>
 
 #include "xbutil.h"
 #include "base.h"
-#include "core/pcie/linux/shim.h"
-#include "core/common/memalign.h"
+
+#define FORMATTED_FW_DIR    "/opt/xilinx/firmware"
+#define hex_digit "[0-9a-fA-F]+"
 
 int bdf2index(std::string& bdfStr, unsigned& index)
 {
@@ -115,7 +118,8 @@ int xrt_xbutil_version_cmp()
     /*check xbutil tools and xrt versions*/
     std::string xrt = sensor_tree::get<std::string>( "runtime.build.version", "N/A" ) + "," 
         + sensor_tree::get<std::string>( "runtime.build.hash", "N/A" );
-    if ( xrt.compare(xcldev::driver_version("xocl") ) != 0 ) {
+    if ( xcldev::driver_version("xocl") != "unknown" &&
+        xrt.compare(xcldev::driver_version("xocl") ) != 0 ) {
         std::cout << "\nERROR: Mixed versions of XRT and xbutil are not supported. \
             \nPlease install matching versions of XRT and xbutil or  \
             \ndefine env variable INTERNAL_BUILD to disable this check\n" << std::endl;
@@ -146,6 +150,7 @@ int main(int argc, char *argv[])
     size_t blockSize = 0;
     int c;
     dd::ddArgs_t ddArgs;
+    int result = 0;
 
     xcldev::baseInit();
 
@@ -155,16 +160,18 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+
+    try {
     /*
-     * Call xbflash if first argument is "flash". This calls
-     * xbflash and never returns. All arguments will be passed
-     * down to xbflash.
+     * Call xbmgmt flash if first argument is "flash". This calls
+     * xbmgmt flash and never returns. All arguments will be passed
+     * down to xbmgmt flash.
      */
     if(std::string( argv[ 1 ] ).compare( "flash" ) == 0) {
         std::cout << "WARNING: The xbutil sub-command flash has been deprecated. "
                   << "Please use the xbmgmt utility with flash sub-command for equivalent functionality.\n"
                   << std::endl;
-        // get self path, launch xbflash from self path
+        // get self path, launch xbmgmt from self path
         char buf[ PATH_MAX ] = {0};
         auto len = readlink( "/proc/self/exe", buf, PATH_MAX );
         if( len == -1 ) {
@@ -176,9 +183,12 @@ int main(int argc, char *argv[])
         // remove exe name from this to get the parent path
         size_t found = std::string( buf ).find_last_of( "/\\" ); // finds the last backslash char
         std::string path = std::string( buf ).substr( 0, found );
-        // coverity[TAINTED_STRING] argv will be validated inside xbflash
+        // coverity[TAINTED_STRING] argv will be validated inside xbmgmt flash
+        // Let xbmgmt know that this call is from xbutil for backward
+        // compatibility behavior in xbmgmt flash
+        argv[1][0] = '-';
         return execv( std::string( path + "/xbmgmt" ).c_str(), argv );
-    } /* end of call to xbflash */
+    } /* end of call to xbmgmt flash */
 
     optind++;
     if( std::strcmp( argv[1], "validate" ) == 0 ) {
@@ -569,9 +579,6 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-
-    int result = 0;
-
     switch (cmd)
     {
     case xcldev::BOOT:
@@ -587,17 +594,10 @@ int main(int argc, char *argv[])
         result = deviceVec[index]->program(xclbin, regionIndex);
         break;
     case xcldev::QUERY:
-        try
-        {
-            if(subcmd == xcldev::STREAM) {
-                result = deviceVec[index]->printStreamInfo(std::cout);
-            } else {
-                result = deviceVec[index]->dump(std::cout);
-            }
-        }
-        catch (...) {
-            result = -1;
-            std::cout << std::endl;
+        if(subcmd == xcldev::STREAM) {
+            result = deviceVec[index]->printStreamInfo(std::cout);
+        } else {
+            result = deviceVec[index]->dump(std::cout);
         }
         break;
     case xcldev::DUMP:
@@ -648,6 +648,10 @@ int main(int argc, char *argv[])
         std::cout << "ERROR: xbutil " << v->first  << " failed." << std::endl;
     else if (cmd != xcldev::DUMP)
         std::cout << "INFO: xbutil " << v->first << " succeeded." << std::endl;
+    } catch (std::exception& ex) {
+      std::cout << ex.what() << std::endl;
+      return -1;
+    }
 
     return result;
 }
@@ -671,11 +675,15 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  scan\n";
     std::cout << "  top [-i seconds]\n";
     std::cout << "  validate [-d card]\n";
-    std::cout << " Requires root privileges:\n";
     std::cout << "  reset  [-d card]\n";
+    std::cout << " Requires root privileges:\n";
     std::cout << "  p2p    [-d card] --enable\n";
     std::cout << "  p2p    [-d card] --disable\n";
     std::cout << "  p2p    [-d card] --validate\n";
+    std::cout << "  flash   [-d card] -m primary_mcs [-n secondary_mcs] [-o bpi|spi]\n";
+    std::cout << "  flash   [-d card] -a <all | shell> [-t timestamp]\n";
+    std::cout << "  flash   [-d card] -p msp432_firmware\n";
+    std::cout << "  flash   scan [-v]\n";
     std::cout << "\nExamples:\n";
     std::cout << "Print JSON file to stdout\n";
     std::cout << "  " << exe << " dump\n";
@@ -952,24 +960,82 @@ int runShellCmd(const std::string& cmd, std::string& output)
     return ret;
 }
 
-int searchXsaAndDsa(std::string xsaPath, std::string 
+int searchXsaAndDsa(int index, std::string xsaPath, std::string
     dsaPath, std::string& path, std::string &output) 
 {
     struct stat st;
-    if (stat(xsaPath.c_str(), &st) != 0) {
-            if (stat(dsaPath.c_str(), &st) != 0) {
-                output += "ERROR: Failed to find xclbin in ";
-                output += xsaPath;
-                output += " and ";
-                output += dsaPath;
-                return -ENOENT;
-            }
-            path =  dsaPath;
-            return EXIT_SUCCESS;
-    } else {
-        path = xsaPath;
+    if (stat(xsaPath.c_str(), &st) == 0) {
+        path =  xsaPath;
+        return EXIT_SUCCESS;
+    } else if (stat(dsaPath.c_str(), &st) == 0) {
+        path = dsaPath;
         return EXIT_SUCCESS;
     }
+    // Check if it is 2rp platform
+    std::string logic_uuid;
+    std::string errmsg;
+    pcidev::get_dev(index)->sysfs_get( "", "logic_uuids", errmsg, logic_uuid);
+    if (!logic_uuid.empty()) {
+        DIR *dp;
+
+	dp = opendir(FORMATTED_FW_DIR);
+	if (!dp) {
+            output += "ERROR: Failed to find firmware installation dir ";
+	    output += FORMATTED_FW_DIR;
+	    output += "\n";
+	    return -ENOENT;
+	}
+	closedir(dp);
+
+        boost::filesystem::path formatted_fw_dir(FORMATTED_FW_DIR);
+        std::vector<std::string> suffix = { "dsabin", "xsabin" };
+        for (std::string t : suffix) {
+            std::regex e("(^" FORMATTED_FW_DIR "/" hex_digit "-" hex_digit "-" hex_digit "/.+/.+/.+/)(" hex_digit ")\\." + t);
+            for (boost::filesystem::recursive_directory_iterator iter(formatted_fw_dir, boost::filesystem::symlink_option::recurse), end;
+                iter != end;
+            )
+            {
+                std::string name = iter->path().string();
+                std::cmatch cm;
+
+                std::regex_match(name.c_str(), cm, e);
+                if (cm.size() > 0)
+                {
+                    std::string uuid = cm.str(2);
+                    if (uuid.compare(logic_uuid) == 0)
+                    {
+                        path = cm.str(1) + "test/";
+                        return EXIT_SUCCESS;
+                    }
+                }
+                else if (iter.level() > 4)
+                {
+                    iter.pop();
+                    continue;
+                }
+                dp = opendir(name.c_str());
+                if (!dp)
+                {
+                    iter.no_push();
+                }
+                else
+                {
+                    closedir(dp);
+                }
+                ++iter;
+            }
+        }
+        output += "ERROR: Failed to find xclbin in ";
+        output += FORMATTED_FW_DIR;
+        output += "\n";
+        return -ENOENT;
+    }
+    
+    output += "ERROR: Failed to find xclbin in ";
+    output += xsaPath;
+    output += " and ";
+    output += dsaPath;
+    return -ENOENT;
 }
 
 int xcldev::device::runTestCase(const std::string& py,
@@ -992,7 +1058,7 @@ int xcldev::device::runTestCase(const std::string& py,
     output.clear();
 
     std::string xclbinPath;
-    searchXsaAndDsa(xsaXclbinPath, dsaXclbinPath, xclbinPath, output);
+    searchXsaAndDsa(m_idx, xsaXclbinPath, dsaXclbinPath, xclbinPath, output);
     xclbinPath += xclbin;
 
     if (stat(xrtTestCasePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
@@ -1035,7 +1101,7 @@ int xcldev::device::runXbTestCase(const std::string& test, std::string& output)
     output.clear();
 
     std::string testPath;
-    searchXsaAndDsa(xsaTestPath, dsaTestPath, testPath, output);
+    searchXsaAndDsa(m_idx, xsaTestPath, dsaTestPath, testPath, output);
     std::string exePath = testPath + "xbtest";
     testPath += test;
 
@@ -1059,8 +1125,10 @@ int xcldev::device::verifyKernelTest(void)
     int ret = runTestCase(std::string("22_verify.py"),
         std::string("verify.xclbin"), output);
 
-    if (ret != 0)
+    if (ret != 0) {
+        std::cout << output << std::endl;
         return ret;
+    }
 
     if (output.find("Hello World") == std::string::npos) {
         std::cout << output << std::endl;
@@ -1076,8 +1144,10 @@ int xcldev::device::bandwidthKernelTest(void)
     int ret = runTestCase(std::string("23_bandwidth.py"),
         std::string("bandwidth.xclbin"), output);
 
-    if (ret != 0)
+    if (ret != 0) {
+        std::cout << output << std::endl;
         return ret;
+    }
 
     if (output.find("PASS") == std::string::npos) {
         std::cout << output << std::endl;
@@ -1125,8 +1195,10 @@ int xcldev::device::bandwidthKernelXbtest(void)
 
     int ret = runXbTestCase(std::string("memory.json"), output);
 
-    if (ret != 0)
+    if (ret != 0) {
+        std::cout << output << std::endl;
         return ret;
+    }
 
     if (output.find("RESULT: ALL TESTS PASSED") == std::string::npos) {
         std::cout << output << std::endl;
@@ -1154,8 +1226,10 @@ int xcldev::device::verifyKernelXbtest(void)
 
     int ret = runXbTestCase(std::string("verify.json"), output);
 
-    if (ret != 0)
+    if (ret != 0) {
+        std::cout << output << std::endl;
         return ret;
+    }
 
     if (output.find("RESULT: ALL TESTS PASSED") == std::string::npos) {
         std::cout << output << std::endl;
@@ -1171,8 +1245,10 @@ int xcldev::device::dmaXbtest(void)
 
     int ret = runXbTestCase(std::string("dma.json"), output);
 
-    if (ret != 0)
+    if (ret != 0) {
+        std::cout << output << std::endl;
         return ret;
+    }
 
     if (output.find("RESULT: ALL TESTS PASSED") == std::string::npos) {
         std::cout << output << std::endl;
@@ -1221,6 +1297,26 @@ int xcldev::device::runOneTest(std::string testName,
     return ret;
 }
 
+int xcldev::device::getXclbinuuid(uuid_t &uuid) {
+    std::string errmsg, xclbinid;
+
+    pcidev::get_dev(m_idx)->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
+
+    if (!errmsg.empty()) {
+        std::cout<<errmsg<<std::endl;
+        return -ENODEV;
+    }
+
+    uuid_parse(xclbinid.c_str(), uuid);
+
+    if (uuid_is_null(uuid)) {
+        std::cout<<"  WARNING: 'uuid' invalid, unable to find uuid. \n"
+                << "  Has the bitstream been loaded? See 'xbutil program'.\n";
+        return -ENODEV;
+    }
+
+    return 0;
+}
 /*
  * validate
  */
@@ -1565,8 +1661,9 @@ int xcldev::device::testP2p()
     std::vector<char> buf;
     int ret = 0;
     int p2p_enabled = 0;
-
+    xclbin_lock xclbin_lock(m_handle, m_idx);
     auto dev = pcidev::get_dev(m_idx);
+
     if (dev == nullptr)
         return -EINVAL;
 
@@ -1674,6 +1771,10 @@ int xcldev::xclP2p(int argc, char *argv[])
         std::cout << "ERROR: P2P is enabled. But there is not enough iomem space, please warm reboot." << std::endl;
     } else if (ret == ENXIO) {
         std::cout << "ERROR: P2P is not supported on this platform" << std::endl;
+    } else if (ret == 1) {
+        std::cout << "P2P is enabled" << std::endl;
+    } else if (ret == 0) {
+        std::cout << "P2P is disabled" << std::endl;
     } else if (ret)
         std::cout << "ERROR: " << strerror(ret) << std::endl;
 
@@ -1715,7 +1816,7 @@ static int m2m_alloc_init_bo(xclDeviceHandle handle, unsigned &boh,
     return 0;
 }
 
-static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int bank_b)
+static int m2mtest_bank(xclDeviceHandle handle, int bank_a, int bank_b)
 {
     unsigned boSrc = NULLBO;
     unsigned boTgt = NULLBO;
@@ -1724,21 +1825,14 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
     int ret = 0;
 
     const size_t boSize = 256L * 1024 * 1024;
-    if (xclOpenContext(handle, uuid, -1, true)) {
-        std::cout << "ERROR: Unable to lockdown xclbin" << std::endl;
-        return -EINVAL;
-    }
 
     //Allocate and init boSrc
-    if(m2m_alloc_init_bo(handle, boSrc, boSrcPtr, boSize, bank_a, 'A')) {
-        xclCloseContext(handle, uuid, -1);
+    if(m2m_alloc_init_bo(handle, boSrc, boSrcPtr, boSize, bank_a, 'A'))
         return -EINVAL;
-    }
 
     //Allocate and init boTgt
     if(m2m_alloc_init_bo(handle, boTgt, boTgtPtr, boSize, bank_b, 'B')) {
         m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
-        xclCloseContext(handle, uuid, -1);
         return -EINVAL;
     }
 
@@ -1750,7 +1844,6 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
     if(xclSyncBO(handle, boTgt, XCL_BO_SYNC_BO_FROM_DEVICE, boSize, 0)) {
         m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
         m2m_free_unmap_bo(handle, boTgt, boTgtPtr, boSize);
-        xclCloseContext(handle, uuid, -1);
         std::cout << "ERROR: Unable to sync target BO" << std::endl;
         return -EINVAL;
     }
@@ -1760,8 +1853,6 @@ static int m2mtest_bank(xclDeviceHandle handle, uuid_t uuid, int bank_a, int ban
     // Clean up
     m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
     m2m_free_unmap_bo(handle, boTgt, boTgtPtr, boSize);
-
-    xclCloseContext(handle, uuid, -1);
 
     if (!match) {
         std::cout << "Memory comparison failed" << std::endl;
@@ -1781,13 +1872,12 @@ int xcldev::device::testM2m()
 {
     std::string errmsg;
     std::vector<char> buf;
-    std::string xclbinid;
     int m2m_enabled = 0;
     std::vector<mem_data> usedBanks;
-    uuid_t uuid;
     int ret = 0;
-
+    xclbin_lock xclbin_lock(m_handle, m_idx);
     auto dev = pcidev::get_dev(m_idx);
+
     if (dev == nullptr)
         return -EINVAL;
 
@@ -1807,15 +1897,6 @@ int xcldev::device::testM2m()
         return -EINVAL;
     }
 
-    dev->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
-    uuid_parse(xclbinid.c_str(), uuid);
-
-    if(xclbinid.empty()) {
-        std::cout << "WARNING: 'xclbinuuid' invalid, "
-            << "unable to perform M2M Test. Bad xclbin. " << std::endl;
-        return -EINVAL;
-    }
-
     for(int32_t i = 0; i < map->m_count; i++) {
         if(map->m_mem_data[i].m_used)
             usedBanks.insert(usedBanks.end(), map->m_mem_data[i]);
@@ -1830,7 +1911,7 @@ int xcldev::device::testM2m()
         for(uint j = i+1; j < usedBanks.size(); j++) {
             std::cout << usedBanks[i].m_tag << " -> "
                 << usedBanks[j].m_tag << " M2M bandwidth: ";
-            ret = m2mtest_bank(m_handle, uuid, i, j);
+            ret = m2mtest_bank(m_handle, i, j);
             if(ret != 0)
                 return ret;
         }

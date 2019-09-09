@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
 #
 # Authors:
 #
@@ -34,6 +34,7 @@ xocl-y := \
 	../subdev/mig.o \
 	../subdev/dna.o \
 	../subdev/iores.o \
+	../subdev/mailbox_versal.o\
 	$(xocl_lib-y)	\
 	xocl_drv.o	\
 	xocl_bo.o	\

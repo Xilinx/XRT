@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
  *
  * Authors: Jan Stephan <j.stephan@hzdr.de>
  *
@@ -595,7 +595,7 @@ int xocl_cleanup_mem(struct xocl_drm *drm_p)
 	return 0;
 }
 
-int xocl_init_mem(struct xocl_drm *drm_p)
+int xocl_init_mem(struct xocl_drm *drm_p, struct mem_topology *new_topo)
 {
 	size_t length = 0;
 	size_t mm_size = 0, mm_stat_size = 0;
@@ -618,7 +618,11 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		reserved2 = 0x1000000;
 	}
 
-	topo = XOCL_MEM_TOPOLOGY(drm_p->xdev);
+	if (XOCL_DSA_IS_VERSAL(drm_p->xdev))
+		topo = new_topo;
+	else
+		topo = XOCL_MEM_TOPOLOGY(drm_p->xdev);
+
 	if (topo == NULL)
 		return 0;
 

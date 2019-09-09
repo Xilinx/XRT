@@ -129,6 +129,7 @@ typedef struct XmaScalerProperties
     uint32_t        param_cnt;
     int32_t         dev_index;
     int32_t         cu_index;
+    char            *cu_name;
     int32_t         ddr_bank_index;//Used for allocating device buffers. Used only if valid index is provide (>= 0); value of -1 imples that XMA should select automatically and then XMA will set it with bank index used automatically
     int32_t         channel_id;
     char            *plugin_lib;

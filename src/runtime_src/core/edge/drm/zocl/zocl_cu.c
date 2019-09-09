@@ -91,6 +91,14 @@ zocl_cu_reset_done(struct zocl_cu *cu)
 	return cu->funcs->reset_done(cu->core);
 }
 
+phys_addr_t
+zocl_cu_get_paddr(struct zocl_cu *cu)
+{
+	struct zcu_core *cu_core = cu->core;
+
+	return cu_core->paddr;
+}
+
 /* -- HLS adapter start -- */
 /* HLS adapter implementation realted code. */
 static void
@@ -311,7 +319,7 @@ zocl_hls_cu_init(struct zocl_cu *cu, phys_addr_t paddr)
 		return -ENOMEM;
 	}
 
-	DRM_DEBUG("CU 0x%llx map to 0x%p\n", core->paddr, core->vaddr);
+	DRM_DEBUG("CU 0x%llx map to 0x%p\n", (u64)core->paddr, core->vaddr);
 	ctrl_reg = ioread32(core->vaddr);
 	version = (ctrl_reg & CU_VERSION_MASK) >> 8;
 	max_cap = (ctrl_reg & CU_MAX_CAP_MASK) >> 12;
@@ -366,7 +374,7 @@ zocl_acc_configure(void *core, u32 *data, size_t sz, int type)
 	 * Same open issue like HLS adapter
 	 * Skip 6 data,this is how user layer construct the command.
 	 */
-	for (i = 4; i < sz - 1; i += 2) {
+	for (i = 6; i < sz - 1; i += 2) {
 		offset = *(data + i) - cu_core->paddr;
 		val = *(data + i + 1);
 
@@ -432,7 +440,7 @@ zocl_acc_cu_init(struct zocl_cu *cu, phys_addr_t paddr)
 		return -ENOMEM;
 	}
 
-	DRM_DEBUG("CU 0x%llx map to 0x%p\n", core->paddr, core->vaddr);
+	DRM_DEBUG("CU 0x%llx map to 0x%p\n", (u64)core->paddr, core->vaddr);
 	/* Unless otherwise configured, the adapter IP has space for 16
 	 * outstanding computations.
 	 */

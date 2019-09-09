@@ -825,6 +825,48 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 				sizeof(ret));
 		break;
 	}
+	case MAILBOX_REQ_READ_P2P_BAR_ADDR: {
+		struct pci_dev *pdev = lro->pci_dev;
+		struct mailbox_p2p_bar_addr *mb_p2p =
+			(struct mailbox_p2p_bar_addr*)req->data;
+		resource_size_t p2p_bar_addr = 0, p2p_bar_len = 0, range = 0;
+		u32 p2p_addr_base, range_base, final_val;
+
+		/* Passthrough Virtualization feature configuration */
+		if (xocl_passthrough_virtualization_on(lro)) {
+			if (!iommu_present(&pci_bus_type)) {
+				p2p_bar_addr = mb_p2p->p2p_bar_addr;
+				p2p_bar_len = mb_p2p->p2p_bar_len;
+				mgmt_info(lro, "got the p2p bar addr = %lld\n", p2p_bar_addr);
+				mgmt_info(lro, "got the p2p bar len = %lld\n", p2p_bar_len);
+				if (!p2p_bar_addr) {
+					pci_write_config_byte(pdev, 0x188, 0x0);
+					ret = 0;
+					(void) xocl_peer_response(lro, req->req, msgid, &ret,
+										  sizeof(ret));
+					break;
+				}
+				range = p2p_bar_addr + p2p_bar_len - 1;
+				range_base = range & 0xFFFF0000;
+				p2p_addr_base = p2p_bar_addr & 0xFFFF0000;
+				final_val = range_base | (p2p_addr_base >> 16);
+				//Translation enable bit
+				pci_write_config_byte(pdev, 0x188, 0x1);
+				//Bar base address
+				pci_write_config_dword(pdev, 0x190, p2p_bar_addr >> 32);
+				//Bar base address + range
+				pci_write_config_dword(pdev, 0x194, range >> 32);
+				pci_write_config_dword(pdev, 0x18c, final_val);
+				mgmt_info(lro, "Passthrough Virtualization config done\n");
+			} else {
+				mgmt_err(lro, "request (%d) dropped, IOMMU is enabled\n",
+						 MAILBOX_REQ_READ_P2P_BAR_ADDR);
+			}
+		}
+		ret = 0;
+		(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
+		break;
+	}
 	default:
 		mgmt_err(lro, "unknown peer request opcode: %d\n", req->req);
 		break;
@@ -866,12 +908,18 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	struct pci_dev *pdev = lro->pci_dev;
 	int i;
 
+	lro->core.thread_arg.thread_cb = health_check_cb;
+	lro->core.thread_arg.arg = lro;
+	lro->core.thread_arg.interval = health_interval * 1000;
+	lro->core.thread_arg.name = "xclmgmt health thread";
+
 	for (i = 0; i < dev_info->subdev_num; i++) {
 		if (dev_info->subdev_info[i].id == XOCL_SUBDEV_DMA)
 			break;
 	}
 
 	if (!(dev_info->flags & XOCL_DSAFLAG_DYNAMIC_IP) &&
+	    !(dev_info->flags & XOCL_DSAFLAG_SMARTN) &&
 			i == dev_info->subdev_num &&
 			lro->core.intr_bar_addr != NULL) {
 		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_DMA_MSIX;
@@ -909,28 +957,27 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	}
 	xocl_info(&pdev->dev, "created all sub devices");
 
-	if (!(dev_info->flags & XOCL_DSAFLAG_SMARTN)) {
-		/* return -ENODEV for 2RP platform */
+	if (!(dev_info->flags & XOCL_DSAFLAG_SMARTN))
 		ret = xocl_icap_download_boot_firmware(lro);
-		if (ret && ret != -ENODEV)
-			goto fail_all_subdev;
 
+	/* return -ENODEV for 2RP platform */
+	if (!ret) {
+		xocl_thread_start(lro);
+
+		/* Launch the mailbox server. */
+		(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv,
+			(void *)lro);
+
+		lro->ready = true;
+	} else if (ret == -ENODEV) {
 		ret = xclmgmt_load_fdt(lro);
 		if (ret)
 			goto fail_all_subdev;
-	}
-	lro->core.thread_arg.thread_cb = health_check_cb;
-	lro->core.thread_arg.arg = lro;
-	lro->core.thread_arg.interval = health_interval * 1000;
-	lro->core.thread_arg.name = "xclmgmt health thread";
-	xocl_thread_start(lro);
+	} else
+		goto fail_all_subdev;
 
-	/* Launch the mailbox server. */
-	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
 	/* Notify our peer that we're listening. */
 	xclmgmt_connect_notify(lro, true);
-
-	lro->ready = true;
 	xocl_info(&pdev->dev, "device fully initialized\n");
 	return;
 
@@ -1048,6 +1095,17 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	 */
 	(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FEATURE_ROM);
 
+	/*
+	 * if can not find BLP metadata, it has to bring up flash to
+	 * allow user switch BLP
+	 */
+	if ((dev_info->flags & XOCL_DSAFLAG_DYNAMIC_IP) && !lro->bld_blob) {
+		struct xocl_subdev_info flash_info = XOCL_DEVINFO_FLASH_BLP;
+
+		xocl_subdev_create(lro, &flash_info);
+	}
+
+
 	return 0;
 
 err_cdev:
@@ -1078,6 +1136,10 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 	BUG_ON(lro->core.pdev != pdev);
 
 	xclmgmt_connect_notify(lro, false);
+
+	if (xocl_passthrough_virtualization_on(lro) &&
+		!iommu_present(&pci_bus_type))
+		pci_write_config_byte(pdev, 0x188, 0x0);
 
 	xocl_thread_stop(lro);
 

@@ -14,10 +14,11 @@ Support for device_only buffers
 Session creation & destroy APIs are thread safe now
 Multi-process support is from XRT
 Register map must be locked (xma_plg_kernel_lock_regmap) by plugin for register_prep_write & schedule_work_item  to work without error. Unlock the register map if other plugins share same CU
-Supports up to 60 CUs per device (in-progress; Testcase needed)
+Supports up to 128 CUs per device (in-progress; Testcase needed)
 CU register map size < 4KB
-By default XMA will automatically select ddr bank for new device buffers (as per selected CU). Session_create may provide user selected ddr bank input when XMA will use user select ddr bank for plugin with that session
-XMA continues to support only one ddr bank per plugin
+By default XMA will automatically select default ddr bank for new device buffers (as per selected CU). Session_create may provide user selected default ddr bank input when XMA will use user select default ddr bank for plugin with that session
+For using ddr bank other than default session ddr_bank use APIs xma_plg_buffer_alloc_arg_num(). See below for info
+XMA now support multiple ddr bank per plugin. See below for info on xma_plg_buffer_alloc_arg_num()
 XMA version check API added to plugin struct. See below for details
 
 Introduction
@@ -201,11 +202,14 @@ performs initialization of all requested processing plugins. In this case, the
 hypothetical encoder plugin has been registered with FFmpeg and the
 initialization callback of the plugin is invoked. The FFmpeg encoder plugin
 begins by creating an XMA session using the xma_enc_session_create() function.
-The xma_enc_session_create() function finds an available resource based on the
+The xma_enc_session_create() function uses available resource based on the
 properties supplied and, invokes the XMA
 plugin initialization function. The XMA plugin initialization function
 allocates any required input and output buffers on the device and performs
 initialization of the SDAccel kernel if needed.
+Default session ddr_bank can be provided in properties supplied to xma_enc_session_create() function. If this ddr_bank_index is -1 then XMA will automatically select default sesion ddr_bank to be used else user provided dr_bank is selected as default session ddr_bank.
+Plugins may use ddr_bank other than default session ddr_bank. For using ddr bank other than default session ddr_bank use APIs xma_plg_buffer_alloc_arg_num().
+Also cu_name or cu_index can be provided in properties supplied to xma_enc_session_create() function. If cu_index is -1 then cu_name is used to use CU for the session.
 
 After initialization has completed, the FFmpeg main() function reads encoded
 data from the specified file, decodes the data in software, and sends the raw
@@ -236,8 +240,10 @@ Execution model
 -----------------
 The APIs are: 
   
+  * xma_plg_kernel_lock_regmap
   * xma_plg_register_prep_write
   * xma_plg_schedule_work_item
+  * xma_plg_kernel_unlock_regmap
   * xma_plg_is_work_item_done
 
 Lets consider the various purposes where the above APIs would be useful. 
@@ -249,7 +255,7 @@ should be used to start the kernel with kernel arguments set earlier with xma_pl
 
 **xma_plg_is_work_item_done** should be used to check if kernel has completed atleast one work item (previously submitted by xma_plg_schedule_work_item).
 
-
+Register map must be locked (xma_plg_kernel_lock_regmap) by plugin for register_prep_write & schedule_work_item  to work without error. Unlock the register map if other plugins share same CU.
 
 
 
@@ -430,7 +436,9 @@ state as necessary. There is no need to free these data structures during
 termination; XMA frees this data for you.
 
 To allocate buffers necessary to handle both incoming and outgoing
-data, please see xma_plg_buffer_alloc().
+data, please see 
+1) xma_plg_buffer_alloc(): Allocate device buffer on default session ddr_bank
+2) xma_plg_buffer_alloc_arg_num(): Allocate device buffer on ddr_bank connected to a kernel argument
 
 
 Handling Incoming Application Data
@@ -497,3 +505,11 @@ Plugins may use dev_index, bank_index & device_only info from BufferObject to en
 
 See XMA copy_encoder & copy_filter examples for more info.
 
+For stateful/multi-channel kernels (eg decodre, encoder):
+    - Use dataflow kernels with context/channels for best performance. Use HLS/RTL Wizard with appropriate settings to generate these kernels in 2019.2 release toolset.
+    - All work items within a channel are treated as FIFO. Kernel must maintain this order for a channel.
+    - See spec for kernels with dataflow with channels. Kernel regamp registers at offset 0x10 (channel_id input to kernel) and 0x14 (channel_id output from kernel) must be supported by kernels.
+    - Use xrt.ini settings (dataflow; kernel_channels) to enable dataflow kernel with channels
+
+Using DRM (Digital Right Management) IPs:
+    - TBD

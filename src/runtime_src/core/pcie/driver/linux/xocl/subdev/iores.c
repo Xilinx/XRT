@@ -21,6 +21,8 @@
 struct iores {
 	struct platform_device	*pdev;
 	void		__iomem *base_addrs[IORES_MAX];
+	resource_size_t		bar_off[IORES_MAX];
+	int			bar_idx[IORES_MAX];
 };
 
 XOCL_DEFINE_IORES_MAP(res_map);
@@ -71,10 +73,19 @@ static void __iomem *get_base(struct platform_device *pdev, u32 id)
 	return iores->base_addrs[id];
 }
 
+static uint64_t get_offset(struct platform_device *pdev, u32 id)
+{
+	struct iores *iores = platform_get_drvdata(pdev);
+
+	return (uint64_t)iores->bar_off[id];
+}
+
+
 static struct xocl_iores_funcs iores_ops = {
 	.read32 = read32,
 	.write32 = write32,
 	.get_base = get_base,
+	.get_offset = get_offset,
 };
 
 static int iores_remove(struct platform_device *pdev)
@@ -102,7 +113,9 @@ static int iores_probe(struct platform_device *pdev)
 {
 	struct iores *iores;
 	struct resource *res;
+	xdev_handle_t xdev;
 	int i, id;
+	int ret;
 
 	iores = devm_kzalloc(&pdev->dev, sizeof(*iores), GFP_KERNEL);
 	if (!iores)
@@ -121,6 +134,14 @@ static int iores_probe(struct platform_device *pdev)
 					res->end - res->start + 1);
 			if (!iores->base_addrs[id]) {
 				xocl_err(&pdev->dev, "map basefailed %pR", res);
+				iores_remove(pdev);
+				return -EINVAL;
+			}
+			xdev = xocl_get_xdev(pdev);
+			ret = xocl_ioaddr_to_baroff(xdev, res->start,
+				&iores->bar_idx[id], &iores->bar_off[id]);
+			if (ret) {
+				xocl_err(&pdev->dev, "get bar off failed %pR", res);
 				iores_remove(pdev);
 				return -EINVAL;
 			}

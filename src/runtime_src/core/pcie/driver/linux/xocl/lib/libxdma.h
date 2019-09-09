@@ -1,7 +1,7 @@
 /*******************************************************************************
  *
  * Xilinx XDMA IP Core Linux Driver
- * Copyright(c) 2015 - 2017 Xilinx, Inc.
+ * Copyright(c) 2015 - 2019 Xilinx, Inc.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -35,6 +35,8 @@
 #include <linux/kernel.h>
 #include <linux/pci.h>
 #include <linux/workqueue.h>
+
+#include "../xocl_drv.h"
 
 /* Switch debug printing on/off */
 #define XDMA_DEBUG 0
@@ -218,6 +220,9 @@
 #define dbg_init(...)
 #define dbg_desc(...)
 #endif
+
+#define XDMA_ENGINE_TO_XDEV(engine)	\
+	XOCL_PCI_DEV_TO_XDEV(engine->xdev->pdev)
 
 /* SECTION: Enum definitions */
 enum transfer_state {

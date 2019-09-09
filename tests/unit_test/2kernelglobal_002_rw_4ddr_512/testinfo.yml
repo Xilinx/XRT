@@ -23,3 +23,5 @@ user:
       name: bandwidth1
       num_cus: 1
     name: bandwidth.xclbin
+  labels:
+    test_type: ['regression']

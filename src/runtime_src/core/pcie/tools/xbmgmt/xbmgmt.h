@@ -26,9 +26,11 @@ void printSubCmdHelp(const std::string& subCmd);
 bool canProceed(void);
 void sudoOrDie(void);
 unsigned int bdf2index(const std::string& bdfStr);
+std::string driver_version(std::string driver);
+bool getenv_or_null(const char* env);
+int xrt_xbmgmt_version_cmp() ;
 
 // Subcommand handlers
-
 int helpHandler(int argc, char *argv[]);
 extern const char *subCmdHelpDesc;
 extern const char *subCmdHelpUsage;
@@ -41,6 +43,9 @@ int scanHandler(int argc, char *argv[]);
 extern const char *subCmdScanDesc;
 extern const char *subCmdScanUsage;
 
+int flashXbutilFlashHandler(int argc, char *argv[]);
+extern const char *subCmdXbutilFlashDesc;
+extern const char *subCmdXbutilFlashUsage;
 int flashHandler(int argc, char *argv[]);
 extern const char *subCmdFlashDesc;
 extern const char *subCmdFlashUsage;
