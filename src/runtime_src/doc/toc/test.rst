@@ -1,5 +1,5 @@
-XRT Developer Build and Test Instructions
------------------------------------------
+Developer Build and Test Instructions
+-------------------------------------
 
 Switching XRT development work from P4 to Git can be done without much
 downtime provided you use a few scripts we have created:
