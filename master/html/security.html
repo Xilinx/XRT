@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Security of Alveo Platform &mdash; Xilinx Runtime 2019.2 documentation</title>
+  <title>Security of Alveo Platform &mdash; XRT 2019.2 documentation</title>
   
 
   
@@ -51,7 +51,7 @@
           
 
           
-            <a href="index.html" class="icon icon-home"> Xilinx Runtime
+            <a href="index.html" class="icon icon-home"> XRT
           
 
           
@@ -85,34 +85,39 @@
               
             
             
-              <p class="caption"><span class="caption-text">XRT Introduction</span></p>
+              <p class="caption"><span class="caption-text">Introduction</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
-<li class="toctree-l1"><a class="reference internal" href="test.html">XRT Developer Build and Test Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
-<p class="caption"><span class="caption-text">XRT Use Model and Features</span></p>
+<p class="caption"><span class="caption-text">Use Model and Features</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Supported Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator (XMA)</a></li>
 </ul>
-<p class="caption"><span class="caption-text">XRT API Library</span></p>
+<p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">Xilinx Runtime (XRT) Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator (XMA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">XMA 19.2 Migration</a></li>
+</ul>
+<p class="caption"><span class="caption-text">USER API Library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
 </ul>
-<p class="caption"><span class="caption-text">XRT developer's space</span></p>
+<p class="caption"><span class="caption-text">XRT DEVELOPER'S SPACE</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
@@ -122,7 +127,7 @@
 <p class="caption"><span class="caption-text">Platform Building</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
-<li class="toctree-l1"><a class="reference internal" href="test.html">XRT Developer Build and Test Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="newxsa-bringup.html">New XSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
 </ul>
@@ -137,6 +142,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#shell">Shell</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#dynamic-function-exchange">Dynamic Function eXchange</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#xclbin-generation">Xclbin Generation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#signing-of-xclbins">Signing of Xclbins</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#firewall">Firewall</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#deployment-models">Deployment Models</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#baremetal">Baremetal</a></li>
@@ -144,10 +150,10 @@
 <li class="toctree-l3"><a class="reference internal" href="#summary">Summary</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#signing-of-xclbins">Signing of Xclbins</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#mailbox">Mailbox</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#device-reset-and-recovery">Device Reset and Recovery</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#shell-update">Shell Update</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#compute-kernel-execution-models">Compute Kernel Execution Models</a></li>
 </ul>
 </li>
 </ul>
@@ -168,7 +174,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">Xilinx Runtime</a>
+          <a href="index.html">XRT</a>
         
       </nav>
 
@@ -225,19 +231,26 @@
 is made up of two fixed physical partitions: an immutable Shell and user compiled DFX partition.
 This design allows end users to perform Dynamic Function eXchange (Partial Reconfiguration
 in classic FPGA terminology) in the well defined DFX partition while the static Shell
-provides key infrastructure services.</p>
+provides key infrastructure services. The following features reinforce security of the platform:</p>
+<ol class="arabic simple">
+<li>2 physical function shell design</li>
+<li>Trusted vs untrusted peripherals</li>
+<li>Signing of xclbins</li>
+<li>AXI Firewall</li>
+<li>Well-defined compute kernel execution model</li>
+</ol>
 <div class="section" id="shell">
 <h2>Shell<a class="headerlink" href="#shell" title="Permalink to this headline">¶</a></h2>
 <p>The Shell provides core infrastructure to the Alveo platform. It includes hardened PCIe
 block which provides physical connectivity to the host PCIe bus via two physical functions
 as described in <a class="reference internal" href="platforms.html#platforms-rst"><span class="std std-ref">Platform Overview</span></a>.
 The Shell is <em>trusted</em> partition of the Alveo platform and for all practical purposes
-should be treated like an ASIC. The Shell is loaded on system boot from PROM. The Shell
-cannot be changed once the system is up.</p>
+should be treated like an ASIC. During system boot, the shell is loaded from the PROM.
+Once loaded, the Shell cannot be changed.</p>
 <p>In the figure above, the Shell peripherals shaded blue can only be accessed from physical
-function 0 (PF0). The Shell peripherals shaded violet can be accessed from physical
+function 0 (PF0) while those shaded violet can be accessed from physical
 function 1 (PF1). From PCIe topology point of view PF0 <em>owns</em> the device and performs
-supervisory actions on the device. Peripherals shaded blue are trusted but peripherals
+supervisory actions on the device. Peripherals shaded blue are trusted while those
 shaded violet are not. A malicious actor with root privileges who has direct access to blue
 shaded peripherals can potentially crash both the device and PCIe bus. However, a malicious
 actor with root privileges who has direct access to only violet shaded peripherals cannot
@@ -263,7 +276,8 @@ the Shell. The image load is itself effected by xclmgmt driver which binds to PF
 xclmgmt driver downloads the bitstream packaged in the bitstream section of xclbin by
 programming the ICAP peripheral. The management driver also discovers the target frequency
 of the DFX partition by reading the xclbin clock section and then programs the clocks
-which are also part of the Shell.</p>
+which are also part of the Shell. These operations are exposed as one atomic ioctl by
+xclmgmt driver.</p>
 <p>xclbin is a container which packs FPGA bitstream for the DFX partition and host of related
 metadata like clock frequencies, information about instantiated compute units, etc. The
 compute units typically expose a well defined register space on the PCIe BAR for access by
@@ -279,6 +293,37 @@ compatible with DFX partition of the shell. The compiler uses a technology calle
 to ensure that the user design physically confines itself to DFX partition and does not attempt
 to overwrite portions of the Shell. It also validates that all the IOs between the DFX and
 Shell are going through fixed pins exposed by Shell.</p>
+</div>
+<div class="section" id="signing-of-xclbins">
+<h2>Signing of Xclbins<a class="headerlink" href="#signing-of-xclbins" title="Permalink to this headline">¶</a></h2>
+<p>xclbin signing process is similar to signing of Linux kernel modules. xclbins can be signed by
+XRT <strong>xclbinutil</strong> utility. The signing adds a PKCS7 signature at the end of xclbin. The signing
+certificate is then registered with appropriate key-ring. XRT supports one of three levels of
+security which can be configured with XRT <strong>xbmgmt</strong> utility running with root privileges.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="19%" />
+<col width="81%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Security level</th>
+<th class="head">Xclbin signature verification behavior of xclmgmt driver</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>0</td>
+<td>No verification</td>
+</tr>
+<tr class="row-odd"><td>1</td>
+<td>Signature verification enforced using signing certificate in
+<em>.xilinx_fpga_xclbin_keys</em> key-ring</td>
+</tr>
+<tr class="row-even"><td>2</td>
+<td>Linux is running in UEFI secure mode and signature verification
+is enforced using signing certificate in <em>system</em> key-ring</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div class="section" id="firewall">
 <h2>Firewall<a class="headerlink" href="#firewall" title="Permalink to this headline">¶</a></h2>
@@ -379,49 +424,18 @@ can crash PCIe bus</td>
 </table>
 </div>
 </div>
-<div class="section" id="signing-of-xclbins">
-<h2>Signing of Xclbins<a class="headerlink" href="#signing-of-xclbins" title="Permalink to this headline">¶</a></h2>
-<p>xclbin signing process is similar to signing of Linux kernel modules. xclbins can be signed by XRT tool,
-<strong>xclbinutil</strong>. The signing adds a PKCS7 signature at the end of xclbin. The signing certificate is then
-registered with appropriate key-ring. XRT supports one of three levels of security which can be configured
-with xbmgmt tool running with root privileges.</p>
-<table border="1" class="docutils">
-<colgroup>
-<col width="19%" />
-<col width="81%" />
-</colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">Security level</th>
-<th class="head">Xclbin signature verification behavior of xclmgmt driver</th>
-</tr>
-</thead>
-<tbody valign="top">
-<tr class="row-even"><td>0</td>
-<td>No verification</td>
-</tr>
-<tr class="row-odd"><td>1</td>
-<td>Signature verification enforced using signing certificate in
-<em>.xilinx_fpga_xclbin_keys</em> key-ring</td>
-</tr>
-<tr class="row-even"><td>2</td>
-<td>Linux is running in UEFI secure mode and signature verification
-is enforced using signing certificate in <em>system</em> key-ring</td>
-</tr>
-</tbody>
-</table>
-</div>
 <div class="section" id="mailbox">
 <h2>Mailbox<a class="headerlink" href="#mailbox" title="Permalink to this headline">¶</a></h2>
 <p>Mailbox is used for communication between user physical function driver, xocl and management physical
 function driver, xclmgmt. The Mailbox hardware design and xclmgmt driver mailbox handling implementation
-has the ability to throttle requests coming from xocl which
-protects it from DoS initiated by a malicious xocl. <a class="reference internal" href="mailbox.main.html#mailbox-main-rst"><span class="std std-ref">Mailbox Subdevice Driver</span></a> has details on mailbox usage.</p>
+has the ability to throttle requests coming from xocl driver which protects it from a potential DoS
+initiated by a malicious xocl driver. <a class="reference internal" href="mailbox.main.html#mailbox-main-rst"><span class="std std-ref">Mailbox Subdevice Driver</span></a> has details on mailbox usage.</p>
 </div>
 <div class="section" id="device-reset-and-recovery">
 <h2>Device Reset and Recovery<a class="headerlink" href="#device-reset-and-recovery" title="Permalink to this headline">¶</a></h2>
 <p>Device reset and recovery is a privileged operation and can only be performed by xclmgmt driver. xocl
 driver can request device reset by sending a message to xclmgmt driver over the Mailbox. An end user
-can reset a device by using XRT <strong>xbutil</strong> tool. This tool talks to xocl driver which uses the reset
+can reset a device by using XRT <strong>xbutil</strong> utility. This utility talks to xocl driver which uses the reset
 message as defined in <a class="reference internal" href="mailbox.main.html#mailbox-main-rst"><span class="std std-ref">Mailbox Subdevice Driver</span></a></p>
 <p>Currently Alveo boards are reset by using PCIe bus <em>hot reset</em> mechanism. This resets the board peripherals
 and also the PCIe link. The drivers reset their platform devices and kill all the clients which have opened
@@ -430,9 +444,16 @@ the device node by sending them a SIGBUS.</p>
 <div class="section" id="shell-update">
 <h2>Shell Update<a class="headerlink" href="#shell-update" title="Permalink to this headline">¶</a></h2>
 <p>Shell update is like firmware update in conventional PCIe devices. Shell updates are distributed as signed
-RPM/DEB package files by Xilinx. Shells may be upgraded using XRT <strong>xbmgmt</strong> tool by system administrators
+RPM/DEB package files by Xilinx. Shells may be upgraded using XRT <strong>xbmgmt</strong> utility by system administrators
 only. The upgrade process will update the PROM. A cold reboot of host is required in In order to boot the
 platform from the updated image.</p>
+</div>
+<div class="section" id="compute-kernel-execution-models">
+<h2>Compute Kernel Execution Models<a class="headerlink" href="#compute-kernel-execution-models" title="Permalink to this headline">¶</a></h2>
+<p>XRT and Alveo support software defined compute kernel execution models having standard AXI hardware
+interfaces. More details on <a class="reference internal" href="xrt_kernel_executions.html#xrt-kernel-executions-rst"><span class="std std-ref">Supported Kernel Execution Models</span></a>. These well understood models do not require
+direct register access from user space. To execute a compute kernel XRT has a well defined <em>exec command buffer</em>
+API and a <em>wait for exec completion</em> API. These operations are exposed as ioctls by the xocl driver.</p>
 </div>
 </div>
 

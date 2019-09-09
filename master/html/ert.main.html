@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Embedded Runtime Library &mdash; Xilinx Runtime 2019.2 documentation</title>
+  <title>Embedded Runtime Library &mdash; XRT 2019.2 documentation</title>
   
 
   
@@ -37,7 +37,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="XMA Core Library" href="xma.main.html" />
-    <link rel="prev" title="Xilinx Runtime (XRT) Core Library" href="xrt.main.html" /> 
+    <link rel="prev" title="XRT Core Library" href="xrt.main.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -51,7 +51,7 @@
           
 
           
-            <a href="index.html" class="icon icon-home"> Xilinx Runtime
+            <a href="index.html" class="icon icon-home"> XRT
           
 
           
@@ -85,34 +85,39 @@
               
             
             
-              <p class="caption"><span class="caption-text">XRT Introduction</span></p>
+              <p class="caption"><span class="caption-text">Introduction</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
-<li class="toctree-l1"><a class="reference internal" href="test.html">XRT Developer Build and Test Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
-<p class="caption"><span class="caption-text">XRT Use Model and Features</span></p>
+<p class="caption"><span class="caption-text">Use Model and Features</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Supported Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator (XMA)</a></li>
 </ul>
-<p class="caption"><span class="caption-text">XRT API Library</span></p>
+<p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator (XMA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">XMA 19.2 Migration</a></li>
+</ul>
+<p class="caption"><span class="caption-text">USER API Library</span></p>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">Xilinx Runtime (XRT) Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
 </ul>
-<p class="caption"><span class="caption-text">XRT developer's space</span></p>
+<p class="caption"><span class="caption-text">XRT DEVELOPER'S SPACE</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
@@ -122,7 +127,7 @@
 <p class="caption"><span class="caption-text">Platform Building</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
-<li class="toctree-l1"><a class="reference internal" href="test.html">XRT Developer Build and Test Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="newxsa-bringup.html">New XSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
 </ul>
@@ -152,7 +157,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">Xilinx Runtime</a>
+          <a href="index.html">XRT</a>
         
       </nav>
 
@@ -348,7 +353,8 @@ struct <code class="descname">ert_configure_sk_cmd</code><a class="headerlink" h
 <p><strong>Definition</strong></p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct ert_configure_sk_cmd {
   union {unnamed_union};
-  uint32_t start_cuidx;
+  uint32_t start_cuidx:16;
+  uint32_t sk_type:16;
   uint32_t num_cus;
   uint32_t sk_size;
   uint32_t sk_name;
@@ -362,6 +368,8 @@ struct <code class="descname">ert_configure_sk_cmd</code><a class="headerlink" h
 <dd>anonymous</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">start_cuidx</span></code></dt>
 <dd>start index of compute units</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">sk_type</span></code></dt>
+<dd>type of soft kernel.</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">num_cus</span></code></dt>
 <dd>number of compute units in program</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">sk_size</span></code></dt>
@@ -560,7 +568,7 @@ MB(W)</p>
         <a href="xma.main.html" class="btn btn-neutral float-right" title="XMA Core Library" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="xrt.main.html" class="btn btn-neutral float-left" title="Xilinx Runtime (XRT) Core Library" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="xrt.main.html" class="btn btn-neutral float-left" title="XRT Core Library" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

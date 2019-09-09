@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>PCIe Peer-to-Peer Support &mdash; Xilinx Runtime 2019.2 documentation</title>
+  <title>PCIe Peer-to-Peer Support &mdash; XRT 2019.2 documentation</title>
   
 
   
@@ -51,7 +51,7 @@
           
 
           
-            <a href="index.html" class="icon icon-home"> Xilinx Runtime
+            <a href="index.html" class="icon icon-home"> XRT
           
 
           
@@ -85,17 +85,17 @@
               
             
             
-              <p class="caption"><span class="caption-text">XRT Introduction</span></p>
+              <p class="caption"><span class="caption-text">Introduction</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
-<li class="toctree-l1"><a class="reference internal" href="test.html">XRT Developer Build and Test Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
-<p class="caption"><span class="caption-text">XRT Use Model and Features</span></p>
+<p class="caption"><span class="caption-text">Use Model and Features</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Supported Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">PCIe Peer-to-Peer Support</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#bios-setup">BIOS Setup</a><ul>
@@ -111,23 +111,38 @@
 <li class="toctree-l3"><a class="reference internal" href="#pcie-topology-considerations">PCIe Topology Considerations</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="#p2p-data-transfer-between-fpga-cards">P2P Data Transfer between FPGA Cards</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#opencl-coding-style">OpenCL coding style</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#profile-report">Profile Report</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#p2p-data-transfer-between-fpga-card-and-nvme-device">P2P Data Transfer between FPGA Card and NVMe Device</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">OpenCL coding style</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">Profile Report</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator (XMA)</a></li>
 </ul>
-<p class="caption"><span class="caption-text">XRT API Library</span></p>
+<p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">Xilinx Runtime (XRT) Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator (XMA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">XMA 19.2 Migration</a></li>
+</ul>
+<p class="caption"><span class="caption-text">USER API Library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
 </ul>
-<p class="caption"><span class="caption-text">XRT developer's space</span></p>
+<p class="caption"><span class="caption-text">XRT DEVELOPER'S SPACE</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
@@ -137,7 +152,7 @@
 <p class="caption"><span class="caption-text">Platform Building</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
-<li class="toctree-l1"><a class="reference internal" href="test.html">XRT Developer Build and Test Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="newxsa-bringup.html">New XSA Bringup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
 </ul>
@@ -167,7 +182,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">Xilinx Runtime</a>
+          <a href="index.html">XRT</a>
         
       </nav>
 
@@ -234,7 +249,7 @@
 </ol>
 <div class="section" id="note">
 <h3>Note<a class="headerlink" href="#note" title="Permalink to this headline">¶</a></h3>
-<p>It may be necessary to update to the latest BIOS release before enabling P2P.  Not doing so may cause the system to continuously reboot during the boot process.  If this occurs, power-cycle the system to disable p2p and allow the system to boot normally.</p>
+<p>It may be necessary to update to the latest BIOS release before enabling P2P.  Not doing so may cause the system to continuously reboot during the boot process.  If this occurs, power-cycle the system to disable P2P and allow the system to boot normally.</p>
 </div>
 <div class="section" id="warning">
 <h3>Warning<a class="headerlink" href="#warning" title="Permalink to this headline">¶</a></h3>
@@ -358,6 +373,240 @@ GEN 3x16        2               true            false
 <h3>PCIe Topology Considerations<a class="headerlink" href="#pcie-topology-considerations" title="Permalink to this headline">¶</a></h3>
 <p>For best performance peer devices wanting to exchange data should be under the same PCIe switch.</p>
 <p>If IOMMU is enabled then all peer-to-peer transfers are routed through the root complex which will degrade performance significantly.</p>
+</div>
+</div>
+<div class="section" id="p2p-data-transfer-between-fpga-cards">
+<h2>P2P Data Transfer between FPGA Cards<a class="headerlink" href="#p2p-data-transfer-between-fpga-cards" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="opencl-coding-style">
+<h3>OpenCL coding style<a class="headerlink" href="#opencl-coding-style" title="Permalink to this headline">¶</a></h3>
+<p>Consider the example situation as below:</p>
+<blockquote>
+<div><ul class="simple">
+<li>P2P data transfer from Card1 to Card2</li>
+<li>Source buffer (<cite>buf_src</cite>) is OpenCL buffer resident of Card1’s DDR</li>
+<li>Destination buffer (<cite>buf_dst</cite>) is OpenCL buffer resident of Card2’s DDR</li>
+</ul>
+</div></blockquote>
+<p>Typical coding style:</p>
+<blockquote>
+<div><ol class="arabic">
+<li><p class="first">In the OpenCL host code, create separate <cite>cl_context</cite> for each <cite>cl_device_id</cite></p>
+</li>
+<li><p class="first">Define <cite>buf_src</cite> as regular buffer</p>
+</li>
+<li><p class="first">Define <cite>buf_dst</cite> as P2P buffer</p>
+</li>
+<li><p class="first">Import the P2P buffer or <cite>buf_dst</cite> to the context of <cite>buf_src</cite>. Use the following APIs</p>
+<blockquote>
+<div><ul class="simple">
+<li><cite>xclGetMemObjectFd</cite></li>
+<li><cite>xclGetMemObjectFromFd</cite></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first">Perform the copy operation from <cite>buf_src</cite> to <cite>imported_dst_buf</cite></p>
+</li>
+</ol>
+</div></blockquote>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// Source Buffer (regular) in source context</span>
+<span class="n">cl_mem</span> <span class="n">src_buf</span><span class="p">;</span>
+<span class="n">src_buf</span> <span class="o">=</span> <span class="n">clCreateBuffer</span><span class="p">(</span><span class="n">src_context</span><span class="p">,</span> <span class="n">CL_MEM_WRITE_ONLY</span><span class="p">,</span> <span class="n">buffersize</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">err</span><span class="p">);</span>
+<span class="n">clSetKernelArg</span><span class="p">(</span><span class="n">kernel_1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">cl_mem</span><span class="p">),</span> <span class="o">&amp;</span><span class="n">src_buf</span><span class="p">);</span>
+
+<span class="c1">// Note: Handling of err is not shown throughout the code example. However, it is recommended</span>
+<span class="c1">// to check error for most of the OpenCL APIs</span>
+
+<span class="c1">// Destination buffer (P2P) in destination context</span>
+<span class="n">cl_mem</span> <span class="n">dst_buf</span><span class="p">;</span>
+<span class="n">cl_mem_ext_ptr_t</span> <span class="n">dst_buf_ext</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+<span class="n">dst_buf_ext</span><span class="p">.</span><span class="n">flags</span> <span class="o">=</span> <span class="n">XCL_MEM_EXT_P2P_BUFFER</span><span class="p">;</span>
+<span class="n">dst_buf</span> <span class="o">=</span> <span class="n">clCreateBuffer</span><span class="p">(</span><span class="n">dst_context</span><span class="p">,</span> <span class="n">CL_MEM_READ_ONLY</span> <span class="o">|</span> <span class="n">CL_MEM_EXT_PTR_XILINX</span><span class="p">,</span> <span class="n">buffersize</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">dst_buf_ext</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">err</span><span class="p">);</span>
+<span class="n">clSetKernelArg</span><span class="p">(</span><span class="n">kernel_2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">cl_mem</span><span class="p">),</span> <span class="o">&amp;</span><span class="n">dst_buf</span><span class="p">);</span>
+
+<span class="c1">// Import Destination P2P buffer to the source context</span>
+<span class="n">err</span> <span class="o">=</span> <span class="n">xclGetMemObjectFd</span><span class="p">(</span><span class="n">dst_buf</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">fd</span><span class="p">);</span>
+
+<span class="n">cl_mem</span> <span class="n">imported_dst_buf</span><span class="p">;</span>
+
+<span class="n">err</span> <span class="o">=</span> <span class="n">xclGetMemObjectFromFd</span><span class="p">(</span><span class="n">src_context</span><span class="p">,</span> <span class="n">device_id</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="n">fd</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">imported_dst_buf</span><span class="p">);</span> <span class="c1">// Import</span>
+
+<span class="c1">// Copy Operation: Local Source buffer -&gt; Imported Destination Buffer</span>
+
+<span class="n">err</span> <span class="o">=</span> <span class="n">clEnqueueCopyBuffer</span><span class="p">(</span><span class="n">src_command_queue</span><span class="p">,</span> <span class="n">src_buf</span><span class="p">,</span> <span class="n">imported_dst_buf</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">data_t</span><span class="p">)</span><span class="o">*</span><span class="n">LENGTH</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">event</span><span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="profile-report">
+<h3>Profile Report<a class="headerlink" href="#profile-report" title="Permalink to this headline">¶</a></h3>
+<p>In the Profile Summary report file the P2P transfer is shown under <strong>Data Transfer: DMA Bypass</strong></p>
+<p><strong>Data Transfer: DMA Bypass</strong></p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="8%" />
+<col width="18%" />
+<col width="12%" />
+<col width="13%" />
+<col width="12%" />
+<col width="11%" />
+<col width="11%" />
+<col width="14%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Device</th>
+<th class="head">Transfer Type</th>
+<th class="head">Number of
+Transfer</th>
+<th class="head">Transfer
+Rate(MB/s)</th>
+<th class="head">Total Data
+Transfer</th>
+<th class="head">Total
+Time (ms)</th>
+<th class="head">Average
+Size (Kb)</th>
+<th class="head">Average
+Latency(ns)</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>…</td>
+<td>IN</td>
+<td>4096</td>
+<td>N/A</td>
+<td>0.262</td>
+<td>N/A</td>
+<td>0.064</td>
+<td>N/A</td>
+</tr>
+</tbody>
+</table>
+<p>The report shows the P2P transfer corresponding to the receiving device (i.e. transfer type IN).</p>
+</div>
+</div>
+<div class="section" id="p2p-data-transfer-between-fpga-card-and-nvme-device">
+<h2>P2P Data Transfer between FPGA Card and NVMe Device<a class="headerlink" href="#p2p-data-transfer-between-fpga-card-and-nvme-device" title="Permalink to this headline">¶</a></h2>
+<p>Using the P2P enabled device the data can be transferred between the FPGA device and another NVMe Device, such as SMART SSD, without migrating the data via host memory space.</p>
+<div class="section" id="id1">
+<h3>OpenCL coding style<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<p>Typical coding style</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>Create P2P buffer</li>
+<li>Map P2P buffer to the host space</li>
+<li>Access the SSD location through Linux File System, the file needs to be opened with <cite>O_DIRECT</cite>.</li>
+<li>Read/Write through Linux <cite>pread</cite>/<cite>pwrite</cite> function</li>
+</ol>
+</div></blockquote>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// Creating P2P buffer</span>
+<span class="n">cl_mem_ext_ptr_t</span> <span class="n">p2pBOExt</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+
+<span class="n">p2pBOExt</span><span class="p">.</span><span class="n">flags</span> <span class="o">=</span> <span class="n">XCL_MEM_EXT_P2P_BUFFER</span><span class="p">;</span>
+
+<span class="n">p2pBO</span> <span class="o">=</span> <span class="n">clCreateBuffer</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">CL_MEM_READ_ONLY</span> <span class="o">|</span> <span class="n">CL_MEM_EXT_PTR_XILINX</span><span class="p">,</span> <span class="n">chunk_size</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">p2pBOExt</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+
+<span class="n">clSetKernelArg</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">cl_mem</span><span class="p">),</span> <span class="n">p2pBO</span><span class="p">);</span>
+
+<span class="c1">// Map P2P Buffer into the host space</span>
+
+<span class="n">p2pPtr</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span> <span class="n">clEnqueueMapBuffer</span><span class="p">(</span><span class="n">command_queue</span><span class="p">,</span> <span class="n">p2pBO</span><span class="p">,</span> <span class="n">CL_TRUE</span><span class="p">,</span> <span class="n">CL_MAP_WRITE</span> <span class="o">|</span> <span class="n">CL_MAP_READ</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">chunk_size</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+
+<span class="n">filename</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">full</span> <span class="n">path</span> <span class="n">to</span> <span class="n">SSD</span><span class="o">&gt;</span>
+<span class="n">fd</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">O_RDWR</span> <span class="o">|</span> <span class="n">O_DIRECT</span><span class="p">);</span>
+
+<span class="c1">// Read chunk_size bytes starting at offset 0 from fd into p2pPtr</span>
+<span class="n">pread</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">p2pPtr</span><span class="p">,</span> <span class="n">chunk_size</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+
+<span class="c1">// Wrtie chunk_size bytes starting at offset 0 from p2pPtr into fd</span>
+<span class="n">pwrite</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">p2pPtr</span><span class="p">,</span> <span class="n">chunk_size</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id2">
+<h3>Profile Report<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<p>Sample Profile report from FPGA to NVMe Device transfer via P2P</p>
+<p><strong>Data Transfer: DMA Bypass</strong></p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="7%" />
+<col width="18%" />
+<col width="11%" />
+<col width="14%" />
+<col width="14%" />
+<col width="11%" />
+<col width="11%" />
+<col width="14%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Device</th>
+<th class="head">Transfer Type</th>
+<th class="head">Number of
+Transfer</th>
+<th class="head">Transfer
+Rate(MB/s)</th>
+<th class="head">Total Data
+Transfer</th>
+<th class="head">Total
+Time (ms)</th>
+<th class="head">Average
+Size (Kb)</th>
+<th class="head">Average
+Latency(ns)</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>…</td>
+<td>OUT</td>
+<td>8388608</td>
+<td>N/A</td>
+<td>1073.740</td>
+<td>N/A</td>
+<td>0.128</td>
+<td>297.141</td>
+</tr>
+</tbody>
+</table>
+<p>Sample Profile report from NVMe Device to FPGA transfer via P2P</p>
+<p><strong>Data Transfer: DMA Bypass</strong></p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="7%" />
+<col width="18%" />
+<col width="11%" />
+<col width="14%" />
+<col width="14%" />
+<col width="11%" />
+<col width="11%" />
+<col width="14%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Device</th>
+<th class="head">Transfer Type</th>
+<th class="head">Number of
+Transfer</th>
+<th class="head">Transfer
+Rate(MB/s)</th>
+<th class="head">Total Data
+Transfer</th>
+<th class="head">Total
+Time (ms)</th>
+<th class="head">Average
+Size (Kb)</th>
+<th class="head">Average
+Latency(ns)</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>…</td>
+<td>IN</td>
+<td>4194304</td>
+<td>N/A</td>
+<td>1073.740</td>
+<td>N/A</td>
+<td>0.256</td>
+<td>237.344</td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 </div>
