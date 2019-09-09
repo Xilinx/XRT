@@ -30,7 +30,7 @@ namespace xdp {
 	  WriterI() {};
       ~WriterI() {};
 
-      static const char * getToolVersion() { return "2019.1"; }
+      static const char * getToolVersion() { return "2019.2"; }
 
       static std::string getCurrentDateTime();
       static std::string getCurrentTimeMsec();

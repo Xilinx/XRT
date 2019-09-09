@@ -163,15 +163,15 @@ int main(int argc, char *argv[])
 
     try {
     /*
-     * Call xbflash if first argument is "flash". This calls
-     * xbflash and never returns. All arguments will be passed
-     * down to xbflash.
+     * Call xbmgmt flash if first argument is "flash". This calls
+     * xbmgmt flash and never returns. All arguments will be passed
+     * down to xbmgmt flash.
      */
     if(std::string( argv[ 1 ] ).compare( "flash" ) == 0) {
         std::cout << "WARNING: The xbutil sub-command flash has been deprecated. "
                   << "Please use the xbmgmt utility with flash sub-command for equivalent functionality.\n"
                   << std::endl;
-        // get self path, launch xbflash from self path
+        // get self path, launch xbmgmt from self path
         char buf[ PATH_MAX ] = {0};
         auto len = readlink( "/proc/self/exe", buf, PATH_MAX );
         if( len == -1 ) {
@@ -183,9 +183,12 @@ int main(int argc, char *argv[])
         // remove exe name from this to get the parent path
         size_t found = std::string( buf ).find_last_of( "/\\" ); // finds the last backslash char
         std::string path = std::string( buf ).substr( 0, found );
-        // coverity[TAINTED_STRING] argv will be validated inside xbflash
+        // coverity[TAINTED_STRING] argv will be validated inside xbmgmt flash
+        // Let xbmgmt know that this call is from xbutil for backward
+        // compatibility behavior in xbmgmt flash
+        argv[1][0] = '-';
         return execv( std::string( path + "/xbmgmt" ).c_str(), argv );
-    } /* end of call to xbflash */
+    } /* end of call to xbmgmt flash */
 
     optind++;
     if( std::strcmp( argv[1], "validate" ) == 0 ) {
@@ -672,11 +675,15 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  scan\n";
     std::cout << "  top [-i seconds]\n";
     std::cout << "  validate [-d card]\n";
-    std::cout << " Requires root privileges:\n";
     std::cout << "  reset  [-d card]\n";
+    std::cout << " Requires root privileges:\n";
     std::cout << "  p2p    [-d card] --enable\n";
     std::cout << "  p2p    [-d card] --disable\n";
     std::cout << "  p2p    [-d card] --validate\n";
+    std::cout << "  flash   [-d card] -m primary_mcs [-n secondary_mcs] [-o bpi|spi]\n";
+    std::cout << "  flash   [-d card] -a <all | shell> [-t timestamp]\n";
+    std::cout << "  flash   [-d card] -p msp432_firmware\n";
+    std::cout << "  flash   scan [-v]\n";
     std::cout << "\nExamples:\n";
     std::cout << "Print JSON file to stdout\n";
     std::cout << "  " << exe << " dump\n";
@@ -1764,6 +1771,10 @@ int xcldev::xclP2p(int argc, char *argv[])
         std::cout << "ERROR: P2P is enabled. But there is not enough iomem space, please warm reboot." << std::endl;
     } else if (ret == ENXIO) {
         std::cout << "ERROR: P2P is not supported on this platform" << std::endl;
+    } else if (ret == 1) {
+        std::cout << "P2P is enabled" << std::endl;
+    } else if (ret == 0) {
+        std::cout << "P2P is disabled" << std::endl;
     } else if (ret)
         std::cout << "ERROR: " << strerror(ret) << std::endl;
 

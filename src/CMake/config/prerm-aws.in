@@ -11,4 +11,8 @@ depmod -A
 
 rm -f /etc/udev/rules.d/10-awsmgmt.rules
 
+echo "Remove mpd plugin"
+rm -rf /opt/xilinx/xrt/lib/libmpd_plugin.so > /dev/null 2>&1
+systemctl stop mpd /dev/null 2>&1
+
 exit 0

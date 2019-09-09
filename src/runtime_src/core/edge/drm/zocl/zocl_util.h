@@ -79,6 +79,14 @@ struct zocl_mem {
 	struct drm_mm          *zm_mm;    /* DRM MM node for PL-DDR */
 };
 
+/*
+ * zocl dev specific data info, if there are different configs across
+ * different compitible device, add their specific data here.
+ */
+struct zdev_data {
+	char fpga_driver_name[64];
+};
+
 struct drm_zocl_dev {
 	struct drm_device       *ddev;
 	struct fpga_manager     *fpga_mgr;
@@ -115,6 +123,8 @@ struct drm_zocl_dev {
 
 	struct soft_krnl	*soft_kernel;
 	struct dma_chan		*zdev_dma_chan;
+	struct mailbox 		*zdev_mailbox;
+	const struct zdev_data 	*zdev_data_info;
 	u32			pr_isolation_addr;
 };
 

@@ -69,7 +69,8 @@ static ssize_t kds_custat_show(struct device *dev,
 		/* Use %x for now. Needs to use a better approach when support
 		 * CU at higher than 4GB address range.
 		 */
-		size += sprintf(buf + size, "CU[@0x%x] : %d\n", paddr, usage);
+		size += sprintf(buf + size, "CU[@0x%llx] : %d\n",
+		    (uint64_t)paddr, usage);
 	}
 
 	read_unlock(&zdev->attr_rwlock);

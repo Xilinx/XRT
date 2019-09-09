@@ -28,4 +28,4 @@ before_script:
 before_install:
   - sudo apt-get update
 
-script: if [ "$COVERITY_SCAN_BRANCH" != 1 ]; then ./build.sh ; fi
+script: if [ "$COVERITY_SCAN_BRANCH" != 1 ]; then ./build.sh -driver; fi

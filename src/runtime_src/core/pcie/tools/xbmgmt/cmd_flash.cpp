@@ -26,6 +26,14 @@
 #include "core/common/sensor.h"
 #include "xbmgmt.h"
 
+// For backward compatibility
+const char *subCmdXbutilFlashDesc = "";
+const char *subCmdXbutilFlashUsage =
+    "[-d card] -m primary_mcs [-n secondary_mcs] [-o bpi|spi]\n"
+    "[-d card] -a <all | shell> [-t timestamp]\n"
+    "[-d card] -p msp432_firmware\n"
+    "scan [-v]\n";
+
 const char *subCmdFlashDesc = "Update SC firmware or shell on the device";
 const char *subCmdFlashUsage =
     "--scan [--verbose|--json]\n"
@@ -399,7 +407,7 @@ static int autoFlash(unsigned index, std::string& shell,
 }
 
 // For backward compatibility, will be removed later
-static int flashCompatibleMode(int argc, char *argv[])
+int flashXbutilFlashHandler(int argc, char *argv[])
 {
     if (argc < 2)
         return -EINVAL;
@@ -709,10 +717,6 @@ int flashHandler(int argc, char *argv[])
     sudoOrDie();
 
     std::string subcmd(argv[1]);
-
-    // Backward compatible, no long option used.
-    if (subcmd.find("--") != 0)
-        return flashCompatibleMode(argc,argv);
 
     auto cmd = optList.find(subcmd);
     if (cmd == optList.end())
