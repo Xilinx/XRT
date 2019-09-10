@@ -769,6 +769,11 @@ class xocl_scheduler
   {
     wait();
     queue_cmds();
+
+    // throttle polling for cu completion
+    if (auto us = xrt::config::get_polling_throttle())
+      std::this_thread::sleep_for(std::chrono::microseconds(us));
+
     iterate_cmds();
   }
 
