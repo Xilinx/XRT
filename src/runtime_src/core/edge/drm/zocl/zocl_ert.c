@@ -16,6 +16,7 @@
 #include "ert.h"
 #include "zocl_ert.h"
 #include "zocl_util.h"
+#include "zocl_mailbox.h"
 
 #define ert_err(pdev, fmt, args...)  \
 	zocl_err(&pdev->dev, fmt"\n", ##args)
@@ -89,6 +90,7 @@ ert_mpsoc_next(struct zocl_ert_dev *ert, struct ert_packet *pkg, int *idx_ret)
 	int slot_idx, mask_idx, slot_tmp;
 	int slot_sz;
 	int i, found;
+	u64 slot_info;
 
 	slot_sz = ioread32(ert_hw + ERT_CQ_SLOT_SIZE_REG) * 4;
 	/* Calculate current slot index */
@@ -104,7 +106,9 @@ ert_mpsoc_next(struct zocl_ert_dev *ert, struct ert_packet *pkg, int *idx_ret)
 		cq_status[3] = ioread32(ert_hw + ERT_CQ_STATUS_REG3);
 	} else {
 		/* ERT mode is only for 64 bits system */
-		slot_idx = ((u64)pkg - (u64)ert->cq_ioremap) / slot_sz;
+	  	slot_info = ((u64)pkg - (u64)ert->cq_ioremap) ;
+		do_div(slot_info,slot_sz);
+		slot_idx = slot_info;
 	}
 
 	/* Get mask index and local slot index for the next commmand */
@@ -147,6 +151,52 @@ static void ert_mpsoc_notify_host(struct zocl_ert_dev *ert, int slot_idx)
 	iowrite32(1 << pos, ert->hw_ioremap + csr_offset);
 }
 
+/* ert versal ops */
+static void
+ert_versal_init(struct zocl_ert_dev *ert)
+{
+	return;
+}
+
+static void
+ert_versal_fini(struct zocl_ert_dev *ert)
+{
+	return;
+}
+
+static void
+ert_versal_config(struct zocl_ert_dev *ert, struct ert_configure_cmd *cfg)
+{
+	return;
+}
+
+static struct ert_packet *
+ert_versal_next(struct zocl_ert_dev *ert, struct ert_packet *pkg, int *idx_ret)
+{
+	return NULL;
+}
+
+static void
+ert_versal_notify_host(struct zocl_ert_dev *ert, int slot_idx)
+{
+	struct mailbox mbx;
+	u32 status = (u32)-1;
+	mbx.mbx_regs = (struct mailbox_reg *)ert->hw_ioremap;
+
+	while (1) {
+		status = zocl_mailbox_status(&mbx);
+		if (status == (u32)-1) {
+			ert_err(ert->pdev, "mailbox error: 0x%x", status);
+			break;
+		}
+
+		if ((status & MBX_STATUS_FULL) == 0) {
+			zocl_mailbox_set(&mbx, slot_idx);
+			break;
+		}
+	}
+}
+
 static struct zocl_ert_ops mpsoc_ops = {
 	.init         = ert_mpsoc_init,
 	.fini         = ert_mpsoc_fini,
@@ -155,27 +205,29 @@ static struct zocl_ert_ops mpsoc_ops = {
 	.notify_host  = ert_mpsoc_notify_host,
 };
 
+static struct zocl_ert_ops versal_ops = {
+	.init         = ert_versal_init,
+	.fini         = ert_versal_fini,
+	.config       = ert_versal_config,
+	.get_next_cmd = ert_versal_next,
+	.notify_host  = ert_versal_notify_host,
+};
+
 static const struct zocl_ert_info mpsoc_ert_info = {
 	.ops   = &mpsoc_ops,
 };
 
-/* Place holder for Versal */
-/*
 static const struct zocl_ert_info versal_ert_info = {
-	.ops   = &versal_ops;
+	.ops   = &versal_ops,
 };
-*/
 
 static const struct of_device_id zocl_ert_of_match[] = {
 	{ .compatible = "xlnx,embedded_sched",
 	  .data = &mpsoc_ert_info,
 	},
-	/* Place holder for versal support */
-	/*
 	{ .compatible = "xlnx,embedded_sched_versal",
 	  .data = &versal_ert_info,
 	},
-	*/
 	{ /* end of table */ },
 };
 
@@ -228,6 +280,10 @@ static int zocl_ert_probe(struct platform_device *pdev)
 	ert_info(pdev, "CQ irq %d, CU irq %d", ert->irq[ERT_CQ_IRQ],
 			ert->irq[ERT_CU_IRQ]);
 
+	if (info->ops == NULL) {
+		ert_err(pdev, "zocl ert probe failed due to ops has not been set");
+		return -ENODEV;
+	}
 	platform_set_drvdata(pdev, ert);
 	return 0;
 }
@@ -246,4 +302,3 @@ struct platform_driver zocl_ert_driver = {
 	.probe  = zocl_ert_probe,
 	.remove = zocl_ert_remove,
 };
-

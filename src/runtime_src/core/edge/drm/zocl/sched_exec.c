@@ -25,6 +25,7 @@
 #include "ert.h"
 #include "sched_exec.h"
 #include "zocl_sk.h"
+
 /* Including xclbin.h in the scheduler is not good.
  * But let us do this for now. Should add zocl_xclbin.c later
  * and move all XCLBIN related code there.
@@ -86,7 +87,7 @@ static DEFINE_MUTEX(free_cmds_mutex);
  * Scheduler copies pending commands to its private queue when necessary
  */
 static LIST_HEAD(pending_cmds);
-static DEFINE_MUTEX(pending_cmds_mutex);
+static DEFINE_SPINLOCK(pending_cmds_lock);
 static atomic_t num_pending = ATOMIC_INIT(0);
 
 /**
@@ -689,35 +690,36 @@ configure(struct sched_cmd *cmd)
 	}
 	write_unlock(&zdev->attr_rwlock);
 
-	/* Enable interrupt from host to PS when new commands are ready */
-	if (exec->cq_interrupt) {
-		/* Stop CQ check thread */
-		if (zdev->exec->cq_thread)
-			kthread_stop(zdev->exec->cq_thread);
+	if(zdev->ert) {
+	  /* Enable interrupt from host to PS when new commands are ready */
+	  if (exec->cq_interrupt) {
+	    /* Stop CQ check thread */
+	    if (zdev->exec->cq_thread)
+	      kthread_stop(zdev->exec->cq_thread);
 
-		/* At this point we are good. No one is polling CQ */
-		cq_irq = zdev->ert->irq[ERT_CQ_IRQ];
-		ret = request_irq(cq_irq, sched_cq_isr, 0, "zocl_cq", zdev);
-		if (ret) {
-			DRM_WARN("Failed to initial CQ interrupt. "
-				 "Fall back to polling\n");
-			exec->cq_interrupt = 0;
-			exec->cq_thread = kthread_run(cq_check, zdev, name);
-		}
-	} else {
-		/* In CQ polling mode now */
-		if (!zdev->exec->cq_thread)
-			exec->cq_thread = kthread_run(cq_check, zdev, name);
+	    /* At this point we are good. No one is polling CQ */
+	    cq_irq = zdev->ert->irq[ERT_CQ_IRQ];
+	    ret = request_irq(cq_irq, sched_cq_isr, 0, "zocl_cq", zdev);
+	    if (ret) {
+	      DRM_WARN("Failed to initial CQ interrupt. "
+		  "Fall back to polling\n");
+	      exec->cq_interrupt = 0;
+	      exec->cq_thread = kthread_run(cq_check, zdev, name);
+	    }
+	  }
 	}
+	/* TODO: let's consider how to support reconfigurable KDS/ERT later.
+	 * At that time, ERT should be able to change back to CQ polling mode.
+	 */
 
 	exec->zcu = vzalloc(sizeof(struct zocl_cu) * exec->num_cus);
 	if (!exec->zcu) {
-		DRM_ERROR("Cound not allocate CU objects\n");
+		DRM_ERROR("Could not allocate CU objects\n");
 		return -ENOMEM;
 	}
 
 	for (i = 0; i < exec->num_cus; i++) {
-		if (cfg->data[i] & (~ZOCL_KDS_MASK == ACCEL_ADAPTER)) {
+		if ((cfg->data[i] & ~ZOCL_KDS_MASK) == ACCEL_ADAPTER) {
 			/* If the ACCEL adapter is used */
 			acc_cu = 1;
 			if (has_acc_cu == 0)
@@ -754,7 +756,9 @@ configure(struct sched_cmd *cmd)
 		 * For Pure MPSoC device, the base address is always 0
 		 */
 		cu_addr = zdev->res_start + cu_addr;
-		SCHED_DEBUG("++ configure cu(%d)\n", i);
+		SCHED_DEBUG("++ configure cu(%d) at res_start: 0x%llx + "
+		    "cu_addr: 0x%llx\n", i, (uint64_t)zdev->res_start,
+		    (uint64_t)cu_addr);
 
 		if (!acc_cu)
 			zocl_cu_init(&exec->zcu[i], MODEL_HLS, cu_addr);
@@ -886,6 +890,21 @@ configure_soft_kernel(struct sched_cmd *cmd)
 	}
 
 	scmd->skc_packet = (struct ert_packet *)cfg;
+
+	if (cfg->sk_type == SOFTKERNEL_TYPE_XCLBIN) {
+		void *xclbin_buffer = NULL;
+
+		/* remap device physical addr to kernel virtual addr */
+		xclbin_buffer = memremap(cfg->sk_addr, cfg->sk_size, MEMREMAP_WB);
+		if (xclbin_buffer == NULL) {
+			ret = -ENOMEM;
+			goto fail;
+		}
+		ret = zocl_load_pdi(cmd->ddev, xclbin_buffer);
+		memunmap(xclbin_buffer);
+		if (ret)
+			goto fail;
+	}
 
 	mutex_lock(&sk->sk_lock);
 	list_add_tail(&scmd->skc_list, &sk->sk_cmd_list);
@@ -1245,9 +1264,9 @@ notify_host(struct sched_cmd *cmd)
 		spin_unlock_irqrestore(&zdev->exec->ctx_list_lock, flags);
 		/* wake up all the clients */
 		wake_up_interruptible(&zdev->exec->poll_wait_queue);
-	} else
+	} else {
 		zdev->ert->ops->notify_host(zdev->ert, cmd->cq_slot_idx);
-
+	}
 	SCHED_DEBUG("<- notify_host\n");
 }
 
@@ -1376,6 +1395,7 @@ static int
 add_cmd(struct sched_cmd *cmd)
 {
 	int ret = 0;
+	unsigned long flags;
 
 	SCHED_DEBUG("-> add_cmd\n");
 
@@ -1384,9 +1404,9 @@ add_cmd(struct sched_cmd *cmd)
 	DRM_DEBUG("packet header 0x%08x, data 0x%08x\n",
 		  cmd->packet->header, cmd->packet->data[0]);
 	set_cmd_state(cmd, ERT_CMD_STATE_NEW);
-	mutex_lock(&pending_cmds_mutex);
+	spin_lock_irqsave(&pending_cmds_lock, flags);
 	list_add_tail(&cmd->list, &pending_cmds);
-	mutex_unlock(&pending_cmds_mutex);
+	spin_unlock_irqrestore(&pending_cmds_lock, flags);
 
 	/* wake scheduler */
 	atomic_inc(&num_pending);
@@ -1864,9 +1884,10 @@ scheduler_queue_cmds(struct scheduler *sched)
 {
 	struct sched_cmd *cmd;
 	struct list_head *pos, *next;
+	unsigned long flags;
 
 	SCHED_DEBUG("-> scheduler_queue_cmds\n");
-	mutex_lock(&pending_cmds_mutex);
+	spin_lock_irqsave(&pending_cmds_lock, flags);
 	list_for_each_safe(pos, next, &pending_cmds) {
 		cmd = list_entry(pos, struct sched_cmd, list);
 		if (cmd->sched != sched)
@@ -1876,7 +1897,7 @@ scheduler_queue_cmds(struct scheduler *sched)
 		set_cmd_int_state(cmd, ERT_CMD_STATE_QUEUED);
 		atomic_dec(&num_pending);
 	}
-	mutex_unlock(&pending_cmds_mutex);
+	spin_unlock_irqrestore(&pending_cmds_lock, flags);
 	SCHED_DEBUG("<- scheduler_queue_cmds\n");
 }
 
@@ -2369,7 +2390,6 @@ ps_ert_submit(struct sched_cmd *cmd)
 	case ERT_SK_START:
 		cmd->cu_idx = get_free_cu(cmd, ZOCL_SOFT_CU);
 		if (cmd->cu_idx < 0) {
-			DRM_ERROR("Can not find free soft kernel slot.");
 			release_slot_idx(cmd->ddev, cmd->slot_idx);
 			return false;
 		}
@@ -2573,6 +2593,7 @@ add_ert_cq_cmd(struct drm_device *drm, void *buffer, unsigned int cq_idx)
 	cmd->sched = zdev->exec->scheduler;
 	cmd->buffer = buffer;
 	cmd->packet = buffer;
+	cmd->exec = zdev->exec;
 	cmd->cq_slot_idx = cq_idx;
 	cmd->free_buffer = zocl_cmd_buffer_free;
 
@@ -2636,6 +2657,7 @@ iterate_packets(struct drm_device *drm)
 	packet = ert->cq_ioremap;
 	num_slots = exec_core->num_slots;
 	slot_sz = slot_size(zdev->ddev);
+
 	for (slot_idx = 0; slot_idx < num_slots; slot_idx++) {
 		buffer = create_cmd_buffer(packet, slot_sz);
 		packet = get_next_packet(packet, slot_sz);
@@ -2765,7 +2787,7 @@ sched_init_exec(struct drm_device *drm)
 		for (i = 0; i < MAX_U32_CU_MASKS; ++i)
 			exec_core->scu_status[i] = 0;
 
-		 /* Initialize soft kernel */
+		/* Initialize soft kernel */
 		zocl_init_soft_kernel(drm);
 
 		exec_core->cq_thread = kthread_run(cq_check, zdev, name);

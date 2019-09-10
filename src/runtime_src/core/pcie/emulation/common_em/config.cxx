@@ -66,7 +66,7 @@ namespace xclemulation{
     mServerPort = 0;
     mKeepRunDir=false;
     mLauncherArgs = "";
-    mSystemDPA = false;
+    mSystemDPA = true;
   }
 
   static bool getBoolValue(std::string& value,bool defaultValue)
@@ -208,7 +208,7 @@ namespace xclemulation{
       }
       else if(name == "system_dpa")
       {
-        setSystemDPA(getBoolValue(value,false));
+        setSystemDPA(getBoolValue(value,true));
       }
       else if(name.find("Debug.") == std::string::npos)
       {

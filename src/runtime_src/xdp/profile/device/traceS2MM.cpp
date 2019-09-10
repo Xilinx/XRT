@@ -141,7 +141,8 @@ inline void TraceS2MM::parsePacketClockTrain(uint64_t packet, uint64_t firstTime
         result.Timestamp = timestamp - firstTimestamp;
       else
         result.Timestamp = timestamp + (tsmask - firstTimestamp);
-      result.isClockTrain = true;
+      //result.isClockTrain = true;
+      result.isClockTrain = 1 ;
     }
     uint64_t partial = (((packet >> 45) & 0xFFFF) << (16 * mod));
     result.HostTimestamp = result.HostTimestamp | partial;
@@ -164,7 +165,8 @@ inline void TraceS2MM::parsePacket(uint64_t packet, uint64_t firstTimestamp, xcl
     result.Error = (packet >> 63) & 0x1;
     result.EventID = XCL_PERF_MON_HW_EVENT;
     result.EventFlags = ((packet >> 45) & 0xF) | ((packet >> 57) & 0x10);
-    result.isClockTrain = false;
+    //result.isClockTrain = false;
+    result.isClockTrain = 0 ;
     if (out_stream) {
       static uint64_t previousTimestamp = 0;
       auto packet_dec = std::bitset<64>(packet).to_string();
