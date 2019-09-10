@@ -32,7 +32,7 @@ validOrError(cl_mem mem,
   if (!config::api_checks())
     return;
 
-  detail::memory::validOrErrorWithHostBuffer(mem);
+  detail::memory::validOrError(mem);
 
   if (!fd)
     throw error(CL_INVALID_VALUE,"fd can not be nullptr. It must be address of variable that will get fd value");
