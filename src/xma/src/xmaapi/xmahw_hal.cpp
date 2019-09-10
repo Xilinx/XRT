@@ -217,7 +217,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             return false;
         }
         dev_tmp1.dev_index = dev_index;
-        xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "xclOpen handle = %p\n",
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "xclOpen handle = %p\n",
             dev_tmp1.handle);
         rc = xclGetDeviceInfo2(dev_tmp1.handle, &dev_tmp1.info);
         if (rc != 0)

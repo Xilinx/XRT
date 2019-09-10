@@ -33,9 +33,11 @@
 #include "scan.h"
 
 // Supported vendors
-#define XILINX_ID    0x10ee
-#define ADVANTECH_ID 0x13fe
-#define AWS_ID    0x1d0f
+#define XILINX_ID       0x10ee
+#define ADVANTECH_ID    0x13fe
+#define AWS_ID          0x1d0f
+
+#define RENDER_NM       "renderD"
 
 static const std::string sysfs_root = "/sys/bus/pci/devices/";
 
@@ -249,17 +251,28 @@ void pcidev::pci_device::sysfs_get(
         b = false; // default value
 }
 
-int pcidev::pci_device::devfs_open(const std::string& subdev, int flag)
+static std::string get_devfs_path(bool is_mgmt, uint32_t instance)
 {
-    std::string file("/dev/xfpga/");
+    std::string prefixStr = is_mgmt ? "/dev/xclmgmt" : "/dev/dri/" RENDER_NM;
+    std::string instStr = std::to_string(instance);
 
+    return prefixStr + instStr;
+}
+
+int pcidev::pci_device::open(const std::string& subdev, int flag)
+{
+    // Open xclmgmt/xocl node
+    if (subdev.empty()) {
+        std::string devfs = get_devfs_path(is_mgmt, instance);
+        return ::open(devfs.c_str(), flag);
+    }
+
+    // Open subdevice node
+    std::string file("/dev/xfpga/");
     file += subdev;
     file += is_mgmt ? ".m" : ".u";
     file += std::to_string((domain<<16) + (bus<<8) + (dev<<3) + func);
-
-    const int fd = open(file.c_str(), flag);
-
-    return fd;
+    return ::open(file.c_str(), flag);
 }
 
 static size_t bar_size(const std::string &dir, unsigned bar)
@@ -280,7 +293,6 @@ static size_t bar_size(const std::string &dir, unsigned bar)
 
 static int get_render_value(const std::string& dir)
 {
-#define RENDER_NM   "renderD"
     struct dirent *entry;
     DIR *dp;
     int instance_num = INVALID_ID;
@@ -299,14 +311,6 @@ static int get_render_value(const std::string& dir)
     closedir(dp);
 
     return instance_num;
-}
-
-static std::string get_devfs_path(bool is_mgmt, uint32_t instance)
-{
-    std::string prefixStr = is_mgmt ? "/dev/xclmgmt" : "/dev/dri/renderD";
-    std::string instStr = std::to_string(instance);
-
-    return prefixStr + instStr;
 }
 
 static bool devfs_exists(bool is_mgmt, uint32_t instance)
@@ -379,39 +383,38 @@ pcidev::pci_device::pci_device(const std::string& sysfs) : sysfs_name(sysfs)
 
 pcidev::pci_device::~pci_device()
 {
-    devfs_close();
+    if (user_bar_map != MAP_FAILED)
+        munmap(user_bar_map, user_bar_size);
 }
 
-int pcidev::pci_device::devfs_open_and_map()
+int pcidev::pci_device::map_usr_bar()
 {
         std::lock_guard<std::mutex> l(lock);
 
         if (user_bar_map != MAP_FAILED)
             return 0;
 
-        std::string devfs = get_devfs_path(is_mgmt, instance);
-
-        dev_handle = open(devfs.c_str(), O_RDWR);
+        int dev_handle = open("", O_RDWR);
         if (dev_handle < 0)
             return -errno;
 
         user_bar_map = (char *)::mmap(0, user_bar_size,
             PROT_READ | PROT_WRITE, MAP_SHARED, dev_handle, 0);
-        if (user_bar_map == MAP_FAILED) {
-            (void) close(dev_handle);
-            dev_handle = -1;
+
+        // Mapping should stay valid after handle is closed
+        // (according to man page)
+        (void)close(dev_handle);
+
+        if (user_bar_map == MAP_FAILED)
             return -errno;
-        }
 
         return 0;
 }
 
-void pcidev::pci_device::devfs_close(void)
+void pcidev::pci_device::close(int dev_handle)
 {
-    if (user_bar_map != MAP_FAILED)
-        munmap(user_bar_map, user_bar_size);
     if (dev_handle != -1)
-        (void) close(dev_handle);
+        (void)::close(dev_handle);
 }
 
 /*
@@ -440,7 +443,7 @@ inline void* wordcopy(void *dst, const void* src, size_t bytes)
 int pcidev::pci_device::pcieBarRead(uint64_t offset, void* buf, uint64_t len)
 {
     if (user_bar_map == MAP_FAILED) {
-        int ret = devfs_open_and_map();
+        int ret = map_usr_bar();
         if (ret)
             return ret;
     }
@@ -452,7 +455,7 @@ int pcidev::pci_device::pcieBarWrite(uint64_t offset,
     const void* buf, uint64_t len)
 {
     if (user_bar_map == MAP_FAILED) {
-        int ret = devfs_open_and_map();
+        int ret = map_usr_bar();
         if (ret)
             return ret;
     }
@@ -460,44 +463,36 @@ int pcidev::pci_device::pcieBarWrite(uint64_t offset,
     return 0;
 }
 
-int pcidev::pci_device::ioctl(unsigned long cmd, void *arg)
+int pcidev::pci_device::ioctl(int dev_handle, unsigned long cmd, void *arg)
 {
     if (dev_handle == -1) {
-        int ret = devfs_open_and_map();
-        if (ret)
-            return ret;
+        errno = -EINVAL;
+        return -1;
     }
     return ::ioctl(dev_handle, cmd, arg);
 }
 
-int pcidev::pci_device::poll(short events, int timeoutMilliSec)
+int pcidev::pci_device::poll(int dev_handle, short events, int timeoutMilliSec)
 {
-    if (dev_handle == -1) {
-        int ret = devfs_open_and_map();
-        if (ret)
-            return ret;
-    }
-
     pollfd info = {dev_handle, events, 0};
     return ::poll(&info, 1, timeoutMilliSec);
 }
 
-void *pcidev::pci_device::mmap(size_t len, int prot, int flags, off_t offset)
+void *pcidev::pci_device::mmap(int dev_handle,
+    size_t len, int prot, int flags, off_t offset)
 {
     if (dev_handle == -1) {
-        int ret = devfs_open_and_map();
-        if (ret)
-            return MAP_FAILED;
+        errno = -EINVAL;
+        return MAP_FAILED;
     }
     return ::mmap(0, len, prot, flags, dev_handle, offset);
 }
 
-int pcidev::pci_device::flock(int op)
+int pcidev::pci_device::flock(int dev_handle, int op)
 {
     if (dev_handle == -1) {
-        int ret = devfs_open_and_map();
-        if (ret)
-            return ret;
+        errno = -EINVAL;
+        return -1;
     }
     return ::flock(dev_handle, op);
 }

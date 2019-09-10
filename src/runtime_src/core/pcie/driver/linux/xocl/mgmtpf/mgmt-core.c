@@ -595,7 +595,7 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 		(void) xclmgmt_mig_get_data(lro, *resp, subdev_req->size);
 		break;
 	case FIREWALL:
-		current_sz = sizeof(struct xcl_mig_ecc);
+		current_sz = sizeof(struct xcl_firewall);
 		*resp = vzalloc(current_sz);
 		(void) xocl_af_get_data(lro, *resp);
 		break;

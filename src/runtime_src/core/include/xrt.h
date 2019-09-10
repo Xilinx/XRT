@@ -682,7 +682,7 @@ XCL_DRIVER_DLLESPEC ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flag
  */
 
 /**
- * xclWrite() - Perform register write operation
+ * xclWrite() - Perform register write operation, deprecated
  *
  * @handle:        Device handle
  * @space:         Address space
@@ -693,15 +693,14 @@ XCL_DRIVER_DLLESPEC ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flag
  *
  * This API may be used to write to device registers exposed on PCIe BAR. Offset is relative to the
  * the address space. A device may have many address spaces.
- * This API will be deprecated in future. Please use this API only for IP bringup/debugging. For
- * execution management please use XRT Compute Unit Execution Management APIs defined below.
+ * *This API is deprecated. Please use xclRegWrite(), instead.*
  */
 
 XCL_DRIVER_DLLESPEC size_t xclWrite(xclDeviceHandle handle, enum xclAddressSpace space, uint64_t offset,
-                                    const void *hostBuf, size_t size);
+                                    const void *hostBuf, size_t size) __attribute__ ((deprecated));
 
 /**
- * xclRead() - Perform register read operation
+ * xclRead() - Perform register read operation, deprecated
  *
  * @handle:        Device handle
  * @space:         Address space
@@ -712,11 +711,10 @@ XCL_DRIVER_DLLESPEC size_t xclWrite(xclDeviceHandle handle, enum xclAddressSpace
  *
  * This API may be used to read from device registers exposed on PCIe BAR. Offset is relative to the
  * the address space. A device may have many address spaces.
- * *This API will be deprecated in future. Please use this API only for IP bringup/debugging. For
- * execution management please use XRT Compute Unit Execution Management APIs defined below*
+ * *This API is deprecated. Please use xclRegRead(), instead.*
  */
 XCL_DRIVER_DLLESPEC size_t xclRead(xclDeviceHandle handle, enum xclAddressSpace space, uint64_t offset,
-                                   void *hostbuf, size_t size);
+                                   void *hostbuf, size_t size) __attribute__ ((deprecated));
 
 /* XRT Register read/write APIs */
 
@@ -1018,41 +1016,6 @@ XCL_DRIVER_DLLESPEC ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl,
 XCL_DRIVER_DLLESPEC int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, struct xclReqCompletion *comps, int* actual_compl, int timeout);
 
 XCL_DRIVER_DLLESPEC const struct axlf_section_header* wrap_get_axlf_section(const struct axlf* top, enum axlf_section_kind kind);
-
-/**
- * xclRegRead() - Read register in register space of a CU
- *
- * @handle:        Device handle
- * @cu_index:      CU index
- * @offset:        Offset in the register space
- * @datap:         Pointer to where result will be saved
- * Return:         0 or appropriate error number
- *
- */
-XCL_DRIVER_DLLESPEC int xclRegRead(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t *datap);
-
-/**
- * xclRegWRite() - Write to register in register space of a CU
- *
- * @handle:        Device handle
- * @cu_index:      CU index
- * @offset:        Offset in the register space
- * @data:          Data to be written
- * Return:         0 or appropriate error number
- *
- */
-XCL_DRIVER_DLLESPEC int xclRegWrite(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t data);
-
-/**
- * xclCuName2Index() - Obtain CU index by CU name
- *
- * @handle:        Device handle
- * @cu_name:       CU name
- * @cu_index:      Pointer to CU index
- * Return:         0 or appropriate error number
- *
- */
-XCL_DRIVER_DLLESPEC int xclCuName2Index(xclDeviceHandle handle, const char *cu_name, uint32_t *cu_index);
 
 XCL_DRIVER_DLLESPEC size_t xclDebugReadIPStatus(xclDeviceHandle handle, enum xclDebugReadType type,
                                                                            void* debugResults);

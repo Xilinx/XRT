@@ -24,8 +24,6 @@
 #include <cassert>
 #include <thread>
 #include <cstring>
-#include <sys/ioctl.h>
-#include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/types.h>

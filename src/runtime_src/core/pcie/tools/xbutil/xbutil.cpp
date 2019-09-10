@@ -113,10 +113,10 @@ void print_pci_info(std::ostream &ostr)
     }
 }
 
-int xrt_xbutil_version_cmp() 
+int xrt_xbutil_version_cmp()
 {
     /*check xbutil tools and xrt versions*/
-    std::string xrt = sensor_tree::get<std::string>( "runtime.build.version", "N/A" ) + "," 
+    std::string xrt = sensor_tree::get<std::string>( "runtime.build.version", "N/A" ) + ","
         + sensor_tree::get<std::string>( "runtime.build.hash", "N/A" );
     if ( xcldev::driver_version("xocl") != "unknown" &&
         xrt.compare(xcldev::driver_version("xocl") ) != 0 ) {
@@ -129,8 +129,8 @@ int xrt_xbutil_version_cmp()
 }
 
 inline bool getenv_or_null(const char* env)
-{ 
-    return getenv(env) ? true : false; 
+{
+    return getenv(env) ? true : false;
 }
 
 int main(int argc, char *argv[])
@@ -222,11 +222,11 @@ int main(int argc, char *argv[])
     }
     if (cmd == xcldev::VERSION) {
         xrt::version::print(std::cout);
-        std::cout.width(26); std::cout << std::internal << "XOCL: " << sensor_tree::get<std::string>( "runtime.build.xocl", "N/A" ) 
+        std::cout.width(26); std::cout << std::internal << "XOCL: " << sensor_tree::get<std::string>( "runtime.build.xocl", "N/A" )
                                        << std:: endl;
-        std::cout.width(26); std::cout << std::internal << "XCLMGMT: " << sensor_tree::get<std::string>( "runtime.build.xclmgmt", "N/A" ) 
+        std::cout.width(26); std::cout << std::internal << "XCLMGMT: " << sensor_tree::get<std::string>( "runtime.build.xclmgmt", "N/A" )
                                        << std::endl;
-        
+
         if ( !getenv_or_null("INTERNAL_BUILD") )
             return xrt_xbutil_version_cmp();
         return 0;
@@ -698,7 +698,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "Download the accelerator program for card 2\n";
     std::cout << "  " << exe << " program -d 2 -p a.xclbin\n";
     std::cout << "Run DMA test on card 1 with 32 KB blocks of buffer\n";
-    std::cout << "  " << exe << " dmatest -d 1 -b 0x2000\n";
+    std::cout << "  " << exe << " dmatest -d 1 -b 0x20\n";
     std::cout << "Read 256 bytes from DDR starting at 0x1000 into file read.out\n";
     std::cout << "  " << exe << " mem --read -a 0x1000 -i 256 -o read.out\n";
     std::cout << "  " << "Default values for address is 0x0, size is DDR size and file is memread.out\n";
@@ -927,7 +927,7 @@ int runShellCmd(const std::string& cmd, std::string& output)
     setenv("PYTHONPATH", "/opt/xilinx/xrt/python", 0);
     setenv("LD_LIBRARY_PATH", "/opt/xilinx/xrt/lib", 1);
     unsetenv("XCL_EMULATION_MODE");
-    
+
     int stderr_fds[2];
     if (pipe(stderr_fds)== -1) {
         perror("ERROR: Unable to create pipe");
@@ -961,7 +961,7 @@ int runShellCmd(const std::string& cmd, std::string& output)
 }
 
 int searchXsaAndDsa(int index, std::string xsaPath, std::string
-    dsaPath, std::string& path, std::string &output) 
+    dsaPath, std::string& path, std::string &output)
 {
     struct stat st;
     if (stat(xsaPath.c_str(), &st) == 0) {
@@ -1030,7 +1030,7 @@ int searchXsaAndDsa(int index, std::string xsaPath, std::string
         output += "\n";
         return -ENOENT;
     }
-    
+
     output += "ERROR: Failed to find xclbin in ";
     output += xsaPath;
     output += " and ";
@@ -1181,7 +1181,7 @@ int xcldev::device::pcieLinkTest(void)
     if (pcie_speed != pcie_speed_max || pcie_width != pcie_width_max) {
         std::cout << "LINK ACTIVE, ATTENTION" << std::endl;
         std::cout << "Ensure Card is plugged in to Gen"
-            << pcie_speed_max << "x" << pcie_width_max << ", instead of Gen" 
+            << pcie_speed_max << "x" << pcie_width_max << ", instead of Gen"
             << pcie_speed << "x" << pcie_width << std::endl
             << "Lower performance may be experienced" << std::endl;
         return 1;

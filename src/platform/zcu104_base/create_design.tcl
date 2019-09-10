@@ -109,6 +109,8 @@ set_property platform.design_intent.external_host "false" [current_project]
 set_property platform.design_intent.embedded "true" [current_project]
 set_property platform.design_intent.datacenter "false" [current_proj]
 
+set_property platform.default_output_type "xclbin" [current_project]
+
 # Set any other project properties
 set_property STEPS.OPT_DESIGN.TCL.POST ${sourcesDir}/misc/dynamic_postopt.tcl [get_runs impl_1]
 set_property STEPS.PHYS_OPT_DESIGN.IS_ENABLED true [get_runs impl_1]

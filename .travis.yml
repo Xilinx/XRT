@@ -12,7 +12,7 @@ matrix:
         project:
           name: "Xilinx/XRT"
           description: "Xilinx Runtime"
-        notification_email: sagarw@xilinx.com
+        notification_email: runtime@xilinx.com
         build_command: "./build.sh -driver"
         branch_pattern: master
 

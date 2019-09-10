@@ -258,10 +258,10 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     }
 
     if (hwcfg->devices[hwcfg_dev_index].kernels[cu_index].in_use) {
-        xma_logmsg(XMA_INFO_LOG, XMA_SCALER_MOD,
+        xma_logmsg(XMA_DEBUG_LOG, XMA_SCALER_MOD,
                    "XMA session sharing CU: %s\n", hwcfg->devices[hwcfg_dev_index].kernels[cu_index].name);
     } else {
-        xma_logmsg(XMA_INFO_LOG, XMA_SCALER_MOD,
+        xma_logmsg(XMA_DEBUG_LOG, XMA_SCALER_MOD,
                    "XMA session with CU: %s\n", hwcfg->devices[hwcfg_dev_index].kernels[cu_index].name);
     }
 
@@ -274,11 +274,11 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
         if (hwcfg->devices[hwcfg_dev_index].kernels[cu_index].soft_kernel) {
             //Only allow ddr_bank == 0;
             sc_session->base.hw_session.bank_index = 0;
-            xma_logmsg(XMA_INFO_LOG, XMA_SCALER_MOD,
+            xma_logmsg(XMA_DEBUG_LOG, XMA_SCALER_MOD,
                 "XMA session with soft_kernel default ddr_bank: %d\n", sc_session->base.hw_session.bank_index);
         } else {
             sc_session->base.hw_session.bank_index = kernel_info->default_ddr_bank;
-            xma_logmsg(XMA_INFO_LOG, XMA_SCALER_MOD,
+            xma_logmsg(XMA_DEBUG_LOG, XMA_SCALER_MOD,
                 "XMA session default ddr_bank: %d\n", sc_session->base.hw_session.bank_index);
         }
     } else {
@@ -289,14 +289,14 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
             }
             //Only allow ddr_bank == 0;
             sc_session->base.hw_session.bank_index = 0;
-            xma_logmsg(XMA_INFO_LOG, XMA_SCALER_MOD,
+            xma_logmsg(XMA_DEBUG_LOG, XMA_SCALER_MOD,
                 "XMA session with soft_kernel default ddr_bank: %d\n", sc_session->base.hw_session.bank_index);
         } else {
             std::bitset<MAX_DDR_MAP> tmp_bset;
             tmp_bset = kernel_info->ip_ddr_mapping;
             if (tmp_bset[sc_props->ddr_bank_index]) {
                 sc_session->base.hw_session.bank_index = sc_props->ddr_bank_index;
-                xma_logmsg(XMA_INFO_LOG, XMA_SCALER_MOD,
+                xma_logmsg(XMA_DEBUG_LOG, XMA_SCALER_MOD,
                     "Using user supplied default ddr_bank. XMA session default ddr_bank: %d\n", sc_session->base.hw_session.bank_index);
             } else {
                 xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
