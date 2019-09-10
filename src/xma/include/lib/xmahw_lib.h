@@ -80,6 +80,9 @@ typedef struct XmaHwSessionPrivate
     uint32_t        kernel_complete_count;
     XmaHwDevice     *device;
     std::unordered_map<uint32_t, XmaCUCmdObjPrivate> CU_cmds;//Use execbo lock when accessing this map
+    std::atomic<uint32_t> cmd_load;
+    bool     using_work_item_done;
+    bool     using_cu_cmd_status;
 
     uint32_t reserved[4];
 
@@ -88,6 +91,9 @@ typedef struct XmaHwSessionPrivate
    kernel_info = NULL;
    kernel_complete_count = 0;
    device = NULL;
+   cmd_load = 0;
+   using_work_item_done = false;
+   using_cu_cmd_status = false;
   }
 } XmaHwSessionPrivate;
 

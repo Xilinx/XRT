@@ -676,6 +676,7 @@ proc create_root_design { parentCell } {
    CONFIG.M62_HAS_REGSLICE {4} \
    CONFIG.M63_HAS_REGSLICE {4} \
    CONFIG.NUM_MI {1} \
+   CONFIG.NUM_SI {2} \
    CONFIG.S00_HAS_REGSLICE {4} \
  ] $interconnect_axifull_2_user_slr1
 
@@ -746,7 +747,7 @@ proc create_root_design { parentCell } {
    CONFIG.M61_HAS_REGSLICE {4} \
    CONFIG.M62_HAS_REGSLICE {4} \
    CONFIG.M63_HAS_REGSLICE {4} \
-   CONFIG.NUM_MI {3} \
+   CONFIG.NUM_MI {4} \
    CONFIG.NUM_SI {1} \
    CONFIG.S00_HAS_REGSLICE {4} \
  ] $interconnect_axilite_user_slr1
@@ -804,7 +805,7 @@ proc create_root_design { parentCell } {
 
   # Create port connections
   connect_bd_net -net ARESETN_1 [get_bd_pins axi_gpio_null/s_axi_aresetn] [get_bd_pins axi_vip_0/aresetn] [get_bd_pins interconnect_axilite_user_slr1/ARESETN] [get_bd_pins interconnect_axilite_user_slr1/M00_ARESETN] [get_bd_pins interconnect_axilite_user_slr1/S00_ARESETN] [get_bd_pins regslice_periph_null/aresetn] [get_bd_pins reset_controllers/psreset_gate_pr_control_interconnect_aresetn]
-  connect_bd_net -net M01_ACLK_1 [get_bd_ports clkwiz_kernel_clk_out1] [get_bd_pins axi_vip_2/aclk] [get_bd_pins axi_vip_3/aclk] [get_bd_pins interconnect_axifull_1_user_slr1/ACLK] [get_bd_pins interconnect_axifull_1_user_slr1/M00_ACLK] [get_bd_pins interconnect_axifull_1_user_slr1/S00_ACLK] [get_bd_pins interconnect_axifull_1_user_slr1/S01_ACLK] [get_bd_pins interconnect_axifull_1_user_slr1/S02_ACLK] [get_bd_pins interconnect_axifull_2_user_slr1/ACLK] [get_bd_pins interconnect_axifull_2_user_slr1/M00_ACLK] [get_bd_pins interconnect_axifull_2_user_slr1/S00_ACLK] [get_bd_pins interconnect_axilite_user_slr1/M01_ACLK] [get_bd_pins interconnect_axilite_user_slr1/M02_ACLK] [get_bd_pins reset_controllers/clkwiz_kernel_clk_out1] [get_bd_pins v_frmbuf_rd_0/ap_clk] [get_bd_pins v_frmbuf_wr_0/ap_clk]
+  connect_bd_net -net M01_ACLK_1 [get_bd_ports clkwiz_kernel_clk_out1] [get_bd_pins axi_vip_2/aclk] [get_bd_pins axi_vip_3/aclk] [get_bd_pins interconnect_axifull_1_user_slr1/ACLK] [get_bd_pins interconnect_axifull_1_user_slr1/M00_ACLK] [get_bd_pins interconnect_axifull_1_user_slr1/S00_ACLK] [get_bd_pins interconnect_axifull_1_user_slr1/S01_ACLK] [get_bd_pins interconnect_axifull_1_user_slr1/S02_ACLK] [get_bd_pins interconnect_axifull_2_user_slr1/ACLK] [get_bd_pins interconnect_axifull_2_user_slr1/M00_ACLK] [get_bd_pins interconnect_axifull_2_user_slr1/S00_ACLK] [get_bd_pins interconnect_axifull_2_user_slr1/S01_ACLK] [get_bd_pins interconnect_axilite_user_slr1/M01_ACLK] [get_bd_pins interconnect_axilite_user_slr1/M02_ACLK] [get_bd_pins interconnect_axilite_user_slr1/M03_ACLK] [get_bd_pins reset_controllers/clkwiz_kernel_clk_out1] [get_bd_pins v_frmbuf_rd_0/ap_clk] [get_bd_pins v_frmbuf_wr_0/ap_clk]
   connect_bd_net -net bscanid_en_1 [get_bd_ports bscanid_en] [get_bd_pins debug_bridge_xsdbm/S_BSCAN_bscanid_en]
   connect_bd_net -net capture_1 [get_bd_ports capture] [get_bd_pins debug_bridge_xsdbm/S_BSCAN_capture]
   connect_bd_net -net dcm_locked_1 [get_bd_ports clkwiz_kernel_locked] [get_bd_pins reset_controllers/clkwiz_kernel_locked]
@@ -816,7 +817,7 @@ proc create_root_design { parentCell } {
   connect_bd_net -net interrupt_concat_xlconcat_interrupt_dout [get_bd_ports xlconcat_interrupt_dout] [get_bd_pins interrupt_concat/xlconcat_interrupt_dout]
   connect_bd_net -net logic_reset_op_Res_1 [get_bd_ports clkwiz_sysclks_locked] [get_bd_pins reset_controllers/clkwiz_sysclks_locked]
   connect_bd_net -net reset_1 [get_bd_ports reset] [get_bd_pins debug_bridge_xsdbm/S_BSCAN_reset]
-  connect_bd_net -net reset_controllers_interconnect_aresetn [get_bd_pins axi_vip_2/aresetn] [get_bd_pins axi_vip_3/aresetn] [get_bd_pins interconnect_axifull_1_user_slr1/ARESETN] [get_bd_pins interconnect_axifull_1_user_slr1/M00_ARESETN] [get_bd_pins interconnect_axifull_1_user_slr1/S00_ARESETN] [get_bd_pins interconnect_axifull_1_user_slr1/S01_ARESETN] [get_bd_pins interconnect_axifull_1_user_slr1/S02_ARESETN] [get_bd_pins interconnect_axifull_2_user_slr1/ARESETN] [get_bd_pins interconnect_axifull_2_user_slr1/M00_ARESETN] [get_bd_pins interconnect_axifull_2_user_slr1/S00_ARESETN] [get_bd_pins interconnect_axilite_user_slr1/M01_ARESETN] [get_bd_pins interconnect_axilite_user_slr1/M02_ARESETN] [get_bd_pins reset_controllers/psreset_gate_pr_kernel_interconnect_aresetn] [get_bd_pins v_frmbuf_rd_0/ap_rst_n] [get_bd_pins v_frmbuf_wr_0/ap_rst_n]
+  connect_bd_net -net reset_controllers_interconnect_aresetn [get_bd_pins axi_vip_2/aresetn] [get_bd_pins axi_vip_3/aresetn] [get_bd_pins interconnect_axifull_1_user_slr1/ARESETN] [get_bd_pins interconnect_axifull_1_user_slr1/M00_ARESETN] [get_bd_pins interconnect_axifull_1_user_slr1/S00_ARESETN] [get_bd_pins interconnect_axifull_1_user_slr1/S01_ARESETN] [get_bd_pins interconnect_axifull_1_user_slr1/S02_ARESETN] [get_bd_pins interconnect_axifull_2_user_slr1/ARESETN] [get_bd_pins interconnect_axifull_2_user_slr1/M00_ARESETN] [get_bd_pins interconnect_axifull_2_user_slr1/S00_ARESETN] [get_bd_pins interconnect_axifull_2_user_slr1/S01_ARESETN] [get_bd_pins interconnect_axilite_user_slr1/M01_ARESETN] [get_bd_pins interconnect_axilite_user_slr1/M02_ARESETN] [get_bd_pins interconnect_axilite_user_slr1/M03_ARESETN] [get_bd_pins reset_controllers/psreset_gate_pr_kernel_interconnect_aresetn] [get_bd_pins v_frmbuf_rd_0/ap_rst_n] [get_bd_pins v_frmbuf_wr_0/ap_rst_n]
   connect_bd_net -net runtest_1 [get_bd_ports runtest] [get_bd_pins debug_bridge_xsdbm/S_BSCAN_runtest]
   connect_bd_net -net sel_1 [get_bd_ports sel] [get_bd_pins debug_bridge_xsdbm/S_BSCAN_sel]
   connect_bd_net -net shift_1 [get_bd_ports shift] [get_bd_pins debug_bridge_xsdbm/S_BSCAN_shift]
@@ -836,6 +837,8 @@ proc create_root_design { parentCell } {
   create_bd_addr_seg -range 0x00010000 -offset 0x80810000 [get_bd_addr_spaces regslice_control_userpf_M_AXI] [get_bd_addr_segs v_frmbuf_rd_0/s_axi_CTRL/Reg] SEG_v_frmbuf_rd_0_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0x80820000 [get_bd_addr_spaces regslice_control_userpf_M_AXI] [get_bd_addr_segs v_frmbuf_wr_0/s_axi_CTRL/Reg] SEG_v_frmbuf_wr_0_Reg
 
+  set_property HDL_ATTRIBUTE.DPA_TRACE_MASTER true [get_bd_intf_pins interconnect_axifull_2_user_slr1/S01_AXI]
+  set_property HDL_ATTRIBUTE.DPA_TRACE_SLAVE true [get_bd_intf_pins interconnect_axilite_user_slr1/M03_AXI]
 
   # Restore current instance
   current_bd_instance $oldCurInst

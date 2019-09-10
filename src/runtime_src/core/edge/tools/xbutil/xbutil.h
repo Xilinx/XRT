@@ -28,6 +28,7 @@
 #include <string>
 #include <sys/ioctl.h>
 #include "xrt.h"
+#include "experimental/xrt-next.h"
 #include "xclperf.h"
 #include "core/common/utils.h"
 #include "core/common/sensor.h"

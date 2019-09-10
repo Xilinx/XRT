@@ -2390,7 +2390,6 @@ ps_ert_submit(struct sched_cmd *cmd)
 	case ERT_SK_START:
 		cmd->cu_idx = get_free_cu(cmd, ZOCL_SOFT_CU);
 		if (cmd->cu_idx < 0) {
-			DRM_ERROR("Can not find free soft kernel slot.");
 			release_slot_idx(cmd->ddev, cmd->slot_idx);
 			return false;
 		}
