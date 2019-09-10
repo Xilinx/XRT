@@ -19,10 +19,9 @@ Tools of the Trade
 ``xclbinutil``
    Retrieve info from an xclbin
 XRT API Trace
-   Run failing application with HAL logging enabled in ``xrt.ini`` ::
+   Run failing application with XRT logging enabled in ``xrt.ini`` ::
 
      [Runtime]
-     hal_log=myfail.log
      runtime_log=my_run.log
 
 Validating a Working Setup
@@ -57,7 +56,7 @@ Incorrect Memory Topology Usage
 
 5.0+ XSAs are considered dynamic platforms which use sparse connectivity between acceleration kernels and memory controllers (MIGs). This means that a kernel port can only read/write from/to a specific MIG. This connectivity is frozen at xclbin generation time in specified in mem_topology section of xclbin. The host application needs to ensure that it uses the correct memory banks for buffer allocation using cl_mem_ext_ptr_t for OpenCL applications. For XRT native applications the bank is specified in flags to xclAllocBO() and xclAllocUserPtr().
 
-If an application is producing incorrect results it is important to review the host code to ensure that host application and xclbin agree on memory topology. One way to validate this at runtime is to enable HAL logging in xrt.ini and then carefully go through all buffer allocation requests.
+If an application is producing incorrect results it is important to review the host code to ensure that host application and xclbin agree on memory topology. One way to validate this at runtime is to enable XRT logging in xrt.ini and then carefully go through all buffer allocation requests.
 
 Memory Read Before Write
 ........................
@@ -95,7 +94,7 @@ HLS scheduler bugs can also result in CU hangs. CU deadlocks AXI data bus at whi
 AXI Bus Deadlock
 ................
 
-AXI Bus deadlocks can be caused by `Memory Read Before Write`_, `CU Deadlock`_ or `Multiple CU DDR Access Deadlock`_ described above. These usually show up as CU hang and sometimes may cause AXI FireWall to trip. Run ``xbutil query`` to check if CU is stuck in *START* or *--* state or if one of the AXI Firewall has tripped. If CU seems stuck we can confirm the deadlock by running ``xbutil status`` which should list and performance counter values. Optionally run ``xbutil dmatest`` which will force transfer over the deadlocked bus causing either DMA timeout or AXI Firewall trip.
+AXI Bus deadlocks can be caused by `Memory Read Before Write`_ or `CU Deadlock`_ described above. These usually show up as CU hang and sometimes may cause AXI FireWall to trip. Run ``xbutil query`` to check if CU is stuck in *START* or *--* state or if one of the AXI Firewall has tripped. If CU seems stuck we can confirm the deadlock by running ``xbutil status`` which should list and performance counter values. Optionally run ``xbutil dmatest`` which will force transfer over the deadlocked bus causing either DMA timeout or AXI Firewall trip.
 
 
 Platform Bugs
