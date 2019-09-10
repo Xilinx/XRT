@@ -99,19 +99,20 @@
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator (XMA)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">XMA 19.2 Migration</a></li>
 </ul>
-<p class="caption"><span class="caption-text">USER API Library</span></p>
+<p class="caption"><span class="caption-text">User API Library</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">XRT Core Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
 </ul>
-<p class="caption"><span class="caption-text">XRT DEVELOPER'S SPACE</span></p>
+<p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
@@ -124,7 +125,7 @@
 <li class="toctree-l1"><a class="reference internal" href="tools.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 </ul>
-<p class="caption"><span class="caption-text">Platform Building</span></p>
+<p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
@@ -768,7 +769,7 @@ object (BO) framework defined before.</p>
 <dl class="function">
 <dt id="c.xclWrite">
 XCL_DRIVER_DLLESPEC size_t <code class="descname">xclWrite</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, enum xclAddressSpace<em>&nbsp;space</em>, uint64_t<em>&nbsp;offset</em>, const void *<em>&nbsp;hostBuf</em>, size_t<em>&nbsp;size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclWrite" title="Permalink to this definition">¶</a></dt>
-<dd><p>Perform register write operation</p>
+<dd><p>Perform register write operation, deprecated</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
@@ -788,12 +789,11 @@ XCL_DRIVER_DLLESPEC size_t <code class="descname">xclWrite</code><span class="si
 <p>size of bytes written or appropriate error number</p>
 <p>This API may be used to write to device registers exposed on PCIe BAR. Offset is relative to the
 the address space. A device may have many address spaces.
-This API will be deprecated in future. Please use this API only for IP bringup/debugging. For
-execution management please use XRT Compute Unit Execution Management APIs defined below.</p>
+<em>This API is deprecated. Please use :c:func:`xclRegWrite()`, instead.</em></p>
 <dl class="function">
 <dt id="c.xclRead">
 XCL_DRIVER_DLLESPEC size_t <code class="descname">xclRead</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, enum xclAddressSpace<em>&nbsp;space</em>, uint64_t<em>&nbsp;offset</em>, void *<em>&nbsp;hostbuf</em>, size_t<em>&nbsp;size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclRead" title="Permalink to this definition">¶</a></dt>
-<dd><p>Perform register read operation</p>
+<dd><p>Perform register read operation, deprecated</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
@@ -813,8 +813,7 @@ XCL_DRIVER_DLLESPEC size_t <code class="descname">xclRead</code><span class="sig
 <p>size of bytes written or appropriate error number</p>
 <p>This API may be used to read from device registers exposed on PCIe BAR. Offset is relative to the
 the address space. A device may have many address spaces.
-<em>This API will be deprecated in future. Please use this API only for IP bringup/debugging. For
-execution management please use XRT Compute Unit Execution Management APIs defined below</em></p>
+<em>This API is deprecated. Please use :c:func:`xclRegRead()`, instead.</em></p>
 <p><strong>XRT Compute Unit Execution Management APIs</strong></p>
 <p>These APIs are under development. These functions will be used to start compute
 units and wait for them to finish.</p>
@@ -1056,61 +1055,6 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclPollCompletion</code><span cla
 <p><strong>Return</strong></p>
 <p>Number of events or appropriate error number</p>
 <p>Poll completion events of non-blocking read/write requests. Once this function returns, an array of completed requests is returned.</p>
-<dl class="function">
-<dt id="c.xclRegRead">
-XCL_DRIVER_DLLESPEC int <code class="descname">xclRegRead</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, uint32_t<em>&nbsp;cu_index</em>, uint32_t<em>&nbsp;offset</em>, uint32_t *<em>&nbsp;datap</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclRegRead" title="Permalink to this definition">¶</a></dt>
-<dd><p>Read register in register space of a CU</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
-<dd>Device handle</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">uint32_t</span> <span class="pre">cu_index</span></code></dt>
-<dd>CU index</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">uint32_t</span> <span class="pre">offset</span></code></dt>
-<dd>Offset in the register space</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">uint32_t</span> <span class="pre">*</span> <span class="pre">datap</span></code></dt>
-<dd>Pointer to where result will be saved</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>0 or appropriate error number</p>
-<dl class="function">
-<dt id="c.xclRegWrite">
-XCL_DRIVER_DLLESPEC int <code class="descname">xclRegWrite</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, uint32_t<em>&nbsp;cu_index</em>, uint32_t<em>&nbsp;offset</em>, uint32_t<em>&nbsp;data</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclRegWrite" title="Permalink to this definition">¶</a></dt>
-<dd><p>Write to register in register space of a CU</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
-<dd>Device handle</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">uint32_t</span> <span class="pre">cu_index</span></code></dt>
-<dd>CU index</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">uint32_t</span> <span class="pre">offset</span></code></dt>
-<dd>Offset in the register space</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">uint32_t</span> <span class="pre">data</span></code></dt>
-<dd>Data to be written</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>0 or appropriate error number</p>
-<dl class="function">
-<dt id="c.xclCuName2Index">
-XCL_DRIVER_DLLESPEC int <code class="descname">xclCuName2Index</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, const char *<em>&nbsp;cu_name</em>, uint32_t *<em>&nbsp;cu_index</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclCuName2Index" title="Permalink to this definition">¶</a></dt>
-<dd><p>Obtain CU index by CU name</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
-<dd>Device handle</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">cu_name</span></code></dt>
-<dd>CU name</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">uint32_t</span> <span class="pre">*</span> <span class="pre">cu_index</span></code></dt>
-<dd>Pointer to CU index</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>0 or appropriate error number</p>
 </div>
 
 
