@@ -283,6 +283,18 @@ static uint xocl_poll(struct file *filp, poll_table *wait)
 	return xocl_exec_poll_client(drm_p->xdev, filp, wait, priv->driver_priv);
 }
 
+static struct dma_buf *xocl_drm_gem_prime_export(struct drm_device *dev,
+						 struct drm_gem_object *obj,
+						 int flags)
+{
+	struct drm_xocl_bo *xobj = to_xocl_bo(obj);
+
+	if (xobj->flags == XOCL_BO_DEV_ONLY)
+		return ERR_PTR(-EINVAL);
+
+	return drm_gem_prime_export(dev, obj, flags);
+}
+
 static const struct drm_ioctl_desc xocl_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(XOCL_CREATE_BO, xocl_create_bo_ioctl,
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
@@ -365,7 +377,7 @@ static struct drm_driver mm_drm_driver = {
 	.prime_handle_to_fd		= drm_gem_prime_handle_to_fd,
 	.prime_fd_to_handle		= drm_gem_prime_fd_to_handle,
 	.gem_prime_import		= drm_gem_prime_import,
-	.gem_prime_export		= drm_gem_prime_export,
+	.gem_prime_export		= xocl_drm_gem_prime_export,
 #if ((LINUX_VERSION_CODE >= KERNEL_VERSION(3, 18, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)))
 	.set_busid			= drm_pci_set_busid,
 #endif
