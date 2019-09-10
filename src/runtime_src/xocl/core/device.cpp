@@ -58,10 +58,10 @@ static void
 userptr_bad_alloc_message(void* addr)
 {
   xrt::message::send(xrt::message::severity_level::XRT_WARNING,
-                     "The bad alloc on host pointer '"
+                     "bad alloc on host pointer '"
                      + to_hex(addr)
                      + "' detected, check dmesg for more information."
-                     + " This leads to extra memcpy.");
+                     + " This could lead to extra memcpy.");
 }
 
 static void
@@ -133,7 +133,7 @@ static void
 sync_to_ubuf(xocl::memory* buffer, size_t offset, size_t size,
              xrt::device* xdevice, const xrt::device::BufferObjectHandle& boh)
 {
-  if (buffer->is_aligned())
+  if (!buffer->need_extra_sync())
     return;
 
   auto ubuf = buffer->get_host_ptr();
@@ -153,7 +153,7 @@ static void
 sync_to_hbuf(xocl::memory* buffer, size_t offset, size_t size,
              xrt::device* xdevice, const xrt::device::BufferObjectHandle& boh)
 {
-  if (buffer->is_aligned())
+  if (!buffer->need_extra_sync())
     return;
 
   auto ubuf = buffer->get_host_ptr();
@@ -295,12 +295,17 @@ alloc(memory* mem, memidx_type memidx)
   auto boh = m_xdevice->alloc(sz,domain,memidx,nullptr);
   track(mem);
 
-  // Handle unaligned user ptr
+  // Handle unaligned user ptr or bad alloc host_ptr
   if (host_ptr) {
     if (!aligned_flag)
       unaligned_message(host_ptr);
+
+    mem->set_extra_sync();
     auto bo_host_ptr = m_xdevice->map(boh);
-    memcpy(bo_host_ptr, host_ptr, sz);
+    // No need to copy data to a CL_MEM_WRITE_ONLY buffer
+    if (!(mem->get_flags() & CL_MEM_WRITE_ONLY))
+        memcpy(bo_host_ptr, host_ptr, sz);
+
     m_xdevice->unmap(boh);
   }
   return boh;
@@ -327,12 +332,17 @@ alloc(memory* mem)
   }
 
   auto boh = m_xdevice->alloc(sz);
-  // Handle unaligned user ptr
+  // Handle unaligned user ptr or bad alloc host_ptr
   if (host_ptr) {
     if (!aligned_flag)
       unaligned_message(host_ptr);
+
+    mem->set_extra_sync();
     auto bo_host_ptr = m_xdevice->map(boh);
-    memcpy(bo_host_ptr, host_ptr, sz);
+    // No need to copy data to a CL_MEM_WRITE_ONLY buffer
+    if (!(mem->get_flags() & CL_MEM_WRITE_ONLY))
+        memcpy(bo_host_ptr, host_ptr, sz);
+
     m_xdevice->unmap(boh);
   }
   track(mem);
@@ -923,7 +933,7 @@ write_buffer(memory* buffer, size_t offset, size_t size, const void* ptr)
   // Write data to buffer object at offset
   xdevice->write(boh,ptr,size,offset,false);
 
-  // Update unaligned ubuf if necessary
+  // Update ubuf if necessary
   sync_to_ubuf(buffer,offset,size,xdevice,boh);
 
   if (buffer->is_resident(this))
@@ -947,7 +957,7 @@ read_buffer(memory* buffer, size_t offset, size_t size, void* ptr)
   // Read data from buffer object at offset
   xdevice->read(boh,ptr,size,offset,false);
 
-  // Update unaligned ubuf if necessary
+  // Update ubuf if necessary
   sync_to_ubuf(buffer,offset,size,xdevice,boh);
 }
 
