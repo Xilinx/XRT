@@ -206,11 +206,15 @@ namespace xclemulation{
       {
         //Nothing to do
       }
+      else if(name == "aliveness_message_interval")
+      {
+        //Nothing to do
+      }
       else if(name == "system_dpa")
       {
         setSystemDPA(getBoolValue(value,true));
       }
-      else if(name.find("Debug.") == std::string::npos && name.find("alive") == std::string::npos)
+      else if(name.find("Debug.") == std::string::npos)
       {
         std::cout<<"WARNING: [HW-EM 08] Invalid option '"<<name<<"` specified in sdaccel.ini"<<std::endl;
       }
