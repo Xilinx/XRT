@@ -178,7 +178,7 @@ xma_admin_session_create(XmaAdminProperties *props)
         return NULL;
     }
 
-    g_xma_singleton->num_kernels++;
+    g_xma_singleton->num_admins++;
     g_xma_singleton->num_of_sessions = session->base.session_id;
     g_xma_singleton->all_sessions.emplace(g_xma_singleton->num_of_sessions, session->base);
 

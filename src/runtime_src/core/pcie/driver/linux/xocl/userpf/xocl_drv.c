@@ -136,7 +136,7 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 		if (ret)
 			xocl_err(&pdev->dev, "Online subdevs failed %d", ret);
 		(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
-		xocl_exec_reset(xdev);
+		xocl_exec_reset(xdev, XOCL_XCLBIN_ID(xdev));
 	}
 }
 

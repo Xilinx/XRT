@@ -287,7 +287,10 @@ public:
             if (computeUnits.at( i ).m_type != IP_KERNEL)
                 continue;
 	    if (!skip_cu) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
                 xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, computeUnits.at( i ).m_base_address, &statusBuf, 4);
+#pragma GCC diagnostic pop
 	    }
             ptCu.put( "name",         computeUnits.at( i ).m_name );
             ptCu.put( "base_address", computeUnits.at( i ).m_base_address );

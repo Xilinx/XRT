@@ -139,7 +139,10 @@ int Container::xclLoadXclBin(const xclBin *&buffer)
         return -EINVAL;
     xclmgmt_ioc_bitstream_axlf obj = {reinterpret_cast<axlf *>(real_xclbin.data())};    
 #endif
-    return mgmtDev->ioctl(XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
+    int fd = mgmtDev->open("", O_RDWR);
+    int ret = mgmtDev->ioctl(fd, XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
+    mgmtDev->close(fd);
+    return ret;
 }
 
 bool Container::isGood()

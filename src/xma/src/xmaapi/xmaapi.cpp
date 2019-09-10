@@ -29,6 +29,8 @@
 #include "lib/xmaapi.h"
 //#include "lib/xmahw_hal.h"
 #include "lib/xmasignal.h"
+#include "app/xma_utils.hpp"
+#include "lib/xma_utils.hpp"
 #include <iostream>
 #include <thread>
 
@@ -63,12 +65,77 @@ void xma_thread1() {
             xclLogMsg(NULL, (xrtLogMsgLevel)itr1->level, "XMA", itr1->msg.c_str());
             list1.pop_front();
         }
+
+        if (!g_xma_singleton->xma_exit) {
+            //Check Session loading
+            uint32_t max_load = 0;
+            bool expected = false;
+            bool desired = true;
+            for (auto& itr1: g_xma_singleton->all_sessions) {
+                if (g_xma_singleton->xma_exit) {
+                    break;
+                }
+                XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.second.hw_session.private_do_not_use;
+                if (priv1 == NULL) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA thread1 failed-1. XMASession is corrupted\n");
+                    continue;
+                }
+                if (itr1.second.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA thread1 failed-2. XMASession is corrupted\n");
+                    continue;
+                }
+
+                XmaHwDevice *dev_tmp1 = priv1->device;
+                if (dev_tmp1 == NULL) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA thread1 failed-3. Session XMA private pointer is NULL\n");
+                    continue;
+                }
+                while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
+                    expected = false;
+                }
+                //execbo lock acquired
+
+                if (xma_core::utils::check_all_execbo(itr1.second) != XMA_SUCCESS) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA thread1 failed-4. Unexpected error\n");
+                    //Release execbo lock
+                    *(dev_tmp1->execbo_locked) = false;
+                    continue;
+                }
+                priv1->cmd_load += priv1->CU_cmds.size();
+
+                //Release execbo lock
+                *(dev_tmp1->execbo_locked) = false;
+
+                max_load = std::max({max_load, (uint32_t)priv1->cmd_load});
+            }
+
+            if (max_load > 1024) {
+                for (auto& itr1: g_xma_singleton->all_sessions) {
+                    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.second.hw_session.private_do_not_use;
+                    priv1->cmd_load = priv1->cmd_load >> 1;
+                }
+            }
+        }
     }
     //Print all stats here
-    //Sarab: TODO
-    xclLogMsg(NULL, XMA_INFO_LOG, "XMA", "CU Usage Stats: ");
+    //Sarab TODO don't print for single session
+    //if (g_xma_singleton->all_sessions.size() > 1) {
+        xclLogMsg(NULL, XMA_INFO_LOG, "XMA-Session-Load", "Session CU Command Relative Loads: ");
+        for (auto& itr1: g_xma_singleton->all_sessions) {
+            XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.second.hw_session.private_do_not_use;
+            xclLogMsg(NULL, XMA_INFO_LOG, "XMA-Session-Load", "Session id: %d, type: %d, load: %d", itr1.first, itr1.second.session_type, (uint32_t)priv1->cmd_load);
+        }
+        xclLogMsg(NULL, XMA_INFO_LOG, "XMA-Session-Load", "Num of Decoders: %d", (uint32_t)g_xma_singleton->num_decoders);
+        xclLogMsg(NULL, XMA_INFO_LOG, "XMA-Session-Load", "Num of Scalers: %d", (uint32_t)g_xma_singleton->num_scalers);
+        xclLogMsg(NULL, XMA_INFO_LOG, "XMA-Session-Load", "Num of Encoders: %d", (uint32_t)g_xma_singleton->num_encoders);
+        xclLogMsg(NULL, XMA_INFO_LOG, "XMA-Session-Load", "Num of Filters: %d", (uint32_t)g_xma_singleton->num_filters);
+        xclLogMsg(NULL, XMA_INFO_LOG, "XMA-Session-Load", "Num of Kernels: %d", (uint32_t)g_xma_singleton->num_kernels);
+        xclLogMsg(NULL, XMA_INFO_LOG, "XMA-Session-Load", "Num of Admins: %d\n", (uint32_t)g_xma_singleton->num_admins);
+    //}
+}
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+void xma_get_session_cmd_load() {
+    xma_core::utils::get_session_cmd_load();
 }
 
 int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
@@ -235,6 +302,6 @@ void xma_exit(void)
 {
     if (g_xma_singleton) {
         g_xma_singleton->xma_exit = true;
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }

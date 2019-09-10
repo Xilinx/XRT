@@ -203,6 +203,14 @@ zocl_fpga_mgr_load(struct drm_device *ddev, char *data, int size)
 	struct fpga_image_info *info;
 	int err = 0;
 
+	 /* On Non PR platform, it shouldn't never go to this point.
+	  * On PR platform, the fpga_mgr should be alive.
+	  */
+	if (!zdev->fpga_mgr) {
+		DRM_ERROR("FPGA manager is not found.\n");
+		return -ENXIO;
+	}
+
 	info = fpga_image_info_alloc(dev);
 	if (!info)
 		return -ENOMEM;

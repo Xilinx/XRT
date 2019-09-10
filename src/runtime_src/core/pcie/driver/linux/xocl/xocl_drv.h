@@ -524,7 +524,7 @@ struct xocl_mb_scheduler_funcs {
 	int (*client_ioctl)(struct platform_device *pdev, int op,
 		void *data, void *drm_filp);
 	int (*stop)(struct platform_device *pdev);
-	int (*reset)(struct platform_device *pdev);
+	int (*reset)(struct platform_device *pdev, const xuid_t *xclbin_id);
 	int (*reconfig)(struct platform_device *pdev);
 	int (*cu_map_addr)(struct platform_device *pdev, u32 cu_index,
 		void *drm_filp, u32 *addrp);
@@ -556,9 +556,9 @@ struct xocl_mb_scheduler_funcs {
 	(SCHE_CB(xdev, stop) ?				\
 	 MB_SCHEDULER_OPS(xdev)->stop(MB_SCHEDULER_DEV(xdev)) : \
 	-ENODEV)
-#define	xocl_exec_reset(xdev)		\
+#define	xocl_exec_reset(xdev, xclbin_id)		\
 	(SCHE_CB(xdev, reset) ?				\
-	 MB_SCHEDULER_OPS(xdev)->reset(MB_SCHEDULER_DEV(xdev)) : \
+	 MB_SCHEDULER_OPS(xdev)->reset(MB_SCHEDULER_DEV(xdev), xclbin_id) : \
 	-ENODEV)
 #define	xocl_exec_reconfig(xdev)		\
 	(SCHE_CB(xdev, reconfig) ?				\

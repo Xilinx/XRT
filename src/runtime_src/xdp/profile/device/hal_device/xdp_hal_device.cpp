@@ -43,11 +43,17 @@ uint32_t HalDevice::getNumLiveProcesses()
 }
 int HalDevice::write(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   return xclWrite(mHalDevice, space, offset, hostBuf, size);
+#pragma GCC diagnostic pop
 }
 int HalDevice::read(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   return xclRead(mHalDevice, space, offset, hostBuf, size);
+#pragma GCC diagnostic pop
 }
 
 int HalDevice::unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset)

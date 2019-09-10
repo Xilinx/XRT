@@ -176,6 +176,7 @@ private:
     std::shared_ptr<pcidev::pci_device> mDev;
     xclVerbosityLevel mVerbosity;
     std::ofstream mLogStream;
+    int mUserHandle;
     int mStreamHandle;
     int mBoardNumber;
     bool mLocked;
