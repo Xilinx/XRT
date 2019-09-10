@@ -205,9 +205,9 @@ namespace xclemulation{
       {
         //Nothing to do
       }
-      else if(name.find("Debug.") == std::string::npos)
+      else if(name.find("Debug.") == std::string::npos &&  name.find("alive") == std::string::npos)
       {
-        std::cout<<"WARNING: [SDx-EM 08] Invalid option '"<<name<<"` specified in sdaccel.ini"<<std::endl;
+        std::cout<<"WARNING: [HW-EM 08] Invalid option '"<<name<<"` specified in sdaccel.ini"<<std::endl;
       }
     }
     //this code has to be removed once gui generates ini file by adding launch_waveform property
