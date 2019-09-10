@@ -143,8 +143,9 @@ namespace xdp {
         continue;
       }
 
-      if (trace.Overflow == 1)
-        timestamp += LOOP_ADD_TIME_AIM;
+      // Overflow is taken care of in trace reader
+      //if (trace.Overflow == 1)
+      //  timestamp += LOOP_ADD_TIME_AIM;
 
       uint32_t s = 0;
       bool SAMPacket = (trace.TraceID >= MIN_TRACE_ID_AM && trace.TraceID <= MAX_TRACE_ID_AM);
