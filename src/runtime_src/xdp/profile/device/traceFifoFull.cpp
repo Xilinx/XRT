@@ -277,8 +277,8 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
       //uint64_t currentSample = *(dataUInt32Ptr + index) | (uint64_t)*(dataUInt32Ptr + index + 1) << 32;
 
       // Works with HW and HW Emu
-      uint64_t* dataUInt32Ptr = (uint64_t*)data;
-      uint64_t currentSample = dataUInt32Ptr[i];
+      uint64_t* dataUInt64Ptr = (uint64_t*)data;
+      uint64_t currentSample = dataUInt64Ptr[i];
 
       if (!currentSample)
         continue;
