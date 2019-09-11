@@ -317,7 +317,6 @@ int zocl_pcap_download_ioctl(struct drm_device *dev, void *data,
 	uint64_t primary_fw_off;
 	uint64_t primary_fw_len;
 	struct axlf_section_header *primaryHeader;
-	int ret = 0;
 
 	if (copy_from_user(&bin_obj, args->xclbin, sizeof(struct axlf)))
 		return -EFAULT;
@@ -328,7 +327,7 @@ int zocl_pcap_download_ioctl(struct drm_device *dev, void *data,
 	/* Check unique ID */
 	if (bin_obj.m_uniqueId == zdev->unique_id_last_bitstream) {
 		DRM_INFO("The XCLBIN already loaded. Don't need to reload.");
-		return ret;
+		return 0;
 	}
 
 	primaryHeader = get_axlf_section(&bin_obj, BITSTREAM);
