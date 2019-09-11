@@ -732,7 +732,6 @@ class xocl_scheduler
   {
     auto end = m_command_queue.end();
     auto nitr = m_command_queue.begin();
-    unsigned completed_cnt = 0;
     m_cmd_completed = false;
     for (auto itr=nitr; itr!=end; itr=nitr) {
       auto& xcmd = (*itr);
@@ -746,14 +745,12 @@ class xocl_scheduler
         complete_to_free(xcmd);
         nitr = m_command_queue.erase(itr);
         end = m_command_queue.end();
-        completed_cnt++;
+        m_cmd_completed = true;
         continue;
       }
 
       nitr = ++itr;
     }
-    if (completed_cnt > 0)
-      m_cmd_completed = true;
   }
 
   // Wait until something interesting happens
