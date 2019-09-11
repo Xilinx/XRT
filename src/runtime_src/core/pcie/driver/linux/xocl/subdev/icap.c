@@ -2948,12 +2948,11 @@ static ssize_t sec_level_store(struct device *dev,
 	mutex_lock(&icap->icap_lock);
 
 	if (ICAP_PRIVILEGED(icap)) {
-		if (icap->sec_level != ICAP_SEC_SYSTEM) {
+		if (!efi_enabled(EFI_SECURE_BOOT)) {
 			icap->sec_level = val;
 		} else {
-			ICAP_ERR(icap,
-				"can't lower security level from system level");
-			ret = -EINVAL;
+			ICAP_ERR(icap, "security level is fixed in scure boot");
+			ret = -EROFS;
 		}
 #ifdef	KEY_DEBUG
 		icap_key_test(icap);
