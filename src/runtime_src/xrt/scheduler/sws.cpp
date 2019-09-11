@@ -753,7 +753,7 @@ class xocl_scheduler
       nitr = ++itr;
     }
     if (completed_cnt > 0)
-        m_cmd_completed = true;
+      m_cmd_completed = true;
   }
 
   // Wait until something interesting happens
