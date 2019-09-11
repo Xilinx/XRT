@@ -160,6 +160,16 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    /* Make sure xrt version matches driver version except for "help"
+     * and "version" subcommands. */
+    if(std::strcmp(argv[1], "help" ) != 0 &&
+        std::strcmp(argv[1], "version") != 0 &&
+        std::strcmp(argv[1], "--version") != 0) {
+        if (!getenv_or_null("INTERNAL_BUILD")) {
+            if (xrt_xbutil_version_cmp() != 0)
+                return -1;
+        }
+    }
 
     try {
     /*
@@ -226,15 +236,7 @@ int main(int argc, char *argv[])
                                        << std:: endl;
         std::cout.width(26); std::cout << std::internal << "XCLMGMT: " << sensor_tree::get<std::string>( "runtime.build.xclmgmt", "N/A" )
                                        << std::endl;
-
-        if ( !getenv_or_null("INTERNAL_BUILD") )
-            return xrt_xbutil_version_cmp();
         return 0;
-    }
-
-    if ( !getenv_or_null("INTERNAL_BUILD") ) {
-        if ( xrt_xbutil_version_cmp() != 0 )
-            return -1;
     }
 
     argv[0] = const_cast<char *>(exe);
