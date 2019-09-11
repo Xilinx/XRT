@@ -29,8 +29,9 @@ struct xocl_subdev_array {
 static DEFINE_IDA(xocl_dev_minor_ida);
 static DEFINE_IDA(subdev_inst_ida);
 
-static struct xocl_dsa_vbnv_map dsa_vbnv_map[] = {
-	XOCL_DSA_VBNV_MAP
+static struct xocl_dsa_map dsa_map[] = {
+	XOCL_DSA_VBNV_MAP,
+	XOCL_DSA_DYNAMIC_MAP,
 };
 
 void xocl_subdev_fini(xdev_handle_t xdev_hdl)
@@ -587,27 +588,50 @@ int xocl_subdev_create_all(xdev_handle_t xdev_hdl)
 	struct FeatureRomHeader rom;
 	int	i, ret = 0, subdev_num = 0;
 	struct xocl_subdev_info *subdev_info = NULL;
+	u32 dyn_shell_magic;
 
 	xocl_lock_xdev(xdev_hdl);
-	if (core->dyn_subdev_num + core->priv.subdev_num == 0)
-		goto failed;
-
-	/* lookup update table */
-	ret = __xocl_subdev_create_by_id(xdev_hdl, XOCL_SUBDEV_FEATURE_ROM);
-	if (!ret) {
-		for (i = 0; i < ARRAY_SIZE(dsa_vbnv_map); i++) {
-			xocl_get_raw_header(core, &rom);
-			if ((core->pdev->vendor == dsa_vbnv_map[i].vendor ||
-				dsa_vbnv_map[i].vendor == (u16)PCI_ANY_ID) &&
-				(core->pdev->device == dsa_vbnv_map[i].device ||
-				dsa_vbnv_map[i].device == (u16)PCI_ANY_ID) &&
+	/* read pci capability to determine if this is multi RP board */
+	/* currently, it is hard coded to 0xB0 as a work around */
+	ret = pci_read_config_dword(core->pdev, 0xB0, &dyn_shell_magic);
+	if (!ret && ((dyn_shell_magic & 0xff00ffff) == 0x01000009)) {
+		for (i = 0; i < ARRAY_SIZE(dsa_map); i++) {
+			if (dsa_map[i].type != XOCL_DSAMAP_DYNAMIC)
+				continue;
+			if ((core->pdev->vendor == dsa_map[i].vendor ||
+				dsa_map[i].vendor == (u16)PCI_ANY_ID) &&
+				(core->pdev->device == dsa_map[i].device ||
+				dsa_map[i].device == (u16)PCI_ANY_ID) &&
 				(core->pdev->subsystem_device ==
-				dsa_vbnv_map[i].subdevice ||
-				dsa_vbnv_map[i].subdevice == (u16)PCI_ANY_ID) &&
-				!strncmp(rom.VBNVName, dsa_vbnv_map[i].vbnv,
-				sizeof(rom.VBNVName))) {
-				xocl_fill_dsa_priv(xdev_hdl, dsa_vbnv_map[i].priv_data);
+				dsa_map[i].subdevice ||
+				dsa_map[i].subdevice == (u16)PCI_ANY_ID)) {
+				xocl_fill_dsa_priv(xdev_hdl, dsa_map[i].priv_data);
 				break;
+			}
+		}
+	} else {
+		if (core->dyn_subdev_num + core->priv.subdev_num == 0)
+			goto failed;
+
+		/* lookup update table */
+		ret = __xocl_subdev_create_by_id(xdev_hdl, XOCL_SUBDEV_FEATURE_ROM);
+		if (!ret) {
+			xocl_get_raw_header(core, &rom);
+			for (i = 0; i < ARRAY_SIZE(dsa_map); i++) {
+				if (!dsa_map[i].vbnv)
+					continue;
+				if ((core->pdev->vendor == dsa_map[i].vendor ||
+					dsa_map[i].vendor == (u16)PCI_ANY_ID) &&
+					(core->pdev->device == dsa_map[i].device ||
+					dsa_map[i].device == (u16)PCI_ANY_ID) &&
+					(core->pdev->subsystem_device ==
+					dsa_map[i].subdevice ||
+					dsa_map[i].subdevice == (u16)PCI_ANY_ID) &&
+					!strncmp(rom.VBNVName, dsa_map[i].vbnv,
+					sizeof(rom.VBNVName))) {
+					xocl_fill_dsa_priv(xdev_hdl, dsa_map[i].priv_data);
+					break;
+				}
 			}
 		}
 	}

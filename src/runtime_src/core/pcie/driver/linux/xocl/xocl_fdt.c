@@ -412,7 +412,7 @@ int xocl_fdt_overlay(void *fdt, int target,
 		int nnode = -FDT_ERR_EXISTS;
 		int level  = 0;
 
-		if (!strcmp(name, NODE_ENDPOINTS)) {
+		if (!strncmp(name, NODE_ENDPOINTS, strlen(NODE_ENDPOINTS))) {
 			while (nnode == -FDT_ERR_EXISTS) {
 				snprintf(temp, strlen(name) + 10, "%s_%d",
 					NODE_ENDPOINTS, level);
@@ -769,48 +769,100 @@ int xocl_fdt_check_uuids(xdev_handle_t xdev_hdl, const void *blob,
 	return 0;
 }
 
+int xocl_fdt_add_pair(xdev_handle_t xdev_hdl, void *blob, char *name,
+		void *val, int size)
+{
+	int ret;
+
+	ret = fdt_setprop(blob, 0, name, val, size);
+	if (ret)
+		xocl_xdev_err(xdev_hdl, "set %s prop failed %d", name, ret);
+
+	return ret;
+}
+
 int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob)
 {
 	struct xocl_dev_core	*core = XDEV(xdev_hdl);
 	struct xocl_subdev	*subdevs;
-	char			*input_blob;
+	char			*input_blob = NULL;
+	char			*output_blob = NULL;
+	const char		*logic_uuid;
+	char			fw_name[256];
+	const struct firmware	*fw = NULL;
 	int			len, i;
 	int			ret;
 
 	if (!blob)
 		return -EINVAL;
 
+	logic_uuid = fdt_getprop(blob, 0, PROP_LOGIC_UUID, NULL);
+	if (!logic_uuid) {
+		xocl_xdev_err(xdev_hdl, "failed to get logic uuid");
+		return -EINVAL;
+	}
+
+	snprintf(fw_name, sizeof(fw_name), "xilinx/%s/partition_info.txt",
+			logic_uuid);
+	xocl_xdev_info(xdev_hdl, "load partition info %s", fw_name);
+	request_firmware(&fw, fw_name, &core->pdev->dev);
+
+	if (fw) {
+		len = fdt_totalsize(blob) + fw->size + 50;
+		input_blob = vmalloc(len);
+		if (!input_blob)
+			return -ENOMEM;
+
+		ret = fdt_create_empty_tree(input_blob, len);
+		if (ret) {
+			xocl_xdev_err(xdev_hdl, "create input blob failed %d", ret);
+			goto failed;
+		}
+
+		ret = xocl_fdt_overlay(input_blob, 0, blob, 0, XOCL_FDT_ALL);
+		if (ret) {
+			xocl_xdev_err(xdev_hdl, "overlay input blob failed %d", ret);
+			goto failed;
+		}
+		blob = input_blob;
+		ret = xocl_fdt_add_pair(xdev_hdl, blob, PROP_PARTITION_INFO,
+				(char *)fw->data, fw->size);
+		if (ret)
+			goto failed;
+	}
+
 	len = fdt_totalsize(blob) * 2;
 	if (core->fdt_blob)
 		len += fdt_totalsize(core->fdt_blob);
 
-	if (!len)
-		return -EINVAL;
-	input_blob = vmalloc(len);
-	if (!input_blob)
+	output_blob = vmalloc(len);
+	if (!output_blob)
 		return -ENOMEM;
 
-	ret = fdt_create_empty_tree(input_blob, len);
+	ret = fdt_create_empty_tree(output_blob, len);
 	if (ret) {
-		xocl_xdev_err(xdev_hdl, "create input blob failed %d", ret);
+		xocl_xdev_err(xdev_hdl, "create output blob failed %d", ret);
 		goto failed;
 	}
 
 	if (core->fdt_blob) {
-		ret = xocl_fdt_overlay(input_blob, 0, core->fdt_blob, 0, XOCL_FDT_ALL);
+		ret = xocl_fdt_overlay(output_blob, 0, core->fdt_blob, 0, XOCL_FDT_ALL);
 		if (ret) {
 			xocl_xdev_err(xdev_hdl, "overlay fdt_blob failed %d", ret);
 			goto failed;
 		}
 	}
 
-	ret = xocl_fdt_overlay(input_blob, 0, blob, 0, XOCL_FDT_ALL);
+	ret = xocl_fdt_overlay(output_blob, 0, blob, 0, XOCL_FDT_ALL);
 	if (ret) {
 		xocl_xdev_err(xdev_hdl, "Overlay input blob failed %d", ret);
 		goto failed;
 	}
 
-	ret = xocl_fdt_parse_blob(xdev_hdl, input_blob, &subdevs);
+	if (input_blob)
+		vfree(input_blob);
+
+	ret = xocl_fdt_parse_blob(xdev_hdl, output_blob, &subdevs);
 	if (ret < 0)
 		goto failed;
 	core->dyn_subdev_num = ret;
@@ -821,7 +873,7 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob)
 	if (core->dyn_subdev_store)
 		vfree(core->dyn_subdev_store);
 
-	core->fdt_blob = input_blob;
+	core->fdt_blob = output_blob;
 	core->dyn_subdev_store = subdevs;
 
 	for (i = 0; i < core->dyn_subdev_num; i++)
@@ -832,6 +884,8 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob)
 failed:
 	if (input_blob)
 		vfree(input_blob);
+	if (output_blob)
+		vfree(output_blob);
 
 	return ret;
 }
@@ -889,18 +943,6 @@ int xocl_fdt_build_priv_data(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev,
 
 
 	return 0;
-}
-
-int xocl_fdt_add_pair(xdev_handle_t xdev_hdl, void *blob, char *name,
-		void *val, int size)
-{
-	int ret;
-
-	ret = fdt_setprop(blob, 0, name, val, size);
-	if (ret)
-		xocl_xdev_err(xdev_hdl, "set %s prop failed %d", name, ret);
-
-	return ret;
 }
 
 const struct axlf_section_header *xocl_axlf_section_header(
