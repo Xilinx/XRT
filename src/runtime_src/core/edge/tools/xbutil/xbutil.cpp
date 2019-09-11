@@ -424,8 +424,8 @@ int main(int argc, char *argv[])
     }
 
     if (cmd == xcldev::SCAN || cmd == xcldev::LIST) {
-        unsigned size = deviceVec.size();
-        for (unsigned i = 0; i < size; i++) {
+        unsigned int size = deviceVec.size();
+        for (unsigned int i = 0; i < size; i++) {
               std::cout << " [" << i << "]:" << deviceVec[i]->name();
               std::cout << std::endl;
         }
