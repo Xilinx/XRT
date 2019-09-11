@@ -252,14 +252,12 @@ track(const memory* mem)
 xrt::device::memoryDomain
 get_mem_domain(const memory* mem)
 {
-  auto domain = xrt::device::memoryDomain::XRT_DEVICE_RAM;
-
   if (mem->is_device_memory_only())
-    domain = xrt::device::memoryDomain::XRT_DEVICE_ONLY_MEM;
+    return xrt::device::memoryDomain::XRT_DEVICE_ONLY_MEM;
   else if (mem->is_device_memory_only_p2p())
-    domain = xrt::device::memoryDomain::XRT_DEVICE_ONLY_MEM_P2P;
+    return xrt::device::memoryDomain::XRT_DEVICE_ONLY_MEM_P2P;
 
-  return domain;
+  return xrt::device::memoryDomain::XRT_DEVICE_RAM;
 }
 
 void
@@ -898,9 +896,10 @@ void
 device::
 migrate_buffer(memory* buffer,cl_mem_migration_flags flags)
 {
-
   if (buffer->no_host_memory())
+    // shouldn't happen
     throw xocl::error(CL_INVALID_OPERATION,"buffer flags do not allow migrate_buffer");
+
   // Support clEnqueueMigrateMemObjects device->host
   if (flags & CL_MIGRATE_MEM_OBJECT_HOST) {
     buffer_resident_or_error(buffer,this);

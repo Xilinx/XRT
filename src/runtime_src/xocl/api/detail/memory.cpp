@@ -227,11 +227,38 @@ validOrError(const cl_mem mem)
 }
 
 void
+validOrErrorWithHostBuffer(const cl_mem mem)
+{
+  validOrError(mem);
+
+  if (xocl(mem)->no_host_memory())
+    throw error(CL_INVALID_MEM_OBJECT,"mem has no host buffer");
+}
+
+void
 validOrError(const std::vector<cl_mem>& mem_objects)
+{
+  std::for_each(mem_objects.begin(),mem_objects.end(),[](const cl_mem mem){validOrError(mem); });
+}
+
+void
+validOrErrorWithHostBuffer(const std::vector<cl_mem>& mem_objects)
+{
+  std::for_each(mem_objects.begin(),mem_objects.end(),[](const cl_mem mem){validOrErrorWithHostBuffer(mem); });
+}
+
+void
+validHostBufferOrError(const cl_mem mem)
+{
+  if (xocl(mem)->no_host_memory())
+    throw error(CL_INVALID_MEM_OBJECT,"mem has no host side buffer");
+}
+
+void
+validHostBufferOrError(const std::vector<cl_mem>& mem_objects)
 {
   std::for_each(mem_objects.begin(),mem_objects.end(),[](cl_mem mem){validOrError(mem); });
 }
-
 
 } // memory
 
