@@ -651,6 +651,9 @@ class xocl_scheduler
   bool                       m_stop = false;
   std::list<xcmd_ptr>        m_command_queue;
 
+  // if command has completed in the iteration
+  bool                       m_cmd_completed = false;
+
   // Copy pending commands into command queue.
   void
   queue_cmds()
@@ -729,6 +732,8 @@ class xocl_scheduler
   {
     auto end = m_command_queue.end();
     auto nitr = m_command_queue.begin();
+    unsigned completed_cnt = 0;
+    m_cmd_completed = false;
     for (auto itr=nitr; itr!=end; itr=nitr) {
       auto& xcmd = (*itr);
       if (xcmd->get_state() == ERT_CMD_STATE_QUEUED)
@@ -741,11 +746,14 @@ class xocl_scheduler
         complete_to_free(xcmd);
         nitr = m_command_queue.erase(itr);
         end = m_command_queue.end();
+        completed_cnt++;
         continue;
       }
 
       nitr = ++itr;
     }
+    if (completed_cnt > 0)
+        m_cmd_completed = true;
   }
 
   // Wait until something interesting happens
@@ -760,6 +768,14 @@ class xocl_scheduler
       if (!m_command_queue.empty() || s_num_pending)
         throw std::runtime_error("software scheduler stopping while there are active commands");
     }
+
+    if (s_num_pending || m_cmd_completed)
+      return;
+
+    // Sleep if no new pending commands or no running command have completed
+    // throttle polling for cu completion
+    if (auto us = xrt::config::get_polling_throttle())
+      std::this_thread::sleep_for(std::chrono::microseconds(us));
   }
 
 
@@ -769,11 +785,6 @@ class xocl_scheduler
   {
     wait();
     queue_cmds();
-
-    // throttle polling for cu completion
-    if (auto us = xrt::config::get_polling_throttle())
-      std::this_thread::sleep_for(std::chrono::microseconds(us));
-
     iterate_cmds();
   }
 
