@@ -276,11 +276,10 @@ public:
         return 0;
     }
 
-    uint32_t cuStatus(uint32_t offset) const
+    uint32_t parseComputeUnitStatus(const std::vector<std::string>& cuctrl, uint32_t offset) const
     {
-       std::string errmsg;
-       std::vector<std::string> cuctrl;
-       pcidev::get_dev(m_idx)->sysfs_get("mb_scheduler", "kds_cuctrl", errmsg, cuctrl);
+       if (cuctrl.empty())
+          return 0;
 
        std::stringstream ss;
        ss << "0x" << std::hex << offset;
@@ -301,12 +300,17 @@ public:
 
     int parseComputeUnits(const std::vector<ip_data> &computeUnits) const
     {
-        auto skip_cu = std::getenv("XCL_SKIP_CU_READ");
+        std::vector<std::string> cuctrl;
+        if (!std::getenv("XCL_SKIP_CU_READ")) {
+          std::string errmsg;
+          pcidev::get_dev(m_idx)->sysfs_get("mb_scheduler", "kds_cuctrl", errmsg, cuctrl);
+        }
+          
         for (unsigned int i = 0; i < computeUnits.size(); ++i) {
             const auto& ip = computeUnits[i];
             if (ip.m_type != IP_KERNEL)
                 continue;
-            uint32_t status = skip_cu ? 0 : cuStatus(ip.m_base_address);
+            uint32_t status = parseComputeUnitStatus(cuctrl,ip.m_base_address);
             boost::property_tree::ptree ptCu;
             ptCu.put( "name",         ip.m_name );
             ptCu.put( "base_address", ip.m_base_address );
