@@ -1048,6 +1048,13 @@ cu_continue(struct xocl_cu *xcu)
 	SCHED_DEBUGF("<- %s\n", __func__);
 }
 
+static inline u32
+cu_status(struct xocl_cu *xcu)
+{
+	SCHED_DEBUGF("%s cu(%d) @0x%x\n", __func__, xcu->idx, xcu->addr);
+	return ioread32(xcu->base + xcu->addr);
+}
+
 /**
  * cu_poll() - Poll a CU for its status
  *
@@ -1063,7 +1070,7 @@ cu_poll(struct xocl_cu *xcu)
 	SCHED_DEBUGF("-> %s cu(%d) @0x%x done(%d) run(%d)\n", __func__,
 		     xcu->idx, xcu->addr, xcu->done_cnt, xcu->run_cnt);
 
-	xcu->ctrlreg = ioread32(xcu->base + xcu->addr);
+	xcu->ctrlreg = cu_status(xcu);
 
 	SCHED_DEBUGF("+ ctrlreg(0x%x)\n", xcu->ctrlreg);
 
@@ -1358,7 +1365,6 @@ static struct exec_ops penguin_ops;   // kds mode (no ert)
  * @cu_usage: Usage count since last reset
  * @slot_status: Bitmap to track status (busy(1)/free(0)) slots in command queue
  * @ctrl_busy: Flag to indicate that slot 0 (ctrl commands) is busy
- * @cu_status: Bitmap to track status (busy(1)/free(0)) of CUs. Unused in ERT mode.
  * @sr0: If set, then status register [0..31] is pending with completed commands (ERT only).
  * @sr1: If set, then status register [32..63] is pending with completed commands (ERT only).
  * @sr2: If set, then status register [64..95] is pending with completed commands (ERT only).
@@ -1501,6 +1507,12 @@ static inline u32
 exec_cu_usage(struct exec_core *exec, unsigned int cuidx)
 {
 	return exec->cu_usage[cuidx];
+}
+
+static inline u32
+exec_cu_status(struct exec_core *exec, unsigned int cuidx)
+{
+	return cu_status(exec->cus[cuidx]);
 }
 
 static bool
@@ -3956,6 +3968,9 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 		SCHED_DEBUGF("<- custat retry(%d)\n", retry);
 	}
 
+	// No need to lock exec, cu stats are computed and cached.
+	// Even if xclbin is swapped, the data reflects the xclbin on
+	// which is was computed above.
 	for (count = 0; count < exec->num_cus; ++count)
 		sz += sprintf(buf+sz, "CU[@0x%x] : %d\n",
 			      exec_cu_base_addr(exec, count),
@@ -3967,11 +3982,34 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 }
 static DEVICE_ATTR_RO(kds_custat);
 
+static ssize_t
+kds_cuctrl_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct exec_core *exec = dev_get_exec(dev);
+	unsigned int count = 0;
+	ssize_t sz = 0;
+
+	// Prevent stop and reset (swapping of xclbin) while
+	// accessing AXI-lite for CU ctrl
+	mutex_lock(&exec->exec_lock);
+	for (count = 0; count < exec->num_cus; ++count)
+		sz += sprintf(buf+sz, "CU[@0x%x] : %d\n",
+			      exec_cu_base_addr(exec, count),
+			      exec_cu_status(exec, count));
+	mutex_unlock(&exec->exec_lock);
+	
+	if (sz)
+		buf[sz++] = 0;
+	return sz;
+}
+static DEVICE_ATTR_RO(kds_cuctrl);
+
 static struct attribute *kds_sysfs_attrs[] = {
 	&dev_attr_kds_numcus.attr,
 	&dev_attr_kds_cucounts.attr,
 	&dev_attr_kds_numcdmas.attr,
 	&dev_attr_kds_custat.attr,
+	&dev_attr_kds_cuctrl.attr,
 	NULL
 };
 

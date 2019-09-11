@@ -149,7 +149,6 @@ static const std::map<MEM_TYPE, std::string> memtype_map = {
 
 static const std::map<std::string, command> commandTable(map_pairs, map_pairs + sizeof(map_pairs) / sizeof(map_pairs[0]));
 
-
 class device {
     unsigned int m_idx;
     xclDeviceHandle m_handle;
@@ -277,24 +276,41 @@ public:
         return 0;
     }
 
+    uint32_t cuStatus(uint32_t offset) const
+    {
+       std::string errmsg;
+       std::vector<std::string> cuctrl;
+       pcidev::get_dev(m_idx)->sysfs_get("mb_scheduler", "kds_cuctrl", errmsg, cuctrl);
+
+       std::stringstream ss;
+       ss << "0x" << std::hex << offset;
+       auto addr = ss.str();
+
+       for (auto& line : cuctrl) {
+           auto pos = line.find(addr);
+           if (pos == std::string::npos)
+               continue;
+           pos = line.find("] : ");
+           if (pos == std::string::npos)
+             return 0;
+           return std::stoi(line.substr(pos + strlen("] : ")));
+       }
+
+       return 0;
+    }
+
     int parseComputeUnits(const std::vector<ip_data> &computeUnits) const
     {
-        char *skip_cu = std::getenv("XCL_SKIP_CU_READ");
-
-        for( unsigned int i = 0; i < computeUnits.size(); i++ ) {
-            boost::property_tree::ptree ptCu;
-            unsigned statusBuf = 0;
-            if (computeUnits.at( i ).m_type != IP_KERNEL)
+        auto skip_cu = std::getenv("XCL_SKIP_CU_READ");
+        for (unsigned int i = 0; i < computeUnits.size(); ++i) {
+            const auto& ip = computeUnits[i];
+            if (ip.m_type != IP_KERNEL)
                 continue;
-	    if (!skip_cu) {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-                xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, computeUnits.at( i ).m_base_address, &statusBuf, 4);
-#pragma GCC diagnostic pop
-	    }
-            ptCu.put( "name",         computeUnits.at( i ).m_name );
-            ptCu.put( "base_address", computeUnits.at( i ).m_base_address );
-            ptCu.put( "status",       parseCUStatus( statusBuf ) );
+            uint32_t status = skip_cu ? 0 : cuStatus(ip.m_base_address);
+            boost::property_tree::ptree ptCu;
+            ptCu.put( "name",         ip.m_name );
+            ptCu.put( "base_address", ip.m_base_address );
+            ptCu.put( "status",       parseCUStatus( status ) );
             sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(i)), ptCu );
         }
         return 0;
