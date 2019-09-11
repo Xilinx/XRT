@@ -699,10 +699,10 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  " << exe << " program -d 2 -p a.xclbin\n";
     std::cout << "Run DMA test on card 1 with 32 KB blocks of buffer\n";
     std::cout << "  " << exe << " dmatest -d 1 -b 0x20\n";
-    std::cout << "Read 256 bytes from DDR starting at 0x1000 into file read.out\n";
+    std::cout << "Read 256 bytes from DDR/HBM/PLRAM starting at 0x1000 into file read.out\n";
     std::cout << "  " << exe << " mem --read -a 0x1000 -i 256 -o read.out\n";
     std::cout << "  " << "Default values for address is 0x0, size is DDR size and file is memread.out\n";
-    std::cout << "Write 256 bytes to DDR starting at 0x1000 with byte 0xaa \n";
+    std::cout << "Write 256 bytes to DDR/HBM/PLRAM starting at 0x1000 with byte 0xaa \n";
     std::cout << "  " << exe << " mem --write -a 0x1000 -i 256 -e 0xaa\n";
     std::cout << "  " << "Default values for address is 0x0, size is DDR size and pattern is 0x0\n";
     std::cout << "List the debug IPs available on the platform\n";
