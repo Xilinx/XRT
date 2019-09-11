@@ -1,0 +1,24 @@
+{
+	"platforms_to_build": {
+		"zcu102_base": {
+			"architecture": "zynqmp",
+			"bsp_key": "zcu102",
+			"pullrequest_build": true,
+			"sysroot": {
+				"copy": {
+					"from": "${XRT_EMBEDDED_STAGING_ROOT}/sw",
+					"to": "${XRT_EMBEDDED_ROOT}/sw"
+				}
+			},
+			"package": {
+				"dsabin": false,
+				"dsadev": false,
+				"ta_locations": [""]
+			},
+			"copy": {
+				"from": "${XRT_EMBEDDED_ROOT}",
+				"to": ["${TA_ROOT}/internal_platforms"]
+			}
+		}
+	}
+}
