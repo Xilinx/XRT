@@ -119,7 +119,7 @@ namespace xdp {
     std::stringstream strAddress;
     strAddress << (boost::format("0X%09x") % srcAddress) << "|" << srcBank;
     if (stageString == "START" || stageString == "END") {
-      strAddress << "|" << (boost::format("0X%x") % threadId);
+      strAddress << "|" << threadId;
 
       if (kind == RTUtil::COPY_BUFFER || kind == RTUtil::COPY_BUFFER_P2P) {
         int p2p = (kind == RTUtil::COPY_BUFFER_P2P) ? 1 : 0;
