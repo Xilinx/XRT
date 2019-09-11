@@ -100,7 +100,7 @@ namespace xdp {
 
     // Hardware Emulation Trace
     bool isHwEmu = (mPluginHandle->getFlowMode() == xdp::RTUtil::HW_EM);
-    if (isHwEmu) {
+    if (isHwEmu && mPluginHandle->getSystemDPAEmulation() == false) {
       logTraceHWEmu(deviceName, traceVector, resultVector);
       return;
     }
