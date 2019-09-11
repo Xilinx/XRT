@@ -851,7 +851,7 @@ static int calibrate_mig(struct icap *icap)
 	if (!mig_calibration_done(icap)) {
 		ICAP_ERR(icap,
 			"MIG calibration timeout after bitstream download");
-		//return -ETIMEDOUT;
+		return -ETIMEDOUT;
 	}
 
 	return 0;
