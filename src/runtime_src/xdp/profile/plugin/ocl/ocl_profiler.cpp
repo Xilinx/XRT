@@ -796,7 +796,7 @@ namespace xdp {
       dIntf->parseTraceData(hostBuf, nBytes, traceVector);
       mTraceReadBufOffset += nBytes;
     }
-    return (nBytes == (mTraceReadBufChunkSz && hostBuf));
+    return ((nBytes == mTraceReadBufChunkSz) && hostBuf);
   }
 
   void OCLProfiler::setTraceFooterString() {
