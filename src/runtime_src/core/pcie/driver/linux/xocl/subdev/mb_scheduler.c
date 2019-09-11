@@ -3986,17 +3986,18 @@ static ssize_t
 kds_cuctrl_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct exec_core *exec = dev_get_exec(dev);
+	struct xocl_dev *xdev = exec_get_xdev(exec);
 	unsigned int count = 0;
 	ssize_t sz = 0;
 
 	// Prevent stop and reset (swapping of xclbin) while
 	// accessing AXI-lite for CU ctrl
-	mutex_lock(&exec->exec_lock);
+	mutex_lock(&xdev->dev_lock);
 	for (count = 0; count < exec->num_cus; ++count)
 		sz += sprintf(buf+sz, "CU[@0x%x] : %d\n",
 			      exec_cu_base_addr(exec, count),
 			      exec_cu_status(exec, count));
-	mutex_unlock(&exec->exec_lock);
+	mutex_unlock(&xdev->dev_lock);
 	
 	if (sz)
 		buf[sz++] = 0;
