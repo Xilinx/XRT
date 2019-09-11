@@ -2324,11 +2324,11 @@ int HwEmShim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t num
 
       if(mLogStream.is_open()) {
         mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
-                      << std::hex << (ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0]*/ << " and writing it to 0x"
+                      << std::hex << ipBaseAddress /*fifoReadAddress[0]*/ << " and writing it to 0x"
                       << (void *)(hostbuf + words) << std::dec << std::endl;
       }
 
-      xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
+      xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress /*offset : or AXI_FIFO_RDFD*/);
 
       size += chunkSizeBytes;
     }
