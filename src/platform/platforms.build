@@ -4,7 +4,8 @@
 		"# platforms_to_build_new section",
 		"#    Structure:",
 		"#      Platform_name: Name of the platform to be built",
-		"#      bsp_key: Name in the platform bsp Ex: xilinx-<bsp_key>-v<release>-final.bsp",
+		"#        architecture: Architecture of the platform bsp Ex: zynqmp or zynq7000",
+		"#        bsp_key: Name in the platform bsp Ex: xilinx-<bsp_key>-v<release>-final.bsp",
 		"#        pullrequest_build: Whether to build this platform in pull request pipleine - true|false?",
 		"#                           please set pullrequest_build:true when enabling new platforms",
 		"#        sysroot:",
@@ -23,6 +24,7 @@
 	],
 	"platforms_to_build": {
 		"zcu102_base": {
+			"architecture": "zynqmp",
 			"bsp_key": "zcu102",
 			"pullrequest_build": true,
 			"sysroot": {
@@ -42,6 +44,7 @@
 			}
 		},
 		"zcu104_base": {
+			"architecture": "zynqmp",
 			"bsp_key": "zcu104",
 			"package": {
 				"dsabin": false,
@@ -54,6 +57,7 @@
 			}
 		},
 		"zc702_base": {
+			"architecture": "zynq7000",
 			"bsp_key": "zc702",
 			"sysroot": {
 				"copy": {
@@ -72,6 +76,7 @@
 			}
 		},
 		"zed_base": {
+			"architecture": "zynq7000",
 			"bsp_key": "zed",
 			"package": {
 				"dsabin": false,
@@ -84,6 +89,7 @@
 			}
 		},
 		"zc706_base": {
+			"architecture": "zynq7000",
 			"bsp_key": "zc706",
 			"pullrequest_build": true,
 			"package": {
