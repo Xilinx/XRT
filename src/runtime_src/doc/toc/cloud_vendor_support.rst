@@ -39,11 +39,29 @@ design has very low bandwidth, and that makes transfer of a hundred Mega Byte xc
 is the complementary to the mailbox framework to overcome this, and it also helps as well for cases where there
 are no working HW mailbox.
 
-SW mailbox relies on MSD/MPD, which reside in userspace and talk to the mailbox subdev in xclmgmt and xocl.
-MSD/MPD may be connected through external networking, eg. Ethernet, or localhost, and make the download xclbin
-faster.
+SW mailbox relies on MSD/MPD. MSD resides in userspace of the machine(ie. Host) where xclmgmt driver is installed,
+while MPD resides in userspace of the machine(ie. VM) where xocl driver is installed. They talk to the mailbox subdev
+in the corresponding driver. MSD/MPD may be connected through external networking, eg. Ethernet, and make the download
+xclbin faster. 
 
-The flow of downloading xclbin through SW mailbox is illustrated as below:
+Please note, in order to use SW mailbox, the cloud vendor has to setup the networking connection between Host and VM.
+Once the networking connection is setup, the following configurations are also required. 
+
+.. code-block:: bash
+
+        # In host, make sure the IP address configured is the one VM talks to
+        Host>$ sudo xbmgmt config --show
+
+        # If the IP address is not correct, change it by running
+        Host>$ sudo xbmgmt config --daemon --host <host-or-ip>
+
+        # Start MSD in host
+        Host>$ sudo systemctl start msd
+
+        # Start MPD in VM
+        VM>$ sudo systemctl start mpd
+
+The flow of downloading xclbin through SW mailbox and MSD/MPD is illustrated as below:
 
 .. image:: sw-mailbox-msd-mpd-download.svg
    :align: center
