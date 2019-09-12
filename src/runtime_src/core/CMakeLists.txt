@@ -1,0 +1,7 @@
+add_subdirectory(include)
+add_subdirectory(common)
+ if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+   add_subdirectory(pcie)
+ else()
+   add_subdirectory(edge)
+ endif()

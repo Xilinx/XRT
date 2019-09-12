@@ -30,7 +30,7 @@ class context : public refcount, public _cl_context
 {
   using property_element_type = cl_context_properties;
   using property_list_type = property_list<cl_context_properties>;
-  
+
   // The context shares ownership of a device
   using device_vector_type = std::vector<ptr<device>>;
   using device_iterator_type = ptr_iterator<device_vector_type::iterator>;
@@ -78,6 +78,10 @@ public:
     return range<device_iterator_type>(m_devices.begin(),m_devices.end());
   }
 
+  /**
+   * @return
+   *   Context device if exactly one
+   */
   device*
   get_device_if_one() const
   {
@@ -85,6 +89,13 @@ public:
       ? (*(m_devices.begin())).get()
       : nullptr;
   }
+
+  /**
+   * @return
+   *   Context device if exactly one and if active with a program
+   */
+  device*
+  get_single_active_device() const;
 
   size_t
   num_devices() const
@@ -111,7 +122,7 @@ public:
     std::lock_guard<std::mutex> lock(m_queue_mutex);
     m_queues.push_back(q);
   }
-  
+
   void
   remove_queue(command_queue* q)
   {
@@ -134,7 +145,7 @@ public:
     std::lock_guard<std::mutex> lock(m_program_mutex);
     m_programs.push_back(p);
   }
-  
+
   void
   remove_program(program* p)
   {
@@ -154,7 +165,7 @@ private:
 
   platform* m_platform = nullptr;
 
-  // The context owns 
+  // The context owns
   device_vector_type m_devices;
 
   // The context does not share ownership of the queue.
@@ -171,5 +182,3 @@ private:
 } // xocl
 
 #endif
-
-
