@@ -454,7 +454,7 @@ static void mig_set_data(struct platform_device *pdev, void *buf, size_t entry_s
 	size_t min_sz = min_t(size_t, entry_sz, sizeof(struct xcl_mig_ecc));
 
 	if (!buf || !entry_sz)
-		return 
+		return;
 
 	if (MIG_PRIVILEGED(mig))
 		return;
