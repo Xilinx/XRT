@@ -494,7 +494,10 @@ namespace xclhwemhal2 {
     set_simulator_started(true);
 
     //Thread to fetch messages from Device to display on host
-    mMessengerThread = std::thread(xclhwemhal2::messagesThread,this);
+    if(mMessengerThreadStarted == false) {
+      mMessengerThread = std::thread(xclhwemhal2::messagesThread,this);
+      mMessengerThreadStarted = true;
+    }
 
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     std::string launcherArgs = xclemulation::config::getInstance()->getLauncherArgs();
@@ -1311,6 +1314,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 #ifndef _WINDOWS
       xclClose_RPC_CALL(xclClose,this);
 #endif
+      closemMessengerThread();
       //clean up directories which are created inside the driver
       systemUtil::makeSystemCall(socketName, systemUtil::systemOperation::REMOVE);
     }
@@ -1397,7 +1401,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       delete mDataSpace;
       mDataSpace = NULL;
     }
-    mMessengerThread.join();
+    closemMessengerThread();
   }
 
   void HwEmShim::initMemoryManager(std::list<xclemulation::DDRBank>& DDRBankList)
@@ -1511,6 +1515,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     mTraceFunnelAddress = 0;
     mDataSpace = new xclemulation::MemoryManager(0x10000000, 0, getpagesize());
     mCuBaseAddress = 0x0;
+    mMessengerThreadStarted = false;
   }
 
   bool HwEmShim::isMBSchedulerEnabled()
@@ -2324,11 +2329,11 @@ int HwEmShim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t num
 
       if(mLogStream.is_open()) {
         mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
-                      << std::hex << (ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0]*/ << " and writing it to 0x"
+                      << std::hex << ipBaseAddress /*fifoReadAddress[0]*/ << " and writing it to 0x"
                       << (void *)(hostbuf + words) << std::dec << std::endl;
       }
 
-      xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
+      xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress /*offset : or AXI_FIFO_RDFD*/);
 
       size += chunkSizeBytes;
     }
@@ -2608,6 +2613,13 @@ int HwEmShim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char
     }
     xrt_core::message::send((xrt_core::message::severity_level)level, tag, buf.data());
     return 0;
+}
+
+void HwEmShim::closemMessengerThread() {
+	if(mMessengerThreadStarted) {
+		mMessengerThread.join();
+		mMessengerThreadStarted = false;
+	}
 }
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/
 /**********************************************HAL2 API's END HERE **********************************************/
