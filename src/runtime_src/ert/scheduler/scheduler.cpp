@@ -18,19 +18,17 @@
  * Embedded runtime scheduler
  */
 
-#ifndef ERT_HW_EMU
 #include "core/include/ert.h"
-#else
-#include "ert.h"
-#endif
 // includes from bsp
 #ifndef ERT_HW_EMU
 #include <xil_printf.h>
 #include <mb_interface.h>
 #include <xparameters.h>
 #else
+#include <stdio.h>
 #define xil_printf printf
 #define print printf
+#define u32 uint32_t
 #endif
 #include <stdlib.h>
 #include <limits>
@@ -46,7 +44,7 @@ ERT_UNUSED
 static void
 ert_assert(const char* file, long line, const char* function, const char* expr, const char* msg)
 {
-  xil_printf("Assert failed: %s:%d:%s:%s %s\n",file,line,function,expr,msg);
+  xil_printf("Assert failed: %s:%ld:%s:%s %s\n",file,line,function,expr,msg);
   exit(1);
 }
 
@@ -71,6 +69,17 @@ ert_assert(const char* file, long line, const char* function, const char* expr, 
 #else
 # define CTRL_DEBUG(msg)
 # define CTRL_DEBUGF(format,...)
+#endif
+
+#ifdef ERT_HW_EMU
+using addr_type = uint32_t;
+using value_type = uint32_t;
+
+extern value_type read_reg(addr_type addr);
+extern void write_reg(addr_type addr, value_type val);
+extern void microblaze_enable_interrupts();
+extern void microblaze_disable_interrupts();
+extern void reg_access_wait();
 #endif
 
 namespace ert {
@@ -886,7 +895,10 @@ configure_mb(size_type slot_idx)
   cdma_enabled = (features & 0x20)!=0;
   dataflow_enabled = (features & 0x40)!=0;
   cu_dma_52 = (features & 0x80000000)!=0;
-
+#ifdef ERT_HW_EMU
+  //Force new mechanism for latest emulation platforms
+  cu_dma_52 = 1;
+#endif
   // CU base address
   for (size_type i=0; i<num_cus; ++i) {
     u32 addr = read_reg(slot.slot_addr + 0x18 + (i<<2));
@@ -1153,13 +1165,7 @@ scheduler_loop()
       auto& slot = command_slots[slot_idx];
 
 #ifdef ERT_HW_EMU
-      if(sim_embedded_scheduler_sw_imp::getSchedularPtr()!=nullptr) {
-      sim_embedded_scheduler_sw_imp* sch=sim_embedded_scheduler_sw_imp::getSchedularPtr();
-        wait(sch->maxi_lite_mb_aclk.posedge_event());
-      } else {
-        sc_time t(1,SC_NS);
-        wait(t);
-      }
+      reg_access_wait();
 #endif
 
       // In dataflow mode ERT is polling CUs for completion after
@@ -1221,7 +1227,9 @@ scheduler_loop()
 /**
  * CU interrupt service routine
  */
+#ifndef ERT_HW_EMU
 void cu_interrupt_handler() __attribute__((interrupt_handler));
+#endif
 void
 cu_interrupt_handler()
 {
@@ -1273,6 +1281,23 @@ cu_interrupt_handler()
 }
 
 } // ert
+#ifdef ERT_HW_EMU
+#ifdef __cplusplus
+extern "C" {
+#endif
+void scheduler_loop() {
+    ert::scheduler_loop();
+}
+
+void cu_interrupt_handler() {
+    ert::cu_interrupt_handler();
+}
+
+#ifdef __cplusplus
+}
+#endif
+#endif
+
 #ifndef ERT_HW_EMU
 int main()
 {
