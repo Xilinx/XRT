@@ -29,3 +29,4 @@ user:
     name: kernels.xclbin
   labels:
     test_type: ['regression']
+  sdx_type: [sdx_fast]

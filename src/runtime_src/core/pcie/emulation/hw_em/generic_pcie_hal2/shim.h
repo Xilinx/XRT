@@ -337,6 +337,8 @@ using addr_type = uint64_t;
 
       //For Emulation specific messages on host from Device
       std::thread mMessengerThread;
+      bool mMessengerThreadStarted;
+      void closemMessengerThread();
   };
 
   extern std::map<unsigned int, HwEmShim*> devices;

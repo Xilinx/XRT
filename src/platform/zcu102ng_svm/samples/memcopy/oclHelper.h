@@ -14,7 +14,7 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
+
 
 
 #ifndef _OCL_HELP_H_
@@ -50,5 +50,3 @@ void release(oclHardware& hardware);
 const char *oclErrorCode(cl_int code);
 
 #endif
-
-// 67d7842dbbe25473c3c32b93c0da8047785f30d78e8a024de1b57352245f9689

@@ -653,19 +653,17 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 		zdev->ert = (struct zocl_ert_dev *)platform_get_drvdata(subdev);
 	}
 
+	/* For Non PR platform, there is not need to have FPGA manager
+	 * For PR platform, the FPGA manager is required. No good way to
+	 * determin if it is a PR platform at probe.
+	 */
 	fnode = of_get_child_by_name(of_root,
 	    zdev->zdev_data_info->fpga_driver_name);
 	if (fnode) {
 		zdev->fpga_mgr = of_fpga_mgr_get(fnode);
-		if (IS_ERR(zdev->fpga_mgr)) {
-			DRM_ERROR("FPGA Manager not found %ld\n",
-			    PTR_ERR(zdev->fpga_mgr));
+		if (IS_ERR(zdev->fpga_mgr))
 			zdev->fpga_mgr = NULL;
-		}
 		DRM_INFO("FPGA programming device %s founded.\n",
-		    zdev->zdev_data_info->fpga_driver_name);
-	} else {
-		DRM_ERROR("FPGA programming device %s not found\n",
 		    zdev->zdev_data_info->fpga_driver_name);
 	}
 

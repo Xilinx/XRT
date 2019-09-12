@@ -21,7 +21,6 @@
 #include <memory>
 #include <regex>
 #include <sstream>
-#include <fcntl.h>
 #include <unistd.h>
 #include <dirent.h>
 #include <stdint.h>
@@ -294,7 +293,7 @@ DSAInfo::~DSAInfo()
 bool DSAInfo::matchId(std::string &id)
 {
     uint64_t ts = strtoull(id.c_str(), nullptr, 0);
-    if (ts != 0 && errno == 0 && ts == timestamp)
+    if (ts != 0 && ts != ULLONG_MAX && ts == timestamp)
         return true;
 
     if (uuids.size() > 0)

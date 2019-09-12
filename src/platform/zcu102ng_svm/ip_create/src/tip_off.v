@@ -12,7 +12,7 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
+
 
 
 `timescale 1ns / 1ps
@@ -63,6 +63,3 @@ output wire                                      m_axi_rready);
     assign m_axi_rready    = 'b0;
 
 endmodule
-
-
-// 67d7842dbbe25473c3c32b93c0da8047785f30d78e8a024de1b57352245f9689

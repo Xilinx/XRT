@@ -140,7 +140,8 @@ static int purge(int argc, char *argv[])
 static void showDaemonConf(void)
 {
     (void) loadDaemonConf(config);
-    std::cout << "Daemons:" << std::endl;
+    std::cout << "Daemon:" << std::endl;
+    std::cout << "\t";
     writeConf(std::cout, config);
 }
 
@@ -205,18 +206,17 @@ static int show(int argc, char *argv[])
     if (daemon)
         showDaemonConf();
 
-    if (!device)
-        return 0;
+    if (device) {
+        if (index != UINT_MAX) {
+            auto dev = pcidev::get_dev(index, false);
+            showDevConf(dev);
+            return 0;
+        }
 
-    if (index != UINT_MAX) {
-        auto dev = pcidev::get_dev(index, false);
-        showDevConf(dev);
-        return 0;
-    }
-
-    for (unsigned i = 0; i < pcidev::get_dev_total(false); i++) {
-        auto dev = pcidev::get_dev(i, false);
-        showDevConf(dev);
+        for (unsigned i = 0; i < pcidev::get_dev_total(false); i++) {
+            auto dev = pcidev::get_dev(i, false);
+            showDevConf(dev);
+        }
     }
 
     return 0;

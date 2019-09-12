@@ -203,6 +203,14 @@ zocl_fpga_mgr_load(struct drm_device *ddev, char *data, int size)
 	struct fpga_image_info *info;
 	int err = 0;
 
+	 /* On Non PR platform, it shouldn't never go to this point.
+	  * On PR platform, the fpga_mgr should be alive.
+	  */
+	if (!zdev->fpga_mgr) {
+		DRM_ERROR("FPGA manager is not found.\n");
+		return -ENXIO;
+	}
+
 	info = fpga_image_info_alloc(dev);
 	if (!info)
 		return -ENOMEM;
@@ -323,6 +331,12 @@ int zocl_pcap_download_ioctl(struct drm_device *dev, void *data,
 
 	if (memcmp(bin_obj.m_magic, "xclbin2", 8))
 		return -EINVAL;
+	
+	/* Check unique ID */
+	if (bin_obj.m_uniqueId == zdev->unique_id_last_bitstream) {
+		DRM_INFO("The XCLBIN already loaded. Don't need to reload.");
+		return 0;
+	}
 
 	primaryHeader = get_axlf_section(&bin_obj, BITSTREAM);
 	if (primaryHeader == NULL)

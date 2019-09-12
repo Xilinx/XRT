@@ -14,7 +14,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
 
 .. toctree::
    :maxdepth: 1
-   :caption: XRT Introduction
+   :caption: Introduction
 
    platforms.rst
    system_requirements.rst
@@ -24,19 +24,25 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
 
 .. toctree::
    :maxdepth: 1
-   :caption: XRT Use Model and Features
+   :caption: Use Model and Features
 
    execution-model.rst
    xrt_kernel_executions.rst
    multiprocess.rst
    p2p.rst
    m2m.rst
-   xma_user_guide.rst
-
+   streaming_data_support.rst
 
 .. toctree::
    :maxdepth: 1
-   :caption: XRT API Library
+   :caption: Video Acceleration Using XMA
+
+   xma_user_guide.rst
+   xma_19.2.rst
+
+.. toctree::
+   :maxdepth: 1
+   :caption: User API Library
 
    xrt.main.rst
    ert.main.rst
@@ -44,13 +50,14 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
 
 
 .. toctree::
-   :caption: XRT developer's space
+   :caption: XRT Developer's Space
    :maxdepth: 1
 
    sysfs.rst
    formats.rst
    mgmt-ioctl.main.rst
    xocl_ioctl.main.rst
+   zocl_ioctl.main.rst
 
 
 .. toctree::
@@ -62,7 +69,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
 
 
 .. toctree::
-   :caption: Platform Building
+   :caption: Building Platforms
    :maxdepth: 1
 
    yocto.rst
@@ -91,3 +98,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    :maxdepth: 1
 
    debug-faq.rst
+
+----------------------------------------------------------------------------
+
+For any questions on XRT please email runtime@xilinx.com

@@ -394,7 +394,7 @@ xma_frame_remove_side_data(XmaFrame          *frame,
 
     sd = xma_frame_get_side_data(frame, in_sd->type);
     if (sd != side_data) {
-        xma_logmsg(XMA_INFO_LOG, XMA_BUFFER_MOD,
+        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD,
                    "%s() Frame %p has no side data buffer %p\n",
                    __func__, frame, side_data);
         return XMA_ERROR_INVALID;
@@ -416,7 +416,7 @@ xma_frame_remove_side_data_type(XmaFrame                  *frame,
         xma_side_data_dec_ref(sd);
         frame->side_data[sd_type] = NULL;
     } else {
-        xma_logmsg(XMA_INFO_LOG, XMA_BUFFER_MOD,
+        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD,
                    "%s() Frame %p has no side data of type %d\n",
                    __func__, frame, sd_type);
         return XMA_ERROR_INVALID;

@@ -1780,13 +1780,8 @@ static int __icap_peer_lock(struct platform_device *pdev,
 	memcpy(mb_req->data, &bitstream_lock, data_len);
 	err = xocl_peer_request(xdev,
 		mb_req, reqlen, &resp, &resplen, NULL, NULL, 0);
-	if (err) {
-		/* ignore error if aws */
-		if (xocl_is_aws(xdev))
-			err = 0;
-	} else {
+	if (!err)
 		err = resp;
-	}
 
 	vfree(mb_req);
 	return err;
@@ -2152,8 +2147,7 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 		xclbin->m_header.m_length / (2048 * 1024));
 	vfree(mb_req);
 
-	/* Ignore failure if it's an AWS device */
-	if (msgerr != 0 && !xocl_is_aws(xdev)) {
+	if (msgerr != 0) {
 		ICAP_ERR(icap, "peer xclbin download err: %d", msgerr);
 		return msgerr;
 	}
@@ -2456,12 +2450,13 @@ static int icap_lock_bitstream(struct platform_device *pdev, const xuid_t *id)
 	ICAP_INFO(icap, "bitstream %pUb locked, ref=%d", id,
 		icap->icap_bitstream_ref);
 
-	mutex_unlock(&icap->icap_lock);
-
 	if (ref == 0) {
 		/* reset on first reference */
-		xocl_exec_reset(xocl_get_xdev(pdev));
+		xocl_exec_reset(xocl_get_xdev(pdev), id);
 	}
+
+	mutex_unlock(&icap->icap_lock);
+
 	return 0;
 }
 
@@ -2953,12 +2948,11 @@ static ssize_t sec_level_store(struct device *dev,
 	mutex_lock(&icap->icap_lock);
 
 	if (ICAP_PRIVILEGED(icap)) {
-		if (icap->sec_level != ICAP_SEC_SYSTEM) {
+		if (!efi_enabled(EFI_SECURE_BOOT)) {
 			icap->sec_level = val;
 		} else {
-			ICAP_ERR(icap,
-				"can't lower security level from system level");
-			ret = -EINVAL;
+			ICAP_ERR(icap, "security level is fixed in scure boot");
+			ret = -EROFS;
 		}
 #ifdef	KEY_DEBUG
 		icap_key_test(icap);

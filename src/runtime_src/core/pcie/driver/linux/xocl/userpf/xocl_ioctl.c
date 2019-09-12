@@ -394,7 +394,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 			 * We have to clear uuid cached in scheduler here if
 			 * download xclbin failed
 			 */
-			(void) xocl_exec_reset(xdev);
+			(void) xocl_exec_reset(xdev, &uuid_null);
 			/*
 			 * Don't just bail out here, always recreate drm mem
 			 * since we have cleaned it up before download.

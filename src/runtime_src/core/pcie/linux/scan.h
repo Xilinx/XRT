@@ -86,22 +86,20 @@ public:
     int pcieBarRead(uint64_t offset, void *buf, uint64_t len);
     int pcieBarWrite(uint64_t offset, const void *buf, uint64_t len);
 
-    int ioctl(unsigned long cmd, void *arg = nullptr);
-    int poll(short events, int timeoutMilliSec);
-    void *mmap(size_t len, int prot, int flags, off_t offset);
-    int flock(int op);
-
-    void devfs_close(void);
-    int devfs_open(const std::string& subdev, int flag);
+    int open(const std::string& subdev, int flag);
+    void close(int devhdl);
+    int ioctl(int devhdl, unsigned long cmd, void *arg = nullptr);
+    int poll(int devhdl, short events, int timeoutMilliSec);
+    void *mmap(int devhdl, size_t len, int prot, int flags, off_t offset);
+    int flock(int devhdl, int op);
 
 private:
     std::fstream sysfs_open(const std::string& subdev,
         const std::string& entry, std::string& err,
         bool write = false, bool binary = false);
-    int devfs_open_and_map(void);
+    int map_usr_bar(void);
 
     std::mutex lock;
-    int dev_handle = -1;
     char *user_bar_map = reinterpret_cast<char *>(MAP_FAILED);
 };
 
