@@ -25,12 +25,12 @@
 #include <mb_interface.h>
 #include <xparameters.h>
 #else
+#include <stdio.h>
 #define xil_printf printf
 #define print printf
 #define u32 uint32_t
 #endif
 #include <stdlib.h>
-#include <stdio.h>
 #include <limits>
 
 #define ERT_UNUSED __attribute__((unused))
