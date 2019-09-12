@@ -422,6 +422,22 @@ static ssize_t ulp_uuids_show(struct device *dev,
 
 static DEVICE_ATTR_RO(ulp_uuids);
 
+static ssize_t mig_cache_update_store(struct device *dev,
+		struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	u32 enable;
+
+	if (kstrtou32(buf, 10, &enable) == -EINVAL || enable > 1)
+		return -EINVAL;
+
+	if (enable)
+		xocl_update_mig_cache(xdev);
+
+	return count;
+}
+static DEVICE_ATTR_WO(mig_cache_update);
+
 /* - End attributes-- */
 static struct attribute *xocl_attrs[] = {
 	&dev_attr_xclbinuuid.attr,
@@ -444,6 +460,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_interface_uuids.attr,
 	&dev_attr_logic_uuids.attr,
 	&dev_attr_ulp_uuids.attr,
+	&dev_attr_mig_cache_update.attr,
 	NULL,
 };
 
