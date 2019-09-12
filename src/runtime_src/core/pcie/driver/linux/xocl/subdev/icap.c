@@ -1505,7 +1505,8 @@ static int icap_post_download_rp(struct platform_device *pdev)
 	if (icap->rp_mgmt_bin) {
 		xocl_mb_load_mgmt_image(xdev, icap->rp_mgmt_bin,
 			icap->rp_mgmt_bin_len);
-		ICAP_INFO(icap, "stashed mb mgmt binary");
+		ICAP_INFO(icap, "stashed mb mgmt binary, len %ld",
+			icap->rp_mgmt_bin_len);
 		vfree(icap->rp_mgmt_bin);
 		icap->rp_mgmt_bin = NULL;
 		icap->rp_mgmt_bin_len = 0;
@@ -1515,7 +1516,8 @@ static int icap_post_download_rp(struct platform_device *pdev)
 	if (icap->rp_sche_bin) {
 		xocl_mb_load_sche_image(xdev, icap->rp_sche_bin,
 			icap->rp_sche_bin_len);
-		ICAP_INFO(icap, "stashed mb sche binary");
+		ICAP_INFO(icap, "stashed mb sche binary, len %ld",
+			icap->rp_sche_bin_len);
 		vfree(icap->rp_sche_bin);
 		icap->rp_sche_bin = NULL;
 		icap->rp_sche_bin_len =0;

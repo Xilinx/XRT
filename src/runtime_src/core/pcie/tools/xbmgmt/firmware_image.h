@@ -57,7 +57,7 @@ public:
 
     DSAInfo(const std::string& filename, uint64_t ts, const std::string& id, const std::string& bmc);
     DSAInfo(const std::string& filename);
-    DSAInfo(const std::string& filename, uint16_t vid, uint16_t did, uint16_t subsys_id, std::string& pr_family, std::string& pr_name, std::string& bld_ident);
+    DSAInfo(const std::string& filename, std::string& pr_board, std::string& pr_family, std::string& pr_name);
     ~DSAInfo();
 
     bool matchId(std::string& id);
