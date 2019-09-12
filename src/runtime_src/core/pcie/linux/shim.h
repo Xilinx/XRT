@@ -76,6 +76,8 @@ public:
     int xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size,
                   size_t dst_offset, size_t src_offset);
 
+    int xclUpdateSchedulerStat();
+
     int xclExportBO(unsigned int boHandle);
     unsigned int xclImportBO(int fd, unsigned flags);
     int xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties);
