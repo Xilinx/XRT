@@ -825,7 +825,13 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob)
 			goto failed;
 		}
 		blob = input_blob;
-		ret = xocl_fdt_add_pair(xdev_hdl, blob, PROP_PARTITION_INFO,
+		if (core->fdt_blob)
+			ret = xocl_fdt_add_pair(xdev_hdl, blob,
+				PROP_PARTITION_INFO_PLP,
+				(char *)fw->data, fw->size);
+		else
+			ret = xocl_fdt_add_pair(xdev_hdl, blob,
+				PROP_PARTITION_INFO_BLP,
 				(char *)fw->data, fw->size);
 		if (ret)
 			goto failed;

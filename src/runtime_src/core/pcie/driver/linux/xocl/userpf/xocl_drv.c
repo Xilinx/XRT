@@ -291,6 +291,7 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 	}
 
 	xocl_mb_connect(xdev);
+	(void) xocl_refresh_subdevs(xdev);
 
 failed:
 	return ret;
@@ -399,9 +400,6 @@ static void xocl_mb_connect(struct xocl_dev *xdev)
 
 	userpf_info(xdev, "ch_state 0x%llx, ret %d\n", resp->conn_flags, ret);
 
-	if (!ret)
-		xocl_queue_work(xdev, XOCL_WORK_REFRESH_SUBDEV, 1);
-
 done:
 	if (!kaddr)
 		kfree(kaddr);
@@ -481,6 +479,8 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 			/* Mgmt is online, try to probe peer */
 			userpf_info(xdev, "mgmt driver online\n");
 			(void) xocl_mb_connect(xdev);
+			xocl_queue_work(xdev, XOCL_WORK_REFRESH_SUBDEV, 1);
+
 		} else if (st->state_flags & MB_STATE_OFFLINE) {
 			/* Mgmt is offline, mark peer as not ready */
 			userpf_info(xdev, "mgmt driver offline\n");
@@ -1099,6 +1099,7 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	}
 	/* Say hi to peer via mailbox. */
 	(void) xocl_mb_connect(xdev);
+	xocl_queue_work(xdev, XOCL_WORK_REFRESH_SUBDEV, 1);
 
 
 	xdev->mig_cache_expire_secs = XDEV_DEFAULT_EXPIRE_SECS;

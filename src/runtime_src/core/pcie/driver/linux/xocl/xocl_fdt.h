@@ -25,7 +25,8 @@
 #define PROP_INTERRUPTS "interrupts"
 #define PROP_INTERFACE_UUID "interface_uuid"
 #define PROP_LOGIC_UUID "logic_uuid"
-#define PROP_PARTITION_INFO "partition_info"
+#define PROP_PARTITION_INFO_BLP "blp_info"
+#define PROP_PARTITION_INFO_PLP "plp_info"
 
 #define UUID_PROP_LEN 65 
 
