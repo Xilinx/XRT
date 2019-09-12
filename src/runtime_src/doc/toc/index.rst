@@ -84,6 +84,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
 
    mailbox.main.rst
    mailbox.proto.rst
+   cloud_vendor_support.rst
 
 
 .. toctree::
