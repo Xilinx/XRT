@@ -10,12 +10,12 @@ some common concerns need to be addressed.
 1. MGMT PF and USER PF of the FPGA are separated
  
    Cloud vendors own the MGMT PF, while users own the USER PF. Any operations by the user on USER PF 
-   should not demage or compromise the operationg of MGMT PF.
+   should not damage or compromise the operation of MGMT PF.
 
 2. xclbin files needs to be protected
 
-   Some of the xclbin files are provided by third-party ISVs -- they don't want to the users use their
-   xclbin files but not to access them. That is, the xclbin files in user VM or container are not the 
+   Some of the xclbin files are provided by third-party ISVs -- they don't want to the users access their
+   xclbin files, but use them indirectly. That is, the xclbin files in user VM or container are not the 
    real ones that are running on the cards. Instead, they are fake one with the BITSTREAM section stripped.
    xclbin download on the fake xclbin files in VM should result in the real one being programed without any
    user perceiving
@@ -59,7 +59,7 @@ and re-feed to xclmgmt, MSD/MPD have to interpret and understand the download xc
 interprets the mailbox message and calls into vendor specific plugin to download the xclbin.
 
 The input to the plugin is the xclbin file fed by the user in VM or container -- it may be a fake xclbin file. The
-plugin calls cloud vendor specific APIs to do the real download. It is the cloud vendor responsbility to,
+plugin calls cloud vendor specific APIs to do the real download. It is the cloud vendor responsibility to,
 
 1. Save the real xclbin files in a dedicated database
 2. Retrieve the real xclbin from fake one
@@ -87,14 +87,14 @@ Azure
 
 The plugin is built as shared object -- libazure_mpd_plugin.so, and when users install the azure pkg, the 'so' file
 will be installed at /opt/xilinx/xrt/lib, and a soft link file -- libmpd_plugin.so is created under the same folder
-linking to the plugin shared object. MPD tries to dlopen the shared object when it gets started.
+linking to the plugin shared object. MPD tries to dlopen(3) the shared object when it gets started.
 
-Auzre uses wireserver to provide RESTful APIs doing the xclbin download. A conf file -- /opt/xilinx/xrt/etc/mpd.conf
+Azure uses wireserver to provide RESTful APIs doing the xclbin download. A conf file -- /opt/xilinx/xrt/etc/mpd.conf
 is used to specify the IP address of the wireserver.
 
 Azure xclmgmt driver hard-codes mailbox channel switch so that only download xclbin opcode will go through MPD and plugin.
 
-Example how a ubuntu VM configurates the plugin
+Example how a ubuntu VM configures the plugin
 
 .. code-block:: bash
 
@@ -117,7 +117,7 @@ AWS
 
 The plugin is built as shared object -- libaws_mpd_plugin.so, and when users install the aws pkg, the 'so' file
 will be installed at /opt/xilinx/xrt/lib, and a soft link file -- libmpd_plugin.so is created under the same folder
-linking to the plugin shared object. MPD tries to dlopen the shared object when it gets started.
+linking to the plugin shared object. MPD tries to dlopen(3) the shared object when it gets started.
 
 AWS has its own FPGA cards which don't have HW mailbox, but AWS does use stock xocl driver. XRT handles this case by creating
 pseudo mailbox in xocl driver leveraging the MPD and plugin framework. All mailbox messages are going through pseudo
@@ -125,7 +125,7 @@ mailbox, MPD and the plugin. The plugin links to libfpga_mgmt.a provided by AWS,
 
 With this plugin, AWS can make use of standard XRT shim layer code.
 
-After xrt and aws pkgs are installed in F1, everything is good to go, no extra configs are required.
+After xrt and aws pkgs are installed in F1, everything is good to go, no extra configurations are required.
 
 Cloud vendors who have their own hardware(FPGA cards) can refer to this plugin to create their own.
 
@@ -135,7 +135,7 @@ Container
 
 The plugin is built as shared object -- libcontainer_mpd_plugin.so, and when users install the container pkg, the 'so' file
 will be installed at /opt/xilinx/xrt/lib, and a soft link file -- libmpd_plugin.so is created under the same folder
-linking to the plugin shared object. MPD tries to dlopen the shared object when it gets started.
+linking to the plugin shared object. MPD tries to dlopen(3) the shared object when it gets started.
 
 This plugin aims at containers running on top of baremetal machines. In this case, both MGMT PF and USER PF are in the same
 domain, so plugin can call ioctl on xclmgmt directly to program ICAP after it retrieves the real xclbin. This is the use case
@@ -150,7 +150,7 @@ This plugin can also be used for internal test on the MPD and mailbox.
 For containers running on top of VMs, essentially it is the same to the Azure case, where the MPD and plugin have been setup
 and running in VM.
 
-Example how a ubuntu host of containers configurates the plugin
+Example how a ubuntu host of containers configures the plugin
 
 .. code-block:: bash
 
