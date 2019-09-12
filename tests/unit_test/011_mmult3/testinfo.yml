@@ -21,3 +21,5 @@ user:
     name: mmult3.xclbin
   labels:
     test_type: ['regression']
+  sdx_type: [sdx_fast]
+
