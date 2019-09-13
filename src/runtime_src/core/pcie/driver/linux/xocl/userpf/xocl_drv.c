@@ -87,7 +87,7 @@ static void set_mig_cache_data(struct xocl_dev *xdev, struct xcl_mig_ecc *mig_ec
 			if (cur->mem_idx != memidx)
 				continue;
 
-			xocl_mig_set_data(xdev, i, &mig_ecc[idx], sizeof(struct xcl_mig_ecc));
+			xocl_mig_set_data(xdev, i, &mig_ecc[idx]);
 		}
 
 

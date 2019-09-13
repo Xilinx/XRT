@@ -426,13 +426,8 @@ static ssize_t mig_cache_update_store(struct device *dev,
 		struct device_attribute *da, const char *buf, size_t count)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	u32 enable;
 
-	if (kstrtou32(buf, 10, &enable) == -EINVAL || enable > 1)
-		return -EINVAL;
-
-	if (enable)
-		xocl_update_mig_cache(xdev);
+	xocl_update_mig_cache(xdev);
 
 	return count;
 }

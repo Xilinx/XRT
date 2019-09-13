@@ -929,7 +929,7 @@ struct xocl_mig_label {
 struct xocl_mig_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	void (*get_data)(struct platform_device *pdev, void *buf, size_t entry_sz);
-	void (*set_data)(struct platform_device *pdev, void *buf, size_t entry_sz);
+	void (*set_data)(struct platform_device *pdev, void *buf);
 	uint32_t (*get_id)(struct platform_device *pdev);
 };
 
@@ -942,9 +942,9 @@ struct xocl_mig_funcs {
 	(MIG_CB(xdev, idx) ?						\
 	MIG_OPS(xdev, idx)->get_data(MIG_DEV(xdev, idx), buf, entry_sz) : \
 	0)
-#define	xocl_mig_set_data(xdev, idx, buf, entry_sz)				\
+#define	xocl_mig_set_data(xdev, idx, buf)				\
 	(MIG_CB(xdev, idx) ?						\
-	MIG_OPS(xdev, idx)->set_data(MIG_DEV(xdev, idx), buf, entry_sz) : \
+	MIG_OPS(xdev, idx)->set_data(MIG_DEV(xdev, idx), buf) : \
 	0)
 #define	xocl_mig_get_id(xdev, idx)				\
 	(MIG_CB(xdev, idx) ?						\

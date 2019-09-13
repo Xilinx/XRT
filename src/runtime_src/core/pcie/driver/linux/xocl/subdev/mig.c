@@ -448,18 +448,17 @@ static void mig_get_data(struct platform_device *pdev, void *buf, size_t entry_s
 	memcpy(buf, &mig_ecc, entry_sz);
 }
 
-static void mig_set_data(struct platform_device *pdev, void *buf, size_t entry_sz)
+static void mig_set_data(struct platform_device *pdev, void *buf)
 {
 	struct xocl_mig *mig = platform_get_drvdata(pdev);
-	size_t min_sz = min_t(size_t, entry_sz, sizeof(struct xcl_mig_ecc));
 
-	if (!buf || !entry_sz)
+	if (!buf)
 		return;
 
 	if (MIG_PRIVILEGED(mig))
 		return;
 
-	memcpy(&mig->cache, buf, min_sz);
+	memcpy(&mig->cache, buf, sizeof(struct xcl_mig_ecc));
 
 }
 
@@ -474,7 +473,7 @@ static uint32_t mig_get_id(struct platform_device *pdev)
 
 static struct xocl_mig_funcs mig_ops = {
 	.get_data	= mig_get_data,
-	.set_data       = mig_set_data,
+	.set_data      = mig_set_data,
 	.get_id 	= mig_get_id,
 };
 
