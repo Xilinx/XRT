@@ -170,6 +170,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
                     subsystem_id = dsa.subsystem_id;
                     partition_family_name = dsa.partition_family_name;
                     partition_name = dsa.partition_name;
+		    file = dsa.file;
                     break;
                 }
             }

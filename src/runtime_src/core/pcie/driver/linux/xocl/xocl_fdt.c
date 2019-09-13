@@ -785,57 +785,12 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob)
 {
 	struct xocl_dev_core	*core = XDEV(xdev_hdl);
 	struct xocl_subdev	*subdevs;
-	char			*input_blob = NULL;
 	char			*output_blob = NULL;
-	const char		*logic_uuid;
-	char			fw_name[256];
-	const struct firmware	*fw = NULL;
 	int			len, i;
 	int			ret;
 
 	if (!blob)
 		return -EINVAL;
-
-	logic_uuid = fdt_getprop(blob, 0, PROP_LOGIC_UUID, NULL);
-	if (!logic_uuid) {
-		xocl_xdev_err(xdev_hdl, "failed to get logic uuid");
-		return -EINVAL;
-	}
-
-	snprintf(fw_name, sizeof(fw_name), "xilinx/%s/partition_info.txt",
-			logic_uuid);
-	xocl_xdev_info(xdev_hdl, "load partition info %s", fw_name);
-	request_firmware(&fw, fw_name, &core->pdev->dev);
-
-	if (fw) {
-		len = fdt_totalsize(blob) + fw->size + 50;
-		input_blob = vmalloc(len);
-		if (!input_blob)
-			return -ENOMEM;
-
-		ret = fdt_create_empty_tree(input_blob, len);
-		if (ret) {
-			xocl_xdev_err(xdev_hdl, "create input blob failed %d", ret);
-			goto failed;
-		}
-
-		ret = xocl_fdt_overlay(input_blob, 0, blob, 0, XOCL_FDT_ALL);
-		if (ret) {
-			xocl_xdev_err(xdev_hdl, "overlay input blob failed %d", ret);
-			goto failed;
-		}
-		blob = input_blob;
-		if (core->fdt_blob)
-			ret = xocl_fdt_add_pair(xdev_hdl, blob,
-				PROP_PARTITION_INFO_PLP,
-				(char *)fw->data, fw->size);
-		else
-			ret = xocl_fdt_add_pair(xdev_hdl, blob,
-				PROP_PARTITION_INFO_BLP,
-				(char *)fw->data, fw->size);
-		if (ret)
-			goto failed;
-	}
 
 	len = fdt_totalsize(blob) * 2;
 	if (core->fdt_blob)
@@ -861,12 +816,9 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob)
 
 	ret = xocl_fdt_overlay(output_blob, 0, blob, 0, XOCL_FDT_ALL);
 	if (ret) {
-		xocl_xdev_err(xdev_hdl, "Overlay input blob failed %d", ret);
+		xocl_xdev_err(xdev_hdl, "Overlay output blob failed %d", ret);
 		goto failed;
 	}
-
-	if (input_blob)
-		vfree(input_blob);
 
 	ret = xocl_fdt_parse_blob(xdev_hdl, output_blob, &subdevs);
 	if (ret < 0)
@@ -888,8 +840,6 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob)
 	return 0;
 
 failed:
-	if (input_blob)
-		vfree(input_blob);
 	if (output_blob)
 		vfree(output_blob);
 

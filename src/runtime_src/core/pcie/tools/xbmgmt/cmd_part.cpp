@@ -22,6 +22,7 @@
 #include <climits>
 #include <getopt.h>
 #include <unistd.h>
+#include <libgen.h>
 
 #include "flasher.h"
 #include "xbmgmt.h"
@@ -153,13 +154,17 @@ void scanPartitions(int index, std::vector<DSAInfo>& installedDSAs, bool verbose
     if (!errmsg.empty() || int_uuids.size() == 0)
         return;
 
-    DSAInfo dsa("", NULL_TIMESTAMP, uuids.back(), "");
-    if (dsa.name.empty())
+    DSAInfo d("", NULL_TIMESTAMP, uuids[0], "");
+    if (d.name.empty())
         return;
 
     std::cout << "Card [" << f.sGetDBDF() << "]" << std::endl;
-    std::cout << fmt_str << "Programmable partition running on FPGA:" << std::endl;
-    std::cout << fmt_str << fmt_str << dsa << std::endl;
+    std::cout << fmt_str << "Partitions running on FPGA:" << std::endl;
+    for (unsigned int i = 0; i < uuids.size(); i++)
+    {
+        DSAInfo d("", NULL_TIMESTAMP, uuids[i], "");
+        std::cout << fmt_str << fmt_str << d << std::endl;
+    }
 
 
     std::cout << fmt_str << "Programmable partitions installed in system:" << std::endl;
@@ -204,7 +209,7 @@ int scan(int argc, char *argv[])
 	return 0;
     }
 
-    bool verbose;
+    bool verbose = false;
     const option opts[] = {
         { "verbose", no_argument, nullptr, '0' },
     };
