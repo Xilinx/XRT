@@ -450,6 +450,7 @@ public:
         int j = 0; // stream index
         int m = 0; // mem index
 
+        dev->sysfs_put( "", "mig_cache_update", errmsg, "1");
         for(int i = 0; i < map->m_count; i++) {
             if (map->m_mem_data[i].m_type == MEM_STREAMING || map->m_mem_data[i].m_type == MEM_STREAMING_CONNECTION) {
                 std::string lname, status = "Inactive", total = "N/A", pending = "N/A";
