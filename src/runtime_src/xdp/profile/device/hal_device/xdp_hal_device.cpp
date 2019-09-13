@@ -16,7 +16,7 @@
 
 
 #include "xdp_hal_device.h"
-#include "xrt/util/time.h"
+#include "core/common/t_time.h"
 #include "core/common/xrt_profiling.h"
 #include "core/include/experimental/xrt-next.h"
 
@@ -69,7 +69,7 @@ double HalDevice::getDeviceClock()
 
 uint64_t HalDevice::getTraceTime()
 {
-  return xrt::time_ns();
+  return xrt_core::time_ns();
 }
 
 int HalDevice::getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
