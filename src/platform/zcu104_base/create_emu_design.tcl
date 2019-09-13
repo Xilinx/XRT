@@ -103,7 +103,7 @@ set_property dsa.synth_constraint_files        [list "${sourcesDir}/constraints/
 # Construct reconfigurable BD and partition
 create_bd_design pfm_dynamic
 source ${sourcesDir}/misc/dynamic_prelink.tcl
-source ${sourcesDir}/emulation_sources/scripts/dynamic.tcl
+source ${sourcesDir}/bd/dynamic.tcl
 source ${sourcesDir}/misc/gen_hpfm_cmd_file.tcl
 source ${sourcesDir}/emulation_sources/dynamic_bd_settings.tcl
 
