@@ -38,6 +38,7 @@ public:
   virtual int unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset) = 0;
 
   virtual double getDeviceClock() = 0;
+  virtual uint64_t getTraceTime() = 0;
 
   virtual int getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz) = 0;
   virtual int readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample) = 0;
