@@ -33,6 +33,8 @@
 #define FORMATTED_FW_DIR    "/opt/xilinx/firmware"
 #define hex_digit "[0-9a-fA-F]+"
 
+const size_t m2mBoSize = 256L * 1024 * 1024;
+
 int bdf2index(std::string& bdfStr, unsigned& index)
 {
     // Extract bdf from bdfStr.
@@ -1826,35 +1828,33 @@ static int m2mtest_bank(xclDeviceHandle handle, int bank_a, int bank_b)
     char *boTgtPtr = nullptr;
     int ret = 0;
 
-    const size_t boSize = 256L * 1024 * 1024;
-
     //Allocate and init boSrc
-    if(m2m_alloc_init_bo(handle, boSrc, boSrcPtr, boSize, bank_a, 'A'))
+    if(m2m_alloc_init_bo(handle, boSrc, boSrcPtr, m2mBoSize, bank_a, 'A'))
         return -EINVAL;
 
     //Allocate and init boTgt
-    if(m2m_alloc_init_bo(handle, boTgt, boTgtPtr, boSize, bank_b, 'B')) {
-        m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
+    if(m2m_alloc_init_bo(handle, boTgt, boTgtPtr, m2mBoSize, bank_b, 'B')) {
+        m2m_free_unmap_bo(handle, boSrc, boSrcPtr, m2mBoSize);
         return -EINVAL;
     }
 
     xcldev::Timer timer;
-    if ((ret = xclCopyBO(handle, boTgt, boSrc, boSize, 0, 0)))
+    if ((ret = xclCopyBO(handle, boTgt, boSrc, m2mBoSize, 0, 0)))
         return ret;
     double timer_stop = timer.stop();
 
-    if(xclSyncBO(handle, boTgt, XCL_BO_SYNC_BO_FROM_DEVICE, boSize, 0)) {
-        m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
-        m2m_free_unmap_bo(handle, boTgt, boTgtPtr, boSize);
+    if(xclSyncBO(handle, boTgt, XCL_BO_SYNC_BO_FROM_DEVICE, m2mBoSize, 0)) {
+        m2m_free_unmap_bo(handle, boSrc, boSrcPtr, m2mBoSize);
+        m2m_free_unmap_bo(handle, boTgt, boTgtPtr, m2mBoSize);
         std::cout << "ERROR: Unable to sync target BO" << std::endl;
         return -EINVAL;
     }
 
-    bool match = (memcmp(boSrcPtr, boTgtPtr, boSize) == 0);
+    bool match = (memcmp(boSrcPtr, boTgtPtr, m2mBoSize) == 0);
 
     // Clean up
-    m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
-    m2m_free_unmap_bo(handle, boTgt, boTgtPtr, boSize);
+    m2m_free_unmap_bo(handle, boSrc, boSrcPtr, m2mBoSize);
+    m2m_free_unmap_bo(handle, boTgt, boTgtPtr, m2mBoSize);
 
     if (!match) {
         std::cout << "Memory comparison failed" << std::endl;
@@ -1862,7 +1862,7 @@ static int m2mtest_bank(xclDeviceHandle handle, int bank_a, int bank_b)
     }
 
     //bandwidth
-    double total = boSize;
+    double total = m2mBoSize;
     total *= 1000000; // convert us to s
     total /= (1024 * 1024); //convert to MB
     std::cout << total / timer_stop << " MB/s\t\n";
@@ -1900,7 +1900,8 @@ int xcldev::device::testM2m()
     }
 
     for(int32_t i = 0; i < map->m_count; i++) {
-        if(map->m_mem_data[i].m_used)
+        if(map->m_mem_data[i].m_used &&
+            map->m_mem_data[i].m_size * 1024 >= m2mBoSize)
             usedBanks.insert(usedBanks.end(), map->m_mem_data[i]);
     }
 
