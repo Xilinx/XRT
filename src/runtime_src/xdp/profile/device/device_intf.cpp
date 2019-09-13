@@ -309,8 +309,10 @@ DeviceIntf::~DeviceIntf()
     if (fifoCtrl)
       fifoCtrl->reset();
 
-    if (traceFunnel)
+    if (traceFunnel) {
+      traceFunnel->reset();
       traceFunnel->initiateClockTraining();
+    }
 
     return size;
   }

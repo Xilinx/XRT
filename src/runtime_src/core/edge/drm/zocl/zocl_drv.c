@@ -195,11 +195,11 @@ void zocl_free_bo(struct drm_gem_object *obj)
 	if (IS_ERR(obj) || !obj)
 		return;
 
+	DRM_DEBUG("Freeing BO\n");
 	zocl_obj = to_zocl_bo(obj);
 	zdev = obj->dev->dev_private;
 
 	if (!zdev->domain) {
-		DRM_INFO("Freeing BO\n");
 		zocl_describe(zocl_obj);
 		if (zocl_obj->flags & ZOCL_BO_FLAGS_USERPTR)
 			zocl_free_userptr_bo(obj);
@@ -555,7 +555,7 @@ static struct drm_driver zocl_driver = {
 	.gem_create_object         = zocl_gem_create_object,
 	.prime_handle_to_fd        = drm_gem_prime_handle_to_fd,
 	.prime_fd_to_handle        = drm_gem_prime_fd_to_handle,
-	.gem_prime_import          = drm_gem_prime_import,
+	.gem_prime_import          = zocl_gem_import,
 	.gem_prime_export          = drm_gem_prime_export,
 	.gem_prime_get_sg_table    = drm_gem_cma_prime_get_sg_table,
 	.gem_prime_import_sg_table = drm_gem_cma_prime_import_sg_table,
