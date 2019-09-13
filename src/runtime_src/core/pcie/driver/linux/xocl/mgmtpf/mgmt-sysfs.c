@@ -320,7 +320,7 @@ static ssize_t logic_uuids_show(struct device *dev,
         struct device_attribute *attr, char *buf)
 {
         struct xclmgmt_dev *lro = dev_get_drvdata(dev);
-	const void *uuid = NULL;
+	const void *uuid = NULL, *blp_uuid = NULL;
 	int node = -1, off = 0;
 
 	if (!lro->core.fdt_blob && xocl_get_timestamp(lro) == 0)
@@ -330,13 +330,15 @@ static ssize_t logic_uuids_show(struct device *dev,
 		return -EINVAL;
 
 	node = xocl_fdt_get_next_prop_by_name(lro, lro->bld_blob,
-		-1, PROP_LOGIC_UUID, &uuid, NULL);
-	if (uuid && node >= 0)
-		off += sprintf(buf + off, "%s\n", (char *)uuid);
+		-1, PROP_LOGIC_UUID, &blp_uuid, NULL);
+	if (blp_uuid && node >= 0)
+		off += sprintf(buf + off, "%s\n", (char *)blp_uuid);
+	else
+		return -EINVAL;
 
 	node = xocl_fdt_get_next_prop_by_name(lro, lro->core.fdt_blob,
 		-1, PROP_LOGIC_UUID, &uuid, NULL);
-	if (uuid && node >= 0)
+	if (uuid && node >= 0 && strcmp(uuid, blp_uuid))
 		off += sprintf(buf + off, "%s\n", (char *)uuid);
 
 	return off;
