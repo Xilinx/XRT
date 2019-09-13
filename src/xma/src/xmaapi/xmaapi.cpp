@@ -167,6 +167,43 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
         g_xma_singleton->locked = false;
         return XMA_ERROR;
     }
+
+    int32_t xrtlib = xma_core::utils::load_libxrt();
+    switch(xrtlib) {
+        case XMA_ERROR:
+          std::cout << "XMA FATAL: Unable to load XRT library" << std::endl;
+
+          //Release singleton lock
+          g_xma_singleton->locked = false;
+          return XMA_ERROR;
+          break;
+        case 1:
+          xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Loaded xrt_core libary\n");
+          break;
+        case 2:
+          xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Loaded xrt_aws libary\n");
+          break;
+        case 3:
+          xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Loaded user supplied xrt_hwem libary\n");
+          break;
+        case 4:
+          xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Loaded user supplied xrt_swem libary\n");
+          break;
+        case 5:
+          xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Loaded installed xrt_hwem libary\n");
+          break;
+        case 6:
+          xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Loaded installed xrt_swem libary\n");
+          break;
+        default:
+          std::cout << "XMA FATAL: Unexpected error. Unable to load XRT library" << std::endl;
+
+          //Release singleton lock
+          g_xma_singleton->locked = false;
+          return XMA_ERROR;
+          break;
+    }
+
     //g_xma_singleton->encoders.reserve(32);
     //g_xma_singleton->encoders.emplace_back(XmaEncoderPlugin{});
     g_xma_singleton->hwcfg.devices.reserve(MAX_XILINX_DEVICES);

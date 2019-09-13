@@ -46,6 +46,8 @@
 #define REBAR_FIRST_CAP		4
 
 #define MAX_DYN_SUBDEV		1024
+#define XDEV_DEFAULT_EXPIRE_SECS	1
+
 static const struct pci_device_id pciidlist[] = {
 	XOCL_USER_XDMA_PCI_IDS,
 	{ 0, }
@@ -58,6 +60,91 @@ MODULE_DEVICE_TABLE(pci, pciidlist);
 static void xocl_mb_connect(struct xocl_dev *xdev);
 static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	u64 msgid, int err, bool sw_ch);
+
+static void set_mig_cache_data(struct xocl_dev *xdev, struct xcl_mig_ecc *mig_ecc)
+{
+	int i, idx;
+	uint32_t id;
+	struct xcl_mig_ecc *cur;
+	enum MEM_TYPE mem_type;
+	uint64_t memidx;
+
+
+	xocl_lock_xdev(xdev);
+	for (i = 0; i < MAX_M_COUNT; ++i) {
+		id = xocl_mig_get_id(xdev, i);
+		if (!id)
+			continue;
+
+		mem_type = (id >> 16) & 0xFF;
+		memidx = id & 0xFF;
+
+		for (idx = 0; idx < MAX_M_COUNT; ++idx) {
+			cur = &mig_ecc[idx];
+
+			if (cur->mem_type != mem_type)
+				continue;
+			if (cur->mem_idx != memidx)
+				continue;
+
+			xocl_mig_set_data(xdev, i, &mig_ecc[idx]);
+		}
+
+
+	}
+	xocl_unlock_xdev(xdev);
+
+	xdev->mig_cache_expires = ktime_add(ktime_get_boottime(),
+		ktime_set(xdev->mig_cache_expire_secs, 0));
+
+}
+
+static void xocl_mig_cache_read_from_peer(struct xocl_dev *xdev)
+{
+	struct mailbox_subdev_peer subdev_peer = {0};
+	struct xcl_mig_ecc *mig_ecc = NULL;
+	size_t resp_len = sizeof(struct xcl_mig_ecc)*MAX_M_COUNT;
+	size_t data_len = sizeof(struct mailbox_subdev_peer);
+	struct mailbox_req *mb_req = NULL;
+	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+	int ret = 0;
+
+	mb_req = vmalloc(reqlen);
+	if (!mb_req)
+		return;
+
+	mig_ecc = vzalloc(resp_len);
+	if (!mig_ecc)
+		return;
+
+	mb_req->req = MAILBOX_REQ_PEER_DATA;
+	subdev_peer.size = sizeof(struct xcl_mig_ecc);
+	subdev_peer.kind = MIG_ECC;
+	subdev_peer.entries = MAX_M_COUNT;
+
+	memcpy(mb_req->data, &subdev_peer, data_len);
+
+	ret = xocl_peer_request(xdev,
+		mb_req, reqlen, mig_ecc, &resp_len, NULL, NULL, 0);
+
+	if (!ret)
+		set_mig_cache_data(xdev, mig_ecc);
+
+	vfree(mig_ecc);
+	vfree(mb_req);
+}
+
+void xocl_update_mig_cache(struct xocl_dev *xdev)
+{
+	ktime_t now = ktime_get_boottime();
+
+	mutex_lock(&xdev->dev_lock);
+
+	if (ktime_compare(now, xdev->mig_cache_expires) > 0)
+		xocl_mig_cache_read_from_peer(xdev);
+
+	mutex_unlock(&xdev->dev_lock);
+}
 
 static void xocl_mb_read_p2p_addr(struct xocl_dev *xdev)
 {
@@ -1012,6 +1099,9 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	}
 	/* Say hi to peer via mailbox. */
 	(void) xocl_mb_connect(xdev);
+
+
+	xdev->mig_cache_expire_secs = XDEV_DEFAULT_EXPIRE_SECS;
 
 	return 0;
 

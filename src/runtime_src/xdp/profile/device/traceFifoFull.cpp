@@ -270,10 +270,15 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
     xclTraceResults results = {};
     uint64_t previousTimestamp = 0;
     for (uint32_t i = 0; i < numSamples; i++) {
-      uint32_t index = wordsPerSample * i;
 
-      uint32_t* dataUInt32Ptr = (uint32_t*)data;
-      uint64_t currentSample = *(dataUInt32Ptr + index) | (uint64_t)*(dataUInt32Ptr + index + 1) << 32;
+      // Old method has issues with emulation trace
+      //uint32_t index = wordsPerSample * i;
+      //uint32_t* dataUInt32Ptr = (uint32_t*)data;
+      //uint64_t currentSample = *(dataUInt32Ptr + index) | (uint64_t)*(dataUInt32Ptr + index + 1) << 32;
+
+      // Works with HW and HW Emu
+      uint64_t* dataUInt64Ptr = (uint64_t*)data;
+      uint64_t currentSample = dataUInt64Ptr[i];
 
       if (!currentSample)
         continue;

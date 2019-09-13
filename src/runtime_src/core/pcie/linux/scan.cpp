@@ -152,6 +152,13 @@ void pcidev::pci_device::sysfs_put(
     if (!err_msg.empty())
         return;
     fs << input;
+    fs.flush();
+    if (!fs.good()) {
+        std::stringstream ss;
+        ss << "Failed to write " << get_sysfs_path(subdev, entry) << ": "
+            << strerror(errno) << std::endl;
+        err_msg = ss.str();
+    }
 }
 
 void pcidev::pci_device::sysfs_put(
@@ -163,6 +170,13 @@ void pcidev::pci_device::sysfs_put(
         return;
 
     fs.write(buf.data(), buf.size());
+    fs.flush();
+    if (!fs.good()) {
+        std::stringstream ss;
+        ss << "Failed to write " << get_sysfs_path(subdev, entry) << ": "
+            << strerror(errno) << std::endl;
+        err_msg = ss.str();
+    }
 }
 
 void pcidev::pci_device::sysfs_get(

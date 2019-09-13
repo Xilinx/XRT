@@ -21,12 +21,178 @@
 #include "lib/xmaapi.h"
 #include "core/common/config_reader.h"
 #include "ert.h"
+#include <dlfcn.h>
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/path.hpp>
+#include <iostream>
 
 #define XMAUTILS_MOD "xmautils"
 
 extern XmaSingleton *g_xma_singleton;
 
+namespace bfs = boost::filesystem;
+
 namespace xma_core { namespace utils {
+
+static const char*
+emptyOrValue(const char* cstr)
+{
+  return cstr ? cstr : "";
+}
+
+int32_t
+directoryOrError(const bfs::path& path)
+{
+  if (!bfs::is_directory(path))
+      return XMA_ERROR;
+
+   return XMA_SUCCESS;
+}
+
+static boost::filesystem::path&
+dllExt()
+{
+  static boost::filesystem::path sDllExt(".so");
+  return sDllExt;
+}
+
+inline bool
+isDLL(const bfs::path& path)
+{
+  return (bfs::exists(path)
+          && bfs::is_regular_file(path)
+          && path.extension()==dllExt());
+}
+
+static bool
+isEmulationMode()
+{
+  static bool val = (std::getenv("XCL_EMULATION_MODE") != nullptr);
+  return val;
+}
+
+int32_t
+load_libxrt()
+{
+   dlerror();    /* Clear any existing error */
+
+   // xrt
+   bfs::path xrt(emptyOrValue(std::getenv("XILINX_XRT")));
+   if (xrt.empty()) {
+      std::cout << "XMA INFO: XILINX_XRT env variable not set. Trying default /opt/xilinx/xrt" << std::endl;
+      xrt = bfs::path("/opt/xilinx/xrt");
+   }
+   if (directoryOrError(xrt) != XMA_SUCCESS) {
+      std::cout << "XMA FATAL: XILINX_XRT env variable is not a directory: " << xrt.string() << std::endl;
+      return XMA_ERROR;
+   }
+
+   if (!isEmulationMode()) {
+      bfs::path p1(xrt / "lib/libxrt_core.so");
+      if (isDLL(p1)) {
+         void* xrthandle = dlopen(p1.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
+         if (!xrthandle)
+         {
+            std::cout << "XMA FATAL: Failed to load XRT library: " << p1.string() << std::endl;
+            std::cout << "XMA FATAL: DLL open error: " << std::string(dlerror()) << std::endl;
+            return XMA_ERROR;
+         }
+
+         return 1;
+      }
+
+      bfs::path p2(xrt / "lib/libxrt_aws.so");
+      if (isDLL(p2)) {
+         void* xrthandle = dlopen(p2.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
+         if (!xrthandle)
+         {
+            std::cout << "XMA FATAL: Failed to load XRT library: " << p2.string() << std::endl;
+            std::cout << "XMA FATAL: DLL open error: " << std::string(dlerror()) << std::endl;
+            return XMA_ERROR;
+         }
+
+         return 2;
+      }
+
+      std::cout << "XMA FATAL: Failed to load XRT library" << std::endl;
+      return XMA_ERROR;
+   } else {
+      auto hw_em_driver = xrt_core::config::get_hw_em_driver();
+
+      if (hw_em_driver != "null") {
+          if (isDLL(hw_em_driver)) {
+             void* xrthandle = dlopen(hw_em_driver.c_str(), RTLD_NOW | RTLD_GLOBAL);
+             if (!xrthandle)
+             {
+                std::cout << "XMA FATAL: Failed to load XRT HWEM library: " << hw_em_driver << std::endl;
+                std::cout << "XMA FATAL: DLL open error: " << std::string(dlerror()) << std::endl;
+                return XMA_ERROR;
+             }
+
+             return 3;
+          }
+          std::cout << "XMA FATAL: Failed to load XRT HWEM library: " << hw_em_driver << std::endl;
+          return XMA_ERROR;
+      }
+
+
+      auto sw_em_driver = xrt_core::config::get_sw_em_driver();
+      if (sw_em_driver != "null") {
+          if (isDLL(sw_em_driver)) {
+             void* xrthandle = dlopen(sw_em_driver.c_str(), RTLD_NOW | RTLD_GLOBAL);
+             if (!xrthandle)
+             {
+                std::cout << "XMA FATAL: Failed to load XRT SWEM library: " << sw_em_driver << std::endl;
+                std::cout << "XMA FATAL: DLL open error: " << std::string(dlerror()) << std::endl;
+                return XMA_ERROR;
+             }
+
+             return 4;
+          }
+          std::cout << "XMA FATAL: Failed to load XRT SWEM library: " << sw_em_driver << std::endl;
+          return XMA_ERROR;
+      }
+
+      bfs::path p1(xrt / "lib/libxrt_hwemu.so");
+      hw_em_driver = p1.string();
+
+      if (isDLL(hw_em_driver)) {
+          void* xrthandle = dlopen(hw_em_driver.c_str(), RTLD_NOW | RTLD_GLOBAL);
+          if (!xrthandle)
+          {
+             std::cout << "XMA FATAL: Failed to load XRT HWEM library: " << hw_em_driver << std::endl;
+             std::cout << "XMA FATAL: DLL open error: " << std::string(dlerror()) << std::endl;
+             return XMA_ERROR;
+          }
+
+          return 5;
+      }
+
+      bfs::path p2(xrt / "lib/libxrt_swemu.so");
+      sw_em_driver = p2.string();
+
+      if (isDLL(sw_em_driver)) {
+          void* xrthandle = dlopen(sw_em_driver.c_str(), RTLD_NOW | RTLD_GLOBAL);
+          if (!xrthandle)
+          {
+             std::cout << "XMA FATAL: Failed to load XRT SWEM library: " << sw_em_driver << std::endl;
+             std::cout << "XMA FATAL: DLL open error: " << std::string(dlerror()) << std::endl;
+             return XMA_ERROR;
+          }
+
+          return 6;
+      }
+
+      std::cout << "XMA FATAL: Failed to load XRT emulation library" << std::endl;
+      return XMA_ERROR;
+   }
+
+}
+
+
+
+
+
 
 void get_session_cmd_load() {
    static auto verbosity = xrt_core::config::get_verbosity();

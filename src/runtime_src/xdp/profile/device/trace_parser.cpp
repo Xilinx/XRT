@@ -100,7 +100,7 @@ namespace xdp {
 
     // Hardware Emulation Trace
     bool isHwEmu = (mPluginHandle->getFlowMode() == xdp::RTUtil::HW_EM);
-    if (isHwEmu) {
+    if (isHwEmu && mPluginHandle->getSystemDPAEmulation() == false) {
       logTraceHWEmu(deviceName, traceVector, resultVector);
       return;
     }
@@ -143,8 +143,9 @@ namespace xdp {
         continue;
       }
 
-      if (trace.Overflow == 1)
-        timestamp += LOOP_ADD_TIME_AIM;
+      // Overflow is taken care of in trace reader
+      //if (trace.Overflow == 1)
+      //  timestamp += LOOP_ADD_TIME_AIM;
 
       uint32_t s = 0;
       bool SAMPacket = (trace.TraceID >= MIN_TRACE_ID_AM && trace.TraceID <= MAX_TRACE_ID_AM);

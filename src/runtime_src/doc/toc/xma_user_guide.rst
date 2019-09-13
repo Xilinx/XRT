@@ -2,24 +2,33 @@
 Xilinx Media Accelerator (XMA)
 ===========================================
 Major XMA Changes in this 2019.2 Release:
-YAML configuration file is not used by XMA
-Resource management is not handled by XMA. (See XRM for resource management details)
-MPSoC PL & soft kernels are supported in XMA
-Direct register read & write is not available
-DataFlow kernels are supported (In-Progress)
-ZeroCopy support has changed. See below for details
-BufferObject added. See below for details
-XmaFrame & XmaDataBuffer can use device buffers instead of host only memory
-Support for device_only buffers
-Session creation & destroy APIs are thread safe now
-Multi-process support is from XRT
-Register map must be locked (xma_plg_kernel_lock_regmap) by plugin for register_prep_write & schedule_work_item  to work without error. Unlock the register map if other plugins share same CU
-Supports up to 128 CUs per device (in-progress; Testcase needed)
-CU register map size < 4KB
-By default XMA will automatically select default ddr bank for new device buffers (as per selected CU). Session_create may provide user selected default ddr bank input when XMA will use user select default ddr bank for plugin with that session
-For using ddr bank other than default session ddr_bank use APIs xma_plg_buffer_alloc_arg_num(). See below for info
-XMA now support multiple ddr bank per plugin. See below for info on xma_plg_buffer_alloc_arg_num()
-XMA version check API added to plugin struct. See below for details
+    YAML configuration file is not used by XMA
+    Resource management is not handled by XMA
+        So channel_id for multi-channel kernels must be handled in host video application (like ffmpeg)
+        channel_id is input to XMA in session_create API as part of the properties argument
+        See XRM for resource management details
+    MPSoC PL & soft kernels are supported in XMA
+    Direct register read & write is not available
+    DataFlow kernels are supported (In-Progress)
+    ZeroCopy support has changed. See below for details
+    BufferObject added. See below for details
+    XmaFrame & XmaDataBuffer can use device buffers instead of host only memory
+    Support for device_only buffers
+    Session creation & destroy APIs are thread safe now
+    Multi-process support is from XRT
+    schedule_work_item  API changed to return CUCmdObj
+    New API xma_plg_schedule_cu_cmd & xma_plg_cu_cmd_status can be used instead of schedule_work_item
+        In a session if using xma_plg_cu_cmd_status then do NOT use xma_plg_is_work_item_done in same session
+    Supports up to 128 CUs per device (in-progress; Testcase needed)
+    CU register map size < 4KB
+    By default XMA will automatically select default ddr bank for new device buffers (as per selected CU). Session_create may provide user selected default ddr bank input when XMA will use user select default ddr bank for plugin with that session
+    For using ddr bank other than default session ddr_bank use APIs xma_plg_buffer_alloc_arg_num(). See below for info
+    XMA now support multiple ddr bank per plugin. See below for info on xma_plg_buffer_alloc_arg_num()
+    XMA version check API added to plugin struct. See below for details
+    New session type XMA_ADMIN for non-video applications to control multiple CUs in single session. See below for details
+    get_session_cmd_load(): Get CU command load of various sessions relative to each other. Printed to log file
+        CU command load of all session is automatically sent to log file at end of the application
+        This gives info on which sessions (or CUs) are more busy compared to other sessions (or CUs)
 
 Introduction
 ---------------
@@ -98,7 +107,7 @@ send frame or send data, receive frame or receive data, close and xma_version.
 BufferObject contains:
 uint8_t* data : Pointer to host buffer space of allocated buffer
 uint64_t size: Size of allocated buffer
-uint64_t paddr: FPGA DDR Addr of allocated buffer. Use this to pass DDR addr to CUs as part of regmap with xma_plg_register_prep_write API
+uint64_t paddr: FPGA DDR Addr of allocated buffer. Use this to pass DDR addr to CUs as part of regmap with xma_plg_schedule_cu_cmd or xma_plg_schedule_work_item API
 int32_t  bank_index: DDR bank index
 int32_t  dev_index: FPGA device index on which the buffer is allocated
 bool     device_only_buffer: If it is device only buffer.
@@ -240,22 +249,20 @@ Execution model
 -----------------
 The APIs are: 
   
-  * xma_plg_kernel_lock_regmap
-  * xma_plg_register_prep_write
+  * xma_plg_schedule_cu_cmd
   * xma_plg_schedule_work_item
-  * xma_plg_kernel_unlock_regmap
   * xma_plg_is_work_item_done
+  * xma_plg_cu_cmd_status
 
 Lets consider the various purposes where the above APIs would be useful. 
 
-**xma_plg_register_prep_write** should be used to set kernel input arguments which will be used to start the kernel later. 
+**xma_plg_schedule_cu_cmd / xma_plg_schedule_work_item** 
+should be used to start the kernel with supplied kernel arguments 
 
-**xma_plg_schedule_work_item** 
-should be used to start the kernel with kernel arguments set earlier with xma_plg_register_prep_write API
+**xma_plg_is_work_item_done** should be used to check if kernel has completed atleast one work item (previously submitted by xma_plg_schedule_cu_cmd / xma_plg_schedule_work_item).
 
-**xma_plg_is_work_item_done** should be used to check if kernel has completed atleast one work item (previously submitted by xma_plg_schedule_work_item).
+**xma_plg_cu_cmd_status** should be used to check status of kernel commands supplied as list of commands in argument (previously submitted by xma_plg_schedule_cu_cmd / xma_plg_schedule_work_item).
 
-Register map must be locked (xma_plg_kernel_lock_regmap) by plugin for register_prep_write & schedule_work_item  to work without error. Unlock the register map if other plugins share same CU.
 
 
 
@@ -457,7 +464,7 @@ contains the data to be processed and programmed appropriately.
 The XMA Plugin library call xma_plg_buffer_write() can be used to copy
 host data to device data.
 
-xma_plg_register_prep_write() and xma_plg_schedule_work_item() can be used to program
+xma_plg_schedule_cu_cmd() or xma_plg_schedule_work_item() can be used to program
 the kernel registers and start kernel processing.
 
 Sending Output to the Application
