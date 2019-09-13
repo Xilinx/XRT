@@ -527,12 +527,95 @@ public:
         return result;
     }
 
+    int memread(std::string aFilename, unsigned long long aStartAddr = 0, unsigned long long aSize = 0) {
+        char *buf;
+        int fd;
+        char temp[32] = "====START of DDR Data=========\n";
+        std::ios_base::fmtflags f(std::cout.flags());
+        if (strstr(m_devinfo.mName, "-xare")) {
+          if (aStartAddr > m_devinfo.mDDRSize) {
+            std::cout << "Start address " << std::hex << aStartAddr <<
+                         " is over ARE" << std::endl;
+          }
+          if (aSize > m_devinfo.mDDRSize || aStartAddr+aSize > m_devinfo.mDDRSize) {
+            std::cout << "Read size " << std::dec << aSize << " from address 0x" << std::hex << aStartAddr <<
+                         " is over ARE" << std::endl;
+          }
+        }
+        std::cout.flags(f);
+        std::ofstream outFile(aFilename, std::ofstream::out | std::ofstream::binary);
+        outFile.write(temp, sizeof(temp));
+
+        fd = open("/dev/mem", O_RDWR);
+        if(fd < 0) {
+          std::cout << "ERROR: Failed to open /dev/mem" << std::endl;
+          outFile.close();
+          return -EINVAL;
+        }
+        buf = (char*)mmap(0, aSize, PROT_READ, MAP_SHARED, fd, aStartAddr);
+        if(buf == MAP_FAILED) {
+          std::cout << "ERROR: Read Mapping failed for offset:" << std::hex << aStartAddr << std::dec << " size:" << aSize << std::endl;
+          close(fd);
+          outFile.close();
+          return -EINVAL;
+        }
+        outFile.write(buf,aSize);
+        if ((outFile.rdstate() & std::ifstream::failbit) != 0) {
+          std::cout << "Error writing to file at offset " << aSize << "\n";
+          munmap(buf,aSize);
+          close(fd);
+          outFile.close();
+          return -1;
+        }
+        strncpy(temp, "\n=====END of DDR Data=========\n", sizeof(temp));
+        outFile.write(temp, sizeof(temp));
+        outFile.close();
+        munmap(buf,aSize);
+        close(fd);
+        std::cout << "INFO: Read data saved in file: " << aFilename << "; Num of bytes: " << std::dec << aSize << " bytes " << std::endl;
+        return 0;
+    }
+
+    int memwrite(unsigned long long aStartAddr, unsigned long long aSize, unsigned int aPattern = 'J') {
+        char *buf;
+        int fd;
+        std::ios_base::fmtflags f(std::cout.flags());
+        if (strstr(m_devinfo.mName, "-xare")) {
+            if (aStartAddr > m_devinfo.mDDRSize) {
+                std::cout << "Start address " << std::hex << aStartAddr <<
+                             " is over ARE" << std::endl;
+            }
+            if (aSize > m_devinfo.mDDRSize || aStartAddr+aSize > m_devinfo.mDDRSize) {
+                std::cout << "Write size " << std::dec << aSize << " from address 0x" << std::hex << aStartAddr <<
+                             " is over ARE" << std::endl;
+            }
+        }
+        std::cout.flags(f);
+        std::cout << "INFO: Writing with " << std::dec << aSize << " bytes of pattern: 0x"
+         << std::hex << aPattern << " from address 0x" <<std::hex << aStartAddr << std::dec << std::endl;
+
+        fd = open("/dev/mem", O_RDWR);
+        if(fd < 0) {
+          std::cout << "ERROR: Failed to open /dev/mem" << std::endl;
+          return -EINVAL;
+        }
+        buf = (char*)mmap(0, aSize, PROT_WRITE, MAP_SHARED, fd, aStartAddr);
+        if(buf == MAP_FAILED) {
+          std::cout << "ERROR: Write Mapping failed for offset:" << std::hex << aStartAddr << std::dec << " size:" << aSize << std::endl;
+          close(fd);
+          return -EINVAL;
+        }
+
+        std::memset(buf, aPattern, aSize);
+        munmap(buf,aSize);
+        close(fd);
+        return 0;
+    }
+
     int boot() { std::cout << "Unsupported API " << std::endl; return -1; }
     int fan(unsigned speed) { std::cout << "Unsupported API " << std::endl; return -1; }
     int run(unsigned region, unsigned cu) { std::cout << "Unsupported API " << std::endl; return -1; }
     int dmatest(size_t blockSize, bool verbose) { std::cout << "Unsupported API " << std::endl; return -1; }
-    int memread(std::string aFilename, unsigned long long aStartAddr = 0, unsigned long long aSize = 0) { std::cout << "Unsupported API " << std::endl; return -1; }
-    int memwrite(unsigned long long aStartAddr, unsigned long long aSize, unsigned int aPattern = 'J') { std::cout << "Unsupported API " << std::endl; return -1; }
     //int do_dd(dd::ddArgs_t args ) { std::cout << "Unsupported API " << std::endl; return -1; }
     int validate(bool quick) { std::cout << "Unsupported API " << std::endl; return -1; }
     int reset(xclResetKind kind) { std::cout << "Unsupported API " << std::endl; return -1; }
