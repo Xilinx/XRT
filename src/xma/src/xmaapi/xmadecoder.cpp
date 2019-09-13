@@ -209,7 +209,7 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
                     "Using user supplied default ddr_bank. XMA session default ddr_bank: %d\n", dec_session->base.hw_session.bank_index);
             } else {
                 xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
-                    "User supplied default ddr_bank is invalid. Valid ddr_bank mapping for this CU: %s\n", tmp_bset.to_string());
+                    "User supplied default ddr_bank is invalid. Valid ddr_bank mapping for this CU: %s\n", tmp_bset.to_string().c_str());
                 
                 //Release singleton lock
                 g_xma_singleton->locked = false;
