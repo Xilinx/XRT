@@ -1046,6 +1046,7 @@ cu_continue(struct xocl_cu *xcu)
 static inline u32
 cu_status(struct xocl_cu *xcu)
 {
+	SCHED_PRINTF("%s cu(%d) @0x%x base(%p) addr(%p)\n", __func__, xcu->idx, xcu->addr,xcu->base,xcu->base + xcu->addr);
 	SCHED_DEBUGF("%s cu(%d) @0x%x\n", __func__, xcu->idx, xcu->addr);
 	return ioread32(xcu->base + xcu->addr);
 }
