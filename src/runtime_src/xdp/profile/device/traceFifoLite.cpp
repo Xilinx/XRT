@@ -21,33 +21,8 @@
 #define AXI_FIFO_SRR                    0x28
 #define AXI_FIFO_RDFR                   0x18
 
-#define MAX_TRACE_NUMBER_SAMPLES                        16384
-
-#define XPAR_AXI_PERF_MON_0_TRACE_NUMBER_FIFO           3
-#define XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH            64
-#define XPAR_AXI_PERF_MON_0_TRACE_NUMBER_SAMPLES        8192
-
-
-#define XPAR_AXI_PERF_MON_1_TRACE_NUMBER_FIFO           0
-#define XPAR_AXI_PERF_MON_1_TRACE_WORD_WIDTH            0
-#define XPAR_AXI_PERF_MON_1_TRACE_NUMBER_SAMPLES        0
-
-#define XPAR_AXI_PERF_MON_2_TRACE_WORD_WIDTH            64
-#define XPAR_AXI_PERF_MON_2_TRACE_NUMBER_SAMPLES        8192
-
-#define XPAR_AXI_PERF_MON_2_TRACE_OFFSET_0              0x01000
-#define XPAR_AXI_PERF_MON_2_TRACE_OFFSET_1              0x02000
-#define XPAR_AXI_PERF_MON_2_TRACE_OFFSET_2              0x03000
-
-
-
-
 
 namespace xdp {
-
-// FIFO CTRL
-
-
 
 TraceFifoLite::TraceFifoLite(Device* handle /** < [in] the xrt or hal device handle */,
                 int index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data)
@@ -90,19 +65,6 @@ size_t TraceFifoLite::reset()
     size += write(AXI_FIFO_RDFR /*fifo address*/, 4, &regValue);
 
     return size;
-}
-
-uint32_t TraceFifoLite::getMaxNumTraceSamples()
-{
-    return XPAR_AXI_PERF_MON_0_TRACE_NUMBER_SAMPLES;
-    
-#if 0
- if (type == XCL_PERF_MON_MEMORY) return XPAR_AXI_PERF_MON_0_TRACE_NUMBER_SAMPLES;
- if (type == XCL_PERF_MON_HOST) return XPAR_AXI_PERF_MON_1_TRACE_NUMBER_SAMPLES;
- // TODO: get number of samples from metadata
- if (type == XCL_PERF_MON_ACCEL) return XPAR_AXI_PERF_MON_2_TRACE_NUMBER_SAMPLES;
-
-#endif
 }
 
 void TraceFifoLite::showProperties()

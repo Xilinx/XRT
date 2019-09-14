@@ -519,11 +519,13 @@ static void xclmgmt_mig_get_data(struct xclmgmt_dev *lro, void *mig_ecc, size_t 
 	int i;
 	size_t offset = 0;
 
+	xocl_lock_xdev(lro);
 	for (i = 0; i < MAX_M_COUNT; i++) {
 
 		xocl_mig_get_data(lro, i, mig_ecc+offset, entry_sz);
 		offset += entry_sz;
 	}
+	xocl_unlock_xdev(lro);
 }
 
 static void xclmgmt_subdev_get_data(struct xclmgmt_dev *lro, size_t offset,
@@ -595,7 +597,7 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 		(void) xclmgmt_mig_get_data(lro, *resp, subdev_req->size);
 		break;
 	case FIREWALL:
-		current_sz = sizeof(struct xcl_mig_ecc);
+		current_sz = sizeof(struct xcl_firewall);
 		*resp = vzalloc(current_sz);
 		(void) xocl_af_get_data(lro, *resp);
 		break;

@@ -2450,12 +2450,13 @@ static int icap_lock_bitstream(struct platform_device *pdev, const xuid_t *id)
 	ICAP_INFO(icap, "bitstream %pUb locked, ref=%d", id,
 		icap->icap_bitstream_ref);
 
-	mutex_unlock(&icap->icap_lock);
-
 	if (ref == 0) {
 		/* reset on first reference */
-		xocl_exec_reset(xocl_get_xdev(pdev));
+		xocl_exec_reset(xocl_get_xdev(pdev), id);
 	}
+
+	mutex_unlock(&icap->icap_lock);
+
 	return 0;
 }
 
@@ -2947,12 +2948,12 @@ static ssize_t sec_level_store(struct device *dev,
 	mutex_lock(&icap->icap_lock);
 
 	if (ICAP_PRIVILEGED(icap)) {
-		if (icap->sec_level != ICAP_SEC_SYSTEM) {
+		if (!efi_enabled(EFI_SECURE_BOOT)) {
 			icap->sec_level = val;
 		} else {
 			ICAP_ERR(icap,
-				"can't lower security level from system level");
-			ret = -EINVAL;
+				"security level is fixed in secure boot");
+			ret = -EROFS;
 		}
 #ifdef	KEY_DEBUG
 		icap_key_test(icap);

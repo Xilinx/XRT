@@ -5,6 +5,7 @@ set(DOC_TOC_DIR            "${CMAKE_CURRENT_BINARY_DIR}/toc")
 
 file(GLOB XRT_MGMT_IOCTL_H ${XRT_RUNTIME_SRC_DIR}/core/pcie/driver/linux/include/mgmt-ioctl.h)
 file(GLOB XRT_XOCL_IOCTL_H ${XRT_RUNTIME_SRC_DIR}/core/pcie/driver/linux/include/xocl_ioctl.h)
+file(GLOB XRT_ZOCL_IOCTL_H ${XRT_RUNTIME_SRC_DIR}/core/edge/include/zynq_ioctl.h)
 file(GLOB XRT_XRT_H        ${XRT_RUNTIME_SRC_DIR}/core/include/xrt.h)
 file(GLOB XRT_ERT_H        ${XRT_RUNTIME_SRC_DIR}/core/include/ert.h)
 file(GLOB XRT_XMA_H        ${XRT_RUNTIME_SRC_DIR}/../xma/include/xma.h)
@@ -39,6 +40,12 @@ else ()
   add_custom_command(OUTPUT core/xocl_ioctl.rst
     COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_XOCL_IOCTL_H} > core/xocl_ioctl.rst
     DEPENDS ${XRT_XOCL_IOCTL_H}
+    VERBATIM
+    )
+  
+  add_custom_command(OUTPUT core/zocl_ioctl.rst
+    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_ZOCL_IOCTL_H} > core/zocl_ioctl.rst
+    DEPENDS ${XRT_ZOCL_IOCTL_H}
     VERBATIM
     )
 
@@ -80,7 +87,7 @@ else ()
 
   add_custom_target(
     xrt_docs ALL
-    DEPENDS core/mgmt-ioctl.rst core/xocl_ioctl.rst core/xrt.rst core/ert.rst core/xma.rst core/xmaplugin.rst core/mailbox_proto.rst core/mailbox.rst
+    DEPENDS core/mgmt-ioctl.rst core/xocl_ioctl.rst core/zocl_ioctl.rst core/xrt.rst core/ert.rst core/xma.rst core/xmaplugin.rst core/mailbox_proto.rst core/mailbox.rst
     COMMENT "Generating documentation with Sphinx"
     COMMAND ${CMAKE_COMMAND} -E make_directory  html
     COMMAND rm -rf ${DOC_TOC_DIR}/*

@@ -251,7 +251,9 @@ int download_xclbin(const pcieFunc& dev, char *xclbin)
         return -EINVAL;
 
     xclmgmt_ioc_bitstream_axlf obj = {reinterpret_cast<axlf *>(newxclbin)};
-    ret = dev.getDev()->ioctl(XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
+    int fd = dev.getDev()->open("", O_RDWR);
+    ret = dev.getDev()->ioctl(fd, XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
+    dev.getDev()->close(fd);
 
     if (done)
         (*done)(done_arg, newxclbin, newlen);

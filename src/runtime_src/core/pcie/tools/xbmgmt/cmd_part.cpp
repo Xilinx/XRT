@@ -47,7 +47,7 @@ int program_prp(unsigned index, const std::string& xclbin, bool force)
     }
 
     auto dev = pcidev::get_dev(index, false);
-    int fd = dev->devfs_open("icap", O_WRONLY);
+    int fd = dev->open("icap", O_WRONLY);
 
     if (fd == -1) {
         std::cout << "ERROR: Cannot open icap for writing." << std::endl;
@@ -77,10 +77,10 @@ int program_prp(unsigned index, const std::string& xclbin, bool force)
 
     if (ret <= 0) {
         std::cout << "ERROR: Write prp to icap subdev failed." << std::endl;
-        close(fd);
+        dev->close(fd);
         return -errno;
     }
-    close(fd);
+    dev->close(fd);
 
     if (force)
     {
@@ -127,7 +127,9 @@ int program_urp(unsigned index, const std::string& xclbin)
     stream.read(buffer, length);
     xclmgmt_ioc_bitstream_axlf obj = { reinterpret_cast<axlf *>(buffer) };
     auto dev = pcidev::get_dev(index, false);
-    int ret = dev->ioctl(XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
+    int fd = dev->open("", O_RDWR);
+    int ret = dev->ioctl(fd, XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
+    dev->close(fd);
     delete [] buffer;
 
     return ret ? -errno : ret;

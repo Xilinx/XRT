@@ -61,6 +61,7 @@ public:
     {}
 
     size_t initiateClockTraining();
+    void reset();
 
     virtual void showProperties();
     virtual uint32_t getProperties() { return properties; }

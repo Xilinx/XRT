@@ -153,7 +153,7 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define xocl_sysfs_error(xdev, fmt, args...)     \
 		snprintf(((struct xocl_dev_core *)xdev)->ebuf, XOCL_EBUF_LEN,	\
 		fmt, ##args)
-#define MAX_M_COUNT      64
+#define MAX_M_COUNT      	XOCL_SUBDEV_MAX_INST
 #define XOCL_MAX_FDT_LEN		1024 * 512
 
 #define	XDEV2DEV(xdev)		(&XDEV(xdev)->pdev->dev)
@@ -524,7 +524,7 @@ struct xocl_mb_scheduler_funcs {
 	int (*client_ioctl)(struct platform_device *pdev, int op,
 		void *data, void *drm_filp);
 	int (*stop)(struct platform_device *pdev);
-	int (*reset)(struct platform_device *pdev);
+	int (*reset)(struct platform_device *pdev, const xuid_t *xclbin_id);
 	int (*reconfig)(struct platform_device *pdev);
 	int (*cu_map_addr)(struct platform_device *pdev, u32 cu_index,
 		void *drm_filp, u32 *addrp);
@@ -556,9 +556,9 @@ struct xocl_mb_scheduler_funcs {
 	(SCHE_CB(xdev, stop) ?				\
 	 MB_SCHEDULER_OPS(xdev)->stop(MB_SCHEDULER_DEV(xdev)) : \
 	-ENODEV)
-#define	xocl_exec_reset(xdev)		\
+#define	xocl_exec_reset(xdev, xclbin_id)		\
 	(SCHE_CB(xdev, reset) ?				\
-	 MB_SCHEDULER_OPS(xdev)->reset(MB_SCHEDULER_DEV(xdev)) : \
+	 MB_SCHEDULER_OPS(xdev)->reset(MB_SCHEDULER_DEV(xdev), xclbin_id) : \
 	-ENODEV)
 #define	xocl_exec_reconfig(xdev)		\
 	(SCHE_CB(xdev, reconfig) ?				\
@@ -929,8 +929,9 @@ struct xocl_mig_label {
 struct xocl_mig_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	void (*get_data)(struct platform_device *pdev, void *buf, size_t entry_sz);
+	void (*set_data)(struct platform_device *pdev, void *buf);
+	uint32_t (*get_id)(struct platform_device *pdev);
 };
-
 
 #define	MIG_DEV(xdev, idx)	SUBDEV_MULTI(xdev, XOCL_SUBDEV_MIG, idx).pldev
 #define	MIG_OPS(xdev, idx)							\
@@ -941,6 +942,15 @@ struct xocl_mig_funcs {
 	(MIG_CB(xdev, idx) ?						\
 	MIG_OPS(xdev, idx)->get_data(MIG_DEV(xdev, idx), buf, entry_sz) : \
 	0)
+#define	xocl_mig_set_data(xdev, idx, buf)				\
+	(MIG_CB(xdev, idx) ?						\
+	MIG_OPS(xdev, idx)->set_data(MIG_DEV(xdev, idx), buf) : \
+	0)
+#define	xocl_mig_get_id(xdev, idx)				\
+	(MIG_CB(xdev, idx) ?						\
+	MIG_OPS(xdev, idx)->get_id(MIG_DEV(xdev, idx)) : \
+	0)
+
 
 struct xocl_iores_funcs {
 	struct xocl_subdev_funcs common_funcs;

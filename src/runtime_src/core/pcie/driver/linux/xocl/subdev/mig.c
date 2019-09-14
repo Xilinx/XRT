@@ -102,118 +102,11 @@ struct xocl_mig {
 	void __iomem		*base;
 	struct device		*mig_dev;
 	enum ecc_type		type;
-	uint32_t		idx;
 	struct xcl_mig_ecc	cache;
 	struct xocl_mig_label	mig_label;
-	struct list_head	list;
-
 };
 
-LIST_HEAD(mig_list);
-DEFINE_MUTEX(mig_mutex);
-uint64_t mig_cache_expire_secs;
-ktime_t mig_cache_expires;
-struct xcl_mig_ecc mig_cache[MAX_M_COUNT];
-
 #define MIG_DEV2XDEV(d)	xocl_get_xdev(to_platform_device(d))
-
-static inline void mig_list_add(struct xocl_mig *mig)
-{
-	mutex_lock(&mig_mutex);
-
-	if (list_empty(&mig_list))
-		mig->idx = 0;
-	else {
-		struct xocl_mig *last;
-
-		last = list_last_entry(&mig_list, struct xocl_mig, list);
-		mig->idx = last->idx + 1;
-	}
-	memset(&mig_cache[mig->idx], 0, sizeof(struct xcl_mig_ecc));
-	list_add_tail(&mig->list, &mig_list);
-	mutex_unlock(&mig_mutex);
-}
-
-static inline void mig_list_remove(struct xocl_mig *mig)
-{
-	mutex_lock(&mig_mutex);
-	memset(&mig_cache[mig->idx], 0, sizeof(struct xcl_mig_ecc));
-	list_del(&mig->list);
-	mutex_unlock(&mig_mutex);
-}
-
-
-static void set_mig_cache_data(struct xcl_mig_ecc *src)
-{
-	mutex_lock(&mig_mutex);
-	memcpy(mig_cache, src, sizeof(struct xcl_mig_ecc)*MAX_M_COUNT);
-	mig_cache_expires = ktime_add(ktime_get_boottime(),
-		ktime_set(mig_cache_expire_secs, 0));
-	mutex_unlock(&mig_mutex);
-}
-
-static void mig_cache_read_from_peer(struct platform_device *pdev)
-{
-	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct mailbox_subdev_peer subdev_peer = {0};
-	struct xcl_mig_ecc *mig_ecc = NULL;
-	size_t resp_len = sizeof(struct xcl_mig_ecc)*MAX_M_COUNT;
-	size_t data_len = sizeof(struct mailbox_subdev_peer);
-	struct mailbox_req *mb_req = NULL;
-	size_t reqlen = sizeof(struct mailbox_req) + data_len;
-
-	mb_req = vmalloc(reqlen);
-	if (!mb_req)
-		return;
-
-	mig_ecc = vzalloc(resp_len);
-	if (!mig_ecc)
-		return;
-
-	mb_req->req = MAILBOX_REQ_PEER_DATA;
-	subdev_peer.size = sizeof(struct xcl_mig_ecc);
-	subdev_peer.kind = MIG_ECC;
-	subdev_peer.entries = MAX_M_COUNT;
-
-	memcpy(mb_req->data, &subdev_peer, data_len);
-
-	(void) xocl_peer_request(xdev,
-		mb_req, reqlen, mig_ecc, &resp_len, NULL, NULL, 0);
-	set_mig_cache_data(mig_ecc);
-
-	vfree(mig_ecc);
-	vfree(mb_req);
-}
-
-static int mig_cache_get_data(struct platform_device *pdev, void *buf)
-{
-	struct xcl_mig_ecc *mig_ecc = (struct xcl_mig_ecc *)buf;
-	struct xocl_mig *mig = platform_get_drvdata(pdev);
-	ktime_t now = ktime_get_boottime();
-	struct xcl_mig_ecc *cur = NULL;
-	enum MEM_TYPE mem_type = mig_ecc->mem_type;
-	uint64_t memidx = mig_ecc->mem_idx;
-	int ret = -ENODATA;
-
-	if (ktime_compare(now, mig_cache_expires) > 0)
-		mig_cache_read_from_peer(pdev);
-
-	cur = &mig_cache[mig->idx];
-
-	if (!cur)
-		goto done;
-
-	if (cur->mem_type != mem_type)
-		goto done;
-	if (cur->mem_idx != memidx)
-		goto done;
-
-	memcpy(mig_ecc, cur, sizeof(struct xcl_mig_ecc));
-	ret = 0;
-done:
-	return ret;
-}
-
 
 static void ecc_reset(struct xocl_mig *mig)
 {
@@ -237,20 +130,6 @@ static void ecc_reset(struct xocl_mig *mig)
 		xocl_dr_reg_write32(xdev, 0x0, &h_regs->err_clr);
 	}
 }
-
-static void get_mig_ecc_data(struct platform_device *pdev)
-{
-	struct xocl_mig *mig  = platform_get_drvdata(pdev);
-	struct xcl_mig_ecc mig_ecc = {0};
-
-	mig_ecc.mem_type = mig->mig_label.mem_type;
-	mig_ecc.mem_idx = mig->mig_label.mem_idx;
-
-	mig_cache_get_data(pdev, &mig_ecc);
-	memcpy(&mig->cache, &mig_ecc, sizeof(struct xcl_mig_ecc));
-
-}
-
 
 static void mig_ecc_get_prop(struct device *dev, enum ecc_prop kind, void *buf)
 {
@@ -317,8 +196,6 @@ static void mig_ecc_get_prop(struct device *dev, enum ecc_prop kind, void *buf)
 			break;
 		}
 	} else {
-
-		get_mig_ecc_data(to_platform_device(dev));
 
 		switch (kind) {
 		case MIG_ECC_ENABLE:
@@ -571,8 +448,33 @@ static void mig_get_data(struct platform_device *pdev, void *buf, size_t entry_s
 	memcpy(buf, &mig_ecc, entry_sz);
 }
 
+static void mig_set_data(struct platform_device *pdev, void *buf)
+{
+	struct xocl_mig *mig = platform_get_drvdata(pdev);
+
+	if (!buf)
+		return;
+
+	if (MIG_PRIVILEGED(mig))
+		return;
+
+	memcpy(&mig->cache, buf, sizeof(struct xcl_mig_ecc));
+
+}
+
+static uint32_t mig_get_id(struct platform_device *pdev)
+{
+	struct xocl_mig *mig = platform_get_drvdata(pdev);
+	uint32_t id = (mig->mig_label.mem_type << 16) + mig->mig_label.mem_idx;
+
+	return id;
+}
+
+
 static struct xocl_mig_funcs mig_ops = {
 	.get_data	= mig_get_data,
+	.set_data      = mig_set_data,
+	.get_id 	= mig_get_id,
 };
 
 static const struct attribute_group mig_attrgroup = {
@@ -613,9 +515,6 @@ static int mig_probe(struct platform_device *pdev)
 	mig = devm_kzalloc(&pdev->dev, sizeof(*mig), GFP_KERNEL);
 	if (!mig)
 		return -ENOMEM;
-
-	INIT_LIST_HEAD(&mig->list);
-	mig_list_add(mig);
 
 	mig->mig_dev = &pdev->dev;
 
@@ -674,7 +573,6 @@ static int mig_probe(struct platform_device *pdev)
 		return err;
 	}
 	ecc_reset(mig);
-	mig_cache_expire_secs = MIG_DEFAULT_EXPIRE_SECS;
 	return 0;
 }
 
@@ -693,7 +591,6 @@ static int mig_remove(struct platform_device *pdev)
 		iounmap(mig->base);
 	platform_set_drvdata(pdev, NULL);
 
-	mig_list_remove(mig);
 	devm_kfree(&pdev->dev, mig);
 
 	return 0;

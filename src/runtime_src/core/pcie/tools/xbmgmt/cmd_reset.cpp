@@ -130,15 +130,17 @@ int resetHandler(int argc, char *argv[])
 
     int ret = 0;
     auto dev = pcidev::get_dev(index, false);
+    int fd = dev->open("", O_RDWR);
     if (hot) {
-        ret = dev->ioctl(XCLMGMT_IOCHOTRESET);
+        ret = dev->ioctl(fd, XCLMGMT_IOCHOTRESET);
 	ret = ret ? -errno : ret;
     } else if (kernel) {
-        ret = dev->ioctl(XCLMGMT_IOCOCLRESET);
+        ret = dev->ioctl(fd, XCLMGMT_IOCOCLRESET);
 	ret = ret ? -errno : ret;
     } else if (ecc) {
         ret = resetEcc(dev);
     }
+    dev->close(fd);
 
     return ret;
 }

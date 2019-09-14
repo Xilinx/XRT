@@ -22,8 +22,6 @@
 #include <fstream>
 #include <vector>
 #include <iomanip>
-#include <fcntl.h>
-#include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <cstring>
 #include <unistd.h>
