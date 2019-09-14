@@ -173,9 +173,6 @@ namespace xclhwemhal2 {
 	  if(xclemulation::config::getInstance()->isSystemDPAEnabled() == false) {
 		  return;
 	  }
-	  if(mPerfMonFifoCtrlBaseAddress == 0 || mPerfMonFifoReadBaseAddress == 0) {//If live support not available
-		  return;
-	  }
 	  std::string info_msgs("");
 	  std::string warning_msgs("");
 	  std::string error_msgs("");
