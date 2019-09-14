@@ -37,5 +37,4 @@ pkg_postinst_ontarget_${PN}() {
 	echo "libxilinxopencl.so" > /etc/OpenCL/vendors/xilinx.icd
 	chmod -R 755 /etc/OpenCL
   fi
-
 }
