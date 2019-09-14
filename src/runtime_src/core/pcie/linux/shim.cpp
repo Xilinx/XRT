@@ -1927,8 +1927,9 @@ int xclCreateProfileResults(xclDeviceHandle handle, ProfileResults** results)
   if(!drv)
     return -ENODEV;
 
-  CREATE_PROFILE_RESULTS_CB(handle, results);
-  return 0;
+  int status = 0;
+  CREATE_PROFILE_RESULTS_CB(handle, results, status);
+  return status;
 }
 
 int xclGetProfileResults(xclDeviceHandle handle, ProfileResults* results) 
@@ -1937,8 +1938,9 @@ int xclGetProfileResults(xclDeviceHandle handle, ProfileResults* results)
   if(!drv)
     return -ENODEV;
 
-  GET_PROFILE_RESULTS_CB(handle, results);
-  return 0;
+  int status = 0;
+  GET_PROFILE_RESULTS_CB(handle, results, status);
+  return status;
 }
 
 int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results) 
@@ -1947,8 +1949,9 @@ int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results)
   if(!drv)
     return -ENODEV;
 
-  DESTROY_PROFILE_RESULTS_CB(handle, results);
-  return 0;
+  int status = 0;
+  DESTROY_PROFILE_RESULTS_CB(handle, results, status);
+  return status;
 }
 
 int xclCuName2Index(xclDeviceHandle handle, const char *name, uint32_t *indexp)
