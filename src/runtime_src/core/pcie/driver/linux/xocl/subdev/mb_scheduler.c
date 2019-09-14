@@ -1046,8 +1046,8 @@ cu_continue(struct xocl_cu *xcu)
 static inline u32
 cu_status(struct xocl_cu *xcu)
 {
-	SCHED_PRINTF("%s cu(%d) @0x%x base(%p) addr(%p)\n", __func__, xcu->idx, xcu->addr,xcu->base,xcu->base + xcu->addr);
-	SCHED_DEBUGF("%s cu(%d) @0x%x\n", __func__, xcu->idx, xcu->addr);
+	SCHED_DEBUGF("%s(%p) cu(%d) @0x%x\n", __func__, xcu->base + xcu->addr,
+		     xcu->idx, xcu->addr);
 	return ioread32(xcu->base + xcu->addr);
 }
 
@@ -1994,10 +1994,15 @@ static void
 exec_update_custatus(struct exec_core *exec)
 {
 	unsigned int cuidx;
-	for (cuidx = 0; cuidx < exec->num_cus; ++cuidx) {
+	// ignore kdma which on least at u200_2018_30_1 is not BAR mapped
+	for (cuidx = 0; cuidx < exec->num_cus - exec->num_cdma; ++cuidx) {
 		struct xocl_cu *xcu = exec->cus[cuidx];
 		exec->cu_status[cuidx] = cu_status(xcu);
 	}
+	// reset cdma status
+	for (; cuidx < exec->num_cus; ++cuidx)
+		exec->cu_status[cuidx] = 0;
+	
 }
 
 /*
