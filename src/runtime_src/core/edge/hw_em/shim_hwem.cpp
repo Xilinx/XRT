@@ -209,9 +209,8 @@ int ZYNQShim::xclLoadXclBin(const xclBin *header) {
 
   drm_zocl_axlf axlf_obj = {
     .za_xclbin_ptr = const_cast<axlf *>(header),
-    .za_flags = xrt_core::config::get_pdi_load() ?
-        DRM_ZOCL_AXLF_FLAGS_PDI_LOAD :
-        DRM_ZOCL_AXLF_FLAGS_NONE,
+    .za_flags = DRM_ZOCL_AXLF_BITSTREAM | DRM_ZOCL_AXLF_BITSTREAM_PDI |
+      DRM_ZOCL_AXLF_AIE_PDI,
   };
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_READ_AXLF, &axlf_obj);
