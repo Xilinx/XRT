@@ -35,7 +35,7 @@
 
 const size_t m2mBoSize = 256L * 1024 * 1024;
 
-int bdf2index(std::string& bdfStr, unsigned& index)
+static int bdf2index(std::string& bdfStr, unsigned& index)
 {
     // Extract bdf from bdfStr.
     int dom = 0, b, d, f;
@@ -64,7 +64,7 @@ int bdf2index(std::string& bdfStr, unsigned& index)
     return -ENOENT;
 }
 
-int str2index(const char *arg, unsigned& index)
+static int str2index(const char *arg, unsigned& index)
 {
     std::string devStr(arg);
 
@@ -90,7 +90,7 @@ int str2index(const char *arg, unsigned& index)
 }
 
 
-void print_pci_info(std::ostream &ostr)
+static void print_pci_info(std::ostream &ostr)
 {
     ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
     if (pcidev::get_dev_total() == 0) {
@@ -115,7 +115,7 @@ void print_pci_info(std::ostream &ostr)
     }
 }
 
-int xrt_xbutil_version_cmp()
+static int xrt_xbutil_version_cmp() 
 {
     /*check xbutil tools and xrt versions*/
     std::string xrt = sensor_tree::get<std::string>( "runtime.build.version", "N/A" ) + ","
