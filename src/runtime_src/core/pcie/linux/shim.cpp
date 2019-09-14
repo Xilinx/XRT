@@ -1927,7 +1927,7 @@ int xclCreateProfileResults(xclDeviceHandle handle, ProfileResults** results)
   if(!drv)
     return -ENODEV;
 
-  int status = 0;
+  int status = -1;
   CREATE_PROFILE_RESULTS_CB(handle, results, status);
   return status;
 }
@@ -1938,7 +1938,7 @@ int xclGetProfileResults(xclDeviceHandle handle, ProfileResults* results)
   if(!drv)
     return -ENODEV;
 
-  int status = 0;
+  int status = -1;
   GET_PROFILE_RESULTS_CB(handle, results, status);
   return status;
 }
@@ -1949,7 +1949,7 @@ int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results)
   if(!drv)
     return -ENODEV;
 
-  int status = 0;
+  int status = -1;
   DESTROY_PROFILE_RESULTS_CB(handle, results, status);
   return status;
 }
