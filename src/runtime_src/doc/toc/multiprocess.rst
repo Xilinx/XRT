@@ -62,4 +62,3 @@ The diagram shows timeline view with all 7 processes running concurrently.
 
 .. graphviz:: multi.dot
 	:caption: Multi-process interaction diagram
-	:align: center
