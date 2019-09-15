@@ -32,6 +32,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    p2p.rst
    m2m.rst
    streaming_data_support.rst
+   xrt_ini.rst
 
 .. toctree::
    :maxdepth: 1
@@ -84,6 +85,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
 
    mailbox.main.rst
    mailbox.proto.rst
+   cloud_vendor_support.rst
 
 
 .. toctree::

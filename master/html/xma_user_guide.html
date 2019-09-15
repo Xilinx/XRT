@@ -33,11 +33,11 @@
   
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+  <link rel="stylesheet" href="_static/theme_overrides.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="XMA 19.2 Migration" href="xma_19.2.html" />
-    <link rel="prev" title="XRT Streaming Platform Support" href="streaming_data_support.html" /> 
+    <link rel="prev" title="xrt.ini Configuration File" href="xrt_ini.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -100,6 +100,7 @@
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">xrt.ini Configuration File</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
 <ul class="current">
@@ -158,6 +159,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
 <ul>
@@ -232,10 +234,15 @@
             
   <div class="section" id="xilinx-media-accelerator-xma">
 <h1>Xilinx Media Accelerator (XMA)<a class="headerlink" href="#xilinx-media-accelerator-xma" title="Permalink to this headline">¶</a></h1>
-<p>Major XMA Changes in this 2019.2 Release:
-YAML configuration file is not used by XMA
-Resource management is not handled by XMA. (See XRM for resource management details)
-MPSoC PL &amp; soft kernels are supported in XMA
+<dl class="docutils">
+<dt>Major XMA Changes in this 2019.2 Release:</dt>
+<dd><p class="first">YAML configuration file is not used by XMA
+Resource management is not handled by XMA</p>
+<blockquote>
+<div>So channel_id for multi-channel kernels must be handled in host video application (like ffmpeg)
+channel_id is input to XMA in session_create API as part of the properties argument
+See XRM for resource management details</div></blockquote>
+<p>MPSoC PL &amp; soft kernels are supported in XMA
 Direct register read &amp; write is not available
 DataFlow kernels are supported (In-Progress)
 ZeroCopy support has changed. See below for details
@@ -244,13 +251,23 @@ XmaFrame &amp; XmaDataBuffer can use device buffers instead of host only memory
 Support for device_only buffers
 Session creation &amp; destroy APIs are thread safe now
 Multi-process support is from XRT
-Register map must be locked (xma_plg_kernel_lock_regmap) by plugin for register_prep_write &amp; schedule_work_item  to work without error. Unlock the register map if other plugins share same CU
-Supports up to 128 CUs per device (in-progress; Testcase needed)
+schedule_work_item  API changed to return CUCmdObj
+New API xma_plg_schedule_cu_cmd &amp; xma_plg_cu_cmd_status can be used instead of schedule_work_item</p>
+<blockquote>
+<div>In a session if using xma_plg_cu_cmd_status then do NOT use xma_plg_is_work_item_done in same session</div></blockquote>
+<p>Supports up to 128 CUs per device (in-progress; Testcase needed)
 CU register map size &lt; 4KB
 By default XMA will automatically select default ddr bank for new device buffers (as per selected CU). Session_create may provide user selected default ddr bank input when XMA will use user select default ddr bank for plugin with that session
 For using ddr bank other than default session ddr_bank use APIs xma_plg_buffer_alloc_arg_num(). See below for info
 XMA now support multiple ddr bank per plugin. See below for info on xma_plg_buffer_alloc_arg_num()
-XMA version check API added to plugin struct. See below for details</p>
+XMA version check API added to plugin struct. See below for details
+New session type XMA_ADMIN for non-video applications to control multiple CUs in single session. See below for details
+get_session_cmd_load(): Get CU command load of various sessions relative to each other. Printed to log file</p>
+<blockquote class="last">
+<div>CU command load of all session is automatically sent to log file at end of the application
+This gives info on which sessions (or CUs) are more busy compared to other sessions (or CUs)</div></blockquote>
+</dd>
+</dl>
 <div class="section" id="introduction">
 <h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
 <p>The Xilinx Media Accelerator (XMA) library (libxmaapi) is a host interface
@@ -314,7 +331,7 @@ send frame or send data, receive frame or receive data, close and xma_version.</
 <p>BufferObject contains:
 uint8_t* data : Pointer to host buffer space of allocated buffer
 uint64_t size: Size of allocated buffer
-uint64_t paddr: FPGA DDR Addr of allocated buffer. Use this to pass DDR addr to CUs as part of regmap with xma_plg_register_prep_write API
+uint64_t paddr: FPGA DDR Addr of allocated buffer. Use this to pass DDR addr to CUs as part of regmap with xma_plg_schedule_cu_cmd or xma_plg_schedule_work_item API
 int32_t  bank_index: DDR bank index
 int32_t  dev_index: FPGA device index on which the buffer is allocated
 bool     device_only_buffer: If it is device only buffer.
@@ -445,19 +462,17 @@ code examples to help illustrate usage of the XMA.</p>
 <p>The APIs are:</p>
 <blockquote>
 <div><ul class="simple">
-<li>xma_plg_kernel_lock_regmap</li>
-<li>xma_plg_register_prep_write</li>
+<li>xma_plg_schedule_cu_cmd</li>
 <li>xma_plg_schedule_work_item</li>
-<li>xma_plg_kernel_unlock_regmap</li>
 <li>xma_plg_is_work_item_done</li>
+<li>xma_plg_cu_cmd_status</li>
 </ul>
 </div></blockquote>
 <p>Lets consider the various purposes where the above APIs would be useful.</p>
-<p><strong>xma_plg_register_prep_write</strong> should be used to set kernel input arguments which will be used to start the kernel later.</p>
-<p><strong>xma_plg_schedule_work_item</strong>
-should be used to start the kernel with kernel arguments set earlier with xma_plg_register_prep_write API</p>
-<p><strong>xma_plg_is_work_item_done</strong> should be used to check if kernel has completed atleast one work item (previously submitted by xma_plg_schedule_work_item).</p>
-<p>Register map must be locked (xma_plg_kernel_lock_regmap) by plugin for register_prep_write &amp; schedule_work_item  to work without error. Unlock the register map if other plugins share same CU.</p>
+<p><strong>xma_plg_schedule_cu_cmd / xma_plg_schedule_work_item</strong>
+should be used to start the kernel with supplied kernel arguments</p>
+<p><strong>xma_plg_is_work_item_done</strong> should be used to check if kernel has completed atleast one work item (previously submitted by xma_plg_schedule_cu_cmd / xma_plg_schedule_work_item).</p>
+<p><strong>xma_plg_cu_cmd_status</strong> should be used to check status of kernel commands supplied as list of commands in argument (previously submitted by xma_plg_schedule_cu_cmd / xma_plg_schedule_work_item).</p>
 </div>
 <div class="section" id="application-development-guide">
 <h2>Application Development Guide<a class="headerlink" href="#application-development-guide" title="Permalink to this headline">¶</a></h2>
@@ -655,7 +670,7 @@ Subsequently, the kernel must be programmed to know which device buffer
 contains the data to be processed and programmed appropriately.</p>
 <p>The XMA Plugin library call xma_plg_buffer_write() can be used to copy
 host data to device data.</p>
-<p>xma_plg_register_prep_write() and xma_plg_schedule_work_item() can be used to program
+<p>xma_plg_schedule_cu_cmd() or xma_plg_schedule_work_item() can be used to program
 the kernel registers and start kernel processing.</p>
 </div>
 <div class="section" id="sending-output-to-the-application">
@@ -700,7 +715,7 @@ Plugins may use dev_index, bank_index &amp; device_only info from BufferObject t
 <li>Use dataflow kernels with context/channels for best performance. Use HLS/RTL Wizard with appropriate settings to generate these kernels in 2019.2 release toolset.</li>
 <li>All work items within a channel are treated as FIFO. Kernel must maintain this order for a channel.</li>
 <li>See spec for kernels with dataflow with channels. Kernel regamp registers at offset 0x10 (channel_id input to kernel) and 0x14 (channel_id output from kernel) must be supported by kernels.</li>
-<li>Use xrt.ini settings (dataflow; kernel_channels) to enable dataflow kernel with channels</li>
+<li>Use <a class="reference internal" href="xrt_ini.html#xrt-ini-rst"><span class="std std-ref">xrt.ini Configuration File</span></a> settings (dataflow; kernel_channels) to enable dataflow kernel with channels</li>
 </ul>
 </dd>
 <dt>Using DRM (Digital Right Management) IPs:</dt>
@@ -724,7 +739,7 @@ Plugins may use dev_index, bank_index &amp; device_only info from BufferObject t
         <a href="xma_19.2.html" class="btn btn-neutral float-right" title="XMA 19.2 Migration" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="streaming_data_support.html" class="btn btn-neutral float-left" title="XRT Streaming Platform Support" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="xrt_ini.html" class="btn btn-neutral float-left" title="xrt.ini Configuration File" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
