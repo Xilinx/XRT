@@ -33,7 +33,7 @@
   
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+  <link rel="stylesheet" href="_static/theme_overrides.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="PCIe Peer-to-Peer Support" href="p2p.html" />
@@ -106,6 +106,7 @@
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">xrt.ini Configuration File</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
 <ul>
@@ -142,6 +143,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
 <ul>
@@ -233,7 +235,7 @@ no support for exclusive access to resources by any one process.</p>
 will acquire the kernel’s compute units per the <code class="docutils literal notranslate"><span class="pre">xocl</span></code> kernel driver
 compute unit scheduler, which is first-come first-serve.  All
 processes have the same priority in XRT.</p>
-<p>To disable multi-process support, add the following entry to <code class="docutils literal notranslate"><span class="pre">xrt.ini</span></code>
+<p>To disable multi-process support, add the following entry to <a class="reference internal" href="xrt_ini.html#xrt-ini-rst"><span class="std std-ref">xrt.ini Configuration File</span></a>
 in the same directory as all the executable(s):</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[Runtime]
 multiprocess=false
@@ -247,9 +249,9 @@ has been enabled. Emulation flow does not have support for multi-process yet.</p
 </div>
 <div class="section" id="implementation-details-for-curious">
 <h2>Implementation Details For Curious<a class="headerlink" href="#implementation-details-for-curious" title="Permalink to this headline">¶</a></h2>
-<p>Since 2018.3 downloading an xclbin to the device does not guarantee a lock on the
-device for the downloading process. Application is required to create explicit context
-for each Compute Unit (CU) it wants to use. OCL applications automatically handle
+<p>Since 2018.3 downloading an xclbin to the device does not guarantee an automatic lock
+on the device for the downloading process. Application is required to create explicit
+context for each Compute Unit (CU) it wants to use. OCL applications automatically handle
 context creation without user needing to change any code. XRT native applications
 should create context on a CU with xclOpenContext() API which requires xclbin UUID
 and CU index. This information can be obtained from the xclbin binary. xclOpenContext()
@@ -263,6 +265,7 @@ error codes. Processes P0, P1, P2, P3, P4 and P6 are each trying to use xclbin w
 process P5 is attempting to use UUID_Y. Processes P0, P1, P3, P4, and P6 are trying to use CU_0 in
 UUID_X. Process P2 is trying to use CU_1 in UUID_X and Process P5 is trying to use CU_0 in UUID_Y.
 The diagram shows timeline view with all 7 processes running concurrently.</p>
+<div class="figure" id="id1">
 <div class="graphviz"><object data="_images/graphviz-72f8554d9ce9f7c74018e6144d471dbae5699a82.svg" type="image/svg+xml" class="graphviz">
 <p class="warning">digraph G {
 	node [fontname = &quot;Courier&quot;, fontsize = 10];
@@ -366,6 +369,8 @@ The diagram shows timeline view with all 7 processes running concurrently.</p>
 		label = &quot;process #6&quot;;
 	}
 }</p></object></div>
+<p class="caption"><span class="caption-text">Multi-process interaction diagram</span><a class="headerlink" href="#id1" title="Permalink to this image">¶</a></p>
+</div>
 </div>
 </div>
 

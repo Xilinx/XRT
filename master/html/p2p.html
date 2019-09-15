@@ -33,7 +33,7 @@
   
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+  <link rel="stylesheet" href="_static/theme_overrides.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Memory-to-Memory (M2M) Support" href="m2m.html" />
@@ -125,6 +125,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">xrt.ini Configuration File</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
 <ul>
@@ -161,6 +162,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
 <ul>
@@ -240,6 +242,9 @@
 <li>Data can be directly transferred between the DDR of one SDx PCIe device and DDR of a second SDx PCIe device.</li>
 <li>A thirdparty peer device like NVMe can directly read/write data from/to DDR of SDX PCIe device.</li>
 </ol>
+<div class="align-center figure" id="id3">
+<img alt="_images/PCIe-P2P.svg" src="_images/PCIe-P2P.svg" /><p class="caption"><span class="caption-text">PCIe peer-to-peer topology and data transfer</span></p>
+</div>
 <p>To use P2P, the DDRs on a SDx PCIe platform need to be mapped to host IO memory space. The total size of DDR on most SDx PCIe platforms is 64 GB all of which needs to mapped to the host IO memory space. Partial mapping a smaller range of device DDR is not supported in this release of XRT. Considering not all host systems (CPU/BIOS/chipset) support 64 GB IO memory space, P2P feature is off by default after a cold reboot or power cycle. The feature needs to be explicitly enabled after a cold boot.</p>
 <p>Note that in addition to BIOS, host CPU should be capable of supporting a very large physical address space. Most desktop class processors do not support very large address space required for supporting 64 GB BAR together with host RAM and address space of all peripherals.</p>
 <div class="section" id="bios-setup">
