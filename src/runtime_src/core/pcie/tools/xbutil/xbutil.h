@@ -702,8 +702,11 @@ public:
         if (custat.size())
           ss << "\nCompute Unit Usage:" << "\n";
 
-        for (auto& line : custat)
-          ss << line.substr(0,line.find(" status :")) << "\n";
+        for (auto& line : custat) {
+          auto pos = line.find(" status :");
+          if (pos != std::string::npos)
+            ss << line.substr(0,line.find(" status :")) << "\n";
+        }
 
         ss << std::setw(80) << std::setfill('#') << std::left << "\n";
         lines.push_back(ss.str());
