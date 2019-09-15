@@ -25,7 +25,7 @@ will acquire the kernel's compute units per the ``xocl`` kernel driver
 compute unit scheduler, which is first-come first-serve.  All
 processes have the same priority in XRT.
 
-To disable multi-process support, add the following entry to ``xrt.ini``
+To disable multi-process support, add the following entry to :ref:`xrt_ini.rst`
 in the same directory as all the executable(s)::
 
   [Runtime]
