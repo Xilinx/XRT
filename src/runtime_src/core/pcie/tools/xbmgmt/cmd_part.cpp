@@ -37,7 +37,7 @@ const char *subCmdPartUsage =
     "--program --path xclbin [--card bdf] [--force]\n"
     "--scan [--verbose]";
 
-#define fmt_str "    "
+#define ident(level)	std::string(level * 4, ' ')
 int program_prp(unsigned index, const std::string& xclbin, bool force)
 {
     std::ifstream stream(xclbin.c_str(), std::ios_base::binary);
@@ -159,19 +159,19 @@ void scanPartitions(int index, std::vector<DSAInfo>& installedDSAs, bool verbose
         return;
 
     std::cout << "Card [" << f.sGetDBDF() << "]" << std::endl;
-    std::cout << fmt_str << "Partitions running on FPGA:" << std::endl;
+    std::cout << ident(1) << "Partitions running on FPGA:" << std::endl;
     for (unsigned int i = 0; i < uuids.size(); i++)
     {
         DSAInfo d("", NULL_TIMESTAMP, uuids[i], "");
-        std::cout << fmt_str << fmt_str << d.name << std::endl;
-        std::cout << fmt_str << fmt_str << fmt_str << "logic-uuid:" << std::endl;
-        std::cout << fmt_str << fmt_str << fmt_str  << uuids[i] << std::endl;
-        std::cout << fmt_str << fmt_str << fmt_str << "interface-uuid:" << std::endl;
-        std::cout << fmt_str << fmt_str << fmt_str  << int_uuids[i] << std::endl;
+        std::cout << ident(2) << d.name << std::endl;
+        std::cout << ident(3) << "logic-uuid:" << std::endl;
+        std::cout << ident(3)  << uuids[i] << std::endl;
+        std::cout << ident(3) << "interface-uuid:" << std::endl;
+        std::cout << ident(3)  << int_uuids[i] << std::endl;
     }
 
 
-    std::cout << fmt_str << "Partitions installed in system:" << std::endl;
+    std::cout << ident(1) << "Partitions installed in system:" << std::endl;
     if (installedDSAs.empty())
     {
         std::cout << "(None)" << std::endl;
@@ -191,15 +191,15 @@ void scanPartitions(int index, std::vector<DSAInfo>& installedDSAs, bool verbose
 	if (i == dsa.uuids.size())
             continue;	
 	dsa.uuids.erase(dsa.uuids.begin()+i);
-	std::cout << fmt_str << fmt_str << dsa.name << std::endl;
+	std::cout << ident(2) << dsa.name << std::endl;
         if (dsa.uuids.size() > 1)
         {
-            std::cout << fmt_str << fmt_str << fmt_str << "logic-uuid:" << std::endl;
-            std::cout << fmt_str << fmt_str << fmt_str  << dsa.uuids[0] << std::endl;
-            std::cout << fmt_str << fmt_str << fmt_str << "interface-uuid:" << std::endl;
+            std::cout << ident(3) << "logic-uuid:" << std::endl;
+            std::cout << ident(3)  << dsa.uuids[0] << std::endl;
+            std::cout << ident(3) << "interface-uuid:" << std::endl;
             for (i = 1; i < dsa.uuids.size(); i++)
             {
-               std::cout << fmt_str << fmt_str << fmt_str  << dsa.uuids[i] << std::endl;
+               std::cout << ident(3) << dsa.uuids[i] << std::endl;
             } 
         }
     }
