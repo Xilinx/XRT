@@ -21,7 +21,6 @@
 #include <memory>
 #include <regex>
 #include <sstream>
-#include <fcntl.h>
 #include <unistd.h>
 #include <dirent.h>
 #include <stdint.h>
@@ -155,6 +154,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
         getVendorBoardFromDSAName(name, vendor, board);
         if (!id.empty() && !timestamp)
         {
+            uuids.push_back(id);
             auto installedDSAs = firmwareImage::getIntalledDSAs();
             for (DSAInfo& dsa: installedDSAs)
 	    {
@@ -293,7 +293,7 @@ DSAInfo::~DSAInfo()
 bool DSAInfo::matchId(std::string &id)
 {
     uint64_t ts = strtoull(id.c_str(), nullptr, 0);
-    if (ts != 0 && errno == 0 && ts == timestamp)
+    if (ts != 0 && ts != ULLONG_MAX && ts == timestamp)
         return true;
 
     if (uuids.size() > 0)
@@ -398,9 +398,9 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
         std::regex e("^" FORMATTED_FW_DIR "/" hex_digit "-" hex_digit "-" hex_digit "/(.+)/(.+)/(.+)/" hex_digit "\\." + t);
         std::cmatch cm;
 
-        for (recursive_directory_iterator iter(formatted_fw_dir), end;
+        for (recursive_directory_iterator iter(formatted_fw_dir, symlink_option::recurse), end;
             iter != end;
-            ++iter)
+            )
         {
             std::string name = iter->path().string();
             std::regex_match(name.c_str(), cm, e);
@@ -417,6 +417,21 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
                 std::string build_ident = cm.str(6);
                 DSAInfo dsa(name, vid, did, subsys_id, pr_family, pr_name, build_ident);
                 installedDSA.push_back(dsa);
+                iter.pop();
+            } else if (iter.level() > 4)
+                iter.pop();
+            else
+            {
+                dp = opendir(name.c_str());
+		if (!dp)
+                {
+                    iter.no_push();
+                }
+		else
+                {
+                    closedir(dp);
+                }
+                ++iter;
             }
         }
     }

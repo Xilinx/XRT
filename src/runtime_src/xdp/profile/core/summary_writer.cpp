@@ -604,6 +604,14 @@ namespace xdp {
         XDP_LOG("writeKernelTransferSummary: s=%d, reads=%d, writes=%d, %s time = %f msec\n",
             s, totalReadTranx, totalWriteTranx, cuName.c_str(), totalCUTimeMsec);
 
+        /** Temporary until hw emulation supports busy cycle registers
+         */
+        if (mPluginHandle->getFlowMode() == xdp::RTUtil::HW_EM) {
+          double totalCUTimeMsec = mProfileCounters->getComputeUnitTotalTime(deviceName, cuName);
+          totalReadTimeMsec = totalCUTimeMsec;
+          totalWriteTimeMsec = totalCUTimeMsec;
+        }
+
         // First do READ, then WRITE
         if (totalReadTranx > 0) {
           mProfileCounters->writeKernelTransferSummary(writer, deviceName, cuPortName, argNames, memoryName,
@@ -742,6 +750,13 @@ namespace xdp {
 
         double totalReadTimeMsec = totalReadBusyCycles / (1000.0 * mTraceParserHandle->getDeviceClockFreqMHz()) ;
         double totalWriteTimeMsec = totalWriteBusyCycles / (1000.0 * mTraceParserHandle->getDeviceClockFreqMHz());
+        /** Temporary until hw emulation supports busy cycle registers
+         */
+        if (mPluginHandle->getFlowMode() == xdp::RTUtil::HW_EM) {
+          double halfCUTimeMsec = mProfileCounters->getComputeUnitTotalTime(deviceName, cuName) / 2;
+          totalReadTimeMsec = halfCUTimeMsec;
+          totalWriteTimeMsec = halfCUTimeMsec;
+        }
 
         mProfileCounters->writeTopKernelTransferSummary(writer, deviceName, cuName, totalWriteBytes,
             totalReadBytes, totalWriteTranx, totalReadTranx, totalWriteTimeMsec, totalReadTimeMsec,

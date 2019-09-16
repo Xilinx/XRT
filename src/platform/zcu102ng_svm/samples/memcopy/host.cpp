@@ -14,7 +14,7 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
+
 
 
 #include "oclHelper.h"
@@ -24,7 +24,7 @@
 #include <string.h>
 
 //DATA_SIZE should be multiple of 4 as Kernel Code is using int4 vector datatype
-//to read the operands from Global Memory. So every read/write to global memory 
+//to read the operands from Global Memory. So every read/write to global memory
 //will read 16 integers value.
 #define DATA_SIZE 16
 
@@ -68,7 +68,7 @@ int main(int argc, char** argv)
   clEnqueueSVMMap(hardware.mQueue, CL_FALSE, CL_MAP_READ, hw_results, vector_size_bytes, 0, NULL, NULL);
 
 
-  // Create the test data and Software Result 
+  // Create the test data and Software Result
   for(int i = 0 ; i < DATA_SIZE ; i++){
     //source_in1[i] = rand();
     source_in1[i] = i;
@@ -88,8 +88,8 @@ int main(int argc, char** argv)
   clSetKernelArg(software.mKernel, nargs++, sizeof(long), &size);
 
   //Launch the Kernel
-  
-  // Define iteration space 
+
+  // Define iteration space
   size_t globalSize[3] = { 1, 1, 1 } ;
   size_t localSize[3] = { 1, 1, 1} ;
   cl_event seq_complete ;
@@ -134,8 +134,6 @@ int main(int argc, char** argv)
   release(software);
   release(hardware);
 
-  std::cout << "TEST " << (match ? "PASSED" : "FAILED") << std::endl; 
+  std::cout << "TEST " << (match ? "PASSED" : "FAILED") << std::endl;
   return (match ? EXIT_SUCCESS :  EXIT_FAILURE);
 }
-
-// 67d7842dbbe25473c3c32b93c0da8047785f30d78e8a024de1b57352245f9689

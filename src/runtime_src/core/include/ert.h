@@ -78,9 +78,13 @@ struct ert_packet {
 /**
  * struct ert_start_kernel_cmd: ERT start kernel command format
  *
- * @state:           [3-0] current state of a command
+ * @state:           [3-0]   current state of a command
+ * @stat_enabled:    [4]     enabled driver to record timestamp for various
+ *                           states cmd has gone through. The stat data
+ *                           is appended after cmd data.
  * @extra_cu_masks:  [11-10] extra CU masks in addition to mandatory mask
- * @count:           [22-12] number of words following header
+ * @count:           [22-12] number of words following header for cmd data. Not
+ *                           include stat data.
  * @opcode:          [27-23] 0, opcode for start_kernel
  * @type:            [31-27] 0, type of start_kernel
  *
@@ -95,8 +99,9 @@ struct ert_start_kernel_cmd {
   union {
     struct {
       uint32_t state:4;          /* [3-0]   */
-      uint32_t unused:6;         /* [9-4]  */
-      uint32_t extra_cu_masks:2; /* [11-10]  */
+      uint32_t stat_enabled:1;   /* [4]     */
+      uint32_t unused:5;         /* [9-5]   */
+      uint32_t extra_cu_masks:2; /* [11-10] */
       uint32_t count:11;         /* [22-12] */
       uint32_t opcode:5;         /* [27-23] */
       uint32_t type:4;           /* [31-27] */
@@ -242,6 +247,7 @@ struct ert_configure_cmd {
  * @type:            [31-27] 0, type of configure
  *
  * @start_cuidx:     start index of compute units
+ * @sk_type:         type of soft kernel.
  * @num_cus:         number of compute units in program
  * @sk_size:         size in bytes of soft kernel image
  * @sk_name:         symbol name of soft kernel
@@ -260,7 +266,8 @@ struct ert_configure_sk_cmd {
   };
 
   /* payload */
-  uint32_t start_cuidx;
+  uint32_t start_cuidx:16;
+  uint32_t sk_type:16;
   uint32_t num_cus;
   uint32_t sk_size;		/* soft kernel size */
   uint32_t sk_name[8];		/* soft kernel name */
@@ -338,6 +345,11 @@ enum ert_cmd_state {
   ERT_CMD_STATE_SUBMITTED = 7,
   ERT_CMD_STATE_TIMEOUT = 8,
   ERT_CMD_STATE_NORESPONSE = 9,
+  ERT_CMD_STATE_MAX, // Always the last one
+};
+
+struct cu_cmd_state_timestamps {
+  uint64_t skc_timestamps[ERT_CMD_STATE_MAX]; // In nano-second
 };
 
 /**
@@ -382,6 +394,17 @@ enum ert_cmd_type {
   ERT_KDS_LOCAL = 1,
   ERT_CTRL = 2,
   ERT_CU = 3,
+};
+
+/**
+ * Soft kernel types
+ *
+ * @SOFTKERNEL_TYPE_EXEC:       executable
+ * @SOFTKERNEL_TYPE_XCLBIN:     XCLBIN data file
+ */
+enum softkernel_type {
+  SOFTKERNEL_TYPE_EXEC = 0,
+  SOFTKERNEL_TYPE_XCLBIN = 1,
 };
 
 /**
@@ -568,6 +591,16 @@ static inline uint64_t
 ert_copybo_size(struct ert_start_copybo_cmd *pkt)
 {
   return pkt->size;
+}
+
+#define P2ROUNDUP(x, align)     (-(-(x) & -(align)))
+static inline struct cu_cmd_state_timestamps *
+ert_start_kernel_timestamps(struct ert_start_kernel_cmd *pkt)
+{
+  uint64_t offset = pkt->count * sizeof(uint32_t) + sizeof(pkt->header);
+  /* Make sure the offset of timestamps are properly aligned. */
+  return (struct cu_cmd_state_timestamps *)
+    ((char *)pkt + P2ROUNDUP(offset, sizeof(uint64_t)));
 }
 
 #endif

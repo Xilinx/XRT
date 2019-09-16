@@ -102,7 +102,7 @@ validOrError(cl_command_queue      command_queue ,
   // which has been created with CL_MEM_HOST_WRITE_ONLY or
   // CL_MEM_HOST_NO_ACCESS
   if (xocl(image)->get_flags() & (CL_MEM_HOST_WRITE_ONLY | CL_MEM_HOST_NO_ACCESS))
-    throw xocl::error(CL_INVALID_OPERATION,"image buffer flags do now allow reading");
+    throw xocl::error(CL_INVALID_OPERATION,"image buffer flags do not allow reading");
   
   // CL_OUT_OF_RESOURCES if there is a failure to allocate resources
   // required by the OpenCL implementation on the device.

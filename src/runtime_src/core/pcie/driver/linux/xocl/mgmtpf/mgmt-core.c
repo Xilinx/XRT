@@ -141,7 +141,7 @@ static int identify_bar(struct xocl_dev_core *core, int bar)
 	 * And reading VBNV name needs to bring up Feature ROM.
 	 * So we are not able to specify BARs in devices.h
 	 */
-	if (bar_len < 1024 * 1024 && bar > 0) {
+	if (bar_len < 1024 * 1024) {
 		core->intr_bar_idx = bar;
 		core->intr_bar_addr = bar_addr;
 		core->intr_bar_size = bar_len;
@@ -463,122 +463,25 @@ static int health_check_cb(void *data)
 	return 0;
 }
 
-static inline bool xclmgmt_support_intr(struct xclmgmt_dev *lro)
-{
-	struct xocl_board_private *dev_info = &lro->core.priv;
-
-	if (dev_info->flags & XOCL_DSAFLAG_DYNAMIC_IP)
-		return false;
-
-	return (dev_info->flags & XOCL_DSAFLAG_FIXED_INTR) ||
-		lro->core.intr_bar_addr != NULL;
-}
-
-static int xclmgmt_setup_msix(struct xclmgmt_dev *lro)
-{
-	struct xocl_board_private *dev_info = &lro->core.priv;
-	int total, rv, i;
-
-	if (!xclmgmt_support_intr(lro))
-		return -EOPNOTSUPP;
-
-	if (dev_info->flags & XOCL_DSAFLAG_FIXED_INTR) {
-		lro->msix_user_start_vector = 0;
-		total = 8;
-	} else {
-		/*
-		 * Get start vector (index into msi-x table) of msi-x usr intr
-		 * on this device.
-		 *
-		 * The device has XCLMGMT_MAX_USER_INTR number of usr intrs,
-		 * the last half of them belongs to mgmt pf, and the first
-		 * half to user pf. All vectors are hard-wired.
-		 *
-		 * The device also has some number of DMA intrs whose vectors
-		 * come before usr ones.
-		 *
-		 * This means that mgmt pf needs to allocate msi-x table big
-		 * enough to cover its own usr vectors. So, only the last
-		 * chunk of the table will ever be used for mgmt pf.
-		 */
-		lro->msix_user_start_vector =
-			XOCL_READ_REG32(lro->core.intr_bar_addr +
-			XCLMGMT_INTR_USER_VECTOR) & 0x0f;
-		total = lro->msix_user_start_vector + XCLMGMT_MAX_USER_INTR;
-	}
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
-	/* Suppress warning about unused variable */
-	i = 0;
-	rv = pci_alloc_irq_vectors(lro->core.pdev, total, total, PCI_IRQ_MSIX);
-	if (rv == total)
-		rv = 0;
-#else
-	for (i = 0; i < total; i++)
-		lro->msix_irq_entries[i].entry = i;
-	rv = pci_enable_msix(lro->core.pdev, lro->msix_irq_entries, total);
-#endif
-	mgmt_info(lro, "setting up msix, total irqs: %d, rv=%d\n", total, rv);
-	return rv;
-}
-
-static void xclmgmt_teardown_msix(struct xclmgmt_dev *lro)
-{
-	if (xclmgmt_support_intr(lro))
-		pci_disable_msix(lro->core.pdev);
-}
-
 static int xclmgmt_intr_config(xdev_handle_t xdev_hdl, u32 intr, bool en)
 {
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)xdev_hdl;
-	struct xocl_board_private *dev_info = &lro->core.priv;
 	int ret;
 
 	ret = xocl_dma_intr_config(lro, intr, en);
-	if (!ret)
-		return ret;
-
-	if (!xclmgmt_support_intr(lro))
-		return -EOPNOTSUPP;
-
-	if (!(dev_info->flags & XOCL_DSAFLAG_FIXED_INTR))
-		XOCL_WRITE_REG32(1 << intr, lro->core.intr_bar_addr +
-			(en ? XCLMGMT_INTR_USER_ENABLE :
-			XCLMGMT_INTR_USER_DISABLE));
-	return 0;
+	return ret;
 }
 
 static int xclmgmt_intr_register(xdev_handle_t xdev_hdl, u32 intr,
 	irq_handler_t handler, void *arg)
 {
-	u32 vec;
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)xdev_hdl;
 	int ret;
 
 	ret = handler ?
 		xocl_dma_intr_register(lro, intr, handler, arg, -1) :
 		xocl_dma_intr_unreg(lro, intr);
-	if (!ret)
-		return ret;
-
-	if (!xclmgmt_support_intr(lro))
-		return -EOPNOTSUPP;
-
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
-	vec = pci_irq_vector(lro->core.pdev,
-		lro->msix_user_start_vector + intr);
-#else
-	vec = lro->msix_irq_entries[
-		lro->msix_user_start_vector + intr].vector;
-#endif
-
-	if (handler)
-		return request_irq(vec, handler, 0, DRV_NAME, arg);
-
-	free_irq(vec, arg);
-
-	return 0;
+	return ret;
 }
 
 static int xclmgmt_reset(xdev_handle_t xdev_hdl)
@@ -616,11 +519,13 @@ static void xclmgmt_mig_get_data(struct xclmgmt_dev *lro, void *mig_ecc, size_t 
 	int i;
 	size_t offset = 0;
 
+	xocl_lock_xdev(lro);
 	for (i = 0; i < MAX_M_COUNT; i++) {
 
 		xocl_mig_get_data(lro, i, mig_ecc+offset, entry_sz);
 		offset += entry_sz;
 	}
+	xocl_unlock_xdev(lro);
 }
 
 static void xclmgmt_subdev_get_data(struct xclmgmt_dev *lro, size_t offset,
@@ -692,7 +597,7 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 		(void) xclmgmt_mig_get_data(lro, *resp, subdev_req->size);
 		break;
 	case FIREWALL:
-		current_sz = sizeof(struct xcl_mig_ecc);
+		current_sz = sizeof(struct xcl_firewall);
 		*resp = vzalloc(current_sz);
 		(void) xocl_af_get_data(lro, *resp);
 		break;
@@ -922,6 +827,48 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 				sizeof(ret));
 		break;
 	}
+	case MAILBOX_REQ_READ_P2P_BAR_ADDR: {
+		struct pci_dev *pdev = lro->pci_dev;
+		struct mailbox_p2p_bar_addr *mb_p2p =
+			(struct mailbox_p2p_bar_addr*)req->data;
+		resource_size_t p2p_bar_addr = 0, p2p_bar_len = 0, range = 0;
+		u32 p2p_addr_base, range_base, final_val;
+
+		/* Passthrough Virtualization feature configuration */
+		if (xocl_passthrough_virtualization_on(lro)) {
+			if (!iommu_present(&pci_bus_type)) {
+				p2p_bar_addr = mb_p2p->p2p_bar_addr;
+				p2p_bar_len = mb_p2p->p2p_bar_len;
+				mgmt_info(lro, "got the p2p bar addr = %lld\n", p2p_bar_addr);
+				mgmt_info(lro, "got the p2p bar len = %lld\n", p2p_bar_len);
+				if (!p2p_bar_addr) {
+					pci_write_config_byte(pdev, 0x188, 0x0);
+					ret = 0;
+					(void) xocl_peer_response(lro, req->req, msgid, &ret,
+										  sizeof(ret));
+					break;
+				}
+				range = p2p_bar_addr + p2p_bar_len - 1;
+				range_base = range & 0xFFFF0000;
+				p2p_addr_base = p2p_bar_addr & 0xFFFF0000;
+				final_val = range_base | (p2p_addr_base >> 16);
+				//Translation enable bit
+				pci_write_config_byte(pdev, 0x188, 0x1);
+				//Bar base address
+				pci_write_config_dword(pdev, 0x190, p2p_bar_addr >> 32);
+				//Bar base address + range
+				pci_write_config_dword(pdev, 0x194, range >> 32);
+				pci_write_config_dword(pdev, 0x18c, final_val);
+				mgmt_info(lro, "Passthrough Virtualization config done\n");
+			} else {
+				mgmt_err(lro, "request (%d) dropped, IOMMU is enabled\n",
+						 MAILBOX_REQ_READ_P2P_BAR_ADDR);
+			}
+		}
+		ret = 0;
+		(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
+		break;
+	}
 	default:
 		mgmt_err(lro, "unknown peer request opcode: %d\n", req->req);
 		break;
@@ -961,13 +908,35 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	int ret;
 	struct xocl_board_private *dev_info = &lro->core.priv;
 	struct pci_dev *pdev = lro->pci_dev;
+	int i;
 
-	/* We can only support MSI-X. */
-	ret = xclmgmt_setup_msix(lro);
-	if (ret && (ret != -EOPNOTSUPP)) {
-		xocl_err(&pdev->dev, "set up MSI-X failed\n");
-		goto fail;
+	lro->core.thread_arg.thread_cb = health_check_cb;
+	lro->core.thread_arg.arg = lro;
+	lro->core.thread_arg.interval = health_interval * 1000;
+	lro->core.thread_arg.name = "xclmgmt health thread";
+
+	for (i = 0; i < dev_info->subdev_num; i++) {
+		if (dev_info->subdev_info[i].id == XOCL_SUBDEV_DMA)
+			break;
 	}
+
+	if (!(dev_info->flags & XOCL_DSAFLAG_DYNAMIC_IP) &&
+	    !(dev_info->flags & XOCL_DSAFLAG_SMARTN) &&
+			i == dev_info->subdev_num &&
+			lro->core.intr_bar_addr != NULL) {
+		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_DMA_MSIX;
+		struct xocl_msix_privdata priv = { 0, 8 };
+
+		if (dev_info->flags & XOCL_DSAFLAG_FIXED_INTR) {
+			subdev_info.priv_data = &priv;
+			subdev_info.data_len = sizeof(priv);
+		}
+
+		ret = xocl_subdev_create(lro, &subdev_info);
+		if (ret)
+			goto fail;
+	}
+
 	lro->core.pci_ops = &xclmgmt_pci_ops;
 	lro->core.pdev = pdev;
 
@@ -978,7 +947,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	ret = xocl_subdev_create_by_id(lro, XOCL_SUBDEV_AF);
 	if (ret && ret != -ENODEV) {
 		xocl_err(&pdev->dev, "failed to register firewall\n");
-		goto fail_firewall;
+		goto fail_all_subdev;
 	}
 	if (dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
 		platform_axilite_flush(lro);
@@ -990,35 +959,32 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	}
 	xocl_info(&pdev->dev, "created all sub devices");
 
-	if (!(dev_info->flags & XOCL_DSAFLAG_SMARTN)) {
-		/* return -ENODEV for 2RP platform */
+	if (!(dev_info->flags & XOCL_DSAFLAG_SMARTN))
 		ret = xocl_icap_download_boot_firmware(lro);
-		if (ret && ret != -ENODEV)
-			goto fail_all_subdev;
 
+	/* return -ENODEV for 2RP platform */
+	if (!ret) {
+		xocl_thread_start(lro);
+
+		/* Launch the mailbox server. */
+		(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv,
+			(void *)lro);
+
+		lro->ready = true;
+	} else if (ret == -ENODEV) {
 		ret = xclmgmt_load_fdt(lro);
 		if (ret)
 			goto fail_all_subdev;
-	}
-	lro->core.thread_arg.thread_cb = health_check_cb;
-	lro->core.thread_arg.arg = lro;
-	lro->core.thread_arg.interval = health_interval * 1000;
-	lro->core.thread_arg.name = "xclmgmt health thread";
-	xocl_thread_start(lro);
+	} else
+		goto fail_all_subdev;
 
-	/* Launch the mailbox server. */
-	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
 	/* Notify our peer that we're listening. */
 	xclmgmt_connect_notify(lro, true);
-
-	lro->ready = true;
 	xocl_info(&pdev->dev, "device fully initialized\n");
 	return;
 
 fail_all_subdev:
 	xocl_subdev_destroy_all(lro);
-fail_firewall:
-	xclmgmt_teardown_msix(lro);
 fail:
 	xocl_err(&pdev->dev, "failed to fully probe device, err: %d\n", ret);
 }
@@ -1131,6 +1097,17 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	 */
 	(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FEATURE_ROM);
 
+	/*
+	 * if can not find BLP metadata, it has to bring up flash to
+	 * allow user switch BLP
+	 */
+	if ((dev_info->flags & XOCL_DSAFLAG_DYNAMIC_IP) && !lro->bld_blob) {
+		struct xocl_subdev_info flash_info = XOCL_DEVINFO_FLASH_BLP;
+
+		xocl_subdev_create(lro, &flash_info);
+	}
+
+
 	return 0;
 
 err_cdev:
@@ -1162,6 +1139,10 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 
 	xclmgmt_connect_notify(lro, false);
 
+	if (xocl_passthrough_virtualization_on(lro) &&
+		!iommu_present(&pci_bus_type))
+		pci_write_config_byte(pdev, 0x188, 0x0);
+
 	xocl_thread_stop(lro);
 
 	mgmt_fini_sysfs(&pdev->dev);
@@ -1169,7 +1150,6 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 	xocl_subdev_destroy_all(lro);
 	xocl_subdev_fini(lro);
 
-	xclmgmt_teardown_msix(lro);
 	/* remove user character device */
 	destroy_sg_char(&lro->user_char_dev);
 
@@ -1231,7 +1211,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_feature_rom,
 	xocl_init_iores,
 	xocl_init_flash,
-	xocl_init_xdma_mgmt,
+	xocl_init_mgmt_msix,
 	xocl_init_sysmon,
 	xocl_init_mb,
 	xocl_init_xvc,
@@ -1251,7 +1231,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_feature_rom,
 	xocl_fini_iores,
 	xocl_fini_flash,
-	xocl_fini_xdma_mgmt,
+	xocl_fini_mgmt_msix,
 	xocl_fini_sysmon,
 	xocl_fini_mb,
 	xocl_fini_xvc,

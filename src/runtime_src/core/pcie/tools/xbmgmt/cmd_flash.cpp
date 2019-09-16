@@ -26,6 +26,14 @@
 #include "core/common/sensor.h"
 #include "xbmgmt.h"
 
+// For backward compatibility
+const char *subCmdXbutilFlashDesc = "";
+const char *subCmdXbutilFlashUsage =
+    "[-d card] -m primary_mcs [-n secondary_mcs] [-o bpi|spi]\n"
+    "[-d card] -a <all | shell> [-t timestamp]\n"
+    "[-d card] -p msp432_firmware\n"
+    "scan [-v]\n";
+
 const char *subCmdFlashDesc = "Update SC firmware or shell on the device";
 const char *subCmdFlashUsage =
     "--scan [--verbose|--json]\n"
@@ -33,6 +41,8 @@ const char *subCmdFlashUsage =
     "--shell --path file [--card bdf] [--type flash_type]\n"
     "--sc_firmware --path file [--card bdf]\n"
     "--reset [--card bdf]";
+
+#define fmt_str		"    "
 
 static int scanDevices(bool verbose, bool json)
 {
@@ -74,32 +84,45 @@ static int scanDevices(bool verbose, bool json)
             sensor_tree::json_dump( std::cout );
         } else {
             std::cout << "Card [" << f.sGetDBDF() << "]" << std::endl;
-            std::cout << "\tCard type:\t\t" << board.board << std::endl;
-            std::cout << "\tFlash type:\t\t" << f.sGetFlashType() << std::endl;
-            std::cout << "\tFlashable partition running on FPGA:" << std::endl;
-            std::cout << "\t\t" << board << std::endl;
+            std::cout << fmt_str << "Card type:\t\t" << board.board << std::endl;
+            std::cout << fmt_str << "Flash type:\t\t" << f.sGetFlashType() << std::endl;
+            std::cout << fmt_str << "Flashable partition running on FPGA:" << std::endl;
+            std::cout << fmt_str << fmt_str << board << std::endl;
 
-            std::cout << "\tFlashable partitions installed in system:\t";
+            if (!board.uuids.empty() && verbose)
+            {
+                std::cout << fmt_str << fmt_str << fmt_str << "Logic UUID:" << std::endl;
+                std::cout << fmt_str << fmt_str << fmt_str << board.uuids[0] << std::endl;
+            }
+            std::cout << fmt_str << "Flashable partitions installed in system:\t";
             if (!installedDSA.empty()) {
                 for (auto& d : installedDSA)
-                    std::cout << std::endl << "\t\t" << d;
+                {
+                    std::cout << std::endl << fmt_str << fmt_str << d;
+                    if (!d.uuids.empty() && verbose)
+                    {
+                        std::cout << std::endl;
+                        std::cout << fmt_str << fmt_str << fmt_str << "Logic UUID:" << std::endl;
+                        std::cout << fmt_str << fmt_str << fmt_str << d.uuids[0];
+                    }
+                }
             } else {
                 std::cout << "(None)";
             }
             std::cout << std::endl;
             if (verbose && getinfo_res == 0) {
-                std::cout << "\tCard name\t\t" << info.mName << std::endl;
+                std::cout << fmt_str << "Card name\t\t\t" << info.mName << std::endl;
 #if 0   // Do not print out rev until further notice
                 std::cout << "\tCard rev\t\t" << info.mRev << std::endl;
 #endif
-                std::cout << "\tCard S/N: \t\t" << info.mSerialNum << std::endl;
-                std::cout << "\tConfig mode: \t\t" << info.mConfigMode << std::endl;
-                std::cout << "\tFan presence:\t\t" << info.mFanPresence << std::endl;
-                std::cout << "\tMax power level:\t" << info.mMaxPower << std::endl;
-                std::cout << "\tMAC address0:\t\t" << info.mMacAddr0 << std::endl;
-                std::cout << "\tMAC address1:\t\t" << info.mMacAddr1 << std::endl;
-                std::cout << "\tMAC address2:\t\t" << info.mMacAddr2 << std::endl;
-                std::cout << "\tMAC address3:\t\t" << info.mMacAddr3 << std::endl;
+                std::cout << fmt_str << "Card S/N: \t\t\t" << info.mSerialNum << std::endl;
+                std::cout << fmt_str << "Config mode: \t\t" << info.mConfigMode << std::endl;
+                std::cout << fmt_str << "Fan presence:\t\t" << info.mFanPresence << std::endl;
+                std::cout << fmt_str << "Max power level:\t\t" << info.mMaxPower << std::endl;
+                std::cout << fmt_str << "MAC address0:\t\t" << info.mMacAddr0 << std::endl;
+                std::cout << fmt_str << "MAC address1:\t\t" << info.mMacAddr1 << std::endl;
+                std::cout << fmt_str << "MAC address2:\t\t" << info.mMacAddr2 << std::endl;
+                std::cout << fmt_str << "MAC address3:\t\t" << info.mMacAddr3 << std::endl;
             }
             std::cout << std::endl;
         }
@@ -309,7 +332,7 @@ static int autoFlash(unsigned index, std::string& shell,
             }
         }
         if (!foundDSA) {
-            std::cout << "Specified shell not installed." << std::endl;
+            std::cout << "Specified shell not found." << std::endl;
             return -ENOENT;
         }
         if (multiDSA) {
@@ -388,7 +411,7 @@ static int autoFlash(unsigned index, std::string& shell,
 }
 
 // For backward compatibility, will be removed later
-static int flashCompatibleMode(int argc, char *argv[])
+int flashXbutilFlashHandler(int argc, char *argv[])
 {
     if (argc < 2)
         return -EINVAL;
@@ -698,10 +721,6 @@ int flashHandler(int argc, char *argv[])
     sudoOrDie();
 
     std::string subcmd(argv[1]);
-
-    // Backward compatible, no long option used.
-    if (subcmd.find("--") != 0)
-        return flashCompatibleMode(argc,argv);
 
     auto cmd = optList.find(subcmd);
     if (cmd == optList.end())

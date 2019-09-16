@@ -73,7 +73,7 @@ namespace xdp {
       }
   };
 
-TraceFifoFull::TraceFifoFull(void* handle /** < [in] the xrt hal device handle */,
+TraceFifoFull::TraceFifoFull(Device* handle /** < [in] the xrt or hal device handle */,
                 int index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data)
     : ProfileIP(handle, index, data),
       properties(0),
@@ -128,18 +128,16 @@ uint32_t TraceFifoFull::readTrace(xclTraceResultsVector& traceVector, uint32_t n
     uint32_t traceBufSz = 0;
     uint32_t traceSamples = 0; 
 
-    xrt::device* xrtDevice = getXRTDevice();
-
     /* Get the trace buffer size and actual number of samples for the specific device
      * On Zynq, we store 2 samples per packet in the FIFO. So, actual number of samples
      * will be different from the already calculated "numSamples".
      */
-    xrtDevice->getTraceBufferInfo(numSamples, traceSamples /*actual no. of samples for specific device*/, traceBufSz);
+    getDevice()->getTraceBufferInfo(numSamples, traceSamples /*actual no. of samples for specific device*/, traceBufSz);
     traceVector.mLength = traceSamples;
 
     uint32_t traceBuf[traceBufSz];
     uint32_t wordsPerSample = 1;
-    xrtDevice->readTraceData(traceBuf, traceBufSz, numSamples/* use numSamples */, getBaseAddress(), wordsPerSample);
+    getDevice()->readTraceData(traceBuf, traceBufSz, numSamples/* use numSamples */, getBaseAddress(), wordsPerSample);
 
     processTraceData(traceVector, numSamples, traceBuf, wordsPerSample); 
 
@@ -272,10 +270,15 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
     xclTraceResults results = {};
     uint64_t previousTimestamp = 0;
     for (uint32_t i = 0; i < numSamples; i++) {
-      uint32_t index = wordsPerSample * i;
 
-      uint32_t* dataUInt32Ptr = (uint32_t*)data;
-      uint64_t currentSample = *(dataUInt32Ptr + index) | (uint64_t)*(dataUInt32Ptr + index + 1) << 32;
+      // Old method has issues with emulation trace
+      //uint32_t index = wordsPerSample * i;
+      //uint32_t* dataUInt32Ptr = (uint32_t*)data;
+      //uint64_t currentSample = *(dataUInt32Ptr + index) | (uint64_t)*(dataUInt32Ptr + index + 1) << 32;
+
+      // Works with HW and HW Emu
+      uint64_t* dataUInt64Ptr = (uint64_t*)data;
+      uint64_t currentSample = dataUInt64Ptr[i];
 
       if (!currentSample)
         continue;
@@ -310,7 +313,8 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
                           << " Timestamp : " << results.Timestamp << "   "
                           << " Host Timestamp : " << std::hex << results.HostTimestamp << std::endl;
           }
-          results.isClockTrain = true;
+          //results.isClockTrain = true;
+	  results.isClockTrain = 1 ;
           traceVector.mArray[static_cast<int>(i/4)] = results;    // save result
         }
         continue;
@@ -326,7 +330,8 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
       results.Error = (currentSample >> 63) & 0x1;
       results.EventID = XCL_PERF_MON_HW_EVENT;
       results.EventFlags = ((currentSample >> 45) & 0xF) | ((currentSample >> 57) & 0x10) ;
-      results.isClockTrain = false;
+      //results.isClockTrain = false;
+      results.isClockTrain = 0 ;
 
       traceVector.mArray[i - clockWordIndex + 1] = results;   // save result
 

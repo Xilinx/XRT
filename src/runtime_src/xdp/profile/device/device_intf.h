@@ -59,21 +59,27 @@ namespace xdp {
 
     // Set device handle
     // NOTE: this is used by write, read, & traceRead
-    void setDeviceHandle(void* xrtDevice);
+    void setDevice(xdp::Device* );
 
     // Debug IP layout
     void     readDebugIPlayout();
     uint32_t getNumMonitors(xclPerfMonType type);
     uint32_t getMonitorProperties(xclPerfMonType type, uint32_t index);
     void     getMonitorName(xclPerfMonType type, uint32_t index, char* name, uint32_t length);
+    std::string  getMonitorName(xclPerfMonType type, uint32_t index);
+
+    bool     isHostAIM(uint32_t index) {
+       return aimList[index]->isHostMonitor();
+    }
     
     // Counters
     size_t startCounters(xclPerfMonType type);
     size_t stopCounters(xclPerfMonType type);
     size_t readCounters(xclPerfMonType type, xclCounterResults& counterResults);
 
-    // Enable Dataflow
+    // Accelerator Monitor
     void configureDataflow(bool* ipConfig);
+    void configAmContext(const std::string& ctx_info);
 
     // Trace FIFO Management
     bool hasFIFO() {return (fifoCtrl != nullptr);};
@@ -81,28 +87,16 @@ namespace xdp {
     size_t startTrace(xclPerfMonType type, uint32_t startTrigger);
     size_t stopTrace(xclPerfMonType type);
     size_t readTrace(xclPerfMonType type, xclTraceResultsVector& traceVector);
+
     /** Trace S2MM Management
-     * The BO is managed internal to device
      */
     bool hasTs2mm() {return (traceDMA != nullptr);};
-    bool initTs2mm(uint64_t bo_size);
-    /** 
-     * Takes the offset inside the mapped buffer
-     * and syncs it with device and returns its virtual address.
-     * We can read the entire buffer in one go if we want to
-     * or choose to read in chunks
-     */
+    void initTS2MM(uint64_t bufferSz, uint64_t bufferAddr);
+    void resetTS2MM();
+    uint8_t  getTS2MmMemIndex();
     uint64_t getWordCountTs2mm();
-    void* syncTraceBO(uint64_t offset, uint64_t bytes);
-    void readTs2mm(uint64_t offset, uint64_t bytes, xclTraceResultsVector& traceVector);
-    /**
-     * This reader needs to be initialized once and then
-     * returns data as long as it's available
-     * returns true if data equal to chunksize was read
-     */
-    bool readTs2mm(xclTraceResultsVector& traceVector);
-    void configReaderTs2mm(uint64_t chunksize);
-    void finTs2mm();
+
+    void parseTraceData(void* traceData, uint64_t bytes, xclTraceResultsVector& traceVector);
 
   private:
     // Turn on/off debug messages to stdout
@@ -111,15 +105,9 @@ namespace xdp {
     bool mIsDeviceProfiling = true;
     // Debug IP Layout has been read or not
     bool mIsDebugIPlayoutRead = false;
-    // Device handle - xrt::device handle
-    void* mDeviceHandle = nullptr;
 
-    uint64_t mBytesTs2mm = 0;
-    uint64_t mChunksizeTs2mm = 0;
-    uint64_t mOffsetTs2mm = 0;
-
-    uint64_t mTs2mmBoSize = 0;
-    xrt::hal::BufferObjectHandle mTs2mmBoHandle = nullptr;
+    // Depending on OpenCL or HAL flow, "mDevice" is populated with xrt::device handle or HAL handle
+    xdp::Device* mDevice = nullptr;
 
     std::vector<AIM*> aimList;
     std::vector<AM*>  amList;

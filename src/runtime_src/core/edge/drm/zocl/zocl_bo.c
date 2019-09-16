@@ -945,3 +945,22 @@ void zocl_clear_mem(struct drm_zocl_dev *zdev)
 
 	mutex_unlock(&zdev->mm_lock);
 }
+
+struct drm_gem_object *zocl_gem_import(struct drm_device *dev,
+				       struct dma_buf *dma_buf)
+{
+	struct drm_gem_object *gem_obj;
+	struct drm_zocl_bo *zocl_bo;
+
+	gem_obj = drm_gem_prime_import(dev, dma_buf);
+	if (!IS_ERR(gem_obj)) {
+		zocl_bo = to_zocl_bo(gem_obj);
+		/* drm_gem_cma_prime_import_sg_table() is used for hook
+		 * gem_prime_import_sg_table. It will check if import buffer
+		 * is a CMA buffer and create CMA object.
+		 */
+		zocl_bo->flags |= ZOCL_BO_FLAGS_CMA;
+	}
+
+	return gem_obj;
+}

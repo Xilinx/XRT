@@ -376,7 +376,7 @@ namespace xclcpuemhal2 {
         else
         {
           installEnvvar = getenv("XILINX_OPENCL");
-          if (installEnvvar != NULL)
+          if (installEnvvar != NULL && xilinxInstall.empty())
           {
             xilinxInstall = std::string(installEnvvar);
           }

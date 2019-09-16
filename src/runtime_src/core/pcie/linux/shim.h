@@ -76,6 +76,8 @@ public:
     int xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size,
                   size_t dst_offset, size_t src_offset);
 
+    int xclUpdateSchedulerStat();
+
     int xclExportBO(unsigned int boHandle);
     unsigned int xclImportBO(int fd, unsigned flags);
     int xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties);
@@ -170,11 +172,13 @@ public:
     ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
     ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
     int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int * actual, int timeout /*ms*/);
+    int xclCuName2Index(const char *name, uint32_t& index);
 
 private:
     std::shared_ptr<pcidev::pci_device> mDev;
     xclVerbosityLevel mVerbosity;
     std::ofstream mLogStream;
+    int mUserHandle;
     int mStreamHandle;
     int mBoardNumber;
     bool mLocked;

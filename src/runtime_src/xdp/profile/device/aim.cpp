@@ -86,7 +86,7 @@
 
 namespace xdp {
 
-AIM::AIM(void* handle /** < [in] the xrt hal device handle */,
+AIM::AIM(Device* handle /** < [in] the xrt or hal device handle */,
                 int index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data)
     : ProfileIP(handle, index, data),
       properties(0),
@@ -158,8 +158,8 @@ size_t AIM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
 
     // Samples are taken almost immediately and it is assumed that the intervals are close to each other.
     // So, only one sample interval reading is okay.
-    if (s==0 && getXRTDevice()) {
-        counterResults.SampleIntervalUsec = sampleInterval / (getXRTDevice()->getDeviceClock().get());
+    if (s==0 && getDevice()) {
+       counterResults.SampleIntervalUsec = sampleInterval / (getDevice()->getDeviceClock());
     }
 
     size += read(XAIM_SAMPLE_WRITE_BYTES_OFFSET, 4, &counterResults.WriteBytes[s]);
@@ -192,6 +192,7 @@ size_t AIM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
         counterResults.ReadBusyCycles[s]  += (upper[6] << 32);
         counterResults.WriteBusyCycles[s] += (upper[7] << 32);
 
+#if 0
         if(out_stream) {
           (*out_stream) << "AXI Interface Monitor Upper 32, slot " << s << std::endl
                         << "  WriteBytes : " << upper[0] << std::endl
@@ -203,6 +204,7 @@ size_t AIM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
                         << "  ReadBusyCycles : " << upper[6] << std::endl
                         << "  WriteBusyCycles : " << upper[7] << std::endl;
         }
+#endif
     }
 
 
