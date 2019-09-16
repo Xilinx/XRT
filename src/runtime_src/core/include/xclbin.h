@@ -313,8 +313,8 @@ extern "C" {
         AXI_STREAM_MONITOR,
         AXI_STREAM_PROTOCOL_CHECKER,
         TRACE_S2MM,
-        TRACE_S2MM_FULL,
-        AXI_DMA
+        AXI_DMA,
+        TRACE_S2MM_FULL
     };
 
     struct debug_ip_data {
