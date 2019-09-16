@@ -496,7 +496,7 @@ void JSONProfileWriter::writeKernelStreamSummary(
   stream.put("masterPort", MasterPort);
   stream.put("masterArgs", MasterArgs);
   stream.put("slavePort", SlavePort);
-  stream.put("slaceArgs", SlaveArgs);
+  stream.put("slaveArgs", SlaveArgs);
   stream.put("numTransfers", strNumTranx);
   stream.put("rate", transferRateMBps);
   stream.put("avgSize", avgSize);
@@ -565,7 +565,11 @@ void JSONProfileWriter::writeGuidanceMetadataSummary(RTProfile *profile)
   boost::property_tree::ptree& check = metadata.add_child(checkName, boost::property_tree::ptree());
   auto iter = deviceExecTimesMap.begin();
   for (; iter != deviceExecTimesMap.end(); ++iter) {
-    check.put(iter->first, iter->second);
+    // Sometimes the key value (iter->first) can contain a '.' in it, which boost
+    // normally interprets as a hierarchy separator. We don't want hierarchy--the
+    // '.' should appear in the key, so we use path_type with '\0' as the 
+    // hierarchy separator (since '\0' won't actually appear in the string).
+    check.put(boost::property_tree::ptree::path_type(iter->first, '\0'), iter->second);
   }
 
   // 2. Compute Unit calls
@@ -573,7 +577,8 @@ void JSONProfileWriter::writeGuidanceMetadataSummary(RTProfile *profile)
   boost::property_tree::ptree& check2 = metadata.add_child(checkName, boost::property_tree::ptree());
   auto iter2 = computeUnitCallsMap.begin();
   for (; iter2 != computeUnitCallsMap.end(); ++iter2) {
-    check2.put(iter2->first, iter2->second);
+    // See above use of path_type for explanation.
+    check2.put(boost::property_tree::ptree::path_type(iter2->first, '\0'), iter2->second);
   }
 
   // 3. Global memory bit widths
@@ -582,7 +587,8 @@ void JSONProfileWriter::writeGuidanceMetadataSummary(RTProfile *profile)
   uint32_t bitWidth = profile->getGlobalMemoryBitWidth();
   auto iter3 = deviceExecTimesMap.begin();
   for (; iter3 != deviceExecTimesMap.end(); ++iter3) {
-    check3.put(iter3->first, bitWidth);
+    // See above use of path_type for explanation.
+    check3.put(boost::property_tree::ptree::path_type(iter3->first, '\0'), bitWidth);
   }
 
   // 4. Usage of MigrateMemObjects
@@ -604,7 +610,8 @@ void JSONProfileWriter::writeGuidanceMetadataSummary(RTProfile *profile)
   }
   auto memoryIter = cuPortsToMemory.begin();
   for (; memoryIter != cuPortsToMemory.end(); ++memoryIter) {
-    check5.put(memoryIter->first, memoryIter->second);
+    // See above use of path_type for explanation.
+    check5.put(boost::property_tree::ptree::path_type(memoryIter->first, '\0'), memoryIter->second);
   }
   cuPortsToMemory.clear();
 
@@ -646,7 +653,8 @@ void JSONProfileWriter::writeGuidanceMetadataSummary(RTProfile *profile)
     auto port = std::get<1>(cuPort);
     std::string portName = cu + "/" + port;
     auto portWidth = std::get<4>(cuPort);
-    check6.put(portName, portWidth);
+    // See above use of path_type for explanation.
+    check6.put(boost::property_tree::ptree::path_type(portName, '\0'), portWidth);
   }
 
   // 7. Kernel CU counts

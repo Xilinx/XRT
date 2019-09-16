@@ -16,6 +16,7 @@
 
 
 #include "xdp_hal_device.h"
+#include "core/common/t_time.h"
 #include "core/common/xrt_profiling.h"
 #include "core/include/experimental/xrt-next.h"
 
@@ -64,6 +65,11 @@ int HalDevice::unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offse
 double HalDevice::getDeviceClock()
 {
   return xclGetDeviceClockFreqMHz(mHalDevice);
+}
+
+uint64_t HalDevice::getTraceTime()
+{
+  return xrt_core::time_ns();
 }
 
 int HalDevice::getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)

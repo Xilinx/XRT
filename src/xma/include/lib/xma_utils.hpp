@@ -19,6 +19,8 @@
 
 namespace xma_core { namespace utils {
 
+int32_t load_libxrt();
+
 int32_t check_all_execbo(XmaSession s_handle);
 
 } // namespace utils

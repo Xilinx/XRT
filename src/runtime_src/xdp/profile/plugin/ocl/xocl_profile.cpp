@@ -430,13 +430,18 @@ uint64_t get_ts2mm_buf_size() {
       }
     } catch (const std::exception& ex) {
       // User specified number cannot be parsed
+      xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_BUFSIZE_DEF);
     }
+  } else {
+    xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_BUFSIZE_DEF);
   }
   if (bytes > TS2MM_MAX_BUF_SIZE) {
     bytes = TS2MM_MAX_BUF_SIZE;
+    xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_BUFSIZE_BIG);
   }
   if (bytes < TS2MM_MIN_BUF_SIZE) {
     bytes = TS2MM_MIN_BUF_SIZE;
+    xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_BUFSIZE_SMALL);
   }
   return bytes;
 }

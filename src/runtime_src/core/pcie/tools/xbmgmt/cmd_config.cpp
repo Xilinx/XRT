@@ -228,8 +228,9 @@ static void updateDevConf(std::shared_ptr<pcidev::pci_device>& dev,
     std::string errmsg;
     dev->sysfs_put("icap", "sec_level", errmsg, lvl);
     if (!errmsg.empty()) {
-        std::cout << "can't set security level for " << dev->sysfs_name << " : "
-            << errmsg << std::endl;
+        std::cout << "Failed to set security level for " << dev->sysfs_name
+            << std::endl;
+        std::cout << "See dmesg log for details" << std::endl;
     }
 }
 

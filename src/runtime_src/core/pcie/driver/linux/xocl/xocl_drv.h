@@ -153,7 +153,7 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define xocl_sysfs_error(xdev, fmt, args...)     \
 		snprintf(((struct xocl_dev_core *)xdev)->ebuf, XOCL_EBUF_LEN,	\
 		fmt, ##args)
-#define MAX_M_COUNT      64
+#define MAX_M_COUNT      	XOCL_SUBDEV_MAX_INST
 #define XOCL_MAX_FDT_LEN		1024 * 512
 
 #define	XDEV2DEV(xdev)		(&XDEV(xdev)->pdev->dev)
@@ -929,8 +929,9 @@ struct xocl_mig_label {
 struct xocl_mig_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	void (*get_data)(struct platform_device *pdev, void *buf, size_t entry_sz);
+	void (*set_data)(struct platform_device *pdev, void *buf);
+	uint32_t (*get_id)(struct platform_device *pdev);
 };
-
 
 #define	MIG_DEV(xdev, idx)	SUBDEV_MULTI(xdev, XOCL_SUBDEV_MIG, idx).pldev
 #define	MIG_OPS(xdev, idx)							\
@@ -941,6 +942,15 @@ struct xocl_mig_funcs {
 	(MIG_CB(xdev, idx) ?						\
 	MIG_OPS(xdev, idx)->get_data(MIG_DEV(xdev, idx), buf, entry_sz) : \
 	0)
+#define	xocl_mig_set_data(xdev, idx, buf)				\
+	(MIG_CB(xdev, idx) ?						\
+	MIG_OPS(xdev, idx)->set_data(MIG_DEV(xdev, idx), buf) : \
+	0)
+#define	xocl_mig_get_id(xdev, idx)				\
+	(MIG_CB(xdev, idx) ?						\
+	MIG_OPS(xdev, idx)->get_id(MIG_DEV(xdev, idx)) : \
+	0)
+
 
 struct xocl_iores_funcs {
 	struct xocl_subdev_funcs common_funcs;
