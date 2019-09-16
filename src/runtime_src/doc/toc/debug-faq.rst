@@ -19,7 +19,7 @@ Tools of the Trade
 ``xclbinutil``
    Retrieve info from an xclbin
 XRT API Trace
-   Run failing application with XRT logging enabled in ``xrt.ini`` ::
+   Run failing application with XRT logging enabled in :ref:`xrt_ini.rst` ::
 
      [Runtime]
      runtime_log=my_run.log
@@ -56,7 +56,7 @@ Incorrect Memory Topology Usage
 
 5.0+ XSAs are considered dynamic platforms which use sparse connectivity between acceleration kernels and memory controllers (MIGs). This means that a kernel port can only read/write from/to a specific MIG. This connectivity is frozen at xclbin generation time in specified in mem_topology section of xclbin. The host application needs to ensure that it uses the correct memory banks for buffer allocation using cl_mem_ext_ptr_t for OpenCL applications. For XRT native applications the bank is specified in flags to xclAllocBO() and xclAllocUserPtr().
 
-If an application is producing incorrect results it is important to review the host code to ensure that host application and xclbin agree on memory topology. One way to validate this at runtime is to enable XRT logging in xrt.ini and then carefully go through all buffer allocation requests.
+If an application is producing incorrect results it is important to review the host code to ensure that host application and xclbin agree on memory topology. One way to validate this at runtime is to enable XRT logging in :ref:`xrt_ini.rst` and then carefully go through all buffer allocation requests.
 
 Memory Read Before Write
 ........................

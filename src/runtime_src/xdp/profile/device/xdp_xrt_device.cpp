@@ -16,6 +16,7 @@
 
 
 #include "xdp_xrt_device.h"
+#include "xrt/util/time.h"
 
 namespace xdp {
 
@@ -55,6 +56,11 @@ int XrtDevice::unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offse
 double XrtDevice::getDeviceClock()
 {
   return mXrtDevice->getDeviceClock().get();
+}
+
+uint64_t XrtDevice::getTraceTime()
+{
+  return xrt::time_ns();
 }
 
 int XrtDevice::getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)

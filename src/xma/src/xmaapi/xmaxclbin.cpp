@@ -170,7 +170,7 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
                                             xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "%s:- arg_start: 0x%x, regmap_size: 0x%x", str_tmp1.c_str(), xclbin_info->ip_layout[j].arg_start, xclbin_info->ip_layout[j].regmap_size);
 
                                             if (xclbin_info->ip_layout[j].regmap_size > MAX_KERNEL_REGMAP_SIZE) {
-                                                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel %s register map size exceeds max limit. regmap_size: %d, max regmap_size: %d\n", xclbin_info->ip_layout[j].regmap_size, MAX_KERNEL_REGMAP_SIZE);
+                                                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel %s register map size exceeds max limit. regmap_size: %d, max regmap_size: %d\n", str_tmp1.c_str(), xclbin_info->ip_layout[j].regmap_size, MAX_KERNEL_REGMAP_SIZE);
                                                 return XMA_ERROR;
                                             }
                                             break;
@@ -180,7 +180,7 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
                             }
                         } catch (std::regex_error& e) {
                             xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "%s", line.c_str());
-                            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "regex exception parsing above string", e.what());
+                            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "regex exception parsing above string: %s", e.what());
                             found_kernel = false;
                             xclbin_info->ip_layout[j].arg_start = -1;
                             xclbin_info->ip_layout[j].regmap_size = -1;
@@ -239,7 +239,7 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
             std::string str_tmp1 = std::string((char*)&buffer[soft_kernel_hdr->m_sectionOffset + sk_data->mpo_name]);
             std::string str_tmp2 = std::string((char*)&buffer[soft_kernel_hdr->m_sectionOffset + sk_data->mpo_version]);
             std::string str_tmp3 = std::string((char*)&buffer[soft_kernel_hdr->m_sectionOffset + sk_data->mpo_symbol_name]);
-            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "soft kernel name = %s, version = %d, symbol name = %s, num of instances = %d\n", str_tmp1.c_str(), str_tmp2.c_str(), str_tmp3.c_str(), sk_data->m_num_instances);
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "soft kernel name = %s, version = %s, symbol name = %s, num of instances = %d\n", str_tmp1.c_str(), str_tmp2.c_str(), str_tmp3.c_str(), sk_data->m_num_instances);
             for (uint32_t i = 0; i < sk_data->m_num_instances; i++) {
                 memset(xclbin_info->ip_layout[j].kernel_name, 0, MAX_KERNEL_NAME);
                 str_tmp1 = std::string((char*)&buffer[soft_kernel_hdr->m_sectionOffset + sk_data->mpo_name]);
@@ -404,7 +404,7 @@ int xma_xclbin_info_get(char *buffer, XmaXclbinInfo *info)
     xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "CU DDR connections bitmap:");
     for(uint32_t i = 0; i < info->number_of_hardware_kernels; i++)
     {
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\t%s - 0x%04llx\n",info->ip_layout[i].kernel_name, info->ip_ddr_mapping[i]);
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\t%s - 0x%04llx\n",info->ip_layout[i].kernel_name, (unsigned long long)info->ip_ddr_mapping[i]);
     }
     //For execbo:
     //info->num_ips = info->number_of_kernels;

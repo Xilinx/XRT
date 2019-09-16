@@ -111,11 +111,11 @@ static void xocl_mig_cache_read_from_peer(struct xocl_dev *xdev)
 
 	mb_req = vmalloc(reqlen);
 	if (!mb_req)
-		return;
+		goto done;
 
 	mig_ecc = vzalloc(resp_len);
 	if (!mig_ecc)
-		return;
+		goto done;
 
 	mb_req->req = MAILBOX_REQ_PEER_DATA;
 	subdev_peer.size = sizeof(struct xcl_mig_ecc);
@@ -130,6 +130,7 @@ static void xocl_mig_cache_read_from_peer(struct xocl_dev *xdev)
 	if (!ret)
 		set_mig_cache_data(xdev, mig_ecc);
 
+done:
 	vfree(mig_ecc);
 	vfree(mb_req);
 }
