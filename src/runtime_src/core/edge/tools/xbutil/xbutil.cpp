@@ -403,11 +403,6 @@ int main(int argc, char *argv[])
     if (total == 0)
         return -ENODEV;
 
-    if (cmd == xcldev::SCAN || cmd == xcldev::LIST) {
-        std::cout << "Unsupported API " << std::endl;
-        return -1;
-    }
-
     for (unsigned i = 0; i < total; i++) {
         try {
             deviceVec.emplace_back(new xcldev::device(i, nullptr));
@@ -427,7 +422,15 @@ int main(int argc, char *argv[])
             return -ENOENT;
         }
     }
-// TODO: how to find usable or not
+
+    if (cmd == xcldev::SCAN || cmd == xcldev::LIST) {
+        unsigned int size = deviceVec.size();
+        for (unsigned int i = 0; i < size; i++) {
+              std::cout << " [" << i << "]:" << deviceVec[i]->name();
+              std::cout << std::endl;
+        }
+        return 0;
+    }
 
     int result = 0;
 
