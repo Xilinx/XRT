@@ -163,11 +163,15 @@ void scanPartitions(int index, std::vector<DSAInfo>& installedDSAs, bool verbose
     for (unsigned int i = 0; i < uuids.size(); i++)
     {
         DSAInfo d("", NULL_TIMESTAMP, uuids[i], "");
-        std::cout << fmt_str << fmt_str << d << std::endl;
+        std::cout << fmt_str << fmt_str << d.name << std::endl;
+        std::cout << fmt_str << fmt_str << fmt_str << "logic-uuid:" << std::endl;
+        std::cout << fmt_str << fmt_str << fmt_str  << uuids[i] << std::endl;
+        std::cout << fmt_str << fmt_str << fmt_str << "interface-uuid:" << std::endl;
+        std::cout << fmt_str << fmt_str << fmt_str  << int_uuids[i] << std::endl;
     }
 
 
-    std::cout << fmt_str << "Programmable partitions installed in system:" << std::endl;
+    std::cout << fmt_str << "Partitions installed in system:" << std::endl;
     if (installedDSAs.empty())
     {
         std::cout << "(None)" << std::endl;
@@ -187,10 +191,12 @@ void scanPartitions(int index, std::vector<DSAInfo>& installedDSAs, bool verbose
 	if (i == dsa.uuids.size())
             continue;	
 	dsa.uuids.erase(dsa.uuids.begin()+i);
-	std::cout << fmt_str << fmt_str << dsa << std::endl;
+	std::cout << fmt_str << fmt_str << dsa.name << std::endl;
         if (dsa.uuids.size() > 1)
         {
-            std::cout << fmt_str << fmt_str << fmt_str << "Interface UUID:" << std::endl;
+            std::cout << fmt_str << fmt_str << fmt_str << "logic-uuid:" << std::endl;
+            std::cout << fmt_str << fmt_str << fmt_str  << dsa.uuids[0] << std::endl;
+            std::cout << fmt_str << fmt_str << fmt_str << "interface-uuid:" << std::endl;
             for (i = 1; i < dsa.uuids.size(); i++)
             {
                std::cout << fmt_str << fmt_str << fmt_str  << dsa.uuids[i] << std::endl;
@@ -344,21 +350,21 @@ int program(int argc, char *argv[])
     }
     if (dsa.uuids.size() == 0)
     {
-        std::cout << "ERROR: Can not get uuids in " << file << std::endl;
-	return -EINVAL;
+        std::cout << "Programming ULP..." << std::endl;
+        return program_urp(index, file);
     }
 
+    std::cout << "Programming PLP..." << std::endl;
     for (std::string uuid : dsa.uuids)
     {
         if (blp_uuid.compare(uuid) == 0)
         {
-            std::cout << "Programming PLP..." << std::endl;
             return program_prp(index, file, force);
         }
     }
 
-    std::cout << "Programming ULP..." << std::endl;
-    return program_urp(index, file);
+    std::cout << "ERROR: uuid does not match BLP" << std::endl;
+    return -EINVAL;
 }
 
 static const std::map<std::string, std::function<int(int, char **)>> optList = {

@@ -1339,7 +1339,8 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 			length = bin_obj_axlf->m_header.m_length;
 			xocl_mb_load_sche_image(xdev, fw->data + mbBinaryOffset,
 				mbBinaryLength);
-			ICAP_INFO(icap, "stashed mb sche binary");
+			ICAP_INFO(icap, "stashed mb sche binary, len %lld",
+					mbBinaryLength);
 			load_mbs = true;
 		}
 	}
@@ -1354,7 +1355,8 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 			length = bin_obj_axlf->m_header.m_length;
 			xocl_mb_load_mgmt_image(xdev, fw->data + mbBinaryOffset,
 				mbBinaryLength);
-			ICAP_INFO(icap, "stashed mb mgmt binary");
+			ICAP_INFO(icap, "stashed mb mgmt binary, len %lld",
+					mbBinaryLength);
 			load_mbs = true;
 		}
 	}
