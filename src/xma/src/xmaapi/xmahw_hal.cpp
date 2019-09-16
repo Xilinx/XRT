@@ -274,7 +274,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
                 info.mem_topology[d].m_type == MEM_TYPE::MEM_HBM)
                 ) {
                 tmp1.in_use = true;
-                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tMEM# %d - %s - size: %d KB", d, (char*)tmp1.name, tmp1.size_kb);
+                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tMEM# %d - %s - size: %lu KB", d, (char*)tmp1.name, tmp1.size_kb);
             } else {
                 xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tMEM# %d - %s - Unused/Unused Type", d, (char*)tmp1.name);
 

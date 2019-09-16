@@ -21,6 +21,7 @@
 #include "shim.h"
 #include "scan.h"
 #include "core/common/message.h"
+#include "core/common/xclbin_parser.h"
 #include "core/common/scheduler.h"
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
@@ -482,6 +483,31 @@ int shim::xclCopyBO(unsigned int dst_bo_handle,
     if (!ret && (bo.second->state != ERT_CMD_STATE_COMPLETED))
         ret = -EINVAL;
     mCmdBOCache->release<ert_start_copybo_cmd>(bo);
+    return ret;
+}
+
+int shim::xclUpdateSchedulerStat()
+{
+    auto bo = mCmdBOCache->alloc<ert_packet>();
+    bo.second->opcode = ERT_CU_STAT;
+    bo.second->type = ERT_CTRL;
+
+    int ret = xclExecBuf(bo.first);
+    if (ret) {
+        mCmdBOCache->release(bo);
+        return ret;
+    }
+
+    do {
+        ret = xclExecWait(1000);
+        if (ret == -1)
+            break;
+    } while (bo.second->state < ERT_CMD_STATE_COMPLETED);
+
+    ret = (ret == -1) ? -errno : 0;
+    if (!ret && (bo.second->state != ERT_CMD_STATE_COMPLETED))
+        ret = -EINVAL;
+    mCmdBOCache->release<ert_packet>(bo);
     return ret;
 }
 
@@ -1522,29 +1548,13 @@ int shim::xclCuName2Index(const char *name, uint32_t& index)
     if (addr == bad_addr)
         return -EINVAL;
 
-    std::vector<std::string> custat;
-    mDev->sysfs_get("mb_scheduler", "kds_custat", errmsg, custat);
-    if (!errmsg.empty()) {
-        xclLog(XRT_ERROR, "XRT", "can't read kds_custat sysfs node: %s",
-            errmsg.c_str());
-        return -EINVAL;
-    }
+    auto cus = xrt_core::xclbin::get_cus(map);
+    auto itr = std::find(cus.begin(), cus.end(), addr);
+    if (itr == cus.end())
+      return -ENOENT;
 
-    uint32_t idx = 0;
-    for (auto& line : custat) {
-        // convert and compare parsed hex address CU[@0x[0-9]+]
-        size_t pos = line.find("0x");
-        if (pos == std::string::npos)
-            continue;
-        if (static_cast<unsigned long>(addr) ==
-            std::stoul(line.substr(pos), 0, 16)) {
-            index = idx;
-            return 0;
-        }
-        ++idx;
-    }
-
-    return -ENOENT;
+    index = std::distance(cus.begin(),itr);
+    return 0;
 }
 
 } // namespace xocl
@@ -1957,3 +1967,8 @@ int xclCuName2Index(xclDeviceHandle handle, const char *name, uint32_t *indexp)
   return (drv) ? drv->xclCuName2Index(name, *indexp) : -ENODEV;
 }
 
+int xclUpdateSchedulerStat(xclDeviceHandle handle)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  return (drv) ? drv->xclUpdateSchedulerStat() : -ENODEV;
+}

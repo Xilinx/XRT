@@ -79,6 +79,9 @@ get_first_used_mem(const axlf* top);
  * @encode: If true encode control protocol in lower address bit
  */
 std::vector<uint64_t>
+get_cus(const ip_layout* ip_layout, bool encode=false);
+
+std::vector<uint64_t>
 get_cus(const axlf* top, bool encode=false);
 
 std::vector<std::pair<uint64_t, size_t>>

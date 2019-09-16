@@ -41,6 +41,7 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
     XmaBufferObj b_obj_error;
     b_obj_error.data = NULL;
     b_obj_error.size = 0;
+    b_obj_error.paddr = 0;
     b_obj_error.bank_index = -1;
     b_obj_error.dev_index = -1;
     b_obj_error.device_only_buffer = false;
@@ -123,6 +124,7 @@ XmaBufferObj xma_plg_buffer_alloc_arg_num(XmaSession s_handle, size_t size, bool
     XmaBufferObj b_obj_error;
     b_obj_error.data = NULL;
     b_obj_error.size = 0;
+    b_obj_error.paddr = 0;
     b_obj_error.bank_index = -1;
     b_obj_error.dev_index = -1;
     b_obj_error.device_only_buffer = false;
@@ -211,6 +213,7 @@ xma_plg_buffer_alloc_ddr(XmaSession s_handle, size_t size, bool device_only_buff
     XmaBufferObj b_obj_error;
     b_obj_error.data = NULL;
     b_obj_error.size = 0;
+    b_obj_error.paddr = 0;
     b_obj_error.bank_index = -1;
     b_obj_error.dev_index = -1;
     b_obj_error.device_only_buffer = false;
@@ -248,7 +251,7 @@ xma_plg_buffer_alloc_ddr(XmaSession s_handle, size_t size, bool device_only_buff
         uint32_t tmp_int1 = 0;
         for (auto& ddr: device->ddrs) {
             if (ddr.in_use) {
-                xma_logmsg(log_level, XMAPLUGIN_MOD,"\tMEM# %d - %s - size: %d KB", tmp_int1, (char*)ddr.name, ddr.size_kb);
+                xma_logmsg(log_level, XMAPLUGIN_MOD,"\tMEM# %d - %s - size: %lu KB", tmp_int1, (char*)ddr.name, ddr.size_kb);
             } else {
                 xma_logmsg(log_level, XMAPLUGIN_MOD,"\tMEM# %d - %s - size: UnUsed", tmp_int1, (char*)ddr.name);
             }
@@ -575,7 +578,7 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
         expected = false;
     }
     //kernel completion lock acquired
-    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "1. Num of cmds in-progress = %d\n", priv1->CU_cmds.size());
+    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "1. Num of cmds in-progress = %lu\n", priv1->CU_cmds.size());
 
     // Find an available execBO buffer
     bo_idx = xma_plg_execbo_avail_get(s_handle);
@@ -665,7 +668,7 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
         }
     }
 
-    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "2. Num of cmds in-progress = %d\n", priv1->CU_cmds.size());
+    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "2. Num of cmds in-progress = %lu\n", priv1->CU_cmds.size());
     *(dev_tmp1->execbo_locked) = false;
     if (return_code) *return_code = XMA_SUCCESS;
     return cmd_obj;
@@ -756,7 +759,7 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
     //kernel completion lock acquired
 
     
-    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "1. Num of cmds in-progress = %d\n", priv1->CU_cmds.size());
+    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "1. Num of cmds in-progress = %lu\n", priv1->CU_cmds.size());
 
     // Find an available execBO buffer
     bo_idx = xma_plg_execbo_avail_get(s_handle);
@@ -846,7 +849,7 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
         }
     }
 
-    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "2. Num of cmds in-progress = %d\n", priv1->CU_cmds.size());
+    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "2. Num of cmds in-progress = %lu\n", priv1->CU_cmds.size());
     *(dev_tmp1->execbo_locked) = false;
     if (return_code) *return_code = XMA_SUCCESS;
     return cmd_obj;

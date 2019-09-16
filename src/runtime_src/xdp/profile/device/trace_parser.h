@@ -90,7 +90,7 @@ namespace xdp {
 
     private:
       // Device/host timestamps: training and conversion
-      void trainDeviceHostTimestamps(const std::string& deviceName, xclPerfMonType type);
+      void trainDeviceHostTimestamps(xclPerfMonType type, uint64_t deviceTimestamp, uint64_t hostTimestamp);
       double convertDeviceToHostTimestamp(uint64_t deviceTimestamp, xclPerfMonType type,
           const std::string& deviceName);
 
@@ -117,7 +117,6 @@ namespace xdp {
       double mEmuTraceMsecOneCycle;
       double mTrainSlope[XCL_PERF_MON_TOTAL_PROFILE];
       double mTrainOffset[XCL_PERF_MON_TOTAL_PROFILE];
-      double mTrainProgramStart[XCL_PERF_MON_TOTAL_PROFILE];
       uint64_t mAccelMonCuTime[XAM_MAX_NUMBER_SLOTS]       = { 0 };
       uint64_t mAccelMonCuHostTime[XAM_MAX_NUMBER_SLOTS]   = { 0 };
       uint64_t mAccelMonStallIntTime[XAM_MAX_NUMBER_SLOTS] = { 0 };

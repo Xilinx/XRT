@@ -693,15 +693,6 @@ cmd_bo_init(struct xocl_cmd *xcmd, struct drm_xocl_bo *bo,
 }
 
 /*
- */
-static void
-cmd_packet_init(struct xocl_cmd *xcmd, struct ert_packet *packet)
-{
-	SCHED_DEBUGF("%s(%lu,packet)\n", __func__, xcmd->uid);
-	xcmd->ert_pkt = packet;
-}
-
-/*
  * cmd_has_cu() - Check if this command object can execute on CU
  *
  * @cuidx: the index of the CU.	 Note that CU indicies start from 0.
@@ -1052,6 +1043,14 @@ cu_continue(struct xocl_cu *xcu)
 	SCHED_DEBUGF("<- %s\n", __func__);
 }
 
+static inline u32
+cu_status(struct xocl_cu *xcu)
+{
+	SCHED_DEBUGF("%s(%p) cu(%d) @0x%x\n", __func__, xcu->base + xcu->addr,
+		     xcu->idx, xcu->addr);
+	return ioread32(xcu->base + xcu->addr);
+}
+
 /**
  * cu_poll() - Poll a CU for its status
  *
@@ -1067,7 +1066,7 @@ cu_poll(struct xocl_cu *xcu)
 	SCHED_DEBUGF("-> %s cu(%d) @0x%x done(%d) run(%d)\n", __func__,
 		     xcu->idx, xcu->addr, xcu->done_cnt, xcu->run_cnt);
 
-	xcu->ctrlreg = ioread32(xcu->base + xcu->addr);
+	xcu->ctrlreg = cu_status(xcu);
 
 	SCHED_DEBUGF("+ ctrlreg(0x%x)\n", xcu->ctrlreg);
 
@@ -1360,9 +1359,9 @@ static struct exec_ops penguin_ops;   // kds mode (no ert)
  * @stopped: Flag to indicate that the core data structure cannot be used
  * @flush: Flag to indicate that commands for this device should be flushed
  * @cu_usage: Usage count since last reset
+ * @cu_status: AP_CTRL status of CU, updated by ERT_CU_STAT
  * @slot_status: Bitmap to track status (busy(1)/free(0)) slots in command queue
  * @ctrl_busy: Flag to indicate that slot 0 (ctrl commands) is busy
- * @cu_status: Bitmap to track status (busy(1)/free(0)) of CUs. Unused in ERT mode.
  * @sr0: If set, then status register [0..31] is pending with completed commands (ERT only).
  * @sr1: If set, then status register [32..63] is pending with completed commands (ERT only).
  * @sr2: If set, then status register [64..95] is pending with completed commands (ERT only).
@@ -1402,6 +1401,7 @@ struct exec_core {
 	struct xocl_ert		   *ert;
 
 	u32			   cu_usage[MAX_CUS];
+	u32			   cu_status[MAX_CUS];
 
 	// Bitmap tracks busy(1)/free(0) slots in cmd_slots
 	struct xocl_cmd		   *submitted_cmds[MAX_SLOTS];
@@ -1505,6 +1505,12 @@ static inline u32
 exec_cu_usage(struct exec_core *exec, unsigned int cuidx)
 {
 	return exec->cu_usage[cuidx];
+}
+
+static inline u32
+exec_cu_status(struct exec_core *exec, unsigned int cuidx)
+{
+	return exec->cu_status[cuidx];
 }
 
 static bool
@@ -1984,14 +1990,35 @@ exec_submit_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	return true;
 }
 
+static void
+exec_update_custatus(struct exec_core *exec)
+{
+	unsigned int cuidx;
+	// ignore kdma which on least at u200_2018_30_1 is not BAR mapped
+	for (cuidx = 0; cuidx < exec->num_cus - exec->num_cdma; ++cuidx) {
+		struct xocl_cu *xcu = exec->cus[cuidx];
+		exec->cu_status[cuidx] = cu_status(xcu);
+	}
+	// reset cdma status
+	for (; cuidx < exec->num_cus; ++cuidx)
+		exec->cu_status[cuidx] = 0;
+	
+}
+
 /*
  * finish_cmd() - Special post processing of commands after execution
  */
 static int
 exec_finish_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 {
-	if (cmd_opcode(xcmd) == ERT_CU_STAT && exec_is_ert(exec))
+	if (cmd_opcode(xcmd) != ERT_CU_STAT)
+		return 0;
+	
+	if (exec_is_ert(exec)) 
 		ert_read_custat(exec->ert, exec->num_cus, exec->cu_usage, xcmd);
+
+	exec_update_custatus(exec);
+
 	return 0;
 }
 
@@ -3059,30 +3086,6 @@ err:
 	return 1;
 }
 
-static int
-add_ctrl_cmd(struct exec_core *exec, struct client_ctx *client, struct ert_packet *packet)
-{
-	struct xocl_cmd *xcmd = cmd_get(exec_scheduler(exec), exec, client);
-
-	if (!xcmd)
-		return 1;
-
-	SCHED_DEBUGF("-> %s cmd(%lu)\n", __func__, xcmd->uid);
-
-	cmd_packet_init(xcmd, packet);
-
-	if (add_xcmd(xcmd))
-		goto err;
-
-	SCHED_DEBUGF("<- %s ret(0) opcode(%d) type(%d)\n", __func__, cmd_opcode(xcmd), cmd_type(xcmd));
-	return 0;
-err:
-	cmd_abort(xcmd);
-	SCHED_DEBUGF("<- %s ret(1) opcode(%d) type(%d)\n", __func__, cmd_opcode(xcmd), cmd_type(xcmd));
-	return 1;
-}
-
-
 /**
  * init_scheduler_thread() - Initialize scheduler thread if necessary
  *
@@ -3930,40 +3933,23 @@ static ssize_t
 kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct exec_core *exec = dev_get_exec(dev);
-	struct xocl_dev *xdev = exec_get_xdev(exec);
-	struct client_ctx client;
-	struct ert_packet packet;
 	unsigned int count = 0;
 	ssize_t sz = 0;
 
-	// minimum required initialization of client
-	client.abort = false;
-	client.xdev = xdev;
-	atomic_set(&client.outstanding_execs, 0);
+	SCHED_DEBUGF("-> %s\n",__func__);
 
-	packet.opcode = ERT_CU_STAT;
-	packet.type = ERT_CTRL;
-	packet.count = 1;  // data[1]
-
-	if (add_ctrl_cmd(exec, &client, &packet) == 0) {
-		int retry = 5;
-
-		SCHED_DEBUGF("-> custat waiting for command to finish\n");
-		// wait for command completion
-		while (--retry && atomic_read(&client.outstanding_execs))
-			msleep(100);
-		if (retry == 0 && atomic_read(&client.outstanding_execs))
-			userpf_info(xdev, "custat unexpected timeout\n");
-		SCHED_DEBUGF("<- custat retry(%d)\n", retry);
-	}
-
+	// No need to lock exec, cu stats are computed and cached.
+	// Even if xclbin is swapped, the data reflects the xclbin on
+	// which is was computed above.
 	for (count = 0; count < exec->num_cus; ++count)
-		sz += sprintf(buf+sz, "CU[@0x%x] : %d\n",
+		sz += sprintf(buf+sz, "CU[@0x%x] : %d status : %d\n",
 			      exec_cu_base_addr(exec, count),
-			      exec_cu_usage(exec, count));
+			      exec_cu_usage(exec, count),
+			      exec_cu_status(exec, count));
 	if (sz)
 		buf[sz++] = 0;
 
+	SCHED_DEBUGF("<- %s sz=%ld\n",__func__,sz);
 	return sz;
 }
 static DEVICE_ATTR_RO(kds_custat);
