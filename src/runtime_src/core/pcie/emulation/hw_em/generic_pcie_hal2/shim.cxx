@@ -528,8 +528,8 @@ namespace xclhwemhal2 {
         launcherArgs = launcherArgs + cmdLineOption.str();
         sim_path = binaryDirectory + "/behav_waveform/xsim";
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
-        unsetenv("SDX_LAUNCH_WAVEFORM_BATCH");
-        setenv("SDX_WAVEFORM", generatedWcfgFileName.c_str(), true);
+        unsetenv("VITIS_LAUNCH_WAVEFORM_BATCH");
+        setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
       }
 
       if (lWaveform == xclemulation::LAUNCHWAVEFORM::BATCH)
@@ -543,8 +543,8 @@ namespace xclhwemhal2 {
         launcherArgs = launcherArgs + cmdLineOption.str();
         sim_path = binaryDirectory + "/behav_waveform/xsim";
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
-        setenv("SDX_LAUNCH_WAVEFORM_BATCH", "1", true);
-        setenv("SDX_WAVEFORM", generatedWcfgFileName.c_str(), true);
+        setenv("VITIS_LAUNCH_WAVEFORM_BATCH", "1", true);
+        setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
       }
 
       if (userSpecifiedSimPath.empty() == false)
