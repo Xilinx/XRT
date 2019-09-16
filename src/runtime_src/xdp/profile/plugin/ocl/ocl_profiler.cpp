@@ -664,7 +664,6 @@ namespace xdp {
               profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector, endLog);
               numTracePackets += info->mTraceVector.mLength;
               info->mTraceVector = {};
-              std::cout << "Trace Packets : " << numTracePackets << std::endl;
             }
             // detect if FIFO is full
             auto fifoProperty = dInt->getMonitorProperties(XCL_PERF_MON_FIFO, 0);
