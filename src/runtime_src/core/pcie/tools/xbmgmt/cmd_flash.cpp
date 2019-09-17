@@ -259,13 +259,13 @@ static DSAInfo selectShell(unsigned idx, std::string& dsa, std::string& id)
 
     // Find candidate DSA from installed DSA list.
     if (dsa.empty()) {
-        std::cout << "Probing card [" << flasher.sGetDBDF() << "]: ";
+        std::cout << "Card [" << flasher.sGetDBDF() << "]: " << std::endl;
         if (installedDSA.empty()) {
-            std::cout << "no shell is installed" << std::endl;
+            std::cout << "\t Status: no shell is installed" << std::endl;
             return DSAInfo("");
         }
         if (installedDSA.size() > 1) {
-            std::cout << "multiple shells are installed" << std::endl;
+            std::cout << "\t Status: multiple shells are installed" << std::endl;
             return DSAInfo("");
         }
         candidateDSAIndex = 0;
@@ -277,7 +277,7 @@ static DSAInfo selectShell(unsigned idx, std::string& dsa, std::string& id)
             if (!id.empty() && !idsa.matchId(id))
                 continue;
             if (candidateDSAIndex != UINT_MAX) {
-                std::cout << "multiple shells are installed" << std::endl;
+                std::cout << "\t Status: multiple shells are installed" << std::endl;
                 return DSAInfo("");
             }
             candidateDSAIndex = i;
@@ -302,10 +302,12 @@ static DSAInfo selectShell(unsigned idx, std::string& dsa, std::string& id)
             candidate.bmcVer == currentDSA.bmcVer);
     }
     if (same_dsa && same_bmc) {
-        std::cout << "shell is up-to-date" << std::endl;
+        std::cout << "\t Status: shell is up-to-date" << std::endl;
         return DSAInfo("");
     }
-    std::cout << "shell needs updating" << std::endl;
+    std::cout << "\t Status: shell needs updating" << std::endl;
+    std::cout << "\t Current shell: " << currentDSA.name << std::endl;
+    std::cout << "\t Shell to be flashed: " << candidate.name << std::endl;
     return candidate;
 }
 
@@ -365,9 +367,6 @@ static int autoFlash(unsigned index, std::string& shell,
     unsigned success = 0;
     bool needreboot = false;
     if (!boardsToUpdate.empty()) {
-        std::cout << "Below card(s) will be updated:" << std::endl;
-        for (auto p : boardsToUpdate)
-            std::cout << pcidev::get_dev(p.first, false) << std::endl;
 
         // Prompt user about what boards will be updated and ask for permission.
         if(!force && !canProceed())
@@ -387,7 +386,12 @@ static int autoFlash(unsigned index, std::string& shell,
 
     std::cout << std::endl;
 
-    if (success!=0) {
+    if (boardsToUpdate.size() == 0) {
+        std::cout << "Card(s) up-to-date and do not need to be flashed." << std::endl;
+        return 0;
+    }
+
+    if (success != 0) {
         std::cout << success << " Card(s) flashed successfully." << std::endl; 
     } else {
         std::cout << "No cards were flashed." << std::endl; 

@@ -1391,38 +1391,41 @@ ssize_t xclReadQueue(xclDeviceHandle handle, void *q_hdl, xclQueueRequest *wr_re
 
 int xclCreateProfileResults(xclDeviceHandle handle, ProfileResults** results)
 {
+  int status = -1;
 #ifndef __HWEM__
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
   if(!drv)
     return -ENODEV;
 
-  CREATE_PROFILE_RESULTS_CB(handle, results);
+  CREATE_PROFILE_RESULTS_CB(handle, results, status);
 #endif
-  return 0;
+  return status;
 }
 
 int xclGetProfileResults(xclDeviceHandle handle, ProfileResults* results)
 {
+  int status = -1;
 #ifndef __HWEM__
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
   if(!drv)
     return -ENODEV;
 
-  GET_PROFILE_RESULTS_CB(handle, results);
+  GET_PROFILE_RESULTS_CB(handle, results, status);
 #endif
-  return 0;
+  return status;
 }
 
 int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results)
 {
+  int status = -1;
 #ifndef __HWEM__
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
   if(!drv)
     return -ENODEV;
 
-  DESTROY_PROFILE_RESULTS_CB(handle, results);
+  DESTROY_PROFILE_RESULTS_CB(handle, results, status);
 #endif
-  return 0;
+  return status;
 }
 
 
