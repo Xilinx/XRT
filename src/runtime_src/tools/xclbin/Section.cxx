@@ -192,7 +192,7 @@ Section::createSectionObjectOfKind( enum axlf_section_kind _eKind,
   Section* pSection = nullptr;
 
   if (m_mapIdToCtor.find(_eKind) == m_mapIdToCtor.end()) {
-    std::string errMsg = XUtil::format("ERROR: Constructor for enum (%d) is missing.", (unsigned int)_eKind);
+    std::string errMsg = XUtil::format("ERROR: Section constructor for the archive section ID '%d' does not exist.  This error is most likely the result of examining a newer version of an archive image then this version of software supports.", (unsigned int)_eKind);
     throw std::runtime_error(errMsg);
   }
 

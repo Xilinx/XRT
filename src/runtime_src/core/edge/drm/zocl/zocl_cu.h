@@ -35,6 +35,13 @@
 #define CU_READY_CNT_MASK       0x00FF0000
 #define CU_DONE_CNT_MASK        0xFF000000
 
+#define CU_AP_START	(0x1 << 0)
+#define CU_AP_DONE	(0x1 << 1)
+#define CU_AP_IDLE	(0x1 << 2)
+#define CU_AP_READY	(0x1 << 3)
+#define CU_AP_CONTINUE	(0x1 << 4)
+#define CU_AP_RESET	(0x1 << 5)
+
 struct zocl_cu;
 
 /* Supported CU models */
@@ -122,7 +129,7 @@ struct zcu_funcs {
 	/**
 	 * @enable_intr:
 	 *
-	 * Enable interrupt. Support DONE and READY interrrupt.
+	 * Enable interrupt. Support DONE and READY interrupt.
 	 */
 	void (*enable_intr)(void *core, u32 intr_type);
 

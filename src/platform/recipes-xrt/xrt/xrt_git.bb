@@ -28,3 +28,13 @@ EXTRA_OECMAKE += " \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_EXPORT_COMPILE_COMANDS=ON \
 		"
+
+pkg_postinst_ontarget_${PN}() {
+  #!/bin/sh
+  if [ ! -e /etc/OpenCL/vendors/xilinx.icd ]; then
+	echo "INFO: Creating ICD entry for Xilinx Platform"
+	mkdir -p /etc/OpenCL/vendors
+	echo "libxilinxopencl.so" > /etc/OpenCL/vendors/xilinx.icd
+	chmod -R 755 /etc/OpenCL
+  fi
+}

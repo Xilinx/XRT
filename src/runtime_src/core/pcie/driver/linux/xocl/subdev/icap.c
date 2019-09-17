@@ -2961,7 +2961,8 @@ static ssize_t sec_level_store(struct device *dev,
 		if (!efi_enabled(EFI_SECURE_BOOT)) {
 			icap->sec_level = val;
 		} else {
-			ICAP_ERR(icap, "security level is fixed in scure boot");
+			ICAP_ERR(icap,
+				"security level is fixed in secure boot");
 			ret = -EROFS;
 		}
 #ifdef	KEY_DEBUG
