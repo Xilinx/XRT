@@ -95,9 +95,24 @@ set_property HD.RECONFIGURABLE true [get_cells pfm_top_i/dynamic_region]
 # Dynamic region pblock
 create_pblock pblock_dynamic_region
 add_cells_to_pblock [get_pblocks pblock_dynamic_region] [get_cells -quiet [list pfm_top_i/dynamic_region]]
-resize_pblock [get_pblocks pblock_dynamic_region] -add {CLOCKREGION_X0Y4:CLOCKREGION_X3Y5}
-resize_pblock [get_pblocks pblock_dynamic_region] -add {SLICE_X48Y235:SLICE_X111Y239}
-resize_pblock [get_pblocks pblock_dynamic_region] -add {DSP48E2_X3Y94:DSP48E2_X13Y95}
-resize_pblock [get_pblocks pblock_dynamic_region] -add {RAMB18_X1Y94:RAMB18_X4Y95}
-resize_pblock [get_pblocks pblock_dynamic_region] -add {RAMB36_X1Y47:RAMB36_X4Y47}
+resize_pblock [get_pblocks pblock_dynamic_region] -add {SLICE_X48Y180:SLICE_X111Y239 SLICE_X101Y120:SLICE_X111Y179 SLICE_X67Y120:SLICE_X98Y179 SLICE_X67Y0:SLICE_X88Y119}
+resize_pblock [get_pblocks pblock_dynamic_region] -add {CFGIO_SITE_X0Y0:CFGIO_SITE_X0Y0}
+resize_pblock [get_pblocks pblock_dynamic_region] -add {DSP48E2_X3Y72:DSP48E2_X13Y95 DSP48E2_X7Y48:DSP48E2_X13Y71 DSP48E2_X7Y0:DSP48E2_X11Y47}
+resize_pblock [get_pblocks pblock_dynamic_region] -add {GTHE4_CHANNEL_X0Y8:GTHE4_CHANNEL_X0Y15}
+resize_pblock [get_pblocks pblock_dynamic_region] -add {GTHE4_COMMON_X0Y2:GTHE4_COMMON_X0Y3}
+resize_pblock [get_pblocks pblock_dynamic_region] -add {IOB_X2Y0:IOB_X2Y207}
+resize_pblock [get_pblocks pblock_dynamic_region] -add {RAMB18_X1Y72:RAMB18_X4Y95 RAMB18_X2Y48:RAMB18_X4Y71 RAMB18_X2Y0:RAMB18_X2Y47}
+resize_pblock [get_pblocks pblock_dynamic_region] -add {RAMB36_X1Y36:RAMB36_X4Y47 RAMB36_X2Y24:RAMB36_X4Y35 RAMB36_X2Y0:RAMB36_X2Y23}
+resize_pblock [get_pblocks pblock_dynamic_region] -add {SYSMONE4_X0Y0:SYSMONE4_X0Y0}
+resize_pblock [get_pblocks pblock_dynamic_region] -add {URAM288_X0Y48:URAM288_X0Y63}
+resize_pblock [get_pblocks pblock_dynamic_region] -add {CLOCKREGION_X0Y4:CLOCKREGION_X3Y5 CLOCKREGION_X3Y0:CLOCKREGION_X3Y1}
 set_property SNAPPING_MODE ON [get_pblocks pblock_dynamic_region]
+
+
+##PROHIBIT on CLBs adjacent to CONFIG_SITE site island 
+set_property PROHIBIT 1  [get_sites -range SLICE_X99Y120:SLICE_X100Y179]
+
+# Vivado Generated miscellaneous constraints 
+
+#revert back to original instance
+current_instance -quiet
