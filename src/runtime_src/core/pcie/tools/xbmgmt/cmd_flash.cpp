@@ -29,9 +29,9 @@
 // For backward compatibility
 const char *subCmdXbutilFlashDesc = "";
 const char *subCmdXbutilFlashUsage =
-    "[-d card] -m primary_mcs [-n secondary_mcs] [-o bpi|spi]\n"
-    "[-d card] -a <all | shell> [-t timestamp]\n"
-    "[-d card] -p msp432_firmware\n"
+    "[-d mgmt-bdf] -m primary_mcs [-n secondary_mcs] [-o bpi|spi]\n"
+    "[-d mgmt-bdf] -a <all | shell> [-t timestamp]\n"
+    "[-d mgmt-bdf] -p msp432_firmware\n"
     "scan [-v]\n";
 
 const char *subCmdFlashDesc = "Update SC firmware or shell on the device";
@@ -448,10 +448,15 @@ int flashXbutilFlashHandler(int argc, char *argv[])
             dsa = optarg;
             break;
         case 'd':
-            if (std::string(optarg).find(":") == std::string::npos)
-                devIdx = atoi(optarg);
-            else
+            if (std::string(optarg).find(":") == std::string::npos) {
+                std::cout <<
+                    "Please use -d <mgmt-BDF> to specify the device to flash"
+                    << std::endl;
+                std::cout << "Run xbmgmt scan to find mgmt BDF"
+                    << std::endl;
+            } else {
                 devIdx = bdf2index(optarg);
+            }
             if (devIdx == UINT_MAX)
                 return -EINVAL;
             break;
