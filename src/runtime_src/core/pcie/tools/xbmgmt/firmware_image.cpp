@@ -416,7 +416,8 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
                 DSAInfo dsa(name, pr_board, pr_family, pr_name);
                 installedDSA.push_back(dsa);
                 iter.pop();
-		iter.pop();
+                if (iter.level() > 0)
+		    iter.pop();
             } else if (iter.level() > 4)
                 iter.pop();
             else

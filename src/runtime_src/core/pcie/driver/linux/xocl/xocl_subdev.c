@@ -606,6 +606,7 @@ int xocl_subdev_create_all(xdev_handle_t xdev_hdl)
 				dsa_map[i].subdevice ||
 				dsa_map[i].subdevice == (u16)PCI_ANY_ID)) {
 				xocl_fill_dsa_priv(xdev_hdl, dsa_map[i].priv_data);
+				XDEV(xdev_hdl)->priv.vbnv = dsa_map[i].vbnv;
 				break;
 			}
 		}
@@ -973,6 +974,7 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 	core->priv.board_name = in->board_name;
 	core->priv.mpsoc = in->mpsoc;
 	core->priv.p2p_bar_sz = in->p2p_bar_sz;
+	core->priv.vbnv = in->vbnv;
 	if (in->flags & XOCL_DSAFLAG_SET_DSA_VER)
 		core->priv.dsa_ver = in->dsa_ver;
 	if (in->flags & XOCL_DSAFLAG_SET_XPR)

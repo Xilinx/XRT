@@ -405,6 +405,9 @@ static int get_header_from_dtb(struct feature_rom *rom)
 	}
 	header->FeatureBitMap = UNIFIED_PLATFORM | BOARD_MGMT_ENBLD | MB_SCHEDULER;
 	*(u32 *)header->EntryPointString = MAGIC_NUM;
+	if (XDEV(xdev)->priv.vbnv)
+		strncpy(header->VBNVName, XDEV(xdev)->priv.vbnv,
+				sizeof (header->VBNVName) - 1);
 
 	return 0;
 }

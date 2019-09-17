@@ -92,6 +92,7 @@ struct xocl_board_private {
 	char			*board_name; /* used by xbflash */
 	bool			mpsoc;
 	uint64_t		p2p_bar_sz;
+	const char		*vbnv;
 };
 
 struct xocl_flash_privdata {
@@ -120,7 +121,7 @@ struct xocl_dsa_map {
 	uint16_t		vendor;
 	uint16_t		device;
 	uint16_t		subdevice;
-	char			*vbnv;
+	const char			*vbnv;
 	struct xocl_board_private	*priv_data;
 	uint32_t		type;
 };
@@ -1879,13 +1880,13 @@ struct xocl_subdev_map {
 		&XOCL_BOARD_USER_DSA_U250_NO_KDMA }
 
 #define XOCL_DSA_DYNAMIC_MAP						\
-	{ 0x10EE, 0x5001, PCI_ANY_ID, NULL,				\
+	{ 0x10EE, 0x5001, PCI_ANY_ID, "xilinx_u200_dynamic",		\
 		&XOCL_BOARD_USER_DYNAMIC_IP, XOCL_DSAMAP_DYNAMIC },	\
-	{ 0x10EE, 0x5000, PCI_ANY_ID, NULL,				\
+	{ 0x10EE, 0x5000, PCI_ANY_ID, "xilinx_u200_dynamic",		\
 		&XOCL_BOARD_MGMT_DYNAMIC_IP, XOCL_DSAMAP_DYNAMIC },	\
-	{ 0x10EE, 0x7021, PCI_ANY_ID, NULL,				\
+	{ 0x10EE, 0x7021, PCI_ANY_ID, "xilinx_u200_dynamic",		\
 		&XOCL_BOARD_USER_DYNAMIC_IP, XOCL_DSAMAP_DYNAMIC },	\
-	{ 0x10EE, 0x7020, PCI_ANY_ID, NULL,				\
+	{ 0x10EE, 0x7020, PCI_ANY_ID, "xilinx_u200_dynamic",		\
 		&XOCL_BOARD_MGMT_DYNAMIC_IP, XOCL_DSAMAP_DYNAMIC }	\
 
 #endif

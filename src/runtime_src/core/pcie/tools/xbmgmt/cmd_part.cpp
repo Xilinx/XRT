@@ -23,7 +23,10 @@
 #include <getopt.h>
 #include <unistd.h>
 #include <libgen.h>
+#include <stdint.h>
+#include <dirent.h>
 
+#include "boost/filesystem.hpp"
 #include "flasher.h"
 #include "xbmgmt.h"
 #include "firmware_image.h"
@@ -31,9 +34,11 @@
 #include "xclbin.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
+using namespace boost::filesystem;
+
 const char *subCmdPartDesc = "Show and download partition onto the device";
 const char *subCmdPartUsage =
-    "--program --id id [--card bdf] [--force]\n"
+    "--program --name name [--id id] [--card bdf] [--force]\n"
     "--program --path xclbin [--card bdf] [--force]\n"
     "--scan [--verbose]";
 
@@ -251,11 +256,13 @@ int program(int argc, char *argv[])
     unsigned index = UINT_MAX;
     bool force = false;
     std::string file, id;
+    std::string plp;
     const option opts[] = {
         { "card", required_argument, nullptr, '0' },
         { "force", no_argument, nullptr, '1' },
         { "path", required_argument, nullptr, '2' },
 	{ "id", required_argument, nullptr, '3' },
+	{ "name", required_argument, nullptr, '4' },
     };
 
     while (true) {
@@ -278,50 +285,17 @@ int program(int argc, char *argv[])
 	case '3':
 	    id = std::string(optarg);
 	    break;
+        case '4':
+            plp = std::string(optarg);
+            break;
         default:
             return -EINVAL;
         }
     }
 
-    if (!id.empty())
-    {
-        std::vector<DSAInfo> DSAs;
-
-        auto installedDSAs = firmwareImage::getIntalledDSAs();
-        for (DSAInfo& dsa : installedDSAs)
-        {
-            if (dsa.uuids.size() == 0)
-                continue;
-            if (!dsa.matchIntId(id))
-                continue;
-
-            DSAs.push_back(dsa);
-        }
-        if (DSAs.size() > 1)
-	{
-            std::cout << "ERROR: found duplicated partitions, please specify the entire uuid" << std::endl;
-            for (DSAInfo&d : DSAs)
-            {
-                std::cout << d;
-            }
-            std::cout << std::endl;
-            return -EINVAL;
-        }
-        else if (DSAs.size() == 0)
-        {
-            std::cout << "ERROR: No match partition found" << std::endl;
-            return -EINVAL;
-	}
-	file = DSAs[0].file;
-    }
-
-    if (file.empty())
-        return -EINVAL;
-
     if (index == UINT_MAX)
         index = 0;
 
-    DSAInfo dsa(file);
     std::string blp_uuid, logic_uuid;
     auto dev = pcidev::get_dev(index, false);
     std::string errmsg;
@@ -348,6 +322,69 @@ int program(int argc, char *argv[])
         std::cout << "ERROR: Can not get BLP interface uuid. Please make sure corresponding BLP package is installed." << std::endl;
 	return -EINVAL;
     }
+    if (file.empty())
+    {
+        std::vector<DSAInfo> DSAs;
+
+        auto installedDSAs = firmwareImage::getIntalledDSAs();
+        for (DSAInfo& dsa : installedDSAs)
+        {
+            if (dsa.uuids.size() == 0)
+                continue;
+
+            if (!id.empty() && !dsa.matchIntId(id))
+                continue;
+
+            if (!plp.empty() && dsa.name.compare(plp))
+                continue;
+
+            DSAs.push_back(dsa);
+        }
+        if (DSAs.size() > 1)
+	{
+            std::cout << "ERROR: found duplicated partitions, please specify the entire uuid" << std::endl;
+            for (DSAInfo&d : DSAs)
+            {
+                std::cout << d;
+            }
+            std::cout << std::endl;
+            return -EINVAL;
+        }
+        else if (DSAs.size() == 0)
+        {
+            std::cout << "ERROR: No match partition found" << std::endl;
+            return -EINVAL;
+	}
+	file = DSAs[0].file;
+    }
+    else
+    {
+        DIR *dp;
+        dp = opendir(file.c_str());
+	if (dp)
+        {
+            path formatted_fw_dir(file);
+            for (recursive_directory_iterator iter(formatted_fw_dir, symlink_option::recurse), end;
+                iter != end;
+            )
+            {
+                DSAInfo d(iter->path().string());
+                if (d.uuids.size() > 0)
+                {
+                    file = iter->path().string();
+                    break;
+                }
+                ++iter;
+            }
+        }
+    }
+
+    if (file.empty())
+    {
+        std::cout << "ERROR: can not find partition file" << std::endl;
+    }
+
+    DSAInfo dsa(file);
     if (dsa.uuids.size() == 0)
     {
         std::cout << "Programming ULP..." << std::endl;
@@ -355,6 +392,7 @@ int program(int argc, char *argv[])
     }
 
     std::cout << "Programming PLP..." << std::endl;
+    std::cout << "Partition file: " << dsa.file << std::endl;
     for (std::string uuid : dsa.uuids)
     {
         if (blp_uuid.compare(uuid) == 0)
