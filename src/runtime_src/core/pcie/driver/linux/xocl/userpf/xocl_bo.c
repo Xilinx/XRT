@@ -40,6 +40,7 @@
 #endif
 
 #define	INVALID_BO_PADDR	0xffffffffffffffffull
+#define	GB(x)			((uint64_t)(x) * 1024 * 1024 * 1024)
 
 #if defined(XOCL_DRM_FREE_MALLOC)
 static inline void drm_free_large(void *ptr)
@@ -424,6 +425,13 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 			goto out_free;
 		}
 		if (xobj->flags & XOCL_HOST_MEM) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0)
+			if (xobj->base.size >= GB(4)) {
+				DRM_ERROR("Due to the limits of Linux Kernel API, xrt does not support buffer >= 4G\n");
+				ret = -EINVAL;
+				goto out_free;
+			}
+#endif
 			xobj->vmapping = vmap(xobj->pages, xobj->base.size >> PAGE_SHIFT, VM_MAP, PAGE_KERNEL);
 			if (!xobj->vmapping) {
 				ret = -ENOMEM;
