@@ -8,7 +8,7 @@ domain config -bif ./src/a9/xrt/linux.bif
 domain -runtime opencl
 domain -qemu-args ./src/qemu/lnx/qemu_args.txt
 domain -qemu-data ./src/boot
-domain -sysroot ./src/arm-xilinx-linux
+#domain -sysroot ./src/arm-xilinx-linux
 
 platform -generate
 
