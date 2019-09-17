@@ -19,6 +19,6 @@ set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")
 
 #Install all header files with directory structure
 #Don't remove trailing/ in include/
-install(DIRECTORY include/ DESTINATION ${XMA_INSTALL_DIR}/include
+install(DIRECTORY include/ DESTINATION ${XMA_INSTALL_DIR}/include/xma2
   PATTERN "include/lib" EXCLUDE
 )
