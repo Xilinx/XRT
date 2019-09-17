@@ -79,14 +79,6 @@ set_property PF0_DEV_CAP2_CPL_TIMEOUT_DISABLE "TRUE" [get_cells -hierarchical -f
 # IO constraints
 # ------------------------------------------------------------------------------
 
-
-
-
-# SDx Feature ROM identification
-# ------------------------------------------------------------------------------
-create_property -type bool -default_value false SDX_FEATURE_ROM cell
-set_property SDX_FEATURE_ROM true [get_cells -hierarchical -filter {PRIMITIVE_TYPE =~ BLOCKRAM.BRAM.* && NAME =~ *static_region*feature_rom*}]
-
 # Floorplanning
 # ------------------------------------------------------------------------------
 set_property DONT_TOUCH true [get_cells pfm_top_i/dynamic_region]
