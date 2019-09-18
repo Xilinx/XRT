@@ -928,8 +928,21 @@ int runShellCmd(const std::string& cmd, std::string& output)
 
     // Run test case
     setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
-    setenv("PYTHONPATH", "/opt/xilinx/xrt/python", 0);
-    setenv("LD_LIBRARY_PATH", "/opt/xilinx/xrt/lib", 1);
+
+    std::string pythonpath;
+    if (getenv("PYTHONPATH") != NULL)
+        pythonpath = std::string(getenv("PYTHONPATH"));
+    pythonpath = "/opt/xilinx/xrt/python:" + pythonpath;
+    setenv("PYTHONPATH", pythonpath.c_str(), 0);
+
+    std::string new_ld_path(getenv("XILINX_XRT"));
+    std::string ld_path;
+    if (getenv("LD_LIBRARY_PATH") != NULL)
+        ld_path = std::string(getenv("LD_LIBRARY_PATH"));
+    new_ld_path += "/lib:";
+    new_ld_path = new_ld_path + ld_path;
+    setenv("LD_LIBRARY_PATH", new_ld_path.c_str(), 1);
+
     unsetenv("XCL_EMULATION_MODE");
 
     int stderr_fds[2];
@@ -938,13 +951,13 @@ int runShellCmd(const std::string& cmd, std::string& output)
         ret = -EINVAL;
     }
 
-    close(stderr_fds[0]);
     dup2(stderr_fds[1], 2);
     std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
-    close(stderr_fds[1]);
+    close(stderr_fds[1]); 
 
     if (pipe == nullptr) {
         std::cout << "ERROR: Failed to run " << cmd << std::endl;
+        close(stderr_fds[0]);
         ret = -EINVAL;
     }
 
@@ -955,6 +968,15 @@ int runShellCmd(const std::string& cmd, std::string& output)
             output += buf;
         }
     }
+
+    //Read stderr
+    if (output.find("PASS") == std::string::npos) {
+        char buffer[256];
+        int count = read(stderr_fds[0], buffer, sizeof(buffer)-1);
+        buffer[count] = 0;
+        std::cout << buffer << std::endl;
+    }
+    
     close(stderr_fds[0]);
 
     // Stop progress reporter
