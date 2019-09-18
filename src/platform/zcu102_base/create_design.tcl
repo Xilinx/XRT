@@ -86,7 +86,7 @@ update_compile_order -fileset sim_1
 
 # Set platform project properties
 set_property platform.vendor                        "xilinx"     [current_project]
-set_property platform.board_id                      "ZCU102"    [current_project]
+set_property platform.board_id                      "zcu102"    [current_project]
 set_property platform.name                          "dynamic"    [current_project]
 set_property platform.version                       "0.1"        [current_project]
 set_property platform.description                   "This platform targets the ZCU102 Development Board. This platform features one PL and one PS channels of DDR4 SDRAM which are instantiated as required by the user kernels for high fabric resource availability ." [current_project]
