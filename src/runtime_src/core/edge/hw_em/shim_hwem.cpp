@@ -207,10 +207,10 @@ int ZYNQShim::xclLoadXclBin(const xclBin *header) {
   char cPacketEndChar = PL_OCL_PACKET_END_MARKER;
   memcpy((char*) (ZYNQ_HW_EM::remotePortMappedPointer), &cPacketEndChar, 1);*/
 
+  /* for emulation, we don't download */
   drm_zocl_axlf axlf_obj = {
     .za_xclbin_ptr = const_cast<axlf *>(header),
-    .za_flags = DRM_ZOCL_AXLF_BITSTREAM | DRM_ZOCL_AXLF_BITSTREAM_PDI |
-      DRM_ZOCL_AXLF_AIE_PDI,
+    .za_flags = DRM_ZOCL_AXLF_NONE,
   };
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_READ_AXLF, &axlf_obj);
