@@ -145,9 +145,10 @@ Emulation Group
 |                           |                            |Default:300                                        |
 +---------------------------+----------------------------+---------------------------------------------------+
 | print_infos_in_console    |  [true|false]              |Controls the printing of emulation info messages   |
-|                           |                            |to users console. Emulation info messages are      |
-|                           |                            |always logged into a file called                   |
-|                           |                            |emulation_debug.log                                |
+|                           |                            |to users console.                                  |
+|                           |                            |                                                   |
+|                           |                            |  Emulation info messages are always logged into a |
+|                           |                            |  file called emulation_debug.log                  |
 |                           |                            |                                                   |
 |                           |                            |     - true = print in users console               |
 |                           |                            |     - false = do not print in user console        |
