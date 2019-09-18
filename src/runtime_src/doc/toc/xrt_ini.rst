@@ -90,9 +90,9 @@ Debug Group
 |                      |                              |                                                      |
 |                      |                              |Default: false                                        |
 +----------------------+------------------------------+------------------------------------------------------+
-| data_transfer_trace  |  [course|fine|off]           |Enable device-level AXI transfers trace:              |
+| data_transfer_trace  |  [coarse|fine|off]           |Enable device-level AXI transfers trace:              |
 |                      |                              |                                                      |
-|                      |                              |     - course: Shows CU transfer activity             |
+|                      |                              |     - coarse: Shows CU transfer activity             |
 |                      |                              |     - fine: Shows all AXI level burst data transfer  |
 |                      |                              |     - off: Does not show device-level AXI transfer   |
 |                      |                              |                                                      |
