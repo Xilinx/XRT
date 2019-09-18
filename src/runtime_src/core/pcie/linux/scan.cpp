@@ -673,15 +673,15 @@ std::ostream& operator<<(std::ostream& stream,
         dev->sysfs_get("rom", "VBNV", err, shell_name);
         dev->sysfs_get("rom", "timestamp", err, ts);
     }
-    stream << ":" << shell_name;
+    stream << " " << shell_name;
     if (ts != 0)
         stream << "(ts=0x" << std::hex << ts << ")";
 
     // instance number
     if (dev->is_mgmt)
-        stream << ":mgmt(inst=";
+        stream << " mgmt(inst=";
     else
-        stream << ":user(inst=";
+        stream << " user(inst=";
     stream << std::dec << dev->instance << ")";
 
     stream.flags(f);
