@@ -3828,8 +3828,8 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 		uint32_t cmd_cus = ecmd->data[maskidx];
 		// cmd_cus must be subset of ctx_cus
 		if (cmd_cus & ~ctx_cus[maskidx]) {
-			userpf_err("
-				CU mismatch in mask(%d) cmd(0x%x) ctx(0x%x)\n",
+			userpf_err(client->xdev,
+				"CU mismatch in mask(%d) cmd(0x%x) ctx(0x%x)\n",
 				maskidx, cmd_cus, ctx_cus[maskidx]);
 			err = 1;
 			goto out; /* error */

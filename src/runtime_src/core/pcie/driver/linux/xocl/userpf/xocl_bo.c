@@ -476,10 +476,8 @@ int xocl_userptr_bo_ioctl(struct drm_device *dev,
 		goto out1;
 	}
 
-	printk(KERN_ERR "ALLOC USER PTR BO\n");
 	ret = get_user_pages_fast(args->addr, page_count, 1, xobj->pages);
 	if (ret != page_count) {
-		printk(KERN_ERR "BAD USER PTR: 0x%llx\n", args->addr);
 		ret = -ENOMEM;
 		goto out0;
 	}
