@@ -121,7 +121,11 @@ Debug Group
 |                      |                              |     - N: Integer                                     |
 |                      |                              |     - K|M|G: Units Kilobyte or Megabyte or Gigabyte  |
 |                      |                              |                                                      |
-|                      |                              |Note: If no unit is given byte is assumed             |
+|                      |                              |Note:                                                 |
+|                      |                              |                                                      |
+|                      |                              |   - This option only applicable in hardware flow     |
+|                      |                              |   - If no unit is given byte is assumed              |
+|                      |                              |                                                      |
 |                      |                              |Example: trace_buffer_size=100M                       |
 |                      |                              |                                                      |
 |                      |                              |Default: 1M                                           |
@@ -161,9 +165,10 @@ Emulation Group
 |                           |                            |Default: true                                      |
 +---------------------------+----------------------------+---------------------------------------------------+
 | print_errors_in_console   |  [true|false]              |Controls the printing of emulation error messages  |
-|                           |                            |to users console. Emulation error messages are     |
-|                           |                            |always logged into a file called                   |
-|                           |                            |emulation_debug.log                                |
+|                           |                            |to users console.                                  |
+|                           |                            |                                                   |
+|                           |                            | Emulation error messages are always logged into a | 
+|                           |                            | file called emulation_debug.log                   |
 |                           |                            |                                                   |
 |                           |                            |     - true = print in users console               |
 |                           |                            |     - false = do not print in user console        |
@@ -181,7 +186,8 @@ Emulation Group
 |                           |                            |     wdb file                                      |
 |                           |                            |                                                   |
 |                           |                            |Default: off                                       |
-|                           |                            |Note: The kernel needs to be compiled with debug   |
+|                           |                            |                                                   |
+|                           |                            | Note: The kernel needs to be compiled with debug  |
 |                           |                            |enabled for the waveform to be saved and displayed |
 |                           |                            |in the simulator GUI.                              |
 +---------------------------+----------------------------+---------------------------------------------------+
