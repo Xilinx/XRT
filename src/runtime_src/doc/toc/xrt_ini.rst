@@ -156,9 +156,10 @@ Emulation Group
 |                           |                            |Default: true                                      |
 +---------------------------+----------------------------+---------------------------------------------------+
 | print_warning_in_console  |  [true|false]              |Controls the printing of emulation warning messages|
-|                           |                            |to users console. Emulation warning messages are   |
-|                           |                            |always logged into a file called                   |
-|                           |                            |emulation_debug.log                                |
+|                           |                            |to users console.                                  |
+|                           |                            |                                                   |
+|                           |                            | Emulation warning messages are always logged into | 
+|                           |                            | a file called emulation_debug.log                 |
 |                           |                            |                                                   |
 |                           |                            |     - true = print in users console               |
 |                           |                            |     - false = do not print in user console        |
