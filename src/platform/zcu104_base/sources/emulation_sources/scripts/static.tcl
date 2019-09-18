@@ -36,13 +36,6 @@ if { [string first $scripts_vivado_version $current_vivado_version] == -1 } {
 # To test this script, run the following commands from Vivado Tcl console:
 # source pfm_top_script.tcl
 
-
-# The design that will be created by this Tcl script contains the following 
-# module references:
-# freq_counter
-
-# Please add the sources of those modules before sourcing this Tcl script.
-
 # If there is no project opened, this script will create a
 # project, but make sure you do not have an existing project
 # <./myproj/project_1.xpr> in the current working folder.
@@ -230,6 +223,8 @@ proc create_hier_cell_pr_isolation_expanded { parentCell nameHier } {
   # Create interface pins
   create_bd_intf_pin -mode Master -vlnv xilinx.com:interface:aximm_rtl:1.0 M_AXI
 
+  create_bd_intf_pin -mode Master -vlnv xilinx.com:interface:aximm_rtl:1.0 M_AXI1
+
   create_bd_intf_pin -mode Slave -vlnv xilinx.com:interface:aximm_rtl:1.0 S02_AXI
 
   create_bd_intf_pin -mode Slave -vlnv xilinx.com:interface:aximm_rtl:1.0 S_AXI
@@ -237,6 +232,8 @@ proc create_hier_cell_pr_isolation_expanded { parentCell nameHier } {
   create_bd_intf_pin -mode Slave -vlnv xilinx.com:interface:aximm_rtl:1.0 S_AXI1
 
   create_bd_intf_pin -mode Slave -vlnv xilinx.com:interface:aximm_rtl:1.0 S_AXI2
+
+  create_bd_intf_pin -mode Slave -vlnv xilinx.com:interface:aximm_rtl:1.0 S_AXI3
 
   create_bd_intf_pin -mode Slave -vlnv xilinx.com:interface:aximm_rtl:1.0 interconnect_axilite_static_secondary_b_M00_AXI
 
@@ -300,6 +297,15 @@ proc create_hier_cell_pr_isolation_expanded { parentCell nameHier } {
    CONFIG.REG_B {1} \
  ] $regslice_data_periph
 
+  # Create instance: regslice_data_periph_1, and set properties
+  set regslice_data_periph_1 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_register_slice regslice_data_periph_1 ]
+  set_property -dict [ list \
+   CONFIG.READ_WRITE_MODE {READ_WRITE} \
+   CONFIG.REG_AR {1} \
+   CONFIG.REG_AW {1} \
+   CONFIG.REG_B {1} \
+ ] $regslice_data_periph_1
+
   # Create instance: regslice_ddrmem_2, and set properties
   set regslice_ddrmem_2 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_register_slice regslice_ddrmem_2 ]
 
@@ -324,23 +330,25 @@ proc create_hier_cell_pr_isolation_expanded { parentCell nameHier } {
 
   # Create interface connections
   connect_bd_intf_net -intf_net Conn1 [get_bd_intf_pins interconnect_axilite_static_secondary_b_M00_AXI] [get_bd_intf_pins gate_pr/S_AXI]
+  connect_bd_intf_net -intf_net Conn2 [get_bd_intf_pins S_AXI3] [get_bd_intf_pins regslice_data_periph_1/S_AXI]
   connect_bd_intf_net -intf_net Conn3 [get_bd_intf_pins S_AXI1] [get_bd_intf_pins regslice_ddrmem_3/S_AXI]
   connect_bd_intf_net -intf_net Conn4 [get_bd_intf_pins M_AXI] [get_bd_intf_pins regslice_ddrmem_3/M_AXI]
   connect_bd_intf_net -intf_net Conn5 [get_bd_intf_pins regslice_ddrmem_2] [get_bd_intf_pins regslice_ddrmem_2/M_AXI]
   connect_bd_intf_net -intf_net Conn6 [get_bd_intf_pins S_AXI2] [get_bd_intf_pins regslice_data_periph/S_AXI]
   connect_bd_intf_net -intf_net Conn7 [get_bd_intf_pins regslice_data_pf_M_AXI] [get_bd_intf_pins regslice_data_periph/M_AXI]
   connect_bd_intf_net -intf_net Conn8 [get_bd_intf_pins S_AXI] [get_bd_intf_pins regslice_ddrmem_2/S_AXI]
+  connect_bd_intf_net -intf_net Conn9 [get_bd_intf_pins M_AXI1] [get_bd_intf_pins regslice_data_periph_1/M_AXI]
   connect_bd_intf_net -intf_net Conn11 [get_bd_intf_pins regslice_control_userpf_M_AXI] [get_bd_intf_pins regslice_control_userpf/M_AXI]
   connect_bd_intf_net -intf_net S02_AXI_1 [get_bd_intf_pins S02_AXI] [get_bd_intf_pins regslice_control_userpf/S_AXI]
 
   # Create port connections
   connect_bd_net -net M00_ACLK_1 [get_bd_pins clkwiz_sysclks_clk_out2] [get_bd_pins gate_pr/s_axi_aclk] [get_bd_pins psreset_regslice_ctrl_pr/slowest_sync_clk] [get_bd_pins regslice_control_userpf/aclk] [get_bd_pins regslice_data_periph/aclk]
   connect_bd_net -net M00_ARESETN_1 [get_bd_pins psreset_ctrlclk_interconnect_aresetn] [get_bd_pins gate_pr/s_axi_aresetn] [get_bd_pins psreset_regslice_ctrl_pr/ext_reset_in] [get_bd_pins psreset_regslice_data_pr/ext_reset_in]
-  connect_bd_net -net clkwiz_kernel_clk_out1_1 [get_bd_pins clkwiz_kernel_clk_out1] [get_bd_pins psreset_regslice_data_pr/slowest_sync_clk] [get_bd_pins regslice_ddrmem_2/aclk] [get_bd_pins regslice_ddrmem_3/aclk]
+  connect_bd_net -net clkwiz_kernel_clk_out1_1 [get_bd_pins clkwiz_kernel_clk_out1] [get_bd_pins psreset_regslice_data_pr/slowest_sync_clk] [get_bd_pins regslice_data_periph_1/aclk] [get_bd_pins regslice_ddrmem_2/aclk] [get_bd_pins regslice_ddrmem_3/aclk]
   connect_bd_net -net clkwiz_kernel_locked_1 [get_bd_pins clkwiz_kernel_locked] [get_bd_pins psreset_regslice_data_pr/dcm_locked]
   connect_bd_net -net dcm_locked_2 [get_bd_pins clkwiz_sysclks_locked] [get_bd_pins psreset_regslice_ctrl_pr/dcm_locked]
   connect_bd_net -net gate_pr_gpio_io_o [get_bd_pins gate_pr/gpio2_io_i] [get_bd_pins gate_pr/gpio_io_o] [get_bd_pins slice_reset_kernel_pr/Din] [get_bd_pins slice_reset_system_pr/Din]
-  connect_bd_net -net psreset_regslice_data_pr_interconnect_aresetn [get_bd_pins psreset_regslice_data_pr_interconnect_aresetn] [get_bd_pins psreset_regslice_data_pr/interconnect_aresetn] [get_bd_pins regslice_ddrmem_2/aresetn] [get_bd_pins regslice_ddrmem_3/aresetn]
+  connect_bd_net -net psreset_regslice_data_pr_interconnect_aresetn [get_bd_pins psreset_regslice_data_pr_interconnect_aresetn] [get_bd_pins psreset_regslice_data_pr/interconnect_aresetn] [get_bd_pins regslice_data_periph_1/aresetn] [get_bd_pins regslice_ddrmem_2/aresetn] [get_bd_pins regslice_ddrmem_3/aresetn]
   connect_bd_net -net psreset_regslice_pr_interconnect_aresetn [get_bd_pins psreset_regslice_ctrl_pr/interconnect_aresetn] [get_bd_pins regslice_control_userpf/aresetn] [get_bd_pins regslice_data_periph/aresetn]
   connect_bd_net -net slice_reset_kernel_pr_Dout [get_bd_pins slice_reset_kernel_pr_Dout] [get_bd_pins slice_reset_kernel_pr/Dout]
   connect_bd_net -net slice_reset_system_pr_Dout [get_bd_pins psreset_regslice_ctrl_pr/aux_reset_in] [get_bd_pins psreset_regslice_data_pr/aux_reset_in] [get_bd_pins slice_reset_system_pr/Dout]
@@ -522,6 +530,8 @@ proc create_hier_cell_static_region { parentCell nameHier } {
   current_bd_instance $hier_obj
 
   # Create interface pins
+  create_bd_intf_pin -mode Master -vlnv xilinx.com:interface:aximm_rtl:1.0 M_AXI
+
   create_bd_intf_pin -mode Slave -vlnv xilinx.com:interface:aximm_rtl:1.0 S_AXI
 
   create_bd_intf_pin -mode Slave -vlnv xilinx.com:interface:aximm_rtl:1.0 S_AXI_0
@@ -1980,7 +1990,7 @@ proc create_hier_cell_static_region { parentCell nameHier } {
    CONFIG.PSU__USE__IRQ {0} \
    CONFIG.PSU__USE__IRQ0 {1} \
    CONFIG.PSU__USE__IRQ1 {0} \
-   CONFIG.PSU__USE__M_AXI_GP0 {0} \
+   CONFIG.PSU__USE__M_AXI_GP0 {1} \
    CONFIG.PSU__USE__M_AXI_GP1 {0} \
    CONFIG.PSU__USE__M_AXI_GP2 {1} \
    CONFIG.PSU__USE__PROC_EVENT_BUS {0} \
@@ -2024,12 +2034,12 @@ proc create_hier_cell_static_region { parentCell nameHier } {
    CONFIG.UART1_BOARD_INTERFACE {custom} \
    CONFIG.USB0_BOARD_INTERFACE {custom} \
    CONFIG.USB1_BOARD_INTERFACE {custom} \
-
  ] $zynq_ultra_ps_e_0
 
 set_property SELECTED_SIM_MODEL tlm_dpi [get_bd_cells zynq_ultra_ps_e_0]
 
   # Create interface connections
+  connect_bd_intf_net -intf_net Conn1 [get_bd_intf_pins M_AXI] [get_bd_intf_pins pr_isolation_expanded/M_AXI1]
   connect_bd_intf_net -intf_net Conn7 [get_bd_intf_pins regslice_control_userpf_M_AXI] [get_bd_intf_pins pr_isolation_expanded/regslice_control_userpf_M_AXI]
   connect_bd_intf_net -intf_net Conn9 [get_bd_intf_pins regslice_data_pf_M_AXI] [get_bd_intf_pins pr_isolation_expanded/regslice_data_pf_M_AXI]
   connect_bd_intf_net -intf_net S02_AXI_1 [get_bd_intf_pins axi_interconnect_user/M00_AXI] [get_bd_intf_pins pr_isolation_expanded/S02_AXI]
@@ -2047,11 +2057,12 @@ set_property SELECTED_SIM_MODEL tlm_dpi [get_bd_cells zynq_ultra_ps_e_0]
   connect_bd_intf_net -intf_net kernel_clk_axi_ctrl_1 [get_bd_intf_pins axi_interconnect_mgmt/M00_AXI] [get_bd_intf_pins base_clocking/kernel_clk_axi_ctrl]
   connect_bd_intf_net -intf_net pr_isolation_expanded_M_AXI [get_bd_intf_pins pr_isolation_expanded/M_AXI] [get_bd_intf_pins zynq_ultra_ps_e_0/S_AXI_HP0_FPD]
   connect_bd_intf_net -intf_net pr_isolation_expanded_regslice_ddrmem_2 [get_bd_intf_pins pr_isolation_expanded/regslice_ddrmem_2] [get_bd_intf_pins zynq_ultra_ps_e_0/S_AXI_HP3_FPD]
+  connect_bd_intf_net -intf_net zynq_ultra_ps_e_0_M_AXI_HPM0_FPD [get_bd_intf_pins pr_isolation_expanded/S_AXI3] [get_bd_intf_pins zynq_ultra_ps_e_0/M_AXI_HPM0_FPD]
   connect_bd_intf_net -intf_net zynq_ultra_ps_e_0_M_AXI_HPM0_LPD [get_bd_intf_pins axi_interconnect_0/S00_AXI] [get_bd_intf_pins zynq_ultra_ps_e_0/M_AXI_HPM0_LPD]
 
   # Create port connections
   connect_bd_net -net axi_intc_0_irq [get_bd_pins axi_intc_0/irq] [get_bd_pins xlconcat_0/In0]
-  connect_bd_net -net base_clocking_clk_out1 [get_bd_pins clkwiz_kernel_clk_out1] [get_bd_pins axi_vip_0/aclk] [get_bd_pins axi_vip_data_m00_axi_1/aclk] [get_bd_pins base_clocking/clkwiz_kernel_clk_out1] [get_bd_pins pr_isolation_expanded/clkwiz_kernel_clk_out1] [get_bd_pins zynq_ultra_ps_e_0/saxihp0_fpd_aclk] [get_bd_pins zynq_ultra_ps_e_0/saxihp3_fpd_aclk]
+  connect_bd_net -net base_clocking_clk_out1 [get_bd_pins clkwiz_kernel_clk_out1] [get_bd_pins axi_vip_0/aclk] [get_bd_pins axi_vip_data_m00_axi_1/aclk] [get_bd_pins base_clocking/clkwiz_kernel_clk_out1] [get_bd_pins pr_isolation_expanded/clkwiz_kernel_clk_out1] [get_bd_pins zynq_ultra_ps_e_0/maxihpm0_fpd_aclk] [get_bd_pins zynq_ultra_ps_e_0/saxihp0_fpd_aclk] [get_bd_pins zynq_ultra_ps_e_0/saxihp3_fpd_aclk]
   connect_bd_net -net base_clocking_clk_out2 [get_bd_pins clkwiz_sysclks_clk_out2] [get_bd_pins axi_intc_0/s_axi_aclk] [get_bd_pins axi_interconnect_0/ACLK] [get_bd_pins axi_interconnect_0/M00_ACLK] [get_bd_pins axi_interconnect_0/M01_ACLK] [get_bd_pins axi_interconnect_0/S00_ACLK] [get_bd_pins axi_interconnect_mgmt/ACLK] [get_bd_pins axi_interconnect_mgmt/M00_ACLK] [get_bd_pins axi_interconnect_mgmt/M01_ACLK] [get_bd_pins axi_interconnect_mgmt/M02_ACLK] [get_bd_pins axi_interconnect_mgmt/M03_ACLK] [get_bd_pins axi_interconnect_mgmt/S00_ACLK] [get_bd_pins axi_interconnect_user/ACLK] [get_bd_pins axi_interconnect_user/M00_ACLK] [get_bd_pins axi_interconnect_user/M01_ACLK] [get_bd_pins axi_interconnect_user/M02_ACLK] [get_bd_pins axi_interconnect_user/S00_ACLK] [get_bd_pins base_clocking/clkwiz_sysclks_clk_out2] [get_bd_pins debug_bridge_xvc/s_axi_aclk] [get_bd_pins pr_isolation_expanded/clkwiz_sysclks_clk_out2] [get_bd_pins zynq_ultra_ps_e_0/maxihpm0_lpd_aclk]
   connect_bd_net -net base_clocking_clk_out4 [get_bd_pins clkwiz_kernel2_clk_out1] [get_bd_pins base_clocking/clkwiz_kernel2_clk_out1]
   connect_bd_net -net base_clocking_interconnect_aresetn [get_bd_pins axi_intc_0/s_axi_aresetn] [get_bd_pins axi_interconnect_0/ARESETN] [get_bd_pins axi_interconnect_0/M00_ARESETN] [get_bd_pins axi_interconnect_0/M01_ARESETN] [get_bd_pins axi_interconnect_0/S00_ARESETN] [get_bd_pins axi_interconnect_mgmt/ARESETN] [get_bd_pins axi_interconnect_mgmt/M00_ARESETN] [get_bd_pins axi_interconnect_mgmt/M01_ARESETN] [get_bd_pins axi_interconnect_mgmt/M02_ARESETN] [get_bd_pins axi_interconnect_mgmt/M03_ARESETN] [get_bd_pins axi_interconnect_mgmt/S00_ARESETN] [get_bd_pins axi_interconnect_user/ARESETN] [get_bd_pins axi_interconnect_user/M00_ARESETN] [get_bd_pins axi_interconnect_user/M01_ARESETN] [get_bd_pins axi_interconnect_user/M02_ARESETN] [get_bd_pins axi_interconnect_user/S00_ARESETN] [get_bd_pins base_clocking/psreset_ctrlclk_interconnect_aresetn] [get_bd_pins debug_bridge_xvc/s_axi_aresetn] [get_bd_pins pr_isolation_expanded/psreset_ctrlclk_interconnect_aresetn]
@@ -2128,6 +2139,7 @@ proc create_root_design { parentCell } {
   connect_bd_intf_net -intf_net dynamic_region_interconnect_aximm_ddrmem2_M00_AXI [get_bd_intf_pins dynamic_region/interconnect_aximm_ddrmem2_M00_AXI] [get_bd_intf_pins static_region/S_AXI_0]
   connect_bd_intf_net -intf_net dynamic_region_interconnect_aximm_ddrmem3_M00_AXI [get_bd_intf_pins dynamic_region/interconnect_aximm_ddrmem3_M00_AXI] [get_bd_intf_pins static_region/S_AXI]
   connect_bd_intf_net -intf_net static_region_M_AXI [get_bd_intf_pins dynamic_region/regslice_data_periph_M_AXI] [get_bd_intf_pins static_region/regslice_data_pf_M_AXI]
+  connect_bd_intf_net -intf_net static_region_M_AXI1 [get_bd_intf_pins dynamic_region/regslice_data_hpm0fpd_M_AXI1] [get_bd_intf_pins static_region/M_AXI]
   connect_bd_intf_net -intf_net static_region_regslice_control_userpf_M_AXI [get_bd_intf_pins dynamic_region/regslice_control_userpf_M_AXI] [get_bd_intf_pins static_region/regslice_control_userpf_M_AXI]
 
   # Create port connections
@@ -2161,6 +2173,7 @@ proc create_root_design { parentCell } {
  # create_bd_addr_seg -range 0x00010000 -offset 0x80090000 [get_bd_addr_spaces static_region/zynq_ultra_ps_e_0/Data] [get_bd_addr_segs static_region/debug_bridge_xvc/S_AXI/Reg0] SEG_debug_bridge_xvc_Reg0
   create_bd_addr_seg -range 0x00800000 -offset 0x80800000 [get_bd_addr_spaces static_region/zynq_ultra_ps_e_0/Data] [get_bd_addr_segs dynamic_region/regslice_control_userpf_M_AXI/Reg0] SEG_dynamic_region_Reg
   create_bd_addr_seg -range 0x00400000 -offset 0x80400000 [get_bd_addr_spaces static_region/zynq_ultra_ps_e_0/Data] [get_bd_addr_segs dynamic_region/regslice_data_periph_M_AXI/Reg] SEG_dynamic_region_Reg1
+  assign_bd_address -offset 0xA0000000 -range 0x00010000 -target_address_space [get_bd_addr_spaces static_region/zynq_ultra_ps_e_0/Data] [get_bd_addr_segs dynamic_region/regslice_data_hpm0fpd_M_AXI1/Reg] -force
   create_bd_addr_seg -range 0x00010000 -offset 0x80070000 [get_bd_addr_spaces static_region/zynq_ultra_ps_e_0/Data] [get_bd_addr_segs static_region/pr_isolation_expanded/gate_pr/S_AXI/Reg] SEG_gate_pr_Reg
 
 
