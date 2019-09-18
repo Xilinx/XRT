@@ -190,6 +190,6 @@ Emulation Group
 |                           |                            |Default: off                                       |
 |                           |                            |                                                   |
 |                           |                            | Note: The kernel needs to be compiled with debug  |
-|                           |                            |enabled for the waveform to be saved and displayed |
-|                           |                            |in the simulator GUI.                              |
+|                           |                            | enabled for the waveform to be saved and          |
+|                           |                            | displayed in the simulator GUI.                   |
 +---------------------------+----------------------------+---------------------------------------------------+
