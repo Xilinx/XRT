@@ -406,6 +406,17 @@ def xclLogMsg(handle, level, tag, format, *args):
     libc.xclAllocBO.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p]
     return libc.xclLogMsg(handle, level, tag, format, *args)
 
+def xrt_logmsg(level, format, *args):
+    """
+    Send message to log file  with XRT tag and following settings in ini file.
+    :param level: (xrtLogMsgLevel) Severity level of the msg
+    :param format: (const char *) Format of Msg string to write to log file
+    :param ...: All other arguments as per the format
+    :return: 0 on success or appropriate error number
+    """
+    libc.xclLog.restype = ctypes.c_int
+    libc.xclLog.argtypes = [ctypes.c_int ctypes.c_void_p]
+    return libc.xclLog(level, format, *args)
 
 def xclAllocBO(handle, size, unused, flags):
     """

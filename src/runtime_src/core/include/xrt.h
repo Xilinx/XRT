@@ -433,6 +433,17 @@ XCL_DRIVER_DLLESPEC unsigned int xclVersion();
 XCL_DRIVER_DLLESPEC int xclLogMsg(xclDeviceHandle handle, enum xrtLogMsgLevel level, const char* tag, const char* format, ...);
 
 /**
+ * xrt_logmsg() - Send message to log file  with XRT tag and following settings in ini file.
+ *
+ * @level:         Severity level of the msg
+ * @format:        Format of Msg string to write to log file
+ * @...:           All other arguments as per the format
+ *
+ * Return:         0 on success or appropriate error number
+ */
+XCL_DRIVER_DLLESPEC int xrt_logmsg(enum xrtLogMsgLevel level, const char* format, ...);
+
+/**
  * DOC: XRT Buffer Management APIs
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  *
