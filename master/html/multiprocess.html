@@ -36,7 +36,7 @@
   <link rel="stylesheet" href="_static/theme_overrides.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="PCIe Peer-to-Peer Support" href="p2p.html" />
+    <link rel="next" title="PCIe Peer-to-Peer (P2P) Support" href="p2p.html" />
     <link rel="prev" title="Supported Kernel Execution Models" href="xrt_kernel_executions.html" /> 
 </head>
 
@@ -103,10 +103,10 @@
 <li class="toctree-l2"><a class="reference internal" href="#implementation-details-for-curious">Implementation Details For Curious</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P) Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">xrt.ini Configuration File</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
 <ul>
@@ -229,14 +229,12 @@ successfull in loading its xclbin. The other processes will get error code
 </div>
 <div class="section" id="usage">
 <h2>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h2>
-<p>Processes share access to all device resources; as of 2019.1, there is
-no support for exclusive access to resources by any one process.</p>
 <p>If two or more processes execute the same kernel, then these processes
 will acquire the kernel’s compute units per the <code class="docutils literal notranslate"><span class="pre">xocl</span></code> kernel driver
 compute unit scheduler, which is first-come first-serve.  All
 processes have the same priority in XRT.</p>
-<p>To disable multi-process support, add the following entry to <a class="reference internal" href="xrt_ini.html#xrt-ini-rst"><span class="std std-ref">xrt.ini Configuration File</span></a>
-in the same directory as all the executable(s):</p>
+<p>To disable multi-process support, add the following entry to <a class="reference internal" href="xrt_ini.html#xrt-ini-rst"><span class="std std-ref">Configuration File xrt.ini</span></a>
+in the same directory as each executable trying to use the device:</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[Runtime]
 multiprocess=false
 </pre></div>
@@ -382,7 +380,7 @@ The diagram shows timeline view with all 7 processes running concurrently.</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="p2p.html" class="btn btn-neutral float-right" title="PCIe Peer-to-Peer Support" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="p2p.html" class="btn btn-neutral float-right" title="PCIe Peer-to-Peer (P2P) Support" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="xrt_kernel_executions.html" class="btn btn-neutral float-left" title="Supported Kernel Execution Models" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>

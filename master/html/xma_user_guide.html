@@ -37,7 +37,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="XMA 19.2 Migration" href="xma_19.2.html" />
-    <link rel="prev" title="xrt.ini Configuration File" href="xrt_ini.html" /> 
+    <link rel="prev" title="Configuration File xrt.ini" href="xrt_ini.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -97,10 +97,10 @@
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P) Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">xrt.ini Configuration File</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
 <ul class="current">
@@ -715,7 +715,7 @@ Plugins may use dev_index, bank_index &amp; device_only info from BufferObject t
 <li>Use dataflow kernels with context/channels for best performance. Use HLS/RTL Wizard with appropriate settings to generate these kernels in 2019.2 release toolset.</li>
 <li>All work items within a channel are treated as FIFO. Kernel must maintain this order for a channel.</li>
 <li>See spec for kernels with dataflow with channels. Kernel regamp registers at offset 0x10 (channel_id input to kernel) and 0x14 (channel_id output from kernel) must be supported by kernels.</li>
-<li>Use <a class="reference internal" href="xrt_ini.html#xrt-ini-rst"><span class="std std-ref">xrt.ini Configuration File</span></a> settings (dataflow; kernel_channels) to enable dataflow kernel with channels</li>
+<li>Use <a class="reference internal" href="xrt_ini.html#xrt-ini-rst"><span class="std std-ref">Configuration File xrt.ini</span></a> settings (dataflow; kernel_channels) to enable dataflow kernel with channels</li>
 </ul>
 </dd>
 <dt>Using DRM (Digital Right Management) IPs:</dt>
@@ -739,7 +739,7 @@ Plugins may use dev_index, bank_index &amp; device_only info from BufferObject t
         <a href="xma_19.2.html" class="btn btn-neutral float-right" title="XMA 19.2 Migration" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="xrt_ini.html" class="btn btn-neutral float-left" title="xrt.ini Configuration File" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="xrt_ini.html" class="btn btn-neutral float-left" title="Configuration File xrt.ini" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

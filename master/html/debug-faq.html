@@ -96,10 +96,10 @@
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P) Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">xrt.ini Configuration File</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
 <ul>
@@ -244,7 +244,7 @@
 <dt><code class="docutils literal notranslate"><span class="pre">xclbinutil</span></code></dt>
 <dd>Retrieve info from an xclbin</dd>
 <dt>XRT API Trace</dt>
-<dd><p class="first">Run failing application with XRT logging enabled in <a class="reference internal" href="xrt_ini.html#xrt-ini-rst"><span class="std std-ref">xrt.ini Configuration File</span></a></p>
+<dd><p class="first">Run failing application with XRT logging enabled in <a class="reference internal" href="xrt_ini.html#xrt-ini-rst"><span class="std std-ref">Configuration File xrt.ini</span></a></p>
 <div class="last highlight-none notranslate"><div class="highlight"><pre><span></span>[Runtime]
 runtime_log=my_run.log
 </pre></div>
@@ -284,7 +284,7 @@ xbutil query
 <div class="section" id="incorrect-memory-topology-usage">
 <h3>Incorrect Memory Topology Usage<a class="headerlink" href="#incorrect-memory-topology-usage" title="Permalink to this headline">¶</a></h3>
 <p>5.0+ XSAs are considered dynamic platforms which use sparse connectivity between acceleration kernels and memory controllers (MIGs). This means that a kernel port can only read/write from/to a specific MIG. This connectivity is frozen at xclbin generation time in specified in mem_topology section of xclbin. The host application needs to ensure that it uses the correct memory banks for buffer allocation using cl_mem_ext_ptr_t for OpenCL applications. For XRT native applications the bank is specified in flags to xclAllocBO() and xclAllocUserPtr().</p>
-<p>If an application is producing incorrect results it is important to review the host code to ensure that host application and xclbin agree on memory topology. One way to validate this at runtime is to enable XRT logging in <a class="reference internal" href="xrt_ini.html#xrt-ini-rst"><span class="std std-ref">xrt.ini Configuration File</span></a> and then carefully go through all buffer allocation requests.</p>
+<p>If an application is producing incorrect results it is important to review the host code to ensure that host application and xclbin agree on memory topology. One way to validate this at runtime is to enable XRT logging in <a class="reference internal" href="xrt_ini.html#xrt-ini-rst"><span class="std std-ref">Configuration File xrt.ini</span></a> and then carefully go through all buffer allocation requests.</p>
 </div>
 <div class="section" id="memory-read-before-write">
 <h3>Memory Read Before Write<a class="headerlink" href="#memory-read-before-write" title="Permalink to this headline">¶</a></h3>
