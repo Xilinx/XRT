@@ -270,10 +270,15 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
     xclTraceResults results = {};
     uint64_t previousTimestamp = 0;
     for (uint32_t i = 0; i < numSamples; i++) {
-      uint32_t index = wordsPerSample * i;
 
-      uint32_t* dataUInt32Ptr = (uint32_t*)data;
-      uint64_t currentSample = *(dataUInt32Ptr + index) | (uint64_t)*(dataUInt32Ptr + index + 1) << 32;
+      // Old method has issues with emulation trace
+      //uint32_t index = wordsPerSample * i;
+      //uint32_t* dataUInt32Ptr = (uint32_t*)data;
+      //uint64_t currentSample = *(dataUInt32Ptr + index) | (uint64_t)*(dataUInt32Ptr + index + 1) << 32;
+
+      // Works with HW and HW Emu
+      uint64_t* dataUInt64Ptr = (uint64_t*)data;
+      uint64_t currentSample = dataUInt64Ptr[i];
 
       if (!currentSample)
         continue;
@@ -308,7 +313,8 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
                           << " Timestamp : " << results.Timestamp << "   "
                           << " Host Timestamp : " << std::hex << results.HostTimestamp << std::endl;
           }
-          results.isClockTrain = true;
+          //results.isClockTrain = true;
+	  results.isClockTrain = 1 ;
           traceVector.mArray[static_cast<int>(i/4)] = results;    // save result
         }
         continue;
@@ -324,7 +330,8 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
       results.Error = (currentSample >> 63) & 0x1;
       results.EventID = XCL_PERF_MON_HW_EVENT;
       results.EventFlags = ((currentSample >> 45) & 0xF) | ((currentSample >> 57) & 0x10) ;
-      results.isClockTrain = false;
+      //results.isClockTrain = false;
+      results.isClockTrain = 0 ;
 
       traceVector.mArray[i - clockWordIndex + 1] = results;   // save result
 

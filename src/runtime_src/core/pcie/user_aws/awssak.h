@@ -231,7 +231,10 @@ public:
         }
         unsigned buf[ 16 ];
         for( unsigned int i = 0; i < computeUnits.size(); i++ ) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
             xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, computeUnits.at( i ).m_base_address, &buf, 16);
+#pragma GCC diagnostic pop
             if (!((buf[0] == 0x0) || (buf[0] == 0x4) || (buf[0] == 0x6))) {
                 return -EBUSY;
             }
@@ -352,7 +355,10 @@ public:
                 static int cuCnt = 0;
                 if( computeUnits.at( i ).m_type == IP_KERNEL ) {
                     unsigned statusBuf;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
                     xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, computeUnits.at( i ).m_base_address, &statusBuf, 4);
+#pragma GCC diagnostic pop
                     ostr << "  CU[" << cuCnt << "]: "
                          << computeUnits.at( i ).m_name
                          << "@0x" << std::hex << computeUnits.at( i ).m_base_address << " "

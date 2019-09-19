@@ -77,6 +77,144 @@ XCL_DRIVER_DLLESPEC int xclGetSysfsPath(xclDeviceHandle handle, const char* subd
  */
 XCL_DRIVER_DLLESPEC int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info);
 
+
+struct KernelTransferData
+{
+   char* cuPortName;
+   char* argName;
+   char* memoryName;
+   
+   uint64_t totalReadBytes; 
+   uint64_t totalReadTranx; 
+   uint64_t totalReadLatency; 
+   uint64_t totalReadBusyCycles; 
+   uint64_t minReadLatency; 
+   uint64_t maxReadLatency; 
+
+   uint64_t totalWriteBytes; 
+   uint64_t totalWriteTranx; 
+   uint64_t totalWriteLatency; 
+   uint64_t totalWriteBusyCycles; 
+   uint64_t minWriteLatency; 
+   uint64_t maxWriteLatency; 
+};
+
+struct CuExecData
+{
+   char* cuName;
+   char* kernelName;
+
+   uint64_t cuExecCount;
+   uint64_t cuExecCycles;
+   uint64_t cuBusyCycles;
+   uint64_t cuMaxExecCycles;
+   uint64_t cuMinExecCycles;
+   uint64_t cuMaxParallelIter;
+   uint64_t cuStallExtCycles;
+   uint64_t cuStallIntCycles;
+   uint64_t cuStallStrCycles;
+
+}; 
+
+struct StreamTransferData
+{
+  char* masterPortName;
+  char* slavePortName;
+
+  uint64_t strmNumTranx;
+  uint64_t strmBusyCycles;
+  uint64_t strmDataBytes;
+  uint64_t strmStallCycles;
+  uint64_t strmStarveCycles;
+};
+
+struct ProfileResults
+{
+  char* deviceName;
+
+  uint64_t numAIM;
+  KernelTransferData* kernelTransferData;
+
+  uint64_t numAM;
+  CuExecData* cuExecData;
+
+  uint64_t numASM;
+  StreamTransferData* streamData;
+};
+
+/**
+ * int xclCreateProfileResults(xclDeviceHandle, ProfileResults**)
+ *     - Creates and initializes buffer for storing the ProfileResults from the device. 
+ *     - To use this API, "profile_api" configuration needs to be set to "true" in xrt.ini.
+ *       "profile_api=true" enables profiling (for profile counters on device) using XRT APIs (no OpenCL API)
+ *
+ * @xclDeviceHandle : Device handle
+ * @ProfileResults** : Double pointer to hold the pointer to buffer created to store profiling results (on success)
+ *                     This argument remains unchanged if xclCreateProfileResults fails.
+ * 
+ */ 
+XCL_DRIVER_DLLESPEC int xclCreateProfileResults(xclDeviceHandle, ProfileResults**);
+
+/**
+ * int xclGetProfileResults(xclDeviceHandle, ProfileResults*)
+ *     - Read the profiling counters from the hardware and populate profiling data in the “ProfileResults” structure (created using xclCreateProfileResults).
+ *     - To use this API, "profile_api" configuration needs to be set to "true" in xrt.ini.
+ *       "profile_api=true" enables profiling (for profile counters on device) using XRT APIs (no OpenCL API)
+ *
+ * @xclDeviceHandle : Device handle
+ * @ProfileResults* : Pointer to buffer to store profiling results. 
+ *                    This buffer should be created using previous call to "xclCreateProfileResults"
+ *
+ */ 
+XCL_DRIVER_DLLESPEC int xclGetProfileResults(xclDeviceHandle, ProfileResults*);
+
+/**
+ * int xclDestroyProfileResults(xclDeviceHandle, ProfileResults*)
+ *     - Traverse the given ProfileResults structure and delete the allocated memory
+ *     - To use this API, "profile_api" configuration needs to be set to "true" in xrt.ini.
+ *       "profile_api=true" enables profiling (for profile counters on device) using XRT APIs (no OpenCL API)
+ *
+ * @xclDeviceHandle : Device handle
+ * @ProfileResults* : Pointer to buffer to be deleted
+ *
+ */ 
+XCL_DRIVER_DLLESPEC int xclDestroyProfileResults(xclDeviceHandle, ProfileResults*);
+
+/**
+ * xclRegRead() - Read register in register space of a CU
+ *
+ * @handle:        Device handle
+ * @cu_index:      CU index
+ * @offset:        Offset in the register space
+ * @datap:         Pointer to where result will be saved
+ * Return:         0 or appropriate error number
+ *
+ */
+XCL_DRIVER_DLLESPEC int xclRegRead(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t *datap);
+
+/**
+ * xclRegWRite() - Write to register in register space of a CU
+ *
+ * @handle:        Device handle
+ * @cu_index:      CU index
+ * @offset:        Offset in the register space
+ * @data:          Data to be written
+ * Return:         0 or appropriate error number
+ *
+ */
+XCL_DRIVER_DLLESPEC int xclRegWrite(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t data);
+
+/**
+ * xclCuName2Index() - Obtain CU index by CU name
+ *
+ * @handle:        Device handle
+ * @cu_name:       CU name
+ * @cu_index:      Pointer to CU index
+ * Return:         0 or appropriate error number
+ *
+ */
+XCL_DRIVER_DLLESPEC int xclCuName2Index(xclDeviceHandle handle, const char *cu_name, uint32_t *cu_index);
+
 #ifdef __cplusplus
 }
 #endif

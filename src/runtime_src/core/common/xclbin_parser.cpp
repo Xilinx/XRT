@@ -100,14 +100,26 @@ memidx_to_name(const axlf* top,  int32_t midx)
   return std::string(reinterpret_cast<const char*>(md.m_tag));
 }
 
+int32_t
+get_first_used_mem(const axlf* top)
+{
+  auto mem_topology = axlf_section_type<const ::mem_topology*>::get(top,axlf_section_kind::MEM_TOPOLOGY);
+  if (!mem_topology)
+    return -1;
+
+  for (int32_t i=0; i<mem_topology->m_count; ++i) {
+    if (mem_topology->m_mem_data[i].m_used)
+      return i;
+  }
+
+  return -1;
+}
+
 std::vector<uint64_t>
-get_cus(const axlf* top, bool encode)
+get_cus(const ip_layout* ip_layout, bool encode)
 {
   std::vector<uint64_t> cus;
-  auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
-  if (!ip_layout)
-   return cus;
-
+  
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
     if (is_valid_cu(ip_data)) {
@@ -125,6 +137,13 @@ get_cus(const axlf* top, bool encode)
   }
   std::sort(cus.begin(),cus.end());
   return cus;
+}
+
+std::vector<uint64_t>
+get_cus(const axlf* top, bool encode)
+{
+  auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
+  return ip_layout ? get_cus(ip_layout,encode) : std::vector<uint64_t>(0);
 }
 
 std::vector<std::pair<uint64_t, size_t>>
@@ -238,6 +257,31 @@ get_dbg_ips_pair(const axlf* top)
 {
   return get_debug_ips(top);
 }
+
+std::vector<softkernel_object>
+get_softkernels(const axlf* top)
+{
+  std::vector<softkernel_object> sks;
+  const axlf_section_header *pSection;
+
+  for (pSection = ::xclbin::get_axlf_section(top, SOFT_KERNEL);
+    pSection != nullptr;
+    pSection = ::xclbin::get_axlf_section_next(top, pSection, SOFT_KERNEL)) {
+      auto begin = reinterpret_cast<const char*>(top) + pSection->m_sectionOffset;
+      auto soft = reinterpret_cast<const soft_kernel*>(begin);
+
+      softkernel_object sko;
+      sko.ninst = soft->m_num_instances;
+      sko.symbol_name = const_cast<char*>(begin + soft->mpo_symbol_name);
+      sko.size = soft->m_image_size;
+      sko.sk_buf = const_cast<char*>(begin + soft->m_image_offset);
+
+      sks.push_back(sko);
+  }
+
+  return sks;
+}
+
 
 } // namespace xclbin
 } // namespace xrt_core

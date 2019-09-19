@@ -26,11 +26,10 @@ typedef struct XmaHwKernel XmaHwKernel;
 
 typedef struct XmaHwSession
 {
-    void            *dev_handle;
-    //For execbo:
-    uint32_t         dev_index;
+    uint32_t        dev_index;
     int32_t         bank_index;//default bank to use
-    XmaHwKernel     *kernel_info;
+    void            *private_do_not_use;
+
     uint32_t         reserved[4];
 } XmaHwSession;
 

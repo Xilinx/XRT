@@ -1584,4 +1584,20 @@ int xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz
   return (drv) ? drv->xclReadTraceData(traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample) : -ENODEV;
 }
 
+int xclCreateProfileResults(xclDeviceHandle handle, ProfileResults** results)
+{
+  return 0;
+}
+
+int xclGetProfileResults(xclDeviceHandle handle, ProfileResults* results)
+{
+  return 0;
+}
+
+int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results)
+{
+  return 0;
+}
+
+
 

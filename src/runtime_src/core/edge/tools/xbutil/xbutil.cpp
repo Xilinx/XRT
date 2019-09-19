@@ -403,11 +403,6 @@ int main(int argc, char *argv[])
     if (total == 0)
         return -ENODEV;
 
-    if (cmd == xcldev::SCAN || cmd == xcldev::LIST) {
-        std::cout << "Unsupported API " << std::endl;
-        return -1;
-    }
-
     for (unsigned i = 0; i < total; i++) {
         try {
             deviceVec.emplace_back(new xcldev::device(i, nullptr));
@@ -427,7 +422,15 @@ int main(int argc, char *argv[])
             return -ENOENT;
         }
     }
-// TODO: how to find usable or not
+
+    if (cmd == xcldev::SCAN || cmd == xcldev::LIST) {
+        unsigned int size = deviceVec.size();
+        for (unsigned int i = 0; i < size; i++) {
+              std::cout << " [" << i << "]:" << deviceVec[i]->name();
+              std::cout << std::endl;
+        }
+        return 0;
+    }
 
     int result = 0;
 
@@ -548,7 +551,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "Download the accelerator program on card\n";
     std::cout << "  " << exe << " program -p a.xclbin\n";
     std::cout << "Run DMA test with 32 KB blocks of buffer\n";
-    std::cout << "  " << exe << " dmatest -b 0x2000\n";
+    std::cout << "  " << exe << " dmatest -b 0x20\n";
     std::cout << "Read 256 bytes from DDR starting at 0x1000 into file read.out\n";
     std::cout << "  " << exe << " mem --read -a 0x1000 -i 256 -o read.out\n";
     std::cout << "  " << "Default values for address is 0x0, size is DDR size and file is memread.out\n";
@@ -560,4 +563,3 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "Validate installation on card\n";
     std::cout << "  " << exe << " validate\n";
 }
-

@@ -74,6 +74,7 @@ set_param project.enablePRFlowIPIOOC 1
 set_param chipscope.enablePRFlow 1
 set_param bd.skipSupportedIPCheck 1
 set_param checkpoint.useBaseFileNamesWhileWritingDCP 1
+set_param platform.populateFeatureRomInWriteHwPlatform 0
 
 # Specify and refresh the IP local repo
 set repo_path "$sourcesDir/emulation_sources/user_ip_repo $sourcesDir/iprepo"
@@ -90,9 +91,6 @@ set_property dsa.platform_state                "impl"       [current_project]
 set_property dsa.uses_pr                       true         [current_project]
 set_property dsa.ocl_inst_path                 {pfm_top_i/dynamic_region}                                              [current_project]
 set_property dsa.board_memories                { {mem0 ddr4 2GB}} [current_project]
-set_property dsa.rom.scheduler                 true                                                                    [current_project]
-set_property dsa.rom.board_mgmt                true                                                                    [current_project]
-set_property dsa.rom.debug_type                2                                                                       [current_project]
 set_property dsa.pre_sys_link_tcl_hook         ${sourcesDir}/misc/dynamic_prelink.tcl                                  [current_project]
 set_property dsa.post_sys_link_tcl_hook        ${sourcesDir}/misc/dynamic_postlink.tcl                                 [current_project]
 set_property dsa.run.steps.opt_design.tcl.post ${sourcesDir}/misc/dynamic_postopt.tcl                                  [current_project]
@@ -103,7 +101,7 @@ set_property dsa.synth_constraint_files        [list "${sourcesDir}/constraints/
 # Construct reconfigurable BD and partition
 create_bd_design pfm_dynamic
 source ${sourcesDir}/misc/dynamic_prelink.tcl
-source ${sourcesDir}/emulation_sources/scripts/dynamic.tcl
+source ${sourcesDir}/bd/dynamic.tcl
 source ${sourcesDir}/misc/gen_hpfm_cmd_file.tcl
 source ${sourcesDir}/emulation_sources/dynamic_bd_settings.tcl
 

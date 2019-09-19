@@ -68,6 +68,7 @@ set_param project.enablePRFlowIPIOOC 1
 set_param chipscope.enablePRFlow 1
 set_param bd.skipSupportedIPCheck 1
 set_param checkpoint.useBaseFileNamesWhileWritingDCP 1
+set_param platform.populateFeatureRomInWriteHwPlatform 0
 
 # Specify and refresh the IP local repo
 set_property ip_repo_paths "${sourcesDir}/iprepo" [current_project]
@@ -75,7 +76,6 @@ update_ip_catalog
 
 # Import HDL, XDC, and other files
 import_files -norecurse ${sourcesDir}/hdl/freq_counter.v
-import_files -fileset constrs_1 -norecurse ${sourcesDir}/constraints/static_synth.xdc
 import_files -fileset constrs_1 -norecurse ${sourcesDir}/constraints/static_impl_early.xdc
 import_files -fileset constrs_1 -norecurse ${sourcesDir}/constraints/static_impl_normal.xdc
 import_files -fileset constrs_1 -norecurse ${sourcesDir}/constraints/dynamic_impl.xdc
@@ -86,7 +86,7 @@ update_compile_order -fileset sim_1
 
 # Set platform project properties
 set_property platform.vendor                        "xilinx"     [current_project]
-set_property platform.board_id                      "ZCU104"    [current_project]
+set_property platform.board_id                      "zcu104"    [current_project]
 set_property platform.name                          "dynamic"    [current_project]
 set_property platform.version                       "0.1"        [current_project]
 set_property platform.description                   "This platform targets the ZCU104 Development Board. This platform features one PL and one PS channels of DDR4 SDRAM which are instantiated as required by the user kernels for high fabric resource availability ." [current_project]
@@ -94,9 +94,6 @@ set_property platform.platform_state                "impl"       [current_projec
 set_property platform.uses_pr                       true         [current_project]
 set_property platform.ocl_inst_path                 {pfm_top_i/dynamic_region}                                              [current_project]
 set_property platform.board_memories                { {mem0 ddr4 2GB}} [current_project]
-set_property platform.rom.scheduler                 true                                                                    [current_project]
-set_property platform.rom.board_mgmt                true                                                                    [current_project]
-set_property platform.rom.debug_type                2                                                                       [current_project]
 set_property platform.pre_sys_link_tcl_hook         ${sourcesDir}/misc/dynamic_prelink.tcl                                  [current_project]
 set_property platform.post_sys_link_tcl_hook        ${sourcesDir}/misc/dynamic_postlink.tcl                                 [current_project]
 set_property platform.run.steps.opt_design.tcl.post ${sourcesDir}/misc/dynamic_postopt.tcl                                  [current_project]
@@ -104,7 +101,12 @@ set_property platform.run.steps.opt_design.tcl.post ${sourcesDir}/misc/dynamic_p
 set_property platform.ip_cache_dir                  ${launchDir}/${projName}/${projName}.cache/ip                           [current_project]
 set_property platform.synth_constraint_files        [list "${sourcesDir}/constraints/dynamic_impl.xdc,NORMAL,implementation"] [current_project]
 
+set_property platform.design_intent.server_managed "false" [current_project]
+set_property platform.design_intent.external_host "false" [current_project]
 set_property platform.design_intent.embedded "true" [current_project]
+set_property platform.design_intent.datacenter "false" [current_proj]
+
+set_property platform.default_output_type "xclbin" [current_project]
 
 # Set any other project properties
 set_property STEPS.OPT_DESIGN.TCL.POST ${sourcesDir}/misc/dynamic_postopt.tcl [get_runs impl_1]

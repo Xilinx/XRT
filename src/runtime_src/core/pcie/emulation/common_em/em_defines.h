@@ -22,8 +22,8 @@
  * ==== ====================================== =========================================
  */
 
-#ifndef __EM_DEFINES_H__ 
-#define __EM_DEFINES_H__ 
+#ifndef __EM_DEFINES_H__
+#define __EM_DEFINES_H__
 
 #include <cstdlib>
 #include <cstdint>
@@ -45,7 +45,7 @@
 #else
 #include <unistd.h>
 #define GetCurrentDir getcwd
-#endif  
+#endif
 const uint64_t mNullBO = 0xffffffff;
 
 
@@ -79,7 +79,7 @@ namespace xclemulation {
    * @handle:     bo handle returned by the driver
    * @flags:      XOCL_BO_XXX flags
    */
-  struct xocl_create_bo 
+  struct xocl_create_bo
   {
     uint64_t size;
     uint32_t handle;
@@ -95,7 +95,7 @@ namespace xclemulation {
    * @handle:     bo handle returned by the driver
    * @flags:      XOCL_BO_XXX flags
    */
-  struct xocl_userptr_bo 
+  struct xocl_userptr_bo
   {
     uint64_t addr;
     uint64_t size;
@@ -106,7 +106,7 @@ namespace xclemulation {
   /*
    * Opcodes for the embedded scheduler provided by the client to the driver
    */
-  enum xocl_execbuf_code 
+  enum xocl_execbuf_code
   {
     XOCL_EXECBUF_RUN_KERNEL = 0,
     XOCL_EXECBUF_RUN_KERNEL_XYZ,
@@ -117,7 +117,7 @@ namespace xclemulation {
   /*
    * State of exec request managed by the kernel driver
    */
-  enum xocl_execbuf_state 
+  enum xocl_execbuf_state
   {
     XOCL_EXECBUF_STATE_COMPLETE = 0,
     XOCL_EXECBUF_STATE_RUNNING,
@@ -130,7 +130,7 @@ namespace xclemulation {
   /*
    * Layout of BO of EXECBUF kind
    */
-  struct xocl_execbuf_bo 
+  struct xocl_execbuf_bo
   {
     enum xocl_execbuf_state state;
     enum xocl_execbuf_code code;
@@ -139,7 +139,7 @@ namespace xclemulation {
     char buf[3584]; // inline regmap layout
   };
 
-  struct xocl_execbuf 
+  struct xocl_execbuf
   {
     uint32_t ctx_id;
     uint32_t exec_bo_handle;
@@ -153,7 +153,7 @@ namespace xclemulation {
    * @fd:	           File descriptor created with eventfd system call
    * @msix:	   User interrupt number (0 to 15)
    */
-  struct xocl_user_intr 
+  struct xocl_user_intr
   {
     uint32_t ctx_id;
     int fd;
@@ -163,7 +163,7 @@ namespace xclemulation {
   /*
    * Opcodes for the embedded scheduler provided by the client to the driver
    */
-  enum drm_xocl_execbuf_code 
+  enum drm_xocl_execbuf_code
   {
     DRM_XOCL_EXECBUF_RUN_KERNEL = 0,
     DRM_XOCL_EXECBUF_RUN_KERNEL_XYZ,
@@ -171,13 +171,13 @@ namespace xclemulation {
     DRM_XOCL_EXECBUF_DEBUG,
   };
 
-  struct drm_xocl_exec_metadata 
+  struct drm_xocl_exec_metadata
   {
     enum xocl_execbuf_state state;
     unsigned int                index;
   };
 
-  struct drm_xocl_bo 
+  struct drm_xocl_bo
   {
     struct drm_xocl_exec_metadata metadata;
     uint64_t              base;
@@ -199,7 +199,7 @@ namespace xclemulation {
 
     if(flag == 0 || ((flag == 0xFFFFFFLL) && is_sw_emu))
       return 0;
-    
+
     return flag;
   }
 
@@ -212,12 +212,25 @@ namespace xclemulation {
   {
     return (bo->flags & XOCL_BO_EXECBUF);
   }
-  
+
   static inline bool xocl_bo_p2p(const struct drm_xocl_bo *bo)
   {
     return (bo->flags & XOCL_BO_P2P);
   }
 
 }
+
+/**
+ * xclMemoryDomains is for support of legacy APIs
+ * It is not used in BO APIs where we instead use xclBOKind
+ */
+enum xclMemoryDomains {
+    XCL_MEM_HOST_RAM =    0x00000000,
+    XCL_MEM_DEVICE_RAM =  0x00000001,
+    XCL_MEM_DEVICE_BRAM = 0x00000002,
+    XCL_MEM_SVM =         0x00000003,
+    XCL_MEM_CMA =         0x00000004,
+    XCL_MEM_DEVICE_REG  = 0x00000005
+};
 
 #endif

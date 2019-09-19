@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@Xilinx.com
  *          Jan Stephan <j.stephan@hzdr.de>
@@ -153,7 +153,7 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define xocl_sysfs_error(xdev, fmt, args...)     \
 		snprintf(((struct xocl_dev_core *)xdev)->ebuf, XOCL_EBUF_LEN,	\
 		fmt, ##args)
-#define MAX_M_COUNT      64
+#define MAX_M_COUNT      	XOCL_SUBDEV_MAX_INST
 #define XOCL_MAX_FDT_LEN		1024 * 512
 
 #define	XDEV2DEV(xdev)		(&XDEV(xdev)->pdev->dev)
@@ -196,6 +196,9 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_PL_DEV_TO_XDEV(pldev) \
 	pci_get_drvdata(XOCL_PL_TO_PCI_DEV(pldev))
 
+#define XOCL_PCI_DEV_TO_XDEV(pcidev) \
+	pci_get_drvdata(pcidev)
+
 #define XOCL_PCI_FUNC(xdev_hdl)		\
 	PCI_FUNC(XDEV(xdev_hdl)->pdev->devfn)
 
@@ -208,6 +211,9 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 
 #define XOCL_DSA_IS_SMARTN(xdev)                \
 	(XDEV(xdev)->priv.flags & XOCL_DSAFLAG_SMARTN)
+
+#define XOCL_DSA_IS_VERSAL(xdev)                \
+	(XDEV(xdev)->priv.flags & XOCL_DSAFLAG_VERSAL)
 
 #define	XOCL_DEV_ID(pdev)			\
 	((pci_domain_nr(pdev->bus) << 16) |	\
@@ -518,7 +524,7 @@ struct xocl_mb_scheduler_funcs {
 	int (*client_ioctl)(struct platform_device *pdev, int op,
 		void *data, void *drm_filp);
 	int (*stop)(struct platform_device *pdev);
-	int (*reset)(struct platform_device *pdev);
+	int (*reset)(struct platform_device *pdev, const xuid_t *xclbin_id);
 	int (*reconfig)(struct platform_device *pdev);
 	int (*cu_map_addr)(struct platform_device *pdev, u32 cu_index,
 		void *drm_filp, u32 *addrp);
@@ -550,9 +556,9 @@ struct xocl_mb_scheduler_funcs {
 	(SCHE_CB(xdev, stop) ?				\
 	 MB_SCHEDULER_OPS(xdev)->stop(MB_SCHEDULER_DEV(xdev)) : \
 	-ENODEV)
-#define	xocl_exec_reset(xdev)		\
+#define	xocl_exec_reset(xdev, xclbin_id)		\
 	(SCHE_CB(xdev, reset) ?				\
-	 MB_SCHEDULER_OPS(xdev)->reset(MB_SCHEDULER_DEV(xdev)) : \
+	 MB_SCHEDULER_OPS(xdev)->reset(MB_SCHEDULER_DEV(xdev), xclbin_id) : \
 	-ENODEV)
 #define	xocl_exec_reconfig(xdev)		\
 	(SCHE_CB(xdev, reconfig) ?				\
@@ -838,6 +844,7 @@ struct xocl_icap_funcs {
 		const void __user *arg);
 	int (*download_boot_firmware)(struct platform_device *pdev);
 	int (*download_rp)(struct platform_device *pdev, int level, int flag);
+	int (*post_download_rp)(struct platform_device *pdev);
 	int (*ocl_set_freq)(struct platform_device *pdev,
 		unsigned int region, unsigned short *freqs, int num_freqs);
 	int (*ocl_get_freq)(struct platform_device *pdev,
@@ -881,6 +888,10 @@ enum {
 	(ICAP_CB(xdev, download_rp) ?					\
 	ICAP_OPS(xdev)->download_rp(ICAP_DEV(xdev), level, flag) :	\
 	-ENODEV)
+#define xocl_icap_post_download_rp(xdev)				\
+	(ICAP_CB(xdev, post_download_rp) ?				\
+	ICAP_OPS(xdev)->post_download_rp(ICAP_DEV(xdev)) :		\
+	-ENODEV)
 #define	xocl_icap_ocl_get_freq(xdev, region, freqs, num)		\
 	(ICAP_CB(xdev, ocl_get_freq) ?					\
 	ICAP_OPS(xdev)->ocl_get_freq(ICAP_DEV(xdev), region, freqs, num) : \
@@ -918,8 +929,9 @@ struct xocl_mig_label {
 struct xocl_mig_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	void (*get_data)(struct platform_device *pdev, void *buf, size_t entry_sz);
+	void (*set_data)(struct platform_device *pdev, void *buf);
+	uint32_t (*get_id)(struct platform_device *pdev);
 };
-
 
 #define	MIG_DEV(xdev, idx)	SUBDEV_MULTI(xdev, XOCL_SUBDEV_MIG, idx).pldev
 #define	MIG_OPS(xdev, idx)							\
@@ -930,6 +942,15 @@ struct xocl_mig_funcs {
 	(MIG_CB(xdev, idx) ?						\
 	MIG_OPS(xdev, idx)->get_data(MIG_DEV(xdev, idx), buf, entry_sz) : \
 	0)
+#define	xocl_mig_set_data(xdev, idx, buf)				\
+	(MIG_CB(xdev, idx) ?						\
+	MIG_OPS(xdev, idx)->set_data(MIG_DEV(xdev, idx), buf) : \
+	0)
+#define	xocl_mig_get_id(xdev, idx)				\
+	(MIG_CB(xdev, idx) ?						\
+	MIG_OPS(xdev, idx)->get_id(MIG_DEV(xdev, idx)) : \
+	0)
+
 
 struct xocl_iores_funcs {
 	struct xocl_subdev_funcs common_funcs;
@@ -1009,6 +1030,28 @@ struct xocl_axigate_funcs {
 	(AXIGATE_CB(xdev, level, free) ?		\
 	AXIGATE_OPS(xdev, level)->free(AXIGATE_DEV(xdev, level)) :	\
 	-ENODEV)
+
+struct xocl_mailbox_versal_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (*set)(struct platform_device *pdev, u32 data);
+	int (*get)(struct platform_device *pdev, u32 *data);
+};
+#define	MAILBOX_VERSAL_DEV(xdev)	\
+	SUBDEV(xdev, XOCL_SUBDEV_MAILBOX_VERSAL).pldev
+#define	MAILBOX_VERSAL_OPS(xdev)	\
+	((struct xocl_mailbox_versal_funcs *)SUBDEV(xdev,	\
+	XOCL_SUBDEV_MAILBOX_VERSAL).ops)
+#define MAILBOX_VERSAL_READY(xdev, cb)	\
+	(MAILBOX_VERSAL_DEV(xdev) && MAILBOX_VERSAL_OPS(xdev) &&	\
+	 MAILBOX_VERSAL_OPS(xdev)->cb)
+#define	xocl_mailbox_versal_set(xdev, data)	\
+	(MAILBOX_VERSAL_READY(xdev, set) ?	\
+	MAILBOX_VERSAL_OPS(xdev)->set(MAILBOX_VERSAL_DEV(xdev), \
+	data) : -ENODEV)
+#define	xocl_mailbox_versal_get(xdev, data)	\
+	(MAILBOX_VERSAL_READY(xdev, get)	\
+	? MAILBOX_VERSAL_OPS(xdev)->get(MAILBOX_VERSAL_DEV(xdev), \
+	data) : -ENODEV)
 
 static inline void __iomem *xocl_cdma_addr(xdev_handle_t xdev)
 {
@@ -1198,4 +1241,7 @@ void xocl_fini_axigate(void);
 
 int __init xocl_init_iores(void);
 void xocl_fini_iores(void);
+
+int __init xocl_init_mailbox_versal(void);
+void xocl_fini_mailbox_versal(void);
 #endif

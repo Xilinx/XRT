@@ -33,4 +33,10 @@ if [ -z "`dkms status -m xrt-aws -v @XRT_VERSION_STRING@ |grep installed`" ]; th
     echo "****************************************************************"
 fi
 
+#create sym link to /opt/xilinx/xrt/lib/libmpd_plugin and restart mpd service
+echo "Install aws mpd plugin"
+ln -s /opt/xilinx/xrt/lib/libaws_mpd_plugin.so /opt/xilinx/xrt/lib/libmpd_plugin.so
+echo "Restart mpd service"
+systemctl restart mpd
+
 exit 0

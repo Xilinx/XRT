@@ -61,6 +61,7 @@
 #include <linux/list.h>
 #include <linux/eventfd.h>
 #include <linux/kthread.h>
+#include <linux/ktime.h>
 #include <ert.h>
 #include "../xocl_drv.h"
 #include "../userpf/common.h"
@@ -103,6 +104,10 @@
 
 #define	CU_ADDR_HANDSHAKE_MASK	(0xff)
 #define	CU_ADDR_VALID(addr)	(((addr) | CU_ADDR_HANDSHAKE_MASK) != -1)
+
+#if defined(XOCL_UUID)
+static xuid_t uuid_null = NULL_UUID_LE;
+#endif
 
 /* constants */
 static const unsigned int no_index = -1;
@@ -242,6 +247,8 @@ struct xocl_cmd {
 	unsigned long uid;      // unique id for this command
 	unsigned int  cu_idx;   // index of CU running this cmd (penguin mode)
 	unsigned int  slot_idx; // index in exec core submit queue
+
+	bool timestamp_enabled;
 };
 
 /*
@@ -340,12 +347,13 @@ cmd_payload_size(struct xocl_cmd *xcmd)
  * cmd_packet_size() - Command packet size
  *
  * @xcmd: Command object
- * Return: Size in number of words of command packet
+ * Return: Size in number of uint32_t of command packet
  */
 static inline unsigned int
 cmd_packet_size(struct xocl_cmd *xcmd)
 {
-	return cmd_payload_size(xcmd) + 1;
+	return cmd_payload_size(xcmd) +
+		sizeof(xcmd->ert_pkt->header) / sizeof(uint32_t);
 }
 
 /**
@@ -388,6 +396,16 @@ cmd_regmap(struct xocl_cmd *xcmd)
 	return xcmd->ert_cu->data + xcmd->ert_cu->extra_cu_masks;
 }
 
+static inline void
+cmd_record_timestamp(struct xocl_cmd *xcmd, enum ert_cmd_state state)
+{
+	if (!xcmd->timestamp_enabled)
+		return;
+
+	ert_start_kernel_timestamps(xcmd->ert_cu)->
+		skc_timestamps[state] = ktime_to_ns(ktime_get());
+}
+
 /**
  * cmd_set_int_state() - Set internal command state used by scheduler only
  *
@@ -398,6 +416,7 @@ static inline void
 cmd_set_int_state(struct xocl_cmd *xcmd, enum ert_cmd_state state)
 {
 	SCHED_DEBUGF("-> %s(%lu,%d)\n", __func__, xcmd->uid, state);
+	cmd_record_timestamp(xcmd, state);
 	xcmd->state = state;
 	SCHED_DEBUGF("<- %s\n", __func__);
 }
@@ -415,6 +434,7 @@ static inline void
 cmd_set_state(struct xocl_cmd *xcmd, enum ert_cmd_state state)
 {
 	SCHED_DEBUGF("->%s(%lu,%d)\n", __func__, xcmd->uid, state);
+	cmd_record_timestamp(xcmd, state);
 	xcmd->state = state;
 	xcmd->ert_pkt->state = state;
 	SCHED_DEBUGF("<-%s\n", __func__);
@@ -568,6 +588,7 @@ cmd_get(struct xocl_scheduler *xs, struct exec_core *exec, struct client_ctx *cl
 	xcmd->ert_pkt = NULL;
 	xcmd->chain_count = 0;
 	xcmd->wait_count = 0;
+	xcmd->timestamp_enabled = false;
 	atomic_inc(&client->outstanding_execs);
 	SCHED_DEBUGF("xcmd(%lu) xcmd(%p) [-> new ]\n", xcmd->uid, xcmd);
 	return xcmd;
@@ -614,6 +635,23 @@ cmd_abort(struct xocl_cmd *xcmd)
 	SCHED_DEBUGF("xcmd(%lu) [-> abort]\n", xcmd->uid);
 }
 
+static inline bool
+cmd_can_enable_timestamps(struct xocl_cmd *xcmd)
+{
+	struct ert_start_kernel_cmd *pkt = xcmd->ert_cu;
+
+	if (cmd_type(xcmd) != ERT_CU || !xcmd->ert_cu->stat_enabled)
+		return false;
+
+	if ((char *)ert_start_kernel_timestamps(pkt) +
+		sizeof(struct cu_cmd_state_timestamps) >
+		(char *)pkt + xcmd->bo->base.size) {
+		userpf_err(xcmd->xdev, "no space for timestamps in exec buf");
+		return false;
+	}
+	return true;
+}
+
 /*
  * cmd_bo_init() - Initialize a command object with an exec BO
  *
@@ -628,6 +666,8 @@ cmd_bo_init(struct xocl_cmd *xcmd, struct drm_xocl_bo *bo,
 	SCHED_DEBUGF("%s(%lu,bo,%d,deps,%d)\n", __func__, xcmd->uid, numdeps, penguin);
 	xcmd->bo = bo;
 	xcmd->ert_pkt = (struct ert_packet *)bo->vmapping;
+
+	xcmd->timestamp_enabled = cmd_can_enable_timestamps(xcmd);
 
 	// in kds mode copy pkt cus to command object cu bitmap
 	if (penguin && cmd_type(xcmd) == ERT_CU) {
@@ -650,15 +690,6 @@ cmd_bo_init(struct xocl_cmd *xcmd, struct drm_xocl_bo *bo,
 	memcpy(xcmd->deps, deps, numdeps*sizeof(struct drm_xocl_bo *));
 	xcmd->wait_count = numdeps;
 	xcmd->chain_count = 0;
-}
-
-/*
- */
-static void
-cmd_packet_init(struct xocl_cmd *xcmd, struct ert_packet *packet)
-{
-	SCHED_DEBUGF("%s(%lu,packet)\n", __func__, xcmd->uid);
-	xcmd->ert_pkt = packet;
 }
 
 /*
@@ -1012,6 +1043,14 @@ cu_continue(struct xocl_cu *xcu)
 	SCHED_DEBUGF("<- %s\n", __func__);
 }
 
+static inline u32
+cu_status(struct xocl_cu *xcu)
+{
+	SCHED_DEBUGF("%s(%p) cu(%d) @0x%x\n", __func__, xcu->base + xcu->addr,
+		     xcu->idx, xcu->addr);
+	return ioread32(xcu->base + xcu->addr);
+}
+
 /**
  * cu_poll() - Poll a CU for its status
  *
@@ -1027,7 +1066,7 @@ cu_poll(struct xocl_cu *xcu)
 	SCHED_DEBUGF("-> %s cu(%d) @0x%x done(%d) run(%d)\n", __func__,
 		     xcu->idx, xcu->addr, xcu->done_cnt, xcu->run_cnt);
 
-	xcu->ctrlreg = ioread32(xcu->base + xcu->addr);
+	xcu->ctrlreg = cu_status(xcu);
 
 	SCHED_DEBUGF("+ ctrlreg(0x%x)\n", xcu->ctrlreg);
 
@@ -1320,9 +1359,9 @@ static struct exec_ops penguin_ops;   // kds mode (no ert)
  * @stopped: Flag to indicate that the core data structure cannot be used
  * @flush: Flag to indicate that commands for this device should be flushed
  * @cu_usage: Usage count since last reset
+ * @cu_status: AP_CTRL status of CU, updated by ERT_CU_STAT
  * @slot_status: Bitmap to track status (busy(1)/free(0)) slots in command queue
  * @ctrl_busy: Flag to indicate that slot 0 (ctrl commands) is busy
- * @cu_status: Bitmap to track status (busy(1)/free(0)) of CUs. Unused in ERT mode.
  * @sr0: If set, then status register [0..31] is pending with completed commands (ERT only).
  * @sr1: If set, then status register [32..63] is pending with completed commands (ERT only).
  * @sr2: If set, then status register [64..95] is pending with completed commands (ERT only).
@@ -1362,6 +1401,7 @@ struct exec_core {
 	struct xocl_ert		   *ert;
 
 	u32			   cu_usage[MAX_CUS];
+	u32			   cu_status[MAX_CUS];
 
 	// Bitmap tracks busy(1)/free(0) slots in cmd_slots
 	struct xocl_cmd		   *submitted_cmds[MAX_SLOTS];
@@ -1467,6 +1507,12 @@ exec_cu_usage(struct exec_core *exec, unsigned int cuidx)
 	return exec->cu_usage[cuidx];
 }
 
+static inline u32
+exec_cu_status(struct exec_core *exec, unsigned int cuidx)
+{
+	return exec->cu_status[cuidx];
+}
+
 static bool
 exec_valid_cu(struct exec_core *exec, unsigned int cuidx)
 {
@@ -1491,7 +1537,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	uint32_t *cdma = xocl_cdma_addr(xdev);
 	unsigned int dsa = exec->ert_cfg_priv;
 	struct ert_configure_cmd *cfg = xcmd->ert_cfg;
-	bool ert = xocl_mb_sched_on(xdev);
+	bool ert = XOCL_DSA_IS_VERSAL(xdev) ? 1 : xocl_mb_sched_on(xdev);
 	bool ert_full = (ert && cfg->ert && !cfg->dataflow);
 	bool ert_poll = (ert && cfg->ert && cfg->dataflow);
 	int cuidx = 0;
@@ -1504,6 +1550,11 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 
 	userpf_info(xdev, "ert per feature rom = %d", ert);
 	userpf_info(xdev, "dsa52 = %d", dsa);
+
+	if (XOCL_DSA_IS_VERSAL(xdev) && !cfg->polling) {
+		userpf_info(xdev, "force polling mode for versal");
+		cfg->polling = true;
+	}
 
 	/* Mark command as control command to force slot 0 execution */
 	cfg->type = ERT_CTRL;
@@ -1613,14 +1664,11 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
  *	 rather than relying of cfg command
  */
 static void
-exec_reset(struct exec_core *exec)
+exec_reset(struct exec_core *exec, const xuid_t *xclbin_id)
 {
 	struct xocl_dev *xdev = exec_get_xdev(exec);
-	xuid_t *xclbin_id;
 
 	mutex_lock(&exec->exec_lock);
-
-	xclbin_id = XOCL_XCLBIN_ID(xdev);
 
 	userpf_info(xdev, "%s(%d) cfg(%d)\n", __func__, exec->uid, exec->configured);
 
@@ -1817,7 +1865,7 @@ exec_create(struct platform_device *pdev, struct xocl_scheduler *xs)
 		xocl_user_interrupt_config(xdev, i + exec->intr_base, true);
 	}
 
-	exec_reset(exec);
+	exec_reset(exec, &uuid_null);
 	platform_set_drvdata(pdev, exec);
 
 	SCHED_DEBUGF("%s(%d)\n", __func__, exec->uid);
@@ -1942,14 +1990,37 @@ exec_submit_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	return true;
 }
 
+static void
+exec_update_custatus(struct exec_core *exec)
+{
+	unsigned int cuidx;
+	// ignore kdma which on least at u200_2018_30_1 is not BAR mapped
+	for (cuidx = 0; cuidx < exec->num_cus - exec->num_cdma; ++cuidx) {
+		struct xocl_cu *xcu = exec->cus[cuidx];
+		// skip free running kernels which is not BAR mapped
+		exec->cu_status[cuidx] =
+			exec_valid_cu(exec, cuidx) ? cu_status(xcu) : 0;
+	}
+	// reset cdma status
+	for (; cuidx < exec->num_cus; ++cuidx)
+		exec->cu_status[cuidx] = 0;
+	
+}
+
 /*
  * finish_cmd() - Special post processing of commands after execution
  */
 static int
 exec_finish_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 {
-	if (cmd_opcode(xcmd) == ERT_CU_STAT && exec_is_ert(exec))
+	if (cmd_opcode(xcmd) != ERT_CU_STAT)
+		return 0;
+	
+	if (exec_is_ert(exec)) 
 		ert_read_custat(exec->ert, exec->num_cus, exec->cu_usage, xcmd);
+
+	exec_update_custatus(exec);
+
 	return 0;
 }
 
@@ -2261,6 +2332,60 @@ exec_ert_clear_csr(struct exec_core *exec)
 }
 
 /**
+ * exec_ert_query_mailbox() - Check ERT CQ completion mailbox
+ *
+ * @exec: device
+ * @xcmd: command to check
+ *
+ * This function is for ERT and ERT polling mode.  When KDS is configured to
+ * poll, this function polls the ert->host mailbox.
+ *
+ * The function checks all available entries in the mailbox so more than one
+ * command may be marked complete by this function.
+ */
+static void
+exec_ert_query_mailbox(struct exec_core *exec, struct xocl_cmd *xcmd)
+{
+	u32 mask;
+	u32 cmdtype = cmd_type(xcmd);
+	u32 slot;
+	int mask_idx;
+	u32 slots[MAX_SLOTS];
+	u32 cnt = 0;
+	int i;
+
+	SCHED_DEBUGF("-> %s cmd(%lu)\n", __func__, xcmd->uid);
+
+	if (cmdtype == ERT_KDS_LOCAL) {
+		exec_mark_cmd_complete(exec, xcmd);
+		SCHED_DEBUGF("<- %s local command\n", __func__);
+		return;
+	}
+
+	while (!(xocl_mailbox_versal_get(xcmd->xdev, &slot)))
+		slots[cnt++] = slot;
+
+	if (!cnt)
+		return;
+
+	for (i = 0; i < cnt; i++) {
+		// special case for control commands which are in slot 0
+		if (cmdtype == ERT_CTRL && (slots[i] == 0)) {
+			exec_process_cmd_mask(exec, 0x1, 0);
+			continue;
+		}
+
+		mask = 1 << (slots[i] % sizeof (u32));
+		mask_idx = slots[i] >> 5;
+
+		exec->ops->process_mask(exec, mask, mask_idx);
+	}
+
+	SCHED_DEBUGF("<- %s\n", __func__);
+}
+
+
+/**
  * ert_query_csr() - Check ERT CQ completion register
  *
  * @exec: device
@@ -2374,8 +2499,15 @@ exec_ert_query_cu(struct exec_core *exec, struct xocl_cmd *xcmd)
 static void
 exec_ert_query_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 {
+	struct xocl_dev *xdev = xocl_get_xdev(exec->pdev);
+
 	SCHED_DEBUGF("-> %s cmd(%lu), slot_idx(%d)\n", __func__, xcmd->uid, xcmd->slot_idx);
-	exec_ert_query_csr(exec, xcmd, slot_mask_idx(xcmd->slot_idx));
+
+	if (XOCL_DSA_IS_VERSAL(xdev)) {
+		exec_ert_query_mailbox(exec, xcmd);
+	} else
+		exec_ert_query_csr(exec, xcmd, slot_mask_idx(xcmd->slot_idx));
+
 	SCHED_DEBUGF("<- %s\n", __func__);
 }
 
@@ -2956,30 +3088,6 @@ err:
 	return 1;
 }
 
-static int
-add_ctrl_cmd(struct exec_core *exec, struct client_ctx *client, struct ert_packet *packet)
-{
-	struct xocl_cmd *xcmd = cmd_get(exec_scheduler(exec), exec, client);
-
-	if (!xcmd)
-		return 1;
-
-	SCHED_DEBUGF("-> %s cmd(%lu)\n", __func__, xcmd->uid);
-
-	cmd_packet_init(xcmd, packet);
-
-	if (add_xcmd(xcmd))
-		goto err;
-
-	SCHED_DEBUGF("<- %s ret(0) opcode(%d) type(%d)\n", __func__, cmd_opcode(xcmd), cmd_type(xcmd));
-	return 0;
-err:
-	cmd_abort(xcmd);
-	SCHED_DEBUGF("<- %s ret(1) opcode(%d) type(%d)\n", __func__, cmd_opcode(xcmd), cmd_type(xcmd));
-	return 1;
-}
-
-
 /**
  * init_scheduler_thread() - Initialize scheduler thread if necessary
  *
@@ -3276,6 +3384,10 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 	u32 cu_idx = args->cu_index;
 	bool shared;
 
+	/* bypass ctx check for versal for now */
+	if (XOCL_DSA_IS_VERSAL(xdev))
+		return 0;
+
 	mutex_lock(&xdev->dev_lock);
 
 	/* Sanity check arguments for add/rem CTX */
@@ -3472,7 +3584,7 @@ static int convert_execbuf(struct xocl_dev *xdev, struct drm_file *filp,
 	if ((dst_addr + dst_off) % KDMA_BLOCK_SIZE ||
 	    (src_addr + src_off) % KDMA_BLOCK_SIZE ||
 	    sz % KDMA_BLOCK_SIZE) {
-		userpf_info(xdev,"improper alignment, cannot use KDMA");
+		userpf_err(xdev,"improper alignment, cannot use KDMA");
 		return -EINVAL;
 	}
 
@@ -3525,11 +3637,14 @@ client_ioctl_execbuf(struct platform_device *pdev,
 		goto out;
 	}
 
-	ret = validate(pdev, client, xobj);
-	if (ret) {
-		userpf_err(xdev, "Exec buffer validation failed\n");
-		ret = -EINVAL;
-		goto out;
+	/* bypass exec buffer valication for versal for now */
+	if (!XOCL_DSA_IS_VERSAL(xdev)) { 
+		ret = validate(pdev, client, xobj);
+		if (ret) {
+			userpf_err(xdev, "Exec buffer validation failed\n");
+			ret = -EINVAL;
+			goto out;
+		}
 	}
 
 	/* Copy dependencies from user.	 It is an error if a BO handle specified
@@ -3627,11 +3742,11 @@ int client_ioctl(struct platform_device *pdev,
  *  Pre-condition: new bitstream has been downloaded and AXI has been reset
  */
 static int
-reset(struct platform_device *pdev)
+reset(struct platform_device *pdev, const xuid_t *xclbin_id)
 {
 	struct exec_core *exec = platform_get_drvdata(pdev);
 
-	exec_reset(exec);
+	exec_reset(exec, xclbin_id);
 	exec->needs_reset = false;
 	return 0;
 }
@@ -3682,8 +3797,16 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 	u32 ctx_cus[4] = {0};
 	u32 cumasks = 0;
 	int err = 0;
+	u64 bo_size = bo->base.size;
 
 	SCHED_DEBUGF("-> %s opcode(%d)\n", __func__, ecmd->opcode);
+
+	// Before accessing content of exec buf, make sure the size makes sense
+	if (bo_size < sizeof(*ecmd) ||
+		bo_size < sizeof(ecmd->header) + ecmd->count * sizeof(u32)) {
+		userpf_err(xocl_get_xdev(pdev), "exec buf is too small\n");
+		return 1;
+	}
 
 	// cus for start kernel commands only
 	if (ecmd->type != ERT_CU)
@@ -3707,8 +3830,9 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 		uint32_t cmd_cus = ecmd->data[maskidx];
 		// cmd_cus must be subset of ctx_cus
 		if (cmd_cus & ~ctx_cus[maskidx]) {
-			SCHED_DEBUGF("<- %s(1), CU mismatch in mask(%d) cmd(0x%x) ctx(0x%x)\n",
-				     __func__, maskidx, cmd_cus, ctx_cus[maskidx]);
+			userpf_err(client->xdev,
+				"CU mismatch in mask(%d) cmd(0x%x) ctx(0x%x)\n",
+				maskidx, cmd_cus, ctx_cus[maskidx]);
 			err = 1;
 			goto out; /* error */
 		}
@@ -3812,40 +3936,23 @@ static ssize_t
 kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct exec_core *exec = dev_get_exec(dev);
-	struct xocl_dev *xdev = exec_get_xdev(exec);
-	struct client_ctx client;
-	struct ert_packet packet;
 	unsigned int count = 0;
 	ssize_t sz = 0;
 
-	// minimum required initialization of client
-	client.abort = false;
-	client.xdev = xdev;
-	atomic_set(&client.outstanding_execs, 0);
+	SCHED_DEBUGF("-> %s\n",__func__);
 
-	packet.opcode = ERT_CU_STAT;
-	packet.type = ERT_CTRL;
-	packet.count = 1;  // data[1]
-
-	if (add_ctrl_cmd(exec, &client, &packet) == 0) {
-		int retry = 5;
-
-		SCHED_DEBUGF("-> custat waiting for command to finish\n");
-		// wait for command completion
-		while (--retry && atomic_read(&client.outstanding_execs))
-			msleep(100);
-		if (retry == 0 && atomic_read(&client.outstanding_execs))
-			userpf_info(xdev, "custat unexpected timeout\n");
-		SCHED_DEBUGF("<- custat retry(%d)\n", retry);
-	}
-
+	// No need to lock exec, cu stats are computed and cached.
+	// Even if xclbin is swapped, the data reflects the xclbin on
+	// which is was computed above.
 	for (count = 0; count < exec->num_cus; ++count)
-		sz += sprintf(buf+sz, "CU[@0x%x] : %d\n",
+		sz += sprintf(buf+sz, "CU[@0x%x] : %d status : %d\n",
 			      exec_cu_base_addr(exec, count),
-			      exec_cu_usage(exec, count));
+			      exec_cu_usage(exec, count),
+			      exec_cu_status(exec, count));
 	if (sz)
 		buf[sz++] = 0;
 
+	SCHED_DEBUGF("<- %s sz=%ld\n",__func__,sz);
 	return sz;
 }
 static DEVICE_ATTR_RO(kds_custat);

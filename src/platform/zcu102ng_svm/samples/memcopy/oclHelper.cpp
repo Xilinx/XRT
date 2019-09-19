@@ -14,7 +14,7 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
+
 
 
 #include "oclHelper.h"
@@ -125,7 +125,7 @@ oclHardware getOclHardware(cl_device_type type, const char *target_device)
         }
 
         //std::cout << "INFO: Selected platform " << platformName << std::endl;
-        
+
         cl_uint deviceCount = 0;
         err = clGetDeviceIDs(platforms[i], type, 16, devices, &deviceCount);
         if ((err != CL_SUCCESS) || (deviceCount == 0)) {
@@ -143,7 +143,7 @@ oclHardware getOclHardware(cl_device_type type, const char *target_device)
             if (strcmp(deviceName, target_device) == 0) {
                 device_id = devices[i];
                 break;
-            }            
+            }
         }
         if (idev == deviceCount) {
             std::cout << "ERROR: target device " << target_device << " not found " << std::endl;
@@ -160,7 +160,7 @@ oclHardware getOclHardware(cl_device_type type, const char *target_device)
             std::cout << oclErrorCode(err) << "\n";
             return hardware;
         }
-        
+
         hardware.mPlatform = platforms[i];
         hardware.mContext = context;
         hardware.mDevice = device_id;
@@ -213,7 +213,7 @@ int getOclSoftware(oclSoftware &software, const oclHardware &hardware)
         std::cout << oclErrorCode(err) << "\n";
         return -4;
     }
-    
+
     delete [] kernelCode;
     return 0;
 }
@@ -232,9 +232,7 @@ void release(oclHardware& hardware)
     clReleaseCommandQueue(hardware.mQueue);
     clReleaseContext(hardware.mContext);
     if ((hardware.mMajorVersion >= 1) && (hardware.mMinorVersion > 1)) {
-        // Only available in OpenCL >= 1.2   
+        // Only available in OpenCL >= 1.2
         clReleaseDevice(hardware.mDevice);
     }
 }
-
-// 67d7842dbbe25473c3c32b93c0da8047785f30d78e8a024de1b57352245f9689
