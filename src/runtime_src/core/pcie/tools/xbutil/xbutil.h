@@ -227,6 +227,7 @@ public:
         std::string name, errmsg;
         pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV", errmsg, name );
         return name;
+    }
 
     void
     schedulerUpdateStat() const
@@ -706,9 +707,8 @@ public:
     int readSensors( void ) const
     {
         // board info
-        std::string name, vendor, device, subsystem, subvendor, xmc_ver,
+        std::string vendor, device, subsystem, subvendor, xmc_ver,
             ser_num, bmc_ver, idcode, fpga, dna, errmsg, max_power;
-
         int ddr_size = 0, ddr_count = 0, pcie_speed = 0, pcie_width = 0, p2p_enabled = 0;
         std::vector<std::string> clock_freqs;
         std::vector<std::string> dma_threads;
