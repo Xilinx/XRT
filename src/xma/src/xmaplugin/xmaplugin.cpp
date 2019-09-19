@@ -73,7 +73,7 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
     }
-    if (ddr_bank < 0) {
+    if (s_handle.hw_session.bank_index < 0) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc can not be used for this XMASession as kernel not connected to any DDR\n");
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;

@@ -356,10 +356,10 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             dev_tmp1.kernels[d1].cu_mask2 = cu_mask.to_ulong();
             cu_mask = cu_mask >> 32;
             dev_tmp1.kernels[d1].cu_mask3 = cu_mask.to_ulong();
-            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - cu_mask0: 0x%lx", d1, (char*)dev_tmp1.kernels[d1].name, dev_tmp1.kernels[d1].cu_mask0);
-            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - cu_mask1: 0x%lx", d1, (char*)dev_tmp1.kernels[d1].name, dev_tmp1.kernels[d1].cu_mask1);
-            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - cu_mask2: 0x%lx", d1, (char*)dev_tmp1.kernels[d1].name, dev_tmp1.kernels[d1].cu_mask2);
-            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - cu_mask3: 0x%lx", d1, (char*)dev_tmp1.kernels[d1].name, dev_tmp1.kernels[d1].cu_mask3);
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - cu_mask0: 0x%x", d1, (char*)dev_tmp1.kernels[d1].name, dev_tmp1.kernels[d1].cu_mask0);
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - cu_mask1: 0x%x", d1, (char*)dev_tmp1.kernels[d1].name, dev_tmp1.kernels[d1].cu_mask1);
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - cu_mask2: 0x%x", d1, (char*)dev_tmp1.kernels[d1].name, dev_tmp1.kernels[d1].cu_mask2);
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - cu_mask3: 0x%x", d1, (char*)dev_tmp1.kernels[d1].name, dev_tmp1.kernels[d1].cu_mask3);
         }
 
         cu_mask.reset();
