@@ -918,6 +918,17 @@ void testCaseProgressReporter(bool *quit)
     }
 }
 
+void set_shell_env(std::string var_name, std::string trailing_path, int overwrite)
+{
+    std::string xrt_path(getenv("XILINX_XRT"));
+    std::string new_path;
+    if (getenv(var_name.c_str()) != NULL)
+        new_path = std::string(getenv(var_name.c_str()));
+    xrt_path += trailing_path + ":";
+    new_path = xrt_path + new_path;
+    setenv(var_name.c_str(), new_path.c_str(), overwrite);
+}
+
 int runShellCmd(const std::string& cmd, std::string& output)
 {
     int ret = 0;
@@ -928,20 +939,9 @@ int runShellCmd(const std::string& cmd, std::string& output)
 
     // Run test case
     setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
-
-    std::string pythonpath;
-    if (getenv("PYTHONPATH") != NULL)
-        pythonpath = std::string(getenv("PYTHONPATH"));
-    pythonpath = "/opt/xilinx/xrt/python:" + pythonpath;
-    setenv("PYTHONPATH", pythonpath.c_str(), 0);
-
-    std::string new_ld_path(getenv("XILINX_XRT"));
-    std::string ld_path;
-    if (getenv("LD_LIBRARY_PATH") != NULL)
-        ld_path = std::string(getenv("LD_LIBRARY_PATH"));
-    new_ld_path += "/lib:";
-    new_ld_path = new_ld_path + ld_path;
-    setenv("LD_LIBRARY_PATH", new_ld_path.c_str(), 1);
+    set_shell_env("PYTHONPATH", "/python", 0);
+    set_shell_env("LD_LIBRARY_PATH", "/lib", 1);
+    set_shell_env("PATH", "/bin", 1);
 
     unsetenv("XCL_EMULATION_MODE");
 
