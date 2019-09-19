@@ -191,8 +191,8 @@ enum xclVerbosityLevel {
 };
 
 enum xclResetKind {
-    XCL_RESET_KERNEL,
-    XCL_RESET_FULL,
+    XCL_RESET_KERNEL, // not implemented through xocl user pf
+    XCL_RESET_FULL,   // not implemented through xocl user pf
     XCL_USER_RESET
 };
 
@@ -259,6 +259,7 @@ XCL_DRIVER_DLLESPEC void xclClose(xclDeviceHandle handle);
  * Reset the device. All running kernels will be killed and buffers in DDR will be
  * purged. A device may be reset if a user's application dies without waiting for
  * running kernel(s) to finish.
+ * NOTE: Only implemeted Reset kind through user pf is XCL_USER_RESET
  */
 XCL_DRIVER_DLLESPEC int xclResetDevice(xclDeviceHandle handle, enum xclResetKind kind);
 
