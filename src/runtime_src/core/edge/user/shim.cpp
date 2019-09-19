@@ -493,7 +493,7 @@ int ZYNQShim::xclLoadAxlf(const axlf *buffer)
    * By default, those flags are enabled, so that if xclbin contains those
    * sections, driver will try to download all of them.
    *
-   * In very rare case, ff the xclbin contains invalid sections,
+   * In a very rare case if the xclbin contains invalid sections,
    * for example: both BITSTREAM and PARTIAL BITSTREAM in one xclbin,
    * the request will be rejected by ioctl.
    */
