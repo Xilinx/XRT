@@ -35,17 +35,18 @@
 #include "core/common/message.h"
 #include "core/common/scheduler.h"
 #include "core/common/xclbin_parser.h"
+#include "core/common/config_reader.h"
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
 #include <assert.h>
+#include <cstdarg>
+
+#ifndef __HWEM__
+#include "plugin/xdp/hal_profile.h"
+#endif
+
 
 #define GB(x)   ((size_t) (x) << 30)
-
-static inline void errlog(std::string& errstr)
-{
-    xrt_core::message::send(xrt_core::message::severity_level::XRT_ERROR,
-        "XRT", errstr.c_str());
-}
 
 static std::string parseCUStatus(unsigned val) {
   char delim = '(';
@@ -80,7 +81,7 @@ static std::string parseCUStatus(unsigned val) {
   else if ( val == 0x0)
     status = "(--)";
   else
-    status = "(??)";
+    status = "(?)";
   return status;
 }
 
@@ -126,6 +127,7 @@ ZYNQShim::ZYNQShim(unsigned index, const char *logfileName, xclVerbosityLevel ve
     mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
   }
   mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
+  mDev = zynq_device::get_dev();
 }
 
 #ifndef __HWEM__
@@ -435,7 +437,7 @@ int ZYNQShim::xclLoadXclBin(const xclBin *buffer)
     ret = xclLoadAxlf(reinterpret_cast<const axlf*> (xclbininmemory));
   } else {
     if (mLogStream.is_open()) {
-      mLogStream << "xclLoadXclBin don't support legacy xclbin format." << std::endl;
+      mLogStream << "xclLoadXclBin doesn't support legacy xclbin format." << std::endl;
     }
   }
 
@@ -471,10 +473,16 @@ int ZYNQShim::xclLoadAxlf(const axlf *buffer)
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << buffer << std::endl;
   }
 
-  // If platform is a non-PR-platform, Following check will fail. Dont download the partial bitstream
-  // if Platform is a PR-platform, Following check passes as enable_pr value is true by default. Download the partial bitstream
-  // If platform is a PR-platform, but v++ generated a full bitstream (using some v++ param). User need to add enable_pr=false in xrt.ini.
-
+  /*
+   * If platform is a non-PR-platform, Following check will fail. Dont download
+   * the partial bitstream
+   *
+   * If Platform is a PR-platform, Following check passes as enable_pr value is
+   * true by default. Download the partial bitstream.
+   *
+   * If platform is a PR-platform, but v++ generated a full bitstream (using
+   * some v++ param).  User need to add enable_pr=false in xrt.ini.
+   */
   auto is_pr_platform = (buffer->m_header.m_mode == XCLBIN_PR ) ? true : false;
   auto runtime_pr_en = xrt_core::config::get_enable_pr(); //default value is true
 
@@ -485,7 +493,12 @@ int ZYNQShim::xclLoadAxlf(const axlf *buffer)
       std::cout << __func__ << "Partial reconfig failed, err: " << ret << std::endl;
   }
 
-  drm_zocl_axlf axlf_obj = { const_cast<axlf *>(buffer) };
+  drm_zocl_axlf axlf_obj = {
+      .za_xclbin_ptr = const_cast<axlf *>(buffer),
+      .za_flags = xrt_core::config::get_pdi_load() ?
+          DRM_ZOCL_AXLF_FLAGS_PDI_LOAD :
+          DRM_ZOCL_AXLF_FLAGS_NONE,
+  };
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_READ_AXLF, &axlf_obj);
 
   return ret;
@@ -580,25 +593,18 @@ uint ZYNQShim::xclGetNumLiveProcesses()
   return 0;
 }
 
-int ZYNQShim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size)
+std::string ZYNQShim::xclGetSysfsPath(const std::string& entry)
 {
-  // Until we have a programmatic way to determine what this directory
-  //  is on Zynq platforms, this is hard-coded so we can test out
-  //  debug and profile features.
-  std::string path = "/sys/devices/platform/amba/amba:zyxclmm_drm/";
-  path += entry ;
-
-  if (path.length() >= size) return -1 ;
-
-  // Since path.length() < size, we are sure to copy over the null
-  //  terminating byte.
-  strncpy(sysfsPath, path.c_str(), size) ;
-  return 0 ;
+  return zynq_device::get_dev()->get_sysfs_path(entry);
 }
 
 int ZYNQShim::xclGetDebugIPlayoutPath(char* layoutPath, size_t size)
 {
-  return xclGetSysfsPath("", "debug_ip_layout", layoutPath, size);
+  std::string path = xclGetSysfsPath("debug_ip_layout");
+  if (path.size() >= size)
+    return -EINVAL;
+  std::strncpy(layoutPath, path.c_str(), size);
+  return 0;
 }
 
 int ZYNQShim::xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
@@ -676,15 +682,11 @@ int ZYNQShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset,
   std::lock_guard<std::mutex> l(mCuMapLock);
 
   if (cu_index >= mCuMaps.size()) {
-    std::string err = "xclRegRW: invalid CU index: ";
-    err += std::to_string(cu_index);
-    errlog(err);
+    xclLog(XRT_ERROR, "XRT", "%s: invalid CU index: %d", __func__, cu_index);
     return -EINVAL;
   }
   if (offset >= mCuMapSize || (offset & (sizeof(uint32_t) - 1)) != 0) {
-    std::string err = "xclRegRW: invalid CU offset: ";
-    err += std::to_string(offset);
-    errlog(err);
+    xclLog(XRT_ERROR, "XRT", "%s: invalid CU offset: %d", __func__, offset);
     return -EINVAL;
   }
 
@@ -692,14 +694,12 @@ int ZYNQShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset,
     void *p = mmap(0, mCuMapSize, PROT_READ | PROT_WRITE, MAP_SHARED,
       mKernelFD, cu_index * getpagesize());
     if (p != MAP_FAILED)
-        mCuMaps[cu_index] = (uint32_t *)p;
+      mCuMaps[cu_index] = (uint32_t *)p;
   }
 
   uint32_t *cumap = mCuMaps[cu_index];
   if (cumap == nullptr) {
-    std::string err = "xclRegRW: can't map CU ";
-    err += std::to_string(cu_index);
-    errlog(err);
+    xclLog(XRT_ERROR, "XRT", "%s: can't map CU: %d", __func__, cu_index);
     return -EINVAL;
   }
 
@@ -718,6 +718,117 @@ int ZYNQShim::xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap)
 int ZYNQShim::xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data)
 {
   return xclRegRW(false, cu_index, offset, &data);
+}
+
+int ZYNQShim::xclCuName2Index(const char *name, uint32_t& index)
+{
+  std::string errmsg;
+  std::vector<char> buf;
+  const uint64_t bad_addr = 0xffffffffffffffff;
+
+  mDev->sysfs_get("ip_layout", errmsg, buf);
+  if (!errmsg.empty()) {
+    xclLog(XRT_ERROR, "XRT", "can't read ip_layout sysfs node: %s",
+      errmsg.c_str());
+    return -EINVAL;
+  }
+  if (buf.empty())
+    return -ENOENT;
+   
+  const ip_layout *map = (ip_layout *)buf.data();
+  if(map->m_count < 0) {
+    xclLog(XRT_ERROR, "XRT", "invalid ip_layout sysfs node content");
+    return -EINVAL;
+  }
+
+  uint64_t addr = bad_addr;
+  int i;
+  for(i = 0; i < map->m_count; i++) {
+    if (strncmp((char *)map->m_ip_data[i].m_name, name,
+                sizeof(map->m_ip_data[i].m_name)) == 0) {
+      addr = map->m_ip_data[i].m_base_address;
+      break;
+    }
+  }
+  if (i == map->m_count)
+    return -ENOENT;
+  if (addr == bad_addr)
+    return -EINVAL;
+
+  std::vector<std::string> custat;
+  mDev->sysfs_get("kds_custat", errmsg, custat);
+  if (!errmsg.empty()) {
+    xclLog(XRT_ERROR, "XRT", "can't read kds_custat sysfs node: %s",
+           errmsg.c_str());
+    return -EINVAL;
+  }
+
+  uint32_t idx = 0;
+  for (auto& line : custat) {
+    // convert and compare parsed hex address CU[@0x[0-9]+]
+    size_t pos = line.find("0x");
+    if (pos == std::string::npos)
+      continue;
+    if (static_cast<unsigned long>(addr) ==
+        std::stoul(line.substr(pos).c_str(), 0, 16)) {
+      index = idx;
+      return 0;
+    }
+    ++idx;
+  }
+
+  return -ENOENT;
+}
+
+inline int ZYNQShim::xclLog(xrtLogMsgLevel level, const char* tag,
+                            const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    int ret = xclLogMsg(level, tag, format, args);
+    va_end(args);
+
+    return ret;
+}
+
+int ZYNQShim::xclLogMsg(xrtLogMsgLevel level, const char* tag,
+    const char* format, va_list args)
+{
+  static auto verbosity = xrt_core::config::get_verbosity();
+  if (level <= verbosity) {
+    va_list args_bak;
+    // vsnprintf will mutate va_list so back it up
+    va_copy(args_bak, args);
+    int len = std::vsnprintf(nullptr, 0, format, args_bak);
+    va_end(args_bak);
+
+    if (len < 0) {
+      //illegal arguments
+      std::string err_str = "ERROR: Illegal arguments in log format string. ";
+      err_str.append(std::string(format));
+      xrt_core::message::send((xrt_core::message::severity_level)level, tag,
+                              err_str);
+      return len;
+    }
+    ++len; //To include null terminator
+
+    std::vector<char> buf(len);
+    len = std::vsnprintf(buf.data(), len, format, args);
+
+    if (len < 0) {
+      //error processing arguments
+      std::string err_str =
+        "ERROR: When processing arguments in log format string. ";
+      err_str.append(std::string(format));
+      xrt_core::message::send((xrt_core::message::severity_level)level, tag,
+                              err_str.c_str());
+      return len;
+    }
+    xrt_core::message::send((xrt_core::message::severity_level)level, tag,
+                            buf.data());
+  }
+
+  return 0;
 }
 
 }
@@ -897,6 +1008,9 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
         printf("Map Debug IPs Failed\n");
         return ret;
     }
+#ifndef __HWEM__
+    START_DEVICE_PROFILING_CB(handle);
+#endif
     return 0;
 }
 
@@ -975,7 +1089,13 @@ int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev,
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
-  return drv->xclGetSysfsPath(subdev, entry, sysfsPath, size);
+
+  std::string path = drv->xclGetSysfsPath(entry);
+  if (path.size() >= size)
+    return -EINVAL;
+
+  std::strncpy(sysfsPath, path.c_str(), size);
+  return 0;
 }
 
 int xclGetDebugIPlayoutPath(xclDeviceHandle handle, char* layoutPath, size_t size)
@@ -1269,6 +1389,43 @@ ssize_t xclReadQueue(xclDeviceHandle handle, void *q_hdl, xclQueueRequest *wr_re
   return -ENOSYS;
 }
 
+int xclCreateProfileResults(xclDeviceHandle handle, ProfileResults** results)
+{
+#ifndef __HWEM__
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  if(!drv)
+    return -ENODEV;
+
+  CREATE_PROFILE_RESULTS_CB(handle, results);
+#endif
+  return 0;
+}
+
+int xclGetProfileResults(xclDeviceHandle handle, ProfileResults* results)
+{
+#ifndef __HWEM__
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  if(!drv)
+    return -ENODEV;
+
+  GET_PROFILE_RESULTS_CB(handle, results);
+#endif
+  return 0;
+}
+
+int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results)
+{
+#ifndef __HWEM__
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  if(!drv)
+    return -ENODEV;
+
+  DESTROY_PROFILE_RESULTS_CB(handle, results);
+#endif
+  return 0;
+}
+
+
 int xclRegWrite(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset,
   uint32_t data)
 {
@@ -1281,4 +1438,32 @@ int xclRegRead(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset,
 {
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
   return drv ? drv->xclRegRead(cu_index, offset, datap) : -ENODEV;
+}
+
+int xclCuName2Index(xclDeviceHandle handle, const char *name, uint32_t *indexp)
+{
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  return (drv) ? drv->xclCuName2Index(name, *indexp) : -ENODEV;
+}
+
+int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag,
+              const char* format, ...)
+{
+    static auto verbosity = xrt_core::config::get_verbosity();
+    if (level <= verbosity) {
+        va_list args;
+        va_start(args, format);
+        int ret = -1;
+        if (handle) {
+            ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+            ret = drv ? drv->xclLogMsg(level, tag, format, args) : -ENODEV;
+        } else {
+            ret = ZYNQ::ZYNQShim::xclLogMsg(level, tag, format, args);
+        }
+        va_end(args);
+
+        return ret;
+    }
+
+    return 0;
 }

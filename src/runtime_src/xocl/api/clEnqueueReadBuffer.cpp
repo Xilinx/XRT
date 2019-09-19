@@ -60,7 +60,7 @@ validOrError(cl_command_queue   command_queue,
   // with CL_MEM_HOST_WRITE_ONLY or CL_MEM_HOST_NO_ACCESS
   if((xocl::xocl(buffer)->get_flags() & CL_MEM_HOST_WRITE_ONLY) ||
      (xocl::xocl(buffer)->get_flags() & CL_MEM_HOST_NO_ACCESS))
-    throw xocl::error(CL_INVALID_OPERATION,"buffer flags do now allow reading");
+    throw xocl::error(CL_INVALID_OPERATION,"buffer flags do not allow reading");
 
 #ifdef PMD_OCL
   if (!(xocl(command_queue)->get_properties() & CL_QUEUE_DPDK))

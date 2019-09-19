@@ -94,6 +94,7 @@ int main_(int argc, char** argv) {
   bool bTrace = false;
   bool bMigrateForward = false;
   bool bListNames = false;
+  bool bListSections = false;
   std::string sInfoFile;
   bool bSkipUUIDInsertion = false;
   bool bVersion = false;
@@ -154,7 +155,7 @@ int main_(int argc, char** argv) {
       ("get-signature", boost::program_options::bool_switch(&bGetSignature), "Returns the user defined signature (if set) of the xclbin image.")
 
       ("info", boost::program_options::value<std::string>(&sInfoFile)->default_value("")->implicit_value("<console>"), "Report accelerator binary content.  Including: generation and packaging data, kernel signatures, connectivity, clocks, sections, etc.  Note: Optionally an output file can be specified.  If none is specified, then the output will go to the console.")
-      ("list-names", boost::program_options::bool_switch(&bListNames), "List all possible section names (Stand Alone Option)")
+      ("list-sections", boost::program_options::bool_switch(&bListSections), "List all possible section names (Stand Alone Option)")
       ("version", boost::program_options::bool_switch(&bVersion), "Version of this executable.")
       ("force", boost::program_options::bool_switch(&bForce), "Forces a file overwrite.")
  ;
@@ -169,6 +170,7 @@ int main_(int argc, char** argv) {
     ("append-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAppend)->multitoken(), "Section to append to.")
     ("signature-debug", boost::program_options::bool_switch(&bSignatureDebug), "Dump section debug data.")
     ("dump-signature", boost::program_options::value<std::string>(&sSignatureOutputFile), "Dumps a sign xclbin image's signature.")
+    ("list-names", boost::program_options::bool_switch(&bListNames), "(Depricated) List all possible section names (Stand Alone Option)")
     ("BAD-DATA", boost::program_options::value<std::vector<std::string> >(&badOptions)->multitoken(), "Dummy Data." )
   ;
 
@@ -248,9 +250,9 @@ int main_(int argc, char** argv) {
   }
 
   // Actions not requiring --input
-  if (bListNames) {
+  if (bListSections || bListNames) {
     if (argc != 2) {
-      std::string errMsg = "ERROR: The '--list-names' argument is a stand alone option.  No other options can be specified with it.";
+      std::string errMsg = "ERROR: The '--list-sections' argument is a stand alone option.  No other options can be specified with it.";
       throw std::runtime_error(errMsg);
     }
     XUtil::printKinds();

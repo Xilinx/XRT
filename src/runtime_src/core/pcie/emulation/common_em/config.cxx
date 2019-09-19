@@ -66,7 +66,7 @@ namespace xclemulation{
     mServerPort = 0;
     mKeepRunDir=false;
     mLauncherArgs = "";
-    mSystemDPA = false;
+    mSystemDPA = true;
   }
 
   static bool getBoolValue(std::string& value,bool defaultValue)
@@ -206,13 +206,17 @@ namespace xclemulation{
       {
         //Nothing to do
       }
+      else if(name == "aliveness_message_interval")
+      {
+        //Nothing to do
+      }
       else if(name == "system_dpa")
       {
-        setSystemDPA(getBoolValue(value,false));
+        setSystemDPA(getBoolValue(value,true));
       }
       else if(name.find("Debug.") == std::string::npos)
       {
-        std::cout<<"WARNING: [SDx-EM 08] Invalid option '"<<name<<"` specified in sdaccel.ini"<<std::endl;
+        std::cout<<"WARNING: [HW-EM 08] Invalid option '"<<name<<"` specified in sdaccel.ini"<<std::endl;
       }
     }
     //this code has to be removed once gui generates ini file by adding launch_waveform property

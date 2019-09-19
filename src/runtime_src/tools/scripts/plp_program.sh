@@ -46,10 +46,14 @@ if [ "foo${RP_DEVICE}" == "foo" ] ; then
 	exit 1;
 fi
 
-echo 0 >/sys/bus/pci/devices/$RP_DEVICE/mbx_offset
+echo 1 >/sys/bus/pci/devices/$RP_DEVICE/remove
+sleep 5
+if [ -f "/sys/bus/pci/devices/$RP_DEVICE" ]; then
+	echo "Shutdown userpf failed!"
+	exit 1;
+fi
 
 echo "xbmgmt partition --program --id $INTERFACE_UUID --force"
 xbmgmt partition --program --id $INTERFACE_UUID --force
 
-echo 0x1f20000 >/sys/bus/pci/devices/$RP_DEVICE/mbx_offset
-sleep 5
+echo 1 >/sys/bus/pci/rescan

@@ -21,7 +21,6 @@
 #include <memory>
 #include <regex>
 #include <sstream>
-#include <fcntl.h>
 #include <unistd.h>
 #include <dirent.h>
 #include <stdint.h>
@@ -294,7 +293,7 @@ DSAInfo::~DSAInfo()
 bool DSAInfo::matchId(std::string &id)
 {
     uint64_t ts = strtoull(id.c_str(), nullptr, 0);
-    if (ts != 0 && errno == 0 && ts == timestamp)
+    if (ts != 0 && ts != ULLONG_MAX && ts == timestamp)
         return true;
 
     if (uuids.size() > 0)
@@ -422,7 +421,18 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
             } else if (iter.level() > 4)
                 iter.pop();
             else
+            {
+                dp = opendir(name.c_str());
+		if (!dp)
+                {
+                    iter.no_push();
+                }
+		else
+                {
+                    closedir(dp);
+                }
                 ++iter;
+            }
         }
     }
 

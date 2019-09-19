@@ -18,7 +18,7 @@
 #ifndef _XDP_PROIFLE_XDP_HAL_DEVICE_H
 #define _XDP_PROIFLE_XDP_HAL_DEVICE_H
 
-#include "xdp_base_device.h"
+#include "xdp/profile/device/xdp_base_device.h"
 
 namespace xdp {
 
@@ -38,6 +38,7 @@ public:
   virtual int unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset);
 
   virtual double getDeviceClock();
+  virtual uint64_t getTraceTime();
   virtual int getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
   virtual int readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
 };

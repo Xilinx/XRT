@@ -563,3 +563,19 @@ int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
 }
+
+int xclCreateProfileResults(xclDeviceHandle handle, ProfileResults** results)
+{
+  return 0;
+}
+
+int xclGetProfileResults(xclDeviceHandle handle, ProfileResults* results)
+{
+  return 0;
+}
+
+int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results)
+{
+  return 0;
+}
+

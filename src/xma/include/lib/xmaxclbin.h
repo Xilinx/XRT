@@ -31,7 +31,10 @@ typedef struct XmaIpLayout
     uint8_t      kernel_name[MAX_KERNEL_NAME];
     uint64_t     base_addr;
     bool         soft_kernel;
-    bool         dataflow_kernel;
+    bool         kernel_channels;
+    uint32_t     max_channel_id;
+    int32_t      arg_start;
+    int32_t      regmap_size;
     uint32_t     reserved[16];
 } XmaIpLayout;
 

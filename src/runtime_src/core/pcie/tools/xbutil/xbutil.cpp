@@ -21,16 +21,21 @@
 #include <curses.h>
 #include <sstream>
 #include <climits>
+#include <regex>
 #include <algorithm>
 #include <getopt.h>
 #include <sys/mman.h>
+#include <boost/filesystem.hpp>
 
 #include "xbutil.h"
 #include "base.h"
-#include "core/pcie/linux/shim.h"
-#include "core/common/memalign.h"
 
-int bdf2index(std::string& bdfStr, unsigned& index)
+#define FORMATTED_FW_DIR    "/opt/xilinx/firmware"
+#define hex_digit "[0-9a-fA-F]+"
+
+const size_t m2mBoSize = 256L * 1024 * 1024;
+
+static int bdf2index(std::string& bdfStr, unsigned& index)
 {
     // Extract bdf from bdfStr.
     int dom = 0, b, d, f;
@@ -59,7 +64,7 @@ int bdf2index(std::string& bdfStr, unsigned& index)
     return -ENOENT;
 }
 
-int str2index(const char *arg, unsigned& index)
+static int str2index(const char *arg, unsigned& index)
 {
     std::string devStr(arg);
 
@@ -85,7 +90,7 @@ int str2index(const char *arg, unsigned& index)
 }
 
 
-void print_pci_info(std::ostream &ostr)
+static void print_pci_info(std::ostream &ostr)
 {
     ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
     if (pcidev::get_dev_total() == 0) {
@@ -110,12 +115,13 @@ void print_pci_info(std::ostream &ostr)
     }
 }
 
-int xrt_xbutil_version_cmp() 
+static int xrt_xbutil_version_cmp() 
 {
     /*check xbutil tools and xrt versions*/
-    std::string xrt = sensor_tree::get<std::string>( "runtime.build.version", "N/A" ) + "," 
+    std::string xrt = sensor_tree::get<std::string>( "runtime.build.version", "N/A" ) + ","
         + sensor_tree::get<std::string>( "runtime.build.hash", "N/A" );
-    if ( xrt.compare(xcldev::driver_version("xocl") ) != 0 ) {
+    if ( xcldev::driver_version("xocl") != "unknown" &&
+        xrt.compare(xcldev::driver_version("xocl") ) != 0 ) {
         std::cout << "\nERROR: Mixed versions of XRT and xbutil are not supported. \
             \nPlease install matching versions of XRT and xbutil or  \
             \ndefine env variable INTERNAL_BUILD to disable this check\n" << std::endl;
@@ -125,8 +131,8 @@ int xrt_xbutil_version_cmp()
 }
 
 inline bool getenv_or_null(const char* env)
-{ 
-    return getenv(env) ? true : false; 
+{
+    return getenv(env) ? true : false;
 }
 
 int main(int argc, char *argv[])
@@ -156,18 +162,28 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    /* Make sure xrt version matches driver version except for "help"
+     * and "version" subcommands. */
+    if(std::strcmp(argv[1], "help" ) != 0 &&
+        std::strcmp(argv[1], "version") != 0 &&
+        std::strcmp(argv[1], "--version") != 0) {
+        if (!getenv_or_null("INTERNAL_BUILD")) {
+            if (xrt_xbutil_version_cmp() != 0)
+                return -1;
+        }
+    }
 
     try {
     /*
-     * Call xbflash if first argument is "flash". This calls
-     * xbflash and never returns. All arguments will be passed
-     * down to xbflash.
+     * Call xbmgmt flash if first argument is "flash". This calls
+     * xbmgmt flash and never returns. All arguments will be passed
+     * down to xbmgmt flash.
      */
     if(std::string( argv[ 1 ] ).compare( "flash" ) == 0) {
         std::cout << "WARNING: The xbutil sub-command flash has been deprecated. "
                   << "Please use the xbmgmt utility with flash sub-command for equivalent functionality.\n"
                   << std::endl;
-        // get self path, launch xbflash from self path
+        // get self path, launch xbmgmt from self path
         char buf[ PATH_MAX ] = {0};
         auto len = readlink( "/proc/self/exe", buf, PATH_MAX );
         if( len == -1 ) {
@@ -179,9 +195,12 @@ int main(int argc, char *argv[])
         // remove exe name from this to get the parent path
         size_t found = std::string( buf ).find_last_of( "/\\" ); // finds the last backslash char
         std::string path = std::string( buf ).substr( 0, found );
-        // coverity[TAINTED_STRING] argv will be validated inside xbflash
+        // coverity[TAINTED_STRING] argv will be validated inside xbmgmt flash
+        // Let xbmgmt know that this call is from xbutil for backward
+        // compatibility behavior in xbmgmt flash
+        argv[1][0] = '-';
         return execv( std::string( path + "/xbmgmt" ).c_str(), argv );
-    } /* end of call to xbflash */
+    } /* end of call to xbmgmt flash */
 
     optind++;
     if( std::strcmp( argv[1], "validate" ) == 0 ) {
@@ -215,19 +234,11 @@ int main(int argc, char *argv[])
     }
     if (cmd == xcldev::VERSION) {
         xrt::version::print(std::cout);
-        std::cout.width(26); std::cout << std::internal << "XOCL: " << sensor_tree::get<std::string>( "runtime.build.xocl", "N/A" ) 
+        std::cout.width(26); std::cout << std::internal << "XOCL: " << sensor_tree::get<std::string>( "runtime.build.xocl", "N/A" )
                                        << std:: endl;
-        std::cout.width(26); std::cout << std::internal << "XCLMGMT: " << sensor_tree::get<std::string>( "runtime.build.xclmgmt", "N/A" ) 
+        std::cout.width(26); std::cout << std::internal << "XCLMGMT: " << sensor_tree::get<std::string>( "runtime.build.xclmgmt", "N/A" )
                                        << std::endl;
-        
-        if ( !getenv_or_null("INTERNAL_BUILD") )
-            return xrt_xbutil_version_cmp();
         return 0;
-    }
-
-    if ( !getenv_or_null("INTERNAL_BUILD") ) {
-        if ( xrt_xbutil_version_cmp() != 0 )
-            return -1;
     }
 
     argv[0] = const_cast<char *>(exe);
@@ -668,11 +679,15 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  scan\n";
     std::cout << "  top [-i seconds]\n";
     std::cout << "  validate [-d card]\n";
-    std::cout << " Requires root privileges:\n";
     std::cout << "  reset  [-d card]\n";
+    std::cout << " Requires root privileges:\n";
     std::cout << "  p2p    [-d card] --enable\n";
     std::cout << "  p2p    [-d card] --disable\n";
     std::cout << "  p2p    [-d card] --validate\n";
+    std::cout << "  flash   [-d card] -m primary_mcs [-n secondary_mcs] [-o bpi|spi]\n";
+    std::cout << "  flash   [-d card] -a <all | shell> [-t timestamp]\n";
+    std::cout << "  flash   [-d card] -p msp432_firmware\n";
+    std::cout << "  flash   scan [-v]\n";
     std::cout << "\nExamples:\n";
     std::cout << "Print JSON file to stdout\n";
     std::cout << "  " << exe << " dump\n";
@@ -687,11 +702,11 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "Download the accelerator program for card 2\n";
     std::cout << "  " << exe << " program -d 2 -p a.xclbin\n";
     std::cout << "Run DMA test on card 1 with 32 KB blocks of buffer\n";
-    std::cout << "  " << exe << " dmatest -d 1 -b 0x2000\n";
-    std::cout << "Read 256 bytes from DDR starting at 0x1000 into file read.out\n";
+    std::cout << "  " << exe << " dmatest -d 1 -b 0x20\n";
+    std::cout << "Read 256 bytes from DDR/HBM/PLRAM starting at 0x1000 into file read.out\n";
     std::cout << "  " << exe << " mem --read -a 0x1000 -i 256 -o read.out\n";
     std::cout << "  " << "Default values for address is 0x0, size is DDR size and file is memread.out\n";
-    std::cout << "Write 256 bytes to DDR starting at 0x1000 with byte 0xaa \n";
+    std::cout << "Write 256 bytes to DDR/HBM/PLRAM starting at 0x1000 with byte 0xaa \n";
     std::cout << "  " << exe << " mem --write -a 0x1000 -i 256 -e 0xaa\n";
     std::cout << "  " << "Default values for address is 0x0, size is DDR size and pattern is 0x0\n";
     std::cout << "List the debug IPs available on the platform\n";
@@ -916,7 +931,7 @@ int runShellCmd(const std::string& cmd, std::string& output)
     setenv("PYTHONPATH", "/opt/xilinx/xrt/python", 0);
     setenv("LD_LIBRARY_PATH", "/opt/xilinx/xrt/lib", 1);
     unsetenv("XCL_EMULATION_MODE");
-    
+
     int stderr_fds[2];
     if (pipe(stderr_fds)== -1) {
         perror("ERROR: Unable to create pipe");
@@ -949,24 +964,82 @@ int runShellCmd(const std::string& cmd, std::string& output)
     return ret;
 }
 
-int searchXsaAndDsa(std::string xsaPath, std::string 
-    dsaPath, std::string& path, std::string &output) 
+int searchXsaAndDsa(int index, std::string xsaPath, std::string
+    dsaPath, std::string& path, std::string &output)
 {
     struct stat st;
-    if (stat(xsaPath.c_str(), &st) != 0) {
-            if (stat(dsaPath.c_str(), &st) != 0) {
-                output += "ERROR: Failed to find xclbin in ";
-                output += xsaPath;
-                output += " and ";
-                output += dsaPath;
-                return -ENOENT;
-            }
-            path =  dsaPath;
-            return EXIT_SUCCESS;
-    } else {
-        path = xsaPath;
+    if (stat(xsaPath.c_str(), &st) == 0) {
+        path =  xsaPath;
+        return EXIT_SUCCESS;
+    } else if (stat(dsaPath.c_str(), &st) == 0) {
+        path = dsaPath;
         return EXIT_SUCCESS;
     }
+    // Check if it is 2rp platform
+    std::string logic_uuid;
+    std::string errmsg;
+    pcidev::get_dev(index)->sysfs_get( "", "logic_uuids", errmsg, logic_uuid);
+    if (!logic_uuid.empty()) {
+        DIR *dp;
+
+	dp = opendir(FORMATTED_FW_DIR);
+	if (!dp) {
+            output += "ERROR: Failed to find firmware installation dir ";
+	    output += FORMATTED_FW_DIR;
+	    output += "\n";
+	    return -ENOENT;
+	}
+	closedir(dp);
+
+        boost::filesystem::path formatted_fw_dir(FORMATTED_FW_DIR);
+        std::vector<std::string> suffix = { "dsabin", "xsabin" };
+        for (std::string t : suffix) {
+            std::regex e("(^" FORMATTED_FW_DIR "/" hex_digit "-" hex_digit "-" hex_digit "/.+/.+/.+/)(" hex_digit ")\\." + t);
+            for (boost::filesystem::recursive_directory_iterator iter(formatted_fw_dir, boost::filesystem::symlink_option::recurse), end;
+                iter != end;
+            )
+            {
+                std::string name = iter->path().string();
+                std::cmatch cm;
+
+                std::regex_match(name.c_str(), cm, e);
+                if (cm.size() > 0)
+                {
+                    std::string uuid = cm.str(2);
+                    if (uuid.compare(logic_uuid) == 0)
+                    {
+                        path = cm.str(1) + "test/";
+                        return EXIT_SUCCESS;
+                    }
+                }
+                else if (iter.level() > 4)
+                {
+                    iter.pop();
+                    continue;
+                }
+                dp = opendir(name.c_str());
+                if (!dp)
+                {
+                    iter.no_push();
+                }
+                else
+                {
+                    closedir(dp);
+                }
+                ++iter;
+            }
+        }
+        output += "ERROR: Failed to find xclbin in ";
+        output += FORMATTED_FW_DIR;
+        output += "\n";
+        return -ENOENT;
+    }
+
+    output += "ERROR: Failed to find xclbin in ";
+    output += xsaPath;
+    output += " and ";
+    output += dsaPath;
+    return -ENOENT;
 }
 
 int xcldev::device::runTestCase(const std::string& py,
@@ -989,7 +1062,7 @@ int xcldev::device::runTestCase(const std::string& py,
     output.clear();
 
     std::string xclbinPath;
-    searchXsaAndDsa(xsaXclbinPath, dsaXclbinPath, xclbinPath, output);
+    searchXsaAndDsa(m_idx, xsaXclbinPath, dsaXclbinPath, xclbinPath, output);
     xclbinPath += xclbin;
 
     if (stat(xrtTestCasePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
@@ -1032,7 +1105,7 @@ int xcldev::device::runXbTestCase(const std::string& test, std::string& output)
     output.clear();
 
     std::string testPath;
-    searchXsaAndDsa(xsaTestPath, dsaTestPath, testPath, output);
+    searchXsaAndDsa(m_idx, xsaTestPath, dsaTestPath, testPath, output);
     std::string exePath = testPath + "xbtest";
     testPath += test;
 
@@ -1056,8 +1129,10 @@ int xcldev::device::verifyKernelTest(void)
     int ret = runTestCase(std::string("22_verify.py"),
         std::string("verify.xclbin"), output);
 
-    if (ret != 0)
+    if (ret != 0) {
+        std::cout << output << std::endl;
         return ret;
+    }
 
     if (output.find("Hello World") == std::string::npos) {
         std::cout << output << std::endl;
@@ -1073,8 +1148,10 @@ int xcldev::device::bandwidthKernelTest(void)
     int ret = runTestCase(std::string("23_bandwidth.py"),
         std::string("bandwidth.xclbin"), output);
 
-    if (ret != 0)
+    if (ret != 0) {
+        std::cout << output << std::endl;
         return ret;
+    }
 
     if (output.find("PASS") == std::string::npos) {
         std::cout << output << std::endl;
@@ -1108,7 +1185,7 @@ int xcldev::device::pcieLinkTest(void)
     if (pcie_speed != pcie_speed_max || pcie_width != pcie_width_max) {
         std::cout << "LINK ACTIVE, ATTENTION" << std::endl;
         std::cout << "Ensure Card is plugged in to Gen"
-            << pcie_speed_max << "x" << pcie_width_max << ", instead of Gen" 
+            << pcie_speed_max << "x" << pcie_width_max << ", instead of Gen"
             << pcie_speed << "x" << pcie_width << std::endl
             << "Lower performance may be experienced" << std::endl;
         return 1;
@@ -1122,8 +1199,10 @@ int xcldev::device::bandwidthKernelXbtest(void)
 
     int ret = runXbTestCase(std::string("memory.json"), output);
 
-    if (ret != 0)
+    if (ret != 0) {
+        std::cout << output << std::endl;
         return ret;
+    }
 
     if (output.find("RESULT: ALL TESTS PASSED") == std::string::npos) {
         std::cout << output << std::endl;
@@ -1151,8 +1230,10 @@ int xcldev::device::verifyKernelXbtest(void)
 
     int ret = runXbTestCase(std::string("verify.json"), output);
 
-    if (ret != 0)
+    if (ret != 0) {
+        std::cout << output << std::endl;
         return ret;
+    }
 
     if (output.find("RESULT: ALL TESTS PASSED") == std::string::npos) {
         std::cout << output << std::endl;
@@ -1168,8 +1249,10 @@ int xcldev::device::dmaXbtest(void)
 
     int ret = runXbTestCase(std::string("dma.json"), output);
 
-    if (ret != 0)
+    if (ret != 0) {
+        std::cout << output << std::endl;
         return ret;
+    }
 
     if (output.find("RESULT: ALL TESTS PASSED") == std::string::npos) {
         std::cout << output << std::endl;
@@ -1218,6 +1301,26 @@ int xcldev::device::runOneTest(std::string testName,
     return ret;
 }
 
+int xcldev::device::getXclbinuuid(uuid_t &uuid) {
+    std::string errmsg, xclbinid;
+
+    pcidev::get_dev(m_idx)->sysfs_get("", "xclbinuuid", errmsg, xclbinid);
+
+    if (!errmsg.empty()) {
+        std::cout<<errmsg<<std::endl;
+        return -ENODEV;
+    }
+
+    uuid_parse(xclbinid.c_str(), uuid);
+
+    if (uuid_is_null(uuid)) {
+        std::cout<<"  WARNING: 'uuid' invalid, unable to find uuid. \n"
+                << "  Has the bitstream been loaded? See 'xbutil program'.\n";
+        return -ENODEV;
+    }
+
+    return 0;
+}
 /*
  * validate
  */
@@ -1672,6 +1775,10 @@ int xcldev::xclP2p(int argc, char *argv[])
         std::cout << "ERROR: P2P is enabled. But there is not enough iomem space, please warm reboot." << std::endl;
     } else if (ret == ENXIO) {
         std::cout << "ERROR: P2P is not supported on this platform" << std::endl;
+    } else if (ret == 1) {
+        std::cout << "P2P is enabled" << std::endl;
+    } else if (ret == 0) {
+        std::cout << "P2P is disabled" << std::endl;
     } else if (ret)
         std::cout << "ERROR: " << strerror(ret) << std::endl;
 
@@ -1721,35 +1828,33 @@ static int m2mtest_bank(xclDeviceHandle handle, int bank_a, int bank_b)
     char *boTgtPtr = nullptr;
     int ret = 0;
 
-    const size_t boSize = 256L * 1024 * 1024;
-
     //Allocate and init boSrc
-    if(m2m_alloc_init_bo(handle, boSrc, boSrcPtr, boSize, bank_a, 'A'))
+    if(m2m_alloc_init_bo(handle, boSrc, boSrcPtr, m2mBoSize, bank_a, 'A'))
         return -EINVAL;
 
     //Allocate and init boTgt
-    if(m2m_alloc_init_bo(handle, boTgt, boTgtPtr, boSize, bank_b, 'B')) {
-        m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
+    if(m2m_alloc_init_bo(handle, boTgt, boTgtPtr, m2mBoSize, bank_b, 'B')) {
+        m2m_free_unmap_bo(handle, boSrc, boSrcPtr, m2mBoSize);
         return -EINVAL;
     }
 
     xcldev::Timer timer;
-    if ((ret = xclCopyBO(handle, boTgt, boSrc, boSize, 0, 0)))
+    if ((ret = xclCopyBO(handle, boTgt, boSrc, m2mBoSize, 0, 0)))
         return ret;
     double timer_stop = timer.stop();
 
-    if(xclSyncBO(handle, boTgt, XCL_BO_SYNC_BO_FROM_DEVICE, boSize, 0)) {
-        m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
-        m2m_free_unmap_bo(handle, boTgt, boTgtPtr, boSize);
+    if(xclSyncBO(handle, boTgt, XCL_BO_SYNC_BO_FROM_DEVICE, m2mBoSize, 0)) {
+        m2m_free_unmap_bo(handle, boSrc, boSrcPtr, m2mBoSize);
+        m2m_free_unmap_bo(handle, boTgt, boTgtPtr, m2mBoSize);
         std::cout << "ERROR: Unable to sync target BO" << std::endl;
         return -EINVAL;
     }
 
-    bool match = (memcmp(boSrcPtr, boTgtPtr, boSize) == 0);
+    bool match = (memcmp(boSrcPtr, boTgtPtr, m2mBoSize) == 0);
 
     // Clean up
-    m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
-    m2m_free_unmap_bo(handle, boTgt, boTgtPtr, boSize);
+    m2m_free_unmap_bo(handle, boSrc, boSrcPtr, m2mBoSize);
+    m2m_free_unmap_bo(handle, boTgt, boTgtPtr, m2mBoSize);
 
     if (!match) {
         std::cout << "Memory comparison failed" << std::endl;
@@ -1757,7 +1862,7 @@ static int m2mtest_bank(xclDeviceHandle handle, int bank_a, int bank_b)
     }
 
     //bandwidth
-    double total = boSize;
+    double total = m2mBoSize;
     total *= 1000000; // convert us to s
     total /= (1024 * 1024); //convert to MB
     std::cout << total / timer_stop << " MB/s\t\n";
@@ -1795,7 +1900,8 @@ int xcldev::device::testM2m()
     }
 
     for(int32_t i = 0; i < map->m_count; i++) {
-        if(map->m_mem_data[i].m_used)
+        if(map->m_mem_data[i].m_used &&
+            map->m_mem_data[i].m_size * 1024 >= m2mBoSize)
             usedBanks.insert(usedBanks.end(), map->m_mem_data[i]);
     }
 

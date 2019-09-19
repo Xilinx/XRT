@@ -43,6 +43,8 @@
 #include <chrono>
 using Clock = std::chrono::high_resolution_clock;
 
+int xclUpdateSchedulerStat(xclDeviceHandle); // exposed by shim
+
 #define TO_STRING(x) #x
 #define AXI_FIREWALL
 
@@ -149,6 +151,15 @@ static const std::map<MEM_TYPE, std::string> memtype_map = {
 
 static const std::map<std::string, command> commandTable(map_pairs, map_pairs + sizeof(map_pairs) / sizeof(map_pairs[0]));
 
+static std::string lvl2PowerStr(unsigned int lvl)
+{
+    std::vector<std::string> powers{ "75W", "150W", "225W" };
+
+    if (lvl < powers.size())
+        return powers[lvl];
+
+    return "0W";
+}
 
 class device {
     unsigned int m_idx;
@@ -167,7 +178,7 @@ class device {
 
             if (!errmsg.empty()) {
                 std::cout<<errmsg<<std::endl;
-                throw std::runtime_error("Failed to lockdown xclbin.");
+                throw std::runtime_error("Failed to get uuid.");
             }
 
             uuid_parse(xclbinid.c_str(), m_uuid);
@@ -176,7 +187,7 @@ class device {
                    throw std::runtime_error("'uuid' invalid, please re-program xclbin.");
 
             if (xclOpenContext(m_handle, m_uuid, -1, true))
-                   throw std::runtime_error("'uuid' invalid, please re-program xclbin.");
+                   throw std::runtime_error("'Failed to lock down xclbin");
         }
         ~xclbin_lock(){
             xclCloseContext(m_handle, m_uuid, -1);
@@ -220,12 +231,49 @@ public:
         xclClose(m_handle);
     }
 
+    void
+    schedulerUpdateStat() const
+    {
+        try {
+          xclbin_lock lk(m_handle, m_idx);
+          xclUpdateSchedulerStat(m_handle);
+        }
+        catch (const std::exception&) {
+          // xclbin_lock failed, safe to ignore
+        }
+    }
+
     const char *name() const {
         return m_devinfo.mName;
     }
 
     int reclock2(unsigned regionIndex, const unsigned short *freq) {
         const unsigned short targetFreqMHz[4] = {freq[0], freq[1], freq[2], 0};
+        std::vector<std::string> clock_freqs_max, clock_freqs_min;
+        unsigned int num_clocks = 4;
+        std::string errmsg;
+        uuid_t uuid;
+        int ret;
+
+        ret = getXclbinuuid(uuid);
+        if (ret)
+            return ret;
+
+        pcidev::get_dev(m_idx)->sysfs_get( "icap", "clock_freqs_max", errmsg, clock_freqs_max ); 
+        pcidev::get_dev(m_idx)->sysfs_get( "icap", "clock_freqs_min", errmsg, clock_freqs_min );
+
+        for (unsigned int i = 0; i < num_clocks; ++i) {
+            if (!targetFreqMHz[i])
+                continue;
+
+            if (targetFreqMHz[i] > std::stoi(clock_freqs_max[i]) || targetFreqMHz[i] < std::stoi(clock_freqs_min[i])) {
+                std::cout<<"  Unable to program clock frequency!\n"
+                         <<"  Frequency max : "<<clock_freqs_max[i]<<", min : "<<clock_freqs_min[i]<<" \n";
+                std::cout<<"  Requested frequency : "<<targetFreqMHz[i]<<std::endl;
+                return -EINVAL;
+            }
+        }
+
         return xclReClock2(m_handle, 0, targetFreqMHz);
     }
 
@@ -252,21 +300,46 @@ public:
         return 0;
     }
 
+    uint32_t parseComputeUnitStatus(const std::vector<std::string>& custat, uint32_t offset) const
+    {
+       if (custat.empty())
+          return 0;
+
+       std::stringstream ss;
+       ss << "0x" << std::hex << offset;
+       auto addr = ss.str();
+
+       for (auto& line : custat) {
+           auto pos = line.find(addr);
+           if (pos == std::string::npos)
+               continue;
+           pos = line.find("status : ");
+           if (pos == std::string::npos)
+             return 0;
+           return std::stoi(line.substr(pos + strlen("status : ")));
+       }
+
+       return 0;
+    }
+
     int parseComputeUnits(const std::vector<ip_data> &computeUnits) const
     {
-        char *skip_cu = std::getenv("XCL_SKIP_CU_READ");
+        if (!std::getenv("XCL_SKIP_CU_READ"))
+          schedulerUpdateStat();
 
-        for( unsigned int i = 0; i < computeUnits.size(); i++ ) {
-            boost::property_tree::ptree ptCu;
-            unsigned statusBuf = 0;
-            if (computeUnits.at( i ).m_type != IP_KERNEL)
+        std::vector<std::string> custat;
+        std::string errmsg;
+        pcidev::get_dev(m_idx)->sysfs_get("mb_scheduler", "kds_custat", errmsg, custat);
+          
+        for (unsigned int i = 0; i < computeUnits.size(); ++i) {
+            const auto& ip = computeUnits[i];
+            if (ip.m_type != IP_KERNEL)
                 continue;
-	    if (!skip_cu) {
-                xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, computeUnits.at( i ).m_base_address, &statusBuf, 4);
-	    }
-            ptCu.put( "name",         computeUnits.at( i ).m_name );
-            ptCu.put( "base_address", computeUnits.at( i ).m_base_address );
-            ptCu.put( "status",       parseCUStatus( statusBuf ) );
+            uint32_t status = parseComputeUnitStatus(custat,ip.m_base_address);
+            boost::property_tree::ptree ptCu;
+            ptCu.put( "name",         ip.m_name );
+            ptCu.put( "base_address", ip.m_base_address );
+            ptCu.put( "status",       parseCUStatus( status ) );
             sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(i)), ptCu );
         }
         return 0;
@@ -278,6 +351,10 @@ public:
         std::string errmsg;
 
         pcidev::get_dev(m_idx)->sysfs_get<unsigned long long>( "xmc", "xmc_power",  errmsg, power, 0);
+
+        if (!errmsg.empty()) {
+            return -1;
+        }
 
         return (float)power / 1000000;
     }
@@ -418,6 +495,7 @@ public:
         int j = 0; // stream index
         int m = 0; // mem index
 
+        dev->sysfs_put( "", "mig_cache_update", errmsg, "1");
         for(int i = 0; i < map->m_count; i++) {
             if (map->m_mem_data[i].m_type == MEM_STREAMING || map->m_mem_data[i].m_type == MEM_STREAMING_CONNECTION) {
                 std::string lname, status = "Inactive", total = "N/A", pending = "N/A";
@@ -610,10 +688,10 @@ public:
     {
         std::stringstream ss;
         std::string errmsg;
-        std::vector<char> buf;
+        std::vector<std::string> custat;
 
-        pcidev::get_dev(m_idx)->sysfs_get("mb_scheduler",
-            "kds_custat", errmsg, buf);
+        schedulerUpdateStat();
+        pcidev::get_dev(m_idx)->sysfs_get("mb_scheduler", "kds_custat", errmsg, custat);
 
         if (!errmsg.empty()) {
             ss << errmsg << std::endl;
@@ -621,10 +699,11 @@ public:
             return;
         }
 
-        if (buf.size()) {
+        if (custat.size())
           ss << "\nCompute Unit Usage:" << "\n";
-          ss << buf.data() << "\n";
-        }
+
+        for (auto& line : custat)
+          ss << line.substr(0,line.find(" status :")) << "\n";
 
         ss << std::setw(80) << std::setfill('#') << std::left << "\n";
         lines.push_back(ss.str());
@@ -633,9 +712,11 @@ public:
     int readSensors( void ) const
     {
         // board info
-        std::string name, vendor, device, subsystem, subvendor, xmc_ver, ser_num, bmc_ver, idcode, fpga, dna, errmsg;
+        std::string name, vendor, device, subsystem, subvendor, xmc_ver,
+            ser_num, bmc_ver, idcode, fpga, dna, errmsg, max_power;
         int ddr_size = 0, ddr_count = 0, pcie_speed = 0, pcie_width = 0, p2p_enabled = 0;
         std::vector<std::string> clock_freqs;
+        std::vector<std::string> dma_threads;
         bool mig_calibration;
         
         pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV",                    errmsg, name ); 
@@ -645,10 +726,12 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "", "subsystem_vendor",           errmsg, subvendor );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "version",                 errmsg, xmc_ver );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "serial_num",              errmsg, ser_num );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "max_power",               errmsg, max_power );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "bmc_ver",                 errmsg, bmc_ver );
         pcidev::get_dev(m_idx)->sysfs_get<int>("rom", "ddr_bank_size",       errmsg, ddr_size,  0 );
         pcidev::get_dev(m_idx)->sysfs_get<int>( "rom", "ddr_bank_count_max", errmsg, ddr_count, 0 );
         pcidev::get_dev(m_idx)->sysfs_get( "icap", "clock_freqs",            errmsg, clock_freqs ); 
+        pcidev::get_dev(m_idx)->sysfs_get( "dma", "channel_stat_raw",        errmsg, dma_threads ); 
         pcidev::get_dev(m_idx)->sysfs_get<int>( "", "link_speed",            errmsg, pcie_speed, 0 );
         pcidev::get_dev(m_idx)->sysfs_get<int>( "", "link_width",            errmsg, pcie_width, 0 );
         pcidev::get_dev(m_idx)->sysfs_get<bool>( "", "mig_calibration",      errmsg, mig_calibration, false );
@@ -663,6 +746,7 @@ public:
         sensor_tree::put( "board.info.subvendor",      subvendor );
         sensor_tree::put( "board.info.xmcversion",     xmc_ver );
         sensor_tree::put( "board.info.serial_number",  ser_num );
+        sensor_tree::put( "board.info.max_power",      lvl2PowerStr(stoi(max_power)) );
         sensor_tree::put( "board.info.sc_version",     bmc_ver );
         sensor_tree::put( "board.info.ddr_size",       GB(ddr_size)*ddr_count );
         sensor_tree::put( "board.info.ddr_count",      ddr_count );
@@ -671,7 +755,7 @@ public:
         sensor_tree::put( "board.info.clock2",         clock_freqs[2] );
         sensor_tree::put( "board.info.pcie_speed",     pcie_speed );
         sensor_tree::put( "board.info.pcie_width",     pcie_width );
-        sensor_tree::put( "board.info.dma_threads",    2 );
+        sensor_tree::put( "board.info.dma_threads",    dma_threads.size() );
         sensor_tree::put( "board.info.mig_calibrated", mig_calibration );
         sensor_tree::put( "board.info.idcode",         idcode );
         sensor_tree::put( "board.info.fpga_name",      fpga );
@@ -846,6 +930,7 @@ public:
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.device",    "N/A" )
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.subdevice", "N/A" )
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.subvendor", "N/A" ) 
+             << std::setw(16) << sensor_tree::get<std::string>( "board.info.max_power", "N/A" ) 
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.serial_number", "N/A" ) << std::endl;
         ostr << std::setw(16) << "DDR size" << std::setw(16) << "DDR count" << std::setw(16) 
              << "Clock0" << std::setw(16) << "Clock1" << std::setw(16) << "Clock2" << std::endl;
@@ -875,6 +960,32 @@ public:
                  ostr << std::setw(16) << "no iomem" << std::endl;
              break;
         }
+
+	std::vector<std::string> interface_uuids;
+	std::vector<std::string> logic_uuids;
+	std::string errmsg;
+        pcidev::get_dev(m_idx)->sysfs_get( "", "interface_uuids", errmsg, interface_uuids);
+        if (interface_uuids.size())
+        {
+            ostr << "Interface UUID" << std::endl;
+            for (auto uuid : interface_uuids)
+            {
+                ostr << uuid;
+            }
+            ostr << std::endl;
+        }
+
+        pcidev::get_dev(m_idx)->sysfs_get( "", "logic_uuids", errmsg, logic_uuids);
+        if (logic_uuids.size())
+        {
+            ostr << "Logic UUID" << std::endl;
+            for (auto uuid : logic_uuids)
+            {
+                ostr << uuid;
+            }
+            ostr << std::endl;
+        }
+
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Temperature(C)\n";
         ostr << std::setw(16) << "PCB TOP FRONT" << std::setw(16) << "PCB TOP REAR" << std::setw(16) << "PCB BTM FRONT" << std::endl;
@@ -920,8 +1031,8 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.mgt_vtt.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.1v2_btm.voltage" ) << std::endl;
         ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "DNA" << std::setw(16) << "VCC3V3 VOL"  << std::endl;
-        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccint.voltage" )
-             << std::setw(16) << sensor_tree::get_pretty<unsigned>( "board.physical.electrical.vccint.current" )
+        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.current" )
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.dna", "N/A" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vcc3v3.voltage"  ) << std::endl;
         ostr << std::setw(16) << "3V3 PEX CURR" << std::setw(16) << "VCC0V85 CURR" << std::setw(16) << "HBM1V2 VOL" << std::setw(16) << "VPP2V5 VOL"  << std::endl;
@@ -933,8 +1044,8 @@ public:
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccint_bram.voltage" ) << std::endl;
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-        ostr << "Card Power\n";
-        ostr << sensor_tree::get_pretty<unsigned>( "board.physical.power" ) << " W" << std::endl;
+        ostr << "Card Power(W)\n";
+        ostr << sensor_tree::get_pretty<unsigned>( "board.physical.power" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Firewall Last Error Status\n";
         ostr << "Level " << std::setw(2) << sensor_tree::get( "board.error.firewall.firewall_level", -1 ) << ": 0x0"
@@ -1588,6 +1699,8 @@ private:
     int bandwidthKernelTest(void);
     // testFunc must return 0 for success, 1 for warning, and < 0 for error
     int runOneTest(std::string testName, std::function<int(void)> testFunc);
+
+    int getXclbinuuid(uuid_t &uuid);
 };
 
 void printHelp(const std::string& exe);

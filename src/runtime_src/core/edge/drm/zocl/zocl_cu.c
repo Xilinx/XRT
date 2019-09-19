@@ -91,6 +91,14 @@ zocl_cu_reset_done(struct zocl_cu *cu)
 	return cu->funcs->reset_done(cu->core);
 }
 
+phys_addr_t
+zocl_cu_get_paddr(struct zocl_cu *cu)
+{
+	struct zcu_core *cu_core = cu->core;
+
+	return cu_core->paddr;
+}
+
 /* -- HLS adapter start -- */
 /* HLS adapter implementation realted code. */
 static void
@@ -246,9 +254,22 @@ zocl_hls_check(void *core, struct zcu_tasks_info *tasks_info)
 	 * There is no ready and done counter. If done bit is 1, means CU is
 	 * ready for a new command and a command was done.
 	 */
-	if (version == 0 && ctrl_reg & 2) {
+	if (version == 0 && ctrl_reg & CU_AP_DONE) {
 		ready_cnt = 1;
 		done_cnt = 1;
+
+		/* 
+		 * wrtie AP_CONTINUE to restart CU.
+		 * this is safe for all hls/versal kernel
+		 */
+		iowrite32(CU_AP_CONTINUE, cu_core->vaddr);
+		/*
+		 * reading AP_DONE is redudent, it should be done in next cycle.
+		 */
+		ctrl_reg = ioread32(cu_core->vaddr);
+		if ((ctrl_reg & CU_AP_DONE) != 0)
+			DRM_ERROR("AP_DONE is not zero: 0x%x", ctrl_reg);
+
 	}
 	tasks_info->num_tasks_ready = ready_cnt;
 	tasks_info->num_tasks_done = done_cnt;
@@ -259,8 +280,7 @@ zocl_hls_reset(void *core)
 {
 	struct zcu_core *cu_core = core;
 
-	/* Bit 5 AP_RESET */
-	iowrite32(0x1 << 5, cu_core->vaddr);
+	iowrite32(CU_AP_RESET, cu_core->vaddr);
 }
 
 static int
@@ -299,7 +319,7 @@ zocl_hls_cu_init(struct zocl_cu *cu, phys_addr_t paddr)
 
 	core = vzalloc(sizeof(struct zcu_core));
 	if (!core) {
-		DRM_ERROR("Cound not allocate CU core object\n");
+		DRM_ERROR("Could not allocate CU core object\n");
 		return -ENOMEM;
 	}
 
@@ -311,7 +331,7 @@ zocl_hls_cu_init(struct zocl_cu *cu, phys_addr_t paddr)
 		return -ENOMEM;
 	}
 
-	DRM_DEBUG("CU 0x%llx map to 0x%p\n", core->paddr, core->vaddr);
+	DRM_DEBUG("CU 0x%llx map to 0x%p\n", (u64)core->paddr, core->vaddr);
 	ctrl_reg = ioread32(core->vaddr);
 	version = (ctrl_reg & CU_VERSION_MASK) >> 8;
 	max_cap = (ctrl_reg & CU_MAX_CAP_MASK) >> 12;
@@ -420,7 +440,7 @@ zocl_acc_cu_init(struct zocl_cu *cu, phys_addr_t paddr)
 
 	core = vzalloc(sizeof(struct zcu_core));
 	if (!core) {
-		DRM_ERROR("Cound not allocate CU core object\n");
+		DRM_ERROR("Could not allocate CU core object\n");
 		return -ENOMEM;
 	}
 
@@ -432,7 +452,7 @@ zocl_acc_cu_init(struct zocl_cu *cu, phys_addr_t paddr)
 		return -ENOMEM;
 	}
 
-	DRM_DEBUG("CU 0x%llx map to 0x%p\n", core->paddr, core->vaddr);
+	DRM_DEBUG("CU 0x%llx map to 0x%p\n", (u64)core->paddr, core->vaddr);
 	/* Unless otherwise configured, the adapter IP has space for 16
 	 * outstanding computations.
 	 */

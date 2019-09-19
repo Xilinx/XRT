@@ -94,9 +94,10 @@ set_property HD.RECONFIGURABLE true [get_cells pfm_top_i/dynamic_region]
 
 # Dynamic region pblock
 create_pblock pblock_dynamic_region
-add_cells_to_pblock [get_pblocks pblock_dynamic_region] [get_cells [list pfm_top_i/dynamic_region]]
-resize_pblock [get_pblocks pblock_dynamic_region] -add {CLOCKREGION_X0Y4:CLOCKREGION_X3Y6}
-set_property CONTAIN_ROUTING 1 [get_pblocks pblock_dynamic_region]
-set_property EXCLUDE_PLACEMENT 1 [get_pblocks pblock_dynamic_region]
+add_cells_to_pblock [get_pblocks pblock_dynamic_region] [get_cells -quiet [list pfm_top_i/dynamic_region]]
+resize_pblock [get_pblocks pblock_dynamic_region] -add {CLOCKREGION_X0Y4:CLOCKREGION_X3Y5}
+resize_pblock [get_pblocks pblock_dynamic_region] -add {SLICE_X48Y235:SLICE_X111Y239}
+resize_pblock [get_pblocks pblock_dynamic_region] -add {DSP48E2_X3Y94:DSP48E2_X13Y95}
+resize_pblock [get_pblocks pblock_dynamic_region] -add {RAMB18_X1Y94:RAMB18_X4Y95}
+resize_pblock [get_pblocks pblock_dynamic_region] -add {RAMB36_X1Y47:RAMB36_X4Y47}
 set_property SNAPPING_MODE ON [get_pblocks pblock_dynamic_region]
-

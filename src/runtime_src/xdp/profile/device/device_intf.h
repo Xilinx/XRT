@@ -66,14 +66,20 @@ namespace xdp {
     uint32_t getNumMonitors(xclPerfMonType type);
     uint32_t getMonitorProperties(xclPerfMonType type, uint32_t index);
     void     getMonitorName(xclPerfMonType type, uint32_t index, char* name, uint32_t length);
+    std::string  getMonitorName(xclPerfMonType type, uint32_t index);
+
+    bool     isHostAIM(uint32_t index) {
+       return aimList[index]->isHostMonitor();
+    }
     
     // Counters
     size_t startCounters(xclPerfMonType type);
     size_t stopCounters(xclPerfMonType type);
     size_t readCounters(xclPerfMonType type, xclCounterResults& counterResults);
 
-    // Enable Dataflow
+    // Accelerator Monitor
     void configureDataflow(bool* ipConfig);
+    void configAmContext(const std::string& ctx_info);
 
     // Trace FIFO Management
     bool hasFIFO() {return (fifoCtrl != nullptr);};

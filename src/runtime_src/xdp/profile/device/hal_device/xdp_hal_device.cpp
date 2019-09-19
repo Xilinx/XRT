@@ -16,6 +16,7 @@
 
 
 #include "xdp_hal_device.h"
+#include "core/common/t_time.h"
 #include "core/common/xrt_profiling.h"
 #include "core/include/experimental/xrt-next.h"
 
@@ -43,11 +44,17 @@ uint32_t HalDevice::getNumLiveProcesses()
 }
 int HalDevice::write(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   return xclWrite(mHalDevice, space, offset, hostBuf, size);
+#pragma GCC diagnostic pop
 }
 int HalDevice::read(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   return xclRead(mHalDevice, space, offset, hostBuf, size);
+#pragma GCC diagnostic pop
 }
 
 int HalDevice::unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset)
@@ -58,6 +65,11 @@ int HalDevice::unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offse
 double HalDevice::getDeviceClock()
 {
   return xclGetDeviceClockFreqMHz(mHalDevice);
+}
+
+uint64_t HalDevice::getTraceTime()
+{
+  return xrt_core::time_ns();
 }
 
 int HalDevice::getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)

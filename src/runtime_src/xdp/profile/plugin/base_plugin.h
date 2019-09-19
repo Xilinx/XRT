@@ -96,7 +96,9 @@ namespace xdp {
         P2P_HOST_TRANSFERS,
         PORT_BIT_WIDTH,
         KERNEL_COUNT,
-        OBJECTS_RELEASED
+        OBJECTS_RELEASED,
+        CU_CONTEXT_EN,
+        TRACE_MEMORY
       };
 
     public:
@@ -121,6 +123,11 @@ namespace xdp {
       inline GuidanceMap& getDeviceExecTimesMap() {return mDeviceExecTimesMap;}
       inline GuidanceMap& getComputeUnitCallsMap() {return mComputeUnitCallsMap;}
       inline GuidanceMap2& getKernelCountsMap() {return mKernelCountsMap;}
+      //Profiling infrastructure metadata
+      void setCtxEn(bool ctxEn) {IsCtxEn = ctxEn;}
+      bool isCtxEn() {return IsCtxEn;}
+      void setTraceMemory(const std::string& traceMemory) {TraceMemory = traceMemory;}
+      std::string getTraceMemory() {return TraceMemory;}
 
     protected:
       GuidanceMap  mDeviceExecTimesMap;
@@ -131,6 +138,8 @@ namespace xdp {
       bool IsHbmDevice = false;
       bool IsKdmaDevice = false;
       bool IsP2PDevice = false;
+      bool IsCtxEn = false;
+      std::string TraceMemory = "NA";
 
     // ****************************************
     // Platform Metadata required by profiler
@@ -160,7 +169,7 @@ namespace xdp {
       std::map<std::string, std::string> mComputeUnitKernelTraceMap;
       std::map<std::string, unsigned int> mDeviceKernelClockFreqMap;
       xdp::RTUtil::e_flow_mode FlowMode = xdp::RTUtil::CPU;
-      bool mSystemDPAEmulation = false;
+      bool mSystemDPAEmulation = true;
       std::string mTraceFooterString;
 
     public:

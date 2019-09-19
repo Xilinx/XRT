@@ -29,7 +29,10 @@
 #include "lib/xmaapi.h"
 //#include "lib/xmahw_hal.h"
 #include "lib/xmasignal.h"
+#include "app/xma_utils.hpp"
+#include "lib/xma_utils.hpp"
 #include <iostream>
+#include <thread>
 
 #define XMAAPI_MOD "xmaapi"
 
@@ -37,6 +40,103 @@
 XmaSingleton xma_singleton_internal;
 
 XmaSingleton *g_xma_singleton = &xma_singleton_internal;
+
+void xma_thread1() {
+    bool expected = false;
+    bool desired = true;
+    std::list<XmaLogMsg> list1;
+    while (!g_xma_singleton->xma_exit) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        while (!g_xma_singleton->log_msg_list_locked.compare_exchange_weak(expected, desired)) {
+            expected = false;
+        }
+        //log msg list lock acquired
+
+        if (!g_xma_singleton->log_msg_list.empty()) {
+            auto itr1 = list1.end();
+            list1.splice(itr1, g_xma_singleton->log_msg_list);
+        }
+
+        //Release log msg list lock
+        g_xma_singleton->log_msg_list_locked = false;
+
+        while (!list1.empty()) {
+            auto itr1 = list1.begin();
+            xclLogMsg(NULL, (xrtLogMsgLevel)itr1->level, "XMA", itr1->msg.c_str());
+            list1.pop_front();
+        }
+
+        if (!g_xma_singleton->xma_exit) {
+            //Check Session loading
+            uint32_t max_load = 0;
+            bool expected = false;
+            bool desired = true;
+            for (auto& itr1: g_xma_singleton->all_sessions) {
+                if (g_xma_singleton->xma_exit) {
+                    break;
+                }
+                XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.second.hw_session.private_do_not_use;
+                if (priv1 == NULL) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA thread1 failed-1. XMASession is corrupted\n");
+                    continue;
+                }
+                if (itr1.second.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA thread1 failed-2. XMASession is corrupted\n");
+                    continue;
+                }
+
+                XmaHwDevice *dev_tmp1 = priv1->device;
+                if (dev_tmp1 == NULL) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA thread1 failed-3. Session XMA private pointer is NULL\n");
+                    continue;
+                }
+                while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
+                    expected = false;
+                }
+                //execbo lock acquired
+
+                if (xma_core::utils::check_all_execbo(itr1.second) != XMA_SUCCESS) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA thread1 failed-4. Unexpected error\n");
+                    //Release execbo lock
+                    *(dev_tmp1->execbo_locked) = false;
+                    continue;
+                }
+                priv1->cmd_load += priv1->CU_cmds.size();
+
+                //Release execbo lock
+                *(dev_tmp1->execbo_locked) = false;
+
+                max_load = std::max({max_load, (uint32_t)priv1->cmd_load});
+            }
+
+            if (max_load > 1024) {
+                for (auto& itr1: g_xma_singleton->all_sessions) {
+                    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.second.hw_session.private_do_not_use;
+                    priv1->cmd_load = priv1->cmd_load >> 1;
+                }
+            }
+        }
+    }
+    //Print all stats here
+    //Sarab TODO don't print for single session
+    //if (g_xma_singleton->all_sessions.size() > 1) {
+        xclLogMsg(NULL, XMA_INFO_LOG, "XMA-Session-Load", "Session CU Command Relative Loads: ");
+        for (auto& itr1: g_xma_singleton->all_sessions) {
+            XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.second.hw_session.private_do_not_use;
+            xclLogMsg(NULL, XMA_INFO_LOG, "XMA-Session-Load", "Session id: %d, type: %d, load: %d", itr1.first, itr1.second.session_type, (uint32_t)priv1->cmd_load);
+        }
+        xclLogMsg(NULL, XMA_INFO_LOG, "XMA-Session-Load", "Num of Decoders: %d", (uint32_t)g_xma_singleton->num_decoders);
+        xclLogMsg(NULL, XMA_INFO_LOG, "XMA-Session-Load", "Num of Scalers: %d", (uint32_t)g_xma_singleton->num_scalers);
+        xclLogMsg(NULL, XMA_INFO_LOG, "XMA-Session-Load", "Num of Encoders: %d", (uint32_t)g_xma_singleton->num_encoders);
+        xclLogMsg(NULL, XMA_INFO_LOG, "XMA-Session-Load", "Num of Filters: %d", (uint32_t)g_xma_singleton->num_filters);
+        xclLogMsg(NULL, XMA_INFO_LOG, "XMA-Session-Load", "Num of Kernels: %d", (uint32_t)g_xma_singleton->num_kernels);
+        xclLogMsg(NULL, XMA_INFO_LOG, "XMA-Session-Load", "Num of Admins: %d\n", (uint32_t)g_xma_singleton->num_admins);
+    //}
+}
+
+void xma_get_session_cmd_load() {
+    xma_core::utils::get_session_cmd_load();
+}
 
 int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
 {
@@ -67,6 +167,43 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
         g_xma_singleton->locked = false;
         return XMA_ERROR;
     }
+
+    int32_t xrtlib = xma_core::utils::load_libxrt();
+    switch(xrtlib) {
+        case XMA_ERROR:
+          std::cout << "XMA FATAL: Unable to load XRT library" << std::endl;
+
+          //Release singleton lock
+          g_xma_singleton->locked = false;
+          return XMA_ERROR;
+          break;
+        case 1:
+          xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Loaded xrt_core libary\n");
+          break;
+        case 2:
+          xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Loaded xrt_aws libary\n");
+          break;
+        case 3:
+          xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Loaded user supplied xrt_hwem libary\n");
+          break;
+        case 4:
+          xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Loaded user supplied xrt_swem libary\n");
+          break;
+        case 5:
+          xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Loaded installed xrt_hwem libary\n");
+          break;
+        case 6:
+          xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Loaded installed xrt_swem libary\n");
+          break;
+        default:
+          std::cout << "XMA FATAL: Unexpected error. Unable to load XRT library" << std::endl;
+
+          //Release singleton lock
+          g_xma_singleton->locked = false;
+          return XMA_ERROR;
+          break;
+    }
+
     //g_xma_singleton->encoders.reserve(32);
     //g_xma_singleton->encoders.emplace_back(XmaEncoderPlugin{});
     g_xma_singleton->hwcfg.devices.reserve(MAX_XILINX_DEVICES);
@@ -167,7 +304,7 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
     */
 
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Init signal and exit handlers\n");
-    ret = atexit(xma_exit);
+    ret = std::atexit(xma_exit);
     if (ret) {
         xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Error initalizing XMA\n");
         //Sarab: Remove xmares stuff
@@ -184,6 +321,12 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
         return XMA_ERROR;
     }
 
+    //std::thread threadObjSystem(xma_thread1);
+    g_xma_singleton->xma_thread1 = std::thread(xma_thread1);
+    //Detach threads to let them run independently
+    //threadObjSystem.detach();
+    g_xma_singleton->xma_thread1.detach();
+
     xma_init_sighandlers();
     //xma_res_mark_xma_ready(g_xma_singleton->shm_res_cfg);
 
@@ -194,50 +337,8 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
 
 void xma_exit(void)
 {
-/*
-    extern XmaSingleton *g_xma_singleton;
-    if (!g_xma_singleton->shm_freed)
-        xma_res_shm_unmap(g_xma_singleton->shm_res_cfg);
-*/
-}
-
-/*Sarab: Remove yaml system cfg stuff
-int32_t xma_cfg_img_cnt_get()
-{
-    if (!g_xma_singleton)
-        return XMA_ERROR_INVALID;
-
-    return g_xma_singleton->systemcfg.num_images;
-}
-
-int32_t xma_cfg_dev_cnt_get()
-{
-    int32_t i, dev_cnt, img_cnt;
-
-    if (!g_xma_singleton)
-        return XMA_ERROR_INVALID;
-
-    dev_cnt = 0;
-    img_cnt = xma_cfg_img_cnt_get();
-    for (i = 0; i < img_cnt; i++)
-        dev_cnt += g_xma_singleton->systemcfg.imagecfg[i].num_devices;
-
-    return dev_cnt;
-}
-
-void xma_cfg_dev_ids_get(uint32_t dev_ids[])
-{
-    int32_t img_cnt = xma_cfg_img_cnt_get();
-    int i, dev_ids_idx = 0;
-
-    for (i = 0; i < img_cnt; i++)
-    {
-        int j, img_dev_cnt;
-        img_dev_cnt = g_xma_singleton->systemcfg.imagecfg[i].num_devices;
-
-        for (j = 0; j < img_dev_cnt; j++)
-            dev_ids[dev_ids_idx++] =
-                g_xma_singleton->systemcfg.imagecfg[i].device_id_map[j];
+    if (g_xma_singleton) {
+        g_xma_singleton->xma_exit = true;
     }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
-*/

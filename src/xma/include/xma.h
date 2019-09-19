@@ -26,6 +26,7 @@
 #include "app/xmascaler.h"
 #include "app/xmafilter.h"
 #include "app/xmakernel.h"
+#include "app/xmaadmin.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,6 +51,8 @@ extern "C" {
  * 
 */
 int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms);
+
+void xma_get_session_cmd_load();
 
 #ifdef __cplusplus
 }
