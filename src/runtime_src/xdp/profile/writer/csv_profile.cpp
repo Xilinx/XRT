@@ -18,6 +18,7 @@
 
 #include "xdp/profile/core/rt_profile.h"
 #include "util.h"
+#include "version.h"
 
 namespace xdp {
 
@@ -97,6 +98,10 @@ namespace xdp {
     }
     ofs << "Target platform: " << PlatformName << "\n";
     ofs << "Tool version: " << xdp::WriterI::getToolVersion() << "\n";
+    ofs << "XRT build version: " << xrt_build_version << "\n";
+    ofs << "Build version branch: " << xrt_build_version_branch << "\n";
+    ofs << "Build version hash: " << xrt_build_version_hash << "\n";
+    ofs << "Build version date: " << xrt_build_version_date << "\n";
   }
 
   // Write sub-header to profile summary

@@ -1997,7 +1997,9 @@ exec_update_custatus(struct exec_core *exec)
 	// ignore kdma which on least at u200_2018_30_1 is not BAR mapped
 	for (cuidx = 0; cuidx < exec->num_cus - exec->num_cdma; ++cuidx) {
 		struct xocl_cu *xcu = exec->cus[cuidx];
-		exec->cu_status[cuidx] = cu_status(xcu);
+		// skip free running kernels which is not BAR mapped
+		exec->cu_status[cuidx] =
+			exec_valid_cu(exec, cuidx) ? cu_status(xcu) : 0;
 	}
 	// reset cdma status
 	for (; cuidx < exec->num_cus; ++cuidx)

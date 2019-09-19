@@ -32,15 +32,15 @@
 // Commands
 #define TS2MM_AP_START          0x1
 
-//15GB
-#define TS2MM_MAX_BUF_SIZE      0x3c0000000
+// little less than 4GB
+#define TS2MM_MAX_BUF_SIZE      0xffffefff
 //8KB
 #define TS2MM_MIN_BUF_SIZE      0x2000
 
 #define FIFO_WARN_MSG "Trace FIFO is full because of too many events. Timeline trace could be incomplete. \
 Please use 'coarse' option for data transfer trace or turn off Stall profiling"
 
-#define TS2MM_WARN_MSG_BUFSIZE_BIG    "Trace Buffer size is too big. The maximum size of 15G will be used."
+#define TS2MM_WARN_MSG_BUFSIZE_BIG    "Trace Buffer size is too big. The maximum size of 4095M will be used."
 #define TS2MM_WARN_MSG_BUFSIZE_SMALL  "Trace Buffer size is too small. The minimum size of 8K will be used."
 #define TS2MM_WARN_MSG_BUFSIZE_DEF    "Trace Buffer size could not be parsed. The default size of 1M will be used."
 #define TS2MM_WARN_MSG_ALLOC_FAIL     "Trace Buffer could not be allocated on device. Device trace will be missing."

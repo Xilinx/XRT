@@ -55,3 +55,29 @@ install (
   DESTINATION
   ${XRT_PKG_CONFIG_DIR}
   )
+
+configure_file (
+  ${CMAKE_SOURCE_DIR}/CMake/config/libxma2api.pc.in
+  ${CMAKE_CURRENT_BINARY_DIR}/libxma2api.pc
+  @ONLY
+  )
+install (
+  FILES
+  ${CMAKE_CURRENT_BINARY_DIR}/libxma2api.pc
+  DESTINATION
+  ${XRT_PKG_CONFIG_DIR}
+  )
+
+configure_file (
+  ${CMAKE_SOURCE_DIR}/CMake/config/libxma2plugin.pc.in
+  ${CMAKE_CURRENT_BINARY_DIR}/libxma2plugin.pc
+  @ONLY
+  )
+install (
+  FILES
+  ${CMAKE_CURRENT_BINARY_DIR}/libxma2plugin.pc
+  DESTINATION
+  ${XRT_PKG_CONFIG_DIR}
+  )
+
+
