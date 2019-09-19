@@ -26,6 +26,7 @@ ParameterSectionData::ParameterSectionData(const std::string &_formattedString)
   , m_file("")
   , m_section("")
   , m_subSection("")
+  , m_sectionIndex("")
   , m_eKind(BITSTREAM)
   , m_originalString(_formattedString)
 {
@@ -40,8 +41,24 @@ ParameterSectionData::~ParameterSectionData()
 
 void 
 ParameterSectionData::transformFormattedString(const std::string _formattedString)
-// String being parsed:  <section>:<formatType>:<filename>
-// Example String:       BUILD_METADATA:JSON:MY_FILE.JSON
+// Items being parsed:
+// -- Section --
+//    Syntax: <section>:<formatType>:<filename>
+//   Example: BUILD_METADATA:JSON:MY_FILE.JSON
+//
+// -- No Section --
+//    Syntax: :<formatType>:<filename>
+//   Example: :JSON:MY_FILE.JSON
+
+// -- Section & Subsection --
+//    Syntax: <section>-<subSection>:<formatType>:<filename>
+//   Example: BMC-METADATA:JSON:MY_FILE.JSON
+//
+// -- Section, Section Element, & Subsection --
+//    Syntax: <section>[<Element>]-<subSection>:<formatType>:<filename>
+//   Example: SOFT_KERNEL[kernel1]-METADATA:JSON:MY_FILE.JSON
+// 
+// Note: A file name can contain a colen (e.g., C:\test)
 {
   const std::string delimiters = ":";      // Our delimiter
 
@@ -71,43 +88,79 @@ ParameterSectionData::transformFormattedString(const std::string _formattedStrin
     throw std::runtime_error(errMsg);
   }
 
-  // -- Format Type --
-  m_formatType = Section::getFormatType(tokens[1]);
+  m_file = tokens[2];
+
   m_formatTypeStr = tokens[1];
+  m_formatType = Section::getFormatType(tokens[1]);
 
-  // -- Section --
-  if ( !tokens[0].empty() ) {
-    // TODO: Better subsection integration
-    std::string sSectionName = tokens[0];
-    std::string sSubSectionName;
-    std::string::size_type sectionPos = tokens[0].find_first_of("-", 0);
-    if (sectionPos != std::string::npos) {
-      sSectionName = tokens[0].substr(0, sectionPos);
-      sSubSectionName = tokens[0].substr(sectionPos+1, tokens[0].length()-sectionPos-1);
-    }
-
-    enum axlf_section_kind eKind;
-    if (Section::translateSectionKindStrToKind(sSectionName, eKind) == false) {
-      std::string errMsg = XUtil::format("Error: Section '%s' isn't a valid section name.", sSectionName.c_str());
-      throw std::runtime_error(errMsg);
-    }
-
-    if (!sSubSectionName.empty() && (Section::supportsSubSections(eKind) == false) ) {
-      std::string errMsg = XUtil::format("Error: The section '%s' doesn't support subsections (e.g., '%s').", sSectionName.c_str(), sSubSectionName.c_str());
-      throw std::runtime_error(errMsg);
-    }
-
-    m_section = sSectionName;
-    m_subSection = sSubSectionName;
-  }
-
-  if ( tokens[0].empty() && (m_formatType != Section::FT_JSON)) {
+  // -- Retrieve the section --
+  std::string sSection = tokens[0];
+  
+  if ( sSection.empty() && (m_formatType != Section::FT_JSON)) {
     std::string errMsg = "Error: Empty sections names are only permitted with JSON format files.";
     throw std::runtime_error(errMsg);
   }
 
-  // -- File --
-  m_file = tokens[2];
+  // -- Break down the section--
+  if ( !sSection.empty() ) {
+    const std::string subDelimiter = "-";      
+
+    // Extract the sub section name (if there is one)
+    std::size_t subIndex = sSection.find_last_of(subDelimiter);
+    if (subIndex != std::string::npos) {
+      m_subSection = sSection.substr(subIndex + 1);
+      sSection = sSection.substr(0, subIndex);
+    }
+
+    // Extract the section index (if it is there)
+    const std::string sectionIndexStartDelimiter = "[";    
+    const char sectionIndexEndDelimiter = ']';    
+    std::size_t sectionIndex =  sSection.find_first_of(sectionIndexStartDelimiter, 0);
+
+    // Was the start index found?
+    if (sectionIndex != std::string::npos) {
+      m_section = sSection.substr(0, sectionIndex);
+      
+      // We need to have an end delimiter
+      if (sectionIndexEndDelimiter != sSection.back()) {
+        std::string errMsg = XUtil::format("Error: Expected format <section>[<section_index>]:<format>:<file> when using a section index.  Received: %s.", _formattedString.c_str());
+        throw std::runtime_error(errMsg);
+      }
+
+      // Extract the index name
+      sSection.pop_back();  // Remove ']'
+      m_sectionIndex = sSection.substr(sectionIndex + 1);
+
+      // Extract the section name
+      m_section = sSection.substr(0, sectionIndex);
+    } else {
+      m_section = sSection;
+    }
+
+    if (m_section.empty()) {
+      std::string errMsg = XUtil::format("Error: Missing section name. Expected format <section>[<section_index]:<format>:<file> when using a section index.  Received: %s.", _formattedString.c_str());
+      throw std::runtime_error(errMsg);
+    }
+
+    // Is the section name is valid
+    enum axlf_section_kind eKind;
+    if (Section::translateSectionKindStrToKind(m_section, eKind) == false) {
+      std::string errMsg = XUtil::format("Error: Section '%s' isn't a valid section name.", m_section.c_str());
+      throw std::runtime_error(errMsg);
+    }
+
+    // Does the section support subsections
+    if (!m_subSection.empty() && (Section::supportsSubSections(eKind) == false)) {
+      std::string errMsg = XUtil::format("Error: The section '%s' doesn't support subsections (e.g., '%s').", m_section.c_str(), m_subSection.c_str());
+      throw std::runtime_error(errMsg);
+    }
+
+    // Does the section support section indexes
+    if (!m_sectionIndex.empty() && (Section::supportsSectionIndex(eKind) == false)) {
+      std::string errMsg = XUtil::format("Error: The section '%s' doesn't support section indexes (e.g., '%s').", m_section.c_str(), m_sectionIndex.c_str());
+      throw std::runtime_error(errMsg);
+    }
+  }
 }
 
 const std::string &
@@ -132,6 +185,12 @@ const std::string &
 ParameterSectionData::getSubSectionName()
 {
   return m_subSection;
+}
+
+const std::string &
+ParameterSectionData::getSectionIndexName()
+{
+  return m_sectionIndex;
 }
 
 enum axlf_section_kind &

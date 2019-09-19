@@ -56,7 +56,7 @@
 
 namespace xdp {
 
-AM::AM(void* handle /** < [in] the xrt hal device handle */,
+AM::AM(Device* handle /** < [in] the xrt or hal device handle */,
                 int index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data)
     : ProfileIP(handle, index, data),
       properties(0),
@@ -105,6 +105,9 @@ size_t AM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
     if(out_stream)
         (*out_stream) << " AM::readCounter " << std::endl;
 
+    if (!m_enabled)
+        return 0;
+
     size_t size = 0;
     uint32_t sampleInterval = 0;
 
@@ -150,12 +153,14 @@ size_t AM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
         counterResults.CuMinExecCycles[s] += (upper[2] << 32);
         counterResults.CuMaxExecCycles[s] += (upper[3] << 32);
 
+#if 0
         if(out_stream)
           (*out_stream) << "Accelerator Monitor Upper 32, slot " << s << std::endl
                         << "  CuExecCount : " << upper[0] << std::endl
                         << "  CuExecCycles : " << upper[1] << std::endl
                         << "  CuMinExecCycles : " << upper[2] << std::endl
                         << "  CuMaxExecCycles : " << upper[3] << std::endl;
+#endif
     }
 
     if(hasDataflow()) {
@@ -228,6 +233,14 @@ size_t AM::triggerTrace(uint32_t traceOption /* starttrigger*/)
     size += write(XAM_TRACE_CTRL_OFFSET, 4, &regValue); 
 
     return size;    
+}
+
+void AM::disable()
+{
+    m_enabled = false;
+    // Disable all trace
+    uint32_t regValue = 0;
+    write(XAM_TRACE_CTRL_OFFSET, 4, &regValue);
 }
 
 void AM::configureDataflow(bool cuHasApCtrlChain)

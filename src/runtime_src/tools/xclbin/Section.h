@@ -53,12 +53,12 @@ class Section {
 
  public:
   static void getKinds(std::vector< std::string > & kinds);
-  static Section* createSectionObjectOfKind(enum axlf_section_kind _eKind);
+  static Section* createSectionObjectOfKind(enum axlf_section_kind _eKind, const std::string _sIndexName = "");
   static bool translateSectionKindStrToKind(const std::string &_sKindStr, enum axlf_section_kind &_eKind);
   static bool getKindOfJSON(const std::string &_sJSONStr, enum axlf_section_kind &_eKind);
   static enum FormatType getFormatType(const std::string _sFormatType);
   static bool supportsSubSections(enum axlf_section_kind &_eKind);
-
+  static bool supportsSectionIndex(enum axlf_section_kind &_eKind);
 
  public:
   virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;
@@ -71,6 +71,7 @@ class Section {
   const std::string& getSectionKindAsString() const;
   std::string getName() const;
   unsigned int getSize() const;
+  const std::string & getSectionIndexName() const;
 
  public:
   // Xclbin Binary helper methods - child classes can override them if they choose
@@ -106,11 +107,12 @@ class Section {
 
  protected:
   typedef std::function<Section*()> Section_factory;
-  static void registerSectionCtor(enum axlf_section_kind _eKind, const std::string& _sKindStr, const std::string& _sHeaderJSONName, bool _bSupportsSubSections, Section_factory _Section_factory);
+  static void registerSectionCtor(enum axlf_section_kind _eKind, const std::string& _sKindStr, const std::string& _sHeaderJSONName, bool _bSupportsSubSections, bool _bSupportsIndexing, Section_factory _Section_factory);
 
  protected:
   enum axlf_section_kind m_eKind;
   std::string m_sKindName;
+  std::string m_sIndexName;
 
   char* m_pBuffer;
   unsigned int m_bufferSize;
@@ -122,6 +124,7 @@ class Section {
   static std::map<enum axlf_section_kind, Section_factory> m_mapIdToCtor;
   static std::map<std::string, enum axlf_section_kind> m_mapJSONNameToKind;
   static std::map<enum axlf_section_kind, bool> m_mapIdToSubSectionSupport;
+  static std::map<enum axlf_section_kind, bool> m_mapIdToSectionIndexSupport;
 
  private:
   // Purposefully private and undefined ctors...

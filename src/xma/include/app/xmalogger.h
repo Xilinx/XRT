@@ -39,11 +39,6 @@ typedef enum xrtLogMsgLevel XmaLogLevelType;
 #define XMA_DEBUG_LOG XRT_DEBUG
 
 /**
- * typedef XmaLoggerCallback - Describes the function signature for an XMA logger callback.
-typedef void (*XmaLoggerCallback)(char *msg);
-*/
-
-/**
  * xma_logmsg() - This function logs a message to stdout, a file, or both depending on
  * how the logger is configured in the system configuration YAML file.
  * The log message includes the current time, logging level, a unique
@@ -60,29 +55,6 @@ typedef void (*XmaLoggerCallback)(char *msg);
 void
 xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...);
 
-/**
- * xma_logger_callback() - This function allows an XMA client to register a callback for all XMA log
- * messages that match the logging levels of equal or greater severity.  For
- * example, a level of XMA_INFO_LOG will match INFO, ERROR, and CRITICAL log
- * messages while a level of XMA_ERROR_LOG will match only ERROR and
- * CRITICAL messages.
- * The supplied callback is given a copy of the log message buffer.  This
- * means the client must free the buffer once the message has been consumed.
- * Failure to free the message will result in a memory-leak.  The log
- * message is a standard C-style NULL terminated string and should be
- * consumed by the callback as quickly as possible since the callback is
- * invoked in the thread context of the log message invoker.  This means
- * that the callback runs in the context of the datapath and blocking calls
- * will impact performance.  To avoid performance impact, perform any output
- * in a separate thread or limit the log level to ERROR.
- *
- * @callback: Pointer to a callback function to receive log messages
- * @level:    The level of log messages to be sent to the callback
- * function.  All messages of equal or greater severity are
- * forwarded to the callback function
-void
-xma_logger_callback(XmaLoggerCallback callback, XmaLogLevelType level);
-*/
 
 
 #ifdef __cplusplus

@@ -588,7 +588,7 @@ void cb_reset(const axlf* xclbin)
   auto pRunSummary = pProfileMgr ? pProfileMgr->getRunSummary() : nullptr;
 
   if (pRunSummary != nullptr) {
-    pRunSummary->extractSystemProfileMetadata(xclbin, "xclbin");
+    pRunSummary->extractSystemProfileMetadata(xclbin);
   }
 
   // init flow mode

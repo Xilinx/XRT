@@ -16,12 +16,13 @@
 
 #include "traceS2MM.h"
 #include "tracedefs.h"
-#include "xdp/profile/core/rt_util.h"
+//#include "xdp/profile/core/rt_util.h"
 #include <bitset>
+#include <iomanip>
 
 namespace xdp {
 
-TraceS2MM::TraceS2MM(void* handle /** < [in] the xrt hal device handle */,
+TraceS2MM::TraceS2MM(Device* handle /** < [in] the xrt or hal device handle */,
                 int index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data)
     : ProfileIP(handle, index, data),
       properties(0),
@@ -140,7 +141,8 @@ inline void TraceS2MM::parsePacketClockTrain(uint64_t packet, uint64_t firstTime
         result.Timestamp = timestamp - firstTimestamp;
       else
         result.Timestamp = timestamp + (tsmask - firstTimestamp);
-      result.isClockTrain = true;
+      //result.isClockTrain = true;
+      result.isClockTrain = 1 ;
     }
     uint64_t partial = (((packet >> 45) & 0xFFFF) << (16 * mod));
     result.HostTimestamp = result.HostTimestamp | partial;
@@ -163,7 +165,8 @@ inline void TraceS2MM::parsePacket(uint64_t packet, uint64_t firstTimestamp, xcl
     result.Error = (packet >> 63) & 0x1;
     result.EventID = XCL_PERF_MON_HW_EVENT;
     result.EventFlags = ((packet >> 45) & 0xF) | ((packet >> 57) & 0x10);
-    result.isClockTrain = false;
+    //result.isClockTrain = false;
+    result.isClockTrain = 0 ;
     if (out_stream) {
       static uint64_t previousTimestamp = 0;
       auto packet_dec = std::bitset<64>(packet).to_string();

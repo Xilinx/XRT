@@ -19,3 +19,6 @@ user:
       name: hello
       num_cus: 1
     name: bin_hello.xclbin
+  labels:
+    test_type: ['regression']
+  sdx_type: [sdx_fast]

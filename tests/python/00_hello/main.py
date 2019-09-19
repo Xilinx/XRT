@@ -13,7 +13,7 @@ def main(args):
         if opt.first_mem < 0:
             return 1
 
-        boHandle1 = xclAllocBO(opt.handle, opt.DATA_SIZE, xclBOKind.XCL_BO_DEVICE_RAM, opt.first_mem)
+        boHandle1 = xclAllocBO(opt.handle, opt.DATA_SIZE, 0, opt.first_mem)
 
         bo1 = xclMapBO(opt.handle, boHandle1, True)
         testVector = "hello\nthis is Xilinx OpenCL memory read write test\n:-)\n"

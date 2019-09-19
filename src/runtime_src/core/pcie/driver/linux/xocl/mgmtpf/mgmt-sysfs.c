@@ -272,7 +272,11 @@ static ssize_t rp_program_store(struct device *dev, struct device_attribute *da,
 				RP_DOWNLOAD_NORMAL);
 	else if (val == 2) {
 		ret = xclmgmt_program_shell(lro);
-		(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
+		(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv,
+				(void *)lro);
+	} else if (val == 3) {
+		ret = xocl_icap_download_rp(lro, XOCL_SUBDEV_LEVEL_PRP,
+				RP_DOWNLOAD_CLEAR);
 	} else
 		return -EINVAL;
 
@@ -286,6 +290,9 @@ static ssize_t interface_uuids_show(struct device *dev,
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
 	const void *uuid;
 	int node = -1, off = 0;
+
+	if (!lro->core.fdt_blob && xocl_get_timestamp(lro) == 0)
+		xclmgmt_load_fdt(lro);
 
 	if (!lro->core.fdt_blob)
 		return -EINVAL;
@@ -315,6 +322,9 @@ static ssize_t logic_uuids_show(struct device *dev,
         struct xclmgmt_dev *lro = dev_get_drvdata(dev);
 	const void *uuid = NULL;
 	int node = -1, off = 0;
+
+	if (!lro->core.fdt_blob && xocl_get_timestamp(lro) == 0)
+		xclmgmt_load_fdt(lro);
 
 	if (!lro->bld_blob)
 		return -EINVAL;

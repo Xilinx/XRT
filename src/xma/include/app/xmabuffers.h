@@ -114,6 +114,7 @@ typedef struct XmaFrameProperties
     XmaFormatType   format; /**< id specifying fourcc */
     int32_t         width; /**< width of primary plane */
     int32_t         height; /**< height of primary plane */
+    int32_t         linesize[XMA_MAX_PLANES]; /**< linesize per components */
     int32_t         bits_per_pixel; /**< bits per pixel of primary plane */
 } XmaFrameProperties;
 

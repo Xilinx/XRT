@@ -28,11 +28,11 @@ XHELLO_HELLO_CONTROL_BITS_ACCESS1_DATA = 64
 def runKernel(opt):
     xclOpenContext(opt.handle, opt.xuuid, 0, True)
 
-    boHandle = xclAllocBO(opt.handle, opt.DATA_SIZE, xclBOKind.XCL_BO_DEVICE_RAM, opt.first_mem)
+    boHandle = xclAllocBO(opt.handle, opt.DATA_SIZE, 0, opt.first_mem)
     if(boHandle == -1):
         xclFreeBO(opt.handle, boHandle)
         xclCloseContext(opt.handle, opt.xuuid, 0)
-        print("Error: Unabe to alloc BO") 
+        print("Error: Unabe to alloc BO")
         return 1
 
     bo = xclMapBO(opt.handle, boHandle, True)
@@ -48,7 +48,7 @@ def runKernel(opt):
         xclFreeBO(opt.handle, boHandle)
         xclCloseContext(opt.handle, opt.xuuid, 0)
         print("Error: Unable to sync BO")
-        return 1  
+        return 1
 
     print("Original string = [%s]\n") % bo.contents[:]
 
@@ -62,7 +62,7 @@ def runKernel(opt):
         return 1
 
     # Allocate the exec_bo
-    execHandle = xclAllocBO(opt.handle, opt.DATA_SIZE, xclBOKind.XCL_BO_SHARED_VIRTUAL, (1 << 31))
+    execHandle = xclAllocBO(opt.handle, opt.DATA_SIZE, 0, (1 << 31))
     if(execHandle == -1):
         xclFreeBO(opt.handle, boHandle)
         xclFreeBO(opt.handle, execHandle)
@@ -106,7 +106,7 @@ def runKernel(opt):
 
     print("Wait until the command finish")
     while start_cmd.m_uert.m_start_cmd_struct.state < ert_cmd_state.ERT_CMD_STATE_COMPLETED:
-        while xclExecWait(opt.handle, 100) == 0: 
+        while xclExecWait(opt.handle, 100) == 0:
             print(".")
 
     print("Get the output data from the device")

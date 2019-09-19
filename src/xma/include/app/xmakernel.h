@@ -44,12 +44,9 @@ extern "C" {
  *  result, these APIs provide a convenient way to send and/or receive frame
  *  data.  In cases where frame data is not needed or more control over the
  *  type of data sent/recevied is needed, the kernel class of plugin may be a
- *  better fit.  In this case, data is transferred between the application
- *  and the plugin via one or more XmaParameter.  The XmaParameter allows
- *  for a number intrinsic types as well as user-defined data types.  The XMA
- *  does not interpret the XmaParameter.  Instead, these parameters are passed
- *  by the XMA from the application to the plugin.  As a result, it is up to
- *  the application and plugin to decide the meaning of the XmaParameter.
+ *  better fit.  In this case, data is transferred between the host application
+ *  and the plugin via private_session_data. private_session_data is managed by host application. As a result, it is up to
+ *  the host application and plugin to decide the meaning/structure of the private_session_data.
  *
  */
 
@@ -80,6 +77,7 @@ typedef struct XmaKernelProperties
     uint32_t        param_cnt;
     int32_t         dev_index;
     int32_t         cu_index;
+    char            *cu_name;
     int32_t         ddr_bank_index;//Used for allocating device buffers. Used only if valid index is provide (>= 0); value of -1 imples that XMA should select automatically and then XMA will set it with bank index used automatically
     int32_t         channel_id;
     char            *plugin_lib;

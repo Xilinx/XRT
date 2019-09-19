@@ -18,7 +18,6 @@
 #ifndef __XDP_BASE_TRACE_WRITER_H
 #define __XDP_BASE_TRACE_WRITER_H
 
-#include <boost/format.hpp>
 #include "xdp/profile/core/rt_util.h"
 #include "xdp/profile/device/trace_parser.h"
 #include "xdp/profile/plugin/base_plugin.h"

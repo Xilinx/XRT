@@ -130,6 +130,7 @@ int xocl_drvinst_kill_proc(void *data)
 			p = find_get_pid(proc->pid);
 			if (!p)
 				continue;
+			xocl_info(drvinstp->dev, "kill %d", proc->pid);
 			ret = kill_pid(p, SIGBUS, 1);
 			if (ret) {
 				xocl_err(drvinstp->dev, "kill %d failed",
@@ -139,12 +140,16 @@ int xocl_drvinst_kill_proc(void *data)
 			}
 			put_pid(p);
 		}
-		if (!ret)
+		if (!ret) {
+			mutex_unlock(&xocl_drvinst_lock);
 			ret = wait_for_completion_killable(&drvinstp->comp);
+			goto done;
+		}
 	}
 
 	mutex_unlock(&xocl_drvinst_lock);
 
+done:
 	xocl_err(drvinstp->dev, "return %d", ret);
 
 	return ret;

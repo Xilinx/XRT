@@ -36,7 +36,7 @@ namespace {
 // emulation mode before clCreateProgramWithBinary->loadBinary has
 // been called.  The call to loadBinary can end up switching the
 // device from swEm to hwEm.
-// 
+//
 // In non emulation mode it is sufficient to check that the context
 // has only one device.
 static xocl::device*
@@ -103,7 +103,7 @@ clSVMAlloc(cl_context       context,
 
 } // xocl
 
-void* 
+void*
 clSVMAlloc(cl_context       context,
            cl_svm_mem_flags flags,
            size_t           size,
@@ -122,5 +122,3 @@ clSVMAlloc(cl_context       context,
   }
   return nullptr;
 }
-
-// 67d7842dbbe25473c3c32b93c0da8047785f30d78e8a024de1b57352245f9689
