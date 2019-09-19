@@ -918,7 +918,7 @@ void testCaseProgressReporter(bool *quit)
     }
 }
 
-void set_shell_env(std::string var_name, std::string trailing_path, int overwrite)
+void set_shell_path_env(const std::string& var_name, const std::string& trailing_path, int overwrite)
 {
     std::string xrt_path(getenv("XILINX_XRT"));
     std::string new_path;
@@ -939,9 +939,9 @@ int runShellCmd(const std::string& cmd, std::string& output)
 
     // Run test case
     setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
-    set_shell_env("PYTHONPATH", "/python", 0);
-    set_shell_env("LD_LIBRARY_PATH", "/lib", 1);
-    set_shell_env("PATH", "/bin", 1);
+    set_shell_path_env(std::string("PYTHONPATH"), std::string("/python"), 0);
+    set_shell_path_env(std::string("LD_LIBRARY_PATH"), std::string("/lib"), 1);
+    set_shell_path_env(std::string("PATH"), std::string("/bin"), 1);
 
     unsetenv("XCL_EMULATION_MODE");
 
@@ -953,7 +953,7 @@ int runShellCmd(const std::string& cmd, std::string& output)
 
     dup2(stderr_fds[1], 2);
     std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
-    close(stderr_fds[1]); 
+    close(stderr_fds[1]);
 
     if (pipe == nullptr) {
         std::cout << "ERROR: Failed to run " << cmd << std::endl;
