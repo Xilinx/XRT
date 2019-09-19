@@ -1233,6 +1233,11 @@ struct xocl_ert {
 
 	unsigned int slot_size;
 	bool         cq_intr;
+
+	// stats
+	u32          cu_usage[MAX_CUS];
+	u32          cu_status[MAX_CUS];
+	u32          cq_slot_status[MAX_SLOTS];
 };
 
 /*
@@ -1311,11 +1316,48 @@ ert_start_cmd(struct xocl_ert *xert, struct xocl_cmd *xcmd)
 /**
  */
 static void
-ert_read_custat(struct xocl_ert *xert, unsigned int num_cus, u32 *cu_usage, struct xocl_cmd *xcmd)
+ert_read_custat(struct xocl_ert *xert, struct xocl_cmd *xcmd)
 {
 	u32 slot_addr = xcmd->slot_idx*xert->slot_size;
+	unsigned int idx = 1; // packet word index past header
 
-	memcpy_fromio(cu_usage, xert->cq_base + slot_addr + 4, num_cus * sizeof(u32));
+	unsigned int ert_num_cq_slots = ioread32(xert->cq_base + slot_addr + (idx++ << 2));
+	unsigned int ert_num_cus = ioread32(xert->cq_base + slot_addr + (idx++ << 2));
+
+	memset(xert->cu_usage, -1, MAX_CUS * sizeof(u32));
+	memset(xert->cu_status, -1, MAX_CUS * sizeof(u32));
+	memset(xert->cq_slot_status, -1, MAX_SLOTS * sizeof(u32));
+
+	// cu execution stat stored at scheduler level
+	memcpy_fromio(xert->cu_usage, xert->cq_base + (idx << 2), ert_num_cus * sizeof(u32));
+	idx += ert_num_cus;
+
+	// ert cu status
+	memcpy_fromio(xert->cu_status, xert->cq_base + (idx << 2), ert_num_cus * sizeof(u32));
+	idx += ert_num_cus;
+
+	// ert cq status
+	memcpy_fromio(xert->cq_slot_status, xert->cq_base + (idx << 2), ert_num_cq_slots * sizeof(u32));
+}
+
+/**
+ */
+static inline u32
+ert_cu_usage(struct xocl_ert *xert, unsigned int cuidx)
+{
+	return xert->cu_usage[cuidx];
+}
+
+static inline u32
+ert_cu_status(struct xocl_ert *xert, unsigned int cuidx)
+{
+	return xert->cu_status[cuidx];
+}
+
+static inline u32
+ert_cq_status(struct xocl_ert *xert, unsigned int slotidx)
+{
+	return xert->cq_slot_status[slotidx];
 }
 
 /**
@@ -1651,7 +1693,6 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		 , exec->num_cdma
 		 , exec->num_cus);
 
-	exec->configured = true;
 	return 0;
 }
 
@@ -1930,8 +1971,12 @@ exec_acquire_slot(struct exec_core *exec, struct xocl_cmd *xcmd)
 	// slot 0 is reserved for ctrl commands
 	if (cmd_type(xcmd) == ERT_CTRL) {
 		SCHED_DEBUGF("%s ctrl cmd(%lu)\n", __func__, xcmd->uid);
-		if (exec->ctrl_busy)
+		if (exec->ctrl_busy) {
+			userpf_info(exec_get_xdev(exec),
+				    "cmd(%lu) opcode(%d) ctrl slot is busy\n",
+				    xcmd->uid, cmd_opcode(xcmd));
 			return -1;
+		}
 		exec->ctrl_busy = true;
 		return (xcmd->slot_idx = 0);
 	}
@@ -2013,11 +2058,16 @@ exec_update_custatus(struct exec_core *exec)
 static int
 exec_finish_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 {
+	if (cmd_opcode(xcmd) == ERT_CONFIGURE) {
+		exec->configured = true;
+		return 0;
+	}
+	
 	if (cmd_opcode(xcmd) != ERT_CU_STAT)
 		return 0;
 	
 	if (exec_is_ert(exec)) 
-		ert_read_custat(exec->ert, exec->num_cus, exec->cu_usage, xcmd);
+		ert_read_custat(exec->ert, xcmd);
 
 	exec_update_custatus(exec);
 
@@ -3024,8 +3074,11 @@ add_xcmd(struct xocl_cmd *xcmd)
 	SCHED_DEBUGF("-> %s cmd(%lu) pid(%d)\n", __func__, xcmd->uid, pid_nr(task_tgid(current)));
 	SCHED_DEBUGF("+ exec stopped(%d) configured(%d)\n", exec->stopped, exec->configured);
 
-	if (exec->stopped || (!exec->configured && cmd_opcode(xcmd) != ERT_CONFIGURE))
+	if (exec->stopped || (!exec->configured && cmd_opcode(xcmd) != ERT_CONFIGURE)) {
+		userpf_err(xdev, "scheduler can't add cmd(%lu) opcode(%d)\n",
+			   xcmd->uid, cmd_opcode(xcmd));
 		goto err;
+	}
 
 	cmd_set_state(xcmd, ERT_CMD_STATE_NEW);
 	mutex_lock(&pending_cmds_mutex);
@@ -3936,23 +3989,43 @@ static ssize_t
 kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct exec_core *exec = dev_get_exec(dev);
-	unsigned int count = 0;
+	struct xocl_ert *xert = exec_is_ert(exec) ? exec->ert : NULL;
+	unsigned int idx = 0;
 	ssize_t sz = 0;
-
-	SCHED_DEBUGF("-> %s\n",__func__);
 
 	// No need to lock exec, cu stats are computed and cached.
 	// Even if xclbin is swapped, the data reflects the xclbin on
 	// which is was computed above.
-	for (count = 0; count < exec->num_cus; ++count)
+	for (idx = 0; idx < exec->num_cus; ++idx)
 		sz += sprintf(buf+sz, "CU[@0x%x] : %d status : %d\n",
-			      exec_cu_base_addr(exec, count),
-			      exec_cu_usage(exec, count),
-			      exec_cu_status(exec, count));
+			      exec_cu_base_addr(exec, idx),
+			      xert ? ert_cu_usage(xert, idx) : exec_cu_usage(exec, idx),
+			      exec_cu_status(exec, idx));
+
+	if (!xert)
+		goto out;
+
+	sz += sprintf(buf+sz, "ERT scheduler CU state : {");
+	for (idx = 0; idx < exec->num_cus; ++idx) {
+		if (idx > 0)
+			sz += sprintf(buf+sz, ",");
+		sz += sprintf(buf+sz, "%d", ert_cu_status(xert, idx));
+	}
+		
+	sz += sprintf(buf+sz, "}\nERT scheduler CQ state : {");
+	for (idx = 0; idx < exec->num_slots; ++idx) {
+		if (idx == 0) { // ctrl slot should be ignored
+			sz += sprintf(buf+sz, "-");
+			continue;
+		}
+		sz += sprintf(buf+sz, ",%d", ert_cq_status(xert, idx));
+	}
+	sz += sprintf(buf+sz, "}\n");
+
+out:
 	if (sz)
 		buf[sz++] = 0;
 
-	SCHED_DEBUGF("<- %s sz=%ld\n",__func__,sz);
 	return sz;
 }
 static DEVICE_ATTR_RO(kds_custat);
