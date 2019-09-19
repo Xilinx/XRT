@@ -3584,7 +3584,7 @@ static int convert_execbuf(struct xocl_dev *xdev, struct drm_file *filp,
 	if ((dst_addr + dst_off) % KDMA_BLOCK_SIZE ||
 	    (src_addr + src_off) % KDMA_BLOCK_SIZE ||
 	    sz % KDMA_BLOCK_SIZE) {
-		userpf_info(xdev,"improper alignment, cannot use KDMA");
+		userpf_err(xdev,"improper alignment, cannot use KDMA");
 		return -EINVAL;
 	}
 
@@ -3830,8 +3830,9 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 		uint32_t cmd_cus = ecmd->data[maskidx];
 		// cmd_cus must be subset of ctx_cus
 		if (cmd_cus & ~ctx_cus[maskidx]) {
-			SCHED_DEBUGF("<- %s(1), CU mismatch in mask(%d) cmd(0x%x) ctx(0x%x)\n",
-				     __func__, maskidx, cmd_cus, ctx_cus[maskidx]);
+			userpf_err(client->xdev,
+				"CU mismatch in mask(%d) cmd(0x%x) ctx(0x%x)\n",
+				maskidx, cmd_cus, ctx_cus[maskidx]);
 			err = 1;
 			goto out; /* error */
 		}
