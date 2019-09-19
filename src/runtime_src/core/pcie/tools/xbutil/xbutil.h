@@ -933,7 +933,6 @@ public:
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.device",    "N/A" )
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.subdevice", "N/A" )
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.subvendor", "N/A" ) 
-             << std::setw(16) << sensor_tree::get<std::string>( "board.info.max_power", "N/A" ) 
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.serial_number", "N/A" ) << std::endl;
         ostr << std::setw(16) << "DDR size" << std::setw(16) << "DDR count" << std::setw(16) 
              << "Clock0" << std::setw(16) << "Clock1" << std::setw(16) << "Clock2" << std::endl;

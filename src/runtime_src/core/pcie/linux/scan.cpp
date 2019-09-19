@@ -648,10 +648,10 @@ std::ostream& operator<<(std::ostream& stream,
     stream << std::hex << std::right << std::setfill('0');
 
     // [dddd:bb:dd.f]
-    stream << "[" << std::setw(4) << dev->domain << ":"
+    stream << std::setw(4) << dev->domain << ":"
         << std::setw(2) << dev->bus << ":"
         << std::setw(2) << dev->dev << "."
-        << std::setw(1) << dev->func << "]";
+        << std::setw(1) << dev->func;
 
     // board/shell name
     std::string shell_name;
