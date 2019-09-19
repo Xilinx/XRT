@@ -526,7 +526,7 @@ int pcidev::pci_device::get_partinfo(std::vector<std::string>& info, void *blob)
     const char *p, *s;
     uint32_t tag;
     int sz;
-    uint32_t level;
+    uint32_t level = 0;
 
     p = p_struct;
     while ((tag = be32toh(GET_CELL(p))) != FDT_END)
