@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>xrt.ini Configuration File &mdash; XRT 2019.2 documentation</title>
+  <title>Configuration File xrt.ini &mdash; XRT 2019.2 documentation</title>
   
 
   
@@ -97,10 +97,10 @@
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P) Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">xrt.ini Configuration File</a><ul>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Configuration File xrt.ini</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#runtime-initialization-file-format">Runtime Initialization File Format</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#runtime-group">Runtime Group</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#debug-group">Debug Group</a></li>
@@ -199,7 +199,7 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>xrt.ini Configuration File</li>
+      <li>Configuration File xrt.ini</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -218,13 +218,13 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="xrt-ini-configuration-file">
-<span id="xrt-ini-rst"></span><h1>xrt.ini Configuration File<a class="headerlink" href="#xrt-ini-configuration-file" title="Permalink to this headline">¶</a></h1>
-<p>XRT uses various parameters to control execution flow, debug, profiling, and message logging during host application and kernel execution in software emulation, hardware emulation, and system run on the acceleration board. These control parameters are specified in a runtime initialization file <code class="docutils literal notranslate"><span class="pre">xrt.ini</span></code></p>
-<p>The location of the file can be specified by defining the environment variable <code class="docutils literal notranslate"><span class="pre">XRT_INI_PATH</span></code> with the path of the directory in which the file exists. By default the tools check <code class="docutils literal notranslate"><span class="pre">XRT_INI_PATH</span></code>, host executable path, and current directory for xrt.ini file in that order. If it does not exist, it returns an empty string.</p>
+  <div class="section" id="configuration-file-xrt-ini">
+<span id="xrt-ini-rst"></span><h1>Configuration File xrt.ini<a class="headerlink" href="#configuration-file-xrt-ini" title="Permalink to this headline">¶</a></h1>
+<p>XRT uses various parameters to control execution flow, debug, profiling, and message logging during host application and kernel execution in software emulation, hardware emulation, and system run on the acceleration board. These control parameters are optionally specified in a runtime initialization file <strong>xrt.ini</strong></p>
+<p>XRT looks for xrt.ini in host executable path and current directory in that order. It stops search when an xrt.ini is found. If xrt.ini is not found, XRT built-in defaults are used as described in the table below.</p>
 <div class="section" id="runtime-initialization-file-format">
 <h2>Runtime Initialization File Format<a class="headerlink" href="#runtime-initialization-file-format" title="Permalink to this headline">¶</a></h2>
-<p>The runtime initialization file is a text file with groups of keys and their values. Any line beginning with a semicolon (;) or a hash (#) is a comment. The group names, keys, and key values are all case sensitive.</p>
+<p>The runtime initialization file is a text file with groups of keys and their values. Any line beginning with a semicolon (<strong>;</strong>) or a hash (<strong>#</strong>) is a comment. The group names, keys, and key values are all case in-sensitive.</p>
 <p>There are three group of keys as below</p>
 <blockquote>
 <div><ul class="simple">
