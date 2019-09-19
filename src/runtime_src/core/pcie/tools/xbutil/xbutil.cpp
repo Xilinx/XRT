@@ -104,7 +104,7 @@ static void print_pci_info(std::ostream &ostr)
             ostr << " ";
         else
             ostr << "*";
-        ostr << "[" << j << "]:" << dev << std::endl;
+        ostr << "[" << j << "] " << dev << std::endl;
     }
 
     if (pcidev::get_dev_total() != pcidev::get_dev_ready()) {
