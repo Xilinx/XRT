@@ -252,19 +252,6 @@ void pcidev::pci_device::sysfs_get(
         s = ""; // default value
 }
 
-void pcidev::pci_device::sysfs_get(
-    const std::string& subdev, const std::string& entry,
-    std::string& err_msg, bool& b)
-{
-    std::vector<uint64_t> iv;
-
-    sysfs_get(subdev, entry, err_msg, iv);
-    if (!iv.empty())
-        b = (iv[0] == 1);
-    else
-        b = false; // default value
-}
-
 static std::string get_devfs_path(bool is_mgmt, uint32_t instance)
 {
     std::string prefixStr = is_mgmt ? "/dev/xclmgmt" : "/dev/dri/" RENDER_NM;
