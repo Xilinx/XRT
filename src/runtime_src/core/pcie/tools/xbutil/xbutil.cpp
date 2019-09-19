@@ -927,9 +927,9 @@ int runShellCmd(const std::string& cmd, std::string& output)
     std::thread t(testCaseProgressReporter, &quit);
 
     // Run test case
-    setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
-    setenv("PYTHONPATH", "/opt/xilinx/xrt/python", 0);
-    setenv("LD_LIBRARY_PATH", "/opt/xilinx/xrt/lib", 1);
+//    setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
+//    setenv("PYTHONPATH", "/opt/xilinx/xrt/python", 0);
+//    setenv("LD_LIBRARY_PATH", "/opt/xilinx/xrt/lib", 1);
     unsetenv("XCL_EMULATION_MODE");
 
     int stderr_fds[2];

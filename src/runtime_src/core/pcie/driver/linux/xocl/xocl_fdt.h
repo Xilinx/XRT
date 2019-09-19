@@ -35,6 +35,8 @@
 #define LEVEL1_DEV_PATH "/addressable_endpoints_1"
 #define INTERFACES_PATH "/interfaces"
 
+#define NODE_PROPERTIES "partition_info"
+
 #define NODE_FLASH "ep_card_flash_program_00"
 #define NODE_XVC_PUB "ep_debug_bscan_user_00"
 #define NODE_XVC_PRI "ep_debug_bscan_mgmt_00"

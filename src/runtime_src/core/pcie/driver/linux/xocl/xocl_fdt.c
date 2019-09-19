@@ -359,6 +359,14 @@ static bool get_userpf_info(void *fdt, int node, u32 pf)
 	int len;
 	const void *val;
 	int depth = 1;
+	int offset;
+
+	for (offset = node; offset >= 0;
+		offset = fdt_parent_offset(fdt, offset)) {
+		val = fdt_get_name(fdt, offset, NULL);
+		if (!strncmp(val, NODE_PROPERTIES, strlen(NODE_PROPERTIES)))
+			return true;
+	}
 
 	do {
 		if (fdt_getprop(fdt, node, PROP_INTERFACE_UUID, NULL))
@@ -410,12 +418,21 @@ int xocl_fdt_overlay(void *fdt, int target,
 		const char *name = fdt_get_name(fdto, subnode, NULL);
 		char temp[64];
 		int nnode = -FDT_ERR_EXISTS;
-		int level  = 0;
+		int level;
 
-		if (!strncmp(name, NODE_ENDPOINTS, strlen(NODE_ENDPOINTS))) {
+		if (!strcmp(name, NODE_ENDPOINTS)) {
+			level = 0;
 			while (nnode == -FDT_ERR_EXISTS) {
 				snprintf(temp, strlen(name) + 10, "%s_%d",
 					NODE_ENDPOINTS, level);
+				nnode = fdt_add_subnode(fdt, target, temp);
+				level++;
+			}
+		} else if (!strcmp(name, NODE_PROPERTIES)) {
+			level = 0;
+			while (nnode == -FDT_ERR_EXISTS) {
+				snprintf(temp, strlen(name) + 10, "%s_%d",
+					NODE_PROPERTIES, level);
 				nnode = fdt_add_subnode(fdt, target, temp);
 				level++;
 			}

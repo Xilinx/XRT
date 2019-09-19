@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <algorithm>
 #include <mutex>
+#include <regex>
 #include <sys/stat.h>
 #include <sys/file.h>
 #include <poll.h>
@@ -500,6 +501,91 @@ void *pcidev::pci_device::mmap(int dev_handle,
         return MAP_FAILED;
     }
     return ::mmap(0, len, prot, flags, dev_handle, offset);
+}
+
+int pcidev::pci_device::get_partinfo(std::vector<std::vector< std::string>>& info)
+{
+    std::vector<char> buf;
+    std::string err;
+
+    sysfs_get("", "fdt_blob", err, buf);
+    if (!buf.size())
+        return ENOENT;
+
+    void *blob = &buf[0];
+    struct fdt_header *bph = (struct fdt_header *)blob;
+    uint32_t version = be32toh(bph->version);
+    uint32_t off_dt = be32toh(bph->off_dt_struct);
+    const char *p_struct = (const char *)blob + off_dt;
+    uint32_t off_str = be32toh(bph->off_dt_strings);
+    const char *p_strings = (const char *)blob + off_str;
+    const char *p, *s;
+    uint32_t tag;
+    int sz;
+    std::vector<std::string> path_vec;
+
+    p = p_struct;
+    while ((tag = be32toh(GET_CELL(p))) != FDT_END)
+    {
+        if (tag == FDT_BEGIN_NODE)
+        {
+            s = p;
+            p = PALIGN(p + strlen(s) + 1, 4);
+	    path_vec.push_back(std::string(s));
+            continue;
+        }
+
+        if (tag == FDT_END_NODE) {
+            path_vec.pop_back();
+	    continue;
+	}
+
+        if (tag != FDT_PROP)
+            continue;
+
+
+        sz = be32toh(GET_CELL(p));
+        s = p_strings + be32toh(GET_CELL(p));
+        if (version < 16 && sz >= 8)
+            p = PALIGN(p, 8);
+
+        std::regex ep("partition_info_([0-9]+)");
+        std::cmatch cm;
+        std::regex_match(path_vec[1].c_str(), cm, ep);
+	if (!cm.size()) {
+            p = PALIGN(p + sz, 4);
+            continue;
+        }
+
+	unsigned int level = std::stoul(cm.str(1));
+        if (info.size() <= level)
+        {
+            info.resize(level + 1);
+        }
+
+        std::regex en("(.*)\?\?([0-9]+)");
+        std::regex_match(s, cm, en);
+
+        if (cm.size() == 3)
+        {
+            unsigned int index = std::stoul(cm.str(2));
+            if (info[level].size() <= index)
+            {
+                info[level].resize(index + 1);
+            }
+	    std::string path;
+	    for (auto pa : path_vec)
+            {
+                path += "/" + pa;
+            }
+	    path += "/" + std::string(s);
+	    path += ": " + std::string(p);
+            info[level].at(index) = path;
+	}
+
+        p = PALIGN(p + sz, 4);
+    }
+    return 0;
 }
 
 int pcidev::pci_device::flock(int dev_handle, int op)

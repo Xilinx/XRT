@@ -364,6 +364,31 @@ SchemaTransformToDTC_addressable_endpoints( const boost::property_tree::ptree& _
   }
 }
 
+void
+SchemaTransformToDTC_partinfo( const boost::property_tree::ptree& _ptOriginal,
+                               boost::property_tree::ptree & _ptTransformed,
+                               int& index )
+{
+
+  for (auto endpoint : _ptOriginal) {
+    if (endpoint.second.empty()) {
+      _ptTransformed.add_child(endpoint.first + "??" + std::to_string(index), endpoint.second);
+      index++;
+      continue;
+    }
+    boost::property_tree::ptree ptPartInfo;
+    SchemaTransformToDTC_partinfo(endpoint.second, ptPartInfo, index);
+    _ptTransformed.add_child(endpoint.first, ptPartInfo);
+  }    
+}
+
+void
+SchemaTransformToDTC_partition_info ( const boost::property_tree::ptree& _ptOriginal,
+                                           boost::property_tree::ptree & _ptTransformed)
+{
+    int index = 0;
+    SchemaTransformToDTC_partinfo(_ptOriginal, _ptTransformed, index);
+}
 
 /**
  * Transform the original partition_metadata format to the DTC 
@@ -388,6 +413,10 @@ SchemaTransformToDTC_root( const boost::property_tree::ptree & _ptOriginal,
 
   SchemaTransform_subNode( "addressable_endpoints", false /*required*/, 
                            SchemaTransformToDTC_addressable_endpoints,
+                           _ptOriginal, _ptTransformed);
+
+  SchemaTransform_subNode( "partition_info", false /*required*/,
+                           SchemaTransformToDTC_partition_info,
                            _ptOriginal, _ptTransformed);
 }
 
@@ -589,13 +618,18 @@ SectionPartitionMetadata::marshalToJSON(char* _pDataSection,
   XUtil::TRACE_PrintTree("Ptree", _ptree);
 }
 
-
 void
 SectionPartitionMetadata::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
                             std::ostringstream& _buf) const 
 {
-  const boost::property_tree::ptree& ptOriginal = _ptSection.get_child("partition_metadata");
+  boost::property_tree::ptree ptOriginal = _ptSection.get_child("partition_metadata");
+  boost::property_tree::ptree ptPartitionInfo;
+ 
+  ptPartitionInfo = _ptSection.get_child("partition_info", ptPartitionInfo);
 
+  if (!ptPartitionInfo.empty()) {
+    ptOriginal.add_child("partition_info", ptPartitionInfo);
+  }
   boost::property_tree::ptree ptTransformed;
   SchemaTransformToDTC_root(ptOriginal, ptTransformed);
 

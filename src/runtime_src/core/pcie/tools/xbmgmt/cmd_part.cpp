@@ -141,7 +141,7 @@ int program_urp(unsigned index, const std::string& xclbin)
     return ret ? -errno : ret;
 }
 
-void scanPartitions(int index, std::vector<DSAInfo>& installedDSAs, bool verbose)
+void scanPartitions(int index, bool verbose)
 {
     Flasher f(index);
     if (!f.isValid())
@@ -175,7 +175,22 @@ void scanPartitions(int index, std::vector<DSAInfo>& installedDSAs, bool verbose
         std::cout << ident(3)  << int_uuids[i] << std::endl;
     }
 
-
+    if (verbose)
+    {
+        std::vector< std::vector<std::string> > partinfo;
+        dev->get_partinfo(partinfo);
+	if (partinfo.size() > 0 && partinfo[0].size() > 0)
+	for (auto pa : partinfo[0])
+        {
+            std::cout << pa << std::endl;
+	}
+	if (partinfo.size() > 1 && partinfo[1].size() > 0)
+	for (auto pa : partinfo[1])
+        {
+            std::cout << pa << std::endl;
+	}
+    }
+    auto installedDSAs = firmwareImage::getIntalledDSAs();
     std::cout << ident(1) << "Partitions installed in system:" << std::endl;
     if (installedDSAs.empty())
     {
@@ -239,10 +254,9 @@ int scan(int argc, char *argv[])
         }
     }
 
-    auto installedDSAs = firmwareImage::getIntalledDSAs();
     for (unsigned i = 0; i < total; i++)
     {
-        scanPartitions(i, installedDSAs, verbose);
+        scanPartitions(i, verbose);
     }
 
     return 0;
