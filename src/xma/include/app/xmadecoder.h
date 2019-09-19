@@ -97,7 +97,7 @@ typedef struct XmaDecoderProperties
     /** For JPG Decoders: chroma_width & chroma_height specify subsampling of chroma: YUV444, YUV422, YUV411, YUV420, etc  */
     int32_t         chroma_width;
     int32_t         chroma_height;
-    int32_t         num_of_images;//Num of JPG images to decode
+    int32_t         num_of_UV;//Num of UV components; yuv400 has zero UV
 
     int32_t         dev_index;
     int32_t         cu_index;
