@@ -922,7 +922,7 @@ public:
         if (pt.empty()) {
             ostr << ": " << pt.data() << std::endl;
         } else {
-            if (level > 1)
+            if (level > 0)
                 ostr << std::endl; 
             for (auto pos = pt.begin(); pos != pt.end();) {
                 std::cout << indent(level+1) << pos->first;

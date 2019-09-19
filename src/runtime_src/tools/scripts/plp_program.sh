@@ -42,9 +42,14 @@ fi
 # workaround mailbox
 RP_DEVICE=`xbutil scan | grep user | grep -v xilinx | sed 's/.*\[//' | sed 's/].*//'`
 if [ "foo${RP_DEVICE}" == "foo" ] ; then
+	RP_DEVICE=`xbutil scan | grep user | grep dynamic | sed 's/.*\[//' | sed 's/].*//'`
+fi
+
+if [ "foo${RP_DEVICE}" == "foo" ] ; then
 	echo "No board!"
 	exit 1;
 fi
+
 
 echo 1 >/sys/bus/pci/devices/$RP_DEVICE/remove
 sleep 5
