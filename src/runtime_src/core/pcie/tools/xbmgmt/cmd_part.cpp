@@ -25,6 +25,8 @@
 #include <libgen.h>
 #include <stdint.h>
 #include <dirent.h>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
 
 #include "boost/filesystem.hpp"
 #include "flasher.h"
@@ -42,7 +44,7 @@ const char *subCmdPartUsage =
     "--program --path xclbin [--card bdf] [--force]\n"
     "--scan [--verbose]";
 
-#define ident(level)	std::string(level * 4, ' ')
+#define indent(level)	std::string((level) * 4, ' ')
 int program_prp(unsigned index, const std::string& xclbin, bool force)
 {
     std::ifstream stream(xclbin.c_str(), std::ios_base::binary);
@@ -141,6 +143,40 @@ int program_urp(unsigned index, const std::string& xclbin)
     return ret ? -errno : ret;
 }
 
+void printTree (boost::property_tree::ptree &pt, int level) {
+    if (pt.empty()) {
+        std::cout << ": " << pt.data() << std::endl;
+    } else {
+        if (level > 1)
+            std::cout << std::endl;
+        for (auto pos = pt.begin(); pos != pt.end();) {
+            std::cout << indent(level+1) << pos->first;
+            printTree(pos->second, level + 1);
+            ++pos;
+        }
+    }
+    return;
+}
+
+void printPartinfo(int index, DSAInfo& d, unsigned int level)
+{
+    auto dev = pcidev::get_dev(index, false);
+    std::vector<std::string> partinfo;
+
+    dev->get_partinfo(partinfo, d.dtbbuf.get());
+    if ((level > 0 && partinfo.size() <= level) || partinfo.empty())
+        return;
+
+    auto info = partinfo[level];
+    if (info.empty())
+        return;
+    boost::property_tree::ptree ptInfo;
+    std::istringstream is(info);
+    boost::property_tree::read_json(is, ptInfo);
+    std::cout << indent(3) << "Partition info";
+    printTree(ptInfo, 3);
+}
+
 void scanPartitions(int index, bool verbose)
 {
     Flasher f(index);
@@ -164,34 +200,21 @@ void scanPartitions(int index, bool verbose)
         return;
 
     std::cout << "Card [" << f.sGetDBDF() << "]" << std::endl;
-    std::cout << ident(1) << "Partitions running on FPGA:" << std::endl;
+    std::cout << indent(1) << "Partitions running on FPGA:" << std::endl;
     for (unsigned int i = 0; i < uuids.size(); i++)
     {
         DSAInfo d("", NULL_TIMESTAMP, uuids[i], "");
-        std::cout << ident(2) << d.name << std::endl;
-        std::cout << ident(3) << "logic-uuid:" << std::endl;
-        std::cout << ident(3)  << uuids[i] << std::endl;
-        std::cout << ident(3) << "interface-uuid:" << std::endl;
-        std::cout << ident(3)  << int_uuids[i] << std::endl;
+        std::cout << indent(2) << d.name << std::endl;
+        std::cout << indent(3) << "logic-uuid:" << std::endl;
+        std::cout << indent(3)  << uuids[i] << std::endl;
+        std::cout << indent(3) << "interface-uuid:" << std::endl;
+        std::cout << indent(3)  << int_uuids[i] << std::endl;
+        if (verbose)
+            printPartinfo(index, d, i);
     }
 
-    if (verbose)
-    {
-        std::vector< std::vector<std::string> > partinfo;
-        dev->get_partinfo(partinfo);
-	if (partinfo.size() > 0 && partinfo[0].size() > 0)
-	for (auto pa : partinfo[0])
-        {
-            std::cout << pa << std::endl;
-	}
-	if (partinfo.size() > 1 && partinfo[1].size() > 0)
-	for (auto pa : partinfo[1])
-        {
-            std::cout << pa << std::endl;
-	}
-    }
     auto installedDSAs = firmwareImage::getIntalledDSAs();
-    std::cout << ident(1) << "Partitions installed in system:" << std::endl;
+    std::cout << indent(1) << "Partitions installed in system:" << std::endl;
     if (installedDSAs.empty())
     {
         std::cout << "(None)" << std::endl;
@@ -211,17 +234,19 @@ void scanPartitions(int index, bool verbose)
 	if (i == dsa.uuids.size())
             continue;	
 	dsa.uuids.erase(dsa.uuids.begin()+i);
-	std::cout << ident(2) << dsa.name << std::endl;
+	std::cout << indent(2) << dsa.name << std::endl;
         if (dsa.uuids.size() > 1)
         {
-            std::cout << ident(3) << "logic-uuid:" << std::endl;
-            std::cout << ident(3)  << dsa.uuids[0] << std::endl;
-            std::cout << ident(3) << "interface-uuid:" << std::endl;
+            std::cout << indent(3) << "logic-uuid:" << std::endl;
+            std::cout << indent(3)  << dsa.uuids[0] << std::endl;
+            std::cout << indent(3) << "interface-uuid:" << std::endl;
             for (i = 1; i < dsa.uuids.size(); i++)
             {
-               std::cout << ident(3) << dsa.uuids[i] << std::endl;
+               std::cout << indent(3) << dsa.uuids[i] << std::endl;
             } 
         }
+        if (verbose)
+            printPartinfo(index, dsa, 0);
     }
     std::cout << std::endl;
 }

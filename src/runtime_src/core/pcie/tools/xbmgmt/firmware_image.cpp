@@ -250,7 +250,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
         // Show it as ID for flashing
         const axlf_section_header* dtbSection = xclbin::get_axlf_section(ap, PARTITION_METADATA);
         if (dtbSection && timestamp == NULL_TIMESTAMP) {
-            std::shared_ptr<char> dtbbuf(new char[dtbSection->m_sectionSize]);
+            dtbbuf = std::shared_ptr<char>(new char[dtbSection->m_sectionSize]);
             in.seekg(dtbSection->m_sectionOffset);
             in.read(dtbbuf.get(), dtbSection->m_sectionSize);
 	    getUUIDFromDTB(dtbbuf.get(), timestamp, uuids);

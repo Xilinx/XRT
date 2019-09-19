@@ -365,29 +365,16 @@ SchemaTransformToDTC_addressable_endpoints( const boost::property_tree::ptree& _
 }
 
 void
-SchemaTransformToDTC_partinfo( const boost::property_tree::ptree& _ptOriginal,
-                               boost::property_tree::ptree & _ptTransformed,
-                               int& index )
-{
-
-  for (auto endpoint : _ptOriginal) {
-    if (endpoint.second.empty()) {
-      _ptTransformed.add_child(endpoint.first + "??" + std::to_string(index), endpoint.second);
-      index++;
-      continue;
-    }
-    boost::property_tree::ptree ptPartInfo;
-    SchemaTransformToDTC_partinfo(endpoint.second, ptPartInfo, index);
-    _ptTransformed.add_child(endpoint.first, ptPartInfo);
-  }    
-}
-
-void
 SchemaTransformToDTC_partition_info ( const boost::property_tree::ptree& _ptOriginal,
                                            boost::property_tree::ptree & _ptTransformed)
 {
-    int index = 0;
-    SchemaTransformToDTC_partinfo(_ptOriginal, _ptTransformed, index);
+  std::ostringstream buf;
+  boost::property_tree::ptree ptInfo;
+
+  boost::property_tree::write_json(buf, _ptOriginal, false);
+  ptInfo.put("", buf.str());
+
+  _ptTransformed.add_child("__INFO", ptInfo);
 }
 
 /**

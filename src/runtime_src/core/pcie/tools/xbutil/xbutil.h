@@ -26,6 +26,7 @@
 #include <iomanip>
 #include <sstream>
 #include <string>
+#include <boost/property_tree/json_parser.hpp>
 
 #include "xrt.h"
 #include "xclperf.h"
@@ -53,6 +54,7 @@ int xclUpdateSchedulerStat(xclDeviceHandle); // exposed by shim
 #define XCL_NO_SENSOR_DEV_S     0xffff
 #define XCL_INVALID_SENSOR_VAL 0
 
+#define indent(level)   std::string((level) * 4, ' ')
 /*
  * Simple command line tool to query and interact with SDx PCIe devices
  * The tool statically links with xcldma HAL driver inorder to avoid
@@ -915,6 +917,44 @@ public:
         return 0;
     }
 
+    void printTree (std::ostream& ostr, boost::property_tree::ptree &pt, int level) const
+    {
+        if (pt.empty()) {
+            ostr << ": " << pt.data() << std::endl;
+        } else {
+            if (level > 1)
+                ostr << std::endl; 
+            for (auto pos = pt.begin(); pos != pt.end();) {
+                std::cout << indent(level+1) << pos->first;
+                printTree(ostr, pos->second, level + 1);
+                ++pos;
+            }
+        }
+        return;
+    }
+
+    int dumpPartitionInfo(std::ostream& ostr) const
+    {
+        std::vector<std::string> partinfo;
+	pcidev::get_dev(m_idx)->get_partinfo(partinfo);
+
+	if (partinfo.size())
+            ostr << "Partition Info" << std::endl;
+        for (auto info : partinfo)
+        {
+            if (info.empty())
+                continue;
+            boost::property_tree::ptree ptInfo;
+            std::istringstream is(info);
+            boost::property_tree::read_json(is, ptInfo);
+            printTree(ostr, ptInfo, 0);
+	    ostr << std::endl;
+        }
+	if (partinfo.size())
+            ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        return 0;
+    }
+
     /*
      * dump
      *
@@ -1238,6 +1278,7 @@ public:
             // eat the exception, probably bad path
         }
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+	dumpPartitionInfo(ostr);
         return 0;
     }
 

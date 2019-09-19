@@ -115,7 +115,7 @@ public:
     int poll(int devhdl, short events, int timeoutMilliSec);
     void *mmap(int devhdl, size_t len, int prot, int flags, off_t offset);
     int flock(int devhdl, int op);
-    int get_partinfo(std::vector<std::vector <std::string>>& info);
+    int get_partinfo(std::vector<std::string>& info, void *blob = nullptr);
 
 private:
     std::fstream sysfs_open(const std::string& subdev,
