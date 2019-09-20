@@ -6,6 +6,11 @@ PCIe peer-to-peer communication (P2P) is a PCIe feature which enables two PCIe d
 1. Data can be directly transferred between the DDR of one SDx PCIe device and DDR of a second SDx PCIe device.
 2. A thirdparty peer device like NVMe can directly read/write data from/to DDR of SDX PCIe device.
 
+.. figure:: PCIe-P2P.svg
+    :figclass: align-center
+
+    PCIe peer-to-peer topology and data transfer
+
 To use P2P, the DDRs on a SDx PCIe platform need to be mapped to host IO memory space. The total size of DDR on most SDx PCIe platforms is 64 GB all of which needs to mapped to the host IO memory space. Partial mapping a smaller range of device DDR is not supported in this release of XRT. Considering not all host systems (CPU/BIOS/chipset) support 64 GB IO memory space, P2P feature is off by default after a cold reboot or power cycle. The feature needs to be explicitly enabled after a cold boot.
 
 Note that in addition to BIOS, host CPU should be capable of supporting a very large physical address space. Most desktop class processors do not support very large address space required for supporting 64 GB BAR together with host RAM and address space of all peripherals.
@@ -187,7 +192,7 @@ Typical coding style:
    // to check error for most of the OpenCL APIs
 
    // Destination buffer (P2P) in destination context
-   cl_mem dst_buf; 
+   cl_mem dst_buf;
    cl_mem_ext_ptr_t dst_buf_ext = {0};
    dst_buf_ext.flags = XCL_MEM_EXT_P2P_BUFFER;
    dst_buf = clCreateBuffer(dst_context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX, buffersize, &dst_buf_ext, &err);
@@ -202,19 +207,19 @@ Typical coding style:
 
    // Copy Operation: Local Source buffer -> Imported Destination Buffer
 
-   err = clEnqueueCopyBuffer(src_command_queue, src_buf, imported_dst_buf, 0, 0, sizeof(data_t)*LENGTH, 0, NULL, &event); 
+   err = clEnqueueCopyBuffer(src_command_queue, src_buf, imported_dst_buf, 0, 0, sizeof(data_t)*LENGTH, 0, NULL, &event);
 
 
 Profile Report
 ..............
 
-In the Profile Summary report file the P2P transfer is shown under **Data Transfer: DMA Bypass** 
+In the Profile Summary report file the P2P transfer is shown under **Data Transfer: DMA Bypass**
 
 **Data Transfer: DMA Bypass**
 
 +-------+----------------+-----------+------------+-----------+----------+----------+-------------+
 | Device|  Transfer Type | Number of |  Transfer  | Total Data| Total    | Average  | Average     |
-|       |                | Transfer  |  Rate(MB/s)| Transfer  | Time (ms)| Size (Kb)| Latency(ns) |     
+|       |                | Transfer  |  Rate(MB/s)| Transfer  | Time (ms)| Size (Kb)| Latency(ns) |
 +=======+================+===========+============+===========+==========+==========+=============+
 | ...   |     IN         |     4096  |    N/A     |    0.262  |    N/A   |   0.064  |      N/A    |
 +-------+----------------+-----------+------------+-----------+----------+----------+-------------+
@@ -222,7 +227,7 @@ In the Profile Summary report file the P2P transfer is shown under **Data Transf
 The report shows the P2P transfer corresponding to the receiving device (i.e. transfer type IN).
 
 
-P2P Data Transfer between FPGA Card and NVMe Device 
+P2P Data Transfer between FPGA Card and NVMe Device
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Using the P2P enabled device the data can be transferred between the FPGA device and another NVMe Device, such as SMART SSD, without migrating the data via host memory space.
@@ -230,7 +235,7 @@ Using the P2P enabled device the data can be transferred between the FPGA device
 OpenCL coding style
 ...................
 
-Typical coding style 
+Typical coding style
 
    1. Create P2P buffer
    2. Map P2P buffer to the host space
@@ -242,7 +247,7 @@ Typical coding style
    // Creating P2P buffer
    cl_mem_ext_ptr_t p2pBOExt = {0};
 
-   p2pBOExt.flags = XCL_MEM_EXT_P2P_BUFFER; 
+   p2pBOExt.flags = XCL_MEM_EXT_P2P_BUFFER;
 
    p2pBO = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_EXT_PTR_XILINX, chunk_size, &p2pBOExt, NULL);
 
@@ -259,7 +264,7 @@ Typical coding style
    pread(fd, p2pPtr, chunk_size, 0);
 
    // Wrtie chunk_size bytes starting at offset 0 from p2pPtr into fd
-   pwrite(fd, p2pPtr, chunk_size, 0); 
+   pwrite(fd, p2pPtr, chunk_size, 0);
 
 Profile Report
 ..............

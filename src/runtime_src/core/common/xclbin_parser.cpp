@@ -116,13 +116,10 @@ get_first_used_mem(const axlf* top)
 }
 
 std::vector<uint64_t>
-get_cus(const axlf* top, bool encode)
+get_cus(const ip_layout* ip_layout, bool encode)
 {
   std::vector<uint64_t> cus;
-  auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
-  if (!ip_layout)
-   return cus;
-
+  
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
     if (is_valid_cu(ip_data)) {
@@ -140,6 +137,13 @@ get_cus(const axlf* top, bool encode)
   }
   std::sort(cus.begin(),cus.end());
   return cus;
+}
+
+std::vector<uint64_t>
+get_cus(const axlf* top, bool encode)
+{
+  auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
+  return ip_layout ? get_cus(ip_layout,encode) : std::vector<uint64_t>(0);
 }
 
 std::vector<std::pair<uint64_t, size_t>>

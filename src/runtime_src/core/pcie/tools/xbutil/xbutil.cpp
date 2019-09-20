@@ -33,7 +33,9 @@
 #define FORMATTED_FW_DIR    "/opt/xilinx/firmware"
 #define hex_digit "[0-9a-fA-F]+"
 
-int bdf2index(std::string& bdfStr, unsigned& index)
+const size_t m2mBoSize = 256L * 1024 * 1024;
+
+static int bdf2index(std::string& bdfStr, unsigned& index)
 {
     // Extract bdf from bdfStr.
     int dom = 0, b, d, f;
@@ -62,7 +64,7 @@ int bdf2index(std::string& bdfStr, unsigned& index)
     return -ENOENT;
 }
 
-int str2index(const char *arg, unsigned& index)
+static int str2index(const char *arg, unsigned& index)
 {
     std::string devStr(arg);
 
@@ -88,7 +90,7 @@ int str2index(const char *arg, unsigned& index)
 }
 
 
-void print_pci_info(std::ostream &ostr)
+static void print_pci_info(std::ostream &ostr)
 {
     ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
     if (pcidev::get_dev_total() == 0) {
@@ -102,7 +104,7 @@ void print_pci_info(std::ostream &ostr)
             ostr << " ";
         else
             ostr << "*";
-        ostr << "[" << j << "]:" << dev << std::endl;
+        ostr << "[" << j << "] " << dev << std::endl;
     }
 
     if (pcidev::get_dev_total() != pcidev::get_dev_ready()) {
@@ -113,7 +115,7 @@ void print_pci_info(std::ostream &ostr)
     }
 }
 
-int xrt_xbutil_version_cmp()
+static int xrt_xbutil_version_cmp() 
 {
     /*check xbutil tools and xrt versions*/
     std::string xrt = sensor_tree::get<std::string>( "runtime.build.version", "N/A" ) + ","
@@ -160,6 +162,16 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    /* Make sure xrt version matches driver version except for "help"
+     * and "version" subcommands. */
+    if(std::strcmp(argv[1], "help" ) != 0 &&
+        std::strcmp(argv[1], "version") != 0 &&
+        std::strcmp(argv[1], "--version") != 0) {
+        if (!getenv_or_null("INTERNAL_BUILD")) {
+            if (xrt_xbutil_version_cmp() != 0)
+                return -1;
+        }
+    }
 
     try {
     /*
@@ -226,15 +238,7 @@ int main(int argc, char *argv[])
                                        << std:: endl;
         std::cout.width(26); std::cout << std::internal << "XCLMGMT: " << sensor_tree::get<std::string>( "runtime.build.xclmgmt", "N/A" )
                                        << std::endl;
-
-        if ( !getenv_or_null("INTERNAL_BUILD") )
-            return xrt_xbutil_version_cmp();
         return 0;
-    }
-
-    if ( !getenv_or_null("INTERNAL_BUILD") ) {
-        if ( xrt_xbutil_version_cmp() != 0 )
-            return -1;
     }
 
     argv[0] = const_cast<char *>(exe);
@@ -699,10 +703,10 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  " << exe << " program -d 2 -p a.xclbin\n";
     std::cout << "Run DMA test on card 1 with 32 KB blocks of buffer\n";
     std::cout << "  " << exe << " dmatest -d 1 -b 0x20\n";
-    std::cout << "Read 256 bytes from DDR starting at 0x1000 into file read.out\n";
+    std::cout << "Read 256 bytes from DDR/HBM/PLRAM starting at 0x1000 into file read.out\n";
     std::cout << "  " << exe << " mem --read -a 0x1000 -i 256 -o read.out\n";
     std::cout << "  " << "Default values for address is 0x0, size is DDR size and file is memread.out\n";
-    std::cout << "Write 256 bytes to DDR starting at 0x1000 with byte 0xaa \n";
+    std::cout << "Write 256 bytes to DDR/HBM/PLRAM starting at 0x1000 with byte 0xaa \n";
     std::cout << "  " << exe << " mem --write -a 0x1000 -i 256 -e 0xaa\n";
     std::cout << "  " << "Default values for address is 0x0, size is DDR size and pattern is 0x0\n";
     std::cout << "List the debug IPs available on the platform\n";
@@ -1824,35 +1828,33 @@ static int m2mtest_bank(xclDeviceHandle handle, int bank_a, int bank_b)
     char *boTgtPtr = nullptr;
     int ret = 0;
 
-    const size_t boSize = 256L * 1024 * 1024;
-
     //Allocate and init boSrc
-    if(m2m_alloc_init_bo(handle, boSrc, boSrcPtr, boSize, bank_a, 'A'))
+    if(m2m_alloc_init_bo(handle, boSrc, boSrcPtr, m2mBoSize, bank_a, 'A'))
         return -EINVAL;
 
     //Allocate and init boTgt
-    if(m2m_alloc_init_bo(handle, boTgt, boTgtPtr, boSize, bank_b, 'B')) {
-        m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
+    if(m2m_alloc_init_bo(handle, boTgt, boTgtPtr, m2mBoSize, bank_b, 'B')) {
+        m2m_free_unmap_bo(handle, boSrc, boSrcPtr, m2mBoSize);
         return -EINVAL;
     }
 
     xcldev::Timer timer;
-    if ((ret = xclCopyBO(handle, boTgt, boSrc, boSize, 0, 0)))
+    if ((ret = xclCopyBO(handle, boTgt, boSrc, m2mBoSize, 0, 0)))
         return ret;
     double timer_stop = timer.stop();
 
-    if(xclSyncBO(handle, boTgt, XCL_BO_SYNC_BO_FROM_DEVICE, boSize, 0)) {
-        m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
-        m2m_free_unmap_bo(handle, boTgt, boTgtPtr, boSize);
+    if(xclSyncBO(handle, boTgt, XCL_BO_SYNC_BO_FROM_DEVICE, m2mBoSize, 0)) {
+        m2m_free_unmap_bo(handle, boSrc, boSrcPtr, m2mBoSize);
+        m2m_free_unmap_bo(handle, boTgt, boTgtPtr, m2mBoSize);
         std::cout << "ERROR: Unable to sync target BO" << std::endl;
         return -EINVAL;
     }
 
-    bool match = (memcmp(boSrcPtr, boTgtPtr, boSize) == 0);
+    bool match = (memcmp(boSrcPtr, boTgtPtr, m2mBoSize) == 0);
 
     // Clean up
-    m2m_free_unmap_bo(handle, boSrc, boSrcPtr, boSize);
-    m2m_free_unmap_bo(handle, boTgt, boTgtPtr, boSize);
+    m2m_free_unmap_bo(handle, boSrc, boSrcPtr, m2mBoSize);
+    m2m_free_unmap_bo(handle, boTgt, boTgtPtr, m2mBoSize);
 
     if (!match) {
         std::cout << "Memory comparison failed" << std::endl;
@@ -1860,7 +1862,7 @@ static int m2mtest_bank(xclDeviceHandle handle, int bank_a, int bank_b)
     }
 
     //bandwidth
-    double total = boSize;
+    double total = m2mBoSize;
     total *= 1000000; // convert us to s
     total /= (1024 * 1024); //convert to MB
     std::cout << total / timer_stop << " MB/s\t\n";
@@ -1898,7 +1900,8 @@ int xcldev::device::testM2m()
     }
 
     for(int32_t i = 0; i < map->m_count; i++) {
-        if(map->m_mem_data[i].m_used)
+        if(map->m_mem_data[i].m_used &&
+            map->m_mem_data[i].m_size * 1024 >= m2mBoSize)
             usedBanks.insert(usedBanks.end(), map->m_mem_data[i]);
     }
 

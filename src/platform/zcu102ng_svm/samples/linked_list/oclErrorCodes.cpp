@@ -14,7 +14,7 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
+
 
 // This is OpenCL error code helper functions
 
@@ -88,5 +88,3 @@ const char *oclErrorCode(cl_int code)
     else
         return iter->second.c_str();
 }
-
-// 67d7842dbbe25473c3c32b93c0da8047785f30d78e8a024de1b57352245f9689

@@ -117,13 +117,13 @@ namespace xdp {
     //     QUEUE/SUBMIT: srcAddress|srcBank
     //     START/END:    srcAddress|srcBank|threadID|dstAddress|dstBank|p2p
     std::stringstream strAddress;
-    strAddress << (boost::format("0X%09x") % srcAddress) << "|" << srcBank;
+    strAddress << "0X" << std::hex << srcAddress << std::dec << "|" << srcBank;
     if (stageString == "START" || stageString == "END") {
-      strAddress << "|" << (boost::format("0X%x") % threadId);
+      strAddress << "|" << "0X" << std::hex << threadId << std::dec;
 
       if (kind == RTUtil::COPY_BUFFER || kind == RTUtil::COPY_BUFFER_P2P) {
         int p2p = (kind == RTUtil::COPY_BUFFER_P2P) ? 1 : 0;
-        strAddress << "|" << (boost::format("0X%09x") % dstAddress) << "|" << dstBank << "|" << p2p;
+        strAddress << "|" << "0X" << std::hex << dstAddress << std::dec << "|" << dstBank << "|" << p2p;
       }
     }
 

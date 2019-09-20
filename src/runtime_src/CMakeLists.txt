@@ -29,8 +29,8 @@ add_dependencies(oclxdp xdp xilinxopencl)
 
 add_library(xdp_hal_plugin SHARED 
   $<TARGET_OBJECTS:xdp_hal_plugin_obj>
-  $<TARGET_OBJECTS:xdpobj>
   )
+
 add_dependencies(xdp_hal_plugin xdp)
 
 option(XOCL_VERBOSE "Enable xocl verbosity" OFF)

@@ -175,6 +175,9 @@ int main(int argc, char *argv[])
         return -EINVAL;
     }
 
+    if (subCmd.compare("help") == 0)
+        printHelp();
+
     if (cmd == subCmdList.end()) {
         printHelp();
         return -EINVAL;

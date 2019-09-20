@@ -152,6 +152,13 @@ void pcidev::pci_device::sysfs_put(
     if (!err_msg.empty())
         return;
     fs << input;
+    fs.flush();
+    if (!fs.good()) {
+        std::stringstream ss;
+        ss << "Failed to write " << get_sysfs_path(subdev, entry) << ": "
+            << strerror(errno) << std::endl;
+        err_msg = ss.str();
+    }
 }
 
 void pcidev::pci_device::sysfs_put(
@@ -163,6 +170,13 @@ void pcidev::pci_device::sysfs_put(
         return;
 
     fs.write(buf.data(), buf.size());
+    fs.flush();
+    if (!fs.good()) {
+        std::stringstream ss;
+        ss << "Failed to write " << get_sysfs_path(subdev, entry) << ": "
+            << strerror(errno) << std::endl;
+        err_msg = ss.str();
+    }
 }
 
 void pcidev::pci_device::sysfs_get(
@@ -634,10 +648,10 @@ std::ostream& operator<<(std::ostream& stream,
     stream << std::hex << std::right << std::setfill('0');
 
     // [dddd:bb:dd.f]
-    stream << "[" << std::setw(4) << dev->domain << ":"
+    stream << std::setw(4) << dev->domain << ":"
         << std::setw(2) << dev->bus << ":"
         << std::setw(2) << dev->dev << "."
-        << std::setw(1) << dev->func << "]";
+        << std::setw(1) << dev->func;
 
     // board/shell name
     std::string shell_name;
@@ -659,15 +673,15 @@ std::ostream& operator<<(std::ostream& stream,
         dev->sysfs_get("rom", "VBNV", err, shell_name);
         dev->sysfs_get("rom", "timestamp", err, ts);
     }
-    stream << ":" << shell_name;
+    stream << " " << shell_name;
     if (ts != 0)
         stream << "(ts=0x" << std::hex << ts << ")";
 
     // instance number
     if (dev->is_mgmt)
-        stream << ":mgmt(inst=";
+        stream << " mgmt(inst=";
     else
-        stream << ":user(inst=";
+        stream << " user(inst=";
     stream << std::dec << dev->instance << ")";
 
     stream.flags(f);

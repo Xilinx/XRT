@@ -13,3 +13,4 @@ user:
   only_host_code: 1 
   labels:
     test_type: ['regression']
+  sdx_type: [sdx_fast]

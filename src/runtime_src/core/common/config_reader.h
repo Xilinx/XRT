@@ -157,9 +157,9 @@ get_trace_buffer_size()
 }
 
 inline bool
-get_hal_profile()
+get_profile_api()
 {
-  static bool value = detail::get_bool_value("Debug.hal_profile", false);
+  static bool value = detail::get_bool_value("Debug.profile_api", false);
   return value;
 }
 

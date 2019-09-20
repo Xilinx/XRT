@@ -142,9 +142,42 @@ struct ProfileResults
   StreamTransferData* streamData;
 };
 
-
+/**
+ * int xclCreateProfileResults(xclDeviceHandle, ProfileResults**)
+ *     - Creates and initializes buffer for storing the ProfileResults from the device. 
+ *     - To use this API, "profile_api" configuration needs to be set to "true" in xrt.ini.
+ *       "profile_api=true" enables profiling (for profile counters on device) using XRT APIs (no OpenCL API)
+ *
+ * @xclDeviceHandle : Device handle
+ * @ProfileResults** : Double pointer to hold the pointer to buffer created to store profiling results (on success)
+ *                     This argument remains unchanged if xclCreateProfileResults fails.
+ * 
+ */ 
 XCL_DRIVER_DLLESPEC int xclCreateProfileResults(xclDeviceHandle, ProfileResults**);
+
+/**
+ * int xclGetProfileResults(xclDeviceHandle, ProfileResults*)
+ *     - Read the profiling counters from the hardware and populate profiling data in the “ProfileResults” structure (created using xclCreateProfileResults).
+ *     - To use this API, "profile_api" configuration needs to be set to "true" in xrt.ini.
+ *       "profile_api=true" enables profiling (for profile counters on device) using XRT APIs (no OpenCL API)
+ *
+ * @xclDeviceHandle : Device handle
+ * @ProfileResults* : Pointer to buffer to store profiling results. 
+ *                    This buffer should be created using previous call to "xclCreateProfileResults"
+ *
+ */ 
 XCL_DRIVER_DLLESPEC int xclGetProfileResults(xclDeviceHandle, ProfileResults*);
+
+/**
+ * int xclDestroyProfileResults(xclDeviceHandle, ProfileResults*)
+ *     - Traverse the given ProfileResults structure and delete the allocated memory
+ *     - To use this API, "profile_api" configuration needs to be set to "true" in xrt.ini.
+ *       "profile_api=true" enables profiling (for profile counters on device) using XRT APIs (no OpenCL API)
+ *
+ * @xclDeviceHandle : Device handle
+ * @ProfileResults* : Pointer to buffer to be deleted
+ *
+ */ 
 XCL_DRIVER_DLLESPEC int xclDestroyProfileResults(xclDeviceHandle, ProfileResults*);
 
 /**
