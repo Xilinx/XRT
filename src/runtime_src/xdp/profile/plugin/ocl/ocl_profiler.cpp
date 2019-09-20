@@ -620,7 +620,8 @@ namespace xdp {
       }
       xdp::xoclp::platform::device::data* info = &(itr->second);
       DeviceIntf* dInt = nullptr;
-      if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (Plugin->getFlowMode() == xdp::RTUtil::HW_EM && Plugin->getSystemDPAEmulation())) {
+      bool isHwEmu = Plugin->getFlowMode() == xdp::RTUtil::HW_EM;
+      if ((Plugin->getFlowMode() == xdp::RTUtil::DEVICE) || (isHwEmu && Plugin->getSystemDPAEmulation())) {
         dInt = &(itr->second.mDeviceIntf);
         dInt->setDevice(new xdp::XrtDevice(xdevice));
       }
@@ -668,15 +669,20 @@ namespace xdp {
             // detect if FIFO is full
             auto fifoProperty = dInt->getMonitorProperties(XCL_PERF_MON_FIFO, 0);
             auto fifoSize = RTUtil::getDevTraceBufferSize(fifoProperty);
-            if (numTracePackets >= fifoSize)
+            if (numTracePackets >= fifoSize && !isHwEmu)
               Plugin->sendMessage(FIFO_WARN_MSG);
           } else if (dInt->hasTs2mm()) {
             configureDDRTraceReader(dInt->getWordCountTs2mm());
+            uint64_t numTraceBytes = 0;
             while (!endLog) {
-              endLog = !(readTraceDataFromDDR(dInt, xdevice, info->mTraceVector));
+              auto readBytes = readTraceDataFromDDR(dInt, xdevice, info->mTraceVector);
+              endLog = readBytes != mTraceReadBufChunkSz;
               profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector, endLog);
+              numTraceBytes += readBytes;
               info->mTraceVector = {};
             }
+            if (numTraceBytes >= mDDRBufferSz)
+              Plugin->sendMessage(TS2MM_WARN_MSG_BUF_FULL);
           }
         } else {
           while(1) {
@@ -688,9 +694,9 @@ namespace xdp {
             profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector);
             info->mTraceVector.mLength= 0;
 
-// With new emulation support, is this required ?
+            // Required for older emualtion platforms
             // Only check repeatedly for trace buffer flush if HW emulation
-            if(Plugin->getFlowMode() != xdp::RTUtil::HW_EM)
+            if(!isHwEmu)
               break;
           }  // for HW Emu continue the loop
 
@@ -794,7 +800,7 @@ namespace xdp {
    * returns data as long as it's available
    * returns true if data equal to chunksize was read
    */
-  bool OCLProfiler::readTraceDataFromDDR(DeviceIntf* dIntf, xrt::device* xrtDevice, xclTraceResultsVector& traceVector)
+  uint64_t OCLProfiler::readTraceDataFromDDR(DeviceIntf* dIntf, xrt::device* xrtDevice, xclTraceResultsVector& traceVector)
   {
     if(mTraceReadBufOffset >= mTraceReadBufSz)
       return false;
@@ -802,13 +808,13 @@ namespace xdp {
     uint64_t nBytes = mTraceReadBufChunkSz;
     if((mTraceReadBufOffset + mTraceReadBufChunkSz) > mTraceReadBufSz)
       nBytes = mTraceReadBufSz - mTraceReadBufOffset;
-
     void* hostBuf = syncDeviceDDRToHostForTrace(xrtDevice, mTraceReadBufOffset, nBytes);
     if(hostBuf) {
       dIntf->parseTraceData(hostBuf, nBytes, traceVector);
       mTraceReadBufOffset += nBytes;
+      return nBytes;
     }
-    return ((nBytes == mTraceReadBufChunkSz) && hostBuf);
+    return 0;
   }
 
   void OCLProfiler::setTraceFooterString() {
