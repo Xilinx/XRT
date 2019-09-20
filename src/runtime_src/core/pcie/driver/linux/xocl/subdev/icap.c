@@ -839,7 +839,7 @@ static int calibrate_mig(struct icap *icap)
 {
 	int i;
 
-	for (i = 0; i < 10 && !mig_calibration_done(icap); ++i)
+	for (i = 0; i < 20 && !mig_calibration_done(icap); ++i)
 		msleep(500);
 
 	if (!mig_calibration_done(icap)) {

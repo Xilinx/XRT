@@ -1,0 +1,12 @@
+prefix=@XMA_INSTALL_DIR@
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include/xma2
+
+Name: libxma2api
+Description: Xilinx Media Accelerator-2 API
+Version: 2.0.1
+#Requires: libxml-2.0 >= 2.9.1 \
+#          xrt >= 2.1.0
+Libs: -L${libdir} -lxma2api
+Cflags: -I${includedir}
