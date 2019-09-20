@@ -1,11 +1,12 @@
 prefix=@XMA_INSTALL_DIR@
 exec_prefix=${prefix}
 libdir=${prefix}/lib
-includedir=${prefix}/include/xma2
+includedir1=${prefix}/include/xma2
+includedir2=${prefix}/include
 
 Name: libxma2plugin
 Description: Xilinx Media Accelerator-2 Plugin API
 Version: 2.0.1
 Requires:
 Libs: -L${libdir}  -lxma2plugin 
-Cflags: -I${includedir}
+Cflags: -I${includedir1} -I${includedir2}
