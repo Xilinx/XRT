@@ -174,6 +174,18 @@ public:
     throw std::runtime_error("is_aligned called on bad object");
   }
 
+  virtual bool
+  need_extra_sync() const
+  {
+    throw std::runtime_error("need_extra_sync called on bad object");
+  }
+
+  virtual void
+  set_extra_sync()
+  {
+    throw std::runtime_error("set_extra_sync called on bad object");
+  }
+
   virtual cl_mem_object_type
   get_type() const = 0;
 
@@ -537,7 +549,20 @@ public:
     return m_size;
   }
 
+  virtual void
+  set_extra_sync()
+  {
+    m_extra_sync = true;
+  }
+
+  virtual bool
+  need_extra_sync() const
+  {
+    return m_extra_sync;
+  }
+
 private:
+  bool m_extra_sync = false;
   bool m_aligned = false;
   size_t m_size = 0;
   void* m_host_ptr = nullptr;

@@ -14,7 +14,7 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
+
 
 
 #include "oclHelper.h"
@@ -92,7 +92,7 @@ int main(int argc, char** argv)
 
 	//Launch the Kernel
 
-	// Define iteration space 
+	// Define iteration space
 	size_t globalSize[3] = {1, 1, 1};
 	size_t localSize[3] = {1, 1, 1};
 	cl_event seq_complete;
@@ -138,8 +138,6 @@ int main(int argc, char** argv)
 	release(software);
 	release(hardware);
 
-	std::cout << "TEST " << (match ? "PASSED" : "FAILED") << std::endl; 
+	std::cout << "TEST " << (match ? "PASSED" : "FAILED") << std::endl;
 	return (match ? EXIT_SUCCESS :  EXIT_FAILURE);
 }
-
-// 67d7842dbbe25473c3c32b93c0da8047785f30d78e8a024de1b57352245f9689

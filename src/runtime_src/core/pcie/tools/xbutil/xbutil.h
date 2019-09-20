@@ -43,6 +43,8 @@
 #include <chrono>
 using Clock = std::chrono::high_resolution_clock;
 
+int xclUpdateSchedulerStat(xclDeviceHandle); // exposed by shim
+
 #define TO_STRING(x) #x
 #define AXI_FIREWALL
 
@@ -149,6 +151,15 @@ static const std::map<MEM_TYPE, std::string> memtype_map = {
 
 static const std::map<std::string, command> commandTable(map_pairs, map_pairs + sizeof(map_pairs) / sizeof(map_pairs[0]));
 
+static std::string lvl2PowerStr(unsigned int lvl)
+{
+    std::vector<std::string> powers{ "75W", "150W", "225W" };
+
+    if (lvl < powers.size())
+        return powers[lvl];
+
+    return "0W";
+}
 
 class device {
     unsigned int m_idx;
@@ -220,6 +231,18 @@ public:
         xclClose(m_handle);
     }
 
+    void
+    schedulerUpdateStat() const
+    {
+        try {
+          xclbin_lock lk(m_handle, m_idx);
+          xclUpdateSchedulerStat(m_handle);
+        }
+        catch (const std::exception&) {
+          // xclbin_lock failed, safe to ignore
+        }
+    }
+
     const char *name() const {
         return m_devinfo.mName;
     }
@@ -277,24 +300,46 @@ public:
         return 0;
     }
 
+    uint32_t parseComputeUnitStatus(const std::vector<std::string>& custat, uint32_t offset) const
+    {
+       if (custat.empty())
+          return 0;
+
+       std::stringstream ss;
+       ss << "0x" << std::hex << offset;
+       auto addr = ss.str();
+
+       for (auto& line : custat) {
+           auto pos = line.find(addr);
+           if (pos == std::string::npos)
+               continue;
+           pos = line.find("status : ");
+           if (pos == std::string::npos)
+             return 0;
+           return std::stoi(line.substr(pos + strlen("status : ")));
+       }
+
+       return 0;
+    }
+
     int parseComputeUnits(const std::vector<ip_data> &computeUnits) const
     {
-        char *skip_cu = std::getenv("XCL_SKIP_CU_READ");
+        if (!std::getenv("XCL_SKIP_CU_READ"))
+          schedulerUpdateStat();
 
-        for( unsigned int i = 0; i < computeUnits.size(); i++ ) {
-            boost::property_tree::ptree ptCu;
-            unsigned statusBuf = 0;
-            if (computeUnits.at( i ).m_type != IP_KERNEL)
+        std::vector<std::string> custat;
+        std::string errmsg;
+        pcidev::get_dev(m_idx)->sysfs_get("mb_scheduler", "kds_custat", errmsg, custat);
+          
+        for (unsigned int i = 0; i < computeUnits.size(); ++i) {
+            const auto& ip = computeUnits[i];
+            if (ip.m_type != IP_KERNEL)
                 continue;
-	    if (!skip_cu) {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-                xclRead(m_handle, XCL_ADDR_KERNEL_CTRL, computeUnits.at( i ).m_base_address, &statusBuf, 4);
-#pragma GCC diagnostic pop
-	    }
-            ptCu.put( "name",         computeUnits.at( i ).m_name );
-            ptCu.put( "base_address", computeUnits.at( i ).m_base_address );
-            ptCu.put( "status",       parseCUStatus( statusBuf ) );
+            uint32_t status = parseComputeUnitStatus(custat,ip.m_base_address);
+            boost::property_tree::ptree ptCu;
+            ptCu.put( "name",         ip.m_name );
+            ptCu.put( "base_address", ip.m_base_address );
+            ptCu.put( "status",       parseCUStatus( status ) );
             sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(i)), ptCu );
         }
         return 0;
@@ -450,6 +495,7 @@ public:
         int j = 0; // stream index
         int m = 0; // mem index
 
+        dev->sysfs_put( "", "mig_cache_update", errmsg, "1");
         for(int i = 0; i < map->m_count; i++) {
             if (map->m_mem_data[i].m_type == MEM_STREAMING || map->m_mem_data[i].m_type == MEM_STREAMING_CONNECTION) {
                 std::string lname, status = "Inactive", total = "N/A", pending = "N/A";
@@ -642,10 +688,10 @@ public:
     {
         std::stringstream ss;
         std::string errmsg;
-        std::vector<char> buf;
+        std::vector<std::string> custat;
 
-        pcidev::get_dev(m_idx)->sysfs_get("mb_scheduler",
-            "kds_custat", errmsg, buf);
+        schedulerUpdateStat();
+        pcidev::get_dev(m_idx)->sysfs_get("mb_scheduler", "kds_custat", errmsg, custat);
 
         if (!errmsg.empty()) {
             ss << errmsg << std::endl;
@@ -653,9 +699,13 @@ public:
             return;
         }
 
-        if (buf.size()) {
+        if (custat.size())
           ss << "\nCompute Unit Usage:" << "\n";
-          ss << buf.data() << "\n";
+
+        for (auto& line : custat) {
+          auto pos = line.find(" status :");
+          if (pos != std::string::npos)
+            ss << line.substr(0,line.find(" status :")) << "\n";
         }
 
         ss << std::setw(80) << std::setfill('#') << std::left << "\n";
@@ -665,7 +715,8 @@ public:
     int readSensors( void ) const
     {
         // board info
-        std::string name, vendor, device, subsystem, subvendor, xmc_ver, ser_num, bmc_ver, idcode, fpga, dna, errmsg;
+        std::string name, vendor, device, subsystem, subvendor, xmc_ver,
+            ser_num, bmc_ver, idcode, fpga, dna, errmsg, max_power;
         int ddr_size = 0, ddr_count = 0, pcie_speed = 0, pcie_width = 0, p2p_enabled = 0;
         std::vector<std::string> clock_freqs;
         std::vector<std::string> dma_threads;
@@ -678,6 +729,7 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "", "subsystem_vendor",      errmsg, subvendor );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "version",            errmsg, xmc_ver );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "serial_num",         errmsg, ser_num );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "max_power",          errmsg, max_power );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "bmc_ver",            errmsg, bmc_ver );
         pcidev::get_dev(m_idx)->sysfs_get("rom", "ddr_bank_size",       errmsg, ddr_size);
         pcidev::get_dev(m_idx)->sysfs_get( "rom", "ddr_bank_count_max", errmsg, ddr_count );
@@ -697,6 +749,7 @@ public:
         sensor_tree::put( "board.info.subvendor",      subvendor );
         sensor_tree::put( "board.info.xmcversion",     xmc_ver );
         sensor_tree::put( "board.info.serial_number",  ser_num );
+        sensor_tree::put( "board.info.max_power",      lvl2PowerStr(stoi(max_power)) );
         sensor_tree::put( "board.info.sc_version",     bmc_ver );
         sensor_tree::put( "board.info.ddr_size",       GB(ddr_size)*ddr_count );
         sensor_tree::put( "board.info.ddr_count",      ddr_count );

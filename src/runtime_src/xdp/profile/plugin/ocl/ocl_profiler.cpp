@@ -655,20 +655,23 @@ namespace xdp {
           binary_name = device->get_xclbin().project_name();
 
         if (dInt) {    // HW Device flow
+          bool endLog = false;
           if (dInt->hasFIFO()) {
+            uint32_t numTracePackets = 0;
+            while (!endLog) {
               dInt->readTrace(type, info->mTraceVector);
-              if (info->mTraceVector.mLength) {
-                profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector);
-                // detect if FIFO is full
-                auto fifoProperty = Plugin->getProfileSlotProperties(XCL_PERF_MON_FIFO, device_name, 0);
-                auto fifoSize = RTUtil::getDevTraceBufferSize(fifoProperty);
-                if (info->mTraceVector.mLength >= fifoSize)
-                  Plugin->sendMessage(FIFO_WARN_MSG);
-              }
-              info->mTraceVector.mLength= 0;
+              endLog = info->mTraceVector.mLength == 0;
+              profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector, endLog);
+              numTracePackets += info->mTraceVector.mLength;
+              info->mTraceVector = {};
+            }
+            // detect if FIFO is full
+            auto fifoProperty = dInt->getMonitorProperties(XCL_PERF_MON_FIFO, 0);
+            auto fifoSize = RTUtil::getDevTraceBufferSize(fifoProperty);
+            if (numTracePackets >= fifoSize)
+              Plugin->sendMessage(FIFO_WARN_MSG);
           } else if (dInt->hasTs2mm()) {
             configureDDRTraceReader(dInt->getWordCountTs2mm());
-            bool endLog = false;
             while (!endLog) {
               endLog = !(readTraceDataFromDDR(dInt, xdevice, info->mTraceVector));
               profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector, endLog);
@@ -717,6 +720,7 @@ namespace xdp {
       xrtDevice->sync(mDDRBufferForTrace, mDDRBufferSz, 0, xrt::hal::device::direction::HOST2DEVICE, false);
     } catch (const std::exception& ex) {
       std::cerr << ex.what() << std::endl;
+      xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_ALLOC_FAIL);
       return false;
     }
     // Data Mover will write input stream to this address
@@ -796,7 +800,7 @@ namespace xdp {
       dIntf->parseTraceData(hostBuf, nBytes, traceVector);
       mTraceReadBufOffset += nBytes;
     }
-    return (nBytes == (mTraceReadBufChunkSz && hostBuf));
+    return ((nBytes == mTraceReadBufChunkSz) && hostBuf);
   }
 
   void OCLProfiler::setTraceFooterString() {

@@ -28,7 +28,13 @@ void
 validOrError(const cl_mem);
 
 void
+validOrErrorWithHostBuffer(const cl_mem mem);
+
+void
 validOrError(const std::vector<cl_mem>& mem_objects);
+
+void
+validOrErrorWithHostBuffer(const std::vector<cl_mem>& mem_objects);
 
 void
 validOrError(const cl_mem, size_t offset, size_t size);
@@ -50,7 +56,6 @@ validOrError(cl_mem_flags flags);
 
 void
 validHostPtrOrError(cl_mem_flags flags, const void* hostptr);
-
 
 } // memory
 

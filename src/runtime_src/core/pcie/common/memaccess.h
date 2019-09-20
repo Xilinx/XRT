@@ -99,7 +99,7 @@ namespace xcldev {
     struct mem_bank_t {
       uint64_t m_base_address;
       uint64_t m_size;
-      int m_index; 
+      int m_index;
       mem_bank_t (uint64_t aAddr, uint64_t aSize, int aIndex) : m_base_address(aAddr), m_size(aSize), m_index(aIndex) {}
     };
 
@@ -177,7 +177,7 @@ namespace xcldev {
         //std::cout << "Reading from addr " << std::hex << phy << " aSize = " << std::hex << incr << std::dec << std::endl;
         if (xclUnmgdPread(mHandle, 0, buf, incr, phy) < 0) {
           //error
-          std::cout << "Error (" << strerror (errno) << ") reading 0x" << std::hex << incr << " bytes from DDR at offset 0x" << std::hex << phy << std::dec << "\n";
+          std::cout << "Error (" << strerror (errno) << ") reading 0x" << std::hex << incr << " bytes from DDR/HBM/PLRAM at offset 0x" << std::hex << phy << std::dec << "\n";
           free(buf);
           return -1;
         }
@@ -198,7 +198,7 @@ namespace xcldev {
       return count;
     }
 
-    int runDMATest(size_t blocksize, unsigned int aPattern) 
+    int runDMATest(size_t blocksize, unsigned int aPattern)
     {
         int result = 0;
         std::vector<mem_bank_t> mems;
@@ -210,7 +210,7 @@ namespace xcldev {
         }
 
         for(const auto& itr : mems) {
-            if( writeBank(itr.m_base_address, itr.m_size, aPattern) == -1) 
+            if( writeBank(itr.m_base_address, itr.m_size, aPattern) == -1)
                 return -1;
             result = readCompare(itr.m_base_address, itr.m_size, aPattern, false);
             if(result < 0)
@@ -222,7 +222,7 @@ namespace xcldev {
 
         }
 
-        
+
         return result;
     }
 
@@ -321,11 +321,11 @@ namespace xcldev {
       }
 
       if (bankcnt > 1) {
-        std::cout << "INFO: Reading " << std::dec << size << " bytes from DDR address 0x"  << std::hex << startAddr
+        std::cout << "INFO: Reading " << std::dec << size << " bytes from DDR/HBM/PLRAM address 0x"  << std::hex << startAddr
                                     << " straddles " << bankcnt << " banks" << std::dec << std::endl;
       }
       else {
-        std::cout << "INFO: Reading from single bank, " << std::dec << size << " bytes from DDR address 0x"  << std::hex << startAddr
+        std::cout << "INFO: Reading from single bank, " << std::dec << size << " bytes from DDR/HBM/PLRAM address 0x"  << std::hex << startAddr
                                     << std::dec << std::endl;
       }
       std::ofstream outFile(aFilename, std::ofstream::out | std::ofstream::binary);
@@ -411,7 +411,7 @@ namespace xcldev {
         //std::cout << "Reading from addr " << std::hex << phy << " size = " << std::hex << incr << std::dec << std::endl;
         if (xclUnmgdPread(mHandle, 0, buf, incr, phy) < 0) {
           //error
-          std::cout << "Error (" << strerror (errno) << ") reading 0x" << std::hex << incr << " bytes from DDR at offset 0x" << std::hex << phy << std::dec << "\n";
+          std::cout << "Error (" << strerror (errno) << ") reading 0x" << std::hex << incr << " bytes from DDR/HBM/PLRAM at offset 0x" << std::hex << phy << std::dec << "\n";
           free(buf);
           free(bufPattern);
           return -1;
@@ -455,7 +455,7 @@ namespace xcldev {
 
       // Use plain POSIX open/pwrite/close.
 
-      std::cout << "INFO: Writing DDR with " << std::dec << size << " bytes of pattern: 0x"
+      std::cout << "INFO: Writing DDR/HBM/PLRAM with " << std::dec << size << " bytes of pattern: 0x"
          << std::hex << aPattern << " from address 0x" <<std::hex << aStartAddr << std::endl;
 
       unsigned long long count = size;
@@ -466,7 +466,7 @@ namespace xcldev {
         //std::cout << "Writing to addr " << std::hex << phy << " size = " << std::hex << incr << std::dec << std::endl;
         if (xclUnmgdPwrite(mHandle, 0, buf, incr, phy) < 0) {
           //error
-          std::cout << "Error (" << strerror (errno) << ") writing 0x" << std::hex << incr << " bytes to DDR at offset 0x" << std::hex << phy << std::dec << "\n";
+          std::cout << "Error (" << strerror (errno) << ") writing 0x" << std::hex << incr << " bytes to DDR/HBM/PLRAM at offset 0x" << std::hex << phy << std::dec << "\n";
           free(buf);
           return -1;
         }
@@ -497,11 +497,11 @@ namespace xcldev {
       }
 
       if (bankcnt > 1) {
-        std::cout << "INFO: Writing " << std::dec << size << " bytes from DDR address 0x"  << std::hex << startAddr
+        std::cout << "INFO: Writing " << std::dec << size << " bytes from DDR/HBM/PLRAM address 0x"  << std::hex << startAddr
                                     << " straddles " << bankcnt << " banks" << std::dec << std::endl;
       }
       else {
-        std::cout << "INFO: Writing to single bank, " << std::dec << size << " bytes from DDR address 0x"  << std::hex << startAddr
+        std::cout << "INFO: Writing to single bank, " << std::dec << size << " bytes from DDR/HBM/PLRAM address 0x"  << std::hex << startAddr
                                     << std::dec << std::endl;
       }
       for(auto it = startbank; it!=vec_banks.end(); ++it) {
@@ -543,7 +543,7 @@ namespace xcldev {
       size = endAddr-aStartAddr;
 
       // Use plain POSIX open/pwrite/close.
-      std::cout << "INFO: Writing DDR with " << size << " bytes from file, "
+      std::cout << "INFO: Writing DDR/HBM/PLRAM with " << size << " bytes from file, "
                 << " from address 0x" << std::hex << aStartAddr << std::dec << std::endl;
 
       unsigned long long count = size;
@@ -553,7 +553,7 @@ namespace xcldev {
         incr = (count >= blockSize) ? blockSize : count;
         if (xclUnmgdPwrite(mHandle, 0, buf, incr, phy) < 0) {
           //error
-          std::cout << "Error (" << strerror (errno) << ") writing 0x" << std::hex << incr << " bytes to DDR at offset 0x" << phy << std::dec << std::endl;
+          std::cout << "Error (" << strerror (errno) << ") writing 0x" << std::hex << incr << " bytes to DDR/HBM/PLRAM at offset 0x" << phy << std::dec << std::endl;
           free(buf);
           return -1;
         }
@@ -583,14 +583,6 @@ namespace xcldev {
         endAddr = aSize == 0 ? mDDRSize : aStartAddr + aSize;
         size = endAddr-aStartAddr;
 
-        // Use plain POSIX open/pwrite/close.
-
-        //std::cout << "INFO: Writing DDR with " << std::dec << size << " bytes of pattern: 0x"
-           //<< std::hex << aPattern << " from address 0x" <<std::hex << aStartAddr << std::endl;
-
-        //char temp = aPattern;
-        //std::cout << "INFO: Pattern char is: " << temp << std::endl;
-
         unsigned long long count = size;
         uint64_t incr;
         std::memset(buf, aPattern, blockSize);
@@ -599,7 +591,7 @@ namespace xcldev {
           //std::cout << "Writing to addr " << std::hex << phy << " size = " << std::hex << incr << std::dec << std::endl;
           if (xclUnmgdPwrite(mHandle, 0, buf, incr, phy) < 0) {
             //error
-            std::cout << "Error (" << strerror (errno) << ") writing 0x" << std::hex << incr << " bytes to DDR at offset 0x" << std::hex << phy << std::dec << "\n";
+            std::cout << "Error (" << strerror (errno) << ") writing 0x" << std::hex << incr << " bytes to DDR/HBM/PLRAM at offset 0x" << std::hex << phy << std::dec << "\n";
             return -1;
           }
           count -= incr;
@@ -616,4 +608,3 @@ namespace xcldev {
 }
 
 #endif /* MEMACCESS_H */
-

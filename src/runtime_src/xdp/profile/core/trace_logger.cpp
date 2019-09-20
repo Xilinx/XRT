@@ -499,7 +499,7 @@ namespace xdp {
   void TraceLogger::logDeviceTrace(const std::string& deviceName, const std::string& binaryName,
       xclPerfMonType type, xclTraceResultsVector& traceVector, bool endLog) {
     auto tp = mTraceParserHandle;
-    if (tp == NULL || traceVector.mLength == 0)
+    if (tp == NULL || (traceVector.mLength == 0 && endLog == false))
       return;
 
     std::lock_guard<std::mutex> lock(mLogMutex);

@@ -15,8 +15,12 @@
  */
 
 #include "traceFunnel.h"
-#include<chrono>
+#include <chrono>
+#include <thread>
 #include <unistd.h>
+
+#define TRACE_FUNNEL_SW_TRACE    0x0
+#define TRACE_FUNNEL_SW_RESET    0xc
 
 namespace xdp {
 
@@ -27,7 +31,7 @@ TraceFunnel::TraceFunnel(Device* handle /** < [in] the xrt or hal device handle 
       major_version(0),
       minor_version(0)
 {
-    if(data) {
+    if (data) {
         properties = data->m_properties;
         major_version = data->m_major;
         minor_version = data->m_minor;
@@ -39,33 +43,25 @@ size_t TraceFunnel::initiateClockTraining()
     size_t size = 0;
     uint32_t regValue = 0;    
 
-
     for(int i = 0; i < 2 ; i++) {
- // Get host timestamp to write to APM
- // IMPORTANT NOTE: this *must* be compatible with the method of generating
- // timestamps as defined in RTProfile::getTraceTime()
-// uint64_t shim::getHostTraceTimeNsec() {
-   using namespace std::chrono;
-   typedef duration<uint64_t, std::ratio<1, 1000000000>> duration_ns;
-   duration_ns time_span =
-       duration_cast<duration_ns>(high_resolution_clock::now().time_since_epoch());
-   uint64_t hostTimeStamp = time_span.count();
-// }
-
-   regValue = static_cast <uint32_t> (hostTimeStamp & 0xFFFF);
-   size += write(0, 4, &regValue);
-   regValue = static_cast <uint32_t> (hostTimeStamp >> 16 & 0xFFFF);
-   size += write(0, 4, &regValue);
-   regValue = static_cast <uint32_t> (hostTimeStamp >> 32 & 0xFFFF);
-   size += write(0, 4, &regValue);
-   regValue = static_cast <uint32_t> (hostTimeStamp >> 48 & 0xFFFF);
-   size += write(0, 4, &regValue);
-   usleep(10);  // Linux specific
-    }
-
+      uint64_t hostTimeStamp = getDevice()->getTraceTime();
+      regValue = static_cast <uint32_t> (hostTimeStamp & 0xFFFF);
+      size += write(TRACE_FUNNEL_SW_TRACE, 4, &regValue);
+      regValue = static_cast <uint32_t> (hostTimeStamp >> 16 & 0xFFFF);
+      size += write(TRACE_FUNNEL_SW_TRACE, 4, &regValue);
+      regValue = static_cast <uint32_t> (hostTimeStamp >> 32 & 0xFFFF);
+      size += write(TRACE_FUNNEL_SW_TRACE, 4, &regValue);
+      regValue = static_cast <uint32_t> (hostTimeStamp >> 48 & 0xFFFF);
+      size += write(TRACE_FUNNEL_SW_TRACE, 4, &regValue);
+      std::this_thread::sleep_for(std::chrono::microseconds(10));
+   }
     return size;
+}
 
-
+void TraceFunnel::reset()
+{
+    uint32_t regValue = 0x1;
+    write(TRACE_FUNNEL_SW_RESET, 4, &regValue);
 }
 
 void TraceFunnel::showProperties()
@@ -74,7 +70,6 @@ void TraceFunnel::showProperties()
     (*outputStream) << " TraceFunnel " << std::endl;
     ProfileIP::showProperties();
 }
-
 
 }   // namespace xdp
 

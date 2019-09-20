@@ -18,19 +18,17 @@
  * Embedded runtime scheduler
  */
 
-#ifndef ERT_HW_EMU
 #include "core/include/ert.h"
-#else
-#include "ert.h"
-#endif
 // includes from bsp
 #ifndef ERT_HW_EMU
 #include <xil_printf.h>
 #include <mb_interface.h>
 #include <xparameters.h>
 #else
+#include <stdio.h>
 #define xil_printf printf
 #define print printf
+#define u32 uint32_t
 #endif
 #include <stdlib.h>
 #include <limits>
@@ -46,7 +44,7 @@ ERT_UNUSED
 static void
 ert_assert(const char* file, long line, const char* function, const char* expr, const char* msg)
 {
-  xil_printf("Assert failed: %s:%d:%s:%s %s\n",file,line,function,expr,msg);
+  xil_printf("Assert failed: %s:%ld:%s:%s %s\n",file,line,function,expr,msg);
   exit(1);
 }
 
@@ -71,6 +69,17 @@ ert_assert(const char* file, long line, const char* function, const char* expr, 
 #else
 # define CTRL_DEBUG(msg)
 # define CTRL_DEBUGF(format,...)
+#endif
+
+#ifdef ERT_HW_EMU
+using addr_type = uint32_t;
+using value_type = uint32_t;
+
+extern value_type read_reg(addr_type addr);
+extern void write_reg(addr_type addr, value_type val);
+extern void microblaze_enable_interrupts();
+extern void microblaze_disable_interrupts();
+extern void reg_access_wait();
 #endif
 
 namespace ert {
@@ -211,6 +220,15 @@ struct bitset_type
   {
     auto mask = pos >> 5;
     return bitmasks[mask] & (1<<(pos - (mask << 5)));
+  }
+
+  size_type
+  count() const
+  {
+    size_type count = 0;
+    for (auto itr=bitmasks; itr!=bitmasks+masks; ++itr)
+      for (bitmask_type bm = *itr; bm; count += (bm & 0x1), bm>>=1);
+    return count;
   }
 
   // Return: true if no bits are set
@@ -886,7 +904,10 @@ configure_mb(size_type slot_idx)
   cdma_enabled = (features & 0x20)!=0;
   dataflow_enabled = (features & 0x40)!=0;
   cu_dma_52 = (features & 0x80000000)!=0;
-
+#ifdef ERT_HW_EMU
+  //Force new mechanism for latest emulation platforms
+  cu_dma_52 = 1;
+#endif
   // CU base address
   for (size_type i=0; i<num_cus; ++i) {
     u32 addr = read_reg(slot.slot_addr + 0x18 + (i<<2));
@@ -936,6 +957,13 @@ exit_mb(size_type slot_idx)
   return true;
 }
 
+// Gather ERT stats in ctrl command packet
+// [1  ]      : header
+// [1  ]      : number of cq slots
+// [1  ]      : number of cus
+// [#numcus]  : cu execution stats (number of executions)
+// [#numcus]  : cu status (1: running, 0: idle)
+// [#slots]   : command queue slot status
 static bool
 cu_stat(size_type slot_idx)
 {
@@ -943,10 +971,41 @@ cu_stat(size_type slot_idx)
   CTRL_DEBUGF("slot(%d) [new -> queued -> running]\n",slot_idx);
   CTRL_DEBUGF("cu_stat slot(%d) header=0x%x\n",slot_idx,slot.header_value);
 
+  // write stats to command package after header
+  size_type pkt_idx = 1; // after header
+
+  // number of cq slots
+  write_reg(slot.slot_addr + (pkt_idx++ << 2),num_slots);
+
+  // number of cus
+  write_reg(slot.slot_addr + (pkt_idx++ << 2),num_cus);
+  
+  // individual cu execution stat
   for (size_type i=0; i<num_cus; ++i) {
-    CTRL_DEBUGF("cu_usage[%d]=%d\n",i,cu_usage[i]);
-    write_reg(slot.slot_addr + 0x4 + (i<<2),cu_usage[i]);
+    CTRL_DEBUGF("cu_usage[0x%x]=%d\n",cu_idx_to_addr(i),cu_usage[i]);
+    write_reg(slot.slot_addr + (pkt_idx++ << 2),cu_usage[i]);
   }
+
+  // individual cu status
+  for (size_type i=0; i<num_cus; ++i) {
+    CTRL_DEBUGF("cu_staus[0x%x]=%d\n",cu_idx_to_addr(i),cu_status.test(i));
+    write_reg(slot.slot_addr + (pkt_idx++ << 2),cu_status.test(i));
+  }
+
+  // command slot status
+  for (size_type i=0; i<num_slots; ++i) {
+    auto& s = command_slots[i];
+    CTRL_DEBUGF("slot_status[%d]=%d\n",i,s.header_value & 0XF);
+    write_reg(slot.slot_addr + (pkt_idx++ << 2),s.header_value & 0XF);
+  }
+
+#if 0
+  // payload count
+  auto mask = 0X7FF << 12;  // [22-12]
+  slot.header_value = (slot.header_value & (~mask)) | (pkt_idx << 12);
+  CTRL_DEBUGF("cu_stat new header=0x%x\n",slot.header_value);
+  write_reg(slot.slot_addr, slot.header_value);
+#endif
 
   // notify host
   notify_host(slot_idx);
@@ -1153,13 +1212,7 @@ scheduler_loop()
       auto& slot = command_slots[slot_idx];
 
 #ifdef ERT_HW_EMU
-      if(sim_embedded_scheduler_sw_imp::getSchedularPtr()!=nullptr) {
-      sim_embedded_scheduler_sw_imp* sch=sim_embedded_scheduler_sw_imp::getSchedularPtr();
-        wait(sch->maxi_lite_mb_aclk.posedge_event());
-      } else {
-        sc_time t(1,SC_NS);
-        wait(t);
-      }
+      reg_access_wait();
 #endif
 
       // In dataflow mode ERT is polling CUs for completion after
@@ -1221,7 +1274,9 @@ scheduler_loop()
 /**
  * CU interrupt service routine
  */
+#ifndef ERT_HW_EMU
 void cu_interrupt_handler() __attribute__((interrupt_handler));
+#endif
 void
 cu_interrupt_handler()
 {
@@ -1273,6 +1328,23 @@ cu_interrupt_handler()
 }
 
 } // ert
+#ifdef ERT_HW_EMU
+#ifdef __cplusplus
+extern "C" {
+#endif
+void scheduler_loop() {
+    ert::scheduler_loop();
+}
+
+void cu_interrupt_handler() {
+    ert::cu_interrupt_handler();
+}
+
+#ifdef __cplusplus
+}
+#endif
+#endif
+
 #ifndef ERT_HW_EMU
 int main()
 {

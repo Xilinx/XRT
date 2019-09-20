@@ -60,8 +60,8 @@ validOrError(cl_command_queue        command_queue ,
     throw error(CL_INVALID_VALUE,"No mem objects specified");
 
   // CL_INVALID_MEM_OBJECT if any of the memory objects in mem_objs is
-  // not a valid memory object.
-  detail::memory::validOrError({mem_objects,mem_objects+num_mem_objects});
+  // not a valid memory object for migration.
+  detail::memory::validOrErrorWithHostBuffer({mem_objects,mem_objects+num_mem_objects});
 
   // CL_INVALID_VALUE if flags is not 0 or is not any of the values
   // described in the table above.

@@ -62,14 +62,14 @@ set_property PFM.AXI_PORT $parVal [get_bd_cells /interconnect_axilite_user_slr1]
 
 set hp3Val []
 for {set i 3} {$i < 16} {incr i} {
-  lappend hp3Val S[format %02d $i]_AXI {memport "S_AXI_HP" sptag "bank0" memory "interconnect_aximm_ddrmem2_M00_AXI HP3_DDR_LOW"}
+  lappend hp3Val S[format %02d $i]_AXI {memport "S_AXI_HP" sptag "bank0" memory "interconnect_aximm_ddrmem2_M00_AXI Reg"}
 }
 set_property PFM.AXI_PORT $hp3Val [get_bd_cells /interconnect_axifull_1_user_slr1]
 
 
 set hpc0Val []
 for {set i 2} {$i < 16} {incr i} {
-  lappend hpc0Val S[format %02d $i]_AXI {memport "S_AXI_HP" sptag "bank1" memory "interconnect_aximm_ddrmem3_M00_AXI HP0_DDR_LOW"}
+  lappend hpc0Val S[format %02d $i]_AXI {memport "S_AXI_HP" sptag "bank1" memory "interconnect_aximm_ddrmem3_M00_AXI Reg"}
 }
 set_property PFM.AXI_PORT $hpc0Val [get_bd_cells /interconnect_axifull_2_user_slr1]
 

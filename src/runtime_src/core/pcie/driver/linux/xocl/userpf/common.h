@@ -125,6 +125,9 @@ struct xocl_dev	{
 	void				*ulp_blob;
 
 	unsigned int			mbx_offset;
+
+	uint64_t			mig_cache_expire_secs;
+	ktime_t				mig_cache_expires;
 };
 
 /**
@@ -233,6 +236,8 @@ void get_pcie_link_info(struct xocl_dev	*xdev,
 	unsigned short *link_width, unsigned short *link_speed, bool is_cap);
 uint64_t xocl_get_data(struct xocl_dev *xdev, enum data_kind kind);
 int xocl_reclock(struct xocl_dev *xdev, void *data);
+
+void xocl_update_mig_cache(struct xocl_dev *xdev);
 
 static inline u64 xocl_pci_rebar_size_to_bytes(int size)
 {

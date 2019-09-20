@@ -75,4 +75,7 @@ static inline uint32_t zocl_convert_bo_uflags(uint32_t uflags)
 	return zflags;
 }
 
+struct drm_gem_object *
+zocl_gem_import(struct drm_device *dev, struct dma_buf *dma_buf);
+
 #endif /* _ZOCL_BO_H */

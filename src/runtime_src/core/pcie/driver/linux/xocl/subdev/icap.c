@@ -839,7 +839,7 @@ static int calibrate_mig(struct icap *icap)
 {
 	int i;
 
-	for (i = 0; i < 10 && !mig_calibration_done(icap); ++i)
+	for (i = 0; i < 20 && !mig_calibration_done(icap); ++i)
 		msleep(500);
 
 	if (!mig_calibration_done(icap)) {
@@ -2948,12 +2948,12 @@ static ssize_t sec_level_store(struct device *dev,
 	mutex_lock(&icap->icap_lock);
 
 	if (ICAP_PRIVILEGED(icap)) {
-		if (icap->sec_level != ICAP_SEC_SYSTEM) {
+		if (!efi_enabled(EFI_SECURE_BOOT)) {
 			icap->sec_level = val;
 		} else {
 			ICAP_ERR(icap,
-				"can't lower security level from system level");
-			ret = -EINVAL;
+				"security level is fixed in secure boot");
+			ret = -EROFS;
 		}
 #ifdef	KEY_DEBUG
 		icap_key_test(icap);
