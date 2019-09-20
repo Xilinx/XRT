@@ -190,9 +190,9 @@ static int bitstream_parse_header(const unsigned char *Data, unsigned int Size,
 }
 
 static int
-zocl_fpga_mgr_load(struct drm_device *ddev, char *data, int size)
+zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, char *data, int size)
 {
-	struct drm_zocl_dev *zdev = ddev->dev_private;
+	struct drm_device *ddev = zdev->ddev;
 	struct device *dev = ddev->dev;
 	struct fpga_manager *fpga_mgr = zdev->fpga_mgr;
 	struct fpga_image_info *info;
@@ -246,7 +246,9 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length)
 		return -EINVAL;
 	}
 
-	/* Byte swap bitstream data */
+	/*
+	 * Can we do this more efficiently by APIs from byteorder.h?
+	 */
 	data = buffer + bit_header.HeaderLength;
 	for (i = 0; i < bit_header.BitstreamLength ; i = i+4) {
 		temp = data[i];
@@ -269,8 +271,10 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length)
 		return -ENOMEM;
 	}
 
+	/* Freeze PR ISOLATION IP for bitstream download */
 	iowrite32(0x0, map);
-	err = zocl_fpga_mgr_load(zdev->ddev, data, bit_header.BitstreamLength);
+	err = zocl_fpga_mgr_load(zdev, data, bit_header.BitstreamLength);
+	/* Unfreeze PR ISOLATION IP */
 	iowrite32(0x3, map);
 
 	iounmap(map);
@@ -404,7 +408,7 @@ zocl_read_sect(enum axlf_section_kind kind, void *sect,
 	if (err) {
 		vfree(*sect_tmp);
 		sect = NULL;
-		return err;
+		return 0;
 	}
 
 	return size;
@@ -517,7 +521,7 @@ zocl_load_pdi(struct drm_device *ddev, void *data)
 
 	size = zocl_offsetof_sect(PDI, &section_buffer, axlf, xclbin);
 	if (size > 0) {
-		ret = zocl_fpga_mgr_load(ddev, section_buffer, size);
+		ret = zocl_fpga_mgr_load(zdev, section_buffer, size);
 	} else {
 		DRM_WARN("Found PDI Section but size is %lld", size);
 	}
@@ -526,6 +530,34 @@ zocl_load_pdi(struct drm_device *ddev, void *data)
 
 out:
 	write_unlock(&zdev->attr_rwlock);
+	return ret;
+}
+
+static int
+zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
+    char __user *xclbin, enum axlf_section_kind kind)
+{
+	uint64_t size = 0;
+	char *section_buffer = NULL;
+	int ret = 0;
+
+	size = zocl_read_sect(kind, &section_buffer, axlf, xclbin);
+	if (size == 0)
+		return -EINVAL;
+
+	switch (kind) {
+	case BITSTREAM:
+		ret = zocl_load_bitstream(zdev, section_buffer, size);
+		break;
+	case PDI:
+	case BITSTREAM_PARTIAL_PDI:
+		ret = zocl_fpga_mgr_load(zdev, section_buffer, size);
+		break;
+	default:
+		DRM_WARN("Unsupported load type %d", kind);
+	}
+	vfree(section_buffer);
+
 	return ret;
 }
 
@@ -542,7 +574,6 @@ zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 	size_t num_of_sections;
 	uint64_t size = 0;
 	int ret = 0;
-	char *section_buffer = NULL;
 
 	if (copy_from_user(&axlf_head, axlf_obj->za_xclbin_ptr, sizeof(struct axlf))) {
 		DRM_WARN("copy_from_user failed for za_xclbin_ptr");
@@ -588,44 +619,21 @@ zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 	/* For PR support platform, device-tree has configured addr */
 	if (zdev->pr_isolation_addr &&
 	    (axlf_obj->za_flags & DRM_ZOCL_AXLF_BITSTREAM)) {
-		size = zocl_read_sect(BITSTREAM, &section_buffer,
-		    axlf, xclbin);
-		if (size > 0) {
-			ret = zocl_load_bitstream(zdev, section_buffer, size);
-			vfree(section_buffer);
-			section_buffer = NULL;
-			if (ret)
-				goto out0;
-		} else if (size < 0) {
+		ret = zocl_load_sect(zdev, axlf, xclbin, BITSTREAM);
+		if (ret)
 			goto out0;
-		}
 	}
 
 	if (axlf_obj->za_flags & DRM_ZOCL_AXLF_BITSTREAM_PDI) {
-		size = zocl_read_sect(BITSTREAM_PARTIAL_PDI, &section_buffer,
-		    axlf, xclbin);
-		if (size > 0) {
-			ret = zocl_fpga_mgr_load(ddev, section_buffer, size);
-			vfree(section_buffer);
-			section_buffer = NULL;
-			if (ret)
-				goto out0;
-		} else if (size < 0) {
+		ret = zocl_load_sect(zdev, axlf, xclbin, BITSTREAM_PARTIAL_PDI);
+		if (ret)
 			goto out0;
-		}
 	}
 
 	if (axlf_obj->za_flags & DRM_ZOCL_AXLF_AIE_PDI) {
-		size = zocl_read_sect(PDI, &section_buffer, axlf, xclbin);
-		if (size > 0) {
-			ret = zocl_fpga_mgr_load(ddev, section_buffer, size);
-			vfree(section_buffer);
-			section_buffer = NULL;
-			if (ret)
-				goto out0;
-		} else if (size < 0) {
+		ret = zocl_load_sect(zdev, axlf, xclbin, PDI);
+		if (ret)
 			goto out0;
-		}
 	}
 
 	/* Populating IP_LAYOUT sections */
