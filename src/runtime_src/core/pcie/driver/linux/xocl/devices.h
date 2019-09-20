@@ -1198,6 +1198,7 @@ struct xocl_subdev_map {
 		.flags		= 0,					\
 		.subdev_info	= MGMT_RES_U2,				\
 		.subdev_num = ARRAY_SIZE(MGMT_RES_U2),			\
+		.flash_type = FLASH_TYPE_SPI,				\
 	}
 
 #define	MGMT_RES_6A8F							\
