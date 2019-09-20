@@ -55,13 +55,13 @@ set_property PFM_NAME "xilinx.com:xd:xilinx_zcu102_dynamic_5_1:5.1" [get_files p
 
 # Define AXI_PORT for AXI_LITE control
 set parVal []
-for {set i 3} {$i < 64} {incr i} {
+for {set i 1} {$i < 64} {incr i} {
   lappend parVal M[format %02d $i]_AXI {memport "M_AXI_GP"}
 }
 set_property PFM.AXI_PORT $parVal [get_bd_cells /interconnect_axilite_user_slr1]
 
 set hp3Val []
-for {set i 3} {$i < 16} {incr i} {
+for {set i 1} {$i < 16} {incr i} {
   lappend hp3Val S[format %02d $i]_AXI {memport "S_AXI_HP" sptag "bank0" memory "interconnect_aximm_ddrmem2_M00_AXI Reg"}
 }
 set_property PFM.AXI_PORT $hp3Val [get_bd_cells /interconnect_axifull_1_user_slr1]
@@ -72,6 +72,18 @@ for {set i 1} {$i < 16} {incr i} {
   lappend hpc0Val S[format %02d $i]_AXI {memport "S_AXI_HP" sptag "bank1" memory "interconnect_aximm_ddrmem3_M00_AXI Reg"}
 }
 set_property PFM.AXI_PORT $hpc0Val [get_bd_cells /interconnect_axifull_2_user_slr1]
+
+set hp1Val []
+for {set i 1} {$i < 16} {incr i} {
+  lappend hp1Val S[format %02d $i]_AXI {memport "S_AXI_HP" sptag "bank0" memory "interconnect_aximm_ddrmem4_M00_AXI Reg"}
+}
+set_property PFM.AXI_PORT $hp1Val [get_bd_cells /axi_interconnect_0]
+
+set hp2Val []
+for {set i 1} {$i < 16} {incr i} {
+  lappend hp2Val S[format %02d $i]_AXI {memport "S_AXI_HP" sptag "bank0" memory "interconnect_aximm_ddrmem5_M00_AXI Reg"}
+}
+set_property PFM.AXI_PORT $hp1Val [get_bd_cells /axi_interconnect_1]
 
 set hpm0Val []
 for {set i 1} {$i < 64} {incr i} {
