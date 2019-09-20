@@ -543,7 +543,7 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
 
 	size = zocl_read_sect(kind, &section_buffer, axlf, xclbin);
 	if (size == 0)
-		return -EINVAL;
+		return 0;
 
 	switch (kind) {
 	case BITSTREAM:
