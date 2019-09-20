@@ -124,6 +124,7 @@ set bCheckIPs 1
 if { $bCheckIPs == 1 } {
    set list_check_ips "\ 
 xilinx.com:ip:axi_gpio:*\
+xilinx.com:ip:axi_mmu:*\
 xilinx.com:ip:axi_vip:*\
 xilinx.com:ip:debug_bridge:*\
 xilinx.com:ip:axi_register_slice:*\
@@ -495,6 +496,20 @@ proc create_root_design { parentCell } {
 
   # Create instance: axi_gpio_null, and set properties
   set axi_gpio_null [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_gpio axi_gpio_null ]
+
+  # Create instance: axi_mmu_2, and set properties
+  set axi_mmu_2 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_mmu axi_mmu_2 ]
+  set_property -dict [ list \
+   CONFIG.D000_ADDR_WIDTH {32} \
+   CONFIG.ID_WIDTH {6} \
+ ] $axi_mmu_2
+
+  # Create instance: axi_mmu_3, and set properties
+  set axi_mmu_3 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_mmu axi_mmu_3 ]
+  set_property -dict [ list \
+   CONFIG.D000_ADDR_WIDTH {32} \
+   CONFIG.ID_WIDTH {6} \
+ ] $axi_mmu_3
 
   # Create instance: axi_interconnect_hpm0fpd, and set properties
   set axi_interconnect_hpm0fpd [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect axi_interconnect_hpm0fpd ]
@@ -901,14 +916,16 @@ proc create_root_design { parentCell } {
 
   # Create interface connections
   connect_bd_intf_net -intf_net S_AXI_0_1 [get_bd_intf_ports regslice_data_periph_M_AXI] [get_bd_intf_pins axi_vip_0/S_AXI]
+  connect_bd_intf_net -intf_net axi_mmu_0_M_AXI [get_bd_intf_ports interconnect_aximm_ddrmem3_M00_AXI] [get_bd_intf_pins axi_mmu_3/M_AXI]
+  connect_bd_intf_net -intf_net axi_mmu_2_M_AXI [get_bd_intf_ports interconnect_aximm_ddrmem2_M00_AXI] [get_bd_intf_pins axi_mmu_2/M_AXI]
   connect_bd_intf_net -intf_net axi_interconnect_0_M00_AXI [get_bd_intf_pins axi_interconnect_hpm0fpd/M00_AXI] [get_bd_intf_pins axi_register_slice_hpm0fpd/S_AXI]
   connect_bd_intf_net -intf_net axi_vip_0_M_AXI [get_bd_intf_pins axi_vip_0/M_AXI] [get_bd_intf_pins regslice_periph_null/S_AXI]
   connect_bd_intf_net -intf_net axi_vip_1_M_AXI [get_bd_intf_pins axi_interconnect_hpm0fpd/S00_AXI] [get_bd_intf_pins axi_vip_hpm0fpd/M_AXI]
   connect_bd_intf_net -intf_net axi_vip_2_M_AXI [get_bd_intf_pins axi_vip_2/M_AXI] [get_bd_intf_pins interconnect_axifull_1_user_slr1/S00_AXI]
   connect_bd_intf_net -intf_net axi_vip_3_M_AXI [get_bd_intf_pins axi_vip_3/M_AXI] [get_bd_intf_pins interconnect_axifull_2_user_slr1/S00_AXI]
   connect_bd_intf_net -intf_net axi_vip_ctrl_userpf_M_AXI [get_bd_intf_pins axi_vip_ctrl_userpf/M_AXI] [get_bd_intf_pins interconnect_axilite_user_slr1/S00_AXI]
-  connect_bd_intf_net -intf_net interconnect_axifull_1_user_slr1_M00_AXI [get_bd_intf_ports interconnect_aximm_ddrmem2_M00_AXI] [get_bd_intf_pins interconnect_axifull_1_user_slr1/M00_AXI]
-  connect_bd_intf_net -intf_net interconnect_axifull_2_user_slr1_M00_AXI [get_bd_intf_ports interconnect_aximm_ddrmem3_M00_AXI] [get_bd_intf_pins interconnect_axifull_2_user_slr1/M00_AXI]
+  connect_bd_intf_net -intf_net interconnect_axifull_1_user_slr1_M00_AXI [get_bd_intf_pins axi_mmu_2/S_AXI] [get_bd_intf_pins interconnect_axifull_1_user_slr1/M00_AXI]
+  connect_bd_intf_net -intf_net interconnect_axifull_2_user_slr1_M00_AXI [get_bd_intf_pins axi_mmu_3/S_AXI] [get_bd_intf_pins interconnect_axifull_2_user_slr1/M00_AXI]
   connect_bd_intf_net -intf_net interconnect_axilite_user_M00_AXI [get_bd_intf_pins axi_gpio_null/S_AXI] [get_bd_intf_pins interconnect_axilite_user_slr1/M00_AXI]
   connect_bd_intf_net -intf_net interconnect_axilite_user_slr1_M01_AXI [get_bd_intf_pins interconnect_axilite_user_slr1/M01_AXI] [get_bd_intf_pins v_frmbuf_rd_0/s_axi_CTRL]
   connect_bd_intf_net -intf_net interconnect_axilite_user_slr1_M02_AXI [get_bd_intf_pins interconnect_axilite_user_slr1/M02_AXI] [get_bd_intf_pins v_frmbuf_wr_0/s_axi_CTRL]
@@ -920,7 +937,7 @@ proc create_root_design { parentCell } {
 
   # Create port connections
   connect_bd_net -net ARESETN_1 [get_bd_pins axi_gpio_null/s_axi_aresetn] [get_bd_pins axi_vip_0/aresetn] [get_bd_pins interconnect_axilite_user_slr1/ARESETN] [get_bd_pins interconnect_axilite_user_slr1/M00_ARESETN] [get_bd_pins interconnect_axilite_user_slr1/S00_ARESETN] [get_bd_pins regslice_periph_null/aresetn] [get_bd_pins reset_controllers/psreset_gate_pr_control_interconnect_aresetn]
-  connect_bd_net -net M01_ACLK_1 [get_bd_ports clkwiz_kernel_clk_out1] [get_bd_pins axi_interconnect_hpm0fpd/ACLK] [get_bd_pins axi_interconnect_hpm0fpd/M00_ACLK] [get_bd_pins axi_interconnect_hpm0fpd/S00_ACLK] [get_bd_pins axi_register_slice_hpm0fpd/aclk] [get_bd_pins axi_vip_2/aclk] [get_bd_pins axi_vip_3/aclk] [get_bd_pins axi_vip_hpm0fpd/aclk] [get_bd_pins interconnect_axifull_1_user_slr1/ACLK] [get_bd_pins interconnect_axifull_1_user_slr1/M00_ACLK] [get_bd_pins interconnect_axifull_1_user_slr1/S00_ACLK] [get_bd_pins interconnect_axifull_1_user_slr1/S01_ACLK] [get_bd_pins interconnect_axifull_1_user_slr1/S02_ACLK] [get_bd_pins interconnect_axifull_2_user_slr1/ACLK] [get_bd_pins interconnect_axifull_2_user_slr1/M00_ACLK] [get_bd_pins interconnect_axifull_2_user_slr1/S00_ACLK] [get_bd_pins interconnect_axilite_user_slr1/M01_ACLK] [get_bd_pins interconnect_axilite_user_slr1/M02_ACLK] [get_bd_pins reset_controllers/clkwiz_kernel_clk_out1] [get_bd_pins v_frmbuf_rd_0/ap_clk] [get_bd_pins v_frmbuf_wr_0/ap_clk]
+  connect_bd_net -net M01_ACLK_1 [get_bd_ports clkwiz_kernel_clk_out1] [get_bd_pins axi_mmu_2/aclk] [get_bd_pins axi_mmu_3/aclk] [get_bd_pins axi_interconnect_hpm0fpd/ACLK] [get_bd_pins axi_interconnect_hpm0fpd/M00_ACLK] [get_bd_pins axi_interconnect_hpm0fpd/S00_ACLK] [get_bd_pins axi_register_slice_hpm0fpd/aclk] [get_bd_pins axi_vip_2/aclk] [get_bd_pins axi_vip_3/aclk] [get_bd_pins axi_vip_hpm0fpd/aclk] [get_bd_pins interconnect_axifull_1_user_slr1/ACLK] [get_bd_pins interconnect_axifull_1_user_slr1/M00_ACLK] [get_bd_pins interconnect_axifull_1_user_slr1/S00_ACLK] [get_bd_pins interconnect_axifull_1_user_slr1/S01_ACLK] [get_bd_pins interconnect_axifull_1_user_slr1/S02_ACLK] [get_bd_pins interconnect_axifull_2_user_slr1/ACLK] [get_bd_pins interconnect_axifull_2_user_slr1/M00_ACLK] [get_bd_pins interconnect_axifull_2_user_slr1/S00_ACLK] [get_bd_pins interconnect_axilite_user_slr1/M01_ACLK] [get_bd_pins interconnect_axilite_user_slr1/M02_ACLK] [get_bd_pins reset_controllers/clkwiz_kernel_clk_out1] [get_bd_pins v_frmbuf_rd_0/ap_clk] [get_bd_pins v_frmbuf_wr_0/ap_clk]
   connect_bd_net -net bscanid_en_1 [get_bd_ports bscanid_en] [get_bd_pins debug_bridge_xsdbm/S_BSCAN_bscanid_en]
   connect_bd_net -net capture_1 [get_bd_ports capture] [get_bd_pins debug_bridge_xsdbm/S_BSCAN_capture]
   connect_bd_net -net dcm_locked_1 [get_bd_ports clkwiz_kernel_locked] [get_bd_pins reset_controllers/clkwiz_kernel_locked]
@@ -932,7 +949,7 @@ proc create_root_design { parentCell } {
   connect_bd_net -net interrupt_concat_xlconcat_interrupt_dout [get_bd_ports xlconcat_interrupt_dout] [get_bd_pins interrupt_concat/xlconcat_interrupt_dout]
   connect_bd_net -net logic_reset_op_Res_1 [get_bd_ports clkwiz_sysclks_locked] [get_bd_pins reset_controllers/clkwiz_sysclks_locked]
   connect_bd_net -net reset_1 [get_bd_ports reset] [get_bd_pins debug_bridge_xsdbm/S_BSCAN_reset]
-  connect_bd_net -net reset_controllers_interconnect_aresetn [get_bd_pins axi_interconnect_hpm0fpd/ARESETN] [get_bd_pins axi_interconnect_hpm0fpd/M00_ARESETN] [get_bd_pins axi_interconnect_hpm0fpd/S00_ARESETN] [get_bd_pins axi_register_slice_hpm0fpd/aresetn] [get_bd_pins axi_vip_2/aresetn] [get_bd_pins axi_vip_3/aresetn] [get_bd_pins axi_vip_hpm0fpd/aresetn] [get_bd_pins interconnect_axifull_1_user_slr1/ARESETN] [get_bd_pins interconnect_axifull_1_user_slr1/M00_ARESETN] [get_bd_pins interconnect_axifull_1_user_slr1/S00_ARESETN] [get_bd_pins interconnect_axifull_1_user_slr1/S01_ARESETN] [get_bd_pins interconnect_axifull_1_user_slr1/S02_ARESETN] [get_bd_pins interconnect_axifull_2_user_slr1/ARESETN] [get_bd_pins interconnect_axifull_2_user_slr1/M00_ARESETN] [get_bd_pins interconnect_axifull_2_user_slr1/S00_ARESETN] [get_bd_pins interconnect_axilite_user_slr1/M01_ARESETN] [get_bd_pins interconnect_axilite_user_slr1/M02_ARESETN] [get_bd_pins reset_controllers/psreset_gate_pr_kernel_interconnect_aresetn] [get_bd_pins v_frmbuf_rd_0/ap_rst_n] [get_bd_pins v_frmbuf_wr_0/ap_rst_n]
+  connect_bd_net -net reset_controllers_interconnect_aresetn [get_bd_pins axi_mmu_2/aresetn] [get_bd_pins axi_mmu_3/aresetn] [get_bd_pins axi_interconnect_hpm0fpd/ARESETN] [get_bd_pins axi_interconnect_hpm0fpd/M00_ARESETN] [get_bd_pins axi_interconnect_hpm0fpd/S00_ARESETN] [get_bd_pins axi_register_slice_hpm0fpd/aresetn] [get_bd_pins axi_vip_2/aresetn] [get_bd_pins axi_vip_3/aresetn] [get_bd_pins axi_vip_hpm0fpd/aresetn] [get_bd_pins interconnect_axifull_1_user_slr1/ARESETN] [get_bd_pins interconnect_axifull_1_user_slr1/M00_ARESETN] [get_bd_pins interconnect_axifull_1_user_slr1/S00_ARESETN] [get_bd_pins interconnect_axifull_1_user_slr1/S01_ARESETN] [get_bd_pins interconnect_axifull_1_user_slr1/S02_ARESETN] [get_bd_pins interconnect_axifull_2_user_slr1/ARESETN] [get_bd_pins interconnect_axifull_2_user_slr1/M00_ARESETN] [get_bd_pins interconnect_axifull_2_user_slr1/S00_ARESETN] [get_bd_pins interconnect_axilite_user_slr1/M01_ARESETN] [get_bd_pins interconnect_axilite_user_slr1/M02_ARESETN] [get_bd_pins reset_controllers/psreset_gate_pr_kernel_interconnect_aresetn] [get_bd_pins v_frmbuf_rd_0/ap_rst_n] [get_bd_pins v_frmbuf_wr_0/ap_rst_n]
   connect_bd_net -net runtest_1 [get_bd_ports runtest] [get_bd_pins debug_bridge_xsdbm/S_BSCAN_runtest]
   connect_bd_net -net sel_1 [get_bd_ports sel] [get_bd_pins debug_bridge_xsdbm/S_BSCAN_sel]
   connect_bd_net -net shift_1 [get_bd_ports shift] [get_bd_pins debug_bridge_xsdbm/S_BSCAN_shift]
