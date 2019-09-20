@@ -19,7 +19,6 @@
 #include <CL/opencl.h>
 #include "xclbin.h"
 
-#include "xrt/util/memory.h"
 #include "xocl/core/range.h"
 #include "xocl/core/error.h"
 #include "xocl/core/device.h"
@@ -124,7 +123,7 @@ clCreateProgramWithBinary(cl_context                      context ,
     std::fill(binary_status,binary_status+num_devices,CL_INVALID_VALUE);
 
   // Construct program object
-  auto program = xrt::make_unique<xocl::program>(xocl::xocl(context),num_devices,device_list,binaries,lengths);
+  auto program = std::make_unique<xocl::program>(xocl::xocl(context),num_devices,device_list,binaries,lengths);
 
   // Assign binaries to all devices in the list
   size_t idx = 0;

@@ -15,6 +15,7 @@
  */
 
 #include "XclBinUtilMain.h"
+#include "XclBinUtilities.h"
 
 #include <string>
 #include <iostream>
@@ -24,14 +25,15 @@ int main( int argc, char** argv )
 {
   try {
     return main_( argc, argv );
+  } catch( XclBinUtilities::XclBinUtilException &e) {
+    std::cerr << e.what() << std::endl;
+    return (int) e.exceptionType();
   } catch ( std::exception &e ) {
     std::string msg = e.what();
     if ( msg.empty() )
       std::cerr << "ERROR: Caught an internal exception no message information is available.\n";
     else {
-        std::cerr << "Unhandled Exception caught in main(): " << std::endl
-            << e.what() << std::endl
-            << "exiting" << std::endl;
+      std::cerr << e.what() << std::endl;
     }
   } catch ( ... ) {
     std::cerr << "ERROR: Caught an internal exception no exception information is available.\n";

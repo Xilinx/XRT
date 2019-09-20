@@ -29,7 +29,7 @@ time_ns()
   static auto zero = std::chrono::high_resolution_clock::now();
   auto now = std::chrono::high_resolution_clock::now();
   auto integral_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(now-zero).count();
-  return integral_duration;
+  return static_cast<unsigned long>(integral_duration);
 }
 
 } // xocl

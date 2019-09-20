@@ -24,6 +24,17 @@
 #include <cstdlib>
 #include "plugin/xdp/profile.h"
 
+namespace {
+
+inline bool
+xcl_conformancecollect()
+{
+  static bool val = getenv("XCL_CONFORMANCECOLLECT") != nullptr;
+  return val;
+}
+
+}
+
 namespace xocl {
 
 static void
@@ -99,7 +110,7 @@ clSetKernelArg(cl_kernel    kernel,
   validOrError(kernel,arg_index,arg_size,arg_value);
 
   // XCL_CONFORMANCECOLLECT mode, not sure why return here?
-  if (getenv("XCL_CONFORMANCECOLLECT"))
+  if (xcl_conformancecollect())
     return CL_SUCCESS;
 
   // May throw out-of-range
@@ -107,6 +118,19 @@ clSetKernelArg(cl_kernel    kernel,
 
   return CL_SUCCESS;
 }
+
+namespace api {
+
+cl_int
+clSetKernelArg(cl_kernel    kernel,
+               cl_uint      arg_index,
+               size_t       arg_size,
+               const void * arg_value)
+{
+  return ::xocl::clSetKernelArg(kernel,arg_index,arg_size,arg_value);
+}
+
+} // api
 
 } // xocl
 
@@ -122,7 +146,7 @@ clSetKernelArg(cl_kernel    kernel,
   }
   catch (const xocl::error& ex) {
     std::string msg = ex.what();
-    msg += "\nERROR: clSetKernelArg() for kernel \"" + xocl::xocl(kernel)->get_name() + "\", argument index " + std::to_string(arg_index) + ".\n";
+    msg += "\nERROR: clSetKernelArg() for kernel \"" + xocl::xocl(kernel)->get_name() + "\", argument index " + std::to_string(arg_index) + ".";
     xocl::send_exception_message(msg.c_str());
     return ex.get_code();
   }
@@ -136,5 +160,3 @@ clSetKernelArg(cl_kernel    kernel,
     return CL_OUT_OF_RESOURCES;
   }
 }
-
-
