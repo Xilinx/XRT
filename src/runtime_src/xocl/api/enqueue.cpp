@@ -519,6 +519,13 @@ action_migrate_memobjects(size_t num, const cl_mem* memobjs, cl_mem_migration_fl
         continue;
       }
 
+      // do not migrate if argument is write only, but trick the code
+      // into assuming that the argument is resident
+      if (xocl::xocl(mem)->get_flags() & (CL_MEM_WRITE_ONLY|CL_MEM_HOST_NO_ACCESS)) {
+          xocl::xocl(mem)->set_resident(device);
+          continue;
+      }
+
       auto at = (flags & CL_MIGRATE_MEM_OBJECT_HOST) ? async_type::read : async_type::write;
       xdevice->schedule(migrate_buffer,at,ec,device,mem,flags);
     }
