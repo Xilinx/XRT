@@ -266,6 +266,10 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		userpf_err(xdev, "invalid xclbin magic string\n");
 		return -EINVAL;
 	}
+	if (uuid_is_null(&bin_obj.m_header.uuid)) {
+		userpf_err(xdev, "invalid xclbin uuid\n");
+		return -EINVAL;
+	}
 
 	xclbin_id = XOCL_XCLBIN_ID(xdev);
 	if (xclbin_id && uuid_equal(xclbin_id, &bin_obj.m_header.uuid)) {

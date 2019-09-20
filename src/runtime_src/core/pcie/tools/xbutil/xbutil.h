@@ -749,7 +749,7 @@ public:
         sensor_tree::put( "board.info.subvendor",      subvendor );
         sensor_tree::put( "board.info.xmcversion",     xmc_ver );
         sensor_tree::put( "board.info.serial_number",  ser_num );
-        sensor_tree::put( "board.info.max_power",      lvl2PowerStr(stoi(max_power)) );
+        sensor_tree::put( "board.info.max_power",      lvl2PowerStr(max_power.empty() ? UINT_MAX : stoi(max_power)) );
         sensor_tree::put( "board.info.sc_version",     bmc_ver );
         sensor_tree::put( "board.info.ddr_size",       GB(ddr_size)*ddr_count );
         sensor_tree::put( "board.info.ddr_count",      ddr_count );
