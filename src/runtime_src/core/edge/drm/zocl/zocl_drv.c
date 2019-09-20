@@ -314,6 +314,14 @@ zocl_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 		rc = remap_pfn_range(vma, vma->vm_start,
 		    paddr >> PAGE_SHIFT, vma->vm_end - vma->vm_start,
 		    vma->vm_page_prot);
+	} else if(bo->flags & ZOCL_BO_FLAGS_ALLOCATOR) {
+		vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
+		unsigned long pfn = (paddr >> PAGE_SHIFT);
+		if (pfn_valid(pfn)) {
+			vma->vm_flags &= ~VM_IO;
+			vma->vm_flags |= VM_MIXEDMAP;
+			vma->vm_flags |= VM_RESERVED;
+		}
 	} else {
 		/* Map non-cacheable CMA */
 		rc = dma_mmap_wc(cma_obj->base.dev->dev, vma, cma_obj->vaddr,
@@ -422,15 +430,34 @@ static int zocl_bo_fault(struct vm_fault *vmf)
 	pgoff_t offset;
 	int err;
 
-	if (!zdev->domain)
-		return 0;
+        if (bo->flags & ZOCL_BO_FLAGS_ALLOCATOR) {
+		dma_addr_t paddr;
+		unsigned long phys_addr;
+		unsigned long pfn;
+		offset = vmf->pgoff << PAGE_SHIFT;
+		if (bo->flags & ZOCL_BO_FLAGS_CMA) {
+			struct drm_gem_cma_object *cma_obj = NULL;
+		        cma_obj = to_drm_gem_cma_obj(obj);
+		        paddr = cma_obj->paddr;
+		} else {
+		        paddr = bo->mm_node->start;
+		}
+		phys_addr = paddr + offset;
+		pfn = phys_addr >> PAGE_SHIFT;
+		if (!pfn_valid(pfn))
+		        return VM_FAULT_SIGBUS;
+		page = pfn_to_page(pfn);
+	} else {
 
-	if (!bo->pages)
-		return VM_FAULT_SIGBUS;
+		if (!zdev->domain)
+			return 0;
 
-	offset = ((unsigned long)vmf->address - vma->vm_start) >> PAGE_SHIFT;
-	page = bo->pages[offset];
+		if (!bo->pages)
+			return VM_FAULT_SIGBUS;
 
+		offset = ((unsigned long)vmf->address - vma->vm_start) >> PAGE_SHIFT;
+		page = bo->pages[offset];
+	}
 	err = vm_insert_page(vma, (unsigned long)vmf->address, page);
 	switch (err) {
 	case -EAGAIN:

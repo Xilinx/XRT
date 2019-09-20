@@ -119,6 +119,7 @@ enum drm_zocl_sync_bo_dir {
 	DRM_ZOCL_SYNC_BO_FROM_DEVICE
 };
 
+#define DRM_ZOCL_BO_FLAGS_ALLOCATOR  (0x1 << 23)
 #define DRM_ZOCL_BO_FLAGS_HOST_BO    (0x1 << 26)
 #define DRM_ZOCL_BO_FLAGS_COHERENT   (0x1 << 27)
 #define DRM_ZOCL_BO_FLAGS_CMA        (0x1 << 28)

@@ -35,6 +35,7 @@
  * will be removed when we implement BO BO BO project at edge
  * side.
  */
+#define ZOCL_BO_FLAGS_ALLOCATOR		(1 << 23)
 #define ZOCL_BO_FLAGS_CACHEABLE		(1 << 24)
 #define ZOCL_BO_FLAGS_HOST_BO		(1 << 25)
 #define ZOCL_BO_FLAGS_COHERENT		(1 << 26)
@@ -71,6 +72,7 @@ static inline uint32_t zocl_convert_bo_uflags(uint32_t uflags)
 		zflags |= ZOCL_BO_FLAGS_CACHEABLE;
 
 	zflags |= (uflags & 0xFFFF);
+	zflags |= (uflags & ZOCL_BO_FLAGS_ALLOCATOR);
 
 	return zflags;
 }

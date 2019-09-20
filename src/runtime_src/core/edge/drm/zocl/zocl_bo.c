@@ -330,6 +330,9 @@ zocl_create_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		return PTR_ERR(bo);
 	}
 
+	if(args->flags & ZOCL_BO_FLAGS_ALLOCATOR)
+		bo->flags |= ZOCL_BO_FLAGS_ALLOCATOR;
+
 	bo->bank = bank;
 	if (args->flags & ZOCL_BO_FLAGS_CACHEABLE)
 		bo->flags |= ZOCL_BO_FLAGS_CACHEABLE;
@@ -374,6 +377,7 @@ int
 zocl_userptr_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 {
 	int ret;
+	int i;
 	struct drm_zocl_bo *bo;
 	unsigned int page_count;
 	struct drm_zocl_userptr_bo *args = data;
@@ -448,6 +452,16 @@ zocl_userptr_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 
 	zocl_describe(bo);
 	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&bo->cma_base.base);
+
+	/* DMA address space is a shared resource and you could render 
+	   the machine unusable by consuming all DMA addresses */
+	dma_unmap_sg(dev->dev, bo->cma_base.sgt->sgl,
+				bo->cma_base.sgt->nents, 0);
+
+	for(i=0;i< page_count;++i) {
+		set_page_dirty_lock(pages[i]);
+		put_page(pages[i]);
+	}
 
 	kvfree(pages);
 

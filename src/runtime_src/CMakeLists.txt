@@ -31,6 +31,11 @@ add_library(xdp_hal_plugin SHARED
   $<TARGET_OBJECTS:xdp_hal_plugin_obj>
   )
 
+set(ALLOCATOR_SRC "")
+add_library(xallocator SHARED ${ALLOCATOR_SRC}
+  $<TARGET_OBJECTS:xallocatorobj>
+)
+
 add_dependencies(xdp_hal_plugin xdp)
 
 option(XOCL_VERBOSE "Enable xocl verbosity" OFF)
@@ -62,6 +67,7 @@ add_subdirectory(xclbin)
 add_subdirectory(xocl)
 add_subdirectory(xrt)
 add_subdirectory(ert)
+add_subdirectory(xallocator)
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   # Only for host native build.
   # For embedded, headers and libraries are installed in /usr
@@ -77,6 +83,10 @@ set_target_properties(xilinxopencl PROPERTIES
   VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION}
   INSTALL_RPATH $ORIGIN
+  )
+
+set_target_properties(xallocator PROPERTIES VERSION ${XRT_VERSION_STRING}
+  SOVERSION ${XRT_SOVERSION}
   )
 
 target_link_libraries(oclxdp
@@ -106,7 +116,7 @@ target_link_libraries(xilinxopencl
   rt
   )
 
-install (TARGETS xilinxopencl oclxdp xdp_hal_plugin LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
+install (TARGETS xilinxopencl oclxdp xallocator xdp_hal_plugin LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
 
 add_subdirectory(core)
 
