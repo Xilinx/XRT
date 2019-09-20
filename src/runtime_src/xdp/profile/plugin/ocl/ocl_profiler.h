@@ -93,7 +93,7 @@ namespace xdp {
     uint32_t getTimeDiffUsec(std::chrono::steady_clock::time_point start,
                              std::chrono::steady_clock::time_point end);
 
-    bool allocateDeviceDDRBufferForTrace(DeviceIntf* , xrt::device*);
+    bool allocateDeviceDDRBufferForTrace(DeviceIntf* , xocl::device*);
     void clearDeviceDDRBufferForTrace(DeviceIntf* , xrt::device* );
 
     void configureDDRTraceReader(uint64_t wordCount);

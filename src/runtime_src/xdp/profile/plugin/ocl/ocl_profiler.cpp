@@ -270,7 +270,7 @@ namespace xdp {
         dInt->startTrace(XCL_PERF_MON_MEMORY, traceOption);
         // Configure DMA if present
         if (dInt->hasTs2mm()) {
-          info->ts2mm_en = allocateDeviceDDRBufferForTrace(dInt, xdevice);
+          info->ts2mm_en = allocateDeviceDDRBufferForTrace(dInt, device);
           /* Todo: Write user specified memory bank here */
           trace_memory = "TS2MM";
         }
@@ -705,8 +705,9 @@ namespace xdp {
   }
 
 
-  bool OCLProfiler::allocateDeviceDDRBufferForTrace(DeviceIntf* dInt, xrt::device* xrtDevice)
+  bool OCLProfiler::allocateDeviceDDRBufferForTrace(DeviceIntf* dInt, xocl::device* device)
   {
+    auto xrtDevice = device->get_xrt_device();
     /* If buffer is already allocated and still attempting to initialize again, 
      * then reset the TS2MM IP and free the old buffer
      */
@@ -716,6 +717,13 @@ namespace xdp {
 
     try {
       mDDRBufferSz = xdp::xoclp::platform::get_ts2mm_buf_size();
+      auto memorySz = xdp::xoclp::platform::device::getMemSizeBytes(device, dInt->getTS2MmMemIndex());
+      if (memorySz > 0 && mDDRBufferSz > memorySz) {
+        std::string msg = "Trace Buffer size is too big for Memory Resource. Using " + std::to_string(memorySz)
+                          + " Bytes instead.";
+        xrt::message::send(xrt::message::severity_level::XRT_WARNING, msg);
+        mDDRBufferSz = memorySz;
+      }
       mDDRBufferForTrace = xrtDevice->alloc(mDDRBufferSz, xrt::hal::device::Domain::XRT_DEVICE_RAM, dInt->getTS2MmMemIndex(), nullptr);
       xrtDevice->sync(mDDRBufferForTrace, mDDRBufferSz, 0, xrt::hal::device::direction::HOST2DEVICE, false);
     } catch (const std::exception& ex) {
