@@ -936,19 +936,20 @@ public:
     int dumpPartitionInfo(std::ostream& ostr) const
     {
         std::vector<std::string> partinfo;
-	pcidev::get_dev(m_idx)->get_partinfo(partinfo);
+        pcidev::get_dev(m_idx)->get_partinfo(partinfo);
 
-	if (partinfo.size())
-            ostr << "Partition Info" << std::endl;
-        for (auto info : partinfo)
+        for (unsigned int i = 0; i < partinfo.size(); i++)
         {
+            auto info = partinfo[i];
             if (info.empty())
                 continue;
             boost::property_tree::ptree ptInfo;
             std::istringstream is(info);
             boost::property_tree::read_json(is, ptInfo);
+            ostr << "Partition Info:" << std::endl;
             printTree(ostr, ptInfo, 0);
-	    ostr << std::endl;
+            if (i != partinfo.size() - 1)
+                ostr << std::endl;
         }
 	if (partinfo.size())
             ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
