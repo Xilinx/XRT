@@ -717,6 +717,7 @@ namespace xdp {
       xrtDevice->sync(mDDRBufferForTrace, mDDRBufferSz, 0, xrt::hal::device::direction::HOST2DEVICE, false);
     } catch (const std::exception& ex) {
       std::cerr << ex.what() << std::endl;
+      xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_ALLOC_FAIL);
       return false;
     }
     // Data Mover will write input stream to this address

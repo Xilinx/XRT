@@ -80,7 +80,7 @@ edge initialization API provides two types of initialization: global and
 session level initialization.  The XMA upper edge API also provides functions
 for sending and receiving frames as well as a method for gracefully terminating
 a video stream when the end of the stream is found.  Also depicted in the
-diagram is the XMA Framework.  The XMA Framework is responsible for 
+diagram is the XMA Framework.  The XMA Framework is responsible for
 delegating requests to the appropriate plugin, and selecting user requested
 resources based on session creation requests.
 
@@ -102,7 +102,7 @@ the APIs are slightly different, however, there is a common pattern associated
 with these classes. Specifically, a plugin must provide registration
 information and must implement all required callback functions. In general, an
 XMA plugin implements at least five required callback functions: initialize,
-send frame or send data, receive frame or receive data, close and xma_version. 
+send frame or send data, receive frame or receive data, close and xma_version.
 
 BufferObject contains:
 uint8_t* data : Pointer to host buffer space of allocated buffer
@@ -247,17 +247,17 @@ code examples to help illustrate usage of the XMA.
 
 Execution model
 -----------------
-The APIs are: 
-  
+The APIs are:
+
   * xma_plg_schedule_cu_cmd
   * xma_plg_schedule_work_item
   * xma_plg_is_work_item_done
   * xma_plg_cu_cmd_status
 
-Lets consider the various purposes where the above APIs would be useful. 
+Lets consider the various purposes where the above APIs would be useful.
 
-**xma_plg_schedule_cu_cmd / xma_plg_schedule_work_item** 
-should be used to start the kernel with supplied kernel arguments 
+**xma_plg_schedule_cu_cmd / xma_plg_schedule_work_item**
+should be used to start the kernel with supplied kernel arguments
 
 **xma_plg_is_work_item_done** should be used to check if kernel has completed atleast one work item (previously submitted by xma_plg_schedule_cu_cmd / xma_plg_schedule_work_item).
 
@@ -283,7 +283,7 @@ Initialization
 ~~~~~~~~~~~~~~~~~~~~~~
 The first act an application must perform is that of initialization of the
 system environment.  This is accomplished by calling xma_initialize() and
-passing in device and xclbin info. 
+passing in device and xclbin info.
 
 Create Session
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -443,7 +443,7 @@ state as necessary. There is no need to free these data structures during
 termination; XMA frees this data for you.
 
 To allocate buffers necessary to handle both incoming and outgoing
-data, please see 
+data, please see
 1) xma_plg_buffer_alloc(): Allocate device buffer on default session ddr_bank
 2) xma_plg_buffer_alloc_arg_num(): Allocate device buffer on ddr_bank connected to a kernel argument
 
@@ -504,7 +504,7 @@ the filter copy data back to a host buffer only to be re-copied from the host
 to the device buffer of the downstream encoder.  This double-copy can be
 avoided if the two kernels can share a buffer within the device memory; a
 buffer that serves as an 'output' buffer for the filter but an 'input'
-buffer for the encoder. This optimization is known as 'zerocopy'. 
+buffer for the encoder. This optimization is known as 'zerocopy'.
 
 Use XRM for system resource reservation such that zero-copy is possible
 XmaFrame with device only buffer can be output of plugins supporting zero-copy and feeding zero-copy enabled plugin/s
@@ -516,7 +516,7 @@ For stateful/multi-channel kernels (eg decodre, encoder):
     - Use dataflow kernels with context/channels for best performance. Use HLS/RTL Wizard with appropriate settings to generate these kernels in 2019.2 release toolset.
     - All work items within a channel are treated as FIFO. Kernel must maintain this order for a channel.
     - See spec for kernels with dataflow with channels. Kernel regamp registers at offset 0x10 (channel_id input to kernel) and 0x14 (channel_id output from kernel) must be supported by kernels.
-    - Use xrt.ini settings (dataflow; kernel_channels) to enable dataflow kernel with channels
+    - Use :ref:`xrt_ini.rst` settings (dataflow; kernel_channels) to enable dataflow kernel with channels
 
 Using DRM (Digital Right Management) IPs:
     - TBD
