@@ -204,13 +204,32 @@ static bool passthrough_virtualization_on(struct platform_device *pdev)
 static uint32_t* get_cdma_base_addresses(struct platform_device *pdev)
 {
 	struct feature_rom *rom;
+        uint32_t *dtb_cdma = NULL;
+	uint32_t *rom_cdma = NULL;
+	uint32_t cdma[4] = { 0 };
 
 	rom = platform_get_drvdata(pdev);
 	BUG_ON(!rom);
 
-	return (!XOCL_DSA_NO_KDMA(xocl_get_xdev(pdev)) &&
-		(rom->header.FeatureBitMap & CDMA)) ?
+	cdma[0] = (uint32_t)xocl_iores_get_offset(xocl_get_xdev(pdev),
+		       IORES_KDMA);
+	if (cdma[0] != (uint32_t)-1)
+		dtb_cdma = cdma;
+	rom_cdma = !XOCL_DSA_NO_KDMA(xocl_get_xdev(pdev)) &&
+		(rom->header.FeatureBitMap & CDMA) ?
 		rom->header.CDMABaseAddress : 0;
+	if (dtb_cdma && (!rom_cdma ||
+	    memcmp(dtb_cdma, rom_cdma, sizeof(cdma)))) {
+		xocl_info(&pdev->dev, "CDMA Addresses are not compatible in feature ROM and DTB");
+		return NULL;
+	}
+
+	if (dtb_cdma) {
+		memcpy(rom->header.CDMABaseAddress, dtb_cdma, sizeof(cdma));
+		return rom->header.CDMABaseAddress;
+	}
+
+	return rom_cdma;
 }
 
 static u16 get_ddr_channel_count(struct platform_device *pdev)

@@ -1053,19 +1053,6 @@ struct xocl_mailbox_versal_funcs {
 	? MAILBOX_VERSAL_OPS(xdev)->get(MAILBOX_VERSAL_DEV(xdev), \
 	data) : -ENODEV)
 
-static inline void __iomem *xocl_cdma_addr(xdev_handle_t xdev)
-{
-	void	__iomem *ioaddr;
-	static uint32_t cdma[4];
-
-	cdma[0] = (uint32_t)xocl_iores_get_offset(xdev, IORES_KDMA);
-	if (cdma[0] != (uint32_t)-1)
-		ioaddr = cdma;
-	else
-		ioaddr = xocl_rom_cdma_addr(xdev);
-
-	return ioaddr;
-}
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
 void xocl_init_dsa_priv(xdev_handle_t xdev_hdl);
