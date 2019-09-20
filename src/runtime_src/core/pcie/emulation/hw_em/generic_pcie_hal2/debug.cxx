@@ -173,6 +173,13 @@ namespace xclhwemhal2 {
 	  if(xclemulation::config::getInstance()->isSystemDPAEnabled() == false) {
 		  return;
 	  }
+
+	  //check to find out if Trace Hub is available. It's not possible to have
+	  //ctrl and Memory Map interface assigned to same address range
+	  if(mPerfMonFifoReadBaseAddress == 0x0 && mPerfMonFifoCtrlBaseAddress == 0x0) {
+		  return;
+	  }
+
 	  std::string info_msgs("");
 	  std::string warning_msgs("");
 	  std::string error_msgs("");
