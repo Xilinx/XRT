@@ -575,7 +575,8 @@ zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 	uint64_t size = 0;
 	int ret = 0;
 
-	if (copy_from_user(&axlf_head, axlf_obj->za_xclbin_ptr, sizeof(struct axlf))) {
+	if (copy_from_user(&axlf_head, axlf_obj->za_xclbin_ptr,
+	    sizeof(struct axlf))) {
 		DRM_WARN("copy_from_user failed for za_xclbin_ptr");
 		return -EFAULT;
 	}
