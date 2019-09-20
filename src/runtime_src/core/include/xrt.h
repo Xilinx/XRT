@@ -642,7 +642,7 @@ inline XCL_DRIVER_DLLESPEC uint64_t xclGetDeviceAddr(xclDeviceHandle handle, uns
  * @buf:           Destination data pointer
  * @size:          Size of data to copy
  * @offset:        Absolute offset inside device
- * Return:         size of bytes read or appropriate error number
+ * Return:         0 on success or appropriate error number
  *
  * This API may be used to perform DMA operation from absolute location specified. Users
  * may use this if they want to perform their own device memory management -- not using the buffer
@@ -659,7 +659,7 @@ XCL_DRIVER_DLLESPEC ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags
  * @buf:           Source data pointer
  * @size:          Size of data to copy
  * @offset:        Absolute offset inside device
- * Return:         size of bytes written or appropriate error number
+ * Return:         0 on success or appropriate error number
  *
  * This API may be used to perform DMA operation to an absolute location specified. Users
  * may use this if they want to perform their own device memory management -- not using the buffer
