@@ -582,6 +582,31 @@ failed:
 	return ret;
 }
 
+struct resource *xocl_subdev_get_ioresource(xdev_handle_t xdev_hdl,
+		char *res_name)
+{
+	struct xocl_subdev_info *subdev_info = NULL;
+	int i, j, subdev_num;
+
+	xocl_lock_xdev(xdev_hdl);
+	subdev_info = xocl_subdev_get_info(xdev_hdl, &subdev_num);
+	for (i = 0; i < subdev_num; i++) {
+		for (j = 0; j < subdev_info[i].num_res; j++) {
+			pr_info("RES NAME: %s, looking for %s\n", subdev_info[i].res[j].name, res_name);
+			if ((subdev_info[i].res[j].flags & IORESOURCE_MEM) &&
+			    !strncmp(subdev_info[i].res[j].name, res_name,
+			    strlen(res_name))) {
+				xocl_unlock_xdev(xdev_hdl);
+				return &subdev_info[i].res[j];
+			}
+		}
+	}
+
+	xocl_unlock_xdev(xdev_hdl);
+
+	return NULL;
+}
+
 int xocl_subdev_create_all(xdev_handle_t xdev_hdl)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;

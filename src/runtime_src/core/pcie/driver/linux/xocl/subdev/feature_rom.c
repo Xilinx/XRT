@@ -372,12 +372,26 @@ static struct xocl_rom_funcs rom_ops = {
 static int get_header_from_peer(struct feature_rom *rom)
 {
 	struct FeatureRomHeader *header;
+	struct resource *res;
+	xdev_handle_t xdev = xocl_get_xdev(rom->pdev);
 	
 	header = XOCL_GET_SUBDEV_PRIV(&rom->pdev->dev);
 	if (!header)
 		return -ENODEV;
 
 	memcpy(&rom->header, header, sizeof(*header));
+
+	xocl_xdev_info(xdev, "Searching nodes in dtb.");
+	res = xocl_subdev_get_ioresource(xdev, RESNAME_KDMA);
+	if (res) {
+                rom->header.FeatureBitMap |= CDMA;
+		memset(rom->header.CDMABaseAddress, 0,
+			sizeof(rom->header.CDMABaseAddress));
+		rom->header.CDMABaseAddress[0] = (uint32_t)res->start;
+
+		xocl_xdev_info(xdev, "CDMA is on, CU offset: 0x%x",
+				rom->header.CDMABaseAddress[0]);
+	}
 
 	return 0;
 }
@@ -408,6 +422,7 @@ static int get_header_from_dtb(struct feature_rom *rom)
 	if (XDEV(xdev)->priv.vbnv)
 		strncpy(header->VBNVName, XDEV(xdev)->priv.vbnv,
 				sizeof (header->VBNVName) - 1);
+
 
 	return 0;
 }

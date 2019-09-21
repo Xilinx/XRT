@@ -1053,19 +1053,6 @@ struct xocl_mailbox_versal_funcs {
 	? MAILBOX_VERSAL_OPS(xdev)->get(MAILBOX_VERSAL_DEV(xdev), \
 	data) : -ENODEV)
 
-static inline void __iomem *xocl_cdma_addr(xdev_handle_t xdev)
-{
-	void	__iomem *ioaddr;
-	static uint32_t cdma[4];
-
-	cdma[0] = (uint32_t)xocl_iores_get_offset(xdev, IORES_KDMA);
-	if (cdma[0] != (uint32_t)-1)
-		ioaddr = cdma;
-	else
-		ioaddr = xocl_rom_cdma_addr(xdev);
-
-	return ioaddr;
-}
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
 void xocl_init_dsa_priv(xdev_handle_t xdev_hdl);
@@ -1103,6 +1090,9 @@ int xocl_subdev_destroy_by_name(xdev_handle_t xdev_hdl, char *name);
 int xocl_subdev_destroy_prp(xdev_handle_t xdev);
 int xocl_subdev_create_prp(xdev_handle_t xdev);
 
+struct resource *xocl_subdev_get_ioresource(xdev_handle_t xdev_hdl,
+		char *res_name);
+
 void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in);
 int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
 	struct axlf *bin_obj, bool major_only);
@@ -1114,12 +1104,14 @@ int xocl_ioaddr_to_baroff(xdev_handle_t xdev_hdl, resource_size_t io_addr,
 
 static inline void xocl_lock_xdev(xdev_handle_t xdev)
 {
-	mutex_lock(&XDEV(xdev)->lock);
+	if (!mutex_is_locked(&XDEV(xdev)->lock))
+		mutex_lock(&XDEV(xdev)->lock);
 }
 
 static inline void xocl_unlock_xdev(xdev_handle_t xdev)
 {
-	mutex_unlock(&XDEV(xdev)->lock);
+	if (mutex_is_locked(&XDEV(xdev)->lock))
+		mutex_unlock(&XDEV(xdev)->lock);
 }
 
 static inline uint32_t xocl_dr_reg_read32(xdev_handle_t xdev, void __iomem *addr)

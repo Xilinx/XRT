@@ -284,6 +284,7 @@ DSAInfo::DSAInfo(const std::string& filename) : DSAInfo(filename, NULL_TIMESTAMP
 
 DSAInfo::DSAInfo(const std::string& filename, std::string &pr_board, std::string& pr_family, std::string& pr_name) : DSAInfo(filename)
 {
+    vendor = "xilinx";
     board = pr_board;
     partition_family_name = pr_family;
     partition_name = pr_name;
