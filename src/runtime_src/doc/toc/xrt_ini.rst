@@ -1,15 +1,15 @@
 .. _xrt_ini.rst:
 
-xrt.ini Configuration File
---------------------------
+Configuration File xrt.ini
+**************************
 
-XRT uses various parameters to control execution flow, debug, profiling, and message logging during host application and kernel execution in software emulation, hardware emulation, and system run on the acceleration board. These control parameters are specified in a runtime initialization file ``xrt.ini``
+XRT uses various parameters to control execution flow, debug, profiling, and message logging during host application and kernel execution in software emulation, hardware emulation, and system run on the acceleration board. These control parameters are optionally specified in a runtime initialization file **xrt.ini**
 
-The location of the file can be specified by defining the environment variable ``XRT_INI_PATH`` with the path of the directory in which the file exists. By default the tools check ``XRT_INI_PATH``, host executable path, and current directory for xrt.ini file in that order. If it does not exist, it returns an empty string.
+XRT looks for xrt.ini in host executable path and current directory in that order. It stops search when an xrt.ini is found. If xrt.ini is not found, XRT built-in defaults are used as described in the table below.
 
 Runtime Initialization File Format
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-The runtime initialization file is a text file with groups of keys and their values. Any line beginning with a semicolon (;) or a hash (#) is a comment. The group names, keys, and key values are all case sensitive.
+The runtime initialization file is a text file with groups of keys and their values. Any line beginning with a semicolon (**;**) or a hash (**#**) is a comment. The group names, keys, and key values are all case in-sensitive.
 
 There are three group of keys as below
 

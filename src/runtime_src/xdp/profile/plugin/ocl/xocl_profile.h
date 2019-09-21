@@ -193,6 +193,8 @@ logCounters(key k, xclPerfMonType type, bool firstReadAfterProgram, bool forceRe
 bool
 isAPCtrlChain(key k, const std::string& cu);
 
+uint64_t getMemSizeBytes(key k, int idx);
+
 } // device
 } // platform
 

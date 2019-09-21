@@ -421,7 +421,8 @@ namespace xdp {
        */
       std::string uniqueCuDataKey;
       uint32_t cuId = 0;
-      if (mPluginHandle->getFlowMode() == xdp::RTUtil::DEVICE) {
+      if((mPluginHandle->getFlowMode() == xdp::RTUtil::DEVICE) || 
+            (mPluginHandle->getFlowMode() == xdp::RTUtil::HW_EM && mPluginHandle->getSystemDPAEmulation() == true)) {
         uniqueCuDataKey = xclbinName + std::to_string(programId);
       } else {
         uniqueCuDataKey = xclbinName + std::to_string(0);
