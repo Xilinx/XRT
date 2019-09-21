@@ -350,6 +350,9 @@ cu_idx_to_timeout(struct drm_device *dev, unsigned int cu_idx)
 {
 	struct drm_zocl_dev *zdev = dev->dev_private;
 
+	if (!zdev->exec->zcu[cu_idx].run_timeout)
+		return 0;
+
 	return zdev->exec->zcu[cu_idx].run_timeout /
 	    (ZOCL_CU_TIMER_INTERVAL * 1000) + 1;
 }
