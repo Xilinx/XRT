@@ -381,7 +381,7 @@ static int get_header_from_peer(struct feature_rom *rom)
 
 	memcpy(&rom->header, header, sizeof(*header));
 
-	xocl_xdev_info(xdev, "Searching nodes in dtb.");
+	xocl_xdev_info(xdev, "Searching CMC in dtb.");
 	res = xocl_subdev_get_ioresource(xdev, RESNAME_KDMA);
 	if (res) {
                 rom->header.FeatureBitMap |= CDMA;
@@ -400,6 +400,7 @@ static int get_header_from_dtb(struct feature_rom *rom)
 {
 	xdev_handle_t xdev = xocl_get_xdev(rom->pdev);
 	struct FeatureRomHeader *header = &rom->header;
+	struct resource *res;
 	const char *vbnv;
 	int i, j = 0;
 
@@ -417,12 +418,24 @@ static int get_header_from_dtb(struct feature_rom *rom)
 					header->VBNVName[i] == '.')
 				header->VBNVName[i] = '_';
 	}
-	header->FeatureBitMap = UNIFIED_PLATFORM | BOARD_MGMT_ENBLD | MB_SCHEDULER;
+	header->FeatureBitMap = UNIFIED_PLATFORM;
 	*(u32 *)header->EntryPointString = MAGIC_NUM;
 	if (XDEV(xdev)->priv.vbnv)
 		strncpy(header->VBNVName, XDEV(xdev)->priv.vbnv,
 				sizeof (header->VBNVName) - 1);
 
+	xocl_xdev_info(xdev, "Searching ERT and CMC in dtb.");
+	res = xocl_subdev_get_ioresource(xdev, NODE_CMC_FW_MEM);
+	if (res) {
+		xocl_xdev_info(xdev, "CMC is on");
+		header->FeatureBitMap |= BOARD_MGMT_ENBLD;
+	}
+
+	res = xocl_subdev_get_ioresource(xdev, NODE_CMC_ERT_MEM);
+	if (res) {
+		xocl_xdev_info(xdev, "ERT is on");
+		header->FeatureBitMap |= MB_SCHEDULER;
+	}
 
 	return 0;
 }

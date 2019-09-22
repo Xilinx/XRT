@@ -592,7 +592,6 @@ struct resource *xocl_subdev_get_ioresource(xdev_handle_t xdev_hdl,
 	subdev_info = xocl_subdev_get_info(xdev_hdl, &subdev_num);
 	for (i = 0; i < subdev_num; i++) {
 		for (j = 0; j < subdev_info[i].num_res; j++) {
-			pr_info("RES NAME: %s, looking for %s\n", subdev_info[i].res[j].name, res_name);
 			if ((subdev_info[i].res[j].flags & IORESOURCE_MEM) &&
 			    !strncmp(subdev_info[i].res[j].name, res_name,
 			    strlen(res_name))) {
