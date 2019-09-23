@@ -1516,6 +1516,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     mDataSpace = new xclemulation::MemoryManager(0x10000000, 0, getpagesize());
     mCuBaseAddress = 0x0;
     mMessengerThreadStarted = false;
+    mIsTraceHubAvailable = false;
   }
 
   bool HwEmShim::isMBSchedulerEnabled()
