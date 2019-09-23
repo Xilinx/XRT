@@ -1,7 +1,7 @@
 /**
  * Copyright (C) 2016-2017 Xilinx, Inc
  * Author(s): Hem C Neema
- * PCIe HAL Driver layered on top of XOCL GEM kernel driver
+ * Edge HAL Driver layered on top of XOCL GEM kernel driver
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
