@@ -186,7 +186,7 @@ int AzureDev::azureLoadXclBin(const xclBin *&buffer)
     std::string ret, key, value;
     ret = REST_Get(
         RESTIP_ENDPOINT,
-        "/machine/plugins/?comp=FpgaController&type=StartReimaging",
+        "machine/plugins/?comp=FpgaController&type=StartReimaging",
         fpgaSerialNumber
     );
     if (splitLine(ret, key, value, delim) != 0 ||
@@ -199,7 +199,7 @@ int AzureDev::azureLoadXclBin(const xclBin *&buffer)
     do {
         ret = REST_Get(
             RESTIP_ENDPOINT,
-            "/machine/plugins/?comp=FpgaController&type=GetReimagingStatus",
+            "machine/plugins/?comp=FpgaController&type=GetReimagingStatus",
             fpgaSerialNumber
         );
         if (splitLine(ret, key, value, delim) != 0 ||

@@ -131,17 +131,15 @@ namespace awsbwhal {
     }
 #endif
 
-    int AwsXcl::xclGetXclBinIdFromSysfs(uint64_t &xclbin_id_from_sysfs) 
+    int AwsXcl::xclGetXclBinIdFromSysfs(uuid_t &xclbin_id_from_sysfs) 
     {
         std::string buf, dev_name;
         std::string errmsg;
         dev_name = xcldev::pci_device_scanner::device_list[ mBoardNumber ].user_name;
         xcldev::sysfs_get(dev_name, "", "xclbinuuid", errmsg, buf);
-        if (!buf.empty())
-             xclbin_id_from_sysfs = std::stoi(buf,nullptr,16);
-        else
+        if (buf.empty() || uuid_parse(buf.c_str(), xclbin_id_from_sysfs) != 0)
             std::cout << "WARNING: 'xclbinuuid' invalid, unable to report xclbinuuid. Has the bitstream been loaded? See 'awssak program'.\n"; 
-         return 0;
+        return 0;
     }
 
     int AwsXcl::xclLoadXclBin(const xclBin *buffer)
@@ -159,14 +157,19 @@ namespace awsbwhal {
           axlf *axlfbuffer = reinterpret_cast<axlf*>(const_cast<xclBin*> (buffer));
           fpga_mgmt_image_info orig_info;
           char* afi_id = get_afi_from_axlf(axlfbuffer);
+          if (!afi_id)
+              return -EINVAL;
+          
           std::memset(&orig_info, 0, sizeof(struct fpga_mgmt_image_info));
           fpga_mgmt_describe_local_image(mBoardNumber, &orig_info, 0);
 
-          uint64_t xclbin_id_from_sysfs;
+          uuid_t xclbin_id_from_sysfs;
           if( int retVal = xclGetXclBinIdFromSysfs( xclbin_id_from_sysfs ) != 0 )
              return retVal;
 
-          if ( (xclbin_id_from_sysfs == 0) || (axlfbuffer->m_uniqueId != xclbin_id_from_sysfs) || checkAndSkipReload(afi_id, &orig_info) ) {
+          if ( uuid_is_null(xclbin_id_from_sysfs) ||
+               uuid_compare(axlfbuffer->m_header.uuid, xclbin_id_from_sysfs) ||
+               checkAndSkipReload(afi_id, &orig_info) ) {    
               // force data retention option
               union fpga_mgmt_load_local_image_options opt;
               fpga_mgmt_init_load_local_image_options(&opt);

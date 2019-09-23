@@ -50,11 +50,6 @@ typedef struct {
 #define DMA_HWICAP_BITFILE_BUFFER_SIZE 1024
 #define BITFILE_BUFFER_SIZE DMA_HWICAP_BITFILE_BUFFER_SIZE
 
-static struct axlf_section_header* get_axlf_section(struct axlf *top,
-						enum axlf_section_kind kind);
-int zocl_check_section(struct axlf_section_header *header, uint64_t xclbin_len,
-		       enum axlf_section_kind kind);
-
 static int bitstream_parse_header(const unsigned char *Data, unsigned int Size,
 				  XHwIcap_Bit_Header *Header)
 {
@@ -195,9 +190,9 @@ static int bitstream_parse_header(const unsigned char *Data, unsigned int Size,
 }
 
 static int
-zocl_fpga_mgr_load(struct drm_device *ddev, char *data, int size)
+zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, char *data, int size)
 {
-	struct drm_zocl_dev *zdev = ddev->dev_private;
+	struct drm_device *ddev = zdev->ddev;
 	struct device *dev = ddev->dev;
 	struct fpga_manager *fpga_mgr = zdev->fpga_mgr;
 	struct fpga_image_info *info;
@@ -230,12 +225,10 @@ zocl_fpga_mgr_load(struct drm_device *ddev, char *data, int size)
 	return err;
 }
 
-static int zocl_pcap_download(struct drm_zocl_dev *zdev,
-			      const void __user *bit_buf, unsigned long length)
+static int
+zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length)
 {
 	XHwIcap_Bit_Header bit_header;
-	struct fpga_image_info *info = NULL;
-	char *buffer = NULL;
 	char *data = NULL;
 	unsigned int i;
 	char temp;
@@ -243,47 +236,20 @@ static int zocl_pcap_download(struct drm_zocl_dev *zdev,
 	void __iomem *map = NULL;
 
 	memset(&bit_header, 0, sizeof(bit_header));
-	buffer = kmalloc(BITFILE_BUFFER_SIZE, GFP_KERNEL);
-
-	if (!buffer) {
-		err = -ENOMEM;
-		goto free_buffers;
-	}
-
-	if (copy_from_user(buffer, bit_buf, BITFILE_BUFFER_SIZE)) {
-		err = -EFAULT;
-		goto free_buffers;
-	}
-
 	if (bitstream_parse_header(buffer, BITFILE_BUFFER_SIZE, &bit_header)) {
-		err = -EINVAL;
-		goto free_buffers;
+		DRM_ERROR("bitstream header parse failed");
+		return -EINVAL;
 	}
 
 	if ((bit_header.HeaderLength + bit_header.BitstreamLength) > length) {
-		err = -EINVAL;
-		goto free_buffers;
+		DRM_ERROR("bitstream header+stream length parse failed");
+		return -EINVAL;
 	}
 
-	bit_buf += bit_header.HeaderLength;
-
-	data = vmalloc(bit_header.BitstreamLength);
-	if (!data) {
-		err = -ENOMEM;
-		goto free_buffers;
-	}
-
-	if (copy_from_user(data, bit_buf, bit_header.BitstreamLength)) {
-		err = -EFAULT;
-		goto free_buffers;
-	}
-
-	if (zdev->pr_isolation_addr) {
-		map = ioremap(zdev->pr_isolation_addr, 0x1000);
-		if (!IS_ERR_OR_NULL(map))
-			iowrite32(0x0, map);
-	}
-
+	/*
+	 * Can we do this more efficiently by APIs from byteorder.h?
+	 */
+	data = buffer + bit_header.HeaderLength;
 	for (i = 0; i < bit_header.BitstreamLength ; i = i+4) {
 		temp = data[i];
 		data[i] = data[i+3];
@@ -294,69 +260,26 @@ static int zocl_pcap_download(struct drm_zocl_dev *zdev,
 		data[i+2] = temp;
 	}
 
-	err = zocl_fpga_mgr_load(zdev->ddev, data, bit_header.BitstreamLength);
-	if (err)
-		DRM_ERROR("%s : ret code %d\n", __func__, err);
-
-	if (zdev->pr_isolation_addr && !IS_ERR_OR_NULL(map))
-		iowrite32(0x3, map);
-
-free_buffers:
-	if (map)
-		iounmap(map);
-	if (info)
-		fpga_image_info_free(info);
-	kfree(buffer);
-	kfree(bit_header.DesignName);
-	kfree(bit_header.PartName);
-	kfree(bit_header.Date);
-	kfree(bit_header.Time);
-	vfree(data);
-	return err;
-}
-
-int zocl_pcap_download_ioctl(struct drm_device *dev, void *data,
-			     struct drm_file *filp)
-{
-	struct axlf bin_obj;
-	char __user *buffer;
-	struct drm_zocl_dev *zdev = dev->dev_private;
-	const struct drm_zocl_pcap_download *args = data;
-	uint64_t primary_fw_off;
-	uint64_t primary_fw_len;
-	struct axlf_section_header *primaryHeader;
-
-	if (copy_from_user(&bin_obj, args->xclbin, sizeof(struct axlf)))
-		return -EFAULT;
-
-	if (memcmp(bin_obj.m_magic, "xclbin2", 8))
-		return -EINVAL;
-	
-	/* Check unique ID */
-	if (bin_obj.m_uniqueId == zdev->unique_id_last_bitstream) {
-		DRM_INFO("The XCLBIN already loaded. Don't need to reload.");
-		return 0;
+	/* Map PR address */
+	if (!zdev->pr_isolation_addr) {
+		DRM_ERROR("PR address is NULL");
+		return -ENODEV;
+	}
+	map = ioremap(zdev->pr_isolation_addr, 0x1000);
+	if (IS_ERR_OR_NULL(map)) {
+		DRM_ERROR("ioremap PR address failed");
+		return -ENOMEM;
 	}
 
-	primaryHeader = get_axlf_section(&bin_obj, BITSTREAM);
-	if (primaryHeader == NULL)
-		return -EINVAL;
+	/* Freeze PR ISOLATION IP for bitstream download */
+	iowrite32(0x0, map);
+	err = zocl_fpga_mgr_load(zdev, data, bit_header.BitstreamLength);
+	/* Unfreeze PR ISOLATION IP */
+	iowrite32(0x3, map);
 
-	if (zocl_check_section(primaryHeader, bin_obj.m_header.m_length,
-			       BITSTREAM))
-		return -EINVAL;
+	iounmap(map);
 
-	primary_fw_off = primaryHeader->m_sectionOffset;
-	primary_fw_len = primaryHeader->m_sectionSize;
-
-	buffer = (char __user *)args->xclbin;
-
-	if (!ZOCL_ACCESS_OK(VERIFY_READ, buffer, bin_obj.m_header.m_length))
-		return -EFAULT;
-
-	buffer += primary_fw_off;
-
-	return zocl_pcap_download(zdev, buffer, primary_fw_len);
+	return err;
 }
 
 char *kind_to_string(enum axlf_section_kind kind)
@@ -466,6 +389,7 @@ zocl_offsetof_sect(enum axlf_section_kind kind, void *sect,
 	return size;
 }
 
+/* zocl_read_sect will alloc memory for sect, callers will call vfree */
 int
 zocl_read_sect(enum axlf_section_kind kind, void *sect,
 		struct axlf *axlf_full, char __user *xclbin_ptr)
@@ -484,7 +408,7 @@ zocl_read_sect(enum axlf_section_kind kind, void *sect,
 	if (err) {
 		vfree(*sect_tmp);
 		sect = NULL;
-		return err;
+		return 0;
 	}
 
 	return size;
@@ -558,6 +482,7 @@ zocl_update_apertures(struct drm_zocl_dev *zdev)
 	return 0;
 }
 
+/* data has been remapped into kernel memory, no copy_from_user needed */
 int
 zocl_load_pdi(struct drm_device *ddev, void *data)
 {
@@ -565,7 +490,7 @@ zocl_load_pdi(struct drm_device *ddev, void *data)
 	struct axlf *axlf = data;
 	struct axlf *axlf_head = axlf;
 	char *xclbin = NULL;
-	char *pdi_buffer = NULL;
+	char *section_buffer = NULL;
 	size_t size_of_header;
 	size_t num_of_sections;
 	uint64_t size = 0;
@@ -594,9 +519,9 @@ zocl_load_pdi(struct drm_device *ddev, void *data)
 		goto out;
 	}
 
-	size = zocl_offsetof_sect(PDI, &pdi_buffer, axlf, xclbin);
+	size = zocl_offsetof_sect(PDI, &section_buffer, axlf, xclbin);
 	if (size > 0) {
-		ret = zocl_fpga_mgr_load(ddev, pdi_buffer, size);
+		ret = zocl_fpga_mgr_load(zdev, section_buffer, size);
 	} else {
 		DRM_WARN("Found PDI Section but size is %lld", size);
 	}
@@ -605,6 +530,34 @@ zocl_load_pdi(struct drm_device *ddev, void *data)
 
 out:
 	write_unlock(&zdev->attr_rwlock);
+	return ret;
+}
+
+static int
+zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
+    char __user *xclbin, enum axlf_section_kind kind)
+{
+	uint64_t size = 0;
+	char *section_buffer = NULL;
+	int ret = 0;
+
+	size = zocl_read_sect(kind, &section_buffer, axlf, xclbin);
+	if (size == 0)
+		return 0;
+
+	switch (kind) {
+	case BITSTREAM:
+		ret = zocl_load_bitstream(zdev, section_buffer, size);
+		break;
+	case PDI:
+	case BITSTREAM_PARTIAL_PDI:
+		ret = zocl_fpga_mgr_load(zdev, section_buffer, size);
+		break;
+	default:
+		DRM_WARN("Unsupported load type %d", kind);
+	}
+	vfree(section_buffer);
+
 	return ret;
 }
 
@@ -621,9 +574,9 @@ zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 	size_t num_of_sections;
 	uint64_t size = 0;
 	int ret = 0;
-	char *pdi_buffer = NULL;
 
-	if (copy_from_user(&axlf_head, axlf_obj->za_xclbin_ptr, sizeof(struct axlf))) {
+	if (copy_from_user(&axlf_head, axlf_obj->za_xclbin_ptr,
+	    sizeof(struct axlf))) {
 		DRM_WARN("copy_from_user failed for za_xclbin_ptr");
 		return -EFAULT;
 	}
@@ -664,16 +617,24 @@ zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 		goto out0;
 	}
 
-	if (axlf_obj->za_flags & DRM_ZOCL_AXLF_FLAGS_PDI_LOAD) {
-		/* If PDI section is available, load PDI */
-		size = zocl_read_sect(PDI, &pdi_buffer, axlf, xclbin);
-		if (size > 0) {
-			ret = zocl_fpga_mgr_load(ddev, pdi_buffer, size);
-			if (ret)
-				goto out0;
-		} else if (size < 0) {
+	/* For PR support platform, device-tree has configured addr */
+	if (zdev->pr_isolation_addr &&
+	    (axlf_obj->za_flags & DRM_ZOCL_AXLF_BITSTREAM)) {
+		ret = zocl_load_sect(zdev, axlf, xclbin, BITSTREAM);
+		if (ret)
 			goto out0;
-		}
+	}
+
+	if (axlf_obj->za_flags & DRM_ZOCL_AXLF_BITSTREAM_PDI) {
+		ret = zocl_load_sect(zdev, axlf, xclbin, BITSTREAM_PARTIAL_PDI);
+		if (ret)
+			goto out0;
+	}
+
+	if (axlf_obj->za_flags & DRM_ZOCL_AXLF_AIE_PDI) {
+		ret = zocl_load_sect(zdev, axlf, xclbin, PDI);
+		if (ret)
+			goto out0;
 	}
 
 	/* Populating IP_LAYOUT sections */
