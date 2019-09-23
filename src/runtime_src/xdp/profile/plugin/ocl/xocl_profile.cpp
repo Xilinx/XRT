@@ -784,6 +784,26 @@ isAPCtrlChain(key k, const std::string& cu)
   return false;
 }
 
+/*
+ * Return Memory size from index in xclbin mem topology
+ */
+uint64_t
+getMemSizeBytes(key k, int idx)
+{
+  auto device = k;
+  if (!device)
+    return false;
+  auto xclbin = device->get_xclbin();
+  auto binary = xclbin.binary();
+  auto binary_data = binary.binary_data();
+  auto header = reinterpret_cast<const xclBin *>(binary_data.first);
+  auto mem_topology = getAxlfSection<const ::mem_topology>(header, axlf_section_kind::MEM_TOPOLOGY);
+  if (mem_topology && idx < mem_topology->m_count) {
+    return mem_topology->m_mem_data[idx].m_size * 1024;
+  }
+  return 0;
+}
+
 data*
 get_data(key k) 
 { 
