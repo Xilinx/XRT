@@ -839,7 +839,7 @@ static int calibrate_mig(struct icap *icap)
 {
 	int i;
 
-	for (i = 0; i < 10 && !mig_calibration_done(icap); ++i)
+	for (i = 0; i < 20 && !mig_calibration_done(icap); ++i)
 		msleep(500);
 
 	if (!mig_calibration_done(icap)) {
@@ -2003,10 +2003,8 @@ static int icap_create_subdev(struct platform_device *pdev, struct axlf *xclbin)
 		}
 	}
 done:
-	if (err) {
-		vfree(ip_layout);
-		vfree(mem_topo);
-	}
+	vfree(ip_layout);
+	vfree(mem_topo);
 	return err;
 }
 
@@ -2521,8 +2519,9 @@ static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
 		break;
 	case CLOCK_FREQ_TOPOLOGY:
 		target = (void **)&icap->icap_clock_freq_topology;
-	default:
 		break;
+	default:
+		return -EINVAL;
 	}
 	if (target) {
 		vfree(*target);

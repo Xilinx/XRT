@@ -514,6 +514,8 @@ AwsDev::~AwsDev()
 #ifdef INTERNAL_TESTING_FOR_AWS
     if (mMgtHandle > 0)
         close(mMgtHandle);
+#else
+    fpga_mgmt_close(); // aws-fpga version newer than 09/2019 need this
 #endif
     if (mLogStream.is_open()) {
         mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
@@ -540,6 +542,7 @@ AwsDev::AwsDev(size_t index, const char *logfileName) : mBoardNumber(index), mLo
         throw std::runtime_error("Can't open /dev/awsmgmt");
 
 #else
+    fpga_mgmt_init(); // aws-fpga version newer than 09/2019 need this
     loadDefaultAfiIfCleared();
     //bar0 is mapped already. seems other 2 bars are not required.
 #endif

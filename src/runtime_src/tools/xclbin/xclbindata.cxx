@@ -993,6 +993,9 @@ XclBinData::getDebugIPType( std::string &_sDebugIPType ) const
   if ( _sDebugIPType == "TRACE_S2MM" )
       return TRACE_S2MM;
 
+  if ( _sDebugIPType == "TRACE_S2MM_FULL" )
+      return TRACE_S2MM_FULL;
+
   if ( _sDebugIPType == "AXI_DMA" )
       return AXI_DMA;
 
@@ -1575,6 +1578,7 @@ XclBinData::getDebugIPTypeStr(enum DEBUG_IP_TYPE _debugIpType) const
     case ACCEL_MONITOR: return "ACCEL_MONITOR";
     case AXI_DMA: return "AXI_DMA";
     case TRACE_S2MM: return "TRACE_S2MM";
+    case TRACE_S2MM_FULL: return "TRACE_S2MM_FULL";
     case AXI_STREAM_MONITOR: return "AXI_STREAM_MONITOR";
     case AXI_STREAM_PROTOCOL_CHECKER: return "AXI_STREAM_PROTOCOL_CHECKER";
   }

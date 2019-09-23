@@ -203,6 +203,8 @@ typedef struct XmaHwExecBO
     handle = 0;
     data = NULL;
     cu_index = -1;
+    cu_cmd_id1 = 0;
+    cu_cmd_id2 = 0;
     session_id = -1;
   }
 } XmaHwExecBO;
