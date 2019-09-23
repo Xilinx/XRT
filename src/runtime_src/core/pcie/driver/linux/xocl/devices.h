@@ -1123,7 +1123,6 @@ struct xocl_subdev_map {
 
 #define	XOCL_BOARD_USER_DSA52_U2						\
 	(struct xocl_board_private){					\
-		.flags		= XOCL_DSAFLAG_NO_KDMA,					\
 		.subdev_info	= USER_RES_DSA52_U2,			\
 		.subdev_num = ARRAY_SIZE(USER_RES_DSA52_U2),		\
 	}
