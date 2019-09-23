@@ -1179,7 +1179,7 @@ static ssize_t scaling_governor_show(struct device *dev,
 	char val[10];
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
 			 __func__);
 		strcpy(val, "NULL");
 		return sprintf(buf, "%s\n", val);
@@ -1209,7 +1209,7 @@ static ssize_t scaling_governor_store(struct device *dev,
 
 	/* Check if clock scaling feature enabled */
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
 			 __func__);
 		return count;
 	}
@@ -1259,7 +1259,7 @@ static ssize_t hwmon_scaling_target_power_show(struct device *dev,
 	u32 val = 0;
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
 			 __func__);
 		return sprintf(buf, "%d\n", val);
 	}
@@ -1279,7 +1279,7 @@ static ssize_t hwmon_scaling_target_power_store(struct device *dev,
 	u32 val, val2, threshold;
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
 			 __func__);
 		return count;
 	}
@@ -1316,7 +1316,7 @@ static ssize_t hwmon_scaling_target_temp_show(struct device *dev,
 	u32 val = 0;
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
 			 __func__);
 		return sprintf(buf, "%d\n", val);
 	}
@@ -1337,7 +1337,7 @@ static ssize_t hwmon_scaling_target_temp_store(struct device *dev,
 
 	/* Check if clock scaling feature enabled */
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
 			 __func__);
 		return count;
 	}
@@ -1372,7 +1372,7 @@ static ssize_t hwmon_scaling_threshold_temp_show(struct device *dev,
 	u32 val = 0;
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
 			 __func__);
 		return sprintf(buf, "%d\n", val);
 	}
@@ -1393,7 +1393,7 @@ static ssize_t hwmon_scaling_threshold_power_show(struct device *dev,
 	u32 val = 0;
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
 			 __func__);
 		return sprintf(buf, "%d\n", val);
 	}

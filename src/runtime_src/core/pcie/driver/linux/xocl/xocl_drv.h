@@ -160,6 +160,8 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 
 #define xocl_err(dev, fmt, args...)			\
 	dev_err(dev, "%s: "fmt, __func__, ##args)
+#define xocl_warn(dev, fmt, args...)			\
+	dev_warn(dev, "%s: "fmt, __func__, ##args)
 #define xocl_info(dev, fmt, args...)			\
 	dev_info(dev, "%s: "fmt, __func__, ##args)
 #define xocl_dbg(dev, fmt, args...)			\

@@ -73,7 +73,7 @@ int xocl_thread_stop(xdev_handle_t xdev)
 	xocl_info(&core->pdev->dev, "%s stop ret = %d\n",
 		       core->thread_arg.name, ret);
 	if(ret != -EINTR) {
-		xocl_err(&core->pdev->dev, "%s has terminated",
+		xocl_info(&core->pdev->dev, "%s has terminated",
 				core->thread_arg.name);
 		ret = 0;
 	}

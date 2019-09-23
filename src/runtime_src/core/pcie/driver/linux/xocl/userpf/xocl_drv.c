@@ -682,7 +682,6 @@ static void xocl_dev_percpu_kill(void *data)
 
 	percpu_ref_kill(ref);
 }
-
 #endif
 
 void xocl_p2p_mem_release(struct xocl_dev *xdev, bool recov_bar_sz)
@@ -964,11 +963,12 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 
 	xdev = pci_get_drvdata(pdev);
 	if (!xdev) {
-		xocl_err(&pdev->dev, "driver data is NULL");
+		xocl_warn(&pdev->dev, "driver data is NULL");
 		return;
 	}
 
 	xocl_queue_destroy(xdev);
+
 
 	xocl_p2p_mem_release(xdev, false);
 	xocl_subdev_destroy_all(xdev);
