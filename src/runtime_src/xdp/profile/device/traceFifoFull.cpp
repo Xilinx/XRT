@@ -280,7 +280,7 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
         continue;
 
       // Poor Man's reset
-      if (i == 0 && !mfirstTimestamp)
+      if (i == 0 && !mclockTrainingdone)
         mfirstTimestamp = currentSample & 0x1FFFFFFFFFFF;
 
       // This section assumes that we write 8 timestamp packets in startTrace
