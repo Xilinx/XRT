@@ -23,7 +23,6 @@
 #include "Section.h"
 #include "FDTProperty.h"
 #include <boost/functional/factory.hpp>
-#include <boost/property_tree/json_parser.hpp>
 
 // ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
 // Forward declarations - use these instead whenever possible...

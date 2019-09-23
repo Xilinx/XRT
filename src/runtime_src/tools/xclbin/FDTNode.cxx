@@ -182,13 +182,6 @@ FDTNode::FDTNode(const boost::property_tree::ptree& _ptDTC,
       XUtil::TRACE(XUtil::format("Node Found: %s", keyName.c_str()).c_str());
       FDTNode * pFDTNode = new FDTNode(iter->second, keyName, _propertyNameFormat);
       m_nestedNodes.push_back(pFDTNode);
-    } else {
-      FDTProperty::PropertyNameFormat format = {
-        { iter->first, FDTProperty::DF_sz }
-      };
-
-      FDTProperty * pProperty = new FDTProperty(iter, format);
-      m_properties.push_back(pProperty);
     }
   }
 }

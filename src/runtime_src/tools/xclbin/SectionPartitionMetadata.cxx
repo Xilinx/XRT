@@ -16,6 +16,7 @@
 
 #include "SectionPartitionMetadata.h"
 #include "DTC.h"
+#include <boost/property_tree/json_parser.hpp>
 
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
@@ -50,7 +51,8 @@ const FDTProperty::PropertyNameFormat SectionPartitionMetadata::m_propertyNameFo
   { "firmware_branch_name", FDTProperty::DF_sz },
   { "firmware_version_major", FDTProperty::DF_u32 },
   { "firmware_version_minor", FDTProperty::DF_u32 },
-  { "firmware_version_revision", FDTProperty::DF_u32 }
+  { "firmware_version_revision", FDTProperty::DF_u32 },
+  { "__INFO", FDTProperty::DF_sz }
 };
 
 // -- Helper transformation helper functions ---------------------------------
