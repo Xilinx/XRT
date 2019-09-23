@@ -1,0 +1,12 @@
+prefix=@XMA_INSTALL_DIR@
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir1=${prefix}/include/xma_legacy
+includedir2=${prefix}/include
+
+Name: libxmaplugin
+Description: Xilinx Media Accelerator Plugin API
+Version: 0.0.1
+Requires:
+Libs: -L${libdir}  -lxmaplugin_legacy 
+Cflags: -I${includedir1} -I${includedir2}

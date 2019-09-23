@@ -69,7 +69,7 @@ validate_bd_design
 # Lock the dynamic region boundary interfaces after validation
 #set l_ext_ports [list ddrmem_0_C0_DDR4 c0_sys regslice_control_M_AXI regslice_control_userpf_M_AXI regslice_data_M_AXI]
 #set l_ext_ports [list ddrmem_0_C0_DDR4 interconnect_aximm_ddrmem1_M00_AXI c0_sys regslice_control_M_AXI regslice_control_userpf_M_AXI regslice_data_M_AXI]
-set l_ext_ports [list interconnect_aximm_ddrmem2_M00_AXI interconnect_aximm_ddrmem3_M00_AXI c0_sys  regslice_control_userpf_M_AXI regslice_data_periph_M_AXI regslice_data_hpm0fpd_M_AXI1]
+set l_ext_ports [list interconnect_aximm_ddrmem2_M00_AXI interconnect_aximm_ddrmem3_M00_AXI c0_sys  regslice_control_userpf_M_AXI regslice_data_periph_M_AXI regslice_data_hpm0fpd_M_AXI1 interconnect_aximm_ddrmem5_M00_AXI interconnect_aximm_ddrmem4_M00_AXI]
 #set l_ext_ports [list  c0_sys  regslice_control_userpf_M_AXI regslice_data_periph_M_AXI]
 
 foreach ext_port_name $l_ext_ports {
