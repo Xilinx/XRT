@@ -53,7 +53,7 @@ module_param(minimum_initialization, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(minimum_initialization,
 	"Enable minimum_initialization to force driver to load without vailid firmware or DSA. Thus xbsak flash is able to upgrade firmware. (0 = normal initialization, 1 = minimum initialization)");
 
-#define	LOW_TEMP		0
+#define	LOW_TEMP		1
 #define	HI_TEMP			85
 #define	LOW_MILLVOLT		500
 #define	HI_MILLVOLT		2500
@@ -203,7 +203,7 @@ void get_pcie_link_info(struct xclmgmt_dev *lro,
 void device_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj)
 {
 	u32 val, major, minor, patch;
-	struct FeatureRomHeader rom;
+	struct FeatureRomHeader rom = { {0} };
 
 	memset(obj, 0, sizeof(struct xclmgmt_ioc_info));
 	sscanf(XRT_DRIVER_VERSION, "%d.%d.%d", &major, &minor, &patch);
@@ -1084,8 +1084,9 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	/* No further initialization for MFG board. */
 	if (minimum_initialization)
 		return 0;
-	else if ((dev_info->flags & XOCL_DSAFLAG_MFG) != 0) {
-		xocl_subdev_create_all(lro);
+
+	if ((dev_info->flags & XOCL_DSAFLAG_MFG) != 0) {
+		(void) xocl_subdev_create_all(lro);
 		return 0;
 	}
 
