@@ -32,6 +32,9 @@
 #define	MIG_DEV2BASE(dev)	(MIG_DEV2MIG(dev)->base)
 #define	MIG_ERR(mig, fmt, arg...)	\
 	xocl_err((mig)->mig_dev, fmt "\n", ##arg)
+#define	MIG_INFO(mig, fmt, arg...)	\
+	xocl_info((mig)->mig_dev, fmt "\n", ##arg)
+
 
 #define MIG_DEFAULT_EXPIRE_SECS 1
 
@@ -114,7 +117,7 @@ static void ecc_reset(struct xocl_mig *mig)
 	xdev_handle_t xdev = MIG_DEV2XDEV(mig->mig_dev);
 
 	if (!MIG_PRIVILEGED(mig)) {
-		MIG_ERR(mig, "Unable to reset from userpf");
+		MIG_INFO(mig, "Unable to reset from userpf");
 		return;
 	}
 
