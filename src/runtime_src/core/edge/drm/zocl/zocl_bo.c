@@ -458,7 +458,7 @@ zocl_userptr_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	dma_unmap_sg(dev->dev, bo->cma_base.sgt->sgl,
 				bo->cma_base.sgt->nents, 0);
 
-	for(i=0;i< page_count;++i) {
+	for(i=0; i < page_count; ++i) {
 		set_page_dirty_lock(pages[i]);
 		put_page(pages[i]);
 	}

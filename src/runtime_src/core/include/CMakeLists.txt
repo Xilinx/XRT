@@ -12,7 +12,8 @@ set(XRT_HEADER_SRC
   xcl_app_debug.h
   xclperf.h
   xclhal2_mem.h
-  xrt_mem.h)
+  xrt_mem.h
+  xallocator.h)
 
 install (FILES ${XRT_HEADER_SRC} DESTINATION ${XRT_INSTALL_INCLUDE_DIR})
 
