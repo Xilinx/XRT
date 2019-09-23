@@ -446,27 +446,3 @@ int xcldev::device::print_debug_ip_list (int aVerbose) {
         "information about the IP" << std::endl;
     return 0;
 }
-
-int xcldev::xclTop(int argc, char* argv[])
-{
-  std::cout << "Unsupported API" << std::endl ;
-  return -1 ;
-}
-
-int xcldev::xclReset(int argc, char* argv[])
-{
-  std::cout << "Unsupported API" << std::endl ;
-  return -1 ;
-}
-
-int xcldev::xclValidate(int argc, char* argv[])
-{
-  std::cout << "Unsupported API" << std::endl ;
-  return -1 ;
-}
-
-int xcldev::xclP2p(int argc, char* argv[])
-{
-  std::cout << "Unsupported API" << std::endl ;
-  return -1 ;
-}
