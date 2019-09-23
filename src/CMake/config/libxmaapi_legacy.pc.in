@@ -1,7 +1,8 @@
 prefix=@XMA_INSTALL_DIR@
 exec_prefix=${prefix}
 libdir=${prefix}/lib
-includedir=${prefix}/include
+includedir1=${prefix}/include/xma_legacy
+includedir2=${prefix}/include
 
 Name: libxmaapi
 Description: Xilinx Media Accelerator API
@@ -9,5 +10,5 @@ Version: 0.0.1
 Requires: yaml-0.1   >= 0.1.4 \
           libxml-2.0 >= 2.9.1 \
           xrt >= 2.1.0
-Libs: -L${libdir} -lxmaapi
-Cflags: -I${includedir}
+Libs: -L${libdir} -lxmaapi_legacy
+Cflags: -I${includedir1} -I${includedir2}
