@@ -34,7 +34,7 @@ ProfileIP::ProfileIP(Device* handle, int index, debug_ip_data* data)
     mapped = true;  
     exclusive = true;
 
-    if (exclusive) {
+    if (exclusive && data) {
         device = handle;
         ip_index = index;
         ip_base_address = data->m_base_address;
@@ -118,8 +118,7 @@ int ProfileIP::read(uint64_t offset, size_t size, void* data) {
     }
     uint64_t absolute_offset = ip_base_address + offset;
     
-    size_t read_size = 1;
-    device->read(XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
+    int read_size = device->read(XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
 //    size_t read_size = xDevice->xclRead(device_handle, XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
     if (read_size < 0) {
         showWarning("xclRead failed");
@@ -139,8 +138,7 @@ int ProfileIP::write(uint64_t offset, size_t size, void* data) {
     }
     uint64_t absolute_offset = ip_base_address + offset;
 
-    size_t write_size = 1;
-    device->write(XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
+    int write_size = device->write(XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
 //    size_t write_size = xclWrite(xrt_device_handle, XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
     if (write_size < 0) {
         showWarning("xclWrite failed");
