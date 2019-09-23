@@ -22,7 +22,7 @@
 #include "lib/xmahw.h"
 #include "lib/xmalimits.h"
 #include "xclbin.h"
-#include "mgmt-ioctl.h"
+//#include "mgmt-ioctl.h"
 
 #if !defined (PATH_MAX) || !defined (NAME_MAX)
 #include <linux/limits.h>
