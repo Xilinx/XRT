@@ -19,6 +19,7 @@
 
 #include "app/xmabuffers.h"
 #include "app/xmaparam.h"
+#include "lib/xmalimits.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -234,13 +235,6 @@ typedef struct XmaDecoderProperties
     int32_t         height;
     /** framerate data structure specifying frame rate per second */
     XmaFraction     framerate;
-    
-    int32_t         dev_index;
-    int32_t         cu_index;
-    int32_t         ddr_bank_index;//Used for allocating device buffers. Used only if valid index is provide (>= 0); value of -1 imples that XMA should select automatically and then XMA will set it with bank index used automatically
-    int32_t         channel_id;
-    char            *plugin_lib;
-    int32_t         reserved[4];
 } XmaDecoderProperties;
 
 /* Forward declaration */
@@ -261,7 +255,7 @@ typedef struct XmaDecoderSession XmaDecoderSession;
  * 
  * NULL on failure
  *
- *  Note: session create & destroy are thread safe APIs
+ *  Note: Cannot be presumed to be thread safe.
 */
 XmaDecoderSession*
 xma_dec_session_create(XmaDecoderProperties *dec_props);
@@ -277,7 +271,7 @@ xma_dec_session_create(XmaDecoderProperties *dec_props);
  * 
  * XMA_ERROR on failure.
  *
- *  Note: session create & destroy are thread safe APIs
+ *  Note: Cannot be presumed to be thread safe.
 */
 int32_t
 xma_dec_session_destroy(XmaDecoderSession *session);

@@ -70,18 +70,9 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
         {
             if (ipl->m_ip_data[i].m_type != IP_KERNEL)
                 continue;
-
-            if (xclbin_info->number_of_kernels == MAX_KERNEL_CONFIGS) {
-                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only %d kernels per device\n", xclbin_info->number_of_kernels);
-                return XMA_ERROR;
-            }
             memcpy(xclbin_info->ip_layout[j].kernel_name,
                    ipl->m_ip_data[i].m_name, MAX_KERNEL_NAME);
             layout[j].base_addr = ipl->m_ip_data[i].m_base_address;
-            //Sarab: handle soft_kernel type here
-            //set some variable in ip_layout of xma struct
-            xclbin_info->ip_layout[j].soft_kernel = false;
-            
             xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index = %d, kernel name = %s, base_addr = %lx\n",
                     j, layout[j].kernel_name, layout[j].base_addr);
             j++;
@@ -95,7 +86,7 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
         return XMA_ERROR;
     }
 
-    uuid_copy(xclbin_info->uuid, xclbin->m_header.uuid); 
+    uuid_copy(xclbin_info->uuid, xclbin->m_header.uuid);
 
     return XMA_SUCCESS;
 }
@@ -113,18 +104,14 @@ static int get_xclbin_mem_topology(char *buffer, XmaXclbinInfo *xclbin_info)
         XmaMemTopology *topology = xclbin_info->mem_topology;
         xclbin_info->number_of_mem_banks = mem_topo->m_count;
         xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "MEM TOPOLOGY - %d banks\n",xclbin_info->number_of_mem_banks);
-        if (xclbin_info->number_of_mem_banks > MAX_DDR_MAP) {
-            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only 64 mem banks\n");
-            return XMA_ERROR;
-        }
         for (int i = 0; i < mem_topo->m_count; i++)
         {
             topology[i].m_type = mem_topo->m_mem_data[i].m_type;
             topology[i].m_used = mem_topo->m_mem_data[i].m_used;
             topology[i].m_size = mem_topo->m_mem_data[i].m_size;
             topology[i].m_base_address = mem_topo->m_mem_data[i].m_base_address;
-            //m_tag is 16 chars
-            memcpy(topology[i].m_tag, mem_topo->m_mem_data[i].m_tag, 16*sizeof(unsigned char));
+            //HHS change limits from MAX_DDR_MAP = 16 if needed
+            memcpy(topology[i].m_tag, mem_topo->m_mem_data[i].m_tag, MAX_DDR_MAP*sizeof(unsigned char));
             xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index=%d, tag=%s, type = %d, used = %d, size = %lx, base = %lx\n",
                    i,topology[i].m_tag, topology[i].m_type, topology[i].m_used,
                    topology[i].m_size, topology[i].m_base_address);
@@ -184,35 +171,37 @@ int xma_xclbin_info_get(char *buffer, XmaXclbinInfo *info)
     if(rc == XMA_ERROR)
         return rc;
 
-    memset(info->ip_ddr_mapping, 0, sizeof(info->ip_ddr_mapping));
+    uint64_t map[MAX_KERNEL_CONFIGS] = {};
     for(uint32_t c = 0; c < info->number_of_connections; c++)
     {
         XmaAXLFConnectivity *xma_conn = &info->connectivity[c];
-        info->ip_ddr_mapping[xma_conn->m_ip_layout_index] |= 1 << (xma_conn->mem_data_index);
+        map[xma_conn->m_ip_layout_index] |= 1 << (xma_conn->mem_data_index + 1);
     }
-    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\nCU DDR connections bitmap:\n");
+    memcpy(info->ip_ddr_mapping,map,MAX_KERNEL_CONFIGS*sizeof(uint64_t));
+    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\nCONNECTIONS (bitmap 63<-0)\n");
     for(uint32_t i = 0; i < info->number_of_kernels; i++)
     {
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\t%s - 0x%04x\n",info->ip_layout[i].kernel_name, info->ip_ddr_mapping[i]);
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "%s - 0x%04x\n",info->ip_layout[i].kernel_name, info->ip_ddr_mapping[i]);
     }
     //For execbo:
-    //info->num_ips = info->number_of_kernels;
+    info->num_ips = info->number_of_kernels;
     return XMA_SUCCESS;
 }
 
-int xma_xclbin_map2ddr(uint64_t bit_map, int* ddr_bank)
+int xma_xclbin_map2ddr(uint64_t bit_map, int* ddr_banks, int* num_banks)
 {
-    //64 bits based on MAX_DDR_MAP = 64
-    int ddr_bank_idx = 0;
+    //TODO HHS Based on uint64_t bitmap considering 64 DDRs as max
+    int ddr_bank_idx = -1;
+    int count = 0;
     while (bit_map != 0)
     {
+        ddr_bank_idx++;
         if (bit_map & 1)
         {
-            *ddr_bank = ddr_bank_idx;
-            return XMA_SUCCESS;
+            ddr_banks[count++]=ddr_bank_idx-1;
         }
-        ddr_bank_idx++;
         bit_map = bit_map >> 1;
     }
-    return XMA_ERROR;
+    *num_banks = count;
+    return XMA_SUCCESS;
 }

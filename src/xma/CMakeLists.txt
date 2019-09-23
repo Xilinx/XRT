@@ -1,6 +1,7 @@
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/include
-  ${CMAKE_SOURCE_DIR}/runtime_src
+  "${CMAKE_SOURCE_DIR}/runtime_src/driver/xclng/include"
+  "${CMAKE_SOURCE_DIR}/runtime_src/driver/include"
   )
 
 option(XMA_VERBOSE "Enable xma verbosity" OFF)
@@ -19,6 +20,4 @@ set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")
 
 #Install all header files with directory structure
 #Don't remove trailing/ in include/
-install(DIRECTORY include/ DESTINATION ${XMA_INSTALL_DIR}/include
-  PATTERN "include/lib" EXCLUDE
-)
+install(DIRECTORY include/ DESTINATION ${XMA_INSTALL_DIR}/include)
