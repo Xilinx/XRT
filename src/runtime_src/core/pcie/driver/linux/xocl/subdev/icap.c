@@ -3460,7 +3460,6 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		ret = copy_from_user(axlf, data, sizeof(struct axlf));
 		if (ret) {
 			vfree(axlf);
-			mutex_unlock(&icap->icap_lock);
 			ICAP_ERR(icap, "copy header buffer failed %ld", ret);
 			goto failed;
 		}
@@ -3484,7 +3483,6 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		ret = copy_from_user(icap->rp_bit, data, data_len);
 		if (ret) {
 			ICAP_ERR(icap, "copy bit file failed %ld", ret);
-			mutex_unlock(&icap->icap_lock);
 			goto failed;
 		}
 		len = data_len;
@@ -3622,7 +3620,6 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 failed:
 	icap_free_bins(icap);
 
-	mutex_lock(&icap->icap_lock);
 	if (axlf)
 		vfree(axlf);
 	mutex_unlock(&icap->icap_lock);
