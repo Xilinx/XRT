@@ -183,7 +183,6 @@ FDTNode::FDTNode(const boost::property_tree::ptree& _ptDTC,
       FDTNode * pFDTNode = new FDTNode(iter->second, keyName, _propertyNameFormat);
       m_nestedNodes.push_back(pFDTNode);
     }
-      
   }
 }
 
