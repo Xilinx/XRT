@@ -45,6 +45,9 @@ validOrError(cl_command_queue command_queue,
   detail::memory::validOrError(buffer,map_flags,offset,size);
   detail::event::validOrError(command_queue,num_events_in_wait_list,event_wait_list);
 
+  if ((xocl(buffer)->get_flags() & CL_MEM_WRITE_ONLY) && map_flags == CL_MAP_WRITE)
+    throw error(CL_MAP_FAILURE,"Map CL_MEM_WRITE_ONLY buffer for write is undefined");
+
   auto ctx1 = xocl(command_queue)->get_context();
   if (ctx1 != xocl(buffer)->get_context())
     throw error(CL_INVALID_CONTEXT,"context of objects do not match");

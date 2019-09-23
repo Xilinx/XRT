@@ -380,13 +380,7 @@ namespace xclcpuemhal2 {
           {
             xilinxInstall = std::string(installEnvvar);
           }
-        }
-
-        char *pcieModelEnvVar = getenv("XILINX_PCIE_MODEL");
-        std::string pcieModelPath("");
-        if (pcieModelEnvVar != NULL) {
-          pcieModelPath = std::string(pcieModelEnvVar);
-        }
+        }       
         
         char *xilinxVivadoEnvvar = getenv("XILINX_VIVADO");
         if(xilinxVivadoEnvvar)
@@ -407,17 +401,13 @@ namespace xclcpuemhal2 {
           setenv("LD_LIBRARY_PATH",sLdLibs.c_str(),true);
         }
         std::string modelDirectory("");
-        modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynqu/model/genericpciemodel";
-        if (!pcieModelPath.empty()) {
-          modelDirectory = xilinxInstall + pcieModelPath;
-        }
-        
-//#if defined(CONFIG_ARM64)
-//        modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynqu/model/genericpciemodel";
-//#else
-//        modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynq/model/genericpciemodel";
-//#endif
+        modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynqu/model/genericpciemodel";  
 
+#if defined(__aarch64__)
+  modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynqu/model/genericpciemodel";
+#elif defined(__arm__)
+  modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynq/model/genericpciemodel";
+#endif
         const char* childArgv[6] = { NULL, NULL, NULL, NULL, NULL, NULL } ;
         childArgv[0] = modelDirectory.c_str() ;
 

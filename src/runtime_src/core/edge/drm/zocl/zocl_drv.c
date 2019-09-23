@@ -530,8 +530,6 @@ static const struct drm_ioctl_desc zocl_ioctls[] = {
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(ZOCL_SK_REPORT, zocl_sk_report_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
-	DRM_IOCTL_DEF_DRV(ZOCL_PCAP_DOWNLOAD, zocl_pcap_download_ioctl,
-			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(ZOCL_INFO_CU, zocl_info_cu_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 };

@@ -44,5 +44,6 @@ Please use 'coarse' option for data transfer trace or turn off Stall profiling"
 #define TS2MM_WARN_MSG_BUFSIZE_SMALL  "Trace Buffer size is too small. The minimum size of 8K will be used."
 #define TS2MM_WARN_MSG_BUFSIZE_DEF    "Trace Buffer size could not be parsed. The default size of 1M will be used."
 #define TS2MM_WARN_MSG_ALLOC_FAIL     "Trace Buffer could not be allocated on device. Device trace will be missing."
+#define TS2MM_WARN_MSG_BUF_FULL       "Trace Buffer is full. Device trace could be incomplete."
 
 #endif

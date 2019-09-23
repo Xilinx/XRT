@@ -1,6 +1,7 @@
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${XRT_SRC_DIR}/include/1_2
+  ${CMAKE_BINARY_DIR}/gen # includes version.h
   )
 
 set(XRT_XDP_APPDEBUG_DIR   "${CMAKE_CURRENT_SOURCE_DIR}/appdebug")

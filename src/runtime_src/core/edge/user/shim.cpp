@@ -469,6 +469,8 @@ int ZYNQShim::xclLoadXclBin(const xclBin *buffer)
 int ZYNQShim::xclLoadAxlf(const axlf *buffer)
 {
   int ret = 0;
+  unsigned int flags = DRM_ZOCL_AXLF_NONE;
+
   if (mLogStream.is_open()) {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << buffer << std::endl;
   }
@@ -484,20 +486,28 @@ int ZYNQShim::xclLoadAxlf(const axlf *buffer)
    * some v++ param).  User need to add enable_pr=false in xrt.ini.
    */
   auto is_pr_platform = (buffer->m_header.m_mode == XCLBIN_PR ) ? true : false;
-  auto runtime_pr_en = xrt_core::config::get_enable_pr(); //default value is true
+  auto is_pr_enabled = xrt_core::config::get_enable_pr(); //default value is true
+  auto is_pdi_enabled = xrt_core::config::get_pdi_load(); //default value is true
 
-  if (is_pr_platform && runtime_pr_en) {
-    drm_zocl_pcap_download obj = { const_cast<axlf *>(buffer) };
-    ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_PCAP_DOWNLOAD, &obj);
-    if (ret)
-      std::cout << __func__ << "Partial reconfig failed, err: " << ret << std::endl;
+  /*
+   * By default, those flags are enabled, so that if xclbin contains those
+   * sections, driver will try to download all of them.
+   *
+   * In a very rare case if the xclbin contains invalid sections,
+   * for example: both BITSTREAM and PARTIAL BITSTREAM in one xclbin,
+   * the request will be rejected by ioctl.
+   */
+  if (is_pr_platform && is_pr_enabled) {
+    flags |= DRM_ZOCL_AXLF_BITSTREAM;
+  } 
+  if (is_pdi_enabled) {
+    flags |= DRM_ZOCL_AXLF_BITSTREAM_PDI;
+    flags |= DRM_ZOCL_AXLF_AIE_PDI;
   }
 
   drm_zocl_axlf axlf_obj = {
       .za_xclbin_ptr = const_cast<axlf *>(buffer),
-      .za_flags = xrt_core::config::get_pdi_load() ?
-          DRM_ZOCL_AXLF_FLAGS_PDI_LOAD :
-          DRM_ZOCL_AXLF_FLAGS_NONE,
+      .za_flags = flags,
   };
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_READ_AXLF, &axlf_obj);
 

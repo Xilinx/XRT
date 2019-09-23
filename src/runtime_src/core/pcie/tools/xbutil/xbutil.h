@@ -704,8 +704,11 @@ public:
         if (custat.size())
           ss << "\nCompute Unit Usage:" << "\n";
 
-        for (auto& line : custat)
-          ss << line.substr(0,line.find(" status :")) << "\n";
+        for (auto& line : custat) {
+          auto pos = line.find(" status :");
+          if (pos != std::string::npos)
+            ss << line.substr(0,line.find(" status :")) << "\n";
+        }
 
         ss << std::setw(80) << std::setfill('#') << std::left << "\n";
         lines.push_back(ss.str());
@@ -748,7 +751,7 @@ public:
         sensor_tree::put( "board.info.subvendor",      subvendor );
         sensor_tree::put( "board.info.xmcversion",     xmc_ver );
         sensor_tree::put( "board.info.serial_number",  ser_num );
-        sensor_tree::put( "board.info.max_power",      lvl2PowerStr(stoi(max_power)) );
+        sensor_tree::put( "board.info.max_power",      lvl2PowerStr(max_power.empty() ? UINT_MAX : stoi(max_power)) );
         sensor_tree::put( "board.info.sc_version",     bmc_ver );
         sensor_tree::put( "board.info.ddr_size",       GB(ddr_size)*ddr_count );
         sensor_tree::put( "board.info.ddr_count",      ddr_count );
@@ -974,7 +977,6 @@ public:
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.device",    "N/A" )
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.subdevice", "N/A" )
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.subvendor", "N/A" ) 
-             << std::setw(16) << sensor_tree::get<std::string>( "board.info.max_power", "N/A" ) 
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.serial_number", "N/A" ) << std::endl;
         ostr << std::setw(16) << "DDR size" << std::setw(16) << "DDR count" << std::setw(16) 
              << "Clock0" << std::setw(16) << "Clock1" << std::setw(16) << "Clock2" << std::endl;
