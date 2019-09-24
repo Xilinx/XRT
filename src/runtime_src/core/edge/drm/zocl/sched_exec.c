@@ -946,7 +946,8 @@ configure_soft_kernel(struct sched_cmd *cmd)
 		void *xclbin_buffer = NULL;
 
 		/* remap device physical addr to kernel virtual addr */
-		xclbin_buffer = memremap(cfg->sk_addr, cfg->sk_size, MEMREMAP_WB);
+		xclbin_buffer =
+		    memremap(cfg->sk_addr, cfg->sk_size, MEMREMAP_WB);
 		if (xclbin_buffer == NULL) {
 			ret = -ENOMEM;
 			goto fail;
@@ -1331,6 +1332,7 @@ static inline void
 polling_cnt_inc(struct sched_cmd *cmd)
 {
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+
 	if (zdev->ert || zdev->exec->polling_mode ||
 	    (opcode(cmd) == ERT_START_COPYBO))
 		++cmd->sched->poll;
@@ -1340,6 +1342,7 @@ static inline void
 polling_cnt_dec(struct sched_cmd *cmd)
 {
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+
 	if (zdev->ert || zdev->exec->polling_mode ||
 	    (opcode(cmd) == ERT_START_COPYBO))
 		--cmd->sched->poll;
@@ -2223,6 +2226,7 @@ penguin_query(struct sched_cmd *cmd)
 static void zocl_dma_complete(void *arg, int ret)
 {
 	struct sched_cmd *cmd = (struct sched_cmd *)arg;
+
 	cmd->dma_handle.dma_flags |= ZOCL_DMA_DONE;
 	if (ret != 0)
 		cmd->dma_handle.dma_flags |= ZOCL_DMA_ERROR;
@@ -2232,7 +2236,7 @@ static void zocl_dma_complete(void *arg, int ret)
 
 static int
 zocl_dma_channel_instance(zocl_dma_handle_t *dma_handle,
-    struct drm_zocl_dev *zdev)
+	struct drm_zocl_dev *zdev)
 {
 	dma_cap_mask_t dma_mask;
 
@@ -2309,10 +2313,9 @@ penguin_submit(struct sched_cmd *cmd)
 		if (zocl_copy_bo_submit(cmd) != 0) {
 			mark_cmd_submit_error(cmd);
 			return false;
-		} else {
-			cmd->slot_idx = acquire_slot_idx(cmd->ddev);
-			return true;
 		}
+		cmd->slot_idx = acquire_slot_idx(cmd->ddev);
+		return true;
 	}
 
 	if (opcode(cmd) == ERT_CONFIGURE) {
@@ -2807,6 +2810,7 @@ static irqreturn_t sched_cq_isr(int irq, void *arg)
 inline void init_exec(struct sched_exec_core *exec_core)
 {
 	unsigned int i;
+
 	exec_core->scheduler = &g_sched0;
 	exec_core->num_slots = 16;
 	exec_core->num_cus = 0;
@@ -2830,7 +2834,7 @@ inline void init_exec(struct sched_exec_core *exec_core)
 	for (i = 0; i < MAX_U32_CU_MASKS; ++i) {
 		exec_core->cu_status[i] = 0;
 		exec_core->cu_init[i] = 0;
-		exec_core->cu_valid[i] = 0; //default value is invalid(0)
+		exec_core->cu_valid[i] = 0; /* default value is invalid(0) */
 	}
 }
 
