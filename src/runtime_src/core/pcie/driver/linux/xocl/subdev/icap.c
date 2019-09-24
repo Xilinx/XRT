@@ -170,11 +170,17 @@ struct icap {
 
 static inline u32 reg_rd(void __iomem *reg)
 {
+	if (!reg)
+		return -1;
+
 	return XOCL_READ_REG32(reg);
 }
 
 static inline void reg_wr(void __iomem *reg, u32 val)
 {
+	if (!reg)
+		return;
+
 	iowrite32(val, reg);
 }
 
@@ -1333,7 +1339,8 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 			length = bin_obj_axlf->m_header.m_length;
 			xocl_mb_load_sche_image(xdev, fw->data + mbBinaryOffset,
 				mbBinaryLength);
-			ICAP_INFO(icap, "stashed mb sche binary");
+			ICAP_INFO(icap, "stashed mb sche binary, len %lld",
+					mbBinaryLength);
 			load_mbs = true;
 		}
 	}
@@ -1348,7 +1355,8 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 			length = bin_obj_axlf->m_header.m_length;
 			xocl_mb_load_mgmt_image(xdev, fw->data + mbBinaryOffset,
 				mbBinaryLength);
-			ICAP_INFO(icap, "stashed mb mgmt binary");
+			ICAP_INFO(icap, "stashed mb mgmt binary, len %lld",
+					mbBinaryLength);
 			load_mbs = true;
 		}
 	}
@@ -1496,20 +1504,22 @@ static int icap_post_download_rp(struct platform_device *pdev)
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	bool load_mbs = false;
 
-	if (icap->rp_mgmt_bin) {
+	if (xocl_mb_mgmt_on(xdev) && icap->rp_mgmt_bin) {
 		xocl_mb_load_mgmt_image(xdev, icap->rp_mgmt_bin,
 			icap->rp_mgmt_bin_len);
-		ICAP_INFO(icap, "stashed mb mgmt binary");
+		ICAP_INFO(icap, "stashed mb mgmt binary, len %ld",
+			icap->rp_mgmt_bin_len);
 		vfree(icap->rp_mgmt_bin);
 		icap->rp_mgmt_bin = NULL;
 		icap->rp_mgmt_bin_len = 0;
 		load_mbs = true;
 	}
 
-	if (icap->rp_sche_bin) {
+	if (xocl_mb_sched_on(xdev) && icap->rp_sche_bin) {
 		xocl_mb_load_sche_image(xdev, icap->rp_sche_bin,
 			icap->rp_sche_bin_len);
-		ICAP_INFO(icap, "stashed mb sche binary");
+		ICAP_INFO(icap, "stashed mb sche binary, len %ld",
+			icap->rp_sche_bin_len);
 		vfree(icap->rp_sche_bin);
 		icap->rp_sche_bin = NULL;
 		icap->rp_sche_bin_len =0;
@@ -2947,6 +2957,7 @@ static ssize_t sec_level_store(struct device *dev,
 	mutex_lock(&icap->icap_lock);
 
 	if (ICAP_PRIVILEGED(icap)) {
+#if defined(EFI_SECURE_BOOT) 
 		if (!efi_enabled(EFI_SECURE_BOOT)) {
 			icap->sec_level = val;
 		} else {
@@ -2954,6 +2965,10 @@ static ssize_t sec_level_store(struct device *dev,
 				"security level is fixed in secure boot");
 			ret = -EROFS;
 		}
+#else
+		icap->sec_level = val;
+#endif
+
 #ifdef	KEY_DEBUG
 		icap_key_test(icap);
 #endif
@@ -3416,7 +3431,6 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		size_t data_len, loff_t *off)
 {
 	struct icap *icap = filp->private_data;
-	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	struct axlf *axlf = NULL;
 	const struct axlf_section_header *section;
 	void *header;
@@ -3445,7 +3459,6 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		ret = copy_from_user(axlf, data, sizeof(struct axlf));
 		if (ret) {
 			vfree(axlf);
-			mutex_unlock(&icap->icap_lock);
 			ICAP_ERR(icap, "copy header buffer failed %ld", ret);
 			goto failed;
 		}
@@ -3469,7 +3482,6 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		ret = copy_from_user(icap->rp_bit, data, data_len);
 		if (ret) {
 			ICAP_ERR(icap, "copy bit file failed %ld", ret);
-			mutex_unlock(&icap->icap_lock);
 			goto failed;
 		}
 		len = data_len;
@@ -3569,35 +3581,31 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 
 	memcpy(icap->rp_bit, header, icap->rp_bit_len);
 
-	if (xocl_mb_mgmt_on(xdev)) {
-		/* Try locating the board mgmt binary. */
-		section = get_axlf_section_hdr(icap, axlf, FIRMWARE);
-		if (section) {
-			header = (char *)axlf + section->m_sectionOffset;
-			icap->rp_mgmt_bin = vmalloc(section->m_sectionSize);
-			if (!icap->rp_mgmt_bin) {
-				ICAP_ERR(icap, "Not enough memory for cmc bin");
-				ret = -ENOMEM;
-				goto failed;
-			}
-			memcpy(icap->rp_mgmt_bin, header, section->m_sectionSize);
-			icap->rp_mgmt_bin_len = section->m_sectionSize;
+	/* Try locating the board mgmt binary. */
+	section = get_axlf_section_hdr(icap, axlf, FIRMWARE);
+	if (section) {
+		header = (char *)axlf + section->m_sectionOffset;
+		icap->rp_mgmt_bin = vmalloc(section->m_sectionSize);
+		if (!icap->rp_mgmt_bin) {
+			ICAP_ERR(icap, "Not enough memory for cmc bin");
+			ret = -ENOMEM;
+			goto failed;
 		}
+		memcpy(icap->rp_mgmt_bin, header, section->m_sectionSize);
+		icap->rp_mgmt_bin_len = section->m_sectionSize;
 	}
 
-	if (xocl_mb_sched_on(xdev)) {
-		section = get_axlf_section_hdr(icap, axlf, SCHED_FIRMWARE);
-		if (section) {
-			header = (char *)axlf + section->m_sectionOffset;
-			icap->rp_sche_bin = vmalloc(section->m_sectionSize);
-			if (!icap->rp_sche_bin) {
-				ICAP_ERR(icap, "Not enough memory for cmc bin");
-				ret = -ENOMEM;
-				goto failed;
-			}
-			memcpy(icap->rp_sche_bin, header, section->m_sectionSize);
-			icap->rp_sche_bin_len = section->m_sectionSize;
+	section = get_axlf_section_hdr(icap, axlf, SCHED_FIRMWARE);
+	if (section) {
+		header = (char *)axlf + section->m_sectionOffset;
+		icap->rp_sche_bin = vmalloc(section->m_sectionSize);
+		if (!icap->rp_sche_bin) {
+			ICAP_ERR(icap, "Not enough memory for cmc bin");
+			ret = -ENOMEM;
+			goto failed;
 		}
+		memcpy(icap->rp_sche_bin, header, section->m_sectionSize);
+		icap->rp_sche_bin_len = section->m_sectionSize;
 	}
 
 	vfree(axlf);
@@ -3611,7 +3619,6 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 failed:
 	icap_free_bins(icap);
 
-	mutex_lock(&icap->icap_lock);
 	if (axlf)
 		vfree(axlf);
 	mutex_unlock(&icap->icap_lock);

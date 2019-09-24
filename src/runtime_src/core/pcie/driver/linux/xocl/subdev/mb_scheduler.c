@@ -1576,7 +1576,7 @@ static int
 exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 {
 	struct xocl_dev *xdev = exec_get_xdev(exec);
-	uint32_t *cdma = xocl_cdma_addr(xdev);
+	uint32_t *cdma = xocl_rom_cdma_addr(xdev);
 	unsigned int dsa = exec->ert_cfg_priv;
 	struct ert_configure_cmd *cfg = xcmd->ert_cfg;
 	bool ert = XOCL_DSA_IS_VERSAL(xdev) ? 1 : xocl_mb_sched_on(xdev);
@@ -3977,7 +3977,7 @@ static ssize_t
 kds_numcdmas_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_xdev(dev);
-	uint32_t *cdma = xocl_cdma_addr(xdev);
+	uint32_t *cdma = xocl_rom_cdma_addr(xdev);
 	unsigned int cdmas = cdma ? 1 : 0; //TBD
 
 	return sprintf(buf, "%d\n", cdmas);
