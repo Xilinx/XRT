@@ -1,0 +1,11 @@
+
+&amba {
+	zyxclmm_drm {
+		compatible = "xlnx,zocl-versal";
+		status = "okay";
+		memory-region = <0xa>;
+		reg = <0x202 0x0 0x0 0x100000>;
+		xlnx,pr-decouple = <0xa4000000>;
+		xlnx,pr-reset = <0xa4010000>;
+	};
+};

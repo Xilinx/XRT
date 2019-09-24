@@ -30,6 +30,7 @@
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
 #include <linux/spinlock.h>
+#include "xclbin.h"
 #include "zocl_drv.h"
 #include "zocl_sk.h"
 #include "zocl_bo.h"
@@ -571,12 +572,150 @@ static struct drm_driver zocl_driver = {
 	.patchlevel                = ZOCL_DRIVER_PATCHLEVEL,
 };
 
+static void
+zdev_fpga_mgr_probe(struct drm_zocl_dev *zdev)
+{
+	struct device_node *fnode;
+
+	/* 
+	 * For Non PR platform, there is not need to have FPGA manager
+	 * For PR platform, the FPGA manager is required. 
+	 *
+	 * There is no enough info to decide if this is a PR platform
+	 * during driver probe, we will load the fpga_mgr whenever it
+	 * is configured correctly in the device tree.
+	 * Later operations (ioctls) will check if bitstream in xclbin
+	 * should be downloaded or not.
+	 */
+	fnode = of_get_child_by_name(of_root,
+	    zdev->zdev_data_info->fpga_driver_name);
+	if (fnode) {
+		zdev->fpga_mgr = of_fpga_mgr_get(fnode);
+		if (IS_ERR(zdev->fpga_mgr))
+			zdev->fpga_mgr = NULL;
+		DRM_INFO("FPGA programming device %s found.\n",
+		    zdev->zdev_data_info->fpga_driver_name);
+	}
+}
+
+static void
+zdev_prop_probe(const struct device_node *np, const char *propname,
+    u32 *out_value)
+{
+	if (of_property_read_u32(np, propname, out_value))
+		*out_value = 0;
+}
+
+static void
+zdev_fpga_mgr_init_mpsoc(struct drm_zocl_dev *zdev,
+    const struct device_node *np)
+{
+	zdev_fpga_mgr_probe(zdev);
+	zdev_prop_probe(np, "xlnx,pr-isolation-addr", &zdev->pr_isolation_addr);
+}
+
+static void
+zdev_fpga_mgr_init_versal(struct drm_zocl_dev *zdev,
+    const struct device_node *np)
+{
+	zdev_fpga_mgr_probe(zdev);
+	/* so sorry, we have to operate on 4 different addresses for now */
+	zdev_prop_probe(np, "xlnx,versal-pr-decouple", &zdev->pr_decouple);
+	zdev_prop_probe(np, "xlnx,versal-pr-reset", &zdev->pr_reset);
+}
+
+static int
+zdev_fpga_mgr_load_mpsoc(struct drm_zocl_dev *zdev, const char *buffer,
+    int length, void *args)
+{
+	int err;
+	void __iomem *map = NULL;
+	enum axlf_section_kind kind = *(enum axlf_section_kind *)args;
+
+	if (kind != PDI && kind != BITSTREAM_PARTIAL_PDI) {
+		DRM_ERROR("Unsupported bitstream %d", kind);
+		return -EINVAL;
+	}
+
+	if (!zdev->pr_isolation_addr) {
+		DRM_ERROR("PR isolation address is not set");
+		return -ENODEV;
+	}
+
+	map = ioremap(zdev->pr_isolation_addr, 0x1000);
+	if (IS_ERR_OR_NULL(map)) {
+		DRM_ERROR("ioremap PR address failed");
+		return -ENOMEM;
+	}
+
+	iowrite32(MPSOC_PR_ISOLATION_FREEZE, map);
+	err = zocl_fpga_mgr_load(zdev, buffer, length);
+	iowrite32(MPSOC_PR_ISOLATION_UNFREEZE, map);
+
+	iounmap(map);
+	return err;
+}
+
+static int
+zdev_fpga_decouple_then_reset(struct drm_zocl_dev *zdev)
+{
+	int err = 0;
+	void __iomem *pr_decouple_map = NULL;
+	void __iomem *pr_reset_map = NULL;
+
+	pr_decouple_map = ioremap(zdev->pr_decouple, 0x1000);
+	if (IS_ERR_OR_NULL(pr_decouple_map)) {
+		DRM_ERROR("ioremap PR decouple failed");
+		err = -ENOMEM;
+		goto out;
+	}
+	pr_reset_map = ioremap(zdev->pr_reset, 0x1000);
+	if (IS_ERR_OR_NULL(pr_reset_map)) {
+		DRM_ERROR("ioremap PR reset failed");
+		err = -ENOMEM;
+		goto out;
+	}
+
+	iowrite32(VERSAL_PR_DECOUPLE, pr_decouple_map);
+	iowrite32(VERSAL_PR_RESET, pr_reset_map);
+out:
+	if (pr_decouple_map)
+		iounmap(pr_decouple_map);
+	if (pr_reset_map)
+		iounmap(pr_reset_map);
+	return err;
+}
+
+static int
+zdev_fpga_mgr_load_versal(struct drm_zocl_dev *zdev, const char *buffer,
+    int length, void *args)
+{
+	int err;
+	enum axlf_section_kind kind = *(enum axlf_section_kind *)args;
+
+	if (!zdev->pr_decouple || !zdev->pr_reset) {
+		DRM_ERROR("PR isolation or reset addresses are not set");
+		return -ENODEV;
+	}
+
+	err = zocl_fpga_mgr_load(zdev, buffer, length);
+	/* only BITSTREAM_PARTIAL_PDI needs decouple and reset */
+	if (!err && kind == BITSTREAM_PARTIAL_PDI)
+		err = zdev_fpga_decouple_then_reset(zdev);
+
+	return err;
+}
+
 static const struct zdev_data zdev_data_mpsoc = {
 	.fpga_driver_name = "pcap",
+	.fpga_mgr_init = &zdev_fpga_mgr_init_mpsoc,
+	.fpga_mgr_load = &zdev_fpga_mgr_load_mpsoc,
 };
 
 static const struct zdev_data zdev_data_versal = {
-	.fpga_driver_name = "versal_fpga"
+	.fpga_driver_name = "versal_fpga",
+	.fpga_mgr_init = &zdev_fpga_mgr_init_versal,
+	.fpga_mgr_load = &zdev_fpga_mgr_load_versal,
 };
 
 static const struct of_device_id zocl_drm_of_match[] = {
@@ -597,7 +736,6 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	struct platform_device *subdev;
 	struct resource res_mem;
 	struct resource *res;
-	struct device_node *fnode;
 	int index;
 	int irq;
 	int ret;
@@ -651,23 +789,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 		zdev->ert = (struct zocl_ert_dev *)platform_get_drvdata(subdev);
 	}
 
-	/* For Non PR platform, there is not need to have FPGA manager
-	 * For PR platform, the FPGA manager is required. No good way to
-	 * determin if it is a PR platform at probe.
-	 */
-	fnode = of_get_child_by_name(of_root,
-	    zdev->zdev_data_info->fpga_driver_name);
-	if (fnode) {
-		zdev->fpga_mgr = of_fpga_mgr_get(fnode);
-		if (IS_ERR(zdev->fpga_mgr))
-			zdev->fpga_mgr = NULL;
-		DRM_INFO("FPGA programming device %s founded.\n",
-		    zdev->zdev_data_info->fpga_driver_name);
-	}
-
-	if (of_property_read_u32(pdev->dev.of_node, "xlnx,pr-isolation-addr",
-	    &zdev->pr_isolation_addr))
-		zdev->pr_isolation_addr = 0;
+	zdev->zdev_data_info->fpga_mgr_init(zdev, pdev->dev.of_node);
 
 	/* Initialzie IOMMU */
 	if (iommu_present(&platform_bus_type)) {

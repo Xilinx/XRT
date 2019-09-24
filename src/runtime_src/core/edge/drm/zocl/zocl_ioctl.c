@@ -19,8 +19,8 @@
  */
 
 #include <linux/fpga/fpga-mgr.h>
-#include "zocl_drv.h"
 #include "xclbin.h"
+#include "zocl_drv.h"
 #include "sched_exec.h"
 
 /**
@@ -189,8 +189,8 @@ static int bitstream_parse_header(const unsigned char *Data, unsigned int Size,
 	return 0;
 }
 
-static int
-zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, char *data, int size)
+int
+zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, const char *data, int size)
 {
 	struct drm_device *ddev = zdev->ddev;
 	struct device *dev = ddev->dev;
@@ -262,7 +262,7 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length)
 
 	/* Map PR address */
 	if (!zdev->pr_isolation_addr) {
-		DRM_ERROR("PR address is NULL");
+		DRM_ERROR("PR isolation address is not set");
 		return -ENODEV;
 	}
 	map = ioremap(zdev->pr_isolation_addr, 0x1000);
@@ -271,11 +271,9 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length)
 		return -ENOMEM;
 	}
 
-	/* Freeze PR ISOLATION IP for bitstream download */
-	iowrite32(0x0, map);
+	iowrite32(MPSOC_PR_ISOLATION_FREEZE, map);
 	err = zocl_fpga_mgr_load(zdev, data, bit_header.BitstreamLength);
-	/* Unfreeze PR ISOLATION IP */
-	iowrite32(0x3, map);
+	iowrite32(MPSOC_PR_ISOLATION_UNFREEZE, map);
 
 	iounmap(map);
 
@@ -547,11 +545,14 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
 
 	switch (kind) {
 	case BITSTREAM:
+		/* platform independent ? */
 		ret = zocl_load_bitstream(zdev, section_buffer, size);
 		break;
 	case PDI:
 	case BITSTREAM_PARTIAL_PDI:
-		ret = zocl_fpga_mgr_load(zdev, section_buffer, size);
+		/* platform specific */
+		ret = zdev->zdev_data_info->fpga_mgr_load(zdev,
+		    section_buffer, size, &kind);
 		break;
 	default:
 		DRM_WARN("Unsupported load type %d", kind);

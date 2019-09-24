@@ -1,0 +1,24 @@
+
+&amba {
+	zyxclmm_drm {
+		compatible = "xlnx,zocl-versal";
+		status = "okay";
+		memory-region = <&versal_buffer>;
+		reg = <0x202 0x0 0x0 0x100000>;
+		xlnx,pr-decouple = <0xa4000000>;
+		xlnx,pr-reset = <0xa4010000>;
+	};
+
+	ert_hw {
+		compatible = "xlnx,embedded_sched_versal";
+		status = "okay";
+		reg = <0x203 0x30000 0x0 0x10000 0x202 0x4000000 0x0 0x10000>;
+	};
+};
+
+&reserved-memory {
+	versal_buffer: buffer@0 {
+		no-map;
+		reg = <0xc0 0x0 0x0 0x80000000>;
+	};
+};

@@ -97,6 +97,12 @@
 	#define ZOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(TYPE, ADDR, SIZE)
 #endif
 
+/* fpga manager IP specific register op code */
+#define MPSOC_PR_ISOLATION_FREEZE 	0x0
+#define MPSOC_PR_ISOLATION_UNFREEZE 	0x3
+#define VERSAL_PR_DECOUPLE		0x0
+#define VERSAL_PR_RESET			0x1
+
 struct drm_zocl_exec_metadata {
 	enum drm_zocl_execbuf_state state;
 	unsigned int                index;
@@ -204,4 +210,5 @@ void zocl_clear_mem(struct drm_zocl_dev *zdev);
 
 int get_apt_index(struct drm_zocl_dev *zdev, phys_addr_t addr);
 
+int zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, const char *data, int size);
 #endif

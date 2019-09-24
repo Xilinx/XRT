@@ -331,7 +331,8 @@ zocl_hls_cu_init(struct zocl_cu *cu, phys_addr_t paddr)
 		return -ENOMEM;
 	}
 
-	DRM_DEBUG("CU 0x%llx map to 0x%p\n", (u64)core->paddr, core->vaddr);
+	DRM_DEBUG("CU 0x%llx map to 0x%llx\n",
+	    (u64)core->paddr, (u64)core->vaddr);
 	ctrl_reg = ioread32(core->vaddr);
 	version = (ctrl_reg & CU_VERSION_MASK) >> 8;
 	max_cap = (ctrl_reg & CU_MAX_CAP_MASK) >> 12;
@@ -342,6 +343,7 @@ zocl_hls_cu_init(struct zocl_cu *cu, phys_addr_t paddr)
 	default:
 		core->max_credits = 1;
 	}
+	core->max_credits = 1;
 	core->credits = core->max_credits;
 
 	core->intr_type = CU_INTR_DONE | CU_INTR_READY;
