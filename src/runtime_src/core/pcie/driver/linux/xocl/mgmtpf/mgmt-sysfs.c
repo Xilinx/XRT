@@ -231,12 +231,12 @@ static ssize_t config_mailbox_comm_id_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
-	char *id = (char *)vzalloc(COMM_ID_SIZE);
+	char *id = (char *)vzalloc(XCL_COMM_ID_SIZE);
 
 	if (!id)
 		return -ENOMEM;
 
-	if (count > COMM_ID_SIZE)
+	if (count > XCL_COMM_ID_SIZE)
 		return -EINVAL;
 
 	(void) memcpy(id, buf, count);
@@ -252,7 +252,7 @@ static ssize_t config_mailbox_comm_id_show(struct device *dev,
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
 
 	(void) xocl_mailbox_get(lro, COMM_ID, (u64 *)buf);
-	return COMM_ID_SIZE;
+	return XCL_COMM_ID_SIZE;
 }
 static DEVICE_ATTR(config_mailbox_comm_id, 0644,
 	config_mailbox_comm_id_show,

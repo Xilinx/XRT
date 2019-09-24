@@ -420,7 +420,7 @@ static void check_sensor(struct xclmgmt_dev *lro)
 		return;	
 	}
 
-	ret = xocl_xmc_get_data(lro, SENSOR, s);
+	ret = xocl_xmc_get_data(lro, XCL_SENSOR, s);
 	if (ret == -ENODEV) {
 		(void) xocl_sysmon_get_prop(lro,
 			XOCL_SYSMON_PROP_TEMP, &s->fpga_temp);
@@ -444,20 +444,20 @@ static void check_sensor(struct xclmgmt_dev *lro)
 static int health_check_cb(void *data)
 {
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)data;
-	struct mailbox_req mbreq = { 0 };
+	struct xcl_mailbox_req mbreq = { 0 };
 	bool tripped;
 
 	if (!health_check)
 		return 0;
 
-	mbreq.req = MAILBOX_REQ_FIREWALL;
+	mbreq.req = XCL_MAILBOX_REQ_FIREWALL;
 	tripped = xocl_af_check(lro, NULL);
 
 	if (!tripped) {
 		check_sensor(lro);
 	} else {
 		mgmt_info(lro, "firewall tripped, notify peer");
-		(void) xocl_peer_notify(lro, &mbreq, sizeof(struct mailbox_req));
+		(void) xocl_peer_notify(lro, &mbreq, sizeof(struct xcl_mailbox_req));
 	}
 
 	return 0;
@@ -575,43 +575,43 @@ static void xclmgmt_subdev_get_data(struct xclmgmt_dev *lro, size_t offset,
 static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void **resp, size_t *sz)
 {
 	size_t resp_sz = 0, current_sz;
-	struct mailbox_subdev_peer *subdev_req = (struct mailbox_subdev_peer *)data_ptr;
+	struct xcl_mailbox_subdev_peer *subdev_req = (struct xcl_mailbox_subdev_peer *)data_ptr;
 
 	BUG_ON(!lro);
 
 	mgmt_info(lro, "req kind %d", subdev_req->kind);
 	switch (subdev_req->kind) {
-	case SENSOR:
+	case XCL_SENSOR:
 		current_sz = sizeof(struct xcl_sensor);
 		*resp = vzalloc(current_sz);
-		(void) xocl_xmc_get_data(lro, SENSOR, *resp);
+		(void) xocl_xmc_get_data(lro, XCL_SENSOR, *resp);
 		break;
-	case ICAP:
+	case XCL_ICAP:
 		current_sz = sizeof(struct xcl_pr_region);
 		*resp = vzalloc(current_sz);
 		(void) xclmgmt_icap_get_data(lro, *resp);
 		break;
-	case MIG_ECC:
+	case XCL_MIG_ECC:
 		current_sz = sizeof(struct xcl_mig_ecc)*MAX_M_COUNT;
 		*resp = vzalloc(current_sz);
 		(void) xclmgmt_mig_get_data(lro, *resp, subdev_req->size);
 		break;
-	case FIREWALL:
+	case XCL_FIREWALL:
 		current_sz = sizeof(struct xcl_firewall);
 		*resp = vzalloc(current_sz);
 		(void) xocl_af_get_data(lro, *resp);
 		break;
-	case DNA:
+	case XCL_DNA:
 		current_sz = sizeof(struct xcl_dna);
 		*resp = vzalloc(current_sz);
 		(void) xocl_dna_get_data(lro, *resp);
 		break;
-	case BDINFO:
+	case XCL_BDINFO:
 		current_sz = sizeof(struct xcl_board_info);
 		*resp = vzalloc(current_sz);
-		(void) xocl_xmc_get_data(lro, BDINFO, *resp);
+		(void) xocl_xmc_get_data(lro, XCL_BDINFO, *resp);
 		break;
-	case SUBDEV:
+	case XCL_SUBDEV:
 		xclmgmt_subdev_get_data(lro, subdev_req->offset,
 			subdev_req->size, resp, &current_sz);
 		break;
@@ -626,7 +626,7 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 }
 
 static bool xclmgmt_is_same_domain(struct xclmgmt_dev *lro,
-	struct mailbox_conn *mb_conn)
+	struct xcl_mailbox_conn *mb_conn)
 {
 	uint32_t crc_chk;
 	phys_addr_t paddr;
@@ -655,7 +655,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	int ret = 0;
 	uint64_t ch_switch = 0;
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)arg;
-	struct mailbox_req *req = (struct mailbox_req *)data;
+	struct xcl_mailbox_req *req = (struct xcl_mailbox_req *)data;
 	bool is_sw = false;
 	size_t payload_len;
 
@@ -681,9 +681,9 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	}
 
 	switch (req->req) {
-	case MAILBOX_REQ_LOCK_BITSTREAM: {
-		struct mailbox_req_bitstream_lock *bitstm_lock =
-			(struct mailbox_req_bitstream_lock *)req->data;
+	case XCL_MAILBOX_REQ_LOCK_BITSTREAM: {
+		struct xcl_mailbox_req_bitstream_lock *bitstm_lock =
+			(struct xcl_mailbox_req_bitstream_lock *)req->data;
 		if (payload_len < sizeof(*bitstm_lock)) {
 			mgmt_err(lro, "peer request dropped, wrong size\n");
 			break;
@@ -694,9 +694,9 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			&ret, sizeof(ret));
 		break;
 	}
-	case MAILBOX_REQ_UNLOCK_BITSTREAM: {
-		struct mailbox_req_bitstream_lock *bitstm_lock =
-			(struct mailbox_req_bitstream_lock *)req->data;
+	case XCL_MAILBOX_REQ_UNLOCK_BITSTREAM: {
+		struct xcl_mailbox_req_bitstream_lock *bitstm_lock =
+			(struct xcl_mailbox_req_bitstream_lock *)req->data;
 		if (payload_len < sizeof(*bitstm_lock)) {
 			mgmt_err(lro, "peer request dropped, wrong size\n");
 			break;
@@ -707,17 +707,17 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			sizeof(ret));
 		break;
 	}
-	case MAILBOX_REQ_HOT_RESET:
+	case XCL_MAILBOX_REQ_HOT_RESET:
 		ret = (int) reset_hot_ioctl(lro);
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
 			sizeof(ret));
 		break;
-	case MAILBOX_REQ_LOAD_XCLBIN_KADDR: {
+	case XCL_MAILBOX_REQ_LOAD_XCLBIN_KADDR: {
 		void *buf = NULL;
 		struct axlf *xclbin = NULL;
 		uint64_t xclbin_len = 0;
-		struct mailbox_bitstream_kaddr *mb_kaddr =
-			(struct mailbox_bitstream_kaddr *)req->data;
+		struct xcl_mailbox_bitstream_kaddr *mb_kaddr =
+			(struct xcl_mailbox_bitstream_kaddr *)req->data;
 		if (payload_len < sizeof(*mb_kaddr)) {
 			mgmt_err(lro, "peer request dropped, wrong size\n");
 			break;
@@ -740,7 +740,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			sizeof(ret));
 		break;
 	}
-	case MAILBOX_REQ_LOAD_XCLBIN: {
+	case XCL_MAILBOX_REQ_LOAD_XCLBIN: {
 		uint64_t xclbin_len = 0;
 		struct axlf *xclbin = (struct axlf *)req->data;
 
@@ -758,7 +758,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			sizeof(ret));
 		break;
 	}
-	case MAILBOX_REQ_RECLOCK: {
+	case XCL_MAILBOX_REQ_RECLOCK: {
 		struct xclmgmt_ioc_freqscaling *clk =
 			(struct xclmgmt_ioc_freqscaling *)req->data;
 		if (payload_len < sizeof(*clk)) {
@@ -770,11 +770,11 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			sizeof(ret));
 		break;
 	}
-	case MAILBOX_REQ_PEER_DATA: {
+	case XCL_MAILBOX_REQ_PEER_DATA: {
 		size_t sz = 0;
 		void *resp = NULL;
-		struct mailbox_subdev_peer *subdev_req =
-			(struct mailbox_subdev_peer *)req->data;
+		struct xcl_mailbox_subdev_peer *subdev_req =
+			(struct xcl_mailbox_subdev_peer *)req->data;
 		if (payload_len < sizeof(*subdev_req)) {
 			mgmt_err(lro, "peer request dropped, wrong size\n");
 			break;
@@ -793,9 +793,9 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		vfree(resp);
 		break;
 	}
-	case MAILBOX_REQ_USER_PROBE: {
-		struct mailbox_conn_resp *resp = NULL;
-		struct mailbox_conn *conn = (struct mailbox_conn *)req->data;
+	case XCL_MAILBOX_REQ_USER_PROBE: {
+		struct xcl_mailbox_conn_resp *resp = NULL;
+		struct xcl_mailbox_conn *conn = (struct xcl_mailbox_conn *)req->data;
 		uint64_t ch_switch = 0;
 
 		if (payload_len < sizeof(*conn)) {
@@ -808,29 +808,29 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			break;
 
 		xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
-		resp->version = min(MB_PROTOCOL_VER, conn->version);
-		resp->conn_flags |= MB_PEER_READY;
+		resp->version = min(XCL_MB_PROTOCOL_VER, conn->version);
+		resp->conn_flags |= XCL_MB_PEER_READY;
 		/* Same domain check only applies when everything is thru HW. */
 		if (!ch_switch && xclmgmt_is_same_domain(lro, conn))
-			resp->conn_flags |= MB_PEER_SAME_DOMAIN;
+			resp->conn_flags |= XCL_MB_PEER_SAME_DOMAIN;
 		resp->chan_switch = ch_switch;
 		(void) xocl_mailbox_get(lro, COMM_ID, (u64 *)resp->comm_id);
 		(void) xocl_peer_response(lro, req->req, msgid, resp,
-			sizeof(struct mailbox_conn_resp));
+			sizeof(struct xcl_mailbox_conn_resp));
 		vfree(resp);
 		break;
 	}
-	case MAILBOX_REQ_PROGRAM_SHELL: {
+	case XCL_MAILBOX_REQ_PROGRAM_SHELL: {
 		/* blob should already been updated */
 		ret = xclmgmt_program_shell(lro);
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
 				sizeof(ret));
 		break;
 	}
-	case MAILBOX_REQ_READ_P2P_BAR_ADDR: {
+	case XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR: {
 		struct pci_dev *pdev = lro->pci_dev;
-		struct mailbox_p2p_bar_addr *mb_p2p =
-			(struct mailbox_p2p_bar_addr*)req->data;
+		struct xcl_mailbox_p2p_bar_addr *mb_p2p =
+			(struct xcl_mailbox_p2p_bar_addr*)req->data;
 		resource_size_t p2p_bar_addr = 0, p2p_bar_len = 0, range = 0;
 		u32 p2p_addr_base, range_base, final_val;
 
@@ -862,7 +862,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 				mgmt_info(lro, "Passthrough Virtualization config done\n");
 			} else {
 				mgmt_err(lro, "request (%d) dropped, IOMMU is enabled\n",
-						 MAILBOX_REQ_READ_P2P_BAR_ADDR);
+						 XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR);
 			}
 		}
 		ret = 0;
@@ -877,21 +877,21 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 
 void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online)
 {
-	struct mailbox_req *mb_req = NULL;
-	struct mailbox_peer_state mb_conn = { 0 };
+	struct xcl_mailbox_req *mb_req = NULL;
+	struct xcl_mailbox_peer_state mb_conn = { 0 };
 	size_t data_len = 0, reqlen = 0;
 
-	data_len = sizeof(struct mailbox_peer_state);
-	reqlen = sizeof(struct mailbox_req) + data_len;
+	data_len = sizeof(struct xcl_mailbox_peer_state);
+	reqlen = sizeof(struct xcl_mailbox_req) + data_len;
 	mb_req = vzalloc(reqlen);
 	if (!mb_req)
 		return;
 
-	mb_req->req = MAILBOX_REQ_MGMT_STATE;
+	mb_req->req = XCL_MAILBOX_REQ_MGMT_STATE;
 	if (online)
-		mb_conn.state_flags |= MB_STATE_ONLINE;
+		mb_conn.state_flags |= XCL_MB_STATE_ONLINE;
 	else
-		mb_conn.state_flags |= MB_STATE_OFFLINE;
+		mb_conn.state_flags |= XCL_MB_STATE_OFFLINE;
 	memcpy(mb_req->data, &mb_conn, data_len);
 
 	(void) xocl_peer_notify(lro, mb_req, reqlen);

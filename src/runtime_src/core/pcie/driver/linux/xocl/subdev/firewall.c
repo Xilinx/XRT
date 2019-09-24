@@ -89,12 +89,12 @@ static void set_fw_data(struct firewall *fw, struct xcl_firewall *fw_status)
 static void fw_read_from_peer(struct platform_device *pdev)
 {
 	struct firewall *fw = platform_get_drvdata(pdev);
-	struct mailbox_subdev_peer subdev_peer = {0};
+	struct xcl_mailbox_subdev_peer subdev_peer = {0};
 	struct xcl_firewall fw_status = {0};
 	size_t resp_len = sizeof(struct xcl_firewall);
-	size_t data_len = sizeof(struct mailbox_subdev_peer);
-	struct mailbox_req *mb_req = NULL;
-	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+	size_t data_len = sizeof(struct xcl_mailbox_subdev_peer);
+	struct xcl_mailbox_req *mb_req = NULL;
+	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	xocl_info(&pdev->dev, "reading from peer");
@@ -102,9 +102,9 @@ static void fw_read_from_peer(struct platform_device *pdev)
 	if (!mb_req)
 		return;
 
-	mb_req->req = MAILBOX_REQ_PEER_DATA;
+	mb_req->req = XCL_MAILBOX_REQ_PEER_DATA;
 	subdev_peer.size = resp_len;
-	subdev_peer.kind = FIREWALL;
+	subdev_peer.kind = XCL_FIREWALL;
 	subdev_peer.entries = 1;
 
 	memcpy(mb_req->data, &subdev_peer, data_len);
