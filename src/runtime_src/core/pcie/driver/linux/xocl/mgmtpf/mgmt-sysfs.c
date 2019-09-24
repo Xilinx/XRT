@@ -231,12 +231,12 @@ static ssize_t config_mailbox_comm_id_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
-	char *id = (char *)vzalloc(COMM_ID_SIZE);
+	char *id = (char *)vzalloc(XCL_COMM_ID_SIZE);
 
 	if (!id)
 		return -ENOMEM;
 
-	if (count > COMM_ID_SIZE)
+	if (count > XCL_COMM_ID_SIZE)
 		return -EINVAL;
 
 	(void) memcpy(id, buf, count);
@@ -252,7 +252,7 @@ static ssize_t config_mailbox_comm_id_show(struct device *dev,
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
 
 	(void) xocl_mailbox_get(lro, COMM_ID, (u64 *)buf);
-	return COMM_ID_SIZE;
+	return XCL_COMM_ID_SIZE;
 }
 static DEVICE_ATTR(config_mailbox_comm_id, 0644,
 	config_mailbox_comm_id_show,
@@ -320,7 +320,7 @@ static ssize_t logic_uuids_show(struct device *dev,
         struct device_attribute *attr, char *buf)
 {
         struct xclmgmt_dev *lro = dev_get_drvdata(dev);
-	const void *uuid = NULL;
+	const void *uuid = NULL, *blp_uuid = NULL;
 	int node = -1, off = 0;
 
 	if (!lro->core.fdt_blob && xocl_get_timestamp(lro) == 0)
@@ -330,13 +330,15 @@ static ssize_t logic_uuids_show(struct device *dev,
 		return -EINVAL;
 
 	node = xocl_fdt_get_next_prop_by_name(lro, lro->bld_blob,
-		-1, PROP_LOGIC_UUID, &uuid, NULL);
-	if (uuid && node >= 0)
-		off += sprintf(buf + off, "%s\n", (char *)uuid);
+		-1, PROP_LOGIC_UUID, &blp_uuid, NULL);
+	if (blp_uuid && node >= 0)
+		off += sprintf(buf + off, "%s\n", (char *)blp_uuid);
+	else
+		return -EINVAL;
 
 	node = xocl_fdt_get_next_prop_by_name(lro, lro->core.fdt_blob,
 		-1, PROP_LOGIC_UUID, &uuid, NULL);
-	if (uuid && node >= 0)
+	if (uuid && node >= 0 && strcmp(uuid, blp_uuid))
 		off += sprintf(buf + off, "%s\n", (char *)uuid);
 
 	return off;

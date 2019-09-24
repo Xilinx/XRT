@@ -199,22 +199,22 @@ static int localMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
     std::unique_ptr<sw_msg>& processed)
 {
     int ret = 0;
-    mailbox_req *req = reinterpret_cast<mailbox_req *>(orig->payloadData());
+    xcl_mailbox_req *req = reinterpret_cast<xcl_mailbox_req *>(orig->payloadData());
     size_t reqSize;
-    if (orig->payloadSize() < sizeof(mailbox_req)) {
+    if (orig->payloadSize() < sizeof(xcl_mailbox_req)) {
         dev.log(LOG_ERR, "local request dropped, wrong size");
         ret = -EINVAL;
         processed = std::make_unique<sw_msg>(&ret, sizeof(ret), orig->id(),
-            MB_REQ_FLAG_RESPONSE);
+            XCL_MB_REQ_FLAG_RESPONSE);
         dev.log(LOG_INFO, "mpd daemon: response %d sent ret = %d", req->req, ret);
         return FOR_LOCAL;
     }
-    reqSize = orig->payloadSize() - sizeof(mailbox_req);
+    reqSize = orig->payloadSize() - sizeof(xcl_mailbox_req);
 
     dev.log(LOG_INFO, "mpd daemon: request %d received", req->req);
 
     switch (req->req) {
-    case MAILBOX_REQ_LOAD_XCLBIN: {//mandatory for every plugin
+    case XCL_MAILBOX_REQ_LOAD_XCLBIN: {//mandatory for every plugin
         const axlf *xclbin = reinterpret_cast<axlf *>(req->data);
         if (reqSize < sizeof(*xclbin)) {
             dev.log(LOG_ERR, "local request(%d) dropped, wrong size", req->req);
@@ -228,18 +228,18 @@ static int localMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
         ret = (*plugin_cbs.load_xclbin)(dev.getIndex(), xclbin);
         break;
     }
-    case MAILBOX_REQ_PEER_DATA: {//optional. aws plugin need to implement this. 
+    case XCL_MAILBOX_REQ_PEER_DATA: {//optional. aws plugin need to implement this. 
         void *resp;
         size_t resp_len = 0;
-        struct mailbox_subdev_peer *subdev_req =
-            reinterpret_cast<mailbox_subdev_peer *>(req->data);
+        struct xcl_mailbox_subdev_peer *subdev_req =
+            reinterpret_cast<xcl_mailbox_subdev_peer *>(req->data);
         if (reqSize < sizeof(*subdev_req)) {
             dev.log(LOG_ERR, "local request(%d) dropped, wrong size", req->req);
             ret = -EINVAL;
             break;
         }
         switch (subdev_req->kind) {
-        case ICAP: {
+        case XCL_ICAP: {
             if (!plugin_cbs.get_icap_data) {
                 ret = -ENOTSUP;
                 break;
@@ -250,7 +250,7 @@ static int localMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
             resp = data.get();
             break;
         }
-        case SENSOR: {
+        case XCL_SENSOR: {
             if (!plugin_cbs.get_sensor_data) {
                 ret = -ENOTSUP;
                 break;
@@ -261,7 +261,7 @@ static int localMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
             resp = data.get();
             break;
         }
-        case BDINFO: {
+        case XCL_BDINFO: {
             if (!plugin_cbs.get_board_info) {
                 ret = -ENOTSUP;
                 break;
@@ -272,7 +272,7 @@ static int localMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
             resp = data.get();
             break;
         }
-        case MIG_ECC: {
+        case XCL_MIG_ECC: {
             if (!plugin_cbs.get_mig_data) {
                 ret = -ENOTSUP;
                 break;
@@ -282,7 +282,7 @@ static int localMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
             resp = data->data();
             break;
         }
-        case FIREWALL: {
+        case XCL_FIREWALL: {
             if (!plugin_cbs.get_firewall_data) {
                 ret = -ENOTSUP;
                 break;
@@ -293,7 +293,7 @@ static int localMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
             resp = data.get();
             break;
         }
-        case DNA: {
+        case XCL_DNA: {
             if (!plugin_cbs.get_dna_data) {
                 ret = -ENOTSUP;
                 break;
@@ -304,7 +304,7 @@ static int localMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
             resp = data.get();
             break;
         }
-        case SUBDEV: {
+        case XCL_SUBDEV: {
             if (!plugin_cbs.get_subdev_data) {
                 ret = -ENOTSUP;
                 break;
@@ -321,22 +321,22 @@ static int localMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
 
         if (!ret) {
             processed = std::make_unique<sw_msg>(resp, resp_len, orig->id(),
-                   MB_REQ_FLAG_RESPONSE);
+                   XCL_MB_REQ_FLAG_RESPONSE);
             dev.log(LOG_INFO, "mpd daemon: response %d sent", req->req);
             return FOR_LOCAL;
         }
         break;
     }
-    case MAILBOX_REQ_USER_PROBE: {//useful for aws plugin
-        struct mailbox_conn_resp resp = {0};
-        size_t resp_len = sizeof(struct mailbox_conn_resp);
-        resp.conn_flags |= MB_PEER_READY;
+    case XCL_MAILBOX_REQ_USER_PROBE: {//useful for aws plugin
+        struct xcl_mailbox_conn_resp resp = {0};
+        size_t resp_len = sizeof(struct xcl_mailbox_conn_resp);
+        resp.conn_flags |= XCL_MB_PEER_READY;
         processed = std::make_unique<sw_msg>(&resp, resp_len, orig->id(),
-            MB_REQ_FLAG_RESPONSE);
+            XCL_MB_REQ_FLAG_RESPONSE);
         dev.log(LOG_INFO, "mpd daemon: response %d sent", req->req);
         return FOR_LOCAL;
     }
-    case MAILBOX_REQ_LOCK_BITSTREAM: {//optional
+    case XCL_MAILBOX_REQ_LOCK_BITSTREAM: {//optional
         if (!plugin_cbs.lock_bitstream) {
             ret = -ENOTSUP;
             break;
@@ -344,7 +344,7 @@ static int localMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
         ret = (*plugin_cbs.lock_bitstream)(dev.getIndex());
         break;
     }
-    case MAILBOX_REQ_UNLOCK_BITSTREAM: { //optional
+    case XCL_MAILBOX_REQ_UNLOCK_BITSTREAM: { //optional
         if (!plugin_cbs.unlock_bitstream) {
             ret = -ENOTSUP;
             break;
@@ -352,7 +352,7 @@ static int localMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
         ret = (*plugin_cbs.unlock_bitstream)(dev.getIndex());
         break;
     }
-    case MAILBOX_REQ_HOT_RESET: {//optional
+    case XCL_MAILBOX_REQ_HOT_RESET: {//optional
         if (!plugin_cbs.hot_reset) {
             ret = -ENOTSUP;
             break;
@@ -360,7 +360,7 @@ static int localMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
         ret = (*plugin_cbs.hot_reset)(dev.getIndex());
         break;
     }
-    case MAILBOX_REQ_RECLOCK: {//optional
+    case XCL_MAILBOX_REQ_RECLOCK: {//optional
         struct xclmgmt_ioc_freqscaling *obj =
             reinterpret_cast<struct xclmgmt_ioc_freqscaling *>(req->data);
         if (!plugin_cbs.hot_reset) {
@@ -375,7 +375,7 @@ static int localMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
     }
 
     processed = std::make_unique<sw_msg>(&ret, sizeof(ret), orig->id(),
-        MB_REQ_FLAG_RESPONSE);
+        XCL_MB_REQ_FLAG_RESPONSE);
     dev.log(LOG_INFO, "mpd daemon: response %d sent ret = %d", req->req, ret);
     return FOR_LOCAL;
 }
@@ -398,21 +398,21 @@ static int localMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
 static int mb_notify(const pcieFunc &dev, int &fd, bool online)
 {
     std::unique_ptr<sw_msg> swmsg;
-    struct mailbox_req *mb_req = NULL;
-    struct mailbox_peer_state mb_conn = { 0 };
-    size_t data_len = sizeof(struct mailbox_peer_state) + sizeof(struct mailbox_req);
+    struct xcl_mailbox_req *mb_req = NULL;
+    struct xcl_mailbox_peer_state mb_conn = { 0 };
+    size_t data_len = sizeof(struct xcl_mailbox_peer_state) + sizeof(struct xcl_mailbox_req);
    
     std::vector<char> buf(data_len, 0);
-    mb_req = reinterpret_cast<struct mailbox_req *>(buf.data());
+    mb_req = reinterpret_cast<struct xcl_mailbox_req *>(buf.data());
 
-    mb_req->req = MAILBOX_REQ_MGMT_STATE;
+    mb_req->req = XCL_MAILBOX_REQ_MGMT_STATE;
     if (online)
-        mb_conn.state_flags |= MB_STATE_ONLINE;
+        mb_conn.state_flags |= XCL_MB_STATE_ONLINE;
     else
-        mb_conn.state_flags |= MB_STATE_OFFLINE;
+        mb_conn.state_flags |= XCL_MB_STATE_OFFLINE;
     memcpy(mb_req->data, &mb_conn, sizeof(mb_conn));
 
-    swmsg = std::make_unique<sw_msg>(mb_req, data_len, 0x1234, MB_REQ_FLAG_REQUEST);
+    swmsg = std::make_unique<sw_msg>(mb_req, data_len, 0x1234, XCL_MB_REQ_FLAG_REQUEST);
     if (swmsg == nullptr)
         return -ENOMEM;
 

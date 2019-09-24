@@ -95,9 +95,9 @@ int main(int argc, char *argv[])
     static struct option long_options[] = {
         {"read", no_argument, 0, xcldev::MEM_READ},
         {"write", no_argument, 0, xcldev::MEM_WRITE},
-        {"spm", no_argument, 0, xcldev::STATUS_SPM},
+        {"aim", no_argument, 0, xcldev::STATUS_SPM},
         {"lapc", no_argument, 0, xcldev::STATUS_LAPC},
-        {"sspm", no_argument, 0, xcldev::STATUS_SSPM},
+        {"asm", no_argument, 0, xcldev::STATUS_SSPM},
         {"spc", no_argument, 0, xcldev::STATUS_SPC},
         {"tracefunnel", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
         {"monitorfifolite", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
@@ -494,10 +494,10 @@ int main(int argc, char *argv[])
             result = deviceVec[index]->readLAPCheckers(1);
         }
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SPM_MASK)) {
-            result = deviceVec[index]->readSPMCounters();
+	    result = deviceVec[index]->readAIMCounters();
         }
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK)) {
-            result = deviceVec[index]->readSSPMCounters() ;
+	    result = deviceVec[index]->readASMCounters() ;
         }
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SPC_MASK)) {
 	  result = deviceVec[index]->readStreamingCheckers(1);
@@ -562,4 +562,28 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  " << exe << " status \n";
     std::cout << "Validate installation on card\n";
     std::cout << "  " << exe << " validate\n";
+}
+
+int xcldev::xclTop(int argc, char* argv[])
+{
+  std::cout << "Unsupported API" << std::endl ;
+  return -1 ;
+}
+
+int xcldev::xclReset(int argc, char* argv[])
+{
+  std::cout << "Unsupported API" << std::endl ;
+  return -1 ;
+}
+
+int xcldev::xclValidate(int argc, char* argv[])
+{
+  std::cout << "Unsupported API" << std::endl ;
+  return -1 ;
+}
+
+int xcldev::xclP2p(int argc, char* argv[])
+{
+  std::cout << "Unsupported API" << std::endl ;
+  return -1 ;
 }

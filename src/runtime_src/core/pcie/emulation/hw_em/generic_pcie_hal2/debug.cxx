@@ -86,12 +86,16 @@ namespace xclhwemhal2 {
 
     std::string fifoName;
     uint64_t fifoCtrlBaseAddr = 0x0;
-    getIPCountAddrNames(debugFileName, AXI_MONITOR_FIFO_LITE, &fifoCtrlBaseAddr, &fifoName, nullptr, 1);
+    uint32_t fifoCtrlCount = getIPCountAddrNames(debugFileName, AXI_MONITOR_FIFO_LITE, &fifoCtrlBaseAddr, &fifoName, nullptr, 1);
     mPerfMonFifoCtrlBaseAddress = fifoCtrlBaseAddr;
 
     uint64_t fifoReadBaseAddr = 0x0;
-    getIPCountAddrNames(debugFileName, AXI_MONITOR_FIFO_FULL, &fifoReadBaseAddr, &fifoName, nullptr, 1);
+    uint32_t fifoFullCount = getIPCountAddrNames(debugFileName, AXI_MONITOR_FIFO_FULL, &fifoReadBaseAddr, &fifoName, nullptr, 1);
     mPerfMonFifoReadBaseAddress = fifoReadBaseAddr;
+
+    if(fifoCtrlCount != 0 && fifoFullCount != 0) {
+    	mIsTraceHubAvailable = true;
+    }
 
     uint64_t traceFunnelAddr = 0x0;
     getIPCountAddrNames(debugFileName, AXI_TRACE_FUNNEL, &traceFunnelAddr, &fifoName, nullptr, 1);
@@ -173,6 +177,12 @@ namespace xclhwemhal2 {
 	  if(xclemulation::config::getInstance()->isSystemDPAEnabled() == false) {
 		  return;
 	  }
+
+	  //check to find out if Trace Hub is available.
+	  if(mIsTraceHubAvailable == false) {
+		  return;
+	  }
+
 	  std::string info_msgs("");
 	  std::string warning_msgs("");
 	  std::string error_msgs("");

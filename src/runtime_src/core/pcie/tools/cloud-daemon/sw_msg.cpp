@@ -25,8 +25,8 @@ sw_msg::~sw_msg()
 
 sw_msg::sw_msg(const void *payload, size_t len, uint64_t id, uint64_t flags)
 {
-    buf = std::make_unique<std::vector<char>>(sizeof(sw_chan) + len, 0);
-    sw_chan *sc = reinterpret_cast<sw_chan *>(buf->data());
+    buf = std::make_unique<std::vector<char>>(sizeof(xcl_sw_chan) + len, 0);
+    xcl_sw_chan *sc = reinterpret_cast<xcl_sw_chan *>(buf->data());
     sc->sz = len;
     sc->flags = flags;
     sc->id = id;
@@ -35,8 +35,8 @@ sw_msg::sw_msg(const void *payload, size_t len, uint64_t id, uint64_t flags)
 
 sw_msg::sw_msg(size_t len)
 {
-    buf = std::make_unique<std::vector<char>>(sizeof(sw_chan) + len, 0);
-    sw_chan *sc = reinterpret_cast<sw_chan *>(buf->data());
+    buf = std::make_unique<std::vector<char>>(sizeof(xcl_sw_chan) + len, 0);
+    xcl_sw_chan *sc = reinterpret_cast<xcl_sw_chan *>(buf->data());
     sc->sz = len;
 }
 
@@ -47,13 +47,13 @@ size_t sw_msg::size()
 
 size_t sw_msg::payloadSize()
 {
-    sw_chan *sc = reinterpret_cast<sw_chan *>(buf->data());
+    xcl_sw_chan *sc = reinterpret_cast<xcl_sw_chan *>(buf->data());
     return sc->sz;
 }
 
 bool sw_msg::valid()
 {
-    return (sizeof(sw_chan) + payloadSize() == size());
+    return (sizeof(xcl_sw_chan) + payloadSize() == size());
 }
 
 char *sw_msg::data()
@@ -63,12 +63,12 @@ char *sw_msg::data()
 
 char *sw_msg::payloadData()
 {
-    sw_chan *sc = reinterpret_cast<sw_chan *>(buf->data());
+    xcl_sw_chan *sc = reinterpret_cast<xcl_sw_chan *>(buf->data());
     return sc->data;
 }
 
 uint64_t sw_msg::id()
 {
-    sw_chan *sc = reinterpret_cast<sw_chan *>(buf->data());
+    xcl_sw_chan *sc = reinterpret_cast<xcl_sw_chan *>(buf->data());
     return sc->id;
 }

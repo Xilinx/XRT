@@ -81,21 +81,21 @@ static void set_xlnx_dna_data(struct xocl_xlnx_dna *xlnx_dna, struct xcl_dna *dn
 static void xlnx_dna_read_from_peer(struct platform_device *pdev)
 {
 	struct xocl_xlnx_dna *xlnx_dna = platform_get_drvdata(pdev);
-	struct mailbox_subdev_peer subdev_peer = {0};
+	struct xcl_mailbox_subdev_peer subdev_peer = {0};
 	struct xcl_dna dna_status = {0};
 	size_t resp_len = sizeof(struct xcl_dna);
-	size_t data_len = sizeof(struct mailbox_subdev_peer);
-	struct mailbox_req *mb_req = NULL;
-	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+	size_t data_len = sizeof(struct xcl_mailbox_subdev_peer);
+	struct xcl_mailbox_req *mb_req = NULL;
+	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	mb_req = vmalloc(reqlen);
 	if (!mb_req)
 		return;
 
-	mb_req->req = MAILBOX_REQ_PEER_DATA;
+	mb_req->req = XCL_MAILBOX_REQ_PEER_DATA;
 	subdev_peer.size = resp_len;
-	subdev_peer.kind = DNA;
+	subdev_peer.kind = XCL_DNA;
 	subdev_peer.entries = 1;
 
 	memcpy(mb_req->data, &subdev_peer, data_len);
