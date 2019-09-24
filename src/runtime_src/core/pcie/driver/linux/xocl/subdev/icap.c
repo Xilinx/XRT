@@ -3473,6 +3473,13 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		icap->rp_bit_len = axlf->m_header.m_length;
 		vfree(axlf);
 
+		if (!icap->rp_bit_len) {
+			ICAP_ERR(icap, "Invalid xclbin size");
+			ret = -EINVAL;
+			goto failed;			
+		}
+
+
 		icap->rp_bit = vmalloc(icap->rp_bit_len);
 		if (!icap->rp_bit) {
 			ret = -ENOMEM;
