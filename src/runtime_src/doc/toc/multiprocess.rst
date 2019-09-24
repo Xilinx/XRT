@@ -17,16 +17,13 @@ successfull in loading its xclbin. The other processes will get error code
 Usage
 =====
 
-Processes share access to all device resources; as of 2019.1, there is
-no support for exclusive access to resources by any one process.
-
 If two or more processes execute the same kernel, then these processes
 will acquire the kernel's compute units per the ``xocl`` kernel driver
 compute unit scheduler, which is first-come first-serve.  All
 processes have the same priority in XRT.
 
 To disable multi-process support, add the following entry to :ref:`xrt_ini.rst`
-in the same directory as all the executable(s)::
+in the same directory as each executable trying to use the device::
 
   [Runtime]
   multiprocess=false

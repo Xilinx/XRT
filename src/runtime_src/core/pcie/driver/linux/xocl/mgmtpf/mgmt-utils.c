@@ -403,14 +403,17 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 	if (!lro->core.fdt_blob)
 		return 0;
 
-	len = fdt_totalsize(lro->core.fdt_blob) + sizeof(rom_header)
-	       + 1024;
+	len = fdt_totalsize(lro->core.fdt_blob) + sizeof(rom_header) + 1024;
+	/* assuming device tree is no bigger than 100MB */
+	if (len > 100 * 1024 * 1024)
+		return -EINVAL;
+
 	if (lro->userpf_blob)
 		vfree(lro->userpf_blob);
 
 	lro->userpf_blob = vzalloc(len);
 	if (!lro->userpf_blob)
-			return -ENOMEM;
+		return -ENOMEM;
 
 	ret = fdt_create_empty_tree(lro->userpf_blob, len);
 	if (ret) {
@@ -435,7 +438,7 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 	}
 
 	ret = xocl_fdt_add_pair(lro, lro->userpf_blob, "vrom", &rom_header,
-			sizeof(rom_header));
+		sizeof(rom_header));
 	if (ret) {
 		mgmt_err(lro, "add vrom failed %d", ret);
 		goto failed;
@@ -471,6 +474,11 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 		goto failed;
 	}
 	len = fdt_totalsize(lro->bld_blob);
+	if (len > 100 * 1024 * 1024) {
+		mgmt_err(lro, "dtb is too big");
+		ret = -EINVAL;
+		goto failed;
+	}
 	lro->core.fdt_blob = vmalloc(len);
 	if (!lro->core.fdt_blob) {
 		ret = -ENOMEM;

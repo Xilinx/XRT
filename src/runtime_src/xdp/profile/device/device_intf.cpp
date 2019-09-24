@@ -165,6 +165,7 @@ DeviceIntf::~DeviceIntf()
     if((type == XCL_PERF_MON_MEMORY) && (index < aimList.size())) { return aimList[index]->getProperties(); }
     if((type == XCL_PERF_MON_ACCEL)  && (index < amList.size()))  { return amList[index]->getProperties(); }
     if((type == XCL_PERF_MON_STR)    && (index < asmList.size())) { return asmList[index]->getProperties(); }
+    if(type == XCL_PERF_MON_FIFO) { return fifoRead->getProperties(); }
     return 0;
   }
 

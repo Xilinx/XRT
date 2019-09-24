@@ -104,7 +104,7 @@ static void print_pci_info(std::ostream &ostr)
             ostr << " ";
         else
             ostr << "*";
-        ostr << "[" << j << "]:" << dev << std::endl;
+        ostr << "[" << j << "] " << dev << std::endl;
     }
 
     if (pcidev::get_dev_total() != pcidev::get_dev_ready()) {
@@ -942,7 +942,6 @@ int runShellCmd(const std::string& cmd, std::string& output)
     set_shell_path_env("PYTHONPATH", "/python", 0);
     set_shell_path_env("LD_LIBRARY_PATH", "/lib", 1);
     set_shell_path_env("PATH", "/bin", 1);
-
     unsetenv("XCL_EMULATION_MODE");
 
     int stderr_fds[2];
@@ -1016,7 +1015,7 @@ int searchXsaAndDsa(int index, std::string xsaPath, std::string
         boost::filesystem::path formatted_fw_dir(FORMATTED_FW_DIR);
         std::vector<std::string> suffix = { "dsabin", "xsabin" };
         for (std::string t : suffix) {
-            std::regex e("(^" FORMATTED_FW_DIR "/" hex_digit "-" hex_digit "-" hex_digit "/.+/.+/.+/)(" hex_digit ")\\." + t);
+            std::regex e("(^" FORMATTED_FW_DIR "/.+/.+/.+/).+/(" hex_digit ")\\." + t);
             for (boost::filesystem::recursive_directory_iterator iter(formatted_fw_dir, boost::filesystem::symlink_option::recurse), end;
                 iter != end;
             )

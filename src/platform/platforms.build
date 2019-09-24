@@ -28,6 +28,7 @@
 			"bsp_key": "zcu102",
 			"pullrequest_build": true,
 			"sysroot": {
+                                "names": ["aarch64-xilinx-linux"],
 				"copy": {
 					"from": "${XRT_EMBEDDED_STAGING_ROOT}/sw",
 					"to": "${XRT_EMBEDDED_ROOT}/sw"
@@ -60,6 +61,7 @@
 			"architecture": "zynq7000",
 			"bsp_key": "zc702",
 			"sysroot": {
+                                "names": ["cortexa9t2hf-neon-xilinx-linux-gnueabi"],
 				"copy": {
 					"from": "${XRT_EMBEDDED_STAGING_ROOT}/sw",
 					"to": "${XRT_EMBEDDED_ROOT}/sw"

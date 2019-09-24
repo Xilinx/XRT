@@ -579,12 +579,13 @@ void cb_reset(const axlf* xclbin)
 {
   auto profiler = OCLProfiler::Instance();
 
-  if(profiler) {
-    profiler->reset();
-  }
+  if(!profiler)
+    return;
+
+  profiler->reset();
 
   // Extract and store the system profile metatdata
-  auto pProfileMgr = profiler ? profiler->getProfileManager() : nullptr;
+  auto pProfileMgr = profiler->getProfileManager();
   auto pRunSummary = pProfileMgr ? pProfileMgr->getRunSummary() : nullptr;
 
   if (pRunSummary != nullptr) {
@@ -615,7 +616,8 @@ void cb_reset(const axlf* xclbin)
 void
 cb_init()
 {
-  xdp::RTSingleton::Instance()->getStatus();
+  // Create RTSingleton object if not already created
+  xdp::RTSingleton::Instance();
 }
 
 void register_xocl_profile_callbacks() {

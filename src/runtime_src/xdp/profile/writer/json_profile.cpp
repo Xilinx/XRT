@@ -18,6 +18,7 @@
 
 #include "xdp/profile/core/rt_profile.h"
 #include "util.h"
+#include "version.h"
 
 namespace xdp {
 
@@ -145,6 +146,10 @@ void JSONProfileWriter::writeDocumentHeader(std::ofstream& ofs,
   header.put("application", xdp::WriterI::getCurrentExecutableName());
   header.put("platform", mPlatformName);
   header.put("toolVersion", xdp::WriterI::getToolVersion());
+  header.put("XRT build version", xrt_build_version);
+  header.put("Build version branch", xrt_build_version_branch);
+  header.put("Build version hash", xrt_build_version_hash);
+  header.put("Build version date", xrt_build_version_date);
   mTree->add_child("header", header);
 }
 

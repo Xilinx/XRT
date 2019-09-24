@@ -2,6 +2,7 @@
 
 echo "Remove mpd plugin"
 rm -rf /opt/xilinx/xrt/lib/libmpd_plugin.so > /dev/null 2>&1
+systemctl disable mpd > /dev/null 2>&1
 systemctl stop mpd > /dev/null 2>&1
  
 exit 0

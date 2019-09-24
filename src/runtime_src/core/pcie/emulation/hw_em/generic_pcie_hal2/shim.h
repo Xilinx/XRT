@@ -339,6 +339,7 @@ using addr_type = uint64_t;
       std::thread mMessengerThread;
       bool mMessengerThreadStarted;
       void closemMessengerThread();
+      bool mIsTraceHubAvailable;
   };
 
   extern std::map<unsigned int, HwEmShim*> devices;

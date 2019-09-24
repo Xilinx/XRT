@@ -22,7 +22,13 @@
 #include <climits>
 #include <getopt.h>
 #include <unistd.h>
+#include <libgen.h>
+#include <stdint.h>
+#include <dirent.h>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
 
+#include "boost/filesystem.hpp"
 #include "flasher.h"
 #include "xbmgmt.h"
 #include "firmware_image.h"
@@ -30,13 +36,15 @@
 #include "xclbin.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
+using namespace boost::filesystem;
+
 const char *subCmdPartDesc = "Show and download partition onto the device";
 const char *subCmdPartUsage =
-    "--program --id id [--card bdf] [--force]\n"
+    "--program --name name [--id id] [--card bdf] [--force]\n"
     "--program --path xclbin [--card bdf] [--force]\n"
     "--scan [--verbose]";
 
-#define fmt_str "    "
+#define indent(level)	std::string((level) * 4, ' ')
 int program_prp(unsigned index, const std::string& xclbin, bool force)
 {
     std::ifstream stream(xclbin.c_str(), std::ios_base::binary);
@@ -135,7 +143,41 @@ int program_urp(unsigned index, const std::string& xclbin)
     return ret ? -errno : ret;
 }
 
-void scanPartitions(int index, std::vector<DSAInfo>& installedDSAs, bool verbose)
+void printTree (boost::property_tree::ptree &pt, int level) {
+    if (pt.empty()) {
+        std::cout << ": " << pt.data() << std::endl;
+    } else {
+        if (level > 1)
+            std::cout << std::endl;
+        for (auto pos = pt.begin(); pos != pt.end();) {
+            std::cout << indent(level+1) << pos->first;
+            printTree(pos->second, level + 1);
+            ++pos;
+        }
+    }
+    return;
+}
+
+void printPartinfo(int index, DSAInfo& d, unsigned int level)
+{
+    auto dev = pcidev::get_dev(index, false);
+    std::vector<std::string> partinfo;
+
+    dev->get_partinfo(partinfo, d.dtbbuf.get());
+    if ((level > 0 && partinfo.size() <= level) || partinfo.empty())
+        return;
+
+    auto info = partinfo[level];
+    if (info.empty())
+        return;
+    boost::property_tree::ptree ptInfo;
+    std::istringstream is(info);
+    boost::property_tree::read_json(is, ptInfo);
+    std::cout << indent(3) << "Partition info";
+    printTree(ptInfo, 3);
+}
+
+void scanPartitions(int index, bool verbose)
 {
     Flasher f(index);
     if (!f.isValid())
@@ -153,16 +195,26 @@ void scanPartitions(int index, std::vector<DSAInfo>& installedDSAs, bool verbose
     if (!errmsg.empty() || int_uuids.size() == 0)
         return;
 
-    DSAInfo dsa("", NULL_TIMESTAMP, uuids.back(), "");
-    if (dsa.name.empty())
+    DSAInfo d("", NULL_TIMESTAMP, uuids[0], "");
+    if (d.name.empty())
         return;
 
     std::cout << "Card [" << f.sGetDBDF() << "]" << std::endl;
-    std::cout << fmt_str << "Programmable partition running on FPGA:" << std::endl;
-    std::cout << fmt_str << fmt_str << dsa << std::endl;
+    std::cout << indent(1) << "Partitions running on FPGA:" << std::endl;
+    for (unsigned int i = 0; i < uuids.size(); i++)
+    {
+        DSAInfo d("", NULL_TIMESTAMP, uuids[i], "");
+        std::cout << indent(2) << d.name << std::endl;
+        std::cout << indent(3) << "logic-uuid:" << std::endl;
+        std::cout << indent(3)  << uuids[i] << std::endl;
+        std::cout << indent(3) << "interface-uuid:" << std::endl;
+        std::cout << indent(3)  << int_uuids[i] << std::endl;
+        if (verbose)
+            printPartinfo(index, d, i);
+    }
 
-
-    std::cout << fmt_str << "Programmable partitions installed in system:" << std::endl;
+    auto installedDSAs = firmwareImage::getIntalledDSAs();
+    std::cout << indent(1) << "Partitions installed in system:" << std::endl;
     if (installedDSAs.empty())
     {
         std::cout << "(None)" << std::endl;
@@ -182,15 +234,19 @@ void scanPartitions(int index, std::vector<DSAInfo>& installedDSAs, bool verbose
 	if (i == dsa.uuids.size())
             continue;	
 	dsa.uuids.erase(dsa.uuids.begin()+i);
-	std::cout << fmt_str << fmt_str << dsa << std::endl;
+	std::cout << indent(2) << dsa.name << std::endl;
         if (dsa.uuids.size() > 1)
         {
-            std::cout << fmt_str << fmt_str << fmt_str << "Interface UUID:" << std::endl;
+            std::cout << indent(3) << "logic-uuid:" << std::endl;
+            std::cout << indent(3)  << dsa.uuids[0] << std::endl;
+            std::cout << indent(3) << "interface-uuid:" << std::endl;
             for (i = 1; i < dsa.uuids.size(); i++)
             {
-               std::cout << fmt_str << fmt_str << fmt_str  << dsa.uuids[i] << std::endl;
+               std::cout << indent(3) << dsa.uuids[i] << std::endl;
             } 
         }
+        if (verbose)
+            printPartinfo(index, dsa, 0);
     }
     std::cout << std::endl;
 }
@@ -204,7 +260,7 @@ int scan(int argc, char *argv[])
 	return 0;
     }
 
-    bool verbose;
+    bool verbose = false;
     const option opts[] = {
         { "verbose", no_argument, nullptr, '0' },
     };
@@ -223,10 +279,9 @@ int scan(int argc, char *argv[])
         }
     }
 
-    auto installedDSAs = firmwareImage::getIntalledDSAs();
     for (unsigned i = 0; i < total; i++)
     {
-        scanPartitions(i, installedDSAs, verbose);
+        scanPartitions(i, verbose);
     }
 
     return 0;
@@ -240,11 +295,13 @@ int program(int argc, char *argv[])
     unsigned index = UINT_MAX;
     bool force = false;
     std::string file, id;
+    std::string plp;
     const option opts[] = {
         { "card", required_argument, nullptr, '0' },
         { "force", no_argument, nullptr, '1' },
         { "path", required_argument, nullptr, '2' },
 	{ "id", required_argument, nullptr, '3' },
+	{ "name", required_argument, nullptr, '4' },
     };
 
     while (true) {
@@ -267,50 +324,17 @@ int program(int argc, char *argv[])
 	case '3':
 	    id = std::string(optarg);
 	    break;
+        case '4':
+            plp = std::string(optarg);
+            break;
         default:
             return -EINVAL;
         }
     }
 
-    if (!id.empty())
-    {
-        std::vector<DSAInfo> DSAs;
-
-        auto installedDSAs = firmwareImage::getIntalledDSAs();
-        for (DSAInfo& dsa : installedDSAs)
-        {
-            if (dsa.uuids.size() == 0)
-                continue;
-            if (!dsa.matchIntId(id))
-                continue;
-
-            DSAs.push_back(dsa);
-        }
-        if (DSAs.size() > 1)
-	{
-            std::cout << "ERROR: found duplicated partitions, please specify the entire uuid" << std::endl;
-            for (DSAInfo&d : DSAs)
-            {
-                std::cout << d;
-            }
-            std::cout << std::endl;
-            return -EINVAL;
-        }
-        else if (DSAs.size() == 0)
-        {
-            std::cout << "ERROR: No match partition found" << std::endl;
-            return -EINVAL;
-	}
-	file = DSAs[0].file;
-    }
-
-    if (file.empty())
-        return -EINVAL;
-
     if (index == UINT_MAX)
         index = 0;
 
-    DSAInfo dsa(file);
     std::string blp_uuid, logic_uuid;
     auto dev = pcidev::get_dev(index, false);
     std::string errmsg;
@@ -337,23 +361,87 @@ int program(int argc, char *argv[])
         std::cout << "ERROR: Can not get BLP interface uuid. Please make sure corresponding BLP package is installed." << std::endl;
 	return -EINVAL;
     }
-    if (dsa.uuids.size() == 0)
+    if (file.empty())
     {
-        std::cout << "ERROR: Can not get uuids in " << file << std::endl;
-	return -EINVAL;
+        std::vector<DSAInfo> DSAs;
+
+        auto installedDSAs = firmwareImage::getIntalledDSAs();
+        for (DSAInfo& dsa : installedDSAs)
+        {
+            if (dsa.uuids.size() == 0)
+                continue;
+
+            if (!id.empty() && !dsa.matchIntId(id))
+                continue;
+
+            if (!plp.empty() && dsa.name.compare(plp))
+                continue;
+
+            DSAs.push_back(dsa);
+        }
+        if (DSAs.size() > 1)
+	{
+            std::cout << "ERROR: found duplicated partitions, please specify the entire uuid" << std::endl;
+            for (DSAInfo&d : DSAs)
+            {
+                std::cout << d;
+            }
+            std::cout << std::endl;
+            return -EINVAL;
+        }
+        else if (DSAs.size() == 0)
+        {
+            std::cout << "ERROR: No match partition found" << std::endl;
+            return -EINVAL;
+	}
+	file = DSAs[0].file;
+    }
+    else
+    {
+        DIR *dp;
+        dp = opendir(file.c_str());
+	if (dp)
+        {
+            path formatted_fw_dir(file);
+            for (recursive_directory_iterator iter(formatted_fw_dir, symlink_option::recurse), end;
+                iter != end;
+            )
+            {
+                DSAInfo d(iter->path().string());
+                if (d.uuids.size() > 0)
+                {
+                    file = iter->path().string();
+                    break;
+                }
+                ++iter;
+            }
+        }
     }
 
+    if (file.empty())
+    {
+        std::cout << "ERROR: can not find partition file" << std::endl;
+    }
+
+    DSAInfo dsa(file);
+    if (dsa.uuids.size() == 0)
+    {
+        std::cout << "Programming ULP..." << std::endl;
+        return program_urp(index, file);
+    }
+
+    std::cout << "Programming PLP..." << std::endl;
+    std::cout << "Partition file: " << dsa.file << std::endl;
     for (std::string uuid : dsa.uuids)
     {
         if (blp_uuid.compare(uuid) == 0)
         {
-            std::cout << "Programming PLP..." << std::endl;
             return program_prp(index, file, force);
         }
     }
 
-    std::cout << "Programming ULP..." << std::endl;
-    return program_urp(index, file);
+    std::cout << "ERROR: uuid does not match BLP" << std::endl;
+    return -EINVAL;
 }
 
 static const std::map<std::string, std::function<int(int, char **)>> optList = {

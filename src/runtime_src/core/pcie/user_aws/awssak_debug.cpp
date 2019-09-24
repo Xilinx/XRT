@@ -131,6 +131,8 @@ int xcldev::device::readAIMCounters() {
     int col1 = std::max(widths.first, strlen("CU Name")) + 4;
     int col2 = std::max(widths.second, strlen("AXI Portname"));
 
+    std::ios_base::fmtflags formatF = std::cout.flags();
+
     std::cout << std::left
             << std::setw(col1) << "CU Name"
             << " " << std::setw(col2) << "AXI Portname"
@@ -161,6 +163,8 @@ int xcldev::device::readAIMCounters() {
             << "  " << std::setw(16) << debugResults.LastReadData[i]
             << std::endl;
     }
+    std::cout.flags(formatF);
+
     return 0;
 }
 

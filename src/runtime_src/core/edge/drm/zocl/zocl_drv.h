@@ -191,8 +191,6 @@ void zocl_free_userptr_bo(struct drm_gem_object *obj);
 void zocl_free_host_bo(struct drm_gem_object *obj);
 int zocl_iommu_map_bo(struct drm_device *dev, struct drm_zocl_bo *bo);
 int zocl_iommu_unmap_bo(struct drm_device *dev, struct drm_zocl_bo *bo);
-int zocl_pcap_download_ioctl(struct drm_device *dev, void *data,
-		struct drm_file *filp);
 int zocl_load_pdi(struct drm_device *ddev, void *data);
 
 int zocl_init_sysfs(struct device *dev);
