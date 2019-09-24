@@ -677,7 +677,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  query   [-d card [-r region]]\n";
     std::cout << "  status [-d card] [--debug_ip_name]\n";
     std::cout << "  scan\n";
-    std::cout << "  top [-i seconds]\n";
+    std::cout << "  top [-d card] [-i seconds]\n";
     std::cout << "  validate [-d card]\n";
     std::cout << "  reset  [-d card]\n";
     std::cout << " Requires root privileges:\n";

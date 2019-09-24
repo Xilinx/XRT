@@ -113,7 +113,7 @@ public:
 private:
     std::shared_ptr<pcidev::pci_device> mDev;
     unsigned mPktBufOffset;
-    unsigned long long mRegBase;
+    unsigned long long mRegBase = 0;
     struct xmcPkt mPkt;
     std::stringstream mProbingErrMsg;
     int program(std::istream& tiTxtStream, const ELARecord& record);

@@ -607,22 +607,16 @@ public:
         const mem_topology *map = (mem_topology *)buf.data();
         unsigned numDDR = 0;
 
-        if(!buf.empty())
-            numDDR = map->m_count;
-
-        if(numDDR == 0) {
-            ss << "-- none found --. See 'xbutil program'.\n";
-        } else if(numDDR < 0) {
-            ss << "WARNING: 'mem_topology' invalid, unable to report topology. "
-                << "Has the bitstream been loaded? See 'xbutil program'.";
-            lines.push_back(ss.str());
+        if(buf.empty() || map->m_count == 0) {
             return;
         } else {
-            ss << std::setw(16) << "Tag"  << std::setw(12) << "Type"
-                << std::setw(12) << "Temp" << std::setw(8) << "Size";
-            ss << std::setw(16) << "Mem Usage" << std::setw(8) << "BO nums"
-                << "\n";
+            numDDR = map->m_count;
         }
+
+        ss << std::setw(16) << "Tag"  << std::setw(12) << "Type"
+           << std::setw(12) << "Temp" << std::setw(8) << "Size";
+        ss << std::setw(16) << "Mem Usage" << std::setw(8) << "BO nums"
+           << "\n";
 
         pcidev::get_dev(m_idx)->sysfs_get("", "memstat_raw", errmsg, mm_buf);
         if(mm_buf.empty())
@@ -966,6 +960,8 @@ public:
      */
     int dump(std::ostream& ostr) const {
         readSensors();
+        std::ios::fmtflags f( ostr.flags() );
+        ostr << std::left << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << std::setw(32) << "Shell" << std::setw(32) << "FPGA" << "IDCode" << std::endl;
         ostr << std::setw(32) << sensor_tree::get<std::string>( "board.info.dsa_name",  "N/A" )
@@ -1105,8 +1101,8 @@ public:
             int index = std::stoi(v.first);
             if( index >= 0 ) {
               std::string tag, st;
-              unsigned int ce_cnt, ue_cnt;
-              uint64_t ce_ffa, ue_ffa;
+              unsigned int ce_cnt = 0, ue_cnt = 0;
+              uint64_t ce_ffa = 0, ue_ffa = 0;
               for (auto& subv : v.second) {
                   if( subv.first == "tag" ) {
                       tag = subv.second.get_value<std::string>();
@@ -1281,7 +1277,8 @@ public:
             // eat the exception, probably bad path
         }
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-	dumpPartitionInfo(ostr);
+        dumpPartitionInfo(ostr);
+        ostr.flags(f);
         return 0;
     }
 
