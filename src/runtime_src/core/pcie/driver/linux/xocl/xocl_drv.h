@@ -660,7 +660,7 @@ struct xocl_mb_funcs {
 		u32 len);
 	int (*load_sche_image)(struct platform_device *pdev, const char *buf,
 		u32 len);
-	int (*get_data)(struct platform_device *pdev, enum group_kind kind, void *buf);
+	int (*get_data)(struct platform_device *pdev, enum xcl_group_kind kind, void *buf);
 	int (*dr_freeze)(struct platform_device *pdev);
 	int (*dr_free)(struct platform_device *pdev);
 };
@@ -806,7 +806,7 @@ struct xocl_mailbox_funcs {
 		mailbox_msg_cb_t cb, void *cbarg, u32 timeout);
 	int (*post_notify)(struct platform_device *pdev, void *req, size_t len);
 	int (*post_response)(struct platform_device *pdev,
-		enum mailbox_request req, u64 reqid, void *resp, size_t len);
+		enum xcl_mailbox_request req, u64 reqid, void *resp, size_t len);
 	int (*listen)(struct platform_device *pdev,
 		mailbox_msg_cb_t cb, void *cbarg);
 	int (*set)(struct platform_device *pdev, enum mb_kind kind, u64 data);

@@ -324,12 +324,12 @@ static void set_sensors_data(struct xocl_xmc *xmc, struct xcl_sensor *sensors)
 static void xmc_read_from_peer(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
-	struct mailbox_subdev_peer subdev_peer = {0};
+	struct xcl_mailbox_subdev_peer subdev_peer = {0};
 	struct xcl_sensor *xcl_sensor = NULL;
 	size_t resp_len = sizeof(struct xcl_sensor);
-	size_t data_len = sizeof(struct mailbox_subdev_peer);
-	struct mailbox_req *mb_req = NULL;
-	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+	size_t data_len = sizeof(struct xcl_mailbox_subdev_peer);
+	struct xcl_mailbox_req *mb_req = NULL;
+	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	xocl_info(&pdev->dev, "reading from peer");
@@ -341,9 +341,9 @@ static void xmc_read_from_peer(struct platform_device *pdev)
 	if (!xcl_sensor)
 		goto done;
 
-	mb_req->req = MAILBOX_REQ_PEER_DATA;
+	mb_req->req = XCL_MAILBOX_REQ_PEER_DATA;
 	subdev_peer.size = resp_len;
-	subdev_peer.kind = SENSOR;
+	subdev_peer.kind = XCL_SENSOR;
 	subdev_peer.entries = 1;
 
 	memcpy(mb_req->data, &subdev_peer, data_len);
@@ -651,11 +651,11 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 static void read_bdinfo_from_peer(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
-	struct mailbox_subdev_peer subdev_peer = {0};
+	struct xcl_mailbox_subdev_peer subdev_peer = {0};
 	size_t resp_len = sizeof(struct xcl_board_info);
-	size_t data_len = sizeof(struct mailbox_subdev_peer);
-	struct mailbox_req *mb_req = NULL;
-	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+	size_t data_len = sizeof(struct xcl_mailbox_subdev_peer);
+	struct xcl_mailbox_req *mb_req = NULL;
+	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	int ret = 0;
 
@@ -670,9 +670,9 @@ static void read_bdinfo_from_peer(struct platform_device *pdev)
 	if (!xmc->bdinfo_raw)
 		goto done;
 
-	mb_req->req = MAILBOX_REQ_PEER_DATA;
+	mb_req->req = XCL_MAILBOX_REQ_PEER_DATA;
 	subdev_peer.size = resp_len;
-	subdev_peer.kind = BDINFO;
+	subdev_peer.kind = XCL_BDINFO;
 	subdev_peer.entries = 1;
 
 	memcpy(mb_req->data, &subdev_peer, data_len);
@@ -789,7 +789,7 @@ static bool autonomous_xmc(struct platform_device *pdev)
 	return core->priv.flags & XOCL_DSAFLAG_SMARTN;
 }
 
-static int xmc_get_data(struct platform_device *pdev, enum group_kind kind, void *buf)
+static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind, void *buf)
 {
 	struct xcl_sensor *sensors = NULL;
 	struct xcl_board_info *bdinfo = NULL;
@@ -799,7 +799,7 @@ static int xmc_get_data(struct platform_device *pdev, enum group_kind kind, void
 		return -ENODEV;
 
 	switch (kind) {
-	case SENSOR:
+	case XCL_SENSOR:
 		sensors = (struct xcl_sensor *)buf;
 
 		xmc_sensor(pdev, VOL_12V_PEX, &sensors->vol_12v_pex, SENSOR_INS);
@@ -842,7 +842,7 @@ static int xmc_get_data(struct platform_device *pdev, enum group_kind kind, void
 		xmc_sensor(pdev, VOL_VPP_2V5, &sensors->vol_2v5_vpp, SENSOR_INS);
 		xmc_sensor(pdev, VOL_VCCINT_BRAM, &sensors->vccint_bram, SENSOR_INS);
 		break;
-	case BDINFO:
+	case XCL_BDINFO:
 		bdinfo = (struct xcl_board_info *)buf;
 
 		xmc_bdinfo(pdev, SER_NUM, (u32 *)bdinfo->serial_num);

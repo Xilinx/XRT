@@ -101,12 +101,12 @@ static void set_mig_cache_data(struct xocl_dev *xdev, struct xcl_mig_ecc *mig_ec
 
 static void xocl_mig_cache_read_from_peer(struct xocl_dev *xdev)
 {
-	struct mailbox_subdev_peer subdev_peer = {0};
+	struct xcl_mailbox_subdev_peer subdev_peer = {0};
 	struct xcl_mig_ecc *mig_ecc = NULL;
 	size_t resp_len = sizeof(struct xcl_mig_ecc)*MAX_M_COUNT;
-	size_t data_len = sizeof(struct mailbox_subdev_peer);
-	struct mailbox_req *mb_req = NULL;
-	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+	size_t data_len = sizeof(struct xcl_mailbox_subdev_peer);
+	struct xcl_mailbox_req *mb_req = NULL;
+	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
 	int ret = 0;
 
 	mb_req = vmalloc(reqlen);
@@ -117,9 +117,9 @@ static void xocl_mig_cache_read_from_peer(struct xocl_dev *xdev)
 	if (!mig_ecc)
 		goto done;
 
-	mb_req->req = MAILBOX_REQ_PEER_DATA;
+	mb_req->req = XCL_MAILBOX_REQ_PEER_DATA;
 	subdev_peer.size = sizeof(struct xcl_mig_ecc);
-	subdev_peer.kind = MIG_ECC;
+	subdev_peer.kind = XCL_MIG_ECC;
 	subdev_peer.entries = MAX_M_COUNT;
 
 	memcpy(mb_req->data, &subdev_peer, data_len);
@@ -150,23 +150,23 @@ void xocl_update_mig_cache(struct xocl_dev *xdev)
 static void xocl_mb_read_p2p_addr(struct xocl_dev *xdev)
 {
 	struct pci_dev *pdev = xdev->core.pdev;
-	struct mailbox_req *mb_req = NULL;
-	struct mailbox_p2p_bar_addr *mb_p2p = NULL;
+	struct xcl_mailbox_req *mb_req = NULL;
+	struct xcl_mailbox_p2p_bar_addr *mb_p2p = NULL;
 	size_t mb_p2p_len, reqlen;
 	int ret = 0;
 	size_t resplen = sizeof(ret);
 
-	mb_p2p_len = sizeof(struct mailbox_p2p_bar_addr);
-	reqlen = sizeof(struct mailbox_req) + mb_p2p_len;
+	mb_p2p_len = sizeof(struct xcl_mailbox_p2p_bar_addr);
+	reqlen = sizeof(struct xcl_mailbox_req) + mb_p2p_len;
 	mb_req = vzalloc(reqlen);
 	if (!mb_req) {
 		userpf_err(xdev, "dropped request (%d), mem alloc issue\n",
-				MAILBOX_REQ_READ_P2P_BAR_ADDR);
+				XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR);
 		return;
 	}
 
-	mb_req->req = MAILBOX_REQ_READ_P2P_BAR_ADDR;
-	mb_p2p = (struct mailbox_p2p_bar_addr *)mb_req->data;
+	mb_req->req = XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR;
+	mb_p2p = (struct xcl_mailbox_p2p_bar_addr *)mb_req->data;
 	mb_p2p->p2p_bar_len = pci_resource_len(pdev, xdev->p2p_bar_idx);
 	mb_p2p->p2p_bar_addr = pci_resource_start(pdev, xdev->p2p_bar_idx);
 
@@ -174,7 +174,7 @@ static void xocl_mb_read_p2p_addr(struct xocl_dev *xdev)
 							NULL, 0);
 	if (ret) {
 		userpf_info(xdev, "dropped request (%d), failed with err: %d",
-					MAILBOX_REQ_READ_P2P_BAR_ADDR, ret);
+					XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR, ret);
 		return;
 	}
 
@@ -231,11 +231,11 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 int xocl_program_shell(struct xocl_dev *xdev, bool force)
 {
 	int ret = 0, mbret = 0;
-	struct mailbox_req mbreq = { 0 };
+	struct xcl_mailbox_req mbreq = { 0 };
 	size_t resplen = sizeof(ret);
 	int i;
 
-	mbreq.req = MAILBOX_REQ_PROGRAM_SHELL;
+	mbreq.req = XCL_MAILBOX_REQ_PROGRAM_SHELL;
 	mutex_lock(&xdev->dev_lock);
 	if (!force && !list_is_singular(&xdev->ctx_list)) {
 		/* We should have one context for ourselves. */
@@ -276,7 +276,7 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 		goto failed;
 
 	userpf_info(xdev, "request mgmtpf to program prp");
-	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct mailbox_req),
+	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
 		&ret, &resplen, NULL, NULL, 0);
 	if (mbret)
 		ret = mbret;
@@ -301,10 +301,10 @@ failed:
 int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 {
 	int ret = 0, mbret = 0;
-	struct mailbox_req mbreq = { 0 };
+	struct xcl_mailbox_req mbreq = { 0 };
 	size_t resplen = sizeof(ret);
 
-	mbreq.req = MAILBOX_REQ_HOT_RESET;
+	mbreq.req = XCL_MAILBOX_REQ_HOT_RESET;
 	mutex_lock(&xdev->dev_lock);
 	if (!force && !list_is_singular(&xdev->ctx_list)) {
 		/* We should have one context for ourselves. */
@@ -324,7 +324,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 	xocl_reset_notify(xdev->core.pdev, true);
 
 	/* Reset mgmt */
-	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct mailbox_req),
+	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
 		&ret, &resplen, NULL, NULL, 0);
 	if (mbret)
 		ret = mbret;
@@ -362,21 +362,21 @@ static void xocl_work_cb(struct work_struct *work)
 
 static void xocl_mb_connect(struct xocl_dev *xdev)
 {
-	struct mailbox_req *mb_req = NULL;
-	struct mailbox_conn *mb_conn = NULL;
-	struct mailbox_conn_resp *resp = (struct mailbox_conn_resp *)
-		vzalloc(sizeof(struct mailbox_conn_resp));
+	struct xcl_mailbox_req *mb_req = NULL;
+	struct xcl_mailbox_conn *mb_conn = NULL;
+	struct xcl_mailbox_conn_resp *resp = (struct xcl_mailbox_conn_resp *)
+		vzalloc(sizeof(struct xcl_mailbox_conn_resp));
 	size_t data_len = 0;
 	size_t reqlen = 0;
-	size_t resplen = sizeof(struct mailbox_conn_resp);
+	size_t resplen = sizeof(struct xcl_mailbox_conn_resp);
 	void *kaddr = NULL;
 	int ret;
 
 	if (!resp)
 		goto done;
 
-	data_len = sizeof(struct mailbox_conn);
-	reqlen = sizeof(struct mailbox_req) + data_len;
+	data_len = sizeof(struct xcl_mailbox_conn);
+	reqlen = sizeof(struct xcl_mailbox_req) + data_len;
 	mb_req = vzalloc(reqlen);
 	if (!mb_req)
 		goto done;
@@ -385,13 +385,13 @@ static void xocl_mb_connect(struct xocl_dev *xdev)
 	if (!kaddr)
 		goto done;
 
-	mb_req->req = MAILBOX_REQ_USER_PROBE;
-	mb_conn = (struct mailbox_conn *)mb_req->data;
+	mb_req->req = XCL_MAILBOX_REQ_USER_PROBE;
+	mb_conn = (struct xcl_mailbox_conn *)mb_req->data;
 	mb_conn->kaddr = (uint64_t)kaddr;
 	mb_conn->paddr = (uint64_t)virt_to_phys(kaddr);
 	get_random_bytes(kaddr, PAGE_SIZE);
 	mb_conn->crc32 = crc32c_le(~0, kaddr, PAGE_SIZE);
-	mb_conn->version = MB_PROTOCOL_VER;
+	mb_conn->version = XCL_MB_PROTOCOL_VER;
 
 	ret = xocl_peer_request(xdev, mb_req, reqlen, resp, &resplen,
 		NULL, NULL, 0);
@@ -414,19 +414,19 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 {
 	int err = 0, i = 0;
 	int msg = -ENODEV;
-	struct mailbox_req *req = NULL;
+	struct xcl_mailbox_req *req = NULL;
 	size_t resplen = sizeof(msg);
-	size_t data_len = sizeof(struct mailbox_clock_freqscaling);
-	size_t reqlen = sizeof(struct mailbox_req)+data_len;
+	size_t data_len = sizeof(struct xcl_mailbox_clock_freqscaling);
+	size_t reqlen = sizeof(struct xcl_mailbox_req)+data_len;
 	struct drm_xocl_reclock_info *freqs = (struct drm_xocl_reclock_info *)data;
-	struct mailbox_clock_freqscaling mb_freqs = {0};
+	struct xcl_mailbox_clock_freqscaling mb_freqs = {0};
 
 	mb_freqs.region = freqs->region;
 	for (i = 0; i < 4; ++i)
 		mb_freqs.target_freqs[i] = freqs->ocl_target_freq[i];
 
 	req = kzalloc(reqlen, GFP_KERNEL);
-	req->req = MAILBOX_REQ_RECLOCK;
+	req->req = XCL_MAILBOX_REQ_RECLOCK;
 	memcpy(req->data, data, data_len);
 
 	mutex_lock(&xdev->dev_lock);
@@ -460,8 +460,8 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	u64 msgid, int err, bool sw_ch)
 {
 	struct xocl_dev *xdev = (struct xocl_dev *)arg;
-	struct mailbox_req *req = (struct mailbox_req *)data;
-	struct mailbox_peer_state *st = NULL;
+	struct xcl_mailbox_req *req = (struct xcl_mailbox_req *)data;
+	struct xcl_mailbox_peer_state *st = NULL;
 
 	if (err != 0)
 		return;
@@ -469,20 +469,20 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	userpf_info(xdev, "received request (%d) from peer\n", req->req);
 
 	switch (req->req) {
-	case MAILBOX_REQ_FIREWALL:
+	case XCL_MAILBOX_REQ_FIREWALL:
 		userpf_info(xdev, "firewall tripped, request reset");
 		xocl_drvinst_set_offline(xdev->core.drm, true);
 		xocl_queue_work(xdev, XOCL_WORK_RESET, XOCL_RESET_DELAY);
 		break;
-	case MAILBOX_REQ_MGMT_STATE:
-		st = (struct mailbox_peer_state *)req->data;
-		if (st->state_flags & MB_STATE_ONLINE) {
+	case XCL_MAILBOX_REQ_MGMT_STATE:
+		st = (struct xcl_mailbox_peer_state *)req->data;
+		if (st->state_flags & XCL_MB_STATE_ONLINE) {
 			/* Mgmt is online, try to probe peer */
 			userpf_info(xdev, "mgmt driver online\n");
 			(void) xocl_mb_connect(xdev);
 			xocl_queue_work(xdev, XOCL_WORK_REFRESH_SUBDEV, 1);
 
-		} else if (st->state_flags & MB_STATE_OFFLINE) {
+		} else if (st->state_flags & XCL_MB_STATE_OFFLINE) {
 			/* Mgmt is offline, mark peer as not ready */
 			userpf_info(xdev, "mgmt driver offline\n");
 			(void) xocl_mailbox_set(xdev, CHAN_STATE, 0);
@@ -491,7 +491,7 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 				st->state_flags);
 		}
 		break;
-	case MAILBOX_REQ_CHG_SHELL:
+	case XCL_MAILBOX_REQ_CHG_SHELL:
 		xocl_queue_work(xdev, XOCL_WORK_PROGRAM_SHELL,
 				XOCL_PROGRAM_SHELL_DELAY);
 		break;
@@ -536,10 +536,10 @@ uint64_t xocl_get_data(struct xocl_dev *xdev, enum data_kind kind)
 
 int xocl_refresh_subdevs(struct xocl_dev *xdev)
 {
-	struct mailbox_subdev_peer subdev_peer = {0};
-	size_t data_len = sizeof(struct mailbox_subdev_peer);
-	struct mailbox_req	*mb_req = NULL;
-	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+	struct xcl_mailbox_subdev_peer subdev_peer = {0};
+	size_t data_len = sizeof(struct xcl_mailbox_subdev_peer);
+	struct xcl_mailbox_req	*mb_req = NULL;
+	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
 	struct xcl_subdev	*resp = NULL;
 	size_t resp_len = sizeof(*resp) + XOCL_MSG_SUBDEV_DATA_LEN;
         char *blob = NULL, *tmp;
@@ -560,10 +560,10 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 		goto failed;
 	}
 
-	mb_req->req = MAILBOX_REQ_PEER_DATA;
+	mb_req->req = XCL_MAILBOX_REQ_PEER_DATA;
 
 	subdev_peer.size = resp_len;
-	subdev_peer.kind = SUBDEV;
+	subdev_peer.kind = XCL_SUBDEV;
 	subdev_peer.entries = 1;
 
 	memcpy(mb_req->data, &subdev_peer, data_len);

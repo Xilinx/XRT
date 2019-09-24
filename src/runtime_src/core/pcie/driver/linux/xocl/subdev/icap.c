@@ -272,13 +272,13 @@ static void icap_free_bins(struct icap *icap)
 
 static void icap_read_from_peer(struct platform_device *pdev)
 {
-	struct mailbox_subdev_peer subdev_peer = {0};
+	struct xcl_mailbox_subdev_peer subdev_peer = {0};
 	struct icap *icap = platform_get_drvdata(pdev);
 	struct xcl_pr_region xcl_hwicap = {0};
 	size_t resp_len = sizeof(struct xcl_pr_region);
-	size_t data_len = sizeof(struct mailbox_subdev_peer);
-	struct mailbox_req *mb_req = NULL;
-	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+	size_t data_len = sizeof(struct xcl_mailbox_subdev_peer);
+	struct xcl_mailbox_req *mb_req = NULL;
+	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	ICAP_INFO(icap, "reading from peer");
@@ -288,9 +288,9 @@ static void icap_read_from_peer(struct platform_device *pdev)
 	if (!mb_req)
 		return;
 
-	mb_req->req = MAILBOX_REQ_PEER_DATA;
+	mb_req->req = XCL_MAILBOX_REQ_PEER_DATA;
 	subdev_peer.size = resp_len;
-	subdev_peer.kind = ICAP;
+	subdev_peer.kind = XCL_ICAP;
 	subdev_peer.entries = 1;
 
 	memcpy(mb_req->data, &subdev_peer, data_len);
@@ -1536,10 +1536,10 @@ static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct mailbox_req mbreq = { 0 };
+	struct xcl_mailbox_req mbreq = { 0 };
 	int ret = 0;
 
-	mbreq.req = MAILBOX_REQ_CHG_SHELL;
+	mbreq.req = XCL_MAILBOX_REQ_CHG_SHELL;
 	mutex_lock(&icap->icap_lock);
 	if (flag == RP_DOWNLOAD_CLEAR) {
 		xocl_xdev_info(xdev, "Clear firmware bins");
@@ -1569,7 +1569,7 @@ static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 		goto end;
 	else if (flag == RP_DOWNLOAD_NORMAL) {
 		(void) xocl_peer_notify(xocl_get_xdev(icap->icap_pdev), &mbreq,
-				sizeof(struct mailbox_req));
+				sizeof(struct xcl_mailbox_req));
 		ICAP_INFO(icap, "Notified userpf to program rp");
 		goto end;
 	}
@@ -1774,10 +1774,10 @@ static int __icap_peer_lock(struct platform_device *pdev,
 	int err = 0;
 	int resp = 0;
 	size_t resplen = sizeof(resp);
-	struct mailbox_req_bitstream_lock bitstream_lock = {0};
-	size_t data_len = sizeof(struct mailbox_req_bitstream_lock);
-	struct mailbox_req *mb_req = NULL;
-	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+	struct xcl_mailbox_req_bitstream_lock bitstream_lock = {0};
+	size_t data_len = sizeof(struct xcl_mailbox_req_bitstream_lock);
+	struct xcl_mailbox_req *mb_req = NULL;
+	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	mb_req = vmalloc(reqlen);
@@ -1785,7 +1785,7 @@ static int __icap_peer_lock(struct platform_device *pdev,
 		return -ENOMEM;
 
 	mb_req->req = lock ?
-		MAILBOX_REQ_LOCK_BITSTREAM : MAILBOX_REQ_UNLOCK_BITSTREAM;
+		XCL_MAILBOX_REQ_LOCK_BITSTREAM : XCL_MAILBOX_REQ_UNLOCK_BITSTREAM;
 	uuid_copy((xuid_t *)bitstream_lock.uuid, id);
 	memcpy(mb_req->data, &bitstream_lock, data_len);
 	err = xocl_peer_request(xdev,
@@ -2109,11 +2109,11 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	uint64_t ch_state = 0;
 	uint32_t data_len = 0;
-	struct mailbox_req *mb_req = NULL;
+	struct xcl_mailbox_req *mb_req = NULL;
 	int msgerr = -ETIMEDOUT;
 	size_t resplen = sizeof(msgerr);
 	xuid_t *peer_uuid = NULL;
-	struct mailbox_bitstream_kaddr mb_addr = {0};
+	struct xcl_mailbox_bitstream_kaddr mb_addr = {0};
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
@@ -2125,27 +2125,27 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	}
 
 	xocl_mailbox_get(xdev, CHAN_STATE, &ch_state);
-	if ((ch_state & MB_PEER_SAME_DOMAIN) != 0) {
-		data_len = sizeof(struct mailbox_req) +
-			sizeof(struct mailbox_bitstream_kaddr);
+	if ((ch_state & XCL_MB_PEER_SAME_DOMAIN) != 0) {
+		data_len = sizeof(struct xcl_mailbox_req) +
+			sizeof(struct xcl_mailbox_bitstream_kaddr);
 		mb_req = vmalloc(data_len);
 		if (!mb_req) {
 			ICAP_ERR(icap, "can't create mb_req\n");
 			return -ENOMEM;
 		}
-		mb_req->req = MAILBOX_REQ_LOAD_XCLBIN_KADDR;
+		mb_req->req = XCL_MAILBOX_REQ_LOAD_XCLBIN_KADDR;
 		mb_addr.addr = (uint64_t)xclbin;
 		memcpy(mb_req->data, &mb_addr,
-			sizeof(struct mailbox_bitstream_kaddr));
+			sizeof(struct xcl_mailbox_bitstream_kaddr));
 	} else {
-		data_len = sizeof(struct mailbox_req) +
+		data_len = sizeof(struct xcl_mailbox_req) +
 			xclbin->m_header.m_length;
 		mb_req = vmalloc(data_len);
 		if (!mb_req) {
 			ICAP_ERR(icap, "can't create mb_req\n");
 			return -ENOMEM;
 		}
-		mb_req->req = MAILBOX_REQ_LOAD_XCLBIN;
+		mb_req->req = XCL_MAILBOX_REQ_LOAD_XCLBIN;
 		memcpy(mb_req->data, xclbin, xclbin->m_header.m_length);
 	}
 
