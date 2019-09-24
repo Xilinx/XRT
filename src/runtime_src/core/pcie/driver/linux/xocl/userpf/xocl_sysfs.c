@@ -334,7 +334,7 @@ static ssize_t config_mailbox_comm_id_show(struct device *dev,
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 
 	xocl_mailbox_get(xdev, COMM_ID, (u64 *)buf);
-	return COMM_ID_SIZE;
+	return XCL_COMM_ID_SIZE;
 }
 static DEVICE_ATTR_RO(config_mailbox_comm_id);
 
@@ -350,7 +350,7 @@ static ssize_t ready_show(struct device *dev,
 	else {
 		xocl_mailbox_get(xdev, CHAN_STATE, &ch_state);
 
-		ret = (ch_state & MB_PEER_READY) ? 1 : 0;
+		ret = (ch_state & XCL_MB_PEER_READY) ? 1 : 0;
 	}
 
 	return sprintf(buf, "0x%llx\n", ret);

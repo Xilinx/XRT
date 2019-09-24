@@ -927,9 +927,9 @@ int runShellCmd(const std::string& cmd, std::string& output)
     std::thread t(testCaseProgressReporter, &quit);
 
     // Run test case
-    setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
-    setenv("PYTHONPATH", "/opt/xilinx/xrt/python", 0);
-    setenv("LD_LIBRARY_PATH", "/opt/xilinx/xrt/lib", 1);
+//    setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
+//    setenv("PYTHONPATH", "/opt/xilinx/xrt/python", 0);
+//    setenv("LD_LIBRARY_PATH", "/opt/xilinx/xrt/lib", 1);
     unsetenv("XCL_EMULATION_MODE");
 
     int stderr_fds[2];
@@ -994,7 +994,7 @@ int searchXsaAndDsa(int index, std::string xsaPath, std::string
         boost::filesystem::path formatted_fw_dir(FORMATTED_FW_DIR);
         std::vector<std::string> suffix = { "dsabin", "xsabin" };
         for (std::string t : suffix) {
-            std::regex e("(^" FORMATTED_FW_DIR "/" hex_digit "-" hex_digit "-" hex_digit "/.+/.+/.+/)(" hex_digit ")\\." + t);
+            std::regex e("(^" FORMATTED_FW_DIR "/.+/.+/.+/).+/(" hex_digit ")\\." + t);
             for (boost::filesystem::recursive_directory_iterator iter(formatted_fw_dir, boost::filesystem::symlink_option::recurse), end;
                 iter != end;
             )

@@ -25,6 +25,8 @@
 #define PROP_INTERRUPTS "interrupts"
 #define PROP_INTERFACE_UUID "interface_uuid"
 #define PROP_LOGIC_UUID "logic_uuid"
+#define PROP_PARTITION_INFO_BLP "blp_info"
+#define PROP_PARTITION_INFO_PLP "plp_info"
 
 #define UUID_PROP_LEN 65 
 
@@ -32,6 +34,8 @@
 #define LEVEL0_DEV_PATH "/addressable_endpoints_0"
 #define LEVEL1_DEV_PATH "/addressable_endpoints_1"
 #define INTERFACES_PATH "/interfaces"
+
+#define NODE_PROPERTIES "partition_info"
 
 #define NODE_FLASH "ep_card_flash_program_00"
 #define NODE_XVC_PUB "ep_debug_bscan_user_00"
