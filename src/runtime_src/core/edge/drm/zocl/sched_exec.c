@@ -377,6 +377,53 @@ cu_idx_to_reset_timeout(struct drm_device *dev, unsigned int cu_idx)
 }
 
 /**
+ * enable_cmd_timestamps() - Enable timestamps for start CU commands
+ *
+ * @cmd: Command Object
+ */
+static inline bool
+enable_cmd_timestamps(struct sched_cmd *cmd)
+{
+	struct ert_start_kernel_cmd *sk = cmd->ert_cu;
+	struct cu_cmd_state_timestamps *ts;
+	size_t ts_sz = sizeof(struct cu_cmd_state_timestamps);
+	struct drm_zocl_bo *bo = cmd->buffer;
+
+	if (!(opcode(cmd) == ERT_START_CU ||
+	    opcode(cmd) == ERT_EXEC_WRITE) ||
+	    !sk->stat_enabled)
+		return false;
+
+	ts = ert_start_kernel_timestamps(sk);
+	if ((char *)ts + ts_sz > (char *)sk + bo->cma_base.base.size) {
+		DRM_ERROR("No enough space for timestamps in command.\n");
+		return false;
+	}
+	return true;
+}
+
+/**
+ * set_cmd_timestamp() - Set time stamp for specific state
+ *
+ * @cmd: Command Object
+ * @state: Command state
+ */
+static inline void
+set_cmd_timestamp(struct sched_cmd *cmd, enum ert_cmd_state state)
+{
+	struct cu_cmd_state_timestamps *ts;
+
+	if (!cmd->timestamp_enabled)
+		return;
+
+	ts = ert_start_kernel_timestamps(cmd->ert_cu);
+	/* The command state enum is using default integer value.
+	 * So we could use it for index.
+	 */
+	ts->skc_timestamps[state] = ktime_to_ns(ktime_get());
+}
+
+/**
  * set_cmd_int_state() - Set internal command state used by scheduler only
  *
  * @xcmd: command to change internal state on
@@ -386,6 +433,7 @@ static inline void
 set_cmd_int_state(struct sched_cmd *cmd, enum ert_cmd_state state)
 {
 	SCHED_DEBUG("-> set_cmd_int_state(,%d)\n", state);
+	set_cmd_timestamp(cmd, state);
 	cmd->state = state;
 	SCHED_DEBUG("<- set_cmd_int_state\n");
 }
@@ -990,6 +1038,7 @@ static inline void
 set_cmd_state(struct sched_cmd *cmd, enum ert_cmd_state state)
 {
 	SCHED_DEBUG("-> set_cmd_state(,%d)\n", state);
+	set_cmd_timestamp(cmd, state);
 	cmd->state = state;
 	cmd->packet->state = state;
 	SCHED_DEBUG("<- set_cmd_state\n");
@@ -1452,6 +1501,7 @@ add_gem_bo_cmd(struct drm_device *dev, struct drm_zocl_bo *bo)
 	else
 		packet = (struct ert_packet *)bo->cma_base.vaddr;
 	cmd->packet = packet;
+	cmd->timestamp_enabled = enable_cmd_timestamps(cmd);
 	cmd->cq_slot_idx = 0;
 	cmd->free_buffer = zocl_gem_object_unref;
 
