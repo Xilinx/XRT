@@ -683,6 +683,10 @@ static void xocl_dev_percpu_kill(void *data)
 	percpu_ref_kill(ref);
 }
 
+static void xocl_dev_pgmap_kill_nop(struct percpu_ref *ref)
+{
+	/* NOP function for sanity check use only*/
+}
 #endif
 
 void xocl_p2p_mem_release(struct xocl_dev *xdev, bool recov_bar_sz)
@@ -771,6 +775,10 @@ int xocl_p2p_mem_reserve(struct xocl_dev *xdev)
 	xdev->pgmap.ref = &xdev->ref;
 	memcpy(&xdev->pgmap.res, &res, sizeof(struct resource));
 	xdev->pgmap.altmap_valid = false;
+#if KERNEL_VERSION(5, 3, 0) > LINUX_VERSION_CODE && \
+	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 2))
+	xdev->pgmap.kill = xocl_dev_pgmap_kill_nop;
+#endif
 #endif
 
 /* Ubuntu 16.04 kernel_ver 4.4.0.116*/
