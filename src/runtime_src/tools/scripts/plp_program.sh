@@ -6,6 +6,7 @@ usage() {
     echo "Program PLP"
     echo
     echo "-i <PATH>	Full path to xclbin file"
+    echo "-card <bdf>   Card bdf printed by xbutil scan, e.g. 0000:b3:00.1"
     echo "[-help]		List this help"
     exit $1
 }
@@ -18,6 +19,11 @@ while [ $# -gt 0 ]; do
 		-i)
 			shift
 			PATH_TO_XCLBIN=$1
+			shift
+			;;
+		-card)
+			shift
+			RP_DEVICE=$1
 			shift
 			;;
 		*)
@@ -40,9 +46,21 @@ if [ "foo${INTERFACE_UUID}" == "foo" ] ; then
 fi
 
 # workaround mailbox
-RP_DEVICE=`xbutil scan | grep user | grep -v xilinx | sed 's/.*\[//' | sed 's/].*//'`
+if [ "foo${RP_DEVICE}" == "foo" ] ; then
+	RP_DEVICE=`xbutil scan | grep user | grep -v xilinx | sed 's/.*[^0-9A-Fa-f]\([0-9A-Fa-f]\+:[0-9A-Fa-f]\+:[0-9A-Fa-f]\+\.[0-9A-Fa-f]\).*/\1/'`
+fi
+
+if [ "foo${RP_DEVICE}" == "foo" ] ; then
+	RP_DEVICE=`xbutil scan | grep user | grep dynamic | sed 's/.*[^0-9A-Fa-f]\([0-9A-Fa-f]\+:[0-9A-Fa-f]\+:[0-9A-Fa-f]\+\.[0-9A-Fa-f]\).*/\1/'`
+fi
+
 if [ "foo${RP_DEVICE}" == "foo" ] ; then
 	echo "No board!"
+	exit 1;
+fi
+
+if [ ! -r "/sys/bus/pci/devices/$RP_DEVICE" ]; then
+	echo "can not find board /sys/bus/pci/devices/$RP_DEVICE"
 	exit 1;
 fi
 

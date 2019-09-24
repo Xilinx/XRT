@@ -21,9 +21,9 @@ static int err_info_ioctl(struct xclmgmt_dev *lro, void __user *arg)
 {
 
 	struct xclmgmt_err_info obj;
-	u32	val, level;
-	u64	t;
-	int	i;
+	u32	val = 0, level = 0;
+	u64	t = 0;
+	int	i = 0;
 
 	mgmt_info(lro, "Enter error_info IOCTL");
 
@@ -91,6 +91,9 @@ static int bitstream_ioctl_axlf(struct xclmgmt_dev *lro, const void __user *arg)
 		return -EINVAL;
 
 	copy_buffer_size = xclbin_obj.m_header.m_length;
+	/* Assuming xclbin is not over 1G */
+	if (copy_buffer_size > 1024 * 1024 * 1024)
+		return -EINVAL;
 	copy_buffer = vmalloc(copy_buffer_size);
 	if (copy_buffer == NULL)
 		return -ENOMEM;

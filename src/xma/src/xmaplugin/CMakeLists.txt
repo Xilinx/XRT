@@ -8,9 +8,9 @@ set(XMA_PLUGIN_ALL_SRC
   ${XMA_PLUGIN_FILES}
   )
 
-add_library(xmaplugin SHARED ${XMA_PLUGIN_ALL_SRC})
+add_library(xma2plugin SHARED ${XMA_PLUGIN_ALL_SRC})
 
-set_target_properties(xmaplugin PROPERTIES VERSION ${XMA_VERSION_STRING}
+set_target_properties(xma2plugin PROPERTIES VERSION ${XMA_VERSION_STRING}
   SOVERSION ${XMA_SOVERSION})
 
-install (TARGETS xmaplugin LIBRARY DESTINATION ${XMA_INSTALL_DIR}/lib)
+install (TARGETS xma2plugin LIBRARY DESTINATION ${XMA_INSTALL_DIR}/lib)

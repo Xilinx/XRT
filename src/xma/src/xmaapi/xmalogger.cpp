@@ -89,6 +89,16 @@ xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...)
             tmp1.level = level;
             tmp1.msg = std::string(msg_buff);
 
+            if (level <= XMA_ERROR_LOG) {
+                //Flush log msg queue for all error
+                //Else application may exit/crash early
+                while (!g_xma_singleton->log_msg_list.empty()) {
+                    auto itr1 = g_xma_singleton->log_msg_list.begin();
+                    xclLogMsg(NULL, (xrtLogMsgLevel)itr1->level, "XMA", itr1->msg.c_str());
+                    g_xma_singleton->log_msg_list.pop_front();
+                }
+            }
+
             //Release log msg list lock
             g_xma_singleton->log_msg_list_locked = false;
         } else {

@@ -123,21 +123,21 @@ public:
 class CreateProfileResultsCls
 {
 public:
-  CreateProfileResultsCls(xclDeviceHandle handle, ProfileResults**);
+  CreateProfileResultsCls(xclDeviceHandle handle, ProfileResults**, int& status);
   ~CreateProfileResultsCls();
 };
 
 class GetProfileResultsCls
 {
 public:
-  GetProfileResultsCls(xclDeviceHandle handle, ProfileResults*);
+  GetProfileResultsCls(xclDeviceHandle handle, ProfileResults*, int& status);
   ~GetProfileResultsCls();
 };
 
 class DestroyProfileResultsCls
 {
 public:
-  DestroyProfileResultsCls(xclDeviceHandle handle, ProfileResults*);
+  DestroyProfileResultsCls(xclDeviceHandle handle, ProfileResults*, int& status);
   ~DestroyProfileResultsCls();
 };
 
@@ -160,8 +160,8 @@ void load_xdp_plugin_library(HalPluginConfig* config);
 #define READ_CB xdphal::ReadCallLogger read_call_logger(handle, space, offset, hostBuf, size);
 
 #define START_DEVICE_PROFILING_CB(handle) xdphal::StartDeviceProfilingCls start_device_profiling_inst(handle);
-#define CREATE_PROFILE_RESULTS_CB(handle, results) xdphal::CreateProfileResultsCls create_profile_results_inst(handle, results);
-#define GET_PROFILE_RESULTS_CB(handle, results) xdphal::GetProfileResultsCls get_profile_results_inst(handle, results);
-#define DESTROY_PROFILE_RESULTS_CB(handle, results) xdphal::DestroyProfileResultsCls destroy_profile_results_inst(handle, results);
+#define CREATE_PROFILE_RESULTS_CB(handle, results, status) xdphal::CreateProfileResultsCls create_profile_results_inst(handle, results, status);
+#define GET_PROFILE_RESULTS_CB(handle, results, status) xdphal::GetProfileResultsCls get_profile_results_inst(handle, results, status);
+#define DESTROY_PROFILE_RESULTS_CB(handle, results, status) xdphal::DestroyProfileResultsCls destroy_profile_results_inst(handle, results, status);
 
 #endif

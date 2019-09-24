@@ -90,6 +90,7 @@ namespace xcldev {
                     break;
                 mBOList.push_back(bo);
             }
+            std::cout << "Buffer Size: " << mSize/(1024*1024) << " MB\n";
         }
 
         ~DMARunner() {
