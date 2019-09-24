@@ -76,6 +76,8 @@ int program_prp(unsigned index, const std::string& xclbin, bool force)
         if (!errmsg.empty())
         {
             std::cout << errmsg << std::endl;
+            delete [] buffer;
+            dev->close(fd);
             return -EINVAL;
         }
     }
@@ -300,8 +302,8 @@ int program(int argc, char *argv[])
         { "card", required_argument, nullptr, '0' },
         { "force", no_argument, nullptr, '1' },
         { "path", required_argument, nullptr, '2' },
-	{ "id", required_argument, nullptr, '3' },
-	{ "name", required_argument, nullptr, '4' },
+	    { "id", required_argument, nullptr, '3' },
+	    { "name", required_argument, nullptr, '4' },
     };
 
     while (true) {
@@ -415,6 +417,7 @@ int program(int argc, char *argv[])
                 }
                 ++iter;
             }
+            closedir(dp);
         }
     }
 
