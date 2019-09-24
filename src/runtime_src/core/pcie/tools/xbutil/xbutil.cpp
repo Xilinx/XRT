@@ -918,9 +918,9 @@ void testCaseProgressReporter(bool *quit)
     }
 }
 
-const char* value_or_empty(const char* value) { return value ? value : "" ; }
+inline const char* value_or_empty(const char* value) { return value ? value : "" ; }
 
-void set_shell_path_env(const std::string& var_name, const std::string& trailing_path, int overwrite)
+static void set_shell_path_env(const std::string& var_name, const std::string& trailing_path, int overwrite)
 {
     std::string xrt_path(getenv("XILINX_XRT"));
     std::string new_path = std::string(value_or_empty(getenv(var_name.c_str())));
