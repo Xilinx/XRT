@@ -611,11 +611,6 @@ public:
             numDDR = map->m_count;
 
         if(numDDR == 0) {
-            ss << "-- none found --. See 'xbutil program'.\n";
-        } else if(numDDR < 0) {
-            ss << "WARNING: 'mem_topology' invalid, unable to report topology. "
-                << "Has the bitstream been loaded? See 'xbutil program'.";
-            lines.push_back(ss.str());
             return;
         } else {
             ss << std::setw(16) << "Tag"  << std::setw(12) << "Type"

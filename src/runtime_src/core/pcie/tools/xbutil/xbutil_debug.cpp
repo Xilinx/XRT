@@ -47,7 +47,7 @@ uint32_t xcldev::device::getIPCountAddrNames(int type,
     }
 
     debug_ip_layout *map = (debug_ip_layout *)buf.data();
-    if (buf.empty() || map->m_count < 0) {
+    if (buf.empty() || map->m_count == 0) {
         std::cout <<  "ERROR: Failed to open debug IP layout file. "
             << "Ensure that a valid xclbin is successfully downloaded. \n";
         return -EINVAL;

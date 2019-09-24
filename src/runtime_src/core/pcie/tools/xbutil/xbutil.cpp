@@ -1551,7 +1551,7 @@ int xcldev::xclReset(int argc, char *argv[])
     if (!d)
         return -EINVAL;
 
-    int err = d->reset(XCL_USER_RESET);
+    unsigned err = d->reset(XCL_USER_RESET);
     if (err)
         std::cout << "ERROR: " << strerror(err) << std::endl;
     return err;
