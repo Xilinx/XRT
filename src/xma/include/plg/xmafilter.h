@@ -46,11 +46,17 @@ typedef struct XmaFilterPlugin
     /** Callback called when application calls xma_filter_session_destroy() */
     int32_t         (*close)(XmaFilterSession *session);
 
-    /** Callback invoked at start to check compatibility with XMA version */
-    int32_t         (*xma_version)(int32_t *main_version, int32_t *sub_version);
+    /** Optional callback called when app calls xma_filter_session_create()
+      * Implement this callback if your kernel supports channels and is
+      * multi-process safe
+    */
+    xma_plg_alloc_chan_mp alloc_chan_mp;
 
-    /** Reserved */
-    uint32_t        reserved[4];
+    /** Optional callback called when app calls xma_filter_session_create()
+      * Implement this callback if your kernel supports channels and is
+      * NOT multi-process safe (but it IS thread-safe)
+    */
+    xma_plg_alloc_chan alloc_chan;
 } XmaFilterPlugin;
 
 /**
@@ -61,12 +67,10 @@ typedef struct XmaFilterSession
     XmaSession            base; /**< base class */
     XmaFilterProperties   props; /**< properties specified by app */
     XmaFilterPlugin      *filter_plugin; /**< link to XMA filter plugin */
-    //int32_t               conn_recv_handle; /**< upstream kernel */
-    //int32_t               conn_send_handle; /**< downstream kernel */
-    //uint64_t              out_dev_addr; /**< paddr of device output buffer */
-    //bool                  zerocopy_dest; /**< flag indicating destination supports zerocopy */
-    /** Reserved */
-    uint32_t        reserved[4];
+    int32_t               conn_recv_handle; /**< upstream kernel */
+    int32_t               conn_send_handle; /**< downstream kernel */
+    uint64_t              out_dev_addr; /**< paddr of device output buffer */
+    bool                  zerocopy_dest; /**< flag indicating destination supports zerocopy */
 } XmaFilterSession;
 
 /**

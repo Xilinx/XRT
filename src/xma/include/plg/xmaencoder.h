@@ -55,7 +55,7 @@ typedef struct XmaEncoderPlugin
     /** bits per pixel for primary plane of input format */
     int32_t         bits_per_pixel;
     /** size of allocated kernel-wide private data */
-    //size_t          kernel_data_size;This is removed;
+    size_t          kernel_data_size;
     /** size of allocated private plugin data.*/
     size_t          plugin_data_size;
     /** Initalization callback.  Called during session_create() */
@@ -70,12 +70,20 @@ typedef struct XmaEncoderPlugin
     /** Callback called when application calls xma_enc_session_destroy() */
     int32_t         (*close)(XmaEncoderSession *session);
 
-    /** Callback invoked at start to check compatibility with XMA version */
-    int32_t         (*xma_version)(int32_t *main_version, int32_t *sub_version);
+    /** Optional callback called when app calls xma_enc_session_create()
+      * Implement this callback if your kernel supports channels and is
+      * multi-process safe
+    */
+    xma_plg_alloc_chan_mp alloc_chan_mp;
 
-    /** Reserved */
-    uint32_t        reserved[4];
+    /** Optional callback called when app calls xma_enc_session_create()
+      * Implement this callback if your kernel supports channels and is
+      * NOT multi-process safe (but it IS thread-safe)
+    */
+    xma_plg_alloc_chan alloc_chan;
 
+    /** Callback called if this encoder supports zerocopy */
+    uint64_t        (*get_dev_input_paddr)(XmaEncoderSession *enc_session);
 } XmaEncoderPlugin;
 
 
@@ -88,9 +96,7 @@ typedef struct XmaEncoderSession
     XmaEncoderProperties  encoder_props; /**< properties specified by app */
     XmaEncoderPlugin     *encoder_plugin; /**< link to XMA encoder plugin */
     /** index into connection table (requires zerocopy: enable in cfg)  */
-    //int32_t               conn_recv_handle;
-    /** Reserved */
-    uint32_t        reserved[4];
+    int32_t               conn_recv_handle;
 } XmaEncoderSession;
 
 /**

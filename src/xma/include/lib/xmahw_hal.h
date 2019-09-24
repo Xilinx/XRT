@@ -14,28 +14,21 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#ifndef _XMA_HW_H_
-#define _XMA_HW_H_
+#ifndef _XMA_HW_HAL_H_
+#define _XMA_HW_HAL_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-//typedef void * XmaKernelRes;
-typedef struct XmaHwKernel XmaHwKernel;
-
-typedef struct XmaHwSession
+typedef struct XmaHwHALKernel
 {
-    void            *dev_handle;
-    //For execbo:
-    uint32_t         dev_index;
-    XmaHwKernel     *kernel_info;
-    uint32_t         reserved[4];
-} XmaHwSession;
+    char            name[MAX_KERNEL_NAME];
+    uint64_t        base_address;
+    uint32_t        ddr_bank;
+}XmaHwHALKernel;
 
-
-#ifdef __cplusplus
-}
-#endif
+typedef struct XmaHwHAL
+{
+    void           *dev_handle;                  // HAL device handle
+    XmaHwHALKernel  kernels[MAX_XILINX_KERNELS];
+    uint32_t       dev_index;
+} XmaHwHAL;
 
 #endif
