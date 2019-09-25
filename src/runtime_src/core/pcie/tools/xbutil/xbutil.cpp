@@ -1350,6 +1350,9 @@ int xcldev::device::validate(bool quick)
     bool withWarning = false;
     int retVal = 0;
 
+    if (!isAuxConnected())
+        std::cout << "WARNING: No aux cable connected." << std::endl;
+
     // Check pcie training
     retVal = runOneTest("PCIE link check",
             std::bind(&xcldev::device::pcieLinkTest, this));
