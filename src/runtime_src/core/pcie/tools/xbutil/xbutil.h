@@ -224,7 +224,7 @@ public:
     }
 
     std::string name() const {
-        std::string name, errmsg;
+        static std::string name, errmsg;
         pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV", errmsg, name );
         return name;
     }
