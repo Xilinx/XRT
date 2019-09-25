@@ -172,6 +172,7 @@ namespace xcldev {
 
       size_t count = aSize;
       uint64_t incr;
+      std::ios_base::fmtflags f(std::cout.flags());
       for (uint64_t phy = aStartAddr; phy < aStartAddr+aSize; phy += incr) {
         incr = (count >= blockSize) ? blockSize : count;
         //std::cout << "Reading from addr " << std::hex << phy << " aSize = " << std::hex << incr << std::dec << std::endl;
@@ -179,6 +180,7 @@ namespace xcldev {
           //error
           std::cout << "Error (" << strerror (errno) << ") reading 0x" << std::hex << incr << " bytes from DDR/HBM/PLRAM at offset 0x" << std::hex << phy << std::dec << "\n";
           free(buf);
+          std::cout.flags(f);
           return -1;
         }
         count -= incr;
@@ -193,8 +195,10 @@ namespace xcldev {
       free(buf);
       if (count != 0) {
         std::cout << "Error! Read " << std::dec << aSize-count << " bytes, requested " << aSize << std::endl;
+        std::cout.flags(f);
         return -1;
       }
+      std::cout.flags(f);
       return count;
     }
 
@@ -592,6 +596,7 @@ namespace xcldev {
           if (xclUnmgdPwrite(mHandle, 0, buf, incr, phy) < 0) {
             //error
             std::cout << "Error (" << strerror (errno) << ") writing 0x" << std::hex << incr << " bytes to DDR/HBM/PLRAM at offset 0x" << std::hex << phy << std::dec << "\n";
+            free(buf);
             return -1;
           }
           count -= incr;
@@ -599,8 +604,10 @@ namespace xcldev {
 
         if (count != 0) {
           std::cout << "Error! Written " << std::dec << size-count << " bytes, requested " << size << std::endl;
+          free(buf);
           return -1;
         }
+        free(buf);
         return count;
       }
 

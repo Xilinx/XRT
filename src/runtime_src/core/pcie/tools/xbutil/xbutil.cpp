@@ -918,12 +918,12 @@ void testCaseProgressReporter(bool *quit)
     }
 }
 
-inline const char* value_or_empty(const char* value) { return value ? value : "" ; }
+inline const char* getenv_or_empty(const char* path) { return getenv(path) ? getenv(path) : "" ; }
 
 static void set_shell_path_env(const std::string& var_name, const std::string& trailing_path, int overwrite)
 {
-    std::string xrt_path(getenv("XILINX_XRT"));
-    std::string new_path = std::string(value_or_empty(getenv(var_name.c_str())));
+    std::string xrt_path(getenv_or_empty("XILINX_XRT"));
+    std::string new_path(getenv_or_empty(var_name.c_str()));
     xrt_path += trailing_path + ":";
     new_path = xrt_path + new_path;
     setenv(var_name.c_str(), new_path.c_str(), overwrite);
@@ -971,7 +971,7 @@ int runShellCmd(const std::string& cmd, std::string& output)
     //Read stderr
     if (output.find("PASS") == std::string::npos) {
         char buffer[256];
-        int count = read(stderr_fds[0], buffer, sizeof(buffer)-1);
+        unsigned count = read(stderr_fds[0], buffer, sizeof(buffer)-1);
         buffer[count] = 0;
         std::cout << buffer << std::endl;
     }
