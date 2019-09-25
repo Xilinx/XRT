@@ -141,10 +141,10 @@ void zynq_device::sysfs_get(const std::string& entry, std::string& err_msg,
 
 zynq_device *zynq_device::get_dev()
 {
-    // Until we have a programmatic way to determine what this directory
-    // is on Zynq platforms, this is hard-coded so we can test out
-    // debug and profile features.
-    static zynq_device dev("/sys/devices/platform/amba/amba:zyxclmm_drm/");
+    // This is based on the fact that on edge devices, we only have one DRM
+    // device, which is named renderD128.
+    // This path is reliable. It is the same for ARM32 and ARM64.
+    static zynq_device dev("/sys/class/drm/renderD128/device/");
     return &dev;
 }
 

@@ -218,6 +218,8 @@ MODULE_PARM_DESC(mailbox_no_intr,
 
 #define	MBX_ERR(mbx, fmt, arg...)	\
 	xocl_err(&mbx->mbx_pdev->dev, fmt "\n", ##arg)
+#define	MBX_WARN(mbx, fmt, arg...)	\
+	xocl_warn(&mbx->mbx_pdev->dev, fmt "\n", ##arg)
 #define	MBX_INFO(mbx, fmt, arg...)	\
 	xocl_info(&mbx->mbx_pdev->dev, fmt "\n", ##arg)
 #define	MBX_DBG(mbx, fmt, arg...)	\
@@ -627,9 +629,9 @@ void timeout_msg(struct mailbox_channel *ch)
 	msg = ch->mbc_cur_msg;
 	if (msg) {
 		if (msg->mbm_ttl == 0) {
-			MBX_ERR(mbx, "found outstanding msg time'd out");
+			MBX_WARN(mbx, "found outstanding msg time'd out");
 			if (!mbx->mbx_peer_dead) {
-				MBX_ERR(mbx, "peer becomes dead");
+				MBX_WARN(mbx, "peer becomes dead");
 				/* Peer is not active any more. */
 				mbx->mbx_peer_dead = true;
 			}
@@ -1792,13 +1794,13 @@ static int mailbox_enable_intr_mode(struct mailbox *mbx)
 
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	if (res == NULL) {
-		MBX_ERR(mbx, "failed to acquire intr resource");
+		MBX_WARN(mbx, "failed to acquire intr resource");
 		return -EINVAL;
 	}
 
 	ret = xocl_user_interrupt_reg(xdev, res->start, mailbox_isr, mbx);
 	if (ret) {
-		MBX_ERR(mbx, "failed to add intr handler");
+		MBX_WARN(mbx, "failed to add intr handler");
 		return ret;
 	}
 	ret = xocl_user_interrupt_config(xdev, res->start, true);
