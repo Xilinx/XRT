@@ -76,11 +76,6 @@ set_param bd.skipSupportedIPCheck 1
 set_param checkpoint.useBaseFileNamesWhileWritingDCP 1
 set_param platform.populateFeatureRomInWriteHwPlatform 0
 
-# Specify and refresh the IP local repo
-set repo_path "$sourcesDir/emulation_sources/user_ip_repo $sourcesDir/iprepo"
-set_property ip_repo_paths "${repo_path}" [current_project]
-update_ip_catalog
-
 # Set DSA project properties
 set_property dsa.vendor                        "xilinx"     [current_project]
 set_property dsa.board_id                      "ZCU102"    [current_project]
@@ -140,6 +135,4 @@ file copy -force  ${sourcesDir}/emulation_sources/emu.xml $overlay_dir/emu
 # Move in created HPFM
 file copy -force  emu.hpfm $overlay_dir/emu/emu.hpfm
 file copy -force  ${sourcesDir}/emulation_sources/dynamic_postlink.tcl $overlay_dir/emu
-file mkdir $overlay_dir/emu/user_ip_repo
-file copy -force  ${sourcesDir}/emulation_sources/user_ip_repo $overlay_dir/emu/user_ip_repo
 cd ../
