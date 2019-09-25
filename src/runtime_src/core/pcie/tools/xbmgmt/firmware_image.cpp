@@ -26,6 +26,7 @@
 #include <stdint.h>
 #include "boost/filesystem.hpp"
 #include "firmware_image.h"
+#include "core/pcie/linux/scan.h"
 #include "xclbin.h"
 
 #define hex_digit "([0-9a-fA-F]+)"
@@ -161,12 +162,16 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
                 if (dsa.uuids.size() > 0 && id.compare(dsa.uuids[0]) == 0)
                 {
                     name = dsa.name;
+                    if (!name.empty())
+                    {
+                        getVendorBoardFromDSAName(name, vendor, board);
+                    }
                     vendor_id = dsa.vendor_id;
                     device_id = dsa.device_id;
                     subsystem_id = dsa.subsystem_id;
                     partition_family_name = dsa.partition_family_name;
                     partition_name = dsa.partition_name;
-                    build_ident = dsa.build_ident;
+		    file = dsa.file;
                     break;
                 }
             }
@@ -232,7 +237,10 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
 
         // Fill out DSA info.
         const axlf *ap = reinterpret_cast<const axlf *>(top.data());
-        name.assign(reinterpret_cast<const char *>(ap->m_header.m_platformVBNV));
+        if (name.empty())
+        {
+            name.assign(reinterpret_cast<const char *>(ap->m_header.m_platformVBNV));
+        }
         // Normalize DSA name: v:b:n:a.b -> v_b_n_a_b
         std::replace_if(name.begin(), name.end(),
             [](const char &a){ return a == ':' || a == '.'; }, '_');
@@ -242,7 +250,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
         // Show it as ID for flashing
         const axlf_section_header* dtbSection = xclbin::get_axlf_section(ap, PARTITION_METADATA);
         if (dtbSection && timestamp == NULL_TIMESTAMP) {
-            std::shared_ptr<char> dtbbuf(new char[dtbSection->m_sectionSize]);
+            dtbbuf = std::shared_ptr<char>(new char[dtbSection->m_sectionSize]);
             in.seekg(dtbSection->m_sectionOffset);
             in.read(dtbbuf.get(), dtbSection->m_sectionSize);
 	    getUUIDFromDTB(dtbbuf.get(), timestamp, uuids);
@@ -274,16 +282,14 @@ DSAInfo::DSAInfo(const std::string& filename) : DSAInfo(filename, NULL_TIMESTAMP
 {
 }
 
-DSAInfo::DSAInfo(const std::string& filename, uint16_t vid, uint16_t did, uint16_t subsys_id, std::string& pr_family, std::string& pr_name, std::string& bld_ident) : DSAInfo(filename)
+DSAInfo::DSAInfo(const std::string& filename, std::string &pr_board, std::string& pr_family, std::string& pr_name) : DSAInfo(filename)
 {
-    vendor_id = vid;
-    device_id = did;
-    subsystem_id = subsys_id;
+    vendor = "xilinx";
+    board = pr_board;
     partition_family_name = pr_family;
     partition_name = pr_name;
-    build_ident = bld_ident;
 
-    name = pr_family + "_" + pr_name + "_" + build_ident;
+    name = "xilinx_" + board + "_" + pr_family + "_" + pr_name;
 }
 
 DSAInfo::~DSAInfo()
@@ -395,7 +401,7 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
 
     for (std::string t : suffix) {
 
-        std::regex e("^" FORMATTED_FW_DIR "/" hex_digit "-" hex_digit "-" hex_digit "/(.+)/(.+)/(.+)/" hex_digit "\\." + t);
+        std::regex e("^" FORMATTED_FW_DIR "/(.+)/(.+)/(.+)/(.+)/" hex_digit "\\." + t);
         std::cmatch cm;
 
         for (recursive_directory_iterator iter(formatted_fw_dir, symlink_option::recurse), end;
@@ -406,18 +412,14 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
             std::regex_match(name.c_str(), cm, e);
             if (cm.size() > 0)
             {
-                uint16_t vid;
-                uint16_t did;
-                uint16_t subsys_id;
-                vid = std::stoi(cm.str(1), 0, 16);
-                did = std::stoi(cm.str(2), 0, 16);
-                subsys_id = std::stoi(cm.str(3), 0, 16);
-                std::string pr_family = cm.str(4);
-                std::string pr_name = cm.str(5);
-                std::string build_ident = cm.str(6);
-                DSAInfo dsa(name, vid, did, subsys_id, pr_family, pr_name, build_ident);
+                std::string pr_board = cm.str(1);
+                std::string pr_family = cm.str(2);
+                std::string pr_name = cm.str(3);
+                DSAInfo dsa(name, pr_board, pr_family, pr_name);
                 installedDSA.push_back(dsa);
                 iter.pop();
+                if (iter.level() > 0)
+		    iter.pop();
             } else if (iter.level() > 4)
                 iter.pop();
             else

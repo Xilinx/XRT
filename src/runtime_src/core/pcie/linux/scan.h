@@ -30,6 +30,29 @@
 #define INVALID_ID      0xffff
 #define MFG_REV_OFFSET  0x131008 // For obtaining Golden image version number
 
+#define FDT_BEGIN_NODE  0x1
+#define FDT_END_NODE    0x2
+#define FDT_PROP        0x3
+#define FDT_NOP         0x4
+#define FDT_END         0x9
+#define ALIGN(x, a)     (((x) + ((a) - 1)) & ~((a) - 1))
+#define PALIGN(p, a)    ((char *)(ALIGN((unsigned long)(p), (a))))
+#define GET_CELL(p)     (p += 4, *((const uint32_t *)(p-4)))
+
+struct fdt_header {
+    uint32_t magic;
+    uint32_t totalsize;
+    uint32_t off_dt_struct;
+    uint32_t off_dt_strings;
+    uint32_t off_mem_rsvmap;
+    uint32_t version;
+    uint32_t last_comp_version;
+    uint32_t boot_cpuid_phys;
+    uint32_t size_dt_strings;
+    uint32_t size_dt_struct;
+};
+
+
 namespace pcidev {
 
 // One PCIE function on FPGA board
@@ -92,6 +115,7 @@ public:
     int poll(int devhdl, short events, int timeoutMilliSec);
     void *mmap(int devhdl, size_t len, int prot, int flags, off_t offset);
     int flock(int devhdl, int op);
+    int get_partinfo(std::vector<std::string>& info, void *blob = nullptr);
 
 private:
     std::fstream sysfs_open(const std::string& subdev,

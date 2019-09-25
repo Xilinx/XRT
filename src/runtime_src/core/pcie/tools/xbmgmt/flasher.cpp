@@ -310,7 +310,8 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
 	else if (!dsa.name.empty() && (vendor_id == dsa.vendor_id) && (device_id == dsa.device_id))
         {
             DSAs.push_back(dsa);
-        }
+        } else if (onBoard.name.empty())
+            DSAs.push_back(dsa);
 
     }
 
