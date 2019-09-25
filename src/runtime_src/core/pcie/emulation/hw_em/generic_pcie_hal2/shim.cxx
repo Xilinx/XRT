@@ -1838,7 +1838,7 @@ uint64_t HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   struct xclemulation::drm_xocl_bo *xobj = new xclemulation::drm_xocl_bo;
   xobj->flags=info->flags;
   /* check whether buffer is p2p or not*/
-  bool noHostMemory = no_host_memory(xobj); 
+  bool noHostMemory = xclemulation::no_host_memory(xobj); 
   std::string sFileName("");
   
   if(xobj->flags & XCL_BO_FLAGS_EXECBUF)
