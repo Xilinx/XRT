@@ -79,6 +79,9 @@ private:
     uint32_t readTraceForEdgeDevice(xclTraceResultsVector& traceVector, uint32_t nSamples);
 #endif
     void processTraceData(xclTraceResultsVector& traceVector, uint32_t numSamples, void* data, uint32_t wordsPerSample);
+
+    bool mclockTrainingdone = false;
+    uint64_t mfirstTimestamp = 0;
 };
 
 } //  xdp

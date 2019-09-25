@@ -359,6 +359,14 @@ static bool get_userpf_info(void *fdt, int node, u32 pf)
 	int len;
 	const void *val;
 	int depth = 1;
+	int offset;
+
+	for (offset = node; offset >= 0;
+		offset = fdt_parent_offset(fdt, offset)) {
+		val = fdt_get_name(fdt, offset, NULL);
+		if (!strncmp(val, NODE_PROPERTIES, strlen(NODE_PROPERTIES)))
+			return true;
+	}
 
 	do {
 		if (fdt_getprop(fdt, node, PROP_INTERFACE_UUID, NULL))
@@ -410,12 +418,21 @@ int xocl_fdt_overlay(void *fdt, int target,
 		const char *name = fdt_get_name(fdto, subnode, NULL);
 		char temp[64];
 		int nnode = -FDT_ERR_EXISTS;
-		int level  = 0;
+		int level;
 
 		if (!strcmp(name, NODE_ENDPOINTS)) {
+			level = 0;
 			while (nnode == -FDT_ERR_EXISTS) {
 				snprintf(temp, strlen(name) + 10, "%s_%d",
 					NODE_ENDPOINTS, level);
+				nnode = fdt_add_subnode(fdt, target, temp);
+				level++;
+			}
+		} else if (!strcmp(name, NODE_PROPERTIES)) {
+			level = 0;
+			while (nnode == -FDT_ERR_EXISTS) {
+				snprintf(temp, strlen(name) + 10, "%s_%d",
+					NODE_PROPERTIES, level);
 				nnode = fdt_add_subnode(fdt, target, temp);
 				level++;
 			}
@@ -769,11 +786,23 @@ int xocl_fdt_check_uuids(xdev_handle_t xdev_hdl, const void *blob,
 	return 0;
 }
 
+int xocl_fdt_add_pair(xdev_handle_t xdev_hdl, void *blob, char *name,
+		void *val, int size)
+{
+	int ret;
+
+	ret = fdt_setprop(blob, 0, name, val, size);
+	if (ret)
+		xocl_xdev_err(xdev_hdl, "set %s prop failed %d", name, ret);
+
+	return ret;
+}
+
 int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob)
 {
 	struct xocl_dev_core	*core = XDEV(xdev_hdl);
 	struct xocl_subdev	*subdevs;
-	char			*input_blob;
+	char			*output_blob = NULL;
 	int			len, i;
 	int			ret;
 
@@ -784,33 +813,31 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob)
 	if (core->fdt_blob)
 		len += fdt_totalsize(core->fdt_blob);
 
-	if (!len)
-		return -EINVAL;
-	input_blob = vmalloc(len);
-	if (!input_blob)
+	output_blob = vmalloc(len);
+	if (!output_blob)
 		return -ENOMEM;
 
-	ret = fdt_create_empty_tree(input_blob, len);
+	ret = fdt_create_empty_tree(output_blob, len);
 	if (ret) {
-		xocl_xdev_err(xdev_hdl, "create input blob failed %d", ret);
+		xocl_xdev_err(xdev_hdl, "create output blob failed %d", ret);
 		goto failed;
 	}
 
 	if (core->fdt_blob) {
-		ret = xocl_fdt_overlay(input_blob, 0, core->fdt_blob, 0, XOCL_FDT_ALL);
+		ret = xocl_fdt_overlay(output_blob, 0, core->fdt_blob, 0, XOCL_FDT_ALL);
 		if (ret) {
 			xocl_xdev_err(xdev_hdl, "overlay fdt_blob failed %d", ret);
 			goto failed;
 		}
 	}
 
-	ret = xocl_fdt_overlay(input_blob, 0, blob, 0, XOCL_FDT_ALL);
+	ret = xocl_fdt_overlay(output_blob, 0, blob, 0, XOCL_FDT_ALL);
 	if (ret) {
-		xocl_xdev_err(xdev_hdl, "Overlay input blob failed %d", ret);
+		xocl_xdev_err(xdev_hdl, "Overlay output blob failed %d", ret);
 		goto failed;
 	}
 
-	ret = xocl_fdt_parse_blob(xdev_hdl, input_blob, &subdevs);
+	ret = xocl_fdt_parse_blob(xdev_hdl, output_blob, &subdevs);
 	if (ret < 0)
 		goto failed;
 	core->dyn_subdev_num = ret;
@@ -821,7 +848,7 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob)
 	if (core->dyn_subdev_store)
 		vfree(core->dyn_subdev_store);
 
-	core->fdt_blob = input_blob;
+	core->fdt_blob = output_blob;
 	core->dyn_subdev_store = subdevs;
 
 	for (i = 0; i < core->dyn_subdev_num; i++)
@@ -830,8 +857,8 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob)
 	return 0;
 
 failed:
-	if (input_blob)
-		vfree(input_blob);
+	if (output_blob)
+		vfree(output_blob);
 
 	return ret;
 }
@@ -889,18 +916,6 @@ int xocl_fdt_build_priv_data(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev,
 
 
 	return 0;
-}
-
-int xocl_fdt_add_pair(xdev_handle_t xdev_hdl, void *blob, char *name,
-		void *val, int size)
-{
-	int ret;
-
-	ret = fdt_setprop(blob, 0, name, val, size);
-	if (ret)
-		xocl_xdev_err(xdev_hdl, "set %s prop failed %d", name, ret);
-
-	return ret;
 }
 
 const struct axlf_section_header *xocl_axlf_section_header(

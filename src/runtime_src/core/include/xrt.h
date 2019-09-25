@@ -191,8 +191,8 @@ enum xclVerbosityLevel {
 };
 
 enum xclResetKind {
-    XCL_RESET_KERNEL,
-    XCL_RESET_FULL,
+    XCL_RESET_KERNEL, // not implemented through xocl user pf
+    XCL_RESET_FULL,   // not implemented through xocl user pf
     XCL_USER_RESET
 };
 
@@ -259,6 +259,7 @@ XCL_DRIVER_DLLESPEC void xclClose(xclDeviceHandle handle);
  * Reset the device. All running kernels will be killed and buffers in DDR will be
  * purged. A device may be reset if a user's application dies without waiting for
  * running kernel(s) to finish.
+ * NOTE: Only implemeted Reset kind through user pf is XCL_USER_RESET
  */
 XCL_DRIVER_DLLESPEC int xclResetDevice(xclDeviceHandle handle, enum xclResetKind kind);
 
@@ -641,7 +642,7 @@ inline XCL_DRIVER_DLLESPEC uint64_t xclGetDeviceAddr(xclDeviceHandle handle, uns
  * @buf:           Destination data pointer
  * @size:          Size of data to copy
  * @offset:        Absolute offset inside device
- * Return:         size of bytes read or appropriate error number
+ * Return:         0 on success or appropriate error number
  *
  * This API may be used to perform DMA operation from absolute location specified. Users
  * may use this if they want to perform their own device memory management -- not using the buffer
@@ -658,7 +659,7 @@ XCL_DRIVER_DLLESPEC ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags
  * @buf:           Source data pointer
  * @size:          Size of data to copy
  * @offset:        Absolute offset inside device
- * Return:         size of bytes written or appropriate error number
+ * Return:         0 on success or appropriate error number
  *
  * This API may be used to perform DMA operation to an absolute location specified. Users
  * may use this if they want to perform their own device memory management -- not using the buffer
