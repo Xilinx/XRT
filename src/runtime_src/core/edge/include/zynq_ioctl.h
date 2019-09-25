@@ -251,16 +251,6 @@ struct drm_zocl_pread_bo {
 };
 
 /**
- * struct drm_zocl_pcap_download - load xclbin (AXLF) device image. Used only in PR platforms
- * used with DRM_IOCTL_ZOCL_PCAP_DOWNLOAD ioctl
- *
- * @xclbin:	Pointer to xclbin (AXLF) object
- */
-struct drm_zocl_pcap_download {
-	struct axlf *xclbin;
-};
-
-/**
  * struct drm_zocl_info_cu - Get information about Compute Unit (experimental)
  * used with DRM_IOCTL_ZOCL_INFO_CU ioctl
  *
@@ -295,8 +285,8 @@ enum drm_zocl_execbuf_state {
 };
 
 /**
- * struct drm_zocl_execbuf - Submit a command buffer for execution on a compute unit  (experimental)
- * used with DRM_IOCTL_ZOCL_EXECBUF ioctl
+ * struct drm_zocl_execbuf - Submit a command buffer for execution on a compute
+ * unit  (experimental) used with DRM_IOCTL_ZOCL_EXECBUF ioctl
  *
  * @ctx_id:         Pass 0
  * @exec_bo_handle: BO handle of command buffer formatted as ERT command
@@ -306,9 +296,15 @@ struct drm_zocl_execbuf {
   uint32_t exec_bo_handle;
 };
 
+/*
+ * BITSTREAM flag is not 1 or 0, in case old shim code might pass in 1 for
+ * other flag.  ZOCL kernel will check BITSTRAM and other flags are exclusive.
+ */
 enum drm_zocl_axlf_flags {
-	DRM_ZOCL_AXLF_FLAGS_NONE 	= 0,
-	DRM_ZOCL_AXLF_FLAGS_PDI_LOAD 	= (1 << 0),
+	DRM_ZOCL_AXLF_NONE 		= 0,
+	DRM_ZOCL_AXLF_AIE_PDI		= (1 << 0),
+	DRM_ZOCL_AXLF_BITSTREAM_PDI	= (1 << 1),
+	DRM_ZOCL_AXLF_BITSTREAM		= (1 << 2),
 };
 
 /**

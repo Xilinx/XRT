@@ -28,13 +28,13 @@
  *   be bumped up.
  * - Support for old OP code should never be removed.
  */
-#define MB_PROTOCOL_VER	0U
+#define XCL_MB_PROTOCOL_VER	0U
 
 /*
  * UUID_SZ should ALWAYS have the same number 
  * as the MACRO UUID_SIZE defined in linux/uuid.h
  */
-#define UUID_SZ		16
+#define XCL_UUID_SZ		16
 
 /**
  * enum mailbox_request - List of all mailbox request OPCODE. Some OP code
@@ -60,23 +60,23 @@
  * @MAILBOX_REQ_CHG_SHELL: shell change is required on mgmt pf (post only)
  * @MAILBOX_REQ_PROGRAM_SHELL: request mgmt pf driver to reprogram shell
  */
-enum mailbox_request {
-	MAILBOX_REQ_UNKNOWN =		0,
-	MAILBOX_REQ_TEST_READY =	1,
-	MAILBOX_REQ_TEST_READ =		2,
-	MAILBOX_REQ_LOCK_BITSTREAM =	3,
-	MAILBOX_REQ_UNLOCK_BITSTREAM =	4,
-	MAILBOX_REQ_HOT_RESET =		5,
-	MAILBOX_REQ_FIREWALL =		6,
-	MAILBOX_REQ_LOAD_XCLBIN_KADDR =	7,
-	MAILBOX_REQ_LOAD_XCLBIN =	8,
-	MAILBOX_REQ_RECLOCK =		9,
-	MAILBOX_REQ_PEER_DATA =		10,
-	MAILBOX_REQ_USER_PROBE =	11,
-	MAILBOX_REQ_MGMT_STATE =	12,
-	MAILBOX_REQ_CHG_SHELL =		13,
-	MAILBOX_REQ_PROGRAM_SHELL =	14,
-	MAILBOX_REQ_READ_P2P_BAR_ADDR =	15,
+enum xcl_mailbox_request {
+	XCL_MAILBOX_REQ_UNKNOWN =		0,
+	XCL_MAILBOX_REQ_TEST_READY =		1,
+	XCL_MAILBOX_REQ_TEST_READ =		2,
+	XCL_MAILBOX_REQ_LOCK_BITSTREAM =	3,
+	XCL_MAILBOX_REQ_UNLOCK_BITSTREAM =	4,
+	XCL_MAILBOX_REQ_HOT_RESET =		5,
+	XCL_MAILBOX_REQ_FIREWALL =		6,
+	XCL_MAILBOX_REQ_LOAD_XCLBIN_KADDR =	7,
+	XCL_MAILBOX_REQ_LOAD_XCLBIN =		8,
+	XCL_MAILBOX_REQ_RECLOCK =		9,
+	XCL_MAILBOX_REQ_PEER_DATA =		10,
+	XCL_MAILBOX_REQ_USER_PROBE =		11,
+	XCL_MAILBOX_REQ_MGMT_STATE =		12,
+	XCL_MAILBOX_REQ_CHG_SHELL =		13,
+	XCL_MAILBOX_REQ_PROGRAM_SHELL =		14,
+	XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR =	15,
 	/* Version 0 OP code ends */
 };
 
@@ -85,9 +85,9 @@ enum mailbox_request {
  * 				       MAILBOX_REQ_UNLOCK_BITSTREAM payload type
  * @uuid: uuid of the xclbin
  */
-struct mailbox_req_bitstream_lock {
+struct xcl_mailbox_req_bitstream_lock {
 	uint64_t reserved;
-	uint8_t uuid[UUID_SZ];
+	uint8_t uuid[XCL_UUID_SZ];
 };
 
 /**
@@ -98,14 +98,14 @@ struct mailbox_req_bitstream_lock {
  * @MIG_ECC: ECC statistics
  * @FIREWALL: AF detected time, status
  */
-enum group_kind {
-	SENSOR = 0,
-	ICAP,
-	BDINFO,
-	MIG_ECC,
-	FIREWALL,
-	DNA,
-	SUBDEV,
+enum xcl_group_kind {
+	XCL_SENSOR = 0,
+	XCL_ICAP,
+	XCL_BDINFO,
+	XCL_MIG_ECC,
+	XCL_FIREWALL,
+	XCL_DNA,
+	XCL_SUBDEV,
 };
 
 /**
@@ -183,7 +183,7 @@ struct xcl_pr_region {
 	uint64_t freq_cntr_2;
 	uint64_t freq_cntr_3;
 	uint64_t idcode;
-	uint8_t uuid[UUID_SZ];
+	uint8_t uuid[XCL_UUID_SZ];
 	uint64_t mig_calib;
 };
 
@@ -240,8 +240,8 @@ struct xcl_subdev {
  * @kind: data group
  * @size: buffer size for receiving response
  */
-struct mailbox_subdev_peer {
-	enum group_kind kind;
+struct xcl_mailbox_subdev_peer {
+	enum xcl_group_kind kind;
 	uint32_t padding;
 	uint64_t size;
 	uint64_t entries;
@@ -255,16 +255,16 @@ struct mailbox_subdev_peer {
  * @crc32: CRC value of the verification data buffer
  * @version: protocol version supported by peer
  */
-struct mailbox_conn {
+struct xcl_mailbox_conn {
 	uint64_t kaddr;
 	uint64_t paddr;
 	uint32_t crc32;
 	uint32_t version;
 };
 
-#define	COMM_ID_SIZE		2048
-#define MB_PEER_READY		(1UL << 0)
-#define MB_PEER_SAME_DOMAIN	(1UL << 1)
+#define	XCL_COMM_ID_SIZE		2048
+#define XCL_MB_PEER_READY		(1UL << 0)
+#define XCL_MB_PEER_SAME_DOMAIN		(1UL << 1)
 /**
  * struct mailbox_conn_resp - MAILBOX_REQ_USER_PROBE response payload type
  * @version: protocol version should be used
@@ -272,21 +272,21 @@ struct mailbox_conn {
  * @chan_switch: bitmap to indicate SW / HW channel for each OP code msg
  * @comm_id: user defined cookie
  */
-struct mailbox_conn_resp {
+struct xcl_mailbox_conn_resp {
 	uint32_t version;
 	uint32_t reserved;
 	uint64_t conn_flags;
 	uint64_t chan_switch;
-	char comm_id[COMM_ID_SIZE];
+	char comm_id[XCL_COMM_ID_SIZE];
 };
 
-#define	MB_STATE_ONLINE		(1UL << 0)
-#define	MB_STATE_OFFLINE	(1UL << 1)
+#define	XCL_MB_STATE_ONLINE		(1UL << 0)
+#define	XCL_MB_STATE_OFFLINE	(1UL << 1)
 /**
  * struct mailbox_peer_state - MAILBOX_REQ_MGMT_STATE payload type
  * @state_flags: peer state flags
  */
-struct mailbox_peer_state {
+struct xcl_mailbox_peer_state {
 	uint64_t state_flags;
 };
 
@@ -294,7 +294,7 @@ struct mailbox_peer_state {
  * struct mailbox_bitstream_kaddr - MAILBOX_REQ_LOAD_XCLBIN_KADDR payload type
  * @addr: pointer to xclbin body
  */
-struct mailbox_bitstream_kaddr {
+struct xcl_mailbox_bitstream_kaddr {
 	uint64_t addr;
 };
 
@@ -303,22 +303,22 @@ struct mailbox_bitstream_kaddr {
  * @region: region of clock
  * @target_freqs: array of target clock frequencies (max clocks: 16)
  */
-struct mailbox_clock_freqscaling {
+struct xcl_mailbox_clock_freqscaling {
 	unsigned int region;
 	unsigned short target_freqs[16];
 };
 
-#define MB_REQ_FLAG_RESPONSE	(1 << 0)
-#define MB_REQ_FLAG_REQUEST	(1 << 1)
+#define XCL_MB_REQ_FLAG_RESPONSE	(1 << 0)
+#define XCL_MB_REQ_FLAG_REQUEST		(1 << 1)
 /**
  * struct mailbox_req - mailbox request message header
  * @req: opcode
  * @flags: flags of this message
  * @data: payload of variable length
  */
-struct mailbox_req {
+struct xcl_mailbox_req {
 	uint64_t flags;
-	enum mailbox_request req;
+	enum xcl_mailbox_request req;
 	char data[1]; /* variable length of payload */
 };
 
@@ -335,7 +335,7 @@ struct mailbox_req {
  * @id: message ID
  * @data: payload (struct mailbox_req or response data matching the request)
  */
-struct sw_chan {
+struct xcl_sw_chan {
 	uint64_t sz;
 	uint64_t flags;
 	uint64_t id;
@@ -347,7 +347,7 @@ struct sw_chan {
  * @bar_addr: p2p bar address
  * @bar_len: p2p bar length
  */
-struct mailbox_p2p_bar_addr {
+struct xcl_mailbox_p2p_bar_addr {
 	uint64_t  p2p_bar_addr;
 	uint64_t  p2p_bar_len;
 };

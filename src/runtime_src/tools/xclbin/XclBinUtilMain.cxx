@@ -170,7 +170,7 @@ int main_(int argc, char** argv) {
     ("append-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAppend)->multitoken(), "Section to append to.")
     ("signature-debug", boost::program_options::bool_switch(&bSignatureDebug), "Dump section debug data.")
     ("dump-signature", boost::program_options::value<std::string>(&sSignatureOutputFile), "Dumps a sign xclbin image's signature.")
-    ("list-names", boost::program_options::bool_switch(&bListNames), "(Depricated) List all possible section names (Stand Alone Option)")
+    ("list-names", boost::program_options::bool_switch(&bListNames), "(Deprecated) List all possible section names (Stand Alone Option)")
     ("BAD-DATA", boost::program_options::value<std::vector<std::string> >(&badOptions)->multitoken(), "Dummy Data." )
   ;
 
@@ -397,14 +397,6 @@ int main_(int argc, char** argv) {
     QUIET("Creating a default 'in-memory' xclbin image.");
   }
 
-  for (auto keyValue : keyValuePairs) {
-    xclBin.setKeyValue(keyValue);
-  }
-
-  for (auto key : keysToRemove) {
-    xclBin.removeKey(key);
-  }
-
   for (auto section : sectionsToRemove) {
     xclBin.removeSection(section);
   }
@@ -433,6 +425,14 @@ int main_(int argc, char** argv) {
       std::string errMsg = "ERROR: Appending of sections only supported via wildcards and the JSON format (e.g. :JSON:appendfile.rtd).";
       throw std::runtime_error(errMsg);
     }
+  }
+
+  for (auto key : keysToRemove) {
+    xclBin.removeKey(key);
+  }
+
+  for (auto keyValue : keyValuePairs) {
+    xclBin.setKeyValue(keyValue);
   }
 
   for (auto section : sectionsToDump) {

@@ -63,6 +63,8 @@
 
 #define	mgmt_err(lro, fmt, args...)	\
 	dev_err(&lro->core.pdev->dev, "%s: "fmt, __func__, ##args)
+#define	mgmt_warn(lro, fmt, args...)	\
+	dev_warn(&lro->core.pdev->dev, "%s: "fmt, __func__, ##args)
 #define	mgmt_info(lro, fmt, args...)	\
 	dev_info(&lro->core.pdev->dev, "%s: "fmt, __func__, ##args)
 #define	mgmt_dbg(lro, fmt, args...)	\

@@ -222,6 +222,15 @@ struct bitset_type
     return bitmasks[mask] & (1<<(pos - (mask << 5)));
   }
 
+  size_type
+  count() const
+  {
+    size_type count = 0;
+    for (auto itr=bitmasks; itr!=bitmasks+masks; ++itr)
+      for (bitmask_type bm = *itr; bm; count += (bm & 0x1), bm>>=1);
+    return count;
+  }
+
   // Return: true if no bits are set
   bool
   none() const
@@ -948,6 +957,13 @@ exit_mb(size_type slot_idx)
   return true;
 }
 
+// Gather ERT stats in ctrl command packet
+// [1  ]      : header
+// [1  ]      : number of cq slots
+// [1  ]      : number of cus
+// [#numcus]  : cu execution stats (number of executions)
+// [#numcus]  : cu status (1: running, 0: idle)
+// [#slots]   : command queue slot status
 static bool
 cu_stat(size_type slot_idx)
 {
@@ -955,10 +971,41 @@ cu_stat(size_type slot_idx)
   CTRL_DEBUGF("slot(%d) [new -> queued -> running]\n",slot_idx);
   CTRL_DEBUGF("cu_stat slot(%d) header=0x%x\n",slot_idx,slot.header_value);
 
+  // write stats to command package after header
+  size_type pkt_idx = 1; // after header
+
+  // number of cq slots
+  write_reg(slot.slot_addr + (pkt_idx++ << 2),num_slots);
+
+  // number of cus
+  write_reg(slot.slot_addr + (pkt_idx++ << 2),num_cus);
+  
+  // individual cu execution stat
   for (size_type i=0; i<num_cus; ++i) {
-    CTRL_DEBUGF("cu_usage[%d]=%d\n",i,cu_usage[i]);
-    write_reg(slot.slot_addr + 0x4 + (i<<2),cu_usage[i]);
+    CTRL_DEBUGF("cu_usage[0x%x]=%d\n",cu_idx_to_addr(i),cu_usage[i]);
+    write_reg(slot.slot_addr + (pkt_idx++ << 2),cu_usage[i]);
   }
+
+  // individual cu status
+  for (size_type i=0; i<num_cus; ++i) {
+    CTRL_DEBUGF("cu_staus[0x%x]=%d\n",cu_idx_to_addr(i),cu_status.test(i));
+    write_reg(slot.slot_addr + (pkt_idx++ << 2),cu_status.test(i));
+  }
+
+  // command slot status
+  for (size_type i=0; i<num_slots; ++i) {
+    auto& s = command_slots[i];
+    CTRL_DEBUGF("slot_status[%d]=%d\n",i,s.header_value & 0XF);
+    write_reg(slot.slot_addr + (pkt_idx++ << 2),s.header_value & 0XF);
+  }
+
+#if 0
+  // payload count
+  auto mask = 0X7FF << 12;  // [22-12]
+  slot.header_value = (slot.header_value & (~mask)) | (pkt_idx << 12);
+  CTRL_DEBUGF("cu_stat new header=0x%x\n",slot.header_value);
+  write_reg(slot.slot_addr, slot.header_value);
+#endif
 
   // notify host
   notify_host(slot_idx);

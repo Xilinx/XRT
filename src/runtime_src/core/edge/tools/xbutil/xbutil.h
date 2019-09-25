@@ -538,11 +538,22 @@ public:
     int validate(bool quick) { std::cout << "Unsupported API " << std::endl; return -1; }
     int reset(xclResetKind kind) { std::cout << "Unsupported API " << std::endl; return -1; }
     int printStreamInfo(std::ostream& ostr) const { std::cout << "Unsupported API " << std::endl; return -1; }
-    int readSPMCounters() { std::cout << "Unsupported API " << std::endl; return -1; }
-    int readSSPMCounters() { std::cout << "Unsupported API " << std::endl; return -1; }
-    int readLAPCheckers(int aVerbose) { std::cout << "Unsupported API " << std::endl; return -1; }
-    int readStreamingCheckers(int aVerbose) { std::cout << "Unsupported API " << std::endl; return -1; }
-    int print_debug_ip_list (int aVerbose) { std::cout << "Unsupported API " << std::endl; return -1; }
+
+    // Debug related functionality
+    uint32_t getIPCountAddrNames(int type,
+				 std::vector<uint64_t>* baseAddress,
+				 std::vector<std::string>* portNames);
+    std::pair<size_t, size_t> 
+      getCUNamePortName(std::vector<std::string>& aSlotNames,
+			std::vector<std::pair<std::string, std::string> >& aCUNamePortNames);
+    std::pair<size_t, size_t> 
+      getStreamName(const std::vector<std::string>& aSlotNames,
+		    std::vector<std::pair<std::string, std::string> >& aStreamNames) ;
+    int readAIMCounters() ;
+    int readASMCounters() ;
+    int readLAPCheckers(int aVerbose) ;
+    int readStreamingCheckers(int aVerbose) ;
+    int print_debug_ip_list (int aVerbose) ;
     int testM2m() { std::cout << "Unsupported API " << std::endl; return -1; }
     int reclock2(unsigned regionIndex, const unsigned short *freq) { std::cout << "Unsupported API " << std::endl; return -1; }
 private:
@@ -550,10 +561,12 @@ private:
 };
 
 void printHelp(const std::string& exe);
-int xclTop(int argc, char *argv[]) { std::cout << "Unsupported API " << std::endl; return -1; }
-int xclReset(int argc, char *argv[]) { std::cout << "Unsupported API " << std::endl; return -1; }
-int xclValidate(int argc, char *argv[]) { std::cout << "Unsupported API " << std::endl; return -1; }
-int xclP2p(int argc, char *argv[]) { std::cout << "Unsupported API " << std::endl; return -1; }
+
+ int xclTop(int argc, char *argv[]) ;
+ int xclReset(int argc, char *argv[]) ;
+ int xclValidate(int argc, char *argv[]) ;
+ int xclP2p(int argc, char *argv[]) ;
+
 } // end namespace xcldev
 
 #endif /* XBUTIL_H */

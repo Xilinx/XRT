@@ -755,7 +755,7 @@ namespace xdp {
   double SummaryWriter::getGlobalMemoryMaxBandwidthMBps() const
   {
     double maxBandwidthMBps =
-        0.6 * (mTraceParserHandle->getGlobalMemoryBitWidth() / 8) * mTraceParserHandle->getGlobalMemoryClockFreqMHz();
+        0.6 * static_cast<uint32_t>(mTraceParserHandle->getGlobalMemoryBitWidth() / 8) * mTraceParserHandle->getGlobalMemoryClockFreqMHz();
     return maxBandwidthMBps;
   }
 

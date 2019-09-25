@@ -475,8 +475,10 @@ bool XMC_Flasher::isXMCReady()
     bool xmcReady = (XMC_MODE() == XMC_READY);
 
     if (!xmcReady) {
+        std::ios::fmtflags f( std::cout.flags() );
         std::cout << "ERROR: XMC is not ready: 0x" << std::hex
             << XMC_MODE() << std::endl;
+        std::cout.flags(f);
     }
     return xmcReady;
 }
@@ -486,8 +488,10 @@ bool XMC_Flasher::isBMCReady()
     bool bmcReady = (BMC_MODE() == 0x1);
 
     if (!bmcReady) {
+        std::ios::fmtflags f( std::cout.flags() );
         std::cout << "ERROR: SC is not ready: 0x" << std::hex
             << BMC_MODE() << std::endl;
+        std::cout.flags(f);
     }
     return bmcReady;
 }

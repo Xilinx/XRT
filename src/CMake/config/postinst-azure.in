@@ -3,6 +3,8 @@
 #create sym link to /opt/xilinx/xrt/lib/libmpd_plugin and restart mpd service
 echo "Install azure mpd plugin"
 ln -s /opt/xilinx/xrt/lib/libazure_mpd_plugin.so /opt/xilinx/xrt/lib/libmpd_plugin.so
+#make sure mpd automatically gets starts across reboot if plugin is installed
+systemctl enable mpd
 echo "Restart mpd service"
 systemctl restart mpd
 
