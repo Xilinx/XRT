@@ -607,10 +607,7 @@ public:
         const mem_topology *map = (mem_topology *)buf.data();
         unsigned numDDR = 0;
 
-        if(!buf.empty())
-            numDDR = map->m_count;
-
-        if(numDDR == 0) {
+        if(buf.empty() || map->m_count == 0) {
             return;
         } else {
             numDDR = map->m_count;
