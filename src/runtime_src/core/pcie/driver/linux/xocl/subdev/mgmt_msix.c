@@ -212,7 +212,7 @@ static int mgmt_msix_probe(struct platform_device *pdev)
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
-		xocl_err(&pdev->dev,
+		xocl_info(&pdev->dev,
 			"legacy platform, identify intr bar by size");
 		bar = identify_intr_bar(mgmt_msix);
 		if (bar < 0) {

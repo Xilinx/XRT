@@ -39,6 +39,8 @@ static struct key *icap_keys;
 
 #define	ICAP_ERR(icap, fmt, arg...)	\
 	xocl_err(&(icap)->icap_pdev->dev, fmt "\n", ##arg)
+#define	ICAP_WARN(icap, fmt, arg...)	\
+	xocl_warn(&(icap)->icap_pdev->dev, fmt "\n", ##arg)
 #define	ICAP_INFO(icap, fmt, arg...)	\
 	xocl_info(&(icap)->icap_pdev->dev, fmt "\n", ##arg)
 #define	ICAP_DBG(icap, fmt, arg...)	\
@@ -1247,7 +1249,7 @@ static const struct axlf_section_header *get_axlf_section_hdr(
 				kind, hdr->m_sectionOffset, hdr->m_sectionSize);
 		}
 	} else {
-		ICAP_ERR(icap, "could not find section header %d", kind);
+		ICAP_WARN(icap, "could not find section header %d", kind);
 	}
 
 	return hdr;
@@ -3626,8 +3628,7 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 failed:
 	icap_free_bins(icap);
 
-	if (axlf)
-		vfree(axlf);
+	vfree(axlf);
 	mutex_unlock(&icap->icap_lock);
 
 	return ret;

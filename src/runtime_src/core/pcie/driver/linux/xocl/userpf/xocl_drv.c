@@ -213,16 +213,16 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 		xocl_subdev_offline_all(xdev);
 		ret = xocl_subdev_online_by_id(xdev, XOCL_SUBDEV_MAILBOX);
 		if (ret)
-			xocl_err(&pdev->dev, "Online mailbox failed %d", ret);
+			xocl_warn(&pdev->dev, "Online mailbox failed %d", ret);
 		(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 		(void) xocl_mb_connect(xdev);
 	} else {
 		ret = xocl_subdev_offline_by_id(xdev, XOCL_SUBDEV_MAILBOX);
 		if (ret)
-			xocl_err(&pdev->dev, "Offline mailbox failed %d", ret);
+			xocl_warn(&pdev->dev, "Offline mailbox failed %d", ret);
 		ret = xocl_subdev_online_all(xdev);
 		if (ret)
-			xocl_err(&pdev->dev, "Online subdevs failed %d", ret);
+			xocl_warn(&pdev->dev, "Online subdevs failed %d", ret);
 		(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 		xocl_exec_reset(xdev, XOCL_XCLBIN_ID(xdev));
 	}
@@ -972,11 +972,12 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 
 	xdev = pci_get_drvdata(pdev);
 	if (!xdev) {
-		xocl_err(&pdev->dev, "driver data is NULL");
+		xocl_warn(&pdev->dev, "driver data is NULL");
 		return;
 	}
 
 	xocl_queue_destroy(xdev);
+
 
 	xocl_p2p_mem_release(xdev, false);
 	xocl_subdev_destroy_all(xdev);

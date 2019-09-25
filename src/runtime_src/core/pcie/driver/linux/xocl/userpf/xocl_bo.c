@@ -460,7 +460,7 @@ int xocl_userptr_bo_ioctl(struct drm_device *dev,
 {
 	int ret;
 	struct drm_xocl_bo *xobj;
-	unsigned int page_count;
+	uint64_t page_count;
 	struct drm_xocl_userptr_bo *args = data;
 	unsigned user_flags = args->flags;
 
@@ -675,7 +675,7 @@ static int xocl_migrate_unmgd(struct xocl_dev *xdev, uint64_t data_ptr, uint64_t
 	int channel;
 	struct drm_xocl_unmgd unmgd;
 	int ret;
-	size_t migrated;
+	ssize_t migrated;
 
 	ret = xocl_init_unmgd(&unmgd, data_ptr, size, dir);
 	if (ret) {
@@ -1144,8 +1144,8 @@ int xocl_pwrite_unmgd_ioctl(struct drm_device *dev, void *data,
 		/* currently we are not able to return error because
 		 * it is unclear that what addresses are valid other than
 		 * ddr area. we should revisit this sometime.
-		 * return -EINVAL;
 		 */
+		return -EINVAL;
 	}
 
 	ret = xocl_migrate_unmgd(xdev, args->data_ptr, args->paddr, args->size, 1);

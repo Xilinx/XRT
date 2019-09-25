@@ -180,11 +180,11 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 
 	ep_name = pdev->bus->name;
 #if defined(__PPC64__)
-	mgmt_err(lro, "Ignore reset operation for card %d in slot %s:%02x:%1x",
+	mgmt_info(lro, "Ignore reset operation for card %d in slot %s:%02x:%1x",
 		lro->instance, ep_name,
 		PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
 #else
-	mgmt_err(lro, "Trying to reset card %d in slot %s:%02x:%1x",
+	mgmt_info(lro, "Trying to reset card %d in slot %s:%02x:%1x",
 		lro->instance, ep_name,
 		PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
 
@@ -204,7 +204,7 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 		xclmgmt_reset_pci(lro);
 		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_MAILBOX);
 	} else {
-		mgmt_err(lro, "PCI Hot reset is not supported on this board.");
+		mgmt_warn(lro, "PCI Hot reset is not supported on this board.");
 	}
 
 	/* Workaround for some DSAs. Flush axilite busses */
