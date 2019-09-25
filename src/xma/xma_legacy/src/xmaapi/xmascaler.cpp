@@ -120,7 +120,7 @@ xma_scaler_plugins_load(XmaSystemCfg      *systemcfg,
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_SCALER_MOD, "%s()\n", __func__);
     // Load the xmaplugin library as it is a dependency for all plugins
-    void *xmahandle = dlopen("libxmaplugin.so",
+    void *xmahandle = dlopen("libxmaplugin_legacy.so",
                              RTLD_LAZY | RTLD_GLOBAL);
     if (!xmahandle)
     {
