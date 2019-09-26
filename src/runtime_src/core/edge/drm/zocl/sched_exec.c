@@ -2785,7 +2785,7 @@ static irqreturn_t sched_cq_isr(int irq, void *arg)
 
 inline void init_exec(struct sched_exec_core *exec_core)
 {
-	unsigned int i;
+        unsigned int i;
         exec_core->scheduler = &g_sched0;
         exec_core->num_slots = 16;
         exec_core->num_cus = 0;
