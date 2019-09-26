@@ -342,7 +342,7 @@ static ssize_t ready_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	uint64_t ch_state, ret;
+	uint64_t ch_state = 0, ret = 0;
 
 	/* Bypass this check for versal for now */
 	if (XOCL_DSA_IS_VERSAL(xdev))

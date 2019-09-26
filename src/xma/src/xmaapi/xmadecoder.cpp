@@ -46,7 +46,7 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
     }
 
     // Load the xmaplugin library as it is a dependency for all plugins
-    void *xmahandle = dlopen("libxmaplugin.so",
+    void *xmahandle = dlopen("libxma2plugin.so",
                              RTLD_LAZY | RTLD_GLOBAL);
     if (!xmahandle)
     {

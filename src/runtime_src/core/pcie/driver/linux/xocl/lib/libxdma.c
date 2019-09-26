@@ -1500,13 +1500,13 @@ static resource_size_t map_single_bar(struct xdma_dev *xdev,
 
 	if (!xdev->bar[idx]) {
 		pr_info("Could not map BAR %d.\n", idx);
-		return -EINVAL;
+		return 0;
 	}
 
 	pr_info("BAR%d at 0x%llx mapped at 0x%p, length=%llu(/%llu)\n", idx,
 		(u64)bar_start, xdev->bar[idx], (u64)map_len, (u64)bar_len);
 
-	return (int)map_len;
+	return (resource_size_t)map_len;
 }
 
 static int is_config_bar(struct xdma_dev *xdev, int idx)
@@ -1621,12 +1621,8 @@ static int map_bars(struct xdma_dev *xdev, struct pci_dev *dev)
 		resource_size_t bar_len;
 
 		bar_len = map_single_bar(xdev, dev, i);
-		if (bar_len == 0) {
+		if (bar_len == 0)
 			continue;
-		} else if (bar_len < 0) {
-			rv = -EINVAL;
-			goto fail;
-		}
 
 		/* Try to identify BAR as XDMA control BAR */
 		if ((bar_len >= XDMA_BAR_SIZE) && (xdev->config_bar_idx < 0)) {
@@ -3962,7 +3958,6 @@ static int transfer_monitor_cyclic(struct xdma_engine *engine,
 			if (rc) {
 				pr_info("%s service_poll failed %d.\n",
 					engine->name, rc);
-				rc = -ERESTARTSYS;
 			}
 			if (result[engine->rx_head].status)
 				return 0;

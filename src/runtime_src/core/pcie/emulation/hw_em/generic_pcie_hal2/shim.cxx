@@ -1018,9 +1018,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     bool ack = false;
     if(sock)
     {
-      bool p2pBuffer = false;
+      bool noHostMemory= false;
       std::string sFileName("");
-      xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,finalValidAddress,origSize,p2pBuffer);
+      xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,finalValidAddress,origSize,noHostMemory);
 
       PRINTENDFUNC;
       if(!ack)
@@ -1029,7 +1029,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     return finalValidAddress;
   }
 
-  uint64_t HwEmShim::xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags, bool p2pBuffer, std::string &sFileName)
+  uint64_t HwEmShim::xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags, bool noHostMemory, std::string &sFileName)
   {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << size <<", "<<domain<<", "<< flags <<std::endl;
@@ -1059,7 +1059,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     bool ack = false;
     if(sock)
     {
-      xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,finalValidAddress,origSize,p2pBuffer);
+      xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,finalValidAddress,origSize,noHostMemory);
 
       PRINTENDFUNC;
       if(!ack)
@@ -1838,7 +1838,7 @@ uint64_t HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   struct xclemulation::drm_xocl_bo *xobj = new xclemulation::drm_xocl_bo;
   xobj->flags=info->flags;
   /* check whether buffer is p2p or not*/
-  bool p2pBuffer = xocl_bo_p2p(xobj); 
+  bool noHostMemory = xclemulation::no_host_memory(xobj); 
   std::string sFileName("");
   
   if(xobj->flags & XCL_BO_FLAGS_EXECBUF)
@@ -1848,7 +1848,7 @@ uint64_t HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   }
   else
   {
-    xobj->base = xclAllocDeviceBuffer2(size,XCL_MEM_DEVICE_RAM,ddr,p2pBuffer,sFileName);
+    xobj->base = xclAllocDeviceBuffer2(size,XCL_MEM_DEVICE_RAM,ddr,noHostMemory,sFileName);
   }
   xobj->filename = sFileName;
   xobj->size = size;

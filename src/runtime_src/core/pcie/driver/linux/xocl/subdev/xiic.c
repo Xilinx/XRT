@@ -932,7 +932,7 @@ static int xiic_probe(struct platform_device *pdev)
 		I2C_SMBUS_READ, LM63_REG_CONFIG_FAN,
 		I2C_SMBUS_BYTE_DATA, &data);
 	if (ret < 0) {
-		xocl_err(&pdev->dev, "read config fan failed");
+		xocl_warn(&pdev->dev, "read config fan failed");
 		return 0;
 	}
 	pwm_config_reg = data.byte;

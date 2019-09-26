@@ -213,16 +213,16 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 		xocl_subdev_offline_all(xdev);
 		ret = xocl_subdev_online_by_id(xdev, XOCL_SUBDEV_MAILBOX);
 		if (ret)
-			xocl_err(&pdev->dev, "Online mailbox failed %d", ret);
+			xocl_warn(&pdev->dev, "Online mailbox failed %d", ret);
 		(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 		(void) xocl_mb_connect(xdev);
 	} else {
 		ret = xocl_subdev_offline_by_id(xdev, XOCL_SUBDEV_MAILBOX);
 		if (ret)
-			xocl_err(&pdev->dev, "Offline mailbox failed %d", ret);
+			xocl_warn(&pdev->dev, "Offline mailbox failed %d", ret);
 		ret = xocl_subdev_online_all(xdev);
 		if (ret)
-			xocl_err(&pdev->dev, "Online subdevs failed %d", ret);
+			xocl_warn(&pdev->dev, "Online subdevs failed %d", ret);
 		(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 		xocl_exec_reset(xdev, XOCL_XCLBIN_ID(xdev));
 	}
@@ -683,6 +683,10 @@ static void xocl_dev_percpu_kill(void *data)
 	percpu_ref_kill(ref);
 }
 
+static void xocl_dev_pgmap_kill_nop(struct percpu_ref *ref)
+{
+	/* NOP function for sanity check use only*/
+}
 #endif
 
 void xocl_p2p_mem_release(struct xocl_dev *xdev, bool recov_bar_sz)
@@ -771,6 +775,10 @@ int xocl_p2p_mem_reserve(struct xocl_dev *xdev)
 	xdev->pgmap.ref = &xdev->ref;
 	memcpy(&xdev->pgmap.res, &res, sizeof(struct resource));
 	xdev->pgmap.altmap_valid = false;
+#if KERNEL_VERSION(5, 3, 0) > LINUX_VERSION_CODE && \
+	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 2))
+	xdev->pgmap.kill = xocl_dev_pgmap_kill_nop;
+#endif
 #endif
 
 /* Ubuntu 16.04 kernel_ver 4.4.0.116*/
@@ -964,11 +972,12 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 
 	xdev = pci_get_drvdata(pdev);
 	if (!xdev) {
-		xocl_err(&pdev->dev, "driver data is NULL");
+		xocl_warn(&pdev->dev, "driver data is NULL");
 		return;
 	}
 
 	xocl_queue_destroy(xdev);
+
 
 	xocl_p2p_mem_release(xdev, false);
 	xocl_subdev_destroy_all(xdev);
@@ -999,7 +1008,6 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		const struct pci_device_id *ent)
 {
 	struct xocl_dev			*xdev;
-	struct xocl_board_private	*dev_info;
 	char				wq_name[15];
 	int				ret, i;
 
@@ -1011,14 +1019,13 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 
 	/* this is used for all subdevs, bind it to device earlier */
 	pci_set_drvdata(pdev, xdev);
-	dev_info = (struct xocl_board_private *)ent->driver_data;
 
 	mutex_init(&xdev->core.lock);
 	xdev->core.pci_ops = &userpf_pci_ops;
 	xdev->core.pdev = pdev;
 	xdev->core.dev_minor = XOCL_INVALID_MINOR;
 	rwlock_init(&xdev->core.rwlock);
-	xocl_fill_dsa_priv(xdev, dev_info);
+	xocl_fill_dsa_priv(xdev, (struct xocl_board_private *)ent->driver_data);
 	mutex_init(&xdev->dev_lock);
 	mutex_init(&xdev->wq_lock);
 	atomic64_set(&xdev->total_execs, 0);
