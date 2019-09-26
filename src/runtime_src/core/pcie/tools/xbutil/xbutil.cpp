@@ -1740,7 +1740,8 @@ int xcldev::xclP2p(int argc, char *argv[])
         {"validate", no_argument, 0, xcldev::P2P_VALIDATE},
         {0, 0, 0, 0}
     };
-    int long_index, ret;
+    int long_index;
+    unsigned ret;
     const char* short_options = "d:f"; //don't add numbers
     const char* exe = argv[ 0 ];
     bool force = false;

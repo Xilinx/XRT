@@ -66,8 +66,8 @@ int program_prp(unsigned index, const std::string& xclbin, bool force)
     int length = stream.tellg();
     stream.seekg(0, stream.beg);
 
-    char *buffer = new char[length];
-    stream.read(buffer, length);
+    std::shared_ptr<char> buffer(new char[length]);
+    stream.read(buffer.get(), length);
 
     std::string errmsg;
     if (force)
@@ -76,14 +76,12 @@ int program_prp(unsigned index, const std::string& xclbin, bool force)
         if (!errmsg.empty())
         {
             std::cout << errmsg << std::endl;
-            delete [] buffer;
             dev->close(fd);
             return -EINVAL;
         }
     }
 
-    ssize_t ret = write(fd, buffer, length);
-    delete [] buffer;
+    ssize_t ret = write(fd, buffer.get(), length);
 
     if (ret <= 0) {
         std::cout << "ERROR: Write prp to icap subdev failed." << std::endl;

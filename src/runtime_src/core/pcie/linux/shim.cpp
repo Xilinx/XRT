@@ -1760,7 +1760,7 @@ int xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
 int xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
 {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
-    return drv ? drv->p2pEnable(enable, force) : ENODEV;
+    return drv ? drv->p2pEnable(enable, force) : -ENODEV;
 }
 
 int xclBootFPGA(xclDeviceHandle handle)
