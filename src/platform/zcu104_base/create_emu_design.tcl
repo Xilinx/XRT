@@ -134,5 +134,12 @@ file copy -force  ${sourcesDir}/misc/dynamic_prelink.tcl $overlay_dir/emu
 file copy -force  ${sourcesDir}/emulation_sources/emu.xml $overlay_dir/emu
 # Move in created HPFM
 file copy -force  emu.hpfm $overlay_dir/emu/emu.hpfm
-file copy -force  ${sourcesDir}/emulation_sources/dynamic_postlink.tcl $overlay_dir/emu
+file copy -force  ${sourcesDir}/misc/dynamic_postlink.tcl $overlay_dir/emu
+exec chmod 755 ${overlay_dir}/emu/dynamic_postlink.tcl
+set fid [open "${overlay_dir}/emu/dynamic_postlink.tcl" a ]
+puts $fid "set_property generate_synth_checkpoint 0 \[get_files pfm_dynamic.bd\]"
+puts $fid "set_property offset 0x00000000 \[get_bd_addr_segs {axi_vip_3/Master_AXI/SEG_interconnect_aximm_ddrmem3_M00_AXI_Reg}\]"
+puts $fid "set_property range 2G \[get_bd_addr_segs {axi_vip_3/Master_AXI/SEG_interconnect_aximm_ddrmem3_M00_AXI_Reg}\]"
+close $fid
+exec chmod 555 ${overlay_dir}/emu/dynamic_postlink.tcl
 cd ../
