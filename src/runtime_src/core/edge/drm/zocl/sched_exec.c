@@ -2785,32 +2785,32 @@ static irqreturn_t sched_cq_isr(int irq, void *arg)
 
 inline void init_exec(struct sched_exec_core *exec_core)
 {
-        unsigned int i;
-        exec_core->scheduler = &g_sched0;
-        exec_core->num_slots = 16;
-        exec_core->num_cus = 0;
-        exec_core->cu_base_addr = 0;
-        exec_core->cu_shift_offset = 0;
-        exec_core->polling_mode = 1;
-        exec_core->cq_interrupt = 0;
-        exec_core->configured = 0;
-        exec_core->cu_isr = 0;
-        exec_core->cu_dma = 0;
-        exec_core->num_slot_masks = 1;
-        exec_core->num_cu_masks = 0;
-        exec_core->ops = &penguin_ops;
+	unsigned int i;
+	exec_core->scheduler = &g_sched0;
+	exec_core->num_slots = 16;
+	exec_core->num_cus = 0;
+	exec_core->cu_base_addr = 0;
+	exec_core->cu_shift_offset = 0;
+	exec_core->polling_mode = 1;
+	exec_core->cq_interrupt = 0;
+	exec_core->configured = 0;
+	exec_core->cu_isr = 0;
+	exec_core->cu_dma = 0;
+	exec_core->num_slot_masks = 1;
+	exec_core->num_cu_masks = 0;
+	exec_core->ops = &penguin_ops;
 
-        for (i = 0; i < MAX_SLOTS; ++i)
-                exec_core->submitted_cmds[i] = NULL;
+	for (i = 0; i < MAX_SLOTS; ++i)
+		exec_core->submitted_cmds[i] = NULL;
 
-        for (i = 0; i < MAX_U32_SLOT_MASKS; ++i)
-                exec_core->slot_status[i] = 0;
+	for (i = 0; i < MAX_U32_SLOT_MASKS; ++i)
+		exec_core->slot_status[i] = 0;
 
-        for (i = 0; i < MAX_U32_CU_MASKS; ++i) {
-                exec_core->cu_status[i] = 0;
-                exec_core->cu_init[i] = 0;
-                exec_core->cu_valid[i] = 0; //default value is invalid(0)
-        }
+	for (i = 0; i < MAX_U32_CU_MASKS; ++i) {
+		exec_core->cu_status[i] = 0;
+		exec_core->cu_init[i] = 0;
+		exec_core->cu_valid[i] = 0; //default value is invalid(0)
+	}
 }
 
 /**
