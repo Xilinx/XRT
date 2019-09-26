@@ -2818,7 +2818,6 @@ inline void init_exec(struct sched_exec_core *exec_core)
  * 
  * This function ensures that the device exec_core state is reset to
  * same state as was when scheduler was originally probed for the device.
- * This gets called after each xclbin load. This gets called for the first time also
  *
  * @drm: Device node to initialize
  *
