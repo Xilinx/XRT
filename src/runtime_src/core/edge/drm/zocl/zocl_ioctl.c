@@ -682,6 +682,7 @@ zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 		goto out0;
 	}
 
+	zocl_clear_mem(zdev);
 	zocl_init_mem(zdev, zdev->topology);
 
 	zdev->unique_id_last_bitstream = axlf_head.m_uniqueId;
