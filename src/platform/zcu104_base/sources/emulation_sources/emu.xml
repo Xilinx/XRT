@@ -10,7 +10,6 @@
         <File Type="EMU_HPFM" Name="emu.hpfm"/>
         <File Type="POST_SYS_LINK_TCL" Name="dynamic_postlink.tcl"/>
         <File Type="PRE_SYS_LINK_TCL" Name="dynamic_prelink.tcl"/>
-        <File Type="USER_IP_REPO" Name="user_ip_repo"/>
       </Files>
     </Emulation>
   </Emulations>
