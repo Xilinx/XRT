@@ -33,6 +33,19 @@
 #include <stdlib.h>
 #include <limits>
 
+// version is a git hash passed in from build script
+// default for builds that bypass build script
+#ifndef ERT_VERSION
+# define ERT_VERSION 0
+#endif
+#ifndef ERT_SVERSION
+# define ERT_SVERSION "0xdeadbeef"
+#endif
+
+// set local string that can be extracted
+// from binary using 'strings sched.bin'
+const char* ert_version = ERT_SVERSION;
+
 #define ERT_UNUSED __attribute__((unused))
 
 //#define ERT_VERBOSE
@@ -959,6 +972,8 @@ exit_mb(size_type slot_idx)
 
 // Gather ERT stats in ctrl command packet
 // [1  ]      : header
+// [1  ]      : custat version
+// [1  ]      : ert version
 // [1  ]      : number of cq slots
 // [1  ]      : number of cus
 // [#numcus]  : cu execution stats (number of executions)
@@ -973,6 +988,12 @@ cu_stat(size_type slot_idx)
 
   // write stats to command package after header
   size_type pkt_idx = 1; // after header
+
+  // custat version, update when changing layout of packet
+  write_reg(slot.slot_addr + (pkt_idx++ << 2),0x51a10000);
+
+  // ert git version
+  write_reg(slot.slot_addr + (pkt_idx++ << 2),ERT_VERSION);
 
   // number of cq slots
   write_reg(slot.slot_addr + (pkt_idx++ << 2),num_slots);
