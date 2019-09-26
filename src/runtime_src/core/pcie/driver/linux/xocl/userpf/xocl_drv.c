@@ -1008,7 +1008,6 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		const struct pci_device_id *ent)
 {
 	struct xocl_dev			*xdev;
-	struct xocl_board_private	*dev_info;
 	char				wq_name[15];
 	int				ret, i;
 
@@ -1020,14 +1019,13 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 
 	/* this is used for all subdevs, bind it to device earlier */
 	pci_set_drvdata(pdev, xdev);
-	dev_info = (struct xocl_board_private *)ent->driver_data;
 
 	mutex_init(&xdev->core.lock);
 	xdev->core.pci_ops = &userpf_pci_ops;
 	xdev->core.pdev = pdev;
 	xdev->core.dev_minor = XOCL_INVALID_MINOR;
 	rwlock_init(&xdev->core.rwlock);
-	xocl_fill_dsa_priv(xdev, dev_info);
+	xocl_fill_dsa_priv(xdev, (struct xocl_board_private *)ent->driver_data);
 	mutex_init(&xdev->dev_lock);
 	mutex_init(&xdev->wq_lock);
 	atomic64_set(&xdev->total_execs, 0);
