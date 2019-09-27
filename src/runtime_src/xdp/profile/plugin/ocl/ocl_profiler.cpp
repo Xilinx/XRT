@@ -381,13 +381,16 @@ namespace xdp {
     // Turn on device profiling (as requested)
     std::string data_transfer_trace = xrt::config::get_data_transfer_trace();
     std::string stall_trace = xrt::config::get_stall_trace();
-    bool isEmulationOn = (std::getenv("XCL_EMULATION_MODE")) ? true : false;
 
     // Turn on application profiling
     turnOnProfile(xdp::RTUtil::PROFILE_APPLICATION);
+
     turnOnProfile(xdp::RTUtil::PROFILE_DEVICE_COUNTERS);
-    // HW trace is controlled at HAL layer
-    if (!(isEmulationOn) || (data_transfer_trace.find("off") == std::string::npos)) {
+
+    char* emuMode = std::getenv("XCL_EMULATION_MODE");
+    if(!emuMode /* Device Flow */
+        || ((0 == strcmp(emuMode, "hw_emu")) && xrt::config::get_system_dpa_emulation()) /* HW Emu with System DPA, same as Device Flow */
+        || (data_transfer_trace.find("off") == std::string::npos)) {
       turnOnProfile(xdp::RTUtil::PROFILE_DEVICE_TRACE);
     }
 
