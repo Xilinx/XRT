@@ -1214,13 +1214,6 @@ int xcldev::device::pcieLinkTest(void)
     return 0;
 }
 
-bool isU2xxBoard(std::string& bd_name)
-{
-    if (strstr( bd_name.c_str(), "U200" ) || strstr( bd_name.c_str(), "U250" ) || strstr( bd_name.c_str(), "U280" ))
-        return true;
-    return false;
-}
-
 int xcldev::device::auxConnectionTest(void) 
 {
     std::string name, errmsg;
@@ -1235,8 +1228,10 @@ int xcldev::device::auxConnectionTest(void)
     pcidev::get_dev(m_idx)->sysfs_get( "xmc", "max_power",  errmsg, max_power );
 
     //check aux cable if board u200, u250, u280
-    if(isU2xxBoard(name) && max_power == 0 ) {
-        std::cout << "WARN: == No AUX power connected." << std::endl;
+    if((strstr( name.c_str(), "U200" ) || strstr( name.c_str(), "U250" ) || 
+        strstr( name.c_str(), "U280" )) && max_power == 0 ) {
+        std::cout << "AUX POWER NOT CONNECTED, ATTENTION" << std::endl;
+        std::cout << "Board not stable for heavy acceleration tasks." << std::endl;
         return 1;
     }
     return 0;
