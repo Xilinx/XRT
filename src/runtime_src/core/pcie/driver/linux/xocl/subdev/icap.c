@@ -3433,6 +3433,7 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		size_t data_len, loff_t *off)
 {
 	struct icap *icap = filp->private_data;
+	struct axlf axlf_header = { 0 };
 	struct axlf *axlf = NULL;
 	const struct axlf_section_header *section;
 	void *header;
@@ -3458,29 +3459,26 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 			goto failed;
 		}
 
-		ret = copy_from_user(axlf, data, sizeof(struct axlf));
+		ret = copy_from_user(&axlf_header, data, sizeof(struct axlf));
 		if (ret) {
-			vfree(axlf);
 			ICAP_ERR(icap, "copy header buffer failed %ld", ret);
 			goto failed;
 		}
 
-		if (memcmp(axlf->m_magic, ICAP_XCLBIN_V2,
+		if (memcmp(axlf_header.m_magic, ICAP_XCLBIN_V2,
 					sizeof(ICAP_XCLBIN_V2))) {
 			ICAP_ERR(icap, "Incorrect magic string");
 			ret = -EINVAL;
 			goto failed;
 		}
 
-		icap->rp_bit_len = axlf->m_header.m_length;
-		vfree(axlf);
-
-		if (!icap->rp_bit_len) {
+		if (!axlf_header.m_header.m_length || axlf_header.m_header.m_length >= GB(1)) {
 			ICAP_ERR(icap, "Invalid xclbin size");
 			ret = -EINVAL;
 			goto failed;			
 		}
 
+		icap->rp_bit_len = axlf_header.m_header.m_length;
 
 		icap->rp_bit = vmalloc(icap->rp_bit_len);
 		if (!icap->rp_bit) {

@@ -1880,7 +1880,7 @@ exec_isr(int irq, void *arg)
 
 		/* wake up all scheduler ... currently one only */
 		scheduler_intr(exec->scheduler);
-	} else {
+	} else if (exec) {
 		userpf_err(exec_get_xdev(exec), "unhandled isr irq %d", irq);
 	}
 	SCHED_DEBUGF("<- xocl_user_event\n");
