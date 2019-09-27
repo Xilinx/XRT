@@ -1716,21 +1716,6 @@ public:
         return false;
     }
 
-    bool isAuxConnected(void) {
-        std::string name, errmsg;
-        unsigned short m12v_aux_vol = 0, m3v3_aux_vol = 0;
-
-        pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV", errmsg, name );
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_12v_aux_vol",  errmsg, m12v_aux_vol );
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_3v3_aux_vol",  errmsg, m3v3_aux_vol );
-
-        //check aux cable if not u2xx
-        if(strstr( name.c_str(), "_u2" ) && m12v_aux_vol == 0 && m3v3_aux_vol == 0 ) {
-            return false;
-        }
-        return true;
-    }
-
     int validate(bool quick);
 
     int reset(xclResetKind kind);
@@ -1754,6 +1739,7 @@ private:
     int dmaXbtest(void);
 
     int pcieLinkTest(void);
+    int auxConnectionTest(void);
     int verifyKernelTest(void);
     int bandwidthKernelTest(void);
     // testFunc must return 0 for success, 1 for warning, and < 0 for error
