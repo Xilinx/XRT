@@ -164,11 +164,11 @@ namespace xcldev {
      * Caller's responsibility to do sanity checks. No sanity checks done here
      */
     int readBank(std::ofstream& aOutFile, unsigned long long aStartAddr, unsigned long long aSize) {
-      char *buf = 0;
+      auto buf = std::make_shared<char>();
       unsigned long long blockSize = 0x20000;
-      if (xrt_core::posix_memalign((void**)&buf, getpagesize(), blockSize))
+      if (xrt_core::posix_memalign((void**)buf.get(), getpagesize(), blockSize))
         return -1;
-      std::memset(buf, 0, blockSize);
+      std::memset(buf.get(), 0, blockSize);
 
       size_t count = aSize;
       uint64_t incr;
@@ -176,23 +176,21 @@ namespace xcldev {
       for (uint64_t phy = aStartAddr; phy < aStartAddr+aSize; phy += incr) {
         incr = (count >= blockSize) ? blockSize : count;
         //std::cout << "Reading from addr " << std::hex << phy << " aSize = " << std::hex << incr << std::dec << std::endl;
-        if (xclUnmgdPread(mHandle, 0, buf, incr, phy) < 0) {
+        if (xclUnmgdPread(mHandle, 0, buf.get(), incr, phy) < 0) {
           //error
           std::cout << "Error (" << strerror (errno) << ") reading 0x" << std::hex << incr << " bytes from DDR/HBM/PLRAM at offset 0x" << std::hex << phy << std::dec << "\n";
-          free(buf);
           std::cout.flags(f);
           return -1;
         }
         count -= incr;
         if (incr) {
-          aOutFile.write((const char*)buf, incr);
+          aOutFile.write((const char*)buf.get(), incr);
           if ((aOutFile.rdstate() & std::ifstream::failbit) != 0) {
             std::cout << "Error writing to file at offset " << aSize-count << "\n";
           }
         }
         std::cout << "INFO: Read size 0x" << std::hex << incr << " B. Total Read so far 0x" << aSize-count << std::endl;
       }
-      free(buf);
       if (count != 0) {
         std::cout << "Error! Read " << std::dec << aSize-count << " bytes, requested " << aSize << std::endl;
         std::cout.flags(f);
@@ -576,12 +574,12 @@ namespace xcldev {
      * writeQuiet()
      */
     int writeQuiet(unsigned long long aStartAddr, unsigned long long aSize, unsigned int aPattern = 'J') {
-        void *buf = 0;
+        auto buf = std::make_shared<char>();
         unsigned long long endAddr;
         unsigned long long size;
         //unsigned long long blockSize = 0x20000;
         unsigned long long blockSize = aSize;
-        if (xrt_core::posix_memalign(&buf, getpagesize(), blockSize))
+        if (xrt_core::posix_memalign((void**) buf.get(), getpagesize(), blockSize))
           return -1;
 
         endAddr = aSize == 0 ? mDDRSize : aStartAddr + aSize;
@@ -589,14 +587,13 @@ namespace xcldev {
 
         unsigned long long count = size;
         uint64_t incr;
-        std::memset(buf, aPattern, blockSize);
+        std::memset(buf.get(), aPattern, blockSize);
         for(uint64_t phy=aStartAddr; phy<endAddr; phy+=incr) {
           incr = (count >= blockSize) ? blockSize : count;
           //std::cout << "Writing to addr " << std::hex << phy << " size = " << std::hex << incr << std::dec << std::endl;
-          if (xclUnmgdPwrite(mHandle, 0, buf, incr, phy) < 0) {
+          if (xclUnmgdPwrite(mHandle, 0, buf.get(), incr, phy) < 0) {
             //error
             std::cout << "Error (" << strerror (errno) << ") writing 0x" << std::hex << incr << " bytes to DDR/HBM/PLRAM at offset 0x" << std::hex << phy << std::dec << "\n";
-            free(buf);
             return -1;
           }
           count -= incr;
@@ -604,10 +601,8 @@ namespace xcldev {
 
         if (count != 0) {
           std::cout << "Error! Written " << std::dec << size-count << " bytes, requested " << size << std::endl;
-          free(buf);
           return -1;
         }
-        free(buf);
         return count;
       }
 

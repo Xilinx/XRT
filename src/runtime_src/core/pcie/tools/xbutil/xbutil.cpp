@@ -971,8 +971,8 @@ int runShellCmd(const std::string& cmd, std::string& output)
     //Read stderr
     if (output.find("PASS") == std::string::npos) {
         char buffer[256];
-        unsigned count = read(stderr_fds[0], buffer, sizeof(buffer)-1);
-        buffer[count] = 0;
+        int count = read(stderr_fds[0], buffer, sizeof(buffer)-1);
+        buffer[std::abs(count)] = 0;
         std::cout << buffer << std::endl;
     }
     
@@ -1572,9 +1572,9 @@ int xcldev::xclReset(int argc, char *argv[])
     if (!d)
         return -EINVAL;
 
-    unsigned err = d->reset(XCL_USER_RESET);
+    int err = d->reset(XCL_USER_RESET);
     if (err)
-        std::cout << "ERROR: " << strerror(err) << std::endl;
+        std::cout << "ERROR: " << strerror(std::abs(err)) << std::endl;
     return err;
 }
 
@@ -1740,8 +1740,7 @@ int xcldev::xclP2p(int argc, char *argv[])
         {"validate", no_argument, 0, xcldev::P2P_VALIDATE},
         {0, 0, 0, 0}
     };
-    int long_index;
-    unsigned ret;
+    int long_index, ret;
     const char* short_options = "d:f"; //don't add numbers
     const char* exe = argv[ 0 ];
     bool force = false;
@@ -1802,7 +1801,7 @@ int xcldev::xclP2p(int argc, char *argv[])
     } else if (ret == 0) {
         std::cout << "P2P is disabled" << std::endl;
     } else if (ret)
-        std::cout << "ERROR: " << strerror(ret) << std::endl;
+        std::cout << "ERROR: " << strerror(std::abs(ret)) << std::endl;
 
     return ret;
 }
