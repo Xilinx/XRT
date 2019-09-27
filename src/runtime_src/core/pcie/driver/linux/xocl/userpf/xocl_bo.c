@@ -40,7 +40,6 @@
 #endif
 
 #define	INVALID_BO_PADDR	0xffffffffffffffffull
-#define	GB(x)			((uint64_t)(x) * 1024 * 1024 * 1024)
 
 #if defined(XOCL_DRM_FREE_MALLOC)
 static inline void drm_free_large(void *ptr)

@@ -64,6 +64,11 @@ if [ ! -r "/sys/bus/pci/devices/$RP_DEVICE" ]; then
 	exit 1;
 fi
 
+trap 'onCtrlC' INT
+function onCtrlC () {
+	echo 1 >/sys/bus/pci/rescan
+}
+
 echo 1 >/sys/bus/pci/devices/$RP_DEVICE/remove
 sleep 5
 if [ -f "/sys/bus/pci/devices/$RP_DEVICE" ]; then
@@ -71,7 +76,9 @@ if [ -f "/sys/bus/pci/devices/$RP_DEVICE" ]; then
 	exit 1;
 fi
 
-echo "xbmgmt partition --program --id $INTERFACE_UUID --force"
-xbmgmt partition --program --id $INTERFACE_UUID --force
+MGMT_DEVICE=`echo ${RP_DEVICE} | sed 's/\(.\+\.\)1/\10/'`
+
+echo "xbmgmt partition --program --id $INTERFACE_UUID --card ${MGMT_DEVICE} --force"
+xbmgmt partition --program --id $INTERFACE_UUID --card ${MGMT_DEVICE} --force
 
 echo 1 >/sys/bus/pci/rescan

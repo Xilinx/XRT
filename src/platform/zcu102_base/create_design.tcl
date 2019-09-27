@@ -75,7 +75,6 @@ set_property ip_repo_paths "${sourcesDir}/iprepo" [current_project]
 update_ip_catalog
 
 # Import HDL, XDC, and other files
-import_files -norecurse ${sourcesDir}/hdl/freq_counter.v
 import_files -fileset constrs_1 -norecurse ${sourcesDir}/constraints/static_impl_early.xdc
 import_files -fileset constrs_1 -norecurse ${sourcesDir}/constraints/static_impl_normal.xdc
 import_files -fileset constrs_1 -norecurse ${sourcesDir}/constraints/dynamic_impl.xdc
