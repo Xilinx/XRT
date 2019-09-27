@@ -351,28 +351,36 @@ reportXclbinInfo( std::ostream & _ostream,
 
   {
     // Get the PARTITION_METADATA property tree (if there is one)
-    boost::property_tree::ptree ptPartitionMetadata;
     for (auto pSection : _sections) {
-      if (pSection->getSectionKind() == PARTITION_METADATA) {
-        boost::property_tree::ptree ptRoot;
-        pSection->getPayload(ptRoot);
-        if (!ptRoot.empty()) {
-          ptPartitionMetadata = ptRoot.get_child("partition_metadata");
-          break;
-        }
+      if (pSection->getSectionKind() != PARTITION_METADATA) {
+        continue;
       }
-    }
 
-    // If we have a property tree, report all of the interface_uuids
-    if (!ptPartitionMetadata.empty()) {
+      // Get the complete JSON metadata tree
+      boost::property_tree::ptree ptRoot;
+      pSection->getPayload(ptRoot);
+      if (ptRoot.empty()) {
+        continue;
+      }
+
+      // Look for the "partition_metadata" node
+      boost::property_tree::ptree ptPartitionMetadata = ptRoot.get_child("partition_metadata");
+      if (ptPartitionMetadata.empty()) {
+        continue;
+      }
+
+      // Look for the "interfaces" node
       boost::property_tree::ptree ptInterfaces = ptPartitionMetadata.get_child("interfaces");
-      if (!ptInterfaces.empty()) {
-        for (const auto& kv : ptInterfaces) {
-          boost::property_tree::ptree ptInterface = kv.second;
-          std::string sUUID = ptInterface.get<std::string>("interface_uuid", "");
-          if (!sUUID.empty()) {
-            _ostream << XUtil::format("   %-23s %s", "UUID (IINTF):", sUUID.c_str()).c_str() << std::endl;
-          }
+      if (ptInterfaces.empty()) {
+        continue;
+      }
+
+      // Report all of the interfaces
+      for (const auto& kv : ptInterfaces) {
+        boost::property_tree::ptree ptInterface = kv.second;
+        std::string sUUID = ptInterface.get<std::string>("interface_uuid", "");
+        if (!sUUID.empty()) {
+          _ostream << XUtil::format("   %-23s %s", "UUID (IINTF):", sUUID.c_str()).c_str() << std::endl;
         }
       }
     }
