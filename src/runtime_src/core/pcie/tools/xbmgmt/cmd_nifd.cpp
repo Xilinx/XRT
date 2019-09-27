@@ -60,9 +60,8 @@ static int status(unsigned int index)
   }
   else
   {
-    std::ios_base::fmtflags f(std::cout.flags());
+    IosBaseFlags format(std::cout);
     std::cout << "Current NIFD status: 0x" << std::hex << status << std::endl;
-    std::cout.flags(f);
   }
   dev->close(fd);
   return 0;
@@ -123,7 +122,7 @@ static int readback(const std::string& inputFile, unsigned int index)
     return 0 ;
   }
 
-  std::ios_base::fmtflags f(std::cout.flags());
+  IosBaseFlags format(std::cout);
   std::cout << "Value read: " ;
   for (unsigned int i = 0 ; i < resultWords ; ++i)
   {
@@ -131,7 +130,6 @@ static int readback(const std::string& inputFile, unsigned int index)
   }
   std::cout << std::endl ;
 
-  std::cout.flags(f);
   dev->close(fd) ;
   return 0 ;
 }

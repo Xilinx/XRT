@@ -443,7 +443,7 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
 
 std::ostream& operator<<(std::ostream& stream, const DSAInfo& dsa)
 {
-    std::ios_base::fmtflags f(stream.flags());
+    IosBaseFlags format(std::cout);
     stream << dsa.name;
     if (dsa.timestamp != NULL_TIMESTAMP)
     {
@@ -454,7 +454,6 @@ std::ostream& operator<<(std::ostream& stream, const DSAInfo& dsa)
     {
         stream << ",[SC=" << dsa.bmcVer << "]";
     }
-    stream.flags(f);
     return stream;
 }
 

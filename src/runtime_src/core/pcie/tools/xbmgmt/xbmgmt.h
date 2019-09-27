@@ -19,6 +19,7 @@
 #define XBUTIL_H
 
 #include <string>
+#include <iostream>
 
 // Helper functions that can be used by all command handlers
 //
@@ -69,5 +70,16 @@ extern const char *subCmdConfigUsage;
 int nifdHandler(int argc, char *argv[]);
 extern const char *subCmdNifdDesc;
 extern const char *subCmdNifdUsage;
+
+class IosBaseFlags {
+public:
+    IosBaseFlags(std::ostream& _ios): ios(_ios), f(_ios.flags()) { }
+    
+    ~IosBaseFlags() { ios.flags(f); }
+
+private:
+    std::ostream& ios;
+    std::ios::fmtflags f;
+};
 
 #endif /* XBMGMT_H */
