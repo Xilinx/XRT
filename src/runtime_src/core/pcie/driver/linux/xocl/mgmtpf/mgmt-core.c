@@ -1057,8 +1057,8 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (rc)
 		goto err_alloc_minor;
 
-	dev_info = (struct xocl_board_private *)id->driver_data;
-	xocl_fill_dsa_priv(lro, dev_info);
+	xocl_fill_dsa_priv(lro, (struct xocl_board_private *)id->driver_data);
+	dev_info = &lro->core.priv;
 
 	/* map BARs */
 	rc = map_bars(lro);

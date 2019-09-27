@@ -10,7 +10,11 @@ BIN := $(BLDDIR)/sched.bin
 BSP := $(BLDDIR)/bsp
 RTS := $(SRCDIR)/../..
 
-MYCFLAGS := -I$(BSP)/include -I$(RTS) $(DEFINES)
+ifndef SCHED_VERSION
+ export SCHED_VERSION := 0x$(shell git rev-list -1 HEAD $(SRC) | cut -c1-8)
+endif
+
+MYCFLAGS := -I$(BSP)/include -I$(RTS) $(DEFINES) -DERT_VERSION=$(SCHED_VERSION) -DERT_SVERSION=\"$(SCHED_VERSION)\"
 MYLFLAGS :=  -Wl,-T,$(BLDDIR)/lscript.ld
 
 $(OBJ): $(SRC) $(BSP).extracted $(RTS)/core/include/ert.h
