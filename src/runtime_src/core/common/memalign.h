@@ -14,8 +14,9 @@
  * under the License.
  */
 
-#ifndef xrtcore_xstdlib_h_
-#define xrtcore_xstdlib_h_
+#ifndef xrtcore_memalign_h_
+#define xrtcore_memalign_h_
+#include <memory>
 #include <cstdlib>
 
 namespace xrt_core { 
@@ -40,6 +41,14 @@ posix_memalign(void **memptr, size_t alignment, size_t size)
   *memptr = ptr;
   return 0;
 #endif
+}
+
+auto aligned_ptr_deleter = [] (void* ptr) { free(ptr); } ;
+using aligned_ptr_type = std::unique_ptr<void, decltype(aligned_ptr_deleter)>;
+inline aligned_ptr_type
+aligned_alloc(size_t align, size_t size)
+{
+  return aligned_ptr_type(::aligned_alloc(align, size),aligned_ptr_deleter);
 }
 
 } // xrt_core
