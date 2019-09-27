@@ -22,6 +22,7 @@
 
 #include "xmc.h"
 #include "flasher.h"
+#include "xbmgmt.h"
 
 //#define XMC_DEBUG
 #define BMC_JUMP_ADDR   0x201  /* Hard-coded for now */

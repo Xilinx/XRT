@@ -28,6 +28,7 @@
 #include "firmware_image.h"
 #include "core/pcie/linux/scan.h"
 #include "xclbin.h"
+#include "xbmgmt.h"
 
 #define hex_digit "([0-9a-fA-F]+)"
 
