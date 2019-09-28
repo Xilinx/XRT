@@ -40,7 +40,7 @@ using namespace boost::filesystem;
 
 const char *subCmdPartDesc = "Show and download partition onto the device";
 const char *subCmdPartUsage =
-    "--program --name name [--id id] [--card bdf] [--force]\n"
+    "--program --name name [--id logic-uuid] [--card bdf] [--force]\n"
     "--program --path xclbin [--card bdf] [--force]\n"
     "--scan [--verbose]";
 
@@ -92,8 +92,7 @@ int program_prp(unsigned index, const std::string& xclbin, bool force)
 
     if (force)
     {
-        std::cout << "CAUTION: Force downloading PRP. " <<
-                "Please make sure xocl driver is unloaded." << std::endl;
+        std::cout << "CAUTION! Force downloading PRP inappropriately may hang the host. Please make sure xocl driver is unloaded or detached from the corresponding board. The host will hang with attached xocl driver instance." << std::endl;
         if(!canProceed())
             return -ECANCELED;
 
@@ -335,6 +334,10 @@ int program(int argc, char *argv[])
     if (index == UINT_MAX)
         index = 0;
 
+    Flasher f(index);
+    if (!f.isValid())
+        return -EINVAL;
+
     std::string blp_uuid, logic_uuid;
     auto dev = pcidev::get_dev(index, false);
     std::string errmsg;
@@ -351,7 +354,7 @@ int program(int argc, char *argv[])
                 return -ECANCELED;
         }
 
-        std::cout << "Programming ULP..." << std::endl;
+        std::cout << "Programming ULP on Card [" << f.sGetDBDF() << "]..." << std::endl;
         return program_urp(index, file);
     }
 
@@ -426,11 +429,11 @@ int program(int argc, char *argv[])
     DSAInfo dsa(file);
     if (dsa.uuids.size() == 0)
     {
-        std::cout << "Programming ULP..." << std::endl;
+        std::cout << "Programming ULP on Card [" << f.sGetDBDF() << "]..." << std::endl;
         return program_urp(index, file);
     }
 
-    std::cout << "Programming PLP..." << std::endl;
+    std::cout << "Programming PLP on Card [" << f.sGetDBDF() << "]..." << std::endl;
     std::cout << "Partition file: " << dsa.file << std::endl;
     for (std::string uuid : dsa.uuids)
     {

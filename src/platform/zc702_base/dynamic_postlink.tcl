@@ -83,10 +83,10 @@ proc wire_cu_to_xlconcat_intr {__cu_inst_intr_pin __intr_pin_num} {
       disconnect_bd_net /interrupt_concat/xlconstant_gnd_dout $__xlconcat_pin -quiet
       connect_bd_net $__cu_inst_intr_pin $__xlconcat_pin -quiet
     } else {
-      puts "(Post-linking DSA Tcl hook) No available xlconcat pins found"
+      puts "(Post-linking XSA Tcl hook) No available xlconcat pins found"
     }
   } else {
-    puts "(Post-linking DSA Tcl hook) No remaining xlconcat pins to connect to"
+    puts "(Post-linking XSA Tcl hook) No remaining xlconcat pins to connect to"
   }
 }
 
@@ -98,14 +98,39 @@ if {[dict exists $config_info kernels]} {
     # Translate the list of CUs to a list of BD cells
     set __cu_inst_list {}
     foreach __cu_inst $__cu_list {
-      lappend __cu_inst_list [get_bd_cells -quiet -filter "VLNV=~*:*:${__cu_inst}:*"]
+	set str [get_bd_cells -quiet -filter "VLNV=~*:*:${__cu_inst}:*"]
+	foreach name [split $str " "] {
+	    lappend __cu_inst_list $name
+	}
     }
+
+    set __cu_inst_addr_list {}
+    # Sort the list of CUs by offset address
+    foreach __cu_bd_cell $__cu_inst_list {
+      set __cu_bd_cell_sub [string range $__cu_bd_cell 1 [string length $__cu_bd_cell]]
+      set __cu_bd_cell_segs [get_bd_addr_segs -of_objects [get_bd_addr_spaces ps7*] -filter "NAME =~ *${__cu_bd_cell_sub}_*"]
+      if {[llength ${__cu_bd_cell_segs}] > 0} {
+        set __cu_offset [get_property OFFSET [get_bd_addr_segs -of_objects [get_bd_addr_spaces ps7*] -filter "NAME =~ *${__cu_bd_cell_sub}_*"]]
+        lappend __cu_inst_addr_list "$__cu_bd_cell $__cu_offset"
+      }
+    }
+
+    if {[llength $__cu_inst_addr_list] > 0} {
+      # Order the list by increasing AXI-Lite address offsets, then extract just ordered BD cells
+      set __cu_inst_list {}
+      unset __cu_inst_list
+      set __cu_inst_addr_list_ordered [lsort -index 1 $__cu_inst_addr_list]
+      foreach __cu_pair $__cu_inst_addr_list_ordered {
+        lappend __cu_inst_list [lindex $__cu_pair 0]
+      }
+    }
+
     # Make sure the list of BD cells is populated
     if {[llength $__cu_inst_list] > 0} {
       # Of the BD cells, iterate through those with an interrupt BD pin
       set __intr_pin_num 0
       foreach __cu_inst_intr $__cu_inst_list {
-        set __cu_inst_intr_pin [get_bd_pins -of_objects $__cu_inst_intr -quiet -filter "TYPE=~intr"]
+        set __cu_inst_intr_pin [get_bd_pins -of_objects [get_bd_cells $__cu_inst_intr] -quiet -filter "TYPE=~intr"]
         if {[llength $__cu_inst_intr_pin] == 1} {
           # When a BD cell has an interrupt BD pin, wire it to the next available xlconcat pin
           wire_cu_to_xlconcat_intr $__cu_inst_intr_pin $__intr_pin_num
@@ -113,11 +138,11 @@ if {[dict exists $config_info kernels]} {
         }
       }
     } else {
-      puts "(Post-linking DSA Tcl hook) No BD cells found for interrupt wiring"
+      puts "(Post-linking XSA Tcl hook) No BD cells found for interrupt wiring"
     }
   } else {
-    puts "(Post-linking DSA Tcl hook) No CUs found for interrupt wiring"
+    puts "(Post-linking XSA Tcl hook) No CUs found for interrupt wiring"
   }
 } else {
-  puts "(Post-linking DSA Tcl hook) No kernels key in config_info dict for interrupt wiring"
+  puts "(Post-linking XSA Tcl hook) No kernels key in config_info dict for interrupt wiring"
 }

@@ -1739,6 +1739,7 @@ private:
     int dmaXbtest(void);
 
     int pcieLinkTest(void);
+    int auxConnectionTest(void);
     int verifyKernelTest(void);
     int bandwidthKernelTest(void);
     // testFunc must return 0 for success, 1 for warning, and < 0 for error

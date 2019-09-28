@@ -65,4 +65,3 @@ write_hw_platform -force -include_bit -ext_metadata "${sourcesDir}/misc/ext_meta
 validate_hw_platform zcu104_base.xsa -verbose
 
 write_hwdef -force  -file pfm_top_wrapper.hdf
-#source dsa_program.tcl

@@ -918,6 +918,17 @@ void testCaseProgressReporter(bool *quit)
     }
 }
 
+inline const char* value_or_empty(const char* value) { return value ? value : "" ; }
+
+static void set_shell_path_env(const std::string& var_name, const std::string& trailing_path, int overwrite)
+{
+    std::string xrt_path(getenv("XILINX_XRT"));
+    std::string new_path = std::string(value_or_empty(getenv(var_name.c_str())));
+    xrt_path += trailing_path + ":";
+    new_path = xrt_path + new_path;
+    setenv(var_name.c_str(), new_path.c_str(), overwrite);
+}
+
 int runShellCmd(const std::string& cmd, std::string& output)
 {
     int ret = 0;
@@ -927,9 +938,10 @@ int runShellCmd(const std::string& cmd, std::string& output)
     std::thread t(testCaseProgressReporter, &quit);
 
     // Run test case
-//    setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
-//    setenv("PYTHONPATH", "/opt/xilinx/xrt/python", 0);
-//    setenv("LD_LIBRARY_PATH", "/opt/xilinx/xrt/lib", 1);
+    setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
+    set_shell_path_env("PYTHONPATH", "/python", 0);
+    set_shell_path_env("LD_LIBRARY_PATH", "/lib", 1);
+    set_shell_path_env("PATH", "/bin", 1);
     unsetenv("XCL_EMULATION_MODE");
 
     int stderr_fds[2];
@@ -938,13 +950,13 @@ int runShellCmd(const std::string& cmd, std::string& output)
         ret = -EINVAL;
     }
 
-    close(stderr_fds[0]);
     dup2(stderr_fds[1], 2);
     std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
     close(stderr_fds[1]);
 
     if (pipe == nullptr) {
         std::cout << "ERROR: Failed to run " << cmd << std::endl;
+        close(stderr_fds[0]);
         ret = -EINVAL;
     }
 
@@ -955,6 +967,15 @@ int runShellCmd(const std::string& cmd, std::string& output)
             output += buf;
         }
     }
+
+    //Read stderr
+    if (output.find("PASS") == std::string::npos) {
+        char buffer[256];
+        int count = read(stderr_fds[0], buffer, sizeof(buffer)-1);
+        buffer[count] = 0;
+        std::cout << buffer << std::endl;
+    }
+    
     close(stderr_fds[0]);
 
     // Stop progress reporter
@@ -1193,6 +1214,29 @@ int xcldev::device::pcieLinkTest(void)
     return 0;
 }
 
+int xcldev::device::auxConnectionTest(void) 
+{
+    std::string name, errmsg;
+    unsigned short max_power = 0;
+
+    if (!errmsg.empty()) {
+        std::cout << errmsg << std::endl;
+        return -EINVAL;
+    }
+
+    pcidev::get_dev(m_idx)->sysfs_get( "xmc", "bd_name", errmsg, name );
+    pcidev::get_dev(m_idx)->sysfs_get( "xmc", "max_power",  errmsg, max_power );
+
+    //check aux cable if board u200, u250, u280
+    if((strstr( name.c_str(), "U200" ) || strstr( name.c_str(), "U250" ) || 
+        strstr( name.c_str(), "U280" )) && max_power == 0 ) {
+        std::cout << "AUX POWER NOT CONNECTED, ATTENTION" << std::endl;
+        std::cout << "Board not stable for heavy acceleration tasks." << std::endl;
+        return 1;
+    }
+    return 0;
+}
+
 int xcldev::device::bandwidthKernelXbtest(void)
 {
     std::string output;
@@ -1328,6 +1372,12 @@ int xcldev::device::validate(bool quick)
 {
     bool withWarning = false;
     int retVal = 0;
+
+    retVal = runOneTest("AUX power connector check",
+            std::bind(&xcldev::device::auxConnectionTest, this));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
 
     // Check pcie training
     retVal = runOneTest("PCIE link check",

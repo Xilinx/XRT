@@ -247,6 +247,8 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 
 #define XOCL_INVALID_MINOR -1
 
+#define	GB(x)			((uint64_t)(x) * 1024 * 1024 * 1024)
+
 extern struct class *xrt_class;
 
 struct drm_xocl_bo;

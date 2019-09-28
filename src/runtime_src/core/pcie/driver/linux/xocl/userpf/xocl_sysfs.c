@@ -492,7 +492,7 @@ bail:
 static struct bin_attribute fdt_blob_attr = {
 	.attr = {
 		.name = "fdt_blob",
-		.mode = 0400
+		.mode = 0444
 	},
 	.read = fdt_blob_output,
 	.size = 0
