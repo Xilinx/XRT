@@ -417,7 +417,7 @@ static void check_sensor(struct xclmgmt_dev *lro)
 	s = vzalloc(sizeof(struct xcl_sensor));
 	if (!s) {
 		mgmt_err(lro, "%s out of memory", __func__);
-		return;	
+		return;
 	}
 
 	ret = xocl_xmc_get_data(lro, XCL_SENSOR, s);
@@ -446,11 +446,20 @@ static int health_check_cb(void *data)
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)data;
 	struct xcl_mailbox_req mbreq = { 0 };
 	bool tripped;
+	void __iomem *shutdown_clk = xocl_iores_get_base(lro, IORES_CLKSHUTDOWN);
+	uint32_t latched;
 
 	if (!health_check)
 		return 0;
 
+	if (shutdown_clk) {
+		latched = XOCL_READ_REG32(shutdown_clk);
+		if (latched & 0x1)
+			mgmt_err(lro, "Card shutting down! Power or Temp may exceed limits");
+	}
+
 	mbreq.req = XCL_MAILBOX_REQ_FIREWALL;
+
 	tripped = xocl_af_check(lro, NULL);
 
 	if (!tripped) {

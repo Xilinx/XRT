@@ -65,6 +65,7 @@
 #define NODE_ERT_SCHED "ep_ert_sched_00"
 #define NODE_XDMA "ep_xdma_00"
 #define NODE_MSIX "ep_msix_00"
+#define NODE_CLK_SHUTDOWN "ep_aclk_shutdown_00"
 
 enum {
 	IORES_GATEPRBLD,
@@ -76,6 +77,7 @@ enum {
 	IORES_CLKFREQ1,
 	IORES_CLKFREQ2,
 	IORES_KDMA,
+	IORES_CLKSHUTDOWN,
 	IORES_MAX,
 };
 
@@ -88,6 +90,7 @@ enum {
 #define RESNAME_CLKFREQ1        "clkreq1"
 #define RESNAME_CLKFREQ2        "clkreq2"
 #define RESNAME_KDMA            NODE_KDMA_CTRL
+#define RESNAME_CLKSHUTDOWN     NODE_CLK_SHUTDOWN
 
 struct xocl_iores_map {
 	char		*res_name;
@@ -105,6 +108,7 @@ struct xocl_iores_map map[] = {                                         \
 	{ RESNAME_CLKFREQ1, IORES_CLKFREQ1 },                           \
 	{ RESNAME_CLKFREQ2, IORES_CLKFREQ2 },                           \
 	{ RESNAME_KDMA, IORES_KDMA },                                   \
+	{ RESNAME_CLKSHUTDOWN, IORES_CLKSHUTDOWN },                     \
 }
 
 #endif
