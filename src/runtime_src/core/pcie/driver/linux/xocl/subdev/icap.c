@@ -1514,10 +1514,8 @@ static int icap_download_rp(struct platform_device *pdev, int level, bool force)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct mailbox_req mbreq = { MAILBOX_REQ_CHG_SHELL, };
+	struct mailbox_req mbreq = { 0 };
 	int ret = 0;
-
-
 
 	mutex_lock(&icap->icap_lock);
 	if (!icap->rp_bit || !icap->rp_fdt) {
@@ -1526,6 +1524,7 @@ static int icap_download_rp(struct platform_device *pdev, int level, bool force)
 		goto failed;
 	}
 	if (!force) {
+		mbreq.req = MAILBOX_REQ_CHG_SHELL;
 		(void) xocl_peer_notify(xocl_get_xdev(icap->icap_pdev), &mbreq,
 				sizeof(struct mailbox_req));
 		ICAP_INFO(icap, "Notified userpf to program rp");
