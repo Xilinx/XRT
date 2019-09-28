@@ -1214,6 +1214,29 @@ int xcldev::device::pcieLinkTest(void)
     return 0;
 }
 
+int xcldev::device::auxConnectionTest(void) 
+{
+    std::string name, errmsg;
+    unsigned short max_power = 0;
+
+    if (!errmsg.empty()) {
+        std::cout << errmsg << std::endl;
+        return -EINVAL;
+    }
+
+    pcidev::get_dev(m_idx)->sysfs_get( "xmc", "bd_name", errmsg, name );
+    pcidev::get_dev(m_idx)->sysfs_get( "xmc", "max_power",  errmsg, max_power );
+
+    //check aux cable if board u200, u250, u280
+    if((strstr( name.c_str(), "U200" ) || strstr( name.c_str(), "U250" ) || 
+        strstr( name.c_str(), "U280" )) && max_power == 0 ) {
+        std::cout << "AUX POWER NOT CONNECTED, ATTENTION" << std::endl;
+        std::cout << "Board not stable for heavy acceleration tasks." << std::endl;
+        return 1;
+    }
+    return 0;
+}
+
 int xcldev::device::bandwidthKernelXbtest(void)
 {
     std::string output;
@@ -1349,6 +1372,12 @@ int xcldev::device::validate(bool quick)
 {
     bool withWarning = false;
     int retVal = 0;
+
+    retVal = runOneTest("AUX power connector check",
+            std::bind(&xcldev::device::auxConnectionTest, this));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
 
     // Check pcie training
     retVal = runOneTest("PCIE link check",
