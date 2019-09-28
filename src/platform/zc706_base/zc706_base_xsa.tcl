@@ -791,7 +791,7 @@ proc create_root_design { parentCell } {
   current_bd_instance $oldCurInst
 
   # Create PFM attributes
-  set_property PFM_NAME {xilinx.com:zc706:zc706_base:1.0} [get_files [current_bd_design].bd]
+  set_property PFM_NAME {xilinx:zc706:zc706_base:1.0} [get_files [current_bd_design].bd]
   set_property PFM.CLOCK {clk_out1 {id "0" is_default "true" proc_sys_reset "proc_sys_reset_0" status "fixed"} clk_out2 {id "1" is_default "false" proc_sys_reset "proc_sys_reset_1" status "fixed"} } [get_bd_cells /clk_wiz_0]
   set_property PFM.AXI_PORT {S01_AXI {memport "MIG" sptag "" memory ""}  S02_AXI {memport "MIG" sptag "" memory ""} S03_AXI {memport "MIG" sptag "" memory ""} S04_AXI {memport "MIG" sptag "" memory ""} S05_AXI {memport "MIG" sptag "" memory ""} S06_AXI {memport "MIG" sptag "" memory ""} S07_AXI {memport "MIG" sptag "" memory ""} S08_AXI {memport "MIG" sptag "" memory ""} S09_AXI {memport "MIG" sptag "" memory ""} S10_AXI {memport "MIG" sptag "" memory ""} S11_AXI {memport "MIG" sptag "" memory ""} S12_AXI {memport "MIG" sptag "" memory ""} S13_AXI {memport "MIG" sptag "" memory ""} S14_AXI {memport "MIG" sptag "" memory ""} S15_AXI {memport "MIG" sptag "" memory ""}} [get_bd_cells /interconnect_axifull]
   set_property PFM.AXI_PORT {M_AXI_GP1 {memport "M_AXI_GP" sptag "GP" memory ""} S_AXI_HP1 {memport "S_AXI_HP" sptag "HP" memory "ps7 HP1_DDR_LOWOCM"} S_AXI_HP2 {memport "S_AXI_HP" sptag "HP" memory "ps7 HP2_DDR_LOWOCM"} S_AXI_HP3 {memport "S_AXI_HP" sptag "HP" memory "ps7 HP3_DDR_LOWOCM"}} [get_bd_cells /ps7]
