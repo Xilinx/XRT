@@ -109,7 +109,7 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 int xocl_program_shell(struct xocl_dev *xdev, bool force)
 {
 	int ret = 0, mbret = 0;
-	struct mailbox_req mbreq = { MAILBOX_REQ_PROGRAM_SHELL, };
+	struct mailbox_req mbreq = { 0 };
 	size_t resplen = sizeof(ret);
 	int i;
 
@@ -153,6 +153,7 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 		goto failed;
 
 	userpf_info(xdev, "request mgmtpf to program prp");
+	mbreq.req = MAILBOX_REQ_PROGRAM_SHELL;
 	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct mailbox_req),
 		&ret, &resplen, NULL, NULL, 0);
 	if (mbret)
@@ -177,7 +178,7 @@ failed:
 int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 {
 	int ret = 0, mbret = 0;
-	struct mailbox_req mbreq = { MAILBOX_REQ_HOT_RESET, };
+	struct mailbox_req mbreq = { 0 };
 	size_t resplen = sizeof(ret);
 
 	mutex_lock(&xdev->dev_lock);
@@ -199,6 +200,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 	xocl_reset_notify(xdev->core.pdev, true);
 
 	/* Reset mgmt */
+	mbreq.req = MAILBOX_REQ_HOT_RESET;
 	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct mailbox_req),
 		&ret, &resplen, NULL, NULL, 0);
 	if (mbret)

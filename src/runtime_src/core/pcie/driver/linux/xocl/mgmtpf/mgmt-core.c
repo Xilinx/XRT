@@ -446,13 +446,14 @@ static void check_sensor(struct xclmgmt_dev *lro)
 static int health_check_cb(void *data)
 {
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)data;
-	struct mailbox_req mbreq = { MAILBOX_REQ_FIREWALL, };
+	struct mailbox_req mbreq = { 0 };
 	bool tripped;
 
 	if (!health_check)
 		return 0;
 
 	tripped = xocl_af_check(lro, NULL);
+	mbreq.req = MAILBOX_REQ_FIREWALL;
 
 	if (!tripped) {
 		check_sensor(lro);
