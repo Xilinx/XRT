@@ -60,6 +60,7 @@
 		"zcu102_base_DFX": {
 			"architecture": "zynqmp",
 			"bsp_key": "zcu102",
+			"pullrequest_build": true,
 			"package": {
 				"dsabin": false,
 				"dsadev": false,
