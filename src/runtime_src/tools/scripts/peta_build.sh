@@ -49,7 +49,8 @@ config_kernel()
 	KERN_CONFIG_FILE=$1
 	# *** Enable or disable Linux kernel features as you need ***
 	# AR# 69143 -- To avoid PetaLinux hang when JTAG connected.
-	echo '# CONFIG_CPU_IDLE is not set' >> $KERN_CONFIG_FILE
+	echo '# CONFIG_CPU_IDLE is not set'      >> $KERN_CONFIG_FILE
+	echo 'CONFIG_CONSOLE_LOGLEVEL_DEFAULT=1' >> $KERN_CONFIG_FILE
 }
 
 config_rootfs()

@@ -115,16 +115,15 @@ ZYNQShim::ZYNQShim(unsigned index, const char *logfileName, xclVerbosityLevel ve
     mVerbosity(verbosity),
     mCuMaps(128, nullptr)
 {
+  if (logfileName != nullptr)
+    xclLog(XRT_WARNING, "XRT", "%s: logfileName is no longer supported", __func__);
+
+  xclLog(XRT_INFO, "XRT", "%s", __func__);
+
   profiling = std::make_unique<ZYNQShimProfiling>(this);
-  //TODO: Use board number
   mKernelFD = open("/dev/dri/renderD128", O_RDWR);
   if (!mKernelFD) {
-    printf("Cannot open /dev/dri/renderD128 \n");
-  }
-  if (logfileName && (logfileName[0] != '\0')) {
-    mLogStream.open(logfileName);
-    mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
+    xclLog(XRT_ERROR, "XRT", "%s: Cannot open /dev/dri/renderD128", __func__);
   }
   mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
   mDev = zynq_device::get_dev();
@@ -133,14 +132,10 @@ ZYNQShim::ZYNQShim(unsigned index, const char *logfileName, xclVerbosityLevel ve
 #ifndef __HWEM__
 ZYNQShim::~ZYNQShim()
 {
-  //TODO
+  xclLog(XRT_INFO, "XRT", "%s", __func__);
+
   if (mKernelFD > 0) {
     close(mKernelFD);
-  }
-
-  if (mLogStream.is_open()) {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-    mLogStream.close();
   }
 
   for (auto p : mCuMaps) {
@@ -171,13 +166,13 @@ int ZYNQShim::mapKernelControl(const std::vector<std::pair<uint64_t, size_t>>& o
         drm_zocl_info_cu info = {offset_it->first, -1};
         int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_INFO_CU, &info);
         if (result) {
-            printf("failed to find CU info 0x%lx\n", offset_it->first);
+            xclLog(XRT_ERROR, "XRT", "%s: Failed to find CU info 0x%lx", __func__, offset_it->first);
             return -1;
         }
         size_t psize = getpagesize();
         ptr = mmap(0, offset_it->second, PROT_READ | PROT_WRITE, MAP_SHARED, mKernelFD, info.apt_idx*psize);
         if (ptr == MAP_FAILED) {
-            printf("Map failed for aperture 0x%lx, size 0x%lx\n", offset_it->first, offset_it->second);
+            xclLog(XRT_ERROR, "XRT", "%s: Map failed for aperture 0x%lx, size 0x%lx", __func__, offset_it->first, offset_it->second);
             return -1;
         }
         mKernelControl.insert(it, std::pair<uint64_t, uint32_t *>(offset_it->first, (uint32_t *)ptr));
@@ -204,7 +199,7 @@ void *ZYNQShim::getVirtAddressOfApture(xclAddressSpace space, const uint64_t phy
     offset = phy_addr & mask;
 
     if (!vaddr)
-        std::cout  << "Could not found the mapped address. Check if XCLBIN is loaded." << std::endl;
+        xclLog(XRT_ERROR, "XRT", "%s: Could not found the mapped address. Check if XCLBIN is loaded.", __func__);
 
     // If could not found the phy_addr in the mapping table, return will be NULL.
     return vaddr;
@@ -220,13 +215,13 @@ size_t ZYNQShim::xclWrite(xclAddressSpace space, uint64_t offset, const void *ho
   void *vaddr = NULL;
 
   if (!hostBuf) {
-    std::cout  << "Invalid hostBuf." << std::endl;
+    xclLog(XRT_ERROR, "XRT", "%s: Invalid hostBuf.", __func__);
     return -1;
   }
 
   vaddr = getVirtAddressOfApture(space, offset, off);
   if (!vaddr) {
-    std::cout  << "Invalid offset." << std::endl;
+    xclLog(XRT_ERROR, "XRT", "%s: Invalid offset.", __func__);
     return -1;
   }
 
@@ -241,13 +236,13 @@ size_t ZYNQShim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, 
   void *vaddr = NULL;
 
   if (!hostBuf) {
-    std::cout  << "Invalid hostBuf." << std::endl;
+    xclLog(XRT_ERROR, "XRT", "%s: Invalid hostBuf.", __func__);
     return -1;
   }
 
   vaddr = getVirtAddressOfApture(space, offset, off);
   if (!vaddr) {
-    std::cout  << "Invalid offset." << std::endl;
+    xclLog(XRT_ERROR, "XRT", "%s: Invalid offset.", __func__);
     return -1;
   }
 
@@ -257,14 +252,12 @@ size_t ZYNQShim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, 
 }
 
 unsigned int ZYNQShim::xclAllocBO(size_t size, int unused, unsigned flags) {
-  // TODO: unify xocl and zocl flags.
-  //drm_zocl_create_bo info = { size, 0xffffffff, DRM_ZOCL_BO_FLAGS_COHERENT | DRM_ZOCL_BO_FLAGS_CMA };
   drm_zocl_create_bo info = { size, 0xffffffff, flags};
   int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CREATE_BO, &info);
-  if (mVerbosity == XCL_INFO) {
-    std::cout  << "xclAllocBO result = " << result << std::endl;
-    std::cout << "Handle " << info.handle << std::endl;
-  }
+
+  xclLog(XRT_DEBUG, "XRT", "%s: size %ld, flags 0x%x", __func__, size, flags);
+  xclLog(XRT_INFO, "XRT", "%s: ioctl return %d, bo handle %d", __func__, result, info.handle);
+
   return info.handle;
 }
 
@@ -272,21 +265,20 @@ unsigned int ZYNQShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned fl
     (void)flags;
     drm_zocl_userptr_bo info = {reinterpret_cast<uint64_t>(userptr), size, 0xffffffff, DRM_ZOCL_BO_FLAGS_USERPTR};
     int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_USERPTR_BO, &info);
-    if (mVerbosity == XCL_INFO) {
-        std::cout  << "xclAllocUserPtrBO result = " << result << std::endl;
-        std::cout << "Handle " << info.handle << std::endl;
-    }
+
+    xclLog(XRT_DEBUG, "XRT", "%s: userptr %p size %ld, flags 0x%x", __func__, userptr, size, DRM_ZOCL_BO_FLAGS_USERPTR);
+    xclLog(XRT_INFO, "XRT", "%s: ioctl return %d, bo handle %d", __func__, result, info.handle);
+
     return info.handle;
 }
 
 unsigned int ZYNQShim::xclGetHostBO(uint64_t paddr, size_t size) {
-  drm_zocl_host_bo info = { paddr, size, 0xffffffff };
-  //std::cout  << "xclGetHostBO paddr " << std::hex << paddr << std::dec << std::endl;
+  drm_zocl_host_bo info = {paddr, size, 0xffffffff};
   int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_GET_HOST_BO, &info);
-  if (mVerbosity == XCL_INFO) {
-    std::cout  << "xclGetHostBO result = " << result << std::endl;
-    std::cout << "Handle " << info.handle << std::endl;
-  }
+
+  xclLog(XRT_DEBUG, "XRT", "%s: paddr 0x%lx, size %ld", __func__, paddr, size);
+  xclLog(XRT_INFO, "XRT", "%s: ioctl return %d, bo handle %d", __func__, result, info.handle);
+
   return info.handle;
 }
 
@@ -294,34 +286,29 @@ void ZYNQShim::xclFreeBO(unsigned int boHandle)
 {
   drm_gem_close closeInfo = {boHandle, 0};
   int result = ioctl(mKernelFD, DRM_IOCTL_GEM_CLOSE, &closeInfo);
-  if (mVerbosity == XCL_INFO) {
-    mLogStream << "xclFreeBO result = " << result << std::endl;
-  }
-}
 
-int ZYNQShim::xclGetBOInfo(uint64_t handle)
-{
-    int result = 0;
-//  drm_zocl_info_bo info = { handle, 0, 0 };
-//  result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_INFO_BO, &info);
-//  if (mVerbosity == XCL_INFO) {
-//    mLogStream << "result = " << result << std::endl;
-//    mLogStream << "Handle " << info.handle << std::endl;
-//    mLogStream << "Size " << info.size << std::endl;
-//    mLogStream << "Physical " << std::hex << info.paddr << std::dec << std::endl;
-//  }
-  return result;
+  xclLog(XRT_DEBUG, "XRT", "%s: boHandle %d, ioctl return %d", __func__, boHandle, result);
 }
 
 int ZYNQShim::xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek)
 {
   drm_zocl_pwrite_bo pwriteInfo = { boHandle, 0, seek, size, reinterpret_cast<uint64_t>(src) };
-  return ioctl(mKernelFD, DRM_IOCTL_ZOCL_PWRITE_BO, &pwriteInfo);
+  int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_PWRITE_BO, &pwriteInfo);
+
+  xclLog(XRT_DEBUG, "XRT", "%s: boHandle %d, src %p, size %ld, seek %ld", __func__, boHandle, src, size, seek);
+  xclLog(XRT_INFO, "XRT", "%s: ioctl return %d", __func__, result);
+
+  return result;
 }
 
 int ZYNQShim::xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip) {
   drm_zocl_pread_bo preadInfo = { boHandle, 0, skip, size, reinterpret_cast<uint64_t>(dst) };
-  return ioctl(mKernelFD, DRM_IOCTL_ZOCL_PREAD_BO, &preadInfo);
+  int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_PREAD_BO, &preadInfo);
+
+  xclLog(XRT_DEBUG, "XRT", "%s: boHandle %d, dst %p, size %ld, skip %ld", __func__, boHandle, dst, size, skip);
+  xclLog(XRT_INFO, "XRT", "%s: ioctl return %d", __func__, result);
+
+  return result;
 }
 
 void *ZYNQShim::xclMapBO(unsigned int boHandle, bool write)
@@ -331,11 +318,15 @@ void *ZYNQShim::xclMapBO(unsigned int boHandle, bool write)
 
   drm_zocl_map_bo mapInfo = { boHandle, 0, 0 };
   result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_MAP_BO, &mapInfo);
-  if (result)
+  if (result) {
+    xclLog(XRT_ERROR, "XRT", "%s: ZOCL_MAP_BO ioctl return %d", __func__, result);
     return NULL;
+  }
 
   void *ptr = mmap(0, info.size, (write ?(PROT_READ|PROT_WRITE) : PROT_READ ),
           MAP_SHARED, mKernelFD, mapInfo.offset);
+
+  xclLog(XRT_INFO, "XRT", "%s: mmap return %p", __func__, ptr);
 
   return ptr;
 }
@@ -366,13 +357,10 @@ int ZYNQShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
   info->mNumCDMA = 0;
 #endif
 
-  std::string deviceName;
-  // Mike add the VBNV in the platform image.
+  std::string deviceName("edge");
   mVBNV.open("/etc/xocl.txt");
   if (mVBNV.is_open()) {
       mVBNV >> deviceName;
-  } else {
-      printf("Can not open /etc/xocl.txt. The device name not found. \n");
   }
   mVBNV.close();
   std::size_t length = deviceName.copy(info->mName, deviceName.length(),0);
@@ -390,7 +378,12 @@ int ZYNQShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t si
   else
       return -EINVAL;
   drm_zocl_sync_bo syncInfo = { boHandle, zocl_dir, offset, size };
-  return ioctl(mKernelFD, DRM_IOCTL_ZOCL_SYNC_BO, &syncInfo);
+  int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_SYNC_BO, &syncInfo);
+
+  xclLog(XRT_DEBUG, "XRT", "%s: boHandle %d, dir %d, size %ld, offset %ld", __func__, boHandle, dir, size, offset);
+  xclLog(XRT_INFO, "XRT", "%s: ioctl return %d", __func__, result);
+
+  return result;
 }
 
 int ZYNQShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size,
@@ -420,6 +413,7 @@ int ZYNQShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
         ret = -EINVAL;
     mCmdBOCache->release<ert_start_copybo_cmd>(bo);
 #endif
+  xclLog(XRT_INFO, "XRT", "%s: return %d", __func__, ret);
   return ret;
 }
 
@@ -429,39 +423,14 @@ int ZYNQShim::xclLoadXclBin(const xclBin *buffer)
 {
   int ret = 0;
   const char *xclbininmemory = reinterpret_cast<char *> (const_cast<xclBin*> (buffer));
-  if (mLogStream.is_open()) {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << buffer << std::endl;
-  }
 
   if (!memcmp(xclbininmemory, "xclbin2", 8)) {
     ret = xclLoadAxlf(reinterpret_cast<const axlf*> (xclbininmemory));
   } else {
-    if (mLogStream.is_open()) {
-      mLogStream << "xclLoadXclBin doesn't support legacy xclbin format." << std::endl;
-    }
+      xclLog(XRT_ERROR, "XRT", "%s: Doesn't support legacy xclbin format.", __func__);
   }
 
-//
-//  std::cout << "CU Status:\n";
-//  for (unsigned i = 0; i < 4; i++) {
-//    xclRead(XCL_ADDR_KERNEL_CTRL, i * 4096, static_cast<void *>(buf), 16);
-//    std::cout << "  " << std::setw(7) << i << ":      0x" << std::hex << buf[0] << std::dec << " " << parseCUStatus(buf[0]) << "\n";
-//  }
-//
-//#if defined(XCLBIN_DOWNLOAD)
-//  drm_zocl_pcap_download obj = { const_cast<xclBin *>(buffer) };
-//  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_PCAP_DOWNLOAD, &obj);
-//  if ( 0 != ret) {
-//    std::cout << __func__ << " PCAP download failed. Error code:  " << ret << std::endl;
-//  }
-//  std::cout << __func__ << " PCAP download successful. return code:  " << ret << std::endl;
-//  std::cout << "CU Status:\n";
-//  for (unsigned i = 0; i < 4; i++) {
-//    xclRead(XCL_ADDR_KERNEL_CTRL, i * 4096, static_cast<void *>(buf), 16);
-//    std::cout << "  " << std::setw(7) << i << ":      0x" << std::hex << buf[0] << std::dec << " " << parseCUStatus(buf[0]) << "\n";
-//  }
-//#endif
-
+  xclLog(XRT_INFO, "XRT", "%s: return %d", __func__, ret);
   return ret;
 }
 #endif
@@ -470,10 +439,6 @@ int ZYNQShim::xclLoadAxlf(const axlf *buffer)
 {
   int ret = 0;
   unsigned int flags = DRM_ZOCL_AXLF_NONE;
-
-  if (mLogStream.is_open()) {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << buffer << std::endl;
-  }
 
   /*
    * If platform is a non-PR-platform, Following check will fail. Dont download
@@ -511,6 +476,7 @@ int ZYNQShim::xclLoadAxlf(const axlf *buffer)
   };
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_READ_AXLF, &axlf_obj);
 
+  xclLog(XRT_INFO, "XRT", "%s: flags 0x%x, return %d", __func__, flags, ret);
   return ret;
 }
 
@@ -520,13 +486,13 @@ int ZYNQShim::xclExportBO(unsigned int boHandle)
   // Since Linux 4.6, drm_prime_handle_to_fd_ioctl respects O_RDWR.
   int result = ioctl(mKernelFD, DRM_IOCTL_PRIME_HANDLE_TO_FD, &info);
   if (result) {
-    std::cout << "WARNING: DRM prime handle to fd faied with DRM_RDWR. Try default flags." << std::endl;
+    xclLog(XRT_WARNING, "XRT", "%s: DRM prime handle to fd faied with DRM_RDWR. Try default flags.", __func__);
     info.flags = 0;
     result = ioctl(mKernelFD, DRM_IOCTL_PRIME_HANDLE_TO_FD, &info);
   }
-  if (mVerbosity == XCL_INFO) {
-    mLogStream << "xclExportBO result = " << result << std::endl;
-  }
+
+  xclLog(XRT_INFO, "XRT", "%s: boHandle %d, ioctl return %ld, fd %d", __func__, boHandle, result, info.fd);
+
   return !result ? info.fd : result;
 }
 
@@ -535,11 +501,11 @@ unsigned int ZYNQShim::xclImportBO(int fd, unsigned flags)
   drm_prime_handle info = {0xffffffff, flags, fd};
   int result = ioctl(mKernelFD, DRM_IOCTL_PRIME_FD_TO_HANDLE, &info);
   if (result) {
-      std::cout << __func__ << " ERROR: FD to handle IOCTL failed" << std::endl;
+    xclLog(XRT_ERROR, "XRT", "%s: FD to handle IOCTL failed", __func__);
   }
-  if (mVerbosity == XCL_INFO) {
-    mLogStream << "xclImportBO result = " << result << std::endl;
-  }
+
+  xclLog(XRT_INFO, "XRT", "%s: fd %d, flags %x, ioctl return %d, bo handle %d", __func__, fd, flags, result, info.handle);
+
   return !result ? info.handle : 0xffffffff;
 }
 
@@ -551,6 +517,9 @@ unsigned int ZYNQShim::xclGetBOProperties(unsigned int boHandle, xclBOProperties
   properties->flags  = DRM_ZOCL_BO_FLAGS_COHERENT | DRM_ZOCL_BO_FLAGS_CMA;
   properties->size   = info.size;
   properties->paddr  = info.paddr;
+
+  xclLog(XRT_DEBUG, "XRT", "%s: boHandle %d, size %x, paddr 0x%lx", __func__, boHandle, info.size, info.paddr);
+
   return result;
 }
 
@@ -567,8 +536,7 @@ ZYNQShim *ZYNQShim::handleCheck(void *handle)
   // Sanity checks
   if (!handle)
     return 0;
-  //if (*(unsigned *)handle != TAG)
-  //  return 0;
+
   if (!((ZYNQShim *) handle)->isGood()) {
     return 0;
   }
@@ -576,18 +544,12 @@ ZYNQShim *ZYNQShim::handleCheck(void *handle)
   return (ZYNQShim *) handle;
 }
 
-void ZYNQShim::xclWriteHostEvent(xclPerfMonEventType type, xclPerfMonEventID id) {
-  //  if (mVerbosity == XCL_INFO)
-  //    std::cout << "xclWriteHostEvent called (type = " << type << ", ID = " << id << ")" << std::endl;
-  //
-  //  uint32_t regValue = (id << 4) + (type & 0xF);
-  //  xclWrite(XCL_ADDR_KERNEL_CTRL, ZYNQ_PERFMON_OFFSET, &regValue, 4);
-}
-
 int ZYNQShim::xclExecBuf(unsigned int cmdBO)
 {
   drm_zocl_execbuf exec = {0, cmdBO};
-  return ioctl(mKernelFD, DRM_IOCTL_ZOCL_EXECBUF, &exec);
+  int result = ioctl(mKernelFD, DRM_IOCTL_ZOCL_EXECBUF, &exec);
+  xclLog(XRT_DEBUG, "XRT", "%s: cmdBO handle %d, ioctl return %d", __func__, cmdBO, result);
+  return result;
 }
 
 int ZYNQShim::xclExecWait(int timeoutMilliSec)
@@ -963,7 +925,6 @@ void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
 
 int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir,
               size_t size, size_t offset) {
-  //std::cout << "xclSyncBO called.. " << handle << std::endl;
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
@@ -1059,14 +1020,6 @@ int xclGetBOProperties(xclDeviceHandle handle, unsigned int boHandle, xclBOPrope
 unsigned int xclVersion ()
 {
   return 2;
-}
-
-void xclWriteHostEvent(xclDeviceHandle handle, xclPerfMonEventType type, xclPerfMonEventID id)
-{
-  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
-  if (!drv)
-    return;
-  drv->xclWriteHostEvent(type, id);
 }
 
 int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
