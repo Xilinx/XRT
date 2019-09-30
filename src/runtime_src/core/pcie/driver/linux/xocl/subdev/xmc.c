@@ -2005,8 +2005,10 @@ static int load_xmc(struct xocl_xmc *xmc)
 	xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
 	/* Shouldnt make it here but if we do then exit */
 	if (reg_val != GPIO_RESET) {
+		xocl_err(&xmc->pdev->dev, "Hold reset GPIO Failed");
 		xmc->state = XMC_STATE_ERROR;
-		return -EIO;
+		ret = -EIO;
+		goto out;
 	}
 
 	xdev_hdl = xocl_get_xdev(xmc->pdev);
