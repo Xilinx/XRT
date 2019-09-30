@@ -7,7 +7,7 @@ domain -runtime opencl
 domain -pmuqemu-args ./src/qemu/lnx/pmu_args.txt
 domain -qemu-args ./src/qemu/lnx/qemu_args.txt
 domain -qemu-data ./src/boot
-domain -sysroot ./src/aarch64-xilinx-linux
+#domain -sysroot ./src/aarch64-xilinx-linux
 
 platform -generate
 
