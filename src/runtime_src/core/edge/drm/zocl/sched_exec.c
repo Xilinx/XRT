@@ -2825,9 +2825,16 @@ inline void init_exec(struct sched_exec_core *exec_core)
 int
 zocl_exec_reset(struct drm_device *drm)
 {
+	unsigned int i;
 	struct drm_zocl_dev *zdev = drm->dev_private;
 	struct sched_exec_core *exec_core = zdev->exec;
 
+	if (!(zdev->ert || exec_core->polling_mode)) {
+		for (i = 0; i < exec_core->num_cus; i++) {
+			if (zocl_cu_is_valid(exec_core, i))
+				free_irq(zdev->irq[i], zdev);
+		}
+	}
 	init_exec(exec_core);
 	reset_exec(exec_core);
 	return 0;
