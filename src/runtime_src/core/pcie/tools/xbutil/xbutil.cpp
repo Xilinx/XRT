@@ -938,9 +938,6 @@ int runShellCmd(const std::string& cmd, std::string& output)
     int ret = 0;
     bool quit = false;
 
-    // Kick off progress reporter
-    std::thread t(testCaseProgressReporter, &quit);
-
     // Fix environment variables before running test case
     setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
     set_shell_path_env("PYTHONPATH", "/python", 0);
@@ -951,11 +948,19 @@ int runShellCmd(const std::string& cmd, std::string& output)
     int stderr_fds[2];
     if (pipe(stderr_fds)== -1) {
         perror("ERROR: Unable to create pipe");
-        ret = -EINVAL;
+        return -errno;
     }
 
     // Save stderr
     int stderr_save = dup(STDERR_FILENO);
+    if (stderr_save == -1) {
+        perror("ERROR: Unable to duplicate stderr");
+        return -errno;
+    }
+
+    // Kick off progress reporter
+    std::thread t(testCaseProgressReporter, &quit);
+
     // Close existing stderr and set it to be the write end of the pipe.
     // After fork below, our child process's stderr will point to the same fd.
     dup2(stderr_fds[1], STDERR_FILENO);
