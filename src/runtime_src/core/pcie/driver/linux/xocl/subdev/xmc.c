@@ -1867,7 +1867,7 @@ create_attr_failed:
 	return err;
 }
 
-static int stop_xmc_nolock(struct platform_device *pdev)
+static int stop_xmc_nolock(struct platform_device *pdev, bool hold)
 {
 	struct xocl_xmc *xmc;
 	int retry = 0;
@@ -1899,12 +1899,6 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 			READ_REG32(xmc, XMC_VERSION_REG),
 			READ_REG32(xmc, XMC_STATUS_REG), magic);
 
-		reg_val = READ_REG32(xmc, XMC_STATUS_REG);
-		if (!(reg_val & STATUS_MASK_STOPPED)) {
-			xocl_info(&xmc->pdev->dev, "Stopping XMC...");
-			WRITE_REG32(xmc, CTL_MASK_STOP, XMC_CONTROL_REG);
-			WRITE_REG32(xmc, 1, XMC_STOP_CONFIRM_REG);
-		}
 		/* Need to check if ERT is loaded before we attempt to stop it */
 		if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0))) {
 			reg_val = XOCL_READ_REG32(xmc->base_addrs[IO_CQ]);
@@ -1912,24 +1906,10 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 				xocl_info(&xmc->pdev->dev, "Stopping scheduler...");
 				XOCL_WRITE_REG32(ERT_EXIT_CMD, xmc->base_addrs[IO_CQ]);
 			}
-		}
-
-		retry = 0;
-		while (retry++ < MAX_XMC_RETRY &&
-			!(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_STOPPED))
-			msleep(RETRY_INTERVAL);
-
-		/* Wait for XMC to stop and then check that ERT has also finished */
-		if (retry >= MAX_XMC_RETRY) {
-			xocl_err(&xmc->pdev->dev, "Failed to stop XMC");
-			xocl_err(&xmc->pdev->dev, "XMC Error Reg 0x%x",
-				READ_REG32(xmc, XMC_ERROR_REG));
-			xmc->state = XMC_STATE_ERROR;
-			return -ETIMEDOUT;
-		} else if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0)) &&
-			 !(XOCL_READ_REG32(xmc->base_addrs[IO_CQ]) & ERT_EXIT_ACK)) {
+			retry = 0;
 			while (retry++ < MAX_ERT_RETRY &&
-				!(XOCL_READ_REG32(xmc->base_addrs[IO_CQ]) & ERT_EXIT_ACK))
+			    !(XOCL_READ_REG32(xmc->base_addrs[IO_CQ]) &
+			    ERT_EXIT_ACK))
 				msleep(RETRY_INTERVAL);
 			if (retry >= MAX_ERT_RETRY) {
 				xocl_err(&xmc->pdev->dev,
@@ -1942,7 +1922,29 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 				 * it can hang due to bad kernel xmc->state =
 				 * XMC_STATE_ERROR; return -ETIMEDOUT;
 				 */
+				xmc->state = XMC_STATE_ERROR;
+				return -ETIMEDOUT;
 			}
+		}
+
+		retry = 0;
+		reg_val = READ_REG32(xmc, XMC_STATUS_REG);
+		if (!(reg_val & STATUS_MASK_STOPPED)) {
+			xocl_info(&xmc->pdev->dev, "Stopping XMC...");
+			WRITE_REG32(xmc, CTL_MASK_STOP, XMC_CONTROL_REG);
+			WRITE_REG32(xmc, 1, XMC_STOP_CONFIRM_REG);
+		}
+		while (retry++ < MAX_XMC_RETRY &&
+			!(READ_REG32(xmc, XMC_STATUS_REG) & STATUS_MASK_STOPPED))
+			msleep(RETRY_INTERVAL);
+
+		/* Wait for XMC to stop and then check that ERT has also finished */
+		if (retry >= MAX_XMC_RETRY) {
+			xocl_err(&xmc->pdev->dev, "Failed to stop XMC");
+			xocl_err(&xmc->pdev->dev, "XMC Error Reg 0x%x",
+				READ_REG32(xmc, XMC_ERROR_REG));
+			xmc->state = XMC_STATE_ERROR;
+			return -ETIMEDOUT;
 		}
 
 		xocl_info(&xmc->pdev->dev, "XMC/sched Stopped, retry %d",
@@ -1955,14 +1957,16 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 		READ_REG32(xmc, XMC_VERSION_REG),
 		READ_REG32(xmc, XMC_STATUS_REG),
 		READ_REG32(xmc, XMC_MAGIC_REG));
-	WRITE_GPIO(xmc, GPIO_RESET, 0);
-	xmc->state = XMC_STATE_RESET;
-	reg_val = READ_GPIO(xmc, 0);
-	xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
-	/* Shouldnt make it here but if we do then exit */
-	if (reg_val != GPIO_RESET) {
-		xmc->state = XMC_STATE_ERROR;
-		return -EIO;
+	if (hold) {
+		WRITE_GPIO(xmc, GPIO_RESET, 0);
+		xmc->state = XMC_STATE_RESET;
+		reg_val = READ_GPIO(xmc, 0);
+		xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
+		/* Shouldnt make it here but if we do then exit */
+		if (reg_val != GPIO_RESET) {
+			xmc->state = XMC_STATE_ERROR;
+			return -EIO;
+		}
 	}
 
 	return 0;
@@ -1983,7 +1987,7 @@ static int stop_xmc(struct platform_device *pdev)
 		return -ENODEV;
 
 	mutex_lock(&xmc->xmc_lock);
-	ret = stop_xmc_nolock(pdev);
+	ret = stop_xmc_nolock(pdev, false);
 	mutex_unlock(&xmc->xmc_lock);
 
 	return ret;
@@ -2005,7 +2009,7 @@ static int load_xmc(struct xocl_xmc *xmc)
 	mutex_lock(&xmc->xmc_lock);
 
 	/* Stop XMC first */
-	ret = stop_xmc_nolock(xmc->pdev);
+	ret = stop_xmc_nolock(xmc->pdev, true);
 	if (ret != 0)
 		goto out;
 
