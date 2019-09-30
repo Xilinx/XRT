@@ -3453,11 +3453,6 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 			ret = -ENOMEM;
 			goto failed;
 		}
-		axlf = vmalloc(sizeof(struct axlf));
-		if (!axlf) {
-			ret = -ENOMEM;
-			goto failed;
-		}
 
 		ret = copy_from_user(&axlf_header, data, sizeof(struct axlf));
 		if (ret) {

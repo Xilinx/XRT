@@ -53,7 +53,6 @@ module_param(minimum_initialization, int, (S_IRUGO|S_IWUSR));
 MODULE_PARM_DESC(minimum_initialization,
 	"Enable minimum_initialization to force driver to load without vailid firmware or DSA. Thus xbsak flash is able to upgrade firmware. (0 = normal initialization, 1 = minimum initialization)");
 
-#define	LOW_TEMP		1
 #define	HI_TEMP			85
 #define	LOW_MILLVOLT		500
 #define	HI_MILLVOLT		2500
@@ -395,10 +394,8 @@ struct pci_dev *find_user_node(const struct pci_dev *pdev)
 
 inline void check_temp_within_range(struct xclmgmt_dev *lro, u32 temp)
 {
-	if (temp < LOW_TEMP || temp > HI_TEMP) {
-		mgmt_err(lro, "Temperature outside normal range (%d-%d) %d.",
-			LOW_TEMP, HI_TEMP, temp);
-	}
+	if (temp > HI_TEMP)
+		mgmt_err(lro, "Temperature is too high: %d.", temp);
 }
 
 inline void check_volt_within_range(struct xclmgmt_dev *lro, u16 volt)
@@ -417,7 +414,7 @@ static void check_sensor(struct xclmgmt_dev *lro)
 	s = vzalloc(sizeof(struct xcl_sensor));
 	if (!s) {
 		mgmt_err(lro, "%s out of memory", __func__);
-		return;	
+		return;
 	}
 
 	ret = xocl_xmc_get_data(lro, XCL_SENSOR, s);
@@ -446,11 +443,20 @@ static int health_check_cb(void *data)
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)data;
 	struct xcl_mailbox_req mbreq = { 0 };
 	bool tripped;
+	void __iomem *shutdown_clk = xocl_iores_get_base(lro, IORES_CLKSHUTDOWN);
+	uint32_t latched;
 
 	if (!health_check)
 		return 0;
 
+	if (shutdown_clk) {
+		latched = XOCL_READ_REG32(shutdown_clk);
+		if (latched & 0x1)
+			mgmt_err(lro, "Card shutting down! Power or Temp may exceed limits");
+	}
+
 	mbreq.req = XCL_MAILBOX_REQ_FIREWALL;
+
 	tripped = xocl_af_check(lro, NULL);
 
 	if (!tripped) {
