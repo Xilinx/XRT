@@ -46,6 +46,17 @@ TEMPLATE=zynqMP
 # The first argument is the rootfs configure file
 #  config_rootfs project-spec/configs/rootfs_config
 #
+#config_rootfs()
+#{
+#	ROOTFS_CONFIG_FILE=$1
+#	echo 'CONFIG_xrt=y'                 >> $ROOTFS_CONFIG_FILE
+#	echo 'CONFIG_mnt-sd=y'              >> $ROOTFS_CONFIG_FILE
+#	echo 'CONFIG_xrt-dev=y'             >> $ROOTFS_CONFIG_FILE
+#	echo 'CONFIG_zocl=y'                >> $ROOTFS_CONFIG_FILE
+#	echo 'CONFIG_opencl-headers-dev=y'  >> $ROOTFS_CONFIG_FILE
+#	echo 'CONFIG_opencl-clhpp-dev=y'    >> $ROOTFS_CONFIG_FILE
+#}
+
 config_rootfs()
 {
 	ROOTFS_CONFIG_FILE=$1
@@ -57,16 +68,17 @@ config_rootfs()
 	echo 'CONFIG_opencl-clhpp-dev=y' 	>> $ROOTFS_CONFIG_FILE
 	echo 'CONFIG_packagegroup-petalinux-opencv=y'    >> $ROOTFS_CONFIG_FILE
 }
-
 # The first argument is the rootfs configure file
 #  config_dts recipes-bsp/device-tree/files/system-user.dtsi
 #
 config_dts()
 {
 	DTS_FILE=$1
-	GLOB_DTS=${XRT_REPO_DIR}/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts
-	echo "cat ${XRT_REPO_DIR}/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi"
-	cat ${XRT_REPO_DIR}/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi
+	#GLOB_DTS=${XRT_REPO_DIR}/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts
+	#echo "cat ${XRT_REPO_DIR}/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi"
+	#cat ${XRT_REPO_DIR}/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi
+	echo "cat ${THIS_CONFIG_SCRIPT_DIR}/zcu104_base.dts >> $DTS_FILE"
+	cat ${THIS_CONFIG_SCRIPT_DIR}/zcu104_base.dts >> $DTS_FILE
 }
 
 # The first argument is the rootfs configure file
@@ -113,16 +125,9 @@ pre_build_hook()
 # The first argument is the petalinux project path
 #  post_build_hook <PETALINUX_PROJECT_DIR>
 #
-post_build_hook()
-{
-	PETA_DIR=$1
-	PLATFORM_NAME=`basename ${PETA_DIR}`
-	echo "create boot.bin in `pwd`"
-
-	cd $PETA_DIR
-
-	petalinux-package --boot --fsbl ${PETA_DIR}/images/linux/zynqmp_fsbl.elf --fpga ${PETA_DIR}/project-spec/hw-description/${PLATFORM_NAME}.bit --u-boot ${PETA_DIR}/images/linux/u-boot.elf --pmufw ${PETA_DIR}/images/linux/pmufw.elf --atf ${PETA_DIR}/images/linux/bl31.elf
-
-	cp -f ${PETA_DIR}/images/linux/BOOT.BIN ${THIS_CONFIG_SCRIPT_DIR}/src/${CPU_ARCH}/xrt/image/
-}
+#post_build_hook()
+#{
+#	PETA_DIR=$1
+#	# Nothing needs to do
+#}
 
