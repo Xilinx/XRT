@@ -252,7 +252,7 @@ int main(int argc, char *argv[])
         {"tracefunnel", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
         {"monitorfifolite", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
         {"monitorfifofull", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
-        {"accelmonitor", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
+        {"accelmonitor", no_argument, 0, xcldev::STATUS_AM},
         {"stream", no_argument, 0, xcldev::STREAM},
         {0, 0, 0, 0}
     };
@@ -333,6 +333,15 @@ int main(int argc, char *argv[])
                 return -1;
             }
             subcmd = xcldev::STREAM;
+            break;
+        }
+        case xcldev::STATUS_AM : {
+            //--am
+            if (cmd != xcldev::STATUS) {
+                std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
+                return -1;
+            }
+            ipmask |= static_cast<unsigned int>(xcldev::STATUS_AM_MASK);
             break;
         }
         //short options are dealt here
@@ -635,6 +644,9 @@ int main(int argc, char *argv[])
         }
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_ASM_MASK)) {
             result = deviceVec[index]->readASMCounters() ;
+        }
+        if (ipmask & static_cast<unsigned int>(xcldev::STATUS_AM_MASK)) {
+            result = deviceVec[index]->readAMCounters();
         }
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SPC_MASK)) {
 	  result = deviceVec[index]->readStreamingCheckers(1);

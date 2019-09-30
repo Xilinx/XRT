@@ -86,13 +86,15 @@ enum subcommand {
     STATUS_SPC,
     STREAM,
     STATUS_UNSUPPORTED,
+    STATUS_AM,
 };
 enum statusmask {
     STATUS_NONE_MASK = 0x0,
     STATUS_SPM_MASK = 0x1,
     STATUS_LAPC_MASK = 0x2,
     STATUS_SSPM_MASK = 0x4,
-    STATUS_SPC_MASK = 0x8
+    STATUS_SPC_MASK = 0x8,
+    STATUS_AM_MASK = 0x10
 };
 
 static const std::pair<std::string, command> map_pairs[] = {
@@ -120,7 +122,8 @@ static const std::pair<std::string, subcommand> subcmd_pairs[] = {
     std::make_pair("spm", STATUS_SPM),
     std::make_pair("lapc", STATUS_LAPC),
     std::make_pair("sspm", STATUS_SSPM),
-    std::make_pair("stream", STREAM)
+    std::make_pair("stream", STREAM),
+    std::make_pair("accelmonitor", STATUS_AM)
 };
 
 static const std::map<MEM_TYPE, std::string> memtype_map = {
@@ -551,6 +554,7 @@ public:
 		    std::vector<std::pair<std::string, std::string> >& aStreamNames) ;
     int readAIMCounters() ;
     int readASMCounters() ;
+    int readAMCounters();
     int readLAPCheckers(int aVerbose) ;
     int readStreamingCheckers(int aVerbose) ;
     int print_debug_ip_list (int aVerbose) ;
