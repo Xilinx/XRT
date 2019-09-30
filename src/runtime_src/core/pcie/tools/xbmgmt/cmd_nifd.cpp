@@ -24,6 +24,7 @@
 
 #include "xbmgmt.h"
 #include "core/pcie/linux/scan.h"
+#include "core/common/utils.h"
 
 const char *subCmdNifdDesc = "Access the NIFD debug IP to readback frames and offsets";
 const char *subCmdNifdUsage = "--status [--card bdf]\n--readback <frame/offset file> [--card bdf]";
@@ -60,7 +61,7 @@ static int status(unsigned int index)
   }
   else
   {
-    IosBaseFlags format(std::cout);
+    xrt_core::ios_flags_restore format(std::cout);
     std::cout << "Current NIFD status: 0x" << std::hex << status << std::endl;
   }
   dev->close(fd);
@@ -122,7 +123,7 @@ static int readback(const std::string& inputFile, unsigned int index)
     return 0 ;
   }
 
-  IosBaseFlags format(std::cout);
+  xrt_core::ios_flags_restore format(std::cout);
   std::cout << "Value read: " ;
   for (unsigned int i = 0 ; i < resultWords ; ++i)
   {

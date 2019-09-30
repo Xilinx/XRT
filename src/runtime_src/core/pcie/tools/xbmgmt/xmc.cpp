@@ -22,7 +22,7 @@
 
 #include "xmc.h"
 #include "flasher.h"
-#include "xbmgmt.h"
+#include "core/common/utils.h"
 
 //#define XMC_DEBUG
 #define BMC_JUMP_ADDR   0x201  /* Hard-coded for now */
@@ -344,7 +344,7 @@ void describePkt(struct xmcPkt& pkt, bool send)
     int lenInUint32 = (sizeof (pkt.hdr) + pkt.hdr.payloadSize +
         sizeof (uint32_t) - 1) / sizeof (uint32_t);
 
-    IosBaseFlags format(std::cout);
+    xrt_core::ios_flags_restore format(std::cout);
 
     if (send)
         std::cout << "Sending XMC packet: ";
@@ -474,7 +474,7 @@ bool XMC_Flasher::isXMCReady()
     bool xmcReady = (XMC_MODE() == XMC_READY);
 
     if (!xmcReady) {
-        IosBaseFlags format(std::cout);
+        xrt_core::ios_flags_restore format(std::cout);
         std::cout << "ERROR: XMC is not ready: 0x" << std::hex
             << XMC_MODE() << std::endl;
     }
@@ -486,7 +486,7 @@ bool XMC_Flasher::isBMCReady()
     bool bmcReady = (BMC_MODE() == 0x1);
 
     if (!bmcReady) {
-        IosBaseFlags format(std::cout);
+        xrt_core::ios_flags_restore format(std::cout);
         std::cout << "ERROR: SC is not ready: 0x" << std::hex
             << BMC_MODE() << std::endl;
     }

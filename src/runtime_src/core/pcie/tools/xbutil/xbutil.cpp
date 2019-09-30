@@ -918,9 +918,9 @@ void testCaseProgressReporter(bool *quit)
     }
 }
 
-inline const char* value_or_empty(const char* value)
+inline const char* getenv_or_empty(const char* path)
 {
-    return value ? value : "";
+    return getenv(path) ? getenv(path) : "";
 }
 
 static void set_shell_path_env(const std::string& var_name,

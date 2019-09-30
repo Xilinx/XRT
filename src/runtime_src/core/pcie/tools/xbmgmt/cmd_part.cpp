@@ -66,7 +66,7 @@ int program_prp(unsigned index, const std::string& xclbin, bool force)
     int length = stream.tellg();
     stream.seekg(0, stream.beg);
 
-    std::shared_ptr<char> buffer(new char[length]);
+    std::unique_ptr<char> buffer(new char[length]);
     stream.read(buffer.get(), length);
 
     std::string errmsg;

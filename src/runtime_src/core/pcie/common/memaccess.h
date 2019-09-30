@@ -36,20 +36,10 @@
 #include <sys/stat.h>
 
 #include "core/common/memalign.h"
+#include "core/common/utils.h"
 
 #include "xclhal2.h"
 #include "xclbin.h"
-
-class IosBaseFlags {
-public:
-    IosBaseFlags(std::ostream& _ios): ios(_ios), f(_ios.flags()) { }
-    
-    ~IosBaseFlags() { ios.flags(f); }
-
-private:
-    std::ostream& ios;
-    std::ios::fmtflags f;
-};
 
 static std::string get_name(const std::string& dir, const std::string& subdir)
 {
@@ -183,7 +173,7 @@ namespace xcldev {
 
       size_t count = aSize;
       uint64_t incr;
-      IosBaseFlags format(std::cout);
+      xrt_core::ios_flags_restore format(std::cout);
       for (uint64_t phy = aStartAddr; phy < aStartAddr+aSize; phy += incr) {
         incr = (count >= blockSize) ? blockSize : count;
         //std::cout << "Reading from addr " << std::hex << phy << " aSize = " << std::hex << incr << std::dec << std::endl;

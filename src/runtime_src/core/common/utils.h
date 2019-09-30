@@ -19,11 +19,25 @@
 #define XRT_USER_COMMON_UTILS_H_
 
 #include <string>
+#include <iostream>
 
 std::string parseCUStatus(unsigned int val);
 std::string parseFirewallStatus(unsigned int val);
 std::string parseDNAStatus(unsigned int val);
 std::string unitConvert(size_t size);
+
+namespace xrt_core {
+    class ios_flags_restore {
+    public:
+        ios_flags_restore(std::ostream& _ios): ios(_ios), f(_ios.flags()) { }
+
+        ~ios_flags_restore() { ios.flags(f); }
+
+    private:
+        std::ostream& ios;
+        std::ios::fmtflags f;
+    };
+} //xrt_core
 
 #endif /* _COMMON_UTILS_H_ */
 
