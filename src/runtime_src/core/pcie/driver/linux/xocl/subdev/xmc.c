@@ -1955,16 +1955,6 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 		READ_REG32(xmc, XMC_VERSION_REG),
 		READ_REG32(xmc, XMC_STATUS_REG),
 		READ_REG32(xmc, XMC_MAGIC_REG));
-	WRITE_GPIO(xmc, GPIO_RESET, 0);
-	xmc->state = XMC_STATE_RESET;
-	reg_val = READ_GPIO(xmc, 0);
-	xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
-	/* Shouldnt make it here but if we do then exit */
-	if (reg_val != GPIO_RESET) {
-		xmc->state = XMC_STATE_ERROR;
-		return -EIO;
-	}
-
 	return 0;
 }
 static int stop_xmc(struct platform_device *pdev)
@@ -2008,6 +1998,18 @@ static int load_xmc(struct xocl_xmc *xmc)
 	ret = stop_xmc_nolock(xmc->pdev);
 	if (ret != 0)
 		goto out;
+
+	WRITE_GPIO(xmc, GPIO_RESET, 0);
+	xmc->state = XMC_STATE_RESET;
+	reg_val = READ_GPIO(xmc, 0);
+	xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
+	/* Shouldnt make it here but if we do then exit */
+	if (reg_val != GPIO_RESET) {
+		xocl_err(&xmc->pdev->dev, "Hold reset GPIO Failed");
+		xmc->state = XMC_STATE_ERROR;
+		ret = -EIO;
+		goto out;
+	}
 
 	xdev_hdl = xocl_get_xdev(xmc->pdev);
 
