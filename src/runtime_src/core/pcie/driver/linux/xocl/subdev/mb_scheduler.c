@@ -433,11 +433,11 @@ cmd_set_int_state(struct xocl_cmd *xcmd, enum ert_cmd_state state)
 static inline void
 cmd_set_state(struct xocl_cmd *xcmd, enum ert_cmd_state state)
 {
-	SCHED_DEBUGF("->%s(%lu,%d)\n", __func__, xcmd->uid, state);
+	SCHED_DEBUGF("-> %s(%lu,%d)\n", __func__, xcmd->uid, state);
 	cmd_record_timestamp(xcmd, state);
 	xcmd->state = state;
 	xcmd->ert_pkt->state = state;
-	SCHED_DEBUGF("<-%s\n", __func__);
+	SCHED_DEBUGF("<- %s\n", __func__);
 }
 
 /*
@@ -2776,6 +2776,7 @@ pending_cmds_reset(void)
  * @stop: set to 1 to indicate scheduler should stop
  * @reset: set to 1 to reset the scheduler
  * @command_queue: list of command objects managed by scheduler
+ * @running_queue: subset of command_queue cmds that are running
  * @intc: boolean flag set when there is a pending interrupt for command completion
  * @poll: number of running commands in polling mode
  */
@@ -2789,6 +2790,7 @@ struct xocl_scheduler {
 	unsigned int		   reset;
 
 	struct list_head	   command_queue;
+	struct list_head           running_queue;
 
 	unsigned int		   intc; /* pending intr shared with isr, word aligned atomic */
 	unsigned int		   poll; /* number of cmds to poll */
@@ -2811,6 +2813,12 @@ scheduler_cq_reset(struct xocl_scheduler *xs)
 {
 	while (!list_empty(&xs->command_queue)) {
 		struct xocl_cmd *xcmd = list_first_entry(&xs->command_queue, struct xocl_cmd, cq_list);
+
+		DRM_INFO("deleting stale scheduler cmd\n");
+		cmd_free(xcmd);
+	}
+	while (!list_empty(&xs->running_queue)) {
+		struct xocl_cmd *xcmd = list_first_entry(&xs->running_queue, struct xocl_cmd, cq_list);
 
 		DRM_INFO("deleting stale scheduler cmd\n");
 		cmd_free(xcmd);
@@ -2916,7 +2924,12 @@ scheduler_queued_to_submitted(struct xocl_scheduler *xs, struct xocl_cmd *xcmd)
 static bool
 scheduler_submitted_to_running(struct xocl_scheduler *xs, struct xocl_cmd *xcmd)
 {
-	return exec_start_cmd(cmd_exec(xcmd), xcmd);
+	if (!exec_start_cmd(cmd_exec(xcmd), xcmd))
+		return false;
+
+	// move command to scheduler running queue
+	list_move_tail(&xcmd->cq_list, &xs->running_queue);
+	return true;
 }
 
 /**
@@ -2969,6 +2982,29 @@ scheduler_abort_to_free(struct xocl_scheduler *xs, struct xocl_cmd *xcmd)
 	SCHED_DEBUGF("<- %s\n", __func__);
 }
 
+static void
+scheduler_process_cmd(struct xocl_scheduler *xs, struct xocl_cmd *xcmd)
+{
+	SCHED_DEBUGF("-> %s cmd(%lu)\n", __func__, xcmd->uid);
+
+	cmd_update_state(xcmd);
+
+	if (xcmd->state == ERT_CMD_STATE_QUEUED)
+		scheduler_queued_to_submitted(xs, xcmd);
+	if (xcmd->state == ERT_CMD_STATE_SUBMITTED)
+		scheduler_submitted_to_running(xs, xcmd);
+	if (xcmd->state == ERT_CMD_STATE_RUNNING)
+		scheduler_running_to_complete(xs, xcmd);
+	if (xcmd->state == ERT_CMD_STATE_COMPLETED)
+		scheduler_complete_to_free(xs, xcmd);
+	if (xcmd->state == ERT_CMD_STATE_ERROR)
+		scheduler_error_to_free(xs, xcmd);
+	if (xcmd->state == ERT_CMD_STATE_ABORT)
+		scheduler_abort_to_free(xs, xcmd);
+
+	SCHED_DEBUGF("<- %s\n", __func__);
+}
+
 /**
  * scheduler_iterator_cmds() - Iterate all commands in scheduler command queue
  */
@@ -2978,25 +3014,23 @@ scheduler_iterate_cmds(struct xocl_scheduler *xs)
 	struct list_head *pos, *next;
 
 	SCHED_DEBUGF("-> %s\n", __func__);
+
+	// process running queue first
+	SCHED_DEBUGF("+ iterating scheduler running queue\n");
+	list_for_each_safe(pos, next, &xs->running_queue) {
+		struct xocl_cmd *xcmd = list_entry(pos, struct xocl_cmd, cq_list);
+		cmd_update_state(xcmd);
+		scheduler_process_cmd(xs, xcmd);
+	}
+
+	// process rest of command queue
+	SCHED_DEBUGF("+ iterating scheduler command queue\n");
 	list_for_each_safe(pos, next, &xs->command_queue) {
 		struct xocl_cmd *xcmd = list_entry(pos, struct xocl_cmd, cq_list);
-
 		cmd_update_state(xcmd);
-		SCHED_DEBUGF("+ processing cmd(%lu)\n", xcmd->uid);
-
-		if (xcmd->state == ERT_CMD_STATE_QUEUED)
-			scheduler_queued_to_submitted(xs, xcmd);
-		if (xcmd->state == ERT_CMD_STATE_SUBMITTED)
-			scheduler_submitted_to_running(xs, xcmd);
-		if (xcmd->state == ERT_CMD_STATE_RUNNING)
-			scheduler_running_to_complete(xs, xcmd);
-		if (xcmd->state == ERT_CMD_STATE_COMPLETED)
-			scheduler_complete_to_free(xs, xcmd);
-		if (xcmd->state == ERT_CMD_STATE_ERROR)
-			scheduler_error_to_free(xs, xcmd);
-		if (xcmd->state == ERT_CMD_STATE_ABORT)
-			scheduler_abort_to_free(xs, xcmd);
+		scheduler_process_cmd(xs, xcmd);
 	}
+
 	SCHED_DEBUGF("<- %s\n", __func__);
 }
 
@@ -3203,6 +3237,7 @@ init_scheduler_thread(struct xocl_scheduler *xs)
 
 	init_waitqueue_head(&xs->wait_queue);
 	INIT_LIST_HEAD(&xs->command_queue);
+	INIT_LIST_HEAD(&xs->running_queue);
 	scheduler_reset(xs);
 
 	xs->scheduler_thread = kthread_run(scheduler, (void *)xs, "xocl-scheduler-thread0");
