@@ -1,7 +1,7 @@
 -M
 microblaze-fdt
 -device
-loader,file=<xrt/qemu/pmufw.elf>
+loader,file=<pmufw.elf>
 -machine-path
 .
 -display
