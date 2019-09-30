@@ -1,6 +1,6 @@
 
 ################################################################
-# This is a generated script based on design: zcu102_revmin
+# This is a generated script based on design: zcu102_base
 #
 # Though there are limitations about the generated script,
 # the main purpose of this utility is to make learning
@@ -35,7 +35,7 @@ if { [string first $scripts_vivado_version $current_vivado_version] == -1 } {
 ################################################################
 
 # To test this script, run the following commands from Vivado Tcl console:
-# source zcu102_revmin_script.tcl
+# source zcu102_base_script.tcl
 
 # If there is no project opened, this script will create a
 # project, but make sure you do not have an existing project
@@ -43,14 +43,14 @@ if { [string first $scripts_vivado_version $current_vivado_version] == -1 } {
 
 set list_projs [get_projects -quiet]
 if { $list_projs eq "" } {
-   create_project zcu102_revmin zcu102_revmin -part xczu9eg-ffvb1156-2-e
+   create_project zcu102_base zcu102_base -part xczu9eg-ffvb1156-2-e
    set_property BOARD_PART xilinx.com:zcu102:part0:3.3 [current_project]
 }
 
 
 # CHANGE DESIGN NAME HERE
 variable design_name
-set design_name zcu102_revmin
+set design_name zcu102_base
 
 # If you do not already have an existing IP Integrator design open,
 # you can create a design using the following command:
@@ -1778,8 +1778,8 @@ proc create_root_design { parentCell } {
   current_bd_instance $oldCurInst
 
   # Create PFM attributes
-  set_property PFM_NAME {xilinx.com:zcu102:zcu102_revmin:1.0} [get_files [current_bd_design].bd]
-  set_property PFM.CLOCK {clk_out1 {id "0" is_default "true" proc_sys_reset "proc_sys_reset_0"} clk_out2 {id "1" is_default "false" proc_sys_reset "proc_sys_reset_1"}} [get_bd_cells /clk_wiz_0]
+  set_property PFM_NAME {xilinx.com:zcu102:zcu102_base:1.0} [get_files [current_bd_design].bd]
+  set_property PFM.CLOCK {clk_out1 {id "0" is_default "true" proc_sys_reset "proc_sys_reset_0" status "fixed"} clk_out2 {id "1" is_default "false" proc_sys_reset "proc_sys_reset_1" status "fixed"}} [get_bd_cells /clk_wiz_0]
   set_property PFM.AXI_PORT {  M_AXI_HPM0_FPD {memport "M_AXI_GP"}  M_AXI_HPM1_FPD {memport "M_AXI_GP"}  M_AXI_HPM0_LPD {memport "M_AXI_GP"}  S_AXI_HPC0_FPD {memport "S_AXI_HPC" sptag "HPC0" memory "ps_e HPC0_DDR_LOW"}  S_AXI_HPC1_FPD {memport "S_AXI_HPC" sptag "HPC1" memory "ps_e HPC1_DDR_LOW"}  S_AXI_HP0_FPD {memport "S_AXI_HP" sptag "HP0" memory "ps_e HP0_DDR_LOW"}  S_AXI_HP1_FPD {memport "S_AXI_HP" sptag "HP1" memory "ps_e HP1_DDR_LOW"}  S_AXI_HP2_FPD {memport "S_AXI_HP" sptag "HP2" memory "ps_e HP2_DDR_LOW"}  S_AXI_HP3_FPD {memport "S_AXI_HP" sptag "HP3" memory "ps_e HP3_DDR_LOW"}  } [get_bd_cells /ps_e]
   set_property PFM.IRQ {In0 {} In1 {} In2 {} In3 {} In4 {} In5 {} In6 {} In7 {}} [get_bd_cells /xlconcat_0]
   set_property PFM.IRQ {In0 {} In1 {} In2 {} In3 {} In4 {} In5 {} In6 {} In7 {}} [get_bd_cells /xlconcat_1]
@@ -1800,21 +1800,27 @@ create_root_design ""
 regenerate_bd_layout
 save_bd_design
 
-generate_target  all  [get_files  ./zcu102_revmin/zcu102_revmin.srcs/sources_1/bd/zcu102_revmin/zcu102_revmin.bd]
+generate_target  all  [get_files  ./zcu102_base/zcu102_base.srcs/sources_1/bd/zcu102_base/zcu102_base.bd]
 set_property generate_synth_checkpoint true [get_files -norecurse *.bd]
-make_wrapper -files [get_files ./zcu102_revmin/zcu102_revmin.srcs/sources_1/bd/zcu102_revmin/zcu102_revmin.bd] -top
-add_files -norecurse ./zcu102_revmin/zcu102_revmin.srcs/sources_1/bd/zcu102_revmin/hdl/zcu102_revmin_wrapper.v
+make_wrapper -files [get_files ./zcu102_base/zcu102_base.srcs/sources_1/bd/zcu102_base/zcu102_base.bd] -top
+add_files -norecurse ./zcu102_base/zcu102_base.srcs/sources_1/bd/zcu102_base/hdl/zcu102_base_wrapper.v
 update_compile_order -fileset sources_1
 update_compile_order -fileset sim_1
 
-launch_runs impl_1 -to_step write_bitstream -jobs 16
-wait_on_run impl_1
+#launch_runs impl_1 -to_step write_bitstream -jobs 16
+#wait_on_run impl_1
+set_property platform.default_output_type "sd_card" [current_project]
+set_property platform.design_intent.embedded "true" [current_project]
+set_property platform.design_intent.server_managed "false" [current_project]
+set_property platform.design_intent.external_host "false" [current_project]
+set_property platform.design_intent.datacenter "false" [current_project]
 
-file mkdir ./zcu102_revmin/zcu102_revmin.sdk
-write_hwdef -force  -file ./zcu102_revmin/zcu102_revmin.sdk/zcu102_revmin_wrapper.hdf
-#file copy -force ./zcu102_revmin/zcu102_revmin.runs/impl_1/zcu102_wrapper.sysdef ./zcu102_revmin/zcu102_revmin.sdk/zcu102_wrapper.hdf
+file mkdir ./zcu102_base/zcu102_base.sdk
+write_hwdef -force  -file ./zcu102_base/zcu102_base.sdk/zcu102_base_wrapper.hdf
+#file copy -force ./zcu102_base/zcu102_base.runs/impl_1/zcu102_wrapper.sysdef ./zcu102_base/zcu102_base.sdk/zcu102_wrapper.hdf
 
 set_property platform.post_sys_link_tcl_hook ./dynamic_postlink.tcl [current_project]
 
-write_hw_platform -unified -include_bit ./zcu102_revmin.xsa
-validate_hw_platform ./zcu102_revmin.xsa
+#write_hw_platform -unified -include_bit ./zcu102_base.xsa
+write_hw_platform -force ./zcu102_base.xsa
+validate_hw_platform ./zcu102_base.xsa
