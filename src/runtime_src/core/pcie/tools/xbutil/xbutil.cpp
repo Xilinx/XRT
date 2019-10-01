@@ -1239,7 +1239,7 @@ int xcldev::device::auxConnectionTest(void)
     }
 
     pcidev::get_dev(m_idx)->sysfs_get("xmc", "bd_name", errmsg, name);
-    pcidev::get_dev(m_idx)->sysfs_get("xmc", "max_power",  errmsg, max_power);
+    pcidev::get_dev(m_idx)->sysfs_get<unsigned short>("xmc", "max_power",  errmsg, max_power, 0);
 
     if (!name.empty()) {
         for (auto bd : auxPwrRequiredBoard) {
@@ -1736,15 +1736,15 @@ int xcldev::device::testP2p()
     std::string errmsg;
     std::vector<char> buf;
     int ret = 0;
-    int p2p_enabled = 0;
+    bool p2p_enabled;
     xclbin_lock xclbin_lock(m_handle, m_idx);
     auto dev = pcidev::get_dev(m_idx);
 
     if (dev == nullptr)
         return -EINVAL;
 
-    dev->sysfs_get<int>("", "p2p_enable", errmsg, p2p_enabled, 0);
-    if (p2p_enabled != 1) {
+    dev->sysfs_get<bool>("", "p2p_enable", errmsg, p2p_enabled, false);
+    if (!p2p_enabled) {
         std::cout << "P2P BAR is not enabled. Skipping validation" << std::endl;
         return -EOPNOTSUPP;
     }
