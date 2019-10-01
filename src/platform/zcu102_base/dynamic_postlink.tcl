@@ -1,77 +1,73 @@
+# *************************************************************************
+#    ____  ____
+#   /   /\/   /
+#  /___/  \  /
+#  \   \   \/    © Copyright 2017 Xilinx, Inc. All rights reserved.
+#   \   \        This file contains confidential and proprietary
+#   /   /        information of Xilinx, Inc. and is protected under U.S.
+#  /___/   /\    and international copyright and other intellectual
+#  \   \  /  \   property laws.
+#   \___\/\___\
+#
+#
+# *************************************************************************
+#
+# Disclaimer:
+#
+#       This disclaimer is not a license and does not grant any rights to
+#       the materials distributed herewith. Except as otherwise provided in
+#       a valid license issued to you by Xilinx, and to the maximum extent
+#       permitted by applicable law: (1) THESE MATERIALS ARE MADE AVAILABLE
+#       "AS IS" AND WITH ALL FAULTS, AND XILINX HEREBY DISCLAIMS ALL
+#       WARRANTIES AND CONDITIONS, EXPRESS, IMPLIED, OR STATUTORY,
+#       INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY,
+#       NON-INFRINGEMENT, OR FITNESS FOR ANY PARTICULAR PURPOSE; and
+#       (2) Xilinx shall not be liable (whether in contract or tort,
+#       including negligence, or under any other theory of liability) for
+#       any loss or damage of any kind or nature related to, arising under
+#       or in connection with these materials, including for any direct, or
+#       any indirect, special, incidental, or consequential loss or damage
+#       (including loss of data, profits, goodwill, or any type of loss or
+#       damage suffered as a result of any action brought by a third party)
+#       even if such damage or loss was reasonably foreseeable or Xilinx
+#       had been advised of the possibility of the same.
+#
+# Critical Applications:
+#
+#       Xilinx products are not designed or intended to be fail-safe, or
+#       for use in any application requiring fail-safe performance, such as
+#       life-support or safety devices or systems, Class III medical
+#       devices, nuclear facilities, applications related to the deployment
+#       of airbags, or any other applications that could lead to death,
+#       personal injury, or severe property or environmental damage
+#       (individually and collectively, "Critical Applications"). Customer
+#       assumes the sole risk and liability of any use of Xilinx products
+#       in Critical Applications, subject only to applicable laws and
+#       regulations governing limitations on product liability.
+#
+# THIS COPYRIGHT NOTICE AND DISCLAIMER MUST BE RETAINED AS PART OF THIS
+# FILE AT ALL TIMES.
+#
+# *************************************************************************
+
 # Generate an empty _post_sys_link_gen_constrs.xdc file
 # -------------------------------------------------------------------------
 set fd [open "./_post_sys_link_gen_constrs.xdc" w]
 puts $fd "# No content"
 close $fd
 
+# Set SLR_ASSIGNMENTS to SLR1 for the host path to MemSS S00_AXI
+# -------------------------------------------------------------------------
+####set_property CONFIG.SLR_ASSIGNMENTS SLR1 [get_bd_cells axi_vip_data] //no SLR
+
 # Connect available interrupt pins on compute units to the interrupt vector
 # -------------------------------------------------------------------------
-
-set __num_xlconcat 4
-set __num_pin_per_xlconcat 32
-
-# Add interrupt controler and concat ips
-proc add_interrupt_ctrl_concat { __cu_num } {
-
-  upvar __num_xlconcat __num_xlconcat
-  upvar __num_pin_per_xlconcat __num_pin_per_xlconcat
-
-  # Generate interrupt contrlor and interrupt number pair list
-  set __inst_intrs_list {} 
-  set __remain_cu $__cu_num
-  set __inst_num 0
-  while { $__remain_cu > 0 } {
-    if { $__remain_cu >= $__num_pin_per_xlconcat } {
-      lappend __inst_intrs_list "$__inst_num 32"
-      set __remain_cu [expr {$__remain_cu - 32}]
-    } else {
-      lappend __inst_intrs_list "$__inst_num ${__remain_cu}"
-      set __remain_cu 0
-    }
-    incr __inst_num
-  }
-
-  #Add IPs
-  foreach __pair $__inst_intrs_list {
-    lassign $__pair __intc_inst_num __intrs_num
-    create_bd_cell -type ip -vlnv xilinx.com:ip:axi_intc axi_intc_${__intc_inst_num}
-    set_property -dict [list CONFIG.C_KIND_OF_INTR.VALUE_SRC USER] [get_bd_cells axi_intc_${__intc_inst_num}]
-    set_property -dict [list CONFIG.C_KIND_OF_INTR {0xFFFFFFFF} CONFIG.C_IRQ_IS_LEVEL {0} CONFIG.C_IRQ_CONNECTION {1}] [get_bd_cells axi_intc_${__intc_inst_num}]
-    create_bd_cell -type ip -vlnv xilinx.com:ip:xlconcat xlconcat_intc_${__intc_inst_num}
-    set_property -dict [list CONFIG.NUM_PORTS ${__intrs_num}] [get_bd_cells xlconcat_intc_${__intc_inst_num}]
-
-    connect_bd_net [get_bd_pins xlconcat_intc_${__intc_inst_num}/dout] [get_bd_pins axi_intc_${__intc_inst_num}/intr]
-
-    # Connect concat input to GND for now
-    for { set i 0 } { $i < ${__intrs_num} } { incr i } {
-      connect_bd_net [get_bd_pins xlconcat_intc_${__intc_inst_num}/In${i}] [get_bd_pins sds_irq_const/dout]
-    }
-
-    # Use 4 PL to PS interrupts, they are on xlconcat_0
-    set __xlconcat_inst [get_bd_cells -hierarchical -quiet -filter NAME=~xlconcat_0]
-    set __xlconcat_pin [get_bd_pins -of_objects $__xlconcat_inst -quiet -filter NAME=~In${__intc_inst_num}]
-
-    # If the xlconcat pin object exists, disconnect it from ground and connect the interrupt controlor's irq to it.
-    if {[llength $__xlconcat_pin] == 1} {
-      disconnect_bd_net /sds_irq_const_dout $__xlconcat_pin -quiet
-      connect_bd_net [get_bd_pins axi_intc_${__intc_inst_num}/irq] $__xlconcat_pin -quiet
-      # Connect interrupt controlor to HPM0
-      apply_bd_automation -rule xilinx.com:bd_rule:axi4 -config { Clk_master {Auto} Clk_slave {Auto} Clk_xbar {Auto} Master {/ps_e/M_AXI_HPM0_FPD} Slave {/axi_intc_${__intc_inst_num}/s_axi} intc_ip {Auto} master_apm {0}}  [get_bd_intf_pins axi_intc_${__intc_inst_num}/s_axi]
-      # Hard code address for now...
-      set offset [expr 0xA8000000 + ${__intc_inst_num} * 0x1000]
-      set_property offset $offset [get_bd_addr_segs "ps_e/Data/SEG_axi_intc_${__intc_inst_num}_Reg"]
-    } else {
-      puts "(Post-linking XSA Tcl hook) No available xlconcat pins found"
-    }
-  }
-}
 
 # The wiring proc takes in the CU's interrupt BD pin and the overall interrupt index
 proc wire_cu_to_xlconcat_intr {__cu_inst_intr_pin __intr_pin_num} {
   # Set number of xlconcat blocks and number of interrupts per block
-
-  upvar __num_xlconcat __num_xlconcat
-  upvar __num_pin_per_xlconcat __num_pin_per_xlconcat
+  set __num_xlconcat 4
+  set __num_pin_per_xlconcat 32
 
   # Get the xlconcat instance and pin number to work on now
   set __xlconcat_inst_num [expr {$__intr_pin_num / $__num_pin_per_xlconcat}]
@@ -79,42 +75,46 @@ proc wire_cu_to_xlconcat_intr {__cu_inst_intr_pin __intr_pin_num} {
 
   # Ensure that the xlconcat instance and its pin exist, then get those objects
   if {($__xlconcat_pin_num < $__num_pin_per_xlconcat) && ($__xlconcat_inst_num < $__num_xlconcat)} {
-    set __xlconcat_inst [get_bd_cells -hierarchical -quiet -filter NAME=~xlconcat_intc_${__xlconcat_inst_num}]
+    set __xlconcat_inst [get_bd_cells -hierarchical -quiet -filter NAME=~xlconcat_interrupt_${__xlconcat_inst_num}]
     set __xlconcat_pin [get_bd_pins -of_objects $__xlconcat_inst -quiet -filter NAME=~In${__xlconcat_pin_num}]
 
     # If the xlconcat pin object exists, disconnect it from ground and connect the CU's interrupt BD pin to it
     if {[llength $__xlconcat_pin] == 1} {
-      disconnect_bd_net /sds_irq_const_dout $__xlconcat_pin -quiet
+      disconnect_bd_net /interrupt_concat/xlconstant_gnd_dout $__xlconcat_pin -quiet
       connect_bd_net $__cu_inst_intr_pin $__xlconcat_pin -quiet
     } else {
-      puts "(Post-linking XSA Tcl hook) No available xlconcat_intc pins found"
+      puts "(Post-linking XSA Tcl hook) No available xlconcat pins found"
     }
   } else {
-    puts "(Post-linking XSA Tcl hook) No remaining xlconcat_intc pins to connect to"
+    puts "(Post-linking XSA Tcl hook) No remaining xlconcat pins to connect to"
   }
 }
 
 # Make sure the kernel key in the config_info dict exists
 if {[dict exists $config_info kernels]} {
-  # Make sure that list of kernels is populated
-  set __k_list [dict get $config_info kernels]
-  if {[llength $__k_list] > 0} {
-    # Translate the list of kernels to a list of BD cells and their AXI-Lite address offsets
+  # Make sure that list of CUs is populated
+  set __cu_list [dict get $config_info kernels]
+  if {[llength $__cu_list] > 0} {
+    # Translate the list of CUs to a list of BD cells
+    set __cu_inst_list {}
+    foreach __cu_inst $__cu_list {
+	set str [get_bd_cells -quiet -filter "VLNV=~*:*:${__cu_inst}:*"]
+	foreach name [split $str " "] {
+	    lappend __cu_inst_list $name
+	}
+    }
+
     set __cu_inst_addr_list {}
-    # Iterate over each kernel
-    foreach __k_inst $__k_list {
-      set __cu_bd_cell_list [get_bd_cells -quiet -filter "VLNV=~*:*:${__k_inst}:*"]
-      # Iterate over each compute unit for the current kernel
-      foreach __cu_bd_cell $__cu_bd_cell_list {
-        set __cu_bd_cell_sub [string range $__cu_bd_cell 1 [string length $__cu_bd_cell]]
-        set __cu_bd_cell_segs [get_bd_addr_segs -of_objects [get_bd_addr_spaces ps_e*] -filter "NAME =~ *${__cu_bd_cell_sub}_*"]
-        if {[llength ${__cu_bd_cell_segs}] > 0} {
-          set __cu_offset [get_property OFFSET [get_bd_addr_segs -of_objects [get_bd_addr_spaces ps_e*] -filter "NAME =~ *${__cu_bd_cell_sub}_*"]]
-          lappend __cu_inst_addr_list "$__cu_bd_cell $__cu_offset"
-        }
+    # Sort the list of CUs by offset address
+    foreach __cu_bd_cell $__cu_inst_list {
+      set __cu_bd_cell_sub [string range $__cu_bd_cell 1 [string length $__cu_bd_cell]]
+      set __cu_bd_cell_segs [get_bd_addr_segs -of_objects [get_bd_addr_spaces ps_*] -filter "NAME =~ *${__cu_bd_cell_sub}_*"]
+      if {[llength ${__cu_bd_cell_segs}] > 0} {
+        set __cu_offset [get_property OFFSET [get_bd_addr_segs -of_objects [get_bd_addr_spaces ps_*] -filter "NAME =~ *${__cu_bd_cell_sub}_*"]]
+        lappend __cu_inst_addr_list "$__cu_bd_cell $__cu_offset"
       }
     }
-    # Make sure the list of BD cells and their AXI-Lite address offsets is populated
+
     if {[llength $__cu_inst_addr_list] > 0} {
       # Order the list by increasing AXI-Lite address offsets, then extract just ordered BD cells
       set __cu_inst_list {}
@@ -123,10 +123,10 @@ if {[dict exists $config_info kernels]} {
       foreach __cu_pair $__cu_inst_addr_list_ordered {
         lappend __cu_inst_list [lindex $__cu_pair 0]
       }
+    }
 
-      # Insert interrupt controler and concat IPs
-      add_interrupt_ctrl_concat [llength $__cu_inst_list]
-
+    # Make sure the list of BD cells is populated
+    if {[llength $__cu_inst_list] > 0} {
       # Of the BD cells, iterate through those with an interrupt BD pin
       set __intr_pin_num 0
       foreach __cu_inst_intr $__cu_inst_list {
