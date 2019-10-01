@@ -861,6 +861,7 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "firewall", "detected_level",  errmsg, level );
         pcidev::get_dev(m_idx)->sysfs_get( "firewall", "detected_status", errmsg, status ); 
         sensor_tree::put( "board.error.firewall.firewall_level", level );
+        sensor_tree::put( "board.error.firewall.firewall_status", status );
         sensor_tree::put( "board.error.firewall.status",         parseFirewallStatus(status) );
         
         // memory
@@ -1093,7 +1094,8 @@ public:
         ostr << sensor_tree::get_pretty<unsigned>( "board.physical.power" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Firewall Last Error Status\n";
-        ostr << "Level " << std::setw(2) << sensor_tree::get( "board.error.firewall.firewall_level", -1 ) << ": 0x0"
+        ostr << "Level " << std::setw(2) << sensor_tree::get( "board.error.firewall.firewall_level", -1 ) << ": 0x"
+             << std::hex << sensor_tree::get( "board.error.firewall.firewall_status", -1 ) << std::dec
              << sensor_tree::get<std::string>( "board.error.firewall.status", "N/A" ) << std::endl;
         ostr << "ECC Error Status\n";
         ostr << std::left << std::setw(8) << "Tag" << std::setw(12) << "Errors"
