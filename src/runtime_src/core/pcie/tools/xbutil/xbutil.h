@@ -164,6 +164,7 @@ static std::string lvl2PowerStr(unsigned int lvl)
 class device {
     unsigned int m_idx;
     xclDeviceHandle m_handle;
+    std::string m_devicename;
 
     struct xclbin_lock
     {
@@ -206,14 +207,19 @@ public:
     int userFunc() {
         return pcidev::get_dev(m_idx)->func;
     }
-    device(unsigned int idx, const char* log) : m_idx(idx), m_handle(nullptr){
+    device(unsigned int idx, const char* log) : m_idx(idx), m_handle(nullptr), m_devicename(""){
         std::string devstr = "device[" + std::to_string(m_idx) + "]";
         m_handle = xclOpen(m_idx, nullptr, XCL_QUIET);
         if (!m_handle)
             throw std::runtime_error("Failed to open " + devstr);
+
+        std::string errmsg;
+        pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV", errmsg, m_devicename );
+        if(!errmsg.empty())
+            throw std::runtime_error("Failed to determine device name. ");
     }
 
-    device(device&& rhs) : m_idx(rhs.m_idx), m_handle(rhs.m_handle){
+    device(device&& rhs) : m_idx(rhs.m_idx), m_handle(rhs.m_handle), m_devicename(""){
     }
 
     device(const device &dev) = delete;
@@ -224,9 +230,7 @@ public:
     }
 
     std::string name() const {
-        static std::string name, errmsg;
-        pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV", errmsg, name );
-        return name;
+        return m_devicename;
     }
 
     void
