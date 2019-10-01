@@ -201,7 +201,29 @@ void get_session_cmd_load() {
       xma_logmsg(level, "XMA-Session-Load", "Session CU Command Relative Loads: ");
       for (auto& itr1: g_xma_singleton->all_sessions) {
          XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.second.hw_session.private_do_not_use;
-         xma_logmsg(level, "XMA-Session-Load", "Session id: %d, type: %d, load: %d", itr1.first, itr1.second.session_type, (uint32_t)priv1->cmd_load);
+            switch(itr1.second.session_type) {
+                case XMA_SCALER:
+                    xma_logmsg(level, "XMA-Session-Load", "Session id: %d, type: scaler, load: %d", itr1.first, (uint32_t)priv1->cmd_load);
+                    break;
+                case XMA_ENCODER:
+                    xma_logmsg(level, "XMA-Session-Load", "Session id: %d, type: encoder, load: %d", itr1.first, (uint32_t)priv1->cmd_load);
+                    break;
+                case XMA_DECODER:
+                    xma_logmsg(level, "XMA-Session-Load", "Session id: %d, type: decoder, load: %d", itr1.first, (uint32_t)priv1->cmd_load);
+                    break;
+                case XMA_FILTER:
+                    xma_logmsg(level, "XMA-Session-Load", "Session id: %d, type: filter, load: %d", itr1.first, (uint32_t)priv1->cmd_load);
+                    break;
+                case XMA_KERNEL:
+                    xma_logmsg(level, "XMA-Session-Load", "Session id: %d, type: kernel, load: %d", itr1.first, (uint32_t)priv1->cmd_load);
+                    break;
+                case XMA_ADMIN:
+                    xma_logmsg(level, "XMA-Session-Load", "Session id: %d, type: admin, load: %d", itr1.first, (uint32_t)priv1->cmd_load);
+                    break;
+                default :
+                    xma_logmsg(level, "XMA-Session-Load", "Session id: %d, type: invalid, load: %d", itr1.first, (uint32_t)priv1->cmd_load);
+                    break;
+            }
       }
       xma_logmsg(level, "XMA-Session-Load", "Num of Decoders: %d", (uint32_t)g_xma_singleton->num_decoders);
       xma_logmsg(level, "XMA-Session-Load", "Num of Scalers: %d", (uint32_t)g_xma_singleton->num_scalers);

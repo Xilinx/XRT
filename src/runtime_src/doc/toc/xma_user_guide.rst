@@ -519,4 +519,9 @@ For stateful/multi-channel kernels (eg decodre, encoder):
     - Use :ref:`xrt_ini.rst` settings (dataflow; kernel_channels) to enable dataflow kernel with channels
 
 Using DRM (Digital Right Management) IPs:
-    - TBD
+    - For register read/write use XRT APIs from libxrt_core
+    - Use APIs xclRead & xclWrite. APIs are depricated and will be removed in 2020.2 release
+    - xclRegRead/Write APIs may NOT work for DRM IPs depending on application setup/use-case
+    - Register read/write is discouraged
+    - DRM solution/setup without register read/write is preferred
+    - DRM solution/setup using standard XMA APis is preferred
