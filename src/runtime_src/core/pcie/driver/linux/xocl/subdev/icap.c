@@ -1337,6 +1337,12 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	ICAP_INFO(icap, "boot_firmware in axlf format");
 	bin_obj_axlf = (struct axlf *)fw->data;
 	length = bin_obj_axlf->m_header.m_length;
+
+	if (length > fw->size) {
+		err = -EINVAL;
+		goto done;
+	}
+
 	/* Match the xclbin with the hardware. */
 	if (!xocl_verify_timestamp(xdev,
 		bin_obj_axlf->m_header.m_featureRomTimeStamp)) {
@@ -1368,7 +1374,6 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 			load_mbs = true;
 			release_firmware(sche_fw);
 		} else {
-			bin_obj_axlf = (struct axlf *)fw->data;
 			mbHeader = get_axlf_section_hdr(icap, bin_obj_axlf,
 					SCHED_FIRMWARE);
 			if (mbHeader) {
@@ -1381,13 +1386,13 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 					"stashed mb sche binary, len %lld",
 					mbBinaryLength);
 				load_mbs = true;
+				err = 0;
 			}
 		}
 	}
 
 	if (xocl_mb_mgmt_on(xdev)) {
 		/* Try locating the board mgmt binary. */
-		bin_obj_axlf = (struct axlf *)fw->data;
 		mbHeader = get_axlf_section_hdr(icap, bin_obj_axlf, FIRMWARE);
 		if (mbHeader) {
 			mbBinaryOffset = mbHeader->m_sectionOffset;
@@ -1413,11 +1418,6 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	if (secondaryHeader) {
 		secondaryFirmwareOffset = secondaryHeader->m_sectionOffset;
 		secondaryFirmwareLength = secondaryHeader->m_sectionSize;
-	}
-
-	if (length > fw->size) {
-		err = -EINVAL;
-		goto done;
 	}
 
 	if ((primaryFirmwareOffset + primaryFirmwareLength) > length) {
