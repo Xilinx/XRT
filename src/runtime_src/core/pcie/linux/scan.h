@@ -75,8 +75,9 @@ public:
             i = static_cast<T>(default_val); // default value
     }
     void sysfs_get_sensor(const std::string& subdev, const std::string& entry,
-        std::string& err_msg, uint32_t& i) {
-        sysfs_get<uint32_t>(subdev, entry, err_msg, i, -1);
+        uint32_t& i) {
+        std::string err;
+        sysfs_get<uint32_t>(subdev, entry, err, i, 0);
     }
     void sysfs_put(const std::string& subdev, const std::string& entry,
         std::string& err_msg, const std::string& input);

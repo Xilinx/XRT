@@ -340,7 +340,7 @@ pcidev::pci_device::pci_device(const std::string& sysfs) : sysfs_name(sysfs)
     }
 
     // Determine if device is of supported vendor
-    sysfs_get("", "vendor", err, vendor, -1);
+    sysfs_get<uint16_t>("", "vendor", err, vendor, -1);
     if (!err.empty()) {
         std::cout << err << std::endl;
         return;

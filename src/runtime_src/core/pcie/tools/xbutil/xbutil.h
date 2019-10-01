@@ -714,10 +714,10 @@ public:
         // board info
         std::string name, vendor, device, subsystem, subvendor, xmc_ver,
             ser_num, bmc_ver, idcode, fpga, dna, errmsg, max_power;
-        int ddr_size = 0, ddr_count = 0, pcie_speed = 0, pcie_width = 0, p2p_enabled = 0;
+        int ddr_size = 0, ddr_count = 0, pcie_speed = 0, pcie_width = 0;
         std::vector<std::string> clock_freqs;
         std::vector<std::string> dma_threads;
-        bool mig_calibration;
+        bool mig_calibration, p2p_enabled;
         
         pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV",                    errmsg, name ); 
         pcidev::get_dev(m_idx)->sysfs_get( "", "vendor",                     errmsg, vendor );
@@ -738,7 +738,7 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "rom", "FPGA",                    errmsg, fpga );
         pcidev::get_dev(m_idx)->sysfs_get( "icap", "idcode",                 errmsg, idcode );
         pcidev::get_dev(m_idx)->sysfs_get( "dna", "dna",                     errmsg, dna );
-        pcidev::get_dev(m_idx)->sysfs_get<int>("", "p2p_enable",             errmsg, p2p_enabled, 0 );
+        pcidev::get_dev(m_idx)->sysfs_get<bool>("", "p2p_enable",            errmsg, p2p_enabled, false );
         sensor_tree::put( "board.info.dsa_name",       name );
         sensor_tree::put( "board.info.vendor",         vendor );
         sensor_tree::put( "board.info.device",         device );
@@ -764,9 +764,9 @@ public:
 
         // physical.thermal.pcb
         unsigned int xmc_se98_temp0, xmc_se98_temp1, xmc_se98_temp2;
-        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_se98_temp0", errmsg, xmc_se98_temp0 ); 
-        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_se98_temp1", errmsg, xmc_se98_temp1 );
-        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_se98_temp2", errmsg, xmc_se98_temp2 );
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_se98_temp0", xmc_se98_temp0 );
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_se98_temp1", xmc_se98_temp1 );
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_se98_temp2", xmc_se98_temp2 );
         sensor_tree::put( "board.physical.thermal.pcb.top_front", xmc_se98_temp0);
         sensor_tree::put( "board.physical.thermal.pcb.top_rear",  xmc_se98_temp1);
         sensor_tree::put( "board.physical.thermal.pcb.btm_front", xmc_se98_temp2);
@@ -775,10 +775,10 @@ public:
         unsigned int fan_rpm, xmc_fpga_temp, xmc_fan_temp;
         std::string fan_presence;
         
-        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_fpga_temp", errmsg, xmc_fpga_temp );
-        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_fan_temp",  errmsg, xmc_fan_temp );
-        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "fan_presence",                errmsg, fan_presence );
-        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_fan_rpm",   errmsg, fan_rpm );
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_fpga_temp", xmc_fpga_temp );
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_fan_temp",  xmc_fan_temp );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "fan_presence",         errmsg, fan_presence );
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_fan_rpm",   fan_rpm );
         sensor_tree::put( "board.physical.thermal.fpga_temp",    xmc_fpga_temp );
         sensor_tree::put( "board.physical.thermal.tcrit_temp",   xmc_fan_temp );
         sensor_tree::put( "board.physical.thermal.fan_presence", fan_presence );
@@ -786,10 +786,10 @@ public:
 
         // physical.thermal.cage
         unsigned int temp0, temp1, temp2, temp3;
-        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_cage_temp0", errmsg, temp0);
-        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_cage_temp1", errmsg, temp1);
-        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_cage_temp2", errmsg, temp2);
-        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_cage_temp3", errmsg, temp3);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_cage_temp0", temp0);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_cage_temp1", temp1);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_cage_temp2", temp2);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_cage_temp3", temp3);
         sensor_tree::put( "board.physical.thermal.cage.temp0", temp0);
         sensor_tree::put( "board.physical.thermal.cage.temp1", temp1);
         sensor_tree::put( "board.physical.thermal.cage.temp2", temp2);
@@ -799,54 +799,54 @@ public:
         unsigned int m3v3_pex_vol, m3v3_aux_vol, ddr_vpp_btm, ddr_vpp_top, sys_5v5, m1v2_top, m1v2_btm, m1v8, 
                      m0v85, mgt0v9avcc, m12v_sw, mgtavtt, vccint_vol, vccint_curr, m3v3_pex_curr, m0v85_curr, m3v3_vcc_vol, 
                      hbm_1v2_vol, vpp2v5_vol, vccint_bram_vol, m12v_pex_vol, m12v_aux_curr, m12v_pex_curr, m12v_aux_vol;
-        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_pex_vol",    errmsg, m12v_pex_vol);
-        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_pex_curr",   errmsg, m12v_pex_curr);
-        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_aux_vol",    errmsg, m12v_aux_vol);
-        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_aux_curr",   errmsg, m12v_aux_curr);
-        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_3v3_pex_vol",    errmsg, m3v3_pex_vol);
-        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_3v3_aux_vol",    errmsg, m3v3_aux_vol); 
-        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_ddr_vpp_btm",    errmsg, ddr_vpp_btm); 
-        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_ddr_vpp_top",    errmsg, ddr_vpp_top); 
-        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_sys_5v5",        errmsg, sys_5v5);
-        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_1v2_top",        errmsg, m1v2_top);
-        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_vcc1v2_btm",     errmsg, m1v2_btm);
-        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_1v8",            errmsg, m1v8);
-        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_0v85",           errmsg, m0v85);
-        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_mgt0v9avcc",     errmsg, mgt0v9avcc);
-        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_sw",         errmsg, m12v_sw);
-        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_mgtavtt",        errmsg, mgtavtt);
-        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_vccint_vol",     errmsg, vccint_vol);
-        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vccint_curr",     errmsg, vccint_curr);
-        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_3v3_pex_curr",    errmsg, m3v3_pex_curr);
-        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_0v85_curr",       errmsg, m0v85_curr);
-        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_3v3_vcc_vol",     errmsg, m3v3_vcc_vol);
-        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_hbm_1v2_vol",     errmsg, hbm_1v2_vol);
-        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vpp2v5_vol",      errmsg, vpp2v5_vol);
-        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vccint_bram_vol", errmsg, vccint_bram_vol);
-        sensor_tree::put( "board.physical.electrical.12v_pex.voltage",        m12v_pex_vol );
-        sensor_tree::put( "board.physical.electrical.12v_pex.current",        m12v_pex_curr );
-        sensor_tree::put( "board.physical.electrical.12v_aux.voltage",        m12v_aux_vol );
-        sensor_tree::put( "board.physical.electrical.12v_aux.current",        m12v_aux_curr );
-        sensor_tree::put( "board.physical.electrical.3v3_pex.voltage",        m3v3_pex_vol );
-        sensor_tree::put( "board.physical.electrical.3v3_aux.voltage",        m3v3_aux_vol );
-        sensor_tree::put( "board.physical.electrical.ddr_vpp_bottom.voltage", ddr_vpp_btm );
-        sensor_tree::put( "board.physical.electrical.ddr_vpp_top.voltage",    ddr_vpp_top );
-        sensor_tree::put( "board.physical.electrical.sys_5v5.voltage",        sys_5v5 );
-        sensor_tree::put( "board.physical.electrical.1v2_top.voltage",        m1v2_top );
-        sensor_tree::put( "board.physical.electrical.1v2_btm.voltage",        m1v2_btm );
-        sensor_tree::put( "board.physical.electrical.1v8.voltage",            m1v8 );
-        sensor_tree::put( "board.physical.electrical.0v85.voltage",           m0v85 );
-        sensor_tree::put( "board.physical.electrical.mgt_0v9.voltage",        mgt0v9avcc );
-        sensor_tree::put( "board.physical.electrical.12v_sw.voltage",         m12v_sw );
-        sensor_tree::put( "board.physical.electrical.mgt_vtt.voltage",        mgtavtt );
-        sensor_tree::put( "board.physical.electrical.vccint.voltage",         vccint_vol );
-        sensor_tree::put( "board.physical.electrical.vccint.current",         vccint_curr);
-        sensor_tree::put( "board.physical.electrical.3v3_pex.current",        m3v3_pex_curr);
-        sensor_tree::put( "board.physical.electrical.0v85.current",           m0v85_curr);
-        sensor_tree::put( "board.physical.electrical.vcc3v3.voltage",         m3v3_vcc_vol);
-        sensor_tree::put( "board.physical.electrical.hbm_1v2.voltage",        hbm_1v2_vol);
-        sensor_tree::put( "board.physical.electrical.vpp2v5.voltage",         vpp2v5_vol);
-        sensor_tree::put( "board.physical.electrical.vccint_bram.voltage",    vccint_bram_vol);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_pex_vol",    m12v_pex_vol);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_pex_curr",   m12v_pex_curr);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_aux_vol",    m12v_aux_vol);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_aux_curr",   m12v_aux_curr);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_3v3_pex_vol",    m3v3_pex_vol);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_3v3_aux_vol",    m3v3_aux_vol); 
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_ddr_vpp_btm",    ddr_vpp_btm);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_ddr_vpp_top",    ddr_vpp_top);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_sys_5v5",        sys_5v5);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_1v2_top",        m1v2_top);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_vcc1v2_btm",     m1v2_btm);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_1v8",            m1v8);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_0v85",           m0v85);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_mgt0v9avcc",     mgt0v9avcc);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_12v_sw",         m12v_sw);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_mgtavtt",        mgtavtt);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor( "xmc", "xmc_vccint_vol",     vccint_vol);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vccint_curr",     vccint_curr);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_3v3_pex_curr",    m3v3_pex_curr);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_0v85_curr",       m0v85_curr);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_3v3_vcc_vol",     m3v3_vcc_vol);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_hbm_1v2_vol",     hbm_1v2_vol);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vpp2v5_vol",      vpp2v5_vol);
+        pcidev::get_dev(m_idx)->sysfs_get_sensor("xmc", "xmc_vccint_bram_vol", vccint_bram_vol);
+        sensor_tree::put( "board.physical.electrical.12v_pex.voltage",         m12v_pex_vol );
+        sensor_tree::put( "board.physical.electrical.12v_pex.current",         m12v_pex_curr );
+        sensor_tree::put( "board.physical.electrical.12v_aux.voltage",         m12v_aux_vol );
+        sensor_tree::put( "board.physical.electrical.12v_aux.current",         m12v_aux_curr );
+        sensor_tree::put( "board.physical.electrical.3v3_pex.voltage",         m3v3_pex_vol );
+        sensor_tree::put( "board.physical.electrical.3v3_aux.voltage",         m3v3_aux_vol );
+        sensor_tree::put( "board.physical.electrical.ddr_vpp_bottom.voltage",  ddr_vpp_btm );
+        sensor_tree::put( "board.physical.electrical.ddr_vpp_top.voltage",     ddr_vpp_top );
+        sensor_tree::put( "board.physical.electrical.sys_5v5.voltage",         sys_5v5 );
+        sensor_tree::put( "board.physical.electrical.1v2_top.voltage",         m1v2_top );
+        sensor_tree::put( "board.physical.electrical.1v2_btm.voltage",         m1v2_btm );
+        sensor_tree::put( "board.physical.electrical.1v8.voltage",             m1v8 );
+        sensor_tree::put( "board.physical.electrical.0v85.voltage",            m0v85 );
+        sensor_tree::put( "board.physical.electrical.mgt_0v9.voltage",         mgt0v9avcc );
+        sensor_tree::put( "board.physical.electrical.12v_sw.voltage",          m12v_sw );
+        sensor_tree::put( "board.physical.electrical.mgt_vtt.voltage",         mgtavtt );
+        sensor_tree::put( "board.physical.electrical.vccint.voltage",          vccint_vol );
+        sensor_tree::put( "board.physical.electrical.vccint.current",          vccint_curr);
+        sensor_tree::put( "board.physical.electrical.3v3_pex.current",         m3v3_pex_curr);
+        sensor_tree::put( "board.physical.electrical.0v85.current",            m0v85_curr);
+        sensor_tree::put( "board.physical.electrical.vcc3v3.voltage",          m3v3_vcc_vol);
+        sensor_tree::put( "board.physical.electrical.hbm_1v2.voltage",         hbm_1v2_vol);
+        sensor_tree::put( "board.physical.electrical.vpp2v5.voltage",          vpp2v5_vol);
+        sensor_tree::put( "board.physical.electrical.vccint_bram.voltage",     vccint_bram_vol);
 
         // physical.power
         sensor_tree::put( "board.physical.power", static_cast<unsigned>(sysfs_power())); 
@@ -944,21 +944,8 @@ public:
              << std::setw(16) << "P2P Enabled" << std::endl;
         ostr << "GEN " << sensor_tree::get( "board.info.pcie_speed", -1 ) << "x" << std::setw(10) 
              << sensor_tree::get( "board.info.pcie_width", -1 ) << std::setw(16) << sensor_tree::get( "board.info.dma_threads", -1 )
-             << std::setw(16) << sensor_tree::get<std::string>( "board.info.mig_calibrated", "N/A" );
-        switch(sensor_tree::get( "board.info.p2p_enabled", -1)) {
-        case ENXIO:
-                 ostr << std::setw(16) << "N/A" << std::endl;
-             break;
-        case 0:
-                 ostr << std::setw(16) << "false" << std::endl;
-             break;
-        case 1:
-                 ostr << std::setw(16) << "true" << std::endl;
-             break;
-        case EBUSY:
-                 ostr << std::setw(16) << "no iomem" << std::endl;
-             break;
-        }
+             << std::setw(16) << sensor_tree::get<std::string>( "board.info.mig_calibrated", "N/A" ) 
+             << sensor_tree::get<std::string>( "board.info.p2p_enabled", "N/A") << std::endl;
 
 	std::vector<std::string> interface_uuids;
 	std::vector<std::string> logic_uuids;

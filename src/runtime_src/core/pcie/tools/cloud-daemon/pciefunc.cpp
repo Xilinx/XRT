@@ -84,7 +84,7 @@ bool pcieFunc::loadConf()
     std::vector<std::string> config;
     std::string err;
 
-    dev->sysfs_get("", "config_mailbox_channel_switch", err, chanSwitch, -1);
+    dev->sysfs_get("", "config_mailbox_channel_switch", err, chanSwitch, 0);
     if (!err.empty()) {
         log(LOG_ERR, "failed to get channel switch: %s", err.c_str());
         return false;
