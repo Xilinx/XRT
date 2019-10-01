@@ -104,7 +104,7 @@ UB_LIST=(\
      libboost-dev \
      libboost-filesystem-dev \
      libboost-program-options-dev \
-     libboost-iostreams \
+     libboost-iostreams-dev \
      libdrm-dev \
      libjpeg-dev \
      libgtest-dev \
