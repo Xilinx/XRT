@@ -1361,10 +1361,12 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 		err = request_firmware(&sche_fw, "xilinx/sched.bin",
 				&pcidev->dev);
 		if (!err)  {
-			xocl_mb_load_sche_image(xdev, fw->data, fw->size);
+			xocl_mb_load_sche_image(xdev, sche_fw->data,
+					sche_fw->size);
 			ICAP_INFO(icap, "stashed shared mb sche bin, len %ld",
-				fw->size);
+				sche_fw->size);
 			load_mbs = true;
+			release_firmware(sche_fw);
 		} else {
 			bin_obj_axlf = (struct axlf *)fw->data;
 			mbHeader = get_axlf_section_hdr(icap, bin_obj_axlf,
