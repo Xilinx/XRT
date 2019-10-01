@@ -110,29 +110,32 @@ if [ "$mpd_active" = "active" ]; then
     systemctl start mpd > /dev/null 2>&1
 fi
 
-#install pyopencl on centOS
+#install pyopencl
+#get major version of pyopencl
+version=$(python -m pip list 2>&1 | grep -Po '(?<=pyopencl )(.+)' | grep -Po '[0-9][0-9][0-9][0-9]')
 FLAVOR=`grep '^ID=' /etc/os-release | awk -F= '{print $2}'`
 FLAVOR=`echo $FLAVOR | tr -d '"'`
-if [ $FLAVOR = "centos" ] || [ $FLAVOR = "rhel" ] ; then
-    if python -c "import pyopencl" &> /dev/null; then
-        echo "Skipping pyopencl installation..."
-        exit 0
-    else
-        echo "Installing pyopencl..."
+
+if [ $version -lt 2019 ] || [ -n $version ]; then
+    echo "Installing pyopencl..."
+    #need to force install numpy version 1.8 for centos
+    if [ $FLAVOR = "centos" ] || [ $FLAVOR = "rhel" ] ; then
         pip install --upgrade setuptools
         pip install --ignore-installed numpy==1.8
-        pip install pyopencl
     fi
-
-    if python -c "import pyopencl" &> /dev/null; then
-        echo "Successfully installed pyopencl"
-    else
-        echo "***********************************************************************"
-        echo "* FAILED TO INSTALL PYOPENCL"
-        echo "*"
-        echo "* Please try to install pyopencl using the "
-        echo "* offical documentation: https://documen.tician.de/pyopencl/misc.html"
-        echo "***********************************************************************"
-    fi
+    pip install pyopencl
+else
+    echo "Skipping pyopencl installation..."
+    exit 0
+fi
+if python -c "import pyopencl" &> /dev/null; then
+    echo "Successfully installed pyopencl"
+else
+    echo "***********************************************************************"
+    echo "* FAILED TO INSTALL PYOPENCL"
+    echo "*"
+    echo "* Please try to install pyopencl using the "
+    echo "* offical documentation: https://documen.tician.de/pyopencl/misc.html"
+    echo "***********************************************************************"
 fi
 exit 0
