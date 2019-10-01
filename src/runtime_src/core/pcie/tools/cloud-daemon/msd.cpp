@@ -59,8 +59,8 @@ int remoteMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
 class Msd : public Common
 {
 public:
-    Msd(std::string name, std::string plugin_path) :
-        Common(name, plugin_path)
+    Msd(std::string name, std::string plugin_path, bool for_user) :
+        Common(name, plugin_path, for_user), plugin_init(nullptr), plugin_fini(nullptr)
     {
     }
 
@@ -383,8 +383,10 @@ void msd_thread(size_t index, std::string host)
 
 done:
     dev.updateConf("", 0, 0); // Restore default config.
-    close(mpdfd);
-    close(sockfd);
+    if (mpdfd >= 0)
+    	close(mpdfd);
+    if (sockfd >= 0)
+    	close(sockfd);
 }
 
 /*
@@ -405,7 +407,7 @@ int main(void)
     signal(SIGINT, signalHandler);
     signal(SIGTERM, signalHandler);
 
-    Msd msd("msd", plugin_path);
+    Msd msd("msd", plugin_path, false);
     msd.preStart();
     msd.start();
     msd.run();

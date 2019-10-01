@@ -68,7 +68,7 @@ int init(mpd_plugin_callbacks *cbs)
         // hook functions
         cbs->mpc_cookie = NULL;
         cbs->get_remote_msd_fd = get_remote_msd_fd;
-        cbs->load_xclbin = azureLoadXclBin;
+        cbs->mb_req.load_xclbin = azureLoadXclBin;
         ret = 0;
     }
     syslog(LOG_INFO, "azure mpd plugin init called: %d\n", ret);
@@ -88,16 +88,16 @@ void fini(void *mpc_cookie)
  * we are going to handle mailbox ourself, no comm channel is required.
  * so just return -1 to the fd
  * Input:
- *        d: dbdf of the user PF
+ *        index: index of the user PF
  * Output:
  *        fd: socket handle of the communication channel
  * Return value:
  *        0: success
  *        1: failure
  */
-int get_remote_msd_fd(size_t index, int& fd)
+int get_remote_msd_fd(size_t index, int* fd)
 {
-    fd = -1;
+    *fd = -1;
     return 0;
 }
 
@@ -108,15 +108,16 @@ int get_remote_msd_fd(size_t index, int& fd)
  *        index: index of the FPGA device
  *        xclbin: the fake xclbin file
  * Output:
- *        none    
+ *        resp: int as response msg    
  * Return value:
  *        0: success
  *        others: error code
  */
-int azureLoadXclBin(size_t index, const axlf *&xclbin)
+int azureLoadXclBin(size_t index, const axlf *xclbin, int *resp)
 {
     AzureDev d(index);
-    return d.azureLoadXclBin(xclbin);
+    *resp = d.azureLoadXclBin(xclbin);
+    return 0;
 }
 
 //azure specific parts 
@@ -143,7 +144,7 @@ static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *use
     return size * nmemb;
 }
 
-int AzureDev::azureLoadXclBin(const xclBin *&buffer)
+int AzureDev::azureLoadXclBin(const xclBin *buffer)
 {
     char *xclbininmemory = reinterpret_cast<char*> (const_cast<xclBin*> (buffer));
     if (memcmp(xclbininmemory, "xclbin2", 8) != 0)
