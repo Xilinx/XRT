@@ -105,6 +105,7 @@ void baseInit()
 
 void baseDump(std::ostream &ostr)
 {
+    std::ios::fmtflags f( ostr.flags() );
     ostr << std::left;
     ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
     ostr << "System Configuration"
@@ -126,6 +127,7 @@ void baseDump(std::ostream &ostr)
          << "\nXOCL:\t\t"       << sensor_tree::get<std::string>( "runtime.build.xocl", "N/A" )
          << "\nXCLMGMT:\t"      << sensor_tree::get<std::string>( "runtime.build.xclmgmt", "N/A" )
          << std::endl;
+    ostr.flags(f);
 }
 
 } // xcldev

@@ -64,7 +64,6 @@ public:
   unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
   unsigned int xclGetHostBO(uint64_t paddr, size_t size);
   void xclFreeBO(unsigned int boHandle);
-  int xclGetBOInfo(uint64_t handle);
   int xclWriteBO(unsigned int boHandle, const void *src, size_t size,
                  size_t seek);
   int xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip);
@@ -97,8 +96,6 @@ public:
                 size_t dst_offset, size_t src_offset);
 
   int xclGetDeviceInfo2(xclDeviceInfo2 *info);
-
-  void xclWriteHostEvent(xclPerfMonEventType type, xclPerfMonEventID id);
 
   bool isGood() const;
   static ZYNQShim *handleCheck(void *handle);

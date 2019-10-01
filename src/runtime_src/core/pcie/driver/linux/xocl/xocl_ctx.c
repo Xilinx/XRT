@@ -150,7 +150,7 @@ int xocl_drvinst_kill_proc(void *data)
 	mutex_unlock(&xocl_drvinst_lock);
 
 done:
-	xocl_err(drvinstp->dev, "return %d", ret);
+	xocl_info(drvinstp->dev, "return %d", ret);
 
 	return ret;
 }

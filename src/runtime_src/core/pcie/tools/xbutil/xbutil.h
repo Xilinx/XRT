@@ -26,6 +26,7 @@
 #include <iomanip>
 #include <sstream>
 #include <string>
+#include <boost/property_tree/json_parser.hpp>
 
 #include "xrt.h"
 #include "xclperf.h"
@@ -53,6 +54,7 @@ int xclUpdateSchedulerStat(xclDeviceHandle); // exposed by shim
 #define XCL_NO_SENSOR_DEV_S     0xffff
 #define XCL_INVALID_SENSOR_VAL 0
 
+#define indent(level)   std::string((level) * 4, ' ')
 /*
  * Simple command line tool to query and interact with SDx PCIe devices
  * The tool statically links with xcldma HAL driver inorder to avoid
@@ -605,22 +607,16 @@ public:
         const mem_topology *map = (mem_topology *)buf.data();
         unsigned numDDR = 0;
 
-        if(!buf.empty())
-            numDDR = map->m_count;
-
-        if(numDDR == 0) {
-            ss << "-- none found --. See 'xbutil program'.\n";
-        } else if(numDDR < 0) {
-            ss << "WARNING: 'mem_topology' invalid, unable to report topology. "
-                << "Has the bitstream been loaded? See 'xbutil program'.";
-            lines.push_back(ss.str());
+        if(buf.empty() || map->m_count == 0) {
             return;
         } else {
-            ss << std::setw(16) << "Tag"  << std::setw(12) << "Type"
-                << std::setw(12) << "Temp" << std::setw(8) << "Size";
-            ss << std::setw(16) << "Mem Usage" << std::setw(8) << "BO nums"
-                << "\n";
+            numDDR = map->m_count;
         }
+
+        ss << std::setw(16) << "Tag"  << std::setw(12) << "Type"
+           << std::setw(12) << "Temp" << std::setw(8) << "Size";
+        ss << std::setw(16) << "Mem Usage" << std::setw(8) << "BO nums"
+           << "\n";
 
         pcidev::get_dev(m_idx)->sysfs_get("", "memstat_raw", errmsg, mm_buf);
         if(mm_buf.empty())
@@ -702,8 +698,11 @@ public:
         if (custat.size())
           ss << "\nCompute Unit Usage:" << "\n";
 
-        for (auto& line : custat)
-          ss << line.substr(0,line.find(" status :")) << "\n";
+        for (auto& line : custat) {
+          auto pos = line.find(" status :");
+          if (pos != std::string::npos)
+            ss << line.substr(0,line.find(" status :")) << "\n";
+        }
 
         ss << std::setw(80) << std::setfill('#') << std::left << "\n";
         lines.push_back(ss.str());
@@ -746,7 +745,7 @@ public:
         sensor_tree::put( "board.info.subvendor",      subvendor );
         sensor_tree::put( "board.info.xmcversion",     xmc_ver );
         sensor_tree::put( "board.info.serial_number",  ser_num );
-        sensor_tree::put( "board.info.max_power",      lvl2PowerStr(stoi(max_power)) );
+        sensor_tree::put( "board.info.max_power",      lvl2PowerStr(max_power.empty() ? UINT_MAX : stoi(max_power)) );
         sensor_tree::put( "board.info.sc_version",     bmc_ver );
         sensor_tree::put( "board.info.ddr_size",       GB(ddr_size)*ddr_count );
         sensor_tree::put( "board.info.ddr_count",      ddr_count );
@@ -912,6 +911,45 @@ public:
         return 0;
     }
 
+    void printTree (std::ostream& ostr, boost::property_tree::ptree &pt, int level) const
+    {
+        if (pt.empty()) {
+            ostr << ": " << pt.data() << std::endl;
+        } else {
+            if (level > 0)
+                ostr << std::endl; 
+            for (auto pos = pt.begin(); pos != pt.end();) {
+                std::cout << indent(level+1) << pos->first;
+                printTree(ostr, pos->second, level + 1);
+                ++pos;
+            }
+        }
+        return;
+    }
+
+    int dumpPartitionInfo(std::ostream& ostr) const
+    {
+        std::vector<std::string> partinfo;
+        pcidev::get_dev(m_idx)->get_partinfo(partinfo);
+
+        for (unsigned int i = 0; i < partinfo.size(); i++)
+        {
+            auto info = partinfo[i];
+            if (info.empty())
+                continue;
+            boost::property_tree::ptree ptInfo;
+            std::istringstream is(info);
+            boost::property_tree::read_json(is, ptInfo);
+            ostr << "Partition Info:" << std::endl;
+            printTree(ostr, ptInfo, 0);
+            if (i != partinfo.size() - 1)
+                ostr << std::endl;
+        }
+	if (partinfo.size())
+            ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        return 0;
+    }
+
     /*
      * dump
      *
@@ -919,6 +957,8 @@ public:
      */
     int dump(std::ostream& ostr) const {
         readSensors();
+        std::ios::fmtflags f( ostr.flags() );
+        ostr << std::left << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << std::setw(32) << "Shell" << std::setw(32) << "FPGA" << "IDCode" << std::endl;
         ostr << std::setw(32) << sensor_tree::get<std::string>( "board.info.dsa_name",  "N/A" )
@@ -1045,8 +1085,8 @@ public:
             int index = std::stoi(v.first);
             if( index >= 0 ) {
               std::string tag, st;
-              unsigned int ce_cnt, ue_cnt;
-              uint64_t ce_ffa, ue_ffa;
+              unsigned int ce_cnt = 0, ue_cnt = 0;
+              uint64_t ce_ffa = 0, ue_ffa = 0;
               for (auto& subv : v.second) {
                   if( subv.first == "tag" ) {
                       tag = subv.second.get_value<std::string>();
@@ -1221,6 +1261,8 @@ public:
             // eat the exception, probably bad path
         }
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        dumpPartitionInfo(ostr);
+        ostr.flags(f);
         return 0;
     }
 
@@ -1681,6 +1723,7 @@ private:
     int dmaXbtest(void);
 
     int pcieLinkTest(void);
+    int auxConnectionTest(void);
     int verifyKernelTest(void);
     int bandwidthKernelTest(void);
     // testFunc must return 0 for success, 1 for warning, and < 0 for error

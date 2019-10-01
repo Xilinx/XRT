@@ -73,6 +73,11 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
     }
+    if (s_handle.hw_session.bank_index < 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc can not be used for this XMASession as kernel not connected to any DDR\n");
+        if (return_code) *return_code = XMA_ERROR;
+        return b_obj_error;
+    }
 
     /*
     #define XRT_BO_FLAGS_MEMIDX_MASK        (0xFFFFFFUL)
@@ -643,22 +648,25 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
 
     bool found = false;
     while(!found) {
-        dev_tmp1->cu_cmd_id++;
-        uint32_t tmp_int1 = dev_tmp1->cu_cmd_id;
+        dev_tmp1->cu_cmd_id1++;
+        uint32_t tmp_int1 = dev_tmp1->cu_cmd_id1;
         if (tmp_int1 == 0) {
             tmp_int1 = 1;
-            dev_tmp1->cu_cmd_id = tmp_int1;
+            dev_tmp1->cu_cmd_id1 = tmp_int1;
             //Change seed of random_generator
             std::random_device rd;
             uint32_t tmp_int = time(0);
             std::seed_seq seed_seq{rd(), tmp_int};
             dev_tmp1->mt_gen = std::mt19937(seed_seq);
+            dev_tmp1->cu_cmd_id2 = dev_tmp1->rnd_dis(dev_tmp1->mt_gen);
+        } else {
+            dev_tmp1->cu_cmd_id2++;
         }
         auto itr_tmp1 = priv1->CU_cmds.emplace(tmp_int1, XmaCUCmdObjPrivate{});
         if (itr_tmp1.second) {//It is newly inserted item;
             found = true;
             cmd_obj.cmd_id1 = tmp_int1;
-            cmd_obj.cmd_id2 = dev_tmp1->rnd_dis(dev_tmp1->mt_gen);
+            cmd_obj.cmd_id2 = dev_tmp1->cu_cmd_id2;
             itr_tmp1.first->second.cmd_id2 = cmd_obj.cmd_id2;
             itr_tmp1.first->second.cu_id = cmd_obj.cu_index;
             itr_tmp1.first->second.execbo_id = bo_idx;
@@ -824,22 +832,25 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
 
     bool found = false;
     while(!found) {
-        dev_tmp1->cu_cmd_id++;
-        uint32_t tmp_int1 = dev_tmp1->cu_cmd_id;
+        dev_tmp1->cu_cmd_id1++;
+        uint32_t tmp_int1 = dev_tmp1->cu_cmd_id1;
         if (tmp_int1 == 0) {
             tmp_int1 = 1;
-            dev_tmp1->cu_cmd_id = tmp_int1;
+            dev_tmp1->cu_cmd_id1 = tmp_int1;
             //Change seed of random_generator
             std::random_device rd;
             uint32_t tmp_int = time(0);
             std::seed_seq seed_seq{rd(), tmp_int};
             dev_tmp1->mt_gen = std::mt19937(seed_seq);
+            dev_tmp1->cu_cmd_id2 = dev_tmp1->rnd_dis(dev_tmp1->mt_gen);
+        } else {
+            dev_tmp1->cu_cmd_id2++;
         }
         auto itr_tmp1 = priv1->CU_cmds.emplace(tmp_int1, XmaCUCmdObjPrivate{});
         if (itr_tmp1.second) {//It is newly inserted item;
             found = true;
             cmd_obj.cmd_id1 = tmp_int1;
-            cmd_obj.cmd_id2 = dev_tmp1->rnd_dis(dev_tmp1->mt_gen);
+            cmd_obj.cmd_id2 = dev_tmp1->cu_cmd_id2;
             itr_tmp1.first->second.cmd_id2 = cmd_obj.cmd_id2;
             itr_tmp1.first->second.cu_id = cmd_obj.cu_index;
             itr_tmp1.first->second.execbo_id = bo_idx;

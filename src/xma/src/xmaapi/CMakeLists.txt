@@ -20,27 +20,27 @@ if(NOT XML2_LIB_INCLUDE)
   MESSAGE("xml2 include path: ${XML2_LIB_INCLUDE}")
 endif()
 
-add_library(xmaapi SHARED ${XMA_API_ALL_SRC})
-target_include_directories(xmaapi PRIVATE
+add_library(xma2api SHARED ${XMA_API_ALL_SRC})
+target_include_directories(xma2api PRIVATE
   "${OPENCL_INCLUDEDIR}"
   "${XML2_LIB_INCLUDE}")
 #  "/usr/include/libxml2"
 
-set_target_properties(xmaapi PROPERTIES VERSION ${XMA_VERSION_STRING}
+set_target_properties(xma2api PROPERTIES VERSION ${XMA_VERSION_STRING}
   SOVERSION ${XMA_SOVERSION})
 
 #target_link_libraries(xmaapi "${XML2_LIB}")
 #removed xrt_core lib as name is different for aws and xbb
-target_link_libraries(xmaapi
+target_link_libraries(xma2api
   m
   dl
   gcc_s
   stdc++
   xml2
-  yaml
   )
+  #yaml
 
-install(TARGETS xmaapi LIBRARY DESTINATION ${XMA_INSTALL_DIR}/lib)
+install(TARGETS xma2api LIBRARY DESTINATION ${XMA_INSTALL_DIR}/lib)
 
 #CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/libxmaapi.pc.in ${CMAKE_CURRENT_SOURCE_DIR}/libxmaapi.pc @ONLY)
 #install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/libxmaapi.pc DESTINATION ${XMA_INSTALL_DIR}/lib/pkgconfig)

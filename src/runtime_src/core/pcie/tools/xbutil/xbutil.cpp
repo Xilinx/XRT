@@ -104,7 +104,7 @@ static void print_pci_info(std::ostream &ostr)
             ostr << " ";
         else
             ostr << "*";
-        ostr << "[" << j << "]:" << dev << std::endl;
+        ostr << "[" << j << "] " << dev << std::endl;
     }
 
     if (pcidev::get_dev_total() != pcidev::get_dev_ready()) {
@@ -677,7 +677,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  query   [-d card [-r region]]\n";
     std::cout << "  status [-d card] [--debug_ip_name]\n";
     std::cout << "  scan\n";
-    std::cout << "  top [-i seconds]\n";
+    std::cout << "  top [-d card] [-i seconds]\n";
     std::cout << "  validate [-d card]\n";
     std::cout << "  reset  [-d card]\n";
     std::cout << " Requires root privileges:\n";
@@ -918,44 +918,76 @@ void testCaseProgressReporter(bool *quit)
     }
 }
 
+inline const char* value_or_empty(const char* value)
+{
+    return value ? value : "";
+}
+
+static void set_shell_path_env(const std::string& var_name,
+    const std::string& trailing_path, int overwrite)
+{
+    std::string xrt_path(getenv("XILINX_XRT"));
+    std::string new_path = std::string(value_or_empty(getenv(var_name.c_str())));
+    xrt_path += trailing_path + ":";
+    new_path = xrt_path + new_path;
+    setenv(var_name.c_str(), new_path.c_str(), overwrite);
+}
+
 int runShellCmd(const std::string& cmd, std::string& output)
 {
     int ret = 0;
     bool quit = false;
 
-    // Kick off progress reporter
-    std::thread t(testCaseProgressReporter, &quit);
-
-    // Run test case
+    // Fix environment variables before running test case
     setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
-    setenv("PYTHONPATH", "/opt/xilinx/xrt/python", 0);
-    setenv("LD_LIBRARY_PATH", "/opt/xilinx/xrt/lib", 1);
+    set_shell_path_env("PYTHONPATH", "/python", 0);
+    set_shell_path_env("LD_LIBRARY_PATH", "/lib", 1);
+    set_shell_path_env("PATH", "/bin", 1);
     unsetenv("XCL_EMULATION_MODE");
 
     int stderr_fds[2];
     if (pipe(stderr_fds)== -1) {
         perror("ERROR: Unable to create pipe");
-        ret = -EINVAL;
+        return -errno;
     }
 
-    close(stderr_fds[0]);
-    dup2(stderr_fds[1], 2);
-    std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
-    close(stderr_fds[1]);
+    // Save stderr
+    int stderr_save = dup(STDERR_FILENO);
+    if (stderr_save == -1) {
+        perror("ERROR: Unable to duplicate stderr");
+        return -errno;
+    }
 
-    if (pipe == nullptr) {
+    // Kick off progress reporter
+    std::thread t(testCaseProgressReporter, &quit);
+
+    // Close existing stderr and set it to be the write end of the pipe.
+    // After fork below, our child process's stderr will point to the same fd.
+    dup2(stderr_fds[1], STDERR_FILENO);
+    close(stderr_fds[1]);
+    std::shared_ptr<FILE> stderr_child(fdopen(stderr_fds[0], "r"), fclose);
+    std::shared_ptr<FILE> stdout_child(popen(cmd.c_str(), "r"), pclose);
+    // Restore our normal stderr
+    dup2(stderr_save, STDERR_FILENO);
+    close(stderr_save);
+
+    if (stdout_child == nullptr) {
         std::cout << "ERROR: Failed to run " << cmd << std::endl;
         ret = -EINVAL;
     }
 
-    // Read all output
-    char buf[256];
-    while (ret == 0 && !feof(pipe.get())) {
-        if (fgets(buf, sizeof (buf), pipe.get()) != nullptr) {
+    // Read child's stdout and stderr without parsing the content
+    char buf[1024];
+    while (ret == 0 && !feof(stdout_child.get())) {
+        if (fgets(buf, sizeof (buf), stdout_child.get()) != nullptr) {
             output += buf;
         }
     }
-    close(stderr_fds[0]);
+    while (ret == 0 && stderr_child && !feof(stderr_child.get())) {
+        if (fgets(buf, sizeof (buf), stderr_child.get()) != nullptr) {
+            output += buf;
+        }
+    }
 
     // Stop progress reporter
     quit = true;
@@ -994,7 +1026,7 @@ int searchXsaAndDsa(int index, std::string xsaPath, std::string
         boost::filesystem::path formatted_fw_dir(FORMATTED_FW_DIR);
         std::vector<std::string> suffix = { "dsabin", "xsabin" };
         for (std::string t : suffix) {
-            std::regex e("(^" FORMATTED_FW_DIR "/" hex_digit "-" hex_digit "-" hex_digit "/.+/.+/.+/)(" hex_digit ")\\." + t);
+            std::regex e("(^" FORMATTED_FW_DIR "/.+/.+/.+/).+/(" hex_digit ")\\." + t);
             for (boost::filesystem::recursive_directory_iterator iter(formatted_fw_dir, boost::filesystem::symlink_option::recurse), end;
                 iter != end;
             )
@@ -1193,6 +1225,40 @@ int xcldev::device::pcieLinkTest(void)
     return 0;
 }
 
+int xcldev::device::auxConnectionTest(void) 
+{
+    std::string name, errmsg;
+    unsigned short max_power = 0;
+    std::vector<std::string> auxPwrRequiredBoard =
+        { "VCU1525", "U200", "U250", "U280" };
+    bool auxBoard = false;
+
+    if (!errmsg.empty()) {
+        std::cout << errmsg << std::endl;
+        return -EINVAL;
+    }
+
+    pcidev::get_dev(m_idx)->sysfs_get("xmc", "bd_name", errmsg, name);
+    pcidev::get_dev(m_idx)->sysfs_get("xmc", "max_power",  errmsg, max_power);
+
+    if (!name.empty()) {
+        for (auto bd : auxPwrRequiredBoard) {
+            if (bd.find(name) != std::string::npos) {
+                auxBoard = true;
+                break;
+            }
+        }
+    }
+
+    //check aux cable if board u200, u250, u280
+    if(auxBoard && max_power == 0) {
+        std::cout << "AUX POWER NOT CONNECTED, ATTENTION" << std::endl;
+        std::cout << "Board not stable for heavy acceleration tasks." << std::endl;
+        return 1;
+    }
+    return 0;
+}
+
 int xcldev::device::bandwidthKernelXbtest(void)
 {
     std::string output;
@@ -1328,6 +1394,12 @@ int xcldev::device::validate(bool quick)
 {
     bool withWarning = false;
     int retVal = 0;
+
+    retVal = runOneTest("AUX power connector check",
+            std::bind(&xcldev::device::auxConnectionTest, this));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
 
     // Check pcie training
     retVal = runOneTest("PCIE link check",

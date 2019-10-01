@@ -385,7 +385,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 
 	BO_ENTER("xobj %p, mm_node %p", xobj, xobj->mm_node);
 	if (IS_ERR(xobj)) {
-		DRM_DEBUG("object creation failed\n");
+		DRM_ERROR("object creation failed\n");
 		return PTR_ERR(xobj);
 	}
 
@@ -424,6 +424,13 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 			goto out_free;
 		}
 		if (xobj->flags & XOCL_HOST_MEM) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0)
+			if (xobj->base.size >= GB(4)) {
+				DRM_ERROR("Due to the limits of Linux Kernel API, xrt does not support buffer >= 4G\n");
+				ret = -EINVAL;
+				goto out_free;
+			}
+#endif
 			xobj->vmapping = vmap(xobj->pages, xobj->base.size >> PAGE_SHIFT, VM_MAP, PAGE_KERNEL);
 			if (!xobj->vmapping) {
 				ret = -ENOMEM;
@@ -452,7 +459,7 @@ int xocl_userptr_bo_ioctl(struct drm_device *dev,
 {
 	int ret;
 	struct drm_xocl_bo *xobj;
-	unsigned int page_count;
+	uint64_t page_count;
 	struct drm_xocl_userptr_bo *args = data;
 	unsigned user_flags = args->flags;
 
@@ -463,7 +470,7 @@ int xocl_userptr_bo_ioctl(struct drm_device *dev,
 	BO_ENTER("xobj %p", xobj);
 
 	if (IS_ERR(xobj)) {
-		DRM_DEBUG("object creation failed\n");
+		DRM_ERROR("object creation failed\n");
 		return PTR_ERR(xobj);
 	}
 
@@ -475,10 +482,12 @@ int xocl_userptr_bo_ioctl(struct drm_device *dev,
 		ret = -ENOMEM;
 		goto out1;
 	}
-	ret = get_user_pages_fast(args->addr, page_count, 1, xobj->pages);
 
-	if (ret != page_count)
+	ret = get_user_pages_fast(args->addr, page_count, 1, xobj->pages);
+	if (ret != page_count) {
+		ret = -ENOMEM;
 		goto out0;
+	}
 
 	xobj->sgt = alloc_onetime_sg_table(xobj->pages, 0, page_count << PAGE_SHIFT);
 	if (IS_ERR(xobj->sgt)) {
@@ -507,7 +516,7 @@ out0:
 	xobj->pages = NULL;
 out1:
 	xocl_free_bo(&xobj->base);
-	DRM_DEBUG("handle creation failed\n");
+	DRM_ERROR("handle creation failed\n");
 	return ret;
 }
 
@@ -568,7 +577,7 @@ int xocl_sync_bo_ioctl(struct drm_device *dev,
 	sgt = xobj->sgt;
 
 	if (!xocl_bo_sync_able(xobj->flags)) {
-		DRM_DEBUG("This BO doesn't support sync_bo\n");
+		DRM_ERROR("This BO doesn't support sync_bo\n");
 		ret = -EOPNOTSUPP;
 		goto out;
 	}
@@ -665,7 +674,7 @@ static int xocl_migrate_unmgd(struct xocl_dev *xdev, uint64_t data_ptr, uint64_t
 	int channel;
 	struct drm_xocl_unmgd unmgd;
 	int ret;
-	size_t migrated;
+	ssize_t migrated;
 
 	ret = xocl_init_unmgd(&unmgd, data_ptr, size, dir);
 	if (ret) {
@@ -966,7 +975,7 @@ struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
 	BO_ENTER("xobj %p", importing_xobj);
 
 	if (IS_ERR(importing_xobj)) {
-		DRM_DEBUG("object creation failed\n");
+		DRM_ERROR("object creation failed\n");
 		return (struct drm_gem_object *)importing_xobj;
 	}
 
@@ -1134,8 +1143,8 @@ int xocl_pwrite_unmgd_ioctl(struct drm_device *dev, void *data,
 		/* currently we are not able to return error because
 		 * it is unclear that what addresses are valid other than
 		 * ddr area. we should revisit this sometime.
-		 * return -EINVAL;
 		 */
+		return -EINVAL;
 	}
 
 	ret = xocl_migrate_unmgd(xdev, args->data_ptr, args->paddr, args->size, 1);

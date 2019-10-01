@@ -430,13 +430,18 @@ uint64_t get_ts2mm_buf_size() {
       }
     } catch (const std::exception& ex) {
       // User specified number cannot be parsed
+      xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_BUFSIZE_DEF);
     }
+  } else {
+    xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_BUFSIZE_DEF);
   }
   if (bytes > TS2MM_MAX_BUF_SIZE) {
     bytes = TS2MM_MAX_BUF_SIZE;
+    xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_BUFSIZE_BIG);
   }
   if (bytes < TS2MM_MIN_BUF_SIZE) {
     bytes = TS2MM_MIN_BUF_SIZE;
+    xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_BUFSIZE_SMALL);
   }
   return bytes;
 }
@@ -777,6 +782,26 @@ isAPCtrlChain(key k, const std::string& cu)
       return true;
   }
   return false;
+}
+
+/*
+ * Return Memory size from index in xclbin mem topology
+ */
+uint64_t
+getMemSizeBytes(key k, int idx)
+{
+  auto device = k;
+  if (!device)
+    return false;
+  auto xclbin = device->get_xclbin();
+  auto binary = xclbin.binary();
+  auto binary_data = binary.binary_data();
+  auto header = reinterpret_cast<const xclBin *>(binary_data.first);
+  auto mem_topology = getAxlfSection<const ::mem_topology>(header, axlf_section_kind::MEM_TOPOLOGY);
+  if (mem_topology && idx < mem_topology->m_count) {
+    return mem_topology->m_mem_data[idx].m_size * 1024;
+  }
+  return 0;
 }
 
 data*

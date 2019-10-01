@@ -89,7 +89,7 @@ static int user_intr_unreg(struct platform_device *pdev, u32 intr)
 	struct xocl_mgmt_msix *mgmt_msix;
 	struct xocl_dev_core *core;
 	u32 vec;
-	int ret;
+	int ret = 0;
 
 	mgmt_msix = platform_get_drvdata(pdev);
 
@@ -212,7 +212,7 @@ static int mgmt_msix_probe(struct platform_device *pdev)
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
-		xocl_err(&pdev->dev,
+		xocl_info(&pdev->dev,
 			"legacy platform, identify intr bar by size");
 		bar = identify_intr_bar(mgmt_msix);
 		if (bar < 0) {

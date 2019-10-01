@@ -42,9 +42,9 @@
 static bool quit = false;
 static const std::string configFile("/etc/msd.conf");
 // We'd like to only handle below request through daemons.
-static uint64_t chanSwitch = (1UL<<MAILBOX_REQ_TEST_READY) |
-                      (1UL<<MAILBOX_REQ_TEST_READ)  |
-                      (1UL<<MAILBOX_REQ_LOAD_XCLBIN);
+static uint64_t chanSwitch = (1UL<<XCL_MAILBOX_REQ_TEST_READY) |
+                      (1UL<<XCL_MAILBOX_REQ_TEST_READ)  |
+                      (1UL<<XCL_MAILBOX_REQ_LOAD_XCLBIN);
 static struct msd_plugin_callbacks plugin_cbs;
 static const std::string plugin_path("/opt/xilinx/xrt/lib/libmsd_plugin.so");
 
@@ -265,15 +265,15 @@ int remoteMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
     std::unique_ptr<sw_msg>& processed)
 {
     int pass = FOR_LOCAL;
-    mailbox_req *req = reinterpret_cast<mailbox_req *>(orig->payloadData());
-    if (orig->payloadSize() < sizeof(mailbox_req)) {
+    xcl_mailbox_req *req = reinterpret_cast<xcl_mailbox_req *>(orig->payloadData());
+    if (orig->payloadSize() < sizeof(xcl_mailbox_req)) {
         dev.log(LOG_ERR, "peer request dropped, wrong size");
         return -EINVAL;
     }
-    size_t reqSize = orig->payloadSize() - sizeof(mailbox_req);
+    size_t reqSize = orig->payloadSize() - sizeof(xcl_mailbox_req);
     
     switch (req->req) {
-    case MAILBOX_REQ_LOAD_XCLBIN: {
+    case XCL_MAILBOX_REQ_LOAD_XCLBIN: {
         axlf *xclbin = reinterpret_cast<axlf *>(req->data);
         if (reqSize < sizeof(*xclbin)) {
             dev.log(LOG_ERR, "peer request dropped, wrong size");
@@ -290,7 +290,7 @@ int remoteMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
         int ret = download_xclbin(dev, req->data);
         dev.log(LOG_INFO, "xclbin download, ret=%d", ret);
         processed = std::make_unique<sw_msg>(&ret, sizeof(ret), orig->id(),
-            MB_REQ_FLAG_RESPONSE);
+            XCL_MB_REQ_FLAG_RESPONSE);
         pass = FOR_REMOTE;
         break;
     }

@@ -1,15 +1,15 @@
 .. _xrt_ini.rst:
 
-xrt.ini Configuration File
---------------------------
+Configuration File xrt.ini
+**************************
 
-XRT uses various parameters to control execution flow, debug, profiling, and message logging during host application and kernel execution in software emulation, hardware emulation, and system run on the acceleration board. These control parameters are specified in a runtime initialization file ``xrt.ini``
+XRT uses various parameters to control execution flow, debug, profiling, and message logging during host application and kernel execution in software emulation, hardware emulation, and system run on the acceleration board. These control parameters are optionally specified in a runtime initialization file **xrt.ini**
 
-The location of the file can be specified by defining the environment variable ``XRT_INI_PATH`` with the path of the directory in which the file exists. By default the tools check ``XRT_INI_PATH``, host executable path, and current directory for xrt.ini file in that order. If it does not exist, it returns an empty string.
+XRT looks for xrt.ini in host executable path and current directory in that order. It stops search when an xrt.ini is found. If xrt.ini is not found, XRT built-in defaults are used as described in the table below.
 
 Runtime Initialization File Format
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-The runtime initialization file is a text file with groups of keys and their values. Any line beginning with a semicolon (;) or a hash (#) is a comment. The group names, keys, and key values are all case sensitive.
+The runtime initialization file is a text file with groups of keys and their values. Any line beginning with a semicolon (**;**) or a hash (**#**) is a comment. The group names, keys, and key values are all case in-sensitive.
 
 There are three group of keys as below
 
@@ -90,9 +90,9 @@ Debug Group
 |                      |                              |                                                      |
 |                      |                              |Default: false                                        |
 +----------------------+------------------------------+------------------------------------------------------+
-| data_transfer_trace  |  [course|fine|off]           |Enable device-level AXI transfers trace:              |
+| data_transfer_trace  |  [coarse|fine|off]           |Enable device-level AXI transfers trace:              |
 |                      |                              |                                                      |
-|                      |                              |     - course: Shows CU transfer activity             |
+|                      |                              |     - coarse: Shows CU transfer activity             |
 |                      |                              |     - fine: Shows all AXI level burst data transfer  |
 |                      |                              |     - off: Does not show device-level AXI transfer   |
 |                      |                              |                                                      |
@@ -121,7 +121,11 @@ Debug Group
 |                      |                              |     - N: Integer                                     |
 |                      |                              |     - K|M|G: Units Kilobyte or Megabyte or Gigabyte  |
 |                      |                              |                                                      |
-|                      |                              |Note: If no unit is given byte is assumed             |
+|                      |                              |Note:                                                 |
+|                      |                              |                                                      |
+|                      |                              |   - This option only applicable in hardware flow     |
+|                      |                              |   - If no unit is given byte is assumed              |
+|                      |                              |                                                      |
 |                      |                              |Example: trace_buffer_size=100M                       |
 |                      |                              |                                                      |
 |                      |                              |Default: 1M                                           |
@@ -141,9 +145,10 @@ Emulation Group
 |                           |                            |Default:300                                        |
 +---------------------------+----------------------------+---------------------------------------------------+
 | print_infos_in_console    |  [true|false]              |Controls the printing of emulation info messages   |
-|                           |                            |to users console. Emulation info messages are      |
-|                           |                            |always logged into a file called                   |
-|                           |                            |emulation_debug.log                                |
+|                           |                            |to users console.                                  |
+|                           |                            |                                                   |
+|                           |                            |  Emulation info messages are always logged into a |
+|                           |                            |  file called emulation_debug.log                  |
 |                           |                            |                                                   |
 |                           |                            |     - true = print in users console               |
 |                           |                            |     - false = do not print in user console        |
@@ -151,9 +156,10 @@ Emulation Group
 |                           |                            |Default: true                                      |
 +---------------------------+----------------------------+---------------------------------------------------+
 | print_warning_in_console  |  [true|false]              |Controls the printing of emulation warning messages|
-|                           |                            |to users console. Emulation warning messages are   |
-|                           |                            |always logged into a file called                   |
-|                           |                            |emulation_debug.log                                |
+|                           |                            |to users console.                                  |
+|                           |                            |                                                   |
+|                           |                            | Emulation warning messages are always logged into | 
+|                           |                            | a file called emulation_debug.log                 |
 |                           |                            |                                                   |
 |                           |                            |     - true = print in users console               |
 |                           |                            |     - false = do not print in user console        |
@@ -161,9 +167,10 @@ Emulation Group
 |                           |                            |Default: true                                      |
 +---------------------------+----------------------------+---------------------------------------------------+
 | print_errors_in_console   |  [true|false]              |Controls the printing of emulation error messages  |
-|                           |                            |to users console. Emulation error messages are     |
-|                           |                            |always logged into a file called                   |
-|                           |                            |emulation_debug.log                                |
+|                           |                            |to users console.                                  |
+|                           |                            |                                                   |
+|                           |                            | Emulation error messages are always logged into a | 
+|                           |                            | file called emulation_debug.log                   |
 |                           |                            |                                                   |
 |                           |                            |     - true = print in users console               |
 |                           |                            |     - false = do not print in user console        |
@@ -181,7 +188,8 @@ Emulation Group
 |                           |                            |     wdb file                                      |
 |                           |                            |                                                   |
 |                           |                            |Default: off                                       |
-|                           |                            |Note: The kernel needs to be compiled with debug   |
-|                           |                            |enabled for the waveform to be saved and displayed |
-|                           |                            |in the simulator GUI.                              |
+|                           |                            |                                                   |
+|                           |                            | Note: The kernel needs to be compiled with debug  |
+|                           |                            | enabled for the waveform to be saved and          |
+|                           |                            | displayed in the simulator GUI.                   |
 +---------------------------+----------------------------+---------------------------------------------------+

@@ -20,7 +20,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <chrono>
-#include <boost/align/aligned_allocator.hpp>
+//#include <boost/align/aligned_allocator.hpp>
 
 #define CL_TARGET_OPENCL_VERSION 120
 #define CL_HPP_MINIMUM_OPENCL_VERSION 120
@@ -40,8 +40,8 @@
 
 namespace utils {
 
-template <typename T>
-using aligned_allocator = boost::alignment::aligned_allocator<T, 4096>;
+//template <typename T>
+//using aligned_allocator = boost::alignment::aligned_allocator<T, 4096>;
   
 /**
  * @return

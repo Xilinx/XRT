@@ -5,6 +5,8 @@
 systemctl stop msd > /dev/null 2>&1
 echo "Install container mpd plugin"
 ln -s /opt/xilinx/xrt/lib/libcontainer_mpd_plugin.so /opt/xilinx/xrt/lib/libmpd_plugin.so
+#make sure mpd automatically gets starts across reboot if plugin is installed
+systemctl enable mpd
 echo "Restart mpd service"
 systemctl restart mpd
 
