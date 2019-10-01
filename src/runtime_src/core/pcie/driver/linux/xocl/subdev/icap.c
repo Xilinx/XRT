@@ -1288,7 +1288,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	int slotid = PCI_SLOT(pcidev->devfn);
 	unsigned short deviceid = pcidev->device;
 	struct axlf *bin_obj_axlf;
-	const struct firmware *fw;
+	const struct firmware *fw, *sche_fw;
 	char fw_name[256];
 	XHwIcap_Bit_Header bit_header = { 0 };
 	long err = 0;
@@ -1328,44 +1328,6 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 		return err;
 	}
 
-	/* Grab lock and touch hardware. */
-	mutex_lock(&icap->icap_lock);
-
-	if (xocl_mb_sched_on(xdev)) {
-		/* Try locating the microblaze binary. */
-		bin_obj_axlf = (struct axlf *)fw->data;
-		mbHeader = get_axlf_section_hdr(icap, bin_obj_axlf, SCHED_FIRMWARE);
-		if (mbHeader) {
-			mbBinaryOffset = mbHeader->m_sectionOffset;
-			mbBinaryLength = mbHeader->m_sectionSize;
-			length = bin_obj_axlf->m_header.m_length;
-			xocl_mb_load_sche_image(xdev, fw->data + mbBinaryOffset,
-				mbBinaryLength);
-			ICAP_INFO(icap, "stashed mb sche binary, len %lld",
-					mbBinaryLength);
-			load_mbs = true;
-		}
-	}
-
-	if (xocl_mb_mgmt_on(xdev)) {
-		/* Try locating the board mgmt binary. */
-		bin_obj_axlf = (struct axlf *)fw->data;
-		mbHeader = get_axlf_section_hdr(icap, bin_obj_axlf, FIRMWARE);
-		if (mbHeader) {
-			mbBinaryOffset = mbHeader->m_sectionOffset;
-			mbBinaryLength = mbHeader->m_sectionSize;
-			length = bin_obj_axlf->m_header.m_length;
-			xocl_mb_load_mgmt_image(xdev, fw->data + mbBinaryOffset,
-				mbBinaryLength);
-			ICAP_INFO(icap, "stashed mb mgmt binary, len %lld",
-					mbBinaryLength);
-			load_mbs = true;
-		}
-	}
-
-	if (load_mbs)
-		xocl_mb_reset(xdev);
-
 	if (memcmp(fw->data, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2)) != 0) {
 		ICAP_ERR(icap, "invalid firmware %s", fw_name);
 		err = -EINVAL;
@@ -1390,6 +1352,54 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 		goto done;
 	}
 	ICAP_INFO(icap, "runtime version matched");
+
+	/* Grab lock and touch hardware. */
+	mutex_lock(&icap->icap_lock);
+
+	if (xocl_mb_sched_on(xdev)) {
+		/* Try locating the microblaze binary. */
+		err = request_firmware(&sche_fw, "xilinx/sched.bin",
+				&pcidev->dev);
+		if (!err)  {
+			xocl_mb_load_sche_image(xdev, fw->data, fw->size);
+			ICAP_INFO(icap, "stashed shared mb sche bin, len %ld",
+				fw->size);
+			load_mbs = true;
+		} else {
+			bin_obj_axlf = (struct axlf *)fw->data;
+			mbHeader = get_axlf_section_hdr(icap, bin_obj_axlf,
+					SCHED_FIRMWARE);
+			if (mbHeader) {
+				mbBinaryOffset = mbHeader->m_sectionOffset;
+				mbBinaryLength = mbHeader->m_sectionSize;
+				xocl_mb_load_sche_image(xdev,
+					fw->data + mbBinaryOffset,
+					mbBinaryLength);
+				ICAP_INFO(icap,
+					"stashed mb sche binary, len %lld",
+					mbBinaryLength);
+				load_mbs = true;
+			}
+		}
+	}
+
+	if (xocl_mb_mgmt_on(xdev)) {
+		/* Try locating the board mgmt binary. */
+		bin_obj_axlf = (struct axlf *)fw->data;
+		mbHeader = get_axlf_section_hdr(icap, bin_obj_axlf, FIRMWARE);
+		if (mbHeader) {
+			mbBinaryOffset = mbHeader->m_sectionOffset;
+			mbBinaryLength = mbHeader->m_sectionSize;
+			xocl_mb_load_mgmt_image(xdev, fw->data + mbBinaryOffset,
+				mbBinaryLength);
+			ICAP_INFO(icap, "stashed mb mgmt binary, len %lld",
+					mbBinaryLength);
+			load_mbs = true;
+		}
+	}
+
+	if (load_mbs)
+		xocl_mb_reset(xdev);
 
 	primaryHeader = get_axlf_section_hdr(icap, bin_obj_axlf, BITSTREAM);
 	secondaryHeader = get_axlf_section_hdr(icap, bin_obj_axlf,
