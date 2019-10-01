@@ -40,7 +40,7 @@ using namespace boost::filesystem;
 
 const char *subCmdPartDesc = "Show and download partition onto the device";
 const char *subCmdPartUsage =
-    "--program --name name [--id logic-uuid] [--card bdf] [--force]\n"
+    "--program --name name [--id interface-uuid] [--card bdf] [--force]\n"
     "--program --path xclbin [--card bdf] [--force]\n"
     "--scan [--verbose]";
 

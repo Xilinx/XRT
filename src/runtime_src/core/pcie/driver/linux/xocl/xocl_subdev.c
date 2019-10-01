@@ -1003,6 +1003,11 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 		core->priv.dsa_ver = in->dsa_ver;
 	if (in->flags & XOCL_DSAFLAG_SET_XPR)
 		core->priv.xpr = in->xpr;
+
+	if (in->sched_bin)
+		core->priv.sched_bin = in->sched_bin;
+	else
+		core->priv.sched_bin = "xilinx/sched.bin";
 }
 
 int xocl_xrt_version_check(xdev_handle_t xdev_hdl,

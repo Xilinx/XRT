@@ -1302,7 +1302,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	const struct axlf_section_header *primaryHeader = 0;
 	const struct axlf_section_header *secondaryHeader = 0;
 	const struct axlf_section_header *mbHeader = 0;
-	bool load_mbs = false;
+	bool load_sched = false, load_mgmt = false;
 
 	/* Can only be done from mgmt pf. */
 	if (!ICAP_PRIVILEGED(icap))
@@ -1364,16 +1364,18 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 
 	if (xocl_mb_sched_on(xdev)) {
 		/* Try locating the microblaze binary. */
-		err = request_firmware(&sche_fw, "xilinx/sched.bin",
-				&pcidev->dev);
-		if (!err)  {
-			xocl_mb_load_sche_image(xdev, sche_fw->data,
+		if (XDEV(xdev)->priv.sched_bin) {
+			err = request_firmware(&sche_fw,
+				XDEV(xdev)->priv.sched_bin, &pcidev->dev);
+			if (!err)  {
+				xocl_mb_load_sche_image(xdev, sche_fw->data,
 					sche_fw->size);
-			ICAP_INFO(icap, "stashed shared mb sche bin, len %ld",
-				sche_fw->size);
-			load_mbs = true;
-			release_firmware(sche_fw);
-		} else {
+				ICAP_INFO(icap, "stashed shared mb sche bin, len %ld", sche_fw->size);
+				load_sched = true;
+				release_firmware(sche_fw);
+			}
+		}
+		if (!load_sched) {
 			mbHeader = get_axlf_section_hdr(icap, bin_obj_axlf,
 					SCHED_FIRMWARE);
 			if (mbHeader) {
@@ -1385,7 +1387,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 				ICAP_INFO(icap,
 					"stashed mb sche binary, len %lld",
 					mbBinaryLength);
-				load_mbs = true;
+				load_sched = true;
 				err = 0;
 			}
 		}
@@ -1401,11 +1403,11 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 				mbBinaryLength);
 			ICAP_INFO(icap, "stashed mb mgmt binary, len %lld",
 					mbBinaryLength);
-			load_mbs = true;
+			load_mgmt = true;
 		}
 	}
 
-	if (load_mbs)
+	if (load_mgmt || load_sched)
 		xocl_mb_reset(xdev);
 
 	primaryHeader = get_axlf_section_hdr(icap, bin_obj_axlf, BITSTREAM);
