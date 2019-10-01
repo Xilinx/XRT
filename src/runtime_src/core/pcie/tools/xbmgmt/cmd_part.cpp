@@ -66,8 +66,8 @@ int program_prp(unsigned index, const std::string& xclbin, bool force)
     int length = stream.tellg();
     stream.seekg(0, stream.beg);
 
-    char *buffer = new char[length];
-    stream.read(buffer, length);
+    std::unique_ptr<char> buffer(new char[length]);
+    stream.read(buffer.get(), length);
 
     std::string errmsg;
     if (force)
@@ -76,12 +76,12 @@ int program_prp(unsigned index, const std::string& xclbin, bool force)
         if (!errmsg.empty())
         {
             std::cout << errmsg << std::endl;
+            dev->close(fd);
             return -EINVAL;
         }
     }
 
-    ssize_t ret = write(fd, buffer, length);
-    delete [] buffer;
+    ssize_t ret = write(fd, buffer.get(), length);
 
     if (ret <= 0) {
         std::cout << "ERROR: Write prp to icap subdev failed." << std::endl;
@@ -299,8 +299,8 @@ int program(int argc, char *argv[])
         { "card", required_argument, nullptr, '0' },
         { "force", no_argument, nullptr, '1' },
         { "path", required_argument, nullptr, '2' },
-	{ "id", required_argument, nullptr, '3' },
-	{ "name", required_argument, nullptr, '4' },
+        { "id", required_argument, nullptr, '3' },
+        { "name", required_argument, nullptr, '4' },
     };
 
     while (true) {
@@ -418,6 +418,7 @@ int program(int argc, char *argv[])
                 }
                 ++iter;
             }
+            closedir(dp);
         }
     }
 

@@ -930,16 +930,16 @@ void testCaseProgressReporter(bool *quit)
     }
 }
 
-inline const char* value_or_empty(const char* value)
+inline const char* getenv_or_empty(const char* path)
 {
-    return value ? value : "";
+    return getenv(path) ? getenv(path) : "";
 }
 
 static void set_shell_path_env(const std::string& var_name,
     const std::string& trailing_path, int overwrite)
 {
-    std::string xrt_path(getenv("XILINX_XRT"));
-    std::string new_path = std::string(value_or_empty(getenv(var_name.c_str())));
+    std::string xrt_path(getenv_or_empty("XILINX_XRT"));
+    std::string new_path(getenv_or_empty(var_name.c_str()));
     xrt_path += trailing_path + ":";
     new_path = xrt_path + new_path;
     setenv(var_name.c_str(), new_path.c_str(), overwrite);
@@ -1637,7 +1637,7 @@ int xcldev::xclReset(int argc, char *argv[])
 
     int err = d->reset(XCL_USER_RESET);
     if (err)
-        std::cout << "ERROR: " << strerror(err) << std::endl;
+        std::cout << "ERROR: " << strerror(std::abs(err)) << std::endl;
     return err;
 }
 
@@ -1864,7 +1864,7 @@ int xcldev::xclP2p(int argc, char *argv[])
     } else if (ret == 0) {
         std::cout << "P2P is disabled" << std::endl;
     } else if (ret)
-        std::cout << "ERROR: " << strerror(ret) << std::endl;
+        std::cout << "ERROR: " << strerror(std::abs(ret)) << std::endl;
 
     return ret;
 }
