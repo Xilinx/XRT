@@ -252,7 +252,7 @@ int main(int argc, char *argv[])
         {"tracefunnel", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
         {"monitorfifolite", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
         {"monitorfifofull", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
-        {"accelmonitor", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
+        {"accelmonitor", no_argument, 0, xcldev::STATUS_AM},
         {"stream", no_argument, 0, xcldev::STREAM},
         {0, 0, 0, 0}
     };
@@ -333,6 +333,15 @@ int main(int argc, char *argv[])
                 return -1;
             }
             subcmd = xcldev::STREAM;
+            break;
+        }
+        case xcldev::STATUS_AM : {
+            //--am
+            if (cmd != xcldev::STATUS) {
+                std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
+                return -1;
+            }
+            ipmask |= static_cast<unsigned int>(xcldev::STATUS_AM_MASK);
             break;
         }
         //short options are dealt here
@@ -636,6 +645,9 @@ int main(int argc, char *argv[])
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_ASM_MASK)) {
             result = deviceVec[index]->readASMCounters() ;
         }
+        if (ipmask & static_cast<unsigned int>(xcldev::STATUS_AM_MASK)) {
+            result = deviceVec[index]->readAMCounters();
+        }
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SPC_MASK)) {
 	  result = deviceVec[index]->readStreamingCheckers(1);
 	}
@@ -938,9 +950,6 @@ int runShellCmd(const std::string& cmd, std::string& output)
     int ret = 0;
     bool quit = false;
 
-    // Kick off progress reporter
-    std::thread t(testCaseProgressReporter, &quit);
-
     // Fix environment variables before running test case
     setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
     set_shell_path_env("PYTHONPATH", "/python", 0);
@@ -951,11 +960,19 @@ int runShellCmd(const std::string& cmd, std::string& output)
     int stderr_fds[2];
     if (pipe(stderr_fds)== -1) {
         perror("ERROR: Unable to create pipe");
-        ret = -EINVAL;
+        return -errno;
     }
 
     // Save stderr
     int stderr_save = dup(STDERR_FILENO);
+    if (stderr_save == -1) {
+        perror("ERROR: Unable to duplicate stderr");
+        return -errno;
+    }
+
+    // Kick off progress reporter
+    std::thread t(testCaseProgressReporter, &quit);
+
     // Close existing stderr and set it to be the write end of the pipe.
     // After fork below, our child process's stderr will point to the same fd.
     dup2(stderr_fds[1], STDERR_FILENO);
