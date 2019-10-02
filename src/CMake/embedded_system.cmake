@@ -54,6 +54,8 @@ foreach (header ${XRT_CL_EXT_SRC})
   message("-- ${header}")
 endforeach()
 
+add_compile_options("-DXRT_EDGE")
+
 # Let yocto handle license files in the standard way
 
 include (CMake/version.cmake)
