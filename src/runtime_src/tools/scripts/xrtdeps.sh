@@ -41,7 +41,6 @@ RH_LIST=(\
      boost-filesystem \
      boost-program-options \
      boost-static \
-     boost-iostreams \
      cmake \
      compat-libtiff3 \
      cppcheck \
@@ -104,7 +103,6 @@ UB_LIST=(\
      libboost-dev \
      libboost-filesystem-dev \
      libboost-program-options-dev \
-     libboost-iostreams-dev \
      libdrm-dev \
      libjpeg-dev \
      libgtest-dev \
