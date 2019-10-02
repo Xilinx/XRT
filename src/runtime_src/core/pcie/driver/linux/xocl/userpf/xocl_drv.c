@@ -682,11 +682,13 @@ static void xocl_dev_percpu_kill(void *data)
 
 	percpu_ref_kill(ref);
 }
-
+#if KERNEL_VERSION(5, 3, 0) > LINUX_VERSION_CODE && \
+	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 2))
 static void xocl_dev_pgmap_kill_nop(struct percpu_ref *ref)
 {
 	/* NOP function for sanity check use only*/
 }
+#endif
 #endif
 
 void xocl_p2p_mem_release(struct xocl_dev *xdev, bool recov_bar_sz)
