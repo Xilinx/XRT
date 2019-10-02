@@ -93,6 +93,7 @@ struct xocl_board_private {
 	bool			mpsoc;
 	uint64_t		p2p_bar_sz;
 	const char		*vbnv;
+	const char		*sched_bin;
 };
 
 struct xocl_flash_privdata {
@@ -1794,6 +1795,7 @@ struct xocl_subdev_map {
 		.subdev_info	= USER_RES_U50,				\
 		.subdev_num = ARRAY_SIZE(USER_RES_U50),			\
 		.p2p_bar_sz = 8, /* GB */				\
+		.sched_bin = "xilinx/sched_u50.bin",			\
 	}
 
 

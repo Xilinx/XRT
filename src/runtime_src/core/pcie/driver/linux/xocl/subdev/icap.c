@@ -1288,7 +1288,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	int slotid = PCI_SLOT(pcidev->devfn);
 	unsigned short deviceid = pcidev->device;
 	struct axlf *bin_obj_axlf;
-	const struct firmware *fw;
+	const struct firmware *fw, *sche_fw;
 	char fw_name[256];
 	XHwIcap_Bit_Header bit_header = { 0 };
 	long err = 0;
@@ -1302,7 +1302,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	const struct axlf_section_header *primaryHeader = 0;
 	const struct axlf_section_header *secondaryHeader = 0;
 	const struct axlf_section_header *mbHeader = 0;
-	bool load_mbs = false;
+	bool load_sched = false, load_mgmt = false;
 
 	/* Can only be done from mgmt pf. */
 	if (!ICAP_PRIVILEGED(icap))
@@ -1328,44 +1328,6 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 		return err;
 	}
 
-	/* Grab lock and touch hardware. */
-	mutex_lock(&icap->icap_lock);
-
-	if (xocl_mb_sched_on(xdev)) {
-		/* Try locating the microblaze binary. */
-		bin_obj_axlf = (struct axlf *)fw->data;
-		mbHeader = get_axlf_section_hdr(icap, bin_obj_axlf, SCHED_FIRMWARE);
-		if (mbHeader) {
-			mbBinaryOffset = mbHeader->m_sectionOffset;
-			mbBinaryLength = mbHeader->m_sectionSize;
-			length = bin_obj_axlf->m_header.m_length;
-			xocl_mb_load_sche_image(xdev, fw->data + mbBinaryOffset,
-				mbBinaryLength);
-			ICAP_INFO(icap, "stashed mb sche binary, len %lld",
-					mbBinaryLength);
-			load_mbs = true;
-		}
-	}
-
-	if (xocl_mb_mgmt_on(xdev)) {
-		/* Try locating the board mgmt binary. */
-		bin_obj_axlf = (struct axlf *)fw->data;
-		mbHeader = get_axlf_section_hdr(icap, bin_obj_axlf, FIRMWARE);
-		if (mbHeader) {
-			mbBinaryOffset = mbHeader->m_sectionOffset;
-			mbBinaryLength = mbHeader->m_sectionSize;
-			length = bin_obj_axlf->m_header.m_length;
-			xocl_mb_load_mgmt_image(xdev, fw->data + mbBinaryOffset,
-				mbBinaryLength);
-			ICAP_INFO(icap, "stashed mb mgmt binary, len %lld",
-					mbBinaryLength);
-			load_mbs = true;
-		}
-	}
-
-	if (load_mbs)
-		xocl_mb_reset(xdev);
-
 	if (memcmp(fw->data, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2)) != 0) {
 		ICAP_ERR(icap, "invalid firmware %s", fw_name);
 		err = -EINVAL;
@@ -1375,6 +1337,12 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	ICAP_INFO(icap, "boot_firmware in axlf format");
 	bin_obj_axlf = (struct axlf *)fw->data;
 	length = bin_obj_axlf->m_header.m_length;
+
+	if (length > fw->size) {
+		err = -EINVAL;
+		goto done;
+	}
+
 	/* Match the xclbin with the hardware. */
 	if (!xocl_verify_timestamp(xdev,
 		bin_obj_axlf->m_header.m_featureRomTimeStamp)) {
@@ -1391,6 +1359,57 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	}
 	ICAP_INFO(icap, "runtime version matched");
 
+	/* Grab lock and touch hardware. */
+	mutex_lock(&icap->icap_lock);
+
+	if (xocl_mb_sched_on(xdev)) {
+		/* Try locating the microblaze binary. */
+		if (XDEV(xdev)->priv.sched_bin) {
+			err = request_firmware(&sche_fw,
+				XDEV(xdev)->priv.sched_bin, &pcidev->dev);
+			if (!err)  {
+				xocl_mb_load_sche_image(xdev, sche_fw->data,
+					sche_fw->size);
+				ICAP_INFO(icap, "stashed shared mb sche bin, len %ld", sche_fw->size);
+				load_sched = true;
+				release_firmware(sche_fw);
+			}
+		}
+		if (!load_sched) {
+			mbHeader = get_axlf_section_hdr(icap, bin_obj_axlf,
+					SCHED_FIRMWARE);
+			if (mbHeader) {
+				mbBinaryOffset = mbHeader->m_sectionOffset;
+				mbBinaryLength = mbHeader->m_sectionSize;
+				xocl_mb_load_sche_image(xdev,
+					fw->data + mbBinaryOffset,
+					mbBinaryLength);
+				ICAP_INFO(icap,
+					"stashed mb sche binary, len %lld",
+					mbBinaryLength);
+				load_sched = true;
+				err = 0;
+			}
+		}
+	}
+
+	if (xocl_mb_mgmt_on(xdev)) {
+		/* Try locating the board mgmt binary. */
+		mbHeader = get_axlf_section_hdr(icap, bin_obj_axlf, FIRMWARE);
+		if (mbHeader) {
+			mbBinaryOffset = mbHeader->m_sectionOffset;
+			mbBinaryLength = mbHeader->m_sectionSize;
+			xocl_mb_load_mgmt_image(xdev, fw->data + mbBinaryOffset,
+				mbBinaryLength);
+			ICAP_INFO(icap, "stashed mb mgmt binary, len %lld",
+					mbBinaryLength);
+			load_mgmt = true;
+		}
+	}
+
+	if (load_mgmt || load_sched)
+		xocl_mb_reset(xdev);
+
 	primaryHeader = get_axlf_section_hdr(icap, bin_obj_axlf, BITSTREAM);
 	secondaryHeader = get_axlf_section_hdr(icap, bin_obj_axlf,
 		CLEARING_BITSTREAM);
@@ -1401,11 +1420,6 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	if (secondaryHeader) {
 		secondaryFirmwareOffset = secondaryHeader->m_sectionOffset;
 		secondaryFirmwareLength = secondaryHeader->m_sectionSize;
-	}
-
-	if (length > fw->size) {
-		err = -EINVAL;
-		goto done;
 	}
 
 	if ((primaryFirmwareOffset + primaryFirmwareLength) > length) {

@@ -502,6 +502,8 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 
 	xocl_thread_stop(lro);
 
+	xocl_mb_stop(lro);
+
 	ret = xocl_subdev_destroy_prp(lro);
 	if (ret) {
 		mgmt_err(lro, "destroy prp failed %d", ret);
