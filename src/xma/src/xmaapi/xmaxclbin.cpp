@@ -170,8 +170,11 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
                                             xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "%s:- arg_start: 0x%x, regmap_size: 0x%x", str_tmp1.c_str(), xclbin_info->ip_layout[j].arg_start, xclbin_info->ip_layout[j].regmap_size);
 
                                             if (xclbin_info->ip_layout[j].regmap_size > MAX_KERNEL_REGMAP_SIZE) {
-                                                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel %s register map size exceeds max limit. regmap_size: %d, max regmap_size: %d\n", str_tmp1.c_str(), xclbin_info->ip_layout[j].regmap_size, MAX_KERNEL_REGMAP_SIZE);
-                                                return XMA_ERROR;
+                                                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel %s register map size exceeds max limit. regmap_size: %d, max regmap_size: %d\n. Will use only max regmap_size", str_tmp1.c_str(), xclbin_info->ip_layout[j].regmap_size, MAX_KERNEL_REGMAP_SIZE);
+
+                                                //DRM IPs have registers at high offset
+                                                xclbin_info->ip_layout[j].regmap_size = MAX_KERNEL_REGMAP_SIZE;
+                                                //return XMA_ERROR;
                                             }
                                             break;
                                         }
