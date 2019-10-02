@@ -1556,7 +1556,6 @@ delete_cmd_list(void)
  * Clear stale command object associated with execution core.
  * This can occur if the HW for some reason hangs.
  */
-SCHED_UNUSED
 static void
 reset_exec(struct sched_exec_core *exec)
 {
@@ -2784,6 +2783,63 @@ static irqreturn_t sched_cq_isr(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
+inline void init_exec(struct sched_exec_core *exec_core)
+{
+	unsigned int i;
+	exec_core->scheduler = &g_sched0;
+	exec_core->num_slots = 16;
+	exec_core->num_cus = 0;
+	exec_core->cu_base_addr = 0;
+	exec_core->cu_shift_offset = 0;
+	exec_core->polling_mode = 1;
+	exec_core->cq_interrupt = 0;
+	exec_core->configured = 0;
+	exec_core->cu_isr = 0;
+	exec_core->cu_dma = 0;
+	exec_core->num_slot_masks = 1;
+	exec_core->num_cu_masks = 0;
+	exec_core->ops = &penguin_ops;
+
+	for (i = 0; i < MAX_SLOTS; ++i)
+		exec_core->submitted_cmds[i] = NULL;
+
+	for (i = 0; i < MAX_U32_SLOT_MASKS; ++i)
+		exec_core->slot_status[i] = 0;
+
+	for (i = 0; i < MAX_U32_CU_MASKS; ++i) {
+		exec_core->cu_status[i] = 0;
+		exec_core->cu_init[i] = 0;
+		exec_core->cu_valid[i] = 0; //default value is invalid(0)
+	}
+}
+
+/**
+ * zocl_exec_reset() 
+ * 
+ * This function ensures that the device exec_core state is reset to
+ * same state as was when scheduler was originally probed for the device.
+ *
+ * @drm: Device node to initialize
+ *
+ */
+int
+zocl_exec_reset(struct drm_device *drm)
+{
+	unsigned int i;
+	struct drm_zocl_dev *zdev = drm->dev_private;
+	struct sched_exec_core *exec_core = zdev->exec;
+
+	if (!(zdev->ert || exec_core->polling_mode)) {
+		for (i = 0; i < exec_core->num_cus; i++) {
+			if (zocl_cu_is_valid(exec_core, i))
+				free_irq(zdev->irq[i], zdev);
+		}
+	}
+	init_exec(exec_core);
+	reset_exec(exec_core);
+	return 0;
+}
+
 /**
  * sched_init_exec() - Initialize the command execution for device
  *
@@ -2809,31 +2865,7 @@ sched_init_exec(struct drm_device *drm)
 	INIT_LIST_HEAD(&exec_core->ctx_list);
 	init_waitqueue_head(&exec_core->poll_wait_queue);
 
-	exec_core->scheduler = &g_sched0;
-	exec_core->num_slots = 16;
-	exec_core->num_cus = 0;
-	exec_core->cu_base_addr = 0;
-	exec_core->cu_shift_offset = 0;
-	exec_core->polling_mode = 1;
-	exec_core->cq_interrupt = 0;
-	exec_core->cu_isr = 0;
-	exec_core->cu_dma = 0;
-	exec_core->num_slot_masks = 1;
-	exec_core->num_cu_masks = 0;
-	exec_core->ops = &penguin_ops;
-
-	for (i = 0; i < MAX_SLOTS; ++i)
-		exec_core->submitted_cmds[i] = NULL;
-
-	for (i = 0; i < MAX_U32_SLOT_MASKS; ++i)
-		exec_core->slot_status[i] = 0;
-
-	for (i = 0; i < MAX_U32_CU_MASKS; ++i) {
-		exec_core->cu_status[i] = 0;
-		exec_core->cu_init[i] = 0;
-		exec_core->cu_valid[i] = 0; //default value is invalid(0)
-	}
-
+	init_exec(exec_core);
 	init_scheduler_thread();
 
 	if (zdev->ert) {

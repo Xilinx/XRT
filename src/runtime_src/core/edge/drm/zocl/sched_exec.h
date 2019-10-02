@@ -241,6 +241,7 @@ struct sched_ops {
 int sched_init_exec(struct drm_device *drm);
 int sched_fini_exec(struct drm_device *drm);
 
+int zocl_exec_reset(struct drm_device *dev);
 void zocl_track_ctx(struct drm_device *dev, struct sched_client_ctx *fpriv);
 void zocl_untrack_ctx(struct drm_device *dev, struct sched_client_ctx *fpriv);
 
