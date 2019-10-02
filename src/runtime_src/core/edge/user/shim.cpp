@@ -193,10 +193,26 @@ void *ZYNQShim::getVirtAddressOfApture(xclAddressSpace space, const uint64_t phy
     // If CU size is 64 Kb, then this is safe.  For Debug/Profile IPs,
     //  they may have 4K or 8K register space.  The profiling library
     //  will make sure that the offset will not be abused.
-    uint64_t mask = (space == XCL_ADDR_SPACE_DEVICE_PERFMON) ? 0x1FFF : 0xFFFF;
-
-    vaddr  = mKernelControl[phy_addr & ~mask];
-    offset = phy_addr & mask;
+    uint64_t mask;
+    if (space == XCL_ADDR_SPACE_DEVICE_PERFMON) {
+      // Try small aperture.  If it fails, then try bigger apertures
+      mask = 0xFFF;
+      while (mask != 0x3FFF) {
+	vaddr = mKernelControl[phy_addr & ~mask];
+	if (vaddr) {
+	  offset = phy_addr & mask ;
+	  break ;
+	}
+      }
+      mask = (mask << 1) + 1;
+    }
+    
+    if (!vaddr) {
+      // Try 64KB aperture
+      mask = 0xFFFF;
+      vaddr = mKernelControl[phy_addr & ~mask];
+      offset = phy_addr & mask;
+    }
 
     if (!vaddr)
         xclLog(XRT_ERROR, "XRT", "%s: Could not found the mapped address. Check if XCLBIN is loaded.", __func__);
