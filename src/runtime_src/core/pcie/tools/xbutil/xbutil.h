@@ -1496,6 +1496,8 @@ public:
     int memread(std::string aFilename, unsigned long long aStartAddr = 0, unsigned long long aSize = 0) {
         std::ios_base::fmtflags f(std::cout.flags());
         std::string name, errmsg;
+        xclbin_lock xclbin_lock(m_handle, m_idx);
+
         pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV", errmsg, name );
 
         if (!errmsg.empty()) {
@@ -1536,6 +1538,8 @@ public:
     int memwrite(unsigned long long aStartAddr, unsigned long long aSize, unsigned int aPattern = 'J') {
         std::ios_base::fmtflags f(std::cout.flags());
         std::string name, errmsg;
+        xclbin_lock xclbin_lock(m_handle, m_idx);
+
         pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV", errmsg, name );
 
         if (!errmsg.empty()) {
