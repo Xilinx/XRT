@@ -815,7 +815,7 @@ chmod -R o=g %{buildroot}/opt/xilinx/platforms/$opt_xsa
 
 %files
 %defattr(-,root,root,-)
-/opt/xilinx
+/opt/xilinx/platforms/$opt_xsa/
 
 %changelog
 * $build_date Xilinx Inc - 5.1-1
