@@ -85,12 +85,6 @@ for {set i 1} {$i < 16} {incr i} {
 }
 set_property PFM.AXI_PORT $hp2Val [get_bd_cells /axi_interconnect_1]
 
-set hpm0Val []
-for {set i 1} {$i < 64} {incr i} {
-  lappend hpm0Val M[format %02d $i]_AXI {memport "MIG" sptag "hpm0" memory "interconnect_hpm0fpd Reg"}
-}
-set_property PFM.AXI_PORT $hpm0Val [get_bd_cells /axi_interconnect_hpm0fpd]
-
 
 # Define CLOCK
 set_property PFM.CLOCK {clkwiz_kernel_clk_out1 {id "0" is_default "true" proc_sys_reset "reset_controllers/psreset_gate_pr_kernel"  status "fixed"} \
