@@ -88,7 +88,7 @@ public:
         std::string& err_msg, std::vector<char>& buf);
     template <typename T>
     void sysfs_get(const std::string& subdev, const std::string& entry,
-        std::string& err_msg, T& i, const int& default_val) {
+        std::string& err_msg, T& i, const T& default_val) {
         std::vector<uint64_t> iv;
 
         sysfs_get(subdev, entry, err_msg, iv);

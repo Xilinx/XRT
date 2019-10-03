@@ -521,9 +521,9 @@ void shim::xclSysfsGetErrorStatus(xclErrorStatus& stat)
     unsigned int level;
     unsigned long time;
 
-    mDev->sysfs_get<unsigned int>("firewall", "detected_status", errmsg, status, -1);
-    mDev->sysfs_get<unsigned int>("firewall", "detected_level", errmsg, level, -1);
-    mDev->sysfs_get<unsigned long>("firewall", "detected_time", errmsg, time, -1);
+    mDev->sysfs_get<unsigned int>("firewall", "detected_status", errmsg, status, static_cast<unsigned int>(-1));
+    mDev->sysfs_get<unsigned int>("firewall", "detected_level", errmsg, level, static_cast<unsigned int>(-1));
+    mDev->sysfs_get<unsigned long>("firewall", "detected_time", errmsg, time, static_cast<unsigned long>(-1));
 
     stat.mNumFirewalls = XCL_FW_MAX_LEVEL;
     if (level < XCL_FW_MAX_LEVEL)
@@ -555,26 +555,26 @@ void shim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     std::string s;
     std::string errmsg;
 
-    mDev->sysfs_get<unsigned short>("", "vendor", errmsg, info->mVendorId, -1);
-    mDev->sysfs_get<unsigned short>("", "device", errmsg, info->mDeviceId, -1);
-    mDev->sysfs_get<unsigned short>("", "subsystem_device", errmsg, info->mSubsystemId, -1);
+    mDev->sysfs_get<unsigned short>("", "vendor", errmsg, info->mVendorId, static_cast<unsigned short>(-1));
+    mDev->sysfs_get<unsigned short>("", "device", errmsg, info->mDeviceId, static_cast<unsigned short>(-1));
+    mDev->sysfs_get<unsigned short>("", "subsystem_device", errmsg, info->mSubsystemId, static_cast<unsigned short>(-1));
     info->mDeviceVersion = info->mSubsystemId & 0xff;
-    mDev->sysfs_get<unsigned short>("", "subsystem_vendor", errmsg, info->mSubsystemVendorId, -1);
+    mDev->sysfs_get<unsigned short>("", "subsystem_vendor", errmsg, info->mSubsystemVendorId, static_cast<unsigned short>(-1));
     info->mDataAlignment = getpagesize();
-    mDev->sysfs_get<size_t>("rom", "ddr_bank_size", errmsg, info->mDDRSize, -1);
+    mDev->sysfs_get<size_t>("rom", "ddr_bank_size", errmsg, info->mDDRSize, static_cast<unsigned short>(-1));
     info->mDDRSize = GB(info->mDDRSize);
 
     mDev->sysfs_get("rom", "VBNV", errmsg, s);
     snprintf(info->mName, sizeof (info->mName), "%s", s.c_str());
     mDev->sysfs_get("rom", "FPGA", errmsg, s);
     snprintf(info->mFpga, sizeof (info->mFpga), "%s", s.c_str());
-    mDev->sysfs_get<unsigned long long>("rom", "timestamp", errmsg, info->mTimeStamp, -1);
-    mDev->sysfs_get<unsigned short>("rom", "ddr_bank_count_max", errmsg, info->mDDRBankCount, -1);
+    mDev->sysfs_get<unsigned long long>("rom", "timestamp", errmsg, info->mTimeStamp, static_cast<unsigned long long>(-1));
+    mDev->sysfs_get<unsigned short>("rom", "ddr_bank_count_max", errmsg, info->mDDRBankCount, static_cast<unsigned short>(-1));
     info->mDDRSize *= info->mDDRBankCount;
 
     info->mNumClocks = numClocks(info->mName);
 
-    mDev->sysfs_get<unsigned short>("mb_scheduler", "kds_numcdmas", errmsg, info->mNumCDMA, -1);
+    mDev->sysfs_get<unsigned short>("mb_scheduler", "kds_numcdmas", errmsg, info->mNumCDMA, static_cast<unsigned short>(-1));
 
     //get sensors
     unsigned int m12VPex, m12VAux, mPexCurr, mAuxCurr, mDimmTemp_0, mDimmTemp_1, mDimmTemp_2, 
@@ -638,10 +638,10 @@ void shim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
 
     //get sensors end
 
-    mDev->sysfs_get("", "link_width", errmsg, info->mPCIeLinkWidth, -1);
-    mDev->sysfs_get("", "link_speed", errmsg, info->mPCIeLinkSpeed, -1);
-    mDev->sysfs_get("", "link_speed_max", errmsg, info->mPCIeLinkSpeedMax, -1);
-    mDev->sysfs_get("", "link_width_max", errmsg, info->mPCIeLinkWidthMax, -1);
+    mDev->sysfs_get("", "link_width", errmsg, info->mPCIeLinkWidth, static_cast<unsigned short>(-1));
+    mDev->sysfs_get("", "link_speed", errmsg, info->mPCIeLinkSpeed, static_cast<unsigned short>(-1));
+    mDev->sysfs_get("", "link_speed_max", errmsg, info->mPCIeLinkSpeedMax, static_cast<unsigned short>(-1));
+    mDev->sysfs_get("", "link_width_max", errmsg, info->mPCIeLinkWidthMax, static_cast<unsigned short>(-1));
     mDev->sysfs_get("", "mig_calibration", errmsg, info->mMigCalib, false);
     std::vector<uint64_t> freqs;
     mDev->sysfs_get("icap", "clock_freqs", errmsg, freqs);

@@ -341,7 +341,7 @@ pcidev::pci_device::pci_device(const std::string& sysfs) : sysfs_name(sysfs)
     }
 
     // Determine if device is of supported vendor
-    sysfs_get<uint16_t>("", "vendor", err, vendor, -1);
+    sysfs_get<uint16_t>("", "vendor", err, vendor, static_cast<uint16_t>(-1));
     if (!err.empty()) {
         std::cout << err << std::endl;
         return;
@@ -365,7 +365,7 @@ pcidev::pci_device::pci_device(const std::string& sysfs) : sysfs_name(sysfs)
 
     uint32_t inst = INVALID_ID;
     if (mgmt)
-        sysfs_get<uint32_t>("", "instance", err, inst, -1);
+        sysfs_get<uint32_t>("", "instance", err, inst, static_cast<uint32_t>(-1));
     else
         inst = get_render_value(dir + "/drm");
     if (!devfs_exists(mgmt, inst))
@@ -728,7 +728,7 @@ std::ostream& operator<<(std::ostream& stream,
         shell_name += std::to_string(ver);
     } else {
         dev->sysfs_get("rom", "VBNV", err, shell_name);
-        dev->sysfs_get<uint64_t>("rom", "timestamp", err, ts, -1);
+        dev->sysfs_get<uint64_t>("rom", "timestamp", err, ts, static_cast<uint64_t>(-1));
     }
     stream << " " << shell_name;
     if (ts != 0)
