@@ -58,7 +58,7 @@ static void
 userptr_bad_alloc_message(void* addr)
 {
   xrt::message::send(xrt::message::severity_level::XRT_INFO,
-                     "bad alloc on host pointer '"
+                     "might be noncontiguous host pointer '"
                      + to_hex(addr)
                      + "' detected, check dmesg for more information."
                      + " This could lead to extra memcpy."
