@@ -24,9 +24,9 @@
 #include "app/xmalogger.h"
 #include "lib/xmaxclbin.h"
 #include "core/common/config_reader.h"
-#include <boost/iostreams/stream.hpp>
-#include <iostream>
 #include <regex>//Doesn't work on CentOS with older c++ lib
+#include "app/xma_utils.hpp"
+#include "lib/xma_utils.hpp"
 
 #define XMAAPI_MOD "xmaxclbin"
 
@@ -122,9 +122,8 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
                 char *xml_data = &buffer[xml_hdr->m_sectionOffset];
                 uint64_t xml_size = xml_hdr->m_sectionSize;
                 if (xml_size > 0 && xml_size < 500000) {
-                    namespace io = boost::iostreams;
-                    io::array_source arr_src(xml_data, xml_size);
-                    io::stream<io::array_source> xml_stream(arr_src);
+                    xma_core::utils::streambuf xml_streambuf(xml_data, xml_size);
+                    std::istream xml_stream(&xml_streambuf);
                     std::string line;
                     bool found_kernel = false;
                     while(std::getline(xml_stream, line)) {
@@ -272,9 +271,8 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
             uint64_t xml_size = xml_hdr->m_sectionSize;
             if (xml_size > 0 && xml_size < 500000) {
                 xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "XML MetaData is:");
-                namespace io = boost::iostreams;
-                io::array_source arr_src(xml_data, xml_size);
-                io::stream<io::array_source> xml_stream(arr_src);
+                xma_core::utils::streambuf xml_streambuf(xml_data, xml_size);
+                std::istream xml_stream(&xml_streambuf);
                 std::string line;
                 while(std::getline(xml_stream, line)) {
                     xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "%s", line.c_str());
@@ -290,9 +288,8 @@ static int get_xclbin_iplayout(char *buffer, XmaXclbinInfo *xclbin_info)
             uint64_t kv_size = kv_hdr->m_sectionSize;
             if (kv_size > 0 && kv_size < 200000) {
                 xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Key-Value MetaData is:");
-                namespace io = boost::iostreams;
-                io::array_source arr_src(kv_data, kv_size);
-                io::stream<io::array_source> kv_stream(arr_src);
+                xma_core::utils::streambuf kv_streambuf(kv_data, kv_size);
+                std::istream kv_stream(&kv_streambuf);
                 std::string line;
                 while(std::getline(kv_stream, line)) {
                     xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "%s", line.c_str());
