@@ -237,6 +237,9 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
                                  int32_t*   return_code);
 
 
+int32_t xma_plg_add_buffer_to_data_buffer(XmaDataBuffer *data, XmaBufferObj *dev_buf);
+
+int32_t xma_plg_add_buffer_to_frame(XmaFrame *frame, XmaBufferObj *dev_buf_list, uint32_t num_dev_buf);
 
 #ifdef __cplusplus
 }
