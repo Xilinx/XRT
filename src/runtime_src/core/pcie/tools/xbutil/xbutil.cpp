@@ -1255,7 +1255,7 @@ int xcldev::device::auxConnectionTest(void)
 
     if (!name.empty()) {
         for (auto bd : auxPwrRequiredBoard) {
-            if (bd.find(name) != std::string::npos) {
+            if (name.find(bd) != std::string::npos) {
                 auxBoard = true;
                 break;
             }
