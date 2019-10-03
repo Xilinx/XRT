@@ -201,10 +201,10 @@ CardMgmtControllerFamily=""
 SchedulerFamily=""
 
 
-XBUTIL=/opt/xilinx/xrt/bin/xbutil
+XBMGMT=/opt/xilinx/xrt/bin/xbmgmt
 post_inst_msg="DSA package installed successfully.
 Please flash card manually by running below command:
-sudo ${XBUTIL} flash -a ${opt_dsa}"
+sudo ${XBMGMT} flash --update --shell ${opt_dsa}"
 
 createEntityAttributeArray ()
 {
