@@ -121,6 +121,25 @@ ZeroCopy use cases:
 Use XRM for system resource reservation such that zero-copy is possible
 XmaFrame with device only buffer can be output of plugins supporting zero-copy and feeding zero-copy enabled plugin/s
 Plugins may use dev_index, bank_index & device_only info from BufferObject to enable or disable zero-copy
+ZeroCopy trancode pipeline:
+    - Decoder->Scaler->Encoder
+    - FFMPEG completes xma_init & create session for all plugins
+    - Pass zerocopy settings for plugins to use
+    - FFMPEG --> send_data with host buffer --> decoder plugin
+    - Decoder plugin uses device buffers for input & output of kernel. Decoder has pool of device buffers to use. Decoder plugin does buffer write to DMA data to FPGA
+    - FFMPEG --> receive frame with DUMMY frame --> decoder plugin
+    - Decoder plugin adds output device buffer to the frame: xma_plg_add_buffer_to_frame()
+    - FFMPEG --> send frame to scaler - same as received from decoder with device buffer
+    - Scaler plugin uses device buffer from input frame as it's input & uses an output buffer from it's pool of buffers
+    - FFMPEG --> receive frame with DUMMY frame --> scaler plugin
+    - Scaler plugin adds output device buffer to the frame: xma_plg_add_buffer_to_frame()
+    - FFMPEG --> send frame to encoder - same as received from scaler with device buffer
+    - Encoder plugin uses device buffer from input frame as it's input & uses an output buffer from it's pool of buffers
+    - FFMPEG --> receive frame with DUMMY DataBuffer --> encoder plugin
+    - Encoder plugin adds output device buffer to the DataBuffer: xma_plg_add_buffer_to_data_buffer(). Encoder plugin does buffer read to DMA output data from FPGA to host
+    - Thus DMA to/from host is only at start and end of pipline. At other times data remain on device only and no DMA is required
+
+
 
 By way of example, the following represents the interface of the XMA Encoder
 class:

@@ -51,6 +51,7 @@ typedef enum XmaBufferType
     XMA_HOST_BUFFER_TYPE = 1, /**< 1 */
     XMA_DEVICE_BUFFER_TYPE, /**< 2 Has both host and device allocated memory*/
     XMA_DEVICE_ONLY_BUFFER_TYPE, /**< 3 Has only device memory. Use for zero copy*/
+    NO_BUFFER /**< 4 Frame/Data is dummy without any buffer*/
 } XmaBufferType;
 
 typedef struct XmaBufferObj
@@ -168,11 +169,12 @@ typedef struct XmaFrameFormatDesc
  * xma_frame_alloc() - Allocate a new frame buffer according to specified frame properties
  *
  * @frame_props: Description of frame buffer to be allocated
+ * @dummy: Allocate dummy frame without any buffer
  *
  * RETURN: XmaFrame pointer
 */
 XmaFrame*
-xma_frame_alloc(XmaFrameProperties *frame_props);
+xma_frame_alloc(XmaFrameProperties *frame_props, bool dummy);
 
 /**
  * xma_frame_planes_get() - Return the number of planes in the frame specified
@@ -418,11 +420,12 @@ xma_frame_clear_all_side_data(XmaFrame *frame);
  * xma_data_buffer_alloc() - Allocate a single buffer and return as XmaDataBuffer pointer
  *
  * @size: of buffer to allocate from heap
+ * @dummy: Allocate dummy XmaDataBuffer without any memory
  *
  * RETURN: pointer to XmaDataBuffer with allocated memory
 */
 XmaDataBuffer*
-xma_data_buffer_alloc(size_t size);
+xma_data_buffer_alloc(size_t size, bool dummy);
 
 /**
  * xma_data_from_buffer_clone() - Create an XmaDataBuffer object from data of given size
