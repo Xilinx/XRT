@@ -91,3 +91,5 @@ set_property PFM.CLOCK {clkwiz_kernel_clk_out1 {id "0" is_default "true" proc_sy
                        } [get_bd_ports /clkwiz_kernel_clk_out1]
 set_property PFM.CLOCK {clkwiz_kernel2_clk_out1 {id "1" is_default "false" proc_sys_reset "reset_controllers/psreset_gate_pr_kernel2"  status "fixed"} \
                        } [get_bd_ports /clkwiz_kernel2_clk_out1]
+set_property PFM.CLOCK {clkwiz_sysclks_clk_out2 {id "2" is_default "false" proc_sys_reset "/reset_controllers/psreset_gate_pr_control" status "fixed"} \
+			} [get_bd_ports /clkwiz_sysclks_clk_out2]
