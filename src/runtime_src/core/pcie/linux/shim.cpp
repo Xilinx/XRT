@@ -223,8 +223,10 @@ void shim::init(unsigned index, const char *logfileName,
     xrt_logmsg(XRT_INFO, "%s", __func__);
 
     int ret = dev_init();
-    if (ret)
-        xrt_logmsg(XRT_WARNING, "dev_init failed: %d", ret);
+    if (ret) {
+        xrt_logmsg(XRT_WARNING, "XRT", "dev_init failed: %d", ret);
+        return;
+    }
 
     // Profiling - defaults
     // Class-level defaults: mIsDebugIpLayoutRead = mIsDeviceProfiling = false
