@@ -142,7 +142,7 @@ int shim::dev_init()
 {
     auto dev = pcidev::get_dev(mBoardNumber);
     if(dev == nullptr) {
-        xclLog(XRT_ERROR, "XRT", "%s: Card [%d] not found", __func__, mBoardNumber);
+        xrt_logmsg(XRT_ERROR, "%s: Card [%d] not found", __func__, mBoardNumber);
         return -ENOENT;
     }
 
@@ -180,14 +180,18 @@ int shim::dev_init()
     return 0;
 }
 
-inline int shim::xclLog(xrtLogMsgLevel level, const char* tag, const char* format, ...)
+int shim::xrt_logmsg(xrtLogMsgLevel level, const char* format, ...)
 {
-    va_list args;
-    va_start(args, format);
-    int ret = xclLogMsg(level, tag, format, args);
-    va_end(args);
-
-    return ret;
+    static auto verbosity = xrt_core::config::get_verbosity();
+    if (level <= verbosity) {
+        va_list args;
+        va_start(args, format);
+        int ret = xclLogMsg(level, "XRT", format, args);
+        va_end(args);
+        return ret;
+    } else {
+        return 0;
+    }
 }
 
 void shim::dev_fini()
@@ -213,14 +217,14 @@ void shim::init(unsigned index, const char *logfileName,
     xclVerbosityLevel verbosity)
 {
     if(logfileName != nullptr) {
-        xclLog(XRT_WARNING, "XRT", "%s: logfileName is no longer supported", __func__);
+        xrt_logmsg(XRT_WARNING, "%s: logfileName is no longer supported", __func__);
     }
 
-    xclLog(XRT_INFO, "XRT", "%s", __func__);
+    xrt_logmsg(XRT_INFO, "%s", __func__);
 
     int ret = dev_init();
     if (ret)
-        xclLog(XRT_WARNING, "XRT", "dev_init failed: %d", ret);
+        xrt_logmsg(XRT_WARNING, "dev_init failed: %d", ret);
 
     // Profiling - defaults
     // Class-level defaults: mIsDebugIpLayoutRead = mIsDeviceProfiling = false
@@ -235,7 +239,7 @@ void shim::init(unsigned index, const char *logfileName,
  */
 shim::~shim()
 {
-    xclLog(XRT_INFO, "XRT", "%s", __func__);
+    xrt_logmsg(XRT_INFO, "%s", __func__);
 
     dev_fini();
 
@@ -304,7 +308,7 @@ size_t shim::xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBu
             if (regSize > 32)
             regSize = 32;
             for (unsigned i = 0; i < regSize; i++) {
-                xclLog(XRT_INFO, "XRT", "%s: space: %d, offset:0x%x, reg:%d", 
+                xrt_logmsg(XRT_INFO, "%s: space: %d, offset:0x%x, reg:%d", 
                         __func__, space, offset+i, reg[i]);
             }
             if (mDev->pcieBarWrite(offset, hostBuf, size) == 0) {
@@ -325,7 +329,7 @@ size_t shim::xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBu
  */
 size_t shim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
 {
-    xclLog(XRT_INFO, "XRT", "%s, space: %d, offset: %d, hostBuf: %s, size: %d", 
+    xrt_logmsg(XRT_INFO, "%s, space: %d, offset: %d, hostBuf: %s, size: %d", 
             __func__, space, offset, hostBuf, size);
 
     switch (space) {
@@ -346,7 +350,7 @@ size_t shim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size
             if (regSize > 4)
             regSize = 4;
             for (unsigned i = 0; i < regSize; i++) {
-                xclLog(XRT_INFO, "XRT", "%s: space: %d, offset:0x%x, reg:%d", 
+                xrt_logmsg(XRT_INFO, "%s: space: %d, offset:0x%x, reg:%d", 
                     __func__, space, offset+i, reg[i]);
             }
             return !result ? size : 0;
@@ -767,14 +771,14 @@ int shim::xclLoadXclBin(const xclBin *buffer)
     ret = xclLoadAxlf(reinterpret_cast<const axlf*>(xclbininmemory));
     if (ret != 0) {
         if (ret == -EOPNOTSUPP) {
-            xclLog(XRT_ERROR, "XRT", "Xclbin does not match Shell on card.");
-            xclLog(XRT_ERROR, "XRT", "Use 'xbmgmt flash' to update Shell.");
+            xrt_logmsg(XRT_ERROR, "Xclbin does not match Shell on card.");
+            xrt_logmsg(XRT_ERROR, "Use 'xbmgmt flash' to update Shell.");
         } else if (ret == -EBUSY) {
-            xclLog(XRT_ERROR, "XRT", "Xclbin on card is in use, can't change.");
+            xrt_logmsg(XRT_ERROR, "Xclbin on card is in use, can't change.");
         } else if (ret == -EKEYREJECTED) {
-            xclLog(XRT_ERROR, "XRT", "Xclbin isn't signed properly");
+            xrt_logmsg(XRT_ERROR, "Xclbin isn't signed properly");
         }
-        xclLog(XRT_ERROR, "XRT", "See dmesg log for details. err=%d", ret);
+        xrt_logmsg(XRT_ERROR, "See dmesg log for details. err=%d", ret);
     }
 
     mIsDebugIpLayoutRead = false;
@@ -787,10 +791,10 @@ int shim::xclLoadXclBin(const xclBin *buffer)
  */
 int shim::xclLoadAxlf(const axlf *buffer)
 {
-    xclLog(XRT_INFO, "XRT", "%s, buffer: %s", __func__, buffer);
+    xrt_logmsg(XRT_INFO, "%s, buffer: %s", __func__, buffer);
 
     if (!mLocked) {
-        xclLog(XRT_ERROR, "XRT", "%s: Device is not locked", __func__);
+        xrt_logmsg(XRT_ERROR, "%s: Device is not locked", __func__);
         return -EPERM;
     }
 
@@ -803,11 +807,11 @@ int shim::xclLoadAxlf(const axlf *buffer)
     // reinitializes the DDR and results in ECC error.
     if(isXPR())
     {
-        xclLog(XRT_INFO, "XRT", "%s, XPR Device found, zeroing out DDR again..", __func__);
+        xrt_logmsg(XRT_INFO, "%s, XPR Device found, zeroing out DDR again..", __func__);
 
         if (zeroOutDDR() == false)
         {
-            xclLog(XRT_ERROR, "XRT", "%s, zeroing out DDR again..", __func__);
+            xrt_logmsg(XRT_ERROR, "%s, zeroing out DDR again..", __func__);
             return -EIO;
         }
     }
@@ -832,7 +836,7 @@ unsigned int shim::xclImportBO(int fd, unsigned flags)
     drm_prime_handle info = {mNullBO, flags, fd};
     int result = mDev->ioctl(mUserHandle, DRM_IOCTL_PRIME_FD_TO_HANDLE, &info);
     if (result) {
-        xclLog(XRT_ERROR, "XRT", "%s: FD to handle IOCTL failed", __func__);
+        xrt_logmsg(XRT_ERROR, "%s: FD to handle IOCTL failed", __func__);
     }
     return !result ? info.handle : mNullBO;
 }
@@ -865,7 +869,7 @@ int shim::xclGetSectionInfo(void* section_info, size_t * section_size,
     else if (kind == IP_LAYOUT)
         entry = "ip_layout";
     else {
-        xclLog(XRT_ERROR, "XRT", "%s: Unhandled section found", __func__);
+        xrt_logmsg(XRT_ERROR, "%s: Unhandled section found", __func__);
         return -EINVAL;
     }
 
@@ -873,7 +877,7 @@ int shim::xclGetSectionInfo(void* section_info, size_t * section_size,
     std::vector<char> buf;
     mDev->sysfs_get("icap", entry, err, buf);
     if (!err.empty()) {
-        xclLog(XRT_ERROR, "XRT", "%s: %s", __func__, err);
+        xrt_logmsg(XRT_ERROR, "%s: %s", __func__, err);
         return -EINVAL;
     }
 
@@ -1009,7 +1013,7 @@ ssize_t shim::xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t of
 int shim::xclExecBuf(unsigned int cmdBO)
 {
     int ret;
-    xclLog(XRT_INFO, "XRT", "%s, cmdBO: %d", __func__, cmdBO);
+    xrt_logmsg(XRT_INFO, "%s, cmdBO: %d", __func__, cmdBO);
     drm_xocl_execbuf exec = {0, cmdBO, 0,0,0,0,0,0,0,0};
     ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_EXECBUF, &exec);
     return ret ? -errno : ret;
@@ -1020,7 +1024,7 @@ int shim::xclExecBuf(unsigned int cmdBO)
  */
 int shim::xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, unsigned int *bo_wait_list)
 {
-    xclLog(XRT_INFO, "XRT", "%s, cmdBO: %d, num_bo_in_wait_list: %d, bo_wait_list: %d", 
+    xrt_logmsg(XRT_INFO, "%s, cmdBO: %d, num_bo_in_wait_list: %d, bo_wait_list: %d", 
             __func__, cmdBO, num_bo_in_wait_list, bo_wait_list);
     int ret;
     unsigned int bwl[8] = {0};
@@ -1111,7 +1115,7 @@ int shim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 
     rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_CREATE_QUEUE, &q_info);
     if (rc) {
-        xclLog(XRT_ERROR, "XRT", "%s: Create Write Queue IOCTL failed", __func__);
+        xrt_logmsg(XRT_ERROR, "%s: Create Write Queue IOCTL failed", __func__);
     } else
         *q_hdl = q_info.handle;
 
@@ -1134,7 +1138,7 @@ int shim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 
     rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_CREATE_QUEUE, &q_info);
     if (rc) {
-        xclLog(XRT_ERROR, "XRT", "%s: Create Read Queue IOCTL failed", __func__);
+        xrt_logmsg(XRT_ERROR, "%s: Create Read Queue IOCTL failed", __func__);
     } else
         *q_hdl = q_info.handle;
 
@@ -1150,7 +1154,7 @@ int shim::xclDestroyQueue(uint64_t q_hdl)
 
     rc = close((int)q_hdl);
     if (rc)
-        xclLog(XRT_ERROR, "XRT", "%s: Destroy Queue failed", __func__);
+        xrt_logmsg(XRT_ERROR, "%s: Destroy Queue failed", __func__);
 
     return rc;
 }
@@ -1169,13 +1173,13 @@ void *shim::xclAllocQDMABuf(size_t size, uint64_t *buf_hdl)
 
     rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_ALLOC_BUFFER, &req);
     if (rc) {
-        xclLog(XRT_ERROR, "XRT", "%s: Alloc buffer IOCTL failed", __func__);
+        xrt_logmsg(XRT_ERROR, "%s: Alloc buffer IOCTL failed", __func__);
         return NULL;
     }
 
     buf = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, req.buf_fd, 0);
     if (!buf) {
-        xclLog(XRT_ERROR, "XRT", "%s: Map buffer failed", __func__);
+        xrt_logmsg(XRT_ERROR, "%s: Map buffer failed", __func__);
 
         close(req.buf_fd);
     } else {
@@ -1194,7 +1198,7 @@ int shim::xclFreeQDMABuf(uint64_t buf_hdl)
 
     rc = close((int)buf_hdl);
     if (rc)
-        xclLog(XRT_ERROR, "XRT", "%s: Destory Queue failed", __func__);
+        xrt_logmsg(XRT_ERROR, "%s: Destory Queue failed", __func__);
 
 
     return rc;
@@ -1212,7 +1216,7 @@ int shim::xclPollCompletion(int min_compl, int max_compl, struct xclReqCompletio
     *actual = 0;
     if (!mAioEnabled) {
         num_evt = -EINVAL;
-        xclLog(XRT_ERROR, "XRT", "%s: async io is not enabled", __func__);
+        xrt_logmsg(XRT_ERROR, "%s: async io is not enabled", __func__);
         goto done;
     }
     if (timeout > 0) {
@@ -1224,7 +1228,7 @@ int shim::xclPollCompletion(int min_compl, int max_compl, struct xclReqCompletio
 
     num_evt = io_getevents(mAioContext, min_compl, max_compl, (struct io_event *)comps, ptime);
     if (num_evt < min_compl) {
-        xclLog(XRT_ERROR, "XRT", "%s: failed to poll Queue Completions", __func__);
+        xrt_logmsg(XRT_ERROR, "%s: failed to poll Queue Completions", __func__);
         goto done;
     }
     *actual = num_evt;
@@ -1269,7 +1273,7 @@ ssize_t shim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
             struct iocb *cbs[1];
 
             if (!mAioEnabled) {
-                xclLog(XRT_ERROR, "XRT", "%s: async io is not enabled", __func__);
+                xrt_logmsg(XRT_ERROR, "%s: async io is not enabled", __func__);
                 break;
             }
 
@@ -1337,7 +1341,7 @@ ssize_t shim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr)
             struct iocb *cbs[1];
 
             if (!mAioEnabled) {
-                xclLog(XRT_ERROR, "XRT", "%s: async io is not enabled", __func__);
+                xrt_logmsg(XRT_ERROR, "%s: async io is not enabled", __func__);
                 break;
             }
 
@@ -1475,11 +1479,11 @@ int shim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap)
     std::lock_guard<std::mutex> l(mCuMapLock);
 
     if (cu_index >= mCuMaps.size()) {
-        xclLog(XRT_ERROR, "XRT", "%s: invalid CU index: %d", __func__, cu_index);
+        xrt_logmsg(XRT_ERROR, "%s: invalid CU index: %d", __func__, cu_index);
         return -EINVAL;
     }
     if (offset >= mCuMapSize || (offset & (sizeof(uint32_t) - 1)) != 0) {
-        xclLog(XRT_ERROR, "XRT", "%s: invalid CU offset: %d", __func__, offset);
+        xrt_logmsg(XRT_ERROR, "%s: invalid CU offset: %d", __func__, offset);
         return -EINVAL;
     }
 
@@ -1492,7 +1496,7 @@ int shim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap)
 
     uint32_t *cumap = mCuMaps[cu_index];
     if (cumap == nullptr) {
-        xclLog(XRT_ERROR, "XRT", "%s: can't map CU: %d", __func__, cu_index);
+        xrt_logmsg(XRT_ERROR, "%s: can't map CU: %d", __func__, cu_index);
         return -EINVAL;
     }
 
@@ -1521,7 +1525,7 @@ int shim::xclCuName2Index(const char *name, uint32_t& index)
 
     mDev->sysfs_get("icap", "ip_layout", errmsg, buf);
     if (!errmsg.empty()) {
-        xclLog(XRT_ERROR, "XRT", "can't read ip_layout sysfs node: %s",
+        xrt_logmsg(XRT_ERROR, "can't read ip_layout sysfs node: %s",
             errmsg.c_str());
         return -EINVAL;
     }
@@ -1530,7 +1534,7 @@ int shim::xclCuName2Index(const char *name, uint32_t& index)
     
     const ip_layout *map = (ip_layout *)buf.data();
     if(map->m_count < 0) {
-        xclLog(XRT_ERROR, "XRT", "invalid ip_layout sysfs node content");
+        xrt_logmsg(XRT_ERROR, "invalid ip_layout sysfs node content");
         return -EINVAL;
     }
 

@@ -58,7 +58,6 @@ public:
     void init(unsigned index, const char *logfileName, xclVerbosityLevel verbosity);
     void readDebugIpLayout();
     static int xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* format, va_list args1);
-    int xclLog(xrtLogMsgLevel level, const char* tag, const char* format, ...);
     // Raw unmanaged read/write on the entire PCIE user BAR
     size_t xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size);
     size_t xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size);
@@ -212,6 +211,7 @@ private:
     void xclSysfsGetDeviceInfo(xclDeviceInfo2 *info);
     void xclSysfsGetUsageInfo(drm_xocl_usage_stat& stat);
     void xclSysfsGetErrorStatus(xclErrorStatus& stat);
+    int xrt_logmsg(xrtLogMsgLevel level, const char* format, ...);
 
     int freezeAXIGate();
     int freeAXIGate();
