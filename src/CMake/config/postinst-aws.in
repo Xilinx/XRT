@@ -35,6 +35,7 @@ fi
 
 #create sym link to /opt/xilinx/xrt/lib/libmpd_plugin and restart mpd service
 echo "Install aws mpd plugin"
+rm -rf /opt/xilinx/xrt/lib/libmpd_plugin.so > /dev/null 2>&1
 ln -s /opt/xilinx/xrt/lib/libaws_mpd_plugin.so /opt/xilinx/xrt/lib/libmpd_plugin.so
 #make sure mpd automatically gets starts across reboot if plugin is installed
 systemctl enable mpd
