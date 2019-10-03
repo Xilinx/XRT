@@ -307,6 +307,9 @@ struct xocl_xmc {
 	uint32_t		fan_presence;
 	uint32_t		config_mode;
 	bool			bdinfo_loaded;
+
+	bool			sysfs_created;
+	bool			mini_sysfs_created;
 };
 
 
@@ -942,6 +945,16 @@ static ssize_t xmc_power_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(xmc_power);
 
+static ssize_t status_show(struct device *dev,
+	struct device_attribute *da, char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val = READ_REG32(xmc, XMC_STATUS_REG);
+
+	return sprintf(buf, "0x%x\n", val);
+}
+static DEVICE_ATTR_RO(status);
+
 #define	SENSOR_SYSFS_NODE_ATTRS						\
 	&dev_attr_xmc_12v_pex_vol.attr,					\
 	&dev_attr_xmc_12v_aux_vol.attr,					\
@@ -1000,7 +1013,6 @@ static DEVICE_ATTR_RO(xmc_power);
 REG_SYSFS_NODE(version, XMC_VERSION_REG, "%d\n");
 REG_SYSFS_NODE(sensor, XMC_SENSOR_REG, "0x%04x\n");
 REG_SYSFS_NODE(id, XMC_MAGIC_REG, "0x%x\n");
-REG_SYSFS_NODE(status, XMC_STATUS_REG, "0x%x\n");
 REG_SYSFS_NODE(error, XMC_ERROR_REG, "0x%x\n");
 REG_SYSFS_NODE(capability, XMC_FEATURE_REG, "0x%x\n");
 REG_SYSFS_NODE(power_checksum, XMC_SNSR_CHKSUM_REG, "%d\n");
@@ -1012,7 +1024,6 @@ REG_SYSFS_NODE(host_msg_header, XMC_HOST_MSG_HEADER_REG, "0x%x\n");
 	&dev_attr_version.attr,						\
 	&dev_attr_sensor.attr,						\
 	&dev_attr_id.attr,						\
-	&dev_attr_status.attr,						\
 	&dev_attr_error.attr,						\
 	&dev_attr_capability.attr,					\
 	&dev_attr_power_checksum.attr,					\
@@ -1495,9 +1506,14 @@ static struct attribute *xmc_attrs[] = {
 	&dev_attr_max_power.attr,
 	&dev_attr_fan_presence.attr,
 	&dev_attr_config_mode.attr,
-	&dev_attr_reg_base.attr,
 	SENSOR_SYSFS_NODE_ATTRS,
 	REG_SYSFS_NODE_ATTRS,
+	NULL,
+};
+
+static struct attribute *xmc_mini_attrs[] = {
+	&dev_attr_reg_base.attr,
+	&dev_attr_status.attr,						\
 	NULL,
 };
 
@@ -1554,6 +1570,10 @@ static struct bin_attribute *xmc_bin_attrs[] = {
 static struct attribute_group xmc_attr_group = {
 	.attrs = xmc_attrs,
 	.bin_attrs = xmc_bin_attrs,
+};
+
+static struct attribute_group xmc_mini_attr_group = {
+	.attrs = xmc_mini_attrs,
 };
 
 /*
@@ -1794,6 +1814,26 @@ static ssize_t show_hwmon_name(struct device *dev, struct device_attribute *da,
 }
 static struct sensor_device_attribute name_attr =
 	SENSOR_ATTR(name, 0444, show_hwmon_name, NULL, 0);
+
+static void mgmt_sysfs_destroy_xmc_mini(struct platform_device *pdev)
+{
+	struct xocl_xmc *xmc;
+
+	xmc = platform_get_drvdata(pdev);
+	sysfs_remove_group(&pdev->dev.kobj, &xmc_mini_attr_group);
+}
+
+static int mgmt_sysfs_create_xmc_mini(struct platform_device *pdev)
+{
+	int err;
+
+	err = sysfs_create_group(&pdev->dev.kobj, &xmc_mini_attr_group);
+	if (err) {
+		xocl_err(&pdev->dev, "create xmc mini attrs failed: 0x%x", err);
+	}
+
+	return err;
+}
 
 static void mgmt_sysfs_destroy_xmc(struct platform_device *pdev)
 {
@@ -2182,7 +2222,8 @@ static struct xocl_mb_funcs xmc_ops = {
 static void xmc_unload_board_info(struct xocl_xmc *xmc)
 {
 	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
-	vfree(xmc->bdinfo_raw);
+	if (xmc->bdinfo_raw)
+		vfree(xmc->bdinfo_raw);
 	xmc->bdinfo_raw = NULL;
 }
 
@@ -2200,17 +2241,18 @@ static int xmc_remove(struct platform_device *pdev)
 	if (xmc->sche_binary)
 		devm_kfree(&pdev->dev, xmc->sche_binary);
 
+	if (xmc->mini_sysfs_created)
+		mgmt_sysfs_destroy_xmc_mini(pdev);
+
 	if (!xmc->enabled)
 		goto end;
 
-	mgmt_sysfs_destroy_xmc(pdev);
+	if (xmc->sysfs_created)
+		mgmt_sysfs_destroy_xmc(pdev);
 
 	mutex_lock(&xmc->mbx_lock);
 	xmc_unload_board_info(xmc);
 	mutex_unlock(&xmc->mbx_lock);
-
-	mutex_destroy(&xmc->xmc_lock);
-	mutex_destroy(&xmc->mbx_lock);
 
 end:
 	for (i = 0; i < NUM_IOADDR; i++) {
@@ -2219,7 +2261,11 @@ end:
 		if (xmc->base_addrs[i])
 			iounmap(xmc->base_addrs[i]);
 	}
-	vfree(xmc->cache);
+	if (xmc->cache)
+		vfree(xmc->cache);
+	mutex_destroy(&xmc->xmc_lock);
+	mutex_destroy(&xmc->mbx_lock);
+
 	platform_set_drvdata(pdev, NULL);
 	devm_kfree(&pdev->dev, xmc);
 	return 0;
@@ -2268,6 +2314,9 @@ static int xmc_probe(struct platform_device *pdev)
 	xmc->pdev = pdev;
 	platform_set_drvdata(pdev, xmc);
 
+	mutex_init(&xmc->xmc_lock);
+	mutex_init(&xmc->mbx_lock);
+
 	for (i = 0; i < NUM_IOADDR; i++) {
 		res = platform_get_resource(pdev, IORESOURCE_MEM, i);
 		if (res) {
@@ -2284,12 +2333,30 @@ static int xmc_probe(struct platform_device *pdev)
 			break;
 	}
 
+	if (XMC_PRIVILEGED(xmc)) {
+		if (xmc->base_addrs[IO_REG]) {
+			err = mgmt_sysfs_create_xmc_mini(pdev);
+			if (err)
+				goto failed;	
+			xmc->mini_sysfs_created = true;
+		} else {
+			xocl_err(&pdev->dev, "Empty resources");
+			err = -EINVAL;
+			goto failed;
+		}
+
+		if (!xmc->base_addrs[IO_GPIO]) {
+			xocl_info(&pdev->dev, "minimum mode for SC upgrade");
+			return 0;
+		}
+	}
+
 	xdev_hdl = xocl_get_xdev(pdev);
 	if (xocl_mb_mgmt_on(xdev_hdl) || xocl_mb_sched_on(xdev_hdl) || autonomous_xmc(pdev)) {
 		xocl_info(&pdev->dev, "Microblaze is supported.");
 		xmc->enabled = true;
 	} else {
-		xocl_err(&pdev->dev, "Microblaze is not supported.");
+		xocl_info(&pdev->dev, "Microblaze is not supported.");
 		return 0;
 	}
 
@@ -2302,7 +2369,8 @@ static int xmc_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	mutex_init(&xmc->xmc_lock);
+	xmc->sysfs_created = true;
+
 	xmc->cache = vzalloc(sizeof(struct xcl_sensor));
 
 	if (!xmc->cache) {
@@ -2323,7 +2391,6 @@ static int xmc_probe(struct platform_device *pdev)
 	}
 
 	/* Enabling XMC mailbox support. */
-	mutex_init(&xmc->mbx_lock);
 	if (XMC_PRIVILEGED(xmc)) {
 		xmc->mbx_enabled = true;
 		safe_read32(xmc, XMC_HOST_MSG_OFFSET_REG, &val);
@@ -2338,7 +2405,6 @@ static int xmc_probe(struct platform_device *pdev)
 
 failed:
 	xmc_remove(pdev);
-	vfree(xmc->cache);
 	return err;
 }
 
