@@ -497,11 +497,11 @@ int xocl_subdev_create_by_name(xdev_handle_t xdev_hdl, char *name)
 		if (strcmp(subdev_info[i].name, name))
 			continue;
 		ret = __xocl_subdev_create(xdev_hdl, &subdev_info[i]);
-		if (ret)
-			goto failed;
+		if (ret && ret != -EEXIST && ret != -EAGAIN)
+			break;
+		ret = 0;
 	}
 
-failed:
 	xocl_unlock_xdev(xdev_hdl);
 	if (subdev_info)
 		vfree(subdev_info);
@@ -538,11 +538,11 @@ static int __xocl_subdev_create_by_id(xdev_handle_t xdev_hdl, int id)
 		if (subdev_info[i].id != id)
 			continue;
 		ret = __xocl_subdev_create(xdev_hdl, &subdev_info[i]);
-		if (ret)
-			goto failed;
+		if (ret && ret != -EEXIST && ret != -EAGAIN)
+			break;
+		ret = 0;
 	}
 
-failed:
 	if (subdev_info)
 		vfree(subdev_info);
 
@@ -572,10 +572,10 @@ int xocl_subdev_create_by_level(xdev_handle_t xdev_hdl, int level)
 			continue;
 		ret = __xocl_subdev_create(xdev_hdl, &subdev_info[i]);
 		if (ret && ret != -EEXIST && ret != -EAGAIN)
-			goto failed;
+			break;
+		ret = 0;
 	}
 
-failed:
 	xocl_unlock_xdev(xdev_hdl);
 	if (subdev_info)
 		vfree(subdev_info);
@@ -593,6 +593,7 @@ struct resource *xocl_subdev_get_ioresource(xdev_handle_t xdev_hdl,
 	for (i = 0; i < subdev_num; i++) {
 		for (j = 0; j < subdev_info[i].num_res; j++) {
 			if ((subdev_info[i].res[j].flags & IORESOURCE_MEM) &&
+			    subdev_info[i].res[j].name &&
 			    !strncmp(subdev_info[i].res[j].name, res_name,
 			    strlen(res_name))) {
 				xocl_unlock_xdev(xdev_hdl);
