@@ -1629,20 +1629,6 @@ int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, con
     return 0;
 }
 
-int xrt_logmsg(xrtLogMsgLevel level, const char* format, ...)
-{
-    static auto verbosity = xrt_core::config::get_verbosity();
-    if (level <= verbosity) {
-        va_list args;
-        va_start(args, format);
-        int ret = xocl::shim::xclLogMsg(level, "XRT", format, args);
-        va_end(args);
-        return ret;
-    } else {
-        return 0;
-    }
-}
-
 
 size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
 {
