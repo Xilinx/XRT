@@ -1928,13 +1928,6 @@ for {set i 1} {$i < 16} {incr i} {
 }
 set_property PFM.AXI_PORT $hp3Val [get_bd_cells /interconnect_axifull]
 
-set hpm0Val []
-for {set i 1} {$i < 64} {incr i} {
-  lappend hpm0Val M[format %02d $i]_AXI {memport "M_AXI_GP"}
-}
-set_property PFM.AXI_PORT $hpm0Val [get_bd_cells /interconnect_axihpm0fpd]
-
-
   save_bd_design
   validate_bd_design
 }
