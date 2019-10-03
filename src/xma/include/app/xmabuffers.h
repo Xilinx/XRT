@@ -61,6 +61,8 @@ typedef struct XmaBufferObj
    uint64_t paddr;
    int32_t  bank_index;
    int32_t  dev_index;
+   int32_t  ref_cnt;//For use by FFMPEG/Plugins; Not managed by XMA
+   void*    user_ptr;//For use by FFMPEG/Plugins; Not managed by XMA
    bool     device_only_buffer;
    void*    private_do_not_touch;
 
