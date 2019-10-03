@@ -61,7 +61,9 @@ userptr_bad_alloc_message(void* addr)
                      "bad alloc on host pointer '"
                      + to_hex(addr)
                      + "' detected, check dmesg for more information."
-                     + " This could lead to extra memcpy.");
+                     + " This could lead to extra memcpy."
+                     + " To avoid this, please try xclGetMemObjectFd() and xclGetMemObjectFromFd(),"
+                     + " instead of use CL_MEM_USE_HOST_PTR.");
 }
 
 static void
