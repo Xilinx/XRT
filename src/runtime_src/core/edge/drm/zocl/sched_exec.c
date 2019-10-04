@@ -741,7 +741,7 @@ configure(struct sched_cmd *cmd)
 	}
 	write_unlock(&zdev->attr_rwlock);
 
-	if(zdev->ert) {
+	if (zdev->ert) {
 	  /* Enable interrupt from host to PS when new commands are ready */
 	  if (exec->cq_interrupt) {
 	    /* Stop CQ check thread */
@@ -1624,7 +1624,9 @@ reset_all(void)
  * This function is called kernel software scheduler mode only, in embedded
  * scheduler mode, the hardware scheduler handles the commands directly.
  *
- * Return: Index of free CU, -1 of no CU is available.
+ * Return: Index of free CU,
+ *         -1 of no CU is available,
+ *         -EINVAL cu_mask is invalid.
  */
 static int
 get_free_cu(struct sched_cmd *cmd, enum zocl_cu_type cu_type)
@@ -1634,6 +1636,7 @@ get_free_cu(struct sched_cmd *cmd, enum zocl_cu_type cu_type)
 	int num_masks = cu_masks(cmd);
 	struct sched_exec_core *exec = zdev->exec;
 	int cu_idx = -1;
+	int valid_found = 0;
 
 	SCHED_DEBUG("-> get_free_cu\n");
 	for (mask_idx = 0; mask_idx < num_masks; ++mask_idx) {
@@ -1642,6 +1645,12 @@ get_free_cu(struct sched_cmd *cmd, enum zocl_cu_type cu_type)
 		    exec->scu_status[mask_idx]
 		    : exec->cu_status[mask_idx];
 		u32 free_mask = (cmd_mask | busy_mask) ^ busy_mask;
+		/* for soft cu, cu is always valid */
+		u32 valid_mask = cu_type == ZOCL_SOFT_CU ?
+		    (u32)-1 : exec->cu_valid[mask_idx];
+
+		if (cmd_mask & valid_mask)
+			valid_found = 1;
 
 		/* For hardware cu, we have to search on valid CUs only. */
 		if (cu_type == ZOCL_HARD_CU)
@@ -1662,8 +1671,12 @@ get_free_cu(struct sched_cmd *cmd, enum zocl_cu_type cu_type)
 			    cu_idx_from_mask(cu_idx, mask_idx));
 		return cu_idx_from_mask(cu_idx, mask_idx);
 	}
-	SCHED_DEBUG("<- get_free_cu returns -1\n");
-	return -1;
+
+	if (!valid_found)
+		DRM_WARN("Cannot find valid cu from cu_mask");
+	valid_found = valid_found ? -1 : -EINVAL;
+	SCHED_DEBUG("<- get_free_cu exhausted returns %d\n", valid_found);
+	return valid_found;
 }
 
 /**
@@ -2259,7 +2272,8 @@ zocl_copy_bo_submit(struct sched_cmd *cmd)
 	int err = 0;
 
 	/* Get single dma channel instance. */
-	if ((err = zocl_dma_channel_instance(dma_handle, zdev)) != 0)
+	err = zocl_dma_channel_instance(dma_handle, zdev);
+	if (err)
 		return err;
 
 	/* We must set up callback for async dma operations. */
@@ -2318,8 +2332,11 @@ penguin_submit(struct sched_cmd *cmd)
 
 	/* extract cu list */
 	cmd->cu_idx = get_free_cu(cmd, ZOCL_HARD_CU);
-	if (cmd->cu_idx < 0)
+	if (cmd->cu_idx < 0) {
+		if (cmd->cu_idx == -EINVAL)
+			mark_cmd_submit_error(cmd);
 		return false;
+	}
 
 	/* track cu executions */
 	++(cmd->exec->zcu[cmd->cu_idx].usage);
@@ -2443,6 +2460,8 @@ ps_ert_submit(struct sched_cmd *cmd)
 		cmd->cu_idx = get_free_cu(cmd, ZOCL_SOFT_CU);
 		if (cmd->cu_idx < 0) {
 			release_slot_idx(cmd->ddev, cmd->slot_idx);
+			if (cmd->cu_idx == -EINVAL)
+				mark_cmd_submit_error(cmd);
 			return false;
 		}
 		if (ert_configure_scu(cmd, cmd->cu_idx)) {
@@ -2460,6 +2479,8 @@ ps_ert_submit(struct sched_cmd *cmd)
 		cmd->cu_idx = get_free_cu(cmd, ZOCL_HARD_CU);
 		if (cmd->cu_idx < 0) {
 			release_slot_idx(cmd->ddev, cmd->slot_idx);
+			if (cmd->cu_idx == -EINVAL)
+				mark_cmd_submit_error(cmd);
 			return false;
 		}
 
@@ -2814,8 +2835,8 @@ inline void init_exec(struct sched_exec_core *exec_core)
 }
 
 /**
- * zocl_exec_reset() 
- * 
+ * zocl_exec_reset()
+ *
  * This function ensures that the device exec_core state is reset to
  * same state as was when scheduler was originally probed for the device.
  *
