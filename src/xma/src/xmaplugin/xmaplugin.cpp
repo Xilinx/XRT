@@ -1089,6 +1089,7 @@ int32_t xma_plg_add_buffer_to_data_buffer(XmaDataBuffer *data, XmaBufferObj *dev
         return XMA_ERROR;
     }
     data->data.buffer = dev_buf->data;
+    data->data.xma_device_buf = dev_buf;
     if (dev_buf->device_only_buffer) {
         data->data.buffer_type = XMA_DEVICE_ONLY_BUFFER_TYPE;
     } else {
@@ -1100,7 +1101,7 @@ int32_t xma_plg_add_buffer_to_data_buffer(XmaDataBuffer *data, XmaBufferObj *dev
     return XMA_SUCCESS;
 }
 
-int32_t xma_plg_add_buffer_to_frame(XmaFrame *frame, XmaBufferObj *dev_buf_list, uint32_t num_dev_buf) {
+int32_t xma_plg_add_buffer_to_frame(XmaFrame *frame, XmaBufferObj **dev_buf_list, uint32_t num_dev_buf) {
     if (frame == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
                 "%s(): frame XmaFrame is NULL\n", __func__);
@@ -1122,7 +1123,7 @@ int32_t xma_plg_add_buffer_to_frame(XmaFrame *frame, XmaBufferObj *dev_buf_list,
         return XMA_ERROR;
     }
     for (uint32_t i = 0; i < num_dev_buf; i++) {
-        if (xma_check_device_buffer(&dev_buf_list[i]) != XMA_SUCCESS) {
+        if (xma_check_device_buffer(dev_buf_list[i]) != XMA_SUCCESS) {
             return XMA_ERROR;
         }
     }
@@ -1135,8 +1136,9 @@ int32_t xma_plg_add_buffer_to_frame(XmaFrame *frame, XmaBufferObj *dev_buf_list,
         if (frame->data[i].buffer_type != NO_BUFFER) {
             break;
         }
-        frame->data[i].buffer = dev_buf_list[i].data;
-        if (dev_buf_list[i].device_only_buffer) {
+        frame->data[i].buffer = dev_buf_list[i]->data;
+        frame->data[i].xma_device_buf = dev_buf_list[i];
+        if (dev_buf_list[i]->device_only_buffer) {
             frame->data[i].buffer_type = XMA_DEVICE_ONLY_BUFFER_TYPE;
         } else {
             frame->data[i].buffer_type = XMA_DEVICE_BUFFER_TYPE;
