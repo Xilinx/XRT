@@ -1,9 +1,10 @@
+
 &amba {
 	axi_intc_0: axi-interrupt-ctrl {
 		#interrupt-cells = <2>;
 		compatible = "xlnx,xps-intc-1.00.a";
 		interrupt-controller;
-		reg = <0x0 0xA8000000 0x0 0x1000>;
+		reg = <0x0 0x80020000 0x0 0x1000>;
 		xlnx,kind-of-intr = <0x0>;
 		xlnx,num-intr-inputs = <0x20>;
 		interrupt-parent = <&gic>;
@@ -24,3 +25,4 @@
 			     <28 4>, <29 4>, <30 4>, <31 4>;
 	};
 };
+

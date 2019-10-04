@@ -22,15 +22,12 @@ TEMPLATE=zynqMP
 # The first argument is the petalinux configure file
 #  config_peta <petalinux_project>/project-spec/configs/config
 #
-#config_peta()
-#{
-#	PETA_CONFIG_FILE=$1
-#	# Enable debug tweaks would avoid enter user name and password at boot time
-#	echo "CONFIG_YOCTO_ENABLE_DEBUG_TWEAKS=y" >> $PETA_CONFIG_FILE
-#	# Specify TMP directory. This will be useful when the petalinux project is on NFS
-#	# PetaLinux required TMP directory on a local drive
-#	echo 'CONFIG_TMP_DIR_LOCATION="/scratch/tmp"' >> $PETA_CONFIG_FILE
-#}
+config_peta()
+{
+	PETA_CONFIG_FILE=$1
+	echo "CONFIG_YOCTO_ENABLE_DEBUG_TWEAKS=y" >> $PETA_CONFIG_FILE
+	echo "CONFIG_SUBSYSTEM_REMOVE_PL_DTB=y" >> $PETA_CONFIG_FILE
+}
 
 # The first argument is the linux kernel configure file
 #  config_kernel recipes-kernel/linux/linux-xlnx/user.cfg
@@ -66,9 +63,9 @@ config_dts()
 	DTS_FILE=$1
 	#GLOB_DTS=${XRT_REPO_DIR}/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts
 	#echo "cat ${XRT_REPO_DIR}/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi"
-	#cat ${XRT_REPO_DIR}/src/runtime_src/core/edge/fragments/xlnk_dts_fragment_mpsoc.dts >> recipes-bsp/device-tree/files/system-user.dtsi
-	echo "cat ${THIS_CONFIG_SCRIPT_DIR}/zcu102_base.dts >> $DTS_FILE"
-	cat ${THIS_CONFIG_SCRIPT_DIR}/zcu102_base.dts >> $DTS_FILE
+	echo "cat ${THIS_CONFIG_SCRIPT_DIR}//zcu102_base.dts >> $DTS_FILE"
+	cat ${THIS_CONFIG_SCRIPT_DIR}/zcu102_base.dts >> recipes-bsp/device-tree/files/system-user.dtsi
+	#cat ${THIS_CONFIG_SCRIPT_DIR}/zcu102_base.dts >> $DTS_FILE
 }
 
 # The first argument is the rootfs configure file
@@ -103,13 +100,8 @@ rootfs_menu()
 pre_build_hook()
 {
 	PETA_DIR=$1
-	# Replace the original pl.dtsi. Remove framebuffer IPs.
+	# Replace the original pl.dtsi. Remove axi intc IP.
 	cp -f ${THIS_CONFIG_SCRIPT_DIR}/pl.dtsi ${PETA_DIR}/components/plnx_workspace/device-tree/device-tree/pl.dtsi
-	cp -f ${THIS_CONFIG_SCRIPT_DIR}/device-tree.mss ${PETA_DIR}/components/plnx_workspace/device-tree/device-tree/device-tree.mss
-	# Remove u-boot 128MB image size limited
-	echo '/* TRD customizations */' >> ${PETA_DIR}/project-spec/meta-user/recipes-bsp/u-boot/files/platform-top.h
-	echo '#undef CONFIG_SYS_BOOTMAPSZ' >> ${PETA_DIR}/project-spec/meta-user/recipes-bsp/u-boot/files/platform-top.h
-	echo '#undef CONFIG_PREBOOT' >> ${PETA_DIR}/project-spec/meta-user/recipes-bsp/u-boot/files/platform-top.h
 }
 
 # The first argument is the petalinux project path
