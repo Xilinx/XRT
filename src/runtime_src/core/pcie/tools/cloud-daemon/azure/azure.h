@@ -43,7 +43,7 @@ public:
     ~AzureDev();
 
     // Bitstreams
-    int azureLoadXclBin(const xclBin *&buffer);
+    int azureLoadXclBin(const xclBin *buffer);
     static std::string get_wireserver_ip()
     {
         const std::string config("/opt/xilinx/xrt/etc/mpd.conf");
@@ -100,8 +100,8 @@ struct write_unit {
     const char *uptr;
     size_t  sizeleft;
 };
-int get_remote_msd_fd(size_t index, int& fd);
-int azureLoadXclBin(size_t index, const axlf *&xclbin);
+int get_remote_msd_fd(size_t index, int* fd);
+int azureLoadXclBin(size_t index, const axlf *xclbin, int *resp);
 static size_t read_callback(void *contents, size_t size,
        size_t nmemb, void *userp);
 static size_t WriteCallback(void *contents, size_t size,
