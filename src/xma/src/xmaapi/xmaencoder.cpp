@@ -382,7 +382,9 @@ xma_enc_session_destroy(XmaEncoderSession *session)
     // Free the session
     //Let's not chnage in_use and num of encoders
     //It is better to have different session_id for debugging
+    /*
     delete (XmaHwSessionPrivate*)session->base.hw_session.private_do_not_use;
+    */
     session->base.hw_session.private_do_not_use = NULL;
     session->base.plugin_data = NULL;
     session->base.stats = NULL;
@@ -621,6 +623,7 @@ xma_enc_session_statsfile_close(XmaEncoderSession *session)
     stats = (XmaEncoderStats*)session->base.stats;
      
     // Close and free the stats memory
-    close(stats->fd);
+    if (stats->fd > 0)
+        close(stats->fd);
     free(stats);
 }

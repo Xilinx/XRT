@@ -382,7 +382,7 @@ xma_plg_buffer_free(XmaSession s_handle, XmaBufferObj b_obj)
     b_obj_priv->size = -1;
     b_obj_priv->bank_index = -1;
     b_obj_priv->dev_index = -1;
-    free(b_obj_priv);
+    delete b_obj_priv;
 }
 
 int32_t
