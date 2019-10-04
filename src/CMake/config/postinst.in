@@ -112,7 +112,7 @@ fi
 
 #install pyopencl
 #quick fix till we update python>=3.5
-if [ `uname --m` = "ppc64le" ]; then
+if [ `uname -m` = "ppc64le" ]; then
     echo "Skipping pyopencl installation..."
     exit 0
 fi
