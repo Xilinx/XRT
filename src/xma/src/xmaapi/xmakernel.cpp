@@ -328,7 +328,9 @@ xma_kernel_session_destroy(XmaKernelSession *session)
     free(session->base.plugin_data);
 
     // Free the session
+    /*
     delete (XmaHwSessionPrivate*)session->base.hw_session.private_do_not_use;
+    */
     session->base.hw_session.private_do_not_use = NULL;
     session->base.plugin_data = NULL;
     session->base.stats = NULL;
