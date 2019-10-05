@@ -567,7 +567,7 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    for (unsigned i = 0; i < total; i++) {
+    for (unsigned i = 0; i < count; i++) {
         try {
             deviceVec.emplace_back(new xcldev::device(i, nullptr));
         } catch (const std::exception& ex) {

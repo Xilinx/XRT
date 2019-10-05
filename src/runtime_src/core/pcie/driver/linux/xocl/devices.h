@@ -1140,7 +1140,7 @@ struct xocl_subdev_map {
 		.flags		= 0,					\
 		.subdev_info	= USER_RES_DSA52,			\
 		.subdev_num = ARRAY_SIZE(USER_RES_DSA52),		\
-		.p2p_bar_sz = 8,					\
+		.p2p_bar_sz = 64,					\
 	}
 
 #define	XOCL_BOARD_USER_SMARTN						\
@@ -1795,6 +1795,7 @@ struct xocl_subdev_map {
 		.subdev_info	= MGMT_RES_U50,				\
 		.subdev_num = ARRAY_SIZE(MGMT_RES_U50),			\
 		.flash_type = FLASH_TYPE_SPI,				\
+		.sched_bin = "xilinx/sched_u50.bin",			\
 	}
 
 #define USER_RES_U50							\
@@ -1812,7 +1813,6 @@ struct xocl_subdev_map {
 		.subdev_info	= USER_RES_U50,				\
 		.subdev_num = ARRAY_SIZE(USER_RES_U50),			\
 		.p2p_bar_sz = 8, /* GB */				\
-		.sched_bin = "xilinx/sched_u50.bin",			\
 	}
 
 
