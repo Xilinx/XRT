@@ -111,12 +111,17 @@ if [ "$mpd_active" = "active" ]; then
 fi
 
 #install pyopencl
+#quick fix till we update python>=3.5
+if [ `uname -m` = "ppc64le" ]; then
+    echo "Skipping pyopencl installation..."
+    exit 0
+fi
 #get major version of pyopencl
 version=$(python -m pip list 2>&1 | grep -Po '(?<=pyopencl )(.+)' | grep -Po '[0-9][0-9][0-9][0-9]')
 FLAVOR=`grep '^ID=' /etc/os-release | awk -F= '{print $2}'`
 FLAVOR=`echo $FLAVOR | tr -d '"'`
 
-if [ $version -lt 2019 ] || [ -n $version ]; then
+if [ -z $version ] || [ $version -lt 2019 ]; then
     echo "Installing pyopencl..."
     #need to force install numpy version 1.8 for centos
     if [ $FLAVOR = "centos" ] || [ $FLAVOR = "rhel" ] ; then
@@ -128,7 +133,7 @@ else
     echo "Skipping pyopencl installation..."
     exit 0
 fi
-if python -c "import pyopencl" &> /dev/null; then
+if python -c "import pyopencl"; then
     echo "Successfully installed pyopencl"
 else
     echo "***********************************************************************"
