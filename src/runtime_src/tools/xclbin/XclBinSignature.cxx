@@ -204,10 +204,9 @@ void signXclBinImage(const std::string& _fileOnDisk,
   }
 
   X509* x509 = PEM_read_bio_X509(bmCertificate, NULL, NULL, NULL);
-  if (x509 == nullptr) {
+  if ((x509 == nullptr) && (BIO_seek(bmCertificate, 0) != -1)) {
     // Try reading in the certificate as DER file instead of PEM file. DER file is
     // default for DKMS generated UEFI secure boot certificates.
-    BIO_seek(bmCertificate, 0);
     x509 = d2i_X509_bio(bmCertificate, NULL);
   }
 
@@ -460,10 +459,9 @@ void verifyXclBinImage(const std::string& _fileOnDisk,
   }
 
   X509* x509 = PEM_read_bio_X509(bmCertificate, NULL, NULL, NULL);
-  if (x509 == nullptr) {
+  if ((x509 == nullptr) && (BIO_seek(bmCertificate, 0) != -1)) {
     // Try reading in the certificate as DER file instead of PEM file. DER file is
     // default for DKMS generated UEFI secure boot certificates.
-    BIO_seek(bmCertificate, 0);
     x509 = d2i_X509_bio(bmCertificate, NULL);
   }
 
