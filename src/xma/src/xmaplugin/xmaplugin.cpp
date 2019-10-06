@@ -40,6 +40,7 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
     XmaBufferObj b_obj;
     XmaBufferObj b_obj_error;
     b_obj_error.data = NULL;
+    b_obj_error.ref_cnt = 0;
     b_obj_error.size = 0;
     b_obj_error.paddr = 0;
     b_obj_error.bank_index = -1;
@@ -130,6 +131,7 @@ XmaBufferObj xma_plg_buffer_alloc_arg_num(XmaSession s_handle, size_t size, bool
     XmaBufferObj b_obj;
     XmaBufferObj b_obj_error;
     b_obj_error.data = NULL;
+    b_obj_error.ref_cnt = 0;
     b_obj_error.size = 0;
     b_obj_error.paddr = 0;
     b_obj_error.bank_index = -1;
@@ -221,6 +223,7 @@ xma_plg_buffer_alloc_ddr(XmaSession s_handle, size_t size, bool device_only_buff
     XmaBufferObj b_obj;
     XmaBufferObj b_obj_error;
     b_obj_error.data = NULL;
+    b_obj_error.ref_cnt = 0;
     b_obj_error.size = 0;
     b_obj_error.paddr = 0;
     b_obj_error.bank_index = -1;
