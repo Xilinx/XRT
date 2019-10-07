@@ -203,8 +203,8 @@ void *ZYNQShim::getVirtAddressOfApture(xclAddressSpace space, const uint64_t phy
 	  offset = phy_addr & mask ;
 	  break ;
 	}
+	mask = (mask << 1) + 1;
       }
-      mask = (mask << 1) + 1;
     }
     
     if (!vaddr) {
