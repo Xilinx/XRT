@@ -44,7 +44,7 @@ enum ReturnCodes {
 }
 
 
-void drcCheckFiles(const std::vector<std::string> & _inputFiles, 
+void drcCheckFiles(const std::vector<std::string> & _inputFiles,
                    const std::vector<std::string> & _outputFiles,
                    bool _bForce)
 {
@@ -98,7 +98,7 @@ int main_(int argc, char** argv) {
   std::string sInfoFile;
   bool bSkipUUIDInsertion = false;
   bool bVersion = false;
-  bool bForce = false;   
+  bool bForce = false;
 
   bool bRemoveSignature = false;
   std::string sSignature;
@@ -195,8 +195,9 @@ int main_(int argc, char** argv) {
       std::cout << "  2) Extracting the bitstream image: xclbinutil --dump-section BITSTREAM:RAW:bitstream.bit --input binary_container_1.xclbin" << std::endl;
       std::cout << "  3) Extracting the build metadata : xclbinutil --dump-section BUILD_METADATA:HTML:buildMetadata.json --input binary_container_1.xclbin" << std::endl;
       std::cout << "  4) Removing a section            : xclbinutil --remove-section BITSTREAM --input binary_container_1.xclbin --output binary_container_modified.xclbin" << std::endl;
+      std::cout << "  5) Signing xclbin                : xclbinutil --private-key key.priv --certificate cert.pem --input binary_container_1.xclbin --output signed.xclbin" << std::endl;
 
-      std::cout << std::endl 
+      std::cout << std::endl
                 << "Command Line Options" << std::endl
                 << desc
                 << std::endl;
@@ -284,7 +285,7 @@ int main_(int argc, char** argv) {
   }
 
   // Actions requiring --input
-  
+
   // Check to see if there any file conflicts
   std::vector< std::string> inputFiles;
   {
@@ -337,7 +338,7 @@ int main_(int argc, char** argv) {
     QUIET("------------------------------------------------------------------------------");
   }
 
-  // Dump the signature 
+  // Dump the signature
   if (!sSignatureOutputFile.empty()) {
     if (sInputFile.empty()) {
       throw std::runtime_error("ERROR: Missing input file.");
@@ -454,7 +455,7 @@ int main_(int argc, char** argv) {
   }
 
   if (!sInfoFile.empty()) {
-    if (sInfoFile == "<console>") {      
+    if (sInfoFile == "<console>") {
       xclBin.reportInfo(std::cout, sInputFile, bVerbose);
     } else {
       std::fstream oInfoFile;
@@ -467,9 +468,8 @@ int main_(int argc, char** argv) {
       oInfoFile.close();
     }
   }
-  
+
   QUIET("Leaving xclbinutil.");
 
   return RC_SUCCESS;
 }
-

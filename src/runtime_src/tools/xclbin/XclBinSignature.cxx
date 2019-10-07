@@ -27,7 +27,7 @@
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
 
-static bool 
+static bool
 copyFile(const std::string & _src, const std::string _dest)
 {
   XUtil::TRACE(XUtil::format("Copying file '%s' to '%s'", _src.c_str(), _dest.c_str()).c_str());
@@ -192,7 +192,7 @@ void signXclBinImage(const std::string& _fileOnDisk,
 
   EVP_PKEY* privateKey = PEM_read_bio_PrivateKey(bmPrivateKey, NULL, NULL, NULL);
   if (privateKey == nullptr) {
-    throw std::runtime_error("ERROR: Can create private key object.");
+    throw std::runtime_error("ERROR: Cannot create private key object.");
   }
 
   BIO_free(bmPrivateKey);
@@ -204,8 +204,14 @@ void signXclBinImage(const std::string& _fileOnDisk,
   }
 
   X509* x509 = PEM_read_bio_X509(bmCertificate, NULL, NULL, NULL);
-  if (bmCertificate == nullptr) {
-    throw std::runtime_error("ERROR: Can create certificate key object.");
+  if ((x509 == nullptr) && (BIO_seek(bmCertificate, 0) != -1)) {
+    // Try reading in the certificate as DER file instead of PEM file. DER file is
+    // default for DKMS generated UEFI secure boot certificates.
+    x509 = d2i_X509_bio(bmCertificate, NULL);
+  }
+
+  if (x509 == nullptr) {
+    throw std::runtime_error("ERROR: Cannot create certificate key object.");
   }
 
   BIO_free(bmCertificate);
@@ -274,20 +280,20 @@ void signXclBinImage(const std::string& _fileOnDisk,
     // Get the header
     iofXclBin.seekg(0);
     iofXclBin.read((char*)&xclBinHeader, sizeof(axlf));
-  
+
     // Update the signature length
     xclBinHeader.m_signature_length = bufMem->length;
     XUtil::TRACE(XUtil::format("Setting the signature length to: 0x%x", xclBinHeader.m_signature_length).c_str());
-    
+
     // Update header
     XUtil::TRACE(XUtil::format("Header length prior to signature: 0x%x", xclBinHeader.m_header.m_length ).c_str());
     xclBinHeader.m_header.m_length += (uint64_t) xclBinHeader.m_signature_length;
     XUtil::TRACE(XUtil::format("Header length with signature: 0x%x", xclBinHeader.m_header.m_length ).c_str());
-  
+
     // All is good, write out the new header
     iofXclBin.seekg(0);
     iofXclBin.write((char*)&xclBinHeader, sizeof(axlf));
-    
+
     iofXclBin.close();
   }
 
@@ -308,16 +314,16 @@ void signXclBinImage(const std::string& _fileOnDisk,
 
     iofXclBin.seekg(0, iofXclBin.end);
     iofXclBin.write(bufMem->data, bufMem->length);
-  
+
     // Check header size with actual size of file
     iofXclBin.seekg(0, iofXclBin.end);
     uint64_t fileSize = iofXclBin.tellg();
-  
+
     if (fileSize != xclBinHeader.m_header.m_length) {
       std::string errMsg = XUtil::format("ERROR: xclbin file size (0x%lx) doesn't match expected header size length (0x%lx).", fileSize, xclBinHeader.m_header.m_length);
       throw std::runtime_error(errMsg);
     }
-  
+
     // And we are done
     iofXclBin.close();
   }
@@ -327,8 +333,8 @@ void signXclBinImage(const std::string& _fileOnDisk,
 }
 #endif
 
-void 
-dumpSignatureFile(const std::string & _fileOnDisk, 
+void
+dumpSignatureFile(const std::string & _fileOnDisk,
                   const std::string & _signatureFile)
 {
   XUtil::TRACE("Dump signature from xclbin archive");
@@ -442,7 +448,7 @@ void verifyXclBinImage(const std::string& _fileOnDisk,
 
   BIO *bmImage = BIO_new_mem_buf(memImage.data(), pXclBinHeader->m_header.m_length);
   BIO *bmSignature = BIO_new_mem_buf((char *)(memImage.data() + pXclBinHeader->m_header.m_length), signatureSize);
-  
+
   // -- Obtain the digest algorithm --
   OpenSSL_add_all_digests();
 
@@ -453,8 +459,14 @@ void verifyXclBinImage(const std::string& _fileOnDisk,
   }
 
   X509* x509 = PEM_read_bio_X509(bmCertificate, NULL, NULL, NULL);
+  if ((x509 == nullptr) && (BIO_seek(bmCertificate, 0) != -1)) {
+    // Try reading in the certificate as DER file instead of PEM file. DER file is
+    // default for DKMS generated UEFI secure boot certificates.
+    x509 = d2i_X509_bio(bmCertificate, NULL);
+  }
+
   if (x509 == nullptr) {
-    throw std::runtime_error("ERROR: Can create certificate key object.");
+    throw std::runtime_error("ERROR: Cannot create certificate key object.");
   }
 
   BIO_free(bmCertificate);
