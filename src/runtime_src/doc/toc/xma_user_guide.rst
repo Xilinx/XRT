@@ -22,7 +22,7 @@ Major XMA Changes in 2019.2 Release:
 12. schedule_work_item  API changed to return CUCmdObj
 13. New API xma_plg_schedule_cu_cmd & xma_plg_cu_cmd_status can be used instead of schedule_work_item
 14. In a session if using xma_plg_cu_cmd_status then do NOT use xma_plg_is_work_item_done in same session
-15. Supports up to 128 CUs per device (in-progress; Testcase needed)
+15. Supports up to 128 CUs per device
 16. CU register map size < 4KB
 17. By default XMA will automatically select default ddr bank for new device buffers (as per selected CU). Session_create may provide user selected default ddr bank input when XMA will use user select default ddr bank for plugin with that session
 18. For using ddr bank other than default session ddr_bank use APIs xma_plg_buffer_alloc_arg_num(). See below for info
