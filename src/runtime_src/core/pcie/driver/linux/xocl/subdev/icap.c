@@ -3423,6 +3423,7 @@ failed:
 	return ret;
 }
 
+#if PF == MGMTPF
 static int icap_open(struct inode *inode, struct file *file)
 {
 	struct icap *icap = NULL;
@@ -3647,7 +3648,6 @@ static const struct file_operations icap_fops = {
 	.write = icap_write_rp,
 };
 
-#if PF == MGMTPF
 struct xocl_drv_private icap_drv_priv = {
 	.ops = &icap_ops,
 	.fops = &icap_fops,

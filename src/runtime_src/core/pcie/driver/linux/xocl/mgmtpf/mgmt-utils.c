@@ -381,6 +381,7 @@ void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	msleep(100);
 	pci_bctl &= ~PCI_BRIDGE_CTL_BUS_RESET;
 	pci_write_config_byte(bus->self, PCI_BRIDGE_CONTROL, pci_bctl);
+	ssleep(1);
 
 	for (i = 0; i < 5000; i++) {
 		pci_read_config_word(pdev, PCI_COMMAND, &pci_cmd);
