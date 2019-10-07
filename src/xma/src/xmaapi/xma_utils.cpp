@@ -19,20 +19,25 @@
 #include "app/xmalogger.h"
 #include "app/xmaparam.h"
 #include "lib/xmaapi.h"
-#include "core/common/config_reader.h"
 #include "ert.h"
+#include "core/common/config_reader.h"
+#include "core/pcie/linux/scan.h"
+#include "core/common/utils.h"
 #include <dlfcn.h>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 #include <iostream>
+#include <sstream>
 
 #define XMAUTILS_MOD "xmautils"
 
 extern XmaSingleton *g_xma_singleton;
 
+namespace xma_core { namespace utils {
+
+constexpr std::uint64_t cu_base_min = 0x1800000;
 namespace bfs = boost::filesystem;
 
-namespace xma_core { namespace utils {
 
 static const char*
 emptyOrValue(const char* cstr)
@@ -190,9 +195,93 @@ load_libxrt()
 }
 
 
+void get_system_info() {
+    static auto verbosity = xrt_core::config::get_verbosity();
+    XmaLogLevelType level = (XmaLogLevelType) std::min({(uint32_t)XMA_INFO_LOG, (uint32_t)verbosity});
+    xma_logmsg(level, "XMA-System-Info", "======= START =============");
+    for (unsigned j = 0; j < pcidev::get_dev_total(); j++) {
+        auto dev = pcidev::get_dev(j);
+        xma_logmsg(level, "XMA-System-Info", "dev index = %d; %s", j, dev->sysfs_name.c_str());
+        if (dev->is_ready) {
+            /* Let's keep this function as generic
+            for more detials customers should use xbutil
+            uint32_t hwcfg_dev_index = 0;
+            bool xma_dev_found = false;
+            for (XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
+                if (hw_device.dev_index == (uint32_t)j) {
+                    xma_dev_found = true;
+                    break;
+                }
+                hwcfg_dev_index++;
+            }
+            if (xma_dev_found) {
+            }
+            */
+            std::string errmsg, str1;
+            str1 = std::string("None");
+            dev->sysfs_get( "rom", "VBNV", errmsg, str1);
+            xma_logmsg(level, "XMA-System-Info", "DSA: %s", str1.c_str());
+            str1 = std::string("None");
+            dev->sysfs_get("rom", "ddr_bank_count_max", errmsg, str1);
+            xma_logmsg(level, "XMA-System-Info", "DDR banks: %s", str1.c_str());
+            str1 = std::string("None");
+            dev->sysfs_get("rom", "ddr_bank_size", errmsg, str1);
+            xma_logmsg(level, "XMA-System-Info", "DDR bank size: %s GB", str1.c_str());
+            str1 = std::string("None");
+            dev->sysfs_get("", "link_speed", errmsg, str1);
+            xma_logmsg(level, "XMA-System-Info", "PCIe Speed: GEN %s", str1.c_str());
+            str1 = std::string("None");
+            dev->sysfs_get("", "link_width", errmsg, str1);
+            xma_logmsg(level, "XMA-System-Info", "PCIe Width: x%s", str1.c_str());
+            str1 = std::string("None");
+            dev->sysfs_get("", "xclbinuuid", errmsg, str1);
+            xma_logmsg(level, "XMA-System-Info", "xclbin uuid: %s", str1.c_str());
+            str1 = std::string("None");
+            dev->sysfs_get("firewall", "detected_status", errmsg, str1);
+            xma_logmsg(level, "XMA-System-Info", "Firewall Status: %s", str1.c_str());
+            str1 = std::string("None");
+            dev->sysfs_get("firewall", "detected_level",  errmsg, str1);
+            xma_logmsg(level, "XMA-System-Info", "Firewall Value: %s", str1.c_str());
+            /* For more details use xbutil
+            std::vector<std::string> custat;
+            dev->sysfs_get("mb_scheduler", "kds_custat", errmsg, custat);
+            char delim = ':';
+            for (auto cu_str: custat) {
+                std::stringstream str2(cu_str);
+                std::string addr = cu_str.substr(4, cu_str.find("]"));
+                if (std::stoull(addr, 0, 16) >= cu_base_min) {
+                    std::string item;
+                    std::getline(str2, item, delim);
+                    std::getline(str2, item, delim);
+                    cu_str += " : ";
+                    cu_str += parseCUStatus(std::stoi(item));
+                    xma_logmsg(level, "XMA-System-Info", cu_str.c_str());
+                }
+            }
+            */
+        } else {
+            xma_logmsg(level, "XMA-System-Info", " Device is not ready. May need to load/flash DSA");
+        }
+        xma_logmsg(level, "XMA-System-Info", " ");//Gap for next device
+    }
+    xma_logmsg(level, "XMA-System-Info", "======= END =============");
 
+    bool expected = false;
+    bool desired = true;
+    while (!g_xma_singleton->log_msg_list_locked.compare_exchange_weak(expected, desired)) {
+        expected = false;
+    }
+    //log msg list lock acquired
 
+    while (!g_xma_singleton->log_msg_list.empty()) {
+        auto itr1 = g_xma_singleton->log_msg_list.begin();
+        xclLogMsg(NULL, (xrtLogMsgLevel)itr1->level, "XMA", itr1->msg.c_str());
+        g_xma_singleton->log_msg_list.pop_front();
+    }
 
+    //Release log msg list lock
+    g_xma_singleton->log_msg_list_locked = false;
+}
 
 void get_session_cmd_load() {
    static auto verbosity = xrt_core::config::get_verbosity();

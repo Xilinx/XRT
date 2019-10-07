@@ -27,6 +27,7 @@ typedef struct streambuf: public std::streambuf {
 } streambuf;
 
 void get_session_cmd_load();
+void get_system_info();
 
 } // namespace utils
 } // namespace xma_core
