@@ -42,12 +42,4 @@ install(TARGETS azure_mpd_plugin
   COMPONENT azure
   )
 
-set (MPD_CONFIG_FILE "mpd.conf")
-
-install (
-  FILES ${MPD_CONFIG_FILE}
-  DESTINATION ${XRT_INSTALL_DIR}/etc
-  COMPONENT azure
-  )
-
 endif (NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")

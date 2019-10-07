@@ -48,7 +48,13 @@ int init(mpd_plugin_callbacks *cbs);
 void fini(void *mpc_cookie);
 }
 
-static std::string RESTIP_ENDPOINT;
+/*
+ * This is the default Azure cloud wireserver IP.
+ * Users debugging with a standalone server needs to edit /etc/mpd.conf to
+ * specify its own IP, with format, eg
+ * restip = 1.1.1.1
+ */
+static std::string RESTIP_ENDPOINT = "168.63.129.16";
 /*
  * Init function of the plugin that is used to hook the required functions.
  * The cookie is used by fini (see below). Can be NULL if not required.
@@ -63,7 +69,9 @@ int init(mpd_plugin_callbacks *cbs)
     }
     if (cbs) 
     {
-        RESTIP_ENDPOINT = AzureDev::get_wireserver_ip();
+        std::string private_ip = AzureDev::get_wireserver_ip();
+        if (!private_ip.empty())
+            RESTIP_ENDPOINT = private_ip;
         syslog(LOG_INFO, "azure restserver ip: %s\n", RESTIP_ENDPOINT.c_str());
         // hook functions
         cbs->mpc_cookie = NULL;

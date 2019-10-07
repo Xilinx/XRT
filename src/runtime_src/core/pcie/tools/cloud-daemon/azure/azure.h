@@ -46,7 +46,7 @@ public:
     int azureLoadXclBin(const xclBin *buffer);
     static std::string get_wireserver_ip()
     {
-        const std::string config("/opt/xilinx/xrt/etc/mpd.conf");
+        const std::string config("/etc/mpd.conf");
         //just check ip address format, not validity
         std::regex ip("^([0-9]{1,3}\\.){3}[0-9]{1,3}$");
 
