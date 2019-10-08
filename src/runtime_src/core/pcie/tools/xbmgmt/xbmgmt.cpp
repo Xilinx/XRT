@@ -106,6 +106,15 @@ unsigned int bdf2index(const std::string& bdfStr)
     return UINT_MAX;
 }
 
+std::string getBDF(unsigned index)
+{
+    char BDF[128];
+    auto dev = pcidev::get_dev(index, false);
+    sprintf(BDF, "%.4x:%.2x:%.2x.%.1x",
+        dev->domain, dev->bus, dev->dev, dev->func);
+    return std::string(BDF);
+}
+
 static inline bool isHiddenSubcmd(const std::string& cmd)
 {
     return cmd[0] == '-';
