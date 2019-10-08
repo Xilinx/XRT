@@ -49,7 +49,7 @@ static inline void drm_free_large(void *ptr)
 
 static inline void *drm_malloc_ab(size_t nmemb, size_t size)
 {
-	return kvmalloc_array(nmemb, sizeof(struct page *), GFP_KERNEL);
+	return kvmalloc_array(nmemb, size, GFP_KERNEL);
 }
 #endif
 
@@ -453,13 +453,13 @@ out_free:
 	return ret;
 }
 
-int xocl_userptr_bo_ioctl(struct drm_device *dev,
-			      void *data,
-			      struct drm_file *filp)
+int xocl_userptr_bo_ioctl(
+	struct drm_device *dev, void *data, struct drm_file *filp)
 {
 	int ret;
 	struct drm_xocl_bo *xobj;
-	uint64_t page_count;
+	uint64_t page_count = 0;
+	uint64_t page_pinned = 0;
 	struct drm_xocl_userptr_bo *args = data;
 	unsigned user_flags = args->flags;
 
@@ -474,7 +474,7 @@ int xocl_userptr_bo_ioctl(struct drm_device *dev,
 		return PTR_ERR(xobj);
 	}
 
-	/* Use the page rounded size so we can accurately account for number of pages */
+	/* Use the page rounded size to accurately account for num of pages */
 	page_count = xobj->base.size >> PAGE_SHIFT;
 
 	xobj->pages = drm_malloc_ab(page_count, sizeof(*xobj->pages));
@@ -483,13 +483,24 @@ int xocl_userptr_bo_ioctl(struct drm_device *dev,
 		goto out1;
 	}
 
-	ret = get_user_pages_fast(args->addr, page_count, 1, xobj->pages);
-	if (ret != page_count) {
-		ret = -ENOMEM;
-		goto out0;
+	while (page_pinned < page_count) {
+		/*
+		 * We pin at most 1G at a time to workaround
+		 * a Linux kernel issue inside get_user_pages_fast().
+		 */
+		u64 nr = min(page_count - page_pinned,
+			(1024ULL * 1024 * 1024) / (1ULL << PAGE_SHIFT));
+		if (get_user_pages_fast(
+			args->addr + (page_pinned << PAGE_SHIFT),
+			nr, 1, xobj->pages + page_pinned) != nr) {
+			ret = -ENOMEM;
+			goto out0;
+		}
+		page_pinned += nr;
 	}
 
-	xobj->sgt = alloc_onetime_sg_table(xobj->pages, 0, page_count << PAGE_SHIFT);
+	xobj->sgt = alloc_onetime_sg_table(xobj->pages, 0,
+		page_count << PAGE_SHIFT);
 	if (IS_ERR(xobj->sgt)) {
 		ret = PTR_ERR(xobj->sgt);
 		goto out0;
@@ -512,6 +523,8 @@ int xocl_userptr_bo_ioctl(struct drm_device *dev,
 	return ret;
 
 out0:
+	if (page_pinned)
+		xocl_release_pages(xobj->pages, page_pinned, 0);
 	drm_free_large(xobj->pages);
 	xobj->pages = NULL;
 out1:
