@@ -113,13 +113,23 @@ static inline bool isHiddenSubcmd(const std::string& cmd)
 
 static void printHelp(void)
 {
+    std::vector<std::string> expert_subCmd =
+        { "reset", "clock", "partition", "config", "nifd" };
+    std::stringstream expert_ostr;
     std::cout << "Supported sub-commands are:" << std::endl;
     for (auto& c : subCmdList) {
         if (isHiddenSubcmd(c.first))
             continue;
+        if(std::find(std::begin(expert_subCmd),
+            std::end(expert_subCmd), c.first) != expert_subCmd.end()) {
+            expert_ostr << "\t" << c.first << " - " << c.second.description
+                << std::endl;
+            continue;
+        }
         std::cout << "\t" << c.first << " - " << c.second.description <<
             std::endl;
     }
+    std::cout << "Experts only:\n" << expert_ostr.str();
     std::cout <<
         "Run xbmgmt help <subcommand> for detailed help of each subcommand" <<
         std::endl;

@@ -700,6 +700,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  flash   [-d card] -a <all | shell> [-t timestamp]\n";
     std::cout << "  flash   [-d card] -p msp432_firmware\n";
     std::cout << "  flash   scan [-v]\n";
+    std::cout << "\nNOTE: card for -d option can either be id or bdf\n";
     std::cout << "\nExamples:\n";
     std::cout << "Print JSON file to stdout\n";
     std::cout << "  " << exe << " dump\n";
@@ -724,7 +725,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "List the debug IPs available on the platform\n";
     std::cout << "  " << exe << " status \n";
     std::cout << "Validate installation on card 1\n";
-    std::cout << "  " << exe << " validate -d 1\n";
+    std::cout << "  " << exe << " validate -d 0000:02:00.0\n";
 }
 
 std::unique_ptr<xcldev::device> xcldev::xclGetDevice(unsigned index)
