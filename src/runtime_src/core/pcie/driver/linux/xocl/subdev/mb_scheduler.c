@@ -1296,7 +1296,7 @@ ert_start_cmd(struct xocl_ert *xert, struct xocl_cmd *xcmd)
 
 	// write packet minus header
 	SCHED_DEBUGF("++ slot_idx=%d, slot_addr=0x%x\n", xcmd->slot_idx, slot_addr);
-	memcpy_toio(xert->cq_base + slot_addr + 4, ecmd->data, (cmd_packet_size(xcmd) - 1) * sizeof(u32));
+	xocl_memcpy_toio(xert->cq_base + slot_addr + 4, ecmd->data, (cmd_packet_size(xcmd) - 1) * sizeof(u32));
 
 	// write header
 	iowrite32(ecmd->header, xert->cq_base + slot_addr);
@@ -1356,22 +1356,22 @@ ert_read_custat(struct xocl_ert *xert, struct xocl_cmd *xcmd, unsigned int num_c
 			return;
 
 		// cu execution stat
-		memcpy_fromio(xert->cu_usage, xert->cq_base + slot_addr + (idx << 2),
+		xocl_memcpy_fromio(xert->cu_usage, xert->cq_base + slot_addr + (idx << 2),
 			      ert_num_cus * sizeof(u32));
 		idx += ert_num_cus;
 
 		// ert cu status
-		memcpy_fromio(xert->cu_status, xert->cq_base + slot_addr + (idx << 2),
+		xocl_memcpy_fromio(xert->cu_status, xert->cq_base + slot_addr + (idx << 2),
 			      ert_num_cus * sizeof(u32));
 		idx += ert_num_cus;
 
 		// ert cq status
-		memcpy_fromio(xert->cq_slot_status, xert->cq_base + slot_addr + (idx << 2),
+		xocl_memcpy_fromio(xert->cq_slot_status, xert->cq_base + slot_addr + (idx << 2),
 			      ert_num_cq_slots * sizeof(u32));
 	}
 	else {
 		// Old ERT command style populates only cu usage past header
-		memcpy_fromio(xert->cu_usage, xert->cq_base + slot_addr + 4,
+		xocl_memcpy_fromio(xert->cu_usage, xert->cq_base + slot_addr + 4,
 			      num_cus * sizeof(u32));
 	}
 }
