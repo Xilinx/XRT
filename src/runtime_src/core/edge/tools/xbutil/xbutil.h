@@ -557,6 +557,7 @@ public:
     int readAMCounters();
     int readLAPCheckers(int aVerbose) ;
     int readStreamingCheckers(int aVerbose) ;
+    int map_debug_ip();
     int print_debug_ip_list (int aVerbose) ;
     int testM2m() { std::cout << "Unsupported API " << std::endl; return -1; }
     int reclock2(unsigned regionIndex, const unsigned short *freq) { std::cout << "Unsupported API " << std::endl; return -1; }
