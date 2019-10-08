@@ -491,6 +491,8 @@ int main(int argc, char *argv[])
         result = -1;//deviceVec[index]->do_dd( ddArgs );
         break;
     case xcldev::STATUS:
+        // On edge, we have to map the debug ip control before they can be read
+        deviceVec[index]->map_debug_ip();
         if (ipmask == xcldev::STATUS_NONE_MASK) {
             //if no ip specified then read all
             //ipmask = static_cast<unsigned int>(xcldev::STATUS_SPM_MASK);

@@ -31,6 +31,7 @@
 #include "xclbin.h"
 #include "xclperf.h"
 #include "xbutil.h"
+#include "core/edge/user/shim.h"
 
 static const int debug_ip_layout_max_size = 65536;
 static const int debug_ip_max_type = 9;
@@ -444,6 +445,43 @@ int xcldev::device::readStreamingCheckers(int aVerbose) {
     std::cout.copyfmt(saveFormat);
   }
   return 0;
+}
+
+int xcldev::device::map_debug_ip() {
+  std::string errmsg ;
+  std::vector<char> buf ;
+  zynq_device::get_dev()->sysfs_get("debug_ip_layout", errmsg, buf) ;
+  if (!errmsg.empty()) {
+    std::cout << errmsg << std::endl ;
+    return -EINVAL ;
+  }
+  debug_ip_layout *map = (debug_ip_layout*)buf.data() ;
+  
+  if (buf.empty() || map->m_count <= 0) {
+    return 0;
+  }
+
+  // Create the set of pairs
+  std::vector<std::pair<uint64_t, size_t>> debug_ip ;
+  for (unsigned int i = 0 ; i < map->m_count ; ++i) {
+    std::pair<uint64_t, size_t> next_debug_ip ;
+    next_debug_ip.first = (map->m_debug_ip_data[i]).m_base_address ;
+    switch ((map->m_debug_ip_data[i]).m_type)
+    {
+    case AXI_MONITOR_FIFO_LITE:
+    case AXI_MONITOR_FIFO_FULL:
+      next_debug_ip.second = 8 * 1024 ;
+      break ;
+    default:
+      next_debug_ip.second = 64 * 1024 ;
+      break ;
+    }
+    debug_ip.push_back(next_debug_ip);
+  }
+
+  ZYNQ::ZYNQShim* drv = ZYNQ::ZYNQShim::handleCheck(m_handle);
+  if (!drv) return -ENODEV;
+  return drv->mapKernelControl(debug_ip);
 }
 
 int xcldev::device::print_debug_ip_list (int aVerbose) {
