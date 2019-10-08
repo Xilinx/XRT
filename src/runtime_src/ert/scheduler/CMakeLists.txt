@@ -1,5 +1,7 @@
 # Build ERT under legacy and u50 directories
 
+set(ERT_INSTALL_FIRMWARE_PREFIX "/lib/firmware/xilinx")
+
 add_custom_command(
  OUTPUT legacy/bsp.extracted
  COMMAND ${CMAKE_COMMAND} -E make_directory legacy/bsp
@@ -46,11 +48,21 @@ install (FILES
 )
 
 install (FILES
+ ${CMAKE_CURRENT_BINARY_DIR}/legacy/sched.bin
+ DESTINATION ${ERT_INSTALL_FIRMWARE_PREFIX}
+  )
+
+install (FILES
  ${CMAKE_CURRENT_BINARY_DIR}/u50/sched.bin
  DESTINATION ${ERT_INSTALL_PREFIX}
  RENAME sched_u50.bin
-)
+ )
 
+install (FILES
+ ${CMAKE_CURRENT_BINARY_DIR}/u50/sched.bin
+ DESTINATION ${ERT_INSTALL_FIRMWARE_PREFIX}
+ RENAME sched_u50.bin
+  )
 
 file(GLOB SCH_SRC_FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"

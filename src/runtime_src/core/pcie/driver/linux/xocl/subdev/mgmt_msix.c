@@ -89,7 +89,7 @@ static int user_intr_unreg(struct platform_device *pdev, u32 intr)
 	struct xocl_mgmt_msix *mgmt_msix;
 	struct xocl_dev_core *core;
 	u32 vec;
-	int ret;
+	int ret = 0;
 
 	mgmt_msix = platform_get_drvdata(pdev);
 

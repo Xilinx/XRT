@@ -40,7 +40,7 @@ using namespace boost::filesystem;
 
 const char *subCmdPartDesc = "Show and download partition onto the device";
 const char *subCmdPartUsage =
-    "--program --name name [--id id] [--card bdf] [--force]\n"
+    "--program --name name [--id interface-uuid] [--card bdf] [--force]\n"
     "--program --path xclbin [--card bdf] [--force]\n"
     "--scan [--verbose]";
 
@@ -66,8 +66,8 @@ int program_prp(unsigned index, const std::string& xclbin, bool force)
     int length = stream.tellg();
     stream.seekg(0, stream.beg);
 
-    char *buffer = new char[length];
-    stream.read(buffer, length);
+    std::unique_ptr<char> buffer(new char[length]);
+    stream.read(buffer.get(), length);
 
     std::string errmsg;
     if (force)
@@ -76,12 +76,12 @@ int program_prp(unsigned index, const std::string& xclbin, bool force)
         if (!errmsg.empty())
         {
             std::cout << errmsg << std::endl;
+            dev->close(fd);
             return -EINVAL;
         }
     }
 
-    ssize_t ret = write(fd, buffer, length);
-    delete [] buffer;
+    ssize_t ret = write(fd, buffer.get(), length);
 
     if (ret <= 0) {
         std::cout << "ERROR: Write prp to icap subdev failed." << std::endl;
@@ -92,8 +92,7 @@ int program_prp(unsigned index, const std::string& xclbin, bool force)
 
     if (force)
     {
-        std::cout << "CAUTION: Force downloading PRP. " <<
-                "Please make sure xocl driver is unloaded." << std::endl;
+        std::cout << "CAUTION! Force downloading PRP inappropriately may hang the host. Please make sure xocl driver is unloaded or detached from the corresponding board. The host will hang with attached xocl driver instance." << std::endl;
         if(!canProceed())
             return -ECANCELED;
 
@@ -300,8 +299,8 @@ int program(int argc, char *argv[])
         { "card", required_argument, nullptr, '0' },
         { "force", no_argument, nullptr, '1' },
         { "path", required_argument, nullptr, '2' },
-	{ "id", required_argument, nullptr, '3' },
-	{ "name", required_argument, nullptr, '4' },
+        { "id", required_argument, nullptr, '3' },
+        { "name", required_argument, nullptr, '4' },
     };
 
     while (true) {
@@ -335,6 +334,10 @@ int program(int argc, char *argv[])
     if (index == UINT_MAX)
         index = 0;
 
+    Flasher f(index);
+    if (!f.isValid())
+        return -EINVAL;
+
     std::string blp_uuid, logic_uuid;
     auto dev = pcidev::get_dev(index, false);
     std::string errmsg;
@@ -351,7 +354,7 @@ int program(int argc, char *argv[])
                 return -ECANCELED;
         }
 
-        std::cout << "Programming ULP..." << std::endl;
+        std::cout << "Programming ULP on Card [" << f.sGetDBDF() << "]..." << std::endl;
         return program_urp(index, file);
     }
 
@@ -415,6 +418,7 @@ int program(int argc, char *argv[])
                 }
                 ++iter;
             }
+            closedir(dp);
         }
     }
 
@@ -426,11 +430,11 @@ int program(int argc, char *argv[])
     DSAInfo dsa(file);
     if (dsa.uuids.size() == 0)
     {
-        std::cout << "Programming ULP..." << std::endl;
+        std::cout << "Programming ULP on Card [" << f.sGetDBDF() << "]..." << std::endl;
         return program_urp(index, file);
     }
 
-    std::cout << "Programming PLP..." << std::endl;
+    std::cout << "Programming PLP on Card [" << f.sGetDBDF() << "]..." << std::endl;
     std::cout << "Partition file: " << dsa.file << std::endl;
     for (std::string uuid : dsa.uuids)
     {

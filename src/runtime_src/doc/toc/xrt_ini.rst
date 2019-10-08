@@ -56,7 +56,7 @@ Runtime Group
 |                 |                              |       specified file.                     |
 |                 |                              |       Example, runtime_log=my_run.log     |
 |                 |                              |                                           |
-|                 |                              |Default: null                              |
+|                 |                              |Default: console                           |
 +-----------------+------------------------------+-------------------------------------------+
 | cpu_affinity    | [{N,N,...}]                  |Pin all runtime threads to specified CPUs. |
 |                 |                              |                                           |
@@ -158,7 +158,7 @@ Emulation Group
 | print_warning_in_console  |  [true|false]              |Controls the printing of emulation warning messages|
 |                           |                            |to users console.                                  |
 |                           |                            |                                                   |
-|                           |                            | Emulation warning messages are always logged into | 
+|                           |                            | Emulation warning messages are always logged into |
 |                           |                            | a file called emulation_debug.log                 |
 |                           |                            |                                                   |
 |                           |                            |     - true = print in users console               |
@@ -169,7 +169,7 @@ Emulation Group
 | print_errors_in_console   |  [true|false]              |Controls the printing of emulation error messages  |
 |                           |                            |to users console.                                  |
 |                           |                            |                                                   |
-|                           |                            | Emulation error messages are always logged into a | 
+|                           |                            | Emulation error messages are always logged into a |
 |                           |                            | file called emulation_debug.log                   |
 |                           |                            |                                                   |
 |                           |                            |     - true = print in users console               |

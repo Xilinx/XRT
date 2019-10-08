@@ -284,6 +284,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 			RESNAME_CLKWIZKERNEL2,
 			RESNAME_CLKWIZKERNEL3,
 			RESNAME_KDMA,
+			RESNAME_CLKSHUTDOWN,
 			NULL
 		},
 		1,

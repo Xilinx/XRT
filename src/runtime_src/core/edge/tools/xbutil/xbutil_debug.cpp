@@ -31,6 +31,7 @@
 #include "xclbin.h"
 #include "xclperf.h"
 #include "xbutil.h"
+#include "core/edge/user/shim.h"
 
 static const int debug_ip_layout_max_size = 65536;
 static const int debug_ip_max_type = 9;
@@ -173,6 +174,58 @@ int xcldev::device::readAIMCounters() {
                   << "  " << "0x" << std::setw(14) << debugResults.LastWriteData[i]
                   << "  " << "0x" << std::setw(14) << debugResults.LastReadAddr[i]
                   << "  " << "0x" << std::setw(14) << debugResults.LastReadData[i]
+                  << std::dec << std::endl;
+    }
+    std::cout.flags(f);
+    return 0;
+}
+
+int xcldev::device::readAMCounters() {
+    xclAccelMonitorCounterResults debugResults = {0};
+    std::vector<std::string> slotNames;
+
+    unsigned int numSlots = getIPCountAddrNames (ACCEL_MONITOR, nullptr, &slotNames);
+    if (numSlots == 0) {
+        std::cout << "ERROR: Accelerator Monitor IP does not exist on the platform" << std::endl;
+        return 0;
+    }
+
+    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_AM, &debugResults);
+
+    std::cout << "Accelerator Monitor Counters (hex values are cycle count)\n";
+
+    size_t maxWidth = 0;
+    for (auto& mon : slotNames) {
+        maxWidth = std::max(strlen(mon.c_str()), maxWidth);
+    }
+    int col1 = std::max(maxWidth, strlen("Compute Unit")) + 4;
+
+    std::ios_base::fmtflags f(std::cout.flags());
+    std::cout << std::left
+              << std::setw(col1) << "Compute Unit"
+              << " " << std::setw(8) << "Ends"
+              << "  " << std::setw(8)  << "Starts"
+              << "  " << std::setw(16)  << "Max Parallel Itr"
+              << "  " << std::setw(16)  << "Execution"
+              << "  " << std::setw(16)  << "Memory Stall"
+              << "  " << std::setw(16)  << "Pipe Stall"
+              << "  " << std::setw(16)  << "Stream Stall"
+              << "  " << std::setw(16)  << "Min Exec"
+              << "  " << std::setw(16)  << "Max Exec"
+              << std::endl;
+    for (size_t i = 0; i<debugResults.NumSlots; ++i) {
+        std::cout << std::left
+                  << std::setw(col1) << slotNames[i]
+                  << " " << std::setw(8) << debugResults.CuExecCount[i]
+                  << "  " << std::setw(8) << debugResults.CuStartCount[i]
+                  << "  " << std::setw(16) << debugResults.CuMaxParallelIter[i]
+                  << std::hex
+                  << "  " << "0x" << std::setw(14) << debugResults.CuExecCycles[i]
+                  << "  " << "0x" << std::setw(14) << debugResults.CuStallExtCycles[i]
+                  << "  " << "0x" << std::setw(14) << debugResults.CuStallIntCycles[i]
+                  << "  " << "0x" << std::setw(14) << debugResults.CuStallStrCycles[i]
+                  << "  " << "0x" << std::setw(14) << debugResults.CuMinExecCycles[i]
+                  << "  " << "0x" << std::setw(14) << debugResults.CuMaxExecCycles[i]
                   << std::dec << std::endl;
     }
     std::cout.flags(f);
@@ -392,6 +445,43 @@ int xcldev::device::readStreamingCheckers(int aVerbose) {
     std::cout.copyfmt(saveFormat);
   }
   return 0;
+}
+
+int xcldev::device::map_debug_ip() {
+  std::string errmsg ;
+  std::vector<char> buf ;
+  zynq_device::get_dev()->sysfs_get("debug_ip_layout", errmsg, buf) ;
+  if (!errmsg.empty()) {
+    std::cout << errmsg << std::endl ;
+    return -EINVAL ;
+  }
+  debug_ip_layout *map = (debug_ip_layout*)buf.data() ;
+  
+  if (buf.empty() || map->m_count <= 0) {
+    return 0;
+  }
+
+  // Create the set of pairs
+  std::vector<std::pair<uint64_t, size_t>> debug_ip ;
+  for (unsigned int i = 0 ; i < map->m_count ; ++i) {
+    std::pair<uint64_t, size_t> next_debug_ip ;
+    next_debug_ip.first = (map->m_debug_ip_data[i]).m_base_address ;
+    switch ((map->m_debug_ip_data[i]).m_type)
+    {
+    case AXI_MONITOR_FIFO_LITE:
+    case AXI_MONITOR_FIFO_FULL:
+      next_debug_ip.second = 8 * 1024 ;
+      break ;
+    default:
+      next_debug_ip.second = 64 * 1024 ;
+      break ;
+    }
+    debug_ip.push_back(next_debug_ip);
+  }
+
+  ZYNQ::ZYNQShim* drv = ZYNQ::ZYNQShim::handleCheck(m_handle);
+  if (!drv) return -ENODEV;
+  return drv->mapKernelControl(debug_ip);
 }
 
 int xcldev::device::print_debug_ip_list (int aVerbose) {

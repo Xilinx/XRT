@@ -430,7 +430,7 @@ zocl_userptr_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 
 	/* Physical address must be continuous */
 	if (sg_count != 1) {
-		DRM_ERROR("User buffer is not physical contiguous\n");
+		DRM_WARN("User buffer is not physical contiguous\n");
 		ret = -EINVAL;
 		goto out0;
 	}

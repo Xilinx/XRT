@@ -1288,7 +1288,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	int slotid = PCI_SLOT(pcidev->devfn);
 	unsigned short deviceid = pcidev->device;
 	struct axlf *bin_obj_axlf;
-	const struct firmware *fw;
+	const struct firmware *fw, *sche_fw;
 	char fw_name[256];
 	XHwIcap_Bit_Header bit_header = { 0 };
 	long err = 0;
@@ -1302,7 +1302,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	const struct axlf_section_header *primaryHeader = 0;
 	const struct axlf_section_header *secondaryHeader = 0;
 	const struct axlf_section_header *mbHeader = 0;
-	bool load_mbs = false;
+	bool load_sched = false, load_mgmt = false;
 
 	/* Can only be done from mgmt pf. */
 	if (!ICAP_PRIVILEGED(icap))
@@ -1328,44 +1328,6 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 		return err;
 	}
 
-	/* Grab lock and touch hardware. */
-	mutex_lock(&icap->icap_lock);
-
-	if (xocl_mb_sched_on(xdev)) {
-		/* Try locating the microblaze binary. */
-		bin_obj_axlf = (struct axlf *)fw->data;
-		mbHeader = get_axlf_section_hdr(icap, bin_obj_axlf, SCHED_FIRMWARE);
-		if (mbHeader) {
-			mbBinaryOffset = mbHeader->m_sectionOffset;
-			mbBinaryLength = mbHeader->m_sectionSize;
-			length = bin_obj_axlf->m_header.m_length;
-			xocl_mb_load_sche_image(xdev, fw->data + mbBinaryOffset,
-				mbBinaryLength);
-			ICAP_INFO(icap, "stashed mb sche binary, len %lld",
-					mbBinaryLength);
-			load_mbs = true;
-		}
-	}
-
-	if (xocl_mb_mgmt_on(xdev)) {
-		/* Try locating the board mgmt binary. */
-		bin_obj_axlf = (struct axlf *)fw->data;
-		mbHeader = get_axlf_section_hdr(icap, bin_obj_axlf, FIRMWARE);
-		if (mbHeader) {
-			mbBinaryOffset = mbHeader->m_sectionOffset;
-			mbBinaryLength = mbHeader->m_sectionSize;
-			length = bin_obj_axlf->m_header.m_length;
-			xocl_mb_load_mgmt_image(xdev, fw->data + mbBinaryOffset,
-				mbBinaryLength);
-			ICAP_INFO(icap, "stashed mb mgmt binary, len %lld",
-					mbBinaryLength);
-			load_mbs = true;
-		}
-	}
-
-	if (load_mbs)
-		xocl_mb_reset(xdev);
-
 	if (memcmp(fw->data, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2)) != 0) {
 		ICAP_ERR(icap, "invalid firmware %s", fw_name);
 		err = -EINVAL;
@@ -1375,6 +1337,12 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	ICAP_INFO(icap, "boot_firmware in axlf format");
 	bin_obj_axlf = (struct axlf *)fw->data;
 	length = bin_obj_axlf->m_header.m_length;
+
+	if (length > fw->size) {
+		err = -EINVAL;
+		goto done;
+	}
+
 	/* Match the xclbin with the hardware. */
 	if (!xocl_verify_timestamp(xdev,
 		bin_obj_axlf->m_header.m_featureRomTimeStamp)) {
@@ -1391,6 +1359,57 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	}
 	ICAP_INFO(icap, "runtime version matched");
 
+	/* Grab lock and touch hardware. */
+	mutex_lock(&icap->icap_lock);
+
+	if (xocl_mb_sched_on(xdev)) {
+		/* Try locating the microblaze binary. */
+		if (XDEV(xdev)->priv.sched_bin) {
+			err = request_firmware(&sche_fw,
+				XDEV(xdev)->priv.sched_bin, &pcidev->dev);
+			if (!err)  {
+				xocl_mb_load_sche_image(xdev, sche_fw->data,
+					sche_fw->size);
+				ICAP_INFO(icap, "stashed shared mb sche bin, len %ld", sche_fw->size);
+				load_sched = true;
+				release_firmware(sche_fw);
+			}
+		}
+		if (!load_sched) {
+			mbHeader = get_axlf_section_hdr(icap, bin_obj_axlf,
+					SCHED_FIRMWARE);
+			if (mbHeader) {
+				mbBinaryOffset = mbHeader->m_sectionOffset;
+				mbBinaryLength = mbHeader->m_sectionSize;
+				xocl_mb_load_sche_image(xdev,
+					fw->data + mbBinaryOffset,
+					mbBinaryLength);
+				ICAP_INFO(icap,
+					"stashed mb sche binary, len %lld",
+					mbBinaryLength);
+				load_sched = true;
+				err = 0;
+			}
+		}
+	}
+
+	if (xocl_mb_mgmt_on(xdev)) {
+		/* Try locating the board mgmt binary. */
+		mbHeader = get_axlf_section_hdr(icap, bin_obj_axlf, FIRMWARE);
+		if (mbHeader) {
+			mbBinaryOffset = mbHeader->m_sectionOffset;
+			mbBinaryLength = mbHeader->m_sectionSize;
+			xocl_mb_load_mgmt_image(xdev, fw->data + mbBinaryOffset,
+				mbBinaryLength);
+			ICAP_INFO(icap, "stashed mb mgmt binary, len %lld",
+					mbBinaryLength);
+			load_mgmt = true;
+		}
+	}
+
+	if (load_mgmt || load_sched)
+		xocl_mb_reset(xdev);
+
 	primaryHeader = get_axlf_section_hdr(icap, bin_obj_axlf, BITSTREAM);
 	secondaryHeader = get_axlf_section_hdr(icap, bin_obj_axlf,
 		CLEARING_BITSTREAM);
@@ -1401,11 +1420,6 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	if (secondaryHeader) {
 		secondaryFirmwareOffset = secondaryHeader->m_sectionOffset;
 		secondaryFirmwareLength = secondaryHeader->m_sectionSize;
-	}
-
-	if (length > fw->size) {
-		err = -EINVAL;
-		goto done;
 	}
 
 	if ((primaryFirmwareOffset + primaryFirmwareLength) > length) {
@@ -3409,6 +3423,7 @@ failed:
 	return ret;
 }
 
+#if PF == MGMTPF
 static int icap_open(struct inode *inode, struct file *file)
 {
 	struct icap *icap = NULL;
@@ -3433,6 +3448,7 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		size_t data_len, loff_t *off)
 {
 	struct icap *icap = filp->private_data;
+	struct axlf axlf_header = { 0 };
 	struct axlf *axlf = NULL;
 	const struct axlf_section_header *section;
 	void *header;
@@ -3452,35 +3468,27 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 			ret = -ENOMEM;
 			goto failed;
 		}
-		axlf = vmalloc(sizeof(struct axlf));
-		if (!axlf) {
-			ret = -ENOMEM;
-			goto failed;
-		}
 
-		ret = copy_from_user(axlf, data, sizeof(struct axlf));
+		ret = copy_from_user(&axlf_header, data, sizeof(struct axlf));
 		if (ret) {
-			vfree(axlf);
 			ICAP_ERR(icap, "copy header buffer failed %ld", ret);
 			goto failed;
 		}
 
-		if (memcmp(axlf->m_magic, ICAP_XCLBIN_V2,
+		if (memcmp(axlf_header.m_magic, ICAP_XCLBIN_V2,
 					sizeof(ICAP_XCLBIN_V2))) {
 			ICAP_ERR(icap, "Incorrect magic string");
 			ret = -EINVAL;
 			goto failed;
 		}
 
-		icap->rp_bit_len = axlf->m_header.m_length;
-		vfree(axlf);
-
-		if (!icap->rp_bit_len) {
+		if (!axlf_header.m_header.m_length || axlf_header.m_header.m_length >= GB(1)) {
 			ICAP_ERR(icap, "Invalid xclbin size");
 			ret = -EINVAL;
 			goto failed;			
 		}
 
+		icap->rp_bit_len = axlf_header.m_header.m_length;
 
 		icap->rp_bit = vmalloc(icap->rp_bit_len);
 		if (!icap->rp_bit) {
@@ -3640,7 +3648,6 @@ static const struct file_operations icap_fops = {
 	.write = icap_write_rp,
 };
 
-#if PF == MGMTPF
 struct xocl_drv_private icap_drv_priv = {
 	.ops = &icap_ops,
 	.fops = &icap_fops,

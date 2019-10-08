@@ -510,7 +510,7 @@ static int feature_rom_probe(struct platform_device *pdev)
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (res == NULL)
-		ret = get_header_from_peer(rom);
+		(void)get_header_from_peer(rom);
 	else {
 		rom->base = ioremap_nocache(res->start, res->end - res->start + 1);
 		if (!rom->base) {
@@ -520,9 +520,9 @@ static int feature_rom_probe(struct platform_device *pdev)
 		}
 
 		if (!strcmp(res->name, "uuid"))
-			ret = get_header_from_dtb(rom);
+			(void)get_header_from_dtb(rom);
 		else
-			ret = get_header_from_iomem(rom);
+			(void)get_header_from_iomem(rom);
 	}
 
 	if (strstr(rom->header.VBNVName, "-xare")) {

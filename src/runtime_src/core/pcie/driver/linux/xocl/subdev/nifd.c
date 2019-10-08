@@ -575,7 +575,7 @@ static int nifd_probe(struct platform_device *pdev)
     struct xocl_nifd *nifd;
     struct resource *res;
     struct xocl_dev_core *core;
-    struct FeatureRomHeader rom;
+    struct FeatureRomHeader rom = { {0} };
     bool nifd_valid = false;
     int err = 0;
 

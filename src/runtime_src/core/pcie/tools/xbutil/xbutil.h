@@ -94,13 +94,15 @@ enum subcommand {
     STATUS_SPC,
     STREAM,
     STATUS_UNSUPPORTED,
+    STATUS_AM,
 };
 enum statusmask {
     STATUS_NONE_MASK = 0x0,
     STATUS_AIM_MASK = 0x1,
     STATUS_LAPC_MASK = 0x2,
     STATUS_ASM_MASK = 0x4,
-    STATUS_SPC_MASK = 0x8
+    STATUS_SPC_MASK = 0x8,
+    STATUS_AM_MASK = 0x10,
 };
 enum p2pcommand {
     P2P_ENABLE = 0x0,
@@ -135,7 +137,8 @@ static const std::pair<std::string, subcommand> subcmd_pairs[] = {
     std::make_pair("aim", STATUS_AIM),
     std::make_pair("lapc", STATUS_LAPC),
     std::make_pair("asm", STATUS_ASM),
-    std::make_pair("stream", STREAM)
+    std::make_pair("stream", STREAM),
+    std::make_pair("accelmonitor", STATUS_AM)
 };
 
 static const std::map<MEM_TYPE, std::string> memtype_map = {
@@ -858,6 +861,7 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "firewall", "detected_level",  errmsg, level );
         pcidev::get_dev(m_idx)->sysfs_get( "firewall", "detected_status", errmsg, status ); 
         sensor_tree::put( "board.error.firewall.firewall_level", level );
+        sensor_tree::put( "board.error.firewall.firewall_status", status );
         sensor_tree::put( "board.error.firewall.status",         parseFirewallStatus(status) );
         
         // memory
@@ -1090,7 +1094,8 @@ public:
         ostr << sensor_tree::get_pretty<unsigned>( "board.physical.power" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Firewall Last Error Status\n";
-        ostr << "Level " << std::setw(2) << sensor_tree::get( "board.error.firewall.firewall_level", -1 ) << ": 0x0"
+        ostr << "Level " << std::setw(2) << sensor_tree::get( "board.error.firewall.firewall_level", -1 ) << ": 0x"
+             << std::hex << sensor_tree::get( "board.error.firewall.firewall_status", -1 ) << std::dec
              << sensor_tree::get<std::string>( "board.error.firewall.status", "N/A" ) << std::endl;
         ostr << "ECC Error Status\n";
         ostr << std::left << std::setw(8) << "Tag" << std::setw(12) << "Errors"
@@ -1493,6 +1498,8 @@ public:
     int memread(std::string aFilename, unsigned long long aStartAddr = 0, unsigned long long aSize = 0) {
         std::ios_base::fmtflags f(std::cout.flags());
         std::string name, errmsg;
+        xclbin_lock xclbin_lock(m_handle, m_idx);
+
         pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV", errmsg, name );
 
         if (!errmsg.empty()) {
@@ -1533,6 +1540,8 @@ public:
     int memwrite(unsigned long long aStartAddr, unsigned long long aSize, unsigned int aPattern = 'J') {
         std::ios_base::fmtflags f(std::cout.flags());
         std::string name, errmsg;
+        xclbin_lock xclbin_lock(m_handle, m_idx);
+
         pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV", errmsg, name );
 
         if (!errmsg.empty()) {
@@ -1612,6 +1621,7 @@ public:
     std::pair<size_t, size_t> getStreamName (const std::vector<std::string>& aSlotNames,
                              std::vector< std::pair<std::string, std::string> >& aStreamNames);
     int readAIMCounters();
+    int readAMCounters();
     int readASMCounters();
     int readLAPCheckers(int aVerbose);
     int readStreamingCheckers(int aVerbose);
@@ -1739,6 +1749,7 @@ private:
     int dmaXbtest(void);
 
     int pcieLinkTest(void);
+    int auxConnectionTest(void);
     int verifyKernelTest(void);
     int bandwidthKernelTest(void);
     // testFunc must return 0 for success, 1 for warning, and < 0 for error
