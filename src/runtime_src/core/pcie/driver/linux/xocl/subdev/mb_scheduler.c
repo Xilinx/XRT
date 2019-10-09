@@ -1641,9 +1641,17 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	userpf_info(xdev, "ert per feature rom = %d", ert);
 	userpf_info(xdev, "dsa52 = %d", dsa);
 
-	if (XOCL_DSA_IS_VERSAL(xdev) && !cfg->polling) {
+	if (XOCL_DSA_IS_VERSAL(xdev)) {
 		userpf_info(xdev, "force polling mode for versal");
 		cfg->polling = true;
+
+		/*
+		 * For versal device, we will use ert_full if we are
+		 * configured as ert mode even dataflow is configured.
+		 * And we do not support ert_poll.
+		 */
+		ert_full = cfg->ert;
+		ert_poll = false;
 	}
 
 	/* Mark command as control command to force slot 0 execution */
