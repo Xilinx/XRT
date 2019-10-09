@@ -166,6 +166,9 @@ static int user_intr_config(struct platform_device *pdev, u32 intr, bool en)
 
 	xdma= platform_get_drvdata(pdev);
 
+	if (!xdma)
+		return -ENODEV;
+
 	if (intr >= xdma->max_user_intr) {
 		xocl_err(&pdev->dev, "Invalid intr %d, user start %d, max %d",
 			intr, xdma->start_user_intr, xdma->max_user_intr);
@@ -211,6 +214,9 @@ static int user_intr_unreg(struct platform_device *pdev, u32 intr)
 
 	xdma= platform_get_drvdata(pdev);
 
+	if (!xdma)
+		return -ENODEV;
+
 	if (intr >= xdma->max_user_intr)
 		return -EINVAL;
 
@@ -244,6 +250,9 @@ static int user_intr_register(struct platform_device *pdev, u32 intr,
 	int ret;
 
 	xdma= platform_get_drvdata(pdev);
+
+	if (!xdma)
+		return -ENODEV;
 
 	if (intr >= xdma->max_user_intr ||
 			(event_fd >= 0 && intr < xdma->start_user_intr)) {
