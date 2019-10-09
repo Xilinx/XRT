@@ -459,10 +459,10 @@ static int health_check_cb(void *data)
 			clk_status = XOCL_READ_REG32(shutdown_clk);
 			latched = clk_status & 0x1;
 			if (latched)
-				mgmt_err(lro, "Card shutting down! Power or Temp may exceed limits");
+				mgmt_err(lro, "Card shutting down! Power or Temp may exceed limits, notify peer");
 		}
 	} else {
-		mgmt_info(lro, "firewall tripped, notify peer");
+		mgmt_err(lro, "firewall tripped, notify peer");
 	}
 
 	/* Press doomsday button */
