@@ -93,3 +93,11 @@ set_property PFM.CLOCK {clkwiz_kernel2_clk_out1 {id "1" is_default "false" proc_
                        } [get_bd_ports /clkwiz_kernel2_clk_out1]
 set_property PFM.CLOCK {clkwiz_sysclks_clk_out2 {id "2" is_default "false" proc_sys_reset "/reset_controllers/psreset_gate_pr_control" status "fixed"} \
 			} [get_bd_ports /clkwiz_sysclks_clk_out2]
+set_property PFM.CLOCK {clkwiz_kernel3_clk_out {id "3" is_default "false" proc_sys_reset "/reset_controllers/psreset_gate_pr_kernel3" status "fixed"} \
+			} [get_bd_ports /clkwiz_kernel3_clk_out]
+set_property PFM.CLOCK {clkwiz_kernel4_clk_out {id "4" is_default "false" proc_sys_reset "/reset_controllers/psreset_gate_pr_kernel4" status "fixed"} \
+			} [get_bd_ports /clkwiz_kernel4_clk_out]
+set_property PFM.CLOCK {clkwiz_kernel5_clk_out {id "5" is_default "false" proc_sys_reset "/reset_controllers/psreset_gate_pr_kernel6" status "fixed"} \
+			} [get_bd_ports /clkwiz_kernel5_clk_out]
+set_property PFM.CLOCK {clkwiz_kernel6_clk_out {id "6" is_default "false" proc_sys_reset "/reset_controllers/psreset_gate_pr_kernel5" status "fixed"} \
+			} [get_bd_ports /clkwiz_kernel6_clk_out]
