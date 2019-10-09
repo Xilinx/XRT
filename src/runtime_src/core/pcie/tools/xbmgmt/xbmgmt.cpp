@@ -123,7 +123,7 @@ static inline bool isHiddenSubcmd(const std::string& cmd)
     return cmd[0] == '-';
 }
 
-static void printHelp(void)
+void printHelp(void)
 {
     std::stringstream expert_ostr;
     std::cout << "Supported sub-commands are:" << std::endl;
@@ -197,9 +197,6 @@ int main(int argc, char *argv[])
         if ( xrt_xbmgmt_version_cmp() != 0 )
         return -EINVAL;
     }
-
-    if (subCmd.compare("help") == 0)
-        printHelp();
 
     if (cmd == subCmdList.end()) {
         printHelp();
