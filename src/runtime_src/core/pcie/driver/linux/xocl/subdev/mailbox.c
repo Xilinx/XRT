@@ -1267,14 +1267,14 @@ static void chan_do_tx(struct mailbox_channel *ch)
 {
 	struct mailbox *mbx = ch->mbc_parent;
 
-	if (is_tx_chan_ready(ch)) {
-		/* Finished sending a whole msg, call it done. */
-		if (ch->mbc_cur_msg &&
-			(ch->mbc_cur_msg->mbm_len == ch->mbc_bytes_done))
-			chan_msg_done(ch, 0);
+        /* Finished sending a whole msg, call it done. */
+        if (ch->mbc_cur_msg &&
+            (ch->mbc_cur_msg->mbm_len == ch->mbc_bytes_done))
+                chan_msg_done(ch, 0);
 
-		dequeue_tx_msg(ch);
+        dequeue_tx_msg(ch);
 
+        if (is_tx_chan_ready(ch)) {
 		if (ch->mbc_cur_msg) {
 			/* Sending msg. */
 			if (ch->mbc_cur_msg->mbm_chan_sw)
