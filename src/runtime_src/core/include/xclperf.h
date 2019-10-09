@@ -95,7 +95,13 @@
 
 /* AXI Stream FIFOs */
 #define XPAR_AXI_PERF_MON_0_TRACE_NUMBER_FIFO           3
+
+#ifdef XRT_EDGE
+#define XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH            32
+#else
 #define XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH            64
+#endif
+
 #define XPAR_AXI_PERF_MON_0_TRACE_NUMBER_SAMPLES        8192
 #define MAX_TRACE_NUMBER_SAMPLES                        16384
 

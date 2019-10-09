@@ -974,7 +974,7 @@ static void dequeue_rx_msg(struct mailbox_channel *ch,
 	int err = 0;
 
 	if (mbx->mbx_peer_dead) {
-		MBX_ERR(mbx, "peer becomes active");
+		MBX_INFO(mbx, "peer becomes active");
 		mbx->mbx_peer_dead = false;
 	}
 

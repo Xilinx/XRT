@@ -31,6 +31,7 @@
 #include <memory>
 #include "core/common/bo_cache.h"
 #include "core/common/xrt_profiling.h"
+#include "core/include/xcl_app_debug.h"
 
 namespace ZYNQ {
 
@@ -102,6 +103,20 @@ public:
   int xclCuName2Index(const char *name, uint32_t& index);
   static int xclLogMsg(xrtLogMsgLevel level, const char* tag,
 		       const char* format, va_list args);
+  
+  // Application debug path functionality for xbutil  
+  size_t xclDebugReadCheckers(xclDebugCheckersResults* aCheckerResults);
+  size_t xclDebugReadCounters(xclDebugCountersResults* aCounterResults);
+  size_t xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult);
+  size_t xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* aCounterResults);
+  size_t xclDebugReadStreamingCheckers(xclDebugStreamingCheckersResults* aStreamingCheckerResults);
+  uint32_t getIPCountAddrNames(int type, uint64_t* baseAddress, 
+                              std::string* portNames,
+                              uint8_t* properties, uint8_t* majorVersions,
+                              uint8_t* minorVersions, size_t size) ;
+  int cmpMonVersions(unsigned int major1, unsigned int minor1, 
+		     unsigned int major2, unsigned int minor2);
+
 
 private:
   const int mBoardNumber = -1;

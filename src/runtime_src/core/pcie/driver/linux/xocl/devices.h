@@ -93,6 +93,7 @@ struct xocl_board_private {
 	bool			mpsoc;
 	uint64_t		p2p_bar_sz;
 	const char		*vbnv;
+	const char		*sched_bin;
 };
 
 struct xocl_flash_privdata {
@@ -1139,7 +1140,7 @@ struct xocl_subdev_map {
 		.flags		= 0,					\
 		.subdev_info	= USER_RES_DSA52,			\
 		.subdev_num = ARRAY_SIZE(USER_RES_DSA52),		\
-		.p2p_bar_sz = 8,					\
+		.p2p_bar_sz = 64,					\
 	}
 
 #define	XOCL_BOARD_USER_SMARTN						\
@@ -1519,11 +1520,6 @@ struct xocl_subdev_map {
 			.end 	= 0x141FFF,		\
 			.flags  = IORESOURCE_MEM,	\
 			},				\
-			{				\
-			.start	= 0x180000,		\
-			.end 	= 0x181FFF,		\
-			.flags  = IORESOURCE_MEM,	\
-			},				\
 		})
 
 #define	XOCL_DEVINFO_XMC_MFG_U50			\
@@ -1629,6 +1625,25 @@ struct xocl_subdev_map {
 		.priv_data = &XOCL_PRIV_FLASH_BLP	\
 	}
 
+#define XOCL_RES_XMC_BLP				\
+	((struct resource []) {				\
+		{					\
+			.start	= 0x140000,		\
+			.end	= 0x141fff,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+	})
+
+#define XOCL_DEVINFO_XMC_BLP				\
+	{						\
+		XOCL_SUBDEV_MB,				\
+		XOCL_XMC,				\
+		XOCL_RES_XMC_BLP,			\
+		ARRAY_SIZE(XOCL_RES_XMC_BLP),		\
+		.level = XOCL_SUBDEV_LEVEL_BLD,		\
+	}
+
+
 #define	XOCL_RES_MAILBOX_USER_DYN			\
 	((struct resource []) {				\
 		{					\
@@ -1676,12 +1691,13 @@ struct xocl_subdev_map {
 		0,	\
 	}
 
-#define MGMT_RES_DYNAMIC_IP						\
-		((struct xocl_subdev_info []) {				\
-		 	XOCL_DEVINFO_FEATURE_ROM_DYN,			\
-		 	XOCL_DEVINFO_IORES_MGMT,			\
-			XOCL_DEVINFO_FMGR,      			\
-		})
+#define MGMT_RES_DYNAMIC_IP					\
+	((struct xocl_subdev_info []) {				\
+	 	XOCL_DEVINFO_FEATURE_ROM_DYN,			\
+	 	XOCL_DEVINFO_IORES_MGMT,			\
+	 	XOCL_DEVINFO_FLASH_BLP,				\
+		XOCL_DEVINFO_FMGR,      			\
+	})
 
 #define	XOCL_BOARD_MGMT_DYNAMIC_IP					\
 	(struct xocl_board_private){					\
@@ -1768,6 +1784,8 @@ struct xocl_subdev_map {
 	((struct xocl_subdev_info []) {					\
 	 	XOCL_DEVINFO_FEATURE_ROM_U50,				\
 	 	XOCL_DEVINFO_IORES_MGMT_U50,				\
+	 	XOCL_DEVINFO_FLASH_BLP,					\
+	 	XOCL_DEVINFO_XMC_BLP,					\
 		XOCL_DEVINFO_FMGR,      				\
 	})
 
@@ -1777,6 +1795,7 @@ struct xocl_subdev_map {
 		.subdev_info	= MGMT_RES_U50,				\
 		.subdev_num = ARRAY_SIZE(MGMT_RES_U50),			\
 		.flash_type = FLASH_TYPE_SPI,				\
+		.sched_bin = "xilinx/sched_u50.bin",			\
 	}
 
 #define USER_RES_U50							\

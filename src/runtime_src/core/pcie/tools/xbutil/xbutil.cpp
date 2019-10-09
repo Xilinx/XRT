@@ -252,7 +252,7 @@ int main(int argc, char *argv[])
         {"tracefunnel", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
         {"monitorfifolite", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
         {"monitorfifofull", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
-        {"accelmonitor", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
+        {"accelmonitor", no_argument, 0, xcldev::STATUS_AM},
         {"stream", no_argument, 0, xcldev::STREAM},
         {0, 0, 0, 0}
     };
@@ -333,6 +333,15 @@ int main(int argc, char *argv[])
                 return -1;
             }
             subcmd = xcldev::STREAM;
+            break;
+        }
+        case xcldev::STATUS_AM : {
+            //--am
+            if (cmd != xcldev::STATUS) {
+                std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
+                return -1;
+            }
+            ipmask |= static_cast<unsigned int>(xcldev::STATUS_AM_MASK);
             break;
         }
         //short options are dealt here
@@ -558,7 +567,7 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    for (unsigned i = 0; i < total; i++) {
+    for (unsigned i = 0; i < count; i++) {
         try {
             deviceVec.emplace_back(new xcldev::device(i, nullptr));
         } catch (const std::exception& ex) {
@@ -636,6 +645,9 @@ int main(int argc, char *argv[])
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_ASM_MASK)) {
             result = deviceVec[index]->readASMCounters() ;
         }
+        if (ipmask & static_cast<unsigned int>(xcldev::STATUS_AM_MASK)) {
+            result = deviceVec[index]->readAMCounters();
+        }
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SPC_MASK)) {
 	  result = deviceVec[index]->readStreamingCheckers(1);
 	}
@@ -688,6 +700,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  flash   [-d card] -a <all | shell> [-t timestamp]\n";
     std::cout << "  flash   [-d card] -p msp432_firmware\n";
     std::cout << "  flash   scan [-v]\n";
+    std::cout << "\nNOTE: card for -d option can either be id or bdf\n";
     std::cout << "\nExamples:\n";
     std::cout << "Print JSON file to stdout\n";
     std::cout << "  " << exe << " dump\n";
@@ -712,7 +725,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "List the debug IPs available on the platform\n";
     std::cout << "  " << exe << " status \n";
     std::cout << "Validate installation on card 1\n";
-    std::cout << "  " << exe << " validate -d 1\n";
+    std::cout << "  " << exe << " validate -d 0000:02:00.0\n";
 }
 
 std::unique_ptr<xcldev::device> xcldev::xclGetDevice(unsigned index)
@@ -918,12 +931,16 @@ void testCaseProgressReporter(bool *quit)
     }
 }
 
-inline const char* value_or_empty(const char* value) { return value ? value : "" ; }
-
-static void set_shell_path_env(const std::string& var_name, const std::string& trailing_path, int overwrite)
+inline const char* getenv_or_empty(const char* path)
 {
-    std::string xrt_path(getenv("XILINX_XRT"));
-    std::string new_path = std::string(value_or_empty(getenv(var_name.c_str())));
+    return getenv(path) ? getenv(path) : "";
+}
+
+static void set_shell_path_env(const std::string& var_name,
+    const std::string& trailing_path, int overwrite)
+{
+    std::string xrt_path(getenv_or_empty("XILINX_XRT"));
+    std::string new_path(getenv_or_empty(var_name.c_str()));
     xrt_path += trailing_path + ":";
     new_path = xrt_path + new_path;
     setenv(var_name.c_str(), new_path.c_str(), overwrite);
@@ -934,10 +951,7 @@ int runShellCmd(const std::string& cmd, std::string& output)
     int ret = 0;
     bool quit = false;
 
-    // Kick off progress reporter
-    std::thread t(testCaseProgressReporter, &quit);
-
-    // Run test case
+    // Fix environment variables before running test case
     setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
     set_shell_path_env("PYTHONPATH", "/python", 0);
     set_shell_path_env("LD_LIBRARY_PATH", "/lib", 1);
@@ -947,36 +961,46 @@ int runShellCmd(const std::string& cmd, std::string& output)
     int stderr_fds[2];
     if (pipe(stderr_fds)== -1) {
         perror("ERROR: Unable to create pipe");
-        ret = -EINVAL;
+        return -errno;
     }
 
-    dup2(stderr_fds[1], 2);
-    std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
+    // Save stderr
+    int stderr_save = dup(STDERR_FILENO);
+    if (stderr_save == -1) {
+        perror("ERROR: Unable to duplicate stderr");
+        return -errno;
+    }
+
+    // Kick off progress reporter
+    std::thread t(testCaseProgressReporter, &quit);
+
+    // Close existing stderr and set it to be the write end of the pipe.
+    // After fork below, our child process's stderr will point to the same fd.
+    dup2(stderr_fds[1], STDERR_FILENO);
     close(stderr_fds[1]);
+    std::shared_ptr<FILE> stderr_child(fdopen(stderr_fds[0], "r"), fclose);
+    std::shared_ptr<FILE> stdout_child(popen(cmd.c_str(), "r"), pclose);
+    // Restore our normal stderr
+    dup2(stderr_save, STDERR_FILENO);
+    close(stderr_save);
 
-    if (pipe == nullptr) {
+    if (stdout_child == nullptr) {
         std::cout << "ERROR: Failed to run " << cmd << std::endl;
-        close(stderr_fds[0]);
         ret = -EINVAL;
     }
 
-    // Read all output
-    char buf[256];
-    while (ret == 0 && !feof(pipe.get())) {
-        if (fgets(buf, sizeof (buf), pipe.get()) != nullptr) {
+    // Read child's stdout and stderr without parsing the content
+    char buf[1024];
+    while (ret == 0 && !feof(stdout_child.get())) {
+        if (fgets(buf, sizeof (buf), stdout_child.get()) != nullptr) {
             output += buf;
         }
     }
-
-    //Read stderr
-    if (output.find("PASS") == std::string::npos) {
-        char buffer[256];
-        int count = read(stderr_fds[0], buffer, sizeof(buffer)-1);
-        buffer[count] = 0;
-        std::cout << buffer << std::endl;
+    while (ret == 0 && stderr_child && !feof(stderr_child.get())) {
+        if (fgets(buf, sizeof (buf), stderr_child.get()) != nullptr) {
+            output += buf;
+        }
     }
-    
-    close(stderr_fds[0]);
 
     // Stop progress reporter
     quit = true;
@@ -1218,18 +1242,29 @@ int xcldev::device::auxConnectionTest(void)
 {
     std::string name, errmsg;
     unsigned short max_power = 0;
+    std::vector<std::string> auxPwrRequiredBoard =
+        { "VCU1525", "U200", "U250", "U280" };
+    bool auxBoard = false;
 
     if (!errmsg.empty()) {
         std::cout << errmsg << std::endl;
         return -EINVAL;
     }
 
-    pcidev::get_dev(m_idx)->sysfs_get( "xmc", "bd_name", errmsg, name );
-    pcidev::get_dev(m_idx)->sysfs_get( "xmc", "max_power",  errmsg, max_power );
+    pcidev::get_dev(m_idx)->sysfs_get("xmc", "bd_name", errmsg, name);
+    pcidev::get_dev(m_idx)->sysfs_get("xmc", "max_power",  errmsg, max_power);
+
+    if (!name.empty()) {
+        for (auto bd : auxPwrRequiredBoard) {
+            if (name.find(bd) != std::string::npos) {
+                auxBoard = true;
+                break;
+            }
+        }
+    }
 
     //check aux cable if board u200, u250, u280
-    if((strstr( name.c_str(), "U200" ) || strstr( name.c_str(), "U250" ) || 
-        strstr( name.c_str(), "U280" )) && max_power == 0 ) {
+    if(auxBoard && max_power == 0) {
         std::cout << "AUX POWER NOT CONNECTED, ATTENTION" << std::endl;
         std::cout << "Board not stable for heavy acceleration tasks." << std::endl;
         return 1;
@@ -1603,7 +1638,7 @@ int xcldev::xclReset(int argc, char *argv[])
 
     int err = d->reset(XCL_USER_RESET);
     if (err)
-        std::cout << "ERROR: " << strerror(err) << std::endl;
+        std::cout << "ERROR: " << strerror(std::abs(err)) << std::endl;
     return err;
 }
 
@@ -1830,7 +1865,7 @@ int xcldev::xclP2p(int argc, char *argv[])
     } else if (ret == 0) {
         std::cout << "P2P is disabled" << std::endl;
     } else if (ret)
-        std::cout << "ERROR: " << strerror(ret) << std::endl;
+        std::cout << "ERROR: " << strerror(std::abs(ret)) << std::endl;
 
     return ret;
 }

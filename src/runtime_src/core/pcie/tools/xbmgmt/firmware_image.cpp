@@ -28,6 +28,7 @@
 #include "firmware_image.h"
 #include "core/pcie/linux/scan.h"
 #include "xclbin.h"
+#include "core/common/utils.h"
 
 #define hex_digit "([0-9a-fA-F]+)"
 
@@ -443,7 +444,7 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
 
 std::ostream& operator<<(std::ostream& stream, const DSAInfo& dsa)
 {
-    std::ios_base::fmtflags f(stream.flags());
+    xrt_core::ios_flags_restore format(std::cout);
     stream << dsa.name;
     if (dsa.timestamp != NULL_TIMESTAMP)
     {
@@ -454,7 +455,6 @@ std::ostream& operator<<(std::ostream& stream, const DSAInfo& dsa)
     {
         stream << ",[SC=" << dsa.bmcVer << "]";
     }
-    stream.flags(f);
     return stream;
 }
 

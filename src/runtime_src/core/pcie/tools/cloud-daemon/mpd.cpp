@@ -67,8 +67,8 @@ void mpd_handleMsg(size_t index,
 class Mpd : public Common
 {
 public:
-    Mpd(std::string name, std::string plugin_path) :
-        Common(name, plugin_path)
+    Mpd(std::string name, std::string plugin_path, bool for_user) :
+        Common(name, plugin_path, for_user), plugin_init(nullptr), plugin_fini(nullptr)
     {
     }
 
@@ -211,172 +211,172 @@ static int localMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
     }
     reqSize = orig->payloadSize() - sizeof(xcl_mailbox_req);
 
-    dev.log(LOG_INFO, "mpd daemon: request %d received", req->req);
+    dev.log(LOG_INFO, "mpd daemon: request %d received(reqSize: %d)",
+           req->req, reqSize);
 
     switch (req->req) {
     case XCL_MAILBOX_REQ_LOAD_XCLBIN: {//mandatory for every plugin
-        const axlf *xclbin = reinterpret_cast<axlf *>(req->data);
-        if (reqSize < sizeof(*xclbin)) {
-            dev.log(LOG_ERR, "local request(%d) dropped, wrong size", req->req);
-            ret = -EINVAL;
-            break;
+        Sw_mb_container c(sizeof(int), orig->id());
+        if (plugin_cbs.mb_req.load_xclbin) {
+            int *resp = reinterpret_cast<int *>(c.get_payload_buf());
+            const axlf *xclbin = reinterpret_cast<axlf *>(req->data);
+            c.set_hook(std::bind(plugin_cbs.mb_req.load_xclbin, dev.getIndex(), xclbin, resp));
         }
-        if (!plugin_cbs.load_xclbin) {
-            ret = -ENOTSUP;
-            break;
-        }
-        ret = (*plugin_cbs.load_xclbin)(dev.getIndex(), xclbin);
+        processed = c.get_response();
+        dev.log(LOG_INFO, "mpd daemon: response %d sent ret = %d", req->req,
+             *((int *)(processed->payloadData())));
         break;
     }
     case XCL_MAILBOX_REQ_PEER_DATA: {//optional. aws plugin need to implement this. 
-        void *resp;
-        size_t resp_len = 0;
-        struct xcl_mailbox_subdev_peer *subdev_req =
+        xcl_mailbox_subdev_peer *subdev_req =
             reinterpret_cast<xcl_mailbox_subdev_peer *>(req->data);
-        if (reqSize < sizeof(*subdev_req)) {
-            dev.log(LOG_ERR, "local request(%d) dropped, wrong size", req->req);
-            ret = -EINVAL;
-            break;
-        }
         switch (subdev_req->kind) {
         case XCL_ICAP: {
-            if (!plugin_cbs.get_icap_data) {
-                ret = -ENOTSUP;
-                break;
+            Sw_mb_container c(sizeof(xcl_pr_region), orig->id());
+            if (plugin_cbs.mb_req.peer_data.get_icap_data) {
+                xcl_pr_region *resp = reinterpret_cast<xcl_pr_region *>(c.get_payload_buf());
+                c.set_hook(std::bind(plugin_cbs.mb_req.peer_data.get_icap_data, dev.getIndex(), resp));
             }
-            std::unique_ptr<xcl_pr_region> data;
-            resp_len = sizeof(xcl_pr_region);
-            ret = (*plugin_cbs.get_icap_data)(dev.getIndex(), data);
-            resp = data.get();
+            processed = c.get_response();
             break;
         }
         case XCL_SENSOR: {
-            if (!plugin_cbs.get_sensor_data) {
-                ret = -ENOTSUP;
-                break;
+            Sw_mb_container c(sizeof(xcl_sensor), orig->id());
+            if (plugin_cbs.mb_req.peer_data.get_sensor_data) {
+                xcl_sensor *resp = reinterpret_cast<xcl_sensor *>(c.get_payload_buf());
+                c.set_hook(std::bind(plugin_cbs.mb_req.peer_data.get_sensor_data, dev.getIndex(), resp));
             }
-            std::unique_ptr<xcl_sensor> data;
-            resp_len = sizeof(xcl_sensor);
-            ret = (*plugin_cbs.get_sensor_data)(dev.getIndex(), data);
-            resp = data.get();
+            processed = c.get_response();
             break;
         }
         case XCL_BDINFO: {
-            if (!plugin_cbs.get_board_info) {
-                ret = -ENOTSUP;
-                break;
+            Sw_mb_container c(sizeof(xcl_board_info), orig->id());
+            if (plugin_cbs.mb_req.peer_data.get_board_info) {
+                xcl_board_info *resp = reinterpret_cast<xcl_board_info *>(c.get_payload_buf());
+                c.set_hook(std::bind(plugin_cbs.mb_req.peer_data.get_board_info, dev.getIndex(), resp));
             }
-            std::unique_ptr<xcl_board_info> data;
-            resp_len = sizeof(xcl_board_info);
-            ret = (*plugin_cbs.get_board_info)(dev.getIndex(), data);
-            resp = data.get();
+            processed = c.get_response();
             break;
         }
         case XCL_MIG_ECC: {
-            if (!plugin_cbs.get_mig_data) {
-                ret = -ENOTSUP;
-                break;
+            Sw_mb_container c(subdev_req->entries * sizeof(xcl_mig_ecc), orig->id());
+            if (plugin_cbs.mb_req.peer_data.get_mig_data) {
+                char *resp = c.get_payload_buf();
+                size_t actualSz = subdev_req->entries * sizeof(xcl_mig_ecc);
+                c.set_hook(std::bind(plugin_cbs.mb_req.peer_data.get_mig_data, dev.getIndex(), resp, actualSz));
             }
-            std::unique_ptr<std::vector<char>> data;
-            ret = (*plugin_cbs.get_mig_data)(dev.getIndex(), data, resp_len);
-            resp = data->data();
+            processed = c.get_response();
             break;
         }
         case XCL_FIREWALL: {
-            if (!plugin_cbs.get_firewall_data) {
-                ret = -ENOTSUP;
-                break;
+            Sw_mb_container c(sizeof(xcl_mig_ecc), orig->id());
+            if (plugin_cbs.mb_req.peer_data.get_firewall_data) {
+                xcl_mig_ecc *resp = reinterpret_cast<xcl_mig_ecc *>(c.get_payload_buf());
+                c.set_hook(std::bind(plugin_cbs.mb_req.peer_data.get_firewall_data, dev.getIndex(), resp));
             }
-            std::unique_ptr<xcl_mig_ecc> data;
-            resp_len = sizeof(xcl_mig_ecc);
-            ret = (*plugin_cbs.get_firewall_data)(dev.getIndex(), data);
-            resp = data.get();
+            processed = c.get_response();
             break;
         }
         case XCL_DNA: {
-            if (!plugin_cbs.get_dna_data) {
-                ret = -ENOTSUP;
-                break;
+            Sw_mb_container c(sizeof(xcl_dna), orig->id());
+            if (plugin_cbs.mb_req.peer_data.get_dna_data) {
+                xcl_dna *resp = reinterpret_cast<xcl_dna *>(c.get_payload_buf());
+                c.set_hook(std::bind(plugin_cbs.mb_req.peer_data.get_dna_data, dev.getIndex(), resp));
             }
-            std::unique_ptr<xcl_dna> data;
-            resp_len = sizeof(xcl_dna);
-            ret = (*plugin_cbs.get_dna_data)(dev.getIndex(), data);
-            resp = data.get();
+            processed = c.get_response();
             break;
         }
         case XCL_SUBDEV: {
-            if (!plugin_cbs.get_subdev_data) {
-                ret = -ENOTSUP;
-                break;
+            Sw_mb_container c(subdev_req->size, orig->id());
+            if (plugin_cbs.mb_req.peer_data.get_subdev_data) {
+                char *resp = c.get_payload_buf();
+                size_t actualSz = subdev_req->size;
+                c.set_hook(std::bind(plugin_cbs.mb_req.peer_data.get_subdev_data, dev.getIndex(), resp, actualSz));
             }
-            std::unique_ptr<std::vector<char>> data;
-            ret = (*plugin_cbs.get_subdev_data)(dev.getIndex(), data, resp_len);
-            resp = data->data();
+            processed = c.get_response();
             break;
         }
         default:
             ret = -ENOTSUP;
+            processed = std::make_unique<sw_msg>(&ret, sizeof(ret), orig->id(),
+                XCL_MB_REQ_FLAG_RESPONSE);
             break;
         }
 
-        if (!ret) {
-            processed = std::make_unique<sw_msg>(resp, resp_len, orig->id(),
-                   XCL_MB_REQ_FLAG_RESPONSE);
-            dev.log(LOG_INFO, "mpd daemon: response %d sent", req->req);
-            return FOR_LOCAL;
-        }
-        break;
-    }
-    case XCL_MAILBOX_REQ_USER_PROBE: {//useful for aws plugin
-        struct xcl_mailbox_conn_resp resp = {0};
-        size_t resp_len = sizeof(struct xcl_mailbox_conn_resp);
-        resp.conn_flags |= XCL_MB_PEER_READY;
-        processed = std::make_unique<sw_msg>(&resp, resp_len, orig->id(),
-            XCL_MB_REQ_FLAG_RESPONSE);
-        dev.log(LOG_INFO, "mpd daemon: response %d sent", req->req);
         return FOR_LOCAL;
     }
-    case XCL_MAILBOX_REQ_LOCK_BITSTREAM: {//optional
-        if (!plugin_cbs.lock_bitstream) {
-            ret = -ENOTSUP;
-            break;
+    case XCL_MAILBOX_REQ_USER_PROBE: {//mandary for aws
+        Sw_mb_container c(sizeof(xcl_mailbox_conn_resp), orig->id());
+        if (plugin_cbs.mb_req.user_probe) {
+            xcl_mailbox_conn_resp *resp = reinterpret_cast<xcl_mailbox_conn_resp *>(c.get_payload_buf());
+            c.set_hook(std::bind(plugin_cbs.mb_req.user_probe, dev.getIndex(), resp));
         }
-        ret = (*plugin_cbs.lock_bitstream)(dev.getIndex());
+        processed = c.get_response();
+        break;
+    }
+    case XCL_MAILBOX_REQ_LOCK_BITSTREAM: {//optional
+        Sw_mb_container c(sizeof(int), orig->id());
+        if (plugin_cbs.mb_req.lock_bitstream) {
+            int *resp = reinterpret_cast<int *>(c.get_payload_buf());
+            c.set_hook(std::bind(plugin_cbs.mb_req.lock_bitstream, dev.getIndex(), resp));
+        }
+        processed = c.get_response();
         break;
     }
     case XCL_MAILBOX_REQ_UNLOCK_BITSTREAM: { //optional
-        if (!plugin_cbs.unlock_bitstream) {
-            ret = -ENOTSUP;
-            break;
+        Sw_mb_container c(sizeof(int), orig->id());
+        if (plugin_cbs.mb_req.unlock_bitstream) {
+            int *resp = reinterpret_cast<int *>(c.get_payload_buf());
+            c.set_hook(std::bind(plugin_cbs.mb_req.unlock_bitstream, dev.getIndex(), resp));
         }
-        ret = (*plugin_cbs.unlock_bitstream)(dev.getIndex());
+        processed = c.get_response();
         break;
     }
     case XCL_MAILBOX_REQ_HOT_RESET: {//optional
-        if (!plugin_cbs.hot_reset) {
-            ret = -ENOTSUP;
-            break;
+        Sw_mb_container c(sizeof(int), orig->id());
+        if (plugin_cbs.mb_req.hot_reset) {
+            int *resp = reinterpret_cast<int *>(c.get_payload_buf());
+            c.set_hook(std::bind(plugin_cbs.mb_req.hot_reset, dev.getIndex(), resp));
         }
-        ret = (*plugin_cbs.hot_reset)(dev.getIndex());
+        processed = c.get_response();
         break;
     }
     case XCL_MAILBOX_REQ_RECLOCK: {//optional
-        struct xclmgmt_ioc_freqscaling *obj =
-            reinterpret_cast<struct xclmgmt_ioc_freqscaling *>(req->data);
-        if (!plugin_cbs.hot_reset) {
-            ret = -ENOTSUP;
-            break;
+        Sw_mb_container c(sizeof(int), orig->id());
+        if (plugin_cbs.mb_req.reclock2) {
+            int *resp = reinterpret_cast<int *>(c.get_payload_buf());
+            struct xclmgmt_ioc_freqscaling *obj =
+                reinterpret_cast<struct xclmgmt_ioc_freqscaling *>(req->data);
+            c.set_hook(std::bind(plugin_cbs.mb_req.reclock2, dev.getIndex(), obj, resp));
         }
-        ret = (*plugin_cbs.reclock2)(dev.getIndex(), obj);
+        processed = c.get_response();
+        break;
+    }
+    case XCL_MAILBOX_REQ_PROGRAM_SHELL: {//optional
+        Sw_mb_container c(sizeof(int), orig->id());
+        if (plugin_cbs.mb_req.program_shell) {
+            int *resp = reinterpret_cast<int *>(c.get_payload_buf());
+            c.set_hook(std::bind(plugin_cbs.mb_req.program_shell, dev.getIndex(), resp));
+        }
+        processed = c.get_response();
+        break;
+    }
+    case XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR: {//optional
+        Sw_mb_container c(sizeof(int), orig->id());
+        if (plugin_cbs.mb_req.read_p2p_bar_addr) {
+            const xcl_mailbox_p2p_bar_addr *addr = reinterpret_cast<xcl_mailbox_p2p_bar_addr *>(req->data);
+            int *resp = reinterpret_cast<int *>(c.get_payload_buf());
+            c.set_hook(std::bind(plugin_cbs.mb_req.read_p2p_bar_addr, dev.getIndex(), addr, resp));
+        }
+        processed = c.get_response();
         break;
     }
     default:
+        processed = std::make_unique<sw_msg>(&ret, sizeof(ret), orig->id(),
+            XCL_MB_REQ_FLAG_RESPONSE);
         break;
     }
 
-    processed = std::make_unique<sw_msg>(&ret, sizeof(ret), orig->id(),
-        XCL_MB_REQ_FLAG_RESPONSE);
-    dev.log(LOG_INFO, "mpd daemon: response %d sent ret = %d", req->req, ret);
     return FOR_LOCAL;
 }
 
@@ -445,7 +445,7 @@ void mpd_getMsg(size_t index,
      * mailbox msg and process the msg with the hook function the plugin provides.
      */
     if (plugin_cbs.get_remote_msd_fd) {
-        ret = (*plugin_cbs.get_remote_msd_fd)(dev.getIndex(), msdfd);
+        ret = (*plugin_cbs.get_remote_msd_fd)(dev.getIndex(), &msdfd);
         if (ret) {
             syslog(LOG_ERR, "failed to get remote fd in plugin");
             quit = true;
@@ -601,7 +601,7 @@ int main(void)
     signal(SIGINT, signalHandler);
     signal(SIGTERM, signalHandler);
 
-    Mpd mpd("mpd", plugin_path);
+    Mpd mpd("mpd", plugin_path, true);
     mpd.preStart();
     mpd.start();
     mpd.run();

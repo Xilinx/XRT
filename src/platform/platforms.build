@@ -57,6 +57,20 @@
 				"to": ["${TA_ROOT}/internal_platforms"]
 			}
 		},
+		"zcu102_base_DFX": {
+			"architecture": "zynqmp",
+			"bsp_key": "zcu102",
+			"pullrequest_build": true,
+			"package": {
+				"dsabin": false,
+				"dsadev": false,
+				"ta_locations": [""]
+			},
+			"copy": {
+				"from": "${XRT_EMBEDDED_ROOT}",
+				"to": ["${TA_ROOT}/internal_platforms"]
+			}
+		},
 		"zc702_base": {
 			"architecture": "zynq7000",
 			"bsp_key": "zc702",
