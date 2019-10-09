@@ -64,18 +64,21 @@ int init(mpd_plugin_callbacks *cbs)
         // hook functions
         cbs->mpc_cookie = NULL;
         cbs->get_remote_msd_fd = get_remote_msd_fd;
-        cbs->load_xclbin = awsLoadXclBin;
-        cbs->get_icap_data = awsGetIcap;
-        cbs->get_sensor_data = awsGetSensor;
-        cbs->get_board_info = awsGetBdinfo;
-        cbs->get_mig_data = awsGetMig;
-        cbs->get_firewall_data = awsGetFirewall;
-        cbs->get_dna_data = awsGetDna;
-        cbs->get_subdev_data = awsGetSubdev;
-        cbs->lock_bitstream = awsLockDevice;
-        cbs->unlock_bitstream = awsUnlockDevice;
-        cbs->hot_reset = awsResetDevice;
-        cbs->reclock2 = awsReClock2;
+        cbs->mb_req.load_xclbin = awsLoadXclBin;
+        cbs->mb_req.peer_data.get_icap_data = awsGetIcap;
+        cbs->mb_req.peer_data.get_sensor_data = awsGetSensor;
+        cbs->mb_req.peer_data.get_board_info = awsGetBdinfo;
+        cbs->mb_req.peer_data.get_mig_data = awsGetMig;
+        cbs->mb_req.peer_data.get_firewall_data = awsGetFirewall;
+        cbs->mb_req.peer_data.get_dna_data = awsGetDna;
+        cbs->mb_req.peer_data.get_subdev_data = awsGetSubdev;
+        cbs->mb_req.lock_bitstream = awsLockDevice;
+        cbs->mb_req.unlock_bitstream = awsUnlockDevice;
+        cbs->mb_req.hot_reset = awsResetDevice;
+        cbs->mb_req.reclock2 = awsReClock2;
+        cbs->mb_req.user_probe = awsUserProbe;
+        cbs->mb_req.program_shell = awsProgramShell;
+        cbs->mb_req.read_p2p_bar_addr = awsReadP2pBarAddr;
         ret = 0;
     }
     syslog(LOG_INFO, "aws mpd plugin init called: %d\n", ret);
@@ -94,16 +97,16 @@ void fini(void *mpc_cookie)
  * callback function that is used to setup communication channel
  * aws doesn't need this, so just return -1 to the fd
  * Input:
- *        d: dbdf of the user PF
+ *        index: index of the user PF
  * Output:
  *        fd: socket handle of the communication channel
  * Return value:
  *        0: success
  *        1: failure
  */
-int get_remote_msd_fd(size_t index, int& fd)
+int get_remote_msd_fd(size_t index, int* fd)
 {
-    fd = -1;
+    *fd = -1;
     return 0;
 }
 
@@ -114,17 +117,20 @@ int get_remote_msd_fd(size_t index, int& fd)
  *        index: index of the FPGA device
  *        awsbin: the aws xclbin file
  * Output:
- *        none    
- * Return value:
+ *        resp: int as response msg
+ * Return value:          
  *        0: success
  *        others: err code
  */
-int awsLoadXclBin(size_t index, const axlf *&xclbin)
+int awsLoadXclBin(size_t index, const axlf *xclbin, int *resp)
 {
+	int ret = -1;
     AwsDev d(index, nullptr);
-    if (!d.isGood())
-        return -1;
-    return d.awsLoadXclBin(xclbin);
+    if (d.isGood()) {
+        *resp = d.awsLoadXclBin(xclbin);
+        ret = 0;
+    }
+    return ret;
 }
 
 /*
@@ -135,16 +141,17 @@ int awsLoadXclBin(size_t index, const axlf *&xclbin)
  *        index: index of the FPGA device
  * Output:
  *        resp: response msg
- * Return value:
+ * Return value:       
  *        0: success
  *        others: err code
  */
-int awsGetIcap(size_t index, std::unique_ptr<xcl_pr_region> &resp)
+int awsGetIcap(size_t index, xcl_pr_region *resp)
 {
+    int ret = -1;
     AwsDev d(index, nullptr);
-    if (!d.isGood())
-        return -1;
-    return d.awsGetIcap(resp);
+    if (d.isGood())
+        ret = d.awsGetIcap(resp);
+    return ret;
 }
 
 /*
@@ -155,16 +162,17 @@ int awsGetIcap(size_t index, std::unique_ptr<xcl_pr_region> &resp)
  *        index: index of the FPGA device
  * Output:
  *        resp: response msg
- * Return value:
+ * Return value:       
  *        0: success
  *        others: err code
  */
-int awsGetSensor(size_t index, std::unique_ptr<xcl_sensor> &resp)
+int awsGetSensor(size_t index, xcl_sensor *resp)
 {
+    int ret = -1;
     AwsDev d(index, nullptr);
-    if (!d.isGood())
-        return -1;
-    return d.awsGetSensor(resp);
+    if (d.isGood())
+        ret = d.awsGetSensor(resp);
+    return ret;
 }
 
 /*
@@ -175,17 +183,17 @@ int awsGetSensor(size_t index, std::unique_ptr<xcl_sensor> &resp)
  *        index: index of the FPGA device
  * Output:
  *        resp: response msg
- *        resp_len: length of response msg 
  * Return value:
  *        0: success
  *        others: err code
  */
-int awsGetBdinfo(size_t index, std::unique_ptr<xcl_board_info> &resp)
+int awsGetBdinfo(size_t index, xcl_board_info *resp)
 {
+    int ret = -1;
     AwsDev d(index, nullptr);
-    if (!d.isGood())
-        return -1;
-    return d.awsGetBdinfo(resp);
+    if (d.isGood())
+        ret = d.awsGetBdinfo(resp);
+    return ret;
 }
 
 /*
@@ -194,18 +202,20 @@ int awsGetBdinfo(size_t index, std::unique_ptr<xcl_board_info> &resp)
  * 
  * Input:
  *        index: index of the FPGA device
+ *        resp_len: response msg length
  * Output:
  *        resp: response msg
  * Return value:
  *        0: success
  *        others: err code
  */
-int awsGetMig(size_t index, std::unique_ptr<std::vector<char>> &resp, size_t &resp_len)
+int awsGetMig(size_t index, char *resp, size_t resp_len)
 {
+    int ret = -1;
     AwsDev d(index, nullptr);
-    if (!d.isGood())
-        return -1;
-    return d.awsGetMig(resp, resp_len);
+    if (d.isGood())
+        ret = d.awsGetMig(resp, resp_len);
+    return ret;
 }
 
 /*
@@ -220,12 +230,13 @@ int awsGetMig(size_t index, std::unique_ptr<std::vector<char>> &resp, size_t &re
  *        0: success
  *        others: err code
  */
-int awsGetFirewall(size_t index, std::unique_ptr<xcl_mig_ecc> &resp)
+int awsGetFirewall(size_t index, xcl_mig_ecc *resp)
 {
+    int ret = -1;
     AwsDev d(index, nullptr);
-    if (!d.isGood())
-        return -1;
-    return d.awsGetFirewall(resp);
+    if (d.isGood())
+        ret = d.awsGetFirewall(resp);
+    return ret;
 }
 
 /*
@@ -240,12 +251,13 @@ int awsGetFirewall(size_t index, std::unique_ptr<xcl_mig_ecc> &resp)
  *        0: success
  *        others: err code
  */
-int awsGetDna(size_t index, std::unique_ptr<xcl_dna> &resp)
+int awsGetDna(size_t index, xcl_dna *resp)
 {
+    int ret = -1;
     AwsDev d(index, nullptr);
-    if (!d.isGood())
-        return -1;
-    return d.awsGetDna(resp);
+    if (d.isGood())
+        ret = d.awsGetDna(resp);
+    return ret;
 }
 
 /*
@@ -254,18 +266,20 @@ int awsGetDna(size_t index, std::unique_ptr<xcl_dna> &resp)
  *
  * Input:
  *        index: index of the FPGA device
+ *        resp_len: response msg length
  * Output:
  *        resp: response msg
  * Return value:
  *        0: success
  *        others: err code
  */
-int awsGetSubdev(size_t index, std::unique_ptr<std::vector<char>> &resp, size_t &resp_len)
+int awsGetSubdev(size_t index, char *resp, size_t resp_len)
 {
+    int ret = -1;
     AwsDev d(index, nullptr);
-    if (!d.isGood())
-        return -1;
-    return d.awsGetSubdev(resp, resp_len);
+    if (d.isGood())
+        ret = d.awsGetSubdev(resp, resp_len);
+    return ret;
 }
 
 /*
@@ -274,17 +288,20 @@ int awsGetSubdev(size_t index, std::unique_ptr<std::vector<char>> &resp, size_t 
  * Input:
  *        index: index of the FPGA device
  * Output:
- *        none
+ *        resp: int as response msg
  * Return value:
  *        0: success
  *        others: err code
  */
-int awsLockDevice(size_t index)
+int awsLockDevice(size_t index, int *resp)
 {
+    int ret = -1;
     AwsDev d(index, nullptr);
-    if (!d.isGood())
-        return -1;
-    return d.awsLockDevice();
+    if (d.isGood()) {
+        *resp = d.awsLockDevice();
+        ret = 0;
+    }
+    return ret;
 }
 
 /*
@@ -293,17 +310,20 @@ int awsLockDevice(size_t index)
  * Input:
  *        index: index of the FPGA device
  * Output:
- *        none
+ *        resp: int as response msg
  * Return value:
  *        0: success
  *        others: err code
  */
-int awsUnlockDevice(size_t index)
+int awsUnlockDevice(size_t index, int *resp)
 {
+    int ret = -1;
     AwsDev d(index, nullptr);
-    if (!d.isGood())
-        return -1;
-    return d.awsUnlockDevice();
+    if (d.isGood()) {
+        *resp = d.awsUnlockDevice();
+        ret = 0;
+    }
+    return ret;
 }
 
 /*
@@ -312,17 +332,20 @@ int awsUnlockDevice(size_t index)
  * Input:
  *        index: index of the FPGA device
  * Output:
- *        none
+ *        resp: int as response msg
  * Return value:
  *        0: success
  *        others: err code
  */
-int awsResetDevice(size_t index)
+int awsResetDevice(size_t index, int *resp)
 {
+    int ret = -1;
     AwsDev d(index, nullptr);
-    if (!d.isGood())
-        return -1;
-    return d.awsResetDevice();
+    if (d.isGood()) {
+        *resp = d.awsResetDevice();
+        ret = 0;
+    }
+    return ret;
 }
 
 /*
@@ -332,20 +355,89 @@ int awsResetDevice(size_t index)
  *        index: index of the FPGA device
  *        obj: the mailbox req msg of type 'struct xclmgmt_ioc_freqscaling'
  * Output:
- *        none
+ *        resp: int as response msg
  * Return value:
  *        0: success
  *        others: err code
  */
-int awsReClock2(size_t index, struct xclmgmt_ioc_freqscaling *&obj)
+int awsReClock2(size_t index, const xclmgmt_ioc_freqscaling *obj, int *resp)
 {
+    int ret = -1;
     AwsDev d(index, nullptr);
-    if (!d.isGood())
-        return -1;
-    return d.awsReClock2(obj);
+    if (d.isGood()) {
+        *resp = d.awsReClock2(obj);
+        ret = 0;
+    }
+    return ret;
 }
 
-int AwsDev::awsLoadXclBin(const xclBin *&buffer)
+/*
+ * callback function that is used to handle MAILBOX_REQ_USER_PROBE msg 
+ *
+ * Input:
+ *        index: index of the FPGA device
+ * Output:
+ *        resp: response msg
+ * Return value:
+ *        0: success
+ *        others: err code
+ */
+int awsUserProbe(size_t index, xcl_mailbox_conn_resp *resp)
+{
+    int ret = -1;
+    AwsDev d(index, nullptr);
+    if (d.isGood()) {
+        ret = d.awsUserProbe(resp);
+    }
+    return ret;
+}
+
+/*
+ * callback function that is used to handle MAILBOX_REQ_PROGRAM_SHELL msg 
+ *
+ * Input:
+ *        index: index of the FPGA device
+ * Output:
+ *        resp: int as response msg
+ * Return value:
+ *        0: success
+ *        others: err code
+ */
+int awsProgramShell(size_t index, int *resp)
+{
+    int ret = -1;
+    AwsDev d(index, nullptr);
+    if (d.isGood()) {
+        *resp = d.awsProgramShell();
+        ret = 0;
+    }
+    return ret;
+}
+
+/*
+ * callback function that is used to handle MAILBOX_REQ_READ_P2P_BAR_ADDR msg 
+ *
+ * Input:
+ *        index: index of the FPGA device
+ *        addr: p2p bar addr
+ * Output:
+ *        resp: int as response msg
+ * Return value:
+ *        0: success
+ *        others: err code
+ */
+int awsReadP2pBarAddr(size_t index, const xcl_mailbox_p2p_bar_addr *addr, int *resp)
+{
+    int ret = -1;
+    AwsDev d(index, nullptr);
+    if (d.isGood()) {
+        *resp = d.awsReadP2pBarAddr(addr);
+        ret = 0;
+    }
+    return ret;
+}
+
+int AwsDev::awsLoadXclBin(const xclBin *buffer)
 {
 #ifdef INTERNAL_TESTING_FOR_AWS
     if ( mLogStream.is_open()) {
@@ -394,10 +486,9 @@ int AwsDev::awsLoadXclBin(const xclBin *&buffer)
 #endif
 }
 
-int AwsDev::awsGetIcap(std::unique_ptr<xcl_pr_region> &hwicap)
+int AwsDev::awsGetIcap(xcl_pr_region *data)
 {
-    struct xcl_pr_region data = {0};
-#define FIELD(var, field, index) (var.field##_##index)
+#define FIELD(var, field, index) (var->field##_##index)
 #ifdef INTERNAL_TESTING_FOR_AWS
     xclmgmt_ioc_info mgmt_info_obj;
     int ret = ioctl(mMgtHandle, XCLMGMT_IOCINFO, &mgmt_info_obj);
@@ -423,50 +514,42 @@ int AwsDev::awsGetIcap(std::unique_ptr<xcl_pr_region> &hwicap)
 #endif
     //do we need to save uuid of xclbin loaded so that we can return xclbin uuid here?
     //seems not. we check afi before load new xclbin.
-
-    hwicap = std::make_unique<xcl_pr_region>(data);
     return 0;
 }
 
-int AwsDev::awsGetSensor(std::unique_ptr<xcl_sensor> &sensor)
+int AwsDev::awsGetSensor(xcl_sensor *sensor)
 {
-    struct xcl_sensor data = {0};
-    sensor = std::make_unique<xcl_sensor>(data);
+//TODO
     return -ENOTSUP;
 }
 
-int AwsDev::awsGetBdinfo(std::unique_ptr<xcl_board_info> &bdinfo)
+int AwsDev::awsGetBdinfo(xcl_board_info *bdinfo)
 {
-    struct xcl_board_info data = {0};
-    bdinfo = std::make_unique<xcl_board_info>(data);
+//TODO
     return -ENOTSUP;
 }
 
-int AwsDev::awsGetMig(std::unique_ptr<std::vector<char>> &mig, size_t &resp_len)
+int AwsDev::awsGetMig(char *mig, size_t resp_len)
 {
-    resp_len = sizeof (struct xcl_mig_ecc) * 64; //MAX_M_COUNT defined in xocl_drv.h
-    mig = std::make_unique<std::vector<char>>(resp_len, 0); 
+//TODO
     return -ENOTSUP;
 }
 
-int AwsDev::awsGetFirewall(std::unique_ptr<xcl_mig_ecc> &firewall)
+int AwsDev::awsGetFirewall(xcl_mig_ecc *firewall)
 {
-    struct xcl_mig_ecc data = {0};
-    firewall = std::make_unique<xcl_mig_ecc>(data);
+//TODO
     return -ENOTSUP;
 }
 
-int AwsDev::awsGetDna(std::unique_ptr<xcl_dna> &dna)
+int AwsDev::awsGetDna(xcl_dna *dna)
 {
-    struct xcl_dna data = {0};
-    dna = std::make_unique<xcl_dna>(data);
+//TODO
     return -ENOTSUP;
 }
 
-int AwsDev::awsGetSubdev(std::unique_ptr<std::vector<char>> &subdev, size_t &resp_len)
+int AwsDev::awsGetSubdev(char *subdev, size_t resp_len)
 {
-    resp_len = sizeof (struct xcl_subdev) + 0; //stub code. 0 may be any number in the future
-    subdev = std::make_unique<std::vector<char>>(resp_len, 0);
+//TODO
     return -ENOTSUP;
 }
 
@@ -478,6 +561,12 @@ bool AwsDev::isGood() {
     }
 #endif    
     return true;
+}
+
+int AwsDev::awsUserProbe(xcl_mailbox_conn_resp *resp)
+{
+    resp->conn_flags |= XCL_MB_PEER_READY;
+    return 0;
 }
 
 int AwsDev::awsLockDevice()
@@ -499,7 +588,7 @@ int AwsDev::awsResetDevice() {
     return 0;
 }
 
-int AwsDev::awsReClock2(xclmgmt_ioc_freqscaling *&obj) {
+int AwsDev::awsReClock2(const xclmgmt_ioc_freqscaling *obj) {
 #ifdef INTERNAL_TESTING_FOR_AWS
     return ioctl(mMgtHandle, XCLMGMT_IOCFREQSCALE, obj);
 #else
@@ -507,6 +596,16 @@ int AwsDev::awsReClock2(xclmgmt_ioc_freqscaling *&obj) {
 //    # This API is not supported in AWS, the frequencies are set per AFI
     return 0;
 #endif
+}
+
+int AwsDev::awsProgramShell() {
+    // AWS FIXME - add 2rp support
+    return 0;
+}
+
+int AwsDev::awsReadP2pBarAddr(const xcl_mailbox_p2p_bar_addr *addr) {
+    // AWS FIXME - add p2p support
+    return 0;
 }
 
 AwsDev::~AwsDev()

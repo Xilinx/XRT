@@ -19,6 +19,7 @@
 #include "xdp/profile/writer/base_profile.h"
 
 #include <iostream>
+#include <stdlib.h>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
@@ -56,6 +57,7 @@ RunSummary::getFileTypeAsStr(enum RunSummary::FileType eFileType)
     case FT_UNKNOWN: return "UNKNOWN";
     case FT_PROFILE: return "PROFILE";
     case FT_TRACE: return "TRACE";
+    case FT_WDB: return "WAVEFORM_DATABASE";
   }
 
   // Yeah, the code will never get here, but it makes for a clean flow
@@ -134,6 +136,15 @@ void RunSummary::writeContent()
   // -- Add the files
   {
     boost::property_tree::ptree ptFiles;
+
+    // If the waveform data is available add it to the report
+    char* pWdbFile = getenv("VITIS_WAVEFORM_WDB_FILENAME"); 
+    if (pWdbFile  != nullptr) {
+      boost::property_tree::ptree ptFile;
+      ptFile.put("name", pWdbFile);
+      ptFile.put("type", getFileTypeAsStr(FT_WDB).c_str());
+      ptFiles.push_back(std::make_pair("", ptFile));
+    }
 
     // Add each files
     for (auto file : mFiles) {

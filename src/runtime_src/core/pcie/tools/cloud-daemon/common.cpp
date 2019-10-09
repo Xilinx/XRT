@@ -26,6 +26,8 @@
 #include <unistd.h>
 #include <strings.h>
 #include <algorithm>
+#include <iostream>
+#include <exception>
 #include <dlfcn.h>
 
 #include "common.h"
@@ -77,7 +79,10 @@ size_t getMailboxMsgSize(const pcieFunc& dev, int mbxfd)
 
     // This read is expected to fail w/ errno == EMSGSIZE
     // However, the real msg size should be filled out by driver.
-    if (read(mbxfd, swmsg->data(), swmsg->size()) >= 0 || errno != EMSGSIZE) {
+    if (int n = read(mbxfd, swmsg->data(), swmsg->size()) >= 0) {
+        dev.log(LOG_ERR, "Unexpected %d bytes read from sw mailbox", n);
+        return 0;
+    } else if (errno != EMSGSIZE) {
         dev.log(LOG_ERR, "can't read sw_chan from mailbox, %m");
         return 0;
     }
@@ -261,13 +266,52 @@ void Common::postStop()
     closelog();         
 }
 
-Common::Common(std::string &name, std::string &plugin_path) :
+Common::Common(std::string &name, std::string &plugin_path, bool for_user) :
     name(name), plugin_path(plugin_path)
 {
-    total = pcidev::get_dev_total();
+    total = pcidev::get_dev_total(for_user);
+    plugin_handle = nullptr;
 }
 
 Common::~Common()
 {
 }
 
+//class Sw_mb_container
+char* Sw_mb_container::get_payload_buf()
+{
+	return processed_->payloadData();
+}
+
+std::unique_ptr<sw_msg> Sw_mb_container::get_response()
+{
+    if (hook_ == nullptr)
+        *((int *)get_payload_buf()) = -ENOTSUP;
+    else
+        hook_(); //TODO check get_peer_data failure
+    return std::move(processed_);
+}
+
+void Sw_mb_container::set_hook(std::function<void()> hook)
+{
+    hook_ = hook;
+}
+
+Sw_mb_container::Sw_mb_container(size_t respLen, uint64_t respID) :
+	hook_(nullptr)
+{
+    try {
+        /*
+         * Build the sw_msg without payload filled yet. The buffer of the payload
+         * will be passed to and filled by the hook function
+         */
+        processed_ = std::make_unique<sw_msg>(respLen, respID, XCL_MB_REQ_FLAG_RESPONSE);
+    } catch (std::exception &e) {
+        std::cout << "Sw_mb_container: " << e.what() << std::endl;
+        throw;
+    }
+}
+
+Sw_mb_container::~Sw_mb_container()
+{
+}

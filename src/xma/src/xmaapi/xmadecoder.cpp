@@ -340,7 +340,9 @@ xma_dec_session_destroy(XmaDecoderSession *session)
 
     */
     // Free the session
+    /*
     delete (XmaHwSessionPrivate*)session->base.hw_session.private_do_not_use;
+    */
     session->base.hw_session.private_do_not_use = NULL;
     session->base.plugin_data = NULL;
     session->base.stats = NULL;

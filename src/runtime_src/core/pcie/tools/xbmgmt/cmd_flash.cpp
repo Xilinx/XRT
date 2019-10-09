@@ -377,7 +377,7 @@ static int autoFlash(unsigned index, std::string& shell,
             bool reboot;
             std::cout << std::endl;
             if (updateShellAndSC(p.first, p.second, reboot) == 0) {
-                std::cout << "Successfully flashed Card[" << success << "]"<< std::endl;
+                std::cout << "Successfully flashed Card[" << getBDF(p.first) << "]"<< std::endl;
                 success++;
             }
             needreboot |= reboot;

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -505,6 +505,9 @@ namespace xclhwemhal2 {
     // The following is evil--hardcoding. This name may change.
     // Is there a way we can determine the name from the directories or otherwise?
     std::string bdName("dr"); // Used to be opencldesign. This is new default.
+
+    unsetenv("VITIS_WAVEFORM_WDB_FILENAME");
+
     if (!simDontRun)
     {
       wdbFileName = std::string(mDeviceInfo.mName) + "-" + std::to_string(mDeviceIndex) + "-" + xclBinName;
@@ -530,6 +533,7 @@ namespace xclhwemhal2 {
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
         unsetenv("VITIS_LAUNCH_WAVEFORM_BATCH");
         setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
+        setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
       }
 
       if (lWaveform == xclemulation::LAUNCHWAVEFORM::BATCH)
@@ -545,6 +549,7 @@ namespace xclhwemhal2 {
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
         setenv("VITIS_LAUNCH_WAVEFORM_BATCH", "1", true);
         setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
+        setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
       }
 
       if (userSpecifiedSimPath.empty() == false)

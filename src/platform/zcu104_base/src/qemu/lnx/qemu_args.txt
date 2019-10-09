@@ -19,6 +19,6 @@ user
 -m
 4G
 -device
-loader,file=<xrt/qemu/bl31.elf>,cpu-num=0
+loader,file=<bl31.elf>,cpu-num=0
 -device
-loader,file=<xrt/qemu/u-boot.elf>
+loader,file=<u-boot.elf>

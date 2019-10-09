@@ -23,6 +23,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <queue>
+#include <functional>
 #include "pciefunc.h"
 #include "sw_msg.h"
 #include "core/pcie/driver/linux/include/mailbox_proto.h"
@@ -74,7 +75,7 @@ class Common;
 class Common
 {
 public:
-    Common(std::string &name, std::string &plugin_path);
+    Common(std::string &name, std::string &plugin_path, bool for_user);
     ~Common();
     void *plugin_handle;
     size_t total;
@@ -87,5 +88,18 @@ public:
 private:
     std::string name;
     std::string plugin_path;
+};
+
+class Sw_mb_container
+{
+public:
+    Sw_mb_container(size_t respLen, uint64_t respID);
+    ~Sw_mb_container();
+    std::unique_ptr<sw_msg> get_response();
+    char* get_payload_buf();
+    void set_hook(std::function<void()> hook);
+private:
+    std::unique_ptr<sw_msg> processed_;
+    std::function<void()> hook_;
 };
 #endif // COMMON_H

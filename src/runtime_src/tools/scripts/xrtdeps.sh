@@ -124,6 +124,7 @@ UB_LIST=(\
      ocl-icd-opencl-dev \
      perl \
      python \
+     python-pip \
      pciutils \
      pkg-config \
      protobuf-compiler \

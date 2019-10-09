@@ -50,6 +50,9 @@ static const std::map<std::string, struct subCmd> subCmdList = {
     { "nifd", {nifdHandler, subCmdNifdDesc, subCmdNifdUsage} },
 };
 
+const static std::vector<std::string> basic_subCmd =
+    { "flash", "help", "scan", "version" };
+
 void sudoOrDie()
 {
     const char* SudoMessage = "ERROR: root privileges required.";
@@ -106,6 +109,15 @@ unsigned int bdf2index(const std::string& bdfStr)
     return UINT_MAX;
 }
 
+std::string getBDF(unsigned index)
+{
+    char BDF[128];
+    auto dev = pcidev::get_dev(index, false);
+    sprintf(BDF, "%.4x:%.2x:%.2x.%.1x",
+        dev->domain, dev->bus, dev->dev, dev->func);
+    return std::string(BDF);
+}
+
 static inline bool isHiddenSubcmd(const std::string& cmd)
 {
     return cmd[0] == '-';
@@ -113,13 +125,21 @@ static inline bool isHiddenSubcmd(const std::string& cmd)
 
 static void printHelp(void)
 {
+    std::stringstream expert_ostr;
     std::cout << "Supported sub-commands are:" << std::endl;
     for (auto& c : subCmdList) {
         if (isHiddenSubcmd(c.first))
             continue;
+        if(std::find(std::begin(basic_subCmd),
+            std::end(basic_subCmd), c.first) == basic_subCmd.end()) {
+            expert_ostr << "\t" << c.first << " - " << c.second.description
+                << std::endl;
+            continue;
+        }
         std::cout << "\t" << c.first << " - " << c.second.description <<
             std::endl;
     }
+    std::cout << "Experts only:\n" << expert_ostr.str();
     std::cout <<
         "Run xbmgmt help <subcommand> for detailed help of each subcommand" <<
         std::endl;
@@ -132,6 +152,9 @@ void printSubCmdHelp(const std::string& subCmd)
     if (cmd == subCmdList.end()) {
         std::cout << "Unknown sub-command: " << subCmd << std::endl;
     } else {
+        if (std::find(std::begin(basic_subCmd),
+            std::end(basic_subCmd), subCmd) == basic_subCmd.end())
+                std::cout << "Experts only sub-command, use at your own risk." << std::endl;
         if (!isHiddenSubcmd(subCmd))
             std::cout << "'" << subCmd << "' sub-command usage:" << std::endl;
         std::cout << cmd->second.usage << std::endl;
