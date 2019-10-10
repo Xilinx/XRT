@@ -53,6 +53,14 @@ config_rootfs()
 	echo 'CONFIG_opencl-headers-dev=y' 	>> $ROOTFS_CONFIG_FILE
 	echo 'CONFIG_opencl-clhpp-dev=y' 	>> $ROOTFS_CONFIG_FILE
 	echo 'CONFIG_packagegroup-petalinux-opencv=y'    >> $ROOTFS_CONFIG_FILE
+	echo 'CONFIG_libdrm=y' >> $ROOTFS_CONFIG_FILE
+	echo 'CONFIG_libdrm-tests=y' >> $ROOTFS_CONFIG_FILE
+	echo 'CONFIG_libdrm-kms=y' >> $ROOTFS_CONFIG_FILE
+	echo 'CONFIG_packagegroup-petalinux-audio=y' >> $ROOTFS_CONFIG_FILE
+	echo 'CONFIG_packagegroup-petalinux-gstreamer=y' >> $ROOTFS_CONFIG_FILE
+	echo 'CONFIG_packagegroup-petalinux-matchbox=y' >> $ROOTFS_CONFIG_FILE
+	echo 'CONFIG_packagegroup-petalinux-v4lutils=y' >> $ROOTFS_CONFIG_FILE
+	echo 'CONFIG_packagegroup-petalinux-x11=y' >> $ROOTFS_CONFIG_FILE
 }
 
 # The first argument is the rootfs configure file
