@@ -442,18 +442,12 @@ static int health_check_cb(void *data)
 {
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)data;
 	struct xcl_mailbox_req mbreq = { 0 };
-	bool tripped;
+	bool tripped, latched;
 	void __iomem *shutdown_clk = xocl_iores_get_base(lro, IORES_CLKSHUTDOWN);
-	uint32_t latched;
+	uint32_t clk_status;
 
 	if (!health_check)
 		return 0;
-
-	if (shutdown_clk) {
-		latched = XOCL_READ_REG32(shutdown_clk);
-		if (latched & 0x1)
-			mgmt_err(lro, "Card shutting down! Power or Temp may exceed limits");
-	}
 
 	mbreq.req = XCL_MAILBOX_REQ_FIREWALL;
 
@@ -461,10 +455,19 @@ static int health_check_cb(void *data)
 
 	if (!tripped) {
 		check_sensor(lro);
+		if (shutdown_clk) {
+			clk_status = XOCL_READ_REG32(shutdown_clk);
+			latched = clk_status & 0x1;
+			if (latched)
+				mgmt_err(lro, "Card shutting down! Power or Temp may exceed limits, notify peer");
+		}
 	} else {
-		mgmt_info(lro, "firewall tripped, notify peer");
-		(void) xocl_peer_notify(lro, &mbreq, sizeof(struct xcl_mailbox_req));
+		mgmt_err(lro, "firewall tripped, notify peer");
 	}
+
+	/* Press doomsday button */
+	if (latched || tripped)
+		(void) xocl_peer_notify(lro, &mbreq, sizeof(struct xcl_mailbox_req));
 
 	return 0;
 }
