@@ -1263,8 +1263,14 @@ int xcldev::device::auxConnectionTest(void)
         }
     }
 
+    if (!auxBoard) {
+        std::cout << "AUX power connector not available. Skipping validation"
+                  << std::endl;
+        return -EOPNOTSUPP;
+    }
+
     //check aux cable if board u200, u250, u280
-    if(auxBoard && max_power == 0) {
+    if(max_power == 0) {
         std::cout << "AUX POWER NOT CONNECTED, ATTENTION" << std::endl;
         std::cout << "Board not stable for heavy acceleration tasks." << std::endl;
         return 1;
