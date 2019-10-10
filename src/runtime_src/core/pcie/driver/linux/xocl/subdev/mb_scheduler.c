@@ -1466,6 +1466,7 @@ struct exec_core {
 	void __iomem		   *base;
 	void __iomem		   *csr_base;
 	void __iomem		   *cq_base;
+	unsigned int               cq_size;
 	u32			   intr_base;
 	u32			   intr_num;
 	char			   ert_cfg_priv;
@@ -1663,14 +1664,14 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		return 1;
 	}
 
-	SCHED_DEBUG("configuring scheduler\n");
-	exec->num_slots = ERT_CQ_SIZE / cfg->slot_size;
+	SCHED_DEBUGF("configuring scheduler cq_size(%d)\n", exec->cq_size);
+	exec->num_slots = exec->cq_size / cfg->slot_size;
 	exec->num_cus = cfg->num_cus;
 	exec->num_cdma = 0;
 
 	if (ert_poll)
 		// Adjust slot size for ert poll mode
-		cfg->slot_size = ERT_CQ_SIZE / MAX_CUS;
+		cfg->slot_size = exec->cq_size / MAX_CUS;
 
 	// Create CUs for regular CUs
 	for (cuidx = 0; cuidx < exec->num_cus; ++cuidx) {
@@ -1714,7 +1715,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 
 	if (ert_poll) {
 		userpf_info(xdev, "configuring dataflow mode with ert polling\n");
-		cfg->slot_size = ERT_CQ_SIZE / MAX_CUS;
+		cfg->slot_size = exec->cq_size / MAX_CUS;
 		cfg->cu_isr = 0;
 		cfg->cu_dma = 0;
 		ert_cfg(exec->ert, cfg->slot_size, cfg->cq_int);
@@ -1939,14 +1940,15 @@ exec_create(struct platform_device *pdev, struct xocl_scheduler *xs)
 	if (!res) {
 		xocl_info(&pdev->dev, "did not get CQ resource");
 	} else {
-		exec->cq_base = ioremap_nocache(res->start,
-			res->end - res->start + 1);
+		exec->cq_size = res->end - res->start + 1;
+		exec->cq_base = ioremap_nocache(res->start, exec->cq_size);
 		if (!exec->cq_base) {
 			if (exec->csr_base)
 				iounmap(exec->csr_base);
 			xocl_err(&pdev->dev, "map CQ resource failed");
 			return NULL;
 		}
+		xocl_info(&pdev->dev, "CQ size is %d\n", exec->cq_size);
 	}
 
 	exec->pdev = pdev;
