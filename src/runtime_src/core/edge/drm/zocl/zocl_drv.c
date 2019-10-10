@@ -497,6 +497,35 @@ static unsigned int zocl_poll(struct file *filp, poll_table *wait)
 	return ret;
 }
 
+static int zocl_iommu_init(struct drm_zocl_dev *zdev,
+		struct platform_device *pdev)
+{
+	struct iommu_domain_geometry *geometry;
+	u64 start, end;
+	int ret;
+
+	zdev->domain = iommu_domain_alloc(&platform_bus_type);
+	if (!zdev->domain)
+		return -ENOMEM;
+
+	ret = iommu_attach_device(zdev->domain, &pdev->dev);
+	if (ret) {
+		DRM_INFO("IOMMU attach device failed. ret(%d)\n", ret);
+		iommu_domain_free(zdev->domain);
+		zdev->domain = NULL;
+		return ret;
+	}
+
+	geometry = &zdev->domain->geometry;
+	start = geometry->aperture_start;
+	end = geometry->aperture_end;
+
+	DRM_INFO("IOMMU aperture initialized (%#llx-%#llx)\n",
+				start, end);
+
+	return 0;
+}
+
 const struct vm_operations_struct zocl_bo_vm_ops = {
 	.fault = zocl_bo_fault,
 	.open  = drm_gem_vm_open,
@@ -671,26 +700,12 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 
 	/* Initialzie IOMMU */
 	if (iommu_present(&platform_bus_type)) {
-		struct iommu_domain_geometry *geometry;
-		u64 start, end;
-		int ret = 0;
-
-		zdev->domain = iommu_domain_alloc(&platform_bus_type);
-		if (!zdev->domain)
-			return -ENOMEM;
-
-		ret = iommu_attach_device(zdev->domain, &pdev->dev);
-		if (ret) {
-			DRM_INFO("IOMMU attach device failed. ret(%d)\n", ret);
-			iommu_domain_free(zdev->domain);
-		}
-
-		geometry = &zdev->domain->geometry;
-		start = geometry->aperture_start;
-		end = geometry->aperture_end;
-
-		DRM_INFO("IOMMU aperture initialized (%#llx-%#llx)\n",
-				start, end);
+		/*
+		 * Note: we ignore the return value of zocl_iommu_init().
+		 * In the case of failing to initialize iommu, zocl
+		 * driver will keep working with iommu disabled.
+		 */
+		(void) zocl_iommu_init(zdev, pdev);
 	}
 
 	platform_set_drvdata(pdev, zdev);
