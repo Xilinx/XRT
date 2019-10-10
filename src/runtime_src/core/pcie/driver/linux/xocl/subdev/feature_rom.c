@@ -311,7 +311,7 @@ static int __find_firmware(struct platform_device *pdev, char *fw_name,
 
 	/* For 2RP, only uuid is provided */
 	if (strlen(rom->uuid) > 0) {
-		snprintf(fw_name, len, "xilinx/%s/%s.%s", rom->uuid, rom->uuid,
+		snprintf(fw_name, len, "xilinx/%s/partition.%s", rom->uuid,
 			suffix);
 	} else {
 		snprintf(fw_name, len, "xilinx/%04x-%04x-%04x-%016llx.%s",
