@@ -8,5 +8,5 @@ Name: libxmaplugin
 Description: Xilinx Media Accelerator Plugin API
 Version: 0.0.1
 Requires:
-Libs: -L${libdir}  -lxmaplugin_legacy 
-Cflags: -I${includedir1} -I${includedir2}
+Libs: -L${libdir}  -lxmaplugin
+Cflags: -I${includedir2}
