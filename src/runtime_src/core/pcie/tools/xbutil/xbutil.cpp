@@ -1264,7 +1264,7 @@ int xcldev::device::auxConnectionTest(void)
     }
 
     if (!auxBoard) {
-        std::cout << "Aux power connector not available. Skipping validation"
+        std::cout << "AUX power connector not available. Skipping validation"
                   << std::endl;
         return -EOPNOTSUPP;
     }
