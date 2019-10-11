@@ -70,15 +70,12 @@ public:
     //int xclBootFPGA();
     int awsResetDevice();
     int awsReClock2(const xclmgmt_ioc_freqscaling *obj);
-    int awsLockDevice();
-    int awsUnlockDevice();
     int awsProgramShell();
     int awsReadP2pBarAddr(const xcl_mailbox_p2p_bar_addr *addr);
     int awsUserProbe(xcl_mailbox_conn_resp *resp);
     bool isGood();
 private:
     const int mBoardNumber;
-    bool mLocked;
     std::ofstream mLogStream;
 #ifdef INTERNAL_TESTING_FOR_AWS
     int mMgtHandle;

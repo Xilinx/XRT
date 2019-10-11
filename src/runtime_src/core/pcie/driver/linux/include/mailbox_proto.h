@@ -46,8 +46,6 @@
  * @MAILBOX_REQ_UNKNOWN: invalid OP code
  * @MAILBOX_REQ_TEST_READY: test msg is ready (post only, internal test only)
  * @MAILBOX_REQ_TEST_READ: fetch test msg from peer (internal test only)
- * @MAILBOX_REQ_LOCK_BITSTREAM: lock down xclbin on mgmt pf
- * @MAILBOX_REQ_UNLOCK_BITSTREAM: unlock xclbin on mgmt pf
  * @MAILBOX_REQ_HOT_RESET: request mgmt pf driver to reset the board
  * @MAILBOX_REQ_FIREWALL: firewall trip detected on mgmt pf (post only)
  * @MAILBOX_REQ_LOAD_XCLBIN_KADDR: download xclbin (pointed to by a pointer)
@@ -64,8 +62,6 @@ enum xcl_mailbox_request {
 	XCL_MAILBOX_REQ_UNKNOWN =		0,
 	XCL_MAILBOX_REQ_TEST_READY =		1,
 	XCL_MAILBOX_REQ_TEST_READ =		2,
-	XCL_MAILBOX_REQ_LOCK_BITSTREAM =	3,
-	XCL_MAILBOX_REQ_UNLOCK_BITSTREAM =	4,
 	XCL_MAILBOX_REQ_HOT_RESET =		5,
 	XCL_MAILBOX_REQ_FIREWALL =		6,
 	XCL_MAILBOX_REQ_LOAD_XCLBIN_KADDR =	7,
@@ -78,16 +74,6 @@ enum xcl_mailbox_request {
 	XCL_MAILBOX_REQ_PROGRAM_SHELL =		14,
 	XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR =	15,
 	/* Version 0 OP code ends */
-};
-
-/**
- * struct mailbox_req_bitstream_lock - MAILBOX_REQ_LOCK_BITSTREAM and
- * 				       MAILBOX_REQ_UNLOCK_BITSTREAM payload type
- * @uuid: uuid of the xclbin
- */
-struct xcl_mailbox_req_bitstream_lock {
-	uint64_t reserved;
-	uint8_t uuid[XCL_UUID_SZ];
 };
 
 /**

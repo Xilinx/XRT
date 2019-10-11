@@ -72,8 +72,6 @@ int init(mpd_plugin_callbacks *cbs)
         cbs->mb_req.peer_data.get_firewall_data = awsGetFirewall;
         cbs->mb_req.peer_data.get_dna_data = awsGetDna;
         cbs->mb_req.peer_data.get_subdev_data = awsGetSubdev;
-        cbs->mb_req.lock_bitstream = awsLockDevice;
-        cbs->mb_req.unlock_bitstream = awsUnlockDevice;
         cbs->mb_req.hot_reset = awsResetDevice;
         cbs->mb_req.reclock2 = awsReClock2;
         cbs->mb_req.user_probe = awsUserProbe;
@@ -279,50 +277,6 @@ int awsGetSubdev(size_t index, char *resp, size_t resp_len)
     AwsDev d(index, nullptr);
     if (d.isGood())
         ret = d.awsGetSubdev(resp, resp_len);
-    return ret;
-}
-
-/*
- * callback function that is used to handle MAILBOX_REQ_LOCK_BITSTREAM msg 
- *
- * Input:
- *        index: index of the FPGA device
- * Output:
- *        resp: int as response msg
- * Return value:
- *        0: success
- *        others: err code
- */
-int awsLockDevice(size_t index, int *resp)
-{
-    int ret = -1;
-    AwsDev d(index, nullptr);
-    if (d.isGood()) {
-        *resp = d.awsLockDevice();
-        ret = 0;
-    }
-    return ret;
-}
-
-/*
- * callback function that is used to handle MAILBOX_REQ_UNLOCK_BITSTREAM msg
- * 
- * Input:
- *        index: index of the FPGA device
- * Output:
- *        resp: int as response msg
- * Return value:
- *        0: success
- *        others: err code
- */
-int awsUnlockDevice(size_t index, int *resp)
-{
-    int ret = -1;
-    AwsDev d(index, nullptr);
-    if (d.isGood()) {
-        *resp = d.awsUnlockDevice();
-        ret = 0;
-    }
     return ret;
 }
 
@@ -569,20 +523,6 @@ int AwsDev::awsUserProbe(xcl_mailbox_conn_resp *resp)
     return 0;
 }
 
-int AwsDev::awsLockDevice()
-{
-    // AWS FIXME - add lockDevice
-    mLocked = true;
-    return 0;
-}
-
-int AwsDev::awsUnlockDevice()
-{
-    // AWS FIXME - add unlockDevice
-    mLocked = false;
-    return 0;
-}
-
 int AwsDev::awsResetDevice() {
     // AWS FIXME - add reset
     return 0;
@@ -622,7 +562,7 @@ AwsDev::~AwsDev()
     }
 }
 
-AwsDev::AwsDev(size_t index, const char *logfileName) : mBoardNumber(index), mLocked(false)
+AwsDev::AwsDev(size_t index, const char *logfileName) : mBoardNumber(index)
 {
     if (logfileName != nullptr) {
         mLogStream.open(logfileName);
