@@ -442,7 +442,7 @@ static int health_check_cb(void *data)
 {
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)data;
 	struct xcl_mailbox_req mbreq = { 0 };
-	bool tripped, latched;
+	bool tripped, latched = false;
 	void __iomem *shutdown_clk = xocl_iores_get_base(lro, IORES_CLKSHUTDOWN);
 	uint32_t clk_status;
 

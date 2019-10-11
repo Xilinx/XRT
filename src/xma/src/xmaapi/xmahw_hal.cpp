@@ -182,13 +182,18 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
 
     /* Download the requested image to the associated device */
     for (int32_t i = 0; i < num_parms; i++) {
-        std::string xclbin = std::string(devXclbins[i].xclbin_name);
         int32_t dev_index = devXclbins[i].device_id;
         if (dev_index >= hwcfg->num_devices || dev_index < 0) {
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Illegal dev_index for xclbin to load into. dev_index = %d\n",
                        dev_index);
             return false;
         }
+        if (devXclbins[i].xclbin_name == NULL) {
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "No xclbin provided for dev_index = %d\n",
+                       dev_index);
+            return false;
+        }
+        std::string xclbin = std::string(devXclbins[i].xclbin_name);
         char *buffer = xma_xclbin_file_open(xclbin.c_str());
         if (!buffer)
         {

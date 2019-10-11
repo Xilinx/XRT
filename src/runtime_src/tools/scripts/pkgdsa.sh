@@ -271,6 +271,8 @@ recordDsaFiles()
    # Metadata
    if [ "${ENTITY_ATTRIBUTES_ARRAY[Type]}" == "META_JSON" ]; then
      metaDataJSONFile="${ENTITY_ATTRIBUTES_ARRAY[Name]}"
+   elif [ "${ENTITY_ATTRIBUTES_ARRAY[Type]}" == "EXT_META_JSON" ]; then
+     metaDataJSONFile="${ENTITY_ATTRIBUTES_ARRAY[Name]}"
    fi
 
    # Partition Metadata

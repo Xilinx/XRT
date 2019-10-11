@@ -2099,15 +2099,19 @@ exec_update_custatus(struct exec_core *exec)
 	unsigned int cuidx;
 	// ignore kdma which on least at u200_2018_30_1 is not BAR mapped
 	for (cuidx = 0; cuidx < exec->num_cus - exec->num_cdma; ++cuidx) {
-		struct xocl_cu *xcu = exec->cus[cuidx];
 		// skip free running kernels which is not BAR mapped
-		exec->cu_status[cuidx] =
-			exec_valid_cu(exec, cuidx) ? cu_status(xcu) : 0;
+		if (!exec_valid_cu(exec, cuidx))
+			exec->cu_status[cuidx] = 0;
+		else if (exec_is_ert(exec))
+			exec->cu_status[cuidx] = ert_cu_status(exec->ert, cuidx)
+				? AP_START : AP_IDLE;
+		else 
+			exec->cu_status[cuidx] = cu_status(exec->cus[cuidx]);
 	}
+
 	// reset cdma status
 	for (; cuidx < exec->num_cus; ++cuidx)
 		exec->cu_status[cuidx] = 0;
-	
 }
 
 /*
@@ -2124,7 +2128,7 @@ exec_finish_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	if (cmd_opcode(xcmd) != ERT_CU_STAT)
 		return 0;
 	
-	if (exec_is_ert(exec)) 
+	if (exec_is_ert(exec))
 		ert_read_custat(exec->ert, xcmd, exec->num_cus);
 
 	exec_update_custatus(exec);

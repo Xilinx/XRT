@@ -61,7 +61,7 @@ set_property platform.EMU_OVERRIDE_DIR emu_overlay/emu_generated/emu/ [current_p
 
 #write_hw_platform -force -include_bit -ext_metadata "${sourcesDir}/misc/ext_metadata.json" xilinx_zcu102_dynamic_0_1.xsa
 #validate_hw_platform xilinx_zcu102_dynamic_0_1.xsa -verbose
-write_hw_platform -force -include_bit -ext_metadata "${sourcesDir}/misc/ext_metadata.json" zcu102_base_DFX.xsa
-validate_hw_platform zcu102_base_DFX.xsa -verbose
+write_hw_platform -force -include_bit -ext_metadata "${sourcesDir}/misc/ext_metadata.json" zcu102_base_dfx.xsa
+validate_hw_platform zcu102_base_dfx.xsa -verbose
 
 write_hwdef -force  -file pfm_top_wrapper.hdf
