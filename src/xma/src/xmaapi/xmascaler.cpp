@@ -229,7 +229,7 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
         free(sc_session);
         return NULL;
     }
-    if ((uint32_t)cu_index >= hwcfg->devices[hwcfg_dev_index].number_of_cus || (cu_index < 0 && sc_props->cu_name == NULL)) {
+    if ((cu_index > 0 && (uint32_t)cu_index >= hwcfg->devices[hwcfg_dev_index].number_of_cus) || (cu_index < 0 && sc_props->cu_name == NULL)) {
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
                    "XMA session creation failed. Invalid cu_index = %d\n", cu_index);
         //Release singleton lock
