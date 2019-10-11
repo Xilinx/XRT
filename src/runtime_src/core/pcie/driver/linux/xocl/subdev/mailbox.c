@@ -2219,8 +2219,9 @@ static int mailbox_probe(struct platform_device *pdev)
 	mbx->mbx_peer_dead = false;
 	mbx->mbx_prot_ver = XCL_MB_PROTOCOL_VER;
 
+	pr_info("STEP 1\n"); ssleep(2);
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-    if (res != NULL) {
+	if (res != NULL) {
 	    mbx->mbx_regs = ioremap_nocache(res->start, res->end - res->start + 1);
 	    if (!mbx->mbx_regs) {
 		    MBX_ERR(mbx, "failed to map in registers");
@@ -2229,8 +2230,9 @@ static int mailbox_probe(struct platform_device *pdev)
 	    }
 	    /* Reset both TX channel and RX channel */
 	    mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_ctrl, 0x3);
-    }
+	}
 
+	pr_info("STEP 2\n"); ssleep(2);
 	/* Dedicated thread for listening to peer request. */
 	mbx->mbx_listen_wq =
 		create_singlethread_workqueue(dev_name(&mbx->mbx_pdev->dev));
@@ -2242,18 +2244,21 @@ static int mailbox_probe(struct platform_device *pdev)
 	INIT_WORK(&mbx->mbx_listen_worker, mailbox_recv_request);
 	queue_work(mbx->mbx_listen_wq, &mbx->mbx_listen_worker);
 
+	pr_info("STEP 3\n"); ssleep(2);
 	/* Set up software communication channels, rx first, then tx. */
 	ret = chan_init(mbx, MBXCT_RX, &mbx->mbx_rx, chan_do_rx);
 	if (ret != 0) {
 		MBX_ERR(mbx, "failed to init rx channel");
 		goto failed;
 	}
+	pr_info("STEP 4\n"); ssleep(2);
 	ret = chan_init(mbx, MBXCT_TX, &mbx->mbx_tx, chan_do_tx);
 	if (ret != 0) {
 		MBX_ERR(mbx, "failed to init tx channel");
 		goto failed;
 	}
 
+	pr_info("STEP 5\n"); ssleep(2);
 	/* Enable interrupt. */
 	if (mailbox_no_intr) {
 		MBX_INFO(mbx, "Enabled timer-driven mode");
@@ -2266,6 +2271,7 @@ static int mailbox_probe(struct platform_device *pdev)
 			mailbox_disable_intr_mode(mbx);
 		}
 	}
+	pr_info("STEP 6\n"); ssleep(2);
 
 	/* Enable access thru sysfs node. */
 	ret = sysfs_create_group(&pdev->dev.kobj, &mailbox_attrgroup);
