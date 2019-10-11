@@ -75,7 +75,6 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
 
    yocto.rst
    test.rst
-   newxsa-bringup.rst
    create_platforms.rst
 
 

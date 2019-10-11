@@ -10,7 +10,7 @@ Xilinx FPGA based acceleration platform architecture are described in the :ref:`
 Image Download
 ==============
 
-Xilinx SDx compiler xocc compiles user's device code into xclbin file which contains FPGA bitstream and collection of metadata like memory topology, IP instantiations, etc. xclbin format is defined in :ref:`formats.rst` document. For Alveo platforms xclmgmt driver provides an ioctl for xclbin download. For Zynq Ultrascale+ MPSoC zocl provides an ioctl for xclbin download. Both drivers support FPGA Manager integration. The drivers walk the xclbin sections, program the FPGA fabric, discover the memory topology, initialize the memory managers for the provided memory topology and discover user's compute units programmed into the FPGA fabric.
+Xilinx Vitis compiler, v++ compiles user's device code into xclbin file which contains FPGA bitstream and collection of metadata like memory topology, IP instantiations, etc. xclbin format is defined in :ref:`formats.rst` document. For Alveo platforms xclmgmt driver provides an ioctl for xclbin download. For Zynq Ultrascale+ MPSoC zocl provides an ioctl for xclbin download. Both drivers support FPGA Manager integration. The drivers walk the xclbin sections, program the FPGA fabric, discover the memory topology, initialize the memory managers for the provided memory topology and discover user's compute units programmed into the FPGA fabric.
 
 Memory Management
 =================

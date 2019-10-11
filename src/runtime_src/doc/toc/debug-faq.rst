@@ -111,7 +111,7 @@ Bitsream Download Failures
   messages in ``dmesg`` would reveal if MIG calibration failed.
 
 Incorrect Timing Constraints
-  If the platform or dynamic region has invalid timing constraints — which is really a platform or SDx tool bug — CUs would show bizarre behaviors. This may result in incorrect outputs or CU/application hangs.
+  If the platform or dynamic region has invalid timing constraints — which is really a platform or Vitis tool bug — CUs would show bizarre behaviors. This may result in incorrect outputs or CU/application hangs.
 
 Board in Crashed State
 ~~~~~~~~~~~~~~~~~~~~~~
