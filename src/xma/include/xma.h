@@ -52,7 +52,7 @@ extern "C" {
 */
 int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms);
 
-void xma_get_session_cmd_load();
+void xma_get_session_cmd_load(void);
 
 #ifdef __cplusplus
 }
