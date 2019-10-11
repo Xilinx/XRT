@@ -773,8 +773,8 @@ int shim::xclLoadXclBin(const xclBin *buffer)
     ret = xclLoadAxlf(reinterpret_cast<const axlf*>(xclbininmemory));
     if (ret != 0) {
         if (ret == -EOPNOTSUPP) {
-            xrt_logmsg(XRT_ERROR, "Xclbin does not match Shell on card.");
-            xrt_logmsg(XRT_ERROR, "Use 'xbmgmt flash' to update Shell.");
+            xrt_logmsg(XRT_ERROR, "Xclbin does not match platform on card.");
+            xrt_logmsg(XRT_ERROR, "Use 'xbmgmt flash' to update platform.");
         } else if (ret == -EBUSY) {
             xrt_logmsg(XRT_ERROR, "Xclbin on card is in use, can't change.");
         } else if (ret == -EKEYREJECTED) {

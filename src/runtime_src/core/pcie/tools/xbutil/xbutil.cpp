@@ -1115,7 +1115,7 @@ int xcldev::device::runTestCase(const std::string& py,
         output += py;
         output += " or ";
         output += xclbin;
-        output += ", Shell package not installed properly.";
+        output += ", Platform package not installed properly.";
         return -ENOENT;
     }
 
@@ -1158,7 +1158,7 @@ int xcldev::device::runXbTestCase(const std::string& test, std::string& output)
         std::cout << output << std::endl;
         std::cout << "ERROR: Failed to find ";
         std::cout << test;
-        std::cout << ", Shell package not installed properly.";
+        std::cout << ", Platform package not installed properly.";
         return -ENOENT;
     }
 

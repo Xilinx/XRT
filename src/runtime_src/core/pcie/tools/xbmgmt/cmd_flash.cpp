@@ -34,7 +34,7 @@ const char *subCmdXbutilFlashUsage =
     "[-d mgmt-bdf] -p msp432_firmware\n"
     "scan [-v]\n";
 
-const char *subCmdFlashDesc = "Update SC firmware or shell on the device";
+const char *subCmdFlashDesc = "Update SC firmware or platform on the device";
 const char *subCmdFlashUsage =
     "--scan [--verbose|--json]\n"
     "--update [--shell name [--id id]] [--card bdf] [--force]\n"
@@ -146,7 +146,7 @@ static int updateSC(unsigned index, const char *file)
     return flasher.upgradeBMCFirmware(bmc.get());
 }
 
-// Update shell on the board.
+// Update platform on the board.
 static int updateShell(unsigned index, std::string flashType,
     const char *primary, const char *secondary)
 {
@@ -181,7 +181,7 @@ static int updateShell(unsigned index, std::string flashType,
     return flasher.upgradeFirmware(flashType, pri.get(), sec.get());
 }
 
-// Reset shell to factory mode.
+// Reset platform to factory mode.
 static int resetShell(unsigned index)
 {
     Flasher flasher(index);
@@ -229,12 +229,12 @@ static int updateShellAndSC(unsigned boardIdx, DSAInfo& candidate, bool& reboot)
     }
 
     if (!same_dsa) {
-        std::cout << "Updating shell on card[" << flasher.sGetDBDF() <<
+        std::cout << "Updating platform on card[" << flasher.sGetDBDF() <<
             "]" << std::endl;
         int ret = updateShell(boardIdx, "", candidate.file.c_str(),
             candidate.file.c_str());
         if (ret != 0) {
-            std::cout << "ERROR: Failed to update shell on card["
+            std::cout << "ERROR: Failed to update platform on card["
                 << flasher.sGetDBDF() << "]" << std::endl;
         } else {
             reboot = true;
@@ -261,11 +261,11 @@ static DSAInfo selectShell(unsigned idx, std::string& dsa, std::string& id)
     if (dsa.empty()) {
         std::cout << "Card [" << flasher.sGetDBDF() << "]: " << std::endl;
         if (installedDSA.empty()) {
-            std::cout << "\t Status: no shell is installed" << std::endl;
+            std::cout << "\t Status: no platform is installed" << std::endl;
             return DSAInfo("");
         }
         if (installedDSA.size() > 1) {
-            std::cout << "\t Status: multiple shells are installed" << std::endl;
+            std::cout << "\t Status: multiple platforms are installed" << std::endl;
             return DSAInfo("");
         }
         candidateDSAIndex = 0;
@@ -277,7 +277,7 @@ static DSAInfo selectShell(unsigned idx, std::string& dsa, std::string& id)
             if (!id.empty() && !idsa.matchId(id))
                 continue;
             if (candidateDSAIndex != UINT_MAX) {
-                std::cout << "\t Status: multiple shells are installed" << std::endl;
+                std::cout << "\t Status: multiple platforms are installed" << std::endl;
                 return DSAInfo("");
             }
             candidateDSAIndex = i;
@@ -286,7 +286,7 @@ static DSAInfo selectShell(unsigned idx, std::string& dsa, std::string& id)
 
     if (candidateDSAIndex == UINT_MAX) {
         std::cout << "WARNING: Failed to flash Card["
-                  << flasher.sGetDBDF() << "]: Specified shell is not applicable" << std::endl;
+                  << flasher.sGetDBDF() << "]: Specified platform is not applicable" << std::endl;
         return DSAInfo("");
     }
 
@@ -302,12 +302,12 @@ static DSAInfo selectShell(unsigned idx, std::string& dsa, std::string& id)
             candidate.bmcVer == currentDSA.bmcVer);
     }
     if (same_dsa && same_bmc) {
-        std::cout << "\t Status: shell is up-to-date" << std::endl;
+        std::cout << "\t Status: platform is up-to-date" << std::endl;
         return DSAInfo("");
     }
-    std::cout << "\t Status: shell needs updating" << std::endl;
-    std::cout << "\t Current shell: " << currentDSA.name << std::endl;
-    std::cout << "\t Shell to be flashed: " << candidate.name << std::endl;
+    std::cout << "\t Status: platform needs updating" << std::endl;
+    std::cout << "\t Current platform: " << currentDSA.name << std::endl;
+    std::cout << "\t Platform to be flashed: " << candidate.name << std::endl;
     return candidate;
 }
 
@@ -332,11 +332,11 @@ static int autoFlash(unsigned index, std::string& shell,
             }
         }
         if (!foundDSA) {
-            std::cout << "Specified shell not found." << std::endl;
+            std::cout << "Specified platform not found." << std::endl;
             return -ENOENT;
         }
         if (multiDSA) {
-            std::cout << "Specified shell matched multiple installed shells" <<
+            std::cout << "Specified platform matched multiple installed platforms" <<
                 std::endl;
             return -ENOTUNIQ;
         }
@@ -492,8 +492,8 @@ int flashXbutilFlashHandler(int argc, char *argv[])
         int ret = resetShell(devIdx == UINT_MAX ? 0 : devIdx);
         if (ret)
             return ret;
-        std::cout << "Shell is reset succesfully" << std::endl;
-        std::cout << "Cold reboot machine to load new shell on card" <<
+        std::cout << "Platform is reset succesfully" << std::endl;
+        std::cout << "Cold reboot machine to load new platform on card" <<
             std::endl;
         return 0;
     }
@@ -506,8 +506,8 @@ int flashXbutilFlashHandler(int argc, char *argv[])
             primary, secondary);
         if (ret)
             return ret;
-        std::cout << "Shell is updated succesfully" << std::endl;
-        std::cout << "Cold reboot machine to load new shell on card" <<
+        std::cout << "Platform is updated succesfully" << std::endl;
+        std::cout << "Cold reboot machine to load new platform on card" <<
             std::endl;
         return 0;
     }
@@ -636,8 +636,8 @@ static int shell(int argc, char *argv[])
     if (ret)
         return ret;
 
-    std::cout << "Shell is updated succesfully" << std::endl;
-    std::cout << "Cold reboot machine to load new shell on card" << std::endl;
+    std::cout << "Platform is updated succesfully" << std::endl;
+    std::cout << "Cold reboot machine to load new platform on card" << std::endl;
     return 0;
 }
 
@@ -707,8 +707,8 @@ static int reset(int argc, char *argv[])
     if (ret)
         return ret;
 
-    std::cout << "Shell is reset succesfully" << std::endl;
-    std::cout << "Cold reboot machine to load new shell on card" << std::endl;
+    std::cout << "Platform is reset succesfully" << std::endl;
+    std::cout << "Cold reboot machine to load new platform on card" << std::endl;
     return 0;
 }
 

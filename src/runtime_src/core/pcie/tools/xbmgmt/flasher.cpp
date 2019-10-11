@@ -274,7 +274,7 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
 
     if (onBoard.name.empty() && onBoard.uuids.empty())
     {
-        std::cout << "Shell on FPGA is unknown" << std::endl;
+        std::cout << "Platform on FPGA is unknown" << std::endl;
         return DSAs;
     }
 
