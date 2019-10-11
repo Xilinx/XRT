@@ -57,7 +57,7 @@
 				"to": ["${TA_ROOT}/internal_platforms"]
 			}
 		},
-		"zcu102_base_DFX": {
+		"zcu102_base_dfx": {
 			"architecture": "zynqmp",
 			"bsp_key": "zcu102",
 			"pullrequest_build": true,

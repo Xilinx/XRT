@@ -85,15 +85,19 @@ for {set i 1} {$i < 16} {incr i} {
 }
 set_property PFM.AXI_PORT $hp2Val [get_bd_cells /axi_interconnect_1]
 
-set hpm0Val []
-for {set i 1} {$i < 64} {incr i} {
-  lappend hpm0Val M[format %02d $i]_AXI {memport "MIG" sptag "hpm0" memory "interconnect_hpm0fpd Reg"}
-}
-set_property PFM.AXI_PORT $hpm0Val [get_bd_cells /axi_interconnect_hpm0fpd]
-
 
 # Define CLOCK
 set_property PFM.CLOCK {clkwiz_kernel_clk_out1 {id "0" is_default "true" proc_sys_reset "reset_controllers/psreset_gate_pr_kernel"  status "fixed"} \
                        } [get_bd_ports /clkwiz_kernel_clk_out1]
 set_property PFM.CLOCK {clkwiz_kernel2_clk_out1 {id "1" is_default "false" proc_sys_reset "reset_controllers/psreset_gate_pr_kernel2"  status "fixed"} \
                        } [get_bd_ports /clkwiz_kernel2_clk_out1]
+set_property PFM.CLOCK {clkwiz_sysclks_clk_out2 {id "2" is_default "false" proc_sys_reset "/reset_controllers/psreset_gate_pr_control" status "fixed"} \
+			} [get_bd_ports /clkwiz_sysclks_clk_out2]
+set_property PFM.CLOCK {clkwiz_kernel3_clk_out {id "3" is_default "false" proc_sys_reset "/reset_controllers/psreset_gate_pr_kernel3" status "fixed"} \
+			} [get_bd_ports /clkwiz_kernel3_clk_out]
+set_property PFM.CLOCK {clkwiz_kernel4_clk_out {id "4" is_default "false" proc_sys_reset "/reset_controllers/psreset_gate_pr_kernel4" status "fixed"} \
+			} [get_bd_ports /clkwiz_kernel4_clk_out]
+set_property PFM.CLOCK {clkwiz_kernel5_clk_out {id "5" is_default "false" proc_sys_reset "/reset_controllers/psreset_gate_pr_kernel6" status "fixed"} \
+			} [get_bd_ports /clkwiz_kernel5_clk_out]
+set_property PFM.CLOCK {clkwiz_kernel6_clk_out {id "6" is_default "false" proc_sys_reset "/reset_controllers/psreset_gate_pr_kernel5" status "fixed"} \
+			} [get_bd_ports /clkwiz_kernel6_clk_out]
