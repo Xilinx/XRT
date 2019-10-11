@@ -1263,8 +1263,14 @@ int xcldev::device::auxConnectionTest(void)
         }
     }
 
+    if (!auxBoard) {
+        std::cout << "AUX power connector not available. Skipping validation"
+                  << std::endl;
+        return -EOPNOTSUPP;
+    }
+
     //check aux cable if board u200, u250, u280
-    if(auxBoard && max_power == 0) {
+    if(max_power == 0) {
         std::cout << "AUX POWER NOT CONNECTED, ATTENTION" << std::endl;
         std::cout << "Board not stable for heavy acceleration tasks." << std::endl;
         return 1;
@@ -1773,7 +1779,10 @@ int xcldev::device::testP2p()
     }
 
     for(int32_t i = 0; i < map->m_count && ret == 0; i++) {
-        if(map->m_mem_data[i].m_type != MEM_DDR4 || !map->m_mem_data[i].m_used)
+        const char *name = (const char *)map->m_mem_data[i].m_tag;
+        if ((std::strncmp(name, "HBM", std::strlen("HBM")) && 
+            std::strncmp(name, "DDR", std::strlen("DDR"))) ||
+            !map->m_mem_data[i].m_used)
             continue;
 
         std::cout << "Performing P2P Test on " << map->m_mem_data[i].m_tag << " ";

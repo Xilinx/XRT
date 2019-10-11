@@ -22,6 +22,7 @@
 
 // Helper functions that can be used by all command handlers
 //
+void printHelp(void);
 void printSubCmdHelp(const std::string& subCmd);
 bool canProceed(void);
 void sudoOrDie(void);

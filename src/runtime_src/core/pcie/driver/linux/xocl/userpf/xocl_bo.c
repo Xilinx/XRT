@@ -1114,6 +1114,7 @@ void xocl_finish_unmgd(struct drm_xocl_unmgd *unmgd)
 	unmgd->pages = NULL;
 }
 
+#if 0
 static bool xocl_validate_paddr(struct xocl_dev *xdev, u64 paddr, u64 size)
 {
 	struct mem_data *mem_data;
@@ -1133,6 +1134,7 @@ static bool xocl_validate_paddr(struct xocl_dev *xdev, u64 paddr, u64 size)
 
 	return false;
 }
+#endif
 
 int xocl_pwrite_unmgd_ioctl(struct drm_device *dev, void *data,
 			    struct drm_file *filp)
