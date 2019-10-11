@@ -52,8 +52,10 @@ Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
     {
         type = E_FlasherType::BPI;
     }
-    else if (typeStr.compare("qspi_ps") == 0)
+    else if (typeStr.find("qspi_ps") == 0)
     {
+        // Use find() for this type of flash.
+        // Since it have variations
         type = E_FlasherType::QSPIPS;
     }
     else
