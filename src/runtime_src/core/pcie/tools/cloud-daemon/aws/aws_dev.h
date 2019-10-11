@@ -96,8 +96,6 @@ int awsGetMig(size_t index, char *resp, size_t resp_len);
 int awsGetFirewall(size_t index, xcl_mig_ecc *resp);
 int awsGetDna(size_t index, xcl_dna *resp);
 int awsGetSubdev(size_t index, char *resp, size_t resp_len);
-int awsLockDevice(size_t index, int *resp);
-int awsUnlockDevice(size_t index, int *resp);
 int awsResetDevice(size_t index, int *resp);
 int awsReClock2(size_t index, const xclmgmt_ioc_freqscaling *obj, int *resp);
 int awsUserProbe(size_t index, xcl_mailbox_conn_resp *resp);

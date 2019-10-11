@@ -2468,7 +2468,11 @@ static int icap_unlock_bitstream(struct platform_device *pdev, const xuid_t *id)
 		return err;
 	}
 
+	if (icap->icap_bitstream_ref == 0 && !ICAP_PRIVILEGED(icap))
+		(void) xocl_exec_stop(xocl_get_xdev(pdev));
+
 	mutex_unlock(&icap->icap_lock);
+
 	return 0;
 }
 
