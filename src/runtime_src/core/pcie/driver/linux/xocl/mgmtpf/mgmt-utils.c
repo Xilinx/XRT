@@ -200,9 +200,11 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 	 * save state and issue PCIe secondary bus reset
 	 */
 	if (!XOCL_DSA_PCI_RESET_OFF(lro)) {
+		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_ICAP);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_MAILBOX);
 		xclmgmt_reset_pci(lro);
 		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_MAILBOX);
+		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_ICAP);
 	} else {
 		mgmt_warn(lro, "PCI Hot reset is not supported on this board.");
 	}
