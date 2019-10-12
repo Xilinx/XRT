@@ -556,3 +556,23 @@ Using DRM (Digital Right Management) IPs:
 4. Register read/write is discouraged
 5. DRM solution/setup without register read/write is preferred
 6. DRM solution/setup using standard XMA APis is preferred
+
+Compiling ffmpeg or host aplication with libxma2api:
+
+1. GCC link flag to use: -Wl,--unresolved-symbols=ignore-in-shared-libs
+2. Example ffmpeg configure cmd:
+
+./configure \
+--prefix=/root_path/ffmpeg/build \
+--pkg-config-flags="--static" \
+--extra-cflags='-I/opt/xilinx/xrt/include/xma2 -I/root_path/ffmpeg/build/include' \
+--extra-ldflags='-L/opt/xilinx/xrt/lib -L/root_path/ffmpeg/build/lib' \
+--extra-libs='-Wl,--unresolved-symbols=ignore-in-shared-libs -lxma2api -lpthread -ldl' \
+--bindir=/root_path/ffmpeg/bin \
+--enable-pthreads \
+--enable-shared \
+--enable-libxma2api \
+--enable-pic \
+--enable-gpl \
+--enable-nonfree
+

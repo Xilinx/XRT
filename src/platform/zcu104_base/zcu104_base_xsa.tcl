@@ -123,7 +123,7 @@ set bCheckIPsPassed 1
 ##################################################################
 set bCheckIPs 1
 if { $bCheckIPs == 1 } {
-   set list_check_ips "\ 
+   set list_check_ips "\
 xilinx.com:ip:axi_intc:*\
 xilinx.com:ip:axi_register_slice:*\
 xilinx.com:ip:axi_vip:*\
@@ -1821,7 +1821,7 @@ proc create_root_design { parentCell } {
    CONFIG.USB1_BOARD_INTERFACE {custom} \
  ] $ps_e
 
-set_property SELECTED_SIM_MODEL tlm_dpi [get_bd_cells /ps_e]
+set_property SELECTED_SIM_MODEL tlm [get_bd_cells /ps_e]
 
   # Create interface connections
   connect_bd_intf_net -intf_net axi_interconnect_0_M00_AXI [get_bd_intf_pins axi_intc_0/s_axi] [get_bd_intf_pins interconnect_axilite/M00_AXI]

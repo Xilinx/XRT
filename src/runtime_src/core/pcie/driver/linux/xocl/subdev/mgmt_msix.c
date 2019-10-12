@@ -194,7 +194,8 @@ static int identify_intr_bar(struct xocl_mgmt_msix *mgmt_msix)
 static int mgmt_msix_probe(struct platform_device *pdev)
 {
 	struct xocl_mgmt_msix *mgmt_msix= NULL;
-	int	i, ret = 0, total = 0, bar;
+	int	i, ret = 0, bar;
+	u32 total;
 	xdev_handle_t		xdev;
 	struct resource *res;
 
@@ -253,6 +254,11 @@ static int mgmt_msix_probe(struct platform_device *pdev)
 		mgmt_msix->msix_user_start_vector =
 			XOCL_READ_REG32(mgmt_msix->base + XCLMGMT_INTR_USER_VECTOR) & 0xf;
 		total = mgmt_msix->msix_user_start_vector + XCLMGMT_MAX_USER_INTR;
+	}
+
+	if (total > XCLMGMT_MAX_INTR_NUM) {
+		xocl_err(&pdev->dev, "Invalid number of interrupts %d", total);
+		goto failed;
 	}
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)

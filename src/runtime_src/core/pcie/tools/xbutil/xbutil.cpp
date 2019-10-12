@@ -937,13 +937,13 @@ inline const char* getenv_or_empty(const char* path)
 }
 
 static void set_shell_path_env(const std::string& var_name,
-    const std::string& trailing_path, int overwrite)
+    const std::string& trailing_path)
 {
     std::string xrt_path(getenv_or_empty("XILINX_XRT"));
     std::string new_path(getenv_or_empty(var_name.c_str()));
     xrt_path += trailing_path + ":";
     new_path = xrt_path + new_path;
-    setenv(var_name.c_str(), new_path.c_str(), overwrite);
+    setenv(var_name.c_str(), new_path.c_str(), 1);
 }
 
 int runShellCmd(const std::string& cmd, std::string& output)
@@ -953,9 +953,9 @@ int runShellCmd(const std::string& cmd, std::string& output)
 
     // Fix environment variables before running test case
     setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
-    set_shell_path_env("PYTHONPATH", "/python", 0);
-    set_shell_path_env("LD_LIBRARY_PATH", "/lib", 1);
-    set_shell_path_env("PATH", "/bin", 1);
+    set_shell_path_env("PYTHONPATH", "/python");
+    set_shell_path_env("LD_LIBRARY_PATH", "/lib");
+    set_shell_path_env("PATH", "/bin");
     unsetenv("XCL_EMULATION_MODE");
 
     int stderr_fds[2];
@@ -1039,7 +1039,7 @@ int searchXsaAndDsa(int index, std::string xsaPath, std::string
         boost::filesystem::path formatted_fw_dir(FORMATTED_FW_DIR);
         std::vector<std::string> suffix = { "dsabin", "xsabin" };
         for (std::string t : suffix) {
-            std::regex e("(^" FORMATTED_FW_DIR "/.+/.+/.+/).+/(" hex_digit ")\\." + t);
+            std::regex e("(^" FORMATTED_FW_DIR "/[^/]+/[^/]+/[^/]+/).+\\." + t);
             for (boost::filesystem::recursive_directory_iterator iter(formatted_fw_dir, boost::filesystem::symlink_option::recurse), end;
                 iter != end;
             )
@@ -1047,11 +1047,34 @@ int searchXsaAndDsa(int index, std::string xsaPath, std::string
                 std::string name = iter->path().string();
                 std::cmatch cm;
 
+                dp = opendir(name.c_str());
+                if (!dp)
+                {
+                    iter.no_push();
+                }
+                else
+                {
+                    closedir(dp);
+                }
+
                 std::regex_match(name.c_str(), cm, e);
                 if (cm.size() > 0)
                 {
-                    std::string uuid = cm.str(2);
-                    if (uuid.compare(logic_uuid) == 0)
+                    std::shared_ptr<char> dtbbuf = nullptr;
+                    std::vector<std::string> uuids;
+		    pcidev::get_axlf_section(name, PARTITION_METADATA, dtbbuf);
+		    if (dtbbuf == nullptr)
+                    {
+                        ++iter;
+                        continue;
+		    }
+		    pcidev::get_uuids(dtbbuf, uuids);
+                    if (!uuids.size())
+                    {
+                        ++iter;
+                        continue;
+		    }
+                    if (uuids[0].compare(logic_uuid) == 0)
                     {
                         path = cm.str(1) + "test/";
                         return EXIT_SUCCESS;
@@ -1062,16 +1085,7 @@ int searchXsaAndDsa(int index, std::string xsaPath, std::string
                     iter.pop();
                     continue;
                 }
-                dp = opendir(name.c_str());
-                if (!dp)
-                {
-                    iter.no_push();
-                }
-                else
-                {
-                    closedir(dp);
-                }
-                ++iter;
+		++iter;
             }
         }
         output += "ERROR: Failed to find xclbin in ";
@@ -1263,8 +1277,14 @@ int xcldev::device::auxConnectionTest(void)
         }
     }
 
+    if (!auxBoard) {
+        std::cout << "AUX power connector not available. Skipping validation"
+                  << std::endl;
+        return -EOPNOTSUPP;
+    }
+
     //check aux cable if board u200, u250, u280
-    if(auxBoard && max_power == 0) {
+    if(max_power == 0) {
         std::cout << "AUX POWER NOT CONNECTED, ATTENTION" << std::endl;
         std::cout << "Board not stable for heavy acceleration tasks." << std::endl;
         return 1;
@@ -1773,7 +1793,10 @@ int xcldev::device::testP2p()
     }
 
     for(int32_t i = 0; i < map->m_count && ret == 0; i++) {
-        if(map->m_mem_data[i].m_type != MEM_DDR4 || !map->m_mem_data[i].m_used)
+        const char *name = (const char *)map->m_mem_data[i].m_tag;
+        if ((std::strncmp(name, "HBM", std::strlen("HBM")) && 
+            std::strncmp(name, "DDR", std::strlen("DDR"))) ||
+            !map->m_mem_data[i].m_used)
             continue;
 
         std::cout << "Performing P2P Test on " << map->m_mem_data[i].m_tag << " ";

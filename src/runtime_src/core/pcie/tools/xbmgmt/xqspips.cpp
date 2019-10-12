@@ -215,11 +215,33 @@ static int flashVendor = -1;
  */
 XQSPIPS_Flasher::XQSPIPS_Flasher(std::shared_ptr<pcidev::pci_device> dev)
 {
+    std::string err;
+    std::string typeStr;
+
     mDev = dev;
     mTxBytes = 0;
     mRxBytes = 0;
-    mMaxNumSectors = 0;
+
     // maybe initialized QSPI here
+    if (typeStr.empty())
+        mDev->sysfs_get("flash", "flash_type", err, typeStr);
+    if (typeStr.empty())
+        mDev->sysfs_get("", "flash_type", err, typeStr);
+
+    // By default, it is 'perallel'
+    mConnectMode = 0;
+    // U30 Rev.A use single
+    if (typeStr.find("single")) {
+        mConnectMode = 1;
+    }
+
+    mBusWidth = 4;
+    if (typeStr.find("x2")) {
+        // U30 Rev.B use x2
+        mBusWidth = 2;
+    }
+
+    //std::cout << "minm: mConnectMode " << mConnectMode << " mBusWidth " << mBusWidth << std::endl;
 }
 
 /**
@@ -261,6 +283,8 @@ uint32_t XQSPIPS_Flasher::readReg(unsigned RegOffset)
         assert(0);
         std::cout << "read reg ERROR" << std::endl;
     }
+    //std::cout << "Read 0x" << std::hex << RegOffset
+    //          << ": 0x" << value << std::dec << std::endl;
     return value;
 }
 
@@ -271,6 +295,8 @@ int XQSPIPS_Flasher::writeReg(unsigned RegOffset, unsigned value)
         assert(0);
         std::cout << "write reg ERROR " << std::endl;
     }
+    //std::cout << "Write 0x" << std::hex << RegOffset
+    //          << ": 0x" << value << std::dec << std::endl;
     return 0;
 
 }
@@ -410,7 +436,6 @@ int XQSPIPS_Flasher::xclUpgradeFirmware(std::istream& binStream)
             mismatched = 0;
         }
 
-        nanosleep(&req, 0);
     }
 #endif
 
@@ -668,8 +693,13 @@ void XQSPIPS_Flasher::sendGenFifoEntryCSAssert()
     GenFifoEntry |= XQSPIPSU_GENFIFO_MODE_SPI;
     /* By default, use upper and lower CS and Bus */
     GenFifoEntry &= ~XQSPIPSU_GENFIFO_BUS_MASK;
-    GenFifoEntry |= XQSPIPSU_GENFIFO_BUS_BOTH;
-    GenFifoEntry |= XQSPIPSU_GENFIFO_CS_BOTH;
+    if (mConnectMode == 0) {
+        GenFifoEntry |= XQSPIPSU_GENFIFO_BUS_BOTH;
+        GenFifoEntry |= XQSPIPSU_GENFIFO_CS_BOTH;
+    } else {
+        GenFifoEntry |= XQSPIPSU_GENFIFO_BUS_LOWER;
+        GenFifoEntry |= XQSPIPSU_GENFIFO_CS_LOWER;
+    }
     GenFifoEntry &= ~(XQSPIPSU_GENFIFO_TX | XQSPIPSU_GENFIFO_RX |
             XQSPIPSU_GENFIFO_STRIPE | XQSPIPSU_GENFIFO_POLL);
     GenFifoEntry |= XQSPIPSU_GENFIFO_CS_SETUP;
@@ -692,8 +722,13 @@ void XQSPIPS_Flasher::sendGenFifoEntryData(xqspips_msg_t *msg)
 
     /* By default, use upper and lower CS and Bus */
     GenFifoEntry &= ~XQSPIPSU_GENFIFO_BUS_MASK;
-    GenFifoEntry |= XQSPIPSU_GENFIFO_BUS_BOTH;
-    GenFifoEntry |= XQSPIPSU_GENFIFO_CS_BOTH;
+    if (mConnectMode == 0) {
+        GenFifoEntry |= XQSPIPSU_GENFIFO_BUS_BOTH;
+        GenFifoEntry |= XQSPIPSU_GENFIFO_CS_BOTH;
+    } else {
+        GenFifoEntry |= XQSPIPSU_GENFIFO_BUS_LOWER;
+        GenFifoEntry |= XQSPIPSU_GENFIFO_CS_LOWER;
+    }
 
     /* Stripe */
     if (msg->flags & XQSPIPSU_MSG_FLAG_STRIPE) {
@@ -761,9 +796,14 @@ void XQSPIPS_Flasher::sendGenFifoEntryCSDeAssert()
     //GenFifoEntry |= XQSPIPSU_GENFIFO_MODE_SPI;
     /* By default, use upper and lower CS and Bus */
     GenFifoEntry &= ~XQSPIPSU_GENFIFO_BUS_MASK;
-    GenFifoEntry |= XQSPIPSU_GENFIFO_BUS_BOTH;
+    if (mConnectMode == 0)
+        GenFifoEntry |= XQSPIPSU_GENFIFO_BUS_BOTH;
+    else
+        GenFifoEntry |= XQSPIPSU_GENFIFO_BUS_LOWER;
+
     GenFifoEntry &= ~(XQSPIPSU_GENFIFO_TX | XQSPIPSU_GENFIFO_RX |
             XQSPIPSU_GENFIFO_STRIPE | XQSPIPSU_GENFIFO_POLL);
+
     GenFifoEntry |= XQSPIPSU_GENFIFO_CS_HOLD;
 
     /* Write GEN FIFO */
@@ -931,21 +971,23 @@ bool XQSPIPS_Flasher::getFlashID()
         return false;
     }
 
-    // Stripe data: Lower data bus uses even bytes, i.e byte 0, 2, 4, ...
-    //              Upper data bus uses odd bytes, i.e byte 1, 3, 5, ...
-    if (mReadBuffer[0] != mReadBuffer[1]) {
-        std::cout << "Upper Flash chip and lower Flash chip have differe vender id" << std::endl;
-        return false;
-    }
+    if (mConnectMode == 0) {
+        // Stripe data: Lower data bus uses even bytes, i.e byte 0, 2, 4, ...
+        //              Upper data bus uses odd bytes, i.e byte 1, 3, 5, ...
+        if (mReadBuffer[0] != mReadBuffer[1]) {
+            std::cout << "Upper Flash chip and lower Flash chip have differe vender id" << std::endl;
+            return false;
+        }
 
-    if (mReadBuffer[2] != mReadBuffer[3]) {
-        std::cout << "Upper Flash chip and lower Flash chip have differe type" << std::endl;
-        return false;
-    }
+        if (mReadBuffer[2] != mReadBuffer[3]) {
+            std::cout << "Upper Flash chip and lower Flash chip have differe type" << std::endl;
+            return false;
+        }
 
-    if (mReadBuffer[4] != mReadBuffer[5]) {
-        std::cout << "Upper Flash chip and lower Flash chip have differe capacity" << std::endl;
-        return false;
+        if (mReadBuffer[4] != mReadBuffer[5]) {
+            std::cout << "Upper Flash chip and lower Flash chip have differe capacity" << std::endl;
+            return false;
+        }
     }
 
     //Update flash vendor
@@ -956,29 +998,6 @@ bool XQSPIPS_Flasher::getFlashID()
     //Update max number of sector. Value of 0x18 is 1 128Mbit sector
     if(mReadBuffer[4] == 0xFF)
         return false;
-    else {
-        switch(mReadBuffer[4]) {
-        case 0x17:
-        case 0x18:
-            mMaxNumSectors = 1;
-            break;
-        case 0x19:
-            mMaxNumSectors = 2;
-            break;
-        case 0x20:
-            mMaxNumSectors = 4;
-            break;
-        case 0x21:
-            mMaxNumSectors = 8;
-            break;
-        case 0x22:
-            mMaxNumSectors = 16;
-            break;
-        default:
-            std::cout << "ERROR: Unrecognized sector field! Exiting..." << std::endl;
-            return false;
-        }
-    }
 
     for (int i = 0; i < IDCODE_READ_BYTES; i++) {
         std::cout << "Idcode byte[" << i << "]=" << std::hex << (int)mReadBuffer[i] << std::dec << std::endl;
@@ -1005,12 +1024,14 @@ bool XQSPIPS_Flasher::eraseSector(unsigned addr, uint32_t byteCount, uint8_t era
             return false;
 
         beatCount++;
-        if (beatCount % 1024 == 0) {
+        if (beatCount % 64 == 0) {
             std::cout << "." << std::flush;
         }
 
-        /* TODO Only support dual Qual SPI mode */
-        realAddr = addr / 2;
+        if (mConnectMode == 0)
+            realAddr = addr / 2;
+        else
+            realAddr = addr;
 
         if(!setWriteEnable())
             return false;
@@ -1079,8 +1100,10 @@ bool XQSPIPS_Flasher::readFlash(unsigned addr, uint32_t byteCount, uint8_t readC
     if (!isFlashReady())
         return false;
 
-    /* TODO Only support dual Qual SPI mode */
-    realAddr = addr / 2;
+    if (mConnectMode == 0)
+        realAddr = addr / 2;
+    else
+        realAddr = addr;
 
     if (readCmd == 0xff)
         readCmd = QUAD_READ_CMD;
@@ -1132,8 +1155,10 @@ bool XQSPIPS_Flasher::writeFlash(unsigned addr, uint32_t byteCount, uint8_t writ
     if(!isFlashReady())
         return false;
 
-    /* TODO Only support dual Qual SPI mode */
-    realAddr = addr / 2;
+    if (mConnectMode == 0)
+        realAddr = addr / 2;
+    else
+        realAddr = addr;
 
     if (!setWriteEnable())
         return false;
@@ -1315,23 +1340,23 @@ int XQSPIPS_Flasher::xclTestXQSpiPS(int index)
     readFlashReg(Cmd, STATUS_READ_BYTES);
 
     /* 3. Testing simple read and write */
-
     enterOrExitFourBytesMode(ENTER_4B);
 
     std::cout << ">>> Testing simple read and write <<<" << std::endl;
     unsigned addr = 0;
     unsigned size = 0;
     // Write/Read 16K + 100 bytes
-    int total_size = 16 * 1024 + 100;
+    //int total_size = 16 * 1024 + 100;
+    int total_size = 300;
 
     int remain = total_size % PAGE_SIZE;
     int pages = total_size / PAGE_SIZE;
 
     std::cout << "Write " << total_size << " bytes" << std::endl;
 
-    //eraseSector(0, total_size);
     std::cout << "earse flash" << std::endl;
-    eraseBulk();
+    eraseSector(0, total_size);
+    //eraseBulk();
 
     std::cout << ">>>>>> Write " << std::endl;
     for (int page = 0; page <= pages; page++) {
@@ -1348,7 +1373,6 @@ int XQSPIPS_Flasher::xclTestXQSpiPS(int index)
         writeFlash(addr, size);
     }
 
-
     remain = total_size % 256;
     pages = total_size / 256;
 
@@ -1364,6 +1388,7 @@ int XQSPIPS_Flasher::xclTestXQSpiPS(int index)
 
         // Verify
         for (unsigned i = 0; i < size; i++) {
+            std::cout << i << " 0x" << std::hex << (int)mReadBuffer[i] << std::dec << std::endl;
             if (mReadBuffer[i] != (i % PAGE_SIZE)) {
                 std::cout << "Found mismatch" << std::endl;
                 return -1;

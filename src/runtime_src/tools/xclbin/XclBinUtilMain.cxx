@@ -323,6 +323,12 @@ int main_(int argc, char** argv) {
       outputFiles.push_back(sOutputFile);
     }
 
+    if (!sInfoFile.empty()) {
+      if (sInfoFile != "<console>") {
+        outputFiles.push_back(sInfoFile);
+      }
+    }
+
     for (auto section : sectionsToDump ) {
       ParameterSectionData psd(section);
       outputFiles.push_back(psd.getFile());
