@@ -801,20 +801,20 @@ int pcidev::get_axlf_section(std::string filename, int kind, std::shared_ptr<cha
     }
 
     buf = std::shared_ptr<char>(new char[section->m_sectionSize]);
-    in.seekg(section->m_sectionSize);
+    in.seekg(section->m_sectionOffset);
     in.read(buf.get(), section->m_sectionSize);
 
     return 0;
 }
 
-int pcidev::get_uuids(std::shared_ptr<char> dtbbuf, std::vector<std::string>& uuids)
+int pcidev::get_uuids(std::shared_ptr<char>& dtbbuf, std::vector<std::string>& uuids)
 {
     struct fdt_header *bph = (struct fdt_header *)dtbbuf.get();
     uint32_t version = be32toh(bph->version);
     uint32_t off_dt = be32toh(bph->off_dt_struct);
-    const char *p_struct = (const char *)dtbbuf.get() + off_dt;
+    const char *p_struct = (const char *)bph + off_dt;
     uint32_t off_str = be32toh(bph->off_dt_strings);
-    const char *p_strings = (const char *)dtbbuf.get() + off_str;
+    const char *p_strings = (const char *)bph + off_str;
     const char *p, *s;
     uint32_t tag;
     int sz;

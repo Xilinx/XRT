@@ -1039,7 +1039,7 @@ int searchXsaAndDsa(int index, std::string xsaPath, std::string
         boost::filesystem::path formatted_fw_dir(FORMATTED_FW_DIR);
         std::vector<std::string> suffix = { "dsabin", "xsabin" };
         for (std::string t : suffix) {
-            std::regex e("(^" FORMATTED_FW_DIR "/.+/.+/.+/).+\\." + t);
+            std::regex e("(^" FORMATTED_FW_DIR "/[^/]+/[^/]+/[^/]+/).+\\." + t);
             for (boost::filesystem::recursive_directory_iterator iter(formatted_fw_dir, boost::filesystem::symlink_option::recurse), end;
                 iter != end;
             )
@@ -1060,7 +1060,7 @@ int searchXsaAndDsa(int index, std::string xsaPath, std::string
                 std::regex_match(name.c_str(), cm, e);
                 if (cm.size() > 0)
                 {
-                    std::shared_ptr<char> dtbbuf;
+                    std::shared_ptr<char> dtbbuf = nullptr;
                     std::vector<std::string> uuids;
 		    pcidev::get_axlf_section(name, PARTITION_METADATA, dtbbuf);
 		    if (dtbbuf == nullptr)
