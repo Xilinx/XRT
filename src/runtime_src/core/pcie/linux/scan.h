@@ -132,6 +132,8 @@ size_t get_dev_total(bool user = true);
 size_t get_dev_ready(bool user = true);
 std::shared_ptr<pci_device> get_dev(unsigned index, bool user = true);
 
+int get_axlf_section(std::string filename, int kind, std::shared_ptr<char>& buf);
+int get_uuids(std::shared_ptr<char>& dtbbuf, std::vector<std::string>& uuids);
 } /* pcidev */
 
 // For print out per device info

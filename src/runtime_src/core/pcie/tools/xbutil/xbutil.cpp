@@ -1039,7 +1039,7 @@ int searchXsaAndDsa(int index, std::string xsaPath, std::string
         boost::filesystem::path formatted_fw_dir(FORMATTED_FW_DIR);
         std::vector<std::string> suffix = { "dsabin", "xsabin" };
         for (std::string t : suffix) {
-            std::regex e("(^" FORMATTED_FW_DIR "/.+/.+/.+/).+/(" hex_digit ")\\." + t);
+            std::regex e("(^" FORMATTED_FW_DIR "/[^/]+/[^/]+/[^/]+/).+\\." + t);
             for (boost::filesystem::recursive_directory_iterator iter(formatted_fw_dir, boost::filesystem::symlink_option::recurse), end;
                 iter != end;
             )
@@ -1047,11 +1047,34 @@ int searchXsaAndDsa(int index, std::string xsaPath, std::string
                 std::string name = iter->path().string();
                 std::cmatch cm;
 
+                dp = opendir(name.c_str());
+                if (!dp)
+                {
+                    iter.no_push();
+                }
+                else
+                {
+                    closedir(dp);
+                }
+
                 std::regex_match(name.c_str(), cm, e);
                 if (cm.size() > 0)
                 {
-                    std::string uuid = cm.str(2);
-                    if (uuid.compare(logic_uuid) == 0)
+                    std::shared_ptr<char> dtbbuf = nullptr;
+                    std::vector<std::string> uuids;
+		    pcidev::get_axlf_section(name, PARTITION_METADATA, dtbbuf);
+		    if (dtbbuf == nullptr)
+                    {
+                        ++iter;
+                        continue;
+		    }
+		    pcidev::get_uuids(dtbbuf, uuids);
+                    if (!uuids.size())
+                    {
+                        ++iter;
+                        continue;
+		    }
+                    if (uuids[0].compare(logic_uuid) == 0)
                     {
                         path = cm.str(1) + "test/";
                         return EXIT_SUCCESS;
@@ -1062,16 +1085,7 @@ int searchXsaAndDsa(int index, std::string xsaPath, std::string
                     iter.pop();
                     continue;
                 }
-                dp = opendir(name.c_str());
-                if (!dp)
-                {
-                    iter.no_push();
-                }
-                else
-                {
-                    closedir(dp);
-                }
-                ++iter;
+		++iter;
             }
         }
         output += "ERROR: Failed to find xclbin in ";

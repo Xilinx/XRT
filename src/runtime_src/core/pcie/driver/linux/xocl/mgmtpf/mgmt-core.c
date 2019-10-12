@@ -1038,7 +1038,6 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		goto err_init_subdev;
 	}
 
-
 	mutex_init(&lro->core.lock);
 	rwlock_init(&lro->core.rwlock);
 
