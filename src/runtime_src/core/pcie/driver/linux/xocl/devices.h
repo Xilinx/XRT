@@ -1470,6 +1470,16 @@ struct xocl_subdev_map {
 		.flash_type = FLASH_TYPE_QSPIPS,			\
 	}
 
+#define	XOCL_BOARD_MGMT_U30						\
+	(struct xocl_board_private){					\
+		.flags		= 0,					\
+		.subdev_info	= MGMT_RES_MPSOC,			\
+		.subdev_num = ARRAY_SIZE(MGMT_RES_MPSOC),		\
+		.mpsoc = true,						\
+		.board_name = "u30",					\
+		.flash_type = "qspi_ps_x4_single",				\
+	}
+
 #define	XOCL_BOARD_USER_XDMA_MPSOC					\
 	(struct xocl_board_private){					\
 		.flags		= 0,					\
@@ -1807,6 +1817,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x684F, PCI_ANY_ID, MGMT_DEFAULT) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0xA883, 0x1351, MGMT_MPSOC) },		\
 	{ XOCL_PCI_DEVID(0x10EE, 0xA983, 0x1351, MGMT_MPSOC) },		\
+	{ XOCL_PCI_DEVID(0x10EE, 0x503C, PCI_ANY_ID, MGMT_U30) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x688F, PCI_ANY_ID, MGMT_DEFAULT) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x694F, PCI_ANY_ID, MGMT_DEFAULT) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6987, PCI_ANY_ID, MGMT_U2) },	\
@@ -1860,6 +1871,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x5035, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0xA884, 0x1351, USER_XDMA_MPSOC) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0xA984, 0x1351, USER_XDMA_MPSOC) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x503D, PCI_ANY_ID, USER_XDMA_MPSOC) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6990, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6A50, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6A90, 0x4350, USER_XDMA_DSA50) },	\
