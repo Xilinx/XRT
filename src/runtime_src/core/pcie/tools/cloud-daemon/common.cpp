@@ -221,6 +221,10 @@ std::unique_ptr<sw_msg> getRemoteMsg(const pcieFunc& dev, int remotefd)
 int handleMsg(const pcieFunc& dev, queue_msg &msg)
 {
     int pass;
+
+    if (msg.data == nullptr)
+	    return -EINVAL;
+
     std::unique_ptr<sw_msg> swmsg = std::move(msg.data);
     std::unique_ptr<sw_msg> swmsgProcessed;
     if (!msg.cb) {
