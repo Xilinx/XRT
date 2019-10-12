@@ -339,7 +339,6 @@ void msd_thread(size_t index, std::string host)
             if (ret) {
                 mpdfd = -1;
                 sleep(interval);
-                dev.log(LOG_INFO, "HEHE");
                 continue; // MPD is not ready yet, retry.
             }
         }
@@ -353,7 +352,6 @@ void msd_thread(size_t index, std::string host)
 
             close(mpdfd);
             mpdfd = -1;
-            dev.log(LOG_INFO, "HOHO");
             continue;
         }
 
@@ -375,7 +373,6 @@ void msd_thread(size_t index, std::string host)
 
             ret = handleMsg(dev, msg);
             if (ret) { // Socket connection was lost, retry
-                dev.log(LOG_INFO, "HAHA");
                 close(mpdfd);
                 mpdfd = -1;
                 continue;
