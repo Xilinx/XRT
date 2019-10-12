@@ -937,13 +937,13 @@ inline const char* getenv_or_empty(const char* path)
 }
 
 static void set_shell_path_env(const std::string& var_name,
-    const std::string& trailing_path, int overwrite)
+    const std::string& trailing_path)
 {
     std::string xrt_path(getenv_or_empty("XILINX_XRT"));
     std::string new_path(getenv_or_empty(var_name.c_str()));
     xrt_path += trailing_path + ":";
     new_path = xrt_path + new_path;
-    setenv(var_name.c_str(), new_path.c_str(), overwrite);
+    setenv(var_name.c_str(), new_path.c_str(), 1);
 }
 
 int runShellCmd(const std::string& cmd, std::string& output)
@@ -953,9 +953,9 @@ int runShellCmd(const std::string& cmd, std::string& output)
 
     // Fix environment variables before running test case
     setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
-    set_shell_path_env("PYTHONPATH", "/python", 0);
-    set_shell_path_env("LD_LIBRARY_PATH", "/lib", 1);
-    set_shell_path_env("PATH", "/bin", 1);
+    set_shell_path_env("PYTHONPATH", "/python");
+    set_shell_path_env("LD_LIBRARY_PATH", "/lib");
+    set_shell_path_env("PATH", "/bin");
     unsetenv("XCL_EMULATION_MODE");
 
     int stderr_fds[2];
