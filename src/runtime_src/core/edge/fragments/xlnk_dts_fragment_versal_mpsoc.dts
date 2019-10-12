@@ -1,27 +1,11 @@
 
-/{
-        reserved-memory {
-                #address-cells = <2>;
-                #size-cells = <2>;
-                ranges;
-
-                versal_buffer: buffer@0 {
-                        no-map;
-                        reg = <0xc0 0x0 0x0 0x80000000>;
-                };
-        };
-};
+/
 
 &amba {
         zyxclmm_drm {
                 compatible = "xlnx,zocl-versal";
                 status = "okay";
                 xlnx,pr-isolation-addr = <0x201 0x06070000>;
-                memory-region = <&versal_buffer>;
                 reg = <0x202 0x0 0x0 0x100000>;
         };
-};
-
-&smmu {
-        status = "disable";
 };

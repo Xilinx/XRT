@@ -238,7 +238,8 @@ zocl_load_partial(struct drm_zocl_dev *zdev, const char *buffer, int length)
 
 	map = ioremap(zdev->pr_isolation_addr, PR_ISO_SIZE);
 	if (IS_ERR_OR_NULL(map)) {
-		DRM_ERROR("ioremap PR address failed");
+		DRM_ERROR("ioremap PR isolation address 0x%llx failed",
+		    zdev->pr_isolation_addr);
 		return -EFAULT;
 	}
 
@@ -602,6 +603,7 @@ zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 		DRM_INFO("The XCLBIN already loaded. Don't need to reload.");
 		return ret;
 	}
+
 	write_lock(&zdev->attr_rwlock);
 
 	zocl_free_sections(zdev);
@@ -630,8 +632,9 @@ zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 
 	/* For PR support platform, device-tree has configured addr */
 	if (zdev->pr_isolation_addr) {
-		DRM_INFO("Loading partial bitstreams, flags %d",
-		    axlf_obj->za_flags);
+		DRM_INFO("PR bitstream header mode: %d flags %d",
+		    axlf_head.m_header.m_mode, axlf_obj->za_flags);
+
 		if (axlf_obj->za_flags & DRM_ZOCL_AXLF_BITSTREAM) {
 			ret = zocl_load_sect(zdev, axlf, xclbin, BITSTREAM);
 			if (ret)
