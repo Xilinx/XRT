@@ -11,14 +11,14 @@ When FPGAs are deployed at cloud vendors, either VM based (IaaS) or container ba
 some common concerns need to be addressed.
 
 1. MGMT PF and USER PF of the FPGA are separated
- 
-   Cloud vendors own the MGMT PF, while users own the USER PF. Any operations by the user on USER PF 
+
+   Cloud vendors own the MGMT PF, while users own the USER PF. Any operations by the user on USER PF
    should not damage or compromise the operation of MGMT PF.
 
 2. xclbin files needs to be protected
 
-   Some of the xclbin files are provided by third-party ISVs -- they don't want to the users access their
-   xclbin files, but use them indirectly. That is, the xclbin files in user VM or container are not the 
+   Some of the xclbin files are provided by third-party ISVs -- they don't want the users access their
+   xclbin files, but use them indirectly. That is, the xclbin files in user VM or container are not the
    real ones that are running on the cards. Instead, they are fake one with the BITSTREAM section stripped.
    xclbin download on the fake xclbin files in VM should result in the real one being programed without any
    user perceiving
@@ -40,7 +40,7 @@ The following picture illustrates how a xclbin file is downloaded on baremetal m
 
 As shown by the red arrows in the picture, the flow of the download in this case is as following:
 
-1. User requests xclbin download from ‘xbutil program’ cmdline or OpenCL API 
+1. User requests xclbin download from ‘xbutil program’ cmdline or OpenCL API
 2. Shim layer issues ioctl to xocl driver
 3. Xocl driver subdev icap sends the req to subdev mailbox (the xclbin file is in host memory, the req  size is very small)
 4. Mailbox transfers the req to the peer in xclmgmt through hw mailbox
@@ -88,9 +88,9 @@ The flow of downloading xclbin through SW mailbox and MSD/MPD is illustrated as 
 
 As shown by the green arrows in the picture, the flow of the download in this case is as following:
 
-1. User requests xclbin download from ‘xbutil program’ cmdline or OpenCL API 
+1. User requests xclbin download from ‘xbutil program’ cmdline or OpenCL API
 2. Shim layer issues ioctl to xocl driver
-3. Xocl driver subdev icap sends the req to subdev mailbox 
+3. Xocl driver subdev icap sends the req to subdev mailbox
 4. Mailbox transfers the req  and xclbin file to MPD as mailbox message
 5. MPD forwards the mailbox message to MSD
 6. MSD transfers the mailbox message to xclmgmt driver subdev mailbox
@@ -179,11 +179,11 @@ Example how a ubuntu host of containers configures the plugin
 Summary
 =======
 
-With the MSD/MPD framework and MPD enhancement, 
+With the MSD/MPD framework and MPD enhancement,
 
 1. Same XRT pkg is installed everywhere, baremetal/IaaS/PaaS/etc. Vendors only need to create/install their
    specific plugins
-2. Users have same Xilinx FPGA using experience everywhere -- they don't even know whether they are running
+2. Users have same Xilinx® FPGA using experience everywhere -- they don't even know whether they are running
    within baremetal, VM, or containers, they don't know whether the xclbin files they see are real one, fake
    one or any other kind either
 
