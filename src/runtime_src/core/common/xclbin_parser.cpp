@@ -47,12 +47,12 @@ is_valid_cu(const ip_data& ip)
 // ensure that they are sorted to come after regular AXI-lite CUs
 // The sort order is important as it determines the CU indices used
 // throughout XRT.
-static uint64_t
+static size_t 
 get_base_addr(const ip_data& ip)
 {
   auto addr = ip.m_base_address;
-  if (addr == static_cast<uint64_t>(-1))
-    addr = std::numeric_limits<uint64_t>::max() & ~0xFF;
+  if (addr == static_cast<size_t>(-1))
+    addr = std::numeric_limits<size_t>::max() & ~0xFF;
   return addr;
 }
 
@@ -184,7 +184,9 @@ get_cu_control(const axlf* top, uint64_t cuaddr)
     throw std::runtime_error("No such CU at address: " + std::to_string(cuaddr));
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
-    if (ip_data.m_base_address == cuaddr)
+    size_t ip_base_addr  = (ip_data.m_base_address == static_cast<size_t>(-1)) ? 
+      std::numeric_limits<size_t>::max() : ip_data.m_base_address;
+    if (ip_base_addr == cuaddr)
       return ((ip_data.properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT);
   }
   throw std::runtime_error("No such CU at address: " + std::to_string(cuaddr));
@@ -198,7 +200,7 @@ get_cu_base_offset(const axlf* top)
   if (!ip_layout)
     return 0;
 
-  uint64_t base = std::numeric_limits<uint32_t>::max();
+  size_t base = std::numeric_limits<uint32_t>::max();
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
     if (is_valid_cu(ip_data))
