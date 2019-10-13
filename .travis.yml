@@ -20,7 +20,8 @@ matrix:
     env:
       - CONFIGURATION=linux/ppc64le
 
-  - os: linux-arm64
+  - os: linux
+    arch: arm64
     env:
       - CONFIGURATION=linux/arm64
 
