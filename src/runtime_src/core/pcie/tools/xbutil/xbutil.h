@@ -857,12 +857,16 @@ public:
         sensor_tree::put( "board.physical.power", static_cast<unsigned>(sysfs_power())); 
 
         // firewall
-        unsigned short level = 0, status = 0;
+        unsigned short level = 0;
+        unsigned int status = 0;
+        unsigned long long time = 0;
         pcidev::get_dev(m_idx)->sysfs_get( "firewall", "detected_level",  errmsg, level );
         pcidev::get_dev(m_idx)->sysfs_get( "firewall", "detected_status", errmsg, status ); 
+        pcidev::get_dev(m_idx)->sysfs_get( "firewall", "detected_time", errmsg, time ); 
         sensor_tree::put( "board.error.firewall.firewall_level", level );
         sensor_tree::put( "board.error.firewall.firewall_status", status );
-        sensor_tree::put( "board.error.firewall.status",         parseFirewallStatus(status) );
+        sensor_tree::put( "board.error.firewall.firewall_time", time );
+        sensor_tree::put( "board.error.firewall.status", parseFirewallStatus(status) );
         
         // memory
         xclDeviceUsage devstat = { 0 };
@@ -1094,9 +1098,18 @@ public:
         ostr << sensor_tree::get_pretty<unsigned>( "board.physical.power" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Firewall Last Error Status\n";
-        ostr << "Level " << std::setw(2) << sensor_tree::get( "board.error.firewall.firewall_level", -1 ) << ": 0x"
+        unsigned short lvl = sensor_tree::get( "board.error.firewall.firewall_level", 0 );
+        ostr << "Level " << std::setw(2) << lvl << ": 0x"
              << std::hex << sensor_tree::get( "board.error.firewall.firewall_status", -1 ) << std::dec
              << sensor_tree::get<std::string>( "board.error.firewall.status", "N/A" ) << std::endl;
+        if (lvl != 0) {
+            char cbuf[80];
+            time_t stamp = static_cast<time_t>(sensor_tree::get( "board.error.firewall.firewall_time", 0 ));
+            struct tm *ts = localtime(&stamp);
+            strftime(cbuf, sizeof(cbuf), "%a %Y-%m-%d %H:%M:%S %Z", ts);
+            ostr << "Error occurred on: " << cbuf << std::endl;
+        }
+        ostr << std::endl;
         ostr << "ECC Error Status\n";
         ostr << std::left << std::setw(8) << "Tag" << std::setw(12) << "Errors"
              << std::setw(10) << "CE Count" << std::setw(10) << "UE Count"
