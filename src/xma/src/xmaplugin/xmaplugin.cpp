@@ -138,6 +138,7 @@ XmaBufferObj xma_plg_buffer_alloc_arg_num(XmaSession s_handle, size_t size, bool
     b_obj_error.dev_index = -1;
     b_obj_error.device_only_buffer = false;
     b_obj_error.private_do_not_touch = NULL;
+    b_obj_error.user_ptr = NULL;
     b_obj.data = NULL;
     b_obj.ref_cnt = 0;
     b_obj.user_ptr = NULL;
@@ -230,6 +231,7 @@ xma_plg_buffer_alloc_ddr(XmaSession s_handle, size_t size, bool device_only_buff
     b_obj_error.dev_index = -1;
     b_obj_error.device_only_buffer = false;
     b_obj_error.private_do_not_touch = NULL;
+    b_obj_error.user_ptr = NULL;
     b_obj.data = NULL;
     b_obj.ref_cnt = 0;
     b_obj.user_ptr = NULL;
