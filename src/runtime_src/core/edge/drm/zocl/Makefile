@@ -1,5 +1,7 @@
 ROOT	:= $(dir $(M))
 
+KERNEL_SRC ?= /lib/modules/$(shell uname -r)/build
+
 ccflags-y := -Iinclude/drm -I${ROOT}/../../include -I${ROOT}/../../common/drv
 zocl-y := \
 	sched_exec.o \
@@ -28,4 +30,3 @@ clean:
 	rm -f *.o *~ core .depend .*.cmd *.ko *.mod.c
 	rm -f Module.markers Module.symvers modules.order
 	rm -rf .tmp_versions Modules.symvers
-
