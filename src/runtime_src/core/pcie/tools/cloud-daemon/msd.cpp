@@ -310,6 +310,7 @@ void msd_thread(size_t index, std::string host)
     int retfd[2];
     int ret;
     struct queue_msg msg = {0};
+    const int interval = 2;
 
     pcieFunc dev(index, false);
 
@@ -335,23 +336,23 @@ void msd_thread(size_t index, std::string host)
         // Connect to mpd.
         if (mpdfd == -1) {
             ret = connectMpd(dev, sockfd, dev.getId(), mpdfd);
-            if (ret == -EWOULDBLOCK) {
-                sleep(1);
+            if (ret) {
                 mpdfd = -1;
+                sleep(interval);
                 continue; // MPD is not ready yet, retry.
-            } else if (ret != 0) {
-                break;
             }
         }
 
         retfd[0] = retfd[1] = -100;
         // Waiting for msg to show up, interval is 3 seconds.
-        ret = waitForMsg(dev, mbxfd, mpdfd, 3, retfd);
+        ret = waitForMsg(dev, mbxfd, mpdfd, interval, retfd);
         if (ret < 0) {
             if (ret == -EAGAIN) // MPD has been quiet, retry.
                 continue;
-            else
-                break;
+
+            close(mpdfd);
+            mpdfd = -1;
+            continue;
         }
 
         msg.localFd = mbxfd;
@@ -366,17 +367,15 @@ void msd_thread(size_t index, std::string host)
                 msg.type = REMOTE_MSG;
                 msg.data = std::move(getRemoteMsg(dev, mpdfd));
                 msg.cb = remoteMsgHandler;
-            } else
+            } else {
                 continue;
-            if (msg.data == nullptr)
-                goto done;
+            }
+
             ret = handleMsg(dev, msg);
-            if (ret == -EAGAIN) { // Socket connection was lost, retry
+            if (ret) { // Socket connection was lost, retry
                 close(mpdfd);
                 mpdfd = -1;
                 continue;
-            } else if (ret != 0) {
-                goto done;
             }
         }
     }
