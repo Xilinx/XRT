@@ -18,11 +18,13 @@ matrix:
 
   - os: linux-ppc64le
     arch: ppc64le
+    dist: bionic
     env:
       - CONFIGURATION=linux/ppc64le
 
   - os: linux
     arch: arm64
+    dist: bionic
     env:
       - CONFIGURATION=linux/arm64
 
