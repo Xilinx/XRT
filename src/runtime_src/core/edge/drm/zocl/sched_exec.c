@@ -2541,6 +2541,34 @@ zocl_execbuf_to_ert(struct drm_zocl_bo *bo, struct drm_file *filp)
 	scmd->arg = filp;
 	return true;
 }
+/**
+ * zocl_dma_check() - Checks whether DMA can be performed or not 
+ *
+ * @dev: Device node calling execbuf
+ * @bo: buffer objects from user space from which new command is created
+ *
+*/
+static bool
+zocl_dma_check(struct drm_device *dev, struct drm_zocl_bo* bo)
+{
+	struct ert_start_copybo_cmd *cmd =
+	  (struct ert_start_copybo_cmd *)bo->cma_base.vaddr;
+
+	if (cmd->opcode != ERT_START_COPYBO)
+	  return true;
+
+	uint64_t		        dst_paddr, src_paddr;
+	struct drm_zocl_copy_bo args = {
+	  .dst_handle = cmd->dst_bo_hdl,
+	  .src_handle = cmd->src_bo_hdl,
+	  .size = ert_copybo_size(cmd),
+	  .dst_offset = ert_copybo_dst_offset(cmd),
+	  .src_offset = ert_copybo_src_offset(cmd),
+	};
+	struct drm_file *filp = cmd->arg;
+
+	return zocl_can_dma_performed(dev,filp,&args,&dst_paddr,&src_paddr);
+}
 
 /**
  * zocl_execbuf_ioctl() - Entry point for exec buffer.
@@ -2573,6 +2601,12 @@ zocl_execbuf_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	if (!zocl_bo_execbuf(zocl_bo) || !zocl_execbuf_to_ert(zocl_bo, filp)) {
 		ret = -EINVAL;
 		goto out;
+	}
+	
+	//check whether dma can be perfomed or not
+	if( !zocl_dma_check(dev,zocl_bo) ) { 
+	  	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
+		return -EOPNOTSUPP;
 	}
 
 	if (add_gem_bo_cmd(dev, zocl_bo)) {
