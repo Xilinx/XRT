@@ -558,7 +558,7 @@ zocl_can_dma_performed(struct drm_device *dev,
 	struct drm_zocl_bo 		*dst_bo, *src_bo;
 	uint64_t		        dst_size, src_size;
 	int 				unsupported_flags = 0;
-	bool rc = true;
+	bool				rc = true;
 	dst_gem_obj = zocl_gem_object_lookup(dev, filp, args->dst_handle);
 	if (!dst_gem_obj) {
 		DRM_ERROR("Failed to look up GEM dst handle %d\n",
@@ -580,7 +580,7 @@ zocl_can_dma_performed(struct drm_device *dev,
 		ZOCL_BO_FLAGS_SVM);
 	if ((dst_bo->flags & unsupported_flags) ||
 	    (src_bo->flags & unsupported_flags)) {
-	  	DRM_ERROR("Failed: Not supported dst flags 0x%x and "
+		DRM_ERROR("Failed: Not supported dst flags 0x%x and "
 		    "src flags 0x%x\n", dst_bo->flags, src_bo->flags);
 		rc = false;
 		goto out;
