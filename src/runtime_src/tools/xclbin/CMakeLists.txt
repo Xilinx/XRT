@@ -161,8 +161,11 @@ else()
     # Used the linux command 'ldd' to show the shared libraries used by the executable
     target_link_libraries(xclbinutil ${Boost_LIBRARIES})
     target_link_libraries(xclbinutil OpenSSL::Crypto)
-#    target_link_libraries(xclbinutil -Bstatic ${PTHREAD_LIB})
-    target_link_libraries(xclbinutil pthread)
+    if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL aarch64)
+      target_link_libraries(xclbinutil pthread)
+    else()
+      target_link_libraries(xclbinutil -Bstatic ${PTHREAD_LIB})
+    endif()
     target_link_libraries(xclbinutil ${CMAKE_DL_LIBS})   # Needs to be shared library
     target_link_libraries(xclbinutil -static-libgcc -static-libstdc++)
   else()

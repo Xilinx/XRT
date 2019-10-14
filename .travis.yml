@@ -17,6 +17,7 @@ matrix:
         branch_pattern: master
 
   - os: linux-ppc64le
+    arch: ppc64le
     env:
       - CONFIGURATION=linux/ppc64le
 
