@@ -313,12 +313,12 @@ get_kernel_freq(const axlf* top)
 
     if(clock_child) { // check whether kernelClocks field exists or not
       for (auto& xml_clock : xml_project.get_child("project.platform.device.core.kernelClocks")) {
-	if (xml_clock.first != "clock")
-	  continue;
-	auto port = xml_clock.second.get<std::string>("<xmlattr>.port","");
-	auto freq = convert(xml_clock.second.get<std::string>("<xmlattr>.frequency","100"));
-	if(port == "KERNEL_CLK")
-	  kernel_clk_freq = freq;
+        if (xml_clock.first != "clock")
+          continue;
+        auto port = xml_clock.second.get<std::string>("<xmlattr>.port","");
+        auto freq = convert(xml_clock.second.get<std::string>("<xmlattr>.frequency","100"));
+        if(port == "KERNEL_CLK")
+          kernel_clk_freq = freq;
       }
     }
   }
