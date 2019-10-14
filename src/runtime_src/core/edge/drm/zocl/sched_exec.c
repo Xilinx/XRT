@@ -723,6 +723,13 @@ configure(struct sched_cmd *cmd)
 		SCHED_DEBUG("++ configuring penguin scheduler mode\n");
 		exec->ops = &penguin_ops;
 		exec->polling_mode = cfg->polling;
+		//Interrupt may not be enabled for some of the kernel, 
+		//Need to use polling mode in that case
+		if(!cfg->cu_isr) {
+			DRM_WARN("Interrupt is not enabled for atleast one kernel."
+			   "Fall back to polling mode\n");
+		  	exec->polling_mode = 1;
+		}
 		exec->configured = 1;
 	} else {
 		SCHED_DEBUG("++ configuring PS ERT mode\n");
