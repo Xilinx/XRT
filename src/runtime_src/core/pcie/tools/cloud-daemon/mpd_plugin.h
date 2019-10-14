@@ -23,8 +23,6 @@
 #include "xclbin.h"
 
 typedef int (*get_remote_msd_fd_fn)(size_t index, int *fd);
-typedef int (*lock_bitstream_fn)(size_t index, int *resp);
-typedef int (*unlock_bitstream_fn)(size_t index, int *resp);
 typedef int (*hot_reset_fn)(size_t index, int *resp);
 typedef int (*load_xclbin_fn)(size_t index, const axlf *buf, int *resp);
 typedef int (*reclock2_fn)(size_t index, const struct xclmgmt_ioc_freqscaling *obj, int *resp);
@@ -69,8 +67,6 @@ struct mpd_plugin_callbacks {
      * on how many features their own HW have.
      */
     struct {
-        lock_bitstream_fn lock_bitstream; //3 optional
-        unlock_bitstream_fn unlock_bitstream; //4 optional
         hot_reset_fn hot_reset; //5 optional
         load_xclbin_fn load_xclbin; //8 mandatory
         reclock2_fn reclock2; //9 optional

@@ -690,32 +690,6 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	}
 
 	switch (req->req) {
-	case XCL_MAILBOX_REQ_LOCK_BITSTREAM: {
-		struct xcl_mailbox_req_bitstream_lock *bitstm_lock =
-			(struct xcl_mailbox_req_bitstream_lock *)req->data;
-		if (payload_len < sizeof(*bitstm_lock)) {
-			mgmt_err(lro, "peer request dropped, wrong size\n");
-			break;
-		}
-		ret = xocl_icap_lock_bitstream(lro,
-			(xuid_t *)bitstm_lock->uuid);
-		(void) xocl_peer_response(lro, req->req, msgid,
-			&ret, sizeof(ret));
-		break;
-	}
-	case XCL_MAILBOX_REQ_UNLOCK_BITSTREAM: {
-		struct xcl_mailbox_req_bitstream_lock *bitstm_lock =
-			(struct xcl_mailbox_req_bitstream_lock *)req->data;
-		if (payload_len < sizeof(*bitstm_lock)) {
-			mgmt_err(lro, "peer request dropped, wrong size\n");
-			break;
-		}
-		ret = xocl_icap_unlock_bitstream(lro,
-			(xuid_t *)bitstm_lock->uuid);
-		(void) xocl_peer_response(lro, req->req, msgid, &ret,
-			sizeof(ret));
-		break;
-	}
 	case XCL_MAILBOX_REQ_HOT_RESET:
 		ret = (int) reset_hot_ioctl(lro);
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,

@@ -314,24 +314,6 @@ static int localMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
         processed = c.get_response();
         break;
     }
-    case XCL_MAILBOX_REQ_LOCK_BITSTREAM: {//optional
-        Sw_mb_container c(sizeof(int), orig->id());
-        if (plugin_cbs.mb_req.lock_bitstream) {
-            int *resp = reinterpret_cast<int *>(c.get_payload_buf());
-            c.set_hook(std::bind(plugin_cbs.mb_req.lock_bitstream, dev.getIndex(), resp));
-        }
-        processed = c.get_response();
-        break;
-    }
-    case XCL_MAILBOX_REQ_UNLOCK_BITSTREAM: { //optional
-        Sw_mb_container c(sizeof(int), orig->id());
-        if (plugin_cbs.mb_req.unlock_bitstream) {
-            int *resp = reinterpret_cast<int *>(c.get_payload_buf());
-            c.set_hook(std::bind(plugin_cbs.mb_req.unlock_bitstream, dev.getIndex(), resp));
-        }
-        processed = c.get_response();
-        break;
-    }
     case XCL_MAILBOX_REQ_HOT_RESET: {//optional
         Sw_mb_container c(sizeof(int), orig->id());
         if (plugin_cbs.mb_req.hot_reset) {

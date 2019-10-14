@@ -70,15 +70,12 @@ public:
     //int xclBootFPGA();
     int awsResetDevice();
     int awsReClock2(const xclmgmt_ioc_freqscaling *obj);
-    int awsLockDevice();
-    int awsUnlockDevice();
     int awsProgramShell();
     int awsReadP2pBarAddr(const xcl_mailbox_p2p_bar_addr *addr);
     int awsUserProbe(xcl_mailbox_conn_resp *resp);
     bool isGood();
 private:
     const int mBoardNumber;
-    bool mLocked;
     std::ofstream mLogStream;
 #ifdef INTERNAL_TESTING_FOR_AWS
     int mMgtHandle;
@@ -99,8 +96,6 @@ int awsGetMig(size_t index, char *resp, size_t resp_len);
 int awsGetFirewall(size_t index, xcl_mig_ecc *resp);
 int awsGetDna(size_t index, xcl_dna *resp);
 int awsGetSubdev(size_t index, char *resp, size_t resp_len);
-int awsLockDevice(size_t index, int *resp);
-int awsUnlockDevice(size_t index, int *resp);
 int awsResetDevice(size_t index, int *resp);
 int awsReClock2(size_t index, const xclmgmt_ioc_freqscaling *obj, int *resp);
 int awsUserProbe(size_t index, xcl_mailbox_conn_resp *resp);
