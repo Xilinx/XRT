@@ -931,23 +931,9 @@ void testCaseProgressReporter(bool *quit)
     }
 }
 
-//coverity[ +tainted_string_sanitize_content : arg-0 ]
-inline bool sanitize_getenv(const char* path) 
+inline const char* getenv_or_empty(const char* path)
 {
-    std::string str_path(path);
-    std::string blacklist = "?\"<>|";
-    for (char const &c: str_path) {
-        if(blacklist.find(c) != std::string::npos) {
-            return false;
-        }
-    }
-    return true;
-}
-
-inline const char* getenv_or_empty(const char* env_var)
-{
-    const char* path(getenv(env_var));
-    return (path != NULL && sanitize_getenv(path)) ? path : "";
+    return getenv(path) ? getenv(path) : "";
 }
 
 static void set_shell_path_env(const std::string& var_name,
