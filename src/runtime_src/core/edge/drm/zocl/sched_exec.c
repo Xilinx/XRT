@@ -726,9 +726,9 @@ configure(struct sched_cmd *cmd)
 		//Interrupt may not be enabled for some of the kernel, 
 		//Need to use polling mode in that case
 		if(!cfg->cu_isr) {
-			DRM_WARN("Interrupt is not enabled for atleast one kernel."
-			   "Fall back to polling mode\n");
-		  	exec->polling_mode = 1;
+			DRM_WARN("Interrupt is not enabled for at least one kernel."
+			    "Fall back to polling mode\n");
+			exec->polling_mode = 1;
 		}
 		exec->configured = 1;
 	} else {
