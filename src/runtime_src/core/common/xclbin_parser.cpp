@@ -17,10 +17,20 @@
 #include "xclbin_parser.h"
 #include "config_reader.h"
 #include <cstring>
-
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/xml_parser.hpp>
+#include <boost/optional.hpp>
 // This is xclbin parser. Update this file if xclbin format has changed.
 
 namespace {
+
+namespace pt = boost::property_tree;
+
+static size_t
+convert(const std::string& str)
+{
+  return str.empty() ? 0 : std::stoul(str,0,0);
+}
 
 static bool
 is_sw_emulation()
@@ -282,6 +292,37 @@ get_softkernels(const axlf* top)
   }
 
   return sks;
+}
+
+size_t
+get_kernel_freq(const axlf* top)
+{
+  size_t kernel_clk_freq = 100; //default clock frequency is 100
+  const axlf_section_header *xml_hdr = ::xclbin::get_axlf_section(top, EMBEDDED_METADATA);
+  if (xml_hdr) {
+    auto begin = reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset;
+    const char *xml_data = reinterpret_cast<const char*>(begin);
+    uint64_t xml_size = xml_hdr->m_sectionSize;
+
+    pt::ptree xml_project;
+    std::stringstream xml_stream;
+    xml_stream.write(xml_data,xml_size);
+    pt::read_xml(xml_stream,xml_project);
+
+    auto clock_child = xml_project.get_child_optional("project.platform.device.core.kernelClocks"); 
+
+    if(clock_child) { // check whether kernelClocks field exists or not
+      for (auto& xml_clock : xml_project.get_child("project.platform.device.core.kernelClocks")) {
+	if (xml_clock.first != "clock")
+	  continue;
+	auto port = xml_clock.second.get<std::string>("<xmlattr>.port","");
+	auto freq = convert(xml_clock.second.get<std::string>("<xmlattr>.frequency","100"));
+	if(port == "KERNEL_CLK")
+	  kernel_clk_freq = freq;
+      }
+    }
+  }
+  return kernel_clk_freq;
 }
 
 
