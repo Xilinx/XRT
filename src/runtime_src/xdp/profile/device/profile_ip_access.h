@@ -156,7 +156,7 @@ protected:
 
     xdp::Device* getDevice() { return device; }
 
-    uint64_t m_index;         /* m_index field from debug IP Layout */
+    uint64_t m_index = 0;         /* m_index field from debug IP Layout */
 
     /**
      * TODO: the exclusive context from hal
