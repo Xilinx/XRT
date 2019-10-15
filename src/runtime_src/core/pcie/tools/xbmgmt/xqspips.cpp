@@ -231,12 +231,12 @@ XQSPIPS_Flasher::XQSPIPS_Flasher(std::shared_ptr<pcidev::pci_device> dev)
     // By default, it is 'perallel'
     mConnectMode = 0;
     // U30 Rev.A use single
-    if (typeStr.find("single")) {
+    if (typeStr.find("single") != std::string::npos) {
         mConnectMode = 1;
     }
 
     mBusWidth = 4;
-    if (typeStr.find("x2")) {
+    if (typeStr.find("x2") != std::string::npos) {
         // U30 Rev.B use x2
         mBusWidth = 2;
     }
