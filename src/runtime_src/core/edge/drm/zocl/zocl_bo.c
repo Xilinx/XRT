@@ -166,11 +166,12 @@ zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
 	} else {
 		/* We are allocating from a separate BANK, i.e. PL-DDR */
 		unsigned int bank = GET_MEM_BANK(user_flags);
+
 		if (bank >= zdev->num_mem || !zdev->mem[bank].zm_used ||
 		    zdev->mem[bank].zm_type != ZOCL_MEM_TYPE_PLDDR)
 			return ERR_PTR(-EINVAL);
 
-		bo = kzalloc(sizeof (struct drm_zocl_bo), GFP_KERNEL);
+		bo = kzalloc(sizeof(struct drm_zocl_bo), GFP_KERNEL);
 		if (IS_ERR(bo))
 			return ERR_PTR(-ENOMEM);
 
@@ -191,7 +192,8 @@ zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
 		err = drm_mm_insert_node_generic(zdev->mem[bank].zm_mm,
 		    bo->mm_node, size, PAGE_SIZE, 0, 0);
 		if (err) {
-			DRM_ERROR("Fail to allocate BO: size %ld\n", (long)size);
+			DRM_ERROR("Fail to allocate BO: size %ld\n",
+			    (long)size);
 			mutex_unlock(&zdev->mm_lock);
 			kfree(bo->mm_node);
 			kfree(bo);
@@ -547,18 +549,16 @@ out:
 	return rc;
 }
 
-bool 
-zocl_can_dma_performed(struct drm_device *dev, 
-    			struct drm_file *filp,
-			struct drm_zocl_copy_bo *args,
-			uint64_t *dst_paddr,
-			uint64_t *src_paddr)
+bool
+zocl_can_dma_performed(struct drm_device *dev, struct drm_file *filp,
+	struct drm_zocl_copy_bo *args, uint64_t *dst_paddr, uint64_t *src_paddr)
 {
-	struct drm_gem_object 		*dst_gem_obj, *src_gem_obj;
-	struct drm_zocl_bo 		*dst_bo, *src_bo;
-	uint64_t		        dst_size, src_size;
-	int 				unsupported_flags = 0;
-	bool				rc = true;
+	struct drm_gem_object  *dst_gem_obj, *src_gem_obj;
+	struct drm_zocl_bo     *dst_bo, *src_bo;
+	uint64_t               dst_size, src_size;
+	int                    unsupported_flags = 0;
+	bool                   rc = true;
+
 	dst_gem_obj = zocl_gem_object_lookup(dev, filp, args->dst_handle);
 	if (!dst_gem_obj) {
 		DRM_ERROR("Failed to look up GEM dst handle %d\n",
@@ -609,7 +609,7 @@ zocl_can_dma_performed(struct drm_device *dev,
 		rc = false;
 		goto out;
 	}
-	return rc;
+
 out:
 	if (dst_gem_obj)
 		ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(dst_gem_obj);
@@ -625,16 +625,17 @@ int zocl_copy_bo_async(struct drm_device *dev,
 		zocl_dma_handle_t *dma_handle,
 		struct drm_zocl_copy_bo *args)
 {
-	uint64_t 			dst_paddr, src_paddr;
-	int 				rc = 0;
+	uint64_t dst_paddr, src_paddr;
+	int rc = 0;
+	bool ret = false;
 
 	if (dma_handle->dma_func == NULL) {
 		DRM_ERROR("Failed: no callback dma_func for async dma");
 		return -EINVAL;
 	}
 
-	bool ret = zocl_can_dma_performed(dev, filp, args, &dst_paddr, &src_paddr);
-	if(!ret) {
+	ret = zocl_can_dma_performed(dev, filp, args, &dst_paddr, &src_paddr);
+	if (!ret) {
 		DRM_ERROR("Failed: Cannot perform DMA due to previous Errors");
 		return -EINVAL;
 	}
