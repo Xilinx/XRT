@@ -32,6 +32,13 @@ TEMPLATE=zynqMP
 #	echo 'CONFIG_TMP_DIR_LOCATION="/scratch/tmp"' >> $PETA_CONFIG_FILE
 #}
 
+config_peta()
+{
+	PETA_CONFIG_FILE=$1
+	echo "CONFIG_YOCTO_ENABLE_DEBUG_TWEAKS=y" >> $PETA_CONFIG_FILE
+	echo "CONFIG_SUBSYSTEM_REMOVE_PL_DTB=y" >> $PETA_CONFIG_FILE
+}
+
 # The first argument is the linux kernel configure file
 #  config_kernel recipes-kernel/linux/linux-xlnx/user.cfg
 #

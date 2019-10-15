@@ -46,8 +46,8 @@
  * @MAILBOX_REQ_UNKNOWN: invalid OP code
  * @MAILBOX_REQ_TEST_READY: test msg is ready (post only, internal test only)
  * @MAILBOX_REQ_TEST_READ: fetch test msg from peer (internal test only)
- * @MAILBOX_REQ_LOCK_BITSTREAM: lock down xclbin on mgmt pf
- * @MAILBOX_REQ_UNLOCK_BITSTREAM: unlock xclbin on mgmt pf
+ * @MAILBOX_REQ_LOCK_BITSTREAM: lock down xclbin on mgmt pf (not implemented)
+ * @MAILBOX_REQ_UNLOCK_BITSTREAM: unlock xclbin on mgmt pf (not implemented)
  * @MAILBOX_REQ_HOT_RESET: request mgmt pf driver to reset the board
  * @MAILBOX_REQ_FIREWALL: firewall trip detected on mgmt pf (post only)
  * @MAILBOX_REQ_LOAD_XCLBIN_KADDR: download xclbin (pointed to by a pointer)

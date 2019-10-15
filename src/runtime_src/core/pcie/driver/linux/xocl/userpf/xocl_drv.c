@@ -930,6 +930,31 @@ int xocl_pci_resize_resource(struct pci_dev *dev, int resno, int size)
 	return ret;
 }
 
+int xocl_pci_rbar_refresh(struct pci_dev *dev, int resno)
+{
+	u32 ctrl;
+	u16 cmd;
+	int pos;
+
+	pos = pci_find_ext_capability(dev, PCI_EXT_CAP_ID_REBAR);
+	if (!pos) {
+		xocl_err(&dev->dev, "rebar cap does not exist");
+		return -ENOTSUPP;
+	}
+
+	pos += resno * PCI_REBAR_CTRL;
+	pci_read_config_dword(dev, pos + PCI_REBAR_CTRL, &ctrl);
+
+	pci_read_config_word(dev, PCI_COMMAND, &cmd);
+	pci_write_config_word(dev, PCI_COMMAND, cmd & ~PCI_COMMAND_MEMORY);
+
+	pci_write_config_dword(dev, pos + PCI_REBAR_CTRL, ctrl);
+
+	pci_write_config_word(dev, PCI_COMMAND, cmd | PCI_COMMAND_MEMORY);
+
+	return 0;
+}
+
 static int identify_bar(struct xocl_dev *xdev)
 {
 	struct pci_dev *pdev = xdev->core.pdev;

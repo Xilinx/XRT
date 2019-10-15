@@ -83,20 +83,20 @@ struct KernelTransferData
    char* cuPortName;
    char* argName;
    char* memoryName;
-   
-   uint64_t totalReadBytes; 
-   uint64_t totalReadTranx; 
-   uint64_t totalReadLatency; 
-   uint64_t totalReadBusyCycles; 
-   uint64_t minReadLatency; 
-   uint64_t maxReadLatency; 
 
-   uint64_t totalWriteBytes; 
-   uint64_t totalWriteTranx; 
-   uint64_t totalWriteLatency; 
-   uint64_t totalWriteBusyCycles; 
-   uint64_t minWriteLatency; 
-   uint64_t maxWriteLatency; 
+   uint64_t totalReadBytes;
+   uint64_t totalReadTranx;
+   uint64_t totalReadLatency;
+   uint64_t totalReadBusyCycles;
+   uint64_t minReadLatency;
+   uint64_t maxReadLatency;
+
+   uint64_t totalWriteBytes;
+   uint64_t totalWriteTranx;
+   uint64_t totalWriteLatency;
+   uint64_t totalWriteBusyCycles;
+   uint64_t minWriteLatency;
+   uint64_t maxWriteLatency;
 };
 
 struct CuExecData
@@ -114,7 +114,7 @@ struct CuExecData
    uint64_t cuStallIntCycles;
    uint64_t cuStallStrCycles;
 
-}; 
+};
 
 struct StreamTransferData
 {
@@ -144,15 +144,15 @@ struct ProfileResults
 
 /**
  * int xclCreateProfileResults(xclDeviceHandle, ProfileResults**)
- *     - Creates and initializes buffer for storing the ProfileResults from the device. 
+ *     - Creates and initializes buffer for storing the ProfileResults from the device.
  *     - To use this API, "profile_api" configuration needs to be set to "true" in xrt.ini.
  *       "profile_api=true" enables profiling (for profile counters on device) using XRT APIs (no OpenCL API)
  *
  * @xclDeviceHandle : Device handle
  * @ProfileResults** : Double pointer to hold the pointer to buffer created to store profiling results (on success)
  *                     This argument remains unchanged if xclCreateProfileResults fails.
- * 
- */ 
+ *
+ */
 XCL_DRIVER_DLLESPEC int xclCreateProfileResults(xclDeviceHandle, ProfileResults**);
 
 /**
@@ -162,10 +162,10 @@ XCL_DRIVER_DLLESPEC int xclCreateProfileResults(xclDeviceHandle, ProfileResults*
  *       "profile_api=true" enables profiling (for profile counters on device) using XRT APIs (no OpenCL API)
  *
  * @xclDeviceHandle : Device handle
- * @ProfileResults* : Pointer to buffer to store profiling results. 
+ * @ProfileResults* : Pointer to buffer to store profiling results.
  *                    This buffer should be created using previous call to "xclCreateProfileResults"
  *
- */ 
+ */
 XCL_DRIVER_DLLESPEC int xclGetProfileResults(xclDeviceHandle, ProfileResults*);
 
 /**
@@ -177,7 +177,7 @@ XCL_DRIVER_DLLESPEC int xclGetProfileResults(xclDeviceHandle, ProfileResults*);
  * @xclDeviceHandle : Device handle
  * @ProfileResults* : Pointer to buffer to be deleted
  *
- */ 
+ */
 XCL_DRIVER_DLLESPEC int xclDestroyProfileResults(xclDeviceHandle, ProfileResults*);
 
 /**
@@ -189,6 +189,13 @@ XCL_DRIVER_DLLESPEC int xclDestroyProfileResults(xclDeviceHandle, ProfileResults
  * @datap:         Pointer to where result will be saved
  * Return:         0 or appropriate error number
  *
+ * Caller should own an exclusive context on the CU obtained via xclOpenContext()
+ * This API may be used to read from device registers exposed on PCIe BAR. Offset is relative to the
+ * the register map exposed by the CU.
+ * Please note that the intent of this API is to support legacy RTL IPs. If you are creating a new
+ * IP please use one of the well defined execution models which are natively supported by XRT.
+ * If you have a new execution model that you would like to be natively supported by XRT please look
+ * into ert.h to define new command objects.
  */
 XCL_DRIVER_DLLESPEC int xclRegRead(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t *datap);
 
@@ -201,6 +208,13 @@ XCL_DRIVER_DLLESPEC int xclRegRead(xclDeviceHandle handle, uint32_t cu_index, ui
  * @data:          Data to be written
  * Return:         0 or appropriate error number
  *
+ * Caller should own an exclusive context on the CU obtained via xclOpenContext()
+ * This API may be used to write to device registers exposed on PCIe BAR. Offset is relative to the
+ * the register map exposed by the CU.
+ * Please note that the intent of this API is to support legacy RTL IPs. If you are creating a new
+ * IP please use one of the well defined execution models which are natively supported by XRT.
+ * If you have a new execution model that you would like to be natively supported by XRT please look
+ * into ert.h to define new command objects.
  */
 XCL_DRIVER_DLLESPEC int xclRegWrite(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t data);
 

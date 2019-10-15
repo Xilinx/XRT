@@ -10,7 +10,7 @@ Host Platform for PCIe Accelerator Cards
 2. AARCH64
 3. PPC64LE
 
-Supported Xilinx Accelerator Cards are listed in :ref:`platforms.rst`.
+Supported Xilinx® Accelerator Cards are listed in :ref:`platforms.rst`.
 
 
 Software Platform for PCIe Accelerator Cards

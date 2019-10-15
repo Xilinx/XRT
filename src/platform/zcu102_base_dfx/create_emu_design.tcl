@@ -93,6 +93,11 @@ set_property dsa.run.steps.opt_design.tcl.post ${sourcesDir}/misc/dynamic_postop
 set_property dsa.ip_cache_dir                  ${launchDir}/${projName}/${projName}.cache/ip                           [current_project]
 set_property dsa.synth_constraint_files        [list "${sourcesDir}/constraints/dynamic_impl.xdc,NORMAL,implementation"] [current_project]
 
+set_property platform.design_intent.server_managed "false" [current_project]
+set_property platform.design_intent.external_host "false" [current_project]
+set_property platform.design_intent.embedded "true" [current_project]
+set_property platform.design_intent.datacenter "false" [current_proj]
+set_property platform.default_output_type "xclbin" [current_project]
 # Construct reconfigurable BD and partition
 create_bd_design pfm_dynamic
 source ${sourcesDir}/misc/dynamic_prelink.tcl

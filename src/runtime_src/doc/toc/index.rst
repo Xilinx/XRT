@@ -1,10 +1,10 @@
-=================================
-Xilinx Runtime (XRT) Architecture
-=================================
+==================================
+Xilinx® Runtime (XRT) Architecture
+==================================
 
-Xilinx Runtime (XRT) is implemented as a combination of userspace and kernel
+Xilinx® Runtime (XRT) is implemented as a combination of userspace and kernel
 driver components. XRT supports both PCIe based accelerator cards and MPSoC
-based embedded architecture provides standardized software interface to Xilinx
+based embedded architecture provides standardized software interface to Xilinx®
 FPGA. The key user APIs are defined in ``xrt.h`` header file.
 
 .. image:: XRT-Layers.svg
@@ -75,7 +75,6 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
 
    yocto.rst
    test.rst
-   newxsa-bringup.rst
    create_platforms.rst
 
 

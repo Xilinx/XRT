@@ -114,6 +114,7 @@ ZYNQShim::ZYNQShim(unsigned index, const char *logfileName, xclVerbosityLevel ve
     profiling(nullptr),
     mBoardNumber(index),
     mVerbosity(verbosity),
+    mKernelClockFreq(100),
     mCuMaps(128, nullptr)
 {
   if (logfileName != nullptr)
@@ -366,7 +367,7 @@ int ZYNQShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
   info->mDataAlignment = BUFFER_ALIGNMENT;  //TODO:UKP
 
   info->mDDRBankCount = 1;
-  info->mOCLFrequency[0] = 100;
+  info->mOCLFrequency[0] = mKernelClockFreq;
 
 #if defined(__aarch64__)
   info->mNumCDMA = 1;
@@ -446,6 +447,7 @@ int ZYNQShim::xclLoadXclBin(const xclBin *buffer)
   } else {
       xclLog(XRT_ERROR, "XRT", "%s: Doesn't support legacy xclbin format.", __func__);
   }
+  mKernelClockFreq = xrt_core::xclbin::get_kernel_freq(buffer);
 
   xclLog(XRT_INFO, "XRT", "%s: return %d", __func__, ret);
   return ret;

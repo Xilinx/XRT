@@ -1783,36 +1783,6 @@ free_buffers:
 	return err;
 }
 
-
-static int __icap_peer_lock(struct platform_device *pdev,
-	const xuid_t *id, bool lock)
-{
-	int err = 0;
-	int resp = 0;
-	size_t resplen = sizeof(resp);
-	struct xcl_mailbox_req_bitstream_lock bitstream_lock = {0};
-	size_t data_len = sizeof(struct xcl_mailbox_req_bitstream_lock);
-	struct xcl_mailbox_req *mb_req = NULL;
-	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
-	xdev_handle_t xdev = xocl_get_xdev(pdev);
-
-	mb_req = vmalloc(reqlen);
-	if (!mb_req)
-		return -ENOMEM;
-
-	mb_req->req = lock ?
-		XCL_MAILBOX_REQ_LOCK_BITSTREAM : XCL_MAILBOX_REQ_UNLOCK_BITSTREAM;
-	uuid_copy((xuid_t *)bitstream_lock.uuid, id);
-	memcpy(mb_req->data, &bitstream_lock, data_len);
-	err = xocl_peer_request(xdev,
-		mb_req, reqlen, &resp, &resplen, NULL, NULL, 0);
-	if (!err)
-		err = resp;
-
-	vfree(mb_req);
-	return err;
-}
-
 static void icap_clean_axlf_section(struct icap *icap,
 	enum axlf_section_kind kind)
 {
@@ -2458,17 +2428,6 @@ static int icap_lock_bitstream(struct platform_device *pdev, const xuid_t *id)
 		return -EBUSY;
 	}
 
-	if (icap->icap_bitstream_ref == 0 && !ICAP_PRIVILEGED(icap)) {
-		int err = __icap_peer_lock(pdev, id, true);
-
-		if (err < 0) {
-			ICAP_ERR(icap, "can't lock bitstream %pUb on peer: %d",
-				id, err);
-			mutex_unlock(&icap->icap_lock);
-			return err;
-		}
-	}
-
 	ref = icap->icap_bitstream_ref;
 	icap->icap_bitstream_ref++;
 	ICAP_INFO(icap, "bitstream %pUb locked, ref=%d", id,
@@ -2480,7 +2439,6 @@ static int icap_lock_bitstream(struct platform_device *pdev, const xuid_t *id)
 	}
 
 	mutex_unlock(&icap->icap_lock);
-
 	return 0;
 }
 
@@ -2510,12 +2468,11 @@ static int icap_unlock_bitstream(struct platform_device *pdev, const xuid_t *id)
 		return err;
 	}
 
-	if (icap->icap_bitstream_ref == 0 && !ICAP_PRIVILEGED(icap)) {
-		(void) __icap_peer_lock(pdev, id, false);
+	if (icap->icap_bitstream_ref == 0 && !ICAP_PRIVILEGED(icap))
 		(void) xocl_exec_stop(xocl_get_xdev(pdev));
-	}
 
 	mutex_unlock(&icap->icap_lock);
+
 	return 0;
 }
 
@@ -3448,7 +3405,7 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		size_t data_len, loff_t *off)
 {
 	struct icap *icap = filp->private_data;
-	struct axlf axlf_header = { 0 };
+	struct axlf axlf_header = { {0} };
 	struct axlf *axlf = NULL;
 	const struct axlf_section_header *section;
 	void *header;
@@ -3476,13 +3433,14 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		}
 
 		if (memcmp(axlf_header.m_magic, ICAP_XCLBIN_V2,
-					sizeof(ICAP_XCLBIN_V2))) {
+			sizeof(ICAP_XCLBIN_V2))) {
 			ICAP_ERR(icap, "Incorrect magic string");
 			ret = -EINVAL;
 			goto failed;
 		}
 
-		if (!axlf_header.m_header.m_length || axlf_header.m_header.m_length >= GB(1)) {
+		if (!axlf_header.m_header.m_length ||
+			axlf_header.m_header.m_length >= GB(1)) {
 			ICAP_ERR(icap, "Invalid xclbin size");
 			ret = -EINVAL;
 			goto failed;			

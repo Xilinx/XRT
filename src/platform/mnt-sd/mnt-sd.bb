@@ -15,9 +15,6 @@ INITSCRIPT_PARAMS = "start 99 5 ."
 S = "${WORKDIR}"
 
 do_install() {
-	# Install to init.d to prepare environment for tcf-agent
-	install -d ${D}${sysconfdir}/init.d
-	install -m 0755 mnt-sd.sh ${D}${sysconfdir}/init.d/mnt-sd
 	# Install to profile.d to set up environment for bash shell
 	install -d ${D}${sysconfdir}/profile.d
 	install -m 0755 mnt-sd.sh ${D}${sysconfdir}/profile.d/mnt-sd.sh

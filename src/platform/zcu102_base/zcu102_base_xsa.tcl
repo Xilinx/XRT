@@ -123,7 +123,7 @@ set bCheckIPsPassed 1
 ##################################################################
 set bCheckIPs 1
 if { $bCheckIPs == 1 } {
-   set list_check_ips "\ 
+   set list_check_ips "\
 xilinx.com:ip:axi_intc:*\
 xilinx.com:ip:axi_register_slice:*\
 xilinx.com:ip:axi_vip:*\
@@ -1267,7 +1267,7 @@ proc create_root_design { parentCell } {
    CONFIG.PSU__DDRC__CWL {14} \
    CONFIG.PSU__DDRC__DDR3L_T_REF_RANGE {NA} \
    CONFIG.PSU__DDRC__DDR3_T_REF_RANGE {NA} \
-   CONFIG.PSU__DDRC__DDR4_ADDR_MAPPING {1} \
+   CONFIG.PSU__DDRC__DDR4_ADDR_MAPPING {0} \
    CONFIG.PSU__DDRC__DDR4_CAL_MODE_ENABLE {0} \
    CONFIG.PSU__DDRC__DDR4_CRC_CONTROL {0} \
    CONFIG.PSU__DDRC__DDR4_MAXPWR_SAVING_EN {0} \
@@ -1718,7 +1718,7 @@ proc create_root_design { parentCell } {
    CONFIG.PSU__PROTECTION__SUBSYSTEMS {PMU Firmware:PMU|Secure Subsystem:} \
    CONFIG.PSU__PSS_ALT_REF_CLK__ENABLE {0} \
    CONFIG.PSU__PSS_ALT_REF_CLK__FREQMHZ {33.333} \
-   CONFIG.PSU__PSS_REF_CLK__FREQMHZ {33.330} \
+   CONFIG.PSU__PSS_REF_CLK__FREQMHZ {33.333333} \
    CONFIG.PSU__QSPI_COHERENCY {0} \
    CONFIG.PSU__QSPI_ROUTE_THROUGH_FPD {0} \
    CONFIG.PSU__QSPI__GRP_FBCLK__ENABLE {1} \
@@ -1889,7 +1889,7 @@ proc create_root_design { parentCell } {
    CONFIG.USB1_BOARD_INTERFACE {custom} \
  ] $ps_e
 
- set_property SELECTED_SIM_MODEL tlm_dpi [get_bd_cells /ps_e]
+ set_property SELECTED_SIM_MODEL tlm [get_bd_cells /ps_e]
 
   # Create interface connections
   connect_bd_intf_net -intf_net axi_interconnect_0_M00_AXI [get_bd_intf_pins axi_intc_0/s_axi] [get_bd_intf_pins interconnect_axilite/M00_AXI]

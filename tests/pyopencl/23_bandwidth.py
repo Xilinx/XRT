@@ -68,6 +68,9 @@ def main():
     if "U2x4" in str(dev):
        threshold = 15000
 
+    if "gen3x4" in str(dev):
+       threshold = 20000
+
     ctx = cl.Context(devices = [dev])
     if not ctx:
        print("ERROR: Failed to create context")
@@ -197,7 +200,7 @@ def main():
     print("TTTT: %d" %throughput[0])
     print("Maximum throughput: %d MB/s" %max(throughput))
     if max(throughput) < threshold:
-        print("ERROR: Throughput is less than expected value of 40 GB/sec")
+        print("ERROR: Throughput is less than expected value of %d GB/sec" %(threshold/1000))
         sys.exit(1)
     
     print("PASSED")

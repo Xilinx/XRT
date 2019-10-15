@@ -18,10 +18,15 @@
 #include "xbmgmt.h"
 
 const char *subCmdHelpDesc = "Print out help message for a sub-command";
-const char *subCmdHelpUsage = "help <sub-command>";
+const char *subCmdHelpUsage = "help [sub-command]";
 
 int helpHandler(int argc, char *argv[])
 {
+    if (argc == 1) {
+        printHelp();
+        return 0;
+    }
+
     if (argc != 2)
         return -EINVAL;
 

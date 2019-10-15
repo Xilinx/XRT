@@ -127,6 +127,7 @@ private:
   std::map<uint64_t, uint32_t *> mKernelControl;
   std::unique_ptr<xrt_core::bo_cache> mCmdBOCache;
   zynq_device *mDev = nullptr;
+  size_t mKernelClockFreq;
 
   /*
    * Mapped CU register space for xclRegRead/Write(). We support at most

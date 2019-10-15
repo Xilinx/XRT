@@ -497,6 +497,35 @@ static unsigned int zocl_poll(struct file *filp, poll_table *wait)
 	return ret;
 }
 
+static int zocl_iommu_init(struct drm_zocl_dev *zdev,
+		struct platform_device *pdev)
+{
+	struct iommu_domain_geometry *geometry;
+	u64 start, end;
+	int ret;
+
+	zdev->domain = iommu_domain_alloc(&platform_bus_type);
+	if (!zdev->domain)
+		return -ENOMEM;
+
+	ret = iommu_attach_device(zdev->domain, &pdev->dev);
+	if (ret) {
+		DRM_INFO("IOMMU attach device failed. ret(%d)\n", ret);
+		iommu_domain_free(zdev->domain);
+		zdev->domain = NULL;
+		return ret;
+	}
+
+	geometry = &zdev->domain->geometry;
+	start = geometry->aperture_start;
+	end = geometry->aperture_end;
+
+	DRM_INFO("IOMMU aperture initialized (%#llx-%#llx)\n",
+				start, end);
+
+	return 0;
+}
+
 const struct vm_operations_struct zocl_bo_vm_ops = {
 	.fault = zocl_bo_fault,
 	.open  = drm_gem_vm_open,
@@ -629,7 +658,8 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	ret = get_reserved_mem_region(&pdev->dev, &res_mem);
 	if (!ret) {
 		DRM_INFO("Reserved memory for host at 0x%lx, size 0x%lx\n",
-			 (unsigned long)res_mem.start, (unsigned long)resource_size(&res_mem));
+			 (unsigned long)res_mem.start,
+			 (unsigned long)resource_size(&res_mem));
 		zdev->host_mem = res_mem.start;
 		zdev->host_mem_len = resource_size(&res_mem);
 	}
@@ -637,7 +667,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 
 	subdev = find_pdev("ert_hw");
 	if (subdev) {
-		DRM_INFO("ert_hw found -> 0x%llx\n", (uint64_t)(uintptr_t)subdev);
+		DRM_INFO("ert_hw found: 0x%llx\n", (uint64_t)(uintptr_t)subdev);
 		/* Trust device tree for now, but a better place should be
 		 * feature rom.
 		 */
@@ -665,32 +695,29 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 		    zdev->zdev_data_info->fpga_driver_name);
 	}
 
-	if (of_property_read_u32(pdev->dev.of_node, "xlnx,pr-isolation-addr",
-	    &zdev->pr_isolation_addr))
-		zdev->pr_isolation_addr = 0;
+	if (ZOCL_PLATFORM_ARM64) {
+		if (of_property_read_u64(pdev->dev.of_node,
+		    "xlnx,pr-isolation-addr", &zdev->pr_isolation_addr))
+			zdev->pr_isolation_addr = 0;
+	} else {
+		u32 prop_addr = 0;
+
+		if (of_property_read_u32(pdev->dev.of_node,
+		    "xlnx,pr-isolation-addr", &prop_addr))
+			zdev->pr_isolation_addr = 0;
+		else
+			zdev->pr_isolation_addr = prop_addr;
+	}
+	DRM_INFO("PR Isolation addr 0x%llx", zdev->pr_isolation_addr);
 
 	/* Initialzie IOMMU */
 	if (iommu_present(&platform_bus_type)) {
-		struct iommu_domain_geometry *geometry;
-		u64 start, end;
-		int ret = 0;
-
-		zdev->domain = iommu_domain_alloc(&platform_bus_type);
-		if (!zdev->domain)
-			return -ENOMEM;
-
-		ret = iommu_attach_device(zdev->domain, &pdev->dev);
-		if (ret) {
-			DRM_INFO("IOMMU attach device failed. ret(%d)\n", ret);
-			iommu_domain_free(zdev->domain);
-		}
-
-		geometry = &zdev->domain->geometry;
-		start = geometry->aperture_start;
-		end = geometry->aperture_end;
-
-		DRM_INFO("IOMMU aperture initialized (%#llx-%#llx)\n",
-				start, end);
+		/*
+		 * Note: we ignore the return value of zocl_iommu_init().
+		 * In the case of failing to initialize iommu, zocl
+		 * driver will keep working with iommu disabled.
+		 */
+		(void) zocl_iommu_init(zdev, pdev);
 	}
 
 	platform_set_drvdata(pdev, zdev);

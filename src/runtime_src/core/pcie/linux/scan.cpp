@@ -31,7 +31,9 @@
 #include <sys/stat.h>
 #include <sys/file.h>
 #include <poll.h>
+#include "xclbin.h"
 #include "scan.h"
+#include "core/common/utils.h"
 
 // Supported vendors
 #define XILINX_ID       0x10ee
@@ -756,4 +758,98 @@ std::ostream& operator<<(std::ostream& stream,
 
     stream.flags(f);
     return stream;
+}
+
+int pcidev::get_axlf_section(std::string filename, int kind, std::shared_ptr<char>& buf)
+{
+    std::ifstream in(filename);
+    if (!in.is_open())
+    {
+        std::cout << "Can't open " << filename << std::endl;
+	return -ENOENT;
+    }
+    // Read axlf from dsabin file to find out number of sections in total.
+    axlf a;
+    size_t sz = sizeof (axlf);
+    in.read(reinterpret_cast<char *>(&a), sz);
+    if (!in.good())
+    {
+        std::cout << "Can't read axlf from "<< filename << std::endl;
+        return -EINVAL;
+    }
+    // Reread axlf from dsabin file, including all sections headers.
+    // Sanity check for number of sections coming from user input file
+    if (a.m_header.m_numSections > 10000)
+        return -EINVAL;
+
+    sz = sizeof (axlf) + sizeof (axlf_section_header) * (a.m_header.m_numSections - 1);
+
+    std::vector<char> top(sz);
+    in.seekg(0);
+    in.read(top.data(), sz);
+    if (!in.good())
+    {
+        std::cout << "Can't read axlf and section headers from "<< filename << std::endl;
+        return -EINVAL;
+    }
+    const axlf *ap = reinterpret_cast<const axlf *>(top.data());
+
+    const axlf_section_header* section = xclbin::get_axlf_section(ap, (enum axlf_section_kind)kind);
+    if (!section)
+    {
+        return -EINVAL;
+    }
+
+    buf = std::shared_ptr<char>(new char[section->m_sectionSize]);
+    in.seekg(section->m_sectionOffset);
+    in.read(buf.get(), section->m_sectionSize);
+
+    return 0;
+}
+
+int pcidev::get_uuids(std::shared_ptr<char>& dtbbuf, std::vector<std::string>& uuids)
+{
+    struct fdt_header *bph = (struct fdt_header *)dtbbuf.get();
+    uint32_t version = be32toh(bph->version);
+    uint32_t off_dt = be32toh(bph->off_dt_struct);
+    const char *p_struct = (const char *)bph + off_dt;
+    uint32_t off_str = be32toh(bph->off_dt_strings);
+    const char *p_strings = (const char *)bph + off_str;
+    const char *p, *s;
+    uint32_t tag;
+    int sz;
+
+    p = p_struct;
+    uuids.clear();
+    while ((tag = be32toh(GET_CELL(p))) != FDT_END)
+    {
+        if (tag == FDT_BEGIN_NODE)
+        {
+            s = p;
+            p = PALIGN(p + strlen(s) + 1, 4);
+            continue;
+        }
+        if (tag != FDT_PROP)
+            continue;
+
+        sz = be32toh(GET_CELL(p));
+        s = p_strings + be32toh(GET_CELL(p));
+        if (version < 16 && sz >= 8)
+            p = PALIGN(p, 8);
+
+        if (!strcmp(s, "logic_uuid"))
+        {
+            uuids.insert(uuids.begin(), std::string(p));
+        }
+        else if (!strcmp(s, "interface_uuid"))
+        {
+            uuids.push_back(std::string(p));
+        }
+        p = PALIGN(p + sz, 4);
+    }
+
+    if (!uuids.size())
+        return -EINVAL;
+
+    return 0;
 }

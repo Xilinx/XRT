@@ -1632,7 +1632,7 @@ int mailbox_post_notify(struct platform_device *pdev, void *buf, size_t len)
 
 	/* No checking for peer's liveness for posted msgs. */
 
-	MBX_INFO(mbx, "posting request: %d via %s",
+	MBX_DBG(mbx, "posting request: %d via %s",
 		((struct xcl_mailbox_req *)buf)->req, sw_ch ? "SW" : "HW");
 
 	msg = alloc_msg(NULL, len);
@@ -2220,7 +2220,7 @@ static int mailbox_probe(struct platform_device *pdev)
 	mbx->mbx_prot_ver = XCL_MB_PROTOCOL_VER;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-    if (res != NULL) {
+	if (res != NULL) {
 	    mbx->mbx_regs = ioremap_nocache(res->start, res->end - res->start + 1);
 	    if (!mbx->mbx_regs) {
 		    MBX_ERR(mbx, "failed to map in registers");
@@ -2229,7 +2229,7 @@ static int mailbox_probe(struct platform_device *pdev)
 	    }
 	    /* Reset both TX channel and RX channel */
 	    mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_ctrl, 0x3);
-    }
+	}
 
 	/* Dedicated thread for listening to peer request. */
 	mbx->mbx_listen_wq =

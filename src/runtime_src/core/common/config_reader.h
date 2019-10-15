@@ -266,7 +266,7 @@ get_ert_cudma()
 inline bool
 get_ert_cuisr()
 {
-  static bool value = get_ert() && detail::get_bool_value("Runtime.ert_cuisr",true);
+  static bool value = get_ert() && detail::get_bool_value("Runtime.ert_cuisr",false);
   return value;
 }
 

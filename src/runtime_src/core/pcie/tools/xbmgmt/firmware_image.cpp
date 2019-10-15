@@ -25,6 +25,7 @@
 #include <dirent.h>
 #include <stdint.h>
 #include "boost/filesystem.hpp"
+#include "xclbin.h"
 #include "firmware_image.h"
 #include "core/pcie/linux/scan.h"
 #include "xclbin.h"
@@ -402,7 +403,7 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
 
     for (std::string t : suffix) {
 
-        std::regex e("^" FORMATTED_FW_DIR "/(.+)/(.+)/(.+)/(.+)/" hex_digit "\\." + t);
+        std::regex e("^" FORMATTED_FW_DIR "/([^/]+)/([^/]+)/([^/]+)/.+\\." + t);
         std::cmatch cm;
 
         for (recursive_directory_iterator iter(formatted_fw_dir, symlink_option::recurse), end;
@@ -418,9 +419,8 @@ std::vector<DSAInfo>& firmwareImage::getIntalledDSAs()
                 std::string pr_name = cm.str(3);
                 DSAInfo dsa(name, pr_board, pr_family, pr_name);
                 installedDSA.push_back(dsa);
-                iter.pop();
-                if (iter.level() > 0)
-		    iter.pop();
+                while (iter != end && iter.level() > 2)
+                    iter.pop();
             } else if (iter.level() > 4)
                 iter.pop();
             else
