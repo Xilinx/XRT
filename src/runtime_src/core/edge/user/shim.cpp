@@ -1470,6 +1470,16 @@ int xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz
   return (drv) ? drv->xclReadTraceData(traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample) : -EINVAL;
 }
 
+double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
+{
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  if (!drv)
+    return 0;
+  if (!(drv->profiling))
+    return 0;
+  return drv->profiling->xclGetDeviceClockFreqMHz();
+}
+
 int xclSKGetCmd(xclDeviceHandle handle, xclSKCmd *cmd)
 {
   ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
@@ -1509,11 +1519,6 @@ int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
 }
 
 size_t xclGetDeviceTimestamp(xclDeviceHandle handle)
-{
-  return 0;
-}
-
-double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
 {
   return 0;
 }
