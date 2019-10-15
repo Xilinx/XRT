@@ -38,6 +38,8 @@ ProfileIP::ProfileIP(Device* handle, int index, debug_ip_data* data)
         device = handle;
         ip_index = index;
         ip_base_address = data->m_base_address;
+        m_index = static_cast<uint64_t>(data->m_index_lowbyte) |
+                  (static_cast<uint64_t>(data->m_index_highbyte) << 8);
         ip_name.assign(reinterpret_cast<const char*>(&data->m_name), 128);
         // Strip away extraneous null characters
         ip_name.assign(ip_name.c_str()); 
@@ -178,6 +180,7 @@ void ProfileIP::showProperties()
 
     (*outputStream) << "    IP Name : " << ip_name << std::endl
                     << "    Index   : " << ip_index << std::endl
+                    << "    MIndex   : " << m_index << std::endl
                     << "    Base Address : " << std::hex << ip_base_address << std::endl
                     << std::endl;
     outputStream->flags(formatF);

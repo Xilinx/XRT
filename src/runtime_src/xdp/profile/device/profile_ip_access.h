@@ -136,6 +136,8 @@ public:
     uint32_t setLogStream(std::ostream* oStream);
     std::ostream* getLogStream() { return out_stream; }
 
+    uint64_t getMIndex() const { return m_index; }
+
 //    double getDeviceClock();
 
 //    bool   isOnEdgeDevice();
@@ -153,6 +155,8 @@ protected:
     std::ostream* out_stream = nullptr; /* Output stream for log */
 
     xdp::Device* getDevice() { return device; }
+
+    uint64_t m_index;         /* m_index field from debug IP Layout */
 
     /**
      * TODO: the exclusive context from hal
