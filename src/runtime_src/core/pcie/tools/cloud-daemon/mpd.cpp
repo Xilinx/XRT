@@ -177,7 +177,7 @@ static int connectMsd(const pcieFunc& dev, std::string &ip, uint16_t port, int i
     }
 
     int ret = 0;
-    if (read(msdfd, &ret, sizeof(ret)) != sizeof(ret) || ret) {
+    if (recv(msdfd, &ret, sizeof(ret), MSG_WAITALL) != sizeof(ret) || ret) {
         dev.log(LOG_ERR, "id not recognized by msd");
         close(msdfd);
         return -1;

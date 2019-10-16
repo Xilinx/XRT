@@ -182,7 +182,7 @@ static int verifyMpd(const pcieFunc& dev, int mpdfd, int id)
 {
     int mpdid;
 
-    if (read(mpdfd, &mpdid, sizeof(mpdid)) != sizeof(mpdid)) {
+    if (recv(mpdfd, &mpdid, sizeof(mpdid), MSG_WAITALL) != sizeof(mpdid)) {
         dev.log(LOG_ERR, "short read mpd id");
         return -EINVAL;
     }

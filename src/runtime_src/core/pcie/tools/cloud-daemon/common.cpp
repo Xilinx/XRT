@@ -61,7 +61,7 @@ size_t getSockMsgSize(const pcieFunc& dev, int sockfd)
 {
     std::unique_ptr<sw_msg> swmsg = std::make_unique<sw_msg>(0);
 
-    if (recv(sockfd, swmsg->data(), swmsg->size(), MSG_PEEK) !=
+    if (recv(sockfd, swmsg->data(), swmsg->size(), MSG_PEEK|MSG_WAITALL) !=
         static_cast<ssize_t>(swmsg->size())) {
         dev.log(LOG_ERR, "can't receive sw_chan from socket, %m");
         return 0;
