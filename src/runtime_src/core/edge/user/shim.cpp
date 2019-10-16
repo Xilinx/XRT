@@ -457,7 +457,7 @@ int ZYNQShim::xclLoadXclBin(const xclBin *buffer)
 int ZYNQShim::xclLoadAxlf(const axlf *buffer)
 {
   int ret = 0;
-  unsigned int flags = DRM_ZOCL_AXLF_NONE;
+  unsigned int flags = DRM_ZOCL_PLATFORM_BASE;
 
   /*
    * If platform is a non-PR-platform, Following check will fail. Dont download
@@ -471,23 +471,9 @@ int ZYNQShim::xclLoadAxlf(const axlf *buffer)
    */
   auto is_pr_platform = (buffer->m_header.m_mode == XCLBIN_PR ) ? true : false;
   auto is_pr_enabled = xrt_core::config::get_enable_pr(); //default value is true
-  auto is_pdi_enabled = xrt_core::config::get_pdi_load(); //default value is true
 
-  /*
-   * By default, those flags are enabled, so that if xclbin contains those
-   * sections, driver will try to download all of them.
-   *
-   * In a very rare case if the xclbin contains invalid sections,
-   * for example: both BITSTREAM and PARTIAL BITSTREAM in one xclbin,
-   * the request will be rejected by ioctl.
-   */
-  if (is_pr_platform && is_pr_enabled) {
-    flags |= DRM_ZOCL_AXLF_BITSTREAM;
-  } 
-  if (is_pdi_enabled) {
-    flags |= DRM_ZOCL_AXLF_BITSTREAM_PDI;
-    flags |= DRM_ZOCL_AXLF_AIE_PDI;
-  }
+  if (is_pr_platform && is_pr_enabled)
+    flags = DRM_ZOCL_PLATFORM_PR;
 
   drm_zocl_axlf axlf_obj = {
       .za_xclbin_ptr = const_cast<axlf *>(buffer),
@@ -665,6 +651,49 @@ int ZYNQShim::xclSKReport(uint32_t cu_idx, xrt_scu_state state)
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_SK_REPORT, &scmd);
 
   return ret;
+}
+
+int ZYNQShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex,
+  bool shared)
+{
+  unsigned int flags = shared ? ZOCL_CTX_SHARED : ZOCL_CTX_EXCLUSIVE;
+  int ret;
+
+  drm_zocl_ctx ctx = {
+    .uuid_ptr = reinterpret_cast<uint64_t>(xclbinId),
+    .uuid_size = sizeof (uuid_t) * sizeof (char),
+    .cu_index = ipIndex,
+    .flags = flags,
+    .op = ZOCL_CTX_OP_ALLOC_CTX,
+  };
+
+  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
+  return ret ? -errno : ret;
+}
+
+int ZYNQShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
+{
+  std::lock_guard<std::mutex> l(mCuMapLock);
+  int ret;
+
+  if (ipIndex < mCuMaps.size()) {
+    // Make sure no MMIO register space access when CU is released.
+    uint32_t *p = mCuMaps[ipIndex];
+    if (p) {
+      (void) munmap(p, mCuMapSize);
+      mCuMaps[ipIndex] = nullptr;
+    }
+  }
+
+  drm_zocl_ctx ctx = {
+    .uuid_ptr = reinterpret_cast<uint64_t>(xclbinId),
+    .uuid_size = sizeof (uuid_t) * sizeof (char),
+    .cu_index = ipIndex,
+    .op = ZOCL_CTX_OP_FREE_CTX,
+  };
+
+  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
+  return ret ? -errno : ret;
 }
 
 int ZYNQShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset,
@@ -1351,6 +1380,7 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
     if (ret) {
         printf("Load Xclbin Failed\n");
+
         return ret;
     }
     ret = xrt_core::scheduler::init(handle, buffer);
@@ -1505,17 +1535,20 @@ int xclSKReport(xclDeviceHandle handle, uint32_t cu_idx, xrt_scu_state state)
   return drv->xclSKReport(cu_idx, state);
 }
 
-//
-// TODO: pending implementations
-//
+/*
+ * Context switch phase 1: support xclbin swap, no cu and shared checking
+ */
 int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
-  return 0;
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+
+  return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -EINVAL;
 }
 
 int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex)
 {
-  return 0;
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -EINVAL;
 }
 
 size_t xclGetDeviceTimestamp(xclDeviceHandle handle)

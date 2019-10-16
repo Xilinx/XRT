@@ -75,6 +75,10 @@ public:
                                   xclBOProperties *properties);
   int xclExecBuf(unsigned int cmdBO);
   int xclExecWait(int timeoutMilliSec);
+
+  int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared);
+  int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex);
+
   int xclSKGetCmd(xclSKCmd *cmd);
   int xclSKCreate(unsigned int boHandle, uint32_t cu_idx);
   int xclSKReport(uint32_t cu_idx, xrt_scu_state state);

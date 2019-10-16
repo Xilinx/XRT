@@ -74,8 +74,9 @@ struct zcu_funcs {
 	/**
 	 * @get_credit:
 	 *
-	 * Try to get one credit from the CU. A credit is required before submit a
-	 * task to the CU. Otherwise, it would lead to unknown CU behaviour.
+	 * Try to get one credit from the CU. A credit is required before
+	 * submit a task to the CU. Otherwise, it would lead to unknown CU
+	 * behaviour.
 	 * Return: the number of remaining credit.
 	 */
 	int (*get_credit)(void *core);
@@ -180,5 +181,6 @@ void zocl_cu_disable_intr(struct zocl_cu *cu, u32 intr_type);
 u32  zocl_cu_clear_intr(struct zocl_cu *cu);
 
 phys_addr_t zocl_cu_get_paddr(struct zocl_cu *cu);
+void zocl_cu_status_print(struct zocl_cu *cu);
 
 #endif /* _ZOCL_CU_H_ */
