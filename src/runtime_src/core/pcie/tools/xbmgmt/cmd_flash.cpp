@@ -38,9 +38,10 @@ const char *subCmdFlashDesc = "Update SC firmware or shell on the device";
 const char *subCmdFlashUsage =
     "--scan [--verbose|--json]\n"
     "--update [--shell name [--id id]] [--card bdf] [--force]\n"
+    "--factory_reset [--card bdf]\n\n"
+    "Experts only:\n"
     "--shell --path file [--card bdf] [--type flash_type]\n"
-    "--sc_firmware --path file [--card bdf]\n"
-    "--factory_reset [--card bdf]";
+    "--sc_firmware --path file [--card bdf]";
 
 #define fmt_str		"    "
 
