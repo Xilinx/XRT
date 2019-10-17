@@ -3,8 +3,6 @@
 xclbinutil
 ----------
 
-`XCLBIN Utility Tool <https://www.xilinx.com/support/documentation/sw_manuals/xilinx2019_1/ug1279-sdx-command-utility-reference-guide.pdf>`_
-
 ``xclbinutil`` can create, modify and report xclbin content information. 
 
 Common Use Cases
@@ -45,3 +43,5 @@ This is to migrate an older xclbin binary format (via the mirror JSON data) forw
     
     xclbinutil --migrate-forward -i binary_container_1.xclbin -o output.xclbin
 
+
+For more details please refer `Vitis Application Acceleration Document` (Link to be inserted)
