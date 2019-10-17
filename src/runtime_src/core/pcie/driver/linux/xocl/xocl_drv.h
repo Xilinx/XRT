@@ -1077,6 +1077,7 @@ void xocl_subdev_fini(xdev_handle_t xdev_hdl);
 int xocl_subdev_create(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info);
 int xocl_subdev_create_by_id(xdev_handle_t xdev_hdl, int id);
+int xocl_subdev_create_by_level(xdev_handle_t xdev_hdl, int level);
 int xocl_subdev_create_all(xdev_handle_t xdev_hdl);
 void xocl_subdev_destroy_all(xdev_handle_t xdev_hdl);
 int xocl_subdev_offline_all(xdev_handle_t xdev_hdl);

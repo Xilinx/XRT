@@ -497,11 +497,11 @@ int xocl_subdev_create_by_name(xdev_handle_t xdev_hdl, char *name)
 		if (strcmp(subdev_info[i].name, name))
 			continue;
 		ret = __xocl_subdev_create(xdev_hdl, &subdev_info[i]);
-		if (ret)
-			goto failed;
+		if (ret && ret != -EEXIST && ret != -EAGAIN)
+			break;
+		ret = 0;
 	}
 
-failed:
 	xocl_unlock_xdev(xdev_hdl);
 	if (subdev_info)
 		vfree(subdev_info);
@@ -538,11 +538,11 @@ static int __xocl_subdev_create_by_id(xdev_handle_t xdev_hdl, int id)
 		if (subdev_info[i].id != id)
 			continue;
 		ret = __xocl_subdev_create(xdev_hdl, &subdev_info[i]);
-		if (ret)
-			goto failed;
+		if (ret && ret != -EEXIST && ret != -EAGAIN)
+			break;
+		ret = 0;
 	}
 
-failed:
 	if (subdev_info)
 		vfree(subdev_info);
 
@@ -572,10 +572,10 @@ int xocl_subdev_create_by_level(xdev_handle_t xdev_hdl, int level)
 			continue;
 		ret = __xocl_subdev_create(xdev_hdl, &subdev_info[i]);
 		if (ret && ret != -EEXIST && ret != -EAGAIN)
-			goto failed;
+			break;
+		ret = 0;
 	}
 
-failed:
 	xocl_unlock_xdev(xdev_hdl);
 	if (subdev_info)
 		vfree(subdev_info);
@@ -593,6 +593,7 @@ struct resource *xocl_subdev_get_ioresource(xdev_handle_t xdev_hdl,
 	for (i = 0; i < subdev_num; i++) {
 		for (j = 0; j < subdev_info[i].num_res; j++) {
 			if ((subdev_info[i].res[j].flags & IORESOURCE_MEM) &&
+			    subdev_info[i].res[j].name &&
 			    !strncmp(subdev_info[i].res[j].name, res_name,
 			    strlen(res_name))) {
 				xocl_unlock_xdev(xdev_hdl);
@@ -612,29 +613,9 @@ int xocl_subdev_create_all(xdev_handle_t xdev_hdl)
 	struct FeatureRomHeader rom;
 	int	i, ret = 0, subdev_num = 0;
 	struct xocl_subdev_info *subdev_info = NULL;
-	u32 dyn_shell_magic;
 
 	xocl_lock_xdev(xdev_hdl);
-	/* read pci capability to determine if this is multi RP board */
-	/* currently, it is hard coded to 0xB0 as a work around */
-	ret = pci_read_config_dword(core->pdev, 0xB0, &dyn_shell_magic);
-	if (!ret && ((dyn_shell_magic & 0xff00ffff) == 0x01000009)) {
-		for (i = 0; i < ARRAY_SIZE(dsa_map); i++) {
-			if (dsa_map[i].type != XOCL_DSAMAP_DYNAMIC)
-				continue;
-			if ((core->pdev->vendor == dsa_map[i].vendor ||
-				dsa_map[i].vendor == (u16)PCI_ANY_ID) &&
-				(core->pdev->device == dsa_map[i].device ||
-				dsa_map[i].device == (u16)PCI_ANY_ID) &&
-				(core->pdev->subsystem_device ==
-				dsa_map[i].subdevice ||
-				dsa_map[i].subdevice == (u16)PCI_ANY_ID)) {
-				xocl_fill_dsa_priv(xdev_hdl, dsa_map[i].priv_data);
-				XDEV(xdev_hdl)->priv.vbnv = dsa_map[i].vbnv;
-				break;
-			}
-		}
-	} else {
+	if (!(core->priv.flags & XOCL_DSAFLAG_DYNAMIC_IP)) {
 		if (core->dyn_subdev_num + core->priv.subdev_num == 0)
 			goto failed;
 
@@ -979,8 +960,31 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
 	struct pci_dev *pdev = core->pdev;
+	u32 dyn_shell_magic;
+	int i, ret;
 
 	memset(&core->priv, 0, sizeof(core->priv));
+	core->priv.vbnv = in->vbnv;
+	/* read pci capability to determine if this is multi RP board */
+	/* currently, it is hard coded to 0xB0 as a work around */
+	ret = pci_read_config_dword(core->pdev, 0xB0, &dyn_shell_magic);
+	if (!ret && ((dyn_shell_magic & 0xff00ffff) == 0x01000009)) {
+		for (i = 0; i < ARRAY_SIZE(dsa_map); i++) {
+			if (dsa_map[i].type != XOCL_DSAMAP_DYNAMIC)
+				continue;
+			if ((core->pdev->vendor == dsa_map[i].vendor ||
+				dsa_map[i].vendor == (u16)PCI_ANY_ID) &&
+				(core->pdev->device == dsa_map[i].device ||
+				dsa_map[i].device == (u16)PCI_ANY_ID) &&
+				(core->pdev->subsystem_device ==
+				dsa_map[i].subdevice ||
+				dsa_map[i].subdevice == (u16)PCI_ANY_ID)) {
+				in = dsa_map[i].priv_data;
+				core->priv.vbnv = dsa_map[i].vbnv;
+				break;
+			}
+		}
+	}
 	/*
 	 * follow xilinx device id, subsystem id codeing rules to set dsa
 	 * private data. And they can be overwrited in subdev header file
@@ -998,11 +1002,15 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 	core->priv.board_name = in->board_name;
 	core->priv.mpsoc = in->mpsoc;
 	core->priv.p2p_bar_sz = in->p2p_bar_sz;
-	core->priv.vbnv = in->vbnv;
 	if (in->flags & XOCL_DSAFLAG_SET_DSA_VER)
 		core->priv.dsa_ver = in->dsa_ver;
 	if (in->flags & XOCL_DSAFLAG_SET_XPR)
 		core->priv.xpr = in->xpr;
+
+	if (in->sched_bin)
+		core->priv.sched_bin = in->sched_bin;
+	else
+		core->priv.sched_bin = "xilinx/sched.bin";
 }
 
 int xocl_xrt_version_check(xdev_handle_t xdev_hdl,

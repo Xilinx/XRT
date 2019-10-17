@@ -1296,7 +1296,7 @@ ert_start_cmd(struct xocl_ert *xert, struct xocl_cmd *xcmd)
 
 	// write packet minus header
 	SCHED_DEBUGF("++ slot_idx=%d, slot_addr=0x%x\n", xcmd->slot_idx, slot_addr);
-	memcpy_toio(xert->cq_base + slot_addr + 4, ecmd->data, (cmd_packet_size(xcmd) - 1) * sizeof(u32));
+	xocl_memcpy_toio(xert->cq_base + slot_addr + 4, ecmd->data, (cmd_packet_size(xcmd) - 1) * sizeof(u32));
 
 	// write header
 	iowrite32(ecmd->header, xert->cq_base + slot_addr);
@@ -1356,22 +1356,22 @@ ert_read_custat(struct xocl_ert *xert, struct xocl_cmd *xcmd, unsigned int num_c
 			return;
 
 		// cu execution stat
-		memcpy_fromio(xert->cu_usage, xert->cq_base + slot_addr + (idx << 2),
+		xocl_memcpy_fromio(xert->cu_usage, xert->cq_base + slot_addr + (idx << 2),
 			      ert_num_cus * sizeof(u32));
 		idx += ert_num_cus;
 
 		// ert cu status
-		memcpy_fromio(xert->cu_status, xert->cq_base + slot_addr + (idx << 2),
+		xocl_memcpy_fromio(xert->cu_status, xert->cq_base + slot_addr + (idx << 2),
 			      ert_num_cus * sizeof(u32));
 		idx += ert_num_cus;
 
 		// ert cq status
-		memcpy_fromio(xert->cq_slot_status, xert->cq_base + slot_addr + (idx << 2),
+		xocl_memcpy_fromio(xert->cq_slot_status, xert->cq_base + slot_addr + (idx << 2),
 			      ert_num_cq_slots * sizeof(u32));
 	}
 	else {
 		// Old ERT command style populates only cu usage past header
-		memcpy_fromio(xert->cu_usage, xert->cq_base + slot_addr + 4,
+		xocl_memcpy_fromio(xert->cu_usage, xert->cq_base + slot_addr + 4,
 			      num_cus * sizeof(u32));
 	}
 }
@@ -1466,6 +1466,7 @@ struct exec_core {
 	void __iomem		   *base;
 	void __iomem		   *csr_base;
 	void __iomem		   *cq_base;
+	unsigned int               cq_size;
 	u32			   intr_base;
 	u32			   intr_num;
 	char			   ert_cfg_priv;
@@ -1641,9 +1642,17 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	userpf_info(xdev, "ert per feature rom = %d", ert);
 	userpf_info(xdev, "dsa52 = %d", dsa);
 
-	if (XOCL_DSA_IS_VERSAL(xdev) && !cfg->polling) {
+	if (XOCL_DSA_IS_VERSAL(xdev)) {
 		userpf_info(xdev, "force polling mode for versal");
 		cfg->polling = true;
+
+		/*
+		 * For versal device, we will use ert_full if we are
+		 * configured as ert mode even dataflow is configured.
+		 * And we do not support ert_poll.
+		 */
+		ert_full = cfg->ert;
+		ert_poll = false;
 	}
 
 	/* Mark command as control command to force slot 0 execution */
@@ -1655,14 +1664,14 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		return 1;
 	}
 
-	SCHED_DEBUG("configuring scheduler\n");
-	exec->num_slots = ERT_CQ_SIZE / cfg->slot_size;
+	SCHED_DEBUGF("configuring scheduler cq_size(%d)\n", exec->cq_size);
+	exec->num_slots = exec->cq_size / cfg->slot_size;
 	exec->num_cus = cfg->num_cus;
 	exec->num_cdma = 0;
 
 	if (ert_poll)
 		// Adjust slot size for ert poll mode
-		cfg->slot_size = ERT_CQ_SIZE / MAX_CUS;
+		cfg->slot_size = exec->cq_size / MAX_CUS;
 
 	// Create CUs for regular CUs
 	for (cuidx = 0; cuidx < exec->num_cus; ++cuidx) {
@@ -1706,7 +1715,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 
 	if (ert_poll) {
 		userpf_info(xdev, "configuring dataflow mode with ert polling\n");
-		cfg->slot_size = ERT_CQ_SIZE / MAX_CUS;
+		cfg->slot_size = exec->cq_size / MAX_CUS;
 		cfg->cu_isr = 0;
 		cfg->cu_dma = 0;
 		ert_cfg(exec->ert, cfg->slot_size, cfg->cq_int);
@@ -1931,14 +1940,15 @@ exec_create(struct platform_device *pdev, struct xocl_scheduler *xs)
 	if (!res) {
 		xocl_info(&pdev->dev, "did not get CQ resource");
 	} else {
-		exec->cq_base = ioremap_nocache(res->start,
-			res->end - res->start + 1);
+		exec->cq_size = res->end - res->start + 1;
+		exec->cq_base = ioremap_nocache(res->start, exec->cq_size);
 		if (!exec->cq_base) {
 			if (exec->csr_base)
 				iounmap(exec->csr_base);
 			xocl_err(&pdev->dev, "map CQ resource failed");
 			return NULL;
 		}
+		xocl_info(&pdev->dev, "CQ size is %d\n", exec->cq_size);
 	}
 
 	exec->pdev = pdev;
@@ -2089,15 +2099,19 @@ exec_update_custatus(struct exec_core *exec)
 	unsigned int cuidx;
 	// ignore kdma which on least at u200_2018_30_1 is not BAR mapped
 	for (cuidx = 0; cuidx < exec->num_cus - exec->num_cdma; ++cuidx) {
-		struct xocl_cu *xcu = exec->cus[cuidx];
 		// skip free running kernels which is not BAR mapped
-		exec->cu_status[cuidx] =
-			exec_valid_cu(exec, cuidx) ? cu_status(xcu) : 0;
+		if (!exec_valid_cu(exec, cuidx))
+			exec->cu_status[cuidx] = 0;
+		else if (exec_is_ert(exec))
+			exec->cu_status[cuidx] = ert_cu_status(exec->ert, cuidx)
+				? AP_START : AP_IDLE;
+		else 
+			exec->cu_status[cuidx] = cu_status(exec->cus[cuidx]);
 	}
+
 	// reset cdma status
 	for (; cuidx < exec->num_cus; ++cuidx)
 		exec->cu_status[cuidx] = 0;
-	
 }
 
 /*
@@ -2114,7 +2128,7 @@ exec_finish_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	if (cmd_opcode(xcmd) != ERT_CU_STAT)
 		return 0;
 	
-	if (exec_is_ert(exec)) 
+	if (exec_is_ert(exec))
 		ert_read_custat(exec->ert, xcmd, exec->num_cus);
 
 	exec_update_custatus(exec);

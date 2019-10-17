@@ -10,7 +10,7 @@ Please read PetaLinux document before you read the rest of this page.
 
 *NOTE* The purpose of this page is only for easy to get started.
 If you are interested in details about creating software images for embedded platform.
-Please read the Software Platform section of Xilinx Document UG1146.
+Please read the Software Platform section of Xilinx® Document UG1146.
 
 Prerequisite
 ~~~~~~~~~~~~

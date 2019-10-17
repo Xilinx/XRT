@@ -252,7 +252,7 @@ int main(int argc, char *argv[])
         {"tracefunnel", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
         {"monitorfifolite", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
         {"monitorfifofull", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
-        {"accelmonitor", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
+        {"accelmonitor", no_argument, 0, xcldev::STATUS_AM},
         {"stream", no_argument, 0, xcldev::STREAM},
         {0, 0, 0, 0}
     };
@@ -333,6 +333,15 @@ int main(int argc, char *argv[])
                 return -1;
             }
             subcmd = xcldev::STREAM;
+            break;
+        }
+        case xcldev::STATUS_AM : {
+            //--am
+            if (cmd != xcldev::STATUS) {
+                std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n";
+                return -1;
+            }
+            ipmask |= static_cast<unsigned int>(xcldev::STATUS_AM_MASK);
             break;
         }
         //short options are dealt here
@@ -558,7 +567,7 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    for (unsigned i = 0; i < total; i++) {
+    for (unsigned i = 0; i < count; i++) {
         try {
             deviceVec.emplace_back(new xcldev::device(i, nullptr));
         } catch (const std::exception& ex) {
@@ -636,6 +645,9 @@ int main(int argc, char *argv[])
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_ASM_MASK)) {
             result = deviceVec[index]->readASMCounters() ;
         }
+        if (ipmask & static_cast<unsigned int>(xcldev::STATUS_AM_MASK)) {
+            result = deviceVec[index]->readAMCounters();
+        }
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SPC_MASK)) {
 	  result = deviceVec[index]->readStreamingCheckers(1);
 	}
@@ -688,6 +700,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  flash   [-d card] -a <all | shell> [-t timestamp]\n";
     std::cout << "  flash   [-d card] -p msp432_firmware\n";
     std::cout << "  flash   scan [-v]\n";
+    std::cout << "\nNOTE: card for -d option can either be id or bdf\n";
     std::cout << "\nExamples:\n";
     std::cout << "Print JSON file to stdout\n";
     std::cout << "  " << exe << " dump\n";
@@ -712,7 +725,7 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "List the debug IPs available on the platform\n";
     std::cout << "  " << exe << " status \n";
     std::cout << "Validate installation on card 1\n";
-    std::cout << "  " << exe << " validate -d 1\n";
+    std::cout << "  " << exe << " validate -d 0000:02:00.0\n";
 }
 
 std::unique_ptr<xcldev::device> xcldev::xclGetDevice(unsigned index)
@@ -918,19 +931,19 @@ void testCaseProgressReporter(bool *quit)
     }
 }
 
-inline const char* value_or_empty(const char* value)
+inline const char* getenv_or_empty(const char* path)
 {
-    return value ? value : "";
+    return getenv(path) ? getenv(path) : "";
 }
 
 static void set_shell_path_env(const std::string& var_name,
-    const std::string& trailing_path, int overwrite)
+    const std::string& trailing_path)
 {
-    std::string xrt_path(getenv("XILINX_XRT"));
-    std::string new_path = std::string(value_or_empty(getenv(var_name.c_str())));
+    std::string xrt_path(getenv_or_empty("XILINX_XRT"));
+    std::string new_path(getenv_or_empty(var_name.c_str()));
     xrt_path += trailing_path + ":";
     new_path = xrt_path + new_path;
-    setenv(var_name.c_str(), new_path.c_str(), overwrite);
+    setenv(var_name.c_str(), new_path.c_str(), 1);
 }
 
 int runShellCmd(const std::string& cmd, std::string& output)
@@ -940,9 +953,9 @@ int runShellCmd(const std::string& cmd, std::string& output)
 
     // Fix environment variables before running test case
     setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
-    set_shell_path_env("PYTHONPATH", "/python", 0);
-    set_shell_path_env("LD_LIBRARY_PATH", "/lib", 1);
-    set_shell_path_env("PATH", "/bin", 1);
+    set_shell_path_env("PYTHONPATH", "/python");
+    set_shell_path_env("LD_LIBRARY_PATH", "/lib");
+    set_shell_path_env("PATH", "/bin");
     unsetenv("XCL_EMULATION_MODE");
 
     int stderr_fds[2];
@@ -1026,7 +1039,7 @@ int searchXsaAndDsa(int index, std::string xsaPath, std::string
         boost::filesystem::path formatted_fw_dir(FORMATTED_FW_DIR);
         std::vector<std::string> suffix = { "dsabin", "xsabin" };
         for (std::string t : suffix) {
-            std::regex e("(^" FORMATTED_FW_DIR "/.+/.+/.+/).+/(" hex_digit ")\\." + t);
+            std::regex e("(^" FORMATTED_FW_DIR "/[^/]+/[^/]+/[^/]+/).+\\." + t);
             for (boost::filesystem::recursive_directory_iterator iter(formatted_fw_dir, boost::filesystem::symlink_option::recurse), end;
                 iter != end;
             )
@@ -1034,11 +1047,34 @@ int searchXsaAndDsa(int index, std::string xsaPath, std::string
                 std::string name = iter->path().string();
                 std::cmatch cm;
 
+                dp = opendir(name.c_str());
+                if (!dp)
+                {
+                    iter.no_push();
+                }
+                else
+                {
+                    closedir(dp);
+                }
+
                 std::regex_match(name.c_str(), cm, e);
                 if (cm.size() > 0)
                 {
-                    std::string uuid = cm.str(2);
-                    if (uuid.compare(logic_uuid) == 0)
+                    std::shared_ptr<char> dtbbuf = nullptr;
+                    std::vector<std::string> uuids;
+		    pcidev::get_axlf_section(name, PARTITION_METADATA, dtbbuf);
+		    if (dtbbuf == nullptr)
+                    {
+                        ++iter;
+                        continue;
+		    }
+		    pcidev::get_uuids(dtbbuf, uuids);
+                    if (!uuids.size())
+                    {
+                        ++iter;
+                        continue;
+		    }
+                    if (uuids[0].compare(logic_uuid) == 0)
                     {
                         path = cm.str(1) + "test/";
                         return EXIT_SUCCESS;
@@ -1049,16 +1085,7 @@ int searchXsaAndDsa(int index, std::string xsaPath, std::string
                     iter.pop();
                     continue;
                 }
-                dp = opendir(name.c_str());
-                if (!dp)
-                {
-                    iter.no_push();
-                }
-                else
-                {
-                    closedir(dp);
-                }
-                ++iter;
+		++iter;
             }
         }
         output += "ERROR: Failed to find xclbin in ";
@@ -1243,15 +1270,21 @@ int xcldev::device::auxConnectionTest(void)
 
     if (!name.empty()) {
         for (auto bd : auxPwrRequiredBoard) {
-            if (bd.find(name) != std::string::npos) {
+            if (name.find(bd) != std::string::npos) {
                 auxBoard = true;
                 break;
             }
         }
     }
 
+    if (!auxBoard) {
+        std::cout << "AUX power connector not available. Skipping validation"
+                  << std::endl;
+        return -EOPNOTSUPP;
+    }
+
     //check aux cable if board u200, u250, u280
-    if(auxBoard && max_power == 0) {
+    if(max_power == 0) {
         std::cout << "AUX POWER NOT CONNECTED, ATTENTION" << std::endl;
         std::cout << "Board not stable for heavy acceleration tasks." << std::endl;
         return 1;
@@ -1625,7 +1658,7 @@ int xcldev::xclReset(int argc, char *argv[])
 
     int err = d->reset(XCL_USER_RESET);
     if (err)
-        std::cout << "ERROR: " << strerror(err) << std::endl;
+        std::cout << "ERROR: " << strerror(std::abs(err)) << std::endl;
     return err;
 }
 
@@ -1760,7 +1793,10 @@ int xcldev::device::testP2p()
     }
 
     for(int32_t i = 0; i < map->m_count && ret == 0; i++) {
-        if(map->m_mem_data[i].m_type != MEM_DDR4 || !map->m_mem_data[i].m_used)
+        const char *name = (const char *)map->m_mem_data[i].m_tag;
+        if ((std::strncmp(name, "HBM", std::strlen("HBM")) && 
+            std::strncmp(name, "DDR", std::strlen("DDR"))) ||
+            !map->m_mem_data[i].m_used)
             continue;
 
         std::cout << "Performing P2P Test on " << map->m_mem_data[i].m_tag << " ";
@@ -1852,7 +1888,7 @@ int xcldev::xclP2p(int argc, char *argv[])
     } else if (ret == 0) {
         std::cout << "P2P is disabled" << std::endl;
     } else if (ret)
-        std::cout << "ERROR: " << strerror(ret) << std::endl;
+        std::cout << "ERROR: " << strerror(std::abs(ret)) << std::endl;
 
     return ret;
 }

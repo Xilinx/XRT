@@ -39,7 +39,7 @@ xma_dec_plugins_load(XmaSystemCfg      *systemcfg,
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_DECODER_MOD, "%s()\n", __func__);
     // Load the xmaplugin library as it is a dependency for all plugins
-    void *xmahandle = dlopen("libxmaplugin_legacy.so",
+    void *xmahandle = dlopen("libxmaplugin.so",
                              RTLD_LAZY | RTLD_GLOBAL);
     if (!xmahandle)
     {

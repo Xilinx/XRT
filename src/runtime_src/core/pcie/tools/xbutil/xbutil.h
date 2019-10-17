@@ -94,13 +94,15 @@ enum subcommand {
     STATUS_SPC,
     STREAM,
     STATUS_UNSUPPORTED,
+    STATUS_AM,
 };
 enum statusmask {
     STATUS_NONE_MASK = 0x0,
     STATUS_AIM_MASK = 0x1,
     STATUS_LAPC_MASK = 0x2,
     STATUS_ASM_MASK = 0x4,
-    STATUS_SPC_MASK = 0x8
+    STATUS_SPC_MASK = 0x8,
+    STATUS_AM_MASK = 0x10,
 };
 enum p2pcommand {
     P2P_ENABLE = 0x0,
@@ -135,7 +137,8 @@ static const std::pair<std::string, subcommand> subcmd_pairs[] = {
     std::make_pair("aim", STATUS_AIM),
     std::make_pair("lapc", STATUS_LAPC),
     std::make_pair("asm", STATUS_ASM),
-    std::make_pair("stream", STREAM)
+    std::make_pair("stream", STREAM),
+    std::make_pair("accelmonitor", STATUS_AM)
 };
 
 static const std::map<MEM_TYPE, std::string> memtype_map = {
@@ -852,10 +855,14 @@ public:
 
         // firewall
         unsigned int level = 0, status = 0;
-        pcidev::get_dev(m_idx)->sysfs_get<unsigned int>( "firewall", "detected_level",  errmsg, level, 0 );
-        pcidev::get_dev(m_idx)->sysfs_get<unsigned int>( "firewall", "detected_status", errmsg, status, 0 ); 
+        unsigned long long time = 0;
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned int>( "firewall", "detected_level",      errmsg, level, 0 );
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned int>( "firewall", "detected_status",     errmsg, status, 0 ); 
+        pcidev::get_dev(m_idx)->sysfs_get<unsigned long long>( "firewall", "detected_time", errmsg, time, 0 ); 
         sensor_tree::put( "board.error.firewall.firewall_level", level );
-        sensor_tree::put( "board.error.firewall.status",         parseFirewallStatus(status) );
+        sensor_tree::put( "board.error.firewall.firewall_status", status );
+        sensor_tree::put( "board.error.firewall.firewall_time", time );
+        sensor_tree::put( "board.error.firewall.status", parseFirewallStatus(status) );
         
         // memory
         xclDeviceUsage devstat = { 0 };
@@ -1011,6 +1018,9 @@ public:
             }
             ostr << std::endl;
         }
+        ostr << "DNA" << std::endl;
+        ostr << sensor_tree::get<std::string>( "board.info.dna", "N/A" ) << std::endl;
+
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Temperature(C)\n";
@@ -1056,26 +1066,34 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.12v_sw.voltage"  )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.mgt_vtt.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.1v2_btm.voltage" ) << std::endl;
-        ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "DNA" << std::setw(16) << "VCC3V3 VOL"  << std::endl;
+        ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "VCCINT BRAM VOL" << std::setw(16) << "VCC3V3 VOL"  << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.current" )
-             << std::setw(16) << sensor_tree::get<std::string>( "board.info.dna", "N/A" )
+             << std::setw(16) << sensor_tree::get<std::string>( "board.physical.electrical.vccint_bram.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vcc3v3.voltage"  ) << std::endl;
         ostr << std::setw(16) << "3V3 PEX CURR" << std::setw(16) << "VCC0V85 CURR" << std::setw(16) << "HBM1V2 VOL" << std::setw(16) << "VPP2V5 VOL"  << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.3v3_pex.current" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.0v85.current" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.hbm_1v2.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vpp2v5.voltage"  ) << std::endl;
-        ostr << std::setw(16) << "VCCINT BRAM VOL" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vccint_bram.voltage" ) << std::endl;
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Card Power(W)\n";
         ostr << sensor_tree::get_pretty<unsigned>( "board.physical.power" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Firewall Last Error Status\n";
-        ostr << "Level " << std::setw(2) << sensor_tree::get( "board.error.firewall.firewall_level", -1 ) << ": 0x0"
+        unsigned short lvl = sensor_tree::get( "board.error.firewall.firewall_level", 0 );
+        ostr << "Level " << std::setw(2) << lvl << ": 0x"
+             << std::hex << sensor_tree::get( "board.error.firewall.firewall_status", -1 ) << std::dec
              << sensor_tree::get<std::string>( "board.error.firewall.status", "N/A" ) << std::endl;
+        if (lvl != 0) {
+            char cbuf[80];
+            time_t stamp = static_cast<time_t>(sensor_tree::get( "board.error.firewall.firewall_time", 0 ));
+            struct tm *ts = localtime(&stamp);
+            strftime(cbuf, sizeof(cbuf), "%a %Y-%m-%d %H:%M:%S %Z", ts);
+            ostr << "Error occurred on: " << cbuf << std::endl;
+        }
+        ostr << std::endl;
         ostr << "ECC Error Status\n";
         ostr << std::left << std::setw(8) << "Tag" << std::setw(12) << "Errors"
              << std::setw(10) << "CE Count" << std::setw(10) << "UE Count"
@@ -1477,6 +1495,8 @@ public:
     int memread(std::string aFilename, unsigned long long aStartAddr = 0, unsigned long long aSize = 0) {
         std::ios_base::fmtflags f(std::cout.flags());
         std::string name, errmsg;
+        xclbin_lock xclbin_lock(m_handle, m_idx);
+
         pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV", errmsg, name );
 
         if (!errmsg.empty()) {
@@ -1517,6 +1537,8 @@ public:
     int memwrite(unsigned long long aStartAddr, unsigned long long aSize, unsigned int aPattern = 'J') {
         std::ios_base::fmtflags f(std::cout.flags());
         std::string name, errmsg;
+        xclbin_lock xclbin_lock(m_handle, m_idx);
+
         pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV", errmsg, name );
 
         if (!errmsg.empty()) {
@@ -1596,6 +1618,7 @@ public:
     std::pair<size_t, size_t> getStreamName (const std::vector<std::string>& aSlotNames,
                              std::vector< std::pair<std::string, std::string> >& aStreamNames);
     int readAIMCounters();
+    int readAMCounters();
     int readASMCounters();
     int readLAPCheckers(int aVerbose);
     int readStreamingCheckers(int aVerbose);

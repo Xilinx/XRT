@@ -306,12 +306,12 @@ static int __find_firmware(struct platform_device *pdev, char *fw_name,
 	u16 vendor = le16_to_cpu(pcidev->vendor);
 	u16 subdevice = le16_to_cpu(pcidev->subsystem_device);
 	u64 timestamp = rom->header.TimeSinceEpoch;
-	char *uuid = NULL;
+	bool is_multi_rp = (strlen(rom->uuid) > 0) ? true : false;
 	int err = 0;
 
 	/* For 2RP, only uuid is provided */
-	if (strlen(rom->uuid) > 0) {
-		snprintf(fw_name, len, "xilinx/%s/%s.%s", rom->uuid, rom->uuid,
+	if (is_multi_rp) {
+		snprintf(fw_name, len, "xilinx/%s/partition.%s", rom->uuid,
 			suffix);
 	} else {
 		snprintf(fw_name, len, "xilinx/%04x-%04x-%04x-%016llx.%s",
@@ -321,15 +321,21 @@ static int __find_firmware(struct platform_device *pdev, char *fw_name,
 	/* deviceid is arg, the others are from pdev) */
 	xocl_info(&pdev->dev, "try load %s", fw_name);
 	err = request_firmware(fw, fw_name, &pcidev->dev);
-	if (err && !uuid) {
+	if (err && !is_multi_rp) {
 		snprintf(fw_name, len, "xilinx/%04x-%04x-%04x-%016llx.%s",
 			vendor, (deviceid + 1), subdevice, timestamp, suffix);
 		xocl_info(&pdev->dev, "try load %s", fw_name);
 		err = request_firmware(fw, fw_name, &pcidev->dev);
 	}
 
+	if (err && is_multi_rp) {
+		snprintf(fw_name, len, "xilinx/%s/%s.%s", rom->uuid, rom->uuid,
+			suffix);
+		err = request_firmware(fw, fw_name, &pcidev->dev);
+	}
+
 	/* Retry with the legacy dsabin */
-	if (err && !uuid) {
+	if (err && !is_multi_rp) {
 		snprintf(fw_name, len, "xilinx/%04x-%04x-%04x-%016llx.%s",
 			vendor, le16_to_cpu(pcidev->device + 1), subdevice,
 			le64_to_cpu(0x0000000000000000), suffix);

@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
         {"tracefunnel", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
         {"monitorfifolite", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
         {"monitorfifofull", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
-        {"accelmonitor", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
+        {"accelmonitor", no_argument, 0, xcldev::STATUS_AM},
         {"stream", no_argument, 0, xcldev::STREAM},
         {0, 0, 0, 0}
     };
@@ -160,6 +160,15 @@ int main(int argc, char *argv[])
                 return -1 ;
             }
             ipmask |= static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK);
+            break ;
+        }
+        case xcldev::STATUS_AM : {
+            //--accelmonitor
+            if (cmd != xcldev::STATUS) {
+                std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n" ;
+                return -1 ;
+            }
+            ipmask |= static_cast<unsigned int>(xcldev::STATUS_AM_MASK);
             break ;
         }
         case xcldev::STATUS_SPC: {
@@ -482,6 +491,8 @@ int main(int argc, char *argv[])
         result = -1;//deviceVec[index]->do_dd( ddArgs );
         break;
     case xcldev::STATUS:
+        // On edge, we have to map the debug ip control before they can be read
+        deviceVec[index]->map_debug_ip();
         if (ipmask == xcldev::STATUS_NONE_MASK) {
             //if no ip specified then read all
             //ipmask = static_cast<unsigned int>(xcldev::STATUS_SPM_MASK);
@@ -498,6 +509,9 @@ int main(int argc, char *argv[])
         }
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK)) {
 	    result = deviceVec[index]->readASMCounters() ;
+        }
+        if (ipmask & static_cast<unsigned int>(xcldev::STATUS_AM_MASK)) {
+	    result = deviceVec[index]->readAMCounters() ;
         }
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SPC_MASK)) {
 	  result = deviceVec[index]->readStreamingCheckers(1);

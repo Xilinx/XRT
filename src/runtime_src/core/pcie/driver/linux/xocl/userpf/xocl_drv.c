@@ -682,11 +682,13 @@ static void xocl_dev_percpu_kill(void *data)
 
 	percpu_ref_kill(ref);
 }
-
+#if KERNEL_VERSION(5, 3, 0) > LINUX_VERSION_CODE && \
+	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 2))
 static void xocl_dev_pgmap_kill_nop(struct percpu_ref *ref)
 {
 	/* NOP function for sanity check use only*/
 }
+#endif
 #endif
 
 void xocl_p2p_mem_release(struct xocl_dev *xdev, bool recov_bar_sz)
@@ -926,6 +928,31 @@ int xocl_pci_resize_resource(struct pci_dev *dev, int resno, int size)
 		XOCL_MODULE_NAME);
 
 	return ret;
+}
+
+int xocl_pci_rbar_refresh(struct pci_dev *dev, int resno)
+{
+	u32 ctrl;
+	u16 cmd;
+	int pos;
+
+	pos = pci_find_ext_capability(dev, PCI_EXT_CAP_ID_REBAR);
+	if (!pos) {
+		xocl_err(&dev->dev, "rebar cap does not exist");
+		return -ENOTSUPP;
+	}
+
+	pos += resno * PCI_REBAR_CTRL;
+	pci_read_config_dword(dev, pos + PCI_REBAR_CTRL, &ctrl);
+
+	pci_read_config_word(dev, PCI_COMMAND, &cmd);
+	pci_write_config_word(dev, PCI_COMMAND, cmd & ~PCI_COMMAND_MEMORY);
+
+	pci_write_config_dword(dev, pos + PCI_REBAR_CTRL, ctrl);
+
+	pci_write_config_word(dev, PCI_COMMAND, cmd | PCI_COMMAND_MEMORY);
+
+	return 0;
 }
 
 static int identify_bar(struct xocl_dev *xdev)

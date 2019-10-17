@@ -423,6 +423,14 @@ DeviceIntf::~DeviceIntf()
 
     ifs.close();
 
+    auto sorter = [] (const ProfileIP* lhs, const ProfileIP* rhs)
+    {
+      return lhs->getMIndex() < rhs->getMIndex();
+    };
+    std::sort(aimList.begin(), aimList.end(), sorter);
+    std::sort(amList.begin(), amList.end(), sorter);
+    std::sort(asmList.begin(), asmList.end(), sorter);
+
 #if 0
     for(auto mon : aimList) {
         mon->showProperties();

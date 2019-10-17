@@ -442,18 +442,12 @@ static int health_check_cb(void *data)
 {
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)data;
 	struct xcl_mailbox_req mbreq = { 0 };
-	bool tripped;
+	bool tripped, latched = false;
 	void __iomem *shutdown_clk = xocl_iores_get_base(lro, IORES_CLKSHUTDOWN);
-	uint32_t latched;
+	uint32_t clk_status;
 
 	if (!health_check)
 		return 0;
-
-	if (shutdown_clk) {
-		latched = XOCL_READ_REG32(shutdown_clk);
-		if (latched & 0x1)
-			mgmt_err(lro, "Card shutting down! Power or Temp may exceed limits");
-	}
 
 	mbreq.req = XCL_MAILBOX_REQ_FIREWALL;
 
@@ -461,10 +455,19 @@ static int health_check_cb(void *data)
 
 	if (!tripped) {
 		check_sensor(lro);
+		if (shutdown_clk) {
+			clk_status = XOCL_READ_REG32(shutdown_clk);
+			latched = clk_status & 0x1;
+			if (latched)
+				mgmt_err(lro, "Card shutting down! Power or Temp may exceed limits, notify peer");
+		}
 	} else {
-		mgmt_info(lro, "firewall tripped, notify peer");
-		(void) xocl_peer_notify(lro, &mbreq, sizeof(struct xcl_mailbox_req));
+		mgmt_err(lro, "firewall tripped, notify peer");
 	}
+
+	/* Press doomsday button */
+	if (latched || tripped)
+		(void) xocl_peer_notify(lro, &mbreq, sizeof(struct xcl_mailbox_req));
 
 	return 0;
 }
@@ -687,32 +690,6 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	}
 
 	switch (req->req) {
-	case XCL_MAILBOX_REQ_LOCK_BITSTREAM: {
-		struct xcl_mailbox_req_bitstream_lock *bitstm_lock =
-			(struct xcl_mailbox_req_bitstream_lock *)req->data;
-		if (payload_len < sizeof(*bitstm_lock)) {
-			mgmt_err(lro, "peer request dropped, wrong size\n");
-			break;
-		}
-		ret = xocl_icap_lock_bitstream(lro,
-			(xuid_t *)bitstm_lock->uuid);
-		(void) xocl_peer_response(lro, req->req, msgid,
-			&ret, sizeof(ret));
-		break;
-	}
-	case XCL_MAILBOX_REQ_UNLOCK_BITSTREAM: {
-		struct xcl_mailbox_req_bitstream_lock *bitstm_lock =
-			(struct xcl_mailbox_req_bitstream_lock *)req->data;
-		if (payload_len < sizeof(*bitstm_lock)) {
-			mgmt_err(lro, "peer request dropped, wrong size\n");
-			break;
-		}
-		ret = xocl_icap_unlock_bitstream(lro,
-			(xuid_t *)bitstm_lock->uuid);
-		(void) xocl_peer_response(lro, req->req, msgid, &ret,
-			sizeof(ret));
-		break;
-	}
 	case XCL_MAILBOX_REQ_HOT_RESET:
 		ret = (int) reset_hot_ioctl(lro);
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
@@ -1035,7 +1012,6 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		goto err_init_subdev;
 	}
 
-
 	mutex_init(&lro->core.lock);
 	rwlock_init(&lro->core.rwlock);
 
@@ -1105,14 +1081,11 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FEATURE_ROM);
 
 	/*
-	 * if can not find BLP metadata, it has to bring up flash to
+	 * if can not find BLP metadata, it has to bring up flash and xmc to
 	 * allow user switch BLP
 	 */
-	if ((dev_info->flags & XOCL_DSAFLAG_DYNAMIC_IP) && !lro->bld_blob) {
-		struct xocl_subdev_info flash_info = XOCL_DEVINFO_FLASH_BLP;
+	(void) xocl_subdev_create_by_level(lro, XOCL_SUBDEV_LEVEL_BLD);
 
-		xocl_subdev_create(lro, &flash_info);
-	}
 
 
 	return 0;

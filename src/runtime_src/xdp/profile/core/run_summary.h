@@ -39,7 +39,8 @@ class RunSummary {
     enum FileType {
       FT_UNKNOWN,
       FT_PROFILE,
-      FT_TRACE
+      FT_TRACE,
+      FT_WDB
     };
 
   public:

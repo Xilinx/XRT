@@ -238,8 +238,8 @@ zocl_hls_check(void *core, struct zcu_tasks_info *tasks_info)
 	struct zcu_core *cu_core = core;
 	u32 version;
 	u32 ctrl_reg;
-	u32 ready_cnt;
-	u32 done_cnt;
+	u32 ready_cnt = 0;
+	u32 done_cnt = 0;
 
 	/* done is indicated by AP_DONE(2) alone or by AP_DONE(2) | AP_IDLE(4)
 	 * but not by AP_IDLE itself.  Since 0x10 | (0x10 | 0x100) = 0x110
@@ -247,14 +247,15 @@ zocl_hls_check(void *core, struct zcu_tasks_info *tasks_info)
 	 */
 	ctrl_reg  = ioread32(cu_core->vaddr);
 	version   = (ctrl_reg & CU_VERSION_MASK) >> 8;
-	ready_cnt = (ctrl_reg & CU_READY_CNT_MASK) >> 16;
-	done_cnt  = (ctrl_reg & CU_DONE_CNT_MASK) >> 24;
 
 	/* For the old version of HLS adapter
 	 * There is no ready and done counter. If done bit is 1, means CU is
 	 * ready for a new command and a command was done.
 	 */
-	if (version == 0 && ctrl_reg & CU_AP_DONE) {
+	if (version != 0) {
+		ready_cnt = (ctrl_reg & CU_READY_CNT_MASK) >> 16;
+		done_cnt  = (ctrl_reg & CU_DONE_CNT_MASK) >> 24;
+	} else if (ctrl_reg & CU_AP_DONE) {
 		ready_cnt = 1;
 		done_cnt = 1;
 
@@ -271,6 +272,7 @@ zocl_hls_check(void *core, struct zcu_tasks_info *tasks_info)
 			DRM_ERROR("AP_DONE is not zero: 0x%x", ctrl_reg);
 
 	}
+
 	tasks_info->num_tasks_ready = ready_cnt;
 	tasks_info->num_tasks_done = done_cnt;
 }

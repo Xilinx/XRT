@@ -40,6 +40,7 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
     XmaBufferObj b_obj;
     XmaBufferObj b_obj_error;
     b_obj_error.data = NULL;
+    b_obj_error.ref_cnt = 0;
     b_obj_error.size = 0;
     b_obj_error.paddr = 0;
     b_obj_error.bank_index = -1;
@@ -47,6 +48,8 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
     b_obj_error.device_only_buffer = false;
     b_obj_error.private_do_not_touch = NULL;
     b_obj.data = NULL;
+    b_obj.ref_cnt = 0;
+    b_obj.user_ptr = NULL;
     b_obj.device_only_buffer = false;
     b_obj.private_do_not_touch = NULL;
 
@@ -128,13 +131,17 @@ XmaBufferObj xma_plg_buffer_alloc_arg_num(XmaSession s_handle, size_t size, bool
     XmaBufferObj b_obj;
     XmaBufferObj b_obj_error;
     b_obj_error.data = NULL;
+    b_obj_error.ref_cnt = 0;
     b_obj_error.size = 0;
     b_obj_error.paddr = 0;
     b_obj_error.bank_index = -1;
     b_obj_error.dev_index = -1;
     b_obj_error.device_only_buffer = false;
     b_obj_error.private_do_not_touch = NULL;
+    b_obj_error.user_ptr = NULL;
     b_obj.data = NULL;
+    b_obj.ref_cnt = 0;
+    b_obj.user_ptr = NULL;
     b_obj.device_only_buffer = false;
     b_obj.private_do_not_touch = NULL;
 
@@ -217,13 +224,17 @@ xma_plg_buffer_alloc_ddr(XmaSession s_handle, size_t size, bool device_only_buff
     XmaBufferObj b_obj;
     XmaBufferObj b_obj_error;
     b_obj_error.data = NULL;
+    b_obj_error.ref_cnt = 0;
     b_obj_error.size = 0;
     b_obj_error.paddr = 0;
     b_obj_error.bank_index = -1;
     b_obj_error.dev_index = -1;
     b_obj_error.device_only_buffer = false;
     b_obj_error.private_do_not_touch = NULL;
+    b_obj_error.user_ptr = NULL;
     b_obj.data = NULL;
+    b_obj.ref_cnt = 0;
+    b_obj.user_ptr = NULL;
     b_obj.device_only_buffer = false;
     b_obj.private_do_not_touch = NULL;
 
@@ -376,7 +387,7 @@ xma_plg_buffer_free(XmaSession s_handle, XmaBufferObj b_obj)
     b_obj_priv->size = -1;
     b_obj_priv->bank_index = -1;
     b_obj_priv->dev_index = -1;
-    free(b_obj_priv);
+    delete b_obj_priv;
 }
 
 int32_t
@@ -1062,3 +1073,85 @@ int32_t xma_plg_channel_id(XmaSession s_handle) {
     }
     return s_handle.channel_id;
 }
+
+int32_t xma_plg_add_buffer_to_data_buffer(XmaDataBuffer *data, XmaBufferObj *dev_buf) {
+    if (data == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
+                "%s(): data XmaDataBuffer is NULL\n", __func__);
+        return XMA_ERROR;
+    }
+    if (dev_buf == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
+                "%s(): dev_buf XmaBufferObj is NULL\n", __func__);
+        return XMA_ERROR;
+    }
+    if (xma_check_device_buffer(dev_buf) != XMA_SUCCESS) {
+        return XMA_ERROR;
+    }
+    if (data->data.buffer_type != NO_BUFFER) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
+                "%s(): Buffer already has assigned memory. Invalid XmaDataBuffer type\n", __func__);
+        return XMA_ERROR;
+    }
+    data->data.buffer = dev_buf->data;
+    data->data.xma_device_buf = dev_buf;
+    if (dev_buf->device_only_buffer) {
+        data->data.buffer_type = XMA_DEVICE_ONLY_BUFFER_TYPE;
+    } else {
+        data->data.buffer_type = XMA_DEVICE_BUFFER_TYPE;
+    }
+    data->alloc_size = dev_buf->size;
+    data->data.is_clone = true;//so that others do not free the device buffer. Plugin owns device buffer
+
+    return XMA_SUCCESS;
+}
+
+int32_t xma_plg_add_buffer_to_frame(XmaFrame *frame, XmaBufferObj **dev_buf_list, uint32_t num_dev_buf) {
+    if (frame == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
+                "%s(): frame XmaFrame is NULL\n", __func__);
+        return XMA_ERROR;
+    }
+    if (dev_buf_list == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
+                "%s(): dev_buf_list XmaBufferObj is NULL\n", __func__);
+        return XMA_ERROR;
+    }
+    if (num_dev_buf > XMA_MAX_PLANES) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
+                "%s(): num_dev_buf is more than max planes in frame\n", __func__);
+        return XMA_ERROR;
+    }
+    if (num_dev_buf == 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
+                "%s(): num_dev_buf is zero\n", __func__);
+        return XMA_ERROR;
+    }
+    for (uint32_t i = 0; i < num_dev_buf; i++) {
+        if (xma_check_device_buffer(dev_buf_list[i]) != XMA_SUCCESS) {
+            return XMA_ERROR;
+        }
+    }
+    if (frame->data[0].buffer_type != NO_BUFFER) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
+                "%s(): Frame already has assigned memory. Invalid frame buffer type\n", __func__);
+        return XMA_ERROR;
+    }
+    for (uint32_t i = 0; i < num_dev_buf; i++) {
+        if (frame->data[i].buffer_type != NO_BUFFER) {
+            break;
+        }
+        frame->data[i].buffer = dev_buf_list[i]->data;
+        frame->data[i].xma_device_buf = dev_buf_list[i];
+        if (dev_buf_list[i]->device_only_buffer) {
+            frame->data[i].buffer_type = XMA_DEVICE_ONLY_BUFFER_TYPE;
+        } else {
+            frame->data[i].buffer_type = XMA_DEVICE_BUFFER_TYPE;
+        }
+        //frame->data[i].alloc_size = dev_buf_list[i].size;
+        frame->data[i].is_clone = true;//so that others do not free the device buffer. Plugin owns device buffer
+    }
+
+    return XMA_SUCCESS;
+}
+
