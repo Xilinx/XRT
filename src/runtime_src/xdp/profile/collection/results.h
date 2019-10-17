@@ -276,9 +276,8 @@ namespace xdp {
   public:
     void write(ProfileWriterI* writer) const override;
   public:
-    // DeviceTrace* Next = nullptr;
-    DeviceTrace* Next;
-    size_t Size;
+    DeviceTrace* Next = nullptr;
+    size_t Size = 0;
     // Singly linked list to pool and recycle the DeviceTrace objects
     static DeviceTrace* RecycleHead;
 

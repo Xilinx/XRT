@@ -29,6 +29,7 @@
 #include <sys/mman.h>
 #include <thread>
 #include "core/common/config_reader.h"
+#include "core/common/xclbin_parser.h"
 
 namespace ZYNQ {
 
@@ -208,6 +209,7 @@ int ZYNQShim::xclLoadXclBin(const xclBin *header) {
   memcpy((char*) (ZYNQ_HW_EM::remotePortMappedPointer), &cPacketEndChar, 1);*/
 
   /* for emulation, we don't download */
+  mKernelClockFreq = xrt_core::xclbin::get_kernel_freq(header);
   drm_zocl_axlf axlf_obj = {
     .za_xclbin_ptr = const_cast<axlf *>(header),
     .za_flags = DRM_ZOCL_AXLF_NONE,

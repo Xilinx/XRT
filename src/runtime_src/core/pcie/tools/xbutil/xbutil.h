@@ -26,6 +26,7 @@
 #include <iomanip>
 #include <sstream>
 #include <string>
+#include <boost/property_tree/json_parser.hpp>
 
 #include "xrt.h"
 #include "xclperf.h"
@@ -53,6 +54,7 @@ int xclUpdateSchedulerStat(xclDeviceHandle); // exposed by shim
 #define XCL_NO_SENSOR_DEV_S     0xffff
 #define XCL_INVALID_SENSOR_VAL 0
 
+#define indent(level)   std::string((level) * 4, ' ')
 /*
  * Simple command line tool to query and interact with SDx PCIe devices
  * The tool statically links with xcldma HAL driver inorder to avoid
@@ -92,13 +94,15 @@ enum subcommand {
     STATUS_SPC,
     STREAM,
     STATUS_UNSUPPORTED,
+    STATUS_AM,
 };
 enum statusmask {
     STATUS_NONE_MASK = 0x0,
     STATUS_AIM_MASK = 0x1,
     STATUS_LAPC_MASK = 0x2,
     STATUS_ASM_MASK = 0x4,
-    STATUS_SPC_MASK = 0x8
+    STATUS_SPC_MASK = 0x8,
+    STATUS_AM_MASK = 0x10,
 };
 enum p2pcommand {
     P2P_ENABLE = 0x0,
@@ -133,7 +137,8 @@ static const std::pair<std::string, subcommand> subcmd_pairs[] = {
     std::make_pair("aim", STATUS_AIM),
     std::make_pair("lapc", STATUS_LAPC),
     std::make_pair("asm", STATUS_ASM),
-    std::make_pair("stream", STREAM)
+    std::make_pair("stream", STREAM),
+    std::make_pair("accelmonitor", STATUS_AM)
 };
 
 static const std::map<MEM_TYPE, std::string> memtype_map = {
@@ -604,22 +609,16 @@ public:
         const mem_topology *map = (mem_topology *)buf.data();
         unsigned numDDR = 0;
 
-        if(!buf.empty())
-            numDDR = map->m_count;
-
-        if(numDDR == 0) {
-            ss << "-- none found --. See 'xbutil program'.\n";
-        } else if(numDDR < 0) {
-            ss << "WARNING: 'mem_topology' invalid, unable to report topology. "
-                << "Has the bitstream been loaded? See 'xbutil program'.";
-            lines.push_back(ss.str());
+        if(buf.empty() || map->m_count == 0) {
             return;
         } else {
-            ss << std::setw(16) << "Tag"  << std::setw(12) << "Type"
-                << std::setw(12) << "Temp" << std::setw(8) << "Size";
-            ss << std::setw(16) << "Mem Usage" << std::setw(8) << "BO nums"
-                << "\n";
+            numDDR = map->m_count;
         }
+
+        ss << std::setw(16) << "Tag"  << std::setw(12) << "Type"
+           << std::setw(12) << "Temp" << std::setw(8) << "Size";
+        ss << std::setw(16) << "Mem Usage" << std::setw(8) << "BO nums"
+           << "\n";
 
         pcidev::get_dev(m_idx)->sysfs_get("", "memstat_raw", errmsg, mm_buf);
         if(mm_buf.empty())
@@ -856,11 +855,16 @@ public:
         sensor_tree::put( "board.physical.power", static_cast<unsigned>(sysfs_power())); 
 
         // firewall
-        unsigned short level = 0, status = 0;
+        unsigned short level = 0;
+        unsigned int status = 0;
+        unsigned long long time = 0;
         pcidev::get_dev(m_idx)->sysfs_get( "firewall", "detected_level",  errmsg, level );
         pcidev::get_dev(m_idx)->sysfs_get( "firewall", "detected_status", errmsg, status ); 
+        pcidev::get_dev(m_idx)->sysfs_get( "firewall", "detected_time", errmsg, time ); 
         sensor_tree::put( "board.error.firewall.firewall_level", level );
-        sensor_tree::put( "board.error.firewall.status",         parseFirewallStatus(status) );
+        sensor_tree::put( "board.error.firewall.firewall_status", status );
+        sensor_tree::put( "board.error.firewall.firewall_time", time );
+        sensor_tree::put( "board.error.firewall.status", parseFirewallStatus(status) );
         
         // memory
         xclDeviceUsage devstat = { 0 };
@@ -916,6 +920,45 @@ public:
         return 0;
     }
 
+    void printTree (std::ostream& ostr, boost::property_tree::ptree &pt, int level) const
+    {
+        if (pt.empty()) {
+            ostr << ": " << pt.data() << std::endl;
+        } else {
+            if (level > 0)
+                ostr << std::endl; 
+            for (auto pos = pt.begin(); pos != pt.end();) {
+                std::cout << indent(level+1) << pos->first;
+                printTree(ostr, pos->second, level + 1);
+                ++pos;
+            }
+        }
+        return;
+    }
+
+    int dumpPartitionInfo(std::ostream& ostr) const
+    {
+        std::vector<std::string> partinfo;
+        pcidev::get_dev(m_idx)->get_partinfo(partinfo);
+
+        for (unsigned int i = 0; i < partinfo.size(); i++)
+        {
+            auto info = partinfo[i];
+            if (info.empty())
+                continue;
+            boost::property_tree::ptree ptInfo;
+            std::istringstream is(info);
+            boost::property_tree::read_json(is, ptInfo);
+            ostr << "Partition Info:" << std::endl;
+            printTree(ostr, ptInfo, 0);
+            if (i != partinfo.size() - 1)
+                ostr << std::endl;
+        }
+	if (partinfo.size())
+            ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        return 0;
+    }
+
     /*
      * dump
      *
@@ -923,6 +966,8 @@ public:
      */
     int dump(std::ostream& ostr) const {
         readSensors();
+        std::ios::fmtflags f( ostr.flags() );
+        ostr << std::left << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << std::setw(32) << "Shell" << std::setw(32) << "FPGA" << "IDCode" << std::endl;
         ostr << std::setw(32) << sensor_tree::get<std::string>( "board.info.dsa_name",  "N/A" )
@@ -988,6 +1033,9 @@ public:
             }
             ostr << std::endl;
         }
+        ostr << "DNA" << std::endl;
+        ostr << sensor_tree::get<std::string>( "board.info.dna", "N/A" ) << std::endl;
+
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Temperature(C)\n";
@@ -1033,26 +1081,34 @@ public:
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.12v_sw.voltage"  )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.mgt_vtt.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.1v2_btm.voltage" ) << std::endl;
-        ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "DNA" << std::setw(16) << "VCC3V3 VOL"  << std::endl;
+        ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "VCCINT BRAM VOL" << std::setw(16) << "VCC3V3 VOL"  << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.current" )
-             << std::setw(16) << sensor_tree::get<std::string>( "board.info.dna", "N/A" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint_bram.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vcc3v3.voltage"  ) << std::endl;
         ostr << std::setw(16) << "3V3 PEX CURR" << std::setw(16) << "VCC0V85 CURR" << std::setw(16) << "HBM1V2 VOL" << std::setw(16) << "VPP2V5 VOL"  << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.3v3_pex.current" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.0v85.current" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.hbm_1v2.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vpp2v5.voltage"  ) << std::endl;
-        ostr << std::setw(16) << "VCCINT BRAM VOL" << std::endl;
-        ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint_bram.voltage" ) << std::endl;
 
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Card Power(W)\n";
         ostr << sensor_tree::get_pretty<unsigned>( "board.physical.power" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
         ostr << "Firewall Last Error Status\n";
-        ostr << "Level " << std::setw(2) << sensor_tree::get( "board.error.firewall.firewall_level", -1 ) << ": 0x0"
+        unsigned short lvl = sensor_tree::get( "board.error.firewall.firewall_level", 0 );
+        ostr << "Level " << std::setw(2) << lvl << ": 0x"
+             << std::hex << sensor_tree::get( "board.error.firewall.firewall_status", -1 ) << std::dec
              << sensor_tree::get<std::string>( "board.error.firewall.status", "N/A" ) << std::endl;
+        if (lvl != 0) {
+            char cbuf[80];
+            time_t stamp = static_cast<time_t>(sensor_tree::get( "board.error.firewall.firewall_time", 0 ));
+            struct tm *ts = localtime(&stamp);
+            strftime(cbuf, sizeof(cbuf), "%a %Y-%m-%d %H:%M:%S %Z", ts);
+            ostr << "Error occurred on: " << cbuf << std::endl;
+        }
+        ostr << std::endl;
         ostr << "ECC Error Status\n";
         ostr << std::left << std::setw(8) << "Tag" << std::setw(12) << "Errors"
              << std::setw(10) << "CE Count" << std::setw(10) << "UE Count"
@@ -1062,8 +1118,8 @@ public:
             int index = std::stoi(v.first);
             if( index >= 0 ) {
               std::string tag, st;
-              unsigned int ce_cnt, ue_cnt;
-              uint64_t ce_ffa, ue_ffa;
+              unsigned int ce_cnt = 0, ue_cnt = 0;
+              uint64_t ce_ffa = 0, ue_ffa = 0;
               for (auto& subv : v.second) {
                   if( subv.first == "tag" ) {
                       tag = subv.second.get_value<std::string>();
@@ -1238,6 +1294,8 @@ public:
             // eat the exception, probably bad path
         }
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        dumpPartitionInfo(ostr);
+        ostr.flags(f);
         return 0;
     }
 
@@ -1446,6 +1504,10 @@ public:
 
     int memread(std::string aFilename, unsigned long long aStartAddr = 0, unsigned long long aSize = 0) {
         std::ios_base::fmtflags f(std::cout.flags());
+        std::string name, errmsg;
+        xclbin_lock xclbin_lock(m_handle, m_idx);
+
+        pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV", errmsg, name );
 
         if (strstr(name().c_str(), "-xare")) {//This is ARE device
           if (aStartAddr > get_ddr_mem_size()) {
@@ -1479,6 +1541,15 @@ public:
 
     int memwrite(unsigned long long aStartAddr, unsigned long long aSize, unsigned int aPattern = 'J') {
         std::ios_base::fmtflags f(std::cout.flags());
+        std::string name, errmsg;
+        xclbin_lock xclbin_lock(m_handle, m_idx);
+
+        pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV", errmsg, name );
+
+        if (!errmsg.empty()) {
+            std::cout << errmsg << std::endl;
+            return -EINVAL;
+        }
 
         if (strstr(name().c_str(), "-xare")) {//This is ARE device
             if (aStartAddr > get_ddr_mem_size()) {
@@ -1545,6 +1616,7 @@ public:
     std::pair<size_t, size_t> getStreamName (const std::vector<std::string>& aSlotNames,
                              std::vector< std::pair<std::string, std::string> >& aStreamNames);
     int readAIMCounters();
+    int readAMCounters();
     int readASMCounters();
     int readLAPCheckers(int aVerbose);
     int readStreamingCheckers(int aVerbose);
@@ -1672,6 +1744,7 @@ private:
     int dmaXbtest(void);
 
     int pcieLinkTest(void);
+    int auxConnectionTest(void);
     int verifyKernelTest(void);
     int bandwidthKernelTest(void);
     // testFunc must return 0 for success, 1 for warning, and < 0 for error

@@ -95,7 +95,8 @@ uint32_t TraceFifoFull::getNumTraceSamples()
 size_t TraceFifoFull::reset()
 {
     // Reset logic
-
+    mclockTrainingdone = false;
+    mfirstTimestamp = 0;
     return 0;
 }
 
@@ -263,12 +264,7 @@ uint32_t TraceFifoFull::readTraceForEdgeDevice(xclTraceResultsVector& traceVecto
 
 void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t numSamples, void* data, uint32_t wordsPerSample)
 {
-    // ******************************
-    // Read & process all trace FIFOs
-    // ******************************
-    static unsigned long long firstTimestamp;
     xclTraceResults results = {};
-    uint64_t previousTimestamp = 0;
     for (uint32_t i = 0; i < numSamples; i++) {
 
       // Old method has issues with emulation trace
@@ -284,22 +280,19 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
         continue;
 
       // Poor Man's reset
-      if (i == 0)
-        firstTimestamp = currentSample & 0x1FFFFFFFFFFF;
+      if (i == 0 && !mclockTrainingdone)
+        mfirstTimestamp = currentSample & 0x1FFFFFFFFFFF;
 
       // This section assumes that we write 8 timestamp packets in startTrace
       int mod = (i % 4);
       unsigned int clockWordIndex = 7;
-      if (i > clockWordIndex || mod == 0) {
-        memset(&results, 0, sizeof(xclTraceResults));
-      }
-      if (i <= clockWordIndex) {
+      if (i <= clockWordIndex && !mclockTrainingdone) {
         if (mod == 0) {
           uint64_t currentTimestamp = currentSample & 0x1FFFFFFFFFFF;
-          if (currentTimestamp >= firstTimestamp)
-            results.Timestamp = currentTimestamp - firstTimestamp;
+          if (currentTimestamp >= mfirstTimestamp)
+            results.Timestamp = currentTimestamp - mfirstTimestamp;
           else
-            results.Timestamp = currentTimestamp + (0x1FFFFFFFFFFF - firstTimestamp);
+            results.Timestamp = currentTimestamp + (0x1FFFFFFFFFFF - mfirstTimestamp);
         }
         uint64_t partial = (((currentSample >> 45) & 0xFFFF) << (16 * mod));
         results.HostTimestamp = results.HostTimestamp | partial;
@@ -313,15 +306,15 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
                           << " Timestamp : " << results.Timestamp << "   "
                           << " Host Timestamp : " << std::hex << results.HostTimestamp << std::endl;
           }
-          //results.isClockTrain = true;
-	  results.isClockTrain = 1 ;
+          results.isClockTrain = 1 ;
           traceVector.mArray[static_cast<int>(i/4)] = results;    // save result
+          memset(&results, 0, sizeof(xclTraceResults));
         }
         continue;
       }
 
-      // Zynq Packet Format
-      results.Timestamp = (currentSample & 0x1FFFFFFFFFFF) - firstTimestamp;
+      // Trace Packet Format
+      results.Timestamp = (currentSample & 0x1FFFFFFFFFFF) - mfirstTimestamp;
       results.EventType = ((currentSample >> 45) & 0xF) ? XCL_PERF_MON_END_EVENT :
           XCL_PERF_MON_START_EVENT;
       results.TraceID = (currentSample >> 49) & 0xFFF;
@@ -330,12 +323,16 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
       results.Error = (currentSample >> 63) & 0x1;
       results.EventID = XCL_PERF_MON_HW_EVENT;
       results.EventFlags = ((currentSample >> 45) & 0xF) | ((currentSample >> 57) & 0x10) ;
-      //results.isClockTrain = false;
       results.isClockTrain = 0 ;
 
-      traceVector.mArray[i - clockWordIndex + 1] = results;   // save result
+      int idx = mclockTrainingdone ? i : i - clockWordIndex + 1;
+      if (idx < 0)
+        continue;
+      traceVector.mArray[idx] = results;   // save result
+      memset(&results, 0, sizeof(xclTraceResults));
 
       if(out_stream) {
+        uint64_t previousTimestamp = 0;
         auto packet_dec = std::bitset<64>(currentSample).to_string();
         (*out_stream) << "  Trace sample " << std::dec << std::setw(5) << i << ": "
                       <<  packet_dec.substr(0,19) << " : " << packet_dec.substr(19)
@@ -352,6 +349,7 @@ void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t
         previousTimestamp = results.Timestamp;
       }
     }
+    mclockTrainingdone = true;
 }
 
 void TraceFifoFull::showProperties()

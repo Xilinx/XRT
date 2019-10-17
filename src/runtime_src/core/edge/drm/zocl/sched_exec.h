@@ -209,10 +209,17 @@ struct sched_cmd {
 	 */
 	int check_timeout;
 
+	/*
+	 * If this flag is set, record time stamps in the user's command
+	 * package when the command state change.
+	 */
+	bool timestamp_enabled;
+
 	/* The actual cmd object representation */
 	union {
 		struct ert_packet *packet;
 		struct ert_start_copybo_cmd *ert_cp;
+		struct ert_start_kernel_cmd *ert_cu;
 	};
 
 	zocl_dma_handle_t dma_handle;
@@ -234,6 +241,7 @@ struct sched_ops {
 int sched_init_exec(struct drm_device *drm);
 int sched_fini_exec(struct drm_device *drm);
 
+int zocl_exec_reset(struct drm_device *dev);
 void zocl_track_ctx(struct drm_device *dev, struct sched_client_ctx *fpriv);
 void zocl_untrack_ctx(struct drm_device *dev, struct sched_client_ctx *fpriv);
 

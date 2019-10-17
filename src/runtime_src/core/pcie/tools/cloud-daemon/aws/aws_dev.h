@@ -58,24 +58,24 @@ public:
     AwsDev(size_t index, const char *logfileName);
     ~AwsDev();
 
-    int awsGetIcap(std::unique_ptr<xcl_pr_region> &resp);
-    int awsGetSensor(std::unique_ptr<xcl_sensor> &resp);
-    int awsGetBdinfo(std::unique_ptr<xcl_board_info> &resp);
-    int awsGetMig(std::unique_ptr<std::vector<char>> &resp, size_t &resp_len);
-    int awsGetFirewall(std::unique_ptr<xcl_mig_ecc> &resp);
-    int awsGetDna(std::unique_ptr<xcl_dna> &resp);
-    int awsGetSubdev(std::unique_ptr<std::vector<char>> &resp, size_t &resp_len);
+    int awsGetIcap(xcl_pr_region *resp);
+    int awsGetSensor(xcl_sensor *resp);
+    int awsGetBdinfo(xcl_board_info *resp);
+    int awsGetMig(char *resp, size_t resp_len);
+    int awsGetFirewall(xcl_mig_ecc *resp);
+    int awsGetDna(xcl_dna *resp);
+    int awsGetSubdev(char *resp, size_t resp_len);
     // Bitstreams
-    int awsLoadXclBin(const xclBin *&buffer);
+    int awsLoadXclBin(const xclBin *buffer);
     //int xclBootFPGA();
     int awsResetDevice();
-    int awsReClock2(xclmgmt_ioc_freqscaling *&obj);
-    int awsLockDevice();
-    int awsUnlockDevice();
+    int awsReClock2(const xclmgmt_ioc_freqscaling *obj);
+    int awsProgramShell();
+    int awsReadP2pBarAddr(const xcl_mailbox_p2p_bar_addr *addr);
+    int awsUserProbe(xcl_mailbox_conn_resp *resp);
     bool isGood();
 private:
     const int mBoardNumber;
-    bool mLocked;
     std::ofstream mLogStream;
 #ifdef INTERNAL_TESTING_FOR_AWS
     int mMgtHandle;
@@ -87,17 +87,18 @@ private:
 #endif
 };
 
-int get_remote_msd_fd(size_t index, int& fd);
-int awsLoadXclBin(size_t index, const axlf *&xclbin);
-int awsGetIcap(size_t index, std::unique_ptr<xcl_pr_region> &resp);
-int awsGetSensor(size_t index, std::unique_ptr<xcl_sensor> &resp);
-int awsGetBdinfo(size_t index, std::unique_ptr<xcl_board_info> &resp);
-int awsGetMig(size_t index, std::unique_ptr<std::vector<char>> &resp, size_t &resp_len);
-int awsGetFirewall(size_t index, std::unique_ptr<xcl_mig_ecc> &resp);
-int awsGetDna(size_t index, std::unique_ptr<xcl_dna> &resp);
-int awsGetSubdev(size_t index, std::unique_ptr<std::vector<char>> &resp, size_t &resp_len);
-int awsLockDevice(size_t index);
-int awsUnlockDevice(size_t index);
-int awsResetDevice(size_t index);
-int awsReClock2(size_t index, struct xclmgmt_ioc_freqscaling *&obj);
+int get_remote_msd_fd(size_t index, int* fd);
+int awsLoadXclBin(size_t index, const axlf *xclbin, int *resp);
+int awsGetIcap(size_t index, xcl_pr_region *resp);
+int awsGetSensor(size_t index, xcl_sensor *resp);
+int awsGetBdinfo(size_t index, xcl_board_info *resp);
+int awsGetMig(size_t index, char *resp, size_t resp_len);
+int awsGetFirewall(size_t index, xcl_mig_ecc *resp);
+int awsGetDna(size_t index, xcl_dna *resp);
+int awsGetSubdev(size_t index, char *resp, size_t resp_len);
+int awsResetDevice(size_t index, int *resp);
+int awsReClock2(size_t index, const xclmgmt_ioc_freqscaling *obj, int *resp);
+int awsUserProbe(size_t index, xcl_mailbox_conn_resp *resp);
+int awsProgramShell(size_t index, int *resp);
+int awsReadP2pBarAddr(size_t index, const xcl_mailbox_p2p_bar_addr *addr, int *resp);
 #endif

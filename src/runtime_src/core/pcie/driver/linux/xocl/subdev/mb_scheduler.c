@@ -1235,6 +1235,7 @@ struct xocl_ert {
 	bool         cq_intr;
 
 	// stats
+	u32          version;
 	u32          cu_usage[MAX_CUS];
 	u32          cu_status[MAX_CUS];
 	u32          cq_slot_status[MAX_SLOTS];
@@ -1295,7 +1296,7 @@ ert_start_cmd(struct xocl_ert *xert, struct xocl_cmd *xcmd)
 
 	// write packet minus header
 	SCHED_DEBUGF("++ slot_idx=%d, slot_addr=0x%x\n", xcmd->slot_idx, slot_addr);
-	memcpy_toio(xert->cq_base + slot_addr + 4, ecmd->data, (cmd_packet_size(xcmd) - 1) * sizeof(u32));
+	xocl_memcpy_toio(xert->cq_base + slot_addr + 4, ecmd->data, (cmd_packet_size(xcmd) - 1) * sizeof(u32));
 
 	// write header
 	iowrite32(ecmd->header, xert->cq_base + slot_addr);
@@ -1314,30 +1315,73 @@ ert_start_cmd(struct xocl_ert *xert, struct xocl_cmd *xcmd)
 }
 
 /**
+ * New ERT populates:
+ * [1  ]      : header
+ * [1  ]      : custat version
+ * [1  ]      : ert git version
+ * [1  ]      : number of cq slots
+ * [1  ]      : number of cus
+ * [#numcus]  : cu execution stats (number of executions)
+ * [#numcus]  : cu status (1: running, 0: idle)
+ * [#slots]   : command queue slot status
+ *
+ * Old ERT populates
+ * [1  ]      : header
+ * [#numcus]  : cu execution stats (number of executions)
  */
 static void
-ert_read_custat(struct xocl_ert *xert, struct xocl_cmd *xcmd)
+ert_read_custat(struct xocl_ert *xert, struct xocl_cmd *xcmd, unsigned int num_cus)
 {
 	u32 slot_addr = xcmd->slot_idx*xert->slot_size;
-	unsigned int idx = 1; // packet word index past header
 
-	unsigned int ert_num_cq_slots = ioread32(xert->cq_base + slot_addr + (idx++ << 2));
-	unsigned int ert_num_cus = ioread32(xert->cq_base + slot_addr + (idx++ << 2));
+	// cu stat version is 1 word past header
+	u32 custat_version = ioread32(xert->cq_base + slot_addr + 4);
 
+	xert->version = -1;
 	memset(xert->cu_usage, -1, MAX_CUS * sizeof(u32));
 	memset(xert->cu_status, -1, MAX_CUS * sizeof(u32));
 	memset(xert->cq_slot_status, -1, MAX_SLOTS * sizeof(u32));
 
-	// cu execution stat stored at scheduler level
-	memcpy_fromio(xert->cu_usage, xert->cq_base + (idx << 2), ert_num_cus * sizeof(u32));
-	idx += ert_num_cus;
+	// New command style from ERT firmware
+	if (custat_version == 0x51a10000) {
+		unsigned int idx = 2; // packet word index past header and version
+		u32 git = ioread32(xert->cq_base + slot_addr + (idx++ << 2));
+		u32 ert_num_cq_slots = ioread32(xert->cq_base + slot_addr + (idx++ << 2));
+		u32 ert_num_cus = ioread32(xert->cq_base + slot_addr + (idx++ << 2));
 
-	// ert cu status
-	memcpy_fromio(xert->cu_status, xert->cq_base + (idx << 2), ert_num_cus * sizeof(u32));
-	idx += ert_num_cus;
+		xert->version = git;
 
-	// ert cq status
-	memcpy_fromio(xert->cq_slot_status, xert->cq_base + (idx << 2), ert_num_cq_slots * sizeof(u32));
+		// bogus data in command, avoid oob writes to local arrays
+		if (ert_num_cus > MAX_CUS || ert_num_cq_slots > MAX_CUS)
+			return;
+
+		// cu execution stat
+		xocl_memcpy_fromio(xert->cu_usage, xert->cq_base + slot_addr + (idx << 2),
+			      ert_num_cus * sizeof(u32));
+		idx += ert_num_cus;
+
+		// ert cu status
+		xocl_memcpy_fromio(xert->cu_status, xert->cq_base + slot_addr + (idx << 2),
+			      ert_num_cus * sizeof(u32));
+		idx += ert_num_cus;
+
+		// ert cq status
+		xocl_memcpy_fromio(xert->cq_slot_status, xert->cq_base + slot_addr + (idx << 2),
+			      ert_num_cq_slots * sizeof(u32));
+	}
+	else {
+		// Old ERT command style populates only cu usage past header
+		xocl_memcpy_fromio(xert->cu_usage, xert->cq_base + slot_addr + 4,
+			      num_cus * sizeof(u32));
+	}
+}
+
+/**
+ */
+static inline u32
+ert_version(struct xocl_ert *xert)
+{
+	return xert->version;
 }
 
 /**
@@ -1348,12 +1392,16 @@ ert_cu_usage(struct xocl_ert *xert, unsigned int cuidx)
 	return xert->cu_usage[cuidx];
 }
 
+/**
+ */
 static inline u32
 ert_cu_status(struct xocl_ert *xert, unsigned int cuidx)
 {
 	return xert->cu_status[cuidx];
 }
 
+/**
+ */
 static inline u32
 ert_cq_status(struct xocl_ert *xert, unsigned int slotidx)
 {
@@ -1418,6 +1466,7 @@ struct exec_core {
 	void __iomem		   *base;
 	void __iomem		   *csr_base;
 	void __iomem		   *cq_base;
+	unsigned int               cq_size;
 	u32			   intr_base;
 	u32			   intr_num;
 	char			   ert_cfg_priv;
@@ -1576,7 +1625,7 @@ static int
 exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 {
 	struct xocl_dev *xdev = exec_get_xdev(exec);
-	uint32_t *cdma = xocl_cdma_addr(xdev);
+	uint32_t *cdma = xocl_rom_cdma_addr(xdev);
 	unsigned int dsa = exec->ert_cfg_priv;
 	struct ert_configure_cmd *cfg = xcmd->ert_cfg;
 	bool ert = XOCL_DSA_IS_VERSAL(xdev) ? 1 : xocl_mb_sched_on(xdev);
@@ -1593,9 +1642,17 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	userpf_info(xdev, "ert per feature rom = %d", ert);
 	userpf_info(xdev, "dsa52 = %d", dsa);
 
-	if (XOCL_DSA_IS_VERSAL(xdev) && !cfg->polling) {
+	if (XOCL_DSA_IS_VERSAL(xdev)) {
 		userpf_info(xdev, "force polling mode for versal");
 		cfg->polling = true;
+
+		/*
+		 * For versal device, we will use ert_full if we are
+		 * configured as ert mode even dataflow is configured.
+		 * And we do not support ert_poll.
+		 */
+		ert_full = cfg->ert;
+		ert_poll = false;
 	}
 
 	/* Mark command as control command to force slot 0 execution */
@@ -1607,14 +1664,14 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		return 1;
 	}
 
-	SCHED_DEBUG("configuring scheduler\n");
-	exec->num_slots = ERT_CQ_SIZE / cfg->slot_size;
+	SCHED_DEBUGF("configuring scheduler cq_size(%d)\n", exec->cq_size);
+	exec->num_slots = exec->cq_size / cfg->slot_size;
 	exec->num_cus = cfg->num_cus;
 	exec->num_cdma = 0;
 
 	if (ert_poll)
 		// Adjust slot size for ert poll mode
-		cfg->slot_size = ERT_CQ_SIZE / MAX_CUS;
+		cfg->slot_size = exec->cq_size / MAX_CUS;
 
 	// Create CUs for regular CUs
 	for (cuidx = 0; cuidx < exec->num_cus; ++cuidx) {
@@ -1658,7 +1715,7 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 
 	if (ert_poll) {
 		userpf_info(xdev, "configuring dataflow mode with ert polling\n");
-		cfg->slot_size = ERT_CQ_SIZE / MAX_CUS;
+		cfg->slot_size = exec->cq_size / MAX_CUS;
 		cfg->cu_isr = 0;
 		cfg->cu_dma = 0;
 		ert_cfg(exec->ert, cfg->slot_size, cfg->cq_int);
@@ -1832,7 +1889,7 @@ exec_isr(int irq, void *arg)
 
 		/* wake up all scheduler ... currently one only */
 		scheduler_intr(exec->scheduler);
-	} else {
+	} else if (exec) {
 		userpf_err(exec_get_xdev(exec), "unhandled isr irq %d", irq);
 	}
 	SCHED_DEBUGF("<- xocl_user_event\n");
@@ -1883,14 +1940,15 @@ exec_create(struct platform_device *pdev, struct xocl_scheduler *xs)
 	if (!res) {
 		xocl_info(&pdev->dev, "did not get CQ resource");
 	} else {
-		exec->cq_base = ioremap_nocache(res->start,
-			res->end - res->start + 1);
+		exec->cq_size = res->end - res->start + 1;
+		exec->cq_base = ioremap_nocache(res->start, exec->cq_size);
 		if (!exec->cq_base) {
 			if (exec->csr_base)
 				iounmap(exec->csr_base);
 			xocl_err(&pdev->dev, "map CQ resource failed");
 			return NULL;
 		}
+		xocl_info(&pdev->dev, "CQ size is %d\n", exec->cq_size);
 	}
 
 	exec->pdev = pdev;
@@ -2041,15 +2099,19 @@ exec_update_custatus(struct exec_core *exec)
 	unsigned int cuidx;
 	// ignore kdma which on least at u200_2018_30_1 is not BAR mapped
 	for (cuidx = 0; cuidx < exec->num_cus - exec->num_cdma; ++cuidx) {
-		struct xocl_cu *xcu = exec->cus[cuidx];
 		// skip free running kernels which is not BAR mapped
-		exec->cu_status[cuidx] =
-			exec_valid_cu(exec, cuidx) ? cu_status(xcu) : 0;
+		if (!exec_valid_cu(exec, cuidx))
+			exec->cu_status[cuidx] = 0;
+		else if (exec_is_ert(exec))
+			exec->cu_status[cuidx] = ert_cu_status(exec->ert, cuidx)
+				? AP_START : AP_IDLE;
+		else 
+			exec->cu_status[cuidx] = cu_status(exec->cus[cuidx]);
 	}
+
 	// reset cdma status
 	for (; cuidx < exec->num_cus; ++cuidx)
 		exec->cu_status[cuidx] = 0;
-	
 }
 
 /*
@@ -2066,8 +2128,8 @@ exec_finish_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	if (cmd_opcode(xcmd) != ERT_CU_STAT)
 		return 0;
 	
-	if (exec_is_ert(exec)) 
-		ert_read_custat(exec->ert, xcmd);
+	if (exec_is_ert(exec))
+		ert_read_custat(exec->ert, xcmd, exec->num_cus);
 
 	exec_update_custatus(exec);
 
@@ -3977,7 +4039,7 @@ static ssize_t
 kds_numcdmas_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_xdev(dev);
-	uint32_t *cdma = xocl_cdma_addr(xdev);
+	uint32_t *cdma = xocl_rom_cdma_addr(xdev);
 	unsigned int cdmas = cdma ? 1 : 0; //TBD
 
 	return sprintf(buf, "%d\n", cdmas);
@@ -4005,6 +4067,7 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 	if (!xert)
 		goto out;
 
+	sz += sprintf(buf+sz, "ERT scheduler version : 0x%x\n", ert_version(xert));
 	sz += sprintf(buf+sz, "ERT scheduler CU state : {");
 	for (idx = 0; idx < exec->num_cus; ++idx) {
 		if (idx > 0)

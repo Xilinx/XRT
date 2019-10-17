@@ -7,7 +7,7 @@ set(Boost_USE_STATIC_RUNTIME ON)            # This is how the boost libraries we
 find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 include_directories(${Boost_INCLUDE_DIRS})
 
-if(NOT WIN32) 
+if(NOT WIN32)
 set(OPENSSL_USE_STATIC_LIBS TRUE)
 find_package(OpenSSL REQUIRED)
 find_library(CRYPTO_LIB libcrypto.a REQUIRED)
@@ -42,8 +42,8 @@ set(XCLBINCAT_SRC ${XCLBINCAT_FILES})
 
 add_executable(xclbincat ${XCLBINCAT_SRC})
 target_link_libraries(xclbincat -static ${Boost_LIBRARIES})
-# On Ubuntu 18.04 CMake was appending '-Wl,-Bdynamic' to the command line which 
-# was causing the executable to reference 'linux-vdso.so.1' which would then 
+# On Ubuntu 18.04 CMake was appending '-Wl,-Bdynamic' to the command line which
+# was causing the executable to reference 'linux-vdso.so.1' which would then
 # produce "Command not found" when running the executable.
 #   Therefore, we direct CMake to end with static, so that it doesn't do that:
 set_target_properties(xclbincat PROPERTIES LINK_SEARCH_END_STATIC 1)
@@ -66,8 +66,8 @@ set(XCLBINSPLIT_SRC ${XCLBINSPLIT_FILES})
 
 add_executable(xclbinsplit ${XCLBINSPLIT_SRC})
 target_link_libraries(xclbinsplit -static ${Boost_LIBRARIES})
-# On Ubuntu 18.04 CMake was appending '-Wl,-Bdynamic' to the command line which 
-# was causing the executable to reference 'linux-vdso.so.1' which would then 
+# On Ubuntu 18.04 CMake was appending '-Wl,-Bdynamic' to the command line which
+# was causing the executable to reference 'linux-vdso.so.1' which would then
 # produce "Command not found" when running the executable.
 #   Therefore, we direct CMake to end with static, so that it doesn't do that:
 set_target_properties(xclbinsplit PROPERTIES LINK_SEARCH_END_STATIC 1)
@@ -124,11 +124,11 @@ set(XCLBINUTIL_SRCS ${XCLBINUTIL_MAIN_FILE} ${XCLBINUTIL_FILES_SRCS})
 
 add_executable(xclbinutil ${XCLBINUTIL_SRCS})
 
-if(WIN32) 
+if(WIN32)
   add_definitions( -DBOOST_ALL_NO_LIB )
   target_link_libraries(xclbinutil PRIVATE Boost::filesystem Boost::program_options Boost::system)
 
-  # Use the static version of the run-time library 
+  # Use the static version of the run-time library
   # Note: Needed to link with boost
   if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     target_compile_options(xclbinutil PRIVATE /MTd)
@@ -146,7 +146,7 @@ else()
   if ((${LINUX_FLAVOR} STREQUAL Ubuntu) AND (${LINUX_VERSION} VERSION_GREATER 17.10))
     # Note: The following Ubuntu 18.04 target results in a execution Segmentation Fault
     #       due to dynamic library dependencies in the openssl static library.
-    #       
+    #
     #       The offending library is: libdl.so.2
     #
     #   target_link_libraries(xclbinutil -static ${Boost_LIBRARIES})
@@ -161,7 +161,11 @@ else()
     # Used the linux command 'ldd' to show the shared libraries used by the executable
     target_link_libraries(xclbinutil ${Boost_LIBRARIES})
     target_link_libraries(xclbinutil OpenSSL::Crypto)
-    target_link_libraries(xclbinutil -Bstatic ${PTHREAD_LIB})
+    if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL aarch64)
+      target_link_libraries(xclbinutil pthread)
+    else()
+      target_link_libraries(xclbinutil -Bstatic ${PTHREAD_LIB})
+    endif()
     target_link_libraries(xclbinutil ${CMAKE_DL_LIBS})   # Needs to be shared library
     target_link_libraries(xclbinutil -static-libgcc -static-libstdc++)
   else()
@@ -170,9 +174,9 @@ else()
     target_link_libraries(xclbinutil ${Z_LIB})            # OpenSSL supporting library
     target_link_libraries(xclbinutil ${DL_LIB})           # OpenSSL supporting library
     target_link_libraries(xclbinutil ${PTHREAD_LIB})      # OpenSSL supporting library
-    
-    # On Ubuntu 18.04 CMake was appending '-Wl,-Bdynamic' to the command line which 
-    # was causing the executable to reference 'linux-vdso.so.1' which would then 
+
+    # On Ubuntu 18.04 CMake was appending '-Wl,-Bdynamic' to the command line which
+    # was causing the executable to reference 'linux-vdso.so.1' which would then
     # produce "Command not found" when running the executable.
     #   Therefore, we direct CMake to end with static, so that it doesn't do that:
     set_target_properties(xclbinutil PROPERTIES LINK_SEARCH_END_STATIC 1)
@@ -214,7 +218,7 @@ if (GTEST_FOUND)
 #  add_custom_command(
 #     TARGET ${UNIT_TEST_XCLBINUTIL}
 #     COMMENT "Run xclbinutil unit-tests"
-#     POST_BUILD 
+#     POST_BUILD
 #     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 #     COMMAND ${CMAKE_CTEST_COMMAND} -C ${CMAKE_BUILD_TYPE} -R ${UNIT_TEST_XCLBINUTIL} --output-on-failures
 #  )
@@ -222,4 +226,3 @@ else()
   message (STATUS "GTest was not found, skipping generation of test executables")
 endif()
 # -----------------------------------------------------------------------------
-

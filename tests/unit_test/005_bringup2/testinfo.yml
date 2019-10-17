@@ -5,12 +5,20 @@ owner: sonals
 user:
   allowed_test_modes: [sw_emu, hw_emu, hw]
   force_makefile: "--force"
-  host_args: {all: -d acc}
+  host_args: {all: -k kernel.xclbin -d acc}
   host_cflags: ' -DDSA64'
   host_exe: host.exe
   host_src: main.cpp oclErrorCodes.cpp oclHelper.cpp
   name: 005_bringup2
-  only_host_code: 1
+  kernels:
+  - {cflags: {all: ' -I.'}, file: loopback.xo, ksrc: kernel.cl, name: loopback, type: C}
+  xclbins:
+  - files: 'loopback.xo '
+    kernels:
+    - cus: [loopback_cu0]
+      name: loopback
+      num_cus: 1
+    name: kernel.xclbin
   labels:
     test_type: ['regression']
   sdx_type: [sdx_fast]

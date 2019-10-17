@@ -618,13 +618,19 @@ namespace xdp {
     static double y2 = 0.0;
     static double x1 = 0.0;
     static double x2 = 0.0;
+    bool isDeviceFlow = mPluginHandle->getFlowMode() == xdp::RTUtil::DEVICE;
     if (!y1 && !x1) {
       y1 = static_cast <double> (hostTimestamp);
       x1 = static_cast <double> (deviceTimestamp);
     } else {
       y2 = static_cast <double> (hostTimestamp);
       x2 = static_cast <double> (deviceTimestamp);
-      mTrainSlope[type] = (y2 - y1) / (x2 - x1);
+      // slope in ns/cycle
+      if (isDeviceFlow) {
+        mTrainSlope[type] = 1000.0/mTraceClockRateMHz;
+      } else {
+        mTrainSlope[type] = (y2 - y1) / (x2 - x1);
+      }
       mTrainOffset[type] = y2 - mTrainSlope[type] * x2;
       // next time update x1, y1
       y1 = 0.0;

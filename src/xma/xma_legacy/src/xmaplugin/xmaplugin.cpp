@@ -311,9 +311,9 @@ xma_plg_register_write(XmaHwSession  s_handle,
                        size_t        offset)
 {
     xclDeviceHandle dev_handle = s_handle.dev_handle;
-    //uint64_t        dev_offset = s_handle.base_address;
+    uint64_t        dev_offset = s_handle.base_address;
     //printf("xma_plg_register_write dev_handle=%p,base_addr=0x%lx,src=%p,size=%lu,offset=0x%lx\n", dev_handle, dev_offset, src, size, offset);
-    //return xclWrite(dev_handle, XCL_ADDR_KERNEL_CTRL, dev_offset + offset, src, size);
+    /*
     uint32_t num_entries = size / 4; //Num of 32 bit register entries
     uint32_t* in1 = (uint32_t*) src;
     uint32_t cu_index;
@@ -333,6 +333,12 @@ xma_plg_register_write(XmaHwSession  s_handle,
         }
     }
     return 0;
+    */
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    return xclWrite(dev_handle, XCL_ADDR_KERNEL_CTRL, dev_offset + offset, src, size);
+#pragma GCC diagnostic pop
 }
 
 int32_t
@@ -342,12 +348,11 @@ xma_plg_register_read(XmaHwSession  s_handle,
                       size_t        offset)
 {
     xclDeviceHandle dev_handle = s_handle.dev_handle;
-    //uint64_t        dev_offset = s_handle.base_address;
-#if 0
+    uint64_t        dev_offset = s_handle.base_address;
+    /*
     printf("xma_plg_register_read dev_handle=%p,dst=%p,size=%lu,offset=%lx\n",
             dev_handle, dst, size, offset);
-#endif
-    //return xclRead(dev_handle, XCL_ADDR_KERNEL_CTRL, dev_offset + offset, dst, size);
+
     uint32_t num_entries = size / 4; //Num of 32 bit register entries
     uint32_t* out1 = (uint*) dst;
     uint32_t cu_index;
@@ -368,6 +373,12 @@ xma_plg_register_read(XmaHwSession  s_handle,
         }
     }
     return 0;
+    */
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    return xclRead(dev_handle, XCL_ADDR_KERNEL_CTRL, dev_offset + offset, dst, size);
+#pragma GCC diagnostic pop
 }
 
 void

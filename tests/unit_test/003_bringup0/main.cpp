@@ -208,15 +208,32 @@ int main(int argc, char** argv)
 
     KernelHostData hostData(length);
 
+    oclSoftware software;
+    std::memset(&software, 0, sizeof(oclSoftware));
+    std::strcpy(software.mKernelName, "loopback");
+    std::strcpy(software.mFileName, kernelFile.c_str());
+    std::sprintf(software.mCompileOptions, "");
+    
+    getOclSoftware(software, hardware);
+
     try {
         KernelDeviceData deviceData(hostData, hardware.mContext);
         cl_mem seq1 = deviceData.getSequence1();
         cl_mem seq2 = deviceData.getSequence2();
 
+        cl_int err = clSetKernelArg(software.mKernel, 0, sizeof(cl_mem), &seq1);
+        checkStatus(err);
+
+        err = clSetKernelArg(software.mKernel, 1, sizeof(cl_mem), &seq2);
+        checkStatus(err);
+
+        err = clSetKernelArg(software.mKernel, 2, 4, &length);
+        checkStatus(err);
+
         std::cout << "Sequence1: " << hostData.getSequence1() << "\n";
         std::cout << "Sequence2: " << hostData.getSequence2() << "\n";
 
-        cl_int err = clEnqueueCopyBuffer(hardware.mQueue, seq2, seq1, 0, 0, hostData.getLength(), 0, NULL, NULL);
+        err = clEnqueueCopyBuffer(hardware.mQueue, seq2, seq1, 0, 0, hostData.getLength(), 0, NULL, NULL);
         checkStatus(err);
 
         err = clFinish(hardware.mQueue);

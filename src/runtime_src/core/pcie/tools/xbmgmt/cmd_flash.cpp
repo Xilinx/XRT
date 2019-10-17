@@ -40,7 +40,7 @@ const char *subCmdFlashUsage =
     "--update [--shell name [--id id]] [--card bdf] [--force]\n"
     "--shell --path file [--card bdf] [--type flash_type]\n"
     "--sc_firmware --path file [--card bdf]\n"
-    "--reset [--card bdf]";
+    "--factory_reset [--card bdf]";
 
 #define fmt_str		"    "
 
@@ -377,7 +377,7 @@ static int autoFlash(unsigned index, std::string& shell,
             bool reboot;
             std::cout << std::endl;
             if (updateShellAndSC(p.first, p.second, reboot) == 0) {
-                std::cout << "Successfully flashed Card[" << success << "]"<< std::endl;
+                std::cout << "Successfully flashed Card[" << getBDF(p.first) << "]"<< std::endl;
                 success++;
             }
             needreboot |= reboot;
@@ -717,7 +717,7 @@ static const std::map<std::string, std::function<int(int, char **)>> optList = {
     { "--update", update },
     { "--shell", shell },
     { "--sc_firmware", sc },
-    { "--reset", reset },
+    { "--factory_reset", reset },
 };
 
 int flashHandler(int argc, char *argv[])

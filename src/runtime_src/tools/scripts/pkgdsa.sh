@@ -201,10 +201,10 @@ CardMgmtControllerFamily=""
 SchedulerFamily=""
 
 
-XBUTIL=/opt/xilinx/xrt/bin/xbutil
+XBMGMT=/opt/xilinx/xrt/bin/xbmgmt
 post_inst_msg="DSA package installed successfully.
 Please flash card manually by running below command:
-sudo ${XBUTIL} flash -a ${opt_dsa}"
+sudo ${XBMGMT} flash --update --shell ${opt_dsa}"
 
 createEntityAttributeArray ()
 {
@@ -270,6 +270,8 @@ recordDsaFiles()
 
    # Metadata
    if [ "${ENTITY_ATTRIBUTES_ARRAY[Type]}" == "META_JSON" ]; then
+     metaDataJSONFile="${ENTITY_ATTRIBUTES_ARRAY[Name]}"
+   elif [ "${ENTITY_ATTRIBUTES_ARRAY[Type]}" == "EXT_META_JSON" ]; then
      metaDataJSONFile="${ENTITY_ATTRIBUTES_ARRAY[Name]}"
    fi
 
@@ -854,7 +856,7 @@ chmod -R o=g %{buildroot}/opt/xilinx/platforms/$opt_dsa
 
 %files
 %defattr(-,root,root,-)
-/opt/xilinx
+/opt/xilinx/platforms/$opt_dsa/
 
 %changelog
 * $build_date Xilinx Inc - 5.1-1

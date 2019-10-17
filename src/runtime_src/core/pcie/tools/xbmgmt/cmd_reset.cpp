@@ -133,6 +133,9 @@ int resetHandler(int argc, char *argv[])
     int fd = dev->open("", O_RDWR);
     if (hot) {
         ret = dev->ioctl(fd, XCLMGMT_IOCHOTRESET);
+        if (ret == 0)
+            std::cout << "Successfully reset Card[" << getBDF(index)
+                      << "]"<< std::endl;
 	ret = ret ? -errno : ret;
     } else if (kernel) {
         ret = dev->ioctl(fd, XCLMGMT_IOCOCLRESET);

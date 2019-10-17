@@ -46,7 +46,7 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
     }
 
     // Load the xmaplugin library as it is a dependency for all plugins
-    void *xmahandle = dlopen("libxmaplugin.so",
+    void *xmahandle = dlopen("libxma2plugin.so",
                              RTLD_LAZY | RTLD_GLOBAL);
     if (!xmahandle)
     {
@@ -138,7 +138,7 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
         free(dec_session);
         return NULL;
     }
-    if ((uint32_t)cu_index >= hwcfg->devices[hwcfg_dev_index].number_of_cus || (cu_index < 0 && dec_props->cu_name == NULL)) {
+    if ((cu_index > 0 && (uint32_t)cu_index >= hwcfg->devices[hwcfg_dev_index].number_of_cus) || (cu_index < 0 && dec_props->cu_name == NULL)) {
         xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
                    "XMA session creation failed. Invalid cu_index = %d\n", cu_index);
         //Release singleton lock
@@ -340,7 +340,9 @@ xma_dec_session_destroy(XmaDecoderSession *session)
 
     */
     // Free the session
+    /*
     delete (XmaHwSessionPrivate*)session->base.hw_session.private_do_not_use;
+    */
     session->base.hw_session.private_do_not_use = NULL;
     session->base.plugin_data = NULL;
     session->base.stats = NULL;

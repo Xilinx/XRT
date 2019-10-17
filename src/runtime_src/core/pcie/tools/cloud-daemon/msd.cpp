@@ -42,9 +42,9 @@
 static bool quit = false;
 static const std::string configFile("/etc/msd.conf");
 // We'd like to only handle below request through daemons.
-static uint64_t chanSwitch = (1UL<<MAILBOX_REQ_TEST_READY) |
-                      (1UL<<MAILBOX_REQ_TEST_READ)  |
-                      (1UL<<MAILBOX_REQ_LOAD_XCLBIN);
+static uint64_t chanSwitch = (1UL<<XCL_MAILBOX_REQ_TEST_READY) |
+                      (1UL<<XCL_MAILBOX_REQ_TEST_READ)  |
+                      (1UL<<XCL_MAILBOX_REQ_LOAD_XCLBIN);
 static struct msd_plugin_callbacks plugin_cbs;
 static const std::string plugin_path("/opt/xilinx/xrt/lib/libmsd_plugin.so");
 
@@ -59,8 +59,8 @@ int remoteMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
 class Msd : public Common
 {
 public:
-    Msd(std::string name, std::string plugin_path) :
-        Common(name, plugin_path)
+    Msd(std::string name, std::string plugin_path, bool for_user) :
+        Common(name, plugin_path, for_user), plugin_init(nullptr), plugin_fini(nullptr)
     {
     }
 
@@ -182,7 +182,7 @@ static int verifyMpd(const pcieFunc& dev, int mpdfd, int id)
 {
     int mpdid;
 
-    if (read(mpdfd, &mpdid, sizeof(mpdid)) != sizeof(mpdid)) {
+    if (recv(mpdfd, &mpdid, sizeof(mpdid), MSG_WAITALL) != sizeof(mpdid)) {
         dev.log(LOG_ERR, "short read mpd id");
         return -EINVAL;
     }
@@ -265,15 +265,15 @@ int remoteMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
     std::unique_ptr<sw_msg>& processed)
 {
     int pass = FOR_LOCAL;
-    mailbox_req *req = reinterpret_cast<mailbox_req *>(orig->payloadData());
-    if (orig->payloadSize() < sizeof(mailbox_req)) {
+    xcl_mailbox_req *req = reinterpret_cast<xcl_mailbox_req *>(orig->payloadData());
+    if (orig->payloadSize() < sizeof(xcl_mailbox_req)) {
         dev.log(LOG_ERR, "peer request dropped, wrong size");
         return -EINVAL;
     }
-    size_t reqSize = orig->payloadSize() - sizeof(mailbox_req);
+    size_t reqSize = orig->payloadSize() - sizeof(xcl_mailbox_req);
     
     switch (req->req) {
-    case MAILBOX_REQ_LOAD_XCLBIN: {
+    case XCL_MAILBOX_REQ_LOAD_XCLBIN: {
         axlf *xclbin = reinterpret_cast<axlf *>(req->data);
         if (reqSize < sizeof(*xclbin)) {
             dev.log(LOG_ERR, "peer request dropped, wrong size");
@@ -290,7 +290,7 @@ int remoteMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
         int ret = download_xclbin(dev, req->data);
         dev.log(LOG_INFO, "xclbin download, ret=%d", ret);
         processed = std::make_unique<sw_msg>(&ret, sizeof(ret), orig->id(),
-            MB_REQ_FLAG_RESPONSE);
+            XCL_MB_REQ_FLAG_RESPONSE);
         pass = FOR_REMOTE;
         break;
     }
@@ -310,6 +310,7 @@ void msd_thread(size_t index, std::string host)
     int retfd[2];
     int ret;
     struct queue_msg msg = {0};
+    const int interval = 2;
 
     pcieFunc dev(index, false);
 
@@ -335,23 +336,23 @@ void msd_thread(size_t index, std::string host)
         // Connect to mpd.
         if (mpdfd == -1) {
             ret = connectMpd(dev, sockfd, dev.getId(), mpdfd);
-            if (ret == -EWOULDBLOCK) {
-                sleep(1);
+            if (ret) {
                 mpdfd = -1;
+                sleep(interval);
                 continue; // MPD is not ready yet, retry.
-            } else if (ret != 0) {
-                break;
             }
         }
 
         retfd[0] = retfd[1] = -100;
         // Waiting for msg to show up, interval is 3 seconds.
-        ret = waitForMsg(dev, mbxfd, mpdfd, 3, retfd);
+        ret = waitForMsg(dev, mbxfd, mpdfd, interval, retfd);
         if (ret < 0) {
             if (ret == -EAGAIN) // MPD has been quiet, retry.
                 continue;
-            else
-                break;
+
+            close(mpdfd);
+            mpdfd = -1;
+            continue;
         }
 
         msg.localFd = mbxfd;
@@ -366,25 +367,25 @@ void msd_thread(size_t index, std::string host)
                 msg.type = REMOTE_MSG;
                 msg.data = std::move(getRemoteMsg(dev, mpdfd));
                 msg.cb = remoteMsgHandler;
-            } else
+            } else {
                 continue;
-            if (msg.data == nullptr)
-                goto done;
+            }
+
             ret = handleMsg(dev, msg);
-            if (ret == -EAGAIN) { // Socket connection was lost, retry
+            if (ret) { // Socket connection was lost, retry
                 close(mpdfd);
                 mpdfd = -1;
                 continue;
-            } else if (ret != 0) {
-                goto done;
             }
         }
     }
 
 done:
     dev.updateConf("", 0, 0); // Restore default config.
-    close(mpdfd);
-    close(sockfd);
+    if (mpdfd >= 0)
+    	close(mpdfd);
+    if (sockfd >= 0)
+    	close(sockfd);
 }
 
 /*
@@ -405,7 +406,7 @@ int main(void)
     signal(SIGINT, signalHandler);
     signal(SIGTERM, signalHandler);
 
-    Msd msd("msd", plugin_path);
+    Msd msd("msd", plugin_path, false);
     msd.preStart();
     msd.start();
     msd.run();

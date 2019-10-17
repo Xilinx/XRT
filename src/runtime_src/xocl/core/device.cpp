@@ -57,11 +57,13 @@ unaligned_message(void* addr)
 static void
 userptr_bad_alloc_message(void* addr)
 {
-  xrt::message::send(xrt::message::severity_level::XRT_WARNING,
-                     "bad alloc on host pointer '"
+  xrt::message::send(xrt::message::severity_level::XRT_INFO,
+                     "might be noncontiguous host pointer '"
                      + to_hex(addr)
                      + "' detected, check dmesg for more information."
-                     + " This could lead to extra memcpy.");
+                     + " This could lead to extra memcpy."
+                     + " To avoid this, please try xclGetMemObjectFd() and xclGetMemObjectFromFd(),"
+                     + " instead of use CL_MEM_USE_HOST_PTR.");
 }
 
 static void
