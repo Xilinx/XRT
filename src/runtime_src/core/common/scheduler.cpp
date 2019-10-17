@@ -49,7 +49,7 @@ namespace {
  */
 struct buffer_object
 {
-  xrtBufferHandle bo;
+  xclBufferHandle bo;
   void* data;
   size_t size;
   xclDeviceHandle dev;

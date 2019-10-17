@@ -48,7 +48,7 @@ is_multiprocess_mode()
 
 struct shim
 {
-  using buffer_handle_type = xrtBufferHandle; // xrt.h
+  using buffer_handle_type = xclBufferHandle; // xrt.h
   unsigned int m_devidx;
   XOCL_MAP_BAR_RESULT	mappedBar[3];
   bool m_locked = false;
@@ -896,7 +896,7 @@ xclClose(xclDeviceHandle handle)
 
 
 // XRT Buffer Management APIs
-xrtBufferHandle
+xclBufferHandle
 xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned int flags)
 {
   xrt_core::message::
@@ -905,7 +905,7 @@ xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned int flags)
   return shim->alloc_bo(size, flags);
 }
 
-xrtBufferHandle
+xclBufferHandle
 xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned int flags)
 {
   xrt_core::message::
@@ -915,7 +915,7 @@ xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned i
 }
 
 void*
-xclMapBO(xclDeviceHandle handle, xrtBufferHandle boHandle, bool write)
+xclMapBO(xclDeviceHandle handle, xclBufferHandle boHandle, bool write)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclMapBO()");
@@ -924,7 +924,7 @@ xclMapBO(xclDeviceHandle handle, xrtBufferHandle boHandle, bool write)
 }
 
 void
-xclFreeBO(xclDeviceHandle handle, xrtBufferHandle boHandle)
+xclFreeBO(xclDeviceHandle handle, xclBufferHandle boHandle)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclFreeBO()");
@@ -933,7 +933,7 @@ xclFreeBO(xclDeviceHandle handle, xrtBufferHandle boHandle)
 }
 
 int
-xclSyncBO(xclDeviceHandle handle, xrtBufferHandle boHandle, xclBOSyncDirection dir, size_t size, size_t offset)
+xclSyncBO(xclDeviceHandle handle, xclBufferHandle boHandle, xclBOSyncDirection dir, size_t size, size_t offset)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclSyncBO()");
@@ -968,7 +968,7 @@ int xclCloseContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipInde
 }
 
 int
-xclExecBuf(xclDeviceHandle handle, xrtBufferHandle cmdBO)
+xclExecBuf(xclDeviceHandle handle, xclBufferHandle cmdBO)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclExecBuf()");
@@ -986,7 +986,7 @@ xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
 }
 
 int
-xclGetBOProperties(xclDeviceHandle handle, xrtBufferHandle boHandle,
+xclGetBOProperties(xclDeviceHandle handle, xclBufferHandle boHandle,
 		   struct xclBOProperties *properties)
 {
   xrt_core::message::

@@ -75,12 +75,12 @@ extern "C" {
 typedef void * xclDeviceHandle;
 
 /**
-   typedef xrtBufferHandle - opaque buffer handle
+ * typedef xclBufferHandle - opaque buffer handle
  */
 #ifdef _WIN32
-typedef void * xrtBufferHandle;
+typedef void * xclBufferHandle;
 #else
-typedef unsigned int xrtBufferHandle;
+typedef unsigned int xclBufferHandle;
 #endif
 
 struct axlf;
@@ -469,7 +469,7 @@ XCL_DRIVER_DLLESPEC int xclLogMsg(xclDeviceHandle handle, enum xrtLogMsgLevel le
  * @flags:         Specify bank information, etc
  * Return:         BO handle
  */
-XCL_DRIVER_DLLESPEC xrtBufferHandle xclAllocBO(xclDeviceHandle handle, size_t size,
+XCL_DRIVER_DLLESPEC xclBufferHandle xclAllocBO(xclDeviceHandle handle, size_t size,
        	int unused, unsigned int flags);
 
 /**
@@ -481,7 +481,7 @@ XCL_DRIVER_DLLESPEC xrtBufferHandle xclAllocBO(xclDeviceHandle handle, size_t si
  * @flags:         Specify bank information, etc
  * Return:         BO handle
  */
-XCL_DRIVER_DLLESPEC xrtBufferHandle xclAllocUserPtrBO(xclDeviceHandle handle,
+XCL_DRIVER_DLLESPEC xclBufferHandle xclAllocUserPtrBO(xclDeviceHandle handle,
 	void *userptr, size_t size, unsigned int flags);
 
 /**
@@ -490,7 +490,7 @@ XCL_DRIVER_DLLESPEC xrtBufferHandle xclAllocUserPtrBO(xclDeviceHandle handle,
  * @handle:        Device handle
  * @boHandle:      BO handle
  */
-XCL_DRIVER_DLLESPEC void xclFreeBO(xclDeviceHandle handle, xrtBufferHandle boHandle);
+XCL_DRIVER_DLLESPEC void xclFreeBO(xclDeviceHandle handle, xclBufferHandle boHandle);
 
 /**
  * xclWriteBO() - Copy-in user data to host backing storage of BO
@@ -505,7 +505,7 @@ XCL_DRIVER_DLLESPEC void xclFreeBO(xclDeviceHandle handle, xrtBufferHandle boHan
  * Copy host buffer contents to previously allocated device memory. ``seek`` specifies how many bytes
  * to skip at the beginning of the BO before copying-in ``size`` bytes of host buffer.
  */
-XCL_DRIVER_DLLESPEC size_t xclWriteBO(xclDeviceHandle handle, xrtBufferHandle boHandle,
+XCL_DRIVER_DLLESPEC size_t xclWriteBO(xclDeviceHandle handle, xclBufferHandle boHandle,
                                        const void *src, size_t size, size_t seek);
 
 /**
@@ -521,7 +521,7 @@ XCL_DRIVER_DLLESPEC size_t xclWriteBO(xclDeviceHandle handle, xrtBufferHandle bo
  * Copy contents of previously allocated device memory to host buffer. ``skip`` specifies how many bytes
  * to skip from the beginning of the BO before copying-out ``size`` bytes of device buffer.
  */
-XCL_DRIVER_DLLESPEC size_t xclReadBO(xclDeviceHandle handle, xrtBufferHandle boHandle,
+XCL_DRIVER_DLLESPEC size_t xclReadBO(xclDeviceHandle handle, xclBufferHandle boHandle,
                                      void *dst, size_t size, size_t skip);
 
 /**
@@ -535,7 +535,7 @@ XCL_DRIVER_DLLESPEC size_t xclReadBO(xclDeviceHandle handle, xrtBufferHandle boH
  * Map the contents of the buffer object into host memory
  * To unmap the buffer call POSIX unmap() on mapped void * pointer returned from xclMapBO
  */
-XCL_DRIVER_DLLESPEC void *xclMapBO(xclDeviceHandle handle, xrtBufferHandle boHandle, bool write);
+XCL_DRIVER_DLLESPEC void *xclMapBO(xclDeviceHandle handle, xclBufferHandle boHandle, bool write);
 
 /**
  * xclSyncBO() - Synchronize buffer contents in requested direction
@@ -550,7 +550,7 @@ XCL_DRIVER_DLLESPEC void *xclMapBO(xclDeviceHandle handle, xrtBufferHandle boHan
  * Synchronize the buffer contents between host and device. Depending on the memory model this may
  * require DMA to/from device or CPU cache flushing/invalidation
  */
-XCL_DRIVER_DLLESPEC int xclSyncBO(xclDeviceHandle handle, xrtBufferHandle boHandle, enum xclBOSyncDirection dir,
+XCL_DRIVER_DLLESPEC int xclSyncBO(xclDeviceHandle handle, xclBufferHandle boHandle, enum xclBOSyncDirection dir,
                                   size_t size, size_t offset);
 /**
  * xclCopyBO() - Copy device buffer contents to another buffer
@@ -567,7 +567,7 @@ XCL_DRIVER_DLLESPEC int xclSyncBO(xclDeviceHandle handle, xrtBufferHandle boHand
  * Always perform WRITE to achieve better performance, destination buffer can be on device or host
  * require DMA from device
  */
-XCL_DRIVER_DLLESPEC int xclCopyBO(xclDeviceHandle handle, xrtBufferHandle dstBoHandle, xrtBufferHandle srcBoHandle,
+XCL_DRIVER_DLLESPEC int xclCopyBO(xclDeviceHandle handle, xclBufferHandle dstBoHandle, xclBufferHandle srcBoHandle,
                                    size_t size, size_t dst_offset, size_t src_offset);
 
 /**
@@ -580,7 +580,7 @@ XCL_DRIVER_DLLESPEC int xclCopyBO(xclDeviceHandle handle, xrtBufferHandle dstBoH
  * Export a BO for import into another device or Linux subsystem which accepts DMA-BUF fd
  * This operation is backed by Linux DMA-BUF framework
  */
-XCL_DRIVER_DLLESPEC int xclExportBO(xclDeviceHandle handle, xrtBufferHandle boHandle);
+XCL_DRIVER_DLLESPEC int xclExportBO(xclDeviceHandle handle, xclBufferHandle boHandle);
 
 /**
  * xclImportBO() - Obtain BO handle for a BO represented by DMA-BUF file descriptor
@@ -593,7 +593,7 @@ XCL_DRIVER_DLLESPEC int xclExportBO(xclDeviceHandle handle, xrtBufferHandle boHa
  * Import a BO exported by another device.     *
  * This operation is backed by Linux DMA-BUF framework
  */
-XCL_DRIVER_DLLESPEC xrtBufferHandle xclImportBO(xclDeviceHandle handle, int fd, unsigned int flags);
+XCL_DRIVER_DLLESPEC xclBufferHandle xclImportBO(xclDeviceHandle handle, int fd, unsigned int flags);
 
 /**
  * xclGetBOProperties() - Obtain xclBOProperties struct for a BO
@@ -605,7 +605,7 @@ XCL_DRIVER_DLLESPEC xrtBufferHandle xclImportBO(xclDeviceHandle handle, int fd, 
  *
  * This is the prefered method for obtaining BO property information.
  */
-XCL_DRIVER_DLLESPEC int xclGetBOProperties(xclDeviceHandle handle, xrtBufferHandle boHandle,
+XCL_DRIVER_DLLESPEC int xclGetBOProperties(xclDeviceHandle handle, xclBufferHandle boHandle,
                                            struct xclBOProperties *properties);
 
 /*
@@ -619,7 +619,7 @@ XCL_DRIVER_DLLESPEC int xclGetBOProperties(xclDeviceHandle handle, xrtBufferHand
  * This API is deprecated and will be removed in future release.
  * New clients should use xclGetBOProperties() instead
  */
-inline XCL_DRIVER_DLLESPEC size_t xclGetBOSize(xclDeviceHandle handle, xrtBufferHandle boHandle)
+inline XCL_DRIVER_DLLESPEC size_t xclGetBOSize(xclDeviceHandle handle, xclBufferHandle boHandle)
 {
     struct xclBOProperties p;
     return !xclGetBOProperties(handle, boHandle, &p) ? (size_t)p.size : -1;
@@ -635,7 +635,7 @@ inline XCL_DRIVER_DLLESPEC size_t xclGetBOSize(xclDeviceHandle handle, xrtBuffer
  * @boHandle:      BO handle
  * @return         uint64_t address of the BO on success
  */
-inline XCL_DRIVER_DLLESPEC uint64_t xclGetDeviceAddr(xclDeviceHandle handle, xrtBufferHandle boHandle)
+inline XCL_DRIVER_DLLESPEC uint64_t xclGetDeviceAddr(xclDeviceHandle handle, xclBufferHandle boHandle)
 {
     struct xclBOProperties p;
     return !xclGetBOProperties(handle, boHandle, &p) ? p.paddr : -1;
@@ -768,7 +768,7 @@ XCL_DRIVER_DLLESPEC size_t xclRead(xclDeviceHandle handle, enum xclAddressSpace 
  * Submit an exec buffer for execution. The exec buffer layout is defined by struct ert_packet
  * which is defined in file *ert.h*. The BO should been allocated with DRM_XOCL_BO_EXECBUF flag.
  */
-XCL_DRIVER_DLLESPEC int xclExecBuf(xclDeviceHandle handle, xrtBufferHandle cmdBO);
+XCL_DRIVER_DLLESPEC int xclExecBuf(xclDeviceHandle handle, xclBufferHandle cmdBO);
 
 /**
  * xclExecBufWithWaitList() - Submit an execution request to the embedded (or software) scheduler
@@ -784,8 +784,8 @@ XCL_DRIVER_DLLESPEC int xclExecBuf(xclDeviceHandle handle, xrtBufferHandle cmdBO
  * handles in the wait list must have beeen submitted prior to this
  * call to xclExecBufWithWaitList.
  */
-XCL_DRIVER_DLLESPEC int xclExecBufWithWaitList(xclDeviceHandle handle, xrtBufferHandle cmdBO,
-                                               size_t num_bo_in_wait_list, xrtBufferHandle *bo_wait_list);
+XCL_DRIVER_DLLESPEC int xclExecBufWithWaitList(xclDeviceHandle handle, xclBufferHandle cmdBO,
+                                               size_t num_bo_in_wait_list, xclBufferHandle *bo_wait_list);
 
 /**
  * xclExecWait() - Wait for one or more execution events on the device
