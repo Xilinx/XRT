@@ -1237,10 +1237,10 @@ int xcldev::device::pcieLinkTest(void)
         return -EINVAL;
     }
 
-    pcidev::get_dev(m_idx)->sysfs_get( "", "link_speed",     errmsg, pcie_speed );
-    pcidev::get_dev(m_idx)->sysfs_get( "", "link_speed_max", errmsg, pcie_speed_max );
-    pcidev::get_dev(m_idx)->sysfs_get( "", "link_width",     errmsg, pcie_width );
-    pcidev::get_dev(m_idx)->sysfs_get( "", "link_width_max", errmsg, pcie_width_max );
+    pcidev::get_dev(m_idx)->sysfs_get<unsigned int>( "", "link_speed",     errmsg, pcie_speed, -1 );
+    pcidev::get_dev(m_idx)->sysfs_get<unsigned int>( "", "link_speed_max", errmsg, pcie_speed_max, -1 );
+    pcidev::get_dev(m_idx)->sysfs_get<unsigned int>( "", "link_width",     errmsg, pcie_width, -1 );
+    pcidev::get_dev(m_idx)->sysfs_get<unsigned int>( "", "link_width_max", errmsg, pcie_width_max, -1 );
     if (pcie_speed != pcie_speed_max || pcie_width != pcie_width_max) {
         std::cout << "LINK ACTIVE, ATTENTION" << std::endl;
         std::cout << "Ensure Card is plugged in to Gen"
@@ -1266,7 +1266,7 @@ int xcldev::device::auxConnectionTest(void)
     }
 
     pcidev::get_dev(m_idx)->sysfs_get("xmc", "bd_name", errmsg, name);
-    pcidev::get_dev(m_idx)->sysfs_get("xmc", "max_power",  errmsg, max_power);
+    pcidev::get_dev(m_idx)->sysfs_get<unsigned short>("xmc", "max_power",  errmsg, max_power, 0);
 
     if (!name.empty()) {
         for (auto bd : auxPwrRequiredBoard) {
@@ -1769,15 +1769,15 @@ int xcldev::device::testP2p()
     std::string errmsg;
     std::vector<char> buf;
     int ret = 0;
-    int p2p_enabled = 0;
+    bool p2p_enabled;
     xclbin_lock xclbin_lock(m_handle, m_idx);
     auto dev = pcidev::get_dev(m_idx);
 
     if (dev == nullptr)
         return -EINVAL;
 
-    dev->sysfs_get("", "p2p_enable", errmsg, p2p_enabled);
-    if (p2p_enabled != 1) {
+    dev->sysfs_get<bool>("", "p2p_enable", errmsg, p2p_enabled, false);
+    if (!p2p_enabled) {
         std::cout << "P2P BAR is not enabled. Skipping validation" << std::endl;
         return -EOPNOTSUPP;
     }
@@ -1991,7 +1991,7 @@ int xcldev::device::testM2m()
     if (dev == nullptr)
         return -EINVAL;
 
-    dev->sysfs_get("mb_scheduler", "kds_numcdmas", errmsg, m2m_enabled);
+    dev->sysfs_get<int>("mb_scheduler", "kds_numcdmas", errmsg, m2m_enabled, 0);
     if (m2m_enabled == 0) {
         std::cout << "M2M is not available. Skipping validation" << std::endl;
         return -EOPNOTSUPP;

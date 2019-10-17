@@ -527,9 +527,9 @@ void shim::xclSysfsGetErrorStatus(xclErrorStatus& stat)
     unsigned int level;
     unsigned long time;
 
-    mDev->sysfs_get("firewall", "detected_status", errmsg, status);
-    mDev->sysfs_get("firewall", "detected_level", errmsg, level);
-    mDev->sysfs_get("firewall", "detected_time", errmsg, time);
+    mDev->sysfs_get<unsigned int>("firewall", "detected_status", errmsg, status, static_cast<unsigned int>(-1));
+    mDev->sysfs_get<unsigned int>("firewall", "detected_level", errmsg, level, static_cast<unsigned int>(-1));
+    mDev->sysfs_get<unsigned long>("firewall", "detected_time", errmsg, time, static_cast<unsigned long>(-1));
 
     stat.mNumFirewalls = XCL_FW_MAX_LEVEL;
     if (level < XCL_FW_MAX_LEVEL)
@@ -561,59 +561,94 @@ void shim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     std::string s;
     std::string errmsg;
 
-    mDev->sysfs_get("", "vendor", errmsg, info->mVendorId);
-    mDev->sysfs_get("", "device", errmsg, info->mDeviceId);
-    mDev->sysfs_get("", "subsystem_device", errmsg, info->mSubsystemId);
+    mDev->sysfs_get<unsigned short>("", "vendor", errmsg, info->mVendorId, static_cast<unsigned short>(-1));
+    mDev->sysfs_get<unsigned short>("", "device", errmsg, info->mDeviceId, static_cast<unsigned short>(-1));
+    mDev->sysfs_get<unsigned short>("", "subsystem_device", errmsg, info->mSubsystemId, static_cast<unsigned short>(-1));
     info->mDeviceVersion = info->mSubsystemId & 0xff;
-    mDev->sysfs_get("", "subsystem_vendor", errmsg, info->mSubsystemVendorId);
+    mDev->sysfs_get<unsigned short>("", "subsystem_vendor", errmsg, info->mSubsystemVendorId, static_cast<unsigned short>(-1));
     info->mDataAlignment = getpagesize();
-    mDev->sysfs_get("rom", "ddr_bank_size", errmsg, info->mDDRSize);
+    mDev->sysfs_get<size_t>("rom", "ddr_bank_size", errmsg, info->mDDRSize, static_cast<unsigned short>(-1));
     info->mDDRSize = GB(info->mDDRSize);
 
     mDev->sysfs_get("rom", "VBNV", errmsg, s);
     snprintf(info->mName, sizeof (info->mName), "%s", s.c_str());
     mDev->sysfs_get("rom", "FPGA", errmsg, s);
     snprintf(info->mFpga, sizeof (info->mFpga), "%s", s.c_str());
-    mDev->sysfs_get("rom", "timestamp", errmsg, info->mTimeStamp);
-    mDev->sysfs_get("rom", "ddr_bank_count_max", errmsg, info->mDDRBankCount);
+    mDev->sysfs_get<unsigned long long>("rom", "timestamp", errmsg, info->mTimeStamp, static_cast<unsigned long long>(-1));
+    mDev->sysfs_get<unsigned short>("rom", "ddr_bank_count_max", errmsg, info->mDDRBankCount, static_cast<unsigned short>(-1));
     info->mDDRSize *= info->mDDRBankCount;
 
     info->mNumClocks = numClocks(info->mName);
 
-    mDev->sysfs_get("mb_scheduler", "kds_numcdmas", errmsg, info->mNumCDMA);
-    mDev->sysfs_get("xmc", "xmc_12v_pex_vol", errmsg, info->m12VPex);
-    mDev->sysfs_get("xmc", "xmc_12v_aux_vol", errmsg, info->m12VAux);
-    mDev->sysfs_get("xmc", "xmc_12v_pex_curr", errmsg, info->mPexCurr);
-    mDev->sysfs_get("xmc", "xmc_12v_aux_curr", errmsg, info->mAuxCurr);
-    mDev->sysfs_get("xmc", "xmc_dimm_temp0", errmsg, info->mDimmTemp[0]);
-    mDev->sysfs_get("xmc", "xmc_dimm_temp1", errmsg, info->mDimmTemp[1]);
-    mDev->sysfs_get("xmc", "xmc_dimm_temp2", errmsg, info->mDimmTemp[2]);
-    mDev->sysfs_get("xmc", "xmc_dimm_temp3", errmsg, info->mDimmTemp[3]);
-    mDev->sysfs_get("xmc", "xmc_se98_temp0", errmsg, info->mSE98Temp[0]);
-    mDev->sysfs_get("xmc", "xmc_se98_temp1", errmsg, info->mSE98Temp[1]);
-    mDev->sysfs_get("xmc", "xmc_se98_temp2", errmsg, info->mSE98Temp[2]);
-    mDev->sysfs_get("xmc", "xmc_fan_temp", errmsg, info->mFanTemp);
-    mDev->sysfs_get("xmc", "xmc_fan_rpm", errmsg, info->mFanRpm);
-    mDev->sysfs_get("xmc", "xmc_3v3_pex_vol", errmsg, info->m3v3Pex);
-    mDev->sysfs_get("xmc", "xmc_3v3_aux_vol", errmsg, info->m3v3Aux);
-    mDev->sysfs_get("xmc", "xmc_ddr_vpp_btm", errmsg, info->mDDRVppBottom);
-    mDev->sysfs_get("xmc", "xmc_ddr_vpp_top", errmsg, info->mDDRVppTop);
-    mDev->sysfs_get("xmc", "xmc_sys_5v5", errmsg, info->mSys5v5);
-    mDev->sysfs_get("xmc", "xmc_1v2_top", errmsg, info->m1v2Top);
-    mDev->sysfs_get("xmc", "xmc_1v8", errmsg, info->m1v8Top);
-    mDev->sysfs_get("xmc", "xmc_0v85", errmsg, info->m0v85);
-    mDev->sysfs_get("xmc", "xmc_mgt0v9avcc", errmsg, info->mMgt0v9);
-    mDev->sysfs_get("xmc", "xmc_12v_sw", errmsg, info->m12vSW);
-    mDev->sysfs_get("xmc", "xmc_mgtavtt", errmsg, info->mMgtVtt);
-    mDev->sysfs_get("xmc", "xmc_vcc1v2_btm", errmsg, info->m1v2Bottom);
-    mDev->sysfs_get("xmc", "xmc_vccint_vol", errmsg, info->mVccIntVol);
-    mDev->sysfs_get("xmc", "xmc_fpga_temp", errmsg, info->mOnChipTemp);
+    mDev->sysfs_get<unsigned short>("mb_scheduler", "kds_numcdmas", errmsg, info->mNumCDMA, static_cast<unsigned short>(-1));
 
-    mDev->sysfs_get("", "link_width", errmsg, info->mPCIeLinkWidth);
-    mDev->sysfs_get("", "link_speed", errmsg, info->mPCIeLinkSpeed);
-    mDev->sysfs_get("", "link_speed_max", errmsg, info->mPCIeLinkSpeedMax);
-    mDev->sysfs_get("", "link_width_max", errmsg, info->mPCIeLinkWidthMax);
-    mDev->sysfs_get("", "mig_calibration", errmsg, info->mMigCalib);
+    //get sensors
+    unsigned int m12VPex, m12VAux, mPexCurr, mAuxCurr, mDimmTemp_0, mDimmTemp_1, mDimmTemp_2, 
+        mDimmTemp_3, mSE98Temp_0, mSE98Temp_1, mSE98Temp_2, mFanTemp, mFanRpm, m3v3Pex, m3v3Aux,
+        mDDRVppBottom, mDDRVppTop, mSys5v5, m1v2Top, m1v8Top, m0v85, mMgt0v9, m12vSW, mMgtVtt,
+        m1v2Bottom, mVccIntVol,mOnChipTemp;
+    mDev->sysfs_get_sensor("xmc", "xmc_12v_pex_vol", m12VPex);
+    mDev->sysfs_get_sensor("xmc", "xmc_12v_aux_vol", m12VAux);
+    mDev->sysfs_get_sensor("xmc", "xmc_12v_pex_curr", mPexCurr);
+    mDev->sysfs_get_sensor("xmc", "xmc_12v_aux_curr", mAuxCurr);
+    mDev->sysfs_get_sensor("xmc", "xmc_dimm_temp0", mDimmTemp_0);
+    mDev->sysfs_get_sensor("xmc", "xmc_dimm_temp1", mDimmTemp_1);
+    mDev->sysfs_get_sensor("xmc", "xmc_dimm_temp2", mDimmTemp_2);
+    mDev->sysfs_get_sensor("xmc", "xmc_dimm_temp3", mDimmTemp_3);
+    mDev->sysfs_get_sensor("xmc", "xmc_se98_temp0", mSE98Temp_0);
+    mDev->sysfs_get_sensor("xmc", "xmc_se98_temp1", mSE98Temp_1);
+    mDev->sysfs_get_sensor("xmc", "xmc_se98_temp2", mSE98Temp_2);
+    mDev->sysfs_get_sensor("xmc", "xmc_fan_temp", mFanTemp);
+    mDev->sysfs_get_sensor("xmc", "xmc_fan_rpm", mFanRpm);
+    mDev->sysfs_get_sensor("xmc", "xmc_3v3_pex_vol", m3v3Pex);
+    mDev->sysfs_get_sensor("xmc", "xmc_3v3_aux_vol", m3v3Aux);
+    mDev->sysfs_get_sensor("xmc", "xmc_ddr_vpp_btm", mDDRVppBottom);
+    mDev->sysfs_get_sensor("xmc", "xmc_ddr_vpp_top", mDDRVppTop);
+    mDev->sysfs_get_sensor("xmc", "xmc_sys_5v5", mSys5v5);
+    mDev->sysfs_get_sensor("xmc", "xmc_1v2_top", m1v2Top);
+    mDev->sysfs_get_sensor("xmc", "xmc_1v8", m1v8Top);
+    mDev->sysfs_get_sensor("xmc", "xmc_0v85", m0v85);
+    mDev->sysfs_get_sensor("xmc", "xmc_mgt0v9avcc", mMgt0v9);
+    mDev->sysfs_get_sensor("xmc", "xmc_12v_sw", m12vSW);
+    mDev->sysfs_get_sensor("xmc", "xmc_mgtavtt", mMgtVtt);
+    mDev->sysfs_get_sensor("xmc", "xmc_vcc1v2_btm", m1v2Bottom);
+    mDev->sysfs_get_sensor("xmc", "xmc_vccint_vol", mVccIntVol);
+    mDev->sysfs_get_sensor("xmc", "xmc_fpga_temp", mOnChipTemp);
+    info->m12VPex = m12VPex;
+    info->m12VAux = m12VAux;
+    info->mPexCurr = mPexCurr;
+    info->mAuxCurr = mAuxCurr;
+    info->mDimmTemp[0] = mDimmTemp_0;
+    info->mDimmTemp[1] = mDimmTemp_1;
+    info->mDimmTemp[2] = mDimmTemp_2;
+    info->mDimmTemp[3] = mDimmTemp_3;
+    info->mSE98Temp[0] = mSE98Temp_0;
+    info->mSE98Temp[1] = mSE98Temp_1;
+    info->mSE98Temp[2] = mSE98Temp_2;
+    info->mFanTemp = mFanTemp;
+    info->mFanRpm = mFanRpm;
+    info->m3v3Pex = m3v3Pex;
+    info->m3v3Aux = m3v3Aux;
+    info->mDDRVppBottom = mDDRVppBottom;
+    info->mDDRVppTop = mDDRVppTop;
+    info->mSys5v5 = mSys5v5;
+    info->m1v2Top = m1v2Top;
+    info->m1v8Top = m1v8Top;
+    info->m0v85 = m0v85;
+    info->mMgt0v9 = mMgt0v9;
+    info->m12vSW = m12vSW;
+    info->mMgtVtt = mMgtVtt;
+    info->m1v2Bottom = m1v2Bottom;
+    info->mVccIntVol = mVccIntVol;
+    info->mOnChipTemp = mOnChipTemp;
+
+    //get sensors end
+
+    mDev->sysfs_get("", "link_width", errmsg, info->mPCIeLinkWidth, static_cast<unsigned short>(-1));
+    mDev->sysfs_get("", "link_speed", errmsg, info->mPCIeLinkSpeed, static_cast<unsigned short>(-1));
+    mDev->sysfs_get("", "link_speed_max", errmsg, info->mPCIeLinkSpeedMax, static_cast<unsigned short>(-1));
+    mDev->sysfs_get("", "link_width_max", errmsg, info->mPCIeLinkWidthMax, static_cast<unsigned short>(-1));
+    mDev->sysfs_get("", "mig_calibration", errmsg, info->mMigCalib, false);
     std::vector<uint64_t> freqs;
     mDev->sysfs_get("icap", "clock_freqs", errmsg, freqs);
     for (unsigned i = 0;
@@ -634,7 +669,7 @@ int shim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
     info->mHALMinorVersion = XCLHAL_MINOR_VER;
     info->mMinTransferSize = DDR_BUFFER_ALIGNMENT;
     info->mDMAThreads = 2;
-    xclSysfsGetDeviceInfo(info);
+    // xclSysfsGetDeviceInfo(info);
     return 0;
 }
 
@@ -657,8 +692,8 @@ int shim::resetDevice(xclResetKind kind)
 
     while (dev_offline) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        pcidev::get_dev(mBoardNumber)->sysfs_get("",
-            "dev_offline", err, dev_offline);
+        pcidev::get_dev(mBoardNumber)->sysfs_get<int>("",
+            "dev_offline", err, dev_offline, -1);
     }
 
     dev_init();
@@ -693,7 +728,7 @@ int shim::p2pEnable(bool enable, bool force)
     }
 
     int p2p_enable = EINVAL;
-    mDev->sysfs_get("", "p2p_enable", err, p2p_enable);
+    mDev->sysfs_get<int>("", "p2p_enable", err, p2p_enable, EINVAL);
 
     return p2p_enable;
 }
