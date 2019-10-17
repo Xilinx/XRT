@@ -606,7 +606,8 @@ static int nifd_probe(struct platform_device *pdev)
             (long)rom.FeatureBitMap);
     nifd_valid = (long)rom.FeatureBitMap & 0x40000000;
     if (!nifd_valid) {
-        return 0;
+        err = -EINVAL;
+        goto failed;
     }
 
     platform_set_drvdata(pdev, nifd);
