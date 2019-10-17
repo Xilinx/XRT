@@ -32,12 +32,12 @@ typedef uint32_t stream_xfer_req_type;
  */
 
 typedef struct stream_xfer_req {
-    stream_xfer_req_type    flags;
-    char*                   cdh;
-    uint32_t                cdh_len;
-    void*		    priv_data;
-    uint32_t                timeout; //in ms
-    char                    reserved[64];
+  stream_xfer_req_type flags;
+  char*                cdh;
+  uint32_t             cdh_len;
+  void*                priv_data;
+  uint32_t             timeout; //in ms
+  char                 reserved[64];
 } stream_xfer_req;
 
 /**
@@ -46,10 +46,10 @@ typedef struct stream_xfer_req {
  * Keep this in sync with xclReqCompletion in xclhal2.h
  */
 typedef struct streams_poll_req_completions {
-    char			resv[64]; /* reserved for meta data */
-    void			*priv_data;
-    size_t			nbytes;
-    int				err_code;
+  char                 resv[64]; /* reserved for meta data */
+  void                 *priv_data;
+  size_t               nbytes;
+  int                  err_code;
 } streams_poll_req_completions;
 
 #ifdef __cplusplus
