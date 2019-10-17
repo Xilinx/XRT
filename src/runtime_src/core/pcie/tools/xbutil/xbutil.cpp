@@ -1789,18 +1789,24 @@ int xcldev::device::testP2p()
     dev->sysfs_get("icap", "mem_topology", errmsg, buf);
 
     const mem_topology *map = (mem_topology *)buf.data();
-    if(buf.empty() || map->m_count == 0) {
+    if (buf.empty() || map->m_count == 0) {
         std::cout << "WARNING: 'mem_topology' invalid, "
             << "unable to perform P2P Test. Has the bitstream been loaded? "
             << "See 'xbutil program'." << std::endl;
         return -EINVAL;
     }
 
-    for(int32_t i = 0; i < map->m_count && ret == 0; i++) {
-        const char *name = (const char *)map->m_mem_data[i].m_tag;
-        if ((std::strncmp(name, "HBM", std::strlen("HBM")) && 
-            std::strncmp(name, "DDR", std::strlen("DDR"))) ||
-            !map->m_mem_data[i].m_used)
+    for (int32_t i = 0; i < map->m_count && ret == 0; i++) {
+        const std::vector<std::string> supList = { "HBM", "DDR", "bank" };
+        const std::string name(reinterpret_cast<const char *>(map->m_mem_data[i].m_tag));
+        bool find = false;
+        for (auto s : supList) {
+            if (name.compare(0, s.size(), s) == 0) {
+                find = true;
+                break;
+            }
+        }
+        if (!find || !map->m_mem_data[i].m_used)
             continue;
 
         std::cout << "Performing P2P Test on " << map->m_mem_data[i].m_tag << " ";
@@ -1884,9 +1890,10 @@ int xcldev::xclP2p(int argc, char *argv[])
         std::cout << "ERROR: Not enough iomem space." << std::endl;
         std::cout << "Please check BIOS settings" << std::endl;
     } else if (ret == EBUSY) {
-        std::cout << "ERROR: P2P is enabled. But there is not enough iomem space, please warm reboot." << std::endl;
+        std::cout << "Please WARM reboot to enable p2p now." << std::endl;
     } else if (ret == ENXIO) {
-        std::cout << "ERROR: P2P is not supported on this platform" << std::endl;
+        std::cout << "ERROR: P2P is not supported on this platform"
+            << std::endl;
     } else if (ret == 1) {
         std::cout << "P2P is enabled" << std::endl;
     } else if (ret == 0) {

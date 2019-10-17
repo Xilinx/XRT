@@ -77,16 +77,15 @@ static size_t xocl_bo_physical_addr(const struct drm_xocl_bo *xobj)
 
 void xocl_describe(const struct drm_xocl_bo *xobj)
 {
-	size_t size_in_kb = xobj->base.size / 1024;
+	size_t size_kb = xobj->base.size / 1024;
 	size_t physical_addr = xocl_bo_physical_addr(xobj);
 	unsigned ddr = xobj->mem_idx;
 	unsigned userptr = xocl_bo_userptr(xobj) ? 1 : 0;
-	uint64_t addr = 0;
 
-	addr = xobj->vmapping ? (uint64_t)xobj->vmapping : (uint64_t)xobj->bar_vmapping;
-	DRM_DEBUG("%p: H[%llx] SIZE[0x%zxKB] D[0x%zx] DDR[%u] UPTR[%u] SGLCOUNT[%u] FLAG[%x]\n",
-		  xobj, addr ? addr : 0, size_in_kb,
-			physical_addr, ddr, userptr, xobj->sgt ? xobj->sgt->orig_nents : 0, xobj->flags);
+	DRM_DEBUG("%p: VA:%p BAR:0x%llx EA:0x%zx SZ:0x%zxKB", xobj,
+		xobj->vmapping, xobj->p2p_bar_offset, physical_addr, size_kb);
+	DRM_DEBUG("%p: IDX:%u UPTR:%u SGL:%u FLG:%x", xobj, ddr, userptr,
+		xobj->sgt ? xobj->sgt->orig_nents : 0, xobj->flags);
 }
 
 static void xocl_free_mm_node(struct drm_xocl_bo *xobj)
@@ -117,9 +116,16 @@ static void xocl_free_bo(struct drm_gem_object *obj)
 	struct xocl_drm *drm_p = ddev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
 	int npages = obj->size >> PAGE_SHIFT;
+
 	DRM_DEBUG("Freeing BO %p\n", xobj);
 
 	BO_ENTER("xobj %p pages %p", xobj, xobj->pages);
+
+	if (xocl_bo_p2p(xobj)) {
+		xocl_p2p_reserve_release_range(xdev,
+			xobj->p2p_bar_offset, obj->size, false);
+	}
+
 	if (xobj->vmapping)
 		vunmap(xobj->vmapping);
 	xobj->vmapping = NULL;
@@ -319,25 +325,27 @@ struct drm_xocl_bo *xocl_drm_create_bo(struct xocl_drm *drm_p,
 	return xocl_create_bo(drm_p->ddev, unaligned_size, user_flags, bo_type);
 }
 
-static struct page **xocl_p2p_get_pages(void *bar_vaddr, int npages)
+static struct page **xocl_p2p_get_pages(struct xocl_dev *xdev,
+	u64 bar_off, u64 size)
 {
 	struct page *p, **pages;
 	int i;
-	uint64_t page_offset_enum = 0;
+	uint64_t offset;
+	uint64_t npages = size >> PAGE_SHIFT;
 
 	pages = drm_malloc_ab(npages, sizeof(struct page *));
-
 	if (pages == NULL)
 		return ERR_PTR(-ENOMEM);
 
-	for (i = 0; i < npages; i++) {
-		p = virt_to_page(bar_vaddr+page_offset_enum);
-		pages[i] = p;
+	for (i = 0, offset = bar_off; i < npages; i++, offset += PAGE_SIZE) {
+		int idx = offset >> XOCL_P2P_CHUNK_SHIFT;
+		void *addr = xdev->p2p_mem_chunks[idx].xpmc_va;
 
+		addr += offset & (XOCL_P2P_CHUNK_SIZE - 1);
+		p = virt_to_page(addr);
+		pages[i] = p;
 		if (IS_ERR(p))
 			goto fail;
-
-		page_offset_enum += PAGE_SIZE;
 	}
 
 	return pages;
@@ -394,23 +402,25 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 		 * DRM allocate contiguous pages, shift the vmapping with
 		 * bar address offset
 		 */
-		if (xdev->p2p_bar_addr) {
-			xobj->bar_vmapping = xdev->p2p_bar_addr +
-				drm_p->mm_p2p_off[ddr] + xobj->mm_node->start -
-				XOCL_MEM_TOPOLOGY(xdev)->m_mem_data[ddr].m_base_address;
-		} else {	
-			xocl_xdev_err(xdev, "No P2P mem region available, "
-					"Can't create p2p BO");	
+		if (xdev->p2p_mem_chunk_num == 0) {
+			xocl_xdev_err(xdev,
+				"No P2P mem region, Can't create p2p BO");	
 			ret = -EINVAL;
 			goto out_free;
 		}
-			
+		xobj->p2p_bar_offset = drm_p->mm_p2p_off[ddr] +
+			xobj->mm_node->start -
+			XOCL_MEM_TOPOLOGY(xdev)->m_mem_data[ddr].m_base_address;
+		ret = xocl_p2p_reserve_release_range(xdev, xobj->p2p_bar_offset,
+			xobj->base.size, true);
+		if (ret)
+			goto out_free;
 	}
 
 	if (xobj->flags & XOCL_PAGE_ALLOC) {
-
 		if (xobj->flags & XOCL_P2P_MEM)
-			xobj->pages = xocl_p2p_get_pages(xobj->bar_vmapping, xobj->base.size >> PAGE_SHIFT);
+			xobj->pages = xocl_p2p_get_pages(xdev,
+				xobj->p2p_bar_offset, xobj->base.size);
 		else if (xobj->flags & XOCL_DRM_SHMEM)
 			xobj->pages = drm_gem_get_pages(&xobj->base);
 
@@ -418,7 +428,8 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 			ret = PTR_ERR(xobj->pages);
 			goto out_free;
 		}
-		xobj->sgt = alloc_onetime_sg_table(xobj->pages, 0, xobj->base.size);
+		xobj->sgt = alloc_onetime_sg_table(xobj->pages, 0,
+			xobj->base.size);
 		if (IS_ERR(xobj->sgt)) {
 			ret = PTR_ERR(xobj->sgt);
 			goto out_free;
@@ -426,12 +437,15 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 		if (xobj->flags & XOCL_HOST_MEM) {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0)
 			if (xobj->base.size >= GB(4)) {
-				DRM_ERROR("Due to the limits of Linux Kernel API, xrt does not support buffer >= 4G\n");
+				DRM_ERROR("cannot support BO size >= 4G\n");
+				DRM_ERROR("limited by Linux kernel API\n");
 				ret = -EINVAL;
 				goto out_free;
 			}
 #endif
-			xobj->vmapping = vmap(xobj->pages, xobj->base.size >> PAGE_SHIFT, VM_MAP, PAGE_KERNEL);
+			xobj->vmapping = vmap(xobj->pages,
+				xobj->base.size >> PAGE_SHIFT,
+				VM_MAP, PAGE_KERNEL);
 			if (!xobj->vmapping) {
 				ret = -ENOMEM;
 				goto out_free;
@@ -590,7 +604,7 @@ int xocl_sync_bo_ioctl(struct drm_device *dev,
 	sgt = xobj->sgt;
 
 	if (!xocl_bo_sync_able(xobj->flags)) {
-		DRM_ERROR("This BO doesn't support sync_bo\n");
+		DRM_ERROR("BO %d doesn't support sync_bo\n", args->handle);
 		ret = -EOPNOTSUPP;
 		goto out;
 	}
@@ -756,15 +770,16 @@ int xocl_pwrite_bo_ioctl(struct drm_device *dev, void *data,
 		ret = -EPERM;
 		goto out;
 	}
-	if (xobj->flags == XOCL_BO_DEV_ONLY) {
+	if (!xobj->vmapping) {
 		ep_addr = xocl_bo_physical_addr(xobj);
 		if (ep_addr == INVALID_BO_PADDR) {
 			ret = -EINVAL;
 			goto out;
 		}
-		ret = xocl_migrate_unmgd(xdev, args->data_ptr, ep_addr, args->size, 1);
+		ret = xocl_migrate_unmgd(xdev, args->data_ptr, ep_addr,
+			args->size, 1);
 	} else {
-		kaddr = xobj->vmapping ? xobj->vmapping : xobj->bar_vmapping;
+		kaddr = xobj->vmapping;
 		kaddr += args->offset;
 
 		ret = copy_from_user(kaddr, user_data, args->size);
@@ -818,7 +833,7 @@ int xocl_pread_bo_ioctl(struct drm_device *dev, void *data,
 	xobj = to_xocl_bo(gem_obj);
 	BO_ENTER("xobj %p", xobj);
 
-	if (xobj->flags == XOCL_BO_DEV_ONLY) {
+	if (!xobj->vmapping) {
 		ep_addr = xocl_bo_physical_addr(xobj);
 		if (ep_addr == INVALID_BO_PADDR) {
 			ret = -EINVAL;
@@ -827,7 +842,7 @@ int xocl_pread_bo_ioctl(struct drm_device *dev, void *data,
 		ret = xocl_migrate_unmgd(xdev, args->data_ptr, ep_addr, args->size, 0);
 
 	} else {
-		kaddr = xobj->vmapping ? xobj->vmapping : xobj->bar_vmapping;
+		kaddr = xobj->vmapping;
 		kaddr += args->offset;		
 		ret = copy_to_user(user_data, kaddr, args->size);
 	}

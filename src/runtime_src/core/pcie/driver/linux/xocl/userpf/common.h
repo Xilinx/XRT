@@ -71,7 +71,32 @@
 #endif
 #endif
 
-#define XOCL_PA_SECTION_SHIFT		28
+/*
+ * P2P Linux kernel API has gone through changes over the time. We are trying
+ * to maintain our driver compabile w/ all kernels we support here.
+ */
+#if KERNEL_VERSION(4, 5, 0) > LINUX_VERSION_CODE && \
+	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
+#define P2P_API_V0
+#elif KERNEL_VERSION(4, 16, 0) > LINUX_VERSION_CODE && \
+	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0))
+#define P2P_API_V1
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
+#define P2P_API_V2
+#elif defined(RHEL_RELEASE_VERSION) /* CentOS/RedHat specific check */
+
+#if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7, 3) && \
+	RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(7, 6)
+#define P2P_API_V1
+#elif RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 6)
+#define P2P_API_V2
+#endif
+
+#endif
+
+/* Each P2P chunk we set up must be at least 256MB */
+#define XOCL_P2P_CHUNK_SHIFT		28
+#define XOCL_P2P_CHUNK_SIZE		(1ULL << XOCL_P2P_CHUNK_SHIFT)
 
 enum {
 	XOCL_WORK_RESET,
@@ -85,6 +110,22 @@ struct xocl_work {
 	int			op;
 };
 
+struct xocl_p2p_mem_chunk {
+	struct xocl_dev		*xpmc_xdev;
+	void			*xpmc_res_grp;
+	void __iomem		*xpmc_va;
+	resource_size_t		xpmc_pa;
+	resource_size_t		xpmc_size;
+	int			xpmc_ref;
+
+	/* Used by kernel API */
+	struct percpu_ref	xpmc_percpu_ref;
+	struct completion	xpmc_comp;
+#ifdef	P2P_API_V2
+	struct dev_pagemap	xpmc_pgmap;
+#endif
+};
+
 struct xocl_dev	{
 	struct xocl_dev_core	core;
 
@@ -92,42 +133,34 @@ struct xocl_dev	{
 
 	u32			p2p_bar_idx;
 	resource_size_t		p2p_bar_len;
-	void __iomem		*p2p_bar_addr;
+	struct mutex		p2p_mem_chunk_lock;
+	int			p2p_mem_chunk_num;
+	struct xocl_p2p_mem_chunk *p2p_mem_chunks;
 
-	/*should be removed after mailbox is supported */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
-	struct percpu_ref ref;
-	struct completion cmp;
-#endif
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0) || RHEL_P2P_SUPPORT_76
-	struct dev_pagemap pgmap;
-#endif
-	struct list_head                ctx_list;
-	struct workqueue_struct		*wq;
-	struct xocl_work		works[XOCL_WORK_NUM];
-	struct mutex			wq_lock;
+	struct list_head	ctx_list;
+	struct workqueue_struct	*wq;
+	struct xocl_work	works[XOCL_WORK_NUM];
+	struct mutex		wq_lock;
 
 	/*
 	 * Per xdev lock protecting client list and all client contexts in the
 	 * list. Any operation which requires client status, such as xclbin
 	 * downloading or validating exec buf, should hold this lock.
 	 */
-	struct mutex			dev_lock;
-	unsigned int                    needs_reset; /* bool aligned */
-	atomic_t                        outstanding_execs;
-	atomic64_t                      total_execs;
-	void				*p2p_res_grp;
+	struct mutex		dev_lock;
+	unsigned int		needs_reset; /* bool aligned */
+	atomic_t		outstanding_execs;
+	atomic64_t		total_execs;
 
-	struct xocl_subdev		*dyn_subdev_store;
-	int dyn_subdev_num;
+	struct xocl_subdev	*dyn_subdev_store;
+	int			dyn_subdev_num;
 
-	void				*ulp_blob;
+	void			*ulp_blob;
 
-	unsigned int			mbx_offset;
+	unsigned int		mbx_offset;
 
-	uint64_t			mig_cache_expire_secs;
-	ktime_t				mig_cache_expires;
+	uint64_t		mig_cache_expire_secs;
+	ktime_t			mig_cache_expires;
 };
 
 /**
@@ -186,8 +219,10 @@ void xocl_fini_sysfs(struct device *dev);
 
 /* helper functions */
 int xocl_hot_reset(struct xocl_dev *xdev, bool force);
-void xocl_p2p_mem_release(struct xocl_dev *xdev, bool recov_bar_sz);
-int xocl_p2p_mem_reserve(struct xocl_dev *xdev);
+void xocl_p2p_fini(struct xocl_dev *xdev, bool recov_bar_sz);
+int xocl_p2p_init(struct xocl_dev *xdev);
+int xocl_p2p_reserve_release_range(struct xocl_dev *xdev,
+	resource_size_t off, resource_size_t sz, bool reserve);
 int xocl_get_p2p_bar(struct xocl_dev *xdev, u64 *bar_size);
 int xocl_pci_resize_resource(struct pci_dev *dev, int resno, int size);
 int xocl_pci_rbar_refresh(struct pci_dev *dev, int resno);

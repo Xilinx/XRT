@@ -14,6 +14,7 @@
  */
 
 #include <linux/pci.h>
+#include <linux/kernel.h>
 #include <linux/aer.h>
 #include <linux/version.h>
 #include <linux/module.h>
@@ -23,7 +24,7 @@
 #include "../xocl_drv.h"
 #include "common.h"
 #include "version.h"
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
+#if defined(P2P_API_V1) || defined(P2P_API_V2)
 #include <linux/memremap.h>
 #endif
 
@@ -161,7 +162,7 @@ static void xocl_mb_read_p2p_addr(struct xocl_dev *xdev)
 	mb_req = vzalloc(reqlen);
 	if (!mb_req) {
 		userpf_err(xdev, "dropped request (%d), mem alloc issue\n",
-				XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR);
+			XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR);
 		return;
 	}
 
@@ -169,16 +170,13 @@ static void xocl_mb_read_p2p_addr(struct xocl_dev *xdev)
 	mb_p2p = (struct xcl_mailbox_p2p_bar_addr *)mb_req->data;
 	mb_p2p->p2p_bar_len = pci_resource_len(pdev, xdev->p2p_bar_idx);
 	mb_p2p->p2p_bar_addr = pci_resource_start(pdev, xdev->p2p_bar_idx);
-
-	ret = xocl_peer_request(xdev, mb_req, reqlen, &ret, &resplen, NULL,
-							NULL, 0);
+	ret = xocl_peer_request(xdev, mb_req, reqlen, &ret,
+		&resplen, NULL, NULL, 0);
+	vfree(mb_req);
 	if (ret) {
 		userpf_info(xdev, "dropped request (%d), failed with err: %d",
-					XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR, ret);
-		return;
+			XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR, ret);
 	}
-
-	vfree(mb_req);
 }
 
 static int userpf_intr_config(xdev_handle_t xdev_hdl, u32 intr, bool en)
@@ -658,53 +656,237 @@ void user_pci_reset_done(struct pci_dev *pdev)
 }
 #endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
-static void xocl_dev_percpu_release(struct percpu_ref *ref)
+static void xocl_p2p_percpu_ref_release(struct percpu_ref *ref)
 {
-	struct xocl_dev *xdev = container_of(ref, struct xocl_dev, ref);
-
-	complete(&xdev->cmp);
+	struct xocl_p2p_mem_chunk *chk =
+		container_of(ref, struct xocl_p2p_mem_chunk, xpmc_percpu_ref);
+	complete(&chk->xpmc_comp);
 }
 
-static void xocl_dev_percpu_exit(void *data)
+static void xocl_p2p_percpu_ref_kill(void *data)
 {
 	struct percpu_ref *ref = data;
-	struct xocl_dev *xdev = container_of(ref, struct xocl_dev, ref);
+	percpu_ref_kill(ref);
+}
 
-	wait_for_completion(&xdev->cmp);
+static void xocl_p2p_percpu_ref_kill_noop(struct percpu_ref *ref)
+{
+	/* Used for pgmap, no op here */
+}
+
+static void xocl_p2p_percpu_ref_exit(void *data)
+{
+	struct percpu_ref *ref = data;
+	struct xocl_p2p_mem_chunk *chk =
+		container_of(ref, struct xocl_p2p_mem_chunk, xpmc_percpu_ref);
+
+	wait_for_completion(&chk->xpmc_comp);
 	percpu_ref_exit(ref);
 }
 
-
-static void xocl_dev_percpu_kill(void *data)
+static void xocl_p2p_mem_chunk_release(struct xocl_p2p_mem_chunk *chk)
 {
-	struct percpu_ref *ref = data;
+	struct pci_dev *pdev = chk->xpmc_xdev->core.pdev;
 
-	percpu_ref_kill(ref);
+	BUG_ON(!mutex_is_locked(&chk->xpmc_xdev->p2p_mem_chunk_lock));
+
+	/*
+	 * When reseration fails, error handling could bring us here with
+	 * ref == 0. Since we've already cleaned up during reservation error
+	 * handling, nothing needs to be done now.
+	 */
+	if (chk->xpmc_ref == 0)
+		return;
+
+	chk->xpmc_ref--;
+	if (chk->xpmc_ref == 0) {
+		if (chk->xpmc_va)
+			devres_release_group(&pdev->dev, chk->xpmc_res_grp);
+		else if (chk->xpmc_res_grp)
+			devres_remove_group(&pdev->dev, chk->xpmc_res_grp);
+		else
+			BUG_ON(1);
+
+		chk->xpmc_va = NULL;
+		chk->xpmc_res_grp = NULL;
+	}
+
+	xocl_info(&pdev->dev,
+		"released P2P mem chunk [0x%llx, 0x%llx), cur ref: %d",
+		chk->xpmc_pa, chk->xpmc_pa + chk->xpmc_size, chk->xpmc_ref);
 }
-#if KERNEL_VERSION(5, 3, 0) > LINUX_VERSION_CODE && \
-	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 2))
-static void xocl_dev_pgmap_kill_nop(struct percpu_ref *ref)
+
+static int xocl_p2p_mem_chunk_reserve(struct xocl_p2p_mem_chunk *chk)
 {
-	/* NOP function for sanity check use only*/
-}
+	struct pci_dev *pdev = chk->xpmc_xdev->core.pdev;
+	struct device *dev = &pdev->dev;
+	struct resource res;
+	struct percpu_ref *pref = &chk->xpmc_percpu_ref;
+	int ret = -ENOMEM;
+
+	BUG_ON(!mutex_is_locked(&chk->xpmc_xdev->p2p_mem_chunk_lock));
+	BUG_ON(chk->xpmc_ref < 0);
+
+	if (chk->xpmc_ref > 0) {
+		chk->xpmc_ref++;
+		ret = 0;
+		goto done;
+	}
+
+	if (percpu_ref_init(pref, xocl_p2p_percpu_ref_release, 0, GFP_KERNEL)) {
+		xocl_err(dev, "init percpu ref failed");
+		goto done;
+	}
+
+	BUG_ON(chk->xpmc_res_grp);
+	chk->xpmc_res_grp = devres_open_group(dev, NULL, GFP_KERNEL);
+	if (!chk->xpmc_res_grp) {
+		percpu_ref_exit(pref);
+		xocl_err(dev, "open p2p resource group failed");
+		goto done;
+	}
+
+	res.start = chk->xpmc_pa;
+	res.end   = res.start + chk->xpmc_size - 1;
+	res.name  = NULL;
+	res.flags = IORESOURCE_MEM;
+
+	/* Suppressing the defined-but-not-used warning */
+	{
+		void *fn= NULL;
+		ret = 0;
+		fn = (void *)xocl_p2p_percpu_ref_exit;
+		fn = (void *)xocl_p2p_percpu_ref_kill_noop;
+		fn = (void *)xocl_p2p_percpu_ref_kill;
+	}
+
+#if	defined(P2P_API_V0)
+	chk->xpmc_va = devm_memremap_pages(dev, &res);
+#elif	defined(P2P_API_V1)
+	ret = devm_add_action_or_reset(dev, xocl_p2p_percpu_ref_exit, pref);
+	if (ret != 0) {
+		xocl_err(dev, "add exit action failed");
+		percpu_ref_exit(pref);
+	} else {
+		chk->xpmc_va = devm_memremap_pages(dev, &res,
+			&chk->xpmc_percpu_ref, NULL);
+		ret = devm_add_action_or_reset(dev,
+			xocl_p2p_percpu_ref_kill, pref);
+		if (ret != 0) {
+			xocl_err(dev, "add kill action failed");
+			percpu_ref_kill(pref);
+		}
+	}
+#elif	defined(P2P_API_V2)
+	ret = devm_add_action_or_reset(dev, xocl_p2p_percpu_ref_exit, pref);
+	if (ret != 0) {
+		xocl_err(dev, "add exit action failed");
+		percpu_ref_exit(pref);
+	} else {
+		chk->xpmc_pgmap.ref = pref;
+		chk->xpmc_pgmap.res = res;
+		chk->xpmc_pgmap.altmap_valid = false;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 2) && \
+	LINUX_VERSION_CODE < KERNEL_VERSION(5, 3, 0)
+		chk->xpmc_pgmap.kill = xocl_p2p_percpu_ref_kill_noop;
 #endif
+		chk->xpmc_va = devm_memremap_pages(dev, &chk->xpmc_pgmap);
+		ret = devm_add_action_or_reset(dev,
+			xocl_p2p_percpu_ref_kill, pref);
+		if (ret != 0) {
+			xocl_err(dev, "add kill action failed");
+			percpu_ref_kill(pref);
+		}
+	}
 #endif
 
-void xocl_p2p_mem_release(struct xocl_dev *xdev, bool recov_bar_sz)
+	devres_close_group(dev, chk->xpmc_res_grp);
+
+	chk->xpmc_ref = 1;
+
+	if (ret != 0 || IS_ERR_OR_NULL(chk->xpmc_va)) {
+		if (IS_ERR(chk->xpmc_va)) {
+			ret = PTR_ERR(chk->xpmc_va);
+			chk->xpmc_va = NULL;
+		}
+		xocl_err(dev, "reserve p2p chunk failed, releasing");
+		xocl_p2p_mem_chunk_release(chk);
+		ret = ret ? ret : -ENOMEM;
+	}
+
+done:
+	xocl_info(dev,
+		"reserved P2P mem chunk [0x%llx, 0x%llx), ret: %d, cur ref: %d",
+		chk->xpmc_pa, chk->xpmc_pa+chk->xpmc_size, ret, chk->xpmc_ref);
+	return ret;
+}
+
+int xocl_p2p_reserve_release_range(struct xocl_dev *xdev,
+	resource_size_t off, resource_size_t sz, bool reserve)
+{
+	int i, j;
+	int ret = 0;
+	int start_index = off / XOCL_P2P_CHUNK_SIZE;
+	int num_chunks =
+		ALIGN((off % XOCL_P2P_CHUNK_SIZE) + sz, XOCL_P2P_CHUNK_SIZE) /
+		XOCL_P2P_CHUNK_SIZE;
+
+	/* Make sure P2P is init'ed before we do anything. */
+	if (xdev->p2p_mem_chunk_num == 0)
+		return -EINVAL;
+
+	mutex_lock(&xdev->p2p_mem_chunk_lock);
+	for (i = start_index; i < start_index + num_chunks; i++) {
+		struct xocl_p2p_mem_chunk *chk = &xdev->p2p_mem_chunks[i];
+
+		ret = 0;
+		if (reserve)
+			ret = xocl_p2p_mem_chunk_reserve(chk);
+		else
+			xocl_p2p_mem_chunk_release(chk);
+
+		if (ret)
+			break;
+	}
+
+	/* Undo reserve, if failed. */
+	if (ret) {
+		for (j = start_index; j < i; j++)
+			xocl_p2p_mem_chunk_release(&xdev->p2p_mem_chunks[j]);
+	}
+	mutex_unlock(&xdev->p2p_mem_chunk_lock);
+	return ret;
+}
+
+void xocl_p2p_mem_chunk_init(struct xocl_dev *xdev,
+	struct xocl_p2p_mem_chunk *chk, resource_size_t off, resource_size_t sz)
+{
+	chk->xpmc_xdev = xdev;
+	chk->xpmc_pa = off;
+	chk->xpmc_size = sz;
+	init_completion(&chk->xpmc_comp);
+}
+
+void xocl_p2p_fini(struct xocl_dev *xdev, bool recov_bar_sz)
 {
 	struct pci_dev *pdev = xdev->core.pdev;
 	int p2p_bar = -1;
+	int i;
 
-	if (xdev->p2p_bar_addr) {
-		devres_release_group(&pdev->dev, xdev->p2p_res_grp);
-		xdev->p2p_bar_addr = NULL;
-		xdev->p2p_res_grp = NULL;
+	mutex_destroy(&xdev->p2p_mem_chunk_lock);
+
+	for (i = 0; i < xdev->p2p_mem_chunk_num; i++) {
+		if (xdev->p2p_mem_chunks[i].xpmc_ref > 0) {
+			xocl_err(&pdev->dev, "still %d ref for P2P chunk[%d]",
+				xdev->p2p_mem_chunks[i].xpmc_ref, i);
+			xdev->p2p_mem_chunks[i].xpmc_ref = 1;
+			xocl_p2p_mem_chunk_release(&xdev->p2p_mem_chunks[i]);
+		}
 	}
-	if (xdev->p2p_res_grp) {
-		devres_remove_group(&pdev->dev, xdev->p2p_res_grp);
-		xdev->p2p_res_grp = NULL;
-	}
+
+	vfree(xdev->p2p_mem_chunks);
+	xdev->p2p_mem_chunk_num = 0;
+	xdev->p2p_mem_chunks = NULL;
 
 	if (recov_bar_sz) {
 		p2p_bar = xocl_get_p2p_bar(xdev, NULL);
@@ -712,123 +894,52 @@ void xocl_p2p_mem_release(struct xocl_dev *xdev, bool recov_bar_sz)
 			return;
 
 		xocl_pci_resize_resource(pdev, p2p_bar,
-				(XOCL_PA_SECTION_SHIFT - 20));
+			(XOCL_P2P_CHUNK_SHIFT - 20));
 
 		xocl_info(&pdev->dev, "Resize p2p bar %d to %d M ", p2p_bar,
-			(1 << XOCL_PA_SECTION_SHIFT));
+			(1 << XOCL_P2P_CHUNK_SHIFT));
 	}
 
 	//Reset Virtualization registers
 	(void) xocl_mb_read_p2p_addr(xdev);
 }
 
-int xocl_p2p_mem_reserve(struct xocl_dev *xdev)
+int xocl_p2p_init(struct xocl_dev *xdev)
 {
-	resource_size_t p2p_bar_addr;
-	resource_size_t p2p_bar_len;
-	struct resource res;
-	uint32_t p2p_bar_idx;
 	struct pci_dev *pdev = xdev->core.pdev;
-	int32_t ret;
+	int i;
+	resource_size_t pa;
 
-	xocl_info(&pdev->dev, "reserve p2p mem, bar %d, len %lld",
+	xocl_info(&pdev->dev, "Initializing P2P, bar %d, len %lld",
 			xdev->p2p_bar_idx, xdev->p2p_bar_len);
 
 	if (xdev->p2p_bar_idx < 0 ||
-		xdev->p2p_bar_len <= (1<<XOCL_PA_SECTION_SHIFT)) {
-		/* only p2p_bar_len > SECTION (256MB) */
+		xdev->p2p_bar_len <= XOCL_P2P_CHUNK_SIZE ||
+		(xdev->p2p_bar_len % XOCL_P2P_CHUNK_SIZE)) {
+		/* valid p2p_bar_len should be > P2P chunk size */
 		xocl_info(&pdev->dev, "Did not find p2p BAR");
 		return 0;
 	}
 
-	p2p_bar_len = xdev->p2p_bar_len;
-	p2p_bar_idx = xdev->p2p_bar_idx;
+	xdev->p2p_mem_chunk_num = xdev->p2p_bar_len / XOCL_P2P_CHUNK_SIZE;
+	xdev->p2p_mem_chunks = vzalloc(sizeof(struct xocl_p2p_mem_chunk) *
+		xdev->p2p_mem_chunk_num);
+	if (xdev->p2p_mem_chunks == NULL)
+		return -ENOMEM;
 
-	xdev->p2p_res_grp = devres_open_group(&pdev->dev, NULL, GFP_KERNEL);
-	if (!xdev->p2p_res_grp) {
-		xocl_err(&pdev->dev, "open p2p resource group failed");
-		ret = -ENOMEM;
-		goto failed;
+	pa = pci_resource_start(pdev, xdev->p2p_bar_idx);
+	for (i = 0; i < xdev->p2p_mem_chunk_num; i++) {
+		xocl_p2p_mem_chunk_init(xdev, &xdev->p2p_mem_chunks[i],
+			pa + ((resource_size_t)i) * XOCL_P2P_CHUNK_SIZE,
+			XOCL_P2P_CHUNK_SIZE);
 	}
 
-	p2p_bar_addr = pci_resource_start(pdev, p2p_bar_idx);
-
-	res.start = p2p_bar_addr;
-	res.end   = p2p_bar_addr+p2p_bar_len-1;
-	res.name  = NULL;
-	res.flags = IORESOURCE_MEM;
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
-
-	init_completion(&xdev->cmp);
-
-	ret = percpu_ref_init(&xdev->ref, xocl_dev_percpu_release, 0,
-		GFP_KERNEL);
-	if (ret)
-		goto failed;
-
-	ret = devm_add_action_or_reset(&(pdev->dev), xocl_dev_percpu_exit,
-		&xdev->ref);
-	if (ret)
-		goto failed;
-#endif
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0) || RHEL_P2P_SUPPORT_76
-	xdev->pgmap.ref = &xdev->ref;
-	memcpy(&xdev->pgmap.res, &res, sizeof(struct resource));
-	xdev->pgmap.altmap_valid = false;
-#if KERNEL_VERSION(5, 3, 0) > LINUX_VERSION_CODE && \
-	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 2))
-	xdev->pgmap.kill = xocl_dev_pgmap_kill_nop;
-#endif
-#endif
-
-/* Ubuntu 16.04 kernel_ver 4.4.0.116*/
-#if KERNEL_VERSION(4, 5, 0) > LINUX_VERSION_CODE && \
-	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
-	xdev->p2p_bar_addr = devm_memremap_pages(&(pdev->dev), &res);
-
-#elif KERNEL_VERSION(4, 16, 0) > LINUX_VERSION_CODE && \
-	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)) || RHEL_P2P_SUPPORT_74
-	xdev->p2p_bar_addr = devm_memremap_pages(&(pdev->dev), &res
-							, &xdev->ref, NULL);
-
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0) || RHEL_P2P_SUPPORT_76
-	xdev->p2p_bar_addr = devm_memremap_pages(&(pdev->dev), &xdev->pgmap);
-
-#endif
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0) || RHEL_P2P_SUPPORT
-	if (!xdev->p2p_bar_addr) {
-		ret = -ENOMEM;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
-		percpu_ref_kill(&xdev->ref);
-#endif
-		devres_close_group(&pdev->dev, xdev->p2p_res_grp);
-		goto failed;
-	}
-#endif
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0) || RHEL_P2P_SUPPORT
-	ret = devm_add_action_or_reset(&(pdev->dev), xocl_dev_percpu_kill,
-		&xdev->ref);
-	if (ret) {
-		percpu_ref_kill(&xdev->ref);
-		devres_close_group(&pdev->dev, xdev->p2p_res_grp);
-		goto failed;
-	}
-#endif
-	devres_close_group(&pdev->dev, xdev->p2p_res_grp);
+	mutex_init(&xdev->p2p_mem_chunk_lock);
 
 	//Pass P2P bar address and len to mgmtpf
 	(void) xocl_mb_read_p2p_addr(xdev);
 
 	return 0;
-
-failed:
-	xocl_p2p_mem_release(xdev, false);
-
-	return ret;
 }
 
 int xocl_get_p2p_bar(struct xocl_dev *xdev, u64 *bar_size)
@@ -849,8 +960,7 @@ int xocl_get_p2p_bar(struct xocl_dev *xdev, u64 *bar_size)
 		pci_read_config_dword(dev, pos + 4, &ctrl);
 		size = (ctrl & PCI_REBAR_CTRL_BAR_SIZE) >>
 			PCI_REBAR_CTRL_BAR_SHIFT;
-		if (xocl_pci_rebar_size_to_bytes(size) >=
-			(1 << XOCL_PA_SECTION_SHIFT) &&
+		if (xocl_pci_rebar_size_to_bytes(size) >= XOCL_P2P_CHUNK_SIZE &&
 			cap >= 0x1000) {
 			if (bar_size)
 				*bar_size = xocl_pci_rebar_size_to_bytes(size);
@@ -963,7 +1073,7 @@ static int identify_bar(struct xocl_dev *xdev)
 
 	for (i = PCI_STD_RESOURCES; i <= PCI_STD_RESOURCE_END; i++) {
 		bar_len = pci_resource_len(pdev, i);
-		if (bar_len >= (1 << XOCL_PA_SECTION_SHIFT)) {
+		if (bar_len >= XOCL_P2P_CHUNK_SIZE) {
 			xdev->p2p_bar_idx = i;
 			xdev->p2p_bar_len = bar_len;
 			pci_request_selected_regions(pdev, 1 << i,
@@ -1005,8 +1115,7 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 
 	xocl_queue_destroy(xdev);
 
-
-	xocl_p2p_mem_release(xdev, false);
+	xocl_p2p_fini(xdev, false);
 	xocl_subdev_destroy_all(xdev);
 
 	xocl_fini_sysfs(&pdev->dev);
@@ -1092,9 +1201,9 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		goto failed;
 	}
 
-	ret = xocl_p2p_mem_reserve(xdev);
+	ret = xocl_p2p_init(xdev);
 	if (ret) {
-		xocl_err(&pdev->dev, "failed to reserve p2p memory region");
+		xocl_err(&pdev->dev, "failed to init p2p memory");
 		goto failed;
 	}
 

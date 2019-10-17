@@ -52,15 +52,15 @@ struct xocl_drm {
 struct drm_xocl_bo {
 	/* drm base object */
 	struct drm_gem_object base;
-	struct drm_mm_node   *mm_node;
+	struct drm_mm_node    *mm_node;
 	struct drm_xocl_exec_metadata metadata;
-	struct page         **pages;
-	struct sg_table      *sgt;
-	void                 *vmapping;
-	void                 *bar_vmapping;
-	struct dma_buf                  *dmabuf;
+	struct page           **pages;
+	struct sg_table       *sgt;
+	void                  *vmapping;
+	u64                   p2p_bar_offset;
+	struct dma_buf        *dmabuf;
 	const struct vm_operations_struct *dmabuf_vm_ops;
-	unsigned                dma_nsg;
+	unsigned              dma_nsg;
 	unsigned              flags;
 	unsigned              mem_idx;
 };
