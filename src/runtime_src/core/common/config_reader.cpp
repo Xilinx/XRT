@@ -196,7 +196,7 @@ get_uint_value(const char* key, unsigned int default_value)
   unsigned int val = default_value;
   try {
     val = s_tree.m_tree.get<unsigned int>(key,default_value);
-  } catch( std::exception const& e) {
+  } catch( std::exception const&) {
     // eat the exception, probably bad path
   }
   return val;
