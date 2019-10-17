@@ -100,7 +100,7 @@ static struct drm_zocl_bo *zocl_create_userprt_bo(struct drm_device *dev,
 	if (!size)
 		return ERR_PTR(-EINVAL);
 
-	cma_obj = kzalloc(sizeof(*cma_obj), GFP_KERNEL);
+	cma_obj = kzalloc(sizeof(struct drm_zocl_bo), GFP_KERNEL);
 	if (!cma_obj) {
 		DRM_DEBUG("cma object create failed\n");
 		return ERR_PTR(-ENOMEM);
