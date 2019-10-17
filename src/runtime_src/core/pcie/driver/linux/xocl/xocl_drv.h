@@ -795,6 +795,7 @@ enum data_kind {
 };
 
 enum mb_kind {
+	DAEMON_STATE,
 	CHAN_STATE,
 	CHAN_SWITCH,
 	COMM_ID,

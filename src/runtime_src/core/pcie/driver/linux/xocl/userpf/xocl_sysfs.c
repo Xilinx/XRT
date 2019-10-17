@@ -342,7 +342,7 @@ static ssize_t ready_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	uint64_t ch_state = 0, ret = 0;
+	uint64_t ch_state = 0, ret = 0, daemon_state = 0;
 
 	/* Bypass this check for versal for now */
 	if (XOCL_DSA_IS_VERSAL(xdev))
@@ -350,7 +350,18 @@ static ssize_t ready_show(struct device *dev,
 	else {
 		xocl_mailbox_get(xdev, CHAN_STATE, &ch_state);
 
-		ret = (ch_state & XCL_MB_PEER_READY) ? 1 : 0;
+		if (ch_state & XCL_MB_PEER_SAME_DOMAIN)
+			ret = (ch_state & XCL_MB_PEER_READY) ? 1 : 0;
+		else {
+			/*
+			 * If xocl and xclmgmt are not in the same daemon,
+			 * mark the card as ready only when both MB channel
+			 * and daemon are ready
+			 */
+			xocl_mailbox_get(xdev, DAEMON_STATE, &daemon_state);
+			ret = ((ch_state & XCL_MB_PEER_READY) && daemon_state)
+				? 1 : 0;
+		}
 	}
 
 	return sprintf(buf, "0x%llx\n", ret);

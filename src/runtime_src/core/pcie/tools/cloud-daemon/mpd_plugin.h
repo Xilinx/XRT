@@ -23,6 +23,7 @@
 #include "xclbin.h"
 
 typedef int (*get_remote_msd_fd_fn)(size_t index, int *fd);
+typedef int (*mb_notify_fn)(size_t index, int fd, bool online);
 typedef int (*hot_reset_fn)(size_t index, int *resp);
 typedef int (*load_xclbin_fn)(size_t index, const axlf *buf, int *resp);
 typedef int (*reclock2_fn)(size_t index, const struct xclmgmt_ioc_freqscaling *obj, int *resp);
@@ -56,6 +57,12 @@ struct mpd_plugin_callbacks {
      * have more controls on the xclbin downloading.
      */
     get_remote_msd_fd_fn get_remote_msd_fd;
+    /*
+     * Function to notify software mailbox online/offline.
+     * For those without xclmgmt driver, this hook function is used to notify
+     * the xocl that imagined mgmt is online/offline. 
+     */
+    mb_notify_fn mb_notify;
     /*
      * The following are all hook functions handling software mailbox msg
      * that initialized from xocl driver
