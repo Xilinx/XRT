@@ -94,13 +94,17 @@ void osInfo(boost::property_tree::ptree &pt)
 
 void baseInit()
 {
-    boost::property_tree::ptree os_pt;
-    boost::property_tree::ptree xrt_pt;
-    osInfo(os_pt);
-    xrtInfo(xrt_pt);
-    sensor_tree::put("version", "1.1.0"); // json schema version
-    sensor_tree::add_child("system", os_pt);
-    sensor_tree::add_child("runtime", xrt_pt);
+    try {
+        boost::property_tree::ptree os_pt;
+        boost::property_tree::ptree xrt_pt;
+        osInfo(os_pt);
+        xrtInfo(xrt_pt);
+        sensor_tree::put("version", "1.1.0"); // json schema version
+        sensor_tree::add_child("system", os_pt);
+        sensor_tree::add_child("runtime", xrt_pt);
+    } catch (const boost::property_tree::ptree_error &e) {
+        std::cout << e.what() << std::endl;
+    }
 }
 
 void baseDump(std::ostream &ostr)

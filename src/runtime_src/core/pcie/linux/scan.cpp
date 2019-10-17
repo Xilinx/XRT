@@ -255,19 +255,6 @@ void pcidev::pci_device::sysfs_get(
         s = ""; // default value
 }
 
-void pcidev::pci_device::sysfs_get(
-    const std::string& subdev, const std::string& entry,
-    std::string& err_msg, bool& b)
-{
-    std::vector<uint64_t> iv;
-
-    sysfs_get(subdev, entry, err_msg, iv);
-    if (!iv.empty())
-        b = (iv[0] == 1);
-    else
-        b = false; // default value
-}
-
 static std::string get_devfs_path(bool is_mgmt, uint32_t instance)
 {
     std::string prefixStr = is_mgmt ? "/dev/xclmgmt" : "/dev/dri/" RENDER_NM;
@@ -356,7 +343,7 @@ pcidev::pci_device::pci_device(const std::string& sysfs) : sysfs_name(sysfs)
     }
 
     // Determine if device is of supported vendor
-    sysfs_get("", "vendor", err, vendor);
+    sysfs_get<uint16_t>("", "vendor", err, vendor, static_cast<uint16_t>(-1));
     if (!err.empty()) {
         std::cout << err << std::endl;
         return;
@@ -380,7 +367,7 @@ pcidev::pci_device::pci_device(const std::string& sysfs) : sysfs_name(sysfs)
 
     uint32_t inst = INVALID_ID;
     if (mgmt)
-        sysfs_get("", "instance", err, inst);
+        sysfs_get<uint32_t>("", "instance", err, inst, static_cast<uint32_t>(-1));
     else
         inst = get_render_value(dir + "/drm");
     if (!devfs_exists(mgmt, inst))
@@ -391,11 +378,11 @@ pcidev::pci_device::pci_device(const std::string& sysfs) : sysfs_name(sysfs)
     bus = b;
     dev = d;
     func = f;
-    sysfs_get("", "userbar", err, user_bar);
+    sysfs_get<int>("", "userbar", err, user_bar, -1);
     user_bar_size = bar_size(dir, user_bar);
     is_mgmt = mgmt;
     instance = inst;
-    sysfs_get("", "ready", err, is_ready);
+    sysfs_get<bool>("", "ready", err, is_ready, false);
 }
 
 pcidev::pci_device::~pci_device()
@@ -730,7 +717,7 @@ std::ostream& operator<<(std::ostream& stream,
     std::string err;
     bool is_mfg = false;
     uint64_t ts = 0;
-    dev->sysfs_get("", "mfg", err, is_mfg);
+    dev->sysfs_get<bool>("", "mfg", err, is_mfg, false);
     if (is_mfg) {
         unsigned ver = 0;
         std::string nm;
@@ -743,7 +730,7 @@ std::ostream& operator<<(std::ostream& stream,
         shell_name += std::to_string(ver);
     } else {
         dev->sysfs_get("rom", "VBNV", err, shell_name);
-        dev->sysfs_get("rom", "timestamp", err, ts);
+        dev->sysfs_get<uint64_t>("rom", "timestamp", err, ts, static_cast<uint64_t>(-1));
     }
     stream << " " << shell_name;
     if (ts != 0)

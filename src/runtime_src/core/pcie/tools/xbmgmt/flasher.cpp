@@ -211,7 +211,7 @@ Flasher::Flasher(unsigned int index) : mFRHeader{}
 
     std::string err;
     bool is_mfg = false;
-    dev->sysfs_get("", "mfg", err, is_mfg);
+    dev->sysfs_get<bool>("", "mfg", err, is_mfg, false);
 
     std::vector<char> feature_rom;
     dev->sysfs_get("rom", "raw", err, feature_rom);
@@ -281,13 +281,13 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
     }
 
     uint16_t vendor_id, device_id;
-    mDev->sysfs_get("", "vendor", err, vendor_id);
+    mDev->sysfs_get<uint16_t>("", "vendor", err, vendor_id, -1);
     if (!err.empty())
     {
         std::cout << err << std::endl;
         return DSAs;
     }
-    mDev->sysfs_get("", "device", err, device_id);
+    mDev->sysfs_get<uint16_t>("", "device", err, device_id, -1);
     if (!err.empty())
     {
         std::cout << err << std::endl;
@@ -330,7 +330,7 @@ DSAInfo Flasher::getOnBoardDSA()
     std::string board_name;
     std::string uuid;
     bool is_mfg = false;
-    mDev->sysfs_get("", "mfg", err, is_mfg);
+    mDev->sysfs_get<bool>("", "mfg", err, is_mfg, false);
     mDev->sysfs_get("", "board_name", err, board_name);
     mDev->sysfs_get("rom", "uuid", err, uuid);
     if (is_mfg)
