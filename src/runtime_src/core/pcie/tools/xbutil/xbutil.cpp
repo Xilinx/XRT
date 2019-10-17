@@ -109,9 +109,13 @@ static void print_pci_info(std::ostream &ostr)
 
     if (pcidev::get_dev_total() != pcidev::get_dev_ready()) {
         ostr << "WARNING: "
-            << "card(s) marked by '*' are not ready, "
-            << "run xbmgmt flash --scan --verbose to further check the details."
-            << std::endl;
+            << "card(s) marked by '*' are not ready, is MPD runing? "
+            << "run 'systemctl status mpd' to check MPD details.";
+	    if (pcidev::get_dev_total(false) == 0)
+            ostr << std::endl;
+	    else
+            ostr << " please also run 'xbmgmt flash --scan --verbose' to further check card details."
+                << std::endl;
     }
 }
 
