@@ -369,7 +369,7 @@ action_ndrange_migrate(cl_event event,cl_kernel kernel)
     for (auto mem : kernel_args) {
       // do not migrate if argument is write only, but trick the code
       // into assuming that the argument is resident
-      if ((mem->get_flags() & CL_MEM_WRITE_ONLY) | (xocl(mem)->no_host_memory())) {
+      if ((mem->get_flags() & CL_MEM_WRITE_ONLY) || (xocl(mem)->no_host_memory())) {
         mem->set_resident(device);
         continue;
       }
