@@ -74,7 +74,7 @@ extern "C" {
  */
 typedef void * xclDeviceHandle;
 
-/**
+/*
  * typedef xclBufferHandle - opaque buffer handle
  *
  * A buffer handle of xclBufferHandle kind is obtained by allocating
