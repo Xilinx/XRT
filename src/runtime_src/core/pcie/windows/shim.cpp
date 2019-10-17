@@ -26,7 +26,7 @@
 #include <strsafe.h>
 
 // To be simplified
-#include "core/pcie/driver/windows/xocl/user/Src/XoclUserM2/Src/Inc/XoclUser_INTF.h"
+#include "core/pcie/driver/windows/include/XoclUser_INTF.h"
 
 #include <cstring>
 #include <cstdio>
