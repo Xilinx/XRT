@@ -87,6 +87,7 @@ public:
    *   Argument index
    * @return Memory index identifying DDR bank for argument
    */
+  XRT_XOCL_EXPORT
   xclbin::memidx_bitmask_type
   get_memidx(unsigned int arg) const;
 

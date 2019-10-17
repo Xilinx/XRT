@@ -170,7 +170,6 @@ int main_(int argc, char** argv) {
     ("append-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAppend)->multitoken(), "Section to append to.")
     ("signature-debug", boost::program_options::bool_switch(&bSignatureDebug), "Dump section debug data.")
     ("dump-signature", boost::program_options::value<std::string>(&sSignatureOutputFile), "Dumps a sign xclbin image's signature.")
-    ("list-names", boost::program_options::bool_switch(&bListNames), "(Deprecated) List all possible section names (Stand Alone Option)")
     ("BAD-DATA", boost::program_options::value<std::vector<std::string> >(&badOptions)->multitoken(), "Dummy Data." )
   ;
 

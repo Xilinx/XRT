@@ -13,6 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+#include "xocl/config.h"
 #include "detail/platform.h"
 #include "xocl/core/platform.h"
 #include "plugin/xdp/profile.h"

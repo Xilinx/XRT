@@ -44,7 +44,7 @@ std::string format(const std::string& format, Args ... args) {
   size_t size = 1 + snprintf(nullptr, 0, format.c_str(), args ...);
   std::unique_ptr<char[]> buf(new char[size]);
   snprintf(buf.get(), size, format.c_str(), args ...);
-  
+
   return std::string(buf.get(), buf.get() + size);
 }
 
@@ -57,11 +57,19 @@ class XclBinUtilException : public std::runtime_error {
     XclBinExceptionType m_eExceptionType;
 
 public:
-    XclBinUtilException(XclBinExceptionType _eExceptionType, 
-                        const std::string & _msg, 
-                        const char * _file = __FILE__, 
-                        int _line = __LINE__, 
-                        const char * _function = __FUNCTION__) 
+#ifndef _WIN32
+    XclBinUtilException(XclBinExceptionType _eExceptionType,
+                        const std::string & _msg,
+                        const char * _file = __FILE__,
+                        int _line = __LINE__,
+                        const char * _function = __FUNCTION__)
+#else
+    XclBinUtilException(XclBinExceptionType _eExceptionType,
+                        const std::string & _msg,
+                        const char * _file = "fix me",
+                        int _line = 0,
+                        const char * _function = "fix me")
+#endif
     : std::runtime_error(_msg)
     , m_msg(_msg)
     , m_file(_file)

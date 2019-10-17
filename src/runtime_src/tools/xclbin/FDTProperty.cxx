@@ -29,6 +29,7 @@ namespace XUtil = XclBinUtilities;
 
 #ifdef _WIN32
   #pragma comment(lib, "wsock32.lib")
+  #pragma warning( disable : 4267 )
   #include <winsock2.h>
 #else
   #include <arpa/inet.h>
@@ -66,8 +67,8 @@ FDTProperty::getDataFormat(const std::string & _variableName) const
     if (extension.length() == 0) {
       continue;
     }
-  
-    // Do we have a match  
+
+    // Do we have a match
     if (hasEnding(_variableName, extension) == true) {
       return _DataFormatTable[index].eDataFormat;
     }
@@ -85,11 +86,11 @@ FDTProperty::getDataFormatPrettyName(DataFormat _eDataFormat) const
     }
   }
 
-  // Should never get here, but just in case we do 
+  // Should never get here, but just in case we do
   return getDataFormatPrettyName(DF_unknown);
 }
 
-unsigned int 
+unsigned int
 FDTProperty::getWordLength(DataFormat _eDataFormat) const
 {
   for (unsigned int index = 0; index < _DataFormatTable.size(); ++index) {
@@ -124,9 +125,9 @@ FDTProperty::FDTProperty()
 }
 
 
-FDTProperty::~FDTProperty() 
+FDTProperty::~FDTProperty()
 {
-  // Delete m_pDataBuffer 
+  // Delete m_pDataBuffer
   if (m_pDataBuffer != NULL) {
     delete m_pDataBuffer;
     m_pDataBuffer = NULL;
@@ -149,8 +150,8 @@ struct FDTLenOffset {
   uint32_t nameoff;
 };
 
-FDTProperty::FDTProperty(const char* _pBuffer, 
-                         const unsigned int _size, 
+FDTProperty::FDTProperty(const char* _pBuffer,
+                         const unsigned int _size,
                          const DTCStringsBlock & _dtcStringsBlock,
                          unsigned int & _bytesExamined,
                          const PropertyNameFormat & _propertyNameFormat)
@@ -201,7 +202,7 @@ FDTProperty::FDTProperty(const char* _pBuffer,
       m_pDataBuffer = new char[m_dataLength];
       memcpy(m_pDataBuffer, &_pBuffer[index], m_dataLength);
       XUtil::TRACE_BUF("Property Data", m_pDataBuffer, m_dataLength);
-  } 
+  }
 
   // Update index
   index += m_dataLength;
@@ -214,7 +215,7 @@ FDTProperty::FDTProperty(const char* _pBuffer,
   _bytesExamined = index;
 }
 
-bool 
+bool
 FDTProperty::hasEnding(std::string const &_sFullString, std::string const & _sEndSubString)
 {
   // See if there is room
@@ -253,7 +254,7 @@ FDTProperty::au16MarshalToJSON(boost::property_tree::ptree &_ptTree) const
 {
   XUtil::TRACE("   Type: Array of 16 bits");
 
-  // Check and make sure that all is good 
+  // Check and make sure that all is good
   static unsigned int byteBoundary = 2;
   if ((m_dataLength % byteBoundary) != 0) {
     std::string err = XUtil::format("ERROR: Data length (%d) does not end on a 2-byte boundary.", m_dataLength);
@@ -277,7 +278,7 @@ FDTProperty::au32MarshalToJSON(boost::property_tree::ptree &_ptTree) const
 {
   XUtil::TRACE("   Type: Array of 32 bits");
 
-  // Check and make sure that all is good 
+  // Check and make sure that all is good
   static unsigned int byteBoundary = 4;
   if ((m_dataLength % byteBoundary) != 0) {
     std::string err = XUtil::format("ERROR: Data length (%d) does not end on a 4-byte boundary.", m_dataLength);
@@ -301,7 +302,7 @@ FDTProperty::u16MarshalToJSON(boost::property_tree::ptree &_ptTree) const
 {
   XUtil::TRACE("   Type: 16 bits");
 
-  // Check and make sure that all is good 
+  // Check and make sure that all is good
   static unsigned int byteBoundary = 2;
   if ((m_dataLength % byteBoundary) != 0) {
     std::string err = XUtil::format("ERROR: Data length (%d) does not end on a 2-byte boundary.", m_dataLength);
@@ -317,7 +318,7 @@ FDTProperty::u32MarshalToJSON(boost::property_tree::ptree &_ptTree) const
 {
   XUtil::TRACE("   Type: 32 bits");
 
-  // Check and make sure that all is good 
+  // Check and make sure that all is good
   if (m_dataLength != sizeof(uint32_t)) {
     std::string err = XUtil::format("ERROR: Data length for a 32-bit word is invalid: Expected: %d, Actual: %d", sizeof(uint32_t), m_dataLength);
     throw std::runtime_error(err);
@@ -332,7 +333,7 @@ FDTProperty::u128MarshalToJSON(boost::property_tree::ptree &_ptTree) const
 {
   XUtil::TRACE("   Type: 128 bits");
 
-  // Check and make sure that all is good 
+  // Check and make sure that all is good
   static unsigned int expectedSize = 16;
   if (m_dataLength != expectedSize) {
     std::string err = XUtil::format("ERROR: Data length for a 128-bit word is invalid: Expected: %d, Actual: %d", expectedSize, m_dataLength);
@@ -350,7 +351,7 @@ FDTProperty::u64MarshalToJSON(boost::property_tree::ptree &_ptTree) const
 {
   XUtil::TRACE("   Type: 64 bits");
 
-  // Check and make sure that all is good 
+  // Check and make sure that all is good
   if (m_dataLength != sizeof(uint64_t)) {
     std::string err = XUtil::format("ERROR: Data length for a 64-bit word is invalid: Expected: %d, Actual: %d", sizeof(uint64_t), m_dataLength);
     throw std::runtime_error(err);
@@ -366,7 +367,7 @@ FDTProperty::au64MarshalToJSON(boost::property_tree::ptree &_ptTree) const
 {
   XUtil::TRACE("   Type: Array 64 bits");
 
-  // Check and make sure that all is good 
+  // Check and make sure that all is good
   static unsigned int byteBoundary = 8;
   if ((m_dataLength % byteBoundary) != 0) {
     std::string err = XUtil::format("ERROR: Data length (%d) does not end on a 8-byte boundary.", m_dataLength);
@@ -391,7 +392,7 @@ FDTProperty::aszMarshalToJSON(boost::property_tree::ptree &_ptTree) const
 {
   XUtil::TRACE("   Type: Array String");
 
-  // Check and make sure that all is good 
+  // Check and make sure that all is good
   if (m_dataLength == 0) {
     throw std::runtime_error("ERROR: Malformed string.  Missing terminator.");
   }
@@ -427,7 +428,7 @@ FDTProperty::szMarshalToJSON(boost::property_tree::ptree &_ptTree) const
 {
   XUtil::TRACE("   Type: String");
 
-  // Check and make sure that all is good 
+  // Check and make sure that all is good
   if (m_dataLength == 0) {
     throw std::runtime_error("ERROR: Malformed string.  Missing terminator.");
   }
@@ -443,7 +444,7 @@ FDTProperty::szMarshalToJSON(boost::property_tree::ptree &_ptTree) const
 
 unsigned int
 FDTProperty::writeDataWord(DataFormat _eDataFormat,
-                           char * _buffer, 
+                           char * _buffer,
                            const std::string & _sData)
 {
   unsigned int bytesWritten = 0;
@@ -470,7 +471,7 @@ FDTProperty::writeDataWord(DataFormat _eDataFormat,
         bytesWritten = sizeof(uint8_t);
       }
       break;
-      
+
     case DF_au16:
     case DF_u16:
       {
@@ -568,7 +569,7 @@ FDTProperty::writeDataWord(DataFormat _eDataFormat,
   return bytesWritten;
 }
 
-void 
+void
 FDTProperty::marshalDataFromJSON(boost::property_tree::ptree::const_iterator & _iter,
                                  const PropertyNameFormat & _propertyNameFormat)
 {
@@ -592,7 +593,7 @@ FDTProperty::marshalDataFromJSON(boost::property_tree::ptree::const_iterator & _
 
   // Address the non-array values first
   if (isDataFormatArray(m_eDataFormat) == false) {
-    std::string sData = ptData.data();  
+    std::string sData = ptData.data();
 
     if (m_eDataFormat == DF_sz) {
       m_dataLength = (unsigned int) sData.size() + 1; // Add room for the '\0' character
@@ -609,7 +610,7 @@ FDTProperty::marshalDataFromJSON(boost::property_tree::ptree::const_iterator & _
   if (m_eDataFormat == DF_asz) {
     m_dataLength = 0;
     for (auto localIter : ptData) {
-      std::string sData = localIter.second.data();  
+      std::string sData = localIter.second.data();
       m_dataLength += sData.size() + 1;  // Add room for the string and the '\0' character
     }
   } else {
@@ -627,7 +628,7 @@ FDTProperty::marshalDataFromJSON(boost::property_tree::ptree::const_iterator & _
 }
 
 
-FDTProperty::FDTProperty(boost::property_tree::ptree::const_iterator & _iter, 
+FDTProperty::FDTProperty(boost::property_tree::ptree::const_iterator & _iter,
                          const PropertyNameFormat & _propertyNameFormat)
   : FDTProperty()
 {
@@ -639,7 +640,7 @@ FDTProperty::FDTProperty(boost::property_tree::ptree::const_iterator & _iter,
 
 
 
-void 
+void
 FDTProperty::marshalToJSON(boost::property_tree::ptree &_ptTree,
                            const PropertyNameFormat & _propertyNameFormat) const
 {
@@ -676,7 +677,7 @@ FDTProperty::marshalToJSON(boost::property_tree::ptree &_ptTree,
 
 #define FDT_PROP        0x00000003
 
-void 
+void
 FDTProperty::marshalToDTC(DTCStringsBlock & _dtcStringsBlock, std::ostream& _buf) const
 {
   // Add property keyword

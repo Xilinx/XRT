@@ -19,7 +19,7 @@
 #include <memory>
 #include <cstdlib>
 
-namespace xrt_core { 
+namespace xrt_core {
 
 inline int
 posix_memalign(void **memptr, size_t alignment, size_t size)
@@ -27,6 +27,7 @@ posix_memalign(void **memptr, size_t alignment, size_t size)
 #if defined(__GNUC__)
   return ::posix_memalign(memptr,alignment,size);
 #elif defined(_WINDOWS)
+  // this is not good, _aligned_malloc requires _aligned_free
   // power of 2
   if (!alignment || (alignment & (alignment - 1)))
     return EINVAL;
@@ -43,12 +44,27 @@ posix_memalign(void **memptr, size_t alignment, size_t size)
 #endif
 }
 
-auto aligned_ptr_deleter = [] (void* ptr) { free(ptr); } ;
-using aligned_ptr_type = std::unique_ptr<void, decltype(aligned_ptr_deleter)>;
+struct aligned_ptr_deleter
+{
+#if defined(_WINDOWS)
+  void operator() (void* ptr)  { _aligned_free(ptr); }
+#else
+  void operator() (void* ptr)  { free(ptr); }
+#endif
+};
+using aligned_ptr_type = std::unique_ptr<void, aligned_ptr_deleter>;
 inline aligned_ptr_type
 aligned_alloc(size_t align, size_t size)
 {
-  return aligned_ptr_type(::aligned_alloc(align, size),aligned_ptr_deleter);
+  // power of 2
+  if (!align || (align & (align - 1)))
+    throw std::runtime_error("xrt_core::aligned_alloc requires power of 2 for alignment");
+
+#if defined(_WINDOWS)
+  return aligned_ptr_type(_aligned_malloc(size, align));
+#else
+  return aligned_ptr_type(::aligned_alloc(align, size));
+#endif
 }
 
 } // xrt_core

@@ -16,6 +16,7 @@
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
+#include "xocl/config.h"
 #include "api.h"
 #include "plugin/xdp/profile.h"
 
@@ -47,5 +48,3 @@ clEnqueueTask(cl_command_queue   command_queue ,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

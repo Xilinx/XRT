@@ -26,6 +26,10 @@
 #include <limits>
 #include "plugin/xdp/profile.h"
 
+#ifdef _WIN32
+# pragma warning ( disable : 4267 )
+#endif
+
 namespace xocl {
 
 const size_t maxuint = std::numeric_limits<unsigned int>::max();

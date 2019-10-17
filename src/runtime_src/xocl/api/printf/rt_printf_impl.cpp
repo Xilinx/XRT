@@ -26,8 +26,9 @@
 #include <iomanip>
 #include <algorithm>
 
-#ifdef _WINDOWS
-#define snprintf _snprintf
+#ifdef _WIN32
+# pragma warning( disable : 4996 )
+# define snprintf _snprintf
 #endif
 
 
@@ -633,15 +634,15 @@ void FormatString::parse(const std::string& format)
 
       if ( conversionBegin == std::string::npos ) {
         // Last iteration - store end of string past conversion specifier
-        std::string str = format.substr(conversionEnd+1, std::string::npos);
-        replacePercent(str);
-        m_splitFormatString.push_back(str);
+        auto sstr = format.substr(conversionEnd+1, std::string::npos);
+        replacePercent(sstr);
+        m_splitFormatString.push_back(sstr);
       }
       else {
         len = conversionBegin - conversionEnd - 1;
-        std::string str = format.substr(conversionEnd+1, len);
-        replacePercent(str);
-        m_splitFormatString.push_back(str);
+        auto sstr = format.substr(conversionEnd+1, len);
+        replacePercent(sstr);
+        m_splitFormatString.push_back(sstr);
       }
     }
     else {
@@ -1083,35 +1084,29 @@ std::string convertArg(PrintfArg& arg, ConversionSpec& conversion)
       break;
     }
     case PrintfArg::AT_INTVEC: {
-      int vectorsize = arg.intVec.size();
-      for ( int idx = 0; idx < vectorsize; ++idx ) {
-        snprintf(printBuf, bufLen, formatStr, arg.intVec[idx]);
+      size_t comma = 0;
+      for (auto val : arg.intVec) {
+        if (comma++) retval += ",";
+        snprintf(printBuf, bufLen, formatStr, val);
         retval += printBuf;
-        if ( idx < (vectorsize - 1) ) {
-          retval += (",");
-        }
       }
       break;
     }
     case PrintfArg::AT_UINTVEC: {
-      int vectorsize = arg.uintVec.size();
-      for ( int idx = 0; idx < vectorsize; ++idx ) {
-        snprintf(printBuf, bufLen, formatStr, arg.uintVec[idx]);
+      size_t comma = 0;
+      for (auto val : arg.uintVec) {
+        if (comma++) retval += ",";
+        snprintf(printBuf, bufLen, formatStr, val);
         retval += printBuf;
-        if ( idx < (vectorsize - 1) ) {
-          retval += (",");
-        }
       }
       break;
     }
     case PrintfArg::AT_FLOATVEC: {
-      int vectorsize = arg.floatVec.size();
-      for ( int idx = 0; idx < vectorsize; ++idx ) {
-        snprintf(printBuf, bufLen, formatStr, arg.floatVec[idx]);
+      size_t comma = 0;
+      for (auto val : arg.floatVec) {
+        if (comma++) retval += ",";
+        snprintf(printBuf, bufLen, formatStr, val);
         retval += printBuf;
-        if ( idx < (vectorsize - 1) ) {
-          retval += (",");
-        }
       }
       break;
     }
@@ -1170,10 +1165,10 @@ size_t getPrintfBufferSize(const std::vector<size_t>& globalSize, const std::vec
   static bool msg_printed = false;
   size_t totalLocal = 1;
   size_t totalGlobal = 1;
-  for ( int g : globalSize ) {
+  for ( auto g : globalSize ) {
     totalGlobal *= g;
   }
-  for ( int l : localSize ) {
+  for ( auto l : localSize ) {
     totalLocal *= l;
   }
   size_t workgroupCount = std::max(static_cast<size_t>(1), (totalGlobal / totalLocal) );

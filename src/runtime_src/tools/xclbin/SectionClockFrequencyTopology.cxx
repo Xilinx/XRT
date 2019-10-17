@@ -45,7 +45,7 @@ SectionClockFrequencyTopology::getClockTypeStr(enum CLOCK_TYPE _clockType) const
       return "SYSTEM";
   }
 
-  return XUtil::format("UNKNOWN (%d) CLOCK_TYPE", (unsigned int)_clockType);
+  return XUtil::format("UNKNOWN (%d) CLOCK_TYPE", (unsigned int) _clockType);
 }
 
 enum CLOCK_TYPE

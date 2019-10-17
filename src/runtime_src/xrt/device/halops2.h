@@ -17,8 +17,12 @@
 #ifndef xrt_device_halops2_h
 #define xrt_device_halops2_h
 
-#include "xclhal2.h"
+#include "xrt.h"
 #include <string>
+
+#ifndef _WIN32
+# include <sys/mman.h>
+#endif
 
 /**
  * This file provides a C++ API into a HAL user shim C library.
@@ -114,9 +118,9 @@ private:
   typedef size_t (* debugReadIPStatusFuncType)(xclDeviceHandle handle, xclDebugReadType type,
                                                void* debugResults);
 
-  typedef int (* openContextFuncType)(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex,
+  typedef int (* openContextFuncType)(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex,
                                       bool shared);
-  typedef int (* closeContextFuncType)(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIndex);
+  typedef int (* closeContextFuncType)(xclDeviceHandle handle, const xuid_t xclbinId, unsigned ipIndex);
 
 
   //Streaming
@@ -131,7 +135,7 @@ private:
 //End Streaming
 
   //APIs using sysfs
-  typedef uint     (*xclGetNumLiveProcessesFuncType)(xclDeviceHandle handle);
+  typedef uint32_t(*xclGetNumLiveProcessesFuncType)(xclDeviceHandle handle);
   typedef int     (*xclGetSysfsPathFuncType)(xclDeviceHandle handle, const char* subdev, const char* entry, char* sysfsPath, size_t size);
 
   typedef int     (*xclGetDebugIPlayoutPathFuncType)(xclDeviceHandle handle, char* layoutPath, size_t size);
@@ -139,21 +143,8 @@ private:
   typedef int (*xclGetTraceBufferInfoFuncType)(xclDeviceHandle handle, uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
   typedef int (*xclReadTraceDataFuncType)(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
 
-//
-#if 0
-  typedef int (* loadBitstreamFuncType)(xclDeviceHandle handle, const char *fileName);
-  typedef int (* loadXclBinFuncType)(xclDeviceHandle handle, const xclBin *buffer);
-  typedef int (* resetProgramFuncType)(xclDeviceHandle handle, xclResetKind kind);
-  typedef int (* reClockFuncType)(xclDeviceHandle handle, unsigned targetFreqMHz);
-
-  typedef uint64_t (* allocDeviceBufferType)(xclDeviceHandle handle, size_t size);
-  typedef uint64_t (* allocDeviceBufferType2)(xclDeviceHandle handle, size_t size, xclMemoryDomains domain,
-                                              unsigned flags);
-  typedef size_t (* copyBufferHost2DeviceType)(xclDeviceHandle handle, uint64_t dest, const void *src,
-                                               size_t size, size_t seek);
-  typedef size_t (* copyBufferDevice2HostType)(xclDeviceHandle handle, void *dest, uint64_t src,
-                                               size_t size, size_t skip);
-  typedef double (* getHostClockFuncType)(xclDeviceHandle handle);
+#ifdef _WIN32
+  typedef int     (*munmapFuncType)(void* addr, size_t length);
 #endif
 
 private:
@@ -229,22 +220,22 @@ public:
   xclGetSysfsPathFuncType mGetSysfsPath;
 
   xclGetDebugIPlayoutPathFuncType mGetDebugIPlayoutPath;
-
   xclGetTraceBufferInfoFuncType mGetTraceBufferInfo;
   xclReadTraceDataFuncType mReadTraceData;
 
-#if 0
-  /* TBD */
-  loadBitstreamFuncType mLoadBitstream;
-  loadXclBinFuncType mLoadXclBin;
-  resetProgramFuncType mResetProgram;
-  reClockFuncType mReClock;
-  copyBufferHost2DeviceType mCopyHost2Device;
-  copyBufferDevice2HostType mCopyDevice2Host;
-  allocDeviceBufferType mAllocDeviceBuffer;
-  allocDeviceBufferType2 mAllocDeviceBuffer2;
-  freeDeviceBufferType mFreeDeviceBuffer;
+#ifdef _WIN32
+  munmapFuncType mMunmap;
 #endif
+
+  int
+  munmap(void* addr, size_t length)
+  {
+#ifndef _WIN32
+    return ::munmap(addr,length);
+#else
+    return mMunmap(addr,length);
+#endif
+  }
 
   const std::string&
   getFileName() const

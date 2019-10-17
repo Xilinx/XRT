@@ -16,16 +16,19 @@
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/context.h"
 #include "xocl/core/device.h"
 #include "xocl/core/memory.h"
 #include "detail/memory.h"
 #include "detail/context.h"
-
-#include <cstdlib>
 #include "plugin/xdp/profile.h"
+#include <CL/opencl.h>
+#include <cstdlib>
+
+#ifdef _WIN32
+# pragma warning ( disable : 4996 )
+#endif
 
 namespace {
 
@@ -575,7 +578,6 @@ mkImageFromBuffer(cl_context             context,
 {
   //This will call mkImageCore() function after modifying the arguments of desc.
   throw xocl::error(CL_IMAGE_FORMAT_NOT_SUPPORTED, "clCreateImage, buffer type");
-  return nullptr;
 }
 
 static cl_mem

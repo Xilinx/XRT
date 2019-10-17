@@ -15,17 +15,18 @@
  */
 
 // Copyright 2018 Xilinx, Inc. All rights reserved.
-#include <CL/opencl.h>
+#include "xocl/config.h"
 #include "xocl/core/stream.h"
 #include "xocl/core/error.h"
 #include "plugin/xdp/profile.h"
 #include "xocl/core/device.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
 static void
 validOrError(cl_device_id               device,
-	cl_streams_poll_req_completions*completions, 
+	cl_streams_poll_req_completions*completions,
 	cl_int                          min_num_completion,
 	cl_int                          max_num_completion,
 	cl_int*                         actual_num_completion,
@@ -35,9 +36,9 @@ validOrError(cl_device_id               device,
 {
 }
 
-static cl_int 
+static cl_int
 clPollStreams(cl_device_id              device,
-	cl_streams_poll_req_completions*completions, 
+	cl_streams_poll_req_completions*completions,
 	cl_int                          min,
 	cl_int                          max,
 	cl_int*                         actual,
@@ -76,4 +77,3 @@ clPollStreams(cl_device_id               device,
   }
   return CL_INVALID_VALUE;
 }
-

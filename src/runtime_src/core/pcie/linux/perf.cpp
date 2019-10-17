@@ -60,14 +60,14 @@
 #include <iostream>
 #include <iomanip>
 
-#ifndef _WINDOWS
+#ifndef _WIN32
 // TODO: Windows build support
 //    unistd.h is linux only header file
 //    it is included for read, write, close, lseek64
 #include <unistd.h>
 #endif
 
-#ifdef _WINDOWS
+#ifdef _WIN32
 #define __func__ __FUNCTION__
 #endif
 
@@ -936,7 +936,7 @@ namespace xocl {
     // Create trace buffer on host (requires alignment)
     const int BUFFER_BYTES = MAX_TRACE_NUMBER_SAMPLES * bytesPerSample;
     const int BUFFER_WORDS = MAX_TRACE_NUMBER_SAMPLES * wordsPerSample;
-#ifndef _WINDOWS
+#ifndef _WIN32
 // TODO: Windows build support
 //    alignas is defined in c++11
 #if GCC_VERSION >= 40800

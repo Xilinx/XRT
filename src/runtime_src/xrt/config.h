@@ -24,9 +24,11 @@
 # define XRT_UNUSED __attribute__((unused))
 #endif
 
+#ifdef _WIN32
+# define XRT_UNUSED
+#endif
+
 // Various configurations for xrt consolidated here to
 // for appropriate recompiles
 
 #endif
-
-

@@ -24,6 +24,8 @@
 #include "xocl/api/detail/device.h"
 #include "xocl/api/detail/context.h"
 
+#include "CL/cl_ext_xilinx.h"
+
 namespace xocl {
 
 void
@@ -71,7 +73,7 @@ clGetMemObjectFromFd(cl_context context,
   auto xdevice  = xocl(device);
 
   size_t size = 0;
-  unsigned iflags = flags;
+  unsigned int iflags = static_cast<unsigned int>(flags);
   if (auto boh = xdevice->get_xrt_device()->getBufferFromFd(fd, size, iflags)) {
     auto buffer = std::make_unique<xocl::buffer>(xcontext, flags, size, nullptr);
     // set fields in cl_buffer

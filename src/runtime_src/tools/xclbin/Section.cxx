@@ -245,6 +245,7 @@ Section::writeXclBinSectionBuffer(std::fstream& _ostream) const
   }
 
   _ostream.write(m_pBuffer, m_bufferSize);
+  _ostream.flush();
 }
 
 void
@@ -400,7 +401,9 @@ Section::readPayload(std::fstream& _istream, enum FormatType _eFormatType)
         sectionHeader.m_sectionKind = getSectionKind();
         sectionHeader.m_sectionOffset = 0;
         _istream.seekg(0, _istream.end);
-        sectionHeader.m_sectionSize = _istream.tellg();
+
+        static_assert(sizeof(std::streamsize) <= sizeof(uint64_t), "std::streamsize percision is greater then 64 bits");
+        sectionHeader.m_sectionSize = (uint64_t) _istream.tellg();
 
         readXclBinBinary(_istream, sectionHeader);
         break;
@@ -409,7 +412,7 @@ Section::readPayload(std::fstream& _istream, enum FormatType _eFormatType)
       {
         // Bring the file into memory
         _istream.seekg(0, _istream.end);
-        unsigned int fileSize = (unsigned int) _istream.tellg();
+        std::streamsize fileSize =  _istream.tellg();
 
         std::unique_ptr<unsigned char> memBuffer(new unsigned char[fileSize]);
         _istream.clear();
@@ -457,7 +460,9 @@ Section::readXclBinBinary(std::fstream& _istream, enum FormatType _eFormatType)
       sectionHeader.m_sectionKind = getSectionKind();
       sectionHeader.m_sectionOffset = 0;
       _istream.seekg(0, _istream.end);
-      sectionHeader.m_sectionSize = _istream.tellg();
+
+      static_assert(sizeof(std::streamsize) <= sizeof(uint64_t), "std::streamsize percision is greater then 64 bits");
+      sectionHeader.m_sectionSize = (uint64_t) _istream.tellg();
 
       readXclBinBinary(_istream, sectionHeader);
       break;
@@ -466,7 +471,7 @@ Section::readXclBinBinary(std::fstream& _istream, enum FormatType _eFormatType)
     {
       // Bring the file into memory
       _istream.seekg(0, _istream.end);
-      unsigned int fileSize = (unsigned int) _istream.tellg();
+      std::streamsize fileSize = _istream.tellg();
 
       std::unique_ptr<unsigned char> memBuffer(new unsigned char[fileSize]);
       _istream.clear();
