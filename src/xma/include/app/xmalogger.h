@@ -19,7 +19,6 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "xrt.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,13 +29,16 @@ extern "C" {
  * Redfine XMA msg log literals to map to XRT literals
  */
 
-typedef enum xrtLogMsgLevel XmaLogLevelType;
-
-#define XMA_CRITICAL_LOG XRT_CRITICAL
-#define XMA_ERROR_LOG XRT_ERROR
-#define XMA_WARNING_LOG XRT_WARNING
-#define XMA_INFO_LOG XRT_INFO
-#define XMA_DEBUG_LOG XRT_DEBUG
+typedef enum XmaLogLevelType {
+     XMA_EMERGENCY_LOG = 0,
+     XMA_ALERT_LOG = 1,
+     XMA_CRITICAL_LOG = 2,
+     XMA_ERROR_LOG = 3,
+     XMA_WARNING_LOG = 4,
+     XMA_NOTICE_LOG = 5,
+     XMA_INFO_LOG = 6,
+     XMA_DEBUG_LOG = 7
+} XmaLogLevelType;
 
 /**
  * xma_logmsg() - This function logs a message to stdout, a file, or both depending on

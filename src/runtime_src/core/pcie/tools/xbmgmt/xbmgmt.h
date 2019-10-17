@@ -22,10 +22,12 @@
 
 // Helper functions that can be used by all command handlers
 //
+void printHelp(void);
 void printSubCmdHelp(const std::string& subCmd);
 bool canProceed(void);
 void sudoOrDie(void);
 unsigned int bdf2index(const std::string& bdfStr);
+std::string getBDF(unsigned index);
 std::string driver_version(std::string driver);
 bool getenv_or_null(const char* env);
 int xrt_xbmgmt_version_cmp() ;

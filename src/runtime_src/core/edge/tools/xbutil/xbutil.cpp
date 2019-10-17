@@ -95,14 +95,14 @@ int main(int argc, char *argv[])
     static struct option long_options[] = {
         {"read", no_argument, 0, xcldev::MEM_READ},
         {"write", no_argument, 0, xcldev::MEM_WRITE},
-        {"spm", no_argument, 0, xcldev::STATUS_SPM},
+        {"aim", no_argument, 0, xcldev::STATUS_SPM},
         {"lapc", no_argument, 0, xcldev::STATUS_LAPC},
-        {"sspm", no_argument, 0, xcldev::STATUS_SSPM},
+        {"asm", no_argument, 0, xcldev::STATUS_SSPM},
         {"spc", no_argument, 0, xcldev::STATUS_SPC},
         {"tracefunnel", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
         {"monitorfifolite", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
         {"monitorfifofull", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
-        {"accelmonitor", no_argument, 0, xcldev::STATUS_UNSUPPORTED},
+        {"accelmonitor", no_argument, 0, xcldev::STATUS_AM},
         {"stream", no_argument, 0, xcldev::STREAM},
         {0, 0, 0, 0}
     };
@@ -160,6 +160,15 @@ int main(int argc, char *argv[])
                 return -1 ;
             }
             ipmask |= static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK);
+            break ;
+        }
+        case xcldev::STATUS_AM : {
+            //--accelmonitor
+            if (cmd != xcldev::STATUS) {
+                std::cout << "ERROR: Option '" << long_options[long_index].name << "' cannot be used with command " << cmdname << "\n" ;
+                return -1 ;
+            }
+            ipmask |= static_cast<unsigned int>(xcldev::STATUS_AM_MASK);
             break ;
         }
         case xcldev::STATUS_SPC: {
@@ -482,6 +491,8 @@ int main(int argc, char *argv[])
         result = -1;//deviceVec[index]->do_dd( ddArgs );
         break;
     case xcldev::STATUS:
+        // On edge, we have to map the debug ip control before they can be read
+        deviceVec[index]->map_debug_ip();
         if (ipmask == xcldev::STATUS_NONE_MASK) {
             //if no ip specified then read all
             //ipmask = static_cast<unsigned int>(xcldev::STATUS_SPM_MASK);
@@ -494,10 +505,13 @@ int main(int argc, char *argv[])
             result = deviceVec[index]->readLAPCheckers(1);
         }
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SPM_MASK)) {
-            result = deviceVec[index]->readSPMCounters();
+	    result = deviceVec[index]->readAIMCounters();
         }
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SSPM_MASK)) {
-            result = deviceVec[index]->readSSPMCounters() ;
+	    result = deviceVec[index]->readASMCounters() ;
+        }
+        if (ipmask & static_cast<unsigned int>(xcldev::STATUS_AM_MASK)) {
+	    result = deviceVec[index]->readAMCounters() ;
         }
         if (ipmask & static_cast<unsigned int>(xcldev::STATUS_SPC_MASK)) {
 	  result = deviceVec[index]->readStreamingCheckers(1);
@@ -562,4 +576,28 @@ void xcldev::printHelp(const std::string& exe)
     std::cout << "  " << exe << " status \n";
     std::cout << "Validate installation on card\n";
     std::cout << "  " << exe << " validate\n";
+}
+
+int xcldev::xclTop(int argc, char* argv[])
+{
+  std::cout << "Unsupported API" << std::endl ;
+  return -1 ;
+}
+
+int xcldev::xclReset(int argc, char* argv[])
+{
+  std::cout << "Unsupported API" << std::endl ;
+  return -1 ;
+}
+
+int xcldev::xclValidate(int argc, char* argv[])
+{
+  std::cout << "Unsupported API" << std::endl ;
+  return -1 ;
+}
+
+int xcldev::xclP2p(int argc, char* argv[])
+{
+  std::cout << "Unsupported API" << std::endl ;
+  return -1 ;
 }

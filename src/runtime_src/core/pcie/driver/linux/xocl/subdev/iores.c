@@ -126,8 +126,8 @@ static int iores_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, iores);
 
 	for (i = 0, res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	    res;
-	    res = platform_get_resource(pdev, IORESOURCE_MEM, ++i)) {
+		res;
+		res = platform_get_resource(pdev, IORESOURCE_MEM, ++i)) {
 		id = res_name2id(res->name);
 		if (id > 0) {
 			iores->base_addrs[id] = ioremap_nocache(res->start,
@@ -145,11 +145,10 @@ static int iores_probe(struct platform_device *pdev)
 				iores_remove(pdev);
 				return -EINVAL;
 			}
+			xocl_info(&pdev->dev, "Resource %s%pR, id %d, mapped @%lx",
+					res->name, res, id,
+					(unsigned long)iores->base_addrs[id]);
 		}
-		xocl_info(&pdev->dev, "Resource %s%pR, id %d, mapped @%lx",
-				res->name, res, id,
-				(unsigned long)iores->base_addrs[id]);
-
 	}
 
 	return 0;

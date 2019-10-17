@@ -228,14 +228,15 @@ typedef struct XmaHwDevice
     std::vector<XmaHwExecBO> kernel_execbos;
     int32_t    num_execbo_allocated;
 
-    uint32_t    cu_cmd_id;//Counter
+    uint32_t    cu_cmd_id1;//Counter
+    uint32_t    cu_cmd_id2;//Counter
     std::mt19937 mt_gen;
     std::uniform_int_distribution<int32_t> rnd_dis;
 
     uint32_t    reserved[16];
 
 //  XmaHwDevice(): execbo_locked(new std::atomic<bool>), mt_gen(std::mt19937(std::seed_seq(static_cast<long unsigned int>(time(0)), std::random_device()))), rnd_dis(-97986387, 97986387) {
-  XmaHwDevice(): execbo_locked(new std::atomic<bool>), rnd_dis(-97986387, 97986387) {
+  XmaHwDevice(): execbo_locked(std::make_unique<std::atomic<bool>>()), rnd_dis(-97986387, 97986387) {
     //in_use = false;
     dev_index = -1;
     number_of_cus = 0;
@@ -243,7 +244,8 @@ typedef struct XmaHwDevice
     number_of_mem_banks = 0;
     num_execbo_allocated = -1;
     handle = NULL;
-    cu_cmd_id = 0;
+    cu_cmd_id1 = 0;
+    cu_cmd_id2 = 0;
     //mt = std::mt19937(std::random_device{}());
     std::random_device rd;
     uint32_t tmp_int = time(0);

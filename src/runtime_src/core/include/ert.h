@@ -411,11 +411,12 @@ enum softkernel_type {
  * Address constants per spec
  */
 #define ERT_WORD_SIZE                     4          /* 4 bytes */
-#define ERT_CQ_SIZE                       0x10000    /* 64K */
 #ifndef ERT_BUILD_U50
+# define ERT_CQ_SIZE                       0x10000    /* 64K */
 # define ERT_CQ_BASE_ADDR                  0x190000
 # define ERT_CSR_ADDR                      0x180000
 #else
+# define ERT_CQ_SIZE                       0x4000    /* 16K */
 # define ERT_CQ_BASE_ADDR                  0x340000
 # define ERT_CSR_ADDR                      0x360000
 #endif

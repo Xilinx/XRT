@@ -28,8 +28,9 @@
 #define _8KB	0x2000
 #define _64KB	0x10000
 
-#define MAX_CU_NUM 128
-#define CU_SIZE _64KB
+#define MAX_CU_NUM     128
+#define CU_SIZE        _64KB
+#define PR_ISO_SIZE    _4KB
 
 #define CLEAR(x) \
 	memset(&x, 0, sizeof(x))
@@ -123,9 +124,9 @@ struct drm_zocl_dev {
 
 	struct soft_krnl	*soft_kernel;
 	struct dma_chan		*zdev_dma_chan;
-	struct mailbox 		*zdev_mailbox;
-	const struct zdev_data 	*zdev_data_info;
-	u32			pr_isolation_addr;
+	struct mailbox		*zdev_mailbox;
+	const struct zdev_data	*zdev_data_info;
+	u64			pr_isolation_addr;
 };
 
 #endif

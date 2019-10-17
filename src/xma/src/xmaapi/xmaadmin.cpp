@@ -42,7 +42,7 @@ xma_admin_session_create(XmaAdminProperties *props)
     }
 
     // Load the xmaplugin library as it is a dependency for all plugins
-    void *xmahandle = dlopen("libxmaplugin.so",
+    void *xmahandle = dlopen("libxma2plugin.so",
                              RTLD_LAZY | RTLD_GLOBAL);
     if (!xmahandle)
     {
@@ -237,7 +237,9 @@ xma_admin_session_destroy(XmaAdminSession *session)
     free(session->base.plugin_data);
 
     // Free the session
+    /*
     delete (XmaHwSessionPrivate*)session->base.hw_session.private_do_not_use;
+    */
     session->base.hw_session.private_do_not_use = NULL;
     session->base.plugin_data = NULL;
     session->base.stats = NULL;

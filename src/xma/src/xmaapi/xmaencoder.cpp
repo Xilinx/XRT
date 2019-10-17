@@ -86,7 +86,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
     }
 
     // Load the xmaplugin library as it is a dependency for all plugins
-    void *xmahandle = dlopen("libxmaplugin.so",
+    void *xmahandle = dlopen("libxma2plugin.so",
                              RTLD_LAZY | RTLD_GLOBAL);
     if (!xmahandle)
     {
@@ -176,7 +176,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
         free(enc_session);
         return NULL;
     }
-    if ((uint32_t)cu_index >= hwcfg->devices[hwcfg_dev_index].number_of_cus || (cu_index < 0 && enc_props->cu_name == NULL)) {
+    if ((cu_index > 0 && (uint32_t)cu_index >= hwcfg->devices[hwcfg_dev_index].number_of_cus) || (cu_index < 0 && enc_props->cu_name == NULL)) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
                    "XMA session creation failed. Invalid cu_index = %d\n", cu_index);
         //Release singleton lock
@@ -382,7 +382,9 @@ xma_enc_session_destroy(XmaEncoderSession *session)
     // Free the session
     //Let's not chnage in_use and num of encoders
     //It is better to have different session_id for debugging
+    /*
     delete (XmaHwSessionPrivate*)session->base.hw_session.private_do_not_use;
+    */
     session->base.hw_session.private_do_not_use = NULL;
     session->base.plugin_data = NULL;
     session->base.stats = NULL;
@@ -621,6 +623,7 @@ xma_enc_session_statsfile_close(XmaEncoderSession *session)
     stats = (XmaEncoderStats*)session->base.stats;
      
     // Close and free the stats memory
-    close(stats->fd);
+    if (stats->fd > 0)
+        close(stats->fd);
     free(stats);
 }

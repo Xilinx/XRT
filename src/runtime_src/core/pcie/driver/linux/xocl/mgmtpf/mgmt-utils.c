@@ -180,11 +180,11 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 
 	ep_name = pdev->bus->name;
 #if defined(__PPC64__)
-	mgmt_err(lro, "Ignore reset operation for card %d in slot %s:%02x:%1x",
+	mgmt_info(lro, "Ignore reset operation for card %d in slot %s:%02x:%1x",
 		lro->instance, ep_name,
 		PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
 #else
-	mgmt_err(lro, "Trying to reset card %d in slot %s:%02x:%1x",
+	mgmt_info(lro, "Trying to reset card %d in slot %s:%02x:%1x",
 		lro->instance, ep_name,
 		PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
 
@@ -200,11 +200,13 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 	 * save state and issue PCIe secondary bus reset
 	 */
 	if (!XOCL_DSA_PCI_RESET_OFF(lro)) {
+		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_ICAP);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_MAILBOX);
 		xclmgmt_reset_pci(lro);
 		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_MAILBOX);
+		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_ICAP);
 	} else {
-		mgmt_err(lro, "PCI Hot reset is not supported on this board.");
+		mgmt_warn(lro, "PCI Hot reset is not supported on this board.");
 	}
 
 	/* Workaround for some DSAs. Flush axilite busses */
@@ -381,6 +383,7 @@ void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	msleep(100);
 	pci_bctl &= ~PCI_BRIDGE_CTL_BUS_RESET;
 	pci_write_config_byte(bus->self, PCI_BRIDGE_CONTROL, pci_bctl);
+	ssleep(1);
 
 	for (i = 0; i < 5000; i++) {
 		pci_read_config_word(pdev, PCI_COMMAND, &pci_cmd);
@@ -403,14 +406,17 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 	if (!lro->core.fdt_blob)
 		return 0;
 
-	len = fdt_totalsize(lro->core.fdt_blob) + sizeof(rom_header)
-	       + 1024;
+	len = fdt_totalsize(lro->core.fdt_blob) + sizeof(rom_header) + 1024;
+	/* assuming device tree is no bigger than 100MB */
+	if (len > 100 * 1024 * 1024)
+		return -EINVAL;
+
 	if (lro->userpf_blob)
 		vfree(lro->userpf_blob);
 
 	lro->userpf_blob = vzalloc(len);
 	if (!lro->userpf_blob)
-			return -ENOMEM;
+		return -ENOMEM;
 
 	ret = fdt_create_empty_tree(lro->userpf_blob, len);
 	if (ret) {
@@ -435,7 +441,7 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 	}
 
 	ret = xocl_fdt_add_pair(lro, lro->userpf_blob, "vrom", &rom_header,
-			sizeof(rom_header));
+		sizeof(rom_header));
 	if (ret) {
 		mgmt_err(lro, "add vrom failed %d", ret);
 		goto failed;
@@ -471,6 +477,11 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 		goto failed;
 	}
 	len = fdt_totalsize(lro->bld_blob);
+	if (len > 100 * 1024 * 1024) {
+		mgmt_err(lro, "dtb is too big");
+		ret = -EINVAL;
+		goto failed;
+	}
 	lro->core.fdt_blob = vmalloc(len);
 	if (!lro->core.fdt_blob) {
 		ret = -ENOMEM;
@@ -493,6 +504,8 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 	xocl_drvinst_set_offline(lro, true);
 
 	xocl_thread_stop(lro);
+
+	xocl_mb_stop(lro);
 
 	ret = xocl_subdev_destroy_prp(lro);
 	if (ret) {

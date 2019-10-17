@@ -129,6 +129,12 @@ get_dbg_ips_pair(const axlf* top);
 std::vector<softkernel_object>
 get_softkernels(const axlf* top);
 
+/**
+ * get_kernel_freq() - Get kernel frequency.
+ */
+size_t
+get_kernel_freq(const axlf* top);
+
 } // xclbin
 } // xrt_core
 

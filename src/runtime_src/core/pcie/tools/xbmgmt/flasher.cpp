@@ -52,8 +52,10 @@ Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
     {
         type = E_FlasherType::BPI;
     }
-    else if (typeStr.compare("qspi_ps") == 0)
+    else if (typeStr.find("qspi_ps") == 0)
     {
+        // Use find() for this type of flash.
+        // Since it have variations
         type = E_FlasherType::QSPIPS;
     }
     else
@@ -293,11 +295,11 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
     }
 
     // Obtain installed DSA info.
-    //std::cout << "ON Board: " << onBoard.vendor << " " << onBoard.board << " " << vendor_id << " " << device_id << std::endl;
+    // std::cout << "ON Board: " << onBoard.vendor << " " << onBoard.board << " " << vendor_id << " " << device_id << std::endl;
     auto installedDSAs = firmwareImage::getIntalledDSAs();
     for (DSAInfo& dsa : installedDSAs)
     {
-        //std::cout << "DSA " << dsa.name << ": " << dsa.vendor << " " << dsa.board << " " << dsa.vendor_id << " " << dsa.device_id << "TS: " << dsa.timestamp << std::endl;
+        // std::cout << "DSA " << dsa.name << ": " << dsa.vendor << " " << dsa.board << " " << dsa.vendor_id << " " << dsa.device_id << "TS: " << dsa.timestamp << std::endl;
         if (!dsa.hasFlashImage || dsa.timestamp == NULL_TIMESTAMP)
 	       continue;
 
@@ -310,7 +312,8 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
 	else if (!dsa.name.empty() && (vendor_id == dsa.vendor_id) && (device_id == dsa.device_id))
         {
             DSAs.push_back(dsa);
-        }
+        } else if (onBoard.name.empty())
+            DSAs.push_back(dsa);
 
     }
 

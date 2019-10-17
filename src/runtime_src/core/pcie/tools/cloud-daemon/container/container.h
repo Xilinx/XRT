@@ -45,7 +45,7 @@ public:
     ~Container();
 
     // Bitstreams
-    int xclLoadXclBin(const xclBin *&buffer);
+    int xclLoadXclBin(const xclBin *buffer);
     bool isGood();
 private:
 /*
@@ -57,6 +57,6 @@ private:
     std::vector<char> read_file(const char *filename);
 };
 
-int get_remote_msd_fd(size_t index, int& fd);
-int xclLoadXclBin(size_t index, const axlf *&xclbin);
+int get_remote_msd_fd(size_t index, int* fd);
+int xclLoadXclBin(size_t index, const axlf *xclbin, int *resp);
 #endif

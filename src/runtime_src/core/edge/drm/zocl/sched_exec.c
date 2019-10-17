@@ -377,6 +377,53 @@ cu_idx_to_reset_timeout(struct drm_device *dev, unsigned int cu_idx)
 }
 
 /**
+ * enable_cmd_timestamps() - Enable timestamps for start CU commands
+ *
+ * @cmd: Command Object
+ */
+static inline bool
+enable_cmd_timestamps(struct sched_cmd *cmd)
+{
+	struct ert_start_kernel_cmd *sk = cmd->ert_cu;
+	struct cu_cmd_state_timestamps *ts;
+	size_t ts_sz = sizeof(struct cu_cmd_state_timestamps);
+	struct drm_zocl_bo *bo = cmd->buffer;
+
+	if (!(opcode(cmd) == ERT_START_CU ||
+	    opcode(cmd) == ERT_EXEC_WRITE) ||
+	    !sk->stat_enabled)
+		return false;
+
+	ts = ert_start_kernel_timestamps(sk);
+	if ((char *)ts + ts_sz > (char *)sk + bo->cma_base.base.size) {
+		DRM_ERROR("No enough space for timestamps in command.\n");
+		return false;
+	}
+	return true;
+}
+
+/**
+ * set_cmd_timestamp() - Set time stamp for specific state
+ *
+ * @cmd: Command Object
+ * @state: Command state
+ */
+static inline void
+set_cmd_timestamp(struct sched_cmd *cmd, enum ert_cmd_state state)
+{
+	struct cu_cmd_state_timestamps *ts;
+
+	if (!cmd->timestamp_enabled)
+		return;
+
+	ts = ert_start_kernel_timestamps(cmd->ert_cu);
+	/* The command state enum is using default integer value.
+	 * So we could use it for index.
+	 */
+	ts->skc_timestamps[state] = ktime_to_ns(ktime_get());
+}
+
+/**
  * set_cmd_int_state() - Set internal command state used by scheduler only
  *
  * @xcmd: command to change internal state on
@@ -386,6 +433,7 @@ static inline void
 set_cmd_int_state(struct sched_cmd *cmd, enum ert_cmd_state state)
 {
 	SCHED_DEBUG("-> set_cmd_int_state(,%d)\n", state);
+	set_cmd_timestamp(cmd, state);
 	cmd->state = state;
 	SCHED_DEBUG("<- set_cmd_int_state\n");
 }
@@ -614,6 +662,26 @@ done:
 		DRM_INFO("CU can only be initialized once.\n");
 }
 
+/*
+ * returns false if any of the cu doesnt support interrupt
+ */
+bool
+get_cus_support_intr(struct drm_zocl_dev *zdev)
+{
+	struct ip_data *ip;
+        int i;
+        if (!zdev->ip)
+                return false;
+
+        for (i = 0; i < zdev->ip->m_count; ++i) {
+                ip = &zdev->ip->m_ip_data[i];
+                if(!(ip->properties & 0x1)) {
+                        return false;
+                }
+        }
+        return true;
+}
+
 /**
  * configure() - Configure the scheduler from user space command
  *
@@ -675,6 +743,15 @@ configure(struct sched_cmd *cmd)
 		SCHED_DEBUG("++ configuring penguin scheduler mode\n");
 		exec->ops = &penguin_ops;
 		exec->polling_mode = cfg->polling;
+		/*
+		 * Interrupt may not be enabled for some of the kernel,
+		 * Need to use polling mode in that case
+		 */
+		if (!get_cus_support_intr(zdev)) {
+			DRM_WARN("Interrupt is not enabled for at least one "
+			    "kernel. Fall back to polling mode.");
+			exec->polling_mode = 1;
+		}
 		exec->configured = 1;
 	} else {
 		SCHED_DEBUG("++ configuring PS ERT mode\n");
@@ -693,23 +770,21 @@ configure(struct sched_cmd *cmd)
 	}
 	write_unlock(&zdev->attr_rwlock);
 
-	if(zdev->ert) {
-	  /* Enable interrupt from host to PS when new commands are ready */
-	  if (exec->cq_interrupt) {
-	    /* Stop CQ check thread */
-	    if (zdev->exec->cq_thread)
-	      kthread_stop(zdev->exec->cq_thread);
+	/* Enable interrupt from host to PS when new commands are ready */
+	if (zdev->ert && exec->cq_interrupt) {
+		/* Stop CQ check thread */
+		if (zdev->exec->cq_thread)
+			kthread_stop(zdev->exec->cq_thread);
 
-	    /* At this point we are good. No one is polling CQ */
-	    cq_irq = zdev->ert->irq[ERT_CQ_IRQ];
-	    ret = request_irq(cq_irq, sched_cq_isr, 0, "zocl_cq", zdev);
-	    if (ret) {
-	      DRM_WARN("Failed to initial CQ interrupt. "
-		  "Fall back to polling\n");
-	      exec->cq_interrupt = 0;
-	      exec->cq_thread = kthread_run(cq_check, zdev, name);
-	    }
-	  }
+		/* At this point we are good. No one is polling CQ */
+		cq_irq = zdev->ert->irq[ERT_CQ_IRQ];
+		ret = request_irq(cq_irq, sched_cq_isr, 0, "zocl_cq", zdev);
+		if (ret) {
+			DRM_WARN("Failed to initial CQ interrupt. "
+			    "Fall back to polling\n");
+			exec->cq_interrupt = 0;
+			exec->cq_thread = kthread_run(cq_check, zdev, name);
+		}
 	}
 	/* TODO: let's consider how to support reconfigurable KDS/ERT later.
 	 * At that time, ERT should be able to change back to CQ polling mode.
@@ -898,7 +973,8 @@ configure_soft_kernel(struct sched_cmd *cmd)
 		void *xclbin_buffer = NULL;
 
 		/* remap device physical addr to kernel virtual addr */
-		xclbin_buffer = memremap(cfg->sk_addr, cfg->sk_size, MEMREMAP_WB);
+		xclbin_buffer =
+		    memremap(cfg->sk_addr, cfg->sk_size, MEMREMAP_WB);
 		if (xclbin_buffer == NULL) {
 			ret = -ENOMEM;
 			goto fail;
@@ -990,6 +1066,7 @@ static inline void
 set_cmd_state(struct sched_cmd *cmd, enum ert_cmd_state state)
 {
 	SCHED_DEBUG("-> set_cmd_state(,%d)\n", state);
+	set_cmd_timestamp(cmd, state);
 	cmd->state = state;
 	cmd->packet->state = state;
 	SCHED_DEBUG("<- set_cmd_state\n");
@@ -1282,6 +1359,7 @@ static inline void
 polling_cnt_inc(struct sched_cmd *cmd)
 {
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+
 	if (zdev->ert || zdev->exec->polling_mode ||
 	    (opcode(cmd) == ERT_START_COPYBO))
 		++cmd->sched->poll;
@@ -1291,6 +1369,7 @@ static inline void
 polling_cnt_dec(struct sched_cmd *cmd)
 {
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+
 	if (zdev->ert || zdev->exec->polling_mode ||
 	    (opcode(cmd) == ERT_START_COPYBO))
 		--cmd->sched->poll;
@@ -1452,6 +1531,7 @@ add_gem_bo_cmd(struct drm_device *dev, struct drm_zocl_bo *bo)
 	else
 		packet = (struct ert_packet *)bo->cma_base.vaddr;
 	cmd->packet = packet;
+	cmd->timestamp_enabled = enable_cmd_timestamps(cmd);
 	cmd->cq_slot_idx = 0;
 	cmd->free_buffer = zocl_gem_object_unref;
 
@@ -1506,7 +1586,6 @@ delete_cmd_list(void)
  * Clear stale command object associated with execution core.
  * This can occur if the HW for some reason hangs.
  */
-SCHED_UNUSED
 static void
 reset_exec(struct sched_exec_core *exec)
 {
@@ -1575,7 +1654,9 @@ reset_all(void)
  * This function is called kernel software scheduler mode only, in embedded
  * scheduler mode, the hardware scheduler handles the commands directly.
  *
- * Return: Index of free CU, -1 of no CU is available.
+ * Return: Index of free CU,
+ *         -1 of no CU is available,
+ *         -EINVAL cu_mask is invalid.
  */
 static int
 get_free_cu(struct sched_cmd *cmd, enum zocl_cu_type cu_type)
@@ -1585,6 +1666,7 @@ get_free_cu(struct sched_cmd *cmd, enum zocl_cu_type cu_type)
 	int num_masks = cu_masks(cmd);
 	struct sched_exec_core *exec = zdev->exec;
 	int cu_idx = -1;
+	int valid_found = 0;
 
 	SCHED_DEBUG("-> get_free_cu\n");
 	for (mask_idx = 0; mask_idx < num_masks; ++mask_idx) {
@@ -1593,6 +1675,12 @@ get_free_cu(struct sched_cmd *cmd, enum zocl_cu_type cu_type)
 		    exec->scu_status[mask_idx]
 		    : exec->cu_status[mask_idx];
 		u32 free_mask = (cmd_mask | busy_mask) ^ busy_mask;
+		/* for soft cu, cu is always valid */
+		u32 valid_mask = cu_type == ZOCL_SOFT_CU ?
+		    (u32)-1 : exec->cu_valid[mask_idx];
+
+		if (cmd_mask & valid_mask)
+			valid_found = 1;
 
 		/* For hardware cu, we have to search on valid CUs only. */
 		if (cu_type == ZOCL_HARD_CU)
@@ -1613,8 +1701,12 @@ get_free_cu(struct sched_cmd *cmd, enum zocl_cu_type cu_type)
 			    cu_idx_from_mask(cu_idx, mask_idx));
 		return cu_idx_from_mask(cu_idx, mask_idx);
 	}
-	SCHED_DEBUG("<- get_free_cu returns -1\n");
-	return -1;
+
+	if (!valid_found)
+		DRM_WARN("Cannot find valid cu from cu_mask");
+	valid_found = valid_found ? -1 : -EINVAL;
+	SCHED_DEBUG("<- get_free_cu exhausted returns %d\n", valid_found);
+	return valid_found;
 }
 
 /**
@@ -2161,6 +2253,7 @@ penguin_query(struct sched_cmd *cmd)
 static void zocl_dma_complete(void *arg, int ret)
 {
 	struct sched_cmd *cmd = (struct sched_cmd *)arg;
+
 	cmd->dma_handle.dma_flags |= ZOCL_DMA_DONE;
 	if (ret != 0)
 		cmd->dma_handle.dma_flags |= ZOCL_DMA_ERROR;
@@ -2170,7 +2263,7 @@ static void zocl_dma_complete(void *arg, int ret)
 
 static int
 zocl_dma_channel_instance(zocl_dma_handle_t *dma_handle,
-    struct drm_zocl_dev *zdev)
+	struct drm_zocl_dev *zdev)
 {
 	dma_cap_mask_t dma_mask;
 
@@ -2210,7 +2303,8 @@ zocl_copy_bo_submit(struct sched_cmd *cmd)
 	int err = 0;
 
 	/* Get single dma channel instance. */
-	if ((err = zocl_dma_channel_instance(dma_handle, zdev)) != 0)
+	err = zocl_dma_channel_instance(dma_handle, zdev);
+	if (err)
 		return err;
 
 	/* We must set up callback for async dma operations. */
@@ -2246,10 +2340,9 @@ penguin_submit(struct sched_cmd *cmd)
 		if (zocl_copy_bo_submit(cmd) != 0) {
 			mark_cmd_submit_error(cmd);
 			return false;
-		} else {
-			cmd->slot_idx = acquire_slot_idx(cmd->ddev);
-			return true;
 		}
+		cmd->slot_idx = acquire_slot_idx(cmd->ddev);
+		return true;
 	}
 
 	if (opcode(cmd) == ERT_CONFIGURE) {
@@ -2269,8 +2362,11 @@ penguin_submit(struct sched_cmd *cmd)
 
 	/* extract cu list */
 	cmd->cu_idx = get_free_cu(cmd, ZOCL_HARD_CU);
-	if (cmd->cu_idx < 0)
+	if (cmd->cu_idx < 0) {
+		if (cmd->cu_idx == -EINVAL)
+			mark_cmd_submit_error(cmd);
 		return false;
+	}
 
 	/* track cu executions */
 	++(cmd->exec->zcu[cmd->cu_idx].usage);
@@ -2394,6 +2490,8 @@ ps_ert_submit(struct sched_cmd *cmd)
 		cmd->cu_idx = get_free_cu(cmd, ZOCL_SOFT_CU);
 		if (cmd->cu_idx < 0) {
 			release_slot_idx(cmd->ddev, cmd->slot_idx);
+			if (cmd->cu_idx == -EINVAL)
+				mark_cmd_submit_error(cmd);
 			return false;
 		}
 		if (ert_configure_scu(cmd, cmd->cu_idx)) {
@@ -2411,6 +2509,8 @@ ps_ert_submit(struct sched_cmd *cmd)
 		cmd->cu_idx = get_free_cu(cmd, ZOCL_HARD_CU);
 		if (cmd->cu_idx < 0) {
 			release_slot_idx(cmd->ddev, cmd->slot_idx);
+			if (cmd->cu_idx == -EINVAL)
+				mark_cmd_submit_error(cmd);
 			return false;
 		}
 
@@ -2463,6 +2563,34 @@ zocl_execbuf_to_ert(struct drm_zocl_bo *bo, struct drm_file *filp)
 }
 
 /**
+ * zocl_dma_check() - Checks whether DMA can be performed or not
+ *
+ * @dev: Device node calling execbuf
+ * @bo: buffer objects from user space from which new command is created
+ *
+*/
+static bool
+zocl_dma_check(struct drm_device *dev, struct drm_zocl_bo *bo)
+{
+	uint64_t dst_paddr, src_paddr;
+	struct ert_start_copybo_cmd *cmd =
+	  (struct ert_start_copybo_cmd *)bo->cma_base.vaddr;
+	struct drm_file *filp = cmd->arg;
+	struct drm_zocl_copy_bo args = {
+	  .dst_handle = cmd->dst_bo_hdl,
+	  .src_handle = cmd->src_bo_hdl,
+	  .size = ert_copybo_size(cmd),
+	  .dst_offset = ert_copybo_dst_offset(cmd),
+	  .src_offset = ert_copybo_src_offset(cmd),
+	};
+
+	if (cmd->opcode != ERT_START_COPYBO)
+		return true;
+
+	return zocl_can_dma_performed(dev, filp, &args, &dst_paddr, &src_paddr);
+}
+
+/**
  * zocl_execbuf_ioctl() - Entry point for exec buffer.
  *
  * @dev: Device node calling execbuf
@@ -2493,6 +2621,12 @@ zocl_execbuf_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	if (!zocl_bo_execbuf(zocl_bo) || !zocl_execbuf_to_ert(zocl_bo, filp)) {
 		ret = -EINVAL;
 		goto out;
+	}
+
+	/* check whether dma can be perfomed or not */
+	if (!zocl_dma_check(dev, zocl_bo)) {
+		ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
+		return -EOPNOTSUPP;
 	}
 
 	if (add_gem_bo_cmd(dev, zocl_bo)) {
@@ -2734,6 +2868,64 @@ static irqreturn_t sched_cq_isr(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
+inline void init_exec(struct sched_exec_core *exec_core)
+{
+	unsigned int i;
+
+	exec_core->scheduler = &g_sched0;
+	exec_core->num_slots = 16;
+	exec_core->num_cus = 0;
+	exec_core->cu_base_addr = 0;
+	exec_core->cu_shift_offset = 0;
+	exec_core->polling_mode = 1;
+	exec_core->cq_interrupt = 0;
+	exec_core->configured = 0;
+	exec_core->cu_isr = 0;
+	exec_core->cu_dma = 0;
+	exec_core->num_slot_masks = 1;
+	exec_core->num_cu_masks = 0;
+	exec_core->ops = &penguin_ops;
+
+	for (i = 0; i < MAX_SLOTS; ++i)
+		exec_core->submitted_cmds[i] = NULL;
+
+	for (i = 0; i < MAX_U32_SLOT_MASKS; ++i)
+		exec_core->slot_status[i] = 0;
+
+	for (i = 0; i < MAX_U32_CU_MASKS; ++i) {
+		exec_core->cu_status[i] = 0;
+		exec_core->cu_init[i] = 0;
+		exec_core->cu_valid[i] = 0; /* default value is invalid(0) */
+	}
+}
+
+/**
+ * zocl_exec_reset()
+ *
+ * This function ensures that the device exec_core state is reset to
+ * same state as was when scheduler was originally probed for the device.
+ *
+ * @drm: Device node to initialize
+ *
+ */
+int
+zocl_exec_reset(struct drm_device *drm)
+{
+	unsigned int i;
+	struct drm_zocl_dev *zdev = drm->dev_private;
+	struct sched_exec_core *exec_core = zdev->exec;
+
+	if (!(zdev->ert || exec_core->polling_mode)) {
+		for (i = 0; i < exec_core->num_cus; i++) {
+			if (zocl_cu_is_valid(exec_core, i))
+				free_irq(zdev->irq[i], zdev);
+		}
+	}
+	init_exec(exec_core);
+	reset_exec(exec_core);
+	return 0;
+}
+
 /**
  * sched_init_exec() - Initialize the command execution for device
  *
@@ -2759,31 +2951,7 @@ sched_init_exec(struct drm_device *drm)
 	INIT_LIST_HEAD(&exec_core->ctx_list);
 	init_waitqueue_head(&exec_core->poll_wait_queue);
 
-	exec_core->scheduler = &g_sched0;
-	exec_core->num_slots = 16;
-	exec_core->num_cus = 0;
-	exec_core->cu_base_addr = 0;
-	exec_core->cu_shift_offset = 0;
-	exec_core->polling_mode = 1;
-	exec_core->cq_interrupt = 0;
-	exec_core->cu_isr = 0;
-	exec_core->cu_dma = 0;
-	exec_core->num_slot_masks = 1;
-	exec_core->num_cu_masks = 0;
-	exec_core->ops = &penguin_ops;
-
-	for (i = 0; i < MAX_SLOTS; ++i)
-		exec_core->submitted_cmds[i] = NULL;
-
-	for (i = 0; i < MAX_U32_SLOT_MASKS; ++i)
-		exec_core->slot_status[i] = 0;
-
-	for (i = 0; i < MAX_U32_CU_MASKS; ++i) {
-		exec_core->cu_status[i] = 0;
-		exec_core->cu_init[i] = 0;
-		exec_core->cu_valid[i] = 0; //default value is invalid(0)
-	}
-
+	init_exec(exec_core);
 	init_scheduler_thread();
 
 	if (zdev->ert) {

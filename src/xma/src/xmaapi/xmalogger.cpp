@@ -37,7 +37,6 @@
 #include "lib/xmaapi.h"
 #include "app/xmalogger.h"
 #include "lib/xmalogger.h"
-#include "xrt.h"
 #include "core/common/config_reader.h"
 
 #ifdef XMA_DEBUG
@@ -48,6 +47,7 @@
 #endif
 
 extern XmaSingleton *g_xma_singleton;
+
 
 void
 xma_logmsg(XmaLogLevelType level, const char *name, const char *msg, ...)

@@ -1,8 +1,3 @@
-include_directories(
-  ${CMAKE_CURRENT_SOURCE_DIR}/include
-  ${CMAKE_SOURCE_DIR}/runtime_src
-  )
-
 option(XMA_VERBOSE "Enable xma verbosity" OFF)
 
 if (XMA_VERBOSE)
@@ -14,6 +9,7 @@ add_compile_options("-Wall" "-Werror")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
 
 add_subdirectory(src)
+add_subdirectory(xma_legacy)
 
 set (CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic")
 

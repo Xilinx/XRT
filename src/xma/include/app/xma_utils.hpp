@@ -16,10 +16,18 @@
 
 #ifndef xma_utils_app_h_
 #define xma_utils_app_h_
+#include <streambuf>
 
 namespace xma_core { namespace utils {
 
+typedef struct streambuf: public std::streambuf {
+   streambuf(char* s, uint32_t size) {
+      setg(s, s, s+size);
+   }
+} streambuf;
+
 void get_session_cmd_load();
+void get_system_info();
 
 } // namespace utils
 } // namespace xma_core

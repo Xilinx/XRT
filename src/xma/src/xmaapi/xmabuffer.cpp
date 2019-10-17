@@ -52,7 +52,7 @@ xma_frame_planes_get(XmaFrameProperties *frame_props)
 }
 
 XmaFrame*
-xma_frame_alloc(XmaFrameProperties *frame_props)
+xma_frame_alloc(XmaFrameProperties *frame_props, bool dummy)
 {
     int32_t num_planes;
 
@@ -67,11 +67,16 @@ xma_frame_alloc(XmaFrameProperties *frame_props)
     for (int32_t i = 0; i < num_planes; i++)
     {
         frame->data[i].refcount++;
-        frame->data[i].buffer_type = XMA_HOST_BUFFER_TYPE;
         frame->data[i].is_clone = false;
         // TODO: Get plane size for each plane
-        frame->data[i].buffer = malloc(frame_props->width *
+        if (dummy) {
+            frame->data[i].buffer_type = NO_BUFFER;
+            frame->data[i].buffer = NULL;
+        } else {
+            frame->data[i].buffer_type = XMA_HOST_BUFFER_TYPE;
+            frame->data[i].buffer = malloc(frame_props->width *
                                        frame_props->height);
+        }
         frame->data[i].xma_device_buf = NULL;
     }
     frame->side_data = NULL;
@@ -203,7 +208,7 @@ xma_device_buffer_free(XmaBufferObj *b_obj)
     b_obj->dev_index = -1;
     b_obj->device_only_buffer = false;
     b_obj->private_do_not_touch = NULL;
-    free(b_obj);
+    delete b_obj;
     b_obj = NULL;
 }
 
@@ -222,11 +227,19 @@ xma_frame_free(XmaFrame *frame)
     if (frame->data[0].refcount > 0)
         return;
 
-    for (int32_t i = 0; i < num_planes && !frame->data[i].is_clone; i++) {
-        if (frame->data[i].buffer_type == XMA_DEVICE_ONLY_BUFFER_TYPE || frame->data[i].buffer_type == XMA_DEVICE_BUFFER_TYPE) {
-            xma_device_buffer_free(frame->data[i].xma_device_buf);
-        } else {
-            free(frame->data[i].buffer);
+    for (int32_t i = 0; i < num_planes; i++) {
+        if (!frame->data[i].is_clone) {
+            switch (frame->data[i].buffer_type) {
+                case XMA_DEVICE_ONLY_BUFFER_TYPE:
+                case XMA_DEVICE_BUFFER_TYPE:
+                    xma_device_buffer_free(frame->data[i].xma_device_buf);
+                    break;
+                case XMA_HOST_BUFFER_TYPE:
+                    free(frame->data[i].buffer);
+                    break;
+                default:
+                    break;
+            }
         }
         frame->data[i].buffer = NULL;
         frame->data[i].xma_device_buf = NULL;
@@ -504,7 +517,7 @@ xma_data_from_device_buffer(XmaBufferObj *dev_buf, bool clone)
 
 
 XmaDataBuffer*
-xma_data_buffer_alloc(size_t size)
+xma_data_buffer_alloc(size_t size, bool dummy)
 {
     xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD,
                "%s() Allocate buffer from of size %lu\n", __func__, size);
@@ -513,11 +526,17 @@ xma_data_buffer_alloc(size_t size)
         return NULL;
     memset(buffer, 0, sizeof(XmaDataBuffer));
     buffer->data.refcount++;
-    buffer->data.buffer_type = XMA_HOST_BUFFER_TYPE;
     buffer->data.is_clone = false;
-    buffer->data.buffer = malloc(size);
+    if (dummy) {
+        buffer->data.buffer_type = NO_BUFFER;
+        buffer->data.buffer = NULL;
+        buffer->alloc_size = -1;
+    } else {
+        buffer->data.buffer_type = XMA_HOST_BUFFER_TYPE;
+        buffer->data.buffer = malloc(size);
+        buffer->alloc_size = size;
+    }
     buffer->data.xma_device_buf = NULL;
-    buffer->alloc_size = size;
     buffer->is_eof = 0;
     buffer->pts = 0;
     buffer->poc = 0;
@@ -530,15 +549,24 @@ xma_data_buffer_free(XmaDataBuffer *data)
 {
     xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD,
                "%s() Free buffer %p\n", __func__, data);
+    if (data == NULL)
+        return;
+        
     data->data.refcount--;
     if (data->data.refcount > 0)
         return;
 
     if (!data->data.is_clone) {
-        if (data->data.buffer_type == XMA_DEVICE_ONLY_BUFFER_TYPE || data->data.buffer_type == XMA_DEVICE_BUFFER_TYPE) {
-            xma_device_buffer_free(data->data.xma_device_buf);
-        } else {
-            free(data->data.buffer);
+        switch (data->data.buffer_type) {
+            case XMA_DEVICE_ONLY_BUFFER_TYPE:
+            case XMA_DEVICE_BUFFER_TYPE:
+                xma_device_buffer_free(data->data.xma_device_buf);
+                break;
+            case XMA_HOST_BUFFER_TYPE:
+                free(data->data.buffer);
+                break;
+            default:
+                break;
         }
         data->data.buffer = NULL;
         data->data.xma_device_buf = NULL;
