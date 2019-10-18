@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,9 +14,6 @@
  * under the License.
  */
 
-// Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/event.h"
 #include "xocl/core/memory.h"
@@ -33,6 +30,8 @@
 #include "khronos/khronos.h"
 #include "plugin/xdp/appdebug.h"
 #include "plugin/xdp/profile.h"
+
+#include <CL/opencl.h>
 
 namespace xocl {
 
@@ -315,5 +314,3 @@ clEnqueueCopyBufferRect(cl_command_queue     command_queue ,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

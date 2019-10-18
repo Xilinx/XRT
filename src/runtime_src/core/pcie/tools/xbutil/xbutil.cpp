@@ -109,17 +109,26 @@ static void print_pci_info(std::ostream &ostr)
 
     if (pcidev::get_dev_total() != pcidev::get_dev_ready()) {
         ostr << "WARNING: "
-            << "card(s) marked by '*' are not ready, "
-            << "run xbmgmt flash --scan --verbose to further check the details."
-            << std::endl;
+            << "card(s) marked by '*' are not ready, is MPD runing? "
+            << "run 'systemctl status mpd' to check MPD details.";
+	    if (pcidev::get_dev_total(false) == 0)
+            ostr << std::endl;
+	    else
+            ostr << " please also run 'xbmgmt flash --scan --verbose' to further check card details."
+                << std::endl;
     }
 }
 
 static int xrt_xbutil_version_cmp() 
 {
     /*check xbutil tools and xrt versions*/
-    std::string xrt = sensor_tree::get<std::string>( "runtime.build.version", "N/A" ) + ","
+    std::string xrt = "";
+    try {
+        xrt = sensor_tree::get<std::string>( "runtime.build.version", "N/A" ) + ","
         + sensor_tree::get<std::string>( "runtime.build.hash", "N/A" );
+    } catch (std::exception const& e) {
+        std::cout << e.what() << std::endl;
+    }
     if ( xcldev::driver_version("xocl") != "unknown" &&
         xrt.compare(xcldev::driver_version("xocl") ) != 0 ) {
         std::cout << "\nERROR: Mixed versions of XRT and xbutil are not supported. \
@@ -793,13 +802,7 @@ static void topThreadFunc(struct topThreadCtrl *ctrl)
     while (!ctrl->quit) {
         if ((i % ctrl->interval) == 0) {
             xclDeviceUsage devstat;
-            xclDeviceInfo2 devinfo;
             int result = ctrl->dev->usageInfo(devstat);
-            if (result) {
-                ctrl->status = result;
-                return;
-            }
-            result = ctrl->dev->deviceInfo(devinfo);
             if (result) {
                 ctrl->status = result;
                 return;
@@ -820,13 +823,7 @@ static void topThreadStreamFunc(struct topThreadCtrl *ctrl)
     while (!ctrl->quit) {
         if ((i % ctrl->interval) == 0) {
             xclDeviceUsage devstat;
-            xclDeviceInfo2 devinfo;
             int result = ctrl->dev->usageInfo(devstat);
-            if (result) {
-                ctrl->status = result;
-                return;
-            }
-            result = ctrl->dev->deviceInfo(devinfo);
             if (result) {
                 ctrl->status = result;
                 return;
@@ -1785,18 +1782,24 @@ int xcldev::device::testP2p()
     dev->sysfs_get("icap", "mem_topology", errmsg, buf);
 
     const mem_topology *map = (mem_topology *)buf.data();
-    if(buf.empty() || map->m_count == 0) {
+    if (buf.empty() || map->m_count == 0) {
         std::cout << "WARNING: 'mem_topology' invalid, "
             << "unable to perform P2P Test. Has the bitstream been loaded? "
             << "See 'xbutil program'." << std::endl;
         return -EINVAL;
     }
 
-    for(int32_t i = 0; i < map->m_count && ret == 0; i++) {
-        const char *name = (const char *)map->m_mem_data[i].m_tag;
-        if ((std::strncmp(name, "HBM", std::strlen("HBM")) && 
-            std::strncmp(name, "DDR", std::strlen("DDR"))) ||
-            !map->m_mem_data[i].m_used)
+    for (int32_t i = 0; i < map->m_count && ret == 0; i++) {
+        const std::vector<std::string> supList = { "HBM", "DDR", "bank" };
+        const std::string name(reinterpret_cast<const char *>(map->m_mem_data[i].m_tag));
+        bool find = false;
+        for (auto s : supList) {
+            if (name.compare(0, s.size(), s) == 0) {
+                find = true;
+                break;
+            }
+        }
+        if (!find || !map->m_mem_data[i].m_used)
             continue;
 
         std::cout << "Performing P2P Test on " << map->m_mem_data[i].m_tag << " ";
@@ -1880,9 +1883,10 @@ int xcldev::xclP2p(int argc, char *argv[])
         std::cout << "ERROR: Not enough iomem space." << std::endl;
         std::cout << "Please check BIOS settings" << std::endl;
     } else if (ret == EBUSY) {
-        std::cout << "ERROR: P2P is enabled. But there is not enough iomem space, please warm reboot." << std::endl;
+        std::cout << "Please WARM reboot to enable p2p now." << std::endl;
     } else if (ret == ENXIO) {
-        std::cout << "ERROR: P2P is not supported on this platform" << std::endl;
+        std::cout << "ERROR: P2P is not supported on this platform"
+            << std::endl;
     } else if (ret == 1) {
         std::cout << "P2P is enabled" << std::endl;
     } else if (ret == 0) {

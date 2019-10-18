@@ -32,6 +32,10 @@
 #include <sstream>
 #include <cstring>
 
+#ifdef _WIN32
+#pragma warning ( disable : 4244 4245 4267 4996 4505 )
+#endif
+
 namespace {
 
 static unsigned int uid_count = 0;
@@ -111,13 +115,6 @@ host_copy_message(const xocl::memory* dst, const xocl::memory* src)
   str << "Reverting to host copy for src buffer(" << src->get_uid() << ") "
       << "to dst buffer(" << dst->get_uid() << ")";
   xrt::message::send(xrt::message::severity_level::XRT_WARNING,str.str());
-}
-
-
-static inline unsigned
-myctz(unsigned val)
-{
-  return __builtin_ctz(val);
 }
 
 static void
@@ -285,7 +282,7 @@ alloc(memory* mem, memidx_type memidx)
       track(mem);
       return boh;
     }
-    catch (const std::bad_alloc& ba) {
+    catch (const std::bad_alloc&) {
       userptr_bad_alloc_message(host_ptr);
     }
   }
@@ -299,7 +296,6 @@ alloc(memory* mem, memidx_type memidx)
   if (host_ptr) {
     if (!aligned_flag)
       unaligned_message(host_ptr);
-
     mem->set_extra_sync();
     auto bo_host_ptr = m_xdevice->map(boh);
     // No need to copy data to a CL_MEM_WRITE_ONLY buffer
@@ -326,7 +322,7 @@ alloc(memory* mem)
       track(mem);
       return boh;
     }
-    catch (const std::bad_alloc& ba) {
+    catch (const std::bad_alloc&) {
       userptr_bad_alloc_message(host_ptr);
     }
   }
@@ -336,7 +332,6 @@ alloc(memory* mem)
   if (host_ptr) {
     if (!aligned_flag)
       unaligned_message(host_ptr);
-
     mem->set_extra_sync();
     auto bo_host_ptr = m_xdevice->map(boh);
     // No need to copy data to a CL_MEM_WRITE_ONLY buffer
@@ -652,7 +647,7 @@ allocate_buffer_object(memory* mem)
     default_allocation_message(this,mem,boh);
     return boh;
   }
-  catch (const std::bad_alloc& ex) {
+  catch (const std::bad_alloc&) {
     default_bad_allocation_message(this,mem);
     throw;
   }

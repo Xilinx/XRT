@@ -75,7 +75,7 @@ class Common;
 class Common
 {
 public:
-    Common(std::string &name, std::string &plugin_path, bool for_user);
+    Common(const std::string &name, const std::string &plugin_path, bool for_user);
     ~Common();
     void *plugin_handle;
     size_t total;

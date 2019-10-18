@@ -25,6 +25,9 @@
 #include <iostream>
 #include <cassert>
 
+#ifdef _WIN32
+#pragma warning ( disable : 4267 )
+#endif
 
 namespace {
 

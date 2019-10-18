@@ -64,6 +64,7 @@ int init(mpd_plugin_callbacks *cbs)
         // hook functions
         cbs->mpc_cookie = NULL;
         cbs->get_remote_msd_fd = get_remote_msd_fd;
+        cbs->mb_notify = mb_notify;
         cbs->mb_req.load_xclbin = awsLoadXclBin;
         cbs->mb_req.peer_data.get_icap_data = awsGetIcap;
         cbs->mb_req.peer_data.get_sensor_data = awsGetSensor;
@@ -106,6 +107,53 @@ int get_remote_msd_fd(size_t index, int* fd)
 {
     *fd = -1;
     return 0;
+}
+
+/*
+ * callback function that is used to notify xocl the imagined xclmgmt
+ * online/offline
+ * Input:
+ *        index: index of the user PF
+ *        fd: mailbox file descriptor
+ *        online: online or offline 
+ * Output:
+ *        None
+ * Return value:
+ *        0: success
+ *        others: err code
+ */
+int mb_notify(size_t index, int fd, bool online)
+{
+    std::unique_ptr<sw_msg> swmsg;
+    struct xcl_mailbox_req *mb_req = NULL;
+    struct xcl_mailbox_peer_state mb_conn = { 0 };
+    size_t data_len = sizeof(struct xcl_mailbox_peer_state) + sizeof(struct xcl_mailbox_req);
+    pcieFunc dev(index);
+   
+    std::vector<char> buf(data_len, 0);
+    mb_req = reinterpret_cast<struct xcl_mailbox_req *>(buf.data());
+
+    mb_req->req = XCL_MAILBOX_REQ_MGMT_STATE;
+    if (online)
+        mb_conn.state_flags |= XCL_MB_STATE_ONLINE;
+    else
+        mb_conn.state_flags |= XCL_MB_STATE_OFFLINE;
+    memcpy(mb_req->data, &mb_conn, sizeof(mb_conn));
+
+    try {
+        swmsg = std::make_unique<sw_msg>(mb_req, data_len, 0x1234, XCL_MB_REQ_FLAG_REQUEST);
+    } catch (std::exception &e) {
+        std::cout << "aws mb_notify: " << e.what() << std::endl;
+        throw;
+    }
+
+    struct queue_msg msg;
+    msg.localFd = fd;
+    msg.type = REMOTE_MSG;
+    msg.cb = nullptr;
+    msg.data = std::move(swmsg);
+
+    return handleMsg(dev, msg);    
 }
 
 /*

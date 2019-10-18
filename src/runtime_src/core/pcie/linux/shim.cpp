@@ -310,7 +310,7 @@ size_t shim::xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBu
             if (regSize > 32)
             regSize = 32;
             for (unsigned i = 0; i < regSize; i++) {
-                xrt_logmsg(XRT_INFO, "%s: space: %d, offset:0x%x, reg:%d", 
+                xrt_logmsg(XRT_INFO, "%s: space: %d, offset:0x%x, reg:%d",
                         __func__, space, offset+i, reg[i]);
             }
             if (mDev->pcieBarWrite(offset, hostBuf, size) == 0) {
@@ -331,7 +331,7 @@ size_t shim::xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBu
  */
 size_t shim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
 {
-    xrt_logmsg(XRT_INFO, "%s, space: %d, offset: %d, hostBuf: %s, size: %d", 
+    xrt_logmsg(XRT_INFO, "%s, space: %d, offset: %d, hostBuf: %s, size: %d",
             __func__, space, offset, hostBuf, size);
 
     switch (space) {
@@ -352,7 +352,7 @@ size_t shim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size
             if (regSize > 4)
             regSize = 4;
             for (unsigned i = 0; i < regSize; i++) {
-                xrt_logmsg(XRT_INFO, "%s: space: %d, offset:0x%x, reg:%d", 
+                xrt_logmsg(XRT_INFO, "%s: space: %d, offset:0x%x, reg:%d",
                     __func__, space, offset+i, reg[i]);
             }
             return !result ? size : 0;
@@ -1066,7 +1066,7 @@ int shim::xclExecBuf(unsigned int cmdBO)
  */
 int shim::xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, unsigned int *bo_wait_list)
 {
-    xrt_logmsg(XRT_INFO, "%s, cmdBO: %d, num_bo_in_wait_list: %d, bo_wait_list: %d", 
+    xrt_logmsg(XRT_INFO, "%s, cmdBO: %d, num_bo_in_wait_list: %d, bo_wait_list: %d",
             __func__, cmdBO, num_bo_in_wait_list, bo_wait_list);
     int ret;
     unsigned int bwl[8] = {0};
@@ -1414,7 +1414,7 @@ ssize_t shim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr)
 
 }
 
-uint shim::xclGetNumLiveProcesses()
+uint32_t shim::xclGetNumLiveProcesses()
 {
     std::string errmsg;
 
@@ -1424,9 +1424,9 @@ uint shim::xclGetNumLiveProcesses()
     // "context" in kdsstat.
     // kdsstat has "context: <number_of_live_processes>"
     if(stringVec.size() >= 4) {
-        std::size_t p = stringVec[3].find_first_of("0123456789");
-        std::string subStr = stringVec[3].substr(p);
-        uint number = std::stoul(subStr);
+        auto p = stringVec[3].find_first_of("0123456789");
+        auto subStr = stringVec[3].substr(p);
+        auto number = std::stoul(subStr);
         return number;
     }
     return 0;
@@ -1444,7 +1444,7 @@ int shim::xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint3
   traceBufSz = MAX_TRACE_NUMBER_SAMPLES * bytesPerSample;   /* Buffer size in bytes */
   traceSamples = nSamples;
 
-  return 0;  
+  return 0;
 }
 
 int shim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
@@ -1459,7 +1459,7 @@ int shim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamp
 
 //    alignas is defined in c++11
 #if GCC_VERSION >= 40800
-    /* Alignment is limited to 16 by PPC64LE : so , should it be 
+    /* Alignment is limited to 16 by PPC64LE : so , should it be
     alignas(16) uint32_t hostbuf[traceBufSzInWords];
     */
     alignas(AXI_FIFO_RDFD_AXI_FULL) uint32_t hostbuf[traceBufWordSz];
@@ -1573,7 +1573,7 @@ int shim::xclCuName2Index(const char *name, uint32_t& index)
     }
     if (buf.empty())
         return -ENOENT;
-    
+
     const ip_layout *map = (ip_layout *)buf.data();
     if(map->m_count < 0) {
         xrt_logmsg(XRT_ERROR, "invalid ip_layout sysfs node content");
@@ -1977,7 +1977,7 @@ int xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz
   return (drv) ? drv->xclReadTraceData(traceBuf, traceBufSz, numSamples, ipBaseAddress, wordsPerSample) : -ENODEV;
 }
 
-int xclCreateProfileResults(xclDeviceHandle handle, ProfileResults** results) 
+int xclCreateProfileResults(xclDeviceHandle handle, ProfileResults** results)
 {
   xocl::shim *drv = xocl::shim::handleCheck(handle);
   if(!drv)
@@ -1988,7 +1988,7 @@ int xclCreateProfileResults(xclDeviceHandle handle, ProfileResults** results)
   return status;
 }
 
-int xclGetProfileResults(xclDeviceHandle handle, ProfileResults* results) 
+int xclGetProfileResults(xclDeviceHandle handle, ProfileResults* results)
 {
   xocl::shim *drv = xocl::shim::handleCheck(handle);
   if(!drv)
@@ -1999,7 +1999,7 @@ int xclGetProfileResults(xclDeviceHandle handle, ProfileResults* results)
   return status;
 }
 
-int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results) 
+int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results)
 {
   xocl::shim *drv = xocl::shim::handleCheck(handle);
   if(!drv)

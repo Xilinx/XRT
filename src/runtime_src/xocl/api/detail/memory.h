@@ -17,6 +17,7 @@
 #ifndef xocl_api_detail_memory_h_
 #define xocl_api_detail_memory_h_
 
+#include "xocl/config.h"
 #include "CL/cl.h"
 #include <vector>
 
@@ -62,5 +63,3 @@ validHostPtrOrError(cl_mem_flags flags, const void* hostptr);
 }} // detail,xocl
 
 #endif
-
-

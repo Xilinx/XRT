@@ -1,6 +1,7 @@
 set(XRT_HEADER_SRC
   ert.h
-  stream.h
+  xstream.h
+  types.h
   xcl_axi_checker_codes.h
   xclbin.h
   xclerr.h
@@ -22,3 +23,4 @@ foreach (header ${XRT_HEADER_SRC})
 endforeach()
 
 add_subdirectory(experimental)
+add_subdirectory(windows)

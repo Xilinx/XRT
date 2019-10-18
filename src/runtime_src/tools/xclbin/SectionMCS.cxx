@@ -328,7 +328,7 @@ SectionMCS::readSubPayload(const char* _pOrigDataSection,
   // Things are good, now get this new buffer
   {
     _istream.seekg(0, _istream.end);
-    uint64_t mcsSize = _istream.tellg();
+    std::streamsize mcsSize = _istream.tellg();
 
     // -- Read contents into memory buffer --
     std::unique_ptr<unsigned char> memBuffer(new unsigned char[mcsSize]);

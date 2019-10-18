@@ -26,6 +26,10 @@
 #include <iostream>
 #include <cassert>
 
+#ifdef _WIN32
+#pragma warning ( disable : 4189 4505 )
+#endif
+
 namespace {
 
 XOCL_UNUSED

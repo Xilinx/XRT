@@ -41,9 +41,15 @@
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 
 // Do *not* include cl_ext.h from this directory
-#include_next <CL/cl_ext.h>
+#ifndef _WIN32
+# include_next <CL/cl_ext.h>
+#else
+# pragma warning( push )
+# pragma warning( disable : 4201 )
+# include <../include/CL/cl_ext.h>
+#endif
 
-#include "stream.h"
+#include "xstream.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -138,7 +144,7 @@ clSetCommandQueueProperty(cl_command_queue command_queue,
  * CL_INVALID_VALUE     : if address is nullptr
  * CL_INVALID_VALUE     : if sz is different from sizeof(uintptr_tr)
  */
-extern cl_int
+extern CL_API_ENTRY cl_int CL_API_CALL
 xclGetMemObjDeviceAddress(cl_mem mem,
                           cl_device_id device,
                           size_t sz,
@@ -152,7 +158,7 @@ xclGetMemObjDeviceAddress(cl_mem mem,
  *                        or if unable to obtain FD from exporting device
  * CL_INVALID_VALUE     : if fd is nullptr
  */
-extern cl_int
+extern CL_API_ENTRY cl_int CL_API_CALL
 xclGetMemObjectFd(cl_mem mem,
                   int* fd); /* returned fd */
 
@@ -168,7 +174,7 @@ xclGetMemObjectFd(cl_mem mem,
  *                        if context is nullptr,
  *                        if mem address of variable for cl_mem pointer is nullptr.
  */
-extern cl_int
+extern CL_API_ENTRY cl_int CL_API_CALL
 xclGetMemObjectFromFd(cl_context context,
                       cl_device_id deviceid,
                       cl_mem_flags flags,
@@ -388,20 +394,20 @@ xclGetXrtDevice(cl_device_id device,
  *
  * @kernel
  *   Kernel object being queried for compute unit.
- * @cuid      
+ * @cuid
  *   Compute unit id within @kernel object [0..numcus[
- *   The CU id must be less that number of CUs as retrieved per 
+ *   The CU id must be less that number of CUs as retrieved per
  *   CL_KERNEL_COMPUTE_UNIT_COUNT with clGetKernelInfo.
- * @param_name 
+ * @param_name
  *   Information to query (see list below)
  * @param_value_size
  *   Number of bytes of memory in @param_value.
  *   Size must >= size of return type.
- * @param_value 
+ * @param_value
  *   Pointer to memory where result is returned.
  *   Ignored if NULL.
  * @param_value_size_ret
- *   Actual size in bytes of data copied to @param_value.  
+ *   Actual size in bytes of data copied to @param_value.
  *   Ignored if NULL.
  *
  * @XCL_COMPUTE_UNIT_NAME
@@ -419,7 +425,7 @@ xclGetXrtDevice(cl_device_id device,
  * @XCL_COMPUTE_UNIT_CONNECTIONS:
  * @type: cl_ulong
  * @return: Memory connection for each compute unit argument.
- *  Number of arguments are retrieved per CL_KERNEL_NUM_ARGS 
+ *  Number of arguments are retrieved per CL_KERNEL_NUM_ARGS
  *  with clGetKernelInfo
  */
 typedef cl_uint xcl_compute_unit_info;
@@ -484,6 +490,10 @@ typedef cl_uint cl_program_target_type;
 
 #ifdef __cplusplus
 }
+#endif
+
+#ifdef _WIN32
+# pragma warning( pop )
 #endif
 
 #endif

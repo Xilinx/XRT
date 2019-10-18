@@ -16,7 +16,6 @@
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/context.h"
 #include "xocl/core/device.h"
@@ -28,12 +27,14 @@
 
 #include "api.h"
 #include "plugin/xdp/profile.h"
-
+#include <CL/opencl.h>
 #include <cstdlib>
 #include <mutex>
 #include <deque>
 
-// Unused code, but left as reference to be reimplemented in needed
+#ifdef _WIN32
+# pragma warning ( disable : 4200 4505 )
+#endif
 
 namespace {
 
@@ -228,7 +229,7 @@ cpu_peek_pipe_nb(void *v, void *e)
 
 XOCL_UNUSED
 static void *
-cpu_reserve_read_pipe(void *v, unsigned n)
+cpu_reserve_read_pipe(void *v, size_t n)
 {
   cpu_pipe_t *p = (cpu_pipe_t*)v;
   if (!v) return 0;
@@ -244,18 +245,18 @@ cpu_reserve_read_pipe(void *v, unsigned n)
     tail = p->tail;
   }
 
-  int space = p->head - tail;
+  auto space = p->head - tail;
   if (space < 0)
     space += p->pipe_size;
 
   cpu_pipe_reserve_id_t *rid = 0;
-  if ((int)n <= space) {
+  if (n <= space) {
     rid = (cpu_pipe_reserve_id_t*)malloc(sizeof(cpu_pipe_reserve_id_t));
     if (rid) {
       // success
       rid->tail = tail;
       rid->next = (tail + (p->pkt_size*n)) % p->pipe_size;
-      rid->size = n*p->pkt_size;
+      rid->size = static_cast<unsigned int>(n*p->pkt_size);
       rid->ref = 1;
       p->rd_rids.push_back(rid);
     }
@@ -320,19 +321,19 @@ cpu_reserve_write_pipe(void *v, unsigned n)
     head = p->head;
   }
 
-  int next = (head + p->pkt_size) % p->pipe_size;
-  int space = p->tail - next;
+  auto next = (head + p->pkt_size) % p->pipe_size;
+  auto space = p->tail - next;
   if (space < 0)
     space += p->pipe_size;
 
   cpu_pipe_reserve_id_t *rid = 0;
-  if ((int)n <= space) {
+  if (n <= space) {
     rid = (cpu_pipe_reserve_id_t*)malloc(sizeof(cpu_pipe_reserve_id_t));
     if (rid) {
       // success
       rid->head = head;
       rid->next = (head + (p->pkt_size*n)) % p->pipe_size;
-      rid->size = n*p->pkt_size;
+      rid->size = static_cast<unsigned int>(n*p->pkt_size);
       rid->ref = 1;
       p->wr_rids.push_back(rid);
     }
@@ -433,7 +434,7 @@ cpu_get_pipe_num_packets(void *v)
     tail = p->tail;
   }
 
-  int space = head - tail;
+  auto space = head - tail;
   if (space < 0)
     space += p->pipe_size;
 
@@ -441,13 +442,13 @@ cpu_get_pipe_num_packets(void *v)
 }
 
 XOCL_UNUSED
-static unsigned int
+static size_t
 cpu_get_pipe_max_packets(void *v)
 {
   cpu_pipe_t *p = (cpu_pipe_t*)v;
   return (p->pipe_size / p->pkt_size) - 8;
 }
-  
+
 }
 
 namespace xocl {
@@ -489,12 +490,9 @@ validOrError(cl_context                context,
   if (!pipe_packet_size)
     //throw error(CL_INVALID_PIPE_SIZE,"pipe_packet_size must be > 0");
     throw error(CL_INVALID_VALUE,"pipe_packet_size must be > 0");
-  auto dr = xocl(context)->get_device_range();
-  if (std::any_of(dr.begin(),dr.end(),
-       [pipe_packet_size](device* d)
-       {return pipe_packet_size > getDevicePipeMaxPacketSize(d); }))
-    //throw error(CL_INVALID_PIPE_SIZE,"pipe_packet_size must be <= max packet size for all devices");
-    throw error(CL_INVALID_VALUE,"pipe_packet_size must be <= max packet size for all devices");
+  for (auto d : xocl(context)->get_device_range())
+    if (pipe_packet_size > getDevicePipeMaxPacketSize(d))
+      throw error(CL_INVALID_VALUE,"pipe_packet_size must be <= max packet size for all devices");
 
   // CL_MEM_OBJECT_ALLOCATION_FAILURE if there is a failure to
   // allocate memory for the pipe object.

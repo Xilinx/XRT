@@ -16,6 +16,7 @@
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
+
 #include "xocl/config.h"
 #include "xocl/core/platform.h"
 #include "xocl/core/context.h"
@@ -31,8 +32,10 @@
 #include <fstream>
 
 // should use some md5 checksum instead
-#include <crypt.h> 
 #include "plugin/xdp/profile.h"
+
+#ifndef _WIN32
+#include <crypt.h>
 
 namespace {
 
@@ -67,7 +70,7 @@ validOrError(cl_context        context,
     return;
 
   detail::context::validOrError(context);
-  
+
   // CL_INVALID_VALUE if count is zero or if strings or any entry in strings is NULL
   if (!count)
     throw xocl::error(CL_INVALID_VALUE,"count is zero");
@@ -76,7 +79,7 @@ validOrError(cl_context        context,
   for (auto string : xocl::get_range(strings,strings+count))
     if (!string)
       throw xocl::error(CL_INVALID_VALUE,"string element is nullptr");
-  
+
 }
 
 static cl_program
@@ -118,7 +121,7 @@ clCreateProgramWithSource(cl_context        context,
   std::string filematch = xocl::conformance_get_xclbin(hash);
   if (filematch.empty())
     throw error(CL_INVALID_BINARY,"clCreateProgramWithSource: error no XCLBIN with matching hash");
-    
+
   // may be more than one matching hashmatch if multiple kernels are
   // in prorgam and spread out over multiple binaries
   for (auto gprogram : xocl::get_global_programs()) {
@@ -137,7 +140,7 @@ clCreateProgramWithSource(cl_context        context,
   // hash match found clCreateProgramWithBinary and exit search
   cl_int err = CL_SUCCESS;
   cl_device_id cldevice = device; // cast before taking address
-  cl_program binaryprogram = 
+  cl_program binaryprogram =
     clCreateProgramWithBinary(context,1,&cldevice,&length,(const unsigned char **)&binary,nullptr,&err);
   if (err!=CL_SUCCESS)
     throw error(CL_INVALID_BINARY,"clCreateProgramWithSource: conformance failed to load binary with matching hash");
@@ -146,16 +149,18 @@ clCreateProgramWithSource(cl_context        context,
   bprogram->conformance_binaryfilename=filematch;
   bprogram->conformance_binaryhash=hash;
   bprogram->set_source(source);
-  
-  // Matching kernels must be renamed to remove the special naming 
+
+  // Matching kernels must be renamed to remove the special naming
   // convention associated with comformance.
   bprogram->conformance_rename_kernel(hash);
-  
+
   xocl::assign(errcode_ret,CL_SUCCESS);
   return bprogram;
 }
 
 } // xocl
+
+#endif // ifndef _WIN32
 
 cl_program
 clCreateProgramWithSource(cl_context        context,
@@ -166,8 +171,12 @@ clCreateProgramWithSource(cl_context        context,
 {
   try {
     PROFILE_LOG_FUNCTION_CALL;
+#ifdef _WIN32
+    throw xocl::error(CL_INVALID_OPERATION,"clCreateProgramWithSource() is not supported, please use clCreateProgramWithBinary().");
+#else
     return xocl::clCreateProgramWithSource
       (context,count,strings,lengths,errcode_ret);
+#endif
   }
   catch (const xocl::error& ex) {
     xocl::send_exception_message(ex.what());
@@ -181,4 +190,3 @@ clCreateProgramWithSource(cl_context        context,
   }
   return nullptr;
 }
-

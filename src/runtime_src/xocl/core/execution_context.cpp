@@ -27,6 +27,10 @@
 #include <fstream>
 #include <bitset>
 
+#ifdef _WIN32
+#pragma warning ( disable : 4996 4267 )
+#endif
+
 namespace {
 
 const char*
@@ -610,7 +614,7 @@ conformance_done(const xrt::command*)
   // any data members of context which is owned (and deleted) with event
   bool ctx_done = false;
   {
-    std::lock_guard<std::mutex> lk(m_mutex);
+    std::lock_guard<std::mutex> ilk(m_mutex);
     if (--m_active==0) {
       assert(m_done);
       conformance::remove(this);

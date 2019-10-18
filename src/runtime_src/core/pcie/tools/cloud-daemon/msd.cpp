@@ -59,7 +59,7 @@ int remoteMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
 class Msd : public Common
 {
 public:
-    Msd(std::string name, std::string plugin_path, bool for_user) :
+    Msd(const std::string name, const std::string plugin_path, bool for_user) :
         Common(name, plugin_path, for_user), plugin_init(nullptr), plugin_fini(nullptr)
     {
     }

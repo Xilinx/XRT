@@ -14,25 +14,62 @@
  * under the License.
  */
 
+#define XRT_CORE_COMMON_SOURCE
 #include "message.h"
 #include "t_time.h"
-#include "version.h"
+#include "gen/version.h"
 #include "config_reader.h"
 
-#include <unistd.h>
-#include <syslog.h>
 #include <map>
 #include <fstream>
 #include <iostream>
 #include <thread>
 #include <climits>
-#include <sys/types.h>
 #ifdef __GNUC__
+# include <unistd.h>
+# include <syslog.h>
 # include <linux/limits.h>
 # include <sys/stat.h>
+# include <sys/types.h>
+#endif
+#ifdef _WIN32
+# include <process.h>
+# include <winsock.h>
 #endif
 
 namespace {
+
+static int
+get_processid()
+{
+#ifdef _WIN32
+  return _getpid();
+#else
+  return getpid();
+#endif
+}
+
+static unsigned int
+get_userid()
+{
+#ifdef _WIN32
+  return 0;
+#else
+  return getuid();
+#endif
+}
+
+static std::string
+get_hostname()
+{
+  std::string hn;
+#ifdef __GNUC__
+  char hostname[256] = {0};
+  gethostname(hostname, 256);
+  hn = hostname;
+#endif
+  return hn;
+}
 
 static std::string
 get_exe_path()
@@ -45,6 +82,7 @@ get_exe_path()
   return "";
 #endif
 }
+
 
 using severity_level = xrt_core::message::severity_level;
 
@@ -65,7 +103,7 @@ class null_dispatch : public message_dispatch
 public:
   null_dispatch() {}
   virtual ~null_dispatch() {}
-  virtual void send(severity_level l, const char* tag, const char* msg) {};
+  virtual void send(severity_level, const char*, const char*) {};
 };
 
 //--
@@ -89,12 +127,19 @@ private:
 };
 
 //--
+#ifndef _WIN32
 class syslog_dispatch : public message_dispatch
 {
 public:
-  syslog_dispatch();
-  virtual ~syslog_dispatch();
-  virtual void send(severity_level l, const char* tag, const char* msg) override;
+  syslog_dispatch()
+  { openlog("sdaccel", LOG_PID|LOG_CONS, LOG_USER); }
+
+  virtual ~syslog_dispatch()
+  { closelog(); }
+
+  virtual void send(severity_level l, const char* tag, const char* msg) override
+  { syslog(severityMap[l], "%s", msg); }
+
 private:
   std::map<severity_level, int> severityMap = {
     { severity_level::XRT_EMERGENCY, LOG_EMERG},
@@ -107,6 +152,7 @@ private:
     { severity_level::XRT_DEBUG,     LOG_DEBUG}
   };
 };
+#endif
 
 //--
 class file_dispatch : public message_dispatch
@@ -139,38 +185,23 @@ make_dispatcher(const std::string& choice)
     return new null_dispatch;
   else if(choice == "console")
     return new console_dispatch;
-  else if(choice == "syslog")
+  else if(choice == "syslog") {
+#ifndef _WIN32
     return new syslog_dispatch;
+#else
+    throw std::runtime_error("syslog not supported on windows");
+#endif
+  }
   else {
-    if(choice.front() == '"'){
+    if(choice.front() == '"') {
       std::string file = choice;
       file.erase(0, 1);
       file.erase(file.size()-1);
       return new file_dispatch(file);
-    }else
+    }
+    else
       return new file_dispatch(choice);
   }
-  return nullptr;
-}
-
-//syslog ops.
-syslog_dispatch::
-syslog_dispatch()
-{
-  openlog("sdaccel", LOG_PID|LOG_CONS, LOG_USER);
-}
-
-syslog_dispatch::
-~syslog_dispatch()
-{
-  closelog();
-}
-
-void
-syslog_dispatch::
-send(severity_level l, const char* tag, const char* msg)
-{
-  syslog(severityMap[l], "%s", msg);
 }
 
 //file ops
@@ -183,13 +214,10 @@ file_dispatch(const std::string &file)
   handle << "Build date: " << xrt_build_version_date << std::endl;
   handle << "Git branch: " << xrt_build_version_branch<< std::endl;
   handle << xrt_core::timestamp() << std::endl;
-  handle << "PID: " << getpid() << std::endl;
-  handle << "UID: " << getuid() << std::endl;
-  //hostname
-  char hostname[HOST_NAME_MAX];
-  gethostname(hostname, HOST_NAME_MAX);
-  handle << "HOST: " <<  hostname << std::endl;
-  handle << "EXE: " <<get_exe_path() << std::endl;
+  handle << "PID: " << get_processid() << std::endl;
+  handle << "UID: " << get_userid() << std::endl;
+  handle << "HOST: " <<  get_hostname() << std::endl;
+  handle << "EXE: " << get_exe_path() << std::endl;
 }
 
 file_dispatch::~file_dispatch() {
@@ -213,14 +241,11 @@ console_dispatch()
   std::cout << "Build hash: " << xrt_build_version_hash << std::endl;
   std::cout << "Build date: " << xrt_build_version_date << std::endl;
   std::cout << "Git branch: " << xrt_build_version_branch<< std::endl;
-  std::cout << "PID: " << getpid() << std::endl;
-  std::cout << "UID: " << getuid() << std::endl;
+  std::cout << "PID: " << get_processid() << std::endl;
+  std::cout << "UID: " << get_userid() << std::endl;
   std::cout << xrt_core::timestamp() << std::endl;
-  //hostname
-  char hostname[HOST_NAME_MAX];
-  gethostname(hostname, HOST_NAME_MAX);
-  std::cout << "HOST: " <<  hostname << std::endl;
-  std::cout << "EXE: " <<get_exe_path() << std::endl;
+  std::cout << "HOST: " << get_hostname() << std::endl;
+  std::cout << "EXE: " << get_exe_path() << std::endl;
 }
 
 void
@@ -247,5 +272,5 @@ send(severity_level l, const char* tag, const char* msg)
     dispatcher->send(l, tag, msg);
   }
 }
-
+  
 }} // message,xrt

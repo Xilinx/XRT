@@ -14,6 +14,12 @@ include_directories(
 file(GLOB AWS_PLUGIN_FILES
   "aws_dev.h"
   "aws_dev.cpp"
+  "../common.h"
+  "../common.cpp"
+  "../sw_msg.h"
+  "../sw_msg.cpp"
+  "../pciefunc.h"
+  "../pciefunc.cpp"
   )
 
 add_library(aws_plugin OBJECT ${AWS_PLUGIN_FILES})
@@ -34,6 +40,7 @@ if(${INTERNAL_TESTING_FOR_AWS})
     boost_system
     pthread
     rt
+    dl
     )
 else()
   include_directories(${AWS_FPGA_REPO_DIR}/sdk/userspace/include/) # path to fpga_mgmt.h
@@ -47,6 +54,7 @@ else()
     boost_system
     pthread
     rt
+    dl
     ${AWS_FPGA_MGMT_LIB_DIR}/libfpga_mgmt.a
     )
 endif()

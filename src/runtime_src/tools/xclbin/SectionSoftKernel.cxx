@@ -24,7 +24,7 @@ namespace XUtil = XclBinUtilities;
 
 // Disable windows compiler warnings
 #ifdef _WIN32
-#pragma warning( disable : 4100)      // 4100 - Unreferenced formal parameter
+#pragma warning( disable : 4100 4267 4244)
 #endif
 
 // Static Variables / Classes
@@ -467,7 +467,6 @@ SectionSoftKernel::writeSubPayload(const std::string& _sSubSectionName,
       break;
   }
 }
-
 
 void
 SectionSoftKernel::readXclBinBinary(std::fstream& _istream, const axlf_section_header& _sectionHeader) {

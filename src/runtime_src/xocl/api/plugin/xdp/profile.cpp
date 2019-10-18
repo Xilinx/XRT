@@ -216,7 +216,7 @@ void get_address_bank(cl_mem buffer, uint64_t &address, std::string &bank)
       xmem->try_get_address_bank(address, bank);
     return;
   }
-  catch (const xocl::error& ex) {
+  catch (const xocl::error&) {
   }
 }
 
@@ -240,7 +240,7 @@ bool is_same_device(cl_mem buffer1, cl_mem buffer2)
       return (device1 == device2);
     }
   }
-  catch (const xocl::error& ex) {
+  catch (const xocl::error&) {
   }
 
   return true;

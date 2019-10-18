@@ -16,14 +16,17 @@
 
 #include "hal.h"
 
-#include <dlfcn.h>
+#include "core/common/dlfcn.h"
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
+
+#ifdef _WIN32
+# pragma warning ( disable : 4996 4706 )
+#endif
 
 namespace hal = xrt::hal;
 namespace hal2 = xrt::hal2;
 namespace bfs = boost::filesystem;
-//namespace pmd = xrt::pmd;
 
 namespace {
 
@@ -38,23 +41,6 @@ directoryOrError(const bfs::path& path)
 {
   if (!bfs::is_directory(path))
     throw std::runtime_error("No such directory '" + path.string() + "'");
-}
-
-XRT_UNUSED
-static const char*
-getPlatform()
-{
-#if defined(__aarch64__)
-  return "aarch64";
-#elif defined(__arm__)
-  return "arm64";
-#elif defined(__x86_64__)
-  return "x86_64";
-#elif defined(__powerpc64__)
-  return "ppc64le";
-#else
-# error("No driver directory for platform")
-#endif
 }
 
 static std::string&
@@ -74,7 +60,11 @@ versionFunc()
 static boost::filesystem::path&
 dllExt()
 {
+#ifdef _WIN32
+  static boost::filesystem::path sDllExt(".dll");
+#else
   static boost::filesystem::path sDllExt(".so");
+#endif
   return sDllExt;
 }
 
@@ -84,6 +74,16 @@ isDLL(const bfs::path& path)
   return (bfs::exists(path)
           && bfs::is_regular_file(path)
           && path.extension()==dllExt());
+}
+
+boost::filesystem::path
+dllpath(const boost::filesystem::path& root, const std::string& libnm)
+{
+#ifdef _WIN32
+  return root / "bin" / (libnm + ".dll");
+#else
+  return root / "lib" / ("lib" + libnm + ".so");
+#endif
 }
 
 static bool
@@ -99,17 +99,17 @@ static void
 createHalDevices(hal::device_list& devices, const std::string& dll, unsigned int count=0)
 {
   auto delHandle = [](void* handle) {
-    dlclose(handle);
+    xrt_core::dlclose(handle);
   };
-  typedef std::unique_ptr<void,decltype(delHandle)> handle_type;
+  using handle_type = std::unique_ptr<void,decltype(delHandle)>;
 
-  auto handle = handle_type(dlopen(dll.c_str(), RTLD_LAZY | RTLD_GLOBAL),delHandle);
+  auto handle = handle_type(xrt_core::dlopen(dll.c_str(), RTLD_LAZY | RTLD_GLOBAL),delHandle);
   if (!handle)
-    throw std::runtime_error("Failed to open HAL driver '" + dll + "'\n" + dlerror());
+    throw std::runtime_error("Failed to open HAL driver '" + dll + "'\n" + xrt_core::dlerror());
 
   typedef unsigned int (* probeFuncType)();
 
-  auto probeFunc = (probeFuncType)dlsym(handle.get(), propeFunc().c_str());
+  auto probeFunc = (probeFuncType)xrt_core::dlsym(handle.get(), propeFunc().c_str());
   if (!probeFunc)
     return;
 
@@ -118,7 +118,7 @@ createHalDevices(hal::device_list& devices, const std::string& dll, unsigned int
   if (count || (count = probeFunc()) || pmdCount) {
   // Version of HAL
     typedef unsigned int (* versionFuncType)();
-    auto vFunc = (versionFuncType)dlsym(handle.get(), versionFunc().c_str());
+    auto vFunc = (versionFuncType)xrt_core::dlsym(handle.get(), versionFunc().c_str());
     auto version = 1;
     if (vFunc)
       version = vFunc();
@@ -155,15 +155,16 @@ loadDevices()
 
   // xrt
   bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
+
   if (!xrt.empty() && !isEmulationMode()) {
     directoryOrError(xrt);
-    bfs::path p(xrt / "lib/libxrt_core.so");
+    auto p = dllpath(xrt,"xrt_core");
     if (isDLL(p))
       createHalDevices(devices,p.string());
   }
 
   if (devices.empty()) { // if failed libxrt_core load, try libxrt_aws
-    bfs::path p(xrt / "lib/libxrt_aws.so");
+    auto p = dllpath(xrt,"xrt_aws");
     if (isDLL(p))
       createHalDevices(devices,p.string());
   }
@@ -173,7 +174,7 @@ loadDevices()
 
     auto hw_em_driver_path = xrt::config::get_hw_em_driver();
     if (hw_em_driver_path == "null") {
-      bfs::path p(xrt / "lib/libxrt_hwemu.so");
+      auto p = dllpath(xrt,"xrt_hwemu");
       if (isDLL(p))
         hw_em_driver_path = p.string();
     }
@@ -187,7 +188,7 @@ loadDevices()
 
     auto sw_em_driver_path = xrt::config::get_sw_em_driver();
     if (sw_em_driver_path == "null") {
-      bfs::path p(xrt / "lib/libxrt_swemu.so");
+      auto p = dllpath(xrt,"xrt_swemu");
       if (isDLL(p))
         sw_em_driver_path = p.string();
     }
@@ -214,7 +215,8 @@ load_xdp()
     xdp_once_loader()
     {
       bfs::path xrt(emptyOrValue(getenv("XILINX_XRT")));
-      bfs::path libname ("liboclxdp.so");
+      bfs::path libname ("liboclxdp");
+      libname += dllExt();
       if (xrt.empty()) {
         throw std::runtime_error("Library " + libname.string() + " not found! XILINX_XRT not set");
       }
@@ -224,16 +226,16 @@ load_xdp()
       if (!isDLL(p)) {
         throw std::runtime_error("Library " + p.string() + " not found!");
       }
-      auto handle = dlopen(p.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
+      auto handle = xrt_core::dlopen(p.string().c_str(), RTLD_NOW | RTLD_GLOBAL);
       if (!handle)
-        throw std::runtime_error("Failed to open XDP library '" + p.string() + "'\n" + dlerror());
+        throw std::runtime_error("Failed to open XDP library '" + p.string() + "'\n" + xrt_core::dlerror());
 
       typedef void (* xdpInitType)();
 
       const std::string s = "initXDPLib";
-      auto initFunc = (xdpInitType)dlsym(handle, s.c_str());
+      auto initFunc = (xdpInitType)xrt_core::dlsym(handle, s.c_str());
       if (!initFunc)
-        throw std::runtime_error("Failed to initialize XDP library, '" + s +"' symbol not found.\n" + dlerror());
+        throw std::runtime_error("Failed to initialize XDP library, '" + s +"' symbol not found.\n" + xrt_core::dlerror());
 
       initFunc();
     }
