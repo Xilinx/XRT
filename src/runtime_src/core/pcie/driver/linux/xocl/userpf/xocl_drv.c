@@ -446,7 +446,8 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 	mutex_unlock(&xdev->dev_lock);
 
 	/* Re-clock changes PR region, make sure next ERT configure cmd will
-	 * go through */
+	 * go through
+	 */
 	if (err == 0)
 		(void) xocl_exec_reconfig(xdev);
 
@@ -468,7 +469,7 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 
 	switch (req->req) {
 	case XCL_MAILBOX_REQ_FIREWALL:
-		userpf_info(xdev, "firewall tripped, request reset");
+		userpf_info(xdev, "Card is in a BAD state, please issue xbutil reset");
 		xocl_drvinst_set_offline(xdev->core.drm, true);
 		xocl_drvinst_kill_proc(xdev->core.drm);
 		break;
@@ -540,7 +541,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
 	struct xcl_subdev	*resp = NULL;
 	size_t resp_len = sizeof(*resp) + XOCL_MSG_SUBDEV_DATA_LEN;
-        char *blob = NULL, *tmp;
+	char *blob = NULL, *tmp;
 	uint64_t checksum;
 	size_t offset = 0;
 	int ret = 0;
