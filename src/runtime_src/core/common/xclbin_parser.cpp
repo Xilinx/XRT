@@ -17,10 +17,20 @@
 #include "xclbin_parser.h"
 #include "config_reader.h"
 #include <cstring>
-
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/xml_parser.hpp>
+#include <boost/optional.hpp>
 // This is xclbin parser. Update this file if xclbin format has changed.
 
 namespace {
+
+namespace pt = boost::property_tree;
+
+static size_t
+convert(const std::string& str)
+{
+  return str.empty() ? 0 : std::stoul(str,0,0);
+}
 
 static bool
 is_sw_emulation()
@@ -47,12 +57,12 @@ is_valid_cu(const ip_data& ip)
 // ensure that they are sorted to come after regular AXI-lite CUs
 // The sort order is important as it determines the CU indices used
 // throughout XRT.
-static uint64_t
+static size_t 
 get_base_addr(const ip_data& ip)
 {
   auto addr = ip.m_base_address;
-  if (addr == static_cast<uint64_t>(-1))
-    addr = std::numeric_limits<uint64_t>::max() & ~0xFF;
+  if (addr == static_cast<size_t>(-1))
+    addr = std::numeric_limits<size_t>::max() & ~0xFF;
   return addr;
 }
 
@@ -184,7 +194,9 @@ get_cu_control(const axlf* top, uint64_t cuaddr)
     throw std::runtime_error("No such CU at address: " + std::to_string(cuaddr));
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
-    if (ip_data.m_base_address == cuaddr)
+    size_t ip_base_addr  = (ip_data.m_base_address == static_cast<size_t>(-1)) ? 
+      std::numeric_limits<size_t>::max() : ip_data.m_base_address;
+    if (ip_base_addr == cuaddr)
       return ((ip_data.properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT);
   }
   throw std::runtime_error("No such CU at address: " + std::to_string(cuaddr));
@@ -198,7 +210,7 @@ get_cu_base_offset(const axlf* top)
   if (!ip_layout)
     return 0;
 
-  uint64_t base = std::numeric_limits<uint32_t>::max();
+  size_t base = std::numeric_limits<uint32_t>::max();
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
     const auto& ip_data = ip_layout->m_ip_data[count];
     if (is_valid_cu(ip_data))
@@ -280,6 +292,37 @@ get_softkernels(const axlf* top)
   }
 
   return sks;
+}
+
+size_t
+get_kernel_freq(const axlf* top)
+{
+  size_t kernel_clk_freq = 100; //default clock frequency is 100
+  const axlf_section_header *xml_hdr = ::xclbin::get_axlf_section(top, EMBEDDED_METADATA);
+  if (xml_hdr) {
+    auto begin = reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset;
+    const char *xml_data = reinterpret_cast<const char*>(begin);
+    uint64_t xml_size = xml_hdr->m_sectionSize;
+
+    pt::ptree xml_project;
+    std::stringstream xml_stream;
+    xml_stream.write(xml_data,xml_size);
+    pt::read_xml(xml_stream,xml_project);
+
+    auto clock_child = xml_project.get_child_optional("project.platform.device.core.kernelClocks"); 
+
+    if(clock_child) { // check whether kernelClocks field exists or not
+      for (auto& xml_clock : xml_project.get_child("project.platform.device.core.kernelClocks")) {
+        if (xml_clock.first != "clock")
+          continue;
+        auto port = xml_clock.second.get<std::string>("<xmlattr>.port","");
+        auto freq = convert(xml_clock.second.get<std::string>("<xmlattr>.frequency","100"));
+        if(port == "KERNEL_CLK")
+          kernel_clk_freq = freq;
+      }
+    }
+  }
+  return kernel_clk_freq;
 }
 
 

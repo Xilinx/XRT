@@ -1,36 +1,39 @@
 #!/bin/sh
 
-if [ -n "`dkms status -m xrt-aws -v @XRT_VERSION_STRING@`" ]; then
-    echo "Unloading old XRT Linux kernel modules"
-    modprobe -r awsmgmt
+nm /opt/xilinx/xrt/lib/libaws_mpd_plugin.so |grep 'fpga_mgmt' > /dev/null 2>&1
+if [ $? -eq 1 ]; then
+    if [ -n "`dkms status -m xrt-aws -v @XRT_VERSION_STRING@`" ]; then
+        echo "Unloading old XRT Linux kernel modules"
+        modprobe -r awsmgmt
+        
+        echo "Unregistering old XRT Linux kernel module sources @XRT_VERSION_STRING@ from dkms"
+        dkms remove -m xrt-aws -v @XRT_VERSION_STRING@ --all
+        find /lib/modules -type f -name awsmgmt.ko -delete
+        find /lib/modules -type f -name awsmgmt.ko.kz -delete
+        find /lib/modules -type f -name awsmgmt.ko.xz -delete
+        depmod -A
+    fi
 
-    echo "Unregistering old XRT Linux kernel module sources @XRT_VERSION_STRING@ from dkms"
-    dkms remove -m xrt-aws -v @XRT_VERSION_STRING@ --all
-    find /lib/modules -type f -name awsmgmt.ko -delete
-    find /lib/modules -type f -name awsmgmt.ko.kz -delete
-    find /lib/modules -type f -name awsmgmt.ko.xz -delete
-    depmod -A
-fi
+    echo "Invoking xrt-aws common.postinst"
+    /usr/lib/dkms/common.postinst xrt-aws @XRT_VERSION_STRING@ "" "" $2
+    if [ $? -eq 0 ]; then
+        echo "Finished xrt-aws common.postinst"
+        install -m 644 /usr/src/xrt-aws-@XRT_VERSION_STRING@/driver/aws/mgmt/10-awsmgmt.rules /etc/udev/rules.d
+        
+        echo "Loading new XRT AWS Linux kernel modules"
+        udevadm control --reload-rules
+        modprobe awsmgmt
+        udevadm trigger
+    fi
 
-echo "Invoking xrt-aws common.postinst"
-/usr/lib/dkms/common.postinst xrt-aws @XRT_VERSION_STRING@ "" "" $2
-if [ $? -eq 0 ]; then
-    echo "Finished xrt-aws common.postinst"
-    install -m 644 /usr/src/xrt-aws-@XRT_VERSION_STRING@/driver/aws/mgmt/10-awsmgmt.rules /etc/udev/rules.d
-
-    echo "Loading new XRT AWS Linux kernel modules"
-    udevadm control --reload-rules
-    modprobe awsmgmt
-    udevadm trigger
-fi
-
-if [ -z "`dkms status -m xrt-aws -v @XRT_VERSION_STRING@ |grep installed`" ]; then
-    echo "****************************************************************"
-    echo "* DKMS failed to install AWS drivers."
-    echo "* Please check if kernel development headers are installed for OS variant used."
-    echo "* "
-    echo "* Check build logs in /var/lib/dkms/xrt-aws/@XRT_VERSION_STRING@"
-    echo "****************************************************************"
+    if [ -z "`dkms status -m xrt-aws -v @XRT_VERSION_STRING@ |grep installed`" ]; then
+        echo "****************************************************************"
+        echo "* DKMS failed to install AWS drivers."
+        echo "* Please check if kernel development headers are installed for OS variant used."
+        echo "* "
+        echo "* Check build logs in /var/lib/dkms/xrt-aws/@XRT_VERSION_STRING@"
+        echo "****************************************************************"
+    fi
 fi
 
 #create sym link to /opt/xilinx/xrt/lib/libmpd_plugin and restart mpd service

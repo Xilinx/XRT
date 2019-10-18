@@ -20,6 +20,10 @@ Added
 * Support has been added for device memory only buffer with no backing shadow buffer in host on PCIe platforms. Use ``XCL_BO_FLAGS_DEV_ONLY`` in flags field of xclAllocBO() to allocate such Buffers.
 * XRT now have integrated support for HWMON. Run Linux sensors utility to see all the sensor values exported by Alveo/XRT.
 
+Known Issue
+...........
+* On U280 Platform, downloading XCLBIN is going to reset P2P BAR size back to 256M internally. XRT workaround this issue by reading BAR size register and writing back the same value. This set the P2P BAR size back to the value before downloading XCLBIN.
+
 2.2.0 (201910.2.2)
 ~~~~~~~~~~~~~~~~~~
 

@@ -35,7 +35,7 @@ namespace xrt_core {
 
     private:
         std::ostream& ios;
-        std::ios::fmtflags f;
+        std::ios_base::fmtflags f;
     };
 } //xrt_core
 

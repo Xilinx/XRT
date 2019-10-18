@@ -31,7 +31,9 @@
 #include <sys/stat.h>
 #include <sys/file.h>
 #include <poll.h>
+#include "xclbin.h"
 #include "scan.h"
+#include "core/common/utils.h"
 
 // Supported vendors
 #define XILINX_ID       0x10ee
@@ -253,19 +255,6 @@ void pcidev::pci_device::sysfs_get(
         s = ""; // default value
 }
 
-void pcidev::pci_device::sysfs_get(
-    const std::string& subdev, const std::string& entry,
-    std::string& err_msg, bool& b)
-{
-    std::vector<uint64_t> iv;
-
-    sysfs_get(subdev, entry, err_msg, iv);
-    if (!iv.empty())
-        b = (iv[0] == 1);
-    else
-        b = false; // default value
-}
-
 static std::string get_devfs_path(bool is_mgmt, uint32_t instance)
 {
     std::string prefixStr = is_mgmt ? "/dev/xclmgmt" : "/dev/dri/" RENDER_NM;
@@ -354,7 +343,7 @@ pcidev::pci_device::pci_device(const std::string& sysfs) : sysfs_name(sysfs)
     }
 
     // Determine if device is of supported vendor
-    sysfs_get("", "vendor", err, vendor);
+    sysfs_get<uint16_t>("", "vendor", err, vendor, static_cast<uint16_t>(-1));
     if (!err.empty()) {
         std::cout << err << std::endl;
         return;
@@ -378,7 +367,7 @@ pcidev::pci_device::pci_device(const std::string& sysfs) : sysfs_name(sysfs)
 
     uint32_t inst = INVALID_ID;
     if (mgmt)
-        sysfs_get("", "instance", err, inst);
+        sysfs_get<uint32_t>("", "instance", err, inst, static_cast<uint32_t>(-1));
     else
         inst = get_render_value(dir + "/drm");
     if (!devfs_exists(mgmt, inst))
@@ -389,11 +378,11 @@ pcidev::pci_device::pci_device(const std::string& sysfs) : sysfs_name(sysfs)
     bus = b;
     dev = d;
     func = f;
-    sysfs_get("", "userbar", err, user_bar);
+    sysfs_get<int>("", "userbar", err, user_bar, 0);
     user_bar_size = bar_size(dir, user_bar);
     is_mgmt = mgmt;
     instance = inst;
-    sysfs_get("", "ready", err, is_ready);
+    sysfs_get<bool>("", "ready", err, is_ready, false);
 }
 
 pcidev::pci_device::~pci_device()
@@ -728,7 +717,7 @@ std::ostream& operator<<(std::ostream& stream,
     std::string err;
     bool is_mfg = false;
     uint64_t ts = 0;
-    dev->sysfs_get("", "mfg", err, is_mfg);
+    dev->sysfs_get<bool>("", "mfg", err, is_mfg, false);
     if (is_mfg) {
         unsigned ver = 0;
         std::string nm;
@@ -741,7 +730,7 @@ std::ostream& operator<<(std::ostream& stream,
         shell_name += std::to_string(ver);
     } else {
         dev->sysfs_get("rom", "VBNV", err, shell_name);
-        dev->sysfs_get("rom", "timestamp", err, ts);
+        dev->sysfs_get<uint64_t>("rom", "timestamp", err, ts, static_cast<uint64_t>(-1));
     }
     stream << " " << shell_name;
     if (ts != 0)
@@ -756,4 +745,98 @@ std::ostream& operator<<(std::ostream& stream,
 
     stream.flags(f);
     return stream;
+}
+
+int pcidev::get_axlf_section(std::string filename, int kind, std::shared_ptr<char>& buf)
+{
+    std::ifstream in(filename);
+    if (!in.is_open())
+    {
+        std::cout << "Can't open " << filename << std::endl;
+	return -ENOENT;
+    }
+    // Read axlf from dsabin file to find out number of sections in total.
+    axlf a;
+    size_t sz = sizeof (axlf);
+    in.read(reinterpret_cast<char *>(&a), sz);
+    if (!in.good())
+    {
+        std::cout << "Can't read axlf from "<< filename << std::endl;
+        return -EINVAL;
+    }
+    // Reread axlf from dsabin file, including all sections headers.
+    // Sanity check for number of sections coming from user input file
+    if (a.m_header.m_numSections > 10000)
+        return -EINVAL;
+
+    sz = sizeof (axlf) + sizeof (axlf_section_header) * (a.m_header.m_numSections - 1);
+
+    std::vector<char> top(sz);
+    in.seekg(0);
+    in.read(top.data(), sz);
+    if (!in.good())
+    {
+        std::cout << "Can't read axlf and section headers from "<< filename << std::endl;
+        return -EINVAL;
+    }
+    const axlf *ap = reinterpret_cast<const axlf *>(top.data());
+
+    const axlf_section_header* section = xclbin::get_axlf_section(ap, (enum axlf_section_kind)kind);
+    if (!section)
+    {
+        return -EINVAL;
+    }
+
+    buf = std::shared_ptr<char>(new char[section->m_sectionSize]);
+    in.seekg(section->m_sectionOffset);
+    in.read(buf.get(), section->m_sectionSize);
+
+    return 0;
+}
+
+int pcidev::get_uuids(std::shared_ptr<char>& dtbbuf, std::vector<std::string>& uuids)
+{
+    struct fdt_header *bph = (struct fdt_header *)dtbbuf.get();
+    uint32_t version = be32toh(bph->version);
+    uint32_t off_dt = be32toh(bph->off_dt_struct);
+    const char *p_struct = (const char *)bph + off_dt;
+    uint32_t off_str = be32toh(bph->off_dt_strings);
+    const char *p_strings = (const char *)bph + off_str;
+    const char *p, *s;
+    uint32_t tag;
+    int sz;
+
+    p = p_struct;
+    uuids.clear();
+    while ((tag = be32toh(GET_CELL(p))) != FDT_END)
+    {
+        if (tag == FDT_BEGIN_NODE)
+        {
+            s = p;
+            p = PALIGN(p + strlen(s) + 1, 4);
+            continue;
+        }
+        if (tag != FDT_PROP)
+            continue;
+
+        sz = be32toh(GET_CELL(p));
+        s = p_strings + be32toh(GET_CELL(p));
+        if (version < 16 && sz >= 8)
+            p = PALIGN(p, 8);
+
+        if (!strcmp(s, "logic_uuid"))
+        {
+            uuids.insert(uuids.begin(), std::string(p));
+        }
+        else if (!strcmp(s, "interface_uuid"))
+        {
+            uuids.push_back(std::string(p));
+        }
+        p = PALIGN(p + sz, 4);
+    }
+
+    if (!uuids.size())
+        return -EINVAL;
+
+    return 0;
 }

@@ -14,7 +14,7 @@
 	zyxclmm_drm {
 		compatible = "xlnx,zocl";
 		status = "okay";
-		xlnx,pr-isolation-addr = <0x80070000>;
+		xlnx,pr-isolation-addr = <0x0 0x80070000>;
 		interrupt-parent = <&axi_intc_0>;
 		interrupts = <0  4>, <1  4>, <2  4>, <3  4>,
 			     <4  4>, <5  4>, <6  4>, <7  4>,

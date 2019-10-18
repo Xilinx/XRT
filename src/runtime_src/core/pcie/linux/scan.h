@@ -85,19 +85,22 @@ public:
     void sysfs_get(const std::string& subdev, const std::string& entry,
         std::string& err_msg, std::string& s);
     void sysfs_get(const std::string& subdev, const std::string& entry,
-        std::string& err_msg, bool& b);
-    void sysfs_get(const std::string& subdev, const std::string& entry,
         std::string& err_msg, std::vector<char>& buf);
     template <typename T>
     void sysfs_get(const std::string& subdev, const std::string& entry,
-        std::string& err_msg, T& i) {
+        std::string& err_msg, T& i, const T& default_val) {
         std::vector<uint64_t> iv;
 
         sysfs_get(subdev, entry, err_msg, iv);
         if (!iv.empty())
             i = static_cast<T>(iv[0]);
         else
-            i = static_cast<T>(-1); // default value
+            i = static_cast<T>(default_val); // default value
+    }
+    void sysfs_get_sensor(const std::string& subdev, const std::string& entry,
+        uint32_t& i) {
+        std::string err;
+        sysfs_get<uint32_t>(subdev, entry, err, i, 0);
     }
     void sysfs_put(const std::string& subdev, const std::string& entry,
         std::string& err_msg, const std::string& input);
@@ -132,6 +135,8 @@ size_t get_dev_total(bool user = true);
 size_t get_dev_ready(bool user = true);
 std::shared_ptr<pci_device> get_dev(unsigned index, bool user = true);
 
+int get_axlf_section(std::string filename, int kind, std::shared_ptr<char>& buf);
+int get_uuids(std::shared_ptr<char>& dtbbuf, std::vector<std::string>& uuids);
 } /* pcidev */
 
 // For print out per device info

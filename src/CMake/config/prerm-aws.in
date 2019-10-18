@@ -27,16 +27,19 @@
 # configuration of the components and hence we want to handle the configuration
 # in postinst script.
 
-echo "Unloading old AWS Linux kernel modules"
-modprobe -r awsmgmt
+nm /opt/xilinx/xrt/lib/libaws_mpd_plugin.so |grep 'fpga_mgmt' > /dev/null 2>&1
+if [ $? -eq 1 ]; then
+    echo "Unloading old AWS Linux kernel modules"
+    modprobe -r awsmgmt
 
-echo "Unregistering AWS Linux kernel module sources @XRT_VERSION_STRING@ from dkms"
-dkms remove -m xrt-aws -v @XRT_VERSION_STRING@ --all
-find /lib/modules -type f -name awsmgmt.ko -delete
-find /lib/modules -type f -name awsmgmt.ko.kz -delete
-depmod -A
+    echo "Unregistering AWS Linux kernel module sources @XRT_VERSION_STRING@ from dkms"
+    dkms remove -m xrt-aws -v @XRT_VERSION_STRING@ --all
+    find /lib/modules -type f -name awsmgmt.ko -delete
+    find /lib/modules -type f -name awsmgmt.ko.kz -delete
+    depmod -A
 
-rm -f /etc/udev/rules.d/10-awsmgmt.rules
+    rm -f /etc/udev/rules.d/10-awsmgmt.rules
+fi
 
 #In case prerm is called after postinst on centos, make sure not to stop mpd
 lsb_release -si | grep -Eq "^RedHat|^CentOS"
@@ -47,7 +50,7 @@ fi
 
 echo "Remove mpd plugin"
 rm -rf /opt/xilinx/xrt/lib/libmpd_plugin.so > /dev/null 2>&1
-systemctl disable mpd /dev/null 2>&1
-systemctl stop mpd /dev/null 2>&1
+systemctl disable mpd > /dev/null 2>&1
+systemctl stop mpd > /dev/null 2>&1
 
 exit 0

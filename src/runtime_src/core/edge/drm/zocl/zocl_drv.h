@@ -185,6 +185,10 @@ int zocl_info_cu_ioctl(struct drm_device *dev, void *data,
 int zocl_copy_bo_async(struct drm_device *, struct drm_file *,
 	zocl_dma_handle_t *, struct drm_zocl_copy_bo *);
 
+bool zocl_can_dma_performed(struct drm_device *dev, struct drm_file *filp,
+	struct drm_zocl_copy_bo *args, uint64_t *dst_paddr,
+	uint64_t *src_paddr);
+
 void zocl_describe(const struct drm_zocl_bo *obj);
 
 void zocl_free_userptr_bo(struct drm_gem_object *obj);

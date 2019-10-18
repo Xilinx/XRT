@@ -400,6 +400,7 @@ struct mailbox {
 	uint32_t		mbx_proto_ver;
 
 	bool			mbx_peer_dead;
+	uint64_t		mbx_opened;
 };
 
 static inline const char *reg2name(struct mailbox *mbx, u32 *reg)
@@ -1632,7 +1633,7 @@ int mailbox_post_notify(struct platform_device *pdev, void *buf, size_t len)
 
 	/* No checking for peer's liveness for posted msgs. */
 
-	MBX_INFO(mbx, "posting request: %d via %s",
+	MBX_DBG(mbx, "posting request: %d via %s",
 		((struct xcl_mailbox_req *)buf)->req, sw_ch ? "SW" : "HW");
 
 	msg = alloc_msg(NULL, len);
@@ -1865,6 +1866,9 @@ int mailbox_get(struct platform_device *pdev, enum mb_kind kind, u64 *data)
 
 	mutex_lock(&mbx->mbx_lock);
 	switch (kind) {
+	case DAEMON_STATE:
+		*data = mbx->mbx_opened;
+		break;
 	case CHAN_STATE:
 		*data = mbx->mbx_ch_state;
 		break;
@@ -1967,6 +1971,8 @@ static int mailbox_open(struct inode *inode, struct file *file)
 	if (!mbx)
 		return -ENXIO;
 
+	/* Assume msd/mpd is the only user of the software mailbox */
+	mbx->mbx_opened = 1;
 	/* create a reference to our char device in the opened file */
 	file->private_data = mbx;
 	return 0;
@@ -1979,6 +1985,7 @@ static int mailbox_close(struct inode *inode, struct file *file)
 {
 	struct mailbox *mbx = file->private_data;
 
+	mbx->mbx_opened = 0;
 	xocl_drvinst_close(mbx);
 	return 0;
 }
@@ -2217,10 +2224,11 @@ static int mailbox_probe(struct platform_device *pdev)
 	mbx->mbx_req_cnt = 0;
 	mbx->mbx_req_sz = 0;
 	mbx->mbx_peer_dead = false;
+	mbx->mbx_opened = 0;
 	mbx->mbx_prot_ver = XCL_MB_PROTOCOL_VER;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-    if (res != NULL) {
+	if (res != NULL) {
 	    mbx->mbx_regs = ioremap_nocache(res->start, res->end - res->start + 1);
 	    if (!mbx->mbx_regs) {
 		    MBX_ERR(mbx, "failed to map in registers");
@@ -2229,7 +2237,7 @@ static int mailbox_probe(struct platform_device *pdev)
 	    }
 	    /* Reset both TX channel and RX channel */
 	    mailbox_reg_wr(mbx, &mbx->mbx_regs->mbr_ctrl, 0x3);
-    }
+	}
 
 	/* Dedicated thread for listening to peer request. */
 	mbx->mbx_listen_wq =

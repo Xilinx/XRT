@@ -64,6 +64,7 @@ int init(mpd_plugin_callbacks *cbs)
         // hook functions
         cbs->mpc_cookie = NULL;
         cbs->get_remote_msd_fd = get_remote_msd_fd;
+        cbs->mb_notify = mb_notify;
         cbs->mb_req.load_xclbin = awsLoadXclBin;
         cbs->mb_req.peer_data.get_icap_data = awsGetIcap;
         cbs->mb_req.peer_data.get_sensor_data = awsGetSensor;
@@ -72,8 +73,6 @@ int init(mpd_plugin_callbacks *cbs)
         cbs->mb_req.peer_data.get_firewall_data = awsGetFirewall;
         cbs->mb_req.peer_data.get_dna_data = awsGetDna;
         cbs->mb_req.peer_data.get_subdev_data = awsGetSubdev;
-        cbs->mb_req.lock_bitstream = awsLockDevice;
-        cbs->mb_req.unlock_bitstream = awsUnlockDevice;
         cbs->mb_req.hot_reset = awsResetDevice;
         cbs->mb_req.reclock2 = awsReClock2;
         cbs->mb_req.user_probe = awsUserProbe;
@@ -108,6 +107,53 @@ int get_remote_msd_fd(size_t index, int* fd)
 {
     *fd = -1;
     return 0;
+}
+
+/*
+ * callback function that is used to notify xocl the imagined xclmgmt
+ * online/offline
+ * Input:
+ *        index: index of the user PF
+ *        fd: mailbox file descriptor
+ *        online: online or offline 
+ * Output:
+ *        None
+ * Return value:
+ *        0: success
+ *        others: err code
+ */
+int mb_notify(size_t index, int fd, bool online)
+{
+    std::unique_ptr<sw_msg> swmsg;
+    struct xcl_mailbox_req *mb_req = NULL;
+    struct xcl_mailbox_peer_state mb_conn = { 0 };
+    size_t data_len = sizeof(struct xcl_mailbox_peer_state) + sizeof(struct xcl_mailbox_req);
+    pcieFunc dev(index);
+   
+    std::vector<char> buf(data_len, 0);
+    mb_req = reinterpret_cast<struct xcl_mailbox_req *>(buf.data());
+
+    mb_req->req = XCL_MAILBOX_REQ_MGMT_STATE;
+    if (online)
+        mb_conn.state_flags |= XCL_MB_STATE_ONLINE;
+    else
+        mb_conn.state_flags |= XCL_MB_STATE_OFFLINE;
+    memcpy(mb_req->data, &mb_conn, sizeof(mb_conn));
+
+    try {
+        swmsg = std::make_unique<sw_msg>(mb_req, data_len, 0x1234, XCL_MB_REQ_FLAG_REQUEST);
+    } catch (std::exception &e) {
+        std::cout << "aws mb_notify: " << e.what() << std::endl;
+        throw;
+    }
+
+    struct queue_msg msg;
+    msg.localFd = fd;
+    msg.type = REMOTE_MSG;
+    msg.cb = nullptr;
+    msg.data = std::move(swmsg);
+
+    return handleMsg(dev, msg);    
 }
 
 /*
@@ -279,50 +325,6 @@ int awsGetSubdev(size_t index, char *resp, size_t resp_len)
     AwsDev d(index, nullptr);
     if (d.isGood())
         ret = d.awsGetSubdev(resp, resp_len);
-    return ret;
-}
-
-/*
- * callback function that is used to handle MAILBOX_REQ_LOCK_BITSTREAM msg 
- *
- * Input:
- *        index: index of the FPGA device
- * Output:
- *        resp: int as response msg
- * Return value:
- *        0: success
- *        others: err code
- */
-int awsLockDevice(size_t index, int *resp)
-{
-    int ret = -1;
-    AwsDev d(index, nullptr);
-    if (d.isGood()) {
-        *resp = d.awsLockDevice();
-        ret = 0;
-    }
-    return ret;
-}
-
-/*
- * callback function that is used to handle MAILBOX_REQ_UNLOCK_BITSTREAM msg
- * 
- * Input:
- *        index: index of the FPGA device
- * Output:
- *        resp: int as response msg
- * Return value:
- *        0: success
- *        others: err code
- */
-int awsUnlockDevice(size_t index, int *resp)
-{
-    int ret = -1;
-    AwsDev d(index, nullptr);
-    if (d.isGood()) {
-        *resp = d.awsUnlockDevice();
-        ret = 0;
-    }
     return ret;
 }
 
@@ -569,20 +571,6 @@ int AwsDev::awsUserProbe(xcl_mailbox_conn_resp *resp)
     return 0;
 }
 
-int AwsDev::awsLockDevice()
-{
-    // AWS FIXME - add lockDevice
-    mLocked = true;
-    return 0;
-}
-
-int AwsDev::awsUnlockDevice()
-{
-    // AWS FIXME - add unlockDevice
-    mLocked = false;
-    return 0;
-}
-
 int AwsDev::awsResetDevice() {
     // AWS FIXME - add reset
     return 0;
@@ -622,7 +610,7 @@ AwsDev::~AwsDev()
     }
 }
 
-AwsDev::AwsDev(size_t index, const char *logfileName) : mBoardNumber(index), mLocked(false)
+AwsDev::AwsDev(size_t index, const char *logfileName) : mBoardNumber(index)
 {
     if (logfileName != nullptr) {
         mLogStream.open(logfileName);

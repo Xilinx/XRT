@@ -24,6 +24,9 @@
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 #include "core/pcie/linux/scan.h"
 #include "../mpd_plugin.h"
+#include "../common.h"
+#include "../sw_msg.h"
+#include "../pciefunc.h"
 
 #ifdef INTERNAL_TESTING_FOR_AWS
 #include "core/pcie/driver/linux/include/xocl_ioctl.h"
@@ -70,15 +73,12 @@ public:
     //int xclBootFPGA();
     int awsResetDevice();
     int awsReClock2(const xclmgmt_ioc_freqscaling *obj);
-    int awsLockDevice();
-    int awsUnlockDevice();
     int awsProgramShell();
     int awsReadP2pBarAddr(const xcl_mailbox_p2p_bar_addr *addr);
     int awsUserProbe(xcl_mailbox_conn_resp *resp);
     bool isGood();
 private:
     const int mBoardNumber;
-    bool mLocked;
     std::ofstream mLogStream;
 #ifdef INTERNAL_TESTING_FOR_AWS
     int mMgtHandle;
@@ -91,6 +91,7 @@ private:
 };
 
 int get_remote_msd_fd(size_t index, int* fd);
+int mb_notify(size_t index, int fd, bool online);
 int awsLoadXclBin(size_t index, const axlf *xclbin, int *resp);
 int awsGetIcap(size_t index, xcl_pr_region *resp);
 int awsGetSensor(size_t index, xcl_sensor *resp);
@@ -99,8 +100,6 @@ int awsGetMig(size_t index, char *resp, size_t resp_len);
 int awsGetFirewall(size_t index, xcl_mig_ecc *resp);
 int awsGetDna(size_t index, xcl_dna *resp);
 int awsGetSubdev(size_t index, char *resp, size_t resp_len);
-int awsLockDevice(size_t index, int *resp);
-int awsUnlockDevice(size_t index, int *resp);
 int awsResetDevice(size_t index, int *resp);
 int awsReClock2(size_t index, const xclmgmt_ioc_freqscaling *obj, int *resp);
 int awsUserProbe(size_t index, xcl_mailbox_conn_resp *resp);

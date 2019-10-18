@@ -176,7 +176,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
         free(enc_session);
         return NULL;
     }
-    if ((uint32_t)cu_index >= hwcfg->devices[hwcfg_dev_index].number_of_cus || (cu_index < 0 && enc_props->cu_name == NULL)) {
+    if ((cu_index > 0 && (uint32_t)cu_index >= hwcfg->devices[hwcfg_dev_index].number_of_cus) || (cu_index < 0 && enc_props->cu_name == NULL)) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
                    "XMA session creation failed. Invalid cu_index = %d\n", cu_index);
         //Release singleton lock

@@ -109,17 +109,26 @@ static void print_pci_info(std::ostream &ostr)
 
     if (pcidev::get_dev_total() != pcidev::get_dev_ready()) {
         ostr << "WARNING: "
-            << "card(s) marked by '*' are not ready, "
-            << "run xbmgmt flash --scan --verbose to further check the details."
-            << std::endl;
+            << "card(s) marked by '*' are not ready, is MPD runing? "
+            << "run 'systemctl status mpd' to check MPD details.";
+	    if (pcidev::get_dev_total(false) == 0)
+            ostr << std::endl;
+	    else
+            ostr << " please also run 'xbmgmt flash --scan --verbose' to further check card details."
+                << std::endl;
     }
 }
 
 static int xrt_xbutil_version_cmp() 
 {
     /*check xbutil tools and xrt versions*/
-    std::string xrt = sensor_tree::get<std::string>( "runtime.build.version", "N/A" ) + ","
+    std::string xrt = "";
+    try {
+        xrt = sensor_tree::get<std::string>( "runtime.build.version", "N/A" ) + ","
         + sensor_tree::get<std::string>( "runtime.build.hash", "N/A" );
+    } catch (std::exception const& e) {
+        std::cout << e.what() << std::endl;
+    }
     if ( xcldev::driver_version("xocl") != "unknown" &&
         xrt.compare(xcldev::driver_version("xocl") ) != 0 ) {
         std::cout << "\nERROR: Mixed versions of XRT and xbutil are not supported. \
@@ -793,13 +802,7 @@ static void topThreadFunc(struct topThreadCtrl *ctrl)
     while (!ctrl->quit) {
         if ((i % ctrl->interval) == 0) {
             xclDeviceUsage devstat;
-            xclDeviceInfo2 devinfo;
             int result = ctrl->dev->usageInfo(devstat);
-            if (result) {
-                ctrl->status = result;
-                return;
-            }
-            result = ctrl->dev->deviceInfo(devinfo);
             if (result) {
                 ctrl->status = result;
                 return;
@@ -820,13 +823,7 @@ static void topThreadStreamFunc(struct topThreadCtrl *ctrl)
     while (!ctrl->quit) {
         if ((i % ctrl->interval) == 0) {
             xclDeviceUsage devstat;
-            xclDeviceInfo2 devinfo;
             int result = ctrl->dev->usageInfo(devstat);
-            if (result) {
-                ctrl->status = result;
-                return;
-            }
-            result = ctrl->dev->deviceInfo(devinfo);
             if (result) {
                 ctrl->status = result;
                 return;
@@ -937,13 +934,13 @@ inline const char* getenv_or_empty(const char* path)
 }
 
 static void set_shell_path_env(const std::string& var_name,
-    const std::string& trailing_path, int overwrite)
+    const std::string& trailing_path)
 {
     std::string xrt_path(getenv_or_empty("XILINX_XRT"));
     std::string new_path(getenv_or_empty(var_name.c_str()));
     xrt_path += trailing_path + ":";
     new_path = xrt_path + new_path;
-    setenv(var_name.c_str(), new_path.c_str(), overwrite);
+    setenv(var_name.c_str(), new_path.c_str(), 1);
 }
 
 int runShellCmd(const std::string& cmd, std::string& output)
@@ -953,9 +950,9 @@ int runShellCmd(const std::string& cmd, std::string& output)
 
     // Fix environment variables before running test case
     setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
-    set_shell_path_env("PYTHONPATH", "/python", 0);
-    set_shell_path_env("LD_LIBRARY_PATH", "/lib", 1);
-    set_shell_path_env("PATH", "/bin", 1);
+    set_shell_path_env("PYTHONPATH", "/python");
+    set_shell_path_env("LD_LIBRARY_PATH", "/lib");
+    set_shell_path_env("PATH", "/bin");
     unsetenv("XCL_EMULATION_MODE");
 
     int stderr_fds[2];
@@ -1039,7 +1036,7 @@ int searchXsaAndDsa(int index, std::string xsaPath, std::string
         boost::filesystem::path formatted_fw_dir(FORMATTED_FW_DIR);
         std::vector<std::string> suffix = { "dsabin", "xsabin" };
         for (std::string t : suffix) {
-            std::regex e("(^" FORMATTED_FW_DIR "/.+/.+/.+/).+/(" hex_digit ")\\." + t);
+            std::regex e("(^" FORMATTED_FW_DIR "/[^/]+/[^/]+/[^/]+/).+\\." + t);
             for (boost::filesystem::recursive_directory_iterator iter(formatted_fw_dir, boost::filesystem::symlink_option::recurse), end;
                 iter != end;
             )
@@ -1047,11 +1044,34 @@ int searchXsaAndDsa(int index, std::string xsaPath, std::string
                 std::string name = iter->path().string();
                 std::cmatch cm;
 
+                dp = opendir(name.c_str());
+                if (!dp)
+                {
+                    iter.no_push();
+                }
+                else
+                {
+                    closedir(dp);
+                }
+
                 std::regex_match(name.c_str(), cm, e);
                 if (cm.size() > 0)
                 {
-                    std::string uuid = cm.str(2);
-                    if (uuid.compare(logic_uuid) == 0)
+                    std::shared_ptr<char> dtbbuf = nullptr;
+                    std::vector<std::string> uuids;
+		    pcidev::get_axlf_section(name, PARTITION_METADATA, dtbbuf);
+		    if (dtbbuf == nullptr)
+                    {
+                        ++iter;
+                        continue;
+		    }
+		    pcidev::get_uuids(dtbbuf, uuids);
+                    if (!uuids.size())
+                    {
+                        ++iter;
+                        continue;
+		    }
+                    if (uuids[0].compare(logic_uuid) == 0)
                     {
                         path = cm.str(1) + "test/";
                         return EXIT_SUCCESS;
@@ -1062,16 +1082,7 @@ int searchXsaAndDsa(int index, std::string xsaPath, std::string
                     iter.pop();
                     continue;
                 }
-                dp = opendir(name.c_str());
-                if (!dp)
-                {
-                    iter.no_push();
-                }
-                else
-                {
-                    closedir(dp);
-                }
-                ++iter;
+		++iter;
             }
         }
         output += "ERROR: Failed to find xclbin in ";
@@ -1223,10 +1234,10 @@ int xcldev::device::pcieLinkTest(void)
         return -EINVAL;
     }
 
-    pcidev::get_dev(m_idx)->sysfs_get( "", "link_speed",     errmsg, pcie_speed );
-    pcidev::get_dev(m_idx)->sysfs_get( "", "link_speed_max", errmsg, pcie_speed_max );
-    pcidev::get_dev(m_idx)->sysfs_get( "", "link_width",     errmsg, pcie_width );
-    pcidev::get_dev(m_idx)->sysfs_get( "", "link_width_max", errmsg, pcie_width_max );
+    pcidev::get_dev(m_idx)->sysfs_get<unsigned int>( "", "link_speed",     errmsg, pcie_speed, -1 );
+    pcidev::get_dev(m_idx)->sysfs_get<unsigned int>( "", "link_speed_max", errmsg, pcie_speed_max, -1 );
+    pcidev::get_dev(m_idx)->sysfs_get<unsigned int>( "", "link_width",     errmsg, pcie_width, -1 );
+    pcidev::get_dev(m_idx)->sysfs_get<unsigned int>( "", "link_width_max", errmsg, pcie_width_max, -1 );
     if (pcie_speed != pcie_speed_max || pcie_width != pcie_width_max) {
         std::cout << "LINK ACTIVE, ATTENTION" << std::endl;
         std::cout << "Ensure Card is plugged in to Gen"
@@ -1252,7 +1263,7 @@ int xcldev::device::auxConnectionTest(void)
     }
 
     pcidev::get_dev(m_idx)->sysfs_get("xmc", "bd_name", errmsg, name);
-    pcidev::get_dev(m_idx)->sysfs_get("xmc", "max_power",  errmsg, max_power);
+    pcidev::get_dev(m_idx)->sysfs_get<unsigned short>("xmc", "max_power",  errmsg, max_power, 0);
 
     if (!name.empty()) {
         for (auto bd : auxPwrRequiredBoard) {
@@ -1755,15 +1766,15 @@ int xcldev::device::testP2p()
     std::string errmsg;
     std::vector<char> buf;
     int ret = 0;
-    int p2p_enabled = 0;
+    bool p2p_enabled;
     xclbin_lock xclbin_lock(m_handle, m_idx);
     auto dev = pcidev::get_dev(m_idx);
 
     if (dev == nullptr)
         return -EINVAL;
 
-    dev->sysfs_get("", "p2p_enable", errmsg, p2p_enabled);
-    if (p2p_enabled != 1) {
+    dev->sysfs_get<bool>("", "p2p_enable", errmsg, p2p_enabled, false);
+    if (!p2p_enabled) {
         std::cout << "P2P BAR is not enabled. Skipping validation" << std::endl;
         return -EOPNOTSUPP;
     }
@@ -1771,18 +1782,24 @@ int xcldev::device::testP2p()
     dev->sysfs_get("icap", "mem_topology", errmsg, buf);
 
     const mem_topology *map = (mem_topology *)buf.data();
-    if(buf.empty() || map->m_count == 0) {
+    if (buf.empty() || map->m_count == 0) {
         std::cout << "WARNING: 'mem_topology' invalid, "
             << "unable to perform P2P Test. Has the bitstream been loaded? "
             << "See 'xbutil program'." << std::endl;
         return -EINVAL;
     }
 
-    for(int32_t i = 0; i < map->m_count && ret == 0; i++) {
-        const char *name = (const char *)map->m_mem_data[i].m_tag;
-        if ((std::strncmp(name, "HBM", std::strlen("HBM")) && 
-            std::strncmp(name, "DDR", std::strlen("DDR"))) ||
-            !map->m_mem_data[i].m_used)
+    for (int32_t i = 0; i < map->m_count && ret == 0; i++) {
+        const std::vector<std::string> supList = { "HBM", "DDR", "bank" };
+        const std::string name(reinterpret_cast<const char *>(map->m_mem_data[i].m_tag));
+        bool find = false;
+        for (auto s : supList) {
+            if (name.compare(0, s.size(), s) == 0) {
+                find = true;
+                break;
+            }
+        }
+        if (!find || !map->m_mem_data[i].m_used)
             continue;
 
         std::cout << "Performing P2P Test on " << map->m_mem_data[i].m_tag << " ";
@@ -1866,9 +1883,10 @@ int xcldev::xclP2p(int argc, char *argv[])
         std::cout << "ERROR: Not enough iomem space." << std::endl;
         std::cout << "Please check BIOS settings" << std::endl;
     } else if (ret == EBUSY) {
-        std::cout << "ERROR: P2P is enabled. But there is not enough iomem space, please warm reboot." << std::endl;
+        std::cout << "Please WARM reboot to enable p2p now." << std::endl;
     } else if (ret == ENXIO) {
-        std::cout << "ERROR: P2P is not supported on this platform" << std::endl;
+        std::cout << "ERROR: P2P is not supported on this platform"
+            << std::endl;
     } else if (ret == 1) {
         std::cout << "P2P is enabled" << std::endl;
     } else if (ret == 0) {
@@ -1977,7 +1995,7 @@ int xcldev::device::testM2m()
     if (dev == nullptr)
         return -EINVAL;
 
-    dev->sysfs_get("mb_scheduler", "kds_numcdmas", errmsg, m2m_enabled);
+    dev->sysfs_get<int>("mb_scheduler", "kds_numcdmas", errmsg, m2m_enabled, 0);
     if (m2m_enabled == 0) {
         std::cout << "M2M is not available. Skipping validation" << std::endl;
         return -EOPNOTSUPP;

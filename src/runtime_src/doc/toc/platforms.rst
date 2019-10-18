@@ -23,9 +23,11 @@ XRT supports following PCIe based devices:
 5. AWS F1
 6. Advantech VEGA-4000/4002
 
-PCIe based platforms are supported on x86_64, PPC64LE and AARCH64 host architectures.
-The *Shell* (previously known as DSA) has two physical functions: PF0 also called *mgmt pf* and PF1 also
-called *user pf*.
+PCIe based platforms are supported on x86_64, PPC64LE and AARCH64 host architectures. The
+platform is comprised of *Shell* and *Dynamic Region*. The Shell (previously known as DSA)
+has two physical functions: PF0 also called *mgmt pf* and PF1 also called *user pf*.
+Dynamic Region contains *Role* which is user compiled binary. Roles are swapped by user
+using process called *Dynamic Function Exchange (DFX)*.
 
 MGMT PF (PF0)
 -------------
@@ -70,7 +72,7 @@ in DFX partition. xocl driver is organized into subdevices and handles the follo
 14. Hardware mailbox for communication with xclmgmt driver
 
 
-Platform security and robustness is described in section :ref:`security.rst`.
+PCIe platform security and robustness is described in section :ref:`security.rst`.
 
 Zynq Ultrascale+ MPSoC Based Embedded Platforms
 ===============================================

@@ -266,8 +266,8 @@ static void *_xocl_drvinst_open(void *file_dev, u32 max_count)
 		}
 		proc->pid = pid;
 		list_add(&proc->link, &drvinstp->open_procs);
-	} else
-		proc->count++;
+	}
+	proc->count++;
 	xocl_info(drvinstp->dev, "OPEN %d\n", drvinstp->ref.counter);
 
 	if (atomic_inc_return(&drvinstp->ref) == 2)
