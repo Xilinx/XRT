@@ -1941,6 +1941,7 @@ exec_create(struct platform_device *pdev, struct xocl_scheduler *xs)
 		xocl_info(&pdev->dev, "did not get CQ resource");
 	} else {
 		exec->cq_size = res->end - res->start + 1;
+		exec->cq_size = min(exec->cq_size, (unsigned int)ERT_CQ_SIZE);
 		exec->cq_base = ioremap_nocache(res->start, exec->cq_size);
 		if (!exec->cq_base) {
 			if (exec->csr_base)
