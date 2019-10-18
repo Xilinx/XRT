@@ -461,7 +461,6 @@ static int health_check_cb(void *data)
 			if (latched) {
 				mgmt_err(lro, "Card shutting down! Power or Temp may exceed limits, notify peer");
 				mgmt_err(lro, "Compute-Unit clocks have been stopped! Power or Temp has exceeded limits");
-				mgmt_err(lro, "please issue xbutil reset");
 			}
 		}
 	}
