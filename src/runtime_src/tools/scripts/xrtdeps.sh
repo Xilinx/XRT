@@ -123,8 +123,8 @@ UB_LIST=(\
      opencl-headers \
      ocl-icd-opencl-dev \
      perl \
-     python \
-     python-pip \
+     python3 \
+     python3-pip \
      pciutils \
      pkg-config \
      protobuf-compiler \
