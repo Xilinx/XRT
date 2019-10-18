@@ -1,5 +1,7 @@
 build/Debug*
+build/WDebug*
 build/Release*
+build/WRelease*
 docs/.buildinfo
 docs/.doctrees
 tests/xrt/build

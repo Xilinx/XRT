@@ -127,13 +127,17 @@ ReturnCodes main_(int argc, char** argv) {
 
   // Global options
   bool bVerbose = false;
+  bool bTrace = false;
   bool bHelp = false;
+  bool bOverride = false;
 
   // Build our global options
   po::options_description globalOptions("Global options");
   globalOptions.add_options()
     ("help", boost::program_options::bool_switch(&bHelp), "Help to use this program")
     ("verbose", boost::program_options::bool_switch(&bVerbose), "Turn on verbosity")
+    ("trace", boost::program_options::bool_switch(&bTrace), "Enables code flow tracing")
+    ("override", boost::program_options::bool_switch(&bOverride), "Bypasses the development check for this executable")
     ("command", po::value<std::string>(), "command to execute")
     ("subArguments", po::value<std::vector<std::string> >(), "Arguments for command")
   ;
@@ -162,9 +166,23 @@ ReturnCodes main_(int argc, char** argv) {
     return RC_ERROR_IN_COMMAND_LINE;
   }
 
+  if (bOverride == false) {
+    std::cout << std::endl;
+    std::cout << "===========================================================" << std::endl;
+    std::cout << "xbutil2 is currently under development and currently is    " << std::endl;
+    std::cout << "not ready to be used in examining XRT drivers or platforms." << std::endl;
+    std::cout << "===========================================================" << std::endl;
+    exit(0);
+  }
+
   // Set the verbosity if enabled
   if (bVerbose == true) {
     XBU::setVerbose( true );
+  }
+
+  // Set the tracing if enabled
+  if (bTrace == true) {
+    XBU::setTrace( true );
   }
 
   // Check to see if help was requested or no command was found

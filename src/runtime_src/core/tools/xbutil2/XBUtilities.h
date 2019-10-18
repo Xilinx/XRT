@@ -21,6 +21,7 @@
 // Please keep these to the bare minimum
 #include <string>
 #include <memory>
+#include <boost/property_tree/ptree.hpp>
 
 namespace XBUtilities {
 
@@ -34,6 +35,16 @@ std::string format(const std::string& format, Args ... args) {
   return std::string(buf.get(), buf.get() + size);
 }
 
+  typedef enum {
+    MT_MESSAGE,
+    MT_INFO,
+    MT_WARNING,
+    MT_ERROR,
+    MT_VERBOSE,
+    MT_FATAL,
+    MT_TRACE,
+    MT_UNKNOWN, 
+  } MessageType;
 
   /**
    * Enables / Disables verbosity
@@ -42,11 +53,24 @@ std::string format(const std::string& format, Args ... args) {
    *                  false - disable verbosity (default)
    */
   void setVerbose(bool _bVerbose);
+  void setTrace(bool _bVerbose);
 
-  void message(const std::string& _msg, bool _endl = true);
-  void error(const std::string& _msg, bool _endl = true);
+  void message_(MessageType _eMT, const std::string& _msg, bool _endl = true);
+
+  void message(const std::string& _msg, bool _endl = true); 
+  void info(const std::string& _msg, bool _endl = true);
   void warning(const std::string& _msg, bool _endl = true);
+  void error(const std::string& _msg, bool _endl = true);
   void verbose(const std::string& _msg, bool _endl = true);
+  void fatal(const std::string& _msg, bool _endl = true);
+  void trace(const std::string& _msg, bool _endl = true);
+
+  void trace_print_tree(const std::string & _name, const boost::property_tree::ptree & _pt);
+
+// ===========================================================================
+void get_system_info(boost::property_tree::ptree & _pt);
+
+
 };
 
 #endif

@@ -19,15 +19,19 @@
 #include "XBUtilities.h"
 
 // 3rd Party Library - Include Files
+#include "common/core_system.h"
+#include <boost/property_tree/json_parser.hpp>
 
 // System - Include Files
 #include <iostream>
+#include <map>
 
 // ------ N A M E S P A C E ---------------------------------------------------
 using namespace XBUtilities;
 
 // ------ S T A T I C   V A R I A B L E S -------------------------------------
 static bool m_bVerbose = false;
+static bool m_bTrace = false;
 
 
 // ------ F U N C T I O N S ---------------------------------------------------
@@ -48,45 +52,127 @@ XBUtilities::setVerbose(bool _bVerbose)
 }
 
 void 
-XBUtilities::message(const std::string& _msg, bool _endl)
+XBUtilities::setTrace(bool _bTrace)
 {
-  std::cout << _msg;
+  if (_bTrace) {
+    trace("Enabling Tracing");
+  } else {
+    trace("Disabling Tracing");
+  }
+
+  m_bTrace = _bTrace;
+}
+
+
+void 
+XBUtilities::message_(MessageType _eMT, const std::string& _msg, bool _endl)
+{
+  static std::map<MessageType, std::string> msgPrefix = {
+    { MT_MESSAGE, "" },
+    { MT_INFO, "Info: " },
+    { MT_WARNING, "Warning: " },
+    { MT_ERROR, "Error: " },
+    { MT_VERBOSE, "Verbose: " },
+    { MT_FATAL, "Fatal: " },
+    { MT_TRACE, "Trace: " },
+    { MT_UNKNOWN, "<type unknown>: " },
+  };
+
+  // A simple DRC check
+  if (_eMT > MT_UNKNOWN) {
+    _eMT = MT_UNKNOWN;
+  }
+
+  // Verbosity is not enabled
+  if ((m_bVerbose == false) && (_eMT == MT_VERBOSE)) {
+      return;
+  }
+
+  // Tracing is not enabled
+  if ((m_bTrace == false) && (_eMT == MT_TRACE)) {
+      return;
+  }
+
+  std::cout << msgPrefix[_eMT] << _msg;
+
   if (_endl == true) {
     std::cout << std::endl;
   }
+}
+
+void 
+XBUtilities::message(const std::string& _msg, bool _endl) 
+{ 
+  message_(MT_MESSAGE, _msg, _endl); 
+}
+
+void 
+XBUtilities::info(const std::string& _msg, bool _endl)    
+{ 
+  message_(MT_INFO, _msg, _endl); 
+}
+
+void 
+XBUtilities::warning(const std::string& _msg, bool _endl) 
+{ 
+  message_(MT_WARNING, _msg, _endl); 
 }
 
 void 
 XBUtilities::error(const std::string& _msg, bool _endl)
-{
-  std::cerr << "Error: " << _msg;
-  if (_endl == true) {
-    std::cout << std::endl;
-  }
-}
-void 
-XBUtilities::warning(const std::string& _msg, bool _endl)
-{
-  std::cout << "Warning: " << _msg;
-  if (_endl == true) {
-    std::cout << std::endl;
-  }
+{ 
+  message_(MT_ERROR, _msg, _endl); 
 }
 
+void 
+XBUtilities::verbose(const std::string& _msg, bool _endl) 
+{ 
+  message_(MT_VERBOSE, _msg, _endl); 
+}
+
+void 
+XBUtilities::fatal(const std::string& _msg, bool _endl)   
+{ 
+  message_(MT_FATAL, _msg, _endl); 
+}
+
+void 
+XBUtilities::trace(const std::string& _msg, bool _endl)   
+{ 
+  message_(MT_TRACE, _msg, _endl); 
+}
+
 
 
 void 
-XBUtilities::verbose(const std::string& _msg, bool _endl)
+XBUtilities::trace_print_tree(const std::string & _name, 
+                              const boost::property_tree::ptree & _pt)
 {
-  // Make sure we have something to report
-  if (m_bVerbose == false) {
+  if (m_bTrace == false) {
     return;
   }
 
-  std::cout << "Verbose: " << _msg;
-  if (_endl == true) {
-    std::cout << std::endl;
-  }
+  XBUtilities::trace(_name + " (JSON Tree)");
+
+  std::ostringstream buf;
+  boost::property_tree::write_json(buf, _pt, true /*Pretty print*/);
+  XBUtilities::message(buf.str());
 }
+
+
+// ===========================================================================
+
+void 
+XBUtilities::get_system_info(boost::property_tree::ptree& _pt)
+{
+  // Reset all information
+  _pt.clear();
+
+  // boost::property_tree::ptree xrt_pt;
+  
+  xrt_core::system::get_xrt_info(_pt);
+}
+
+
 
 
