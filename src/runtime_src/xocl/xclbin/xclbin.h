@@ -17,6 +17,7 @@
 #ifndef runtime_src_xocl_xclbin_h_
 #define runtime_src_xocl_xclbin_h_
 
+#include "xocl/config.h"
 #include "core/include/xclbin.h" // definition of binary structs
 
 #include "xocl/core/refcount.h"
@@ -150,6 +151,8 @@ public:
   xclbin(xclbin&& rhs);
 
   xclbin(const xclbin& rhs);
+
+  XRT_XOCL_EXPORT
   ~xclbin();
 
   xclbin&
@@ -167,6 +170,7 @@ public:
    * The binary type API conforms to the xclBin struct interface
    */
   using binary_type = ::xclbin::binary;
+  XRT_XOCL_EXPORT
   binary_type
   binary() const;
 
@@ -180,7 +184,7 @@ public:
   /**
    * Access the project name per xml meta data
    */
-  std::string
+  XRT_XOCL_EXPORT std::string
   project_name() const;
 
   /**
@@ -322,6 +326,7 @@ public:
    * @return
    *   Tag name for memory idx
    */
+  XRT_XOCL_EXPORT
   std::string
   memidx_to_banktag(memidx_type memidx) const;
 

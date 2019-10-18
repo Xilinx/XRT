@@ -16,7 +16,6 @@
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/memory.h"
 #include "xocl/core/event.h"
@@ -28,16 +27,18 @@
 #include "plugin/xdp/appdebug.h"
 #include "plugin/xdp/profile.h"
 
+#include <CL/opencl.h>
+
 namespace xocl {
 
 static void
 validOrError(cl_command_queue      command_queue ,
              cl_mem                image ,
-             cl_bool               blocking_read , 
+             cl_bool               blocking_read ,
              const size_t *        origin,
              const size_t *        region,
              size_t                row_pitch ,
-             size_t                slice_pitch , 
+             size_t                slice_pitch ,
              void *                ptr ,
              cl_uint               num_events_in_wait_list ,
              const cl_event *      event_wait_list ,
@@ -56,7 +57,7 @@ validOrError(cl_command_queue      command_queue ,
   // num_events_in_wait_list > 0, or event_wait_list is not NULL and
   // num_events_in_wait_list is 0, or if event objects in
   // event_wait_list are not valid events.
-  // 
+  //
   // CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST if the read and
   // write operations are blocking and the execution status of any of
   // the events in event_wait_list is a negative integer value.
@@ -73,8 +74,8 @@ validOrError(cl_command_queue      command_queue ,
     throw error(CL_INVALID_VALUE,"region or originis nullptr");
   if (std::any_of(region,region+3,[](size_t sz){return sz==0;}))
     throw error(CL_INVALID_VALUE,"one ore more region elements are zero");
-  if (   origin[0] + region[0] > xocl::xocl(image)->get_image_width() 
-      || origin[1] + region[1] > xocl::xocl(image)->get_image_height() 
+  if (   origin[0] + region[0] > xocl::xocl(image)->get_image_width()
+      || origin[1] + region[1] > xocl::xocl(image)->get_image_height()
       || origin[2] + region[2] > xocl::xocl(image)->get_image_depth())
     throw xocl::error(CL_INVALID_VALUE,"origin / region out of bounds");
 
@@ -103,7 +104,7 @@ validOrError(cl_command_queue      command_queue ,
   // CL_MEM_HOST_NO_ACCESS
   if (xocl(image)->get_flags() & (CL_MEM_HOST_WRITE_ONLY | CL_MEM_HOST_NO_ACCESS))
     throw xocl::error(CL_INVALID_OPERATION,"image buffer flags do not allow reading");
-  
+
   // CL_OUT_OF_RESOURCES if there is a failure to allocate resources
   // required by the OpenCL implementation on the device.
 
@@ -114,11 +115,11 @@ validOrError(cl_command_queue      command_queue ,
 static cl_int
 clEnqueueReadImage(cl_command_queue      command_queue ,
                    cl_mem                image ,
-                   cl_bool               blocking_read , 
+                   cl_bool               blocking_read ,
                    const size_t *        origin,
                    const size_t *        region,
                    size_t                row_pitch ,
-                   size_t                slice_pitch , 
+                   size_t                slice_pitch ,
                    void *                ptr ,
                    cl_uint               num_events_in_wait_list ,
                    const cl_event *      event_wait_list ,
@@ -155,11 +156,11 @@ clEnqueueReadImage(cl_command_queue      command_queue ,
 cl_int
 clEnqueueReadImage(cl_command_queue      command_queue ,
                    cl_mem                image ,
-                   cl_bool               blocking_read , 
+                   cl_bool               blocking_read ,
                    const size_t *        origin,
                    const size_t *        region,
                    size_t                row_pitch ,
-                   size_t                slice_pitch , 
+                   size_t                slice_pitch ,
                    void *                ptr ,
                    cl_uint               num_events_in_wait_list ,
                    const cl_event *      event_wait_list ,
@@ -180,5 +181,3 @@ clEnqueueReadImage(cl_command_queue      command_queue ,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

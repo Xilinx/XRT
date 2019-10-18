@@ -16,7 +16,7 @@
 
 #ifndef xocl_core_program_h_
 #define xocl_core_program_h_
-
+#include "xocl/config.h"
 #include "xocl/core/object.h"
 #include "xocl/core/refcount.h"
 #include "xocl/core/range.h"
@@ -25,6 +25,12 @@
 #include <vector>
 #include <map>
 #include <functional>
+
+#ifdef _WIN32
+# pragma warning( push )
+# pragma warning ( disable : 4996 )
+#endif
+
 
 namespace xocl {
 
@@ -135,6 +141,7 @@ public:
    * @return
    *   The xclbin associated with the device
    */
+  XRT_XOCL_EXPORT
   xclbin
   get_xclbin(const device* d) const;
 
@@ -349,5 +356,9 @@ range_lock<program_iterator_type>
 get_global_programs();
 
 } // xocl
+
+#ifdef _WIN32
+# pragma warning( pop )
+#endif
 
 #endif

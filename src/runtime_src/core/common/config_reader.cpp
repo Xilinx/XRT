@@ -14,6 +14,7 @@
  * under the License.
  */
 
+#define XRT_CORE_COMMON_SOURCE
 #include "config_reader.h"
 #include "message.h"
 #include <boost/property_tree/ptree.hpp>
@@ -26,6 +27,10 @@
 #ifdef __GNUC__
 # include <linux/limits.h>
 # include <sys/stat.h>
+#endif
+
+#ifdef _WIN32
+# pragma warning( disable : 4996 )
 #endif
 
 namespace {
@@ -97,7 +102,7 @@ get_ini_path()
       return full_path;
 
   }
-  catch (const boost::filesystem::filesystem_error& e) {
+  catch (const boost::filesystem::filesystem_error&) {
   }
   return full_path;
 }
@@ -110,8 +115,10 @@ struct tree
   void
   setenv()
   {
+#ifndef _WIN32
     if (xrt_core::config::get_multiprocess())
       ::setenv("XCL_MULTIPROCESS_MODE","1",1);
+#endif
   }
 
   void
@@ -189,7 +196,7 @@ get_uint_value(const char* key, unsigned int default_value)
   unsigned int val = default_value;
   try {
     val = s_tree.m_tree.get<unsigned int>(key,default_value);
-  } catch( std::exception const& e) {
+  } catch( std::exception const&) {
     // eat the exception, probably bad path
   }
   return val;

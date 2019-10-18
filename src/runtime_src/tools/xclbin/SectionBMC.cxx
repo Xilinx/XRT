@@ -160,7 +160,7 @@ SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 
   // Get the JSON metadata
   _istream.seekg( 0, _istream.end );
-  unsigned int fileSize = (unsigned int) _istream.tellg();
+  std::streamsize fileSize = _istream.tellg();
 
   std::unique_ptr<unsigned char> memBuffer(new unsigned char[fileSize]);
   _istream.clear();
@@ -242,7 +242,9 @@ SectionBMC::createDefaultFWImage(std::fstream & _istream, std::ostringstream &_b
   // Determine if the file can be opened and its size
   {
     _istream.seekg( 0, _istream.end );
-    bmcHdr.m_size = _istream.tellg();
+
+    static_assert(sizeof(std::streamsize) <= sizeof(uint64_t), "std::streamsize percision is greater then 64 bits");
+    bmcHdr.m_size = (uint64_t) _istream.tellg();
     bmcHdr.m_offset = sizeof(bmc);
   }
   

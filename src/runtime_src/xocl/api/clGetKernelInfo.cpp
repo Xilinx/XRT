@@ -16,7 +16,6 @@
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/param.h"
 #include "xocl/core/error.h"
@@ -25,10 +24,13 @@
 #include "xocl/core/context.h"
 #include "xocl/core/compute_unit.h"
 #include "xocl/xclbin/xclbin.h"
-
 #include "detail/kernel.h"
-
 #include "plugin/xdp/profile.h"
+#include <CL/opencl.h>
+
+#ifdef _WIN32
+# pragma warning ( disable : 4267 )
+#endif
 
 namespace xocl {
 
@@ -89,7 +91,7 @@ clGetKernelInfo(cl_kernel        kernel,
     case CL_KERNEL_COMPUTE_UNIT_COUNT:
       buffer.as<cl_uint>() = xocl(kernel)->get_cus().size();
       break;
-    case CL_KERNEL_INSTANCE_BASE_ADDRESS: 
+    case CL_KERNEL_INSTANCE_BASE_ADDRESS:
       for (auto cu : xocl(kernel)->get_cus())
         buffer.as<size_t>() = cu->get_base_addr();
       break;
@@ -124,6 +126,3 @@ clGetKernelInfo(cl_kernel        kernel,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-
-

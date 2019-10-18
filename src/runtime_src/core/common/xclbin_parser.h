@@ -17,6 +17,7 @@
 #ifndef xclbin_parser_h_
 #define xclbin_parser_h_
 
+#include "core/common/config.h"
 #include "xclbin.h"
 #include <string>
 #include <vector>
@@ -29,7 +30,7 @@ namespace xrt_core { namespace xclbin {
  * @ninst: number of instances
  * @symbol_name: soft kernel symbol name
  * @size: size of soft kernel image
- * @sk_buf: pointer to the soft kernel buffer 
+ * @sk_buf: pointer to the soft kernel buffer
  */
 struct softkernel_object
 {
@@ -64,6 +65,7 @@ struct axlf_section_type<SectionType*>
 /**
  * memidx_to_name() - Convert mem topology memory index to name
  */
+XRT_CORE_COMMON_EXPORT
 std::string
 memidx_to_name(const axlf* top, int32_t midx);
  
@@ -78,48 +80,57 @@ get_first_used_mem(const axlf* top);
  *
  * @encode: If true encode control protocol in lower address bit
  */
+XRT_CORE_COMMON_EXPORT
 std::vector<uint64_t>
 get_cus(const ip_layout* ip_layout, bool encode=false);
 
+XRT_CORE_COMMON_EXPORT
 std::vector<uint64_t>
 get_cus(const axlf* top, bool encode=false);
 
+XRT_CORE_COMMON_EXPORT
 std::vector<std::pair<uint64_t, size_t>>
 get_debug_ips(const axlf* top);
 
 /**
  * get_cu_control() - Get the IP_CONTROL type of CU at specified address
  */
+XRT_CORE_COMMON_EXPORT
 uint32_t
 get_cu_control(const axlf* top, uint64_t cuaddr);
 
 /**
  * get_cu_base_offset() - Get minimum base offset of all IP_KERNEL objects
  */
+XRT_CORE_COMMON_EXPORT
 uint64_t
 get_cu_base_offset(const axlf* top);
 
 /**
  * get_cuisr() - Check if all kernels support interrupt
  */
+XRT_CORE_COMMON_EXPORT
 bool
 get_cuisr(const axlf* top);
 
 /**
  * get_dataflow() - Check if any kernel in xclbin is a dataflow kernel
  */
+XRT_CORE_COMMON_EXPORT
 bool
 get_dataflow(const axlf* top);
 
 /**
  * get_cus_pair() - Get list CUs physical address & size pair
  */
+XRT_CORE_COMMON_EXPORT
 std::vector<std::pair<uint64_t, size_t>>
 get_cus_pair(const axlf* top);
 
 /**
  * get_dbg_ips_pair() - Get list of Debug IPs physical address & size pair
  */
+XRT_CORE_COMMON_EXPORT
 std::vector<std::pair<uint64_t, size_t>>
 get_dbg_ips_pair(const axlf* top);
 

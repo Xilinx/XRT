@@ -78,7 +78,7 @@ DTCStringsBlock::parseDTCStringsBlock(const char* _pBuffer, const unsigned int _
   }
 }
 
-unsigned int 
+uint32_t 
 DTCStringsBlock::addString(const std::string _dtcString)
 {
   // Has the string already been added
@@ -91,7 +91,7 @@ DTCStringsBlock::addString(const std::string _dtcString)
 
   // Did we find it?
   if (index != std::string::npos) {
-    return (unsigned int) index;
+    return (uint32_t) index;
   }
 
   // Not found, lets add it
@@ -99,7 +99,7 @@ DTCStringsBlock::addString(const std::string _dtcString)
 
   *m_pDTCStringBlock << _dtcString << '\0';
  
-  return (unsigned int) index;
+  return (uint32_t) index;
 }
 
 

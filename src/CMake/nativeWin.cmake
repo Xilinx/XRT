@@ -5,6 +5,9 @@
 # XRT_VERSION_MINOR
 # XRT_VERSION_PATCH
 
+# install under c:/xrt
+set (CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}/xilinx")
+
 # --- Git ---
 find_package(Git)
 
@@ -18,12 +21,6 @@ endif(GIT_FOUND)
 #set(Boost_DEBUG 1)
 
 INCLUDE (FindBoost)
-
-set(Boost_USE_STATIC_LIBS     ON)
-set(Boost_USE_STATIC_RUNTIME  ON)
-set(Boost_USE_MULTITHREADED   OFF)
-
-find_package(Boost REQUIRED COMPONENTS system filesystem )
 
 # --- XRT Variables ---
 set (XRT_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/xrt")
@@ -51,5 +48,6 @@ message("-- XRT EA eula files  ${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE")
 # --- Create Version header and JSON file ---
 include (CMake/version.cmake)
 
+message ("------------ xrt install dir: ${XRT_INSTALL_DIR}")
 add_subdirectory(runtime_src)
 

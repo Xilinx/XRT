@@ -15,12 +15,11 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/error.h"
 
 #include "plugin/xdp/profile.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
@@ -40,7 +39,7 @@ validOrError(cl_command_queue command_queue,
 
   // CL_INVALID_COMMAND_QUEUE if command_queue is not a valid host
   // command-queue.
-  
+
   // CL_INVALID_CONTEXT if the context associated with command_queue,
   // src_image and dst_image are not the same or if the context
   // associated with command_queue and events in event_wait_list are
@@ -94,7 +93,7 @@ validOrError(cl_command_queue command_queue,
   // object and the source and destination regions overlap.
 }
 
-static cl_int 
+static cl_int
 clEnqueueCopyImage (cl_command_queue command_queue,
                     cl_mem           src_image,
                     cl_mem           dst_image,
@@ -138,6 +137,3 @@ clEnqueueCopyImage (cl_command_queue command_queue,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-
-

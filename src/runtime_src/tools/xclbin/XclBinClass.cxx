@@ -229,6 +229,7 @@ XclBin::writeXclBinBinaryHeader(std::fstream& _ostream, boost::property_tree::pt
   // Write the header (minus the section header array)
   XUtil::TRACE("Writing xclbin binary header");
   _ostream.write((char*)&m_xclBinHeader, sizeof(axlf) - sizeof(axlf_section_header));
+  _ostream.flush();
 
   // Get mirror data
   boost::property_tree::ptree pt_header;
@@ -246,7 +247,6 @@ XclBin::writeXclBinBinarySections(std::fstream& _ostream, boost::property_tree::
   }
 
   // Prepare the array
-  // WARNING - Do not us this code in Linux.  It hasn't been fully flushed out.
   struct axlf_section_header *sectionHeader = new struct axlf_section_header[m_sections.size()];
   memset(sectionHeader, 0, sizeof(struct axlf_section_header) * m_sections.size());  // Zero out memory
 
@@ -265,6 +265,7 @@ XclBin::writeXclBinBinarySections(std::fstream& _ostream, boost::property_tree::
 
   XUtil::TRACE("Writing xclbin section header array");
   _ostream.write((char*) sectionHeader, sizeof(axlf_section_header) * m_sections.size());
+  _ostream.flush();
 
   // Write out each of the sections
   for (unsigned int index = 0; index < m_sections.size(); ++index) {
@@ -276,6 +277,7 @@ XclBin::writeXclBinBinarySections(std::fstream& _ostream, boost::property_tree::
     if (bytePadding != 0) {
       static char holePack[] = { (char)0, (char)0, (char)0, (char)0, (char)0, (char)0, (char)0, (char)0 };
       _ostream.write(holePack, bytePadding);
+      _ostream.flush();
     }
     runningOffset += bytePadding;
 
@@ -389,10 +391,11 @@ XclBin::writeXclBinBinary(const std::string &_binaryFileName,
   {
     // Determine file size
     ofXclBin.seekg(0, ofXclBin.end);
-    unsigned int streamSize = (unsigned int) ofXclBin.tellg();
+    static_assert(sizeof(std::streamsize) <= sizeof(uint64_t), "std::streamsize percision is greater then 64 bits");
+    std::streamsize streamSize = (std::streamsize) ofXclBin.tellg();
 
     // Update Header
-    m_xclBinHeader.m_header.m_length = streamSize;
+    m_xclBinHeader.m_header.m_length = (uint64_t) streamSize;
 
     // Write out the header...again
     ofXclBin.seekg(0, ofXclBin.beg);

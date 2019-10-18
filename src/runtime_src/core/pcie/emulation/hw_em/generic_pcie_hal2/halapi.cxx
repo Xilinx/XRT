@@ -138,7 +138,7 @@ int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
 
 //defining following two functions as they gets called in scheduler init call
 int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
-  
+
 {
   return 0;
 }
@@ -530,11 +530,11 @@ int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclR
 }
 
 /*
- * API to get number of live processes. 
+ * API to get number of live processes.
  * Applicable only for System Flow as it supports Multiple processes on same device.
  * For Hardware Emulation, return 0
  */
-uint xclGetNumLiveProcesses(xclDeviceHandle handle)
+uint32_t xclGetNumLiveProcesses(xclDeviceHandle handle)
 {
     return 0;
 }
@@ -585,4 +585,3 @@ int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results)
 {
   return 0;
 }
-

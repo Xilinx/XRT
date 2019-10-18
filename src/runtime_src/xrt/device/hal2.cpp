@@ -21,7 +21,10 @@
 #include <cstring> // for std::memcpy
 #include <iostream>
 #include <cerrno>
-#include <sys/mman.h> // for POSIX munmap
+
+#ifdef _WIN32
+# pragma warning( disable : 4267 4996 4244 4245 )
+#endif
 
 namespace xrt { namespace hal2 {
 
@@ -154,7 +157,7 @@ allocExecBuffer(size_t sz)
   auto delBufferObject = [this](ExecBufferObjectHandle::element_type* ebo) {
     ExecBufferObject* bo = static_cast<ExecBufferObject*>(ebo);
     XRT_DEBUG(std::cout,"deleted exec buffer object\n");
-    munmap(bo->data, bo->size);
+    m_ops->munmap(bo->data, bo->size);
     m_ops->mFreeBO(m_handle, bo->handle);
     delete bo;
   };
@@ -179,7 +182,7 @@ alloc(size_t sz)
   auto delBufferObject = [this](BufferObjectHandle::element_type* vbo) {
     BufferObject* bo = static_cast<BufferObject*>(vbo);
     XRT_DEBUGF("deleted buffer object device address(%p,%d)\n",bo->deviceAddr,bo->size);
-    munmap(bo->hostAddr, bo->size);
+    m_ops->munmap(bo->hostAddr, bo->size);
     m_ops->mFreeBO(m_handle, bo->handle);
     delete bo;
   };
@@ -234,7 +237,7 @@ alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
     BufferObject* bo = static_cast<BufferObject*>(vbo);
     XRT_DEBUGF("deleted buffer object device address(%p,%d)\n",bo->deviceAddr,bo->size);
     if (mmapRequired)
-      munmap(bo->hostAddr, bo->size);
+      m_ops->munmap(bo->hostAddr, bo->size);
     m_ops->mFreeBO(m_handle, bo->handle);
     delete bo;
   };
@@ -516,7 +519,7 @@ getBufferFromFd(const int fd, size_t& size, unsigned flags)
   auto delBufferObject = [this](BufferObjectHandle::element_type* vbo) {
     BufferObject* bo = static_cast<BufferObject*>(vbo);
     XRT_DEBUGF("deleted buffer object device address(%p,%d)\n",bo->deviceAddr,bo->size);
-    munmap(bo->hostAddr, bo->size);
+    m_ops->munmap(bo->hostAddr, bo->size);
     m_ops->mFreeBO(m_handle, bo->handle);
     delete bo;
   };

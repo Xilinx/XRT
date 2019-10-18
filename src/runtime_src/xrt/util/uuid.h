@@ -17,7 +17,12 @@
 #ifndef xrt_uuid_h_
 #define xrt_uuid_h_
 
-#include <uuid/uuid.h>
+#ifdef _WIN32
+# include "core/include/windows/uuid.h"
+#else
+# include <uuid/uuid.h>
+typedef unsigned char xuid_t[16];
+#endif
 
 namespace xrt {
 
@@ -27,14 +32,14 @@ namespace xrt {
  */
 struct uuid
 {
-  uuid_t m_uuid;
+  xuid_t m_uuid;
 
   uuid()
   {
     uuid_clear(m_uuid);
   }
 
-  uuid(const uuid_t val)
+  uuid(const xuid_t val)
   {
     uuid_copy(m_uuid,val);
   }
@@ -54,7 +59,7 @@ struct uuid
     return *this;
   }
 
-  const uuid_t& get() const
+  const xuid_t& get() const
   {
     return m_uuid;
   }

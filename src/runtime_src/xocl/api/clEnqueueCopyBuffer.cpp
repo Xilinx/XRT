@@ -15,8 +15,6 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/event.h"
 #include "xocl/core/memory.h"
@@ -27,11 +25,11 @@
 #include "detail/memory.h"
 #include "detail/context.h"
 #include "detail/event.h"
-
 #include "api.h"
 #include "enqueue.h"
 #include "plugin/xdp/appdebug.h"
 #include "plugin/xdp/profile.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
