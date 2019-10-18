@@ -41,8 +41,8 @@ int subCmdQuery(const std::vector<std::string> &_options, bool _help)
 {
   XBU::verbose("SubCommand: query");
   // -- Retrieve and parse the subcommand options -----------------------------
-  uint64_t card = -1;
-  uint64_t region = -1;
+  uint64_t card = 0;
+  uint64_t region = 0;
 
   po::options_description queryDesc("query options");
   queryDesc.add_options()
