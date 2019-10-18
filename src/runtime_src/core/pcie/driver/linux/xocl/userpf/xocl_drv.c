@@ -470,7 +470,7 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	case XCL_MAILBOX_REQ_FIREWALL:
 		userpf_info(xdev, "firewall tripped, request reset");
 		xocl_drvinst_set_offline(xdev->core.drm, true);
-		xocl_queue_work(xdev, XOCL_WORK_RESET, XOCL_RESET_DELAY);
+		xocl_drvinst_kill_proc(xdev->core.drm);
 		break;
 	case XCL_MAILBOX_REQ_MGMT_STATE:
 		st = (struct xcl_mailbox_peer_state *)req->data;

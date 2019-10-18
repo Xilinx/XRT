@@ -1972,9 +1972,9 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 				!(XOCL_READ_REG32(xmc->base_addrs[IO_CQ]) & ERT_EXIT_ACK))
 				msleep(RETRY_INTERVAL);
 			if (retry >= MAX_ERT_RETRY) {
-				xocl_err(&xmc->pdev->dev,
+				xocl_warn(&xmc->pdev->dev,
 					"Failed to stop sched");
-				xocl_err(&xmc->pdev->dev,
+				xocl_warn(&xmc->pdev->dev,
 					"Scheduler CQ status 0x%x",
 					XOCL_READ_REG32(xmc->base_addrs[IO_CQ]));
 				/*
