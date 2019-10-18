@@ -38,9 +38,10 @@ const char *subCmdFlashDesc = "Update SC firmware or shell on the device";
 const char *subCmdFlashUsage =
     "--scan [--verbose|--json]\n"
     "--update [--shell name [--id id]] [--card bdf] [--force]\n"
-    "--shell --path file [--card bdf] [--type flash_type]\n"
-    "--sc_firmware --path file [--card bdf]\n"
-    "--factory_reset [--card bdf]";
+    "--factory_reset [--card bdf]\n\n"
+    "Experts only:\n"
+    "--shell --path file --card bdf [--type flash_type]\n"
+    "--sc_firmware --path file --card bdf";
 
 #define fmt_str		"    "
 
@@ -628,11 +629,10 @@ static int shell(int argc, char *argv[])
         }
     }
 
-    if (file.empty())
+    if (file.empty() || index == UINT_MAX)
         return -EINVAL;
 
-    int ret = updateShell(index == UINT_MAX ? 0 : index, type, file.c_str(),
-        nullptr);
+    int ret = updateShell(index, type, file.c_str(), nullptr);
     if (ret)
         return ret;
 
@@ -669,10 +669,10 @@ static int sc(int argc, char *argv[])
         }
     }
 
-    if (file.empty())
+    if (file.empty() || index == UINT_MAX)
         return -EINVAL;
 
-    int ret = updateSC(index == UINT_MAX ? 0 : index, file.c_str());
+    int ret = updateSC(index, file.c_str());
     if (ret)
         return ret;
 

@@ -122,8 +122,13 @@ static void print_pci_info(std::ostream &ostr)
 static int xrt_xbutil_version_cmp() 
 {
     /*check xbutil tools and xrt versions*/
-    std::string xrt = sensor_tree::get<std::string>( "runtime.build.version", "N/A" ) + ","
+    std::string xrt = "";
+    try {
+        xrt = sensor_tree::get<std::string>( "runtime.build.version", "N/A" ) + ","
         + sensor_tree::get<std::string>( "runtime.build.hash", "N/A" );
+    } catch (std::exception const& e) {
+        std::cout << e.what() << std::endl;
+    }
     if ( xcldev::driver_version("xocl") != "unknown" &&
         xrt.compare(xcldev::driver_version("xocl") ) != 0 ) {
         std::cout << "\nERROR: Mixed versions of XRT and xbutil are not supported. \

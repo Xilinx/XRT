@@ -378,7 +378,7 @@ pcidev::pci_device::pci_device(const std::string& sysfs) : sysfs_name(sysfs)
     bus = b;
     dev = d;
     func = f;
-    sysfs_get<int>("", "userbar", err, user_bar, -1);
+    sysfs_get<int>("", "userbar", err, user_bar, 0);
     user_bar_size = bar_size(dir, user_bar);
     is_mgmt = mgmt;
     instance = inst;
