@@ -34,6 +34,7 @@
 #define TEST_SIZE 0x40000000
 
 #define TEST_SIZE_VCU1550   0x20000000 //
+#define TEST_SIZE_HBM       0x8000000 // 
 
 static uint64_t test_size = TEST_SIZE;
 /**
@@ -99,9 +100,16 @@ static uint64_t getMemBankSize(xclDeviceHandle &handle,axlf_section_kind kind,ui
         return 1;
     }
     bool is_vcu1550;
+    bool is_u280;
+    bool is_u50;
     is_vcu1550 = std::memcmp(info.mName, "xilinx_vcu1550_dynamic_5_0", 26) ? false : true;
+    is_u280    = std::memcmp(info.mName, "xilinx_u280", 11) ? false : true;
+    is_u50     = std::memcmp(info.mName, "xilinx_u50", 10) ? false : true;
     if(is_vcu1550){
         return TEST_SIZE_VCU1550;
+    }
+    else if (is_u280 || is_u50) {
+        return TEST_SIZE_HBM;
     }
     else{
         return TEST_SIZE;
