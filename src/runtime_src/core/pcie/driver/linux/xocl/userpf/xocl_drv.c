@@ -1072,6 +1072,8 @@ static int identify_bar(struct xocl_dev *xdev)
 	resource_size_t bar_len;
 	int		i;
 
+	xdev->p2p_bar_idx = -1;
+
 	for (i = PCI_STD_RESOURCES; i <= PCI_STD_RESOURCE_END; i++) {
 		bar_len = pci_resource_len(pdev, i);
 		if (bar_len >= XOCL_P2P_CHUNK_SIZE) {

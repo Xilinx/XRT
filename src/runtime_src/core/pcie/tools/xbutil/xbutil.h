@@ -212,21 +212,20 @@ public:
     int userFunc() {
         return pcidev::get_dev(m_idx)->func;
     }
-    device(unsigned int idx, const char* log) : m_idx(idx), m_handle(nullptr), m_devicename(""){
+    device(unsigned int idx, const char* log) : m_idx(idx), m_handle(nullptr),
+        m_devicename(""){
         std::string devstr = "device[" + std::to_string(m_idx) + "]";
         m_handle = xclOpen(m_idx, nullptr, XCL_QUIET);
         if (!m_handle)
             throw std::runtime_error("Failed to open " + devstr);
 
         std::string errmsg;
-        pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV", errmsg, m_devicename );
+        pcidev::get_dev(m_idx)->sysfs_get("rom", "VBNV", errmsg, m_devicename);
         if(!errmsg.empty())
             throw std::runtime_error("Failed to determine device name. ");
     }
 
-    device(device&& rhs) : m_idx(rhs.m_idx), m_handle(rhs.m_handle), m_devicename(""){
-    }
-
+    device(device&& rhs) = delete;
     device(const device &dev) = delete;
     device& operator=(const device &dev) = delete;
 
