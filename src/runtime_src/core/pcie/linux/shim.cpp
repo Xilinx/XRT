@@ -669,7 +669,7 @@ int shim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
     info->mHALMinorVersion = XCLHAL_MINOR_VER;
     info->mMinTransferSize = DDR_BUFFER_ALIGNMENT;
     info->mDMAThreads = 2;
-    // xclSysfsGetDeviceInfo(info);
+    xclSysfsGetDeviceInfo(info);
     return 0;
 }
 
