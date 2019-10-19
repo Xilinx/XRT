@@ -34,7 +34,6 @@
 #include "xclbin.h"
 
 /* #define SCHED_VERBOSE */
-#define SCHED_VERBOSE
 
 #if defined(__GNUC__)
 #define SCHED_UNUSED __attribute__((unused))
@@ -2982,6 +2981,13 @@ sched_init_exec(struct drm_device *drm)
 	return 0;
 }
 
+/*
+ * fini_configure() - clean up configure() specific data.
+ *    As a matter of fact, the configure() will potentially request_irq for
+ *    both KDS and ERT. The other configuration data can be easily reset to 0 or
+ *    initial value, but for requested interrupt resources, we should recycle
+ *    them by free_irq.
+ */
 static inline void
 fini_configure(struct drm_device *drm)
 {
@@ -3106,8 +3112,8 @@ sched_reset_exec(struct drm_device *drm)
 	 * 1) cleanup additional irqs from configure
 	 * 2) reset exec initial value
 	 *
-	 * Note: no need to check stale commands, becuase we return EBUSY above for
-	 * this condition.
+	 * Note: no need to check stale commands, becuase we return EBUSY above
+	 * for this condition.
 	 */
 	fini_configure(drm);
 	init_exec(exec);

@@ -758,8 +758,7 @@ out0:
 	write_unlock(&zdev->attr_rwlock);
 	if (size < 0)
 		ret = size;
-	if (axlf)
-		vfree(axlf);
+	vfree(axlf);
 	return ret;
 }
 
@@ -833,7 +832,8 @@ zocl_xclbin_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
 	ctx_xuid = vmalloc(ctx->uuid_size);
 	if (!ctx_xuid)
 		return -ENOMEM;
-	ret = copy_from_user(ctx_xuid, (void *)ctx->uuid_ptr, ctx->uuid_size);
+	ret = copy_from_user(ctx_xuid, (void *)(uintptr_t)ctx->uuid_ptr,
+	    ctx->uuid_size);
 	if (ret) {
 		vfree(ctx_xuid);
 		return ret;
@@ -931,10 +931,9 @@ zocl_xclbin_init(struct drm_zocl_dev *zdev)
 void
 zocl_xclbin_fini(struct drm_zocl_dev *zdev)
 {
-	if (zdev->zdev_xclbin->zx_uuid)
-		vfree(zdev->zdev_xclbin->zx_uuid);
-	if (zdev->zdev_xclbin)
-		vfree(zdev->zdev_xclbin);
+	vfree(zdev->zdev_xclbin->zx_uuid);
+	zdev->zdev_xclbin->zx_uuid = NULL;
+	vfree(zdev->zdev_xclbin);
 	zdev->zdev_xclbin = NULL;
 }
 
