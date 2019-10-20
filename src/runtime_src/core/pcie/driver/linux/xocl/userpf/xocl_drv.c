@@ -469,8 +469,8 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 
 	switch (req->req) {
 	case XCL_MAILBOX_REQ_FIREWALL:
-		userpf_info(xdev, "Card is in a BAD state, please issue xbutil reset");
-		xocl_drvinst_set_offline(xdev->core.drm, true);
+		userpf_info(xdev,
+			"Card is in a BAD state, please issue xbutil reset");
 		xocl_drvinst_kill_proc(xdev->core.drm);
 		break;
 	case XCL_MAILBOX_REQ_MGMT_STATE:
