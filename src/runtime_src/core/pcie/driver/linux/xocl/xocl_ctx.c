@@ -25,7 +25,7 @@ struct xocl_drvinst *xocl_drvinst_array[XOCL_MAX_DEVICES * 10];
 
 void *xocl_drvinst_alloc(struct device *dev, u32 size)
 {
-	struct xocl_drvinst	*drvinstp;
+	struct xocl_drvinst	*drvinstp = NULL;
 	int		inst;
 
 	mutex_lock(&xocl_drvinst_lock);
