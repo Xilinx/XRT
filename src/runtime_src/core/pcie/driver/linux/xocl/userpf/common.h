@@ -131,7 +131,7 @@ struct xocl_dev	{
 
 	bool			offline;
 
-	u32			p2p_bar_idx;
+	int			p2p_bar_idx;
 	resource_size_t		p2p_bar_len;
 	struct mutex		p2p_mem_chunk_lock;
 	int			p2p_mem_chunk_num;

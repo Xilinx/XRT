@@ -135,7 +135,7 @@ static int get_prop(struct platform_device *pdev, u32 prop, void *val)
 
 	if (FW_PRIVILEGED(fw)) {
 
-		check_firewall(pdev, NULL);
+		(void) check_firewall(pdev, NULL);
 
 		switch (prop) {
 		case XOCL_AF_PROP_TOTAL_LEVEL:

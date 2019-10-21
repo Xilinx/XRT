@@ -1363,8 +1363,8 @@ static ssize_t mailbox_ctl_store(struct device *dev,
 		return count;
 
 	if (sscanf(buf, "%d:%d", &off, &val) != 2 || (off % sizeof(u32)) ||
-		!(off >= 0 && off < nreg * sizeof(u32))) {
-		MBX_ERR(mbx, "input should be <reg_offset:reg_val>");
+		off >= nreg * sizeof(u32)) {
+		MBX_ERR(mbx, "input should be < reg_offset:reg_val>");
 		return -EINVAL;
 	}
 	reg += off / sizeof(u32);

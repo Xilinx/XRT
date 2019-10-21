@@ -17,6 +17,8 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdQuery.h"
+#include "XBReport.h"
+
 #include "XBUtilities.h"
 namespace XBU = XBUtilities;
 
@@ -72,10 +74,12 @@ int subCmdQuery(const std::vector<std::string> &_options, bool _help)
   XBU::verbose(XBU::format("  Card: %ld", card));
   XBU::verbose(XBU::format("Region: %ld", region));
 
+  // Determine the number of cards and their states
 
-  XBU::error("COMMAND BODY NOT IMPLEMENTED.");
-  // TODO: Put working code here
-
+  // Report system configuration and XRT information
+  XBReport::report_system_config();
+  XBReport::report_xrt_info();
+  
   return 0;
 }
 

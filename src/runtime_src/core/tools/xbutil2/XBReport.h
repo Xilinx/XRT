@@ -14,19 +14,16 @@
  * under the License.
  */
 
-#ifndef xma_utils_lib_h_
-#define xma_utils_lib_h_
+#ifndef __XBReport_h_
+#define __XBReport_h_
 
-namespace xma_core { namespace utils {
+// Include files
+// Please keep these to the bare minimum
 
-int32_t load_libxrt();
-
-int32_t get_cu_index(int32_t dev_index, char* cu_name);
-int32_t get_default_ddr_index(int32_t dev_index, int32_t cu_index);
-
-int32_t check_all_execbo(XmaSession s_handle);
-
-} // namespace utils
-} // namespace xma_core
+namespace XBReport {
+  void report_system_config();
+  void report_xrt_info();
+};
 
 #endif
+

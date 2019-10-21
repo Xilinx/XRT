@@ -19,6 +19,8 @@
 #include "ert.h"
 #include "lib/xmahw_lib.h"
 //#include "lib/xmares.h"
+#include "app/xma_utils.hpp"
+#include "lib/xma_utils.hpp"
 
 #include <cstdio>
 #include <iostream>
@@ -40,7 +42,7 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
     XmaBufferObj b_obj;
     XmaBufferObj b_obj_error;
     b_obj_error.data = NULL;
-    b_obj_error.ref_cnt = 0;
+    //b_obj_error.ref_cnt = 0;
     b_obj_error.size = 0;
     b_obj_error.paddr = 0;
     b_obj_error.bank_index = -1;
@@ -48,7 +50,7 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
     b_obj_error.device_only_buffer = false;
     b_obj_error.private_do_not_touch = NULL;
     b_obj.data = NULL;
-    b_obj.ref_cnt = 0;
+    //b_obj.ref_cnt = 0;
     b_obj.user_ptr = NULL;
     b_obj.device_only_buffer = false;
     b_obj.private_do_not_touch = NULL;
@@ -131,7 +133,7 @@ XmaBufferObj xma_plg_buffer_alloc_arg_num(XmaSession s_handle, size_t size, bool
     XmaBufferObj b_obj;
     XmaBufferObj b_obj_error;
     b_obj_error.data = NULL;
-    b_obj_error.ref_cnt = 0;
+    //b_obj_error.ref_cnt = 0;
     b_obj_error.size = 0;
     b_obj_error.paddr = 0;
     b_obj_error.bank_index = -1;
@@ -140,7 +142,7 @@ XmaBufferObj xma_plg_buffer_alloc_arg_num(XmaSession s_handle, size_t size, bool
     b_obj_error.private_do_not_touch = NULL;
     b_obj_error.user_ptr = NULL;
     b_obj.data = NULL;
-    b_obj.ref_cnt = 0;
+    //b_obj.ref_cnt = 0;
     b_obj.user_ptr = NULL;
     b_obj.device_only_buffer = false;
     b_obj.private_do_not_touch = NULL;
@@ -224,7 +226,7 @@ xma_plg_buffer_alloc_ddr(XmaSession s_handle, size_t size, bool device_only_buff
     XmaBufferObj b_obj;
     XmaBufferObj b_obj_error;
     b_obj_error.data = NULL;
-    b_obj_error.ref_cnt = 0;
+    //b_obj_error.ref_cnt = 0;
     b_obj_error.size = 0;
     b_obj_error.paddr = 0;
     b_obj_error.bank_index = -1;
@@ -233,7 +235,7 @@ xma_plg_buffer_alloc_ddr(XmaSession s_handle, size_t size, bool device_only_buff
     b_obj_error.private_do_not_touch = NULL;
     b_obj_error.user_ptr = NULL;
     b_obj.data = NULL;
-    b_obj.ref_cnt = 0;
+    //b_obj.ref_cnt = 0;
     b_obj.user_ptr = NULL;
     b_obj.device_only_buffer = false;
     b_obj.private_do_not_touch = NULL;
@@ -591,10 +593,11 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
     bool expected = false;
     bool desired = true;
     while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
+        //std::this_thread::sleep_for(std::chrono::milliseconds(1));
         expected = false;
     }
     //kernel completion lock acquired
-    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "1. Num of cmds in-progress = %lu\n", priv1->CU_cmds.size());
+    //xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "1. Num of cmds in-progress = %lu\n", priv1->CU_cmds.size());
 
     // Find an available execBO buffer
     bo_idx = xma_plg_execbo_avail_get(s_handle);
@@ -675,6 +678,7 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
         }
         auto itr_tmp1 = priv1->CU_cmds.emplace(tmp_int1, XmaCUCmdObjPrivate{});
         if (itr_tmp1.second) {//It is newly inserted item;
+            priv1->num_cu_cmds++;
             found = true;
             cmd_obj.cmd_id1 = tmp_int1;
             cmd_obj.cmd_id2 = dev_tmp1->cu_cmd_id2;
@@ -687,7 +691,7 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
         }
     }
 
-    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "2. Num of cmds in-progress = %lu\n", priv1->CU_cmds.size());
+    //xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "2. Num of cmds in-progress = %lu\n", priv1->CU_cmds.size());
     *(dev_tmp1->execbo_locked) = false;
     if (return_code) *return_code = XMA_SUCCESS;
     return cmd_obj;
@@ -773,12 +777,13 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
     bool expected = false;
     bool desired = true;
     while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
+        //std::this_thread::sleep_for(std::chrono::milliseconds(1));
         expected = false;
     }
     //kernel completion lock acquired
 
     
-    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "1. Num of cmds in-progress = %lu\n", priv1->CU_cmds.size());
+    //xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "1. Num of cmds in-progress = %lu\n", priv1->CU_cmds.size());
 
     // Find an available execBO buffer
     bo_idx = xma_plg_execbo_avail_get(s_handle);
@@ -859,6 +864,7 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
         }
         auto itr_tmp1 = priv1->CU_cmds.emplace(tmp_int1, XmaCUCmdObjPrivate{});
         if (itr_tmp1.second) {//It is newly inserted item;
+            priv1->num_cu_cmds++;
             found = true;
             cmd_obj.cmd_id1 = tmp_int1;
             cmd_obj.cmd_id2 = dev_tmp1->cu_cmd_id2;
@@ -871,7 +877,7 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
         }
     }
 
-    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "2. Num of cmds in-progress = %lu\n", priv1->CU_cmds.size());
+    //xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "2. Num of cmds in-progress = %lu\n", priv1->CU_cmds.size());
     *(dev_tmp1->execbo_locked) = false;
     if (return_code) *return_code = XMA_SUCCESS;
     return cmd_obj;
@@ -924,61 +930,72 @@ int32_t xma_plg_cu_cmd_status(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, i
     bool all_done = true;
     std::vector<XmaCUCmdObj> cmd_vector(cmd_obj_array, cmd_obj_array+num_cu_objs);
     do {
-        while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
-            expected = false;
-        }
-        //kernel completion lock acquired
+        expected = false;
+        if ((*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
+            //kernel completion lock acquired
 
-        all_done = true;
-        for (auto& cmd: cmd_vector) {
-            if (s_handle.session_type < XMA_ADMIN && cmd.cu_index != kernel_tmp1->cu_index) {
-                xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-1\n");
-                //Release completion lock
+            if (xma_core::utils::check_all_execbo(s_handle) != XMA_SUCCESS) {
+                xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "check_all-1: Unexpected error\n");
+                //Release execbo lock
                 *(dev_tmp1->execbo_locked) = false;
                 return XMA_ERROR;
             }
-            if (cmd.cmd_id1 == 0 || cmd.cu_index == -1) {
-                xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj is invalid. Schedule_command may have  failed\n");
-                //Release completion lock
-                *(dev_tmp1->execbo_locked) = false;
-                return XMA_ERROR;
-            }
-            auto itr_tmp1 = priv1->CU_cmds.find(cmd.cmd_id1);
-            if (itr_tmp1 == priv1->CU_cmds.end()) {
-                cmd.cmd_finished = true;
-            } else {
-                all_done = false;
-
-                if (itr_tmp1->second.cmd_id2 != cmd.cmd_id2) {
-                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-2\n");
+            all_done = true;
+            for (auto& cmd: cmd_vector) {
+                if (s_handle.session_type < XMA_ADMIN && cmd.cu_index != kernel_tmp1->cu_index) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-1\n");
                     //Release completion lock
                     *(dev_tmp1->execbo_locked) = false;
                     return XMA_ERROR;
                 }
-                if (itr_tmp1->second.cu_id != cmd.cu_index) {
-                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-3\n");
+                if (cmd.cmd_id1 == 0 || cmd.cu_index == -1) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj is invalid. Schedule_command may have  failed\n");
+                    //Release completion lock
+                    *(dev_tmp1->execbo_locked) = false;
+                    return XMA_ERROR;
+                }
+                auto itr_tmp1 = priv1->CU_cmds.find(cmd.cmd_id1);
+                if (itr_tmp1 == priv1->CU_cmds.end()) {
+                    cmd.cmd_finished = true;
+                } else {
+                    all_done = false;
+
+                    if (itr_tmp1->second.cmd_id2 != cmd.cmd_id2) {
+                        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-2\n");
+                        //Release completion lock
+                        *(dev_tmp1->execbo_locked) = false;
+                        return XMA_ERROR;
+                    }
+                    if (itr_tmp1->second.cu_id != cmd.cu_index) {
+                        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-3\n");
+                        //Release completion lock
+                        *(dev_tmp1->execbo_locked) = false;
+                        return XMA_ERROR;
+                    }
+                }
+
+                if (cmd.do_not_use1 != s_handle.session_signature) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-5\n");
                     //Release completion lock
                     *(dev_tmp1->execbo_locked) = false;
                     return XMA_ERROR;
                 }
             }
 
-            if (cmd.do_not_use1 != s_handle.session_signature) {
-                xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-5\n");
-                //Release completion lock
-                *(dev_tmp1->execbo_locked) = false;
-                return XMA_ERROR;
-            }
+            //Release completion lock
+            *(dev_tmp1->execbo_locked) = false;
+        } else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(3));
         }
-
-        //Release completion lock
-        *(dev_tmp1->execbo_locked) = false;
-
         if (!wait_for_cu_cmds) {
             //Don't wait for all cu_cmds to finsh
             all_done = true;
         } else if (!all_done) {
-            xclExecWait(priv1->dev_handle, 10000);
+            expected = false;
+            if ((*(dev_tmp1->execwait_locked)).compare_exchange_weak(expected, desired)) {
+                xclExecWait(priv1->dev_handle, 10);
+                *(dev_tmp1->execwait_locked) = false;
+            }
         }
     } while(!all_done);
 
@@ -989,7 +1006,7 @@ int32_t xma_plg_cu_cmd_status(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, i
     return XMA_SUCCESS;
 }
 
-int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
+int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
 {
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
     if (priv1 == NULL) {
@@ -1025,12 +1042,12 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
     int32_t give_up = 0;
     bool expected = false;
     bool desired = true;
-    while (count == 0)
+    uint32_t timeout1 = timeout_ms / 10;
+    if (timeout1 < 10) {
+        timeout1 = 10;
+    }
+    while (give_up < 20)
     {
-        while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
-            expected = false;
-        }
-        //kernel completion lock acquired
 
         count = priv1->kernel_complete_count;
 
@@ -1039,19 +1056,47 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
             if (count > 255) {
                 xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "CU completion count is more than 256. Application maybe slow to process CU output\n");
             }
-            //Release completion lock
-            *(dev_tmp1->execbo_locked) = false;
             return XMA_SUCCESS;
-        } else {
-            //Release completion lock
-            *(dev_tmp1->execbo_locked) = false;
+        }
+        if (give_up > 0) {
+            expected = false;
+            if ((*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
+                //kernel completion lock acquired
+
+                if (xma_core::utils::check_all_execbo(s_handle) != XMA_SUCCESS) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "check_all-2: Unexpected error\n");
+                    //Release execbo lock
+                    *(dev_tmp1->execbo_locked) = false;
+                    return XMA_ERROR;
+                }
+                //Release execbo lock
+                *(dev_tmp1->execbo_locked) = false;
+
+                count = priv1->kernel_complete_count;
+
+                if (count) {
+                    priv1->kernel_complete_count--;
+                    if (count > 255) {
+                        xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "CU completion count is more than 256. Application maybe slow to process CU output\n");
+                    }
+                    return XMA_SUCCESS;
+                }
+            }
         }
 
         // Wait for a notification
+        if (give_up > 10) {
+            expected = false;
+            if ((*(dev_tmp1->execwait_locked)).compare_exchange_weak(expected, desired)) {
+                xclExecWait(priv1->dev_handle, timeout1);
+                *(dev_tmp1->execwait_locked) = false;
+            } else {
+                std::this_thread::sleep_for(std::chrono::milliseconds(3));
+            }
+        } else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(3));
+        }
         give_up++;
-        xclExecWait(priv1->dev_handle, timeout_ms);
-        if (give_up >= 3)
-            break;
     }
 
     return XMA_ERROR;
@@ -1153,5 +1198,17 @@ int32_t xma_plg_add_buffer_to_frame(XmaFrame *frame, XmaBufferObj **dev_buf_list
     }
 
     return XMA_SUCCESS;
+}
+
+int32_t xma_plg_add_ref_cnt(XmaBufferObj *b_obj, int32_t num) {
+    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD,
+               "%s(), line# %d\n", __func__, __LINE__);
+
+    if (xma_check_device_buffer(b_obj) != XMA_SUCCESS) {
+        return -999;
+    }
+    XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj->private_do_not_touch;
+    b_obj_priv->ref_cnt += num;
+    return b_obj_priv->ref_cnt;
 }
 

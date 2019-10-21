@@ -1290,8 +1290,9 @@ unload_program(const program* program)
 {
   if (m_active == program) {
     clear_cus();
-    m_xdevice->release_cu_context(-1); // release virtual CU context
     m_active = nullptr;
+    if (!m_parent.get())
+      m_xdevice->release_cu_context(-1); // release virtual CU context
   }
 }
 

@@ -68,7 +68,7 @@ xma_kernel_session_create(XmaKernelProperties *props)
     if ((error = dlerror()) != NULL)
     {
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
-            "Failed to get kernel_plugin from %s\n Error msg: %s\n",
+            "Failed to get struct kernel_plugin from %s\n Error msg: %s\n",
             props->plugin_lib, dlerror());
         return NULL;
     }
@@ -97,6 +97,7 @@ xma_kernel_session_create(XmaKernelProperties *props)
     bool expected = false;
     bool desired = true;
     while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
         expected = false;
     }
     //Singleton lock acquired
@@ -288,6 +289,7 @@ xma_kernel_session_destroy(XmaKernelSession *session)
     bool expected = false;
     bool desired = true;
     while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
         expected = false;
     }
     //Singleton lock acquired

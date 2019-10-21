@@ -143,6 +143,17 @@ int32_t xma_check_device_buffer(XmaBufferObj *b_obj) {
     return XMA_SUCCESS;
 }
 
+int32_t xma_add_ref_cnt(XmaBufferObj *b_obj, int32_t num) {
+    xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD,
+               "%s(), line# %d\n", __func__, __LINE__);
+
+    if (xma_check_device_buffer(b_obj) != XMA_SUCCESS) {
+        return -999;
+    }
+    XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj->private_do_not_touch;
+    b_obj_priv->ref_cnt += num;
+    return b_obj_priv->ref_cnt;
+}
 
 XmaFrame*
 xma_frame_from_device_buffers(XmaFrameProperties *frame_props,
