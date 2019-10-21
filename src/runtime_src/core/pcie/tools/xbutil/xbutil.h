@@ -714,10 +714,10 @@ public:
         // board info
         std::string vendor, device, subsystem, subvendor, xmc_ver,
             ser_num, bmc_ver, idcode, fpga, dna, errmsg, max_power;
-        int ddr_size = 0, ddr_count = 0, pcie_speed = 0, pcie_width = 0;
+        int ddr_size = 0, ddr_count = 0, pcie_speed = 0, pcie_width = 0, p2p_enabled = 0;
         std::vector<std::string> clock_freqs;
         std::vector<std::string> dma_threads;
-        bool mig_calibration, p2p_enabled;
+        bool mig_calibration;
         
         pcidev::get_dev(m_idx)->sysfs_get( "", "vendor",                     errmsg, vendor );
         pcidev::get_dev(m_idx)->sysfs_get( "", "device",                     errmsg, device );
@@ -737,7 +737,7 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "rom", "FPGA",                    errmsg, fpga );
         pcidev::get_dev(m_idx)->sysfs_get( "icap", "idcode",                 errmsg, idcode );
         pcidev::get_dev(m_idx)->sysfs_get( "dna", "dna",                     errmsg, dna );
-        pcidev::get_dev(m_idx)->sysfs_get<bool>("", "p2p_enable",            errmsg, p2p_enabled, false );
+        pcidev::get_dev(m_idx)->sysfs_get<int>("", "p2p_enable",             errmsg, p2p_enabled, 0 );
         sensor_tree::put( "board.info.dsa_name",       name() );
         sensor_tree::put( "board.info.vendor",         vendor );
         sensor_tree::put( "board.info.device",         device );
@@ -988,8 +988,21 @@ public:
              << std::setw(16) << "P2P Enabled" << std::endl;
         ostr << "GEN " << sensor_tree::get( "board.info.pcie_speed", -1 ) << "x" << std::setw(10) 
              << sensor_tree::get( "board.info.pcie_width", -1 ) << std::setw(16) << sensor_tree::get( "board.info.dma_threads", -1 )
-             << std::setw(16) << sensor_tree::get<std::string>( "board.info.mig_calibrated", "N/A" ) 
-             << sensor_tree::get<std::string>( "board.info.p2p_enabled", "N/A") << std::endl;
+             << std::setw(16) << sensor_tree::get<std::string>( "board.info.mig_calibrated", "N/A" );
+             switch(sensor_tree::get( "board.info.p2p_enabled", -1)) {
+             case ENXIO:
+                      ostr << std::setw(16) << "N/A" << std::endl;
+                  break;
+             case 0:
+                      ostr << std::setw(16) << "false" << std::endl;
+                  break;
+             case 1:
+                      ostr << std::setw(16) << "true" << std::endl;
+                  break;
+             case EBUSY:
+                      ostr << std::setw(16) << "no iomem" << std::endl;
+                  break;
+             }
 
 	std::vector<std::string> interface_uuids;
 	std::vector<std::string> logic_uuids;
