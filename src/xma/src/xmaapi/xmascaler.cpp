@@ -163,7 +163,7 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     if ((error = dlerror()) != NULL)
     {
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
-            "Failed to get scaler_plugin from %s\n Error msg: %s\n",
+            "Failed to get struct scaler_plugin from %s\n Error msg: %s\n",
             sc_props->plugin_lib, dlerror());
         return NULL;
     }

@@ -110,7 +110,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
     if ((error = dlerror()) != NULL)
     {
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
-            "Failed to get encoder_plugin from %s\n Error msg: %s\n",
+            "Failed to get struct encoder_plugin from %s\n Error msg: %s\n",
             enc_props->plugin_lib, dlerror());
         return NULL;
     }

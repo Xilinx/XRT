@@ -77,9 +77,10 @@ typedef struct XmaHwSessionPrivate
     void            *dev_handle;
     XmaHwKernel     *kernel_info;
     //For execbo:
-    uint32_t        kernel_complete_count;
+    std::atomic<uint32_t>  kernel_complete_count;
     XmaHwDevice     *device;
     std::unordered_map<uint32_t, XmaCUCmdObjPrivate> CU_cmds;//Use execbo lock when accessing this map
+    std::atomic<uint32_t> num_cu_cmds;
     std::atomic<uint32_t> cmd_load;
     bool     using_work_item_done;
     bool     using_cu_cmd_status;
@@ -92,6 +93,7 @@ typedef struct XmaHwSessionPrivate
    kernel_complete_count = 0;
    device = NULL;
    cmd_load = 0;
+   num_cu_cmds = 0;
    using_work_item_done = false;
    using_cu_cmd_status = false;
   }
@@ -105,6 +107,7 @@ typedef struct XmaBufferObjPrivate
     int32_t  bank_index;
     int32_t  dev_index;
     uint64_t boHandle;
+    std::atomic<int32_t> ref_cnt;
     bool     device_only_buffer;
     xclDeviceHandle dev_handle;
     uint32_t reserved[4];
@@ -114,6 +117,7 @@ typedef struct XmaBufferObjPrivate
    size = 0;
    bank_index = -1;
    dev_index = -1;
+   ref_cnt = 0;
    dev_handle = NULL;
    device_only_buffer = false;
    boHandle = 0;
@@ -227,6 +231,7 @@ typedef struct XmaHwDevice
     std::unique_ptr<std::atomic<bool>> execbo_locked;
     std::vector<XmaHwExecBO> kernel_execbos;
     int32_t    num_execbo_allocated;
+    std::unique_ptr<std::atomic<bool>> execwait_locked;
 
     uint32_t    cu_cmd_id1;//Counter
     uint32_t    cu_cmd_id2;//Counter
@@ -236,11 +241,12 @@ typedef struct XmaHwDevice
     uint32_t    reserved[16];
 
 //  XmaHwDevice(): execbo_locked(new std::atomic<bool>), mt_gen(std::mt19937(std::seed_seq(static_cast<long unsigned int>(time(0)), std::random_device()))), rnd_dis(-97986387, 97986387) {
-  XmaHwDevice(): execbo_locked(std::make_unique<std::atomic<bool>>()), rnd_dis(-97986387, 97986387) {
+  XmaHwDevice(): execbo_locked(std::make_unique<std::atomic<bool>>()), execwait_locked(std::make_unique<std::atomic<bool>>()), rnd_dis(-97986387, 97986387) {
     //in_use = false;
     dev_index = -1;
     number_of_cus = 0;
     *execbo_locked = false;
+    *execwait_locked = false;
     number_of_mem_banks = 0;
     num_execbo_allocated = -1;
     handle = NULL;

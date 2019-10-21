@@ -68,7 +68,7 @@ xma_kernel_session_create(XmaKernelProperties *props)
     if ((error = dlerror()) != NULL)
     {
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
-            "Failed to get kernel_plugin from %s\n Error msg: %s\n",
+            "Failed to get struct kernel_plugin from %s\n Error msg: %s\n",
             props->plugin_lib, dlerror());
         return NULL;
     }

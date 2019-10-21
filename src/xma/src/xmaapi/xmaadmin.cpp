@@ -66,7 +66,7 @@ xma_admin_session_create(XmaAdminProperties *props)
     if ((error = dlerror()) != NULL)
     {
         xma_logmsg(XMA_ERROR_LOG, XMA_ADMIN_MOD,
-            "Failed to get admin_plugin from %s\n Error msg: %s\n",
+            "Failed to get struct admin_plugin from %s\n Error msg: %s\n",
             props->plugin_lib, dlerror());
         return NULL;
     }

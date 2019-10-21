@@ -68,7 +68,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     if ((error = dlerror()) != NULL)
     {
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
-            "Failed to get filterer_plugin from %s\n Error msg: %s\n",
+            "Failed to get struct filter_plugin from %s\n Error msg: %s\n",
             filter_props->plugin_lib, dlerror());
         return NULL;
     }
