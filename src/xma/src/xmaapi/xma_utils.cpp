@@ -269,6 +269,7 @@ void get_system_info() {
     bool expected = false;
     bool desired = true;
     while (!g_xma_singleton->log_msg_list_locked.compare_exchange_weak(expected, desired)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
         expected = false;
     }
     //log msg list lock acquired

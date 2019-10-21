@@ -593,6 +593,7 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
     bool expected = false;
     bool desired = true;
     while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
+        //std::this_thread::sleep_for(std::chrono::milliseconds(1));
         expected = false;
     }
     //kernel completion lock acquired
@@ -776,6 +777,7 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
     bool expected = false;
     bool desired = true;
     while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
+        //std::this_thread::sleep_for(std::chrono::milliseconds(1));
         expected = false;
     }
     //kernel completion lock acquired

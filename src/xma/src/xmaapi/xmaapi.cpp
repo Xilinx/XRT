@@ -52,6 +52,7 @@ int32_t xma_get_default_ddr_index(int32_t dev_index, int32_t cu_index, char* cu_
     bool expected = false;
     bool desired = true;
     while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
         expected = false;
     }
     //Singleton lock acquired
@@ -78,6 +79,7 @@ void xma_thread1() {
     while (!g_xma_singleton->xma_exit) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         while (!g_xma_singleton->log_msg_list_locked.compare_exchange_weak(expected, desired)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
             expected = false;
         }
         //log msg list lock acquired
@@ -223,6 +225,7 @@ void xma_thread2() {
                     if (ret > 0) {
                         expected = false;
                         while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
+                            std::this_thread::sleep_for(std::chrono::milliseconds(1));
                             expected = false;
                         }
                         //execbo lock acquired
@@ -267,6 +270,7 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
     bool expected = false;
     bool desired = true;
     while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
         expected = false;
     }
     //Singleton lock acquired
