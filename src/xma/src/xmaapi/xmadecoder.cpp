@@ -70,7 +70,7 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
     if ((error = dlerror()) != NULL)
     {
         xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
-            "Failed to get decoder_plugin from %s\n Error msg: %s\n",
+            "Failed to get struct decoder_plugin from %s\n Error msg: %s\n",
             dec_props->plugin_lib, dlerror());
         return NULL;
     }
@@ -102,6 +102,7 @@ xma_dec_session_create(XmaDecoderProperties *dec_props)
     bool expected = false;
     bool desired = true;
     while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
         expected = false;
     }
     //Singleton lock acquired
@@ -292,6 +293,7 @@ xma_dec_session_destroy(XmaDecoderSession *session)
     bool expected = false;
     bool desired = true;
     while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
         expected = false;
     }
     //Singleton lock acquired

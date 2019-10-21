@@ -61,7 +61,7 @@ typedef struct XmaBufferObj
    uint64_t paddr;
    int32_t  bank_index;
    int32_t  dev_index;
-   int32_t  ref_cnt;//For use by FFMPEG/Plugins; Not managed by XMA
+//   int32_t  ref_cnt;//For use by FFMPEG/Plugins; Not managed by XMA
    void*    user_ptr;//For use by FFMPEG/Plugins; Not managed by XMA
    bool     device_only_buffer;
    void*    private_do_not_touch;
@@ -454,6 +454,8 @@ xma_data_from_device_buffer(XmaBufferObj *dev_buf, bool clone);
 */
 void
 xma_data_buffer_free(XmaDataBuffer *data);
+
+int32_t xma_add_ref_cnt(XmaBufferObj *b_obj, int32_t num);//Returns new value after adding
 
 #ifdef __cplusplus
 }
