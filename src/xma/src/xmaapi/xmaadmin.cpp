@@ -149,6 +149,17 @@ xma_admin_session_create(XmaAdminProperties *props)
         return NULL;
     }
 
+    /*For ADMIN session will open cu context when scheduling command
+    XmaHwDevice& dev_tmp1 = hwcfg->devices[hwcfg_dev_index];
+    if (xclOpenContext(dev_handle, dev_tmp1.uuid, d, true) != 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ADMIN_MOD, "Failed to open context to CU %s for this session\n", kernel_info->name);
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(session);
+        return NULL;
+    }
+    */
+    
     // Allocate the private data
     session->base.plugin_data =
         calloc(session->admin_plugin->plugin_data_size, sizeof(uint8_t));
