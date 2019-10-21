@@ -61,7 +61,6 @@ def main():
        sys.exit(1)
     else:
        dev = devices[int(index)]
-    import pdb;pdb.set_trace();
     if "qdma" in str(dev):
        threshold = 30000
     

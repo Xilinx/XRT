@@ -79,8 +79,8 @@ RH_LIST=(\
      protobuf-devel \
      protobuf-compiler \
      protobuf-static \
-     python \
-     python-pip \
+     python3 \
+     python3-pip \
      redhat-lsb \
      rpm-build \
      strace \
