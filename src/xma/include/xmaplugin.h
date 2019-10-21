@@ -205,7 +205,7 @@ int32_t xma_plg_cu_cmd_status(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, i
  * XMA_ERROR on timeout
  *
  */
-int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_in_ms);
+int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_in_ms);
 
 /**
  * xma_plg_schedule_work_item_with_args() - This function schedules a request to the XRT
@@ -240,6 +240,7 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
 int32_t xma_plg_add_buffer_to_data_buffer(XmaDataBuffer *data, XmaBufferObj *dev_buf);
 
 int32_t xma_plg_add_buffer_to_frame(XmaFrame *frame, XmaBufferObj **dev_buf_list, uint32_t num_dev_buf);
+int32_t xma_plg_add_ref_cnt(XmaBufferObj *b_obj, int32_t num);//Returns new value after adding
 
 #ifdef __cplusplus
 }

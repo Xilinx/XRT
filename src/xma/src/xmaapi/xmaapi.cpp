@@ -42,6 +42,36 @@ XmaSingleton xma_singleton_internal;
 
 XmaSingleton *g_xma_singleton = &xma_singleton_internal;
 
+int32_t xma_get_default_ddr_index(int32_t dev_index, int32_t cu_index, char* cu_name) {
+    if (!g_xma_singleton->xma_initialized) {
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD,
+                   "ddr_index can be obtained only after xma_initialization\n");
+        return -1;
+    }
+
+    bool expected = false;
+    bool desired = true;
+    while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        expected = false;
+    }
+    //Singleton lock acquired
+
+    if (cu_index < 0) {
+        cu_index = xma_core::utils::get_cu_index(dev_index, cu_name);
+        if (cu_index < 0) {
+            //Release singleton lock
+            g_xma_singleton->locked = false;
+            return -1;
+        }
+    }
+    int32_t ddr_index = xma_core::utils::get_default_ddr_index(dev_index, cu_index);
+    //Release singleton lock
+    g_xma_singleton->locked = false;
+
+    return ddr_index;
+}
+
 void xma_thread1() {
     bool expected = false;
     bool desired = true;
@@ -49,6 +79,7 @@ void xma_thread1() {
     while (!g_xma_singleton->xma_exit) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         while (!g_xma_singleton->log_msg_list_locked.compare_exchange_weak(expected, desired)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
             expected = false;
         }
         //log msg list lock acquired
@@ -70,8 +101,8 @@ void xma_thread1() {
         if (!g_xma_singleton->xma_exit) {
             //Check Session loading
             uint32_t max_load = 0;
-            bool expected = false;
-            bool desired = true;
+            //bool expected = false;
+            //bool desired = true;
             for (auto& itr1: g_xma_singleton->all_sessions) {
                 if (g_xma_singleton->xma_exit) {
                     break;
@@ -91,6 +122,7 @@ void xma_thread1() {
                     xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA thread1 failed-3. Session XMA private pointer is NULL\n");
                     continue;
                 }
+                /*
                 while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
                     expected = false;
                 }
@@ -102,10 +134,13 @@ void xma_thread1() {
                     *(dev_tmp1->execbo_locked) = false;
                     continue;
                 }
-                priv1->cmd_load += priv1->CU_cmds.size();
+                //priv1->cmd_load += priv1->CU_cmds.size(); See below
 
                 //Release execbo lock
                 *(dev_tmp1->execbo_locked) = false;
+                */
+
+                priv1->cmd_load += priv1->num_cu_cmds;
 
                 max_load = std::max({max_load, (uint32_t)priv1->cmd_load});
             }
@@ -157,6 +192,62 @@ void xma_thread1() {
     //}
 }
 
+void xma_thread2() {
+    bool expected = false;
+    bool desired = true;
+    int32_t ret = 0;
+    while (!g_xma_singleton->xma_exit) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(30));
+        for (auto& itr1: g_xma_singleton->all_sessions) {
+            if (g_xma_singleton->xma_exit) {
+                break;
+            }
+            XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.second.hw_session.private_do_not_use;
+            if (priv1 == NULL) {
+                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA thread2 failed-1. XMASession is corrupted\n");
+                continue;
+            }
+            if (itr1.second.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
+                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA thread2 failed-2. XMASession is corrupted\n");
+                continue;
+            }
+
+            XmaHwDevice *dev_tmp1 = priv1->device;
+            if (dev_tmp1 == NULL) {
+                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA thread2 failed-3. Session XMA private pointer is NULL\n");
+                continue;
+            }
+
+            if (priv1->num_cu_cmds > 0) {
+                expected = false;
+                if ((*(dev_tmp1->execwait_locked)).compare_exchange_weak(expected, desired)) {
+                    ret = xclExecWait(priv1->dev_handle, 30);
+                    if (ret > 0) {
+                        expected = false;
+                        while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
+                            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                            expected = false;
+                        }
+                        //execbo lock acquired
+
+                        if (xma_core::utils::check_all_execbo(itr1.second) != XMA_SUCCESS) {
+                            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA thread2 failed-4. Unexpected error\n");
+                            //Release execbo lock
+                            *(dev_tmp1->execbo_locked) = false;
+                            *(dev_tmp1->execwait_locked) = false;
+                            continue;
+                        }
+
+                        //Release execbo lock
+                        *(dev_tmp1->execbo_locked) = false;
+                        *(dev_tmp1->execwait_locked) = false;
+                    }
+                }
+            }
+        }
+    }
+}
+
 void xma_get_session_cmd_load() {
     xma_core::utils::get_session_cmd_load();
 }
@@ -179,6 +270,7 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
     bool expected = false;
     bool desired = true;
     while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
         expected = false;
     }
     //Singleton lock acquired
@@ -346,9 +438,11 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
 
     //std::thread threadObjSystem(xma_thread1);
     g_xma_singleton->xma_thread1 = std::thread(xma_thread1);
+    g_xma_singleton->xma_thread2 = std::thread(xma_thread2);
     //Detach threads to let them run independently
     //threadObjSystem.detach();
     g_xma_singleton->xma_thread1.detach();
+    g_xma_singleton->xma_thread2.detach();
 
     xma_init_sighandlers();
     //xma_res_mark_xma_ready(g_xma_singleton->shm_res_cfg);

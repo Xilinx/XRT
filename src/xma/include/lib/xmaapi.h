@@ -65,6 +65,7 @@ typedef struct XmaSingleton
 
     std::atomic<bool> xma_exit;
     std::thread       xma_thread1;
+    std::thread       xma_thread2;
 
     uint32_t          reserved[4];
 

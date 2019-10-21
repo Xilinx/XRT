@@ -269,6 +269,7 @@ void get_system_info() {
     bool expected = false;
     bool desired = true;
     while (!g_xma_singleton->log_msg_list_locked.compare_exchange_weak(expected, desired)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
         expected = false;
     }
     //log msg list lock acquired
@@ -325,6 +326,84 @@ void get_session_cmd_load() {
    }
 }
 
+int32_t get_cu_index(int32_t dev_index, char* cu_name1) {
+    //singleton should be locked before calling this function
+    XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
+    if (dev_index >= hwcfg->num_devices || dev_index < 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD,
+                   "dev_index not found\n");
+        return -1;
+    }
+
+    uint32_t hwcfg_dev_index = 0;
+    bool found = false;
+    for (XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
+        if (hw_device.dev_index == (uint32_t)dev_index) {
+            found = true;
+            break;
+        }
+        hwcfg_dev_index++;
+    }
+    if (!found) {
+        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD,
+                   "dev_index %d not loaded with xclbin\n", dev_index);
+        return -1;
+    }
+    if (cu_name1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD,
+                   "cu_name is null\n");
+        return -1;
+    }
+    std::string cu_name = std::string(cu_name1);
+    for (XmaHwKernel& kernel: g_xma_singleton->hwcfg.devices[hwcfg_dev_index].kernels) {
+        if (std::string((char*)kernel.name) == cu_name) {
+            return kernel.cu_index;
+        }
+    }
+    xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD,
+                "cu_name %s not found\n", cu_name.c_str());
+    return -1;
+}
+
+int32_t get_default_ddr_index(int32_t dev_index, int32_t cu_index) {
+    //singleton should be locked before calling this function
+    XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
+    if (dev_index >= hwcfg->num_devices || dev_index < 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD,
+                   "dev_index not found\n");
+        return -1;
+    }
+
+    uint32_t hwcfg_dev_index = 0;
+    bool found = false;
+    for (XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
+        if (hw_device.dev_index == (uint32_t)dev_index) {
+            found = true;
+            break;
+        }
+        hwcfg_dev_index++;
+    }
+    if (!found) {
+        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD,
+                   "dev_index %d not loaded with xclbin\n", dev_index);
+        return -1;
+    }
+    if ((cu_index > 0 && (uint32_t)cu_index >= hwcfg->devices[hwcfg_dev_index].number_of_cus) || cu_index < 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD,
+                   "Invalid cu_index = %d\n", cu_index);
+        return -1;
+    }
+
+    XmaHwKernel* kernel_info = &hwcfg->devices[hwcfg_dev_index].kernels[cu_index];
+
+    if (hwcfg->devices[hwcfg_dev_index].kernels[cu_index].soft_kernel) {
+        //Only allow ddr_bank == 0;
+        return 0;
+    } else {
+        return kernel_info->default_ddr_bank;
+    }
+}
+
 int32_t check_all_execbo(XmaSession s_handle) {
     //NOTE: execbo lock must be already obtained
     //Check only for commands in this sessions else too much checking will waste CPU cycles
@@ -365,6 +444,7 @@ int32_t check_all_execbo(XmaSession s_handle) {
                     execbo_tmp1->in_use = false;
 
                   itr_tmp1 = priv1->CU_cmds.erase(itr_tmp1);
+                  priv1->num_cu_cmds--;
                 }
             } else {
               ++itr_tmp1;
