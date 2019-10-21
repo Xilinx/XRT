@@ -249,6 +249,7 @@ using addr_type = uint64_t;
       }
 
       void fetchAndPrintMessages();
+      std::mutex mPrintMessagesLock;
 
     private:
       //hw_em_profile* _profile_inst;
