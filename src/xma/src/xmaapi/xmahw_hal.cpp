@@ -329,29 +329,36 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
                 } else {
                     xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - default DDR bank:%d", d, (char*)tmp1.name, tmp1.default_ddr_bank);
                 }
+                /* Not to open context on all CUs
+                Will open during session_create
                 if (xclOpenContext(dev_tmp1.handle, info.uuid, d, true) != 0) {
                     free(buffer);
                     xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Failed to open context to this CU\n");
                     return false;
                 }
+                */
             }
         }
 
         std::bitset<MAX_XILINX_KERNELS> cu_mask;
         uint64_t base_addr1 = 0;
+        uint32_t cu_index_ert = 0;
         for (uint32_t d1 = 0; d1 < info.number_of_hardware_kernels; d1++) {
             base_addr1 = dev_tmp1.kernels[d1].base_address;
             //uint64_t cu_mask = 1;
             cu_mask.reset();
             cu_mask.set(0);
+            cu_index_ert = 0;
 
             for (uint32_t d2 = 0; d2 < info.number_of_kernels; d2++) {
                 if (d1 != d2) {
                     if (dev_tmp1.kernels[d2].base_address < base_addr1) {
                         cu_mask = cu_mask << 1;
+                        cu_index_ert++;
                     }
                 }
             }
+            dev_tmp1.kernels[d1].cu_index_ert = cu_index_ert;
             //dev_tmp1.kernels[d1].cu_mask0 = cu_mask & 0xFFFFFFFF;
             //dev_tmp1.kernels[d1].cu_mask1 = ((uint64_t)(cu_mask >> 32)) & 0xFFFFFFFF;
             dev_tmp1.kernels[d1].cu_mask0 = cu_mask.to_ulong();

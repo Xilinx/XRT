@@ -135,6 +135,7 @@ typedef struct XmaHwKernel
     int32_t     default_ddr_bank;
     std::unordered_map<int32_t, int32_t> CU_arg_to_mem_info;// arg# -> ddr_bank#
 
+    int32_t     cu_index_ert;
     uint32_t    cu_mask0;
     uint32_t    cu_mask1;
     uint32_t    cu_mask2;
@@ -157,6 +158,7 @@ typedef struct XmaHwKernel
     cu_index = -1;
     default_ddr_bank = -1;
     ip_ddr_mapping = 0;
+    cu_index_ert = -1;
     cu_mask0 = 0;
     cu_mask1 = 0;
     cu_mask2 = 0;
