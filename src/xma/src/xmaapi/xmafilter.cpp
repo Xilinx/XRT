@@ -243,6 +243,16 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         return NULL;
     }
 
+    XmaHwDevice& dev_tmp1 = hwcfg->devices[hwcfg_dev_index];
+    if (!kernel_info->soft_kernel) {
+        if (xclOpenContext(dev_handle, dev_tmp1.uuid, kernel_info->cu_index_ert, true) != 0) {
+            xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD, "Failed to open context to CU %s for this session\n", kernel_info->name);
+            //Release singleton lock
+            g_xma_singleton->locked = false;
+            free(filter_session);
+            return NULL;
+        }
+    }
     // Allocate the private data
     filter_session->base.plugin_data =
         calloc(filter_session->filter_plugin->plugin_data_size, sizeof(uint8_t));

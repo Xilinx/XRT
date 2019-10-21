@@ -721,6 +721,12 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
         if (return_code) *return_code = XMA_ERROR;
         return cmd_obj_error;
     }
+    XmaHwDevice *dev_tmp1 = priv1->device;
+    if (dev_tmp1 == NULL) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is NULL\n");
+        if (return_code) *return_code = XMA_ERROR;
+        return cmd_obj_error;
+    }
     XmaHwKernel* kernel_tmp1 = priv1->kernel_info;
     if (s_handle.session_type < XMA_ADMIN) {
         xma_logmsg(XMA_INFO_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_cu_cmd: cu_index ignored for this session type\n");
@@ -732,14 +738,17 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
             return cmd_obj_error;
         }
         kernel_tmp1 = &priv1->device->kernels[cu_index];
+    
+        if (!kernel_tmp1->in_use && !kernel_tmp1->soft_kernel) {
+            if (xclOpenContext(dev_tmp1->handle, dev_tmp1->uuid, kernel_tmp1->cu_index_ert, true) != 0) {
+                xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Failed to open context to CU %s for this session\n", kernel_tmp1->name);
+                if (return_code) *return_code = XMA_ERROR;
+                return cmd_obj_error;
+            }
+        }
+        xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_cu_cmd: Using admin session with CU %s\n", kernel_tmp1->name);
     }
 
-    XmaHwDevice *dev_tmp1 = priv1->device;
-    if (dev_tmp1 == NULL) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is NULL\n");
-        if (return_code) *return_code = XMA_ERROR;
-        return cmd_obj_error;
-    }
     if (regmap == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regmap is NULL\n");
         if (return_code) *return_code = XMA_ERROR;
