@@ -239,7 +239,7 @@ int main(int argc, char *argv[])
 
     if (cmd == xcldev::HELP) {
         xcldev::printHelp(exe);
-        return 1;
+        return 0;
     }
     if (cmd == xcldev::VERSION) {
         xrt::version::print(std::cout);

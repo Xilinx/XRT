@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
 
     if (cmd == xcldev::HELP) {
         xcldev::printHelp(exe);
-        return 1;
+        return 0;
     }
 
     argv[0] = const_cast<char *>(exe);
