@@ -374,6 +374,7 @@ struct xocl_dev_core {
 
 	rwlock_t		rwlock;
 
+	void			*reset_save_buf;
 	char			ebuf[XOCL_EBUF_LEN + 1];
 };
 

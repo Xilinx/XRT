@@ -94,6 +94,7 @@ struct xocl_board_private {
 	uint64_t		p2p_bar_sz;
 	const char		*vbnv;
 	const char		*sched_bin;
+	void (*reset_cb)(void *xdev_hdl, int flag);
 };
 
 struct xocl_flash_privdata {
@@ -1781,6 +1782,8 @@ struct xocl_subdev_map {
 		XOCL_DEVINFO_FMGR,      				\
 	})
 
+void u50_reset_cb(void *xdev_hdl, int flag);
+
 #define	XOCL_BOARD_MGMT_U50						\
 	(struct xocl_board_private){					\
 		.flags		= XOCL_DSAFLAG_DYNAMIC_IP,		\
@@ -1788,6 +1791,7 @@ struct xocl_subdev_map {
 		.subdev_num = ARRAY_SIZE(MGMT_RES_U50),			\
 		.flash_type = FLASH_TYPE_SPI,				\
 		.sched_bin = "xilinx/sched_u50.bin",			\
+		.reset_cb = u50_reset_cb,				\
 	}
 
 #define USER_RES_U50							\
@@ -1805,6 +1809,7 @@ struct xocl_subdev_map {
 		.subdev_info	= USER_RES_U50,				\
 		.subdev_num = ARRAY_SIZE(USER_RES_U50),			\
 		.p2p_bar_sz = 8, /* GB */				\
+		.reset_cb = u50_reset_cb,				\
 	}
 
 

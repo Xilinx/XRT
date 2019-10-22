@@ -373,6 +373,8 @@ void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 
 	/* what if user PF in VM ? */
 	xocl_pci_save_config_all(pdev);
+	if (XDEV(lro)->priv.reset_cb)
+		XDEV(lro)->priv.reset_cb(lro, 0);
 
 	/* Reset secondary bus. */
 	bus = pdev->bus;
@@ -394,6 +396,8 @@ void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 
 	mgmt_info(lro, "Resetting for %d ms", i);
 
+	if (XDEV(lro)->priv.reset_cb)
+		XDEV(lro)->priv.reset_cb(lro, 1);
 	xocl_pci_restore_config_all(pdev);
 }
 

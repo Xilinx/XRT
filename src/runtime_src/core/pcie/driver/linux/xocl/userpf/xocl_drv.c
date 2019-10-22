@@ -323,11 +323,16 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 
 	xocl_reset_notify(xdev->core.pdev, true);
 
+	if (XDEV(xdev)->priv.reset_cb)
+		XDEV(xdev)->priv.reset_cb(xdev, 0);
 	/* Reset mgmt */
 	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
 		&ret, &resplen, NULL, NULL, 0);
 	if (mbret)
 		ret = mbret;
+
+	if (XDEV(xdev)->priv.reset_cb)
+		XDEV(xdev)->priv.reset_cb(xdev, 1);
 
 	xocl_reset_notify(xdev->core.pdev, false);
 

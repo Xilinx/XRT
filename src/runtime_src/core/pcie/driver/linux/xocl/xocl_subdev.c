@@ -1011,6 +1011,8 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 		core->priv.sched_bin = in->sched_bin;
 	else
 		core->priv.sched_bin = "xilinx/sched.bin";
+
+	core->priv.reset_cb = in->reset_cb;
 }
 
 int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
@@ -1150,3 +1152,45 @@ int xocl_subdev_create_prp(xdev_handle_t xdev)
 failed:
 	return ret;
 }
+
+void u50_reset_cb(void *xdev_hdl, int flag)
+{
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+	struct pci_dev *pdev = core->pdev;
+	int cap;
+	unsigned err_cap;
+
+	cap = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_ERR);
+        if (!cap)
+		return;
+
+	if (flag == 0) {
+		pci_read_config_dword(pdev, cap + PCI_ERR_UNCOR_SEVER,
+			&err_cap);
+		xocl_xdev_info(xdev_hdl, "Save AER uncorrect %x", err_cap);
+		if (core->reset_save_buf)
+			vfree(core->reset_save_buf);
+		core->reset_save_buf = vzalloc(sizeof(err_cap));
+		if (!core->reset_save_buf)
+			return;
+		*(unsigned *)core->reset_save_buf = err_cap;
+		err_cap &= ~PCI_ERR_UNC_POISON_TLP;
+		err_cap &= ~PCI_ERR_UNC_COMP_TIME;
+		err_cap &= ~PCI_ERR_UNC_COMP_ABORT;
+		xocl_xdev_info(xdev_hdl, "Change AER uncor to %x", err_cap);
+		pci_write_config_dword(pdev, cap + PCI_ERR_UNCOR_SEVER,
+			err_cap);
+		return;
+	}
+
+	if (!core->reset_save_buf) {
+		xocl_xdev_err(xdev_hdl, "Did no find saved uncor aer");
+		return;
+	}
+	err_cap = *(unsigned *)core->reset_save_buf;
+	xocl_xdev_info(xdev_hdl, "Restore AER uncorrect %x", err_cap);
+	pci_write_config_dword(pdev, cap + PCI_ERR_UNCOR_SEVER, err_cap);
+
+	xocl_af_clear(xdev_hdl);
+}
+
