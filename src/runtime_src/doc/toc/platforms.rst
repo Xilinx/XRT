@@ -11,14 +11,14 @@ application from one class of platform to another.
 User Application Compilation
 ============================
 
-User application is made up of host code written in C/C++/OpenCL or Python. Device code may be written in C/C++/OpenCL.
+User application is made up of host code written in C/C++/OpenCL or Python. Device code may be written in C/C++/OpenCL or VHDL/Verilog hardware description language.
 
 .. figure:: Alveo-Compilation-Flow.svg
     :figclass: align-center
 
     User application compilation and execution
 
-Users use Vitis™ compiler, v++ to compile the device code for the target platform. Host code written in C/C++/OpenCL may be compiled with gcc/g++. Host code written in Python to exercise OpenCL binding using PyOpenCL or native XRT using builti-in python binding.
+Users use Vitis™ compiler, v++ to compile and link device code for the target platform. Host code written in C/C++/OpenCL may be compiled with gcc/g++. Host code may be written in Python OpenCL (using PyOpenCL) or Python XRT (using builti-in python binding).
 
 PCIe Based Platforms
 ====================
