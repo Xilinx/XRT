@@ -2,8 +2,18 @@
 
 set -e
 
+OSDIST=`lsb_release -i |awk -F: '{print tolower($2)}' | tr -d ' \t'`
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 CORE=`grep -c ^processor /proc/cpuinfo`
+CMAKE=cmake
+
+if [[ $OSDIST == "centos" ]]; then
+    CMAKE=cmake3
+    if [[ ! -x "$(command -v $CMAKE)" ]]; then
+        echo "$CMAKE is not installed, please run xrtdeps.sh"
+        exit 1
+    fi
+fi
 
 usage()
 {
@@ -11,9 +21,13 @@ usage()
     echo
     echo "[-help]                    List this help"
     echo "[clean|-clean]             Remove build directories"
+    echo "[-dbg]                     Build debug library only"
+    echo "[-opt]                     Build optimized library only"
+    echo "[-nocmake]                 Skip CMake call"
     echo "[-j <n>]                   Compile parallel (default: system cores)"
     echo "[-ccache]                  Build using RDI's compile cache"
-    echo "[-coverity]                Run a Coverity build, requires admin priviledges to Coverity"
+    echo "[-driver]                  Include building driver code"
+    echo "[-checkpatch]              Run checkpatch.pl on driver code"
     echo "[-verbose]                 Turn on verbosity when compiling"
     echo ""
     echo "Compile caching is enabled with '-ccache' but requires access to internal network."
@@ -22,10 +36,16 @@ usage()
 }
 
 clean=0
-covbuild=0
 ccache=0
+docs=0
 verbose=""
+driver=0
+clangtidy=0
+checkpatch=0
 jcore=$CORE
+opt=1
+dbg=1
+nocmake=0
 while [ $# -gt 0 ]; do
     case "$1" in
         -help)
@@ -33,6 +53,20 @@ while [ $# -gt 0 ]; do
             ;;
         clean|-clean)
             clean=1
+            shift
+            ;;
+        -dbg)
+            dbg=1
+            opt=0
+            shift
+            ;;
+        -opt)
+            dbg=0
+            opt=1
+            shift
+            ;;
+        -nocmake)
+            nocmake=1
             shift
             ;;
         -j)
@@ -44,18 +78,20 @@ while [ $# -gt 0 ]; do
             ccache=1
             shift
             ;;
-        coverity|-coverity)
-            covbuild=1
+        -checkpatch)
+            checkpatch=1
             shift
             ;;
-        -covuser)
-            shift
-            covuser=$1
+	docs|-docs)
+            docs=1
             shift
             ;;
-        -covpw)
+        -driver)
+            driver=1
             shift
-            covpw=$1
+            ;;
+        -clangtidy)
+            clangtidy=1
             shift
             ;;
         -verbose)
@@ -92,31 +128,63 @@ if [[ $ccache == 1 ]]; then
     fi
 fi
 
-if [[ $covbuild == 1 ]]; then
-    if [[ -z ${covuser+x} ]]; then
-        echo -n "Enter coverity user name: "
-        read covuser
-    fi
-    if [[ -z ${covpw+x} ]]; then
-    echo -n "Enter coverity password: "
-    read covpw
-    fi
-    mkdir -p Coverity
-    cd Coverity
-    cmake -DCMAKE_BUILD_TYPE=Release ../../src
-    make -j $CORE COVUSER=$covuser COVPW=$covpw DATE="`git rev-parse --short HEAD`" coverity
-    cd $here
-    exit 0
+if [[ $dbg == 1 ]]; then
+  mkdir -p Debug
+  cd Debug
+  if [[ $nocmake == 0 ]]; then
+    echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
+    time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
+  fi
+  echo "make -j $jcore $verbose DESTDIR=$PWD install"
+  time make -j $jcore $verbose DESTDIR=$PWD install
+  time ctest --output-on-failure
+  cd $BUILDDIR
 fi
 
-mkdir -p Debug Release
-cd Debug
-time cmake -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
-time make -j $jcore $verbose DESTDIR=$PWD install
-cd $BUILDDIR
+if [[ $opt == 1 ]]; then
+  mkdir -p Release
+  cd Release
+  if [[ $nocmake == 0 ]]; then
+    echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
+    time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
+  fi
+  echo "make -j $jcore $verbose DESTDIR=$PWD install"
+  time make -j $jcore $verbose DESTDIR=$PWD install
+  time ctest --output-on-failure
+  time make package
+fi
 
-cd Release
-time cmake -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
-time make -j $jcore $verbose DESTDIR=$PWD install
-time make package
+if [[ $driver == 1 ]]; then
+    echo "make -C usr/src/xrt-2.3.0/driver/xocl"
+    make -C usr/src/xrt-2.3.0/driver/xocl
+fi
+
+if [[ $docs == 1 ]]; then
+    echo "make xrt_docs"
+    make xrt_docs
+fi
+
+if [[ $clangtidy == 1 ]]; then
+    echo "make clang-tidy"
+    make clang-tidy
+fi
+
+if [[ $checkpatch == 1 ]]; then
+    # check only driver released files
+    DRIVERROOT=`readlink -f $BUILDDIR/Release/usr/src/xrt-2.3.0/driver`
+
+    # find corresponding source under src tree so errors can be fixed in place
+    XOCLROOT=`readlink -f $BUILDDIR/../src/runtime_src/core/pcie/driver`
+    echo $XOCLROOT
+    for f in $(find $DRIVERROOT -type f -name *.c -o -name *.h); do
+        fsum=$(md5sum $f | cut -d ' ' -f 1)
+        for src in $(find $XOCLROOT -type f -name $(basename $f)); do
+            ssum=$(md5sum $src | cut -d ' ' -f 1)
+            if [[ "$fsum" == "$ssum" ]]; then
+                $BUILDDIR/checkpatch.sh $src | grep -v WARNING
+            fi
+        done
+    done
+fi
+
 cd $here

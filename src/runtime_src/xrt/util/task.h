@@ -29,6 +29,11 @@
 #include <condition_variable>
 #include <iostream>
 
+#ifdef _WIN32
+# pragma warning( push )
+# pragma warning( disable : 4459 )
+#endif
+
 namespace xrt { namespace task {
 
 /**
@@ -295,9 +300,11 @@ public:
  */
 // Free function, lambda, functor
 
-#pragma GCC diagnostic push
-#if __GNUC__  >= 7
-#pragma GCC diagnostic ignored "-Wnoexcept-type"
+#ifdef __GNUC__
+# pragma GCC diagnostic push
+# if __GNUC__  >= 7
+#  pragma GCC diagnostic ignored "-Wnoexcept-type"
+# endif
 #endif
 template <typename Q,typename F, typename ...Args>
 auto
@@ -326,7 +333,9 @@ createM(Q& q, F&& f, C& c, Args&&... args)
   q.addWork(std::move(t));
   return e;
 }
-#pragma GCC diagnostic pop
+#ifdef __GNUC__
+# pragma GCC diagnostic pop
+#endif
 
 // A task worker is a thread function getting work off a task queue.
 // The worker runs until the queue is stopped.
@@ -386,5 +395,9 @@ worker(queue& q)
   return worker2(q,"");
 }
 }} // task,xrt
+
+#ifdef _WIN32
+# pragma warning( pop )
+#endif
 
 #endif

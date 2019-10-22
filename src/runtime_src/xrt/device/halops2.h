@@ -17,8 +17,12 @@
 #ifndef xrt_device_halops2_h
 #define xrt_device_halops2_h
 
-#include "driver/include/xclhal2.h"
+#include "xrt.h"
 #include <string>
+
+#ifndef _WIN32
+# include <sys/mman.h>
+#endif
 
 /**
  * This file provides a C++ API into a HAL user shim C library.
@@ -55,7 +59,7 @@ private:
   //typedef void (* freeDeviceBufferType)(xclDeviceHandle handle, unsigned int boHandle);
   typedef int (* loadBitstreamFuncType)(xclDeviceHandle handle, const char *fileName);
   typedef int (* loadXclBinFuncType)(xclDeviceHandle handle, const xclBin *buffer);
-  typedef unsigned int (*allocBOFuncType) (xclDeviceHandle handle, size_t size, xclBOKind domain, unsigned flags);
+  typedef unsigned int (*allocBOFuncType) (xclDeviceHandle handle, size_t size, int unused, unsigned flags);
   typedef unsigned int (*allocUserPtrBOFuncType) (xclDeviceHandle handle, void* userptr, size_t size, unsigned flags);
 
   typedef unsigned int (*importBOFuncType)(xclDeviceHandle handle, int fd, unsigned flags);
@@ -81,6 +85,7 @@ private:
                                    const void *hostBuf, size_t size);
   typedef size_t (* readFuncType)(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset,
                                   void *hostbuf, size_t size);
+  typedef size_t (* unmgdPreadFuncType)(xclDeviceHandle handle, unsigned flags, void *buf, size_t count, uint64_t offset);
 
   typedef int (* lockDeviceFuncType)(xclDeviceHandle handle);
   typedef int (* unlockDeviceFuncType)(xclDeviceHandle handle);
@@ -95,7 +100,9 @@ private:
   typedef uint32_t (* getSlotFuncType)(xclDeviceHandle handle, xclPerfMonType type);
   typedef void (* getSlotNameFuncType)(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum,
                                        char* slotName, uint32_t length);
+  typedef uint32_t (* getSlotPropertiesFuncType)(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum);
   typedef size_t (* clockTrainingFuncType)(xclDeviceHandle handle, xclPerfMonType type);
+  typedef void  (* configureDataflowFuncType)(xclDeviceHandle handle, xclPerfMonType type, unsigned *ip_config);
   typedef size_t (* startCountersFuncType)(xclDeviceHandle handle, xclPerfMonType type);
   typedef size_t (* stopCountersFuncType)(xclDeviceHandle handle, xclPerfMonType type);
   typedef size_t (* readCountersFuncType)(xclDeviceHandle handle, xclPerfMonType type,
@@ -111,7 +118,12 @@ private:
   typedef size_t (* debugReadIPStatusFuncType)(xclDeviceHandle handle, xclDebugReadType type,
                                                void* debugResults);
 
-//Streaming 
+  typedef int (* openContextFuncType)(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex,
+                                      bool shared);
+  typedef int (* closeContextFuncType)(xclDeviceHandle handle, const xuid_t xclbinId, unsigned ipIndex);
+
+
+  //Streaming
   typedef int     (*createWriteQueueFuncType)(xclDeviceHandle handle,xclQueueContext *q_ctx, uint64_t *q_hdl);
   typedef int     (*createReadQueueFuncType)(xclDeviceHandle handle,xclQueueContext *q_ctx, uint64_t *q_hdl);
   typedef int     (*destroyQueueFuncType)(xclDeviceHandle handle,uint64_t q_hdl);
@@ -121,21 +133,18 @@ private:
   typedef ssize_t (*readQueueFuncType)(xclDeviceHandle handle,uint64_t q_hdl, xclQueueRequest *wr);
   typedef int     (*pollQueuesFuncType)(xclDeviceHandle handle,int min, int max, xclReqCompletion* completions, int* actual, int timeout);
 //End Streaming
-//
-#if 0
-  typedef int (* loadBitstreamFuncType)(xclDeviceHandle handle, const char *fileName);
-  typedef int (* loadXclBinFuncType)(xclDeviceHandle handle, const xclBin *buffer);
-  typedef int (* resetProgramFuncType)(xclDeviceHandle handle, xclResetKind kind);
-  typedef int (* reClockFuncType)(xclDeviceHandle handle, unsigned targetFreqMHz);
 
-  typedef uint64_t (* allocDeviceBufferType)(xclDeviceHandle handle, size_t size);
-  typedef uint64_t (* allocDeviceBufferType2)(xclDeviceHandle handle, size_t size, xclMemoryDomains domain,
-                                              unsigned flags);
-  typedef size_t (* copyBufferHost2DeviceType)(xclDeviceHandle handle, uint64_t dest, const void *src,
-                                               size_t size, size_t seek);
-  typedef size_t (* copyBufferDevice2HostType)(xclDeviceHandle handle, void *dest, uint64_t src,
-                                               size_t size, size_t skip);
-  typedef double (* getHostClockFuncType)(xclDeviceHandle handle);
+  //APIs using sysfs
+  typedef uint32_t(*xclGetNumLiveProcessesFuncType)(xclDeviceHandle handle);
+  typedef int     (*xclGetSysfsPathFuncType)(xclDeviceHandle handle, const char* subdev, const char* entry, char* sysfsPath, size_t size);
+
+  typedef int     (*xclGetDebugIPlayoutPathFuncType)(xclDeviceHandle handle, char* layoutPath, size_t size);
+
+  typedef int (*xclGetTraceBufferInfoFuncType)(xclDeviceHandle handle, uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
+  typedef int (*xclReadTraceDataFuncType)(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
+
+#ifdef _WIN32
+  typedef int     (*munmapFuncType)(void* addr, size_t length);
 #endif
 
 private:
@@ -159,6 +168,9 @@ public:
   execBOFuncType mExecBuf;
   execWaitFuncType mExecWait;
 
+  openContextFuncType mOpenContext;
+  closeContextFuncType mCloseContext;
+
   freeBOFuncType mFreeBO;
   writeBOFuncType mWriteBO;
   readBOFuncType mReadBO;
@@ -167,6 +179,7 @@ public:
   mapBOFuncType mMapBO;
   writeFuncType mWrite;
   readFuncType mRead;
+  unmgdPreadFuncType mUnmgdPread;
   reClock2FuncType mReClock2;
   lockDeviceFuncType mLockDevice;
   unlockDeviceFuncType mUnlockDevice;
@@ -179,7 +192,9 @@ public:
   setSlotFuncType mSetProfilingSlots;
   getSlotFuncType mGetProfilingSlots;
   getSlotNameFuncType mGetProfilingSlotName;
+  getSlotPropertiesFuncType mGetProfilingSlotProperties;
   clockTrainingFuncType mClockTraining;
+  configureDataflowFuncType mConfigureDataflow;
   startCountersFuncType mStartCounters;
   stopCountersFuncType mStopCounters;
   readCountersFuncType mReadCounters;
@@ -200,24 +215,37 @@ public:
   pollQueuesFuncType mPollQueues;
 //End Streaming
 
-#if 0
-  /* TBD */
-  loadBitstreamFuncType mLoadBitstream;
-  loadXclBinFuncType mLoadXclBin;
-  resetProgramFuncType mResetProgram;
-  reClockFuncType mReClock;
-  copyBufferHost2DeviceType mCopyHost2Device;
-  copyBufferDevice2HostType mCopyDevice2Host;
-  allocDeviceBufferType mAllocDeviceBuffer;
-  allocDeviceBufferType2 mAllocDeviceBuffer2;
-  freeDeviceBufferType mFreeDeviceBuffer;
+  // APIs using sysfs
+  xclGetNumLiveProcessesFuncType mGetNumLiveProcesses;
+  xclGetSysfsPathFuncType mGetSysfsPath;
+
+  xclGetDebugIPlayoutPathFuncType mGetDebugIPlayoutPath;
+  xclGetTraceBufferInfoFuncType mGetTraceBufferInfo;
+  xclReadTraceDataFuncType mReadTraceData;
+
+#ifdef _WIN32
+  munmapFuncType mMunmap;
 #endif
 
-  const std::string& getFileName() const {
+  int
+  munmap(void* addr, size_t length)
+  {
+#ifndef _WIN32
+    return ::munmap(addr,length);
+#else
+    return mMunmap(addr,length);
+#endif
+  }
+
+  const std::string&
+  getFileName() const
+  {
     return mFileName;
   }
 
-  const unsigned getDeviceCount() const {
+  unsigned
+  getDeviceCount() const
+  {
     return mDeviceCount;
   }
 
@@ -230,7 +258,7 @@ public:
       : p.size;
   }
 
-  uint64_t 
+  uint64_t
   mGetDeviceAddr(xclDeviceHandle handle, unsigned int boHandle) const
   {
     xclBOProperties p;
@@ -244,5 +272,3 @@ public:
 }} // hal2,xrt
 
 #endif
-
-
