@@ -57,11 +57,12 @@ class XclBinUtilException : public std::runtime_error {
     XclBinExceptionType m_eExceptionType;
 
 public:
+  
     XclBinUtilException(XclBinExceptionType _eExceptionType,
                         const std::string & _msg,
+                        const char * _function = "<not_defined>", 
                         const char * _file = __FILE__,
-                        int _line = __LINE__,
-                        const char * _function = __FUNCTION__)
+                        int _line = __LINE__)
     : std::runtime_error(_msg)
     , m_msg(_msg)
     , m_file(_file)
