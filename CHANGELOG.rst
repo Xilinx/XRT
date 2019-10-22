@@ -13,16 +13,23 @@ Added
 * Support for U50 board has been added to XRT.
 * Support for signing xclbins using xclbinutil and validating xclbin signature in xclbin driver has been added to XRT. Please refer to XRT Security documentation for more details.
 * Edge platforms based on MPSoC now support M2M feature via **Zynqmp built-in DMA engine**. M2M for both PCIe and edge platforms can be performed using ``xclCopyBO()`` XRT API or ``clEnqueueCopyBuffers()`` OCL API.
-* For edge platforms XRT now supports ACC (adapter execution model)
-* XRT documentation has been reorganized and significantly updated
+* For edge platforms XRT now supports ACC (adapter execution model).
+* XRT documentation has been reorganized and significantly updated.
 * XRT now natively supports fully virtualized environments where management physical function (PF0) is completely hidden in host and only user physical function (PF1) is exported to the guest. End-user applications based on libxrt_core and xbutil command line utility do not need directly interact with xclmgmt driver. Communication between xocl driver and xclmgmt driver is done over hardware mailbox and MPD/MSD framework. For more information refer to MPD/MSD and Mailbox sections in XRT documentation.
-* Management Physical Function (PF0) should now be managed using ``xbmgmt`` utility. ``xbutil`` continues to be end-user facing utility.
-* Support has been added for device memory only buffer with no backing shadow buffer in host on PCIe platforms. Use ``XCL_BO_FLAGS_DEV_ONLY`` in flags field of xclAllocBO() to allocate such Buffers.
-* XRT now have integrated support for HWMON. Run Linux sensors utility to see all the sensor values exported by Alveo/XRT.
+* Management Physical Function (PF0) should now be managed using ``xbmgmt`` utility which is geared towards system adminstrators. ``xbutil`` continues to be end-user facing utility.
+* Support has been added for device memory only buffer with no backing shadow buffer in host on PCIe platforms. To allocate such buffers use ``XCL_BO_FLAGS_DEV_ONLY`` in flags field of xclAllocBO() or ``CL_MEM_HOST_NO_ACCESS`` in flags field of OCL API.
+* XRT now has integrated support for Linux hwmon. Run Linux sensors utility to see all the sensor values exported by Alveo/XRT.
+* XRT now has production support for edge platforms. The following non DFX platforms edge platforms are supported: zcu102_base, zcu104_base, zc702, zc706. In addition zcu102_base_dfx platform has DFX support.
+* Emulation and HW profiling support has been enabled for all the above mentioned edge platforms. Zynq MPSoC platforms: zcu102_base, zcu104_base and zcu102_base_dfx also has emulation profiling enabled.
+* Improved handling of PCIe reset via ``xbutil reset`` which resolves system crash on some servers.
+
 
 Known Issue
 ...........
+
 * On U280 Platform, downloading XCLBIN is going to reset P2P BAR size back to 256M internally. XRT workaround this issue by reading BAR size register and writing back the same value. This set the P2P BAR size back to the value before downloading XCLBIN.
+* Intermittent hang is observed when downloading multiple xclbins multiple times when interrupt is enabled.
+* Dynamic clock scaling is not enabled for edge platforms.
 
 2.2.0 (201910.2.2)
 ~~~~~~~~~~~~~~~~~~
