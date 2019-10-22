@@ -7,7 +7,7 @@ BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 CORE=`grep -c ^processor /proc/cpuinfo`
 CMAKE=cmake
 
-if [[ $OSDIST == "centos" ]]; then
+if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amazon" ]]; then
     CMAKE=cmake3
     if [[ ! -x "$(command -v $CMAKE)" ]]; then
         echo "$CMAKE is not installed, please run xrtdeps.sh"
