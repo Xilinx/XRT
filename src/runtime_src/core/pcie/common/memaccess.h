@@ -189,7 +189,8 @@ namespace xcldev {
             std::cout << "Error writing to file at offset " << aSize-count << "\n";
           }
         }
-        std::cout << "INFO: Read size 0x" << std::hex << incr << " B. Total Read so far 0x" << aSize-count << std::endl;
+        std::cout << "INFO: Read size 0x" << std::hex << incr << " B from addr 0x" << phy
+                  << ". Total Read so far 0x" << aSize-count << std::endl;
       }
       if (count != 0) {
         std::cout << "Error! Read " << std::dec << aSize-count << " bytes, requested " << aSize << std::endl;

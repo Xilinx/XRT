@@ -1429,7 +1429,8 @@ public:
         if(buf.empty() || map->m_count == 0) {
             std::cout << "WARNING: 'mem_topology' invalid, "
                 << "unable to perform DMA Test. Has the bitstream been loaded? "
-                << "See 'xbutil program'." << std::endl;
+                << "See 'xbutil program' to load a specific xclbin file or run "
+                << "'xbutil validate' to use the xclbins provided with this card." << std::endl;
             return -EINVAL;
         }
 
