@@ -1188,6 +1188,8 @@ void u50_reset_cb(void *xdev_hdl, int flag)
 		return;
 	}
 	err_cap = *(unsigned *)core->reset_save_buf;
+	vfree(core->reset_save_buf);
+	core->reset_save_buf = NULL;
 	xocl_xdev_info(xdev_hdl, "Restore AER uncorrect %x", err_cap);
 	pci_write_config_dword(pdev, cap + PCI_ERR_UNCOR_SEVER, err_cap);
 
