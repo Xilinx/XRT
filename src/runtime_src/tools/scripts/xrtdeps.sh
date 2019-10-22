@@ -79,8 +79,8 @@ RH_LIST=(\
      protobuf-devel \
      protobuf-compiler \
      protobuf-static \
-     python3 \
-     python3-pip \
+     python \
+     python-pip \
      redhat-lsb \
      rpm-build \
      strace \
@@ -123,8 +123,8 @@ UB_LIST=(\
      opencl-headers \
      ocl-icd-opencl-dev \
      perl \
-     python3 \
-     python3-pip \
+     python \
+     python-pip \
      pciutils \
      pkg-config \
      protobuf-compiler \
