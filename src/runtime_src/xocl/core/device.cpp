@@ -255,6 +255,8 @@ get_mem_domain(const memory* mem)
     return xrt::device::memoryDomain::XRT_DEVICE_ONLY_MEM;
   else if (mem->is_device_memory_only_p2p())
     return xrt::device::memoryDomain::XRT_DEVICE_ONLY_MEM_P2P;
+  else if (mem->is_host_only())
+    return xrt::device::memoryDomain::XRT_HOST_ONLY_MEM;
 
   return xrt::device::memoryDomain::XRT_DEVICE_RAM;
 }

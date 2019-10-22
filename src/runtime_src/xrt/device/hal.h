@@ -161,6 +161,7 @@ public:
     ,XRT_SHARED_PHYSICAL
     ,XRT_DEVICE_ONLY_MEM_P2P
     ,XRT_DEVICE_ONLY_MEM
+    ,XRT_HOST_ONLY_MEM
   };
 
   virtual bool

@@ -254,6 +254,8 @@ alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
       flags |= XCL_BO_FLAGS_P2P;
     } else if (domain == Domain::XRT_DEVICE_ONLY_MEM) {
       flags |= XCL_BO_FLAGS_DEV_ONLY;
+    } else if (domain == Domain::XRT_HOST_ONLY_MEM) {
+      flags |= XCL_BO_FLAGS_HOST_ONLY;
     } else
       flags |= XCL_BO_FLAGS_CACHEABLE;
 
