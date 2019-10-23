@@ -1284,11 +1284,11 @@ bool XQSPIPS_Flasher::writeFlashReg(unsigned commandCode, unsigned value, unsign
     }
 
     msgWriteFlash[0].bufPtr = mWriteBuffer;
-    msgWriteFlash[0].byteCount = 1;
+    msgWriteFlash[0].byteCount = 1 + bytes;
     msgWriteFlash[0].busWidth = XQSPIPSU_SELECT_MODE_SPI;
     msgWriteFlash[0].flags = XQSPIPSU_MSG_FLAG_TX;
 
-    Status = finalTransfer(msgWriteFlash, 1 + bytes);
+    Status = finalTransfer(msgWriteFlash, 1);
     if (!Status)
         return false;
 
