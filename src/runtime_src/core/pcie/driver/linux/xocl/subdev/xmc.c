@@ -1188,7 +1188,7 @@ static ssize_t scaling_governor_show(struct device *dev,
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
 	u32 mode;
-	char val[10];
+	char val[20];
 
 	if (!xmc->runtime_cs_enabled) {
 		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
