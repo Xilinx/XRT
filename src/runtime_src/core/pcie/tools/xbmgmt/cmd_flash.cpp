@@ -529,6 +529,7 @@ static int scan(int argc, char *argv[])
     const option opts[] = {
         { "verbose", no_argument, nullptr, '0' },
         { "json", no_argument, nullptr, '1' },
+        {0,0,0,0},
     };
 
     while (true) {
