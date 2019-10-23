@@ -108,6 +108,7 @@
 #define	XMC_CLOCK_SCALING_MODE_REG	0x10
 #define	XMC_CLOCK_SCALING_MODE_POWER	0x0
 #define	XMC_CLOCK_SCALING_MODE_TEMP	0x1
+#define	XMC_CLOCK_SCALING_MODE_POWER_TEMP	0x2
 
 #define	XMC_CLOCK_SCALING_POWER_REG	0x18
 #define	XMC_CLOCK_SCALING_POWER_TARGET_MASK 0xFF
@@ -1207,6 +1208,9 @@ static ssize_t scaling_governor_show(struct device *dev,
 	case 1:
 		strcpy(val, "temp");
 		break;
+	case 2:
+		strcpy(val, "power_temp");
+		break;
 	}
 
 	return sprintf(buf, "%s\n", val);
@@ -1229,6 +1233,8 @@ static ssize_t scaling_governor_store(struct device *dev,
 		val = XMC_CLOCK_SCALING_MODE_POWER;
 	else if (strncmp(buf, "temp", strlen("temp")) == 0)
 		val = XMC_CLOCK_SCALING_MODE_TEMP;
+	else if (strncmp(buf, "power_temp", strlen("power_temp")) == 0)
+		val = XMC_CLOCK_SCALING_MODE_POWER_TEMP;
 	else {
 		xocl_err(dev, "valid modes [power, temp]\n");
 		return -EINVAL;
