@@ -1138,7 +1138,13 @@ int xcldev::device::runTestCase(const std::string& py,
         return -EINVAL;
     }
 
-    std::string cmd = "/usr/bin/python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
+    // python3 is just for ppc+ubuntu setup for now. In postinst we install pyopencl with python2.7
+    // so can't default to python3 if it's available. Need to revisit this when 2.7 is deprecated (Jan 1, 2020)
+    #if _ARCH_PPC
+        std::string cmd = "/usr/bin/python3 " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
+    #else
+        std::string cmd = "/usr/bin/python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
+    #endif
     return runShellCmd(cmd, output);
 }
 
