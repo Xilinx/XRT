@@ -406,7 +406,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		}
 		/* work around vivado issue. Resize p2p bar after xclbin download */
 		if (xdev->core.priv.p2p_bar_sz > 0 && xdev->p2p_bar_idx >= 0 &&
-		    xdev->p2p_bar_len > (1<<XOCL_PA_SECTION_SHIFT) &&
+		    xdev->p2p_bar_len > (1 << XOCL_P2P_CHUNK_SHIFT) &&
 		    xocl_get_p2p_bar(xdev, NULL) >= 0) {
 			(void) xocl_pci_rbar_refresh(xdev->core.pdev,
 					xdev->p2p_bar_idx);

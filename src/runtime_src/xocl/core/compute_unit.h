@@ -87,6 +87,7 @@ public:
    *   Argument index
    * @return Memory index identifying DDR bank for argument
    */
+  XRT_XOCL_EXPORT
   xclbin::memidx_bitmask_type
   get_memidx(unsigned int arg) const;
 
@@ -156,6 +157,10 @@ public:
 
 private:
 
+  // Shared implementation by outer locking routines
+  xclbin::memidx_bitmask_type
+  get_memidx_nolock(unsigned int arg) const;
+
   // Used by xocl::device to cache the acquire context for
   void
   set_context_type(bool shared) const
@@ -186,6 +191,7 @@ private:
   // Intersection of all argument masks
   mutable bool cached = false;
   mutable xclbin::memidx_bitmask_type m_memidx;
+  mutable std::mutex m_mutex;
 };
 
 } // xocl

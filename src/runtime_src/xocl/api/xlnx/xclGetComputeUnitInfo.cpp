@@ -13,8 +13,6 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
-#include <CL/cl_ext_xilinx.h>
 #include "xocl/config.h"
 #include "xocl/core/param.h"
 #include "xocl/core/error.h"
@@ -24,6 +22,12 @@
 #include "detail/kernel.h"
 
 #include "plugin/xdp/profile.h"
+
+#include <CL/cl_ext_xilinx.h>
+
+#ifdef _WIN32
+# pragma warning ( disable : 4267 )
+#endif
 
 namespace xocl {
 

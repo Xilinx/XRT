@@ -16,6 +16,7 @@
 
 #ifndef xrtcore_message_h_
 #define xrtcore_message_h_
+#include "core/common/config.h"
 #include "core/common/config_reader.h"
 #include <string>
 #include <cstdio>
@@ -37,6 +38,7 @@ enum class severity_level : unsigned short
 };
 
 
+XRT_CORE_COMMON_EXPORT
 void
 send(severity_level l, const char* tag, const char* msg);
 

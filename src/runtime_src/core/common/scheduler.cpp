@@ -19,12 +19,19 @@
 #include "xclbin_parser.h"
 #include "message.h"
 #include "ert.h"
+#include "types.h"
 
-#include <sys/mman.h>
 #include <memory>
 #include <string>
 #include <cstring>
-#include <uuid/uuid.h>
+
+#ifdef __GNUC__
+#include <sys/mman.h>
+#endif
+
+#ifdef _WIN32
+# pragma warning( disable : 4244 4245 4267 4996)
+#endif
 
 // This is interim, must be consolidated with runtime_src/xrt/scheduler
 // when XRT C++ code is refactored.
@@ -42,7 +49,7 @@ namespace {
  */
 struct buffer_object
 {
-  unsigned int bo;
+  xclBufferHandle bo;
   void* data;
   size_t size;
   xclDeviceHandle dev;
@@ -120,7 +127,7 @@ namespace xrt_core { namespace scheduler {
 int
 init(xclDeviceHandle handle, const axlf* top)
 {
-  uuid_t uuid;
+  xuid_t uuid = {0};
   auto execbo = create_exec_bo(handle,0x1000);
   auto ecmd = reinterpret_cast<ert_configure_cmd*>(execbo->data);
   ecmd->state = ERT_CMD_STATE_NEW;
@@ -144,7 +151,7 @@ init(xclDeviceHandle handle, const axlf* top)
   ecmd->count = 5 + cus.size();
 
   uuid_copy(uuid, top->m_header.uuid);
-  if (xclOpenContext(handle,uuid,-1,true))
+  if (xclOpenContext(handle,uuid,std::numeric_limits<unsigned int>::max(),true))
     throw std::runtime_error("unable to reserve virtual CU");
 
   if (xclExecBuf(handle,execbo->bo))
@@ -192,7 +199,7 @@ init(xclDeviceHandle handle, const axlf* top)
     }
   }
 
-  (void) xclCloseContext(handle,uuid,-1);
+  xclCloseContext(handle,uuid,std::numeric_limits<unsigned int>::max());
 
   return 0;
 }
@@ -206,7 +213,7 @@ init(xclDeviceHandle handle, const axlf* top)
 int
 loadXclbinToPS(xclDeviceHandle handle, const axlf* top)
 {
-  uuid_t uuid;
+  xuid_t uuid;
   auto execbo = create_exec_bo(handle,0x1000);
   auto ecmd = reinterpret_cast<ert_configure_sk_cmd*>(execbo->data);
   ecmd->state = ERT_CMD_STATE_NEW;
@@ -224,7 +231,7 @@ loadXclbinToPS(xclDeviceHandle handle, const axlf* top)
   ecmd->sk_addr = skbo->prop.paddr;
   ecmd->sk_size = skbo->prop.size;
   std::memcpy(skbo->data, top, skbo->size);
-  xclSyncBO(handle, skbo->bo, XCL_BO_SYNC_BO_TO_DEVICE, skbo->size, 0); 
+  xclSyncBO(handle, skbo->bo, XCL_BO_SYNC_BO_TO_DEVICE, skbo->size, 0);
 
   uuid_copy(uuid, top->m_header.uuid);
   if (xclOpenContext(handle,uuid,-1,true))

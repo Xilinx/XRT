@@ -51,6 +51,11 @@
 # include <stdint.h>
 #endif
 
+#ifdef _WIN32
+# pragma warning( push )
+# pragma warning( disable : 4201 )
+#endif
+
 /**
  * struct ert_packet: ERT generic packet format
  *
@@ -558,7 +563,7 @@ enum softkernel_type {
  */
 static inline void
 ert_fill_copybo_cmd(struct ert_start_copybo_cmd *pkt, uint32_t src_bo,
-  uint32_t dst_bo, uint64_t src_offset, uint64_t dst_offset, uint64_t size)
+  uint32_t dst_bo, uint64_t src_offset, uint64_t dst_offset, uint32_t size)
 {
   pkt->state = ERT_CMD_STATE_NEW;
   pkt->extra_cu_masks = 3;
@@ -569,10 +574,10 @@ ert_fill_copybo_cmd(struct ert_start_copybo_cmd *pkt, uint32_t src_bo,
   pkt->cu_mask[1] = 0;
   pkt->cu_mask[2] = 0;
   pkt->cu_mask[3] = 0;
-  pkt->src_addr_lo = src_offset;
+  pkt->src_addr_lo = (uint32_t)src_offset;
   pkt->src_addr_hi = (src_offset >> 32) & 0xFFFFFFFF;
   pkt->src_bo_hdl = src_bo;
-  pkt->dst_addr_lo = dst_offset;
+  pkt->dst_addr_lo = (uint32_t)dst_offset;
   pkt->dst_addr_hi = (dst_offset >> 32) & 0xFFFFFFFF;
   pkt->dst_bo_hdl = dst_bo;
   pkt->size = size;
@@ -594,6 +599,7 @@ ert_copybo_size(struct ert_start_copybo_cmd *pkt)
   return pkt->size;
 }
 
+#ifdef __GNUC__
 #define P2ROUNDUP(x, align)     (-(-(x) & -(align)))
 static inline struct cu_cmd_state_timestamps *
 ert_start_kernel_timestamps(struct ert_start_kernel_cmd *pkt)
@@ -603,5 +609,10 @@ ert_start_kernel_timestamps(struct ert_start_kernel_cmd *pkt)
   return (struct cu_cmd_state_timestamps *)
     ((char *)pkt + P2ROUNDUP(offset, sizeof(uint64_t)));
 }
+#endif
+
+#ifdef _WIN32
+# pragma warning( pop )
+#endif
 
 #endif

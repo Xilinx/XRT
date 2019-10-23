@@ -27,6 +27,10 @@
 #include <algorithm>
 #include <regex>
 
+#ifdef _WIN32
+#pragma warning ( disable : 4267 4245 )
+#endif
+
 namespace xocl {
 
 std::string
@@ -145,7 +149,7 @@ get_string_value() const
   const unsigned char* cdata = reinterpret_cast<const unsigned char*>(get_value());
   std::vector<unsigned char> host_data(cdata,cdata+size);
   // For each component of the argument
-  int count = std::distance(arginforange.begin(), arginforange.end());
+  auto count = std::distance(arginforange.begin(), arginforange.end());
   if (count > 1) sstr << "{ ";
 
   for (auto arginfo : arginforange) {

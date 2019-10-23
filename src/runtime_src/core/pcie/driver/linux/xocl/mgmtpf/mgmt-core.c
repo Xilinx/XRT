@@ -57,7 +57,11 @@ MODULE_PARM_DESC(minimum_initialization,
 #define	LOW_MILLVOLT		500
 #define	HI_MILLVOLT		2500
 
-#define MAX_DYN_SUBDEV		1024
+#define	MAX_DYN_SUBDEV		1024
+
+#define	CLK_SHUTDOWN_BIT	0x1
+#define	DEBUG_CLK_SHUTDOWN_BIT	0x2
+#define	VALID_CLKSHUTDOWN_BITS	(CLK_SHUTDOWN_BIT|DEBUG_CLK_SHUTDOWN_BIT)
 
 static dev_t xclmgmt_devnode;
 struct class *xrt_class;
@@ -449,26 +453,28 @@ static int health_check_cb(void *data)
 	if (!health_check)
 		return 0;
 
+	if (shutdown_clk) {
+		clk_status = XOCL_READ_REG32(shutdown_clk);
+		/* BIT0:latch bit, BIT1:Debug bit */
+		if (!(clk_status & (~VALID_CLKSHUTDOWN_BITS))) {
+			latched = clk_status & CLK_SHUTDOWN_BIT;
+			if (latched)
+				mgmt_err(lro, "Compute-Unit clocks have been stopped! Power or Temp may exceed limits, notify peer");
+		}
+	}
+
 	mbreq.req = XCL_MAILBOX_REQ_FIREWALL;
 
 	tripped = xocl_af_check(lro, NULL);
 
-	if (!tripped) {
+	if (!tripped)
 		check_sensor(lro);
-		if (shutdown_clk) {
-			clk_status = XOCL_READ_REG32(shutdown_clk);
-			latched = clk_status & 0x1;
-			if (latched)
-				mgmt_err(lro, "Card shutting down! Power or Temp may exceed limits, notify peer");
-		}
-	} else {
-		mgmt_err(lro, "firewall tripped, notify peer");
-	}
 
 	/* Press doomsday button */
-	if (latched || tripped)
+	if (latched || tripped) {
+		mgmt_err(lro, "Card is in a Bad state, please issue xbutil reset");
 		(void) xocl_peer_notify(lro, &mbreq, sizeof(struct xcl_mailbox_req));
-
+	}
 	return 0;
 }
 
@@ -813,7 +819,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	case XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR: {
 		struct pci_dev *pdev = lro->pci_dev;
 		struct xcl_mailbox_p2p_bar_addr *mb_p2p =
-			(struct xcl_mailbox_p2p_bar_addr*)req->data;
+			(struct xcl_mailbox_p2p_bar_addr *)req->data;
 		resource_size_t p2p_bar_addr = 0, p2p_bar_len = 0, range = 0;
 		u32 p2p_addr_base, range_base, final_val;
 

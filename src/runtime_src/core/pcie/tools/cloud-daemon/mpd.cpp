@@ -56,7 +56,6 @@ static int connectMsd(const pcieFunc& dev, std::string &ip,
 static int localMsgHandler(const pcieFunc& dev,
     std::unique_ptr<sw_msg>& orig,
     std::unique_ptr<sw_msg>& processed);
-static int mb_notify(const pcieFunc &dev, int &fd, bool online);
 void mpd_getMsg(size_t index,
     std::shared_ptr<Msgq> &msgq,
     std::shared_ptr<std::atomic<bool>> &is_handling);
@@ -67,7 +66,7 @@ void mpd_handleMsg(size_t index,
 class Mpd : public Common
 {
 public:
-    Mpd(std::string name, std::string plugin_path, bool for_user) :
+    Mpd(const std::string name, const std::string plugin_path, bool for_user) :
         Common(name, plugin_path, for_user), plugin_init(nullptr), plugin_fini(nullptr)
     {
     }
@@ -362,51 +361,6 @@ static int localMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
     return FOR_LOCAL;
 }
 
-/*
- * Function to notify software mailbox online/offline.
- * This is usefull for aws. Since there is no mgmt, when xocl driver is loaded,
- * and before the mpd daemon is running, sending MAILBOX_REQ_USER_PROBE msg
- * will timeout and get no response, so there is no chance to know the card is
- * ready. 
- * With this notification, when the mpd open/close the mailbox instance, a fake
- * MAILBOX_REQ_MGMT_STATE msg is sent to mailbox in xocl, pretending a mgmt is
- * ready, then xocl will send a MAILBOX_REQ_USER_PROBE again. This time, mpd
- * will get and msg and send back a MB_PEER_READY response.
- *
- * For other cloud vendors, as long as they want to handle mailbox msg themselves,
- * eg. load xclbin, mpd and plugin is required. mpd exiting will send a offline
- * notification to xocl, which will mark the card as not ready.
- */
-static int mb_notify(const pcieFunc &dev, int &fd, bool online)
-{
-    std::unique_ptr<sw_msg> swmsg;
-    struct xcl_mailbox_req *mb_req = NULL;
-    struct xcl_mailbox_peer_state mb_conn = { 0 };
-    size_t data_len = sizeof(struct xcl_mailbox_peer_state) + sizeof(struct xcl_mailbox_req);
-   
-    std::vector<char> buf(data_len, 0);
-    mb_req = reinterpret_cast<struct xcl_mailbox_req *>(buf.data());
-
-    mb_req->req = XCL_MAILBOX_REQ_MGMT_STATE;
-    if (online)
-        mb_conn.state_flags |= XCL_MB_STATE_ONLINE;
-    else
-        mb_conn.state_flags |= XCL_MB_STATE_OFFLINE;
-    memcpy(mb_req->data, &mb_conn, sizeof(mb_conn));
-
-    swmsg = std::make_unique<sw_msg>(mb_req, data_len, 0x1234, XCL_MB_REQ_FLAG_REQUEST);
-    if (swmsg == nullptr)
-        return -ENOMEM;
-
-    struct queue_msg msg;
-    msg.localFd = fd;
-    msg.type = REMOTE_MSG;
-    msg.cb = nullptr;
-    msg.data = std::move(swmsg);
-
-    return handleMsg(dev, msg);    
-}
-
 // Client of MPD getting msg. Will quit on any error from either local mailbox or socket fd.
 // No retry is ever conducted.
 void mpd_getMsg(size_t index,
@@ -462,13 +416,22 @@ void mpd_getMsg(size_t index,
         return;
     }
 
-    /*
-     * notify mailbox driver the daemon is ready.
-     * when mpd daemon is required, it will also notify mailbox driver when it
-     * exits, which to the mailbox acts as if the mgmt is down. Then the card
-     * will be marked as not ready
-     */
-    mb_notify(dev, mbxfd, true);
+   /*
+	* Notify software mailbox online
+	* This is usefull for aws. Since there is no mgmt, when xocl driver is loaded,
+	* and before the mpd daemon is running, sending MAILBOX_REQ_USER_PROBE msg
+	* will timeout and get no response, so there is no chance to know the card is
+	* ready. 
+	* With this notification, when the mpd open/close the mailbox instance, a fake
+	* MAILBOX_REQ_MGMT_STATE msg is sent to mailbox in xocl, pretending a mgmt is
+	* ready, then xocl will send a MAILBOX_REQ_USER_PROBE again. This time, mpd
+	* will get and msg and send back a MB_PEER_READY response.
+	*/
+    if (plugin_cbs.mb_notify) {
+        ret = (*plugin_cbs.mb_notify)(index, mbxfd, true);
+        if (ret)
+            syslog(LOG_ERR, "failed to mark mgmt as online");
+    }
 
     struct queue_msg msg = {
         .localFd = mbxfd,
@@ -525,7 +488,11 @@ void mpd_getMsg(size_t index,
     (msgq->cv).notify_all();
 
     //notify mailbox driver the daemon is offline 
-    mb_notify(dev, mbxfd, false);
+    if (plugin_cbs.mb_notify) {
+        ret = (*plugin_cbs.mb_notify)(index, mbxfd, false);
+        if (ret)
+            syslog(LOG_ERR, "failed to mark mgmt as offline");
+    }
 
     if (msdfd > 0)     
         close(msdfd);

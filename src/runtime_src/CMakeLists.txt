@@ -27,7 +27,7 @@ add_library(oclxdp SHARED ${OPENCL_SRC}
   )
 add_dependencies(oclxdp xdp xilinxopencl)
 
-add_library(xdp_hal_plugin SHARED 
+add_library(xdp_hal_plugin SHARED
   $<TARGET_OBJECTS:xdp_hal_plugin_obj>
   )
 
@@ -116,15 +116,23 @@ else()
   # Enable ALL warnings and make them errors if they occur
   if (MSVC)
     # warning level 4 and all warnings are errors
-    add_compile_options(/W4 /WX)
+    add_compile_options(/WX /W4)
+    if (DEFINED MSVC_PARALLEL_JOBS)
+      string(CONCAT MP_OPTION "/MP" ${MSVC_PARALLEL_JOBS})
+      add_compile_options(${MP_OPTION})
+    endif()
   else()
     # lots of warnings and all warnings as errors
     # add_compile_options(-Wall -Wextra -pedantic -Werror)
     add_compile_options("-Wall" "-Werror")
   endif()
 
-
   # Build Subdirectories
+  add_subdirectory(xocl)
+  add_subdirectory(xclbin)
+  add_subdirectory(xrt)
   add_subdirectory(tools/xclbin)
+  add_subdirectory(tools/scripts)
+  add_subdirectory(core)
+#  add_subdirectory(xdp)
 endif()
-

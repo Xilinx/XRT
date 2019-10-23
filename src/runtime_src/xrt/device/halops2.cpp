@@ -15,7 +15,7 @@
  */
 
 #include "halops2.h"
-#include <dlfcn.h>
+#include "core/common/dlfcn.h"
 
 namespace xrt { namespace hal2 {
 
@@ -79,110 +79,88 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mPollQueues(0)
   ,mGetNumLiveProcesses(0)
   ,mGetSysfsPath(0)
+#ifdef _WIN32
+  ,mMunmap(0)
+#endif
 {
-  mProbe = (probeFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclProbe");
-  if (!mProbe)
-    return;
-  mOpen = (openFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclOpen");
-  if (!mOpen)
-    return;
-  mClose = (closeFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclClose");;
-  if (!mClose)
-    return;
+  mProbe = (probeFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclProbe");
+  mOpen = (openFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclOpen");
+  mClose = (closeFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclClose");;
 
- // mLoadBitstream = (loadBitstreamFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclLoadBitstream");;
+ // mLoadBitstream = (loadBitstreamFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclLoadBitstream");;
 
-  mLoadXclBin = (loadXclBinFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclLoadXclBin");
+  mLoadXclBin = (loadXclBinFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclLoadXclBin");
+  mAllocBO = (allocBOFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclAllocBO");
+  mAllocUserPtrBO = (allocUserPtrBOFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclAllocUserPtrBO");
+  mImportBO = (importBOFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclImportBO");
+  mExportBO = (exportBOFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclExportBO");
+  mGetBOProperties = (getBOPropertiesFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetBOProperties");
+  mExecBuf = (execBOFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclExecBuf");
+  mExecWait = (execWaitFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclExecWait");
 
-  mAllocBO = (allocBOFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclAllocBO");
-  if(!mAllocBO)
-    return;
+  mOpenContext = (openContextFuncType)xrt_core::dlsym(const_cast<void*>(mDriverHandle), "xclOpenContext");
+  mCloseContext = (closeContextFuncType)xrt_core::dlsym(const_cast<void*>(mDriverHandle), "xclCloseContext");
 
-  mAllocUserPtrBO = (allocUserPtrBOFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclAllocUserPtrBO");
-  mImportBO = (importBOFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclImportBO");
-  mExportBO = (exportBOFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclExportBO");
+  mFreeBO   = (freeBOFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclFreeBO");
+  mWriteBO  = (writeBOFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclWriteBO");
+  mReadBO   = (readBOFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclReadBO");
+  mSyncBO   = (syncBOFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclSyncBO");
+  mCopyBO   = (copyBOFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclCopyBO");
+  mMapBO    = (mapBOFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclMapBO");
 
-  mGetBOProperties = (getBOPropertiesFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetBOProperties");
-  mExecBuf = (execBOFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclExecBuf");
-  mExecWait = (execWaitFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclExecWait");
+  mWrite      = (writeFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclWrite");
+  mRead       = (readFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclRead");
+  mUnmgdPread = (unmgdPreadFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclUnmgdPread");
 
-  mOpenContext = (openContextFuncType)dlsym(const_cast<void*>(mDriverHandle), "xclOpenContext");
-  mCloseContext = (closeContextFuncType)dlsym(const_cast<void*>(mDriverHandle), "xclCloseContext");
+  mReClock2 = (reClock2FuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclReClock2");
+  mLockDevice = (lockDeviceFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclLockDevice");
+  mUnlockDevice = (unlockDeviceFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclUnlockDevice");
+  mGetDeviceInfo = (getDeviceInfoFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetDeviceInfo2");
 
-  mFreeBO   = (freeBOFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclFreeBO");
-  if(!mFreeBO)
-    return;
-  mWriteBO  = (writeBOFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclWriteBO");
-  if(!mWriteBO)
-    return;
-  mReadBO   = (readBOFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclReadBO");
-  if(!mReadBO)
-    return;
-
-  mSyncBO   = (syncBOFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclSyncBO");
-  mCopyBO   = (copyBOFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclCopyBO");
-  mMapBO    = (mapBOFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclMapBO");
-
-  mWrite    = (writeFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclWrite");
-  if(!mWrite)
-    return;
-  mRead     = (readFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclRead");
-  if(!mRead)
-    return;
-
-  mReClock2 = (reClock2FuncType)dlsym(const_cast<void *>(mDriverHandle), "xclReClock2");
-  mLockDevice = (lockDeviceFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclLockDevice");
-  mUnlockDevice = (unlockDeviceFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclUnlockDevice");
-  mGetDeviceInfo = (getDeviceInfoFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetDeviceInfo2");
-
-  mCreateWriteQueue = (createWriteQueueFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclCreateWriteQueue");
-  mCreateReadQueue = (createReadQueueFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclCreateReadQueue");
-  mDestroyQueue = (destroyQueueFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclDestroyQueue");
-  mAllocQDMABuf = (allocQDMABufFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclAllocQDMABuf");
-  mFreeQDMABuf = (freeQDMABufFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclFreeQDMABuf");
-  mWriteQueue = (writeQueueFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclWriteQueue");
-  mReadQueue = (readQueueFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclReadQueue");
-  mPollQueues = (pollQueuesFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPollCompletion");
+  mCreateWriteQueue = (createWriteQueueFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclCreateWriteQueue");
+  mCreateReadQueue = (createReadQueueFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclCreateReadQueue");
+  mDestroyQueue = (destroyQueueFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclDestroyQueue");
+  mAllocQDMABuf = (allocQDMABufFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclAllocQDMABuf");
+  mFreeQDMABuf = (freeQDMABufFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclFreeQDMABuf");
+  mWriteQueue = (writeQueueFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclWriteQueue");
+  mReadQueue = (readQueueFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclReadQueue");
+  mPollQueues = (pollQueuesFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclPollCompletion");
 
   // Profiling Functions
-  mGetDeviceTime = (getDeviceTimeFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetDeviceTimestamp");
-  mGetDeviceClock = (getDeviceClockFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetDeviceClockFreqMHz");
-  mGetDeviceMaxRead = (getDeviceMaxReadFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetReadMaxBandwidthMBps");
-  mGetDeviceMaxWrite = (getDeviceMaxWriteFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetWriteMaxBandwidthMBps");
-  mSetProfilingSlots = (setSlotFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclSetProfilingNumberSlots");
-  mGetProfilingSlots = (getSlotFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetProfilingNumberSlots");
-  mGetProfilingSlotName = (getSlotNameFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetProfilingSlotName");
-  mGetProfilingSlotProperties = (getSlotPropertiesFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetProfilingSlotProperties");
-  mWriteHostEvent = (writeHostEventFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclWriteHostEvent");
-  mClockTraining = (clockTrainingFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonClockTraining");
-  mConfigureDataflow = (configureDataflowFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonConfigureDataflow");
-  mStartCounters = (startCountersFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonStartCounters");
-  mStopCounters = (stopCountersFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonStopCounters");
-  mReadCounters = (readCountersFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonReadCounters");
-  mStartTrace = (startTraceFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonStartTrace");
-  mStopTrace = (stopTraceFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonStopTrace");
-  mCountTrace = (countTraceFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonGetTraceCount");
-  mReadTrace = (readTraceFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonReadTrace");
-  mWriteHostEvent = (writeHostEventFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclWriteHostEvent");
-  mDebugReadIPStatus = (debugReadIPStatusFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclDebugReadIPStatus");
-
-  mUnmgdPread = (unmgdPreadFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclUnmgdPread");
-  if(!mUnmgdPread)
-    return;
-
-  mGetDebugIPlayoutPath = (xclGetDebugIPlayoutPathFuncType)dlsym(const_cast<void*>(mDriverHandle), "xclGetDebugIPlayoutPath");
-  mGetTraceBufferInfo = (xclGetTraceBufferInfoFuncType)dlsym(const_cast<void*>(mDriverHandle), "xclGetTraceBufferInfo");
-  mReadTraceData = (xclReadTraceDataFuncType)dlsym(const_cast<void*>(mDriverHandle), "xclReadTraceData");
-
-  // APIs using sysfs
-  mGetNumLiveProcesses = (xclGetNumLiveProcessesFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetNumLiveProcesses");
-  mGetSysfsPath = (xclGetSysfsPathFuncType)dlsym(const_cast<void *>(mDriverHandle), "xclGetSysfsPath");
+  mGetDeviceTime = (getDeviceTimeFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetDeviceTimestamp");
+  mGetDeviceClock = (getDeviceClockFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetDeviceClockFreqMHz");
+  mGetDeviceMaxRead = (getDeviceMaxReadFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetReadMaxBandwidthMBps");
+  mGetDeviceMaxWrite = (getDeviceMaxWriteFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetWriteMaxBandwidthMBps");
+  mSetProfilingSlots = (setSlotFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclSetProfilingNumberSlots");
+  mGetProfilingSlots = (getSlotFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetProfilingNumberSlots");
+  mGetProfilingSlotName = (getSlotNameFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetProfilingSlotName");
+  mGetProfilingSlotProperties = (getSlotPropertiesFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetProfilingSlotProperties");
+  mWriteHostEvent = (writeHostEventFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclWriteHostEvent");
+  mClockTraining = (clockTrainingFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonClockTraining");
+  mConfigureDataflow = (configureDataflowFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonConfigureDataflow");
+  mStartCounters = (startCountersFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonStartCounters");
+  mStopCounters = (stopCountersFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonStopCounters");
+  mReadCounters = (readCountersFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonReadCounters");
+  mStartTrace = (startTraceFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonStartTrace");
+  mStopTrace = (stopTraceFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonStopTrace");
+  mCountTrace = (countTraceFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonGetTraceCount");
+  mReadTrace = (readTraceFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclPerfMonReadTrace");
+  mWriteHostEvent = (writeHostEventFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclWriteHostEvent");
+  mDebugReadIPStatus = (debugReadIPStatusFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclDebugReadIPStatus");
+  mGetNumLiveProcesses = (xclGetNumLiveProcessesFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetNumLiveProcesses");
+  mGetSysfsPath = (xclGetSysfsPathFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetSysfsPath");
+  mGetDebugIPlayoutPath = (xclGetDebugIPlayoutPathFuncType)xrt_core::dlsym(const_cast<void*>(mDriverHandle), "xclGetDebugIPlayoutPath");
+  mGetTraceBufferInfo = (xclGetTraceBufferInfoFuncType)xrt_core::dlsym(const_cast<void*>(mDriverHandle), "xclGetTraceBufferInfo");
+  mReadTraceData = (xclReadTraceDataFuncType)xrt_core::dlsym(const_cast<void*>(mDriverHandle), "xclReadTraceData");
+#ifdef _WIN32
+  mMunmap = (munmapFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "munmap");;
+#endif
 }
 
 operations::
 ~operations()
 {
-  dlclose(const_cast<void *>(mDriverHandle));
+  xrt_core::dlclose(const_cast<void *>(mDriverHandle));
 }
 
 }} // hal2,xrt

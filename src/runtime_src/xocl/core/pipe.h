@@ -16,10 +16,9 @@
 
 #ifndef xocl_core_pmd_pipe_h_
 #define xocl_core_pmd_pipe_h_
-
+#include "xocl/config.h"
 #include "xocl/core/object.h"
 #include "xocl/core/refcount.h"
-
 #include "xrt/device/device.h"
 
 namespace xocl {

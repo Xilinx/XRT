@@ -125,7 +125,6 @@ set(XCLBINUTIL_SRCS ${XCLBINUTIL_MAIN_FILE} ${XCLBINUTIL_FILES_SRCS})
 add_executable(xclbinutil ${XCLBINUTIL_SRCS})
 
 if(WIN32)
-  add_definitions( -DBOOST_ALL_NO_LIB )
   target_link_libraries(xclbinutil PRIVATE Boost::filesystem Boost::program_options Boost::system)
 
   # Use the static version of the run-time library
@@ -135,10 +134,6 @@ if(WIN32)
   else()
     target_compile_options(xclbinutil PRIVATE /MT)
   endif()
-
-  # Disable BOOST warning message indicating that the MS compiler is newer then
-  # when BOOST was released
-  target_compile_options(xclbinutil PRIVATE /DBOOST_CONFIG_SUPPRESS_OUTDATED_MESSAGE)
 else()
 
   # For Ubuntu 18.04 and later versions we must link dynamic libraries.  This is because the static
@@ -187,7 +182,18 @@ install (TARGETS xclbinutil RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
 
 # -----------------------------------------------------------------------------
 
+if (WIN32)
+  set(GTEST_ROOT "C:/XRT/libs/gtest")
+endif()
+
 find_package(GTest)
+
+#find_library(ws_bcrypt_LIBRARY_PATH
+#  NAMES bcrypt
+#  HINTS "C:/Program Files (x86)/Windows Kits/10/Lib/10.0.17763.0/um/x64/")
+#message("bcrypt = ${ws_bcrypt_LIBRARY_PATH}")
+#target_link_libraries(xclbinutil PRIVATE ${ws_bcrypt_LIBRARY_PATH})
+
 
 if (GTEST_FOUND)
   message (STATUS "Copying test data")
@@ -202,17 +208,46 @@ if (GTEST_FOUND)
   )
 
   set(XCLBINTEST_SRCS ${XCLBINTEST_FILES} ${XCLBINUTIL_FILES_SRCS})
-  add_executable(xclbintest ${XCLBINTEST_SRCS})
 
-  message (STATUS "GTest libraries: '${Boost_LIBRARIES} ${GTEST_BOTH_LIBRARIES} pthread'")
-  target_link_libraries(xclbintest ${Boost_LIBRARIES} ${GTEST_BOTH_LIBRARIES} pthread )
-  target_link_libraries(xclbintest OpenSSL::Crypto)
-  target_link_libraries(xclbintest ${ZLIB_LIBRARIES})     # OpenSSL supporting library
-  target_link_libraries(xclbintest ${CMAKE_DL_LIBS})      # OpenSSL supporting library
+  set(UNIT_TEST_XCLBINUTIL xclbintest)
+  add_executable(${UNIT_TEST_XCLBINUTIL} ${XCLBINTEST_SRCS})
+
+  if(WIN32) 
+    target_link_libraries(${UNIT_TEST_XCLBINUTIL} PRIVATE Boost::filesystem Boost::program_options Boost::system )
+    target_link_libraries(${UNIT_TEST_XCLBINUTIL} PRIVATE ${GTEST_BOTH_LIBRARIES})
+
+    # Use the static version of the run-time library 
+    # Note: Needed to link with boost
+    if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+      target_compile_options(${UNIT_TEST_XCLBINUTIL} PRIVATE /MTd)
+    else()
+      target_compile_options(${UNIT_TEST_XCLBINUTIL} PRIVATE /MT)
+    endif()
+  else()
+    message (STATUS "GTest libraries: '${Boost_LIBRARIES} ${GTEST_BOTH_LIBRARIES} pthread'")
+    target_link_libraries(xclbintest ${Boost_LIBRARIES} ${GTEST_BOTH_LIBRARIES} pthread )
+    target_link_libraries(xclbintest OpenSSL::Crypto)
+    target_link_libraries(xclbintest ${ZLIB_LIBRARIES})     # OpenSSL supporting library
+    target_link_libraries(xclbintest ${CMAKE_DL_LIBS})      # OpenSSL supporting library
+  endif()
 
   message(STATUS "Configuring CMake to run unit test after building")
-  set(UNIT_TEST_XCLBINUTIL xclbintest)
-  add_test(NAME ${UNIT_TEST_XCLBINUTIL} COMMAND ${UNIT_TEST_XCLBINUTIL})
+  add_test(NAME ${UNIT_TEST_XCLBINUTIL} 
+           COMMAND ${UNIT_TEST_XCLBINUTIL}
+           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+  # Execute unit tests after the xclbintest is created.
+  # Note: This command works GREAT if the tests pass.  If they fail xclbintest is deleted :(
+  if (0)
+    add_custom_command(
+         TARGET ${UNIT_TEST_XCLBINUTIL}
+         COMMENT "Run xclbinutil unit-tests"
+         POST_BUILD 
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+         COMMAND ${CMAKE_CTEST_COMMAND} -C ${CMAKE_BUILD_TYPE} -R ${UNIT_TEST_XCLBINUTIL} --output-on-failures
+      )
+  endif()
+
 # Execute unit tests after the xclbintest is created.
 # Note: This command works GREAT if the tests pass.  If they fail xclbintest is deleted :(
 #  add_custom_command(

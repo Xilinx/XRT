@@ -27,6 +27,11 @@
 
 #include <iostream>
 
+#ifdef _WIN32
+#pragma warning( push )
+#pragma warning ( disable : 4245 )
+#endif
+
 namespace xocl {
 
 class compute_unit;
@@ -48,7 +53,7 @@ public:
     using argtype = xclbin::symbol::arg::argtype;
     using arginfo_type = const xclbin::symbol::arg*;
     using arginfo_vector_type = std::vector<arginfo_type>;
-    using arginfo_iterator_type = arginfo_vector_type::const_iterator;
+    using arginfo_iterator_type = const arginfo_type*;
     using arginfo_range_type = range<arginfo_iterator_type>;
     using memidx_type = xclbin::memidx_type;
 
@@ -258,7 +263,7 @@ public:
     virtual const void* get_value() const { return m_value.data(); }
     virtual const std::string get_string_value() const;
     virtual arginfo_range_type get_arginfo_range() const
-    { return arginfo_range_type(m_components.begin(),m_components.end()); }
+    { return arginfo_range_type(m_components.data(),m_components.data()+m_components.size()); }
   private:
     size_t m_sz;
     std::vector<uint8_t> m_value;
@@ -677,5 +682,9 @@ get_cu_names(const std::string& kernel_name);
 } // kernel_utils
 
 } // xocl
+
+#ifdef _WIN32
+#pragma warning( pop )
+#endif
 
 #endif

@@ -15,14 +15,14 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/cl.h>
+#include "xocl/config.h"
 #include "xocl/core/program.h"
 #include "xocl/core/error.h"
 #include "detail/program.h"
 #include "detail/device.h"
 #include "api.h"
 #include "plugin/xdp/profile.h"
+#include <CL/cl.h>
 
 namespace xocl {
 
@@ -42,12 +42,12 @@ validOrError(cl_program             program ,
 
   detail::program::validOrError(program);
   detail::device::validOrError(program,num_devices,device_list);
-  
+
   if (num_input_headers==0 && (header_include_names || input_headers))
     throw error(CL_INVALID_VALUE,"clCompileProgram");
   if (num_input_headers && (!header_include_names || !input_headers))
     throw error(CL_INVALID_VALUE,"clCompileProgram");
-  
+
   if(!pfn_notify && user_data)
     throw error(CL_INVALID_VALUE,"clCompileProgram");
 
@@ -59,7 +59,7 @@ validOrError(cl_program             program ,
         throw xocl::error(CL_COMPILER_NOT_AVAILABLE,"clCompileProgram");
     }
   }
-  
+
   if (xocl(program)->get_num_kernels()!=0)
     throw xocl::error(CL_INVALID_OPERATION,"clCompileProgram: program already has kernels");
 
@@ -67,7 +67,7 @@ validOrError(cl_program             program ,
     throw xocl::error(CL_INVALID_OPERATION,"clCompileProgram: program not created from source");
 }
 
-static cl_int 
+static cl_int
 clCompileProgram(cl_program             program ,
                  cl_uint                num_devices ,
                  const cl_device_id *   device_list ,
@@ -114,5 +114,3 @@ clCompileProgram(cl_program            program ,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-
