@@ -7,12 +7,11 @@ XRT ChangeLog
 Added
 .....
 
-* Resource management has been moved out of XMA library.
 * ``xclRead()`` and ``xclWrite()`` have been marked as deprecated in this release and will be removed in a future release. For direct register access please use replacement APIs ``xclRegRead()`` and ``xclRegWrite()`` which are more secure and multi-process aware.
 * Edge platforms can now use DFX also known as Partial Reconfiguration.
 * Support for U50 board has been added to XRT.
-* Support for signing xclbins using xclbinutil and validating xclbin signature in xclbin driver has been added to XRT. Please refer to XRT Security documentation for more details.
-* Edge platforms based on MPSoC now support M2M feature via **Zynqmp built-in DMA engine**. M2M for both PCIe and edge platforms can be performed using ``xclCopyBO()`` XRT API or ``clEnqueueCopyBuffers()`` OCL API.
+* Support for signing xclbins using xclbinutil and validating xclbin signature in xclbin driver has been added to XRT. Please refer to XRT Security documentation https://xilinx.github.io/XRT/2019.2/html/security.html for more details.
+* Edge platforms based on MPSoC now support M2M feature via **Zynqmp built-in DMA engine**. M2M for both PCIe and edge platforms can be performed using ``xclCopyBO()`` XRT API or ``clEnqueueCopyBuffers()`` OCL API. Note that the same APIs can also be used to copy buffers between two devices using PCIe peer-to-peer transfer.
 * For edge platforms XRT now supports ACC (adapter execution model).
 * XRT documentation has been reorganized and significantly updated.
 * XRT now natively supports fully virtualized environments where management physical function (PF0) is completely hidden in host and only user physical function (PF1) is exported to the guest. End-user applications based on libxrt_core and xbutil command line utility do not need directly interact with xclmgmt driver. Communication between xocl driver and xclmgmt driver is done over hardware mailbox and MPD/MSD framework. For more information refer to MPD/MSD and Mailbox sections in XRT documentation.
@@ -21,13 +20,16 @@ Added
 * XRT now has integrated support for Linux hwmon. Run Linux sensors utility to see all the sensor values exported by Alveo/XRT.
 * XRT now has production support for edge platforms. The following non DFX platforms edge platforms are supported: zcu102_base, zcu104_base, zc702, zc706. In addition zcu102_base_dfx platform has DFX support.
 * Emulation and HW profiling support has been enabled for all the above mentioned edge platforms. Zynq MPSoC platforms: zcu102_base, zcu104_base and zcu102_base_dfx also has emulation profiling enabled.
-* Improved handling of PCIe reset via ``xbutil reset`` which resolves system crash on some servers.
+* Improved handling of PCIe reset via ``xbutil reset`` which resolves system crash observed on some servers.
+* Resource management has been moved out of XMA library.
+* Only signed xclbins can be loaded on systems running in UEFI secure boot mode. You can use DKMS key used to sign XRT drivers to sign xclbins as well. As root please use the following command to sign xclbin with DKMS UEFI key--
+  ``xclbinutil --private-key /var/lib/shim-signed/mok/MOK.priv --certificate /var/lib/shim-signed/mok/MOK.der --input a.xclbin --output signed.xclbin``
 
 
 Known Issue
 ...........
 
-* On U280 Platform, downloading XCLBIN is going to reset P2P BAR size back to 256M internally. XRT workaround this issue by reading BAR size register and writing back the same value. This set the P2P BAR size back to the value before downloading XCLBIN.
+* On U280 Platform, downloading XCLBIN is going to reset P2P BAR size back to 256M internally. XRT workaround this issue by reading BAR size register and writing back the same value. This sets the P2P BAR size back to the value before downloading XCLBIN.
 * Intermittent hang is observed when downloading multiple xclbins multiple times when interrupt is enabled.
 * Dynamic clock scaling is not enabled for edge platforms.
 
