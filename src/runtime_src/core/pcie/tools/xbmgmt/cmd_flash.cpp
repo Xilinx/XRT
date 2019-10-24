@@ -529,6 +529,7 @@ static int scan(int argc, char *argv[])
     const option opts[] = {
         { "verbose", no_argument, nullptr, '0' },
         { "json", no_argument, nullptr, '1' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {
@@ -563,6 +564,7 @@ static int update(int argc, char *argv[])
         { "shell", required_argument, nullptr, '1' },
         { "id", required_argument, nullptr, '2' },
         { "force", no_argument, nullptr, '3' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {
@@ -605,6 +607,7 @@ static int shell(int argc, char *argv[])
         { "card", required_argument, nullptr, '0' },
         { "path", required_argument, nullptr, '1' },
         { "flash_type", required_argument, nullptr, '2' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {
@@ -648,6 +651,7 @@ static int sc(int argc, char *argv[])
     const option opts[] = {
         { "card", required_argument, nullptr, '0' },
         { "path", required_argument, nullptr, '1' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {
@@ -685,6 +689,7 @@ static int reset(int argc, char *argv[])
     unsigned index = UINT_MAX;
     const option opts[] = {
         { "card", required_argument, nullptr, '0' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {
