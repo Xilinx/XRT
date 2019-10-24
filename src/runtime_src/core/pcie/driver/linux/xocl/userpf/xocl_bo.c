@@ -631,7 +631,7 @@ int xocl_sync_bo_ioctl(struct drm_device *dev,
 {
 	const struct drm_xocl_bo *xobj;
 	struct sg_table *sgt;
-	u64 paddr = 0;
+	u64 paddr = 0, nents;
 	int channel = 0;
 	ssize_t ret = 0;
 	const struct drm_xocl_sync_bo *args = data;
