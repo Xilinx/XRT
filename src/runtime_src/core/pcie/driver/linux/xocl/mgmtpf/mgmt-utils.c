@@ -218,6 +218,8 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 	 * Otherwise issue message that a warm reboot is required.
 	 */
 	do {
+		if (dev_info->flags & XOCL_DSAFLAG_EXTRA_AF_CLEAR)
+			xocl_af_clear(lro);
 		msleep(20);
 	} while (retry++ < XCLMGMT_RESET_MAX_RETRY &&
 		xocl_af_check(lro, NULL));

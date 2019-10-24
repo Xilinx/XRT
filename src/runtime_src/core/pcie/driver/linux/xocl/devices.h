@@ -51,6 +51,7 @@ enum {
 	XOCL_DSAFLAG_DYNAMIC_IP			= 0x200,
 	XOCL_DSAFLAG_SMARTN			= 0x400,
 	XOCL_DSAFLAG_VERSAL			= 0x800,
+	XOCL_DSAFLAG_EXTRA_AF_CLEAR		= 0x1000,
 };
 
 #define	FLASH_TYPE_SPI	"spi"
@@ -1783,7 +1784,8 @@ struct xocl_subdev_map {
 
 #define	XOCL_BOARD_MGMT_U50						\
 	(struct xocl_board_private){					\
-		.flags		= XOCL_DSAFLAG_DYNAMIC_IP,		\
+		.flags		= XOCL_DSAFLAG_DYNAMIC_IP |		\
+				XOCL_DSAFLAG_EXTRA_AF_CLEAR,		\
 		.subdev_info	= MGMT_RES_U50,				\
 		.subdev_num = ARRAY_SIZE(MGMT_RES_U50),			\
 		.flash_type = FLASH_TYPE_SPI,				\
