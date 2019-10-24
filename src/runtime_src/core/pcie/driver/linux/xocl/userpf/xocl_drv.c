@@ -471,7 +471,9 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	case XCL_MAILBOX_REQ_FIREWALL:
 		userpf_info(xdev,
 			"Card is in a BAD state, please issue xbutil reset");
-		xocl_drvinst_kill_proc(xdev->core.drm);
+		xocl_drvinst_set_offline(xdev->core.drm, true);
+		/* Once firewall tripped, need to reset in secs */
+		xocl_queue_work(xdev, XOCL_WORK_RESET, XOCL_RESET_DELAY);
 		break;
 	case XCL_MAILBOX_REQ_MGMT_STATE:
 		st = (struct xcl_mailbox_peer_state *)req->data;
