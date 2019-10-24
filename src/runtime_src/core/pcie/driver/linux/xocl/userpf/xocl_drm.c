@@ -594,7 +594,7 @@ int xocl_cleanup_mem(struct xocl_drm *drm_p)
 	return 0;
 }
 
-int xocl_init_mem(struct xocl_drm *drm_p, struct mem_topology *new_topo)
+int xocl_init_mem(struct xocl_drm *drm_p)
 {
 	size_t length = 0;
 	size_t mm_size = 0, mm_stat_size = 0;
@@ -617,10 +617,7 @@ int xocl_init_mem(struct xocl_drm *drm_p, struct mem_topology *new_topo)
 		reserved2 = 0x1000000;
 	}
 
-	if (XOCL_DSA_IS_VERSAL(drm_p->xdev))
-		topo = new_topo;
-	else
-		topo = XOCL_MEM_TOPOLOGY(drm_p->xdev);
+	topo = XOCL_MEM_TOPOLOGY(drm_p->xdev);
 
 	if (topo == NULL)
 		return 0;
