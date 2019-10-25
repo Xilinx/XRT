@@ -27,12 +27,6 @@
 #include "zocl_sk.h"
 #include "zocl_xclbin.h"
 
-/*
- * The get_cu_support_intr needs this but we will move it to zocl_xclbin.c
- * in next code change.
- */
-#include "xclbin.h"
-
 /* #define SCHED_VERBOSE */
 
 #if defined(__GNUC__)
@@ -670,26 +664,6 @@ done:
 		DRM_INFO("CU can only be initialized once.\n");
 }
 
-/*
- * returns false if any of the cu doesnt support interrupt
- */
-bool
-get_cus_support_intr(struct drm_zocl_dev *zdev)
-{
-	struct ip_data *ip;
-        int i;
-        if (!zdev->ip)
-                return false;
-
-        for (i = 0; i < zdev->ip->m_count; ++i) {
-                ip = &zdev->ip->m_ip_data[i];
-                if(!(ip->properties & 0x1)) {
-                        return false;
-                }
-        }
-        return true;
-}
-
 /**
  * configure() - Configure the scheduler from user space command
  *
@@ -755,7 +729,7 @@ configure(struct sched_cmd *cmd)
 		 * Interrupt may not be enabled for some of the kernel,
 		 * Need to use polling mode in that case
 		 */
-		if (!get_cus_support_intr(zdev)) {
+		if (!zocl_xclbin_cus_support_intr(zdev)) {
 			DRM_WARN("Interrupt is not enabled for at least one "
 			    "kernel. Fall back to polling mode.");
 			exec->polling_mode = 1;
