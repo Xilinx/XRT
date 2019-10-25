@@ -558,7 +558,9 @@ struct xocl_mb_scheduler_funcs {
 	-ENODEV)
 
 #define XOCL_MEM_TOPOLOGY(xdev)						\
-	((struct mem_topology *)xocl_icap_get_data(xdev, MEMTOPO_AXLF))
+	(XOCL_DSA_IS_VERSAL(xdev) ?					\
+	((struct mem_topology *)(((struct xocl_dev *)(xdev))->mem_topo)) : \
+	((struct mem_topology *)xocl_icap_get_data(xdev, MEMTOPO_AXLF)))
 #define XOCL_IP_LAYOUT(xdev)						\
 	((struct ip_layout *)xocl_icap_get_data(xdev, IPLAYOUT_AXLF))
 #define XOCL_XCLBIN_ID(xdev)						\

@@ -1137,6 +1137,8 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 		vfree(xdev->core.dyn_subdev_store);
 	if (xdev->ulp_blob)
 		vfree(xdev->ulp_blob);
+	if (xdev->mem_topo)
+		vfree(xdev->mem_topo);
 	mutex_destroy(&xdev->core.lock);
 	mutex_destroy(&xdev->dev_lock);
 	mutex_destroy(&xdev->wq_lock);
