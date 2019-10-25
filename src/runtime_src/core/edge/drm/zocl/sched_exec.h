@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /** * Compute unit execution, interrupt management and
  * client context core data structures.
  *
@@ -59,14 +60,32 @@ enum zocl_cu_type {
 	ZOCL_SOFT_CU,
 };
 
+enum zocl_exec_status {
+	ZOCL_EXEC_NORMAL = 0,
+	ZOCL_EXEC_STOP,
+	ZOCL_EXEC_FLUSH,
+};
+
 struct sched_dev;
 struct sched_ops;
 
+/*
+ * struct sched_client_ctx: Manage user space client attached to device
+ *
+ * @link: Client context is added to list in device
+ * @trigger:
+ * @lock:
+ */
 struct sched_client_ctx {
-	struct list_head    link;
-	atomic_t            trigger;
-	struct mutex        lock;
+	struct list_head   link;
+	atomic_t           trigger;
+	atomic_t           outstanding_execs;
+	struct mutex       lock;
+	int		   num_cus;
+	struct pid	   *pid;
+	unsigned int	   abort;
 };
+#define CLIENT_NUM_CU_CTX(client) ((client)->num_cus)
 
 /**
  * struct sched_exec_core: Core data structure for command execution on a device
@@ -137,6 +156,9 @@ struct sched_exec_core {
 	wait_queue_head_t          cq_wait_queue;
 
 	struct task_struct        *timer_task;
+
+	/* Context switch */
+	atomic_t		  exec_status;
 };
 
 /**
@@ -185,6 +207,7 @@ struct sched_cmd {
 	struct drm_device *ddev;
 	struct scheduler *sched;
 	struct sched_exec_core *exec;
+	struct sched_client_ctx *client;
 	enum ert_cmd_state state;
 	int cu_idx; /* running cu, initialized to -1 */
 	int slot_idx;
@@ -240,9 +263,12 @@ struct sched_ops {
 
 int sched_init_exec(struct drm_device *drm);
 int sched_fini_exec(struct drm_device *drm);
+int sched_reset_exec(struct drm_device *drm);
 
-int zocl_exec_reset(struct drm_device *dev);
 void zocl_track_ctx(struct drm_device *dev, struct sched_client_ctx *fpriv);
 void zocl_untrack_ctx(struct drm_device *dev, struct sched_client_ctx *fpriv);
 
+int zocl_exec_valid_cu(struct sched_exec_core *exec, unsigned int cuid);
+u32 sched_is_busy(struct drm_zocl_dev *zdev);
+u32 sched_live_clients(struct drm_zocl_dev *zdev, pid_t **plist);
 #endif

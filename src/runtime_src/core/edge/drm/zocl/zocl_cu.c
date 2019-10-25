@@ -99,6 +99,15 @@ zocl_cu_get_paddr(struct zocl_cu *cu)
 	return cu_core->paddr;
 }
 
+void
+zocl_cu_status_print(struct zocl_cu *cu)
+{
+	struct zcu_core *cu_core = cu->core;
+
+	DRM_INFO("addr 0x%llx, status 0x%x",
+	    (u64)cu_core->paddr, ioread32(cu_core->vaddr));
+}
+
 /* -- HLS adapter start -- */
 /* HLS adapter implementation realted code. */
 static void
@@ -154,8 +163,9 @@ zocl_hls_clear_intr(void *core)
 		 * So, the reliable way to clear this register is read
 		 * then write the same value back.
 		 *
-		 * Do not write 1 to this register. If, somehow, the status register
-		 * is 0, write 1 to this register will trigger interrupt.
+		 * Do not write 1 to this register.  If, somehow, the
+		 * status register is 0, write 1 to this register will
+		 * trigger interrupt.
 		 */
 		isr = ioread32(cu_core->vaddr + 3);
 		iowrite32(isr, cu_core->vaddr + 3);
@@ -171,7 +181,6 @@ zocl_hls_clear_intr(void *core)
 	 * Write 1 to this register will trigger interrupt.
 	 */
 	return ioread32(cu_core->vaddr + 3);
-
 }
 
 static void
@@ -259,7 +268,7 @@ zocl_hls_check(void *core, struct zcu_tasks_info *tasks_info)
 		ready_cnt = 1;
 		done_cnt = 1;
 
-		/* 
+		/*
 		 * wrtie AP_CONTINUE to restart CU.
 		 * this is safe for all hls/versal kernel
 		 */

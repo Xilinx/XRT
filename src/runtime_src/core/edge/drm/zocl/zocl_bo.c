@@ -127,7 +127,7 @@ void zocl_free_userptr_bo(struct drm_gem_object *gem_obj)
 	/* Do all drm_gem_cma_free_object(bo->base) do, execpt free vaddr */
 	struct drm_zocl_bo *zocl_bo = to_zocl_bo(gem_obj);
 
-	DRM_INFO("zocl_free_userptr_bo: obj 0x%p", zocl_bo);
+	DRM_INFO("%s: obj 0x%p", __func__, zocl_bo);
 	if (zocl_bo->cma_base.sgt)
 		sg_free_table(zocl_bo->cma_base.sgt);
 
@@ -839,7 +839,7 @@ void zocl_free_host_bo(struct drm_gem_object *gem_obj)
 {
 	struct drm_zocl_bo *zocl_bo = to_zocl_bo(gem_obj);
 
-	DRM_INFO("zocl_free_host_bo: obj 0x%p", zocl_bo);
+	DRM_INFO("%s: obj 0x%p", __func__, zocl_bo);
 
 	memunmap(zocl_bo->cma_base.vaddr);
 
