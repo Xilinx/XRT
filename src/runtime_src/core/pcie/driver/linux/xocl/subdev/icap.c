@@ -36,6 +36,7 @@ static xuid_t uuid_null = NULL_UUID_LE;
 
 static DEFINE_MUTEX(icap_keyring_lock);
 static struct key *icap_keys;
+static int icap_key_users;
 
 #define	ICAP_ERR(icap, fmt, arg...)	\
 	xocl_err(&(icap)->icap_pdev->dev, fmt "\n", ##arg)
@@ -168,6 +169,8 @@ struct icap {
 	ktime_t			cache_expires;
 
 	enum icap_sec_level	sec_level;
+
+	bool			sysfs_created;
 };
 
 static inline u32 reg_rd(void __iomem *reg)
@@ -3223,30 +3226,50 @@ static int icap_load_keyring(void)
 	int ret = 0;
 
 	mutex_lock(&icap_keyring_lock);
+	BUG_ON(icap_key_users < 0);
 
-	if (icap_keys) {
+	if (icap_key_users) {
+		/* Not first user, just bump up the ref cnt. */
 		key_get(icap_keys);
+		icap_key_users++;
 	} else {
+		/* First user, alloc our keyring. */
+		BUG_ON(icap_keys != NULL);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
 		icap_keys = keyring_alloc(".xilinx_fpga_xclbin_keys",
 			KUIDT_INIT(0), KGIDT_INIT(0), current_cred(),
 			((KEY_POS_ALL & ~KEY_POS_SETATTR) |
 			KEY_USR_VIEW | KEY_USR_WRITE | KEY_USR_SEARCH),
 			KEY_ALLOC_NOT_IN_QUOTA, NULL, NULL);
-		ret = PTR_ERR_OR_ZERO(icap_keys);
+		if (IS_ERR(icap_keys)) {
+			ret = PTR_ERR(icap_keys);
+			icap_keys = NULL;
+		} else {
+			icap_key_users = 1;
+		}
 #endif
 	}
 
 	mutex_unlock(&icap_keyring_lock);
-
 	return ret;
 }
 
 static void icap_release_keyring(void)
 {
 	mutex_lock(&icap_keyring_lock);
-	if (icap_keys)
+	BUG_ON(icap_key_users < 0);
+
+	if (icap_key_users) {
+		icap_key_users--;
 		key_put(icap_keys);
+		/*
+		 * After key_put(), our key ring will be automatically freed
+		 * some time later. Make sure icap_keys is cleared.
+		 */
+		if (icap_key_users == 0)
+			icap_keys = NULL;
+	}
+
 	mutex_unlock(&icap_keyring_lock);
 }
 
@@ -3264,7 +3287,8 @@ static int icap_remove(struct platform_device *pdev)
 	free_clear_bitstream(icap);
 	free_clock_freq_topology(icap);
 
-	sysfs_remove_group(&pdev->dev.kobj, &icap_attr_group);
+	if (icap->sysfs_created)
+		sysfs_remove_group(&pdev->dev.kobj, &icap_attr_group);
 
 	ICAP_INFO(icap, "cleaned up successfully");
 	platform_set_drvdata(pdev, NULL);
@@ -3323,6 +3347,7 @@ static int icap_probe(struct platform_device *pdev)
 	if (!icap)
 		return -ENOMEM;
 	platform_set_drvdata(pdev, icap);
+
 	icap->icap_pdev = pdev;
 	mutex_init(&icap->icap_lock);
 
@@ -3347,6 +3372,8 @@ static int icap_probe(struct platform_device *pdev)
 	if (ret) {
 		ICAP_ERR(icap, "create icap attrs failed: %d", ret);
 		goto failed;
+	} else {
+		icap->sysfs_created = true;
 	}
 
 	if (ICAP_PRIVILEGED(icap)) {
