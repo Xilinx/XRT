@@ -1,0 +1,552 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Configuration File xrt.ini &mdash; XRT 2019.2 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Xilinx Media Accelerator (XMA)" href="xma_user_guide.html" />
+    <link rel="prev" title="XRT Streaming Platform Support" href="streaming_data_support.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> XRT
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2019.2
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Use Model and Features</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P) Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Configuration File xrt.ini</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#runtime-initialization-file-format">Runtime Initialization File Format</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#runtime-group">Runtime Group</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#debug-group">Debug Group</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#emulation-group">Emulation Group</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator (XMA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">XMA 19.2 Migration</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User API Library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
+</ul>
+<p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tools and Utilities</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Building Platforms</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Cloud Support</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Security</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Debug and Faqs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">XRT</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Configuration File xrt.ini</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/xrt_ini.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="configuration-file-xrt-ini">
+<span id="xrt-ini-rst"></span><h1>Configuration File xrt.ini<a class="headerlink" href="#configuration-file-xrt-ini" title="Permalink to this headline">¶</a></h1>
+<p>XRT uses various parameters to control execution flow, debug, profiling, and message logging during host application and kernel execution in software emulation, hardware emulation, and system run on the acceleration board. These control parameters are optionally specified in a runtime initialization file <strong>xrt.ini</strong></p>
+<p>XRT looks for xrt.ini in host executable path and current directory in that order. It stops search when an xrt.ini is found. If xrt.ini is not found, XRT built-in defaults are used as described in the table below.</p>
+<div class="section" id="runtime-initialization-file-format">
+<h2>Runtime Initialization File Format<a class="headerlink" href="#runtime-initialization-file-format" title="Permalink to this headline">¶</a></h2>
+<p>The runtime initialization file is a text file with groups of keys and their values. Any line beginning with a semicolon (<strong>;</strong>) or a hash (<strong>#</strong>) is a comment. The group names, keys, and key values are all case in-sensitive.</p>
+<p>There are three group of keys as below</p>
+<blockquote>
+<div><ul class="simple">
+<li><strong>Runtime</strong>: The keys in this group impact general XRT flow</li>
+<li><strong>Debug</strong>: The keys in this group are used to generate and configure the debug related files such as profile report and timeline trace</li>
+<li><strong>Emulation</strong>: The keys in this group are related to the Emulation flow only</li>
+</ul>
+</div></blockquote>
+<p>The following is a simple example that turns on profile timeline trace and sends the runtime log messages to the console.</p>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="c1">#Start of Runtime group</span>
+<span class="k">[Runtime]</span>
+<span class="na">runtime_log</span> <span class="o">=</span> <span class="s">console</span>
+
+<span class="c1">#Start of Debug group</span>
+<span class="k">[Debug]</span>
+<span class="na">timeline_trace</span> <span class="o">=</span> <span class="s">true</span>
+</pre></div>
+</div>
+<p>The following table lists all supported groups, keys, valid key values, and short descriptions on the function of the keys.</p>
+<div class="section" id="runtime-group">
+<h3>Runtime Group<a class="headerlink" href="#runtime-group" title="Permalink to this headline">¶</a></h3>
+<table border="1" class="docutils">
+<colgroup>
+<col width="19%" />
+<col width="33%" />
+<col width="48%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Valid Values</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>api_checks</td>
+<td>[true|false]</td>
+<td><p class="first">Enable or disable OpenCL API checks:</p>
+<blockquote>
+<div><ul class="simple">
+<li>true: enable</li>
+<li>false: disable</li>
+</ul>
+</div></blockquote>
+<p class="last">Default: true</p>
+</td>
+</tr>
+<tr class="row-odd"><td>runtime_log</td>
+<td>[null|console|syslog|filename]</td>
+<td><p class="first">Specify where the runtime logs are printed:</p>
+<blockquote>
+<div><ul class="simple">
+<li>null: Do not print any logs.</li>
+<li>console: Print logs to stdout</li>
+<li>syslog: Print logs to Linux syslog</li>
+<li>filename: Print logs to the
+specified file.
+Example, runtime_log=my_run.log</li>
+</ul>
+</div></blockquote>
+<p class="last">Default: console</p>
+</td>
+</tr>
+<tr class="row-even"><td>cpu_affinity</td>
+<td>[{N,N,…}]</td>
+<td><p class="first">Pin all runtime threads to specified CPUs.</p>
+<p class="last">Example: cpu_affinity = {4,5,6}</p>
+</td>
+</tr>
+<tr class="row-odd"><td>polling_throttle</td>
+<td>[N]</td>
+<td><p class="first">Specify the time interval in microseconds
+that the runtime library polls the device.</p>
+<p class="last">Default: 0</p>
+</td>
+</tr>
+<tr class="row-even"><td>verbosity</td>
+<td>[0|1|2|3]</td>
+<td><p class="first">verbosity level of log messages. Higher
+number implies more verbosity</p>
+<p class="last">Default: 0</p>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="debug-group">
+<h3>Debug Group<a class="headerlink" href="#debug-group" title="Permalink to this headline">¶</a></h3>
+<table border="1" class="docutils">
+<colgroup>
+<col width="21%" />
+<col width="28%" />
+<col width="51%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Valid Values</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>profile</td>
+<td>[true|false]</td>
+<td><p class="first">Enable or disable OpenCL host code profile. Set true
+to generate profile_summary report</p>
+<p class="last">Default: false</p>
+</td>
+</tr>
+<tr class="row-odd"><td>timeline_trace</td>
+<td>[true|false]</td>
+<td><p class="first">Enable or disable profile timeline trace. Set true to
+generate timeline_trace report</p>
+<p class="last">Default: false</p>
+</td>
+</tr>
+<tr class="row-even"><td>data_transfer_trace</td>
+<td>[coarse|fine|off]</td>
+<td><p class="first">Enable device-level AXI transfers trace:</p>
+<blockquote>
+<div><ul class="simple">
+<li>coarse: Shows CU transfer activity</li>
+<li>fine: Shows all AXI level burst data transfer</li>
+<li>off: Does not show device-level AXI transfer</li>
+</ul>
+</div></blockquote>
+<p class="last">Default: off</p>
+</td>
+</tr>
+<tr class="row-odd"><td>stall_trace</td>
+<td>[dataflow|memory|pipe|all|off]</td>
+<td><p class="first">Specifies type of stalls to be captured in timeline
+trace report:</p>
+<blockquote>
+<div><ul class="simple">
+<li>dataflow: Stall related to intra-kernel streams</li>
+<li>memory: Stall related to memory transfer</li>
+<li>pipe: Inter-kernel pipes, applicable to OpenCL
+kernel</li>
+<li>all: All type of stalls</li>
+<li>off: Does not show stalls</li>
+</ul>
+</div></blockquote>
+<p class="last">Default: off</p>
+</td>
+</tr>
+<tr class="row-even"><td>app_debug</td>
+<td>[true|false]</td>
+<td><p class="first">If true, enable xprint and xstatus command during
+debugging with xgdb</p>
+<p class="last">Default: false</p>
+</td>
+</tr>
+<tr class="row-odd"><td>trace_buffer_size</td>
+<td>[N {K|M|G}]</td>
+<td><p class="first">Specifies the size of DDR/HBM memory for storing trace
+data:</p>
+<blockquote>
+<div><ul class="simple">
+<li>N: Integer</li>
+<li>K|M|G: Units Kilobyte or Megabyte or Gigabyte</li>
+</ul>
+</div></blockquote>
+<p>Note:</p>
+<blockquote>
+<div><ul class="simple">
+<li>This option only applicable in hardware flow</li>
+<li>If no unit is given byte is assumed</li>
+</ul>
+</div></blockquote>
+<p>Example: trace_buffer_size=100M</p>
+<p class="last">Default: 1M</p>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="emulation-group">
+<h3>Emulation Group<a class="headerlink" href="#emulation-group" title="Permalink to this headline">¶</a></h3>
+<table border="1" class="docutils">
+<colgroup>
+<col width="25%" />
+<col width="26%" />
+<col width="48%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Valid Values</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>aliveness_message_interval</td>
+<td>[N]</td>
+<td><p class="first">Specify the interval in seconds that aliveness
+messages need to be printed.</p>
+<p class="last">Default:300</p>
+</td>
+</tr>
+<tr class="row-odd"><td>print_infos_in_console</td>
+<td>[true|false]</td>
+<td><p class="first">Controls the printing of emulation info messages
+to users console.</p>
+<blockquote>
+<div><p>Emulation info messages are always logged into a
+file called emulation_debug.log</p>
+<blockquote>
+<div><ul class="simple">
+<li>true = print in users console</li>
+<li>false = do not print in user console</li>
+</ul>
+</div></blockquote>
+</div></blockquote>
+<p class="last">Default: true</p>
+</td>
+</tr>
+<tr class="row-even"><td>print_warning_in_console</td>
+<td>[true|false]</td>
+<td><p class="first">Controls the printing of emulation warning messages
+to users console.</p>
+<blockquote>
+<div><p>Emulation warning messages are always logged into
+a file called emulation_debug.log</p>
+<blockquote>
+<div><ul class="simple">
+<li>true = print in users console</li>
+<li>false = do not print in user console</li>
+</ul>
+</div></blockquote>
+</div></blockquote>
+<p class="last">Default: true</p>
+</td>
+</tr>
+<tr class="row-odd"><td>print_errors_in_console</td>
+<td>[true|false]</td>
+<td><p class="first">Controls the printing of emulation error messages
+to users console.</p>
+<blockquote>
+<div><p>Emulation error messages are always logged into a
+file called emulation_debug.log</p>
+<blockquote>
+<div><ul class="simple">
+<li>true = print in users console</li>
+<li>false = do not print in user console</li>
+</ul>
+</div></blockquote>
+</div></blockquote>
+<p class="last">Default: true</p>
+</td>
+</tr>
+<tr class="row-even"><td>launch_waveform</td>
+<td>[off|batch|gui]</td>
+<td><p class="first">Specify how the waveform is saved and displayed
+during emulation:</p>
+<blockquote>
+<div><ul class="simple">
+<li>off: Do not launch simulator waveform GUI, and
+do not save wdb file</li>
+<li>batch: Do not launch simulator waveform GUI,
+but save wdb file</li>
+<li>gui: Launch simulator waveform GUI, and save
+wdb file</li>
+</ul>
+</div></blockquote>
+<p>Default: off</p>
+<blockquote class="last">
+<div>Note: The kernel needs to be compiled with debug
+enabled for the waveform to be saved and
+displayed in the simulator GUI.</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="xma_user_guide.html" class="btn btn-neutral float-right" title="Xilinx Media Accelerator (XMA)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="streaming_data_support.html" class="btn btn-neutral float-left" title="XRT Streaming Platform Support" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017-2019, Xilinx, Inc
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

@@ -1,0 +1,707 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>ZOCL Driver Interfaces &mdash; XRT 2019.2 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="xclbinutil" href="xclbintools.html" />
+    <link rel="prev" title="XOCL (PCIe User Physical Function) Driver Interfaces" href="xocl_ioctl.main.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> XRT
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2019.2
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Use Model and Features</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P) Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator (XMA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">XMA 19.2 Migration</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User API Library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
+</ul>
+<p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">ZOCL Driver Interfaces</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tools and Utilities</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Building Platforms</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Cloud Support</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Security</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Debug and Faqs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">XRT</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>ZOCL Driver Interfaces</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/zocl_ioctl.main.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="zocl-driver-interfaces">
+<span id="zocl-ioctl-main-rst"></span><h1>ZOCL Driver Interfaces<a class="headerlink" href="#zocl-driver-interfaces" title="Permalink to this headline">¶</a></h1>
+<p><strong>A GEM style driver for Xilinx edge based accelerators</strong></p>
+<p>This file defines ioctl command codes and associated structures for interacting with
+<em>zocl</em> driver for Xilinx FPGA platforms(Zynq/ZynqMP/Versal).</p>
+<p>Accelerator memory allocation is modeled as buffer objects (bo). zocl
+supports both SMMU based shared virtual memory and CMA based shared physical memory
+between PS and PL. zocl also supports memory management of PL-DDRs and PL-BRAMs.
+PL-DDR is reserved by zocl driver via device tree. Both PS Linux and PL logic can access PL-DDRs</p>
+<p>Execution model is asynchronous where execute commands are submitted using command buffers and
+POSIX poll is used to wait for finished commands. Commands for a compute unit can only be submitted
+after an explicit context has been opened by the client for that compute unit.</p>
+<p><em>zocl</em> driver functionality is described in the following table.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="4%" />
+<col width="36%" />
+<col width="28%" />
+<col width="32%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">#</th>
+<th class="head">Functionality</th>
+<th class="head">ioctl request code</th>
+<th class="head">data format</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>1</td>
+<td>Allocate buffer on device</td>
+<td>DRM_IOCTL_ZOCL_CREATE_BO</td>
+<td>drm_zocl_create_bo</td>
+</tr>
+<tr class="row-odd"><td>2</td>
+<td>Allocate buffer on device with
+userptr</td>
+<td>DRM_IOCTL_ZOCL_USERPTR_BO</td>
+<td>drm_zocl_userptr_bo</td>
+</tr>
+<tr class="row-even"><td>3</td>
+<td>Get the buffer handle of given
+physical address</td>
+<td>DRM_IOCTL_ZOCL_GET_HOST_BO</td>
+<td>drm_zocl_host_bo</td>
+</tr>
+<tr class="row-odd"><td>4</td>
+<td>Prepare bo for mapping into user’s
+address space</td>
+<td>DRM_IOCTL_ZOCL_MAP_BO</td>
+<td>drm_zocl_map_bo</td>
+</tr>
+<tr class="row-even"><td>5</td>
+<td>Synchronize (DMA) buffer contents in
+requested direction</td>
+<td>DRM_IOCTL_ZOCL_SYNC_BO</td>
+<td>drm_zocl_sync_bo</td>
+</tr>
+<tr class="row-odd"><td>6</td>
+<td>Obtain information about buffer
+object</td>
+<td>DRM_IOCTL_ZOCL_INFO_BO</td>
+<td>drm_zocl_info_bo</td>
+</tr>
+<tr class="row-even"><td>7</td>
+<td>Update bo backing storage with user’s
+data</td>
+<td>DRM_IOCTL_ZOCL_PWRITE_BO</td>
+<td>drm_zocl_pwrite_bo</td>
+</tr>
+<tr class="row-odd"><td>8</td>
+<td>Read back data in bo backing storage</td>
+<td>DRM_IOCTL_ZOCL_PREAD_BO</td>
+<td>drm_zocl_pread_bo</td>
+</tr>
+<tr class="row-even"><td>9</td>
+<td>Update device view with a specific
+xclbin image</td>
+<td>DRM_IOCTL_ZOCL_PCAP_DOWNLOAD</td>
+<td>drm_zocl_pcap_download</td>
+</tr>
+<tr class="row-odd"><td>10</td>
+<td>Read the xclbin and map the compute
+units.</td>
+<td>DRM_IOCTL_ZOCL_READ_AXLF</td>
+<td>drm_zocl_axlf</td>
+</tr>
+<tr class="row-even"><td>11</td>
+<td>Send an execute job to a compute unit</td>
+<td>DRM_IOCTL_ZOCL_EXECBUF</td>
+<td>drm_zocl_execbuf</td>
+</tr>
+<tr class="row-odd"><td>12</td>
+<td>Get the soft kernel command
+(experimental)</td>
+<td>DRM_IOCTL_ZOCL_SK_GETCMD</td>
+<td>drm_zocl_sk_getcmd</td>
+</tr>
+<tr class="row-even"><td>13</td>
+<td>Create the soft kernel
+(experimental)</td>
+<td>DRM_IOCTL_ZOCL_SK_CREATE</td>
+<td>drm_zocl_sk_create</td>
+</tr>
+<tr class="row-odd"><td>14</td>
+<td>Report the soft kernel state
+(experimental)</td>
+<td>DRM_IOCTL_ZOCL_SK_REPORT</td>
+<td>drm_zocl_sk_report</td>
+</tr>
+<tr class="row-even"><td>15</td>
+<td>Get Information about Compute Unit
+(experimental)</td>
+<td>DRM_IOCTL_ZOCL_INFO_CU</td>
+<td>drm_zocl_info_cu</td>
+</tr>
+</tbody>
+</table>
+<dl class="type">
+<dt id="c.drm_zocl_create_bo">
+struct <code class="descname">drm_zocl_create_bo</code><a class="headerlink" href="#c.drm_zocl_create_bo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create buffer object used with DRM_IOCTL_ZOCL_CREATE_BO ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_create_bo {
+  uint64_t size;
+  uint32_t handle;
+  uint32_t flags;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt>
+<dd>Requested size of the buffer object</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt>
+<dd>bo handle returned by the driver</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">flags</span></code></dt>
+<dd>DRM_ZOCL_BO_XXX flags</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_zocl_userptr_bo">
+struct <code class="descname">drm_zocl_userptr_bo</code><a class="headerlink" href="#c.drm_zocl_userptr_bo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create buffer object with user’s pointer used with DRM_IOCTL_ZOCL_USERPTR_BO ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_userptr_bo {
+  uint64_t addr;
+  uint64_t size;
+  uint32_t handle;
+  uint32_t flags;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">addr</span></code></dt>
+<dd>Address of buffer allocated by user</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt>
+<dd>Requested size of the buffer object</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt>
+<dd>bo handle returned by the driver</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">flags</span></code></dt>
+<dd>DRM_XOCL_BO_XXX flags</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_zocl_map_bo">
+struct <code class="descname">drm_zocl_map_bo</code><a class="headerlink" href="#c.drm_zocl_map_bo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prepare a buffer object for mmap used with DRM_IOCTL_ZOCL_MAP_BO ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_map_bo {
+  uint32_t handle;
+  uint32_t pad;
+  uint64_t offset;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt>
+<dd>bo handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">pad</span></code></dt>
+<dd>Unused</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">offset</span></code></dt>
+<dd>‘Fake’ offset returned by the driver which can be used with POSIX mmap</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_zocl_sync_bo">
+struct <code class="descname">drm_zocl_sync_bo</code><a class="headerlink" href="#c.drm_zocl_sync_bo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Synchronize the buffer in the requested direction via cache flush/invalidation. used with DRM_ZOCL_SYNC_BO ioctl.</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_sync_bo {
+  uint32_t handle;
+  enum drm_zocl_sync_bo_dir dir;
+  uint64_t offset;
+  uint64_t size;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt>
+<dd>GEM object handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">dir</span></code></dt>
+<dd>DRM_ZOCL_SYNC_DIR_XXX</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">offset</span></code></dt>
+<dd>Offset into the object to write to</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt>
+<dd>Length of data to write</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_zocl_info_bo">
+struct <code class="descname">drm_zocl_info_bo</code><a class="headerlink" href="#c.drm_zocl_info_bo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Obtain information about buffer object used with DRM_IOCTL_ZOCL_INFO_BO ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_info_bo {
+  uint32_t handle;
+  uint64_t size;
+  uint64_t paddr;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt>
+<dd>GEM object handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt>
+<dd>Size of BO</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">paddr</span></code></dt>
+<dd>physical address</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_zocl_host_bo">
+struct <code class="descname">drm_zocl_host_bo</code><a class="headerlink" href="#c.drm_zocl_host_bo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the buffer handle of given physical address used with DRM_IOCTL_ZOCL_GET_HOST_BO ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_host_bo {
+  uint64_t paddr;
+  size_t size;
+  uint32_t handle;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">paddr</span></code></dt>
+<dd>physical address</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt>
+<dd>Size of BO</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt>
+<dd>GEM object handle</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_zocl_pwrite_bo">
+struct <code class="descname">drm_zocl_pwrite_bo</code><a class="headerlink" href="#c.drm_zocl_pwrite_bo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update bo with user’s data used with DRM_IOCTL_ZOCL_PWRITE_BO ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_pwrite_bo {
+  uint32_t handle;
+  uint32_t pad;
+  uint64_t offset;
+  uint64_t size;
+  uint64_t data_ptr;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt>
+<dd>GEM object handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">pad</span></code></dt>
+<dd>Padding</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">offset</span></code></dt>
+<dd>Offset into the object to write to</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt>
+<dd>Length of data to write</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">data_ptr</span></code></dt>
+<dd>Pointer to read the data from (pointers not 32/64 compatible)</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_zocl_pread_bo">
+struct <code class="descname">drm_zocl_pread_bo</code><a class="headerlink" href="#c.drm_zocl_pread_bo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read data from bo used with DRM_IOCTL_ZOCL_PREAD_BO ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_pread_bo {
+  uint32_t handle;
+  uint32_t pad;
+  uint64_t offset;
+  uint64_t size;
+  uint64_t data_ptr;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt>
+<dd>GEM object handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">pad</span></code></dt>
+<dd>Padding</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">offset</span></code></dt>
+<dd>Offset into the object to read from</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt>
+<dd>Length of data to wrreadite</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">data_ptr</span></code></dt>
+<dd>Pointer to write the data into (pointers not 32/64 compatible)</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_zocl_info_cu">
+struct <code class="descname">drm_zocl_info_cu</code><a class="headerlink" href="#c.drm_zocl_info_cu" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get information about Compute Unit (experimental) used with DRM_IOCTL_ZOCL_INFO_CU ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_info_cu {
+  uint64_t paddr;
+  int apt_idx;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">paddr</span></code></dt>
+<dd>Physical address</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">apt_idx</span></code></dt>
+<dd>Aperture index</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_zocl_execbuf">
+struct <code class="descname">drm_zocl_execbuf</code><a class="headerlink" href="#c.drm_zocl_execbuf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Submit a command buffer for execution on a compute unit (experimental) used with DRM_IOCTL_ZOCL_EXECBUF ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_execbuf {
+  uint32_t ctx_id;
+  uint32_t exec_bo_handle;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">ctx_id</span></code></dt>
+<dd>Pass 0</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">exec_bo_handle</span></code></dt>
+<dd>BO handle of command buffer formatted as ERT command</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_zocl_axlf">
+struct <code class="descname">drm_zocl_axlf</code><a class="headerlink" href="#c.drm_zocl_axlf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read xclbin (AXLF) device image and map CUs (experimental) used with DRM_IOCTL_ZOCL_READ_AXLF ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_axlf {
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="type">
+<dt id="c.drm_zocl_sk_getcmd">
+struct <code class="descname">drm_zocl_sk_getcmd</code><a class="headerlink" href="#c.drm_zocl_sk_getcmd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the soft kernel command (experimental) used with DRM_IOCTL_ZOCL_SK_GETCMD ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_sk_getcmd {
+  uint32_t opcode;
+  uint32_t start_cuidx;
+  uint32_t cu_nums;
+  size_t size;
+  uint64_t paddr;
+  char name;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">opcode</span></code></dt>
+<dd>opcode for the Soft Kernel Command Packet</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">start_cuidx</span></code></dt>
+<dd>start index of compute units</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_nums</span></code></dt>
+<dd>number of compute units in program</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt>
+<dd>size in bytes of soft kernel image</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">paddr</span></code></dt>
+<dd>soft kernel image’s physical address (little endian)</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">name</span></code></dt>
+<dd>symbol name of soft kernel</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_zocl_sk_create">
+struct <code class="descname">drm_zocl_sk_create</code><a class="headerlink" href="#c.drm_zocl_sk_create" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a soft kernel (experimental) used with DRM_IOCTL_ZOCL_SK_CREATE ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_sk_create {
+  uint32_t cu_idx;
+  uint32_t handle;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">cu_idx</span></code></dt>
+<dd>Compute unit index</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">handle</span></code></dt>
+<dd>Buffer object handle</dd>
+</dl>
+<dl class="type">
+<dt id="c.drm_zocl_sk_report">
+struct <code class="descname">drm_zocl_sk_report</code><a class="headerlink" href="#c.drm_zocl_sk_report" title="Permalink to this definition">¶</a></dt>
+<dd><p>Report the Soft Kernel State (experimental) used with DRM_IOCTL_ZOCL_SK_REPORT ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_sk_report {
+  uint32_t cu_idx;
+  enum drm_zocl_scu_state cu_state;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">cu_idx</span></code></dt>
+<dd>Compute unit index</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_state</span></code></dt>
+<dd>State of the Soft Compute Unit</dd>
+</dl>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="xclbintools.html" class="btn btn-neutral float-right" title="xclbinutil" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="xocl_ioctl.main.html" class="btn btn-neutral float-left" title="XOCL (PCIe User Physical Function) Driver Interfaces" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017-2019, Xilinx, Inc
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

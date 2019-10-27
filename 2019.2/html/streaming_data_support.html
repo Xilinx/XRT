@@ -1,0 +1,427 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>XRT Streaming Platform Support &mdash; XRT 2019.2 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Configuration File xrt.ini" href="xrt_ini.html" />
+    <link rel="prev" title="Memory-to-Memory (M2M) Support" href="m2m.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> XRT
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2019.2
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Use Model and Features</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P) Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">XRT Streaming Platform Support</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#apis-required-for-streaming-data-tranfer">APIs required for streaming data tranfer</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator (XMA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">XMA 19.2 Migration</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User API Library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
+</ul>
+<p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tools and Utilities</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Building Platforms</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Cloud Support</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Security</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Debug and Faqs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">XRT</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>XRT Streaming Platform Support</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/streaming_data_support.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="xrt-streaming-platform-support">
+<h1>XRT Streaming Platform Support<a class="headerlink" href="#xrt-streaming-platform-support" title="Permalink to this headline">¶</a></h1>
+<p>Starting from the 2019.1 release, XRT supports a new programming model which supports the direct streaming of data from host to kernel and kernel to host without having to go through global memory. This feature is an addition to the existing host to kernel and kernel to host data transfer using global memories. By using streams, you can get some of the advantages such as:</p>
+<ul class="simple">
+<li>The host application does not necessarily need to know the size of the data coming from the kernel. Data resides on the host memory can be transferred to the kernel as soon as it is needed. Similarly, the processed data can be transferred back when it is required.</li>
+<li>This programming model uses minimal storage compared to the larger and slower global memory bank, and thus improving the performance and power.</li>
+</ul>
+<div class="section" id="apis-required-for-streaming-data-tranfer">
+<h2>APIs required for streaming data tranfer<a class="headerlink" href="#apis-required-for-streaming-data-tranfer" title="Permalink to this headline">¶</a></h2>
+<p><strong>OpenCL™ extension APIs for streaming operation</strong></p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="25%" />
+<col width="75%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">APIs</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>clCreateStream</td>
+<td>Creates a read or write stream</td>
+</tr>
+<tr class="row-odd"><td>clReleaseStream</td>
+<td>Frees the created stream and its associated memory</td>
+</tr>
+<tr class="row-even"><td>clWriteStream</td>
+<td>Writes data to stream</td>
+</tr>
+<tr class="row-odd"><td>clReadStream</td>
+<td>Gets data from stream</td>
+</tr>
+<tr class="row-even"><td>clPollStreams</td>
+<td>Polls for any stream on the device to finish.
+Required only for non-blocking stream operation.</td>
+</tr>
+</tbody>
+</table>
+<p>The typical API flow is described below:</p>
+<ul>
+<li><p class="first">Create the required number of the read/write streams by clCreateStream.</p>
+<blockquote>
+<div><ul class="simple">
+<li>Streams should be directly attached to the OpenCL device object because it does not use any command queue. A stream itself is a command queue that only passes the data to a particular direction, either from host to kernel or from kernel to host.</li>
+<li>An appropriate flag should be used to denote stream write/read operation (from the host perspective).</li>
+<li>To specify how the stream is connected to the device, a predefined extension pointer (cl_mem_ext_ptr_t) should be used to denote the kernel and its argument the stream is associated with.</li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<p>In the code block below, a Read Stream (named read_stream) and a Write Stream (named write_stream) are created.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;CL/cl_ext_xilinx.h&gt; // Required for Xilinx® Extension</span><span class="cp"></span>
+
+<span class="c1">// Device connection specification of the stream through extension pointer</span>
+<span class="n">cl_mem_ext_ptr_t</span>  <span class="n">ext</span><span class="p">;</span>  <span class="c1">// Extension pointer</span>
+<span class="n">ext</span><span class="p">.</span><span class="n">param</span> <span class="o">=</span> <span class="n">kernel</span><span class="p">;</span>     <span class="c1">// The .param should be set to kernel (cl_kernel type)</span>
+<span class="n">ext</span><span class="p">.</span><span class="n">obj</span> <span class="o">=</span> <span class="k">nullptr</span><span class="p">;</span>
+
+<span class="c1">// The .flag should be used to denote the kernel argument</span>
+<span class="c1">// Create write stream for argument 3 of kernel</span>
+<span class="n">ext</span><span class="p">.</span><span class="n">flags</span> <span class="o">=</span> <span class="mi">3</span><span class="p">;</span>
+<span class="n">cl_stream</span> <span class="n">write_stream</span> <span class="o">=</span> <span class="n">clCreateStream</span><span class="p">(</span><span class="n">device_id</span><span class="p">,</span> <span class="n">CL_STREAM_WRITE_ONLY</span><span class="p">,</span> <span class="n">CL_STREAM</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ext</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ret</span><span class="p">);</span>
+
+<span class="c1">// Create read stream for argument 4 of kernel</span>
+<span class="n">ext</span><span class="p">.</span><span class="n">flags</span> <span class="o">=</span> <span class="mi">4</span><span class="p">;</span>
+<span class="n">cl_stream</span> <span class="n">read_stream</span> <span class="o">=</span> <span class="n">clCreateStream</span><span class="p">(</span><span class="n">device_id</span><span class="p">,</span> <span class="n">CL_STREAM_READ_ONLY</span><span class="p">,</span> <span class="n">CL_STREAM</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ext</span><span class="p">,</span><span class="o">&amp;</span><span class="n">ret</span><span class="p">);</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li>Set the remaining non-stream kernel arguments and enqueue the kernel. The following code block shows typical kernel argument (non-stream arguments such as buffer and/or scalar) setting and kernel enqueuing.</li>
+</ul>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="c1">// Set kernel non-stream argument (if any)</span>
+<span class="n">clSetKernelArg</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="mi">0</span><span class="p">,...,...);</span>
+<span class="n">clSetKernelArg</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="mi">1</span><span class="p">,...,...);</span>
+<span class="n">clSetKernelArg</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="mi">2</span><span class="p">,...,...);</span>
+<span class="c1">// 3rd and 4th arguments are not set as those are already specified when creating the streams</span>
+
+<span class="c1">// Schedule kernel enqueue</span>
+<span class="n">clEnqueueTask</span><span class="p">(</span><span class="n">commands</span><span class="p">,</span> <span class="n">kernel</span><span class="p">,</span> <span class="p">.</span> <span class="p">..</span> <span class="p">.</span> <span class="p">);</span>
+</pre></div>
+</div>
+<ul>
+<li><p class="first">Initiate Read and Write transfer by clReadStream and clWriteStream.</p>
+<blockquote>
+<div><ul>
+<li><p class="first">Note the usage of attribute cl_stream_xfer_req associated with read and write request.</p>
+</li>
+<li><p class="first">The .flag is used to denote transfer mechanism.</p>
+<blockquote>
+<div><ul class="simple">
+<li><strong>CL_STREAM_EOT:</strong> Currently, successful stream transfer mechanism depends on identifying the end of the transfer by an End of Transfer signal. This flag is mandatory in the current release.</li>
+<li><strong>CL_STREAM_NONBLOCKING:</strong> By default the Read and Write transfers are blocking. For non-blocking transfer, CL_STREAM_NONBLOCKING has to be set.</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first">The .priv_data is used to specify a string (as a name for tagging purpose) associated with the transfer. This will help identify specific transfer completion when polling the stream completion. It is required when using the non-blocking version of the API.</p>
+</li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<p>In the following code block, the stream read and write transfers are executed with the non-blocking approach.</p>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="c1">// Initiate the READ transfer</span>
+<span class="n">cl_stream_xfer_req</span> <span class="n">rd_req</span> <span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+
+<span class="n">rd_req</span><span class="p">.</span><span class="n">flags</span> <span class="o">=</span> <span class="n">CL_STREAM_EOT</span> <span class="o">|</span> <span class="n">CL_STREAM_NONBLOCKING</span><span class="p">;</span>
+<span class="n">rd_req</span><span class="p">.</span><span class="n">priv_data</span> <span class="o">=</span> <span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="p">)</span><span class="s">&quot;read&quot;</span><span class="p">;</span> <span class="c1">// You can think this as tagging the</span>
+                                                                      <span class="n">transfer</span> <span class="n">with</span> <span class="n">a</span> <span class="n">name</span>
+<span class="nf">clReadStream</span><span class="p">(</span><span class="n">read_stream</span><span class="p">,</span> <span class="n">host_read_ptr</span><span class="p">,</span> <span class="n">max_read_size</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">rd_req</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ret</span><span class="p">);</span>
+
+<span class="c1">// Initiating the WRITE transfer</span>
+<span class="n">cl_stream_xfer_req</span> <span class="n">wr_req</span> <span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+
+<span class="n">wr_req</span><span class="p">.</span><span class="n">flags</span> <span class="o">=</span> <span class="n">CL_STREAM_EOT</span> <span class="o">|</span> <span class="n">CL_STREAM_NONBLOCKING</span><span class="p">;</span>
+<span class="n">wr_req</span><span class="p">.</span><span class="n">priv_data</span> <span class="o">=</span> <span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="p">)</span><span class="s">&quot;write&quot;</span><span class="p">;</span>
+
+<span class="n">clWriteStream</span><span class="p">(</span><span class="n">write_stream</span><span class="p">,</span> <span class="n">host_write_ptr</span><span class="p">,</span> <span class="n">write_size</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">wr_req</span> <span class="p">,</span> <span class="o">&amp;</span><span class="n">ret</span><span class="p">);</span>
+</pre></div>
+</div>
+<ul>
+<li><p class="first">Poll all the streams for completion. For the non-blocking transfer, a polling API is provided to ensure the read/write transfers are completed. For the blocking version of the API, polling is not required.</p>
+<blockquote>
+<div><ul class="simple">
+<li>The number of poll requests should be used through cl_streams_poll_req_completions.</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">clPollStreams</span></code> is a blocking API. It returns the execution to the host code as soon as it receives the notification that all stream requests have been completed, or until you specify the timeout.</li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="c1">// Checking the request completion</span>
+<span class="n">cl_streams_poll_req_completions</span> <span class="n">poll_req</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="p">{</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">};</span> <span class="c1">// 2 Requests</span>
+
+<span class="k">auto</span> <span class="n">num_compl</span> <span class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+<span class="n">clPollStreams</span><span class="p">(</span><span class="n">device_id</span><span class="p">,</span> <span class="n">poll_req</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">num_compl</span><span class="p">,</span> <span class="mi">5000</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">ret</span><span class="p">);</span>
+<span class="c1">// Blocking API, waits for 2 poll request completion or 5000ms, whichever occurs first</span>
+</pre></div>
+</div>
+<ul>
+<li><p class="first">Read and use the stream data in host.</p>
+<blockquote>
+<div><ul class="simple">
+<li>After the successful poll request is completed, the host can read the data from the host pointer.</li>
+<li>Also, the host can check the size of the data transferred to the host. For this purpose, the host needs to find the correct poll request by matching <code class="docutils literal notranslate"><span class="pre">priv_data</span></code> and then fetching nbytes (the number of bytes transferred) from the <code class="docutils literal notranslate"><span class="pre">cl_streams_poll_req_completions</span></code> structure.</li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">i</span><span class="o">&lt;</span><span class="mi">2</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">rd_req</span><span class="p">.</span><span class="n">priv_data</span> <span class="o">==</span> <span class="n">poll_req</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">priv_data</span><span class="p">)</span> <span class="p">{</span> <span class="c1">// Identifying the read transfer</span>
+
+     <span class="c1">// Getting read size, data size from kernel is unknown</span>
+     <span class="kt">ssize_t</span> <span class="n">result_size</span><span class="o">=</span><span class="n">poll_req</span><span class="p">[</span><span class="n">i</span><span class="p">].</span><span class="n">nbytes</span><span class="p">;</span>
+     <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The header file containing function prototype and argument description is available in the XRT GitHub repository.</p>
+<p><strong>IMPORTANT</strong>: If the streaming kernel has multiple CUs, the host code needs to use a unique <code class="docutils literal notranslate"><span class="pre">cl_kernel</span></code> object for each CU. The host code must use <code class="docutils literal notranslate"><span class="pre">clCreateKernel</span></code> with &lt;kernel_name&gt;:{compute_unit_name} to get each CU, creating streams for them, and enqueuing them individually.</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="xrt_ini.html" class="btn btn-neutral float-right" title="Configuration File xrt.ini" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="m2m.html" class="btn btn-neutral float-left" title="Memory-to-Memory (M2M) Support" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017-2019, Xilinx, Inc
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

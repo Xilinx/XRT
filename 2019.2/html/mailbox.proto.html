@@ -1,0 +1,605 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Mailbox Inter-domain Communication Protocol &mdash; XRT 2019.2 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="MSD/MPD and Plugins" href="cloud_vendor_support.html" />
+    <link rel="prev" title="Mailbox Subdevice Driver" href="mailbox.main.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> XRT
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2019.2
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Use Model and Features</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P) Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator (XMA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">XMA 19.2 Migration</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User API Library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
+</ul>
+<p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tools and Utilities</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Building Platforms</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Cloud Support</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Mailbox Inter-domain Communication Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Security</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Debug and Faqs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">XRT</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Mailbox Inter-domain Communication Protocol</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/mailbox.proto.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="mailbox-inter-domain-communication-protocol">
+<h1>Mailbox Inter-domain Communication Protocol<a class="headerlink" href="#mailbox-inter-domain-communication-protocol" title="Permalink to this headline">¶</a></h1>
+<dl class="type">
+<dt id="c.xcl_mailbox_request">
+enum <code class="descname">xcl_mailbox_request</code><a class="headerlink" href="#c.xcl_mailbox_request" title="Permalink to this definition">¶</a></dt>
+<dd><p>List of all mailbox request OPCODE. Some OP code requires arguments, which is defined as corresponding data structures below. Response to the request usually is a int32_t containing the error code. Some responses are more complicated and require a data structure, which is also defined below in this file.</p>
+</dd></dl>
+
+<p><strong>Constants</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_UNKNOWN</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_TEST_READY</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_TEST_READ</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_LOCK_BITSTREAM</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_UNLOCK_BITSTREAM</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_HOT_RESET</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_FIREWALL</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_LOAD_XCLBIN_KADDR</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_LOAD_XCLBIN</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_RECLOCK</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_PEER_DATA</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_USER_PROBE</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_MGMT_STATE</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_CHG_SHELL</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_PROGRAM_SHELL</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<dl class="type">
+<dt id="c.xcl_mailbox_req_bitstream_lock">
+struct <code class="descname">xcl_mailbox_req_bitstream_lock</code><a class="headerlink" href="#c.xcl_mailbox_req_bitstream_lock" title="Permalink to this definition">¶</a></dt>
+<dd><p>MAILBOX_REQ_LOCK_BITSTREAM and MAILBOX_REQ_UNLOCK_BITSTREAM payload type</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_mailbox_req_bitstream_lock {
+  uint8_t uuid;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">uuid</span></code></dt>
+<dd>uuid of the xclbin</dd>
+</dl>
+<dl class="type">
+<dt id="c.xcl_group_kind">
+enum <code class="descname">xcl_group_kind</code><a class="headerlink" href="#c.xcl_group_kind" title="Permalink to this definition">¶</a></dt>
+<dd><p>Groups of data that can be fetched from mgmt side</p>
+</dd></dl>
+
+<p><strong>Constants</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_SENSOR</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_ICAP</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_BDINFO</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MIG_ECC</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_FIREWALL</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_DNA</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_SUBDEV</span></code></dt>
+<dd><em>undescribed</em></dd>
+</dl>
+<dl class="type">
+<dt id="c.xcl_board_info">
+struct <code class="descname">xcl_board_info</code><a class="headerlink" href="#c.xcl_board_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Data structure used to fetch BDINFO group</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_board_info {
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="type">
+<dt id="c.xcl_sensor">
+struct <code class="descname">xcl_sensor</code><a class="headerlink" href="#c.xcl_sensor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Data structure used to fetch SENSOR group</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_sensor {
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="type">
+<dt id="c.xcl_pr_region">
+struct <code class="descname">xcl_pr_region</code><a class="headerlink" href="#c.xcl_pr_region" title="Permalink to this definition">¶</a></dt>
+<dd><p>Data structure used to fetch ICAP group</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_pr_region {
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="type">
+<dt id="c.xcl_mig_ecc">
+struct <code class="descname">xcl_mig_ecc</code><a class="headerlink" href="#c.xcl_mig_ecc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Data structure used to fetch MIG_ECC group</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_mig_ecc {
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="type">
+<dt id="c.xcl_firewall">
+struct <code class="descname">xcl_firewall</code><a class="headerlink" href="#c.xcl_firewall" title="Permalink to this definition">¶</a></dt>
+<dd><p>Data structure used to fetch FIREWALL group</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_firewall {
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="type">
+<dt id="c.xcl_dna">
+struct <code class="descname">xcl_dna</code><a class="headerlink" href="#c.xcl_dna" title="Permalink to this definition">¶</a></dt>
+<dd><p>Data structure used to fetch DNA group</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_dna {
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="type">
+<dt id="c.xcl_mailbox_subdev_peer">
+struct <code class="descname">xcl_mailbox_subdev_peer</code><a class="headerlink" href="#c.xcl_mailbox_subdev_peer" title="Permalink to this definition">¶</a></dt>
+<dd><p>MAILBOX_REQ_PEER_DATA payload type</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_mailbox_subdev_peer {
+  enum xcl_group_kind kind;
+  uint64_t size;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">kind</span></code></dt>
+<dd>data group</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt>
+<dd>buffer size for receiving response</dd>
+</dl>
+<dl class="type">
+<dt id="c.xcl_mailbox_conn">
+struct <code class="descname">xcl_mailbox_conn</code><a class="headerlink" href="#c.xcl_mailbox_conn" title="Permalink to this definition">¶</a></dt>
+<dd><p>MAILBOX_REQ_USER_PROBE payload type</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_mailbox_conn {
+  uint64_t kaddr;
+  uint64_t paddr;
+  uint32_t crc32;
+  uint32_t version;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">kaddr</span></code></dt>
+<dd>KVA of the verification data buffer</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">paddr</span></code></dt>
+<dd>physical addresss of the verification data buffer</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">crc32</span></code></dt>
+<dd>CRC value of the verification data buffer</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">version</span></code></dt>
+<dd>protocol version supported by peer</dd>
+</dl>
+<dl class="type">
+<dt id="c.xcl_mailbox_conn_resp">
+struct <code class="descname">xcl_mailbox_conn_resp</code><a class="headerlink" href="#c.xcl_mailbox_conn_resp" title="Permalink to this definition">¶</a></dt>
+<dd><p>MAILBOX_REQ_USER_PROBE response payload type</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_mailbox_conn_resp {
+  uint32_t version;
+  uint64_t conn_flags;
+  uint64_t chan_switch;
+  char comm_id;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">version</span></code></dt>
+<dd>protocol version should be used</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">conn_flags</span></code></dt>
+<dd>connection status</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">chan_switch</span></code></dt>
+<dd>bitmap to indicate SW / HW channel for each OP code msg</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">comm_id</span></code></dt>
+<dd>user defined cookie</dd>
+</dl>
+<dl class="type">
+<dt id="c.xcl_mailbox_peer_state">
+struct <code class="descname">xcl_mailbox_peer_state</code><a class="headerlink" href="#c.xcl_mailbox_peer_state" title="Permalink to this definition">¶</a></dt>
+<dd><p>MAILBOX_REQ_MGMT_STATE payload type</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_mailbox_peer_state {
+  uint64_t state_flags;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">state_flags</span></code></dt>
+<dd>peer state flags</dd>
+</dl>
+<dl class="type">
+<dt id="c.xcl_mailbox_bitstream_kaddr">
+struct <code class="descname">xcl_mailbox_bitstream_kaddr</code><a class="headerlink" href="#c.xcl_mailbox_bitstream_kaddr" title="Permalink to this definition">¶</a></dt>
+<dd><p>MAILBOX_REQ_LOAD_XCLBIN_KADDR payload type</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_mailbox_bitstream_kaddr {
+  uint64_t addr;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">addr</span></code></dt>
+<dd>pointer to xclbin body</dd>
+</dl>
+<dl class="type">
+<dt id="c.xcl_mailbox_clock_freqscaling">
+struct <code class="descname">xcl_mailbox_clock_freqscaling</code><a class="headerlink" href="#c.xcl_mailbox_clock_freqscaling" title="Permalink to this definition">¶</a></dt>
+<dd><p>MAILBOX_REQ_RECLOCK payload type</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_mailbox_clock_freqscaling {
+  unsigned int region;
+  unsigned short target_freqs;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">region</span></code></dt>
+<dd>region of clock</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">target_freqs</span></code></dt>
+<dd>array of target clock frequencies (max clocks: 16)</dd>
+</dl>
+<dl class="type">
+<dt id="c.xcl_mailbox_req">
+struct <code class="descname">xcl_mailbox_req</code><a class="headerlink" href="#c.xcl_mailbox_req" title="Permalink to this definition">¶</a></dt>
+<dd><p>mailbox request message header</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_mailbox_req {
+  uint64_t flags;
+  enum xcl_mailbox_request req;
+  char data;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">flags</span></code></dt>
+<dd>flags of this message</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">req</span></code></dt>
+<dd>opcode</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt>
+<dd>payload of variable length</dd>
+</dl>
+<dl class="type">
+<dt id="c.xcl_sw_chan">
+struct <code class="descname">xcl_sw_chan</code><a class="headerlink" href="#c.xcl_sw_chan" title="Permalink to this definition">¶</a></dt>
+<dd><p>mailbox software channel message metadata. This defines the interface between daemons (MPD and MSD) and mailbox’s read or write callbacks. A mailbox message (either a request or response) is wrapped by this data structure as payload. A sw_chan is passed between mailbox driver and daemon via read / write driver callbacks. And it is also passed between MPD and MSD via vendor defined interface (TCP socket, etc).</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_sw_chan {
+  uint64_t sz;
+  uint64_t flags;
+  uint64_t id;
+  char data;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">sz</span></code></dt>
+<dd>payload size</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">flags</span></code></dt>
+<dd>flags of this message as in struct mailbox_req</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">id</span></code></dt>
+<dd>message ID</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt>
+<dd>payload (struct mailbox_req or response data matching the request)</dd>
+</dl>
+<dl class="type">
+<dt id="c.xcl_mailbox_p2p_bar_addr">
+struct <code class="descname">xcl_mailbox_p2p_bar_addr</code><a class="headerlink" href="#c.xcl_mailbox_p2p_bar_addr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_mailbox_p2p_bar_addr {
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="cloud_vendor_support.html" class="btn btn-neutral float-right" title="MSD/MPD and Plugins" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="mailbox.main.html" class="btn btn-neutral float-left" title="Mailbox Subdevice Driver" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017-2019, Xilinx, Inc
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
