@@ -1,0 +1,374 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>XCLMGMT (PCIe Management Physical Function) Driver Interfaces &mdash; XRT 2019.2 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="XOCL (PCIe User Physical Function) Driver Interfaces" href="xocl_ioctl.main.html" />
+    <link rel="prev" title="Binary Formats" href="formats.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> XRT
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2019.2
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Use Model and Features</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P) Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator (XMA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">XMA 19.2 Migration</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User API Library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
+</ul>
+<p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tools and Utilities</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Building Platforms</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Cloud Support</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Security</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Debug and Faqs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">XRT</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>XCLMGMT (PCIe Management Physical Function) Driver Interfaces</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/mgmt-ioctl.main.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="xclmgmt-pcie-management-physical-function-driver-interfaces">
+<span id="mgmt-ioctl-main-rst"></span><h1>XCLMGMT (PCIe Management Physical Function) Driver Interfaces<a class="headerlink" href="#xclmgmt-pcie-management-physical-function-driver-interfaces" title="Permalink to this headline">¶</a></h1>
+<p><strong>PCIe Kernel Driver for Managament Physical Function</strong></p>
+<p>Interfaces exposed by <em>xclmgmt</em> driver are defined in file, <em>mgmt-ioctl.h</em>.
+Core functionality provided by <em>xclmgmt</em> driver is described in the following table:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="4%" />
+<col width="36%" />
+<col width="28%" />
+<col width="32%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">#</th>
+<th class="head">Functionality</th>
+<th class="head">ioctl request code</th>
+<th class="head">data format</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>1</td>
+<td>FPGA image download</td>
+<td>XCLMGMT_IOCICAPDOWNLOAD_AXLF</td>
+<td>xclmgmt_ioc_bitstream_axlf</td>
+</tr>
+<tr class="row-odd"><td>2</td>
+<td>CL frequency scaling</td>
+<td>XCLMGMT_IOCFREQSCALE</td>
+<td>xclmgmt_ioc_freqscaling</td>
+</tr>
+<tr class="row-even"><td>3</td>
+<td>PCIe hot reset</td>
+<td>XCLMGMT_IOCHOTRESET</td>
+<td>NA</td>
+</tr>
+<tr class="row-odd"><td>4</td>
+<td>CL reset</td>
+<td>XCLMGMT_IOCOCLRESET</td>
+<td>NA</td>
+</tr>
+<tr class="row-even"><td>5</td>
+<td>Live boot FPGA from PROM</td>
+<td>XCLMGMT_IOCREBOOT</td>
+<td>NA</td>
+</tr>
+<tr class="row-odd"><td>6</td>
+<td>Device sensors (current, voltage and
+temperature)</td>
+<td>NA</td>
+<td><em>hwmon</em> (xclmgmt_microblaze and
+xclmgmt_sysmon) interface on sysfs</td>
+</tr>
+<tr class="row-even"><td>7</td>
+<td>Querying device errors</td>
+<td>XCLMGMT_IOCERRINFO</td>
+<td>xclErrorStatus</td>
+</tr>
+</tbody>
+</table>
+<dl class="type">
+<dt id="c.xclmgmt_ioc_info">
+struct <code class="descname">xclmgmt_ioc_info</code><a class="headerlink" href="#c.xclmgmt_ioc_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Obtain information from the device used with XCLMGMT_IOCINFO ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xclmgmt_ioc_info {
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<p><strong>Description</strong></p>
+<p>Note that this structure will be obsoleted in future and the same functionality will be exposed via sysfs nodes</p>
+<dl class="type">
+<dt id="c.xclmgmt_ioc_bitstream_axlf">
+struct <code class="descname">xclmgmt_ioc_bitstream_axlf</code><a class="headerlink" href="#c.xclmgmt_ioc_bitstream_axlf" title="Permalink to this definition">¶</a></dt>
+<dd><p>load xclbin (AXLF) device image used with XCLMGMT_IOCICAPDOWNLOAD_AXLF ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xclmgmt_ioc_bitstream_axlf {
+  struct axlf * xclbin;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclbin</span></code></dt>
+<dd>Pointer to user’s xclbin structure in memory</dd>
+</dl>
+<dl class="type">
+<dt id="c.xclmgmt_ioc_freqscaling">
+struct <code class="descname">xclmgmt_ioc_freqscaling</code><a class="headerlink" href="#c.xclmgmt_ioc_freqscaling" title="Permalink to this definition">¶</a></dt>
+<dd><p>scale frequencies on the board using Xilinx clock wizard used with XCLMGMT_IOCFREQSCALE ioctl</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xclmgmt_ioc_freqscaling {
+  unsigned ocl_region;
+  unsigned short ocl_target_freq;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">ocl_region</span></code></dt>
+<dd>PR region (currently only 0 is supported)</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">ocl_target_freq</span></code></dt>
+<dd>Array of requested frequencies, a value o zero in the array indicates leave untouched</dd>
+</dl>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="xocl_ioctl.main.html" class="btn btn-neutral float-right" title="XOCL (PCIe User Physical Function) Driver Interfaces" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="formats.html" class="btn btn-neutral float-left" title="Binary Formats" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017-2019, Xilinx, Inc
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

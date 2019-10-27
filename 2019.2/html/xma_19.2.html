@@ -1,0 +1,387 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>XMA 19.2 Migration &mdash; XRT 2019.2 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="XRT Core Library" href="xrt.main.html" />
+    <link rel="prev" title="Xilinx Media Accelerator (XMA)" href="xma_user_guide.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> XRT
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2019.2
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Use Model and Features</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P) Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator (XMA)</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">XMA 19.2 Migration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#summary-of-changes">Summary of changes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#plugin-code-migration">Plugin code Migration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#plugin-structure-change">Plugin Structure Change</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#buffer-creation-xma-plg-buffer-alloc">Buffer Creation: <code class="docutils literal notranslate"><span class="pre">xma_plg_buffer_alloc</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#buffer-write-xma-plg-buffer-write">Buffer Write: <code class="docutils literal notranslate"><span class="pre">xma_plg_buffer_write</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#buffer-read-xma-plg-buffer-read">Buffer Read: <code class="docutils literal notranslate"><span class="pre">xma_plg_buffer_read</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#scalar-register-write-xma-plg-register-prep-write">Scalar/Register Write: <code class="docutils literal notranslate"><span class="pre">xma_plg_register_prep_write</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#kernel-scheduling-xma-plg-schedule-work-item">Kernel Scheduling: <code class="docutils literal notranslate"><span class="pre">xma_plg_schedule_work_item</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#application-code-migration">Application Code Migration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#xma-initialize-function-xma-initlialize">XMA Initialize Function: <code class="docutils literal notranslate"><span class="pre">xma_initlialize</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#expanded-plugin-properties">Expanded Plugin Properties</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">User API Library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
+</ul>
+<p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tools and Utilities</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Building Platforms</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Cloud Support</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Security</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Debug and Faqs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">XRT</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>XMA 19.2 Migration</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/xma_19.2.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="xma-19-2-migration">
+<h1>XMA 19.2 Migration<a class="headerlink" href="#xma-19-2-migration" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="summary-of-changes">
+<h2>Summary of changes<a class="headerlink" href="#summary-of-changes" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic simple">
+<li><dl class="first docutils">
+<dt><a class="reference internal" href="#plugin-code-migration">Plugin Code Migration</a></dt>
+<dd><ul class="first last">
+<li><a class="reference internal" href="#plugin-structure-change">Plugin Structure Change</a></li>
+<li><a class="reference internal" href="#buffer-creation-xma-plg-buffer-alloc">Buffer Creation: xma_plg_buffer_alloc</a></li>
+<li><a class="reference internal" href="#buffer-write-xma-plg-buffer-write">Buffer Write: xma_plg_buffer_write</a></li>
+<li><a class="reference internal" href="#buffer-read-xma-plg-buffer-read">Buffer Read: xma_plg_buffer_read</a></li>
+<li><a class="reference internal" href="#scalar-register-write-xma-plg-register-prep-write">Scalar/Register Write: xma_plg_register_prep_write</a></li>
+<li><a class="reference internal" href="#kernel-scheduling-xma-plg-schedule-work-item">Kernel Scheduling: xma_plg_schedule_work_item</a></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><a class="reference internal" href="#application-code-migration">Application Code Migration</a></dt>
+<dd><ul class="first last">
+<li><a class="reference internal" href="#xma-initialize-function-xma-initlialize">XMA Initialize Function: xma_initlialize</a></li>
+<li><a class="reference internal" href="#expanded-plugin-properties">Expanded Plugin Properties</a></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ol>
+</div>
+<div class="section" id="plugin-code-migration">
+<h2>Plugin code Migration<a class="headerlink" href="#plugin-code-migration" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="plugin-structure-change">
+<h3>Plugin Structure Change<a class="headerlink" href="#plugin-structure-change" title="Permalink to this headline">¶</a></h3>
+<p>The following changes have been incorporated in the main plugin structures: <code class="docutils literal notranslate"><span class="pre">XmaEncoderPlugin</span></code>, <code class="docutils literal notranslate"><span class="pre">XmaDecoderPlugin</span></code>, etc.</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>The <code class="docutils literal notranslate"><span class="pre">.alloc_chan</span></code> plugin function has been deprecated. The resource management should be done in the application level.</li>
+<li>The field <code class="docutils literal notranslate"><span class="pre">.kernel_data_size</span></code> is removed.</li>
+<li>The new field <code class="docutils literal notranslate"><span class="pre">.xma_version</span></code> is added.</li>
+</ol>
+</div></blockquote>
+</div>
+<div class="section" id="buffer-creation-xma-plg-buffer-alloc">
+<h3>Buffer Creation: <code class="docutils literal notranslate"><span class="pre">xma_plg_buffer_alloc</span></code><a class="headerlink" href="#buffer-creation-xma-plg-buffer-alloc" title="Permalink to this headline">¶</a></h3>
+<p>In <strong>19.1</strong>, the buffer creation process was complex. It was needed to specify all buffer properties such as buffer size, physical address, handle when creating the buffer.</p>
+<p>In <strong>19.2</strong>, the buffer creation process is simplified</p>
+<blockquote>
+<div><ul>
+<li><p class="first">A new type <code class="docutils literal notranslate"><span class="pre">XmaBufferObj</span></code> is introduced</p>
+</li>
+<li><p class="first">Function <code class="docutils literal notranslate"><span class="pre">xma_plg_buffer_alloc</span></code> is changed</p>
+<blockquote>
+<div><ul class="simple">
+<li>Works on <code class="docutils literal notranslate"><span class="pre">XMASession</span></code> directly</li>
+<li>Supports Device Only Buffer</li>
+<li>Now there is no need to pass physical address using <code class="docutils literal notranslate"><span class="pre">xma_plg_get_paddr</span></code></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="buffer-write-xma-plg-buffer-write">
+<h3>Buffer Write: <code class="docutils literal notranslate"><span class="pre">xma_plg_buffer_write</span></code><a class="headerlink" href="#buffer-write-xma-plg-buffer-write" title="Permalink to this headline">¶</a></h3>
+<p>In <strong>19.1</strong>, the API <code class="docutils literal notranslate"><span class="pre">xma_plg_buffer_write</span></code> was used to copy data from the host pointer followed by the DMA transfer.</p>
+<p>In <strong>19.2</strong>, the API <code class="docutils literal notranslate"><span class="pre">xma_plg_buffer_write</span></code> does not accept host pointer any longer. If desired, the user has to copy from the host pointer to the buffer. <strong>The API now only performs DMA transfer from host to device</strong>.</p>
+</div>
+<div class="section" id="buffer-read-xma-plg-buffer-read">
+<h3>Buffer Read: <code class="docutils literal notranslate"><span class="pre">xma_plg_buffer_read</span></code><a class="headerlink" href="#buffer-read-xma-plg-buffer-read" title="Permalink to this headline">¶</a></h3>
+<p>In <strong>19.1</strong>, the API <code class="docutils literal notranslate"><span class="pre">xma_plg_buffer_read.</span></code> used to copy data to the host pointer after DMA transfer.</p>
+<p>In <strong>19.2</strong>, the API <code class="docutils literal notranslate"><span class="pre">xma_plg_buffer_read</span></code> does not accept host pointer any longer. If desired, the user has to copy from the buffer to the host pointer. <strong>The API now only performs DMA transfer from device to host</strong>.</p>
+</div>
+<div class="section" id="scalar-register-write-xma-plg-register-prep-write">
+<h3>Scalar/Register Write: <code class="docutils literal notranslate"><span class="pre">xma_plg_register_prep_write</span></code><a class="headerlink" href="#scalar-register-write-xma-plg-register-prep-write" title="Permalink to this headline">¶</a></h3>
+<p>In <strong>19.2</strong>, the API <code class="docutils literal notranslate"><span class="pre">xma_plg_register_prep_write</span></code> works directly on <code class="docutils literal notranslate"><span class="pre">XMASession</span></code> instead of <code class="docutils literal notranslate"><span class="pre">XmaHwSession</span></code>. This API has to be guarded between <code class="docutils literal notranslate"><span class="pre">xma_plg_kernel_lock_regmap</span></code> and <code class="docutils literal notranslate"><span class="pre">xma_plg_kernel_unlock_regmap</span></code> APIs.</p>
+<p><strong>Note</strong>: The API <code class="docutils literal notranslate"><span class="pre">xma_plg_register_prep_write</span></code> is not needed if the new scheduling API <code class="docutils literal notranslate"><span class="pre">xma_plg_schedule_work_item_with_args</span></code> is used.</p>
+</div>
+<div class="section" id="kernel-scheduling-xma-plg-schedule-work-item">
+<h3>Kernel Scheduling: <code class="docutils literal notranslate"><span class="pre">xma_plg_schedule_work_item</span></code><a class="headerlink" href="#kernel-scheduling-xma-plg-schedule-work-item" title="Permalink to this headline">¶</a></h3>
+<p>Now in <strong>19.2</strong>, the kernel scheduling API <code class="docutils literal notranslate"><span class="pre">xma_plg_schedule_work_item</span></code> has to be guarded between <code class="docutils literal notranslate"><span class="pre">xma_plg_kernel_lock_regmap</span></code> and <code class="docutils literal notranslate"><span class="pre">xma_plg_kernel_unlock_regmap</span></code> APIs.</p>
+<p><strong>Note</strong>: If using new scheduling API <code class="docutils literal notranslate"><span class="pre">xma_plg_schedule_work_item_with_args</span></code> the above locking and unlocking APIs are not required.</p>
+</div>
+</div>
+<div class="section" id="application-code-migration">
+<h2>Application Code Migration<a class="headerlink" href="#application-code-migration" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="xma-initialize-function-xma-initlialize">
+<h3>XMA Initialize Function: <code class="docutils literal notranslate"><span class="pre">xma_initlialize</span></code><a class="headerlink" href="#xma-initialize-function-xma-initlialize" title="Permalink to this headline">¶</a></h3>
+<p>In <strong>19.1</strong>, the API <code class="docutils literal notranslate"><span class="pre">xma_initlialize</span></code> used to take YAML configuration file.</p>
+<p>In <strong>19.2</strong>, the usage of <strong>YAML file has been obsoleted</strong>. The API <code class="docutils literal notranslate"><span class="pre">xma_initlialize</span></code> takes device information and XCLBIN through new datatype: <code class="docutils literal notranslate"><span class="pre">XmaXclbinParameter</span></code></p>
+</div>
+<div class="section" id="expanded-plugin-properties">
+<h3>Expanded Plugin Properties<a class="headerlink" href="#expanded-plugin-properties" title="Permalink to this headline">¶</a></h3>
+<p>Plugin properties have been expanded in <strong>19.2</strong> to contain more information.</p>
+<p>For example, compare <code class="docutils literal notranslate"><span class="pre">XmaEncoderProperties</span></code> between 19.1 and 19.2 XRT versions.</p>
+<p>Now in <strong>19.2</strong>, more fields have been added.</p>
+<blockquote>
+<div><ul class="simple">
+<li>Device index (Should be passed from the application level)</li>
+<li>Compute Unit index (Should be determined at the application level)</li>
+<li>Channel id (Each channel should be passed with unique id from the application level)</li>
+<li>DDR bank index (Set -1 if auto-detection is desired)</li>
+<li>Plugin lib path</li>
+</ul>
+</div></blockquote>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="xrt.main.html" class="btn btn-neutral float-right" title="XRT Core Library" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="xma_user_guide.html" class="btn btn-neutral float-left" title="Xilinx Media Accelerator (XMA)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017-2019, Xilinx, Inc
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

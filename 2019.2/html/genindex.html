@@ -1,0 +1,538 @@
+
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Index &mdash; XRT 2019.2 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="#" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> XRT
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2019.2
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Use Model and Features</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P) Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator (XMA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">XMA 19.2 Migration</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User API Library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
+</ul>
+<p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tools and Utilities</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Building Platforms</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Cloud Support</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Security</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Debug and Faqs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">XRT</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Index</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+
+<h1 id="index">Index</h1>
+
+<div class="genindex-jumpbox">
+ <a href="#D"><strong>D</strong></a>
+ | <a href="#E"><strong>E</strong></a>
+ | <a href="#X"><strong>X</strong></a>
+ 
+</div>
+<h2 id="D">D</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_axlf">drm_xocl_axlf (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_create_bo">drm_xocl_create_bo (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_ctx">drm_xocl_ctx (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_execbuf">drm_xocl_execbuf (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_info_bo">drm_xocl_info_bo (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_map_bo">drm_xocl_map_bo (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_pread_bo">drm_xocl_pread_bo (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_pread_unmgd">drm_xocl_pread_unmgd (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_pwrite_bo">drm_xocl_pwrite_bo (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_pwrite_unmgd">drm_xocl_pwrite_unmgd (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_sync_bo">drm_xocl_sync_bo (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_usage_stat">drm_xocl_usage_stat (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_user_intr">drm_xocl_user_intr (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_userptr_bo">drm_xocl_userptr_bo (C type)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_axlf">drm_zocl_axlf (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_create_bo">drm_zocl_create_bo (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_execbuf">drm_zocl_execbuf (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_host_bo">drm_zocl_host_bo (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_info_bo">drm_zocl_info_bo (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_info_cu">drm_zocl_info_cu (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_map_bo">drm_zocl_map_bo (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_pread_bo">drm_zocl_pread_bo (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_pwrite_bo">drm_zocl_pwrite_bo (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_sk_create">drm_zocl_sk_create (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_sk_getcmd">drm_zocl_sk_getcmd (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_sk_report">drm_zocl_sk_report (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_sync_bo">drm_zocl_sync_bo (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_userptr_bo">drm_zocl_userptr_bo (C type)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="E">E</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="ert.main.html#c.ert_abort_cmd">ert_abort_cmd (C type)</a>
+</li>
+      <li><a href="ert.main.html#c.ert_configure_cmd">ert_configure_cmd (C type)</a>
+</li>
+      <li><a href="ert.main.html#c.ert_configure_sk_cmd">ert_configure_sk_cmd (C type)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_CQ_BASE_ADDRESS_ADDR">ERT_CQ_BASE_ADDRESS_ADDR (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_CQ_NUMBER_OF_SLOTS_ADDR">ERT_CQ_NUMBER_OF_SLOTS_ADDR (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_CQ_SLOT_SIZE_ADDR">ERT_CQ_SLOT_SIZE_ADDR (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_CQ_STATUS_ENABLE_ADDR">ERT_CQ_STATUS_ENABLE_ADDR (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_CU_BASE_ADDRESS_ADDR">ERT_CU_BASE_ADDRESS_ADDR (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_CU_DMA_ENABLE_ADDR">ERT_CU_DMA_ENABLE_ADDR (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_CU_ISR_HANDLER_ENABLE_ADDR">ERT_CU_ISR_HANDLER_ENABLE_ADDR (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_CU_OFFSET_ADDR">ERT_CU_OFFSET_ADDR (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_CUISR_LUT_ADDR">ERT_CUISR_LUT_ADDR (C function)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="ert.main.html#c.ERT_EXIT_CMD">ERT_EXIT_CMD (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_HLS_MODULE_IDLE">ERT_HLS_MODULE_IDLE (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_HOST_INTERRUPT_ENABLE_ADDR">ERT_HOST_INTERRUPT_ENABLE_ADDR (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ert_init_kernel_cmd">ert_init_kernel_cmd (C type)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_INTC_ADDR">ERT_INTC_ADDR (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_INTC_IPR_ADDR">ERT_INTC_IPR_ADDR (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_NUMBER_OF_CU_ADDR">ERT_NUMBER_OF_CU_ADDR (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ert_packet">ert_packet (C type)</a>
+</li>
+      <li><a href="ert.main.html#c.ert_start_kernel_cmd">ert_start_kernel_cmd (C type)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_STATUS_REGISTER_ADDR">ERT_STATUS_REGISTER_ADDR (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ert_unconfigure_sk_cmd">ert_unconfigure_sk_cmd (C type)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_WORD_SIZE">ERT_WORD_SIZE (C function)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="X">X</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="mailbox.proto.html#c.xcl_board_info">xcl_board_info (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_dna">xcl_dna (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_firewall">xcl_firewall (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_group_kind">xcl_group_kind (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_bitstream_kaddr">xcl_mailbox_bitstream_kaddr (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_clock_freqscaling">xcl_mailbox_clock_freqscaling (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_conn">xcl_mailbox_conn (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_conn_resp">xcl_mailbox_conn_resp (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_p2p_bar_addr">xcl_mailbox_p2p_bar_addr (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_peer_state">xcl_mailbox_peer_state (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_req">xcl_mailbox_req (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_req_bitstream_lock">xcl_mailbox_req_bitstream_lock (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_request">xcl_mailbox_request (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_subdev_peer">xcl_mailbox_subdev_peer (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mig_ecc">xcl_mig_ecc (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_pr_region">xcl_pr_region (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_sensor">xcl_sensor (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_sw_chan">xcl_sw_chan (C type)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclAllocBO">xclAllocBO (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclAllocQDMABuf">xclAllocQDMABuf (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclAllocUserPtrBO">xclAllocUserPtrBO (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclBootFPGA">xclBootFPGA (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclClose">xclClose (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclCloseContext">xclCloseContext (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclCopyBO">xclCopyBO (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclCreateReadQueue">xclCreateReadQueue (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclCreateWriteQueue">xclCreateWriteQueue (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclDestroyQueue">xclDestroyQueue (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclDeviceHandle">xclDeviceHandle (C type)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclExecBuf">xclExecBuf (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclExecBufWithWaitList">xclExecBufWithWaitList (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclExecWait">xclExecWait (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclExportBO">xclExportBO (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclFreeBO">xclFreeBO (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclFreeQDMABuf">xclFreeQDMABuf (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclGetBOProperties">xclGetBOProperties (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclGetDeviceInfo2">xclGetDeviceInfo2 (C function)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="xrt.main.html#c.xclGetErrorStatus">xclGetErrorStatus (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclGetSectionInfo">xclGetSectionInfo (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclGetUsageInfo">xclGetUsageInfo (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclImportBO">xclImportBO (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclLoadXclBin">xclLoadXclBin (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclLockDevice">xclLockDevice (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclLogMsg">xclLogMsg (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclMapBO">xclMapBO (C function)</a>
+</li>
+      <li><a href="mgmt-ioctl.main.html#c.xclmgmt_ioc_bitstream_axlf">xclmgmt_ioc_bitstream_axlf (C type)</a>
+</li>
+      <li><a href="mgmt-ioctl.main.html#c.xclmgmt_ioc_freqscaling">xclmgmt_ioc_freqscaling (C type)</a>
+</li>
+      <li><a href="mgmt-ioctl.main.html#c.xclmgmt_ioc_info">xclmgmt_ioc_info (C type)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclOpen">xclOpen (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclOpenContext">xclOpenContext (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclPollCompletion">xclPollCompletion (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclProbe">xclProbe (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclRead">xclRead (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclReadBO">xclReadBO (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclReadQueue">xclReadQueue (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclReClock2">xclReClock2 (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclRegisterInterruptNotify">xclRegisterInterruptNotify (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclResetDevice">xclResetDevice (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclSyncBO">xclSyncBO (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclUnlockDevice">xclUnlockDevice (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclUnmgdPread">xclUnmgdPread (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclUnmgdPwrite">xclUnmgdPwrite (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclWrite">xclWrite (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclWriteBO">xclWriteBO (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclWriteQueue">xclWriteQueue (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_initialize">xma_initialize (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_buffer_alloc">xma_plg_buffer_alloc (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_buffer_alloc_arg_num">xma_plg_buffer_alloc_arg_num (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_buffer_alloc_ddr">xma_plg_buffer_alloc_ddr (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_buffer_free">xma_plg_buffer_free (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_buffer_read">xma_plg_buffer_read (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_buffer_write">xma_plg_buffer_write (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_channel_id">xma_plg_channel_id (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_is_work_item_done">xma_plg_is_work_item_done (C function)</a>
+</li>
+      <li><a href="xma.main.html#c.xma_plg_schedule_work_item">xma_plg_schedule_work_item (C function)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017-2019, Xilinx, Inc
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

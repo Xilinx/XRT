@@ -1,0 +1,512 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Security of Alveo Platform &mdash; XRT 2019.2 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/theme_overrides.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="XRT/Board Debug FAQ" href="debug-faq.html" />
+    <link rel="prev" title="MSD/MPD and Plugins" href="cloud_vendor_support.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> XRT
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2019.2
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building and Installing Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Use Model and Features</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P) Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M) Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="streaming_data_support.html">XRT Streaming Platform Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">Xilinx Media Accelerator (XMA)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">XMA 19.2 Migration</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User API Library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Core Library</a></li>
+</ul>
+<p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tools and Utilities</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Building Platforms</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">Yocto Recipes For Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="create_platforms.html">Create MPSoC Based Embedded Platforms</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Cloud Support</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Security</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Security of Alveo Platform</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#shell">Shell</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#dynamic-function-exchange">Dynamic Function eXchange</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#xclbin-generation">Xclbin Generation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#signing-of-xclbins">Signing of Xclbins</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#firewall">Firewall</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#deployment-models">Deployment Models</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#baremetal">Baremetal</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pass-through-virtualization">Pass-through Virtualization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#summary">Summary</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#mailbox">Mailbox</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#device-reset-and-recovery">Device Reset and Recovery</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#shell-update">Shell Update</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#compute-kernel-execution-models">Compute Kernel Execution Models</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Debug and Faqs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">XRT</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Security of Alveo Platform</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/security.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="security-of-alveo-platform">
+<span id="security-rst"></span><h1>Security of Alveo Platform<a class="headerlink" href="#security-of-alveo-platform" title="Permalink to this headline">¶</a></h1>
+<div align="center" class="align-center"><img alt="_images/XSA-shell.svg" src="_images/XSA-shell.svg" /></div>
+<p>Security is built into Alveo platform hardware and software architecture. The platform
+is made up of two fixed physical partitions: an immutable Shell and user compiled DFX partition.
+This design allows end users to perform Dynamic Function eXchange (Partial Reconfiguration
+in classic FPGA terminology) in the well defined DFX partition while the static Shell
+provides key infrastructure services. The following features reinforce security of the platform:</p>
+<ol class="arabic simple">
+<li>2 physical function shell design</li>
+<li>Trusted vs untrusted peripherals</li>
+<li>Signing of xclbins</li>
+<li>AXI Firewall</li>
+<li>Well-defined compute kernel execution model</li>
+</ol>
+<div class="section" id="shell">
+<h2>Shell<a class="headerlink" href="#shell" title="Permalink to this headline">¶</a></h2>
+<p>The Shell provides core infrastructure to the Alveo platform. It includes hardened PCIe
+block which provides physical connectivity to the host PCIe bus via two physical functions
+as described in <a class="reference internal" href="platforms.html#platforms-rst"><span class="std std-ref">Platform Overview</span></a>.
+The Shell is <em>trusted</em> partition of the Alveo platform and for all practical purposes
+should be treated like an ASIC. During system boot, the shell is loaded from the PROM.
+Once loaded, the Shell cannot be changed.</p>
+<p>In the figure above, the Shell peripherals shaded blue can only be accessed from physical
+function 0 (PF0) while those shaded violet can be accessed from physical
+function 1 (PF1). From PCIe topology point of view PF0 <em>owns</em> the device and performs
+supervisory actions on the device. Peripherals shaded blue are trusted while those
+shaded violet are not. A malicious actor with root privileges who has direct access to blue
+shaded peripherals can potentially crash both the device and PCIe bus. However, a malicious
+actor with root privileges who has direct access to only violet shaded peripherals cannot
+crash the PCIe bus. This is particularly significant in pass-through virtualization deployment
+as discussed later. Ordinary users without root privileges can never crash the PCIe bus.</p>
+<p>All peripherals in the shell except XDMA are slaves from PCIe point of view and cannot
+initiate PCIe transactions. <a class="reference external" href="https://www.xilinx.com/support/documentation/ip_documentation/xdma/v4_1/pg195-pcie-dma.pdf">XDMA</a>
+is a regular PCIe scatter gather DMA engine with a well defined programming model.</p>
+<p>The Shell provides a <em>control</em> path and a <em>data</em>
+path to the user compiled image loaded on DFX partition. The Firewalls in control and data
+paths protect the Shell from un-trusted DFX partition. For example if a slave in DFX has a
+bug or is malicious the appropriate firewall will step in and protect the Shell from the
+failing slave as soon as a non compiant AXI transaction is placed on AXI bus..</p>
+<p>For shell update see <a class="reference internal" href="#shell-update">Shell Update</a> section below.</p>
+</div>
+<div class="section" id="dynamic-function-exchange">
+<h2>Dynamic Function eXchange<a class="headerlink" href="#dynamic-function-exchange" title="Permalink to this headline">¶</a></h2>
+<p>User compiled image packaged as xclbin is loaded on the Dynamic Functional eXchange
+partition by the Shell. The image may be signed with a private key and its public
+key registered with Linux kernel keyring. The xclbin signature is validated by
+xclmgmt driver. This guarantees that only known good user compiled images are loaded by
+the Shell. The image load is itself effected by xclmgmt driver which binds to PF0.
+xclmgmt driver downloads the bitstream packaged in the bitstream section of xclbin by
+programming the ICAP peripheral. The management driver also discovers the target frequency
+of the DFX partition by reading the xclbin clock section and then programs the clocks
+which are also part of the Shell. These operations are exposed as one atomic ioctl by
+xclmgmt driver.</p>
+<p>xclbin is a container which packs FPGA bitstream for the DFX partition and host of related
+metadata like clock frequencies, information about instantiated compute units, etc. The
+compute units typically expose a well defined register space on the PCIe BAR for access by
+XRT. An user compiled image does not have any physical path to directly interact with PCIe
+Bus. Compiled images do have access to device DDR.</p>
+<p>More information on xclbin can be found in <a class="reference internal" href="formats.html#formats-rst"><span class="std std-ref">Binary Formats</span></a>.</p>
+</div>
+<div class="section" id="xclbin-generation">
+<h2>Xclbin Generation<a class="headerlink" href="#xclbin-generation" title="Permalink to this headline">¶</a></h2>
+<p>Users compile their Verilog/VHDL/OpenCL/C/C++ design using Vitis™ compiler, v++ which also takes
+the shell specification as a second input. By construction the Vitis™ compiler, v++ generates image
+compatible with DFX partition of the shell. The compiler uses a technology called <em>PR Verify</em>
+to ensure that the user design physically confines itself to DFX partition and does not attempt
+to overwrite portions of the Shell. It also validates that all the IOs between the DFX and
+Shell are going through fixed pins exposed by Shell.</p>
+</div>
+<div class="section" id="signing-of-xclbins">
+<h2>Signing of Xclbins<a class="headerlink" href="#signing-of-xclbins" title="Permalink to this headline">¶</a></h2>
+<p>xclbin signing process is similar to signing of Linux kernel modules. xclbins can be signed by
+XRT <strong>xclbinutil</strong> utility. The signing adds a PKCS7 signature at the end of xclbin. The signing
+certificate is then registered with appropriate key-ring. XRT supports one of three levels of
+security which can be configured with XRT <strong>xbmgmt</strong> utility running with root privileges.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="19%" />
+<col width="81%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Security level</th>
+<th class="head">Xclbin signature verification behavior of xclmgmt driver</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>0</td>
+<td>No verification</td>
+</tr>
+<tr class="row-odd"><td>1</td>
+<td>Signature verification enforced using signing certificate in
+<em>.xilinx_fpga_xclbin_keys</em> key-ring</td>
+</tr>
+<tr class="row-even"><td>2</td>
+<td>Linux is running in UEFI secure mode and signature verification
+is enforced using signing certificate in <em>system</em> key-ring</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="firewall">
+<h2>Firewall<a class="headerlink" href="#firewall" title="Permalink to this headline">¶</a></h2>
+<p>Alveo hardware design uses standard AXI bus. As shown in the figure the control path uses AXI-Lite
+and data path uses AXI4 full. Specialized hardware element called AXI Firewall monitors all transactions
+going across the bus into the un-trusted DFX partition. It is possible that one or more AXI slave in the DFX
+partition is not fully AXI-compliant or deadlocks/stalls/hangs during operation. When an AXI slave in DFX
+partition fails AXI Firewall <em>trips</em> – it starts completing AXI transactions on behalf of the slave so the
+master and the specific AXI bus is not impacted – to protect the Shell. The AXI Firewall starts completing
+all transactions on behalf of misbehaving slave while also notifying the mgmt driver about the trip. The
+xclmgmt driver then starts taking recovery action. xclmgmt posts a message to xocl using MailBox to inform
+the peer about FireWall trip. xocl can suggest a reset by sending a reset command to xclmgmt on MailBox.</p>
+</div>
+<div class="section" id="deployment-models">
+<h2>Deployment Models<a class="headerlink" href="#deployment-models" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="baremetal">
+<h3>Baremetal<a class="headerlink" href="#baremetal" title="Permalink to this headline">¶</a></h3>
+<p>In Baremetal deployment model, both physical functions are visible to the end user who <em>does not</em>
+have root privileges. End user have access to both XRT <strong>xclmgmt</strong> and XRT <strong>xocl</strong> drivers. The system
+administrator trusts both drivers which provide well defined <a class="reference internal" href="mgmt-ioctl.main.html#mgmt-ioctl-main-rst"><span class="std std-ref">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</span></a> and <a class="reference internal" href="xocl_ioctl.main.html#xocl-ioctl-main-rst"><span class="std std-ref">XOCL (PCIe User Physical Function) Driver Interfaces</span></a>.
+End user does have the privilege to load xclbins which should be signed for maximum security. This
+will ensure that only known good xclbins are loaded by end users.</p>
+<p>Certain operations like resetting the board and upgrading the flash image on PROM (from which the shell
+is loaded on system boot) require root privileges and are effected by xclmgmt driver.</p>
+</div>
+<div class="section" id="pass-through-virtualization">
+<h3>Pass-through Virtualization<a class="headerlink" href="#pass-through-virtualization" title="Permalink to this headline">¶</a></h3>
+<p>In Pass-through Virtualization deployment model, management physical function is only visible to the host
+but user physical function is visible to the guest VM. Host considers the guest VM a <em>hostile</em> environment.
+End users in guest VM may be root and may be running modified implementation of XRT <strong>xocl</strong> driver – XRT
+<strong>xclmgmt</strong> driver does not trust XRT xocl driver. xclmgmt as described before exposes well defined
+<a class="reference internal" href="mgmt-ioctl.main.html#mgmt-ioctl-main-rst"><span class="std std-ref">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</span></a> to the host. In a good and clean deployment end users in guest VM interact with
+standard xocl using well defined <a class="reference internal" href="xocl_ioctl.main.html#xocl-ioctl-main-rst"><span class="std std-ref">XOCL (PCIe User Physical Function) Driver Interfaces</span></a>.</p>
+<p>As explained under the Shell section above, by design xocl has limited access to violet shaded Shell peripherals.
+This ensures that users in guest VM cannot perform any privileged operation like updating flash image or device
+reset. A user in guest VM can only perform operations listed under USER PF (PF1) section in <a class="reference internal" href="platforms.html#platforms-rst"><span class="std std-ref">Platform Overview</span></a>.</p>
+<p>A guest VM user can potentially crash a compute unit in DFX partition, deadlock data path AXI bus or corrupt
+device memory. If the user has root access he may compromise VM memory. But none of this can bring down the
+host or the PCIe bus. Host memory is protected by system IOMMU. Device reset and recovery is described below.</p>
+<p>A user cannot load a malicious xclbin on the DFX partition since xclbin downloads are done by xclmgmt
+drive. xclbins are passed on to the host via a plugin based MPD/MSD framework defined in
+<a class="reference internal" href="mailbox.main.html#mailbox-main-rst"><span class="std std-ref">Mailbox Subdevice Driver</span></a>. Host can add any extra checks necessary to validate xclbins received from guest VM.</p>
+<p>This deployment model is ideal for public cloud where host does not trust the guest VM. This is the prevalent
+deployment model for FaaS operators.</p>
+</div>
+<div class="section" id="summary">
+<h3>Summary<a class="headerlink" href="#summary" title="Permalink to this headline">¶</a></h3>
+<table border="1" class="docutils">
+<colgroup>
+<col width="31%" />
+<col width="22%" />
+<col width="22%" />
+<col width="25%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head" colspan="2" rowspan="2">Behavior</th>
+<th class="head" colspan="2">Deployment Model</th>
+</tr>
+<tr class="row-even"><th class="head">Bare Metal</th>
+<th class="head">Pass-through</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-odd"><td rowspan="2">System admin
+trusts drivers</td>
+<td>xocl</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr class="row-even"><td>xclmgmt</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr class="row-odd"><td rowspan="2">End user has
+root access</td>
+<td>xocl</td>
+<td>No</td>
+<td>Maybe</td>
+</tr>
+<tr class="row-even"><td>xclmgmt</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr class="row-odd"><td colspan="2">End user can crash device</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr class="row-even"><td colspan="2">End user can crash PCIe bus</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr class="row-odd"><td colspan="2">End user with root access
+can crash PCIe bus</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section" id="mailbox">
+<h2>Mailbox<a class="headerlink" href="#mailbox" title="Permalink to this headline">¶</a></h2>
+<p>Mailbox is used for communication between user physical function driver, xocl and management physical
+function driver, xclmgmt. The Mailbox hardware design and xclmgmt driver mailbox handling implementation
+has the ability to throttle requests coming from xocl driver which protects it from a potential DoS
+initiated by a malicious xocl driver. <a class="reference internal" href="mailbox.main.html#mailbox-main-rst"><span class="std std-ref">Mailbox Subdevice Driver</span></a> has details on mailbox usage.</p>
+</div>
+<div class="section" id="device-reset-and-recovery">
+<h2>Device Reset and Recovery<a class="headerlink" href="#device-reset-and-recovery" title="Permalink to this headline">¶</a></h2>
+<p>Device reset and recovery is a privileged operation and can only be performed by xclmgmt driver. xocl
+driver can request device reset by sending a message to xclmgmt driver over the Mailbox. An end user
+can reset a device by using XRT <strong>xbutil</strong> utility. This utility talks to xocl driver which uses the reset
+message as defined in <a class="reference internal" href="mailbox.main.html#mailbox-main-rst"><span class="std std-ref">Mailbox Subdevice Driver</span></a></p>
+<p>Currently Alveo boards are reset by using PCIe bus <em>hot reset</em> mechanism. This resets the board peripherals
+and also the PCIe link. The drivers reset their platform devices and kill all the clients which have opened
+the device node by sending them a SIGBUS.</p>
+</div>
+<div class="section" id="shell-update">
+<h2>Shell Update<a class="headerlink" href="#shell-update" title="Permalink to this headline">¶</a></h2>
+<p>Shell update is like firmware update in conventional PCIe devices. Shell updates are distributed as signed
+RPM/DEB package files by Xilinx®. Shells may be upgraded using XRT <strong>xbmgmt</strong> utility by system administrators
+only. The upgrade process will update the PROM. A cold reboot of host is required in In order to boot the
+platform from the updated image.</p>
+</div>
+<div class="section" id="compute-kernel-execution-models">
+<h2>Compute Kernel Execution Models<a class="headerlink" href="#compute-kernel-execution-models" title="Permalink to this headline">¶</a></h2>
+<p>XRT and Alveo support software defined compute kernel execution models having standard AXI hardware
+interfaces. More details on <a class="reference internal" href="xrt_kernel_executions.html#xrt-kernel-executions-rst"><span class="std std-ref">Supported Kernel Execution Models</span></a>. These well understood models do not require
+direct register access from user space. To execute a compute kernel XRT has a well defined <em>exec command buffer</em>
+API and a <em>wait for exec completion</em> API. These operations are exposed as ioctls by the xocl driver.</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="debug-faq.html" class="btn btn-neutral float-right" title="XRT/Board Debug FAQ" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="cloud_vendor_support.html" class="btn btn-neutral float-left" title="MSD/MPD and Plugins" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017-2019, Xilinx, Inc
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
