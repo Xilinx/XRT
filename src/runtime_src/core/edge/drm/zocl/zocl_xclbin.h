@@ -38,5 +38,6 @@ int zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev,
 int zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data);
 
 bool zocl_xclbin_accel_adapter(int kds_mask);
+bool zocl_xclbin_cus_support_intr(struct drm_zocl_dev *zdev);
 
 #endif /* _ZOCL_XCLBIN_H_ */
