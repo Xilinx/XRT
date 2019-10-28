@@ -129,12 +129,15 @@ if [ -z $VERSION ] ; then
         pip install --ignore-installed numpy==1.8
     fi
     pip install pyopencl
-elif [ $VERSION -lt 2019 ]; then
+# if older version of pyopencl and import fails prompt user to upgarde pyopencl
+POCL_INSTALL=$(python -c "import pyopencl")
+elif [ $VERSION -lt 2019 ] && [[ $POCL_INSTALL -ne 0 ]] ; then
     
     echo "***********************************************************************"
     echo "* Pyopencl ($VERSION) is installed on the system but pyopencl >= 2019.1"
     echo "* is required. Please uninstall the current pyopencl by running"
-    echo "* 'apt remove python-pyopencl' and then reinstall the xrt package"
+    echo "* 'apt remove python-pyopencl' or 'pip uninstall pyopencl'" 
+    echo "* and then reinstall the xrt package"
     echo "***********************************************************************"
     exit 0
 else
@@ -142,7 +145,7 @@ else
     exit 0
 fi
 
-if python -c "import pyopencl"; then
+if [[ $POCL_INSTALL -eq 0 ]]; then
     echo "Successfully installed pyopencl"
 else
     echo "***********************************************************************"
