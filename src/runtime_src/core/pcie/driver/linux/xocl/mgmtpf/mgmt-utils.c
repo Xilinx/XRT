@@ -217,10 +217,11 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 	 * Check firewall status. Status should be 0 (cleared)
 	 * Otherwise issue message that a warm reboot is required.
 	 */
-	do {
+	msleep(20);
+	while (retry++ < XCLMGMT_RESET_MAX_RETRY && xocl_af_check(lro, NULL)) {
+		xocl_af_clear(lro);
 		msleep(20);
-	} while (retry++ < XCLMGMT_RESET_MAX_RETRY &&
-		xocl_af_check(lro, NULL));
+	}
 
 	if (retry >= XCLMGMT_RESET_MAX_RETRY) {
 		mgmt_err(lro, "Board is not able to recover by PCI Hot reset. "
