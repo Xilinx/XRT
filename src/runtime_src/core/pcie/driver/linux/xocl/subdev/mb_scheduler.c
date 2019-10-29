@@ -734,26 +734,11 @@ cmd_next_cu(struct xocl_cmd *xcmd, unsigned int prev)
 static inline void
 cmd_set_cu(struct xocl_cmd *xcmd, unsigned int cuidx)
 {
-	unsigned int midx = 0;
-
 	SCHED_DEBUGF("-> %s cmd(%lu) cuidx(%d)\n", __func__, xcmd->uid, cuidx);
 
 	xcmd->cu_idx = cuidx;
 	bitmap_zero(xcmd->cu_bitmap, MAX_CUS);
 	set_bit(cuidx, xcmd->cu_bitmap);
-
-	// TODO, change ERT to get exact idx of selected CU
-	// rather than bitmap which now has just one bit set
-	xcmd->ert_cu->cu_mask = 0;  // cuidx per TODO
-	for (midx = 0; midx < xcmd->ert_cu->extra_cu_masks; ++midx)
-		xcmd->ert_cu->data[midx] = 0;
-
-	midx = mask_idx32(cuidx);
-	SCHED_DEBUGF("+ midx(%d) = 0x%x\n", midx, 1 << idx_in_mask32(cuidx, midx));
-	if (midx == 0)
-		xcmd->ert_cu->cu_mask = (1 << idx_in_mask32(cuidx, midx));
-	else
-		xcmd->ert_cu->data[midx - 1] = (1 << idx_in_mask32(cuidx, midx));
 
 	SCHED_DEBUGF("<- %s\n", __func__);
 }
@@ -1479,8 +1464,17 @@ ert_start_cmd(struct xocl_ert *xert, struct xocl_cmd *xcmd)
 	SCHED_DEBUG_PACKET(ecmd, cmd_packet_size(xcmd));
 
 	// write packet minus header
-	SCHED_DEBUGF("++ slot_idx=%d, slot_addr=0x%x\n", xcmd->slot_idx, slot_addr);
-	xocl_memcpy_toio(xert->cq_base + slot_addr + 4, ecmd->data, (cmd_packet_size(xcmd) - 1) * sizeof(u32));
+	if (cmd_type(xcmd) == ERT_CU && !XOCL_DSA_IS_VERSAL(xcmd->xdev)) {
+		// write kds selected cu_idx in first cumask (first word after header)
+		iowrite32(xcmd->cu_idx, xert->cq_base + slot_addr + 4);
+
+		// write remaining packet (past header and cuidx)
+		xocl_memcpy_toio(xert->cq_base + slot_addr + 8,
+				 ecmd->data + 1, (ecmd->count - 1) * sizeof(u32));
+	}
+	else
+		xocl_memcpy_toio(xert->cq_base + slot_addr + 4,
+				 ecmd->data, ecmd->count * sizeof(u32));
 
 	// write header
 	iowrite32(ecmd->header, xert->cq_base + slot_addr);
@@ -4298,6 +4292,7 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 	u32 ctx_cus[4] = {0};
 	u32 cumasks = 0;
 	int err = 0;
+	bool cus_specified = false;
 	u64 bo_size = bo->base.size;
 
 	SCHED_DEBUGF("-> %s opcode(%d)\n", __func__, ecmd->opcode);
@@ -4312,6 +4307,12 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 	// cus for start kernel commands only
 	if (ecmd->type != ERT_CU)
 		return 0; /* ok */
+
+	// payload count must be at least 1 for mandatory cumask
+	if (scmd->count < 1 + scmd->extra_cu_masks) {
+		userpf_err(xocl_get_xdev(pdev), "exec buf payload count is too small\n");
+		return 1;
+	}
 
 	// client context cu bitmap may not change while validating
 	mutex_lock(&client->xdev->dev_lock);
@@ -4329,6 +4330,12 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 
 	for (maskidx = 0; maskidx < cumasks; ++maskidx) {
 		uint32_t cmd_cus = ecmd->data[maskidx];
+
+		if (!cmd_cus) // no cus in mask
+			continue;
+
+		cus_specified = true;
+
 		// cmd_cus must be subset of ctx_cus
 		if (cmd_cus & ~ctx_cus[maskidx]) {
 			userpf_err(client->xdev,
@@ -4337,6 +4344,11 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 			err = 1;
 			goto out; /* error */
 		}
+	}
+
+	if (!cus_specified) {
+		userpf_err(client->xdev, "No CUs specified for command\n");
+		err = 1;
 	}
 
 out:
