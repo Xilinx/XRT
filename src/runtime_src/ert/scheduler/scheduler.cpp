@@ -1093,19 +1093,18 @@ running_to_free(size_type slot_idx)
   ERT_ASSERT((slot.header_value & 0xF)==0x3,"slot is not running\n");
   // running command, check its cu status
   bitset_type cus = slot.cus;
-  for (size_type w=0,offset=0; w<num_cu_masks; ++w,offset+=32) {
-    for (size_type cu_idx=offset; cus.any(); cus >>= 1, ++cu_idx) {
-      if (cus[0] && check_cu(cu_idx,false)) {
-        notify_host(slot_idx);
-        slot.header_value = (slot.header_value & ~0xF) | 0x4; // free
-        ERT_DEBUGF("slot(%d) [running -> free]\n",slot_idx);
+  for (size_type cu_idx=0; cus.any(); cus >>= 1, ++cu_idx) {
+    if (!cus[0] || !check_cu(cu_idx,false))
+      continue;
+
+    notify_host(slot_idx);
+    slot.header_value = (slot.header_value & ~0xF) | 0x4; // free
+    ERT_DEBUGF("slot(%d) [running -> free]\n",slot_idx);
 
 #ifdef DEBUG_SLOT_STATE
-        write_reg(slot.slot_addr,slot.header_value);
+    write_reg(slot.slot_addr,slot.header_value);
 #endif
-        return true;
-      }
-    }
+    return true;
   }
   return false;
 }
