@@ -132,6 +132,7 @@ init(xclDeviceHandle handle, const axlf* top)
   auto ecmd = reinterpret_cast<ert_configure_cmd*>(execbo->data);
   ecmd->state = ERT_CMD_STATE_NEW;
   ecmd->opcode = ERT_CONFIGURE;
+  ecmd->type = ERT_CTRL;
 
   auto cus = xclbin::get_cus(top, true);
 
