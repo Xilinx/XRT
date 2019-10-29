@@ -57,7 +57,6 @@ class XclBinUtilException : public std::runtime_error {
     XclBinExceptionType m_eExceptionType;
 
 public:
-  
     XclBinUtilException(XclBinExceptionType _eExceptionType,
                         const std::string & _msg,
                         const char * _function = "<not_defined>", 

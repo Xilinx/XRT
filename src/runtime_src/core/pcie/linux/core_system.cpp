@@ -28,6 +28,8 @@
 
 #include <chrono>
 
+#include "scan.h"
+
 
 static std::string driver_version(std::string driver)
 {
@@ -94,6 +96,7 @@ xrt_core::system::get_os_info(boost::property_tree::ptree &_pt)
   tnow.pop_back();
   _pt.put("now", tnow);
 }
+
 
 
 
