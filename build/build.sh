@@ -158,7 +158,7 @@ fi
 if [[ $driver == 1 ]]; then
     echo "make -C usr/src/xrt-2.3.0/driver/xocl"
     make -C usr/src/xrt-2.3.0/driver/xocl
-    if [[$CPU == "aarch64"]]
+    if [[$CPU == "aarch64"]]; then
        mkdir -p zocl
        cd zocl
        ZOCL_SRC=`realpath ../../../src/runtime_src/core/edge/drm/zocl`
