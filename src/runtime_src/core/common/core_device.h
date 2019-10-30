@@ -19,7 +19,7 @@
 
 // Please keep eternal include file dependencies to a minimum
 #include <boost/property_tree/ptree.hpp>
-#include <stdint.h>
+#include <cstdint>
 
 /**
  * This class is a library abstract class where:
