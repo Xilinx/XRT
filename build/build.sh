@@ -159,10 +159,10 @@ if [[ $driver == 1 ]]; then
     echo "make -C usr/src/xrt-2.3.0/driver/xocl"
     make -C usr/src/xrt-2.3.0/driver/xocl
     if [[ $CPU == "aarch64" ]]; then
-       mkdir -p zocl
-       cd zocl
-       ZOCL_SRC=`readlink -f ../../../src/runtime_src/core/edge/drm/zocl`
-       make -C $ZOCL_SRC O=$PWD
+	# I know this is dirty as it messes up the source directory with build artifacts but this is the
+	# quickest way to enable native zocl build in Travis CI environment for aarch64
+	ZOCL_SRC=`readlink -f ../../../src/runtime_src/core/edge/drm/zocl`
+	make -C $ZOCL_SRC
     fi
 fi
 
