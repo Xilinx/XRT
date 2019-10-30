@@ -1311,8 +1311,10 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     }
 
     xclGetDebugMessages(true);
+    mPrintMessagesLock.lock();
     fetchAndPrintMessages();
     simulator_started = false;
+    mPrintMessagesLock.unlock();
     std::string socketName = sock->get_name();
     if(socketName.empty() == false)// device is active if socketName is non-empty
     {
