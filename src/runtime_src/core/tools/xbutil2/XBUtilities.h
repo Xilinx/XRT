@@ -66,11 +66,6 @@ std::string format(const std::string& format, Args ... args) {
   void trace(const std::string& _msg, bool _endl = true);
 
   void trace_print_tree(const std::string & _name, const boost::property_tree::ptree & _pt);
-
-// ===========================================================================
-void get_system_info(boost::property_tree::ptree & _pt);
-
-
 };
 
 #endif
