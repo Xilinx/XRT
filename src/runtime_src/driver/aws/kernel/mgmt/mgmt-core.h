@@ -15,6 +15,7 @@
 #define _AWS_MGT_PF_H_
 
 #include <linux/cdev.h>
+#include <linux/version.h>
 #include <asm/io.h>
 
 #define DRV_NAME "awsmgmt"
