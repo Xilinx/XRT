@@ -27,6 +27,8 @@ matrix:
     dist: bionic
     env:
       - CONFIGURATION=linux/arm64
+      - CC=gcc-8
+      - CXX=g++-8
 
 before_script:
   - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-

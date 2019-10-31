@@ -158,6 +158,13 @@ if [ $ARCH == "x86_64" ]; then
     fi
 fi
 
+# Use GCC8 on ARM64 Ubuntu as GCC7 randomly crashes with Internal Compiler Error on
+# Travis CI ARM64 platform
+if [ $ARCH == "aarch64" ] && [ $FLAVOR == "ubuntu" ]; then
+    UB_LIST+=( gcc-8 )
+    UB_LIST+=( g++-8 )
+fi
+
 validate()
 {
     if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then

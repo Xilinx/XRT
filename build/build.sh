@@ -156,6 +156,8 @@ if [[ $opt == 1 ]]; then
 fi
 
 if [[ $driver == 1 ]]; then
+    unset CC
+    unset C++
     echo "make -C usr/src/xrt-2.3.0/driver/xocl"
     make -C usr/src/xrt-2.3.0/driver/xocl
     if [[ $CPU == "aarch64" ]]; then
