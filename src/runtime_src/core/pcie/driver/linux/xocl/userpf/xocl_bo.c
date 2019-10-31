@@ -393,7 +393,7 @@ static struct page **xocl_virt_addr_get_pages(void *vaddr, int npages)
 
 	return pages;
 fail:
-	kvfree(pages);
+	drm_free_large(pages);
 	return ERR_CAST(p);
 }
 
@@ -652,20 +652,21 @@ int xocl_sync_bo_ioctl(struct drm_device *dev,
 	sgt = xobj->sgt;
 	sg = sgt->sgl;
 
-	if (xocl_bo_cma(xobj)) {
-
-		if (dir)
-			dma_sync_single_for_device(&(XDEV(xdev)->pdev->dev), sg_phys(sg),
-				sg->length, DMA_TO_DEVICE);
-		else
-			dma_sync_single_for_cpu(&(XDEV(xdev)->pdev->dev), sg_phys(sg),
-				sg->length, DMA_FROM_DEVICE);
-		goto out;
-	}
-
 	if (!xocl_bo_sync_able(xobj->flags)) {
 		DRM_ERROR("BO %d doesn't support sync_bo\n", args->handle);
 		ret = -EOPNOTSUPP;
+		goto out;
+	}
+
+	if (xocl_bo_cma(xobj)) {
+
+		if (dir) {
+			dma_sync_single_for_device(&(XDEV(xdev)->pdev->dev), sg_phys(sg),
+				sg->length, DMA_TO_DEVICE);
+		} else {
+			dma_sync_single_for_cpu(&(XDEV(xdev)->pdev->dev), sg_phys(sg),
+				sg->length, DMA_FROM_DEVICE);
+		}
 		goto out;
 	}
 
