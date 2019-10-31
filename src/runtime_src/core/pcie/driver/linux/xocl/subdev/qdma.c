@@ -565,9 +565,6 @@ static void free_channels(struct platform_device *pdev)
 		qidx = i % qdma->channel;
 		chan = &qdma->chans[write][qidx];
 
-		if (!chan)
-			continue;
-
 		channel_sysfs_destroy(chan);
 
 		ret = qdma_queue_stop((unsigned long)qdma->dma_handle,
@@ -1642,9 +1639,7 @@ failed:
 		dma_buf_put(dmabuf);
 	}
 
-	if (xobj) {
-		xocl_drm_free_bo(&xobj->base);
-	}
+	xocl_drm_free_bo(&xobj->base);
 
 	return ret;
 }

@@ -1279,14 +1279,14 @@ static void chan_do_tx(struct mailbox_channel *ch)
 {
 	struct mailbox *mbx = ch->mbc_parent;
 
+	/* Finished sending a whole msg, call it done. */
+	if (ch->mbc_cur_msg &&
+		(ch->mbc_cur_msg->mbm_len == ch->mbc_bytes_done))
+		chan_msg_done(ch, 0);
+
+	dequeue_tx_msg(ch);
+
 	if (is_tx_chan_ready(ch)) {
-		/* Finished sending a whole msg, call it done. */
-		if (ch->mbc_cur_msg &&
-			(ch->mbc_cur_msg->mbm_len == ch->mbc_bytes_done))
-			chan_msg_done(ch, 0);
-
-		dequeue_tx_msg(ch);
-
 		if (ch->mbc_cur_msg) {
 			/* Sending msg. */
 			if (ch->mbc_cur_msg->mbm_chan_sw || MB_SW_ONLY(mbx))
@@ -2216,7 +2216,6 @@ static int mailbox_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, mbx);
 	mbx->mbx_pdev = pdev;
 	mbx->mbx_irq = (u32)-1;
-
 
 	init_completion(&mbx->mbx_comp);
 	mutex_init(&mbx->mbx_lock);
