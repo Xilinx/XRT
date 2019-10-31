@@ -417,7 +417,7 @@ typedef struct {
   unsigned int TraceID;
   unsigned char Error;
   unsigned char Reserved;
-  int isClockTrain;
+  bool isClockTrain;
   // Used in HW Emulation
   unsigned long long  HostTimestamp;
   unsigned char  EventFlags;

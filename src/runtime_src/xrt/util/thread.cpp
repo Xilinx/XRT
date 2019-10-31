@@ -135,12 +135,12 @@ set_cpu_affinity(std::thread& thread)
 #else
 
 static void
-set_thread_policy(std::thread& thread)
+set_thread_policy(std::thread&)
 {
 }
 
 static void
-set_cpu_affinity(std::thread& thread)
+set_cpu_affinity(std::thread&)
 {
 }
 

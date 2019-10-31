@@ -961,7 +961,8 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
 	struct pci_dev *pdev = core->pdev;
 	u32 dyn_shell_magic;
-	int i, ret;
+	int i, ret, cap;
+	unsigned err_cap;
 
 	memset(&core->priv, 0, sizeof(core->priv));
 	core->priv.vbnv = in->vbnv;
@@ -985,6 +986,18 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 			}
 		}
 	}
+	/* workaround firewall completer abort issue */
+	cap = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_ERR);
+	if (cap) {
+		ret = pci_read_config_dword(pdev, cap + PCI_ERR_UNCOR_SEVER,
+			&err_cap);
+		if (!ret) {
+			err_cap &= ~PCI_ERR_UNC_COMP_ABORT;
+			pci_write_config_dword(pdev, cap + PCI_ERR_UNCOR_SEVER,
+				err_cap);
+		}
+	}
+
 	/*
 	 * follow xilinx device id, subsystem id codeing rules to set dsa
 	 * private data. And they can be overwrited in subdev header file

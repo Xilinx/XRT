@@ -139,7 +139,7 @@ public:
     size_t xclPerfMonReadTrace(xclPerfMonType type, xclTraceResultsVector& traceVector);
 
     // APIs using sysfs information
-    uint xclGetNumLiveProcesses();
+    uint32_t xclGetNumLiveProcesses();
     int xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size);
 
     int xclGetDebugIPlayoutPath(char* layoutPath, size_t size);

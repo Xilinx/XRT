@@ -23,6 +23,8 @@
 #include "xocl/api/detail/memory.h"
 #include "xocl/api/detail/device.h"
 
+#include "CL/cl_ext_xilinx.h"
+
 namespace xocl {
 
 void
@@ -86,5 +88,3 @@ xclGetMemObjectFd(cl_mem mem,
 {
   return xlnx::clGetMemObjectFd(mem, fd);
 }
-
-

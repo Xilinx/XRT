@@ -26,9 +26,9 @@
 #include <drm/drm_mm.h>
 #include <drm/drm_gem_cma_helper.h>
 #include <linux/version.h>
+#include "zocl_util.h"
 #include "zocl_ioctl.h"
 #include "zocl_ert.h"
-#include "zocl_util.h"
 #include "zocl_bo.h"
 #include "zocl_dma.h"
 
@@ -40,14 +40,14 @@
 
 /* Ensure compatibility with newer kernels and backported Red Hat kernels. */
 /* The y2k38 bug fix was introduced with Kernel 3.17 and backported to Red Hat
- * 7.2. 
+ * 7.2.
  */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,17,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
 	#define ZOCL_TIMESPEC struct timespec64
 	#define ZOCL_GETTIME ktime_get_real_ts64
 	#define ZOCL_USEC tv_nsec / NSEC_PER_USEC
 #elif defined(RHEL_RELEASE_CODE)
-	#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,2)
+	#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 2)
 		#define ZOCL_TIMESPEC struct timespec64
 		#define ZOCL_GETTIME ktime_get_real_ts64
 		#define ZOCL_USEC tv_nsec / NSEC_PER_USEC
@@ -65,24 +65,27 @@
 /* drm_gem_object_put_unlocked was introduced with Kernel 4.12 and backported to
  * Red Hat 7.5
  */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
 	#define ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_put_unlocked
 #elif defined(RHEL_RELEASE_CODE)
-	#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,5)
-		#define ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_put_unlocked
+	#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 5)
+		#define ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED \
+			drm_gem_object_put_unlocked
 	#else
-		#define ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_unreference_unlocked
+		#define ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED \
+			drm_gem_object_unreference_unlocked
 	#endif
 #else
-	#define ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED drm_gem_object_unreference_unlocked
+	#define ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED \
+		drm_gem_object_unreference_unlocked
 #endif
 
 /* drm_dev_put was introduced with Kernel 4.15 and backported to Red Hat 7.6. */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
 	#define ZOCL_DRM_DEV_PUT drm_dev_put
 #elif defined(RHEL_RELEASE_CODE)
-	#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,6)
-		#define ZOCL_DRM_DEV_PUT drm_dev_put	
+	#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 6)
+		#define ZOCL_DRM_DEV_PUT drm_dev_put
 	#else
 		#define ZOCL_DRM_DEV_PUT drm_dev_unref
 	#endif
@@ -91,7 +94,7 @@
 #endif
 
 /* access_ok lost its first parameter with Linux 5.0. */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)
 	#define ZOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(ADDR, SIZE)
 #else
 	#define ZOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(TYPE, ADDR, SIZE)
@@ -182,8 +185,11 @@ int zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);
 int zocl_info_cu_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp);
-int zocl_copy_bo_async(struct drm_device *, struct drm_file *,
-	zocl_dma_handle_t *, struct drm_zocl_copy_bo *);
+int zocl_ctx_ioctl(struct drm_device *dev, void *data,
+		struct drm_file *filp);
+
+int zocl_copy_bo_async(struct drm_device *dev, struct drm_file *fipl,
+		zocl_dma_handle_t *handle, struct drm_zocl_copy_bo *bo);
 
 bool zocl_can_dma_performed(struct drm_device *dev, struct drm_file *filp,
 	struct drm_zocl_copy_bo *args, uint64_t *dst_paddr,
@@ -195,7 +201,6 @@ void zocl_free_userptr_bo(struct drm_gem_object *obj);
 void zocl_free_host_bo(struct drm_gem_object *obj);
 int zocl_iommu_map_bo(struct drm_device *dev, struct drm_zocl_bo *bo);
 int zocl_iommu_unmap_bo(struct drm_device *dev, struct drm_zocl_bo *bo);
-int zocl_load_pdi(struct drm_device *ddev, void *data);
 
 int zocl_init_sysfs(struct device *dev);
 void zocl_fini_sysfs(struct device *dev);
@@ -207,5 +212,4 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct mem_topology *mtopo);
 void zocl_clear_mem(struct drm_zocl_dev *zdev);
 
 int get_apt_index(struct drm_zocl_dev *zdev, phys_addr_t addr);
-
 #endif

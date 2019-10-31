@@ -270,7 +270,7 @@ void Common::postStop()
     closelog();         
 }
 
-Common::Common(std::string &name, std::string &plugin_path, bool for_user) :
+Common::Common(const std::string &name, const std::string &plugin_path, bool for_user) :
     name(name), plugin_path(plugin_path)
 {
     total = pcidev::get_dev_total(for_user);

@@ -1,12 +1,17 @@
 @ECHO OFF
 
+set BOOST=C:/Xilinx/XRT/ext
+set KHRONOS=C:/Xilinx/XRT/ext
+
+if DEFINED MSVC_PARALLEL_JOBS ( SET LOCAL_MSVC_PARALLEL_JOBS=%MSVC_PARALLEL_JOBS%) ELSE ( SET LOCAL_MSVC_PARALLEL_JOBS=3 )
+
 IF "%1" == "clean" (
   goto Clean
-)   
+)
 
 IF "%1" == "-clean" (
   goto Clean
-) 
+)
 
 if "%1" == "-help" (
   goto Help
@@ -22,14 +27,22 @@ if "%1" == "-release" (
 
 if "%1" == "-all" (
   call:DebugBuild
+  if errorlevel 1 (exit /B %errorlevel%)
+
   call:ReleaseBuild
+  if errorlevel 1 (exit /B %errorlevel%)
+
   goto:EOF
 )
 
 
 if "%1" == "" (
   call:DebugBuild
+  if errorlevel 1 (exit /B %errorlevel%)
+
   call:ReleaseBuild
+  if errorlevel 1 (exit /B %errorlevel%)
+
   GOTO:EOF
 )
 
@@ -48,13 +61,13 @@ GOTO:EOF
 
 REM --------------------------------------------------------------------------
 :Clean
-if exist Debug (
-  echo Removing 'Debug' directory...
-  rmdir /S /Q Debug
+if exist WDebug (
+  echo Removing 'WDebug' directory...
+  rmdir /S /Q WDebug
 )
-if exist Release (
-  echo Removing 'Release' directory...
-  rmdir /S /Q Release
+if exist WRelease (
+  echo Removing 'WRelease' directory...
+  rmdir /S /Q WRelease
 )
 GOTO:EOF
 
@@ -62,19 +75,39 @@ GOTO:EOF
 REM --------------------------------------------------------------------------
 :DebugBuild
 echo ====================== Windows Debug Build ============================
-mkdir Debug
-cd Debug
-cmake -G "Visual Studio 15 2017 Win64" -DBOOST_ROOT=C:\XRT\libs\boost -DBOOST_LIBRARYDIR=C:\XRT\libs\boost  -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..\..\src
+mkdir WDebug
+pushd WDebug
+
+echo MSVC Compile Parallel Jobs: %LOCAL_MSVC_PARALLEL_JOBS%
+
+cmake -G "Visual Studio 15 2017 Win64" -DMSVC_PARALLEL_JOBS=%LOCAL_MSVC_PARALLEL_JOBS% -DKHRONOS=%KHRONOS% -DBOOST_ROOT=%BOOST% -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
+if errorlevel 1 (popd & exit /B %errorlevel%)
+
 cmake --build . --verbose --config Debug
-cd ..
+if errorlevel 1 (popd & exit /B %errorlevel%)
+
+cmake --build . --verbose --config Debug --target install
+if errorlevel 1 (popd & exit /B %errorlevel%)
+
+popd
 GOTO:EOF
 
 REM --------------------------------------------------------------------------
 :ReleaseBuild
 echo ====================== Windows Release Build ============================
-mkdir Release
-cd Release
-cmake -G "Visual Studio 15 2017 Win64" -DBOOST_ROOT=C:\XRT\libs\boost -DBOOST_LIBRARYDIR=C:\XRT\libs\boost  -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..\..\src
+mkdir WRelease
+pushd WRelease
+
+echo MSVC Compile Parallel Jobs: %LOCAL_MSVC_PARALLEL_JOBS%
+
+cmake -G "Visual Studio 15 2017 Win64" -DMSVC_PARALLEL_JOBS=%LOCAL_MSVC_PARALLEL_JOBS% -DKHRONOS=%KHRONOS% -DBOOST_ROOT=%BOOST% -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
+if errorlevel 1 (popd & exit /B %errorlevel%)
+
 cmake --build . --verbose --config Release
-cd ..
+if errorlevel 1 (popd & exit /B %errorlevel%)
+
+cmake --build . --verbose --config Release --target install
+if errorlevel 1 (popd & exit /B %errorlevel%)
+
+popd
 GOTO:EOF

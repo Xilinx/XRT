@@ -37,6 +37,10 @@
 #include <mutex>
 #include <condition_variable>
 
+#ifdef _WIN32
+# pragma warning( disable : 4996 4458 4267 4244 )
+#endif
+
 namespace {
 
 static bool

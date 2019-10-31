@@ -14,8 +14,10 @@ ifndef SCHED_VERSION
  export SCHED_VERSION := 0x$(shell git rev-list -1 HEAD $(SRC) | cut -c1-8)
 endif
 
-MYCFLAGS := -I$(BSP)/include -I$(RTS) $(DEFINES) -DERT_VERSION=$(SCHED_VERSION) -DERT_SVERSION=\"$(SCHED_VERSION)\"
-MYLFLAGS :=  -Wl,-T,$(BLDDIR)/lscript.ld
+MYCFLAGS := -ffunction-sections -fdata-sections -fno-exceptions -fno-rtti
+MYCFLAGS += -I$(BSP)/include -I$(RTS) $(DEFINES) -DERT_VERSION=$(SCHED_VERSION) -DERT_SVERSION=\"$(SCHED_VERSION)\"
+MYLFLAGS := -Wl,--defsym=_HEAP_SIZE=0x0 -Wl,--gc-sections
+MYLFLAGS += -Wl,-T,$(BLDDIR)/lscript.ld
 
 $(OBJ): $(SRC) $(BSP).extracted $(RTS)/core/include/ert.h
 	$(CPP) $(MYCFLAGS) -c -o $@ $<

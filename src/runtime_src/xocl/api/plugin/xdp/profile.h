@@ -83,60 +83,60 @@ using cb_end_device_profiling_type = std::function<void(void)>;
 /*
  * callback registration functions called from profile
 */
-void register_cb_action_ndrange (cb_action_ndrange_type&& cb);
-void register_cb_action_read  (cb_action_read_type&& cb);
-void register_cb_action_map (cb_action_map_type&& cb);
-void register_cb_action_write (cb_action_write_type&& cb);
-void register_cb_action_unmap (cb_action_unmap_type&& cb);
-void register_cb_action_ndrange_migrate (cb_action_ndrange_migrate_type&& cb);
-void register_cb_action_migrate (cb_action_migrate_type&& cb);
-void register_cb_action_copy (cb_action_copy_type&& cb);
+XRT_XOCL_EXPORT void register_cb_action_ndrange (cb_action_ndrange_type&& cb);
+XRT_XOCL_EXPORT void register_cb_action_read  (cb_action_read_type&& cb);
+XRT_XOCL_EXPORT void register_cb_action_map (cb_action_map_type&& cb);
+XRT_XOCL_EXPORT void register_cb_action_write (cb_action_write_type&& cb);
+XRT_XOCL_EXPORT void register_cb_action_unmap (cb_action_unmap_type&& cb);
+XRT_XOCL_EXPORT void register_cb_action_ndrange_migrate (cb_action_ndrange_migrate_type&& cb);
+XRT_XOCL_EXPORT void register_cb_action_migrate (cb_action_migrate_type&& cb);
+XRT_XOCL_EXPORT void register_cb_action_copy (cb_action_copy_type&& cb);
 
-void register_cb_log_function_start (cb_log_function_start_type&& cb);
-void register_cb_log_function_end (cb_log_function_end_type&& cb);
-void register_cb_log_dependencies(cb_log_dependencies_type && cb);
-void register_cb_add_to_active_devices(cb_add_to_active_devices_type&& cb);
-void register_cb_set_kernel_clock_freq (cb_set_kernel_clock_freq_type&& cb);
-void register_cb_reset(cb_reset_type && cb);
-void register_cb_init (cb_init_type && cb);
+XRT_XOCL_EXPORT void register_cb_log_function_start (cb_log_function_start_type&& cb);
+XRT_XOCL_EXPORT void register_cb_log_function_end (cb_log_function_end_type&& cb);
+XRT_XOCL_EXPORT void register_cb_log_dependencies(cb_log_dependencies_type && cb);
+XRT_XOCL_EXPORT void register_cb_add_to_active_devices(cb_add_to_active_devices_type&& cb);
+XRT_XOCL_EXPORT void register_cb_set_kernel_clock_freq (cb_set_kernel_clock_freq_type&& cb);
+XRT_XOCL_EXPORT void register_cb_reset(cb_reset_type && cb);
+XRT_XOCL_EXPORT void register_cb_init (cb_init_type && cb);
 
-void register_cb_get_device_trace (cb_get_device_trace_type&& cb);
-void register_cb_get_device_counters (cb_get_device_counters_type&& cb);
-void register_cb_start_device_profiling (cb_start_device_profiling_type&& cb);
-void register_cb_reset_device_profiling (cb_reset_device_profiling_type&& cb);
-void register_cb_end_device_profiling (cb_end_device_profiling_type&& cb);
+XRT_XOCL_EXPORT void register_cb_get_device_trace (cb_get_device_trace_type&& cb);
+XRT_XOCL_EXPORT void register_cb_get_device_counters (cb_get_device_counters_type&& cb);
+XRT_XOCL_EXPORT void register_cb_start_device_profiling (cb_start_device_profiling_type&& cb);
+XRT_XOCL_EXPORT void register_cb_reset_device_profiling (cb_reset_device_profiling_type&& cb);
+XRT_XOCL_EXPORT void register_cb_end_device_profiling (cb_end_device_profiling_type&& cb);
 
-void get_address_bank(cl_mem buffer, uint64_t &address, int &bank);
-bool is_same_device(cl_mem buffer1, cl_mem buffer2);
+XRT_XOCL_EXPORT void get_address_bank(cl_mem buffer, uint64_t &address, int &bank);
+XRT_XOCL_EXPORT bool is_same_device(cl_mem buffer1, cl_mem buffer2);
 
-std::string
+XRT_XOCL_EXPORT std::string
 get_event_string(xocl::event* currEvent);
 
-std::string
+XRT_XOCL_EXPORT std::string
 get_event_dependencies_string(xocl::event* currEvent);
 
-xocl::event::action_profile_type
+XRT_XOCL_EXPORT xocl::event::action_profile_type
 action_ndrange(cl_event event,cl_kernel kernel);
 
-xocl::event::action_profile_type
+XRT_XOCL_EXPORT xocl::event::action_profile_type
 action_read(cl_mem buffer, size_t offset, size_t size, bool entire_buffer);
 
-xocl::event::action_profile_type
+XRT_XOCL_EXPORT xocl::event::action_profile_type
 action_map(cl_mem buffer,cl_map_flags map_flags);
 
-xocl::event::action_profile_type
+XRT_XOCL_EXPORT xocl::event::action_profile_type
 action_write(cl_mem buffer, size_t offset, size_t size, bool entire_buffer);
 
-xocl::event::action_profile_type
+XRT_XOCL_EXPORT xocl::event::action_profile_type
 action_unmap(cl_mem buffer);
 
-xocl::event::action_profile_type
+XRT_XOCL_EXPORT xocl::event::action_profile_type
 action_ndrange_migrate(cl_event event, cl_kernel kernel);
 
-xocl::event::action_profile_type
+XRT_XOCL_EXPORT xocl::event::action_profile_type
 action_migrate(cl_uint num_mem_objects, const cl_mem *mem_objects, cl_mem_migration_flags flags);
 
-xocl::event::action_profile_type
+XRT_XOCL_EXPORT xocl::event::action_profile_type
 action_copy(cl_mem src_buffer, cl_mem dst_buffer, size_t src_offset, size_t dst_offset, size_t size, bool same_device);
 
 template <typename F, typename ...Args>
@@ -147,13 +147,13 @@ set_event_action(xocl::event* event, F&& f, Args&&... args)
     event->set_profile_action(f(std::forward<Args>(args)...));
 }
 
-void
+XRT_XOCL_EXPORT void
 log(xocl::event* event, cl_int status);
 
-void
+XRT_XOCL_EXPORT void
 log(xocl::event* event, cl_int status, const std::string& cuname);
 
-void
+XRT_XOCL_EXPORT void
 log_dependencies (xocl::event* event,  cl_uint num_deps, const cl_event* deps);
 
 struct function_call_logger
@@ -168,34 +168,34 @@ struct function_call_logger
   long long m_address = 0;
 };
 
-void
+XRT_XOCL_EXPORT void
 add_to_active_devices(const std::string& device_name);
 
-void
+XRT_XOCL_EXPORT void
 set_kernel_clock_freq(const std::string& device_name, unsigned int freq);
 
-void
+XRT_XOCL_EXPORT void
 reset(const axlf* xclbin);
 
 /**
  * Initialize profiling (was RTSignleton::instance() blah blah
  */
-void 
+XRT_XOCL_EXPORT void 
 init();
 
-void
+XRT_XOCL_EXPORT void
 get_device_trace (bool forceReadTrace);
 
-void
+XRT_XOCL_EXPORT void
 get_device_counters (bool firstReadAfterProgram, bool forceReadCounters);
 
-void
+XRT_XOCL_EXPORT void
 start_device_profiling(size_t numComputeUnits);
 
-void
+XRT_XOCL_EXPORT void
 reset_device_profiling();
 
-void
+XRT_XOCL_EXPORT void
 end_device_profiling();
 
 }} // profile,xocl

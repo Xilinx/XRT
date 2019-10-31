@@ -14,12 +14,17 @@
  * under the License.
  */
 
+#define XRT_CORE_COMMON_SOURCE
 #include "t_time.h"
 
 #include <chrono>
 #include <string>
 #include <ctime>
 #include <cstring>
+
+#ifdef _WIN32
+# pragma warning ( disable : 4996 )
+#endif
 
 namespace xrt_core {
 

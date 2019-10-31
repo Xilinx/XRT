@@ -47,7 +47,7 @@ if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian|pynqlinux)")
   # xrt component dependencies
   SET(CPACK_DEBIAN_XRT_PACKAGE_DEPENDS "ocl-icd-opencl-dev (>= 2.2.0), libboost-dev (>= ${Boost_VER_STR}), libboost-dev (<< ${Boost_VER_STR_ONEGREATER}), libboost-filesystem-dev (>=${Boost_VER_STR}), libboost-filesystem-dev (<<${Boost_VER_STR_ONEGREATER}), uuid-dev (>= 2.27.1), dkms (>= 2.2.0), libprotoc-dev (>=2.6.1), libssl-dev (>=1.0.2), protobuf-compiler (>=2.6.1), libncurses5-dev (>=6.0), lsb-release, libxml2-dev (>=2.9.1), libyaml-dev (>= 0.1.6), libc6 (>= ${GLIBC_VERSION}), libc6 (<< ${GLIBC_VERSION_ONEGREATER}), python (>= 2.7), python-pip ")
 
-elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS)")
+elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Amazon)")
   SET(CPACK_GENERATOR "RPM;TGZ")
   SET(PACKAGE_KIND "RPM")
   # Modify the package name for the xrt component

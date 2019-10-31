@@ -96,6 +96,7 @@ static int daemon(int argc, char *argv[])
 
     const option opts[] = {
         { "host", required_argument, nullptr, '0' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     // Load current config.
@@ -150,7 +151,7 @@ static void showDevConf(std::shared_ptr<pcidev::pci_device>& dev)
     std::string errmsg;
     int lvl = 0;
 
-    dev->sysfs_get("icap", "sec_level", errmsg, lvl);
+    dev->sysfs_get("icap", "sec_level", errmsg, lvl, 0);
     if (!errmsg.empty()) {
         std::cout << "can't read security level from " << dev->sysfs_name <<
             " : " << errmsg << std::endl;
@@ -169,6 +170,7 @@ static int show(int argc, char *argv[])
         { "card", required_argument, nullptr, '0' },
         { "daemon", no_argument, nullptr, '1' },
         { "device", no_argument, nullptr, '2' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {
@@ -241,6 +243,7 @@ static int device(int argc, char *argv[])
     const option opts[] = {
         { "card", required_argument, nullptr, '0' },
         { "security", required_argument, nullptr, '1' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {

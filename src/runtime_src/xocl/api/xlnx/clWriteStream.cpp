@@ -15,11 +15,16 @@
  */
 
 // Copyright 2018 Xilinx, Inc. All rights reserved.
-#include <CL/opencl.h>
+#include "xocl/config.h"
 #include "xocl/core/stream.h"
 #include "xocl/core/error.h"
 #include "plugin/xdp/profile.h"
 #include "xocl/core/device.h"
+#include <CL/opencl.h>
+
+#ifdef _WIN32
+#pragma warning ( disable : 4267 )
+#endif
 
 namespace xocl {
 
@@ -33,7 +38,7 @@ validOrError(cl_stream           stream,
 {
 }
 
-static cl_int 
+static cl_int
 clWriteStream(cl_stream           stream,
 	      const void*         ptr,
 	      size_t              size,
@@ -69,4 +74,3 @@ clWriteStream(cl_stream           stream,
   }
   return CL_INVALID_VALUE;
 }
-

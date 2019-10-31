@@ -79,7 +79,7 @@
 /* drm_dev_put was introduced with Linux 4.15 and backported to Red Hat 7.6. */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0)
 	#define XOCL_DRM_DEV_PUT drm_dev_put
-#elif defined(RHEL_RELEASE_CODE)
+#elif defined(RHEL_RELEASE_CODE) && !defined(__PPC64__)
 	#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,6)
 		#define XOCL_DRM_DEV_PUT drm_dev_put
 	#else
@@ -225,23 +225,6 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 
 #define	XOCL_XILINX_VEN		0x10EE
 #define	XOCL_CHARDEV_REG_COUNT	16
-
-#ifdef RHEL_RELEASE_VERSION
-
-#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 6)
-#define RHEL_P2P_SUPPORT_74  0
-#define RHEL_P2P_SUPPORT_76  1
-#elif RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7, 3) && RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(7, 6)
-#define RHEL_P2P_SUPPORT_74  1
-#define RHEL_P2P_SUPPORT_76  0
-#endif
-#else
-#define RHEL_P2P_SUPPORT_74  0
-#define RHEL_P2P_SUPPORT_76  0
-#endif
-
-
-#define RHEL_P2P_SUPPORT (RHEL_P2P_SUPPORT_74 | RHEL_P2P_SUPPORT_76)
 
 #define INVALID_SUBDEVICE ~0U
 
@@ -575,7 +558,9 @@ struct xocl_mb_scheduler_funcs {
 	-ENODEV)
 
 #define XOCL_MEM_TOPOLOGY(xdev)						\
-	((struct mem_topology *)xocl_icap_get_data(xdev, MEMTOPO_AXLF))
+	(XOCL_DSA_IS_VERSAL(xdev) ?					\
+	((struct mem_topology *)(((struct xocl_dev *)(xdev))->mem_topo)) : \
+	((struct mem_topology *)xocl_icap_get_data(xdev, MEMTOPO_AXLF)))
 #define XOCL_IP_LAYOUT(xdev)						\
 	((struct ip_layout *)xocl_icap_get_data(xdev, IPLAYOUT_AXLF))
 #define XOCL_XCLBIN_ID(xdev)						\
@@ -795,6 +780,7 @@ enum data_kind {
 };
 
 enum mb_kind {
+	DAEMON_STATE,
 	CHAN_STATE,
 	CHAN_SWITCH,
 	COMM_ID,

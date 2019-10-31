@@ -66,7 +66,7 @@ xma_admin_session_create(XmaAdminProperties *props)
     if ((error = dlerror()) != NULL)
     {
         xma_logmsg(XMA_ERROR_LOG, XMA_ADMIN_MOD,
-            "Failed to get admin_plugin from %s\n Error msg: %s\n",
+            "Failed to get struct admin_plugin from %s\n Error msg: %s\n",
             props->plugin_lib, dlerror());
         return NULL;
     }
@@ -95,6 +95,7 @@ xma_admin_session_create(XmaAdminProperties *props)
     bool expected = false;
     bool desired = true;
     while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
         expected = false;
     }
     //Singleton lock acquired
@@ -148,6 +149,17 @@ xma_admin_session_create(XmaAdminProperties *props)
         return NULL;
     }
 
+    /*For ADMIN session will open cu context when scheduling command
+    XmaHwDevice& dev_tmp1 = hwcfg->devices[hwcfg_dev_index];
+    if (xclOpenContext(dev_handle, dev_tmp1.uuid, d, true) != 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ADMIN_MOD, "Failed to open context to CU %s for this session\n", kernel_info->name);
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(session);
+        return NULL;
+    }
+    */
+    
     // Allocate the private data
     session->base.plugin_data =
         calloc(session->admin_plugin->plugin_data_size, sizeof(uint8_t));
@@ -197,6 +209,7 @@ xma_admin_session_destroy(XmaAdminSession *session)
     bool expected = false;
     bool desired = true;
     while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
         expected = false;
     }
     //Singleton lock acquired

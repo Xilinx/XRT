@@ -19,15 +19,16 @@
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 0, 0)
 #include <drm/drm_backport.h>
 #endif
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)) || \
+	defined(RHEL_RELEASE_VERSION)
+#include <linux/pfn_t.h>
+#endif
 #include <drm/drmP.h>
 #include <drm/drm_gem.h>
 #include <drm/drm_mm.h>
 #include "version.h"
 #include "../lib/libxdma_api.h"
 #include "common.h"
-#if RHEL_P2P_SUPPORT
-#include <linux/pfn_t.h>
-#endif
 
 #if defined(__PPC64__)
 #define XOCL_FILE_PAGE_OFFSET	0x10000
@@ -192,9 +193,6 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	loff_t num_pages;
 	unsigned int page_offset;
 	int ret = 0;
-#if RHEL_P2P_SUPPORT
-	pfn_t pfn;
-#endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
 	unsigned long vmf_address = vmf->address;
@@ -212,7 +210,8 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 		return VM_FAULT_SIGBUS;
 
 	if (xocl_bo_p2p(xobj)) {
-#if RHEL_P2P_SUPPORT
+#ifdef RHEL_RELEASE_VERSION
+		pfn_t pfn;
 		pfn = phys_to_pfn_t(page_to_phys(xobj->pages[page_offset]), PFN_MAP|PFN_DEV);
 		ret = vm_insert_mixed(vma, vmf_address, pfn);
 #else
@@ -595,7 +594,7 @@ int xocl_cleanup_mem(struct xocl_drm *drm_p)
 	return 0;
 }
 
-int xocl_init_mem(struct xocl_drm *drm_p, struct mem_topology *new_topo)
+int xocl_init_mem(struct xocl_drm *drm_p)
 {
 	size_t length = 0;
 	size_t mm_size = 0, mm_stat_size = 0;
@@ -618,10 +617,7 @@ int xocl_init_mem(struct xocl_drm *drm_p, struct mem_topology *new_topo)
 		reserved2 = 0x1000000;
 	}
 
-	if (XOCL_DSA_IS_VERSAL(drm_p->xdev))
-		topo = new_topo;
-	else
-		topo = XOCL_MEM_TOPOLOGY(drm_p->xdev);
+	topo = XOCL_MEM_TOPOLOGY(drm_p->xdev);
 
 	if (topo == NULL)
 		return 0;

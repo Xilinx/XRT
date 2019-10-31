@@ -66,8 +66,8 @@ static ssize_t kdsstat_show(struct device *dev,
 		xclbin_id ? xclbin_id : 0);
 	size += sprintf(buf + size, "outstanding execs:\t%d\n",
 		atomic_read(&xdev->outstanding_execs));
-	size += sprintf(buf + size, "total execs:\t\t%ld\n",
-		atomic64_read(&xdev->total_execs));
+	size += sprintf(buf + size, "total execs:\t\t%lld\n",
+		(s64)atomic64_read(&xdev->total_execs));
 
 	clients = get_live_clients(xdev, &plist);
 	size += sprintf(buf + size, "contexts:\t\t%d\n", clients);
@@ -153,14 +153,14 @@ static ssize_t p2p_enable_show(struct device *dev,
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	u64 size;
 
-	if (xdev->p2p_bar_addr)
+	if (xdev->p2p_mem_chunk_num)
 		return sprintf(buf, "1\n");
 	else if (xocl_get_p2p_bar(xdev, &size) >= 0 &&
-			size > (1 << XOCL_PA_SECTION_SHIFT))
+		size > XOCL_P2P_CHUNK_SIZE)
 		return sprintf(buf, "%d\n", EBUSY);
-	else if (xocl_get_p2p_bar(xdev, &size) < 0 && (
-			xdev->p2p_bar_idx < 0 ||
-			xdev->p2p_bar_len <= (1<<XOCL_PA_SECTION_SHIFT)))
+	else if (xocl_get_p2p_bar(xdev, &size) < 0 &&
+		(xdev->p2p_bar_idx < 0 ||
+		xdev->p2p_bar_len <= XOCL_P2P_CHUNK_SIZE))
 		return sprintf(buf, "%d\n", ENXIO);
 
 	return sprintf(buf, "0\n");
@@ -193,7 +193,7 @@ static ssize_t p2p_enable_store(struct device *dev,
 	}
 
 	size = (ffs(size) == fls(size)) ? (fls(size) - 1) : fls(size);
-	size = enable ? (size + 10) : (XOCL_PA_SECTION_SHIFT - 20);
+	size = enable ? (size + 10) : (XOCL_P2P_CHUNK_SHIFT - 20);
 	if (xocl_pci_rebar_size_to_bytes(size) == curr_size) {
 		if (enable) {
 			xocl_info(&pdev->dev, "p2p is enabled, bar size %d M",
@@ -207,7 +207,7 @@ static ssize_t p2p_enable_store(struct device *dev,
 
 	xocl_info(&pdev->dev, "Resize p2p bar %d to %d M ", p2p_bar,
 			(1 << size));
-	xocl_p2p_mem_release(xdev, false);
+	xocl_p2p_fini(xdev, false);
 
 	ret = xocl_pci_resize_resource(pdev, p2p_bar, size);
 	if (ret) {
@@ -219,7 +219,7 @@ static ssize_t p2p_enable_store(struct device *dev,
 	xdev->p2p_bar_len = pci_resource_len(pdev, p2p_bar);
 
 	if (enable) {
-		ret = xocl_p2p_mem_reserve(xdev);
+		ret = xocl_p2p_init(xdev);
 		if (ret) {
 			xocl_err(&pdev->dev, "Failed to reserve p2p memory %d",
 					ret);
@@ -342,7 +342,7 @@ static ssize_t ready_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	uint64_t ch_state = 0, ret = 0;
+	uint64_t ch_state = 0, ret = 0, daemon_state = 0;
 
 	/* Bypass this check for versal for now */
 	if (XOCL_DSA_IS_VERSAL(xdev))
@@ -350,7 +350,18 @@ static ssize_t ready_show(struct device *dev,
 	else {
 		xocl_mailbox_get(xdev, CHAN_STATE, &ch_state);
 
-		ret = (ch_state & XCL_MB_PEER_READY) ? 1 : 0;
+		if (ch_state & XCL_MB_PEER_SAME_DOMAIN)
+			ret = (ch_state & XCL_MB_PEER_READY) ? 1 : 0;
+		else {
+			/*
+			 * If xocl and xclmgmt are not in the same daemon,
+			 * mark the card as ready only when both MB channel
+			 * and daemon are ready
+			 */
+			xocl_mailbox_get(xdev, DAEMON_STATE, &daemon_state);
+			ret = ((ch_state & XCL_MB_PEER_READY) && daemon_state)
+				? 1 : 0;
+		}
 	}
 
 	return sprintf(buf, "0x%llx\n", ret);

@@ -15,13 +15,13 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
+#include "xocl/config.h"
 #include "xocl/core/pipe.h"
 #include "xocl/core/device.h"
 #include "xocl/core/error.h"
 
 #include "xocl/api/detail/device.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 

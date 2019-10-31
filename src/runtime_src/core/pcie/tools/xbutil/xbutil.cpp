@@ -109,17 +109,26 @@ static void print_pci_info(std::ostream &ostr)
 
     if (pcidev::get_dev_total() != pcidev::get_dev_ready()) {
         ostr << "WARNING: "
-            << "card(s) marked by '*' are not ready, "
-            << "run xbmgmt flash --scan --verbose to further check the details."
-            << std::endl;
+            << "card(s) marked by '*' are not ready, is MPD runing? "
+            << "run 'systemctl status mpd' to check MPD details.";
+	    if (pcidev::get_dev_total(false) == 0)
+            ostr << std::endl;
+	    else
+            ostr << " please also run 'xbmgmt flash --scan --verbose' to further check card details."
+                << std::endl;
     }
 }
 
 static int xrt_xbutil_version_cmp() 
 {
     /*check xbutil tools and xrt versions*/
-    std::string xrt = sensor_tree::get<std::string>( "runtime.build.version", "N/A" ) + ","
+    std::string xrt = "";
+    try {
+        xrt = sensor_tree::get<std::string>( "runtime.build.version", "N/A" ) + ","
         + sensor_tree::get<std::string>( "runtime.build.hash", "N/A" );
+    } catch (std::exception const& e) {
+        std::cout << e.what() << std::endl;
+    }
     if ( xcldev::driver_version("xocl") != "unknown" &&
         xrt.compare(xcldev::driver_version("xocl") ) != 0 ) {
         std::cout << "\nERROR: Mixed versions of XRT and xbutil are not supported. \
@@ -230,7 +239,7 @@ int main(int argc, char *argv[])
 
     if (cmd == xcldev::HELP) {
         xcldev::printHelp(exe);
-        return 1;
+        return 0;
     }
     if (cmd == xcldev::VERSION) {
         xrt::version::print(std::cout);
@@ -793,13 +802,7 @@ static void topThreadFunc(struct topThreadCtrl *ctrl)
     while (!ctrl->quit) {
         if ((i % ctrl->interval) == 0) {
             xclDeviceUsage devstat;
-            xclDeviceInfo2 devinfo;
             int result = ctrl->dev->usageInfo(devstat);
-            if (result) {
-                ctrl->status = result;
-                return;
-            }
-            result = ctrl->dev->deviceInfo(devinfo);
             if (result) {
                 ctrl->status = result;
                 return;
@@ -820,13 +823,7 @@ static void topThreadStreamFunc(struct topThreadCtrl *ctrl)
     while (!ctrl->quit) {
         if ((i % ctrl->interval) == 0) {
             xclDeviceUsage devstat;
-            xclDeviceInfo2 devinfo;
             int result = ctrl->dev->usageInfo(devstat);
-            if (result) {
-                ctrl->status = result;
-                return;
-            }
-            result = ctrl->dev->deviceInfo(devinfo);
             if (result) {
                 ctrl->status = result;
                 return;
@@ -1141,7 +1138,13 @@ int xcldev::device::runTestCase(const std::string& py,
         return -EINVAL;
     }
 
-    std::string cmd = "/usr/bin/python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
+    // python3 is just for ppc+ubuntu setup for now. In postinst we install pyopencl with python2.7
+    // so can't default to python3 if it's available. Need to revisit this when 2.7 is deprecated (Jan 1, 2020)
+    #if _ARCH_PPC
+        std::string cmd = "/usr/bin/python3 " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
+    #else
+        std::string cmd = "/usr/bin/python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
+    #endif
     return runShellCmd(cmd, output);
 }
 
@@ -1237,10 +1240,10 @@ int xcldev::device::pcieLinkTest(void)
         return -EINVAL;
     }
 
-    pcidev::get_dev(m_idx)->sysfs_get( "", "link_speed",     errmsg, pcie_speed );
-    pcidev::get_dev(m_idx)->sysfs_get( "", "link_speed_max", errmsg, pcie_speed_max );
-    pcidev::get_dev(m_idx)->sysfs_get( "", "link_width",     errmsg, pcie_width );
-    pcidev::get_dev(m_idx)->sysfs_get( "", "link_width_max", errmsg, pcie_width_max );
+    pcidev::get_dev(m_idx)->sysfs_get<unsigned int>( "", "link_speed",     errmsg, pcie_speed, -1 );
+    pcidev::get_dev(m_idx)->sysfs_get<unsigned int>( "", "link_speed_max", errmsg, pcie_speed_max, -1 );
+    pcidev::get_dev(m_idx)->sysfs_get<unsigned int>( "", "link_width",     errmsg, pcie_width, -1 );
+    pcidev::get_dev(m_idx)->sysfs_get<unsigned int>( "", "link_width_max", errmsg, pcie_width_max, -1 );
     if (pcie_speed != pcie_speed_max || pcie_width != pcie_width_max) {
         std::cout << "LINK ACTIVE, ATTENTION" << std::endl;
         std::cout << "Ensure Card is plugged in to Gen"
@@ -1266,7 +1269,7 @@ int xcldev::device::auxConnectionTest(void)
     }
 
     pcidev::get_dev(m_idx)->sysfs_get("xmc", "bd_name", errmsg, name);
-    pcidev::get_dev(m_idx)->sysfs_get("xmc", "max_power",  errmsg, max_power);
+    pcidev::get_dev(m_idx)->sysfs_get<unsigned short>("xmc", "max_power",  errmsg, max_power, 0);
 
     if (!name.empty()) {
         for (auto bd : auxPwrRequiredBoard) {
@@ -1768,15 +1771,14 @@ int xcldev::device::testP2p()
 {
     std::string errmsg;
     std::vector<char> buf;
-    int ret = 0;
-    int p2p_enabled = 0;
+    int ret = 0, p2p_enabled = 0;
     xclbin_lock xclbin_lock(m_handle, m_idx);
     auto dev = pcidev::get_dev(m_idx);
 
     if (dev == nullptr)
         return -EINVAL;
 
-    dev->sysfs_get("", "p2p_enable", errmsg, p2p_enabled);
+    dev->sysfs_get<int>("", "p2p_enable", errmsg, p2p_enabled, 0);
     if (p2p_enabled != 1) {
         std::cout << "P2P BAR is not enabled. Skipping validation" << std::endl;
         return -EOPNOTSUPP;
@@ -1785,18 +1787,24 @@ int xcldev::device::testP2p()
     dev->sysfs_get("icap", "mem_topology", errmsg, buf);
 
     const mem_topology *map = (mem_topology *)buf.data();
-    if(buf.empty() || map->m_count == 0) {
+    if (buf.empty() || map->m_count == 0) {
         std::cout << "WARNING: 'mem_topology' invalid, "
             << "unable to perform P2P Test. Has the bitstream been loaded? "
             << "See 'xbutil program'." << std::endl;
         return -EINVAL;
     }
 
-    for(int32_t i = 0; i < map->m_count && ret == 0; i++) {
-        const char *name = (const char *)map->m_mem_data[i].m_tag;
-        if ((std::strncmp(name, "HBM", std::strlen("HBM")) && 
-            std::strncmp(name, "DDR", std::strlen("DDR"))) ||
-            !map->m_mem_data[i].m_used)
+    for (int32_t i = 0; i < map->m_count && ret == 0; i++) {
+        const std::vector<std::string> supList = { "HBM", "DDR", "bank" };
+        const std::string name(reinterpret_cast<const char *>(map->m_mem_data[i].m_tag));
+        bool find = false;
+        for (auto s : supList) {
+            if (name.compare(0, s.size(), s) == 0) {
+                find = true;
+                break;
+            }
+        }
+        if (!find || !map->m_mem_data[i].m_used)
             continue;
 
         std::cout << "Performing P2P Test on " << map->m_mem_data[i].m_tag << " ";
@@ -1880,9 +1888,10 @@ int xcldev::xclP2p(int argc, char *argv[])
         std::cout << "ERROR: Not enough iomem space." << std::endl;
         std::cout << "Please check BIOS settings" << std::endl;
     } else if (ret == EBUSY) {
-        std::cout << "ERROR: P2P is enabled. But there is not enough iomem space, please warm reboot." << std::endl;
+        std::cout << "Please WARM reboot to enable p2p now." << std::endl;
     } else if (ret == ENXIO) {
-        std::cout << "ERROR: P2P is not supported on this platform" << std::endl;
+        std::cout << "ERROR: P2P is not supported on this platform"
+            << std::endl;
     } else if (ret == 1) {
         std::cout << "P2P is enabled" << std::endl;
     } else if (ret == 0) {
@@ -1991,7 +2000,7 @@ int xcldev::device::testM2m()
     if (dev == nullptr)
         return -EINVAL;
 
-    dev->sysfs_get("mb_scheduler", "kds_numcdmas", errmsg, m2m_enabled);
+    dev->sysfs_get<int>("mb_scheduler", "kds_numcdmas", errmsg, m2m_enabled, 0);
     if (m2m_enabled == 0) {
         std::cout << "M2M is not available. Skipping validation" << std::endl;
         return -EOPNOTSUPP;

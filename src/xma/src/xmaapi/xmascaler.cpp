@@ -163,7 +163,7 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     if ((error = dlerror()) != NULL)
     {
         xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD,
-            "Failed to get scaler_plugin from %s\n Error msg: %s\n",
+            "Failed to get struct scaler_plugin from %s\n Error msg: %s\n",
             sc_props->plugin_lib, dlerror());
         return NULL;
     }
@@ -193,6 +193,7 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     bool expected = false;
     bool desired = true;
     while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
         expected = false;
     }
     //Singleton lock acquired
@@ -336,6 +337,16 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
         return NULL;
     }
 
+    XmaHwDevice& dev_tmp1 = hwcfg->devices[hwcfg_dev_index];
+    if (!kernel_info->soft_kernel) {
+        if (xclOpenContext(dev_handle, dev_tmp1.uuid, kernel_info->cu_index_ert, true) != 0) {
+            xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD, "Failed to open context to CU %s for this session\n", kernel_info->name);
+            //Release singleton lock
+            g_xma_singleton->locked = false;
+            free(sc_session);
+            return NULL;
+        }
+    }
     // Allocate the private data
     sc_session->base.plugin_data =
         calloc(sc_session->scaler_plugin->plugin_data_size, sizeof(uint8_t));
@@ -390,6 +401,7 @@ xma_scaler_session_destroy(XmaScalerSession *session)
     bool expected = false;
     bool desired = true;
     while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
         expected = false;
     }
     //Singleton lock acquired

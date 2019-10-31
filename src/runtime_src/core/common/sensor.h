@@ -92,7 +92,7 @@ template <typename T>
 inline std::string pretty( const T &val, const std::string &default_val = "N/A", bool isHex = false )
 {   
     if( typeid(val).name() != typeid(std::string).name() ) {
-        if( val >= std::numeric_limits<T>::max() ) {
+        if( val >= std::numeric_limits<T>::max() || val == 0) {
             return default_val;
         }
 

@@ -13,14 +13,20 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
+#define XRT_CORE_COMMON_SOURCE
 #include "xclbin_parser.h"
 #include "config_reader.h"
-#include <cstring>
+
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/optional.hpp>
+#include <cstring>
+#include <cstdlib>
 // This is xclbin parser. Update this file if xclbin format has changed.
+
+#ifdef _WIN32
+#pragma warning ( disable : 4996 )
+#endif
 
 namespace {
 
@@ -72,7 +78,7 @@ kernel_max_ctx(const ip_data& ip)
   auto ctx = xrt_core::config::get_kernel_channel_info();
   if (ctx.empty())
     return 0;
-  
+
   std::string knm = reinterpret_cast<const char*>(ip.m_name);
   knm = knm.substr(0,knm.find(":"));
 
@@ -188,7 +194,7 @@ get_cu_control(const axlf* top, uint64_t cuaddr)
 {
   if (is_sw_emulation())
     return AP_CTRL_HS;
-  
+
   auto ip_layout = axlf_section_type<const ::ip_layout*>::get(top,axlf_section_kind::IP_LAYOUT);
   if (!ip_layout)
     throw std::runtime_error("No such CU at address: " + std::to_string(cuaddr));
@@ -311,7 +317,7 @@ get_kernel_freq(const axlf* top)
 
     auto clock_child = xml_project.get_child_optional("project.platform.device.core.kernelClocks"); 
 
-    if(clock_child) { // check whether kernelClocks field exists or not
+    if (clock_child) { // check whether kernelClocks field exists or not
       for (auto& xml_clock : xml_project.get_child("project.platform.device.core.kernelClocks")) {
         if (xml_clock.first != "clock")
           continue;
@@ -324,7 +330,6 @@ get_kernel_freq(const axlf* top)
   }
   return kernel_clk_freq;
 }
-
 
 } // namespace xclbin
 } // namespace xrt_core

@@ -20,15 +20,15 @@ set script_folder [_tcl::get_script_folder]
 ################################################################
 # Check if script is running in correct Vivado version.
 ################################################################
-set scripts_vivado_version 2019.2
-set current_vivado_version [version -short]
-
-if { [string first $scripts_vivado_version $current_vivado_version] == -1 } {
-   puts ""
-   catch {common::send_msg_id "BD_TCL-109" "ERROR" "This script was generated using Vivado <$scripts_vivado_version> and is being run in <$current_vivado_version> of Vivado. Please run the script in Vivado <$scripts_vivado_version> then open the design in Vivado <$current_vivado_version>. Upgrade the design by running \"Tools => Report => Report IP Status...\", then run write_bd_tcl to create an updated script."}
-
-   return 1
-}
+#set scripts_vivado_version 2019.2
+#set current_vivado_version [version -short]
+#
+#if { [string first $scripts_vivado_version $current_vivado_version] == -1 } {
+#   puts ""
+#   catch {common::send_msg_id "BD_TCL-109" "ERROR" "This script was generated using Vivado <$scripts_vivado_version> and is being run in <$current_vivado_version> of Vivado. Please run the script in Vivado <$scripts_vivado_version> then open the design in Vivado <$current_vivado_version>. Upgrade the design by running \"Tools => Report => Report IP Status...\", then run write_bd_tcl to create an updated script."}
+#
+#   return 1
+#}
 
 ################################################################
 # START
@@ -817,7 +817,7 @@ proc create_root_design { parentCell } {
   # Create PFM attributes
   set_property PFM_NAME {xilinx:zc706:zc706_base:1.0} [get_files [current_bd_design].bd]
   set_property PFM.CLOCK {clk_out1 {id "2" is_default "true" proc_sys_reset "proc_sys_reset_100MHz" status "fixed"} clk_out2 {id "1" is_default "false" proc_sys_reset "proc_sys_reset_142MHz" status "fixed"} clk_out3 {id "0" is_default "false" proc_sys_reset "proc_sys_reset_142MHz" status "fixed"} clk_out4 {id "3" is_default "false" proc_sys_reset "proc_sys_reset_200MHz" status "fixed"} clk_out5 {id "4" is_default "false" proc_sys_reset "proc_sys_reset_50MHz" status "fixed"} clk_out6 {id "5" is_default "false" proc_sys_reset "proc_sys_reset_41MHz" status "fixed"}} [get_bd_cells /clk_wiz_0]
- 
+
   set hp0Val []
   for {set i 1} {$i < 16} {incr i} {
     lappend hp0Val S[format %02d $i]_AXI {memport "S_AXI_HP" sptag "HP0" memory "ps7 HP0_DDR_LOWOCM"}

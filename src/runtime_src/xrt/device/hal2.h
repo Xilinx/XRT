@@ -30,6 +30,7 @@
 #include <cstring>
 #include <memory>
 #include <map>
+#include <array>
 
 namespace xrt { namespace hal2 {
 
@@ -158,9 +159,11 @@ public:
     return task::createM(get_queue(qt),f,*this,std::forward<Args>(args)...);
   }
 
-#pragma GCC diagnostic push
-#if __GNUC__  >= 7
-#pragma GCC diagnostic ignored "-Wnoexcept-type"
+#ifdef __GNUC__
+# pragma GCC diagnostic push
+# if __GNUC__ >= 7
+#  pragma GCC diagnostic ignored "-Wnoexcept-type"
+# endif
 #endif
   template <typename F,typename ...Args>
   auto
@@ -168,7 +171,9 @@ public:
   {
     return task::createF(get_queue(qt),f,std::forward<Args>(args)...);
   }
-#pragma GCC diagnostic pop
+#ifdef __GNUC__
+# pragma GCC diagnostic pop
+#endif
 public:
   device(std::shared_ptr<hal2::operations> ops, unsigned int idx);
   ~device();
@@ -635,7 +640,7 @@ public:
   {
     if(!m_ops->mGetNumLiveProcesses)
       return hal::operations_result<uint32_t>();
-    return (uint32_t)(m_ops->mGetNumLiveProcesses(m_handle));
+    return m_ops->mGetNumLiveProcesses(m_handle);
   }
 
   virtual hal::operations_result<std::string>
@@ -643,7 +648,7 @@ public:
   {
     if (!m_ops->mGetSysfsPath)
       return hal::operations_result<std::string>();
-    size_t max_path = 256;
+    constexpr size_t max_path = 256;
     char path_buf[max_path];
     if (m_ops->mGetSysfsPath(m_handle, subdev.c_str(), entry.c_str(), path_buf, max_path)) {
       return hal::operations_result<std::string>();
@@ -659,7 +664,7 @@ public:
     if(!m_ops->mGetDebugIPlayoutPath)
       return hal::operations_result<std::string>();
 
-    size_t maxLen = 512;
+    const size_t maxLen = 512;
     char path[maxLen];
     if(m_ops->mGetDebugIPlayoutPath(m_handle, path, maxLen)) {
       return hal::operations_result<std::string>();
