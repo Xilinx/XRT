@@ -6,8 +6,9 @@ OSDIST=`lsb_release -i |awk -F: '{print tolower($2)}' | tr -d ' \t'`
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 CORE=`grep -c ^processor /proc/cpuinfo`
 CMAKE=cmake
+CPU=`uname -m`
 
-if [[ $OSDIST == "centos" ]]; then
+if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amazon" ]]; then
     CMAKE=cmake3
     if [[ ! -x "$(command -v $CMAKE)" ]]; then
         echo "$CMAKE is not installed, please run xrtdeps.sh"
@@ -135,6 +136,7 @@ if [[ $dbg == 1 ]]; then
     echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
     time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
   fi
+  echo "make -j $jcore $verbose DESTDIR=$PWD install"
   time make -j $jcore $verbose DESTDIR=$PWD install
   time ctest --output-on-failure
   cd $BUILDDIR
@@ -147,20 +149,30 @@ if [[ $opt == 1 ]]; then
     echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
     time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
   fi
+  echo "make -j $jcore $verbose DESTDIR=$PWD install"
   time make -j $jcore $verbose DESTDIR=$PWD install
   time ctest --output-on-failure
   time make package
 fi
 
 if [[ $driver == 1 ]]; then
+    echo "make -C usr/src/xrt-2.3.0/driver/xocl"
     make -C usr/src/xrt-2.3.0/driver/xocl
+    if [[ $CPU == "aarch64" ]]; then
+	# I know this is dirty as it messes up the source directory with build artifacts but this is the
+	# quickest way to enable native zocl build in Travis CI environment for aarch64
+	ZOCL_SRC=`readlink -f ../../src/runtime_src/core/edge/drm/zocl`
+	make -C $ZOCL_SRC
+    fi
 fi
 
 if [[ $docs == 1 ]]; then
+    echo "make xrt_docs"
     make xrt_docs
 fi
 
 if [[ $clangtidy == 1 ]]; then
+    echo "make clang-tidy"
     make clang-tidy
 fi
 

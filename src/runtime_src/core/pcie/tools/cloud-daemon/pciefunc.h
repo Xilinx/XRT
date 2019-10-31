@@ -25,7 +25,7 @@
 
 class pcieFunc {
 public:
-    pcieFunc(std::shared_ptr<pcidev::pci_device> d);
+    pcieFunc(size_t index, bool user = true);
     ~pcieFunc();
 
     // Getters for various device attributes
@@ -34,17 +34,16 @@ public:
     int getId();
     int getMailbox();
     uint64_t getSwitch();
+    int getIndex() const;
+    std::shared_ptr<pcidev::pci_device> getDev() const;
 
     // Load config from device's sysfs nodes
     bool loadConf();
     // Write config to device's sysfs nodes
     int updateConf(std::string host, uint16_t port, uint64_t swch);
 
-    // Perform IOCTL on this device
-    int ioctl(unsigned long cmd, void *arg = nullptr);
-
     // prefix syslog msg with dev specific bdf
-    void log(int priority, const char *format, ...);
+    void log(int priority, const char *format, ...) const;
 
 private:
     std::string host;
@@ -53,6 +52,7 @@ private:
     int devId = 0;
     int mbxfd = -1;
     std::shared_ptr<pcidev::pci_device> dev;
+    size_t index;
     std::mutex lock;
     bool validConf();
     void clearConf();

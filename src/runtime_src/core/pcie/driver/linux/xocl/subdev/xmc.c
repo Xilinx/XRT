@@ -79,6 +79,13 @@
 #define	XMC_SNSR_CHKSUM_REG		0x1A4
 #define	XMC_SNSR_FLAGS_REG		0x1A8
 #define	XMC_HBM_TEMP_REG		0x260
+#define	XMC_VCC3V3_REG			0x26C
+#define	XMC_3V3_PEX_I_REG		0x278
+#define	XMC_VCC0V85_I_REG		0x284
+#define	XMC_HBM_1V2_REG			0x290
+#define	XMC_VPP2V5_REG			0x29C
+#define	XMC_VCCINT_BRAM_REG		0x2A8
+#define	XMC_HBM_TEMP2_REG		0x2B4
 #define	XMC_HOST_MSG_OFFSET_REG		0x300
 #define	XMC_HOST_MSG_ERROR_REG		0x304
 #define	XMC_HOST_MSG_HEADER_REG		0x308
@@ -300,6 +307,9 @@ struct xocl_xmc {
 	uint32_t		fan_presence;
 	uint32_t		config_mode;
 	bool			bdinfo_loaded;
+
+	bool			sysfs_created;
+	bool			mini_sysfs_created;
 };
 
 
@@ -317,12 +327,12 @@ static void set_sensors_data(struct xocl_xmc *xmc, struct xcl_sensor *sensors)
 static void xmc_read_from_peer(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
-	struct mailbox_subdev_peer subdev_peer = {0};
+	struct xcl_mailbox_subdev_peer subdev_peer = {0};
 	struct xcl_sensor *xcl_sensor = NULL;
 	size_t resp_len = sizeof(struct xcl_sensor);
-	size_t data_len = sizeof(struct mailbox_subdev_peer);
-	struct mailbox_req *mb_req = NULL;
-	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+	size_t data_len = sizeof(struct xcl_mailbox_subdev_peer);
+	struct xcl_mailbox_req *mb_req = NULL;
+	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	xocl_info(&pdev->dev, "reading from peer");
@@ -334,9 +344,9 @@ static void xmc_read_from_peer(struct platform_device *pdev)
 	if (!xcl_sensor)
 		goto done;
 
-	mb_req->req = MAILBOX_REQ_PEER_DATA;
+	mb_req->req = XCL_MAILBOX_REQ_PEER_DATA;
 	subdev_peer.size = resp_len;
-	subdev_peer.kind = SENSOR;
+	subdev_peer.kind = XCL_SENSOR;
 	subdev_peer.entries = 1;
 
 	memcpy(mb_req->data, &subdev_peer, data_len);
@@ -493,6 +503,24 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 		case VCC_0V85:
 			READ_SENSOR(xmc, XMC_VCC0V85_REG, val, val_kind);
 			break;
+		case VOL_VCC_3V3:
+			READ_SENSOR(xmc, XMC_VCC3V3_REG, val, val_kind);
+			break;
+		case CUR_3V3_PEX:
+			READ_SENSOR(xmc, XMC_3V3_PEX_I_REG, val, val_kind);
+			break;
+		case CUR_VCC_0V85:
+			READ_SENSOR(xmc, XMC_VCC0V85_I_REG, val, val_kind);
+			break;
+		case VOL_HBM_1V2:
+			READ_SENSOR(xmc, XMC_HBM_1V2_REG, val, val_kind);
+			break;
+		case VOL_VPP_2V5:
+			READ_SENSOR(xmc, XMC_VPP2V5_REG, val, val_kind);
+			break;
+		case VOL_VCCINT_BRAM:
+			READ_SENSOR(xmc, XMC_VCCINT_BRAM_REG, val, val_kind);
+			break;
 		default:
 			break;
 		}
@@ -599,6 +627,24 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 		case VCC_0V85:
 			*val = xmc->cache->vol_0v85;
 			break;
+		case VOL_VCC_3V3:
+			*val = xmc->cache->vol_3v3_vcc;
+			break;
+		case CUR_3V3_PEX:
+			*val = xmc->cache->cur_3v3_pex;
+			break;
+		case CUR_VCC_0V85:
+			*val = xmc->cache->cur_0v85;
+			break;
+		case VOL_HBM_1V2:
+			*val = xmc->cache->vol_1v2_hbm;
+			break;
+		case VOL_VPP_2V5:
+			*val = xmc->cache->vol_2v5_vpp;
+			break;
+		case VOL_VCCINT_BRAM:
+			*val = xmc->cache->vccint_bram;
+			break;
 		default:
 			break;
 		}
@@ -608,11 +654,11 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 static void read_bdinfo_from_peer(struct platform_device *pdev)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
-	struct mailbox_subdev_peer subdev_peer = {0};
+	struct xcl_mailbox_subdev_peer subdev_peer = {0};
 	size_t resp_len = sizeof(struct xcl_board_info);
-	size_t data_len = sizeof(struct mailbox_subdev_peer);
-	struct mailbox_req *mb_req = NULL;
-	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+	size_t data_len = sizeof(struct xcl_mailbox_subdev_peer);
+	struct xcl_mailbox_req *mb_req = NULL;
+	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	int ret = 0;
 
@@ -627,9 +673,9 @@ static void read_bdinfo_from_peer(struct platform_device *pdev)
 	if (!xmc->bdinfo_raw)
 		goto done;
 
-	mb_req->req = MAILBOX_REQ_PEER_DATA;
+	mb_req->req = XCL_MAILBOX_REQ_PEER_DATA;
 	subdev_peer.size = resp_len;
-	subdev_peer.kind = BDINFO;
+	subdev_peer.kind = XCL_BDINFO;
 	subdev_peer.entries = 1;
 
 	memcpy(mb_req->data, &subdev_peer, data_len);
@@ -746,7 +792,7 @@ static bool autonomous_xmc(struct platform_device *pdev)
 	return core->priv.flags & XOCL_DSAFLAG_SMARTN;
 }
 
-static int xmc_get_data(struct platform_device *pdev, enum group_kind kind, void *buf)
+static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind, void *buf)
 {
 	struct xcl_sensor *sensors = NULL;
 	struct xcl_board_info *bdinfo = NULL;
@@ -756,7 +802,7 @@ static int xmc_get_data(struct platform_device *pdev, enum group_kind kind, void
 		return -ENODEV;
 
 	switch (kind) {
-	case SENSOR:
+	case XCL_SENSOR:
 		sensors = (struct xcl_sensor *)buf;
 
 		xmc_sensor(pdev, VOL_12V_PEX, &sensors->vol_12v_pex, SENSOR_INS);
@@ -792,8 +838,14 @@ static int xmc_get_data(struct platform_device *pdev, enum group_kind kind, void
 		xmc_sensor(pdev, CAGE_TEMP2, &sensors->cage_temp2, SENSOR_INS);
 		xmc_sensor(pdev, CAGE_TEMP3, &sensors->cage_temp3, SENSOR_INS);
 		xmc_sensor(pdev, HBM_TEMP, &sensors->hbm_temp0, SENSOR_INS);
+		xmc_sensor(pdev, VOL_VCC_3V3, &sensors->vol_3v3_vcc, SENSOR_INS);
+		xmc_sensor(pdev, CUR_3V3_PEX, &sensors->cur_3v3_pex, SENSOR_INS);
+		xmc_sensor(pdev, CUR_VCC_0V85, &sensors->cur_0v85, SENSOR_INS);
+		xmc_sensor(pdev, VOL_HBM_1V2, &sensors->vol_1v2_hbm, SENSOR_INS);
+		xmc_sensor(pdev, VOL_VPP_2V5, &sensors->vol_2v5_vpp, SENSOR_INS);
+		xmc_sensor(pdev, VOL_VCCINT_BRAM, &sensors->vccint_bram, SENSOR_INS);
 		break;
-	case BDINFO:
+	case XCL_BDINFO:
 		bdinfo = (struct xcl_board_info *)buf;
 
 		xmc_bdinfo(pdev, SER_NUM, (u32 *)bdinfo->serial_num);
@@ -814,6 +866,22 @@ static int xmc_get_data(struct platform_device *pdev, enum group_kind kind, void
 	return 0;
 }
 
+uint64_t xmc_get_power(struct platform_device *pdev, enum sensor_val_kind kind)
+{
+	u32 v_pex, v_aux, v_3v3, c_pex, c_aux, c_3v3;
+	u64 val = 0;
+
+	xmc_sensor(pdev, VOL_12V_PEX, &v_pex, kind);
+	xmc_sensor(pdev, VOL_12V_AUX, &v_aux, kind);
+	xmc_sensor(pdev, CUR_12V_PEX, &c_pex, kind);
+	xmc_sensor(pdev, CUR_12V_AUX, &c_aux, kind);
+	xmc_sensor(pdev, VOL_3V3_PEX, &v_3v3, kind);
+	xmc_sensor(pdev, CUR_3V3_PEX, &c_3v3, kind);
+
+	val = (u64)v_pex * c_pex + (u64)v_aux * c_aux + (u64)v_3v3 * c_3v3;
+
+	return val;
+}
 /*
  * Defining sysfs nodes for all sensor readings.
  */
@@ -859,6 +927,33 @@ SENSOR_SYSFS_NODE(xmc_cage_temp0, CAGE_TEMP0);
 SENSOR_SYSFS_NODE(xmc_cage_temp1, CAGE_TEMP1);
 SENSOR_SYSFS_NODE(xmc_cage_temp2, CAGE_TEMP2);
 SENSOR_SYSFS_NODE(xmc_cage_temp3, CAGE_TEMP3);
+SENSOR_SYSFS_NODE(xmc_3v3_vcc_vol, VOL_VCC_3V3);
+SENSOR_SYSFS_NODE(xmc_3v3_pex_curr, CUR_3V3_PEX);
+SENSOR_SYSFS_NODE(xmc_0v85_curr, CUR_VCC_0V85);
+SENSOR_SYSFS_NODE(xmc_hbm_1v2_vol, VOL_HBM_1V2);
+SENSOR_SYSFS_NODE(xmc_vpp2v5_vol, VOL_VPP_2V5);
+SENSOR_SYSFS_NODE(xmc_vccint_bram_vol, VOL_VCCINT_BRAM);
+SENSOR_SYSFS_NODE(xmc_hbm_temp, HBM_TEMP);
+
+static ssize_t xmc_power_show(struct device *dev,
+	struct device_attribute *da, char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u64 val = xmc_get_power(xmc->pdev, SENSOR_INS);
+
+	return sprintf(buf, "%lld\n", val);
+}
+static DEVICE_ATTR_RO(xmc_power);
+
+static ssize_t status_show(struct device *dev,
+	struct device_attribute *da, char *buf)
+{
+	struct xocl_xmc *xmc = dev_get_drvdata(dev);
+	u32 val = READ_REG32(xmc, XMC_STATUS_REG);
+
+	return sprintf(buf, "0x%x\n", val);
+}
+static DEVICE_ATTR_RO(status);
 
 #define	SENSOR_SYSFS_NODE_ATTRS						\
 	&dev_attr_xmc_12v_pex_vol.attr,					\
@@ -892,7 +987,15 @@ SENSOR_SYSFS_NODE(xmc_cage_temp3, CAGE_TEMP3);
 	&dev_attr_xmc_cage_temp0.attr,					\
 	&dev_attr_xmc_cage_temp1.attr,					\
 	&dev_attr_xmc_cage_temp2.attr,					\
-	&dev_attr_xmc_cage_temp3.attr
+	&dev_attr_xmc_cage_temp3.attr,					\
+	&dev_attr_xmc_3v3_vcc_vol.attr,					\
+	&dev_attr_xmc_3v3_pex_curr.attr,				\
+	&dev_attr_xmc_0v85_curr.attr,					\
+	&dev_attr_xmc_hbm_1v2_vol.attr,					\
+	&dev_attr_xmc_vpp2v5_vol.attr,					\
+	&dev_attr_xmc_vccint_bram_vol.attr,				\
+	&dev_attr_xmc_hbm_temp.attr,					\
+	&dev_attr_xmc_power.attr
 
 /*
  * Defining sysfs nodes for reading some of xmc regisers.
@@ -910,7 +1013,6 @@ SENSOR_SYSFS_NODE(xmc_cage_temp3, CAGE_TEMP3);
 REG_SYSFS_NODE(version, XMC_VERSION_REG, "%d\n");
 REG_SYSFS_NODE(sensor, XMC_SENSOR_REG, "0x%04x\n");
 REG_SYSFS_NODE(id, XMC_MAGIC_REG, "0x%x\n");
-REG_SYSFS_NODE(status, XMC_STATUS_REG, "0x%x\n");
 REG_SYSFS_NODE(error, XMC_ERROR_REG, "0x%x\n");
 REG_SYSFS_NODE(capability, XMC_FEATURE_REG, "0x%x\n");
 REG_SYSFS_NODE(power_checksum, XMC_SNSR_CHKSUM_REG, "%d\n");
@@ -922,7 +1024,6 @@ REG_SYSFS_NODE(host_msg_header, XMC_HOST_MSG_HEADER_REG, "0x%x\n");
 	&dev_attr_version.attr,						\
 	&dev_attr_sensor.attr,						\
 	&dev_attr_id.attr,						\
-	&dev_attr_status.attr,						\
 	&dev_attr_error.attr,						\
 	&dev_attr_capability.attr,					\
 	&dev_attr_power_checksum.attr,					\
@@ -1089,10 +1190,12 @@ static ssize_t scaling_governor_show(struct device *dev,
 	char val[10];
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
 			 __func__);
-		return -EIO;
+		strcpy(val, "NULL");
+		return sprintf(buf, "%s\n", val);
 	}
+
 	mutex_lock(&xmc->xmc_lock);
 	mode = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_MODE_REG);
 	mutex_unlock(&xmc->xmc_lock);
@@ -1117,9 +1220,9 @@ static ssize_t scaling_governor_store(struct device *dev,
 
 	/* Check if clock scaling feature enabled */
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
 			 __func__);
-		return -EIO;
+		return count;
 	}
 
 	if (strncmp(buf, "power", strlen("power")) == 0)
@@ -1143,12 +1246,10 @@ static ssize_t scaling_enabled_show(struct device *dev,
 	struct device_attribute *da, char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
-	u32 val;
+	u32 val = 0;
 
-	if (!xmc->runtime_cs_enabled) {
-		val = 0;
+	if (!xmc->runtime_cs_enabled)
 		return sprintf(buf, "%d\n", val);
-	}
 
 	mutex_lock(&xmc->xmc_lock);
 	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_CONTROL_REG);
@@ -1166,16 +1267,17 @@ static ssize_t hwmon_scaling_target_power_show(struct device *dev,
 	struct device_attribute *da, char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
-	u32 val;
+	u32 val = 0;
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
 			 __func__);
-		return -EIO;
+		return sprintf(buf, "%d\n", val);
 	}
 	mutex_lock(&xmc->xmc_lock);
 	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_POWER_REG);
 	val &= XMC_CLOCK_SCALING_POWER_TARGET_MASK;
+	val = val * 1000000;
 	mutex_unlock(&xmc->xmc_lock);
 
 	return sprintf(buf, "%uW\n", val);
@@ -1188,9 +1290,9 @@ static ssize_t hwmon_scaling_target_power_store(struct device *dev,
 	u32 val, val2, threshold;
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
 			 __func__);
-		return -EIO;
+		return count;
 	}
 
 	if (kstrtou32(buf, 10, &val) == -EINVAL)
@@ -1222,16 +1324,17 @@ static ssize_t hwmon_scaling_target_temp_show(struct device *dev,
 	struct device_attribute *da, char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
-	u32 val;
+	u32 val = 0;
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
 			 __func__);
-		return -EIO;
+		return sprintf(buf, "%d\n", val);
 	}
 	mutex_lock(&xmc->xmc_lock);
 	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_TEMP_REG);
 	val &= XMC_CLOCK_SCALING_TEMP_TARGET_MASK;
+	val = val * 1000;
 	mutex_unlock(&xmc->xmc_lock);
 
 	return sprintf(buf, "%uc\n", val);
@@ -1245,9 +1348,9 @@ static ssize_t hwmon_scaling_target_temp_store(struct device *dev,
 
 	/* Check if clock scaling feature enabled */
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
 			 __func__);
-		return -EIO;
+		return count;
 	}
 
 	if (kstrtou32(buf, 10, &val) == -EINVAL)
@@ -1277,17 +1380,18 @@ static ssize_t hwmon_scaling_threshold_temp_show(struct device *dev,
 	struct device_attribute *da, char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
-	u32 val;
+	u32 val = 0;
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
 			 __func__);
-		return -EIO;
+		return sprintf(buf, "%d\n", val);
 	}
 	mutex_lock(&xmc->xmc_lock);
 	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
 	val = (val >> XMC_CLOCK_SCALING_TEMP_THRESHOLD_POS) &
 		XMC_CLOCK_SCALING_TEMP_THRESHOLD_MASK;
+	val = val * 1000;
 	mutex_unlock(&xmc->xmc_lock);
 
 	return sprintf(buf, "%uc\n", val);
@@ -1297,17 +1401,18 @@ static ssize_t hwmon_scaling_threshold_power_show(struct device *dev,
 	struct device_attribute *da, char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
-	u32 val;
+	u32 val = 0;
 
 	if (!xmc->runtime_cs_enabled) {
-		xocl_err(dev, "%s: runtime clock scaling is not supported\n",
+		xocl_warn(dev, "%s: runtime clock scaling is not supported\n",
 			 __func__);
-		return -EIO;
+		return sprintf(buf, "%d\n", val);
 	}
 	mutex_lock(&xmc->xmc_lock);
 	val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
 	val = (val >> XMC_CLOCK_SCALING_POWER_THRESHOLD_POS) &
 		XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK;
+	val = val * 1000000;
 	mutex_unlock(&xmc->xmc_lock);
 
 	return sprintf(buf, "%uW\n", val);
@@ -1401,9 +1506,14 @@ static struct attribute *xmc_attrs[] = {
 	&dev_attr_max_power.attr,
 	&dev_attr_fan_presence.attr,
 	&dev_attr_config_mode.attr,
-	&dev_attr_reg_base.attr,
 	SENSOR_SYSFS_NODE_ATTRS,
 	REG_SYSFS_NODE_ATTRS,
+	NULL,
+};
+
+static struct attribute *xmc_mini_attrs[] = {
+	&dev_attr_reg_base.attr,
+	&dev_attr_status.attr,						\
 	NULL,
 };
 
@@ -1460,6 +1570,10 @@ static struct bin_attribute *xmc_bin_attrs[] = {
 static struct attribute_group xmc_attr_group = {
 	.attrs = xmc_attrs,
 	.bin_attrs = xmc_bin_attrs,
+};
+
+static struct attribute_group xmc_mini_attr_group = {
+	.attrs = xmc_mini_attrs,
 };
 
 /*
@@ -1550,14 +1664,8 @@ static ssize_t hwmon_power_show(struct device *dev,
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	int index = to_sensor_dev_attr(da)->index;
-	u32 v_pex, v_aux, c_pex, c_aux;
-	u64 val;
+	u64 val = xmc_get_power(pdev, HWMON_INDEX2VAL_KIND(index));
 
-	xmc_sensor(pdev, VOL_12V_PEX, &v_pex, HWMON_INDEX2VAL_KIND(index));
-	xmc_sensor(pdev, VOL_12V_AUX, &v_aux, HWMON_INDEX2VAL_KIND(index));
-	xmc_sensor(pdev, CUR_12V_PEX, &c_pex, HWMON_INDEX2VAL_KIND(index));
-	xmc_sensor(pdev, CUR_12V_AUX, &c_aux, HWMON_INDEX2VAL_KIND(index));
-	val = (u64)v_pex * c_pex + (u64)v_aux * c_aux;
 	return sprintf(buf, "%lld\n", val);
 }
 
@@ -1609,9 +1717,15 @@ HWMON_VOLT_CURR_SYSFS_NODE(in, 11, "0V85", VCC_0V85);
 HWMON_VOLT_CURR_SYSFS_NODE(in, 12, "MGT VTT", VTT_MGTA);
 HWMON_VOLT_CURR_SYSFS_NODE(in, 13, "DDR VPP BOTTOM", VPP_BTM);
 HWMON_VOLT_CURR_SYSFS_NODE(in, 14, "DDR VPP TOP", VPP_TOP);
+HWMON_VOLT_CURR_SYSFS_NODE(in, 15, "VCC 3V3", VOL_VCC_3V3);
+HWMON_VOLT_CURR_SYSFS_NODE(in, 16, "1V2 HBM", VOL_HBM_1V2);
+HWMON_VOLT_CURR_SYSFS_NODE(in, 17, "2V5 VPP", VOL_VPP_2V5);
+HWMON_VOLT_CURR_SYSFS_NODE(in, 18, "VCC INT BRAM", VOL_VCCINT_BRAM);
 HWMON_VOLT_CURR_SYSFS_NODE(curr, 1, "12V PEX Current", CUR_12V_PEX);
 HWMON_VOLT_CURR_SYSFS_NODE(curr, 2, "12V AUX Current", CUR_12V_AUX);
 HWMON_VOLT_CURR_SYSFS_NODE(curr, 3, "VCC INT Current", CUR_VCC_INT);
+HWMON_VOLT_CURR_SYSFS_NODE(curr, 4, "3V3 PEX Current", CUR_3V3_PEX);
+HWMON_VOLT_CURR_SYSFS_NODE(curr, 5, "VCC 0V85 Current", CUR_VCC_0V85);
 HWMON_TEMPERATURE_SYSFS_NODE(1, "PCB TOP FRONT", SE98_TEMP0);
 HWMON_TEMPERATURE_SYSFS_NODE(2, "PCB TOP REAR", SE98_TEMP1);
 HWMON_TEMPERATURE_SYSFS_NODE(3, "PCB BTM FRONT", SE98_TEMP2);
@@ -1647,9 +1761,15 @@ static struct attribute *hwmon_xmc_attributes[] = {
 	HWMON_VOLT_CURR_ATTRS(in, 12),
 	HWMON_VOLT_CURR_ATTRS(in, 13),
 	HWMON_VOLT_CURR_ATTRS(in, 14),
+	HWMON_VOLT_CURR_ATTRS(in, 15),
+	HWMON_VOLT_CURR_ATTRS(in, 16),
+	HWMON_VOLT_CURR_ATTRS(in, 17),
+	HWMON_VOLT_CURR_ATTRS(in, 18),
 	HWMON_VOLT_CURR_ATTRS(curr, 1),
 	HWMON_VOLT_CURR_ATTRS(curr, 2),
 	HWMON_VOLT_CURR_ATTRS(curr, 3),
+	HWMON_VOLT_CURR_ATTRS(curr, 4),
+	HWMON_VOLT_CURR_ATTRS(curr, 5),
 	HWMON_TEMPERATURE_ATTRS(1),
 	HWMON_TEMPERATURE_ATTRS(2),
 	HWMON_TEMPERATURE_ATTRS(3),
@@ -1694,6 +1814,26 @@ static ssize_t show_hwmon_name(struct device *dev, struct device_attribute *da,
 }
 static struct sensor_device_attribute name_attr =
 	SENSOR_ATTR(name, 0444, show_hwmon_name, NULL, 0);
+
+static void mgmt_sysfs_destroy_xmc_mini(struct platform_device *pdev)
+{
+	struct xocl_xmc *xmc;
+
+	xmc = platform_get_drvdata(pdev);
+	sysfs_remove_group(&pdev->dev.kobj, &xmc_mini_attr_group);
+}
+
+static int mgmt_sysfs_create_xmc_mini(struct platform_device *pdev)
+{
+	int err;
+
+	err = sysfs_create_group(&pdev->dev.kobj, &xmc_mini_attr_group);
+	if (err) {
+		xocl_err(&pdev->dev, "create xmc mini attrs failed: 0x%x", err);
+	}
+
+	return err;
+}
 
 static void mgmt_sysfs_destroy_xmc(struct platform_device *pdev)
 {
@@ -1773,6 +1913,7 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 	int retry = 0;
 	u32 reg_val = 0;
 	void *xdev_hdl;
+	u32 magic = 0;
 
 	xmc = platform_get_drvdata(pdev);
 	if (!xmc)
@@ -1782,6 +1923,12 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 
 	xdev_hdl = xocl_get_xdev(xmc->pdev);
 
+	magic = READ_REG32(xmc, XMC_MAGIC_REG);
+	if (!magic) {
+		xocl_info(&xmc->pdev->dev, "Image is not loaded");
+		return 0;
+	}
+
 	reg_val = READ_GPIO(xmc, 0);
 	xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
 
@@ -1790,8 +1937,7 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 		xocl_info(&xmc->pdev->dev,
 			"XMC info, version 0x%x, status 0x%x, id 0x%x",
 			READ_REG32(xmc, XMC_VERSION_REG),
-			READ_REG32(xmc, XMC_STATUS_REG),
-			READ_REG32(xmc, XMC_MAGIC_REG));
+			READ_REG32(xmc, XMC_STATUS_REG), magic);
 
 		reg_val = READ_REG32(xmc, XMC_STATUS_REG);
 		if (!(reg_val & STATUS_MASK_STOPPED)) {
@@ -1826,9 +1972,9 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 				!(XOCL_READ_REG32(xmc->base_addrs[IO_CQ]) & ERT_EXIT_ACK))
 				msleep(RETRY_INTERVAL);
 			if (retry >= MAX_ERT_RETRY) {
-				xocl_err(&xmc->pdev->dev,
+				xocl_warn(&xmc->pdev->dev,
 					"Failed to stop sched");
-				xocl_err(&xmc->pdev->dev,
+				xocl_warn(&xmc->pdev->dev,
 					"Scheduler CQ status 0x%x",
 					XOCL_READ_REG32(xmc->base_addrs[IO_CQ]));
 				/*
@@ -1849,16 +1995,6 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 		READ_REG32(xmc, XMC_VERSION_REG),
 		READ_REG32(xmc, XMC_STATUS_REG),
 		READ_REG32(xmc, XMC_MAGIC_REG));
-	WRITE_GPIO(xmc, GPIO_RESET, 0);
-	xmc->state = XMC_STATE_RESET;
-	reg_val = READ_GPIO(xmc, 0);
-	xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
-	/* Shouldnt make it here but if we do then exit */
-	if (reg_val != GPIO_RESET) {
-		xmc->state = XMC_STATE_ERROR;
-		return -EIO;
-	}
-
 	return 0;
 }
 static int stop_xmc(struct platform_device *pdev)
@@ -1902,6 +2038,18 @@ static int load_xmc(struct xocl_xmc *xmc)
 	ret = stop_xmc_nolock(xmc->pdev);
 	if (ret != 0)
 		goto out;
+
+	WRITE_GPIO(xmc, GPIO_RESET, 0);
+	xmc->state = XMC_STATE_RESET;
+	reg_val = READ_GPIO(xmc, 0);
+	xocl_info(&xmc->pdev->dev, "MB Reset GPIO 0x%x", reg_val);
+	/* Shouldnt make it here but if we do then exit */
+	if (reg_val != GPIO_RESET) {
+		xocl_err(&xmc->pdev->dev, "Hold reset GPIO Failed");
+		xmc->state = XMC_STATE_ERROR;
+		ret = -EIO;
+		goto out;
+	}
 
 	xdev_hdl = xocl_get_xdev(xmc->pdev);
 
@@ -1962,6 +2110,10 @@ static int load_xmc(struct xocl_xmc *xmc)
 	xmc->state = XMC_STATE_ENABLED;
 
 	xmc->cap = READ_REG32(xmc, XMC_FEATURE_REG);
+
+	if (XMC_PRIVILEGED(xmc) && xocl_clk_scale_on(xdev_hdl))
+		xmc_clk_scale_config(xmc->pdev);
+
 out:
 	mutex_unlock(&xmc->xmc_lock);
 
@@ -2070,7 +2222,8 @@ static struct xocl_mb_funcs xmc_ops = {
 static void xmc_unload_board_info(struct xocl_xmc *xmc)
 {
 	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
-	vfree(xmc->bdinfo_raw);
+	if (xmc->bdinfo_raw)
+		vfree(xmc->bdinfo_raw);
 	xmc->bdinfo_raw = NULL;
 }
 
@@ -2088,17 +2241,18 @@ static int xmc_remove(struct platform_device *pdev)
 	if (xmc->sche_binary)
 		devm_kfree(&pdev->dev, xmc->sche_binary);
 
+	if (xmc->mini_sysfs_created)
+		mgmt_sysfs_destroy_xmc_mini(pdev);
+
 	if (!xmc->enabled)
 		goto end;
 
-	mgmt_sysfs_destroy_xmc(pdev);
+	if (xmc->sysfs_created)
+		mgmt_sysfs_destroy_xmc(pdev);
 
 	mutex_lock(&xmc->mbx_lock);
 	xmc_unload_board_info(xmc);
 	mutex_unlock(&xmc->mbx_lock);
-
-	mutex_destroy(&xmc->xmc_lock);
-	mutex_destroy(&xmc->mbx_lock);
 
 end:
 	for (i = 0; i < NUM_IOADDR; i++) {
@@ -2107,7 +2261,11 @@ end:
 		if (xmc->base_addrs[i])
 			iounmap(xmc->base_addrs[i]);
 	}
-	vfree(xmc->cache);
+	if (xmc->cache)
+		vfree(xmc->cache);
+	mutex_destroy(&xmc->xmc_lock);
+	mutex_destroy(&xmc->mbx_lock);
+
 	platform_set_drvdata(pdev, NULL);
 	devm_kfree(&pdev->dev, xmc);
 	return 0;
@@ -2156,9 +2314,10 @@ static int xmc_probe(struct platform_device *pdev)
 	xmc->pdev = pdev;
 	platform_set_drvdata(pdev, xmc);
 
+	mutex_init(&xmc->xmc_lock);
+	mutex_init(&xmc->mbx_lock);
+
 	for (i = 0; i < NUM_IOADDR; i++) {
-		if ((i == IO_CLK_SCALING) && !xmc->runtime_cs_enabled)
-			continue;
 		res = platform_get_resource(pdev, IORESOURCE_MEM, i);
 		if (res) {
 			xocl_info(&pdev->dev, "IO start: 0x%llx, end: 0x%llx",
@@ -2174,12 +2333,30 @@ static int xmc_probe(struct platform_device *pdev)
 			break;
 	}
 
+	if (XMC_PRIVILEGED(xmc)) {
+		if (xmc->base_addrs[IO_REG]) {
+			err = mgmt_sysfs_create_xmc_mini(pdev);
+			if (err)
+				goto failed;	
+			xmc->mini_sysfs_created = true;
+		} else {
+			xocl_err(&pdev->dev, "Empty resources");
+			err = -EINVAL;
+			goto failed;
+		}
+
+		if (!xmc->base_addrs[IO_GPIO]) {
+			xocl_info(&pdev->dev, "minimum mode for SC upgrade");
+			return 0;
+		}
+	}
+
 	xdev_hdl = xocl_get_xdev(pdev);
 	if (xocl_mb_mgmt_on(xdev_hdl) || xocl_mb_sched_on(xdev_hdl) || autonomous_xmc(pdev)) {
 		xocl_info(&pdev->dev, "Microblaze is supported.");
 		xmc->enabled = true;
 	} else {
-		xocl_err(&pdev->dev, "Microblaze is not supported.");
+		xocl_info(&pdev->dev, "Microblaze is not supported.");
 		return 0;
 	}
 
@@ -2192,7 +2369,8 @@ static int xmc_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	mutex_init(&xmc->xmc_lock);
+	xmc->sysfs_created = true;
+
 	xmc->cache = vzalloc(sizeof(struct xcl_sensor));
 
 	if (!xmc->cache) {
@@ -2209,12 +2387,10 @@ static int xmc_probe(struct platform_device *pdev)
 	 */
 	if (XMC_PRIVILEGED(xmc) && xocl_clk_scale_on(xdev_hdl)) {
 		xmc->runtime_cs_enabled = true;
-		xmc_clk_scale_config(pdev);
 		xocl_info(&pdev->dev, "Runtime clock scaling is supported.\n");
 	}
 
 	/* Enabling XMC mailbox support. */
-	mutex_init(&xmc->mbx_lock);
 	if (XMC_PRIVILEGED(xmc)) {
 		xmc->mbx_enabled = true;
 		safe_read32(xmc, XMC_HOST_MSG_OFFSET_REG, &val);
@@ -2229,7 +2405,6 @@ static int xmc_probe(struct platform_device *pdev)
 
 failed:
 	xmc_remove(pdev);
-	vfree(xmc->cache);
 	return err;
 }
 

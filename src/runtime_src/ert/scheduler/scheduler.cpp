@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,22 +18,34 @@
  * Embedded runtime scheduler
  */
 
-#ifndef ERT_HW_EMU
 #include "core/include/ert.h"
-#else
-#include "ert.h"
-#endif
 // includes from bsp
 #ifndef ERT_HW_EMU
 #include <xil_printf.h>
 #include <mb_interface.h>
 #include <xparameters.h>
 #else
+#include <stdio.h>
 #define xil_printf printf
 #define print printf
+#define u32 uint32_t
 #endif
 #include <stdlib.h>
 #include <limits>
+#include <bitset>
+
+// version is a git hash passed in from build script
+// default for builds that bypass build script
+#ifndef ERT_VERSION
+# define ERT_VERSION 0
+#endif
+#ifndef ERT_SVERSION
+# define ERT_SVERSION "0xdeadbeef"
+#endif
+
+// set local string that can be extracted
+// from binary using 'strings sched.bin'
+const char* ert_version = ERT_SVERSION;
 
 #define ERT_UNUSED __attribute__((unused))
 
@@ -46,7 +58,7 @@ ERT_UNUSED
 static void
 ert_assert(const char* file, long line, const char* function, const char* expr, const char* msg)
 {
-  xil_printf("Assert failed: %s:%d:%s:%s %s\n",file,line,function,expr,msg);
+  xil_printf("Assert failed: %s:%ld:%s:%s %s\n",file,line,function,expr,msg);
   exit(1);
 }
 
@@ -71,6 +83,17 @@ ert_assert(const char* file, long line, const char* function, const char* expr, 
 #else
 # define CTRL_DEBUG(msg)
 # define CTRL_DEBUGF(format,...)
+#endif
+
+#ifdef ERT_HW_EMU
+using addr_type = uint32_t;
+using value_type = uint32_t;
+
+extern value_type read_reg(addr_type addr);
+extern void write_reg(addr_type addr, value_type val);
+extern void microblaze_enable_interrupts();
+extern void microblaze_disable_interrupts();
+extern void reg_access_wait();
 #endif
 
 namespace ert {
@@ -134,108 +157,16 @@ const addr_type CQ_STATUS_REGISTER_ADDR[4] =
  ,ERT_CQ_STATUS_REGISTER_ADDR3
 };
 
+
 /**
  * Simple bitset type supporting 128 bits
  *
  * ERT supports a max of 128 CUs and 128 slots, this bitset class
  * is added to simplify managing 4 32bit bitmasks.
+ *
+ * Using std::bitset non-throwing functions only
  */
-struct bitset_type
-{
-  bitmask_type bitmasks[4] = {0};
-  size_type masks;
-
-  /**
-   * Default construct with 4 masks.
-   *
-   * Use reset once number of positions are known
-   */
-  bitset_type()
-    : masks(4)
-  {}
-
-  /**
-   * Reset a bitset such that it supports specified number of bits
-   *
-   * @maxpos: The index of the highest order bit
-   */
-  void
-  reset(size_type maxpos)
-  {
-    clear();
-    masks = (maxpos >> 5)+1;
-  }
-
-  void
-  set(size_type pos)
-  {
-    auto mask = pos >> 5;
-    bitmasks[mask] |= 1<<(pos - (mask << 5));
-  }
-
-  void
-  clear(size_type pos)
-  {
-    auto mask = pos >> 5;
-    bitmasks[mask] &= ~(1<<(pos - (mask << 5)));
-  }
-
-  void
-  clear_and_set(size_type pos)
-  {
-    clear();
-    set(pos);
-  }
-
-  void
-  set_mask(size_type mask_idx, bitmask_type bm)
-  {
-    bitmasks[mask_idx] = bm;
-  }
-
-  bitmask_type
-  get_mask(size_type mask_idx) const
-  {
-    return bitmasks[mask_idx];
-  }
-
-  void
-  toggle(size_type pos)
-  {
-    auto mask = pos >> 5;
-    bitmasks[mask] ^= 1<<(pos - (mask << 5));
-  }
-
-  bool
-  test(size_type pos) const
-  {
-    auto mask = pos >> 5;
-    return bitmasks[mask] & (1<<(pos - (mask << 5)));
-  }
-
-  // Return: true if no bits are set
-  bool
-  none() const
-  {
-    for (auto itr=bitmasks; itr!=bitmasks+masks; ++itr)
-      if (*itr)
-        return false;
-    return true;
-  }
-
-  void
-  clear()
-  {
-    for (auto itr=bitmasks; itr!=bitmasks+masks; ++itr)
-      (*itr)=0;
-  }
-
-  const char*
-  string()
-  {
-    return "? not implemented";
-  }
-};
+using bitset_type = std::bitset<128>;
 
 // If this assert fails, then ert_parameters is out of sync with
 // the board support package header files.
@@ -501,7 +432,7 @@ setup()
     auto& slot = command_slots[i];
     slot.slot_addr = ERT_CQ_BASE_ADDR + (slot_size * i);
     slot.header_value = 0x4; // free
-    slot.cus.reset(num_cus);
+    slot.cus.reset();
     slot.regmap_addr = 0;
     slot.regmap_size = 0;
 
@@ -513,7 +444,7 @@ setup()
   for (size_type i=0; i<4; ++i)
     ERT_UNUSED volatile auto val = read_reg(STATUS_REGISTER_ADDR[i]);
 
-  cu_status.reset(num_cus);
+  cu_status.reset();
 
   // Initialize cu_slot_usage
   for (size_type i=0; i<num_cus; ++i) {
@@ -567,13 +498,13 @@ setup()
   bool enable_master_interrupts = false;
 
   // Enable cu interupts (cu -> cu_isr -> mb interrupts)
-  cu_interrupt_mask.reset(num_cus);
+  cu_interrupt_mask.reset();
   bitmask_type intc_ier_mask = 0;
   if (cu_interrupt_enabled) {
     for (size_type cu=0; cu<num_cus; ++cu) {
       write_reg(cu_idx_to_addr(cu) + 0x04,1);
       write_reg(cu_idx_to_addr(cu) + 0x08,1);
-      cu_interrupt_mask.set(cu);
+      cu_interrupt_mask[cu] = 1;
     }
     write_reg(ERT_CU_ISR_HANDLER_ENABLE_ADDR,1); // enable CU ISR handler
     intc_ier_mask |= 0x2;                        // acccept cu interrupts on bit 1 of the ier of intc
@@ -590,7 +521,7 @@ setup()
     write_reg(ERT_INTC_IER_ADDR,read_reg(ERT_INTC_IER_ADDR) & ~0x6);  // disable interrupts on bit 1 & 2 (0x2|0x4)
     write_reg(ERT_CU_ISR_HANDLER_ENABLE_ADDR,0); // disable CU ISR handler
   }
-  CTRL_DEBUGF("cu interrupt mask : %s\n",cu_interrupt_mask.string());
+  CTRL_DEBUGF("cu interrupt mask : %s\n", "cannot convert"); // to_string throws
 
   // Enable interrupts from host to MB when new commands are ready
   // When enabled, MB will read CQ_STATUS_REGISTER(s) to determine new
@@ -645,10 +576,11 @@ notify_host(size_type cmd_idx)
   auto mask_idx = cmd_idx>>5;
   auto mask = idx_to_mask(cmd_idx,mask_idx);
   write_reg(STATUS_REGISTER_ADDR[mask_idx],mask);
-#endif
+#else
   // this relies on 1<<n == 1<<(n%32), safe?  no, not safe, to be fixed
   // once 128 slots work so I can check the actual behavior
   write_reg(STATUS_REGISTER_ADDR[cmd_idx>>5],1<<cmd_idx);
+#endif
 }
 
 /**
@@ -751,7 +683,7 @@ start_cu(size_type slot_idx)
 
   // Check all CUs against argument cus mask and against cu_status
   for (size_type cu_idx=0; cu_idx<num_cus; ++cu_idx) {
-    if (cus.test(cu_idx) && !cu_status.test(cu_idx)) {
+    if (cus[cu_idx] && !cu_status[cu_idx]) {
       ERT_DEBUGF("start_cu cu(%d) for slot_idx(%d)\n",cu_idx,slot_idx);
       ERT_ASSERT(read_reg(cu_idx_to_addr(cu_idx))==AP_IDLE,"cu not ready");
 
@@ -766,7 +698,7 @@ start_cu(size_type slot_idx)
         // manually configure and start cu
         configure_cu(cu_idx_to_addr(cu_idx),slot.regmap_addr,slot.regmap_size);
 
-      cu_status.toggle(cu_idx);     // toggle cu status bit, it is now busy
+      cu_status[cu_idx] = !cu_status[cu_idx];     // toggle cu status bit, it is now busy
       set_cu_info(cu_idx,slot_idx); // record which slot cu associated with
       return cu_idx;
     }
@@ -790,9 +722,9 @@ static void
 check_command(size_type slot_idx, size_type cu_idx)
 {
   auto& slot = command_slots[slot_idx];
-  ERT_ASSERT(slot.cus.test(cu_idx),"cu is not used by slot");
+  ERT_ASSERT(slot.cus[cu_idx],"cu is not used by slot");
   // toggle cu mask in slot
-  slot.cus.toggle(cu_idx);
+  slot.cus[cu_idx] = !slot.cus[cu_idx];
   if (slot.cus.none()) {
     notify_host(slot_idx);
     slot.header_value = (slot.header_value & ~0xF) | 0x4; // free
@@ -823,18 +755,18 @@ static bool
 check_cu(size_type cu_idx, bool wait=false)
 {
   // cu interrupt enabled, then managed by interrupt handler
-  if (cu_interrupt_mask.test(cu_idx))
+  if (cu_interrupt_mask[cu_idx])
     return false;
 
   // no interrupt for cu, check cu status register manually
-  ERT_ASSERT(cu_status.test(cu_idx),"cu wasn't started");
+  ERT_ASSERT(cu_status[cu_idx],"cu wasn't started");
   auto cu_addr = cu_idx_to_addr(cu_idx);
 
   // check if done
   do {
     if (read_reg(cu_addr) & AP_DONE) {
       // toogle cu status bit, it is now free
-      cu_status.toggle(cu_idx);
+      cu_status[cu_idx] = !cu_status[cu_idx];
       cu_slot_usage[cu_idx] = no_index; // reset slot index
       return true;
     }
@@ -886,7 +818,10 @@ configure_mb(size_type slot_idx)
   cdma_enabled = (features & 0x20)!=0;
   dataflow_enabled = (features & 0x40)!=0;
   cu_dma_52 = (features & 0x80000000)!=0;
-
+#ifdef ERT_HW_EMU
+  //Force new mechanism for latest emulation platforms
+  cu_dma_52 = 1;
+#endif
   // CU base address
   for (size_type i=0; i<num_cus; ++i) {
     u32 addr = read_reg(slot.slot_addr + 0x18 + (i<<2));
@@ -936,6 +871,15 @@ exit_mb(size_type slot_idx)
   return true;
 }
 
+// Gather ERT stats in ctrl command packet
+// [1  ]      : header
+// [1  ]      : custat version
+// [1  ]      : ert version
+// [1  ]      : number of cq slots
+// [1  ]      : number of cus
+// [#numcus]  : cu execution stats (number of executions)
+// [#numcus]  : cu status (1: running, 0: idle)
+// [#slots]   : command queue slot status
 static bool
 cu_stat(size_type slot_idx)
 {
@@ -943,10 +887,48 @@ cu_stat(size_type slot_idx)
   CTRL_DEBUGF("slot(%d) [new -> queued -> running]\n",slot_idx);
   CTRL_DEBUGF("cu_stat slot(%d) header=0x%x\n",slot_idx,slot.header_value);
 
-  for (size_type i=0; i<num_cus; ++i) {
-    CTRL_DEBUGF("cu_usage[%d]=%d\n",i,cu_usage[i]);
-    write_reg(slot.slot_addr + 0x4 + (i<<2),cu_usage[i]);
+  // write stats to command package after header
+  size_type pkt_idx = 1; // after header
+  size_type max_idx = slot_size >> 2; 
+
+  // custat version, update when changing layout of packet
+  write_reg(slot.slot_addr + (pkt_idx++ << 2),0x51a10000);
+
+  // ert git version
+  write_reg(slot.slot_addr + (pkt_idx++ << 2),ERT_VERSION);
+
+  // number of cq slots
+  write_reg(slot.slot_addr + (pkt_idx++ << 2),num_slots);
+
+  // number of cus
+  write_reg(slot.slot_addr + (pkt_idx++ << 2),num_cus);
+  
+  // individual cu execution stat
+  for (size_type i=0; pkt_idx<max_idx && i<num_cus; ++i) {
+    CTRL_DEBUGF("cu_usage[0x%x]=%d\n",cu_idx_to_addr(i),cu_usage[i]);
+    write_reg(slot.slot_addr + (pkt_idx++ << 2),cu_usage[i]);
   }
+
+  // individual cu status
+  for (size_type i=0; pkt_idx<max_idx && i<num_cus; ++i) {
+    CTRL_DEBUGF("cu_staus[0x%x]=%d\n",cu_idx_to_addr(i),cu_status[i]);
+    write_reg(slot.slot_addr + (pkt_idx++ << 2),cu_status[i]);
+  }
+
+  // command slot status
+  for (size_type i=0; pkt_idx<max_idx && i<num_slots; ++i) {
+    auto& s = command_slots[i];
+    CTRL_DEBUGF("slot_status[%d]=%d\n",i,s.header_value & 0XF);
+    write_reg(slot.slot_addr + (pkt_idx++ << 2),s.header_value & 0XF);
+  }
+
+#if 0
+  // payload count
+  auto mask = 0X7FF << 12;  // [22-12]
+  slot.header_value = (slot.header_value & (~mask)) | (pkt_idx << 12);
+  CTRL_DEBUGF("cu_stat new header=0x%x\n",slot.header_value);
+  write_reg(slot.slot_addr, slot.header_value);
+#endif
 
   // notify host
   notify_host(slot_idx);
@@ -969,10 +951,10 @@ abort_mb(size_type slot_idx)
   if ((s.header_value & 0xF)!=0x3)
     return true; // bail if not running
   for (size_type cu_idx=0; cu_idx<num_cus; ++cu_idx) {
-    if (s.cus.test(cu_idx)) {
+    if (s.cus[cu_idx]) {
       check_command(sidx,cu_idx);
       cu_slot_usage[cu_idx] = no_index;
-      cu_status.toggle(cu_idx);
+      cu_status[cu_idx] = !cu_status[cu_idx];
     }
   }
 
@@ -1049,8 +1031,11 @@ new_to_queued(size_type slot_idx)
 
   // new command, gather slot info
   addr_type addr = cu_section_addr(slot.slot_addr);
+  slot.cus.reset();
   for (size_type idx=0; idx<num_cu_masks; ++idx) {
-    slot.cus.set_mask(idx,read_reg(addr + (idx<<2)));
+    bitset_type reg(read_reg(addr + (idx<<2)));
+    slot.cus <<= 32;
+    slot.cus |= reg;
   }
   slot.regmap_addr = regmap_section_addr(slot.header_value,slot.slot_addr);
   slot.regmap_size = regmap_size(slot.header_value);
@@ -1082,7 +1067,7 @@ queued_to_running(size_type slot_idx)
   // queued command, start if any of cus is ready
   auto cu_idx = start_cu(slot_idx);
   if (cu_idx != no_index) {
-    slot.cus.clear_and_set(cu_idx); // bitmask now reflects running cu
+    slot.cus.reset(); slot.cus[cu_idx] = 1; // bitmask now reflects running cu
     slot.header_value |= 0x1;       // running (0x2->0x3)
     ERT_DEBUGF("slot(%d) [queued -> running]\n",slot_idx);
 
@@ -1107,20 +1092,19 @@ running_to_free(size_type slot_idx)
   auto& slot = command_slots[slot_idx];
   ERT_ASSERT((slot.header_value & 0xF)==0x3,"slot is not running\n");
   // running command, check its cu status
-  for (size_type w=0,offset=0; w<num_cu_masks; ++w,offset+=32) {
-    auto cu_mask = slot.cus.get_mask(w);
-    for (size_type cu_idx=offset; cu_mask; cu_mask >>=1, ++cu_idx) {
-      if ((cu_mask & 0x1) && check_cu(cu_idx,false)) {
-        notify_host(slot_idx);
-        slot.header_value = (slot.header_value & ~0xF) | 0x4; // free
-        ERT_DEBUGF("slot(%d) [running -> free]\n",slot_idx);
+  bitset_type cus = slot.cus;
+  for (size_type cu_idx=0; cus.any(); cus >>= 1, ++cu_idx) {
+    if (!cus[0] || !check_cu(cu_idx,false))
+      continue;
+
+    notify_host(slot_idx);
+    slot.header_value = (slot.header_value & ~0xF) | 0x4; // free
+    ERT_DEBUGF("slot(%d) [running -> free]\n",slot_idx);
 
 #ifdef DEBUG_SLOT_STATE
-        write_reg(slot.slot_addr,slot.header_value);
+    write_reg(slot.slot_addr,slot.header_value);
 #endif
-        return true;
-      }
-    }
+    return true;
   }
   return false;
 }
@@ -1153,13 +1137,7 @@ scheduler_loop()
       auto& slot = command_slots[slot_idx];
 
 #ifdef ERT_HW_EMU
-      if(sim_embedded_scheduler_sw_imp::getSchedularPtr()!=nullptr) {
-      sim_embedded_scheduler_sw_imp* sch=sim_embedded_scheduler_sw_imp::getSchedularPtr();
-        wait(sch->maxi_lite_mb_aclk.posedge_event());
-      } else {
-        sc_time t(1,SC_NS);
-        wait(t);
-      }
+      reg_access_wait();
 #endif
 
       // In dataflow mode ERT is polling CUs for completion after
@@ -1169,23 +1147,23 @@ scheduler_loop()
         size_type cuidx = slot_idx-1;  // compensate for reserved slot (0)
 
         // Check if host has started or continued this CU
-        if (!cu_status.test(cuidx)) {
+        if (!cu_status[cuidx]) {
           auto cqvalue = read_reg(slot.slot_addr);
           if (cqvalue & (AP_START|AP_CONTINUE)) {
             write_reg(slot.slot_addr,0x0); // clear
             ERT_DEBUGF("enable cu(%d) cqvalue(0x%x)\n",cuidx,cqvalue);
-            cu_status.toggle(cuidx); // enable polling of this CU
+            cu_status[cuidx] = !cu_status[cuidx]; // enable polling of this CU
           }
         }
 
-        if (!cu_status.test(cuidx))
+        if (!cu_status[cuidx])
           continue; // CU is not used
 
         auto cuvalue = read_reg(cu_idx_to_addr(cuidx));
         if (!(cuvalue & AP_DONE))
           continue;
 
-        cu_status.toggle(cuidx); // disable polling until host re-enables
+        cu_status[cuidx] = !cu_status[cuidx]; // disable polling until host re-enables
         ERT_DEBUGF("polled cu(%d) cuvalue(0x%x)\n",cuidx,cuvalue);
 
         // wake up host
@@ -1221,7 +1199,9 @@ scheduler_loop()
 /**
  * CU interrupt service routine
  */
+#ifndef ERT_HW_EMU
 void cu_interrupt_handler() __attribute__((interrupt_handler));
+#endif
 void
 cu_interrupt_handler()
 {
@@ -1230,15 +1210,15 @@ cu_interrupt_handler()
 
   if (intc_mask & 0x2) { // cuisr interrupt
     for (size_type w=0,offset=0; w<num_cu_masks; ++w,offset+=32) {
-      auto cu_mask = read_reg(CU_STATUS_REGISTER_ADDR[w]) & cu_interrupt_mask.get_mask(w);
+      auto cu_mask = read_reg(CU_STATUS_REGISTER_ADDR[w]);
       for (size_type cu_idx=offset; cu_mask; cu_mask >>= 1, ++cu_idx) {
-        if (cu_mask & 0x1) {
+        if ((cu_mask & 0x1) && cu_interrupt_mask[cu_idx]) {
           ERT_DEBUGF("cu(%d) is interrupting\n",cu_idx);
-          ERT_ASSERT(cu_status.test(cu_idx),"cu wasn't started");
+          ERT_ASSERT(cu_status[cu_idx],"cu wasn't started");
           // check if command is done
           check_command(cu_slot_usage[cu_idx],cu_idx);
           cu_slot_usage[cu_idx] = no_index; // reset slot index
-          cu_status.toggle(cu_idx); // toggle status of completed cus
+          cu_status[cu_idx] = !cu_status[cu_idx]; // toggle status of completed cus
         }
       }
     }
@@ -1258,10 +1238,10 @@ cu_interrupt_handler()
   if (intc_mask & 0x4) { // cdma interrupt
     auto cu_idx = num_cus-1; // cdma is last cu
     ERT_DEBUGF("cdma cu(%d) interrupts\n",cu_idx);
-    ERT_ASSERT(cu_status.test(cu_idx),"cdma cu wasn't started");
+    ERT_ASSERT(cu_status[cu_idx],"cdma cu wasn't started");
     check_command(cu_slot_usage[cu_idx],cu_idx);
     cu_slot_usage[cu_idx] = no_index; // reset slot index;
-    cu_status.toggle(cu_idx); // toggle status of completed cus
+    cu_status[cu_idx] = !cu_status[cu_idx]; // toggle status of completed cus
 
     // Reset cdma (1) read status to clear it, (2) reset isr at base + 0xC
     ERT_UNUSED volatile auto val = read_reg(cu_idx_to_addr(cu_idx));
@@ -1273,6 +1253,23 @@ cu_interrupt_handler()
 }
 
 } // ert
+#ifdef ERT_HW_EMU
+#ifdef __cplusplus
+extern "C" {
+#endif
+void scheduler_loop() {
+    ert::scheduler_loop();
+}
+
+void cu_interrupt_handler() {
+    ert::cu_interrupt_handler();
+}
+
+#ifdef __cplusplus
+}
+#endif
+#endif
+
 #ifndef ERT_HW_EMU
 int main()
 {

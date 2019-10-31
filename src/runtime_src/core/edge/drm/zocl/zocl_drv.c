@@ -34,6 +34,7 @@
 #include "zocl_sk.h"
 #include "zocl_bo.h"
 #include "sched_exec.h"
+#include "zocl_xclbin.h"
 
 #define ZOCL_DRIVER_NAME        "zocl"
 #define ZOCL_DRIVER_DESC        "Zynq BO manager"
@@ -92,6 +93,17 @@ static inline irqreturn_t zocl_h2c_isr(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
+static int
+match_name(struct device *dev, void *data)
+{
+	const char *name = data;
+	/*
+	 * check if given name is substring inside dev.
+	 * the dev_name is like: 20300030000.ert_hw
+	 */
+	return strstr(dev_name(dev), name) != NULL;
+}
+
 /**
  * find_pdev - Find platform device by name
  *
@@ -104,7 +116,8 @@ static struct platform_device *find_pdev(char *name)
 	struct device *dev;
 	struct platform_device *pdev;
 
-	dev = bus_find_device_by_name(&platform_bus_type, NULL, name);
+	dev = bus_find_device(&platform_bus_type, NULL, (void *)name,
+	    match_name);
 	if (!dev)
 		return NULL;
 
@@ -183,11 +196,11 @@ void zocl_free_bo(struct drm_gem_object *obj)
 	if (IS_ERR(obj) || !obj)
 		return;
 
+	DRM_DEBUG("Freeing BO\n");
 	zocl_obj = to_zocl_bo(obj);
 	zdev = obj->dev->dev_private;
 
 	if (!zdev->domain) {
-		DRM_INFO("Freeing BO\n");
 		zocl_describe(zocl_obj);
 		if (zocl_obj->flags & ZOCL_BO_FLAGS_USERPTR)
 			zocl_free_userptr_bo(obj);
@@ -443,6 +456,9 @@ static int zocl_client_open(struct drm_device *dev, struct drm_file *filp)
 	filp->driver_priv = fpriv;
 	mutex_init(&fpriv->lock);
 	atomic_set(&fpriv->trigger, 0);
+	atomic_set(&fpriv->outstanding_execs, 0);
+	fpriv->abort = false;
+	fpriv->pid = get_pid(task_pid(current));
 	zocl_track_ctx(dev, fpriv);
 	DRM_INFO("Pid %d opened device\n", pid_nr(task_tgid(current)));
 	return 0;
@@ -450,13 +466,49 @@ static int zocl_client_open(struct drm_device *dev, struct drm_file *filp)
 
 static void zocl_client_release(struct drm_device *dev, struct drm_file *filp)
 {
-	struct sched_client_ctx *fpriv = filp->driver_priv;
+	struct sched_client_ctx *client = filp->driver_priv;
+	struct drm_zocl_dev *zdev = dev->dev_private;
+	int pid = pid_nr(client->pid);
+	u32 outstanding = 0;
+	int retry = 20;
+	int i;
 
-	if (!fpriv)
+	if (!client)
 		return;
 
-	zocl_untrack_ctx(dev, fpriv);
-	kfree(fpriv);
+	/* force scheduler to abort scheduled cmds for this client */
+	client->abort = true;
+	outstanding = atomic_read(&client->outstanding_execs);
+	while (retry-- && outstanding) {
+		DRM_INFO("pid(%d) waiting for outstanding %d cmds to finish",
+		    pid, outstanding);
+		msleep(500);
+		outstanding = atomic_read(&client->outstanding_execs);
+	}
+	outstanding = atomic_read(&client->outstanding_execs);
+	if (outstanding) {
+		DRM_ERROR("Please investigate stale cmds\n");
+		for (i = 0; i < zdev->exec->num_cus; i++) {
+			zocl_cu_status_print(&zdev->exec->zcu[i]);
+		}
+	}
+
+	put_pid(client->pid);
+	client->pid = NULL;
+	if (CLIENT_NUM_CU_CTX(client) == 0)
+		goto done;
+
+	/*
+	 * This happens when application exits without releasing the
+	 * contexts. Give up contexts and release xclbin.
+	 */
+	client->num_cus = 0;
+	mutex_lock(&zdev->zdev_xclbin_lock);
+	(void) zocl_xclbin_release(zdev);
+	mutex_unlock(&zdev->zdev_xclbin_lock);
+done:
+	zocl_untrack_ctx(dev, client);
+	kfree(client);
 
 	DRM_INFO("Pid %d closed device\n", pid_nr(task_tgid(current)));
 }
@@ -483,6 +535,35 @@ static unsigned int zocl_poll(struct file *filp, poll_table *wait)
 	mutex_unlock(&fpriv->lock);
 
 	return ret;
+}
+
+static int zocl_iommu_init(struct drm_zocl_dev *zdev,
+		struct platform_device *pdev)
+{
+	struct iommu_domain_geometry *geometry;
+	u64 start, end;
+	int ret;
+
+	zdev->domain = iommu_domain_alloc(&platform_bus_type);
+	if (!zdev->domain)
+		return -ENOMEM;
+
+	ret = iommu_attach_device(zdev->domain, &pdev->dev);
+	if (ret) {
+		DRM_INFO("IOMMU attach device failed. ret(%d)\n", ret);
+		iommu_domain_free(zdev->domain);
+		zdev->domain = NULL;
+		return ret;
+	}
+
+	geometry = &zdev->domain->geometry;
+	start = geometry->aperture_start;
+	end = geometry->aperture_end;
+
+	DRM_INFO("IOMMU aperture initialized (%#llx-%#llx)\n",
+				start, end);
+
+	return 0;
 }
 
 const struct vm_operations_struct zocl_bo_vm_ops = {
@@ -518,9 +599,9 @@ static const struct drm_ioctl_desc zocl_ioctls[] = {
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(ZOCL_SK_REPORT, zocl_sk_report_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
-	DRM_IOCTL_DEF_DRV(ZOCL_PCAP_DOWNLOAD, zocl_pcap_download_ioctl,
-			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(ZOCL_INFO_CU, zocl_info_cu_ioctl,
+			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(ZOCL_CTX, zocl_ctx_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 };
 
@@ -543,7 +624,7 @@ static struct drm_driver zocl_driver = {
 	.gem_create_object         = zocl_gem_create_object,
 	.prime_handle_to_fd        = drm_gem_prime_handle_to_fd,
 	.prime_fd_to_handle        = drm_gem_prime_fd_to_handle,
-	.gem_prime_import          = drm_gem_prime_import,
+	.gem_prime_import          = zocl_gem_import,
 	.gem_prime_export          = drm_gem_prime_export,
 	.gem_prime_get_sg_table    = drm_gem_cma_prime_get_sg_table,
 	.gem_prime_import_sg_table = drm_gem_cma_prime_import_sg_table,
@@ -561,10 +642,19 @@ static struct drm_driver zocl_driver = {
 	.patchlevel                = ZOCL_DRIVER_PATCHLEVEL,
 };
 
+static const struct zdev_data zdev_data_mpsoc = {
+	.fpga_driver_name = "pcap",
+};
+
+static const struct zdev_data zdev_data_versal = {
+	.fpga_driver_name = "versal_fpga"
+};
+
 static const struct of_device_id zocl_drm_of_match[] = {
-	{ .compatible = "xlnx,zocl", },
-	{ .compatible = "xlnx,zoclsvm", },
-	{ .compatible = "xlnx,zocl-ert", },
+	{ .compatible = "xlnx,zocl", .data = &zdev_data_mpsoc},
+	{ .compatible = "xlnx,zoclsvm", .data = &zdev_data_mpsoc},
+	{ .compatible = "xlnx,zocl-ert", .data = &zdev_data_mpsoc},
+	{ .compatible = "xlnx,zocl-versal", .data = &zdev_data_versal},
 	{ /* end of table */ },
 };
 MODULE_DEVICE_TABLE(of, zocl_drm_of_match);
@@ -591,6 +681,8 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	if (!zdev)
 		return -ENOMEM;
 
+	zdev->zdev_data_info = id->data;
+
 	/* Record and get IRQ number */
 	for (index = 0; index < MAX_CU_NUM; index++) {
 		irq = platform_get_irq(pdev, index);
@@ -608,15 +700,16 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	ret = get_reserved_mem_region(&pdev->dev, &res_mem);
 	if (!ret) {
 		DRM_INFO("Reserved memory for host at 0x%lx, size 0x%lx\n",
-			 (unsigned long)res_mem.start, (unsigned long)resource_size(&res_mem));
+			 (unsigned long)res_mem.start,
+			 (unsigned long)resource_size(&res_mem));
 		zdev->host_mem = res_mem.start;
 		zdev->host_mem_len = resource_size(&res_mem);
 	}
 	mutex_init(&zdev->mm_lock);
 
-	subdev = find_pdev("80180000.ert_hw");
+	subdev = find_pdev("ert_hw");
 	if (subdev) {
-		DRM_INFO("ert_hw found -> %p\n", subdev);
+		DRM_INFO("ert_hw found: 0x%llx\n", (uint64_t)(uintptr_t)subdev);
 		/* Trust device tree for now, but a better place should be
 		 * feature rom.
 		 */
@@ -630,44 +723,43 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 		zdev->ert = (struct zocl_ert_dev *)platform_get_drvdata(subdev);
 	}
 
-	fnode = of_get_child_by_name(of_root, "pcap");
+	/* For Non PR platform, there is not need to have FPGA manager
+	 * For PR platform, the FPGA manager is required. No good way to
+	 * determin if it is a PR platform at probe.
+	 */
+	fnode = of_get_child_by_name(of_root,
+	    zdev->zdev_data_info->fpga_driver_name);
 	if (fnode) {
 		zdev->fpga_mgr = of_fpga_mgr_get(fnode);
-		if (IS_ERR(zdev->fpga_mgr)) {
-			DRM_ERROR("FPGA Manager not found %ld\n",
-				  PTR_ERR(zdev->fpga_mgr));
+		if (IS_ERR(zdev->fpga_mgr))
 			zdev->fpga_mgr = NULL;
-		} else {
-			if (of_property_read_u32(pdev->dev.of_node, "xlnx,pr-isolation-addr",
-						 &zdev->pr_isolation_addr))
-				zdev->pr_isolation_addr = 0;
-		}
-	} else {
-		DRM_ERROR("FPGA programming device pcap not found\n");
+		DRM_INFO("FPGA programming device %s founded.\n",
+		    zdev->zdev_data_info->fpga_driver_name);
 	}
+
+	if (ZOCL_PLATFORM_ARM64) {
+		if (of_property_read_u64(pdev->dev.of_node,
+		    "xlnx,pr-isolation-addr", &zdev->pr_isolation_addr))
+			zdev->pr_isolation_addr = 0;
+	} else {
+		u32 prop_addr = 0;
+
+		if (of_property_read_u32(pdev->dev.of_node,
+		    "xlnx,pr-isolation-addr", &prop_addr))
+			zdev->pr_isolation_addr = 0;
+		else
+			zdev->pr_isolation_addr = prop_addr;
+	}
+	DRM_INFO("PR Isolation addr 0x%llx", zdev->pr_isolation_addr);
 
 	/* Initialzie IOMMU */
 	if (iommu_present(&platform_bus_type)) {
-		struct iommu_domain_geometry *geometry;
-		u64 start, end;
-		int ret = 0;
-
-		zdev->domain = iommu_domain_alloc(&platform_bus_type);
-		if (!zdev->domain)
-			return -ENOMEM;
-
-		ret = iommu_attach_device(zdev->domain, &pdev->dev);
-		if (ret) {
-			DRM_INFO("IOMMU attach device failed. ret(%d)\n", ret);
-			iommu_domain_free(zdev->domain);
-		}
-
-		geometry = &zdev->domain->geometry;
-		start = geometry->aperture_start;
-		end = geometry->aperture_end;
-
-		DRM_INFO("IOMMU aperture initialized (%#llx-%#llx)\n",
-				start, end);
+		/*
+		 * Note: we ignore the return value of zocl_iommu_init().
+		 * In the case of failing to initialize iommu, zocl
+		 * driver will keep working with iommu disabled.
+		 */
+		(void) zocl_iommu_init(zdev, pdev);
 	}
 
 	platform_set_drvdata(pdev, zdev);
@@ -683,6 +775,11 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 
 	/* During attach, we don't request dma channel */
 	zdev->zdev_dma_chan = NULL;
+
+	/* Initial xclbin */
+	ret = zocl_xclbin_init(zdev);
+	if (ret)
+		goto err0;
 
 	/* doen with zdev initialization */
 	drm->dev_private = zdev;
@@ -704,6 +801,7 @@ err1:
 	zocl_fini_sysfs(drm->dev);
 
 err0:
+	zocl_xclbin_fini(zdev);
 	ZOCL_DRM_DEV_PUT(drm);
 	return ret;
 }
@@ -729,9 +827,11 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 		fpga_mgr_put(zdev->fpga_mgr);
 
 	sched_fini_exec(drm);
+
 	zocl_clear_mem(zdev);
 	mutex_destroy(&zdev->mm_lock);
 	zocl_free_sections(zdev);
+	zocl_xclbin_fini(zdev);
 	zocl_fini_sysfs(drm->dev);
 
 	kfree(zdev->apertures);

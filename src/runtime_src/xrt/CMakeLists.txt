@@ -2,10 +2,16 @@ add_subdirectory(xrt++)
 
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
-  ${DRM_INCLUDE_DIRS}
-  ${BOOST_FILESYSTEM_INCLUDE_DIRS}
-  ${BOOST_SYSTEM_INCLUDE_DIRS}
   )
+
+if (NOT WIN32)
+  include_directories(${DRM_INCLUDE_DIRS})
+else()
+set(Boost_USE_STATIC_LIBS     ON)
+set(Boost_USE_MULTITHREADED   ON)
+find_package(Boost REQUIRED COMPONENTS system filesystem )
+include_directories(${Boost_INCLUDE_DIRS})
+endif (NOT WIN32)
 
 set(XRT_XRT_DEVICE_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/device")
 set(XRT_XRT_SCHED_DIR   "${CMAKE_CURRENT_SOURCE_DIR}/scheduler")
@@ -47,7 +53,16 @@ add_library(xrt++ SHARED ${XRT_SRC}
   $<TARGET_OBJECTS:xrt>
   )
 
+target_link_libraries(xrt++
+  xrt_coreutil
+  ${Boost_FILESYSTEM_LIBRARY}
+  ${Boost_SYSTEM_LIBRARY}
+  )
+
 set_target_properties(xrt++ PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
-install (TARGETS xrt++ LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib)
+install(TARGETS xrt++
+  ARCHIVE DESTINATION ${XRT_INSTALL_DIR}/lib
+  LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib
+  RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)

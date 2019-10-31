@@ -575,7 +575,7 @@ static int nifd_probe(struct platform_device *pdev)
     struct xocl_nifd *nifd;
     struct resource *res;
     struct xocl_dev_core *core;
-    struct FeatureRomHeader rom;
+    struct FeatureRomHeader rom = { {0} };
     bool nifd_valid = false;
     int err = 0;
 
@@ -606,7 +606,8 @@ static int nifd_probe(struct platform_device *pdev)
             (long)rom.FeatureBitMap);
     nifd_valid = (long)rom.FeatureBitMap & 0x40000000;
     if (!nifd_valid) {
-        return 0;
+        err = -EINVAL;
+        goto failed;
     }
 
     platform_set_drvdata(pdev, nifd);
@@ -623,21 +624,18 @@ static int nifd_remove(struct platform_device *pdev)
 {
     struct xocl_nifd *nifd;
     struct xocl_dev_core *core;
+
     core = xocl_get_xdev(pdev);
     if (!core)
-    {
-        xocl_err(&pdev->dev, "core is NULL in NIFD remove");
-    }
+        xocl_info(&pdev->dev, "core is NULL in NIFD remove");
+
     nifd = platform_get_drvdata(pdev);
-    if (!nifd)
-    {
+    if (!nifd) {
         xocl_err(&pdev->dev, "driver data is NULL");
         return -EINVAL;
     }
-    if (nifd->nifd_base) 
-    {
+    if (nifd->nifd_base)
         iounmap(nifd->nifd_base);
-    }
     platform_set_drvdata(pdev, NULL);
     xocl_drvinst_free(nifd);
 

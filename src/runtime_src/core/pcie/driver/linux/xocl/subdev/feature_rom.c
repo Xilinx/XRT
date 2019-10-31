@@ -33,6 +33,7 @@ struct feature_rom {
 	bool			aws_dev;
 	bool			runtime_clk_scale_en;
 	char			uuid[65];
+	bool			passthrough_virt_en;
 };
 
 static ssize_t VBNV_show(struct device *dev,
@@ -84,6 +85,15 @@ static ssize_t timestamp_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(timestamp);
 
+static ssize_t uuid_show(struct device *dev,
+    struct device_attribute *attr, char *buf)
+{
+	struct feature_rom *rom = platform_get_drvdata(to_platform_device(dev));
+
+	return sprintf(buf, "%s\n", rom->uuid);
+}
+static DEVICE_ATTR_RO(uuid);
+
 static ssize_t FPGA_show(struct device *dev,
     struct device_attribute *attr, char *buf)
 {
@@ -100,6 +110,7 @@ static struct attribute *rom_attrs[] = {
 	&dev_attr_ddr_bank_size.attr,
 	&dev_attr_timestamp.attr,
 	&dev_attr_FPGA.attr,
+	&dev_attr_uuid.attr,
 	NULL,
 };
 
@@ -178,6 +189,16 @@ static bool runtime_clk_scale_on(struct platform_device *pdev)
 	BUG_ON(!rom);
 
 	return rom->runtime_clk_scale_en;
+}
+
+static bool passthrough_virtualization_on(struct platform_device *pdev)
+{
+	struct feature_rom *rom;
+
+	rom = platform_get_drvdata(pdev);
+	BUG_ON(!rom);
+
+	return rom->passthrough_virt_en;
 }
 
 static uint32_t* get_cdma_base_addresses(struct platform_device *pdev)
@@ -285,12 +306,12 @@ static int __find_firmware(struct platform_device *pdev, char *fw_name,
 	u16 vendor = le16_to_cpu(pcidev->vendor);
 	u16 subdevice = le16_to_cpu(pcidev->subsystem_device);
 	u64 timestamp = rom->header.TimeSinceEpoch;
-	char *uuid = NULL;
+	bool is_multi_rp = (strlen(rom->uuid) > 0) ? true : false;
 	int err = 0;
 
 	/* For 2RP, only uuid is provided */
-	if (strlen(rom->uuid) > 0) {
-		snprintf(fw_name, len, "xilinx/%s/%s.%s", rom->uuid, rom->uuid,
+	if (is_multi_rp) {
+		snprintf(fw_name, len, "xilinx/%s/partition.%s", rom->uuid,
 			suffix);
 	} else {
 		snprintf(fw_name, len, "xilinx/%04x-%04x-%04x-%016llx.%s",
@@ -300,15 +321,21 @@ static int __find_firmware(struct platform_device *pdev, char *fw_name,
 	/* deviceid is arg, the others are from pdev) */
 	xocl_info(&pdev->dev, "try load %s", fw_name);
 	err = request_firmware(fw, fw_name, &pcidev->dev);
-	if (err && !uuid) {
+	if (err && !is_multi_rp) {
 		snprintf(fw_name, len, "xilinx/%04x-%04x-%04x-%016llx.%s",
 			vendor, (deviceid + 1), subdevice, timestamp, suffix);
 		xocl_info(&pdev->dev, "try load %s", fw_name);
 		err = request_firmware(fw, fw_name, &pcidev->dev);
 	}
 
+	if (err && is_multi_rp) {
+		snprintf(fw_name, len, "xilinx/%s/%s.%s", rom->uuid, rom->uuid,
+			suffix);
+		err = request_firmware(fw, fw_name, &pcidev->dev);
+	}
+
 	/* Retry with the legacy dsabin */
-	if (err && !uuid) {
+	if (err && !is_multi_rp) {
 		snprintf(fw_name, len, "xilinx/%04x-%04x-%04x-%016llx.%s",
 			vendor, le16_to_cpu(pcidev->device + 1), subdevice,
 			le64_to_cpu(0x0000000000000000), suffix);
@@ -345,17 +372,32 @@ static struct xocl_rom_funcs rom_ops = {
 	.get_raw_header = get_raw_header,
 	.runtime_clk_scale_on = runtime_clk_scale_on,
 	.find_firmware = find_firmware,
+	.passthrough_virtualization_on = passthrough_virtualization_on,
 };
 
 static int get_header_from_peer(struct feature_rom *rom)
 {
 	struct FeatureRomHeader *header;
+	struct resource *res;
+	xdev_handle_t xdev = xocl_get_xdev(rom->pdev);
 	
 	header = XOCL_GET_SUBDEV_PRIV(&rom->pdev->dev);
 	if (!header)
 		return -ENODEV;
 
 	memcpy(&rom->header, header, sizeof(*header));
+
+	xocl_xdev_info(xdev, "Searching CMC in dtb.");
+	res = xocl_subdev_get_ioresource(xdev, RESNAME_KDMA);
+	if (res) {
+                rom->header.FeatureBitMap |= CDMA;
+		memset(rom->header.CDMABaseAddress, 0,
+			sizeof(rom->header.CDMABaseAddress));
+		rom->header.CDMABaseAddress[0] = (uint32_t)res->start;
+
+		xocl_xdev_info(xdev, "CDMA is on, CU offset: 0x%x",
+				rom->header.CDMABaseAddress[0]);
+	}
 
 	return 0;
 }
@@ -364,11 +406,15 @@ static int get_header_from_dtb(struct feature_rom *rom)
 {
 	xdev_handle_t xdev = xocl_get_xdev(rom->pdev);
 	struct FeatureRomHeader *header = &rom->header;
+	struct resource *res;
 	const char *vbnv;
 	int i, j = 0;
 
-	for (i = 31; i >= 0; i--, j+=2) {
-		sprintf(&rom->uuid[j], "%02x", *((uint8_t *)rom->base + i));
+	/* uuid string should be 64 + '\0' */
+	BUG_ON(sizeof(rom->uuid) <= 64);
+
+	for (i = 28; i >= 0 && j < 64; i -= 4, j += 8) {
+		sprintf(&rom->uuid[j], "%08x", ioread32(rom->base + i));
 	}
 	xocl_info(&rom->pdev->dev, "UUID %s", rom->uuid);
 
@@ -383,6 +429,22 @@ static int get_header_from_dtb(struct feature_rom *rom)
 	}
 	header->FeatureBitMap = UNIFIED_PLATFORM;
 	*(u32 *)header->EntryPointString = MAGIC_NUM;
+	if (XDEV(xdev)->priv.vbnv)
+		strncpy(header->VBNVName, XDEV(xdev)->priv.vbnv,
+				sizeof (header->VBNVName) - 1);
+
+	xocl_xdev_info(xdev, "Searching ERT and CMC in dtb.");
+	res = xocl_subdev_get_ioresource(xdev, NODE_CMC_FW_MEM);
+	if (res) {
+		xocl_xdev_info(xdev, "CMC is on");
+		header->FeatureBitMap |= BOARD_MGMT_ENBLD;
+	}
+
+	res = xocl_subdev_get_ioresource(xdev, NODE_CMC_ERT_MEM);
+	if (res) {
+		xocl_xdev_info(xdev, "ERT is on");
+		header->FeatureBitMap |= MB_SCHEDULER;
+	}
 
 	return 0;
 }
@@ -457,7 +519,7 @@ static int feature_rom_probe(struct platform_device *pdev)
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (res == NULL)
-		ret = get_header_from_peer(rom);
+		(void)get_header_from_peer(rom);
 	else {
 		rom->base = ioremap_nocache(res->start, res->end - res->start + 1);
 		if (!rom->base) {
@@ -467,9 +529,9 @@ static int feature_rom_probe(struct platform_device *pdev)
 		}
 
 		if (!strcmp(res->name, "uuid"))
-			ret = get_header_from_dtb(rom);
+			(void)get_header_from_dtb(rom);
 		else
-			ret = get_header_from_iomem(rom);
+			(void)get_header_from_iomem(rom);
 	}
 
 	if (strstr(rom->header.VBNVName, "-xare")) {
@@ -492,6 +554,9 @@ static int feature_rom_probe(struct platform_device *pdev)
 
 	if(rom->header.FeatureBitMap & RUNTIME_CLK_SCALE)
 		rom->runtime_clk_scale_en = true;
+
+	if(rom->header.FeatureBitMap & PASSTHROUGH_VIRTUALIZATION)
+		rom->passthrough_virt_en = true;
 
 	ret = sysfs_create_group(&pdev->dev.kobj, &rom_attr_group);
 	if (ret) {

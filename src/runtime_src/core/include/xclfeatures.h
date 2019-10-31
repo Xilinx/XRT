@@ -108,6 +108,7 @@ enum FeatureBitMask {
 	, CDMA		       =   0x0000000000080000	    /* bits 21	: Device has CDMA*/
 	, QDMA		       =   0x0000000000100000	    /* bits 20	: Device has QDMA*/
 	, RUNTIME_CLK_SCALE    =   0x0000000000200000	    /* bit 22 : Device has RUNTIME CLOCK SCALING feature*/
+	, PASSTHROUGH_VIRTUALIZATION    =   0x0000000000400000	/* bit 23 : Device has Passthrough Virtualization feature*/
 
    //....more
 };

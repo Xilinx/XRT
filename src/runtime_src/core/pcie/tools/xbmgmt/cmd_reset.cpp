@@ -75,6 +75,7 @@ int resetHandler(int argc, char *argv[])
         { "kernel", no_argument, nullptr, '2' },
         { "ecc", no_argument, nullptr, '3' },
         { "force", no_argument, nullptr, '4' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {
@@ -130,15 +131,20 @@ int resetHandler(int argc, char *argv[])
 
     int ret = 0;
     auto dev = pcidev::get_dev(index, false);
+    int fd = dev->open("", O_RDWR);
     if (hot) {
-        ret = dev->ioctl(XCLMGMT_IOCHOTRESET);
+        ret = dev->ioctl(fd, XCLMGMT_IOCHOTRESET);
+        if (ret == 0)
+            std::cout << "Successfully reset Card[" << getBDF(index)
+                      << "]"<< std::endl;
 	ret = ret ? -errno : ret;
     } else if (kernel) {
-        ret = dev->ioctl(XCLMGMT_IOCOCLRESET);
+        ret = dev->ioctl(fd, XCLMGMT_IOCOCLRESET);
 	ret = ret ? -errno : ret;
     } else if (ecc) {
         ret = resetEcc(dev);
     }
+    dev->close(fd);
 
     return ret;
 }

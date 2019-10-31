@@ -20,6 +20,8 @@
 #include "device.h"
 #include "program.h"
 
+#include "core/common/xclbin_parser.h"
+
 #include <algorithm>
 #include <iostream>
 #include <limits>
@@ -29,6 +31,7 @@ namespace xocl {
 compute_unit::
 compute_unit(const xclbin::symbol* s, const std::string& n, size_t base, size_t idx, const device* d)
   : m_symbol(s), m_name(n), m_device(d), m_address(base), m_index(idx)
+  , m_control(xrt_core::xclbin::get_cu_control(d->get_axlf(),base))
 {
   static unsigned int count = 0;
   m_uid = count++;
@@ -44,7 +47,7 @@ compute_unit::
 
 xclbin::memidx_bitmask_type
 compute_unit::
-get_memidx(unsigned int argidx) const
+get_memidx_nolock(unsigned int argidx) const
 {
   auto itr = m_memidx_mask.find(argidx);
   if (itr == m_memidx_mask.end()) {
@@ -56,8 +59,18 @@ get_memidx(unsigned int argidx) const
 
 xclbin::memidx_bitmask_type
 compute_unit::
+get_memidx(unsigned int argidx) const
+{
+  std::lock_guard<std::mutex> lk(m_mutex);
+  return get_memidx_nolock(argidx);
+}
+
+xclbin::memidx_bitmask_type
+compute_unit::
 get_memidx_intersect() const
 {
+  std::lock_guard<std::mutex> lk(m_mutex);
+
   if (cached)
     return m_memidx;
 
@@ -69,7 +82,7 @@ get_memidx_intersect() const
     if (arg.atype!=xclbin::symbol::arg::argtype::indexed)
       continue;
     if (arg.address_qualifier==1 || arg.address_qualifier==2) // global or constant
-      m_memidx &= get_memidx(argidx);
+      m_memidx &= get_memidx_nolock(argidx);
     ++argidx;
   }
 

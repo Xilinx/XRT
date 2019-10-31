@@ -229,6 +229,7 @@ XclBin::writeXclBinBinaryHeader(std::fstream& _ostream, boost::property_tree::pt
   // Write the header (minus the section header array)
   XUtil::TRACE("Writing xclbin binary header");
   _ostream.write((char*)&m_xclBinHeader, sizeof(axlf) - sizeof(axlf_section_header));
+  _ostream.flush();
 
   // Get mirror data
   boost::property_tree::ptree pt_header;
@@ -246,7 +247,6 @@ XclBin::writeXclBinBinarySections(std::fstream& _ostream, boost::property_tree::
   }
 
   // Prepare the array
-  // WARNING - Do not us this code in Linux.  It hasn't been fully flushed out.
   struct axlf_section_header *sectionHeader = new struct axlf_section_header[m_sections.size()];
   memset(sectionHeader, 0, sizeof(struct axlf_section_header) * m_sections.size());  // Zero out memory
 
@@ -265,6 +265,7 @@ XclBin::writeXclBinBinarySections(std::fstream& _ostream, boost::property_tree::
 
   XUtil::TRACE("Writing xclbin section header array");
   _ostream.write((char*) sectionHeader, sizeof(axlf_section_header) * m_sections.size());
+  _ostream.flush();
 
   // Write out each of the sections
   for (unsigned int index = 0; index < m_sections.size(); ++index) {
@@ -276,6 +277,7 @@ XclBin::writeXclBinBinarySections(std::fstream& _ostream, boost::property_tree::
     if (bytePadding != 0) {
       static char holePack[] = { (char)0, (char)0, (char)0, (char)0, (char)0, (char)0, (char)0, (char)0 };
       _ostream.write(holePack, bytePadding);
+      _ostream.flush();
     }
     runningOffset += bytePadding;
 
@@ -389,10 +391,11 @@ XclBin::writeXclBinBinary(const std::string &_binaryFileName,
   {
     // Determine file size
     ofXclBin.seekg(0, ofXclBin.end);
-    unsigned int streamSize = (unsigned int) ofXclBin.tellg();
+    static_assert(sizeof(std::streamsize) <= sizeof(uint64_t), "std::streamsize percision is greater then 64 bits");
+    std::streamsize streamSize = (std::streamsize) ofXclBin.tellg();
 
     // Update Header
-    m_xclBinHeader.m_header.m_length = streamSize;
+    m_xclBinHeader.m_header.m_length = (uint64_t) streamSize;
 
     // Write out the header...again
     ofXclBin.seekg(0, ofXclBin.beg);
@@ -615,12 +618,14 @@ XclBin::removeSection(const Section* _pSection)
 }
 
 Section *
-XclBin::findSection(enum axlf_section_kind _eKind)
+XclBin::findSection(enum axlf_section_kind _eKind, 
+                    const std::string _indexName)
 {
-  // How do we handle this when multiple sections of the same type exist:
   for (unsigned int index = 0; index < m_sections.size(); ++index) {
     if (m_sections[index]->getSectionKind() == _eKind) {
-      return m_sections[index];
+      if (m_sections[index]->getSectionIndexName().compare(_indexName) == 0) {
+        return m_sections[index];
+      }
     }
   }
   return nullptr;
@@ -631,22 +636,64 @@ XclBin::removeSection(const std::string & _sSectionToRemove)
 {
   XUtil::TRACE("Removing Section: " + _sSectionToRemove);
 
+  std::string sectionName = _sSectionToRemove;
+  std::string sectionIndexName;
+
+  // Extract the section index (if it is there)
+  const std::string sectionIndexStartDelimiter = "[";    
+  const char sectionIndexEndDelimiter = ']';    
+  std::size_t sectionIndex =  _sSectionToRemove.find_first_of(sectionIndexStartDelimiter, 0);
+
+  // Was the start index found?
+  if (sectionIndex != std::string::npos) {
+    // We need to have an end delimiter
+    if (sectionIndexEndDelimiter != _sSectionToRemove.back()) {
+      std::string errMsg = XUtil::format("Error: Expected format <section>[<section_index>] when using a section index.  Received: %s.", _sSectionToRemove.c_str());
+      throw std::runtime_error(errMsg);
+    }
+
+    // Extract the index name
+    sectionIndexName = _sSectionToRemove.substr(sectionIndex + 1);
+    sectionIndexName.pop_back();  // Remove ']'
+
+    // Extract the section name
+    sectionName = _sSectionToRemove.substr(0, sectionIndex);
+  }
+
   enum axlf_section_kind _eKind;
   
-  if (Section::translateSectionKindStrToKind(_sSectionToRemove, _eKind) == false) {
-    std::string errMsg = XUtil::format("ERROR: Section '%s' isn't a valid section name.", _sSectionToRemove.c_str());
+  if (Section::translateSectionKindStrToKind(sectionName, _eKind) == false) {
+    std::string errMsg = XUtil::format("ERROR: Section '%s' isn't a valid section name.", sectionName.c_str());
     throw std::runtime_error(errMsg);
   }
 
-  const Section * pSection = findSection(_eKind);
+  if ((Section::supportsSectionIndex(_eKind) == true) && 
+      (sectionIndexName.empty())) {
+    std::string errMsg = XUtil::format("ERROR: Section '%s' can only be deleted with indexes.", sectionName.c_str());
+    throw std::runtime_error(errMsg);
+  }
+
+  if ((Section::supportsSectionIndex(_eKind) == false) && 
+      (!sectionIndexName.empty())) {
+    std::string errMsg = XUtil::format("ERROR: Section '%s' cannot be deleted with index values (not supported).", sectionName.c_str());
+    throw std::runtime_error(errMsg);
+  }
+
+  const Section * pSection = findSection(_eKind, sectionIndexName);
   if (pSection == nullptr) {
     std::string errMsg = XUtil::format("ERROR: Section '%s' is not part of the xclbin archive.", _sSectionToRemove.c_str());
     throw XUtil::XclBinUtilException(XET_MISSING_SECTION, errMsg);
   }
 
   removeSection(pSection);
-  std::cout << std::endl << XUtil::format("Section '%s'(%d) was successfully removed", 
+
+  std::string indexEntry;
+  if (!sectionIndexName.empty()) {
+    indexEntry = "[" + sectionIndexName + "]";
+  }
+  std::cout << std::endl << XUtil::format("Section '%s%s'(%d) was successfully removed",
                                           pSection->getSectionKindAsString().c_str(), 
+                                          indexEntry.c_str(),
                                           pSection->getSectionKind()) << std::endl;
 }
 
@@ -769,7 +816,7 @@ XclBin::addSubSection(ParameterSectionData &_PSD)
   }
 
   // Determine if the section already exists
-  Section *pSection = findSection(eKind);
+  Section *pSection = findSection(eKind, _PSD.getSectionIndexName());
   bool bNewSection = false;
   if (pSection != nullptr) {
     // Check to see if the subsection is supported
@@ -785,7 +832,7 @@ XclBin::addSubSection(ParameterSectionData &_PSD)
       throw std::runtime_error(errMsg);
     }
   } else {
-    pSection = Section::createSectionObjectOfKind(eKind);
+    pSection = Section::createSectionObjectOfKind(eKind, _PSD.getSectionIndexName());
     bNewSection = true;
 
     // Check to see if the subsection is supported
@@ -821,8 +868,15 @@ XclBin::addSubSection(ParameterSectionData &_PSD)
   std::string sSectionAddedName = pSection->getSectionKindAsString();
 
   XUtil::TRACE(XUtil::format("Section '%s-%s' (%d) successfully added.", sSectionAddedName.c_str(), sSubSection.c_str(), pSection->getSectionKind()));
-  std::cout << std::endl << XUtil::format("Section: '%s-%s'(%d) was successfully added.\nSize   : %ld bytes\nFormat : %s\nFile   : '%s'", 
-                                          sSectionAddedName.c_str(), sSubSection.c_str(), pSection->getSectionKind(),
+  std::string optionalIndex;
+  if (!(pSection->getSectionIndexName().empty())) {
+    optionalIndex = XUtil::format("[%s]", pSection->getSectionIndexName().c_str());
+  }
+
+  std::cout << std::endl << XUtil::format("Section: '%s%s-%s'(%d) was successfully added.\nSize   : %ld bytes\nFormat : %s\nFile   : '%s'", 
+                                          sSectionAddedName.c_str(), 
+                                          optionalIndex.c_str(),
+                                          sSubSection.c_str(), pSection->getSectionKind(),
                                           pSection->getSize(),
                                           _PSD.getFormatTypeAsStr().c_str(), sSectionFileName.c_str()).c_str() << std::endl;
 }
@@ -1093,7 +1147,7 @@ XclBin::dumpSubSection(ParameterSectionData &_PSD)
   }
 
   // Determine if the section exists
-  Section *pSection = findSection(eKind);
+  Section *pSection = findSection(eKind, _PSD.getSectionIndexName());
   if (pSection == nullptr) {
     std::string errMsg = XUtil::format("ERROR: Section '%s' does not exist.", pSection->getSectionKindAsString().c_str());
     throw std::runtime_error(errMsg);

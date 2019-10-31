@@ -90,7 +90,7 @@ class FDTProperty {
   FDTProperty& operator=(const FDTProperty& obj);
 
  private:
-  unsigned int m_dataLength;  // The length of the data buffer
+  uint32_t m_dataLength;      // The length of the data buffer
   char * m_pDataBuffer;       // The databuffer
   std::string m_name;         // The name of the property
   DataFormat m_eDataFormat;    // The format of the property

@@ -16,8 +16,6 @@
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
-#include <CL/opencl.h>
-
 #include "xocl/config.h"
 #include "xocl/core/platform.h"
 #include "xocl/core/kernel.h"
@@ -27,14 +25,19 @@
 
 #include "detail/program.h"
 #include "api.h"
+#include "plugin/xdp/profile.h"
+
+#include <CL/opencl.h>
 
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
-
 #include <fstream>
-#include "plugin/xdp/profile.h"
 
 namespace bfs = boost::filesystem;
+
+#ifdef _WIN32
+# pragma warning ( disable : 4996 4189 4505 )
+#endif
 
 namespace {
 

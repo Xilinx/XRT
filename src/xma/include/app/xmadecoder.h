@@ -64,7 +64,8 @@ typedef enum XmaDecoderType
     XMA_HEVC_DECODER_TYPE, /**< 2 */
     XMA_VP9_DECODER_TYPE, /**< 3 */
     XMA_AV1_DECODER_TYPE, /**< 4 */
-    XMA_MULTI_DECODER_TYPE, /**< 5 */
+    XMA_JPG_DECODER_TYPE, 
+    XMA_MULTI_DECODER_TYPE
 } XmaDecoderType;
 
 /**
@@ -92,9 +93,15 @@ typedef struct XmaDecoderProperties
     int32_t         height;
     /** framerate data structure specifying frame rate per second */
     XmaFraction     framerate;
-    
+
+    /** For JPG Decoders: chroma_width & chroma_height specify subsampling of chroma: YUV444, YUV422, YUV411, YUV420, etc  */
+    int32_t         chroma_width;
+    int32_t         chroma_height;
+    int32_t         num_of_UV;//Num of UV components; yuv400 has zero UV
+
     int32_t         dev_index;
     int32_t         cu_index;
+    char            *cu_name;
     int32_t         ddr_bank_index;//Used for allocating device buffers. Used only if valid index is provide (>= 0); value of -1 imples that XMA should select automatically and then XMA will set it with bank index used automatically
     int32_t         channel_id;
     char            *plugin_lib;

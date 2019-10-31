@@ -17,6 +17,7 @@
 #ifndef xrtcore_config_reader_h_
 #define xrtcore_config_reader_h_
 
+#include "core/common/config.h"
 #include <string>
 #include <iosfwd>
 
@@ -61,13 +62,29 @@ namespace detail {
  * Raw uncached accessors, should not be used
  * See xrt/test/util/tconfig.cpp for unit test
  */
-bool                               get_bool_value(const char*, bool);
-const char*                        get_env_value(const char*);
-std::string                        get_string_value(const char*, const std::string&);
-unsigned int                       get_uint_value(const char*, unsigned int);
-/* API to return a fragment of ptree. Currently used by emulation drivers */
-const boost::property_tree::ptree& get_ptree_value(const char*);
-std::ostream& debug(std::ostream&, const std::string& ini="");
+XRT_CORE_COMMON_EXPORT
+bool
+get_bool_value(const char*, bool);
+
+XRT_CORE_COMMON_EXPORT
+const char*
+get_env_value(const char*);
+
+XRT_CORE_COMMON_EXPORT
+std::string
+get_string_value(const char*, const std::string&);
+
+XRT_CORE_COMMON_EXPORT
+unsigned int
+get_uint_value(const char*, unsigned int);
+
+XRT_CORE_COMMON_EXPORT
+const boost::property_tree::ptree&
+get_ptree_value(const char*);
+
+XRT_CORE_COMMON_EXPORT
+std::ostream&
+debug(std::ostream&, const std::string& ini="");
 
 }
 
@@ -153,6 +170,13 @@ inline std::string
 get_trace_buffer_size()
 {
   static std::string value = detail::get_string_value("Debug.trace_buffer_size", "1M");
+  return value;
+}
+
+inline bool
+get_profile_api()
+{
+  static bool value = detail::get_bool_value("Debug.profile_api", false);
   return value;
 }
 
@@ -259,7 +283,7 @@ get_ert_cudma()
 inline bool
 get_ert_cuisr()
 {
-  static bool value = get_ert() && detail::get_bool_value("Runtime.ert_cuisr",true);
+  static bool value = get_ert() && detail::get_bool_value("Runtime.ert_cuisr",false);
   return value;
 }
 
@@ -291,9 +315,9 @@ get_cdma()
 }
 
 inline bool
-get_pr_enable()
+get_enable_pr()
 {
-  static unsigned int value = detail::get_bool_value("Runtime.enable_pr",false);
+  static unsigned int value = detail::get_bool_value("Runtime.enable_pr",true);
   return value;
 }
 
@@ -341,6 +365,13 @@ get_sw_em_driver()
   return value;
 }
 
+inline bool
+get_pdi_load()
+{
+  static bool value = detail::get_bool_value("Runtime.pdi_load",true);
+  return value;
+}
+
 /* Indicate whether Block automation based Emulation Models are used. By default, it is turned off.
  * This is used to turn on xclRead/Write based counter and trace data collection flow in ProfileIP objects in XDP.
  * Otherwise, fall back on old HwEmuShim layer based RPC call mechanism.
@@ -348,14 +379,14 @@ get_sw_em_driver()
 
 inline bool get_system_dpa_emulation()
 {
-  static bool value = detail::get_bool_value("Emulation.system_dpa", false);
+  static bool value = detail::get_bool_value("Emulation.system_dpa", true);
   return value;
 }
 
 inline std::string
-get_ctx_info()
+get_kernel_channel_info()
 {
-  static std::string value = detail::get_string_value("Runtime.ctx_info","");
+  static std::string value = detail::get_string_value("Runtime.kernel_channels","");
   return value;
 }
 

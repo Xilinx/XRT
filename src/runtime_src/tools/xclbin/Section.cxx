@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018 - 2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -38,10 +38,12 @@ std::map<std::string, enum axlf_section_kind> Section::m_mapNameToId;
 std::map<enum axlf_section_kind, Section::Section_factory> Section::m_mapIdToCtor;
 std::map<std::string, enum axlf_section_kind> Section::m_mapJSONNameToKind;
 std::map<enum axlf_section_kind, bool> Section::m_mapIdToSubSectionSupport;
+std::map<enum axlf_section_kind, bool> Section::m_mapIdToSectionIndexSupport;
 
 Section::Section()
     : m_eKind(BITSTREAM)
     , m_sKindName("")
+    , m_sIndexName("")
     , m_pBuffer(nullptr)
     , m_bufferSize(0)
     , m_name("") {
@@ -80,6 +82,7 @@ Section::registerSectionCtor(enum axlf_section_kind _eKind,
                              const std::string& _sKindStr,
                              const std::string& _sHeaderJSONName,
                              bool _bSupportsSubSections,
+                             bool _bSupportsIndexing,
                              Section_factory _Section_factory) {
   // Some error checking
   if (_sKindStr.empty()) {
@@ -116,6 +119,7 @@ Section::registerSectionCtor(enum axlf_section_kind _eKind,
   m_mapNameToId[_sKindStr] = _eKind;
   m_mapIdToCtor[_eKind] = _Section_factory;
   m_mapIdToSubSectionSupport[_eKind] = _bSupportsSubSections;
+  m_mapIdToSectionIndexSupport[_eKind] = _bSupportsIndexing;
 }
 
 bool
@@ -135,6 +139,23 @@ Section::supportsSubSections(enum axlf_section_kind &_eKind)
     return false;   
   }
   return m_mapIdToSubSectionSupport[_eKind];
+}
+
+bool
+Section::supportsSectionIndex(enum axlf_section_kind &_eKind)
+{
+  if (m_mapIdToSectionIndexSupport.find(_eKind) == m_mapIdToSectionIndexSupport.end()) {
+    return false;   
+  }
+  return m_mapIdToSectionIndexSupport[_eKind];
+}
+
+// -------------------------------------------------------------------------
+
+const std::string & 
+Section::getSectionIndexName() const
+{
+  return m_sIndexName;
 }
 
 enum Section::FormatType 
@@ -166,21 +187,24 @@ Section::getKindOfJSON(const std::string &_sJSONStr, enum axlf_section_kind &_eK
 
 
 Section*
-Section::createSectionObjectOfKind(enum axlf_section_kind _eKind) {
+Section::createSectionObjectOfKind( enum axlf_section_kind _eKind, 
+                                    const std::string _sIndexName) {
   Section* pSection = nullptr;
 
   if (m_mapIdToCtor.find(_eKind) == m_mapIdToCtor.end()) {
-    std::string errMsg = XUtil::format("ERROR: Constructor for enum (%d) is missing.", (unsigned int)_eKind);
+    std::string errMsg = XUtil::format("ERROR: Section constructor for the archive section ID '%d' does not exist.  This error is most likely the result of examining a newer version of an archive image then this version of software supports.", (unsigned int)_eKind);
     throw std::runtime_error(errMsg);
   }
 
   pSection = m_mapIdToCtor[_eKind]();
   pSection->m_eKind = _eKind;
   pSection->m_sKindName = m_mapIdToName[_eKind];
+  pSection->m_sIndexName = _sIndexName;
 
-  XUtil::TRACE(XUtil::format("Created segment: %s (%d)",
+  XUtil::TRACE(XUtil::format("Created segment: %s (%d), index: '%s'",
                              pSection->getSectionKindAsString().c_str(),
-                             (unsigned int)pSection->getSectionKind()));
+                             (unsigned int)pSection->getSectionKind(),
+                             pSection->getSectionIndexName().c_str()));
   return pSection;
 }
 
@@ -221,6 +245,7 @@ Section::writeXclBinSectionBuffer(std::fstream& _ostream) const
   }
 
   _ostream.write(m_pBuffer, m_bufferSize);
+  _ostream.flush();
 }
 
 void
@@ -376,7 +401,9 @@ Section::readPayload(std::fstream& _istream, enum FormatType _eFormatType)
         sectionHeader.m_sectionKind = getSectionKind();
         sectionHeader.m_sectionOffset = 0;
         _istream.seekg(0, _istream.end);
-        sectionHeader.m_sectionSize = _istream.tellg();
+
+        static_assert(sizeof(std::streamsize) <= sizeof(uint64_t), "std::streamsize percision is greater then 64 bits");
+        sectionHeader.m_sectionSize = (uint64_t) _istream.tellg();
 
         readXclBinBinary(_istream, sectionHeader);
         break;
@@ -385,7 +412,7 @@ Section::readPayload(std::fstream& _istream, enum FormatType _eFormatType)
       {
         // Bring the file into memory
         _istream.seekg(0, _istream.end);
-        unsigned int fileSize = (unsigned int) _istream.tellg();
+        std::streamsize fileSize =  _istream.tellg();
 
         std::unique_ptr<unsigned char> memBuffer(new unsigned char[fileSize]);
         _istream.clear();
@@ -433,7 +460,9 @@ Section::readXclBinBinary(std::fstream& _istream, enum FormatType _eFormatType)
       sectionHeader.m_sectionKind = getSectionKind();
       sectionHeader.m_sectionOffset = 0;
       _istream.seekg(0, _istream.end);
-      sectionHeader.m_sectionSize = _istream.tellg();
+
+      static_assert(sizeof(std::streamsize) <= sizeof(uint64_t), "std::streamsize percision is greater then 64 bits");
+      sectionHeader.m_sectionSize = (uint64_t) _istream.tellg();
 
       readXclBinBinary(_istream, sectionHeader);
       break;
@@ -442,7 +471,7 @@ Section::readXclBinBinary(std::fstream& _istream, enum FormatType _eFormatType)
     {
       // Bring the file into memory
       _istream.seekg(0, _istream.end);
-      unsigned int fileSize = (unsigned int) _istream.tellg();
+      std::streamsize fileSize = _istream.tellg();
 
       std::unique_ptr<unsigned char> memBuffer(new unsigned char[fileSize]);
       _istream.clear();

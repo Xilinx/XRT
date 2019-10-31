@@ -27,14 +27,20 @@
 #include <unistd.h>
 #include <algorithm>
 #include <mutex>
+#include <regex>
 #include <sys/stat.h>
 #include <sys/file.h>
 #include <poll.h>
+#include "xclbin.h"
 #include "scan.h"
+#include "core/common/utils.h"
 
 // Supported vendors
-#define XILINX_ID    0x10ee
-#define ADVANTECH_ID 0x13fe
+#define XILINX_ID       0x10ee
+#define ADVANTECH_ID    0x13fe
+#define AWS_ID          0x1d0f
+
+#define RENDER_NM       "renderD"
 
 static const std::string sysfs_root = "/sys/bus/pci/devices/";
 
@@ -149,6 +155,13 @@ void pcidev::pci_device::sysfs_put(
     if (!err_msg.empty())
         return;
     fs << input;
+    fs.flush();
+    if (!fs.good()) {
+        std::stringstream ss;
+        ss << "Failed to write " << get_sysfs_path(subdev, entry) << ": "
+            << strerror(errno) << std::endl;
+        err_msg = ss.str();
+    }
 }
 
 void pcidev::pci_device::sysfs_put(
@@ -160,6 +173,13 @@ void pcidev::pci_device::sysfs_put(
         return;
 
     fs.write(buf.data(), buf.size());
+    fs.flush();
+    if (!fs.good()) {
+        std::stringstream ss;
+        ss << "Failed to write " << get_sysfs_path(subdev, entry) << ": "
+            << strerror(errno) << std::endl;
+        err_msg = ss.str();
+    }
 }
 
 void pcidev::pci_device::sysfs_get(
@@ -235,30 +255,28 @@ void pcidev::pci_device::sysfs_get(
         s = ""; // default value
 }
 
-void pcidev::pci_device::sysfs_get(
-    const std::string& subdev, const std::string& entry,
-    std::string& err_msg, bool& b)
+static std::string get_devfs_path(bool is_mgmt, uint32_t instance)
 {
-    std::vector<uint64_t> iv;
+    std::string prefixStr = is_mgmt ? "/dev/xclmgmt" : "/dev/dri/" RENDER_NM;
+    std::string instStr = std::to_string(instance);
 
-    sysfs_get(subdev, entry, err_msg, iv);
-    if (!iv.empty())
-        b = (iv[0] == 1);
-    else
-        b = false; // default value
+    return prefixStr + instStr;
 }
 
-int pcidev::pci_device::devfs_open(const std::string& subdev, int flag)
+int pcidev::pci_device::open(const std::string& subdev, int flag)
 {
-    std::string file("/dev/xfpga/");
+    // Open xclmgmt/xocl node
+    if (subdev.empty()) {
+        std::string devfs = get_devfs_path(is_mgmt, instance);
+        return ::open(devfs.c_str(), flag);
+    }
 
+    // Open subdevice node
+    std::string file("/dev/xfpga/");
     file += subdev;
     file += is_mgmt ? ".m" : ".u";
     file += std::to_string((domain<<16) + (bus<<8) + (dev<<3) + func);
-
-    const int fd = open(file.c_str(), flag);
-
-    return fd;
+    return ::open(file.c_str(), flag);
 }
 
 static size_t bar_size(const std::string &dir, unsigned bar)
@@ -279,7 +297,6 @@ static size_t bar_size(const std::string &dir, unsigned bar)
 
 static int get_render_value(const std::string& dir)
 {
-#define RENDER_NM   "renderD"
     struct dirent *entry;
     DIR *dp;
     int instance_num = INVALID_ID;
@@ -298,14 +315,6 @@ static int get_render_value(const std::string& dir)
     closedir(dp);
 
     return instance_num;
-}
-
-static std::string get_devfs_path(bool is_mgmt, uint32_t instance)
-{
-    std::string prefixStr = is_mgmt ? "/dev/xclmgmt" : "/dev/dri/renderD";
-    std::string instStr = std::to_string(instance);
-
-    return prefixStr + instStr;
 }
 
 static bool devfs_exists(bool is_mgmt, uint32_t instance)
@@ -334,12 +343,12 @@ pcidev::pci_device::pci_device(const std::string& sysfs) : sysfs_name(sysfs)
     }
 
     // Determine if device is of supported vendor
-    sysfs_get("", "vendor", err, vendor);
+    sysfs_get<uint16_t>("", "vendor", err, vendor, static_cast<uint16_t>(-1));
     if (!err.empty()) {
         std::cout << err << std::endl;
         return;
     }
-    if((vendor != XILINX_ID) && (vendor != ADVANTECH_ID))
+    if((vendor != XILINX_ID) && (vendor != ADVANTECH_ID) && (vendor != AWS_ID))
         return;
 
     // Determine if the device is mgmt or user pf.
@@ -358,7 +367,7 @@ pcidev::pci_device::pci_device(const std::string& sysfs) : sysfs_name(sysfs)
 
     uint32_t inst = INVALID_ID;
     if (mgmt)
-        sysfs_get("", "instance", err, inst);
+        sysfs_get<uint32_t>("", "instance", err, inst, static_cast<uint32_t>(-1));
     else
         inst = get_render_value(dir + "/drm");
     if (!devfs_exists(mgmt, inst))
@@ -369,48 +378,47 @@ pcidev::pci_device::pci_device(const std::string& sysfs) : sysfs_name(sysfs)
     bus = b;
     dev = d;
     func = f;
-    sysfs_get("", "userbar", err, user_bar);
+    sysfs_get<int>("", "userbar", err, user_bar, 0);
     user_bar_size = bar_size(dir, user_bar);
     is_mgmt = mgmt;
     instance = inst;
-    sysfs_get("", "ready", err, is_ready);
+    sysfs_get<bool>("", "ready", err, is_ready, false);
 }
 
 pcidev::pci_device::~pci_device()
 {
-    devfs_close();
+    if (user_bar_map != MAP_FAILED)
+        munmap(user_bar_map, user_bar_size);
 }
 
-int pcidev::pci_device::devfs_open_and_map()
+int pcidev::pci_device::map_usr_bar()
 {
         std::lock_guard<std::mutex> l(lock);
 
         if (user_bar_map != MAP_FAILED)
             return 0;
 
-        std::string devfs = get_devfs_path(is_mgmt, instance);
-
-        dev_handle = open(devfs.c_str(), O_RDWR);
+        int dev_handle = open("", O_RDWR);
         if (dev_handle < 0)
             return -errno;
 
         user_bar_map = (char *)::mmap(0, user_bar_size,
             PROT_READ | PROT_WRITE, MAP_SHARED, dev_handle, 0);
-        if (user_bar_map == MAP_FAILED) {
-            (void) close(dev_handle);
-            dev_handle = -1;
+
+        // Mapping should stay valid after handle is closed
+        // (according to man page)
+        (void)close(dev_handle);
+
+        if (user_bar_map == MAP_FAILED)
             return -errno;
-        }
 
         return 0;
 }
 
-void pcidev::pci_device::devfs_close(void)
+void pcidev::pci_device::close(int dev_handle)
 {
-    if (user_bar_map != MAP_FAILED)
-        munmap(user_bar_map, user_bar_size);
     if (dev_handle != -1)
-        (void) close(dev_handle);
+        (void)::close(dev_handle);
 }
 
 /*
@@ -439,7 +447,7 @@ inline void* wordcopy(void *dst, const void* src, size_t bytes)
 int pcidev::pci_device::pcieBarRead(uint64_t offset, void* buf, uint64_t len)
 {
     if (user_bar_map == MAP_FAILED) {
-        int ret = devfs_open_and_map();
+        int ret = map_usr_bar();
         if (ret)
             return ret;
     }
@@ -451,7 +459,7 @@ int pcidev::pci_device::pcieBarWrite(uint64_t offset,
     const void* buf, uint64_t len)
 {
     if (user_bar_map == MAP_FAILED) {
-        int ret = devfs_open_and_map();
+        int ret = map_usr_bar();
         if (ret)
             return ret;
     }
@@ -459,44 +467,105 @@ int pcidev::pci_device::pcieBarWrite(uint64_t offset,
     return 0;
 }
 
-int pcidev::pci_device::ioctl(unsigned long cmd, void *arg)
+int pcidev::pci_device::ioctl(int dev_handle, unsigned long cmd, void *arg)
 {
     if (dev_handle == -1) {
-        int ret = devfs_open_and_map();
-        if (ret)
-            return ret;
+        errno = -EINVAL;
+        return -1;
     }
     return ::ioctl(dev_handle, cmd, arg);
 }
 
-int pcidev::pci_device::poll(short events, int timeoutMilliSec)
+int pcidev::pci_device::poll(int dev_handle, short events, int timeoutMilliSec)
 {
-    if (dev_handle == -1) {
-        int ret = devfs_open_and_map();
-        if (ret)
-            return ret;
-    }
-
     pollfd info = {dev_handle, events, 0};
     return ::poll(&info, 1, timeoutMilliSec);
 }
 
-void *pcidev::pci_device::mmap(size_t len, int prot, int flags, off_t offset)
+void *pcidev::pci_device::mmap(int dev_handle,
+    size_t len, int prot, int flags, off_t offset)
 {
     if (dev_handle == -1) {
-        int ret = devfs_open_and_map();
-        if (ret)
-            return MAP_FAILED;
+        errno = -EINVAL;
+        return MAP_FAILED;
     }
     return ::mmap(0, len, prot, flags, dev_handle, offset);
 }
 
-int pcidev::pci_device::flock(int op)
+int pcidev::pci_device::get_partinfo(std::vector<std::string>& info, void *blob)
+{
+    std::vector<char> buf;
+    std::string err;
+
+    if (!blob)
+    {
+        sysfs_get("", "fdt_blob", err, buf);
+        if (!buf.size())
+            return -ENOENT;
+
+        blob = &buf[0];
+    }
+
+    struct fdt_header *bph = (struct fdt_header *)blob;
+    uint32_t version = be32toh(bph->version);
+    uint32_t off_dt = be32toh(bph->off_dt_struct);
+    const char *p_struct = (const char *)blob + off_dt;
+    uint32_t off_str = be32toh(bph->off_dt_strings);
+    const char *p_strings = (const char *)blob + off_str;
+    const char *p, *s;
+    uint32_t tag;
+    int sz;
+    uint32_t level = 0;
+
+    p = p_struct;
+    while ((tag = be32toh(GET_CELL(p))) != FDT_END)
+    {
+        if (tag == FDT_BEGIN_NODE)
+        {
+            s = p;
+            p = PALIGN(p + strlen(s) + 1, 4);
+            std::regex e("partition_info_([0-9]+)");
+            std::cmatch cm;
+            std::regex_match(s, cm, e);
+            if (cm.size())
+            {
+                level = std::stoul(cm.str(1));
+            }
+            continue;
+        }
+
+        if (tag != FDT_PROP)
+            continue;
+
+
+        sz = be32toh(GET_CELL(p));
+        s = p_strings + be32toh(GET_CELL(p));
+        if (version < 16 && sz >= 8)
+            p = PALIGN(p, 8);
+
+        if (strcmp(s, "__INFO"))
+        {
+            p = PALIGN(p + sz, 4);
+            continue;
+        }
+
+        if (info.size() <= level)
+        {
+            info.resize(level + 1);
+        }
+
+        info[level] = std::string(p);
+
+        p = PALIGN(p + sz, 4);
+    }
+    return 0;
+}
+
+int pcidev::pci_device::flock(int dev_handle, int op)
 {
     if (dev_handle == -1) {
-        int ret = devfs_open_and_map();
-        if (ret)
-            return ret;
+        errno = -EINVAL;
+        return -1;
     }
     return ::flock(dev_handle, op);
 }
@@ -635,20 +704,20 @@ std::ostream& operator<<(std::ostream& stream,
 {
     std::ios_base::fmtflags f(stream.flags());
 
-    stream << std::hex << std::setfill('0');
+    stream << std::hex << std::right << std::setfill('0');
 
     // [dddd:bb:dd.f]
-    stream << "[" << std::setw(4) << dev->domain << ":"
+    stream << std::setw(4) << dev->domain << ":"
         << std::setw(2) << dev->bus << ":"
         << std::setw(2) << dev->dev << "."
-        << std::setw(1) << dev->func << "]";
+        << std::setw(1) << dev->func;
 
     // board/shell name
     std::string shell_name;
     std::string err;
     bool is_mfg = false;
     uint64_t ts = 0;
-    dev->sysfs_get("", "mfg", err, is_mfg);
+    dev->sysfs_get<bool>("", "mfg", err, is_mfg, false);
     if (is_mfg) {
         unsigned ver = 0;
         std::string nm;
@@ -661,19 +730,113 @@ std::ostream& operator<<(std::ostream& stream,
         shell_name += std::to_string(ver);
     } else {
         dev->sysfs_get("rom", "VBNV", err, shell_name);
-        dev->sysfs_get("rom", "timestamp", err, ts);
+        dev->sysfs_get<uint64_t>("rom", "timestamp", err, ts, static_cast<uint64_t>(-1));
     }
-    stream << ":" << shell_name;
+    stream << " " << shell_name;
     if (ts != 0)
         stream << "(ts=0x" << std::hex << ts << ")";
 
     // instance number
     if (dev->is_mgmt)
-        stream << ":mgmt(inst=";
+        stream << " mgmt(inst=";
     else
-        stream << ":user(inst=";
+        stream << " user(inst=";
     stream << std::dec << dev->instance << ")";
 
     stream.flags(f);
     return stream;
+}
+
+int pcidev::get_axlf_section(std::string filename, int kind, std::shared_ptr<char>& buf)
+{
+    std::ifstream in(filename);
+    if (!in.is_open())
+    {
+        std::cout << "Can't open " << filename << std::endl;
+	return -ENOENT;
+    }
+    // Read axlf from dsabin file to find out number of sections in total.
+    axlf a;
+    size_t sz = sizeof (axlf);
+    in.read(reinterpret_cast<char *>(&a), sz);
+    if (!in.good())
+    {
+        std::cout << "Can't read axlf from "<< filename << std::endl;
+        return -EINVAL;
+    }
+    // Reread axlf from dsabin file, including all sections headers.
+    // Sanity check for number of sections coming from user input file
+    if (a.m_header.m_numSections > 10000)
+        return -EINVAL;
+
+    sz = sizeof (axlf) + sizeof (axlf_section_header) * (a.m_header.m_numSections - 1);
+
+    std::vector<char> top(sz);
+    in.seekg(0);
+    in.read(top.data(), sz);
+    if (!in.good())
+    {
+        std::cout << "Can't read axlf and section headers from "<< filename << std::endl;
+        return -EINVAL;
+    }
+    const axlf *ap = reinterpret_cast<const axlf *>(top.data());
+
+    const axlf_section_header* section = xclbin::get_axlf_section(ap, (enum axlf_section_kind)kind);
+    if (!section)
+    {
+        return -EINVAL;
+    }
+
+    buf = std::shared_ptr<char>(new char[section->m_sectionSize]);
+    in.seekg(section->m_sectionOffset);
+    in.read(buf.get(), section->m_sectionSize);
+
+    return 0;
+}
+
+int pcidev::get_uuids(std::shared_ptr<char>& dtbbuf, std::vector<std::string>& uuids)
+{
+    struct fdt_header *bph = (struct fdt_header *)dtbbuf.get();
+    uint32_t version = be32toh(bph->version);
+    uint32_t off_dt = be32toh(bph->off_dt_struct);
+    const char *p_struct = (const char *)bph + off_dt;
+    uint32_t off_str = be32toh(bph->off_dt_strings);
+    const char *p_strings = (const char *)bph + off_str;
+    const char *p, *s;
+    uint32_t tag;
+    int sz;
+
+    p = p_struct;
+    uuids.clear();
+    while ((tag = be32toh(GET_CELL(p))) != FDT_END)
+    {
+        if (tag == FDT_BEGIN_NODE)
+        {
+            s = p;
+            p = PALIGN(p + strlen(s) + 1, 4);
+            continue;
+        }
+        if (tag != FDT_PROP)
+            continue;
+
+        sz = be32toh(GET_CELL(p));
+        s = p_strings + be32toh(GET_CELL(p));
+        if (version < 16 && sz >= 8)
+            p = PALIGN(p, 8);
+
+        if (!strcmp(s, "logic_uuid"))
+        {
+            uuids.insert(uuids.begin(), std::string(p));
+        }
+        else if (!strcmp(s, "interface_uuid"))
+        {
+            uuids.push_back(std::string(p));
+        }
+        p = PALIGN(p + sz, 4);
+    }
+
+    if (!uuids.size())
+        return -EINVAL;
+
+    return 0;
 }

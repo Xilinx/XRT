@@ -46,6 +46,7 @@ int clockHandler(int argc, char *argv[])
         { "kernel", required_argument, nullptr, '2' },
         { "system", required_argument, nullptr, '3' },
         { "force", no_argument, nullptr, '4' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {
@@ -102,7 +103,9 @@ int clockHandler(int argc, char *argv[])
     obj.ocl_target_freq[KERNEL_CLK] = kernel;
     obj.ocl_target_freq[SYSTEM_CLK] = system;
     auto dev = pcidev::get_dev(index, false);
-    int ret = dev->ioctl(XCLMGMT_IOCFREQSCALE, &obj);
+    int hdl = dev->open("", O_RDWR);
+    int ret = dev->ioctl(hdl, XCLMGMT_IOCFREQSCALE, &obj);
+    dev->close(hdl);
 
     return ret ? -errno : ret;
 }

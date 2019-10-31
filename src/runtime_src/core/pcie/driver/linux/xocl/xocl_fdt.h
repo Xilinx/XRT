@@ -20,11 +20,13 @@
 
 #define PROP_COMPATIBLE "compatible"
 #define PROP_PF_NUM "pcie_physical_function"
-#define PROP_BAR_IDX "pcie_base_address_register"
+#define PROP_BAR_IDX "pcie_bar_mapping"
 #define PROP_IO_OFFSET "reg"
 #define PROP_INTERRUPTS "interrupts"
 #define PROP_INTERFACE_UUID "interface_uuid"
 #define PROP_LOGIC_UUID "logic_uuid"
+#define PROP_PARTITION_INFO_BLP "blp_info"
+#define PROP_PARTITION_INFO_PLP "plp_info"
 
 #define UUID_PROP_LEN 65 
 
@@ -32,6 +34,8 @@
 #define LEVEL0_DEV_PATH "/addressable_endpoints_0"
 #define LEVEL1_DEV_PATH "/addressable_endpoints_1"
 #define INTERFACES_PATH "/interfaces"
+
+#define NODE_PROPERTIES "partition_info"
 
 #define NODE_FLASH "ep_card_flash_program_00"
 #define NODE_XVC_PUB "ep_debug_bscan_user_00"
@@ -61,6 +65,7 @@
 #define NODE_ERT_SCHED "ep_ert_sched_00"
 #define NODE_XDMA "ep_xdma_00"
 #define NODE_MSIX "ep_msix_00"
+#define NODE_CLK_SHUTDOWN "ep_aclk_shutdown_00"
 
 enum {
 	IORES_GATEPRBLD,
@@ -72,6 +77,7 @@ enum {
 	IORES_CLKFREQ1,
 	IORES_CLKFREQ2,
 	IORES_KDMA,
+	IORES_CLKSHUTDOWN,
 	IORES_MAX,
 };
 
@@ -84,6 +90,7 @@ enum {
 #define RESNAME_CLKFREQ1        "clkreq1"
 #define RESNAME_CLKFREQ2        "clkreq2"
 #define RESNAME_KDMA            NODE_KDMA_CTRL
+#define RESNAME_CLKSHUTDOWN     NODE_CLK_SHUTDOWN
 
 struct xocl_iores_map {
 	char		*res_name;
@@ -101,6 +108,7 @@ struct xocl_iores_map map[] = {                                         \
 	{ RESNAME_CLKFREQ1, IORES_CLKFREQ1 },                           \
 	{ RESNAME_CLKFREQ2, IORES_CLKFREQ2 },                           \
 	{ RESNAME_KDMA, IORES_KDMA },                                   \
+	{ RESNAME_CLKSHUTDOWN, IORES_CLKSHUTDOWN },                     \
 }
 
 #endif

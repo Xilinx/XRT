@@ -26,6 +26,7 @@
 #include "app/xmascaler.h"
 #include "app/xmafilter.h"
 #include "app/xmakernel.h"
+#include "app/xmaadmin.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,6 +51,10 @@ extern "C" {
  * 
 */
 int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms);
+
+int32_t xma_get_default_ddr_index(int32_t dev_index, int32_t cu_index, char* cu_name);
+
+void xma_get_session_cmd_load(void);
 
 #ifdef __cplusplus
 }

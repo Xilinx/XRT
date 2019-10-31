@@ -44,7 +44,7 @@ enum ReturnCodes {
 }
 
 
-void drcCheckFiles(const std::vector<std::string> & _inputFiles, 
+void drcCheckFiles(const std::vector<std::string> & _inputFiles,
                    const std::vector<std::string> & _outputFiles,
                    bool _bForce)
 {
@@ -94,10 +94,11 @@ int main_(int argc, char** argv) {
   bool bTrace = false;
   bool bMigrateForward = false;
   bool bListNames = false;
+  bool bListSections = false;
   std::string sInfoFile;
   bool bSkipUUIDInsertion = false;
   bool bVersion = false;
-  bool bForce = false;   
+  bool bForce = false;
 
   bool bRemoveSignature = false;
   std::string sSignature;
@@ -154,7 +155,7 @@ int main_(int argc, char** argv) {
       ("get-signature", boost::program_options::bool_switch(&bGetSignature), "Returns the user defined signature (if set) of the xclbin image.")
 
       ("info", boost::program_options::value<std::string>(&sInfoFile)->default_value("")->implicit_value("<console>"), "Report accelerator binary content.  Including: generation and packaging data, kernel signatures, connectivity, clocks, sections, etc.  Note: Optionally an output file can be specified.  If none is specified, then the output will go to the console.")
-      ("list-names", boost::program_options::bool_switch(&bListNames), "List all possible section names (Stand Alone Option)")
+      ("list-sections", boost::program_options::bool_switch(&bListSections), "List all possible section names (Stand Alone Option)")
       ("version", boost::program_options::bool_switch(&bVersion), "Version of this executable.")
       ("force", boost::program_options::bool_switch(&bForce), "Forces a file overwrite.")
  ;
@@ -193,8 +194,9 @@ int main_(int argc, char** argv) {
       std::cout << "  2) Extracting the bitstream image: xclbinutil --dump-section BITSTREAM:RAW:bitstream.bit --input binary_container_1.xclbin" << std::endl;
       std::cout << "  3) Extracting the build metadata : xclbinutil --dump-section BUILD_METADATA:HTML:buildMetadata.json --input binary_container_1.xclbin" << std::endl;
       std::cout << "  4) Removing a section            : xclbinutil --remove-section BITSTREAM --input binary_container_1.xclbin --output binary_container_modified.xclbin" << std::endl;
+      std::cout << "  5) Signing xclbin                : xclbinutil --private-key key.priv --certificate cert.pem --input binary_container_1.xclbin --output signed.xclbin" << std::endl;
 
-      std::cout << std::endl 
+      std::cout << std::endl
                 << "Command Line Options" << std::endl
                 << desc
                 << std::endl;
@@ -248,9 +250,9 @@ int main_(int argc, char** argv) {
   }
 
   // Actions not requiring --input
-  if (bListNames) {
+  if (bListSections || bListNames) {
     if (argc != 2) {
-      std::string errMsg = "ERROR: The '--list-names' argument is a stand alone option.  No other options can be specified with it.";
+      std::string errMsg = "ERROR: The '--list-sections' argument is a stand alone option.  No other options can be specified with it.";
       throw std::runtime_error(errMsg);
     }
     XUtil::printKinds();
@@ -282,7 +284,7 @@ int main_(int argc, char** argv) {
   }
 
   // Actions requiring --input
-  
+
   // Check to see if there any file conflicts
   std::vector< std::string> inputFiles;
   {
@@ -320,6 +322,12 @@ int main_(int argc, char** argv) {
       outputFiles.push_back(sOutputFile);
     }
 
+    if (!sInfoFile.empty()) {
+      if (sInfoFile != "<console>") {
+        outputFiles.push_back(sInfoFile);
+      }
+    }
+
     for (auto section : sectionsToDump ) {
       ParameterSectionData psd(section);
       outputFiles.push_back(psd.getFile());
@@ -335,7 +343,7 @@ int main_(int argc, char** argv) {
     QUIET("------------------------------------------------------------------------------");
   }
 
-  // Dump the signature 
+  // Dump the signature
   if (!sSignatureOutputFile.empty()) {
     if (sInputFile.empty()) {
       throw std::runtime_error("ERROR: Missing input file.");
@@ -395,14 +403,6 @@ int main_(int argc, char** argv) {
     QUIET("Creating a default 'in-memory' xclbin image.");
   }
 
-  for (auto keyValue : keyValuePairs) {
-    xclBin.setKeyValue(keyValue);
-  }
-
-  for (auto key : keysToRemove) {
-    xclBin.removeKey(key);
-  }
-
   for (auto section : sectionsToRemove) {
     xclBin.removeSection(section);
   }
@@ -433,6 +433,14 @@ int main_(int argc, char** argv) {
     }
   }
 
+  for (auto key : keysToRemove) {
+    xclBin.removeKey(key);
+  }
+
+  for (auto keyValue : keyValuePairs) {
+    xclBin.setKeyValue(keyValue);
+  }
+
   for (auto section : sectionsToDump) {
     ParameterSectionData psd(section);
     if (psd.getSectionName().empty() &&
@@ -452,7 +460,7 @@ int main_(int argc, char** argv) {
   }
 
   if (!sInfoFile.empty()) {
-    if (sInfoFile == "<console>") {      
+    if (sInfoFile == "<console>") {
       xclBin.reportInfo(std::cout, sInputFile, bVerbose);
     } else {
       std::fstream oInfoFile;
@@ -465,9 +473,8 @@ int main_(int argc, char** argv) {
       oInfoFile.close();
     }
   }
-  
+
   QUIET("Leaving xclbinutil.");
 
   return RC_SUCCESS;
 }
-

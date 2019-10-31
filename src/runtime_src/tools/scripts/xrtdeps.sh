@@ -86,6 +86,8 @@ RH_LIST=(\
      strace \
      unzip \
      zlib-static \
+     curl-devel \
+     openssl-devel \
 )
 
 UB_LIST=(\
@@ -122,6 +124,7 @@ UB_LIST=(\
      ocl-icd-opencl-dev \
      perl \
      python \
+     python-pip \
      pciutils \
      pkg-config \
      protobuf-compiler \
@@ -131,6 +134,8 @@ UB_LIST=(\
      strace \
      unzip \
      uuid-dev \
+     libcurl4-openssl-dev \
+     libssl-dev \
 )
 
 if [[ $docker == 0 ]]; then
@@ -148,7 +153,7 @@ if [ $ARCH == "x86_64" ]; then
     if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
 	UB_LIST+=( dmidecode )
     fi
-    if [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] ; then
+    if [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] || [ $FLAVOR == "amzn" ]; then
 	RH_LIST+=( dmidecode )
     fi
 fi
@@ -164,7 +169,7 @@ validate()
         fi
     fi
 
-    if [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] ; then
+    if [ $FLAVOR == "centos" ] || [ $FLAVOR == "rhel" ] || [ $FLAVOR == "amzn" ]; then
         rpm -q "${RH_LIST[@]}"
         if [ $? == 0 ] ; then
             # Validate we have OpenCL 2.X headers installed
@@ -204,7 +209,7 @@ install()
         ${SUDO} yum --enablerepo=extras install -y centos-release-scl
     fi
 
-    if [ $FLAVOR == "rhel" ] || [ $FLAVOR == "centos" ]; then
+    if [ $FLAVOR == "rhel" ] || [ $FLAVOR == "centos" ] || [ $FLAVOR == "amzn" ]; then
         echo "Installing RHEL/CentOS packages..."
         ${SUDO} yum install -y "${RH_LIST[@]}"
         ${SUDO} yum install -y devtoolset-6

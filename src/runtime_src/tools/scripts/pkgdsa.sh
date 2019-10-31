@@ -201,10 +201,10 @@ CardMgmtControllerFamily=""
 SchedulerFamily=""
 
 
-XBUTIL=/opt/xilinx/xrt/bin/xbutil
+XBMGMT=/opt/xilinx/xrt/bin/xbmgmt
 post_inst_msg="DSA package installed successfully.
 Please flash card manually by running below command:
-sudo ${XBUTIL} flash -a ${opt_dsa}"
+sudo ${XBMGMT} flash --update --shell ${opt_dsa}"
 
 createEntityAttributeArray ()
 {
@@ -271,6 +271,13 @@ recordDsaFiles()
    # Metadata
    if [ "${ENTITY_ATTRIBUTES_ARRAY[Type]}" == "META_JSON" ]; then
      metaDataJSONFile="${ENTITY_ATTRIBUTES_ARRAY[Name]}"
+   elif [ "${ENTITY_ATTRIBUTES_ARRAY[Type]}" == "EXT_META_JSON" ]; then
+     metaDataJSONFile="${ENTITY_ATTRIBUTES_ARRAY[Name]}"
+   fi
+
+   # Partition Metadata
+   if [ "${ENTITY_ATTRIBUTES_ARRAY[Type]}" == "PARTITION_META_JSON" ]; then
+     partitionMetaDataJSONFile="${ENTITY_ATTRIBUTES_ARRAY[Name]}"
    fi
 }
 
@@ -331,6 +338,8 @@ initBMCVar()
          prefix="AlveoGen2-"
       elif [ "${SatelliteControllerFamily}" == "Alveo-Gen3" ]; then
          prefix="AlveoGen3-"
+      elif [ "${SatelliteControllerFamily}" == "Alveo-Gen4" ]; then
+         prefix="AlveoGen4-"
       else
          echo "ERROR: Unknown satellite controller family: ${SatelliteControllerFamily}"
          exit 1
@@ -368,6 +377,62 @@ initBMCVar()
          echo "ERROR: MSP432 Flash image failed MD5 varification."
          echo "       Expected: ${bmcMd5Expected}"
          echo "       Actual  : ${bmcMd5Actual}"
+         echo "       File:   : $file"
+         exit 1
+      fi
+
+      # We only go through this loop once
+      return
+    done
+}
+
+initCMCVar()
+{
+    fwManagement=""
+    prefix=""
+    if [ "${CardMgmtControllerFamily}" != "" ]; then
+      if [ "${CardMgmtControllerFamily}" == "Legacy" ]; then
+         fwManagement="${XILINX_XRT}/share/fw/mgmt.bin"
+         return
+      elif [ "${CardMgmtControllerFamily}" == "CMC-Gen1" ]; then
+         fwManagement="${XILINX_XRT}/share/fw/cmc.bin"
+         return
+      elif [ "${CardMgmtControllerFamily}" == "CMC-Gen2" ]; then
+         prefix="CmcGen2-"
+      elif [ "${CardMgmtControllerFamily}" == "CMC-NoSC-Gen1" ]; then
+         prefix="CmcNoSCGen1-"
+      else
+         echo "ERROR: Unknown card management controller family: ${CardMgmtControllerFamily}"
+         exit 1
+      fi
+    fi
+
+
+    # Looking for the CMC firmware image
+    for file in ${XILINX_XRT}/share/fw/${prefix}*.bin; do
+      [ -e "$file" ] || continue
+
+      # Found "something" break it down into the basic parts
+      baseFileName="${file%.*bin}"        # Remove suffix
+      baseFileName="${baseFileName##*/}"  # Remove Path
+      baseFileName=${baseFileName#"$prefix"}  # Remove prefix
+
+      set -- `echo ${baseFileName} | tr '-' ' '`
+      cmcImageName="${1}"
+      cmcVersion="${2}"
+      cmcMd5Expected="${3}"
+
+      # Calculate the md5 checksum
+      set -- $(md5sum $file)
+      cmcMd5Actual="${1}"
+
+      if [ "${cmcMd5Expected}" == "${cmcMd5Actual}" ]; then
+         echo "Info: Validated ${prefix}:${baseFileName} image MD5 value"
+         fwManagement="${file}"
+      else
+         echo "ERROR: CMC image failed MD5 varification."
+         echo "       Expected: ${cmcMd5Expected}"
+         echo "       Actual  : ${cmcMd5Actual}"
          echo "       File:   : $file"
          exit 1
       fi
@@ -457,6 +522,11 @@ initDsaBinEnvAndVars()
        fi
     fi
 
+    if [ "${partitionMetaDataJSONFile}" != "" ]; then
+       echo "Info: Extracting Partition Metadata file: ${partitionMetaDataJSONFile}"
+       unzip -q -d "." "${dsaFile}" "${partitionMetaDataJSONFile}"
+    fi
+
     echo "Info: Satellite Controller Family: ${SatelliteControllerFamily}"
     echo "Info: Card Management Controller Family: ${CardMgmtControllerFamily}"
     echo "Info: Scheduler Family: ${SchedulerFamily}"
@@ -466,6 +536,8 @@ initDsaBinEnvAndVars()
     if [ "${SchedulerFamily}" != "" ]; then
       if [ "${SchedulerFamily}" == "ERT-Gen1" ]; then
          fwScheduler="${XILINX_XRT}/share/fw/sched.bin"
+      elif [ "${SchedulerFamily}" == "ERT-Gen2" ]; then
+         fwScheduler="${XILINX_XRT}/share/fw/sched_u50.bin"
       else
          echo "ERROR: Unknown scheduler firmware family: ${SchedulerFamily}"
          exit 1
@@ -473,17 +545,7 @@ initDsaBinEnvAndVars()
     fi
 
     # -- Determine management firmware --
-    fwManagement=""
-    if [ "${CardMgmtControllerFamily}" != "" ]; then
-      if [ "${CardMgmtControllerFamily}" == "Legacy" ]; then
-         fwManagement="${XILINX_XRT}/share/fw/mgmt.bin"
-      elif [ "${CardMgmtControllerFamily}" == "CMC-Gen1" ]; then
-         fwManagement="${XILINX_XRT}/share/fw/cmc.bin"
-      else
-         echo "ERROR: Unknown card management controller family: ${CardMgmtControllerFamily}"
-         exit 1
-      fi
-    fi
+    initCMCVar
 
     # -- MSP432 --
     initBMCVar
@@ -578,6 +640,11 @@ dodsabin()
     # -- Clear bitstream --
     if [ "${clearBitstreamFile}" != "" ]; then
        xclbinOpts+=" --add-section CLEARING_BITSTREAM:RAW:./firmware/${clearBitstreamFile}"
+    fi
+
+    # -- PARTITION_METADATA --
+    if [ "$partitionMetaDataJSONFile" != "" ]; then
+       xclbinOpts+=" --add-section PARTITION_METADATA:JSON:${partitionMetaDataJSONFile}"
     fi
 
     # -- FeatureRom Timestamp --
@@ -789,7 +856,7 @@ chmod -R o=g %{buildroot}/opt/xilinx/platforms/$opt_dsa
 
 %files
 %defattr(-,root,root,-)
-/opt/xilinx
+/opt/xilinx/platforms/$opt_dsa/
 
 %changelog
 * $build_date Xilinx Inc - 5.1-1

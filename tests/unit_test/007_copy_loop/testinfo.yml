@@ -19,3 +19,6 @@ user:
       name: myCopy
       num_cus: 1
     name: kernel.xclbin
+  labels:
+    test_type: ['regression']
+  sdx_type: [sdx_fast]

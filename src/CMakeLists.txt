@@ -7,6 +7,7 @@ SET(PROJECT_DESCRIPTION "https://github.com/Xilinx/XRT")
 
 # Exported interface into XRT for include from implemenation
 include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}/runtime_src
   ${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/core/include
   )
 

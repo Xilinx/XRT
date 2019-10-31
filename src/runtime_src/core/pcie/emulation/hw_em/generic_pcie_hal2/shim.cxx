@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -494,7 +494,10 @@ namespace xclhwemhal2 {
     set_simulator_started(true);
 
     //Thread to fetch messages from Device to display on host
-    mMessengerThread = std::thread(xclhwemhal2::messagesThread,this);
+    if(mMessengerThreadStarted == false) {
+      mMessengerThread = std::thread(xclhwemhal2::messagesThread,this);
+      mMessengerThreadStarted = true;
+    }
 
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     std::string launcherArgs = xclemulation::config::getInstance()->getLauncherArgs();
@@ -502,6 +505,9 @@ namespace xclhwemhal2 {
     // The following is evil--hardcoding. This name may change.
     // Is there a way we can determine the name from the directories or otherwise?
     std::string bdName("dr"); // Used to be opencldesign. This is new default.
+
+    unsetenv("VITIS_WAVEFORM_WDB_FILENAME");
+
     if (!simDontRun)
     {
       wdbFileName = std::string(mDeviceInfo.mName) + "-" + std::to_string(mDeviceIndex) + "-" + xclBinName;
@@ -525,8 +531,9 @@ namespace xclhwemhal2 {
         launcherArgs = launcherArgs + cmdLineOption.str();
         sim_path = binaryDirectory + "/behav_waveform/xsim";
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
-        unsetenv("SDX_LAUNCH_WAVEFORM_BATCH");
-        setenv("SDX_WAVEFORM", generatedWcfgFileName.c_str(), true);
+        unsetenv("VITIS_LAUNCH_WAVEFORM_BATCH");
+        setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
+        setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
       }
 
       if (lWaveform == xclemulation::LAUNCHWAVEFORM::BATCH)
@@ -540,8 +547,9 @@ namespace xclhwemhal2 {
         launcherArgs = launcherArgs + cmdLineOption.str();
         sim_path = binaryDirectory + "/behav_waveform/xsim";
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
-        setenv("SDX_LAUNCH_WAVEFORM_BATCH", "1", true);
-        setenv("SDX_WAVEFORM", generatedWcfgFileName.c_str(), true);
+        setenv("VITIS_LAUNCH_WAVEFORM_BATCH", "1", true);
+        setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
+        setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
       }
 
       if (userSpecifiedSimPath.empty() == false)
@@ -1015,9 +1023,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     bool ack = false;
     if(sock)
     {
-      bool p2pBuffer = false;
+      bool noHostMemory= false;
       std::string sFileName("");
-      xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,finalValidAddress,origSize,p2pBuffer);
+      xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,finalValidAddress,origSize,noHostMemory);
 
       PRINTENDFUNC;
       if(!ack)
@@ -1026,7 +1034,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     return finalValidAddress;
   }
 
-  uint64_t HwEmShim::xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags, bool p2pBuffer, std::string &sFileName)
+  uint64_t HwEmShim::xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags, bool noHostMemory, std::string &sFileName)
   {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << size <<", "<<domain<<", "<< flags <<std::endl;
@@ -1056,7 +1064,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     bool ack = false;
     if(sock)
     {
-      xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,finalValidAddress,origSize,p2pBuffer);
+      xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,finalValidAddress,origSize,noHostMemory);
 
       PRINTENDFUNC;
       if(!ack)
@@ -1303,14 +1311,17 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     }
 
     xclGetDebugMessages(true);
+    mPrintMessagesLock.lock();
     fetchAndPrintMessages();
     simulator_started = false;
+    mPrintMessagesLock.unlock();
     std::string socketName = sock->get_name();
     if(socketName.empty() == false)// device is active if socketName is non-empty
     {
 #ifndef _WINDOWS
       xclClose_RPC_CALL(xclClose,this);
 #endif
+      closemMessengerThread();
       //clean up directories which are created inside the driver
       systemUtil::makeSystemCall(socketName, systemUtil::systemOperation::REMOVE);
     }
@@ -1397,6 +1408,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       delete mDataSpace;
       mDataSpace = NULL;
     }
+    closemMessengerThread();
   }
 
   void HwEmShim::initMemoryManager(std::list<xclemulation::DDRBank>& DDRBankList)
@@ -1510,6 +1522,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     mTraceFunnelAddress = 0;
     mDataSpace = new xclemulation::MemoryManager(0x10000000, 0, getpagesize());
     mCuBaseAddress = 0x0;
+    mMessengerThreadStarted = false;
+    mIsTraceHubAvailable = false;
   }
 
   bool HwEmShim::isMBSchedulerEnabled()
@@ -1588,6 +1602,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
   void HwEmShim::xclGetDebugMessages(bool force)
   {
+    if(xclemulation::config::getInstance()->isSystemDPAEnabled() == true) {
+      return;
+    }
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
@@ -1828,7 +1845,7 @@ uint64_t HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   struct xclemulation::drm_xocl_bo *xobj = new xclemulation::drm_xocl_bo;
   xobj->flags=info->flags;
   /* check whether buffer is p2p or not*/
-  bool p2pBuffer = xocl_bo_p2p(xobj); 
+  bool noHostMemory = xclemulation::no_host_memory(xobj); 
   std::string sFileName("");
   
   if(xobj->flags & XCL_BO_FLAGS_EXECBUF)
@@ -1838,7 +1855,7 @@ uint64_t HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   }
   else
   {
-    xobj->base = xclAllocDeviceBuffer2(size,XCL_MEM_DEVICE_RAM,ddr,p2pBuffer,sFileName);
+    xobj->base = xclAllocDeviceBuffer2(size,XCL_MEM_DEVICE_RAM,ddr,noHostMemory,sFileName);
   }
   xobj->filename = sFileName;
   xobj->size = size;
@@ -2305,10 +2322,10 @@ int HwEmShim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t num
       for (; words < (numWords-chunkSizeWords); words += chunkSizeWords) {
           if(mLogStream.is_open())
             mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
-                          << std::hex << (ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0] or AXI_FIFO_RDFD*/ << " and writing it to 0x"
+                          << std::hex << ipBaseAddress /*fifoReadAddress[0] or AXI_FIFO_RDFD*/ << " and writing it to 0x"
                           << (void *)(hostbuf + words) << std::dec << std::endl;
 
-        xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
+        xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress /*offset : or AXI_FIFO_RDFD*/);
 
         size += chunkSizeBytes;
       }
@@ -2320,11 +2337,11 @@ int HwEmShim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t num
 
       if(mLogStream.is_open()) {
         mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
-                      << std::hex << (ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0]*/ << " and writing it to 0x"
+                      << std::hex << ipBaseAddress /*fifoReadAddress[0]*/ << " and writing it to 0x"
                       << (void *)(hostbuf + words) << std::dec << std::endl;
       }
 
-      xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
+      xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress /*offset : or AXI_FIFO_RDFD*/);
 
       size += chunkSizeBytes;
     }
@@ -2604,6 +2621,13 @@ int HwEmShim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char
     }
     xrt_core::message::send((xrt_core::message::severity_level)level, tag, buf.data());
     return 0;
+}
+
+void HwEmShim::closemMessengerThread() {
+	if(mMessengerThreadStarted) {
+		mMessengerThread.join();
+		mMessengerThreadStarted = false;
+	}
 }
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/
 /**********************************************HAL2 API's END HERE **********************************************/

@@ -22,17 +22,9 @@
 #include <getopt.h>
 #include <climits>
 
-#if !defined(_WIN32)
-// Linux specific headers
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/ioctl.h>
-#include <fcntl.h>
-#include <unistd.h>
-#endif
-
 #include "xbmgmt.h"
 #include "core/pcie/linux/scan.h"
+#include "core/common/utils.h"
 
 const char *subCmdNifdDesc = "Access the NIFD debug IP to readback frames and offsets";
 const char *subCmdNifdUsage = "--status [--card bdf]\n--readback <frame/offset file> [--card bdf]";
@@ -53,7 +45,7 @@ static int readback(const std::string& inputFile, unsigned int index)
 static int status(unsigned int index)
 {
   std::shared_ptr<pcidev::pci_device> dev = pcidev::get_dev(index, false);
-  int fd = dev->devfs_open("nifd_pri", O_RDWR);
+  int fd = dev->open("nifd_pri", O_RDWR);
   if (fd == -1)
   {
     std::cout << "NIFD IP not available on selected device" << std::endl;
@@ -62,16 +54,17 @@ static int status(unsigned int index)
 	  
   const int NIFD_CHECK_STATUS = 8;
   unsigned int status = 0;
-  int result = ioctl(fd, NIFD_CHECK_STATUS, &status);
+  int result = dev->ioctl(fd, NIFD_CHECK_STATUS, &status);
   if (result != 0)
   {
     std::cout << "ERROR: Could not read status register" << std::endl;
   }
   else
   {
+    xrt_core::ios_flags_restore format(std::cout);
     std::cout << "Current NIFD status: 0x" << std::hex << status << std::endl;
   }
-  close(fd);
+  dev->close(fd);
   return 0;
 }
 
@@ -94,7 +87,7 @@ static int readback(const std::string& inputFile, unsigned int index)
   fin.close() ;
 
   std::shared_ptr<pcidev::pci_device> dev = pcidev::get_dev(index, false);
-  int fd = dev->devfs_open("nifd_pri", O_RDWR);
+  int fd = dev->open("nifd_pri", O_RDWR);
   if (fd == -1)
   {
     std::cout << "NIFD IP not available on selected device" << std::endl;
@@ -114,22 +107,23 @@ static int readback(const std::string& inputFile, unsigned int index)
   const int NIFD_SWITCH_ICAP_TO_NIFD = 4 ;
   const int NIFD_SWITCH_ICAP_TO_PR = 5 ;
   int result = 0 ;
-  result = ioctl(fd, NIFD_SWITCH_ICAP_TO_NIFD);
+  result = dev->ioctl(fd, NIFD_SWITCH_ICAP_TO_NIFD);
   if (result != 0)
   {
     std::cout << "ERROR: Could not switch ICAP to NIFD control" << std::endl ;
-    close(fd) ;
+    dev->close(fd) ;
     return 0 ;
   }
-  result = ioctl(fd, NIFD_READBACK_VARIABLE, packet) ;
-  result |= ioctl(fd, NIFD_SWITCH_ICAP_TO_PR);
+  result = dev->ioctl(fd, NIFD_READBACK_VARIABLE, packet) ;
+  result |= dev->ioctl(fd, NIFD_SWITCH_ICAP_TO_PR);
   if (result != 0)
   {
     std::cout << "ERROR: Could not readback variable!" << std::endl ;
-    close(fd) ;
+    dev->close(fd) ;
     return 0 ;
   }
 
+  xrt_core::ios_flags_restore format(std::cout);
   std::cout << "Value read: " ;
   for (unsigned int i = 0 ; i < resultWords ; ++i)
   {
@@ -137,7 +131,7 @@ static int readback(const std::string& inputFile, unsigned int index)
   }
   std::cout << std::endl ;
 
-  close(fd) ;
+  dev->close(fd) ;
   return 0 ;
 }
 
@@ -159,6 +153,7 @@ int nifdHandler(int argc, char* argv[])
     { "status",   no_argument,       nullptr, '0' },
     { "readback", required_argument, nullptr, '1' },
     { "card",     required_argument, nullptr, '2' },
+    { nullptr, 0, nullptr, 0 },
   };
 
   while (true)

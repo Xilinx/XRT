@@ -22,6 +22,7 @@
 
 #include "xmc.h"
 #include "flasher.h"
+#include "core/common/utils.h"
 
 //#define XMC_DEBUG
 #define BMC_JUMP_ADDR   0x201  /* Hard-coded for now */
@@ -35,16 +36,16 @@ XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
 
     std::string err;
     bool is_mfg = false;
-    mDev->sysfs_get("", "mfg", err, is_mfg);
+    mDev->sysfs_get<bool>("", "mfg", err, is_mfg, false);
     if (!is_mfg) {
-        mDev->sysfs_get("xmc", "status", err, val);
+        mDev->sysfs_get<unsigned>("xmc", "status", err, val, 0);
 	if (!err.empty() || !(val & 1)) {
             mProbingErrMsg << "Failed to detect XMC, xmc.bin not loaded";
             goto nosup;
         }
     }
 
-    mDev->sysfs_get("xmc", "reg_base", err, mRegBase);
+    mDev->sysfs_get<unsigned long long>("xmc", "reg_base", err, mRegBase, -1);
     if (!err.empty())
 	    mRegBase = XMC_REG_BASE;
 
@@ -343,7 +344,7 @@ void describePkt(struct xmcPkt& pkt, bool send)
     int lenInUint32 = (sizeof (pkt.hdr) + pkt.hdr.payloadSize +
         sizeof (uint32_t) - 1) / sizeof (uint32_t);
 
-    std::ios::fmtflags f(std::cout.flags());
+    xrt_core::ios_flags_restore format(std::cout);
 
     if (send)
         std::cout << "Sending XMC packet: ";
@@ -371,8 +372,6 @@ void describePkt(struct xmcPkt& pkt, bool send)
     }
     std::cout << std::endl;
 #endif
-
-    std::cout.flags(f);
 }
 
 int XMC_Flasher::recvPkt()
@@ -475,6 +474,7 @@ bool XMC_Flasher::isXMCReady()
     bool xmcReady = (XMC_MODE() == XMC_READY);
 
     if (!xmcReady) {
+        xrt_core::ios_flags_restore format(std::cout);
         std::cout << "ERROR: XMC is not ready: 0x" << std::hex
             << XMC_MODE() << std::endl;
     }
@@ -486,6 +486,7 @@ bool XMC_Flasher::isBMCReady()
     bool bmcReady = (BMC_MODE() == 0x1);
 
     if (!bmcReady) {
+        xrt_core::ios_flags_restore format(std::cout);
         std::cout << "ERROR: SC is not ready: 0x" << std::hex
             << BMC_MODE() << std::endl;
     }

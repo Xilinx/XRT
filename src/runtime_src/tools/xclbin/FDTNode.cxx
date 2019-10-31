@@ -90,11 +90,11 @@ FDTNode::FDTNode(const char* _pBuffer,
     throw std::runtime_error("ERROR: The given buffer is empty.");
   }
 
-  unsigned index = 0;                   // Running index
+  uint32_t index = 0;                   // Running index
   // Get the node name
   {
     m_name = _pBuffer;                  // Get the null terminated ascii string
-    index += (unsigned int) m_name.size() + 1;         // Count the "null" character
+    index += (uint32_t) m_name.size() + 1;         // Count the "null" character
     runningBufferCheck(index, _size);
 
     XUtil::TRACE(XUtil::format("DTC Node Name: '%s'", m_name.c_str()));

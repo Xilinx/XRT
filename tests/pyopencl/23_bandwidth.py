@@ -61,9 +61,14 @@ def main():
        sys.exit(1)
     else:
        dev = devices[int(index)]
-
     if "qdma" in str(dev):
        threshold = 30000
+    
+    if "U2x4" in str(dev):
+       threshold = 15000
+
+    if "gen3x4" in str(dev):
+       threshold = 20000
 
     ctx = cl.Context(devices = [dev])
     if not ctx:
@@ -77,8 +82,9 @@ def main():
        sys.exit(1)
  
     print("Loading xclbin")
- 
-    prg = cl.Program(ctx, [dev], [open(xclbin).read()])
+    with open(xclbin, "rb") as f:
+       src = f.read()
+    prg = cl.Program(ctx, [dev], [src])
  
     try:
        prg.build()
@@ -150,7 +156,7 @@ def main():
             cl.enqueue_copy(commands, output_host2, output_buf2).wait()
             
             # need to check, currently fails
-            limit = beats*(typesize/8)
+            limit = int(beats*(typesize/8))
             if not np.array_equal(output_host1[:limit], input_host1[:limit]):
                print("ERROR: Failed to copy entries")
                input_buf1.release()
@@ -194,7 +200,7 @@ def main():
     print("TTTT: %d" %throughput[0])
     print("Maximum throughput: %d MB/s" %max(throughput))
     if max(throughput) < threshold:
-        print("ERROR: Throughput is less than expected value of 40 GB/sec")
+        print("ERROR: Throughput is less than expected value of %d GB/sec" %(threshold/1000))
         sys.exit(1)
     
     print("PASSED")

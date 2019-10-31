@@ -25,7 +25,7 @@ struct xocl_drvinst *xocl_drvinst_array[XOCL_MAX_DEVICES * 10];
 
 void *xocl_drvinst_alloc(struct device *dev, u32 size)
 {
-	struct xocl_drvinst	*drvinstp;
+	struct xocl_drvinst	*drvinstp = NULL;
 	int		inst;
 
 	mutex_lock(&xocl_drvinst_lock);
@@ -130,6 +130,7 @@ int xocl_drvinst_kill_proc(void *data)
 			p = find_get_pid(proc->pid);
 			if (!p)
 				continue;
+			xocl_info(drvinstp->dev, "kill %d", proc->pid);
 			ret = kill_pid(p, SIGBUS, 1);
 			if (ret) {
 				xocl_err(drvinstp->dev, "kill %d failed",
@@ -139,13 +140,17 @@ int xocl_drvinst_kill_proc(void *data)
 			}
 			put_pid(p);
 		}
-		if (!ret)
+		if (!ret) {
+			mutex_unlock(&xocl_drvinst_lock);
 			ret = wait_for_completion_killable(&drvinstp->comp);
+			goto done;
+		}
 	}
 
 	mutex_unlock(&xocl_drvinst_lock);
 
-	xocl_err(drvinstp->dev, "return %d", ret);
+done:
+	xocl_info(drvinstp->dev, "return %d", ret);
 
 	return ret;
 }
@@ -261,8 +266,8 @@ static void *_xocl_drvinst_open(void *file_dev, u32 max_count)
 		}
 		proc->pid = pid;
 		list_add(&proc->link, &drvinstp->open_procs);
-	} else
-		proc->count++;
+	}
+	proc->count++;
 	xocl_info(drvinstp->dev, "OPEN %d\n", drvinstp->ref.counter);
 
 	if (atomic_inc_return(&drvinstp->ref) == 2)

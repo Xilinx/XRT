@@ -87,6 +87,7 @@ public:
    *   Argument index
    * @return Memory index identifying DDR bank for argument
    */
+  XRT_XOCL_EXPORT
   xclbin::memidx_bitmask_type
   get_memidx(unsigned int arg) const;
 
@@ -126,6 +127,12 @@ public:
     return m_context_type;
   }
 
+  uint32_t
+  get_control_type() const
+  {
+    return m_control;
+  }
+
   const device*
   get_device() const
   {
@@ -150,6 +157,10 @@ public:
 
 private:
 
+  // Shared implementation by outer locking routines
+  xclbin::memidx_bitmask_type
+  get_memidx_nolock(unsigned int arg) const;
+
   // Used by xocl::device to cache the acquire context for
   void
   set_context_type(bool shared) const
@@ -170,6 +181,7 @@ private:
   const device* m_device = nullptr;
   size_t m_address = 0;
   size_t m_index = 0;
+  uint32_t m_control = 0;  // IP_CONTROL type per xclbin ip_layout
   mutable context_type m_context_type = context_type::none;
 
   // Map CU arg to memory bank indicies. An argument can
@@ -179,6 +191,7 @@ private:
   // Intersection of all argument masks
   mutable bool cached = false;
   mutable xclbin::memidx_bitmask_type m_memidx;
+  mutable std::mutex m_mutex;
 };
 
 } // xocl

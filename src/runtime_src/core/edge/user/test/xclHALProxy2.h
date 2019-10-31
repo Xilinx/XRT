@@ -24,13 +24,12 @@ public:
       mClose(mDeviceHandle);
       dlclose(mDriverHandle);
   }
-  unsigned int allocate_bo(size_t size,xclBOKind domain, unsigned flags) {
+  unsigned int allocate_bo(size_t size, int unused, unsigned flags) {
 
     std::cout << "Inside Allocate BO: " << mDeviceHandle <<  std::endl;
     std::cout << "Size: " << size <<  std::endl;
-    std::cout << "Domain: " << domain <<  std::endl;
     std::cout << "Fpags: " << flags <<  std::endl;
-    return mAllocBO(mDeviceHandle, size, domain, flags);
+    return mAllocBO(mDeviceHandle, size, unused, flags);
   }
 
   void* map_bo(unsigned int boHandle, bool write) {

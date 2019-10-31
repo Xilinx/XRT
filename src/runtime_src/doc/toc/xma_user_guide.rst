@@ -1,24 +1,37 @@
 ===========================================
 Xilinx Media Accelerator (XMA)
 ===========================================
-Major XMA Changes in this 2019.2 Release:
-YAML configuration file is not used by XMA
-Resource management is not handled by XMA. (See XRM for resource management details)
-MPSoC PL & soft kernels are supported in XMA
-Direct register read & write is not available
-DataFlow kernels are supported (In-Progress)
-ZeroCopy support has changed. See below for details
-BufferObject added. See below for details
-XmaFrame & XmaDataBuffer can use device buffers instead of host only memory
-Support for device_only buffers
-Session creation & destroy APIs are thread safe now
-Multi-process support is from XRT
-Register map must be locked (xma_plg_kernel_lock_regmap) by plugin for register_prep_write & schedule_work_item  to work without error. Unlock the register map if other plugins share same CU
-Supports up to 60 CUs per device (in-progress; Testcase needed)
-CU register map size < 4KB
-By default XMA will automatically select ddr bank for new device buffers (as per selected CU). Session_create may provide user selected ddr bank input when XMA will use user select ddr bank for plugin with that session
-XMA continues to support only one ddr bank per plugin
-XMA version check API added to plugin struct. See below for details
+Major XMA Changes in 2019.2 Release:
+
+1. YAML configuration file is not used by XMA
+2. Resource management is not handled by XMA
+
+   a. So channel_id for multi-channel kernels must be handled in host video application (like ffmpeg)
+   b. channel_id is input to XMA in session_create API as part of the properties argument
+   c. See XRM for resource management details
+
+3. MPSoC PL & soft kernels are supported in XMA
+4. Direct register read & write is not available
+5. DataFlow kernels are supported (In-Progress)
+6. ZeroCopy support has changed. See below for details
+7. BufferObject added. See below for details
+8. XmaFrame & XmaDataBuffer can use device buffers instead of host only memory
+9. Support for device_only buffers
+10. Session creation & destroy APIs are thread safe now
+11. Multi-process support is from XRT
+12. schedule_work_item  API changed to return CUCmdObj
+13. New API xma_plg_schedule_cu_cmd & xma_plg_cu_cmd_status can be used instead of schedule_work_item
+14. In a session if using xma_plg_cu_cmd_status then do NOT use xma_plg_is_work_item_done in same session
+15. Supports up to 128 CUs per device
+16. CU register map size < 4KB
+17. By default XMA will automatically select default ddr bank for new device buffers (as per selected CU). Session_create may provide user selected default ddr bank input when XMA will use user select default ddr bank for plugin with that session
+18. For using ddr bank other than default session ddr_bank use APIs xma_plg_buffer_alloc_arg_num(). See below for info
+19. XMA now support multiple ddr bank per plugin. See below for info on xma_plg_buffer_alloc_arg_num()
+20. XMA version check API added to plugin struct. See below for details
+21. New session type XMA_ADMIN for non-video applications to control multiple CUs in single session. See below for details
+22. get_session_cmd_load(): Get CU command load of various sessions relative to each other. Printed to log file
+23. CU command load of all session is automatically sent to log file at end of the application
+24. This gives info on which sessions (or CUs) are more busy compared to other sessions (or CUs)
 
 Introduction
 ---------------
@@ -70,7 +83,7 @@ edge initialization API provides two types of initialization: global and
 session level initialization.  The XMA upper edge API also provides functions
 for sending and receiving frames as well as a method for gracefully terminating
 a video stream when the end of the stream is found.  Also depicted in the
-diagram is the XMA Framework.  The XMA Framework is responsible for 
+diagram is the XMA Framework.  The XMA Framework is responsible for
 delegating requests to the appropriate plugin, and selecting user requested
 resources based on session creation requests.
 
@@ -92,29 +105,54 @@ the APIs are slightly different, however, there is a common pattern associated
 with these classes. Specifically, a plugin must provide registration
 information and must implement all required callback functions. In general, an
 XMA plugin implements at least five required callback functions: initialize,
-send frame or send data, receive frame or receive data, close and xma_version. 
+send frame or send data, receive frame or receive data, close and xma_version.
 
-BufferObject contains:
-uint8_t* data : Pointer to host buffer space of allocated buffer
-uint64_t size: Size of allocated buffer
-uint64_t paddr: FPGA DDR Addr of allocated buffer. Use this to pass DDR addr to CUs as part of regmap with xma_plg_register_prep_write API
-int32_t  bank_index: DDR bank index
-int32_t  dev_index: FPGA device index on which the buffer is allocated
-bool     device_only_buffer: If it is device only buffer.
-For device only buffers, BufferObject → data == NULL as no host buffer space is allocated
+BufferObject:
+
+1. uint8_t* data : Pointer to host buffer space of allocated buffer
+2. uint64_t size: Size of allocated buffer
+3. uint64_t paddr: 
+   a. FPGA DDR Addr of allocated buffer. 
+   b. Use it to pass DDR addr to CUs as part of regmap with xma_plg_schedule_cu_cmd or xma_plg_schedule_work_item API
+4. int32_t  bank_index: DDR bank index
+5. int32_t  dev_index: FPGA device index on which the buffer is allocated
+6. bool     device_only_buffer: If it is device only buffer.
+7. For device only buffers, BufferObject → data == NULL as no host buffer space is allocated
+8. ref_cnt & user_ptr: For plugin/user to use
 
 XmaFrame & XmaDataBuffer with device buffers:
-xma_frame_from_device_buffers()
-xma_data_from_device_buffer()
+
+1. xma_frame_from_device_buffers()
+2. xma_data_from_device_buffer()
 
 ZeroCopy use cases:
-Use XRM for system resource reservation such that zero-copy is possible
-XmaFrame with device only buffer can be output of plugins supporting zero-copy and feeding zero-copy enabled plugin/s
-Plugins may use dev_index, bank_index & device_only info from BufferObject to enable or disable zero-copy
+
+1. Use XRM for system resource reservation such that zero-copy is possible
+2. XmaFrame with device only buffer can be output of plugins supporting zero-copy and feeding zero-copy enabled plugin/s
+3. Plugins may use dev_index, bank_index & device_only info from BufferObject to enable or disable zero-copy
+
+ZeroCopy trancode pipeline:
+
+1. Decoder->Scaler->Encoder
+2. FFMPEG completes xma_init & create session for all plugins
+3. Pass zerocopy settings for plugins to use
+4. FFMPEG --> send_data with host buffer --> decoder plugin
+5. Decoder plugin uses device buffers for input & output of kernel. Decoder has pool of device buffers to use. Decoder plugin does buffer write to DMA data to FPGA
+6. FFMPEG --> receive frame with DUMMY frame --> decoder plugin
+7. Decoder plugin adds output device buffer to the frame: xma_plg_add_buffer_to_frame()
+8. FFMPEG --> send frame to scaler - same as received from decoder with device buffer
+9. Scaler plugin uses device buffer from input frame as it's input & uses an output buffer from it's pool of buffers
+10. FFMPEG --> receive frame with DUMMY frame --> scaler plugin
+11. Scaler plugin adds output device buffer to the frame: xma_plg_add_buffer_to_frame()
+12. FFMPEG --> send frame to encoder - same as received from scaler with device buffer
+13. Encoder plugin uses device buffer from input frame as it's input & uses an output buffer from it's pool of buffers
+14. FFMPEG --> receive frame with DUMMY DataBuffer --> encoder plugin
+15. Encoder plugin adds output device buffer to the DataBuffer: xma_plg_add_buffer_to_data_buffer(). Encoder plugin does buffer read to DMA output data from FPGA to host
+16. Thus DMA to/from host is only at start and end of pipline. At other times data remain on device only and no DMA is required
+
 
 By way of example, the following represents the interface of the XMA Encoder
 class:
-
 
 ::
 
@@ -196,16 +234,20 @@ function of the FFmpeg command is invoked and this calls the xma_initialize()
 function. The xma_initialize() function is called prior to executing any other
 XMA functions and performs a number of initialization steps that are detailed
 in a subsequent section.
+
 Once the xma_initialize() successfully completes, the FFmpeg main() function
 performs initialization of all requested processing plugins. In this case, the
 hypothetical encoder plugin has been registered with FFmpeg and the
 initialization callback of the plugin is invoked. The FFmpeg encoder plugin
 begins by creating an XMA session using the xma_enc_session_create() function.
-The xma_enc_session_create() function finds an available resource based on the
+The xma_enc_session_create() function uses available resource based on the
 properties supplied and, invokes the XMA
 plugin initialization function. The XMA plugin initialization function
 allocates any required input and output buffers on the device and performs
 initialization of the SDAccel kernel if needed.
+Default session ddr_bank can be provided in properties supplied to xma_enc_session_create() function. If this ddr_bank_index is -1 then XMA will automatically select default sesion ddr_bank to be used else user provided dr_bank is selected as default session ddr_bank.
+Plugins may use ddr_bank other than default session ddr_bank. For using ddr bank other than default session ddr_bank use APIs xma_plg_buffer_alloc_arg_num().
+Also cu_name or cu_index can be provided in properties supplied to xma_enc_session_create() function. If cu_index is -1 then cu_name is used to use CU for the session.
 
 After initialization has completed, the FFmpeg main() function reads encoded
 data from the specified file, decodes the data in software, and sends the raw
@@ -234,24 +276,21 @@ code examples to help illustrate usage of the XMA.
 
 Execution model
 -----------------
-The APIs are: 
-  
-  * xma_plg_register_prep_write
-  * xma_plg_schedule_work_item
-  * xma_plg_is_work_item_done
+The APIs are:
 
-Lets consider the various purposes where the above APIs would be useful. 
+1. xma_plg_schedule_cu_cmd
+2. xma_plg_schedule_work_item
+3. xma_plg_is_work_item_done
+4. xma_plg_cu_cmd_status
 
-**xma_plg_register_prep_write** should be used to set kernel input arguments which will be used to start the kernel later. 
+Lets consider the various purposes where the above APIs would be useful.
 
-**xma_plg_schedule_work_item** 
-should be used to start the kernel with kernel arguments set earlier with xma_plg_register_prep_write API
+**xma_plg_schedule_cu_cmd / xma_plg_schedule_work_item**
+should be used to start the kernel with supplied kernel arguments
 
-**xma_plg_is_work_item_done** should be used to check if kernel has completed atleast one work item (previously submitted by xma_plg_schedule_work_item).
+**xma_plg_is_work_item_done** should be used to check if kernel has completed atleast one work item (previously submitted by xma_plg_schedule_cu_cmd / xma_plg_schedule_work_item).
 
-
-
-
+**xma_plg_cu_cmd_status** should be used to check status of kernel commands supplied as list of commands in argument (previously submitted by xma_plg_schedule_cu_cmd / xma_plg_schedule_work_item).
 
 
 Application Development Guide
@@ -261,16 +300,16 @@ The XMA application interface is used to provide an API that can
 be used to control video accelerators.  The XMA API operations
 fall into four categories:
 
-- Initialization
-- Create session
-- Runtime frame/data processing
-- Cleanup
+1. Initialization
+2. Create session
+3. Runtime frame/data processing
+4. Cleanup
 
 Initialization
 ~~~~~~~~~~~~~~~~~~~~~~
 The first act an application must perform is that of initialization of the
 system environment.  This is accomplished by calling xma_initialize() and
-passing in device and xclbin info. 
+passing in device and xclbin info.
 
 Create Session
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -279,16 +318,17 @@ requires different properties to be specified before a session can be created.
 
 See the document for the corresponding module for more details for a given
 kernel type:
-- xmadec
-- xmaenc
-- xmafilter
-- xmascaler
-- xmakernel
+
+1. xmadec
+2. xmaenc
+3. xmafilter
+4. xmascaler
+5. xmakernel
 
 The general initialization sequence that is common to all kernel classes is as follows:
 
-- define key type-specific properties of the kernel to be initialized
-- call the_session_create() routine corresponding to the kernel (e.g. xma_enc_session_create())
+1. define key type-specific properties of the kernel to be initialized
+2. call the_session_create() routine corresponding to the kernel (e.g. xma_enc_session_create())
 
 
 Runtime Frame and Data Processing
@@ -321,11 +361,11 @@ each session.  Doing so will free the session to be used by another thread or
 process and ensure that the kernel plugin has the opportunity to perform
 proper cleanup/closing procedures.
 
-- xma_enc_session_destroy()
-- xma_dec_session_destroy()
-- xma_scaler_session_destroy()
-- xma_filter_session_destroy()
-- xma_kernel_session_destroy()
+1. xma_enc_session_destroy()
+2. xma_dec_session_destroy()
+3. xma_scaler_session_destroy()
+4. xma_filter_session_destroy()
+5. xma_kernel_session_destroy()
 
 See XMA copy_encoder & copy_filter examples for more info.
 
@@ -416,8 +456,9 @@ Initalization
 
 Initialization is the time for a plugin to perform one or more of the
 following:
-* allocate device buffers to handle input data as well as output data
-* initalize the state of the kernel
+
+1. allocate device buffers to handle input data as well as output data
+2. initalize the state of the kernel
 
 
 When a session has been created in response to an application request,
@@ -430,7 +471,10 @@ state as necessary. There is no need to free these data structures during
 termination; XMA frees this data for you.
 
 To allocate buffers necessary to handle both incoming and outgoing
-data, please see xma_plg_buffer_alloc().
+data, please see
+
+1. xma_plg_buffer_alloc(): Allocate device buffer on default session ddr_bank
+2. xma_plg_buffer_alloc_arg_num(): Allocate device buffer on ddr_bank connected to a kernel argument
 
 
 Handling Incoming Application Data
@@ -449,7 +493,7 @@ contains the data to be processed and programmed appropriately.
 The XMA Plugin library call xma_plg_buffer_write() can be used to copy
 host data to device data.
 
-xma_plg_register_prep_write() and xma_plg_schedule_work_item() can be used to program
+xma_plg_schedule_cu_cmd() or xma_plg_schedule_work_item() can be used to program
 the kernel registers and start kernel processing.
 
 Sending Output to the Application
@@ -489,11 +533,46 @@ the filter copy data back to a host buffer only to be re-copied from the host
 to the device buffer of the downstream encoder.  This double-copy can be
 avoided if the two kernels can share a buffer within the device memory; a
 buffer that serves as an 'output' buffer for the filter but an 'input'
-buffer for the encoder. This optimization is known as 'zerocopy'. 
+buffer for the encoder. This optimization is known as 'zerocopy'.
 
 Use XRM for system resource reservation such that zero-copy is possible
 XmaFrame with device only buffer can be output of plugins supporting zero-copy and feeding zero-copy enabled plugin/s
 Plugins may use dev_index, bank_index & device_only info from BufferObject to enable or disable zero-copy
 
 See XMA copy_encoder & copy_filter examples for more info.
+
+For stateful/multi-channel kernels (eg decodre, encoder):
+
+1. Use dataflow kernels with context/channels for best performance. Use HLS/RTL Wizard with appropriate settings to generate these kernels in 2019.2 release toolset.
+2. All work items within a channel are treated as FIFO. Kernel must maintain this order for a channel.
+3. See spec for kernels with dataflow with channels. Kernel regamp registers at offset 0x10 (channel_id input to kernel) and 0x14 (channel_id output from kernel) must be supported by kernels.
+4. Use xrt_ini settings (dataflow; kernel_channels) to enable dataflow kernel with channels
+
+Using DRM (Digital Right Management) IPs:
+
+1. For register read/write use XRT APIs from libxrt_core
+2. Use APIs xclRead & xclWrite. APIs are depricated and will be removed in 2020.2 release
+3. xclRegRead/Write APIs may NOT work for DRM IPs depending on application setup/use-case
+4. Register read/write is discouraged
+5. DRM solution/setup without register read/write is preferred
+6. DRM solution/setup using standard XMA APis is preferred
+
+Compiling ffmpeg or host aplication with libxma2api:
+
+1. GCC link flag to use: -Wl,--unresolved-symbols=ignore-in-shared-libs
+2. Example ffmpeg configure cmd:
+
+./configure \
+--prefix=/root_path/ffmpeg/build \
+--pkg-config-flags="--static" \
+--extra-cflags='-I/opt/xilinx/xrt/include/xma2 -I/root_path/ffmpeg/build/include' \
+--extra-ldflags='-L/opt/xilinx/xrt/lib -L/root_path/ffmpeg/build/lib' \
+--extra-libs='-Wl,--unresolved-symbols=ignore-in-shared-libs -lxma2api -lpthread -ldl' \
+--bindir=/root_path/ffmpeg/bin \
+--enable-pthreads \
+--enable-shared \
+--enable-libxma2api \
+--enable-pic \
+--enable-gpl \
+--enable-nonfree
 

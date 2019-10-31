@@ -22,7 +22,13 @@
 #include <climits>
 #include <getopt.h>
 #include <unistd.h>
+#include <libgen.h>
+#include <stdint.h>
+#include <dirent.h>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
 
+#include "boost/filesystem.hpp"
 #include "flasher.h"
 #include "xbmgmt.h"
 #include "firmware_image.h"
@@ -30,12 +36,15 @@
 #include "xclbin.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
+using namespace boost::filesystem;
+
 const char *subCmdPartDesc = "Show and download partition onto the device";
 const char *subCmdPartUsage =
-    "--program --id id [--card bdf] [--force]\n"
+    "--program --name name [--id interface-uuid] [--card bdf] [--force]\n"
     "--program --path xclbin [--card bdf] [--force]\n"
     "--scan [--verbose]";
 
+#define indent(level)	std::string((level) * 4, ' ')
 int program_prp(unsigned index, const std::string& xclbin, bool force)
 {
     std::ifstream stream(xclbin.c_str(), std::ios_base::binary);
@@ -46,7 +55,7 @@ int program_prp(unsigned index, const std::string& xclbin, bool force)
     }
 
     auto dev = pcidev::get_dev(index, false);
-    int fd = dev->devfs_open("icap", O_WRONLY);
+    int fd = dev->open("icap", O_WRONLY);
 
     if (fd == -1) {
         std::cout << "ERROR: Cannot open icap for writing." << std::endl;
@@ -57,29 +66,39 @@ int program_prp(unsigned index, const std::string& xclbin, bool force)
     int length = stream.tellg();
     stream.seekg(0, stream.beg);
 
-    char *buffer = new char[length];
-    stream.read(buffer, length);
-    ssize_t ret = write(fd, buffer, length);
-    delete [] buffer;
-
-    if (ret <= 0) {
-        std::cout << "ERROR: Write prp to icap subdev failed." << std::endl;
-        close(fd);
-        return -errno;
-    }
-    close(fd);
+    std::unique_ptr<char> buffer(new char[length]);
+    stream.read(buffer.get(), length);
 
     std::string errmsg;
     if (force)
     {
-        std::cout << "CAUTION: Force downloading PRP. " <<
-                "Please make sure xocl driver is unloaded." << std::endl;
+        dev->sysfs_put("", "rp_program", errmsg, "3");
+        if (!errmsg.empty())
+        {
+            std::cout << errmsg << std::endl;
+            dev->close(fd);
+            return -EINVAL;
+        }
+    }
+
+    ssize_t ret = write(fd, buffer.get(), length);
+
+    if (ret <= 0) {
+        std::cout << "ERROR: Write prp to icap subdev failed." << std::endl;
+        dev->close(fd);
+        return -errno;
+    }
+    dev->close(fd);
+
+    if (force)
+    {
+        std::cout << "CAUTION! Force downloading PRP inappropriately may hang the host. Please make sure xocl driver is unloaded or detached from the corresponding board. The host will hang with attached xocl driver instance." << std::endl;
         if(!canProceed())
             return -ECANCELED;
 
         dev->sysfs_put("", "rp_program", errmsg, "2");
         if (!errmsg.empty())
-	{
+        {
             std::cout << errmsg << std::endl;
             return -EINVAL;
         }
@@ -93,6 +112,7 @@ int program_prp(unsigned index, const std::string& xclbin, bool force)
             return -EINVAL;
         }
     }
+    std::cout << "Program successfully" << std::endl;
 
     return 0;
 }
@@ -114,14 +134,49 @@ int program_urp(unsigned index, const std::string& xclbin)
     stream.read(buffer, length);
     xclmgmt_ioc_bitstream_axlf obj = { reinterpret_cast<axlf *>(buffer) };
     auto dev = pcidev::get_dev(index, false);
-    int ret = dev->ioctl(XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
+    int fd = dev->open("", O_RDWR);
+    int ret = dev->ioctl(fd, XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
+    dev->close(fd);
     delete [] buffer;
 
     return ret ? -errno : ret;
 }
 
-#define fmt_str "    "
-void scanPartitions(int index, std::vector<DSAInfo>& installedDSAs, bool verbose)
+void printTree (boost::property_tree::ptree &pt, int level) {
+    if (pt.empty()) {
+        std::cout << ": " << pt.data() << std::endl;
+    } else {
+        if (level > 1)
+            std::cout << std::endl;
+        for (auto pos = pt.begin(); pos != pt.end();) {
+            std::cout << indent(level+1) << pos->first;
+            printTree(pos->second, level + 1);
+            ++pos;
+        }
+    }
+    return;
+}
+
+void printPartinfo(int index, DSAInfo& d, unsigned int level)
+{
+    auto dev = pcidev::get_dev(index, false);
+    std::vector<std::string> partinfo;
+
+    dev->get_partinfo(partinfo, d.dtbbuf.get());
+    if ((level > 0 && partinfo.size() <= level) || partinfo.empty())
+        return;
+
+    auto info = partinfo[level];
+    if (info.empty())
+        return;
+    boost::property_tree::ptree ptInfo;
+    std::istringstream is(info);
+    boost::property_tree::read_json(is, ptInfo);
+    std::cout << indent(3) << "Partition info";
+    printTree(ptInfo, 3);
+}
+
+void scanPartitions(int index, bool verbose)
 {
     Flasher f(index);
     if (!f.isValid())
@@ -129,18 +184,36 @@ void scanPartitions(int index, std::vector<DSAInfo>& installedDSAs, bool verbose
 
     auto dev = pcidev::get_dev(index, false);
     std::vector<std::string> uuids;
+    std::vector<std::string> int_uuids;
     std::string errmsg;
     dev->sysfs_get("", "logic_uuids", errmsg, uuids);
     if (!errmsg.empty() || uuids.size() == 0)
         return;
 
+    dev->sysfs_get("", "interface_uuids", errmsg, int_uuids);
+    if (!errmsg.empty() || int_uuids.size() == 0)
+        return;
+
+    DSAInfo d("", NULL_TIMESTAMP, uuids[0], "");
+    if (d.name.empty())
+        return;
+
     std::cout << "Card [" << f.sGetDBDF() << "]" << std::endl;
-    std::cout << fmt_str << "Programmable partition running on FPGA:" << std::endl;
-    DSAInfo dsa("", NULL_TIMESTAMP, uuids.back(), "");
-    std::cout << fmt_str << fmt_str << dsa << std::endl;
+    std::cout << indent(1) << "Partitions running on FPGA:" << std::endl;
+    for (unsigned int i = 0; i < uuids.size(); i++)
+    {
+        DSAInfo d("", NULL_TIMESTAMP, uuids[i], "");
+        std::cout << indent(2) << d.name << std::endl;
+        std::cout << indent(3) << "logic-uuid:" << std::endl;
+        std::cout << indent(3)  << uuids[i] << std::endl;
+        std::cout << indent(3) << "interface-uuid:" << std::endl;
+        std::cout << indent(3)  << int_uuids[i] << std::endl;
+        if (verbose)
+            printPartinfo(index, d, i);
+    }
 
-
-    std::cout << fmt_str << "Programmable partitions installed in system:" << std::endl;
+    auto installedDSAs = firmwareImage::getIntalledDSAs();
+    std::cout << indent(1) << "Partitions installed in system:" << std::endl;
     if (installedDSAs.empty())
     {
         std::cout << "(None)" << std::endl;
@@ -149,17 +222,30 @@ void scanPartitions(int index, std::vector<DSAInfo>& installedDSAs, bool verbose
 
     for (auto& dsa : installedDSAs)
     {
+        unsigned int i;
         if (dsa.hasFlashImage || dsa.uuids.empty())
             continue;
-	std::cout << fmt_str << fmt_str << dsa << std::endl;
-        if (dsa.uuids.size() > 2)
+	for (i = 0; i < dsa.uuids.size(); i++)
         {
-            std::cout << fmt_str << fmt_str << fmt_str << "Interface UUID:" << std::endl;
-            for (unsigned int i = 2; i < dsa.uuids.size(); i++)
+            if (int_uuids[0].compare(dsa.uuids[i]) == 0)
+                break;
+        }
+	if (i == dsa.uuids.size())
+            continue;	
+	dsa.uuids.erase(dsa.uuids.begin()+i);
+	std::cout << indent(2) << dsa.name << std::endl;
+        if (dsa.uuids.size() > 1)
+        {
+            std::cout << indent(3) << "logic-uuid:" << std::endl;
+            std::cout << indent(3)  << dsa.uuids[0] << std::endl;
+            std::cout << indent(3) << "interface-uuid:" << std::endl;
+            for (i = 1; i < dsa.uuids.size(); i++)
             {
-               std::cout << fmt_str << fmt_str << fmt_str  << dsa.uuids[i] << std::endl;
+               std::cout << indent(3) << dsa.uuids[i] << std::endl;
             } 
         }
+        if (verbose)
+            printPartinfo(index, dsa, 0);
     }
     std::cout << std::endl;
 }
@@ -173,9 +259,10 @@ int scan(int argc, char *argv[])
 	return 0;
     }
 
-    bool verbose;
+    bool verbose = false;
     const option opts[] = {
         { "verbose", no_argument, nullptr, '0' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {
@@ -192,10 +279,9 @@ int scan(int argc, char *argv[])
         }
     }
 
-    auto installedDSAs = firmwareImage::getIntalledDSAs();
     for (unsigned i = 0; i < total; i++)
     {
-        scanPartitions(i, installedDSAs, verbose);
+        scanPartitions(i, verbose);
     }
 
     return 0;
@@ -209,11 +295,14 @@ int program(int argc, char *argv[])
     unsigned index = UINT_MAX;
     bool force = false;
     std::string file, id;
+    std::string plp;
     const option opts[] = {
         { "card", required_argument, nullptr, '0' },
         { "force", no_argument, nullptr, '1' },
         { "path", required_argument, nullptr, '2' },
-	{ "id", required_argument, nullptr, '3' },
+        { "id", required_argument, nullptr, '3' },
+        { "name", required_argument, nullptr, '4' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {
@@ -236,12 +325,48 @@ int program(int argc, char *argv[])
 	case '3':
 	    id = std::string(optarg);
 	    break;
+        case '4':
+            plp = std::string(optarg);
+            break;
         default:
             return -EINVAL;
         }
     }
 
-    if (!id.empty())
+    if (index == UINT_MAX)
+        index = 0;
+
+    Flasher f(index);
+    if (!f.isValid())
+        return -EINVAL;
+
+    std::string blp_uuid, logic_uuid;
+    auto dev = pcidev::get_dev(index, false);
+    std::string errmsg;
+
+    dev->sysfs_get("rom", "uuid", errmsg, logic_uuid);
+    if (!errmsg.empty() || logic_uuid.empty())
+    {
+        // 1RP platform
+    	/* Get permission from user. */
+        if (!force) {
+            std::cout << "CAUTION: Downloading xclbin. " <<
+                "Please make sure xocl driver is unloaded." << std::endl;
+            if(!canProceed())
+                return -ECANCELED;
+        }
+
+        std::cout << "Programming ULP on Card [" << f.sGetDBDF() << "]..." << std::endl;
+        return program_urp(index, file);
+    }
+
+    dev->sysfs_get("", "interface_uuids", errmsg, blp_uuid);
+    if (!errmsg.empty() || blp_uuid.empty())
+    {
+        std::cout << "ERROR: Can not get BLP interface uuid. Please make sure corresponding BLP package is installed." << std::endl;
+	return -EINVAL;
+    }
+    if (file.empty())
     {
         std::vector<DSAInfo> DSAs;
 
@@ -250,7 +375,11 @@ int program(int argc, char *argv[])
         {
             if (dsa.uuids.size() == 0)
                 continue;
-            if (!dsa.matchIntId(id))
+
+            if (!id.empty() && !dsa.matchIntId(id))
+                continue;
+
+            if (!plp.empty() && dsa.name.compare(plp))
                 continue;
 
             DSAs.push_back(dsa);
@@ -272,45 +401,53 @@ int program(int argc, char *argv[])
 	}
 	file = DSAs[0].file;
     }
+    else
+    {
+        DIR *dp;
+        dp = opendir(file.c_str());
+	if (dp)
+        {
+            path formatted_fw_dir(file);
+            for (recursive_directory_iterator iter(formatted_fw_dir, symlink_option::recurse), end;
+                iter != end;
+            )
+            {
+                DSAInfo d(iter->path().string());
+                if (d.uuids.size() > 0)
+                {
+                    file = iter->path().string();
+                    break;
+                }
+                ++iter;
+            }
+            closedir(dp);
+        }
+    }
 
     if (file.empty())
-        return -EINVAL;
-
-    if (index == UINT_MAX)
-        index = 0;
+    {
+        std::cout << "ERROR: can not find partition file" << std::endl;
+    }
 
     DSAInfo dsa(file);
-    std::string blp_uuid;
-    auto dev = pcidev::get_dev(index, false);
-    std::string errmsg;
-
-    dev->sysfs_get("", "interface_uuids", errmsg, blp_uuid);
-    if (!errmsg.empty())
+    if (dsa.uuids.size() == 0)
     {
-        // 1RP platform
-    	/* Get permission from user. */
-        if (!force) {
-            std::cout << "CAUTION: Downloading xclbin. " <<
-                "Please make sure xocl driver is unloaded." << std::endl;
-            if(!canProceed())
-                return -ECANCELED;
-        }
-
-        std::cout << "Programming URP..." << std::endl;
+        std::cout << "Programming ULP on Card [" << f.sGetDBDF() << "]..." << std::endl;
         return program_urp(index, file);
     }
 
+    std::cout << "Programming PLP on Card [" << f.sGetDBDF() << "]..." << std::endl;
+    std::cout << "Partition file: " << dsa.file << std::endl;
     for (std::string uuid : dsa.uuids)
     {
         if (blp_uuid.compare(uuid) == 0)
         {
-            std::cout << "Programming PRP..." << std::endl;
             return program_prp(index, file, force);
         }
     }
 
-    std::cout << "Programming URP..." << std::endl;
-    return program_urp(index, file);
+    std::cout << "ERROR: uuid does not match BLP" << std::endl;
+    return -EINVAL;
 }
 
 static const std::map<std::string, std::function<int(int, char **)>> optList = {

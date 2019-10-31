@@ -41,8 +41,7 @@
 #ifdef _WIN32
   #include <cstdint>
   #include <algorithm>
-
-  typedef unsigned char xuid_t[16];
+  #include "windows/uuid.h"
 #else
   #if defined(__KERNEL__)
     #include <linux/types.h>
@@ -260,11 +259,11 @@ extern "C" {
 
     /****   IP_LAYOUT SECTION ****/
 
-    // IP Kernel 
+    // IP Kernel
     #define IP_INT_ENABLE_MASK    0x0001
     #define IP_INTERRUPT_ID_MASK  0x00FE
     #define IP_INTERRUPT_ID_SHIFT 0x1
-        
+
     enum IP_CONTROL {
         AP_CTRL_HS = 0,
         AP_CTRL_CHAIN = 1,
@@ -280,10 +279,10 @@ extern "C" {
     struct ip_data {
         uint32_t m_type; //map to IP_TYPE enum
         union {
-            uint32_t properties; // Default: 32-bits to indicate ip specific property. 
+            uint32_t properties; // Default: 32-bits to indicate ip specific property.
                                  // m_type: IP_KERNEL
                                  //         m_int_enable   : Bit  - 0x0000_0001;
-                                 //         m_interrupt_id : Bits - 0x0000_00FE; 
+                                 //         m_interrupt_id : Bits - 0x0000_00FE;
                                  //         m_ip_control   : Bits = 0x0000_FF00;
             struct {             // m_type: IP_MEM_*
                uint16_t m_index;
@@ -313,7 +312,8 @@ extern "C" {
         AXI_STREAM_MONITOR,
         AXI_STREAM_PROTOCOL_CHECKER,
         TRACE_S2MM,
-        AXI_DMA
+        AXI_DMA,
+        TRACE_S2MM_FULL
     };
 
     struct debug_ip_data {
@@ -417,6 +417,36 @@ extern "C" {
         auto begin = top->m_sections;
         auto end = begin + top->m_header.m_numSections;
         auto itr = std::find_if(begin,end,[kind](const axlf_section_header& sec) { return sec.m_sectionKind==(const uint32_t) kind; });
+        return (itr!=end) ? &(*itr) : nullptr;
+      }
+
+      // Helper C++ section iteration
+      // To keep with with the current "coding" them, the function get_axlf_section_next() was
+      // introduced find 'next' common section names.  
+      // 
+      // Future TODO: Create a custom iterator and refactor the code base to use it. 
+      // 
+      // Example on how this function may be used:
+      // 
+      // const axlf_section_header * pSection;
+      // const axlf* top = <xclbin image in memory>;
+      // for (pSection = xclbin::get_axlf_section( top, SOFT_KERNEL);
+      //      pSection != nullptr;
+      //      pSection = xclbin::get_axlf_section_next( top, pSection, SOFT_KERNEL)) {
+      //   <code to do work>
+      // }
+      inline const axlf_section_header*
+      get_axlf_section_next(const axlf* top, const axlf_section_header* current_section, axlf_section_kind kind)
+      {
+        if (top == nullptr) { return nullptr; }
+        if (current_section == nullptr) { return nullptr; }
+
+        auto end = top->m_sections + top->m_header.m_numSections;
+
+        auto begin = current_section + 1;        // Point to the next section
+        if (begin == end) { return nullptr; }
+
+        auto itr = std::find_if(begin, end, [kind](const axlf_section_header &sec) {return sec.m_sectionKind == (const uint32_t)kind;});
         return (itr!=end) ? &(*itr) : nullptr;
       }
     }

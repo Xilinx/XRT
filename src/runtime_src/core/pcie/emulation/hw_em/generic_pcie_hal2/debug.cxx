@@ -45,6 +45,7 @@
 #include <vector>
 #include <ctime>
 #include <string>
+#include <chrono>
 
 #ifndef _WINDOWS
 // TODO: Windows build support
@@ -85,12 +86,16 @@ namespace xclhwemhal2 {
 
     std::string fifoName;
     uint64_t fifoCtrlBaseAddr = 0x0;
-    getIPCountAddrNames(debugFileName, AXI_MONITOR_FIFO_LITE, &fifoCtrlBaseAddr, &fifoName, nullptr, 1);
+    uint32_t fifoCtrlCount = getIPCountAddrNames(debugFileName, AXI_MONITOR_FIFO_LITE, &fifoCtrlBaseAddr, &fifoName, nullptr, 1);
     mPerfMonFifoCtrlBaseAddress = fifoCtrlBaseAddr;
 
     uint64_t fifoReadBaseAddr = 0x0;
-    getIPCountAddrNames(debugFileName, AXI_MONITOR_FIFO_FULL, &fifoReadBaseAddr, &fifoName, nullptr, 1);
+    uint32_t fifoFullCount = getIPCountAddrNames(debugFileName, AXI_MONITOR_FIFO_FULL, &fifoReadBaseAddr, &fifoName, nullptr, 1);
     mPerfMonFifoReadBaseAddress = fifoReadBaseAddr;
+
+    if(fifoCtrlCount != 0 && fifoFullCount != 0) {
+    	mIsTraceHubAvailable = true;
+    }
 
     uint64_t traceFunnelAddr = 0x0;
     getIPCountAddrNames(debugFileName, AXI_TRACE_FUNNEL, &traceFunnelAddr, &fifoName, nullptr, 1);
@@ -172,9 +177,12 @@ namespace xclhwemhal2 {
 	  if(xclemulation::config::getInstance()->isSystemDPAEnabled() == false) {
 		  return;
 	  }
-	  if(mPerfMonFifoCtrlBaseAddress == 0 || mPerfMonFifoReadBaseAddress == 0) {//If live support not available
+
+	  //check to find out if Trace Hub is available.
+	  if(mIsTraceHubAvailable == false) {
 		  return;
 	  }
+
 	  std::string info_msgs("");
 	  std::string warning_msgs("");
 	  std::string error_msgs("");
@@ -188,6 +196,7 @@ namespace xclhwemhal2 {
 		  char info_buffer[msg_size_bytes];
 		  xclUnmgdPread(0, info_buffer, msg_size_bytes, mPerfMonFifoReadBaseAddress+xclemulation::FIFO_INFO_MESSAGES);
 		  info_msgs = std::string(info_buffer);
+		  info_msgs.erase(info_msgs.find_last_of('\n')+1);
 	  }
 
 	  strncpy(buffer,"0",4);
@@ -198,7 +207,8 @@ namespace xclhwemhal2 {
 	  if(msg_size_bytes > 0) {
 		  char warning_buffer[msg_size_bytes];
 	      xclUnmgdPread(0, warning_buffer, msg_size_bytes, mPerfMonFifoReadBaseAddress+xclemulation::FIFO_WARNING_MESSAGES);
-		  warning_msgs = warning_buffer;
+		  warning_msgs = std::string(warning_buffer);
+		  warning_msgs.erase(warning_msgs.find_last_of('\n')+1);
 	  }
 
 	  strncpy(buffer,"0",4);
@@ -210,7 +220,8 @@ namespace xclhwemhal2 {
 	  if(msg_size_bytes > 0) {
 		  char error_buffer[msg_size_bytes];
 		  xclUnmgdPread(0, error_buffer, msg_size_bytes, mPerfMonFifoReadBaseAddress+xclemulation::FIFO_ERROR_MESSAGES);
-		  error_msgs = error_buffer;
+		  error_msgs = std::string(error_buffer);
+		  error_msgs.erase(error_msgs.find_last_of('\n')+1);
 	  }
 
 	  if(mDebugLogStream.is_open() && info_msgs.empty() == false) {
@@ -250,28 +261,28 @@ namespace xclhwemhal2 {
   /*
    * messagesThread()
    */
-  void messagesThread(xclhwemhal2::HwEmShim* inst) {
-	if(xclemulation::config::getInstance()->isSystemDPAEnabled() == false) {
+void messagesThread(xclhwemhal2::HwEmShim* inst) {
+	if (xclemulation::config::getInstance()->isSystemDPAEnabled() == false) {
 		return;
 	}
-  	static clock_t l_time = clock();
-  	time_t currentTime;
-  	std::stringstream msg;
-  	std::ios::fmtflags f(msg.flags());
-  	bool childAlive = true;
-  	while (inst && childAlive) {
-  		if (!(inst->get_simulator_started())) {
-  			childAlive = false;
-  		} else {
-  			sleep(10);
-  		}
-  		time(&currentTime);
-  		msg.flags(f);
-  		if (((clock() - l_time) / CLOCKS_PER_SEC > 300)//todo make it configurable
-  				|| childAlive == false) {
-  			l_time = clock();
-  			inst->fetchAndPrintMessages();
-  		}
-  	}
-  }
+	static auto l_time = std::chrono::high_resolution_clock::now();
+	while (inst && inst->get_simulator_started()) {
+		sleep(10);
+		if (inst->get_simulator_started() == false) {
+			return;
+		}
+		auto l_time_end = std::chrono::high_resolution_clock::now();
+		if (std::chrono::duration<double>(l_time_end - l_time).count() > 300) {
+			l_time = std::chrono::high_resolution_clock::now();
+			inst->mPrintMessagesLock.lock();
+			if (inst->get_simulator_started() == false) {
+				inst->mPrintMessagesLock.unlock();
+				return;
+			}
+
+			inst->fetchAndPrintMessages();
+			inst->mPrintMessagesLock.unlock();
+		}
+	}
+}
 } // namespace xclhwemhal2

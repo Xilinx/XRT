@@ -421,7 +421,8 @@ namespace xdp {
        */
       std::string uniqueCuDataKey;
       uint32_t cuId = 0;
-      if (mPluginHandle->getFlowMode() == xdp::RTUtil::DEVICE) {
+      if((mPluginHandle->getFlowMode() == xdp::RTUtil::DEVICE) || 
+            (mPluginHandle->getFlowMode() == xdp::RTUtil::HW_EM && mPluginHandle->getSystemDPAEmulation() == true)) {
         uniqueCuDataKey = xclbinName + std::to_string(programId);
       } else {
         uniqueCuDataKey = xclbinName + std::to_string(0);
@@ -499,7 +500,7 @@ namespace xdp {
   void TraceLogger::logDeviceTrace(const std::string& deviceName, const std::string& binaryName,
       xclPerfMonType type, xclTraceResultsVector& traceVector, bool endLog) {
     auto tp = mTraceParserHandle;
-    if (tp == NULL || traceVector.mLength == 0)
+    if (tp == NULL || (traceVector.mLength == 0 && endLog == false))
       return;
 
     std::lock_guard<std::mutex> lock(mLogMutex);

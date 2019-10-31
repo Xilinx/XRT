@@ -38,10 +38,6 @@
 #include "xclbin.h"
 #include "core/common/message.h"
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-
 #include <iostream>
 #include <cstdio>
 #include <cstring>

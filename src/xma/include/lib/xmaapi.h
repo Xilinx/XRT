@@ -24,7 +24,19 @@
 //#include "lib/xmares.h"
 #include "lib/xmalogger.h"
 #include <atomic>
-#include <vector>
+#include <list>
+#include <unordered_map>
+#include <thread>
+
+typedef struct XmaLogMsg
+{
+    XmaLogLevelType level;
+    std::string msg;
+
+  XmaLogMsg() {
+    level = XMA_DEBUG_LOG;
+  }
+} XmaLogMsg;
 
 typedef struct XmaSingleton
 {
@@ -45,13 +57,16 @@ typedef struct XmaSingleton
     std::atomic<uint32_t> num_scalers;
     std::atomic<uint32_t> num_filters;
     std::atomic<uint32_t> num_kernels;
-    //std::vector<XmaDecoderPlugin*> decoders;
-    //std::vector<XmaEncoderPlugin*> encoders;
-    //std::vector<XmaScalerPlugin*> scalers;
-    //std::vector<XmaFilterPlugin*> filters;
-    //std::vector<XmaKernelPlugin*> kernels;
-    //XmaResources      shm_res_cfg;
-    //bool              shm_freed;
+    std::atomic<uint32_t> num_admins;
+    std::atomic<uint32_t> num_of_sessions;
+    std::unordered_map<uint32_t, XmaSession> all_sessions;// XMASessions
+    std::list<XmaLogMsg>   log_msg_list;
+    std::atomic<bool> log_msg_list_locked;
+
+    std::atomic<bool> xma_exit;
+    std::thread       xma_thread1;
+    std::thread       xma_thread2;
+
     uint32_t          reserved[4];
 
   XmaSingleton() {
@@ -62,6 +77,10 @@ typedef struct XmaSingleton
     num_scalers = 0;
     num_filters = 0;
     num_kernels = 0;
+    num_admins = 0;
+    num_of_sessions = 0;
+    log_msg_list_locked = false;
+    xma_exit = false;
   }
 } XmaSingleton;
 

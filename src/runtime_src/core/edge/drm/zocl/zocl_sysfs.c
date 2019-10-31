@@ -17,6 +17,7 @@
 
 #include "zocl_drv.h"
 #include "sched_exec.h"
+#include "zocl_xclbin.h"
 #include "xclbin.h"
 
 static ssize_t xclbinid_show(struct device *dev,
@@ -28,7 +29,7 @@ static ssize_t xclbinid_show(struct device *dev,
 	if (!zdev)
 		return 0;
 
-	size = sprintf(buf, "%llx\n", zdev->unique_id_last_bitstream);
+	size = sprintf(buf, "%llx\n", zdev->zdev_xclbin->zx_last_bitstream);
 
 	return size;
 }
@@ -54,16 +55,29 @@ static ssize_t kds_custat_show(struct device *dev,
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
 	ssize_t size = 0;
+	phys_addr_t paddr;
+	u32 usage;
 	int i;
 
-	if (!zdev || !zdev->exec)
+	if (!zdev)
 		return 0;
 
 	read_lock(&zdev->attr_rwlock);
 
-	for (i = 0; i < zdev->exec->num_cus; i++)
-		size += sprintf(buf + size, "CU[@0x%x] : %d\n",
-		    zdev->exec->cu_addr_phy[i], zdev->exec->cu_usage[i]);
+	if (!zdev->exec) {
+		read_unlock(&zdev->attr_rwlock);
+		return 0;
+	}
+
+	for (i = 0; i < zdev->exec->num_cus; i++) {
+		paddr = zocl_cu_get_paddr(&zdev->exec->zcu[i]);
+		usage = zdev->exec->zcu[i].usage;
+		/* Use %x for now. Needs to use a better approach when support
+		 * CU at higher than 4GB address range.
+		 */
+		size += sprintf(buf + size, "CU[@0x%llx] : %d\n",
+		    (uint64_t)paddr, usage);
+	}
 
 	read_unlock(&zdev->attr_rwlock);
 
@@ -84,12 +98,18 @@ static ssize_t zocl_get_memstat(struct device *dev, char *buf, bool raw)
 	const char *raw_fmt = "%llu %d\n";
 	int i;
 
-	if (!zdev || !zdev->topology || !zdev->mem)
+	if (!zdev)
 		return 0;
+
+	read_lock(&zdev->attr_rwlock);
+
+	if (!zdev->topology || !zdev->mem) {
+		read_unlock(&zdev->attr_rwlock);
+		return 0;
+	}
 
 	memp = zdev->mem;
 	topo = zdev->topology;
-	read_lock(&zdev->attr_rwlock);
 
 	for (i = 0; i < topo->m_count; i++) {
 		if (topo->m_mem_data[i].m_type == MEM_STREAMING)
@@ -149,10 +169,15 @@ static ssize_t read_debug_ip_layout(struct file *filp, struct kobject *kobj,
 	u32 nread = 0;
 
 	zdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
-	if (!zdev || !zdev->debug_ip)
+	if (!zdev)
 		return 0;
 
 	read_lock(&zdev->attr_rwlock);
+
+	if (!zdev->debug_ip) {
+		read_unlock(&zdev->attr_rwlock);
+		return 0;
+	}
 
 	size = sizeof_section(zdev->debug_ip, m_debug_ip_data);
 
@@ -181,10 +206,15 @@ static ssize_t read_ip_layout(struct file *filp, struct kobject *kobj,
 	u32 nread = 0;
 
 	zdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
-	if (!zdev || !zdev->ip)
+	if (!zdev)
 		return 0;
 
 	read_lock(&zdev->attr_rwlock);
+
+	if (!zdev->ip) {
+		read_unlock(&zdev->attr_rwlock);
+		return 0;
+	}
 
 	size = sizeof_section(zdev->ip, m_ip_data);
 
@@ -213,10 +243,15 @@ static ssize_t read_connectivity(struct file *filp, struct kobject *kobj,
 	u32 nread = 0;
 
 	zdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
-	if (!zdev || !zdev->connectivity)
+	if (!zdev)
 		return 0;
 
 	read_lock(&zdev->attr_rwlock);
+
+	if (!zdev->connectivity) {
+		read_unlock(&zdev->attr_rwlock);
+		return 0;
+	}
 
 	size = sizeof_section(zdev->connectivity, m_connection);
 
@@ -245,10 +280,15 @@ static ssize_t read_mem_topology(struct file *filp, struct kobject *kobj,
 	u32 nread = 0;
 
 	zdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
-	if (!zdev || !zdev->topology)
+	if (!zdev)
 		return 0;
 
 	read_lock(&zdev->attr_rwlock);
+
+	if (!zdev->topology) {
+		read_unlock(&zdev->attr_rwlock);
+		return 0;
+	}
 
 	size = sizeof_section(zdev->topology, m_mem_data);
 
@@ -338,4 +378,3 @@ void zocl_fini_sysfs(struct device *dev)
 {
 	sysfs_remove_group(&dev->kobj, &zocl_attr_group);
 }
-

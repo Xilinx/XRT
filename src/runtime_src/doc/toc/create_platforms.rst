@@ -14,7 +14,7 @@ zcu102ng and zcu102ng_svm. Take zcu102ng as an example.
 
 *NOTE* The purpose of this page is only for easy to get started.
 If you are interested in details about creating Shell for a platform.
-Please read the Hardware Platform section of Xilinx Document UG1146.
+Please read the Hardware Platform section of Xilinx® Document UG1146.
 
 Build Hardware Platform
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -25,9 +25,9 @@ To create Hardware Platform, under platform/zcu102ng/
 
     vivado -mode batch -notrace -source ./zcu102ng_dsa.tcl
 
-This will generate hardware Xilinx Shell Archive
+This will generate hardware Xilinx® Shell Archive
 ``platform/zcu102ng/zcu102ng.dsa`` and Hardware Definition File
-``platform/zcu102ng/zcu102ng_vivado/zcu102ng.hdf`` 
+``platform/zcu102ng/zcu102ng_vivado/zcu102ng.hdf``
 
 .. _`Build Boot Images`:
 
@@ -35,7 +35,7 @@ Build Boot Images
 ~~~~~~~~~~~~~~~~~
 
 Using PetaLinux to build necessray Boot Images for the software
-platform with the Hardware Definition File we created. :ref:`Yocto Recipes For Embedded Flow`.
+platform with the Hardware Definition File we created. :ref:`yocto.rst`.
 
 The boot image files required include
 

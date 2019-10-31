@@ -122,6 +122,12 @@ private:
   encode_compute_units(packet_type& pkt);
 
   /**
+   * Control type, IP_CONTROL per xclbin ip_layout
+   */
+  uint32_t
+  cu_control_type() const;
+
+  /**
    * Update workgroup accounting.
    */
   void
@@ -232,6 +238,7 @@ public:
    *   Pointer to compute unit object that maps to cu_idx, nullptr
    *   if no mapping
    */
+  XRT_XOCL_EXPORT
   const compute_unit*
   get_compute_unit(unsigned int cu_idx) const;
 
@@ -268,12 +275,16 @@ using command_callback_function_type = std::function<void(const xrt::command*,co
 /**
  * Register function to invoke when a kernel command is constructed
  */
-void add_command_start_callback(command_callback_function_type fcn);
+XRT_XOCL_EXPORT
+void
+add_command_start_callback(command_callback_function_type fcn);
 
 /**
  * Register function to invoke when a kernel command completes
  */
-void add_command_done_callback(command_callback_function_type fcn);
+XRT_XOCL_EXPORT
+void
+add_command_done_callback(command_callback_function_type fcn);
 
 
 } // xocl

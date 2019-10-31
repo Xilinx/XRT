@@ -17,6 +17,7 @@
 #ifndef xrtcore_util_time_h_
 #define xrtcore_util_time_h_
 
+#include "core/common/config.h"
 #include <string>
 
 namespace xrt_core {
@@ -25,12 +26,14 @@ namespace xrt_core {
  * @return
  *   nanoseconds since first call
  */
+XRT_CORE_COMMON_EXPORT
 unsigned long
 time_ns();
 
 /**
  * @return formatted timestamp
  */
+XRT_CORE_COMMON_EXPORT
 std::string
 timestamp();
 
@@ -42,11 +45,13 @@ class time_guard
   unsigned long zero = 0;
   unsigned long& tally;
 public:
+  XRT_CORE_COMMON_EXPORT
   explicit
   time_guard(unsigned long& t)
     : zero(time_ns()), tally(t)
   {}
 
+  XRT_CORE_COMMON_EXPORT
   ~time_guard()
   {
     tally += time_ns() - zero;

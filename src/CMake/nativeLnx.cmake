@@ -64,8 +64,8 @@ INCLUDE (FindBoost)
 # On older systems libboost_system.a is not compiled with -fPIC which leads to
 # link errors when XRT shared objects try to link with it.
 
-# Static linking with Boost is enabled on Ubuntu 18.04.
-if ((${LINUX_FLAVOR} STREQUAL Ubuntu) AND (${LINUX_VERSION} STREQUAL 18.04))
+# Static linking with Boost is enabled on Ubuntu 18.04 and later versions.
+if ((${LINUX_FLAVOR} STREQUAL Ubuntu) AND (${LINUX_VERSION} VERSION_GREATER 17.10))
    set(Boost_USE_STATIC_LIBS  ON)
 endif()
 
@@ -145,6 +145,8 @@ set (XRT_DKMS_DRIVER_SRC_BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/core"
 
 include (CMake/dkms.cmake)
 include (CMake/dkms-aws.cmake)
+include (CMake/dkms-azure.cmake)
+include (CMake/dkms-container.cmake)
 
 # --- ICD ---
 include (CMake/icd.cmake)

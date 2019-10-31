@@ -15,12 +15,12 @@
  */
 
 // Copyright 2018 Xilinx, Inc. All rights reserved.
-//
-#include <CL/opencl.h>
+#include "xocl/config.h"
 #include "xocl/core/stream.h"
 #include "xocl/core/error.h"
 #include "xocl/core/device.h"
 #include "plugin/xdp/profile.h"
+#include <CL/opencl.h>
 
 //To access make_unique<>. TODO
 
@@ -36,7 +36,7 @@ validOrError(cl_device_id device,
 static cl_stream_mem
 clCreateStreamBuffer(cl_device_id device,
 	             size_t       size,
-	             cl_int*      errcode_ret) 
+	             cl_int*      errcode_ret)
 {
   validOrError(device,size,errcode_ret);
   auto buf = std::make_unique<xocl::stream_mem>(size);

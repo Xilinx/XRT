@@ -28,8 +28,9 @@
 #define _8KB	0x2000
 #define _64KB	0x10000
 
-#define MAX_CU_NUM 128
-#define CU_SIZE _64KB
+#define MAX_CU_NUM     128
+#define CU_SIZE        _64KB
+#define PR_ISO_SIZE    _4KB
 
 #define CLEAR(x) \
 	memset(&x, 0, sizeof(x))
@@ -48,6 +49,8 @@
  * bits  0 ~ 15: DDR BANK index
  */
 #define	GET_MEM_BANK(x)		((x) & 0xFFFF)
+
+#define ZOCL_GET_ZDEV(ddev) (ddev->dev_private)
 
 struct drm_zocl_mm_stat {
 	size_t memory_usage;
@@ -79,6 +82,14 @@ struct zocl_mem {
 	struct drm_mm          *zm_mm;    /* DRM MM node for PL-DDR */
 };
 
+/*
+ * zocl dev specific data info, if there are different configs across
+ * different compitible device, add their specific data here.
+ */
+struct zdev_data {
+	char fpga_driver_name[64];
+};
+
 struct drm_zocl_dev {
 	struct drm_device       *ddev;
 	struct fpga_manager     *fpga_mgr;
@@ -101,7 +112,6 @@ struct drm_zocl_dev {
 	struct connectivity	*connectivity;
 	struct addr_aperture	*apertures;
 	unsigned int		 num_apts;
-	u64			 unique_id_last_bitstream;
 
 	/*
 	 * This RW lock is to protect the sysfs nodes exported
@@ -113,9 +123,13 @@ struct drm_zocl_dev {
 	 */
 	rwlock_t		attr_rwlock;
 
-	struct soft_kernel	*soft_kernel;
-	struct dma_chan 	*zdev_dma_chan;
-	u32			pr_isolation_addr;
+	struct soft_krnl	*soft_kernel;
+	struct dma_chan		*zdev_dma_chan;
+	struct mailbox		*zdev_mailbox;
+	const struct zdev_data	*zdev_data_info;
+	u64			pr_isolation_addr;
+	struct zocl_xclbin	*zdev_xclbin;
+	struct mutex		zdev_xclbin_lock;
 };
 
 #endif

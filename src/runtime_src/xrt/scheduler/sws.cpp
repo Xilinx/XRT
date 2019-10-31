@@ -37,6 +37,10 @@
 #include <mutex>
 #include <condition_variable>
 
+#ifdef _WIN32
+# pragma warning( disable : 4996 4458 4267 4244 )
+#endif
+
 namespace {
 
 static bool
@@ -138,13 +142,19 @@ public:
   {
     static size_type count = 0;
     m_uid = count++;
-    if (m_ecmd->opcode==ERT_START_KERNEL) {
+    if (m_ecmd->type==ERT_CU) {
       m_cus |= m_kcmd->cu_mask;
       for (size_type i=0; i<m_kcmd->extra_cu_masks; ++i) {
         cu_bitset_type mask(m_kcmd->data[i]);
         m_cus |= (mask<<sizeof(value_type)*8*i);
       }
     }
+  }
+
+  value_type
+  opcode() const
+  {
+    return m_ecmd->opcode;
   }
 
   size_type
@@ -417,13 +427,21 @@ public:
   {
     XRT_ASSERT(!(ctrlreg & AP_START),"cu not ready");
 
-    // data past header and cu_masks
     auto size = xcmd->regmap_size();
     auto regmap = xcmd->regmap_data();
 
-    // write register map, starting at base + 0xC
-    // 0x4, 0x8 used for interrupt, which is initialized in setu
-    xdev->write_register(addr,regmap,size*4);
+    if (xcmd->opcode() == ERT_EXEC_WRITE) {
+      // write address value pairs
+      for (size_type idx = 6; idx < size - 1; idx+=2) {
+        addr_type offset = *(regmap + idx);
+        value_type value = *(regmap + idx + 1);
+        xdev->write_register(addr + offset,&value,4);
+      }
+    }
+    else {
+      // write register map consecutively from CU base
+      xdev->write_register(addr,regmap,size*4);
+    }
 
     // invoke callback for starting cu
     xcmd->notify_start(idx);
@@ -637,6 +655,9 @@ class xocl_scheduler
   bool                       m_stop = false;
   std::list<xcmd_ptr>        m_command_queue;
 
+  // if command has completed in the iteration
+  bool                       m_cmd_completed = false;
+
   // Copy pending commands into command queue.
   void
   queue_cmds()
@@ -715,6 +736,7 @@ class xocl_scheduler
   {
     auto end = m_command_queue.end();
     auto nitr = m_command_queue.begin();
+    m_cmd_completed = false;
     for (auto itr=nitr; itr!=end; itr=nitr) {
       auto& xcmd = (*itr);
       if (xcmd->get_state() == ERT_CMD_STATE_QUEUED)
@@ -727,6 +749,7 @@ class xocl_scheduler
         complete_to_free(xcmd);
         nitr = m_command_queue.erase(itr);
         end = m_command_queue.end();
+        m_cmd_completed = true;
         continue;
       }
 
@@ -746,6 +769,14 @@ class xocl_scheduler
       if (!m_command_queue.empty() || s_num_pending)
         throw std::runtime_error("software scheduler stopping while there are active commands");
     }
+
+    if (s_num_pending || m_cmd_completed)
+      return;
+
+    // Sleep if no new pending commands or no running command have completed
+    // throttle polling for cu completion
+    if (auto us = xrt::config::get_polling_throttle())
+      std::this_thread::sleep_for(std::chrono::microseconds(us));
   }
 
 

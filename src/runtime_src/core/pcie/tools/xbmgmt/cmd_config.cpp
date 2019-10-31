@@ -96,6 +96,7 @@ static int daemon(int argc, char *argv[])
 
     const option opts[] = {
         { "host", required_argument, nullptr, '0' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     // Load current config.
@@ -140,7 +141,8 @@ static int purge(int argc, char *argv[])
 static void showDaemonConf(void)
 {
     (void) loadDaemonConf(config);
-    std::cout << "Daemons:" << std::endl;
+    std::cout << "Daemon:" << std::endl;
+    std::cout << "\t";
     writeConf(std::cout, config);
 }
 
@@ -149,7 +151,7 @@ static void showDevConf(std::shared_ptr<pcidev::pci_device>& dev)
     std::string errmsg;
     int lvl = 0;
 
-    dev->sysfs_get("icap", "sec_level", errmsg, lvl);
+    dev->sysfs_get("icap", "sec_level", errmsg, lvl, 0);
     if (!errmsg.empty()) {
         std::cout << "can't read security level from " << dev->sysfs_name <<
             " : " << errmsg << std::endl;
@@ -168,6 +170,7 @@ static int show(int argc, char *argv[])
         { "card", required_argument, nullptr, '0' },
         { "daemon", no_argument, nullptr, '1' },
         { "device", no_argument, nullptr, '2' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {
@@ -205,18 +208,17 @@ static int show(int argc, char *argv[])
     if (daemon)
         showDaemonConf();
 
-    if (!device)
-        return 0;
+    if (device) {
+        if (index != UINT_MAX) {
+            auto dev = pcidev::get_dev(index, false);
+            showDevConf(dev);
+            return 0;
+        }
 
-    if (index != UINT_MAX) {
-        auto dev = pcidev::get_dev(index, false);
-        showDevConf(dev);
-        return 0;
-    }
-
-    for (unsigned i = 0; i < pcidev::get_dev_total(false); i++) {
-        auto dev = pcidev::get_dev(i, false);
-        showDevConf(dev);
+        for (unsigned i = 0; i < pcidev::get_dev_total(false); i++) {
+            auto dev = pcidev::get_dev(i, false);
+            showDevConf(dev);
+        }
     }
 
     return 0;
@@ -228,8 +230,9 @@ static void updateDevConf(std::shared_ptr<pcidev::pci_device>& dev,
     std::string errmsg;
     dev->sysfs_put("icap", "sec_level", errmsg, lvl);
     if (!errmsg.empty()) {
-        std::cout << "can't set security level for " << dev->sysfs_name << " : "
-            << errmsg << std::endl;
+        std::cout << "Failed to set security level for " << dev->sysfs_name
+            << std::endl;
+        std::cout << "See dmesg log for details" << std::endl;
     }
 }
 
@@ -240,6 +243,7 @@ static int device(int argc, char *argv[])
     const option opts[] = {
         { "card", required_argument, nullptr, '0' },
         { "security", required_argument, nullptr, '1' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {

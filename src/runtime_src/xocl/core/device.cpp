@@ -32,6 +32,10 @@
 #include <sstream>
 #include <cstring>
 
+#ifdef _WIN32
+#pragma warning ( disable : 4244 4245 4267 4996 4505 )
+#endif
+
 namespace {
 
 static unsigned int uid_count = 0;
@@ -52,6 +56,18 @@ unaligned_message(void* addr)
                      "unaligned host pointer '"
                      + to_hex(addr)
                      + "' detected, this leads to extra memcpy");
+}
+
+static void
+userptr_bad_alloc_message(void* addr)
+{
+  xrt::message::send(xrt::message::severity_level::XRT_INFO,
+                     "might be noncontiguous host pointer '"
+                     + to_hex(addr)
+                     + "' detected, check dmesg for more information."
+                     + " This could lead to extra memcpy."
+                     + " To avoid this, please try xclGetMemObjectFd() and xclGetMemObjectFromFd(),"
+                     + " instead of use CL_MEM_USE_HOST_PTR.");
 }
 
 static void
@@ -101,13 +117,6 @@ host_copy_message(const xocl::memory* dst, const xocl::memory* src)
   xrt::message::send(xrt::message::severity_level::XRT_WARNING,str.str());
 }
 
-
-static inline unsigned
-myctz(unsigned val)
-{
-  return __builtin_ctz(val);
-}
-
 static void
 buffer_resident_or_error(const xocl::memory* buffer, const xocl::device* device)
 {
@@ -123,7 +132,7 @@ static void
 sync_to_ubuf(xocl::memory* buffer, size_t offset, size_t size,
              xrt::device* xdevice, const xrt::device::BufferObjectHandle& boh)
 {
-  if (buffer->is_aligned())
+  if (!buffer->need_extra_sync())
     return;
 
   auto ubuf = buffer->get_host_ptr();
@@ -143,7 +152,7 @@ static void
 sync_to_hbuf(xocl::memory* buffer, size_t offset, size_t size,
              xrt::device* xdevice, const xrt::device::BufferObjectHandle& boh)
 {
-  if (buffer->is_aligned())
+  if (!buffer->need_extra_sync())
     return;
 
   auto ubuf = buffer->get_host_ptr();
@@ -242,14 +251,12 @@ track(const memory* mem)
 xrt::device::memoryDomain
 get_mem_domain(const memory* mem)
 {
-  auto domain = xrt::device::memoryDomain::XRT_DEVICE_RAM;
-
   if (mem->is_device_memory_only())
-    domain = xrt::device::memoryDomain::XRT_DEVICE_ONLY_MEM;
+    return xrt::device::memoryDomain::XRT_DEVICE_ONLY_MEM;
   else if (mem->is_device_memory_only_p2p())
-    domain = xrt::device::memoryDomain::XRT_DEVICE_ONLY_MEM_P2P;
+    return xrt::device::memoryDomain::XRT_DEVICE_ONLY_MEM_P2P;
 
-  return domain;
+  return xrt::device::memoryDomain::XRT_DEVICE_RAM;
 }
 
 void
@@ -266,10 +273,18 @@ alloc(memory* mem, memidx_type memidx)
 {
   auto host_ptr = mem->get_host_ptr();
   auto sz = mem->get_size();
+  bool aligned_flag = false;
+
   if (is_aligned_ptr(host_ptr)) {
-    auto boh = m_xdevice->alloc(sz,xrt::device::memoryDomain::XRT_DEVICE_RAM,memidx,host_ptr);
-    track(mem);
-    return boh;
+    aligned_flag = true;
+    try {
+      auto boh = m_xdevice->alloc(sz,xrt::device::memoryDomain::XRT_DEVICE_RAM,memidx,host_ptr);
+      track(mem);
+      return boh;
+    }
+    catch (const std::bad_alloc&) {
+      userptr_bad_alloc_message(host_ptr);
+    }
   }
 
   auto domain = get_mem_domain(mem);
@@ -277,11 +292,16 @@ alloc(memory* mem, memidx_type memidx)
   auto boh = m_xdevice->alloc(sz,domain,memidx,nullptr);
   track(mem);
 
-  // Handle unaligned user ptr
+  // Handle unaligned user ptr or bad alloc host_ptr
   if (host_ptr) {
-    unaligned_message(host_ptr);
+    if (!aligned_flag)
+      unaligned_message(host_ptr);
+    mem->set_extra_sync();
     auto bo_host_ptr = m_xdevice->map(boh);
-    memcpy(bo_host_ptr, host_ptr, sz);
+    // No need to copy data to a CL_MEM_WRITE_ONLY buffer
+    if (!(mem->get_flags() & CL_MEM_WRITE_ONLY))
+        memcpy(bo_host_ptr, host_ptr, sz);
+
     m_xdevice->unmap(boh);
   }
   return boh;
@@ -293,19 +313,31 @@ alloc(memory* mem)
 {
   auto host_ptr = mem->get_host_ptr();
   auto sz = mem->get_size();
+  bool aligned_flag = false;
 
   if (is_aligned_ptr(host_ptr)) {
-    auto boh = m_xdevice->alloc(sz,host_ptr);
-    track(mem);
-    return boh;
+    aligned_flag = true;
+    try {
+      auto boh = m_xdevice->alloc(sz,host_ptr);
+      track(mem);
+      return boh;
+    }
+    catch (const std::bad_alloc&) {
+      userptr_bad_alloc_message(host_ptr);
+    }
   }
 
   auto boh = m_xdevice->alloc(sz);
-  // Handle unaligned user ptr
+  // Handle unaligned user ptr or bad alloc host_ptr
   if (host_ptr) {
-    unaligned_message(host_ptr);
+    if (!aligned_flag)
+      unaligned_message(host_ptr);
+    mem->set_extra_sync();
     auto bo_host_ptr = m_xdevice->map(boh);
-    memcpy(bo_host_ptr, host_ptr, sz);
+    // No need to copy data to a CL_MEM_WRITE_ONLY buffer
+    if (!(mem->get_flags() & CL_MEM_WRITE_ONLY))
+        memcpy(bo_host_ptr, host_ptr, sz);
+
     m_xdevice->unmap(boh);
   }
   track(mem);
@@ -615,7 +647,7 @@ allocate_buffer_object(memory* mem)
     default_allocation_message(this,mem,boh);
     return boh;
   }
-  catch (const std::bad_alloc& ex) {
+  catch (const std::bad_alloc&) {
     default_bad_allocation_message(this,mem);
     throw;
   }
@@ -861,15 +893,17 @@ void
 device::
 migrate_buffer(memory* buffer,cl_mem_migration_flags flags)
 {
+  if (buffer->no_host_memory())
+    // shouldn't happen
+    throw xocl::error(CL_INVALID_OPERATION,"buffer flags do not allow migrate_buffer");
+
   // Support clEnqueueMigrateMemObjects device->host
   if (flags & CL_MIGRATE_MEM_OBJECT_HOST) {
     buffer_resident_or_error(buffer,this);
     auto boh = buffer->get_buffer_object_or_error(this);
     auto xdevice = get_xrt_device();
-    if(!buffer->no_host_memory()){
-      xdevice->sync(boh,buffer->get_size(),0,xrt::hal::device::direction::DEVICE2HOST,false);
-      sync_to_ubuf(buffer,0,buffer->get_size(),xdevice,boh);
-    }
+    xdevice->sync(boh,buffer->get_size(),0,xrt::hal::device::direction::DEVICE2HOST,false);
+    sync_to_ubuf(buffer,0,buffer->get_size(),xdevice,boh);
     return;
   }
 
@@ -878,11 +912,9 @@ migrate_buffer(memory* buffer,cl_mem_migration_flags flags)
   auto xdevice = get_xrt_device();
   xrt::device::BufferObjectHandle boh = buffer->get_buffer_object(this);
 
-  if(!buffer->no_host_memory()){
-    // Sync from host to device to make make buffer resident of this device
-    sync_to_hbuf(buffer,0,buffer->get_size(),xdevice,boh);
-    xdevice->sync(boh,buffer->get_size(), 0, xrt::hal::device::direction::HOST2DEVICE,false);
-  }
+  // Sync from host to device to make make buffer resident of this device
+  sync_to_hbuf(buffer,0,buffer->get_size(),xdevice,boh);
+  xdevice->sync(boh,buffer->get_size(), 0, xrt::hal::device::direction::HOST2DEVICE,false);
   // Now buffer is resident on this device and migrate is complete
   buffer->set_resident(this);
 }
@@ -897,7 +929,7 @@ write_buffer(memory* buffer, size_t offset, size_t size, const void* ptr)
   // Write data to buffer object at offset
   xdevice->write(boh,ptr,size,offset,false);
 
-  // Update unaligned ubuf if necessary
+  // Update ubuf if necessary
   sync_to_ubuf(buffer,offset,size,xdevice,boh);
 
   if (buffer->is_resident(this))
@@ -921,7 +953,7 @@ read_buffer(memory* buffer, size_t offset, size_t size, void* ptr)
   // Read data from buffer object at offset
   xdevice->read(boh,ptr,size,offset,false);
 
-  // Update unaligned ubuf if necessary
+  // Update ubuf if necessary
   sync_to_ubuf(buffer,offset,size,xdevice,boh);
 }
 
@@ -1258,8 +1290,9 @@ unload_program(const program* program)
 {
   if (m_active == program) {
     clear_cus();
-    m_xdevice->release_cu_context(-1); // release virtual CU context
     m_active = nullptr;
+    if (!m_parent.get())
+      m_xdevice->release_cu_context(-1); // release virtual CU context
   }
 }
 

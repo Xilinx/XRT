@@ -144,7 +144,7 @@ def initXRT(opt):
         f.close()
         blob = (ctypes.c_char * len(data)).from_buffer(data)
         xbinary = axlf.from_buffer(data)
-        if xbinary.m_magic != "xclbin2":
+        if xbinary.m_magic.decode("utf-8") != "xclbin2":
             print("Invalid Bitsream")
             sys.exit()
 
@@ -152,9 +152,9 @@ def initXRT(opt):
             print("Bitsream download failed")
 
         xclLoadXclBin(opt.handle, blob)
-        print("Finished downloading bitstream %s") % opt.bitstreamFile
-        myuuid = buffer(xbinary.m_header.u2.uuid)[:]
-        opt.xuuid = uuid.UUID(bytes=myuuid)
+        print("Finished downloading bitstream %s" % opt.bitstreamFile)
+        myuuid = memoryview(xbinary.m_header.u2.uuid)[:]
+        opt.xuuid = uuid.UUID(bytes=myuuid.tobytes())
         head = wrap_get_axlf_section(blob, AXLF_SECTION_KIND.IP_LAYOUT)
         layout = ip_layout.from_buffer(data, head.contents.m_sectionOffset)
 
@@ -168,14 +168,14 @@ def initXRT(opt):
             if (ip[i].m_type != 1):
                 continue
             opt.cu_base_addr = ip[i].ip_u1.m_base_address
-            print("CU[%d] %s @0x%x") % (i, ctypes.cast(ip[i].m_name, ctypes.c_char_p).value, opt.cu_base_addr)
+            print("CU[%d] %s @0x%x" % (i, ctypes.cast(ip[i].m_name, ctypes.c_char_p).value, opt.cu_base_addr))
 
         head = wrap_get_axlf_section(blob, AXLF_SECTION_KIND.MEM_TOPOLOGY)
         topo = mem_topology.from_buffer(data, head.contents.m_sectionOffset)
         mem = (mem_data * topo.m_count).from_buffer(data, head.contents.m_sectionOffset + 8)
 
         for i in range(topo.m_count):
-            print("[%d] %s @0x%x") % (i, ctypes.cast(mem[i].m_tag, ctypes.c_char_p).value, mem[i].mem_u2.m_base_address)
+            print("[%d] %s @0x%x" % (i, ctypes.cast(mem[i].m_tag, ctypes.c_char_p).value, mem[i].mem_u2.m_base_address))
             if (mem[i].m_used == 0):
                 continue
             opt.first_mem = i

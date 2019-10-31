@@ -16,6 +16,7 @@
 
 #include "SectionPartitionMetadata.h"
 #include "DTC.h"
+#include <boost/property_tree/json_parser.hpp>
 
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
@@ -50,7 +51,8 @@ const FDTProperty::PropertyNameFormat SectionPartitionMetadata::m_propertyNameFo
   { "firmware_branch_name", FDTProperty::DF_sz },
   { "firmware_version_major", FDTProperty::DF_u32 },
   { "firmware_version_minor", FDTProperty::DF_u32 },
-  { "firmware_version_revision", FDTProperty::DF_u32 }
+  { "firmware_version_revision", FDTProperty::DF_u32 },
+  { "__INFO", FDTProperty::DF_sz }
 };
 
 // -- Helper transformation helper functions ---------------------------------
@@ -151,8 +153,8 @@ SchemaTransformUniversal_firmware( const boost::property_tree::ptree& _ptOrigina
   SchemaTransform_nameValue("firmware_product_name", "", true  /*required*/, _ptOriginal, _ptTransformed);
   SchemaTransform_nameValue("firmware_branch_name", "", true  /*required*/, _ptOriginal, _ptTransformed);
   SchemaTransform_nameValue("firmware_version_major", "", true  /*required*/, _ptOriginal, _ptTransformed);
-  SchemaTransform_nameValue("firmware_version_minor", "", true  /*required*/, _ptOriginal, _ptTransformed);
-  SchemaTransform_nameValue("firmware_version_revision", "", true  /*required*/, _ptOriginal, _ptTransformed);
+  SchemaTransform_nameValue("firmware_version_minor", "", false  /*required*/, _ptOriginal, _ptTransformed);
+  SchemaTransform_nameValue("firmware_version_revision", "", false  /*required*/, _ptOriginal, _ptTransformed);
 }
 
 /**
@@ -364,6 +366,16 @@ SchemaTransformToDTC_addressable_endpoints( const boost::property_tree::ptree& _
   }
 }
 
+void
+SchemaTransformToDTC_partition_info ( const boost::property_tree::ptree& _ptOriginal,
+                                           boost::property_tree::ptree & _ptTransformed)
+{
+  // Convert the entire JSON tree under the __INFO node to be a DTB string entry.
+  std::ostringstream buf;
+
+  boost::property_tree::write_json(buf, _ptOriginal, false);
+  _ptTransformed.put("__INFO", buf.str());
+}
 
 /**
  * Transform the original partition_metadata format to the DTC 
@@ -388,6 +400,10 @@ SchemaTransformToDTC_root( const boost::property_tree::ptree & _ptOriginal,
 
   SchemaTransform_subNode( "addressable_endpoints", false /*required*/, 
                            SchemaTransformToDTC_addressable_endpoints,
+                           _ptOriginal, _ptTransformed);
+
+  SchemaTransform_subNode( "partition_info", false /*required*/,
+                           SchemaTransformToDTC_partition_info,
                            _ptOriginal, _ptTransformed);
 }
 
@@ -508,6 +524,32 @@ SchemaTransformToPM_addressable_endpoints( const boost::property_tree::ptree& _p
   }
 }
 
+
+/**
+ * Transforms all of the partition_info array elements.
+ * 
+ * @param _ptOriginal The original addressable_endpoints 
+ *                    property tree
+ * @param _ptTransformed The transformed addressable_endpoints 
+ *                       property tree.
+ */
+void 
+SchemaTransformToPM_partition_info( const boost::property_tree::ptree& _ptOriginal,
+                                          boost::property_tree::ptree & _ptTransformed)
+{ 
+  // DRC check for known values
+  if (_ptOriginal.find("__INFO") == _ptOriginal.not_found()) {
+    throw std::runtime_error("Error: 'partition_info '__INFO' key not found.");
+  }
+
+  // Convert the JSON string to a boost property tree
+  std::string sInfo = _ptOriginal.get<std::string>("__INFO");
+
+  // Convert the JSON file to a boost property tree
+  std::istringstream is(sInfo);
+  boost::property_tree::read_json(is, _ptTransformed);
+}
+
 /**
  * Transform the DTC schema to the partition_metadata format
  * 
@@ -530,6 +572,10 @@ SchemaTransformToPM_root( const boost::property_tree::ptree & _ptOriginal,
 
   SchemaTransform_subNode( "addressable_endpoints", false /*required*/, 
                            SchemaTransformToPM_addressable_endpoints,
+                           _ptOriginal, _ptTransformed);
+
+  SchemaTransform_subNode( "partition_info", false /*required*/, 
+                           SchemaTransformToPM_partition_info,
                            _ptOriginal, _ptTransformed);
 }
 
@@ -589,12 +635,26 @@ SectionPartitionMetadata::marshalToJSON(char* _pDataSection,
   XUtil::TRACE_PrintTree("Ptree", _ptree);
 }
 
-
 void
 SectionPartitionMetadata::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
                             std::ostringstream& _buf) const 
 {
-  const boost::property_tree::ptree& ptOriginal = _ptSection.get_child("partition_metadata");
+  boost::property_tree::ptree ptOriginal = _ptSection.get_child("partition_metadata");
+
+  if (ptOriginal.empty()) {
+    throw std::runtime_error("Error: Missing 'partition_metadata' root node.");
+  }
+
+  boost::property_tree::ptree ptEmpty;
+  boost::property_tree::ptree ptPartitionInfo = _ptSection.get_child("partition_info", ptEmpty);
+
+  if (!ptPartitionInfo.empty()) {
+    if (!ptOriginal.get_child("partition_info", ptEmpty).empty()) {
+      throw std::runtime_error("Error: 'partition_info' is already a child node in partition_metadata.");
+    }
+
+    ptOriginal.add_child("partition_info", ptPartitionInfo);
+  }
 
   boost::property_tree::ptree ptTransformed;
   SchemaTransformToDTC_root(ptOriginal, ptTransformed);

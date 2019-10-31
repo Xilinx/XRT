@@ -17,16 +17,13 @@ successfull in loading its xclbin. The other processes will get error code
 Usage
 =====
 
-Processes share access to all device resources; as of 2019.1, there is
-no support for exclusive access to resources by any one process.
-
 If two or more processes execute the same kernel, then these processes
 will acquire the kernel's compute units per the ``xocl`` kernel driver
 compute unit scheduler, which is first-come first-serve.  All
 processes have the same priority in XRT.
 
-To disable multi-process support, add the following entry to ``xrt.ini``
-in the same directory as all the executable(s)::
+To disable multi-process support, add the following entry to :ref:`xrt_ini.rst`
+in the same directory as each executable trying to use the device::
 
   [Runtime]
   multiprocess=false
@@ -42,9 +39,9 @@ has been enabled. Emulation flow does not have support for multi-process yet.
 Implementation Details For Curious
 ==================================
 
-Since 2018.3 downloading an xclbin to the device does not guarantee a lock on the
-device for the downloading process. Application is required to create explicit context
-for each Compute Unit (CU) it wants to use. OCL applications automatically handle
+Since 2018.3 downloading an xclbin to the device does not guarantee an automatic lock
+on the device for the downloading process. Application is required to create explicit
+context for each Compute Unit (CU) it wants to use. OCL applications automatically handle
 context creation without user needing to change any code. XRT native applications
 should create context on a CU with xclOpenContext() API which requires xclbin UUID
 and CU index. This information can be obtained from the xclbin binary. xclOpenContext()
@@ -61,3 +58,4 @@ UUID_X. Process P2 is trying to use CU_1 in UUID_X and Process P5 is trying to u
 The diagram shows timeline view with all 7 processes running concurrently.
 
 .. graphviz:: multi.dot
+	:caption: Multi-process interaction diagram

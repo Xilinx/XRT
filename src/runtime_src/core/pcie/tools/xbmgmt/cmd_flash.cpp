@@ -26,13 +26,24 @@
 #include "core/common/sensor.h"
 #include "xbmgmt.h"
 
+// For backward compatibility
+const char *subCmdXbutilFlashDesc = "";
+const char *subCmdXbutilFlashUsage =
+    "[-d mgmt-bdf] -m primary_mcs [-n secondary_mcs] [-o bpi|spi]\n"
+    "[-d mgmt-bdf] -a <all | shell> [-t timestamp]\n"
+    "[-d mgmt-bdf] -p msp432_firmware\n"
+    "scan [-v]\n";
+
 const char *subCmdFlashDesc = "Update SC firmware or shell on the device";
 const char *subCmdFlashUsage =
     "--scan [--verbose|--json]\n"
     "--update [--shell name [--id id]] [--card bdf] [--force]\n"
-    "--shell --path file [--card bdf] [--type flash_type]\n"
-    "--sc_firmware --path file [--card bdf]\n"
-    "--reset [--card bdf]";
+    "--factory_reset [--card bdf]\n\n"
+    "Experts only:\n"
+    "--shell --path file --card bdf [--type flash_type]\n"
+    "--sc_firmware --path file --card bdf";
+
+#define fmt_str		"    "
 
 static int scanDevices(bool verbose, bool json)
 {
@@ -74,32 +85,45 @@ static int scanDevices(bool verbose, bool json)
             sensor_tree::json_dump( std::cout );
         } else {
             std::cout << "Card [" << f.sGetDBDF() << "]" << std::endl;
-            std::cout << "\tCard type:\t\t" << board.board << std::endl;
-            std::cout << "\tFlash type:\t\t" << f.sGetFlashType() << std::endl;
-            std::cout << "\tFlashable partition running on FPGA:" << std::endl;
-            std::cout << "\t\t" << board << std::endl;
+            std::cout << fmt_str << "Card type:\t\t" << board.board << std::endl;
+            std::cout << fmt_str << "Flash type:\t\t" << f.sGetFlashType() << std::endl;
+            std::cout << fmt_str << "Flashable partition running on FPGA:" << std::endl;
+            std::cout << fmt_str << fmt_str << board << std::endl;
 
-            std::cout << "\tFlashable partitions installed in system:\t";
+            if (!board.uuids.empty() && verbose)
+            {
+                std::cout << fmt_str << fmt_str << fmt_str << "Logic UUID:" << std::endl;
+                std::cout << fmt_str << fmt_str << fmt_str << board.uuids[0] << std::endl;
+            }
+            std::cout << fmt_str << "Flashable partitions installed in system:\t";
             if (!installedDSA.empty()) {
                 for (auto& d : installedDSA)
-                    std::cout << std::endl << "\t\t" << d;
+                {
+                    std::cout << std::endl << fmt_str << fmt_str << d;
+                    if (!d.uuids.empty() && verbose)
+                    {
+                        std::cout << std::endl;
+                        std::cout << fmt_str << fmt_str << fmt_str << "Logic UUID:" << std::endl;
+                        std::cout << fmt_str << fmt_str << fmt_str << d.uuids[0];
+                    }
+                }
             } else {
                 std::cout << "(None)";
             }
             std::cout << std::endl;
             if (verbose && getinfo_res == 0) {
-                std::cout << "\tCard name\t\t" << info.mName << std::endl;
+                std::cout << fmt_str << "Card name\t\t\t" << info.mName << std::endl;
 #if 0   // Do not print out rev until further notice
                 std::cout << "\tCard rev\t\t" << info.mRev << std::endl;
 #endif
-                std::cout << "\tCard S/N: \t\t" << info.mSerialNum << std::endl;
-                std::cout << "\tConfig mode: \t\t" << info.mConfigMode << std::endl;
-                std::cout << "\tFan presence:\t\t" << info.mFanPresence << std::endl;
-                std::cout << "\tMax power level:\t" << info.mMaxPower << std::endl;
-                std::cout << "\tMAC address0:\t\t" << info.mMacAddr0 << std::endl;
-                std::cout << "\tMAC address1:\t\t" << info.mMacAddr1 << std::endl;
-                std::cout << "\tMAC address2:\t\t" << info.mMacAddr2 << std::endl;
-                std::cout << "\tMAC address3:\t\t" << info.mMacAddr3 << std::endl;
+                std::cout << fmt_str << "Card S/N: \t\t\t" << info.mSerialNum << std::endl;
+                std::cout << fmt_str << "Config mode: \t\t" << info.mConfigMode << std::endl;
+                std::cout << fmt_str << "Fan presence:\t\t" << info.mFanPresence << std::endl;
+                std::cout << fmt_str << "Max power level:\t\t" << info.mMaxPower << std::endl;
+                std::cout << fmt_str << "MAC address0:\t\t" << info.mMacAddr0 << std::endl;
+                std::cout << fmt_str << "MAC address1:\t\t" << info.mMacAddr1 << std::endl;
+                std::cout << fmt_str << "MAC address2:\t\t" << info.mMacAddr2 << std::endl;
+                std::cout << fmt_str << "MAC address3:\t\t" << info.mMacAddr3 << std::endl;
             }
             std::cout << std::endl;
         }
@@ -236,13 +260,13 @@ static DSAInfo selectShell(unsigned idx, std::string& dsa, std::string& id)
 
     // Find candidate DSA from installed DSA list.
     if (dsa.empty()) {
-        std::cout << "Probing card [" << flasher.sGetDBDF() << "]: ";
+        std::cout << "Card [" << flasher.sGetDBDF() << "]: " << std::endl;
         if (installedDSA.empty()) {
-            std::cout << "no shell is installed" << std::endl;
+            std::cout << "\t Status: no shell is installed" << std::endl;
             return DSAInfo("");
         }
         if (installedDSA.size() > 1) {
-            std::cout << "multiple shells are installed" << std::endl;
+            std::cout << "\t Status: multiple shells are installed" << std::endl;
             return DSAInfo("");
         }
         candidateDSAIndex = 0;
@@ -254,7 +278,7 @@ static DSAInfo selectShell(unsigned idx, std::string& dsa, std::string& id)
             if (!id.empty() && !idsa.matchId(id))
                 continue;
             if (candidateDSAIndex != UINT_MAX) {
-                std::cout << "multiple shells are installed" << std::endl;
+                std::cout << "\t Status: multiple shells are installed" << std::endl;
                 return DSAInfo("");
             }
             candidateDSAIndex = i;
@@ -279,10 +303,12 @@ static DSAInfo selectShell(unsigned idx, std::string& dsa, std::string& id)
             candidate.bmcVer == currentDSA.bmcVer);
     }
     if (same_dsa && same_bmc) {
-        std::cout << "shell is up-to-date" << std::endl;
+        std::cout << "\t Status: shell is up-to-date" << std::endl;
         return DSAInfo("");
     }
-    std::cout << "shell needs updating" << std::endl;
+    std::cout << "\t Status: shell needs updating" << std::endl;
+    std::cout << "\t Current shell: " << currentDSA.name << std::endl;
+    std::cout << "\t Shell to be flashed: " << candidate.name << std::endl;
     return candidate;
 }
 
@@ -307,7 +333,7 @@ static int autoFlash(unsigned index, std::string& shell,
             }
         }
         if (!foundDSA) {
-            std::cout << "Specified shell not installed." << std::endl;
+            std::cout << "Specified shell not found." << std::endl;
             return -ENOENT;
         }
         if (multiDSA) {
@@ -342,9 +368,6 @@ static int autoFlash(unsigned index, std::string& shell,
     unsigned success = 0;
     bool needreboot = false;
     if (!boardsToUpdate.empty()) {
-        std::cout << "Below card(s) will be updated:" << std::endl;
-        for (auto p : boardsToUpdate)
-            std::cout << pcidev::get_dev(p.first, false) << std::endl;
 
         // Prompt user about what boards will be updated and ask for permission.
         if(!force && !canProceed())
@@ -355,7 +378,7 @@ static int autoFlash(unsigned index, std::string& shell,
             bool reboot;
             std::cout << std::endl;
             if (updateShellAndSC(p.first, p.second, reboot) == 0) {
-                std::cout << "Successfully flashed Card[" << success << "]"<< std::endl;
+                std::cout << "Successfully flashed Card[" << getBDF(p.first) << "]"<< std::endl;
                 success++;
             }
             needreboot |= reboot;
@@ -364,7 +387,12 @@ static int autoFlash(unsigned index, std::string& shell,
 
     std::cout << std::endl;
 
-    if (success!=0) {
+    if (boardsToUpdate.size() == 0) {
+        std::cout << "Card(s) up-to-date and do not need to be flashed." << std::endl;
+        return 0;
+    }
+
+    if (success != 0) {
         std::cout << success << " Card(s) flashed successfully." << std::endl; 
     } else {
         std::cout << "No cards were flashed." << std::endl; 
@@ -384,10 +412,12 @@ static int autoFlash(unsigned index, std::string& shell,
 }
 
 // For backward compatibility, will be removed later
-static int flashCompatibleMode(int argc, char *argv[])
+int flashXbutilFlashHandler(int argc, char *argv[])
 {
     if (argc < 2)
         return -EINVAL;
+
+    sudoOrDie();
 
     if (strcmp(argv[1], "scan") == 0) {
         bool verbose = false;
@@ -421,10 +451,15 @@ static int flashCompatibleMode(int argc, char *argv[])
             dsa = optarg;
             break;
         case 'd':
-            if (std::string(optarg).find(":") == std::string::npos)
-                devIdx = atoi(optarg);
-            else
+            if (std::string(optarg).find(":") == std::string::npos) {
+                std::cout <<
+                    "Please use -d <mgmt-BDF> to specify the device to flash"
+                    << std::endl;
+                std::cout << "Run xbmgmt scan to find mgmt BDF"
+                    << std::endl;
+            } else {
                 devIdx = bdf2index(optarg);
+            }
             if (devIdx == UINT_MAX)
                 return -EINVAL;
             break;
@@ -494,6 +529,7 @@ static int scan(int argc, char *argv[])
     const option opts[] = {
         { "verbose", no_argument, nullptr, '0' },
         { "json", no_argument, nullptr, '1' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {
@@ -528,6 +564,7 @@ static int update(int argc, char *argv[])
         { "shell", required_argument, nullptr, '1' },
         { "id", required_argument, nullptr, '2' },
         { "force", no_argument, nullptr, '3' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {
@@ -570,6 +607,7 @@ static int shell(int argc, char *argv[])
         { "card", required_argument, nullptr, '0' },
         { "path", required_argument, nullptr, '1' },
         { "flash_type", required_argument, nullptr, '2' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {
@@ -594,11 +632,10 @@ static int shell(int argc, char *argv[])
         }
     }
 
-    if (file.empty())
+    if (file.empty() || index == UINT_MAX)
         return -EINVAL;
 
-    int ret = updateShell(index == UINT_MAX ? 0 : index, type, file.c_str(),
-        nullptr);
+    int ret = updateShell(index, type, file.c_str(), nullptr);
     if (ret)
         return ret;
 
@@ -614,6 +651,7 @@ static int sc(int argc, char *argv[])
     const option opts[] = {
         { "card", required_argument, nullptr, '0' },
         { "path", required_argument, nullptr, '1' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {
@@ -635,10 +673,10 @@ static int sc(int argc, char *argv[])
         }
     }
 
-    if (file.empty())
+    if (file.empty() || index == UINT_MAX)
         return -EINVAL;
 
-    int ret = updateSC(index == UINT_MAX ? 0 : index, file.c_str());
+    int ret = updateSC(index, file.c_str());
     if (ret)
         return ret;
 
@@ -651,6 +689,7 @@ static int reset(int argc, char *argv[])
     unsigned index = UINT_MAX;
     const option opts[] = {
         { "card", required_argument, nullptr, '0' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {
@@ -683,7 +722,7 @@ static const std::map<std::string, std::function<int(int, char **)>> optList = {
     { "--update", update },
     { "--shell", shell },
     { "--sc_firmware", sc },
-    { "--reset", reset },
+    { "--factory_reset", reset },
 };
 
 int flashHandler(int argc, char *argv[])
@@ -694,10 +733,6 @@ int flashHandler(int argc, char *argv[])
     sudoOrDie();
 
     std::string subcmd(argv[1]);
-
-    // Backward compatible, no long option used.
-    if (subcmd.find("--") != 0)
-        return flashCompatibleMode(argc,argv);
 
     auto cmd = optList.find(subcmd);
     if (cmd == optList.end())

@@ -18,6 +18,24 @@
 #define xocl_api_debug_h
 #include <functional>
 
+#ifdef _WIN32
+  #ifdef XRT_XOCL_SOURCE
+    #define XRT_XOCL_EXPORT __declspec(dllexport)
+  #else
+    #define XRT_XOCL_EXPORT __declspec(dllimport)
+  #endif
+#endif
+
+#ifdef __GNUC__
+  #ifdef XRT_XOCL_SOURCE
+    #define XRT_XOCL_EXPORT __attribute__ ((visibility("default")))
+  #else
+    #define XRT_XOCL_EXPORT 
+  #endif
+#endif
+
+
+
 struct axlf;
 
 /**
@@ -30,9 +48,11 @@ namespace debug {
 
 using cb_reset_type = std::function<void (const axlf* xclbin)>;
 
+XRT_XOCL_EXPORT
 void
 register_cb_reset (cb_reset_type && cb);
 
+XRT_XOCL_EXPORT
 void
 reset(const axlf* xclbin);
 

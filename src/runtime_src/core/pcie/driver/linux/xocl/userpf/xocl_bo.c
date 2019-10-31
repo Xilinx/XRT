@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2016-2017 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
@@ -49,7 +49,7 @@ static inline void drm_free_large(void *ptr)
 
 static inline void *drm_malloc_ab(size_t nmemb, size_t size)
 {
-	return kvmalloc_array(nmemb, sizeof(struct page *), GFP_KERNEL);
+	return kvmalloc_array(nmemb, size, GFP_KERNEL);
 }
 #endif
 
@@ -77,16 +77,15 @@ static size_t xocl_bo_physical_addr(const struct drm_xocl_bo *xobj)
 
 void xocl_describe(const struct drm_xocl_bo *xobj)
 {
-	size_t size_in_kb = xobj->base.size / 1024;
+	size_t size_kb = xobj->base.size / 1024;
 	size_t physical_addr = xocl_bo_physical_addr(xobj);
 	unsigned ddr = xobj->mem_idx;
 	unsigned userptr = xocl_bo_userptr(xobj) ? 1 : 0;
-	uint64_t addr = 0;
 
-	addr = xobj->vmapping ? (uint64_t)xobj->vmapping : (uint64_t)xobj->bar_vmapping;
-	DRM_DEBUG("%p: H[%llx] SIZE[0x%zxKB] D[0x%zx] DDR[%u] UPTR[%u] SGLCOUNT[%u] FLAG[%x]\n",
-		  xobj, addr ? addr : 0, size_in_kb,
-			physical_addr, ddr, userptr, xobj->sgt ? xobj->sgt->orig_nents : 0, xobj->flags);
+	DRM_DEBUG("%p: VA:%p BAR:0x%llx EA:0x%zx SZ:0x%zxKB", xobj,
+		xobj->vmapping, xobj->p2p_bar_offset, physical_addr, size_kb);
+	DRM_DEBUG("%p: IDX:%u UPTR:%u SGL:%u FLG:%x", xobj, ddr, userptr,
+		xobj->sgt ? xobj->sgt->orig_nents : 0, xobj->flags);
 }
 
 static void xocl_free_mm_node(struct drm_xocl_bo *xobj)
@@ -117,9 +116,16 @@ static void xocl_free_bo(struct drm_gem_object *obj)
 	struct xocl_drm *drm_p = ddev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
 	int npages = obj->size >> PAGE_SHIFT;
+
 	DRM_DEBUG("Freeing BO %p\n", xobj);
 
 	BO_ENTER("xobj %p pages %p", xobj, xobj->pages);
+
+	if (xocl_bo_p2p(xobj)) {
+		xocl_p2p_reserve_release_range(xdev,
+			xobj->p2p_bar_offset, obj->size, false);
+	}
+
 	if (xobj->vmapping)
 		vunmap(xobj->vmapping);
 	xobj->vmapping = NULL;
@@ -198,6 +204,10 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 	unsigned ddr;
 
 	if (type == XOCL_BO_EXECBUF || type == XOCL_BO_IMPORT)
+		return 0;
+
+	if (XOCL_DSA_IS_VERSAL(xdev))
+		/* Bypass checking bo user reqs for now */
 		return 0;
 
 	//From "mem_topology" or "feature rom" depending on
@@ -315,25 +325,27 @@ struct drm_xocl_bo *xocl_drm_create_bo(struct xocl_drm *drm_p,
 	return xocl_create_bo(drm_p->ddev, unaligned_size, user_flags, bo_type);
 }
 
-static struct page **xocl_p2p_get_pages(void *bar_vaddr, int npages)
+static struct page **xocl_p2p_get_pages(struct xocl_dev *xdev,
+	u64 bar_off, u64 size)
 {
 	struct page *p, **pages;
 	int i;
-	uint64_t page_offset_enum = 0;
+	uint64_t offset;
+	uint64_t npages = size >> PAGE_SHIFT;
 
 	pages = drm_malloc_ab(npages, sizeof(struct page *));
-
 	if (pages == NULL)
 		return ERR_PTR(-ENOMEM);
 
-	for (i = 0; i < npages; i++) {
-		p = virt_to_page(bar_vaddr+page_offset_enum);
-		pages[i] = p;
+	for (i = 0, offset = bar_off; i < npages; i++, offset += PAGE_SIZE) {
+		int idx = offset >> XOCL_P2P_CHUNK_SHIFT;
+		void *addr = xdev->p2p_mem_chunks[idx].xpmc_va;
 
+		addr += offset & (XOCL_P2P_CHUNK_SIZE - 1);
+		p = virt_to_page(addr);
+		pages[i] = p;
 		if (IS_ERR(p))
 			goto fail;
-
-		page_offset_enum += PAGE_SIZE;
 	}
 
 	return pages;
@@ -381,7 +393,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 
 	BO_ENTER("xobj %p, mm_node %p", xobj, xobj->mm_node);
 	if (IS_ERR(xobj)) {
-		DRM_DEBUG("object creation failed\n");
+		DRM_ERROR("object creation failed\n");
 		return PTR_ERR(xobj);
 	}
 
@@ -390,23 +402,25 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 		 * DRM allocate contiguous pages, shift the vmapping with
 		 * bar address offset
 		 */
-		if (xdev->p2p_bar_addr) {
-			xobj->bar_vmapping = xdev->p2p_bar_addr +
-				drm_p->mm_p2p_off[ddr] + xobj->mm_node->start -
-				XOCL_MEM_TOPOLOGY(xdev)->m_mem_data[ddr].m_base_address;
-		} else {	
-			xocl_xdev_err(xdev, "No P2P mem region available, "
-					"Can't create p2p BO");	
+		if (xdev->p2p_mem_chunk_num == 0) {
+			xocl_xdev_err(xdev,
+				"No P2P mem region, Can't create p2p BO");	
 			ret = -EINVAL;
 			goto out_free;
 		}
-			
+		xobj->p2p_bar_offset = drm_p->mm_p2p_off[ddr] +
+			xobj->mm_node->start -
+			XOCL_MEM_TOPOLOGY(xdev)->m_mem_data[ddr].m_base_address;
+		ret = xocl_p2p_reserve_release_range(xdev, xobj->p2p_bar_offset,
+			xobj->base.size, true);
+		if (ret)
+			goto out_free;
 	}
 
 	if (xobj->flags & XOCL_PAGE_ALLOC) {
-
 		if (xobj->flags & XOCL_P2P_MEM)
-			xobj->pages = xocl_p2p_get_pages(xobj->bar_vmapping, xobj->base.size >> PAGE_SHIFT);
+			xobj->pages = xocl_p2p_get_pages(xdev,
+				xobj->p2p_bar_offset, xobj->base.size);
 		else if (xobj->flags & XOCL_DRM_SHMEM)
 			xobj->pages = drm_gem_get_pages(&xobj->base);
 
@@ -414,13 +428,24 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 			ret = PTR_ERR(xobj->pages);
 			goto out_free;
 		}
-		xobj->sgt = alloc_onetime_sg_table(xobj->pages, 0, xobj->base.size);
+		xobj->sgt = alloc_onetime_sg_table(xobj->pages, 0,
+			xobj->base.size);
 		if (IS_ERR(xobj->sgt)) {
 			ret = PTR_ERR(xobj->sgt);
 			goto out_free;
 		}
 		if (xobj->flags & XOCL_HOST_MEM) {
-			xobj->vmapping = vmap(xobj->pages, xobj->base.size >> PAGE_SHIFT, VM_MAP, PAGE_KERNEL);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0)
+			if (xobj->base.size >= GB(4)) {
+				DRM_ERROR("cannot support BO size >= 4G\n");
+				DRM_ERROR("limited by Linux kernel API\n");
+				ret = -EINVAL;
+				goto out_free;
+			}
+#endif
+			xobj->vmapping = vmap(xobj->pages,
+				xobj->base.size >> PAGE_SHIFT,
+				VM_MAP, PAGE_KERNEL);
 			if (!xobj->vmapping) {
 				ret = -ENOMEM;
 				goto out_free;
@@ -442,13 +467,13 @@ out_free:
 	return ret;
 }
 
-int xocl_userptr_bo_ioctl(struct drm_device *dev,
-			      void *data,
-			      struct drm_file *filp)
+int xocl_userptr_bo_ioctl(
+	struct drm_device *dev, void *data, struct drm_file *filp)
 {
 	int ret;
 	struct drm_xocl_bo *xobj;
-	unsigned int page_count;
+	uint64_t page_count = 0;
+	uint64_t page_pinned = 0;
 	struct drm_xocl_userptr_bo *args = data;
 	unsigned user_flags = args->flags;
 
@@ -459,11 +484,11 @@ int xocl_userptr_bo_ioctl(struct drm_device *dev,
 	BO_ENTER("xobj %p", xobj);
 
 	if (IS_ERR(xobj)) {
-		DRM_DEBUG("object creation failed\n");
+		DRM_ERROR("object creation failed\n");
 		return PTR_ERR(xobj);
 	}
 
-	/* Use the page rounded size so we can accurately account for number of pages */
+	/* Use the page rounded size to accurately account for num of pages */
 	page_count = xobj->base.size >> PAGE_SHIFT;
 
 	xobj->pages = drm_malloc_ab(page_count, sizeof(*xobj->pages));
@@ -471,12 +496,25 @@ int xocl_userptr_bo_ioctl(struct drm_device *dev,
 		ret = -ENOMEM;
 		goto out1;
 	}
-	ret = get_user_pages_fast(args->addr, page_count, 1, xobj->pages);
 
-	if (ret != page_count)
-		goto out0;
+	while (page_pinned < page_count) {
+		/*
+		 * We pin at most 1G at a time to workaround
+		 * a Linux kernel issue inside get_user_pages_fast().
+		 */
+		u64 nr = min(page_count - page_pinned,
+			(1024ULL * 1024 * 1024) / (1ULL << PAGE_SHIFT));
+		if (get_user_pages_fast(
+			args->addr + (page_pinned << PAGE_SHIFT),
+			nr, 1, xobj->pages + page_pinned) != nr) {
+			ret = -ENOMEM;
+			goto out0;
+		}
+		page_pinned += nr;
+	}
 
-	xobj->sgt = alloc_onetime_sg_table(xobj->pages, 0, page_count << PAGE_SHIFT);
+	xobj->sgt = alloc_onetime_sg_table(xobj->pages, 0,
+		page_count << PAGE_SHIFT);
 	if (IS_ERR(xobj->sgt)) {
 		ret = PTR_ERR(xobj->sgt);
 		goto out0;
@@ -499,11 +537,13 @@ int xocl_userptr_bo_ioctl(struct drm_device *dev,
 	return ret;
 
 out0:
+	if (page_pinned)
+		xocl_release_pages(xobj->pages, page_pinned, 0);
 	drm_free_large(xobj->pages);
 	xobj->pages = NULL;
 out1:
 	xocl_free_bo(&xobj->base);
-	DRM_DEBUG("handle creation failed\n");
+	DRM_ERROR("handle creation failed\n");
 	return ret;
 }
 
@@ -564,7 +604,7 @@ int xocl_sync_bo_ioctl(struct drm_device *dev,
 	sgt = xobj->sgt;
 
 	if (!xocl_bo_sync_able(xobj->flags)) {
-		DRM_DEBUG("This BO doesn't support sync_bo\n");
+		DRM_ERROR("BO %d doesn't support sync_bo\n", args->handle);
 		ret = -EOPNOTSUPP;
 		goto out;
 	}
@@ -661,7 +701,7 @@ static int xocl_migrate_unmgd(struct xocl_dev *xdev, uint64_t data_ptr, uint64_t
 	int channel;
 	struct drm_xocl_unmgd unmgd;
 	int ret;
-	size_t migrated;
+	ssize_t migrated;
 
 	ret = xocl_init_unmgd(&unmgd, data_ptr, size, dir);
 	if (ret) {
@@ -730,15 +770,16 @@ int xocl_pwrite_bo_ioctl(struct drm_device *dev, void *data,
 		ret = -EPERM;
 		goto out;
 	}
-	if (xobj->flags == XOCL_BO_DEV_ONLY) {
+	if (!xobj->vmapping) {
 		ep_addr = xocl_bo_physical_addr(xobj);
 		if (ep_addr == INVALID_BO_PADDR) {
 			ret = -EINVAL;
 			goto out;
 		}
-		ret = xocl_migrate_unmgd(xdev, args->data_ptr, ep_addr, args->size, 1);
+		ret = xocl_migrate_unmgd(xdev, args->data_ptr, ep_addr,
+			args->size, 1);
 	} else {
-		kaddr = xobj->vmapping ? xobj->vmapping : xobj->bar_vmapping;
+		kaddr = xobj->vmapping;
 		kaddr += args->offset;
 
 		ret = copy_from_user(kaddr, user_data, args->size);
@@ -792,7 +833,7 @@ int xocl_pread_bo_ioctl(struct drm_device *dev, void *data,
 	xobj = to_xocl_bo(gem_obj);
 	BO_ENTER("xobj %p", xobj);
 
-	if (xobj->flags == XOCL_BO_DEV_ONLY) {
+	if (!xobj->vmapping) {
 		ep_addr = xocl_bo_physical_addr(xobj);
 		if (ep_addr == INVALID_BO_PADDR) {
 			ret = -EINVAL;
@@ -801,7 +842,7 @@ int xocl_pread_bo_ioctl(struct drm_device *dev, void *data,
 		ret = xocl_migrate_unmgd(xdev, args->data_ptr, ep_addr, args->size, 0);
 
 	} else {
-		kaddr = xobj->vmapping ? xobj->vmapping : xobj->bar_vmapping;
+		kaddr = xobj->vmapping;
 		kaddr += args->offset;		
 		ret = copy_to_user(user_data, kaddr, args->size);
 	}
@@ -944,6 +985,10 @@ struct sg_table *xocl_gem_prime_get_sg_table(struct drm_gem_object *obj)
 	struct drm_xocl_bo *xobj = to_xocl_bo(obj);
 
 	BO_ENTER("xobj %p", xobj);
+	
+	if (!xobj->pages)
+		return ERR_PTR(-EINVAL);
+
 	return alloc_onetime_sg_table(xobj->pages, 0, xobj->base.size);
 }
 
@@ -958,7 +1003,7 @@ struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
 	BO_ENTER("xobj %p", importing_xobj);
 
 	if (IS_ERR(importing_xobj)) {
-		DRM_DEBUG("object creation failed\n");
+		DRM_ERROR("object creation failed\n");
 		return (struct drm_gem_object *)importing_xobj;
 	}
 
@@ -1084,6 +1129,7 @@ void xocl_finish_unmgd(struct drm_xocl_unmgd *unmgd)
 	unmgd->pages = NULL;
 }
 
+#if 0
 static bool xocl_validate_paddr(struct xocl_dev *xdev, u64 paddr, u64 size)
 {
 	struct mem_data *mem_data;
@@ -1103,6 +1149,7 @@ static bool xocl_validate_paddr(struct xocl_dev *xdev, u64 paddr, u64 size)
 
 	return false;
 }
+#endif
 
 int xocl_pwrite_unmgd_ioctl(struct drm_device *dev, void *data,
 			    struct drm_file *filp)
@@ -1120,15 +1167,16 @@ int xocl_pwrite_unmgd_ioctl(struct drm_device *dev, void *data,
 	if (args->size == 0)
 		return 0;
 
-	if (!xocl_validate_paddr(xdev, args->paddr, args->size)) {
-		userpf_err(xdev, "invalid paddr: 0x%llx, size:0x%llx",
-			args->paddr, args->size);
-		/* currently we are not able to return error because
-		 * it is unclear that what addresses are valid other than
-		 * ddr area. we should revisit this sometime.
-		 * return -EINVAL;
-		 */
-	}
+	/* currently we are not able to return error because
+	 * it is unclear that what addresses are valid other than
+	 * ddr area. we should revisit this sometime.
+	 * if (!xocl_validate_paddr(xdev, args->paddr, args->size)) {
+	 *	userpf_err(xdev, "invalid paddr: 0x%llx, size:0x%llx",
+	 *		args->paddr, args->size);
+	 *	return -EINVAL;
+	 * }
+	 */
+
 
 	ret = xocl_migrate_unmgd(xdev, args->data_ptr, args->paddr, args->size, 1);
 
@@ -1151,15 +1199,15 @@ int xocl_pread_unmgd_ioctl(struct drm_device *dev, void *data,
 	if (args->size == 0)
 		return 0;
 
-	if (!xocl_validate_paddr(xdev, args->paddr, args->size)) {
-		userpf_err(xdev, "invalid paddr: 0x%llx, size:0x%llx",
-			args->paddr, args->size);
-		/* currently we are not able to return error because
-		 * it is unclear that what addresses are valid other than
-		 * ddr area. we should revisit this sometime.
-		 * return -EINVAL;
-		 */
-	}
+	/* currently we are not able to return error because
+	 * it is unclear that what addresses are valid other than
+	 * ddr area. we should revisit this sometime.
+	 * if (!xocl_validate_paddr(xdev, args->paddr, args->size)) {
+	 *	userpf_err(xdev, "invalid paddr: 0x%llx, size:0x%llx",
+	 *		args->paddr, args->size);
+	 *	return -EINVAL;
+	 * }
+	 */
 
 	ret = xocl_migrate_unmgd(xdev, args->data_ptr, args->paddr, args->size, 0);
 

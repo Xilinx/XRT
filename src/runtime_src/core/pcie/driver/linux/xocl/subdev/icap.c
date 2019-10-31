@@ -39,6 +39,8 @@ static struct key *icap_keys;
 
 #define	ICAP_ERR(icap, fmt, arg...)	\
 	xocl_err(&(icap)->icap_pdev->dev, fmt "\n", ##arg)
+#define	ICAP_WARN(icap, fmt, arg...)	\
+	xocl_warn(&(icap)->icap_pdev->dev, fmt "\n", ##arg)
 #define	ICAP_INFO(icap, fmt, arg...)	\
 	xocl_info(&(icap)->icap_pdev->dev, fmt "\n", ##arg)
 #define	ICAP_DBG(icap, fmt, arg...)	\
@@ -152,6 +154,12 @@ struct icap {
 	void			*rp_bit;
 	unsigned long		rp_bit_len;
 	void			*rp_fdt;
+	void			*rp_mgmt_bin;
+	unsigned long		rp_mgmt_bin_len;
+	void			*rp_sche_bin;
+	unsigned long		rp_sche_bin_len;
+	void			*rp_sc_bin;
+	unsigned long		*rp_sc_bin_len;
 
 	char			*icap_clock_freq_counter_hbm;
 
@@ -164,11 +172,17 @@ struct icap {
 
 static inline u32 reg_rd(void __iomem *reg)
 {
+	if (!reg)
+		return -1;
+
 	return XOCL_READ_REG32(reg);
 }
 
 static inline void reg_wr(void __iomem *reg, u32 val)
 {
+	if (!reg)
+		return;
+
 	iowrite32(val, reg);
 }
 
@@ -183,48 +197,137 @@ const static struct xclmgmt_ocl_clockwiz {
 	/* config0 register */
 	unsigned long config0;
 	/* config2 register */
-	unsigned short config2;
+	unsigned config2;
 } frequency_table[] = {
-	{/* 600*/   60, 0x0601, 0x000a},
-	{/* 600*/   66, 0x0601, 0x0009},
-	{/* 600*/   75, 0x0601, 0x0008},
-	{/* 800*/   80, 0x0801, 0x000a},
-	{/* 600*/   85, 0x0601, 0x0007},
-	{/* 900*/   90, 0x0901, 0x000a},
-	{/*1000*/  100, 0x0a01, 0x000a},
-	{/*1100*/  110, 0x0b01, 0x000a},
-	{/* 700*/  116, 0x0701, 0x0006},
-	{/*1100*/  122, 0x0b01, 0x0009},
-	{/* 900*/  128, 0x0901, 0x0007},
-	{/*1200*/  133, 0x0c01, 0x0009},
-	{/*1400*/  140, 0x0e01, 0x000a},
-	{/*1200*/  150, 0x0c01, 0x0008},
-	{/*1400*/  155, 0x0e01, 0x0009},
-	{/* 800*/  160, 0x0801, 0x0005},
-	{/*1000*/  166, 0x0a01, 0x0006},
-	{/*1200*/  171, 0x0c01, 0x0007},
-	{/* 900*/  180, 0x0901, 0x0005},
-	{/*1300*/  185, 0x0d01, 0x0007},
-	{/*1400*/  200, 0x0e01, 0x0007},
-	{/*1300*/  216, 0x0d01, 0x0006},
-	{/* 900*/  225, 0x0901, 0x0004},
-	{/*1400*/  233, 0x0e01, 0x0006},
-	{/*1200*/  240, 0x0c01, 0x0005},
-	{/*1000*/  250, 0x0a01, 0x0004},
-	{/*1300*/  260, 0x0d01, 0x0005},
-	{/* 800*/  266, 0x0801, 0x0003},
-	{/*1100*/  275, 0x0b01, 0x0004},
-	{/*1400*/  280, 0x0e01, 0x0005},
-	{/*1200*/  300, 0x0c01, 0x0004},
-	{/*1300*/  325, 0x0d01, 0x0004},
-	{/*1000*/  333, 0x0a01, 0x0003},
-	{/*1400*/  350, 0x0e01, 0x0004},
-	{/*1100*/  366, 0x0b01, 0x0003},
-	{/*1200*/  400, 0x0c01, 0x0003},
-	{/*1300*/  433, 0x0d01, 0x0003},
-	{/* 900*/  450, 0x0901, 0x0002},
-	{/*1400*/  466, 0x0e01, 0x0003},
-	{/*1000*/  500, 0x0a01, 0x0002}
+	{/*1275.000*/   10.000, 	0x02EE0C01,     0x0001F47F},
+	{/*1575.000*/   15.000, 	0x02EE0F01,     0x00000069},
+	{/*1600.000*/   20.000, 	0x00001001,     0x00000050},
+	{/*1600.000*/   25.000, 	0x00001001,     0x00000040},
+	{/*1575.000*/   30.000, 	0x02EE0F01,     0x0001F434},
+	{/*1575.000*/   35.000, 	0x02EE0F01,     0x0000002D},
+	{/*1600.000*/   40.000, 	0x00001001,     0x00000028},
+	{/*1575.000*/   45.000, 	0x02EE0F01,     0x00000023},
+	{/*1600.000*/   50.000, 	0x00001001,     0x00000020},
+	{/*1512.500*/   55.000, 	0x007D0F01,     0x0001F41B},
+	{/*1575.000*/   60.000, 	0x02EE0F01,     0x0000FA1A},
+	{/*1462.500*/   65.000, 	0x02710E01,     0x0001F416},
+	{/*1575.000*/   70.000, 	0x02EE0F01,     0x0001F416},
+	{/*1575.000*/   75.000, 	0x02EE0F01,     0x00000015},
+	{/*1600.000*/   80.000, 	0x00001001,     0x00000014},
+	{/*1487.500*/   85.000, 	0x036B0E01,     0x0001F411},
+	{/*1575.000*/   90.000, 	0x02EE0F01,     0x0001F411},
+	{/*1425.000*/   95.000, 	0x00FA0E01,     0x0000000F},
+	{/*1600.000*/   100.000,        0x00001001,     0x00000010},
+	{/*1575.000*/   105.000,        0x02EE0F01,     0x0000000F},
+	{/*1512.500*/   110.000,        0x007D0F01,     0x0002EE0D},
+	{/*1437.500*/   115.000,        0x01770E01,     0x0001F40C},
+	{/*1575.000*/   120.000,        0x02EE0F01,     0x00007D0D},
+	{/*1562.500*/   125.000,        0x02710F01,     0x0001F40C},
+	{/*1462.500*/   130.000,        0x02710E01,     0x0000FA0B},
+	{/*1350.000*/   135.000,        0x01F40D01,     0x0000000A},
+	{/*1575.000*/   140.000,        0x02EE0F01,     0x0000FA0B},
+	{/*1450.000*/   145.000,        0x01F40E01,     0x0000000A},
+	{/*1575.000*/   150.000,        0x02EE0F01,     0x0001F40A},
+	{/*1550.000*/   155.000,        0x01F40F01,     0x0000000A},
+	{/*1600.000*/   160.000,        0x00001001,     0x0000000A},
+	{/*1237.500*/   165.000,        0x01770C01,     0x0001F407},
+	{/*1487.500*/   170.000,        0x036B0E01,     0x0002EE08},
+	{/*1575.000*/   175.000,        0x02EE0F01,     0x00000009},
+	{/*1575.000*/   180.000,        0x02EE0F01,     0x0002EE08},
+	{/*1387.500*/   185.000,        0x036B0D01,     0x0001F407},
+	{/*1425.000*/   190.000,        0x00FA0E01,     0x0001F407},
+	{/*1462.500*/   195.000,        0x02710E01,     0x0001F407},
+	{/*1600.000*/   200.000,        0x00001001,     0x00000008},
+	{/*1537.500*/   205.000,        0x01770F01,     0x0001F407},
+	{/*1575.000*/   210.000,        0x02EE0F01,     0x0001F407},
+	{/*1075.000*/   215.000,        0x02EE0A01,     0x00000005},
+	{/*1512.500*/   220.000,        0x007D0F01,     0x00036B06},
+	{/*1575.000*/   225.000,        0x02EE0F01,     0x00000007},
+	{/*1437.500*/   230.000,        0x01770E01,     0x0000FA06},
+	{/*1175.000*/   235.000,        0x02EE0B01,     0x00000005},
+	{/*1500.000*/   240.000,        0x00000F01,     0x0000FA06},
+	{/*1225.000*/   245.000,        0x00FA0C01,     0x00000005},
+	{/*1562.500*/   250.000,        0x02710F01,     0x0000FA06},
+	{/*1275.000*/   255.000,        0x02EE0C01,     0x00000005},
+	{/*1462.500*/   260.000,        0x02710E01,     0x00027105},
+	{/*1325.000*/   265.000,        0x00FA0D01,     0x00000005},
+	{/*1350.000*/   270.000,        0x01F40D01,     0x00000005},
+	{/*1512.500*/   275.000,        0x007D0F01,     0x0001F405},
+	{/*1575.000*/   280.000,        0x02EE0F01,     0x00027105},
+	{/*1425.000*/   285.000,        0x00FA0E01,     0x00000005},
+	{/*1450.000*/   290.000,        0x01F40E01,     0x00000005},
+	{/*1475.000*/   295.000,        0x02EE0E01,     0x00000005},
+	{/*1575.000*/   300.000,        0x02EE0F01,     0x0000FA05},
+	{/*1525.000*/   305.000,        0x00FA0F01,     0x00000005},
+	{/*1550.000*/   310.000,        0x01F40F01,     0x00000005},
+	{/*1575.000*/   315.000,        0x02EE0F01,     0x00000005},
+	{/*1600.000*/   320.000,        0x00001001,     0x00000005},
+	{/*1462.500*/   325.000,        0x02710E01,     0x0001F404},
+	{/*1237.500*/   330.000,        0x01770C01,     0x0002EE03},
+	{/*837.500*/    335.000,        0x01770801,     0x0001F402},
+	{/*1487.500*/   340.000,        0x036B0E01,     0x00017704},
+	{/*862.500*/    345.000,        0x02710801,     0x0001F402},
+	{/*1575.000*/   350.000,        0x02EE0F01,     0x0001F404},
+	{/*887.500*/    355.000,        0x036B0801,     0x0001F402},
+	{/*1575.000*/   360.000,        0x02EE0F01,     0x00017704},
+	{/*912.500*/    365.000,        0x007D0901,     0x0001F402},
+	{/*1387.500*/   370.000,        0x036B0D01,     0x0002EE03},
+	{/*1500.000*/   375.000,        0x00000F01,     0x00000004},
+	{/*1425.000*/   380.000,        0x00FA0E01,     0x0002EE03},
+	{/*962.500*/    385.000,        0x02710901,     0x0001F402},
+	{/*1462.500*/   390.000,        0x02710E01,     0x0002EE03},
+	{/*987.500*/    395.000,        0x036B0901,     0x0001F402},
+	{/*1600.000*/   400.000,        0x00001001,     0x00000004},
+	{/*1012.500*/   405.000,        0x007D0A01,     0x0001F402},
+	{/*1537.500*/   410.000,        0x01770F01,     0x0002EE03},
+	{/*1037.500*/   415.000,        0x01770A01,     0x0001F402},
+	{/*1575.000*/   420.000,        0x02EE0F01,     0x0002EE03},
+	{/*1487.500*/   425.000,        0x036B0E01,     0x0001F403},
+	{/*1075.000*/   430.000,        0x02EE0A01,     0x0001F402},
+	{/*1087.500*/   435.000,        0x036B0A01,     0x0001F402},
+	{/*1375.000*/   440.000,        0x02EE0D01,     0x00007D03},
+	{/*1112.500*/   445.000,        0x007D0B01,     0x0001F402},
+	{/*1575.000*/   450.000,        0x02EE0F01,     0x0001F403},
+	{/*1137.500*/   455.000,        0x01770B01,     0x0001F402},
+	{/*1437.500*/   460.000,        0x01770E01,     0x00007D03},
+	{/*1162.500*/   465.000,        0x02710B01,     0x0001F402},
+	{/*1175.000*/   470.000,        0x02EE0B01,     0x0001F402},
+	{/*1425.000*/   475.000,        0x00FA0E01,     0x00000003},
+	{/*1500.000*/   480.000,        0x00000F01,     0x00007D03},
+	{/*1212.500*/   485.000,        0x007D0C01,     0x0001F402},
+	{/*1225.000*/   490.000,        0x00FA0C01,     0x0001F402},
+	{/*1237.500*/   495.000,        0x01770C01,     0x0001F402},
+	{/*1562.500*/   500.000,        0x02710F01,     0x00007D03},
+	{/*1262.500*/   505.000,        0x02710C01,     0x0001F402},
+	{/*1275.000*/   510.000,        0x02EE0C01,     0x0001F402},
+	{/*1287.500*/   515.000,        0x036B0C01,     0x0001F402},
+	{/*1300.000*/   520.000,        0x00000D01,     0x0001F402},
+	{/*1575.000*/   525.000,        0x02EE0F01,     0x00000003},
+	{/*1325.000*/   530.000,        0x00FA0D01,     0x0001F402},
+	{/*1337.500*/   535.000,        0x01770D01,     0x0001F402},
+	{/*1350.000*/   540.000,        0x01F40D01,     0x0001F402},
+	{/*1362.500*/   545.000,        0x02710D01,     0x0001F402},
+	{/*1512.500*/   550.000,        0x007D0F01,     0x0002EE02},
+	{/*1387.500*/   555.000,        0x036B0D01,     0x0001F402},
+	{/*1400.000*/   560.000,        0x00000E01,     0x0001F402},
+	{/*1412.500*/   565.000,        0x007D0E01,     0x0001F402},
+	{/*1425.000*/   570.000,        0x00FA0E01,     0x0001F402},
+	{/*1437.500*/   575.000,        0x01770E01,     0x0001F402},
+	{/*1450.000*/   580.000,        0x01F40E01,     0x0001F402},
+	{/*1462.500*/   585.000,        0x02710E01,     0x0001F402},
+	{/*1475.000*/   590.000,        0x02EE0E01,     0x0001F402},
+	{/*1487.500*/   595.000,        0x036B0E01,     0x0001F402},
+	{/*1575.000*/   600.000,        0x02EE0F01,     0x00027102},
+	{/*1512.500*/   605.000,        0x007D0F01,     0x0001F402},
+	{/*1525.000*/   610.000,        0x00FA0F01,     0x0001F402},
+	{/*1537.500*/   615.000,        0x01770F01,     0x0001F402},
+	{/*1550.000*/   620.000,        0x01F40F01,     0x0001F402},
+	{/*1562.500*/   625.000,        0x02710F01,     0x0001F402},
+	{/*1575.000*/   630.000,        0x02EE0F01,     0x0001F402},
+	{/*1587.500*/   635.000,        0x036B0F01,     0x0001F402},
+	{/*1600.000*/   640.000,        0x00001001,     0x0001F402},
+	{/*1290.000*/   645.000,        0x01F44005,     0x00000002},
+	{/*1462.500*/   650.000,        0x02710E01,     0x0000FA02}
 };
 
 static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
@@ -232,16 +335,41 @@ static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
 static void icap_set_data(struct icap *icap, struct xcl_pr_region *hwicap);
 static uint64_t icap_get_data_nolock(struct platform_device *pdev, enum data_kind kind);
 static uint64_t icap_get_data(struct platform_device *pdev, enum data_kind kind);
+static const struct axlf_section_header *get_axlf_section_hdr(
+	struct icap *icap, const struct axlf *top, enum axlf_section_kind kind);
+
+static void icap_free_bins(struct icap *icap)
+{
+	if (icap->rp_bit) {
+		vfree(icap->rp_bit);
+		icap->rp_bit = NULL;
+		icap->rp_bit_len = 0;
+	}
+	if (icap->rp_fdt) {
+		vfree(icap->rp_fdt);
+		icap->rp_fdt = NULL;
+	}
+	if (icap->rp_mgmt_bin) {
+		vfree(icap->rp_mgmt_bin);
+		icap->rp_mgmt_bin = NULL;
+		icap->rp_mgmt_bin_len = 0;
+	}
+	if (icap->rp_sche_bin) {
+		vfree(icap->rp_sche_bin);
+		icap->rp_sche_bin = NULL;
+		icap->rp_sche_bin_len = 0;
+	}
+}
 
 static void icap_read_from_peer(struct platform_device *pdev)
 {
-	struct mailbox_subdev_peer subdev_peer = {0};
+	struct xcl_mailbox_subdev_peer subdev_peer = {0};
 	struct icap *icap = platform_get_drvdata(pdev);
 	struct xcl_pr_region xcl_hwicap = {0};
 	size_t resp_len = sizeof(struct xcl_pr_region);
-	size_t data_len = sizeof(struct mailbox_subdev_peer);
-	struct mailbox_req *mb_req = NULL;
-	size_t reqlen = sizeof(struct mailbox_req) + data_len;
+	size_t data_len = sizeof(struct xcl_mailbox_subdev_peer);
+	struct xcl_mailbox_req *mb_req = NULL;
+	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	ICAP_INFO(icap, "reading from peer");
@@ -251,9 +379,9 @@ static void icap_read_from_peer(struct platform_device *pdev)
 	if (!mb_req)
 		return;
 
-	mb_req->req = MAILBOX_REQ_PEER_DATA;
+	mb_req->req = XCL_MAILBOX_REQ_PEER_DATA;
 	subdev_peer.size = resp_len;
-	subdev_peer.kind = ICAP;
+	subdev_peer.kind = XCL_ICAP;
 	subdev_peer.entries = 1;
 
 	memcpy(mb_req->data, &subdev_peer, data_len);
@@ -707,6 +835,33 @@ static int icap_ocl_set_freqscaling(struct platform_device *pdev,
 	return err;
 }
 
+static void icap_get_ocl_frequency_max_min(struct icap *icap,
+	int idx, unsigned short *freq_max, unsigned short *freq_min)
+{
+	struct clock_freq_topology *topology = 0;
+	int num_clocks = 0;
+
+	BUG_ON(!mutex_is_locked(&icap->icap_lock));
+
+	if (!uuid_is_null(&icap->icap_bitstream_uuid)) {
+		topology = icap->icap_clock_freq_topology;
+		if (!topology)
+			return;
+
+		num_clocks = topology->m_count;
+
+		if (idx >= num_clocks)
+			return;
+
+		if (freq_max)
+			*freq_max = topology->m_clock_freq[idx].m_freq_Mhz;
+
+		if (freq_min)
+			*freq_min = frequency_table[0].ocl;
+	}
+
+}
+
 static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev, struct xclmgmt_ioc_freqscaling *freq_obj)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
@@ -714,21 +869,27 @@ static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev, str
 	int num_clocks = 0;
 	int i = 0;
 	int err = 0;
+	unsigned short freq_max;
 
 	mutex_lock(&icap->icap_lock);
 	if (!uuid_is_null(&icap->icap_bitstream_uuid)) {
 		topology = icap->icap_clock_freq_topology;
+		if (!topology) {
+			err = -EDOM;
+			goto done;
+		}
+
 		num_clocks = topology->m_count;
 		ICAP_INFO(icap, "Num clocks is %d", num_clocks);
 		for (i = 0; i < ARRAY_SIZE(freq_obj->ocl_target_freq); i++) {
+			icap_get_ocl_frequency_max_min(icap, i, &freq_max, NULL);
 			ICAP_INFO(icap, "requested frequency is : %d xclbin freq is: %d",
 				freq_obj->ocl_target_freq[i],
-				topology->m_clock_freq[i].m_freq_Mhz);
-			if (freq_obj->ocl_target_freq[i] >
-				topology->m_clock_freq[i].m_freq_Mhz) {
+				freq_max);
+			if (freq_obj->ocl_target_freq[i] > freq_max) {
 				ICAP_ERR(icap, "Unable to set frequency as requested frequency %d is greater than set by xclbin %d",
 					freq_obj->ocl_target_freq[i],
-					topology->m_clock_freq[i].m_freq_Mhz);
+					freq_max);
 				err = -EDOM;
 				goto done;
 			}
@@ -775,7 +936,7 @@ static int calibrate_mig(struct icap *icap)
 {
 	int i;
 
-	for (i = 0; i < 10 && !mig_calibration_done(icap); ++i)
+	for (i = 0; i < 20 && !mig_calibration_done(icap); ++i)
 		msleep(500);
 
 	if (!mig_calibration_done(icap)) {
@@ -802,21 +963,26 @@ static void icap_write_clock_freq(struct clock_freq *dst, struct clock_freq *src
 }
 
 
-static int icap_setup_clock_freq_topology(struct icap *icap,
-	const char *buffer, unsigned long length)
+static int icap_setup_clock_freq_topology(struct icap *icap, const struct axlf *xclbin)
 {
 	int i;
-	struct clock_freq_topology *topology = (struct clock_freq_topology *)buffer;
+	struct clock_freq_topology *topology;
 	struct clock_freq *clk_freq = NULL;
+	const struct axlf_section_header *hdr =
+		get_axlf_section_hdr(icap, xclbin, CLOCK_FREQ_TOPOLOGY);
 
-	if (length == 0)
+	/* Can't find CLOCK_FREQ_TOPOLOGY, just return*/
+	if (!hdr)
 		return 0;
 
 	free_clock_freq_topology(icap);
 
-	icap->icap_clock_freq_topology = vmalloc(length);
+	icap->icap_clock_freq_topology = vzalloc(hdr->m_sectionSize);
 	if (!icap->icap_clock_freq_topology)
 		return -ENOMEM;
+
+	topology = (struct clock_freq_topology *)(((char *)xclbin) + hdr->m_sectionOffset);
+
 	/*
 	 *  icap->icap_clock_freq_topology->m_clock_freq
 	 *  must follow the order
@@ -839,7 +1005,6 @@ static int icap_setup_clock_freq_topology(struct icap *icap,
 
 		icap_write_clock_freq(clk_freq, &topology->m_clock_freq[i]);
 	}
-	icap->icap_clock_freq_topology_length = length;
 
 	return 0;
 }
@@ -925,6 +1090,9 @@ static uint64_t icap_get_section_size(struct icap *icap, enum axlf_section_kind 
 		break;
 	case CONNECTIVITY:
 		size = sizeof_sect(icap->connectivity, m_connection);
+		break;
+	case CLOCK_FREQ_TOPOLOGY:
+		size = sizeof_sect(icap->icap_clock_freq_topology, m_clock_freq);
 		break;
 	default:
 		break;
@@ -1170,7 +1338,7 @@ static const struct axlf_section_header *get_axlf_section_hdr(
 				kind, hdr->m_sectionOffset, hdr->m_sectionSize);
 		}
 	} else {
-		ICAP_ERR(icap, "could not find section header %d", kind);
+		ICAP_WARN(icap, "could not find section header %d", kind);
 	}
 
 	return hdr;
@@ -1209,7 +1377,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	int slotid = PCI_SLOT(pcidev->devfn);
 	unsigned short deviceid = pcidev->device;
 	struct axlf *bin_obj_axlf;
-	const struct firmware *fw;
+	const struct firmware *fw, *sche_fw;
 	char fw_name[256];
 	XHwIcap_Bit_Header bit_header = { 0 };
 	long err = 0;
@@ -1223,7 +1391,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	const struct axlf_section_header *primaryHeader = 0;
 	const struct axlf_section_header *secondaryHeader = 0;
 	const struct axlf_section_header *mbHeader = 0;
-	bool load_mbs = false;
+	bool load_sched = false, load_mgmt = false;
 
 	/* Can only be done from mgmt pf. */
 	if (!ICAP_PRIVILEGED(icap))
@@ -1249,43 +1417,6 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 		return err;
 	}
 
-	/* Grab lock and touch hardware. */
-	mutex_lock(&icap->icap_lock);
-
-	if (xocl_mb_sched_on(xdev)) {
-		/* Try locating the microblaze binary. */
-		bin_obj_axlf = (struct axlf *)fw->data;
-		mbHeader = get_axlf_section_hdr(icap, bin_obj_axlf, SCHED_FIRMWARE);
-		if (mbHeader) {
-			mbBinaryOffset = mbHeader->m_sectionOffset;
-			mbBinaryLength = mbHeader->m_sectionSize;
-			length = bin_obj_axlf->m_header.m_length;
-			xocl_mb_load_sche_image(xdev, fw->data + mbBinaryOffset,
-				mbBinaryLength);
-			ICAP_INFO(icap, "stashed mb sche binary");
-			load_mbs = true;
-		}
-	}
-
-	if (xocl_mb_mgmt_on(xdev)) {
-		/* Try locating the board mgmt binary. */
-		bin_obj_axlf = (struct axlf *)fw->data;
-		mbHeader = get_axlf_section_hdr(icap, bin_obj_axlf, FIRMWARE);
-		if (mbHeader) {
-			mbBinaryOffset = mbHeader->m_sectionOffset;
-			mbBinaryLength = mbHeader->m_sectionSize;
-			length = bin_obj_axlf->m_header.m_length;
-			xocl_mb_load_mgmt_image(xdev, fw->data + mbBinaryOffset,
-				mbBinaryLength);
-			ICAP_INFO(icap, "stashed mb mgmt binary");
-			load_mbs = true;
-		}
-	}
-
-	if (load_mbs)
-		xocl_mb_reset(xdev);
-
-
 	if (memcmp(fw->data, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2)) != 0) {
 		ICAP_ERR(icap, "invalid firmware %s", fw_name);
 		err = -EINVAL;
@@ -1295,6 +1426,12 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	ICAP_INFO(icap, "boot_firmware in axlf format");
 	bin_obj_axlf = (struct axlf *)fw->data;
 	length = bin_obj_axlf->m_header.m_length;
+
+	if (length > fw->size) {
+		err = -EINVAL;
+		goto done;
+	}
+
 	/* Match the xclbin with the hardware. */
 	if (!xocl_verify_timestamp(xdev,
 		bin_obj_axlf->m_header.m_featureRomTimeStamp)) {
@@ -1311,6 +1448,57 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	}
 	ICAP_INFO(icap, "runtime version matched");
 
+	/* Grab lock and touch hardware. */
+	mutex_lock(&icap->icap_lock);
+
+	if (xocl_mb_sched_on(xdev)) {
+		/* Try locating the microblaze binary. */
+		if (XDEV(xdev)->priv.sched_bin) {
+			err = request_firmware(&sche_fw,
+				XDEV(xdev)->priv.sched_bin, &pcidev->dev);
+			if (!err)  {
+				xocl_mb_load_sche_image(xdev, sche_fw->data,
+					sche_fw->size);
+				ICAP_INFO(icap, "stashed shared mb sche bin, len %ld", sche_fw->size);
+				load_sched = true;
+				release_firmware(sche_fw);
+			}
+		}
+		if (!load_sched) {
+			mbHeader = get_axlf_section_hdr(icap, bin_obj_axlf,
+					SCHED_FIRMWARE);
+			if (mbHeader) {
+				mbBinaryOffset = mbHeader->m_sectionOffset;
+				mbBinaryLength = mbHeader->m_sectionSize;
+				xocl_mb_load_sche_image(xdev,
+					fw->data + mbBinaryOffset,
+					mbBinaryLength);
+				ICAP_INFO(icap,
+					"stashed mb sche binary, len %lld",
+					mbBinaryLength);
+				load_sched = true;
+				err = 0;
+			}
+		}
+	}
+
+	if (xocl_mb_mgmt_on(xdev)) {
+		/* Try locating the board mgmt binary. */
+		mbHeader = get_axlf_section_hdr(icap, bin_obj_axlf, FIRMWARE);
+		if (mbHeader) {
+			mbBinaryOffset = mbHeader->m_sectionOffset;
+			mbBinaryLength = mbHeader->m_sectionSize;
+			xocl_mb_load_mgmt_image(xdev, fw->data + mbBinaryOffset,
+				mbBinaryLength);
+			ICAP_INFO(icap, "stashed mb mgmt binary, len %lld",
+					mbBinaryLength);
+			load_mgmt = true;
+		}
+	}
+
+	if (load_mgmt || load_sched)
+		xocl_mb_reset(xdev);
+
 	primaryHeader = get_axlf_section_hdr(icap, bin_obj_axlf, BITSTREAM);
 	secondaryHeader = get_axlf_section_hdr(icap, bin_obj_axlf,
 		CLEARING_BITSTREAM);
@@ -1321,11 +1509,6 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	if (secondaryHeader) {
 		secondaryFirmwareOffset = secondaryHeader->m_sectionOffset;
 		secondaryFirmwareLength = secondaryHeader->m_sectionSize;
-	}
-
-	if (length > fw->size) {
-		err = -EINVAL;
-		goto done;
 	}
 
 	if ((primaryFirmwareOffset + primaryFirmwareLength) > length) {
@@ -1420,17 +1603,54 @@ static long icap_download_clear_bitstream(struct icap *icap)
 	return err;
 }
 
-// DECLARE_WAIT_QUEUE_HEAD(mytestwait);
+static int icap_post_download_rp(struct platform_device *pdev)
+{
+	struct icap *icap = platform_get_drvdata(pdev);
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	bool load_mbs = false;
+
+	if (xocl_mb_mgmt_on(xdev) && icap->rp_mgmt_bin) {
+		xocl_mb_load_mgmt_image(xdev, icap->rp_mgmt_bin,
+			icap->rp_mgmt_bin_len);
+		ICAP_INFO(icap, "stashed mb mgmt binary, len %ld",
+			icap->rp_mgmt_bin_len);
+		vfree(icap->rp_mgmt_bin);
+		icap->rp_mgmt_bin = NULL;
+		icap->rp_mgmt_bin_len = 0;
+		load_mbs = true;
+	}
+
+	if (xocl_mb_sched_on(xdev) && icap->rp_sche_bin) {
+		xocl_mb_load_sche_image(xdev, icap->rp_sche_bin,
+			icap->rp_sche_bin_len);
+		ICAP_INFO(icap, "stashed mb sche binary, len %ld",
+			icap->rp_sche_bin_len);
+		vfree(icap->rp_sche_bin);
+		icap->rp_sche_bin = NULL;
+		icap->rp_sche_bin_len =0;
+		load_mbs = true;
+	}
+
+	if (load_mbs)
+		xocl_mb_reset(xdev);
+
+	return 0;
+}
 
 static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct mailbox_req mbreq = { 0 };
+	struct xcl_mailbox_req mbreq = { 0 };
 	int ret = 0;
 
-	mbreq.req = MAILBOX_REQ_CHG_SHELL;
+	mbreq.req = XCL_MAILBOX_REQ_CHG_SHELL;
 	mutex_lock(&icap->icap_lock);
+	if (flag == RP_DOWNLOAD_CLEAR) {
+		xocl_xdev_info(xdev, "Clear firmware bins");
+		icap_free_bins(icap);
+		goto end;
+	}
 	if (!icap->rp_bit || !icap->rp_fdt) {
 		xocl_xdev_err(xdev, "Invalid reprogram request %p.%p",
 			icap->rp_bit, icap->rp_fdt);
@@ -1454,7 +1674,7 @@ static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 		goto end;
 	else if (flag == RP_DOWNLOAD_NORMAL) {
 		(void) xocl_peer_notify(xocl_get_xdev(icap->icap_pdev), &mbreq,
-				sizeof(struct mailbox_req));
+				sizeof(struct xcl_mailbox_req));
 		ICAP_INFO(icap, "Notified userpf to program rp");
 		goto end;
 	}
@@ -1509,8 +1729,7 @@ end:
 	return ret;
 }
 
-static long axlf_set_freqscaling(struct icap *icap,
-	const char *clk_buf, unsigned long length)
+static long axlf_set_freqscaling(struct icap *icap)
 {
 	struct clock_freq_topology *freqs = NULL;
 	int clock_type_count = 0;
@@ -1523,7 +1742,10 @@ static long axlf_set_freqscaling(struct icap *icap,
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
-	freqs = (struct clock_freq_topology *)clk_buf;
+	if (!icap->icap_clock_freq_topology)
+		return 0;
+
+	freqs = icap->icap_clock_freq_topology;
 	if (freqs->m_count > 4) {
 		ICAP_ERR(icap, "More than 4 clocks found in clock topology");
 		return -EDOM;
@@ -1647,41 +1869,6 @@ free_buffers:
 	kfree(bit_header.PartName);
 	kfree(bit_header.Date);
 	kfree(bit_header.Time);
-	return err;
-}
-
-
-static int __icap_peer_lock(struct platform_device *pdev,
-	const xuid_t *id, bool lock)
-{
-	int err = 0;
-	int resp = 0;
-	size_t resplen = sizeof(resp);
-	struct mailbox_req_bitstream_lock bitstream_lock = {0};
-	size_t data_len = sizeof(struct mailbox_req_bitstream_lock);
-	struct mailbox_req *mb_req = NULL;
-	size_t reqlen = sizeof(struct mailbox_req) + data_len;
-	xdev_handle_t xdev = xocl_get_xdev(pdev);
-
-	mb_req = vmalloc(reqlen);
-	if (!mb_req)
-		return -ENOMEM;
-
-	mb_req->req = lock ?
-		MAILBOX_REQ_LOCK_BITSTREAM : MAILBOX_REQ_UNLOCK_BITSTREAM;
-	uuid_copy((xuid_t *)bitstream_lock.uuid, id);
-	memcpy(mb_req->data, &bitstream_lock, data_len);
-	err = xocl_peer_request(xdev,
-		mb_req, reqlen, &resp, &resplen, NULL, NULL, 0);
-	if (err) {
-		/* ignore error if aws */
-		if (xocl_is_aws(xdev))
-			err = 0;
-	} else {
-		err = resp;
-	}
-
-	vfree(mb_req);
 	return err;
 }
 
@@ -1901,10 +2088,8 @@ static int icap_create_subdev(struct platform_device *pdev, struct axlf *xclbin)
 		}
 	}
 done:
-	if (err) {
-		vfree(ip_layout);
-		vfree(mem_topo);
-	}
+	vfree(ip_layout);
+	vfree(mem_topo);
 	return err;
 }
 
@@ -1936,12 +2121,12 @@ static int icap_verify_bitstream_axlf(struct platform_device *pdev,
 		goto done;
 
 
-	/* Skip dna validation in userpf*/ 
+	/* Skip dna validation in userpf*/
 	if (!ICAP_PRIVILEGED(icap))
 		goto done;
 
 	/* capability BIT8 as DRM IP enable, BIT0 as AXI mode
- 	 * We only check if anyone of them is set.
+	 * We only check if anyone of them is set.
 	 */
 	capability = ((xocl_dna_capability(xdev) & 0x101) != 0);
 
@@ -1999,11 +2184,11 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	uint64_t ch_state = 0;
 	uint32_t data_len = 0;
-	struct mailbox_req *mb_req = NULL;
+	struct xcl_mailbox_req *mb_req = NULL;
 	int msgerr = -ETIMEDOUT;
 	size_t resplen = sizeof(msgerr);
 	xuid_t *peer_uuid = NULL;
-	struct mailbox_bitstream_kaddr mb_addr = {0};
+	struct xcl_mailbox_bitstream_kaddr mb_addr = {0};
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
@@ -2015,27 +2200,27 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	}
 
 	xocl_mailbox_get(xdev, CHAN_STATE, &ch_state);
-	if ((ch_state & MB_PEER_SAME_DOMAIN) != 0) {
-		data_len = sizeof(struct mailbox_req) +
-			sizeof(struct mailbox_bitstream_kaddr);
+	if ((ch_state & XCL_MB_PEER_SAME_DOMAIN) != 0) {
+		data_len = sizeof(struct xcl_mailbox_req) +
+			sizeof(struct xcl_mailbox_bitstream_kaddr);
 		mb_req = vmalloc(data_len);
 		if (!mb_req) {
 			ICAP_ERR(icap, "can't create mb_req\n");
 			return -ENOMEM;
 		}
-		mb_req->req = MAILBOX_REQ_LOAD_XCLBIN_KADDR;
+		mb_req->req = XCL_MAILBOX_REQ_LOAD_XCLBIN_KADDR;
 		mb_addr.addr = (uint64_t)xclbin;
 		memcpy(mb_req->data, &mb_addr,
-			sizeof(struct mailbox_bitstream_kaddr));
+			sizeof(struct xcl_mailbox_bitstream_kaddr));
 	} else {
-		data_len = sizeof(struct mailbox_req) +
+		data_len = sizeof(struct xcl_mailbox_req) +
 			xclbin->m_header.m_length;
 		mb_req = vmalloc(data_len);
 		if (!mb_req) {
 			ICAP_ERR(icap, "can't create mb_req\n");
 			return -ENOMEM;
 		}
-		mb_req->req = MAILBOX_REQ_LOAD_XCLBIN;
+		mb_req->req = XCL_MAILBOX_REQ_LOAD_XCLBIN;
 		memcpy(mb_req->data, xclbin, xclbin->m_header.m_length);
 	}
 
@@ -2045,8 +2230,7 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 		xclbin->m_header.m_length / (2048 * 1024));
 	vfree(mb_req);
 
-	/* Ignore failure if it's an AWS device */
-	if (msgerr != 0 && !xocl_is_aws(xdev)) {
+	if (msgerr != 0) {
 		ICAP_ERR(icap, "peer xclbin download err: %d", msgerr);
 		return msgerr;
 	}
@@ -2091,13 +2275,10 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	const struct axlf_section_header *primaryHeader = NULL;
 	const struct axlf_section_header *clearHeader = NULL;
-	const struct axlf_section_header *clockHeader = NULL;
 	uint64_t primaryFirmwareOffset = 0;
 	uint64_t primaryFirmwareLength = 0;
 	uint64_t clearFirmwareOffset = 0;
 	uint64_t clearFirmwareLength = 0;
-	uint64_t clockFirmwareOffset = 0;
-	uint64_t clockFirmwareLength = 0;
 	char *buffer = NULL;
 	long err = 0;
 
@@ -2124,23 +2305,14 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 		return -EKEYREJECTED;
 	}
 
-	/* Set clock frequency. */
-	clockHeader = get_axlf_section_hdr(icap, xclbin, CLOCK_FREQ_TOPOLOGY);
-	if (clockHeader != NULL && !XOCL_DSA_IS_SMARTN(xdev)) {
-		clockFirmwareOffset = clockHeader->m_sectionOffset;
-		clockFirmwareLength = clockHeader->m_sectionSize;
-
-		buffer = (char *)xclbin;
-		buffer += clockFirmwareOffset;
-		err = axlf_set_freqscaling(icap, buffer, clockFirmwareLength);
+	if (!XOCL_DSA_IS_SMARTN(xdev)) {
+		err = icap_setup_clock_freq_topology(icap, xclbin);
 		if (err)
 			return err;
-		err = icap_setup_clock_freq_topology(icap, buffer,
-			clockFirmwareLength);
+		err = axlf_set_freqscaling(icap);
 		if (err)
 			return err;
 	}
-
 	/* Download bitstream */
 	primaryHeader = get_axlf_section_hdr(icap, xclbin, BITSTREAM);
 	if (primaryHeader == NULL)
@@ -2196,7 +2368,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		}
 		err = xocl_fdt_check_uuids(xdev,
 				(const void *)XDEV(xdev)->fdt_blob,
-				(const void *)((char*)xclbin +
+				(const void *)((char *)xclbin +
 				dtbHeader->m_sectionOffset));
 		if (err) {
 			ICAP_ERR(icap, "interface uuids do not match");
@@ -2248,6 +2420,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		icap_parse_bitstream_axlf_section(pdev, xclbin, CONNECTIVITY);
 		icap_parse_bitstream_axlf_section(pdev, xclbin,
 			DEBUG_IP_LAYOUT);
+		icap_setup_clock_freq_topology(icap, xclbin);
 		/* not really doing verification, but just create subdevs */
 		(void) icap_verify_bitstream_axlf(pdev, xclbin);
 	}
@@ -2344,27 +2517,17 @@ static int icap_lock_bitstream(struct platform_device *pdev, const xuid_t *id)
 		return -EBUSY;
 	}
 
-	if (icap->icap_bitstream_ref == 0 && !ICAP_PRIVILEGED(icap)) {
-		int err = __icap_peer_lock(pdev, id, true);
-		if (err < 0) {
-			ICAP_ERR(icap, "can't lock bitstream %pUb on peer: %d",
-				id, err);
-			mutex_unlock(&icap->icap_lock);
-			return err;
-		}
-	}
-
 	ref = icap->icap_bitstream_ref;
 	icap->icap_bitstream_ref++;
 	ICAP_INFO(icap, "bitstream %pUb locked, ref=%d", id,
 		icap->icap_bitstream_ref);
 
-	mutex_unlock(&icap->icap_lock);
-
 	if (ref == 0) {
 		/* reset on first reference */
-		xocl_exec_reset(xocl_get_xdev(pdev));
+		xocl_exec_reset(xocl_get_xdev(pdev), id);
 	}
+
+	mutex_unlock(&icap->icap_lock);
 	return 0;
 }
 
@@ -2394,12 +2557,11 @@ static int icap_unlock_bitstream(struct platform_device *pdev, const xuid_t *id)
 		return err;
 	}
 
-	if (icap->icap_bitstream_ref == 0 && !ICAP_PRIVILEGED(icap)) {
-		(void) __icap_peer_lock(pdev, id, false);
+	if (icap->icap_bitstream_ref == 0 && !ICAP_PRIVILEGED(icap))
 		(void) xocl_exec_stop(xocl_get_xdev(pdev));
-	}
 
 	mutex_unlock(&icap->icap_lock);
+
 	return 0;
 }
 
@@ -2427,13 +2589,17 @@ static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
 	case CONNECTIVITY:
 		target = (void **)&icap->connectivity;
 		break;
-	default:
+	case CLOCK_FREQ_TOPOLOGY:
+		target = (void **)&icap->icap_clock_freq_topology;
 		break;
+	default:
+		return -EINVAL;
 	}
 	if (target) {
 		vfree(*target);
 		*target = NULL;
 	}
+
 	err = alloc_and_get_axlf_section(icap, xclbin, kind,
 		target, &section_size);
 	if (err != 0)
@@ -2443,6 +2609,7 @@ static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
 		err = -EINVAL;
 		goto done;
 	}
+
 done:
 	if (err) {
 		vfree(*target);
@@ -2636,6 +2803,7 @@ static struct xocl_icap_funcs icap_ops = {
 	.download_boot_firmware = icap_download_boot_firmware,
 	.download_bitstream_axlf = icap_download_bitstream_axlf,
 	.download_rp = icap_download_rp,
+	.post_download_rp = icap_post_download_rp,
 	.ocl_set_freq = icap_ocl_set_freqscaling,
 	.ocl_get_freq = icap_ocl_get_freqscaling,
 	.ocl_update_clock_freq_topology = icap_ocl_update_clock_freq_topology,
@@ -2643,25 +2811,6 @@ static struct xocl_icap_funcs icap_ops = {
 	.ocl_unlock_bitstream = icap_unlock_bitstream,
 	.get_data = icap_get_data,
 };
-
-static ssize_t clock_freq_topology_show(struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
-	ssize_t cnt = 0;
-
-	mutex_lock(&icap->icap_lock);
-	if (ICAP_PRIVILEGED(icap)) {
-		memcpy(buf, icap->icap_clock_freq_topology, icap->icap_clock_freq_topology_length);
-		cnt = icap->icap_clock_freq_topology_length;
-	}
-	mutex_unlock(&icap->icap_lock);
-
-	return cnt;
-
-}
-
-static DEVICE_ATTR_RO(clock_freq_topology);
 
 static ssize_t clock_freqs_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -2693,6 +2842,49 @@ static ssize_t clock_freqs_show(struct device *dev,
 	return cnt;
 }
 static DEVICE_ATTR_RO(clock_freqs);
+
+static ssize_t clock_freqs_max_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
+	ssize_t cnt = 0;
+	int i;
+	unsigned short freq;
+
+	mutex_lock(&icap->icap_lock);
+
+	for (i = 0; i < ICAP_MAX_NUM_CLOCKS; i++) {
+		freq = 0;
+		icap_get_ocl_frequency_max_min(icap, i, &freq, NULL);
+		cnt += sprintf(buf + cnt, "%d\n", freq);
+	}
+
+	mutex_unlock(&icap->icap_lock);
+
+	return cnt;
+}
+static DEVICE_ATTR_RO(clock_freqs_max);
+
+static ssize_t clock_freqs_min_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
+	ssize_t cnt = 0;
+	int i;
+	unsigned short freq;
+
+	mutex_lock(&icap->icap_lock);
+
+	for (i = 0; i < ICAP_MAX_NUM_CLOCKS; i++) {
+		freq = 0;
+		icap_get_ocl_frequency_max_min(icap, i, NULL, &freq);
+		cnt += sprintf(buf + cnt, "%d\n", freq);
+	}
+	mutex_unlock(&icap->icap_lock);
+
+	return cnt;
+}
+static DEVICE_ATTR_RO(clock_freqs_min);
 
 static ssize_t idcode_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -2827,13 +3019,18 @@ static ssize_t sec_level_store(struct device *dev,
 	mutex_lock(&icap->icap_lock);
 
 	if (ICAP_PRIVILEGED(icap)) {
-		if (icap->sec_level != ICAP_SEC_SYSTEM) {
+#if defined(EFI_SECURE_BOOT) 
+		if (!efi_enabled(EFI_SECURE_BOOT)) {
 			icap->sec_level = val;
 		} else {
 			ICAP_ERR(icap,
-				"can't lower security level from system level");
-			ret = -EINVAL;
+				"security level is fixed in secure boot");
+			ret = -EROFS;
 		}
+#else
+		icap->sec_level = val;
+#endif
+
 #ifdef	KEY_DEBUG
 		icap_key_test(icap);
 #endif
@@ -2847,11 +3044,12 @@ static ssize_t sec_level_store(struct device *dev,
 static DEVICE_ATTR_RW(sec_level);
 
 static struct attribute *icap_attrs[] = {
-	&dev_attr_clock_freq_topology.attr,
 	&dev_attr_clock_freqs.attr,
 	&dev_attr_idcode.attr,
 	&dev_attr_cache_expire_secs.attr,
 	&dev_attr_sec_level.attr,
+	&dev_attr_clock_freqs_max.attr,
+	&dev_attr_clock_freqs_min.attr,
 	NULL,
 };
 
@@ -3019,6 +3217,47 @@ static struct bin_attribute mem_topology_attr = {
 	.size = 0
 };
 
+/* -Mem_topology-- */
+static ssize_t icap_read_clock_freqs(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+{
+	struct icap *icap;
+	u32 nread = 0;
+	size_t size = 0;
+
+	icap = (struct icap *)dev_get_drvdata(container_of(kobj, struct device, kobj));
+
+	if (!icap || !icap->icap_clock_freq_topology)
+		return 0;
+
+	mutex_lock(&icap->icap_lock);
+
+	size = sizeof_sect(icap->icap_clock_freq_topology, m_clock_freq);
+	if (offset >= size)
+		goto unlock;
+
+	if (count < size - offset)
+		nread = count;
+	else
+		nread = size - offset;
+
+	memcpy(buffer, ((char *)icap->icap_clock_freq_topology) + offset, nread);
+unlock:
+	mutex_unlock(&icap->icap_lock);
+	return nread;
+}
+
+
+static struct bin_attribute clock_freq_topology_attr = {
+	.attr = {
+		.name = "clock_freq_topology",
+		.mode = 0444
+	},
+	.read = icap_read_clock_freqs,
+	.write = NULL,
+	.size = 0
+};
+
 static ssize_t rp_bit_output(struct file *filp, struct kobject *kobj,
 		struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
@@ -3059,6 +3298,7 @@ static struct bin_attribute *icap_bin_attrs[] = {
 	&connectivity_attr,
 	&mem_topology_attr,
 	&rp_bit_attr,
+	&clock_freq_topology_attr,
 	NULL,
 };
 
@@ -3105,10 +3345,7 @@ static int icap_remove(struct platform_device *pdev)
 
 	BUG_ON(icap == NULL);
 
-	if (icap->rp_bit)
-		vfree(icap->rp_bit);
-	if (icap->rp_fdt)
-		vfree(icap->rp_fdt);
+	icap_free_bins(icap);
 
 	icap_release_keyring();
 
@@ -3232,6 +3469,7 @@ failed:
 	return ret;
 }
 
+#if PF == MGMTPF
 static int icap_open(struct inode *inode, struct file *file)
 {
 	struct icap *icap = NULL;
@@ -3256,6 +3494,7 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		size_t data_len, loff_t *off)
 {
 	struct icap *icap = filp->private_data;
+	struct axlf axlf_header = { {0} };
 	struct axlf *axlf = NULL;
 	const struct axlf_section_header *section;
 	void *header;
@@ -3275,22 +3514,28 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 			ret = -ENOMEM;
 			goto failed;
 		}
-		axlf = vmalloc(sizeof(struct axlf));
-		if (!axlf) {
-			ret = -ENOMEM;
-			goto failed;
-		}
 
-		ret = copy_from_user(axlf, data, sizeof(struct axlf));
+		ret = copy_from_user(&axlf_header, data, sizeof(struct axlf));
 		if (ret) {
-			vfree(axlf);
-			mutex_unlock(&icap->icap_lock);
 			ICAP_ERR(icap, "copy header buffer failed %ld", ret);
 			goto failed;
 		}
 
-		icap->rp_bit_len = axlf->m_header.m_length;
-		vfree(axlf);
+		if (memcmp(axlf_header.m_magic, ICAP_XCLBIN_V2,
+			sizeof(ICAP_XCLBIN_V2))) {
+			ICAP_ERR(icap, "Incorrect magic string");
+			ret = -EINVAL;
+			goto failed;
+		}
+
+		if (!axlf_header.m_header.m_length ||
+			axlf_header.m_header.m_length >= GB(1)) {
+			ICAP_ERR(icap, "Invalid xclbin size");
+			ret = -EINVAL;
+			goto failed;			
+		}
+
+		icap->rp_bit_len = axlf_header.m_header.m_length;
 
 		icap->rp_bit = vmalloc(icap->rp_bit_len);
 		if (!icap->rp_bit) {
@@ -3301,7 +3546,6 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		ret = copy_from_user(icap->rp_bit, data, data_len);
 		if (ret) {
 			ICAP_ERR(icap, "copy bit file failed %ld", ret);
-			mutex_unlock(&icap->icap_lock);
 			goto failed;
 		}
 		len = data_len;
@@ -3400,6 +3644,34 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 	}
 
 	memcpy(icap->rp_bit, header, icap->rp_bit_len);
+
+	/* Try locating the board mgmt binary. */
+	section = get_axlf_section_hdr(icap, axlf, FIRMWARE);
+	if (section) {
+		header = (char *)axlf + section->m_sectionOffset;
+		icap->rp_mgmt_bin = vmalloc(section->m_sectionSize);
+		if (!icap->rp_mgmt_bin) {
+			ICAP_ERR(icap, "Not enough memory for cmc bin");
+			ret = -ENOMEM;
+			goto failed;
+		}
+		memcpy(icap->rp_mgmt_bin, header, section->m_sectionSize);
+		icap->rp_mgmt_bin_len = section->m_sectionSize;
+	}
+
+	section = get_axlf_section_hdr(icap, axlf, SCHED_FIRMWARE);
+	if (section) {
+		header = (char *)axlf + section->m_sectionOffset;
+		icap->rp_sche_bin = vmalloc(section->m_sectionSize);
+		if (!icap->rp_sche_bin) {
+			ICAP_ERR(icap, "Not enough memory for cmc bin");
+			ret = -ENOMEM;
+			goto failed;
+		}
+		memcpy(icap->rp_sche_bin, header, section->m_sectionSize);
+		icap->rp_sche_bin_len = section->m_sectionSize;
+	}
+
 	vfree(axlf);
 
 	ICAP_INFO(icap, "write axlf to device successfully. len %ld", len);
@@ -3409,19 +3681,9 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 	return len;
 
 failed:
+	icap_free_bins(icap);
 
-	mutex_lock(&icap->icap_lock);
-	if (icap->rp_bit) {
-		vfree(icap->rp_bit);
-		icap->rp_bit = NULL;
-		icap->rp_bit_len = 0;
-	}
-	if (icap->rp_fdt) {
-		vfree(icap->rp_fdt);
-		icap->rp_fdt = NULL;
-	}
-	if (axlf)
-		vfree(axlf);
+	vfree(axlf);
 	mutex_unlock(&icap->icap_lock);
 
 	return ret;
@@ -3433,7 +3695,6 @@ static const struct file_operations icap_fops = {
 	.write = icap_write_rp,
 };
 
-#if PF == MGMTPF
 struct xocl_drv_private icap_drv_priv = {
 	.ops = &icap_ops,
 	.fops = &icap_fops,

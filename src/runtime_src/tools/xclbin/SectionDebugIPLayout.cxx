@@ -57,6 +57,8 @@ SectionDebugIPLayout::getDebugIPTypeStr(enum DEBUG_IP_TYPE _debugIpType) const {
       return "AXI_STREAM_PROTOCOL_CHECKER";
     case TRACE_S2MM:
       return "TRACE_S2MM";
+    case TRACE_S2MM_FULL:
+      return "TRACE_S2MM_FULL";
     case AXI_DMA:
       return "AXI_DMA";
   }
@@ -89,6 +91,9 @@ SectionDebugIPLayout::getDebugIPType(std::string& _sDebugIPType) const {
 
   if (_sDebugIPType == "TRACE_S2MM")
     return TRACE_S2MM;
+
+  if (_sDebugIPType == "TRACE_S2MM_FULL")
+    return TRACE_S2MM_FULL;
 
   if (_sDebugIPType == "AXI_DMA")
     return AXI_DMA;
@@ -174,7 +179,7 @@ SectionDebugIPLayout::marshalToJSON(char* _pDataSection,
     debug_ip_data.put("m_base_address", XUtil::format("0x%lx",  pHdr->m_debug_ip_data[index].m_base_address).c_str());
     debug_ip_data.put("m_name", XUtil::format("%s", pHdr->m_debug_ip_data[index].m_name).c_str());
 
-    m_debug_ip_data.add_child("debug_ip_data", debug_ip_data);
+    m_debug_ip_data.push_back(std::make_pair("", debug_ip_data));   // Used to make an array of objects
   }
 
   debug_ip_layout.add_child("m_debug_ip_data", m_debug_ip_data);

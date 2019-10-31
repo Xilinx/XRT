@@ -180,11 +180,11 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 
 	ep_name = pdev->bus->name;
 #if defined(__PPC64__)
-	mgmt_err(lro, "Ignore reset operation for card %d in slot %s:%02x:%1x",
+	mgmt_info(lro, "Ignore reset operation for card %d in slot %s:%02x:%1x",
 		lro->instance, ep_name,
 		PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
 #else
-	mgmt_err(lro, "Trying to reset card %d in slot %s:%02x:%1x",
+	mgmt_info(lro, "Trying to reset card %d in slot %s:%02x:%1x",
 		lro->instance, ep_name,
 		PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
 
@@ -200,11 +200,13 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 	 * save state and issue PCIe secondary bus reset
 	 */
 	if (!XOCL_DSA_PCI_RESET_OFF(lro)) {
+		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_ICAP);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_MAILBOX);
 		xclmgmt_reset_pci(lro);
 		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_MAILBOX);
+		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_ICAP);
 	} else {
-		mgmt_err(lro, "PCI Hot reset is not supported on this board.");
+		mgmt_warn(lro, "PCI Hot reset is not supported on this board.");
 	}
 
 	/* Workaround for some DSAs. Flush axilite busses */
@@ -215,10 +217,11 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 	 * Check firewall status. Status should be 0 (cleared)
 	 * Otherwise issue message that a warm reboot is required.
 	 */
-	do {
+	msleep(20);
+	while (retry++ < XCLMGMT_RESET_MAX_RETRY && xocl_af_check(lro, NULL)) {
+		xocl_af_clear(lro);
 		msleep(20);
-	} while (retry++ < XCLMGMT_RESET_MAX_RETRY &&
-		xocl_af_check(lro, NULL));
+	}
 
 	if (retry >= XCLMGMT_RESET_MAX_RETRY) {
 		mgmt_err(lro, "Board is not able to recover by PCI Hot reset. "
@@ -381,6 +384,7 @@ void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	msleep(100);
 	pci_bctl &= ~PCI_BRIDGE_CTL_BUS_RESET;
 	pci_write_config_byte(bus->self, PCI_BRIDGE_CONTROL, pci_bctl);
+	ssleep(1);
 
 	for (i = 0; i < 5000; i++) {
 		pci_read_config_word(pdev, PCI_COMMAND, &pci_cmd);
@@ -403,14 +407,17 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 	if (!lro->core.fdt_blob)
 		return 0;
 
-	len = fdt_totalsize(lro->core.fdt_blob) + sizeof(rom_header)
-	       + 1024;
+	len = fdt_totalsize(lro->core.fdt_blob) + sizeof(rom_header) + 1024;
+	/* assuming device tree is no bigger than 100MB */
+	if (len > 100 * 1024 * 1024)
+		return -EINVAL;
+
 	if (lro->userpf_blob)
 		vfree(lro->userpf_blob);
 
 	lro->userpf_blob = vzalloc(len);
 	if (!lro->userpf_blob)
-			return -ENOMEM;
+		return -ENOMEM;
 
 	ret = fdt_create_empty_tree(lro->userpf_blob, len);
 	if (ret) {
@@ -435,7 +442,7 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 	}
 
 	ret = xocl_fdt_add_pair(lro, lro->userpf_blob, "vrom", &rom_header,
-			sizeof(rom_header));
+		sizeof(rom_header));
 	if (ret) {
 		mgmt_err(lro, "add vrom failed %d", ret);
 		goto failed;
@@ -461,8 +468,21 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 	char *blob = NULL;
 	int len;
 
+	if (!lro->core.fdt_blob && xocl_get_timestamp(lro) == 0)
+		xclmgmt_load_fdt(lro);
+
 	blob = lro->core.fdt_blob;
+	if (!blob) {
+		mgmt_err(lro, "Can not get dtb");
+		ret = -EINVAL;
+		goto failed;
+	}
 	len = fdt_totalsize(lro->bld_blob);
+	if (len > 100 * 1024 * 1024) {
+		mgmt_err(lro, "dtb is too big");
+		ret = -EINVAL;
+		goto failed;
+	}
 	lro->core.fdt_blob = vmalloc(len);
 	if (!lro->core.fdt_blob) {
 		ret = -ENOMEM;
@@ -486,6 +506,8 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 
 	xocl_thread_stop(lro);
 
+	xocl_mb_stop(lro);
+
 	ret = xocl_subdev_destroy_prp(lro);
 	if (ret) {
 		mgmt_err(lro, "destroy prp failed %d", ret);
@@ -504,6 +526,8 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 		mgmt_err(lro, "failed to create prp %d", ret);
 		goto failed;
 	}
+
+	xocl_icap_post_download_rp(lro);
 
 	xocl_thread_start(lro);
 
@@ -524,6 +548,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	char					fw_name[256];
 	int					ret;
 
+	mutex_lock(&lro->busy_mutex);
         ret = xocl_rom_find_firmware(lro, fw_name, sizeof(fw_name),
 		lro->core.pdev->device, &fw);
 	if (ret)
@@ -578,9 +603,17 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 
 	xclmgmt_update_userpf_blob(lro);
 
+	xocl_thread_start(lro);
+
+	/* Launch the mailbox server. */
+	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
+
+	lro->ready = true;
+
 failed:
 	if (fw)
 		release_firmware(fw);
+	mutex_unlock(&lro->busy_mutex);
 
 	return ret;
 }

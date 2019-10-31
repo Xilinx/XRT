@@ -51,7 +51,7 @@ public:
      * During the construction, the exclusive access to this
      * IP will be requested, otherwise exception will be thrown.
      */
-    TraceFifoFull(void* handle /** < [in] the xrt hal device handle */, 
+    TraceFifoFull(Device* handle /** < [in] the xrt or hal device handle */, 
                 int index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data = nullptr);
 
     /**
@@ -79,6 +79,9 @@ private:
     uint32_t readTraceForEdgeDevice(xclTraceResultsVector& traceVector, uint32_t nSamples);
 #endif
     void processTraceData(xclTraceResultsVector& traceVector, uint32_t numSamples, void* data, uint32_t wordsPerSample);
+
+    bool mclockTrainingdone = false;
+    uint64_t mfirstTimestamp = 0;
 };
 
 } //  xdp

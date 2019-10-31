@@ -39,7 +39,8 @@ class RunSummary {
     enum FileType {
       FT_UNKNOWN,
       FT_PROFILE,
-      FT_TRACE
+      FT_TRACE,
+      FT_WDB
     };
 
   public:
@@ -50,7 +51,7 @@ class RunSummary {
     void addFile(const std::string & fileName, FileType eFileType);
     void setProfileTree(std::shared_ptr<boost::property_tree::ptree> tree);
 
-    void extractSystemProfileMetadata(const axlf * pXclbinImage, const std::string & xclbinBaseName);
+    void extractSystemProfileMetadata(const axlf * pXclbinImage, const std::string & xclbinContainerName = "");
     void writeContent();
 
   protected:
@@ -59,7 +60,7 @@ class RunSummary {
   private:
     std::vector< std::pair< std::string, FileType> > mFiles;
     std::string mSystemMetadata;
-    std::string mXclbinBaseName;
+    std::string mXclbinContainerName;
     std::shared_ptr<boost::property_tree::ptree> mProfileTree;
 
   private:

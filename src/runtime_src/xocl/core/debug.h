@@ -17,6 +17,7 @@
 #ifndef xocl_util_debug_h_
 #define xocl_util_debug_h_
 
+#include "xocl/config.h"
 #include "xrt/util/debug.h"
 
 #include <CL/cl.h>
@@ -26,6 +27,7 @@
 namespace xocl {
 
 #ifdef VERBOSE
+XRT_XOCL_EXPORT
 void
 logf(const char* format,...);
 #endif
@@ -52,16 +54,16 @@ logf(const char* format,...);
 # define XOCL_LOG(...)
 #endif
 
-namespace xocl { 
+namespace xocl {
 
 class event;
 
 namespace debug {
 
-void 
+void
 time_log(event* ev, cl_int status, cl_ulong ns);
 
-void 
+void
 time_log(event* ev, cl_int status);
 
 void
@@ -74,5 +76,3 @@ add_command_type(event* event, cl_uint ct);
 } // xocl
 
 #endif
-
-

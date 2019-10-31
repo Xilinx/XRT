@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /** * Compute unit execution, interrupt management and
  * client context core data structures.
  *
@@ -24,17 +25,14 @@
 #include <linux/init_task.h>
 #include <linux/list.h>
 #include <linux/wait.h>
-#include "ert.h"
 #include "zocl_drv.h"
+#include "zocl_cu.h"
+#include "ert.h"
 
 #define MAX_SLOTS 128
 #define MAX_U32_SLOT_MASKS (((MAX_SLOTS-1)>>5) + 1)
 /* MAX_CU_NUM are defined in zocl_util.h */
 #define MAX_U32_CU_MASKS (((MAX_CU_NUM-1)>>5) + 1)
-#define U32_MASK 0xFFFFFFFF
-
-#define ZOCL_KDS_MASK		(~0xFF)
-#define ZOCL_CU_FREE_RUNNING	(U32_MASK & ZOCL_KDS_MASK)
 
 /* Timer thread wake up interval in Millisecond */
 #define	ZOCL_CU_TIMER_INTERVAL		(500)
@@ -42,13 +40,12 @@
 /* Reset timer interval in Microsecond */
 #define	ZOCL_CU_RESET_TIMER_INTERVAL	(1000)
 
-/**
- * Address constants per spec
+/*
+ * For zocl cu version 1. The done counter will have risk to overflow
+ * if more than 31 commands done but kds still not able to read done counter.
+ * TBD. This is related to the hardware implementation.
  */
-#define WORD_SIZE                     4          /* 4 bytes */
-#define CQ_SIZE                       0x10000    /* 64K */
-#define CQ_BASE_ADDR                  0x190000
-#define CSR_ADDR                      0x180000
+#define MAX_PENDING_CMD         31
 
 /**
  * Timestamp only use in set_cmd_ext_timestamp()
@@ -63,19 +60,32 @@ enum zocl_cu_type {
 	ZOCL_SOFT_CU,
 };
 
+enum zocl_exec_status {
+	ZOCL_EXEC_NORMAL = 0,
+	ZOCL_EXEC_STOP,
+	ZOCL_EXEC_FLUSH,
+};
+
 struct sched_dev;
 struct sched_ops;
 
+/*
+ * struct sched_client_ctx: Manage user space client attached to device
+ *
+ * @link: Client context is added to list in device
+ * @trigger:
+ * @lock:
+ */
 struct sched_client_ctx {
-	struct list_head    link;
-	atomic_t            trigger;
-	struct mutex        lock;
+	struct list_head   link;
+	atomic_t           trigger;
+	atomic_t           outstanding_execs;
+	struct mutex       lock;
+	int		   num_cus;
+	struct pid	   *pid;
+	unsigned int	   abort;
 };
-
-struct zocl_cu {
-	uint32_t            zc_timeout;
-	uint32_t            zc_reset_timeout;
-};
+#define CLIENT_NUM_CU_CTX(client) ((client)->num_cus)
 
 /**
  * struct sched_exec_core: Core data structure for command execution on a device
@@ -97,7 +107,6 @@ struct zocl_cu {
  * @cu_status: Status (busy(1)/free(0)) of CUs. Unused in ERT mode.
  * @num_cu_masks: Number of CU masks used (computed from @num_cus)
  * @cu_addr_phy: Physical address of CUs.
- * @cu_usage: How many times the CUs are excecuted.
  * @cu: Per CU structure.
  * @ops: Scheduler operations vtable
  * @cq_thread: Kernel thread to check the ert command queue.
@@ -138,19 +147,18 @@ struct sched_exec_core {
 	u32                        scu_status[MAX_U32_CU_MASKS];
 
 	/* Bitmap tracks valid CU valid(1)/invalid(0) */
-	u32 			   cu_valid[MAX_U32_CU_MASKS];
+	u32			   cu_valid[MAX_U32_CU_MASKS];
 
-	u32                        cu_addr_phy[MAX_CU_NUM];
-	void __iomem              *cu_addr_virt[MAX_CU_NUM];
-	u32                        cu_usage[MAX_CU_NUM];
-
-	struct zocl_cu            *cu;
+	struct zocl_cu		  *zcu;
 
 	struct sched_ops          *ops;
 	struct task_struct        *cq_thread;
 	wait_queue_head_t          cq_wait_queue;
 
 	struct task_struct        *timer_task;
+
+	/* Context switch */
+	atomic_t		  exec_status;
 };
 
 /**
@@ -195,9 +203,11 @@ struct scheduler {
  */
 struct sched_cmd {
 	struct list_head list;
+	struct list_head rq_list;
 	struct drm_device *ddev;
 	struct scheduler *sched;
 	struct sched_exec_core *exec;
+	struct sched_client_ctx *client;
 	enum ert_cmd_state state;
 	int cu_idx; /* running cu, initialized to -1 */
 	int slot_idx;
@@ -222,10 +232,17 @@ struct sched_cmd {
 	 */
 	int check_timeout;
 
+	/*
+	 * If this flag is set, record time stamps in the user's command
+	 * package when the command state change.
+	 */
+	bool timestamp_enabled;
+
 	/* The actual cmd object representation */
 	union {
 		struct ert_packet *packet;
 		struct ert_start_copybo_cmd *ert_cp;
+		struct ert_start_kernel_cmd *ert_cu;
 	};
 
 	zocl_dma_handle_t dma_handle;
@@ -244,11 +261,14 @@ struct sched_ops {
 	void (*query)(struct sched_cmd *xcmd);
 };
 
-
 int sched_init_exec(struct drm_device *drm);
 int sched_fini_exec(struct drm_device *drm);
+int sched_reset_exec(struct drm_device *drm);
 
 void zocl_track_ctx(struct drm_device *dev, struct sched_client_ctx *fpriv);
 void zocl_untrack_ctx(struct drm_device *dev, struct sched_client_ctx *fpriv);
 
+int zocl_exec_valid_cu(struct sched_exec_core *exec, unsigned int cuid);
+u32 sched_is_busy(struct drm_zocl_dev *zdev);
+u32 sched_live_clients(struct drm_zocl_dev *zdev, pid_t **plist);
 #endif

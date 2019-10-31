@@ -29,24 +29,11 @@
 #include <fstream>
 #include <memory>
 
+#ifdef _WIN32
+#pragma warning ( disable : 4996 )
+#endif
+
 namespace {
-
-XOCL_UNUSED
-static std::vector<char>
-read_file(const std::string& filename)
-{
-  std::ifstream istr(filename,std::ios::binary|std::ios::ate);
-  if (!istr)
-    throw xocl::error(CL_BUILD_PROGRAM_FAILURE,"Cannot not open '" + filename + "' for reading");
-
-  auto pos = istr.tellg();
-  istr.seekg(0,std::ios::beg);
-
-  std::vector<char> buffer(pos);
-  istr.read (&buffer[0],pos);
-
-  return buffer;
-}
 
 // Current list of live program objects.
 // Required for conformance (clCreateProgramWithSource)
@@ -265,55 +252,6 @@ build(const std::vector<device*>& devices,const std::string& options)
     throw std::runtime_error("internal error program::build");
 
   throw std::runtime_error("build program is not safe and no longer supported");
-
-#if 0
-  // Copied from xcl_device_sim.cpp
-  std::ofstream buffer("_temp.cl");
-  buffer << get_source();
-  buffer.close();
-
-  // unsafe command injection
-  std::string command = xocl::get_install_root();
-  command.append("/bin/xocc");
-
-  if (!boost::filesystem::exists(command))
-    throw xocl::error(CL_COMPILER_NOT_AVAILABLE,"No such command '" + command + "'");
-
-  command
-    .append(" ")
-    .append(options)
-    .append(" -t hw_emu --xdevice xilinx:adm-pcie-7v3:1ddr:1.0")
-    .append(" -o xcl_verif.xclbin ")
-    .append(" -s ") // CR 844247
-    .append("_temp.cl");
-
-  if (std::system(command.c_str()))
-    throw xocl::error(CL_BUILD_PROGRAM_FAILURE,"command '" + command + "' failed");
-  if (std::remove("_temp.cl"))
-    throw xocl::error(CL_BUILD_PROGRAM_FAILURE,"could not delete temporary file");
-
-  auto xclbin = read_file("xcl_verif.xclbin");
-  auto data = &xclbin[0]; // char*
-  auto size = xclbin.size();
-
-  for (auto device : devices) {
-    int status[1]={0}, err=0;
-    cl_device_id dev = device;
-    auto new_program = clCreateProgramWithBinary(get_context(), 1, &dev,
-                                                 &size, (const unsigned char **)&data, status, &err);
-    if (!new_program)
-      throw xocl::error(CL_BUILD_PROGRAM_FAILURE,"Failed to create program with binary");
-
-    m_options[device] = options;
-    m_logs.erase(device);   // logs are saved only on error
-
-    // move data from new_program to this program
-    m_binaries.emplace(std::make_pair(device,xocl::xocl(new_program)->get_xclbin(device)));
-    assert(has_device(device));
-
-    clReleaseProgram(new_program);
-  }
-#endif
 }
 
 range_lock<program_iterator_type>

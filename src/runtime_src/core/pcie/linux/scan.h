@@ -30,6 +30,29 @@
 #define INVALID_ID      0xffff
 #define MFG_REV_OFFSET  0x131008 // For obtaining Golden image version number
 
+#define FDT_BEGIN_NODE  0x1
+#define FDT_END_NODE    0x2
+#define FDT_PROP        0x3
+#define FDT_NOP         0x4
+#define FDT_END         0x9
+#define ALIGN(x, a)     (((x) + ((a) - 1)) & ~((a) - 1))
+#define PALIGN(p, a)    ((char *)(ALIGN((unsigned long)(p), (a))))
+#define GET_CELL(p)     (p += 4, *((const uint32_t *)(p-4)))
+
+struct fdt_header {
+    uint32_t magic;
+    uint32_t totalsize;
+    uint32_t off_dt_struct;
+    uint32_t off_dt_strings;
+    uint32_t off_mem_rsvmap;
+    uint32_t version;
+    uint32_t last_comp_version;
+    uint32_t boot_cpuid_phys;
+    uint32_t size_dt_strings;
+    uint32_t size_dt_struct;
+};
+
+
 namespace pcidev {
 
 // One PCIE function on FPGA board
@@ -62,19 +85,22 @@ public:
     void sysfs_get(const std::string& subdev, const std::string& entry,
         std::string& err_msg, std::string& s);
     void sysfs_get(const std::string& subdev, const std::string& entry,
-        std::string& err_msg, bool& b);
-    void sysfs_get(const std::string& subdev, const std::string& entry,
         std::string& err_msg, std::vector<char>& buf);
     template <typename T>
     void sysfs_get(const std::string& subdev, const std::string& entry,
-        std::string& err_msg, T& i) {
+        std::string& err_msg, T& i, const T& default_val) {
         std::vector<uint64_t> iv;
 
         sysfs_get(subdev, entry, err_msg, iv);
         if (!iv.empty())
             i = static_cast<T>(iv[0]);
         else
-            i = static_cast<T>(-1); // default value
+            i = static_cast<T>(default_val); // default value
+    }
+    void sysfs_get_sensor(const std::string& subdev, const std::string& entry,
+        uint32_t& i) {
+        std::string err;
+        sysfs_get<uint32_t>(subdev, entry, err, i, 0);
     }
     void sysfs_put(const std::string& subdev, const std::string& entry,
         std::string& err_msg, const std::string& input);
@@ -86,22 +112,21 @@ public:
     int pcieBarRead(uint64_t offset, void *buf, uint64_t len);
     int pcieBarWrite(uint64_t offset, const void *buf, uint64_t len);
 
-    int ioctl(unsigned long cmd, void *arg = nullptr);
-    int poll(short events, int timeoutMilliSec);
-    void *mmap(size_t len, int prot, int flags, off_t offset);
-    int flock(int op);
-
-    void devfs_close(void);
-    int devfs_open(const std::string& subdev, int flag);
+    int open(const std::string& subdev, int flag);
+    void close(int devhdl);
+    int ioctl(int devhdl, unsigned long cmd, void *arg = nullptr);
+    int poll(int devhdl, short events, int timeoutMilliSec);
+    void *mmap(int devhdl, size_t len, int prot, int flags, off_t offset);
+    int flock(int devhdl, int op);
+    int get_partinfo(std::vector<std::string>& info, void *blob = nullptr);
 
 private:
     std::fstream sysfs_open(const std::string& subdev,
         const std::string& entry, std::string& err,
         bool write = false, bool binary = false);
-    int devfs_open_and_map(void);
+    int map_usr_bar(void);
 
     std::mutex lock;
-    int dev_handle = -1;
     char *user_bar_map = reinterpret_cast<char *>(MAP_FAILED);
 };
 
@@ -110,6 +135,8 @@ size_t get_dev_total(bool user = true);
 size_t get_dev_ready(bool user = true);
 std::shared_ptr<pci_device> get_dev(unsigned index, bool user = true);
 
+int get_axlf_section(std::string filename, int kind, std::shared_ptr<char>& buf);
+int get_uuids(std::shared_ptr<char>& dtbbuf, std::vector<std::string>& uuids);
 } /* pcidev */
 
 // For print out per device info

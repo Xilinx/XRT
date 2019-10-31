@@ -27,12 +27,13 @@
 #include <sstream>
 #include <string>
 #include <sys/ioctl.h>
-#include "xclhal2.h"
+#include "xrt.h"
+#include "experimental/xrt-next.h"
 #include "xclperf.h"
-//#include "core/common/dd.h"
 #include "core/common/utils.h"
 #include "core/common/sensor.h"
 #include "core/edge/include/zynq_ioctl.h"
+#include "core/edge/user/zynq_dev.h"
 #include "xclbin.h"
 #include <version.h>
 #include <fcntl.h>
@@ -85,13 +86,15 @@ enum subcommand {
     STATUS_SPC,
     STREAM,
     STATUS_UNSUPPORTED,
+    STATUS_AM,
 };
 enum statusmask {
     STATUS_NONE_MASK = 0x0,
     STATUS_SPM_MASK = 0x1,
     STATUS_LAPC_MASK = 0x2,
     STATUS_SSPM_MASK = 0x4,
-    STATUS_SPC_MASK = 0x8
+    STATUS_SPC_MASK = 0x8,
+    STATUS_AM_MASK = 0x10
 };
 
 static const std::pair<std::string, command> map_pairs[] = {
@@ -119,7 +122,8 @@ static const std::pair<std::string, subcommand> subcmd_pairs[] = {
     std::make_pair("spm", STATUS_SPM),
     std::make_pair("lapc", STATUS_LAPC),
     std::make_pair("sspm", STATUS_SSPM),
-    std::make_pair("stream", STREAM)
+    std::make_pair("stream", STREAM),
+    std::make_pair("accelmonitor", STATUS_AM)
 };
 
 static const std::map<MEM_TYPE, std::string> memtype_map = {
@@ -136,47 +140,6 @@ static const std::map<MEM_TYPE, std::string> memtype_map = {
 };
 
 static const std::map<std::string, command> commandTable(map_pairs, map_pairs + sizeof(map_pairs) / sizeof(map_pairs[0]));
-
-static void readsysfd(std::string path,std::vector<std::string> &buf,std::string& errmsg)
-{
-    std::fstream fs(path,std::ios::in| std::ios::binary);
-    std::string line;
-    if (fs.is_open()) {
-        while(std::getline(fs,line))
-            buf.push_back(line);
-    }else {
-        std::stringstream ss;
-        ss << "Failed to open " << path << " "
-            << strerror(errno) << std::endl;
-        errmsg = ss.str();
-    }
-}
-
-static void readsysfd(std::string path,std::string &buf,std::string& errmsg)
-{
-    std::vector<std::string> s;
-    readsysfd(path,s,errmsg);
-    if(!s.empty())
-        buf = s[0];
-    else
-        buf = "";
-}
-
-static void readsysfd(std::string path,std::vector<char> &buf,std::string& errmsg)
-{
-    std::fstream fs(path,std::ios::in| std::ios::binary);
-    char c;
-    if (fs.is_open()) {
-        while(fs.get(c))
-            buf.push_back(c);
-        fs.close();
-    }else {
-        std::stringstream ss;
-        ss << "Failed to open " << path << " "
-            << strerror(errno) << std::endl;
-        errmsg = ss.str();
-    }
-}
 
 class device {
     unsigned int m_idx;
@@ -213,8 +176,7 @@ public:
         std::string errmsg;
         std::vector<char> buf;
 
-        readsysfd("/sys/devices/platform/amba/amba\:zyxclmm_drm/ip_layout",buf,errmsg);
-
+        zynq_device::get_dev()->sysfs_get("ip_layout", errmsg, buf);
         if (!errmsg.empty()) {
             std::cout << errmsg << std::endl;
             return -EINVAL;
@@ -274,7 +236,7 @@ public:
                 }
                 ptr = mmap(0, 0x10000, PROT_READ | PROT_WRITE, MAP_SHARED, mKernelFD, info.apt_idx*getpagesize());
                 if (!ptr) {
-                    printf("Map failed for aperture 0x%lx, size 0x%lx\n", computeUnits.at( i ).m_base_address, 0x10000);
+                    printf("Map failed for aperture 0x%lx, size 0x%x\n", computeUnits.at( i ).m_base_address, 0x10000);
                     return -1;
                 }
                 uint64_t mask = 0xFFFF;
@@ -295,8 +257,8 @@ public:
         std::vector<char> buf, temp_buf;
         std::vector<std::string> mm_buf, stream_stat;
         uint64_t memoryUsage, boCount;
-        readsysfd("/sys/devices/platform/amba/amba\:zyxclmm_drm/mem_topology",buf,errmsg);
-        readsysfd("/sys/devices/platform/amba/amba\:zyxclmm_drm/memstat_raw",mm_buf,errmsg);
+        zynq_device::get_dev()->sysfs_get("mem_topology", errmsg, buf);
+        zynq_device::get_dev()->sysfs_get("memstat_raw", errmsg, mm_buf);
 
         const mem_topology *map = (mem_topology *)buf.data();
 
@@ -352,7 +314,7 @@ public:
 
         // xclbin
         std::string errmsg, xclbinid;
-        readsysfd("/sys/devices/platform/amba/amba\:zyxclmm_drm/xclbinid",xclbinid,errmsg);
+        zynq_device::get_dev()->sysfs_get("xclbinid", errmsg, xclbinid);
         if(errmsg.empty()) {
             sensor_tree::put( "board.xclbin.uuid", xclbinid );
         }
@@ -498,26 +460,31 @@ public:
           int cu_i = 0;
           for (auto& v : sensor_tree::get_child( "board.compute_unit" )) {
             int index = std::stoi(v.first);
-            if( index >= 0 ) {
+            if ( index >= 0 ) {
+              uint32_t cu_i;
               std::string cu_n, cu_s, cu_ba;
               for (auto& subv : v.second) {
-                if( subv.first == "name" )
+                if ( subv.first == "name" ) {
                   cu_n = subv.second.get_value<std::string>();
-                else if( subv.first == "base_address" ) {
+                } else if ( subv.first == "base_address" ) {
                   auto addr = subv.second.get_value<uint64_t>();
-		  cu_ba = (addr == (uint64_t)-1) ? "N/A" : sensor_tree::pretty<uint64_t>(addr, "N/A", true);
-		} else if( subv.first == "status" )
+                  cu_ba = (addr == (uint64_t)-1) ? "N/A" : sensor_tree::pretty<uint64_t>(addr, "N/A", true);
+                } else if ( subv.first == "status" ) {
                   cu_s = subv.second.get_value<std::string>();
+                }
               }
-              ostr << "CU[" << std::right << std::setw(2) << cu_i << "]: "
-                   << std::left << std::setw(32) << cu_n
+              if (xclCuName2Index(m_handle, cu_n.c_str(), &cu_i) != 0) {
+                ostr << "CU: ";
+              } else {
+                ostr << "CU[" << std::right << std::setw(2) << cu_i << "]: ";
+              }
+              ostr << std::left << std::setw(32) << cu_n
                    << "@" << std::setw(18) << std::hex << cu_ba
                    << cu_s << std::endl;
-	      cu_i++;
             }
           }
         }
-        catch( std::exception const& e) {
+        catch(std::exception const& e) {
             // eat the exception, probably bad path
         }
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
@@ -574,11 +541,24 @@ public:
     int validate(bool quick) { std::cout << "Unsupported API " << std::endl; return -1; }
     int reset(xclResetKind kind) { std::cout << "Unsupported API " << std::endl; return -1; }
     int printStreamInfo(std::ostream& ostr) const { std::cout << "Unsupported API " << std::endl; return -1; }
-    int readSPMCounters() { std::cout << "Unsupported API " << std::endl; return -1; }
-    int readSSPMCounters() { std::cout << "Unsupported API " << std::endl; return -1; }
-    int readLAPCheckers(int aVerbose) { std::cout << "Unsupported API " << std::endl; return -1; }
-    int readStreamingCheckers(int aVerbose) { std::cout << "Unsupported API " << std::endl; return -1; }
-    int print_debug_ip_list (int aVerbose) { std::cout << "Unsupported API " << std::endl; return -1; }
+
+    // Debug related functionality
+    uint32_t getIPCountAddrNames(int type,
+				 std::vector<uint64_t>* baseAddress,
+				 std::vector<std::string>* portNames);
+    std::pair<size_t, size_t> 
+      getCUNamePortName(std::vector<std::string>& aSlotNames,
+			std::vector<std::pair<std::string, std::string> >& aCUNamePortNames);
+    std::pair<size_t, size_t> 
+      getStreamName(const std::vector<std::string>& aSlotNames,
+		    std::vector<std::pair<std::string, std::string> >& aStreamNames) ;
+    int readAIMCounters() ;
+    int readASMCounters() ;
+    int readAMCounters();
+    int readLAPCheckers(int aVerbose) ;
+    int readStreamingCheckers(int aVerbose) ;
+    int map_debug_ip();
+    int print_debug_ip_list (int aVerbose) ;
     int testM2m() { std::cout << "Unsupported API " << std::endl; return -1; }
     int reclock2(unsigned regionIndex, const unsigned short *freq) { std::cout << "Unsupported API " << std::endl; return -1; }
 private:
@@ -586,10 +566,12 @@ private:
 };
 
 void printHelp(const std::string& exe);
-int xclTop(int argc, char *argv[]) { std::cout << "Unsupported API " << std::endl; return -1; }
-int xclReset(int argc, char *argv[]) { std::cout << "Unsupported API " << std::endl; return -1; }
-int xclValidate(int argc, char *argv[]) { std::cout << "Unsupported API " << std::endl; return -1; }
-int xclP2p(int argc, char *argv[]) { std::cout << "Unsupported API " << std::endl; return -1; }
+
+ int xclTop(int argc, char *argv[]) ;
+ int xclReset(int argc, char *argv[]) ;
+ int xclValidate(int argc, char *argv[]) ;
+ int xclP2p(int argc, char *argv[]) ;
+
 } // end namespace xcldev
 
 #endif /* XBUTIL_H */

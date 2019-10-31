@@ -22,8 +22,6 @@
 #include <fstream>
 #include <vector>
 #include <iomanip>
-#include <fcntl.h>
-#include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <cstring>
 #include <unistd.h>
@@ -49,7 +47,7 @@ uint32_t xcldev::device::getIPCountAddrNames(int type,
     }
 
     debug_ip_layout *map = (debug_ip_layout *)buf.data();
-    if (buf.empty() || map->m_count < 0) {
+    if (buf.empty() || map->m_count == 0) {
         std::cout <<  "ERROR: Failed to open debug IP layout file. "
             << "Ensure that a valid xclbin is successfully downloaded. \n";
         return -EINVAL;
@@ -175,6 +173,58 @@ int xcldev::device::readAIMCounters() {
                   << "  " << "0x" << std::setw(14) << debugResults.LastWriteData[i]
                   << "  " << "0x" << std::setw(14) << debugResults.LastReadAddr[i]
                   << "  " << "0x" << std::setw(14) << debugResults.LastReadData[i]
+                  << std::dec << std::endl;
+    }
+    std::cout.flags(f);
+    return 0;
+}
+
+int xcldev::device::readAMCounters() {
+    xclAccelMonitorCounterResults debugResults = {0};
+    std::vector<std::string> slotNames;
+
+    unsigned int numSlots = getIPCountAddrNames (ACCEL_MONITOR, nullptr, &slotNames);
+    if (numSlots == 0) {
+        std::cout << "ERROR: Accelerator Monitor IP does not exist on the platform" << std::endl;
+        return 0;
+    }
+
+    xclDebugReadIPStatus(m_handle, XCL_DEBUG_READ_TYPE_AM, &debugResults);
+
+    std::cout << "Accelerator Monitor Counters (hex values are cycle count)\n";
+
+    size_t maxWidth = 0;
+    for (auto& mon : slotNames) {
+        maxWidth = std::max(strlen(mon.c_str()), maxWidth);
+    }
+    int col1 = std::max(maxWidth, strlen("Compute Unit")) + 4;
+
+    std::ios_base::fmtflags f(std::cout.flags());
+    std::cout << std::left
+              << std::setw(col1) << "Compute Unit"
+              << " " << std::setw(8) << "Ends"
+              << "  " << std::setw(8)  << "Starts"
+              << "  " << std::setw(16)  << "Max Parallel Itr"
+              << "  " << std::setw(16)  << "Execution"
+              << "  " << std::setw(16)  << "Memory Stall"
+              << "  " << std::setw(16)  << "Pipe Stall"
+              << "  " << std::setw(16)  << "Stream Stall"
+              << "  " << std::setw(16)  << "Min Exec"
+              << "  " << std::setw(16)  << "Max Exec"
+              << std::endl;
+    for (size_t i = 0; i<debugResults.NumSlots; ++i) {
+        std::cout << std::left
+                  << std::setw(col1) << slotNames[i]
+                  << " " << std::setw(8) << debugResults.CuExecCount[i]
+                  << "  " << std::setw(8) << debugResults.CuStartCount[i]
+                  << "  " << std::setw(16) << debugResults.CuMaxParallelIter[i]
+                  << std::hex
+                  << "  " << "0x" << std::setw(14) << debugResults.CuExecCycles[i]
+                  << "  " << "0x" << std::setw(14) << debugResults.CuStallExtCycles[i]
+                  << "  " << "0x" << std::setw(14) << debugResults.CuStallIntCycles[i]
+                  << "  " << "0x" << std::setw(14) << debugResults.CuStallStrCycles[i]
+                  << "  " << "0x" << std::setw(14) << debugResults.CuMinExecCycles[i]
+                  << "  " << "0x" << std::setw(14) << debugResults.CuMaxExecCycles[i]
                   << std::dec << std::endl;
     }
     std::cout.flags(f);

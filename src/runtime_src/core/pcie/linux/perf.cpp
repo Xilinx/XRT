@@ -60,14 +60,14 @@
 #include <iostream>
 #include <iomanip>
 
-#ifndef _WINDOWS
+#ifndef _WIN32
 // TODO: Windows build support
 //    unistd.h is linux only header file
 //    it is included for read, write, close, lseek64
 #include <unistd.h>
 #endif
 
-#ifdef _WINDOWS
+#ifdef _WIN32
 #define __func__ __FUNCTION__
 #endif
 
@@ -936,7 +936,7 @@ namespace xocl {
     // Create trace buffer on host (requires alignment)
     const int BUFFER_BYTES = MAX_TRACE_NUMBER_SAMPLES * bytesPerSample;
     const int BUFFER_WORDS = MAX_TRACE_NUMBER_SAMPLES * wordsPerSample;
-#ifndef _WINDOWS
+#ifndef _WIN32
 // TODO: Windows build support
 //    alignas is defined in c++11
 #if GCC_VERSION >= 40800
@@ -973,7 +973,7 @@ namespace xocl {
 
           drm_xocl_pread_unmgd unmgd = {0, 0, fifoReadAddress[0], chunkSizeBytes,
             reinterpret_cast<uint64_t>((void *)(hostbuf + words))};
-          if (mDev->ioctl(DRM_IOCTL_XOCL_PREAD_UNMGD, &unmgd) < 0)
+          if (mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_PREAD_UNMGD, &unmgd) < 0)
             return 0;
 
           size += chunkSizeBytes;
@@ -992,7 +992,7 @@ namespace xocl {
 
         drm_xocl_pread_unmgd unmgd = {0, 0, fifoReadAddress[0], chunkSizeBytes,
           reinterpret_cast<uint64_t>((void *)(hostbuf + words))};
-        if (mDev->ioctl(DRM_IOCTL_XOCL_PREAD_UNMGD, &unmgd) < 0)
+        if (mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_PREAD_UNMGD, &unmgd) < 0)
           return 0;
 
         size += chunkSizeBytes;

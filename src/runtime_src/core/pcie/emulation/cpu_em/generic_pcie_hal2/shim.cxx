@@ -660,9 +660,9 @@ namespace xclcpuemhal2 {
     //   Memory Manager Has allocated aligned address, 
 	//   size contains alignement + original size requested.
 	//   We are passing original size to device process for exact stats.	
-    bool p2pBuffer = false;
+    bool noHostMemory = false;
     std::string sFileName("");
-    xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,result,requestedSize,p2pBuffer);
+    xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,result,requestedSize,noHostMemory);
     if(!ack)
     {
       PRINTENDFUNC;
@@ -672,7 +672,7 @@ namespace xclcpuemhal2 {
     return result;
   }
   
-  uint64_t CpuemShim::xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags,bool p2pBuffer,std::string &sFileName)
+  uint64_t CpuemShim::xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags,bool noHostMemory,std::string &sFileName)
   {
     if (mLogStream.is_open()) {
       mLogStream << __func__ <<" , "<<std::this_thread::get_id() << ", " << size <<", "<<domain<<", "<< flags <<std::endl;
@@ -701,7 +701,7 @@ namespace xclcpuemhal2 {
     //   Memory Manager Has allocated aligned address, 
 	//   size contains alignement + original size requested.
 	//   We are passing original size to device process for exact stats.	
-    xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,result,size,p2pBuffer);
+    xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,result,size,noHostMemory);
     
     if(!ack)
     {
@@ -1091,9 +1091,9 @@ int CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   struct xclemulation::drm_xocl_bo *xobj = new xclemulation::drm_xocl_bo;
   xobj->flags=info->flags;
   /* check whether buffer is p2p or not*/
-  bool p2pBuffer = xocl_bo_p2p(xobj); 
+  bool noHostMemory = xclemulation::no_host_memory(xobj); 
   std::string sFileName("");
-  xobj->base = xclAllocDeviceBuffer2(size,XCL_MEM_DEVICE_RAM,ddr,p2pBuffer,sFileName);
+  xobj->base = xclAllocDeviceBuffer2(size,XCL_MEM_DEVICE_RAM,ddr,noHostMemory,sFileName);
   xobj->filename = sFileName;
   xobj->size = size;
   xobj->userptr = NULL;

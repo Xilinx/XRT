@@ -19,12 +19,13 @@
 #include "xdp/profile/writer/base_profile.h"
 
 #include <iostream>
+#include <stdlib.h>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 RunSummary::RunSummary()
     : mSystemMetadata("")
-    , mXclbinBaseName("")
+    , mXclbinContainerName("")
 {
   // Empty
 }
@@ -56,6 +57,7 @@ RunSummary::getFileTypeAsStr(enum RunSummary::FileType eFileType)
     case FT_UNKNOWN: return "UNKNOWN";
     case FT_PROFILE: return "PROFILE";
     case FT_TRACE: return "TRACE";
+    case FT_WDB: return "WAVEFORM_DATABASE";
   }
 
   // Yeah, the code will never get here, but it makes for a clean flow
@@ -63,9 +65,9 @@ RunSummary::getFileTypeAsStr(enum RunSummary::FileType eFileType)
 }
 
 void RunSummary::extractSystemProfileMetadata(const axlf * pXclbinImage, 
-                                              const std::string & xclbinBaseName)
+                                              const std::string & xclbinContainerName)
 {
-  mXclbinBaseName = xclbinBaseName;
+  mXclbinContainerName = xclbinContainerName;
   mSystemMetadata.clear();
 
   // Make sure we have something to work with
@@ -90,6 +92,26 @@ void RunSummary::extractSystemProfileMetadata(const axlf * pXclbinImage,
   }
 
   mSystemMetadata = buf.str();
+
+  // If we don't have a binary container name, obtain it from the system diagram metadata
+
+  if (mXclbinContainerName.empty()) {
+    try {
+      std::stringstream ss;
+      ss.write((const char*) pBuffer,  pSectionHeader->m_sectionSize);
+
+      // Create a property tree and determine if the variables are all default values
+      boost::property_tree::ptree pt;
+      boost::property_tree::read_json(ss, pt);
+
+      mXclbinContainerName = pt.get<std::string>("system_diagram_metadata.xsa.xclbin.generated_by.xclbin_name", "");
+      if (!mXclbinContainerName.empty()) {
+        mXclbinContainerName += ".xclbin";
+      }
+    } catch (...) {
+      // Do nothing
+    }
+  }
 }
 
 
@@ -114,6 +136,15 @@ void RunSummary::writeContent()
   // -- Add the files
   {
     boost::property_tree::ptree ptFiles;
+
+    // If the waveform data is available add it to the report
+    char* pWdbFile = getenv("VITIS_WAVEFORM_WDB_FILENAME"); 
+    if (pWdbFile  != nullptr) {
+      boost::property_tree::ptree ptFile;
+      ptFile.put("name", pWdbFile);
+      ptFile.put("type", getFileTypeAsStr(FT_WDB).c_str());
+      ptFiles.push_back(std::make_pair("", ptFile));
+    }
 
     // Add each files
     for (auto file : mFiles) {
@@ -141,7 +172,8 @@ void RunSummary::writeContent()
   }
    
   // Open output file
-  std::string outputFile = mXclbinBaseName + ".run_summary";
+  std::string outputFile = mXclbinContainerName.empty() ? "xclbin" : mXclbinContainerName;
+  outputFile += ".run_summary";
 
   std::fstream outputStream;
   outputStream.open(outputFile, std::ifstream::out | std::ifstream::binary);

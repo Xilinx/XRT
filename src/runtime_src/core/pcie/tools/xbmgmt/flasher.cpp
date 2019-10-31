@@ -52,8 +52,10 @@ Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
     {
         type = E_FlasherType::BPI;
     }
-    else if (typeStr.compare("qspi_ps") == 0)
+    else if (typeStr.find("qspi_ps") == 0)
     {
+        // Use find() for this type of flash.
+        // Since it have variations
         type = E_FlasherType::QSPIPS;
     }
     else
@@ -209,7 +211,7 @@ Flasher::Flasher(unsigned int index) : mFRHeader{}
 
     std::string err;
     bool is_mfg = false;
-    dev->sysfs_get("", "mfg", err, is_mfg);
+    dev->sysfs_get<bool>("", "mfg", err, is_mfg, false);
 
     std::vector<char> feature_rom;
     dev->sysfs_get("rom", "raw", err, feature_rom);
@@ -220,7 +222,7 @@ Flasher::Flasher(unsigned int index) : mFRHeader{}
         // character. Using "<" will check for a match that EntryPointString
         // starts with magic char sequence "xlnx".
         if(std::string(reinterpret_cast<const char*>(mFRHeader.EntryPointString))
-            .compare(MAGIC_XLNX_STRING) < 0)
+            .compare(0, 4, MAGIC_XLNX_STRING) != 0)
         {
             std::cout << "ERROR: Failed to detect feature ROM." << std::endl;
         }
@@ -270,21 +272,22 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
 
     // Obtain board info.
     DSAInfo onBoard = getOnBoardDSA();
+    std::string err;
 
-    if (onBoard.name.empty())
+    if (onBoard.name.empty() && onBoard.uuids.empty())
     {
         std::cout << "Shell on FPGA is unknown" << std::endl;
         return DSAs;
     }
+
     uint16_t vendor_id, device_id;
-    std::string err;
-    mDev->sysfs_get("", "vendor", err, vendor_id);
+    mDev->sysfs_get<uint16_t>("", "vendor", err, vendor_id, -1);
     if (!err.empty())
     {
         std::cout << err << std::endl;
         return DSAs;
     }
-    mDev->sysfs_get("", "device", err, device_id);
+    mDev->sysfs_get<uint16_t>("", "device", err, device_id, -1);
     if (!err.empty())
     {
         std::cout << err << std::endl;
@@ -292,11 +295,11 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
     }
 
     // Obtain installed DSA info.
-    //std::cout << "ON Board: " << onBoard.vendor << " " << onBoard.board << " " << vendor_id << " " << device_id << std::endl;
+    // std::cout << "ON Board: " << onBoard.vendor << " " << onBoard.board << " " << vendor_id << " " << device_id << std::endl;
     auto installedDSAs = firmwareImage::getIntalledDSAs();
     for (DSAInfo& dsa : installedDSAs)
     {
-        //std::cout << "DSA " << dsa.name << ": " << dsa.vendor << " " << dsa.board << " " << dsa.vendor_id << " " << dsa.device_id << "TS: " << dsa.timestamp << std::endl;
+        // std::cout << "DSA " << dsa.name << ": " << dsa.vendor << " " << dsa.board << " " << dsa.vendor_id << " " << dsa.device_id << "TS: " << dsa.timestamp << std::endl;
         if (!dsa.hasFlashImage || dsa.timestamp == NULL_TIMESTAMP)
 	       continue;
 
@@ -309,7 +312,8 @@ std::vector<DSAInfo> Flasher::getInstalledDSA()
 	else if (!dsa.name.empty() && (vendor_id == dsa.vendor_id) && (device_id == dsa.device_id))
         {
             DSAs.push_back(dsa);
-        }
+        } else if (onBoard.name.empty())
+            DSAs.push_back(dsa);
 
     }
 
@@ -326,9 +330,9 @@ DSAInfo Flasher::getOnBoardDSA()
     std::string board_name;
     std::string uuid;
     bool is_mfg = false;
-    mDev->sysfs_get("", "mfg", err, is_mfg);
+    mDev->sysfs_get<bool>("", "mfg", err, is_mfg, false);
     mDev->sysfs_get("", "board_name", err, board_name);
-    mDev->sysfs_get("", "logic_uuids", err, uuid);
+    mDev->sysfs_get("rom", "uuid", err, uuid);
     if (is_mfg)
     {
         std::stringstream ss;

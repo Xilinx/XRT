@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@xilinx.com
  *
@@ -66,8 +66,8 @@ static ssize_t kdsstat_show(struct device *dev,
 		xclbin_id ? xclbin_id : 0);
 	size += sprintf(buf + size, "outstanding execs:\t%d\n",
 		atomic_read(&xdev->outstanding_execs));
-	size += sprintf(buf + size, "total execs:\t\t%ld\n",
-		atomic64_read(&xdev->total_execs));
+	size += sprintf(buf + size, "total execs:\t\t%lld\n",
+		(s64)atomic64_read(&xdev->total_execs));
 
 	clients = get_live_clients(xdev, &plist);
 	size += sprintf(buf + size, "contexts:\t\t%d\n", clients);
@@ -153,14 +153,14 @@ static ssize_t p2p_enable_show(struct device *dev,
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	u64 size;
 
-	if (xdev->p2p_bar_addr)
+	if (xdev->p2p_mem_chunk_num)
 		return sprintf(buf, "1\n");
 	else if (xocl_get_p2p_bar(xdev, &size) >= 0 &&
-			size > (1 << XOCL_PA_SECTION_SHIFT))
+		size > XOCL_P2P_CHUNK_SIZE)
 		return sprintf(buf, "%d\n", EBUSY);
-	else if (xocl_get_p2p_bar(xdev, &size) < 0 && (
-			xdev->p2p_bar_idx < 0 ||
-			xdev->p2p_bar_len <= (1<<XOCL_PA_SECTION_SHIFT)))
+	else if (xocl_get_p2p_bar(xdev, &size) < 0 &&
+		(xdev->p2p_bar_idx < 0 ||
+		xdev->p2p_bar_len <= XOCL_P2P_CHUNK_SIZE))
 		return sprintf(buf, "%d\n", ENXIO);
 
 	return sprintf(buf, "0\n");
@@ -193,7 +193,7 @@ static ssize_t p2p_enable_store(struct device *dev,
 	}
 
 	size = (ffs(size) == fls(size)) ? (fls(size) - 1) : fls(size);
-	size = enable ? (size + 10) : (XOCL_PA_SECTION_SHIFT - 20);
+	size = enable ? (size + 10) : (XOCL_P2P_CHUNK_SHIFT - 20);
 	if (xocl_pci_rebar_size_to_bytes(size) == curr_size) {
 		if (enable) {
 			xocl_info(&pdev->dev, "p2p is enabled, bar size %d M",
@@ -207,7 +207,7 @@ static ssize_t p2p_enable_store(struct device *dev,
 
 	xocl_info(&pdev->dev, "Resize p2p bar %d to %d M ", p2p_bar,
 			(1 << size));
-	xocl_p2p_mem_release(xdev, false);
+	xocl_p2p_fini(xdev, false);
 
 	ret = xocl_pci_resize_resource(pdev, p2p_bar, size);
 	if (ret) {
@@ -219,7 +219,7 @@ static ssize_t p2p_enable_store(struct device *dev,
 	xdev->p2p_bar_len = pci_resource_len(pdev, p2p_bar);
 
 	if (enable) {
-		ret = xocl_p2p_mem_reserve(xdev);
+		ret = xocl_p2p_init(xdev);
 		if (ret) {
 			xocl_err(&pdev->dev, "Failed to reserve p2p memory %d",
 					ret);
@@ -242,7 +242,7 @@ static ssize_t dev_offline_show(struct device *dev,
 	bool offline;
 	int val;
 
-	val = xocl_drvinst_get_offline(xdev, &offline);
+	val = xocl_drvinst_get_offline(xdev->core.drm, &offline);
 	if (!val)
 		val = offline ? 1 : 0;
 
@@ -334,7 +334,7 @@ static ssize_t config_mailbox_comm_id_show(struct device *dev,
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 
 	xocl_mailbox_get(xdev, COMM_ID, (u64 *)buf);
-	return COMM_ID_SIZE;
+	return XCL_COMM_ID_SIZE;
 }
 static DEVICE_ATTR_RO(config_mailbox_comm_id);
 
@@ -342,16 +342,74 @@ static ssize_t ready_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	uint64_t ch_state, ret;
+	uint64_t ch_state = 0, ret = 0, daemon_state = 0;
 
-	xocl_mailbox_get(xdev, CHAN_STATE, &ch_state);
+	/* Bypass this check for versal for now */
+	if (XOCL_DSA_IS_VERSAL(xdev))
+		ret = 1;
+	else {
+		xocl_mailbox_get(xdev, CHAN_STATE, &ch_state);
 
-	ret = (ch_state & MB_PEER_READY) ? 1 : 0;
+		if (ch_state & XCL_MB_PEER_SAME_DOMAIN)
+			ret = (ch_state & XCL_MB_PEER_READY) ? 1 : 0;
+		else {
+			/*
+			 * If xocl and xclmgmt are not in the same daemon,
+			 * mark the card as ready only when both MB channel
+			 * and daemon are ready
+			 */
+			xocl_mailbox_get(xdev, DAEMON_STATE, &daemon_state);
+			ret = ((ch_state & XCL_MB_PEER_READY) && daemon_state)
+				? 1 : 0;
+		}
+	}
 
 	return sprintf(buf, "0x%llx\n", ret);
 }
 
 static DEVICE_ATTR_RO(ready);
+
+static ssize_t interface_uuids_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	const void *uuid;
+	int node = -1, off = 0;
+
+	if (!xdev->core.fdt_blob)
+		return -EINVAL;
+
+	for (node = xocl_fdt_get_next_prop_by_name(xdev, xdev->core.fdt_blob,
+		-1, PROP_INTERFACE_UUID, &uuid, NULL);
+		uuid && node > 0;
+		node = xocl_fdt_get_next_prop_by_name(xdev, xdev->core.fdt_blob,
+		node, PROP_INTERFACE_UUID, &uuid, NULL))
+		off += sprintf(buf + off, "%s\n", (char *)uuid);
+
+	return off;
+}
+
+static DEVICE_ATTR_RO(interface_uuids);
+
+static ssize_t logic_uuids_show(struct device *dev,
+		        struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	const void *uuid = NULL;
+	int node = -1, off = 0;
+
+	if (!xdev->core.fdt_blob)
+		return -EINVAL;
+
+	node = xocl_fdt_get_next_prop_by_name(xdev, xdev->core.fdt_blob,
+		-1, PROP_LOGIC_UUID, &uuid, NULL);
+	if (uuid && node >= 0)
+		off += sprintf(buf + off, "%s\n", (char *)uuid);
+
+	return off;
+}
+
+static DEVICE_ATTR_RO(logic_uuids);
 
 static ssize_t ulp_uuids_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -375,30 +433,16 @@ static ssize_t ulp_uuids_show(struct device *dev,
 
 static DEVICE_ATTR_RO(ulp_uuids);
 
-/* TODO: remove this after hw is ready */
-static ssize_t mbx_offset_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct xocl_dev *xdev = dev_get_drvdata(dev);
-
-	return sprintf(buf, "0x%x\n", xdev->mbx_offset);
-}
-
-static ssize_t mbx_offset_store(struct device *dev,
+static ssize_t mig_cache_update_store(struct device *dev,
 		struct device_attribute *da, const char *buf, size_t count)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	u32 val;
 
-	if (!xdev || kstrtou32(buf, 16, &val) == -EINVAL)
-		return -EINVAL;
-
-	xdev->mbx_offset = val;
+	xocl_update_mig_cache(xdev);
 
 	return count;
 }
-
-static DEVICE_ATTR_RW(mbx_offset);
+static DEVICE_ATTR_WO(mig_cache_update);
 
 /* - End attributes-- */
 static struct attribute *xocl_attrs[] = {
@@ -419,8 +463,10 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_config_mailbox_channel_switch.attr,
 	&dev_attr_config_mailbox_comm_id.attr,
 	&dev_attr_ready.attr,
+	&dev_attr_interface_uuids.attr,
+	&dev_attr_logic_uuids.attr,
 	&dev_attr_ulp_uuids.attr,
-	&dev_attr_mbx_offset.attr,
+	&dev_attr_mig_cache_update.attr,
 	NULL,
 };
 
@@ -457,7 +503,7 @@ bail:
 static struct bin_attribute fdt_blob_attr = {
 	.attr = {
 		.name = "fdt_blob",
-		.mode = 0400
+		.mode = 0444
 	},
 	.read = fdt_blob_output,
 	.size = 0

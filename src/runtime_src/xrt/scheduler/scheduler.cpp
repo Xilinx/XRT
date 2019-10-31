@@ -19,7 +19,21 @@
 #include "xrt/device/device.h"
 #include <cstdlib>
 
+#ifdef _WIN32
+# pragma warning( disable : 4996 )
+#endif
+
 namespace {
+
+static bool
+is_windows()
+{
+#ifdef _WIN32
+    return true;
+#else
+    return false;
+#endif
+}
 
 static bool
 emulation_mode()
@@ -40,7 +54,7 @@ is_sw_emulation()
 inline bool
 kds_enabled(bool forceoff=false)
 {
-  static bool enabled = !is_sw_emulation() && xrt::config::get_kds() && !xrt::config::get_feature_toggle("Runtime.sws");
+  static bool enabled = !is_sw_emulation() && xrt::config::get_kds() && !xrt::config::get_feature_toggle("Runtime.sws") && !is_windows();
   if (forceoff)
     enabled = false;
   return enabled;

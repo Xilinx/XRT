@@ -58,7 +58,6 @@ public:
     void init(unsigned index, const char *logfileName, xclVerbosityLevel verbosity);
     void readDebugIpLayout();
     static int xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* format, va_list args1);
-    int xclLog(xrtLogMsgLevel level, const char* tag, const char* format, ...);
     // Raw unmanaged read/write on the entire PCIE user BAR
     size_t xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size);
     size_t xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size);
@@ -75,6 +74,8 @@ public:
     int xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset);
     int xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size,
                   size_t dst_offset, size_t src_offset);
+
+    int xclUpdateSchedulerStat();
 
     int xclExportBO(unsigned int boHandle);
     unsigned int xclImportBO(int fd, unsigned flags);
@@ -138,7 +139,7 @@ public:
     size_t xclPerfMonReadTrace(xclPerfMonType type, xclTraceResultsVector& traceVector);
 
     // APIs using sysfs information
-    uint xclGetNumLiveProcesses();
+    uint32_t xclGetNumLiveProcesses();
     int xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size);
 
     int xclGetDebugIPlayoutPath(char* layoutPath, size_t size);
@@ -170,11 +171,13 @@ public:
     ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
     ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
     int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int * actual, int timeout /*ms*/);
+    int xclCuName2Index(const char *name, uint32_t& index);
 
 private:
     std::shared_ptr<pcidev::pci_device> mDev;
     xclVerbosityLevel mVerbosity;
     std::ofstream mLogStream;
+    int mUserHandle;
     int mStreamHandle;
     int mBoardNumber;
     bool mLocked;
@@ -208,6 +211,7 @@ private:
     void xclSysfsGetDeviceInfo(xclDeviceInfo2 *info);
     void xclSysfsGetUsageInfo(drm_xocl_usage_stat& stat);
     void xclSysfsGetErrorStatus(xclErrorStatus& stat);
+    int xrt_logmsg(xrtLogMsgLevel level, const char* format, ...);
 
     int freezeAXIGate();
     int freeAXIGate();

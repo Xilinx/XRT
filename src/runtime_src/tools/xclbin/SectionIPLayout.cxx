@@ -186,7 +186,7 @@ SectionIPLayout::marshalToJSON(char* _pDataSection,
     }
     ip_data.put("m_name", XUtil::format("%s", pHdr->m_ip_data[index].m_name).c_str());
 
-    m_ip_data.add_child("ip_data", ip_data);
+    m_ip_data.push_back(std::make_pair("", ip_data));   // Used to make an array of objects
   }
 
   ip_layout.add_child("m_ip_data", m_ip_data);
@@ -426,7 +426,7 @@ SectionIPLayout::appendToSectionMetadata(const boost::property_tree::ptree& _ptA
     new_ip_data.put("m_base_address", ip_data.get<std::string>("m_base_address"));
     new_ip_data.put("m_name", ip_data.get<std::string>("m_name"));
 
-    ptDest_m_ip_data.add_child("ip_data", new_ip_data);
+    ptDest_m_ip_data.push_back(std::make_pair("", new_ip_data));   // Used to make an array of objects
   }
 
   // Update count

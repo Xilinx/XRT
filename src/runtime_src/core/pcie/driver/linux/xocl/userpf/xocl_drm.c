@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
  *
  * Authors: Jan Stephan <j.stephan@hzdr.de>
  *
@@ -19,15 +19,16 @@
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 0, 0)
 #include <drm/drm_backport.h>
 #endif
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)) || \
+	defined(RHEL_RELEASE_VERSION)
+#include <linux/pfn_t.h>
+#endif
 #include <drm/drmP.h>
 #include <drm/drm_gem.h>
 #include <drm/drm_mm.h>
 #include "version.h"
 #include "../lib/libxdma_api.h"
 #include "common.h"
-#if RHEL_P2P_SUPPORT
-#include <linux/pfn_t.h>
-#endif
 
 #if defined(__PPC64__)
 #define XOCL_FILE_PAGE_OFFSET	0x10000
@@ -55,41 +56,6 @@ static void xocl_free_object(struct drm_gem_object *obj)
 {
 	DRM_ENTER("");
 	xocl_drm_free_bo(obj);
-}
-
-static int xocl_open(struct inode *inode, struct file *filp)
-{
-	struct xocl_drm *drm_p;
-	struct drm_file *priv;
-	struct drm_device *ddev;
-	int ret;
-
-	ret = drm_open(inode, filp);
-	if (ret)
-		return ret;
-
-	priv = filp->private_data;
-	ddev = priv->minor->dev;
-	drm_p = xocl_drvinst_open(ddev);
-	if (!drm_p) {
-		drm_release(inode, filp);
-		return -ENXIO;
-	}
-
-	return 0;
-}
-
-static int xocl_release(struct inode *inode, struct file *filp)
-{
-	struct drm_file *priv = filp->private_data;
-	struct drm_device *ddev = priv->minor->dev;
-	struct xocl_drm	*drm_p = ddev->dev_private;
-	int ret;
-
-	ret = drm_release(inode, filp);
-	xocl_drvinst_close(drm_p);
-
-	return ret;
 }
 
 static int xocl_bo_mmap(struct file *filp, struct vm_area_struct *vma)
@@ -227,9 +193,6 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	loff_t num_pages;
 	unsigned int page_offset;
 	int ret = 0;
-#if RHEL_P2P_SUPPORT
-	pfn_t pfn;
-#endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
 	unsigned long vmf_address = vmf->address;
@@ -247,7 +210,8 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 		return VM_FAULT_SIGBUS;
 
 	if (xocl_bo_p2p(xobj)) {
-#if RHEL_P2P_SUPPORT
+#ifdef RHEL_RELEASE_VERSION
+		pfn_t pfn;
 		pfn = phys_to_pfn_t(page_to_phys(xobj->pages[page_offset]), PFN_MAP|PFN_DEV);
 		ret = vm_insert_mixed(vma, vmf_address, pfn);
 #else
@@ -270,7 +234,7 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 
 static int xocl_client_open(struct drm_device *dev, struct drm_file *filp)
 {
-	struct xocl_drm	*drm_p = dev->dev_private;
+	struct xocl_drm	*drm_p;
 	int	ret = 0;
 
 	DRM_ENTER("");
@@ -281,9 +245,16 @@ static int xocl_client_open(struct drm_device *dev, struct drm_file *filp)
 	if (drm_is_primary_client(filp))
 		return -EPERM;
 
+	drm_p = xocl_drvinst_open(dev);
+	if (!drm_p) {
+		return -ENXIO;
+	}
+
 	ret = xocl_exec_create_client(drm_p->xdev, &filp->driver_priv);
-	if (ret)
+	if (ret) {
+		xocl_drvinst_close(drm_p);
 		goto failed;
+	}
 
 	return 0;
 
@@ -296,6 +267,7 @@ static void xocl_client_release(struct drm_device *dev, struct drm_file *filp)
 	struct xocl_drm	*drm_p = dev->dev_private;
 
 	xocl_exec_destroy_client(drm_p->xdev, &filp->driver_priv);
+	xocl_drvinst_close(drm_p);
 }
 
 static uint xocl_poll(struct file *filp, poll_table *wait)
@@ -355,12 +327,12 @@ static long xocl_drm_ioctl(struct file *filp,
 
 static const struct file_operations xocl_driver_fops = {
 	.owner		= THIS_MODULE,
-	.open		= xocl_open,
+	.open		= drm_open,
 	.mmap		= xocl_mmap,
 	.poll		= xocl_poll,
 	.read		= drm_read,
 	.unlocked_ioctl = xocl_drm_ioctl,
-	.release	= xocl_release,
+	.release	= drm_release,
 };
 
 static const struct vm_operations_struct xocl_vm_ops = {
@@ -646,6 +618,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	}
 
 	topo = XOCL_MEM_TOPOLOGY(drm_p->xdev);
+
 	if (topo == NULL)
 		return 0;
 
