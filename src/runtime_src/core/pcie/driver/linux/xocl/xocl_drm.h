@@ -63,6 +63,7 @@ struct drm_xocl_bo {
 	unsigned              dma_nsg;
 	unsigned              flags;
 	unsigned              mem_idx;
+	void                 *cma_addr;
 };
 
 struct drm_xocl_unmgd {
