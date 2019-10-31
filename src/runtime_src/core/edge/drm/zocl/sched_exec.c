@@ -2930,8 +2930,10 @@ sched_init_exec(struct drm_device *drm)
 	SCHED_DEBUG("-> %s\n", __func__);
 
 	exec_core = devm_kzalloc(drm->dev, sizeof(*exec_core), GFP_KERNEL);
-	if (!exec_core)
+	if (!exec_core) {
+		DRM_ERROR("Alloc exec_core failed: no memory\n");
 		return -ENOMEM;
+	}
 
 	zdev->exec = exec_core;
 	spin_lock_init(&exec_core->ctx_list_lock);
