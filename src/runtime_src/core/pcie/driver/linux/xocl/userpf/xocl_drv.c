@@ -544,6 +544,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	struct xcl_subdev	*resp = NULL;
 	size_t resp_len = sizeof(*resp) + XOCL_MSG_SUBDEV_DATA_LEN;
 	char *blob = NULL, *tmp;
+	u32 blob_len;
 	uint64_t checksum;
 	size_t offset = 0;
 	int ret = 0;
@@ -581,6 +582,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 			vfree(blob);
 		}
 		blob = tmp;
+		blob_len = offset + resp_len;
 
 		subdev_peer.offset = offset;
 		ret = xocl_peer_request(xdev, mb_req, reqlen,
@@ -607,19 +609,20 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	if (!offset && !xdev->core.fdt_blob)
 		goto failed;
 
-	if (xdev->core.fdt_blob)
+	if (xdev->core.fdt_blob) {
 		vfree(xdev->core.fdt_blob);
+		xdev->core.fdt_blob = NULL;
+	}
 	xdev->core.fdt_blob = blob;
-	blob = NULL;
-
 
 	xocl_drvinst_set_offline(xdev->core.drm, true);
-	if (xdev->core.fdt_blob) {
-		ret = xocl_fdt_blob_input(xdev, xdev->core.fdt_blob);
+	if (blob) {
+		ret = xocl_fdt_blob_input(xdev, blob, blob_len);
 		if (ret) {
 			userpf_err(xdev, "parse blob failed %d", ret);
 			goto failed;
 		}
+		blob = NULL;
 	}
 
 	if (XOCL_DRM(xdev))
