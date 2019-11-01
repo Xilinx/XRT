@@ -34,7 +34,7 @@
 static xuid_t uuid_null = NULL_UUID_LE;
 #endif
 
-static struct key *icap_keys;
+static struct key *icap_keys = NULL;
 
 #define	ICAP_ERR(icap, fmt, arg...)	\
 	xocl_err(&(icap)->icap_pdev->dev, fmt "\n", ##arg)
@@ -2245,9 +2245,6 @@ static int icap_verify_signature(struct icap *icap,
 {
 	int ret = 0;
 
-	if (icap_keys == NULL)
-		return ret;
-
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
 #define	SYS_KEYS	((void *)1UL)
 	ret = verify_pkcs7_signature(data, data_len, sig, sig_len,
@@ -3699,23 +3696,29 @@ int __init xocl_init_icap(void)
 	if (err)
 		goto err_reg_driver;
 
+	icap_keys = NULL;
 #if PF == MGMTPF
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
 	icap_keys = keyring_alloc(".xilinx_fpga_xclbin_keys", KUIDT_INIT(0),
 		KGIDT_INIT(0), current_cred(),
 		((KEY_POS_ALL & ~KEY_POS_SETATTR) |
 		KEY_USR_VIEW | KEY_USR_WRITE | KEY_USR_SEARCH),
 		KEY_ALLOC_NOT_IN_QUOTA, NULL, NULL);
+#endif
+
+#endif
 	if (IS_ERR(icap_keys)) {
 		err = PTR_ERR(icap_keys);
 		icap_keys = NULL;
 		pr_err("create icap keyring failed: %d", err);
+		goto err_key;
 	}
-#endif
-#endif
 
 	return 0;
 
+err_key:
+	platform_driver_unregister(&icap_driver);
 err_reg_driver:
 	if (icap_drv_priv.fops && icap_drv_priv.dev != -1)
 		unregister_chrdev_region(icap_drv_priv.dev, XOCL_MAX_DEVICES);
@@ -3725,12 +3728,8 @@ err_reg_cdev:
 
 void xocl_fini_icap(void)
 {
-#if PF == MGMTPF
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
 	if (icap_keys)
 		key_put(icap_keys);
-#endif
-#endif
 	if (icap_drv_priv.fops && icap_drv_priv.dev != -1)
 		unregister_chrdev_region(icap_drv_priv.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&icap_driver);
