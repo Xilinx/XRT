@@ -23,6 +23,7 @@ int32_t load_libxrt();
 
 int32_t get_cu_index(int32_t dev_index, char* cu_name);
 int32_t get_default_ddr_index(int32_t dev_index, int32_t cu_index);
+void xma_enable_mode1(void);
 
 int32_t check_all_execbo(XmaSession s_handle);
 

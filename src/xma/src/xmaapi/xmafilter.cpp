@@ -43,16 +43,6 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         return NULL;
     }
 
-    // Load the xmaplugin library as it is a dependency for all plugins
-    void *xmahandle = dlopen("libxma2plugin.so",
-                             RTLD_LAZY | RTLD_GLOBAL);
-    if (!xmahandle)
-    {
-        xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
-                   "Failed to open plugin xmaplugin.so. Error msg: %s\n",
-                   dlerror());
-        return NULL;
-    }
     void *handle = dlopen(filter_props->plugin_lib, RTLD_NOW);
     if (!handle)
     {
@@ -268,6 +258,38 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     priv1->device = &hwcfg->devices[hwcfg_dev_index];
     filter_session->base.hw_session.private_do_not_use = (void*) priv1;
     filter_session->base.session_signature = (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved));
+
+    int32_t num_execbo = g_xma_singleton->num_execbos;
+    priv1->kernel_execbos.reserve(num_execbo);
+    priv1->num_execbo_allocated = num_execbo;
+    for (int32_t d = 0; d < num_execbo; d++) {
+        uint32_t  bo_handle;
+        int       execBO_size = MAX_EXECBO_BUFF_SIZE;
+        //uint32_t  execBO_flags = (1<<31);
+        char     *bo_data;
+        bo_handle = xclAllocBO(dev_handle, 
+                                execBO_size, 
+                                0, 
+                                XCL_BO_FLAGS_EXECBUF);
+        if (!bo_handle || bo_handle == mNullBO) 
+        {
+            xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
+                    "Initalization of plugin failed. Failed to alloc execbo\n");
+            //Release singleton lock
+            g_xma_singleton->locked = false;
+            free(filter_session->base.plugin_data);
+            free(filter_session);
+            delete priv1;
+            return NULL;
+        }
+        bo_data = (char*)xclMapBO(dev_handle, bo_handle, true);
+        memset((void*)bo_data, 0x0, execBO_size);
+
+        priv1->kernel_execbos.emplace_back(XmaHwExecBO{});
+        XmaHwExecBO& dev_execbo = priv1->kernel_execbos.back();
+        dev_execbo.handle = bo_handle;
+        dev_execbo.data = bo_data;
+    }
 
     rc = filter_session->filter_plugin->init(filter_session);
     if (rc) {

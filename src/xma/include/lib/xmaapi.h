@@ -62,6 +62,7 @@ typedef struct XmaSingleton
     std::unordered_map<uint32_t, XmaSession> all_sessions;// XMASessions
     std::list<XmaLogMsg>   log_msg_list;
     std::atomic<bool> log_msg_list_locked;
+    std::atomic<uint32_t> num_execbos;
 
     std::atomic<bool> xma_exit;
     std::thread       xma_thread1;
@@ -78,6 +79,7 @@ typedef struct XmaSingleton
     num_filters = 0;
     num_kernels = 0;
     num_admins = 0;
+    num_execbos = 3;//Default is 3 execbo per session
     num_of_sessions = 0;
     log_msg_list_locked = false;
     xma_exit = false;
