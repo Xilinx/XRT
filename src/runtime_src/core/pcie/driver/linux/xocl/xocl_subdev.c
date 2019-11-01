@@ -493,6 +493,9 @@ int xocl_subdev_create_by_name(xdev_handle_t xdev_hdl, char *name)
 
 	xocl_lock_xdev(xdev_hdl);
 	subdev_info = xocl_subdev_get_info(xdev_hdl, &subdev_num);
+	if (!subdev_info)
+		return ret;
+
 	for (i = 0; i < subdev_num; i++) {
 		if (strcmp(subdev_info[i].name, name))
 			continue;
@@ -534,6 +537,9 @@ static int __xocl_subdev_create_by_id(xdev_handle_t xdev_hdl, int id)
 	int i, ret = -ENODEV, subdev_num;
 
 	subdev_info = xocl_subdev_get_info(xdev_hdl, &subdev_num);
+	if (!subdev_info)
+		return ret;
+
 	for (i = 0; i < subdev_num; i++) {
 		if (subdev_info[i].id != id)
 			continue;
@@ -567,6 +573,9 @@ int xocl_subdev_create_by_level(xdev_handle_t xdev_hdl, int level)
 
 	xocl_lock_xdev(xdev_hdl);
 	subdev_info = xocl_subdev_get_info(xdev_hdl, &subdev_num);
+	if (!subdev_info)
+		return ret;
+
 	for (i = 0; i < subdev_num; i++) {
 		if (subdev_info[i].level != level)
 			continue;
@@ -590,6 +599,9 @@ struct resource *xocl_subdev_get_ioresource(xdev_handle_t xdev_hdl,
 
 	xocl_lock_xdev(xdev_hdl);
 	subdev_info = xocl_subdev_get_info(xdev_hdl, &subdev_num);
+	if (!subdev_info)
+		return NULL;
+
 	for (i = 0; i < subdev_num; i++) {
 		for (j = 0; j < subdev_info[i].num_res; j++) {
 			if ((subdev_info[i].res[j].flags & IORESOURCE_MEM) &&
@@ -794,9 +806,6 @@ static int __xocl_subdev_online(xdev_handle_t xdev_hdl,
 				goto failed;
 		}
 	}
-
-	if (ret)
-		goto failed;
 
 	ret = xocl_subdev_cdev_create(subdev->pldev, &subdev->cdev);
 	if (ret) {

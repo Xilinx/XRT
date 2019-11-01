@@ -561,7 +561,8 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 		goto failed;
 
 	ret = xocl_fdt_blob_input(lro,
-			(char *)fw->data + dtc_header->m_sectionOffset);
+			(char *)fw->data + dtc_header->m_sectionOffset,
+			dtc_header->m_sectionSize);
 	if (ret) {
 		mgmt_err(lro, "Invalid PARTITION_METADATA");
 		goto failed;
