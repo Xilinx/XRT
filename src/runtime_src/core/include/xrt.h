@@ -39,7 +39,6 @@
 
 #if defined (_WIN32)
 #include "windows/types.h"
-#include "windows/xrt.h"
 #endif
 
 #ifdef __GNUC__
