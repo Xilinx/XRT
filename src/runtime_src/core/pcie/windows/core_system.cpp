@@ -34,7 +34,7 @@ void xrt_core::system::get_xrt_info(boost::property_tree::ptree &_pt)
 
 
 //function for converting CString type to std::string
-std::string convert(CString input)
+static std::string convert(CString input)
 {
   CT2CA converted_input(input);
   std::string string_input(converted_input);
@@ -42,11 +42,14 @@ std::string convert(CString input)
   return string_input;
 }
 
-CString GetStringFromReg(HKEY keyParent, CString keyName, CString keyValName)
+static std::string GetStringFromReg(HKEY keyParent, std::string _keyName,
+						std::string _keyValName)
 {
   CRegKey key;
   CString out;
 
+  CString keyName(_keyName.c_str());
+  CString keyValName(_keyValName.c_str());
   if (key.Open(keyParent, keyName, KEY_READ) == ERROR_SUCCESS) {
 	ULONG len = 256;
 	key.QueryStringValue(keyValName, out.GetBuffer(256), &len);
@@ -54,12 +57,12 @@ CString GetStringFromReg(HKEY keyParent, CString keyName, CString keyValName)
 	key.Close();
   }
 
-  return out;
+  return convert(out);
 }
 
-CString getmachinename()
+static std::string getmachinename()
 {
-  CString machine;
+  std::string machine;
   SYSTEM_INFO sysInfo;
 
   // Get hardware info
@@ -68,17 +71,17 @@ CString getmachinename()
   // Set processor architecture
   switch (sysInfo.wProcessorArchitecture) {
   case PROCESSOR_ARCHITECTURE_AMD64:
-	  machine = CString(_T("x86_64"));
+	  machine = "x86_64";
 	  break;
   case PROCESSOR_ARCHITECTURE_IA64:
-	  machine = CString(_T("ia64"));
+	  machine = "ia64";
 	  break;
   case PROCESSOR_ARCHITECTURE_INTEL:
-	  machine = CString(_T("x86"));
+	  machine = "x86";
 	  break;
   case PROCESSOR_ARCHITECTURE_UNKNOWN:
   default:
-	  machine = CString(_T("unknown"));
+	  machine = "unknown";
 	  break;
   }
 
@@ -87,20 +90,16 @@ CString getmachinename()
 
 void xrt_core::system::get_os_info(boost::property_tree::ptree &_pt)
 {
-  CString osversion = GetStringFromReg(HKEY_LOCAL_MACHINE,
-		L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", L"CurrentVersion");
-  CString osname = GetStringFromReg(HKEY_LOCAL_MACHINE,
-		L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", L"ProductName");
-  CString build = GetStringFromReg(HKEY_LOCAL_MACHINE,
-		L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", L"BuildLab");
-  CString machine = getmachinename();
   char tnow[26];
-  time_t result = time(NULL);
+  time_t result = 0;
 
   ctime_s(tnow, sizeof tnow, &result);
-  _pt.put("sysname", convert(osname));
-  _pt.put("release", convert(build));
-  _pt.put("version", convert(osversion));
-  _pt.put("machine", convert(machine));
+  _pt.put("sysname", GetStringFromReg(HKEY_LOCAL_MACHINE,
+				"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "ProductName").c_str());
+  _pt.put("release", GetStringFromReg(HKEY_LOCAL_MACHINE,
+				"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "BuildLab").c_str());
+  _pt.put("version", GetStringFromReg(HKEY_LOCAL_MACHINE,
+				"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "CurrentVersion").c_str());
+  _pt.put("machine", getmachinename().c_str());
   _pt.put("now", tnow);
 }
