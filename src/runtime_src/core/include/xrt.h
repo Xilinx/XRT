@@ -537,9 +537,18 @@ XCL_DRIVER_DLLESPEC size_t xclReadBO(xclDeviceHandle handle, xclBufferHandle boH
  * Return:         Memory mapped buffer
  *
  * Map the contents of the buffer object into host memory
- * To unmap the buffer call POSIX unmap() on mapped void * pointer returned from xclMapBO
+ * To unmap the buffer call xclUnmapBO().
  */
 XCL_DRIVER_DLLESPEC void *xclMapBO(xclDeviceHandle handle, xclBufferHandle boHandle, bool write);
+
+/**
+ * xclUnmapBO() - Unmap a BO that was previously mapped with xclMapBO
+ *
+ * @handle:        Device handle
+ * @boHandle:      BO handle
+ * @addr:          Starting point of mapped address
+ */
+XCL_DRIVER_DLLESPEC int xclUnmapBO(xclDeviceHandle handle, xclBufferHandle boHandle, void* addr);
 
 /**
  * xclSyncBO() - Synchronize buffer contents in requested direction

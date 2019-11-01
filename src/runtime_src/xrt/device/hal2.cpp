@@ -157,7 +157,7 @@ allocExecBuffer(size_t sz)
   auto delBufferObject = [this](ExecBufferObjectHandle::element_type* ebo) {
     ExecBufferObject* bo = static_cast<ExecBufferObject*>(ebo);
     XRT_DEBUG(std::cout,"deleted exec buffer object\n");
-    m_ops->munmap(bo->data, bo->size);
+    m_ops->mUnmapBO(m_handle, bo->handle, bo->data);
     m_ops->mFreeBO(m_handle, bo->handle);
     delete bo;
   };
@@ -182,7 +182,7 @@ alloc(size_t sz)
   auto delBufferObject = [this](BufferObjectHandle::element_type* vbo) {
     BufferObject* bo = static_cast<BufferObject*>(vbo);
     XRT_DEBUGF("deleted buffer object device address(%p,%d)\n",bo->deviceAddr,bo->size);
-    m_ops->munmap(bo->hostAddr, bo->size);
+    m_ops->mUnmapBO(m_handle, bo->handle, bo->hostAddr);
     m_ops->mFreeBO(m_handle, bo->handle);
     delete bo;
   };
@@ -237,7 +237,7 @@ alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
     BufferObject* bo = static_cast<BufferObject*>(vbo);
     XRT_DEBUGF("deleted buffer object device address(%p,%d)\n",bo->deviceAddr,bo->size);
     if (mmapRequired)
-      m_ops->munmap(bo->hostAddr, bo->size);
+      m_ops->mUnmapBO(m_handle, bo->handle, bo->hostAddr);
     m_ops->mFreeBO(m_handle, bo->handle);
     delete bo;
   };
@@ -521,7 +521,7 @@ getBufferFromFd(const int fd, size_t& size, unsigned flags)
   auto delBufferObject = [this](BufferObjectHandle::element_type* vbo) {
     BufferObject* bo = static_cast<BufferObject*>(vbo);
     XRT_DEBUGF("deleted buffer object device address(%p,%d)\n",bo->deviceAddr,bo->size);
-    m_ops->munmap(bo->hostAddr, bo->size);
+    m_ops->mUnmapBO(m_handle, bo->handle, bo->hostAddr);
     m_ops->mFreeBO(m_handle, bo->handle);
     delete bo;
   };

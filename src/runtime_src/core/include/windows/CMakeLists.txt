@@ -1,7 +1,6 @@
 set(XRT_WINDOWS_HEADER_SRC
   types.h
-  uuid.h
-  xrt.h)
+  uuid.h)
 
 install (FILES ${XRT_WINDOWS_HEADER_SRC} DESTINATION ${XRT_INSTALL_DIR}/include/windows)
 
