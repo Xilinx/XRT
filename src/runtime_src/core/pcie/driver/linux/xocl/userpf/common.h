@@ -128,6 +128,8 @@ struct xocl_dev	{
 
 	uint64_t			mig_cache_expire_secs;
 	ktime_t				mig_cache_expires;
+
+	struct mem_topology		*mem_topo;
 };
 
 /**
