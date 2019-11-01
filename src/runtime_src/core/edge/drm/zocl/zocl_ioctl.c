@@ -630,6 +630,12 @@ zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 		goto out0;
 	}
 
+	/*
+	 * xclbin download changes PR region, make sure next
+	 * ERT configure cmd will go through
+	 */
+	zocl_exec_reset(ddev);
+
 	/* For PR support platform, device-tree has configured addr */
 	if (zdev->pr_isolation_addr) {
 		DRM_INFO("PR bitstream header mode: %d flags %d",
@@ -707,12 +713,6 @@ zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 	zocl_init_mem(zdev, zdev->topology);
 
 	zdev->unique_id_last_bitstream = axlf_head.m_uniqueId;
-
-	/*
-	 * xclbin download changes PR region, make sure next
-	 * ERT configure cmd will go through
-	 */
-	zocl_exec_reset(ddev);
 
 out0:
 	write_unlock(&zdev->attr_rwlock);
