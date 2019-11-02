@@ -79,7 +79,7 @@
 /* drm_dev_put was introduced with Linux 4.15 and backported to Red Hat 7.6. */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0)
 	#define XOCL_DRM_DEV_PUT drm_dev_put
-#elif defined(RHEL_RELEASE_CODE)
+#elif defined(RHEL_RELEASE_CODE) && !defined(__PPC64__)
 	#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,6)
 		#define XOCL_DRM_DEV_PUT drm_dev_put
 	#else
