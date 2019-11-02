@@ -530,6 +530,7 @@ static void chan_config_timer(struct mailbox_channel *ch)
 	struct list_head *pos, *n;
 	struct mailbox_msg *msg = NULL;
 	bool on = false;
+	struct mailbox *mbx = ch->mbc_parent;
 
 	mutex_lock(&ch->mbc_mutex);
 
@@ -553,6 +554,7 @@ static void chan_config_timer(struct mailbox_channel *ch)
 			del_timer_sync(&ch->mbc_timer);
 	}
 
+	MBX_DBG(mbx, "%s timer is %s", ch_name(ch), on ? "on" : "off");
 	mutex_unlock(&ch->mbc_mutex);
 }
 
@@ -1278,15 +1280,17 @@ static bool is_tx_chan_ready(struct mailbox_channel *ch)
 static void chan_do_tx(struct mailbox_channel *ch)
 {
 	struct mailbox *mbx = ch->mbc_parent;
+	bool chan_ready = is_tx_chan_ready(ch);
 
 	/* Finished sending a whole msg, call it done. */
-	if (ch->mbc_cur_msg &&
+	if (chan_ready && ch->mbc_cur_msg &&
 		(ch->mbc_cur_msg->mbm_len == ch->mbc_bytes_done))
 		chan_msg_done(ch, 0);
 
 	dequeue_tx_msg(ch);
 
-	if (is_tx_chan_ready(ch)) {
+	/* Send the next pkg out. */
+	if (chan_ready) {
 		if (ch->mbc_cur_msg) {
 			/* Sending msg. */
 			if (ch->mbc_cur_msg->mbm_chan_sw || MB_SW_ONLY(mbx))
