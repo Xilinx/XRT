@@ -58,13 +58,13 @@ private:
   typedef void (* closeFuncType)(xclDeviceHandle handle);
   typedef int (* loadBitstreamFuncType)(xclDeviceHandle handle, const char *fileName);
   typedef int (* loadXclBinFuncType)(xclDeviceHandle handle, const xclBin *buffer);
-  typedef unsigned int (*allocBOFuncType) (xclDeviceHandle handle, size_t size, int unused, unsigned int flags);
-  typedef unsigned int (*allocUserPtrBOFuncType) (xclDeviceHandle handle, void* userptr, size_t size, unsigned int flags);
+  typedef xclBufferHandle (*allocBOFuncType) (xclDeviceHandle handle, size_t size, int unused, unsigned int flags);
+  typedef xclBufferHandle (*allocUserPtrBOFuncType) (xclDeviceHandle handle, void* userptr, size_t size, unsigned int flags);
 
-  typedef unsigned int (*importBOFuncType)(xclDeviceHandle handle, int fd, unsigned int flags);
-  typedef unsigned int (*exportBOFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle);
+  typedef xclBufferHandle (*importBOFuncType)(xclDeviceHandle handle, int fd, unsigned int flags);
+  typedef int (*exportBOFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle);
   typedef int (*getBOPropertiesFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle, xclBOProperties*);
-  typedef unsigned int (*execBOFuncType)(xclDeviceHandle handle, xclBufferHandle cmdBO);
+  typedef int (*execBOFuncType)(xclDeviceHandle handle, xclBufferHandle cmdBO);
   typedef int (*execWaitFuncType)(xclDeviceHandle handle, int timeoutMS);
 
   typedef void (* freeBOFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle);
@@ -72,7 +72,7 @@ private:
   typedef size_t (* readBOFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle, void *dst, size_t size, size_t skip);
   typedef int (* syncBOFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle, xclBOSyncDirection dir,
                                  size_t size, size_t offset);
-  typedef int (* copyBOFuncType)(xclDeviceHandle handle, unsigned int dstBoHandle, unsigned int srcBoHandle,
+  typedef int (* copyBOFuncType)(xclDeviceHandle handle, xclBufferHandle dstBoHandle, xclBufferHandle srcBoHandle,
                                  size_t size, size_t dst_offset, size_t src_offset);
 
   typedef void* (* mapBOFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle, bool write);

@@ -38,6 +38,8 @@
 #endif
 
 #if defined (_WIN32)
+#define NOMINMAX
+#include <windows.h>
 #include "windows/types.h"
 #endif
 
@@ -82,8 +84,10 @@ typedef void * xclDeviceHandle;
  */
 #ifdef _WIN32
 typedef void * xclBufferHandle;
+# define NULLBO	INVALID_HANDLE_VALUE
 #else
 typedef unsigned int xclBufferHandle;
+# define NULLBO	0xffffffff
 #endif
 
 struct axlf;
@@ -237,8 +241,6 @@ struct xclBOProperties {
     uint64_t paddr;
     int reserved; // not implemented
 };
-
-#define	NULLBO	0xffffffff
 
 /**
  * DOC: XRT Device Management APIs
