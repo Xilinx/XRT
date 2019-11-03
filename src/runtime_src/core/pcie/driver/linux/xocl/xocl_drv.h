@@ -232,6 +232,11 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 
 #define	GB(x)			((uint64_t)(x) * 1024 * 1024 * 1024)
 
+#define XOCL_VSEC_UUID_ROM          0x50
+#define XOCL_VSEC_FLASH_CONTROLER   0x51
+#define XOCL_VSEC_PLATFORM_INFO     0x52
+#define XOCL_VSEC_MAILBOX           0x53
+
 extern struct class *xrt_class;
 
 struct drm_xocl_bo;
@@ -1080,6 +1085,8 @@ int xocl_subdev_destroy_by_name(xdev_handle_t xdev_hdl, char *name);
 
 int xocl_subdev_destroy_prp(xdev_handle_t xdev);
 int xocl_subdev_create_prp(xdev_handle_t xdev);
+
+int xocl_subdev_vsec(xdev_handle_t xdev, u32 type, u64 *offset, u32 *value);
 
 struct resource *xocl_subdev_get_ioresource(xdev_handle_t xdev_hdl,
 		char *res_name);

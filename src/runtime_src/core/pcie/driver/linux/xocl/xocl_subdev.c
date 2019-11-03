@@ -956,36 +956,120 @@ xdev_handle_t xocl_get_xdev(struct platform_device *pdev)
 	return dev ? pci_get_drvdata(to_pci_dev(dev)) : NULL;
 }
 
+static void
+xocl_fetch_dynamic_platform(struct xocl_dev_core *core,
+	struct xocl_board_private **in)
+{
+	struct pci_dev *pdev = core->pdev;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(dsa_map); i++) {
+		if (dsa_map[i].type != XOCL_DSAMAP_DYNAMIC)
+			continue;
+		if ((pdev->vendor == dsa_map[i].vendor ||
+			dsa_map[i].vendor == (u16)PCI_ANY_ID) &&
+			(pdev->device == dsa_map[i].device ||
+			dsa_map[i].device == (u16)PCI_ANY_ID) &&
+			(pdev->subsystem_device ==
+			dsa_map[i].subdevice ||
+			dsa_map[i].subdevice == (u16)PCI_ANY_ID)) {
+			*in = dsa_map[i].priv_data;
+			core->priv.vbnv = dsa_map[i].vbnv;
+			break;
+		}
+	}
+}
+
+int
+xocl_subdev_vsec(xdev_handle_t xdev, u32 type, u64 *offset, u32 *value)
+{
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev;
+	struct pci_dev *pdev = core->pdev;
+	int bar;
+	resource_size_t bar_len;
+	void __iomem *bar_addr;
+	int cap, i, length;
+	u32 off_low, off_high;
+	u64 vsec_off;
+	bool found = false;
+
+	/* check vendor specific section */
+	cap = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_VNDR);
+	if (!cap) {
+		xocl_err(&core->pdev->dev, "No Vendor Specific Capability.");
+		return -EINVAL;
+	}
+
+	/* get vendor specific offset */
+	if (pci_read_config_dword(pdev, cap+8, &off_low) ||
+	    pci_read_config_dword(pdev, cap+12, &off_high)) {
+		xocl_err(&core->pdev->dev, "pci_read vendor specific failed.");
+		return -EINVAL;
+	}
+
+	bar =  off_low & 0xf;
+	if (bar != 0) {
+		xocl_err(&core->pdev->dev, "bar id(%d) has to be zero.", bar);
+		return -EINVAL;
+	}
+
+	/* iomap bar_addr for ioread32 to read data */
+	bar_len = pci_resource_len(pdev, bar);
+	BUG_ON(!bar_len);
+	bar_addr = pci_iomap(pdev, bar, bar_len);
+	if (!bar_addr) {
+		xocl_err(&core->pdev->dev, "Could not map BAR #%d", bar);
+		return -EIO;
+	}
+
+	vsec_off = ((u64)off_high << 32) | (off_low & 0xfffffff0);
+	length = ioread32(bar_addr + vsec_off + 0x4);
+
+	for (i = 16; i < length; i += 8) {
+		u64 off;
+
+		off_low = ioread32(bar_addr + vsec_off + i);
+		if ((off_low & 0xff) != type)
+			continue;
+
+		found = true;
+		off_high = ioread32(bar_addr + vsec_off + i + 4);
+		off = ((u64)off_high << 16) | (off_low & 0xffff0000) >> 16;
+		if (offset)
+			*offset = off;
+		if (value)
+			*value = ioread32(bar_addr + off);
+	}
+
+	/* unmap bar_addr */
+	pci_iounmap(pdev, bar_addr);
+	bar_addr = NULL;
+
+	return found ? 0 : -ENOENT;
+}
+
 void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
 	struct pci_dev *pdev = core->pdev;
 	u32 dyn_shell_magic;
-	int i, ret, cap;
+	int ret, cap;
 	unsigned err_cap;
+	u32 type;
 
 	memset(&core->priv, 0, sizeof(core->priv));
 	core->priv.vbnv = in->vbnv;
 	/* read pci capability to determine if this is multi RP board */
 	/* currently, it is hard coded to 0xB0 as a work around */
 	ret = pci_read_config_dword(core->pdev, 0xB0, &dyn_shell_magic);
-	if (!ret && ((dyn_shell_magic & 0xff00ffff) == 0x01000009)) {
-		for (i = 0; i < ARRAY_SIZE(dsa_map); i++) {
-			if (dsa_map[i].type != XOCL_DSAMAP_DYNAMIC)
-				continue;
-			if ((core->pdev->vendor == dsa_map[i].vendor ||
-				dsa_map[i].vendor == (u16)PCI_ANY_ID) &&
-				(core->pdev->device == dsa_map[i].device ||
-				dsa_map[i].device == (u16)PCI_ANY_ID) &&
-				(core->pdev->subsystem_device ==
-				dsa_map[i].subdevice ||
-				dsa_map[i].subdevice == (u16)PCI_ANY_ID)) {
-				in = dsa_map[i].priv_data;
-				core->priv.vbnv = dsa_map[i].vbnv;
-				break;
-			}
-		}
-	}
+	if (!ret && ((dyn_shell_magic & 0xff00ffff) == 0x01000009))
+		xocl_fetch_dynamic_platform(core, &in);
+
+	/* When vender specific has platform_info, we can load golden now */
+	ret = xocl_subdev_vsec(xdev_hdl, XOCL_VSEC_PLATFORM_INFO, NULL, &type);
+	if (!ret)
+		xocl_fetch_dynamic_platform(core, &in);
+		
 	/* workaround firewall completer abort issue */
 	cap = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_ERR);
 	if (cap) {
