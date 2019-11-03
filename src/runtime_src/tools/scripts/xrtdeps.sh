@@ -219,7 +219,11 @@ install()
     if [ $FLAVOR == "rhel" ] || [ $FLAVOR == "centos" ] || [ $FLAVOR == "amzn" ]; then
         echo "Installing RHEL/CentOS packages..."
         ${SUDO} yum install -y "${RH_LIST[@]}"
-        ${SUDO} yum install -y devtoolset-6
+	if [ $ARCH == "ppc64le" ]; then
+            ${SUDO} yum install -y devtoolset-7
+	else
+            ${SUDO} yum install -y devtoolset-6
+	fi
     fi
 }
 
