@@ -547,7 +547,7 @@ XCL_DRIVER_DLLESPEC void *xclMapBO(xclDeviceHandle handle, xclBufferHandle boHan
  *
  * @handle:        Device handle
  * @boHandle:      BO handle
- * @addr:          Starting point of mapped address
+ * @addr:          The mapped void * pointer returned from xclMapBO()
  */
 XCL_DRIVER_DLLESPEC int xclUnmapBO(xclDeviceHandle handle, xclBufferHandle boHandle, void* addr);
 
