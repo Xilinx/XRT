@@ -79,7 +79,7 @@
 /* drm_dev_put was introduced with Linux 4.15 and backported to Red Hat 7.6. */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,15,0)
 	#define XOCL_DRM_DEV_PUT drm_dev_put
-#elif defined(RHEL_RELEASE_CODE)
+#elif defined(RHEL_RELEASE_CODE) && !defined(__PPC64__)
 	#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7,6)
 		#define XOCL_DRM_DEV_PUT drm_dev_put
 	#else
@@ -575,7 +575,9 @@ struct xocl_mb_scheduler_funcs {
 	-ENODEV)
 
 #define XOCL_MEM_TOPOLOGY(xdev)						\
-	((struct mem_topology *)xocl_icap_get_data(xdev, MEMTOPO_AXLF))
+	(XOCL_DSA_IS_VERSAL(xdev) ?					\
+	((struct mem_topology *)(((struct xocl_dev *)(xdev))->mem_topo)) : \
+	((struct mem_topology *)xocl_icap_get_data(xdev, MEMTOPO_AXLF)))
 #define XOCL_IP_LAYOUT(xdev)						\
 	((struct ip_layout *)xocl_icap_get_data(xdev, IPLAYOUT_AXLF))
 #define XOCL_XCLBIN_ID(xdev)						\

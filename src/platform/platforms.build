@@ -91,19 +91,6 @@
 				"to": ["${TA_ROOT}/internal_platforms"]
 			}
 		},
-		"zed_base": {
-			"architecture": "zynq7000",
-			"bsp_key": "zed",
-			"package": {
-				"dsabin": false,
-				"dsadev": false,
-				"ta_locations": [""]
-			},
-			"copy": {
-				"from": "${XRT_EMBEDDED_ROOT}",
-				"to": ["${TA_ROOT}/internal_platforms"]
-			}
-		},
 		"zc706_base": {
 			"architecture": "zynq7000",
 			"bsp_key": "zc706",

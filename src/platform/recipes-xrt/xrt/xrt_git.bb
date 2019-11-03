@@ -7,7 +7,7 @@ LIC_FILES_CHKSUM = "file://../LICENSE;md5=fa343562af4b9b922b8d7fe7b0b6d000 \
                     file://runtime_src/core/pcie/linux/LICENSE;md5=3b83ef96387f14655fc854ddc3c6bd57 \
                     file://runtime_src/core/pcie/tools/xbutil/LICENSE;md5=d273d63619c9aeaf15cdaf76422c4f87"
 
-SRC_URI = "git://github.com/Xilinx/XRT.git;protocol=https;branch=master"
+SRC_URI = "git://github.com/Xilinx/XRT.git;protocol=https;branch=2019.2"
 
 PV = "2.2.0+git${SRCPV}"
 
