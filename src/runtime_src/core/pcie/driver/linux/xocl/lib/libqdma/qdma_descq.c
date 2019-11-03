@@ -381,9 +381,8 @@ static unsigned int st_h2c_desc_fill(struct qdma_descq *descq,
 		if (!tlen && eop) {
 			desc->flags |= S_H2C_DESC_F_EOP;
 
-			if (xdev->stm_en)
-				desc->cdh_flags |=  (eot << S_H2C_DESC_F_EOT) |
-					(1 << S_H2C_DESC_F_REQ_CMPL_STATUS);
+			if (xdev->stm_en && eot)
+				desc->cdh_flags |=  1 << S_H2C_DESC_F_EOT;
 		}
 
 #ifdef DEBUG
@@ -538,10 +537,21 @@ static ssize_t descq_proc_st_h2c_request(struct qdma_descq *descq)
 	}
 
 	if (desc_written) {
+#if 1
+		struct qdma_h2c_desc *desc = (struct qdma_h2c_desc *)descq->desc;
+		unsigned int pidx = descq->pidx;
+
+		if (pidx == 0)
+			pidx = rngsz - 1;
+		else
+			pidx--;
+		desc += pidx;
+		desc->cdh_flags |= (1 << S_H2C_DESC_F_REQ_CMPL_STATUS);
+#endif
+
 		descq->pend_list_empty = 0;
 		descq_h2c_pidx_update(descq, descq->pidx);
 		descq_poll_mm_n_h2c_cmpl_status(descq);
-
 	}
 
 	descq->proc_req_running = 0;
