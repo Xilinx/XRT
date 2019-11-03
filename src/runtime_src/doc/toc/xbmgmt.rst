@@ -11,4 +11,4 @@ This utility is used for card installation and administration, and requires sudo
 running it. The ``xbmgmt`` supported tasks include flashing the card firmware, and scanning the
 current device configuration.
 
-For more details please refer `Vitis Application Acceleration Document` (Link to be inserted)
+For more details please refer `Vitis Application Acceleration Document <https://www.xilinx.com/html_docs/xilinx2019_2/vitis_doc/utg1569948694132.html>`_

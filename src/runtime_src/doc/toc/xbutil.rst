@@ -10,4 +10,4 @@ the installed accelerator card(s) along with additional card details including D
 platform name, and system information. This information can be used for both card administration 
 and application debugging.
 
-For more details please refer `Vitis Application Acceleration Document` (Link to be inserted)
+For more details please refer `Vitis Application Acceleration Document <https://www.xilinx.com/html_docs/xilinx2019_2/vitis_doc/Chunk1185163305.html>`_ 
