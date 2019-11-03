@@ -72,7 +72,7 @@ class device : public xrt::hal::device
 
   struct BufferObject : hal::buffer_object
   {
-    unsigned int handle = 0xffffffff;
+    xclBufferHandle handle;
     uint64_t deviceAddr = 0xffffffffffffffff;
     void *hostAddr = nullptr;
     size_t size = 0;
@@ -85,7 +85,7 @@ class device : public xrt::hal::device
 
   struct ExecBufferObject : hal::exec_buffer_object
   {
-    unsigned int handle = 0xffffffff;
+    xclBufferHandle handle;
     void* data = nullptr;
     size_t size = 0;
     hal2::device_handle owner = nullptr;

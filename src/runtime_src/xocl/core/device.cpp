@@ -973,10 +973,9 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
     auto cppkt = xrt::command_cast<ert_start_copybo_cmd*>(cmd);
     auto src_boh = src_buffer->get_buffer_object(this);
     auto dst_boh = dst_buffer->get_buffer_object(this);
-    xdevice->fill_copy_pkt(dst_boh,src_boh,size,dst_offset,src_offset,cppkt);
-
-    cmd->start();    // done() called by scheduler on success
     try {
+      xdevice->fill_copy_pkt(dst_boh,src_boh,size,dst_offset,src_offset,cppkt);
+      cmd->start();    // done() called by scheduler on success
       cmd->execute();  // throws on error
       XOCL_DEBUG(std::cout,"xocl::device::copy_buffer scheduled kdma copy\n");
       // Driver fills dst buffer same as migrate_buffer does, hence dst buffer
