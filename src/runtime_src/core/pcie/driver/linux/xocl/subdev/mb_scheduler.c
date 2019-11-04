@@ -1464,7 +1464,7 @@ ert_start_cmd(struct xocl_ert *xert, struct xocl_cmd *xcmd)
 	SCHED_DEBUG_PACKET(ecmd, cmd_packet_size(xcmd));
 
 	// write packet minus header
-	if (cmd_type(xcmd) == ERT_CU && !XOCL_DSA_IS_VERSAL(xcmd->xdev)) {
+	if (cmd_type(xcmd) == ERT_CU) {
 		// write kds selected cu_idx in first cumask (first word after header)
 		iowrite32(xcmd->cu_idx, xert->cq_base + slot_addr + 4);
 

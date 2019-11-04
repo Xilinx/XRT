@@ -259,6 +259,12 @@ opcode(struct sched_cmd *cmd)
 	return cmd->packet->opcode;
 }
 
+static inline u32
+type(struct sched_cmd *cmd)
+{
+	return cmd->packet->type;
+}
+
 /**
  * payload_size() - Command payload size
  *
@@ -1626,6 +1632,30 @@ reset_all(void)
 	}
 }
 
+static int
+ert_get_cu(struct sched_cmd *cmd)
+{
+	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	struct sched_exec_core *exec = zdev->exec;
+	u32 busy_mask;
+	int cu_idx, cu_bit;
+
+	/* Let's trust host, the cu_idx should be valid */
+	cu_idx = cmd->packet->data[0];
+	cu_bit = cu_idx_in_mask(cu_idx);
+
+	/* Check if the specific CU is busy */
+	busy_mask = exec->cu_status[cu_mask_idx(cu_idx)];
+	if (busy_mask & (1 << cu_bit))
+		return -1;
+
+	/* The specific CU is ready */
+	if (!zocl_cu_get_credit(&exec->zcu[cu_idx]))
+		exec->cu_status[cu_mask_idx(cu_idx)] ^= 1 << cu_bit;
+
+	return cu_idx;
+}
+
 /**
  * get_free_cu() - get index of first available CU per command cu mask
  *
@@ -2510,14 +2540,16 @@ ps_ert_submit(struct sched_cmd *cmd)
 
 	case ERT_START_CU:
 	case ERT_EXEC_WRITE:
-		/* extract cu list */
-		cmd->cu_idx = get_free_cu(cmd, ZOCL_HARD_CU);
-		if (cmd->cu_idx < 0) {
-			release_slot_idx(cmd->ddev, cmd->slot_idx);
-			if (cmd->cu_idx == -EINVAL)
-				mark_cmd_submit_error(cmd);
-			return false;
-		}
+		/* When command type is ERT_CU, host would set cu_idx instead of
+		 * cu_mask. The cu index is set at right after packet header.
+		 * ERT_CU is only for hardware kernel.
+		 */
+		if (type(cmd) == ERT_CU)
+			cmd->cu_idx = ert_get_cu(cmd);
+		else
+			cmd->cu_idx = get_free_cu(cmd, ZOCL_HARD_CU);
+		if (cmd->cu_idx < 0)
+			goto invalid_cu_idx;
 
 		/* found free cu, transfer regmap and start it */
 		ert_configure_cu(cmd, cmd->cu_idx);
@@ -2532,6 +2564,12 @@ ps_ert_submit(struct sched_cmd *cmd)
 	}
 
 	return true;
+
+invalid_cu_idx:
+	release_slot_idx(cmd->ddev, cmd->slot_idx);
+	if (cmd->cu_idx == -EINVAL)
+		mark_cmd_submit_error(cmd);
+	return false;
 }
 
 /**
