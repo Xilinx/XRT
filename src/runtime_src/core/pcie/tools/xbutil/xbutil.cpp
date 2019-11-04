@@ -1305,12 +1305,6 @@ int xcldev::device::bandwidthKernelXbtest(void)
 {
     std::string output;
 
-    if (sensor_tree::get<std::string>("system.linux", "N/A").find("Red Hat") != std::string::npos) {
-        std::cout << "Testcase not supported on Red Hat. Skipping validation"
-                  << std::endl;
-        return -EOPNOTSUPP;
-    }
-
     int ret = runXbTestCase(std::string("memory.json"), output);
 
     if (ret != 0) {
