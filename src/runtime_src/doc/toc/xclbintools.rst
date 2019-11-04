@@ -44,4 +44,4 @@ This is to migrate an older xclbin binary format (via the mirror JSON data) forw
     xclbinutil --migrate-forward -i binary_container_1.xclbin -o output.xclbin
 
 
-For more details please refer `Vitis Application Acceleration Document` (Link to be inserted)
+For more details please refer `Vitis Application Acceleration Document <https://www.xilinx.com/html_docs/xilinx2019_2/vitis_doc/Chunk1655973722.html>`_
