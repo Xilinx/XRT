@@ -118,7 +118,7 @@ FLAVOR=`echo $FLAVOR | tr -d '"'`
 
 #ppc+rhel
 # skip pyopencl installation
-if [ `uname -m` = "ppc64le" ] && [ $FLAVOR = "ubuntu" ]; then
+if [ `uname -m` = "ppc64le" ] && [ $FLAVOR = "rhel" ]; then
     exit 0
 fi
 #ppc+ubuntu
