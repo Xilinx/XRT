@@ -327,6 +327,10 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 	if (mbret)
 		ret = mbret;
 
+	(void) xocl_config_pci(xdev);
+	(void) xocl_pci_resize_resource(xdev->core.pdev, xdev->p2p_bar_idx,
+			xdev->p2p_bar_sz_cached);
+
 	xocl_reset_notify(xdev->core.pdev, false);
 
 	xocl_drvinst_set_offline(xdev->core.drm, false);
@@ -1150,6 +1154,31 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	xocl_drvinst_free(xdev);
 }
 
+int xocl_config_pci(struct xocl_dev *xdev)
+{
+	struct pci_dev *pdev = xdev->core.pdev;
+	int ret = 0;
+
+        if (pci_is_pcie(pdev)) {
+                ret = pcie_capability_clear_and_set_word(pdev, PCI_EXP_DEVCTL2,
+			PCI_EXP_DEVCTL2_COMP_TIMEOUT, 0x9);
+		if (ret) {
+			xocl_err(&pdev->dev, "failed to set PCIe timeout");
+			goto failed;
+		}
+	}
+
+	ret = pci_enable_device(pdev);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to enable device.");
+		goto failed;
+	}
+
+failed:
+	return ret;
+
+}
+
 int xocl_userpf_probe(struct pci_dev *pdev,
 		const struct pci_device_id *ent)
 {
@@ -1199,11 +1228,9 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		goto failed;
 	}
 
-	ret = pci_enable_device(pdev);
-	if (ret) {
-		xocl_err(&pdev->dev, "failed to enable device.");
+	ret = xocl_config_pci(xdev);
+	if (ret)
 		goto failed;
-	}
 
 	ret = xocl_subdev_create_all(xdev);
 	if (ret) {
