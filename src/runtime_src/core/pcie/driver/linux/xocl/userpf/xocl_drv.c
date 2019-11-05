@@ -1150,6 +1150,22 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	xocl_drvinst_free(xdev);
 }
 
+int xocl_config_pci(struct xocl_dev *xdev)
+{
+	struct pci_dev *pdev = xdev->core.pdev;
+	int ret = 0;
+
+	ret = pci_enable_device(pdev);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to enable device.");
+		goto failed;
+	}
+
+failed:
+	return ret;
+
+}
+
 int xocl_userpf_probe(struct pci_dev *pdev,
 		const struct pci_device_id *ent)
 {

@@ -978,6 +978,37 @@ fail:
 	xocl_err(&pdev->dev, "failed to fully probe device, err: %d\n", ret);
 }
 
+int xclmgmt_config_pci(struct xclmgmt_dev *lro)
+{
+	struct pci_dev *pdev = lro->core.pdev;
+	int rc;
+
+	rc = pci_enable_device(pdev);
+	if (rc) {
+		xocl_err(&pdev->dev, "pci_enable_device() failed, rc = %d.\n",
+			rc);
+		goto failed;
+	}
+
+	pci_set_master(pdev);
+
+	rc = pcie_get_readrq(pdev);
+	if (rc < 0) {
+		xocl_err(&pdev->dev, "failed to read mrrs %d\n", rc);
+		goto failed;
+	}
+	if (rc > 512) {
+		rc = pcie_set_readrq(pdev, 512);
+		if (rc) {
+			xocl_err(&pdev->dev, "failed to force mrrs %d\n", rc);
+			goto failed;
+		}
+	}
+
+failed:
+	return rc;
+}
+
 /*
  * Device initialization is done in two phases:
  * 1. Minimum initialization - init to the point where open/close/mmap entry

@@ -34,6 +34,10 @@
 #include "lib/libfdt/libfdt.h"
 #include <linux/firmware.h>
 
+#ifndef mmiowb
+#define mmiowb()		do { } while (0)
+#endif
+
 /* The fix for the y2k38 bug was introduced with Linux 3.17 and backported to
  * Red Hat 7.2.
  */
