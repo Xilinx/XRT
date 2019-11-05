@@ -1537,16 +1537,18 @@ struct xocl_subdev_map {
 		.flash_type = FLASH_TYPE_SPI,				\
 	}
 
+#define MFG_RES_U50_RP							\
+	((struct xocl_subdev_info []) {					\
+	 	XOCL_DEVINFO_FEATURE_ROM_U50,				\
+	 })
+
 #define	XOCL_BOARD_USER_U50_DYNAMIC_IP					\
 	(struct xocl_board_private){					\
 		.flags = XOCL_DSAFLAG_MFG,				\
 		.board_name = "u50",					\
+		.subdev_info	= MFG_RES_U50_RP,			\
+		.subdev_num = ARRAY_SIZE(MFG_RES_U50_RP),		\
 	}
-
-#define MFG_RES_U50_RP							\
-	((struct xocl_subdev_info []) {					\
-	 	XOCL_DEVINFO_FLASH_MFG_U50,				\
-	 })
 
 #define	XOCL_BOARD_MGMT_U50_DYNAMIC_IP					\
 	(struct xocl_board_private){					\
