@@ -1050,6 +1050,10 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	lro->pci_dev = pdev;
 	lro->ready = false;
 
+	rc = xclmgmt_config_pci(lro);
+	if (rc)
+		goto err_alloc_minor;
+
 	rc = xocl_alloc_dev_minor(lro);
 	if (rc)
 		goto err_alloc_minor;
