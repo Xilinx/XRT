@@ -93,12 +93,12 @@ static inline irqreturn_t zocl_h2c_isr(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
-#if KERNEL_VERSION(5, 2, 0) <= LINUX_VERSION_CODE
+#if KERNEL_VERSION(5, 3, 0) <= LINUX_VERSION_CODE
 static int
 match_name(struct device *dev, const void *data)
 #else
 static int
-match_name(struct device *dev, const void *data)
+match_name(struct device *dev, void *data)
 #endif
 {
 	const char *name = data;
