@@ -1004,6 +1004,7 @@ int xclmgmt_config_pci(struct xclmgmt_dev *lro)
 			goto failed;
 		}
 	}
+	rc = 0;
 
 failed:
 	return rc;
