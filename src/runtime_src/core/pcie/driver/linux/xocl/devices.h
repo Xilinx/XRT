@@ -1586,6 +1586,28 @@ struct xocl_subdev_map {
 		.flash_type = FLASH_TYPE_SPI,				\
 	}
 
+#define MFG_RES_U50_RP							\
+	((struct xocl_subdev_info []) {					\
+	 	XOCL_DEVINFO_FEATURE_ROM_U50,				\
+	 })
+
+#define	XOCL_BOARD_USER_U50_DYNAMIC_IP					\
+	(struct xocl_board_private){					\
+		.flags = XOCL_DSAFLAG_MFG,				\
+		.board_name = "u50",					\
+		.subdev_info	= MFG_RES_U50_RP,			\
+		.subdev_num = ARRAY_SIZE(MFG_RES_U50_RP),		\
+	}
+
+#define	XOCL_BOARD_MGMT_U50_DYNAMIC_IP					\
+	(struct xocl_board_private){					\
+		.flags = XOCL_DSAFLAG_MFG,				\
+		.board_name = "u50",					\
+		.subdev_info	= MFG_RES_U50_RP,			\
+		.subdev_num = ARRAY_SIZE(MFG_RES_U50_RP),		\
+		.flash_type = FLASH_TYPE_SPI,				\
+	}
+
 #define	XOCL_BOARD_XBB_MFG(board)					\
 	(struct xocl_board_private){					\
 		.flags = XOCL_DSAFLAG_MFG,				\
@@ -1966,6 +1988,10 @@ struct xocl_subdev_map {
 	{ 0x10EE, 0x5001, PCI_ANY_ID, "xilinx_u200_xdma_201920_1",	\
 		&XOCL_BOARD_USER_DYNAMIC_IP, XOCL_DSAMAP_DYNAMIC },	\
 	{ 0x10EE, 0x5000, PCI_ANY_ID, "xilinx_u200_xdma_201920_1",	\
-		&XOCL_BOARD_MGMT_DYNAMIC_IP, XOCL_DSAMAP_DYNAMIC }	\
+		&XOCL_BOARD_MGMT_DYNAMIC_IP, XOCL_DSAMAP_DYNAMIC },	\
+	{ 0x10EE, 0x5020, PCI_ANY_ID, "xilinx_u50_golden",		\
+		&XOCL_BOARD_MGMT_U50_DYNAMIC_IP, XOCL_DSAMAP_DYNAMIC },	\
+	{ 0x10EE, 0x5021, PCI_ANY_ID, "xilinx_u50_golden",		\
+		&XOCL_BOARD_USER_U50_DYNAMIC_IP, XOCL_DSAMAP_DYNAMIC }	\
 
 #endif
