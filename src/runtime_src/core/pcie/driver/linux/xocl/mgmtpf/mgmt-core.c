@@ -1027,15 +1027,6 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	xocl_info(&pdev->dev, "Driver: %s", XRT_DRIVER_VERSION);
 	xocl_info(&pdev->dev, "probe(pdev = 0x%p, pci_id = 0x%p)\n", pdev, id);
 
-	rc = pci_enable_device(pdev);
-	if (rc) {
-		xocl_err(&pdev->dev, "pci_enable_device() failed, rc = %d.\n",
-			rc);
-		return rc;
-	}
-
-	pci_set_master(pdev);
-
 	/* allocate zeroed device book keeping structure */
 	lro = xocl_drvinst_alloc(&pdev->dev, sizeof(struct xclmgmt_dev));
 	if (!lro) {

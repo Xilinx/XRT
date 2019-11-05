@@ -396,6 +396,8 @@ void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	mgmt_info(lro, "Resetting for %d ms", i);
 
 	xocl_pci_restore_config_all(pdev);
+
+	xclmgmt_config_pci(lro);
 }
 
 int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
@@ -598,6 +600,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	ret = xocl_subdev_create_all(lro);
 	if (ret)
 		goto failed;
+
 	ret = xocl_icap_download_boot_firmware(lro);
 	if (ret)
 		goto failed;

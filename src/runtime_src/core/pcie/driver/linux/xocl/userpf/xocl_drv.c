@@ -327,6 +327,10 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 	if (mbret)
 		ret = mbret;
 
+	(void) xocl_config_pci(xdev);
+	(void) xocl_pci_resize_resource(xdev->core.pdev, xdev->p2p_bar_idx,
+			xdev->p2p_bar_sz_cached);
+
 	xocl_reset_notify(xdev->core.pdev, false);
 
 	xocl_drvinst_set_offline(xdev->core.drm, false);
@@ -1219,11 +1223,9 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		goto failed;
 	}
 
-	ret = pci_enable_device(pdev);
-	if (ret) {
-		xocl_err(&pdev->dev, "failed to enable device.");
+	ret = xocl_config_pci(xdev);
+	if (ret)
 		goto failed;
-	}
 
 	ret = xocl_subdev_create_all(xdev);
 	if (ret) {
