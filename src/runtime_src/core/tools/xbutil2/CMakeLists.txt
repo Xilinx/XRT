@@ -64,9 +64,13 @@ if(WIN32)
 else()
   target_link_libraries(
     xbutil2 -static 
-    ${Boost_LIBRARIES} 
     xrt_core_static
     xrt_coreutil_static
+    boost_filesystem
+    boost_system
+    boost_program_options 
+    uuid
+    dl
   )
 
   # On Ubuntu 18.04 CMake was appending '-Wl,-Bdynamic' to the command line which 

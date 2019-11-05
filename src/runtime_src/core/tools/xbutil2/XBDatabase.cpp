@@ -54,25 +54,87 @@ XBDatabase::create_complete_device_tree(boost::property_tree::ptree & _pt)
     boost::property_tree::ptree ptPlatform;
 
     // Get and add generic information
-//    {
-//      boost::property_tree::ptree ptPlatInfo;
-//      xrt_core::device::get_device_platform_info(device_id, ptPlatInfo);
-//      ptPlatform.add_child("info", ptPlatInfo);
-//    }
-
+    {
+      boost::property_tree::ptree pt;
+      xrt_core::device::get_device_platform_info(device_id, pt);
+      ptPlatform.add_child("info", pt);
+    }
 
     // Get and add ROM information
     {
-      boost::property_tree::ptree ptROM;
-      xrt_core::device::get_device_rom_info(device_id, ptROM);
-      ptPlatform.add_child("rom", ptROM);
+      boost::property_tree::ptree pt;
+      xrt_core::device::get_device_rom_info(device_id, pt);
+      ptPlatform.add_child("rom", pt);
     }
 
     // Get and add XMC information
     {
-      boost::property_tree::ptree ptXMC;
-      xrt_core::device::get_device_xmc_info(device_id, ptXMC);
-      ptPlatform.add_child("xmc", ptXMC);
+      boost::property_tree::ptree pt;
+      xrt_core::device::get_device_xmc_info(device_id, pt);
+      ptPlatform.add_child("xmc", pt);
+    }
+
+    // Get and add thermal pcb information
+    {
+      boost::property_tree::ptree pt;
+      xrt_core::device::read_device_thermal_pcb(device_id, pt);
+      ptPlatform.add_child("physical.thermal.pcb", pt);
+    }
+
+    // Get and add thermal fpga information
+    {
+      boost::property_tree::ptree pt;
+      xrt_core::device::read_device_thermal_fpga(device_id, pt);
+      ptPlatform.add_child("physical.thermal.fpga", pt);
+    }
+
+    // Get and add thermal fpga information
+    {
+      boost::property_tree::ptree pt;
+      xrt_core::device::read_device_thermal_fpga(device_id, pt);
+      ptPlatform.add_child("physical.thermal.fpga", pt);
+    }
+
+    // Get and add fan information
+    {
+      boost::property_tree::ptree pt;
+      xrt_core::device::read_device_fan_info(device_id, pt);
+      ptPlatform.add_child("physical.fan", pt);
+    }
+
+    // Get and add thermal cage information
+    {
+      boost::property_tree::ptree pt;
+      xrt_core::device::read_device_thermal_cage(device_id, pt);
+      ptPlatform.add_child("physical.thermal.cage", pt);
+    }
+
+    // Get and add electrical information
+    {
+      boost::property_tree::ptree pt;
+      xrt_core::device::read_device_electrical(device_id, pt);
+      ptPlatform.add_child("physical.electrical", pt);
+    }
+
+    // Get and add power information
+    {
+      boost::property_tree::ptree pt;
+      xrt_core::device::read_device_power(device_id, pt);
+      ptPlatform.add_child("physical.power", pt);
+    }
+
+    // Get and add firewall information
+    {
+      boost::property_tree::ptree pt;
+      xrt_core::device::read_device_firewall(device_id, pt);
+      ptPlatform.add_child("firewall", pt);
+    }
+
+    // Get and add pcie dma status information
+    {
+      boost::property_tree::ptree pt;
+      xrt_core::device::read_device_pcie_dma_stats(device_id, pt);
+      ptPlatform.add_child("pcie_dma", pt);
     }
 
     // Add the platform to the device tree
