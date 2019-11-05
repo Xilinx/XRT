@@ -791,7 +791,11 @@ static int xocl_p2p_mem_chunk_reserve(struct xocl_p2p_mem_chunk *chk)
 	} else {
 		chk->xpmc_pgmap.ref = pref;
 		chk->xpmc_pgmap.res = res;
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 3, 0)
 		chk->xpmc_pgmap.altmap_valid = false;
+#endif
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 2) && \
 	LINUX_VERSION_CODE < KERNEL_VERSION(5, 3, 0)
 		chk->xpmc_pgmap.kill = xocl_p2p_percpu_ref_kill_noop;
