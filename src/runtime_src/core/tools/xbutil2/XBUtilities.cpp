@@ -160,19 +160,4 @@ XBUtilities::trace_print_tree(const std::string & _name,
 }
 
 
-// ===========================================================================
-
-void 
-XBUtilities::get_system_info(boost::property_tree::ptree& _pt)
-{
-  // Reset all information
-  _pt.clear();
-
-  // boost::property_tree::ptree xrt_pt;
-  
-  xrt_core::system::get_xrt_info(_pt);
-}
-
-
-
 

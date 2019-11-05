@@ -69,7 +69,7 @@ static buffer
 create_exec_bo(xclDeviceHandle handle, size_t sz)
 {
   auto delBO = [](buffer_object* bo) {
-    munmap(bo->data,bo->size);
+    xclUnmapBO(bo->dev, bo->bo, bo->data);
     xclFreeBO(bo->dev,bo->bo);
     delete bo;
   };
@@ -95,7 +95,7 @@ static buffer
 create_data_bo(xclDeviceHandle handle, size_t sz, uint32_t flags)
 {
   auto delBO = [](buffer_object* bo) {
-    munmap(bo->data,bo->size);
+    xclUnmapBO(bo->dev, bo->bo, bo->data);
     xclFreeBO(bo->dev,bo->bo);
     delete bo;
   };
@@ -132,6 +132,7 @@ init(xclDeviceHandle handle, const axlf* top)
   auto ecmd = reinterpret_cast<ert_configure_cmd*>(execbo->data);
   ecmd->state = ERT_CMD_STATE_NEW;
   ecmd->opcode = ERT_CONFIGURE;
+  ecmd->type = ERT_CTRL;
 
   auto cus = xclbin::get_cus(top, true);
 

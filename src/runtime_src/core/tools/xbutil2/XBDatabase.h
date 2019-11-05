@@ -14,12 +14,16 @@
  * under the License.
  */
 
-#ifndef core_include_types_h_
-#define core_include_types_h_
+#ifndef __XBDatabase_h_
+#define __XBDatabase_h_
 
-#if defined(_WIN32)
-# include "windows/types.h"
-# include "windows/uuid.h"
+// Include files
+// Please keep these to the bare minimum
+#include <boost/property_tree/ptree.hpp>
+
+namespace XBDatabase {
+void create_complete_device_tree(boost::property_tree::ptree & _pt);
+};
+
 #endif
 
-#endif

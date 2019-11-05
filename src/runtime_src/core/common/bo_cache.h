@@ -110,7 +110,7 @@ private:
   void
   destroy(const cmd_bo<void> &bo)
   {
-    (void)munmap(bo.second, mBOSize);
+    xclUnmapBO(mDevice, bo.first, bo.second);
     xclFreeBO(mDevice, bo.first);
   }
 };

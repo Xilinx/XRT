@@ -919,8 +919,10 @@ int
 zocl_xclbin_init(struct drm_zocl_dev *zdev)
 {
 	zdev->zdev_xclbin = vmalloc(sizeof(struct zocl_xclbin));
-	if (!zdev->zdev_xclbin)
+	if (!zdev->zdev_xclbin) {
+		DRM_ERROR("Alloc zdev_xclbin failed: no memory\n");
 		return -ENOMEM;
+	}
 
 	zdev->zdev_xclbin->zx_last_bitstream = 0;
 	zdev->zdev_xclbin->zx_refcnt = 0;
@@ -942,3 +944,26 @@ zocl_xclbin_accel_adapter(int kds_mask)
 {
 	return kds_mask == ACCEL_ADAPTER;
 }
+
+/*
+ * returns false if any of the cu doesnt support interrupt
+ */
+bool
+zocl_xclbin_cus_support_intr(struct drm_zocl_dev *zdev)
+{
+	struct ip_data *ip;
+	int i;
+
+	if (!zdev->ip)
+		return false;
+
+	for (i = 0; i < zdev->ip->m_count; ++i) {
+		ip = &zdev->ip->m_ip_data[i];
+		if (!(ip->properties & 0x1)) {
+			return false;
+		}
+	}
+
+	return true;
+}
+

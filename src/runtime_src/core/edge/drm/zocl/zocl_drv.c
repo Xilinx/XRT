@@ -771,7 +771,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 
 	ret = drm_dev_register(drm, 0);
 	if (ret)
-		goto err0;
+		goto err_drm;
 
 	/* During attach, we don't request dma channel */
 	zdev->zdev_dma_chan = NULL;
@@ -779,7 +779,8 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	/* Initial xclbin */
 	ret = zocl_xclbin_init(zdev);
 	if (ret)
-		goto err0;
+		goto err_drm;
+	mutex_init(&zdev->zdev_xclbin_lock);
 
 	/* doen with zdev initialization */
 	drm->dev_private = zdev;
@@ -789,19 +790,22 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	rwlock_init(&zdev->attr_rwlock);
 	ret = zocl_init_sysfs(drm->dev);
 	if (ret)
-		goto err0;
+		goto err_sysfs;
 
 	/* Now initial kds */
 	ret = sched_init_exec(drm);
 	if (ret)
-		goto err1;
+		goto err_sched;
 
 	return 0;
-err1:
-	zocl_fini_sysfs(drm->dev);
 
-err0:
+/* error out in exact reverse order of init */
+err_sched:
+	zocl_fini_sysfs(drm->dev);
+err_sysfs:
 	zocl_xclbin_fini(zdev);
+	mutex_destroy(&zdev->zdev_xclbin_lock);
+err_drm:
 	ZOCL_DRM_DEV_PUT(drm);
 	return ret;
 }
@@ -832,6 +836,7 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 	mutex_destroy(&zdev->mm_lock);
 	zocl_free_sections(zdev);
 	zocl_xclbin_fini(zdev);
+	mutex_destroy(&zdev->zdev_xclbin_lock);
 	zocl_fini_sysfs(drm->dev);
 
 	kfree(zdev->apertures);
