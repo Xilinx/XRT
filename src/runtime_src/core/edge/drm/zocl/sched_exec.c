@@ -1677,7 +1677,7 @@ get_free_cu(struct sched_cmd *cmd, enum zocl_cu_type cu_type)
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
 	int num_masks = cu_masks(cmd);
 	struct sched_exec_core *exec = zdev->exec;
-	int cu_idx = -1;
+	int cu_idx, cu_bit;
 	int valid_found = 0;
 
 	SCHED_DEBUG("-> %s\n", __func__);
@@ -1699,20 +1699,20 @@ get_free_cu(struct sched_cmd *cmd, enum zocl_cu_type cu_type)
 		if (cu_type == ZOCL_HARD_CU)
 			free_mask &= exec->cu_valid[mask_idx];
 
-		cu_idx = ffs_or_neg_one(free_mask);
+		cu_bit = ffs_or_neg_one(free_mask);
 
-		if (cu_idx < 0)
+		if (cu_bit < 0)
 			continue;
 
+		cu_idx = cu_idx_from_mask(cu_bit, mask_idx);
 		if (cu_type == ZOCL_HARD_CU) {
 			 /* KDS should not over spending credits */
 			if (!zocl_cu_get_credit(&exec->zcu[cu_idx]))
-				exec->cu_status[mask_idx] ^= 1 << cu_idx;
+				exec->cu_status[mask_idx] ^= 1 << cu_bit;
 		} else
-			exec->scu_status[mask_idx] ^= 1 << cu_idx;
-		SCHED_DEBUG("<- %s returns %d\n", __func__,
-			    cu_idx_from_mask(cu_idx, mask_idx));
-		return cu_idx_from_mask(cu_idx, mask_idx);
+			exec->scu_status[mask_idx] ^= 1 << cu_bit;
+		SCHED_DEBUG("<- %s returns %d\n", __func__, cu_idx);
+		return cu_idx;
 	}
 
 	if (!valid_found)
