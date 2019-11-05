@@ -75,6 +75,7 @@ int resetHandler(int argc, char *argv[])
         { "kernel", no_argument, nullptr, '2' },
         { "ecc", no_argument, nullptr, '3' },
         { "force", no_argument, nullptr, '4' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {

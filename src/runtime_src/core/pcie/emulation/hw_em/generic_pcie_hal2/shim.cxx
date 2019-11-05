@@ -1311,8 +1311,10 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     }
 
     xclGetDebugMessages(true);
+    mPrintMessagesLock.lock();
     fetchAndPrintMessages();
     simulator_started = false;
+    mPrintMessagesLock.unlock();
     std::string socketName = sock->get_name();
     if(socketName.empty() == false)// device is active if socketName is non-empty
     {
@@ -2084,6 +2086,13 @@ void *HwEmShim::xclMapBO(unsigned int boHandle, bool write)
   bo->buf = pBuf;
   PRINTENDFUNC;
   return pBuf;
+}
+
+int HwEmShim::xclUnmapBO(unsigned int boHandle, void* addr)
+{
+  std::lock_guard<std::mutex> lk(mApiMtx);
+  auto bo = xclGetBoByHandle(boHandle);
+  return munmap(addr, bo->size);
 }
 
 /**************************************************************************************/

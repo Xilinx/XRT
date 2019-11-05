@@ -410,8 +410,11 @@ static int get_header_from_dtb(struct feature_rom *rom)
 	const char *vbnv;
 	int i, j = 0;
 
-	for (i = 31; i >= 0; i--, j+=2) {
-		sprintf(&rom->uuid[j], "%02x", *((uint8_t *)rom->base + i));
+	/* uuid string should be 64 + '\0' */
+	BUG_ON(sizeof(rom->uuid) <= 64);
+
+	for (i = 28; i >= 0 && j < 64; i -= 4, j += 8) {
+		sprintf(&rom->uuid[j], "%08x", ioread32(rom->base + i));
 	}
 	xocl_info(&rom->pdev->dev, "UUID %s", rom->uuid);
 

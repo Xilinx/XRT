@@ -17,6 +17,7 @@
 
 #include "common/core_system.h"
 #include "gen/version.h"
+#include <atlstr.h>
 
 
 void xrt_core::system::get_xrt_info(boost::property_tree::ptree &_pt)
@@ -32,11 +33,74 @@ void xrt_core::system::get_xrt_info(boost::property_tree::ptree &_pt)
 }
 
 
-void xrt_core::system::get_os_info(boost::property_tree::ptree &_pt)
+//function for converting CString type to std::string
+static std::string convert(CString input)
 {
-  // TODO
-  _pt.put("windows", "");
+  CT2CA converted_input(input);
+  std::string string_input(converted_input);
+
+  return string_input;
+}
+
+static std::string GetStringFromReg(HKEY keyParent, std::string _keyName,
+					std::string _keyValName)
+{
+  CRegKey key;
+  CString out;
+
+  CString keyName(_keyName.c_str());
+  CString keyValName(_keyValName.c_str());
+  if (key.Open(keyParent, keyName, KEY_READ) == ERROR_SUCCESS) {
+	ULONG len = 256;
+	key.QueryStringValue(keyValName, out.GetBuffer(256), &len);
+	out.ReleaseBuffer();
+	key.Close();
+  }
+
+  return convert(out);
 }
 
 
+static std::string getmachinename()
+{
+  std::string machine;
+  SYSTEM_INFO sysInfo;
 
+  // Get hardware info
+  ZeroMemory(&sysInfo, sizeof(SYSTEM_INFO));
+  GetSystemInfo(&sysInfo);
+  // Set processor architecture
+  switch (sysInfo.wProcessorArchitecture) {
+  case PROCESSOR_ARCHITECTURE_AMD64:
+	  machine = "x86_64";
+	  break;
+  case PROCESSOR_ARCHITECTURE_IA64:
+	  machine = "ia64";
+	  break;
+  case PROCESSOR_ARCHITECTURE_INTEL:
+	  machine = "x86";
+	  break;
+  case PROCESSOR_ARCHITECTURE_UNKNOWN:
+  default:
+	  machine = "unknown";
+	  break;
+  }
+
+  return machine;
+}
+
+void xrt_core::system::get_os_info(boost::property_tree::ptree &_pt)
+{
+  char tnow[26];
+  time_t result = 0;
+
+  ctime_s(tnow, sizeof tnow, &result);
+  _pt.put("sysname", GetStringFromReg(HKEY_LOCAL_MACHINE,
+				"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "ProductName").c_str());
+  _pt.put("release", GetStringFromReg(HKEY_LOCAL_MACHINE,
+				"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "BuildLab").c_str());
+  _pt.put("version", GetStringFromReg(HKEY_LOCAL_MACHINE,
+				"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "CurrentVersion").c_str());
+  _pt.put("machine", getmachinename().c_str());
+  _pt.put("now", tnow);
+}

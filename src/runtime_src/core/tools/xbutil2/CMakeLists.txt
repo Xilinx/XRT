@@ -36,6 +36,7 @@ file(GLOB XBUTIL_V2_FILES
   "SubCmdP2P.cpp"
   "SubCmdVersion.cpp"
   "XBReport.cpp"
+  "XBDatabase.cpp"
 )
 set(XBUTIL_V2_FILES_SRCS ${XBUTIL_V2_FILES})
 set(XBUTIL_V2_SRCS ${XBUTIL_V2_FILES_SRCS})

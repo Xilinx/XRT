@@ -262,6 +262,7 @@ int scan(int argc, char *argv[])
     bool verbose = false;
     const option opts[] = {
         { "verbose", no_argument, nullptr, '0' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {
@@ -301,6 +302,7 @@ int program(int argc, char *argv[])
         { "path", required_argument, nullptr, '2' },
         { "id", required_argument, nullptr, '3' },
         { "name", required_argument, nullptr, '4' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {

@@ -6,12 +6,27 @@ OSDIST=`lsb_release -i |awk -F: '{print tolower($2)}' | tr -d ' \t'`
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 CORE=`grep -c ^processor /proc/cpuinfo`
 CMAKE=cmake
+CPU=`uname -m`
 
-if [[ $OSDIST == "centos" ]]; then
+if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amazon" ]]; then
     CMAKE=cmake3
     if [[ ! -x "$(command -v $CMAKE)" ]]; then
         echo "$CMAKE is not installed, please run xrtdeps.sh"
         exit 1
+    fi
+fi
+
+if [[ $CPU == "aarch64" ]] && [[ $OSDIST == "ubuntu" ]]; then
+    # On ARM64 Ubuntu use GCC version 8 if available since default
+    # (GCC version 7) has random Internal Compiler Issues compiling XRT
+    # C++14 code
+    gcc-8 --version > /dev/null 2>&1
+    status1=$?
+    g++-8 --version > /dev/null 2>&1
+    status2=$?
+    if [[ $status1 == 0 ]] && [[ $status2 == 0 ]]; then
+	export CC=gcc-8
+	export CXX=g++-8
     fi
 fi
 
@@ -155,8 +170,16 @@ if [[ $opt == 1 ]]; then
 fi
 
 if [[ $driver == 1 ]]; then
+    unset CC
+    unset CXX
     echo "make -C usr/src/xrt-2.3.0/driver/xocl"
     make -C usr/src/xrt-2.3.0/driver/xocl
+    if [[ $CPU == "aarch64" ]]; then
+	# I know this is dirty as it messes up the source directory with build artifacts but this is the
+	# quickest way to enable native zocl build in Travis CI environment for aarch64
+	ZOCL_SRC=`readlink -f ../../src/runtime_src/core/edge/drm/zocl`
+	make -C $ZOCL_SRC
+    fi
 fi
 
 if [[ $docs == 1 ]]; then

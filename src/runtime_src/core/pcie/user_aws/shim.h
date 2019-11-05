@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2017-2018 Xilinx, Inc
+ * Copyright (C) 2017-2019 Xilinx, Inc
  * Author: Sonal Santan
  * AWS HAL Driver layered on top of kernel drivers
  *
@@ -82,6 +82,7 @@ public:
   int xclReadBO(unsigned int boHandle,
                 void *dst, size_t size, size_t skip);
   void *xclMapBO(unsigned int boHandle, bool write);
+  int xclUnmapBO(unsigned int boHandle, void* addr);
   int xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir,
                 size_t size, size_t offset);
   int xclExportBO(unsigned int boHandle);

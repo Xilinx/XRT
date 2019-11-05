@@ -46,6 +46,7 @@ int clockHandler(int argc, char *argv[])
         { "kernel", required_argument, nullptr, '2' },
         { "system", required_argument, nullptr, '3' },
         { "force", no_argument, nullptr, '4' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {

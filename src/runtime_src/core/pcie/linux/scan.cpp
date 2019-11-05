@@ -388,7 +388,7 @@ pcidev::pci_device::pci_device(const std::string& sysfs) : sysfs_name(sysfs)
 pcidev::pci_device::~pci_device()
 {
     if (user_bar_map != MAP_FAILED)
-        munmap(user_bar_map, user_bar_size);
+      ::munmap(user_bar_map, user_bar_size);
 }
 
 int pcidev::pci_device::map_usr_bar()
@@ -490,6 +490,15 @@ void *pcidev::pci_device::mmap(int dev_handle,
         return MAP_FAILED;
     }
     return ::mmap(0, len, prot, flags, dev_handle, offset);
+}
+
+int pcidev::pci_device::munmap(int dev_handle, void* addr, size_t len)
+{
+    if (dev_handle == -1) {
+       errno = -EINVAL;
+       return -1;
+    }
+    return ::munmap(addr, len);
 }
 
 int pcidev::pci_device::get_partinfo(std::vector<std::string>& info, void *blob)
