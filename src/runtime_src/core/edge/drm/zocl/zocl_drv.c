@@ -94,7 +94,7 @@ static inline irqreturn_t zocl_h2c_isr(int irq, void *arg)
 }
 
 static int
-match_name(struct device *dev, void *data)
+match_name(struct device *dev, const void *data)
 {
 	const char *name = data;
 	/*
@@ -413,7 +413,7 @@ static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 	return rc;
 }
 
-static int zocl_bo_fault(struct vm_fault *vmf)
+static vm_fault_t zocl_bo_fault(struct vm_fault *vmf)
 {
 	struct vm_area_struct *vma = vmf->vma;
 	struct drm_gem_object *obj = vma->vm_private_data;
