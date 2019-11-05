@@ -227,17 +227,19 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define	XOCL_CHARDEV_REG_COUNT	16
 
 #ifdef RHEL_RELEASE_VERSION
-
-#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 6)
-#define RHEL_P2P_SUPPORT_74  0
-#define RHEL_P2P_SUPPORT_76  1
+#if defined(__PPC64__)
+	#define RHEL_P2P_SUPPORT_74  0
+	#define RHEL_P2P_SUPPORT_76  0
+#elif RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 6)
+	#define RHEL_P2P_SUPPORT_74  0
+	#define RHEL_P2P_SUPPORT_76  1
 #elif RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7, 3) && RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(7, 6)
-#define RHEL_P2P_SUPPORT_74  1
-#define RHEL_P2P_SUPPORT_76  0
+	#define RHEL_P2P_SUPPORT_74  1
+	#define RHEL_P2P_SUPPORT_76  0
 #endif
 #else
-#define RHEL_P2P_SUPPORT_74  0
-#define RHEL_P2P_SUPPORT_76  0
+	#define RHEL_P2P_SUPPORT_74  0
+	#define RHEL_P2P_SUPPORT_76  0
 #endif
 
 
