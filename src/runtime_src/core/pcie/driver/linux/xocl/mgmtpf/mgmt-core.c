@@ -992,15 +992,6 @@ int xclmgmt_config_pci(struct xclmgmt_dev *lro)
 
 	pci_set_master(pdev);
 
-	if (pci_is_pcie(pdev)) {
-		rc = pcie_capability_clear_and_set_word(pdev, PCI_EXP_DEVCTL2,
-			PCI_EXP_DEVCTL2_COMP_TIMEOUT, 0x9);
-		if (rc) {
-			xocl_err(&pdev->dev, "set pcie timeout failed");
-			goto failed;
-		}
-	}
-
 	rc = pcie_get_readrq(pdev);
 	if (rc < 0) {
 		xocl_err(&pdev->dev, "failed to read mrrs %d\n", rc);

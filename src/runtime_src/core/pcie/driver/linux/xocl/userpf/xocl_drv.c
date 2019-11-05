@@ -1159,15 +1159,6 @@ int xocl_config_pci(struct xocl_dev *xdev)
 	struct pci_dev *pdev = xdev->core.pdev;
 	int ret = 0;
 
-        if (pci_is_pcie(pdev)) {
-                ret = pcie_capability_clear_and_set_word(pdev, PCI_EXP_DEVCTL2,
-			PCI_EXP_DEVCTL2_COMP_TIMEOUT, 0x9);
-		if (ret) {
-			xocl_err(&pdev->dev, "failed to set PCIe timeout");
-			goto failed;
-		}
-	}
-
 	ret = pci_enable_device(pdev);
 	if (ret) {
 		xocl_err(&pdev->dev, "failed to enable device.");
