@@ -2623,6 +2623,9 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 	if (xmc->bdinfo_loaded)
 		return 0;
 
+	if (!xmc->mbx_offset)
+		return 0;
+
 	if (XMC_PRIVILEGED(xmc)) {
 
 		if ((!is_xmc_ready(xmc) || !is_sc_ready(xmc)))
