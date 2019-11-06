@@ -2431,6 +2431,7 @@ ps_ert_query(struct sched_cmd *cmd)
 	case ERT_EXEC_WRITE:
 		if (!cu_done(cmd))
 			break;
+                __attribute__ ((fallthrough));
 		/* pass through */
 
 	case ERT_CONFIGURE:
