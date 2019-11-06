@@ -216,6 +216,7 @@ static ssize_t p2p_enable_store(struct device *dev,
 	}
 
 	xdev->p2p_bar_idx = p2p_bar;
+	xdev->p2p_bar_sz_cached = size;
 	xdev->p2p_bar_len = pci_resource_len(pdev, p2p_bar);
 
 	if (enable) {
