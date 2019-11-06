@@ -93,8 +93,13 @@ static inline irqreturn_t zocl_h2c_isr(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
+#if KERNEL_VERSION(5, 3, 0) <= LINUX_VERSION_CODE
+static int
+match_name(struct device *dev, const void *data)
+#else
 static int
 match_name(struct device *dev, void *data)
+#endif
 {
 	const char *name = data;
 	/*
@@ -413,7 +418,7 @@ static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 	return rc;
 }
 
-static int zocl_bo_fault(struct vm_fault *vmf)
+static vm_fault_t zocl_bo_fault(struct vm_fault *vmf)
 {
 	struct vm_area_struct *vma = vmf->vma;
 	struct drm_gem_object *obj = vma->vm_private_data;
