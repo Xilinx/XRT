@@ -2114,6 +2114,23 @@ static int load_xmc(struct xocl_xmc *xmc)
 	if (XMC_PRIVILEGED(xmc) && xocl_clk_scale_on(xdev_hdl))
 		xmc_clk_scale_config(xmc->pdev);
 
+	mutex_unlock(&xmc->xmc_lock);
+
+	/* Enabling XMC mailbox support. */
+	if (XMC_PRIVILEGED(xmc)) {
+		u32 val = 0;
+
+		xmc->mbx_enabled = true;
+		safe_read32(xmc, XMC_HOST_MSG_OFFSET_REG, &val);
+		xmc->mbx_offset = val;
+		xocl_info(&xmc->pdev->dev, "XMC mailbox offset: 0x%x.\n", val);
+	}
+
+	mutex_lock(&xmc->mbx_lock);
+	xmc_load_board_info(xmc);
+	mutex_unlock(&xmc->mbx_lock);
+
+	return 0;
 out:
 	mutex_unlock(&xmc->xmc_lock);
 
@@ -2303,7 +2320,6 @@ static int xmc_probe(struct platform_device *pdev)
 	struct resource *res;
 	void *xdev_hdl;
 	int i, err;
-	u32 val;
 
 	xmc = devm_kzalloc(&pdev->dev, sizeof(*xmc), GFP_KERNEL);
 	if (!xmc) {
@@ -2390,17 +2406,6 @@ static int xmc_probe(struct platform_device *pdev)
 		xocl_info(&pdev->dev, "Runtime clock scaling is supported.\n");
 	}
 
-	/* Enabling XMC mailbox support. */
-	if (XMC_PRIVILEGED(xmc)) {
-		xmc->mbx_enabled = true;
-		safe_read32(xmc, XMC_HOST_MSG_OFFSET_REG, &val);
-		xmc->mbx_offset = val;
-		xocl_info(&pdev->dev, "XMC mailbox offset: 0x%x.\n", val);
-	}
-
-	mutex_lock(&xmc->mbx_lock);
-	xmc_load_board_info(xmc);
-	mutex_unlock(&xmc->mbx_lock);
 	return 0;
 
 failed:
