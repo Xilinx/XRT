@@ -34,6 +34,10 @@
 #include "lib/libfdt/libfdt.h"
 #include <linux/firmware.h>
 
+#ifndef mmiowb
+#define mmiowb()		do { } while (0)
+#endif
+
 /* The fix for the y2k38 bug was introduced with Linux 3.17 and backported to
  * Red Hat 7.2.
  */
@@ -358,6 +362,7 @@ struct xocl_dev_core {
 	struct xocl_drm		*drm;
 
 	char			*fdt_blob;
+	u32			fdt_blob_sz;
 	struct xocl_board_private priv;
 
 	rwlock_t		rwlock;
@@ -1150,7 +1155,7 @@ int xocl_thread_start(xdev_handle_t xdev);
 int xocl_thread_stop(xdev_handle_t xdev);
 
 /* subdev blob functions */
-int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob);
+int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz);
 int xocl_fdt_remove_subdevs(xdev_handle_t xdev_hdl, struct list_head *devlist);
 int xocl_fdt_unlink_node(xdev_handle_t xdev_hdl, void *node);
 int xocl_fdt_overlay(void *fdt, int target, void *fdto, int node, int pf);

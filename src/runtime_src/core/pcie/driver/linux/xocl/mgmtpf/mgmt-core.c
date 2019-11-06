@@ -978,6 +978,38 @@ fail:
 	xocl_err(&pdev->dev, "failed to fully probe device, err: %d\n", ret);
 }
 
+int xclmgmt_config_pci(struct xclmgmt_dev *lro)
+{
+	struct pci_dev *pdev = lro->core.pdev;
+	int rc;
+
+	rc = pci_enable_device(pdev);
+	if (rc) {
+		xocl_err(&pdev->dev, "pci_enable_device() failed, rc = %d.\n",
+			rc);
+		goto failed;
+	}
+
+	pci_set_master(pdev);
+
+	rc = pcie_get_readrq(pdev);
+	if (rc < 0) {
+		xocl_err(&pdev->dev, "failed to read mrrs %d\n", rc);
+		goto failed;
+	}
+	if (rc > 512) {
+		rc = pcie_set_readrq(pdev, 512);
+		if (rc) {
+			xocl_err(&pdev->dev, "failed to force mrrs %d\n", rc);
+			goto failed;
+		}
+	}
+	rc = 0;
+
+failed:
+	return rc;
+}
+
 /*
  * Device initialization is done in two phases:
  * 1. Minimum initialization - init to the point where open/close/mmap entry
@@ -994,15 +1026,6 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	xocl_info(&pdev->dev, "Driver: %s", XRT_DRIVER_VERSION);
 	xocl_info(&pdev->dev, "probe(pdev = 0x%p, pci_id = 0x%p)\n", pdev, id);
-
-	rc = pci_enable_device(pdev);
-	if (rc) {
-		xocl_err(&pdev->dev, "pci_enable_device() failed, rc = %d.\n",
-			rc);
-		return rc;
-	}
-
-	pci_set_master(pdev);
 
 	/* allocate zeroed device book keeping structure */
 	lro = xocl_drvinst_alloc(&pdev->dev, sizeof(struct xclmgmt_dev));
@@ -1028,18 +1051,9 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	lro->pci_dev = pdev;
 	lro->ready = false;
 
-	rc = pcie_get_readrq(pdev);
-	if (rc < 0) {
-		dev_err(&pdev->dev, "failed to read mrrs %d\n", rc);
-		goto err_alloc;
-	}
-	if (rc > 512) {
-		rc = pcie_set_readrq(pdev, 512);
-		if (rc) {
-			dev_err(&pdev->dev, "failed to force mrrs %d\n", rc);
-			goto err_alloc;
-		}
-	}
+	rc = xclmgmt_config_pci(lro);
+	if (rc)
+		goto err_alloc_minor;
 
 	rc = xocl_alloc_dev_minor(lro);
 	if (rc)

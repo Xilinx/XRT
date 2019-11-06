@@ -396,6 +396,8 @@ void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	mgmt_info(lro, "Resetting for %d ms", i);
 
 	xocl_pci_restore_config_all(pdev);
+
+	xclmgmt_config_pci(lro);
 }
 
 int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
@@ -562,7 +564,8 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 		goto failed;
 
 	ret = xocl_fdt_blob_input(lro,
-			(char *)fw->data + dtc_header->m_sectionOffset);
+			(char *)fw->data + dtc_header->m_sectionOffset,
+			dtc_header->m_sectionSize);
 	if (ret) {
 		mgmt_err(lro, "Invalid PARTITION_METADATA");
 		goto failed;
@@ -597,6 +600,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	ret = xocl_subdev_create_all(lro);
 	if (ret)
 		goto failed;
+
 	ret = xocl_icap_download_boot_firmware(lro);
 	if (ret)
 		goto failed;

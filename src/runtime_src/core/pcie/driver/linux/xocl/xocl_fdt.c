@@ -66,6 +66,11 @@ static void *rom_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 		goto failed;
 	}
 
+	if (proplen > sizeof(struct FeatureRomHeader)) {
+		xocl_xdev_err(xdev_hdl, "invalid vrom length");
+		goto failed;
+	}
+
 	priv_data = vmalloc(proplen);
 	if (!priv_data)
 		goto failed;
@@ -90,27 +95,27 @@ static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 
 	blob = core->fdt_blob;
 	if (!blob)
-		goto failed;
+		return NULL;
 
 	node = fdt_path_offset(blob, LEVEL0_DEV_PATH
 			"/" NODE_FLASH);
 	if (node < 0) {
 		xocl_xdev_err(xdev_hdl, "did not find flash node");
-		goto failed;
+		return NULL;
 	}
 
 	if (!fdt_node_check_compatible(blob, node, "axi_quad_spi"))
 		flash_type = FLASH_TYPE_SPI;
 	else {
 		xocl_xdev_err(xdev_hdl, "UNKNOWN flash type");
-		goto failed;
+		return NULL;
 	}
 
 	proplen = sizeof(*priv) + strlen(flash_type);
 
 	priv = vzalloc(proplen);
 	if (!priv)
-		goto failed;
+		return NULL;
 
 	priv->flash_type = offsetof(struct xocl_flash_privdata, data);
 	priv->properties = priv->flash_type + strlen(flash_type) + 1;
@@ -119,10 +124,6 @@ static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 	*len = proplen;
 
 	return priv;
-failed:
-	if (priv)
-		vfree(priv);
-	return NULL;
 
 }
 
@@ -799,7 +800,7 @@ int xocl_fdt_add_pair(xdev_handle_t xdev_hdl, void *blob, char *name,
 	return ret;
 }
 
-int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob)
+int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz)
 {
 	struct xocl_dev_core	*core = XDEV(xdev_hdl);
 	struct xocl_subdev	*subdevs;
@@ -809,6 +810,11 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob)
 
 	if (!blob)
 		return -EINVAL;
+
+	if (fdt_totalsize(blob) > blob_sz) {
+		xocl_xdev_err(xdev_hdl, "Invalid blob inbut size");
+		return -EINVAL;
+	}
 
 	len = fdt_totalsize(blob) * 2;
 	if (core->fdt_blob)
@@ -850,6 +856,7 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob)
 		vfree(core->dyn_subdev_store);
 
 	core->fdt_blob = output_blob;
+	core->fdt_blob_sz = fdt_totalsize(output_blob);
 	core->dyn_subdev_store = subdevs;
 
 	for (i = 0; i < core->dyn_subdev_num; i++)
