@@ -958,7 +958,7 @@ configure_soft_kernel(struct sched_cmd *cmd)
 
 		/* remap device physical addr to kernel virtual addr */
 		xclbin_buffer =
-		    memremap(cfg->sk_addr, cfg->sk_size, MEMREMAP_WB);
+		    memremap(cfg->sk_addr, cfg->sk_size, MEMREMAP_WC);
 		if (xclbin_buffer == NULL) {
 			ret = -ENOMEM;
 			goto fail;
