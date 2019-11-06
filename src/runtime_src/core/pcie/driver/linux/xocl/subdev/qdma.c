@@ -565,9 +565,6 @@ static void free_channels(struct platform_device *pdev)
 		qidx = i % qdma->channel;
 		chan = &qdma->chans[write][qidx];
 
-		if (!chan)
-			continue;
-
 		channel_sysfs_destroy(chan);
 
 		ret = qdma_queue_stop((unsigned long)qdma->dma_handle,
@@ -880,7 +877,8 @@ static void inline cmpl_aio(struct kiocb *kiocb, unsigned int done_bytes,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,16,0)
 	kiocb->ki_complete(kiocb, done_bytes, error);
 #else
-	atomic_set(&kiocb->ki_users, 1);
+	if (is_sync_kiocb(kiocb))
+		atomic_set(&kiocb->ki_users, 1);
 	aio_complete(kiocb, done_bytes, error);
 #endif
 }
@@ -1642,9 +1640,7 @@ failed:
 		dma_buf_put(dmabuf);
 	}
 
-	if (xobj) {
-		xocl_drm_free_bo(&xobj->base);
-	}
+	xocl_drm_free_bo(&xobj->base);
 
 	return ret;
 }

@@ -145,6 +145,9 @@ static void xocl_free_bo(struct drm_gem_object *obj)
 			drm_free_large(xobj->pages);
 		} else if (xocl_bo_p2p(xobj) || xocl_bo_import(xobj)) {
 			drm_free_large(xobj->pages);
+		} else if (xocl_bo_cma(xobj)) {
+			free_pages_exact(xobj->cma_addr, npages << PAGE_SHIFT);
+			drm_free_large(xobj->pages);
 		} else {
 			drm_gem_put_pages(obj, xobj->pages, false, false);
 		}
@@ -276,6 +279,18 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 		drm_gem_private_object_init(dev, &xobj->base, size);
 	}
 
+	if (xobj->flags & XOCL_CMA_MEM) {
+
+		xobj->cma_addr = alloc_pages_exact(size, GFP_KERNEL | __GFP_ZERO);
+
+		if (!xobj->cma_addr) {
+			DRM_ERROR("Unable to alloc %lx bytes CMA buffer", size);
+			err = -ENOMEM;
+			goto failed;
+		}
+
+	}
+
 	xobj_inited = true;
 
 	if (!(xobj->flags & XOCL_DEVICE_MEM))
@@ -310,6 +325,8 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 failed:
 	mutex_unlock(&drm_p->mm_lock);
 	kfree(xobj->mm_node);
+	if (xobj->cma_addr)
+		free_pages_exact(xobj->cma_addr, size);
 	if (xobj_inited)
 		drm_gem_object_release(&xobj->base);
 	kfree(xobj);
@@ -351,6 +368,32 @@ static struct page **xocl_p2p_get_pages(struct xocl_dev *xdev,
 	return pages;
 fail:
 	kvfree(pages);
+	return ERR_CAST(p);
+}
+
+
+static struct page **xocl_virt_addr_get_pages(void *vaddr, int npages)
+
+{
+	struct page *p, **pages;
+	int i;
+	uint64_t offset = 0;
+
+	pages = drm_malloc_ab(npages, sizeof(struct page *));
+	if (pages == NULL)
+		return ERR_PTR(-ENOMEM);
+
+	for (i = 0; i < npages; i++) {
+		p = virt_to_page(vaddr + offset);
+		pages[i] = p;
+		if (IS_ERR(p))
+			goto fail;
+		offset += PAGE_SIZE; 
+	}
+
+	return pages;
+fail:
+	drm_free_large(pages);
 	return ERR_CAST(p);
 }
 
@@ -423,6 +466,8 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 				xobj->p2p_bar_offset, xobj->base.size);
 		else if (xobj->flags & XOCL_DRM_SHMEM)
 			xobj->pages = drm_gem_get_pages(&xobj->base);
+		else if (xobj->flags & XOCL_CMA_MEM)
+			xobj->pages = xocl_virt_addr_get_pages(xobj->cma_addr, xobj->base.size >> PAGE_SHIFT);
 
 		if (IS_ERR(xobj->pages)) {
 			ret = PTR_ERR(xobj->pages);
@@ -443,12 +488,14 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 				goto out_free;
 			}
 #endif
-			xobj->vmapping = vmap(xobj->pages,
-				xobj->base.size >> PAGE_SHIFT,
-				VM_MAP, PAGE_KERNEL);
-			if (!xobj->vmapping) {
-				ret = -ENOMEM;
-				goto out_free;
+			if (!(xobj->flags & XOCL_CMA_MEM)) {
+				xobj->vmapping = vmap(xobj->pages,
+					xobj->base.size >> PAGE_SHIFT,
+					VM_MAP, PAGE_KERNEL);
+				if (!xobj->vmapping) {
+					ret = -ENOMEM;
+					goto out_free;
+				}
 			}
 		}
 	}
@@ -590,6 +637,7 @@ int xocl_sync_bo_ioctl(struct drm_device *dev,
 	const struct drm_xocl_sync_bo *args = data;
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
+	struct scatterlist *sg;
 
 	u32 dir = (args->dir == DRM_XOCL_SYNC_BO_TO_DEVICE) ? 1 : 0;
 	struct drm_gem_object *gem_obj = xocl_gem_object_lookup(dev, filp,
@@ -602,10 +650,23 @@ int xocl_sync_bo_ioctl(struct drm_device *dev,
 	xobj = to_xocl_bo(gem_obj);
 	BO_ENTER("xobj %p", xobj);
 	sgt = xobj->sgt;
+	sg = sgt->sgl;
 
 	if (!xocl_bo_sync_able(xobj->flags)) {
 		DRM_ERROR("BO %d doesn't support sync_bo\n", args->handle);
 		ret = -EOPNOTSUPP;
+		goto out;
+	}
+
+	if (xocl_bo_cma(xobj)) {
+
+		if (dir) {
+			dma_sync_single_for_device(&(XDEV(xdev)->pdev->dev), sg_phys(sg),
+				sg->length, DMA_TO_DEVICE);
+		} else {
+			dma_sync_single_for_cpu(&(XDEV(xdev)->pdev->dev), sg_phys(sg),
+				sg->length, DMA_FROM_DEVICE);
+		}
 		goto out;
 	}
 

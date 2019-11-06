@@ -327,6 +327,10 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 	if (mbret)
 		ret = mbret;
 
+	(void) xocl_config_pci(xdev);
+	(void) xocl_pci_resize_resource(xdev->core.pdev, xdev->p2p_bar_idx,
+			xdev->p2p_bar_sz_cached);
+
 	xocl_reset_notify(xdev->core.pdev, false);
 
 	xocl_drvinst_set_offline(xdev->core.drm, false);
@@ -544,6 +548,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	struct xcl_subdev	*resp = NULL;
 	size_t resp_len = sizeof(*resp) + XOCL_MSG_SUBDEV_DATA_LEN;
 	char *blob = NULL, *tmp;
+	u32 blob_len;
 	uint64_t checksum;
 	size_t offset = 0;
 	int ret = 0;
@@ -581,6 +586,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 			vfree(blob);
 		}
 		blob = tmp;
+		blob_len = offset + resp_len;
 
 		subdev_peer.offset = offset;
 		ret = xocl_peer_request(xdev, mb_req, reqlen,
@@ -607,19 +613,20 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	if (!offset && !xdev->core.fdt_blob)
 		goto failed;
 
-	if (xdev->core.fdt_blob)
+	if (xdev->core.fdt_blob) {
 		vfree(xdev->core.fdt_blob);
+		xdev->core.fdt_blob = NULL;
+	}
 	xdev->core.fdt_blob = blob;
-	blob = NULL;
-
 
 	xocl_drvinst_set_offline(xdev->core.drm, true);
-	if (xdev->core.fdt_blob) {
-		ret = xocl_fdt_blob_input(xdev, xdev->core.fdt_blob);
+	if (blob) {
+		ret = xocl_fdt_blob_input(xdev, blob, blob_len);
 		if (ret) {
 			userpf_err(xdev, "parse blob failed %d", ret);
 			goto failed;
 		}
+		blob = NULL;
 	}
 
 	if (XOCL_DRM(xdev))
@@ -788,7 +795,11 @@ static int xocl_p2p_mem_chunk_reserve(struct xocl_p2p_mem_chunk *chk)
 	} else {
 		chk->xpmc_pgmap.ref = pref;
 		chk->xpmc_pgmap.res = res;
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 3, 0)
 		chk->xpmc_pgmap.altmap_valid = false;
+#endif
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 2) && \
 	LINUX_VERSION_CODE < KERNEL_VERSION(5, 3, 0)
 		chk->xpmc_pgmap.kill = xocl_p2p_percpu_ref_kill_noop;
@@ -1147,6 +1158,22 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	xocl_drvinst_free(xdev);
 }
 
+int xocl_config_pci(struct xocl_dev *xdev)
+{
+	struct pci_dev *pdev = xdev->core.pdev;
+	int ret = 0;
+
+	ret = pci_enable_device(pdev);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to enable device.");
+		goto failed;
+	}
+
+failed:
+	return ret;
+
+}
+
 int xocl_userpf_probe(struct pci_dev *pdev,
 		const struct pci_device_id *ent)
 {
@@ -1196,11 +1223,9 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		goto failed;
 	}
 
-	ret = pci_enable_device(pdev);
-	if (ret) {
-		xocl_err(&pdev->dev, "failed to enable device.");
+	ret = xocl_config_pci(xdev);
+	if (ret)
 		goto failed;
-	}
 
 	ret = xocl_subdev_create_all(xdev);
 	if (ret) {

@@ -181,7 +181,11 @@ static int xocl_mmap(struct file *filp, struct vm_area_struct *vma)
 	return xocl_native_mmap(filp, vma);
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
+vm_fault_t xocl_gem_fault(struct vm_fault *vmf)
+{
+	struct vm_area_struct *vma = vmf->vma;
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 int xocl_gem_fault(struct vm_fault *vmf)
 {
 	struct vm_area_struct *vma = vmf->vma;

@@ -21,16 +21,38 @@
 
 #include <sys/utsname.h>
 #include <gnu/libc-version.h>
+#include <unistd.h>
 
 #include <boost/property_tree/ini_parser.hpp>
 #include <string>
 #include <fstream>
 #include <chrono>
 #include <ctime>
-
+#include <thread>
 
 
 namespace xcldev {
+
+static std::string getMachineModel()
+{
+#if defined(__aarch64__) || defined(__arm__)
+    const char node[] = "/proc/device-tree/model";
+#elif defined(__PPC64__)
+    const char node[] = "/proc/device-tree/model-name";
+    // /proc/device-tree/system-id may be 000000
+    // /proc/device-tree/model may be 00000
+#elif defined (__x86_64__)
+    const char node[] = "/sys/devices/virtual/dmi/id/product_name";
+#else
+    #error "Unsupported platform"
+    const char node[] = "";
+#endif
+    std::string model("unknown");
+    std::ifstream stream(node);
+    std::getline(stream, model);
+    stream.close();
+    return model;
+}
 
 static std::string driver_version(std::string driver)
 {
@@ -82,6 +104,10 @@ void osInfo(boost::property_tree::ptree &pt)
         ifs.close();
     }
 
+    pt.put("cores", std::thread::hardware_concurrency());
+    pt.put("memory", sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGE_SIZE) / 0x100000);
+    pt.put("model", getMachineModel());
+
     // Cannot use xrt_core::timestamp() defined in common/t_time because
     // it adds [] around the string
     auto n = std::chrono::system_clock::now();
@@ -117,6 +143,9 @@ void baseDump(std::ostream &ostr)
          << "\nRelease:\t"      << sensor_tree::get<std::string>("system.release", "N/A")
          << "\nVersion:\t"      << sensor_tree::get<std::string>("system.version", "N/A")
          << "\nMachine:\t"      << sensor_tree::get<std::string>("system.machine", "N/A")
+         << "\nModel:\t\t"      << sensor_tree::get<std::string>("system.model", "N/A")
+         << "\nCPU cores:\t"    << sensor_tree::get<std::string>("system.cores", "N/A")
+         << "\nMemory:\t\t"     << sensor_tree::get<std::string>("system.memory", "N/A") << " MB"
          << "\nGlibc:\t\t"      << sensor_tree::get<std::string>("system.glibc", "N/A")
          << "\nDistribution:\t" << sensor_tree::get<std::string>("system.linux", "N/A")
          << "\nNow:\t\t"        << sensor_tree::get<std::string>("system.now", "N/A")

@@ -34,8 +34,7 @@
 static xuid_t uuid_null = NULL_UUID_LE;
 #endif
 
-static DEFINE_MUTEX(icap_keyring_lock);
-static struct key *icap_keys;
+static struct key *icap_keys = NULL;
 
 #define	ICAP_ERR(icap, fmt, arg...)	\
 	xocl_err(&(icap)->icap_pdev->dev, fmt "\n", ##arg)
@@ -154,6 +153,7 @@ struct icap {
 	void			*rp_bit;
 	unsigned long		rp_bit_len;
 	void			*rp_fdt;
+	unsigned long		rp_fdt_len;
 	void			*rp_mgmt_bin;
 	unsigned long		rp_mgmt_bin_len;
 	void			*rp_sche_bin;
@@ -348,6 +348,7 @@ static void icap_free_bins(struct icap *icap)
 	if (icap->rp_fdt) {
 		vfree(icap->rp_fdt);
 		icap->rp_fdt = NULL;
+		icap->rp_fdt_len = 0;
 	}
 	if (icap->rp_mgmt_bin) {
 		vfree(icap->rp_mgmt_bin);
@@ -1679,7 +1680,7 @@ static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 		goto end;
 	}
 
-	ret = xocl_fdt_blob_input(xdev, icap->rp_fdt);
+	ret = xocl_fdt_blob_input(xdev, icap->rp_fdt, icap->rp_fdt_len);
 	if (ret) {
 		xocl_xdev_err(xdev, "failed to parse fdt %d", ret);
 		goto failed;
@@ -1722,6 +1723,7 @@ failed:
 	if (icap->rp_fdt) {
 		vfree(icap->rp_fdt);
 		icap->rp_fdt = NULL;
+		icap->rp_fdt_len = 0;
 	}
 
 end:
@@ -3307,38 +3309,6 @@ static struct attribute_group icap_attr_group = {
 	.bin_attrs = icap_bin_attrs,
 };
 
-static int icap_load_keyring(void)
-{
-	int ret = 0;
-
-	mutex_lock(&icap_keyring_lock);
-
-	if (icap_keys) {
-		key_get(icap_keys);
-	} else {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
-		icap_keys = keyring_alloc(".xilinx_fpga_xclbin_keys",
-			KUIDT_INIT(0), KGIDT_INIT(0), current_cred(),
-			((KEY_POS_ALL & ~KEY_POS_SETATTR) |
-			KEY_USR_VIEW | KEY_USR_WRITE | KEY_USR_SEARCH),
-			KEY_ALLOC_NOT_IN_QUOTA, NULL, NULL);
-		ret = PTR_ERR_OR_ZERO(icap_keys);
-#endif
-	}
-
-	mutex_unlock(&icap_keyring_lock);
-
-	return ret;
-}
-
-static void icap_release_keyring(void)
-{
-	mutex_lock(&icap_keyring_lock);
-	if (icap_keys)
-		key_put(icap_keys);
-	mutex_unlock(&icap_keyring_lock);
-}
-
 static int icap_remove(struct platform_device *pdev)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
@@ -3346,8 +3316,6 @@ static int icap_remove(struct platform_device *pdev)
 	BUG_ON(icap == NULL);
 
 	icap_free_bins(icap);
-
-	icap_release_keyring();
 
 	iounmap(icap->icap_regs);
 	free_clear_bitstream(icap);
@@ -3439,11 +3407,6 @@ static int icap_probe(struct platform_device *pdev)
 	}
 
 	if (ICAP_PRIVILEGED(icap)) {
-		ret = icap_load_keyring();
-		if (ret) {
-			ICAP_ERR(icap, "create icap keyring failed: %d", ret);
-			goto failed;
-		}
 #ifdef	EFI_SECURE_BOOT
 		if (efi_enabled(EFI_SECURE_BOOT)) {
 			ICAP_INFO(icap, "secure boot mode detected");
@@ -3606,6 +3569,7 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		ret = -ENOMEM;
 		goto failed;
 	}
+	icap->rp_fdt_len = fdt_totalsize(header);
 	memcpy(icap->rp_fdt, header, fdt_totalsize(header));
 
 	section = get_axlf_section_hdr(icap, axlf, BITSTREAM);
@@ -3736,8 +3700,29 @@ int __init xocl_init_icap(void)
 	if (err)
 		goto err_reg_driver;
 
+	icap_keys = NULL;
+#if PF == MGMTPF
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
+	icap_keys = keyring_alloc(".xilinx_fpga_xclbin_keys", KUIDT_INIT(0),
+		KGIDT_INIT(0), current_cred(),
+		((KEY_POS_ALL & ~KEY_POS_SETATTR) |
+		KEY_USR_VIEW | KEY_USR_WRITE | KEY_USR_SEARCH),
+		KEY_ALLOC_NOT_IN_QUOTA, NULL, NULL);
+#endif
+
+#endif
+	if (IS_ERR(icap_keys)) {
+		err = PTR_ERR(icap_keys);
+		icap_keys = NULL;
+		pr_err("create icap keyring failed: %d", err);
+		goto err_key;
+	}
+
 	return 0;
 
+err_key:
+	platform_driver_unregister(&icap_driver);
 err_reg_driver:
 	if (icap_drv_priv.fops && icap_drv_priv.dev != -1)
 		unregister_chrdev_region(icap_drv_priv.dev, XOCL_MAX_DEVICES);
@@ -3747,6 +3732,8 @@ err_reg_cdev:
 
 void xocl_fini_icap(void)
 {
+	if (icap_keys)
+		key_put(icap_keys);
 	if (icap_drv_priv.fops && icap_drv_priv.dev != -1)
 		unregister_chrdev_region(icap_drv_priv.dev, XOCL_MAX_DEVICES);
 	platform_driver_unregister(&icap_driver);
