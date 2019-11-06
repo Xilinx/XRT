@@ -17,7 +17,9 @@
 
 #include "common/core_system.h"
 #include "gen/version.h"
-#include <atlstr.h>
+#include <windows.h>
+
+#define BUFFER 128
 
 
 void xrt_core::system::get_xrt_info(boost::property_tree::ptree &_pt)
@@ -30,34 +32,6 @@ void xrt_core::system::get_xrt_info(boost::property_tree::ptree &_pt)
   //TODO
   // _pt.put("xocl",      driver_version("xocl"));
   // _pt.put("xclmgmt",   driver_version("xclmgmt"));
-}
-
-
-//function for converting CString type to std::string
-static std::string convert(CString input)
-{
-  CT2CA converted_input(input);
-  std::string string_input(converted_input);
-
-  return string_input;
-}
-
-static std::string GetStringFromReg(HKEY keyParent, std::string _keyName,
-					std::string _keyValName)
-{
-  CRegKey key;
-  CString out;
-
-  CString keyName(_keyName.c_str());
-  CString keyValName(_keyValName.c_str());
-  if (key.Open(keyParent, keyName, KEY_READ) == ERROR_SUCCESS) {
-	ULONG len = 256;
-	key.QueryStringValue(keyValName, out.GetBuffer(256), &len);
-	out.ReleaseBuffer();
-	key.Close();
-  }
-
-  return convert(out);
 }
 
 
@@ -92,15 +66,22 @@ static std::string getmachinename()
 void xrt_core::system::get_os_info(boost::property_tree::ptree &_pt)
 {
   char tnow[26];
-  time_t result = 0;
+  time_t result = time(NULL);
+  char value[BUFFER];
+  DWORD BufferSize = BUFFER;
 
   ctime_s(tnow, sizeof tnow, &result);
-  _pt.put("sysname", GetStringFromReg(HKEY_LOCAL_MACHINE,
-				"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "ProductName").c_str());
-  _pt.put("release", GetStringFromReg(HKEY_LOCAL_MACHINE,
-				"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "BuildLab").c_str());
-  _pt.put("version", GetStringFromReg(HKEY_LOCAL_MACHINE,
-				"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "CurrentVersion").c_str());
+
+  RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "ProductName", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
+  _pt.put("sysname", value);
+  //Reassign buffer size since it get override with size of value by RegGetValueA() call
+  BufferSize = BUFFER;
+  RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "BuildLab", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
+  _pt.put("release", value);
+  BufferSize = BUFFER;
+  RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "CurrentVersion", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
+  _pt.put("version", value);
+
   _pt.put("machine", getmachinename().c_str());
   _pt.put("now", tnow);
 }
