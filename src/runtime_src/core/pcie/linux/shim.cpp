@@ -448,16 +448,28 @@ void *shim::xclMapBO(unsigned int boHandle, bool write)
 }
 
 /*
+ * xclMapBO()
+ */
+int shim::xclUnmapBO(unsigned int boHandle, void* addr)
+{
+    drm_xocl_info_bo info = { boHandle, 0, 0 };
+    int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_INFO_BO, &info);
+    if (ret)
+      return -errno;
+
+    return mDev->munmap(mUserHandle, addr, info.size);
+}
+
+/*
  * xclSyncBO()
  */
 int shim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset)
 {
-    int ret;
     drm_xocl_sync_bo_dir drm_dir = (dir == XCL_BO_SYNC_BO_TO_DEVICE) ?
             DRM_XOCL_SYNC_BO_TO_DEVICE :
             DRM_XOCL_SYNC_BO_FROM_DEVICE;
     drm_xocl_sync_bo syncInfo = {boHandle, 0, size, offset, drm_dir};
-    ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_SYNC_BO, &syncInfo);
+    int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_SYNC_BO, &syncInfo);
     return ret ? -errno : ret;
 }
 
@@ -1760,6 +1772,12 @@ void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
 //    MAP_BO_CB;
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclMapBO(boHandle, write) : nullptr;
+}
+
+int xclUnmapBO(xclDeviceHandle handle, unsigned int boHandle, void* addr)
+{
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return drv ? drv->xclUnmapBO(boHandle, addr) : -ENODEV;
 }
 
 int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset)

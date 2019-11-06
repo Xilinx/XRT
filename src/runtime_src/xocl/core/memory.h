@@ -143,6 +143,12 @@ public:
   }
 
   bool
+  is_host_only() const
+  {
+    return m_ext_flags & XCL_MEM_EXT_HOST_ONLY;
+  }
+
+  bool
   no_host_memory() const
   {
     return is_device_memory_only() || is_device_memory_only_p2p();

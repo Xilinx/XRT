@@ -69,7 +69,7 @@ static buffer
 create_exec_bo(xclDeviceHandle handle, size_t sz)
 {
   auto delBO = [](buffer_object* bo) {
-    munmap(bo->data,bo->size);
+    xclUnmapBO(bo->dev, bo->bo, bo->data);
     xclFreeBO(bo->dev,bo->bo);
     delete bo;
   };
@@ -95,7 +95,7 @@ static buffer
 create_data_bo(xclDeviceHandle handle, size_t sz, uint32_t flags)
 {
   auto delBO = [](buffer_object* bo) {
-    munmap(bo->data,bo->size);
+    xclUnmapBO(bo->dev, bo->bo, bo->data);
     xclFreeBO(bo->dev,bo->bo);
     delete bo;
   };

@@ -1153,6 +1153,10 @@ static int32_t xma_client_mp_alloc(XmaResources shm_cfg,
     uint8_t j;
     int ret;
 
+    xma_logmsg(XMA_DEBUG_LOG, XMA_RES_MOD, "%s()\n", __func__);
+    if (xma_shm_lock(xma_shm))
+        return XMA_ERROR;
+
     for (j = 0;
          kernel_inst->channels[j].client_id &&
          j < MAX_KERNEL_CHANS               &&

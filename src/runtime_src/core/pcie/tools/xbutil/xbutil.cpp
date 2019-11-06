@@ -1207,6 +1207,12 @@ int xcldev::device::bandwidthKernelTest(void)
 {
     std::string output;
 
+    if (sensor_tree::get<std::string>("system.linux", "N/A").find("Red Hat") != std::string::npos) {
+        std::cout << "Testcase not supported on Red Hat. Skipping validation"
+                  << std::endl;
+        return -EOPNOTSUPP;
+    }
+
     int ret = runTestCase(std::string("23_bandwidth.py"),
         std::string("bandwidth.xclbin"), output);
 

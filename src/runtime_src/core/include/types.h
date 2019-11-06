@@ -19,7 +19,6 @@
 
 #if defined(_WIN32)
 # include "windows/types.h"
-# include "windows/xrt.h"
 # include "windows/uuid.h"
 #endif
 
