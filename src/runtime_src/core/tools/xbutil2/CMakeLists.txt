@@ -63,8 +63,8 @@ if(WIN32)
 else()
   target_link_libraries(
     xbutil2 
-    xrt_core
-    xrt_coreutil
+    xrt_core_static
+    xrt_coreutil_static
     boost_filesystem
     boost_system
     boost_program_options 
