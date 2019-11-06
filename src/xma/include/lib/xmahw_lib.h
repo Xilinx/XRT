@@ -40,7 +40,7 @@
 #define MAX_KERNEL_REGMAP_SIZE    4032//Some space used by ert pkt
 #define MAX_REGMAP_ENTRIES        1024//Int32 entries; So 4B x 1024 = 4K Bytes
 
-const uint64_t mNullBO = 0xffffffff;
+//const uint64_t mNullBO = 0xffffffff;
 
 //#ifdef __cplusplus
 //extern "C" {

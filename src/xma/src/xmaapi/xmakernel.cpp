@@ -231,7 +231,7 @@ xma_kernel_session_create(XmaKernelProperties *props)
     }
 
     XmaHwDevice& dev_tmp1 = hwcfg->devices[hwcfg_dev_index];
-    if (!kernel_info->soft_kernel) {
+    if (!kernel_info->soft_kernel && !kernel_info->in_use) {
         if (xclOpenContext(dev_handle, dev_tmp1.uuid, kernel_info->cu_index_ert, true) != 0) {
             xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD, "Failed to open context to CU %s for this session\n", kernel_info->name);
             //Release singleton lock
@@ -260,7 +260,7 @@ xma_kernel_session_create(XmaKernelProperties *props)
     priv1->kernel_execbos.reserve(num_execbo);
     priv1->num_execbo_allocated = num_execbo;
     for (int32_t d = 0; d < num_execbo; d++) {
-        uint32_t  bo_handle;
+        xclBufferHandle  bo_handle = 0;
         int       execBO_size = MAX_EXECBO_BUFF_SIZE;
         //uint32_t  execBO_flags = (1<<31);
         char     *bo_data;
@@ -268,7 +268,7 @@ xma_kernel_session_create(XmaKernelProperties *props)
                                 execBO_size, 
                                 0, 
                                 XCL_BO_FLAGS_EXECBUF);
-        if (!bo_handle || bo_handle == mNullBO) 
+        if (!bo_handle || bo_handle == NULLBO) 
         {
             xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
                     "Initalization of plugin failed. Failed to alloc execbo\n");

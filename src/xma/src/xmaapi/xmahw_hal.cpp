@@ -422,6 +422,12 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         }
         */
         free(buffer);
+
+        //Opening virtual CU context as some applications may use soft kernels only
+        if (xclOpenContext(dev_tmp1.handle, info.uuid, -1, true) != 0) {
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Failed to open virtual CU context\n");
+            return false;
+        }
     }
 
     return true;
