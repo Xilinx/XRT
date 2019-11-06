@@ -261,20 +261,27 @@ static int mgmt_msix_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
+	if (total > pci_msix_vec_count(XDEV(xdev)->pdev)) {
+		xocl_info(&pdev->dev, "Actual number of msix less then expected total %d", total);
+		total = pci_msix_vec_count(XDEV(xdev)->pdev);
+	}
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
 	i = 0;
 	ret = pci_alloc_irq_vectors(XDEV(xdev)->pdev, total, total,
 			PCI_IRQ_MSIX);
-	if (ret != total) {
-		ret = -ENOENT;
-		goto failed;
-	}
 #else
 	for (i = 0; i < total; i++)
 		mgmt_msix->msix_irq_entries[i].entry = i;
 
 	ret = pci_enable_msix(XDEV(xdev)->pdev, mgmt_msix->msix_irq_entries, total);
+
 #endif
+	if (ret != total) {
+		xocl_err(&pdev->dev, "init msix failed ret %d", ret);
+		ret = -ENOENT;
+		goto failed;
+	}
 	mgmt_msix->max_user_intr = total;
 
 	mgmt_msix->user_msix_table = devm_kzalloc(&pdev->dev,
