@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -1311,6 +1311,13 @@ void *CpuemShim::xclMapBO(unsigned int boHandle, bool write)
   bo->buf = pBuf;
   PRINTENDFUNC;
   return pBuf;
+}
+
+int CpuemShim::xclUnmapBO(unsigned int boHandle, void* addr)
+{
+  std::lock_guard<std::mutex> lk(mApiMtx);
+  auto bo = xclGetBoByHandle(boHandle);
+  return munmap(addr,bo->size);
 }
 
 /**************************************************************************************/

@@ -96,7 +96,7 @@ is_ert(struct drm_device *dev)
 {
 	struct drm_zocl_dev *zdev = dev->dev_private;
 
-	return zdev->exec->ops == &ps_ert_ops;
+	return zdev->ert != NULL;
 }
 
 /**
@@ -1567,7 +1567,9 @@ recycle_cmd(struct sched_cmd *cmd)
 	list_move_tail(&cmd->list, &free_cmds);
 	mutex_unlock(&free_cmds_mutex);
 
-	atomic_dec(&cmd->client->outstanding_execs);
+	if (!is_ert(cmd->ddev))
+		atomic_dec(&cmd->client->outstanding_execs);
+
 	return 0;
 }
 
@@ -1984,6 +1986,13 @@ scheduler_queue_cmds(struct scheduler *sched)
 static void
 cmd_update_state(struct sched_cmd *cmd)
 {
+	/*
+	 * In the case of ERT, stalled commands are handled by host
+	 * XRT. So we just bail out here.
+	 */
+	if (is_ert(cmd->ddev))
+		return;
+
 	if (cmd->state != ERT_CMD_STATE_RUNNING && cmd->client->abort) {
 		DRM_INFO("Aborting cmds for closing pid(%d)",
 		    pid_nr(cmd->client->pid));
@@ -2431,6 +2440,7 @@ ps_ert_query(struct sched_cmd *cmd)
 	case ERT_EXEC_WRITE:
 		if (!cu_done(cmd))
 			break;
+                __attribute__ ((fallthrough));
 		/* pass through */
 
 	case ERT_CONFIGURE:
@@ -2930,8 +2940,10 @@ sched_init_exec(struct drm_device *drm)
 	SCHED_DEBUG("-> %s\n", __func__);
 
 	exec_core = devm_kzalloc(drm->dev, sizeof(*exec_core), GFP_KERNEL);
-	if (!exec_core)
+	if (!exec_core) {
+		DRM_ERROR("Alloc exec_core failed: no memory\n");
 		return -ENOMEM;
+	}
 
 	zdev->exec = exec_core;
 	spin_lock_init(&exec_core->ctx_list_lock);

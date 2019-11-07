@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -43,6 +43,7 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mSyncBO(0)
   ,mCopyBO(0)
   ,mMapBO(0)
+  ,mUnmapBO(0)
   ,mWrite(0)
   ,mRead(0)
   ,mUnmgdPread(0)
@@ -79,9 +80,6 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mPollQueues(0)
   ,mGetNumLiveProcesses(0)
   ,mGetSysfsPath(0)
-#ifdef _WIN32
-  ,mMunmap(0)
-#endif
 {
   mProbe = (probeFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclProbe");
   mOpen = (openFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclOpen");
@@ -107,6 +105,7 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mSyncBO   = (syncBOFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclSyncBO");
   mCopyBO   = (copyBOFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclCopyBO");
   mMapBO    = (mapBOFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclMapBO");
+  mUnmapBO  = (unmapBOFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclUnmapBO");
 
   mWrite      = (writeFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclWrite");
   mRead       = (readFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclRead");
@@ -152,9 +151,6 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mGetDebugIPlayoutPath = (xclGetDebugIPlayoutPathFuncType)xrt_core::dlsym(const_cast<void*>(mDriverHandle), "xclGetDebugIPlayoutPath");
   mGetTraceBufferInfo = (xclGetTraceBufferInfoFuncType)xrt_core::dlsym(const_cast<void*>(mDriverHandle), "xclGetTraceBufferInfo");
   mReadTraceData = (xclReadTraceDataFuncType)xrt_core::dlsym(const_cast<void*>(mDriverHandle), "xclReadTraceData");
-#ifdef _WIN32
-  mMunmap = (munmapFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "munmap");;
-#endif
 }
 
 operations::

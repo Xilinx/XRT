@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2018 Xilinx, Inc
+ * Copyright (C) 2017-2019 Xilinx, Inc
  * Author: Sonal Santan
  * AWS HAL Driver for SDAccel/OpenCL runtime evnrionemnt, for AWS EC2 F1
  *
@@ -1109,6 +1109,16 @@ namespace awsbwhal {
                   MAP_SHARED, mUserHandle, mapInfo.offset);
     }
 
+    int AwsXcl::xclUnmapBO(unsigned int boHandle, void* addr)
+    {
+      drm_xocl_info_bo info = { boHandle, 0, 0 };
+      int ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_INFO_BO, &info);
+      if (ret)
+        return -errno;
+
+      return munmap(addr, info.size);
+    }
+
     int AwsXcl::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir,
                             size_t size, size_t offset)
     {
@@ -1535,6 +1545,11 @@ void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
   return drv ? drv->xclMapBO(boHandle, write) : nullptr;
 }
 
+int xclUnmapBO(xclDeviceHandle handle, unsigned int boHandle, void* addr)
+{
+  awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+  return drv ? drv->xclUnmapBO(boHandle, addr) : -ENODEV;
+}
 
 int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir,
               size_t size, size_t offset)

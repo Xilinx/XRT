@@ -69,6 +69,7 @@ public:
                  size_t seek);
   int xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip);
   void *xclMapBO(unsigned int boHandle, bool write);
+  int xclUnmapBO(unsigned int boHandle, void* addr);
   int xclExportBO(unsigned int boHandle);
   unsigned int xclImportBO(int fd, unsigned flags);
   unsigned int xclGetBOProperties(unsigned int boHandle,

@@ -176,6 +176,7 @@ int Flasher::getBoardInfo(BoardInfo& board)
 
     if (!flasher.probingErrMsg().empty())
     {
+        std::cout << "ERROR: " << flasher.probingErrMsg() << std::endl;
         return -EOPNOTSUPP;
     }
 

@@ -318,6 +318,13 @@ done:
     }
   }
 
+  int
+  unmap_bo(buffer_handle_type handle, void* addr)
+  {
+    // TODO : Implement
+    return 0;
+  }
+
   void
   free_bo(buffer_handle_type handle)
   {
@@ -923,6 +930,15 @@ xclMapBO(xclDeviceHandle handle, xclBufferHandle boHandle, bool write)
   return shim->map_bo(boHandle, write);
 }
 
+int
+xclUnmapBO(xclDeviceHandle handle, xclBufferHandle boHandle, void* addr)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclUnmapBO()");
+  auto shim = get_shim_object(handle);
+  return shim->unmap_bo(boHandle, addr);
+}
+
 void
 xclFreeBO(xclDeviceHandle handle, xclBufferHandle boHandle)
 {
@@ -1070,13 +1086,4 @@ xclRead(xclDeviceHandle handle, enum xclAddressSpace space,
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclRead()");
   auto shim = get_shim_object(handle);
   return shim->read(space,offset,hostbuf,size) ? 0 : size;
-}
-
-// TBD from xrt-windows.h
-int
-munmap(void* addr, size_t length)
-{
-  xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "unmap()");
-  return 0;
 }

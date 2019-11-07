@@ -38,8 +38,9 @@
 #endif
 
 #if defined (_WIN32)
+#define NOMINMAX
+#include <windows.h>
 #include "windows/types.h"
-#include "windows/xrt.h"
 #endif
 
 #ifdef __GNUC__
@@ -83,8 +84,10 @@ typedef void * xclDeviceHandle;
  */
 #ifdef _WIN32
 typedef void * xclBufferHandle;
+# define NULLBO	INVALID_HANDLE_VALUE
 #else
 typedef unsigned int xclBufferHandle;
+# define NULLBO	0xffffffff
 #endif
 
 struct axlf;
@@ -238,8 +241,6 @@ struct xclBOProperties {
     uint64_t paddr;
     int reserved; // not implemented
 };
-
-#define	NULLBO	0xffffffff
 
 /**
  * DOC: XRT Device Management APIs
@@ -537,9 +538,18 @@ XCL_DRIVER_DLLESPEC size_t xclReadBO(xclDeviceHandle handle, xclBufferHandle boH
  * Return:         Memory mapped buffer
  *
  * Map the contents of the buffer object into host memory
- * To unmap the buffer call POSIX unmap() on mapped void * pointer returned from xclMapBO
+ * To unmap the buffer call xclUnmapBO().
  */
 XCL_DRIVER_DLLESPEC void *xclMapBO(xclDeviceHandle handle, xclBufferHandle boHandle, bool write);
+
+/**
+ * xclUnmapBO() - Unmap a BO that was previously mapped with xclMapBO
+ *
+ * @handle:        Device handle
+ * @boHandle:      BO handle
+ * @addr:          The mapped void * pointer returned from xclMapBO()
+ */
+XCL_DRIVER_DLLESPEC int xclUnmapBO(xclDeviceHandle handle, xclBufferHandle boHandle, void* addr);
 
 /**
  * xclSyncBO() - Synchronize buffer contents in requested direction
