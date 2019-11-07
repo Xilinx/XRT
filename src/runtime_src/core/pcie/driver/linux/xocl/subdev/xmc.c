@@ -316,6 +316,7 @@ struct xocl_xmc {
 static int load_xmc(struct xocl_xmc *xmc);
 static int stop_xmc(struct platform_device *pdev);
 static void xmc_clk_scale_config(struct platform_device *pdev);
+static int xmc_load_board_info(struct xocl_xmc *xmc);
 
 static void set_sensors_data(struct xocl_xmc *xmc, struct xcl_sensor *sensors)
 {
@@ -846,6 +847,10 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind, 
 		xmc_sensor(pdev, VOL_VCCINT_BRAM, &sensors->vccint_bram, SENSOR_INS);
 		break;
 	case XCL_BDINFO:
+		mutex_lock(&xmc->mbx_lock);
+		xmc_load_board_info(xmc);
+		mutex_unlock(&xmc->mbx_lock);
+
 		bdinfo = (struct xcl_board_info *)buf;
 
 		xmc_bdinfo(pdev, SER_NUM, (u32 *)bdinfo->serial_num);
@@ -1438,8 +1443,6 @@ static ssize_t reg_base_show(struct device *dev,
 	return sprintf(buf, "%lld\n", bar_off);
 }
 static DEVICE_ATTR_RO(reg_base);
-
-static int xmc_load_board_info(struct xocl_xmc *xmc);
 
 #define	XMC_BDINFO_STRING_SYSFS_NODE(name)		\
 	static ssize_t name##_show(struct device *dev,		\
@@ -2114,6 +2117,23 @@ static int load_xmc(struct xocl_xmc *xmc)
 	if (XMC_PRIVILEGED(xmc) && xocl_clk_scale_on(xdev_hdl))
 		xmc_clk_scale_config(xmc->pdev);
 
+	mutex_unlock(&xmc->xmc_lock);
+
+	/* Enabling XMC mailbox support. */
+	if (XMC_PRIVILEGED(xmc)) {
+		u32 val = 0;
+
+		xmc->mbx_enabled = true;
+		safe_read32(xmc, XMC_HOST_MSG_OFFSET_REG, &val);
+		xmc->mbx_offset = val;
+		xocl_info(&xmc->pdev->dev, "XMC mailbox offset: 0x%x.\n", val);
+	}
+
+	mutex_lock(&xmc->mbx_lock);
+	xmc_load_board_info(xmc);
+	mutex_unlock(&xmc->mbx_lock);
+
+	return 0;
 out:
 	mutex_unlock(&xmc->xmc_lock);
 
@@ -2253,7 +2273,6 @@ static int xmc_remove(struct platform_device *pdev)
 	mutex_lock(&xmc->mbx_lock);
 	xmc_unload_board_info(xmc);
 	mutex_unlock(&xmc->mbx_lock);
-
 end:
 	for (i = 0; i < NUM_IOADDR; i++) {
 		if ((i == IO_CLK_SCALING) && !xmc->runtime_cs_enabled)
@@ -2303,7 +2322,6 @@ static int xmc_probe(struct platform_device *pdev)
 	struct resource *res;
 	void *xdev_hdl;
 	int i, err;
-	u32 val;
 
 	xmc = devm_kzalloc(&pdev->dev, sizeof(*xmc), GFP_KERNEL);
 	if (!xmc) {
@@ -2390,17 +2408,6 @@ static int xmc_probe(struct platform_device *pdev)
 		xocl_info(&pdev->dev, "Runtime clock scaling is supported.\n");
 	}
 
-	/* Enabling XMC mailbox support. */
-	if (XMC_PRIVILEGED(xmc)) {
-		xmc->mbx_enabled = true;
-		safe_read32(xmc, XMC_HOST_MSG_OFFSET_REG, &val);
-		xmc->mbx_offset = val;
-		xocl_info(&pdev->dev, "XMC mailbox offset: 0x%x.\n", val);
-	}
-
-	mutex_lock(&xmc->mbx_lock);
-	xmc_load_board_info(xmc);
-	mutex_unlock(&xmc->mbx_lock);
 	return 0;
 
 failed:
@@ -2510,7 +2517,7 @@ static int xmc_recv_pkt(struct xocl_xmc *xmc)
 	pkt = (u32 *)&xmc->mbx_pkt;
 	len = XMC_PKT_SZ(&hdr);
 	if (hdr.payload_sz == 0 || len > XMC_PKT_MAX_SZ) {
-		xocl_err(&xmc->pdev->dev, "read invalid XMC packet\n");
+		xocl_warn(&xmc->pdev->dev, "read invalid XMC packet\n");
 		return -EINVAL;
 	}
 	for (i = 0; i < len; i++)
@@ -2562,7 +2569,6 @@ static int xmc_dynamic_region_free(struct platform_device *pdev)
 	if (ret)
 		goto done;
 
-	
 	xocl_info(&xmc->pdev->dev, "xmc dynamic region free\n");
 
 done:
@@ -2607,6 +2613,14 @@ static void xmc_set_board_info(uint32_t *bdinfo_raw, uint32_t bd_info_sz,
 	memcpy(target, info, len);
 }
 
+static bool bd_info_valid(char *ser_num)
+{
+	if (ser_num[0] != 0)
+		return true;
+
+	return false;
+}
+
 static int xmc_load_board_info(struct xocl_xmc *xmc)
 {
 	int ret = 0;
@@ -2622,6 +2636,9 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 
 		if ((!is_xmc_ready(xmc) || !is_sc_ready(xmc)))
 			return -EINVAL;
+
+		if (!xmc->mbx_offset)
+			return -ENODEV;
 		/* Load new info from HW. */
 		memset(&xmc->mbx_pkt, 0, sizeof(xmc->mbx_pkt));
 		xmc->mbx_pkt.hdr.op = XPO_BOARD_INFO;
@@ -2650,8 +2667,11 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_MAX_PWR, (char *)&xmc->max_power);
 		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_FAN_PRESENCE, (char *)&xmc->fan_presence);
 		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_CONFIG_MODE, (char *)&xmc->config_mode);
-		xocl_info(&xmc->pdev->dev, "board info reloaded\n");
-		xmc->bdinfo_loaded = true;
+
+		if (bd_info_valid(xmc->serial_num)) {
+			xmc->bdinfo_loaded = true;
+			xocl_info(&xmc->pdev->dev, "board info reloaded\n");
+		}
 		vfree(bdinfo_raw);
 	} else {
 
@@ -2672,8 +2692,13 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		xmc_bdinfo(xmc->pdev, FAN_PRESENCE, &xmc->fan_presence);
 		xmc_bdinfo(xmc->pdev, CFG_MODE, &xmc->config_mode);
 
-		if (xmc->bdinfo_raw)
+		if (bd_info_valid(xmc->serial_num)) {
 			xmc->bdinfo_loaded = true;
+			xocl_info(&xmc->pdev->dev, "board info reloaded\n");
+		} else {
+			vfree(xmc->bdinfo_raw);
+			xmc->bdinfo_raw = NULL;
+		}
 	}
 	return 0;
 }
