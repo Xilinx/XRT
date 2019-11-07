@@ -193,6 +193,9 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 	/* request XMC/ERT to stop */
 	xocl_mb_stop(lro);
 
+	/* If the PCIe board has PS */
+	xocl_ps_sys_reset(lro);
+
 	xocl_icap_reset_axi_gate(lro);
 
 	/*
@@ -240,6 +243,9 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 	xocl_mb_reset(lro);
 
 	xocl_thread_start(lro);
+
+	/* If the PCIe board has PS. This could take 50 seconds */
+	xocl_ps_wait(lro);
 
 #endif
 done:

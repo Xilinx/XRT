@@ -74,6 +74,22 @@ static long reset_ocl_ioctl(struct xclmgmt_dev *lro)
 	return 0;
 }
 
+static long reset_sk_ioctl(struct xclmgmt_dev *lro)
+{
+	xocl_ps_sk_reset(lro);
+
+	return 0;
+}
+
+static long reset_ert_ioctl(struct xclmgmt_dev *lro)
+{
+	xocl_ps_reset(lro);
+
+	xocl_ps_wait(lro);
+
+	return 0;
+}
+
 static int bitstream_ioctl_axlf(struct xclmgmt_dev *lro, const void __user *arg)
 {
 	void *copy_buffer = NULL;
@@ -146,6 +162,12 @@ long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 	case XCLMGMT_IOCHOTRESET:
 		result = reset_hot_ioctl(lro);
+		break;
+	case XCLMGMT_IOCSKRESET:
+		result = reset_sk_ioctl(lro);
+		break;
+	case XCLMGMT_IOCERTRESET:
+		result = reset_ert_ioctl(lro);
 		break;
 	case XCLMGMT_IOCFREQSCALE:
 		result = ocl_freqscaling_ioctl(lro, (void __user *)arg);

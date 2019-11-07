@@ -128,6 +128,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/sysmon.c
   xocl/subdev/firewall.c
   xocl/subdev/microblaze.c
+  xocl/subdev/ps.c
   xocl/subdev/xiic.c
   xocl/subdev/mailbox.c
   xocl/subdev/icap.c
