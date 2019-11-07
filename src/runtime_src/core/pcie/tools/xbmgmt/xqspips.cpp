@@ -61,6 +61,7 @@
 #define QUAD_READ_CMD_4B            0x6C
 #define READ_FLAG_STATUS_CMD        0x70
 #define READ_ID                     0x9F
+#define DUAL_WRITE_CMD              0xA2
 #define ENTER_4B_ADDR_MODE          0xB7
 #define DIE_ERASE_CMD               0xC4
 /* Bank register is called Extended Address Register in Micron */
@@ -230,18 +231,22 @@ XQSPIPS_Flasher::XQSPIPS_Flasher(std::shared_ptr<pcidev::pci_device> dev)
 
     // By default, it is 'perallel'
     mConnectMode = 0;
-    // U30 Rev.A use single
     if (typeStr.find("single") != std::string::npos) {
         mConnectMode = 1;
     }
 
-    mBusWidth = 4;
+    mBusWidth = 2;
     if (typeStr.find("x2") != std::string::npos) {
-        // U30 Rev.B use x2
-        mBusWidth = 2;
+        int value;
+        // This is a special register in the U30 shell.
+        // Because U30 supports x2 and x4 buswidth. Default: x2.
+        // SC could configure it. U30 firmware would set this register.
+        // TODO: Find a better solution if need.
+        mDev->pcieBarRead(0x11000C, &value, 4);
+        mBusWidth = (value >> 16) & 0x7;
+        if (mBusWidth != 4)
+            mBusWidth = 2;
     }
-
-    //std::cout << "minm: mConnectMode " << mConnectMode << " mBusWidth " << mBusWidth << std::endl;
 }
 
 /**
@@ -907,7 +912,11 @@ bool XQSPIPS_Flasher::isFlashReady()
         if (!Status) {
             return false;
         }
-        StatusReg = mReadBuffer[1] |= mReadBuffer[0];
+        if (mConnectMode == 0)
+            StatusReg = mReadBuffer[1] |= mReadBuffer[0];
+        else
+            StatusReg = mReadBuffer[0];
+
 #if defined(_DEBUG)
         printHEX("Flash ready:", StatusReg);
 #endif
@@ -1105,8 +1114,18 @@ bool XQSPIPS_Flasher::readFlash(unsigned addr, uint32_t byteCount, uint8_t readC
     else
         realAddr = addr;
 
-    if (readCmd == 0xff)
-        readCmd = QUAD_READ_CMD;
+    if (readCmd == 0xff) {
+        switch(mBusWidth) {
+        case 2:
+            readCmd = DUAL_READ_CMD;
+            break;
+        case 4:
+            readCmd = QUAD_READ_CMD;
+            break;
+        default:
+            readCmd = READ_CMD;
+        }
+    }
 
     writeCmds[0] = readCmd;
     writeCmds[1] = (uint8_t)((realAddr & 0xFF000000) >> 24);
@@ -1128,11 +1147,17 @@ bool XQSPIPS_Flasher::readFlash(unsigned addr, uint32_t byteCount, uint8_t readC
         msgReadFlash[msgCnt].busWidth = XQSPIPSU_SELECT_MODE_SPI;
         msgReadFlash[msgCnt].flags = 0;
         msgCnt++;
+    } else if (readCmd == DUAL_READ_CMD) {
+        msgReadFlash[msgCnt].bufPtr = NULL;
+        msgReadFlash[msgCnt].byteCount = 8;
+        msgReadFlash[msgCnt].busWidth = mBusWidth;
+        msgReadFlash[msgCnt].flags = 0;
+        msgCnt++;
     }
 
     msgReadFlash[msgCnt].bufPtr = mReadBuffer;
     msgReadFlash[msgCnt].byteCount = byteCount;
-    msgReadFlash[msgCnt].busWidth = XQSPIPSU_SELECT_MODE_QUADSPI;
+    msgReadFlash[msgCnt].busWidth = mBusWidth;
     msgReadFlash[msgCnt].flags = XQSPIPSU_MSG_FLAG_RX | XQSPIPSU_MSG_FLAG_STRIPE;
     msgCnt++;
 
@@ -1167,7 +1192,16 @@ bool XQSPIPS_Flasher::writeFlash(unsigned addr, uint32_t byteCount, uint8_t writ
         return false;
 
     if (writeCmd == 0xff) {
-        writeCmd = QUAD_WRITE_CMD;
+        switch(mBusWidth) {
+        case 2:
+            writeCmd = DUAL_WRITE_CMD;
+            break;
+        case 4:
+            writeCmd = QUAD_WRITE_CMD;
+            break;
+        default:
+            writeCmd = WRITE_CMD;
+        }
     }
 
     writeCmds[0] = writeCmd;
@@ -1185,7 +1219,7 @@ bool XQSPIPS_Flasher::writeFlash(unsigned addr, uint32_t byteCount, uint8_t writ
     /* The data to write is already filled up */
     msgWriteFlash[1].bufPtr = mWriteBuffer;
     msgWriteFlash[1].byteCount = byteCount;
-    msgWriteFlash[1].busWidth = XQSPIPSU_SELECT_MODE_QUADSPI;
+    msgWriteFlash[1].busWidth = mBusWidth;
     msgWriteFlash[1].flags = XQSPIPSU_MSG_FLAG_TX | XQSPIPSU_MSG_FLAG_STRIPE;
 
     if (!finalTransfer(msgWriteFlash, 2))

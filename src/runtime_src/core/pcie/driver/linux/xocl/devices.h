@@ -1526,7 +1526,7 @@ struct xocl_subdev_map {
 		.subdev_num = ARRAY_SIZE(MGMT_RES_MPSOC),		\
 		.mpsoc = true,						\
 		.board_name = "u30",					\
-		.flash_type = "qspi_ps_x4_single",				\
+		.flash_type = "qspi_ps_x2_single",				\
 	}
 
 #define	XOCL_BOARD_USER_XDMA_MPSOC					\
