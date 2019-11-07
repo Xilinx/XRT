@@ -112,7 +112,7 @@ fi
 
 #install pyopencl
 #get major version of pyopencl
-version=$(python -m pip list 2>&1 | grep -Po '(?<=pyopencl )(.+)' | grep -Po '[0-9][0-9][0-9][0-9]')
+VERSION=$(python -m pip list 2>&1 | grep -Po '(?<=pyopencl )(.+)' | grep -Po '[0-9][0-9][0-9][0-9]')
 FLAVOR=`grep '^ID=' /etc/os-release | awk -F= '{print $2}'`
 FLAVOR=`echo $FLAVOR | tr -d '"'`
 
@@ -139,7 +139,7 @@ if [ `uname -m` = "ppc64le" ] && [ $FLAVOR = "ubuntu" ]; then
     exit 0
 fi
 
-if [ -z $version ] || [ $version -lt 2019 ]; then
+if [ -z $VERSION ] ; then
     echo "Installing pyopencl..."
     #need to force install numpy version 1.8 for centos
     if [ $FLAVOR = "centos" ] || [ $FLAVOR = "rhel" ] ; then
@@ -147,18 +147,29 @@ if [ -z $version ] || [ $version -lt 2019 ]; then
         pip install --ignore-installed numpy==1.8
     fi
     pip install pyopencl
+# if older version of pyopencl and import fails prompt user to upgarde pyopencl
+POCL_INSTALL=$(python -c "import pyopencl")
+elif [ $VERSION -lt 2019 ] && [[ $POCL_INSTALL -ne 0 ]] ; then
+    echo "***********************************************************************"
+    echo "* Pyopencl ($VERSION) is installed on the system but pyopencl >= 2019.1"
+    echo "* is required. Please uninstall the current pyopencl by running"
+    echo "* 'apt remove python-pyopencl' or 'pip uninstall pyopencl'" 
+    echo "* and then reinstall the xrt package"
+    echo "***********************************************************************"
+    exit 0
 else
     echo "Skipping pyopencl installation..."
     exit 0
 fi
-if python -c "import pyopencl"; then
-    echo "Successfully installed pyopencl"
-else
+if [[ $POCL_INSTALL -ne 0 ]]; then
     echo "***********************************************************************"
     echo "* FAILED TO INSTALL PYOPENCL"
     echo "*"
-    echo "* Please try to install pyopencl using the "
-    echo "* offical documentation: https://documen.tician.de/pyopencl/misc.html"
+    echo "* Please try to reinstall xrt package after running"
+    echo "* 'sudo pip install --upgrade pip'"
+    echo "* 'sudo pip install numpy'"
+    echo "* Or follow the official pyopencl installation guide: "
+    echo "* https://documen.tician.de/pyopencl/misc.html"
     echo "***********************************************************************"
 fi
 exit 0
