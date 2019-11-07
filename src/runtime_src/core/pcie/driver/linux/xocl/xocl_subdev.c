@@ -321,6 +321,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 				sdev_info->name, SUBDEV_SUFFIX);
 	xocl_xdev_info(xdev_hdl, "creating subdev %s",
 			devname);
+	ssleep(1);
 
 	subdev = xocl_subdev_reserve(xdev_hdl, sdev_info);
 	if (!subdev) {
@@ -438,6 +439,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 
 	xocl_xdev_info(xdev_hdl, "Created subdev %s inst %d",
 			sdev_info->name, subdev->inst);
+	ssleep(1);
 
 	if (XOCL_GET_DRV_PRI(subdev->pldev) &&
 			XOCL_GET_DRV_PRI(subdev->pldev)->ops)
@@ -990,17 +992,18 @@ xocl_fetch_dynamic_platform(struct xocl_dev_core *core,
 }
 
 int
-xocl_subdev_vsec(xdev_handle_t xdev, u32 type, u64 *offset, u32 *value)
+xocl_subdev_vsec(xdev_handle_t xdev, u32 type,
+	int *bar_idx, u64 *offset)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev;
 	struct pci_dev *pdev = core->pdev;
 	int bar;
-	resource_size_t bar_len;
 	void __iomem *bar_addr;
 	int cap, i, length;
 	u32 off_low, off_high;
 	u64 vsec_off;
 	bool found = false;
+	struct xocl_vsec_header *p_hdr;
 
 	/* check vendor specific section */
 	cap = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_VNDR);
@@ -1017,37 +1020,33 @@ xocl_subdev_vsec(xdev_handle_t xdev, u32 type, u64 *offset, u32 *value)
 	}
 
 	bar =  off_low & 0xf;
-	if (bar != 0) {
-		xocl_err(&core->pdev->dev, "bar id(%d) has to be zero.", bar);
-		return -EINVAL;
-	}
+	vsec_off = ((u64)off_high << 32) | (off_low & 0xfffffff0);
 
 	/* iomap bar_addr for ioread32 to read data */
-	bar_len = pci_resource_len(pdev, bar);
-	BUG_ON(!bar_len);
-	bar_addr = pci_iomap(pdev, bar, bar_len);
-	if (!bar_addr) {
+	p_hdr = pci_iomap_range(pdev, bar, vsec_off, sizeof(*p_hdr));
+	if (!p_hdr) {
 		xocl_err(&core->pdev->dev, "Could not map BAR #%d", bar);
 		return -EIO;
 	}
+	length = ioread32(&(p_hdr->length));
+	pci_iounmap(pdev, p_hdr);
 
-	vsec_off = ((u64)off_high << 32) | (off_low & 0xfffffff0);
-	length = ioread32(bar_addr + vsec_off + 0x4);
+	bar_addr = pci_iomap_range(pdev, bar, vsec_off, length);
 
 	for (i = 16; i < length; i += 8) {
 		u64 off;
 
-		off_low = ioread32(bar_addr + vsec_off + i);
+		off_low = ioread32(bar_addr + i);
 		if ((off_low & 0xff) != type)
 			continue;
 
 		found = true;
-		off_high = ioread32(bar_addr + vsec_off + i + 4);
+		off_high = ioread32(bar_addr + i + 4);
 		off = ((u64)off_high << 16) | (off_low & 0xffff0000) >> 16;
+		if (bar_idx)
+			*bar_idx = (off_low >> 8) & 0xff;
 		if (offset)
 			*offset = off;
-		if (value)
-			*value = ioread32(bar_addr + off);
 	}
 
 	/* unmap bar_addr */
@@ -1057,6 +1056,40 @@ xocl_subdev_vsec(xdev_handle_t xdev, u32 type, u64 *offset, u32 *value)
 	return found ? 0 : -ENOENT;
 }
 
+int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
+{
+	u64 offset;
+	int bar, ret;
+
+	ret = xocl_subdev_vsec(xdev, XOCL_VSEC_FLASH_CONTROLER, &bar, &offset);
+	if (!ret) {
+		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_FLASH_VSEC;
+
+		subdev_info.res[0].start = offset;
+		subdev_info.res[0].end = offset + 0xffff;
+		subdev_info.bar_idx[0] = bar;
+
+		ret = xocl_subdev_create(xdev, &subdev_info);
+		if (ret)
+			return ret;
+	}
+
+	ret = xocl_subdev_vsec(xdev, XOCL_VSEC_MAILBOX, &bar, &offset);
+	if (!ret) {
+		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_MAILBOX_VSEC;
+
+		subdev_info.res[0].start = offset;
+		subdev_info.res[0].end = offset + 0xfff;
+		subdev_info.bar_idx[0] = bar;
+
+		ret = xocl_subdev_create(xdev, &subdev_info);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
 void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
@@ -1064,20 +1097,23 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 	u32 dyn_shell_magic;
 	int ret, cap;
 	unsigned err_cap;
-	u32 type;
 
 	memset(&core->priv, 0, sizeof(core->priv));
 	core->priv.vbnv = in->vbnv;
 	/* read pci capability to determine if this is multi RP board */
 	/* currently, it is hard coded to 0xB0 as a work around */
 	ret = pci_read_config_dword(core->pdev, 0xB0, &dyn_shell_magic);
-	if (!ret && ((dyn_shell_magic & 0xff00ffff) == 0x01000009))
+	if (!ret && ((dyn_shell_magic & 0xff00ffff) == 0x01000009)) {
+		xocl_xdev_info(xdev_hdl, "found multi RP cap");
 		xocl_fetch_dynamic_platform(core, &in);
+	}
 
 	/* When vender specific has platform_info, we can load golden now */
-	ret = xocl_subdev_vsec(xdev_hdl, XOCL_VSEC_PLATFORM_INFO, NULL, &type);
-	if (!ret)
+	ret = xocl_subdev_vsec(xdev_hdl, XOCL_VSEC_PLATFORM_INFO, NULL, NULL);
+	if (!ret) {
+		xocl_xdev_info(xdev_hdl, "found vsec cap");
 		xocl_fetch_dynamic_platform(core, &in);
+	}
 		
 	/* workaround firewall completer abort issue */
 	cap = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_ERR);

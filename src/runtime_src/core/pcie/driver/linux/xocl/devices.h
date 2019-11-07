@@ -1586,25 +1586,38 @@ struct xocl_subdev_map {
 		.flash_type = FLASH_TYPE_SPI,				\
 	}
 
-#define MFG_RES_U50_RP							\
+#define	XOCL_DEVINFO_FEATURE_ROM_MGMT_DYN		\
+	{						\
+		XOCL_SUBDEV_FEATURE_ROM,		\
+		XOCL_FEATURE_ROM,			\
+		NULL,					\
+		0,					\
+	}
+
+#define RES_MGMT_VSEC							\
 	((struct xocl_subdev_info []) {					\
-	 	XOCL_DEVINFO_FEATURE_ROM_U50,				\
+	 	XOCL_DEVINFO_FEATURE_ROM_MGMT_DYN,			\
+	 })
+
+#define RES_USER_VSEC							\
+	((struct xocl_subdev_info []) {					\
+	 	XOCL_DEVINFO_FEATURE_ROM_USER_DYN,			\
 	 })
 
 #define	XOCL_BOARD_USER_U50_DYNAMIC_IP					\
 	(struct xocl_board_private){					\
-		.flags = XOCL_DSAFLAG_MFG,				\
+		.flags = XOCL_DSAFLAG_DYNAMIC_IP,			\
 		.board_name = "u50",					\
-		.subdev_info	= MFG_RES_U50_RP,			\
-		.subdev_num = ARRAY_SIZE(MFG_RES_U50_RP),		\
+		.subdev_info	= RES_USER_VSEC,			\
+		.subdev_num = ARRAY_SIZE(RES_USER_VSEC),		\
 	}
 
 #define	XOCL_BOARD_MGMT_U50_DYNAMIC_IP					\
 	(struct xocl_board_private){					\
-		.flags = XOCL_DSAFLAG_MFG,				\
+		.flags = XOCL_DSAFLAG_DYNAMIC_IP,			\
 		.board_name = "u50",					\
-		.subdev_info	= MFG_RES_U50_RP,			\
-		.subdev_num = ARRAY_SIZE(MFG_RES_U50_RP),		\
+		.subdev_info	= RES_MGMT_VSEC,			\
+		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),		\
 		.flash_type = FLASH_TYPE_SPI,				\
 	}
 
@@ -1644,7 +1657,7 @@ struct xocl_subdev_map {
 		.level = XOCL_SUBDEV_LEVEL_PRP,		\
 	}
 
-#define XOCL_RES_MAILBOX_PRP				\
+#define XOCL_RES_MAILBOX_VSEC				\
 	((struct resource []) {				\
 		{					\
 			.start	= 0x0,		\
@@ -1653,13 +1666,14 @@ struct xocl_subdev_map {
 		},					\
 	})
 
-#define XOCL_DEVINFO_MAILBOX_PRP			\
+#define XOCL_DEVINFO_MAILBOX_VSEC			\
 	{						\
 		XOCL_SUBDEV_MAILBOX,			\
 		XOCL_MAILBOX,				\
-		XOCL_RES_MAILBOX_PRP,			\
-		ARRAY_SIZE(XOCL_RES_MAILBOX_PRP),	\
+		XOCL_RES_MAILBOX_VSEC,			\
+		ARRAY_SIZE(XOCL_RES_MAILBOX_VSEC),	\
 		.level = XOCL_SUBDEV_LEVEL_PRP,		\
+		.bar_idx = (char []){ 2 },		\
 	}
 
 #define XOCL_RES_FLASH_BLP				\
@@ -1685,8 +1699,11 @@ struct xocl_subdev_map {
 		XOCL_RES_FLASH_BLP,			\
 		ARRAY_SIZE(XOCL_RES_FLASH_BLP),		\
 		.level = XOCL_SUBDEV_LEVEL_BLD,		\
+		.bar_idx = (char []){ 0 },		\
 		.priv_data = &XOCL_PRIV_FLASH_BLP	\
 	}
+
+#define XOCL_DEVINFO_FLASH_VSEC XOCL_DEVINFO_FLASH_BLP
 
 #define XOCL_RES_XMC_BLP				\
 	((struct resource []) {				\
@@ -1861,30 +1878,6 @@ struct xocl_subdev_map {
 		.sched_bin = "xilinx/sched_u50.bin",			\
 	}
 
-#define	XOCL_DEVINFO_FEATURE_ROM_VSEC			\
-	{						\
-		XOCL_SUBDEV_FEATURE_ROM,		\
-		XOCL_FEATURE_ROM,			\
-		NULL,					\
-		0,					\
-	}
-
-#define MGMT_RES_U50_VSEC						\
-	((struct xocl_subdev_info []) {					\
-		XOCL_DEVINFO_FEATURE_ROM_VSEC,				\
-		XOCL_DEVINFO_FMGR,      				\
-	})
-
-#define XOCL_BOARD_MGMT_U50_VSEC					\
-	(struct xocl_board_private){					\
-		.flags		= XOCL_DSAFLAG_DYNAMIC_IP,		\
-		.subdev_info	= MGMT_RES_U50_VSEC,			\
-		.subdev_num = ARRAY_SIZE(MGMT_RES_U50_VSEC),		\
-		.flash_type = FLASH_TYPE_SPI,				\
-		.sched_bin = "xilinx/sched_u50.bin",			\
-	}
-
-
 #define USER_RES_U50							\
 		((struct xocl_subdev_info []) {				\
 		 	XOCL_DEVINFO_FEATURE_ROM_U50,			\
@@ -1942,7 +1935,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x5004, PCI_ANY_ID, MGMT_XBB_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5008, PCI_ANY_ID, MGMT_XBB_DSA52_U280) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x500C, PCI_ANY_ID, MGMT_XBB_DSA52_U280) },\
-	{ XOCL_PCI_DEVID(0x10EE, 0x5020, PCI_ANY_ID, MGMT_U50_VSEC) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x5020, PCI_ANY_ID, MGMT_U50) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x006C, PCI_ANY_ID, MGMT_6A8F) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x0078, PCI_ANY_ID, MGMT_XBB_DSA52) },  \
 	{ XOCL_PCI_DEVID(0x10EE, 0xD000, PCI_ANY_ID, XBB_MFG("u200")) },\
@@ -1985,7 +1978,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x5005, PCI_ANY_ID, USER_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5009, PCI_ANY_ID, USER_DSA52_U280) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x500D, PCI_ANY_ID, USER_DSA52_U280) },	\
-	/*{ XOCL_PCI_DEVID(0x10EE, 0x5021, PCI_ANY_ID, USER_U50) },*/	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x5021, PCI_ANY_ID, USER_U50) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x0065, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x0077, PCI_ANY_ID, USER_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x1D0F, 0x1042, PCI_ANY_ID, USER_AWS) },	\

@@ -458,6 +458,19 @@ static int get_header_from_dtb(struct feature_rom *rom)
 
 static int get_header_from_vsec(struct feature_rom *rom)
 {
+	xdev_handle_t xdev = xocl_get_xdev(rom->pdev);
+	int bar;
+	u64 offset;
+	int ret;
+
+	ret = xocl_subdev_vsec(xdev, XOCL_VSEC_UUID_ROM, &bar, &offset);
+	if (ret)
+		return -ENODEV;
+
+	offset += pci_resource_start(XDEV(xdev)->pdev, bar);
+	xocl_xdev_info(xdev, "Mapping uuid at offset 0x%llx", offset);
+	rom->base = ioremap_nocache(offset, PAGE_SIZE);
+
 	strcpy(rom->uuid, "11111c256808446c95821e06e144da3411111c256808446c95821e06e144da34");
 	return init_rom_by_dtb(rom);
 }
@@ -541,11 +554,13 @@ static int feature_rom_probe(struct platform_device *pdev)
 	 * if (ret)
 	 * 	error_handling;
 	 */
+	(void) xocl_subdev_create_vsec_devs(xocl_get_xdev(pdev));
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (res == NULL) {
-		(void)get_header_from_vsec(rom);
-		//(void)get_header_from_peer(rom);
+		ret = get_header_from_vsec(rom);
+		if (ret)
+			(void)get_header_from_peer(rom);
 	} else {
 		rom->base = ioremap_nocache(res->start, res->end - res->start + 1);
 		if (!rom->base) {
