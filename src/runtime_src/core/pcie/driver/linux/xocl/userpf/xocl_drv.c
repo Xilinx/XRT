@@ -327,6 +327,14 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 	if (mbret)
 		ret = mbret;
 
+#if defined(__PPC64__)
+	/* During reset we can't poll mailbox registers to get notified when
+	 * peer finishes reset. Just do a timer based wait for 20 seconds,
+	 * which is long enough for reset to be done.
+	 */
+	msleep(20 * 1000);
+#endif
+
 	(void) xocl_config_pci(xdev);
 	(void) xocl_pci_resize_resource(xdev->core.pdev, xdev->p2p_bar_idx,
 			xdev->p2p_bar_sz_cached);
