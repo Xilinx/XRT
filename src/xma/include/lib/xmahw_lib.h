@@ -40,6 +40,8 @@
 #define MAX_KERNEL_REGMAP_SIZE    4032//Some space used by ert pkt
 #define MAX_REGMAP_ENTRIES        1024//Int32 entries; So 4B x 1024 = 4K Bytes
 
+//const uint64_t mNullBO = 0xffffffff;
+
 //#ifdef __cplusplus
 //extern "C" {
 //#endif
@@ -72,6 +74,28 @@ typedef struct XmaCUCmdObjPrivate
   }
 } XmaCUCmdObjPrivate;
 
+typedef struct XmaHwExecBO
+{
+    uint32_t    handle;
+    char*       data;//execBO size is 4096 in xmahw_hal.cpp
+    bool        in_use;
+    int32_t     cu_index;
+    int32_t     session_id;
+    uint32_t    cu_cmd_id1;//Counter
+    int32_t     cu_cmd_id2;//Random num
+
+  XmaHwExecBO() {
+    in_use = false;
+    handle = 0;
+    data = NULL;
+    cu_index = -1;
+    cu_cmd_id1 = 0;
+    cu_cmd_id2 = 0;
+    session_id = -1;
+  }
+} XmaHwExecBO;
+
+
 typedef struct XmaHwSessionPrivate
 {
     void            *dev_handle;
@@ -84,18 +108,25 @@ typedef struct XmaHwSessionPrivate
     std::atomic<uint32_t> cmd_load;
     bool     using_work_item_done;
     bool     using_cu_cmd_status;
+    std::atomic<bool> execbo_locked;
+    std::vector<XmaHwExecBO> kernel_execbos;
+    int32_t    num_execbo_allocated;
+    std::atomic<bool> execwait_locked;
 
     uint32_t reserved[4];
 
   XmaHwSessionPrivate() {
-   dev_handle = NULL;
-   kernel_info = NULL;
-   kernel_complete_count = 0;
-   device = NULL;
-   cmd_load = 0;
-   num_cu_cmds = 0;
-   using_work_item_done = false;
-   using_cu_cmd_status = false;
+    dev_handle = NULL;
+    kernel_info = NULL;
+    kernel_complete_count = 0;
+    device = NULL;
+    cmd_load = 0;
+    num_cu_cmds = 0;
+    execbo_locked = false;
+    execwait_locked = false;
+    num_execbo_allocated = -1;
+    using_work_item_done = false;
+    using_cu_cmd_status = false;
   }
 } XmaHwSessionPrivate;
 
@@ -192,29 +223,6 @@ typedef struct XmaHwMem
   }
 } XmaHwMem;
 
-typedef struct XmaHwExecBO
-{
-    uint32_t    handle;
-    char*       data;//execBO size is 4096 in xmahw_hal.cpp
-    bool        in_use;
-    int32_t     cu_index;
-    int32_t     session_id;
-    uint32_t    cu_cmd_id1;//Counter
-    int32_t     cu_cmd_id2;//Random num
-
-    uint32_t    reserved[16];
-
-  XmaHwExecBO() {
-    in_use = false;
-    handle = 0;
-    data = NULL;
-    cu_index = -1;
-    cu_cmd_id1 = 0;
-    cu_cmd_id2 = 0;
-    session_id = -1;
-  }
-} XmaHwExecBO;
-
 typedef struct XmaHwDevice
 {
     //char        dsa[MAX_DSA_NAME];
@@ -229,11 +237,12 @@ typedef struct XmaHwDevice
     //XmaHwKernel kernels[MAX_KERNEL_CONFIGS];
     std::vector<XmaHwKernel> kernels;
     std::vector<XmaHwMem> ddrs;
-
+    /*
     std::unique_ptr<std::atomic<bool>> execbo_locked;
     std::vector<XmaHwExecBO> kernel_execbos;
     int32_t    num_execbo_allocated;
     std::unique_ptr<std::atomic<bool>> execwait_locked;
+    */
 
     uint32_t    cu_cmd_id1;//Counter
     uint32_t    cu_cmd_id2;//Counter
@@ -243,14 +252,15 @@ typedef struct XmaHwDevice
     uint32_t    reserved[16];
 
 //  XmaHwDevice(): execbo_locked(new std::atomic<bool>), mt_gen(std::mt19937(std::seed_seq(static_cast<long unsigned int>(time(0)), std::random_device()))), rnd_dis(-97986387, 97986387) {
-  XmaHwDevice(): execbo_locked(std::make_unique<std::atomic<bool>>()), execwait_locked(std::make_unique<std::atomic<bool>>()), rnd_dis(-97986387, 97986387) {
+//  XmaHwDevice(): execbo_locked(std::make_unique<std::atomic<bool>>()), execwait_locked(std::make_unique<std::atomic<bool>>()), rnd_dis(-97986387, 97986387) {
+  XmaHwDevice(): rnd_dis(-97986387, 97986387) {
     //in_use = false;
     dev_index = -1;
     number_of_cus = 0;
-    *execbo_locked = false;
-    *execwait_locked = false;
+    //*execbo_locked = false;
+    //*execwait_locked = false;
+    //num_execbo_allocated = -1;
     number_of_mem_banks = 0;
-    num_execbo_allocated = -1;
     handle = NULL;
     cu_cmd_id1 = 0;
     cu_cmd_id2 = 0;
