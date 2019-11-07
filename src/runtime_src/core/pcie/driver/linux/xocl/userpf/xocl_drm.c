@@ -622,7 +622,6 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	}
 
 	topo = XOCL_MEM_TOPOLOGY(drm_p->xdev);
-
 	if (topo == NULL)
 		return 0;
 
@@ -631,7 +630,6 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	wrapper_size = sizeof(struct xocl_mm_wrapper);
 	mm_size = sizeof(struct drm_mm);
 	mm_stat_size = sizeof(struct drm_xocl_mm_stat);
-
 	xocl_info(drm_p->ddev->dev, "Topology count = %d, data_length = %ld",
 		topo->m_count, length);
 
