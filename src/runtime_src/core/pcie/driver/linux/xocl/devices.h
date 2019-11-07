@@ -1673,7 +1673,7 @@ struct xocl_subdev_map {
 		XOCL_RES_MAILBOX_VSEC,			\
 		ARRAY_SIZE(XOCL_RES_MAILBOX_VSEC),	\
 		.level = XOCL_SUBDEV_LEVEL_PRP,		\
-		.bar_idx = (char []){ 2 },		\
+		.bar_idx = (char []){ 0 },		\
 	}
 
 #define XOCL_RES_FLASH_BLP				\

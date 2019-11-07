@@ -321,7 +321,6 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 				sdev_info->name, SUBDEV_SUFFIX);
 	xocl_xdev_info(xdev_hdl, "creating subdev %s",
 			devname);
-	ssleep(1);
 
 	subdev = xocl_subdev_reserve(xdev_hdl, sdev_info);
 	if (!subdev) {
@@ -390,6 +389,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 				else
 					res[i].end += iostart;
 			}
+			xocl_xdev_info(xdev_hdl, "resource %pR", &res[i]);
 		}
 
 		retval = platform_device_add_resources(subdev->pldev,
@@ -439,7 +439,6 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 
 	xocl_xdev_info(xdev_hdl, "Created subdev %s inst %d",
 			sdev_info->name, subdev->inst);
-	ssleep(1);
 
 	if (XOCL_GET_DRV_PRI(subdev->pldev) &&
 			XOCL_GET_DRV_PRI(subdev->pldev)->ops)
@@ -1066,7 +1065,7 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_FLASH_VSEC;
 
 		subdev_info.res[0].start = offset;
-		subdev_info.res[0].end = offset + 0xffff;
+		subdev_info.res[0].end = offset + 0xfff;
 		subdev_info.bar_idx[0] = bar;
 
 		ret = xocl_subdev_create(xdev, &subdev_info);

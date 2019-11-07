@@ -270,18 +270,24 @@ static int mgmt_msix_probe(struct platform_device *pdev)
 	i = 0;
 	ret = pci_alloc_irq_vectors(XDEV(xdev)->pdev, total, total,
 			PCI_IRQ_MSIX);
-#else
-	for (i = 0; i < total; i++)
-		mgmt_msix->msix_irq_entries[i].entry = i;
-
-	ret = pci_enable_msix(XDEV(xdev)->pdev, mgmt_msix->msix_irq_entries, total);
-
-#endif
 	if (ret != total) {
 		xocl_err(&pdev->dev, "init msix failed ret %d", ret);
 		ret = -ENOENT;
 		goto failed;
 	}
+#else
+	for (i = 0; i < total; i++)
+		mgmt_msix->msix_irq_entries[i].entry = i;
+
+	ret = pci_enable_msix(XDEV(xdev)->pdev, mgmt_msix->msix_irq_entries, total);
+	if (ret) {
+		xocl_err(&pdev->dev, "init msix failed ret %d", ret);
+		ret = -ENOENT;
+		goto failed;
+	}
+
+
+#endif
 	mgmt_msix->max_user_intr = total;
 
 	mgmt_msix->user_msix_table = devm_kzalloc(&pdev->dev,
