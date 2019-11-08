@@ -1485,8 +1485,6 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	if (load_mgmt || load_sched)
 		xocl_mb_reset(xdev);
 
-	err = icap_download_hw(icap, bin_obj_axlf);
-
 done:
 	mutex_unlock(&icap->icap_lock);
 	release_firmware(fw);
