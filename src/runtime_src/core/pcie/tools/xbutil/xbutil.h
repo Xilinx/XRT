@@ -719,6 +719,7 @@ public:
         std::vector<std::string> dma_threads;
         bool mig_calibration;
         
+        clock_freqs.resize(3);
         pcidev::get_dev(m_idx)->sysfs_get( "", "vendor",                     errmsg, vendor );
         pcidev::get_dev(m_idx)->sysfs_get( "", "device",                     errmsg, device );
         pcidev::get_dev(m_idx)->sysfs_get( "", "subsystem_device",           errmsg, subsystem );

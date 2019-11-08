@@ -534,6 +534,7 @@ static int feature_rom_probe(struct platform_device *pdev)
 {
 	struct feature_rom *rom;
 	struct resource *res;
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	char	*tmp;
 	int	ret;
 
@@ -543,18 +544,8 @@ static int feature_rom_probe(struct platform_device *pdev)
 
 	rom->pdev =  pdev;
 
-	/*
-	 * Example of get platform types
-	 * xdev_handle_t xdev = xocl_get_xdev(rom->pdev);
-	 * u64 offset;
-	 * u32 value;
-	 * int ret;
-	 * ret = xocl_subdev_vsec(xdev, XOCL_VSEC_FLASH_CONTROLER, &offset, NULL)
-	 * ret = xocl_subdev_vsec(xdev, XOCL_VSEC_PLATFORM_INFO, NULL, &value)
-	 * if (ret)
-	 * 	error_handling;
-	 */
-	(void) xocl_subdev_create_vsec_devs(xocl_get_xdev(pdev));
+	if (!XDEV(xdev)->fdt_blob)
+		(void) xocl_subdev_create_vsec_devs(xocl_get_xdev(pdev));
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (res == NULL) {

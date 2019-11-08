@@ -454,6 +454,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 		   if this is an error or not */
 		xocl_xdev_info(xdev_hdl, "failed to probe subdev %s, ret %d",
 			devname, retval);
+		subdev->ops = NULL;
 		return -EAGAIN;
 	}
 	subdev->state = XOCL_SUBDEV_STATE_ACTIVE;
@@ -1007,7 +1008,7 @@ xocl_subdev_vsec(xdev_handle_t xdev, u32 type,
 	/* check vendor specific section */
 	cap = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_VNDR);
 	if (!cap) {
-		xocl_err(&core->pdev->dev, "No Vendor Specific Capability.");
+		xocl_info(&core->pdev->dev, "No Vendor Specific Capability.");
 		return -EINVAL;
 	}
 

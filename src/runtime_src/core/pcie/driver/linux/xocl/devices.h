@@ -193,11 +193,11 @@ enum {
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
 enum subdev_id {
+	XOCL_SUBDEV_AXIGATE,
+	XOCL_SUBDEV_DMA,
 	XOCL_SUBDEV_FEATURE_ROM,
 	XOCL_SUBDEV_IORES,
 	XOCL_SUBDEV_FLASH,
-	XOCL_SUBDEV_AXIGATE,
-	XOCL_SUBDEV_DMA,
 	XOCL_SUBDEV_MB_SCHEDULER,
 	XOCL_SUBDEV_XVC_PUB,
 	XOCL_SUBDEV_XVC_PRI,
@@ -1597,6 +1597,7 @@ struct xocl_subdev_map {
 #define RES_MGMT_VSEC							\
 	((struct xocl_subdev_info []) {					\
 	 	XOCL_DEVINFO_FEATURE_ROM_MGMT_DYN,			\
+	 	XOCL_DEVINFO_IORES_MGMT_U50,				\
 	 })
 
 #define RES_USER_VSEC							\
