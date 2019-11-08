@@ -269,6 +269,12 @@ public:
             if (!targetFreqMHz[i])
                 continue;
 
+            if (std::stoi(clock_freqs_max[i]) == 0) {
+                std::cout<<" This clock is not reconfigurable, requested frequency : "<< targetFreqMHz[i]<<std::endl;
+                return -EINVAL;
+            }
+
+
             if (targetFreqMHz[i] > std::stoi(clock_freqs_max[i]) || targetFreqMHz[i] < std::stoi(clock_freqs_min[i])) {
                 std::cout<<"  Unable to program clock frequency!\n"
                          <<"  Frequency max : "<<clock_freqs_max[i]<<", min : "<<clock_freqs_min[i]<<" \n";
