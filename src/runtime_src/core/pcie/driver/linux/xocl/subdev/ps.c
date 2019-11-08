@@ -1,7 +1,7 @@
 /*
- * A GEM style device manager for PCIe based OpenCL accelerators.
+ * Processor System manager for Alveo board.
  *
- * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2019 Xilinx, Inc. All rights reserved.
  *
  * Authors: Min.Ma@xilinx.com
  *
@@ -21,6 +21,9 @@
 #define MAX_RETRY       50
 #define RETRY_INTERVAL  100       //ms
 
+#define MAX_WAIT        12
+#define WAIT_INTERVAL   5000	//ms
+
 #define RESET_REG	0xC
 
 #define ERT_READY_MASK  0x8
@@ -39,6 +42,7 @@
 struct xocl_ps {
 	struct platform_device	*pdev;
 	void __iomem		*base_addr;
+	struct mutex		 ps_lock;
 };
 
 /*
@@ -57,6 +61,7 @@ static void ps_reset(struct platform_device *pdev, int type)
 	if (!ps)
 		return;
 
+	mutex_lock(&ps->ps_lock);
 	reg = READ_REG32(ps, RESET_REG);
 	/* Set reset type in scratchpad register */
 	switch(type) {
@@ -84,12 +89,14 @@ static void ps_reset(struct platform_device *pdev, int type)
 
 	if (retry >= MAX_RETRY) {
 		xocl_err(&pdev->dev, "Reset time out");
+		mutex_unlock(&ps->ps_lock);
 		return;
 	}
 
 	/* Clear reset done bit */
 	reg &= ~RES_DONE_MASK;
 	WRITE_REG32(ps, reg, RESET_REG);
+	mutex_unlock(&ps->ps_lock);
 }
 
 /* Wait Processor system goes into ready status */
@@ -104,20 +111,16 @@ static void ps_wait(struct platform_device *pdev)
 	if (!ps)
 		return;
 
-	/*
-	 * The PS need about 30 ~ 40 seconds for reboot
-	 * 50 seconds are more than enough
-	 */
-	msleep(50000);
-
+	mutex_lock(&ps->ps_lock);
 	do {
 		reg = READ_REG32(ps, RESET_REG);
-		msleep(RETRY_INTERVAL);
-	} while(retry++ < MAX_RETRY && !(reg & ERT_READY_MASK));
+		msleep(WAIT_INTERVAL);
+	} while(retry++ < MAX_WAIT && !(reg & ERT_READY_MASK));
 
-	if (retry >= MAX_RETRY)
+	if (retry >= MAX_WAIT)
 		xocl_err(&pdev->dev, "PS wait time out");
 
+	mutex_unlock(&ps->ps_lock);
 }
 
 static struct xocl_ps_funcs ps_ops = {
@@ -138,6 +141,8 @@ static int ps_remove(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, NULL);
 	devm_kfree(&pdev->dev, ps);
+
+	mutex_destroy(&ps->ps_lock);
 
 	return 0;
 };
@@ -170,6 +175,8 @@ static int ps_probe(struct platform_device *pdev)
 		xocl_err(&pdev->dev, "Map iomem failed");
 		goto failed;
 	}
+
+	mutex_init(&ps->ps_lock);
 
 	return 0;
 failed:
