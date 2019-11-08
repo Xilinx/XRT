@@ -789,7 +789,9 @@ int xocl_p2p_mem_reserve(struct xocl_dev *xdev)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0) || RHEL_P2P_SUPPORT_76
 	xdev->pgmap.ref = &xdev->ref;
 	memcpy(&xdev->pgmap.res, &res, sizeof(struct resource));
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 3, 0)
 	xdev->pgmap.altmap_valid = false;
+#endif
 #if KERNEL_VERSION(5, 3, 0) > LINUX_VERSION_CODE && \
 	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 2))
 	xdev->pgmap.kill = xocl_dev_pgmap_kill_nop;
