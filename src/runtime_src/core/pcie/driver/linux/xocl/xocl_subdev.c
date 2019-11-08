@@ -667,6 +667,8 @@ int xocl_subdev_create_all(xdev_handle_t xdev_hdl)
 	if (subdev_info)
 		vfree(subdev_info);
 
+	(void) xocl_subdev_create_vsec_devs(xdev_hdl);
+
 	xocl_unlock_xdev(xdev_hdl);
 
 	return 0;
