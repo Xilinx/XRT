@@ -75,8 +75,6 @@ int subCmdQuery(const std::vector<std::string> &_options, bool _help)
   XBU::verbose(XBU::format("  Card: %ld", card));
   XBU::verbose(XBU::format("Region: %ld", region));
 
-  // Determine the number of cards and their states
-
   // Report system configuration and XRT information
   XBReport::report_system_config();
   XBReport::report_xrt_info();

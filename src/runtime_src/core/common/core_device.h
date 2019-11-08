@@ -39,6 +39,14 @@ namespace device {
   void get_device_rom_info(uint64_t _deviceID, boost::property_tree::ptree & _pt);
   void get_device_xmc_info(uint64_t _deviceID, boost::property_tree::ptree & _pt);
   void get_device_platform_info(uint64_t _deviceID, boost::property_tree::ptree & _pt);
+  void read_device_thermal_pcb(uint64_t _deviceID, boost::property_tree::ptree &_pt);
+  void read_device_thermal_fpga(uint64_t _deviceID, boost::property_tree::ptree &_pt);
+  void read_device_fan_info(uint64_t _deviceID, boost::property_tree::ptree &_pt);
+  void read_device_thermal_cage(uint64_t _deviceID, boost::property_tree::ptree &_pt);
+  void read_device_electrical(uint64_t _deviceID, boost::property_tree::ptree &_pt);
+  void read_device_power(uint64_t _deviceID, boost::property_tree::ptree &_pt);
+  void read_device_firewall(uint64_t _deviceID, boost::property_tree::ptree &_pt);
+  void read_device_pcie_dma_stats(uint64_t _deviceID, boost::property_tree::ptree &_pt);
 }
 }
 
