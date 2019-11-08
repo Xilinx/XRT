@@ -431,14 +431,12 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 	req->req = XCL_MAILBOX_REQ_RECLOCK;
 	memcpy(req->data, data, data_len);
 
-	mutex_lock(&xdev->dev_lock);
-
-	if (!list_is_singular(&xdev->ctx_list)) {
-		/* We should have one context for ourselves. */
-		BUG_ON(list_empty(&xdev->ctx_list));
+	if (get_live_clients(xdev, NULL)) {
 		userpf_err(xdev, "device is in use, can't reset");
 		err = -EBUSY;
 	}
+
+	mutex_lock(&xdev->dev_lock);
 
 	if (err == 0) {
 		err = xocl_peer_request(xdev, req, reqlen,
