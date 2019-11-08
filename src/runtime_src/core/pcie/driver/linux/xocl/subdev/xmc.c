@@ -522,6 +522,9 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 		case VOL_VCCINT_BRAM:
 			READ_SENSOR(xmc, XMC_VCCINT_BRAM_REG, val, val_kind);
 			break;
+		case XMC_VER:
+			safe_read32(xmc, XMC_VERSION_REG, val);
+			break;
 		default:
 			break;
 		}
@@ -645,6 +648,9 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 			break;
 		case VOL_VCCINT_BRAM:
 			*val = xmc->cache->vccint_bram;
+			break;
+		case XMC_VER:
+			*val = xmc->cache->version;
 			break;
 		default:
 			break;
@@ -845,6 +851,7 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind, 
 		xmc_sensor(pdev, VOL_HBM_1V2, &sensors->vol_1v2_hbm, SENSOR_INS);
 		xmc_sensor(pdev, VOL_VPP_2V5, &sensors->vol_2v5_vpp, SENSOR_INS);
 		xmc_sensor(pdev, VOL_VCCINT_BRAM, &sensors->vccint_bram, SENSOR_INS);
+		xmc_sensor(pdev, XMC_VER, &sensors->version, SENSOR_INS);
 		break;
 	case XCL_BDINFO:
 		mutex_lock(&xmc->mbx_lock);
@@ -939,6 +946,7 @@ SENSOR_SYSFS_NODE(xmc_hbm_1v2_vol, VOL_HBM_1V2);
 SENSOR_SYSFS_NODE(xmc_vpp2v5_vol, VOL_VPP_2V5);
 SENSOR_SYSFS_NODE(xmc_vccint_bram_vol, VOL_VCCINT_BRAM);
 SENSOR_SYSFS_NODE(xmc_hbm_temp, HBM_TEMP);
+SENSOR_SYSFS_NODE(version, XMC_VER);
 
 static ssize_t xmc_power_show(struct device *dev,
 	struct device_attribute *da, char *buf)
@@ -1000,7 +1008,8 @@ static DEVICE_ATTR_RO(status);
 	&dev_attr_xmc_vpp2v5_vol.attr,					\
 	&dev_attr_xmc_vccint_bram_vol.attr,				\
 	&dev_attr_xmc_hbm_temp.attr,					\
-	&dev_attr_xmc_power.attr
+	&dev_attr_xmc_power.attr,					\
+	&dev_attr_version.attr
 
 /*
  * Defining sysfs nodes for reading some of xmc regisers.
@@ -1015,7 +1024,7 @@ static DEVICE_ATTR_RO(status);
 		return sprintf(buf, format, val);			\
 	}								\
 	static DEVICE_ATTR_RO(node_name)
-REG_SYSFS_NODE(version, XMC_VERSION_REG, "%d\n");
+
 REG_SYSFS_NODE(sensor, XMC_SENSOR_REG, "0x%04x\n");
 REG_SYSFS_NODE(id, XMC_MAGIC_REG, "0x%x\n");
 REG_SYSFS_NODE(error, XMC_ERROR_REG, "0x%x\n");
@@ -1026,7 +1035,6 @@ REG_SYSFS_NODE(host_msg_offset, XMC_HOST_MSG_OFFSET_REG, "%d\n");
 REG_SYSFS_NODE(host_msg_error, XMC_HOST_MSG_ERROR_REG, "0x%x\n");
 REG_SYSFS_NODE(host_msg_header, XMC_HOST_MSG_HEADER_REG, "0x%x\n");
 #define	REG_SYSFS_NODE_ATTRS						\
-	&dev_attr_version.attr,						\
 	&dev_attr_sensor.attr,						\
 	&dev_attr_id.attr,						\
 	&dev_attr_error.attr,						\
