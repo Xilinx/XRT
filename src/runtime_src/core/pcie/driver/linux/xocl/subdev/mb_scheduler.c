@@ -169,6 +169,16 @@ xocl_bitmap_from_arr32(unsigned long *bitmap, const u32 *buf, unsigned int nbits
 		bitmap[(halfwords - 1) / 2] &= BITMAP_LAST_WORD_MASK(nbits);
 }
 
+static inline unsigned int
+count_entries_u32(uint32_t *arr, unsigned int max)
+{
+	unsigned int count = 0;
+	uint32_t *end = arr + max;
+	for (; arr < end; ++arr)
+		if (*arr)
+			++count;
+	return count;
+}
 
 /**
  * mask_idx32() - Slot mask idx index for a given slot_idx
@@ -1876,9 +1886,12 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	bool ert_full = (ert && cfg->ert && !cfg->dataflow);
 	bool ert_poll = (ert && cfg->ert && cfg->dataflow);
 	unsigned int ert_num_slots = 0;
-	int cuidx = 0;
+	unsigned int cuidx = 0;
 
-	/* Only allow configuration with one live ctx */
+	// Count number of KDMA CUs, max 4 per xclfeatures.h
+	unsigned int num_cdma = cdma ? count_entries_u32(cdma, 4) : 0;
+
+	// Only allow configuration with one live ctx
 	if (exec->configured) {
 		DRM_INFO("command scheduler is already configured for this device\n");
 		return 1;
@@ -1891,21 +1904,34 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		userpf_info(xdev, "force polling mode for versal");
 		cfg->polling = true;
 
-		/*
-		 * For versal device, we will use ert_full if we are
-		 * configured as ert mode even dataflow is configured.
-		 * And we do not support ert_poll.
-		 */
+
+		// For versal device, we will use ert_full if we are
+		// configured as ert mode even dataflow is configured.
+		// And we do not support ert_poll.
 		ert_full = cfg->ert;
 		ert_poll = false;
 	}
 
-	/* Mark command as control command to force slot 0 execution */
+	// Mark command as control command to force slot 0 execution
 	cfg->type = ERT_CTRL;
 
 	if (cfg->count != 5 + cfg->num_cus) {
-		userpf_err(xdev, "invalid configure command, count=%d expected 5+num_cus(%d)\n",
+		userpf_err(xdev, "invalid cfg cmd, count(%d) expected 5+num_cus(%d)\n",
 			   cfg->count, cfg->num_cus);
+		return 1;
+	}
+
+	// Guard against overflowing MAX_CUS structures,  account for KDMAs
+	if (cfg->num_cus > MAX_CUS-num_cdma) {
+		userpf_err(xdev, "invalid cfg cmd, num_cus (%d) cannot exceed %d\n",
+			   cfg->num_cus, MAX_CUS-num_cdma);
+		return 1;
+	}
+
+	// Guard against overflowing MAX_CUS structures,  account for KDMAs
+	if (cfg->slot_size < 0x200 || cfg->slot_size > 0x1000) {
+		userpf_err(xdev, "invalid cfg cmd, slot_size (%d) must be greater than 512b and 4Kb\n",
+			   cfg->slot_size);
 		return 1;
 	}
 
@@ -2961,7 +2987,7 @@ exec_submit_cu_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 {
 	// Append cmd to end of shortest CU list
 	unsigned int min_load_count = -1;
-	unsigned int cuidx = -1;
+	unsigned int cuidx = MAX_CUS;
 	unsigned int bit;
 	SCHED_DEBUGF("-> %s exec(%d) cmd(%lu)\n", __func__, exec->uid, xcmd->uid);
 	for (bit = cmd_first_cu(xcmd); bit < exec->num_cus; bit = cmd_next_cu(xcmd, bit)) {
@@ -2972,6 +2998,8 @@ exec_submit_cu_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		if ((min_load_count = load_count) == 0)
 			break;
 	}
+
+	BUG_ON(cuidx == MAX_CUS || cuidx >= exec->num_cus);
 
 	list_move_tail(&xcmd->cq_list, &exec->pending_cu_queue[cuidx]);
 	cmd_set_cu(xcmd, cuidx);
