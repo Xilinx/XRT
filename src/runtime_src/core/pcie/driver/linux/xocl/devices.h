@@ -1598,11 +1598,16 @@ struct xocl_subdev_map {
 	((struct xocl_subdev_info []) {					\
 	 	XOCL_DEVINFO_FEATURE_ROM_MGMT_DYN,			\
 	 	XOCL_DEVINFO_IORES_MGMT_U50,				\
+		XOCL_DEVINFO_FMGR,      			\
 	 })
 
 #define RES_USER_VSEC							\
 	((struct xocl_subdev_info []) {					\
 	 	XOCL_DEVINFO_FEATURE_ROM_USER_DYN,			\
+		XOCL_DEVINFO_SCHEDULER_DYN,				\
+		XOCL_DEVINFO_ICAP_USER,					\
+		XOCL_DEVINFO_XMC_USER,					\
+		XOCL_DEVINFO_AF_USER,					\
 	 })
 
 #define	XOCL_BOARD_USER_U50_DYNAMIC_IP					\
