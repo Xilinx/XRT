@@ -503,7 +503,7 @@ static int xclmgmt_reset(xdev_handle_t xdev_hdl)
 {
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)xdev_hdl;
 
-	return reset_hot_ioctl(lro);
+	return xclmgmt_hot_reset(lro);
 }
 
 struct xocl_pci_funcs xclmgmt_pci_ops = {
@@ -697,7 +697,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 
 	switch (req->req) {
 	case XCL_MAILBOX_REQ_HOT_RESET:
-		ret = (int) reset_hot_ioctl(lro);
+		ret = (int) xclmgmt_hot_reset(lro);
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
 			sizeof(ret));
 		break;

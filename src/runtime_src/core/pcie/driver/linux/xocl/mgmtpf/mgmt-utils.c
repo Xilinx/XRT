@@ -162,14 +162,13 @@ void platform_axilite_flush(struct xclmgmt_dev *lro)
  * This method is known to work better.
  */
 
-long reset_hot_ioctl(struct xclmgmt_dev *lro)
+long xclmgmt_hot_reset(struct xclmgmt_dev *lro)
 {
 	long err = 0;
 	const char *ep_name;
 	struct pci_dev *pdev = lro->pci_dev;
 	struct xocl_board_private *dev_info = &lro->core.priv;
 	int retry = 0;
-
 
 	if (!pdev->bus || !pdev->bus->self) {
 		mgmt_err(lro, "Unable to identify device root port for card %d",
@@ -622,4 +621,21 @@ failed:
 	mutex_unlock(&lro->busy_mutex);
 
 	return ret;
+}
+
+void xclmgmt_ocl_reset(struct xclmgmt_dev *lro)
+{
+	xocl_icap_reset_axi_gate(lro);
+}
+
+void xclmgmt_ert_reset(struct xclmgmt_dev *lro)
+{
+	/* This is for reset PS ERT */
+	xocl_ps_reset(lro);
+	xocl_ps_wait(lro);
+}
+
+void xclmgmt_softkernel_reset(struct xclmgmt_dev *lro)
+{
+	xocl_ps_sk_reset(lro);
 }

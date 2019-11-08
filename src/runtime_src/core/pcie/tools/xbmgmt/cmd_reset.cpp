@@ -70,6 +70,8 @@ int resetHandler(int argc, char *argv[])
     int ecc = 0;
     int sk = 0;
     int ert = 0;
+    std::string type = "0";
+    std::string err;
     bool force = false;
     const option opts[] = {
         { "card", required_argument, nullptr, '0' },
@@ -95,9 +97,11 @@ int resetHandler(int argc, char *argv[])
             break;
         case '1':
             hot = 1;
+            type = "1";
             break;
         case '2':
             kernel = 1;
+            type = "2";
             break;
         case '3':
             ecc = 1;
@@ -107,9 +111,11 @@ int resetHandler(int argc, char *argv[])
             break;
         case '5':
             sk = 1;
+            type = "4";
             break;
         case '6':
             ert = 1;
+            type = "3";
             break;
         default:
             return -EINVAL;
@@ -146,22 +152,19 @@ int resetHandler(int argc, char *argv[])
     int ret = 0;
     auto dev = pcidev::get_dev(index, false);
     int fd = dev->open("", O_RDWR);
-    if (hot) {
-        ret = dev->ioctl(fd, XCLMGMT_IOCHOTRESET);
-        if (ret == 0)
-            std::cout << "Successfully reset Card[" << getBDF(index)
-                      << "]"<< std::endl;
-	ret = ret ? -errno : ret;
-    } else if (kernel) {
-        ret = dev->ioctl(fd, XCLMGMT_IOCOCLRESET);
-	ret = ret ? -errno : ret;
-    } else if (ecc) {
+    if (ecc)
         ret = resetEcc(dev);
-    } else if (sk) {
-        ret = dev->ioctl(fd, XCLMGMT_IOCSKRESET);
-    } else if (ert) {
-        ret = dev->ioctl(fd, XCLMGMT_IOCERTRESET);
+    else {
+        dev->sysfs_put("", "reset", err, type);
+        if (hot) {
+            if (!err.size())
+                std::cout << "Successfully reset Card[" << getBDF(index)
+                    << "]"<< std::endl;
+            else
+                std::cout << err << std::endl;
+        }
     }
+
     dev->close(fd);
 
     return ret;
