@@ -134,6 +134,15 @@ static void devinfo_cb_setlevel(void *dev_hdl, void *subdevs, int num)
 	subdev->info.override_idx = subdev->info.level;
 }
 
+static void devinfo_cb_xdma(void *dev_hdl, void *subdevs, int num)
+{
+	struct xocl_subdev *subdev = subdevs;
+
+	subdev->info.res = NULL;
+	subdev->info.bar_idx = NULL;
+	subdev->info.num_res = 0; 
+}
+
 /* missing clk freq counter ip */
 static struct xocl_subdev_map		subdev_map[] = {
 	{
@@ -152,7 +161,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 		1,
 		0,
 		NULL,
-		NULL,
+		devinfo_cb_xdma,
 	},
 	{
 		XOCL_SUBDEV_DMA,
