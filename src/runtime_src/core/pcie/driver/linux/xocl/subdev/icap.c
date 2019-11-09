@@ -136,9 +136,6 @@ struct icap {
 	xuid_t			icap_bitstream_uuid;
 	int			icap_bitstream_ref;
 
-	char			*icap_clear_bitstream;
-	unsigned long		icap_clear_bitstream_length;
-
 	char			*icap_clock_bases[ICAP_MAX_NUM_CLOCKS];
 	unsigned short		icap_ocl_frequency[ICAP_MAX_NUM_CLOCKS];
 
@@ -982,31 +979,6 @@ static int icap_setup_clock_freq_topology(struct icap *icap, const struct axlf *
 	return 0;
 }
 
-static inline void free_clear_bitstream(struct icap *icap)
-{
-	vfree(icap->icap_clear_bitstream);
-	icap->icap_clear_bitstream = NULL;
-	icap->icap_clear_bitstream_length = 0;
-}
-
-static int icap_setup_clear_bitstream(struct icap *icap,
-	const char *buffer, unsigned long length)
-{
-	free_clear_bitstream(icap);
-
-	if (length == 0)
-		return 0;
-
-	icap->icap_clear_bitstream = vmalloc(length);
-	if (!icap->icap_clear_bitstream)
-		return -ENOMEM;
-
-	memcpy(icap->icap_clear_bitstream, buffer, length);
-	icap->icap_clear_bitstream_length = length;
-
-	return 0;
-}
-
 static int wait_for_done(struct icap *icap)
 {
 	u32 w;
@@ -1342,6 +1314,52 @@ static int alloc_and_get_axlf_section(struct icap *icap,
 	return 0;
 }
 
+
+static int icap_download_hw(struct icap *icap, const struct axlf *axlf)
+{
+	uint64_t primaryFirmwareOffset = 0;
+	uint64_t primaryFirmwareLength = 0;
+	const struct axlf_section_header *primaryHeader = 0;
+	uint64_t length;
+	int err = 0;
+	char *buffer = (char *)axlf;
+
+	if (!axlf) {
+		err = -EINVAL;
+		goto done;
+	}
+
+	length = axlf->m_header.m_length;
+
+	primaryHeader = get_axlf_section_hdr(icap, axlf, BITSTREAM);
+
+	if (primaryHeader) {
+		primaryFirmwareOffset = primaryHeader->m_sectionOffset;
+		primaryFirmwareLength = primaryHeader->m_sectionSize;
+	}
+
+	if ((primaryFirmwareOffset + primaryFirmwareLength) > length) {
+		ICAP_ERR(icap, "Invalid BITSTREAM size");
+		err = -EINVAL;
+		goto done;
+	}
+
+	if (primaryFirmwareLength) {
+		ICAP_INFO(icap,
+			"found second stage bitstream of size 0x%llx",
+			primaryFirmwareLength);
+		err = icap_download(icap, buffer + primaryFirmwareOffset,
+			primaryFirmwareLength);
+		if (err) {
+			ICAP_ERR(icap, "Dowload bitstream failed");
+			goto done;
+		}
+	}
+
+done:
+	ICAP_INFO(icap, "%s, err = %d", __func__, err);
+	return err;
+}
 static int icap_download_boot_firmware(struct platform_device *pdev)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
@@ -1354,17 +1372,10 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	struct axlf *bin_obj_axlf;
 	const struct firmware *fw, *sche_fw;
 	char fw_name[256];
-	XHwIcap_Bit_Header bit_header = { 0 };
 	long err = 0;
 	uint64_t length = 0;
-	uint64_t primaryFirmwareOffset = 0;
-	uint64_t primaryFirmwareLength = 0;
-	uint64_t secondaryFirmwareOffset = 0;
-	uint64_t secondaryFirmwareLength = 0;
 	uint64_t mbBinaryOffset = 0;
 	uint64_t mbBinaryLength = 0;
-	const struct axlf_section_header *primaryHeader = 0;
-	const struct axlf_section_header *secondaryHeader = 0;
 	const struct axlf_section_header *mbHeader = 0;
 	bool load_sched = false, load_mgmt = false;
 
@@ -1474,100 +1485,10 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	if (load_mgmt || load_sched)
 		xocl_mb_reset(xdev);
 
-	primaryHeader = get_axlf_section_hdr(icap, bin_obj_axlf, BITSTREAM);
-	secondaryHeader = get_axlf_section_hdr(icap, bin_obj_axlf,
-		CLEARING_BITSTREAM);
-	if (primaryHeader) {
-		primaryFirmwareOffset = primaryHeader->m_sectionOffset;
-		primaryFirmwareLength = primaryHeader->m_sectionSize;
-	}
-	if (secondaryHeader) {
-		secondaryFirmwareOffset = secondaryHeader->m_sectionOffset;
-		secondaryFirmwareLength = secondaryHeader->m_sectionSize;
-	}
-
-	if ((primaryFirmwareOffset + primaryFirmwareLength) > length) {
-		err = -EINVAL;
-		goto done;
-	}
-
-	if ((secondaryFirmwareOffset + secondaryFirmwareLength) > length) {
-		err = -EINVAL;
-		goto done;
-	}
-
-	if (primaryFirmwareLength) {
-		ICAP_INFO(icap,
-			"found second stage bitstream of size 0x%llx in %s",
-			primaryFirmwareLength, fw_name);
-		err = icap_download(icap, fw->data + primaryFirmwareOffset,
-			primaryFirmwareLength);
-		/*
-		 * If we loaded a new second stage, we do not need the
-		 * previously stashed clearing bitstream if any.
-		 */
-		free_clear_bitstream(icap);
-		if (err) {
-			ICAP_ERR(icap,
-				"failed to download second stage bitstream");
-			goto done;
-		}
-		ICAP_INFO(icap, "downloaded second stage bitstream");
-	}
-
-	/*
-	 * If both primary and secondary bitstreams have been provided then
-	 * ignore the previously stashed bitstream if any. If only secondary
-	 * bitstream was provided, but we found a previously stashed bitstream
-	 * we should use the latter since it is more appropriate for the
-	 * current state of the device
-	 */
-	if (secondaryFirmwareLength && (primaryFirmwareLength ||
-		!icap->icap_clear_bitstream)) {
-		icap_setup_clear_bitstream(icap, fw->data + secondaryFirmwareOffset, 
-		secondaryFirmwareLength);
-
-		ICAP_INFO(icap, "found clearing bitstream of size 0x%lx in %s",
-			icap->icap_clear_bitstream_length, fw_name);
-	} else if (icap->icap_clear_bitstream) {
-		ICAP_INFO(icap,
-			"using existing clearing bitstream of size 0x%lx",
-		       icap->icap_clear_bitstream_length);
-	}
-
-	if (icap->icap_clear_bitstream &&
-		bitstream_parse_header(icap, icap->icap_clear_bitstream,
-		DMA_HWICAP_BITFILE_BUFFER_SIZE, &bit_header)) {
-		err = -EINVAL;
-		free_clear_bitstream(icap);
-	}
-
 done:
 	mutex_unlock(&icap->icap_lock);
 	release_firmware(fw);
-	kfree(bit_header.DesignName);
-	kfree(bit_header.PartName);
-	kfree(bit_header.Date);
-	kfree(bit_header.Time);
 	ICAP_INFO(icap, "%s err: %ld", __func__, err);
-	return err;
-}
-
-
-static long icap_download_clear_bitstream(struct icap *icap)
-{
-	long err = 0;
-	const char *buffer = icap->icap_clear_bitstream;
-	unsigned long length = icap->icap_clear_bitstream_length;
-
-	ICAP_INFO(icap, "downloading clear bitstream of length 0x%lx", length);
-
-	if (!buffer)
-		return 0;
-
-	err = icap_download(icap, buffer, length);
-
-	free_clear_bitstream(icap);
 	return err;
 }
 
@@ -1777,51 +1698,13 @@ static long axlf_set_freqscaling(struct icap *icap)
 }
 
 
-static int icap_download_hw(struct icap *icap, const char *bit_buf,
-	unsigned long length)
+static int icap_download_bitstream(struct icap *icap, const struct axlf *axlf)
 {
 	long err = 0;
-	XHwIcap_Bit_Header bit_header = { 0 };
-	unsigned numCharsRead = DMA_HWICAP_BITFILE_BUFFER_SIZE;
-	unsigned byte_read;
-
-	ICAP_INFO(icap, "downloading bitstream, length: %lu", length);
 
 	icap_freeze_axi_gate(icap);
 
-	err = icap_download_clear_bitstream(icap);
-	if (err)
-		goto free_buffers;
-
-	if (bitstream_parse_header(icap, bit_buf,
-		DMA_HWICAP_BITFILE_BUFFER_SIZE, &bit_header)) {
-		err = -EINVAL;
-		goto free_buffers;
-	}
-	if ((bit_header.HeaderLength + bit_header.BitstreamLength) > length) {
-		err = -EINVAL;
-		goto free_buffers;
-	}
-
-	bit_buf += bit_header.HeaderLength;
-	for (byte_read = 0; byte_read < bit_header.BitstreamLength;
-		byte_read += numCharsRead) {
-		numCharsRead = bit_header.BitstreamLength - byte_read;
-		if (numCharsRead > DMA_HWICAP_BITFILE_BUFFER_SIZE)
-			numCharsRead = DMA_HWICAP_BITFILE_BUFFER_SIZE;
-
-		err = bitstream_helper(icap, (u32 *)bit_buf,
-			numCharsRead / sizeof(u32));
-		if (err)
-			goto free_buffers;
-
-		bit_buf += numCharsRead;
-	}
-
-	err = wait_for_done(icap);
-	if (err)
-		goto free_buffers;
-
+	err = icap_download_hw(icap, axlf);
 	/*
 	 * Perform frequency scaling since PR download can silenty overwrite
 	 * MMCM settings in static region changing the clock frequencies
@@ -1832,12 +1715,7 @@ static int icap_download_hw(struct icap *icap, const char *bit_buf,
 	if (!err)
 		err = icap_ocl_freqscaling(icap, true);
 
-free_buffers:
 	icap_free_axi_gate(icap);
-	kfree(bit_header.DesignName);
-	kfree(bit_header.PartName);
-	kfree(bit_header.Date);
-	kfree(bit_header.Time);
 	return err;
 }
 
@@ -2230,13 +2108,6 @@ static int icap_verify_signature(struct icap *icap,
 static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 {
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
-	const struct axlf_section_header *primaryHeader = NULL;
-	const struct axlf_section_header *clearHeader = NULL;
-	uint64_t primaryFirmwareOffset = 0;
-	uint64_t primaryFirmwareLength = 0;
-	uint64_t clearFirmwareOffset = 0;
-	uint64_t clearFirmwareLength = 0;
-	char *buffer = NULL;
 	long err = 0;
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
@@ -2270,27 +2141,8 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 		if (err)
 			return err;
 	}
-	/* Download bitstream */
-	primaryHeader = get_axlf_section_hdr(icap, xclbin, BITSTREAM);
-	if (primaryHeader == NULL)
-		return -EINVAL;
-	primaryFirmwareOffset = primaryHeader->m_sectionOffset;
-	primaryFirmwareLength = primaryHeader->m_sectionSize;
-	buffer = (char *)xclbin;
-	buffer += primaryFirmwareOffset;
-	err = icap_download_hw(icap, buffer, primaryFirmwareLength);
-	if (err)
-		return err;
 
-	/* Save clearing bitstream */
-	clearHeader = get_axlf_section_hdr(icap, xclbin, CLEARING_BITSTREAM);
-	if (clearHeader != NULL) {
-		clearFirmwareOffset = clearHeader->m_sectionOffset;
-		clearFirmwareLength = clearHeader->m_sectionSize;
-	}
-	buffer = (char *)xclbin;
-	buffer += clearFirmwareOffset;
-	err = icap_setup_clear_bitstream(icap, buffer, clearFirmwareLength);
+	err = icap_download_bitstream(icap, xclbin);
 	if (err)
 		return err;
 
@@ -2731,7 +2583,6 @@ static int icap_offline(struct platform_device *pdev)
 	xocl_drvinst_kill_proc(platform_get_drvdata(pdev));
 
 	sysfs_remove_group(&pdev->dev.kobj, &icap_attr_group);
-	free_clear_bitstream(icap);
 	free_clock_freq_topology(icap);
 
 	icap_clean_bitstream_axlf(pdev);
@@ -3270,7 +3121,6 @@ static int icap_remove(struct platform_device *pdev)
 	icap_free_bins(icap);
 
 	iounmap(icap->icap_regs);
-	free_clear_bitstream(icap);
 	free_clock_freq_topology(icap);
 
 	sysfs_remove_group(&pdev->dev.kobj, &icap_attr_group);
