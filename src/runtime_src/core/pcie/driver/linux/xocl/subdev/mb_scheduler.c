@@ -4038,9 +4038,23 @@ static int convert_execbuf(struct xocl_dev *xdev, struct drm_file *filp,
 	uint64_t dst_addr;
 	struct ert_start_copybo_cmd *scmd = (struct ert_start_copybo_cmd *)xobj->vmapping;
 
-	/* CU style commands must specify CU type */
-	if (scmd->opcode == ERT_START_CU || scmd->opcode == ERT_EXEC_WRITE)
+	/*
+	 * CU style commands must specify CU type
+	 * Softkernel commands should use CTRL type
+	 */
+	switch (scmd->opcode) {
+	case ERT_START_CU:
+	case ERT_EXEC_WRITE:
 		scmd->type = ERT_CU;
+		break;
+	case ERT_SK_CONFIG:
+	case ERT_SK_START:
+	case ERT_SK_UNCONFIG:
+		scmd->type = ERT_CTRL;
+		break;
+	default:
+		break;
+	}
 
 	/* Only convert COPYBO cmd for now. */
 	if (scmd->opcode != ERT_START_COPYBO)
