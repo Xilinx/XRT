@@ -993,6 +993,20 @@ xocl_fetch_dynamic_platform(struct xocl_dev_core *core,
 	}
 }
 
+u32
+xocl_subdev_vsec_read32(xdev_handle_t xdev, int bar, u64 offset)
+{
+	void __iomem *base;
+	u32 value;
+
+	offset += pci_resource_start(XDEV(xdev)->pdev, bar);
+	base = ioremap_nocache(offset, 32);
+	value = ioread32(base);
+	iounmap(base);
+
+	return value;
+}
+
 int
 xocl_subdev_vsec(xdev_handle_t xdev, u32 type,
 	int *bar_idx, u64 *offset)
