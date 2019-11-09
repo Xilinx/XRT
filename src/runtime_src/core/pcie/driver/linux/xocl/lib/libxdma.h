@@ -38,6 +38,10 @@
 
 #include "../xocl_drv.h"
 
+#ifndef mmiowb
+#define mmiowb()               do { } while (0)
+#endif
+
 /* Switch debug printing on/off */
 #define XDMA_DEBUG 0
 

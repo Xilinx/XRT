@@ -90,7 +90,8 @@ struct xocl_dev	{
 
 	bool			offline;
 
-	u32			p2p_bar_idx;
+	int			p2p_bar_idx;
+	u64			p2p_bar_sz_cached;
 	resource_size_t		p2p_bar_len;
 	void __iomem		*p2p_bar_addr;
 
@@ -241,6 +242,8 @@ uint64_t xocl_get_data(struct xocl_dev *xdev, enum data_kind kind);
 int xocl_reclock(struct xocl_dev *xdev, void *data);
 
 void xocl_update_mig_cache(struct xocl_dev *xdev);
+
+int xocl_config_pci(struct xocl_dev *xdev);
 
 static inline u64 xocl_pci_rebar_size_to_bytes(int size)
 {

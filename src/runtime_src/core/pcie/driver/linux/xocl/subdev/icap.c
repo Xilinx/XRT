@@ -155,6 +155,7 @@ struct icap {
 	void			*rp_bit;
 	unsigned long		rp_bit_len;
 	void			*rp_fdt;
+	unsigned long		rp_fdt_len;
 	void			*rp_mgmt_bin;
 	unsigned long		rp_mgmt_bin_len;
 	void			*rp_sche_bin;
@@ -262,6 +263,7 @@ static void icap_free_bins(struct icap *icap)
 	if (icap->rp_fdt) {
 		vfree(icap->rp_fdt);
 		icap->rp_fdt = NULL;
+		icap->rp_fdt_len = 0;
 	}
 	if (icap->rp_mgmt_bin) {
 		vfree(icap->rp_mgmt_bin);
@@ -1593,7 +1595,7 @@ static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 		goto end;
 	}
 
-	ret = xocl_fdt_blob_input(xdev, icap->rp_fdt);
+	ret = xocl_fdt_blob_input(xdev, icap->rp_fdt, icap->rp_fdt_len);
 	if (ret) {
 		xocl_xdev_err(xdev, "failed to parse fdt %d", ret);
 		goto failed;
@@ -1636,6 +1638,7 @@ failed:
 	if (icap->rp_fdt) {
 		vfree(icap->rp_fdt);
 		icap->rp_fdt = NULL;
+		icap->rp_fdt_len = 0;
 	}
 
 end:
@@ -3544,6 +3547,7 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 		ret = -ENOMEM;
 		goto failed;
 	}
+	icap->rp_fdt_len = fdt_totalsize(header);
 	memcpy(icap->rp_fdt, header, fdt_totalsize(header));
 
 	section = get_axlf_section_hdr(icap, axlf, BITSTREAM);
