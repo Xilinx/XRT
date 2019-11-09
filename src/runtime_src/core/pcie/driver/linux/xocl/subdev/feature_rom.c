@@ -423,7 +423,7 @@ static void platform_type_append(char *prefix, u32 platform_type)
 		type = "_Unknown";
 	}
 
-	strncat(prefix, type, XOCL_MAXNAMELEN - 1);
+	strncat(prefix, type, XOCL_MAXNAMELEN - strlen(prefix) - 1);
 }
 
 static int init_rom_by_dtb(struct feature_rom *rom)
