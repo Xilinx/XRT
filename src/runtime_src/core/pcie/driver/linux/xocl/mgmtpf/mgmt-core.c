@@ -697,9 +697,23 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 
 	switch (req->req) {
 	case XCL_MAILBOX_REQ_HOT_RESET:
+#if defined(__PPC64__)
+		/* Reply before doing reset to release peer from waiting
+		 * for response and move to timer based wait stage.
+		 */
+		(void) xocl_peer_response(lro, req->req, msgid, &ret,
+			sizeof(ret));
+		msleep(2000);
+		/* Peer should be msleeping and waiting now. Do reset now
+		 * before peer wakes up and start touching the PCIE BAR,
+		 * which is not allowed during reset.
+		 */
+		ret = (int) reset_hot_ioctl(lro);
+#else
 		ret = (int) reset_hot_ioctl(lro);
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
 			sizeof(ret));
+#endif
 		break;
 	case XCL_MAILBOX_REQ_LOAD_XCLBIN_KADDR: {
 		void *buf = NULL;
