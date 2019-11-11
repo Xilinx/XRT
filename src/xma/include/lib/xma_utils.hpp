@@ -17,6 +17,17 @@
 #ifndef xma_utils_lib_h_
 #define xma_utils_lib_h_
 
+#include "plg/xmasess.h"
+#include "lib/xmahw_lib.h"
+#include <map>
+
+namespace xma_core {
+   extern std::map<XmaSessionType, const char*> sessionMap;
+
+   int32_t finalize_ddr_index(XmaHwKernel* kernel_info, int32_t req_ddr_index, int32_t* ddr_index, char* prefix);
+   int32_t create_session_execbo(XmaHwSessionPrivate *priv, int32_t count, char* prefix);
+}
+
 namespace xma_core { namespace utils {
 
 int32_t load_libxrt();

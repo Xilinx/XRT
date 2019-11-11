@@ -19,6 +19,8 @@
 #include <string.h>
 #include <dlfcn.h>
 #include "lib/xmaapi.h"
+#include "app/xma_utils.hpp"
+#include "lib/xma_utils.hpp"
 #include "xmaplugin.h"
 #include <bitset>
 
@@ -170,33 +172,13 @@ xma_admin_session_create(XmaAdminProperties *props)
     int32_t num_execbo = 6;
     priv1->kernel_execbos.reserve(num_execbo);
     priv1->num_execbo_allocated = num_execbo;
-    for (int32_t d = 0; d < num_execbo; d++) {
-        xclBufferHandle  bo_handle = 0;
-        int       execBO_size = MAX_EXECBO_BUFF_SIZE;
-        //uint32_t  execBO_flags = (1<<31);
-        char     *bo_data;
-        bo_handle = xclAllocBO(dev_handle, 
-                                execBO_size, 
-                                0, 
-                                XCL_BO_FLAGS_EXECBUF);
-        if (!bo_handle || bo_handle == NULLBO) 
-        {
-            xma_logmsg(XMA_ERROR_LOG, XMA_ADMIN_MOD,
-                    "Initalization of plugin failed. Failed to alloc execbo\n");
-            //Release singleton lock
-            g_xma_singleton->locked = false;
-            free(session->base.plugin_data);
-            free(session);
-            delete priv1;
-            return NULL;
-        }
-        bo_data = (char*)xclMapBO(dev_handle, bo_handle, true);
-        memset((void*)bo_data, 0x0, execBO_size);
-
-        priv1->kernel_execbos.emplace_back(XmaHwExecBO{});
-        XmaHwExecBO& dev_execbo = priv1->kernel_execbos.back();
-        dev_execbo.handle = bo_handle;
-        dev_execbo.data = bo_data;
+    if (xma_core::create_session_execbo(priv1, num_execbo, (char*) XMA_ADMIN_MOD) != XMA_SUCCESS) {
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(session->base.plugin_data);
+        free(session);
+        delete priv1;
+        return NULL;
     }
 
     rc = session->admin_plugin->init(session);

@@ -15,6 +15,7 @@
  */
 
 #include "app/xma_utils.hpp"
+#include "lib/xma_utils.hpp"
 #include "app/xmaerror.h"
 #include "app/xmalogger.h"
 #include "app/xmaparam.h"
@@ -28,10 +29,78 @@
 #include <boost/filesystem/path.hpp>
 #include <iostream>
 #include <sstream>
+#include <bitset>
 
 #define XMAUTILS_MOD "xmautils"
 
 extern XmaSingleton *g_xma_singleton;
+
+namespace xma_core {
+    std::map<XmaSessionType, const char*> sessionMap = {
+        { XmaSessionType::XMA_SCALER, "scaler"},
+        { XmaSessionType::XMA_ENCODER, "encoder"},
+        { XmaSessionType::XMA_DECODER, "decoder"},
+        { XmaSessionType::XMA_FILTER, "filter"},
+        { XmaSessionType::XMA_KERNEL, "kernel"},
+        { XmaSessionType::XMA_ADMIN, "admin"},
+        { XmaSessionType::XMA_INVALID, "invalid"}
+    };
+
+    int32_t finalize_ddr_index(XmaHwKernel* kernel_info, int32_t req_ddr_index, int32_t* ddr_index, char* prefix) {
+        *ddr_index = -1;
+        if (kernel_info->soft_kernel) {
+            if (req_ddr_index != 0) {
+                xma_logmsg(XMA_WARNING_LOG, prefix, "XMA session with soft_kernel only allows ddr bank of zero\n");
+            }
+            //Only allow ddr_bank == 0;
+            *ddr_index = 0;
+            xma_logmsg(XMA_DEBUG_LOG, prefix, "XMA session with soft_kernel default ddr_bank: %d\n", *ddr_index);
+            return XMA_SUCCESS;
+        }
+        if (req_ddr_index < 0) {
+            *ddr_index = kernel_info->default_ddr_bank;
+            xma_logmsg(XMA_DEBUG_LOG, prefix, "XMA session default ddr_bank: %d\n", *ddr_index);
+            return XMA_SUCCESS;
+        }
+        std::bitset<MAX_DDR_MAP> tmp_bset;
+        tmp_bset = kernel_info->ip_ddr_mapping;
+        if (tmp_bset[req_ddr_index]) {
+            *ddr_index = req_ddr_index;
+            xma_logmsg(XMA_DEBUG_LOG, prefix, "Using user supplied default ddr_bank. XMA session default ddr_bank: %d\n", *ddr_index);
+            return XMA_SUCCESS;
+        }
+        xma_logmsg(XMA_ERROR_LOG, prefix,
+            "User supplied default ddr_bank is invalid. Valid ddr_bank mapping for this CU: %s\n", tmp_bset.to_string().c_str());
+        return XMA_ERROR;
+    }
+
+    int32_t create_session_execbo(XmaHwSessionPrivate *priv, int32_t count, char* prefix) {
+        for (int32_t d = 0; d < count; d++) {
+            xclBufferHandle  bo_handle = 0;
+            int       execBO_size = MAX_EXECBO_BUFF_SIZE;
+            //uint32_t  execBO_flags = (1<<31);
+            char     *bo_data;
+            bo_handle = xclAllocBO(priv->dev_handle, 
+                                    execBO_size, 
+                                    0, 
+                                    XCL_BO_FLAGS_EXECBUF);
+            if (!bo_handle || bo_handle == NULLBO) 
+            {
+                xma_logmsg(XMA_ERROR_LOG, prefix, "Initalization of plugin failed. Failed to alloc execbo\n");
+                return XMA_ERROR;
+            }
+            bo_data = (char*)xclMapBO(priv->dev_handle, bo_handle, true);
+            memset((void*)bo_data, 0x0, execBO_size);
+
+            priv->kernel_execbos.emplace_back(XmaHwExecBO{});
+            XmaHwExecBO& dev_execbo = priv->kernel_execbos.back();
+            dev_execbo.handle = bo_handle;
+            dev_execbo.data = bo_data;
+        }
+        return XMA_SUCCESS;
+    }
+
+}
 
 namespace xma_core { namespace utils {
 
