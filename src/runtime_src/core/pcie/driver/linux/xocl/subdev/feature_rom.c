@@ -402,6 +402,30 @@ static int get_header_from_peer(struct feature_rom *rom)
 	return 0;
 }
 
+static void platform_type_append(char *prefix, u32 platform_type)
+{
+	char *type;
+
+	if (!prefix)
+		return;
+
+	switch (platform_type) {
+	case 0x0:
+		type = "_Recovery BLP";
+		break;
+	case 0x1:
+		type = "_1RP";
+		break;
+	case 0x2:
+		type = "_2RP";
+		break;
+	default:
+		type = "_Unknown";
+	}
+
+	strncat(prefix, type, XOCL_MAXNAMELEN - strlen(prefix) - 1);
+}
+
 static int init_rom_by_dtb(struct feature_rom *rom)
 {
 	xdev_handle_t xdev = xocl_get_xdev(rom->pdev);
@@ -409,6 +433,9 @@ static int init_rom_by_dtb(struct feature_rom *rom)
 	struct resource *res;
 	const char *vbnv;
 	int i;
+	int bar;
+	u64 offset;
+	u32 platform_type;
 
 	if (XDEV(xdev)->fdt_blob) {
 		vbnv = fdt_getprop(XDEV(xdev)->fdt_blob, 0, "vbnv", NULL);
@@ -424,6 +451,11 @@ static int init_rom_by_dtb(struct feature_rom *rom)
 	if (XDEV(xdev)->priv.vbnv)
 		strncpy(header->VBNVName, XDEV(xdev)->priv.vbnv,
 				sizeof (header->VBNVName) - 1);
+
+	if (!xocl_subdev_vsec(xdev, XOCL_VSEC_PLATFORM_INFO, &bar, &offset)) {
+		platform_type = xocl_subdev_vsec_read32(xdev, bar, offset);
+		platform_type_append(header->VBNVName, platform_type);
+	}
 
 	xocl_xdev_info(xdev, "Searching ERT and CMC in dtb.");
 	res = xocl_subdev_get_ioresource(xdev, NODE_CMC_FW_MEM);

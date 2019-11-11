@@ -2012,9 +2012,9 @@ struct xocl_subdev_map {
 		&XOCL_BOARD_USER_DYNAMIC_IP, XOCL_DSAMAP_DYNAMIC },	\
 	{ 0x10EE, 0x5000, PCI_ANY_ID, "xilinx_u200_xdma_201920_1",	\
 		&XOCL_BOARD_MGMT_DYNAMIC_IP, XOCL_DSAMAP_DYNAMIC },	\
-	{ 0x10EE, 0x5020, PCI_ANY_ID, "xilinx_u50_golden",		\
+	{ 0x10EE, 0x5020, PCI_ANY_ID, "xilinx_u50",		\
 		&XOCL_BOARD_MGMT_U50_DYNAMIC_IP, XOCL_DSAMAP_DYNAMIC },	\
-	{ 0x10EE, 0x5021, PCI_ANY_ID, "xilinx_u50_golden",		\
+	{ 0x10EE, 0x5021, PCI_ANY_ID, "xilinx_u50",		\
 		&XOCL_BOARD_USER_U50_DYNAMIC_IP, XOCL_DSAMAP_DYNAMIC }	\
 
 #endif
