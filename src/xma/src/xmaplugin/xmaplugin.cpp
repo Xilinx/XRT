@@ -109,7 +109,17 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
         return b_obj_error;
     }
     */
-    b_obj.paddr = xclGetDeviceAddr(dev_handle, b_obj_handle);
+
+    struct xclBOProperties bop;
+    if (xclGetBOProperties(dev_handle, b_obj_handle, &bop) != 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc failed to get BO properties\n");
+        xclFreeBO(dev_handle, b_obj_handle);
+        if (return_code) *return_code = XMA_ERROR;
+        return b_obj_error;
+
+    }
+    b_obj.paddr = bop.paddr;
+
     if (!device_only_buffer) {
         b_obj.data = (uint8_t*) xclMapBO(dev_handle, b_obj_handle, true);
     }
@@ -201,7 +211,17 @@ XmaBufferObj xma_plg_buffer_alloc_arg_num(XmaSession s_handle, size_t size, bool
     } else {
         b_obj_handle = xclAllocBO(dev_handle, size, 0, ddr_bank);
     }
-    b_obj.paddr = xclGetDeviceAddr(dev_handle, b_obj_handle);
+
+    struct xclBOProperties bop;
+    if (xclGetBOProperties(dev_handle, b_obj_handle, &bop) != 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc failed to get BO properties\n");
+        xclFreeBO(dev_handle, b_obj_handle);
+        if (return_code) *return_code = XMA_ERROR;
+        return b_obj_error;
+
+    }
+    b_obj.paddr = bop.paddr;
+
     if (!device_only_buffer) {
         b_obj.data = (uint8_t*) xclMapBO(dev_handle, b_obj_handle, true);
     }
@@ -316,7 +336,17 @@ xma_plg_buffer_alloc_ddr(XmaSession s_handle, size_t size, bool device_only_buff
         return b_obj_error;
     }
     */
-    b_obj.paddr = xclGetDeviceAddr(dev_handle, b_obj_handle);
+
+    struct xclBOProperties bop;
+    if (xclGetBOProperties(dev_handle, b_obj_handle, &bop) != 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc failed to get BO properties\n");
+        xclFreeBO(dev_handle, b_obj_handle);
+        if (return_code) *return_code = XMA_ERROR;
+        return b_obj_error;
+
+    }
+    b_obj.paddr = bop.paddr;
+
     if (!device_only_buffer) {
         b_obj.data = (uint8_t*) xclMapBO(dev_handle, b_obj_handle, true);
     }
