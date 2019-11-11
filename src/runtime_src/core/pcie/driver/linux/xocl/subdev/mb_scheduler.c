@@ -3826,8 +3826,8 @@ destroy_client(struct platform_device *pdev, void **priv)
 	 * Note, that implicit CUs (such as CDMA) do not add to ip_reference.
 	 */
 
-	layout = XOCL_IP_LAYOUT(xdev);
-	xclbin_id = XOCL_XCLBIN_ID(xdev);
+	layout = XOCL_GET_IP_LAYOUT(xdev);
+	xclbin_id = XOCL_GET_XCLBIN_ID(xdev);
 
 	client_release_implicit_cus(exec, client);
 	client->virt_cu_ref = 0;
@@ -3845,6 +3845,9 @@ destroy_client(struct platform_device *pdev, void **priv)
 	bitmap_zero(client->cu_bitmap, MAX_CUS);
 
 	(void) xocl_icap_unlock_bitstream(xdev, xclbin_id);
+
+	XOCL_PUT_IP_LAYOUT(xdev);
+	XOCL_PUT_XCLBIN_ID(xdev);
 
 done:
 	mutex_unlock(&xdev->dev_lock);
@@ -3875,7 +3878,7 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
 	struct exec_core *exec = platform_get_drvdata(pdev);
 	xuid_t *xclbin_id;
-	u32 cu_idx = args->cu_index;
+	u32 cu_idx = args->cu_index, ip_cnt = 0;
 	bool shared;
 
 	/* bypass ctx check for versal for now */
@@ -3885,17 +3888,19 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 	mutex_lock(&xdev->dev_lock);
 
 	/* Sanity check arguments for add/rem CTX */
-	xclbin_id = XOCL_XCLBIN_ID(xdev);
+	xclbin_id = XOCL_GET_XCLBIN_ID(xdev);
 	if (!xclbin_id || !uuid_equal(xclbin_id, &args->xclbin_id)) {
 		userpf_err(xdev, "try to add/rem CTX on wrong xclbin");
 		ret = -EBUSY;
 		goto out;
 	}
 
+	ip_cnt = XOCL_GET_IP_LAYOUT(xdev)->m_count;
+	XOCL_PUT_IP_LAYOUT(xdev);
 	if (cu_idx != XOCL_CTX_VIRT_CU_INDEX
-	    && cu_idx >= XOCL_IP_LAYOUT(xdev)->m_count) {
+	    && cu_idx >= ip_cnt) {
 		userpf_err(xdev, "cuidx(%d) >= numcus(%d)\n",
-			cu_idx, XOCL_IP_LAYOUT(xdev)->m_count);
+			cu_idx, ip_cnt);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -3990,6 +3995,7 @@ out:
 		args->op == XOCL_CTX_OP_FREE_CTX ? "del" : "add",
 		xclbin_id, pid, cu_idx, ret, CLIENT_NUM_CU_CTX(client));
 
+	XOCL_PUT_XCLBIN_ID(xdev);
 	mutex_unlock(&xdev->dev_lock);
 	return ret;
 }
