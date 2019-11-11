@@ -6,6 +6,7 @@
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
  *    Sarabjeet Singh <sarabjeet.singh@xilinx.com>
+ *    Jan Stephan <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -539,7 +540,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 		goto out_free;
 
 	xocl_describe(xobj);
-	drm_gem_object_unreference_unlocked(&xobj->base);
+	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&xobj->base);
 	return ret;
 
 out_free:
@@ -611,7 +612,7 @@ int xocl_userptr_bo_ioctl(struct drm_device *dev,
 
 	xobj->type |= XOCL_BO_USERPTR;
 	xocl_describe(xobj);
-	drm_gem_object_unreference_unlocked(&xobj->base);
+	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&xobj->base);
 	return ret;
 
 out0:
@@ -650,7 +651,7 @@ int xocl_map_bo_ioctl(struct drm_device *dev,
 	args->offset = drm_vma_node_offset_addr(&obj->vma_node);
 	xocl_describe(to_xocl_bo(obj));
 out:
-	drm_gem_object_unreference_unlocked(obj);
+	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(obj);
 	return ret;
 }
 
@@ -763,7 +764,7 @@ clear:
 		kfree(sgt);
 	}
 out:
-	drm_gem_object_unreference_unlocked(gem_obj);
+	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
 	return ret;
 }
 
@@ -788,7 +789,7 @@ int xocl_info_bo_ioctl(struct drm_device *dev,
 
 	args->paddr = xocl_bo_physical_addr(xobj);
 	xocl_describe(xobj);
-	drm_gem_object_unreference_unlocked(gem_obj);
+	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
 
 	return 0;
 }
@@ -838,7 +839,7 @@ int xocl_pwrite_bo_ioctl(struct drm_device *dev, void *data,
 
 	ret = copy_from_user(kaddr, user_data, args->size);
 out:
-	drm_gem_object_unreference_unlocked(gem_obj);
+	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
 
 	return ret;
 }
@@ -888,7 +889,7 @@ int xocl_pread_bo_ioctl(struct drm_device *dev, void *data,
 	ret = copy_to_user(user_data, kaddr, args->size);
 
 out:
-	drm_gem_object_unreference_unlocked(gem_obj);
+	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
 
 	return ret;
 }
@@ -987,9 +988,9 @@ clear:
 		kfree(sgt);
 	}
 out:
-	drm_gem_object_unreference_unlocked(src_gem_obj);
+	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(src_gem_obj);
 src_lookup_fail:
-	drm_gem_object_unreference_unlocked(dst_gem_obj);
+	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(dst_gem_obj);
 	return ret;
 
 }

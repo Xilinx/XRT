@@ -336,7 +336,7 @@ static int queue_req_complete(unsigned long priv, unsigned int done_bytes,
 			cb->queue->qconf.c2h ? DMA_FROM_DEVICE : DMA_TO_DEVICE);
 		xocl_finish_unmgd(&cb->unmgd);
 	} else {
-		drm_gem_object_unreference_unlocked(&cb->xobj->base);
+		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&cb->xobj->base);
 	}
 
 	if (kiocb) {
@@ -374,7 +374,7 @@ static ssize_t stream_post_bo(struct str_device *sdev,
 		goto out;
 	}
 
-	drm_gem_object_reference(gem_obj);
+	XOCL_DRM_GEM_OBJECT_GET(gem_obj);
 	xobj = to_xocl_bo(gem_obj);
 
 	io_req = queue_req_new(queue);
@@ -422,7 +422,7 @@ static ssize_t stream_post_bo(struct str_device *sdev,
 
 out:
 	if (!kiocb) {
-		drm_gem_object_unreference_unlocked(gem_obj);
+		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
 		if (io_req)
 			queue_req_free(queue, io_req);
 	}
@@ -982,7 +982,7 @@ static long stream_ioctl_alloc_buffer(struct str_device *sdev,
 
 	flags = O_CLOEXEC | O_RDWR;
 
-	drm_gem_object_reference(&xobj->base);
+	XOCL_DRM_GEM_OBJECT_GET(&xobj->base);
 	dmabuf = drm_gem_prime_export(xdev->ddev, &xobj->base, flags);
 	if (IS_ERR(dmabuf)) {
 		xocl_err(&sdev->pdev->dev, "failed to export dma_buf");
