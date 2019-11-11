@@ -25,9 +25,12 @@ static ssize_t xclbinuuid_show(struct device *dev,
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	xuid_t *xclbin_id;
+	ssize_t cnt;
 
-	xclbin_id = XOCL_XCLBIN_ID(xdev);
-	return sprintf(buf, "%pUb\n", xclbin_id ? xclbin_id : 0);
+	xclbin_id = XOCL_GET_XCLBIN_ID(xdev);
+	cnt = sprintf(buf, "%pUb\n", xclbin_id ? xclbin_id : 0);
+	XOCL_PUT_XCLBIN_ID(xdev);
+	return cnt;
 }
 
 static DEVICE_ATTR_RO(xclbinuuid);
@@ -61,7 +64,7 @@ static ssize_t kdsstat_show(struct device *dev,
 	pid_t *plist = NULL;
 	u32 clients, i;
 
-	xclbin_id = XOCL_XCLBIN_ID(xdev);
+	xclbin_id = XOCL_GET_XCLBIN_ID(xdev);
 	size += sprintf(buf + size, "xclbin:\t\t\t%pUb\n",
 		xclbin_id ? xclbin_id : 0);
 	size += sprintf(buf + size, "outstanding execs:\t%d\n",
@@ -75,6 +78,7 @@ static ssize_t kdsstat_show(struct device *dev,
 	for (i = 0; i < clients; i++)
 		size += sprintf(buf + size, "\t\t\t%d\n", plist[i]);
 	vfree(plist);
+	XOCL_PUT_XCLBIN_ID(xdev);
 	return size;
 }
 static DEVICE_ATTR_RO(kdsstat);
@@ -93,10 +97,10 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 
 	mutex_lock(&xdev->dev_lock);
 
-	topo = XOCL_MEM_TOPOLOGY(xdev);
+	topo = XOCL_GET_MEM_TOPOLOGY(xdev);
 	if (!topo) {
-		mutex_unlock(&xdev->dev_lock);
-		return -EINVAL;
+		size = -EINVAL;
+		goto done;
 	}
 
 	for (i = 0; i < topo->m_count; i++) {
@@ -124,6 +128,8 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 		buf += count;
 		size += count;
 	}
+done:
+	XOCL_PUT_MEM_TOPOLOGY(xdev);
 	mutex_unlock(&xdev->dev_lock);
 	return size;
 }

@@ -495,9 +495,9 @@ static int xocl_check_topology(struct xocl_drm *drm_p)
 	u16	i;
 	int	err = 0;
 
-	topology = XOCL_MEM_TOPOLOGY(drm_p->xdev);
+	topology = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev);
 	if (topology == NULL)
-		return 0;
+		goto done;
 
 	for (i = 0; i < topology->m_count; i++) {
 		if (!topology->m_mem_data[i].m_used)
@@ -514,6 +514,8 @@ static int xocl_check_topology(struct xocl_drm *drm_p)
 		}
 	}
 
+done:	
+	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
 	return err;
 }
 
@@ -558,7 +560,7 @@ int xocl_cleanup_mem(struct xocl_drm *drm_p)
 		return err;
 	}
 
-	topology = XOCL_MEM_TOPOLOGY(drm_p->xdev);
+	topology = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev);
 	if (topology) {
 		ddr = topology->m_count;
 		for (i = 0; i < ddr; i++) {
@@ -595,6 +597,7 @@ int xocl_cleanup_mem(struct xocl_drm *drm_p)
 
 	mutex_unlock(&drm_p->mm_lock);
 
+	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
 	return 0;
 }
 
@@ -621,9 +624,12 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		reserved2 = 0x1000000;
 	}
 
-	topo = XOCL_MEM_TOPOLOGY(drm_p->xdev);
-	if (topo == NULL)
-		return 0;
+	topo = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev);
+
+	if (topo == NULL) {
+		err = -ENODEV;
+		goto failed;
+	}
 
 	length = topo->m_count * sizeof(struct mem_data);
 	size = topo->m_count * sizeof(void *);
@@ -714,7 +720,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 
 		xocl_info(drm_p->ddev->dev, "drm_mm_init called");
 	}
-
+	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
 	mutex_unlock(&drm_p->mm_lock);
 	return 0;
 
@@ -733,7 +739,7 @@ failed:
 	drm_p->mm_usage_stat = NULL;
 	vfree(drm_p->mm_p2p_off);
 	drm_p->mm_p2p_off = NULL;
-
+	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
 	mutex_unlock(&drm_p->mm_lock);
 	return err;
 }
