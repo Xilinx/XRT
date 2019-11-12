@@ -595,20 +595,9 @@ struct xocl_mb_scheduler_funcs {
 #define XOCL_PUT_XCLBIN_ID(xdev)						\
 	xocl_icap_put_xclbin_metadata(xdev)
 
-/*
- * #define	XOCL_IS_DDR_USED(xdev, ddr)					\
- *	(XOCL_MEM_TOPOLOGY(xdev)->m_mem_data[ddr].m_used == 1)
- *
- * #define	XOCL_DDR_COUNT_UNIFIED(xdev)		\
- *	(XOCL_MEM_TOPOLOGY(xdev) ? XOCL_MEM_TOPOLOGY(xdev)->m_count : 0)
- */
-#define XOCL_IS_DDR_USED(xdev, ddr) \
-({ \
-	bool ret; \
-	ret = XOCL_GET_MEM_TOPOLOGY(xdev)->m_mem_data[ddr].m_used == 1; \
-	XOCL_PUT_MEM_TOPOLOGY(xdev); \
-	(ret); \
-})
+#define XOCL_IS_DDR_USED(topo, ddr) 			\
+	(topo->m_mem_data[ddr].m_used == 1)
+
 #define	XOCL_DDR_COUNT_UNIFIED(xdev)		\
 ({ \
 	struct mem_topology *topo = XOCL_GET_MEM_TOPOLOGY(xdev); \
