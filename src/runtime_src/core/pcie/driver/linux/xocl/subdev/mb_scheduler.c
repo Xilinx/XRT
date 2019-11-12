@@ -3869,6 +3869,23 @@ static uint poll_client(struct platform_device *pdev, struct file *filp,
 	return POLLIN;
 }
 
+static int cuidx_valid(struct xocl_dev *xdev, u32 cu_idx)
+{
+	u32 ip_cnt = 0;
+	int ret = 0;
+
+	ip_cnt = XOCL_GET_IP_LAYOUT(xdev)->m_count;
+
+	if (cu_idx != XOCL_CTX_VIRT_CU_INDEX
+		&& cu_idx >= ip_cnt) {
+		userpf_err(xdev, "cuidx(%d) >= numcus(%d)\n",
+			cu_idx, ip_cnt);
+		ret = -EINVAL;
+	}
+
+	XOCL_PUT_IP_LAYOUT(xdev);
+	return ret;
+}
 static int client_ioctl_ctx(struct platform_device *pdev,
 			    struct client_ctx *client, void *data)
 {
@@ -3878,7 +3895,7 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
 	struct exec_core *exec = platform_get_drvdata(pdev);
 	xuid_t *xclbin_id;
-	u32 cu_idx = args->cu_index, ip_cnt = 0;
+	u32 cu_idx = args->cu_index;
 	bool shared;
 
 	/* bypass ctx check for versal for now */
@@ -3895,15 +3912,11 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 		goto out;
 	}
 
-	ip_cnt = XOCL_GET_IP_LAYOUT(xdev)->m_count;
-	XOCL_PUT_IP_LAYOUT(xdev);
-	if (cu_idx != XOCL_CTX_VIRT_CU_INDEX
-	    && cu_idx >= ip_cnt) {
-		userpf_err(xdev, "cuidx(%d) >= numcus(%d)\n",
-			cu_idx, ip_cnt);
-		ret = -EINVAL;
+	ret = cuidx_valid(xdev, cu_idx);
+
+	if (ret)
 		goto out;
-	}
+
 
 	if (cu_idx != XOCL_CTX_VIRT_CU_INDEX && !exec_valid_cu(exec,cu_idx)) {
 		userpf_err(xdev, "invalid CU(%d)",cu_idx);
