@@ -181,7 +181,11 @@ static int xocl_mmap(struct file *filp, struct vm_area_struct *vma)
 	return xocl_native_mmap(filp, vma);
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
+vm_fault_t xocl_gem_fault(struct vm_fault *vmf)
+{
+	struct vm_area_struct *vma = vmf->vma;
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 int xocl_gem_fault(struct vm_fault *vmf)
 {
 	struct vm_area_struct *vma = vmf->vma;
@@ -594,7 +598,7 @@ int xocl_cleanup_mem(struct xocl_drm *drm_p)
 	return 0;
 }
 
-int xocl_init_mem(struct xocl_drm *drm_p, struct mem_topology *new_topo)
+int xocl_init_mem(struct xocl_drm *drm_p)
 {
 	size_t length = 0;
 	size_t mm_size = 0, mm_stat_size = 0;
@@ -617,11 +621,7 @@ int xocl_init_mem(struct xocl_drm *drm_p, struct mem_topology *new_topo)
 		reserved2 = 0x1000000;
 	}
 
-	if (XOCL_DSA_IS_VERSAL(drm_p->xdev))
-		topo = new_topo;
-	else
-		topo = XOCL_MEM_TOPOLOGY(drm_p->xdev);
-
+	topo = XOCL_MEM_TOPOLOGY(drm_p->xdev);
 	if (topo == NULL)
 		return 0;
 
@@ -630,7 +630,6 @@ int xocl_init_mem(struct xocl_drm *drm_p, struct mem_topology *new_topo)
 	wrapper_size = sizeof(struct xocl_mm_wrapper);
 	mm_size = sizeof(struct drm_mm);
 	mm_stat_size = sizeof(struct drm_xocl_mm_stat);
-
 	xocl_info(drm_p->ddev->dev, "Topology count = %d, data_length = %ld",
 		topo->m_count, length);
 

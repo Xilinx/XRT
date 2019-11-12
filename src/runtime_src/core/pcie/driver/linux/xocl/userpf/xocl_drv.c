@@ -327,6 +327,18 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 	if (mbret)
 		ret = mbret;
 
+#if defined(__PPC64__)
+	/* During reset we can't poll mailbox registers to get notified when
+	 * peer finishes reset. Just do a timer based wait for 20 seconds,
+	 * which is long enough for reset to be done.
+	 */
+	msleep(20 * 1000);
+#endif
+
+	(void) xocl_config_pci(xdev);
+	(void) xocl_pci_resize_resource(xdev->core.pdev, xdev->p2p_bar_idx,
+			xdev->p2p_bar_sz_cached);
+
 	xocl_reset_notify(xdev->core.pdev, false);
 
 	xocl_drvinst_set_offline(xdev->core.drm, false);
@@ -427,14 +439,12 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 	req->req = XCL_MAILBOX_REQ_RECLOCK;
 	memcpy(req->data, data, data_len);
 
-	mutex_lock(&xdev->dev_lock);
-
-	if (!list_is_singular(&xdev->ctx_list)) {
-		/* We should have one context for ourselves. */
-		BUG_ON(list_empty(&xdev->ctx_list));
+	if (get_live_clients(xdev, NULL)) {
 		userpf_err(xdev, "device is in use, can't reset");
 		err = -EBUSY;
 	}
+
+	mutex_lock(&xdev->dev_lock);
 
 	if (err == 0) {
 		err = xocl_peer_request(xdev, req, reqlen,
@@ -471,7 +481,9 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	case XCL_MAILBOX_REQ_FIREWALL:
 		userpf_info(xdev,
 			"Card is in a BAD state, please issue xbutil reset");
-		xocl_drvinst_kill_proc(xdev->core.drm);
+		xocl_drvinst_set_offline(xdev->core.drm, true);
+		/* Once firewall tripped, need to reset in secs */
+		xocl_queue_work(xdev, XOCL_WORK_RESET, XOCL_RESET_DELAY);
 		break;
 	case XCL_MAILBOX_REQ_MGMT_STATE:
 		st = (struct xcl_mailbox_peer_state *)req->data;
@@ -542,6 +554,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	struct xcl_subdev	*resp = NULL;
 	size_t resp_len = sizeof(*resp) + XOCL_MSG_SUBDEV_DATA_LEN;
 	char *blob = NULL, *tmp;
+	u32 blob_len;
 	uint64_t checksum;
 	size_t offset = 0;
 	int ret = 0;
@@ -579,6 +592,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 			vfree(blob);
 		}
 		blob = tmp;
+		blob_len = offset + resp_len;
 
 		subdev_peer.offset = offset;
 		ret = xocl_peer_request(xdev, mb_req, reqlen,
@@ -605,19 +619,20 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	if (!offset && !xdev->core.fdt_blob)
 		goto failed;
 
-	if (xdev->core.fdt_blob)
+	if (xdev->core.fdt_blob) {
 		vfree(xdev->core.fdt_blob);
+		xdev->core.fdt_blob = NULL;
+	}
 	xdev->core.fdt_blob = blob;
-	blob = NULL;
-
 
 	xocl_drvinst_set_offline(xdev->core.drm, true);
-	if (xdev->core.fdt_blob) {
-		ret = xocl_fdt_blob_input(xdev, xdev->core.fdt_blob);
+	if (blob) {
+		ret = xocl_fdt_blob_input(xdev, blob, blob_len);
 		if (ret) {
 			userpf_err(xdev, "parse blob failed %d", ret);
 			goto failed;
 		}
+		blob = NULL;
 	}
 
 	if (XOCL_DRM(xdev))
@@ -786,7 +801,11 @@ static int xocl_p2p_mem_chunk_reserve(struct xocl_p2p_mem_chunk *chk)
 	} else {
 		chk->xpmc_pgmap.ref = pref;
 		chk->xpmc_pgmap.res = res;
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 3, 0)
 		chk->xpmc_pgmap.altmap_valid = false;
+#endif
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 2) && \
 	LINUX_VERSION_CODE < KERNEL_VERSION(5, 3, 0)
 		chk->xpmc_pgmap.kill = xocl_p2p_percpu_ref_kill_noop;
@@ -1135,12 +1154,30 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 		vfree(xdev->core.dyn_subdev_store);
 	if (xdev->ulp_blob)
 		vfree(xdev->ulp_blob);
+	if (xdev->mem_topo)
+		vfree(xdev->mem_topo);
 	mutex_destroy(&xdev->core.lock);
 	mutex_destroy(&xdev->dev_lock);
 	mutex_destroy(&xdev->wq_lock);
 
 	pci_set_drvdata(pdev, NULL);
 	xocl_drvinst_free(xdev);
+}
+
+int xocl_config_pci(struct xocl_dev *xdev)
+{
+	struct pci_dev *pdev = xdev->core.pdev;
+	int ret = 0;
+
+	ret = pci_enable_device(pdev);
+	if (ret) {
+		xocl_err(&pdev->dev, "failed to enable device.");
+		goto failed;
+	}
+
+failed:
+	return ret;
+
 }
 
 int xocl_userpf_probe(struct pci_dev *pdev,
@@ -1192,11 +1229,9 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 		goto failed;
 	}
 
-	ret = pci_enable_device(pdev);
-	if (ret) {
-		xocl_err(&pdev->dev, "failed to enable device.");
+	ret = xocl_config_pci(xdev);
+	if (ret)
 		goto failed;
-	}
 
 	ret = xocl_subdev_create_all(xdev);
 	if (ret) {

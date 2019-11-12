@@ -165,6 +165,12 @@ static int axigate_probe(struct platform_device *pdev)
 
 	mutex_init(&gate->gate_lock);
 
+	/* force closing gate */
+	if (!reg_rd(gate, iag_rd)) {
+		gate->freeze = true;
+		axigate_free(pdev);
+	}
+
 	return 0;
 
 failed:

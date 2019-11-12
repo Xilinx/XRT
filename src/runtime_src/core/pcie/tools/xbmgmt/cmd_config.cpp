@@ -96,6 +96,7 @@ static int daemon(int argc, char *argv[])
 
     const option opts[] = {
         { "host", required_argument, nullptr, '0' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     // Load current config.
@@ -169,6 +170,7 @@ static int show(int argc, char *argv[])
         { "card", required_argument, nullptr, '0' },
         { "daemon", no_argument, nullptr, '1' },
         { "device", no_argument, nullptr, '2' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {
@@ -241,6 +243,7 @@ static int device(int argc, char *argv[])
     const option opts[] = {
         { "card", required_argument, nullptr, '0' },
         { "security", required_argument, nullptr, '1' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {

@@ -111,6 +111,8 @@ enum drm_zocl_ops {
 	DRM_ZOCL_SK_REPORT,
 	/* Get the information about Compute Unit such as physical address in the device */
 	DRM_ZOCL_INFO_CU,
+	/* Open/Close context */
+	DRM_ZOCL_CTX,
 	DRM_ZOCL_NUM_IOCTLS
 };
 
@@ -262,6 +264,26 @@ struct drm_zocl_info_cu {
 	int apt_idx;
 };
 
+enum drm_zocl_ctx_code {
+	ZOCL_CTX_OP_ALLOC_CTX = 0,
+	ZOCL_CTX_OP_FREE_CTX,
+};
+
+#define	ZOCL_CTX_NOOPS		0	
+#define	ZOCL_CTX_SHARED		(1 << 0)	
+#define	ZOCL_CTX_EXCLUSIVE	(1 << 1)	
+#define	ZOCL_CTX_VERBOSE	(1 << 2)
+
+struct drm_zocl_ctx {
+	uint64_t uuid_ptr;
+	uint64_t uuid_size;
+	uint32_t cu_index;
+	uint32_t flags;
+	// unused, in future it would return context id
+	uint32_t handle;
+	enum drm_zocl_ctx_code op;
+};
+
 /**
  * Opcodes for the embedded scheduler provided by the client to the driver
  */
@@ -297,14 +319,11 @@ struct drm_zocl_execbuf {
 };
 
 /*
- * BITSTREAM flag is not 1 or 0, in case old shim code might pass in 1 for
- * other flag.  ZOCL kernel will check BITSTRAM and other flags are exclusive.
+ * enum drm_zocl_platform_flags - can be used for axlf bitstream
  */
 enum drm_zocl_axlf_flags {
-	DRM_ZOCL_AXLF_NONE 		= 0,
-	DRM_ZOCL_AXLF_AIE_PDI		= (1 << 0),
-	DRM_ZOCL_AXLF_BITSTREAM_PDI	= (1 << 1),
-	DRM_ZOCL_AXLF_BITSTREAM		= (1 << 2),
+	DRM_ZOCL_PLATFORM_BASE		= 0,
+	DRM_ZOCL_PLATFORM_PR		= (1 << 0),
 };
 
 /**
@@ -392,8 +411,6 @@ struct drm_zocl_sk_report {
                                        struct drm_zocl_pwrite_bo)
 #define DRM_IOCTL_ZOCL_PREAD_BO        DRM_IOWR(DRM_COMMAND_BASE +      \
                                        DRM_ZOCL_PREAD_BO, struct drm_zocl_pread_bo)
-#define DRM_IOCTL_ZOCL_PCAP_DOWNLOAD   DRM_IOWR(DRM_COMMAND_BASE +      \
-                                       DRM_ZOCL_PCAP_DOWNLOAD, struct drm_zocl_pcap_download)
 #define DRM_IOCTL_ZOCL_EXECBUF         DRM_IOWR(DRM_COMMAND_BASE + \
                                        DRM_ZOCL_EXECBUF, struct drm_zocl_execbuf)
 #define DRM_IOCTL_ZOCL_READ_AXLF       DRM_IOWR(DRM_COMMAND_BASE + \
@@ -406,4 +423,6 @@ struct drm_zocl_sk_report {
                                        DRM_ZOCL_SK_REPORT, struct drm_zocl_sk_report)
 #define DRM_IOCTL_ZOCL_INFO_CU         DRM_IOWR(DRM_COMMAND_BASE + \
                                        DRM_ZOCL_INFO_CU, struct drm_zocl_info_cu)
+#define DRM_IOCTL_ZOCL_CTX             DRM_IOWR(DRM_COMMAND_BASE + \
+                                       DRM_ZOCL_CTX, struct drm_zocl_ctx)
 #endif

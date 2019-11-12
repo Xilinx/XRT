@@ -71,6 +71,7 @@ public:
     int xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek);
     int xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip);
     void *xclMapBO(unsigned int boHandle, bool write);
+    int xclUnmapBO(unsigned int boHandle, void* addr);
     int xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset);
     int xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size,
                   size_t dst_offset, size_t src_offset);

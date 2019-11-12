@@ -28,11 +28,12 @@ namespace XBUtilities {
 template<typename ... Args>
 
 std::string format(const std::string& format, Args ... args) {
-  size_t size = 1 + snprintf(nullptr, 0, format.c_str(), args ...);
+  const static size_t NULL_CHAR_SIZE = 1;
+  size_t size = NULL_CHAR_SIZE + snprintf(nullptr, 0, format.c_str(), args ...);
   std::unique_ptr<char[]> buf(new char[size]);
   snprintf(buf.get(), size, format.c_str(), args ...);
   
-  return std::string(buf.get(), buf.get() + size);
+  return std::string(buf.get());
 }
 
   typedef enum {
@@ -66,11 +67,6 @@ std::string format(const std::string& format, Args ... args) {
   void trace(const std::string& _msg, bool _endl = true);
 
   void trace_print_tree(const std::string & _name, const boost::property_tree::ptree & _pt);
-
-// ===========================================================================
-void get_system_info(boost::property_tree::ptree & _pt);
-
-
 };
 
 #endif

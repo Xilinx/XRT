@@ -1740,6 +1740,10 @@ static int enable_msi_msix(struct xdma_dev *xdev, struct pci_dev *pdev)
 		if (rv < 0)
 			dbg_init("Couldn't enable MSI-X mode: %d\n", rv);
 
+		pr_info("request vectors: h2c %d, c2h %d, user %d\n",
+			xdev->h2c_channel_max,
+			xdev->c2h_channel_max, xdev->user_max);
+
 		xdev->msix_enabled = 1;
 
 	} else if (interrupt_mode == 1 &&
@@ -1899,7 +1903,7 @@ static int irq_msix_channel_setup(struct xdma_dev *xdev)
 		rv = request_irq(vector, xdma_channel_irq, 0, xdev->mod_name,
 				 engine);
 		if (rv) {
-			pr_info("requesti irq#%d failed %d, engine %s.\n",
+			pr_err("requesti irq#%d failed %d, engine %s.\n",
 				vector, rv, engine->name);
 			return rv;
 		}
@@ -3625,6 +3629,16 @@ void *xdma_device_open(const char *mname, struct pci_dev *pdev, int *user_max,
 	rv = probe_engines(xdev);
 	if (rv)
 		goto err_engines;
+	/* re-determine user_max */
+	xdev->user_max = min(xdev->user_max, pci_msix_vec_count(pdev) -
+			xdev->c2h_channel_max - xdev->h2c_channel_max);
+	if (xdev->user_max < 0) {
+		rv = -EINVAL;
+		pr_err("Invalid number of interrupts. pci %d, h2c %d, c2h %d",
+			pci_msix_vec_count(pdev), xdev->h2c_channel_max,
+			xdev->c2h_channel_max);
+		goto err_enable_msix;
+	}
 
 	rv = enable_msi_msix(xdev, pdev);
 	if (rv < 0)

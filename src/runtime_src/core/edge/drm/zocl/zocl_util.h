@@ -50,6 +50,8 @@
  */
 #define	GET_MEM_BANK(x)		((x) & 0xFFFF)
 
+#define ZOCL_GET_ZDEV(ddev) (ddev->dev_private)
+
 struct drm_zocl_mm_stat {
 	size_t memory_usage;
 	unsigned int bo_count;
@@ -110,7 +112,6 @@ struct drm_zocl_dev {
 	struct connectivity	*connectivity;
 	struct addr_aperture	*apertures;
 	unsigned int		 num_apts;
-	u64			 unique_id_last_bitstream;
 
 	/*
 	 * This RW lock is to protect the sysfs nodes exported
@@ -127,6 +128,8 @@ struct drm_zocl_dev {
 	struct mailbox		*zdev_mailbox;
 	const struct zdev_data	*zdev_data_info;
 	u64			pr_isolation_addr;
+	struct zocl_xclbin	*zdev_xclbin;
+	struct mutex		zdev_xclbin_lock;
 };
 
 #endif

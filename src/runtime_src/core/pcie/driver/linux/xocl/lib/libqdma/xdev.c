@@ -354,17 +354,19 @@ static int xdev_map_bars(struct xlnx_dma_dev *xdev, struct pci_dev *pdev)
 			pr_warn("%s unable to map bar %d.\n",
 				xdev->conf.name, xdev->conf.bar_num_stm);
 			return -EINVAL;
+			return 0;
 		}
 
 		rev = readl(xdev->stm_regs + STM_REG_REV);
 		if ((((rev >> 24) & 0xFF)!= 'S') ||
 			(((rev >> 16) & 0xFF) != 'T') ||
 			(((rev >> 8) & 0xFF) != 'M')) {
-			pr_err("%s: Unknown STM %c%c%c.\n",
-				xdev->conf.name, (rev >> 24) & 0xFF,
+			pr_err("%s: Unknown STM 0x%x, %c%c%c.\n",
+				xdev->conf.name, rev, (rev >> 24) & 0xFF,
 				(rev >> 16) & 0xFF, (rev >> 8) & 0xFF);
-			xdev_unmap_bars(xdev, pdev);
-			return -EINVAL;
+			iounmap(xdev->stm_regs);
+			xdev->stm_regs = NULL;
+			return 0;
 		}
 		xdev->stm_rev = rev & 0xFF;
 
@@ -372,7 +374,8 @@ static int xdev_map_bars(struct xlnx_dma_dev *xdev, struct pci_dev *pdev)
 			pr_err("%s: Unsupported STM rev 0x%x/0x%x < 0x%x.\n",
 				xdev->conf.name, xdev->stm_rev, rev,
 				STM_SUPPORTED_REV_MIN);
-			xdev_unmap_bars(xdev, pdev);
+			iounmap(xdev->stm_regs);
+			xdev->stm_regs = NULL;
 			return -EINVAL;
 		} else {
 			pr_info("%s: STM enabled, rev 0x%x, 0x%x\n",

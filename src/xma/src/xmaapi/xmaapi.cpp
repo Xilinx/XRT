@@ -42,6 +42,21 @@ XmaSingleton xma_singleton_internal;
 
 XmaSingleton *g_xma_singleton = &xma_singleton_internal;
 
+void xma_enable_mode1(void) {
+    bool expected = false;
+    bool desired = true;
+    while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        expected = false;
+    }
+    //Singleton lock acquired
+
+    xma_core::utils::xma_enable_mode1();
+
+    //Release singleton lock
+    g_xma_singleton->locked = false;
+}
+
 int32_t xma_get_default_ddr_index(int32_t dev_index, int32_t cu_index, char* cu_name) {
     if (!g_xma_singleton->xma_initialized) {
         xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD,
@@ -220,11 +235,12 @@ void xma_thread2() {
 
             if (priv1->num_cu_cmds > 0) {
                 expected = false;
-                if ((*(dev_tmp1->execwait_locked)).compare_exchange_weak(expected, desired)) {
+                //if ((*(dev_tmp1->execwait_locked)).compare_exchange_weak(expected, desired)) {
+                if (priv1->execwait_locked.compare_exchange_weak(expected, desired)) {
                     ret = xclExecWait(priv1->dev_handle, 30);
                     if (ret > 0) {
                         expected = false;
-                        while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
+                        while (!priv1->execbo_locked.compare_exchange_weak(expected, desired)) {
                             std::this_thread::sleep_for(std::chrono::milliseconds(1));
                             expected = false;
                         }
@@ -233,14 +249,14 @@ void xma_thread2() {
                         if (xma_core::utils::check_all_execbo(itr1.second) != XMA_SUCCESS) {
                             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA thread2 failed-4. Unexpected error\n");
                             //Release execbo lock
-                            *(dev_tmp1->execbo_locked) = false;
-                            *(dev_tmp1->execwait_locked) = false;
+                            priv1->execbo_locked = false;
+                            priv1->execwait_locked = false;
                             continue;
                         }
 
                         //Release execbo lock
-                        *(dev_tmp1->execbo_locked) = false;
-                        *(dev_tmp1->execwait_locked) = false;
+                        priv1->execbo_locked = false;
+                        priv1->execwait_locked = false;
                     }
                 }
             }

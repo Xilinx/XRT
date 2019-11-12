@@ -28,12 +28,13 @@
 
 #include <chrono>
 
+#include "scan.h"
 
-static std::string driver_version(std::string driver)
+static std::string driver_version(const std::string & _driver)
 {
   std::string line("unknown");
   std::string path("/sys/module/");
-  path += driver;
+  path += _driver;
   path += "/version";
   std::ifstream ver(path);
   if (ver.is_open()) {
@@ -94,6 +95,7 @@ xrt_core::system::get_os_info(boost::property_tree::ptree &_pt)
   tnow.pop_back();
   _pt.put("now", tnow);
 }
+
 
 
 

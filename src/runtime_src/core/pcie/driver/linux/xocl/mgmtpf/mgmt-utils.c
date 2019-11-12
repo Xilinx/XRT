@@ -179,11 +179,6 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 	}
 
 	ep_name = pdev->bus->name;
-#if defined(__PPC64__)
-	mgmt_info(lro, "Ignore reset operation for card %d in slot %s:%02x:%1x",
-		lro->instance, ep_name,
-		PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
-#else
 	mgmt_info(lro, "Trying to reset card %d in slot %s:%02x:%1x",
 		lro->instance, ep_name,
 		PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
@@ -202,7 +197,11 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 	if (!XOCL_DSA_PCI_RESET_OFF(lro)) {
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_ICAP);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_MAILBOX);
+#if defined(__PPC64__)
+		pci_fundamental_reset(lro);
+#else
 		xclmgmt_reset_pci(lro);
+#endif
 		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_MAILBOX);
 		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_ICAP);
 	} else {
@@ -217,10 +216,11 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 	 * Check firewall status. Status should be 0 (cleared)
 	 * Otherwise issue message that a warm reboot is required.
 	 */
-	do {
+	msleep(20);
+	while (retry++ < XCLMGMT_RESET_MAX_RETRY && xocl_af_check(lro, NULL)) {
+		xocl_af_clear(lro);
 		msleep(20);
-	} while (retry++ < XCLMGMT_RESET_MAX_RETRY &&
-		xocl_af_check(lro, NULL));
+	}
 
 	if (retry >= XCLMGMT_RESET_MAX_RETRY) {
 		mgmt_err(lro, "Board is not able to recover by PCI Hot reset. "
@@ -240,7 +240,6 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 
 	xocl_thread_start(lro);
 
-#endif
 done:
 	return err;
 }
@@ -395,6 +394,8 @@ void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	mgmt_info(lro, "Resetting for %d ms", i);
 
 	xocl_pci_restore_config_all(pdev);
+
+	xclmgmt_config_pci(lro);
 }
 
 int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
@@ -561,7 +562,8 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 		goto failed;
 
 	ret = xocl_fdt_blob_input(lro,
-			(char *)fw->data + dtc_header->m_sectionOffset);
+			(char *)fw->data + dtc_header->m_sectionOffset,
+			dtc_header->m_sectionSize);
 	if (ret) {
 		mgmt_err(lro, "Invalid PARTITION_METADATA");
 		goto failed;
@@ -596,6 +598,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	ret = xocl_subdev_create_all(lro);
 	if (ret)
 		goto failed;
+
 	ret = xocl_icap_download_boot_firmware(lro);
 	if (ret)
 		goto failed;

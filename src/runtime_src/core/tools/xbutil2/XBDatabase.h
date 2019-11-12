@@ -14,20 +14,16 @@
  * under the License.
  */
 
-#ifndef xma_utils_lib_h_
-#define xma_utils_lib_h_
+#ifndef __XBDatabase_h_
+#define __XBDatabase_h_
 
-namespace xma_core { namespace utils {
+// Include files
+// Please keep these to the bare minimum
+#include <boost/property_tree/ptree.hpp>
 
-int32_t load_libxrt();
-
-int32_t get_cu_index(int32_t dev_index, char* cu_name);
-int32_t get_default_ddr_index(int32_t dev_index, int32_t cu_index);
-void xma_enable_mode1(void);
-
-int32_t check_all_execbo(XmaSession s_handle);
-
-} // namespace utils
-} // namespace xma_core
+namespace XBDatabase {
+void create_complete_device_tree(boost::property_tree::ptree & _pt);
+};
 
 #endif
+

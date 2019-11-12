@@ -175,6 +175,7 @@ void xclmgmt_list_add(struct xclmgmt_dev *lro, struct pid *new_pid);
 void xclmgmt_list_remove(struct xclmgmt_dev *lro, struct pid *remove_pid);
 void xclmgmt_list_del(struct xclmgmt_dev *lro);
 bool xclmgmt_check_proc(struct xclmgmt_dev *lro, struct pid *pid);
+int xclmgmt_config_pci(struct xclmgmt_dev *lro);
 
 /* mgmt-xvc.c */
 long xvc_ioctl(struct xclmgmt_dev *lro, const void __user *arg);

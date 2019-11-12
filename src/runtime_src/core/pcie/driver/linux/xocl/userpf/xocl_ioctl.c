@@ -385,10 +385,15 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	}
 
 	/* Switching the xclbin, make sure none of the buffers are used. */
-	if (!preserve_mem && !XOCL_DSA_IS_VERSAL(xdev)) {
+	if (!preserve_mem) {
 		err = xocl_cleanup_mem(drm_p);
 		if (err)
 			goto done;
+
+		if (XOCL_DSA_IS_VERSAL(xdev)) {
+			vfree(xdev->mem_topo);
+			xdev->mem_topo = NULL;
+		}
 	}
 
 	if (!XOCL_DSA_IS_VERSAL(xdev)) {
@@ -411,16 +416,17 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 			(void) xocl_pci_rbar_refresh(xdev->core.pdev,
 					xdev->p2p_bar_idx);
 		}
+	} else if (!preserve_mem) {
+		xdev->mem_topo = vmalloc(size);
+		if (!xdev->mem_topo) {
+			err = -ENOMEM;
+			goto done;
+		}
+		memcpy(xdev->mem_topo, new_topology, size);
 	}
 
-	if (XOCL_DSA_IS_VERSAL(xdev)) {
-		if (drm_p->mm == NULL) {
-			rc = xocl_init_mem(drm_p, new_topology);
-			if (err == 0)
-				err = rc;
-		}
-	} else if (!preserve_mem) {
-		rc = xocl_init_mem(drm_p, NULL);
+	if (!preserve_mem) {
+		rc = xocl_init_mem(drm_p);
 		if (err == 0)
 			err = rc;
 	}

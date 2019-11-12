@@ -180,12 +180,17 @@ get_bool_value(const char* key, bool default_value)
 std::string
 get_string_value(const char* key, const std::string& default_value)
 {
-  std::string val = s_tree.m_tree.get<std::string>(key,default_value);
-  // Although INI file entries are not supposed to have quotes around strings
-  // but we want to be cautious
-  if (!val.empty() && (val.front() == '"') && (val.back() == '"')) {
-    val.erase(0, 1);
-    val.erase(val.size()-1);
+  std::string val = default_value;
+  try {
+    val = s_tree.m_tree.get<std::string>(key,default_value);
+    // Although INI file entries are not supposed to have quotes around strings
+    // but we want to be cautious
+    if (!val.empty() && (val.front() == '"') && (val.back() == '"')) {
+      val.erase(0, 1);
+      val.erase(val.size()-1);
+      } 
+    }catch( std::exception const&) {
+    // eat the exception, probably bad path
   }
   return val;
 }

@@ -239,7 +239,7 @@ int main(int argc, char *argv[])
 
     if (cmd == xcldev::HELP) {
         xcldev::printHelp(exe);
-        return 1;
+        return 0;
     }
     if (cmd == xcldev::VERSION) {
         xrt::version::print(std::cout);
@@ -1138,7 +1138,13 @@ int xcldev::device::runTestCase(const std::string& py,
         return -EINVAL;
     }
 
-    std::string cmd = "/usr/bin/python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
+    // python3 is just for ppc+ubuntu setup for now. In postinst we install pyopencl with python2.7
+    // so can't default to python3 if it's available. Need to revisit this when 2.7 is deprecated (Jan 1, 2020)
+    #if _ARCH_PPC
+        std::string cmd = "/usr/bin/python3 " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
+    #else
+        std::string cmd = "/usr/bin/python " + xrtTestCasePath + " -k " + xclbinPath + " -d " + std::to_string(m_idx);
+    #endif
     return runShellCmd(cmd, output);
 }
 
@@ -1200,6 +1206,12 @@ int xcldev::device::verifyKernelTest(void)
 int xcldev::device::bandwidthKernelTest(void)
 {
     std::string output;
+
+    if (sensor_tree::get<std::string>("system.linux", "N/A").find("Red Hat") != std::string::npos) {
+        std::cout << "Testcase not supported on Red Hat. Skipping validation"
+                  << std::endl;
+        return -EOPNOTSUPP;
+    }
 
     int ret = runTestCase(std::string("23_bandwidth.py"),
         std::string("bandwidth.xclbin"), output);

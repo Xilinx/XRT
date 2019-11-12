@@ -460,7 +460,7 @@ xclGetComputeUnitInfo(cl_kernel             kernel,
 #define XCL_MEM_LEGACY                  0x0
 #define XCL_MEM_TOPOLOGY                (1<<31)
 #define XCL_MEM_EXT_P2P_BUFFER          (1<<30)
-
+#define XCL_MEM_EXT_HOST_ONLY           (1<<29)
 //cl_program_info
 //accepted by the <flags> paramete of clGetProrgamInfo
 #define CL_PROGRAM_BUFFERS_XILINX       0x1180

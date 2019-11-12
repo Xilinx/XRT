@@ -30,15 +30,17 @@
 #define XOCL_USER_MEM		XRT_DRV_BO_USER_ALLOC
 #define XOCL_DRM_IMPORT 	XRT_DRV_BO_DRM_IMPORT
 #define XOCL_P2P_MEM		XRT_DRV_BO_P2P
+#define XOCL_CMA_MEM		XRT_DRV_BO_CMA
 
-#define XOCL_PAGE_ALLOC 	(XOCL_DRV_ALLOC | XOCL_USER_MEM | XOCL_P2P_MEM | XOCL_DRM_IMPORT)
+#define XOCL_PAGE_ALLOC 	(XOCL_DRV_ALLOC | XOCL_USER_MEM | XOCL_P2P_MEM | XOCL_DRM_IMPORT | XOCL_CMA_MEM)
 
 #define XOCL_BO_NORMAL		(XOCL_DEVICE_MEM | XOCL_HOST_MEM | XOCL_DRV_ALLOC | XOCL_DRM_SHMEM)
 #define XOCL_BO_USERPTR 	(XOCL_DEVICE_MEM | XOCL_HOST_MEM | XOCL_USER_MEM)
 #define XOCL_BO_P2P		(XOCL_DEVICE_MEM | XOCL_P2P_MEM)
 #define XOCL_BO_DEV_ONLY	(XOCL_DEVICE_MEM)
 #define XOCL_BO_IMPORT		(XOCL_HOST_MEM | XOCL_DRM_IMPORT)
-#define XOCL_BO_EXECBUF 	(XOCL_HOST_MEM | XOCL_DRV_ALLOC | XOCL_DRM_SHMEM)
+#define XOCL_BO_EXECBUF		(XOCL_HOST_MEM | XOCL_DRV_ALLOC | XOCL_DRM_SHMEM)
+#define XOCL_BO_CMA		(XOCL_HOST_MEM | XOCL_CMA_MEM)
 
 #define XOCL_BO_DDR0 (1 << 0)
 #define XOCL_BO_DDR1 (1 << 1)
@@ -69,6 +71,11 @@ static inline bool xocl_bo_p2p(const struct drm_xocl_bo *bo)
 {
 	return (bo->flags == XOCL_BO_P2P);
 }
+static inline bool xocl_bo_cma(const struct drm_xocl_bo *bo)
+{
+	return (bo->flags == XOCL_BO_CMA);
+}
+
 
 static inline struct drm_gem_object *xocl_gem_object_lookup(struct drm_device *dev,
 							    struct drm_file *filp,
@@ -115,6 +122,9 @@ static inline unsigned xocl_bo_type(unsigned user_flags)
 	case XCL_BO_FLAGS_CACHEABLE:
 		bo_type = XOCL_BO_NORMAL;
 		break;
+	case XCL_BO_FLAGS_HOST_ONLY:
+		bo_type = XOCL_BO_CMA;
+		break;
 	default:
 		bo_type = XOCL_BO_NORMAL;
 		break;
@@ -125,7 +135,8 @@ static inline unsigned xocl_bo_type(unsigned user_flags)
 
 static inline bool xocl_bo_sync_able(unsigned bo_flags)
 {
-	return (bo_flags & XOCL_DEVICE_MEM) && (bo_flags & XOCL_HOST_MEM);
+	return ((bo_flags & XOCL_DEVICE_MEM) && (bo_flags & XOCL_HOST_MEM)) 
+	    	|| (bo_flags & XOCL_CMA_MEM);
 }
 
 int xocl_create_bo_ioctl(struct drm_device *dev, void *data,

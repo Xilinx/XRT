@@ -402,18 +402,40 @@ static int get_header_from_peer(struct feature_rom *rom)
 	return 0;
 }
 
-static int get_header_from_dtb(struct feature_rom *rom)
+static void platform_type_append(char *prefix, u32 platform_type)
+{
+	char *type;
+
+	if (!prefix)
+		return;
+
+	switch (platform_type) {
+	case 0x0:
+		type = "_Recovery BLP";
+		break;
+	case 0x1:
+		type = "_1RP";
+		break;
+	case 0x2:
+		type = "_2RP";
+		break;
+	default:
+		type = "_Unknown";
+	}
+
+	strncat(prefix, type, XOCL_MAXNAMELEN - strlen(prefix) - 1);
+}
+
+static int init_rom_by_dtb(struct feature_rom *rom)
 {
 	xdev_handle_t xdev = xocl_get_xdev(rom->pdev);
 	struct FeatureRomHeader *header = &rom->header;
 	struct resource *res;
 	const char *vbnv;
-	int i, j = 0;
-
-	for (i = 31; i >= 0; i--, j+=2) {
-		sprintf(&rom->uuid[j], "%02x", *((uint8_t *)rom->base + i));
-	}
-	xocl_info(&rom->pdev->dev, "UUID %s", rom->uuid);
+	int i;
+	int bar;
+	u64 offset;
+	u32 platform_type;
 
 	if (XDEV(xdev)->fdt_blob) {
 		vbnv = fdt_getprop(XDEV(xdev)->fdt_blob, 0, "vbnv", NULL);
@@ -430,6 +452,11 @@ static int get_header_from_dtb(struct feature_rom *rom)
 		strncpy(header->VBNVName, XDEV(xdev)->priv.vbnv,
 				sizeof (header->VBNVName) - 1);
 
+	if (!xocl_subdev_vsec(xdev, XOCL_VSEC_PLATFORM_INFO, &bar, &offset)) {
+		platform_type = xocl_subdev_vsec_read32(xdev, bar, offset);
+		platform_type_append(header->VBNVName, platform_type);
+	}
+
 	xocl_xdev_info(xdev, "Searching ERT and CMC in dtb.");
 	res = xocl_subdev_get_ioresource(xdev, NODE_CMC_FW_MEM);
 	if (res) {
@@ -444,6 +471,41 @@ static int get_header_from_dtb(struct feature_rom *rom)
 	}
 
 	return 0;
+}
+
+static int get_header_from_dtb(struct feature_rom *rom)
+{
+	int i, j = 0;
+
+	/* uuid string should be 64 + '\0' */
+	BUG_ON(sizeof(rom->uuid) <= 64);
+
+	for (i = 28; i >= 0 && j < 64; i -= 4, j += 8) {
+		sprintf(&rom->uuid[j], "%08x", ioread32(rom->base + i));
+	}
+	xocl_info(&rom->pdev->dev, "UUID %s", rom->uuid);
+
+	return init_rom_by_dtb(rom);
+}
+
+static int get_header_from_vsec(struct feature_rom *rom)
+{
+	xdev_handle_t xdev = xocl_get_xdev(rom->pdev);
+	int bar;
+	u64 offset;
+	int ret;
+
+	ret = xocl_subdev_vsec(xdev, XOCL_VSEC_UUID_ROM, &bar, &offset);
+	if (ret)
+		return -ENODEV;
+
+	offset += pci_resource_start(XDEV(xdev)->pdev, bar);
+	xocl_xdev_info(xdev, "Mapping uuid at offset 0x%llx", offset);
+	rom->base = ioremap_nocache(offset, PAGE_SIZE);
+
+	//strcpy(rom->uuid, "11111c256808446c95821e06e144da3411111c256808446c95821e06e144da34");
+	//return init_rom_by_dtb(rom);
+	return get_header_from_dtb(rom);
 }
 
 static int get_header_from_iomem(struct feature_rom *rom)
@@ -515,9 +577,11 @@ static int feature_rom_probe(struct platform_device *pdev)
 	rom->pdev =  pdev;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (res == NULL)
-		(void)get_header_from_peer(rom);
-	else {
+	if (res == NULL) {
+		ret = get_header_from_vsec(rom);
+		if (ret)
+			(void)get_header_from_peer(rom);
+	} else {
 		rom->base = ioremap_nocache(res->start, res->end - res->start + 1);
 		if (!rom->base) {
 			ret = -EIO;
