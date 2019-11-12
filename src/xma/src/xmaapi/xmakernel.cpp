@@ -37,12 +37,12 @@ xma_kernel_session_create(XmaKernelProperties *props)
     if (!g_xma_singleton->xma_initialized) {
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
                    "XMA session creation must be after initialization\n");
-        return NULL;
+        return nullptr;
     }
     if (props->plugin_lib == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
                    "KernelProperties must set plugin_lib\n");
-        return NULL;
+        return nullptr;
     }
 
     void *handle = dlopen(props->plugin_lib, RTLD_NOW);
@@ -51,7 +51,7 @@ xma_kernel_session_create(XmaKernelProperties *props)
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
             "Failed to open plugin %s\n Error msg: %s\n",
             props->plugin_lib, dlerror());
-        return NULL;
+        return nullptr;
     }
 
     XmaKernelPlugin *plg =
@@ -62,19 +62,19 @@ xma_kernel_session_create(XmaKernelProperties *props)
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
             "Failed to get struct kernel_plugin from %s\n Error msg: %s\n",
             props->plugin_lib, dlerror());
-        return NULL;
+        return nullptr;
     }
     if (plg->xma_version == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
                    "KernelPlugin library must have xma_version function\n");
-        return NULL;
+        return nullptr;
     }
 
     XmaKernelSession *session = (XmaKernelSession*) malloc(sizeof(XmaKernelSession));
     if (session == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
             "Failed to allocate memory for kernelSession\n");
-        return NULL;
+        return nullptr;
     }
     memset(session, 0, sizeof(XmaKernelSession));
     // init session data
@@ -105,7 +105,7 @@ xma_kernel_session_create(XmaKernelProperties *props)
         //Release singleton lock
         g_xma_singleton->locked = false;
         free(session);
-        return NULL;
+        return nullptr;
     }
 
     uint32_t hwcfg_dev_index = 0;
@@ -123,7 +123,7 @@ xma_kernel_session_create(XmaKernelProperties *props)
         //Release singleton lock
         g_xma_singleton->locked = false;
         free(session);
-        return NULL;
+        return nullptr;
     }
     if ((cu_index > 0 && (uint32_t)cu_index >= hwcfg->devices[hwcfg_dev_index].number_of_cus) || (cu_index < 0 && props->cu_name == NULL)) {
         xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
@@ -131,7 +131,7 @@ xma_kernel_session_create(XmaKernelProperties *props)
         //Release singleton lock
         g_xma_singleton->locked = false;
         free(session);
-        return NULL;
+        return nullptr;
     }
     if (cu_index < 0) {
         std::string cu_name = std::string(props->cu_name);
@@ -149,7 +149,7 @@ xma_kernel_session_create(XmaKernelProperties *props)
             //Release singleton lock
             g_xma_singleton->locked = false;
             free(session);
-            return NULL;
+            return nullptr;
         }
     }
 
@@ -167,11 +167,11 @@ xma_kernel_session_create(XmaKernelProperties *props)
 
     //Allow user selected default ddr bank per XMA session
     if (xma_core::finalize_ddr_index(kernel_info, props->ddr_bank_index, 
-        &session->base.hw_session.bank_index, (char*)XMA_KERNEL_MOD) != XMA_SUCCESS) {
+        session->base.hw_session.bank_index, XMA_KERNEL_MOD) != XMA_SUCCESS) {
         //Release singleton lock
         g_xma_singleton->locked = false;
         free(session);
-        return NULL;
+        return nullptr;
     }
 
     if (kernel_info->kernel_channels) {
@@ -182,7 +182,7 @@ xma_kernel_session_create(XmaKernelProperties *props)
             //Release singleton lock
             g_xma_singleton->locked = false;
             free(session);
-            return NULL;
+            return nullptr;
         }
     }
 
@@ -197,7 +197,7 @@ xma_kernel_session_create(XmaKernelProperties *props)
         //Release singleton lock
         g_xma_singleton->locked = false;
         free(session);
-        return NULL;
+        return nullptr;
     }
 
     XmaHwDevice& dev_tmp1 = hwcfg->devices[hwcfg_dev_index];
@@ -207,7 +207,7 @@ xma_kernel_session_create(XmaKernelProperties *props)
             //Release singleton lock
             g_xma_singleton->locked = false;
             free(session);
-            return NULL;
+            return nullptr;
         }
     }
     // Allocate the private data
@@ -229,13 +229,13 @@ xma_kernel_session_create(XmaKernelProperties *props)
     int32_t num_execbo = g_xma_singleton->num_execbos;
     priv1->kernel_execbos.reserve(num_execbo);
     priv1->num_execbo_allocated = num_execbo;
-    if (xma_core::create_session_execbo(priv1, num_execbo, (char*) XMA_KERNEL_MOD) != XMA_SUCCESS) {
+    if (xma_core::create_session_execbo(priv1, num_execbo, XMA_KERNEL_MOD) != XMA_SUCCESS) {
         //Release singleton lock
         g_xma_singleton->locked = false;
         free(session->base.plugin_data);
         free(session);
         delete priv1;
-        return NULL;
+        return nullptr;
     }
 
     rc = session->kernel_plugin->init(session);
@@ -248,7 +248,7 @@ xma_kernel_session_create(XmaKernelProperties *props)
         free(session->base.plugin_data);
         free(session);
         delete priv1;
-        return NULL;
+        return nullptr;
     }
 
     kernel_info->in_use = true;
@@ -315,15 +315,15 @@ xma_kernel_session_destroy(XmaKernelSession *session)
     /*
     delete (XmaHwSessionPrivate*)session->base.hw_session.private_do_not_use;
     */
-    session->base.hw_session.private_do_not_use = NULL;
-    session->base.plugin_data = NULL;
+    session->base.hw_session.private_do_not_use = nullptr;
+    session->base.plugin_data = nullptr;
     session->base.stats = NULL;
     session->kernel_plugin = NULL;
     //do not change kernel in_use as it maybe in use by another plugin
     session->base.hw_session.dev_index = -1;
     session->base.session_signature = NULL;
     free(session);
-    session = NULL;
+    session = nullptr;
 
     //Release singleton lock
     g_xma_singleton->locked = false;

@@ -38,7 +38,7 @@
 #define XMAAPI_MOD "xmaapi"
 
 //Create singleton on the stack
-XmaSingleton xma_singleton_internal;
+static XmaSingleton xma_singleton_internal;
 
 XmaSingleton *g_xma_singleton = &xma_singleton_internal;
 

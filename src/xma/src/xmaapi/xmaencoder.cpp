@@ -79,12 +79,12 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
     if (!g_xma_singleton->xma_initialized) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
                    "XMA session creation must be after initialization\n");
-        return NULL;
+        return nullptr;
     }
     if (enc_props->plugin_lib == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
                    "EncoderProperties must set plugin_lib\n");
-        return NULL;
+        return nullptr;
     }
 
     void *handle = dlopen(enc_props->plugin_lib, RTLD_NOW);
@@ -93,7 +93,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
             "Failed to open plugin %s\n Error msg: %s\n",
             enc_props->plugin_lib, dlerror());
-        return NULL;
+        return nullptr;
     }
 
     XmaEncoderPlugin *plg =
@@ -104,19 +104,19 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
             "Failed to get struct encoder_plugin from %s\n Error msg: %s\n",
             enc_props->plugin_lib, dlerror());
-        return NULL;
+        return nullptr;
     }
     if (plg->xma_version == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
                    "EncoderPlugin library must have xma_version function\n");
-        return NULL;
+        return nullptr;
     }
 
     XmaEncoderSession *enc_session = (XmaEncoderSession*) malloc(sizeof(XmaEncoderSession));
     if (enc_session == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
             "Failed to allocate memory for encoderSession\n");
-        return NULL;
+        return nullptr;
     }
     memset(enc_session, 0, sizeof(XmaEncoderSession));
     // init session data
@@ -149,7 +149,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
         //Release singleton lock
         g_xma_singleton->locked = false;
         free(enc_session);
-        return NULL;
+        return nullptr;
     }
 
     uint32_t hwcfg_dev_index = 0;
@@ -167,7 +167,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
         //Release singleton lock
         g_xma_singleton->locked = false;
         free(enc_session);
-        return NULL;
+        return nullptr;
     }
     if ((cu_index > 0 && (uint32_t)cu_index >= hwcfg->devices[hwcfg_dev_index].number_of_cus) || (cu_index < 0 && enc_props->cu_name == NULL)) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
@@ -175,7 +175,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
         //Release singleton lock
         g_xma_singleton->locked = false;
         free(enc_session);
-        return NULL;
+        return nullptr;
     }
     if (cu_index < 0) {
         std::string cu_name = std::string(enc_props->cu_name);
@@ -193,7 +193,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
             //Release singleton lock
             g_xma_singleton->locked = false;
             free(enc_session);
-            return NULL;
+            return nullptr;
         }
     }
 
@@ -211,11 +211,11 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
 
     //Allow user selected default ddr bank per XMA session
     if (xma_core::finalize_ddr_index(kernel_info, enc_props->ddr_bank_index, 
-        &enc_session->base.hw_session.bank_index, (char*)XMA_ENCODER_MOD) != XMA_SUCCESS) {
+        enc_session->base.hw_session.bank_index, XMA_ENCODER_MOD) != XMA_SUCCESS) {
         //Release singleton lock
         g_xma_singleton->locked = false;
         free(enc_session);
-        return NULL;
+        return nullptr;
     }
 
     if (kernel_info->kernel_channels) {
@@ -226,7 +226,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
             //Release singleton lock
             g_xma_singleton->locked = false;
             free(enc_session);
-            return NULL;
+            return nullptr;
         }
     }
 
@@ -241,7 +241,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
         //Release singleton lock
         g_xma_singleton->locked = false;
         free(enc_session);
-        return NULL;
+        return nullptr;
     }
 
     XmaHwDevice& dev_tmp1 = hwcfg->devices[hwcfg_dev_index];
@@ -251,7 +251,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
             //Release singleton lock
             g_xma_singleton->locked = false;
             free(enc_session);
-            return NULL;
+            return nullptr;
         }
     }
     // Allocate the private data
@@ -273,13 +273,13 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
     int32_t num_execbo = g_xma_singleton->num_execbos;
     priv1->kernel_execbos.reserve(num_execbo);
     priv1->num_execbo_allocated = num_execbo;
-    if (xma_core::create_session_execbo(priv1, num_execbo, (char*) XMA_ENCODER_MOD) != XMA_SUCCESS) {
+    if (xma_core::create_session_execbo(priv1, num_execbo, XMA_ENCODER_MOD) != XMA_SUCCESS) {
         //Release singleton lock
         g_xma_singleton->locked = false;
         free(enc_session->base.plugin_data);
         free(enc_session);
         delete priv1;
-        return NULL;
+        return nullptr;
     }
 
     rc = enc_session->encoder_plugin->init(enc_session);
@@ -292,7 +292,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
         free(enc_session->base.plugin_data);
         free(enc_session);
         delete priv1;
-        return NULL;
+        return nullptr;
     }
 
     // Create encoder file if it does not exist and initialize all fields 
@@ -369,15 +369,15 @@ xma_enc_session_destroy(XmaEncoderSession *session)
     /*
     delete (XmaHwSessionPrivate*)session->base.hw_session.private_do_not_use;
     */
-    session->base.hw_session.private_do_not_use = NULL;
-    session->base.plugin_data = NULL;
+    session->base.hw_session.private_do_not_use = nullptr;
+    session->base.plugin_data = nullptr;
     session->base.stats = NULL;
     session->encoder_plugin = NULL;
     //do not change kernel in_use as it maybe in use by another plugin
     session->base.hw_session.dev_index = -1;
     session->base.session_signature = NULL;
     free(session);
-    session = NULL;
+    session = nullptr;
 
     //Release singleton lock
     g_xma_singleton->locked = false;
