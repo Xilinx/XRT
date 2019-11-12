@@ -4,7 +4,6 @@ set(Boost_USE_STATIC_LIBS ON)               # Only find static libraries
 set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
 set(Boost_USE_STATIC_RUNTIME ON)            # This is how the boost libraries were build
 
-# -----------------------------------------------------------------------------
 find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 include_directories(${Boost_INCLUDE_DIRS})
 
@@ -63,17 +62,15 @@ if(WIN32)
   endif()
 else()
   target_link_libraries(
-    xbutil2 -static 
-    ${Boost_LIBRARIES} 
+    xbutil2 
     xrt_core_static
     xrt_coreutil_static
+    boost_filesystem
+    boost_system
+    boost_program_options 
+    uuid
+    dl
   )
-
-  # On Ubuntu 18.04 CMake was appending '-Wl,-Bdynamic' to the command line which 
-  # was causing the executable to reference 'linux-vdso.so.1' which would then 
-  # produce "Command not found" when running the executable.
-  #   Therefore, we direct CMake to end with static, so that it doesn't do that:
-  set_target_properties(xbutil2 PROPERTIES LINK_SEARCH_END_STATIC 1)
 endif()
 
 install (TARGETS xbutil2 RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)

@@ -1,6 +1,13 @@
 XRT ChangeLog
 -------------
 
+2.4.0 (202010.2.4)
+~~~~~~~~~~~~~~~~~~
+
+Added
+.....
+* ``xclUnmapBO()`` was added to match ``xclMapBO()``.  This new API should be called when unmapping addresses returned by ``xclMapB()``.  On Linux the API ends up calling POSIX ``munmap()`` but on Windows the implementation is different.
+
 2.3.0 (201920.2.3)
 ~~~~~~~~~~~~~~~~~~
 

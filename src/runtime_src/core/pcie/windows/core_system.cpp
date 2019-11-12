@@ -17,6 +17,9 @@
 
 #include "common/core_system.h"
 #include "gen/version.h"
+#include <windows.h>
+
+#define BUFFER 128
 
 
 void xrt_core::system::get_xrt_info(boost::property_tree::ptree &_pt)
@@ -32,11 +35,53 @@ void xrt_core::system::get_xrt_info(boost::property_tree::ptree &_pt)
 }
 
 
-void xrt_core::system::get_os_info(boost::property_tree::ptree &_pt)
+static std::string getmachinename()
 {
-  // TODO
-  _pt.put("windows", "");
+  std::string machine;
+  SYSTEM_INFO sysInfo;
+
+  // Get hardware info
+  ZeroMemory(&sysInfo, sizeof(SYSTEM_INFO));
+  GetSystemInfo(&sysInfo);
+  // Set processor architecture
+  switch (sysInfo.wProcessorArchitecture) {
+  case PROCESSOR_ARCHITECTURE_AMD64:
+	  machine = "x86_64";
+	  break;
+  case PROCESSOR_ARCHITECTURE_IA64:
+	  machine = "ia64";
+	  break;
+  case PROCESSOR_ARCHITECTURE_INTEL:
+	  machine = "x86";
+	  break;
+  case PROCESSOR_ARCHITECTURE_UNKNOWN:
+  default:
+	  machine = "unknown";
+	  break;
+  }
+
+  return machine;
 }
 
+void xrt_core::system::get_os_info(boost::property_tree::ptree &_pt)
+{
+  char tnow[26];
+  time_t result = time(NULL);
+  char value[BUFFER];
+  DWORD BufferSize = BUFFER;
 
+  ctime_s(tnow, sizeof tnow, &result);
 
+  RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "ProductName", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
+  _pt.put("sysname", value);
+  //Reassign buffer size since it get override with size of value by RegGetValueA() call
+  BufferSize = BUFFER;
+  RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "BuildLab", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
+  _pt.put("release", value);
+  BufferSize = BUFFER;
+  RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "CurrentVersion", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
+  _pt.put("version", value);
+
+  _pt.put("machine", getmachinename().c_str());
+  _pt.put("now", tnow);
+}

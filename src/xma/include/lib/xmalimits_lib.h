@@ -32,4 +32,7 @@
 #define MAX_KERNEL_NAME         256
 #define MAX_DSA_NAME            256
 #define MAX_PLUGINS             32//32 encoders+32 decoders+...
+
+#define INVALID_M1             -1
+
 #endif

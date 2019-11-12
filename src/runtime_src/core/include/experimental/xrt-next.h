@@ -133,13 +133,13 @@ struct ProfileResults
   char* deviceName;
 
   uint64_t numAIM;
-  KernelTransferData* kernelTransferData;
+  struct KernelTransferData *kernelTransferData;
 
   uint64_t numAM;
-  CuExecData* cuExecData;
+  struct CuExecData *cuExecData;
 
   uint64_t numASM;
-  StreamTransferData* streamData;
+  struct StreamTransferData  *streamData;
 };
 
 /**
@@ -153,7 +153,7 @@ struct ProfileResults
  *                     This argument remains unchanged if xclCreateProfileResults fails.
  *
  */
-XCL_DRIVER_DLLESPEC int xclCreateProfileResults(xclDeviceHandle, ProfileResults**);
+XCL_DRIVER_DLLESPEC int xclCreateProfileResults(xclDeviceHandle, struct ProfileResults**);
 
 /**
  * int xclGetProfileResults(xclDeviceHandle, ProfileResults*)
@@ -166,7 +166,7 @@ XCL_DRIVER_DLLESPEC int xclCreateProfileResults(xclDeviceHandle, ProfileResults*
  *                    This buffer should be created using previous call to "xclCreateProfileResults"
  *
  */
-XCL_DRIVER_DLLESPEC int xclGetProfileResults(xclDeviceHandle, ProfileResults*);
+XCL_DRIVER_DLLESPEC int xclGetProfileResults(xclDeviceHandle, struct ProfileResults*);
 
 /**
  * int xclDestroyProfileResults(xclDeviceHandle, ProfileResults*)
@@ -178,7 +178,7 @@ XCL_DRIVER_DLLESPEC int xclGetProfileResults(xclDeviceHandle, ProfileResults*);
  * @ProfileResults* : Pointer to buffer to be deleted
  *
  */
-XCL_DRIVER_DLLESPEC int xclDestroyProfileResults(xclDeviceHandle, ProfileResults*);
+XCL_DRIVER_DLLESPEC int xclDestroyProfileResults(xclDeviceHandle, struct ProfileResults*);
 
 /**
  * xclRegRead() - Read register in register space of a CU

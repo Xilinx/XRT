@@ -2088,6 +2088,13 @@ void *HwEmShim::xclMapBO(unsigned int boHandle, bool write)
   return pBuf;
 }
 
+int HwEmShim::xclUnmapBO(unsigned int boHandle, void* addr)
+{
+  std::lock_guard<std::mutex> lk(mApiMtx);
+  auto bo = xclGetBoByHandle(boHandle);
+  return munmap(addr, bo->size);
+}
+
 /**************************************************************************************/
 
 /******************************** xclSyncBO *******************************************/

@@ -16,6 +16,20 @@ if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amazon" ]]; then
     fi
 fi
 
+if [[ $CPU == "aarch64" ]] && [[ $OSDIST == "ubuntu" ]]; then
+    # On ARM64 Ubuntu use GCC version 8 if available since default
+    # (GCC version 7) has random Internal Compiler Issues compiling XRT
+    # C++14 code
+    gcc-8 --version > /dev/null 2>&1
+    status1=$?
+    g++-8 --version > /dev/null 2>&1
+    status2=$?
+    if [[ $status1 == 0 ]] && [[ $status2 == 0 ]]; then
+	export CC=gcc-8
+	export CXX=g++-8
+    fi
+fi
+
 usage()
 {
     echo "Usage: build.sh [options]"
@@ -156,6 +170,8 @@ if [[ $opt == 1 ]]; then
 fi
 
 if [[ $driver == 1 ]]; then
+    unset CC
+    unset CXX
     echo "make -C usr/src/xrt-2.3.0/driver/xocl"
     make -C usr/src/xrt-2.3.0/driver/xocl
     if [[ $CPU == "aarch64" ]]; then

@@ -34,6 +34,10 @@
 #include "lib/libfdt/libfdt.h"
 #include <linux/firmware.h>
 
+#ifndef mmiowb
+#define mmiowb()		do { } while (0)
+#endif
+
 /* The fix for the y2k38 bug was introduced with Linux 3.17 and backported to
  * Red Hat 7.2.
  */
@@ -159,13 +163,13 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define	XDEV2DEV(xdev)		(&XDEV(xdev)->pdev->dev)
 
 #define xocl_err(dev, fmt, args...)			\
-	dev_err(dev, "%s: "fmt, __func__, ##args)
+	dev_err(dev, "dev %llx, %s: "fmt, (u64)dev, __func__, ##args)
 #define xocl_warn(dev, fmt, args...)			\
-	dev_warn(dev, "%s: "fmt, __func__, ##args)
+	dev_warn(dev, "dev %llx, %s: "fmt, (u64)dev, __func__, ##args)
 #define xocl_info(dev, fmt, args...)			\
-	dev_info(dev, "%s: "fmt, __func__, ##args)
+	dev_info(dev, "dev %llx, %s: "fmt, (u64)dev, __func__, ##args)
 #define xocl_dbg(dev, fmt, args...)			\
-	dev_dbg(dev, "%s: "fmt, __func__, ##args)
+	dev_dbg(dev, "dev %llx, %s: "fmt, (u64)dev, __func__, ##args)
 
 #define xocl_xdev_info(xdev, fmt, args...)		\
 	xocl_info(XDEV2DEV(xdev), fmt, ##args)
@@ -231,6 +235,20 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_INVALID_MINOR -1
 
 #define	GB(x)			((uint64_t)(x) * 1024 * 1024 * 1024)
+
+#define XOCL_VSEC_UUID_ROM          0x50
+#define XOCL_VSEC_FLASH_CONTROLER   0x51
+#define XOCL_VSEC_PLATFORM_INFO     0x52
+#define XOCL_VSEC_MAILBOX           0x53
+
+#define XOCL_MAXNAMELEN	64
+
+struct xocl_vsec_header {
+	u32		format;
+	u32		length;
+	u32		entry_sz;
+	u32		rsvd;
+};
 
 extern struct class *xrt_class;
 
@@ -353,6 +371,7 @@ struct xocl_dev_core {
 	struct xocl_drm		*drm;
 
 	char			*fdt_blob;
+	u32			fdt_blob_sz;
 	struct xocl_board_private priv;
 
 	rwlock_t		rwlock;
@@ -802,6 +821,7 @@ enum data_kind {
 	VOL_HBM_1V2,
 	VOL_VPP_2V5,
 	VOL_VCCINT_BRAM,
+	XMC_VER,
 };
 
 enum mb_kind {
@@ -914,10 +934,6 @@ enum {
 #define	xocl_icap_ocl_update_clock_freq_topology(xdev, freqs)		\
 	(ICAP_CB(xdev, ocl_update_clock_freq_topology) ?		\
 	ICAP_OPS(xdev)->ocl_update_clock_freq_topology(ICAP_DEV(xdev), freqs) :\
-	-ENODEV)
-#define	xocl_icap_ocl_set_freq(xdev, region, freqs, num)		\
-	(ICAP_CB(xdev, ocl_set_freq) ?					\
-	ICAP_OPS(xdev)->ocl_set_freq(ICAP_DEV(xdev), region, freqs, num) : \
 	-ENODEV)
 #define	xocl_icap_lock_bitstream(xdev, uuid)				\
 	(ICAP_CB(xdev, ocl_lock_bitstream) ?				\
@@ -1106,6 +1122,10 @@ int xocl_subdev_destroy_by_name(xdev_handle_t xdev_hdl, char *name);
 int xocl_subdev_destroy_prp(xdev_handle_t xdev);
 int xocl_subdev_create_prp(xdev_handle_t xdev);
 
+int xocl_subdev_vsec(xdev_handle_t xdev, u32 type, int *bar_idx, u64 *offset);
+u32 xocl_subdev_vsec_read32(xdev_handle_t xdev, int bar, u64 offset);
+int xocl_subdev_create_vsec_devs(xdev_handle_t xdev);
+
 struct resource *xocl_subdev_get_ioresource(xdev_handle_t xdev_hdl,
 		char *res_name);
 
@@ -1168,7 +1188,7 @@ int xocl_thread_start(xdev_handle_t xdev);
 int xocl_thread_stop(xdev_handle_t xdev);
 
 /* subdev blob functions */
-int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob);
+int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz);
 int xocl_fdt_remove_subdevs(xdev_handle_t xdev_hdl, struct list_head *devlist);
 int xocl_fdt_unlink_node(xdev_handle_t xdev_hdl, void *node);
 int xocl_fdt_overlay(void *fdt, int target, void *fdto, int node, int pf);

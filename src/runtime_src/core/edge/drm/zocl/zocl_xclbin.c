@@ -919,8 +919,10 @@ int
 zocl_xclbin_init(struct drm_zocl_dev *zdev)
 {
 	zdev->zdev_xclbin = vmalloc(sizeof(struct zocl_xclbin));
-	if (!zdev->zdev_xclbin)
+	if (!zdev->zdev_xclbin) {
+		DRM_ERROR("Alloc zdev_xclbin failed: no memory\n");
 		return -ENOMEM;
+	}
 
 	zdev->zdev_xclbin->zx_last_bitstream = 0;
 	zdev->zdev_xclbin->zx_refcnt = 0;
