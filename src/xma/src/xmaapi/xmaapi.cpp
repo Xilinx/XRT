@@ -174,29 +174,8 @@ void xma_thread1() {
         xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Session CU Command Relative Loads: ");
         for (auto& itr1: g_xma_singleton->all_sessions) {
             XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.second.hw_session.private_do_not_use;
-            switch(itr1.second.session_type) {
-                case XMA_SCALER:
-                    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Session id: %d, type: scaler, load: %d", itr1.first, (uint32_t)priv1->cmd_load);
-                    break;
-                case XMA_ENCODER:
-                    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Session id: %d, type: encoder, load: %d", itr1.first, (uint32_t)priv1->cmd_load);
-                    break;
-                case XMA_DECODER:
-                    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Session id: %d, type: decoder, load: %d", itr1.first, (uint32_t)priv1->cmd_load);
-                    break;
-                case XMA_FILTER:
-                    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Session id: %d, type: filter, load: %d", itr1.first, (uint32_t)priv1->cmd_load);
-                    break;
-                case XMA_KERNEL:
-                    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Session id: %d, type: kernel, load: %d", itr1.first, (uint32_t)priv1->cmd_load);
-                    break;
-                case XMA_ADMIN:
-                    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Session id: %d, type: admin, load: %d", itr1.first, (uint32_t)priv1->cmd_load);
-                    break;
-                default :
-                    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Session id: %d, type: invalid, load: %d", itr1.first, (uint32_t)priv1->cmd_load);
-                    break;
-            }
+            xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Session id: %d, type: %s, load: %d", itr1.first, 
+                xma_core::sessionMap.at(itr1.second.session_type).c_str(),(uint32_t)priv1->cmd_load);
         }
         xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Num of Decoders: %d", (uint32_t)g_xma_singleton->num_decoders);
         xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Num of Scalers: %d", (uint32_t)g_xma_singleton->num_scalers);
