@@ -169,42 +169,18 @@ void xma_thread1() {
         }
     }
     //Print all stats here
-    //Sarab TODO don't print for single session
-    //if (g_xma_singleton->all_sessions.size() > 1) {
-        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Session CU Command Relative Loads: ");
-        for (auto& itr1: g_xma_singleton->all_sessions) {
-            XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.second.hw_session.private_do_not_use;
-            switch(itr1.second.session_type) {
-                case XMA_SCALER:
-                    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Session id: %d, type: scaler, load: %d", itr1.first, (uint32_t)priv1->cmd_load);
-                    break;
-                case XMA_ENCODER:
-                    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Session id: %d, type: encoder, load: %d", itr1.first, (uint32_t)priv1->cmd_load);
-                    break;
-                case XMA_DECODER:
-                    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Session id: %d, type: decoder, load: %d", itr1.first, (uint32_t)priv1->cmd_load);
-                    break;
-                case XMA_FILTER:
-                    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Session id: %d, type: filter, load: %d", itr1.first, (uint32_t)priv1->cmd_load);
-                    break;
-                case XMA_KERNEL:
-                    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Session id: %d, type: kernel, load: %d", itr1.first, (uint32_t)priv1->cmd_load);
-                    break;
-                case XMA_ADMIN:
-                    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Session id: %d, type: admin, load: %d", itr1.first, (uint32_t)priv1->cmd_load);
-                    break;
-                default :
-                    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Session id: %d, type: invalid, load: %d", itr1.first, (uint32_t)priv1->cmd_load);
-                    break;
-            }
-        }
-        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Num of Decoders: %d", (uint32_t)g_xma_singleton->num_decoders);
-        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Num of Scalers: %d", (uint32_t)g_xma_singleton->num_scalers);
-        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Num of Encoders: %d", (uint32_t)g_xma_singleton->num_encoders);
-        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Num of Filters: %d", (uint32_t)g_xma_singleton->num_filters);
-        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Num of Kernels: %d", (uint32_t)g_xma_singleton->num_kernels);
-        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Num of Admins: %d\n", (uint32_t)g_xma_singleton->num_admins);
-    //}
+    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Session CU Command Relative Loads: ");
+    for (auto& itr1: g_xma_singleton->all_sessions) {
+        XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.second.hw_session.private_do_not_use;
+        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Session id: %d, type: %s, load: %d", itr1.first, 
+            xma_core::get_session_name(itr1.second.session_type).c_str(), (uint32_t)priv1->cmd_load);
+    }
+    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Num of Decoders: %d", (uint32_t)g_xma_singleton->num_decoders);
+    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Num of Scalers: %d", (uint32_t)g_xma_singleton->num_scalers);
+    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Num of Encoders: %d", (uint32_t)g_xma_singleton->num_encoders);
+    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Num of Filters: %d", (uint32_t)g_xma_singleton->num_filters);
+    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Num of Kernels: %d", (uint32_t)g_xma_singleton->num_kernels);
+    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Num of Admins: %d\n", (uint32_t)g_xma_singleton->num_admins);
 }
 
 void xma_thread2() {
@@ -233,33 +209,37 @@ void xma_thread2() {
                 continue;
             }
 
-            if (priv1->num_cu_cmds > 0) {
-                expected = false;
-                //if ((*(dev_tmp1->execwait_locked)).compare_exchange_weak(expected, desired)) {
-                if (priv1->execwait_locked.compare_exchange_weak(expected, desired)) {
-                    ret = xclExecWait(priv1->dev_handle, 30);
-                    if (ret > 0) {
-                        expected = false;
-                        while (!priv1->execbo_locked.compare_exchange_weak(expected, desired)) {
-                            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                            expected = false;
-                        }
-                        //execbo lock acquired
-
-                        if (xma_core::utils::check_all_execbo(itr1.second) != XMA_SUCCESS) {
-                            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA thread2 failed-4. Unexpected error\n");
-                            //Release execbo lock
-                            priv1->execbo_locked = false;
-                            priv1->execwait_locked = false;
-                            continue;
-                        }
-
-                        //Release execbo lock
-                        priv1->execbo_locked = false;
-                        priv1->execwait_locked = false;
-                    }
-                }
+            if (priv1->num_cu_cmds == 0) {
+                continue;
             }
+
+            expected = false;
+            if (!priv1->execwait_locked.compare_exchange_weak(expected, desired)) {
+                continue;
+            }
+            ret = xclExecWait(priv1->dev_handle, 30);
+            if (ret <= 0) {
+                priv1->execwait_locked = false;
+                continue;
+            }
+            expected = false;
+            while (!priv1->execbo_locked.compare_exchange_weak(expected, desired)) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                expected = false;
+            }
+            //execbo lock acquired
+
+            if (xma_core::utils::check_all_execbo(itr1.second) != XMA_SUCCESS) {
+                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA thread2 failed-4. Unexpected error\n");
+                //Release execbo lock
+                priv1->execbo_locked = false;
+                priv1->execwait_locked = false;
+                continue;
+            }
+
+            //Release execbo lock
+            priv1->execbo_locked = false;
+            priv1->execwait_locked = false;
         }
     }
 }

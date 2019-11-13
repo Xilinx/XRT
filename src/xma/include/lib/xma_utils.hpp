@@ -22,16 +22,8 @@
 #include <map>
 
 namespace xma_core {
-   static const std::map<XmaSessionType, const std::string> sessionMap = {
-      { XmaSessionType::XMA_SCALER, "scaler"},
-      { XmaSessionType::XMA_ENCODER, "encoder"},
-      { XmaSessionType::XMA_DECODER, "decoder"},
-      { XmaSessionType::XMA_FILTER, "filter"},
-      { XmaSessionType::XMA_KERNEL, "kernel"},
-      { XmaSessionType::XMA_ADMIN, "admin"},
-      { XmaSessionType::XMA_INVALID, "invalid"}
-   };
-
+   std::string get_session_name(XmaSessionType eSessionType);
+   
    int32_t finalize_ddr_index(XmaHwKernel* kernel_info, int32_t req_ddr_index, int32_t& ddr_index, const std::string& prefix);
    int32_t create_session_execbo(XmaHwSessionPrivate *priv, int32_t count, const std::string& prefix);
 }
