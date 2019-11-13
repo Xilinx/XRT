@@ -37,7 +37,7 @@
 extern XmaSingleton *g_xma_singleton;
 
 namespace xma_core {
-    const std::map<XmaSessionType, const std::string> sessionMap = {
+    static const std::map<XmaSessionType, const std::string> sessionMap = {
         { XmaSessionType::XMA_SCALER, "scaler"},
         { XmaSessionType::XMA_ENCODER, "encoder"},
         { XmaSessionType::XMA_DECODER, "decoder"},
@@ -46,6 +46,14 @@ namespace xma_core {
         { XmaSessionType::XMA_ADMIN, "admin"},
         { XmaSessionType::XMA_INVALID, "invalid"}
     };
+
+    std::string get_session_name(XmaSessionType eSessionType) {
+        auto it = sessionMap.find(eSessionType);
+        if (it == sessionMap.end()) {
+            return std::string("invalid");
+        }
+        return it->second;
+    }
 
     int32_t finalize_ddr_index(XmaHwKernel* kernel_info, int32_t req_ddr_index, int32_t& ddr_index, const std::string& prefix) {
         ddr_index = INVALID_M1;
@@ -375,7 +383,7 @@ void get_session_cmd_load() {
       for (auto& itr1: g_xma_singleton->all_sessions) {
         XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.second.hw_session.private_do_not_use;
         xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Session id: %d, type: %s, load: %d", itr1.first, 
-            xma_core::sessionMap.at(itr1.second.session_type).c_str(),(uint32_t)priv1->cmd_load);
+            xma_core::get_session_name(itr1.second.session_type).c_str(), (uint32_t)priv1->cmd_load);
       }
       xma_logmsg(level, "XMA-Session-Load", "Num of Decoders: %d", (uint32_t)g_xma_singleton->num_decoders);
       xma_logmsg(level, "XMA-Session-Load", "Num of Scalers: %d", (uint32_t)g_xma_singleton->num_scalers);
