@@ -249,7 +249,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 			// 0x53000 runtime clk scaling
 			NULL
 		},
-		5,
+		3,
 		0,
 		NULL,
 		NULL,
