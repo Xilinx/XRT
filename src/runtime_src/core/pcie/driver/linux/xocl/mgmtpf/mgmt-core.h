@@ -139,6 +139,9 @@ struct xclmgmt_dev {
 
 	/* ID set on mgmt and passed to user for inter-domain communication */
 	u64 comm_id;
+
+	/* save config for pci reset */
+	u32 saved_config[8][16];
 };
 
 extern int health_check;
