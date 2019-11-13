@@ -14,6 +14,7 @@ file(GLOB EM_SRC_FILES
   "${COMMON_EM_SRC_DIR}/*.cpp"
   "${EM_SRC_DIR}/*.h"
   "${EM_SRC_DIR}/*.cpp"
+  "../../common/stub.cpp"
   )
 
 add_definitions(-DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=0 -D__HWEM__)

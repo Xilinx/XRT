@@ -12,6 +12,7 @@ file(GLOB XRT_USER_FILES
   "*.h"
   "*.cpp"
   "*.c"
+  "../../common/stub.cpp"
   )
 
 set(CMAKE_CXX_FLAGS "-DXCLHAL_MAJOR_VER=2 ${CMAKE_CXX_FLAGS}")
