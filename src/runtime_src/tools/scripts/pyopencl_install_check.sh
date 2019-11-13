@@ -14,11 +14,15 @@ if [ -z $PYTHON ] ; then
 fi
 echo "Python version: $PYTHON"
 
-PIP=$(sudo pip -V 2>&1 | grep -Po '(?<=pip )(.+)' | grep -Po '[0-9][0-9].[0-9]')
-if [ -z $PIP ] ; then
+PIP=$(sudo pip -V 2>&1 | grep -Po '(?<=pip )(.+)')
+trauncate=$(echo ${PIP% from*})
+trauncate2=$(echo ${trauncate%.*})
+PIP_VER=$( printf "%.1f"'\n' $trauncate2 )
+
+if [ -z $PIP_VER ] ; then
     echo "ERROR: Pip is not installed on the system"
     exit 1
-elif [ 1 -eq "$(echo "${PIP} < 18.0" | bc)" ]; then
+elif [ 1 -eq "$(echo "${PIP_VER} < 18.0" | bc)" ]; then
     WARNING=1
     echo "WARNING: An older version of pip is installed. Please try"
     echo "upgrading pip using 'sudo pip install --upgrade pip'"
