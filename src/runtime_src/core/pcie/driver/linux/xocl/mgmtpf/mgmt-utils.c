@@ -251,13 +251,12 @@ done:
 
 static int xocl_match_slot_and_save(struct device *dev, void *data)
 {
+	struct xclmgmt_dev *lro = data;
 	struct pci_dev *pdev;
-	unsigned long slot;
 
 	pdev = to_pci_dev(dev);
-	slot = PCI_SLOT(pdev->devfn);
 
-	if (slot == (unsigned long)data) {
+	if ((XOCL_DEV_ID(pdev) >> 3) == (XOCL_DEV_ID(lro->pci_dev) >> 3)) {
 		pci_cfg_access_lock(pdev);
 		pci_save_state(pdev);
 	}
@@ -265,23 +264,19 @@ static int xocl_match_slot_and_save(struct device *dev, void *data)
 	return 0;
 }
 
-static void xocl_pci_save_config_all(struct pci_dev *pdev)
+static void xocl_pci_save_config_all(struct xclmgmt_dev *lro)
 {
-	unsigned long slot = PCI_SLOT(pdev->devfn);
-
-	bus_for_each_dev(&pci_bus_type, NULL, (void *)slot,
-		xocl_match_slot_and_save);
+	bus_for_each_dev(&pci_bus_type, NULL, lro, xocl_match_slot_and_save);
 }
 
 static int xocl_match_slot_and_restore(struct device *dev, void *data)
 {
+	struct xclmgmt_dev *lro = data;
 	struct pci_dev *pdev;
-	unsigned long slot;
 
 	pdev = to_pci_dev(dev);
-	slot = PCI_SLOT(pdev->devfn);
 
-	if (slot == (unsigned long)data) {
+	if ((XOCL_DEV_ID(pdev) >> 3) == (XOCL_DEV_ID(lro->pci_dev) >> 3)) {
 		pci_restore_state(pdev);
 		pci_cfg_access_unlock(pdev);
 	}
@@ -289,12 +284,9 @@ static int xocl_match_slot_and_restore(struct device *dev, void *data)
 	return 0;
 }
 
-static void xocl_pci_restore_config_all(struct pci_dev *pdev)
+static void xocl_pci_restore_config_all(struct xclmgmt_dev *lro)
 {
-	unsigned long slot = PCI_SLOT(pdev->devfn);
-
-	bus_for_each_dev(&pci_bus_type, NULL, (void *)slot,
-		xocl_match_slot_and_restore);
+	bus_for_each_dev(&pci_bus_type, NULL, lro, xocl_match_slot_and_restore);
 }
 /*
  * Inspired by GenWQE driver, card_base.c
@@ -316,7 +308,7 @@ int pci_fundamental_reset(struct xclmgmt_dev *lro)
 	printk(KERN_INFO "%s: pci_fundamental_reset \n", DRV_NAME);
 
 	/* Save pci config space for botht the pf's */
-	xocl_pci_save_config_all(pci_dev);
+	xocl_pci_save_config_all(lro);
 
 	rc = pcie_mask_surprise_down(pci_dev, &orig_mask);
 	if (rc)
@@ -357,7 +349,7 @@ done:
 
 	/* restore pci config space for botht the pf's */
 	rc = pcie_unmask_surprise_down(pci_dev, orig_mask);
-	xocl_pci_restore_config_all(pci_dev);
+	xocl_pci_restore_config_all(lro);
 
 	/* Also freeze and free AXI gate to reset the OCL region. */
 	xocl_icap_reset_axi_gate(lro);
@@ -376,7 +368,7 @@ void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	mgmt_info(lro, "Reset PCI");
 
 	/* what if user PF in VM ? */
-	xocl_pci_save_config_all(pdev);
+	xocl_pci_save_config_all(lro);
 
 	/* Reset secondary bus. */
 	bus = pdev->bus;
@@ -398,7 +390,7 @@ void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 
 	mgmt_info(lro, "Resetting for %d ms", i);
 
-	xocl_pci_restore_config_all(pdev);
+	xocl_pci_restore_config_all(lro);
 
 	xclmgmt_config_pci(lro);
 }
