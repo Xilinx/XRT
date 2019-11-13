@@ -24,6 +24,7 @@ file(GLOB XRT_CORECOMMON_LIB_FILES
 # Files to include in object list
 file(GLOB XRT_CORECOMMON_OBJ_FILES
   "scheduler.*"
+  "device_core.*"
   )
 
 add_library(xrt_coreutil SHARED ${XRT_CORECOMMON_LIB_FILES})

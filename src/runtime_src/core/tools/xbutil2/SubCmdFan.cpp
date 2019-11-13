@@ -27,6 +27,14 @@ namespace po = boost::program_options;
 // System - Include Files
 #include <iostream>
 
+// ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
+#include "SubCmd.h"
+static unsigned int registerResult = 
+                    register_subcommand("fan", 
+                                        "Set the fan speed",
+                                        subCmdFan);
+// =============================================================================
+
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
 
@@ -34,16 +42,18 @@ namespace po = boost::program_options;
 
 // ------ F U N C T I O N S ---------------------------------------------------
 
-int subCmdFan(const std::vector<std::string> &_options, bool _help)
+int subCmdFan(const std::vector<std::string> &_options)
 // Reference Command:  fan -s fanspeed
 
 {
   XBU::verbose("SubCommand: fan");
   // -- Retrieve and parse the subcommand options -----------------------------
   uint64_t fanSpeed = 0;
+  bool help = false;
 
   po::options_description fanDesc("fan options");
   fanDesc.add_options()
+    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
     (",d", boost::program_options::value<uint64_t>(&fanSpeed), "Fan speed")
   ;
 
@@ -62,7 +72,7 @@ int subCmdFan(const std::vector<std::string> &_options, bool _help)
   }
 
   // Check to see if help was requested or no command was found
-  if (_help == true)  {
+  if (help == true)  {
     std::cout << fanDesc << std::endl;
     return 0;
   }

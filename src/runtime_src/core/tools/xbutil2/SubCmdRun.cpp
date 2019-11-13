@@ -16,7 +16,7 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
-#include "SubCmdClock.h"
+#include "SubCmdRun.h"
 #include "XBUtilities.h"
 namespace XBU = XBUtilities;
 
@@ -27,6 +27,14 @@ namespace po = boost::program_options;
 // System - Include Files
 #include <iostream>
 
+// ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
+#include "SubCmd.h"
+static unsigned int registerResult = 
+                    register_subcommand("run", 
+                                        "<add description>",
+                                        subCmdRun);
+// =============================================================================
+
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
 
@@ -34,7 +42,7 @@ namespace po = boost::program_options;
 
 // ------ F U N C T I O N S ---------------------------------------------------
 
-int subCmdRun(const std::vector<std::string> &_options, bool _help)
+int subCmdRun(const std::vector<std::string> &_options)
 // Reference Command: run -c computIndex -r region
 
 {
@@ -42,9 +50,11 @@ int subCmdRun(const std::vector<std::string> &_options, bool _help)
   // -- Retrieve and parse the subcommand options -----------------------------
   uint64_t computeIndex = 0;
   uint64_t region = 0;
+  bool help = false;
 
   po::options_description runDesc("run options");
   runDesc.add_options()
+    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
     (",c", boost::program_options::value<uint64_t>(&computeIndex), "Compute Index")
     (",r", boost::program_options::value<uint64_t>(&region), "Card region")
   ;
@@ -64,7 +74,7 @@ int subCmdRun(const std::vector<std::string> &_options, bool _help)
   }
 
   // Check to see if help was requested or no command was found
-  if (_help == true)  {
+  if (help == true)  {
     std::cout << runDesc << std::endl;
     return 0;
   }

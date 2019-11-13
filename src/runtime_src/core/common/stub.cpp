@@ -14,13 +14,13 @@
  * under the License.
  */
 
-#ifndef __SubCmdRun_h_
-#define __SubCmdRun_h_
+#include "stub.h"
 
-// Please keep eternal include file dependencies to a minimum
-#include <vector>
-#include <string>
-  
-int subCmdRun(const std::vector<std::string> &_options);
+ /**
+ * Helper function to initialize the child's class constructer.
+ */
+void xrt_core::initialize_child_ctor()
+{
+  // Empty
+}
 
-#endif

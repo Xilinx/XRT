@@ -21,6 +21,6 @@
 #include <vector>
 #include <string>
   
-int subCmdFan(const std::vector<std::string> &_options, bool _help);
+int subCmdFan(const std::vector<std::string> &_options);
 
 #endif
