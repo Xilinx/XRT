@@ -28,6 +28,7 @@
 
 namespace xrt_core {
 
+void initialize_child_ctor();
 
 /**
  * Helper function to initialize the child's class constructer.
@@ -193,7 +194,7 @@ class device_core {
      *               The child's class constructure.
      */
   public:
-    static void register_child_ctor( device_core_factory _device_core_factory);
+    static unsigned int register_child_ctor( device_core_factory _device_core_factory);
 
   private:
     static device_core_factory m_singleton_ctor;

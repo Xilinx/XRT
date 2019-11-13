@@ -18,7 +18,6 @@
 #include "device_windows.h"
 #include "common/utils.h"
 #include "include/xrt.h"
-#include "common/stub.h"
 #include <string>
 #include <iostream>
 #include "boost/format.hpp"

@@ -19,7 +19,6 @@
 #include "common/utils.h"
 #include "include/xrt.h"
 #include "boost/format.hpp"
-#include "stub.h"
 #include <string>
 #include <iostream>
 
@@ -145,10 +144,11 @@ xrt_core::device_core::get_handle()
   return *pSingleton;
 }
 
-void
+unsigned int
 xrt_core::device_core::register_child_ctor(device_core_factory _device_core_factory)
 {
   m_singleton_ctor = _device_core_factory;
+  return 0;
 }
 
 std::string

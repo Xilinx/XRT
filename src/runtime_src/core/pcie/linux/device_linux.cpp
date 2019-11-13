@@ -19,12 +19,20 @@
 #include "common/utils.h"
 #include "include/xrt.h"
 #include "scan.h"
-#include "common/stub.h"
 #include <string>
 #include <iostream>
 #include "boost/format.hpp"
 #include <map>
 
+
+
+void xrt_core::initialize_child_ctor()
+{
+  xrt_core::device_core::register_child_ctor(boost::factory<xrt_core::device_linux *>());
+}
+
+
+unsigned int foo = xrt_core::device_core::register_child_ctor(boost::factory<xrt_core::device_linux *>());
 
 const xrt_core::device_linux::SysDevEntry & 
 xrt_core::device_linux::get_sysdev_entry( QueryRequest _eQueryRequest) const
@@ -161,11 +169,6 @@ xrt_core::device_linux::query_device(uint64_t _deviceID, QueryRequest _eQueryReq
   }
 }
 
-
-void xrt_core::initialize_child_ctor()
-{
-  xrt_core::device_core::register_child_ctor(boost::factory<xrt_core::device_linux *>());
-}
 
 xrt_core::device_linux::device_linux()
 {

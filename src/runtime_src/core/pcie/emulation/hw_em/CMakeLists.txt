@@ -14,7 +14,6 @@ include_directories(
 file(GLOB EM_SRC_FILES
   "${EM_SRC_DIR}/*.h"
   "${EM_SRC_DIR}/*.cxx"
-  "../../../common/stub.cpp"      # Child implemented C functions
   )
 
 add_definitions(-DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=0)

@@ -16,7 +16,6 @@ include_directories(
 file(GLOB XRT_USER_AWS_FILES
   "*.h"
   "*.cpp"
-  "../../common/stub.cpp"      # Child implemented C functions
   )
 
 set(CMAKE_CXX_FLAGS "-DXCLHAL_MAJOR_VER=2 ${CMAKE_CXX_FLAGS}")
