@@ -34,8 +34,8 @@ public:
     int getId();
     int getMailbox();
     uint64_t getSwitch();
-	int getIndex();
-    std::shared_ptr<pcidev::pci_device> getDev();
+    int getIndex() const;
+    std::shared_ptr<pcidev::pci_device> getDev() const;
 
     // Load config from device's sysfs nodes
     bool loadConf();
@@ -43,7 +43,7 @@ public:
     int updateConf(std::string host, uint16_t port, uint64_t swch);
 
     // prefix syslog msg with dev specific bdf
-    void log(int priority, const char *format, ...);
+    void log(int priority, const char *format, ...) const;
 
 private:
     std::string host;
@@ -52,7 +52,7 @@ private:
     int devId = 0;
     int mbxfd = -1;
     std::shared_ptr<pcidev::pci_device> dev;
-	size_t index;
+    size_t index;
     std::mutex lock;
     bool validConf();
     void clearConf();

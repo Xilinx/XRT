@@ -17,60 +17,98 @@
 /* Declaring interfaces for mpd plugin. */
 /* For all functions return int, 0 = success, negative value indicate error. */
 
-#ifndef	MPD_PLUGIN_H
-#define	MPD_PLUGIN_H
+#ifndef MPD_PLUGIN_H
+#define MPD_PLUGIN_H
 
 #include "xclbin.h"
 
-typedef int (*get_remote_msd_fd_fn)(size_t index, int &fd);
-typedef int (*load_xclbin_fn)(size_t index, const axlf *&buf);
-typedef int (*get_icap_data_fn)(size_t index,
-	   std::shared_ptr<struct xcl_hwicap> &resp,
-	   size_t &resp_len);
-typedef int (*get_sensor_data_fn)(size_t index,
-	   std::shared_ptr<struct xcl_sensor> &resp,
-	   size_t &resp_len);
-typedef int (*get_board_info_fn)(size_t index,
-	   std::shared_ptr<struct xcl_common> &resp,
-	   size_t &resp_len);
-typedef int (*get_mig_data_fn)(size_t index,
-	   std::shared_ptr<struct xcl_mig_ecc> &resp,
-	   size_t &resp_len);
-typedef int (*get_firewall_data_fn)(size_t index,
-	   std::shared_ptr<struct xcl_mig_ecc> &resp,
-	   size_t &resp_len);
-typedef int (*get_dna_data_fn)(size_t index,
-	   std::shared_ptr<struct xcl_dna> &resp,
-	   size_t &resp_len);
-typedef int (*get_subdev_data_fn)(size_t index,
-	   std::shared_ptr<void> &resp,
-	   size_t &resp_len);
-typedef int (*lock_bitstream_fn)(size_t index);
-typedef int (*unlock_bitstream_fn)(size_t index);
-typedef int (*hot_reset_fn)(size_t index);
-typedef int (*reclock2_fn)(size_t index, struct xclmgmt_ioc_freqscaling *&obj);
+typedef int (*get_remote_msd_fd_fn)(size_t index, int *fd);
+typedef int (*hot_reset_fn)(size_t index, int *resp);
+typedef int (*load_xclbin_fn)(size_t index, const axlf *buf, int *resp);
+typedef int (*reclock2_fn)(size_t index, const struct xclmgmt_ioc_freqscaling *obj, int *resp);
+typedef int (*get_icap_data_fn)(size_t index, struct xcl_hwicap *resp);
+typedef int (*get_sensor_data_fn)(size_t index, struct xcl_sensor *resp);
+typedef int (*get_board_info_fn)(size_t index, struct xcl_common *resp);
+typedef int (*get_mig_data_fn)(size_t index, char *resp, size_t resp_len);
+typedef int (*get_firewall_data_fn)(size_t index, struct xcl_mig_ecc *resp);
+typedef int (*get_dna_data_fn)(size_t index, struct xcl_dna *resp);
+typedef int (*get_subdev_data_fn)(size_t index, char *resp, size_t resp_len);
+typedef int (*user_probe_fn)(size_t index, struct mailbox_conn_resp *resp);
+typedef int (*program_shell_fn)(size_t index, int *resp);
+typedef int (*read_p2p_bar_addr_fn)(size_t index, const struct mailbox_p2p_bar_addr *addr, int *resp);
 
+/*
+ * plugin reports some hooks require special treatment from mpd
+ */
+enum MPD_PLUGIN_CAP
+{
+    /*
+     * plugin itself can't fulfil the reset, need mpd help
+     */
+    CAP_RESET_NEED_HELP = 0,
+};
 
+/*
+ * hook functions or cookie set by the plugin
+ */
 struct mpd_plugin_callbacks {
-	void *mpc_cookie;
+    /*
+     * cookie is set by init_fn and used by fini_fn to do any cleaning
+     * work specific to the plugin. See below for init_fn and fini_fn
+     */
+    void *mpc_cookie;
+    /*
+     * The hook function that is used to setup communication channel to
+     * the msd daemon. By default, msd and mpd talk to each other through
+     * a tcp socket. If the vendors want to setup a different type of
+     * socket, they can implemente this hook function. If they don't want
+     * to leverage the msd daemon, they can just run return a -1 to the
+     * fd -- this is the case for most public cloud vendors so that they
+     * have more controls on the xclbin downloading.
+     */
     get_remote_msd_fd_fn get_remote_msd_fd;
-	load_xclbin_fn load_xclbin;
-	get_icap_data_fn get_icap_data;
-	get_sensor_data_fn get_sensor_data;
-	get_board_info_fn get_mgmt_data;
-	get_mig_data_fn get_mig_data;
-	get_firewall_data_fn get_firewall_data;
-	get_dna_data_fn get_dna_data;
-	get_subdev_data_fn get_subdev_data;
-	lock_bitstream_fn lock_bitstream;
-	unlock_bitstream_fn unlock_bitstream;
-	hot_reset_fn hot_reset;
-	reclock2_fn reclock2;
+    /*
+     * The following are all hook functions handling software mailbox msg
+     * that initialized from xocl driver
+     * Now all hook functions are mandatory. For example, vendors using
+     * Xilinx FPGA boards have all mailbox msg other than xclbin download
+     * gone through HW mailbox, then they only need to implement the
+     * 'load_xclbin_fn' below. For vendors using their own FPGA boards,
+     * say AWS, they may need to implement more hook functions depending
+     * on how many features their own HW have.
+     */
+    struct {
+        hot_reset_fn hot_reset; //5 optional
+        load_xclbin_fn load_xclbin; //8 mandatory
+        reclock2_fn reclock2; //9 optional
+        struct {
+        	get_icap_data_fn get_icap_data;
+        	get_sensor_data_fn get_sensor_data;
+        	get_board_info_fn get_board_info;
+        	get_mig_data_fn get_mig_data;
+        	get_firewall_data_fn get_firewall_data;
+        	get_dna_data_fn get_dna_data;
+        	get_subdev_data_fn get_subdev_data;
+        } peer_data; //10 optional
+        user_probe_fn user_probe; //11 mandatory for customized HW
+        program_shell_fn program_shell; //14 optional
+        read_p2p_bar_addr_fn read_p2p_bar_addr; //15 optional
+    } mb_req;
+    /*
+     * bitmap of MPD_PLUGIN_CAP
+     */
+    uint64_t plugin_cap;
 };
 
 #define INIT_FN_NAME    "init"
 #define FINI_FN_NAME    "fini"
+/*
+ * These 2 functions are mandatory for all mpd plugins.
+ * init_fn is used to hook all functions the plugin implements.
+ * fini_fn is used to do any cleaning work required when the plugin
+ * exits
+ */
 typedef int (*init_fn)(struct mpd_plugin_callbacks *cbs);
 typedef void (*fini_fn)(void *mpc_cookie);
 
-#endif	// MPD_PLUGIN_H
+#endif // MPD_PLUGIN_H

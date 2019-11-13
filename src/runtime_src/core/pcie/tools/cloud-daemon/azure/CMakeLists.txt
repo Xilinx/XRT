@@ -33,6 +33,7 @@ target_link_libraries(azure_mpd_plugin
   rt
   curl
   crypto
+  dl
   )
 
 install(TARGETS azure_mpd_plugin

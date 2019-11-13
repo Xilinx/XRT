@@ -19,6 +19,7 @@
 #include <stdarg.h>
 #include <sstream>
 #include <cstring>
+#include <random>
 #include "pciefunc.h"
 #include "common.h"
 
@@ -55,15 +56,13 @@ uint64_t pcieFunc::getSwitch()
     return chanSwitch;
 }
 
-int pcieFunc::getIndex()
+int pcieFunc::getIndex() const
 {
-    std::lock_guard<std::mutex> l(lock);
     return index;
 }
 
-std::shared_ptr<pcidev::pci_device> pcieFunc::getDev()
+std::shared_ptr<pcidev::pci_device> pcieFunc::getDev() const
 {
-    std::lock_guard<std::mutex> l(lock);
     return dev;
 }
 
@@ -115,7 +114,7 @@ bool pcieFunc::loadConf()
         else if (key.compare("port") == 0)
             port = stoi(value, nullptr, 0);
         else if (key.compare("id") == 0)
-            devId = stoi(value, nullptr, 0);
+            devId = stol(value, nullptr, 0);
         else // ignore unknown key, but don't fail
             log(LOG_WARNING, "unknown config key %s", key.c_str());
     }
@@ -132,7 +131,7 @@ bool pcieFunc::loadConf()
     return validConf();
 }
 
-void pcieFunc::log(int priority, const char *format, ...)
+void pcieFunc::log(int priority, const char *format, ...) const
 {
     va_list args;
     std::ostringstream ss;
@@ -154,7 +153,7 @@ pcieFunc::pcieFunc(size_t index, bool user) : index(index)
 
 pcieFunc::~pcieFunc()
 {
-    dev->devfs_close();
+    dev->devfs_close();	
     clearConf();
     close(mbxfd);
     mbxfd = -1;
@@ -165,7 +164,9 @@ int pcieFunc::updateConf(std::string hostname, uint16_t hostport, uint64_t swch)
     std::lock_guard<std::mutex> l(lock);
     std::string config;
     std::string err;
-    int id = rand();
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    int id = gen();
 
     config += "host=" + hostname + "\n";
     config += "port=" + std::to_string(hostport) + "\n";
