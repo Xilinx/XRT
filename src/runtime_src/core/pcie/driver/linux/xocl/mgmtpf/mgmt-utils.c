@@ -179,11 +179,6 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 	}
 
 	ep_name = pdev->bus->name;
-#if defined(__PPC64__)
-	mgmt_info(lro, "Ignore reset operation for card %d in slot %s:%02x:%1x",
-		lro->instance, ep_name,
-		PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
-#else
 	mgmt_info(lro, "Trying to reset card %d in slot %s:%02x:%1x",
 		lro->instance, ep_name,
 		PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
@@ -202,7 +197,11 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 	if (!XOCL_DSA_PCI_RESET_OFF(lro)) {
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_ICAP);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_MAILBOX);
+#if defined(__PPC64__)
+		pci_fundamental_reset(lro);
+#else
 		xclmgmt_reset_pci(lro);
+#endif
 		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_MAILBOX);
 		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_ICAP);
 	} else {
@@ -241,7 +240,6 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 
 	xocl_thread_start(lro);
 
-#endif
 done:
 	return err;
 }
