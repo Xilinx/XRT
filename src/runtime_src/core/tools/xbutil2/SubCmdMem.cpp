@@ -29,7 +29,7 @@ namespace po = boost::program_options;
 
 // ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
 #include "SubCmd.h"
-static unsigned int registerResult = 
+static const unsigned int registerResult = 
                     register_subcommand("mem", 
                                         "Memory write tests.",
                                         subCmdMem);
@@ -111,6 +111,6 @@ int subCmdMem(const std::vector<std::string> &_options)
   XBU::error("COMMAND BODY NOT IMPLEMENTED.");
   // TODO: Put working code here
 
-  return 0;
+  return registerResult;
 }
 

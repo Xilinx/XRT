@@ -29,10 +29,10 @@ namespace po = boost::program_options;
 
 // ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
 #include "SubCmd.h"
-static unsigned int registerResult = 
-                    register_subcommand("dump", 
-                                        "<add description>",
-                                        subCmdDump);
+static const unsigned int registerResult = 
+                          register_subcommand("dump", 
+                                              "<add description>",
+                                              subCmdDump);
 // =============================================================================
 
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
@@ -81,6 +81,6 @@ int subCmdDump(const std::vector<std::string> &_options)
   XBU::error("COMMAND BODY NOT IMPLEMENTED.");
   // TODO: Put working code here
 
-  return 0;
+  return registerResult;
 }
 

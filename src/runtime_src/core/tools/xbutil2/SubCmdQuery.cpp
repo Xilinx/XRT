@@ -32,7 +32,8 @@ namespace po = boost::program_options;
 
 // ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
 #include "SubCmd.h"
-static unsigned int registerResult = 
+
+static const unsigned int registerResult = 
                     register_subcommand("query", 
                                         "Status of the system and device(s)",
                                         subCmdQuery);
@@ -95,6 +96,6 @@ int subCmdQuery(const std::vector<std::string> &_options)
   XBDatabase::create_complete_device_tree(pt);
 
   XBU::trace_print_tree("Complete Device Tree", pt);
-  return 0;
+  return registerResult;
 }
 

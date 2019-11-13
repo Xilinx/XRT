@@ -31,7 +31,7 @@ namespace po = boost::program_options;
 
 // ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
 #include "SubCmd.h"
-static unsigned int registerResult = 
+static const unsigned int registerResult = 
                     register_subcommand("version", 
                                         "Reports the version of the build, OS, and drivers (if present)",
                                         subCmdVersion);
@@ -101,6 +101,6 @@ int subCmdVersion(const std::vector<std::string> &_options)
   // -- Now process the subcommand --------------------------------------------
   reportVersions();
 
-  return 0;
+  return registerResult;
 }
 
