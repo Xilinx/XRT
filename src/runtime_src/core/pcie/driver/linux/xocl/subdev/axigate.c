@@ -29,7 +29,6 @@ struct axi_gate {
 	struct mutex		gate_lock;
 	void		__iomem *base;
 	int			level;
-	bool			freeze;
 };
 
 #define reg_rd(g, r)					\
@@ -41,64 +40,48 @@ static int axigate_freeze(struct platform_device *pdev)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct axi_gate *gate = platform_get_drvdata(pdev);
-	int i, ret = 0;
+	u32 freeze = 0;
 
 	mutex_lock(&gate->gate_lock);
-	if (gate->freeze)
+
+	freeze = reg_rd(gate, iag_rd);
+	if (!freeze)
 		goto failed;
 
-	for (i = XOCL_SUBDEV_LEVEL_MAX - 1; i > gate->level; i--) {
-		ret = xocl_subdev_offline_by_level(xdev, i);
-		if (ret) {
-			xocl_xdev_err(xdev, "failed offline level %d devs, %d",
-				i, ret);
-			goto failed;
-		}
-	}
-	(void) reg_rd(gate, iag_rd);
 	reg_wr(gate, 0, iag_wr);
+	ndelay(500);
 	(void) reg_rd(gate, iag_rd);
-	gate->freeze = true;
 
 failed:
 	mutex_unlock(&gate->gate_lock);
 
-	xocl_xdev_info(xdev, "freeze level %d gate, ret %d", gate->level, ret);
-	return ret;
+	xocl_xdev_info(xdev, "freeze level %d gate", gate->level);
+	return 0;
 }
 
 static int axigate_free(struct platform_device *pdev)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct axi_gate *gate = platform_get_drvdata(pdev);
-	int i, ret = 0;
+	u32 freeze;
 
 	mutex_lock(&gate->gate_lock);
-	if (!gate->freeze)
+
+	freeze = reg_rd(gate, iag_rd);
+	if (freeze)
 		goto failed;
 
-	(void) reg_rd(gate, iag_rd);
 	reg_wr(gate, 0x2, iag_wr);
 	ndelay(500);
 	(void) reg_rd(gate, iag_rd);
 	reg_wr(gate, 0x3, iag_wr);
 	ndelay(500);
 	(void) reg_rd(gate, iag_rd);
-	gate->freeze = false;
-
-	for (i = gate->level + 1; i < XOCL_SUBDEV_LEVEL_MAX; i++) {
-		ret = xocl_subdev_online_by_level(xdev, i);
-		if (ret) {
-			xocl_xdev_err(xdev, "failed online level %d devs, %d",
-				i, ret);
-			goto failed;
-		}
-	}
 
 failed:
 	mutex_unlock(&gate->gate_lock);
-	xocl_xdev_info(xdev, "free level %d gate, ret %d", gate->level, ret);
-	return ret;
+	xocl_xdev_info(xdev, "free level %d gate", gate->level);
+	return 0;
 }
 
 static struct xocl_axigate_funcs axigate_ops = {
@@ -166,10 +149,7 @@ static int axigate_probe(struct platform_device *pdev)
 	mutex_init(&gate->gate_lock);
 
 	/* force closing gate */
-	if (!reg_rd(gate, iag_rd)) {
-		gate->freeze = true;
-		axigate_free(pdev);
-	}
+	axigate_free(pdev);
 
 	return 0;
 
