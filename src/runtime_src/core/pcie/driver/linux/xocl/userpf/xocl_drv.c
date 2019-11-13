@@ -321,9 +321,12 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 
 	xocl_reset_notify(xdev->core.pdev, true);
 
-	/* Reset mgmt */
+	/*
+	 * Reset mgmt. The reset will take 50 seconds on some platform.
+	 * Set time out to 60 seconds.
+	 */
 	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
-		&ret, &resplen, NULL, NULL, 0);
+		&ret, &resplen, NULL, NULL, 60);
 	if (mbret)
 		ret = mbret;
 

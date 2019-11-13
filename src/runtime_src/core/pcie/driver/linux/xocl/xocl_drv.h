@@ -701,6 +701,31 @@ struct xocl_mb_funcs {
 #define xocl_xmc_dr_free(xdev)		\
 	(MB_CB(xdev, dr_free) ? MB_OPS(xdev)->dr_free(MB_DEV(xdev)) : -ENODEV)
 
+/* processor system callbacks */
+struct xocl_ps_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	void (*reset)(struct platform_device *pdev, int type);
+	void (*wait)(struct platform_device *pdev);
+};
+
+#define	PS_DEV(xdev)		\
+	SUBDEV(xdev, XOCL_SUBDEV_PS).pldev
+#define	PS_OPS(xdev)		\
+	((struct xocl_ps_funcs *)SUBDEV(xdev,	\
+	XOCL_SUBDEV_PS).ops)
+#define PS_CB(xdev, cb)	\
+	(PS_DEV(xdev) && PS_OPS(xdev) && PS_OPS(xdev)->cb)
+#define	xocl_ps_sk_reset(xdev)			\
+	(PS_CB(xdev, reset) ? PS_OPS(xdev)->reset(PS_DEV(xdev), 1) : NULL)
+#define	xocl_ps_reset(xdev)			\
+	(PS_CB(xdev, reset) ? PS_OPS(xdev)->reset(PS_DEV(xdev), 2) : NULL)
+#define	xocl_ps_sys_reset(xdev)			\
+	(PS_CB(xdev, reset) ? PS_OPS(xdev)->reset(PS_DEV(xdev), 3) : NULL)
+#define	xocl_ps_wait(xdev)			\
+	(PS_CB(xdev, reset) ? PS_OPS(xdev)->wait(PS_DEV(xdev)) : NULL)
+
+
+/* dna callbacks */
 struct xocl_dna_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	u32 (*status)(struct platform_device *pdev);
@@ -1211,6 +1236,9 @@ void xocl_fini_sysmon(void);
 
 int __init xocl_init_mb(void);
 void xocl_fini_mb(void);
+
+int __init xocl_init_ps(void);
+void xocl_fini_ps(void);
 
 int __init xocl_init_xiic(void);
 void xocl_fini_xiic(void);

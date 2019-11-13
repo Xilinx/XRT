@@ -178,6 +178,7 @@ enum {
 #define XOCL_SYSMON		"sysmon"
 #define XOCL_FIREWALL		"firewall"
 #define	XOCL_MB			"microblaze"
+#define	XOCL_PS			"processor_system"
 #define	XOCL_XIIC		"xiic"
 #define	XOCL_MAILBOX		"mailbox"
 #define	XOCL_ICAP		"icap"
@@ -206,6 +207,7 @@ enum subdev_id {
 	XOCL_SUBDEV_AF,
 	XOCL_SUBDEV_MIG,
 	XOCL_SUBDEV_MB,
+	XOCL_SUBDEV_PS,
 	XOCL_SUBDEV_XIIC,
 	XOCL_SUBDEV_MAILBOX,
 	XOCL_SUBDEV_ICAP,
@@ -873,6 +875,23 @@ struct xocl_subdev_map {
 		ARRAY_SIZE(XOCL_RES_MB),		\
 	}
 
+#define	XOCL_RES_PS					\
+		((struct resource []) {			\
+			{				\
+			.start	= 0x110000,		\
+			.end	= 0x110FFF,		\
+			.flags  = IORESOURCE_MEM,	\
+			},				\
+		})
+
+#define	XOCL_DEVINFO_PS					\
+	{						\
+		XOCL_SUBDEV_PS,				\
+		XOCL_PS,				\
+		XOCL_RES_PS,				\
+		ARRAY_SIZE(XOCL_RES_PS),		\
+	}
+
 #define XOCL_RES_QDMA					\
 	((struct resource []) {				\
 		{					\
@@ -1509,6 +1528,19 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_FMGR,      			\
 		})
 
+#define MGMT_RES_MPSOC_U30							\
+		((struct xocl_subdev_info []) {				\
+			XOCL_DEVINFO_FEATURE_ROM,			\
+			XOCL_DEVINFO_IORES_MGMT,			\
+			XOCL_DEVINFO_PRP_IORES_MGMT,			\
+			XOCL_DEVINFO_SYSMON,				\
+			XOCL_DEVINFO_PS,				\
+			XOCL_DEVINFO_XVC_PUB,				\
+			XOCL_DEVINFO_MAILBOX_MGMT,			\
+			XOCL_DEVINFO_ICAP_MGMT,				\
+			XOCL_DEVINFO_FMGR,      			\
+		})
+
 #define	XOCL_BOARD_MGMT_MPSOC						\
 	(struct xocl_board_private){					\
 		.flags		= 0,					\
@@ -1522,8 +1554,8 @@ struct xocl_subdev_map {
 #define	XOCL_BOARD_MGMT_U30						\
 	(struct xocl_board_private){					\
 		.flags		= 0,					\
-		.subdev_info	= MGMT_RES_MPSOC,			\
-		.subdev_num = ARRAY_SIZE(MGMT_RES_MPSOC),		\
+		.subdev_info	= MGMT_RES_MPSOC_U30,			\
+		.subdev_num = ARRAY_SIZE(MGMT_RES_MPSOC_U30),		\
 		.mpsoc = true,						\
 		.board_name = "u30",					\
 		.flash_type = "qspi_ps_x2_single",				\

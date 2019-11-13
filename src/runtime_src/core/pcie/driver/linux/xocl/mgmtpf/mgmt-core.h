@@ -157,7 +157,7 @@ void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online);
 /* utils.c */
 int pci_fundamental_reset(struct xclmgmt_dev *lro);
 
-long reset_hot_ioctl(struct xclmgmt_dev *lro);
+long xclmgmt_hot_reset(struct xclmgmt_dev *lro);
 void xdma_reset(struct pci_dev *pdev, bool prepare);
 void xclmgmt_reset_pci(struct xclmgmt_dev *lro);
 void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online);
@@ -167,6 +167,9 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 int xclmgmt_load_fdt(struct xclmgmt_dev *lro);
 int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro);
 int xclmgmt_program_shell(struct xclmgmt_dev *lro);
+void xclmgmt_ocl_reset(struct xclmgmt_dev *lro);
+void xclmgmt_ert_reset(struct xclmgmt_dev *lro);
+void xclmgmt_softkernel_reset(struct xclmgmt_dev *lro);
 
 /* firewall.c */
 void init_firewall(struct xclmgmt_dev *lro);
