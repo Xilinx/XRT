@@ -249,6 +249,14 @@ done:
 	return err;
 }
 
+static void xocl_save_config_space(struct pci_dev *pdev, u32 *saved_config)
+{
+	int i;
+
+	for (i = 0; i < 16; i++)
+		pci_read_config_dword(pdev, i * 4, &saved_config[i]);
+}
+
 static int xocl_match_slot_and_save(struct device *dev, void *data)
 {
 	struct xclmgmt_dev *lro = data;
@@ -259,6 +267,8 @@ static int xocl_match_slot_and_save(struct device *dev, void *data)
 	if ((XOCL_DEV_ID(pdev) >> 3) == (XOCL_DEV_ID(lro->pci_dev) >> 3)) {
 		pci_cfg_access_lock(pdev);
 		pci_save_state(pdev);
+		xocl_save_config_space(pdev,
+				lro->saved_config[PCI_FUNC(pdev->devfn)]);
 	}
 
 	return 0;
@@ -269,6 +279,25 @@ static void xocl_pci_save_config_all(struct xclmgmt_dev *lro)
 	bus_for_each_dev(&pci_bus_type, NULL, lro, xocl_match_slot_and_save);
 }
 
+static void xocl_restore_config_space(struct pci_dev *pdev, u32 *config_saved)
+{
+	int i;
+	u32 val;
+
+	for (i = 0; i < 16; i++) {
+		pci_read_config_dword(pdev, i * 4, &val);
+		if (val == config_saved[i])
+			continue;
+
+		pci_write_config_dword(pdev, i * 4, config_saved[i]);
+		pci_read_config_dword(pdev, i * 4, &val);
+		if (val != config_saved[i]) {
+			xocl_err(&pdev->dev,
+				"restore config at %d failed", i * 4);
+		}
+	}
+}
+
 static int xocl_match_slot_and_restore(struct device *dev, void *data)
 {
 	struct xclmgmt_dev *lro = data;
@@ -277,6 +306,20 @@ static int xocl_match_slot_and_restore(struct device *dev, void *data)
 	pdev = to_pci_dev(dev);
 
 	if ((XOCL_DEV_ID(pdev) >> 3) == (XOCL_DEV_ID(lro->pci_dev) >> 3)) {
+		/*
+		 * For U50 built with 2RP flow. PLP Gate is closed after
+		 * pci hot reset. Any access to PLP IPs will hangs the host.
+		 * E.g. read/write BAR2 (DMA BAR). 
+		 * To be able to open PLP gate after hot reset, the first 64
+		 * bytes of config space has to be restored. 
+		 * In the meanwhile, XRT expects firewall trip instead of
+		 * hard hang if there is an unexpected access of non-exist
+		 * IPs. (E.g. Invalid access from a active VM)
+		 */
+		xocl_restore_config_space(pdev,
+			lro->saved_config[PCI_FUNC(pdev->devfn)]);
+		xocl_axigate_free(lro, XOCL_SUBDEV_LEVEL_BLD);
+
 		pci_restore_state(pdev);
 		pci_cfg_access_unlock(pdev);
 	}
@@ -288,6 +331,7 @@ static void xocl_pci_restore_config_all(struct xclmgmt_dev *lro)
 {
 	bus_for_each_dev(&pci_bus_type, NULL, lro, xocl_match_slot_and_restore);
 }
+
 /*
  * Inspired by GenWQE driver, card_base.c
  */
@@ -349,8 +393,8 @@ done:
 
 	/* restore pci config space for botht the pf's */
 	rc = pcie_unmask_surprise_down(pci_dev, orig_mask);
-	xocl_pci_restore_config_all(lro);
 
+	xocl_pci_restore_config_all(lro);
 	/* Also freeze and free AXI gate to reset the OCL region. */
 	xocl_icap_reset_axi_gate(lro);
 
