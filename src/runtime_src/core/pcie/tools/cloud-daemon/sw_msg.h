@@ -26,6 +26,8 @@ class sw_msg {
 public:
     // Init a buffer ready to be sent out.
     sw_msg(const void *payload, size_t len, uint64_t id, uint64_t flags);
+    // Init a buffer to be sent without payload being filled yet.
+    sw_msg(size_t len, uint64_t id, uint64_t flags);
     // Init a buffer ready to receive data.
     sw_msg(size_t len);
     ~sw_msg();
@@ -39,7 +41,7 @@ public:
     uint64_t id();
 
 private:
-    std::unique_ptr<std::vector<char>> buf;
+    std::vector<char> buf;
 };
 
 #endif // SW_MSG_H
