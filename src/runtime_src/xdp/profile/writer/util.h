@@ -27,10 +27,12 @@ namespace xdp {
   class WriterI {
 
   public:
-	  WriterI() {};
+      WriterI() {};
       ~WriterI() {};
 
       static const char * getToolVersion() { return "2019.2"; }
+
+      static std::string getXRTVersion();
 
       static std::string getCurrentDateTime();
       static std::string getCurrentTimeMsec();
