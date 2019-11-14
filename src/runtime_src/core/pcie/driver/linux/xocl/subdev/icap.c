@@ -848,7 +848,7 @@ static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev, str
 	struct icap *icap = platform_get_drvdata(pdev);
 	int i = 0;
 	int err = 0;
-	unsigned short freq_max;
+	unsigned short freq_max, freq_min;
 
 	mutex_lock(&icap->icap_lock);
 	if (uuid_is_null(&icap->icap_bitstream_uuid)) {
@@ -859,14 +859,22 @@ static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev, str
 	}
 
 	for (i = 0; i < ARRAY_SIZE(freq_obj->ocl_target_freq); i++) {
-		icap_get_ocl_frequency_max_min(icap, i, &freq_max, NULL);
-		ICAP_INFO(icap, "requested frequency is : %d xclbin freq is: %d",
-			freq_obj->ocl_target_freq[i],
-			freq_max);
-		if (freq_obj->ocl_target_freq[i] > freq_max) {
-			ICAP_ERR(icap, "Unable to set frequency as requested frequency %d is greater than set by xclbin %d",
-				freq_obj->ocl_target_freq[i],
-				freq_max);
+		if (!freq_obj->ocl_target_freq)
+		        continue;
+		freq_max = freq_min = 0;
+		icap_get_ocl_frequency_max_min(icap, i, &freq_max, &freq_min);
+		ICAP_INFO(icap, "requested frequency is : %d, "
+			"xclbin freq is: %d, "
+		        "xclbin minimum freq allowed is: %d",
+		        freq_obj->ocl_target_freq[i],
+		        freq_max, freq_min);
+		if (freq_obj->ocl_target_freq[i] > freq_max ||
+		        freq_obj->ocl_target_freq[i] < freq_min) {
+		        ICAP_ERR(icap, "Unable to set frequency! "
+		                "Frequency max: %d, Frequency min: %d, "
+		                "Requested frequency: %d",
+		                freq_max, freq_min,
+		                freq_obj->ocl_target_freq[i]);
 			err = -EDOM;
 			goto done;
 		}
