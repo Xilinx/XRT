@@ -17,6 +17,7 @@
 #ifndef xocl_api_detail_event_h_
 #define xocl_api_detail_event_h_
 
+#include "xocl/config.h"
 #include "CL/cl.h"
 
 namespace xocl { namespace detail {
@@ -26,7 +27,7 @@ namespace event {
 void
 validOrError(const cl_event ev);
 
-void 
+void
 validOrError(cl_context ctx, cl_uint num_events, const cl_event* event_list, bool check_status=false);
 
 void
@@ -40,5 +41,3 @@ validOrError(cl_uint num_events_in_wait_list, const cl_event* event_wait_list,bo
 }} // detail,xocl
 
 #endif
-
-

@@ -111,7 +111,8 @@ if [ $opt_dep == 1 ]; then
  done
 fi
 
-/home/soeren/staff/tools/gnuplot/5.0.5/bin/gnuplot -p <<- EOF
+#/home/soeren/staff/tools/gnuplot/5.0.5/bin/gnuplot -p <<- EOF
+gnuplot -p <<- EOF
 set grid
 set nokey
 
@@ -124,5 +125,6 @@ plot "$file" every ::$pbegin::$pend using (\$3/1e6):1, \
      "$file" every ::$pbegin::$pend using (\$5/1e6) : (\$1) : ((\$6-\$5)/1e6) : (0.0) with vector nohead lc rgb "red"
 
 pause mouse keypress
+pause mouse close
 
 EOF

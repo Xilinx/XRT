@@ -1,0 +1,15 @@
+{
+   "chipscope_debug": {
+      "debug_networks": {
+         "user": {
+            "name": "User Debug Network",
+            "pcie_pf": "???",
+            "bar_number": "???",
+            "axi_baseaddr": "???",
+            "supports_jtag_fallback": "false",
+            "supports_microblaze_debug": "true",
+            "is_user_visible":"true"
+         }
+      }
+   }
+}

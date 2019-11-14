@@ -26,6 +26,10 @@
 #include "plugin/xdp/appdebug.h"
 #include "plugin/xdp/profile.h"
 
+#ifdef _WIN32
+# pragma warning ( disable : 4996 )
+#endif
+
 namespace xocl {
 
 static void
@@ -54,7 +58,7 @@ validOrError(cl_program            program ,
   // CL_INVALID_BUILD_OPTIONS if the build options specified by
   // options are invalid
   // todo
-  
+
   // CL_INVALID_OPERATION if the build of a program executable for any
   // of the devices listed in device_list by a previous call to
   // clBuildProgram for program has not completed.
@@ -73,17 +77,17 @@ validOrError(cl_program            program ,
         throw error(CL_COMPILER_NOT_AVAILABLE,"clBuildProgram: no compiler");
     }
   }
-  
+
   // CL_BUILD_PROGRAM_FAILURE if there is a failure to build the
   // program executable. This error will be returned if clBuildProgram
   // does not return until the build has completed.
   // todo
-  
+
   // CL_INVALID_OPERATION if program was not created with
   // clCreateProgramWithSource, clCreateProgramWithIL, or
   // clCreateProgramWithBinary.
   if (creation_type!=xocl::program::creation_type::source && creation_type!=xocl::program::creation_type::binary)
-    throw xocl::error(CL_INVALID_OPERATION,"clBuildProgram: program not from source or binary");  
+    throw xocl::error(CL_INVALID_OPERATION,"clBuildProgram: program not from source or binary");
 
   // CL_INVALID_OPERATION if the program requires independent forward
   // progress of sub-groups but one or more of the devices listed in
@@ -106,9 +110,9 @@ clBuildProgram(cl_program            program ,
   // If device_list is a NULL value, the prorgam executable is built
   // for all devices associated with program
   std::vector<xocl::device*> idevice_list;
-  if(device_list==NULL){
-    auto r = xocl(program)->get_device_range();
-    std::copy(r.begin(),r.end(),std::back_inserter(idevice_list));
+  if(device_list == nullptr){
+    for (auto d : xocl(program)->get_device_range())
+      idevice_list.push_back(d);
   }
   else {
     std::transform(device_list,device_list+num_devices,std::back_inserter(idevice_list)
@@ -154,6 +158,3 @@ clBuildProgram(cl_program program ,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-
-
