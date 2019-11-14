@@ -31,32 +31,60 @@ using namespace std;
 
 #define XMAPLUGIN_MOD "xmapluginlib"
 
-//Sarab: TODO .. Assign buffr object fields.. bank etc..
-//Add new API for allocating device only buffer object.. which will not have host mappped buffer.. This could be used for zero copy plugins..
-//NULL data pointer in buffer obj implies it is device only buffer..
-//Remove read/write before SyncBO.. As plugin should manage that using host mapped data pointer..
+
+int32_t create_bo(xclDeviceHandle dev_handle, XmaBufferObj& b_obj, uint32_t size, uint32_t ddr_bank, 
+    bool device_only_buffer, xclBufferHandle& b_obj_handle) {
+    /*
+    #define XRT_BO_FLAGS_MEMIDX_MASK        (0xFFFFFFUL)
+    #define XCL_BO_FLAGS_CACHEABLE          (1 << 24)
+    #define XCL_BO_FLAGS_SVM                (1 << 27)
+    #define XCL_BO_FLAGS_DEV_ONLY           (1 << 28)
+    #define XCL_BO_FLAGS_HOST_ONLY          (1 << 29)
+    #define XCL_BO_FLAGS_P2P                (1 << 30)
+    #define XCL_BO_FLAGS_EXECBUF            (1 << 31)
+    */
+    if (device_only_buffer) {
+        b_obj_handle = xclAllocBO(dev_handle, size, 0, XCL_BO_FLAGS_DEV_ONLY | ddr_bank);
+        b_obj.device_only_buffer = true;
+    } else {
+        b_obj_handle = xclAllocBO(dev_handle, size, 0, ddr_bank);
+    }
+
+    struct xclBOProperties bop;
+    if (xclGetBOProperties(dev_handle, b_obj_handle, &bop) != 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc failed to get BO properties\n");
+        xclFreeBO(dev_handle, b_obj_handle);
+        return XMA_ERROR;
+    }
+    b_obj.paddr = bop.paddr;
+
+    if (!device_only_buffer) {
+        b_obj.data = (uint8_t*) xclMapBO(dev_handle, b_obj_handle, true);
+    }
+    return XMA_SUCCESS;
+}
 
 XmaBufferObj
 xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, int32_t* return_code)
 {
     XmaBufferObj b_obj;
     XmaBufferObj b_obj_error;
-    b_obj_error.data = NULL;
+    b_obj_error.data = nullptr;
     //b_obj_error.ref_cnt = 0;
     b_obj_error.size = 0;
     b_obj_error.paddr = 0;
     b_obj_error.bank_index = -1;
     b_obj_error.dev_index = -1;
     b_obj_error.device_only_buffer = false;
-    b_obj_error.private_do_not_touch = NULL;
-    b_obj.data = NULL;
+    b_obj_error.private_do_not_touch = nullptr;
+    b_obj.data = nullptr;
     //b_obj.ref_cnt = 0;
-    b_obj.user_ptr = NULL;
+    b_obj.user_ptr = nullptr;
     b_obj.device_only_buffer = false;
-    b_obj.private_do_not_touch = NULL;
+    b_obj.private_do_not_touch = nullptr;
 
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    if (priv1 == NULL) {
+    if (priv1 == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc failed. XMASession is corrupted.\n");
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
@@ -84,45 +112,12 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
         return b_obj_error;
     }
 
-    /*
-    #define XRT_BO_FLAGS_MEMIDX_MASK        (0xFFFFFFUL)
-    #define XCL_BO_FLAGS_CACHEABLE          (1 << 24)
-    #define XCL_BO_FLAGS_SVM                (1 << 27)
-    #define XCL_BO_FLAGS_DEV_ONLY           (1 << 28)
-    #define XCL_BO_FLAGS_HOST_ONLY          (1 << 29)
-    #define XCL_BO_FLAGS_P2P                (1 << 30)
-    #define XCL_BO_FLAGS_EXECBUF            (1 << 31)
-    */
-    uint64_t b_obj_handle = 0;
-    if (device_only_buffer) {
-        b_obj_handle = xclAllocBO(dev_handle, size, 0, XCL_BO_FLAGS_DEV_ONLY | ddr_bank);
-        b_obj.device_only_buffer = true;
-    } else {
-        b_obj_handle = xclAllocBO(dev_handle, size, 0, ddr_bank);
-    }
-    /*BO handlk is uint64_t
-    if (b_obj_handle < 0) {
-        std::cout << "ERROR: xma_plg_buffer_alloc failed. handle=0x" << std::hex << b_obj_handle << std::endl;
-        //printf("xclAllocBO failed. handle=0x%ullx\n", b_obj_handle);
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xclAllocBO failed.\n");
+    xclBufferHandle b_obj_handle = 0;
+    if (create_bo(dev_handle, b_obj, size, ddr_bank, device_only_buffer, b_obj_handle) != XMA_SUCCESS) {
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
     }
-    */
 
-    struct xclBOProperties bop;
-    if (xclGetBOProperties(dev_handle, b_obj_handle, &bop) != 0) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc failed to get BO properties\n");
-        xclFreeBO(dev_handle, b_obj_handle);
-        if (return_code) *return_code = XMA_ERROR;
-        return b_obj_error;
-
-    }
-    b_obj.paddr = bop.paddr;
-
-    if (!device_only_buffer) {
-        b_obj.data = (uint8_t*) xclMapBO(dev_handle, b_obj_handle, true);
-    }
     XmaBufferObjPrivate* tmp1 = new XmaBufferObjPrivate;
     b_obj.private_do_not_touch = (void*) tmp1;
     tmp1->dummy = (void*)(((uint64_t)tmp1) | signature);
@@ -142,23 +137,23 @@ XmaBufferObj xma_plg_buffer_alloc_arg_num(XmaSession s_handle, size_t size, bool
 {
     XmaBufferObj b_obj;
     XmaBufferObj b_obj_error;
-    b_obj_error.data = NULL;
+    b_obj_error.data = nullptr;
     //b_obj_error.ref_cnt = 0;
     b_obj_error.size = 0;
     b_obj_error.paddr = 0;
     b_obj_error.bank_index = -1;
     b_obj_error.dev_index = -1;
     b_obj_error.device_only_buffer = false;
-    b_obj_error.private_do_not_touch = NULL;
-    b_obj_error.user_ptr = NULL;
-    b_obj.data = NULL;
+    b_obj_error.private_do_not_touch = nullptr;
+    b_obj_error.user_ptr = nullptr;
+    b_obj.data = nullptr;
     //b_obj.ref_cnt = 0;
-    b_obj.user_ptr = NULL;
+    b_obj.user_ptr = nullptr;
     b_obj.device_only_buffer = false;
-    b_obj.private_do_not_touch = NULL;
+    b_obj.private_do_not_touch = nullptr;
 
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    if (priv1 == NULL) {
+    if (priv1 == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_arg_num failed. XMASession is corrupted.\n");
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
@@ -195,36 +190,12 @@ XmaBufferObj xma_plg_buffer_alloc_arg_num(XmaSession s_handle, size_t size, bool
         }
     }
 
-    /*
-    #define XRT_BO_FLAGS_MEMIDX_MASK        (0xFFFFFFUL)
-    #define XCL_BO_FLAGS_CACHEABLE          (1 << 24)
-    #define XCL_BO_FLAGS_SVM                (1 << 27)
-    #define XCL_BO_FLAGS_DEV_ONLY           (1 << 28)
-    #define XCL_BO_FLAGS_HOST_ONLY          (1 << 29)
-    #define XCL_BO_FLAGS_P2P                (1 << 30)
-    #define XCL_BO_FLAGS_EXECBUF            (1 << 31)
-    */
-    uint64_t b_obj_handle = 0;
-    if (device_only_buffer) {
-        b_obj_handle = xclAllocBO(dev_handle, size, 0, XCL_BO_FLAGS_DEV_ONLY | ddr_bank);
-        b_obj.device_only_buffer = true;
-    } else {
-        b_obj_handle = xclAllocBO(dev_handle, size, 0, ddr_bank);
-    }
-
-    struct xclBOProperties bop;
-    if (xclGetBOProperties(dev_handle, b_obj_handle, &bop) != 0) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc failed to get BO properties\n");
-        xclFreeBO(dev_handle, b_obj_handle);
+    xclBufferHandle b_obj_handle = 0;
+    if (create_bo(dev_handle, b_obj, size, ddr_bank, device_only_buffer, b_obj_handle) != XMA_SUCCESS) {
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
-
     }
-    b_obj.paddr = bop.paddr;
 
-    if (!device_only_buffer) {
-        b_obj.data = (uint8_t*) xclMapBO(dev_handle, b_obj_handle, true);
-    }
     XmaBufferObjPrivate* tmp1 = new XmaBufferObjPrivate;
     b_obj.private_do_not_touch = (void*) tmp1;
     tmp1->dummy = (void*)(((uint64_t)tmp1) | signature);
@@ -245,23 +216,23 @@ xma_plg_buffer_alloc_ddr(XmaSession s_handle, size_t size, bool device_only_buff
 {
     XmaBufferObj b_obj;
     XmaBufferObj b_obj_error;
-    b_obj_error.data = NULL;
+    b_obj_error.data = nullptr;
     //b_obj_error.ref_cnt = 0;
     b_obj_error.size = 0;
     b_obj_error.paddr = 0;
     b_obj_error.bank_index = -1;
     b_obj_error.dev_index = -1;
     b_obj_error.device_only_buffer = false;
-    b_obj_error.private_do_not_touch = NULL;
-    b_obj_error.user_ptr = NULL;
-    b_obj.data = NULL;
+    b_obj_error.private_do_not_touch = nullptr;
+    b_obj_error.user_ptr = nullptr;
+    b_obj.data = nullptr;
     //b_obj.ref_cnt = 0;
-    b_obj.user_ptr = NULL;
+    b_obj.user_ptr = nullptr;
     b_obj.device_only_buffer = false;
-    b_obj.private_do_not_touch = NULL;
+    b_obj.private_do_not_touch = nullptr;
 
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    if (priv1 == NULL) {
+    if (priv1 == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_ddr failed. XMASession is corrupted.\n");
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
@@ -311,45 +282,12 @@ xma_plg_buffer_alloc_ddr(XmaSession s_handle, size_t size, bool device_only_buff
         return b_obj_error;
     }
 
-    /*
-    #define XRT_BO_FLAGS_MEMIDX_MASK        (0xFFFFFFUL)
-    #define XCL_BO_FLAGS_CACHEABLE          (1 << 24)
-    #define XCL_BO_FLAGS_SVM                (1 << 27)
-    #define XCL_BO_FLAGS_DEV_ONLY           (1 << 28)
-    #define XCL_BO_FLAGS_HOST_ONLY          (1 << 29)
-    #define XCL_BO_FLAGS_P2P                (1 << 30)
-    #define XCL_BO_FLAGS_EXECBUF            (1 << 31)
-    */
-    uint64_t b_obj_handle = 0;
-    if (device_only_buffer) {
-        b_obj_handle = xclAllocBO(dev_handle, size, 0, XCL_BO_FLAGS_DEV_ONLY | ddr_bank);
-        b_obj.device_only_buffer = true;
-    } else {
-        b_obj_handle = xclAllocBO(dev_handle, size, 0, ddr_bank);
-    }
-    /*BO handlk is uint64_t
-    if (b_obj_handle < 0) {
-        std::cout << "ERROR: xma_plg_buffer_alloc failed. handle=0x" << std::hex << b_obj_handle << std::endl;
-        //printf("xclAllocBO failed. handle=0x%ullx\n", b_obj_handle);
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xclAllocBO failed.\n");
+    xclBufferHandle b_obj_handle = 0;
+    if (create_bo(dev_handle, b_obj, size, ddr_bank, device_only_buffer, b_obj_handle) != XMA_SUCCESS) {
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
     }
-    */
 
-    struct xclBOProperties bop;
-    if (xclGetBOProperties(dev_handle, b_obj_handle, &bop) != 0) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc failed to get BO properties\n");
-        xclFreeBO(dev_handle, b_obj_handle);
-        if (return_code) *return_code = XMA_ERROR;
-        return b_obj_error;
-
-    }
-    b_obj.paddr = bop.paddr;
-
-    if (!device_only_buffer) {
-        b_obj.data = (uint8_t*) xclMapBO(dev_handle, b_obj_handle, true);
-    }
     XmaBufferObjPrivate* tmp1 = new XmaBufferObjPrivate;
     b_obj.private_do_not_touch = (void*) tmp1;
     tmp1->dummy = (void*)(((uint64_t)tmp1) | signature);
@@ -415,7 +353,7 @@ xma_plg_buffer_free(XmaSession s_handle, XmaBufferObj b_obj)
     XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj.private_do_not_touch;
     //xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
     xclFreeBO(b_obj_priv->dev_handle, b_obj_priv->boHandle);
-    b_obj_priv->dummy = NULL;
+    b_obj_priv->dummy = nullptr;
     b_obj_priv->size = -1;
     b_obj_priv->bank_index = -1;
     b_obj_priv->dev_index = -1;
@@ -560,7 +498,7 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
     cmd_obj_error.cmd_id2 = 0;
     cmd_obj_error.cmd_finished = false;
     cmd_obj_error.cu_index = -1;
-    cmd_obj_error.do_not_use1 = NULL;
+    cmd_obj_error.do_not_use1 = nullptr;
 
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
     if (priv1 == NULL) {
@@ -632,7 +570,7 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
     // Find an available execBO buffer
     bo_idx = xma_plg_execbo_avail_get(s_handle);
     if (bo_idx == -1) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unable to find free execbo to use\n");
+        xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "Unable to find free execbo to use\n");
         priv1->execbo_locked = false;
         if (return_code) *return_code = XMA_ERROR;
         return cmd_obj_error;
@@ -738,7 +676,7 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
     cmd_obj_error.cmd_id2 = 0;
     cmd_obj_error.cmd_finished = false;
     cmd_obj_error.cu_index = -1;
-    cmd_obj_error.do_not_use1 = NULL;
+    cmd_obj_error.do_not_use1 = nullptr;
 
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
     if (priv1 == NULL) {
@@ -827,7 +765,7 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
     // Find an available execBO buffer
     bo_idx = xma_plg_execbo_avail_get(s_handle);
     if (bo_idx == -1) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unable to find free execbo to use\n");
+        xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "Unable to find free execbo to use\n");
         priv1->execbo_locked = false;
         if (return_code) *return_code = XMA_ERROR;
         return cmd_obj_error;
