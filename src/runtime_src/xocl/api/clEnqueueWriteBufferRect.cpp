@@ -133,7 +133,7 @@ clEnqueueWriteBufferRect(cl_command_queue     command_queue ,
               region[0]);
     }
   }
-  xdevice->unmap(boh);
+  xdevice->unmap(boh, host_ptr);
 
   if (event)
     xocl::xocl(*event)->set_status(CL_COMPLETE);

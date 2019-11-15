@@ -138,7 +138,7 @@ sync_to_ubuf(xocl::memory* buffer, size_t offset, size_t size,
   auto ubuf = buffer->get_host_ptr();
   if (ubuf) {
     auto hbuf = xdevice->map(boh);
-    xdevice->unmap(boh);
+    xdevice->unmap(boh, hbuf);
     if (ubuf!=hbuf) {
       ubuf = static_cast<char*>(ubuf) + offset;
       hbuf = static_cast<char*>(hbuf) + offset;
@@ -158,7 +158,7 @@ sync_to_hbuf(xocl::memory* buffer, size_t offset, size_t size,
   auto ubuf = buffer->get_host_ptr();
   if (ubuf) {
     auto hbuf = xdevice->map(boh);
-    xdevice->unmap(boh);
+    xdevice->unmap(boh, hbuf);
     if (ubuf!=hbuf) {
       ubuf = static_cast<char*>(ubuf) + offset;
       hbuf = static_cast<char*>(hbuf) + offset;
@@ -304,7 +304,7 @@ alloc(memory* mem, memidx_type memidx)
     if (!(mem->get_flags() & CL_MEM_WRITE_ONLY))
         memcpy(bo_host_ptr, host_ptr, sz);
 
-    m_xdevice->unmap(boh);
+    m_xdevice->unmap(boh, bo_host_ptr);
   }
   return boh;
 }
@@ -340,7 +340,7 @@ alloc(memory* mem)
     if (!(mem->get_flags() & CL_MEM_WRITE_ONLY))
         memcpy(bo_host_ptr, host_ptr, sz);
 
-    m_xdevice->unmap(boh);
+    m_xdevice->unmap(boh, bo_host_ptr);
   }
   track(mem);
   return boh;
@@ -830,7 +830,7 @@ map_buffer(memory* buffer, cl_map_flags map_flags, size_t offset, size_t size, v
   if (!ubuf || !is_aligned_ptr(ubuf)) {
     // boh was created with it's own alloced host_ptr
     auto hbuf = xdevice->map(boh);
-    xdevice->unmap(boh);
+    xdevice->unmap(boh, hbuf);
     assert(ubuf!=hbuf);
     if (ubuf && !nosync) {
       auto dst = static_cast<char*>(ubuf) + offset;
