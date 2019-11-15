@@ -370,12 +370,12 @@ public:
    *   Handle to buffer object to map
    */
   void
-  unmap(const BufferObjectHandle& bo)
+  unmap(const BufferObjectHandle& bo, void* addr)
   {
     // TODO: We need to track if user fully unmapped the object or only
     // part of the BO before calling release.
     release(bo);
-    m_hal->unmap(bo);
+    m_hal->unmap(bo, addr);
   }
 
   void*

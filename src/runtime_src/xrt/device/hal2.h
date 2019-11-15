@@ -330,7 +330,7 @@ public:
   map(const BufferObjectHandle& bo);
 
   virtual void
-  unmap(const BufferObjectHandle& bo);
+  unmap(const BufferObjectHandle& bo, void* addr);
 
   virtual void*
   map(const ExecBufferObjectHandle& bo);

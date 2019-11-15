@@ -428,8 +428,10 @@ map(const BufferObjectHandle& boh)
 
 void
 device::
-unmap(const BufferObjectHandle& boh)
+unmap(const BufferObjectHandle& boh, void* addr)
 {
+  BufferObject* bo = getBufferObject(boh);
+  m_ops->mUnmapBO(m_handle, bo->handle, addr);
 }
 
 void*
