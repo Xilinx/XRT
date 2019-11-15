@@ -346,6 +346,44 @@ static ssize_t logic_uuids_show(struct device *dev,
 
 static DEVICE_ATTR_RO(logic_uuids);
 
+static ssize_t reset_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	u32 val;
+	int ret;
+
+	if (kstrtou32(buf, 10, &val) == -EINVAL || val > 4)
+		return -EINVAL;
+
+	/*
+	 * Supported reset types:
+	 * 1. Hot reset (reset the whole boad)
+	 * 2. OCL dynamic region reset
+	 * 3. ERT reset
+	 * 4. Soft Kernel reset
+	 */
+	switch(val) {
+	case 1:
+		ret = (int) xclmgmt_hot_reset(lro);
+		if (ret < 0)
+			return ret;
+		break;
+	case 2:
+		xclmgmt_ocl_reset(lro);
+		break;
+	case 3:
+		xclmgmt_ert_reset(lro);
+		break;
+	case 4:
+		xclmgmt_softkernel_reset(lro);
+		break;
+	}
+
+	return count;
+}
+static DEVICE_ATTR_WO(reset);
+
 static struct attribute *mgmt_attrs[] = {
 	&dev_attr_instance.attr,
 	&dev_attr_error.attr,
@@ -369,6 +407,7 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_rp_program.attr,
 	&dev_attr_interface_uuids.attr,
 	&dev_attr_logic_uuids.attr,
+	&dev_attr_reset.attr,
 	NULL,
 };
 

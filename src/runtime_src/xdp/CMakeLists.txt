@@ -3,7 +3,6 @@ if (NOT WIN32)
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${XRT_SRC_DIR}/include/1_2
-  ${CMAKE_BINARY_DIR}/gen # includes version.h
   )
 
 else()

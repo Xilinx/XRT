@@ -19,6 +19,8 @@
 #include <string.h>
 #include <dlfcn.h>
 #include "lib/xmaapi.h"
+#include "app/xma_utils.hpp"
+#include "lib/xma_utils.hpp"
 //#include "lib/xmahw_hal.h"
 //#include "lib/xmares.h"
 #include "xmaplugin.h"
@@ -35,12 +37,12 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     if (!g_xma_singleton->xma_initialized) {
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
                    "XMA session creation must be after initialization\n");
-        return NULL;
+        return nullptr;
     }
     if (filter_props->plugin_lib == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
                    "FilterProperties must set plugin_lib\n");
-        return NULL;
+        return nullptr;
     }
 
     void *handle = dlopen(filter_props->plugin_lib, RTLD_NOW);
@@ -49,7 +51,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
             "Failed to open plugin %s\n Error msg: %s\n",
             filter_props->plugin_lib, dlerror());
-        return NULL;
+        return nullptr;
     }
 
     XmaFilterPlugin *plg =
@@ -60,19 +62,19 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
             "Failed to get struct filter_plugin from %s\n Error msg: %s\n",
             filter_props->plugin_lib, dlerror());
-        return NULL;
+        return nullptr;
     }
     if (plg->xma_version == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
                    "FilterPlugin library must have xma_version function\n");
-        return NULL;
+        return nullptr;
     }
 
     XmaFilterSession *filter_session = (XmaFilterSession*) malloc(sizeof(XmaFilterSession));
     if (filter_session == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
             "Failed to allocate memory for filterSession\n");
-        return NULL;
+        return nullptr;
     }
     memset(filter_session, 0, sizeof(XmaFilterSession));
     // init session data
@@ -105,7 +107,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         //Release singleton lock
         g_xma_singleton->locked = false;
         free(filter_session);
-        return NULL;
+        return nullptr;
     }
 
     uint32_t hwcfg_dev_index = 0;
@@ -123,7 +125,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         //Release singleton lock
         g_xma_singleton->locked = false;
         free(filter_session);
-        return NULL;
+        return nullptr;
     }
     if ((cu_index > 0 && (uint32_t)cu_index >= hwcfg->devices[hwcfg_dev_index].number_of_cus) || (cu_index < 0 && filter_props->cu_name == NULL)) {
         xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
@@ -131,7 +133,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         //Release singleton lock
         g_xma_singleton->locked = false;
         free(filter_session);
-        return NULL;
+        return nullptr;
     }
     if (cu_index < 0) {
         std::string cu_name = std::string(filter_props->cu_name);
@@ -149,7 +151,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
             //Release singleton lock
             g_xma_singleton->locked = false;
             free(filter_session);
-            return NULL;
+            return nullptr;
         }
     }
 
@@ -167,44 +169,12 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     filter_session->base.hw_session.dev_index = hwcfg->devices[hwcfg_dev_index].dev_index;
 
     //Allow user selected default ddr bank per XMA session
-    if (filter_props->ddr_bank_index < 0) {
-        if (hwcfg->devices[hwcfg_dev_index].kernels[cu_index].soft_kernel) {
-            //Only allow ddr_bank == 0;
-            filter_session->base.hw_session.bank_index = 0;
-            xma_logmsg(XMA_DEBUG_LOG, XMA_FILTER_MOD,
-                "XMA session with soft_kernel default ddr_bank: %d\n", filter_session->base.hw_session.bank_index);
-        } else {
-            filter_session->base.hw_session.bank_index = kernel_info->default_ddr_bank;
-            xma_logmsg(XMA_DEBUG_LOG, XMA_FILTER_MOD,
-                "XMA session default ddr_bank: %d\n", filter_session->base.hw_session.bank_index);
-        }
-    } else {
-        if (hwcfg->devices[hwcfg_dev_index].kernels[cu_index].soft_kernel) {
-            if (filter_props->ddr_bank_index != 0) {
-                xma_logmsg(XMA_WARNING_LOG, XMA_FILTER_MOD,
-                    "XMA session with soft_kernel only allows ddr bank of zero\n");
-            }
-            //Only allow ddr_bank == 0;
-            filter_session->base.hw_session.bank_index = 0;
-            xma_logmsg(XMA_DEBUG_LOG, XMA_FILTER_MOD,
-                "XMA session with soft_kernel default ddr_bank: %d\n", filter_session->base.hw_session.bank_index);
-        } else {
-            std::bitset<MAX_DDR_MAP> tmp_bset;
-            tmp_bset = kernel_info->ip_ddr_mapping;
-            if (tmp_bset[filter_props->ddr_bank_index]) {
-                filter_session->base.hw_session.bank_index = filter_props->ddr_bank_index;
-                xma_logmsg(XMA_DEBUG_LOG, XMA_FILTER_MOD,
-                    "Using user supplied default ddr_bank. XMA session default ddr_bank: %d\n", filter_session->base.hw_session.bank_index);
-            } else {
-                xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
-                    "User supplied default ddr_bank is invalid. Valid ddr_bank mapping for this CU: %s\n", tmp_bset.to_string().c_str());
-                
-                //Release singleton lock
-                g_xma_singleton->locked = false;
-                free(filter_session);
-                return NULL;
-            }
-        }
+    if (xma_core::finalize_ddr_index(kernel_info, filter_props->ddr_bank_index, 
+        filter_session->base.hw_session.bank_index, XMA_FILTER_MOD) != XMA_SUCCESS) {
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(filter_session);
+        return nullptr;
     }
 
     if (kernel_info->kernel_channels) {
@@ -215,7 +185,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
             //Release singleton lock
             g_xma_singleton->locked = false;
             free(filter_session);
-            return NULL;
+            return nullptr;
         }
     }
 
@@ -230,7 +200,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         //Release singleton lock
         g_xma_singleton->locked = false;
         free(filter_session);
-        return NULL;
+        return nullptr;
     }
 
     XmaHwDevice& dev_tmp1 = hwcfg->devices[hwcfg_dev_index];
@@ -240,7 +210,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
             //Release singleton lock
             g_xma_singleton->locked = false;
             free(filter_session);
-            return NULL;
+            return nullptr;
         }
     }
     // Allocate the private data
@@ -262,33 +232,13 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
     int32_t num_execbo = g_xma_singleton->num_execbos;
     priv1->kernel_execbos.reserve(num_execbo);
     priv1->num_execbo_allocated = num_execbo;
-    for (int32_t d = 0; d < num_execbo; d++) {
-        xclBufferHandle  bo_handle = 0;
-        int       execBO_size = MAX_EXECBO_BUFF_SIZE;
-        //uint32_t  execBO_flags = (1<<31);
-        char     *bo_data;
-        bo_handle = xclAllocBO(dev_handle, 
-                                execBO_size, 
-                                0, 
-                                XCL_BO_FLAGS_EXECBUF);
-        if (!bo_handle || bo_handle == NULLBO) 
-        {
-            xma_logmsg(XMA_ERROR_LOG, XMA_FILTER_MOD,
-                    "Initalization of plugin failed. Failed to alloc execbo\n");
-            //Release singleton lock
-            g_xma_singleton->locked = false;
-            free(filter_session->base.plugin_data);
-            free(filter_session);
-            delete priv1;
-            return NULL;
-        }
-        bo_data = (char*)xclMapBO(dev_handle, bo_handle, true);
-        memset((void*)bo_data, 0x0, execBO_size);
-
-        priv1->kernel_execbos.emplace_back(XmaHwExecBO{});
-        XmaHwExecBO& dev_execbo = priv1->kernel_execbos.back();
-        dev_execbo.handle = bo_handle;
-        dev_execbo.data = bo_data;
+    if (xma_core::create_session_execbo(priv1, num_execbo, XMA_FILTER_MOD) != XMA_SUCCESS) {
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(filter_session->base.plugin_data);
+        free(filter_session);
+        delete priv1;
+        return nullptr;
     }
 
     rc = filter_session->filter_plugin->init(filter_session);
@@ -301,7 +251,7 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
         free(filter_session->base.plugin_data);
         free(filter_session);
         delete priv1;
-        return NULL;
+        return nullptr;
     }
 
     g_xma_singleton->num_filters++;
@@ -369,15 +319,15 @@ xma_filter_session_destroy(XmaFilterSession *session)
     /*
     delete (XmaHwSessionPrivate*)session->base.hw_session.private_do_not_use;
     */
-    session->base.hw_session.private_do_not_use = NULL;
-    session->base.plugin_data = NULL;
+    session->base.hw_session.private_do_not_use = nullptr;
+    session->base.plugin_data = nullptr;
     session->base.stats = NULL;
     session->filter_plugin = NULL;
     //do not change kernel in_use as it maybe in use by another plugin
     session->base.hw_session.dev_index = -1;
     session->base.session_signature = NULL;
     free(session);
-    session = NULL;
+    session = nullptr;
 
     //Release singleton lock
     g_xma_singleton->locked = false;
