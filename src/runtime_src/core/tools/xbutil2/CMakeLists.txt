@@ -41,8 +41,6 @@ else()
     "SubCmdM2MTest.cpp"
     "SubCmdScan.cpp"
     "SubCmdProgram.cpp"
-    "SubCmdRun.cpp"
-    "SubCmdFan.cpp"
     "SubCmdList.cpp"
     "SubCmdMem.cpp"
     "SubCmdDD.cpp"

@@ -30,7 +30,7 @@ namespace po = boost::program_options;
 // ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
 #include "SubCmd.h"
 static const unsigned int registerResult = 
-                    register_subcommand("p3p", 
+                    register_subcommand("p2p", 
                                         "<add description>",
                                         subCmdP2P);
 // =============================================================================
