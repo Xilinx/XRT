@@ -49,6 +49,7 @@ if(WIN32)
     Boost::filesystem 
     Boost::program_options 
     Boost::system 
+    xrt_core
     xrt_core_static
     xrt_coreutil_static
   )

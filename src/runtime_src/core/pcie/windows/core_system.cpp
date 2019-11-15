@@ -14,6 +14,7 @@
  * under the License.
  */
 
+#define XRT_CORE_COMMON_SOURCE
 
 #include "common/core_system.h"
 #include "gen/version.h"
