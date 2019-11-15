@@ -503,7 +503,7 @@ static int xclmgmt_reset(xdev_handle_t xdev_hdl)
 {
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)xdev_hdl;
 
-	return reset_hot_ioctl(lro);
+	return xclmgmt_hot_reset(lro);
 }
 
 struct xocl_pci_funcs xclmgmt_pci_ops = {
@@ -708,9 +708,9 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		 * before peer wakes up and start touching the PCIE BAR,
 		 * which is not allowed during reset.
 		 */
-		ret = (int) reset_hot_ioctl(lro);
+		ret = (int) xclmgmt_hot_reset(lro);
 #else
-		ret = (int) reset_hot_ioctl(lro);
+		ret = (int) xclmgmt_hot_reset(lro);
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
 			sizeof(ret));
 #endif
@@ -1228,6 +1228,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_mgmt_msix,
 	xocl_init_sysmon,
 	xocl_init_mb,
+	xocl_init_ps,
 	xocl_init_xvc,
 	xocl_init_nifd,
 	xocl_init_xiic,
@@ -1248,6 +1249,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_mgmt_msix,
 	xocl_fini_sysmon,
 	xocl_fini_mb,
+	xocl_fini_ps,
 	xocl_fini_xvc,
 	xocl_fini_nifd,
 	xocl_fini_xiic,

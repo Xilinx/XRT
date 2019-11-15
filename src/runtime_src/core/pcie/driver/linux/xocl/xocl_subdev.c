@@ -1007,6 +1007,44 @@ xocl_subdev_vsec_read32(xdev_handle_t xdev, int bar, u64 offset)
 	return value;
 }
 
+/*
+ * PCIe PF0/1 Extended Config Spec
+ * |31 ..         |15 ..        |0
+ *
+ * +--------------+-------------+
+ * | nxt cap  |0x1|   0x000B    | vendor specific cap
+ * |----------+---+-------------|
+ * | 0x10     |0x0|   0x0020    | ALF type
+ * |----------+---+-------------|
+ * | PF offset(31:4)      | |bar|
+ * |----------------------+-+---|
+ * | PF offset(63:32)           |
+ * +----------------------------+
+ *
+ * PF
+ * |31 ..         |15 ..        |0
+ *
+ * +---+-+---+------------------+
+ * |rsv|1|rev| format = 0x1     |
+ * |---+-+---+------------------|
+ * | length (31:0)              | total length in bytes
+ * |----------------------------|
+ * | rsvd                 |size | (7:0) size of each entry
+ * |----------------------+-----|
+ * | rsvd                       |
+ * |----------------------------|
+ *   ... start 1st entry ...          
+ * +--------------+---+---+-----|
+ * |uuid(15:0)    |bar|rev| type|
+ * |--------------+---+---+-----|
+ * |uuid(47:16)                 |
+ * |----------------------------|
+ * |rsvd  |major  |minor  |ver  |
+ * |------+-------+-------+-----|
+ * |rsvd                        |
+ * +----+-----------------------|
+ *  ... next entry ...          
+ */
 int
 xocl_subdev_vsec(xdev_handle_t xdev, u32 type,
 	int *bar_idx, u64 *offset)
@@ -1015,7 +1053,7 @@ xocl_subdev_vsec(xdev_handle_t xdev, u32 type,
 	struct pci_dev *pdev = core->pdev;
 	int bar;
 	void __iomem *bar_addr;
-	int cap, i, length;
+	int cap, i, length, size;
 	u32 off_low, off_high;
 	u64 vsec_off;
 	bool found = false;
@@ -1045,11 +1083,14 @@ xocl_subdev_vsec(xdev_handle_t xdev, u32 type,
 		return -EIO;
 	}
 	length = ioread32(&(p_hdr->length));
+	/* (7:0) is entry_size */
+	size = ioread32(&(p_hdr->entry_sz)) & 0xff;
 	pci_iounmap(pdev, p_hdr);
+	BUG_ON(size == 0);
 
 	bar_addr = pci_iomap_range(pdev, bar, vsec_off, length);
 
-	for (i = 16; i < length; i += 8) {
+	for (i = 16; i < length; i += size) {
 		u64 off;
 
 		off_low = ioread32(bar_addr + i);
@@ -1060,7 +1101,7 @@ xocl_subdev_vsec(xdev_handle_t xdev, u32 type,
 		off_high = ioread32(bar_addr + i + 4);
 		off = ((u64)off_high << 16) | (off_low & 0xffff0000) >> 16;
 		if (bar_idx)
-			*bar_idx = (off_low >> 8) & 0xff;
+			*bar_idx = (off_low >> 12) & 0xf;
 		if (offset)
 			*offset = off;
 	}
@@ -1081,6 +1122,8 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 	if (!ret) {
 		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_FLASH_VSEC;
 
+		xocl_xdev_info(xdev,
+			"Vendor Specific FLASH RES Start 0x%llx", offset);
 		subdev_info.res[0].start = offset;
 		subdev_info.res[0].end = offset + 0xfff;
 		subdev_info.bar_idx[0] = bar;
@@ -1094,6 +1137,8 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 	if (!ret) {
 		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_MAILBOX_VSEC;
 
+		xocl_xdev_info(xdev,
+			"Vendor Specific MAILBOX RES Start 0x%llx", offset);
 		subdev_info.res[0].start = offset;
 		subdev_info.res[0].end = offset + 0xfff;
 		subdev_info.bar_idx[0] = bar;

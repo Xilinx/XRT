@@ -137,7 +137,7 @@ typedef struct XmaBufferObjPrivate
     uint64_t paddr;
     int32_t  bank_index;
     int32_t  dev_index;
-    uint64_t boHandle;
+    xclBufferHandle boHandle;
     std::atomic<int32_t> ref_cnt;
     bool     device_only_buffer;
     xclDeviceHandle dev_handle;

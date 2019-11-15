@@ -25,7 +25,7 @@
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
 const char *subCmdResetDesc = "Perform various flavors of reset on the device";
-const char *subCmdResetUsage = "--hot | --kernel | --ecc [--card bdf] [--force]";
+const char *subCmdResetUsage = "--hot | --kernel | --ecc | --softkernel | --ert [--card bdf] [--force]";
 
 static int resetEcc(std::shared_ptr<pcidev::pci_device> dev)
 {
@@ -68,6 +68,10 @@ int resetHandler(int argc, char *argv[])
     int hot = 0;
     int kernel = 0;
     int ecc = 0;
+    int sk = 0;
+    int ert = 0;
+    std::string type = "0";
+    std::string err;
     bool force = false;
     const option opts[] = {
         { "card", required_argument, nullptr, '0' },
@@ -75,6 +79,8 @@ int resetHandler(int argc, char *argv[])
         { "kernel", no_argument, nullptr, '2' },
         { "ecc", no_argument, nullptr, '3' },
         { "force", no_argument, nullptr, '4' },
+        { "softkernel", no_argument, nullptr, '5' },
+        { "ert", no_argument, nullptr, '6' },
         { nullptr, 0, nullptr, 0 },
     };
 
@@ -91,9 +97,11 @@ int resetHandler(int argc, char *argv[])
             break;
         case '1':
             hot = 1;
+            type = "1";
             break;
         case '2':
             kernel = 1;
+            type = "2";
             break;
         case '3':
             ecc = 1;
@@ -101,13 +109,21 @@ int resetHandler(int argc, char *argv[])
         case '4':
             force = true;
             break;
+        case '5':
+            sk = 1;
+            type = "4";
+            break;
+        case '6':
+            ert = 1;
+            type = "3";
+            break;
         default:
             return -EINVAL;
         }
     }
 
     /* Can't do multiple reset in one shot. */
-    if (hot + kernel + ecc != 1)
+    if (hot + kernel + ecc + sk + ert != 1)
         return -EINVAL;
 
     if (index == UINT_MAX)
@@ -124,6 +140,10 @@ int resetHandler(int argc, char *argv[])
                 std::endl;
         } else if (ecc) {
             std::cout << "CAUTION: resetting all ECC counters. " << std::endl;
+        } else if (sk) {
+            std::cout << "CAUTION: Performing Soft Kernel reset. " << std::endl;
+        } else if (ert) {
+            std::cout << "CAUTION: Performing PS ERT reset. " << std::endl;
         }
         if(!canProceed())
             return -ECANCELED;
@@ -132,18 +152,19 @@ int resetHandler(int argc, char *argv[])
     int ret = 0;
     auto dev = pcidev::get_dev(index, false);
     int fd = dev->open("", O_RDWR);
-    if (hot) {
-        ret = dev->ioctl(fd, XCLMGMT_IOCHOTRESET);
-        if (ret == 0)
-            std::cout << "Successfully reset Card[" << getBDF(index)
-                      << "]"<< std::endl;
-	ret = ret ? -errno : ret;
-    } else if (kernel) {
-        ret = dev->ioctl(fd, XCLMGMT_IOCOCLRESET);
-	ret = ret ? -errno : ret;
-    } else if (ecc) {
+    if (ecc)
         ret = resetEcc(dev);
+    else {
+        dev->sysfs_put("", "reset", err, type);
+        if (hot) {
+            if (!err.size())
+                std::cout << "Successfully reset Card[" << getBDF(index)
+                    << "]"<< std::endl;
+            else
+                std::cout << err << std::endl;
+        }
     }
+
     dev->close(fd);
 
     return ret;
