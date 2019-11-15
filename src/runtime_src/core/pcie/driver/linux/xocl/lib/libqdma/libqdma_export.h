@@ -972,7 +972,7 @@ int qdma_queue_dump_cmpt(unsigned long dev_hndl, unsigned long qhndl,
 /**
  * maximum request length
  */
-#define QDMA_REQ_OPAQUE_SIZE	108
+#define QDMA_REQ_OPAQUE_SIZE	128
 /**
  * Max length of the user defined data
  */
