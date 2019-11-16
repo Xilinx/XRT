@@ -346,7 +346,7 @@ static ssize_t logic_uuids_show(struct device *dev,
 
 static DEVICE_ATTR_RO(logic_uuids);
 
-static ssize_t reset_store(struct device *dev,
+static ssize_t mgmt_reset_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
@@ -382,7 +382,7 @@ static ssize_t reset_store(struct device *dev,
 
 	return count;
 }
-static DEVICE_ATTR_WO(reset);
+static DEVICE_ATTR_WO(mgmt_reset);
 
 static struct attribute *mgmt_attrs[] = {
 	&dev_attr_instance.attr,
@@ -407,7 +407,7 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_rp_program.attr,
 	&dev_attr_interface_uuids.attr,
 	&dev_attr_logic_uuids.attr,
-	&dev_attr_reset.attr,
+	&dev_attr_mgmt_reset.attr,
 	NULL,
 };
 
