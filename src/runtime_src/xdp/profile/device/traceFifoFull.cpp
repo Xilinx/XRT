@@ -142,7 +142,7 @@ uint32_t TraceFifoFull::readTrace(xclTraceResultsVector& traceVector, uint32_t n
 
     processTraceData(traceVector, numSamples, traceBuf, wordsPerSample); 
 
-    delete traceBuf;
+    delete [] traceBuf;
     return 0;
 }
 
