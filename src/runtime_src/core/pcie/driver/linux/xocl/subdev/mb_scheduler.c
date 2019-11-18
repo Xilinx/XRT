@@ -1888,9 +1888,6 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 	unsigned int ert_num_slots = 0;
 	unsigned int cuidx = 0;
 
-	// Count number of KDMA CUs, max 4 per xclfeatures.h
-	unsigned int num_cdma = cdma ? count_entries_u32(cdma, 4) : 0;
-
 	// Only allow configuration with one live ctx
 	if (exec->configured) {
 		DRM_INFO("command scheduler is already configured for this device\n");
@@ -4310,7 +4307,8 @@ validate_ctrl(struct platform_device *pdev, struct ert_packet *ecmd)
 	struct ert_configure_cmd *cfg = (struct ert_configure_cmd *)ecmd;
 	uint32_t *cdma = xocl_rom_cdma_addr(xdev);
 	unsigned int num_cdma = cdma ? count_entries_u32(cdma, 4) : 0;
-	unsigned int num_slots = 0;
+
+	SCHED_DEBUGF("-> %s opcode(%d)\n", __func__, ecmd->opcode);
 
 	if (ecmd->opcode != ERT_CONFIGURE)
 		return 0;
@@ -4336,6 +4334,7 @@ validate_ctrl(struct platform_device *pdev, struct ert_packet *ecmd)
 		return 1;
 	}
 
+	SCHED_DEBUGF("<- %s opcode\n", __func__);
 	return 0;
 }
 
@@ -4354,7 +4353,6 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 	bool cus_specified = false;
 	u64 bo_size = bo->base.size;
 
-	SCHED_DEBUGF("-> %s opcode(%d)\n", __func__, ecmd->opcode);
 
 	// Before accessing content of exec buf, make sure the size makes sense
 	if (bo_size < sizeof(*ecmd) ||
@@ -4365,6 +4363,8 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 
 	if (ecmd->type == ERT_CTRL)
 		return validate_ctrl(pdev, ecmd);
+		
+	SCHED_DEBUGF("-> %s opcode(%d)\n", __func__, ecmd->opcode);
 
 	// cus for start kernel commands only
 	if (ecmd->type != ERT_CU)
