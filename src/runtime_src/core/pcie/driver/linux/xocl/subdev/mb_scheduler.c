@@ -4300,7 +4300,7 @@ reconfig(struct platform_device *pdev)
 }
 
 static int
-validate_ctrl(struct platform_device *pdev, struct ert_packet *ecmd)
+validate_ctrl(struct platform_device *pdev, const struct ert_packet *ecmd)
 {
 	struct exec_core *exec = platform_get_drvdata(pdev);
 	struct xocl_dev *xdev = xocl_get_xdev(pdev);
