@@ -515,7 +515,12 @@ struct xocl_pci_funcs xclmgmt_pci_ops = {
 static void xclmgmt_icap_get_data(struct xclmgmt_dev *lro, void *buf)
 {
 	struct xcl_pr_region *hwicap = NULL;
-	xuid_t *xclbin_id = XOCL_GET_XCLBIN_ID(lro);
+	int err = 0;
+	xuid_t *xclbin_id = NULL;
+
+	err = XOCL_GET_XCLBIN_ID(lro, xclbin_id);
+	if (err)
+		return;
 
 	hwicap = (struct xcl_pr_region *)buf;
 	hwicap->idcode = xocl_icap_get_data(lro, IDCODE);

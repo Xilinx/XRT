@@ -491,11 +491,14 @@ int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
 
 static int xocl_check_topology(struct xocl_drm *drm_p)
 {
-	struct mem_topology    *topology;
+	struct mem_topology    *topology = NULL;
 	u16	i;
 	int	err = 0;
 
-	topology = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev);
+	err = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev, topology);
+	if (err)
+		return err;
+
 	if (topology == NULL)
 		goto done;
 
@@ -544,7 +547,7 @@ uint32_t xocl_get_shared_ddr(struct xocl_drm *drm_p, struct mem_data *m_data)
 int xocl_cleanup_mem(struct xocl_drm *drm_p)
 {
 	int err;
-	struct mem_topology *topology;
+	struct mem_topology *topology = NULL;
 	u16 i, ddr;
 	uint64_t addr;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
@@ -560,7 +563,10 @@ int xocl_cleanup_mem(struct xocl_drm *drm_p)
 		return err;
 	}
 
-	topology = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev);
+	err = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev, topology);
+	if (err)
+		goto done;	
+
 	if (topology) {
 		ddr = topology->m_count;
 		for (i = 0; i < ddr; i++) {
@@ -588,6 +594,9 @@ int xocl_cleanup_mem(struct xocl_drm *drm_p)
 			drm_p->mm_usage_stat[i] = NULL;
 		}
 	}
+	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
+
+done:
 	vfree(drm_p->mm);
 	drm_p->mm = NULL;
 	vfree(drm_p->mm_usage_stat);
@@ -596,8 +605,6 @@ int xocl_cleanup_mem(struct xocl_drm *drm_p)
 	drm_p->mm_p2p_off = NULL;
 
 	mutex_unlock(&drm_p->mm_lock);
-
-	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
 	return 0;
 }
 
@@ -607,7 +614,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	size_t mm_size = 0, mm_stat_size = 0;
 	size_t size = 0, wrapper_size = 0;
 	size_t ddr_bank_size;
-	struct mem_topology *topo;
+	struct mem_topology *topo = NULL;
 	struct mem_data *mem_data;
 	uint32_t shared;
 	struct xocl_mm_wrapper *wrapper = NULL;
@@ -624,7 +631,9 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		reserved2 = 0x1000000;
 	}
 
-	topo = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev);
+	err = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev, topo);
+	if (err)
+		return err;
 
 	if (topo == NULL) {
 		err = -ENODEV;

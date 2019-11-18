@@ -24,10 +24,14 @@ static ssize_t xclbinuuid_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	xuid_t *xclbin_id;
-	ssize_t cnt;
+	xuid_t *xclbin_id = NULL;
+	ssize_t cnt = 0;
+	int err = 0;
 
-	xclbin_id = XOCL_GET_XCLBIN_ID(xdev);
+	err = XOCL_GET_XCLBIN_ID(xdev, xclbin_id);
+	if (err)
+		return cnt;
+
 	cnt = sprintf(buf, "%pUb\n", xclbin_id ? xclbin_id : 0);
 	XOCL_PUT_XCLBIN_ID(xdev);
 	return cnt;
@@ -59,12 +63,17 @@ static ssize_t kdsstat_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	int size = 0;
-	xuid_t *xclbin_id;
+	int size = 0, err;
+	xuid_t *xclbin_id = NULL;
 	pid_t *plist = NULL;
 	u32 clients, i;
 
-	xclbin_id = XOCL_GET_XCLBIN_ID(xdev);
+	err = XOCL_GET_XCLBIN_ID(xdev, xclbin_id);
+	if (err) {
+		size += sprintf(buf + size, "unable to give xclbin id");
+		return size;
+	}
+
 	size += sprintf(buf + size, "xclbin:\t\t\t%pUb\n",
 		xclbin_id ? xclbin_id : 0);
 	size += sprintf(buf + size, "outstanding execs:\t%d\n",
@@ -85,7 +94,7 @@ static DEVICE_ATTR_RO(kdsstat);
 
 static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 {
-	int i;
+	int i, err;
 	ssize_t count = 0;
 	ssize_t size = 0;
 	size_t memory_usage = 0;
@@ -97,7 +106,12 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 
 	mutex_lock(&xdev->dev_lock);
 
-	topo = XOCL_GET_MEM_TOPOLOGY(xdev);
+	err = XOCL_GET_MEM_TOPOLOGY(xdev, topo);
+	if (err) {
+		mutex_unlock(&xdev->dev_lock);
+		return err;
+	}
+
 	if (!topo) {
 		size = -EINVAL;
 		goto done;

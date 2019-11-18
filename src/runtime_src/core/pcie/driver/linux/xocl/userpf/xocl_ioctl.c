@@ -243,7 +243,12 @@ u32 get_live_clients(struct xocl_dev *xdev, pid_t **plist)
 static bool xclbin_downloaded(struct xocl_dev *xdev, xuid_t *xclbin_id)
 {
 	bool ret = false;
-	xuid_t *downloaded_xclbin = XOCL_GET_XCLBIN_ID(xdev);
+	int err = 0;
+	xuid_t *downloaded_xclbin =  NULL;
+
+	err = XOCL_GET_XCLBIN_ID(xdev, downloaded_xclbin);
+	if (err)
+		return ret;
 
 	if (downloaded_xclbin && uuid_equal(downloaded_xclbin, xclbin_id)) {
 		ret = true;
@@ -257,7 +262,11 @@ static bool xclbin_downloaded(struct xocl_dev *xdev, xuid_t *xclbin_id)
 static int xocl_preserve_mem(struct xocl_dev *xdev, struct mem_topology *new_topology, size_t size)
 {
 	int ret = 0;
-	 struct mem_topology *topology = XOCL_GET_MEM_TOPOLOGY(xdev);
+	struct mem_topology *topology = NULL;
+
+	ret = XOCL_GET_MEM_TOPOLOGY(xdev, topology);
+	if (ret)
+		return ret;
 
 	/*
 	 * Compare MEM_TOPOLOGY previous vs new.

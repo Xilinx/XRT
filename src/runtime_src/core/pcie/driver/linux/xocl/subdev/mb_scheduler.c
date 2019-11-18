@@ -3778,10 +3778,10 @@ destroy_client(struct platform_device *pdev, void **priv)
 	unsigned int	outstanding;
 	unsigned int	timeout_loops = 20;
 	unsigned int	loops = 0;
-	int pid = pid_nr(client->pid);
+	int pid = pid_nr(client->pid), err;
 	unsigned int bit;
-	struct ip_layout *layout;
-	xuid_t *xclbin_id;
+	struct ip_layout *layout = NULL;
+	xuid_t *xclbin_id = NULL;
 
 	// force scheduler to abort execs for this client
 	client->abort = true;
@@ -3826,9 +3826,15 @@ destroy_client(struct platform_device *pdev, void **priv)
 	 * Note, that implicit CUs (such as CDMA) do not add to ip_reference.
 	 */
 
-	layout = XOCL_GET_IP_LAYOUT(xdev);
-	xclbin_id = XOCL_GET_XCLBIN_ID(xdev);
+	err = XOCL_GET_IP_LAYOUT(xdev, layout);
+	if (err)
+		goto done;
 
+	err = XOCL_GET_XCLBIN_ID(xdev, xclbin_id);
+	if (err) {
+		XOCL_PUT_IP_LAYOUT(xdev);
+		goto done;
+	}
 	client_release_implicit_cus(exec, client);
 	client->virt_cu_ref = 0;
 
@@ -3873,8 +3879,13 @@ static int cuidx_valid(struct xocl_dev *xdev, u32 cu_idx)
 {
 	u32 ip_cnt = 0;
 	int ret = 0;
+	struct ip_layout *layout = NULL;
 
-	ip_cnt = XOCL_GET_IP_LAYOUT(xdev)->m_count;
+	ret = XOCL_GET_IP_LAYOUT(xdev, layout);
+	if (ret)
+		return ret;
+
+	ip_cnt = layout->m_count;
 
 	if (cu_idx != XOCL_CTX_VIRT_CU_INDEX
 		&& cu_idx >= ip_cnt) {
@@ -3894,7 +3905,7 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 	pid_t pid = pid_nr(task_tgid(current));
 	struct xocl_dev	*xdev = xocl_get_xdev(pdev);
 	struct exec_core *exec = platform_get_drvdata(pdev);
-	xuid_t *xclbin_id;
+	xuid_t *xclbin_id = NULL;
 	u32 cu_idx = args->cu_index;
 	bool shared;
 
@@ -3905,7 +3916,12 @@ static int client_ioctl_ctx(struct platform_device *pdev,
 	mutex_lock(&xdev->dev_lock);
 
 	/* Sanity check arguments for add/rem CTX */
-	xclbin_id = XOCL_GET_XCLBIN_ID(xdev);
+	ret = XOCL_GET_XCLBIN_ID(xdev, xclbin_id);
+	if (ret) {
+		mutex_unlock(&xdev->dev_lock);
+		return ret;
+	}
+
 	if (!xclbin_id || !uuid_equal(xclbin_id, &args->xclbin_id)) {
 		userpf_err(xdev, "try to add/rem CTX on wrong xclbin");
 		ret = -EBUSY;
