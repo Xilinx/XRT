@@ -254,7 +254,7 @@ struct xocl_cmd {
 		struct drm_xocl_bo *deps[8];
 	};
 
-	bool          aborted;  // set to true if CU aborts the command 
+	bool          aborted;  // set to true if CU aborts the command
 	unsigned long uid;      // unique id for this command
 	unsigned int  cu_idx;   // index of CU running this cmd
 	unsigned int  slot_idx; // index in exec core running queue
@@ -787,7 +787,7 @@ cmd_ctx_read(struct xocl_cmd *xcmd)
  * @done_cnt: number of commands that have completed (<=running_queue.size())
  * @run_cnt: number of commands that have bee started (<=running_queue.size())
  *
- * A compute unit is configured with a number of context it supports.  Each 
+ * A compute unit is configured with a number of context it supports.  Each
  * context manages command execution separate from other contexts.  A command
  * started in some context finished in order in that context, but a context
  * executes out of order with respect to another context.
@@ -812,7 +812,7 @@ cmd_ctx_read(struct xocl_cmd *xcmd)
  *  1. Command explicit context (ctx_in) exceeds CU configured contexts.
  *     If this error occurs, the cmd is aborted (never started on CU)
  *  2. CU output context (ctx_out) exceeds CU configured contexts
- *     If this error occurs, then all cmds are aborted, the CU is put in 
+ *     If this error occurs, then all cmds are aborted, the CU is put in
  *     error state and will not accept new commands, likely xbutil reset
  *     will be necessary.
  *  3. When ctx queue has no cmd for corresponding ctx_out
@@ -961,7 +961,7 @@ cu_abort(struct xocl_cu *xcu)
 /**
  * cu_ctx_out() - Read back context from CU
  *
- * @return: If the CU is not configured with explicit context, then 
+ * @return: If the CU is not configured with explicit context, then
  *   return the default ctx id (0), otherwise read CU @ 0x14 offset
  */
 static inline uint32_t
@@ -989,7 +989,7 @@ cu_ctx_in(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
 {
 	uint32_t ctxid;
 
-	if (!xcu->ctx_cfg) 
+	if (!xcu->ctx_cfg)
 		return 0;  // default ctx
 
 	ctxid = cmd_ctx_read(xcmd);
@@ -1023,14 +1023,14 @@ cu_pop_ctx(struct xocl_cu *xcu)
 
 	if (ctxid == no_index)
 		return 1;
-	
+
 	xcmd = list_first_entry_or_null(&xcu->ctx[ctxid], struct xocl_cmd, cu_list);
 	if (!xcmd) {
 		userpf_err(xcu->xdev,"missing cmd in cu(%d) for ctx(%d)\n",
 			   xcu->uid,ctxid);
 		cu_abort(xcu);
 		return 1;
-		
+
 	}
 
         SCHED_DEBUGF("%s xcu(%d) ctx(%d) pops xcmd(%lu)\n"
@@ -1053,7 +1053,7 @@ cu_push_ctx(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
 		cu_abort_cmd(xcu, xcmd);
 		return 1;
 	}
-		
+
 	SCHED_DEBUGF("%s cu(%d) ctx(%d) pushes cmd(%lu)\n",
 		     __func__, xcu->uid, ctxid, xcmd->uid);
 	list_add_tail(&xcmd->cu_list, &xcu->ctx[ctxid]);
@@ -1195,7 +1195,7 @@ cu_configure_ooo(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
 	unsigned int idx;
 
 	SCHED_DEBUGF("-> %s cu(%d) xcmd(%lu)\n", __func__, xcu->idx, xcmd->uid);
-	// past reserved 4 ctrl + 2 ctx 
+	// past reserved 4 ctrl + 2 ctx
 	for (idx = 6; idx < size - 1; idx += 2) {
 		u32 offset = *(regmap + idx);
 		u32 val = *(regmap + idx + 1);
@@ -1295,7 +1295,7 @@ struct xocl_ert {
 
 	unsigned int      slot_size;
 	bool              cq_intr;
-	
+
 	struct xocl_cmd * command_queue[MAX_SLOTS];
 
 	// Bitmap tracks busy(1)/free(0) slots in command_queue
@@ -1503,7 +1503,7 @@ ert_start_cmd(struct xocl_ert *xert, struct xocl_cmd *xcmd)
 	// success
 	++xert->cq_slot_usage[xcmd->slot_idx];
 	xert->command_queue[xcmd->slot_idx] = xcmd;
-	
+
 	SCHED_DEBUGF("<- %s returns true\n", __func__);
 	return true;
 }
@@ -1543,7 +1543,7 @@ ert_read_custat(struct xocl_ert *xert, struct xocl_cmd *xcmd, unsigned int num_c
 		u32 git = ioread32(xert->cq_base + slot_addr + (idx++ << 2));
 		u32 ert_num_cq_slots = ioread32(xert->cq_base + slot_addr + (idx++ << 2));
 		u32 ert_num_cus = ioread32(xert->cq_base + slot_addr + (idx++ << 2));
-		unsigned int words = 0; 
+		unsigned int words = 0;
 
 		xert->version = git;
 
@@ -1715,7 +1715,7 @@ struct exec_core {
 
 	unsigned int		   num_cus;
 	unsigned int		   num_cdma;
-	
+
 	bool		           polling_mode;
 	bool		           cq_interrupt;
 	bool		           configure_active;
@@ -1914,26 +1914,6 @@ exec_cfg_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 
 	// Mark command as control command to force slot 0 execution
 	cfg->type = ERT_CTRL;
-
-	if (cfg->count != 5 + cfg->num_cus) {
-		userpf_err(xdev, "invalid cfg cmd, count(%d) expected 5+num_cus(%d)\n",
-			   cfg->count, cfg->num_cus);
-		return 1;
-	}
-
-	// Guard against overflowing MAX_CUS structures,  account for KDMAs
-	if (cfg->num_cus > MAX_CUS-num_cdma) {
-		userpf_err(xdev, "invalid cfg cmd, num_cus (%d) cannot exceed %d\n",
-			   cfg->num_cus, MAX_CUS-num_cdma);
-		return 1;
-	}
-
-	// Guard against overflowing MAX_CUS structures,  account for KDMAs
-	if (cfg->slot_size < 0x200 || cfg->slot_size > 0x1000) {
-		userpf_err(xdev, "invalid cfg cmd, slot_size (%d) must be greater than 512b and 4Kb\n",
-			   cfg->slot_size);
-		return 1;
-	}
 
 	SCHED_DEBUGF("configuring scheduler cq_size(%d)\n", exec->cq_size);
 	ert_num_slots = exec->cq_size / cfg->slot_size;
@@ -2270,7 +2250,7 @@ exec_destroy(struct exec_core *exec)
 		cu_destroy(exec->cus[idx]);
 	if (exec->ert)
 		ert_destroy(exec->ert);
-	if (exec->csr_base) 
+	if (exec->csr_base)
 		iounmap(exec->csr_base);
 	if (exec->cq_base)
 		iounmap(exec->cq_base);
@@ -2301,7 +2281,7 @@ exec_update_custatus(struct exec_core *exec)
 		else if (exec_is_ert(exec))
 			exec->cu_status[cuidx] = ert_cu_status(exec->ert, cuidx)
 				? AP_START : AP_IDLE;
-		else 
+		else
 			exec->cu_status[cuidx] = cu_status(exec->cus[cuidx]);
 	}
 
@@ -2324,7 +2304,7 @@ exec_finish_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 
 	if (cmd_opcode(xcmd) != ERT_CU_STAT)
 		return 0;
-	
+
 	if (exec_is_ert(exec))
 		ert_read_custat(exec->ert, xcmd, exec->num_cus);
 
@@ -2529,14 +2509,14 @@ exec_penguin_start_cu_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		SCHED_DEBUGF("<- %s -> true\n", __func__);
 		return true;
 	}
-	
+
 	SCHED_DEBUGF("<- %s -> false\n", __func__);
 	return false;
 }
 
 /**
  * exec_penguin_start_ctrl_cmd() - Callback in penguin mode for ctrl commands
- * 
+ *
  * In penguin mode ctrl commands run synchronously, so mark them complete when
  * done, e.g. there is nothihng to poll for completion as there is nothing
  * left running
@@ -2600,7 +2580,7 @@ exec_ert_start_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 {
 	SCHED_DEBUGF("-> %s exec(%d) cmd(%lu) opcode(%d)\n", __func__,
 		     exec->uid, xcmd->uid, cmd_opcode(xcmd));
-	
+
 	if (ert_start_cmd(exec->ert, xcmd)) {
 		cmd_set_int_state(xcmd, ERT_CMD_STATE_RUNNING);
 		list_move_tail(&xcmd->cq_list, &exec->running_cmd_queue);
@@ -2618,7 +2598,7 @@ exec_ert_start_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
  * exec_ert_start_ctrl_cmd() - Callback in ERT mode for ctrl commands
  *
  * In ERT poll mode cu stats are managed by kds itself, nothing
- * to retrieve from ERT.  This could be split to two functions 
+ * to retrieve from ERT.  This could be split to two functions
  * through scheduler_ops, but not really critical.
  */
 static bool
@@ -2638,7 +2618,7 @@ exec_ert_start_ctrl_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		SCHED_DEBUGF("<- %s returns true\n", __func__);
 		return true;
 	}
-		
+
 	SCHED_DEBUGF("<- %s returns false\n", __func__);
 	return false;
 }
@@ -2903,7 +2883,7 @@ exec_start_ctrl_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 		SCHED_DEBUGF("<- %s returns true\n", __func__);
 		return true;
 	}
-	
+
 	SCHED_DEBUGF("<- %s returns false\n", __func__);
 	return false;
 }
@@ -3023,7 +3003,7 @@ exec_submit_ctrl_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 
 	// move to pending ctrl list
 	list_move_tail(&xcmd->cq_list, &exec->pending_ctrl_queue);
-	
+
 	SCHED_DEBUGF("<- %s true\n", __func__);
 	return true;
 }
@@ -3032,7 +3012,7 @@ static inline bool
 exec_submit_kds_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 {
 	SCHED_DEBUGF("-> %s exec(%d) cmd(%lu)\n", __func__, exec->uid, xcmd->uid);
-	
+
 	// If preprocessing fails, then abandon
 	if (cmd_opcode(xcmd) == ERT_START_COPYBO && exec_execute_copybo_cmd(exec, xcmd)) {
 		cmd_set_state(xcmd, ERT_CMD_STATE_ERROR);
@@ -3043,7 +3023,7 @@ exec_submit_kds_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 
 	// move to pending kds list
 	list_move_tail(&xcmd->cq_list, &exec->pending_kds_queue);
-	
+
 	SCHED_DEBUGF("<- %s returns true\n", __func__);
 	return true;
 }
@@ -3070,7 +3050,7 @@ exec_submit_cmd(struct exec_core *exec, struct xocl_cmd *xcmd)
 
 	if (ret)
 		++exec->num_pending_cmds;
-	
+
 	SCHED_DEBUGF("<- %s ret(%d)\n", __func__, ret);
 	return ret;
 }
@@ -3114,7 +3094,7 @@ static void
 exec_submitted_to_running(struct exec_core *exec)
 {
 	unsigned int started = 0;
-	
+
 	SCHED_DEBUGF("-> %s exec(%d)\n", __func__, exec->uid);
 	started += exec_start_ctrl(exec);
 	started += exec_start_cus(exec);
@@ -3239,7 +3219,7 @@ static struct exec_ops penguin_ops = {
 /**
  * struct dataflow_ops: kernel mode scheduling with ert polling
  *
- * Callback functions used in dataflow mode only when ERT is 
+ * Callback functions used in dataflow mode only when ERT is
  * assisting in polling for CU completion.
  */
 static struct exec_ops ert_poll_ops = {
@@ -3796,7 +3776,7 @@ static int rem_ip_ref(struct xocl_dev *xdev, struct exec_core *exec, u32 ip_idx)
 	return 0;
 }
 
-static void 
+static void
 destroy_client(struct platform_device *pdev, void **priv)
 {
 	struct client_ctx *client = (struct client_ctx *)(*priv);
@@ -4174,7 +4154,7 @@ client_ioctl_execbuf(struct platform_device *pdev,
 	}
 
 	/* bypass exec buffer valication for versal for now */
-	if (!XOCL_DSA_IS_VERSAL(xdev)) { 
+	if (!XOCL_DSA_IS_VERSAL(xdev)) {
 		ret = validate(pdev, client, xobj);
 		if (ret) {
 			userpf_err(xdev, "Exec buffer validation failed\n");
@@ -4322,6 +4302,43 @@ reconfig(struct platform_device *pdev)
 	return 0;
 }
 
+static int
+validate_ctrl(struct platform_device *pdev, struct ert_packet *ecmd)
+{
+	struct exec_core *exec = platform_get_drvdata(pdev);
+	struct xocl_dev *xdev = xocl_get_xdev(pdev);
+	struct ert_configure_cmd *cfg = (struct ert_configure_cmd *)ecmd;
+	uint32_t *cdma = xocl_rom_cdma_addr(xdev);
+	unsigned int num_cdma = cdma ? count_entries_u32(cdma, 4) : 0;
+	unsigned int num_slots = 0;
+
+	if (ecmd->opcode != ERT_CONFIGURE)
+		return 0;
+
+	// Payload count per command format in ert.h
+	if (cfg->count != 5 + cfg->num_cus) {
+		userpf_err(xdev, "invalid cfg cmd, count(%d) expected 5+num_cus(%d)\n",
+			   cfg->count, cfg->num_cus);
+		return 1;
+	}
+
+	// Guard against overflowing MAX_CUS structures,  account for KDMAs
+	if (cfg->num_cus > MAX_CUS-num_cdma) {
+		userpf_err(xdev, "invalid cfg cmd, num_cus (%d) cannot exceed %d\n",
+			   cfg->num_cus, MAX_CUS-num_cdma);
+		return 1;
+	}
+
+	// Number of command queue slots per slot_size and cq size must be less than 128
+	if (cfg->slot_size == 0 || (exec->cq_size / cfg->slot_size) > 128) {
+		userpf_err(xdev, "invalid cfg cmd, slot_size (%d)\n",
+			   cfg->slot_size);
+		return 1;
+	}
+
+	return 0;
+}
+
 /**
  * validate() - Check if requested cmd is valid in the current context
  */
@@ -4345,6 +4362,9 @@ validate(struct platform_device *pdev, struct client_ctx *client, const struct d
 		userpf_err(xocl_get_xdev(pdev), "exec buf is too small\n");
 		return 1;
 	}
+
+	if (ecmd->type == ERT_CTRL)
+		return validate_ctrl(pdev, ecmd);
 
 	// cus for start kernel commands only
 	if (ecmd->type != ERT_CU)
@@ -4534,7 +4554,7 @@ kds_custat_show(struct device *dev, struct device_attribute *attr, char *buf)
 			sz += sprintf(buf+sz, ",");
 		sz += sprintf(buf+sz, "%d", ert_cu_status(xert, idx));
 	}
-		
+
 	sz += sprintf(buf+sz, "}\nERT scheduler CQ state : {");
 	for (idx = 0; idx < xert->num_slots; ++idx) {
 		if (idx == 0) { // ctrl slot should be ignored
