@@ -13,39 +13,54 @@ include_directories(${CMAKE_BINARY_DIR})
 
 # -----------------------------------------------------------------------------
 
-file(GLOB XBUTIL_V2_FILES
+file(GLOB XBUTIL_V2_BASE_FILES
   "xbutil.cpp"
   "XBUtilMain.cpp"
   "XBUtilities.cpp"
-  "SubCmdQuery.cpp"
-  "SubCmdClock.cpp"
-  "SubCmdDmaTest.cpp"
-  "SubCmdDump.cpp"
-  "SubCmdM2MTest.cpp"
-  "SubCmdScan.cpp"
-  "SubCmdProgram.cpp"
-  "SubCmdRun.cpp"
-  "SubCmdFan.cpp"
-  "SubCmdList.cpp"
-  "SubCmdMem.cpp"
-  "SubCmdDD.cpp"
-  "SubCmdTop.cpp"
-  "SubCmdValidate.cpp"
-  "SubCmdReset.cpp"
-  "SubCmdP2P.cpp"
-  "SubCmdVersion.cpp"
   "XBReport.cpp"
   "XBDatabase.cpp"
+  "SubCmd.cpp"
 )
-set(XBUTIL_V2_FILES_SRCS ${XBUTIL_V2_FILES})
+
+if(WIN32)
+  set(XBUTIL2_NAME "xbutil")     # Yes, on windows the file name will be xbutil
+  file(GLOB XBUTIL_V2_SUBCMD_FILES
+    "SubCmdProgram.cpp"
+    "SubCmdClock.cpp"
+    "SubCmdQuery.cpp"
+    "SubCmdReset.cpp"
+    "SubCmdVersion.cpp"
+  )
+else()
+  set(XBUTIL2_NAME "xbutil2")
+  file(GLOB XBUTIL_V2_SUBCMD_FILES
+    "SubCmdQuery.cpp"
+    "SubCmdClock.cpp"
+    "SubCmdDmaTest.cpp"
+    "SubCmdDump.cpp"
+    "SubCmdM2MTest.cpp"
+    "SubCmdScan.cpp"
+    "SubCmdProgram.cpp"
+    "SubCmdList.cpp"
+    "SubCmdMem.cpp"
+    "SubCmdDD.cpp"
+    "SubCmdTop.cpp"
+    "SubCmdValidate.cpp"
+    "SubCmdReset.cpp"
+    "SubCmdP2P.cpp"
+    "SubCmdVersion.cpp"
+  )
+endif()
+
+set(XBUTIL_V2_FILES_SRCS ${XBUTIL_V2_BASE_FILES} ${XBUTIL_V2_SUBCMD_FILES})
 set(XBUTIL_V2_SRCS ${XBUTIL_V2_FILES_SRCS})
 
-add_executable(xbutil2 ${XBUTIL_V2_SRCS})
+add_executable(${XBUTIL2_NAME} ${XBUTIL_V2_SRCS})
 
 
 if(WIN32) 
   target_link_libraries(
-    xbutil2 PRIVATE 
+    ${XBUTIL2_NAME} PRIVATE 
     Boost::filesystem 
     Boost::program_options 
     Boost::system 
@@ -56,13 +71,13 @@ if(WIN32)
   # Use the static version of the run-time library 
   # Note: Needed to link with boost
   if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-    target_compile_options(xbutil2 PRIVATE /MTd)
+    target_compile_options(${XBUTIL2_NAME} PRIVATE /MTd)
   else()
-    target_compile_options(xbutil2 PRIVATE /MT)
+    target_compile_options(${XBUTIL2_NAME} PRIVATE /MT)
   endif()
 else()
   target_link_libraries(
-    xbutil2 
+    ${XBUTIL2_NAME} 
     xrt_core_static
     xrt_coreutil_static
     boost_filesystem
@@ -73,7 +88,7 @@ else()
   )
 endif()
 
-install (TARGETS xbutil2 RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
+install (TARGETS ${XBUTIL2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
 
 # -----------------------------------------------------------------------------
 
