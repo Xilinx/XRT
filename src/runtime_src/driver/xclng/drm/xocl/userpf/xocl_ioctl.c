@@ -175,7 +175,7 @@ int xocl_execbuf_ioctl(struct drm_device *dev,
 	return ret;
 
 out:
-	drm_gem_object_unreference_unlocked(&xobj->base);
+	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&xobj->base);
 	return ret;
 }
 

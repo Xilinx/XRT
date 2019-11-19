@@ -5,7 +5,8 @@
  *
  * Authors:
  *    Soren Soe <soren.soe@xilinx.com>
- *
+ *    Jan Stephan <j.stephan@hzdr.de>
+ * 
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
  * may be copied, distributed, and modified under those terms.
@@ -406,7 +407,7 @@ static inline void
 cmd_release_gem_object_reference(struct xocl_cmd *xcmd)
 {
 	if (xcmd->bo)
-		drm_gem_object_unreference_unlocked(&xcmd->bo->base);
+		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&xcmd->bo->base);
 }
 
 static inline void
@@ -1176,7 +1177,7 @@ chain_dependencies(struct xocl_cmd* xcmd)
 		struct xocl_cmd* chain_to = dbo->metadata.active;
 		/* release reference created in ioctl call when dependency was looked up
 		 * see comments in xocl_ioctl.c:xocl_execbuf_ioctl() */
-		drm_gem_object_unreference_unlocked(&dbo->base);
+		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&dbo->base);
 		xcmd->deps[didx] = NULL;
 		if (!chain_to) { /* command may have completed already */
 			--xcmd->wait_count;

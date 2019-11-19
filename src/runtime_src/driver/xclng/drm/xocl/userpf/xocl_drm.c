@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
  *
- * Authors:
+ * Authors: Jan Stephan <j.stephan@hzdr.de>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -540,7 +540,7 @@ int xocl_drm_init(struct xocl_dev *xdev)
 
 failed:
 	if (!ddev)
-		drm_dev_unref(ddev);
+		XOCL_DRM_GEM_OBJECT_GET(ddev);
 
 	return ret;
 }
