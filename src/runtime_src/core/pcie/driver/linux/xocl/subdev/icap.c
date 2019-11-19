@@ -950,7 +950,7 @@ static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev, str
 	}
 
 	for (i = 0; i < ARRAY_SIZE(freq_obj->ocl_target_freq); i++) {
-		if (!freq_obj->ocl_target_freq)
+		if (!freq_obj->ocl_target_freq[i])
 		        continue;
 		freq_max = freq_min = 0;
 		icap_get_ocl_frequency_max_min(icap, i, &freq_max, &freq_min);
