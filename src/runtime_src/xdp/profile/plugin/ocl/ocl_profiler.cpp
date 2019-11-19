@@ -759,6 +759,7 @@ namespace xdp {
 
     dInt->resetTS2MM();
 
+    xrtDevice->map(mDDRBufferForTrace);
     xrtDevice->free(mDDRBufferForTrace);
 
     mDDRBufferForTrace = nullptr;
