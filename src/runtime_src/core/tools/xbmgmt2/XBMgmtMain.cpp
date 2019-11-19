@@ -17,6 +17,8 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "XBMgmtMain.h"
+#include "SubCmdFlash.h"
+#include "SubCmdVersion.h"
 
 #include "XBUtilities.h"
 namespace XBU = XBUtilities;
@@ -31,16 +33,36 @@ namespace po = boost::program_options;
 
 static void printHelp()
 {
-    std::cout << "<------TO-DO------->\n";
-    std::cout << "\tPrint help\n";
+  std::cout << "Supported sub-commands are:\n";
+  std::cout << "\tflash - Update SC firmware or shell on the device\n";
+  std::cout << "\thelp - Print out help message for a sub-command\n";
+  std::cout << "\tscan - List all detected mgmt PCIE functions\n";
+  std::cout << "\tversion - Print out xrt build version\n";
+  std::cout << "Experts only:\n";
+  std::cout << "\tclock - Change various clock frequency on the device\n";
+  std::cout << "\tconfig - Parse or update daemon/device configuration\n";
+  std::cout << "\tnifd - Access the NIFD debug IP to readback frames and offsets\n";
+  std::cout << "\tpartition - Show and download partition onto the device\n";
+  std::cout << "\treset - Perform various flavors of reset on the device\n";
+  std::cout << "Run xbmgmt --help <subcommand> for detailed help of each subcommand\n";
+
 }
 
-
+static void sudoOrDie()
+{
+    const char* SudoMessage = "ERROR: root privileges required.";
+    if ((getuid() == 0) || (geteuid() == 0))
+        return;
+    std::cout << SudoMessage << std::endl;
+    exit(-EPERM);
+}
 
 // Initialized the sub cmd call back table
-// typedef int (*t_subcommand)(const std::vector<std::string> &, bool);
-// static const std::map<const std::string, t_subcommand> cmdTable = {
-// };
+typedef int (*t_subcommand)(const std::vector<std::string> &, bool);
+static const std::map<const std::string, t_subcommand> cmdTable = {
+  {"flash",  &subCmdFlash},
+  {"version",  &subCmdVersion}
+};
 
 
 // ------ Program entry point -------------------------------------------------
@@ -107,7 +129,7 @@ ReturnCodes main_(int argc, char** argv) {
   }
 
   // Check to see if help was requested or no command was found
-  if ((bHelp == true) || (vm.count("command") == 0)) {
+  if ((vm.count("command") == 0)) {
     ::printHelp();
     return RC_SUCCESS;
   }
@@ -121,19 +143,20 @@ ReturnCodes main_(int argc, char** argv) {
     return RC_SUCCESS;
   }
 
-//   if (cmdTable.find(sCommand) == cmdTable.end()) {
-//     std::cerr << "ERROR: " << "Unknown sub-command: '" << sCommand << "'" << std::endl;
-//     return RC_ERROR_IN_COMMAND_LINE;
-//   }
+  if (cmdTable.find(sCommand) == cmdTable.end()) {
+    std::cerr << "ERROR: " << "Unknown sub-command: '" << sCommand << "'" << std::endl;
+    return RC_ERROR_IN_COMMAND_LINE;
+  }
 
-//   // Prepare the data
-//   std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
-//   opts.erase(opts.begin());
+  // Prepare the data
+  std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
+  opts.erase(opts.begin());
 
-//   // Call the registered function for this command
-//   if (cmdTable.find(sCommand)->second != nullptr) {
-//     cmdTable.find(sCommand)->second(opts, bHelp);
-//   }
+  sudoOrDie();
+  // Call the registered function for this command
+  if (cmdTable.find(sCommand)->second != nullptr) {
+    cmdTable.find(sCommand)->second(opts, bHelp);
+  }
 
   return RC_SUCCESS;
 }

@@ -17,6 +17,8 @@ file(GLOB XBMGMT_V2_FILES
   "xbmgmt.cpp"
   "XBMgmtMain.cpp"
   "XBUtilities.cpp"
+  "SubCmdFlash.cpp"
+  "SubCmdVersion.cpp"
 )
 set(XBMGMT_V2_FILES_SRCS ${XBMGMT_V2_FILES})
 set(XBMGMT_V2_SRCS ${XBMGMT_V2_FILES_SRCS})
