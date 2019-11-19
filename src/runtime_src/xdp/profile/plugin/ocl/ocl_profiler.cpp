@@ -23,6 +23,10 @@
 #include <iomanip>
 #include <chrono>
 
+#ifndef _WIN32
+#include <sys/mman.h>
+#endif
+
 #include "ocl_profiler.h"
 #include "xdp/profile/config.h"
 #include "xdp/profile/core/rt_profile.h"
@@ -760,8 +764,11 @@ namespace xdp {
     dInt->resetTS2MM();
 
     auto addr = xrtDevice->map(mDDRBufferForTrace);
+#ifdef _WIN32
     xrtDevice->unmap(mDDRBufferForTrace, addr);
-//    munmap(addr, mDDRBufferSz);
+#else
+    munmap(addr, mDDRBufferSz);
+#endif
     xrtDevice->free(mDDRBufferForTrace);
 
     mDDRBufferForTrace = nullptr;
