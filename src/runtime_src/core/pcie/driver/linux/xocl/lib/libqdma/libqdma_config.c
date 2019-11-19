@@ -61,7 +61,6 @@ int qdma_set_qmax(unsigned long dev_hndl, u32 qsets_max, bool forced)
 		return -EINVAL;
 
 	qdev = xdev_2_qdev(xdev);
-
 	if (!qdev)
 		return -EINVAL;
 
@@ -156,7 +155,6 @@ int qdma_set_intr_rngsz(unsigned long dev_hndl, u32 intr_rngsz)
 		return -EINVAL;
 
 	qdev = xdev_2_qdev(xdev);
-
 	if (!qdev)
 		return -EINVAL;
 
@@ -342,7 +340,7 @@ int qdma_set_glbl_rng_sz(unsigned long dev_hndl, u32 *glbl_rng_sz)
 	if (!xdev)
 		return -EINVAL;
 
-       	qdev = xdev_2_qdev(xdev);
+	qdev = xdev_2_qdev(xdev);
 	if (!qdev)
 		return -EINVAL;
 
@@ -412,7 +410,7 @@ int qdma_set_timer_cnt(unsigned long dev_hndl, u32 *tmr_cnt)
 	if (!xdev)
 		return -EINVAL;
 
-       	qdev = xdev_2_qdev(xdev);
+	qdev = xdev_2_qdev(xdev);
 	if (!qdev)
 		return -EINVAL;
 
