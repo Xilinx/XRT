@@ -201,6 +201,7 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 {
 	struct xocl_dev *xdev = pci_get_drvdata(pdev);
 	int ret;
+	xuid_t *xclbin_id = NULL;
 
 	xocl_info(&pdev->dev, "PCI reset NOTIFY, prepare %d", prepare);
 
@@ -222,7 +223,14 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 		if (ret)
 			xocl_warn(&pdev->dev, "Online subdevs failed %d", ret);
 		(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
-		xocl_exec_reset(xdev, XOCL_XCLBIN_ID(xdev));
+
+		ret = XOCL_GET_XCLBIN_ID(xdev, xclbin_id);
+		if (ret) {
+			xocl_warn(&pdev->dev, "Unable to get on device uuid %d", ret);
+			return;
+		}
+		xocl_exec_reset(xdev, xclbin_id);
+		XOCL_PUT_XCLBIN_ID(xdev);
 	}
 }
 
