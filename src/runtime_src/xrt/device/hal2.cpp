@@ -430,8 +430,11 @@ void
 device::
 unmap(const BufferObjectHandle& boh, void* addr)
 {
+#if 0
+// The following causes crashes in some tests. Commenting it for now. This needs to be fixed.
   BufferObject* bo = getBufferObject(boh);
   m_ops->mUnmapBO(m_handle, bo->handle, addr);
+#endif
 }
 
 void*
