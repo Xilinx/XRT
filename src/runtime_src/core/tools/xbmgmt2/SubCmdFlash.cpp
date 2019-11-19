@@ -59,6 +59,8 @@ int subCmdFlash(const std::vector<std::string> &_options)
   uint64_t card = 0;
   bool help = false;
   bool scan = false;
+  bool shell = false;
+  bool sc_firmware = false;
 
   po::options_description flashDesc("flash options");
   flashDesc.add_options()
@@ -66,28 +68,40 @@ int subCmdFlash(const std::vector<std::string> &_options)
     (",d", boost::program_options::value<uint64_t>(&card), "Card to be examined")
     ("scan", boost::program_options::bool_switch(&scan), "Information about the card")
   ;
+
+  po::options_description expertsOnlyDesc("experts only");
+  expertsOnlyDesc.add_options()
+    ("shell", boost::program_options::bool_switch(&shell), "Flash platform from source")
+    ("sc_firmware", boost::program_options::bool_switch(&sc_firmware), "Flash sc firmware from source")
+  ;
+
+  po::options_description allOptions("");
+  allOptions.add(flashDesc).add(expertsOnlyDesc);
+
   // Parse sub-command ...
   po::variables_map vm;
 
   try {
-    po::store(po::command_line_parser(_options).options(flashDesc).run(), vm);
+    po::store(po::command_line_parser(_options).options(allOptions).run(), vm);
     po::notify(vm); // Can throw
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
-    std::cerr << flashDesc << std::endl;
+    std::cerr << allOptions << std::endl;
 
     // Re-throw exception
     throw;
   }
-  // Check to see if help was requested or no command was found
-  if ((help == true) || (vm.count("command") == 0))  {
-    std::cout << flashDesc << std::endl;
+  // Check to see if help was requested
+  if (help == true)  {
+    std::cout << allOptions << std::endl;
     return 0;
   }
 
   // -- Now process the subcommand --------------------------------------------
   XBU::verbose(XBU::format("  Card: %ld", card));
   XBU::verbose(XBU::format("  Scan: %ld", scan));
+  XBU::verbose(XBU::format("  Shell: %ld", shell));
+  XBU::verbose(XBU::format("  sc_firmware: %ld", sc_firmware));
 
   XBU::error("COMMAND BODY NOT IMPLEMENTED.");
   // TODO: Put working code here
