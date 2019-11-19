@@ -269,7 +269,7 @@ public:
   map(const BufferObjectHandle& bo) = 0;
 
   virtual void
-  unmap(const BufferObjectHandle& bo, void* addr) = 0;
+  unmap(const BufferObjectHandle& bo) = 0;
 
   virtual void*
   map(const ExecBufferObjectHandle& bo) = 0;

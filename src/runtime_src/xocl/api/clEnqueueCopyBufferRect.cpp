@@ -270,8 +270,8 @@ clEnqueueCopyBufferRect(cl_command_queue     command_queue ,
                      region[0]);
       }
     }
-    xdevice->unmap(src_boh, host_ptr_src);
-    xdevice->unmap(dst_boh, host_ptr_dst);
+    xdevice->unmap(src_boh);
+    xdevice->unmap(dst_boh);
   }
 
   //set event CL_COMPLETE

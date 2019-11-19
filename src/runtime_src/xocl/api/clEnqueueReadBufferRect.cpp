@@ -167,7 +167,7 @@ clEnqueueReadBufferRect(cl_command_queue     command_queue ,
               region[0]);
     }
   }
-  xdevice->unmap(boh, host_ptr);
+  xdevice->unmap(boh);
 
   if (event)
     xocl::xocl(*event)->set_status(CL_COMPLETE);

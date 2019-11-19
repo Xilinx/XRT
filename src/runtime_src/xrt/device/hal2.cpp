@@ -428,13 +428,14 @@ map(const BufferObjectHandle& boh)
 
 void
 device::
-unmap(const BufferObjectHandle& boh, void* addr)
+unmap(const BufferObjectHandle& boh)
 {
-#if 0
-// The following causes crashes in some tests. Commenting it for now. This needs to be fixed.
-  BufferObject* bo = getBufferObject(boh);
-  m_ops->mUnmapBO(m_handle, bo->handle, addr);
-#endif
+/*
+ * Any BO allocated through xrt::hal2 is mapped by default and cannot be munmap'ed.
+ * The unmapping happens as part of the buffer object handle going out of scope.
+ * xrt::device::map() simply returns the already nmap'ed host pointer contained within the opaque buffer object handle.
+ * So,xrt::device::unmap is provided for symmetry but is a no-op.
+ */
 }
 
 void*
@@ -449,6 +450,12 @@ void
 device::
 unmap(const ExecBufferObjectHandle& boh)
 {
+/*
+ * Any BO allocated through xrt::hal2 is mapped by default and cannot be munmap'ed.
+ * The unmapping happens as part of the buffer object handle going out of scope.
+ * xrt::device::map() simply returns the already nmap'ed host pointer contained within the opaque buffer object handle.
+ * So,xrt::device::unmap is provided for symmetry but is a no-op.
+ */
 }
 
 int
