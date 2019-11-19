@@ -180,6 +180,7 @@ bool hal_is_compatible(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg)
         return false;
     }
 
+#if 0
     /* For each of the requested devices, check that the DSA name matches */
     for (i = 0; i < num_devices_requested; i++)
     {
@@ -190,6 +191,7 @@ bool hal_is_compatible(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg)
             return false;
         }
     }
+#endif
 
     return true;
 }
