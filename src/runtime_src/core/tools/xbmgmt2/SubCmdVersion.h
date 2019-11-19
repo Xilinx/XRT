@@ -21,6 +21,6 @@
 #include <vector>
 #include <string>
   
-int subCmdVersion(const std::vector<std::string> &_options, bool _help);
+int subCmdVersion(const std::vector<std::string> &_options);
 
 #endif

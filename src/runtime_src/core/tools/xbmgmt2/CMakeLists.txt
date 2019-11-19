@@ -13,22 +13,36 @@ include_directories(${CMAKE_BINARY_DIR})
 
 # -----------------------------------------------------------------------------
 
-file(GLOB XBMGMT_V2_FILES
+file(GLOB XBMGMT_V2_BASE_FILES
   "xbmgmt.cpp"
   "XBMgmtMain.cpp"
   "XBUtilities.cpp"
-  "SubCmdFlash.cpp"
-  "SubCmdVersion.cpp"
+  "SubCmd.cpp"
 )
-set(XBMGMT_V2_FILES_SRCS ${XBMGMT_V2_FILES})
+
+if(WIN32)
+  set(XBMGMT2_NAME "xbmgmt")     # Yes, on windows the file name will be xbmgmt
+  file(GLOB XBMGMT_V2_SUBCMD_FILES
+    "SubCmdFlash.cpp"
+    "SubCmdVersion.cpp"
+  )
+else()
+  set(XBMGMT2_NAME "xbmgmt2")
+  file(GLOB XBMGMT_V2_SUBCMD_FILES
+    "SubCmdFlash.cpp"
+    "SubCmdVersion.cpp"
+  )
+endif()
+
+set(XBMGMT_V2_FILES_SRCS ${XBMGMT_V2_BASE_FILES} ${XBMGMT_V2_SUBCMD_FILES})
 set(XBMGMT_V2_SRCS ${XBMGMT_V2_FILES_SRCS})
 
-add_executable(xbmgmt2 ${XBMGMT_V2_SRCS})
+add_executable(${XBMGMT2_NAME} ${XBMGMT_V2_SRCS})
 
 
 if(WIN32) 
   target_link_libraries(
-    xbmgmt2 PRIVATE 
+    ${XBMGMT2_NAME} PRIVATE 
     Boost::filesystem 
     Boost::program_options 
     Boost::system 
@@ -39,13 +53,13 @@ if(WIN32)
   # Use the static version of the run-time library 
   # Note: Needed to link with boost
   if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-    target_compile_options(xbmgmt2 PRIVATE /MTd)
+    target_compile_options(${XBMGMT2_NAME} PRIVATE /MTd)
   else()
-    target_compile_options(xbmgmt2 PRIVATE /MT)
+    target_compile_options(${XBMGMT2_NAME} PRIVATE /MT)
   endif()
 else()
   target_link_libraries(
-    xbmgmt2 
+    ${XBMGMT2_NAME} 
     xrt_core_static
     xrt_coreutil_static
     boost_filesystem
@@ -56,7 +70,6 @@ else()
   )
 endif()
 
-install (TARGETS xbmgmt2 RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
+install (TARGETS ${XBMGMT2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
 
 # -----------------------------------------------------------------------------
-

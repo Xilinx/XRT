@@ -16,6 +16,9 @@
 
 #ifndef __XBMgmtMain_h_
 #define __XBMgmtMain_h_
+
+#include <string>
+#include <vector>
   
   typedef enum {
     RC_SUCCESS = 0,

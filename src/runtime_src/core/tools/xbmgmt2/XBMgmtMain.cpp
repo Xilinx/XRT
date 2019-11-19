@@ -17,34 +17,47 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "XBMgmtMain.h"
-#include "SubCmdFlash.h"
-#include "SubCmdVersion.h"
 
 #include "XBUtilities.h"
+#include "SubCmd.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
+#include "boost/format.hpp"
 
 // System - Include Files
 #include <iostream>
 
 
-static void printHelp()
+static void printHelp(po::options_description _optionDescription)
 {
-  std::cout << "Supported sub-commands are:\n";
-  std::cout << "\tflash - Update SC firmware or shell on the device\n";
-  std::cout << "\thelp - Print out help message for a sub-command\n";
-  std::cout << "\tscan - List all detected mgmt PCIE functions\n";
-  std::cout << "\tversion - Print out xrt build version\n";
-  std::cout << "Experts only:\n";
-  std::cout << "\tclock - Change various clock frequency on the device\n";
-  std::cout << "\tconfig - Parse or update daemon/device configuration\n";
-  std::cout << "\tnifd - Access the NIFD debug IP to readback frames and offsets\n";
-  std::cout << "\tpartition - Show and download partition onto the device\n";
-  std::cout << "\treset - Perform various flavors of reset on the device\n";
-  std::cout << "Run xbmgmt --help <subcommand> for detailed help of each subcommand\n";
+  std::cout << std::endl;
+  std::cout << "Syntax: xbmgmt <subcommand> <options>" << std::endl;
+  std::cout << std::endl;
+  std::cout << "Sub Commands:" << std::endl;
+  const SubCmdTable & cmdTable = getSubCmdsTable();
+  for (auto subCmdEntry : cmdTable) {
+    if (subCmdEntry.second.isHidden == true) {
+      continue;
+    }
+    std::cout << boost::format("  %-10s - %s") % subCmdEntry.second.sSubCmd % subCmdEntry.second.sDescription << std::endl;
+  }
+  std::cout << std::endl;
+  std::cout << _optionDescription << std::endl;
+  // std::cout << "Supported sub-commands are:\n";
+  // std::cout << "\tflash - Update SC firmware or shell on the device\n";
+  // std::cout << "\thelp - Print out help message for a sub-command\n";
+  // std::cout << "\tscan - List all detected mgmt PCIE functions\n";
+  // std::cout << "\tversion - Print out xrt build version\n";
+  // std::cout << "Experts only:\n";
+  // std::cout << "\tclock - Change various clock frequency on the device\n";
+  // std::cout << "\tconfig - Parse or update daemon/device configuration\n";
+  // std::cout << "\tnifd - Access the NIFD debug IP to readback frames and offsets\n";
+  // std::cout << "\tpartition - Show and download partition onto the device\n";
+  // std::cout << "\treset - Perform various flavors of reset on the device\n";
+  // std::cout << "Run xbmgmt --help <subcommand> for detailed help of each subcommand\n";
 
 }
 
@@ -56,14 +69,6 @@ static void sudoOrDie()
     std::cout << SudoMessage << std::endl;
     exit(-EPERM);
 }
-
-// Initialized the sub cmd call back table
-typedef int (*t_subcommand)(const std::vector<std::string> &, bool);
-static const std::map<const std::string, t_subcommand> cmdTable = {
-  {"flash",  &subCmdFlash},
-  {"version",  &subCmdVersion}
-};
-
 
 // ------ Program entry point -------------------------------------------------
 ReturnCodes main_(int argc, char** argv) {
@@ -128,9 +133,9 @@ ReturnCodes main_(int argc, char** argv) {
     XBU::setTrace( true );
   }
 
-  // Check to see if help was requested or no command was found
-  if ((vm.count("command") == 0)) {
-    ::printHelp();
+  // Check to see if help was requested and no command was found
+  if ((bHelp == true) || (vm.count("command") == 0)) {
+    ::printHelp(globalOptions);
     return RC_SUCCESS;
   }
 
@@ -139,12 +144,14 @@ ReturnCodes main_(int argc, char** argv) {
   std::string sCommand = vm["command"].as<std::string>();
 
   if (sCommand == "help") {
-    ::printHelp();
+    ::printHelp(globalOptions);
     return RC_SUCCESS;
   }
 
-  if (cmdTable.find(sCommand) == cmdTable.end()) {
+  const SubCmdEntry *pSubCmdEntry = getSubCmdEntry(sCommand);
+  if (pSubCmdEntry == nullptr) {
     std::cerr << "ERROR: " << "Unknown sub-command: '" << sCommand << "'" << std::endl;
+    ::printHelp(globalOptions);
     return RC_ERROR_IN_COMMAND_LINE;
   }
 
@@ -154,8 +161,8 @@ ReturnCodes main_(int argc, char** argv) {
 
   sudoOrDie();
   // Call the registered function for this command
-  if (cmdTable.find(sCommand)->second != nullptr) {
-    cmdTable.find(sCommand)->second(opts, bHelp);
+  if (pSubCmdEntry->callBackFunction != nullptr) {
+    pSubCmdEntry->callBackFunction(opts);
   }
 
   return RC_SUCCESS;
