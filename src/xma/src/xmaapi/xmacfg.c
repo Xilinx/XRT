@@ -81,7 +81,7 @@ static XmaSystemCfgSM systemcfg_sm[] = {
 { "SystemCfg",     &check_systemcfg,   true },
 { "logfile",       &set_logfile,       false },
 { "loglevel",      &set_loglevel,      false },
-{ "dsa",           &set_dsa,           true },
+{ "dsa",           &set_dsa,           false },
 { "pluginpath",    &set_pluginpath,    true },
 { "xclbinpath",    &set_xclbinpath,    true },
 { "ImageCfg",      &check_imagecfg,    true },
