@@ -64,7 +64,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
 
   po::options_description flashDesc("flash options");
   flashDesc.add_options()
-    (",h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
+    ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
     (",d", boost::program_options::value<uint64_t>(&card), "Card to be examined")
     ("scan", boost::program_options::bool_switch(&scan), "Information about the card")
   ;

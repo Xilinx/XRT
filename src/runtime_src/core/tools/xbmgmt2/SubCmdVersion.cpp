@@ -75,7 +75,7 @@ int subCmdVersion(const std::vector<std::string> &_options)
 
   po::options_description versionDesc("version options");
   versionDesc.add_options()
-    (",h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
+    ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
   // Parse sub-command ...

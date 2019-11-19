@@ -134,7 +134,7 @@ ReturnCodes main_(int argc, char** argv) {
   }
 
   // Check to see if help was requested and no command was found
-  if ((bHelp == true) || (vm.count("command") == 0)) {
+  if ((bHelp == true) && (vm.count("command") == 0)) {
     ::printHelp(globalOptions);
     return RC_SUCCESS;
   }
@@ -158,6 +158,10 @@ ReturnCodes main_(int argc, char** argv) {
   // Prepare the data
   std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
   opts.erase(opts.begin());
+
+  if (bHelp == true) {
+      opts.push_back("--help");
+  }
 
   sudoOrDie();
   // Call the registered function for this command
