@@ -3890,6 +3890,9 @@ static int cuidx_valid(struct xocl_dev *xdev, u32 cu_idx)
 	if (ret)
 		return ret;
 
+	if (!layout)
+		goto done;
+
 	ip_cnt = layout->m_count;
 
 	if (cu_idx != XOCL_CTX_VIRT_CU_INDEX
@@ -3899,6 +3902,7 @@ static int cuidx_valid(struct xocl_dev *xdev, u32 cu_idx)
 		ret = -EINVAL;
 	}
 
+done:
 	XOCL_PUT_IP_LAYOUT(xdev);
 	return ret;
 }
