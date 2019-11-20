@@ -44,21 +44,21 @@ namespace xdp {
   // *************************
   // Accelerator port metadata
   // *************************
-  void XDPPluginI::setArgumentsBank(const std::string& deviceName)
+  void XDPPluginI::setArgumentsBank(const std::string& /*deviceName*/)
   {
     // do nothing
   }
 
   // Get the arguments and memory resource for a given device/CU/port
-  void XDPPluginI::getArgumentsBank(const std::string& deviceName, const std::string& cuName,
-   	                                const std::string& portName, std::string& argNames,
+  void XDPPluginI::getArgumentsBank(const std::string& /*deviceName*/, const std::string& /*cuName*/,
+   	                                const std::string& /*portName*/, std::string& argNames,
    				                          std::string& memoryName)
   {
     argNames = "All";
     memoryName = "DDR";
   }
 
-  void XDPPluginI::getGuidanceMetadata(RTProfile *profile)
+  void XDPPluginI::getGuidanceMetadata(RTProfile* /*profile*/)
   {
     // do nothing
   }

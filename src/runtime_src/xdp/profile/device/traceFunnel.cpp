@@ -17,7 +17,6 @@
 #include "traceFunnel.h"
 #include <chrono>
 #include <thread>
-#include <unistd.h>
 
 #define TRACE_FUNNEL_SW_TRACE    0x0
 #define TRACE_FUNNEL_SW_RESET    0xc
@@ -25,7 +24,7 @@
 namespace xdp {
 
 TraceFunnel::TraceFunnel(Device* handle /** < [in] the xrt or hal device handle */,
-                int index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data)
+                         uint64_t index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data)
     : ProfileIP(handle, index, data),
       properties(0),
       major_version(0),

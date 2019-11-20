@@ -90,7 +90,7 @@ namespace xdp {
     void setTraceFooterString();
     bool isProfileRunning() {return mProfileRunning;}
     inline const int& getProfileFlag() { return ProfileFlags; }
-    uint32_t getTimeDiffUsec(std::chrono::steady_clock::time_point start,
+    uint64_t getTimeDiffUsec(std::chrono::steady_clock::time_point start,
                              std::chrono::steady_clock::time_point end);
 
     bool allocateDeviceDDRBufferForTrace(DeviceIntf* , xocl::device*);

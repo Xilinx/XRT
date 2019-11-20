@@ -20,6 +20,8 @@
 // Please keep eternal include file dependencies to a minimum
 #include <boost/property_tree/ptree.hpp>
 
+#include "core/common/config.h"
+
 /**
  * This class is a library abstract class where:
  * 1) The header file is defined in core/common
@@ -33,7 +35,11 @@
  */
 namespace xrt_core {
 namespace system {
+
+  XRT_CORE_COMMON_EXPORT
   void get_xrt_info(boost::property_tree::ptree &_pt);
+
+  XRT_CORE_COMMON_EXPORT
   void get_os_info(boost::property_tree::ptree &_pt);
 }
 }
