@@ -146,6 +146,7 @@ struct icap {
 	struct ip_layout	*ip_layout;
 	struct debug_ip_layout	*debug_layout;
 	struct connectivity	*connectivity;
+	void			*partition_metadata;
 
 	void			*rp_bit;
 	unsigned long		rp_bit_len;
@@ -1840,6 +1841,12 @@ static void icap_clean_axlf_section(struct icap *icap,
 	case CONNECTIVITY:
 		target = (void **)&icap->connectivity;
 		break;
+	case CLOCK_FREQ_TOPOLOGY:
+		target = (void **)&icap->icap_clock_freq_topology;
+		break;
+	case PARTITION_METADATA:
+		target = (void **)&icap->partition_metadata;
+		break;
 	default:
 		break;
 	}
@@ -1858,6 +1865,8 @@ static void icap_clean_bitstream_axlf(struct platform_device *pdev)
 	icap_clean_axlf_section(icap, MEM_TOPOLOGY);
 	icap_clean_axlf_section(icap, DEBUG_IP_LAYOUT);
 	icap_clean_axlf_section(icap, CONNECTIVITY);
+	icap_clean_axlf_section(icap, CLOCK_FREQ_TOPOLOGY);
+	icap_clean_axlf_section(icap, PARTITION_METADATA);
 }
 
 static uint32_t convert_mem_type(const char *name)
@@ -2260,8 +2269,9 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	struct axlf *xclbin)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
-	int err = 0;
+	int err = 0, num_dev = -1;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	struct xocl_subdev *subdevs;
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
@@ -2295,6 +2305,12 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 		/* not really doing verification, but just create subdevs */
 		(void) icap_verify_bitstream_axlf(pdev, xclbin);
 	}
+
+	xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
+	icap_parse_bitstream_axlf_section(pdev, xclbin, PARTITION_METADATA);
+	num_dev = xocl_fdt_parse_blob(xdev, icap->partition_metadata, &subdevs);
+	for (num_dev--; num_dev >= 0; num_dev--)
+		xocl_subdev_create(xdev, &subdevs[num_dev].info);
 
 done:
 	if (err) {
@@ -2545,6 +2561,9 @@ static int icap_parse_bitstream_axlf_section(struct platform_device *pdev,
 		break;
 	case CLOCK_FREQ_TOPOLOGY:
 		target = (void **)&icap->icap_clock_freq_topology;
+		break;
+	case PARTITION_METADATA:
+		target = (void **)&icap->partition_metadata;
 		break;
 	default:
 		return -EINVAL;
