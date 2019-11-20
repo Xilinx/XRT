@@ -503,8 +503,6 @@ static int get_header_from_vsec(struct feature_rom *rom)
 	xocl_xdev_info(xdev, "Mapping uuid at offset 0x%llx", offset);
 	rom->base = ioremap_nocache(offset, PAGE_SIZE);
 
-	//strcpy(rom->uuid, "11111c256808446c95821e06e144da3411111c256808446c95821e06e144da34");
-	//return init_rom_by_dtb(rom);
 	return get_header_from_dtb(rom);
 }
 
