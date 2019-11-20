@@ -1842,10 +1842,10 @@ uint64_t HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
     return -1;
   }
 
-  struct xclemulation::drm_xocl_bo *xobj = new xclemulation::drm_xocl_bo;
+  auto xobj = std::make_unique<xclemulation::drm_xocl_bo>();
   xobj->flags=info->flags;
   /* check whether buffer is p2p or not*/
-  bool noHostMemory = xclemulation::no_host_memory(xobj); 
+  bool noHostMemory = xclemulation::no_host_memory(xobj.get()); 
   std::string sFileName("");
   
   if(xobj->flags & XCL_BO_FLAGS_EXECBUF)
@@ -1869,7 +1869,7 @@ uint64_t HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   }
 
   info->handle = mBufferCount;
-  mXoclObjMap[mBufferCount++] = xobj;
+  mXoclObjMap[mBufferCount++] = xobj.release();
   return 0;
 }
 
@@ -2092,7 +2092,7 @@ int HwEmShim::xclUnmapBO(unsigned int boHandle, void* addr)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
   auto bo = xclGetBoByHandle(boHandle);
-  return munmap(addr, bo->size);
+  return bo ? munmap(addr, bo->size) : -1;
 }
 
 /**************************************************************************************/
