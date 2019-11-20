@@ -22,6 +22,17 @@
 
 #include "xcl_perfmon_parameters.h"
 
+namespace {
+
+inline bool
+file_exists(const std::string& fnm)
+{
+  struct stat statBuf;
+  return stat(fnm.c_str(), &statBuf) == 0;
+}
+  
+}
+
 namespace xclhwemhal2 {
 
   namespace pt = boost::property_tree;
@@ -635,11 +646,8 @@ namespace xclhwemhal2 {
         if (!launcherArgs.empty())
           simMode = launcherArgs.c_str();
 
-        struct stat statBuf;
-        if (stat(sim_file.c_str(), &statBuf) == -1)
-        {
+        if (!file_exists(sim_file))
           sim_file = "simulate.sh";
-        }
         int r = execl(sim_file.c_str(), sim_file.c_str(), simMode, NULL);
         fclose(stdout);
         if (r == -1){ std::cerr << "FATAL ERROR : Simulation process did not launch" << std::endl; exit(1); }
