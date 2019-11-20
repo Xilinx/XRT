@@ -13,8 +13,8 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+#include "ocl_icd_bindings.h"
 #include <CL/cl_ext_xilinx.h>
-#include <ocl_icd.h>
 
 // Sanity check that the sizeof the struct doesn't change unexpectedly.
 // Not possible since struct size is different depending on OS, but it
@@ -22,7 +22,7 @@
 // populated, trailing 0s don't matter.
 //static_assert(sizeof(_cl_icd_dispatch)==178*sizeof(void*),"Fix dispatch table");
 
-struct _cl_icd_dispatch cl_icd_dispatch = {
+const _cl_icd_dispatch cl_icd_dispatch = {
   clGetPlatformIDs,
   clGetPlatformInfo,
   clGetDeviceIDs,
@@ -167,8 +167,9 @@ struct _cl_icd_dispatch cl_icd_dispatch = {
   0, //clGetHostTimer,
   0, //clGetKernelSubGroupInfo,
   0, //clSetDefaultDeviceCommandQueue,
-  0,
-  0,
+  0, //clSetProgramReleaseCallback,
+  0, //clSetProgramSpecializationConstant,
+#ifndef _WIN32
   0,
   0,
   0,
@@ -201,4 +202,5 @@ struct _cl_icd_dispatch cl_icd_dispatch = {
   0,
   0,
   0
+#endif
 };

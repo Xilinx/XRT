@@ -16,7 +16,7 @@
 
 #ifndef xocl_core_sampler_h_
 #define xocl_core_sampler_h_
-
+#include "xocl/config.h"
 #include "xocl/core/object.h"
 #include "xocl/core/refcount.h"
 
@@ -29,13 +29,13 @@ public:
   virtual ~sampler();
 
   context*
-  get_context() const 
+  get_context() const
   {
     return m_context.get();
   }
 
   bool
-  get_norm_mode() const 
+  get_norm_mode() const
   {
     return m_norm_mode;
   }
@@ -62,5 +62,3 @@ private:
 } // xocl
 
 #endif
-
-

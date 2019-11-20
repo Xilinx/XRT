@@ -15,8 +15,6 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/event.h"
 #include "xocl/core/command_queue.h"
@@ -28,6 +26,8 @@
 #include "enqueue.h"
 #include "plugin/xdp/appdebug.h"
 #include "plugin/xdp/profile.h"
+
+#include <CL/opencl.h>
 
 namespace xocl {
 
@@ -61,9 +61,9 @@ validOrError(cl_command_queue  command_queue,
 
   // CL_INVALID_VALUE if mapped_ptr is not a valid pointer returned by
   // clEnqueueMapBuffer or clEnqueueMapImage for memobj.
-  if (!xocl(command_queue)->get_device()->is_mapped(mapped_ptr)) 
+  if (!xocl(command_queue)->get_device()->is_mapped(mapped_ptr))
     throw xocl::error(CL_INVALID_VALUE,"mapped_ptr is not a valid ptr");
-  
+
   // CL_OUT_OF_RESOURCES if there is a failure to allocate resources
   // required by the OpenCL implementation on the device.
 
@@ -84,7 +84,7 @@ clEnqueueUnmapMemObject(cl_command_queue  command_queue,
                num_events_in_wait_list,event_wait_list,event_parameter);
 
   auto uevent = xocl::create_hard_event
-    (command_queue,CL_COMMAND_UNMAP_MEM_OBJECT,num_events_in_wait_list,event_wait_list); 
+    (command_queue,CL_COMMAND_UNMAP_MEM_OBJECT,num_events_in_wait_list,event_wait_list);
   xocl::enqueue::set_event_action
     (uevent.get(),xocl::enqueue::action_unmap_buffer,memobj,mapped_ptr);
   xocl::profile::set_event_action
@@ -121,5 +121,3 @@ clEnqueueUnmapMemObject(cl_command_queue  command_queue,
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

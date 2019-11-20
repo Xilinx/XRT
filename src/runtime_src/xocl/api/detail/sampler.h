@@ -17,6 +17,7 @@
 #ifndef xocl_api_detail_sampler_h_
 #define xocl_api_detail_sampler_h_
 
+#include "xocl/config.h"
 #include "CL/cl.h"
 
 namespace xocl { namespace detail {
@@ -31,5 +32,3 @@ validOrError(const cl_sampler);
 }} // detail,xocl
 
 #endif
-
-
