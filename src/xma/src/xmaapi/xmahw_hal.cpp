@@ -181,21 +181,6 @@ bool hal_is_compatible(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg)
         return false;
     }
 
-#if 0
-    for (i = 0; i < systemcfg->num_images; i++)
-    {
-        for (j = 0; j < systemcfg->imagecfg[i].num_devices; j++)
-        {
-            if (strcmp(systemcfg->dsa, hwcfg->devices[systemcfg->imagecfg[i].device_id_map[j]].dsa) != 0)
-            {
-                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "DSA mismatch: requested %s found %s\n",
-                systemcfg->dsa, hwcfg->devices[systemcfg->imagecfg[i].device_id_map[j]].dsa);
-                return false;
-            }
-        }
-    }
-#endif
-
     return true;
 }
 
