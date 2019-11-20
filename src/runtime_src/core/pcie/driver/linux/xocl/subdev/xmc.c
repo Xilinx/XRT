@@ -1535,21 +1535,24 @@ static ssize_t read_temp_by_mem_topology(struct file *filp,
 	u32 nread = 0;
 	size_t size = 0;
 	u32 i;
+	int err = 0;
 	struct mem_topology *memtopo = NULL;
 	struct xocl_xmc *xmc =
 		dev_get_drvdata(container_of(kobj, struct device, kobj));
 	uint32_t temp[MAX_M_COUNT] = {0};
 	xdev_handle_t xdev = xocl_get_xdev(xmc->pdev);
 
-	memtopo = (struct mem_topology *)xocl_icap_get_data(xdev, MEMTOPO_AXLF);
+	err = xocl_icap_get_xclbin_metadata(xdev, MEMTOPO_AXLF, (void **)&memtopo);
+	if (err)
+		return nread;
 
 	if (!memtopo)
-		return 0;
+		goto done;
 
 	size = sizeof(u32)*(memtopo->m_count);
 
 	if (offset >= size)
-		return 0;
+		goto done;
 	for (i = 0; i < memtopo->m_count; ++i)
 		*(temp+i) = get_temp_by_m_tag(xmc, memtopo->m_mem_data[i].m_tag);
 
@@ -1559,6 +1562,8 @@ static ssize_t read_temp_by_mem_topology(struct file *filp,
 		nread = size - offset;
 
 	memcpy(buffer, temp, nread);
+done:
+	xocl_icap_put_xclbin_metadata(xdev);
 	/* xocl_icap_unlock_bitstream */
 	return nread;
 }

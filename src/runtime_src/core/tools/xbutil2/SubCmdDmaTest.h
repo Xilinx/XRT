@@ -21,6 +21,6 @@
 #include <vector>
 #include <string>
   
-int subCmdDmaTest(const std::vector<std::string> &_options, bool _help);
+int subCmdDmaTest(const std::vector<std::string> &_options);
 
 #endif

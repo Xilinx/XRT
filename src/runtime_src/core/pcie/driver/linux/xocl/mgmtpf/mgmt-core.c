@@ -515,11 +515,17 @@ struct xocl_pci_funcs xclmgmt_pci_ops = {
 static void xclmgmt_icap_get_data(struct xclmgmt_dev *lro, void *buf)
 {
 	struct xcl_pr_region *hwicap = NULL;
+	int err = 0;
+	xuid_t *xclbin_id = NULL;
+
+	err = XOCL_GET_XCLBIN_ID(lro, xclbin_id);
+	if (err)
+		return;
 
 	hwicap = (struct xcl_pr_region *)buf;
 	hwicap->idcode = xocl_icap_get_data(lro, IDCODE);
-	if (XOCL_XCLBIN_ID(lro))
-		uuid_copy((xuid_t *)hwicap->uuid, XOCL_XCLBIN_ID(lro));
+	if (xclbin_id)
+		uuid_copy((xuid_t *)hwicap->uuid, xclbin_id);
 	hwicap->freq_0 = xocl_icap_get_data(lro, CLOCK_FREQ_0);
 	hwicap->freq_1 = xocl_icap_get_data(lro, CLOCK_FREQ_1);
 	hwicap->freq_2 = xocl_icap_get_data(lro, CLOCK_FREQ_2);
@@ -527,6 +533,8 @@ static void xclmgmt_icap_get_data(struct xclmgmt_dev *lro, void *buf)
 	hwicap->freq_cntr_1 = xocl_icap_get_data(lro, FREQ_COUNTER_1);
 	hwicap->freq_cntr_2 = xocl_icap_get_data(lro, FREQ_COUNTER_2);
 	hwicap->mig_calib = lro->ready ? xocl_icap_get_data(lro, MIG_CALIB) : 0;
+
+	XOCL_PUT_XCLBIN_ID(lro);
 }
 
 static void xclmgmt_mig_get_data(struct xclmgmt_dev *lro, void *mig_ecc, size_t entry_sz)

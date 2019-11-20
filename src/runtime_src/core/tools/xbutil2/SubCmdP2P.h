@@ -21,6 +21,6 @@
 #include <vector>
 #include <string>
   
-int subCmdP2P(const std::vector<std::string> &_options, bool _help);
+int subCmdP2P(const std::vector<std::string> &_options);
 
 #endif

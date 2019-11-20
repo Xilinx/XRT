@@ -30,23 +30,34 @@ namespace po = boost::program_options;
 // System - Include Files
 #include <iostream>
 
+// ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
+#include "SubCmd.h"
+static const unsigned int registerResult = 
+                    register_subcommand("query", 
+                                        "Status of the system and device(s)",
+                                        subCmdQuery);
+// =============================================================================
+
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
-
-
 
 
 // ------ F U N C T I O N S ---------------------------------------------------
 
-int subCmdQuery(const std::vector<std::string> &_options, bool _help)
+int subCmdQuery(const std::vector<std::string> &_options)
 // Reference Command:  query [-d card [-r region]
 {
+  for (auto aString : _options) {
+    std::cout << "Option: '" << aString << "'" << std::endl;
+  }
   XBU::verbose("SubCommand: query");
   // -- Retrieve and parse the subcommand options -----------------------------
   uint64_t card = 0;
   uint64_t region = 0;
+  bool help = false;
 
   po::options_description queryDesc("query options");
   queryDesc.add_options()
+    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
     (",d", boost::program_options::value<uint64_t>(&card), "Card to be examined.")
     (",r", boost::program_options::value<uint64_t>(&region), "Card region.")
   ;
@@ -66,7 +77,7 @@ int subCmdQuery(const std::vector<std::string> &_options, bool _help)
   }
 
   // Check to see if help was requested or no command was found
-  if (_help == true)  {
+  if (help == true)  {
     std::cout << queryDesc << std::endl;
     return 0;
   }
@@ -84,6 +95,6 @@ int subCmdQuery(const std::vector<std::string> &_options, bool _help)
   XBDatabase::create_complete_device_tree(pt);
 
   XBU::trace_print_tree("Complete Device Tree", pt);
-  return 0;
+  return registerResult;
 }
 

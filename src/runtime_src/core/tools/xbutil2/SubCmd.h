@@ -14,13 +14,28 @@
  * under the License.
  */
 
-#ifndef __SubCmdFan_h_
-#define __SubCmdFan_h_
+#ifndef __SubCmd_h_
+#define __SubCmd_h_
 
 // Please keep eternal include file dependencies to a minimum
 #include <vector>
 #include <string>
+#include <map>
   
-int subCmdFan(const std::vector<std::string> &_options, bool _help);
+typedef int (*t_subcommand)(const std::vector<std::string> &);
+  
+typedef struct {
+  std::string sSubCmd;
+  std::string sDescription;
+  t_subcommand callBackFunction;
+  bool isHidden;
+} SubCmdEntry;
+
+typedef std::map<const std::string, SubCmdEntry> SubCmdTable;
+
+unsigned int register_subcommand(const std::string &_subCommandName, const std::string &_description, t_subcommand _pSubCommand, bool _isHidden = false);
+const SubCmdEntry *getSubCmdEntry(const std::string &_sSubCmdName);
+const SubCmdTable &getSubCmdsTable();
+
 
 #endif

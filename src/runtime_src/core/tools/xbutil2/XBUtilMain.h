@@ -17,6 +17,9 @@
 #ifndef __XBUtilMain_h_
 #define __XBUtilMain_h_
   
+#include <string>
+#include <vector>
+
   typedef enum {
     RC_SUCCESS = 0,
     RC_ERROR_IN_COMMAND_LINE = 1,

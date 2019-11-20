@@ -155,7 +155,7 @@ int resetHandler(int argc, char *argv[])
     if (ecc)
         ret = resetEcc(dev);
     else {
-        dev->sysfs_put("", "reset", err, type);
+        dev->sysfs_put("", "mgmt_reset", err, type);
         if (hot) {
             if (!err.size())
                 std::cout << "Successfully reset Card[" << getBDF(index)
