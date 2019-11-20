@@ -136,9 +136,6 @@ struct icap {
 	xuid_t			icap_bitstream_uuid;
 	int			icap_bitstream_ref;
 
-	char			*icap_clear_bitstream;
-	unsigned long		icap_clear_bitstream_length;
-
 	char			*icap_clock_bases[ICAP_MAX_NUM_CLOCKS];
 	unsigned short		icap_ocl_frequency[ICAP_MAX_NUM_CLOCKS];
 
@@ -168,6 +165,16 @@ struct icap {
 	ktime_t			cache_expires;
 
 	enum icap_sec_level	sec_level;
+
+
+	/* Use reader_ref as xclbin metadata reader counter
+	 * Ther reference count increases by 1 
+	 * if icap_xclbin_rd_lock get called.
+	 */
+	u64			busy;
+	int			reader_ref;
+	wait_queue_head_t	reader_wq;
+
 };
 
 static inline u32 reg_rd(void __iomem *reg)
@@ -337,6 +344,83 @@ static uint64_t icap_get_data_nolock(struct platform_device *pdev, enum data_kin
 static uint64_t icap_get_data(struct platform_device *pdev, enum data_kind kind);
 static const struct axlf_section_header *get_axlf_section_hdr(
 	struct icap *icap, const struct axlf *top, enum axlf_section_kind kind);
+
+
+static int icap_xclbin_wr_lock(struct icap *icap)
+{
+	pid_t pid = pid_nr(task_tgid(current));
+	int ret = 0;
+
+	mutex_lock(&icap->icap_lock);
+	if (icap->busy) {
+		ret = -EBUSY;
+	} else {
+		icap->busy = (u64)pid;
+	}
+	mutex_unlock(&icap->icap_lock);
+
+ 	if (ret)
+		goto done;
+
+	ret = wait_event_interruptible(icap->reader_wq, icap->reader_ref == 0);
+
+	if (ret)
+		goto done;
+
+	BUG_ON(icap->reader_ref != 0);
+
+done:
+	ICAP_DBG(icap, "%d ret: %d", pid, ret);
+	return ret;
+}
+static void icap_xclbin_wr_unlock(struct icap *icap)
+{
+	pid_t pid = pid_nr(task_tgid(current));
+
+	BUG_ON(icap->busy != (u64)pid);
+
+	mutex_lock(&icap->icap_lock);
+	icap->busy = 0;
+	mutex_unlock(&icap->icap_lock);
+	ICAP_DBG(icap, "%d", pid);
+}
+static int icap_xclbin_rd_lock(struct icap *icap)
+{
+	pid_t pid = pid_nr(task_tgid(current));
+	int ret = 0;
+
+	mutex_lock(&icap->icap_lock);
+
+	if (icap->busy) {
+		ret = -EBUSY;
+		goto done;
+	}
+
+	icap->reader_ref++;
+
+done:
+	mutex_unlock(&icap->icap_lock);
+	ICAP_DBG(icap, "%d ret: %d", pid, ret);
+	return ret;
+}
+static  void icap_xclbin_rd_unlock(struct icap *icap)
+{
+	pid_t pid = pid_nr(task_tgid(current));
+	bool wake = false;
+
+	mutex_lock(&icap->icap_lock);
+
+	BUG_ON(icap->reader_ref == 0);
+
+	ICAP_DBG(icap, "%d", pid);
+
+	wake = (icap->reader_ref-- == 0);
+
+	mutex_unlock(&icap->icap_lock);
+	if (wake)
+		wake_up_interruptible(&icap->reader_wq);
+}
+
 
 static void icap_free_bins(struct icap *icap)
 {
@@ -843,7 +927,6 @@ static void icap_get_ocl_frequency_max_min(struct icap *icap,
 		if (freq_min)
 			*freq_min = frequency_table[0].ocl;
 	}
-
 }
 
 static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev, struct xclmgmt_ioc_freqscaling *freq_obj)
@@ -851,9 +934,14 @@ static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev, str
 	struct icap *icap = platform_get_drvdata(pdev);
 	int i = 0;
 	int err = 0;
-	unsigned short freq_max;
+	unsigned short freq_max, freq_min;
+
+	err = icap_xclbin_rd_lock(icap);
+	if (err)
+		return err;
 
 	mutex_lock(&icap->icap_lock);
+
 	if (uuid_is_null(&icap->icap_bitstream_uuid)) {
 		ICAP_ERR(icap, "ERROR: There isn't a hardware accelerator loaded in the dynamic region."
 			" Validation of accelerator frequencies cannot be determine");
@@ -862,14 +950,22 @@ static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev, str
 	}
 
 	for (i = 0; i < ARRAY_SIZE(freq_obj->ocl_target_freq); i++) {
-		icap_get_ocl_frequency_max_min(icap, i, &freq_max, NULL);
-		ICAP_INFO(icap, "requested frequency is : %d xclbin freq is: %d",
-			freq_obj->ocl_target_freq[i],
-			freq_max);
-		if (freq_obj->ocl_target_freq[i] > freq_max) {
-			ICAP_ERR(icap, "Unable to set frequency as requested frequency %d is greater than set by xclbin %d",
-				freq_obj->ocl_target_freq[i],
-				freq_max);
+		if (!freq_obj->ocl_target_freq[i])
+		        continue;
+		freq_max = freq_min = 0;
+		icap_get_ocl_frequency_max_min(icap, i, &freq_max, &freq_min);
+		ICAP_INFO(icap, "requested frequency is : %d, "
+			"xclbin freq is: %d, "
+		        "xclbin minimum freq allowed is: %d",
+		        freq_obj->ocl_target_freq[i],
+		        freq_max, freq_min);
+		if (freq_obj->ocl_target_freq[i] > freq_max ||
+		        freq_obj->ocl_target_freq[i] < freq_min) {
+		        ICAP_ERR(icap, "Unable to set frequency! "
+		                "Frequency max: %d, Frequency min: %d, "
+		                "Requested frequency: %d",
+		                freq_max, freq_min,
+		                freq_obj->ocl_target_freq[i]);
 			err = -EDOM;
 			goto done;
 		}
@@ -877,6 +973,7 @@ static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev, str
 	err = set_and_verify_freqs(icap, freq_obj->ocl_target_freq, ARRAY_SIZE(freq_obj->ocl_target_freq));
 done:
 	mutex_unlock(&icap->icap_lock);
+	icap_xclbin_rd_unlock(icap);
 	return err;
 }
 
@@ -978,31 +1075,6 @@ static int icap_setup_clock_freq_topology(struct icap *icap, const struct axlf *
 
 		icap_write_clock_freq(clk_freq, &topology->m_clock_freq[i]);
 	}
-
-	return 0;
-}
-
-static inline void free_clear_bitstream(struct icap *icap)
-{
-	vfree(icap->icap_clear_bitstream);
-	icap->icap_clear_bitstream = NULL;
-	icap->icap_clear_bitstream_length = 0;
-}
-
-static int icap_setup_clear_bitstream(struct icap *icap,
-	const char *buffer, unsigned long length)
-{
-	free_clear_bitstream(icap);
-
-	if (length == 0)
-		return 0;
-
-	icap->icap_clear_bitstream = vmalloc(length);
-	if (!icap->icap_clear_bitstream)
-		return -ENOMEM;
-
-	memcpy(icap->icap_clear_bitstream, buffer, length);
-	icap->icap_clear_bitstream_length = length;
 
 	return 0;
 }
@@ -1342,6 +1414,52 @@ static int alloc_and_get_axlf_section(struct icap *icap,
 	return 0;
 }
 
+
+static int icap_download_hw(struct icap *icap, const struct axlf *axlf)
+{
+	uint64_t primaryFirmwareOffset = 0;
+	uint64_t primaryFirmwareLength = 0;
+	const struct axlf_section_header *primaryHeader = 0;
+	uint64_t length;
+	int err = 0;
+	char *buffer = (char *)axlf;
+
+	if (!axlf) {
+		err = -EINVAL;
+		goto done;
+	}
+
+	length = axlf->m_header.m_length;
+
+	primaryHeader = get_axlf_section_hdr(icap, axlf, BITSTREAM);
+
+	if (primaryHeader) {
+		primaryFirmwareOffset = primaryHeader->m_sectionOffset;
+		primaryFirmwareLength = primaryHeader->m_sectionSize;
+	}
+
+	if ((primaryFirmwareOffset + primaryFirmwareLength) > length) {
+		ICAP_ERR(icap, "Invalid BITSTREAM size");
+		err = -EINVAL;
+		goto done;
+	}
+
+	if (primaryFirmwareLength) {
+		ICAP_INFO(icap,
+			"found second stage bitstream of size 0x%llx",
+			primaryFirmwareLength);
+		err = icap_download(icap, buffer + primaryFirmwareOffset,
+			primaryFirmwareLength);
+		if (err) {
+			ICAP_ERR(icap, "Dowload bitstream failed");
+			goto done;
+		}
+	}
+
+done:
+	ICAP_INFO(icap, "%s, err = %d", __func__, err);
+	return err;
+}
 static int icap_download_boot_firmware(struct platform_device *pdev)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
@@ -1354,17 +1472,10 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	struct axlf *bin_obj_axlf;
 	const struct firmware *fw, *sche_fw;
 	char fw_name[256];
-	XHwIcap_Bit_Header bit_header = { 0 };
 	long err = 0;
 	uint64_t length = 0;
-	uint64_t primaryFirmwareOffset = 0;
-	uint64_t primaryFirmwareLength = 0;
-	uint64_t secondaryFirmwareOffset = 0;
-	uint64_t secondaryFirmwareLength = 0;
 	uint64_t mbBinaryOffset = 0;
 	uint64_t mbBinaryLength = 0;
-	const struct axlf_section_header *primaryHeader = 0;
-	const struct axlf_section_header *secondaryHeader = 0;
 	const struct axlf_section_header *mbHeader = 0;
 	bool load_sched = false, load_mgmt = false;
 
@@ -1474,100 +1585,10 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	if (load_mgmt || load_sched)
 		xocl_mb_reset(xdev);
 
-	primaryHeader = get_axlf_section_hdr(icap, bin_obj_axlf, BITSTREAM);
-	secondaryHeader = get_axlf_section_hdr(icap, bin_obj_axlf,
-		CLEARING_BITSTREAM);
-	if (primaryHeader) {
-		primaryFirmwareOffset = primaryHeader->m_sectionOffset;
-		primaryFirmwareLength = primaryHeader->m_sectionSize;
-	}
-	if (secondaryHeader) {
-		secondaryFirmwareOffset = secondaryHeader->m_sectionOffset;
-		secondaryFirmwareLength = secondaryHeader->m_sectionSize;
-	}
-
-	if ((primaryFirmwareOffset + primaryFirmwareLength) > length) {
-		err = -EINVAL;
-		goto done;
-	}
-
-	if ((secondaryFirmwareOffset + secondaryFirmwareLength) > length) {
-		err = -EINVAL;
-		goto done;
-	}
-
-	if (primaryFirmwareLength) {
-		ICAP_INFO(icap,
-			"found second stage bitstream of size 0x%llx in %s",
-			primaryFirmwareLength, fw_name);
-		err = icap_download(icap, fw->data + primaryFirmwareOffset,
-			primaryFirmwareLength);
-		/*
-		 * If we loaded a new second stage, we do not need the
-		 * previously stashed clearing bitstream if any.
-		 */
-		free_clear_bitstream(icap);
-		if (err) {
-			ICAP_ERR(icap,
-				"failed to download second stage bitstream");
-			goto done;
-		}
-		ICAP_INFO(icap, "downloaded second stage bitstream");
-	}
-
-	/*
-	 * If both primary and secondary bitstreams have been provided then
-	 * ignore the previously stashed bitstream if any. If only secondary
-	 * bitstream was provided, but we found a previously stashed bitstream
-	 * we should use the latter since it is more appropriate for the
-	 * current state of the device
-	 */
-	if (secondaryFirmwareLength && (primaryFirmwareLength ||
-		!icap->icap_clear_bitstream)) {
-		icap_setup_clear_bitstream(icap, fw->data + secondaryFirmwareOffset, 
-		secondaryFirmwareLength);
-
-		ICAP_INFO(icap, "found clearing bitstream of size 0x%lx in %s",
-			icap->icap_clear_bitstream_length, fw_name);
-	} else if (icap->icap_clear_bitstream) {
-		ICAP_INFO(icap,
-			"using existing clearing bitstream of size 0x%lx",
-		       icap->icap_clear_bitstream_length);
-	}
-
-	if (icap->icap_clear_bitstream &&
-		bitstream_parse_header(icap, icap->icap_clear_bitstream,
-		DMA_HWICAP_BITFILE_BUFFER_SIZE, &bit_header)) {
-		err = -EINVAL;
-		free_clear_bitstream(icap);
-	}
-
 done:
 	mutex_unlock(&icap->icap_lock);
 	release_firmware(fw);
-	kfree(bit_header.DesignName);
-	kfree(bit_header.PartName);
-	kfree(bit_header.Date);
-	kfree(bit_header.Time);
 	ICAP_INFO(icap, "%s err: %ld", __func__, err);
-	return err;
-}
-
-
-static long icap_download_clear_bitstream(struct icap *icap)
-{
-	long err = 0;
-	const char *buffer = icap->icap_clear_bitstream;
-	unsigned long length = icap->icap_clear_bitstream_length;
-
-	ICAP_INFO(icap, "downloading clear bitstream of length 0x%lx", length);
-
-	if (!buffer)
-		return 0;
-
-	err = icap_download(icap, buffer, length);
-
-	free_clear_bitstream(icap);
 	return err;
 }
 
@@ -1777,51 +1798,13 @@ static long axlf_set_freqscaling(struct icap *icap)
 }
 
 
-static int icap_download_hw(struct icap *icap, const char *bit_buf,
-	unsigned long length)
+static int icap_download_bitstream(struct icap *icap, const struct axlf *axlf)
 {
 	long err = 0;
-	XHwIcap_Bit_Header bit_header = { 0 };
-	unsigned numCharsRead = DMA_HWICAP_BITFILE_BUFFER_SIZE;
-	unsigned byte_read;
-
-	ICAP_INFO(icap, "downloading bitstream, length: %lu", length);
 
 	icap_freeze_axi_gate(icap);
 
-	err = icap_download_clear_bitstream(icap);
-	if (err)
-		goto free_buffers;
-
-	if (bitstream_parse_header(icap, bit_buf,
-		DMA_HWICAP_BITFILE_BUFFER_SIZE, &bit_header)) {
-		err = -EINVAL;
-		goto free_buffers;
-	}
-	if ((bit_header.HeaderLength + bit_header.BitstreamLength) > length) {
-		err = -EINVAL;
-		goto free_buffers;
-	}
-
-	bit_buf += bit_header.HeaderLength;
-	for (byte_read = 0; byte_read < bit_header.BitstreamLength;
-		byte_read += numCharsRead) {
-		numCharsRead = bit_header.BitstreamLength - byte_read;
-		if (numCharsRead > DMA_HWICAP_BITFILE_BUFFER_SIZE)
-			numCharsRead = DMA_HWICAP_BITFILE_BUFFER_SIZE;
-
-		err = bitstream_helper(icap, (u32 *)bit_buf,
-			numCharsRead / sizeof(u32));
-		if (err)
-			goto free_buffers;
-
-		bit_buf += numCharsRead;
-	}
-
-	err = wait_for_done(icap);
-	if (err)
-		goto free_buffers;
-
+	err = icap_download_hw(icap, axlf);
 	/*
 	 * Perform frequency scaling since PR download can silenty overwrite
 	 * MMCM settings in static region changing the clock frequencies
@@ -1832,12 +1815,7 @@ static int icap_download_hw(struct icap *icap, const char *bit_buf,
 	if (!err)
 		err = icap_ocl_freqscaling(icap, true);
 
-free_buffers:
 	icap_free_axi_gate(icap);
-	kfree(bit_header.DesignName);
-	kfree(bit_header.PartName);
-	kfree(bit_header.Date);
-	kfree(bit_header.Time);
 	return err;
 }
 
@@ -2230,13 +2208,6 @@ static int icap_verify_signature(struct icap *icap,
 static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 {
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
-	const struct axlf_section_header *primaryHeader = NULL;
-	const struct axlf_section_header *clearHeader = NULL;
-	uint64_t primaryFirmwareOffset = 0;
-	uint64_t primaryFirmwareLength = 0;
-	uint64_t clearFirmwareOffset = 0;
-	uint64_t clearFirmwareLength = 0;
-	char *buffer = NULL;
 	long err = 0;
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
@@ -2270,27 +2241,8 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 		if (err)
 			return err;
 	}
-	/* Download bitstream */
-	primaryHeader = get_axlf_section_hdr(icap, xclbin, BITSTREAM);
-	if (primaryHeader == NULL)
-		return -EINVAL;
-	primaryFirmwareOffset = primaryHeader->m_sectionOffset;
-	primaryFirmwareLength = primaryHeader->m_sectionSize;
-	buffer = (char *)xclbin;
-	buffer += primaryFirmwareOffset;
-	err = icap_download_hw(icap, buffer, primaryFirmwareLength);
-	if (err)
-		return err;
 
-	/* Save clearing bitstream */
-	clearHeader = get_axlf_section_hdr(icap, xclbin, CLEARING_BITSTREAM);
-	if (clearHeader != NULL) {
-		clearFirmwareOffset = clearHeader->m_sectionOffset;
-		clearFirmwareLength = clearHeader->m_sectionSize;
-	}
-	buffer = (char *)xclbin;
-	buffer += clearFirmwareOffset;
-	err = icap_setup_clear_bitstream(icap, buffer, clearFirmwareLength);
+	err = icap_download_bitstream(icap, xclbin);
 	if (err)
 		return err;
 
@@ -2301,58 +2253,17 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	return err;
 }
 
-static int icap_download_bitstream_axlf(struct platform_device *pdev,
-	const void *u_xclbin)
+static int __icap_download_bitstream_axlf(struct platform_device *pdev,
+	struct axlf *xclbin)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
-	struct axlf *xclbin = (struct axlf *)u_xclbin;
 	int err = 0;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	const struct axlf_section_header *dtbHeader = NULL;
 
-	/* Sanity check xclbin. */
-	if (memcmp(xclbin->m_magic, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2))) {
-		ICAP_ERR(icap, "invalid xclbin magic string");
-		return -EINVAL;
-	}
-
-	dtbHeader = get_axlf_section_hdr(icap, xclbin, PARTITION_METADATA);
-	if (dtbHeader) {
-		ICAP_INFO(icap, "check interface uuid");
-		if (!XDEV(xdev)->fdt_blob) {
-			ICAP_ERR(icap, "did not find platform dtb");
-			return -EINVAL;
-		}
-		err = xocl_fdt_check_uuids(xdev,
-				(const void *)XDEV(xdev)->fdt_blob,
-				(const void *)((char *)xclbin +
-				dtbHeader->m_sectionOffset));
-		if (err) {
-			ICAP_ERR(icap, "interface uuids do not match");
-			return -EINVAL;
-		}
-	}
-
-	if (xocl_xrt_version_check(xdev, xclbin, true)) {
-		ICAP_ERR(icap, "xclbin isn't supported by current XRT");
-		return -EINVAL;
-	}
-	if (!xocl_verify_timestamp(xdev,
-		xclbin->m_header.m_featureRomTimeStamp)) {
-		ICAP_ERR(icap, "TimeStamp of ROM did not match Xclbin");
-		return -EOPNOTSUPP;
-	}
-
-	mutex_lock(&icap->icap_lock);
+	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
 	ICAP_INFO(icap, "incoming xclbin: %pUb\non device xclbin: %pUb",
 		&xclbin->m_header.uuid, &icap->icap_bitstream_uuid);
-
-	if (icap_bitstream_in_use(icap)) {
-		ICAP_ERR(icap, "bitstream is in-use, can't change");
-		err = -EBUSY;
-		goto done;
-	}
 
 	if (ICAP_PRIVILEGED(icap)) {
 		err = __icap_xclbin_download(icap, xclbin);
@@ -2389,7 +2300,72 @@ done:
 		/* Remember "this" bitstream, so avoid redownload next time. */
 		uuid_copy(&icap->icap_bitstream_uuid, &xclbin->m_header.uuid);
 	}
+	return err;
+}
+
+static int icap_download_bitstream_axlf(struct platform_device *pdev,
+	const void *u_xclbin)
+{
+	struct icap *icap = platform_get_drvdata(pdev);
+	struct axlf *xclbin = (struct axlf *)u_xclbin;
+	int err = 0;
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	const struct axlf_section_header *dtbHeader = NULL;
+
+	err = icap_xclbin_wr_lock(icap);
+	if (err)
+		return err;
+
+	mutex_lock(&icap->icap_lock);
+
+	/* Sanity check xclbin. */
+	if (memcmp(xclbin->m_magic, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2))) {
+		ICAP_ERR(icap, "invalid xclbin magic string");
+		err = -EINVAL;
+		goto done;
+	}
+
+	dtbHeader = get_axlf_section_hdr(icap, xclbin, PARTITION_METADATA);
+	if (dtbHeader) {
+		ICAP_INFO(icap, "check interface uuid");
+		if (!XDEV(xdev)->fdt_blob) {
+			ICAP_ERR(icap, "did not find platform dtb");
+			err = -EINVAL;
+			goto done;
+		}
+		err = xocl_fdt_check_uuids(xdev,
+				(const void *)XDEV(xdev)->fdt_blob,
+				(const void *)((char *)xclbin +
+				dtbHeader->m_sectionOffset));
+		if (err) {
+			ICAP_ERR(icap, "interface uuids do not match");
+			err = -EINVAL;
+			goto done;
+		}
+	}
+
+	if (xocl_xrt_version_check(xdev, xclbin, true)) {
+		ICAP_ERR(icap, "xclbin isn't supported by current XRT");
+		err = -EINVAL;
+		goto done;
+	}
+	if (!xocl_verify_timestamp(xdev,
+		xclbin->m_header.m_featureRomTimeStamp)) {
+		ICAP_ERR(icap, "TimeStamp of ROM did not match Xclbin");
+		err = -EOPNOTSUPP;
+		goto done;
+	}
+	if (icap_bitstream_in_use(icap)) {
+		ICAP_ERR(icap, "bitstream is in-use, can't change");
+		err = -EBUSY;
+		goto done;
+	}
+
+	err = __icap_download_bitstream_axlf(pdev, xclbin);
+
+done:
 	mutex_unlock(&icap->icap_lock);
+	icap_xclbin_wr_unlock(icap);
 	ICAP_INFO(icap, "%s err: %d", __func__, err);
 	return err;
 }
@@ -2465,6 +2441,12 @@ static int icap_lock_bitstream(struct platform_device *pdev, const xuid_t *id)
 
 	BUG_ON(uuid_is_null(id));
 
+	err = icap_xclbin_rd_lock(icap);
+	if (err) {
+		ICAP_ERR(icap, "Failed to get on device uuid, device busy");
+		return err;
+	}
+
 	mutex_lock(&icap->icap_lock);
 
 	if (!uuid_equal(id, &icap->icap_bitstream_uuid)) {
@@ -2473,7 +2455,6 @@ static int icap_lock_bitstream(struct platform_device *pdev, const xuid_t *id)
 		err = -EBUSY;
 		goto done;
 	}
-
 
 	ref = icap->icap_bitstream_ref;
 	icap->icap_bitstream_ref++;
@@ -2487,6 +2468,7 @@ static int icap_lock_bitstream(struct platform_device *pdev, const xuid_t *id)
 
 done:
 	mutex_unlock(&icap->icap_lock);
+	icap_xclbin_rd_unlock(icap);
 	return 0;
 }
 
@@ -2494,24 +2476,34 @@ static int icap_unlock_bitstream(struct platform_device *pdev, const xuid_t *id)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
 	int err = 0;
+	xuid_t on_device_uuid;
 
 	if (id == NULL)
 		id = &uuid_null;
 
+	err = icap_xclbin_rd_lock(icap);
+	if (err) {
+		ICAP_ERR(icap, "Failed to get on device uuid, device busy");
+		return err;
+	}
+
 	mutex_lock(&icap->icap_lock);
+
+	uuid_copy(&on_device_uuid, &icap->icap_bitstream_uuid);
 
 	if (uuid_is_null(id)) /* force unlock all */
 		icap->icap_bitstream_ref = 0;
-	else if (uuid_equal(id, &icap->icap_bitstream_uuid))
+	else if (uuid_equal(id, &on_device_uuid))
 		icap->icap_bitstream_ref--;
 	else
 		err = -EINVAL;
+
 	if (err == 0) {
 		ICAP_INFO(icap, "bitstream %pUb unlocked, ref=%d",
-			&icap->icap_bitstream_uuid, icap->icap_bitstream_ref);
+			&on_device_uuid, icap->icap_bitstream_ref);
 	} else {
 		ICAP_ERR(icap, "unlock bitstream %pUb failed, on device: %pUb",
-			id, &icap->icap_bitstream_uuid);
+			id, &on_device_uuid);
 		goto done;
 	}
 
@@ -2520,6 +2512,7 @@ static int icap_unlock_bitstream(struct platform_device *pdev, const xuid_t *id)
 
 done:
 	mutex_unlock(&icap->icap_lock);
+	icap_xclbin_rd_unlock(icap);
 	return 0;
 }
 
@@ -2590,21 +2583,6 @@ static uint64_t icap_get_data_nolock(struct platform_device *pdev,
 			icap_read_from_peer(pdev);
 
 		switch (kind) {
-		case IPLAYOUT_AXLF:
-			target = (uint64_t)icap->ip_layout;
-			break;
-		case MEMTOPO_AXLF:
-			target = (uint64_t)icap->mem_topo;
-			break;
-		case DEBUG_IPLAYOUT_AXLF:
-			target = (uint64_t)icap->debug_layout;
-			break;
-		case CONNECTIVITY_AXLF:
-			target = (uint64_t)icap->connectivity;
-			break;
-		case XCLBIN_UUID:
-			target = (uint64_t)&icap->icap_bitstream_uuid;
-			break;
 		case CLOCK_FREQ_0:
 			target = icap->cache.freq_0;
 			break;
@@ -2639,21 +2617,6 @@ static uint64_t icap_get_data_nolock(struct platform_device *pdev,
 
 	} else {
 		switch (kind) {
-		case IPLAYOUT_AXLF:
-			target = (uint64_t)icap->ip_layout;
-			break;
-		case MEMTOPO_AXLF:
-			target = (uint64_t)icap->mem_topo;
-			break;
-		case DEBUG_IPLAYOUT_AXLF:
-			target = (uint64_t)icap->debug_layout;
-			break;
-		case CONNECTIVITY_AXLF:
-			target = (uint64_t)icap->connectivity;
-			break;
-		case XCLBIN_UUID:
-			target = (uint64_t)&icap->icap_bitstream_uuid;
-			break;
 		case IDCODE:
 			target = icap->idcode;
 			break;
@@ -2696,6 +2659,48 @@ static uint64_t icap_get_data(struct platform_device *pdev,
 	return target;
 }
 
+static void icap_put_xclbin_metadata(struct platform_device *pdev)
+{
+	struct icap *icap = platform_get_drvdata(pdev);
+
+	icap_xclbin_rd_unlock(icap);
+}
+
+static int icap_get_xclbin_metadata(struct platform_device *pdev,
+	enum data_kind kind, void **buf)
+{
+	struct icap *icap = platform_get_drvdata(pdev);
+	int err = 0;
+
+	err = icap_xclbin_rd_lock(icap);
+	if (err)
+		return err;
+
+	mutex_lock(&icap->icap_lock);
+
+	switch (kind) {
+		case IPLAYOUT_AXLF:
+			*buf = icap->ip_layout;
+			break;
+		case MEMTOPO_AXLF:
+			*buf = icap->mem_topo;
+			break;
+		case DEBUG_IPLAYOUT_AXLF:
+			*buf = icap->debug_layout;
+			break;
+		case CONNECTIVITY_AXLF:
+			*buf = icap->connectivity;
+			break;
+		case XCLBIN_UUID:
+			*buf = &icap->icap_bitstream_uuid;
+			break;
+		default:
+			break;
+	}
+	mutex_unlock(&icap->icap_lock);
+	return 0;
+}
+
 static void icap_refresh_addrs(struct platform_device *pdev)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
@@ -2731,7 +2736,6 @@ static int icap_offline(struct platform_device *pdev)
 	xocl_drvinst_kill_proc(platform_get_drvdata(pdev));
 
 	sysfs_remove_group(&pdev->dev.kobj, &icap_attr_group);
-	free_clear_bitstream(icap);
 	free_clock_freq_topology(icap);
 
 	icap_clean_bitstream_axlf(pdev);
@@ -2767,6 +2771,8 @@ static struct xocl_icap_funcs icap_ops = {
 	.ocl_lock_bitstream = icap_lock_bitstream,
 	.ocl_unlock_bitstream = icap_unlock_bitstream,
 	.get_data = icap_get_data,
+	.get_xclbin_metadata = icap_get_xclbin_metadata,
+	.put_xclbin_metadata = icap_put_xclbin_metadata,
 };
 
 static ssize_t clock_freqs_show(struct device *dev,
@@ -2774,8 +2780,12 @@ static ssize_t clock_freqs_show(struct device *dev,
 {
 	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
 	ssize_t cnt = 0;
-	int i;
+	int i, err;
 	u32 freq_counter, freq, request_in_khz, tolerance;
+
+	err = icap_xclbin_rd_lock(icap);
+	if (err)
+		return cnt;
 
 	mutex_lock(&icap->icap_lock);
 	for (i = 0; i < ICAP_MAX_NUM_CLOCKS; i++) {
@@ -2792,8 +2802,9 @@ static ssize_t clock_freqs_show(struct device *dev,
 		} else
 			cnt += sprintf(buf + cnt, "%d\n", freq);
 	}
-	mutex_unlock(&icap->icap_lock);
 
+	mutex_unlock(&icap->icap_lock);
+	icap_xclbin_rd_unlock(icap);
 	return cnt;
 }
 static DEVICE_ATTR_RO(clock_freqs);
@@ -2803,18 +2814,20 @@ static ssize_t clock_freqs_max_show(struct device *dev,
 {
 	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
 	ssize_t cnt = 0;
-	int i;
+	int i, err;
 	unsigned short freq;
 
-	mutex_lock(&icap->icap_lock);
+	err = icap_xclbin_rd_lock(icap);
+	if (err)
+		return cnt;
 
 	for (i = 0; i < ICAP_MAX_NUM_CLOCKS; i++) {
 		freq = 0;
 		icap_get_ocl_frequency_max_min(icap, i, &freq, NULL);
 		cnt += sprintf(buf + cnt, "%d\n", freq);
 	}
-	mutex_unlock(&icap->icap_lock);
 
+	icap_xclbin_rd_unlock(icap);
 	return cnt;
 }
 static DEVICE_ATTR_RO(clock_freqs_max);
@@ -2824,18 +2837,20 @@ static ssize_t clock_freqs_min_show(struct device *dev,
 {
 	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
 	ssize_t cnt = 0;
-	int i;
+	int i, err;
 	unsigned short freq;
 
-	mutex_lock(&icap->icap_lock);
+	err = icap_xclbin_rd_lock(icap);
+	if (err)
+		return cnt;
 
 	for (i = 0; i < ICAP_MAX_NUM_CLOCKS; i++) {
 		freq = 0;
 		icap_get_ocl_frequency_max_min(icap, i, NULL, &freq);
 		cnt += sprintf(buf + cnt, "%d\n", freq);
 	}
-	mutex_unlock(&icap->icap_lock);
 
+	icap_xclbin_rd_unlock(icap);
 	return cnt;
 }
 static DEVICE_ATTR_RO(clock_freqs_min);
@@ -3014,13 +3029,16 @@ static ssize_t icap_read_debug_ip_layout(struct file *filp, struct kobject *kobj
 	struct icap *icap;
 	u32 nread = 0;
 	size_t size = 0;
+	int err = 0;
 
 	icap = (struct icap *)dev_get_drvdata(container_of(kobj, struct device, kobj));
 
 	if (!icap || !icap->debug_layout)
-		return 0;
+		return nread;
 
-	mutex_lock(&icap->icap_lock);
+	err = icap_xclbin_rd_lock(icap);
+	if (err)
+		return nread;
 
 	size = sizeof_sect(icap->debug_layout, m_debug_ip_data);
 	if (offset >= size)
@@ -3034,7 +3052,7 @@ static ssize_t icap_read_debug_ip_layout(struct file *filp, struct kobject *kobj
 	memcpy(buffer, ((char *)icap->debug_layout) + offset, nread);
 
 unlock:
-	mutex_unlock(&icap->icap_lock);
+	icap_xclbin_rd_unlock(icap);
 	return nread;
 }
 static struct bin_attribute debug_ip_layout_attr = {
@@ -3054,13 +3072,17 @@ static ssize_t icap_read_ip_layout(struct file *filp, struct kobject *kobj,
 	struct icap *icap;
 	u32 nread = 0;
 	size_t size = 0;
+	int err = 0;
 
 	icap = (struct icap *)dev_get_drvdata(container_of(kobj, struct device, kobj));
 
 	if (!icap || !icap->ip_layout)
-		return 0;
+		return nread;
 
-	mutex_lock(&icap->icap_lock);
+	err = icap_xclbin_rd_lock(icap);
+	if (err)
+		return nread;
+
 
 	size = sizeof_sect(icap->ip_layout, m_ip_data);
 	if (offset >= size)
@@ -3074,7 +3096,7 @@ static ssize_t icap_read_ip_layout(struct file *filp, struct kobject *kobj,
 	memcpy(buffer, ((char *)icap->ip_layout) + offset, nread);
 
 unlock:
-	mutex_unlock(&icap->icap_lock);
+	icap_xclbin_rd_unlock(icap);
 	return nread;
 }
 
@@ -3095,13 +3117,16 @@ static ssize_t icap_read_connectivity(struct file *filp, struct kobject *kobj,
 	struct icap *icap;
 	u32 nread = 0;
 	size_t size = 0;
+	int err = 0;
 
 	icap = (struct icap *)dev_get_drvdata(container_of(kobj, struct device, kobj));
 
 	if (!icap || !icap->connectivity)
-		return 0;
+		return nread;
 
-	mutex_lock(&icap->icap_lock);
+	err = icap_xclbin_rd_lock(icap);
+	if (err)
+		return nread;
 
 	size = sizeof_sect(icap->connectivity, m_connection);
 	if (offset >= size)
@@ -3115,7 +3140,7 @@ static ssize_t icap_read_connectivity(struct file *filp, struct kobject *kobj,
 	memcpy(buffer, ((char *)icap->connectivity) + offset, nread);
 
 unlock:
-	mutex_unlock(&icap->icap_lock);
+	icap_xclbin_rd_unlock(icap);
 	return nread;
 }
 
@@ -3137,13 +3162,16 @@ static ssize_t icap_read_mem_topology(struct file *filp, struct kobject *kobj,
 	struct icap *icap;
 	u32 nread = 0;
 	size_t size = 0;
+	int err = 0;
 
 	icap = (struct icap *)dev_get_drvdata(container_of(kobj, struct device, kobj));
 
 	if (!icap || !icap->mem_topo)
-		return 0;
+		return nread;
 
-	mutex_lock(&icap->icap_lock);
+	err = icap_xclbin_rd_lock(icap);
+	if (err)
+		return nread;
 
 	size = sizeof_sect(icap->mem_topo, m_mem_data);
 	if (offset >= size)
@@ -3156,7 +3184,7 @@ static ssize_t icap_read_mem_topology(struct file *filp, struct kobject *kobj,
 
 	memcpy(buffer, ((char *)icap->mem_topo) + offset, nread);
 unlock:
-	mutex_unlock(&icap->icap_lock);
+	icap_xclbin_rd_unlock(icap);
 	return nread;
 }
 
@@ -3178,13 +3206,16 @@ static ssize_t icap_read_clock_freqs(struct file *filp, struct kobject *kobj,
 	struct icap *icap;
 	u32 nread = 0;
 	size_t size = 0;
+	int err = 0;
 
 	icap = (struct icap *)dev_get_drvdata(container_of(kobj, struct device, kobj));
 
 	if (!icap || !icap->icap_clock_freq_topology)
-		return 0;
+		return nread;
 
-	mutex_lock(&icap->icap_lock);
+	err = icap_xclbin_rd_lock(icap);
+	if (err)
+		return nread;
 
 	size = sizeof_sect(icap->icap_clock_freq_topology, m_clock_freq);
 	if (offset >= size)
@@ -3197,7 +3228,7 @@ static ssize_t icap_read_clock_freqs(struct file *filp, struct kobject *kobj,
 
 	memcpy(buffer, ((char *)icap->icap_clock_freq_topology) + offset, nread);
 unlock:
-	mutex_unlock(&icap->icap_lock);
+	icap_xclbin_rd_unlock(icap);
 	return nread;
 }
 
@@ -3270,7 +3301,6 @@ static int icap_remove(struct platform_device *pdev)
 	icap_free_bins(icap);
 
 	iounmap(icap->icap_regs);
-	free_clear_bitstream(icap);
 	free_clock_freq_topology(icap);
 
 	sysfs_remove_group(&pdev->dev.kobj, &icap_attr_group);
@@ -3330,6 +3360,7 @@ static int icap_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, icap);
 	icap->icap_pdev = pdev;
 	mutex_init(&icap->icap_lock);
+	init_waitqueue_head(&icap->reader_wq);
 
 	regs = (void **)&icap->icap_regs;
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);

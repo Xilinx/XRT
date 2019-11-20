@@ -15,10 +15,10 @@
  */
 
 #include "json_profile.h"
+#include "util.h"
 
 #include "xdp/profile/core/rt_profile.h"
-#include "util.h"
-#include "version.h"
+#include "core/common/core_system.h"
 
 namespace xdp {
 
@@ -146,10 +146,14 @@ void JSONProfileWriter::writeDocumentHeader(std::ofstream& ofs,
   header.put("application", xdp::WriterI::getCurrentExecutableName());
   header.put("platform", mPlatformName);
   header.put("toolVersion", xdp::WriterI::getToolVersion());
-  header.put("XRT build version", xrt_build_version);
-  header.put("Build version branch", xrt_build_version_branch);
-  header.put("Build version hash", xrt_build_version_hash);
-  header.put("Build version date", xrt_build_version_date);
+
+  boost::property_tree::ptree xrtInfo;
+  xrt_core::system::get_xrt_info(xrtInfo);
+  header.put("XRT build version", xrtInfo.get<std::string>("version", "N/A"));
+  header.put("Build version branch", xrtInfo.get<std::string>("branch", "N/A"));
+  header.put("Build version hash", xrtInfo.get<std::string>("hash", "N/A"));
+  header.put("Build version date", xrtInfo.get<std::string>("date", "N/A"));
+
   mTree->add_child("header", header);
 }
 

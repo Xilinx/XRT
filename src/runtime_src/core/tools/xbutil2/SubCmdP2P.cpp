@@ -27,6 +27,14 @@ namespace po = boost::program_options;
 // System - Include Files
 #include <iostream>
 
+// ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
+#include "SubCmd.h"
+static const unsigned int registerResult = 
+                    register_subcommand("p2p", 
+                                        "<add description>",
+                                        subCmdP2P);
+// =============================================================================
+
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
 
@@ -34,7 +42,7 @@ namespace po = boost::program_options;
 
 // ------ F U N C T I O N S ---------------------------------------------------
 
-int subCmdP2P(const std::vector<std::string> &_options, bool _help)
+int subCmdP2P(const std::vector<std::string> &_options)
 // Reference Command:  
 //                      p2p  [-d card] --enable
 //                      p2p  [-d card] --disable
@@ -47,9 +55,11 @@ int subCmdP2P(const std::vector<std::string> &_options, bool _help)
   bool bEnable = false;
   bool bDisable = false;
   bool bValidate = false;
+  bool help = false;
 
   po::options_description p2pDesc("p2p options");
   p2pDesc.add_options()
+    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
     (",d", boost::program_options::value<uint64_t>(&card), "Card to be examined")
     ("enable", boost::program_options::bool_switch(&bEnable), "Enable")
     ("disable", boost::program_options::bool_switch(&bDisable), "Disable")
@@ -71,7 +81,7 @@ int subCmdP2P(const std::vector<std::string> &_options, bool _help)
   }
 
   // Check to see if help was requested or no command was found
-  if (_help == true)  {
+  if (help == true)  {
     std::cout << p2pDesc << std::endl;
     return 0;
   }
@@ -86,6 +96,6 @@ int subCmdP2P(const std::vector<std::string> &_options, bool _help)
   XBU::error("COMMAND BODY NOT IMPLEMENTED.");
   // TODO: Put working code here
 
-  return 0;
+  return registerResult;
 }
 

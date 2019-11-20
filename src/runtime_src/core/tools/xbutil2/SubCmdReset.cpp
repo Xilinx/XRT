@@ -27,6 +27,14 @@ namespace po = boost::program_options;
 // System - Include Files
 #include <iostream>
 
+// ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
+#include "SubCmd.h"
+static const unsigned int registerResult = 
+                    register_subcommand("reset", 
+                                        "<add description>",
+                                        subCmdReset);
+// =============================================================================
+
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
 
@@ -34,16 +42,18 @@ namespace po = boost::program_options;
 
 // ------ F U N C T I O N S ---------------------------------------------------
 
-int subCmdReset(const std::vector<std::string> &_options, bool _help)
+int subCmdReset(const std::vector<std::string> &_options)
 // Reference Command:  reset [-d card]
 
 {
   XBU::verbose("SubCommand: reset");
   // -- Retrieve and parse the subcommand options -----------------------------
   uint64_t card = 0;
+  bool help = false;
 
   po::options_description resetDesc("reset options");
   resetDesc.add_options()
+    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
     (",d", boost::program_options::value<uint64_t>(&card), "Card to be examined")
   ;
 
@@ -62,7 +72,7 @@ int subCmdReset(const std::vector<std::string> &_options, bool _help)
   }
 
   // Check to see if help was requested or no command was found
-  if (_help == true)  {
+  if (help == true)  {
     std::cout << resetDesc << std::endl;
     return 0;
   }
@@ -73,6 +83,6 @@ int subCmdReset(const std::vector<std::string> &_options, bool _help)
   XBU::error("COMMAND BODY NOT IMPLEMENTED.");
   // TODO: Put working code here
 
-  return 0;
+  return registerResult;
 }
 

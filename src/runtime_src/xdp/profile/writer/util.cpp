@@ -20,7 +20,23 @@
 #include <unistd.h>
 #endif
 
+#include "core/common/core_system.h"
+
 namespace xdp {
+
+  std::string WriterI::getXRTVersion()
+  {
+    std::string xrtVersion;
+
+    boost::property_tree::ptree xrtInfo;
+    xrt_core::system::get_xrt_info(xrtInfo);
+    xrtVersion = "XRT build version: "  + xrtInfo.get<std::string>("version", "N/A") + "\n"
+               + "Build version branch: " + xrtInfo.get<std::string>("branch", "N/A") + "\n"
+               + "Build version hash: " + xrtInfo.get<std::string>("hash", "N/A") + "\n"
+               + "Build version date: " + xrtInfo.get<std::string>("date", "N/A") + " ";
+
+    return xrtVersion;
+  }
 
   std::string WriterI::getCurrentDateTime()
   {

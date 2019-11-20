@@ -201,6 +201,7 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 {
 	struct xocl_dev *xdev = pci_get_drvdata(pdev);
 	int ret;
+	xuid_t *xclbin_id = NULL;
 
 	xocl_info(&pdev->dev, "PCI reset NOTIFY, prepare %d", prepare);
 
@@ -222,7 +223,14 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 		if (ret)
 			xocl_warn(&pdev->dev, "Online subdevs failed %d", ret);
 		(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
-		xocl_exec_reset(xdev, XOCL_XCLBIN_ID(xdev));
+
+		ret = XOCL_GET_XCLBIN_ID(xdev, xclbin_id);
+		if (ret) {
+			xocl_warn(&pdev->dev, "Unable to get on device uuid %d", ret);
+			return;
+		}
+		xocl_exec_reset(xdev, xclbin_id);
+		XOCL_PUT_XCLBIN_ID(xdev);
 	}
 }
 
@@ -321,11 +329,22 @@ int xocl_hot_reset(struct xocl_dev *xdev, bool force)
 
 	xocl_reset_notify(xdev->core.pdev, true);
 
-	/* Reset mgmt */
+	/*
+	 * Reset mgmt. The reset will take 50 seconds on some platform.
+	 * Set time out to 60 seconds.
+	 */
 	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
-		&ret, &resplen, NULL, NULL, 0);
+		&ret, &resplen, NULL, NULL, 60);
 	if (mbret)
 		ret = mbret;
+
+#if defined(__PPC64__)
+	/* During reset we can't poll mailbox registers to get notified when
+	 * peer finishes reset. Just do a timer based wait for 20 seconds,
+	 * which is long enough for reset to be done.
+	 */
+	msleep(20 * 1000);
+#endif
 
 	(void) xocl_config_pci(xdev);
 	(void) xocl_pci_resize_resource(xdev->core.pdev, xdev->p2p_bar_idx,
@@ -431,14 +450,12 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 	req->req = XCL_MAILBOX_REQ_RECLOCK;
 	memcpy(req->data, data, data_len);
 
-	mutex_lock(&xdev->dev_lock);
-
-	if (!list_is_singular(&xdev->ctx_list)) {
-		/* We should have one context for ourselves. */
-		BUG_ON(list_empty(&xdev->ctx_list));
+	if (get_live_clients(xdev, NULL)) {
 		userpf_err(xdev, "device is in use, can't reset");
 		err = -EBUSY;
 	}
+
+	mutex_lock(&xdev->dev_lock);
 
 	if (err == 0) {
 		err = xocl_peer_request(xdev, req, reqlen,
