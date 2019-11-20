@@ -29,6 +29,7 @@ if(WIN32)
     "SubCmdClock.cpp"
     "SubCmdQuery.cpp"
     "SubCmdReset.cpp"
+    "SubCmdScan.cpp"
     "SubCmdVersion.cpp"
   )
 else()

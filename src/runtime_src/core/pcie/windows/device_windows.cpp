@@ -15,6 +15,7 @@
  */
 
 
+#define INITGUID
 #include "device_windows.h"
 #include "common/utils.h"
 #include "include/xrt.h"
@@ -22,7 +23,18 @@
 #include <iostream>
 #include "boost/format.hpp"
 #include <map>
+#include <setupapi.h>
 
+#pragma warning(disable : 4100 4996)
+#pragma comment (lib, "Setupapi.lib")
+
+ //mgmt GUID
+DEFINE_GUID(GUID_XILINX_PF_INTERFACE,
+	0xd5bf220b, 0xf9c4, 0x415d, 0xbf, 0xac, 0x8, 0x6e, 0xbd, 0x65, 0x3f, 0x8f);
+
+//user GUID
+DEFINE_GUID(GUID_DEVINTERFACE_XOCL_USER,
+	0x45a6ffca, 0xef63, 0x4933, 0x99, 0x83, 0xf6, 0x3d, 0xec, 0x58, 0x16, 0xeb);
 
 const xrt_core::device_windows::IOCTLEntry & 
 xrt_core::device_windows::get_IOCTL_entry( QueryRequest _eQueryRequest) const
@@ -186,9 +198,35 @@ xrt_core::device_windows::~device_windows() {
 uint64_t 
 xrt_core::device_windows::get_total_devices() const
 {
-  // Linux reference code: 
-  // return pcidev::get_dev_total();
-  return 0;
+  SP_DEVICE_INTERFACE_DATA DeviceInterfaceData;
+  unsigned int mgmt_count, user_count;
+  HDEVINFO hDevInfo;
+
+  //finding number of user_devices
+  hDevInfo = SetupDiGetClassDevs(&GUID_DEVINTERFACE_XOCL_USER, NULL, NULL,
+	  DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
+
+  DeviceInterfaceData.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
+  user_count = 0;
+  while (SetupDiEnumDeviceInterfaces(hDevInfo, NULL, &GUID_DEVINTERFACE_XOCL_USER,
+	  user_count++, &DeviceInterfaceData));
+  user_count--;
+
+  if (user_count == 0)
+	  std::cout << "No Xilinx U250 devices are present and enabled in the system" << std::endl;
+
+  //Finding number of mgmt_devices
+  hDevInfo = SetupDiGetClassDevs(&GUID_XILINX_PF_INTERFACE, NULL, NULL,
+	  DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
+  DeviceInterfaceData.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
+  mgmt_count = 0;
+  while (SetupDiEnumDeviceInterfaces(hDevInfo, NULL, &GUID_XILINX_PF_INTERFACE,
+	  mgmt_count++, &DeviceInterfaceData));
+  mgmt_count--;
+  if (mgmt_count == 0)
+	  std::cout << "No Xilinx U250 devices are present and enabled in the system" << std::endl;
+
+  return user_count;
 }
 
 void 
