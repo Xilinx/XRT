@@ -222,16 +222,17 @@ enum xclResetKind {
     XCL_USER_RESET
 };
 
+#define XCL_DEVICE_USAGE_COUNT 8
 struct xclDeviceUsage {
-    size_t h2c[8];
-    size_t c2h[8];
-    size_t ddrMemUsed[8];
-    unsigned int ddrBOAllocated[8];
+    size_t h2c[XCL_DEVICE_USAGE_COUNT];
+    size_t c2h[XCL_DEVICE_USAGE_COUNT];
+    size_t ddrMemUsed[XCL_DEVICE_USAGE_COUNT];
+    unsigned int ddrBOAllocated[XCL_DEVICE_USAGE_COUNT];
     unsigned int totalContexts;
     uint64_t xclbinId[4];
     unsigned int dma_channel_cnt;
     unsigned int mm_channel_cnt;
-    uint64_t memSize[8];
+    uint64_t memSize[XCL_DEVICE_USAGE_COUNT];
 };
 
 struct xclBOProperties {
@@ -633,6 +634,8 @@ XCL_DRIVER_DLLESPEC int xclGetBOProperties(xclDeviceHandle handle, xclBufferHand
  * This API is deprecated and will be removed in future release.
  * New clients should use xclGetBOProperties() instead
  */
+XRT_DEPRECATED
+XCL_DRIVER_DLLESPEC size_t xclGetBOSize(xclDeviceHandle handle, xclBufferHandle boHandle);
 inline XCL_DRIVER_DLLESPEC size_t xclGetBOSize(xclDeviceHandle handle, xclBufferHandle boHandle)
 {
     struct xclBOProperties p;
@@ -649,6 +652,8 @@ inline XCL_DRIVER_DLLESPEC size_t xclGetBOSize(xclDeviceHandle handle, xclBuffer
  * @boHandle:      BO handle
  * @return         uint64_t address of the BO on success
  */
+XRT_DEPRECATED
+XCL_DRIVER_DLLESPEC uint64_t xclGetDeviceAddr(xclDeviceHandle handle, xclBufferHandle boHandle);
 inline XCL_DRIVER_DLLESPEC uint64_t xclGetDeviceAddr(xclDeviceHandle handle, xclBufferHandle boHandle)
 {
     struct xclBOProperties p;

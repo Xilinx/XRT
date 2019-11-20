@@ -7,11 +7,8 @@ include_directories(
 file(GLOB XRT_PCIE_WINDOWS_FILES
   "*.h"
   "*.cpp"
-  )
-
-file(GLOB XRT_PCIE_WINDOWS_FILES
-  "*.h"
-  "*.cpp"
+  "../common/device_pcie.cpp"
+  "../../common/device_core.cpp"
   )
 
 set(CMAKE_CXX_FLAGS "-DXCLHAL_MAJOR_VER=2 ${CMAKE_CXX_FLAGS}")

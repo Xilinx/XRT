@@ -160,4 +160,3 @@ XBUtilities::trace_print_tree(const std::string & _name,
 }
 
 
-

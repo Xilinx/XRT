@@ -67,13 +67,6 @@ static int version_ioctl(struct xclmgmt_dev *lro, void __user *arg)
 	return 0;
 }
 
-static long reset_ocl_ioctl(struct xclmgmt_dev *lro)
-{
-	xocl_icap_reset_axi_gate(lro);
-
-	return 0;
-}
-
 static int bitstream_ioctl_axlf(struct xclmgmt_dev *lro, const void __user *arg)
 {
 	void *copy_buffer = NULL;
@@ -140,12 +133,6 @@ long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 	case XCLMGMT_IOCICAPDOWNLOAD_AXLF:
 		result = bitstream_ioctl_axlf(lro, (void __user *)arg);
-		break;
-	case XCLMGMT_IOCOCLRESET:
-		result = reset_ocl_ioctl(lro);
-		break;
-	case XCLMGMT_IOCHOTRESET:
-		result = reset_hot_ioctl(lro);
 		break;
 	case XCLMGMT_IOCFREQSCALE:
 		result = ocl_freqscaling_ioctl(lro, (void __user *)arg);

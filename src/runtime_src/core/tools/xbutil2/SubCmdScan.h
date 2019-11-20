@@ -21,6 +21,6 @@
 #include <vector>
 #include <string>
   
-int subCmdScan(const std::vector<std::string> &_options, bool _help);
+int subCmdScan(const std::vector<std::string> &_options);
 
 #endif

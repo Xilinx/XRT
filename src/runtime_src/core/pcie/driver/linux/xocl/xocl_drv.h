@@ -34,6 +34,10 @@
 #include "lib/libfdt/libfdt.h"
 #include <linux/firmware.h>
 
+#ifndef mmiowb
+#define mmiowb()		do { } while (0)
+#endif
+
 /* The fix for the y2k38 bug was introduced with Linux 3.17 and backported to
  * Red Hat 7.2.
  */
@@ -232,6 +236,20 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 
 #define	GB(x)			((uint64_t)(x) * 1024 * 1024 * 1024)
 
+#define XOCL_VSEC_UUID_ROM          0x50
+#define XOCL_VSEC_FLASH_CONTROLER   0x51
+#define XOCL_VSEC_PLATFORM_INFO     0x52
+#define XOCL_VSEC_MAILBOX           0x53
+
+#define XOCL_MAXNAMELEN	64
+
+struct xocl_vsec_header {
+	u32		format;
+	u32		length;
+	u32		entry_sz;
+	u32		rsvd;
+};
+
 extern struct class *xrt_class;
 
 struct drm_xocl_bo;
@@ -353,6 +371,7 @@ struct xocl_dev_core {
 	struct xocl_drm		*drm;
 
 	char			*fdt_blob;
+	u32			fdt_blob_sz;
 	struct xocl_board_private priv;
 
 	rwlock_t		rwlock;
@@ -557,19 +576,46 @@ struct xocl_mb_scheduler_funcs {
 	MB_SCHEDULER_DEV(xdev), cu, filep, addrp) :		\
 	-ENODEV)
 
-#define XOCL_MEM_TOPOLOGY(xdev)						\
-	(XOCL_DSA_IS_VERSAL(xdev) ?					\
-	((struct mem_topology *)(((struct xocl_dev *)(xdev))->mem_topo)) : \
-	((struct mem_topology *)xocl_icap_get_data(xdev, MEMTOPO_AXLF)))
-#define XOCL_IP_LAYOUT(xdev)						\
-	((struct ip_layout *)xocl_icap_get_data(xdev, IPLAYOUT_AXLF))
-#define XOCL_XCLBIN_ID(xdev)						\
-	((xuid_t *)xocl_icap_get_data(xdev, XCLBIN_UUID))
 
-#define	XOCL_IS_DDR_USED(xdev, ddr)					\
-	(XOCL_MEM_TOPOLOGY(xdev)->m_mem_data[ddr].m_used == 1)
+#define XOCL_GET_MEM_TOPOLOGY(xdev, topo)						\
+({ \
+	int ret = 0; \
+	if (XOCL_DSA_IS_VERSAL(xdev)) 							\
+		topo = (struct mem_topology *)(((struct xocl_dev *)(xdev))->mem_topo); 	\
+	ret = xocl_icap_get_xclbin_metadata(xdev, MEMTOPO_AXLF, (void **)&topo); \
+	(ret);\
+})
+
+#define XOCL_GET_IP_LAYOUT(xdev, ip_layout)						\
+	(xocl_icap_get_xclbin_metadata(xdev, IPLAYOUT_AXLF, (void **)&ip_layout))
+#define XOCL_GET_XCLBIN_ID(xdev, xclbin_id)						\
+	(xocl_icap_get_xclbin_metadata(xdev, XCLBIN_UUID, (void **)&xclbin_id))
+
+
+#define XOCL_PUT_MEM_TOPOLOGY(xdev)						\
+	(XOCL_DSA_IS_VERSAL(xdev) ?						\
+	-ENODEV : \
+	xocl_icap_put_xclbin_metadata(xdev))
+#define XOCL_PUT_IP_LAYOUT(xdev)						\
+	xocl_icap_put_xclbin_metadata(xdev)
+#define XOCL_PUT_XCLBIN_ID(xdev)						\
+	xocl_icap_put_xclbin_metadata(xdev)
+
+#define XOCL_IS_DDR_USED(topo, ddr) 			\
+	(topo->m_mem_data[ddr].m_used == 1)
+
 #define	XOCL_DDR_COUNT_UNIFIED(xdev)		\
-	(XOCL_MEM_TOPOLOGY(xdev) ? XOCL_MEM_TOPOLOGY(xdev)->m_count : 0)
+({ \
+	struct mem_topology *topo = NULL; \
+	uint32_t ret = 0; 	\
+	int err = XOCL_GET_MEM_TOPOLOGY(xdev, topo); \
+	if (err)	\
+		return 0;		\
+	ret = topo ? topo->m_count : 0; \
+	XOCL_PUT_MEM_TOPOLOGY(xdev); \
+	(ret); \
+})
+
 #define	XOCL_DDR_COUNT(xdev)			\
 	((xocl_is_unified(xdev) ? XOCL_DDR_COUNT_UNIFIED(xdev) :	\
 	xocl_get_ddr_channel_count(xdev)))
@@ -682,6 +728,31 @@ struct xocl_mb_funcs {
 #define xocl_xmc_dr_free(xdev)		\
 	(MB_CB(xdev, dr_free) ? MB_OPS(xdev)->dr_free(MB_DEV(xdev)) : -ENODEV)
 
+/* processor system callbacks */
+struct xocl_ps_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	void (*reset)(struct platform_device *pdev, int type);
+	void (*wait)(struct platform_device *pdev);
+};
+
+#define	PS_DEV(xdev)		\
+	SUBDEV(xdev, XOCL_SUBDEV_PS).pldev
+#define	PS_OPS(xdev)		\
+	((struct xocl_ps_funcs *)SUBDEV(xdev,	\
+	XOCL_SUBDEV_PS).ops)
+#define PS_CB(xdev, cb)	\
+	(PS_DEV(xdev) && PS_OPS(xdev) && PS_OPS(xdev)->cb)
+#define	xocl_ps_sk_reset(xdev)			\
+	(PS_CB(xdev, reset) ? PS_OPS(xdev)->reset(PS_DEV(xdev), 1) : NULL)
+#define	xocl_ps_reset(xdev)			\
+	(PS_CB(xdev, reset) ? PS_OPS(xdev)->reset(PS_DEV(xdev), 2) : NULL)
+#define	xocl_ps_sys_reset(xdev)			\
+	(PS_CB(xdev, reset) ? PS_OPS(xdev)->reset(PS_DEV(xdev), 3) : NULL)
+#define	xocl_ps_wait(xdev)			\
+	(PS_CB(xdev, reset) ? PS_OPS(xdev)->wait(PS_DEV(xdev)) : NULL)
+
+
+/* dna callbacks */
 struct xocl_dna_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	u32 (*status)(struct platform_device *pdev);
@@ -777,6 +848,7 @@ enum data_kind {
 	VOL_HBM_1V2,
 	VOL_VPP_2V5,
 	VOL_VCCINT_BRAM,
+	XMC_VER,
 };
 
 enum mb_kind {
@@ -846,6 +918,9 @@ struct xocl_icap_funcs {
 		const xuid_t *uuid);
 	uint64_t (*get_data)(struct platform_device *pdev,
 		enum data_kind kind);
+	int (*get_xclbin_metadata)(struct platform_device *pdev,
+		enum data_kind kind, void **buf);
+	void (*put_xclbin_metadata)(struct platform_device *pdev);
 };
 enum {
 	RP_DOWNLOAD_NORMAL,
@@ -890,10 +965,6 @@ enum {
 	(ICAP_CB(xdev, ocl_update_clock_freq_topology) ?		\
 	ICAP_OPS(xdev)->ocl_update_clock_freq_topology(ICAP_DEV(xdev), freqs) :\
 	-ENODEV)
-#define	xocl_icap_ocl_set_freq(xdev, region, freqs, num)		\
-	(ICAP_CB(xdev, ocl_set_freq) ?					\
-	ICAP_OPS(xdev)->ocl_set_freq(ICAP_DEV(xdev), region, freqs, num) : \
-	-ENODEV)
 #define	xocl_icap_lock_bitstream(xdev, uuid)				\
 	(ICAP_CB(xdev, ocl_lock_bitstream) ?				\
 	ICAP_OPS(xdev)->ocl_lock_bitstream(ICAP_DEV(xdev), uuid) :	\
@@ -909,6 +980,15 @@ enum {
 	(ICAP_CB(xdev, get_data) ?					\
 	ICAP_OPS(xdev)->get_data(ICAP_DEV(xdev), kind) : 		\
 	0)
+#define	xocl_icap_get_xclbin_metadata(xdev, kind, buf)			\
+	(ICAP_CB(xdev, get_xclbin_metadata) ?				\
+	ICAP_OPS(xdev)->get_xclbin_metadata(ICAP_DEV(xdev), kind, buf) :	\
+	0)
+#define	xocl_icap_put_xclbin_metadata(xdev)			\
+	(ICAP_CB(xdev, put_xclbin_metadata) ?				\
+	ICAP_OPS(xdev)->put_xclbin_metadata(ICAP_DEV(xdev)) : 	\
+	0)
+
 
 struct xocl_mig_label {
 	unsigned char	tag[16];
@@ -1081,6 +1161,10 @@ int xocl_subdev_destroy_by_name(xdev_handle_t xdev_hdl, char *name);
 int xocl_subdev_destroy_prp(xdev_handle_t xdev);
 int xocl_subdev_create_prp(xdev_handle_t xdev);
 
+int xocl_subdev_vsec(xdev_handle_t xdev, u32 type, int *bar_idx, u64 *offset);
+u32 xocl_subdev_vsec_read32(xdev_handle_t xdev, int bar, u64 offset);
+int xocl_subdev_create_vsec_devs(xdev_handle_t xdev);
+
 struct resource *xocl_subdev_get_ioresource(xdev_handle_t xdev_hdl,
 		char *res_name);
 
@@ -1143,7 +1227,7 @@ int xocl_thread_start(xdev_handle_t xdev);
 int xocl_thread_stop(xdev_handle_t xdev);
 
 /* subdev blob functions */
-int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob);
+int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz);
 int xocl_fdt_remove_subdevs(xdev_handle_t xdev_hdl, struct list_head *devlist);
 int xocl_fdt_unlink_node(xdev_handle_t xdev_hdl, void *node);
 int xocl_fdt_overlay(void *fdt, int target, void *fdto, int node, int pf);
@@ -1191,6 +1275,9 @@ void xocl_fini_sysmon(void);
 
 int __init xocl_init_mb(void);
 void xocl_fini_mb(void);
+
+int __init xocl_init_ps(void);
+void xocl_fini_ps(void);
 
 int __init xocl_init_xiic(void);
 void xocl_fini_xiic(void);

@@ -21,6 +21,6 @@
 #include <vector>
 #include <string>
   
-int subCmdDD(const std::vector<std::string> &_options, bool _help);
+int subCmdDD(const std::vector<std::string> &_options);
 
 #endif
