@@ -678,6 +678,9 @@ static int icap_ocl_freqscaling(struct icap *icap, bool force)
 		/* A value of zero means skip scaling for this clock index */
 		if (!icap->icap_ocl_frequency[i])
 			continue;
+		/* skip if the io does not exist */
+		if (!icap->icap_clock_bases[i])
+			continue;
 
 		idx = find_matching_freq_config(icap->icap_ocl_frequency[i]);
 		curr_freq = icap_get_ocl_frequency(icap, i);

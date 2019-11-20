@@ -464,7 +464,7 @@ static int init_rom_by_dtb(struct feature_rom *rom)
 		header->FeatureBitMap |= BOARD_MGMT_ENBLD;
 	}
 
-	res = xocl_subdev_get_ioresource(xdev, NODE_CMC_ERT_MEM);
+	res = xocl_subdev_get_ioresource(xdev, NODE_ERT_FW_MEM);
 	if (res) {
 		xocl_xdev_info(xdev, "ERT is on");
 		header->FeatureBitMap |= MB_SCHEDULER;
@@ -503,8 +503,6 @@ static int get_header_from_vsec(struct feature_rom *rom)
 	xocl_xdev_info(xdev, "Mapping uuid at offset 0x%llx", offset);
 	rom->base = ioremap_nocache(offset, PAGE_SIZE);
 
-	//strcpy(rom->uuid, "11111c256808446c95821e06e144da3411111c256808446c95821e06e144da34");
-	//return init_rom_by_dtb(rom);
 	return get_header_from_dtb(rom);
 }
 

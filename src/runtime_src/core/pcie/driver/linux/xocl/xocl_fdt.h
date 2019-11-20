@@ -49,7 +49,7 @@
 #define NODE_CMC_REG "ep_cmc_regmap_00"
 #define NODE_CMC_RESET "ep_cmc_reset_00"
 #define NODE_CMC_FW_MEM "ep_cmc_firmware_mem_00"
-#define NODE_CMC_ERT_MEM "ep_ert_firmware_mem_00"
+#define NODE_ERT_FW_MEM "ep_ert_firmware_mem_00"
 #define NODE_ERT_CQ_MGMT "ep_ert_command_queue_mgmt_00"
 #define NODE_ERT_CQ_USER "ep_ert_command_queue_user_00"
 #define NODE_MAILBOX_MGMT "ep_mailbox_mgmt_00"
@@ -66,6 +66,8 @@
 #define NODE_XDMA "ep_xdma_00"
 #define NODE_MSIX "ep_msix_00"
 #define NODE_CLK_SHUTDOWN "ep_aclk_shutdown_00"
+#define NODE_ERT_BASE "ep_ert_base_address_00"
+#define NODE_ERT_RESET "ep_ert_reset_00"
 
 enum {
 	IORES_GATEPRBLD,
