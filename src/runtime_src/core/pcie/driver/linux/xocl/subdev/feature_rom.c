@@ -410,13 +410,13 @@ static void platform_type_append(char *prefix, u32 platform_type)
 		return;
 
 	switch (platform_type) {
-	case 0x0:
+	case XOCL_VSEC_PLAT_RECOVERY:
 		type = "_Recovery BLP";
 		break;
-	case 0x1:
+	case XOCL_VSEC_PLAT_1RP:
 		type = "_1RP";
 		break;
-	case 0x2:
+	case XOCL_VSEC_PLAT_2RP:
 		type = "_2RP";
 		break;
 	default:
