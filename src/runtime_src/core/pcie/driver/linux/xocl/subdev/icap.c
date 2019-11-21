@@ -2278,6 +2278,7 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	ICAP_INFO(icap, "incoming xclbin: %pUb\non device xclbin: %pUb",
 		&xclbin->m_header.uuid, &icap->icap_bitstream_uuid);
 
+	xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 	if (ICAP_PRIVILEGED(icap)) {
 		err = __icap_xclbin_download(icap, xclbin);
 		if (err)
@@ -2306,11 +2307,13 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 		(void) icap_verify_bitstream_axlf(pdev, xclbin);
 	}
 
-	xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 	icap_parse_bitstream_axlf_section(pdev, xclbin, PARTITION_METADATA);
-	num_dev = xocl_fdt_parse_blob(xdev, icap->partition_metadata, &subdevs);
-	for (num_dev--; num_dev >= 0; num_dev--)
-		xocl_subdev_create(xdev, &subdevs[num_dev].info);
+	if (icap->partition_metadata) {
+		num_dev = xocl_fdt_parse_blob(xdev, icap->partition_metadata,
+				&subdevs);
+		for (num_dev--; num_dev >= 0; num_dev--)
+			xocl_subdev_create(xdev, &subdevs[num_dev].info);
+	}
 
 done:
 	if (err) {
