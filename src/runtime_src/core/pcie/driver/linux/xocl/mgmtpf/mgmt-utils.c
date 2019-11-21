@@ -601,9 +601,8 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	char					fw_name[256];
 	int					ret;
 
-		mgmt_info(lro, "__DZ__ Skip load_fdt for Vendor specific Golden image");
 	if (xocl_subdev_vsec_is_golden(lro)) {
-		mgmt_info(lro, "Skip load_fdt for Vendor specific Golden image");
+		mgmt_info(lro, "Skip load_fdt for vsec Golden image");
 		return 0;
 	}
 

@@ -174,9 +174,6 @@ int Flasher::getBoardInfo(BoardInfo& board)
     std::map<char, std::vector<char>> info;
     XMC_Flasher flasher(mDev);
 
-    if (!flasher.hasXMC())
-	    return -EOPNOTSUPP;
-
     if (!flasher.probingErrMsg().empty())
     {
         std::cout << "ERROR: " << flasher.probingErrMsg() << std::endl;

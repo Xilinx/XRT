@@ -51,7 +51,6 @@ enum {
 	XOCL_DSAFLAG_DYNAMIC_IP			= (1 << 9),
 	XOCL_DSAFLAG_SMARTN			= (1 << 10),
 	XOCL_DSAFLAG_VERSAL			= (1 << 11),
-	XOCL_DSAFLAG_MFG_NO_XMC			= (1 << 12),
 };
 
 #define	FLASH_TYPE_SPI	"spi"

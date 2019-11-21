@@ -71,7 +71,6 @@ public:
     int upgradeFirmware(const std::string& typeStr, firmwareImage* primary, firmwareImage* secondary);
     int upgradeBMCFirmware(firmwareImage* bmc);
     bool isValid(void) { return mDev != nullptr; }
-    bool hasXMC(void) { return hasXMC };
 
     std::string sGetDBDF();
     std::string sGetFlashType() { return std::string( getFlasherTypeText( getFlashType() ) ); }
@@ -80,7 +79,6 @@ public:
     int getBoardInfo(BoardInfo& board);
 
 private:
-    bool hasXMC;
     enum E_FlasherType {
         UNKNOWN,
         SPI,

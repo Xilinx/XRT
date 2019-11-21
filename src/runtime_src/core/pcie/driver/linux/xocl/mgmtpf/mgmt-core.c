@@ -972,7 +972,6 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 
 	if (!(dev_info->flags & XOCL_DSAFLAG_SMARTN))
 		ret = xocl_icap_download_boot_firmware(lro);
-	printk("__DZ__ %s ret %d\n", __func__, ret);
 
 	/* return -ENODEV for 2RP platform */
 	if (!ret) {
