@@ -60,7 +60,7 @@ validOrError(cl_command_queue   command_queue,
   // with CL_MEM_HOST_WRITE_ONLY or CL_MEM_HOST_NO_ACCESS
   if((xocl::xocl(buffer)->get_flags() & CL_MEM_HOST_WRITE_ONLY) ||
      (xocl::xocl(buffer)->get_flags() & CL_MEM_HOST_NO_ACCESS))
-    throw xocl::error(CL_INVALID_OPERATION,"buffer flags do now allow reading");
+    throw xocl::error(CL_INVALID_OPERATION,"buffer flags do not allow reading");
 
 #ifdef PMD_OCL
   if (!(xocl(command_queue)->get_properties() & CL_QUEUE_DPDK))
@@ -101,7 +101,7 @@ clEnqueueReadBuffer(cl_command_queue   command_queue,
   auto uevent = xocl::create_hard_event
     (command_queue,CL_COMMAND_READ_BUFFER,num_events_in_wait_list,event_wait_list);
   xocl::enqueue::set_event_action(uevent.get(),xocl::enqueue::action_read_buffer,buffer,offset,size,ptr);
-  xocl::profile::set_event_action(uevent.get(),xocl::profile::action_read,buffer);
+  xocl::profile::set_event_action(uevent.get(),xocl::profile::action_read,buffer,offset,size,false);
   xocl::appdebug::set_event_action(uevent.get(),xocl::appdebug::action_readwrite,buffer,offset,size,ptr);
  
   uevent->queue();

@@ -208,11 +208,29 @@ int main(int argc, char** argv)
 
     KernelHostData hostData(length);
 
+    oclSoftware software;
+    std::memset(&software, 0, sizeof(oclSoftware));
+    std::strcpy(software.mKernelName, "loopback");
+    std::strcpy(software.mFileName, kernelFile.c_str());
+    std::sprintf(software.mCompileOptions, "");
+    
+    getOclSoftware(software, hardware);
+
     try {
         std::cout << "Sequence1: " << hostData.getSequence1() << "\n";
         std::cout << "Sequence2: " << hostData.getSequence2() << "\n";
         cl_int err = CL_SUCCESS;
         cl_mem mSequence = clCreateBuffer(hardware.mContext, CL_MEM_READ_WRITE, hostData.getLength(), NULL, &err);
+
+        err = clSetKernelArg(software.mKernel, 0, sizeof(cl_mem), &mSequence);
+        checkStatus(err);
+
+        //err = clSetKernelArg(software.mKernel, 1, sizeof(cl_mem), &seq2);
+        //checkStatus(err);
+
+        //err = clSetKernelArg(software.mKernel, 2, 4, &length);
+        //checkStatus(err);
+
         err = clEnqueueWriteBuffer(hardware.mQueue, mSequence, CL_FALSE, 0, hostData.getLength(), hostData.getSequence2(), 0, NULL, NULL);
         checkStatus(err);
         if ((hardware.mMajorVersion >= 1) && (hardware.mMinorVersion > 1)) {
