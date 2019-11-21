@@ -1156,8 +1156,7 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
 	struct pci_dev *pdev = core->pdev;
 	u32 dyn_shell_magic;
-	u64 offset;
-	int ret, cap, bar;
+	int ret, cap;
 	unsigned err_cap;
 
 	memset(&core->priv, 0, sizeof(core->priv));
@@ -1170,19 +1169,11 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 		xocl_fetch_dynamic_platform(core, &in);
 	}
 
-	/* When vendor specific has platform_info, we can load vendor specific */
-	ret = xocl_subdev_vsec(xdev_hdl, XOCL_VSEC_PLATFORM_INFO, &bar,
-		&offset);
+	/* vendor specific has platform_info */
+	ret = xocl_subdev_vsec(xdev_hdl, XOCL_VSEC_PLATFORM_INFO, NULL, NULL);
 	if (!ret) {
-		xocl_xdev_info(xdev_hdl, "found vendor specific cap");
+		xocl_xdev_info(xdev_hdl, "found vsec cap");
 		xocl_fetch_dynamic_platform(core, &in);
-		/* explicitly set priv.flags to MFG|NO_XMC */
-		if (xocl_subdev_vsec_read32(xdev_hdl, bar, offset) ==
-			XOCL_VSEC_PLAT_RECOVERY) {
-			in->flags |= XOCL_DSAFLAG_MFG;
-			in->flags |= XOCL_DSAFLAG_MFG_NO_XMC;
-			xocl_xdev_info(xdev_hdl, "cap is Golden with no XMC");
-		}
 	}
 		
 	/* workaround firewall completer abort issue */

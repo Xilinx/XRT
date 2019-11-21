@@ -172,13 +172,10 @@ std::string int2PowerString(unsigned lvl)
 int Flasher::getBoardInfo(BoardInfo& board)
 {
     std::map<char, std::vector<char>> info;
-    std::string err;
-    bool no_xmc = false;
-    mDev->sysfs_get<bool>("", "mfg_no_xmc", err, no_xmc, false);
-    if (no_xmc)
-	    return -EOPNOTSUPP;
-
     XMC_Flasher flasher(mDev);
+
+    if (!flasher.hasXMC())
+	    return -EOPNOTSUPP;
 
     if (!flasher.probingErrMsg().empty())
     {
@@ -336,17 +333,11 @@ DSAInfo Flasher::getOnBoardDSA()
     std::string err;
     std::string board_name;
     std::string uuid;
-    bool is_mfg = false, no_xmc = false;
+    bool is_mfg = false;
     mDev->sysfs_get<bool>("", "mfg", err, is_mfg, false);
-    mDev->sysfs_get<bool>("", "mfg_no_xmc", err, no_xmc, false);
     mDev->sysfs_get("", "board_name", err, board_name);
     mDev->sysfs_get("rom", "uuid", err, uuid);
-    /*
-     * Golden image will be shown as _GOLDEN_ except vendor specific
-     * pcie card which is customized based on it's image type. So far,
-     * we use mfg_no_xmc to indicate and it has to have VBNVName.
-     */
-    if (is_mfg && !no_xmc)
+    if (is_mfg)
     {
         std::stringstream ss;
 

@@ -40,9 +40,9 @@ XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
     if (!is_mfg) {
         mDev->sysfs_get<unsigned>("xmc", "status", err, val, 0);
 	if (!err.empty() || !(val & 1)) {
-            mProbingErrMsg << "Failed to detect XMC, xmc.bin not loaded";
+	    hasXMC = false;
             goto nosup;
-        }
+	}
     }
 
     mDev->sysfs_get<unsigned long long>("xmc", "reg_base", err, mRegBase, -1);

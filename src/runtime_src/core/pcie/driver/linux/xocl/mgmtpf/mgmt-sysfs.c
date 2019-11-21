@@ -82,16 +82,6 @@ static ssize_t mfg_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(mfg);
 
-static ssize_t mfg_no_xmc_show(struct device *dev,
-	struct device_attribute *attr, char *buf)
-{
-	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
-
-	return sprintf(buf, "%d\n",
-		(lro->core.priv.flags & XOCL_DSAFLAG_MFG_NO_XMC) != 0);
-}
-static DEVICE_ATTR_RO(mfg_no_xmc);
-
 static ssize_t mgmt_pf_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -408,7 +398,6 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_xpr.attr,
 	&dev_attr_ready.attr,
 	&dev_attr_mfg.attr,
-	&dev_attr_mfg_no_xmc.attr,
 	&dev_attr_mgmt_pf.attr,
 	&dev_attr_flash_type.attr,
 	&dev_attr_board_name.attr,
