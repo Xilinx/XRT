@@ -176,6 +176,13 @@ enum sensor_val_kind {
 	(xmc->base_addrs[IO_GPIO] ?		\
 	XOCL_WRITE_REG32(val, xmc->base_addrs[IO_GPIO] + off) : ((void)0))
 
+#define	READ_CQ(xmc, off)			\
+	(xmc->base_addrs[IO_CQ] ?		\
+	XOCL_READ_REG32(xmc->base_addrs[IO_CQ] + off) : 0)
+#define	WRITE_CQ(xmc, val, off)		\
+	(xmc->base_addrs[IO_CQ] ?		\
+	XOCL_WRITE_REG32(val, xmc->base_addrs[IO_CQ] + off) : ((void)0))
+
 #define	READ_IMAGE_MGMT(xmc, off)		\
 	(xmc->base_addrs[IO_IMAGE_MGMT] ?	\
 	XOCL_READ_REG32(xmc->base_addrs[IO_IMAGE_MGMT] + off) : 0)
@@ -1963,10 +1970,10 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 		}
 		/* Need to check if ERT is loaded before we attempt to stop it */
 		if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0))) {
-			reg_val = XOCL_READ_REG32(xmc->base_addrs[IO_CQ]);
+			reg_val = READ_CQ(xmc, 0);
 			if (!(reg_val & ERT_EXIT_ACK)) {
 				xocl_info(&xmc->pdev->dev, "Stopping scheduler...");
-				XOCL_WRITE_REG32(ERT_EXIT_CMD, xmc->base_addrs[IO_CQ]);
+				WRITE_CQ(xmc, ERT_EXIT_CMD, 0);
 			}
 		}
 
@@ -1983,16 +1990,16 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 			xmc->state = XMC_STATE_ERROR;
 			return -ETIMEDOUT;
 		} else if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0)) &&
-			 !(XOCL_READ_REG32(xmc->base_addrs[IO_CQ]) & ERT_EXIT_ACK)) {
+			 !(READ_CQ(xmc, 0) & ERT_EXIT_ACK)) {
 			while (retry++ < MAX_ERT_RETRY &&
-				!(XOCL_READ_REG32(xmc->base_addrs[IO_CQ]) & ERT_EXIT_ACK))
+				!(READ_CQ(xmc, 0) & ERT_EXIT_ACK))
 				msleep(RETRY_INTERVAL);
 			if (retry >= MAX_ERT_RETRY) {
 				xocl_warn(&xmc->pdev->dev,
 					"Failed to stop sched");
 				xocl_warn(&xmc->pdev->dev,
 					"Scheduler CQ status 0x%x",
-					XOCL_READ_REG32(xmc->base_addrs[IO_CQ]));
+					READ_CQ(xmc, 0));
 				/*
 				 * We don't exit if ERT doesn't stop since
 				 * it can hang due to bad kernel xmc->state =

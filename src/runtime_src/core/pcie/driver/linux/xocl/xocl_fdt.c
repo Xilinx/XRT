@@ -779,10 +779,18 @@ end:
 	return total;
 }
 
-int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob,
+int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 		struct xocl_subdev **subdevs)
 {
 	int		dev_num; 
+
+	if (!blob)
+		return -EINVAL;
+
+	if (fdt_totalsize(blob) > blob_sz) {
+		xocl_xdev_err(xdev_hdl, "Invalid blob inbut size");
+		return -EINVAL;
+	}
 
 	dev_num = xocl_fdt_parse_subdevs(xdev_hdl, blob, NULL, 0);
 	if (dev_num < 0) {
@@ -890,12 +898,13 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz)
 	if (!blob)
 		return -EINVAL;
 
-	if (fdt_totalsize(blob) > blob_sz) {
+	len = fdt_totalsize(blob);
+	if (len > blob_sz) {
 		xocl_xdev_err(xdev_hdl, "Invalid blob inbut size");
 		return -EINVAL;
 	}
 
-	len = fdt_totalsize(blob) * 2;
+	len *= 2;
 	if (core->fdt_blob)
 		len += fdt_totalsize(core->fdt_blob);
 
@@ -923,7 +932,7 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz)
 		goto failed;
 	}
 
-	ret = xocl_fdt_parse_blob(xdev_hdl, output_blob, &subdevs);
+	ret = xocl_fdt_parse_blob(xdev_hdl, output_blob, len, &subdevs);
 	if (ret < 0)
 		goto failed;
 	core->dyn_subdev_num = ret;

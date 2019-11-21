@@ -1144,6 +1144,9 @@ static uint64_t icap_get_section_size(struct icap *icap, enum axlf_section_kind 
 	case CLOCK_FREQ_TOPOLOGY:
 		size = sizeof_sect(icap->icap_clock_freq_topology, m_clock_freq);
 		break;
+	case PARTITION_METADATA:
+		size = fdt_totalsize(icap->partition_metadata);
+		break;
 	default:
 		break;
 	}
@@ -2310,6 +2313,7 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	icap_parse_bitstream_axlf_section(pdev, xclbin, PARTITION_METADATA);
 	if (icap->partition_metadata) {
 		num_dev = xocl_fdt_parse_blob(xdev, icap->partition_metadata,
+				icap_get_section_size(icap, PARTITION_METADATA),
 				&subdevs);
 		for (num_dev--; num_dev >= 0; num_dev--)
 			xocl_subdev_create(xdev, &subdevs[num_dev].info);
