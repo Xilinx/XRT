@@ -51,6 +51,7 @@ class device_core {
     virtual void get_device_info(uint64_t _deviceID, boost::property_tree::ptree &_pt) const = 0;
     virtual void read_device_dma_stats(uint64_t _deviceID, boost::property_tree::ptree &_pt) const = 0;
     virtual uint64_t get_total_devices() const = 0;
+	virtual int program_device(uint64_t _deviceID, uint64_t region, const std::string &sXclBin) const = 0;
 
     void get_device_rom_info(uint64_t _deviceID, boost::property_tree::ptree & _pt) const;
     void get_device_xmc_info(uint64_t _deviceID, boost::property_tree::ptree & _pt) const;

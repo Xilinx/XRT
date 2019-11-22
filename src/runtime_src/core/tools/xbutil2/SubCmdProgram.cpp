@@ -26,6 +26,7 @@ namespace po = boost::program_options;
 
 // System - Include Files
 #include <iostream>
+#include "common/device_core.h"
 
 // ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
 #include "SubCmd.h"
@@ -89,9 +90,17 @@ int subCmdProgram(const std::vector<std::string> &_options)
   XBU::verbose(XBU::format("Region: %ld", region));
   XBU::verbose(XBU::format("XclBin: %s", sXclBin.c_str()));
 
+  const xrt_core::device_core &CoreDevice = xrt_core::device_core::get_handle();
+  //device_windows child;
+  int v = CoreDevice.program_device(card, region, sXclBin);
 
-  XBU::error("COMMAND BODY NOT IMPLEMENTED.");
-  // TODO: Put working code here
+  if (!v)
+  {
+	  std::cout << "XCLBIN succesfully loaded" << std::endl;
+  }
+  else {
+	  std::cout << "XCLBIN loading failed" << std::endl;
+  }
 
   return registerResult;
 }

@@ -185,6 +185,16 @@ xrt_core::device_linux::get_total_devices() const
   return pcidev::get_dev_total();
 }
 
+int
+program_device(uint64_t _deviceID, uint64_t region, const std::string &sXclBin) const;
+{
+	std::cout << ":program_device: " << _deviceID << region << sXclBin << std::endl;
+	//dummy for windows to work
+	return 0;
+}
+
+
+
 void 
 xrt_core::device_linux::read_device_dma_stats(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
 {

@@ -20,19 +20,27 @@
 // Please keep eternal include file dependencies to a minimum
 #include <boost/functional/factory.hpp>
 #include "common/device_pcie.h"
+#include "include/xrt.h"
 
 namespace xrt_core {
 class device_windows : public xrt_core::device_pcie {
   public:
+	  uint64_t total_devices;
+	  std::vector<xclDeviceHandle> deviceHandle;
     struct IOCTLEntry {
-      uint64_t IOCTLValue;
+		uint64_t subdev;
+		uint64_t variable;
     };
+
+	uint64_t channel_stat_raw_v = 0;
+	uint64_t dna_v = 0;
 
     const IOCTLEntry & get_IOCTL_entry( QueryRequest _eQueryRequest) const;
 
   protected:
     virtual void read_device_dma_stats(uint64_t _deviceID, boost::property_tree::ptree &_pt) const;
     virtual uint64_t get_total_devices() const;
+	virtual int program_device(uint64_t _deviceID, uint64_t region, const std::string &sXclBin) const;
     virtual void query_device(uint64_t _deviceID, QueryRequest _eQueryRequest, const std::type_info & _typeInfo, boost::any &_returnValue) const;
 
   public:

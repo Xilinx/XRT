@@ -26,6 +26,7 @@ namespace po = boost::program_options;
 
 // System - Include Files
 #include <iostream>
+#include "common/device_core.h"
 
 // ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
 #include "SubCmd.h"
@@ -78,8 +79,10 @@ int subCmdScan(const std::vector<std::string> &_options)
 
   // -- Now process the subcommand --------------------------------------------
 
-  XBU::error("COMMAND BODY NOT IMPLEMENTED.");
-  // TODO: Put working code here
+  const xrt_core::device_core &CoreDevice = xrt_core::device_core::get_handle();
+  uint64_t total_devices = CoreDevice.get_total_devices();
+
+  std::cout << "total_devices " << total_devices << " found" << std::endl;
 
   return registerResult;
 }

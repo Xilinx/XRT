@@ -1049,6 +1049,14 @@ xclLockDevice(xclDeviceHandle handle)
   return shim->lock_device() ? 0 : 1;
 }
 
+int
+xclUnlockDevice(xclDeviceHandle handle)
+{
+	//ToDo
+	return 0;
+}
+
+
 ssize_t
 xclUnmgdPwrite(xclDeviceHandle handle, unsigned int flags, const void *buf, size_t count, uint64_t offset)
 {
@@ -1086,4 +1094,72 @@ xclRead(xclDeviceHandle handle, enum xclAddressSpace space,
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclRead()");
   auto shim = get_shim_object(handle);
   return shim->read(space,offset,hostbuf,size) ? 0 : size;
+}
+
+void
+queryDeviceWithQR(xclDeviceHandle handle, uint64_t subdev,
+	uint64_t variable,
+	boost::any & _returnValue)
+{
+	switch (subdev)
+	{
+	case pcie:
+		break;
+	case rom: qr_rom_info(handle, variable, _returnValue);
+		break;
+	case icap:
+		break;
+	case xmc:
+		break;
+	case firewall:
+		break;
+	case dma:
+		break;
+	case dna:
+		break;
+	default:
+		std::cout << "unknown request" << std::endl;
+	}
+}
+
+void
+qr_rom_info(xclDeviceHandle handle, uint64_t variable, boost::any & _returnValue) {
+	XOCL_ROM_INFORMATION romInfo;
+	XOCL_STAT_CLASS statClass = XoclStatRomInfo;
+	DWORD bytesWritten;
+	DWORD bytesToRead;
+
+	bytesToRead = sizeof(romInfo);
+
+	if (!DeviceIoControl(handle,
+		IOCTL_XOCL_STAT,
+		&statClass,
+		sizeof(statClass),
+		&romInfo,
+		sizeof(XOCL_ROM_INFORMATION),
+		&bytesWritten,
+		nullptr)) {
+
+		std::cout << "DeviceIoControl failed " << std::endl;
+
+	}
+
+	else {
+		switch (variable)
+		{
+		case VBNV:
+			_returnValue = romInfo.VBNVName;
+			break;
+		case ddr_bank_size:
+			_returnValue = (uint64_t)-1;
+			_returnValue = romInfo.DDRChannelSize;
+			break;
+		case ddr_bank_count_max:
+			_returnValue = romInfo.DDRChannelCount;
+			break;
+		case FPGA:
+			_returnValue = romInfo.FPGAPartName;
+			break;
+		}
+	}
 }

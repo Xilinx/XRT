@@ -185,6 +185,14 @@ typedef struct _XOCL_MAP_BAR_RESULT {
     ULONG       BarLength;     // OUT: Length of mapped buffer
 } XOCL_MAP_BAR_RESULT, *PXOCL_MAP_BAR_RESULT;
 
+typedef struct _XOCL_ROM_INFORMATION {
+	UCHAR FPGAPartName[64];
+	UCHAR VBNVName[64];
+	uint8_t DDRChannelCount;
+	uint8_t DDRChannelSize;
+} XOCL_ROM_INFORMATION, *PXOCL_ROM_INFORMATION;
+
+
 //
 // IOCTL_XOCL_STAT
 //
@@ -201,7 +209,7 @@ typedef enum _XOCL_STAT_CLASS {
     XoclStatIpLayout,
     XoclStatKds,
     XoclStatKdsCU,
-
+	XoclStatRomInfo
 } XOCL_STAT_CLASS, *PXOCL_STAT_CLASS;
 
 typedef struct _XOCL_STAT_CLASS_ARGS {

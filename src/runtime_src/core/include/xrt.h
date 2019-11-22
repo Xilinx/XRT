@@ -54,6 +54,7 @@
 #include "xcl_app_debug.h"
 #include "xclerr.h"
 #include "xclhal2_mem.h"
+#include "boost/any.hpp"
 
 #ifdef __cplusplus
 extern "C" {
@@ -264,7 +265,7 @@ XCL_DRIVER_DLLESPEC unsigned int xclProbe();
  *
  * Return:         Device handle
  */
-XCL_DRIVER_DLLESPEC xclDeviceHandle xclOpen(unsigned int deviceIndex, const char *logFileName,
+ xclDeviceHandle xclOpen(unsigned int deviceIndex, const char *logFileName,
                                             enum xclVerbosityLevel level);
 
 /**
@@ -327,7 +328,7 @@ XCL_DRIVER_DLLESPEC int xclGetErrorStatus(xclDeviceHandle handle, struct xclErro
  * xclbin as a section. xclbin may also contains other sections which are suitably
  * handled by the driver.
  */
-XCL_DRIVER_DLLESPEC int xclLoadXclBin(xclDeviceHandle handle, const struct axlf *buffer);
+ int xclLoadXclBin(xclDeviceHandle handle, const struct axlf *buffer);
 /**
  * xclGetSectionInfo() - Get Information from sysfs about the downloaded xclbin sections
  *
@@ -367,7 +368,7 @@ XCL_DRIVER_DLLESPEC int xclReClock2(xclDeviceHandle handle, unsigned short regio
  * The lock is necessary before performing buffer migration, register access or
  * bitstream downloads.
  */
-XCL_DRIVER_DLLESPEC int xclLockDevice(xclDeviceHandle handle);
+ int xclLockDevice(xclDeviceHandle handle);
 
 /**
  * xclUnlockDevice() - Release exclusive ownership of the device
@@ -375,7 +376,7 @@ XCL_DRIVER_DLLESPEC int xclLockDevice(xclDeviceHandle handle);
  * @handle:        Device handle
  * Return:         0 on success or appropriate error number
  */
-XCL_DRIVER_DLLESPEC int xclUnlockDevice(xclDeviceHandle handle);
+ int xclUnlockDevice(xclDeviceHandle handle);
 
 /**
  * xclOpenContext() - Create shared/exclusive context on compute units
@@ -1059,6 +1060,94 @@ XCL_DRIVER_DLLESPEC const struct axlf_section_header* wrap_get_axlf_section(cons
 
 XCL_DRIVER_DLLESPEC size_t xclDebugReadIPStatus(xclDeviceHandle handle, enum xclDebugReadType type,
                                                                            void* debugResults);
+
+typedef enum {
+	pcie = 0,
+	rom,
+	icap,
+	xmc,
+	firewall,
+	dma,
+	dna
+}subdev;
+
+typedef enum {
+	VBNV = 0,
+	ddr_bank_size,
+	ddr_bank_count_max,
+	FPGA
+}rom_variable;
+
+typedef enum {
+	vendor = 0,
+	device,
+	subsystem_vendor,
+	subsystem_device,
+	link_speed,
+	link_width,
+	mig_calibration,
+	p2p_enable
+}pcie_variable;
+
+typedef enum {
+	clock_freqs = 0,
+	idcode
+}icap_variable;
+
+typedef enum {
+	detected_level = 0,
+	detected_status,
+	detected_time
+}firewall_variable;
+
+typedef enum {
+	version = 0,
+	serial_num,
+	max_power,
+	bmc_ver,
+	xmc_se98_temp0,
+	xmc_se98_temp1,
+	xmc_se98_temp2,
+	xmc_fpga_temp,
+	xmc_fan_temp,
+	fan_presence,
+	xmc_fan_rpm,
+	xmc_cage_temp0,
+	xmc_cage_temp1,
+	xmc_cage_temp2,
+	xmc_cage_temp3,
+	xmc_12v_pex_vol,
+	xmc_12v_pex_curr,
+	xmc_12v_aux_vol,
+	xmc_12v_aux_curr,
+	xmc_3v3_pex_vol,
+	xmc_3v3_aux_vol,
+	xmc_ddr_vpp_btm,
+	xmc_ddr_vpp_top,
+	xmc_sys_5v5,
+	xmc_1v2_top,
+	xmc_vcc1v2_btm,
+	xmc_1v8,
+	xmc_0v85,
+	xmc_mgt0v9avcc,
+	xmc_12v_sw,
+	xmc_mgtavtt,
+	xmc_vccint_vol,
+	xmc_vccint_curr,
+
+	xmc_3v3_pex_curr,
+	xmc_0v85_curr,
+	xmc_3v3_vcc_vol,
+	xmc_hbm_1v2_vol,
+	xmc_vpp2v5_vol,
+	xmc_vccint_bram_vol,
+	xmc_power
+}xmc_variable;
+
+void queryDeviceWithQR(xclDeviceHandle handle, uint64_t subdev, uint64_t variable, boost::any & _returnValue);
+
+void qr_rom_info(xclDeviceHandle handle, uint64_t variable, boost::any & _returnValue);
+
 
 #ifdef __cplusplus
 }
