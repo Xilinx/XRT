@@ -569,11 +569,13 @@ static int xocl_fdt_next_ip(xdev_handle_t xdev_hdl, char *blob,
 {
 	char *l0_path = LEVEL0_DEV_PATH;
 	char *l1_path = LEVEL1_DEV_PATH;
-	int l1_off, l0_off, node;
+	int l1_off, l0_off, ulp_off, node;
 	const char *comp, *p;
 
 	l0_off = fdt_path_offset(blob, l0_path);
 	l1_off = fdt_path_offset(blob, l1_path);
+	ulp_off = fdt_path_offset(blob, ULP_DEV_PATH);
+
 	for (node = fdt_next_node(blob, off, NULL);
 	    node >= 0;
 	    node = fdt_next_node(blob, node, NULL)) {
@@ -586,6 +588,12 @@ static int xocl_fdt_next_ip(xdev_handle_t xdev_hdl, char *blob,
 		if (fdt_parent_offset(blob, node) == l1_off) {
 			if (ip)
 				ip->level = XOCL_SUBDEV_LEVEL_PRP;
+			goto found;
+		}
+
+		if (fdt_parent_offset(blob, node) == ulp_off) {
+			if (ip)
+				ip->level = XOCL_SUBDEV_LEVEL_URP;
 			goto found;
 		}
 	}
@@ -771,10 +779,18 @@ end:
 	return total;
 }
 
-static int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob,
+int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 		struct xocl_subdev **subdevs)
 {
 	int		dev_num; 
+
+	if (!blob)
+		return -EINVAL;
+
+	if (fdt_totalsize(blob) > blob_sz) {
+		xocl_xdev_err(xdev_hdl, "Invalid blob inbut size");
+		return -EINVAL;
+	}
 
 	dev_num = xocl_fdt_parse_subdevs(xdev_hdl, blob, NULL, 0);
 	if (dev_num < 0) {
@@ -882,12 +898,13 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz)
 	if (!blob)
 		return -EINVAL;
 
-	if (fdt_totalsize(blob) > blob_sz) {
+	len = fdt_totalsize(blob);
+	if (len > blob_sz) {
 		xocl_xdev_err(xdev_hdl, "Invalid blob inbut size");
 		return -EINVAL;
 	}
 
-	len = fdt_totalsize(blob) * 2;
+	len *= 2;
 	if (core->fdt_blob)
 		len += fdt_totalsize(core->fdt_blob);
 
@@ -915,7 +932,7 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz)
 		goto failed;
 	}
 
-	ret = xocl_fdt_parse_blob(xdev_hdl, output_blob, &subdevs);
+	ret = xocl_fdt_parse_blob(xdev_hdl, output_blob, len, &subdevs);
 	if (ret < 0)
 		goto failed;
 	core->dyn_subdev_num = ret;

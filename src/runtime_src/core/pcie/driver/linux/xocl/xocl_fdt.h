@@ -33,6 +33,7 @@
 #define NODE_ENDPOINTS "addressable_endpoints"
 #define LEVEL0_DEV_PATH "/addressable_endpoints_0"
 #define LEVEL1_DEV_PATH "/addressable_endpoints_1"
+#define ULP_DEV_PATH "/addressable_endpoints"
 #define INTERFACES_PATH "/interfaces"
 
 #define NODE_PROPERTIES "partition_info"
