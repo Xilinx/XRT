@@ -1169,7 +1169,7 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 		xocl_fetch_dynamic_platform(core, &in);
 	}
 
-	/* When vender specific has platform_info, we can load golden now */
+	/* vendor specific has platform_info */
 	ret = xocl_subdev_vsec(xdev_hdl, XOCL_VSEC_PLATFORM_INFO, NULL, NULL);
 	if (!ret) {
 		xocl_xdev_info(xdev_hdl, "found vsec cap");

@@ -205,6 +205,8 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 	struct xocl_dev *xdev = drm_p->xdev;
 	u16 ddr_count;
 	unsigned ddr;
+	struct mem_topology *topo = NULL;
+	int err = 0;
 
 	if (type == XOCL_BO_EXECBUF || type == XOCL_BO_IMPORT)
 		return 0;
@@ -223,17 +225,25 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 	if (ddr >= ddr_count)
 		return -EINVAL;
 
-	if (XOCL_MEM_TOPOLOGY(xdev)) {
-		if (XOCL_IS_STREAM(XOCL_MEM_TOPOLOGY(xdev), ddr)) {
+	err = XOCL_GET_MEM_TOPOLOGY(xdev, topo);
+	if (err)
+		return err;
+
+	if (topo) {
+		if (XOCL_IS_STREAM(topo, ddr)) {
 			userpf_err(xdev, "Bank %d is Stream", ddr);
-			return -EINVAL;
+			err = -EINVAL;
+			goto done;
 		}
-		if (!XOCL_IS_DDR_USED(xdev, ddr)) {
+		if (!XOCL_IS_DDR_USED(topo, ddr)) {
 			userpf_err(xdev,
 				"Bank %d is marked as unused in axlf", ddr);
-			return -EINVAL;
+			err = -EINVAL;
+			goto done;
 		}
 	}
+done:	
+	XOCL_PUT_MEM_TOPOLOGY(xdev);
 	return 0;
 }
 
@@ -431,6 +441,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 	struct drm_xocl_create_bo *args = data;
 	unsigned ddr = xocl_bo_ddr_idx(args->flags);
 	unsigned bo_type = xocl_bo_type(args->flags);
+	struct mem_topology *topo = NULL;
 
 	xobj = xocl_create_bo(dev, args->size, args->flags, bo_type);
 
@@ -451,9 +462,15 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 			ret = -EINVAL;
 			goto out_free;
 		}
+		ret = XOCL_GET_MEM_TOPOLOGY(xdev, topo);
+		if (ret)
+			goto out_free;
+
 		xobj->p2p_bar_offset = drm_p->mm_p2p_off[ddr] +
 			xobj->mm_node->start -
-			XOCL_MEM_TOPOLOGY(xdev)->m_mem_data[ddr].m_base_address;
+			topo->m_mem_data[ddr].m_base_address;
+
+		XOCL_PUT_MEM_TOPOLOGY(xdev);
 		ret = xocl_p2p_reserve_release_range(xdev, xobj->p2p_bar_offset,
 			xobj->base.size, true);
 		if (ret)

@@ -30,7 +30,6 @@
 #include <fstream>
 #include <cstring>
 #include <iomanip>
-#include <algorithm>
 #include <map>
 #include <vector>
 
@@ -83,7 +82,7 @@ namespace xdp {
        xclPerfMonType type, xclCounterResults& counterResults, uint64_t timeNsec, bool firstReadAfterProgram)
   {
     // Number of monitor slots
-    uint32_t numSlots = 0;
+    unsigned int numSlots = 0;
     std::string key = deviceName + "|" + binaryName;
     std::string slotName = "";
 
@@ -213,26 +212,26 @@ namespace xdp {
       mPluginHandle->getProfileKernelName(deviceName, cuName, kernelName);
       if (!deviceDataExists)
         mDeviceBinaryCuSlotsMap[key].push_back(cuName);
-      uint32_t cuExecCount = counterResults.CuExecCount[s] + rolloverResults.CuExecCount[s];
-      uint64_t cuExecCycles = counterResults.CuExecCycles[s] + rolloverResults.CuExecCycles[s]
+      auto cuExecCount = counterResults.CuExecCount[s] + rolloverResults.CuExecCount[s];
+      auto cuExecCycles = counterResults.CuExecCycles[s] + rolloverResults.CuExecCycles[s]
                                 + (rolloverCounts.CuExecCycles[s] * 4294967296UL);
-      uint64_t cuBusyCycles = counterResults.CuBusyCycles[s] + rolloverResults.CuBusyCycles[s]
+      auto cuBusyCycles = counterResults.CuBusyCycles[s] + rolloverResults.CuBusyCycles[s]
                                 + (rolloverCounts.CuBusyCycles[s] * 4294967296UL);
-      uint32_t cuMaxExecCycles  = counterResults.CuMaxExecCycles[s];
-      uint32_t cuMinExecCycles  = counterResults.CuMinExecCycles[s];
-      uint64_t cuMaxParallelIter = counterResults.CuMaxParallelIter[s];
+      auto cuMaxExecCycles  = counterResults.CuMaxExecCycles[s];
+      auto cuMinExecCycles  = counterResults.CuMinExecCycles[s];
+      auto cuMaxParallelIter = counterResults.CuMaxParallelIter[s];
       double cuRunTimeMsec = (double) cuBusyCycles / deviceCyclesMsec;
       double cuRunTimeAvgMsec = (double) (cuExecCycles / deviceCyclesMsec) / cuExecCount;
       double cuMaxExecCyclesMsec = (double) cuMaxExecCycles / deviceCyclesMsec;
       double cuMinExecCyclesMsec = (double) cuMinExecCycles / deviceCyclesMsec;
-      uint32_t isDataflow = mPluginHandle->isAPCtrlChain(deviceName, cuName) ? 1 : 0;
+      auto isDataflow = mPluginHandle->isAPCtrlChain(deviceName, cuName) ? 1 : 0;
       std::string binaryInstance = binaryName + std::to_string(programID);
       //XDP_LOG("[RT_PROFILE] cuName : %s exec cycles : %d runtime %f \n", cuName.c_str(), cuExecCycles, cuRunTimeMsec);
       // Don't log if not a valid stat
       if (cuMaxParallelIter > 0)
         mProfileCounters->logComputeUnitStats(cuName, kernelName, cuRunTimeMsec,
                                               cuRunTimeAvgMsec, cuMaxExecCyclesMsec,
-                                              cuMinExecCyclesMsec, cuExecCount, kernelClockMhz,
+                                              cuMinExecCyclesMsec, static_cast<uint32_t>(cuExecCount), kernelClockMhz,
                                               isDataflow, cuMaxParallelIter, deviceName, binaryInstance);
     }
 #ifdef XDP_VERBOSE
@@ -246,6 +245,9 @@ namespace xdp {
       }
       sampleNum++;
     }
+#else
+    (void)type;
+    (void)timeNsec;
 #endif
   }
 
@@ -359,7 +361,7 @@ namespace xdp {
       uint64_t totalWriteBusyCycles = 0;
 
       // Traverse all slots to find shell monitors
-      uint32_t numSlots = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_MEMORY, deviceName);
+      auto numSlots = mPluginHandle->getProfileNumberSlots(XCL_PERF_MON_MEMORY, deviceName);
 
       for (uint32_t s=0; s < numSlots; s++) {
         // Make sure it's the shell monitor we're looking for
@@ -441,23 +443,23 @@ namespace xdp {
 
       std::string cuName = "";
 
-      uint32_t numSlots = mDeviceBinaryCuSlotsMap.at(key).size();
+      auto numSlots = mDeviceBinaryCuSlotsMap.at(key).size();
       for (unsigned int s=0; s < numSlots; ++s) {
         cuName = mDeviceBinaryCuSlotsMap.at(key)[s];
-        uint32_t cuExecCount = counterResults.CuExecCount[s] + rolloverResults.CuExecCount[s];
-        uint64_t cuExecCycles = counterResults.CuExecCycles[s] + rolloverResults.CuExecCycles[s]
+        auto cuExecCount = counterResults.CuExecCount[s] + rolloverResults.CuExecCount[s];
+        auto cuExecCycles = counterResults.CuExecCycles[s] + rolloverResults.CuExecCycles[s]
                                   + (rolloverCounts.CuExecCycles[s] * 4294967296UL);
-        uint64_t cuStallExtCycles = counterResults.CuStallExtCycles[s] + rolloverResults.CuStallExtCycles[s]
+        auto cuStallExtCycles = counterResults.CuStallExtCycles[s] + rolloverResults.CuStallExtCycles[s]
                                   + (rolloverCounts.CuStallExtCycles[s] * 4294967296UL);
-        uint64_t cuStallStrCycles = counterResults.CuStallStrCycles[s] + rolloverResults.CuStallStrCycles[s]
+        auto cuStallStrCycles = counterResults.CuStallStrCycles[s] + rolloverResults.CuStallStrCycles[s]
                                   + (rolloverCounts.CuStallStrCycles[s] * 4294967296UL);
-        uint64_t cuStallIntCycles = counterResults.CuStallIntCycles[s] + rolloverResults.CuStallIntCycles[s]
+        auto cuStallIntCycles = counterResults.CuStallIntCycles[s] + rolloverResults.CuStallIntCycles[s]
                                   + (rolloverCounts.CuStallIntCycles[s] * 4294967296UL);
         double cuRunTimeMsec = (double) cuExecCycles / deviceCyclesMsec;
         double cuStallExt =    (double) cuStallExtCycles / deviceCyclesMsec;
         double cuStallStr =    (double) cuStallStrCycles / deviceCyclesMsec;
         double cuStallInt =    (double) cuStallIntCycles / deviceCyclesMsec;
-        writer->writeStallSummary(cuName, cuExecCount, cuRunTimeMsec,
+        writer->writeStallSummary(cuName, static_cast<uint32_t>(cuExecCount), cuRunTimeMsec,
                                   cuStallExt, cuStallStr, cuStallInt);
       }
     }
@@ -474,7 +476,7 @@ namespace xdp {
 
       // Get results
       xclCounterResults counterResults = iter->second;
-      uint32_t numSlots = mDeviceBinaryStrSlotsMap.at(key).size();
+      auto numSlots = mDeviceBinaryStrSlotsMap.at(key).size();
 
       std::string cuPortName;
       std::string masterPortName;
@@ -557,7 +559,7 @@ namespace xdp {
         memset(&rolloverCounts, 0, sizeof(xclCounterResults));
 
       // Number of monitor slots
-      uint32_t numSlots = mDeviceBinaryDataSlotsMap.at(key).size();
+      auto numSlots = mDeviceBinaryDataSlotsMap.at(key).size();
 
       // Total kernel time = sum of all kernel executions
       //double totalKernelTimeMsec = mProfileCounters->getTotalKernelExecutionTime(deviceName);
@@ -653,7 +655,7 @@ namespace xdp {
         memset(&rolloverCounts, 0, sizeof(xclCounterResults));
 
       // Number of monitor slots
-      uint32_t numSlots = mDeviceBinaryDataSlotsMap.at(key).size();
+      auto numSlots = mDeviceBinaryDataSlotsMap.at(key).size();
       double maxTransferRateMBps = getGlobalMemoryMaxBandwidthMBps();
 
       // Maximum bytes per AXI data transfer

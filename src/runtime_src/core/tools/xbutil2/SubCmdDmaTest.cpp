@@ -27,6 +27,14 @@ namespace po = boost::program_options;
 // System - Include Files
 #include <iostream>
 
+// ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
+#include "SubCmd.h"
+static const unsigned int registerResult = 
+                    register_subcommand("dmatest", 
+                                        "Runs a DMA test on a given device",
+                                        subCmdDmaTest);
+// =============================================================================
+
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
 
@@ -34,7 +42,7 @@ namespace po = boost::program_options;
 
 // ------ F U N C T I O N S ---------------------------------------------------
 
-int subCmdDmaTest(const std::vector<std::string> &_options, bool _help)
+int subCmdDmaTest(const std::vector<std::string> &_options)
 // References: dmatest [-d card] [-b [0x]block_size_KB]
 //             Run DMA test on card 1 with 32 KB blocks of buffer
 //               xbutil dmatest -d 1 -b 0x2000
@@ -44,9 +52,11 @@ int subCmdDmaTest(const std::vector<std::string> &_options, bool _help)
   uint64_t card = 0;
   uint64_t blockSizeKB = 0;
   std::string sBlockSizeKB;
+  bool help = false;
 
   po::options_description dmaTestDesc("dmatest options");
   dmaTestDesc.add_options()
+    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
     (",d", boost::program_options::value<uint64_t>(&card), "Card to be examined")
     (",b", boost::program_options::value<std::string>(&sBlockSizeKB), "Block Size KB")
   ;
@@ -66,7 +76,7 @@ int subCmdDmaTest(const std::vector<std::string> &_options, bool _help)
   }
 
   // Check to see if help was requested or no command was found
-  if (_help == true)  {
+  if (help == true)  {
     std::cout << dmaTestDesc << std::endl;
     return 0;
   }
@@ -81,6 +91,6 @@ int subCmdDmaTest(const std::vector<std::string> &_options, bool _help)
   XBU::error("COMMAND BODY NOT IMPLEMENTED.");
   // TODO: Put working code here
 
-  return 0;
+  return registerResult;
 }
 

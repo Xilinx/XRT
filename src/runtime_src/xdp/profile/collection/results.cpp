@@ -24,7 +24,6 @@
 #include <fstream>
 #include <chrono>
 #include <iomanip>
-#include <algorithm>
 #include <time.h>
 
 xdp::KernelTrace* xdp::KernelTrace::RecycleHead = nullptr;

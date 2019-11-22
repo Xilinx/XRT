@@ -27,6 +27,14 @@ namespace po = boost::program_options;
 // System - Include Files
 #include <iostream>
 
+// ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
+#include "SubCmd.h"
+static const unsigned int registerResult = 
+                    register_subcommand("program", 
+                                        "Download the acceleration program to a given device",
+                                        subCmdProgram);
+// =============================================================================
+
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
 
@@ -34,7 +42,7 @@ namespace po = boost::program_options;
 
 // ------ F U N C T I O N S ---------------------------------------------------
 
-int subCmdProgram(const std::vector<std::string> &_options, bool _help)
+int subCmdProgram(const std::vector<std::string> &_options)
 // Reference Command:  [-d card] [-r region] -p xclbin
 //                     Download the accelerator program for card 2
 //                       xbutil program -d 2 -p a.xclbin
@@ -46,9 +54,11 @@ int subCmdProgram(const std::vector<std::string> &_options, bool _help)
   uint64_t card = 0;
   uint64_t region = 0;
   std::string sXclBin;
+  bool help = false;
 
   po::options_description programDesc("program options");
   programDesc.add_options()
+    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
     (",d", boost::program_options::value<uint64_t>(&card), "Card to be examined")
     (",r", boost::program_options::value<uint64_t>(&region), "Card region")
     (",p", boost::program_options::value<std::string>(&sXclBin), "The xclbin image to load")
@@ -69,7 +79,7 @@ int subCmdProgram(const std::vector<std::string> &_options, bool _help)
   }
 
   // Check to see if help was requested or no command was found
-  if (_help == true)  {
+  if (help == true)  {
     std::cout << programDesc << std::endl;
     return 0;
   }
@@ -83,6 +93,6 @@ int subCmdProgram(const std::vector<std::string> &_options, bool _help)
   XBU::error("COMMAND BODY NOT IMPLEMENTED.");
   // TODO: Put working code here
 
-  return 0;
+  return registerResult;
 }
 

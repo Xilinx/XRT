@@ -27,6 +27,15 @@ namespace po = boost::program_options;
 // System - Include Files
 #include <iostream>
 
+
+// ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
+#include "SubCmd.h"
+static const unsigned int registerResult = 
+                    register_subcommand("dd", 
+                                        "<add description>",
+                                        subCmdDD);
+// =============================================================================
+
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
 
@@ -34,7 +43,7 @@ namespace po = boost::program_options;
 
 // ------ F U N C T I O N S ---------------------------------------------------
 
-int subCmdDD(const std::vector<std::string> &_options, bool _help)
+int subCmdDD(const std::vector<std::string> &_options)
 // Reference Command:  dd -i inputFile -o outputFile -b blockSize -c count -p blocksToSkip -e seek
 
 {
@@ -46,9 +55,11 @@ int subCmdDD(const std::vector<std::string> &_options, bool _help)
   std::string sCount;
   std::string sSkip;
   std::string sSeek;
+  bool help = false;
 
   po::options_description ddDesc("dd options");
   ddDesc.add_options()
+    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
     ("if,i", boost::program_options::value<std::string>(&sInputFile), "Input File")
     ("of,o", boost::program_options::value<std::string>(&sOutputFile), "Output File")
     ("bs,b", boost::program_options::value<std::string>(&sBlockSize), "Block Size")
@@ -72,7 +83,7 @@ int subCmdDD(const std::vector<std::string> &_options, bool _help)
   }
 
   // Check to see if help was requested or no command was found
-  if (_help == true)  {
+  if (help == true)  {
     std::cout << ddDesc << std::endl;
     return 0;
   }
@@ -89,6 +100,6 @@ int subCmdDD(const std::vector<std::string> &_options, bool _help)
   XBU::error("COMMAND BODY NOT IMPLEMENTED.");
   // TODO: Put working code here
 
-  return 0;
+  return registerResult;
 }
 

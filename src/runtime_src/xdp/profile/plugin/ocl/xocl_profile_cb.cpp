@@ -23,6 +23,12 @@
 #include "xdp/rt_singleton.h"
 #include "xdp/profile/core/rt_profile.h"
 
+
+#ifdef _WIN32
+#pragma warning (disable : 4996)
+/* Disable warning during Windows compilation for use of std::getenv */
+#endif
+
 namespace {
 
 static bool
@@ -99,10 +105,16 @@ std::string get_event_dependencies_string(xocl::event* currEvent) {
       }
     }
   }
+#ifdef XOCL_VERBOSE
   catch (const xocl::error &err) {
     XOCL_DEBUGF("IGNORE: %s\n", err.what());
     sstr << "None";
   }
+#else
+  catch (const xocl::error & /*err*/) {
+    sstr << "None";
+  }
+#endif
 
   return sstr.str();
 }
@@ -187,7 +199,7 @@ cb_action_ndrange(xocl::event* event,cl_int status,const std::string& cu_name, c
 
 void
 cb_action_read(xocl::event* event,cl_int status, cl_mem buffer, size_t size, uint64_t address, const std::string& bank,
-               bool entire_buffer, size_t user_size, size_t user_offset)
+               bool entire_buffer, size_t user_size, size_t /*user_offset*/)
 {
     if (!isProfilingOn())
       return;
@@ -287,7 +299,7 @@ cb_action_map(xocl::event* event,cl_int status, cl_mem buffer, size_t size, uint
 
 void
 cb_action_write(xocl::event* event,cl_int status, cl_mem buffer, size_t size, uint64_t address, const std::string& bank,
-                bool entire_buffer, size_t user_size, size_t user_offset)
+                bool entire_buffer, size_t user_size, size_t /*user_offset*/)
 {
     if (!isProfilingOn())
       return;

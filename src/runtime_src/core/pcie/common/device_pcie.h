@@ -14,13 +14,28 @@
  * under the License.
  */
 
-#ifndef __SubCmdRun_h_
-#define __SubCmdRun_h_
+#ifndef DEVICE_PCIE_H
+#define DEVICE_PCIE_H
 
 // Please keep eternal include file dependencies to a minimum
-#include <vector>
-#include <string>
-  
-int subCmdRun(const std::vector<std::string> &_options, bool _help);
+#include "common/device_core.h"
 
-#endif
+namespace xrt_core {
+class device_pcie : public xrt_core::device_core {
+
+  protected:
+    device_pcie();
+    virtual ~device_pcie();
+
+  protected:
+    virtual uint64_t get_total_devices() const = 0;
+    virtual void get_devices(boost::property_tree::ptree &_pt) const;
+    virtual void get_device_info(uint64_t _deviceID, boost::property_tree::ptree &_pt) const;
+
+  private:
+    device_pcie(const device_pcie&);
+    device_pcie& operator=(const device_pcie&);
+};
+}
+
+#endif /* CORE_SYSTEM_H */

@@ -17,110 +17,40 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "XBUtilMain.h"
-#include "SubCmdQuery.h"
-#include "SubCmdClock.h"
-#include "SubCmdDmaTest.h"
-#include "SubCmdDump.h"
-#include "SubCmdM2MTest.h"
-#include "SubCmdScan.h"
-#include "SubCmdProgram.h"
-#include "SubCmdRun.h"
-#include "SubCmdFan.h"
-#include "SubCmdList.h"
-#include "SubCmdMem.h"
-#include "SubCmdDD.h"
-#include "SubCmdTop.h"
-#include "SubCmdValidate.h"
-#include "SubCmdReset.h"
-#include "SubCmdP2P.h"
-#include "SubCmdVersion.h"
 
 #include "XBUtilities.h"
+#include "SubCmd.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
+#include "boost/format.hpp"
 
 // System - Include Files
 #include <iostream>
 
 
-static void printHelp()
+static void printHelp(po::options_description _optionDescription)
 {
-    std::cout << "Running xbutil for 4.0+ shell's \n\n";
-    std::cout << "Usage: " << "xbutil" << " <command> [options]\n\n";
-    std::cout << "Command and option summary:\n";
-    std::cout << "  clock   [-d card] [-r region] [-f clock1_freq_MHz] [-g clock2_freq_MHz] [-h clock3_freq_MHz]\n";
-    std::cout << "  dmatest [-d card] [-b [0x]block_size_KB]\n";
-    std::cout << "  dump\n";
-    std::cout << "  help\n";
-    std::cout << "  m2mtest\n";
-    std::cout << "  mem --read [-d card] [-a [0x]start_addr] [-i size_bytes] [-o output filename]\n";
-    std::cout << "  mem --write [-d card] [-a [0x]start_addr] [-i size_bytes] [-e pattern_byte]\n";
-    std::cout << "  program [-d card] [-r region] -p xclbin\n";
-    std::cout << "  query   [-d card [-r region]]\n";
-    std::cout << "  status [-d card] [--debug_ip_name]\n";
-    std::cout << "  scan\n";
-    std::cout << "  top [-i seconds]\n";
-    std::cout << "  validate [-d card]\n";
-    std::cout << " Requires root privileges:\n";
-    std::cout << "  reset  [-d card]\n";
-    std::cout << "  p2p    [-d card] --enable\n";
-    std::cout << "  p2p    [-d card] --disable\n";
-    std::cout << "  p2p    [-d card] --validate\n";
-    std::cout << "\nExamples:\n";
-    std::cout << "Print JSON file to stdout\n";
-    std::cout << "  " << "xbutil" << " dump\n";
-    std::cout << "List all cards\n";
-    std::cout << "  " << "xbutil" << " list\n";
-    std::cout << "Scan for Xilinx PCIe card(s) & associated drivers (if any) and relevant system information\n";
-    std::cout << "  " << "xbutil" << " scan\n";
-    std::cout << "Change the clock frequency of region 0 in card 0 to 100 MHz\n";
-    std::cout << "  " << "xbutil" << " clock -f 100\n";
-    std::cout << "For card 0 which supports multiple clocks, change the clock 1 to 200MHz and clock 2 to 250MHz\n";
-    std::cout << "  " << "xbutil" << " clock -f 200 -g 250\n";
-    std::cout << "Download the accelerator program for card 2\n";
-    std::cout << "  " << "xbutil" << " program -d 2 -p a.xclbin\n";
-    std::cout << "Run DMA test on card 1 with 32 KB blocks of buffer\n";
-    std::cout << "  " << "xbutil" << " dmatest -d 1 -b 0x2000\n";
-    std::cout << "Read 256 bytes from DDR starting at 0x1000 into file read.out\n";
-    std::cout << "  " << "xbutil" << " mem --read -a 0x1000 -i 256 -o read.out\n";
-    std::cout << "  " << "Default values for address is 0x0, size is DDR size and file is memread.out\n";
-    std::cout << "Write 256 bytes to DDR starting at 0x1000 with byte 0xaa \n";
-    std::cout << "  " << "xbutil" << " mem --write -a 0x1000 -i 256 -e 0xaa\n";
-    std::cout << "  " << "Default values for address is 0x0, size is DDR size and pattern is 0x0\n";
-    std::cout << "List the debug IPs available on the platform\n";
-    std::cout << "  " << "xbutil" << " status \n";
-    std::cout << "Validate installation on card 1\n";
-    std::cout << "  " << "xbutil" << " validate -d 1\n";
+   std::cout << std::endl;
+   std::cout << "Syntax: xbutil <subcommand> <options>" << std::endl;
+
+   std::cout << std::endl;
+   std::cout << "Sub Commands:" << std::endl;
+
+   const SubCmdTable & cmdTable = getSubCmdsTable();
+   for (auto subCmdEntry : cmdTable) {
+     if (subCmdEntry.second.isHidden == true) {
+       continue;
+     }
+
+     std::cout << boost::format("  %-10s - %s") % subCmdEntry.second.sSubCmd % subCmdEntry.second.sDescription << std::endl;
+   }
+   std::cout << std::endl;
+
+   std::cout << _optionDescription << std::endl;
 }
-
-
-
-// Initialized the sub cmd call back table
-typedef int (*t_subcommand)(const std::vector<std::string> &, bool);
-static const std::map<const std::string, t_subcommand> cmdTable = {
-  {"query",    &subCmdQuery},
-  {"program",  &subCmdProgram},
-  {"clock",    &subCmdClock},
-  {"dump",     &subCmdDump},
-  {"help",     nullptr},
-  {"run",      &subCmdRun},               // Should this be hidden?
-  {"fan",      &subCmdFan},               // Should this be hidden?
-  {"dmatest",  &subCmdDmaTest},
-  {"list",     &subCmdList},
-  {"mem",      &subCmdMem},
-  {"dd",       &subCmdDD},                // Should this be hidden?
-  {"status",   &subCmdScan},
-  {"m2mtest",  &subCmdM2MTest},
-  {"top",      &subCmdTop},
-  {"validate", &subCmdValidate},
-  {"reset",    &subCmdReset},
-  {"p2p",      &subCmdP2P},
-  {"version",  &subCmdVersion}
-};
-
 
 // ------ Program entry point -------------------------------------------------
 ReturnCodes main_(int argc, char** argv) {
@@ -185,9 +115,9 @@ ReturnCodes main_(int argc, char** argv) {
     XBU::setTrace( true );
   }
 
-  // Check to see if help was requested or no command was found
-  if ((bHelp == true) || (vm.count("command") == 0)) {
-    ::printHelp();
+  // Check to see if help was requested and no command was found
+  if ((bHelp == true) && (vm.count("command") == 0)) {
+    ::printHelp(globalOptions);
     return RC_SUCCESS;
   }
 
@@ -196,12 +126,14 @@ ReturnCodes main_(int argc, char** argv) {
   std::string sCommand = vm["command"].as<std::string>();
 
   if (sCommand == "help") {
-    ::printHelp();
+    ::printHelp(globalOptions);
     return RC_SUCCESS;
   }
 
-  if (cmdTable.find(sCommand) == cmdTable.end()) {
+  const SubCmdEntry *pSubCmdEntry = getSubCmdEntry(sCommand);
+  if (pSubCmdEntry == nullptr) {
     std::cerr << "ERROR: " << "Unknown sub-command: '" << sCommand << "'" << std::endl;
+    ::printHelp(globalOptions);
     return RC_ERROR_IN_COMMAND_LINE;
   }
 
@@ -209,9 +141,13 @@ ReturnCodes main_(int argc, char** argv) {
   std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
   opts.erase(opts.begin());
 
+  if (bHelp == true) {
+      opts.push_back("--help");
+  }
+
   // Call the registered function for this command
-  if (cmdTable.find(sCommand)->second != nullptr) {
-    cmdTable.find(sCommand)->second(opts, bHelp);
+  if (pSubCmdEntry->callBackFunction != nullptr) {
+    pSubCmdEntry->callBackFunction(opts);
   }
 
   return RC_SUCCESS;

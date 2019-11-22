@@ -143,13 +143,13 @@ namespace xdp {
       // derived from ProfileWriterI. The writing of such a file can still be organized in following steps.
       // Any additional intelligence such as streaming compression can be built in the WDBWriter
       virtual void writeDocumentHeader(std::ofstream& ofs, const std::string& docName)  { ofs << docName;}
-      virtual void writeDocumentSubHeader(std::ofstream& ofs, RTProfile* profile) {}
+      virtual void writeDocumentSubHeader(std::ofstream& /*ofs*/, RTProfile* /*profile*/) {}
       virtual void writeTableHeader(std::ofstream& ofs, const std::string& caption,
                                     const std::vector<std::string>& columnLabels) = 0;
       virtual void writeTableRowStart(std::ofstream& ofs) { ofs << rowStart(); }
       virtual void writeTableRowEnd(std::ofstream& ofs)   { ofs << rowEnd() << newLine(); }
-      virtual void writeTableFooter(std::ofstream& ofs) {}
-      virtual void writeDocumentFooter(std::ofstream& ofs) {}
+      virtual void writeTableFooter(std::ofstream& /*ofs*/) {}
+      virtual void writeDocumentFooter(std::ofstream& /*ofs*/) {}
 
       // Cell and Row marking tokens
       virtual const char* cellStart()  { return ""; }

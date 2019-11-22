@@ -240,6 +240,9 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_VSEC_FLASH_CONTROLER   0x51
 #define XOCL_VSEC_PLATFORM_INFO     0x52
 #define XOCL_VSEC_MAILBOX           0x53
+#define XOCL_VSEC_PLAT_RECOVERY     0x0
+#define XOCL_VSEC_PLAT_1RP          0x1
+#define XOCL_VSEC_PLAT_2RP          0x2
 
 #define XOCL_MAXNAMELEN	64
 
@@ -576,19 +579,46 @@ struct xocl_mb_scheduler_funcs {
 	MB_SCHEDULER_DEV(xdev), cu, filep, addrp) :		\
 	-ENODEV)
 
-#define XOCL_MEM_TOPOLOGY(xdev)						\
-	(XOCL_DSA_IS_VERSAL(xdev) ?					\
-	((struct mem_topology *)(((struct xocl_dev *)(xdev))->mem_topo)) : \
-	((struct mem_topology *)xocl_icap_get_data(xdev, MEMTOPO_AXLF)))
-#define XOCL_IP_LAYOUT(xdev)						\
-	((struct ip_layout *)xocl_icap_get_data(xdev, IPLAYOUT_AXLF))
-#define XOCL_XCLBIN_ID(xdev)						\
-	((xuid_t *)xocl_icap_get_data(xdev, XCLBIN_UUID))
 
-#define	XOCL_IS_DDR_USED(xdev, ddr)					\
-	(XOCL_MEM_TOPOLOGY(xdev)->m_mem_data[ddr].m_used == 1)
+#define XOCL_GET_MEM_TOPOLOGY(xdev, topo)						\
+({ \
+	int ret = 0; \
+	if (XOCL_DSA_IS_VERSAL(xdev)) 							\
+		topo = (struct mem_topology *)(((struct xocl_dev *)(xdev))->mem_topo); 	\
+	ret = xocl_icap_get_xclbin_metadata(xdev, MEMTOPO_AXLF, (void **)&topo); \
+	(ret);\
+})
+
+#define XOCL_GET_IP_LAYOUT(xdev, ip_layout)						\
+	(xocl_icap_get_xclbin_metadata(xdev, IPLAYOUT_AXLF, (void **)&ip_layout))
+#define XOCL_GET_XCLBIN_ID(xdev, xclbin_id)						\
+	(xocl_icap_get_xclbin_metadata(xdev, XCLBIN_UUID, (void **)&xclbin_id))
+
+
+#define XOCL_PUT_MEM_TOPOLOGY(xdev)						\
+	(XOCL_DSA_IS_VERSAL(xdev) ?						\
+	-ENODEV : \
+	xocl_icap_put_xclbin_metadata(xdev))
+#define XOCL_PUT_IP_LAYOUT(xdev)						\
+	xocl_icap_put_xclbin_metadata(xdev)
+#define XOCL_PUT_XCLBIN_ID(xdev)						\
+	xocl_icap_put_xclbin_metadata(xdev)
+
+#define XOCL_IS_DDR_USED(topo, ddr) 			\
+	(topo->m_mem_data[ddr].m_used == 1)
+
 #define	XOCL_DDR_COUNT_UNIFIED(xdev)		\
-	(XOCL_MEM_TOPOLOGY(xdev) ? XOCL_MEM_TOPOLOGY(xdev)->m_count : 0)
+({ \
+	struct mem_topology *topo = NULL; \
+	uint32_t ret = 0; 	\
+	int err = XOCL_GET_MEM_TOPOLOGY(xdev, topo); \
+	if (err)	\
+		return 0;		\
+	ret = topo ? topo->m_count : 0; \
+	XOCL_PUT_MEM_TOPOLOGY(xdev); \
+	(ret); \
+})
+
 #define	XOCL_DDR_COUNT(xdev)			\
 	((xocl_is_unified(xdev) ? XOCL_DDR_COUNT_UNIFIED(xdev) :	\
 	xocl_get_ddr_channel_count(xdev)))
@@ -891,6 +921,9 @@ struct xocl_icap_funcs {
 		const xuid_t *uuid);
 	uint64_t (*get_data)(struct platform_device *pdev,
 		enum data_kind kind);
+	int (*get_xclbin_metadata)(struct platform_device *pdev,
+		enum data_kind kind, void **buf);
+	void (*put_xclbin_metadata)(struct platform_device *pdev);
 };
 enum {
 	RP_DOWNLOAD_NORMAL,
@@ -950,6 +983,15 @@ enum {
 	(ICAP_CB(xdev, get_data) ?					\
 	ICAP_OPS(xdev)->get_data(ICAP_DEV(xdev), kind) : 		\
 	0)
+#define	xocl_icap_get_xclbin_metadata(xdev, kind, buf)			\
+	(ICAP_CB(xdev, get_xclbin_metadata) ?				\
+	ICAP_OPS(xdev)->get_xclbin_metadata(ICAP_DEV(xdev), kind, buf) :	\
+	0)
+#define	xocl_icap_put_xclbin_metadata(xdev)			\
+	(ICAP_CB(xdev, put_xclbin_metadata) ?				\
+	ICAP_OPS(xdev)->put_xclbin_metadata(ICAP_DEV(xdev)) : 	\
+	0)
+
 
 struct xocl_mig_label {
 	unsigned char	tag[16];
@@ -1201,6 +1243,8 @@ int xocl_fdt_get_next_prop_by_name(xdev_handle_t xdev_hdl, void *blob,
     int offset, char *name, const void **prop, int *prop_len);
 int xocl_fdt_check_uuids(xdev_handle_t xdev_hdl, const void *blob,
 		        const void *subset_blob);
+int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
+		struct xocl_subdev **subdevs);
 const struct axlf_section_header *xocl_axlf_section_header(
 	xdev_handle_t xdev_hdl, const struct axlf *top,
 	enum axlf_section_kind kind);
