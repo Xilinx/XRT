@@ -61,7 +61,7 @@ namespace xdp {
     Platform = xocl::get_shared_platform();
     Plugin = std::make_shared<XoclPlugin>(getclPlatformID());
     // Share ownership to ensure correct order of destruction
-    ProfileMgr = std::make_unique<RTProfile>(ProfileFlags, Plugin);
+    ProfileMgr = std::make_shared<RTProfile>(ProfileFlags, Plugin);
     startProfiling();
   }
 
@@ -137,6 +137,10 @@ namespace xdp {
     logFinalTrace(XCL_PERF_MON_MEMORY /* type should not matter */);  // reads and logs trace data for all monitors in HW flow
 
     endTrace();
+    // Close offload threads
+    for (auto& ptr : DeviceOffloadList) {
+      ptr.reset();
+    }
 
     // Gather info for guidance
     // NOTE: this needs to be done here before the device clears its list of CUs
@@ -277,6 +281,11 @@ namespace xdp {
           /* Todo: Write user specified memory bank here */
           trace_memory = "TS2MM";
         }
+        std::string binary_name = "binary";
+        if (device->is_active())
+          binary_name = device->get_xclbin().project_name();
+        auto offloadThread = std::make_unique<OclDeviceOffload>(dInt, ProfileMgr, device->get_unique_name(), binary_name, 10);
+        DeviceOffloadList.push_back(std::move(offloadThread));
       } else {
         xdevice->startTrace(XCL_PERF_MON_MEMORY, traceOption);
         // for HW_EMU consider , 2 calls , with new XDP, all flow should be same
@@ -664,19 +673,19 @@ namespace xdp {
         if (dInt) {    // HW Device flow
           bool endLog = false;
           if (dInt->hasFIFO()) {
-            uint32_t numTracePackets = 0;
-            while (!endLog) {
-              dInt->readTrace(type, info->mTraceVector);
-              endLog = info->mTraceVector.mLength == 0;
-              profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector, endLog);
-              numTracePackets += info->mTraceVector.mLength;
-              info->mTraceVector = {};
-            }
-            // detect if FIFO is full
-            auto fifoProperty = dInt->getMonitorProperties(XCL_PERF_MON_FIFO, 0);
-            auto fifoSize = RTUtil::getDevTraceBufferSize(fifoProperty);
-            if (numTracePackets >= fifoSize && !isHwEmu)
-              Plugin->sendMessage(FIFO_WARN_MSG);
+          //  uint32_t numTracePackets = 0;
+          //  while (!endLog) {
+          //    dInt->readTrace(type, info->mTraceVector);
+          //    endLog = info->mTraceVector.mLength == 0;
+          //    profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector, endLog);
+          //    numTracePackets += info->mTraceVector.mLength;
+          //    info->mTraceVector = {};
+          //  }
+          //  // detect if FIFO is full
+          //  auto fifoProperty = dInt->getMonitorProperties(XCL_PERF_MON_FIFO, 0);
+          //  auto fifoSize = RTUtil::getDevTraceBufferSize(fifoProperty);
+          //  if (numTracePackets >= fifoSize && !isHwEmu)
+          //    Plugin->sendMessage(FIFO_WARN_MSG);
           } else if (dInt->hasTs2mm()) {
             configureDDRTraceReader(dInt->getWordCountTs2mm());
             uint64_t numTraceBytes = 0;

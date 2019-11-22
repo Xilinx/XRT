@@ -26,6 +26,7 @@
 #include "xdp/profile/core/rt_util.h"
 #include "xdp/profile/writer/csv_trace.h"
 #include "xdp/profile/plugin/ocl/ocl_power_profile.h"
+#include "xdp/profile/plugin/ocl/ocl_device_offload.h"
 
 namespace xdp {
 
@@ -113,7 +114,9 @@ namespace xdp {
     static OCLProfiler* mRTInstance;
     std::shared_ptr<xocl::platform> Platform;
     std::shared_ptr<XoclPlugin> Plugin;
-    std::unique_ptr<RTProfile> ProfileMgr;
+    std::shared_ptr<RTProfile> ProfileMgr;
+    std::vector<std::unique_ptr<OclDeviceOffload>> DeviceOffloadList;
+    std::unique_ptr<OclDeviceOffload> DeviceOffload;
     std::vector<std::unique_ptr<OclPowerProfile>> PowerProfileList;
 
     // Buffer on Device DDR for Trace
