@@ -22,7 +22,8 @@
 #include "common/device_pcie.h"
 
 namespace xrt_core {
-class device_windows : public xrt_core::device_pcie {
+  
+class device_windows : public device_pcie {
   public:
     struct IOCTLEntry {
       uint64_t IOCTLValue;
@@ -40,9 +41,10 @@ class device_windows : public xrt_core::device_pcie {
     virtual ~device_windows();
 
   private:
-    device_windows(const device_windows&);
-    device_windows& operator=(const device_windows&);
+    device_windows(const device_windows&) = delete;
+    device_windows& operator=(const device_windows&) = delete;
 };
-}
+
+} // xrt_core
 
 #endif 

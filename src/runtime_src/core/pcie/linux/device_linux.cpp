@@ -24,15 +24,13 @@
 #include "boost/format.hpp"
 #include <map>
 
-
-
-void xrt_core::initialize_child_ctor()
+xrt_core::device_core*
+xrt_core::
+initialize_child_ctor()
 {
-  xrt_core::device_core::register_child_ctor(boost::factory<xrt_core::device_linux *>());
+  static device_linux dl;
+  return &dl;
 }
-
-
-unsigned int foo = xrt_core::device_core::register_child_ctor(boost::factory<xrt_core::device_linux *>());
 
 const xrt_core::device_linux::SysDevEntry & 
 xrt_core::device_linux::get_sysdev_entry( QueryRequest _eQueryRequest) const
@@ -117,8 +115,9 @@ xrt_core::device_linux::get_sysdev_entry( QueryRequest _eQueryRequest) const
 
 
 
-void 
-xrt_core::device_linux::query_device(uint64_t _deviceID, QueryRequest _eQueryRequest, const std::type_info & _typeInfo, boost::any &_returnValue) const
+void
+xrt_core::device_linux::
+query_device(uint64_t _deviceID, QueryRequest _eQueryRequest, const std::type_info & _typeInfo, boost::any &_returnValue) const
 {
   // Initialize return data to being empty container.
   // Note: CentOS Boost 1.53 doesn't support the clear() method.

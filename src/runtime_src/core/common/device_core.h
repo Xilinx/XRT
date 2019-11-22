@@ -28,13 +28,6 @@
 
 namespace xrt_core {
 
-void initialize_child_ctor();
-
-/**
- * Helper function to initialize the child's class constructer.
- */
-void initialize();
-
 class device_core {
 
   public:
@@ -161,12 +154,13 @@ class device_core {
     void query_device_and_put(uint64_t _deviceID, QueryRequest _eQueryRequest, boost::property_tree::ptree & _pt) const;
     
   protected:
-    typedef struct {
+
+    struct QueryRequestEntry {
       std::string sPrettyName;
       std::string sPtreeNodeName;
       const std::type_info *pTypeInfo;
       FORMAT_STRING_PTR string_formatter;
-    } QueryRequestEntry;
+    };
 
     const QueryRequestEntry * get_query_entry(QueryRequest _eQueryRequest) const;
 
@@ -175,31 +169,16 @@ class device_core {
     virtual ~device_core();
 
   private:
-    device_core(const device_core&);
-    device_core& operator=(const device_core&);
+    device_core(const device_core&) = delete;
+    device_core& operator=(const device_core&) = delete;
 
-  protected:
-    typedef std::function<xrt_core::device_core*()> device_core_factory;
-   
-    /**
-     * Register's the child's constructor to be used to create the singleton.
-     * 
-     * Note
-     * ----
-     * Last constructer registered win's prior to creating the singleton.  Once
-     * the singleton is created, exceptions will be thrown if this 
-     * method is called again. 
-     * 
-     * @param _core_device_factory
-     *               The child's class constructure.
-     */
-  public:
-    static unsigned int register_child_ctor( device_core_factory _device_core_factory);
-
-  private:
-    static device_core_factory m_singleton_ctor;
+ private:
     static std::map<QueryRequest, QueryRequestEntry> m_QueryTable;
 };
-}
+
+device_core*
+initialize_child_ctor();
+
+} // xrt_core
 
 #endif 

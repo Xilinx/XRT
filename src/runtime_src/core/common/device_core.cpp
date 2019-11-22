@@ -22,9 +22,6 @@
 #include <string>
 #include <iostream>
 
-// Static Class Variables
-xrt_core::device_core::device_core_factory xrt_core::device_core::m_singleton_ctor;
-
 std::map<xrt_core::device_core::QueryRequest, xrt_core::device_core::QueryRequestEntry> xrt_core::device_core::m_QueryTable = 
 { 
   { QR_PCIE_VENDOR,               { "QR_PCIE_VENDOR",               "vendor",           &typeid(std::string), device_core::format_primative }},
@@ -134,21 +131,8 @@ xrt_core::device_core::~device_core()
 const xrt_core::device_core &
 xrt_core::device_core::get_handle()
 {
-  xrt_core::device_core *pSingleton = nullptr;
-
-  if (pSingleton == nullptr) {
-    xrt_core::initialize_child_ctor();
-    pSingleton = m_singleton_ctor();
-  }
-
+  static xrt_core::device_core *pSingleton = initialize_child_ctor();
   return *pSingleton;
-}
-
-unsigned int
-xrt_core::device_core::register_child_ctor(device_core_factory _device_core_factory)
-{
-  m_singleton_ctor = _device_core_factory;
-  return 0;
 }
 
 std::string
