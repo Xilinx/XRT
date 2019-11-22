@@ -25,7 +25,7 @@
 namespace xdp {
 
 TraceFifoLite::TraceFifoLite(Device* handle /** < [in] the xrt or hal device handle */,
-                int index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data)
+                             uint64_t index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data)
     : ProfileIP(handle, index, data),
       properties(0),
       major_version(0),

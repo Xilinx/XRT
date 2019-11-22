@@ -108,7 +108,7 @@ namespace xdp {
 	        const std::vector<std::string>& columnLabels) = 0;
 	    virtual void writeTableRowStart(std::ofstream& ofs) { ofs << rowStart(); }
 	    virtual void writeTableRowEnd(std::ofstream& ofs)   { ofs << rowEnd() << newLine(); }
-	    virtual void writeDocumentFooter(std::ofstream& ofs) {}
+	    virtual void writeDocumentFooter(std::ofstream& /*ofs*/) {}
 
 	    // Cell and Row marking tokens
         virtual const char* cellStart()  { return ""; }

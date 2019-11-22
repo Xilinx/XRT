@@ -24,6 +24,7 @@ xclmgmt-y := \
 	../subdev/sysmon.o \
 	../subdev/feature_rom.o \
 	../subdev/microblaze.o \
+	../subdev/ps.o \
 	../subdev/firewall.o \
 	../subdev/xvc.o \
 	../subdev/nifd.o \

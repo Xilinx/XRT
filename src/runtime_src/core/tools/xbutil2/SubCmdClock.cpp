@@ -27,6 +27,15 @@ namespace po = boost::program_options;
 // System - Include Files
 #include <iostream>
 
+// ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
+#include "SubCmd.h"
+static const unsigned int registerResult = 
+                    register_subcommand("clock", 
+                                        "Change a given clock frequency",
+                                        subCmdClock);
+// =============================================================================
+
+
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
 
@@ -34,7 +43,7 @@ namespace po = boost::program_options;
 
 // ------ F U N C T I O N S ---------------------------------------------------
 
-int subCmdClock(const std::vector<std::string> &_options, bool _help)
+int subCmdClock(const std::vector<std::string> &_options)
 // Reference Command:  clock   [-d card] [-r region] [-f clock1_freq_MHz] [-g clock2_freq_MHz] [-h clock3_freq_MHz]
 //                     Change the clock frequency of region 0 in card 0 to 100 MHz\n";
 //                         xbutil clock -f 100
@@ -49,9 +58,11 @@ int subCmdClock(const std::vector<std::string> &_options, bool _help)
   uint64_t clock1FreqMhz = 0;
   uint64_t clock2FreqMhz = 0;
   uint64_t clock3FreqMhz = 0;
+  bool help = false;
 
   po::options_description clockDesc("clock options");
   clockDesc.add_options()
+    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
     (",d", boost::program_options::value<uint64_t>(&card), "Card to be examined")
     (",r", boost::program_options::value<uint64_t>(&region), "Card region")
     (",f", boost::program_options::value<uint64_t>(&clock1FreqMhz), "Clock 1 frequency MHz")
@@ -74,7 +85,7 @@ int subCmdClock(const std::vector<std::string> &_options, bool _help)
   }
 
   // Check to see if help was requested or no command was found
-  if (_help == true)  {
+  if (help == true)  {
     std::cout << clockDesc << std::endl;
     return 0;
   }
@@ -90,6 +101,6 @@ int subCmdClock(const std::vector<std::string> &_options, bool _help)
   XBU::error("COMMAND BODY NOT IMPLEMENTED.");
   // TODO: Put working code here
 
-  return 0;
+  return registerResult;
 }
 

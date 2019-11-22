@@ -580,9 +580,27 @@ int AwsDev::awsReClock2(const xclmgmt_ioc_freqscaling *obj) {
 #ifdef INTERNAL_TESTING_FOR_AWS
     return ioctl(mMgtHandle, XCLMGMT_IOCFREQSCALE, obj);
 #else
-//    # error "INTERNAL_TESTING macro disabled. AMZN code goes here. "
-//    # This API is not supported in AWS, the frequencies are set per AFI
-    return 0;
+    int retVal = 0;
+    fpga_mgmt_image_info orig_info;
+    std::memset(&orig_info, 0, sizeof(struct fpga_mgmt_image_info));
+    fpga_mgmt_describe_local_image(mBoardNumber, &orig_info, 0);
+    if(orig_info.status == FPGA_STATUS_LOADED) {
+        std::cout << "Reclock AFI(" << orig_info.ids.afi_id << ")" << std::endl;
+        union fpga_mgmt_load_local_image_options opt;
+        fpga_mgmt_init_load_local_image_options(&opt);
+        opt.afi_id = orig_info.ids.afi_id;
+        opt.slot_id = mBoardNumber;
+        opt.clock_mains[0] = obj->ocl_target_freq[0];
+        opt.clock_mains[1] = obj->ocl_target_freq[1];
+        opt.clock_mains[2] = obj->ocl_target_freq[2];
+        retVal = fpga_mgmt_load_local_image_with_options(&opt);
+        if (retVal) {
+            std::cout << "Failed to load AFI with freq , error: " << retVal << std::endl;
+            return -retVal;
+        }
+        return retVal;
+    }
+    return 1;
 #endif
 }
 

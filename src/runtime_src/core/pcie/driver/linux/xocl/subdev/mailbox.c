@@ -430,7 +430,7 @@ int mailbox_post_notify(struct platform_device *, void *, size_t);
 int mailbox_get(struct platform_device *pdev, enum mb_kind kind, u64 *data);
 
 static int mailbox_enable_intr_mode(struct mailbox *mbx);
-static void mailbox_disable_intr_mode(struct mailbox *mbx);
+static void mailbox_disable_intr_mode(struct mailbox *mbx, bool timer_on);
 
 static inline u32 mailbox_reg_rd(struct mailbox *mbx, u32 *reg)
 {
@@ -1496,7 +1496,7 @@ static ssize_t intr_mode_store(struct device *dev,
 	if (enable)
 		mailbox_enable_intr_mode(mbx);
 	else
-		mailbox_disable_intr_mode(mbx);
+		mailbox_disable_intr_mode(mbx, true);
 
 	return count;
 }
@@ -1832,19 +1832,22 @@ static int mailbox_enable_intr_mode(struct mailbox *mbx)
 	return 0;
 }
 
-static void mailbox_disable_intr_mode(struct mailbox *mbx)
+static void mailbox_disable_intr_mode(struct mailbox *mbx, bool timer_on)
 {
 	struct platform_device *pdev = mbx->mbx_pdev;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	if (MB_SW_ONLY(mbx))
 		return;
+
 	/*
 	 * No need to turn on polling mode for TX, which has
 	 * a channel stall checking timer always on when there is
 	 * outstanding TX packet.
 	 */
-	set_bit(MBXCS_BIT_POLL_MODE, &mbx->mbx_rx.mbc_state);
+	if (timer_on)
+		set_bit(MBXCS_BIT_POLL_MODE, &mbx->mbx_rx.mbc_state);
+
 	chan_config_timer(&mbx->mbx_rx);
 
 	/* Disable both TX / RX intrs. */
@@ -1942,7 +1945,14 @@ static int mailbox_offline(struct platform_device *pdev)
 	struct mailbox *mbx;
 
 	mbx = platform_get_drvdata(pdev);
-	mailbox_disable_intr_mode(mbx);
+#if defined(__PPC64__)
+	/* Offline is called during reset. We can't poll mailbox registers
+	 * during reset on PPC.
+	 */
+	mailbox_disable_intr_mode(mbx, false);
+#else
+	mailbox_disable_intr_mode(mbx, true);
+#endif
 	return 0;
 }
 
@@ -2191,7 +2201,7 @@ static int mailbox_remove(struct platform_device *pdev)
 	sysfs_remove_group(&pdev->dev.kobj, &mailbox_attrgroup);
 
 	/* Stop interrupt. */
-	mailbox_disable_intr_mode(mbx);
+	mailbox_disable_intr_mode(mbx, false);
 	/* Tear down all threads. */
 	chan_fini(&mbx->mbx_tx);
 	chan_fini(&mbx->mbx_rx);
@@ -2268,13 +2278,13 @@ static int mailbox_probe(struct platform_device *pdev)
 	/* Enable interrupt. */
 	if (mailbox_no_intr) {
 		MBX_INFO(mbx, "Enabled timer-driven mode");
-		mailbox_disable_intr_mode(mbx);
+		mailbox_disable_intr_mode(mbx, true);
 	} else {
 		ret = mailbox_enable_intr_mode(mbx);
 		if (ret != 0) {
 			MBX_INFO(mbx, "failed to enable intr mode");
 			/* Ignore error, fall back to timer driven mode */
-			mailbox_disable_intr_mode(mbx);
+			mailbox_disable_intr_mode(mbx, true);
 		}
 	}
 

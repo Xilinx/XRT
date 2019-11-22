@@ -18,7 +18,12 @@
 #include "xdp/profile/writer/base_profile.h"
 #include "xdp/profile/core/rt_profile.h"
 
-#include "xrt/util/time.h"
+#include "core/common/t_time.h"
+
+#ifdef _WIN32
+#pragma warning (disable : 4244)
+/* Disable warning for "int" to "char" conversion in <algorithm> header file included in one of the included files */
+#endif
 
 namespace xdp {
   // XOCL XDP Plugin constructor
@@ -37,7 +42,7 @@ namespace xdp {
   double XoclPlugin::getTraceTime()
   {
     // Get trace time from XRT
-    auto nsec = xrt::time_ns();
+    auto nsec = xrt_core::time_ns();
     return getTimestampMsec(nsec);
   }
 
@@ -110,7 +115,7 @@ namespace xdp {
                   }
                 }
               }
-              catch (const std::runtime_error& ex) {
+              catch (const std::runtime_error& ) {
                 memoryName = "DDR";
                 XDP_LOG("setArgumentsBank: caught error, using default of %s\n", memoryName.c_str());
               }
@@ -144,7 +149,7 @@ namespace xdp {
   }
 
   // Get the arguments and memory resource for a given device/CU/port
-  void XoclPlugin::getArgumentsBank(const std::string& deviceName, const std::string& cuName,
+  void XoclPlugin::getArgumentsBank(const std::string& /*deviceName*/, const std::string& cuName,
    	                                const std::string& portName, std::string& argNames,
    				                    std::string& memoryName)
   {
@@ -252,7 +257,7 @@ namespace xdp {
     }
   }
 
-  void XoclPlugin::getKernelCounts(RTProfile *profile)
+  void XoclPlugin::getKernelCounts(RTProfile* /*profile*/)
   {
     // Traverse all devices in this platform
     for (auto device_id : mPlatformHandle->get_device_range()) {

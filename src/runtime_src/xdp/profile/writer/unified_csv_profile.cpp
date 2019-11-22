@@ -244,7 +244,7 @@ namespace xdp {
       uint64_t totalWriteBytes, uint64_t totalReadBytes,
       uint64_t totalWriteTranx, uint64_t totalReadTranx,
       double totalWriteTimeMsec, double totalReadTimeMsec,
-      uint32_t maxBytesPerTransfer, double maxTransferRateMBps)
+      uint32_t maxBytesPerTransfer, double /*maxTransferRateMBps*/)
   {
     double totalTimeMsec = (totalWriteTimeMsec > totalReadTimeMsec) ?
         totalWriteTimeMsec : totalReadTimeMsec;
@@ -277,7 +277,7 @@ namespace xdp {
   // Transfer Type, Number Of Transfers, Transfer Rate (MB/s),
   // Average Bandwidth Utilization (%), Average Size (KB), Average Time (ms)
   void UnifiedCSVProfileWriter::writeHostTransferSummary(const std::string& name,
-      const BufferStats& stats, uint64_t totalBytes, uint64_t totalTranx,
+      const BufferStats& /*stats*/, uint64_t totalBytes, uint64_t totalTranx,
       double totalTimeMsec, double maxTransferRateMBps)
   {
     //double aveTimeMsec = stats.getAveTime();

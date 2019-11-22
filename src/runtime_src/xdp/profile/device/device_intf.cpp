@@ -22,11 +22,9 @@
 #include <iostream>
 #include <cstdio>
 #include <cstring>
-//#include <algorithm>
 #include <thread>
 #include <vector>
-//#include <time.h>
-#include <string.h>
+#include <string>
 #include <chrono>
 
 #ifndef _WINDOWS
@@ -38,6 +36,12 @@
 
 #ifdef _WINDOWS
 #define __func__ __FUNCTION__
+#endif
+
+#ifdef _WIN32
+#pragma warning (disable : 4996 4267)
+/* 4996 : Disable warning for use of strncpy */
+/* 4267 : Disable warning for conversion of size_t to uint32_t in return statements in "getNumMonitors" */
 #endif
 
 namespace xdp {
@@ -398,7 +402,7 @@ DeviceIntf::~DeviceIntf()
     debug_ip_layout *map;
     if (ifs.gcount() > 0) {
       map = (debug_ip_layout*)(buffer);
-      for( unsigned int i = 0; i < map->m_count; i++ ) {
+      for(uint64_t i = 0; i < map->m_count; i++ ) {
       switch(map->m_debug_ip_data[i].m_type) {
         case AXI_MM_MONITOR :        aimList.push_back(new AIM(mDevice, i, &(map->m_debug_ip_data[i])));
                                      break;

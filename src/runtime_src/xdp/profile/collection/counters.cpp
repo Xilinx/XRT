@@ -25,7 +25,6 @@
 #include <sstream>
 #include <fstream>
 #include <iomanip>
-#include <algorithm>
 #include <ctime>
 
 namespace xdp {
@@ -74,7 +73,7 @@ namespace xdp {
   }
 
   void ProfileCounters::logBufferTransfer(RTUtil::e_profile_command_kind kind, size_t size, double duration,
-                                          uint32_t contextId, uint32_t numDevices)
+                                          uint32_t contextId, size_t numDevices)
   {
     if (BufferTransferStats.find(kind) == BufferTransferStats.end()) {
       BufferStats bufferStats;
@@ -102,7 +101,7 @@ namespace xdp {
     DeviceKernelStat.log(size, duration);
   }
 
-  void ProfileCounters::logDeviceKernelTransfer(std::string& deviceName, std::string& kernelName,
+  void ProfileCounters::logDeviceKernelTransfer(std::string& /*deviceName*/, std::string& /*kernelName*/,
       size_t size, double duration, uint32_t bitWidth, double clockFreqMhz, bool isRead)
   {
     // For now, classify under 'ALL'

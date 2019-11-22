@@ -176,6 +176,13 @@ enum sensor_val_kind {
 	(xmc->base_addrs[IO_GPIO] ?		\
 	XOCL_WRITE_REG32(val, xmc->base_addrs[IO_GPIO] + off) : ((void)0))
 
+#define	READ_CQ(xmc, off)			\
+	(xmc->base_addrs[IO_CQ] ?		\
+	XOCL_READ_REG32(xmc->base_addrs[IO_CQ] + off) : 0)
+#define	WRITE_CQ(xmc, val, off)		\
+	(xmc->base_addrs[IO_CQ] ?		\
+	XOCL_WRITE_REG32(val, xmc->base_addrs[IO_CQ] + off) : ((void)0))
+
 #define	READ_IMAGE_MGMT(xmc, off)		\
 	(xmc->base_addrs[IO_IMAGE_MGMT] ?	\
 	XOCL_READ_REG32(xmc->base_addrs[IO_IMAGE_MGMT] + off) : 0)
@@ -316,6 +323,7 @@ struct xocl_xmc {
 static int load_xmc(struct xocl_xmc *xmc);
 static int stop_xmc(struct platform_device *pdev);
 static void xmc_clk_scale_config(struct platform_device *pdev);
+static int xmc_load_board_info(struct xocl_xmc *xmc);
 
 static void set_sensors_data(struct xocl_xmc *xmc, struct xcl_sensor *sensors)
 {
@@ -521,6 +529,9 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 		case VOL_VCCINT_BRAM:
 			READ_SENSOR(xmc, XMC_VCCINT_BRAM_REG, val, val_kind);
 			break;
+		case XMC_VER:
+			safe_read32(xmc, XMC_VERSION_REG, val);
+			break;
 		default:
 			break;
 		}
@@ -644,6 +655,9 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 			break;
 		case VOL_VCCINT_BRAM:
 			*val = xmc->cache->vccint_bram;
+			break;
+		case XMC_VER:
+			*val = xmc->cache->version;
 			break;
 		default:
 			break;
@@ -844,8 +858,13 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind, 
 		xmc_sensor(pdev, VOL_HBM_1V2, &sensors->vol_1v2_hbm, SENSOR_INS);
 		xmc_sensor(pdev, VOL_VPP_2V5, &sensors->vol_2v5_vpp, SENSOR_INS);
 		xmc_sensor(pdev, VOL_VCCINT_BRAM, &sensors->vccint_bram, SENSOR_INS);
+		xmc_sensor(pdev, XMC_VER, &sensors->version, SENSOR_INS);
 		break;
 	case XCL_BDINFO:
+		mutex_lock(&xmc->mbx_lock);
+		xmc_load_board_info(xmc);
+		mutex_unlock(&xmc->mbx_lock);
+
 		bdinfo = (struct xcl_board_info *)buf;
 
 		xmc_bdinfo(pdev, SER_NUM, (u32 *)bdinfo->serial_num);
@@ -934,6 +953,7 @@ SENSOR_SYSFS_NODE(xmc_hbm_1v2_vol, VOL_HBM_1V2);
 SENSOR_SYSFS_NODE(xmc_vpp2v5_vol, VOL_VPP_2V5);
 SENSOR_SYSFS_NODE(xmc_vccint_bram_vol, VOL_VCCINT_BRAM);
 SENSOR_SYSFS_NODE(xmc_hbm_temp, HBM_TEMP);
+SENSOR_SYSFS_NODE(version, XMC_VER);
 
 static ssize_t xmc_power_show(struct device *dev,
 	struct device_attribute *da, char *buf)
@@ -995,7 +1015,8 @@ static DEVICE_ATTR_RO(status);
 	&dev_attr_xmc_vpp2v5_vol.attr,					\
 	&dev_attr_xmc_vccint_bram_vol.attr,				\
 	&dev_attr_xmc_hbm_temp.attr,					\
-	&dev_attr_xmc_power.attr
+	&dev_attr_xmc_power.attr,					\
+	&dev_attr_version.attr
 
 /*
  * Defining sysfs nodes for reading some of xmc regisers.
@@ -1010,7 +1031,7 @@ static DEVICE_ATTR_RO(status);
 		return sprintf(buf, format, val);			\
 	}								\
 	static DEVICE_ATTR_RO(node_name)
-REG_SYSFS_NODE(version, XMC_VERSION_REG, "%d\n");
+
 REG_SYSFS_NODE(sensor, XMC_SENSOR_REG, "0x%04x\n");
 REG_SYSFS_NODE(id, XMC_MAGIC_REG, "0x%x\n");
 REG_SYSFS_NODE(error, XMC_ERROR_REG, "0x%x\n");
@@ -1021,7 +1042,6 @@ REG_SYSFS_NODE(host_msg_offset, XMC_HOST_MSG_OFFSET_REG, "%d\n");
 REG_SYSFS_NODE(host_msg_error, XMC_HOST_MSG_ERROR_REG, "0x%x\n");
 REG_SYSFS_NODE(host_msg_header, XMC_HOST_MSG_HEADER_REG, "0x%x\n");
 #define	REG_SYSFS_NODE_ATTRS						\
-	&dev_attr_version.attr,						\
 	&dev_attr_sensor.attr,						\
 	&dev_attr_id.attr,						\
 	&dev_attr_error.attr,						\
@@ -1439,8 +1459,6 @@ static ssize_t reg_base_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(reg_base);
 
-static int xmc_load_board_info(struct xocl_xmc *xmc);
-
 #define	XMC_BDINFO_STRING_SYSFS_NODE(name)		\
 	static ssize_t name##_show(struct device *dev,		\
 		struct device_attribute *attr, char *buf) {		\
@@ -1524,21 +1542,24 @@ static ssize_t read_temp_by_mem_topology(struct file *filp,
 	u32 nread = 0;
 	size_t size = 0;
 	u32 i;
+	int err = 0;
 	struct mem_topology *memtopo = NULL;
 	struct xocl_xmc *xmc =
 		dev_get_drvdata(container_of(kobj, struct device, kobj));
 	uint32_t temp[MAX_M_COUNT] = {0};
 	xdev_handle_t xdev = xocl_get_xdev(xmc->pdev);
 
-	memtopo = (struct mem_topology *)xocl_icap_get_data(xdev, MEMTOPO_AXLF);
+	err = xocl_icap_get_xclbin_metadata(xdev, MEMTOPO_AXLF, (void **)&memtopo);
+	if (err)
+		return nread;
 
 	if (!memtopo)
-		return 0;
+		goto done;
 
 	size = sizeof(u32)*(memtopo->m_count);
 
 	if (offset >= size)
-		return 0;
+		goto done;
 	for (i = 0; i < memtopo->m_count; ++i)
 		*(temp+i) = get_temp_by_m_tag(xmc, memtopo->m_mem_data[i].m_tag);
 
@@ -1548,6 +1569,8 @@ static ssize_t read_temp_by_mem_topology(struct file *filp,
 		nread = size - offset;
 
 	memcpy(buffer, temp, nread);
+done:
+	xocl_icap_put_xclbin_metadata(xdev);
 	/* xocl_icap_unlock_bitstream */
 	return nread;
 }
@@ -1947,10 +1970,10 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 		}
 		/* Need to check if ERT is loaded before we attempt to stop it */
 		if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0))) {
-			reg_val = XOCL_READ_REG32(xmc->base_addrs[IO_CQ]);
+			reg_val = READ_CQ(xmc, 0);
 			if (!(reg_val & ERT_EXIT_ACK)) {
 				xocl_info(&xmc->pdev->dev, "Stopping scheduler...");
-				XOCL_WRITE_REG32(ERT_EXIT_CMD, xmc->base_addrs[IO_CQ]);
+				WRITE_CQ(xmc, ERT_EXIT_CMD, 0);
 			}
 		}
 
@@ -1967,16 +1990,16 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 			xmc->state = XMC_STATE_ERROR;
 			return -ETIMEDOUT;
 		} else if (!SELF_JUMP(READ_IMAGE_SCHED(xmc, 0)) &&
-			 !(XOCL_READ_REG32(xmc->base_addrs[IO_CQ]) & ERT_EXIT_ACK)) {
+			 !(READ_CQ(xmc, 0) & ERT_EXIT_ACK)) {
 			while (retry++ < MAX_ERT_RETRY &&
-				!(XOCL_READ_REG32(xmc->base_addrs[IO_CQ]) & ERT_EXIT_ACK))
+				!(READ_CQ(xmc, 0) & ERT_EXIT_ACK))
 				msleep(RETRY_INTERVAL);
 			if (retry >= MAX_ERT_RETRY) {
 				xocl_warn(&xmc->pdev->dev,
 					"Failed to stop sched");
 				xocl_warn(&xmc->pdev->dev,
 					"Scheduler CQ status 0x%x",
-					XOCL_READ_REG32(xmc->base_addrs[IO_CQ]));
+					READ_CQ(xmc, 0));
 				/*
 				 * We don't exit if ERT doesn't stop since
 				 * it can hang due to bad kernel xmc->state =
@@ -2114,6 +2137,23 @@ static int load_xmc(struct xocl_xmc *xmc)
 	if (XMC_PRIVILEGED(xmc) && xocl_clk_scale_on(xdev_hdl))
 		xmc_clk_scale_config(xmc->pdev);
 
+	mutex_unlock(&xmc->xmc_lock);
+
+	/* Enabling XMC mailbox support. */
+	if (XMC_PRIVILEGED(xmc)) {
+		u32 val = 0;
+
+		xmc->mbx_enabled = true;
+		safe_read32(xmc, XMC_HOST_MSG_OFFSET_REG, &val);
+		xmc->mbx_offset = val;
+		xocl_info(&xmc->pdev->dev, "XMC mailbox offset: 0x%x.\n", val);
+	}
+
+	mutex_lock(&xmc->mbx_lock);
+	xmc_load_board_info(xmc);
+	mutex_unlock(&xmc->mbx_lock);
+
+	return 0;
 out:
 	mutex_unlock(&xmc->xmc_lock);
 
@@ -2253,7 +2293,6 @@ static int xmc_remove(struct platform_device *pdev)
 	mutex_lock(&xmc->mbx_lock);
 	xmc_unload_board_info(xmc);
 	mutex_unlock(&xmc->mbx_lock);
-
 end:
 	for (i = 0; i < NUM_IOADDR; i++) {
 		if ((i == IO_CLK_SCALING) && !xmc->runtime_cs_enabled)
@@ -2303,7 +2342,6 @@ static int xmc_probe(struct platform_device *pdev)
 	struct resource *res;
 	void *xdev_hdl;
 	int i, err;
-	u32 val;
 
 	xmc = devm_kzalloc(&pdev->dev, sizeof(*xmc), GFP_KERNEL);
 	if (!xmc) {
@@ -2390,17 +2428,6 @@ static int xmc_probe(struct platform_device *pdev)
 		xocl_info(&pdev->dev, "Runtime clock scaling is supported.\n");
 	}
 
-	/* Enabling XMC mailbox support. */
-	if (XMC_PRIVILEGED(xmc)) {
-		xmc->mbx_enabled = true;
-		safe_read32(xmc, XMC_HOST_MSG_OFFSET_REG, &val);
-		xmc->mbx_offset = val;
-		xocl_info(&pdev->dev, "XMC mailbox offset: 0x%x.\n", val);
-	}
-
-	mutex_lock(&xmc->mbx_lock);
-	xmc_load_board_info(xmc);
-	mutex_unlock(&xmc->mbx_lock);
 	return 0;
 
 failed:
@@ -2510,7 +2537,7 @@ static int xmc_recv_pkt(struct xocl_xmc *xmc)
 	pkt = (u32 *)&xmc->mbx_pkt;
 	len = XMC_PKT_SZ(&hdr);
 	if (hdr.payload_sz == 0 || len > XMC_PKT_MAX_SZ) {
-		xocl_err(&xmc->pdev->dev, "read invalid XMC packet\n");
+		xocl_warn(&xmc->pdev->dev, "read invalid XMC packet\n");
 		return -EINVAL;
 	}
 	for (i = 0; i < len; i++)
@@ -2562,7 +2589,6 @@ static int xmc_dynamic_region_free(struct platform_device *pdev)
 	if (ret)
 		goto done;
 
-	
 	xocl_info(&xmc->pdev->dev, "xmc dynamic region free\n");
 
 done:
@@ -2607,6 +2633,14 @@ static void xmc_set_board_info(uint32_t *bdinfo_raw, uint32_t bd_info_sz,
 	memcpy(target, info, len);
 }
 
+static bool bd_info_valid(char *ser_num)
+{
+	if (ser_num[0] != 0)
+		return true;
+
+	return false;
+}
+
 static int xmc_load_board_info(struct xocl_xmc *xmc)
 {
 	int ret = 0;
@@ -2622,6 +2656,9 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 
 		if ((!is_xmc_ready(xmc) || !is_sc_ready(xmc)))
 			return -EINVAL;
+
+		if (!xmc->mbx_offset)
+			return -ENODEV;
 		/* Load new info from HW. */
 		memset(&xmc->mbx_pkt, 0, sizeof(xmc->mbx_pkt));
 		xmc->mbx_pkt.hdr.op = XPO_BOARD_INFO;
@@ -2650,8 +2687,11 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_MAX_PWR, (char *)&xmc->max_power);
 		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_FAN_PRESENCE, (char *)&xmc->fan_presence);
 		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_CONFIG_MODE, (char *)&xmc->config_mode);
-		xocl_info(&xmc->pdev->dev, "board info reloaded\n");
-		xmc->bdinfo_loaded = true;
+
+		if (bd_info_valid(xmc->serial_num)) {
+			xmc->bdinfo_loaded = true;
+			xocl_info(&xmc->pdev->dev, "board info reloaded\n");
+		}
 		vfree(bdinfo_raw);
 	} else {
 
@@ -2672,8 +2712,13 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		xmc_bdinfo(xmc->pdev, FAN_PRESENCE, &xmc->fan_presence);
 		xmc_bdinfo(xmc->pdev, CFG_MODE, &xmc->config_mode);
 
-		if (xmc->bdinfo_raw)
+		if (bd_info_valid(xmc->serial_num)) {
 			xmc->bdinfo_loaded = true;
+			xocl_info(&xmc->pdev->dev, "board info reloaded\n");
+		} else {
+			vfree(xmc->bdinfo_raw);
+			xmc->bdinfo_raw = NULL;
+		}
 	}
 	return 0;
 }

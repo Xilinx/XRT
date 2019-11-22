@@ -62,7 +62,7 @@ namespace xdp {
     // Log host buffer reads and writes
     void logDataTransfer(uint64_t objId, RTUtil::e_profile_command_kind objKind,
         RTUtil::e_profile_command_state objStage, size_t objSize, uint32_t contextId,
-        uint32_t numDevices, std::string deviceName, uint32_t commandQueueId,
+        size_t numDevices, std::string deviceName, uint32_t commandQueueId,
 		uint64_t srcAddress, const std::string& srcBank, uint64_t dstAddress, const std::string& dstBank,
 		std::thread::id threadId, const std::string eventString = "", const std::string dependString = "",
         double timeStampMsec = 0.0);
@@ -70,7 +70,7 @@ namespace xdp {
     // Log Kernel execution
     void logKernelExecution(uint64_t objId, uint32_t programId, uint64_t eventId,
         RTUtil::e_profile_command_state objStage, std::string kernelName, std::string xclbinName,
-        uint32_t contextId, uint32_t commandQueueId, const std::string& deviceName, uid_t uid,
+        uint32_t contextId, uint32_t commandQueueId, const std::string& deviceName, unsigned int uid,
         const size_t* globalWorkSize, size_t workGroupSize, const size_t* localWorkDim,
         const std::string& cu_name, const std::string eventString = "", const std::string dependString = "",
         double timeStampMsec = 0.0);

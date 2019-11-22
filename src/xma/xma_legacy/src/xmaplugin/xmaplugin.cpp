@@ -66,7 +66,10 @@ xma_plg_get_paddr(XmaHwSession s_handle, XmaBufferHandle b_handle)
 {
     uint64_t paddr;
     xclDeviceHandle dev_handle = s_handle.dev_handle;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     paddr = xclGetDeviceAddr(dev_handle, b_handle);
+#pragma GCC diagnostic pop
 #if 0
     printf("xma_plg_get_paddr b_handle = %d, paddr = %lx\n", b_handle, paddr);
 #endif

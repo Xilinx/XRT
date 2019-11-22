@@ -27,7 +27,6 @@
 #include <sstream>
 #include <fstream>
 #include <iomanip>
-#include <algorithm>
 #include <ctime>
 #include <cassert>
 
@@ -183,15 +182,6 @@ namespace xdp {
     mProfileCounters->logFunctionCallStart(functionName, timeStamp);
     writeTimelineTrace(timeStamp, name.c_str(), "START", functionID);
     mFunctionStartLogged = true;
-
-#if 0
-    // Write host event to trace buffer
-    xclPerfMonEventID eventID = RTUtil::getFunctionEventID(name, queueAddress);
-    if (eventID != XCL_PERF_MON_IGNORE_EVENT) {
-      xclPerfMonEventType eventType = XCL_PERF_MON_START_EVENT;
-      xdp::profile::platform::write_host_event(xdp::RTSingleton::Instance()->getcl_platform_id(), eventType, eventID);
-    }
-#endif
   }
 
   void TraceLogger::logFunctionCallEnd(const char* functionName, long long queueAddress, unsigned int functionID)
@@ -212,15 +202,6 @@ namespace xdp {
     std::lock_guard<std::mutex> lock(mLogMutex);
     mProfileCounters->logFunctionCallEnd(functionName, timeStamp);
     writeTimelineTrace(timeStamp, name.c_str(), "END", functionID);
-
-#if 0
-    // Write host event to trace buffer
-    xclPerfMonEventID eventID = RTUtil::getFunctionEventID(name, queueAddress);
-    if (eventID != XCL_PERF_MON_IGNORE_EVENT) {
-      xclPerfMonEventType eventType = XCL_PERF_MON_END_EVENT;
-      xdp::profile::platform::write_host_event(xdp::RTSingleton::Instance()->getcl_platform_id(), eventType, eventID);
-    }
-#endif
   }
 
   // ***************************************************************************
@@ -229,7 +210,7 @@ namespace xdp {
 
   void TraceLogger::logDataTransfer(uint64_t objId, RTUtil::e_profile_command_kind objKind,
       RTUtil::e_profile_command_state objStage, size_t objSize, uint32_t contextId,
-      uint32_t numDevices, std::string deviceName, uint32_t commandQueueId,
+      size_t numDevices, std::string deviceName, uint32_t commandQueueId,
       uint64_t srcAddress, const std::string& srcBank, uint64_t dstAddress, const std::string& dstBank,
       std::thread::id threadId, const std::string eventString, const std::string dependString,
       double timeStampMsec)
@@ -275,8 +256,7 @@ namespace xdp {
       traceObject->Size = objSize;
       traceObject->ContextId = contextId;
       traceObject->CommandQueueId = commandQueueId;
-      auto itr = mBufferTraceMap.find(objId);
-      mBufferTraceMap.erase(itr);
+      mBufferTraceMap.erase(mBufferTraceMap.find(objId));
 
       // Store thread IDs into set
       addToThreadIds(threadId);
@@ -305,7 +285,7 @@ namespace xdp {
   //  kernel as well as compute unit info.
   void TraceLogger::logKernelExecution(uint64_t objId, uint32_t programId, uint64_t eventId,
       RTUtil::e_profile_command_state objStage, std::string kernelName, std::string xclbinName,
-      uint32_t contextId, uint32_t commandQueueId, const std::string& deviceName, uid_t uid,
+      uint32_t contextId, uint32_t commandQueueId, const std::string& deviceName, unsigned int uid,
       const size_t* globalWorkSize, size_t workGroupSize, const size_t* localWorkDim,
       const std::string& cu_name, const std::string eventString, const std::string dependString,
       double timeStampMsec)
@@ -323,7 +303,7 @@ namespace xdp {
 
     // TODO: create unique name for device since currently all devices are called fpga0
     // NOTE: see also logCounters for corresponding device name for counters
-    std::string newDeviceName = deviceName + "-" + std::to_string(uid);
+    std::string newDeviceName(deviceName + "-" + std::to_string(uid));
 
     // In HW emulation, use estimated host timestamp based on device clock cycles
     double deviceTimeStamp = getDeviceTimeStamp(timeStamp, newDeviceName);
@@ -393,8 +373,7 @@ namespace xdp {
         traceObject->LocalWorkSize[1] = localWorkDim[1];
         traceObject->LocalWorkSize[2] = localWorkDim[2];
 
-        auto itr = mKernelTraceMap.find(eventId);
-        mKernelTraceMap.erase(itr);
+        mKernelTraceMap.erase(mKernelTraceMap.find(eventId));
         // Only log Valid trace objects
         if (traceObject->getStart() > 0.0 && traceObject->getStart() < deviceTimeStamp) {
           mProfileCounters->pushToSortedTopUsage(traceObject);

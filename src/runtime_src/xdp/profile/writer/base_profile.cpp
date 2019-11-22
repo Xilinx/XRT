@@ -338,7 +338,7 @@ namespace xdp {
       uint64_t totalWriteBytes, uint64_t totalReadBytes,
       uint64_t totalWriteTranx, uint64_t totalReadTranx,
       double totalWriteTimeMsec, double totalReadTimeMsec,
-      uint32_t maxBytesPerTransfer, double maxTransferRateMBps)
+      uint32_t maxBytesPerTransfer, double /*maxTransferRateMBps*/)
   {
     double totalTimeMsec = totalWriteTimeMsec + totalReadTimeMsec;
 
@@ -487,13 +487,9 @@ namespace xdp {
     std::string checkName;
     XDPPluginI::getGuidanceName(XDPPluginI::DEVICE_EXEC_TIME, checkName);
 
-    auto iter = deviceExecTimesMap.begin();
-    for (; iter != deviceExecTimesMap.end(); ++iter) {
-      std::string deviceName = iter->first;
-      std::string value = iter->second;
-
+    for(auto& itr : deviceExecTimesMap) {
       writeTableRowStart(getStream());
-      writeTableCells(getStream(), checkName, deviceName, value);
+      writeTableCells(getStream(), checkName, itr.first /*deviceName*/, itr.second /*value*/);
       writeTableRowEnd(getStream());
     }
 
@@ -501,13 +497,9 @@ namespace xdp {
     std::string checkName2;
     XDPPluginI::getGuidanceName(XDPPluginI::CU_CALLS, checkName2);
 
-    auto iter2 = computeUnitCallsMap.begin();
-    for (; iter2 != computeUnitCallsMap.end(); ++iter2) {
-      std::string cuName = iter2->first;
-      std::string value = iter2->second;
-
+    for(auto& itr : computeUnitCallsMap) {
       writeTableRowStart(getStream());
-      writeTableCells(getStream(), checkName2, cuName, value);
+      writeTableCells(getStream(), checkName2, itr.first /*cuName*/, itr.second /*value*/);
       writeTableRowEnd(getStream());
     }
 
@@ -516,12 +508,9 @@ namespace xdp {
     XDPPluginI::getGuidanceName(XDPPluginI::MEMORY_BIT_WIDTH, checkName3);
     uint32_t bitWidth = profile->getGlobalMemoryBitWidth();
 
-    auto iter3 = deviceExecTimesMap.begin();
-    for (; iter3 != deviceExecTimesMap.end(); ++iter3) {
-      std::string deviceName = iter3->first;
-
+    for(auto& itr : deviceExecTimesMap) {
       writeTableRowStart(getStream());
-      writeTableCells(getStream(), checkName3, deviceName, bitWidth);
+      writeTableCells(getStream(), checkName3, itr.first /*deviceName*/, bitWidth);
       writeTableRowEnd(getStream());
     }
 
@@ -546,9 +535,8 @@ namespace xdp {
       cuPortsToMemory[memoryName] = numPorts;
     }
 
-    auto memoryIter = cuPortsToMemory.begin();
-    for (; memoryIter != cuPortsToMemory.end(); ++memoryIter) {
-      writeTableCells(getStream(), checkName5, memoryIter->first, memoryIter->second);
+    for(auto& itr : cuPortsToMemory) {
+      writeTableCells(getStream(), checkName5, itr.first, itr.second);
       writeTableRowEnd(getStream());
     }
     cuPortsToMemory.clear();

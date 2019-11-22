@@ -162,14 +162,13 @@ void platform_axilite_flush(struct xclmgmt_dev *lro)
  * This method is known to work better.
  */
 
-long reset_hot_ioctl(struct xclmgmt_dev *lro)
+long xclmgmt_hot_reset(struct xclmgmt_dev *lro)
 {
 	long err = 0;
 	const char *ep_name;
 	struct pci_dev *pdev = lro->pci_dev;
 	struct xocl_board_private *dev_info = &lro->core.priv;
 	int retry = 0;
-
 
 	if (!pdev->bus || !pdev->bus->self) {
 		mgmt_err(lro, "Unable to identify device root port for card %d",
@@ -179,11 +178,6 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 	}
 
 	ep_name = pdev->bus->name;
-#if defined(__PPC64__)
-	mgmt_info(lro, "Ignore reset operation for card %d in slot %s:%02x:%1x",
-		lro->instance, ep_name,
-		PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
-#else
 	mgmt_info(lro, "Trying to reset card %d in slot %s:%02x:%1x",
 		lro->instance, ep_name,
 		PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
@@ -192,6 +186,9 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 
 	/* request XMC/ERT to stop */
 	xocl_mb_stop(lro);
+
+	/* If the PCIe board has PS */
+	xocl_ps_sys_reset(lro);
 
 	xocl_icap_reset_axi_gate(lro);
 
@@ -202,7 +199,11 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 	if (!XOCL_DSA_PCI_RESET_OFF(lro)) {
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_ICAP);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_MAILBOX);
+#if defined(__PPC64__)
+		pci_fundamental_reset(lro);
+#else
 		xclmgmt_reset_pci(lro);
+#endif
 		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_MAILBOX);
 		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_ICAP);
 	} else {
@@ -241,44 +242,84 @@ long reset_hot_ioctl(struct xclmgmt_dev *lro)
 
 	xocl_thread_start(lro);
 
-#endif
+	/* If the PCIe board has PS. This could take 50 seconds */
+	xocl_ps_wait(lro);
+
 done:
 	return err;
 }
 
+static void xocl_save_config_space(struct pci_dev *pdev, u32 *saved_config)
+{
+	int i;
+
+	for (i = 0; i < 16; i++)
+		pci_read_config_dword(pdev, i * 4, &saved_config[i]);
+}
+
 static int xocl_match_slot_and_save(struct device *dev, void *data)
 {
+	struct xclmgmt_dev *lro = data;
 	struct pci_dev *pdev;
-	unsigned long slot;
 
 	pdev = to_pci_dev(dev);
-	slot = PCI_SLOT(pdev->devfn);
 
-	if (slot == (unsigned long)data) {
+	if ((XOCL_DEV_ID(pdev) >> 3) == (XOCL_DEV_ID(lro->pci_dev) >> 3)) {
 		pci_cfg_access_lock(pdev);
 		pci_save_state(pdev);
+		xocl_save_config_space(pdev,
+				lro->saved_config[PCI_FUNC(pdev->devfn)]);
 	}
 
 	return 0;
 }
 
-static void xocl_pci_save_config_all(struct pci_dev *pdev)
+static void xocl_pci_save_config_all(struct xclmgmt_dev *lro)
 {
-	unsigned long slot = PCI_SLOT(pdev->devfn);
+	bus_for_each_dev(&pci_bus_type, NULL, lro, xocl_match_slot_and_save);
+}
 
-	bus_for_each_dev(&pci_bus_type, NULL, (void *)slot,
-		xocl_match_slot_and_save);
+static void xocl_restore_config_space(struct pci_dev *pdev, u32 *config_saved)
+{
+	int i;
+	u32 val;
+
+	for (i = 0; i < 16; i++) {
+		pci_read_config_dword(pdev, i * 4, &val);
+		if (val == config_saved[i])
+			continue;
+
+		pci_write_config_dword(pdev, i * 4, config_saved[i]);
+		pci_read_config_dword(pdev, i * 4, &val);
+		if (val != config_saved[i]) {
+			xocl_err(&pdev->dev,
+				"restore config at %d failed", i * 4);
+		}
+	}
 }
 
 static int xocl_match_slot_and_restore(struct device *dev, void *data)
 {
+	struct xclmgmt_dev *lro = data;
 	struct pci_dev *pdev;
-	unsigned long slot;
 
 	pdev = to_pci_dev(dev);
-	slot = PCI_SLOT(pdev->devfn);
 
-	if (slot == (unsigned long)data) {
+	if ((XOCL_DEV_ID(pdev) >> 3) == (XOCL_DEV_ID(lro->pci_dev) >> 3)) {
+		/*
+		 * For U50 built with 2RP flow. PLP Gate is closed after
+		 * pci hot reset. Any access to PLP IPs will hangs the host.
+		 * E.g. read/write BAR2 (DMA BAR). 
+		 * To be able to open PLP gate after hot reset, the first 64
+		 * bytes of config space has to be restored. 
+		 * In the meanwhile, XRT expects firewall trip instead of
+		 * hard hang if there is an unexpected access of non-exist
+		 * IPs. (E.g. Invalid access from a active VM)
+		 */
+		xocl_restore_config_space(pdev,
+			lro->saved_config[PCI_FUNC(pdev->devfn)]);
+		xocl_axigate_free(lro, XOCL_SUBDEV_LEVEL_BLD);
+
 		pci_restore_state(pdev);
 		pci_cfg_access_unlock(pdev);
 	}
@@ -286,13 +327,11 @@ static int xocl_match_slot_and_restore(struct device *dev, void *data)
 	return 0;
 }
 
-static void xocl_pci_restore_config_all(struct pci_dev *pdev)
+static void xocl_pci_restore_config_all(struct xclmgmt_dev *lro)
 {
-	unsigned long slot = PCI_SLOT(pdev->devfn);
-
-	bus_for_each_dev(&pci_bus_type, NULL, (void *)slot,
-		xocl_match_slot_and_restore);
+	bus_for_each_dev(&pci_bus_type, NULL, lro, xocl_match_slot_and_restore);
 }
+
 /*
  * Inspired by GenWQE driver, card_base.c
  */
@@ -313,7 +352,7 @@ int pci_fundamental_reset(struct xclmgmt_dev *lro)
 	printk(KERN_INFO "%s: pci_fundamental_reset \n", DRV_NAME);
 
 	/* Save pci config space for botht the pf's */
-	xocl_pci_save_config_all(pci_dev);
+	xocl_pci_save_config_all(lro);
 
 	rc = pcie_mask_surprise_down(pci_dev, &orig_mask);
 	if (rc)
@@ -354,8 +393,8 @@ done:
 
 	/* restore pci config space for botht the pf's */
 	rc = pcie_unmask_surprise_down(pci_dev, orig_mask);
-	xocl_pci_restore_config_all(pci_dev);
 
+	xocl_pci_restore_config_all(lro);
 	/* Also freeze and free AXI gate to reset the OCL region. */
 	xocl_icap_reset_axi_gate(lro);
 
@@ -373,7 +412,7 @@ void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	mgmt_info(lro, "Reset PCI");
 
 	/* what if user PF in VM ? */
-	xocl_pci_save_config_all(pdev);
+	xocl_pci_save_config_all(lro);
 
 	/* Reset secondary bus. */
 	bus = pdev->bus;
@@ -395,7 +434,7 @@ void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 
 	mgmt_info(lro, "Resetting for %d ms", i);
 
-	xocl_pci_restore_config_all(pdev);
+	xocl_pci_restore_config_all(lro);
 
 	xclmgmt_config_pci(lro);
 }
@@ -542,6 +581,18 @@ failed:
 
 }
 
+static bool xocl_subdev_vsec_is_golden(xdev_handle_t xdev_hdl)
+{
+	int bar;
+	u64 offset;
+
+	if (xocl_subdev_vsec(xdev_hdl, XOCL_VSEC_PLATFORM_INFO, &bar, &offset))
+		return false;
+
+	return xocl_subdev_vsec_read32(xdev_hdl, bar, offset) ==
+		XOCL_VSEC_PLAT_RECOVERY;
+}
+
 int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 {
 	const struct firmware			*fw = NULL;
@@ -549,6 +600,11 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	struct axlf				*bin_axlf;
 	char					fw_name[256];
 	int					ret;
+
+	if (xocl_subdev_vsec_is_golden(lro)) {
+		mgmt_info(lro, "Skip load_fdt for vsec Golden image");
+		return 0;
+	}
 
 	mutex_lock(&lro->busy_mutex);
         ret = xocl_rom_find_firmware(lro, fw_name, sizeof(fw_name),
@@ -620,4 +676,21 @@ failed:
 	mutex_unlock(&lro->busy_mutex);
 
 	return ret;
+}
+
+void xclmgmt_ocl_reset(struct xclmgmt_dev *lro)
+{
+	xocl_icap_reset_axi_gate(lro);
+}
+
+void xclmgmt_ert_reset(struct xclmgmt_dev *lro)
+{
+	/* This is for reset PS ERT */
+	xocl_ps_reset(lro);
+	xocl_ps_wait(lro);
+}
+
+void xclmgmt_softkernel_reset(struct xclmgmt_dev *lro)
+{
+	xocl_ps_sk_reset(lro);
 }

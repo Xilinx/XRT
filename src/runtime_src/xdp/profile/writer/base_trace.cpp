@@ -16,6 +16,8 @@
 
 #include "base_trace.h"
 
+#include<sstream>
+
 namespace xdp {
   //******************
   // Base Trace Writer
@@ -153,8 +155,8 @@ namespace xdp {
   }
 
   // Functions for device counters
-  void TraceWriterI::writeDeviceCounters(xclPerfMonType type, xclCounterResults& results,
-      double timestamp, uint32_t sampleNum, bool firstReadAfterProgram)
+  void TraceWriterI::writeDeviceCounters(xclPerfMonType /*type*/, xclCounterResults& results,
+      double timestamp, uint32_t /*sampleNum*/, bool firstReadAfterProgram)
   {
     if (!Trace_ofs.is_open())
       return;
@@ -190,14 +192,13 @@ namespace xdp {
       std::stringstream writeThputCellStr;
       writeThputCellStr << std::setprecision(5) << writeThputMBps << " MBps";
   #else
-      uint32_t writeBytes = results.WriteBytes[slot] - CountersPrev.WriteBytes[slot];
+      auto writeBytes = results.WriteBytes[slot] - CountersPrev.WriteBytes[slot];
   #endif
 
       double writeLatency = 0.0;
-      uint32_t numWriteTranx = results.WriteTranx[slot] - CountersPrev.WriteTranx[slot];
+      auto numWriteTranx = results.WriteTranx[slot] - CountersPrev.WriteTranx[slot];
       if (numWriteTranx > 0) {
-        writeLatency = (results.WriteLatency[slot] - CountersPrev.WriteLatency[slot]) /
-            numWriteTranx;
+        writeLatency = (static_cast<double>(results.WriteLatency[slot] - CountersPrev.WriteLatency[slot])) / numWriteTranx;
       }
 
       // Don't report if no new transactions in this sample time window
@@ -231,14 +232,13 @@ namespace xdp {
       std::stringstream readThputCellStr;
       readThputCellStr << std::setprecision(5) << readThputMBps << " MBps";
   #else
-      uint32_t readBytes = results.ReadBytes[slot] - CountersPrev.ReadBytes[slot];
+      auto readBytes = results.ReadBytes[slot] - CountersPrev.ReadBytes[slot];
   #endif
 
       double readLatency = 0.0;
-      uint32_t numReadTranx = results.ReadTranx[slot] - CountersPrev.ReadTranx[slot];
+      auto numReadTranx = results.ReadTranx[slot] - CountersPrev.ReadTranx[slot];
       if (numReadTranx > 0) {
-        readLatency = (results.ReadLatency[slot] - CountersPrev.ReadLatency[slot]) /
-            numReadTranx;
+        readLatency = (static_cast<double>(results.ReadLatency[slot] - CountersPrev.ReadLatency[slot])) / numReadTranx;
       }
 
       // Don't report if no new transactions in this sample time window

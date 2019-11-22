@@ -58,7 +58,7 @@ namespace xdp {
         mStartTimeNsec = (uint64_t)((startTimeMsec + PCIE_DELAY_OFFSET_MSEC) * 1.0e6);
       }
 
-      void setKernelClockFreqMHz(const std::string& deviceName, unsigned int clockRateMHz) {
+      void setKernelClockFreqMHz(const std::string& /*deviceName*/, unsigned int clockRateMHz) {
     	  // In 2017.4, trace events are captured at the kernel clock
     	  setTraceClockFreqMHz(clockRateMHz);
       }

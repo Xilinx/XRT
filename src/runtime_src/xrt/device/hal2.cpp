@@ -430,6 +430,12 @@ void
 device::
 unmap(const BufferObjectHandle& boh)
 {
+/*
+ * Any BO allocated through xrt::hal2 is mapped by default and cannot be munmap'ed.
+ * The unmapping happens as part of the buffer object handle going out of scope.
+ * xrt::device::map() simply returns the already nmap'ed host pointer contained within the opaque buffer object handle.
+ * So,xrt::device::unmap is provided for symmetry but is a no-op.
+ */
 }
 
 void*
@@ -444,6 +450,12 @@ void
 device::
 unmap(const ExecBufferObjectHandle& boh)
 {
+/*
+ * Any BO allocated through xrt::hal2 is mapped by default and cannot be munmap'ed.
+ * The unmapping happens as part of the buffer object handle going out of scope.
+ * xrt::device::map() simply returns the already nmap'ed host pointer contained within the opaque buffer object handle.
+ * So,xrt::device::unmap is provided for symmetry but is a no-op.
+ */
 }
 
 int

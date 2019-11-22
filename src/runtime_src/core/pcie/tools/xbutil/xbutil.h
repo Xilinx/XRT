@@ -252,30 +252,12 @@ public:
 
     int reclock2(unsigned regionIndex, const unsigned short *freq) {
         const unsigned short targetFreqMHz[4] = {freq[0], freq[1], freq[2], 0};
-        std::vector<std::string> clock_freqs_max, clock_freqs_min;
-        unsigned int num_clocks = 4;
-        std::string errmsg;
         uuid_t uuid;
         int ret;
 
         ret = getXclbinuuid(uuid);
         if (ret)
             return ret;
-
-        pcidev::get_dev(m_idx)->sysfs_get( "icap", "clock_freqs_max", errmsg, clock_freqs_max ); 
-        pcidev::get_dev(m_idx)->sysfs_get( "icap", "clock_freqs_min", errmsg, clock_freqs_min );
-
-        for (unsigned int i = 0; i < num_clocks; ++i) {
-            if (!targetFreqMHz[i])
-                continue;
-
-            if (targetFreqMHz[i] > std::stoi(clock_freqs_max[i]) || targetFreqMHz[i] < std::stoi(clock_freqs_min[i])) {
-                std::cout<<"  Unable to program clock frequency!\n"
-                         <<"  Frequency max : "<<clock_freqs_max[i]<<", min : "<<clock_freqs_min[i]<<" \n";
-                std::cout<<"  Requested frequency : "<<targetFreqMHz[i]<<std::endl;
-                return -EINVAL;
-            }
-        }
 
         return xclReClock2(m_handle, 0, targetFreqMHz);
     }
@@ -719,6 +701,7 @@ public:
         std::vector<std::string> dma_threads;
         bool mig_calibration;
         
+        clock_freqs.resize(3);
         pcidev::get_dev(m_idx)->sysfs_get( "", "vendor",                     errmsg, vendor );
         pcidev::get_dev(m_idx)->sysfs_get( "", "device",                     errmsg, device );
         pcidev::get_dev(m_idx)->sysfs_get( "", "subsystem_device",           errmsg, subsystem );
@@ -1079,7 +1062,7 @@ public:
         ostr << std::setw(16) << "VCCINT VOL" << std::setw(16) << "VCCINT CURR" << std::setw(16) << "VCCINT BRAM VOL" << std::setw(16) << "VCC3V3 VOL"  << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint.current" )
-             << std::setw(16) << sensor_tree::get<std::string>( "board.physical.electrical.vccint_bram.voltage" )
+             << std::setw(16) << sensor_tree::get_pretty<unsigned short>( "board.physical.electrical.vccint_bram.voltage" )
              << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.vcc3v3.voltage"  ) << std::endl;
         ostr << std::setw(16) << "3V3 PEX CURR" << std::setw(16) << "VCC0V85 CURR" << std::setw(16) << "HBM1V2 VOL" << std::setw(16) << "VPP2V5 VOL"  << std::endl;
         ostr << std::setw(16) << sensor_tree::get_pretty<unsigned int>( "board.physical.electrical.3v3_pex.current" )
