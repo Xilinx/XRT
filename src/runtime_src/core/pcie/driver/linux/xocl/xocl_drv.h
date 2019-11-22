@@ -240,6 +240,9 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_VSEC_FLASH_CONTROLER   0x51
 #define XOCL_VSEC_PLATFORM_INFO     0x52
 #define XOCL_VSEC_MAILBOX           0x53
+#define XOCL_VSEC_PLAT_RECOVERY     0x0
+#define XOCL_VSEC_PLAT_1RP          0x1
+#define XOCL_VSEC_PLAT_2RP          0x2
 
 #define XOCL_MAXNAMELEN	64
 
