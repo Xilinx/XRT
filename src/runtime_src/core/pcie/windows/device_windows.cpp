@@ -25,7 +25,8 @@
 
 
 const xrt_core::device_windows::IOCTLEntry & 
-xrt_core::device_windows::get_IOCTL_entry( QueryRequest _eQueryRequest) const
+xrt_core::device_windows::
+get_IOCTL_entry( QueryRequest _eQueryRequest) const
 {
   // Initialize our lookup table
   static const std::map<QueryRequest, IOCTLEntry> QueryRequestToIOCTLTable =
@@ -108,7 +109,8 @@ xrt_core::device_windows::get_IOCTL_entry( QueryRequest _eQueryRequest) const
 
 
 void 
-xrt_core::device_windows::query_device(uint64_t _deviceID, QueryRequest _eQueryRequest, const std::type_info & _typeInfo, boost::any &_returnValue) const
+xrt_core::device_windows::
+query_device(uint64_t _deviceID, QueryRequest _eQueryRequest, const std::type_info & _typeInfo, boost::any &_returnValue) const
 {
   // Initialize return data to being empty container.
   // Note: CentOS Boost 1.53 doesn't support the clear() method.
@@ -168,23 +170,28 @@ xrt_core::device_windows::query_device(uint64_t _deviceID, QueryRequest _eQueryR
   }
 }
 
-
-void xrt_core::initialize_child_ctor()
+xrt_core::device_core*
+xrt_core::
+initialize_child_ctor()
 {
-  xrt_core::device_windows::register_child_ctor(boost::factory<xrt_core::device_windows *>());
+  static device_windows dw;
+  return &dw;
 }
 
-xrt_core::device_windows::device_windows()
+xrt_core::device_windows::
+device_windows()
 {
   // Do nothing
 }
 
-xrt_core::device_windows::~device_windows() {
+xrt_core::device_windows::
+~device_windows() {
   // Do nothing
 }
 
 uint64_t 
-xrt_core::device_windows::get_total_devices() const
+xrt_core::device_windows::
+get_total_devices() const
 {
   // Linux reference code: 
   // return pcidev::get_dev_total();
@@ -192,7 +199,8 @@ xrt_core::device_windows::get_total_devices() const
 }
 
 void 
-xrt_core::device_windows::read_device_dma_stats(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
+xrt_core::device_windows::
+read_device_dma_stats(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
 {
   // Removes compiler warnings
   _deviceID = _deviceID;
