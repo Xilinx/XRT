@@ -61,14 +61,14 @@ static void printHelp(po::options_description _optionDescription)
 
 }
 
-static void sudoOrDie()
-{
-    const char* SudoMessage = "ERROR: root privileges required.";
-    if ((getuid() == 0) || (geteuid() == 0))
-        return;
-    std::cout << SudoMessage << std::endl;
-    exit(-EPERM);
-}
+// static void sudoOrDie()
+// {
+//     const char* SudoMessage = "ERROR: root privileges required.";
+//     if ((getuid() == 0) || (geteuid() == 0))
+//         return;
+//     std::cout << SudoMessage << std::endl;
+//     exit(-EPERM);
+// }
 
 // ------ Program entry point -------------------------------------------------
 ReturnCodes main_(int argc, char** argv) {
@@ -163,7 +163,7 @@ ReturnCodes main_(int argc, char** argv) {
       opts.push_back("--help");
   }
 
-  sudoOrDie();
+  // sudoOrDie();
   // Call the registered function for this command
   if (pSubCmdEntry->callBackFunction != nullptr) {
     pSubCmdEntry->callBackFunction(opts);
