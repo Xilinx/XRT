@@ -35,9 +35,9 @@ class device_core {
 
   public:
     /**
-     * Returns the class handle use to query the abstract 
-     * libraries 
-     * 
+     * Returns the class handle use to query the abstract
+     * libraries
+     *
      * @return The handle instance
      */
    static const device_core & instance();
@@ -88,7 +88,7 @@ class device_core {
       explicit device(uint64_t _deviceID)
         : m_idx(_deviceID)
         , m_name("device[" + std::to_string(m_idx) + "]")
-        , m_hdl(xclOpen(_deviceID, nullptr, XCL_QUIET))
+        , m_hdl(xclOpen(static_cast<unsigned int>(_deviceID), nullptr, XCL_QUIET))
       {
         if (!m_hdl)
           throw error("could not open " + m_name);
@@ -124,7 +124,7 @@ class device_core {
       QR_PCIE_LINK_SPEED,
       QR_PCIE_EXPRESS_LANE_WIDTH,
 
-      QR_DMA_THREADS_RAW,               
+      QR_DMA_THREADS_RAW,
 
       QR_ROM_VBNV,
       OR_ROM_DDR_BANK_SIZE,
@@ -202,15 +202,15 @@ class device_core {
     static std::string format_base10_shiftdown3(const boost::any &_data);
     static std::string format_base10_shiftdown6(const boost::any &_data);
 
-    void query_device_and_put(uint64_t _deviceID, 
-                              QueryRequest _eQueryRequest, 
-                              const std::type_info & _typeInfo, 
-                              boost::property_tree::ptree & _pt, 
-                              const std::string &_sPropertyName, 
+    void query_device_and_put(uint64_t _deviceID,
+                              QueryRequest _eQueryRequest,
+                              const std::type_info & _typeInfo,
+                              boost::property_tree::ptree & _pt,
+                              const std::string &_sPropertyName,
                               FORMAT_STRING_PTR stringFormat = format_primative) const;
 
     void query_device_and_put(uint64_t _deviceID, QueryRequest _eQueryRequest, boost::property_tree::ptree & _pt) const;
-    
+
   protected:
 
     struct QueryRequestEntry {
@@ -229,7 +229,7 @@ class device_core {
   private:
     device_core(const device_core&) = delete;
     device_core& operator=(const device_core&) = delete;
- 
+
   private:
     static std::map<QueryRequest, QueryRequestEntry> m_QueryTable;
 };
@@ -239,4 +239,4 @@ initialize_child_ctor();
 
 } // xrt_core
 
-#endif 
+#endif
