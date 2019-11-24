@@ -189,7 +189,7 @@ xrt_core::device_windows::
   // Do nothing
 }
 
-uint64_t 
+std::pair<uint64_t, uint64_t>
 xrt_core::device_windows::
 get_total_devices() const
 {

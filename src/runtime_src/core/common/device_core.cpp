@@ -16,13 +16,17 @@
 
 
 #include "device_core.h"
-#include "common/utils.h"
+#include "error.h"
+#include "utils.h"
 #include "include/xrt.h"
 #include "boost/format.hpp"
 #include <string>
 #include <iostream>
+#include <fstream>
 
-std::map<xrt_core::device_core::QueryRequest, xrt_core::device_core::QueryRequestEntry> xrt_core::device_core::m_QueryTable = 
+namespace xrt_core {
+
+std::map<device_core::QueryRequest, device_core::QueryRequestEntry> device_core::m_QueryTable = 
 { 
   { QR_PCIE_VENDOR,               { "QR_PCIE_VENDOR",               "vendor",           &typeid(std::string), device_core::format_primative }},
   { QR_PCIE_DEVICE,               { "QR_PCIE_DEVICE",               "device",           &typeid(std::string), device_core::format_primative }},
@@ -105,38 +109,52 @@ std::map<xrt_core::device_core::QueryRequest, xrt_core::device_core::QueryReques
 };
 
 
-const xrt_core::device_core::QueryRequestEntry * 
-xrt_core::device_core::get_query_entry(QueryRequest _eQueryRequest) const
+const device_core::QueryRequestEntry * 
+device_core::get_query_entry(QueryRequest _eQueryRequest) const
 {
   std::map<QueryRequest, QueryRequestEntry>::const_iterator it = m_QueryTable.find(_eQueryRequest);
 
   if (it == m_QueryTable.end()) {
     std::string errMsg = boost::str( boost::format("The given query request ID (%d) was dont found.") % _eQueryRequest);
-    throw std::runtime_error(errMsg);
+    throw error(errMsg);
   }
 
   return &m_QueryTable[_eQueryRequest];
 }
 
-xrt_core::device_core::device_core()
+device_core::device_core()
 {
   // Do nothing
 }
 
-xrt_core::device_core::~device_core()
+device_core::~device_core()
 {
   // Do nothing
 }
 
-const xrt_core::device_core &
-xrt_core::device_core::get_handle()
+const device_core &
+device_core::instance()
 {
-  static xrt_core::device_core *pSingleton = initialize_child_ctor();
+  static device_core *pSingleton = initialize_child_ctor();
   return *pSingleton;
 }
 
+device_core::device
+device_core::get_device(uint64_t _deviceID) const 
+{
+  static bool device_message = true;
+  if (device_message) {
+    device_message = false;
+    auto devices = get_total_devices();
+    std::cout << "INFO: Found total " << devices.first << " card(s), "
+              << devices.second << " are usable.\n";
+  }
+
+  return device(_deviceID);
+}
+
 std::string
-xrt_core::device_core::format_primative(const boost::any &_data)
+device_core::format_primative(const boost::any &_data)
 {
   std::string sPropertyValue;
 
@@ -149,14 +167,14 @@ xrt_core::device_core::format_primative(const boost::any &_data)
   }
   else {
     std::string errMsg = boost::str( boost::format("Unsupported 'any' typeid: '%s'") % _data.type().name());
-    throw std::runtime_error(errMsg);
+    throw error(errMsg);
   }
 
   return sPropertyValue;
 }
 
 std::string 
-xrt_core::device_core::format_hex(const boost::any & _data)
+device_core::format_hex(const boost::any & _data)
 {
   // Can we work with this data type?
   if (_data.type() != typeid(uint64_t)) {
@@ -177,7 +195,7 @@ static to_string(const T _value, const int _precision = 6)
 }
 
 std::string 
-xrt_core::device_core::format_base10_shiftdown3(const boost::any &_data)
+device_core::format_base10_shiftdown3(const boost::any &_data)
 {
   if (_data.type() != typeid(uint64_t)) {
     return format_primative(_data);
@@ -185,11 +203,11 @@ xrt_core::device_core::format_base10_shiftdown3(const boost::any &_data)
 
   double value = (double) boost::any_cast<uint64_t>(_data);
   value /= (double) 1000.0;    // Shift down 3 
-  return ::to_string(value, 3 /*precision*/ );
+  return to_string(value, 3 /*precision*/ );
 }
 
 std::string 
-xrt_core::device_core::format_base10_shiftdown6(const boost::any &_data)
+device_core::format_base10_shiftdown6(const boost::any &_data)
 {
   if (_data.type() != typeid(uint64_t)) {
     return format_primative(_data);
@@ -197,11 +215,11 @@ xrt_core::device_core::format_base10_shiftdown6(const boost::any &_data)
 
   double value = (double) boost::any_cast<uint64_t>(_data);
   value /= (double) 1000000.0;    // Shift down 3 
-  return ::to_string(value, 6 /*precision*/ );
+  return to_string(value, 6 /*precision*/ );
 }
 
 std::string 
-xrt_core::device_core::format_hex_base2_shiftup30(const boost::any &_data)
+device_core::format_hex_base2_shiftup30(const boost::any &_data)
 {
   if (_data.type() != typeid(uint64_t)) {
     return format_primative(_data);
@@ -214,21 +232,21 @@ xrt_core::device_core::format_hex_base2_shiftup30(const boost::any &_data)
 
 
 void 
-xrt_core::device_core::query_device_and_put(uint64_t _deviceID, 
+device_core::query_device_and_put(uint64_t _deviceID, 
                                             QueryRequest _eQueryRequest, 
                                             boost::property_tree::ptree & _pt) const
 {
   const QueryRequestEntry *pQREntry = get_query_entry(_eQueryRequest);
   if (pQREntry == nullptr) {
     std::string errMsg = boost::str(boost::format("Missing query request entry for ID:  %d") % (uint32_t) _eQueryRequest);
-    throw std::runtime_error(errMsg);
+    throw error(errMsg);
   }
 
   query_device_and_put(_deviceID, _eQueryRequest, *(pQREntry->pTypeInfo), _pt, pQREntry->sPtreeNodeName, pQREntry->string_formatter);
 }
 
 void
-xrt_core::device_core::query_device_and_put(uint64_t _deviceID, 
+device_core::query_device_and_put(uint64_t _deviceID, 
                                             QueryRequest _eQueryRequest, 
                                             const std::type_info & _typeInfo,
                                             boost::property_tree::ptree & _pt, 
@@ -238,7 +256,7 @@ xrt_core::device_core::query_device_and_put(uint64_t _deviceID,
   try {
     if (stringFormat == nullptr) {
       std::string errMsg = boost::str(boost::format("Missing data format help function for request: %d") % (uint32_t) _eQueryRequest);
-      throw std::runtime_error(errMsg);
+      throw error(errMsg);
     }
 
     boost::any anyValue;
@@ -261,7 +279,7 @@ xrt_core::device_core::query_device_and_put(uint64_t _deviceID,
 }
 
 void 
-xrt_core::device_core::get_device_rom_info(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
+device_core::get_device_rom_info(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
 {
   query_device_and_put(_deviceID, QR_ROM_VBNV, _pt);
   query_device_and_put(_deviceID, OR_ROM_DDR_BANK_SIZE, _pt);
@@ -271,7 +289,7 @@ xrt_core::device_core::get_device_rom_info(uint64_t _deviceID, boost::property_t
 
 
 void 
-xrt_core::device_core::get_device_xmc_info(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
+device_core::get_device_xmc_info(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
 {
 
   query_device_and_put(_deviceID, QR_XMC_VERSION, _pt);
@@ -281,7 +299,7 @@ xrt_core::device_core::get_device_xmc_info(uint64_t _deviceID, boost::property_t
 }
 
 void 
-xrt_core::device_core::get_device_platform_info(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
+device_core::get_device_platform_info(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
 {
   query_device_and_put(_deviceID, QR_DNA_SERIAL_NUM, _pt);
   query_device_and_put(_deviceID, QR_CLOCK_FREQS, _pt);
@@ -291,7 +309,7 @@ xrt_core::device_core::get_device_platform_info(uint64_t _deviceID, boost::prope
 }
 
 void 
-xrt_core::device_core::read_device_thermal_pcb(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
+device_core::read_device_thermal_pcb(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
 {
 
   query_device_and_put(_deviceID, QR_TEMP_CARD_TOP_FRONT, _pt);
@@ -300,13 +318,13 @@ xrt_core::device_core::read_device_thermal_pcb(uint64_t _deviceID, boost::proper
 }
 
 void 
-xrt_core::device_core::read_device_thermal_fpga(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
+device_core::read_device_thermal_fpga(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
 {
   query_device_and_put(_deviceID, QR_TEMP_FPGA, _pt);
 }
 
 void 
-xrt_core::device_core::read_device_fan_info(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
+device_core::read_device_fan_info(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
 {
   query_device_and_put(_deviceID, QR_FAN_TRIGGER_CRITICAL_TEMP, _pt);
   query_device_and_put(_deviceID, QR_FAN_FAN_PRESENCE, _pt);
@@ -314,7 +332,7 @@ xrt_core::device_core::read_device_fan_info(uint64_t _deviceID, boost::property_
 }
 
 void 
-xrt_core::device_core::read_device_thermal_cage(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
+device_core::read_device_thermal_cage(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
 {
   query_device_and_put(_deviceID, QR_CAGE_TEMP_0, _pt);
   query_device_and_put(_deviceID, QR_CAGE_TEMP_1, _pt);
@@ -325,7 +343,7 @@ xrt_core::device_core::read_device_thermal_cage(uint64_t _deviceID, boost::prope
 
 
 void 
-xrt_core::device_core::read_device_electrical(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
+device_core::read_device_electrical(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
 {
   query_device_and_put(_deviceID, QR_12V_PEX_MILLIVOLTS, _pt);
   query_device_and_put(_deviceID, QR_12V_PEX_MILLIAMPS,  _pt);
@@ -358,18 +376,18 @@ xrt_core::device_core::read_device_electrical(uint64_t _deviceID, boost::propert
 }
 
 void 
-xrt_core::device_core::read_device_power(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
+device_core::read_device_power(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
 {
   query_device_and_put(_deviceID, QR_POWER_MICROWATTS, _pt);
 }
 
 
 void 
-xrt_core::device_core::read_device_firewall(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
+device_core::read_device_firewall(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
 {
   query_device_and_put(_deviceID, QR_FIREWALL_DETECT_LEVEL, _pt);
   query_device_and_put(_deviceID, QR_FIREWALL_STATUS, _pt);
   query_device_and_put(_deviceID, QR_FIREWALL_TIME_SEC, _pt);
 }
 
-
+} // xrt_core

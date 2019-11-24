@@ -34,10 +34,10 @@ xrt_core::device_pcie::~device_pcie()
 void 
 xrt_core::device_pcie::get_devices(boost::property_tree::ptree &_pt) const
 {
-  size_t cardsFound = get_total_devices();
+  auto cards = get_total_devices();
 
   boost::property_tree::ptree ptDevices;
-  for (unsigned int deviceID = 0; deviceID < cardsFound; ++deviceID) {
+  for (unsigned int deviceID = 0; deviceID < cards.first; ++deviceID) {
     boost::property_tree::ptree ptDevice;
     std::string valueString;
 

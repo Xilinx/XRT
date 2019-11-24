@@ -33,7 +33,7 @@ class device_linux : public xrt_core::device_pcie {
     const SysDevEntry & get_sysdev_entry( QueryRequest _eQueryRequest) const;
 
   protected:
-    virtual uint64_t get_total_devices() const;
+    virtual std::pair<uint64_t, uint64_t> get_total_devices() const;
     virtual void query_device(uint64_t _deviceID, QueryRequest _eQueryRequest, const std::type_info & _typeInfo, boost::any &_returnValue) const;
 
   public:
