@@ -33,7 +33,8 @@ class device_windows : public device_pcie {
 
   protected:
     virtual void read_device_dma_stats(uint64_t _deviceID, boost::property_tree::ptree &_pt) const;
-    virtual uint64_t get_total_devices() const;
+
+    virtual std::pair<uint64_t, uint64_t> get_total_devices() const;
     virtual void query_device(uint64_t _deviceID, QueryRequest _eQueryRequest, const std::type_info & _typeInfo, boost::any &_returnValue) const;
 
   public:

@@ -178,10 +178,10 @@ xrt_core::device_linux::~device_linux() {
   // Do nothing
 }
 
-uint64_t 
+std::pair<uint64_t, uint64_t>
 xrt_core::device_linux::get_total_devices() const
 {
-  return pcidev::get_dev_total();
+  return std::make_pair(pcidev::get_dev_total(), pcidev::get_dev_ready());
 }
 
 void 

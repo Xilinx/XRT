@@ -24,7 +24,7 @@
 #include <map>
 
 
-const xrt_core::device_windows::IOCTLEntry & 
+const xrt_core::device_windows::IOCTLEntry &
 xrt_core::device_windows::
 get_IOCTL_entry( QueryRequest _eQueryRequest) const
 {
@@ -108,7 +108,7 @@ get_IOCTL_entry( QueryRequest _eQueryRequest) const
 
 
 
-void 
+void
 xrt_core::device_windows::
 query_device(uint64_t _deviceID, QueryRequest _eQueryRequest, const std::type_info & _typeInfo, boost::any &_returnValue) const
 {
@@ -128,7 +128,7 @@ query_device(uint64_t _deviceID, QueryRequest _eQueryRequest, const std::type_in
 
   // Removes compile warnings for unused variables
   _deviceID = _deviceID;
- 
+
   // Reference linux code:
 //  if (_typeInfo == typeid(std::string)) {
 //    // -- Typeid: std::string --
@@ -189,16 +189,16 @@ xrt_core::device_windows::
   // Do nothing
 }
 
-uint64_t 
+std::pair<uint64_t, uint64_t>
 xrt_core::device_windows::
 get_total_devices() const
 {
-  // Linux reference code: 
+  // Linux reference code:
   // return pcidev::get_dev_total();
-  return 0;
+  return std::make_pair(1,1); // TODO
 }
 
-void 
+void
 xrt_core::device_windows::
 read_device_dma_stats(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
 {
@@ -229,7 +229,7 @@ read_device_dma_stats(uint64_t _deviceID, boost::property_tree::ptree &_pt) cons
 //      ptDMA.put( "c2h", unitConvert(devstat.c2h[index]) );
 //
 //      // Create our array of data
-//      ptChannels.push_back(std::make_pair("", ptDMA)); 
+//      ptChannels.push_back(std::make_pair("", ptDMA));
 //  }
 //
 //  _pt.add_child( "transfer_metrics.channels", ptChannels);

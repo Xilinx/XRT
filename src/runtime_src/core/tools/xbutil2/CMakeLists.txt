@@ -58,18 +58,18 @@ set(XBUTIL_V2_SRCS ${XBUTIL_V2_FILES_SRCS})
 add_executable(${XBUTIL2_NAME} ${XBUTIL_V2_SRCS})
 
 
-if(WIN32) 
+if(WIN32)
   target_link_libraries(
-    ${XBUTIL2_NAME} PRIVATE 
-    Boost::filesystem 
-    Boost::program_options 
-    Boost::system 
+    ${XBUTIL2_NAME} PRIVATE
+    Boost::filesystem
+    Boost::program_options
+    Boost::system
     xrt_core
     xrt_core_static
     xrt_coreutil_static
   )
 
-  # Use the static version of the run-time library 
+  # Use the static version of the run-time library
   # Note: Needed to link with boost
   if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     target_compile_options(${XBUTIL2_NAME} PRIVATE /MTd)
@@ -78,12 +78,12 @@ if(WIN32)
   endif()
 else()
   target_link_libraries(
-    ${XBUTIL2_NAME} 
+    ${XBUTIL2_NAME}
     xrt_core_static
     xrt_coreutil_static
     boost_filesystem
     boost_system
-    boost_program_options 
+    boost_program_options
     uuid
     dl
   )
@@ -92,4 +92,3 @@ endif()
 install (TARGETS ${XBUTIL2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
 
 # -----------------------------------------------------------------------------
-
