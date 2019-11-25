@@ -51,7 +51,7 @@ public:
      * IP will be requested, otherwise exception will be thrown.
      */
     TraceFunnel(Device* handle /** < [in] the xrt or hal device handle */, 
-                int index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data = nullptr);
+                uint64_t index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data = nullptr);
 
     /**
      * The exclusive access should be release in the destructor

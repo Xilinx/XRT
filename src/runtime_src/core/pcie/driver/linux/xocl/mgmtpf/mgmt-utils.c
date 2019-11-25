@@ -581,6 +581,18 @@ failed:
 
 }
 
+static bool xocl_subdev_vsec_is_golden(xdev_handle_t xdev_hdl)
+{
+	int bar;
+	u64 offset;
+
+	if (xocl_subdev_vsec(xdev_hdl, XOCL_VSEC_PLATFORM_INFO, &bar, &offset))
+		return false;
+
+	return xocl_subdev_vsec_read32(xdev_hdl, bar, offset) ==
+		XOCL_VSEC_PLAT_RECOVERY;
+}
+
 int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 {
 	const struct firmware			*fw = NULL;
@@ -588,6 +600,11 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	struct axlf				*bin_axlf;
 	char					fw_name[256];
 	int					ret;
+
+	if (xocl_subdev_vsec_is_golden(lro)) {
+		mgmt_info(lro, "Skip load_fdt for vsec Golden image");
+		return 0;
+	}
 
 	mutex_lock(&lro->busy_mutex);
         ret = xocl_rom_find_firmware(lro, fw_name, sizeof(fw_name),

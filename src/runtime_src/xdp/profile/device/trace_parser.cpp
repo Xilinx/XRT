@@ -19,7 +19,6 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -28,6 +27,13 @@
 #include <bitset>
 
 #define getBit(word, bit) (((word) >> bit) & 0x1)
+
+
+#ifdef _WIN32
+#pragma warning (disable : 4244)
+/* Disable warnings for conversion from uint32_t to uint16_t */
+#endif
+
 
 namespace xdp {
 
@@ -640,7 +646,7 @@ namespace xdp {
 
   // Convert device timestamp to host time domain (in msec)
   double TraceParser::convertDeviceToHostTimestamp(uint64_t deviceTimestamp, xclPerfMonType type,
-      const std::string& deviceName) {
+      const std::string& /*deviceName*/) {
     // Return y = m*x + b
     return (mTrainSlope[type] * (double)deviceTimestamp + mTrainOffset[type])/1e6;
   }

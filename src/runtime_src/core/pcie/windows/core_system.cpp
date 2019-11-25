@@ -14,9 +14,11 @@
  * under the License.
  */
 
+#define XRT_CORE_COMMON_SOURCE
 
 #include "common/core_system.h"
 #include "gen/version.h"
+
 #include <windows.h>
 
 #define BUFFER 128
@@ -81,7 +83,6 @@ void xrt_core::system::get_os_info(boost::property_tree::ptree &_pt)
   BufferSize = BUFFER;
   RegGetValueA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", "CurrentVersion", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
   _pt.put("version", value);
-
   _pt.put("machine", getmachinename().c_str());
   _pt.put("now", tnow);
 }

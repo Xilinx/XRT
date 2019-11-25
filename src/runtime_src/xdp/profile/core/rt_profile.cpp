@@ -29,7 +29,12 @@
 #include <sstream>
 #include <fstream>
 #include <iomanip>
-#include <algorithm>
+
+#ifdef _WIN32
+#pragma warning(disable : 4996 4244)
+/* 4996 : Disable warning for use of "getenv" */
+/* 4244 : Disable warning for conversion of int to char in header file <algorithm> included in one of the header files */
+#endif
 
 namespace xdp {
   // ***********************
@@ -392,7 +397,7 @@ namespace xdp {
 
   void RTProfile::logDataTransfer(uint64_t objId, RTUtil::e_profile_command_kind objKind,
       RTUtil::e_profile_command_state objStage, size_t objSize, uint32_t contextId,
-      uint32_t numDevices, const std::string& deviceName, uint32_t commandQueueId,
+      size_t numDevices, const std::string& deviceName, uint32_t commandQueueId,
       uint64_t srcAddress, const std::string& srcBank,
       uint64_t dstAddress, const std::string& dstBank,
       std::thread::id threadId, const std::string eventString,
@@ -405,7 +410,7 @@ namespace xdp {
 
   void RTProfile::logKernelExecution(uint64_t objId, uint32_t programId, uint64_t eventId,
       RTUtil::e_profile_command_state objStage, const std::string& kernelName, const std::string& xclbinName,
-      uint32_t contextId, uint32_t commandQueueId, const std::string& deviceName, uid_t uid,
+      uint32_t contextId, uint32_t commandQueueId, const std::string& deviceName, unsigned int uid,
       const size_t* globalWorkSize, size_t workGroupSize, const size_t* localWorkDim,
       const std::string& cu_name, const std::string eventString, const std::string dependString,
       double timeStampMsec)

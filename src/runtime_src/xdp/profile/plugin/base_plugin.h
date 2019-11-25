@@ -70,7 +70,7 @@ namespace xdp {
       //   2    string    List of kernel arguments (separated by '|')
       //   3    string    Name of memory resource this port is connected to
       //   4    uint32_t  Bit width of this port
-      typedef std::tuple<std::string, std::string, std::string, std::string, uint32_t> CUPortArgsBankType;
+      typedef std::tuple<std::string, std::string, std::string, std::string, size_t> CUPortArgsBankType;
       std::vector<CUPortArgsBankType> CUPortVector;
 
     public:

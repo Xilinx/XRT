@@ -17,6 +17,9 @@
 #ifndef DEVICE_CORE_H
 #define DEVICE_CORE_H
 
+#include "error.h"
+#include "xrt.h"
+
 // Please keep eternal include file dependencies to a minimum
 #include <boost/property_tree/ptree.hpp>
 #include <cstdint>
@@ -28,29 +31,28 @@
 
 namespace xrt_core {
 
-void initialize_child_ctor();
-
-/**
- * Helper function to initialize the child's class constructer.
- */
-void initialize();
-
 class device_core {
 
   public:
     /**
-     * Returns the class handle use to query the abstract 
-     * libraries 
-     * 
+     * Returns the class handle use to query the abstract
+     * libraries
+     *
      * @return The handle instance
      */
-    static const device_core & get_handle();
+   static const device_core & instance();
 
   public:
     virtual void get_devices(boost::property_tree::ptree &_pt) const = 0;
     virtual void get_device_info(uint64_t _deviceID, boost::property_tree::ptree &_pt) const = 0;
     virtual void read_device_dma_stats(uint64_t _deviceID, boost::property_tree::ptree &_pt) const = 0;
-    virtual uint64_t get_total_devices() const = 0;
+
+    /**
+     * get_total_devices() - Get total devices and total usable devices
+     *
+     * Return: Pair of total devices and usable devices
+     */
+    virtual std::pair<uint64_t, uint64_t> get_total_devices() const = 0;
 
     void get_device_rom_info(uint64_t _deviceID, boost::property_tree::ptree & _pt) const;
     void get_device_xmc_info(uint64_t _deviceID, boost::property_tree::ptree & _pt) const;
@@ -64,6 +66,55 @@ class device_core {
     void read_device_firewall(uint64_t _deviceID, boost::property_tree::ptree &_pt) const;
 
   public:
+
+    /**
+     * class device - Encapsulate the device created from a card index
+     *
+     * @m_midx: card index
+     * @m_name: name of device
+     * @m_hdl: device handle per shim layer
+     *
+     * The device is opened immediately when constructed and closed upon
+     * destruction.  The class supports execution of shim level functions
+     * through its execute method (sample usage SubCmdProgram.cpp)
+     */
+    class device
+    {
+      uint64_t m_idx;
+      std::string m_name;
+      xclDeviceHandle m_hdl;
+
+    public:
+      explicit device(uint64_t _deviceID)
+        : m_idx(_deviceID)
+        , m_name("device[" + std::to_string(m_idx) + "]")
+        , m_hdl(xclOpen(static_cast<unsigned int>(_deviceID), nullptr, XCL_QUIET))
+      {
+        if (!m_hdl)
+          throw error("could not open " + m_name);
+      }
+
+      ~device()
+      {
+        xclClose(m_hdl);
+      }
+
+      template <typename ShimDeviceFunction, typename ...Args>
+      auto
+      execute(ShimDeviceFunction&& f, Args&&... args)
+        -> decltype(f(m_hdl, std::forward<Args>(args)...))
+      {
+        return f(m_hdl, std::forward<Args>(args)...);
+      }
+    };
+
+    /**
+     * get_device() - Construct a managed device object frok a device ID
+     */
+    device
+    get_device(uint64_t _deviceID) const;
+
+  public:
     // Future TODO: Move a way from static enumeration to dynamic enumeration
     typedef enum {
       QR_PCIE_VENDOR,
@@ -73,7 +124,7 @@ class device_core {
       QR_PCIE_LINK_SPEED,
       QR_PCIE_EXPRESS_LANE_WIDTH,
 
-      QR_DMA_THREADS_RAW,               
+      QR_DMA_THREADS_RAW,
 
       QR_ROM_VBNV,
       OR_ROM_DDR_BANK_SIZE,
@@ -151,22 +202,23 @@ class device_core {
     static std::string format_base10_shiftdown3(const boost::any &_data);
     static std::string format_base10_shiftdown6(const boost::any &_data);
 
-    void query_device_and_put(uint64_t _deviceID, 
-                              QueryRequest _eQueryRequest, 
-                              const std::type_info & _typeInfo, 
-                              boost::property_tree::ptree & _pt, 
-                              const std::string &_sPropertyName, 
+    void query_device_and_put(uint64_t _deviceID,
+                              QueryRequest _eQueryRequest,
+                              const std::type_info & _typeInfo,
+                              boost::property_tree::ptree & _pt,
+                              const std::string &_sPropertyName,
                               FORMAT_STRING_PTR stringFormat = format_primative) const;
 
     void query_device_and_put(uint64_t _deviceID, QueryRequest _eQueryRequest, boost::property_tree::ptree & _pt) const;
-    
+
   protected:
-    typedef struct {
+
+    struct QueryRequestEntry {
       std::string sPrettyName;
       std::string sPtreeNodeName;
       const std::type_info *pTypeInfo;
       FORMAT_STRING_PTR string_formatter;
-    } QueryRequestEntry;
+    };
 
     const QueryRequestEntry * get_query_entry(QueryRequest _eQueryRequest) const;
 
@@ -175,31 +227,16 @@ class device_core {
     virtual ~device_core();
 
   private:
-    device_core(const device_core&);
-    device_core& operator=(const device_core&);
-
-  protected:
-    typedef std::function<xrt_core::device_core*()> device_core_factory;
-   
-    /**
-     * Register's the child's constructor to be used to create the singleton.
-     * 
-     * Note
-     * ----
-     * Last constructer registered win's prior to creating the singleton.  Once
-     * the singleton is created, exceptions will be thrown if this 
-     * method is called again. 
-     * 
-     * @param _core_device_factory
-     *               The child's class constructure.
-     */
-  public:
-    static unsigned int register_child_ctor( device_core_factory _device_core_factory);
+    device_core(const device_core&) = delete;
+    device_core& operator=(const device_core&) = delete;
 
   private:
-    static device_core_factory m_singleton_ctor;
     static std::map<QueryRequest, QueryRequestEntry> m_QueryTable;
 };
-}
 
-#endif 
+device_core*
+initialize_child_ctor();
+
+} // xrt_core
+
+#endif

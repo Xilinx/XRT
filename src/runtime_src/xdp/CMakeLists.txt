@@ -1,7 +1,20 @@
+if (NOT WIN32)
+
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${XRT_SRC_DIR}/include/1_2
   )
+
+else()
+# = WINDOWS ===================================================================
+
+include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${Boost_INCLUDE_DIRS}
+  ${XRT_SRC_DIR}/include/1_2
+  ${KHRONOS}/include
+  )
+endif()
 
 set(XRT_XDP_APPDEBUG_DIR   "${CMAKE_CURRENT_SOURCE_DIR}/appdebug")
 set(XRT_XDP_DEBUG_DIR      "${CMAKE_CURRENT_SOURCE_DIR}/debug")
@@ -20,7 +33,10 @@ file(GLOB XRT_XDP_APPDEBUG_FILES
   "${XRT_XDP_APPDEBUG_DIR}/*.h"
   "${XRT_XDP_APPDEBUG_DIR}/*.cpp"
   )
-set_source_files_properties (${XRT_XDP_APPDEBUG_FILES} PROPERTIES COMPILE_FLAGS -g)
+
+if (NOT WIN32)
+  set_source_files_properties (${XRT_XDP_APPDEBUG_FILES} PROPERTIES COMPILE_FLAGS -g)
+endif()
 
 file(GLOB XRT_XDP_DEBUG_FILES
   "${XRT_XDP_DEBUG_DIR}/*.h"
@@ -77,6 +93,8 @@ set(XRT_XDP_ALL_SRC
   ${XRT_XDP_FILES}
   )
 
+if (NOT WIN32)
+
 add_library(xdpobj OBJECT ${XRT_XDP_PROFILE_OCL_PLUGIN_FILES})
 
 add_library(xdp_hal_plugin_obj OBJECT ${XRT_XDP_PROFILE_HAL_PLUGIN_FILES})
@@ -97,4 +115,35 @@ install (FILES
   ${XRT_XDP_APPDEBUG_DIR}/appdebugint.py
   DESTINATION ${APPDEBUG_INSTALL_PREFIX}
 )
+endif()
+
+else()
+# = WINDOWS ===================================================================
+
+add_library(xdpobj OBJECT ${XRT_XDP_PROFILE_OCL_PLUGIN_FILES})
+
+add_library(xdp SHARED ${XRT_XDP_ALL_SRC}
+  $<TARGET_OBJECTS:xdpobj>
+)
+
+add_dependencies(xdp xrt_core xilinxopencl)
+target_link_libraries (xdp xrt_core xilinxopencl)
+
+install(TARGETS xdp
+  ARCHIVE DESTINATION ${XRT_INSTALL_DIR}/lib
+  LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib
+  RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
+
+# install (FILES "${XRT_XDP_PROFILE_XMA_PLUGIN_DIR}/xma_profile.h" DESTINATION ${XRT_INSTALL_INCLUDE_DIR})
+
+# Only install these files for PCIe device for now, which is .
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+#set (APPDEBUG_INSTALL_PREFIX "/opt/xilinx/xrt/share/appdebug")
+set (APPDEBUG_INSTALL_PREFIX "${XRT_INSTALL_DIR}/share/appdebug")
+install (FILES
+  ${XRT_XDP_APPDEBUG_DIR}/appdebug.py
+  ${XRT_XDP_APPDEBUG_DIR}/appdebugint.py
+  DESTINATION ${APPDEBUG_INSTALL_PREFIX}
+)
+endif()
 endif()

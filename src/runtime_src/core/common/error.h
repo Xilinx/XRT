@@ -14,28 +14,47 @@
  * under the License.
  */
 
-#ifndef DEVICE_PCIE_H
-#define DEVICE_PCIE_H
+#ifndef xrt_util_error_h
+#define xrt_util_error_h
 
-// Please keep eternal include file dependencies to a minimum
-#include "common/device_core.h"
+#include "message.h"
+#include <stdexcept>
+#include <string>
 
 namespace xrt_core {
-class device_pcie : public xrt_core::device_core {
 
-  protected:
-    device_pcie();
-    virtual ~device_pcie();
+class error : public std::runtime_error
+{
+  int m_code;
+public:
+  error(int ec, const std::string& what = "")
+    : std::runtime_error(what), m_code(ec)
+  {}
 
-  protected:
-    virtual std::pair<uint64_t, uint64_t> get_total_devices() const = 0;
-    virtual void get_devices(boost::property_tree::ptree &_pt) const;
-    virtual void get_device_info(uint64_t _deviceID, boost::property_tree::ptree &_pt) const;
+  explicit
+  error(const std::string& what)
+    : std::runtime_error(what), m_code(0)
+  {}
 
-  private:
-    device_pcie(const device_pcie&);
-    device_pcie& operator=(const device_pcie&);
+  int
+  get() const
+  {
+    return m_code;
+  }
+
+  unsigned int
+  get_code() const
+  {
+    return get();
+  }
 };
+
+inline void
+send_exception_message(const char* msg)
+{
+  message::send(message::severity_level::XRT_ERROR, "XRT", msg);
 }
 
-#endif /* CORE_SYSTEM_H */
+} // xrt_core
+
+#endif

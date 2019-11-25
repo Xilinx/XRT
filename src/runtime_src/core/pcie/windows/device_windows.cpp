@@ -36,8 +36,9 @@ DEFINE_GUID(GUID_XILINX_PF_INTERFACE,
 DEFINE_GUID(GUID_DEVINTERFACE_XOCL_USER,
 	0x45a6ffca, 0xef63, 0x4933, 0x99, 0x83, 0xf6, 0x3d, 0xec, 0x58, 0x16, 0xeb);
 
-const xrt_core::device_windows::IOCTLEntry & 
-xrt_core::device_windows::get_IOCTL_entry( QueryRequest _eQueryRequest) const
+const xrt_core::device_windows::IOCTLEntry &
+xrt_core::device_windows::
+get_IOCTL_entry( QueryRequest _eQueryRequest) const
 {
   // Initialize our lookup table
   static const std::map<QueryRequest, IOCTLEntry> QueryRequestToIOCTLTable =
@@ -119,8 +120,9 @@ xrt_core::device_windows::get_IOCTL_entry( QueryRequest _eQueryRequest) const
 
 
 
-void 
-xrt_core::device_windows::query_device(uint64_t _deviceID, QueryRequest _eQueryRequest, const std::type_info & _typeInfo, boost::any &_returnValue) const
+void
+xrt_core::device_windows::
+query_device(uint64_t _deviceID, QueryRequest _eQueryRequest, const std::type_info & _typeInfo, boost::any &_returnValue) const
 {
   // Initialize return data to being empty container.
   // Note: CentOS Boost 1.53 doesn't support the clear() method.
@@ -138,7 +140,7 @@ xrt_core::device_windows::query_device(uint64_t _deviceID, QueryRequest _eQueryR
 
   // Removes compile warnings for unused variables
   _deviceID = _deviceID;
- 
+
   // Reference linux code:
 //  if (_typeInfo == typeid(std::string)) {
 //    // -- Typeid: std::string --
@@ -180,23 +182,28 @@ xrt_core::device_windows::query_device(uint64_t _deviceID, QueryRequest _eQueryR
   }
 }
 
-
-void xrt_core::initialize_child_ctor()
+xrt_core::device_core*
+xrt_core::
+initialize_child_ctor()
 {
-  xrt_core::device_windows::register_child_ctor(boost::factory<xrt_core::device_windows *>());
+  static device_windows dw;
+  return &dw;
 }
 
-xrt_core::device_windows::device_windows()
+xrt_core::device_windows::
+device_windows()
 {
   // Do nothing
 }
 
-xrt_core::device_windows::~device_windows() {
+xrt_core::device_windows::
+~device_windows() {
   // Do nothing
 }
 
-uint64_t 
-xrt_core::device_windows::get_total_devices() const
+std::pair<uint64_t, uint64_t>
+xrt_core::device_windows::
+get_total_devices() const
 {
   SP_DEVICE_INTERFACE_DATA DeviceInterfaceData;
   unsigned int mgmt_count, user_count;
@@ -229,8 +236,9 @@ xrt_core::device_windows::get_total_devices() const
   return user_count;
 }
 
-void 
-xrt_core::device_windows::read_device_dma_stats(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
+void
+xrt_core::device_windows::
+read_device_dma_stats(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
 {
   // Removes compiler warnings
   _deviceID = _deviceID;
@@ -259,7 +267,7 @@ xrt_core::device_windows::read_device_dma_stats(uint64_t _deviceID, boost::prope
 //      ptDMA.put( "c2h", unitConvert(devstat.c2h[index]) );
 //
 //      // Create our array of data
-//      ptChannels.push_back(std::make_pair("", ptDMA)); 
+//      ptChannels.push_back(std::make_pair("", ptDMA));
 //  }
 //
 //  _pt.add_child( "transfer_metrics.channels", ptChannels);
