@@ -69,7 +69,7 @@ static buffer
 create_exec_bo(xclDeviceHandle handle, size_t sz)
 {
   auto delBO = [](buffer_object* bo) {
-    munmap(bo->data,bo->size);
+    xclUnmapBO(bo->dev, bo->bo, bo->data);
     xclFreeBO(bo->dev,bo->bo);
     delete bo;
   };
@@ -95,7 +95,7 @@ static buffer
 create_data_bo(xclDeviceHandle handle, size_t sz, uint32_t flags)
 {
   auto delBO = [](buffer_object* bo) {
-    munmap(bo->data,bo->size);
+    xclUnmapBO(bo->dev, bo->bo, bo->data);
     xclFreeBO(bo->dev,bo->bo);
     delete bo;
   };
@@ -180,6 +180,7 @@ init(xclDeviceHandle handle, const axlf* top)
       std::memset(scmd, 0, 0x1000);
       scmd->state = ERT_CMD_STATE_NEW;
       scmd->opcode = ERT_SK_CONFIG;
+      ecmd->type = ERT_CTRL;
       scmd->count = sizeof (ert_configure_sk_cmd) / 4 - 1;
       scmd->start_cuidx = start_cuidx;
       scmd->num_cus = sk.ninst;
@@ -219,6 +220,7 @@ loadXclbinToPS(xclDeviceHandle handle, const axlf* top)
   auto ecmd = reinterpret_cast<ert_configure_sk_cmd*>(execbo->data);
   ecmd->state = ERT_CMD_STATE_NEW;
   ecmd->opcode = ERT_SK_CONFIG;
+  ecmd->type = ERT_CTRL;
   ecmd->count = 13;
   ecmd->start_cuidx = 0;
   ecmd->sk_type = SOFTKERNEL_TYPE_XCLBIN;

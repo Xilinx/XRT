@@ -30,7 +30,6 @@
 
 #include "scan.h"
 
-
 static std::string driver_version(const std::string & _driver)
 {
   std::string line("unknown");

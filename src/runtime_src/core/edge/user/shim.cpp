@@ -349,6 +349,16 @@ void *ZYNQShim::xclMapBO(unsigned int boHandle, bool write)
   return ptr;
 }
 
+int ZYNQShim::xclUnmapBO(unsigned int boHandle, void* addr)
+{
+  drm_zocl_info_bo info = { boHandle, 0, 0 };
+  int ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_INFO_BO, &info);
+  if (ret)
+    return -errno;
+
+  return munmap(addr, info.size);
+}
+
 int ZYNQShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
 {
   std::memset(info, 0, sizeof(xclDeviceInfo2));
@@ -1339,6 +1349,15 @@ void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
   if (!drv)
     return NULL;
   return drv->xclMapBO(boHandle, write);
+}
+
+int xclUnmapBO(xclDeviceHandle handle, unsigned int boHandle, void* addr)
+{
+  //std::cout << "xclMapBO called" << std::endl;
+  ZYNQ::ZYNQShim *drv = ZYNQ::ZYNQShim::handleCheck(handle);
+  if (!drv)
+    return NULL;
+  return drv->xclUnmapBO(boHandle, addr);
 }
 
 int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir,

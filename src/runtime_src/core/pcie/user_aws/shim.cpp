@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2018 Xilinx, Inc
+ * Copyright (C) 2017-2019 Xilinx, Inc
  * Author: Sonal Santan
  * AWS HAL Driver for SDAccel/OpenCL runtime evnrionemnt, for AWS EC2 F1
  *
@@ -809,12 +809,30 @@ namespace awsbwhal {
     int AwsXcl::xclReClock2(unsigned short region, const unsigned short *targetFreqMHz)
     {
     #ifdef INTERNAL_TESTING
-            xclmgmt_ioc_freqscaling obj = {0, targetFreqMHz[0], targetFreqMHz[1], targetFreqMHz[2], 0};
-            return ioctl(mMgtHandle, XCLMGMT_IOCFREQSCALE, &obj);
+        xclmgmt_ioc_freqscaling obj = {0, targetFreqMHz[0], targetFreqMHz[1], targetFreqMHz[2], 0};
+        return ioctl(mMgtHandle, XCLMGMT_IOCFREQSCALE, &obj);
     #else
-//    #       error "INTERNAL_TESTING macro disabled. AMZN code goes here. "
-//    #       This API is not supported in AWS, the frequencies are set per AFI
-   	return 0;
+        int retVal = 0;
+        fpga_mgmt_image_info orig_info;
+        std::memset(&orig_info, 0, sizeof(struct fpga_mgmt_image_info));
+        fpga_mgmt_describe_local_image(mBoardNumber, &orig_info, 0);
+        if(orig_info.status == FPGA_STATUS_LOADED) {
+            std::cout << "Reclock AFI(" << orig_info.ids.afi_id << ")" << std::endl;
+            union fpga_mgmt_load_local_image_options opt;
+            fpga_mgmt_init_load_local_image_options(&opt);
+            opt.afi_id = orig_info.ids.afi_id;
+            opt.slot_id = mBoardNumber;
+            opt.clock_mains[0] = targetFreqMHz[0];
+            opt.clock_mains[1] = targetFreqMHz[1];
+            opt.clock_mains[2] = targetFreqMHz[2];
+            retVal = fpga_mgmt_load_local_image_with_options(&opt);
+            if (retVal) {
+                std::cout << "Failed to load AFI with freq , error: " << retVal << std::endl;
+                return -retVal;
+            }
+            return retVal;
+        }
+        return 1;
     #endif
     }
 
@@ -1107,6 +1125,16 @@ namespace awsbwhal {
 
       return mmap(0, info.size, (write ? (PROT_READ|PROT_WRITE) : PROT_READ),
                   MAP_SHARED, mUserHandle, mapInfo.offset);
+    }
+
+    int AwsXcl::xclUnmapBO(unsigned int boHandle, void* addr)
+    {
+      drm_xocl_info_bo info = { boHandle, 0, 0 };
+      int ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_INFO_BO, &info);
+      if (ret)
+        return -errno;
+
+      return munmap(addr, info.size);
     }
 
     int AwsXcl::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir,
@@ -1535,6 +1563,11 @@ void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
   return drv ? drv->xclMapBO(boHandle, write) : nullptr;
 }
 
+int xclUnmapBO(xclDeviceHandle handle, unsigned int boHandle, void* addr)
+{
+  awsbwhal::AwsXcl *drv = awsbwhal::AwsXcl::handleCheck(handle);
+  return drv ? drv->xclUnmapBO(boHandle, addr) : -ENODEV;
+}
 
 int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir,
               size_t size, size_t offset)

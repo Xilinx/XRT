@@ -318,6 +318,13 @@ done:
     }
   }
 
+  int
+  unmap_bo(buffer_handle_type handle, void* addr)
+  {
+    // TODO : Implement
+    return 0;
+  }
+
   void
   free_bo(buffer_handle_type handle)
   {
@@ -797,6 +804,14 @@ done:
 
     return m_locked = true;
   }
+
+  bool
+  unlock_device()
+  {
+    m_locked = false;
+    return true;
+  }
+
 }; // struct shim
 
 shim*
@@ -923,6 +938,15 @@ xclMapBO(xclDeviceHandle handle, xclBufferHandle boHandle, bool write)
   return shim->map_bo(boHandle, write);
 }
 
+int
+xclUnmapBO(xclDeviceHandle handle, xclBufferHandle boHandle, void* addr)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclUnmapBO()");
+  auto shim = get_shim_object(handle);
+  return shim->unmap_bo(boHandle, addr);
+}
+
 void
 xclFreeBO(xclDeviceHandle handle, xclBufferHandle boHandle)
 {
@@ -1033,6 +1057,15 @@ xclLockDevice(xclDeviceHandle handle)
   return shim->lock_device() ? 0 : 1;
 }
 
+int
+xclUnlockDevice(xclDeviceHandle handle)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclUnlockDevice()");
+  auto shim = get_shim_object(handle);
+  return shim->unlock_device() ? 0 : 1;
+}
+
 ssize_t
 xclUnmgdPwrite(xclDeviceHandle handle, unsigned int flags, const void *buf, size_t count, uint64_t offset)
 {
@@ -1070,13 +1103,4 @@ xclRead(xclDeviceHandle handle, enum xclAddressSpace space,
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclRead()");
   auto shim = get_shim_object(handle);
   return shim->read(space,offset,hostbuf,size) ? 0 : size;
-}
-
-// TBD from xrt-windows.h
-int
-munmap(void* addr, size_t length)
-{
-  xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "unmap()");
-  return 0;
 }

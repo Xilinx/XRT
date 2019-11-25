@@ -503,7 +503,7 @@ static int xclmgmt_reset(xdev_handle_t xdev_hdl)
 {
 	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)xdev_hdl;
 
-	return reset_hot_ioctl(lro);
+	return xclmgmt_hot_reset(lro);
 }
 
 struct xocl_pci_funcs xclmgmt_pci_ops = {
@@ -515,11 +515,17 @@ struct xocl_pci_funcs xclmgmt_pci_ops = {
 static void xclmgmt_icap_get_data(struct xclmgmt_dev *lro, void *buf)
 {
 	struct xcl_pr_region *hwicap = NULL;
+	int err = 0;
+	xuid_t *xclbin_id = NULL;
+
+	err = XOCL_GET_XCLBIN_ID(lro, xclbin_id);
+	if (err)
+		return;
 
 	hwicap = (struct xcl_pr_region *)buf;
 	hwicap->idcode = xocl_icap_get_data(lro, IDCODE);
-	if (XOCL_XCLBIN_ID(lro))
-		uuid_copy((xuid_t *)hwicap->uuid, XOCL_XCLBIN_ID(lro));
+	if (xclbin_id)
+		uuid_copy((xuid_t *)hwicap->uuid, xclbin_id);
 	hwicap->freq_0 = xocl_icap_get_data(lro, CLOCK_FREQ_0);
 	hwicap->freq_1 = xocl_icap_get_data(lro, CLOCK_FREQ_1);
 	hwicap->freq_2 = xocl_icap_get_data(lro, CLOCK_FREQ_2);
@@ -527,6 +533,8 @@ static void xclmgmt_icap_get_data(struct xclmgmt_dev *lro, void *buf)
 	hwicap->freq_cntr_1 = xocl_icap_get_data(lro, FREQ_COUNTER_1);
 	hwicap->freq_cntr_2 = xocl_icap_get_data(lro, FREQ_COUNTER_2);
 	hwicap->mig_calib = lro->ready ? xocl_icap_get_data(lro, MIG_CALIB) : 0;
+
+	XOCL_PUT_XCLBIN_ID(lro);
 }
 
 static void xclmgmt_mig_get_data(struct xclmgmt_dev *lro, void *mig_ecc, size_t entry_sz)
@@ -697,9 +705,23 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 
 	switch (req->req) {
 	case XCL_MAILBOX_REQ_HOT_RESET:
-		ret = (int) reset_hot_ioctl(lro);
+#if defined(__PPC64__)
+		/* Reply before doing reset to release peer from waiting
+		 * for response and move to timer based wait stage.
+		 */
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
 			sizeof(ret));
+		msleep(2000);
+		/* Peer should be msleeping and waiting now. Do reset now
+		 * before peer wakes up and start touching the PCIE BAR,
+		 * which is not allowed during reset.
+		 */
+		ret = (int) xclmgmt_hot_reset(lro);
+#else
+		ret = (int) xclmgmt_hot_reset(lro);
+		(void) xocl_peer_response(lro, req->req, msgid, &ret,
+			sizeof(ret));
+#endif
 		break;
 	case XCL_MAILBOX_REQ_LOAD_XCLBIN_KADDR: {
 		void *buf = NULL;
@@ -978,6 +1000,38 @@ fail:
 	xocl_err(&pdev->dev, "failed to fully probe device, err: %d\n", ret);
 }
 
+int xclmgmt_config_pci(struct xclmgmt_dev *lro)
+{
+	struct pci_dev *pdev = lro->core.pdev;
+	int rc;
+
+	rc = pci_enable_device(pdev);
+	if (rc) {
+		xocl_err(&pdev->dev, "pci_enable_device() failed, rc = %d.\n",
+			rc);
+		goto failed;
+	}
+
+	pci_set_master(pdev);
+
+	rc = pcie_get_readrq(pdev);
+	if (rc < 0) {
+		xocl_err(&pdev->dev, "failed to read mrrs %d\n", rc);
+		goto failed;
+	}
+	if (rc > 512) {
+		rc = pcie_set_readrq(pdev, 512);
+		if (rc) {
+			xocl_err(&pdev->dev, "failed to force mrrs %d\n", rc);
+			goto failed;
+		}
+	}
+	rc = 0;
+
+failed:
+	return rc;
+}
+
 /*
  * Device initialization is done in two phases:
  * 1. Minimum initialization - init to the point where open/close/mmap entry
@@ -994,15 +1048,6 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	xocl_info(&pdev->dev, "Driver: %s", XRT_DRIVER_VERSION);
 	xocl_info(&pdev->dev, "probe(pdev = 0x%p, pci_id = 0x%p)\n", pdev, id);
-
-	rc = pci_enable_device(pdev);
-	if (rc) {
-		xocl_err(&pdev->dev, "pci_enable_device() failed, rc = %d.\n",
-			rc);
-		return rc;
-	}
-
-	pci_set_master(pdev);
 
 	/* allocate zeroed device book keeping structure */
 	lro = xocl_drvinst_alloc(&pdev->dev, sizeof(struct xclmgmt_dev));
@@ -1028,18 +1073,9 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	lro->pci_dev = pdev;
 	lro->ready = false;
 
-	rc = pcie_get_readrq(pdev);
-	if (rc < 0) {
-		dev_err(&pdev->dev, "failed to read mrrs %d\n", rc);
-		goto err_alloc;
-	}
-	if (rc > 512) {
-		rc = pcie_set_readrq(pdev, 512);
-		if (rc) {
-			dev_err(&pdev->dev, "failed to force mrrs %d\n", rc);
-			goto err_alloc;
-		}
-	}
+	rc = xclmgmt_config_pci(lro);
+	if (rc)
+		goto err_alloc_minor;
 
 	rc = xocl_alloc_dev_minor(lro);
 	if (rc)
@@ -1200,6 +1236,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_mgmt_msix,
 	xocl_init_sysmon,
 	xocl_init_mb,
+	xocl_init_ps,
 	xocl_init_xvc,
 	xocl_init_nifd,
 	xocl_init_xiic,
@@ -1220,6 +1257,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_mgmt_msix,
 	xocl_fini_sysmon,
 	xocl_fini_mb,
+	xocl_fini_ps,
 	xocl_fini_xvc,
 	xocl_fini_nifd,
 	xocl_fini_xiic,

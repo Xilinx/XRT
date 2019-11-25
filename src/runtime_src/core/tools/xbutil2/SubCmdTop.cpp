@@ -27,6 +27,14 @@ namespace po = boost::program_options;
 // System - Include Files
 #include <iostream>
 
+// ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
+#include "SubCmd.h"
+static const unsigned int registerResult = 
+                    register_subcommand("top", 
+                                        "<add description>",
+                                        subCmdTop);
+// =============================================================================
+
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
 
@@ -34,16 +42,18 @@ namespace po = boost::program_options;
 
 // ------ F U N C T I O N S ---------------------------------------------------
 
-int subCmdTop(const std::vector<std::string> &_options, bool _help)
+int subCmdTop(const std::vector<std::string> &_options)
 // Reference Command:  top  [-i seconds]
 
 {
   XBU::verbose("SubCommand: top");
   // -- Retrieve and parse the subcommand options -----------------------------
   uint64_t seconds = 0;
+  bool help = false;
 
   po::options_description topDesc("top options");
   topDesc.add_options()
+    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
     (",s", boost::program_options::value<uint64_t>(&seconds), "Seconds")
   ;
 
@@ -62,7 +72,7 @@ int subCmdTop(const std::vector<std::string> &_options, bool _help)
   }
 
   // Check to see if help was requested or no command was found
-  if (_help == true)  {
+  if (help == true)  {
     std::cout << topDesc << std::endl;
     return 0;
   }
@@ -73,6 +83,6 @@ int subCmdTop(const std::vector<std::string> &_options, bool _help)
   XBU::error("COMMAND BODY NOT IMPLEMENTED.");
   // TODO: Put working code here
 
-  return 0;
+  return registerResult;
 }
 

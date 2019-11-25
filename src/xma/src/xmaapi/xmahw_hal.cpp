@@ -38,7 +38,6 @@
 #define XMAAPI_MOD "xmahw_hal"
 
 using namespace std;
-const uint64_t mNullBO = 0xffffffff;
 
 /*
 static void set_hw_cfg(uint32_t        device_count,
@@ -389,7 +388,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
 
             cu_mask = cu_mask << 1;
         }
-
+        /*
         int32_t num_execbo = 0;
         if (dev_tmp1.number_of_cus > MIN_EXECBO_POOL_SIZE) {
             num_execbo = dev_tmp1.number_of_cus;
@@ -421,8 +420,14 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             dev_execbo.handle = bo_handle;
             dev_execbo.data = bo_data;
         }
-
+        */
         free(buffer);
+
+        //Opening virtual CU context as some applications may use soft kernels only
+        if (xclOpenContext(dev_tmp1.handle, info.uuid, -1, true) != 0) {
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Failed to open virtual CU context\n");
+            return false;
+        }
     }
 
     return true;

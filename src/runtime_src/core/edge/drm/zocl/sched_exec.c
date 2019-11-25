@@ -96,7 +96,7 @@ is_ert(struct drm_device *dev)
 {
 	struct drm_zocl_dev *zdev = dev->dev_private;
 
-	return zdev->exec->ops == &ps_ert_ops;
+	return zdev->ert != NULL;
 }
 
 /**
@@ -257,6 +257,12 @@ inline u32
 opcode(struct sched_cmd *cmd)
 {
 	return cmd->packet->opcode;
+}
+
+static inline u32
+type(struct sched_cmd *cmd)
+{
+	return cmd->packet->type;
 }
 
 /**
@@ -958,7 +964,7 @@ configure_soft_kernel(struct sched_cmd *cmd)
 
 		/* remap device physical addr to kernel virtual addr */
 		xclbin_buffer =
-		    memremap(cfg->sk_addr, cfg->sk_size, MEMREMAP_WB);
+		    memremap(cfg->sk_addr, cfg->sk_size, MEMREMAP_WC);
 		if (xclbin_buffer == NULL) {
 			ret = -ENOMEM;
 			goto fail;
@@ -1567,7 +1573,9 @@ recycle_cmd(struct sched_cmd *cmd)
 	list_move_tail(&cmd->list, &free_cmds);
 	mutex_unlock(&free_cmds_mutex);
 
-	atomic_dec(&cmd->client->outstanding_execs);
+	if (!is_ert(cmd->ddev))
+		atomic_dec(&cmd->client->outstanding_execs);
+
 	return 0;
 }
 
@@ -1626,6 +1634,30 @@ reset_all(void)
 	}
 }
 
+static int
+ert_get_cu(struct sched_cmd *cmd)
+{
+	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	struct sched_exec_core *exec = zdev->exec;
+	u32 busy_mask;
+	int cu_idx, cu_bit;
+
+	/* Let's trust host, the cu_idx should be valid */
+	cu_idx = cmd->packet->data[0];
+	cu_bit = cu_idx_in_mask(cu_idx);
+
+	/* Check if the specific CU is busy */
+	busy_mask = exec->cu_status[cu_mask_idx(cu_idx)];
+	if (busy_mask & (1 << cu_bit))
+		return -1;
+
+	/* The specific CU is ready */
+	if (!zocl_cu_get_credit(&exec->zcu[cu_idx]))
+		exec->cu_status[cu_mask_idx(cu_idx)] ^= 1 << cu_bit;
+
+	return cu_idx;
+}
+
 /**
  * get_free_cu() - get index of first available CU per command cu mask
  *
@@ -1647,7 +1679,7 @@ get_free_cu(struct sched_cmd *cmd, enum zocl_cu_type cu_type)
 	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
 	int num_masks = cu_masks(cmd);
 	struct sched_exec_core *exec = zdev->exec;
-	int cu_idx = -1;
+	int cu_idx, cu_bit;
 	int valid_found = 0;
 
 	SCHED_DEBUG("-> %s\n", __func__);
@@ -1669,20 +1701,20 @@ get_free_cu(struct sched_cmd *cmd, enum zocl_cu_type cu_type)
 		if (cu_type == ZOCL_HARD_CU)
 			free_mask &= exec->cu_valid[mask_idx];
 
-		cu_idx = ffs_or_neg_one(free_mask);
+		cu_bit = ffs_or_neg_one(free_mask);
 
-		if (cu_idx < 0)
+		if (cu_bit < 0)
 			continue;
 
+		cu_idx = cu_idx_from_mask(cu_bit, mask_idx);
 		if (cu_type == ZOCL_HARD_CU) {
 			 /* KDS should not over spending credits */
 			if (!zocl_cu_get_credit(&exec->zcu[cu_idx]))
-				exec->cu_status[mask_idx] ^= 1 << cu_idx;
+				exec->cu_status[mask_idx] ^= 1 << cu_bit;
 		} else
-			exec->scu_status[mask_idx] ^= 1 << cu_idx;
-		SCHED_DEBUG("<- %s returns %d\n", __func__,
-			    cu_idx_from_mask(cu_idx, mask_idx));
-		return cu_idx_from_mask(cu_idx, mask_idx);
+			exec->scu_status[mask_idx] ^= 1 << cu_bit;
+		SCHED_DEBUG("<- %s returns %d\n", __func__, cu_idx);
+		return cu_idx;
 	}
 
 	if (!valid_found)
@@ -1984,6 +2016,13 @@ scheduler_queue_cmds(struct scheduler *sched)
 static void
 cmd_update_state(struct sched_cmd *cmd)
 {
+	/*
+	 * In the case of ERT, stalled commands are handled by host
+	 * XRT. So we just bail out here.
+	 */
+	if (is_ert(cmd->ddev))
+		return;
+
 	if (cmd->state != ERT_CMD_STATE_RUNNING && cmd->client->abort) {
 		DRM_INFO("Aborting cmds for closing pid(%d)",
 		    pid_nr(cmd->client->pid));
@@ -2431,6 +2470,7 @@ ps_ert_query(struct sched_cmd *cmd)
 	case ERT_EXEC_WRITE:
 		if (!cu_done(cmd))
 			break;
+		__attribute__ ((fallthrough));
 		/* pass through */
 
 	case ERT_CONFIGURE:
@@ -2510,14 +2550,16 @@ ps_ert_submit(struct sched_cmd *cmd)
 
 	case ERT_START_CU:
 	case ERT_EXEC_WRITE:
-		/* extract cu list */
-		cmd->cu_idx = get_free_cu(cmd, ZOCL_HARD_CU);
-		if (cmd->cu_idx < 0) {
-			release_slot_idx(cmd->ddev, cmd->slot_idx);
-			if (cmd->cu_idx == -EINVAL)
-				mark_cmd_submit_error(cmd);
-			return false;
-		}
+		/* When command type is ERT_CU, host would set cu_idx instead of
+		 * cu_mask. The cu index is set at right after packet header.
+		 * ERT_CU is only for hardware kernel.
+		 */
+		if (type(cmd) == ERT_CU)
+			cmd->cu_idx = ert_get_cu(cmd);
+		else
+			cmd->cu_idx = get_free_cu(cmd, ZOCL_HARD_CU);
+		if (cmd->cu_idx < 0)
+			goto invalid_cu_idx;
 
 		/* found free cu, transfer regmap and start it */
 		ert_configure_cu(cmd, cmd->cu_idx);
@@ -2532,6 +2574,12 @@ ps_ert_submit(struct sched_cmd *cmd)
 	}
 
 	return true;
+
+invalid_cu_idx:
+	release_slot_idx(cmd->ddev, cmd->slot_idx);
+	if (cmd->cu_idx == -EINVAL)
+		mark_cmd_submit_error(cmd);
+	return false;
 }
 
 /**
@@ -2930,8 +2978,10 @@ sched_init_exec(struct drm_device *drm)
 	SCHED_DEBUG("-> %s\n", __func__);
 
 	exec_core = devm_kzalloc(drm->dev, sizeof(*exec_core), GFP_KERNEL);
-	if (!exec_core)
+	if (!exec_core) {
+		DRM_ERROR("Alloc exec_core failed: no memory\n");
 		return -ENOMEM;
+	}
 
 	zdev->exec = exec_core;
 	spin_lock_init(&exec_core->ctx_list_lock);

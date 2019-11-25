@@ -21,6 +21,6 @@
 #include <vector>
 #include <string>
   
-int subCmdList(const std::vector<std::string> &_options, bool _help);
+int subCmdList(const std::vector<std::string> &_options);
 
 #endif

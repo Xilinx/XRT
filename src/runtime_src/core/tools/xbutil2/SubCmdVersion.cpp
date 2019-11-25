@@ -29,6 +29,15 @@ namespace po = boost::program_options;
 // System - Include Files
 #include <iostream>
 
+// ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
+#include "SubCmd.h"
+static const unsigned int registerResult = 
+                    register_subcommand("version", 
+                                        "Reports the version of the build, OS, and drivers (if present)",
+                                        subCmdVersion);
+// =============================================================================
+
+
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
 void reportVersions()
@@ -55,14 +64,19 @@ void reportVersions()
 
 // ------ F U N C T I O N S ---------------------------------------------------
 
-int subCmdVersion(const std::vector<std::string> &_options, bool _help)
+int subCmdVersion(const std::vector<std::string> &_options)
 // Reference Command:  version
 
 {
   XBU::verbose("SubCommand: version");
   // -- Retrieve and parse the subcommand options -----------------------------
 
+  bool bHelp = false;
+
   po::options_description versionDesc("version options");
+  versionDesc.add_options()
+    ("help", boost::program_options::bool_switch(&bHelp), "Help to use this sub-command")
+  ;
 
   // Parse sub-command ...
   po::variables_map vm;
@@ -79,7 +93,7 @@ int subCmdVersion(const std::vector<std::string> &_options, bool _help)
   }
 
   // Check to see if help was requested or no command was found
-  if (_help == true)  {
+  if (bHelp == true)  {
     std::cout << versionDesc << std::endl;
     return 0;
   }
@@ -87,6 +101,6 @@ int subCmdVersion(const std::vector<std::string> &_options, bool _help)
   // -- Now process the subcommand --------------------------------------------
   reportVersions();
 
-  return 0;
+  return registerResult;
 }
 

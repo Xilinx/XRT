@@ -27,6 +27,14 @@ namespace po = boost::program_options;
 // System - Include Files
 #include <iostream>
 
+// ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
+#include "SubCmd.h"
+static const unsigned int registerResult = 
+                    register_subcommand("scan", 
+                                        "<add description>",
+                                        subCmdScan);
+// =============================================================================
+
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
 
@@ -34,14 +42,19 @@ namespace po = boost::program_options;
 
 // ------ F U N C T I O N S ---------------------------------------------------
 
-int subCmdScan(const std::vector<std::string> &_options, bool _help)
+int subCmdScan(const std::vector<std::string> &_options)
 // Reference Command:  scan
 
 {
   XBU::verbose("SubCommand: scan");
   // -- Retrieve and parse the subcommand options -----------------------------
+  bool help = false;
 
   po::options_description scanDesc("scan options");
+
+  scanDesc.add_options()
+    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
+  ;
 
   // Parse sub-command ...
   po::variables_map vm;
@@ -58,7 +71,7 @@ int subCmdScan(const std::vector<std::string> &_options, bool _help)
   }
 
   // Check to see if help was requested or no command was found
-  if (_help == true)  {
+  if (help == true)  {
     std::cout << scanDesc << std::endl;
     return 0;
   }
@@ -68,6 +81,6 @@ int subCmdScan(const std::vector<std::string> &_options, bool _help)
   XBU::error("COMMAND BODY NOT IMPLEMENTED.");
   // TODO: Put working code here
 
-  return 0;
+  return registerResult;
 }
 

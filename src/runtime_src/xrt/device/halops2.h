@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -52,31 +52,31 @@ public:
 private:
 
   /* TBD */
-  typedef unsigned (* probeFuncType)();
-  typedef xclDeviceHandle (* openFuncType)(unsigned deviceIndex, const char *logFileName,
+  typedef unsigned int (* probeFuncType)();
+  typedef xclDeviceHandle (* openFuncType)(unsigned int deviceIndex, const char *logFileName,
                                            xclVerbosityLevel level);
   typedef void (* closeFuncType)(xclDeviceHandle handle);
-  //typedef void (* freeDeviceBufferType)(xclDeviceHandle handle, unsigned int boHandle);
   typedef int (* loadBitstreamFuncType)(xclDeviceHandle handle, const char *fileName);
   typedef int (* loadXclBinFuncType)(xclDeviceHandle handle, const xclBin *buffer);
-  typedef unsigned int (*allocBOFuncType) (xclDeviceHandle handle, size_t size, int unused, unsigned flags);
-  typedef unsigned int (*allocUserPtrBOFuncType) (xclDeviceHandle handle, void* userptr, size_t size, unsigned flags);
+  typedef xclBufferHandle (*allocBOFuncType) (xclDeviceHandle handle, size_t size, int unused, unsigned int flags);
+  typedef xclBufferHandle (*allocUserPtrBOFuncType) (xclDeviceHandle handle, void* userptr, size_t size, unsigned int flags);
 
-  typedef unsigned int (*importBOFuncType)(xclDeviceHandle handle, int fd, unsigned flags);
-  typedef unsigned int (*exportBOFuncType)(xclDeviceHandle handle, unsigned int boHandle);
-  typedef int (*getBOPropertiesFuncType)(xclDeviceHandle handle, unsigned int boHandle, xclBOProperties*);
-  typedef unsigned int (*execBOFuncType)(xclDeviceHandle handle, unsigned int cmdBO);
+  typedef xclBufferHandle (*importBOFuncType)(xclDeviceHandle handle, int fd, unsigned int flags);
+  typedef int (*exportBOFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle);
+  typedef int (*getBOPropertiesFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle, xclBOProperties*);
+  typedef int (*execBOFuncType)(xclDeviceHandle handle, xclBufferHandle cmdBO);
   typedef int (*execWaitFuncType)(xclDeviceHandle handle, int timeoutMS);
 
-  typedef void (* freeBOFuncType)(xclDeviceHandle handle, unsigned int boHandle);
-  typedef size_t (* writeBOFuncType)(xclDeviceHandle handle, unsigned int boHandle, const void *src, size_t size, size_t seek);
-  typedef size_t (* readBOFuncType)(xclDeviceHandle handle, unsigned int boHandle, void *dst, size_t size, size_t skip);
-  typedef int (* syncBOFuncType)(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir,
+  typedef void (* freeBOFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle);
+  typedef size_t (* writeBOFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle, const void *src, size_t size, size_t seek);
+  typedef size_t (* readBOFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle, void *dst, size_t size, size_t skip);
+  typedef int (* syncBOFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle, xclBOSyncDirection dir,
                                  size_t size, size_t offset);
-  typedef int (* copyBOFuncType)(xclDeviceHandle handle, unsigned int dstBoHandle, unsigned int srcBoHandle,
+  typedef int (* copyBOFuncType)(xclDeviceHandle handle, xclBufferHandle dstBoHandle, xclBufferHandle srcBoHandle,
                                  size_t size, size_t dst_offset, size_t src_offset);
 
-  typedef void* (* mapBOFuncType)(xclDeviceHandle handle, unsigned int boHandle, bool write);
+  typedef void* (* mapBOFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle, bool write);
+  typedef int   (* unmapBOFuncType)(xclDeviceHandle handle, xclBufferHandle boHandle, void* addr);
 
   typedef int (* reClock2FuncType)(xclDeviceHandle handle, unsigned short region,
                                    const unsigned short *targetFreqMHz);
@@ -85,7 +85,7 @@ private:
                                    const void *hostBuf, size_t size);
   typedef size_t (* readFuncType)(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset,
                                   void *hostbuf, size_t size);
-  typedef size_t (* unmgdPreadFuncType)(xclDeviceHandle handle, unsigned flags, void *buf, size_t count, uint64_t offset);
+  typedef size_t (* unmgdPreadFuncType)(xclDeviceHandle handle, unsigned int flags, void *buf, size_t count, uint64_t offset);
 
   typedef int (* lockDeviceFuncType)(xclDeviceHandle handle);
   typedef int (* unlockDeviceFuncType)(xclDeviceHandle handle);
@@ -102,7 +102,7 @@ private:
                                        char* slotName, uint32_t length);
   typedef uint32_t (* getSlotPropertiesFuncType)(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum);
   typedef size_t (* clockTrainingFuncType)(xclDeviceHandle handle, xclPerfMonType type);
-  typedef void  (* configureDataflowFuncType)(xclDeviceHandle handle, xclPerfMonType type, unsigned *ip_config);
+  typedef void  (* configureDataflowFuncType)(xclDeviceHandle handle, xclPerfMonType type, unsigned int *ip_config);
   typedef size_t (* startCountersFuncType)(xclDeviceHandle handle, xclPerfMonType type);
   typedef size_t (* stopCountersFuncType)(xclDeviceHandle handle, xclPerfMonType type);
   typedef size_t (* readCountersFuncType)(xclDeviceHandle handle, xclPerfMonType type,
@@ -120,7 +120,7 @@ private:
 
   typedef int (* openContextFuncType)(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex,
                                       bool shared);
-  typedef int (* closeContextFuncType)(xclDeviceHandle handle, const xuid_t xclbinId, unsigned ipIndex);
+  typedef int (* closeContextFuncType)(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex);
 
 
   //Streaming
@@ -143,14 +143,10 @@ private:
   typedef int (*xclGetTraceBufferInfoFuncType)(xclDeviceHandle handle, uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
   typedef int (*xclReadTraceDataFuncType)(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
 
-#ifdef _WIN32
-  typedef int     (*munmapFuncType)(void* addr, size_t length);
-#endif
-
 private:
   const std::string mFileName;
   const void *mDriverHandle;
-  const unsigned mDeviceCount;
+  const unsigned int mDeviceCount;
 
 public:
 
@@ -177,6 +173,7 @@ public:
   syncBOFuncType mSyncBO;
   copyBOFuncType mCopyBO;
   mapBOFuncType mMapBO;
+  unmapBOFuncType mUnmapBO;
   writeFuncType mWrite;
   readFuncType mRead;
   unmgdPreadFuncType mUnmgdPread;
@@ -223,34 +220,20 @@ public:
   xclGetTraceBufferInfoFuncType mGetTraceBufferInfo;
   xclReadTraceDataFuncType mReadTraceData;
 
-#ifdef _WIN32
-  munmapFuncType mMunmap;
-#endif
-
-  int
-  munmap(void* addr, size_t length)
-  {
-#ifndef _WIN32
-    return ::munmap(addr,length);
-#else
-    return mMunmap(addr,length);
-#endif
-  }
-
   const std::string&
   getFileName() const
   {
     return mFileName;
   }
 
-  unsigned
+  unsigned int
   getDeviceCount() const
   {
     return mDeviceCount;
   }
 
   size_t
-  mGetBOSize(xclDeviceHandle handle, unsigned int boHandle) const
+  mGetBOSize(xclDeviceHandle handle, xclBufferHandle boHandle) const
   {
     xclBOProperties p;
     return mGetBOProperties(handle,boHandle,&p)
@@ -259,7 +242,7 @@ public:
   }
 
   uint64_t
-  mGetDeviceAddr(xclDeviceHandle handle, unsigned int boHandle) const
+  mGetDeviceAddr(xclDeviceHandle handle, xclBufferHandle boHandle) const
   {
     xclBOProperties p;
     return mGetBOProperties(handle,boHandle,&p)

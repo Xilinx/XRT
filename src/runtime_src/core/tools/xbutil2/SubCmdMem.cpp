@@ -27,6 +27,14 @@ namespace po = boost::program_options;
 // System - Include Files
 #include <iostream>
 
+// ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
+#include "SubCmd.h"
+static const unsigned int registerResult = 
+                    register_subcommand("mem", 
+                                        "Memory write tests.",
+                                        subCmdMem);
+// =============================================================================
+
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
 
@@ -34,7 +42,7 @@ namespace po = boost::program_options;
 
 // ------ F U N C T I O N S ---------------------------------------------------
 
-int subCmdMem(const std::vector<std::string> &_options, bool _help)
+int subCmdMem(const std::vector<std::string> &_options)
 // Reference Command: mem --read [-d card] [-a [0x]start_addr] [-i size_bytes] [-o output filename]
 //                    mem --write [-d card] [-a [0x]start_addr] [-i size_bytes] [-e pattern_byte]
 //                    Read 256 bytes from DDR starting at 0x1000 into file read.out\n";
@@ -54,9 +62,11 @@ int subCmdMem(const std::vector<std::string> &_options, bool _help)
   std::string sSizeBytes;
   std::string sOutputFile;
   std::string sPatternBytes;
+  bool help = false;
 
   po::options_description memDesc("mem options");
   memDesc.add_options()
+    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
     ("read", boost::program_options::bool_switch(&bRead), "Read operation")
     ("write", boost::program_options::bool_switch(&bWrite), "Write operation")
     (",c", boost::program_options::value<uint64_t>(&card), "Card to be examined")
@@ -81,7 +91,7 @@ int subCmdMem(const std::vector<std::string> &_options, bool _help)
   }
 
   // Check to see if help was requested or no command was found
-  if (_help == true)  {
+  if (help == true)  {
     std::cout << memDesc << std::endl;
     return 0;
   }
@@ -101,6 +111,6 @@ int subCmdMem(const std::vector<std::string> &_options, bool _help)
   XBU::error("COMMAND BODY NOT IMPLEMENTED.");
   // TODO: Put working code here
 
-  return 0;
+  return registerResult;
 }
 

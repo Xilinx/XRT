@@ -14,13 +14,47 @@
  * under the License.
  */
 
-#ifndef __SubCmdRun_h_
-#define __SubCmdRun_h_
+#ifndef xrt_util_error_h
+#define xrt_util_error_h
 
-// Please keep eternal include file dependencies to a minimum
-#include <vector>
+#include "message.h"
+#include <stdexcept>
 #include <string>
-  
-int subCmdRun(const std::vector<std::string> &_options, bool _help);
+
+namespace xrt_core {
+
+class error : public std::runtime_error
+{
+  int m_code;
+public:
+  error(int ec, const std::string& what = "")
+    : std::runtime_error(what), m_code(ec)
+  {}
+
+  explicit
+  error(const std::string& what)
+    : std::runtime_error(what), m_code(0)
+  {}
+
+  int
+  get() const
+  {
+    return m_code;
+  }
+
+  unsigned int
+  get_code() const
+  {
+    return get();
+  }
+};
+
+inline void
+send_exception_message(const char* msg)
+{
+  message::send(message::severity_level::XRT_ERROR, "XRT", msg);
+}
+
+} // xrt_core
 
 #endif

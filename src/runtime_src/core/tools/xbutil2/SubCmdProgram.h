@@ -21,6 +21,6 @@
 #include <vector>
 #include <string>
   
-int subCmdProgram(const std::vector<std::string> &_options, bool _help);
+int subCmdProgram(const std::vector<std::string> &_options);
 
 #endif

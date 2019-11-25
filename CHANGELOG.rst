@@ -1,6 +1,13 @@
 XRT ChangeLog
 -------------
 
+2.4.0 (202010.2.4)
+~~~~~~~~~~~~~~~~~~
+
+Added
+.....
+* ``xclUnmapBO()`` was added to match ``xclMapBO()``.  This new API should be called when unmapping addresses returned by ``xclMapB()``.  On Linux the API ends up calling POSIX ``munmap()`` but on Windows the implementation is different.
+
 2.3.0 (201920.2.3)
 ~~~~~~~~~~~~~~~~~~
 
@@ -30,8 +37,9 @@ Known Issue
 ...........
 
 * On U280 Platform, downloading XCLBIN is going to reset P2P BAR size back to 256M internally. XRT workaround this issue by reading BAR size register and writing back the same value. This sets the P2P BAR size back to the value before downloading XCLBIN.
-* Intermittent hang is observed when downloading multiple xclbins multiple times when interrupt is enabled.
+* On edge platforms intermittent hang is observed when downloading different xclbins multiple times while CU interrupt is enabled.
 * Dynamic clock scaling is not enabled for edge platforms.
+* On PPC64LE ``xbutil reset`` uses PCIe fundamental reset effectively reloading the platform from PROM. Note on x86_64 ``xbutil reset`` continues to use PCIe warm reset which just resets the shell and the dynamic region without reloading the platform from PROM.
 
 2.2.0 (201910.2.2)
 ~~~~~~~~~~~~~~~~~~
