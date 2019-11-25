@@ -220,7 +220,7 @@ get_total_devices() const
   user_count--;
 
   if (user_count == 0)
-	  std::cout << "No Xilinx U250 devices are present and enabled in the system" << std::endl;
+	  std::cout << "No Xilinx devices are present" << std::endl;
 
   //Finding number of mgmt_devices
   hDevInfo = SetupDiGetClassDevs(&GUID_XILINX_PF_INTERFACE, NULL, NULL,
@@ -231,7 +231,7 @@ get_total_devices() const
 	  mgmt_count++, &DeviceInterfaceData));
   mgmt_count--;
   if (mgmt_count == 0)
-	  std::cout << "No Xilinx U250 devices are present and enabled in the system" << std::endl;
+	  std::cout << "No Xilinx devices are present" << std::endl;
 
   return std::make_pair(user_count, 0);
 }

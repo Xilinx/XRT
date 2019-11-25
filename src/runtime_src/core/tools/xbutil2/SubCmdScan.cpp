@@ -56,7 +56,7 @@ int subCmdScan(const std::vector<std::string> &_options)
 
   scanDesc.add_options()
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
-	(",d", boost::program_options::value<uint64_t>(&card), "Card to be examined")
+    (",d", boost::program_options::value<uint64_t>(&card), "Card to be examined")
   ;
 
   // Parse sub-command ...
