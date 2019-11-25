@@ -39,18 +39,18 @@
 #include "xocl_fdt.h"
 /* board flags */
 enum {
-	XOCL_DSAFLAG_PCI_RESET_OFF		= 0x01,
-	XOCL_DSAFLAG_MB_SCHE_OFF		= 0x02,
-	XOCL_DSAFLAG_AXILITE_FLUSH		= 0x04,
-	XOCL_DSAFLAG_SET_DSA_VER		= 0x08,
-	XOCL_DSAFLAG_SET_XPR			= 0x10,
-	XOCL_DSAFLAG_MFG			= 0x20,
-	XOCL_DSAFLAG_FIXED_INTR			= 0x40,
-	XOCL_DSAFLAG_NO_KDMA			= 0x80,
-	XOCL_DSAFLAG_CUDMA_OFF			= 0x100,
-	XOCL_DSAFLAG_DYNAMIC_IP			= 0x200,
-	XOCL_DSAFLAG_SMARTN			= 0x400,
-	XOCL_DSAFLAG_VERSAL			= 0x800,
+	XOCL_DSAFLAG_PCI_RESET_OFF		= (1 << 0),
+	XOCL_DSAFLAG_MB_SCHE_OFF		= (1 << 1),
+	XOCL_DSAFLAG_AXILITE_FLUSH		= (1 << 2),
+	XOCL_DSAFLAG_SET_DSA_VER		= (1 << 3),
+	XOCL_DSAFLAG_SET_XPR			= (1 << 4),
+	XOCL_DSAFLAG_MFG			= (1 << 5),
+	XOCL_DSAFLAG_FIXED_INTR			= (1 << 6),
+	XOCL_DSAFLAG_NO_KDMA			= (1 << 7),
+	XOCL_DSAFLAG_CUDMA_OFF			= (1 << 8),
+	XOCL_DSAFLAG_DYNAMIC_IP			= (1 << 9),
+	XOCL_DSAFLAG_SMARTN			= (1 << 10),
+	XOCL_DSAFLAG_VERSAL			= (1 << 11),
 };
 
 #define	FLASH_TYPE_SPI	"spi"
@@ -190,6 +190,7 @@ enum {
 #define	XOCL_FLASH		"flash"
 #define XOCL_DMA_MSIX		"dma_msix"
 #define	XOCL_MAILBOX_VERSAL	"mailbox_versal"
+#define XOCL_ERT		"ert"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
@@ -1626,9 +1627,48 @@ struct xocl_subdev_map {
 		0,					\
 	}
 
+#define XOCL_RES_IORES_MGMT_VSEC			\
+	((struct resource []) {				\
+		/* OCL_CLKFREQ_BASE */			\
+		{					\
+			.name	= RESNAME_CLKFREQ1,	\
+			.start	= 0x845000,		\
+			.end	= 0x845fff,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+		/* OCL_CLKFREQ_BASE */			\
+		{					\
+			.name	= RESNAME_CLKFREQ2,	\
+			.start	= 0x846000,		\
+			.end	= 0x846fff,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+		{					\
+			.name	= RESNAME_CLKWIZKERNEL1,\
+			.start	= 0x843000,		\
+			.end	= 0x843fff,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+		{					\
+			.name	= RESNAME_CLKWIZKERNEL2,\
+			.start	= 0x844000,		\
+			.end	= 0x844fff,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+	 })
+
+#define	XOCL_DEVINFO_IORES_MGMT_VSEC			\
+	{						\
+		XOCL_SUBDEV_IORES,			\
+		XOCL_IORES0,				\
+		XOCL_RES_IORES_MGMT_VSEC,		\
+		ARRAY_SIZE(XOCL_RES_IORES_MGMT_U50),	\
+	}
+
 #define RES_MGMT_VSEC							\
 	((struct xocl_subdev_info []) {					\
 	 	XOCL_DEVINFO_FEATURE_ROM_MGMT_DYN,			\
+	 	/* XOCL_DEVINFO_IORES_MGMT_VSEC,*/			\
 		XOCL_DEVINFO_FMGR,					\
 	 })
 

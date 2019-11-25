@@ -73,7 +73,7 @@ namespace xdp {
 
   public:
     void logBufferTransfer(RTUtil::e_profile_command_kind kind, size_t size, double duration,
-                           uint32_t contextId, uint32_t numDevices);
+                           uint32_t contextId, size_t numDevices);
     void logDeviceRead(size_t size, double duration);
     void logDeviceWrite(size_t size, double duration);
     void logDeviceKernel(size_t size, double duration);

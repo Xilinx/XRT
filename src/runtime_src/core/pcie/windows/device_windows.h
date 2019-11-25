@@ -22,7 +22,8 @@
 #include "common/device_pcie.h"
 
 namespace xrt_core {
-class device_windows : public xrt_core::device_pcie {
+  
+class device_windows : public device_pcie {
   public:
     struct IOCTLEntry {
       uint64_t IOCTLValue;
@@ -32,7 +33,8 @@ class device_windows : public xrt_core::device_pcie {
 
   protected:
     virtual void read_device_dma_stats(uint64_t _deviceID, boost::property_tree::ptree &_pt) const;
-    virtual uint64_t get_total_devices() const;
+
+    virtual std::pair<uint64_t, uint64_t> get_total_devices() const;
     virtual void query_device(uint64_t _deviceID, QueryRequest _eQueryRequest, const std::type_info & _typeInfo, boost::any &_returnValue) const;
 
   public:
@@ -40,9 +42,10 @@ class device_windows : public xrt_core::device_pcie {
     virtual ~device_windows();
 
   private:
-    device_windows(const device_windows&);
-    device_windows& operator=(const device_windows&);
+    device_windows(const device_windows&) = delete;
+    device_windows& operator=(const device_windows&) = delete;
 };
-}
+
+} // xrt_core
 
 #endif 

@@ -27,7 +27,21 @@
 #include <sstream>
 #include <cstdio>
 
+#ifdef _WIN32
+#include<process.h>
+#endif
+
 namespace xdp {
+
+void setenvLinuxNWin(const char* envVar, const char* val, int overwrite)
+{
+#ifdef _WIN32
+  (void)overwrite;
+  _putenv_s(envVar, val);
+#else
+  setenv(envVar, val, overwrite);
+#endif
+}
 
 void
 cb_debug_reset (const axlf* xclbin)
@@ -38,8 +52,13 @@ cb_debug_reset (const axlf* xclbin)
 RTDebug::RTDebug() : uid(-1), pid(-1),
       	       sdxDirectory(""), jsonFile(""), dwarfFile("")
 {
+#ifdef _WIN32
+  uid = 0;
+  pid = _getpid();
+#else
   uid = getuid() ;
   pid = getpid() ;
+#endif
 
   // On start up, check to see if the directory /tmp/sdx/$uid exists.
   //  If it does, then the sdx_server is running, so we have to
@@ -182,14 +201,14 @@ void RTDebug::setEnvironment()
 {
   std::stringstream convert ;
   convert << pid ;
-  setenv("XILINX_HOST_CODE_PID", convert.str().c_str(), 1) ;
+  setenvLinuxNWin("XILINX_HOST_CODE_PID", convert.str().c_str(), 1) ;
   if (dwarfFile != "")
   {
-    setenv("XILINX_DWARF_FILE", dwarfFile.c_str(), 1) ;
+    setenvLinuxNWin("XILINX_DWARF_FILE", dwarfFile.c_str(), 1) ;
   }
   if (jsonFile != "")
   {
-    setenv("XILINX_JSON_FILE", jsonFile.c_str(), 1) ;
+    setenvLinuxNWin("XILINX_JSON_FILE", jsonFile.c_str(), 1) ;
   }
 }
 

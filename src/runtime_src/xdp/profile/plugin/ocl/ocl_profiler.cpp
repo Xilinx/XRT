@@ -17,14 +17,11 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <iomanip>
 #include <chrono>
-
-#include <sys/mman.h>
 
 #include "ocl_profiler.h"
 #include "xdp/profile/config.h"
@@ -36,6 +33,12 @@
 #include "xrt/util/config_reader.h"
 #include "xrt/util/message.h"
 #include "xclperf.h"
+
+
+#ifdef _WIN32
+#pragma warning (disable : 4996)
+/* Disable warning during Windows compilation for use of std::getenv */
+#endif
 
 
 namespace xdp {
@@ -145,7 +148,7 @@ namespace xdp {
   }
 
   // Get timestamp difference in usec (used for debug)
-  uint32_t
+  uint64_t
   OCLProfiler::getTimeDiffUsec(std::chrono::steady_clock::time_point start,
                             std::chrono::steady_clock::time_point end)
   {
@@ -282,7 +285,7 @@ namespace xdp {
       // Get/set clock freqs
       double deviceClockMHz = xdevice->getDeviceClock().get();
       if (deviceClockMHz > 0) {
-        setKernelClockFreqMHz(device->get_unique_name(), deviceClockMHz );
+        setKernelClockFreqMHz(device->get_unique_name(), static_cast<unsigned int>(deviceClockMHz) );
         profileMgr->setDeviceClockFreqMHz( deviceClockMHz );
       }
 
@@ -550,9 +553,9 @@ namespace xdp {
         }
 
         // Record the counter data 
-        struct timespec now;
-        int err = clock_gettime(CLOCK_MONOTONIC, &now);
-        uint64_t timeNsec = (err < 0) ? 0 : (uint64_t) now.tv_sec * 1000000000UL + (uint64_t) now.tv_nsec;
+        auto timeSinceEpoch = (std::chrono::steady_clock::now()).time_since_epoch();
+        auto value = std::chrono::duration_cast<std::chrono::nanoseconds>(timeSinceEpoch);
+        uint64_t timeNsec = value.count();
 
         // Create unique name for device since currently all devices are called fpga0
         std::string device_name = device->get_unique_name();
@@ -756,8 +759,6 @@ namespace xdp {
 
     dInt->resetTS2MM();
 
-    auto addr = xrtDevice->map(mDDRBufferForTrace);
-    munmap(addr, mDDRBufferSz);
     xrtDevice->free(mDDRBufferForTrace);
 
     mDDRBufferForTrace = nullptr;
@@ -905,7 +906,7 @@ namespace xdp {
 
   void cb_get_device_counters(bool firstReadAfterProgram, bool forceReadCounters)
   {
-    OCLProfiler::Instance()->getDeviceCounters(firstReadAfterProgram, firstReadAfterProgram);
+    OCLProfiler::Instance()->getDeviceCounters(firstReadAfterProgram, forceReadCounters);
   }
 
   void cb_start_device_profiling(size_t numComputeUnits)

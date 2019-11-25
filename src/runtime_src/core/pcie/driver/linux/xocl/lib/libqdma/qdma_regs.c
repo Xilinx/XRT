@@ -443,9 +443,7 @@ int qdma_device_version_info(unsigned long dev_hndl,
 static int qdma_device_num_pfs_get(struct xlnx_dma_dev *xdev)
 {
 	int count = 0;
-	int reg_val = 0;
-
-	reg_val = __read_reg(xdev, QDMA_REG_GLBL_PF_BARLITE_INT);
+	unsigned int reg_val = __read_reg(xdev, QDMA_REG_GLBL_PF_BARLITE_INT);
 
 	if ((reg_val & PF_BARLITE_INT_0_MASK) >> PF_BARLITE_INT_0_SHIFT)
 		count++;

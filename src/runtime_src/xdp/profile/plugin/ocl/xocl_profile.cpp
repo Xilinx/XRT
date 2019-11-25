@@ -21,7 +21,6 @@
 #include "xdp/profile/device/tracedefs.h"
 #include "xrt/device/hal.h"
 #include "xclbin.h"
-#include <sys/mman.h>
 #include <regex>
 
 
@@ -149,7 +148,7 @@ void get_cu_done(const xrt::command* cmd, const xocl::execution_context* ctx)
 namespace platform {
 
 void
-init(key k)
+init(key )
 {
   auto mgr = OCLProfiler::Instance()->getProfileManager();
   //mgr->setLoggingTraceUsec(0);
@@ -381,7 +380,7 @@ get_ddr_bank_count(key k, const std::string& deviceName)
 }
 
 bool 
-isValidPerfMonTypeTrace(key k, xclPerfMonType type)
+isValidPerfMonTypeTrace(key , xclPerfMonType type)
 {
   auto profiler = OCLProfiler::Instance();
   return ((profiler->deviceTraceProfilingOn() && (type == XCL_PERF_MON_MEMORY || type == XCL_PERF_MON_STR))
@@ -389,7 +388,7 @@ isValidPerfMonTypeTrace(key k, xclPerfMonType type)
 }
 
 bool 
-isValidPerfMonTypeCounters(key k, xclPerfMonType type)
+isValidPerfMonTypeCounters(key , xclPerfMonType type)
 {
   auto profiler = OCLProfiler::Instance();
   return ((profiler->deviceCountersProfilingOn() && (type == XCL_PERF_MON_MEMORY || type == XCL_PERF_MON_STR))
@@ -428,7 +427,7 @@ uint64_t get_ts2mm_buf_size() {
       } else {
         bytes = std::stoull(pieces_match[1]);
       }
-    } catch (const std::exception& ex) {
+    } catch (const std::exception& ) {
       // User specified number cannot be parsed
       xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_BUFSIZE_DEF);
     }
@@ -510,7 +509,7 @@ getProfileSlotProperties(key k, xclPerfMonType type, unsigned int index)
 }
 
 cl_int
-startTrace(key k, xclPerfMonType type, size_t numComputeUnits)
+startTrace(key k, xclPerfMonType type, size_t /*numComputeUnits*/)
 {
   auto device = k;
   auto xdevice = device->get_xrt_device();
@@ -537,7 +536,7 @@ startTrace(key k, xclPerfMonType type, size_t numComputeUnits)
   // Get/set clock freqs
   double deviceClockMHz = xdevice->getDeviceClock().get();
   if (deviceClockMHz > 0) {
-    profiler->setKernelClockFreqMHz(device->get_unique_name(), deviceClockMHz );
+    profiler->setKernelClockFreqMHz(device->get_unique_name(), static_cast<unsigned int>(deviceClockMHz) );
     profileMgr->setDeviceClockFreqMHz( deviceClockMHz );
   }
 
@@ -707,9 +706,11 @@ logCounters(key k, xclPerfMonType type, bool firstReadAfterProgram, bool forceRe
     //warning : reading from the accelerator device only
     //read the device profile
     xdevice->readCounters(type, data->mCounterResults);
-    struct timespec now;
-    int err = clock_gettime(CLOCK_MONOTONIC, &now);
-    uint64_t timeNsec = (err < 0) ? 0 : (uint64_t) now.tv_sec * 1000000000UL + (uint64_t) now.tv_nsec;
+
+    // Record counter data
+    auto timeSinceEpoch = (std::chrono::steady_clock::now()).time_since_epoch();
+    auto value = std::chrono::duration_cast<std::chrono::nanoseconds>(timeSinceEpoch);
+    uint64_t timeNsec = value.count();
     
     // Create unique name for device since currently all devices are called fpga0
     std::string device_name = device->get_unique_name();

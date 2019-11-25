@@ -240,6 +240,9 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_VSEC_FLASH_CONTROLER   0x51
 #define XOCL_VSEC_PLATFORM_INFO     0x52
 #define XOCL_VSEC_MAILBOX           0x53
+#define XOCL_VSEC_PLAT_RECOVERY     0x0
+#define XOCL_VSEC_PLAT_1RP          0x1
+#define XOCL_VSEC_PLAT_2RP          0x2
 
 #define XOCL_MAXNAMELEN	64
 
@@ -1240,6 +1243,8 @@ int xocl_fdt_get_next_prop_by_name(xdev_handle_t xdev_hdl, void *blob,
     int offset, char *name, const void **prop, int *prop_len);
 int xocl_fdt_check_uuids(xdev_handle_t xdev_hdl, const void *blob,
 		        const void *subset_blob);
+int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
+		struct xocl_subdev **subdevs);
 const struct axlf_section_header *xocl_axlf_section_header(
 	xdev_handle_t xdev_hdl, const struct axlf *top,
 	enum axlf_section_kind kind);

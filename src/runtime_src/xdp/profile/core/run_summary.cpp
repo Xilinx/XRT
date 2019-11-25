@@ -23,6 +23,12 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
+#ifdef _WIN32
+#pragma warning(disable : 4996)
+/* Disable warning for use of "getenv" */
+#endif
+
+
 RunSummary::RunSummary()
     : mSystemMetadata("")
     , mXclbinContainerName("")

@@ -43,7 +43,13 @@
 #include <map>
 #include <sstream>
 #include <fstream>
+#include <limits>
 #include "xocl/api/plugin/xdp/appdebug.h"
+
+#ifdef _WIN32
+#pragma warning (disable : 4996)
+/* Disable warning for use of getenv */
+#endif
 
 namespace {
 static const int debug_ip_layout_max_size = 65536;
@@ -105,7 +111,7 @@ std::string event_dependencies_to_string(std::vector<xocl::event*>&& dependencie
     try {
       status_str = event_commandstatus_to_string(e->try_get_status());
     }
-    catch (const xocl::error & ex) {
+    catch (const xocl::error & ) {
       status_str = "Not Available";
     }
     sstr << "[" << std::hex << (cl_event)e << ", " << std::dec << e->get_uid() << ", " << status_str << ", " <<
@@ -832,7 +838,7 @@ clGetMemInfo(cl_mem aMem) {
   catch (const xocl::error& ex) {
     //locked, cannot provide addr/bank information
 
-    mdv = new clmem_debug_view(aMem, xoclMem->get_uid(), "Unknown", -1,
+    mdv = new clmem_debug_view(aMem, xoclMem->get_uid(), "Unknown", std::numeric_limits<uint64_t>::max(),
                              xoclMem->get_size(), xoclMem->get_host_ptr());
 
     auto adv = new app_debug_view <clmem_debug_view> (mdv, [mdv] () {delete mdv;}, true, ex.what());
@@ -1159,8 +1165,8 @@ aim_debug_view::getstring(int aVerbose, int aJSONFormat) {
   }
   else {
     sstr<< "Performance Monitor Counters\n";
-    int col1 = std::max(widths.first, strlen("Region or CU")) + 4;
-    int col2 = std::max(widths.second, strlen("Type or Port"));
+    auto col1 = std::max(widths.first, strlen("Region or CU")) + 4;
+    auto col2 = std::max(widths.second, strlen("Type or Port"));
 
     sstr << std::left
               << std::setw(col1) << "Region or CU"
@@ -1332,8 +1338,8 @@ asm_debug_view::getXGDBString(bool aVerbose) {
     maxSlaveWidth = std::max(ConnectionNames[i].second.length(), maxSlaveWidth);
   }
 
-  size_t col1 = std::max(strlen("Stream Master"), maxMasterWidth) + 4 ;
-  size_t col2 = std::max(strlen("Stream Slave"), maxSlaveWidth) ;
+  auto col1 = std::max(strlen("Stream Master"), maxMasterWidth) + 4 ;
+  auto col2 = std::max(strlen("Stream Slave"), maxSlaveWidth) ;
 
   sstr << "Streaming Performance Monitor Counters\n" ;
   sstr << std::left
@@ -1728,8 +1734,8 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
     sstr << "]";
   }
   else {
-    int col1 = std::max(widths.first, strlen("CU Name")) + 4;
-    int col2 = std::max(widths.second, strlen("AXI Portname"));
+    auto col1 = std::max(widths.first, strlen("CU Name")) + 4;
+    auto col2 = std::max(widths.second, strlen("AXI Portname"));
 
     sstr << "Light-weight AXI protocol checker status\n";
     for (unsigned int i = 0; i<NumSlots; ++i) {
