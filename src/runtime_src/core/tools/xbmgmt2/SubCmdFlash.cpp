@@ -37,6 +37,29 @@ static const unsigned int registerResult =
 
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
+unsigned int bdf2index() {
+  //this should be placed in xbmgmt common
+  return 0;
+}
+int scanDevices() {
+  return 0;
+}
+
+int autoFlash() {
+  return 0;
+}
+
+int resetShell() {
+  return 0;
+}
+
+int updateShell() {
+      return 0;
+}
+
+int updateSC() {
+  return 0;
+}
 
 
 
@@ -59,12 +82,9 @@ int subCmdFlash(const std::vector<std::string> &_options)
   bool help = false;
   bool scan = false;
   bool reset = false;
-  std::string bdf = "";
+  bool update = false;
   bool shell = false;
   bool sc_firmware = false;
-  bool update = false;
-  bool force = false;
-  std::string file_path = "";
   
 
   po::options_description flashDesc("flash options");
@@ -73,25 +93,27 @@ int subCmdFlash(const std::vector<std::string> &_options)
     ("scan", boost::program_options::bool_switch(&scan), "Information about the card")
     ("factory_reset", boost::program_options::bool_switch(&reset), "Reset to golden image")
     ("update", boost::program_options::bool_switch(&update), "Update the card with the installed shell")
-    ("force", boost::program_options::bool_switch(&force), "force") //option
-    ("card", boost::program_options::value<std::string>(&bdf), "bdf of the card") //option
   ;
 
   po::options_description expertsOnlyDesc("experts only");
   expertsOnlyDesc.add_options()
     ("shell", boost::program_options::bool_switch(&shell), "Flash platform from source")
     ("sc_firmware", boost::program_options::bool_switch(&sc_firmware), "Flash sc firmware from source")
-    ("path", boost::program_options::value<std::string>(&file_path), "path of shell or sc_firmware files") //option
   ;
 
   po::options_description allOptions("");
   allOptions.add(flashDesc).add(expertsOnlyDesc);
 
+  // Parse the command line
+  po::parsed_options parsed = po::command_line_parser(_options).
+    options(allOptions).         // Global options
+    allow_unregistered().           // Allow for unregistered options (needed for options)
+    run();                          // Parse the options
+
   // Parse sub-command ...
   po::variables_map vm;
-
   try {
-    po::store(po::command_line_parser(_options).options(allOptions).run(), vm);
+    po::store(parsed, vm); //Can throw
     po::notify(vm); // Can throw
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
@@ -100,40 +122,201 @@ int subCmdFlash(const std::vector<std::string> &_options)
     // Re-throw exception
     throw;
   }
-  // Check to see if help was requested
+  // Check to see if help was requested or no command was found
   if (help == true)  {
     std::cout << allOptions << std::endl;
     return 0;
   }
 
+  //prep data
+  std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
+
   // -- Now process the subcommand --------------------------------------------
-  XBU::verbose(XBU::format("  Card: %s", bdf.c_str()));
   XBU::verbose(XBU::format("  Scan: %ld", scan));
   XBU::verbose(XBU::format("  Shell: %ld", shell));
   XBU::verbose(XBU::format("  sc_firmware: %ld", sc_firmware));
   XBU::verbose(XBU::format("  Reset: %ld", reset));
   XBU::verbose(XBU::format("  Update: %ld", update));
-  XBU::verbose(XBU::format("  Force: %ld", force));
-  XBU::verbose(XBU::format("  File path: %s", file_path.c_str()));
 
-
-
-  XBU::error("COMMAND BODY NOT IMPLEMENTED.");
-  // TODO: Put working code here
   if (scan) {
-      std::cout << "Call xbmgmt flash --scan\n"; //parse verbose|json??
-      return registerResult;
+    bool verbose, json;
+    XBU::verbose("Sub command: --scan");
+
+    po::options_description scanDesc("scan options");
+    scanDesc.add_options()
+      (",v", boost::program_options::bool_switch(&verbose), "verbose")
+      ("json", boost::program_options::bool_switch(&json), "json")
+    ;
+    // -- Now process the subcommand options ----------------------------------
+    po::variables_map option_vm;
+    try {
+      po::store(po::command_line_parser(opts).options(scanDesc).run(), option_vm);
+      po::notify(option_vm); // Can throw
+    } catch (po::error& e) {
+      std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
+      std::cerr << scanDesc << std::endl;
+    // Re-throw exception
+    throw;
+    }
+
+    // -- Now process the subcommand option-------------------------------
+    XBU::verbose(XBU::format("  Verbose: %ld", verbose));
+    XBU::verbose(XBU::format("  Json: %ld", json));
+
+    if (verbose && json) {
+      XBU::error("Please specify only one option");
+      return 1;
+    }
+    std::cout << "TO_DO implement xbmgmt flash --scan";
+
+    return scanDevices(); 
   }
 
   if (update) {
-    //   if (shell.empty() && !id.empty()) //--shell name [--id id]
-    //     return RC_ERROR_IN_COMMAND_LINE;
-      std::cout << "Call xbmgmt update\n"; //call autoFlash
+    //[--shell name [--id id]] [--card bdf] [--force]
+    bool force;
+    std::string bdf;
+    std::string name;
+    std::string id;
+
+    XBU::verbose("Sub command: --update");
+
+    po::options_description updateDesc("update options");
+    updateDesc.add_options()
+      ("force", boost::program_options::bool_switch(&force), "force")
+      ("card", boost::program_options::value<std::string>(&bdf), "bdf of the card")
+      ("shell_name", boost::program_options::value<std::string>(&name), "name of shell")
+      ("id", boost::program_options::value<std::string>(&id), "id of the card")
+    ;
+    
+    // -- Now process the subcommand options ----------------------------------
+    po::variables_map option_vm;
+    try {
+      po::store(po::command_line_parser(opts).options(updateDesc).run(), option_vm);
+      po::notify(option_vm); // Can throw
+    } catch (po::error& e) {
+      std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
+      std::cerr << updateDesc << std::endl;
+    // Re-throw exception
+    throw;
+    }
+
+    // -- Now process the subcommand option-------------------------------
+    XBU::verbose(XBU::format("  Force: %ld", force));
+    XBU::verbose(XBU::format("  Card: %s", bdf.c_str()));
+    XBU::verbose(XBU::format("  Shell_name: %s", name.c_str()));
+    XBU::verbose(XBU::format("  Card id: %s", id.c_str()));
+
+    if (name.empty() && !id.empty()){
+      XBU::error("Please specify the shell");
+      return 1;
+    }
+
+    std::cout << "TO_DO implement xbmgmt flash --update";
+
+    return autoFlash();
   }
 
   if (reset) {
-      std::cout << "Call xbmgmt reset\n";
+    // --factory_reset [--card bdf]
+    std::string bdf;
 
+    XBU::verbose("Sub command: --factory_reset");
+
+    po::options_description resetDesc("factory_reset options");
+    resetDesc.add_options()
+      ("card", boost::program_options::value<std::string>(&bdf), "bdf of the card");
+
+    po::variables_map option_vm;
+    try {
+      po::store(po::command_line_parser(opts).options(resetDesc).run(), option_vm);
+      po::notify(option_vm); // Can throw
+    } catch (po::error& e) {
+      std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
+      std::cerr << resetDesc << std::endl;
+    // Re-throw exception
+    throw;
+    }
+
+    // -- Now process the subcommand option-------------------------------
+    XBU::verbose(XBU::format("  Card: %s", bdf.c_str()));
+    std::cout << "TO_DO implement xbmgmt flash --factory_reset";
+    return resetShell();
+  }
+
+  if (shell) {
+    // --shell --path file --card bdf [--type flash_type]
+    std::string bdf;
+    std::string file;
+    std::string flash_type;
+
+    XBU::verbose("Sub command: --shell");
+
+    po::options_description shellDesc("shell options");
+    shellDesc.add_options()
+      ("path", boost::program_options::value<std::string>(&file), "path of shell file")
+      ("card", boost::program_options::value<std::string>(&bdf), "bdf of the card")
+      ("type", boost::program_options::value<std::string>(&flash_type), "flash_type")
+    ;
+
+    po::variables_map option_vm;
+    try {
+      po::store(po::command_line_parser(opts).options(shellDesc).run(), option_vm);
+      po::notify(option_vm); // Can throw
+    } catch (po::error& e) {
+      std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
+      std::cerr << shellDesc << std::endl;
+    // Re-throw exception
+    throw;
+    }
+
+    // -- Now process the subcommand option-------------------------------
+    XBU::verbose(XBU::format("  Card: %s", bdf.c_str()));
+    XBU::verbose(XBU::format("  File: %s", file.c_str()));
+    XBU::verbose(XBU::format("  Flash_type: %s", flash_type.c_str()));
+    if (file.empty() || bdf2index() == UINT_MAX) {
+      XBU::error("Please specify the shell file path and the device bdf");
+      std::cerr << shellDesc << std::endl;
+      return 1;
+    }
+    std::cout << "TO_DO implement xbmgmt flash --shell";
+    return updateShell();
+  }
+
+  if (sc_firmware) {
+    //--sc_firmware --path file --card bdf
+    std::string bdf;
+    std::string file;
+
+    XBU::verbose("Sub command: --sc_firmware");
+
+    po::options_description scDesc("sc_firmware options");
+    scDesc.add_options()
+      ("path", boost::program_options::value<std::string>(&file), "path of sc firmware file")
+      ("card", boost::program_options::value<std::string>(&bdf), "bdf of the card")
+    ;
+
+    po::variables_map option_vm;
+    try {
+      po::store(po::command_line_parser(opts).options(scDesc).run(), option_vm);
+      po::notify(option_vm); // Can throw
+    } catch (po::error& e) {
+      std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
+      std::cerr << scDesc << std::endl;
+    // Re-throw exception
+    throw;
+    }
+
+    // -- Now process the subcommand option-------------------------------
+    XBU::verbose(XBU::format("  Card: %s", bdf.c_str()));
+    XBU::verbose(XBU::format("  Sc_file: %s", file.c_str()));
+    if (file.empty() || bdf2index() == UINT_MAX) {
+      XBU::error("Please specify the sc file path and the device bdf");
+      std::cerr << scDesc << std::endl;
+      return 1;
+    }
+    std::cout << "TO_DO implement xbmgmt flash --sc_firmware";
+    return updateSC();
   }
 
   return registerResult;

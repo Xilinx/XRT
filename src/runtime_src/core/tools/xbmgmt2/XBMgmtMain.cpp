@@ -60,15 +60,7 @@ static void printHelp(po::options_description _optionDescription)
   // std::cout << "Run xbmgmt --help <subcommand> for detailed help of each subcommand\n";
 
 }
-
-// static void sudoOrDie()
-// {
-//     const char* SudoMessage = "ERROR: root privileges required.";
-//     if ((getuid() == 0) || (geteuid() == 0))
-//         return;
-//     std::cout << SudoMessage << std::endl;
-//     exit(-EPERM);
-// }
+//to-do: check administrator
 
 // ------ Program entry point -------------------------------------------------
 ReturnCodes main_(int argc, char** argv) {
@@ -94,7 +86,7 @@ ReturnCodes main_(int argc, char** argv) {
   po::positional_options_description positionalCommand;
   positionalCommand.
     add("command", 1 /* max_count */).
-    add("subArguments", -1 /* Unlimited max_count */);
+    add("subArguments", 1 /* Unlimited max_count */);
 
   // Parse the command line
   po::parsed_options parsed = po::command_line_parser(argc, argv).
@@ -163,7 +155,6 @@ ReturnCodes main_(int argc, char** argv) {
       opts.push_back("--help");
   }
 
-  // sudoOrDie();
   // Call the registered function for this command
   if (pSubCmdEntry->callBackFunction != nullptr) {
     pSubCmdEntry->callBackFunction(opts);
