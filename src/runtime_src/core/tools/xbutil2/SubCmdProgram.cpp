@@ -75,7 +75,7 @@ int subCmdProgram(const std::vector<std::string> &_options)
     po::store(po::command_line_parser(_options).options(programDesc).run(), vm);
     po::notify(vm); // Can throw
   } catch (po::error& e) {
-    std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
+    xrt_core::send_exception_message(e.what(), "XBUTIL");
     std::cerr << programDesc << std::endl;
 
     // Re-throw exception
@@ -87,6 +87,9 @@ int subCmdProgram(const std::vector<std::string> &_options)
     std::cout << programDesc << std::endl;
     return 0;
   }
+
+  if (xclbin.empty())
+    throw xrt_core::error("Please specify xclbin file with '-p' switch");
 
   // -- Now process the subcommand --------------------------------------------
   XBU::verbose(XBU::format("  Card: %ld", card));
