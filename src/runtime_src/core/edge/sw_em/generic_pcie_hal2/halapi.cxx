@@ -27,15 +27,34 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   info.mMagic = 0X586C0C6C;
   info.mHALMajorVersion = XCLHAL_MAJOR_VER;
   info.mHALMinorVersion = XCLHAL_MINOR_VER;
-  info.mVendorId = 0x10ee;
-  info.mDeviceId = 0x0000;
-  info.mSubsystemVendorId = 0x0000;
-  info.mDeviceVersion = 0x0000;
+  info.mMinTransferSize = 32;
+  info.mVendorId = 0x10ee;   // TODO: UKP
+  info.mDeviceId = 0xffff;   // TODO: UKP
+  info.mSubsystemId = 0xffff;
+  info.mSubsystemVendorId = 0xffff;
+  info.mDeviceVersion = 0xffff;
   info.mDDRSize = xclemulation::MEMSIZE_4G;
   info.mDataAlignment = DDR_BUFFER_ALIGNMENT;
   info.mDDRBankCount = 1;
   for(unsigned int i = 0; i < 4 ;i++)
     info.mOCLFrequency[i] = 200;
+
+#if defined(__aarch64__)
+  info.mNumCDMA = 1;
+#else
+  info.mNumCDMA = 0;
+#endif
+
+  std::string deviceName("edge");
+  std::ifstream mVBNV;
+  mVBNV.open("/etc/xocl.txt");
+  if (mVBNV.is_open()) {
+    mVBNV >> deviceName;
+  }
+  mVBNV.close();
+  std::size_t length = deviceName.copy(info.mName, deviceName.length(), 0);
+  info.mName[length] = '\0';
+
   std::list<xclemulation::DDRBank> DDRBankList;
   xclemulation::DDRBank bank;
   bank.ddrSize = xclemulation::MEMSIZE_4G;
