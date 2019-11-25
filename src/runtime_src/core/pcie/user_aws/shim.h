@@ -111,22 +111,8 @@ public:
   size_t xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size);
   size_t xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size);
 
-  // Performance monitoring
-  // Control
   double xclGetDeviceClockFreqMHz();
-  double xclGetReadMaxBandwidthMBps();
-  double xclGetWriteMaxBandwidthMBps();
-  void xclSetProfilingNumberSlots(xclPerfMonType type, uint32_t numSlots);
-  size_t xclPerfMonClockTraining(xclPerfMonType type);
-  uint32_t getPerfMonProperties(xclPerfMonType type, uint32_t slotnum);
-  uint32_t getPerfMonNumberSlots(xclPerfMonType type);
-  void getPerfMonSlotName(xclPerfMonType type, uint32_t slotnum,
-                          char* slotName, uint32_t length);
-  void xclPerfMonConfigureDataflow(xclPerfMonType type, unsigned *ip_config);
-  // Counters
-  size_t xclPerfMonStartCounters(xclPerfMonType type);
-  size_t xclPerfMonStopCounters(xclPerfMonType type);
-  size_t xclPerfMonReadCounters(xclPerfMonType type, xclCounterResults& counterResults);
+
   //debug related
   uint32_t getCheckerNumberSlots(int type);
   uint32_t getIPCountAddrNames(int type, uint64_t *baseAddress, std::string * portNames, 
@@ -136,13 +122,6 @@ public:
   size_t xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* streamingResult);
   size_t xclDebugReadStreamingCheckers(xclDebugStreamingCheckersResults* streamingCheckerResult);
   size_t xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult);
-  void readDebugIpLayout();
-
-  // Trace
-  size_t xclPerfMonStartTrace(xclPerfMonType type, uint32_t startTrigger);
-  size_t xclPerfMonStopTrace(xclPerfMonType type);
-  uint32_t xclPerfMonGetTraceCount(xclPerfMonType type);
-  size_t xclPerfMonReadTrace(xclPerfMonType type, xclTraceResultsVector& traceVector);
 
   // APIs using sysfs information
   int xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size);
@@ -233,25 +212,8 @@ private:
 
 
   // Performance monitoring helper functions
-  bool isDSAVersion(unsigned majorVersion, unsigned minorVersion, bool onlyThisVersion);
-  unsigned getBankCount();
   signed   cmpMonVersions(unsigned major1, unsigned minor1, unsigned major2, unsigned minor2);
-  uint64_t getHostTraceTimeNsec();
-  uint64_t getPerfMonBaseAddress(xclPerfMonType type, uint32_t slotNum);
-  uint64_t getPerfMonFifoBaseAddress(xclPerfMonType type, uint32_t fifonum);
-  uint64_t getPerfMonFifoReadBaseAddress(xclPerfMonType type, uint32_t fifonum);
-  uint64_t getTraceFunnelAddress(xclPerfMonType type);
-  uint32_t getPerfMonNumberSamples(xclPerfMonType type);
-  uint32_t getPerfMonByteScaleFactor(xclPerfMonType type);
-  uint8_t  getPerfMonShowIDS(xclPerfMonType type);
-  uint8_t  getPerfMonShowLEN(xclPerfMonType type);
-  uint32_t getPerfMonSlotStartBit(xclPerfMonType type, uint32_t slotnum);
-  uint32_t getPerfMonSlotDataWidth(xclPerfMonType type, uint32_t slotnum);
-  size_t resetFifos(xclPerfMonType type);
-  uint32_t bin2dec(std::string str, int start, int number);
-  uint32_t bin2dec(const char * str, int start, int number);
-  std::string dec2bin(uint32_t n);
-  std::string dec2bin(uint32_t n, unsigned bits);
+
   static std::string getDSAName(unsigned short deviceId, unsigned short subsystemId);
 
 private:
@@ -275,28 +237,6 @@ private:
   uint32_t mStallProfilingNumberSlots;
   uint32_t mStreamProfilingNumberSlots;
   std::string mDevUserName;
-
-  // Information extracted from platform linker
-  bool mIsDebugIpLayoutRead = false;
-  bool mIsDeviceProfiling = false;
-  uint64_t mPerfMonFifoCtrlBaseAddress;
-  uint64_t mPerfMonFifoReadBaseAddress;
-  uint64_t mTraceFunnelAddress = 0;
-  uint64_t mPerfMonBaseAddress[XAIM_MAX_NUMBER_SLOTS]     = {0};
-  uint64_t mAccelMonBaseAddress[XAM_MAX_NUMBER_SLOTS]    = {0};
-  uint64_t mStreamMonBaseAddress[XASM_MAX_NUMBER_SLOTS]  = {0};
-  std::string mPerfMonSlotName[XAIM_MAX_NUMBER_SLOTS]     = {};
-  std::string mAccelMonSlotName[XAM_MAX_NUMBER_SLOTS]    = {};
-  std::string mStreamMonSlotName[XASM_MAX_NUMBER_SLOTS]  = {};
-  uint8_t mPerfmonProperties[XAIM_MAX_NUMBER_SLOTS]       = {0};
-  uint8_t mAccelmonProperties[XAM_MAX_NUMBER_SLOTS]      = {0};
-  uint8_t mStreammonProperties[XASM_MAX_NUMBER_SLOTS]    = {0};
-  uint8_t mPerfmonMajorVersions[XAIM_MAX_NUMBER_SLOTS]    = {0};
-  uint8_t mAccelmonMajorVersions[XAM_MAX_NUMBER_SLOTS]   = {0};
-  uint8_t mStreammonMajorVersions[XASM_MAX_NUMBER_SLOTS] = {0};
-  uint8_t mPerfmonMinorVersions[XAIM_MAX_NUMBER_SLOTS]    = {0};
-  uint8_t mAccelmonMinorVersions[XAM_MAX_NUMBER_SLOTS]   = {0};
-  uint8_t mStreammonMinorVersions[XASM_MAX_NUMBER_SLOTS] = {0};
 
   char *mUserMap;
   std::ofstream mLogStream;

@@ -48,7 +48,7 @@ namespace awsbwhal {
   // ****************
   // Helper functions
   // ****************
-
+#if 0
   void AwsXcl::readDebugIpLayout()
   {
     if (mIsDebugIpLayoutRead)
@@ -115,7 +115,7 @@ namespace awsbwhal {
     // Only need to read it once
     mIsDebugIpLayoutRead = true;
   }
-
+#endif
   // Gets the information about the specified IP from the sysfs debug_ip_table.
   // The IP types are defined in xclbin.h
   uint32_t AwsXcl::getIPCountAddrNames(int type, uint64_t *baseAddress, std::string * portNames,
