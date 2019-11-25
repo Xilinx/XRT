@@ -60,7 +60,7 @@ static DEFINE_MUTEX(xdev_mutex);
 #endif
 
 /* extern declarations */
-void qdma_device_attributes_get(struct xlnx_dma_dev *xdev);
+int qdma_device_attributes_get(struct xlnx_dma_dev *xdev);
 int qdma_device_init(struct xlnx_dma_dev *xdev);
 void qdma_device_cleanup(struct xlnx_dma_dev *xdev);
 
@@ -786,7 +786,9 @@ int qdma_device_open(const char *mod_name, struct qdma_dev_conf *conf,
 
 #ifndef __QDMA_VF__
 	/* get the device attributes */
-	qdma_device_attributes_get(xdev);
+	rv = qdma_device_attributes_get(xdev);
+	if (rv < 0)
+		goto unmap_bars;
 
 	if (!xdev->mm_mode_en && !xdev->st_mode_en) {
 		pr_info("None of the modes ( ST or MM) are enabled\n");

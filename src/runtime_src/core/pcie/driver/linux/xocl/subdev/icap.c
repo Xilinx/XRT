@@ -3041,6 +3041,22 @@ static ssize_t sec_level_store(struct device *dev,
 }
 static DEVICE_ATTR_RW(sec_level);
 
+static ssize_t reader_cnt_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
+	u64 val = 0;
+
+	mutex_lock(&icap->icap_lock);
+
+	val = icap->reader_ref;
+
+	mutex_unlock(&icap->icap_lock);
+
+	return sprintf(buf, "%llu\n", val);
+}
+static DEVICE_ATTR_RO(reader_cnt);
+
 static struct attribute *icap_attrs[] = {
 	&dev_attr_clock_freqs.attr,
 	&dev_attr_idcode.attr,
@@ -3048,6 +3064,7 @@ static struct attribute *icap_attrs[] = {
 	&dev_attr_sec_level.attr,
 	&dev_attr_clock_freqs_max.attr,
 	&dev_attr_clock_freqs_min.attr,
+	&dev_attr_reader_cnt.attr,
 	NULL,
 };
 

@@ -804,6 +804,14 @@ done:
 
     return m_locked = true;
   }
+
+  bool
+  unlock_device()
+  {
+    m_locked = false;
+    return true;
+  }
+
 }; // struct shim
 
 shim*
@@ -1047,6 +1055,15 @@ xclLockDevice(xclDeviceHandle handle)
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclLockDevice()");
   auto shim = get_shim_object(handle);
   return shim->lock_device() ? 0 : 1;
+}
+
+int
+xclUnlockDevice(xclDeviceHandle handle)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclUnlockDevice()");
+  auto shim = get_shim_object(handle);
+  return shim->unlock_device() ? 0 : 1;
 }
 
 ssize_t

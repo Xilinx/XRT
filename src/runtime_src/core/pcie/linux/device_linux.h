@@ -18,7 +18,6 @@
 #define DEVICE_LINUX_H
 
 // Please keep eternal include file dependencies to a minimum
-#include <boost/functional/factory.hpp>
 #include "common/device_pcie.h"
 
 namespace xrt_core {
@@ -34,7 +33,7 @@ class device_linux : public xrt_core::device_pcie {
     const SysDevEntry & get_sysdev_entry( QueryRequest _eQueryRequest) const;
 
   protected:
-    virtual uint64_t get_total_devices() const;
+    virtual std::pair<uint64_t, uint64_t> get_total_devices() const;
     virtual void query_device(uint64_t _deviceID, QueryRequest _eQueryRequest, const std::type_info & _typeInfo, boost::any &_returnValue) const;
 
   public:
@@ -42,8 +41,8 @@ class device_linux : public xrt_core::device_pcie {
     virtual ~device_linux();
 
   private:
-    device_linux(const device_linux&);
-    device_linux& operator=(const device_linux&);
+    device_linux(const device_linux&) = delete;
+    device_linux& operator=(const device_linux&) = delete;
 };
 }
 
