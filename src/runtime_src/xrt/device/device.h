@@ -965,7 +965,7 @@ loadDevices(UnaryPredicate pred)
     if (pred(hal->getDriverLibraryName()))
       devices.emplace_back(std::move(hal));
   }
-  return std::move(devices);
+  return devices;
 }
 
 /**

@@ -38,7 +38,7 @@ XBDatabase::create_complete_device_tree(boost::property_tree::ptree & _pt)
   _pt.clear();  
 
   // Get the handle to the devices
-  const xrt_core::device_core &CoreDevice = xrt_core::device_core::get_handle();
+  const xrt_core::device_core &CoreDevice = xrt_core::device_core::instance();
 
   // Get a collection of the devices present
   CoreDevice.get_devices(_pt);

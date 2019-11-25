@@ -14,6 +14,11 @@
  * under the License.
  */
 
+// For now device_core.cpp is delivered with core library (libxrt_core), see
+// for example core/pcie/windows/CMakeLists.txt.  To prevent compilation of
+// this file from importing symbols from libxrt_core we define this source
+// file to instead export with same macro as used in libxrt_core.
+#define XCL_DRIVER_DLL_EXPORT
 
 #include "device_pcie.h"
 #include "common/utils.h"
@@ -31,32 +36,32 @@ xrt_core::device_pcie::~device_pcie()
   // Do nothing
 }
 
-void 
+void
 xrt_core::device_pcie::get_devices(boost::property_tree::ptree &_pt) const
 {
-  size_t cardsFound = get_total_devices();
+  auto cards = get_total_devices();
 
   boost::property_tree::ptree ptDevices;
-  for (unsigned int deviceID = 0; deviceID < cardsFound; ++deviceID) {
+  for (unsigned int deviceID = 0; deviceID < cards.first; ++deviceID) {
     boost::property_tree::ptree ptDevice;
     std::string valueString;
 
     // Key: device_id
     ptDevice.put("device_id", std::to_string(deviceID).c_str());
 
-    // Key: pcie 
+    // Key: pcie
     boost::property_tree::ptree ptPcie;
     get_device_info(deviceID, ptPcie);
     ptDevice.add_child("pcie", ptPcie);
 
     // Create our array of data
-    ptDevices.push_back(std::make_pair("", ptDevice)); 
+    ptDevices.push_back(std::make_pair("", ptDevice));
   }
 
   _pt.add_child("devices", ptDevices);
 }
 
-void 
+void
 xrt_core::device_pcie::get_device_info(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
 {
   query_device_and_put(_deviceID, QR_PCIE_VENDOR, _pt);
@@ -67,7 +72,3 @@ xrt_core::device_pcie::get_device_info(uint64_t _deviceID, boost::property_tree:
   query_device_and_put(_deviceID, QR_PCIE_EXPRESS_LANE_WIDTH, _pt);
   query_device_and_put(_deviceID, QR_DMA_THREADS_RAW, _pt);
 }
-
-
-
-

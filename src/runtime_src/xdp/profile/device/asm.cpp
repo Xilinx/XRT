@@ -51,7 +51,7 @@
 namespace xdp {
 
 ASM::ASM(Device* handle /** < [in] the xrt or hal device handle */,
-                int index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data)
+         uint64_t index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data)
     : ProfileIP(handle, index, data),
       properties(0),
       major_version(0),
@@ -128,7 +128,7 @@ size_t ASM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
     return size;
 }
 
-size_t ASM::triggerTrace(uint32_t traceOption /* starttrigger*/)
+size_t ASM::triggerTrace(uint32_t /*traceOption*/ /* starttrigger*/)
 {
     return 0;
 }

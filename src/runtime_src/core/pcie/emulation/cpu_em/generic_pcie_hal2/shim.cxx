@@ -1317,7 +1317,7 @@ int CpuemShim::xclUnmapBO(unsigned int boHandle, void* addr)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
   auto bo = xclGetBoByHandle(boHandle);
-  return munmap(addr,bo->size);
+  return bo ? munmap(addr,bo->size) : -1;
 }
 
 /**************************************************************************************/

@@ -68,6 +68,6 @@ send(severity_level l, const char* tag, const char* format, Args ... args)
   }
 }
 
-}} // message,xrt
+}} // message,xrt_core
 
 #endif

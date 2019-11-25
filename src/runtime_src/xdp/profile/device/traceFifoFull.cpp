@@ -74,7 +74,7 @@ namespace xdp {
   };
 
 TraceFifoFull::TraceFifoFull(Device* handle /** < [in] the xrt or hal device handle */,
-                int index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data)
+                             uint64_t index  /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data)
     : ProfileIP(handle, index, data),
       properties(0),
       major_version(0),
@@ -136,12 +136,13 @@ uint32_t TraceFifoFull::readTrace(xclTraceResultsVector& traceVector, uint32_t n
     getDevice()->getTraceBufferInfo(numSamples, traceSamples /*actual no. of samples for specific device*/, traceBufSz);
     traceVector.mLength = traceSamples;
 
-    uint32_t traceBuf[traceBufSz];
+    uint32_t *traceBuf = new uint32_t[traceBufSz];
     uint32_t wordsPerSample = 1;
     getDevice()->readTraceData(traceBuf, traceBufSz, numSamples/* use numSamples */, getBaseAddress(), wordsPerSample);
 
     processTraceData(traceVector, numSamples, traceBuf, wordsPerSample); 
 
+    delete [] traceBuf;
     return 0;
 }
 
@@ -262,7 +263,7 @@ uint32_t TraceFifoFull::readTraceForEdgeDevice(xclTraceResultsVector& traceVecto
 }
 #endif
 
-void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t numSamples, void* data, uint32_t wordsPerSample)
+void TraceFifoFull::processTraceData(xclTraceResultsVector& traceVector,uint32_t numSamples, void* data, uint32_t /*wordsPerSample*/)
 {
     xclTraceResults results = {};
     for (uint32_t i = 0; i < numSamples; i++) {
