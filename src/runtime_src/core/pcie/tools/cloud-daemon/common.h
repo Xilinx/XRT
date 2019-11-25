@@ -51,10 +51,47 @@ struct queue_msg {
     enum MSG_TYPE type;
 };
 
-struct Msgq {
-    std::mutex mtx;
+enum HOT_RESET_MSG_TYPE {
+    REMOVE_REQ = 0,
+    ADD_REQ,
+};
+
+struct hotreset_msg {
+    std::string sysfs_name;
+    enum HOT_RESET_MSG_TYPE type;
+};
+
+template <typename Msg>
+class Msgq
+{
+    std::queue<Msg> q;
+    mutable std::mutex mtx;
     std::condition_variable cv;
-    std::queue<queue_msg> q;
+public:
+    Msgq()
+    {
+    }
+    void addMsg(Msg &msg)
+    {
+        std::lock_guard<std::mutex> lck(mtx);
+        q.push(std::move(msg));
+        cv.notify_all();
+    }
+    int getMsg(int timeout, Msg& msg)
+    {
+        std::unique_lock<std::mutex> lck(mtx, std::defer_lock);
+        lck.lock();
+        while (q.empty()) {
+            if (cv.wait_for(lck, std::chrono::seconds(timeout)) == std::cv_status::timeout) {
+                lck.unlock();
+                return 1;
+            }
+        }
+        msg = std::move(q.front());
+        q.pop();
+        lck.unlock();
+        return 0;
+    }
 };
 
 std::string str_trim(const std::string &str);
