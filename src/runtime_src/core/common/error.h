@@ -50,9 +50,15 @@ public:
 };
 
 inline void
-send_exception_message(const char* msg)
+send_exception_message(const char* msg, const char* tag="XRT")
 {
-  message::send(message::severity_level::XRT_ERROR, "XRT", msg);
+  message::send(message::severity_level::XRT_ERROR, tag, msg);
+}
+
+inline void
+send_exception_message(const std::string& msg, const char* tag="XRT")
+{
+  message::send(message::severity_level::XRT_ERROR, tag, msg);
 }
 
 } // xrt_core
