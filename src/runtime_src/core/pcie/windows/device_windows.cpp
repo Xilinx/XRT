@@ -233,7 +233,7 @@ get_total_devices() const
   if (mgmt_count == 0)
 	  std::cout << "No Xilinx U250 devices are present and enabled in the system" << std::endl;
 
-  return user_count;
+  return std::make_pair(user_count, 0);
 }
 
 void

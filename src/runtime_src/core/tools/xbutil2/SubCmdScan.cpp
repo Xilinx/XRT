@@ -50,11 +50,13 @@ int subCmdScan(const std::vector<std::string> &_options)
   XBU::verbose("SubCommand: scan");
   // -- Retrieve and parse the subcommand options -----------------------------
   bool help = false;
+  uint64_t card = 0;
 
   po::options_description scanDesc("scan options");
 
   scanDesc.add_options()
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
+	(",d", boost::program_options::value<uint64_t>(&card), "Card to be examined")
   ;
 
   // Parse sub-command ...
@@ -82,9 +84,7 @@ int subCmdScan(const std::vector<std::string> &_options)
   //
   // TODO: Put working code here
   // Get the handle to the devices
-  const xrt_core::device_core &CoreDevice = xrt_core::device_core::get_handle();
-  uint64_t total_devices = CoreDevice.get_total_devices();
-  std::cout << "INFO: Found total " << total_devices << " card(s)" << std::endl;
+  auto device = xrt_core::device_core::instance().get_device(card);
 
   return registerResult;
 }
