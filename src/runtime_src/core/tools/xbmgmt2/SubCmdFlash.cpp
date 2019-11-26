@@ -20,6 +20,9 @@
 #include "XBUtilities.h"
 namespace XBU = XBUtilities;
 
+#include "core/common/device_core.h"
+#include "core/common/error.h"
+
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
@@ -116,7 +119,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
     po::store(parsed, vm); //Can throw
     po::notify(vm); // Can throw
   } catch (po::error& e) {
-    std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
+    xrt_core::send_exception_message(e.what(), "XBMGMT");
     std::cerr << allOptions << std::endl;
 
     // Re-throw exception
@@ -153,7 +156,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
       po::store(po::command_line_parser(opts).options(scanDesc).run(), option_vm);
       po::notify(option_vm); // Can throw
     } catch (po::error& e) {
-      std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
+      xrt_core::send_exception_message(e.what(), "XBMGMT");
       std::cerr << scanDesc << std::endl;
     // Re-throw exception
     throw;
@@ -195,7 +198,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
       po::store(po::command_line_parser(opts).options(updateDesc).run(), option_vm);
       po::notify(option_vm); // Can throw
     } catch (po::error& e) {
-      std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
+      xrt_core::send_exception_message(e.what(), "XBMGMT");
       std::cerr << updateDesc << std::endl;
     // Re-throw exception
     throw;
@@ -232,7 +235,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
       po::store(po::command_line_parser(opts).options(resetDesc).run(), option_vm);
       po::notify(option_vm); // Can throw
     } catch (po::error& e) {
-      std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
+      xrt_core::send_exception_message(e.what(), "XBMGMT");
       std::cerr << resetDesc << std::endl;
     // Re-throw exception
     throw;
@@ -264,7 +267,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
       po::store(po::command_line_parser(opts).options(shellDesc).run(), option_vm);
       po::notify(option_vm); // Can throw
     } catch (po::error& e) {
-      std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
+      xrt_core::send_exception_message(e.what(), "XBMGMT");
       std::cerr << shellDesc << std::endl;
     // Re-throw exception
     throw;
@@ -301,7 +304,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
       po::store(po::command_line_parser(opts).options(scDesc).run(), option_vm);
       po::notify(option_vm); // Can throw
     } catch (po::error& e) {
-      std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
+      xrt_core::send_exception_message(e.what(), "XBMGMT");
       std::cerr << scDesc << std::endl;
     // Re-throw exception
     throw;
