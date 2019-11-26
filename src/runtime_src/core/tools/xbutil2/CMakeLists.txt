@@ -15,7 +15,7 @@ include_directories(${CMAKE_BINARY_DIR})
 
 file(GLOB XBUTIL_V2_BASE_FILES
   "xbutil.cpp"
-  "XBUtilMain.cpp"
+  "../common/XBMain.cpp"
   "../common/XBUtilities.cpp"
   "XBReport.cpp"
   "XBDatabase.cpp"

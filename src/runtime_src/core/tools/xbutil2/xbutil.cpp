@@ -14,7 +14,7 @@
  * under the License.
  */
 
-#include "XBUtilMain.h"
+#include "tools/common/XBMain.h"
 #include "common/error.h"
 
 #include <string>

@@ -15,7 +15,7 @@ include_directories(${CMAKE_BINARY_DIR})
 
 file(GLOB XBMGMT_V2_BASE_FILES
   "xbmgmt.cpp"
-  "XBMgmtMain.cpp"
+  "../common/XBMain.cpp"
   "../common/XBUtilities.cpp"
   "../common/SubCmd.cpp"
 )
