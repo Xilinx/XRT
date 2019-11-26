@@ -38,6 +38,20 @@ zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 	return ret;
 }
 
+/*
+ * Block comment for context switch.
+ * The read_axlf_ioctl can happen without calling open context, we need to use mutex
+ * lock to exclude access between read_axlf_ioctl and zocl_ctx_ioctl. At one
+ * time, only one operation can be accessed.
+ *
+ * When swaping xclbin, first call read_axlf_ioctl to download new xclbin, the
+ * following conditions have to be true:
+ *   -  When we lock the zdev_xclbin_lock, no more zocl_ctx/read_axlf
+ *   -  If still have live context, we cannot swap xclbin
+ *   -  If no live contexts, but still live cmds from previous closed context,
+ *      we cannot swap xclbin.
+ * If all the above conditions is cleared, we start changing to new xclbin.
+ */
 int
 zocl_ctx_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 {

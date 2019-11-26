@@ -609,17 +609,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj)
 		return -EINVAL;
 	}
 
-	/*
-	 * Block comment for context switch.
-	 * The read_axlf can happen without open context, we will need a
-	 * mutex lock to exclude read_axlf and openContext. At one time,
-	 * only one operation can be done if mutex is grabbed successfully.
-	 *   -  When we lock the zdev->config_lock, no new open contexts
-	 *      and no live contexts can be closed.
-	 *   -  If more live context, we cannot swap xclbin
-	 *   -  If no live contexts, but still live cmds from previous
-	 *      closed context, we cannot swap xclbin.
-	 */
+
 	write_lock(&zdev->attr_rwlock);
 
 	if (sched_live_clients(zdev, NULL) || sched_is_busy(zdev)) {
@@ -838,6 +828,9 @@ zocl_xclbin_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
 		vfree(ctx_xuid);
 		return ret;
 	}
+
+
+	write_lock(&zdev->attr_rwlock);
 
 	/*
 	 * valid xclbin_id is the same.
