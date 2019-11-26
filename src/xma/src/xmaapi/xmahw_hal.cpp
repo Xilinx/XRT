@@ -162,7 +162,7 @@ bool hal_is_compatible(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg)
 {
     int32_t num_devices_requested = 0;
     int32_t i;
-    int32_t j;
+    //int32_t j;
     int32_t max_dev_id;
 
     max_dev_id = get_max_dev_id(systemcfg);
@@ -179,19 +179,6 @@ bool hal_is_compatible(XmaHwCfg *hwcfg, XmaSystemCfg *systemcfg)
                    num_devices_requested, hwcfg->num_devices);
         xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Max device id specified in YAML cfg %d\n", max_dev_id);
         return false;
-    }
-
-    for (i = 0; i < systemcfg->num_images; i++)
-    {
-        for (j = 0; j < systemcfg->imagecfg[i].num_devices; j++)
-        {
-            if (strcmp(systemcfg->dsa, hwcfg->devices[systemcfg->imagecfg[i].device_id_map[j]].dsa) != 0)
-            {
-                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "DSA mismatch: requested %s found %s\n",
-                systemcfg->dsa, hwcfg->devices[systemcfg->imagecfg[i].device_id_map[j]].dsa);
-                return false;
-            }
-        }
     }
 
     return true;
