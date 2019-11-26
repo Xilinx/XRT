@@ -33,11 +33,6 @@ extern "C" {
  * Note that the offset is wrt the address space
  */
 
-/* Write host event to device tracing (Zynq only) */
-
-XCL_DRIVER_DLLESPEC void xclWriteHostEvent(xclDeviceHandle handle, enum xclPerfMonEventType type,
-                                           enum xclPerfMonEventID id);
-
 XCL_DRIVER_DLLESPEC double xclGetDeviceClockFreqMHz(xclDeviceHandle handle);
 
 XCL_DRIVER_DLLESPEC int xclGetDebugIPlayoutPath(xclDeviceHandle handle, char* layoutPath, size_t size);

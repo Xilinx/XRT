@@ -105,23 +105,7 @@ public:
     int xclGetSectionInfo(void *section_info, size_t *section_size, enum axlf_section_kind, int index);
 
     double xclGetDeviceClockFreqMHz();
-#if 0
-    // Performance monitoring
-    // Control
-    double xclGetReadMaxBandwidthMBps();
-    double xclGetWriteMaxBandwidthMBps();
-    void xclSetProfilingNumberSlots(xclPerfMonType type, uint32_t numSlots);
-    uint32_t getPerfMonNumberSlots(xclPerfMonType type);
-    uint32_t getPerfMonProperties(xclPerfMonType type, uint32_t slotnum);
-    void getPerfMonSlotName(xclPerfMonType type, uint32_t slotnum,
-                            char* slotName, uint32_t length);
-    size_t xclPerfMonClockTraining(xclPerfMonType type);
-    void xclPerfMonConfigureDataflow(xclPerfMonType type, unsigned *ip_config);
-    // Counters
-    size_t xclPerfMonStartCounters(xclPerfMonType type);
-    size_t xclPerfMonStopCounters(xclPerfMonType type);
-    size_t xclPerfMonReadCounters(xclPerfMonType type, xclCounterResults& counterResults);
-#endif
+
     //debug related
     uint32_t getCheckerNumberSlots(int type);
     uint32_t getIPCountAddrNames(int type, uint64_t *baseAddress, std::string * portNames,
@@ -133,13 +117,6 @@ public:
     size_t xclDebugReadStreamingCheckers(xclDebugStreamingCheckersResults* streamingCheckerResult);
     size_t xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult);
 
-#if 0
-    // Trace
-    size_t xclPerfMonStartTrace(xclPerfMonType type, uint32_t startTrigger);
-    size_t xclPerfMonStopTrace(xclPerfMonType type);
-    uint32_t xclPerfMonGetTraceCount(xclPerfMonType type);
-    size_t xclPerfMonReadTrace(xclPerfMonType type, xclTraceResultsVector& traceVector);
-#endif
     // APIs using sysfs information
     uint32_t xclGetNumLiveProcesses();
     int xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size);
