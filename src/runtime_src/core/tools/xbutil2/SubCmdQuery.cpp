@@ -20,7 +20,7 @@
 #include "XBReport.h"
 #include "XBDatabase.h"
 
-#include "XBUtilities.h"
+#include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
@@ -31,7 +31,7 @@ namespace po = boost::program_options;
 #include <iostream>
 
 // ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
-#include "SubCmd.h"
+#include "tools/common/SubCmd.h"
 static const unsigned int registerResult = 
                     register_subcommand("query", 
                                         "Status of the system and device(s)",

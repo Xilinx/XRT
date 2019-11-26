@@ -18,8 +18,8 @@
 // Local - Include Files
 #include "XBUtilMain.h"
 
-#include "XBUtilities.h"
-#include "SubCmd.h"
+#include "tools/common/XBUtilities.h"
+#include "tools/common/SubCmd.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
@@ -40,7 +40,7 @@ static void printHelp(po::options_description _optionDescription)
    std::cout << "Sub Commands:" << std::endl;
 
    const SubCmdTable & cmdTable = getSubCmdsTable();
-   for (auto subCmdEntry : cmdTable) {
+   for (auto subCmdEntry : cmdTable) { //
      if (subCmdEntry.second.isHidden == true) {
        continue;
      }

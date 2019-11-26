@@ -18,8 +18,8 @@
 // Local - Include Files
 #include "XBMgmtMain.h"
 
-#include "XBUtilities.h"
-#include "SubCmd.h"
+#include "tools/common/XBUtilities.h"
+#include "tools/common/SubCmd.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
