@@ -15,6 +15,7 @@
  */
 
 #include "XBUtilMain.h"
+#include "common/error.h"
 
 #include <string>
 #include <iostream>
@@ -24,15 +25,10 @@ int main( int argc, char** argv )
 {
   try {
     return main_( argc, argv );
-  } catch ( std::exception &e ) {
-    std::string msg = e.what();
-    if ( msg.empty() )
-      std::cerr << "ERROR: Caught an internal exception no message information is available.\n";
-    else {
-      std::cerr << e.what() << std::endl;
-    }
-  } catch ( ... ) {
-    std::cerr << "ERROR: Caught an internal exception no exception information is available.\n";
+  } catch (const std::exception &e) {
+    xrt_core::send_exception_message(e.what(), "XBUTIL");
+  } catch (...) {
+    xrt_core::send_exception_message("Unknown error", "XBUTIL");
   }
-  return -1;
+  return 1;
 }
