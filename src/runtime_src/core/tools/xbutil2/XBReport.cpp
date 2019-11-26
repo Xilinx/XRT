@@ -59,10 +59,10 @@ XBReport::report_xrt_info()
 
   XBU::message("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
   XBU::message("XRT Information");
-	XBU::message(XBU::format("%-14s: %s", "Version",    _ptXRT.get<std::string>("version", "N/A").c_str()));
-  XBU::message(XBU::format("%-14s: %s", "Git Hash",   _ptXRT.get<std::string>("hash", "N/A").c_str()));
-  XBU::message(XBU::format("%-14s: %s", "Git Branch", _ptXRT.get<std::string>("branch", "N/A").c_str()));
-  XBU::message(XBU::format("%-14s: %s", "Build Date", _ptXRT.get<std::string>("date", "N/A").c_str()));
+  XBU::message(XBU::format("%-14s: %s", "Version",    _ptXRT.get<std::string>("build.version", "N/A").c_str()));
+  XBU::message(XBU::format("%-14s: %s", "Git Hash",   _ptXRT.get<std::string>("build.hash", "N/A").c_str()));
+  XBU::message(XBU::format("%-14s: %s", "Git Branch", _ptXRT.get<std::string>("build.branch", "N/A").c_str()));
+  XBU::message(XBU::format("%-14s: %s", "Build Date", _ptXRT.get<std::string>("build.date", "N/A").c_str()));
   XBU::message(XBU::format("%-14s: %s", "XOCL",       _ptXRT.get<std::string>("xocl", "N/A").c_str()));
   XBU::message(XBU::format("%-14s: %s", "XCLMGMT",    _ptXRT.get<std::string>("xclmgmt", "N/A").c_str()));
 }
