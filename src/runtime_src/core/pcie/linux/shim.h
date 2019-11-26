@@ -212,10 +212,6 @@ private:
     // Performance monitoring helper functions
     signed cmpMonVersions(unsigned major1, unsigned minor1, unsigned major2, unsigned minor2);
 
-
-    // Information extracted from platform linker
-    uint8_t mPerfmonProperties[XAIM_MAX_NUMBER_SLOTS] = {};
-
     // QDMA AIO
     aio_context_t mAioContext;
     bool mAioEnabled;

@@ -197,7 +197,8 @@ namespace xocl {
 
     // Read all metric counters
     uint64_t baseAddress[XAIM_MAX_NUMBER_SLOTS];
-    uint32_t numSlots = getIPCountAddrNames(AXI_MM_MONITOR, baseAddress, nullptr, mPerfmonProperties, nullptr, nullptr, XAIM_MAX_NUMBER_SLOTS);
+    uint8_t  perfMonProperties[XAIM_MAX_NUMBER_SLOTS] = {};
+    uint32_t numSlots = getIPCountAddrNames(AXI_MM_MONITOR, baseAddress, nullptr, perfMonProperties, nullptr, nullptr, XAIM_MAX_NUMBER_SLOTS);
 
     uint32_t temp[XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT];
 
@@ -211,7 +212,7 @@ namespace xocl {
                     &sampleInterval, 4);
 
       // If applicable, read the upper 32-bits of the 64-bit debug counters
-      if (mPerfmonProperties[s] & XAIM_64BIT_PROPERTY_MASK) {
+      if (perfMonProperties[s] & XAIM_64BIT_PROPERTY_MASK) {
 	for (int c = 0 ; c < XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT ; ++c) {
 	  xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
 		  baseAddress[s] + spm_upper_offsets[c],
