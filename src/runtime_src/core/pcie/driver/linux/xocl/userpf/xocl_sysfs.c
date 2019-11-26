@@ -390,8 +390,15 @@ static ssize_t ready_show(struct device *dev,
 		if (!board_info)
 			goto bail;
 		xocl_xmc_get_data(xdev, XCL_BDINFO, board_info);
-		ret = strcmp(board_info->bmc_ver, board_info->exp_bmc_ver) ?
-			0 : 1;
+		/*
+		 * with legacy mgmtpf driver, exp_bmc_ver will be NULL.
+		 * And we have to mark ready in this case
+		 */
+		if (!strcmp(board_info->bmc_ver, board_info->exp_bmc_ver) ||
+			board_info->exp_bmc_ver[0] == 0)
+			ret = 1;
+		else
+			ret = 0;
 	}
 
 bail:
