@@ -15,14 +15,16 @@
  */
 
 
+#define INITGUID
 #include "device_windows.h"
 #include "common/utils.h"
-#include "include/xrt.h"
+#include "xrt.h"
+#include "boost/format.hpp"
 #include <string>
 #include <iostream>
-#include "boost/format.hpp"
 #include <map>
 
+#pragma warning(disable : 4100 4996)
 
 const xrt_core::device_windows::IOCTLEntry &
 xrt_core::device_windows::
@@ -193,9 +195,8 @@ std::pair<uint64_t, uint64_t>
 xrt_core::device_windows::
 get_total_devices() const
 {
-  // Linux reference code:
-  // return pcidev::get_dev_total();
-  return std::make_pair(1,1); // TODO
+  auto user_count = xclProbe();
+  return std::make_pair(user_count, user_count);
 }
 
 void

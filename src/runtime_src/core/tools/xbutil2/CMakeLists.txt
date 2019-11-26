@@ -2,7 +2,6 @@
 
 set(Boost_USE_STATIC_LIBS ON)               # Only find static libraries
 set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
-set(Boost_USE_STATIC_RUNTIME ON)            # This is how the boost libraries were build
 
 find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 include_directories(${Boost_INCLUDE_DIRS})
@@ -29,6 +28,7 @@ if(WIN32)
     "SubCmdClock.cpp"
     "SubCmdQuery.cpp"
     "SubCmdReset.cpp"
+    "SubCmdScan.cpp"
     "SubCmdVersion.cpp"
   )
 else()
@@ -69,13 +69,6 @@ if(WIN32)
     xrt_coreutil_static
   )
 
-  # Use the static version of the run-time library
-  # Note: Needed to link with boost
-  if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-    target_compile_options(${XBUTIL2_NAME} PRIVATE /MTd)
-  else()
-    target_compile_options(${XBUTIL2_NAME} PRIVATE /MT)
-  endif()
 else()
   target_link_libraries(
     ${XBUTIL2_NAME}
