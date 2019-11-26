@@ -1543,9 +1543,6 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	}
 	ICAP_INFO(icap, "runtime version matched");
 
-	/* Grab lock and touch hardware. */
-	mutex_lock(&icap->icap_lock);
-
 	if (xocl_mb_sched_on(xdev)) {
 		/* Try locating the microblaze binary. */
 		if (XDEV(xdev)->priv.sched_bin) {
@@ -1615,7 +1612,6 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 
 
 done:
-	mutex_unlock(&icap->icap_lock);
 	release_firmware(fw);
 	ICAP_INFO(icap, "%s err: %ld", __func__, err);
 	return err;
