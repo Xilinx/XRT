@@ -109,7 +109,7 @@ ReturnCodes main_(int argc, char** argv) {
   if (bOverride == false) {
     std::cout << std::endl;
     std::cout << "===========================================================" << std::endl;
-    std::cout << "xbutil2 is currently under development and currently is    " << std::endl;
+    std::cout << "xbmgmt2 is currently under development and currently is    " << std::endl;
     std::cout << "not ready to be used in examining XRT drivers or platforms." << std::endl;
     std::cout << "===========================================================" << std::endl;
     exit(0);
