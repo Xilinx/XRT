@@ -248,6 +248,23 @@ struct xocl_subdev_map {
 		ARRAY_SIZE(XOCL_RES_FEATURE_ROM),	\
 	}
 
+#define	XOCL_RES_FEATURE_ROM_VERSAL			\
+		((struct resource []) {			\
+			{				\
+			.start	= 0x6000000,		\
+			.end	= 0x600FFFF,		\
+			.flags	= IORESOURCE_MEM,	\
+			}				\
+		})
+
+#define	XOCL_DEVINFO_FEATURE_ROM_VERSAL			\
+	{						\
+		XOCL_SUBDEV_FEATURE_ROM,		\
+		XOCL_FEATURE_ROM,			\
+		XOCL_RES_FEATURE_ROM_VERSAL,		\
+		ARRAY_SIZE(XOCL_RES_FEATURE_ROM_VERSAL),	\
+	}
+
 
 #define	XOCL_RES_FEATURE_ROM_SMARTN			\
 		((struct resource []) {			\
@@ -1083,6 +1100,7 @@ struct xocl_subdev_map {
 
 #define	USER_RES_XDMA_VERSAL						\
 		((struct xocl_subdev_info []) {				\
+		 	XOCL_DEVINFO_FEATURE_ROM_VERSAL,		\
 			XOCL_DEVINFO_XDMA,				\
 		 	XOCL_DEVINFO_SCHEDULER_VERSAL,			\
 		 	XOCL_DEVINFO_MAILBOX_USER_VERSAL,		\
@@ -1199,6 +1217,11 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_FMGR,		        	\
 		})
 
+#define	MGMT_RES_VERSAL							\
+		((struct xocl_subdev_info []) {				\
+		 	XOCL_DEVINFO_FEATURE_ROM_VERSAL,		\
+		})
+
 #define	MGMT_RES_DSA50							\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
@@ -1251,6 +1274,13 @@ struct xocl_subdev_map {
 		.subdev_info	= MGMT_RES_U2,				\
 		.subdev_num = ARRAY_SIZE(MGMT_RES_U2),			\
 		.flash_type = FLASH_TYPE_SPI,				\
+	}
+
+#define	XOCL_BOARD_MGMT_VERSAL						\
+	(struct xocl_board_private){					\
+		.flags		= XOCL_DSAFLAG_VERSAL,			\
+		.subdev_info	= MGMT_RES_VERSAL,			\
+		.subdev_num = ARRAY_SIZE(MGMT_RES_VERSAL),		\
 	}
 
 #define	MGMT_RES_6A8F							\
@@ -2015,6 +2045,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x5008, PCI_ANY_ID, MGMT_XBB_DSA52_U280) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x500C, PCI_ANY_ID, MGMT_XBB_DSA52_U280) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5020, PCI_ANY_ID, MGMT_U50) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x5028, PCI_ANY_ID, MGMT_VERSAL) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x006C, PCI_ANY_ID, MGMT_6A8F) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x0078, PCI_ANY_ID, MGMT_XBB_DSA52) },  \
 	{ XOCL_PCI_DEVID(0x10EE, 0xD000, PCI_ANY_ID, XBB_MFG("u200")) },\
