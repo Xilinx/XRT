@@ -2,7 +2,6 @@
 
 set(Boost_USE_STATIC_LIBS ON)               # Only find static libraries
 set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
-set(Boost_USE_STATIC_RUNTIME ON)            # This is how the boost libraries were build
 
 find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 include_directories(${Boost_INCLUDE_DIRS})
@@ -40,32 +39,25 @@ set(XBMGMT_V2_SRCS ${XBMGMT_V2_FILES_SRCS})
 add_executable(${XBMGMT2_NAME} ${XBMGMT_V2_SRCS})
 
 
-if(WIN32) 
+if(WIN32)
   target_link_libraries(
-    ${XBMGMT2_NAME} PRIVATE 
-    Boost::filesystem 
-    Boost::program_options 
-    Boost::system 
+    ${XBMGMT2_NAME} PRIVATE
+    Boost::filesystem
+    Boost::program_options
+    Boost::system
     xrt_core
     xrt_core_static
     xrt_coreutil_static
   )
 
-  # Use the static version of the run-time library 
-  # Note: Needed to link with boost
-  if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-    target_compile_options(${XBMGMT2_NAME} PRIVATE /MTd)
-  else()
-    target_compile_options(${XBMGMT2_NAME} PRIVATE /MT)
-  endif()
 else()
   target_link_libraries(
-    ${XBMGMT2_NAME} 
+    ${XBMGMT2_NAME}
     xrt_core_static
     xrt_coreutil_static
     boost_filesystem
     boost_system
-    boost_program_options 
+    boost_program_options
     uuid
     dl
   )
