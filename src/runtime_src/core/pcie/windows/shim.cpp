@@ -33,6 +33,7 @@
 #include <ctime>
 #include <iostream>
 #include <string>
+#include "boost/any.hpp"
 
 #pragma warning(disable : 4100 4996)
 #pragma comment (lib, "Setupapi.lib")
@@ -641,7 +642,82 @@ done:
     return error ? false : true;
   }
 
-  int
+  bool SendIoctlStatIpLayout()
+  {
+	  DWORD bytesRead;
+	  XOCL_STAT_CLASS_ARGS statClassArgs;
+	  DWORD  error = ERROR_SUCCESS;
+	  XU_IP_LAYOUT layoutHeader;
+	  XU_IP_LAYOUT *ipLayout;
+	  DWORD size = 0;
+	  HANDLE devHandle = m_dev;
+
+	  statClassArgs.StatClass = XoclStatIpLayout;
+
+	  if (!DeviceIoControl(devHandle,
+		  IOCTL_XOCL_STAT,
+		  &statClassArgs,
+		  sizeof(XOCL_STAT_CLASS_ARGS),
+		  &layoutHeader,
+		  sizeof(XU_IP_LAYOUT),
+		  &bytesRead,
+		  NULL)) {
+
+		  error = GetLastError();
+
+		  printf("DeviceIoControl failed with error 0x%x\n", error);
+
+		  return false;
+
+	  }
+
+	  printf("Retrieved XU_IP_LAYOUT header (%d XU_IP_DATAs)\n", layoutHeader.m_count);
+
+	  size = (DWORD)(sizeof(XU_IP_LAYOUT) + layoutHeader.m_count * sizeof(XU_IP_DATA));
+	  ipLayout = (XU_IP_LAYOUT*)malloc(size);
+
+	  if (ipLayout == NULL) {
+		  printf("<E> Couldn't alloc mem for ipLayout\n");
+		  return false;
+	  }
+
+	  if (!DeviceIoControl(devHandle,
+		  IOCTL_XOCL_STAT,
+		  &statClassArgs,
+		  sizeof(XOCL_STAT_CLASS_ARGS),
+		  ipLayout,
+		  size,
+		  &bytesRead,
+		  NULL)) {
+
+		  error = GetLastError();
+
+		  printf("DeviceIoControl failed with error 0x%x\n", error);
+		  free(ipLayout);
+		  return false;
+
+	  }
+
+	  printf("Retrieved XU_IP_LAYOUT with XU_IP_DATA:\n");
+	  for (int i = 0; i < ipLayout->m_count; i++) {
+		  XU_IP_DATA* data = &ipLayout->m_ip_data[i];
+		  std::string name((const char*)data->m_name, 63);
+
+		  printf("---XU_IP_DATA[%d]---\n", i);
+		  printf("\tm_name      = %s\n", name.c_str());
+		  printf("\tm_type      = 0x%lx\n", data->m_type);
+		  printf("\tm_index     = 0x%hx\n", data->indices.m_index);
+		  printf("\tm_pc_index  = 0x%hhx\n", data->indices.m_pc_index);
+		  printf("\tunused      = 0x%hhx\n", data->indices.unused);
+		  printf("\tm_base_addr = 0x%llx\n", data->m_base_address);
+		  printf("\tproperties  = 0x%lx\n", data->properties);
+	  }
+
+	  free(ipLayout);
+	  return true;
+  }
+
+   int
   load_xclbin(const struct axlf* buffer)
   {
     DWORD buffSize = 0;
@@ -684,6 +760,21 @@ done:
         send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "FAILED");
       return 1;
     }
+
+	//third test
+	xrt_core::message::
+		send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "Calling IOCTL_XOCL_STAT (XoclIpLayout)... ");
+	succeeded = SendIoctlStatIpLayout();
+
+	if (succeeded) {
+		xrt_core::message::
+			send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "OK");
+	}
+	else {
+		xrt_core::message::
+			send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "FAILED");
+		return 1;
+	}
 
     return 0;
   }
@@ -1104,4 +1195,163 @@ xclRead(xclDeviceHandle handle, enum xclAddressSpace space,
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclRead()");
   auto shim = get_shim_object(handle);
   return shim->read(space,offset,hostbuf,size) ? 0 : size;
+}
+
+void
+queryDeviceWithQR(uint64_t _deviceID, uint64_t subdev,
+	uint64_t variable,
+	boost::any & _returnValue)
+{
+  xclDeviceHandle handle;
+  // DeviceIoControl failed error seen when below method used for handle.
+  //xclDeviceHandle handle = xclOpen((int)_deviceID, 0, XCL_INFO);
+
+  handle = CreateFileW(L"\\\\.\\XOCL_USER-0" XOCL_USER_DEVICE_DEVICE_NAMESPACE,
+		GENERIC_READ | GENERIC_WRITE,
+		0,
+		0,
+		OPEN_EXISTING,
+		0,
+		0);
+  if (handle == INVALID_HANDLE_VALUE) {
+		printf("GetDeviceHandle of User Failed in qr_pcie_info()\n");
+		CloseHandle(handle);
+		handle = INVALID_HANDLE_VALUE;
+		return;
+  }
+
+  switch (subdev)
+  {
+	case pcie: qr_pcie_info(handle, variable, _returnValue);
+		break;
+	case rom: qr_rom_info(handle, variable, _returnValue);
+		break;
+	case icap:
+		break;
+	case xmc:
+		break;
+	case firewall:
+		break;
+	case dma:
+		break;
+	case dna:
+		break;
+	default:
+		std::cout << "unknown request" << std::endl;
+	}
+	//xclClose(handle);
+}
+
+void
+qr_rom_info(xclDeviceHandle handle, uint64_t variable, boost::any & _returnValue) {
+	XOCL_ROM_INFORMATION romInfo;
+	XOCL_STAT_CLASS statClass = XoclStatRomInfo;
+	DWORD bytesWritten;
+	DWORD bytesToRead;
+	DWORD  error = ERROR_SUCCESS;
+
+	bytesToRead = sizeof(romInfo);
+
+	if (!DeviceIoControl(handle,
+		IOCTL_XOCL_STAT,
+		&statClass,
+		sizeof(statClass),
+		&romInfo,
+		sizeof(romInfo),
+		&bytesWritten,
+		nullptr)) {
+
+		error = GetLastError();
+
+		printf("DeviceIoControl failed with error 0x%x\n", error);
+		std::cout << "DeviceIoControl failed in qr_rom_info()" << std::endl;
+	} else {
+		switch (variable)
+		{
+		case VBNV:
+		{
+			std::string VBNVName(reinterpret_cast<const char *> (romInfo.VBNVName),
+				sizeof(romInfo.VBNVName) / sizeof(romInfo.VBNVName[0]));
+			_returnValue = boost::any_cast<std::string>(VBNVName);
+		}
+			break;
+		case ddr_bank_size:
+		{
+			uint64_t DDRChannelSize = romInfo.DDRChannelSize;
+			_returnValue = boost::any_cast<uint64_t>(DDRChannelSize);
+		}
+			break;
+		case ddr_bank_count_max:
+		{
+			uint64_t DDRChannelCount = romInfo.DDRChannelCount;
+			_returnValue = boost::any_cast<uint64_t>(DDRChannelCount);
+		}
+			break;
+		case FPGA:
+		{
+			std::string FPGAPartName(reinterpret_cast<const char *> (romInfo.FPGAPartName),
+				sizeof(romInfo.FPGAPartName) / sizeof(romInfo.FPGAPartName[0]));
+			_returnValue = boost::any_cast<std::string>(FPGAPartName);
+		}
+			break;
+		default:
+			break;
+		}
+	}
+}
+
+void
+qr_pcie_info(xclDeviceHandle handle, uint64_t variable, boost::any & _returnValue) {
+	DWORD bytesRead;
+	XOCL_STAT_CLASS_ARGS statClassArgs;
+	XOCL_DEVICE_INFORMATION deviceInfo;
+
+	statClassArgs.StatClass = XoclStatDevice;
+
+	if (!DeviceIoControl(handle,
+		IOCTL_XOCL_STAT,
+		&statClassArgs,
+		sizeof(XOCL_STAT_CLASS_ARGS),
+		&deviceInfo,
+		sizeof(XOCL_DEVICE_INFORMATION),
+		&bytesRead,
+		NULL)) {
+
+		std::cout << "DeviceIoControl failed in qr_pcie_info() " << std::endl;
+	} else {
+		switch (variable)
+		{
+		case vendor:
+		{
+			uint64_t vendor = deviceInfo.Vendor;
+			_returnValue = boost::any_cast<uint64_t>(vendor);
+		}
+			break;
+		case pcie_device:
+		{
+			uint64_t Device = deviceInfo.Device;
+			_returnValue = boost::any_cast<uint64_t>(Device);
+		}
+			break;
+		case subsystem_vendor:
+		{
+			uint64_t SubsystemVendor = deviceInfo.SubsystemVendor;
+			_returnValue = boost::any_cast<uint64_t>(SubsystemVendor);
+		}
+			break;
+		case subsystem_device:
+		{
+			uint64_t SubsystemDevice = deviceInfo.SubsystemDevice;
+			_returnValue = boost::any_cast<uint64_t>(SubsystemDevice);
+		}
+			break;
+		case ready:
+		{
+			_returnValue = boost::any_cast<bool>(deviceInfo.ready);
+		}
+			break;
+		default:
+			break;
+		}
+	}
 }

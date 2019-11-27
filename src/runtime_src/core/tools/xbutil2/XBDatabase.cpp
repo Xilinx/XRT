@@ -56,12 +56,14 @@ XBDatabase::create_complete_device_tree(boost::property_tree::ptree & _pt)
     // Platform information
     boost::property_tree::ptree ptPlatform;
 
+#if 0
     // Get and add generic information
     {
       boost::property_tree::ptree pt;
       CoreDevice.get_device_platform_info(device_id, pt);
       ptPlatform.add_child("info", pt);
     }
+#endif
 
     // Get and add ROM information
     {
@@ -69,7 +71,7 @@ XBDatabase::create_complete_device_tree(boost::property_tree::ptree & _pt)
       CoreDevice.get_device_rom_info(device_id, pt);
       ptPlatform.add_child("rom", pt);
     }
-
+#if 0
     // Get and add XMC information
     {
       boost::property_tree::ptree pt;
@@ -139,6 +141,7 @@ XBDatabase::create_complete_device_tree(boost::property_tree::ptree & _pt)
       CoreDevice.read_device_dma_stats(device_id, pt);
       ptPlatform.add_child("pcie_dma", pt);
     }
+#endif
 
     // Add the platform to the device tree
     ptDevice.add_child("platform", ptPlatform);

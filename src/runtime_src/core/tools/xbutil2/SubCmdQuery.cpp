@@ -86,15 +86,20 @@ int subCmdQuery(const std::vector<std::string> &_options)
   XBU::verbose(XBU::format("  Card: %ld", card));
   XBU::verbose(XBU::format("Region: %ld", region));
 
+  
   // Report system configuration and XRT information
   XBReport::report_system_config();
   XBReport::report_xrt_info();
-  
+  std::cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
+  // Enable Tracing.
+  XBU::setTrace(true);
+
   // Gather the complete system information for ALL devices
   boost::property_tree::ptree pt;
   XBDatabase::create_complete_device_tree(pt);
-
+  std::cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
   XBU::trace_print_tree("Complete Device Tree", pt);
+  std::cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
   return registerResult;
 }
 

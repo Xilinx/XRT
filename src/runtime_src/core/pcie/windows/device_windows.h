@@ -26,8 +26,12 @@ namespace xrt_core {
 class device_windows : public device_pcie {
   public:
     struct IOCTLEntry {
-      uint64_t IOCTLValue;
+		uint64_t subdev;
+		uint64_t variable;
     };
+
+	uint64_t channel_stat_raw_v = 0;
+	uint64_t dna_v = 0;
 
     const IOCTLEntry & get_IOCTL_entry( QueryRequest _eQueryRequest) const;
 

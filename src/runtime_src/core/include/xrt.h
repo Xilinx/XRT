@@ -54,6 +54,7 @@
 #include "xcl_app_debug.h"
 #include "xclerr.h"
 #include "xclhal2_mem.h"
+#include "boost/any.hpp"
 
 #ifdef __cplusplus
 extern "C" {
@@ -1059,6 +1060,97 @@ XCL_DRIVER_DLLESPEC const struct axlf_section_header* wrap_get_axlf_section(cons
 
 XCL_DRIVER_DLLESPEC size_t xclDebugReadIPStatus(xclDeviceHandle handle, enum xclDebugReadType type,
                                                                            void* debugResults);
+
+typedef enum {
+	pcie = 0,
+	rom,
+	icap,
+	xmc,
+	firewall,
+	dma,
+	dna
+}subdev;
+
+typedef enum {
+	VBNV = 0,
+	ddr_bank_size,
+	ddr_bank_count_max,
+	FPGA
+}rom_variable;
+
+typedef enum {
+	vendor = 0,
+	pcie_device,
+	subsystem_vendor,
+	subsystem_device,
+	link_speed,
+	link_width,
+	mig_calibration,
+	p2p_enable,
+	ready
+}pcie_variable;
+
+typedef enum {
+	clock_freqs = 0,
+	idcode
+}icap_variable;
+
+typedef enum {
+	detected_level = 0,
+	detected_status,
+	detected_time
+}firewall_variable;
+
+typedef enum {
+	version = 0,
+	serial_num,
+	max_power,
+	bmc_ver,
+	xmc_se98_temp0,
+	xmc_se98_temp1,
+	xmc_se98_temp2,
+	xmc_fpga_temp,
+	xmc_fan_temp,
+	fan_presence,
+	xmc_fan_rpm,
+	xmc_cage_temp0,
+	xmc_cage_temp1,
+	xmc_cage_temp2,
+	xmc_cage_temp3,
+	xmc_12v_pex_vol,
+	xmc_12v_pex_curr,
+	xmc_12v_aux_vol,
+	xmc_12v_aux_curr,
+	xmc_3v3_pex_vol,
+	xmc_3v3_aux_vol,
+	xmc_ddr_vpp_btm,
+	xmc_ddr_vpp_top,
+	xmc_sys_5v5,
+	xmc_1v2_top,
+	xmc_vcc1v2_btm,
+	xmc_1v8,
+	xmc_0v85,
+	xmc_mgt0v9avcc,
+	xmc_12v_sw,
+	xmc_mgtavtt,
+	xmc_vccint_vol,
+	xmc_vccint_curr,
+
+	xmc_3v3_pex_curr,
+	xmc_0v85_curr,
+	xmc_3v3_vcc_vol,
+	xmc_hbm_1v2_vol,
+	xmc_vpp2v5_vol,
+	xmc_vccint_bram_vol,
+	xmc_power
+}xmc_variable;
+
+XCL_DRIVER_DLLESPEC void queryDeviceWithQR(uint64_t _deviceID, uint64_t subdev, uint64_t variable, boost::any & _returnValue);
+
+XCL_DRIVER_DLLESPEC void qr_rom_info(xclDeviceHandle handle, uint64_t variable, boost::any & _returnValue);
+
+XCL_DRIVER_DLLESPEC void qr_pcie_info(xclDeviceHandle handle, uint64_t variable, boost::any & _returnValue);
+
 
 #ifdef __cplusplus
 }

@@ -64,6 +64,8 @@ class device_core {
     void read_device_electrical(uint64_t _deviceID, boost::property_tree::ptree &_pt) const;
     void read_device_power(uint64_t _deviceID, boost::property_tree::ptree &_pt) const;
     void read_device_firewall(uint64_t _deviceID, boost::property_tree::ptree &_pt) const;
+	size_t get_ddr_mem_size(uint64_t _deviceID) const;
+	void get_mem_topology(uint64_t _deviceID, void *buf) const;
 
   public:
 
@@ -123,6 +125,7 @@ class device_core {
       QR_PCIE_SUBSYSTEM_ID,
       QR_PCIE_LINK_SPEED,
       QR_PCIE_EXPRESS_LANE_WIDTH,
+	  QR_PCIE_READY_STATUS,
 
       QR_DMA_THREADS_RAW,
 

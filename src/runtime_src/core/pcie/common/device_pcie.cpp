@@ -64,10 +64,12 @@ xrt_core::device_pcie::get_devices(boost::property_tree::ptree &_pt) const
 void
 xrt_core::device_pcie::get_device_info(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
 {
+//	std::cout << "get_device_info: started: " << std::endl;
   query_device_and_put(_deviceID, QR_PCIE_VENDOR, _pt);
   query_device_and_put(_deviceID, QR_PCIE_DEVICE, _pt);
   query_device_and_put(_deviceID, QR_PCIE_SUBSYSTEM_VENDOR, _pt);
   query_device_and_put(_deviceID, QR_PCIE_SUBSYSTEM_ID, _pt);
+  query_device_and_put(_deviceID, QR_PCIE_READY_STATUS, _pt);
   query_device_and_put(_deviceID, QR_PCIE_LINK_SPEED, _pt);
   query_device_and_put(_deviceID, QR_PCIE_EXPRESS_LANE_WIDTH, _pt);
   query_device_and_put(_deviceID, QR_DMA_THREADS_RAW, _pt);

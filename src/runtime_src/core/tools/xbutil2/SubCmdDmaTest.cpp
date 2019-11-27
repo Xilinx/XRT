@@ -26,6 +26,9 @@ namespace po = boost::program_options;
 
 // System - Include Files
 #include <iostream>
+#include "xclbin.h"
+//#include "core/pcie/common/dmatest.h" //TODO: Enable it for DMATest
+#include "common/device_core.h"
 
 // ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
 #include "SubCmd.h"
@@ -82,14 +85,97 @@ int subCmdDmaTest(const std::vector<std::string> &_options)
   }
 
   // -- Now process the subcommand --------------------------------------------
-  blockSizeKB = stoi(sBlockSizeKB, nullptr, 0);
+  blockSizeKB = stoi(sBlockSizeKB);
 
   XBU::verbose(XBU::format("      Card: %ld", card));
   XBU::verbose(XBU::format("Block Size: 0x%lx", blockSizeKB));
 
 
-  XBU::error("COMMAND BODY NOT IMPLEMENTED.");
-  // TODO: Put working code here
+  if (blockSizeKB & (blockSizeKB - 1)) {
+	  std::cerr << "ERROR: block size should be power of 2\n";
+	  return -1;
+  }
+
+  if (blockSizeKB > 0x100000) {
+	  std::cerr << "ERROR: block size cannot be greater than 0x100000 MB\n";
+	  return -1;
+  }
+
+  blockSizeKB *= 1024; // convert kilo bytes to bytes
+
+  if (blockSizeKB == 0)
+	  blockSizeKB = 256 * 1024 * 1024; // Default block size, 256MB
+
+  //TODO:1:
+  // Get the handle to the devices
+  const xrt_core::device_core &CoreDevice = xrt_core::device_core::instance();
+
+  size_t ddr_mem_size = CoreDevice.get_ddr_mem_size(card);
+  if (ddr_mem_size == -EINVAL)
+	  return -EINVAL;
+
+  std::cout << "Total DDR size: " << ddr_mem_size << " MB" << std::endl;
+  std::cout << "DMATest TBD ..." << std::endl;
+#if 0
+  int result = 0;
+  unsigned long long addr = 0x0;
+  unsigned long long sz = 0x1;
+  unsigned int pattern = 'J';
+  size_t blockSize = 4096;
+
+  // get DDR bank count from mem_topology if possible
+  std::vector<char> buf;
+  //dev->sysfs_get("icap", "mem_topology", errmsg, buf);
+  //TODO:2:
+  CoreDevice.get_mem_topology(card, buf);
+
+  const mem_topology *map = (mem_topology *)buf.data();
+  if(buf.empty() || map->m_count == 0) {
+	  std::cout << "WARNING: 'mem_topology' invalid, "
+		  << "unable to perform DMA Test. Has the bitstream been loaded? "
+		  << "See 'xbutil program' to load a specific xclbin file or run "
+		  << "'xbutil validate' to use the xclbins provided with this card."
+		  << std::endl;
+	  return -EINVAL;
+  }
+
+  std::cout << "Reporting from mem_topology:" << std::endl;
+
+  for(int32_t i = 0; i < map->m_count; i++) {
+	  if(map->m_mem_data[i].m_type == MEM_STREAMING)
+		  continue;
+
+	  if(map->m_mem_data[i].m_used) {
+		  std::cout << "Data Validity & DMA Test on "
+				  << map->m_mem_data[i].m_tag << "\n";
+
+		  //What exactly is the use of this for loop()??
+		  //I think it is for read/write tests on DDR banks?
+		  //mem*() APIs are implemented in runtime_src/core/pcie/common/memaccess.h
+		  /*
+		  addr = map->m_mem_data[i].m_base_address;
+		  for(unsigned sz = 1; sz <= 256; sz *= 2) {
+			//TODO:3:
+			  result = memwriteQuiet(addr, sz, pattern);
+			  if( result < 0 )
+				  return result;
+			//TODO:4:
+			  result = memreadCompare(addr, sz, pattern , false);
+			  if( result < 0 )
+				  return result;
+		  }
+		  */
+			//TODO:5:DMARunner() present in runtime_src/core/pcie/common/dmatest.h
+			//blockSize = 4096
+		  DMARunner runner( m_handle, blockSize, i);
+		  result = runner.run();
+	  }
+  }
+  if (result != 0)
+	  std::cout << "ERROR: xbutil validate failed." << std::endl;
+  else
+	  std::cout << "INFO: xbutil validate(dmatest) succeeded." << std::endl;
+#endif
 
   return registerResult;
 }
