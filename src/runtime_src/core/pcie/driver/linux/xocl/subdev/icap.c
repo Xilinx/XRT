@@ -159,6 +159,8 @@ struct icap {
 	void			*rp_sc_bin;
 	unsigned long		*rp_sc_bin_len;
 
+	struct bmc		bmc_header;
+
 	char			*icap_clock_freq_counter_hbm;
 
 	uint64_t		cache_expire_secs;
@@ -1541,9 +1543,6 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	}
 	ICAP_INFO(icap, "runtime version matched");
 
-	/* Grab lock and touch hardware. */
-	mutex_lock(&icap->icap_lock);
-
 	if (xocl_mb_sched_on(xdev)) {
 		/* Try locating the microblaze binary. */
 		if (XDEV(xdev)->priv.sched_bin) {
@@ -1592,8 +1591,27 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	if (load_mgmt || load_sched)
 		xocl_mb_reset(xdev);
 
+	/* save BMC version */
+	mbHeader = get_axlf_section_hdr(icap, bin_obj_axlf, BMC);
+	if (mbHeader) {
+		if (mbHeader->m_sectionSize < sizeof(struct bmc)) {
+			err = -EINVAL;
+			ICAP_ERR(icap, "Invalid bmc section size %lld",
+					mbHeader->m_sectionSize);
+			goto done;
+		}
+		memcpy(&icap->bmc_header, fw->data + mbHeader->m_sectionOffset,
+				sizeof(struct bmc));
+		if (icap->bmc_header.m_size > mbHeader->m_sectionSize) {
+			err = -EINVAL;
+			ICAP_ERR(icap, "Invalid bmc size %lld",
+					icap->bmc_header.m_size);
+			goto done;
+		}
+	}
+
+
 done:
-	mutex_unlock(&icap->icap_lock);
 	release_firmware(fw);
 	ICAP_INFO(icap, "%s err: %ld", __func__, err);
 	return err;
@@ -2669,6 +2687,9 @@ static uint64_t icap_get_data_nolock(struct platform_device *pdev,
 			break;
 		case MIG_CALIB:
 			target = mig_calibration_done(icap);
+			break;
+		case EXP_BMC_VER:
+			target = (uint64_t)icap->bmc_header.m_version;
 			break;
 		default:
 			break;

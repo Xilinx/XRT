@@ -310,6 +310,7 @@ struct xocl_xmc {
 	char			revision[XMC_BDINFO_ENTRY_LEN_MAX];
 	char			bd_name[XMC_BDINFO_ENTRY_LEN_MAX];
 	char			bmc_ver[XMC_BDINFO_ENTRY_LEN_MAX];
+	char			exp_bmc_ver[XMC_BDINFO_ENTRY_LEN_MAX];
 	uint32_t		max_power;
 	uint32_t		fan_presence;
 	uint32_t		config_mode;
@@ -748,6 +749,9 @@ static void xmc_bdinfo(struct platform_device *pdev, enum data_kind kind,
 		case CFG_MODE:
 			*buf = xmc->config_mode;
 			break;
+		case EXP_BMC_VER:
+			memcpy(buf, xmc->exp_bmc_ver, XMC_BDINFO_ENTRY_LEN_MAX);
+			break;
 		default:
 			break;
 		}
@@ -793,6 +797,10 @@ static void xmc_bdinfo(struct platform_device *pdev, enum data_kind kind,
 			break;
 		case CFG_MODE:
 			*buf = bdinfo->config_mode;
+			break;
+		case EXP_BMC_VER:
+			memcpy(buf, bdinfo->exp_bmc_ver,
+					XMC_BDINFO_ENTRY_LEN_MAX);
 			break;
 		default:
 			break;
@@ -878,6 +886,7 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind, 
 		xmc_bdinfo(pdev, MAX_PWR, &bdinfo->max_power);
 		xmc_bdinfo(pdev, FAN_PRESENCE, &bdinfo->fan_presence);
 		xmc_bdinfo(pdev, CFG_MODE, &bdinfo->config_mode);
+		xmc_bdinfo(pdev, EXP_BMC_VER, (u32 *)bdinfo->exp_bmc_ver);
 		break;
 	default:
 		break;
@@ -1478,6 +1487,7 @@ XMC_BDINFO_STRING_SYSFS_NODE(mac_addr3)
 XMC_BDINFO_STRING_SYSFS_NODE(revision)
 XMC_BDINFO_STRING_SYSFS_NODE(bd_name)
 XMC_BDINFO_STRING_SYSFS_NODE(bmc_ver)
+XMC_BDINFO_STRING_SYSFS_NODE(exp_bmc_ver)
 
 #define	XMC_BDINFO_STAT_SYSFS_NODE(name)		\
 	static ssize_t name##_show(struct device *dev,		\
@@ -1521,6 +1531,7 @@ static struct attribute *xmc_attrs[] = {
 	&dev_attr_revision.attr,
 	&dev_attr_bd_name.attr,
 	&dev_attr_bmc_ver.attr,
+	&dev_attr_exp_bmc_ver.attr,
 	&dev_attr_max_power.attr,
 	&dev_attr_fan_presence.attr,
 	&dev_attr_config_mode.attr,
@@ -2646,9 +2657,10 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 	int ret = 0;
 	uint32_t bd_info_sz = 0;
 	uint32_t *bdinfo_raw;
+	xdev_handle_t xdev = xocl_get_xdev(xmc->pdev);
+	char *tmp_str;
 
 	BUG_ON(!mutex_is_locked(&xmc->mbx_lock));
-
 	if (xmc->bdinfo_loaded)
 		return 0;
 
@@ -2688,16 +2700,26 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_FAN_PRESENCE, (char *)&xmc->fan_presence);
 		xmc_set_board_info(bdinfo_raw, bd_info_sz, BDINFO_CONFIG_MODE, (char *)&xmc->config_mode);
 
-		if (bd_info_valid(xmc->serial_num)) {
+		tmp_str = (char *)xocl_icap_get_data(xdev, EXP_BMC_VER);
+		if (tmp_str) {
+			strncpy(xmc->exp_bmc_ver, tmp_str,
+				XMC_BDINFO_ENTRY_LEN_MAX);
+		}
+		if (bd_info_valid(xmc->serial_num) &&
+			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver)) {
 			xmc->bdinfo_loaded = true;
 			xocl_info(&xmc->pdev->dev, "board info reloaded\n");
 		}
 		vfree(bdinfo_raw);
 	} else {
 
-		if (xmc->bdinfo_raw) {
+		if (xmc->bdinfo_raw &&
+			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver)) {
 			xocl_info(&xmc->pdev->dev, "board info loaded, skip\n");
 			return 0;
+		} else {
+			vfree(xmc->bdinfo_raw);
+			xmc->bdinfo_raw = NULL;
 		}
 
 		xmc_bdinfo(xmc->pdev, SER_NUM, (u32 *)xmc->serial_num);
@@ -2711,13 +2733,12 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		xmc_bdinfo(xmc->pdev, MAX_PWR, &xmc->max_power);
 		xmc_bdinfo(xmc->pdev, FAN_PRESENCE, &xmc->fan_presence);
 		xmc_bdinfo(xmc->pdev, CFG_MODE, &xmc->config_mode);
+		xmc_bdinfo(xmc->pdev, EXP_BMC_VER, (u32 *)xmc->exp_bmc_ver);
 
-		if (bd_info_valid(xmc->serial_num)) {
+		if (bd_info_valid(xmc->serial_num) &&
+			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver)) {
 			xmc->bdinfo_loaded = true;
 			xocl_info(&xmc->pdev->dev, "board info reloaded\n");
-		} else {
-			vfree(xmc->bdinfo_raw);
-			xmc->bdinfo_raw = NULL;
 		}
 	}
 	return 0;

@@ -1236,6 +1236,27 @@ int xcldev::device::bandwidthKernelTest(void)
     return 0;
 }
 
+int xcldev::device::scVersionTest(void)
+{
+    std::string sc_ver, exp_sc_ver;
+    std::string errmsg;
+
+    if (!errmsg.empty()) {
+        std::cout << errmsg << std::endl;
+        return -EINVAL;
+    }
+
+    pcidev::get_dev(m_idx)->sysfs_get("xmc", "bmc_ver", errmsg, sc_ver);
+    pcidev::get_dev(m_idx)->sysfs_get("xmc", "exp_bmc_ver", errmsg, exp_sc_ver);
+    if (!exp_sc_ver.empty() && sc_ver.compare(exp_sc_ver) != 0)
+    {
+        std::cout << "SC firmware version is not expected. SC firmware running on board: " << sc_ver << ". Expected SC firmware: " << exp_sc_ver << std::endl; 
+	return -EINVAL;
+    }
+
+    return 0;
+}
+
 int xcldev::device::pcieLinkTest(void)
 {
     unsigned int pcie_speed, pcie_speed_max, pcie_width, pcie_width_max;
@@ -1446,6 +1467,13 @@ int xcldev::device::validate(bool quick)
     // Check pcie training
     retVal = runOneTest("PCIE link check",
             std::bind(&xcldev::device::pcieLinkTest, this));
+    withWarning = withWarning || (retVal == 1);
+    if (retVal < 0)
+        return retVal;
+
+    // Check SC firmware version
+    retVal = runOneTest("SC firmware version check",
+            std::bind(&xcldev::device::scVersionTest, this));
     withWarning = withWarning || (retVal == 1);
     if (retVal < 0)
         return retVal;

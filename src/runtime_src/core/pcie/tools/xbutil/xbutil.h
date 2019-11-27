@@ -1711,6 +1711,7 @@ private:
     int verifyKernelXbtest(void);
     int dmaXbtest(void);
 
+    int scVersionTest(void);
     int pcieLinkTest(void);
     int auxConnectionTest(void);
     int verifyKernelTest(void);

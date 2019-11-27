@@ -852,6 +852,7 @@ enum data_kind {
 	VOL_VPP_2V5,
 	VOL_VCCINT_BRAM,
 	XMC_VER,
+	EXP_BMC_VER,
 };
 
 enum mb_kind {
