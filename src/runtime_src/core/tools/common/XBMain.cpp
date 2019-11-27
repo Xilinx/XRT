@@ -16,7 +16,7 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
-#include "XBMgmtMain.h"
+#include "XBMain.h"
 
 #include "XBUtilities.h"
 #include "SubCmd.h"
@@ -31,36 +31,19 @@ namespace po = boost::program_options;
 #include <iostream>
 
 
-static void printHelp(po::options_description _optionDescription)
+static void printHelp(const po::options_description& _optionDescription)
 {
-  std::cout << std::endl;
-  std::cout << "Syntax: xbmgmt <subcommand> <options>" << std::endl;
-  std::cout << std::endl;
-  std::cout << "Sub Commands:" << std::endl;
+  std::cout << "\nSyntax: xbmgmt <subcommand> <options>\n\n";
+  std::cout << "Sub Commands:\n";
   const SubCmdTable & cmdTable = getSubCmdsTable();
-  for (auto subCmdEntry : cmdTable) {
+  for (auto& subCmdEntry : cmdTable) {
     if (subCmdEntry.second.isHidden == true) {
       continue;
     }
-    std::cout << boost::format("  %-10s - %s") % subCmdEntry.second.sSubCmd % subCmdEntry.second.sDescription << std::endl;
+    std::cout << boost::format("  %-10s - %s") % subCmdEntry.second.sSubCmd % subCmdEntry.second.sDescription << "\n";
   }
-  std::cout << std::endl;
-  std::cout << _optionDescription << std::endl;
-  // std::cout << "Supported sub-commands are:\n";
-  // std::cout << "\tflash - Update SC firmware or shell on the device\n";
-  // std::cout << "\thelp - Print out help message for a sub-command\n";
-  // std::cout << "\tscan - List all detected mgmt PCIE functions\n";
-  // std::cout << "\tversion - Print out xrt build version\n";
-  // std::cout << "Experts only:\n";
-  // std::cout << "\tclock - Change various clock frequency on the device\n";
-  // std::cout << "\tconfig - Parse or update daemon/device configuration\n";
-  // std::cout << "\tnifd - Access the NIFD debug IP to readback frames and offsets\n";
-  // std::cout << "\tpartition - Show and download partition onto the device\n";
-  // std::cout << "\treset - Perform various flavors of reset on the device\n";
-  // std::cout << "Run xbmgmt --help <subcommand> for detailed help of each subcommand\n";
-
+  std::cout << "\n" << _optionDescription << std::endl;
 }
-//to-do: check administrator
 
 // ------ Program entry point -------------------------------------------------
 ReturnCodes main_(int argc, char** argv) {
@@ -107,11 +90,10 @@ ReturnCodes main_(int argc, char** argv) {
   }
 
   if (bOverride == false) {
-    std::cout << std::endl;
-    std::cout << "===========================================================" << std::endl;
-    std::cout << "xbmgmt2 is currently under development and currently is    " << std::endl;
-    std::cout << "not ready to be used in examining XRT drivers or platforms." << std::endl;
-    std::cout << "===========================================================" << std::endl;
+    std::cout << "\n===========================================================\n";
+    std::cout << "this tool is currently under development and currently is  \n"; 
+    std::cout << "not ready to be used in examining XRT drivers or platforms.\n";
+    std::cout << "===========================================================\n";
     exit(0);
   }
 

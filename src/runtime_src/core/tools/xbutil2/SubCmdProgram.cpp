@@ -17,7 +17,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdProgram.h"
-#include "XBUtilities.h"
+#include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
 #include "xrt.h"
@@ -33,7 +33,7 @@ namespace po = boost::program_options;
 #include <fstream>
 
 // ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
-#include "SubCmd.h"
+#include "tools/common/SubCmd.h"
 static const unsigned int registerResult = 
                     register_subcommand("program", 
                                         "Download the acceleration program to a given device",

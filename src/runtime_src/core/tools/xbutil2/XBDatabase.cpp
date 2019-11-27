@@ -17,7 +17,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "XBDatabase.h"
-#include "XBUtilities.h"
+#include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 #include "common/device_core.h"
 

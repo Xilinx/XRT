@@ -235,3 +235,52 @@ read_device_dma_stats(uint64_t _deviceID, boost::property_tree::ptree &_pt) cons
 //
 //  _pt.add_child( "transfer_metrics.channels", ptChannels);
 }
+
+void
+xrt_core::device_windows::
+scan_devices(bool verbose, bool json) const
+{
+  std::cout << "TO-DO: scan_devices\n";
+  verbose = verbose;
+  json = json;
+}
+
+void
+xrt_core::device_windows::
+auto_flash(uint64_t _deviceID, std::string& shell, std::string& id, bool force) const
+{
+  std::cout << "TO-DO: auto_flash\n";
+  _deviceID = _deviceID;
+  shell = shell;
+  id = id;
+  force = force;
+}
+
+void
+xrt_core::device_windows::
+reset_shell(uint64_t _deviceID) const
+{
+  std::cout << "TO-DO: reset_shell\n";
+  _deviceID = _deviceID;
+}
+
+void
+xrt_core::device_windows::
+update_shell(uint64_t _deviceID, std::string flashType, std::string& primary, std::string& secondary) const
+{
+  std::cout << "TO-DO: update_shell\n";
+  _deviceID = _deviceID;
+  flashType = flashType;
+  primary = primary;
+  secondary = secondary;
+}
+
+void
+xrt_core::device_windows::
+update_SC(uint64_t _deviceID, std::string& file) const
+{
+  std::cout << "TO-DO: update_SC\n";
+  _deviceID = _deviceID;
+  file = file;
+}
+

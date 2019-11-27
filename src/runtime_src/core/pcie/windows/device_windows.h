@@ -36,6 +36,13 @@ class device_windows : public device_pcie {
 
     virtual std::pair<uint64_t, uint64_t> get_total_devices() const;
     virtual void query_device(uint64_t _deviceID, QueryRequest _eQueryRequest, const std::type_info & _typeInfo, boost::any &_returnValue) const;
+    //flash functions
+    virtual void scan_devices(bool verbose, bool json) const;
+    virtual void auto_flash(uint64_t _deviceID, std::string& shell, std::string& id, bool force) const;
+    virtual void reset_shell(uint64_t _deviceID) const;
+    virtual void update_shell(uint64_t _deviceID, std::string flashType, std::string& primary, std::string& secondary) const;
+    virtual void update_SC(uint64_t _deviceID, std::string& file) const;
+    //end flash functions
 
   public:
     device_windows();

@@ -14,11 +14,11 @@ include_directories(${CMAKE_BINARY_DIR})
 
 file(GLOB XBUTIL_V2_BASE_FILES
   "xbutil.cpp"
-  "XBUtilMain.cpp"
-  "XBUtilities.cpp"
+  "../common/XBMain.cpp"
+  "../common/XBUtilities.cpp"
   "XBReport.cpp"
   "XBDatabase.cpp"
-  "SubCmd.cpp"
+  "../common/SubCmd.cpp"
 )
 
 if(WIN32)
