@@ -32,6 +32,14 @@ class device_pcie : public xrt_core::device_core {
     virtual void get_devices(boost::property_tree::ptree &_pt) const;
     virtual void get_device_info(uint64_t _deviceID, boost::property_tree::ptree &_pt) const;
 
+    //flash functions
+    virtual void scan_devices(bool verbose, bool json) const = 0;
+    virtual void auto_flash(uint64_t _deviceID, std::string& shell, std::string& id, bool force) const = 0;
+    virtual void reset_shell(uint64_t _deviceID) const = 0;
+    virtual void update_shell(uint64_t _deviceID, std::string flashType, std::string& primary, std::string& secondary) const = 0;
+    virtual void update_SC(uint64_t _deviceID, std::string& file) const = 0;
+    //end flash functions
+
   private:
     device_pcie(const device_pcie&);
     device_pcie& operator=(const device_pcie&);
