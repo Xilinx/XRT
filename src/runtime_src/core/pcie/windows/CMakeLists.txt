@@ -28,12 +28,6 @@ set(CMAKE_CXX_FLAGS "-DXCLHAL_MINOR_VER=1 ${CMAKE_CXX_FLAGS}")
 add_library(xrt_core SHARED ${XRT_PCIE_WINDOWS_SHARED_FILES})
 add_library(xrt_core_static STATIC ${XRT_PCIE_WINDOWS_STATIC_FILES})
 
-if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-  target_compile_options(xrt_core_static PRIVATE /MTd)
-else()
-  target_compile_options(xrt_core_static PRIVATE /MT)
-endif()
-
 target_link_libraries(
   xrt_core
   xrt_coreutil
