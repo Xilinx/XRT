@@ -48,11 +48,11 @@ class device_core {
     virtual void read_device_dma_stats(uint64_t _deviceID, boost::property_tree::ptree &_pt) const = 0;
 
     //flash functions
-    virtual int scan_devices(bool verbose, bool json) const = 0;
-    virtual int auto_flash(uint64_t _deviceID, std::string& shell, std::string& id, bool force) const = 0;
-    virtual int reset_shell(uint64_t _deviceID) const = 0;
-    virtual int update_shell(uint64_t _deviceID, std::string flashType, const char *primary, const char *secondary) const = 0;
-    virtual int update_SC(uint64_t _deviceID, const char *file) const = 0;
+    virtual void scan_devices(bool verbose, bool json) const = 0;
+    virtual void auto_flash(uint64_t _deviceID, std::string& shell, std::string& id, bool force) const = 0;
+    virtual void reset_shell(uint64_t _deviceID) const = 0;
+    virtual void update_shell(uint64_t _deviceID, std::string flashType, std::string& primary, std::string& secondary) const = 0;
+    virtual void update_SC(uint64_t _deviceID, std::string& file) const = 0;
     //end flash functions
 
     /**

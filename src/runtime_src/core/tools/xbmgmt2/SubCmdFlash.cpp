@@ -152,7 +152,8 @@ int subCmdFlash(const std::vector<std::string> &_options)
       return 1;
     }
 
-    return xrt_core::device_core::instance().scan_devices(verbose, json); 
+    xrt_core::device_core::instance().scan_devices(verbose, json); 
+    return registerResult;
   }
 
   if (update) {
@@ -195,7 +196,8 @@ int subCmdFlash(const std::vector<std::string> &_options)
       return 1;
     }
 
-    return xrt_core::device_core::instance().auto_flash(bdf2index(), name, id, force);
+    xrt_core::device_core::instance().auto_flash(bdf2index(), name, id, force);
+    return registerResult;
   }
 
   if (reset) {
@@ -222,7 +224,8 @@ int subCmdFlash(const std::vector<std::string> &_options)
     // -- Now process the subcommand option-------------------------------
     XBU::verbose(XBU::format("  Card: %s", bdf.c_str()));
 
-    return xrt_core::device_core::instance().reset_shell(bdf2index());
+    xrt_core::device_core::instance().reset_shell(bdf2index());
+    return registerResult;
   }
 
   if (shell) {
@@ -230,6 +233,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
     std::string bdf;
     std::string file;
     std::string flash_type;
+    std::string secondary;
 
     XBU::verbose("Sub command: --shell");
 
@@ -260,7 +264,8 @@ int subCmdFlash(const std::vector<std::string> &_options)
       std::cerr << shellDesc << std::endl;
       return 1;
     }
-    return xrt_core::device_core::instance().update_shell(bdf2index(), flash_type, file.c_str(), nullptr);
+    xrt_core::device_core::instance().update_shell(bdf2index(), flash_type, file, secondary);
+    return registerResult;
   }
 
   if (sc_firmware) {
@@ -296,7 +301,8 @@ int subCmdFlash(const std::vector<std::string> &_options)
       return 1;
     }
 
-    return xrt_core::device_core::instance().update_SC(bdf2index(), file.c_str());
+    xrt_core::device_core::instance().update_SC(bdf2index(), file);
+    return registerResult;
   }
 
   return registerResult;

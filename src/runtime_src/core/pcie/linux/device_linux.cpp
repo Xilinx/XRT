@@ -216,17 +216,16 @@ xrt_core::device_linux::read_device_dma_stats(uint64_t _deviceID, boost::propert
   _pt.add_child( "transfer_metrics.channels", ptChannels);
 }
 
-int
+void
 xrt_core::device_linux::
 scan_devices(bool verbose, bool json) const
 {
   std::cout << "TO-DO: scan_devices\n";
   verbose = verbose;
   json = json;
-  return 0;
 }
 
-int
+void
 xrt_core::device_linux::
 auto_flash(uint64_t _deviceID, std::string& shell, std::string& id, bool force) const
 {
@@ -235,36 +234,32 @@ auto_flash(uint64_t _deviceID, std::string& shell, std::string& id, bool force) 
   shell = shell;
   id = id;
   force = force;
-  return 0;
 }
 
-int
+void
 xrt_core::device_linux::
 reset_shell(uint64_t _deviceID) const
 {
   std::cout << "TO-DO: reset_shell\n";
   _deviceID = _deviceID;
-  return 0;
 }
 
-int
+void
 xrt_core::device_linux::
-update_shell(uint64_t _deviceID, std::string flashType, const char *primary, const char *secondary) const
+update_shell(uint64_t _deviceID, std::string flashType, std::string& primary, std::string& secondary) const
 {
   std::cout << "TO-DO: update_shell\n";
   _deviceID = _deviceID;
   flashType = flashType;
   primary = primary;
   secondary = secondary;
-  return 0;
 }
 
-int
+void
 xrt_core::device_linux::
-update_SC(uint64_t _deviceID, const char *file) const
+update_SC(uint64_t _deviceID, std::string& file) const
 {
   std::cout << "TO-DO: update_SC\n";
   _deviceID = _deviceID;
   file = file;
-  return 0;
 }

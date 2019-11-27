@@ -31,7 +31,7 @@ namespace po = boost::program_options;
 #include <iostream>
 
 
-static void printHelp(po::options_description _optionDescription)
+static void printHelp(const po::options_description& _optionDescription)
 {
   std::cout << "\nSyntax: xbmgmt <subcommand> <options>\n\n";
   std::cout << "Sub Commands:\n";

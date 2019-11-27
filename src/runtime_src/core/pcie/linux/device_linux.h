@@ -37,11 +37,11 @@ class device_linux : public xrt_core::device_pcie {
     virtual void query_device(uint64_t _deviceID, QueryRequest _eQueryRequest, const std::type_info & _typeInfo, boost::any &_returnValue) const;
 
     //flash functions
-    virtual int scan_devices(bool verbose, bool json) const;
-    virtual int auto_flash(uint64_t _deviceID, std::string& shell, std::string& id, bool force) const;
-    virtual int reset_shell(uint64_t _deviceID) const;
-    virtual int update_shell(uint64_t _deviceID, std::string flashType, const char *primary, const char *secondary) const;
-    virtual int update_SC(uint64_t _deviceID, const char *file) const;
+    virtual void scan_devices(bool verbose, bool json) const;
+    virtual void auto_flash(uint64_t _deviceID, std::string& shell, std::string& id, bool force) const;
+    virtual void reset_shell(uint64_t _deviceID) const;
+    virtual void update_shell(uint64_t _deviceID, std::string flashType, std::string& primary, std::string& secondary) const;
+    virtual void update_SC(uint64_t _deviceID, std::string& file) const;
     //end flash functions
   public:
     device_linux();
