@@ -145,6 +145,11 @@ XBDatabase::create_complete_device_tree(boost::property_tree::ptree & _pt)
 
     // Add the platform to the device tree
     ptDevice.add_child("platform", ptPlatform);
+
+	//printing Iplayout and MemTopology
+	auto device = xrt_core::device_core::instance().get_device(device_id);
+	device.execute(printIPLayout);
+	device.execute(printMemTopology);
   }
 }
 

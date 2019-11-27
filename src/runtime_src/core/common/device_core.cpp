@@ -149,7 +149,7 @@ device_core::instance()
 device_core::device
 device_core::get_device(uint64_t _deviceID) const
 {
-  static bool device_message = true;
+  static bool device_message = false;
   if (device_message) {
     device_message = false;
     auto devices = get_total_devices();

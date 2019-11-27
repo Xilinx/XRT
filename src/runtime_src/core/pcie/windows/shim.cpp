@@ -1197,34 +1197,45 @@ xclRead(xclDeviceHandle handle, enum xclAddressSpace space,
   return shim->read(space,offset,hostbuf,size) ? 0 : size;
 }
 
+int
+printIPLayout(xclDeviceHandle handle)
+{
+  auto shim = get_shim_object(handle);
+
+  if (!shim->SendIoctlStatIpLayout()) {
+	  std::cout << "Printing IpLayout failed" << std::endl;
+	  return 1;
+  }
+
+  return 0;
+}
+
+int
+printMemTopology(xclDeviceHandle handle)
+{
+  auto shim = get_shim_object(handle);
+  if (!shim->SendIoctlStatMemTopo()) {
+	  std::cout << "Printing MemTopology failed" << std::endl;
+	  return 1;
+  }
+
+  return 0;
+}
+
 void
 queryDeviceWithQR(uint64_t _deviceID, uint64_t subdev,
 	uint64_t variable,
 	boost::any & _returnValue)
 {
-  xclDeviceHandle handle;
-  // DeviceIoControl failed error seen when below method used for handle.
-  //xclDeviceHandle handle = xclOpen((int)_deviceID, 0, XCL_INFO);
-
-  handle = CreateFileW(L"\\\\.\\XOCL_USER-0" XOCL_USER_DEVICE_DEVICE_NAMESPACE,
-		GENERIC_READ | GENERIC_WRITE,
-		0,
-		0,
-		OPEN_EXISTING,
-		0,
-		0);
-  if (handle == INVALID_HANDLE_VALUE) {
-		printf("GetDeviceHandle of User Failed in qr_pcie_info()\n");
-		CloseHandle(handle);
-		handle = INVALID_HANDLE_VALUE;
-		return;
-  }
+  xclDeviceHandle handle = xclOpen((int)_deviceID, 0, XCL_INFO);
+  auto shim = get_shim_object(handle);
+  HANDLE deviceHandle = shim->m_dev;
 
   switch (subdev)
   {
-	case pcie: qr_pcie_info(handle, variable, _returnValue);
+	case pcie: qr_pcie_info(deviceHandle, variable, _returnValue);
 		break;
-	case rom: qr_rom_info(handle, variable, _returnValue);
+	case rom: qr_rom_info(deviceHandle, variable, _returnValue);
 		break;
 	case icap:
 		break;
@@ -1239,11 +1250,10 @@ queryDeviceWithQR(uint64_t _deviceID, uint64_t subdev,
 	default:
 		std::cout << "unknown request" << std::endl;
 	}
-	//xclClose(handle);
 }
 
 void
-qr_rom_info(xclDeviceHandle handle, uint64_t variable, boost::any & _returnValue) {
+qr_rom_info(HANDLE handle, uint64_t variable, boost::any & _returnValue) {
 	XOCL_ROM_INFORMATION romInfo;
 	XOCL_STAT_CLASS statClass = XoclStatRomInfo;
 	DWORD bytesWritten;
@@ -1270,8 +1280,8 @@ qr_rom_info(xclDeviceHandle handle, uint64_t variable, boost::any & _returnValue
 		{
 		case VBNV:
 		{
-			std::string VBNVName(reinterpret_cast<const char *> (romInfo.VBNVName),
-				sizeof(romInfo.VBNVName) / sizeof(romInfo.VBNVName[0]));
+			size_t len = strlen((char*)romInfo.VBNVName);
+			std::string VBNVName(reinterpret_cast<const char *> (romInfo.VBNVName),len);
 			_returnValue = boost::any_cast<std::string>(VBNVName);
 		}
 			break;
@@ -1289,8 +1299,8 @@ qr_rom_info(xclDeviceHandle handle, uint64_t variable, boost::any & _returnValue
 			break;
 		case FPGA:
 		{
-			std::string FPGAPartName(reinterpret_cast<const char *> (romInfo.FPGAPartName),
-				sizeof(romInfo.FPGAPartName) / sizeof(romInfo.FPGAPartName[0]));
+			size_t len = strlen((char*)romInfo.FPGAPartName);
+			std::string FPGAPartName(reinterpret_cast<const char *> (romInfo.FPGAPartName),len);
 			_returnValue = boost::any_cast<std::string>(FPGAPartName);
 		}
 			break;
@@ -1301,7 +1311,7 @@ qr_rom_info(xclDeviceHandle handle, uint64_t variable, boost::any & _returnValue
 }
 
 void
-qr_pcie_info(xclDeviceHandle handle, uint64_t variable, boost::any & _returnValue) {
+qr_pcie_info(HANDLE handle, uint64_t variable, boost::any & _returnValue) {
 	DWORD bytesRead;
 	XOCL_STAT_CLASS_ARGS statClassArgs;
 	XOCL_DEVICE_INFORMATION deviceInfo;

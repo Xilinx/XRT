@@ -1061,6 +1061,10 @@ XCL_DRIVER_DLLESPEC const struct axlf_section_header* wrap_get_axlf_section(cons
 XCL_DRIVER_DLLESPEC size_t xclDebugReadIPStatus(xclDeviceHandle handle, enum xclDebugReadType type,
                                                                            void* debugResults);
 
+XCL_DRIVER_DLLESPEC int printIPLayout(xclDeviceHandle handle);
+
+XCL_DRIVER_DLLESPEC int printMemTopology(xclDeviceHandle handle);
+
 typedef enum {
 	pcie = 0,
 	rom,
@@ -1147,9 +1151,9 @@ typedef enum {
 
 XCL_DRIVER_DLLESPEC void queryDeviceWithQR(uint64_t _deviceID, uint64_t subdev, uint64_t variable, boost::any & _returnValue);
 
-XCL_DRIVER_DLLESPEC void qr_rom_info(xclDeviceHandle handle, uint64_t variable, boost::any & _returnValue);
+XCL_DRIVER_DLLESPEC void qr_rom_info(HANDLE handle, uint64_t variable, boost::any & _returnValue);
 
-XCL_DRIVER_DLLESPEC void qr_pcie_info(xclDeviceHandle handle, uint64_t variable, boost::any & _returnValue);
+XCL_DRIVER_DLLESPEC void qr_pcie_info(HANDLE handle, uint64_t variable, boost::any & _returnValue);
 
 
 #ifdef __cplusplus
