@@ -26,6 +26,7 @@ namespace po = boost::program_options;
 
 // System - Include Files
 #include <iostream>
+#include "common/device_core.h"
 
 // ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
 #include "tools/common/SubCmd.h"
@@ -82,15 +83,65 @@ int subCmdDmaTest(const std::vector<std::string> &_options)
   }
 
   // -- Now process the subcommand --------------------------------------------
-  blockSizeKB = stoi(sBlockSizeKB, nullptr, 0);
+  blockSizeKB = stoi(sBlockSizeKB);
 
   XBU::verbose(XBU::format("      Card: %ld", card));
   XBU::verbose(XBU::format("Block Size: 0x%lx", blockSizeKB));
 
 
-  XBU::error("COMMAND BODY NOT IMPLEMENTED.");
-  // TODO: Put working code here
+  if (blockSizeKB & (blockSizeKB - 1)) {
+	  std::cerr << "ERROR: block size should be power of 2\n";
+	  return -1;
+  }
+
+  if (blockSizeKB > 0x100000) {
+	  std::cerr << "ERROR: block size cannot be greater than 0x100000 MB\n";
+	  return -1;
+  }
+
+  blockSizeKB *= 1024; // convert kilo bytes to bytes
+
+  if (blockSizeKB == 0)
+	  blockSizeKB = 256 * 1024 * 1024; // Default block size, 256MB
+
+  //TODO:1:
+  // Get the handle to the devices
+  const xrt_core::device_core &CoreDevice = xrt_core::device_core::instance();
+
+  size_t ddr_mem_size = CoreDevice.get_ddr_mem_size(card);
+  if (ddr_mem_size == -EINVAL)
+	  return -EINVAL;
+
+  std::cout << "Total DDR size: " << ddr_mem_size << " MB" << std::endl;
+  XOCL_MEM_TOPOLOGY_INFORMATION topoInfo;
+  CoreDevice.get_memTopology(card, &topoInfo);
+
+  if (topoInfo.MemTopoCount == 0) {
+	  std::cout << "WARNING: 'mem_topology' invalid, "
+		  << "unable to perform DMA Test. Has the bitstream been loaded? "
+		  << "See 'xbutil program' to load a specific xclbin file or run "
+		  << "'xbutil dmatest' to use the xclbins provided with this card."
+		  << std::endl;
+	  return -EINVAL;
+  }
+
+  printf("Got XoclStatMemTopology Data:\n");
+  printf("Memory regions: %d\n", topoInfo.MemTopoCount);
+  for (size_t i = 0; i < topoInfo.MemTopoCount; i++) {
+	  printf("\ttype: %d, tag=%s, start=0x%llx, size=0x%llx\n",
+		  topoInfo.MemTopo[i].m_type,
+		  topoInfo.MemTopo[i].m_tag,
+		  topoInfo.MemTopo[i].m_base_address,
+		  topoInfo.MemTopo[i].m_size);
+	  if (topoInfo.MemTopo[i].m_type == MEM_STREAMING)
+		  continue;
+	  if (topoInfo.MemTopo[i].m_used) {
+		  std::cout << "[TBD] Data Validity & DMA Test on "
+			  << topoInfo.MemTopo[i].m_tag << "\n";
+		  //DMARunner runner(m_handle, blockSize, i);
+		  //result = runner.run();
+	  }
+  }
 
   return registerResult;
 }
-

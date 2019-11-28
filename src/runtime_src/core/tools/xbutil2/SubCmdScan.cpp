@@ -17,6 +17,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdScan.h"
+#include "XBReport.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
@@ -79,6 +80,11 @@ int subCmdScan(const std::vector<std::string> &_options)
     std::cout << scanDesc << std::endl;
     return 0;
   }
+
+  // Report system configuration and XRT information
+  XBReport::report_system_config();
+  XBReport::report_xrt_info();
+  std::cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
 
   auto& core = xrt_core::device_core::instance();
 

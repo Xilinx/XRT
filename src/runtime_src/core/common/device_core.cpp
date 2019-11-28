@@ -28,6 +28,7 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <boost/property_tree/ptree.hpp>
 
 namespace xrt_core {
 
@@ -39,7 +40,7 @@ std::map<device_core::QueryRequest, device_core::QueryRequestEntry> device_core:
   { QR_PCIE_SUBSYSTEM_ID,         { "QR_PCIE_SUBSYSTEM_ID",         "subsystem_id",     &typeid(std::string), device_core::format_primative }},
   { QR_PCIE_LINK_SPEED,           { "QR_PCIE_LINK_SPEED",           "link_speed",       &typeid(uint64_t),    device_core::format_primative }},
   { QR_PCIE_EXPRESS_LANE_WIDTH,   { "QR_PCIE_EXPRESS_LANE_WIDTH",   "width",            &typeid(uint64_t),    device_core::format_primative }},
-
+  { QR_PCIE_READY_STATUS,         { "QR_PCIE_READY_STATUS",         "ready",            &typeid(bool),    device_core::format_primative }},
   { QR_ROM_VBNV,                  { "QR_ROM_VBNV",                  "vbnv",             &typeid(std::string), device_core::format_primative }},
   { OR_ROM_DDR_BANK_SIZE,         { "OR_ROM_DDR_BANK_SIZE",         "ddr_size_bytes",   &typeid(uint64_t),    device_core::format_hex_base2_shiftup30 }},
   { QR_ROM_DDR_BANK_COUNT_MAX,    { "QR_ROM_DDR_BANK_COUNT_MAX",    "widdr_countdth",   &typeid(uint64_t),    device_core::format_primative }},
@@ -147,7 +148,7 @@ device_core::instance()
 device_core::device
 device_core::get_device(uint64_t _deviceID) const
 {
-  static bool device_message = true;
+  static bool device_message = false;
   if (device_message) {
     device_message = false;
     auto devices = get_total_devices();
@@ -292,7 +293,6 @@ device_core::get_device_rom_info(uint64_t _deviceID, boost::property_tree::ptree
   query_device_and_put(_deviceID, QR_ROM_FPGA_NAME, _pt);
 }
 
-
 void
 device_core::get_device_xmc_info(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
 {
@@ -395,4 +395,26 @@ device_core::read_device_firewall(uint64_t _deviceID, boost::property_tree::ptre
   query_device_and_put(_deviceID, QR_FIREWALL_TIME_SEC, _pt);
 }
 
+//TODO: dmatest
+size_t
+xrt_core::device_core::get_ddr_mem_size(uint64_t _deviceID) const
+{
+  std::string errmsg;
+  uint64_t ddr_size = 0;
+  uint64_t ddr_bank_count = 0;
+  boost::property_tree::ptree _pt;
+
+  query_device_and_put(_deviceID, OR_ROM_DDR_BANK_SIZE, _pt);
+  query_device_and_put(_deviceID, QR_ROM_DDR_BANK_COUNT_MAX, _pt);
+
+  std::string s;
+  s = _pt.get<std::string>("ddr_size_bytes", "N/A");
+  //std::cout << "get_ddr_mem_size(): ddr_size: " << s << std::endl;
+  ddr_size = strtoull(s.c_str(), nullptr, 16);
+  s = _pt.get<std::string>("widdr_countdth", "N/A");
+  //std::cout << "get_ddr_mem_size(): ddr_bank_count: " << s << std::endl;
+  ddr_bank_count = strtoull(s.c_str(), nullptr, 16);
+
+  return (ddr_size * ddr_bank_count) / (1024 * 1024);
+}
 } // xrt_core
