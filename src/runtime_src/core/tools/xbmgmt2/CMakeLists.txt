@@ -24,12 +24,14 @@ if(WIN32)
   file(GLOB XBMGMT_V2_SUBCMD_FILES
     "SubCmdFlash.cpp"
     "SubCmdVersion.cpp"
+    "flash/xspi.cpp"
   )
 else()
   set(XBMGMT2_NAME "xbmgmt2")
   file(GLOB XBMGMT_V2_SUBCMD_FILES
     "SubCmdFlash.cpp"
     "SubCmdVersion.cpp"
+    "flash/xspi.cpp"
   )
 endif()
 

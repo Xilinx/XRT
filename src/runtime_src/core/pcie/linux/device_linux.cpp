@@ -24,16 +24,17 @@
 #include "boost/format.hpp"
 #include <map>
 
-xrt_core::device_core*
-xrt_core::
-initialize_child_ctor()
+namespace xrt_core {
+
+device_core*
+device_core_child_ctor()
 {
-  static device_linux dl;
+  static xrt_core::device_linux dl;
   return &dl;
 }
 
-const xrt_core::device_linux::SysDevEntry & 
-xrt_core::device_linux::get_sysdev_entry( QueryRequest _eQueryRequest) const
+const device_linux::SysDevEntry &
+device_linux::get_sysdev_entry( QueryRequest _eQueryRequest) const
 {
   // Initialize our lookup table
   static const std::map<QueryRequest, SysDevEntry> QueryRequestToSysDevTable =
@@ -101,13 +102,13 @@ xrt_core::device_linux::get_sysdev_entry( QueryRequest _eQueryRequest) const
     { QR_FIREWALL_TIME_SEC,         {"firewall", "detected_time"}},
 
     { QR_POWER_MICROWATTS,          {"xmc", "xmc_power"}}
-};
+  };
   // Find the translation entry
-  std::map<QueryRequest, SysDevEntry>::const_iterator it = QueryRequestToSysDevTable.find(_eQueryRequest);
+  auto it = QueryRequestToSysDevTable.find(_eQueryRequest);
 
   if (it == QueryRequestToSysDevTable.end()) {
     std::string errMsg = boost::str( boost::format("The given query request ID (%d) is not supported.") % _eQueryRequest);
-    throw std::runtime_error( errMsg);
+    throw no_such_query(_eQueryRequest, errMsg);
   }
 
   return it->second;
@@ -116,7 +117,7 @@ xrt_core::device_linux::get_sysdev_entry( QueryRequest _eQueryRequest) const
 
 
 void
-xrt_core::device_linux::
+device_linux::
 query_device(uint64_t _deviceID, QueryRequest _eQueryRequest, const std::type_info & _typeInfo, boost::any &_returnValue) const
 {
   // Initialize return data to being empty container.
@@ -169,23 +170,23 @@ query_device(uint64_t _deviceID, QueryRequest _eQueryRequest, const std::type_in
 }
 
 
-xrt_core::device_linux::device_linux()
+device_linux::device_linux()
 {
   // Do nothing
 }
 
-xrt_core::device_linux::~device_linux() {
+device_linux::~device_linux() {
   // Do nothing
 }
 
 std::pair<uint64_t, uint64_t>
-xrt_core::device_linux::get_total_devices() const
+device_linux::get_total_devices() const
 {
   return std::make_pair(pcidev::get_dev_total(), pcidev::get_dev_ready());
 }
 
-void 
-xrt_core::device_linux::read_device_dma_stats(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
+void
+device_linux::read_device_dma_stats(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
 {
   _deviceID = _deviceID;
   _pt = _pt;
@@ -210,14 +211,14 @@ xrt_core::device_linux::read_device_dma_stats(uint64_t _deviceID, boost::propert
       ptDMA.put( "c2h", unitConvert(devstat.c2h[index]) );
 
       // Create our array of data
-      ptChannels.push_back(std::make_pair("", ptDMA)); 
+      ptChannels.push_back(std::make_pair("", ptDMA));
   }
 
   _pt.add_child( "transfer_metrics.channels", ptChannels);
 }
 
 void
-xrt_core::device_linux::
+device_linux::
 scan_devices(bool verbose, bool json) const
 {
   std::cout << "TO-DO: scan_devices\n";
@@ -226,7 +227,7 @@ scan_devices(bool verbose, bool json) const
 }
 
 void
-xrt_core::device_linux::
+device_linux::
 auto_flash(uint64_t _deviceID, std::string& shell, std::string& id, bool force) const
 {
   std::cout << "TO-DO: auto_flash\n";
@@ -237,7 +238,7 @@ auto_flash(uint64_t _deviceID, std::string& shell, std::string& id, bool force) 
 }
 
 void
-xrt_core::device_linux::
+device_linux::
 reset_shell(uint64_t _deviceID) const
 {
   std::cout << "TO-DO: reset_shell\n";
@@ -245,7 +246,7 @@ reset_shell(uint64_t _deviceID) const
 }
 
 void
-xrt_core::device_linux::
+device_linux::
 update_shell(uint64_t _deviceID, std::string flashType, std::string& primary, std::string& secondary) const
 {
   std::cout << "TO-DO: update_shell\n";
@@ -256,10 +257,12 @@ update_shell(uint64_t _deviceID, std::string flashType, std::string& primary, st
 }
 
 void
-xrt_core::device_linux::
+device_linux::
 update_SC(uint64_t _deviceID, std::string& file) const
 {
   std::cout << "TO-DO: update_SC\n";
   _deviceID = _deviceID;
   file = file;
 }
+
+} // xrt_core

@@ -26,8 +26,10 @@
 
 #pragma warning(disable : 4100 4996)
 
-const xrt_core::device_windows::IOCTLEntry &
-xrt_core::device_windows::
+namespace xrt_core {
+
+const device_windows::IOCTLEntry &
+device_windows::
 get_IOCTL_entry( QueryRequest _eQueryRequest) const
 {
   // Initialize our lookup table
@@ -102,7 +104,7 @@ get_IOCTL_entry( QueryRequest _eQueryRequest) const
 
   if (it == QueryRequestToIOCTLTable.end()) {
     std::string errMsg = boost::str( boost::format("The given query request ID (%d) is not supported.") % _eQueryRequest);
-    throw std::runtime_error( errMsg);
+    throw no_such_query(_eQueryRequest, errMsg);
   }
 
   return it->second;
@@ -111,7 +113,7 @@ get_IOCTL_entry( QueryRequest _eQueryRequest) const
 
 
 void
-xrt_core::device_windows::
+device_windows::
 query_device(uint64_t _deviceID, QueryRequest _eQueryRequest, const std::type_info & _typeInfo, boost::any &_returnValue) const
 {
   // Initialize return data to being empty container.
@@ -172,27 +174,26 @@ query_device(uint64_t _deviceID, QueryRequest _eQueryRequest, const std::type_in
   }
 }
 
-xrt_core::device_core*
-xrt_core::
-initialize_child_ctor()
+device_core*
+device_core_child_ctor()
 {
   static device_windows dw;
   return &dw;
 }
 
-xrt_core::device_windows::
+device_windows::
 device_windows()
 {
   // Do nothing
 }
 
-xrt_core::device_windows::
+device_windows::
 ~device_windows() {
   // Do nothing
 }
 
 std::pair<uint64_t, uint64_t>
-xrt_core::device_windows::
+device_windows::
 get_total_devices() const
 {
   auto user_count = xclProbe();
@@ -200,7 +201,7 @@ get_total_devices() const
 }
 
 void
-xrt_core::device_windows::
+device_windows::
 read_device_dma_stats(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
 {
   // Removes compiler warnings
@@ -237,7 +238,7 @@ read_device_dma_stats(uint64_t _deviceID, boost::property_tree::ptree &_pt) cons
 }
 
 void
-xrt_core::device_windows::
+device_windows::
 scan_devices(bool verbose, bool json) const
 {
   std::cout << "TO-DO: scan_devices\n";
@@ -246,7 +247,7 @@ scan_devices(bool verbose, bool json) const
 }
 
 void
-xrt_core::device_windows::
+device_windows::
 auto_flash(uint64_t _deviceID, std::string& shell, std::string& id, bool force) const
 {
   std::cout << "TO-DO: auto_flash\n";
@@ -257,7 +258,7 @@ auto_flash(uint64_t _deviceID, std::string& shell, std::string& id, bool force) 
 }
 
 void
-xrt_core::device_windows::
+device_windows::
 reset_shell(uint64_t _deviceID) const
 {
   std::cout << "TO-DO: reset_shell\n";
@@ -265,7 +266,7 @@ reset_shell(uint64_t _deviceID) const
 }
 
 void
-xrt_core::device_windows::
+device_windows::
 update_shell(uint64_t _deviceID, std::string flashType, std::string& primary, std::string& secondary) const
 {
   std::cout << "TO-DO: update_shell\n";
@@ -276,7 +277,7 @@ update_shell(uint64_t _deviceID, std::string flashType, std::string& primary, st
 }
 
 void
-xrt_core::device_windows::
+device_windows::
 update_SC(uint64_t _deviceID, std::string& file) const
 {
   std::cout << "TO-DO: update_SC\n";
@@ -284,3 +285,4 @@ update_SC(uint64_t _deviceID, std::string& file) const
   file = file;
 }
 
+} // xrt_core
