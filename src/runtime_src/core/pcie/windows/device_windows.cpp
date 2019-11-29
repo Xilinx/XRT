@@ -269,28 +269,28 @@ update_SC(uint64_t _deviceID, std::string& file) const
 }
 DWORD
 xrt_core::device_windows::
-get_IpLayoutSize(uint64_t _deviceID) const
+get_ip_layoutsize(uint64_t _deviceID) const
 {
-  return shim_getIPLayoutSize(_deviceID);
+  return shim_get_ip_layoutsize(_deviceID);
 }
 
 void
 xrt_core::device_windows::
-get_IpLayout(uint64_t _deviceID, XU_IP_LAYOUT **ipLayout, DWORD size) const
+get_ip_layout(uint64_t _deviceID, struct ip_layout **ipLayout, DWORD size) const
 {
-  shim_getIPLayout(_deviceID, ipLayout, size);
+  shim_get_ip_layout(_deviceID, ipLayout, size);
 }
 
 void
 xrt_core::device_windows::
-get_memTopology(uint64_t _deviceID, XOCL_MEM_TOPOLOGY_INFORMATION *topoInfo) const
+get_mem_topology(uint64_t _deviceID, struct mem_topology *topoInfo) const
 {
-  shim_getMemTopology(_deviceID, topoInfo);
+  shim_get_mem_topology(_deviceID, topoInfo);
 }
 
 void
 xrt_core::device_windows::
-get_memRawInfo(uint64_t _deviceID, XOCL_MEM_RAW_INFORMATION *memRaw) const
+get_mem_rawinfo(uint64_t _deviceID, struct mem_raw_info *memRaw) const
 {
-  shim_getMemRawInfo(_deviceID, memRaw);
+  shim_get_mem_rawinfo(_deviceID, memRaw);
 }

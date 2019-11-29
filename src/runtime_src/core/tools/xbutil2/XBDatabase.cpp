@@ -20,7 +20,6 @@
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 #include "common/device_core.h"
-#include "core/pcie/driver/windows/include/XoclUser_INTF.h"
 
 // 3rd Party Library - Include Files
 
@@ -178,15 +177,15 @@ XBDatabase::create_complete_device_tree(boost::property_tree::ptree & _pt)
 #endif
 	{
 	  //boost::property_tree::ptree pt;
-	  XU_IP_LAYOUT *ipLayout = NULL;
-	  unsigned long ipSize = CoreDevice.get_IpLayoutSize(device_id);
-	  ipLayout = (XU_IP_LAYOUT*)malloc(ipSize);
-	  CoreDevice.get_IpLayout(device_id, &ipLayout, ipSize);
+	  struct ip_layout *ipLayout = NULL;
+	  unsigned long ipSize = CoreDevice.get_ip_layoutsize(device_id);
+	  ipLayout = (struct ip_layout*)malloc(ipSize);
+	  CoreDevice.get_ip_layout(device_id, &ipLayout, ipSize);
 	  if (ipLayout != NULL) {
 		  std::cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
 		  std::cout << "Compute Unit Status:" << std::endl;
 		  for (int i = 0; i < ipLayout->m_count; i++) {
-			  XU_IP_DATA* data = &ipLayout->m_ip_data[i];
+			  struct ip_data* data = &ipLayout->m_ip_data[i];
 			  if (data->m_type != IP_KERNEL)
 				  continue;
 			  size_t len = strlen((char*)data->m_name);
@@ -200,22 +199,22 @@ XBDatabase::create_complete_device_tree(boost::property_tree::ptree & _pt)
 
 	{
 	  std::cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
-	  XOCL_MEM_TOPOLOGY_INFORMATION topoInfo;
-	  CoreDevice.get_memTopology(device_id, &topoInfo);
+	  struct mem_topology topoInfo;
+	  CoreDevice.get_mem_topology(device_id, &topoInfo);
 	  printf("Got XoclStatMemTopology Data:\n");
-	  printf("Memory regions: %d\n", topoInfo.MemTopoCount);
-	  for (size_t i = 0; i < topoInfo.MemTopoCount; i++) {
+	  printf("Memory regions: %d\n", topoInfo.m_count);
+	  for (size_t i = 0; i < topoInfo.m_count; i++) {
 		  printf("\ttag=%s, start=0x%llx, size=0x%llx\n",
-			  topoInfo.MemTopo[i].m_tag,
-			  topoInfo.MemTopo[i].m_base_address,
-			  topoInfo.MemTopo[i].m_size);
+			  topoInfo.m_mem_data[i].m_tag,
+			  topoInfo.m_mem_data[i].m_base_address,
+			  topoInfo.m_mem_data[i].m_size);
 	  }
 	}
 
 	{
 		std::cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
-		XOCL_MEM_RAW_INFORMATION memRaw;
-		CoreDevice.get_memRawInfo(device_id, &memRaw);
+		struct mem_raw_info memRaw;
+		CoreDevice.get_mem_rawinfo(device_id, &memRaw);
 		printf("Got XoclStatMemRaw Data:\n");
 		printf("Count: %d\n", memRaw.MemRawCount);
 		for (unsigned int i = 0; i < memRaw.MemRawCount; i++) {

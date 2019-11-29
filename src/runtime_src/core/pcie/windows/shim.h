@@ -21,7 +21,6 @@
 #include "core/common/xrt_profiling.h"
 #include "boost/any.hpp"
 #include <boost/property_tree/ptree.hpp>
-#include "core/pcie/driver/windows/include/XoclUser_INTF.h"
 
 typedef enum {
 	pcie = 0,
@@ -112,12 +111,12 @@ void qr_pcie_info(HANDLE handle, uint64_t variable, boost::any & _returnValue);
 
 __declspec(dllexport) void queryDeviceWithQR(uint64_t _deviceID, uint64_t subdev, uint64_t variable, boost::any & _returnValue);
 
-__declspec(dllexport) void shim_getIPLayout(uint64_t _deviceID, XU_IP_LAYOUT **ipLayout, DWORD size);
+__declspec(dllexport) void shim_get_ip_layout(uint64_t _deviceID, struct ip_layout **ipLayout, DWORD size);
 
-__declspec(dllexport) DWORD shim_getIPLayoutSize(uint64_t _deviceID);
+__declspec(dllexport) DWORD shim_get_ip_layoutsize(uint64_t _deviceID);
 
-__declspec(dllexport) void shim_getMemTopology(uint64_t _deviceID, XOCL_MEM_TOPOLOGY_INFORMATION *topoInfo);
-__declspec(dllexport) void shim_getMemRawInfo(uint64_t _deviceID, XOCL_MEM_RAW_INFORMATION *memRaw);
+__declspec(dllexport) void shim_get_mem_topology(uint64_t _deviceID, struct mem_topology *topoInfo);
+__declspec(dllexport) void shim_get_mem_rawinfo(uint64_t _deviceID, struct mem_raw_info *memRaw);
 
 namespace xocl { // shared implementation
 

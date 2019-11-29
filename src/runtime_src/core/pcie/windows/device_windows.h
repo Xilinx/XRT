@@ -47,10 +47,10 @@ class device_windows : public device_pcie {
     virtual void update_shell(uint64_t _deviceID, std::string flashType, std::string& primary, std::string& secondary) const;
     virtual void update_SC(uint64_t _deviceID, std::string& file) const;
     //end flash functions
-    virtual void get_IpLayout(uint64_t _deviceID, XU_IP_LAYOUT **ipLayout, DWORD size) const;
-    virtual DWORD get_IpLayoutSize(uint64_t _deviceID) const;
-    virtual void get_memTopology(uint64_t _deviceID, XOCL_MEM_TOPOLOGY_INFORMATION *topoInfo) const;
-    virtual void get_memRawInfo(uint64_t _deviceID, XOCL_MEM_RAW_INFORMATION *memRaw) const;
+    virtual void get_ip_layout(uint64_t _deviceID, struct ip_layout **ipLayout, DWORD size) const;
+    virtual DWORD get_ip_layoutsize(uint64_t _deviceID) const;
+    virtual void get_mem_topology(uint64_t _deviceID, struct mem_topology *topoInfo) const;
+    virtual void get_mem_rawinfo(uint64_t _deviceID, struct mem_raw_info *memRaw) const;
   public:
     device_windows();
     virtual ~device_windows();

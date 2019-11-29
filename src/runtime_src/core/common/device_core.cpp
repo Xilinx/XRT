@@ -395,25 +395,18 @@ device_core::read_device_firewall(uint64_t _deviceID, boost::property_tree::ptre
   query_device_and_put(_deviceID, QR_FIREWALL_TIME_SEC, _pt);
 }
 
-//TODO: dmatest
 size_t
 xrt_core::device_core::get_ddr_mem_size(uint64_t _deviceID) const
 {
-  std::string errmsg;
-  uint64_t ddr_size = 0;
-  uint64_t ddr_bank_count = 0;
   boost::property_tree::ptree _pt;
 
   query_device_and_put(_deviceID, OR_ROM_DDR_BANK_SIZE, _pt);
   query_device_and_put(_deviceID, QR_ROM_DDR_BANK_COUNT_MAX, _pt);
 
-  std::string s;
-  s = _pt.get<std::string>("ddr_size_bytes", "N/A");
-  //std::cout << "get_ddr_mem_size(): ddr_size: " << s << std::endl;
-  ddr_size = strtoull(s.c_str(), nullptr, 16);
+  auto s = _pt.get<std::string>("ddr_size_bytes", "N/A");
+  auto ddr_size = strtoull(s.c_str(), nullptr, 16);
   s = _pt.get<std::string>("widdr_countdth", "N/A");
-  //std::cout << "get_ddr_mem_size(): ddr_bank_count: " << s << std::endl;
-  ddr_bank_count = strtoull(s.c_str(), nullptr, 16);
+  auto ddr_bank_count = strtoull(s.c_str(), nullptr, 16);
 
   return (ddr_size * ddr_bank_count) / (1024 * 1024);
 }

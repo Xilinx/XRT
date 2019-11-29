@@ -25,6 +25,9 @@
 #include <setupapi.h>
 #include <strsafe.h>
 
+// To be simplified
+#include "core/pcie/driver/windows/include/XoclUser_INTF.h"
+
 #include <cstring>
 #include <cstdio>
 #include <ctime>
@@ -1108,42 +1111,35 @@ void queryDeviceWithQR(uint64_t _deviceID, uint64_t subdev,
 	uint64_t variable,
 	boost::any & _returnValue)
 {
-	xclDeviceHandle handle = xclOpen((int)_deviceID, 0, XCL_INFO);
-	auto shim = get_shim_object(handle);
-	HANDLE deviceHandle = shim->m_dev;
+  xclDeviceHandle handle = xclOpen((int)_deviceID, 0, XCL_INFO);
+  auto shim = get_shim_object(handle);
+  HANDLE deviceHandle = shim->m_dev;
 
-	switch (subdev)
-	{
-	case pcie: qr_pcie_info(deviceHandle, variable, _returnValue);
-		break;
-	case rom: qr_rom_info(deviceHandle, variable, _returnValue);
-		break;
-	case icap:
-		break;
-	case xmc:
-		break;
-	case firewall:
-		break;
-	case dma:
-		break;
-	case dna:
-		break;
-	default:
-		std::cout << "unknown request" << std::endl;
-	}
+  switch (subdev)
+  {
+  case pcie: qr_pcie_info(deviceHandle, variable, _returnValue);
+	  break;
+  case rom: qr_rom_info(deviceHandle, variable, _returnValue);
+	  break;
+  case icap:
+  case xmc:
+  case firewall:
+  case dma:
+  case dna: break;
+  default: std::cout << "unknown request" << std::endl;
+  }
 }
 
 void
 qr_rom_info(HANDLE handle, uint64_t variable, boost::any & _returnValue) {
-	XOCL_ROM_INFORMATION romInfo;
-	XOCL_STAT_CLASS statClass = XoclStatRomInfo;
-	DWORD bytesWritten;
-	DWORD bytesToRead;
-	DWORD  error = ERROR_SUCCESS;
+  XOCL_ROM_INFORMATION romInfo;
+  XOCL_STAT_CLASS statClass = XoclStatRomInfo;
+  DWORD bytesWritten;
+  DWORD bytesToRead;
+  DWORD error = ERROR_SUCCESS;
 
-	bytesToRead = sizeof(romInfo);
-
-	if (!DeviceIoControl(handle,
+  bytesToRead = sizeof(romInfo);
+  if (!DeviceIoControl(handle,
 		IOCTL_XOCL_STAT,
 		&statClass,
 		sizeof(statClass),
@@ -1151,55 +1147,53 @@ qr_rom_info(HANDLE handle, uint64_t variable, boost::any & _returnValue) {
 		sizeof(romInfo),
 		&bytesWritten,
 		nullptr)) {
-
-		error = GetLastError();
-
-		printf("DeviceIoControl failed with error 0x%x\n", error);
-		std::cout << "DeviceIoControl failed in qr_rom_info()" << std::endl;
-	} else {
-		switch (variable)
-		{
-		case VBNV:
-		{
-			size_t len = strlen((char*)romInfo.VBNVName);
-			std::string VBNVName(reinterpret_cast<const char *> (romInfo.VBNVName),len);
-			_returnValue = boost::any_cast<std::string>(VBNVName);
-		}
-			break;
-		case ddr_bank_size:
-		{
-			uint64_t DDRChannelSize = romInfo.DDRChannelSize;
-			_returnValue = boost::any_cast<uint64_t>(DDRChannelSize);
-		}
-			break;
-		case ddr_bank_count_max:
-		{
-			uint64_t DDRChannelCount = romInfo.DDRChannelCount;
-			_returnValue = boost::any_cast<uint64_t>(DDRChannelCount);
-		}
-			break;
-		case FPGA:
-		{
-			size_t len = strlen((char*)romInfo.FPGAPartName);
-			std::string FPGAPartName(reinterpret_cast<const char *> (romInfo.FPGAPartName),len);
-			_returnValue = boost::any_cast<std::string>(FPGAPartName);
-		}
-			break;
-		default:
-			break;
-		}
-	}
+	  error = GetLastError();
+	  xrt_core::message::
+		  send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "%s: DeviceIoControl failed with error %d", __func__, error);
+  } else {
+	  switch (variable)
+	  {
+	  case VBNV:
+	  {
+		  size_t len = strlen((char*)romInfo.VBNVName);
+		  std::string VBNVName(reinterpret_cast<const char *> (romInfo.VBNVName), len);
+		  _returnValue = boost::any_cast<std::string>(VBNVName);
+	  }
+	  break;
+	  case ddr_bank_size:
+	  {
+		  uint64_t DDRChannelSize = romInfo.DDRChannelSize;
+		  _returnValue = boost::any_cast<uint64_t>(DDRChannelSize);
+	  }
+	  break;
+	  case ddr_bank_count_max:
+	  {
+		  uint64_t DDRChannelCount = romInfo.DDRChannelCount;
+		  _returnValue = boost::any_cast<uint64_t>(DDRChannelCount);
+	  }
+	  break;
+	  case FPGA:
+	  {
+		  size_t len = strlen((char*)romInfo.FPGAPartName);
+		  std::string FPGAPartName(reinterpret_cast<const char *> (romInfo.FPGAPartName), len);
+		  _returnValue = boost::any_cast<std::string>(FPGAPartName);
+	  }
+	  break;
+	  default:
+		  break;
+	  }
+  }
 }
 
 void
 qr_pcie_info(HANDLE handle, uint64_t variable, boost::any & _returnValue) {
-	DWORD bytesRead;
-	XOCL_STAT_CLASS_ARGS statClassArgs;
-	XOCL_DEVICE_INFORMATION deviceInfo;
+  DWORD bytesRead;
+  XOCL_STAT_CLASS_ARGS statClassArgs;
+  XOCL_DEVICE_INFORMATION deviceInfo;
+  DWORD error = ERROR_SUCCESS;
 
-	statClassArgs.StatClass = XoclStatDevice;
-
-	if (!DeviceIoControl(handle,
+  statClassArgs.StatClass = XoclStatDevice;
+  if (!DeviceIoControl(handle,
 		IOCTL_XOCL_STAT,
 		&statClassArgs,
 		sizeof(XOCL_STAT_CLASS_ARGS),
@@ -1207,52 +1201,53 @@ qr_pcie_info(HANDLE handle, uint64_t variable, boost::any & _returnValue) {
 		sizeof(XOCL_DEVICE_INFORMATION),
 		&bytesRead,
 		NULL)) {
-
-		std::cout << "DeviceIoControl failed in qr_pcie_info() " << std::endl;
-	} else {
-		switch (variable)
-		{
-		case vendor:
-		{
-			uint64_t vendor = deviceInfo.Vendor;
-			_returnValue = boost::any_cast<uint64_t>(vendor);
-		}
-			break;
-		case pcie_device:
-		{
-			uint64_t Device = deviceInfo.Device;
-			_returnValue = boost::any_cast<uint64_t>(Device);
-		}
-			break;
-		case subsystem_vendor:
-		{
-			uint64_t SubsystemVendor = deviceInfo.SubsystemVendor;
-			_returnValue = boost::any_cast<uint64_t>(SubsystemVendor);
-		}
-			break;
-		case subsystem_device:
-		{
-			uint64_t SubsystemDevice = deviceInfo.SubsystemDevice;
-			_returnValue = boost::any_cast<uint64_t>(SubsystemDevice);
-		}
-			break;
-		case ready:
-		{
-			_returnValue = boost::any_cast<bool>(deviceInfo.ready);
-		}
-			break;
-		default:
-			break;
-		}
-	}
+	  error = GetLastError();
+	  xrt_core::message::
+		  send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "%s: DeviceIoControl failed with error %d", __func__, error);
+  } else {
+	  switch (variable)
+	  {
+	  case vendor:
+	  {
+		  uint64_t vendor = deviceInfo.Vendor;
+		  _returnValue = boost::any_cast<uint64_t>(vendor);
+	  }
+	  break;
+	  case pcie_device:
+	  {
+		  uint64_t Device = deviceInfo.Device;
+		  _returnValue = boost::any_cast<uint64_t>(Device);
+	  }
+	  break;
+	  case subsystem_vendor:
+	  {
+		  uint64_t SubsystemVendor = deviceInfo.SubsystemVendor;
+		  _returnValue = boost::any_cast<uint64_t>(SubsystemVendor);
+	  }
+	  break;
+	  case subsystem_device:
+	  {
+		  uint64_t SubsystemDevice = deviceInfo.SubsystemDevice;
+		  _returnValue = boost::any_cast<uint64_t>(SubsystemDevice);
+	  }
+	  break;
+	  case ready:
+	  {
+		  _returnValue = boost::any_cast<bool>(deviceInfo.ready);
+	  }
+	  break;
+	  default:
+		  break;
+	  }
+  }
 }
 
-DWORD shim_getIPLayoutSize(uint64_t _deviceID)
+DWORD shim_get_ip_layoutsize(uint64_t _deviceID)
 {
   DWORD bytesRead;
   XOCL_STAT_CLASS_ARGS statClassArgs;
   DWORD  error = ERROR_SUCCESS;
-  XU_IP_LAYOUT layoutHeader;
+  struct ip_layout layoutHeader;
   DWORD size = 0;
   xclDeviceHandle handle = xclOpen((int)_deviceID, 0, XCL_INFO);
   auto shim = get_shim_object(handle);
@@ -1264,25 +1259,24 @@ DWORD shim_getIPLayoutSize(uint64_t _deviceID)
 		&statClassArgs,
 		sizeof(XOCL_STAT_CLASS_ARGS),
 		&layoutHeader,
-		sizeof(XU_IP_LAYOUT),
+		sizeof(struct ip_layout),
 		&bytesRead,
 		NULL)) {
 	  error = GetLastError();
-	  printf("DeviceIoControl failed with error 0x%x\n", error);
-	  return 0;
-  }
-  //printf("Retrieved XU_IP_LAYOUT header (%d XU_IP_DATAs)\n", layoutHeader.m_count);
-  size = (DWORD)(sizeof(XU_IP_LAYOUT) + layoutHeader.m_count * sizeof(XU_IP_DATA));
+	  xrt_core::message::
+		  send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "%s: DeviceIoControl failed with error %d", __func__, error);
+  } else
+	  size = (DWORD)(sizeof(struct ip_layout) + layoutHeader.m_count * sizeof(struct ip_data));
 
   return size;
 }
 
-void shim_getIPLayout(uint64_t _deviceID, XU_IP_LAYOUT **ip, DWORD size)
+void shim_get_ip_layout(uint64_t _deviceID, struct ip_layout **ip, DWORD size)
 {
   DWORD bytesRead;
   XOCL_STAT_CLASS_ARGS statClassArgs;
   DWORD  error = ERROR_SUCCESS;
-  XU_IP_LAYOUT *ipLayout = *ip;
+  struct ip_layout *ipLayout = *ip;
   xclDeviceHandle handle = xclOpen((int)_deviceID, 0, XCL_INFO);
   auto shim = get_shim_object(handle);
   HANDLE devHandle = shim->m_dev;
@@ -1297,29 +1291,14 @@ void shim_getIPLayout(uint64_t _deviceID, XU_IP_LAYOUT **ip, DWORD size)
 		&bytesRead,
 		NULL)) {
 	  error = GetLastError();
-	  printf("DeviceIoControl failed with error 0x%x\n", error);
-  } else {
-#if 0
-	  for (int i = 0; i < ipLayout->m_count; i++) {
-		  XU_IP_DATA* data = &ipLayout->m_ip_data[i];
-		  size_t len = strlen((char*)data->m_name);
-		  std::string name((const char*)data->m_name, len);
-		  printf("[shim_getIPLayout] XU_IP_DATA[%d]---\n", i);
-		  printf("\t+++m_name      = %s\n", name.c_str());
-		  printf("\t+++m_type      = 0x%lx\n", data->m_type);
-		  printf("\t+++m_index     = 0x%hx\n", data->indices.m_index);
-		  printf("\t+++m_pc_index  = 0x%hhx\n", data->indices.m_pc_index);
-		  printf("\t+++unused      = 0x%hhx\n", data->indices.unused);
-		  printf("\t+++m_base_addr = 0x%llx\n", data->m_base_address);
-		  printf("\t+++properties  = 0x%lx\n", data->properties);
-	  }
-#endif
+	  xrt_core::message::
+		  send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "%s: DeviceIoControl failed with error %d", __func__, error);
   }
 
   return;
 }
 
-void shim_getMemTopology(uint64_t _deviceID, XOCL_MEM_TOPOLOGY_INFORMATION *topoInfo)
+void shim_get_mem_topology(uint64_t _deviceID, struct mem_topology *topoInfo)
 {
   xclDeviceHandle handle = xclOpen((int)_deviceID, 0, XCL_INFO);
   auto shim = get_shim_object(handle);
@@ -1333,16 +1312,16 @@ void shim_getMemTopology(uint64_t _deviceID, XOCL_MEM_TOPOLOGY_INFORMATION *topo
 			&statClass,
 			sizeof(statClass),
 			topoInfo,
-			sizeof(XOCL_MEM_TOPOLOGY_INFORMATION),
+			sizeof(struct mem_topology),
 			&bytesWritten,
 			nullptr)) {
 	  error = GetLastError();
 	  xrt_core::message::
-		  send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl failed with error %d", error);
+		  send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "%s: DeviceIoControl failed with error %d", __func__, error);
   }
 }
 
-void shim_getMemRawInfo(uint64_t _deviceID, XOCL_MEM_RAW_INFORMATION *memRaw)
+void shim_get_mem_rawinfo(uint64_t _deviceID, struct mem_raw_info *memRaw)
 {
   xclDeviceHandle handle = xclOpen((int)_deviceID, 0, XCL_INFO);
   auto shim = get_shim_object(handle);
@@ -1356,11 +1335,11 @@ void shim_getMemRawInfo(uint64_t _deviceID, XOCL_MEM_RAW_INFORMATION *memRaw)
 		&statClass,
 		sizeof(statClass),
 		memRaw,
-		sizeof(XOCL_MEM_RAW_INFORMATION),
+		sizeof(struct mem_raw_info),
 		&bytesWritten,
 		nullptr)) {
 	  error = GetLastError();
 	  xrt_core::message::
-		  send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl failed with error %d", error);
+		  send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "%s: DeviceIoControl failed with error %d", __func__, error);
   }
 }

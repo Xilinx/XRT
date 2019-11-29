@@ -113,10 +113,10 @@ int subCmdDmaTest(const std::vector<std::string> &_options)
 	  return -EINVAL;
 
   std::cout << "Total DDR size: " << ddr_mem_size << " MB" << std::endl;
-  XOCL_MEM_TOPOLOGY_INFORMATION topoInfo;
-  CoreDevice.get_memTopology(card, &topoInfo);
+  struct mem_topology topoInfo;
+  CoreDevice.get_mem_topology(card, &topoInfo);
 
-  if (topoInfo.MemTopoCount == 0) {
+  if (topoInfo.m_count == 0) {
 	  std::cout << "WARNING: 'mem_topology' invalid, "
 		  << "unable to perform DMA Test. Has the bitstream been loaded? "
 		  << "See 'xbutil program' to load a specific xclbin file or run "
@@ -126,18 +126,18 @@ int subCmdDmaTest(const std::vector<std::string> &_options)
   }
 
   printf("Got XoclStatMemTopology Data:\n");
-  printf("Memory regions: %d\n", topoInfo.MemTopoCount);
-  for (size_t i = 0; i < topoInfo.MemTopoCount; i++) {
+  printf("Memory regions: %d\n", topoInfo.m_count);
+  for (size_t i = 0; i < topoInfo.m_count; i++) {
 	  printf("\ttype: %d, tag=%s, start=0x%llx, size=0x%llx\n",
-		  topoInfo.MemTopo[i].m_type,
-		  topoInfo.MemTopo[i].m_tag,
-		  topoInfo.MemTopo[i].m_base_address,
-		  topoInfo.MemTopo[i].m_size);
-	  if (topoInfo.MemTopo[i].m_type == MEM_STREAMING)
+		  topoInfo.m_mem_data[i].m_type,
+		  topoInfo.m_mem_data[i].m_tag,
+		  topoInfo.m_mem_data[i].m_base_address,
+		  topoInfo.m_mem_data[i].m_size);
+	  if (topoInfo.m_mem_data[i].m_type == MEM_STREAMING)
 		  continue;
-	  if (topoInfo.MemTopo[i].m_used) {
+	  if (topoInfo.m_mem_data[i].m_used) {
 		  std::cout << "[TBD] Data Validity & DMA Test on "
-			  << topoInfo.MemTopo[i].m_tag << "\n";
+			  << topoInfo.m_mem_data[i].m_tag << "\n";
 		  //DMARunner runner(m_handle, blockSize, i);
 		  //result = runner.run();
 	  }
