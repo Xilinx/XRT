@@ -45,6 +45,7 @@ std::map<device_core::QueryRequest, device_core::QueryRequestEntry> device_core:
   { OR_ROM_DDR_BANK_SIZE,         { "OR_ROM_DDR_BANK_SIZE",         "ddr_size_bytes",   &typeid(uint64_t),    device_core::format_hex_base2_shiftup30 }},
   { QR_ROM_DDR_BANK_COUNT_MAX,    { "QR_ROM_DDR_BANK_COUNT_MAX",    "widdr_countdth",   &typeid(uint64_t),    device_core::format_primative }},
   { QR_ROM_FPGA_NAME,             { "QR_ROM_FPGA_NAME",             "fpga_name",        &typeid(std::string), device_core::format_primative }},
+  { QR_ROM_TIME_SINCE_EPOCH,      { "QR_ROM_TIME_SINCE_EPOCH",      "time_since_epoch", &typeid(uint64_t),    device_core::format_primative }},
   { QR_DMA_THREADS_RAW,           { "QR_DMA_THREADS_RAW",           "dma_threads",      &typeid(std::vector<std::string>),  device_core::format_primative }},
 
   { QR_XMC_VERSION,               { "QR_XMC_VERSION",               "xmc_version",      &typeid(std::string),  device_core::format_primative }},
@@ -291,6 +292,7 @@ device_core::get_device_rom_info(uint64_t _deviceID, boost::property_tree::ptree
   query_device_and_put(_deviceID, OR_ROM_DDR_BANK_SIZE, _pt);
   query_device_and_put(_deviceID, QR_ROM_DDR_BANK_COUNT_MAX, _pt);
   query_device_and_put(_deviceID, QR_ROM_FPGA_NAME, _pt);
+  query_device_and_put(_deviceID, QR_ROM_TIME_SINCE_EPOCH, _pt);
 }
 
 void

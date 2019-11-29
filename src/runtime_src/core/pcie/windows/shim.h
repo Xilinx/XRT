@@ -36,7 +36,8 @@ typedef enum {
 	VBNV = 0,
 	ddr_bank_size,
 	ddr_bank_count_max,
-	FPGA
+	FPGA,
+	time_since_epoch
 }rom_variable;
 
 typedef enum {

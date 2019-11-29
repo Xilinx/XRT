@@ -140,6 +140,7 @@ class device_core {
       OR_ROM_DDR_BANK_SIZE,
       QR_ROM_DDR_BANK_COUNT_MAX,
       QR_ROM_FPGA_NAME,
+      QR_ROM_TIME_SINCE_EPOCH,
 
       QR_XMC_VERSION,
       QR_XMC_SERIAL_NUM,

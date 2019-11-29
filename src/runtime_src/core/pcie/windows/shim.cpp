@@ -1216,6 +1216,11 @@ qr_rom_info(HANDLE handle, uint64_t variable, boost::any & _returnValue) {
 		  std::string FPGAPartName(reinterpret_cast<const char *> (romInfo.FPGAPartName), len);
 		  _returnValue = boost::any_cast<std::string>(FPGAPartName);
 	  }
+	  case time_since_epoch:
+	  {
+		  uint64_t TimeSinceEpoch = romInfo.TimeSinceEpoch;
+		  _returnValue = boost::any_cast<uint64_t>(TimeSinceEpoch);
+	  }
 	  break;
 	  default:
 		  break;

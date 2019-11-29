@@ -48,6 +48,7 @@ get_IOCTL_entry( QueryRequest _eQueryRequest) const
 	{ OR_ROM_DDR_BANK_SIZE,         {rom,  ddr_bank_size}},
 	{ QR_ROM_DDR_BANK_COUNT_MAX,    {rom,  ddr_bank_count_max}},
 	{ QR_ROM_FPGA_NAME,             {rom,  FPGA}},
+	{ QR_ROM_TIME_SINCE_EPOCH,      {rom,  time_since_epoch}},
 	{ QR_XMC_VERSION,               {xmc,  version}},
 	{ QR_XMC_SERIAL_NUM,            {xmc,  serial_num}},
 	{ QR_XMC_MAX_POWER,             {xmc,  max_power}},

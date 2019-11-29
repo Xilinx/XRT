@@ -190,6 +190,7 @@ typedef struct _XOCL_ROM_INFORMATION {
     UCHAR VBNVName[64];
     uint8_t DDRChannelCount;
     uint8_t DDRChannelSize;
+    uint64_t TimeSinceEpoch;
 } XOCL_ROM_INFORMATION, *PXOCL_ROM_INFORMATION;
 
 
