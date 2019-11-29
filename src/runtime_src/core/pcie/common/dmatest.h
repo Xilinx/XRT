@@ -54,7 +54,7 @@ namespace xcldev {
                           xclBOSyncDirection dir) const {
             int result = 0;
             while (b < e) {
-                result = xclSyncBO(mHandle, *b, dir, mSize, 0);
+                result = xclSyncBO(mHandle, UIntToPtr(*b), dir, mSize, 0);
                 if (result != 0)
                     break;
                 ++b;
@@ -85,7 +85,7 @@ namespace xcldev {
                 count = 0x40000;
 
             for (long long i = 0; i < count; i++) {
-                unsigned bo = xclAllocBO(mHandle, mSize, 0, mFlags);
+                unsigned bo = (PtrToUint)(xclAllocBO(mHandle, mSize, 0, mFlags));
                 if (bo == 0xffffffff)
                     break;
                 mBOList.push_back(bo);
@@ -98,7 +98,7 @@ namespace xcldev {
 
         ~DMARunner() {
             for (auto i : mBOList)
-                xclFreeBO(mHandle, i);
+                xclFreeBO(mHandle, UIntToPtr(i));
         }
 
         int validate(const char *buf) const {
@@ -107,7 +107,7 @@ namespace xcldev {
             for (auto i : mBOList) {
                 //Clear out the host buffer
                 std::memset(bufCmp.get(), 0, mSize);
-                result = xclReadBO(mHandle, i, bufCmp.get(), mSize, 0);
+                result = (int)xclReadBO(mHandle, UIntToPtr(i), bufCmp.get(), mSize, 0);
                 if (result < 0)
                     break;
                 if (std::memcmp(buf, bufCmp.get(), mSize)) {
@@ -125,15 +125,15 @@ namespace xcldev {
 
             int result = 0;
             for (auto i : mBOList)
-                result += xclWriteBO(mHandle, i, buf.get(), mSize, 0);
+                result += (int)xclWriteBO(mHandle, UIntToPtr(i), buf.get(), mSize, 0);
 
             if (result)
                 return result;
 
             Timer timer;
             result = runSync(XCL_BO_SYNC_BO_TO_DEVICE, true);
-            double timer_stop = timer.stop();
-            double rate = mBOList.size() * mSize;
+            double timer_stop = (double)timer.stop();
+            double rate = (double)(mBOList.size() * mSize);
             rate /= 0x100000; // MB
             rate /= timer_stop;
             rate *= 1000000; // s
@@ -141,8 +141,8 @@ namespace xcldev {
 
             timer.reset();
             result += runSync(XCL_BO_SYNC_BO_FROM_DEVICE, true);
-            timer_stop = timer.stop();
-            rate = mBOList.size() * mSize;
+            timer_stop = (double)timer.stop();
+            rate = (double)(mBOList.size() * mSize);
             rate /= 0x100000; // MB
             rate /= timer_stop;
             rate *= 1000000; //

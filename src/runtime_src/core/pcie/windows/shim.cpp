@@ -334,6 +334,26 @@ done:
       CloseHandle(handle);
   }
 
+  size_t
+  write_bo(xclBufferHandle boHandle, const void *src, size_t size, size_t seek)
+  {
+	void* a = map_bo(boHandle, 1);
+
+	memcpy(a, src, size);
+
+	return 0;
+}
+
+  size_t
+  read_bo(xclBufferHandle boHandle, void *dst, size_t size, size_t skip)
+  {
+	void* a = map_bo(boHandle, 1);
+
+	memcpy(dst, a, size);
+
+	return 0;
+  }
+
   int
   sync_bo(buffer_handle_type handle, xclBOSyncDirection dir, size_t size, size_t offset)
   {
@@ -965,6 +985,24 @@ xclSyncBO(xclDeviceHandle handle, xclBufferHandle boHandle, xclBOSyncDirection d
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclSyncBO()");
   auto shim = get_shim_object(handle);
   return shim->sync_bo(boHandle, dir, size, offset);
+}
+
+size_t
+xclWriteBO(xclDeviceHandle handle, xclBufferHandle boHandle, const void *src, size_t size, size_t seek)
+{
+  xrt_core::message::
+	send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclWriteBO()");
+  auto shim = get_shim_object(handle);
+  return shim->write_bo(boHandle, src, size, seek);
+}
+
+size_t
+xclReadBO(xclDeviceHandle handle, xclBufferHandle boHandle, void *dst, size_t size, size_t skip)
+{
+  xrt_core::message::
+	send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclReadBO()");
+  auto shim = get_shim_object(handle);
+  return shim->read_bo(boHandle, dst, size, skip);
 }
 
 // Compute Unit Execution Management APIs

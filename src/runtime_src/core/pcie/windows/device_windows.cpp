@@ -164,10 +164,10 @@ std::pair<uint64_t, uint64_t>
 xrt_core::device_windows::
 get_total_devices() const
 {
-  uint64_t user_count = xclProbe();
+  auto user_count = xclProbe();
 
   //TODO: Getting ready status of devices.
-  const IOCTLEntry & entry = get_IOCTL_entry(QR_PCIE_READY_STATUS);
+  const auto& entry = get_IOCTL_entry(QR_PCIE_READY_STATUS);
   uint64_t ready_count = 0;
   boost::any anyValue;
 

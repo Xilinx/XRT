@@ -26,6 +26,7 @@ namespace po = boost::program_options;
 
 // System - Include Files
 #include <iostream>
+#include "core/pcie/common/dmatest.h"
 #include "common/device_core.h"
 
 // ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
@@ -51,7 +52,7 @@ int subCmdDmaTest(const std::vector<std::string> &_options)
   XBU::verbose("SubCommand: dmatest");
   // -- Retrieve and parse the subcommand options -----------------------------
   uint64_t card = 0;
-  uint64_t blockSizeKB = 0;
+  int blockSizeKB = 0;
   std::string sBlockSizeKB;
   bool help = false;
 
@@ -125,21 +126,19 @@ int subCmdDmaTest(const std::vector<std::string> &_options)
 	  return -EINVAL;
   }
 
-  printf("Got XoclStatMemTopology Data:\n");
-  printf("Memory regions: %d\n", topoInfo.m_count);
+  std::cout << "Reporting from mem_topology:" << std::endl;
+  std::cout << "Memory regions:" << topoInfo.m_count << std::endl;
   for (size_t i = 0; i < topoInfo.m_count; i++) {
-	  printf("\ttype: %d, tag=%s, start=0x%llx, size=0x%llx\n",
-		  topoInfo.m_mem_data[i].m_type,
-		  topoInfo.m_mem_data[i].m_tag,
-		  topoInfo.m_mem_data[i].m_base_address,
-		  topoInfo.m_mem_data[i].m_size);
 	  if (topoInfo.m_mem_data[i].m_type == MEM_STREAMING)
 		  continue;
 	  if (topoInfo.m_mem_data[i].m_used) {
-		  std::cout << "[TBD] Data Validity & DMA Test on "
-			  << topoInfo.m_mem_data[i].m_tag << "\n";
-		  //DMARunner runner(m_handle, blockSize, i);
-		  //result = runner.run();
+		std::cout << "Data Validity & DMA Test on "
+			<< topoInfo.m_mem_data[i].m_tag << ":" << std::endl;
+		xclDeviceHandle m_handle = xclOpen((int)card, nullptr, XCL_QUIET);
+		xcldev::DMARunner runner(m_handle,(size_t)blockSizeKB, (unsigned int)i);
+		auto result = runner.run();
+		if (result != 0)
+		  std::cout << "Dmatest failed on " << topoInfo.m_mem_data[i].m_tag << std::endl;
 	  }
   }
 
