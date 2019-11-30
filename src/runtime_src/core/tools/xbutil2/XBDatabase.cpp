@@ -49,7 +49,7 @@ XBDatabase::dump(boost::property_tree::ptree & _pt, std::ostream& ostr)
 			<< std::setw(16) << _pt.get<std::string>("pcie.subsystem_id", "N/A")
 			<< std::setw(16) << _pt.get<std::string>("pcie.subsystem_vendor", "N/A")
 			<< std::setw(16) << _pt.get<std::string>("pcie.serial_number", "N/A") << std::endl;
-		ostr << std::setw(16) << "DDR size" << std::setw(16) << "DDR count" << std::setw(16)
+		ostr << std::setw(16) << "DDR size (MB)" << std::setw(16) << "DDR count" << std::setw(16)
 			<< "Clock0" << std::setw(16) << "Clock1" << std::setw(16) << "Clock2" << std::endl;
 		ostr << std::setw(16) << strtoull(_pt.get<std::string>("platform.rom.ddr_size_bytes", "N/A").c_str(), nullptr, 16) / (1024 * 1024)
 			<< std::setw(16) << _pt.get("platform.rom.widdr_countdth", -1)
@@ -201,24 +201,31 @@ XBDatabase::create_complete_device_tree(boost::property_tree::ptree & _pt)
 	  std::cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
 	  struct mem_topology topoInfo;
 	  CoreDevice.get_mem_topology(device_id, &topoInfo);
-	  printf("Got XoclStatMemTopology Data:\n");
-	  printf("Memory regions: %d\n", topoInfo.m_count);
-	  for (size_t i = 0; i < topoInfo.m_count; i++) {
-		  printf("\ttag=%s, start=0x%llx, size=0x%llx\n",
-			  topoInfo.m_mem_data[i].m_tag,
-			  topoInfo.m_mem_data[i].m_base_address,
-			  topoInfo.m_mem_data[i].m_size);
-	  }
-	}
+	  std::cout << "Memory Status:" << std::endl;
+	  std::cout << "Tag" << std::setw(16) << "Type" << std::setw(16)
+		  << "Temp(C)" << std::setw(16) << "Size (GB)" << std::setw(16)
+		  << "Mem Usage" << std::setw(16) << "BO count" << std::endl;
+	  struct mem_raw_info memRaw;
+	  CoreDevice.get_mem_rawinfo(device_id, &memRaw);
 
-	{
-		std::cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
-		struct mem_raw_info memRaw;
-		CoreDevice.get_mem_rawinfo(device_id, &memRaw);
-		printf("Got XoclStatMemRaw Data:\n");
-		printf("Count: %d\n", memRaw.MemRawCount);
-		for (unsigned int i = 0; i < memRaw.MemRawCount; i++) {
-			printf("\t(%d) BOCount=%llu, MemoryUsage=0x%llx\n", i, memRaw.MemRaw[i].BOCount, memRaw.MemRaw[i].MemoryUsage);
+	  for (size_t i = 0; i < topoInfo.m_count; i++) {
+		  std::cout << topoInfo.m_mem_data[i].m_tag << std::setw(16);
+		  switch (topoInfo.m_mem_data[i].m_type) {
+		  case MEM_DDR3: std::cout << "MEM_DDR3" << std::setw(16); break;
+		  case MEM_DDR4: std::cout << "MEM_DDR4" << std::setw(16); break;
+		  case MEM_DRAM: std::cout << "MEM_DRAM" << std::setw(16); break;
+		  case MEM_STREAMING: std::cout << "MEM_STREAMING" << std::setw(16); break;
+		  case MEM_PREALLOCATED_GLOB: std::cout << "MEM_PREALLOCATED_GLOB" << std::setw(16); break;
+		  case MEM_ARE: std::cout << "MEM_ARE" << std::setw(16); break;
+		  case MEM_HBM: std::cout << "MEM_HBM" << std::setw(16); break;
+		  case MEM_BRAM: std::cout << "MEM_BRAM" << std::setw(16); break;
+		  case MEM_URAM: std::cout << "MEM_URAM" << std::setw(16); break;
+		  case MEM_STREAMING_CONNECTION: std::cout << "MEM_STREAMING_CONNECTION" << std::setw(16); break;
+		  }
+		  std::cout << ptPlatform.get<std::string>("physical.thermal.fpga.temp_c", "N/A") << std::setw(16);
+		  std::cout << topoInfo.m_mem_data[i].m_size / (1024 * 1024) << std::setw(16)
+			  << memRaw.MemRaw[i].MemoryUsage / (1024 * 1024) << " (MB)" << std::setw(16)
+			  << memRaw.MemRaw[i].BOCount << std::endl;
 		}
 	}
     // Add the platform to the device tree

@@ -337,9 +337,11 @@ done:
   size_t
   write_bo(xclBufferHandle boHandle, const void *src, size_t size, size_t seek)
   {
-	void* a = map_bo(boHandle, 1);
+	void* addr = map_bo(boHandle, 1);
 
-	memcpy(a, src, size);
+	memcpy(addr, src, size);
+
+	unmap_bo(boHandle, addr);
 
 	return 0;
 }
@@ -347,9 +349,11 @@ done:
   size_t
   read_bo(xclBufferHandle boHandle, void *dst, size_t size, size_t skip)
   {
-	void* a = map_bo(boHandle, 1);
+	void* addr = map_bo(boHandle, 1);
 
-	memcpy(dst, a, size);
+	memcpy(dst, addr, size);
+
+	unmap_bo(boHandle, addr);
 
 	return 0;
   }

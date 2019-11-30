@@ -203,8 +203,8 @@ class device_core {
     } QueryRequest;
 
     virtual void query_device(uint64_t _deviceID, QueryRequest _eQueryRequest, const std::type_info & _typeInfo, boost::any &_returnValue) const = 0;
-    virtual void get_ip_layout(uint64_t _deviceID, struct ip_layout **ipLayout, DWORD size) const = 0;
-    virtual DWORD get_ip_layoutsize(uint64_t _deviceID) const = 0;
+    virtual void get_ip_layout(uint64_t _deviceID, struct ip_layout **ipLayout, unsigned long size) const = 0;
+    virtual unsigned long get_ip_layoutsize(uint64_t _deviceID) const = 0;
     virtual void get_mem_topology(uint64_t _deviceID, struct mem_topology *topoInfo) const = 0;
     virtual void get_mem_rawinfo(uint64_t _deviceID, struct mem_raw_info *memRaw) const = 0;
 

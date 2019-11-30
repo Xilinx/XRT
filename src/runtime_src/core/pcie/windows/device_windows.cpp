@@ -268,7 +268,8 @@ update_SC(uint64_t _deviceID, std::string& file) const
   _deviceID = _deviceID;
   file = file;
 }
-DWORD
+
+unsigned long
 xrt_core::device_windows::
 get_ip_layoutsize(uint64_t _deviceID) const
 {
@@ -277,7 +278,7 @@ get_ip_layoutsize(uint64_t _deviceID) const
 
 void
 xrt_core::device_windows::
-get_ip_layout(uint64_t _deviceID, struct ip_layout **ipLayout, DWORD size) const
+get_ip_layout(uint64_t _deviceID, struct ip_layout **ipLayout, unsigned long size) const
 {
   shim_get_ip_layout(_deviceID, ipLayout, size);
 }

@@ -44,17 +44,17 @@ namespace xcldev {
     };
 
     class DMARunner {
-        std::vector<unsigned int> mBOList;
+        std::vector<xclBufferHandle> mBOList;
         xclDeviceHandle mHandle;
         size_t mSize;
         unsigned mFlags;
 
-        int runSyncWorker(std::vector<unsigned>::const_iterator b,
-                          std::vector<unsigned>::const_iterator e,
+        int runSyncWorker(std::vector<xclBufferHandle>::const_iterator b,
+                          std::vector<xclBufferHandle>::const_iterator e,
                           xclBOSyncDirection dir) const {
             int result = 0;
             while (b < e) {
-                result = xclSyncBO(mHandle, UIntToPtr(*b), dir, mSize, 0);
+                result = xclSyncBO(mHandle, *b, dir, mSize, 0);
                 if (result != 0)
                     break;
                 ++b;
@@ -63,8 +63,8 @@ namespace xcldev {
         }
 
         int runSync(xclBOSyncDirection dir, bool mt) const {
-            const std::vector<unsigned>::const_iterator b = mBOList.begin();
-            const std::vector<unsigned>::const_iterator e = mBOList.end();
+            const std::vector<xclBufferHandle>::const_iterator b = mBOList.begin();
+            const std::vector<xclBufferHandle>::const_iterator e = mBOList.end();
             if (mt) {
                 auto len = e - b;
                 auto mid = b + len/2;
@@ -85,8 +85,8 @@ namespace xcldev {
                 count = 0x40000;
 
             for (long long i = 0; i < count; i++) {
-                unsigned bo = (PtrToUint)(xclAllocBO(mHandle, mSize, 0, mFlags));
-                if (bo == 0xffffffff)
+                xclBufferHandle bo = xclAllocBO(mHandle, mSize, 0, mFlags);
+                if (bo == NULLBO)
                     break;
                 mBOList.push_back(bo);
             }
@@ -98,7 +98,7 @@ namespace xcldev {
 
         ~DMARunner() {
             for (auto i : mBOList)
-                xclFreeBO(mHandle, UIntToPtr(i));
+                xclFreeBO(mHandle, i);
         }
 
         int validate(const char *buf) const {
@@ -107,7 +107,7 @@ namespace xcldev {
             for (auto i : mBOList) {
                 //Clear out the host buffer
                 std::memset(bufCmp.get(), 0, mSize);
-                result = (int)xclReadBO(mHandle, UIntToPtr(i), bufCmp.get(), mSize, 0);
+                result = (int)xclReadBO(mHandle, i, bufCmp.get(), mSize, 0);
                 if (result < 0)
                     break;
                 if (std::memcmp(buf, bufCmp.get(), mSize)) {
@@ -125,7 +125,7 @@ namespace xcldev {
 
             int result = 0;
             for (auto i : mBOList)
-                result += (int)xclWriteBO(mHandle, UIntToPtr(i), buf.get(), mSize, 0);
+                result += (int)xclWriteBO(mHandle, i, buf.get(), mSize, 0);
 
             if (result)
                 return result;
