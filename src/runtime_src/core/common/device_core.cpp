@@ -137,10 +137,14 @@ device_core::~device_core()
   // Do nothing
 }
 
+
+device_core* device_core_child_ctor(); // forward declaration
+
 const device_core &
 device_core::instance()
 {
-  static device_core *pSingleton = initialize_child_ctor();
+  //  device_core* device_core_ctor(); // fwd decl, fails to scope properly on windows
+  static device_core *pSingleton = device_core_child_ctor();
   return *pSingleton;
 }
 

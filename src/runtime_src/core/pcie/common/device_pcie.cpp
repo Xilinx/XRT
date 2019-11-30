@@ -26,18 +26,20 @@
 #include <string>
 #include <iostream>
 
-xrt_core::device_pcie::device_pcie()
+namespace xrt_core {
+
+device_pcie::device_pcie()
 {
   // Do nothing
 }
 
-xrt_core::device_pcie::~device_pcie()
+device_pcie::~device_pcie()
 {
   // Do nothing
 }
 
 void
-xrt_core::device_pcie::get_devices(boost::property_tree::ptree &_pt) const
+device_pcie::get_devices(boost::property_tree::ptree &_pt) const
 {
   auto cards = get_total_devices();
 
@@ -62,7 +64,7 @@ xrt_core::device_pcie::get_devices(boost::property_tree::ptree &_pt) const
 }
 
 void
-xrt_core::device_pcie::get_device_info(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
+device_pcie::get_device_info(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
 {
   query_device_and_put(_deviceID, QR_PCIE_VENDOR, _pt);
   query_device_and_put(_deviceID, QR_PCIE_DEVICE, _pt);
@@ -72,3 +74,6 @@ xrt_core::device_pcie::get_device_info(uint64_t _deviceID, boost::property_tree:
   query_device_and_put(_deviceID, QR_PCIE_EXPRESS_LANE_WIDTH, _pt);
   query_device_and_put(_deviceID, QR_DMA_THREADS_RAW, _pt);
 }
+
+
+} // xrt_core

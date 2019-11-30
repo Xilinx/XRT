@@ -32,19 +32,24 @@ namespace po = boost::program_options;
 
 // ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
 #include "tools/common/SubCmd.h"
-static const unsigned int registerResult = 
-                    register_subcommand("flash", 
+static const unsigned int registerResult =
+                    register_subcommand("flash",
                                         "Update SC firmware or shell on the device",
                                         subCmdFlash);
 // =============================================================================
 
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
-uint64_t bdf2index() {
+namespace {
+
+static uint64_t
+bdf2index()
+{
   //this should be placed in xbmgmt common
   return 0;
 }
 
+} // unnamed namespace
 
 
 // ------ F U N C T I O N S ---------------------------------------------------
@@ -54,7 +59,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
 //                      --scan [--verbose|--json]
 //                      --update [--shell name [--id id]] [--card bdf] [--force]
 //                      --factory_reset [--card bdf]
-//                      
+//
 //                      Experts only:
 //                      --shell --path file --card bdf [--type flash_type]
 //                      --sc_firmware --path file --card bdf
@@ -69,7 +74,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
   bool update = false;
   bool shell = false;
   bool sc_firmware = false;
-  
+
 
   po::options_description flashDesc("flash options");
   flashDesc.add_options()
@@ -152,7 +157,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
       return 1;
     }
 
-    xrt_core::device_core::instance().scan_devices(verbose, json); 
+    xrt_core::device_core::instance().scan_devices(verbose, json);
     return registerResult;
   }
 
@@ -172,7 +177,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
       ("shell_name", boost::program_options::value<std::string>(&name), "name of shell")
       ("id", boost::program_options::value<std::string>(&id), "id of the card")
     ;
-    
+
     // -- Now process the subcommand options ----------------------------------
     po::variables_map option_vm;
     try {
@@ -307,4 +312,3 @@ int subCmdFlash(const std::vector<std::string> &_options)
 
   return registerResult;
 }
-
