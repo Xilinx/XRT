@@ -60,10 +60,18 @@ int hpRemoveHandler(int argc, char *argv[])
         switch (opt) 
         {
             case '0':
+		char ch;
                 index = bdf2index(optarg);
                 if (index == UINT_MAX)
                     return -ENOENT;
-                break;
+            	std::cout << "CAUTION: Performing hot removal. This command is going to impact both user pf and mgmt pf. " <<
+                "Please make sure no application is currently running." << std::endl;
+		std::cout << "Proceed[y/n]? " << std::endl;
+		std::cin >> ch;
+		if (ch == 'y' || ch == 'Y')
+			break;
+		else
+			return -EINVAL;
 
             default:
                 return -EINVAL;

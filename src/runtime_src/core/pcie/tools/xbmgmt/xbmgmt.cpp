@@ -48,6 +48,8 @@ static const std::map<std::string, struct subCmd> subCmdList = {
     { "partition", {partHandler, subCmdPartDesc, subCmdPartUsage} },
     { "config", {configHandler, subCmdConfigDesc, subCmdConfigUsage} },
     { "nifd", {nifdHandler, subCmdNifdDesc, subCmdNifdUsage} },
+    { "-hotplug_rescan", {hpRescanHandler, subCmdHpRescanDesc, subCmdHpRescanUsage} },
+    { "-hotplug_remove", {hpRemoveHandler, subCmdHpRemoveDesc, subCmdHpRemoveUsage} },
 };
 
 const static std::vector<std::string> basic_subCmd =
