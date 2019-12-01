@@ -17,7 +17,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdVersion.h"
-#include "common/core_system.h"
+#include "common/system.h"
 #include "gen/version.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
@@ -31,8 +31,8 @@ namespace po = boost::program_options;
 
 // ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
 #include "tools/common/SubCmd.h"
-static const unsigned int registerResult = 
-                    register_subcommand("version", 
+static const unsigned int registerResult =
+                    register_subcommand("version",
                                         "Reports the version of the build, OS, and drivers (if present)",
                                         subCmdVersion);
 // =============================================================================
@@ -47,17 +47,17 @@ void reportVersions()
 
   // Get and report XOCL build information
   boost::property_tree::ptree xrt_pt;
-  xrt_core::system::get_xrt_info(xrt_pt);
+  xrt_core::get_xrt_info(xrt_pt);
 
-  std::cout.width(26); 
-  std::cout << std::internal 
+  std::cout.width(26);
+  std::cout << std::internal
             << "XOCL: "
             << xrt_pt.get<std::string>( "xocl", "---Not Defined--")
             << std::endl;
 
-  std::cout.width(26); 
-  std::cout << std::internal 
-            << "XCLMGMT: " 
+  std::cout.width(26);
+  std::cout << std::internal
+            << "XCLMGMT: "
             << xrt_pt.get<std::string>( "xclmgmt", "---Not Defined--")
             << std::endl;
 }
@@ -103,4 +103,3 @@ int subCmdVersion(const std::vector<std::string> &_options)
 
   return registerResult;
 }
-

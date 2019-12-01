@@ -18,7 +18,7 @@
 #include "util.h"
 
 #include "xdp/profile/core/rt_profile.h"
-#include "core/common/core_system.h"
+#include "core/common/system.h"
 
 namespace xdp {
 
@@ -43,7 +43,7 @@ void JSONProfileWriter::writeSummary(RTProfile* profile)
   // that here to be Table A-7. Later there is code which matches that in
   // the subclasses, e.g. CSVProfileWriter. Where that calls "Table 7," we've
   // changed that here to be Table B-7. But note also that ProfileWriterI helper
-  // methods that implement this are not consistently labeled, e.g. 
+  // methods that implement this are not consistently labeled, e.g.
   // Table 5: Data Transfer: Host & Global Memory
   // void ProfileWriterI::writeHostTransferSummary(const std::string& name,
   // Table 5: Data Transfer: Kernels & Global Memory
@@ -148,7 +148,7 @@ void JSONProfileWriter::writeDocumentHeader(std::ofstream& /*ofs*/,
   header.put("toolVersion", xdp::WriterI::getToolVersion());
 
   boost::property_tree::ptree xrtInfo;
-  xrt_core::system::get_xrt_info(xrtInfo);
+  xrt_core::get_xrt_info(xrtInfo);
   header.put("XRT build version", xrtInfo.get<std::string>("version", "N/A"));
   header.put("Build version branch", xrtInfo.get<std::string>("branch", "N/A"));
   header.put("Build version hash", xrtInfo.get<std::string>("hash", "N/A"));
@@ -576,7 +576,7 @@ void JSONProfileWriter::writeGuidanceMetadataSummary(RTProfile *profile)
   for (auto& itr : deviceExecTimesMap) {
     // Sometimes the key value (iter->first) can contain a '.' in it, which boost
     // normally interprets as a hierarchy separator. We don't want hierarchy--the
-    // '.' should appear in the key, so we use path_type with '\0' as the 
+    // '.' should appear in the key, so we use path_type with '\0' as the
     // hierarchy separator (since '\0' won't actually appear in the string).
     check.put(boost::property_tree::ptree::path_type(itr.first, '\0'), itr.second);
   }

@@ -27,7 +27,8 @@ namespace po = boost::program_options;
 
 // System - Include Files
 #include <iostream>
-#include "common/device_core.h"
+#include "common/system.h"
+#include "common/device.h"
 
 // ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
 #include "tools/common/SubCmd.h"
@@ -80,12 +81,10 @@ int subCmdScan(const std::vector<std::string> &_options)
     return 0;
   }
 
-  auto& core = xrt_core::device_core::instance();
-
   // Collect
   namespace bpt = boost::property_tree;
   bpt::ptree pt;
-  core.get_devices(pt);
+  xrt_core::get_devices(pt);
 
   // Walk the property tree and print info
   auto devices = pt.get_child_optional("devices");

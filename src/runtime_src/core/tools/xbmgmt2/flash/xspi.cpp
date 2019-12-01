@@ -17,7 +17,8 @@
  * under the License.
  */
 #include "xspi.h"
-#include "core/common/device_core.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
 #include <iostream>
 #include <string>
 #include <fstream>
@@ -273,9 +274,9 @@ static void clearBuffers() {
 }
 
 XSPI_Flasher::XSPI_Flasher(unsigned int device_index)
-  : m_dev_id(device_index)
+  : m_device(xrt_core::get_mgmtpf_device(device_index))
 {
-  flash_base = xrt_core::query_device<uint64_t>(m_dev_id, xrt_core::device_core::QR_FLASH_BAR_OFFSET);
+  flash_base = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_FLASH_BAR_OFFSET);
   if (flash_base == xrt_core::invalid_query_value<uint64_t>())
     flash_base = FLASH_BASE;
 }

@@ -14,35 +14,35 @@
  * under the License.
  */
 
-#ifndef DEVICE_PCIE_H
-#define DEVICE_PCIE_H
+#ifndef SYSTEM_WINDOWS_H
+#define SYSTEM_WINDOWS_H
 
-#include "common/device.h"
+#include "pcie/common/system_pcie.h"
 
 namespace xrt_core {
 
-class device_pcie : public device
+class system_windows : public system_pcie
 {
 public:
-  device_pcie(id_type device_id, bool user);
-  ~device_pcie();
+  void
+  get_xrt_info(boost::property_tree::ptree &pt);
 
-  virtual void
-  get_info(boost::property_tree::ptree& pt) const;
+  void
+  get_os_info(boost::property_tree::ptree &pt);
 
-  /**
-   * get_device_handle() - Get underlying shim device handle
-   *
-   * Throws if called on non userof devices
-   */
-  xclDeviceHandle
-  get_device_handle() const;
+  std::pair<device::id_type, device::id_type>
+  get_total_devices() const;
 
-private:
-  bool m_userpf;
-  xclDeviceHandle m_handle = XRT_NULL_HANDLE;
+  void
+  scan_devices(bool verbose, bool json) const;
+
+  std::shared_ptr<device>
+  get_userpf_device(device::id_type id) const;
+
+  std::shared_ptr<device>
+  get_mgmtpf_device(device::id_type id) const;
 };
 
-} // xrt_core
+} // host,xrt_core
 
 #endif
