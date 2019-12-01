@@ -173,14 +173,6 @@ device_windows(id_type device_id, bool user)
 {
 }
 
-std::pair<uint64_t, uint64_t>
-device_windows::
-get_total_devices() const
-{
-  auto user_count = xclProbe();
-  return std::make_pair(user_count, user_count);
-}
-
 void
 device_windows::
 read_dma_stats(boost::property_tree::ptree& pt) const

@@ -133,6 +133,15 @@ public:
   device& operator=(const device&) = delete;
 
   /**
+   * get_device_id() - Get device index
+   */
+  id_type
+  get_device_id() const
+  {
+    return m_device_id;
+  }
+
+  /**
    * get_device_handle() - Get underlying shim device handle
    *
    * Throws if called on non userof devices

@@ -17,8 +17,6 @@
 #ifndef DEVICE_WINDOWS_H
 #define DEVICE_WINDOWS_H
 
-// Please keep eternal include file dependencies to a minimum
-#include <boost/functional/factory.hpp>
 #include "common/device_pcie.h"
 
 namespace xrt_core {
@@ -36,7 +34,6 @@ public:
 
   // query functions
   virtual void read_dma_stats(boost::property_tree::ptree &_pt) const;
-  virtual std::pair<uint64_t, uint64_t> get_total_devices() const;
   virtual void query(QueryRequest qr, const std::type_info & tinfo, boost::any& value) const;
 
   //flash functions

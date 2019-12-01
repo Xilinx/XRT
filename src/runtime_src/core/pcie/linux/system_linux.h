@@ -14,18 +14,33 @@
  * under the License.
  */
 
-#ifndef SYSTEM_PCIE_H
-#define SYSTEM_PCIE_H
+#ifndef PCIE_SYSTEM_LINUX_H
+#define PCIE_SYSTEM_LINUX_H
 
-#include "common/system.h"
+#include "pcie/common/system_pcie.h"
 
 namespace xrt_core {
 
-class system_pcie : public system
+class system_linux : public system_pcie
 {
 public:
   void
-  get_devices(boost::property_tree::ptree& pt) const;
+  get_xrt_info(boost::property_tree::ptree &pt);
+
+  void
+  get_os_info(boost::property_tree::ptree &pt);
+
+  std::pair<device::id_type, device::id_type>
+  get_total_devices() const;
+
+  void
+  scan_devices(bool verbose, bool json) const;
+
+  std::shared_ptr<device>
+  get_userpf_device(device::id_type id) const;
+
+  std::shared_ptr<device>
+  get_mgmtpf_device(device::id_type id) const;
 };
 
 } // xrt_core

@@ -56,8 +56,8 @@ getmachinename()
   return machine;
 }
 
-static std::vector<std::weak_ptr<xrt_core::device_windows>> mgmtpf_devices;
-static std::vector<std::weak_ptr<xrt_core::device_windows>> userpf_devices;
+static std::vector<std::weak_ptr<xrt_core::device_windows>> mgmtpf_devices(16); // fix size
+static std::vector<std::weak_ptr<xrt_core::device_windows>> userpf_devices(16); // fix size
 
 }
 
