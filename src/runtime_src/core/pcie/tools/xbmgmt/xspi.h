@@ -40,12 +40,14 @@ class XSPI_Flasher
 
 public:
     XSPI_Flasher(std::shared_ptr<pcidev::pci_device> dev);
+    ~XSPI_Flasher();
     int xclUpgradeFirmware2(std::istream& mcsStream1, std::istream& mcsStream2);
     int xclUpgradeFirmwareXSpi(std::istream& mcsStream, int device_index=0);
     int revertToMFG(void);
 
 private:
     std::shared_ptr<pcidev::pci_device> mDev;
+    std::FILE *mFlashDev;
 
     unsigned long long flash_base;
     int xclTestXSpi(int device_index);
@@ -69,6 +71,9 @@ private:
     bool writeRegister(unsigned commandCode, unsigned value, unsigned bytes);
     bool setSector(unsigned address);
     unsigned getSector(unsigned address);
+
+    // Upgrade firmware via driver.
+    int upgradeFirmwareXSpiDrv(std::istream& mcsStream, int device_index);
 };
 
 #endif
