@@ -182,7 +182,7 @@ XBDatabase::create_complete_device_tree(boost::property_tree::ptree & _pt)
 			continue;
 		  size_t len = strlen((char*)data->m_name);
 		  std::string name((const char*)data->m_name, len);
-		  printf("[%d]: %s @0x%llx\t(state:TBD)\n", i, name.c_str(), data->m_base_address);
+		  printf("[%d]: %s @0x%llx\t(state:)\n", i, name.c_str(), (unsigned long long)data->m_base_address);
 		}
 	  }
       //ptPlatform.add_child("ip_layout", pt);
