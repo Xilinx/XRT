@@ -225,27 +225,28 @@ update_SC(const std::string& file) const
 
 unsigned long
 device_linux::
-get_ip_layoutsize(uint64_t _deviceID) const
+get_ip_layoutsize() const
 {
 	return 0;
 }
 
 void
 device_linux::
-get_ip_layout(uint64_t _deviceID, struct ip_layout **ipLayout, unsigned long size) const
+get_ip_layout(struct ip_layout **ipLayout, unsigned long size) const
 {
+  return;
 }
 
 unsigned long
 device_linux::
-get_mem_topology(uint64_t _deviceID, struct mem_topology *topoInfo) const
+get_mem_topology(struct mem_topology *topoInfo) const
 {
 	return 0;
 }
 
 unsigned long
 device_linux::
-get_mem_rawinfo(uint64_t _deviceID, struct mem_raw_info *memRaw) const
+get_mem_rawinfo(struct mem_raw_info *memRaw) const
 {
 	return 0;
 }

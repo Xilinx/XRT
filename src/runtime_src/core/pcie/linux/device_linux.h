@@ -41,10 +41,11 @@ public:
   virtual void reset_shell() const;
   virtual void update_shell(const std::string& flashType, const std::string& primary, const std::string& secondary) const;
   virtual void update_SC(const std::string& file) const;
-  virtual void get_ip_layout(uint64_t _deviceID, struct ip_layout **ipLayout, unsigned long size) const;
-  virtual unsigned long get_ip_layoutsize(uint64_t _deviceID) const;
-  virtual unsigned long get_mem_topology(uint64_t _deviceID, struct mem_topology *topoInfo) const;
-  virtual unsigned long get_mem_rawinfo(uint64_t _deviceID, struct mem_raw_info *memRaw) const;
+
+  virtual void get_ip_layout(struct ip_layout **ipLayout, unsigned long size) const;
+  virtual unsigned long get_ip_layoutsize() const;
+  virtual unsigned long get_mem_topology(struct mem_topology *topoInfo) const;
+  virtual unsigned long get_mem_rawinfo(struct mem_raw_info *memRaw) const;
 
 };
 }

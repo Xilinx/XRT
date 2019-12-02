@@ -25,14 +25,14 @@
  // To be simplified
 #include "core/pcie/driver/windows/include/XoclUser_INTF.h"
 
-__declspec(dllexport) void queryDeviceWithQR(uint64_t _deviceID, boost::any & _returnValue, int QR_ID, const std::type_info & _typeInfo, uint64_t statClass);
+__declspec(dllexport) void queryDeviceWithQR(xclDeviceHandle handle, boost::any & _returnValue, int QR_ID, const std::type_info & _typeInfo, uint64_t statClass);
 
-__declspec(dllexport) void shim_get_ip_layout(uint64_t _deviceID, struct ip_layout **ipLayout, DWORD size);
+__declspec(dllexport) void shim_get_ip_layout(xclDeviceHandle handle, struct ip_layout **ipLayout, DWORD size);
 
-__declspec(dllexport) DWORD shim_get_ip_layoutsize(uint64_t _deviceID);
+__declspec(dllexport) DWORD shim_get_ip_layoutsize(xclDeviceHandle handle);
 
-__declspec(dllexport) DWORD shim_get_mem_topology(uint64_t _deviceID, struct mem_topology *topoInfo);
-__declspec(dllexport) DWORD shim_get_mem_rawinfo(uint64_t _deviceID, struct mem_raw_info *memRaw);
+__declspec(dllexport) DWORD shim_get_mem_topology(xclDeviceHandle handle, struct mem_topology *topoInfo);
+__declspec(dllexport) DWORD shim_get_mem_rawinfo(xclDeviceHandle handle, struct mem_raw_info *memRaw);
 
 namespace xocl { // shared implementation
 

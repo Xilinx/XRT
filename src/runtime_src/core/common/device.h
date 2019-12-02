@@ -190,10 +190,10 @@ public:
   virtual void update_shell(const std::string& flashType, const std::string& primary, const std::string& secondary) const = 0;
   virtual void update_SC(const std::string& file) const = 0;
 
-  virtual void get_ip_layout(uint64_t _deviceID, struct ip_layout **ipLayout, unsigned long size) const = 0;
-  virtual unsigned long get_ip_layoutsize(uint64_t _deviceID) const = 0;
-  virtual unsigned long get_mem_topology(uint64_t _deviceID, struct mem_topology *topoInfo) const = 0;
-  virtual unsigned long get_mem_rawinfo(uint64_t _deviceID, struct mem_raw_info *memRaw) const = 0;
+  virtual void get_ip_layout(struct ip_layout **ipLayout, unsigned long size) const = 0;
+  virtual unsigned long get_ip_layoutsize() const = 0;
+  virtual unsigned long get_mem_topology(struct mem_topology *topoInfo) const = 0;
+  virtual unsigned long get_mem_rawinfo(struct mem_raw_info *memRaw) const = 0;
   // Helper methods
   typedef std::string (*FORMAT_STRING_PTR)(const boost::any &);
   static std::string format_primative(const boost::any & _data);

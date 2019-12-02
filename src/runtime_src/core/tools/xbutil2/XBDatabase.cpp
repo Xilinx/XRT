@@ -171,9 +171,9 @@ XBDatabase::create_complete_device_tree(boost::property_tree::ptree & _pt)
 	  std::cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
 	  //boost::property_tree::ptree pt;
 	  struct ip_layout *ipLayout = NULL;
-	  unsigned long ipSize = device->get_ip_layoutsize(device_id);
+	  unsigned long ipSize = device->get_ip_layoutsize();
 	  ipLayout = (struct ip_layout*)malloc(ipSize);
-	  device->get_ip_layout(device_id, &ipLayout, ipSize);
+	  device->get_ip_layout(&ipLayout, ipSize);
 	  if (ipLayout != NULL) {
 		std::cout << "Compute Unit Status:" << std::endl;
 		for (int i = 0; i < ipLayout->m_count; i++) {
@@ -192,8 +192,8 @@ XBDatabase::create_complete_device_tree(boost::property_tree::ptree & _pt)
 	  std::cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
 	  struct mem_topology topoInfo;
 	  struct mem_raw_info memRaw;
-	  if (!device->get_mem_topology(device_id, &topoInfo) &&
-		  !device->get_mem_rawinfo(device_id, &memRaw)) {
+	  if (!device->get_mem_topology(&topoInfo) &&
+		  !device->get_mem_rawinfo(&memRaw)) {
 		  std::cout << "Memory Status:" << std::endl;
 		  std::cout << "Tag" << std::setw(16) << "Type" << std::setw(16)
 			  << "Temp(C)" << std::setw(16) << "Size (GB)" << std::setw(16)

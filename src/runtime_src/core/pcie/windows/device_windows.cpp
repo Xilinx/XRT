@@ -121,7 +121,7 @@ query(QueryRequest qr, const std::type_info & _typeInfo, boost::any& value) cons
   boost::any anyEmpty;
   value.swap(anyEmpty);
 
-  auto device_id = get_device_id();
+  auto handle = get_device_handle();
 
   // Get the sysdev and entry values to call
   const IOCTLEntry & entry = get_IOCTL_entry(qr);
@@ -131,7 +131,7 @@ query(QueryRequest qr, const std::type_info & _typeInfo, boost::any& value) cons
   if (entry.IOCTLValue == 0) {
     sErrorMsg = "IOCTLEntry is initialized with zeros.";
   } else {
-    queryDeviceWithQR(device_id, value, qr, _typeInfo, entry.statClass);
+    queryDeviceWithQR(handle, value, qr, _typeInfo, entry.statClass);
   }
 
   if (!sErrorMsg.empty()) {
@@ -181,30 +181,38 @@ update_SC(const std::string& file) const
 
 unsigned long
 device_windows::
-get_ip_layoutsize(uint64_t _deviceID) const
+get_ip_layoutsize() const
 {
-  return shim_get_ip_layoutsize(_deviceID);
+  auto handle = get_device_handle();
+
+  return shim_get_ip_layoutsize(handle);
 }
 
 void
 device_windows::
-get_ip_layout(uint64_t _deviceID, struct ip_layout **ipLayout, unsigned long size) const
+get_ip_layout(struct ip_layout **ipLayout, unsigned long size) const
 {
-  shim_get_ip_layout(_deviceID, ipLayout, size);
+  auto handle = get_device_handle();
+
+  shim_get_ip_layout(handle, ipLayout, size);
 }
 
 unsigned long
 device_windows::
-get_mem_topology(uint64_t _deviceID, struct mem_topology *topoInfo) const
+get_mem_topology(struct mem_topology *topoInfo) const
 {
-  return shim_get_mem_topology(_deviceID, topoInfo);
+  auto handle = get_device_handle();
+
+  return shim_get_mem_topology(handle, topoInfo);
 }
 
 unsigned long
 device_windows::
-get_mem_rawinfo(uint64_t _deviceID, struct mem_raw_info *memRaw) const
+get_mem_rawinfo(struct mem_raw_info *memRaw) const
 {
-  return shim_get_mem_rawinfo(_deviceID, memRaw);
+  auto handle = get_device_handle();
+
+  return shim_get_mem_rawinfo(handle, memRaw);
 }
 
 } // xrt_core

@@ -114,7 +114,7 @@ int subCmdDmaTest(const std::vector<std::string> &_options)
 
   std::cout << "Total DDR size: " << ddr_mem_size << " MB" << std::endl;
   struct mem_topology topoInfo;
-  device->get_mem_topology(card, &topoInfo);
+  device->get_mem_topology(&topoInfo);
 
   if (topoInfo.m_count == 0) {
 	std::cout << "WARNING: 'mem_topology' invalid, "

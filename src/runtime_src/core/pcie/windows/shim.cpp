@@ -1148,10 +1148,11 @@ xclRead(xclDeviceHandle handle, enum xclAddressSpace space,
   return shim->read(space,offset,hostbuf,size) ? 0 : size;
 }
 
-void queryDeviceWithQR(uint64_t _deviceID, boost::any & _returnValue,
+void queryDeviceWithQR(xclDeviceHandle handle, boost::any & _returnValue,
 	int QR_ID, const std::type_info & _typeInfo, uint64_t statClass)
 {
-  xclDeviceHandle handle = xclOpen((int)_deviceID, 0, XCL_INFO);
+  //xclDeviceHandle handle = xclOpen((int)_deviceID, 0, XCL_INFO);
+  //auto handle = get_device_handle();
   auto shim = get_shim_object(handle);
   HANDLE deviceHandle = shim->m_dev;
   XOCL_STAT_QR_INFO qrInfo;
@@ -1192,14 +1193,15 @@ void queryDeviceWithQR(uint64_t _deviceID, boost::any & _returnValue,
   return;
 }
 
-DWORD shim_get_ip_layoutsize(uint64_t _deviceID)
+DWORD shim_get_ip_layoutsize(xclDeviceHandle handle)
 {
   DWORD bytesRead;
   XOCL_STAT_CLASS_ARGS statClassArgs;
   DWORD  error = ERROR_SUCCESS;
   struct ip_layout layoutHeader;
   DWORD size = 0;
-  xclDeviceHandle handle = xclOpen((int)_deviceID, 0, XCL_INFO);
+  //xclDeviceHandle handle = xclOpen((int)_deviceID, 0, XCL_INFO);
+  //auto handle = get_device_handle();
   auto shim = get_shim_object(handle);
   HANDLE devHandle = shim->m_dev;
 
@@ -1221,13 +1223,14 @@ DWORD shim_get_ip_layoutsize(uint64_t _deviceID)
   return size;
 }
 
-void shim_get_ip_layout(uint64_t _deviceID, struct ip_layout **ip, DWORD size)
+void shim_get_ip_layout(xclDeviceHandle handle, struct ip_layout **ip, DWORD size)
 {
   DWORD bytesRead;
   XOCL_STAT_CLASS_ARGS statClassArgs;
   DWORD  error = ERROR_SUCCESS;
   struct ip_layout *ipLayout = *ip;
-  xclDeviceHandle handle = xclOpen((int)_deviceID, 0, XCL_INFO);
+  //xclDeviceHandle handle = xclOpen((int)_deviceID, 0, XCL_INFO);
+  //auto handle = get_device_handle();
   auto shim = get_shim_object(handle);
   HANDLE devHandle = shim->m_dev;
 
@@ -1248,9 +1251,10 @@ void shim_get_ip_layout(uint64_t _deviceID, struct ip_layout **ip, DWORD size)
   return;
 }
 
-DWORD shim_get_mem_topology(uint64_t _deviceID, struct mem_topology *topoInfo)
+DWORD shim_get_mem_topology(xclDeviceHandle handle, struct mem_topology *topoInfo)
 {
-  xclDeviceHandle handle = xclOpen((int)_deviceID, 0, XCL_INFO);
+  //xclDeviceHandle handle = xclOpen((int)_deviceID, 0, XCL_INFO);
+  //auto handle = get_device_handle();
   auto shim = get_shim_object(handle);
   HANDLE deviceHandle = shim->m_dev;
   DWORD error = 0;
@@ -1275,9 +1279,10 @@ DWORD shim_get_mem_topology(uint64_t _deviceID, struct mem_topology *topoInfo)
   return error;
 }
 
-DWORD shim_get_mem_rawinfo(uint64_t _deviceID, struct mem_raw_info *memRaw)
+DWORD shim_get_mem_rawinfo(xclDeviceHandle handle, struct mem_raw_info *memRaw)
 {
-  xclDeviceHandle handle = xclOpen((int)_deviceID, 0, XCL_INFO);
+  //xclDeviceHandle handle = xclOpen((int)_deviceID, 0, XCL_INFO);
+  //auto handle = get_device_handle();
   auto shim = get_shim_object(handle);
   HANDLE deviceHandle = shim->m_dev;
   DWORD error = 0;
