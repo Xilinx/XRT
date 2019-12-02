@@ -197,6 +197,22 @@ read_dma_stats(boost::property_tree::ptree& pt) const
 
 void
 device_linux::
+read(uint64_t offset, void* buf, uint64_t len) const
+{
+  if (auto err = pcidev::get_dev(get_device_id())->pcieBarRead(offset, buf, len))
+    throw error(err, "read failed");
+}
+
+void
+device_linux::
+write(uint64_t offset, const void* buf, uint64_t len) const
+{
+  if (auto err = pcidev::get_dev(get_device_id())->pcieBarWrite(offset, buf, len))
+    throw error(err, "write failed");
+}
+
+void
+device_linux::
 auto_flash(const std::string& shell, const std::string& id, bool force) const
 {
   std::cout << "TO-DO: auto_flash\n";
