@@ -4,7 +4,7 @@ level: 6
 owner: soeren
 user:
   allowed_test_modes: [hw]
-  excl_platforms: [xilinx_v350-es1_xdma_201920_1, xilinx_u200_qdma_201910_1, xilinx_u200_qdma_201920_1, xilinx_u250_qdma_201910_1, xilinx_u250_qdma_201920_1, xilinx_u280_xdma_201920_1, xilinx_u50_xdma_201920_1, xilinx_samsung_U2x4_201920_1]
+  excl_platforms: [xilinx_v350-es1_xdma_201920_1, xilinx_u200_qdma_201910_1, xilinx_u200_qdma_201920_1, xilinx_u250_qdma_201910_1, xilinx_u250_qdma_201920_1, xilinx_u280_xdma_201920_1, xilinx_u50_xdma_201920_1, xilinx_samsung_U2x4_201920_1, xilinx_samsung_u2x4_201920_2, xilinx_u250_qep_201910_1]
   force_makefile: "--force"
   host_args: {all: addone.xclbin}
   host_cflags: ' -DDSA64'
