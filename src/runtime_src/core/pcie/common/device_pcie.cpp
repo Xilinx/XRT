@@ -52,6 +52,7 @@ get_info(boost::property_tree::ptree& pt) const
   query_and_put(QR_PCIE_SUBSYSTEM_VENDOR, pt);
   query_and_put(QR_PCIE_SUBSYSTEM_ID, pt);
   query_and_put(QR_PCIE_LINK_SPEED, pt);
+  query_and_put(QR_PCIE_READY_STATUS, pt);
   query_and_put(QR_PCIE_EXPRESS_LANE_WIDTH, pt);
   query_and_put(QR_DMA_THREADS_RAW, pt);
 }

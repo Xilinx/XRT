@@ -30,6 +30,7 @@ if(WIN32)
     "SubCmdReset.cpp"
     "SubCmdScan.cpp"
     "SubCmdVersion.cpp"
+    "SubCmdDmaTest.cpp"
   )
 else()
   set(XBUTIL2_NAME "xbutil2")

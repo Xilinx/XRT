@@ -23,6 +23,7 @@
 
 namespace XBDatabase {
 void create_complete_device_tree(boost::property_tree::ptree & _pt);
+void dump(boost::property_tree::ptree & pt, std::ostream& ostr);
 };
 
 #endif
