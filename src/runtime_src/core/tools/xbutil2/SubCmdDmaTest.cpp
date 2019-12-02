@@ -113,10 +113,12 @@ int subCmdDmaTest(const std::vector<std::string> &_options)
 	return -EINVAL;
 
   std::cout << "Total DDR size: " << ddr_mem_size << " MB" << std::endl;
-  struct mem_topology topoInfo;
-  device->get_mem_topology(&topoInfo);
+  struct mem_topology *topoInfo = NULL;
+  uint64_t memsize = device->get_memtopology_size();
+  topoInfo = (struct mem_topology*)malloc(memsize);
+  device->get_mem_topology(&topoInfo, memsize);
 
-  if (topoInfo.m_count == 0) {
+  if (topoInfo->m_count == 0) {
 	std::cout << "WARNING: 'mem_topology' invalid, "
 		<< "unable to perform DMA Test. Has the bitstream been loaded? "
 		<< "See 'xbutil program' to load a specific xclbin file or run "
@@ -126,18 +128,18 @@ int subCmdDmaTest(const std::vector<std::string> &_options)
   }
 
   std::cout << "Reporting from mem_topology:" << std::endl;
-  std::cout << "Memory regions:" << topoInfo.m_count << std::endl;
-  for (int i = 0; i < topoInfo.m_count; i++) {
-	if (topoInfo.m_mem_data[i].m_type == MEM_STREAMING)
+  std::cout << "Memory regions:" << topoInfo->m_count << std::endl;
+  for (int i = 0; i < topoInfo->m_count; i++) {
+	if (topoInfo->m_mem_data[i].m_type == MEM_STREAMING)
 	  continue;
-	if (topoInfo.m_mem_data[i].m_used) {
+	if (topoInfo->m_mem_data[i].m_used) {
 	  std::cout << "Data Validity & DMA Test on "
-		  << topoInfo.m_mem_data[i].m_tag << ":" << std::endl;
+		  << topoInfo->m_mem_data[i].m_tag << ":" << std::endl;
 	  xclDeviceHandle m_handle = xclOpen((int)card, nullptr, XCL_QUIET);
 	  xcldev::DMARunner runner(m_handle,(size_t)blockSizeKB, (unsigned int)i);
 	  auto result = runner.run();
 	  if (result != 0)
-		std::cout << "Dmatest failed on " << topoInfo.m_mem_data[i].m_tag << std::endl;
+		std::cout << "Dmatest failed on " << topoInfo->m_mem_data[i].m_tag << std::endl;
 	}
   }
 

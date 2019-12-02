@@ -38,8 +38,6 @@
 #ifndef _XCLBIN_H_
 #define _XCLBIN_H_
 
-#define MAX_DDR_BANKS    4
-
 #ifdef _WIN32
   #include <cstdint>
   #include <algorithm>
@@ -235,7 +233,7 @@ extern "C" {
 
     struct mem_topology {
         int32_t m_count; //Number of mem_data
-        struct mem_data m_mem_data[MAX_DDR_BANKS]; //Should be sorted on mem_type
+        struct mem_data m_mem_data[1]; //Should be sorted on mem_type
     };
 
     // XoclStatMemRaw
@@ -246,7 +244,7 @@ extern "C" {
 
     struct mem_raw_info {
 	    unsigned long MemRawCount;
-	    struct mem_raw MemRaw[MAX_DDR_BANKS];
+	    struct mem_raw MemRaw[1];
     };
 
     /****   CONNECTIVITY SECTION ****/

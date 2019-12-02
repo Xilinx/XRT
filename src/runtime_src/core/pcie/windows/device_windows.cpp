@@ -48,6 +48,7 @@ get_IOCTL_entry(QueryRequest qr) const
     { QR_ROM_DDR_BANK_COUNT_MAX,    { IOCTL_XOCL_STAT,   XoclStatRomInfo }},
     { QR_ROM_FPGA_NAME,             { IOCTL_XOCL_STAT,   XoclStatRomInfo }},
     { QR_ROM_TIME_SINCE_EPOCH,      { IOCTL_XOCL_STAT,   XoclStatRomInfo }},
+    { QR_AXLF_MEMSECTION_COUNT,    { IOCTL_XOCL_STAT,   XoclStatMemTopology }},
     { QR_XMC_VERSION,               { 0 }},
     { QR_XMC_SERIAL_NUM,            { 0 }},
     { QR_XMC_MAX_POWER,             { 0 }},
@@ -179,6 +180,54 @@ update_SC(const std::string& file) const
   std::cout << "TO-DO: update_SC\n";
 }
 
+uint64_t
+device_windows::
+get_memtopology_size() const
+{
+  boost::any value;
+  auto handle = get_device_handle();
+  // Get the sysdev and entry values to call
+  const IOCTLEntry & entry = get_IOCTL_entry(QR_AXLF_MEMSECTION_COUNT);
+  std::string sErrorMsg;
+
+  if (entry.IOCTLValue == 0) {
+	sErrorMsg = "IOCTLEntry is initialized with zeros.";
+	throw std::runtime_error(sErrorMsg);
+  }
+  else {
+	queryDeviceWithQR(handle, value, QR_AXLF_MEMSECTION_COUNT, typeid(uint64_t), entry.statClass);
+  }
+
+  uint64_t output = boost::any_cast<uint64_t>(value);
+  output = sizeof(struct mem_topology) + output * sizeof(struct mem_data);
+
+  return output;
+}
+
+uint64_t
+device_windows::
+get_memraw_size() const
+{
+	boost::any value;
+	auto handle = get_device_handle();
+	// Get the sysdev and entry values to call
+	const IOCTLEntry & entry = get_IOCTL_entry(QR_AXLF_MEMSECTION_COUNT);
+	std::string sErrorMsg;
+
+	if (entry.IOCTLValue == 0) {
+		sErrorMsg = "IOCTLEntry is initialized with zeros.";
+		throw std::runtime_error(sErrorMsg);
+	}
+	else {
+		queryDeviceWithQR(handle, value, QR_AXLF_MEMSECTION_COUNT, typeid(uint64_t), entry.statClass);
+	}
+
+	uint64_t output = boost::any_cast<uint64_t>(value);
+	output = sizeof(struct mem_raw_info) + output * sizeof(struct mem_raw);
+
+	return output;
+}
+
 unsigned long
 device_windows::
 get_ip_layoutsize() const
@@ -199,20 +248,20 @@ get_ip_layout(struct ip_layout **ipLayout, unsigned long size) const
 
 unsigned long
 device_windows::
-get_mem_topology(struct mem_topology *topoInfo) const
+get_mem_topology(struct mem_topology **topoInfo, uint64_t topoSize) const
 {
   auto handle = get_device_handle();
 
-  return shim_get_mem_topology(handle, topoInfo);
+  return shim_get_mem_topology(handle, topoInfo, topoSize);
 }
 
 unsigned long
 device_windows::
-get_mem_rawinfo(struct mem_raw_info *memRaw) const
+get_mem_rawinfo(struct mem_raw_info **memRaw, uint64_t rawSize) const
 {
   auto handle = get_device_handle();
 
-  return shim_get_mem_rawinfo(handle, memRaw);
+  return shim_get_mem_rawinfo(handle, memRaw, rawSize);
 }
 
 } // xrt_core

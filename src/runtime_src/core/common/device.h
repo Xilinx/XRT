@@ -65,6 +65,8 @@ public:
       QR_ROM_FPGA_NAME,
       QR_ROM_TIME_SINCE_EPOCH,
 
+      QR_AXLF_MEMSECTION_COUNT,
+
       QR_XMC_VERSION,
       QR_XMC_SERIAL_NUM,
       QR_XMC_MAX_POWER,
@@ -192,8 +194,10 @@ public:
 
   virtual void get_ip_layout(struct ip_layout **ipLayout, unsigned long size) const = 0;
   virtual unsigned long get_ip_layoutsize() const = 0;
-  virtual unsigned long get_mem_topology(struct mem_topology *topoInfo) const = 0;
-  virtual unsigned long get_mem_rawinfo(struct mem_raw_info *memRaw) const = 0;
+  virtual uint64_t get_memtopology_size() const = 0;
+  virtual uint64_t get_memraw_size() const = 0;
+  virtual unsigned long get_mem_topology(struct mem_topology **topoInfo, uint64_t topoSize) const = 0;
+  virtual unsigned long get_mem_rawinfo(struct mem_raw_info **memRaw, uint64_t rawSize) const = 0;
   // Helper methods
   typedef std::string (*FORMAT_STRING_PTR)(const boost::any &);
   static std::string format_primative(const boost::any & _data);

@@ -223,6 +223,20 @@ update_SC(const std::string& file) const
   std::cout << "TO-DO: update_SC\n";
 }
 
+uint64_t
+device_linux::
+get_memraw_size() const
+{
+	return 0;
+}
+
+uint64_t
+device_linux::
+get_memtopology_size() const
+{
+	return 0;
+}
+
 unsigned long
 device_linux::
 get_ip_layoutsize() const
@@ -239,14 +253,14 @@ get_ip_layout(struct ip_layout **ipLayout, unsigned long size) const
 
 unsigned long
 device_linux::
-get_mem_topology(struct mem_topology *topoInfo) const
+get_mem_topology(struct mem_topology **topoInfo, uint64_t topoSize) const
 {
 	return 0;
 }
 
 unsigned long
 device_linux::
-get_mem_rawinfo(struct mem_raw_info *memRaw) const
+get_mem_rawinfo(struct mem_raw_info **memRaw, uint64_t rawSize) const
 {
 	return 0;
 }

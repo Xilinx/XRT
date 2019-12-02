@@ -31,8 +31,8 @@ __declspec(dllexport) void shim_get_ip_layout(xclDeviceHandle handle, struct ip_
 
 __declspec(dllexport) DWORD shim_get_ip_layoutsize(xclDeviceHandle handle);
 
-__declspec(dllexport) DWORD shim_get_mem_topology(xclDeviceHandle handle, struct mem_topology *topoInfo);
-__declspec(dllexport) DWORD shim_get_mem_rawinfo(xclDeviceHandle handle, struct mem_raw_info *memRaw);
+__declspec(dllexport) DWORD shim_get_mem_topology(xclDeviceHandle handle, struct mem_topology **topoInfo, uint64_t topoSize);
+__declspec(dllexport) DWORD shim_get_mem_rawinfo(xclDeviceHandle handle, struct mem_raw_info **memRaw, uint64_t rawSize);
 
 namespace xocl { // shared implementation
 

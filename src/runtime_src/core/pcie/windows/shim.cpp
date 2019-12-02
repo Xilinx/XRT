@@ -598,7 +598,7 @@ done:
     DWORD error;
     DWORD bytesWritten;
     DWORD bytesToRead;
-    XOCL_STAT_CLASS_ARGS statClassArgs;
+    XOCL_STAT_CLASS_ARGS statClassArgs = { 0 };
     XOCL_MEM_TOPOLOGY_INFORMATION topoInfo;
     XOCL_MEM_RAW_INFORMATION memRaw;
 
@@ -1251,15 +1251,14 @@ void shim_get_ip_layout(xclDeviceHandle handle, struct ip_layout **ip, DWORD siz
   return;
 }
 
-DWORD shim_get_mem_topology(xclDeviceHandle handle, struct mem_topology *topoInfo)
+DWORD shim_get_mem_topology(xclDeviceHandle handle, struct mem_topology **topo, uint64_t topoSize)
 {
-  //xclDeviceHandle handle = xclOpen((int)_deviceID, 0, XCL_INFO);
-  //auto handle = get_device_handle();
+  struct mem_topology *topoInfo = *topo;
   auto shim = get_shim_object(handle);
   HANDLE deviceHandle = shim->m_dev;
   DWORD error = 0;
   DWORD bytesWritten;
-  XOCL_STAT_CLASS_ARGS statClassArgs;
+  XOCL_STAT_CLASS_ARGS statClassArgs = { 0 };
 
   statClassArgs.StatClass = XoclStatMemTopology;
 
@@ -1268,7 +1267,7 @@ DWORD shim_get_mem_topology(xclDeviceHandle handle, struct mem_topology *topoInf
 			&statClassArgs,
 			sizeof(XOCL_STAT_CLASS_ARGS),
 			topoInfo,
-			sizeof(struct mem_topology),
+			(DWORD)topoSize,
 			&bytesWritten,
 			nullptr)) {
 	  error = GetLastError();
@@ -1279,15 +1278,14 @@ DWORD shim_get_mem_topology(xclDeviceHandle handle, struct mem_topology *topoInf
   return error;
 }
 
-DWORD shim_get_mem_rawinfo(xclDeviceHandle handle, struct mem_raw_info *memRaw)
+DWORD shim_get_mem_rawinfo(xclDeviceHandle handle, struct mem_raw_info **mem, uint64_t rawSize)
 {
-  //xclDeviceHandle handle = xclOpen((int)_deviceID, 0, XCL_INFO);
-  //auto handle = get_device_handle();
+  struct mem_raw_info *memRaw = *mem;
   auto shim = get_shim_object(handle);
   HANDLE deviceHandle = shim->m_dev;
   DWORD error = 0;
   DWORD bytesWritten;
-  XOCL_STAT_CLASS_ARGS statClassArgs;
+  XOCL_STAT_CLASS_ARGS statClassArgs = { 0 };
 
   statClassArgs.StatClass = XoclStatMemRaw;
 
@@ -1296,7 +1294,7 @@ DWORD shim_get_mem_rawinfo(xclDeviceHandle handle, struct mem_raw_info *memRaw)
 		&statClassArgs,
 		sizeof(XOCL_STAT_CLASS_ARGS),
 		memRaw,
-		sizeof(struct mem_raw_info),
+		(DWORD)rawSize,
 		&bytesWritten,
 		nullptr)) {
 	  error = GetLastError();

@@ -185,22 +185,29 @@ XBDatabase::create_complete_device_tree(boost::property_tree::ptree & _pt)
 		  printf("[%d]: %s @0x%llx\t(state:)\n", i, name.c_str(), (unsigned long long)data->m_base_address);
 		}
 	  }
+	  free(ipLayout);
       //ptPlatform.add_child("ip_layout", pt);
     }
 
     {
 	  std::cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
-	  struct mem_topology topoInfo;
-	  struct mem_raw_info memRaw;
-	  if (!device->get_mem_topology(&topoInfo) &&
-		  !device->get_mem_rawinfo(&memRaw)) {
+	  struct mem_topology *topoInfo = NULL;
+	  uint64_t memsize = device->get_memtopology_size();
+	  topoInfo = (struct mem_topology*)malloc(memsize);
+
+	  struct mem_raw_info *memRaw = NULL;
+	  uint64_t rawsize = device->get_memraw_size();
+	  memRaw = (struct mem_raw_info*)malloc(rawsize);
+
+	  if (!device->get_mem_topology(&topoInfo, memsize) &&
+		  !device->get_mem_rawinfo(&memRaw, rawsize)) {
 		  std::cout << "Memory Status:" << std::endl;
 		  std::cout << "Tag" << std::setw(16) << "Type" << std::setw(16)
 			  << "Temp(C)" << std::setw(16) << "Size (GB)" << std::setw(16)
 			  << "Mem Usage" << std::setw(16) << "BO count" << std::endl;
-		  for (int i = 0; i < topoInfo.m_count; i++) {
-			  std::cout << topoInfo.m_mem_data[i].m_tag << std::setw(16);
-			  switch (topoInfo.m_mem_data[i].m_type) {
+		  for (int i = 0; i < topoInfo->m_count; i++) {
+			  std::cout << topoInfo->m_mem_data[i].m_tag << std::setw(16);
+			  switch (topoInfo->m_mem_data[i].m_type) {
 			  case MEM_DDR3: std::cout << "MEM_DDR3" << std::setw(16); break;
 			  case MEM_DDR4: std::cout << "MEM_DDR4" << std::setw(16); break;
 			  case MEM_DRAM: std::cout << "MEM_DRAM" << std::setw(16); break;
@@ -213,14 +220,15 @@ XBDatabase::create_complete_device_tree(boost::property_tree::ptree & _pt)
 			  case MEM_STREAMING_CONNECTION: std::cout << "MEM_STREAMING_CONNECTION" << std::setw(16); break;
 			  }
 			  std::cout << ptPlatform.get<std::string>("physical.thermal.fpga.temp_c", "N/A") << std::setw(16);
-			  std::cout << topoInfo.m_mem_data[i].m_size / (1024 * 1024) << std::setw(16)
-				  << memRaw.MemRaw[i].MemoryUsage / (1024 * 1024) << " (MB)" << std::setw(16)
-				  << memRaw.MemRaw[i].BOCount << std::endl;
+			  std::cout << topoInfo->m_mem_data[i].m_size / (1024 * 1024) << std::setw(16)
+				  << memRaw->MemRaw[i].MemoryUsage / (1024 * 1024) << " (MB)" << std::setw(16)
+				  << memRaw->MemRaw[i].BOCount << std::endl;
 		  }
 	  }
 	  else {
 		  std::cout << "Memory Status: N/A" << std::endl;
 	  }
+	  free(topoInfo);
     }
 
     // Add the platform to the device tree
