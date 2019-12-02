@@ -80,6 +80,7 @@ else()
     boost_program_options
     uuid
     dl
+    pthread
   )
 endif()
 
