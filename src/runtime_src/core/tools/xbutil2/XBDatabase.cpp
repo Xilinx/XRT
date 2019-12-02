@@ -198,7 +198,7 @@ XBDatabase::create_complete_device_tree(boost::property_tree::ptree & _pt)
 		  std::cout << "Tag" << std::setw(16) << "Type" << std::setw(16)
 			  << "Temp(C)" << std::setw(16) << "Size (GB)" << std::setw(16)
 			  << "Mem Usage" << std::setw(16) << "BO count" << std::endl;
-		  for (size_t i = 0; i < topoInfo.m_count; i++) {
+		  for (int i = 0; i < topoInfo.m_count; i++) {
 			  std::cout << topoInfo.m_mem_data[i].m_tag << std::setw(16);
 			  switch (topoInfo.m_mem_data[i].m_type) {
 			  case MEM_DDR3: std::cout << "MEM_DDR3" << std::setw(16); break;

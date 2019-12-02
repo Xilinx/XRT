@@ -109,7 +109,7 @@ int subCmdDmaTest(const std::vector<std::string> &_options)
   auto device = xrt_core::get_userpf_device((unsigned int)card);
 
   size_t ddr_mem_size = device->get_ddr_mem_size();
-  if (ddr_mem_size == -EINVAL)
+  if (ddr_mem_size == 0)
 	return -EINVAL;
 
   std::cout << "Total DDR size: " << ddr_mem_size << " MB" << std::endl;
@@ -127,7 +127,7 @@ int subCmdDmaTest(const std::vector<std::string> &_options)
 
   std::cout << "Reporting from mem_topology:" << std::endl;
   std::cout << "Memory regions:" << topoInfo.m_count << std::endl;
-  for (size_t i = 0; i < topoInfo.m_count; i++) {
+  for (int i = 0; i < topoInfo.m_count; i++) {
 	if (topoInfo.m_mem_data[i].m_type == MEM_STREAMING)
 	  continue;
 	if (topoInfo.m_mem_data[i].m_used) {
