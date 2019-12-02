@@ -19,6 +19,20 @@
 
 #include "xrt.h"
 #include "core/common/xrt_profiling.h"
+#include "boost/any.hpp"
+#include <boost/property_tree/ptree.hpp>
+
+ // To be simplified
+#include "core/pcie/driver/windows/include/XoclUser_INTF.h"
+
+__declspec(dllexport) void queryDeviceWithQR(uint64_t _deviceID, boost::any & _returnValue, int QR_ID, const std::type_info & _typeInfo, uint64_t statClass);
+
+__declspec(dllexport) void shim_get_ip_layout(uint64_t _deviceID, struct ip_layout **ipLayout, DWORD size);
+
+__declspec(dllexport) DWORD shim_get_ip_layoutsize(uint64_t _deviceID);
+
+__declspec(dllexport) DWORD shim_get_mem_topology(uint64_t _deviceID, struct mem_topology *topoInfo);
+__declspec(dllexport) DWORD shim_get_mem_rawinfo(uint64_t _deviceID, struct mem_raw_info *memRaw);
 
 namespace xocl { // shared implementation
 

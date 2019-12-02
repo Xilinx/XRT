@@ -26,6 +26,9 @@ namespace po = boost::program_options;
 
 // System - Include Files
 #include <iostream>
+#include "core/pcie/common/dmatest.h"
+#include "common/device.h"
+#include "common/system.h"
 
 // ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
 #include "tools/common/SubCmd.h"
@@ -50,7 +53,7 @@ int subCmdDmaTest(const std::vector<std::string> &_options)
   XBU::verbose("SubCommand: dmatest");
   // -- Retrieve and parse the subcommand options -----------------------------
   uint64_t card = 0;
-  uint64_t blockSizeKB = 0;
+  int blockSizeKB = 0;
   std::string sBlockSizeKB;
   bool help = false;
 
@@ -82,15 +85,61 @@ int subCmdDmaTest(const std::vector<std::string> &_options)
   }
 
   // -- Now process the subcommand --------------------------------------------
-  blockSizeKB = stoi(sBlockSizeKB, nullptr, 0);
+  blockSizeKB = stoi(sBlockSizeKB);
 
   XBU::verbose(XBU::format("      Card: %ld", card));
   XBU::verbose(XBU::format("Block Size: 0x%lx", blockSizeKB));
 
+  if (blockSizeKB & (blockSizeKB - 1)) {
+	std::cerr << "ERROR: block size should be power of 2\n";
+	return -1;
+  }
 
-  XBU::error("COMMAND BODY NOT IMPLEMENTED.");
-  // TODO: Put working code here
+  if (blockSizeKB > 0x100000) {
+	std::cerr << "ERROR: block size cannot be greater than 0x100000 MB\n";
+	return -1;
+  }
+
+  blockSizeKB *= 1024; // convert kilo bytes to bytes
+
+  if (blockSizeKB == 0)
+	blockSizeKB = 256 * 1024 * 1024; // Default block size, 256MB
+
+  // Get the handle to the devices
+  auto device = xrt_core::get_userpf_device((unsigned int)card);
+
+  size_t ddr_mem_size = device->get_ddr_mem_size();
+  if (ddr_mem_size == 0)
+	return -EINVAL;
+
+  std::cout << "Total DDR size: " << ddr_mem_size << " MB" << std::endl;
+  struct mem_topology topoInfo;
+  device->get_mem_topology(card, &topoInfo);
+
+  if (topoInfo.m_count == 0) {
+	std::cout << "WARNING: 'mem_topology' invalid, "
+		<< "unable to perform DMA Test. Has the bitstream been loaded? "
+		<< "See 'xbutil program' to load a specific xclbin file or run "
+		<< "'xbutil dmatest' to use the xclbins provided with this card."
+		<< std::endl;
+	return -EINVAL;
+  }
+
+  std::cout << "Reporting from mem_topology:" << std::endl;
+  std::cout << "Memory regions:" << topoInfo.m_count << std::endl;
+  for (int i = 0; i < topoInfo.m_count; i++) {
+	if (topoInfo.m_mem_data[i].m_type == MEM_STREAMING)
+	  continue;
+	if (topoInfo.m_mem_data[i].m_used) {
+	  std::cout << "Data Validity & DMA Test on "
+		  << topoInfo.m_mem_data[i].m_tag << ":" << std::endl;
+	  xclDeviceHandle m_handle = xclOpen((int)card, nullptr, XCL_QUIET);
+	  xcldev::DMARunner runner(m_handle,(size_t)blockSizeKB, (unsigned int)i);
+	  auto result = runner.run();
+	  if (result != 0)
+		std::cout << "Dmatest failed on " << topoInfo.m_mem_data[i].m_tag << std::endl;
+	}
+  }
 
   return registerResult;
 }
-

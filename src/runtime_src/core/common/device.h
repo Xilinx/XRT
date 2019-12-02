@@ -55,13 +55,15 @@ public:
       QR_PCIE_SUBSYSTEM_ID,
       QR_PCIE_LINK_SPEED,
       QR_PCIE_EXPRESS_LANE_WIDTH,
+      QR_PCIE_READY_STATUS,
 
       QR_DMA_THREADS_RAW,
 
       QR_ROM_VBNV,
-      OR_ROM_DDR_BANK_SIZE,
+      QR_ROM_DDR_BANK_SIZE,
       QR_ROM_DDR_BANK_COUNT_MAX,
       QR_ROM_FPGA_NAME,
+      QR_ROM_TIME_SINCE_EPOCH,
 
       QR_XMC_VERSION,
       QR_XMC_SERIAL_NUM,
@@ -179,6 +181,8 @@ public:
   void read_electrical(boost::property_tree::ptree &pt) const;
   void read_power(boost::property_tree::ptree &pt) const;
   void read_firewall(boost::property_tree::ptree &pt) const;
+  void read_ready_status(boost::property_tree::ptree &pt) const;
+  size_t get_ddr_mem_size() const;
 
   //flash functions
   virtual void auto_flash(const std::string& shell, const std::string& id, bool force) const = 0;
@@ -186,6 +190,10 @@ public:
   virtual void update_shell(const std::string& flashType, const std::string& primary, const std::string& secondary) const = 0;
   virtual void update_SC(const std::string& file) const = 0;
 
+  virtual void get_ip_layout(uint64_t _deviceID, struct ip_layout **ipLayout, unsigned long size) const = 0;
+  virtual unsigned long get_ip_layoutsize(uint64_t _deviceID) const = 0;
+  virtual unsigned long get_mem_topology(uint64_t _deviceID, struct mem_topology *topoInfo) const = 0;
+  virtual unsigned long get_mem_rawinfo(uint64_t _deviceID, struct mem_raw_info *memRaw) const = 0;
   // Helper methods
   typedef std::string (*FORMAT_STRING_PTR)(const boost::any &);
   static std::string format_primative(const boost::any & _data);

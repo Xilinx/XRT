@@ -16,11 +16,13 @@
 
 #include "device_windows.h"
 #include "common/utils.h"
-#include "xrt.h"
+#include "shim.h"
 #include "boost/format.hpp"
 #include <string>
 #include <iostream>
 #include <map>
+#include <fstream>
+#include <setupapi.h>
 
 #pragma warning(disable : 4100 4996)
 
@@ -33,17 +35,19 @@ get_IOCTL_entry(QueryRequest qr) const
   // Initialize our lookup table
   static const std::map<QueryRequest, IOCTLEntry> QueryRequestToIOCTLTable =
   {
-    { QR_PCIE_VENDOR,               { 0 }},
-    { QR_PCIE_DEVICE,               { 0 }},
-    { QR_PCIE_SUBSYSTEM_VENDOR,     { 0 }},
-    { QR_PCIE_SUBSYSTEM_ID,         { 0 }},
-    { QR_PCIE_LINK_SPEED,           { 0 }},
-    { QR_PCIE_EXPRESS_LANE_WIDTH,   { 0 }},
+    { QR_PCIE_VENDOR,               { IOCTL_XOCL_STAT,   XoclStatDevice }},
+    { QR_PCIE_DEVICE,               { IOCTL_XOCL_STAT,   XoclStatDevice }},
+    { QR_PCIE_SUBSYSTEM_VENDOR,     { IOCTL_XOCL_STAT,   XoclStatDevice }},
+    { QR_PCIE_SUBSYSTEM_ID,         { IOCTL_XOCL_STAT,   XoclStatDevice }},
+    { QR_PCIE_LINK_SPEED,           { IOCTL_XOCL_STAT,   XoclStatDevice }},
+    { QR_PCIE_EXPRESS_LANE_WIDTH,   { IOCTL_XOCL_STAT,   XoclStatDevice }},
+    { QR_PCIE_READY_STATUS,         { IOCTL_XOCL_STAT,   XoclStatDevice }},
     { QR_DMA_THREADS_RAW,           { 0 }},
-    { QR_ROM_VBNV,                  { 0 }},
-    { OR_ROM_DDR_BANK_SIZE,         { 0 }},
-    { QR_ROM_DDR_BANK_COUNT_MAX,    { 0 }},
-    { QR_ROM_FPGA_NAME,             { 0 }},
+    { QR_ROM_VBNV,                  { IOCTL_XOCL_STAT,   XoclStatRomInfo }},
+    { QR_ROM_DDR_BANK_SIZE,         { IOCTL_XOCL_STAT,   XoclStatRomInfo }},
+    { QR_ROM_DDR_BANK_COUNT_MAX,    { IOCTL_XOCL_STAT,   XoclStatRomInfo }},
+    { QR_ROM_FPGA_NAME,             { IOCTL_XOCL_STAT,   XoclStatRomInfo }},
+    { QR_ROM_TIME_SINCE_EPOCH,      { IOCTL_XOCL_STAT,   XoclStatRomInfo }},
     { QR_XMC_VERSION,               { 0 }},
     { QR_XMC_SERIAL_NUM,            { 0 }},
     { QR_XMC_MAX_POWER,             { 0 }},
@@ -117,6 +121,8 @@ query(QueryRequest qr, const std::type_info & _typeInfo, boost::any& value) cons
   boost::any anyEmpty;
   value.swap(anyEmpty);
 
+  auto device_id = get_device_id();
+
   // Get the sysdev and entry values to call
   const IOCTLEntry & entry = get_IOCTL_entry(qr);
 
@@ -124,43 +130,9 @@ query(QueryRequest qr, const std::type_info & _typeInfo, boost::any& value) cons
 
   if (entry.IOCTLValue == 0) {
     sErrorMsg = "IOCTLEntry is initialized with zeros.";
+  } else {
+    queryDeviceWithQR(device_id, value, qr, _typeInfo, entry.statClass);
   }
-
-  // Reference linux code:
-//  if (_typeInfo == typeid(std::string)) {
-//    // -- Typeid: std::string --
-//    _returnValue = std::string("");
-//    std::string *stringValue = boost::any_cast<std::string>(&_returnValue);
-//    pcidev::get_dev(_deviceID)->sysfs_get( entry.sSubDevice, entry.sEntry, sErrorMsg, *stringValue);
-//
-//  } else if (_typeInfo == typeid(uint64_t)) {
-//    // -- Typeid: uint64_t --
-//    _returnValue = (uint64_t) -1;
-//    std::vector<uint64_t> uint64Vector;
-//    pcidev::get_dev(_deviceID)->sysfs_get( entry.sSubDevice, entry.sEntry, sErrorMsg, uint64Vector);
-//    if (!uint64Vector.empty()) {
-//      _returnValue = uint64Vector[0];
-//    }
-//
-//  } else if (_typeInfo == typeid(bool)) {
-//    // -- Typeid: bool --
-//    _returnValue = (bool) 0;
-//    std::vector<uint64_t> uint64Vector;
-//    pcidev::get_dev(_deviceID)->sysfs_get( entry.sSubDevice, entry.sEntry, sErrorMsg, uint64Vector);
-//    if (!uint64Vector.empty()) {
-//      _returnValue = (bool) uint64Vector[0];
-//    }
-//
-//  } else if (_typeInfo == typeid(std::vector<std::string>)) {
-//    // -- Typeid: std::vector<std::string>
-//    _returnValue = std::vector<std::string>();
-//    std::vector<std::string> *stringVector = boost::any_cast<std::vector<std::string>>(&_returnValue);
-//    pcidev::get_dev(_deviceID)->sysfs_get( entry.sSubDevice, entry.sEntry, sErrorMsg, *stringVector);
-//
-//  } else {
-//  }
-
-  sErrorMsg = boost::str( boost::format("Error: Unsupported query_device return type: '%s'") % _typeInfo.name());
 
   if (!sErrorMsg.empty()) {
     throw std::runtime_error(sErrorMsg);
@@ -205,6 +177,34 @@ device_windows::
 update_SC(const std::string& file) const
 {
   std::cout << "TO-DO: update_SC\n";
+}
+
+unsigned long
+device_windows::
+get_ip_layoutsize(uint64_t _deviceID) const
+{
+  return shim_get_ip_layoutsize(_deviceID);
+}
+
+void
+device_windows::
+get_ip_layout(uint64_t _deviceID, struct ip_layout **ipLayout, unsigned long size) const
+{
+  shim_get_ip_layout(_deviceID, ipLayout, size);
+}
+
+unsigned long
+device_windows::
+get_mem_topology(uint64_t _deviceID, struct mem_topology *topoInfo) const
+{
+  return shim_get_mem_topology(_deviceID, topoInfo);
+}
+
+unsigned long
+device_windows::
+get_mem_rawinfo(uint64_t _deviceID, struct mem_raw_info *memRaw) const
+{
+  return shim_get_mem_rawinfo(_deviceID, memRaw);
 }
 
 } // xrt_core

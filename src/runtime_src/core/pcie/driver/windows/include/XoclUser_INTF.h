@@ -185,6 +185,15 @@ typedef struct _XOCL_MAP_BAR_RESULT {
     ULONG       BarLength;     // OUT: Length of mapped buffer
 } XOCL_MAP_BAR_RESULT, *PXOCL_MAP_BAR_RESULT;
 
+typedef struct _XOCL_ROM_INFORMATION {
+    UCHAR FPGAPartName[64];
+    UCHAR VBNVName[64];
+    uint8_t DDRChannelCount;
+    uint8_t DDRChannelSize;
+    uint64_t TimeSinceEpoch;
+} XOCL_ROM_INFORMATION, *PXOCL_ROM_INFORMATION;
+
+
 //
 // IOCTL_XOCL_STAT
 //
@@ -201,13 +210,13 @@ typedef enum _XOCL_STAT_CLASS {
     XoclStatIpLayout,
     XoclStatKds,
     XoclStatKdsCU,
-
+    XoclStatRomInfo
 } XOCL_STAT_CLASS, *PXOCL_STAT_CLASS;
 
 typedef struct _XOCL_STAT_CLASS_ARGS {
-
-    XOCL_STAT_CLASS StatClass;
-
+	uint64_t StatClass;
+	bool QueryRequest;
+	int QueryRequestID;
 } XOCL_STAT_CLASS_ARGS, *PXOCL_STAT_CLASS_ARGS;
 
 // 
@@ -222,6 +231,7 @@ typedef struct _XOCL_DEVICE_INFORMATION {
     ULONG  DmaEngineVersion;
     ULONG  DriverVersion;
     ULONG  PciSlot;
+    bool ready;
 
 } XOCL_DEVICE_INFORMATION, *PXOCL_DEVICE_INFORMATION;
 #if 0
@@ -408,3 +418,31 @@ typedef struct _XOCL_EXECPOLL_ARGS {
     ULONG DelayInMS;        // IN: Poll delay in microseconds
 } XOCL_EXECPOLL_ARGS, *PXOCL_EXECPOLL_ARGS;
 
+enum XOCL_STAT_QR_ID {
+	QR_PCIE_VENDOR = 0,
+	QR_PCIE_DEVICE,
+	QR_PCIE_SUBSYSTEM_VENDOR,
+	QR_PCIE_SUBSYSTEM_ID,
+	QR_PCIE_LINK_SPEED,
+	QR_PCIE_EXPRESS_LANE_WIDTH,
+	QR_PCIE_READY_STATUS,
+
+	QR_ROM_VBNV,
+	QR_ROM_DDR_BANK_SIZE,
+	QR_ROM_DDR_BANK_COUNT_MAX,
+	QR_ROM_FPGA_NAME,
+	QR_ROM_TIME_SINCE_EPOCH,
+};
+
+enum _XOCL_STAT_QR_TYPE {
+	TYPE_STRING,
+	TYPE_UINT64,
+	TYPE_BOOL,
+};
+
+typedef struct _XOCL_STAT_QR_INFO {
+	UCHAR OP_STR[64];
+	uint64_t OP_ULONG;
+	bool OP_BOOL;
+	int type;
+} XOCL_STAT_QR_INFO, *PXOCL_STAT_QR_INFO;
