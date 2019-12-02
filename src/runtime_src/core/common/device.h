@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#ifndef DEVICE_CORE_H
-#define DEVICE_CORE_H
+#ifndef XRT_CORE_DEVICE_H
+#define XRT_CORE_DEVICE_H
 
 #include "error.h"
 #include "xrt.h"
@@ -32,27 +32,14 @@
 namespace xrt_core {
 
 /**
- * class device_core - interface to support OS agnositic querying of device
- *
- * TODO: better class name reflecting its purpose.  It is really about querying
- * device info, device_core is confusing.
+ * class device - interface to support OS agnositic operations on a device
  */
-class device_core
+class device
 {
 public:
-  /**
-   * Returns the class handle use to query the abstract
-   * libraries
-   *
-   * @return The handle instance
-   *
-   * TODO: Hide this singleton instance behind public functions that
-   * under the hood call instance().  No need for client code to
-   * know about these singleton details.
-   */
-  static const device_core & instance();
+  // device index type
+  using id_type = unsigned int;
 
-public:
   /**
    * enum QueryRequest - Query request types
    *
@@ -137,6 +124,30 @@ public:
 
       QR_FLASH_BAR_OFFSET
   };
+public:
+
+  device(id_type device_id);
+  virtual ~device();
+
+  device(const device&) = delete;
+  device& operator=(const device&) = delete;
+
+  /**
+   * get_device_id() - Get device index
+   */
+  id_type
+  get_device_id() const
+  {
+    return m_device_id;
+  }
+
+  /**
+   * get_device_handle() - Get underlying shim device handle
+   *
+   * Throws if called on non userof devices
+   */
+  virtual xclDeviceHandle
+  get_device_handle() const = 0;
 
 public:
   /*
@@ -154,91 +165,28 @@ public:
    * As strange as this function looks it is merely a poor mans
    * templated virtual function
    */
-  virtual void query_device(uint64_t device_id, QueryRequest qr, const std::type_info & ti, boost::any &ret) const = 0;
+  virtual void query(QueryRequest qr, const std::type_info & ti, boost::any &ret) const = 0;
+  virtual void get_info(boost::property_tree::ptree &pt) const = 0;
+  virtual void read_dma_stats(boost::property_tree::ptree &pt) const = 0;
 
-public:
-  virtual void get_devices(boost::property_tree::ptree &_pt) const = 0;
-  virtual void get_device_info(uint64_t _deviceID, boost::property_tree::ptree &_pt) const = 0;
-  virtual void read_device_dma_stats(uint64_t _deviceID, boost::property_tree::ptree &_pt) const = 0;
+  void get_rom_info(boost::property_tree::ptree & pt) const;
+  void get_xmc_info(boost::property_tree::ptree & pt) const;
+  void get_platform_info(boost::property_tree::ptree & pt) const;
+  void read_thermal_pcb(boost::property_tree::ptree &pt) const;
+  void read_thermal_fpga(boost::property_tree::ptree &pt) const;
+  void read_fan_info(boost::property_tree::ptree &pt) const;
+  void read_thermal_cage(boost::property_tree::ptree &pt) const;
+  void read_electrical(boost::property_tree::ptree &pt) const;
+  void read_power(boost::property_tree::ptree &pt) const;
+  void read_firewall(boost::property_tree::ptree &pt) const;
 
   //flash functions
-  virtual void scan_devices(bool verbose, bool json) const = 0;
-  virtual void auto_flash(uint64_t _deviceID, std::string& shell, std::string& id, bool force) const = 0;
-  virtual void reset_shell(uint64_t _deviceID) const = 0;
-  virtual void update_shell(uint64_t _deviceID, std::string flashType, std::string& primary, std::string& secondary) const = 0;
-  virtual void update_SC(uint64_t _deviceID, std::string& file) const = 0;
-  //end flash functions
-
-  /**
-   * get_total_devices() - Get total devices and total usable devices
-   *
-   * Return: Pair of total devices and usable devices
-   */
-  virtual std::pair<uint64_t, uint64_t> get_total_devices() const = 0;
-
- public:
-
-  void get_device_rom_info(uint64_t _deviceID, boost::property_tree::ptree & _pt) const;
-  void get_device_xmc_info(uint64_t _deviceID, boost::property_tree::ptree & _pt) const;
-  void get_device_platform_info(uint64_t _deviceID, boost::property_tree::ptree & _pt) const;
-  void read_device_thermal_pcb(uint64_t _deviceID, boost::property_tree::ptree &_pt) const;
-  void read_device_thermal_fpga(uint64_t _deviceID, boost::property_tree::ptree &_pt) const;
-  void read_device_fan_info(uint64_t _deviceID, boost::property_tree::ptree &_pt) const;
-  void read_device_thermal_cage(uint64_t _deviceID, boost::property_tree::ptree &_pt) const;
-  void read_device_electrical(uint64_t _deviceID, boost::property_tree::ptree &_pt) const;
-  void read_device_power(uint64_t _deviceID, boost::property_tree::ptree &_pt) const;
-  void read_device_firewall(uint64_t _deviceID, boost::property_tree::ptree &_pt) const;
-
- public:
-
-  /**
-   * class device - Encapsulate the device created from a card index
-   *
-   * @m_midx: card index
-   * @m_name: name of device
-   * @m_hdl: device handle per shim layer
-   *
-   * The device is opened immediately when constructed and closed upon
-   * destruction.  The class supports execution of shim level functions
-   * through its execute method (sample usage SubCmdProgram.cpp)
-   */
-  class device
-  {
-    uint64_t m_idx;
-    std::string m_name;
-    xclDeviceHandle m_hdl;
-
-  public:
-    explicit device(uint64_t _deviceID)
-      : m_idx(_deviceID)
-      , m_name("device[" + std::to_string(m_idx) + "]")
-      , m_hdl(xclOpen(static_cast<unsigned int>(_deviceID), nullptr, XCL_QUIET))
-    {
-      if (!m_hdl)
-        throw error("could not open " + m_name);
-    }
-
-    ~device()
-    {
-      xclClose(m_hdl);
-    }
-
-    template <typename ShimDeviceFunction, typename ...Args>
-    decltype(auto)
-    execute(ShimDeviceFunction&& f, Args&&... args)
-    {
-      return f(m_hdl, std::forward<Args>(args)...);
-    }
-  };
-
-  /**
-   * get_device() - Construct a managed device object frok a device ID
-   */
-  device
-  get_device(uint64_t _deviceID) const;
+  virtual void auto_flash(const std::string& shell, const std::string& id, bool force) const = 0;
+  virtual void reset_shell() const = 0;
+  virtual void update_shell(const std::string& flashType, const std::string& primary, const std::string& secondary) const = 0;
+  virtual void update_SC(const std::string& file) const = 0;
 
   // Helper methods
- protected:
   typedef std::string (*FORMAT_STRING_PTR)(const boost::any &);
   static std::string format_primative(const boost::any & _data);
   static std::string format_hex(const boost::any & _data);
@@ -246,16 +194,15 @@ public:
   static std::string format_base10_shiftdown3(const boost::any &_data);
   static std::string format_base10_shiftdown6(const boost::any &_data);
 
-  void query_device_and_put(uint64_t _deviceID,
-                            QueryRequest _eQueryRequest,
-                            const std::type_info & _typeInfo,
-                            boost::property_tree::ptree & _pt,
-                            const std::string &_sPropertyName,
-                            FORMAT_STRING_PTR stringFormat = format_primative) const;
+  void
+  query_and_put(QueryRequest qr,
+                const std::type_info & _typeInfo,
+                boost::property_tree::ptree & pt,
+                const std::string &_sPropertyName,
+                FORMAT_STRING_PTR stringFormat = format_primative) const;
 
-  void query_device_and_put(uint64_t _deviceID, QueryRequest _eQueryRequest, boost::property_tree::ptree & _pt) const;
-
- protected:
+  void
+  query_and_put(QueryRequest qr, boost::property_tree::ptree & pt) const;
 
   struct QueryRequestEntry {
     std::string sPrettyName;
@@ -264,18 +211,10 @@ public:
     FORMAT_STRING_PTR string_formatter;
   };
 
-  const QueryRequestEntry * get_query_entry(QueryRequest _eQueryRequest) const;
+  const QueryRequestEntry * get_query_entry(QueryRequest qr) const;
 
- protected:
-  device_core();
-  virtual ~device_core();
-
- private:
-  device_core(const device_core&) = delete;
-  device_core& operator=(const device_core&) = delete;
-
- private:
-  static std::map<QueryRequest, QueryRequestEntry> m_QueryTable;
+private:
+  id_type m_device_id;
 };
 
 /**
@@ -287,13 +226,13 @@ public:
  */
 class no_such_query : public std::runtime_error
 {
-  device_core::QueryRequest m_qr;
+  device::QueryRequest m_qr;
 public:
-  no_such_query(device_core::QueryRequest qr, const std::string& what = "")
+  no_such_query(device::QueryRequest qr, const std::string& what = "")
     : std::runtime_error(what), m_qr(qr)
   {}
 
-  device_core::QueryRequest
+  device::QueryRequest
   get_qr() const
   {
     return m_qr;
@@ -326,11 +265,11 @@ invalid_query_value()
  */
 template <typename QueryType>
 static QueryType
-query_device(uint64_t device_id, device_core::QueryRequest qr)
+query_device(const std::shared_ptr<device>& device, device::QueryRequest qr)
 {
   boost::any ret = invalid_query_value<QueryType>();
   try {
-    device_core::instance().query_device(device_id, qr, typeid(QueryType), ret);
+    device->query(qr, typeid(QueryType), ret);
   }
   catch (const no_such_query&) {
   }

@@ -19,7 +19,8 @@
 #include "XBDatabase.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
-#include "common/device_core.h"
+#include "common/system.h"
+#include "common/device.h"
 
 
 // 3rd Party Library - Include Files
@@ -35,23 +36,22 @@ void
 XBDatabase::create_complete_device_tree(boost::property_tree::ptree & _pt)
 {
   // Work with a clean property tree
-  _pt.clear();  
+  _pt.clear();
 
   // Get the handle to the devices
-  const xrt_core::device_core &CoreDevice = xrt_core::device_core::instance();
-
-  // Get a collection of the devices present
-  CoreDevice.get_devices(_pt);
+  xrt_core::get_devices(_pt);
 
   // Now start to fill in the missing data
   boost::property_tree::ptree & ptDevices = _pt.get_child("devices");
   for (auto& kv : ptDevices) {
     boost::property_tree::ptree & ptDevice = kv.second;
-    uint64_t device_id = ptDevice.get<uint64_t>("device_id", (uint64_t) -1);
-    if (device_id == (uint64_t) -1) {
+    auto device_id = ptDevice.get<unsigned int>("device_id", (unsigned int) -1);
+    if (device_id == (unsigned int) -1) {
       std::string errMsg = "Internal Error: Invalid device ID";
       throw std::runtime_error(errMsg);
     }
+
+    auto device = xrt_core::get_userpf_device(device_id);
 
     // Platform information
     boost::property_tree::ptree ptPlatform;
@@ -59,84 +59,77 @@ XBDatabase::create_complete_device_tree(boost::property_tree::ptree & _pt)
     // Get and add generic information
     {
       boost::property_tree::ptree pt;
-      CoreDevice.get_device_platform_info(device_id, pt);
+      device->get_platform_info(pt);
       ptPlatform.add_child("info", pt);
     }
 
     // Get and add ROM information
     {
       boost::property_tree::ptree pt;
-      CoreDevice.get_device_rom_info(device_id, pt);
+      device->get_rom_info(pt);
       ptPlatform.add_child("rom", pt);
     }
 
     // Get and add XMC information
     {
       boost::property_tree::ptree pt;
-      CoreDevice.get_device_xmc_info(device_id, pt);
+      device->get_xmc_info(pt);
       ptPlatform.add_child("xmc", pt);
     }
 
     // Get and add thermal pcb information
     {
       boost::property_tree::ptree pt;
-      CoreDevice.read_device_thermal_pcb(device_id, pt);
+      device->read_thermal_pcb(pt);
       ptPlatform.add_child("physical.thermal.pcb", pt);
     }
 
     // Get and add thermal fpga information
     {
       boost::property_tree::ptree pt;
-      CoreDevice.read_device_thermal_fpga(device_id, pt);
-      ptPlatform.add_child("physical.thermal.fpga", pt);
-    }
-
-    // Get and add thermal fpga information
-    {
-      boost::property_tree::ptree pt;
-      CoreDevice.read_device_thermal_fpga(device_id, pt);
+      device->read_thermal_fpga(pt);
       ptPlatform.add_child("physical.thermal.fpga", pt);
     }
 
     // Get and add fan information
     {
       boost::property_tree::ptree pt;
-      CoreDevice.read_device_fan_info(device_id, pt);
+      device->read_fan_info(pt);
       ptPlatform.add_child("physical.fan", pt);
     }
 
     // Get and add thermal cage information
     {
       boost::property_tree::ptree pt;
-      CoreDevice.read_device_thermal_cage(device_id, pt);
+      device->read_thermal_cage(pt);
       ptPlatform.add_child("physical.thermal.cage", pt);
     }
 
     // Get and add electrical information
     {
       boost::property_tree::ptree pt;
-      CoreDevice.read_device_electrical(device_id, pt);
+      device->read_electrical(pt);
       ptPlatform.add_child("physical.electrical", pt);
     }
 
     // Get and add power information
     {
       boost::property_tree::ptree pt;
-      CoreDevice.read_device_power(device_id, pt);
+      device->read_power(pt);
       ptPlatform.add_child("physical.power", pt);
     }
 
     // Get and add firewall information
     {
       boost::property_tree::ptree pt;
-      CoreDevice.read_device_firewall(device_id, pt);
+      device->read_firewall(pt);
       ptPlatform.add_child("firewall", pt);
     }
 
     // Get and add pcie dma status information
     {
       boost::property_tree::ptree pt;
-      CoreDevice.read_device_dma_stats(device_id, pt);
+      device->read_dma_stats(pt);
       ptPlatform.add_child("pcie_dma", pt);
     }
 
@@ -144,5 +137,3 @@ XBDatabase::create_complete_device_tree(boost::property_tree::ptree & _pt)
     ptDevice.add_child("platform", ptPlatform);
   }
 }
-
-

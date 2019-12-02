@@ -18,17 +18,17 @@
 #ifndef xrtcore_config_h_
 #define xrtcore_config_h_
 
-//------------------Enable dynamic linking on windows-------------------------// 
+//------------------Enable dynamic linking on windows-------------------------//
 
 #ifdef _WIN32
 # ifdef XRT_CORE_COMMON_SOURCE
 #  define XRT_CORE_COMMON_EXPORT __declspec(dllexport)
 # else
 #  define XRT_CORE_COMMON_EXPORT __declspec(dllimport)
-# endif  
+# endif
 #endif
 #ifdef __GNUC__
-# ifdef XRT_COMMON_SOURCE
+# ifdef XRT_CORE_COMMON_SOURCE
 #  define XRT_CORE_COMMON_EXPORT __attribute__ ((visibility("default")))
 # else
 #  define XRT_CORE_COMMON_EXPORT

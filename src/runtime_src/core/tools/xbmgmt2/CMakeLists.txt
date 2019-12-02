@@ -55,6 +55,7 @@ if(WIN32)
 else()
   target_link_libraries(
     ${XBMGMT2_NAME}
+    xrt_core
     xrt_core_static
     xrt_coreutil_static
     boost_filesystem

@@ -17,24 +17,17 @@
 
 #include "device_linux.h"
 #include "common/utils.h"
-#include "include/xrt.h"
+#include "xrt.h"
 #include "scan.h"
 #include <string>
 #include <iostream>
-#include "boost/format.hpp"
 #include <map>
+#include "boost/format.hpp"
 
 namespace xrt_core {
 
-device_core*
-device_core_child_ctor()
-{
-  static xrt_core::device_linux dl;
-  return &dl;
-}
-
-const device_linux::SysDevEntry &
-device_linux::get_sysdev_entry( QueryRequest _eQueryRequest) const
+const device_linux::SysDevEntry&
+device_linux::get_sysdev_entry(QueryRequest qr) const
 {
   // Initialize our lookup table
   static const std::map<QueryRequest, SysDevEntry> QueryRequestToSysDevTable =
@@ -104,165 +97,130 @@ device_linux::get_sysdev_entry( QueryRequest _eQueryRequest) const
     { QR_POWER_MICROWATTS,          {"xmc", "xmc_power"}}
   };
   // Find the translation entry
-  auto it = QueryRequestToSysDevTable.find(_eQueryRequest);
+  auto it = QueryRequestToSysDevTable.find(qr);
 
   if (it == QueryRequestToSysDevTable.end()) {
-    std::string errMsg = boost::str( boost::format("The given query request ID (%d) is not supported.") % _eQueryRequest);
-    throw no_such_query(_eQueryRequest, errMsg);
+    std::string errMsg = boost::str( boost::format("The given query request ID (%d) is not supported.") % qr);
+    throw no_such_query(qr, errMsg);
   }
 
   return it->second;
 }
 
-
-
 void
 device_linux::
-query_device(uint64_t _deviceID, QueryRequest _eQueryRequest, const std::type_info & _typeInfo, boost::any &_returnValue) const
+query(QueryRequest qr, const std::type_info& tinfo, boost::any& value) const
 {
   // Initialize return data to being empty container.
   // Note: CentOS Boost 1.53 doesn't support the clear() method.
   boost::any anyEmpty;
-  _returnValue.swap(anyEmpty);
+  value.swap(anyEmpty);
+
+  auto device_id = get_device_id();
 
   // Get the sysdev and entry values to call
-  const SysDevEntry & entry = get_sysdev_entry(_eQueryRequest);
+  auto& entry = get_sysdev_entry(qr);
 
-  std::string sErrorMsg;
+  std::string errmsg;
 
-  if (_typeInfo == typeid(std::string)) {
+  if (tinfo == typeid(std::string)) {
     // -- Typeid: std::string --
-    _returnValue = std::string("");
-    std::string *stringValue = boost::any_cast<std::string>(&_returnValue);
-    pcidev::get_dev(_deviceID)->sysfs_get( entry.sSubDevice, entry.sEntry, sErrorMsg, *stringValue);
+    value = std::string("");
+    auto p_str = boost::any_cast<std::string>(&value);
+    pcidev::get_dev(device_id)->sysfs_get(entry.sSubDevice, entry.sEntry, errmsg, *p_str);
 
-  } else if (_typeInfo == typeid(uint64_t)) {
+  }
+  else if (tinfo == typeid(uint64_t)) {
     // -- Typeid: uint64_t --
-    _returnValue = (uint64_t) -1;
+    value = (uint64_t) -1;
     std::vector<uint64_t> uint64Vector;
-    pcidev::get_dev(_deviceID)->sysfs_get( entry.sSubDevice, entry.sEntry, sErrorMsg, uint64Vector);
+    pcidev::get_dev(device_id)->sysfs_get(entry.sSubDevice, entry.sEntry, errmsg, uint64Vector);
     if (!uint64Vector.empty()) {
-      _returnValue = uint64Vector[0];
+      value = uint64Vector[0];
     }
 
-  } else if (_typeInfo == typeid(bool)) {
+  }
+  else if (tinfo == typeid(bool)) {
     // -- Typeid: bool --
-    _returnValue = (bool) 0;
+    value = (bool) 0;
     std::vector<uint64_t> uint64Vector;
-    pcidev::get_dev(_deviceID)->sysfs_get( entry.sSubDevice, entry.sEntry, sErrorMsg, uint64Vector);
+    pcidev::get_dev(device_id)->sysfs_get(entry.sSubDevice, entry.sEntry, errmsg, uint64Vector);
     if (!uint64Vector.empty()) {
-      _returnValue = (bool) uint64Vector[0];
+      value = (bool) uint64Vector[0];
     }
 
-  } else if (_typeInfo == typeid(std::vector<std::string>)) {
+  }
+  else if (tinfo == typeid(std::vector<std::string>)) {
     // -- Typeid: std::vector<std::string>
-    _returnValue = std::vector<std::string>();
-    std::vector<std::string> *stringVector = boost::any_cast<std::vector<std::string>>(&_returnValue);
-    pcidev::get_dev(_deviceID)->sysfs_get( entry.sSubDevice, entry.sEntry, sErrorMsg, *stringVector);
+    value = std::vector<std::string>();
+    auto p_strvec = boost::any_cast<std::vector<std::string>>(&value);
+    pcidev::get_dev(device_id)->sysfs_get(entry.sSubDevice, entry.sEntry, errmsg, *p_strvec);
 
-  } else {
-    sErrorMsg = boost::str( boost::format("Error: Unsupported query_device return type: '%s'") % _typeInfo.name());
+  }
+  else {
+    errmsg = boost::str( boost::format("Error: Unsupported query_device return type: '%s'") % tinfo.name());
   }
 
-  if (!sErrorMsg.empty()) {
-    throw std::runtime_error(sErrorMsg);
+  if (!errmsg.empty()) {
+    throw std::runtime_error(errmsg);
   }
 }
 
-
-device_linux::device_linux()
+device_linux::
+device_linux(id_type device_id, bool user)
+  : device_pcie(device_id, user)
 {
-  // Do nothing
-}
-
-device_linux::~device_linux() {
-  // Do nothing
-}
-
-std::pair<uint64_t, uint64_t>
-device_linux::get_total_devices() const
-{
-  return std::make_pair(pcidev::get_dev_total(), pcidev::get_dev_ready());
 }
 
 void
-device_linux::read_device_dma_stats(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
+device_linux::
+read_dma_stats(boost::property_tree::ptree& pt) const
 {
-  _deviceID = _deviceID;
-  _pt = _pt;
-  xclDeviceHandle handle = xclOpen(_deviceID, nullptr, XCL_QUIET);
-
-  if (!handle) {
-    // Unable to get a handle
-    return;
-  }
+  auto handle = get_device_handle();
 
   xclDeviceUsage devstat = { 0 };
   xclGetUsageInfo(handle, &devstat);
 
-  // Clean up after ourselves
-  xclClose(handle);
+  boost::property_tree::ptree pt_channels;
+  for (unsigned int idx = 0; idx < XCL_DEVICE_USAGE_COUNT; ++idx) {
+    boost::property_tree::ptree pt_dma;
+    pt_dma.put( "id", std::to_string(get_device_id()));
+    pt_dma.put( "h2c", unitConvert(devstat.h2c[idx]) );
+    pt_dma.put( "c2h", unitConvert(devstat.c2h[idx]) );
 
-  boost::property_tree::ptree ptChannels;
-  for (unsigned index = 0; index < XCL_DEVICE_USAGE_COUNT; ++index) {
-      boost::property_tree::ptree ptDMA;
-      ptDMA.put( "id", std::to_string(index).c_str());
-      ptDMA.put( "h2c", unitConvert(devstat.h2c[index]) );
-      ptDMA.put( "c2h", unitConvert(devstat.c2h[index]) );
-
-      // Create our array of data
-      ptChannels.push_back(std::make_pair("", ptDMA));
+    // Create our array of data
+    pt_channels.push_back(std::make_pair("", pt_dma));
   }
 
-  _pt.add_child( "transfer_metrics.channels", ptChannels);
+  pt.add_child( "transfer_metrics.channels", pt_channels);
 }
 
 void
 device_linux::
-scan_devices(bool verbose, bool json) const
-{
-  std::cout << "TO-DO: scan_devices\n";
-  verbose = verbose;
-  json = json;
-}
-
-void
-device_linux::
-auto_flash(uint64_t _deviceID, std::string& shell, std::string& id, bool force) const
+auto_flash(const std::string& shell, const std::string& id, bool force) const
 {
   std::cout << "TO-DO: auto_flash\n";
-  _deviceID = _deviceID;
-  shell = shell;
-  id = id;
-  force = force;
 }
 
 void
 device_linux::
-reset_shell(uint64_t _deviceID) const
+reset_shell() const
 {
   std::cout << "TO-DO: reset_shell\n";
-  _deviceID = _deviceID;
 }
 
 void
 device_linux::
-update_shell(uint64_t _deviceID, std::string flashType, std::string& primary, std::string& secondary) const
+update_shell(const std::string& flashType, const std::string& primary, const std::string& secondary) const
 {
   std::cout << "TO-DO: update_shell\n";
-  _deviceID = _deviceID;
-  flashType = flashType;
-  primary = primary;
-  secondary = secondary;
 }
 
 void
 device_linux::
-update_SC(uint64_t _deviceID, std::string& file) const
+update_SC(const std::string& file) const
 {
   std::cout << "TO-DO: update_SC\n";
-  _deviceID = _deviceID;
-  file = file;
 }
 
 } // xrt_core
