@@ -75,6 +75,7 @@ namespace xclhwemhal2 {
     {
       cu_addr_map[i] = 0;
       cu_usage[i] = 0;
+      cus[i] = nullptr;
     }
 
     for (unsigned int i=0; i<MAX_U32_CU_MASKS; ++i)
@@ -399,17 +400,21 @@ namespace xclhwemhal2 {
     {
       xocl_cu *xcu = exec->cus[cuidx];
 
-      if (cmd_has_cu(xcmd, cuidx) && cu_ready(xcu) && cu_start(xcu, xcmd))
+      if (cmd_has_cu(xcmd, cuidx) && cu_ready(xcu))
       {
-        xcmd->slot_idx = acquire_slot(xcmd);
-        if (xcmd->slot_idx<0)
+        int l_slot_idx =  acquire_slot(xcmd);
+        if(l_slot_idx < 0)
           return false;
-        exec->submitted_cmds[xcmd->slot_idx] = NULL;
-        //exec_release_slot(exec, xcmd);
-        xcmd->cu_idx = cuidx;
-        ++xcmd->exec->cu_usage[xcmd->cu_idx];
-        (xcu->running_queue).push(xcmd);
-        return true;
+        if(cu_start(xcu,xcmd))
+        {
+          xcmd->slot_idx = l_slot_idx;
+          exec->submitted_cmds[xcmd->slot_idx] = NULL;
+          //exec_release_slot(exec, xcmd);
+          xcmd->cu_idx = cuidx;
+          ++xcmd->exec->cu_usage[xcmd->cu_idx];
+          (xcu->running_queue).push(xcmd);
+          return true;
+        }
       }
     }
     return false;

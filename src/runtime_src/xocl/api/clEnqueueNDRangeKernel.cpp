@@ -16,7 +16,6 @@
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/debug.h"
 #include "xocl/core/time.h"
@@ -33,12 +32,17 @@
 #include "enqueue.h"
 #include "api.h"
 
-
 #include "printf/rt_printf.h"
 
-#include <sstream>
 #include "plugin/xdp/appdebug.h"
 #include "plugin/xdp/profile.h"
+
+#include <sstream>
+#include <CL/opencl.h>
+
+#ifdef _WIN32
+# pragma warning ( disable : 4996 4245 )
+#endif
 
 namespace {
 
@@ -393,13 +397,13 @@ clEnqueueNDRangeKernel(cl_command_queue command_queue,
   // Add printf buffer initialization to wait list to ensure this is forced to happen
   // before kernel execution starts in case we are running out of order.
   const cl_event* new_wait_list = event_wait_list;
-  cl_uint new_wait_list_size = num_events_in_wait_list;
+  auto new_wait_list_size = num_events_in_wait_list;
   std::vector<cl_event> printf_wait_list;
   if (printf_init_event) {
     std::copy(event_wait_list,event_wait_list+num_events_in_wait_list,std::back_inserter(printf_wait_list));
     printf_wait_list.push_back(printf_init_event);
     new_wait_list = printf_wait_list.data();
-    new_wait_list_size = printf_wait_list.size();
+    new_wait_list_size = static_cast<cl_uint>(printf_wait_list.size());
   }
 
   // Event for kernel arg migration (todo: experiment with multiple events, one pr arg)

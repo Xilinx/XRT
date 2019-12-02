@@ -443,9 +443,7 @@ int qdma_device_version_info(unsigned long dev_hndl,
 static int qdma_device_num_pfs_get(struct xlnx_dma_dev *xdev)
 {
 	int count = 0;
-	int reg_val = 0;
-
-	reg_val = __read_reg(xdev, QDMA_REG_GLBL_PF_BARLITE_INT);
+	unsigned int reg_val = __read_reg(xdev, QDMA_REG_GLBL_PF_BARLITE_INT);
 
 	if ((reg_val & PF_BARLITE_INT_0_MASK) >> PF_BARLITE_INT_0_SHIFT)
 		count++;
@@ -456,11 +454,16 @@ static int qdma_device_num_pfs_get(struct xlnx_dma_dev *xdev)
 	if ((reg_val & PF_BARLITE_INT_3_MASK) >> PF_BARLITE_INT_3_SHIFT)
 		count++;
 
-	xdev->pf_count = count;
-	return count;
+	if (count) {
+		xdev->pf_count = count;
+		return count;
+	} else {
+		pr_warn("%s, no PF found.\n", xdev->conf.name);
+		return -EINVAL;
+	}
 }
 
-void qdma_device_attributes_get(struct xlnx_dma_dev *xdev)
+int qdma_device_attributes_get(struct xlnx_dma_dev *xdev)
 {
 	int mm_c2h_flag = 0;
 	int mm_h2c_flag = 0;
@@ -468,6 +471,9 @@ void qdma_device_attributes_get(struct xlnx_dma_dev *xdev)
 	int st_h2c_flag = 0;
 	unsigned int v1 =  __read_reg(xdev, QDMA_REG_GLBL_QMAX);
 	int v2 = qdma_device_num_pfs_get(xdev);
+
+	if (v2 <= 0)
+		return v2;
 
 	xdev->conf.qsets_max = v1 / v2;
 
@@ -509,6 +515,8 @@ void qdma_device_attributes_get(struct xlnx_dma_dev *xdev)
 	pr_info("%s: present flr %d, mm %d, st %d.\n",
 		xdev->conf.name, xdev->flr_prsnt, xdev->mm_mode_en,
 		xdev->st_mode_en);
+
+	return 0;
 }
 
 void hw_set_global_csr(struct xlnx_dma_dev *xdev)

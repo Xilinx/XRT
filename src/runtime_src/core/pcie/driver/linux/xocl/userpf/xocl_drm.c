@@ -19,15 +19,16 @@
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 0, 0)
 #include <drm/drm_backport.h>
 #endif
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)) || \
+	defined(RHEL_RELEASE_VERSION)
+#include <linux/pfn_t.h>
+#endif
 #include <drm/drmP.h>
 #include <drm/drm_gem.h>
 #include <drm/drm_mm.h>
 #include "version.h"
 #include "../lib/libxdma_api.h"
 #include "common.h"
-#if RHEL_P2P_SUPPORT
-#include <linux/pfn_t.h>
-#endif
 
 #if defined(__PPC64__)
 #define XOCL_FILE_PAGE_OFFSET	0x10000
@@ -180,7 +181,11 @@ static int xocl_mmap(struct file *filp, struct vm_area_struct *vma)
 	return xocl_native_mmap(filp, vma);
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
+vm_fault_t xocl_gem_fault(struct vm_fault *vmf)
+{
+	struct vm_area_struct *vma = vmf->vma;
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 int xocl_gem_fault(struct vm_fault *vmf)
 {
 	struct vm_area_struct *vma = vmf->vma;
@@ -192,9 +197,6 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	loff_t num_pages;
 	unsigned int page_offset;
 	int ret = 0;
-#if RHEL_P2P_SUPPORT
-	pfn_t pfn;
-#endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
 	unsigned long vmf_address = vmf->address;
@@ -212,7 +214,8 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 		return VM_FAULT_SIGBUS;
 
 	if (xocl_bo_p2p(xobj)) {
-#if RHEL_P2P_SUPPORT
+#ifdef RHEL_RELEASE_VERSION
+		pfn_t pfn;
 		pfn = phys_to_pfn_t(page_to_phys(xobj->pages[page_offset]), PFN_MAP|PFN_DEV);
 		ret = vm_insert_mixed(vma, vmf_address, pfn);
 #else
@@ -488,13 +491,16 @@ int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
 
 static int xocl_check_topology(struct xocl_drm *drm_p)
 {
-	struct mem_topology    *topology;
+	struct mem_topology    *topology = NULL;
 	u16	i;
 	int	err = 0;
 
-	topology = XOCL_MEM_TOPOLOGY(drm_p->xdev);
+	err = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev, topology);
+	if (err)
+		return err;
+
 	if (topology == NULL)
-		return 0;
+		goto done;
 
 	for (i = 0; i < topology->m_count; i++) {
 		if (!topology->m_mem_data[i].m_used)
@@ -511,6 +517,8 @@ static int xocl_check_topology(struct xocl_drm *drm_p)
 		}
 	}
 
+done:	
+	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
 	return err;
 }
 
@@ -539,7 +547,7 @@ uint32_t xocl_get_shared_ddr(struct xocl_drm *drm_p, struct mem_data *m_data)
 int xocl_cleanup_mem(struct xocl_drm *drm_p)
 {
 	int err;
-	struct mem_topology *topology;
+	struct mem_topology *topology = NULL;
 	u16 i, ddr;
 	uint64_t addr;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
@@ -555,7 +563,10 @@ int xocl_cleanup_mem(struct xocl_drm *drm_p)
 		return err;
 	}
 
-	topology = XOCL_MEM_TOPOLOGY(drm_p->xdev);
+	err = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev, topology);
+	if (err)
+		goto done;	
+
 	if (topology) {
 		ddr = topology->m_count;
 		for (i = 0; i < ddr; i++) {
@@ -583,6 +594,9 @@ int xocl_cleanup_mem(struct xocl_drm *drm_p)
 			drm_p->mm_usage_stat[i] = NULL;
 		}
 	}
+	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
+
+done:
 	vfree(drm_p->mm);
 	drm_p->mm = NULL;
 	vfree(drm_p->mm_usage_stat);
@@ -591,17 +605,16 @@ int xocl_cleanup_mem(struct xocl_drm *drm_p)
 	drm_p->mm_p2p_off = NULL;
 
 	mutex_unlock(&drm_p->mm_lock);
-
 	return 0;
 }
 
-int xocl_init_mem(struct xocl_drm *drm_p, struct mem_topology *new_topo)
+int xocl_init_mem(struct xocl_drm *drm_p)
 {
 	size_t length = 0;
 	size_t mm_size = 0, mm_stat_size = 0;
 	size_t size = 0, wrapper_size = 0;
 	size_t ddr_bank_size;
-	struct mem_topology *topo;
+	struct mem_topology *topo = NULL;
 	struct mem_data *mem_data;
 	uint32_t shared;
 	struct xocl_mm_wrapper *wrapper = NULL;
@@ -618,20 +631,20 @@ int xocl_init_mem(struct xocl_drm *drm_p, struct mem_topology *new_topo)
 		reserved2 = 0x1000000;
 	}
 
-	if (XOCL_DSA_IS_VERSAL(drm_p->xdev))
-		topo = new_topo;
-	else
-		topo = XOCL_MEM_TOPOLOGY(drm_p->xdev);
+	err = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev, topo);
+	if (err)
+		return err;
 
-	if (topo == NULL)
-		return 0;
+	if (topo == NULL) {
+		err = -ENODEV;
+		goto failed;
+	}
 
 	length = topo->m_count * sizeof(struct mem_data);
 	size = topo->m_count * sizeof(void *);
 	wrapper_size = sizeof(struct xocl_mm_wrapper);
 	mm_size = sizeof(struct drm_mm);
 	mm_stat_size = sizeof(struct drm_xocl_mm_stat);
-
 	xocl_info(drm_p->ddev->dev, "Topology count = %d, data_length = %ld",
 		topo->m_count, length);
 
@@ -716,7 +729,7 @@ int xocl_init_mem(struct xocl_drm *drm_p, struct mem_topology *new_topo)
 
 		xocl_info(drm_p->ddev->dev, "drm_mm_init called");
 	}
-
+	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
 	mutex_unlock(&drm_p->mm_lock);
 	return 0;
 
@@ -735,7 +748,7 @@ failed:
 	drm_p->mm_usage_stat = NULL;
 	vfree(drm_p->mm_p2p_off);
 	drm_p->mm_p2p_off = NULL;
-
+	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
 	mutex_unlock(&drm_p->mm_lock);
 	return err;
 }

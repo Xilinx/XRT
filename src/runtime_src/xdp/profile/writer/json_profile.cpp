@@ -15,15 +15,15 @@
  */
 
 #include "json_profile.h"
+#include "util.h"
 
 #include "xdp/profile/core/rt_profile.h"
-#include "util.h"
-#include "version.h"
+#include "core/common/system.h"
 
 namespace xdp {
 
 JSONProfileWriter::JSONProfileWriter(XDPPluginI* Plugin,
-    const std::string& platformName, const std::string& summaryFileName) :
+    const std::string& platformName, const std::string& /*summaryFileName*/) :
   ProfileWriterI(Plugin, platformName, ""), // fileName intentionally blank.
   mTree(new boost::property_tree::ptree())
 {
@@ -43,7 +43,7 @@ void JSONProfileWriter::writeSummary(RTProfile* profile)
   // that here to be Table A-7. Later there is code which matches that in
   // the subclasses, e.g. CSVProfileWriter. Where that calls "Table 7," we've
   // changed that here to be Table B-7. But note also that ProfileWriterI helper
-  // methods that implement this are not consistently labeled, e.g. 
+  // methods that implement this are not consistently labeled, e.g.
   // Table 5: Data Transfer: Host & Global Memory
   // void ProfileWriterI::writeHostTransferSummary(const std::string& name,
   // Table 5: Data Transfer: Kernels & Global Memory
@@ -135,7 +135,7 @@ void JSONProfileWriter::writeSummary(RTProfile* profile)
   writeGuidanceMetadataSummary(profile);
 }
 
-void JSONProfileWriter::writeDocumentHeader(std::ofstream& ofs,
+void JSONProfileWriter::writeDocumentHeader(std::ofstream& /*ofs*/,
     const std::string& docName)
 {
   boost::property_tree::ptree header;
@@ -146,16 +146,20 @@ void JSONProfileWriter::writeDocumentHeader(std::ofstream& ofs,
   header.put("application", xdp::WriterI::getCurrentExecutableName());
   header.put("platform", mPlatformName);
   header.put("toolVersion", xdp::WriterI::getToolVersion());
-  header.put("XRT build version", xrt_build_version);
-  header.put("Build version branch", xrt_build_version_branch);
-  header.put("Build version hash", xrt_build_version_hash);
-  header.put("Build version date", xrt_build_version_date);
+
+  boost::property_tree::ptree xrtInfo;
+  xrt_core::get_xrt_info(xrtInfo);
+  header.put("XRT build version", xrtInfo.get<std::string>("version", "N/A"));
+  header.put("Build version branch", xrtInfo.get<std::string>("branch", "N/A"));
+  header.put("Build version hash", xrtInfo.get<std::string>("hash", "N/A"));
+  header.put("Build version date", xrtInfo.get<std::string>("date", "N/A"));
+
   mTree->add_child("header", header);
 }
 
 // Write sub-header to profile summary
 // NOTE: this part of the header must be written after a run is completed.
-void JSONProfileWriter::writeDocumentSubHeader(std::ofstream& ofs, RTProfile* profile)
+void JSONProfileWriter::writeDocumentSubHeader(std::ofstream& /*ofs*/, RTProfile* profile)
 {
   // Let's just add to the existing header section.
   boost::property_tree::ptree& header = mTree->get_child("header");
@@ -518,7 +522,7 @@ void JSONProfileWriter::writeTopKernelTransferSummary(
   uint64_t totalWriteBytes, uint64_t totalReadBytes,
   uint64_t totalWriteTranx, uint64_t totalReadTranx,
   double totalWriteTimeMsec, double totalReadTimeMsec,
-  uint32_t maxBytesPerTransfer, double maxTransferRateMBps)
+  uint32_t maxBytesPerTransfer, double /*maxTransferRateMBps*/)
 {
   double totalTimeMsec = (totalWriteTimeMsec > totalReadTimeMsec) ?
     totalWriteTimeMsec : totalReadTimeMsec;
@@ -568,32 +572,32 @@ void JSONProfileWriter::writeGuidanceMetadataSummary(RTProfile *profile)
   // 1. Device execution times
   XDPPluginI::getGuidanceName(XDPPluginI::DEVICE_EXEC_TIME, checkName);
   boost::property_tree::ptree& check = metadata.add_child(checkName, boost::property_tree::ptree());
-  auto iter = deviceExecTimesMap.begin();
-  for (; iter != deviceExecTimesMap.end(); ++iter) {
+
+  for (auto& itr : deviceExecTimesMap) {
     // Sometimes the key value (iter->first) can contain a '.' in it, which boost
     // normally interprets as a hierarchy separator. We don't want hierarchy--the
-    // '.' should appear in the key, so we use path_type with '\0' as the 
+    // '.' should appear in the key, so we use path_type with '\0' as the
     // hierarchy separator (since '\0' won't actually appear in the string).
-    check.put(boost::property_tree::ptree::path_type(iter->first, '\0'), iter->second);
+    check.put(boost::property_tree::ptree::path_type(itr.first, '\0'), itr.second);
   }
 
   // 2. Compute Unit calls
   XDPPluginI::getGuidanceName(XDPPluginI::CU_CALLS, checkName);
   boost::property_tree::ptree& check2 = metadata.add_child(checkName, boost::property_tree::ptree());
-  auto iter2 = computeUnitCallsMap.begin();
-  for (; iter2 != computeUnitCallsMap.end(); ++iter2) {
+
+  for (auto& itr : computeUnitCallsMap) {
     // See above use of path_type for explanation.
-    check2.put(boost::property_tree::ptree::path_type(iter2->first, '\0'), iter2->second);
+    check2.put(boost::property_tree::ptree::path_type(itr.first, '\0'), itr.second);
   }
 
   // 3. Global memory bit widths
   XDPPluginI::getGuidanceName(XDPPluginI::MEMORY_BIT_WIDTH, checkName);
   boost::property_tree::ptree& check3 = metadata.add_child(checkName, boost::property_tree::ptree());
   uint32_t bitWidth = profile->getGlobalMemoryBitWidth();
-  auto iter3 = deviceExecTimesMap.begin();
-  for (; iter3 != deviceExecTimesMap.end(); ++iter3) {
+
+  for (auto& itr : deviceExecTimesMap) {
     // See above use of path_type for explanation.
-    check3.put(boost::property_tree::ptree::path_type(iter3->first, '\0'), bitWidth);
+    check3.put(boost::property_tree::ptree::path_type(itr.first, '\0'), bitWidth);
   }
 
   // 4. Usage of MigrateMemObjects
@@ -613,10 +617,10 @@ void JSONProfileWriter::writeGuidanceMetadataSummary(RTProfile *profile)
     int numPorts = (iter == cuPortsToMemory.end()) ? 1 : (iter->second + 1);
     cuPortsToMemory[memoryName] = numPorts;
   }
-  auto memoryIter = cuPortsToMemory.begin();
-  for (; memoryIter != cuPortsToMemory.end(); ++memoryIter) {
+
+  for (auto& itr : cuPortsToMemory) {
     // See above use of path_type for explanation.
-    check5.put(boost::property_tree::ptree::path_type(memoryIter->first, '\0'), memoryIter->second);
+    check5.put(boost::property_tree::ptree::path_type(itr.first, '\0'), itr.second);
   }
   cuPortsToMemory.clear();
 
@@ -677,8 +681,8 @@ void JSONProfileWriter::writeGuidanceMetadataSummary(RTProfile *profile)
 }
 
 
-void JSONProfileWriter::writeTableHeader(std::ofstream& ofs, const std::string& caption,
-                                        const std::vector<std::string>& columnLabels)
+void JSONProfileWriter::writeTableHeader(std::ofstream& /*ofs*/, const std::string& /*caption*/,
+                                        const std::vector<std::string>& /*columnLabels*/)
 {
   // Nothing to do, but this is a pure virtual in the base class, so we have
   // to provide an override.

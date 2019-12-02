@@ -19,11 +19,11 @@
 
 namespace xdp {
 
-ProfileIP::ProfileIP(Device* handle, int index, debug_ip_data* data)
+ProfileIP::ProfileIP(Device* handle, uint64_t index, debug_ip_data* data)
           : device(nullptr),
             mapped(false),
             exclusive(false),
-            ip_index(-1),
+            ip_index(static_cast<uint64_t>(-1)),
             ip_base_address(0),
             mapped_address(0)
 {
@@ -38,6 +38,8 @@ ProfileIP::ProfileIP(Device* handle, int index, debug_ip_data* data)
         device = handle;
         ip_index = index;
         ip_base_address = data->m_base_address;
+        m_index = static_cast<uint64_t>(data->m_index_lowbyte) |
+                  (static_cast<uint64_t>(data->m_index_highbyte) << 8);
         ip_name.assign(reinterpret_cast<const char*>(&data->m_name), 128);
         // Strip away extraneous null characters
         ip_name.assign(ip_name.c_str()); 
@@ -60,7 +62,7 @@ ProfileIP::~ProfileIP() {
     }
 } 
 
-void ProfileIP::request_exclusive_ip_access(int index) {
+void ProfileIP::request_exclusive_ip_access(uint64_t /*index*/) {
     /**
      * TODO: when the XRT implements the exclusive context hal API, this
      * method should try to open a exclusive context here and set the
@@ -72,7 +74,7 @@ void ProfileIP::request_exclusive_ip_access(int index) {
     return;
 }
 
-void ProfileIP::release_exclusive_ip_access(int index) {
+void ProfileIP::release_exclusive_ip_access(uint64_t /*index*/) {
     /**
      * TODO: when the XRT implements the exclusive context hal API, this
      * method should close the previously requested exclusive context if
@@ -178,6 +180,7 @@ void ProfileIP::showProperties()
 
     (*outputStream) << "    IP Name : " << ip_name << std::endl
                     << "    Index   : " << ip_index << std::endl
+                    << "    MIndex   : " << m_index << std::endl
                     << "    Base Address : " << std::hex << ip_base_address << std::endl
                     << std::endl;
     outputStream->flags(formatF);

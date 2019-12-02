@@ -15,10 +15,7 @@
  */
 
 // (c) Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
-#include "xclbin.h"
-
+#include "xocl/config.h"
 #include "xocl/core/range.h"
 #include "xocl/core/error.h"
 #include "xocl/core/device.h"
@@ -29,11 +26,19 @@
 #include "detail/context.h"
 #include "detail/device.h"
 
+#include "xclbin.h"
+
 #include <exception>
 #include <string>
 #include <algorithm>
 
 #include "plugin/xdp/profile.h"
+
+#include <CL/opencl.h>
+
+#ifdef _WIN32
+# pragma warning ( disable : 4996 )
+#endif
 
 namespace {
 
@@ -110,7 +115,7 @@ clCreateProgramWithBinary(cl_context                      context ,
                           cl_int *                        errcode_ret )
 {
   validOrError(context,num_devices,device_list,lengths,binaries,binary_status,errcode_ret);
-               
+
   // Flushing device trace (not done on first call to program with binary)
   static bool once = false;
   if (!once) {
@@ -130,10 +135,12 @@ clCreateProgramWithBinary(cl_context                      context ,
   for (auto device : xocl::get_range(device_list,device_list+num_devices)) {
     try {
       loadProgramBinary(program.get(),xocl(device));
-      xocl::assign(&binary_status[idx++],CL_SUCCESS);
+      if (binary_status)
+        xocl::assign(&binary_status[idx++],CL_SUCCESS);
     }
-    catch (const xocl::error& ex) {
-      xocl::assign(&binary_status[idx],CL_INVALID_BINARY);
+    catch (const xocl::error&) {
+      if (binary_status)
+        xocl::assign(&binary_status[idx],CL_INVALID_BINARY);
       throw;
     }
   }
@@ -199,5 +206,3 @@ clCreateProgramWithBinary(cl_context                      context ,
 
   return nullptr;
 }
-
-

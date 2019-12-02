@@ -12,7 +12,7 @@ Major XMA Changes in 2019.2 Release:
 
 3. MPSoC PL & soft kernels are supported in XMA
 4. Direct register read & write is not available
-5. DataFlow kernels are supported (In-Progress)
+5. DataFlow kernels are supported
 6. ZeroCopy support has changed. See below for details
 7. BufferObject added. See below for details
 8. XmaFrame & XmaDataBuffer can use device buffers instead of host only memory
@@ -32,6 +32,7 @@ Major XMA Changes in 2019.2 Release:
 22. get_session_cmd_load(): Get CU command load of various sessions relative to each other. Printed to log file
 23. CU command load of all session is automatically sent to log file at end of the application
 24. This gives info on which sessions (or CUs) are more busy compared to other sessions (or CUs)
+25. QDMA platform: Host to kernel streams will be supported by XMA in future. See below for more details
 
 Introduction
 ---------------
@@ -548,6 +549,12 @@ For stateful/multi-channel kernels (eg decodre, encoder):
 3. See spec for kernels with dataflow with channels. Kernel regamp registers at offset 0x10 (channel_id input to kernel) and 0x14 (channel_id output from kernel) must be supported by kernels.
 4. Use xrt_ini settings (dataflow; kernel_channels) to enable dataflow kernel with channels
 
+QDMA Platform:
+
+1. Host to kernel streams will be supported by XMA in future
+2. Pre defined commands packets maybe used to implement streaming kenels with standard command interface
+3. Pre define command format will be provided
+
 Using DRM (Digital Right Management) IPs:
 
 1. For register read/write use XRT APIs from libxrt_core
@@ -556,6 +563,7 @@ Using DRM (Digital Right Management) IPs:
 4. Register read/write is discouraged
 5. DRM solution/setup without register read/write is preferred
 6. DRM solution/setup using standard XMA APis is preferred
+7. DRM IP as independent kernel should meet above suggestions
 
 Compiling ffmpeg or host aplication with libxma2api:
 

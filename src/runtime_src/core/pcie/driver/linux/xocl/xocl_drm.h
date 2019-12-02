@@ -52,17 +52,18 @@ struct xocl_drm {
 struct drm_xocl_bo {
 	/* drm base object */
 	struct drm_gem_object base;
-	struct drm_mm_node   *mm_node;
+	struct drm_mm_node    *mm_node;
 	struct drm_xocl_exec_metadata metadata;
-	struct page         **pages;
-	struct sg_table      *sgt;
-	void                 *vmapping;
-	void                 *bar_vmapping;
-	struct dma_buf                  *dmabuf;
+	struct page           **pages;
+	struct sg_table       *sgt;
+	void                  *vmapping;
+	u64                   p2p_bar_offset;
+	struct dma_buf        *dmabuf;
 	const struct vm_operations_struct *dmabuf_vm_ops;
-	unsigned                dma_nsg;
+	unsigned              dma_nsg;
 	unsigned              flags;
 	unsigned              mem_idx;
+	void                 *cma_addr;
 };
 
 struct drm_xocl_unmgd {
@@ -86,10 +87,12 @@ int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
 void *xocl_drm_init(xdev_handle_t xdev);
 void xocl_drm_fini(struct xocl_drm *drm_p);
 uint32_t xocl_get_shared_ddr(struct xocl_drm *drm_p, struct mem_data *m_data);
-int xocl_init_mem(struct xocl_drm *drm_p, struct mem_topology *topo);
+int xocl_init_mem(struct xocl_drm *drm_p);
 int xocl_cleanup_mem(struct xocl_drm *drm_p);
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
+vm_fault_t xocl_gem_fault(struct vm_fault *vmf);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 int xocl_gem_fault(struct vm_fault *vmf);
 #else
 int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf);

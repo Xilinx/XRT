@@ -16,11 +16,33 @@
 
 #include "util.h"
 #include <chrono>
+#include <ctime>
+#include "core/common/system.h"
+
 #if defined(__linux__) && defined(__x86_64__)
 #include <unistd.h>
 #endif
 
+#ifdef _WIN32
+#pragma warning(disable : 4996)
+/* Disable warning for use of "localtime" */
+#endif
+
 namespace xdp {
+
+  std::string WriterI::getXRTVersion()
+  {
+    std::string xrtVersion;
+
+    boost::property_tree::ptree xrtInfo;
+    xrt_core::get_xrt_info(xrtInfo);
+    xrtVersion = "XRT build version: "  + xrtInfo.get<std::string>("version", "N/A") + "\n"
+               + "Build version branch: " + xrtInfo.get<std::string>("branch", "N/A") + "\n"
+               + "Build version hash: " + xrtInfo.get<std::string>("hash", "N/A") + "\n"
+               + "Build version date: " + xrtInfo.get<std::string>("date", "N/A") + " ";
+
+    return xrtVersion;
+  }
 
   std::string WriterI::getCurrentDateTime()
   {
@@ -43,6 +65,12 @@ namespace xdp {
 
   std::string WriterI::getCurrentTimeMsec()
   {
+    auto timeSinceEpoch = (std::chrono::system_clock::now()).time_since_epoch();
+    auto value = std::chrono::duration_cast<std::chrono::milliseconds>(timeSinceEpoch);
+    uint64_t timeMsec = value.count();
+    return std::to_string(timeMsec);
+
+#if 0
     struct timespec now;
     int err;
     if ((err = clock_gettime(CLOCK_REALTIME, &now)) < 0)
@@ -51,6 +79,7 @@ namespace xdp {
     uint64_t nsec = (uint64_t) now.tv_sec * 1000000000UL + (uint64_t) now.tv_nsec;
     uint64_t msec = nsec / 1e6;
     return std::to_string(msec);
+#endif
   }
 
   std::string WriterI::getCurrentExecutableName()

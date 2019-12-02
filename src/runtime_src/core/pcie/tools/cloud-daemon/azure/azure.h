@@ -44,6 +44,7 @@ public:
 
     // Bitstreams
     int azureLoadXclBin(const xclBin *buffer);
+    int azureHotReset();
     static std::string get_wireserver_ip()
     {
         const std::string config("/etc/mpd.conf");
@@ -74,7 +75,7 @@ public:
 private:
     // 4 MB buffer to truncate and send
     static const int TRANSFER_SEGMENT_SIZE { 1024 * 4096 };
-    static const int REIMAGE_TIMEOUT { 5 }; //in second
+    static const int REIMAGE_TIMEOUT { 20 }; //in second
     std::shared_ptr<pcidev::pci_device> dev;
     int UploadToWireServer(
         const std::string &ip,
@@ -102,6 +103,7 @@ struct write_unit {
 };
 int get_remote_msd_fd(size_t index, int* fd);
 int azureLoadXclBin(size_t index, const axlf *xclbin, int *resp);
+int azureHotReset(size_t index, int *resp);
 static size_t read_callback(void *contents, size_t size,
        size_t nmemb, void *userp);
 static size_t WriteCallback(void *contents, size_t size,

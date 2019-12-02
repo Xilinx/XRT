@@ -26,6 +26,9 @@ struct ip_node {
 	int inst;
 	u16 major;
 	u16 minor;
+	int off;
+	bool used;
+	bool match;
 };
 
 static void *ert_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
@@ -66,6 +69,11 @@ static void *rom_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 		goto failed;
 	}
 
+	if (proplen > sizeof(struct FeatureRomHeader)) {
+		xocl_xdev_err(xdev_hdl, "invalid vrom length");
+		goto failed;
+	}
+
 	priv_data = vmalloc(proplen);
 	if (!priv_data)
 		goto failed;
@@ -90,27 +98,27 @@ static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 
 	blob = core->fdt_blob;
 	if (!blob)
-		goto failed;
+		return NULL;
 
 	node = fdt_path_offset(blob, LEVEL0_DEV_PATH
 			"/" NODE_FLASH);
 	if (node < 0) {
 		xocl_xdev_err(xdev_hdl, "did not find flash node");
-		goto failed;
+		return NULL;
 	}
 
 	if (!fdt_node_check_compatible(blob, node, "axi_quad_spi"))
 		flash_type = FLASH_TYPE_SPI;
 	else {
 		xocl_xdev_err(xdev_hdl, "UNKNOWN flash type");
-		goto failed;
+		return NULL;
 	}
 
 	proplen = sizeof(*priv) + strlen(flash_type);
 
 	priv = vzalloc(proplen);
 	if (!priv)
-		goto failed;
+		return NULL;
 
 	priv->flash_type = offsetof(struct xocl_flash_privdata, data);
 	priv->properties = priv->flash_type + strlen(flash_type) + 1;
@@ -119,10 +127,6 @@ static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 	*len = proplen;
 
 	return priv;
-failed:
-	if (priv)
-		vfree(priv);
-	return NULL;
 
 }
 
@@ -131,6 +135,23 @@ static void devinfo_cb_setlevel(void *dev_hdl, void *subdevs, int num)
 	struct xocl_subdev *subdev = subdevs;
 
 	subdev->info.override_idx = subdev->info.level;
+}
+
+static void ert_cb_setlevel(void *dev_hdl, void *subdevs, int num)
+{
+	struct xocl_subdev *subdev = subdevs;
+
+	/* 0 is used by CMC */
+	subdev->info.override_idx = 1;
+}
+
+static void devinfo_cb_xdma(void *dev_hdl, void *subdevs, int num)
+{
+	struct xocl_subdev *subdev = subdevs;
+
+	subdev->info.res = NULL;
+	subdev->info.bar_idx = NULL;
+	subdev->info.num_res = 0; 
 }
 
 /* missing clk freq counter ip */
@@ -151,7 +172,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 		1,
 		0,
 		NULL,
-		NULL,
+		devinfo_cb_xdma,
 	},
 	{
 		XOCL_SUBDEV_DMA,
@@ -229,17 +250,33 @@ static struct xocl_subdev_map		subdev_map[] = {
 	},
 	{
 		XOCL_SUBDEV_MB,
+		XOCL_ERT,
+		{
+			NODE_ERT_BASE,
+			NODE_ERT_RESET,
+			NODE_ERT_FW_MEM,
+			NODE_ERT_CQ_MGMT,
+			// 0x53000 runtime clk scaling
+			NULL
+		},
+		3,
+		0,
+		NULL,
+		ert_cb_setlevel,
+	},
+	{
+		XOCL_SUBDEV_MB,
 		XOCL_XMC,
 		{
 			NODE_CMC_REG,
 			NODE_CMC_RESET,
 			NODE_CMC_FW_MEM,
-			NODE_CMC_ERT_MEM,
+			NODE_ERT_FW_MEM,
 			NODE_ERT_CQ_MGMT,
 			// 0x53000 runtime clk scaling
 			NULL
 		},
-		5,
+		3,
 		0,
 		NULL,
 		NULL,
@@ -457,13 +494,14 @@ int xocl_fdt_overlay(void *fdt, int target,
 	return 0;
 }
 
-static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob, int off,
+static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob,
 		struct ip_node *ip, struct xocl_subdev *subdev)
 {
 	int idx, sz, num_res;
 	const u32 *bar_idx, *pfnum;
 	const u64 *io_off;
 	const u32 *irq_off; 
+	int off = ip->off;
 
 	num_res = subdev->info.num_res;
 
@@ -531,21 +569,31 @@ static int xocl_fdt_next_ip(xdev_handle_t xdev_hdl, char *blob,
 {
 	char *l0_path = LEVEL0_DEV_PATH;
 	char *l1_path = LEVEL1_DEV_PATH;
-	int l1_off, l0_off, node;
+	int l1_off, l0_off, ulp_off, node;
 	const char *comp, *p;
 
 	l0_off = fdt_path_offset(blob, l0_path);
 	l1_off = fdt_path_offset(blob, l1_path);
+	ulp_off = fdt_path_offset(blob, ULP_DEV_PATH);
+
 	for (node = fdt_next_node(blob, off, NULL);
 	    node >= 0;
 	    node = fdt_next_node(blob, node, NULL)) {
 		if (fdt_parent_offset(blob, node) == l0_off) {
-			ip->level = XOCL_SUBDEV_LEVEL_BLD;
+			if (ip)
+				ip->level = XOCL_SUBDEV_LEVEL_BLD;
 			goto found;
 		}
 
 		if (fdt_parent_offset(blob, node) == l1_off) {
-			ip->level = XOCL_SUBDEV_LEVEL_PRP;
+			if (ip)
+				ip->level = XOCL_SUBDEV_LEVEL_PRP;
+			goto found;
+		}
+
+		if (fdt_parent_offset(blob, node) == ulp_off) {
+			if (ip)
+				ip->level = XOCL_SUBDEV_LEVEL_URP;
 			goto found;
 		}
 	}
@@ -553,41 +601,45 @@ static int xocl_fdt_next_ip(xdev_handle_t xdev_hdl, char *blob,
 	return -ENODEV;
 
 found:
-	ip->name = fdt_get_name(blob, node, NULL);
+	if (ip) {
+		ip->name = fdt_get_name(blob, node, NULL);
 
-	/* Get Version */
-	comp = fdt_getprop(blob, node, PROP_COMPATIBLE, NULL);
-	if (comp) {
-		for (p = comp; p != NULL; p = strstr(comp, "-"))
-			comp = p + 1;
-		sscanf(comp, "%hd.%hd", &ip->major, &ip->minor);
+		/* Get Version */
+		comp = fdt_getprop(blob, node, PROP_COMPATIBLE, NULL);
+		if (comp) {
+			for (p = comp; p != NULL; p = strstr(comp, "-"))
+				comp = p + 1;
+			sscanf(comp, "%hd.%hd", &ip->major, &ip->minor);
+		}
+		ip->off = node;
 	}
 
 	return node;
 }
 
 static int xocl_fdt_res_lookup(xdev_handle_t xdev_hdl, char *blob,
-		const char *ipname, struct xocl_subdev *subdev)
+		const char *ipname, struct xocl_subdev *subdev,
+		struct ip_node *ip, int ip_num)
 {
-	struct ip_node	ip;
-	int off = -1, ret;
+	int i, ret;
 
-	for (off = xocl_fdt_next_ip(xdev_hdl, blob, off, &ip); off >= 0;
-		off = xocl_fdt_next_ip(xdev_hdl, blob, off, &ip)) {
-
-		if (ip.name && strlen(ipname) > 0 &&
-			       !strncmp(ip.name, ipname, strlen(ipname)))
+	for (i = 0; i < ip_num; i++) {
+		if (ip->name && strlen(ipname) > 0 && !ip->used &&
+			       !strncmp(ip->name, ipname, strlen(ipname)))
 			break;
+		ip++;
 	}
-	if (off < 0)
+	if (i == ip_num)
 		return 0;
 
-	ret = xocl_fdt_parse_ip(xdev_hdl, blob, off, &ip, subdev);
+	ret = xocl_fdt_parse_ip(xdev_hdl, blob, ip, subdev);
 	if (ret) {
 		xocl_xdev_err(xdev_hdl, "parse ip failed, Node %s, ip %s",
-			ip.name, ipname);
+			ip->name, ipname);
 		return ret;
 	}
+
+	ip->match = true;
 
 	return 0;
 }
@@ -607,7 +659,7 @@ static void xocl_fdt_dump_subdev(xdev_handle_t xdev_hdl,
 }
 
 static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
-		struct xocl_subdev_map  *map_p,
+		struct xocl_subdev_map  *map_p, struct ip_node *ip, int ip_num,
 		struct xocl_subdev *rtn_subdevs)
 {
 	struct xocl_subdev *subdev;
@@ -625,7 +677,8 @@ static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 
 	for (res_name = map_p->res_names[0]; res_name;
 			res_name = map_p->res_names[++i]) {
-		ret = xocl_fdt_res_lookup(xdev_hdl, blob, res_name, subdev);
+		ret = xocl_fdt_res_lookup(xdev_hdl, blob, res_name, subdev,
+				ip, ip_num);
 		if (ret) {
 			xocl_xdev_err(xdev_hdl, "lookup dev %s, ip %s failed",
 					map_p->dev_name, res_name);
@@ -661,6 +714,14 @@ static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 failed:
 	if (!rtn_subdevs)
 		vfree(subdev);
+	for (i = 0; i < ip_num; i++) {
+		if (ip[i].used || !ip[i].match)
+			continue;
+		if (num > 0)
+			ip[i].used = true;
+		else
+			ip[i].match = false;
+	}
 
 	return num;
 }
@@ -670,6 +731,23 @@ static int xocl_fdt_parse_subdevs(xdev_handle_t xdev_hdl, char *blob,
 {
 	struct xocl_subdev_map  *map_p;
 	int id, j, num, total = 0;
+	struct ip_node	*ip;
+	int off = -1, ip_num = 0;
+
+	for (off = xocl_fdt_next_ip(xdev_hdl, blob, off, NULL); off >= 0;
+		off = xocl_fdt_next_ip(xdev_hdl, blob, off, NULL))
+		ip_num++;
+	if (!ip_num)
+		return -EINVAL;
+	ip = vzalloc(sizeof(*ip) * ip_num);
+	if (!ip)
+		return -ENOMEM;
+
+	off = -1;
+	j = 0;
+	for (off = xocl_fdt_next_ip(xdev_hdl, blob, off, &ip[j]); off >= 0;
+		off = xocl_fdt_next_ip(xdev_hdl, blob, off, &ip[j]))
+		j++;
 
 	for (id = 0; id < XOCL_SUBDEV_NUM; id++) { 
 		for (j = 0; j < ARRAY_SIZE(subdev_map); j++) {
@@ -678,11 +756,12 @@ static int xocl_fdt_parse_subdevs(xdev_handle_t xdev_hdl, char *blob,
 				continue;
 
 			num = xocl_fdt_get_devinfo(xdev_hdl, blob, map_p,
-					subdevs);
+					ip, ip_num, subdevs);
 			if (num < 0) {
 				xocl_xdev_err(xdev_hdl,
 					"get subdev info failed, dev name: %s",
 					map_p->dev_name);
+				vfree(ip);
 				return num;
 			}
 
@@ -696,13 +775,22 @@ static int xocl_fdt_parse_subdevs(xdev_handle_t xdev_hdl, char *blob,
 	}
 
 end:
+	vfree(ip);
 	return total;
 }
 
-static int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob,
+int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 		struct xocl_subdev **subdevs)
 {
 	int		dev_num; 
+
+	if (!blob)
+		return -EINVAL;
+
+	if (fdt_totalsize(blob) > blob_sz) {
+		xocl_xdev_err(xdev_hdl, "Invalid blob inbut size");
+		return -EINVAL;
+	}
 
 	dev_num = xocl_fdt_parse_subdevs(xdev_hdl, blob, NULL, 0);
 	if (dev_num < 0) {
@@ -799,7 +887,7 @@ int xocl_fdt_add_pair(xdev_handle_t xdev_hdl, void *blob, char *name,
 	return ret;
 }
 
-int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob)
+int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz)
 {
 	struct xocl_dev_core	*core = XDEV(xdev_hdl);
 	struct xocl_subdev	*subdevs;
@@ -810,7 +898,13 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob)
 	if (!blob)
 		return -EINVAL;
 
-	len = fdt_totalsize(blob) * 2;
+	len = fdt_totalsize(blob);
+	if (len > blob_sz) {
+		xocl_xdev_err(xdev_hdl, "Invalid blob inbut size");
+		return -EINVAL;
+	}
+
+	len *= 2;
 	if (core->fdt_blob)
 		len += fdt_totalsize(core->fdt_blob);
 
@@ -838,7 +932,7 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob)
 		goto failed;
 	}
 
-	ret = xocl_fdt_parse_blob(xdev_hdl, output_blob, &subdevs);
+	ret = xocl_fdt_parse_blob(xdev_hdl, output_blob, len, &subdevs);
 	if (ret < 0)
 		goto failed;
 	core->dyn_subdev_num = ret;
@@ -850,6 +944,7 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob)
 		vfree(core->dyn_subdev_store);
 
 	core->fdt_blob = output_blob;
+	core->fdt_blob_sz = fdt_totalsize(output_blob);
 	core->dyn_subdev_store = subdevs;
 
 	for (i = 0; i < core->dyn_subdev_num; i++)

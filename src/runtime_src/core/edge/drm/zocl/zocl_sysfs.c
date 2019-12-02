@@ -17,6 +17,7 @@
 
 #include "zocl_drv.h"
 #include "sched_exec.h"
+#include "zocl_xclbin.h"
 #include "xclbin.h"
 
 static ssize_t xclbinid_show(struct device *dev,
@@ -28,7 +29,7 @@ static ssize_t xclbinid_show(struct device *dev,
 	if (!zdev)
 		return 0;
 
-	size = sprintf(buf, "%llx\n", zdev->unique_id_last_bitstream);
+	size = sprintf(buf, "%llx\n", zdev->zdev_xclbin->zx_last_bitstream);
 
 	return size;
 }
@@ -377,4 +378,3 @@ void zocl_fini_sysfs(struct device *dev)
 {
 	sysfs_remove_group(&dev->kobj, &zocl_attr_group);
 }
-

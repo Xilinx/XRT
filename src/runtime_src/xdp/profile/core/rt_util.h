@@ -111,8 +111,6 @@ namespace xdp {
         std::string& monitorString);
     static void setTimeStamp(e_profile_command_state objStage, TimeTrace* traceObject,
     	double timeStamp);
-    static xclPerfMonEventID getFunctionEventID(const std::string &functionName,
-        long long queueAddress);
     static void getFlowModeName(e_flow_mode flowMode, std::string& str);
     static uint32_t getDevTraceBufferSize(uint32_t property);
 

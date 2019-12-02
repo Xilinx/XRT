@@ -32,6 +32,9 @@
 #include <cstdlib>
 #include <sstream>
 
+#ifdef _WIN32
+# pragma warning( disable : 4267 4996 4244 )
+#endif
 
 namespace {
 
@@ -869,7 +872,6 @@ public:
       return memidx;
     }
     throw std::runtime_error("did not find mem index for (kernel_name,arg):" + kernel_name + "," + std::to_string(arg));
-    return -1;
   }
 
   void
@@ -893,10 +895,12 @@ public:
   xocl::xclbin::memidx_bitmask_type
   cu_address_to_memidx(addr_type cuaddr, int32_t arg) const
   {
-    if (!is_valid())
-      return -1;
-
     xocl::xclbin::memidx_bitmask_type bitmask;
+
+    if (!is_valid()) {
+      bitmask.set();
+      return bitmask;
+    }
 
     // iterate connectivity and look for matching [cuaddr,arg] pair
     for (int32_t i=0; i<m_con->m_count; ++i) {
@@ -922,10 +926,11 @@ public:
   xocl::xclbin::memidx_bitmask_type
   cu_address_to_memidx(addr_type cuaddr) const
   {
-    if (!is_valid())
-      return -1;
-
     xocl::xclbin::memidx_bitmask_type bitmask;
+    if (!is_valid()) {
+      bitmask.set();
+      return bitmask;
+    }
 
     for (int32_t i=0; i<m_con->m_count; ++i) {
       auto ipidx = m_con->m_connection[i].m_ip_layout_index;

@@ -46,7 +46,7 @@ namespace xdp {
         ContextId( 0 ),
         NumDevices( 1 ),
         BitWidth( 0 ),
-        TotalSize( 0.0 ),
+        TotalSize( 0 ),
         Average( 0.0 ),
         TotalTime( 0.0 ),
         AveTime( 0.0 ),
@@ -62,7 +62,7 @@ namespace xdp {
     inline size_t getMax() const {return Max; }
     inline size_t getMin() const {return (Count > 0) ? Min : 0; }
     inline uint32_t getContextId() const { return ContextId; }
-    inline uint32_t getNumDevices() const { return NumDevices; }
+    inline size_t getNumDevices() const { return NumDevices; }
     inline uint32_t getBitWidth() const { return BitWidth; }
     inline uint64_t getTotalSize() const { return TotalSize; }
     inline double getTotalTime() const { return TotalTime; }
@@ -81,7 +81,7 @@ namespace xdp {
     inline std::string getDeviceName() const { return DeviceName; }
 
     inline void setContextId(uint32_t contextId) { ContextId = contextId; }
-    inline void setNumDevices(uint32_t numDevices) { NumDevices = numDevices; }
+    inline void setNumDevices(size_t numDevices) { NumDevices = numDevices; }
     inline void setBitWidth(uint32_t bitWidth) { BitWidth = bitWidth; }
     inline void setClockFreqMhz(double clockFreqMhz) { ClockFreqMhz = clockFreqMhz; }
     inline void setDeviceName(std::string& deviceName) { DeviceName = deviceName; }
@@ -91,7 +91,7 @@ namespace xdp {
     size_t Min;
     size_t Max;
     uint32_t ContextId;
-    uint32_t NumDevices;
+    size_t NumDevices;
     uint32_t BitWidth;
     uint64_t TotalSize;
     double Average;

@@ -16,7 +16,7 @@
 
 #ifndef xocl_core_device_h_
 #define xocl_core_device_h_
-
+#include "xocl/config.h"
 #include "xocl/core/object.h"
 #include "xocl/core/refcount.h"
 #include "xocl/core/error.h"
@@ -24,8 +24,7 @@
 #include "xocl/xclbin/xclbin.h"
 #include "xrt/device/device.h"
 #include "xrt/scheduler/command.h"
-
-#include <unistd.h>
+#include "core/common/unistd.h"
 
 #include <cassert>
 
@@ -223,7 +222,7 @@ public:
   size_t
   get_alignment() const
   {
-    return m_xdevice ? m_xdevice->getAlignment() : getpagesize();
+    return m_xdevice ? m_xdevice->getAlignment() : xrt_core::getpagesize();
   }
 
   /**
@@ -572,6 +571,7 @@ public:
    * @return
    *  Current loaded xclbin
    */
+  XRT_XOCL_EXPORT
   xclbin
   get_xclbin() const;
 

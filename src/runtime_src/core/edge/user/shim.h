@@ -69,12 +69,17 @@ public:
                  size_t seek);
   int xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip);
   void *xclMapBO(unsigned int boHandle, bool write);
+  int xclUnmapBO(unsigned int boHandle, void* addr);
   int xclExportBO(unsigned int boHandle);
   unsigned int xclImportBO(int fd, unsigned flags);
   unsigned int xclGetBOProperties(unsigned int boHandle,
                                   xclBOProperties *properties);
   int xclExecBuf(unsigned int cmdBO);
   int xclExecWait(int timeoutMilliSec);
+
+  int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared);
+  int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex);
+
   int xclSKGetCmd(xclSKCmd *cmd);
   int xclSKCreate(unsigned int boHandle, uint32_t cu_idx);
   int xclSKReport(uint32_t cu_idx, xrt_scu_state state);

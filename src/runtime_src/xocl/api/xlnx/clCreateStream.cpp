@@ -13,16 +13,12 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
-#include <CL/opencl.h>
 #include "xocl/core/stream.h"
 #include "xocl/core/error.h"
 #include "xocl/core/device.h"
-
-//To access make_unique<>. TODO
+#include <CL/opencl.h>
 
 #include "plugin/xdp/profile.h"
-
 
 // Copyright 2018 Xilinx, Inc. All rights reserved.
 

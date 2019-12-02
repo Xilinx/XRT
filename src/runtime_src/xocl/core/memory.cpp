@@ -23,6 +23,10 @@
 
 #include <iostream>
 
+#ifdef _WIN32
+#pragma warning ( disable : 4267 4245 )
+#endif
+
 namespace {
 
 // Hack to determine if a context is associated with exactly one
@@ -50,6 +54,28 @@ singleContextDevice(cl_context context)
 
 static xocl::memory::memory_callback_list sg_constructor_callbacks;
 static xocl::memory::memory_callback_list sg_destructor_callbacks;
+
+#ifdef __GNUC__
+int
+ctz(unsigned int x)
+{
+  return __builtin_ctz(x);
+}
+#endif
+
+#ifdef _WIN32
+#pragma intrinsic(_BitScanForward64)
+int
+ctz(uint64_t x)
+{
+  if (!x)
+    return 64;
+  unsigned long idx = 0;
+  _BitScanForward64(&idx,x);
+  return idx;
+}
+#endif
+
 
 } // namespace
 
@@ -233,7 +259,7 @@ get_ext_memidx_nolock(const xclbin& xclbin) const
     if (m_ext_flags & XCL_MEM_TOPOLOGY) {
       m_memidx = memid;
     } else if (memid != 0) {
-      auto bank = __builtin_ctz(memid);
+      auto bank = ctz(memid);
       m_memidx = xclbin.banktag_to_memidx(std::string("bank")+std::to_string(bank));
       if (m_memidx==-1)
         m_memidx = bank;

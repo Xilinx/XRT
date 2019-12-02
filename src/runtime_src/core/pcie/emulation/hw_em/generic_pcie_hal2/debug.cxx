@@ -261,8 +261,8 @@ namespace xclhwemhal2 {
   /*
    * messagesThread()
    */
-  void messagesThread(xclhwemhal2::HwEmShim* inst) {
-	if(xclemulation::config::getInstance()->isSystemDPAEnabled() == false) {
+void messagesThread(xclhwemhal2::HwEmShim* inst) {
+	if (xclemulation::config::getInstance()->isSystemDPAEnabled() == false) {
 		return;
 	}
 	static auto l_time = std::chrono::high_resolution_clock::now();
@@ -274,8 +274,15 @@ namespace xclhwemhal2 {
 		auto l_time_end = std::chrono::high_resolution_clock::now();
 		if (std::chrono::duration<double>(l_time_end - l_time).count() > 300) {
 			l_time = std::chrono::high_resolution_clock::now();
+			inst->mPrintMessagesLock.lock();
+			if (inst->get_simulator_started() == false) {
+				inst->mPrintMessagesLock.unlock();
+				return;
+			}
+
 			inst->fetchAndPrintMessages();
+			inst->mPrintMessagesLock.unlock();
 		}
 	}
-  }
+}
 } // namespace xclhwemhal2

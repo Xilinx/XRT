@@ -2,6 +2,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${DRM_INCLUDE_DIRS}
   ${CURSES_INCLUDE_DIRS}
+  ${CMAKE_BINARY_DIR}
   )
 
 file(GLOB XRT_PCIE_LINUX_PLUGIN_XDP_FILES
@@ -12,6 +13,10 @@ file(GLOB XRT_PCIE_LINUX_PLUGIN_XDP_FILES
 file(GLOB XRT_PCIE_LINUX_FILES
   "*.h"
   "*.cpp"
+  "../common/system_pcie.cpp"
+  "../common/device_pcie.cpp"
+  "../../common/system.cpp"
+  "../../common/device.cpp"
   )
 
 set(CMAKE_CXX_FLAGS "-DXCLHAL_MAJOR_VER=2 ${CMAKE_CXX_FLAGS}")

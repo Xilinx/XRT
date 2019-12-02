@@ -19,6 +19,8 @@
 #include "ert.h"
 #include "lib/xmahw_lib.h"
 //#include "lib/xmares.h"
+#include "app/xma_utils.hpp"
+#include "lib/xma_utils.hpp"
 
 #include <cstdio>
 #include <iostream>
@@ -29,32 +31,51 @@ using namespace std;
 
 #define XMAPLUGIN_MOD "xmapluginlib"
 
-//Sarab: TODO .. Assign buffr object fields.. bank etc..
-//Add new API for allocating device only buffer object.. which will not have host mappped buffer.. This could be used for zero copy plugins..
-//NULL data pointer in buffer obj implies it is device only buffer..
-//Remove read/write before SyncBO.. As plugin should manage that using host mapped data pointer..
+
+int32_t create_bo(xclDeviceHandle dev_handle, XmaBufferObj& b_obj, uint32_t size, uint32_t ddr_bank, 
+    bool device_only_buffer, xclBufferHandle& b_obj_handle) {
+    if (device_only_buffer) {
+        b_obj_handle = xclAllocBO(dev_handle, size, 0, XCL_BO_FLAGS_DEV_ONLY | ddr_bank);
+        b_obj.device_only_buffer = true;
+    } else {
+        b_obj_handle = xclAllocBO(dev_handle, size, 0, ddr_bank);
+    }
+
+    struct xclBOProperties bop = {0};
+    if (xclGetBOProperties(dev_handle, b_obj_handle, &bop) != 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc failed to get BO properties");
+        xclFreeBO(dev_handle, b_obj_handle);
+        return XMA_ERROR;
+    }
+    b_obj.paddr = bop.paddr;
+
+    if (!device_only_buffer) {
+        b_obj.data = (uint8_t*) xclMapBO(dev_handle, b_obj_handle, true);
+    }
+    return XMA_SUCCESS;
+}
 
 XmaBufferObj
 xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, int32_t* return_code)
 {
     XmaBufferObj b_obj;
     XmaBufferObj b_obj_error;
-    b_obj_error.data = NULL;
-    b_obj_error.ref_cnt = 0;
+    b_obj_error.data = nullptr;
+    //b_obj_error.ref_cnt = 0;
     b_obj_error.size = 0;
     b_obj_error.paddr = 0;
     b_obj_error.bank_index = -1;
     b_obj_error.dev_index = -1;
     b_obj_error.device_only_buffer = false;
-    b_obj_error.private_do_not_touch = NULL;
-    b_obj.data = NULL;
-    b_obj.ref_cnt = 0;
-    b_obj.user_ptr = NULL;
+    b_obj_error.private_do_not_touch = nullptr;
+    b_obj.data = nullptr;
+    //b_obj.ref_cnt = 0;
+    b_obj.user_ptr = nullptr;
     b_obj.device_only_buffer = false;
-    b_obj.private_do_not_touch = NULL;
+    b_obj.private_do_not_touch = nullptr;
 
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    if (priv1 == NULL) {
+    if (priv1 == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc failed. XMASession is corrupted.\n");
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
@@ -82,35 +103,12 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
         return b_obj_error;
     }
 
-    /*
-    #define XRT_BO_FLAGS_MEMIDX_MASK        (0xFFFFFFUL)
-    #define XCL_BO_FLAGS_CACHEABLE          (1 << 24)
-    #define XCL_BO_FLAGS_SVM                (1 << 27)
-    #define XCL_BO_FLAGS_DEV_ONLY           (1 << 28)
-    #define XCL_BO_FLAGS_HOST_ONLY          (1 << 29)
-    #define XCL_BO_FLAGS_P2P                (1 << 30)
-    #define XCL_BO_FLAGS_EXECBUF            (1 << 31)
-    */
-    uint64_t b_obj_handle = 0;
-    if (device_only_buffer) {
-        b_obj_handle = xclAllocBO(dev_handle, size, 0, XCL_BO_FLAGS_DEV_ONLY | ddr_bank);
-        b_obj.device_only_buffer = true;
-    } else {
-        b_obj_handle = xclAllocBO(dev_handle, size, 0, ddr_bank);
-    }
-    /*BO handlk is uint64_t
-    if (b_obj_handle < 0) {
-        std::cout << "ERROR: xma_plg_buffer_alloc failed. handle=0x" << std::hex << b_obj_handle << std::endl;
-        //printf("xclAllocBO failed. handle=0x%ullx\n", b_obj_handle);
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xclAllocBO failed.\n");
+    xclBufferHandle b_obj_handle = 0;
+    if (create_bo(dev_handle, b_obj, size, ddr_bank, device_only_buffer, b_obj_handle) != XMA_SUCCESS) {
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
     }
-    */
-    b_obj.paddr = xclGetDeviceAddr(dev_handle, b_obj_handle);
-    if (!device_only_buffer) {
-        b_obj.data = (uint8_t*) xclMapBO(dev_handle, b_obj_handle, true);
-    }
+
     XmaBufferObjPrivate* tmp1 = new XmaBufferObjPrivate;
     b_obj.private_do_not_touch = (void*) tmp1;
     tmp1->dummy = (void*)(((uint64_t)tmp1) | signature);
@@ -130,22 +128,23 @@ XmaBufferObj xma_plg_buffer_alloc_arg_num(XmaSession s_handle, size_t size, bool
 {
     XmaBufferObj b_obj;
     XmaBufferObj b_obj_error;
-    b_obj_error.data = NULL;
-    b_obj_error.ref_cnt = 0;
+    b_obj_error.data = nullptr;
+    //b_obj_error.ref_cnt = 0;
     b_obj_error.size = 0;
     b_obj_error.paddr = 0;
     b_obj_error.bank_index = -1;
     b_obj_error.dev_index = -1;
     b_obj_error.device_only_buffer = false;
-    b_obj_error.private_do_not_touch = NULL;
-    b_obj.data = NULL;
-    b_obj.ref_cnt = 0;
-    b_obj.user_ptr = NULL;
+    b_obj_error.private_do_not_touch = nullptr;
+    b_obj_error.user_ptr = nullptr;
+    b_obj.data = nullptr;
+    //b_obj.ref_cnt = 0;
+    b_obj.user_ptr = nullptr;
     b_obj.device_only_buffer = false;
-    b_obj.private_do_not_touch = NULL;
+    b_obj.private_do_not_touch = nullptr;
 
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    if (priv1 == NULL) {
+    if (priv1 == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_arg_num failed. XMASession is corrupted.\n");
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
@@ -182,26 +181,12 @@ XmaBufferObj xma_plg_buffer_alloc_arg_num(XmaSession s_handle, size_t size, bool
         }
     }
 
-    /*
-    #define XRT_BO_FLAGS_MEMIDX_MASK        (0xFFFFFFUL)
-    #define XCL_BO_FLAGS_CACHEABLE          (1 << 24)
-    #define XCL_BO_FLAGS_SVM                (1 << 27)
-    #define XCL_BO_FLAGS_DEV_ONLY           (1 << 28)
-    #define XCL_BO_FLAGS_HOST_ONLY          (1 << 29)
-    #define XCL_BO_FLAGS_P2P                (1 << 30)
-    #define XCL_BO_FLAGS_EXECBUF            (1 << 31)
-    */
-    uint64_t b_obj_handle = 0;
-    if (device_only_buffer) {
-        b_obj_handle = xclAllocBO(dev_handle, size, 0, XCL_BO_FLAGS_DEV_ONLY | ddr_bank);
-        b_obj.device_only_buffer = true;
-    } else {
-        b_obj_handle = xclAllocBO(dev_handle, size, 0, ddr_bank);
+    xclBufferHandle b_obj_handle = 0;
+    if (create_bo(dev_handle, b_obj, size, ddr_bank, device_only_buffer, b_obj_handle) != XMA_SUCCESS) {
+        if (return_code) *return_code = XMA_ERROR;
+        return b_obj_error;
     }
-    b_obj.paddr = xclGetDeviceAddr(dev_handle, b_obj_handle);
-    if (!device_only_buffer) {
-        b_obj.data = (uint8_t*) xclMapBO(dev_handle, b_obj_handle, true);
-    }
+
     XmaBufferObjPrivate* tmp1 = new XmaBufferObjPrivate;
     b_obj.private_do_not_touch = (void*) tmp1;
     tmp1->dummy = (void*)(((uint64_t)tmp1) | signature);
@@ -222,22 +207,23 @@ xma_plg_buffer_alloc_ddr(XmaSession s_handle, size_t size, bool device_only_buff
 {
     XmaBufferObj b_obj;
     XmaBufferObj b_obj_error;
-    b_obj_error.data = NULL;
-    b_obj_error.ref_cnt = 0;
+    b_obj_error.data = nullptr;
+    //b_obj_error.ref_cnt = 0;
     b_obj_error.size = 0;
     b_obj_error.paddr = 0;
     b_obj_error.bank_index = -1;
     b_obj_error.dev_index = -1;
     b_obj_error.device_only_buffer = false;
-    b_obj_error.private_do_not_touch = NULL;
-    b_obj.data = NULL;
-    b_obj.ref_cnt = 0;
-    b_obj.user_ptr = NULL;
+    b_obj_error.private_do_not_touch = nullptr;
+    b_obj_error.user_ptr = nullptr;
+    b_obj.data = nullptr;
+    //b_obj.ref_cnt = 0;
+    b_obj.user_ptr = nullptr;
     b_obj.device_only_buffer = false;
-    b_obj.private_do_not_touch = NULL;
+    b_obj.private_do_not_touch = nullptr;
 
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    if (priv1 == NULL) {
+    if (priv1 == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_ddr failed. XMASession is corrupted.\n");
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
@@ -287,35 +273,12 @@ xma_plg_buffer_alloc_ddr(XmaSession s_handle, size_t size, bool device_only_buff
         return b_obj_error;
     }
 
-    /*
-    #define XRT_BO_FLAGS_MEMIDX_MASK        (0xFFFFFFUL)
-    #define XCL_BO_FLAGS_CACHEABLE          (1 << 24)
-    #define XCL_BO_FLAGS_SVM                (1 << 27)
-    #define XCL_BO_FLAGS_DEV_ONLY           (1 << 28)
-    #define XCL_BO_FLAGS_HOST_ONLY          (1 << 29)
-    #define XCL_BO_FLAGS_P2P                (1 << 30)
-    #define XCL_BO_FLAGS_EXECBUF            (1 << 31)
-    */
-    uint64_t b_obj_handle = 0;
-    if (device_only_buffer) {
-        b_obj_handle = xclAllocBO(dev_handle, size, 0, XCL_BO_FLAGS_DEV_ONLY | ddr_bank);
-        b_obj.device_only_buffer = true;
-    } else {
-        b_obj_handle = xclAllocBO(dev_handle, size, 0, ddr_bank);
-    }
-    /*BO handlk is uint64_t
-    if (b_obj_handle < 0) {
-        std::cout << "ERROR: xma_plg_buffer_alloc failed. handle=0x" << std::hex << b_obj_handle << std::endl;
-        //printf("xclAllocBO failed. handle=0x%ullx\n", b_obj_handle);
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xclAllocBO failed.\n");
+    xclBufferHandle b_obj_handle = 0;
+    if (create_bo(dev_handle, b_obj, size, ddr_bank, device_only_buffer, b_obj_handle) != XMA_SUCCESS) {
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
     }
-    */
-    b_obj.paddr = xclGetDeviceAddr(dev_handle, b_obj_handle);
-    if (!device_only_buffer) {
-        b_obj.data = (uint8_t*) xclMapBO(dev_handle, b_obj_handle, true);
-    }
+
     XmaBufferObjPrivate* tmp1 = new XmaBufferObjPrivate;
     b_obj.private_do_not_touch = (void*) tmp1;
     tmp1->dummy = (void*)(((uint64_t)tmp1) | signature);
@@ -332,14 +295,14 @@ xma_plg_buffer_alloc_ddr(XmaSession s_handle, size_t size, bool device_only_buff
 }
 
 int32_t xma_check_device_buffer(XmaBufferObj *b_obj) {
-    if (b_obj == NULL) {
+    if (b_obj == nullptr) {
         //std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_device_buffer_free failed. XMABufferObj failed allocation\n");
         return XMA_ERROR;
     }
 
     XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj->private_do_not_touch;
-    if (b_obj_priv == NULL) {
+    if (b_obj_priv == nullptr) {
         //std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_device_buffer_free failed. XMABufferObj failed allocation\n");
         return XMA_ERROR;
@@ -366,7 +329,7 @@ void
 xma_plg_buffer_free(XmaSession s_handle, XmaBufferObj b_obj)
 {
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    if (priv1 == NULL) {
+    if (priv1 == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_free failed. XMASession is corrupted.\n");
         return;
     }
@@ -381,7 +344,7 @@ xma_plg_buffer_free(XmaSession s_handle, XmaBufferObj b_obj)
     XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj.private_do_not_touch;
     //xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
     xclFreeBO(b_obj_priv->dev_handle, b_obj_priv->boHandle);
-    b_obj_priv->dummy = NULL;
+    b_obj_priv->dummy = nullptr;
     b_obj_priv->size = -1;
     b_obj_priv->bank_index = -1;
     b_obj_priv->dev_index = -1;
@@ -396,7 +359,7 @@ xma_plg_buffer_write(XmaSession s_handle,
 {
     int32_t rc;
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    if (priv1 == NULL) {
+    if (priv1 == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
@@ -438,7 +401,7 @@ xma_plg_buffer_read(XmaSession s_handle,
 {
     int32_t rc;
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    if (priv1 == NULL) {
+    if (priv1 == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
@@ -483,11 +446,11 @@ int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
     //std::cout << "Sarab: Debug - " << __func__ << "; " << __LINE__ << std::endl;
     XmaHwKernel* kernel_tmp1 = priv1->kernel_info;
     XmaHwDevice *dev_tmp1 = priv1->device;
-    if (dev_tmp1 == NULL) {
+    if (dev_tmp1 == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is NULL\n");
         return -1;
     }
-    int32_t num_execbo = dev_tmp1->num_execbo_allocated;
+    int32_t num_execbo = priv1->num_execbo_allocated;
     if (num_execbo <= 0) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private: No execbo allocated\n");
         return -1;
@@ -498,7 +461,7 @@ int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
     //NOTE: execbo lock must be already acquired
 
     for (i = 0; i < num_execbo; i++) {
-        XmaHwExecBO* execbo_tmp1 = &dev_tmp1->kernel_execbos[i];
+        XmaHwExecBO* execbo_tmp1 = &priv1->kernel_execbos[i];
         if (!execbo_tmp1->in_use) {
             found = true;
         }
@@ -526,10 +489,10 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
     cmd_obj_error.cmd_id2 = 0;
     cmd_obj_error.cmd_finished = false;
     cmd_obj_error.cu_index = -1;
-    cmd_obj_error.do_not_use1 = NULL;
+    cmd_obj_error.do_not_use1 = nullptr;
 
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    if (priv1 == NULL) {
+    if (priv1 == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_work_item failed. XMASession is corrupted.\n");
         if (return_code) *return_code = XMA_ERROR;
         return cmd_obj_error;
@@ -547,12 +510,12 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
 
     XmaHwKernel* kernel_tmp1 = priv1->kernel_info;
     XmaHwDevice *dev_tmp1 = priv1->device;
-    if (dev_tmp1 == NULL) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is NULL\n");
+    if (dev_tmp1 == nullptr) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is nullptr\n");
         if (return_code) *return_code = XMA_ERROR;
         return cmd_obj_error;
     }
-    if (regmap == NULL) {
+    if (regmap == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regmap is NULL\n");
         if (return_code) *return_code = XMA_ERROR;
         return cmd_obj_error;
@@ -584,27 +547,43 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
     }
 
     uint8_t *src = (uint8_t*)regmap;
-    int32_t bo_idx;
     
     bool expected = false;
     bool desired = true;
-    while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
+    while (!priv1->execbo_locked.compare_exchange_weak(expected, desired)) {
+        //std::this_thread::sleep_for(std::chrono::milliseconds(1));
         expected = false;
     }
     //kernel completion lock acquired
-    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "1. Num of cmds in-progress = %lu\n", priv1->CU_cmds.size());
+    //xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "1. Num of cmds in-progress = %lu\n", priv1->CU_cmds.size());
 
     // Find an available execBO buffer
-    bo_idx = xma_plg_execbo_avail_get(s_handle);
-    if (bo_idx == -1) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unable to find free execbo to use\n");
-        *(dev_tmp1->execbo_locked) = false;
-        if (return_code) *return_code = XMA_ERROR;
-        return cmd_obj_error;
+    uint32_t itr = 0;
+    int32_t bo_idx = -1;
+    while (true) {
+        bo_idx = xma_plg_execbo_avail_get(s_handle);
+        if (bo_idx != -1) {
+            break;
+        }
+        if (itr > 15) {
+            xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "Unable to find free execbo to use\n");
+            priv1->execbo_locked = false;
+            if (return_code) *return_code = XMA_ERROR;
+            return cmd_obj_error;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(3));
+        itr++;
+        if (xma_core::utils::check_all_execbo(s_handle) != XMA_SUCCESS) {
+            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "check_all-0: Unexpected error\n");
+            //Release execbo lock
+            priv1->execbo_locked = false;
+            if (return_code) *return_code = XMA_ERROR;
+            return cmd_obj_error;
+        }
     }
     // Setup ert_start_kernel_cmd 
     ert_start_kernel_cmd *cu_cmd = 
-        (ert_start_kernel_cmd*)dev_tmp1->kernel_execbos[bo_idx].data;
+        (ert_start_kernel_cmd*)priv1->kernel_execbos[bo_idx].data;
     cu_cmd->state = ERT_CMD_STATE_NEW;
     if (kernel_tmp1->soft_kernel) {
         cu_cmd->opcode = ERT_SK_START;
@@ -639,11 +618,11 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
     cu_cmd->count = (regmap_size >> 2) + 4;
     
     if (xclExecBuf(priv1->dev_handle, 
-                    dev_tmp1->kernel_execbos[bo_idx].handle) != 0)
+                    priv1->kernel_execbos[bo_idx].handle) != 0)
     {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
                     "Failed to submit kernel start with xclExecBuf\n");
-        *(dev_tmp1->execbo_locked) = false;
+        priv1->execbo_locked = false;
         if (return_code) *return_code = XMA_ERROR;
         return cmd_obj_error;
     }
@@ -673,6 +652,7 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
         }
         auto itr_tmp1 = priv1->CU_cmds.emplace(tmp_int1, XmaCUCmdObjPrivate{});
         if (itr_tmp1.second) {//It is newly inserted item;
+            priv1->num_cu_cmds++;
             found = true;
             cmd_obj.cmd_id1 = tmp_int1;
             cmd_obj.cmd_id2 = dev_tmp1->cu_cmd_id2;
@@ -680,13 +660,13 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
             itr_tmp1.first->second.cu_id = cmd_obj.cu_index;
             itr_tmp1.first->second.execbo_id = bo_idx;
 
-            dev_tmp1->kernel_execbos[bo_idx].cu_cmd_id1 = tmp_int1;
-            dev_tmp1->kernel_execbos[bo_idx].cu_cmd_id2 = cmd_obj.cmd_id2;
+            priv1->kernel_execbos[bo_idx].cu_cmd_id1 = tmp_int1;
+            priv1->kernel_execbos[bo_idx].cu_cmd_id2 = cmd_obj.cmd_id2;
         }
     }
 
-    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "2. Num of cmds in-progress = %lu\n", priv1->CU_cmds.size());
-    *(dev_tmp1->execbo_locked) = false;
+    //xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "2. Num of cmds in-progress = %lu\n", priv1->CU_cmds.size());
+    priv1->execbo_locked = false;
     if (return_code) *return_code = XMA_SUCCESS;
     return cmd_obj;
 }
@@ -702,16 +682,22 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
     cmd_obj_error.cmd_id2 = 0;
     cmd_obj_error.cmd_finished = false;
     cmd_obj_error.cu_index = -1;
-    cmd_obj_error.do_not_use1 = NULL;
+    cmd_obj_error.do_not_use1 = nullptr;
 
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    if (priv1 == NULL) {
+    if (priv1 == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_cu_cmd failed. XMASession is corrupted.\n");
         if (return_code) *return_code = XMA_ERROR;
         return cmd_obj_error;
     }
     if (s_handle.session_signature != (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved))) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_cu_cmd failed. XMASession is corrupted.\n");
+        if (return_code) *return_code = XMA_ERROR;
+        return cmd_obj_error;
+    }
+    XmaHwDevice *dev_tmp1 = priv1->device;
+    if (dev_tmp1 == nullptr) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is NULL\n");
         if (return_code) *return_code = XMA_ERROR;
         return cmd_obj_error;
     }
@@ -726,16 +712,19 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
             return cmd_obj_error;
         }
         kernel_tmp1 = &priv1->device->kernels[cu_index];
+    
+        if (!kernel_tmp1->in_use && !kernel_tmp1->soft_kernel) {
+            if (xclOpenContext(dev_tmp1->handle, dev_tmp1->uuid, kernel_tmp1->cu_index_ert, true) != 0) {
+                xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Failed to open context to CU %s for this session\n", kernel_tmp1->name);
+                if (return_code) *return_code = XMA_ERROR;
+                return cmd_obj_error;
+            }
+        }
+        xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_cu_cmd: Using admin session with CU %s\n", kernel_tmp1->name);
     }
 
-    XmaHwDevice *dev_tmp1 = priv1->device;
-    if (dev_tmp1 == NULL) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is NULL\n");
-        if (return_code) *return_code = XMA_ERROR;
-        return cmd_obj_error;
-    }
-    if (regmap == NULL) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regmap is NULL\n");
+    if (regmap == nullptr) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "regmap is nullptr\n");
         if (return_code) *return_code = XMA_ERROR;
         return cmd_obj_error;
     }
@@ -766,29 +755,46 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
     }
 
     uint8_t *src = (uint8_t*)regmap;
-    int32_t bo_idx;
     
     bool expected = false;
     bool desired = true;
-    while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
+    while (!priv1->execbo_locked.compare_exchange_weak(expected, desired)) {
+        //std::this_thread::sleep_for(std::chrono::milliseconds(1));
         expected = false;
     }
     //kernel completion lock acquired
 
     
-    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "1. Num of cmds in-progress = %lu\n", priv1->CU_cmds.size());
+    //xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "1. Num of cmds in-progress = %lu\n", priv1->CU_cmds.size());
 
     // Find an available execBO buffer
-    bo_idx = xma_plg_execbo_avail_get(s_handle);
-    if (bo_idx == -1) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unable to find free execbo to use\n");
-        *(dev_tmp1->execbo_locked) = false;
-        if (return_code) *return_code = XMA_ERROR;
-        return cmd_obj_error;
+    uint32_t itr = 0;
+    int32_t bo_idx = -1;
+    while (true) {
+        bo_idx = xma_plg_execbo_avail_get(s_handle);
+        if (bo_idx != -1) {
+            break;
+        }
+        if (itr > 15) {
+            xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "Unable to find free execbo to use\n");
+            priv1->execbo_locked = false;
+            if (return_code) *return_code = XMA_ERROR;
+            return cmd_obj_error;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(3));
+        itr++;
+        if (xma_core::utils::check_all_execbo(s_handle) != XMA_SUCCESS) {
+            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "check_all-0: Unexpected error\n");
+            //Release execbo lock
+            priv1->execbo_locked = false;
+            if (return_code) *return_code = XMA_ERROR;
+            return cmd_obj_error;
+        }
     }
+
     // Setup ert_start_kernel_cmd 
     ert_start_kernel_cmd *cu_cmd = 
-        (ert_start_kernel_cmd*)dev_tmp1->kernel_execbos[bo_idx].data;
+        (ert_start_kernel_cmd*)priv1->kernel_execbos[bo_idx].data;
     cu_cmd->state = ERT_CMD_STATE_NEW;
     if (kernel_tmp1->soft_kernel) {
         cu_cmd->opcode = ERT_SK_START;
@@ -823,11 +829,11 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
     cu_cmd->count = (regmap_size >> 2) + 4;
     
     if (xclExecBuf(priv1->dev_handle, 
-                    dev_tmp1->kernel_execbos[bo_idx].handle) != 0)
+                    priv1->kernel_execbos[bo_idx].handle) != 0)
     {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
                     "Failed to submit kernel start with xclExecBuf\n");
-        *(dev_tmp1->execbo_locked) = false;
+        priv1->execbo_locked = false;
         if (return_code) *return_code = XMA_ERROR;
         return cmd_obj_error;
     }
@@ -857,6 +863,7 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
         }
         auto itr_tmp1 = priv1->CU_cmds.emplace(tmp_int1, XmaCUCmdObjPrivate{});
         if (itr_tmp1.second) {//It is newly inserted item;
+            priv1->num_cu_cmds++;
             found = true;
             cmd_obj.cmd_id1 = tmp_int1;
             cmd_obj.cmd_id2 = dev_tmp1->cu_cmd_id2;
@@ -864,13 +871,13 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
             itr_tmp1.first->second.cu_id = cmd_obj.cu_index;
             itr_tmp1.first->second.execbo_id = bo_idx;
 
-            dev_tmp1->kernel_execbos[bo_idx].cu_cmd_id1 = tmp_int1;
-            dev_tmp1->kernel_execbos[bo_idx].cu_cmd_id2 = cmd_obj.cmd_id2;
+            priv1->kernel_execbos[bo_idx].cu_cmd_id1 = tmp_int1;
+            priv1->kernel_execbos[bo_idx].cu_cmd_id2 = cmd_obj.cmd_id2;
         }
     }
 
-    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "2. Num of cmds in-progress = %lu\n", priv1->CU_cmds.size());
-    *(dev_tmp1->execbo_locked) = false;
+    //xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "2. Num of cmds in-progress = %lu\n", priv1->CU_cmds.size());
+    priv1->execbo_locked = false;
     if (return_code) *return_code = XMA_SUCCESS;
     return cmd_obj;
 }
@@ -878,7 +885,7 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
 int32_t xma_plg_cu_cmd_status(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, int32_t num_cu_objs, bool wait_for_cu_cmds)
 {
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    if (priv1 == NULL) {
+    if (priv1 == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_cu_cmd_status failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
@@ -889,11 +896,11 @@ int32_t xma_plg_cu_cmd_status(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, i
 
     XmaHwKernel* kernel_tmp1 = priv1->kernel_info;
     XmaHwDevice *dev_tmp1 = priv1->device;
-    if (dev_tmp1 == NULL) {
+    if (dev_tmp1 == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is NULL-1\n");
         return XMA_ERROR;
     }
-    if (s_handle.session_type != XMA_ADMIN && kernel_tmp1 == NULL) {
+    if (s_handle.session_type != XMA_ADMIN && kernel_tmp1 == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is NULL-2\n");
         return XMA_ERROR;
     }
@@ -903,12 +910,12 @@ int32_t xma_plg_cu_cmd_status(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, i
     }
     priv1->using_cu_cmd_status = true;
 
-    int32_t num_execbo = dev_tmp1->num_execbo_allocated;
+    int32_t num_execbo = priv1->num_execbo_allocated;
     if (num_execbo <= 0) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private: No execbo allocated\n");
         return XMA_ERROR;
     }
-    if (cmd_obj_array == NULL) {
+    if (cmd_obj_array == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is NULL\n");
         return XMA_ERROR;
     }
@@ -922,61 +929,72 @@ int32_t xma_plg_cu_cmd_status(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, i
     bool all_done = true;
     std::vector<XmaCUCmdObj> cmd_vector(cmd_obj_array, cmd_obj_array+num_cu_objs);
     do {
-        while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
-            expected = false;
-        }
-        //kernel completion lock acquired
+        expected = false;
+        if (priv1->execbo_locked.compare_exchange_weak(expected, desired)) {
+            //kernel completion lock acquired
 
-        all_done = true;
-        for (auto& cmd: cmd_vector) {
-            if (s_handle.session_type < XMA_ADMIN && cmd.cu_index != kernel_tmp1->cu_index) {
-                xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-1\n");
-                //Release completion lock
-                *(dev_tmp1->execbo_locked) = false;
+            if (xma_core::utils::check_all_execbo(s_handle) != XMA_SUCCESS) {
+                xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "check_all-1: Unexpected error\n");
+                //Release execbo lock
+                priv1->execbo_locked = false;
                 return XMA_ERROR;
             }
-            if (cmd.cmd_id1 == 0 || cmd.cu_index == -1) {
-                xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj is invalid. Schedule_command may have  failed\n");
-                //Release completion lock
-                *(dev_tmp1->execbo_locked) = false;
-                return XMA_ERROR;
-            }
-            auto itr_tmp1 = priv1->CU_cmds.find(cmd.cmd_id1);
-            if (itr_tmp1 == priv1->CU_cmds.end()) {
-                cmd.cmd_finished = true;
-            } else {
-                all_done = false;
-
-                if (itr_tmp1->second.cmd_id2 != cmd.cmd_id2) {
-                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-2\n");
+            all_done = true;
+            for (auto& cmd: cmd_vector) {
+                if (s_handle.session_type < XMA_ADMIN && cmd.cu_index != kernel_tmp1->cu_index) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-1\n");
                     //Release completion lock
-                    *(dev_tmp1->execbo_locked) = false;
+                    priv1->execbo_locked = false;
                     return XMA_ERROR;
                 }
-                if (itr_tmp1->second.cu_id != cmd.cu_index) {
-                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-3\n");
+                if (cmd.cmd_id1 == 0 || cmd.cu_index == -1) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj is invalid. Schedule_command may have  failed\n");
                     //Release completion lock
-                    *(dev_tmp1->execbo_locked) = false;
+                    priv1->execbo_locked = false;
+                    return XMA_ERROR;
+                }
+                auto itr_tmp1 = priv1->CU_cmds.find(cmd.cmd_id1);
+                if (itr_tmp1 == priv1->CU_cmds.end()) {
+                    cmd.cmd_finished = true;
+                } else {
+                    all_done = false;
+
+                    if (itr_tmp1->second.cmd_id2 != cmd.cmd_id2) {
+                        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-2\n");
+                        //Release completion lock
+                        priv1->execbo_locked = false;
+                        return XMA_ERROR;
+                    }
+                    if (itr_tmp1->second.cu_id != cmd.cu_index) {
+                        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-3\n");
+                        //Release completion lock
+                        priv1->execbo_locked = false;
+                        return XMA_ERROR;
+                    }
+                }
+
+                if (cmd.do_not_use1 != s_handle.session_signature) {
+                    xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-5\n");
+                    //Release completion lock
+                    priv1->execbo_locked = false;
                     return XMA_ERROR;
                 }
             }
 
-            if (cmd.do_not_use1 != s_handle.session_signature) {
-                xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "cmd_obj_array is corrupted-5\n");
-                //Release completion lock
-                *(dev_tmp1->execbo_locked) = false;
-                return XMA_ERROR;
-            }
+            //Release completion lock
+            priv1->execbo_locked = false;
+        } else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(3));
         }
-
-        //Release completion lock
-        *(dev_tmp1->execbo_locked) = false;
-
         if (!wait_for_cu_cmds) {
             //Don't wait for all cu_cmds to finsh
             all_done = true;
         } else if (!all_done) {
-            xclExecWait(priv1->dev_handle, 10000);
+            expected = false;
+            if (priv1->execwait_locked.compare_exchange_weak(expected, desired)) {
+                xclExecWait(priv1->dev_handle, 10);
+                priv1->execwait_locked = false;
+            }
         }
     } while(!all_done);
 
@@ -987,10 +1005,10 @@ int32_t xma_plg_cu_cmd_status(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, i
     return XMA_SUCCESS;
 }
 
-int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
+int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
 {
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    if (priv1 == NULL) {
+    if (priv1 == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_is_work_item_done failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
@@ -1009,11 +1027,11 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
     priv1->using_work_item_done = true;
 
     XmaHwDevice *dev_tmp1 = priv1->device;
-    if (dev_tmp1 == NULL) {
+    if (dev_tmp1 == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private pointer is NULL\n");
         return XMA_ERROR;
     }
-    int32_t num_execbo = dev_tmp1->num_execbo_allocated;
+    int32_t num_execbo = priv1->num_execbo_allocated;
     if (num_execbo <= 0) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session XMA private: No execbo allocated\n");
         return XMA_ERROR;
@@ -1023,12 +1041,23 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
     int32_t give_up = 0;
     bool expected = false;
     bool desired = true;
-    while (count == 0)
-    {
-        while (!(*(dev_tmp1->execbo_locked)).compare_exchange_weak(expected, desired)) {
-            expected = false;
+
+    count = priv1->kernel_complete_count;
+    if (count) {
+        priv1->kernel_complete_count--;
+        if (count > 255) {
+            xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "CU completion count is more than 256. Application maybe slow to process CU output\n");
         }
-        //kernel completion lock acquired
+        return XMA_SUCCESS;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(3));
+
+    uint32_t timeout1 = timeout_ms / 10;
+    if (timeout1 < 10) {
+        timeout1 = 10;
+    }
+    while (give_up < 20)
+    {
 
         count = priv1->kernel_complete_count;
 
@@ -1037,19 +1066,46 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
             if (count > 255) {
                 xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "CU completion count is more than 256. Application maybe slow to process CU output\n");
             }
-            //Release completion lock
-            *(dev_tmp1->execbo_locked) = false;
             return XMA_SUCCESS;
-        } else {
-            //Release completion lock
-            *(dev_tmp1->execbo_locked) = false;
         }
 
+        expected = false;
+        if (priv1->execbo_locked.compare_exchange_weak(expected, desired)) {
+            //kernel completion lock acquired
+
+            if (xma_core::utils::check_all_execbo(s_handle) != XMA_SUCCESS) {
+                xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "check_all-2: Unexpected error\n");
+                //Release execbo lock
+                priv1->execbo_locked = false;
+                return XMA_ERROR;
+            }
+            //Release execbo lock
+            priv1->execbo_locked = false;
+
+            count = priv1->kernel_complete_count;
+
+            if (count) {
+                priv1->kernel_complete_count--;
+                if (count > 255) {
+                    xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "CU completion count is more than 256. Application maybe slow to process CU output\n");
+                }
+                return XMA_SUCCESS;
+            }
+        }
+    
         // Wait for a notification
+        if (give_up > 10) {
+            expected = false;
+            if (priv1->execwait_locked.compare_exchange_weak(expected, desired)) {
+                xclExecWait(priv1->dev_handle, timeout1);
+                priv1->execwait_locked = false;
+            } else {
+                std::this_thread::sleep_for(std::chrono::milliseconds(3));
+            }
+        } else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(3));
+        }
         give_up++;
-        xclExecWait(priv1->dev_handle, timeout_ms);
-        if (give_up >= 3)
-            break;
     }
 
     return XMA_ERROR;
@@ -1057,7 +1113,7 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, int32_t timeout_ms)
 
 int32_t xma_plg_channel_id(XmaSession s_handle) {
     XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    if (priv1 == NULL) {
+    if (priv1 == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_channel_id failed. XMASession is corrupted.\n");
         return XMA_ERROR;
     }
@@ -1073,12 +1129,12 @@ int32_t xma_plg_channel_id(XmaSession s_handle) {
 }
 
 int32_t xma_plg_add_buffer_to_data_buffer(XmaDataBuffer *data, XmaBufferObj *dev_buf) {
-    if (data == NULL) {
+    if (data == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
                 "%s(): data XmaDataBuffer is NULL\n", __func__);
         return XMA_ERROR;
     }
-    if (dev_buf == NULL) {
+    if (dev_buf == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
                 "%s(): dev_buf XmaBufferObj is NULL\n", __func__);
         return XMA_ERROR;
@@ -1105,12 +1161,12 @@ int32_t xma_plg_add_buffer_to_data_buffer(XmaDataBuffer *data, XmaBufferObj *dev
 }
 
 int32_t xma_plg_add_buffer_to_frame(XmaFrame *frame, XmaBufferObj **dev_buf_list, uint32_t num_dev_buf) {
-    if (frame == NULL) {
+    if (frame == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
                 "%s(): frame XmaFrame is NULL\n", __func__);
         return XMA_ERROR;
     }
-    if (dev_buf_list == NULL) {
+    if (dev_buf_list == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
                 "%s(): dev_buf_list XmaBufferObj is NULL\n", __func__);
         return XMA_ERROR;
@@ -1151,5 +1207,17 @@ int32_t xma_plg_add_buffer_to_frame(XmaFrame *frame, XmaBufferObj **dev_buf_list
     }
 
     return XMA_SUCCESS;
+}
+
+int32_t xma_plg_add_ref_cnt(XmaBufferObj *b_obj, int32_t num) {
+    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD,
+               "%s(), line# %d\n", __func__, __LINE__);
+
+    if (xma_check_device_buffer(b_obj) != XMA_SUCCESS) {
+        return -999;
+    }
+    XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj->private_do_not_touch;
+    b_obj_priv->ref_cnt += num;
+    return b_obj_priv->ref_cnt;
 }
 

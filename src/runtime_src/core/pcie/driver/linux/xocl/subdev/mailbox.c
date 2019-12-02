@@ -400,6 +400,7 @@ struct mailbox {
 	uint32_t		mbx_proto_ver;
 
 	bool			mbx_peer_dead;
+	uint64_t		mbx_opened;
 };
 
 static inline const char *reg2name(struct mailbox *mbx, u32 *reg)
@@ -429,7 +430,7 @@ int mailbox_post_notify(struct platform_device *, void *, size_t);
 int mailbox_get(struct platform_device *pdev, enum mb_kind kind, u64 *data);
 
 static int mailbox_enable_intr_mode(struct mailbox *mbx);
-static void mailbox_disable_intr_mode(struct mailbox *mbx);
+static void mailbox_disable_intr_mode(struct mailbox *mbx, bool timer_on);
 
 static inline u32 mailbox_reg_rd(struct mailbox *mbx, u32 *reg)
 {
@@ -529,6 +530,7 @@ static void chan_config_timer(struct mailbox_channel *ch)
 	struct list_head *pos, *n;
 	struct mailbox_msg *msg = NULL;
 	bool on = false;
+	struct mailbox *mbx = ch->mbc_parent;
 
 	mutex_lock(&ch->mbc_mutex);
 
@@ -552,6 +554,7 @@ static void chan_config_timer(struct mailbox_channel *ch)
 			del_timer_sync(&ch->mbc_timer);
 	}
 
+	MBX_DBG(mbx, "%s timer is %s", ch_name(ch), on ? "on" : "off");
 	mutex_unlock(&ch->mbc_mutex);
 }
 
@@ -1277,15 +1280,17 @@ static bool is_tx_chan_ready(struct mailbox_channel *ch)
 static void chan_do_tx(struct mailbox_channel *ch)
 {
 	struct mailbox *mbx = ch->mbc_parent;
+	bool chan_ready = is_tx_chan_ready(ch);
 
-	if (is_tx_chan_ready(ch)) {
-		/* Finished sending a whole msg, call it done. */
-		if (ch->mbc_cur_msg &&
-			(ch->mbc_cur_msg->mbm_len == ch->mbc_bytes_done))
-			chan_msg_done(ch, 0);
+	/* Finished sending a whole msg, call it done. */
+	if (chan_ready && ch->mbc_cur_msg &&
+		(ch->mbc_cur_msg->mbm_len == ch->mbc_bytes_done))
+		chan_msg_done(ch, 0);
 
-		dequeue_tx_msg(ch);
+	dequeue_tx_msg(ch);
 
+	/* Send the next pkg out. */
+	if (chan_ready) {
 		if (ch->mbc_cur_msg) {
 			/* Sending msg. */
 			if (ch->mbc_cur_msg->mbm_chan_sw || MB_SW_ONLY(mbx))
@@ -1362,8 +1367,8 @@ static ssize_t mailbox_ctl_store(struct device *dev,
 		return count;
 
 	if (sscanf(buf, "%d:%d", &off, &val) != 2 || (off % sizeof(u32)) ||
-		!(off >= 0 && off < nreg * sizeof(u32))) {
-		MBX_ERR(mbx, "input should be <reg_offset:reg_val>");
+		off >= nreg * sizeof(u32)) {
+		MBX_ERR(mbx, "input should be < reg_offset:reg_val>");
 		return -EINVAL;
 	}
 	reg += off / sizeof(u32);
@@ -1491,7 +1496,7 @@ static ssize_t intr_mode_store(struct device *dev,
 	if (enable)
 		mailbox_enable_intr_mode(mbx);
 	else
-		mailbox_disable_intr_mode(mbx);
+		mailbox_disable_intr_mode(mbx, true);
 
 	return count;
 }
@@ -1827,19 +1832,22 @@ static int mailbox_enable_intr_mode(struct mailbox *mbx)
 	return 0;
 }
 
-static void mailbox_disable_intr_mode(struct mailbox *mbx)
+static void mailbox_disable_intr_mode(struct mailbox *mbx, bool timer_on)
 {
 	struct platform_device *pdev = mbx->mbx_pdev;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	if (MB_SW_ONLY(mbx))
 		return;
+
 	/*
 	 * No need to turn on polling mode for TX, which has
 	 * a channel stall checking timer always on when there is
 	 * outstanding TX packet.
 	 */
-	set_bit(MBXCS_BIT_POLL_MODE, &mbx->mbx_rx.mbc_state);
+	if (timer_on)
+		set_bit(MBXCS_BIT_POLL_MODE, &mbx->mbx_rx.mbc_state);
+
 	chan_config_timer(&mbx->mbx_rx);
 
 	/* Disable both TX / RX intrs. */
@@ -1865,6 +1873,9 @@ int mailbox_get(struct platform_device *pdev, enum mb_kind kind, u64 *data)
 
 	mutex_lock(&mbx->mbx_lock);
 	switch (kind) {
+	case DAEMON_STATE:
+		*data = mbx->mbx_opened;
+		break;
 	case CHAN_STATE:
 		*data = mbx->mbx_ch_state;
 		break;
@@ -1934,7 +1945,14 @@ static int mailbox_offline(struct platform_device *pdev)
 	struct mailbox *mbx;
 
 	mbx = platform_get_drvdata(pdev);
-	mailbox_disable_intr_mode(mbx);
+#if defined(__PPC64__)
+	/* Offline is called during reset. We can't poll mailbox registers
+	 * during reset on PPC.
+	 */
+	mailbox_disable_intr_mode(mbx, false);
+#else
+	mailbox_disable_intr_mode(mbx, true);
+#endif
 	return 0;
 }
 
@@ -1967,6 +1985,8 @@ static int mailbox_open(struct inode *inode, struct file *file)
 	if (!mbx)
 		return -ENXIO;
 
+	/* Assume msd/mpd is the only user of the software mailbox */
+	mbx->mbx_opened = 1;
 	/* create a reference to our char device in the opened file */
 	file->private_data = mbx;
 	return 0;
@@ -1979,6 +1999,7 @@ static int mailbox_close(struct inode *inode, struct file *file)
 {
 	struct mailbox *mbx = file->private_data;
 
+	mbx->mbx_opened = 0;
 	xocl_drvinst_close(mbx);
 	return 0;
 }
@@ -2180,7 +2201,7 @@ static int mailbox_remove(struct platform_device *pdev)
 	sysfs_remove_group(&pdev->dev.kobj, &mailbox_attrgroup);
 
 	/* Stop interrupt. */
-	mailbox_disable_intr_mode(mbx);
+	mailbox_disable_intr_mode(mbx, false);
 	/* Tear down all threads. */
 	chan_fini(&mbx->mbx_tx);
 	chan_fini(&mbx->mbx_rx);
@@ -2210,13 +2231,13 @@ static int mailbox_probe(struct platform_device *pdev)
 	mbx->mbx_pdev = pdev;
 	mbx->mbx_irq = (u32)-1;
 
-
 	init_completion(&mbx->mbx_comp);
 	mutex_init(&mbx->mbx_lock);
 	INIT_LIST_HEAD(&mbx->mbx_req_list);
 	mbx->mbx_req_cnt = 0;
 	mbx->mbx_req_sz = 0;
 	mbx->mbx_peer_dead = false;
+	mbx->mbx_opened = 0;
 	mbx->mbx_prot_ver = XCL_MB_PROTOCOL_VER;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -2257,13 +2278,13 @@ static int mailbox_probe(struct platform_device *pdev)
 	/* Enable interrupt. */
 	if (mailbox_no_intr) {
 		MBX_INFO(mbx, "Enabled timer-driven mode");
-		mailbox_disable_intr_mode(mbx);
+		mailbox_disable_intr_mode(mbx, true);
 	} else {
 		ret = mailbox_enable_intr_mode(mbx);
 		if (ret != 0) {
 			MBX_INFO(mbx, "failed to enable intr mode");
 			/* Ignore error, fall back to timer driven mode */
-			mailbox_disable_intr_mode(mbx);
+			mailbox_disable_intr_mode(mbx, true);
 		}
 	}
 

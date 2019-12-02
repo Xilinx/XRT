@@ -20,14 +20,18 @@
 #include "xocl/core/object.h"
 #include "xocl/core/refcount.h"
 #include "xocl/core/property.h"
-
 #include "xocl/xclbin/xclbin.h"
-
 #include "xrt/device/device.h"
 
 #include "core/common/memalign.h"
+#include "core/common/unistd.h"
 
 #include <map>
+
+#ifdef _WIN32
+#pragma warning( push )
+#pragma warning ( disable : 4245 )
+#endif
 
 namespace xocl {
 
@@ -136,6 +140,12 @@ public:
   is_device_memory_only_p2p() const
   {
     return m_ext_flags & XCL_MEM_EXT_P2P_BUFFER;
+  }
+
+  bool
+  is_host_only() const
+  {
+    return m_ext_flags & XCL_MEM_EXT_HOST_ONLY;
   }
 
   bool
@@ -454,14 +464,18 @@ public:
    *
    * Callbacks are called in arbitrary order
    */
-  static void register_constructor_callbacks(memory_callback_type&& aCallback);
+  XRT_XOCL_EXPORT
+  static void
+  register_constructor_callbacks(memory_callback_type&& aCallback);
 
   /**
    * Register callback function for memory destruction
    *
    * Callbacks are called in arbitrary order
    */
-  static void register_destructor_callbacks(memory_callback_type&& aCallback);
+  XRT_XOCL_EXPORT
+  static void
+  register_destructor_callbacks(memory_callback_type&& aCallback);
 
 private:
   memidx_type
@@ -507,7 +521,7 @@ public:
     : memory(ctx,flags) ,m_size(sz), m_host_ptr(host_ptr)
   {
     // device is unknown so alignment requirement has to be hardwired
-    const size_t alignment = getpagesize();
+    const size_t alignment = xrt_core::getpagesize();
 
     if (flags & (CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR))
       // allocate sufficiently aligned memory and reassign m_host_ptr
@@ -728,7 +742,6 @@ public:
     m_slice_pitch = pitch;
   }
 
-
   virtual buffer_object_handle
   get_buffer_object(device* device);
 
@@ -861,5 +874,9 @@ get_ocl_flags(cl_mem_flags flags)
 }
 
 } // xocl
+
+#ifdef _WIN32
+#pragma warning( pop )
+#endif
 
 #endif

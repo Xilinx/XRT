@@ -240,6 +240,52 @@ u32 get_live_clients(struct xocl_dev *xdev, pid_t **plist)
 	return c;
 }
 
+static bool xclbin_downloaded(struct xocl_dev *xdev, xuid_t *xclbin_id)
+{
+	bool ret = false;
+	int err = 0;
+	xuid_t *downloaded_xclbin =  NULL;
+
+	err = XOCL_GET_XCLBIN_ID(xdev, downloaded_xclbin);
+	if (err)
+		return ret;
+
+	if (downloaded_xclbin && uuid_equal(downloaded_xclbin, xclbin_id)) {
+		ret = true;
+		userpf_info(xdev, "xclbin is already downloaded\n");
+	}
+	XOCL_PUT_XCLBIN_ID(xdev);
+
+	return ret;
+}
+
+static int xocl_preserve_mem(struct xocl_dev *xdev, struct mem_topology *new_topology, size_t size)
+{
+	int ret = 0;
+	struct mem_topology *topology = NULL;
+
+	ret = XOCL_GET_MEM_TOPOLOGY(xdev, topology);
+	if (ret)
+		return ret;
+
+	/*
+	 * Compare MEM_TOPOLOGY previous vs new.
+	 * Ignore this and keep disable preserve_mem if not for aws.
+	 */
+	if (xocl_is_aws(xdev) && (topology != NULL)) {
+		if ((size == sizeof_sect(topology, m_mem_data)) &&
+		    !memcmp(new_topology, topology, size)) {
+			userpf_info(xdev, "preserving mem_topology.");
+			ret = 1;
+		} else {
+			userpf_info(xdev, "not preserving mem_topology.");
+		}
+	}
+	XOCL_PUT_MEM_TOPOLOGY(xdev);
+
+	return ret;
+}
+
 static int
 xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 {
@@ -248,14 +294,13 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	struct axlf bin_obj;
 	size_t size = 0;
 	int preserve_mem = 0;
-	struct mem_topology *new_topology = NULL, *topology;
+	struct mem_topology *new_topology = NULL;
 	struct xocl_dev *xdev = drm_p->xdev;
-	xuid_t *xclbin_id;
 	const struct axlf_section_header * dtbHeader = NULL;
 	void *ulp_blob;
 	int rc;
 
-	if (!XOCL_DSA_IS_VERSAL(xdev) && !xocl_is_unified(xdev)) {
+	if (!xocl_is_unified(xdev)) {
 		userpf_err(xdev, "XOCL: not unified Shell\n");
 		return -EINVAL;
 	}
@@ -271,11 +316,8 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		return -EINVAL;
 	}
 
-	xclbin_id = XOCL_XCLBIN_ID(xdev);
-	if (xclbin_id && uuid_equal(xclbin_id, &bin_obj.m_header.uuid)) {
-		userpf_info(xdev, "xclbin is already downloaded\n");
+	if (xclbin_downloaded(xdev, &bin_obj.m_header.uuid))
 		goto done;
-	}
 
 	/*
 	 * Support for multiple processes
@@ -368,27 +410,18 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		goto done;
 	}
 
-	topology = XOCL_MEM_TOPOLOGY(xdev);
-
-	/*
-	 * Compare MEM_TOPOLOGY previous vs new.
-	 * Ignore this and keep disable preserve_mem if not for aws.
-	 */
-	if (xocl_is_aws(xdev) && (topology != NULL)) {
-		if ((size == sizeof_sect(topology, m_mem_data)) &&
-		    !memcmp(new_topology, topology, size)) {
-			userpf_info(xdev, "preserving mem_topology.");
-			preserve_mem = 1;
-		} else {
-			userpf_info(xdev, "not preserving mem_topology.");
-		}
-	}
+	preserve_mem = xocl_preserve_mem(xdev, new_topology, size);
 
 	/* Switching the xclbin, make sure none of the buffers are used. */
-	if (!preserve_mem && !XOCL_DSA_IS_VERSAL(xdev)) {
+	if (!preserve_mem) {
 		err = xocl_cleanup_mem(drm_p);
 		if (err)
 			goto done;
+
+		if (XOCL_DSA_IS_VERSAL(xdev)) {
+			vfree(xdev->mem_topo);
+			xdev->mem_topo = NULL;
+		}
 	}
 
 	if (!XOCL_DSA_IS_VERSAL(xdev)) {
@@ -406,21 +439,22 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		}
 		/* work around vivado issue. Resize p2p bar after xclbin download */
 		if (xdev->core.priv.p2p_bar_sz > 0 && xdev->p2p_bar_idx >= 0 &&
-		    xdev->p2p_bar_len > (1<<XOCL_PA_SECTION_SHIFT) &&
+		    xdev->p2p_bar_len > (1 << XOCL_P2P_CHUNK_SHIFT) &&
 		    xocl_get_p2p_bar(xdev, NULL) >= 0) {
 			(void) xocl_pci_rbar_refresh(xdev->core.pdev,
 					xdev->p2p_bar_idx);
 		}
+	} else if (!preserve_mem) {
+		xdev->mem_topo = vmalloc(size);
+		if (!xdev->mem_topo) {
+			err = -ENOMEM;
+			goto done;
+		}
+		memcpy(xdev->mem_topo, new_topology, size);
 	}
 
-	if (XOCL_DSA_IS_VERSAL(xdev)) {
-		if (drm_p->mm == NULL) {
-			rc = xocl_init_mem(drm_p, new_topology);
-			if (err == 0)
-				err = rc;
-		}
-	} else if (!preserve_mem) {
-		rc = xocl_init_mem(drm_p, NULL);
+	if (!preserve_mem) {
+		rc = xocl_init_mem(drm_p);
 		if (err == 0)
 			err = rc;
 	}
@@ -431,7 +465,8 @@ done:
 	if (err)
 		userpf_err(xdev, "Failed to download xclbin, err: %ld\n", err);
 	else
-		userpf_info(xdev, "Loaded xclbin %pUb", xclbin_id);
+		userpf_info(xdev, "Loaded xclbin %pUb", &bin_obj.m_header.uuid);
+
 	vfree(axlf);
 	return err;
 }

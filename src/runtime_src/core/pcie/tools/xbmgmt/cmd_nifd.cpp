@@ -153,6 +153,7 @@ int nifdHandler(int argc, char* argv[])
     { "status",   no_argument,       nullptr, '0' },
     { "readback", required_argument, nullptr, '1' },
     { "card",     required_argument, nullptr, '2' },
+    { nullptr, 0, nullptr, 0 },
   };
 
   while (true)

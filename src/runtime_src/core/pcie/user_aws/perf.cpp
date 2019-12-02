@@ -39,7 +39,7 @@
 #include <ctime>
 #include <cstring>
 
-#ifdef _WINDOWS
+#ifdef _WIN32
 #define __func__ __FUNCTION__
 #endif
 

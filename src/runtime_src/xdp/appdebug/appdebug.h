@@ -28,7 +28,6 @@
 #include "xocl/core/command_queue.h"
 #include <utility>
 #include <string>
-#include <algorithm>
 
 namespace appdebug {
 class app_debug_view_base {

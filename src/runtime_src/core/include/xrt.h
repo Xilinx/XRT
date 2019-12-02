@@ -37,6 +37,17 @@
 #define XCL_DRIVER_DLLESPEC __attribute__((visibility("default")))
 #endif
 
+#if defined (_WIN32)
+#define NOMINMAX
+#include <windows.h>
+#include "windows/types.h"
+#endif
+
+#ifdef __GNUC__
+# define XRT_DEPRECATED __attribute__ ((deprecated))
+#else
+# define XRT_DEPRECATED
+#endif
 
 #include "xclbin.h"
 #include "xclperf.h"
@@ -63,6 +74,23 @@ extern "C" {
  * device handle to refer to the opened device in all future interaction with XRT.
  */
 typedef void * xclDeviceHandle;
+#define XRT_NULL_HANDLE NULL
+
+/*
+ * typedef xclBufferHandle - opaque buffer handle
+ *
+ * A buffer handle of xclBufferHandle kind is obtained by allocating
+ * buffer objects. The buffer handle is used by XRT APIs that operate
+ * on on buffer objects.
+ */
+#ifdef _WIN32
+typedef void * xclBufferHandle;
+# define NULLBO	INVALID_HANDLE_VALUE
+#else
+typedef unsigned int xclBufferHandle;
+# define NULLBO	0xffffffff
+#endif
+#define XRT_NULL_BO NULLBO
 
 struct axlf;
 
@@ -71,7 +99,7 @@ struct axlf;
  */
 
 struct xclDeviceInfo2 {
-  unsigned mMagic; // = 0X586C0C6C; XL OpenCL X->58(ASCII), L->6C(ASCII), O->0 C->C L->6C(ASCII);
+  unsigned int mMagic; // = 0X586C0C6C; XL OpenCL X->58(ASCII), L->6C(ASCII), O->0 C->C L->6C(ASCII);
   char mName[256];
   unsigned short mHALMajorVersion;
   unsigned short mHALMinorVersion;
@@ -120,7 +148,7 @@ struct xclDeviceInfo2 {
   unsigned short mMgtVtt;
   unsigned short m1v2Bottom;
   unsigned long long mDriverVersion;
-  unsigned mPciSlot;
+  unsigned int mPciSlot;
   bool mIsXPR;
   unsigned long long mTimeStamp;
   char mFpga[256];
@@ -196,16 +224,17 @@ enum xclResetKind {
     XCL_USER_RESET
 };
 
+#define XCL_DEVICE_USAGE_COUNT 8
 struct xclDeviceUsage {
-    size_t h2c[8];
-    size_t c2h[8];
-    size_t ddrMemUsed[8];
-    unsigned ddrBOAllocated[8];
-    unsigned totalContexts;
+    size_t h2c[XCL_DEVICE_USAGE_COUNT];
+    size_t c2h[XCL_DEVICE_USAGE_COUNT];
+    size_t ddrMemUsed[XCL_DEVICE_USAGE_COUNT];
+    unsigned int ddrBOAllocated[XCL_DEVICE_USAGE_COUNT];
+    unsigned int totalContexts;
     uint64_t xclbinId[4];
-    unsigned dma_channel_cnt;
-    unsigned mm_channel_cnt;
-    uint64_t memSize[8];
+    unsigned int dma_channel_cnt;
+    unsigned int mm_channel_cnt;
+    uint64_t memSize[XCL_DEVICE_USAGE_COUNT];
 };
 
 struct xclBOProperties {
@@ -215,8 +244,6 @@ struct xclBOProperties {
     uint64_t paddr;
     int reserved; // not implemented
 };
-
-#define	NULLBO	0xffffffff
 
 /**
  * DOC: XRT Device Management APIs
@@ -228,7 +255,7 @@ struct xclBOProperties {
  *
  * Return: count of devices found
  */
-XCL_DRIVER_DLLESPEC unsigned xclProbe();
+XCL_DRIVER_DLLESPEC unsigned int xclProbe();
 
 /**
  * xclOpen() - Open a device and obtain its handle.
@@ -239,7 +266,7 @@ XCL_DRIVER_DLLESPEC unsigned xclProbe();
  *
  * Return:         Device handle
  */
-XCL_DRIVER_DLLESPEC xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logFileName,
+XCL_DRIVER_DLLESPEC xclDeviceHandle xclOpen(unsigned int deviceIndex, const char *logFileName,
                                             enum xclVerbosityLevel level);
 
 /**
@@ -366,7 +393,7 @@ XCL_DRIVER_DLLESPEC int xclUnlockDevice(xclDeviceHandle handle);
  * only if another client has not already setup up a context on that compute unit. Shared
  * contexts can be concurrently allocated by many processes on the same compute units.
  */
-XCL_DRIVER_DLLESPEC int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex,
+XCL_DRIVER_DLLESPEC int xclOpenContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex,
                                        bool shared);
 
 /**
@@ -379,7 +406,7 @@ XCL_DRIVER_DLLESPEC int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, 
  *
  * Close a previously allocated shared/exclusive context for a compute unit.
  */
-XCL_DRIVER_DLLESPEC int xclCloseContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned ipIndex);
+XCL_DRIVER_DLLESPEC int xclCloseContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex);
 
 /*
  * Update the device BPI PROM with new image
@@ -450,8 +477,8 @@ XCL_DRIVER_DLLESPEC int xclLogMsg(xclDeviceHandle handle, enum xrtLogMsgLevel le
  * @flags:         Specify bank information, etc
  * Return:         BO handle
  */
-XCL_DRIVER_DLLESPEC unsigned int xclAllocBO(xclDeviceHandle handle, size_t size,
-       	int unused, unsigned flags);
+XCL_DRIVER_DLLESPEC xclBufferHandle xclAllocBO(xclDeviceHandle handle, size_t size,
+       	int unused, unsigned int flags);
 
 /**
  * xclAllocUserPtrBO() - Allocate a BO using userptr provided by the user
@@ -462,8 +489,8 @@ XCL_DRIVER_DLLESPEC unsigned int xclAllocBO(xclDeviceHandle handle, size_t size,
  * @flags:         Specify bank information, etc
  * Return:         BO handle
  */
-XCL_DRIVER_DLLESPEC unsigned int xclAllocUserPtrBO(xclDeviceHandle handle,
-	void *userptr, size_t size, unsigned flags);
+XCL_DRIVER_DLLESPEC xclBufferHandle xclAllocUserPtrBO(xclDeviceHandle handle,
+	void *userptr, size_t size, unsigned int flags);
 
 /**
  * xclFreeBO() - Free a previously allocated BO
@@ -471,7 +498,7 @@ XCL_DRIVER_DLLESPEC unsigned int xclAllocUserPtrBO(xclDeviceHandle handle,
  * @handle:        Device handle
  * @boHandle:      BO handle
  */
-XCL_DRIVER_DLLESPEC void xclFreeBO(xclDeviceHandle handle, unsigned int boHandle);
+XCL_DRIVER_DLLESPEC void xclFreeBO(xclDeviceHandle handle, xclBufferHandle boHandle);
 
 /**
  * xclWriteBO() - Copy-in user data to host backing storage of BO
@@ -486,7 +513,7 @@ XCL_DRIVER_DLLESPEC void xclFreeBO(xclDeviceHandle handle, unsigned int boHandle
  * Copy host buffer contents to previously allocated device memory. ``seek`` specifies how many bytes
  * to skip at the beginning of the BO before copying-in ``size`` bytes of host buffer.
  */
-XCL_DRIVER_DLLESPEC size_t xclWriteBO(xclDeviceHandle handle, unsigned int boHandle,
+XCL_DRIVER_DLLESPEC size_t xclWriteBO(xclDeviceHandle handle, xclBufferHandle boHandle,
                                        const void *src, size_t size, size_t seek);
 
 /**
@@ -502,7 +529,7 @@ XCL_DRIVER_DLLESPEC size_t xclWriteBO(xclDeviceHandle handle, unsigned int boHan
  * Copy contents of previously allocated device memory to host buffer. ``skip`` specifies how many bytes
  * to skip from the beginning of the BO before copying-out ``size`` bytes of device buffer.
  */
-XCL_DRIVER_DLLESPEC size_t xclReadBO(xclDeviceHandle handle, unsigned int boHandle,
+XCL_DRIVER_DLLESPEC size_t xclReadBO(xclDeviceHandle handle, xclBufferHandle boHandle,
                                      void *dst, size_t size, size_t skip);
 
 /**
@@ -514,9 +541,18 @@ XCL_DRIVER_DLLESPEC size_t xclReadBO(xclDeviceHandle handle, unsigned int boHand
  * Return:         Memory mapped buffer
  *
  * Map the contents of the buffer object into host memory
- * To unmap the buffer call POSIX unmap() on mapped void * pointer returned from xclMapBO
+ * To unmap the buffer call xclUnmapBO().
  */
-XCL_DRIVER_DLLESPEC void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write);
+XCL_DRIVER_DLLESPEC void *xclMapBO(xclDeviceHandle handle, xclBufferHandle boHandle, bool write);
+
+/**
+ * xclUnmapBO() - Unmap a BO that was previously mapped with xclMapBO
+ *
+ * @handle:        Device handle
+ * @boHandle:      BO handle
+ * @addr:          The mapped void * pointer returned from xclMapBO()
+ */
+XCL_DRIVER_DLLESPEC int xclUnmapBO(xclDeviceHandle handle, xclBufferHandle boHandle, void* addr);
 
 /**
  * xclSyncBO() - Synchronize buffer contents in requested direction
@@ -531,7 +567,7 @@ XCL_DRIVER_DLLESPEC void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle
  * Synchronize the buffer contents between host and device. Depending on the memory model this may
  * require DMA to/from device or CPU cache flushing/invalidation
  */
-XCL_DRIVER_DLLESPEC int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, enum xclBOSyncDirection dir,
+XCL_DRIVER_DLLESPEC int xclSyncBO(xclDeviceHandle handle, xclBufferHandle boHandle, enum xclBOSyncDirection dir,
                                   size_t size, size_t offset);
 /**
  * xclCopyBO() - Copy device buffer contents to another buffer
@@ -548,7 +584,7 @@ XCL_DRIVER_DLLESPEC int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle,
  * Always perform WRITE to achieve better performance, destination buffer can be on device or host
  * require DMA from device
  */
-XCL_DRIVER_DLLESPEC int xclCopyBO(xclDeviceHandle handle, unsigned int dstBoHandle, unsigned int srcBoHandle,
+XCL_DRIVER_DLLESPEC int xclCopyBO(xclDeviceHandle handle, xclBufferHandle dstBoHandle, xclBufferHandle srcBoHandle,
                                    size_t size, size_t dst_offset, size_t src_offset);
 
 /**
@@ -561,7 +597,7 @@ XCL_DRIVER_DLLESPEC int xclCopyBO(xclDeviceHandle handle, unsigned int dstBoHand
  * Export a BO for import into another device or Linux subsystem which accepts DMA-BUF fd
  * This operation is backed by Linux DMA-BUF framework
  */
-XCL_DRIVER_DLLESPEC int xclExportBO(xclDeviceHandle handle, unsigned int boHandle);
+XCL_DRIVER_DLLESPEC int xclExportBO(xclDeviceHandle handle, xclBufferHandle boHandle);
 
 /**
  * xclImportBO() - Obtain BO handle for a BO represented by DMA-BUF file descriptor
@@ -574,7 +610,7 @@ XCL_DRIVER_DLLESPEC int xclExportBO(xclDeviceHandle handle, unsigned int boHandl
  * Import a BO exported by another device.     *
  * This operation is backed by Linux DMA-BUF framework
  */
-XCL_DRIVER_DLLESPEC unsigned int xclImportBO(xclDeviceHandle handle, int fd, unsigned flags);
+XCL_DRIVER_DLLESPEC xclBufferHandle xclImportBO(xclDeviceHandle handle, int fd, unsigned int flags);
 
 /**
  * xclGetBOProperties() - Obtain xclBOProperties struct for a BO
@@ -586,7 +622,7 @@ XCL_DRIVER_DLLESPEC unsigned int xclImportBO(xclDeviceHandle handle, int fd, uns
  *
  * This is the prefered method for obtaining BO property information.
  */
-XCL_DRIVER_DLLESPEC int xclGetBOProperties(xclDeviceHandle handle, unsigned int boHandle,
+XCL_DRIVER_DLLESPEC int xclGetBOProperties(xclDeviceHandle handle, xclBufferHandle boHandle,
                                            struct xclBOProperties *properties);
 
 /*
@@ -600,7 +636,9 @@ XCL_DRIVER_DLLESPEC int xclGetBOProperties(xclDeviceHandle handle, unsigned int 
  * This API is deprecated and will be removed in future release.
  * New clients should use xclGetBOProperties() instead
  */
-inline XCL_DRIVER_DLLESPEC size_t xclGetBOSize(xclDeviceHandle handle, unsigned int boHandle)
+XRT_DEPRECATED
+XCL_DRIVER_DLLESPEC size_t xclGetBOSize(xclDeviceHandle handle, xclBufferHandle boHandle);
+inline XCL_DRIVER_DLLESPEC size_t xclGetBOSize(xclDeviceHandle handle, xclBufferHandle boHandle)
 {
     struct xclBOProperties p;
     return !xclGetBOProperties(handle, boHandle, &p) ? (size_t)p.size : -1;
@@ -616,7 +654,9 @@ inline XCL_DRIVER_DLLESPEC size_t xclGetBOSize(xclDeviceHandle handle, unsigned 
  * @boHandle:      BO handle
  * @return         uint64_t address of the BO on success
  */
-inline XCL_DRIVER_DLLESPEC uint64_t xclGetDeviceAddr(xclDeviceHandle handle, unsigned int boHandle)
+XRT_DEPRECATED
+XCL_DRIVER_DLLESPEC uint64_t xclGetDeviceAddr(xclDeviceHandle handle, xclBufferHandle boHandle);
+inline XCL_DRIVER_DLLESPEC uint64_t xclGetDeviceAddr(xclDeviceHandle handle, xclBufferHandle boHandle)
 {
     struct xclBOProperties p;
     return !xclGetBOProperties(handle, boHandle, &p) ? p.paddr : -1;
@@ -648,7 +688,7 @@ inline XCL_DRIVER_DLLESPEC uint64_t xclGetDeviceAddr(xclDeviceHandle handle, uns
  * may use this if they want to perform their own device memory management -- not using the buffer
  * object (BO) framework defined before.
  */
-XCL_DRIVER_DLLESPEC ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf,
+XCL_DRIVER_DLLESPEC ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned int flags, void *buf,
                                           size_t size, uint64_t offset);
 
 /**
@@ -665,7 +705,7 @@ XCL_DRIVER_DLLESPEC ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags
  * may use this if they want to perform their own device memory management -- not using the buffer
  * object (BO) framework defined before.
  */
-XCL_DRIVER_DLLESPEC ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf,
+XCL_DRIVER_DLLESPEC ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned int flags, const void *buf,
                                            size_t size, uint64_t offset);
 
 /* End XRT Unmanaged DMA APIs */
@@ -696,9 +736,9 @@ XCL_DRIVER_DLLESPEC ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flag
  * the address space. A device may have many address spaces.
  * *This API is deprecated. Please use xclRegWrite(), instead.*
  */
-
+XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC size_t xclWrite(xclDeviceHandle handle, enum xclAddressSpace space, uint64_t offset,
-                                    const void *hostBuf, size_t size) __attribute__ ((deprecated));
+                                    const void *hostBuf, size_t size);
 
 /**
  * xclRead() - Perform register read operation, deprecated
@@ -714,8 +754,9 @@ XCL_DRIVER_DLLESPEC size_t xclWrite(xclDeviceHandle handle, enum xclAddressSpace
  * the address space. A device may have many address spaces.
  * *This API is deprecated. Please use xclRegRead(), instead.*
  */
+XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC size_t xclRead(xclDeviceHandle handle, enum xclAddressSpace space, uint64_t offset,
-                                   void *hostbuf, size_t size) __attribute__ ((deprecated));
+                                   void *hostbuf, size_t size);
 
 /* XRT Register read/write APIs */
 
@@ -748,7 +789,7 @@ XCL_DRIVER_DLLESPEC size_t xclRead(xclDeviceHandle handle, enum xclAddressSpace 
  * Submit an exec buffer for execution. The exec buffer layout is defined by struct ert_packet
  * which is defined in file *ert.h*. The BO should been allocated with DRM_XOCL_BO_EXECBUF flag.
  */
-XCL_DRIVER_DLLESPEC int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO);
+XCL_DRIVER_DLLESPEC int xclExecBuf(xclDeviceHandle handle, xclBufferHandle cmdBO);
 
 /**
  * xclExecBufWithWaitList() - Submit an execution request to the embedded (or software) scheduler
@@ -764,8 +805,8 @@ XCL_DRIVER_DLLESPEC int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO);
  * handles in the wait list must have beeen submitted prior to this
  * call to xclExecBufWithWaitList.
  */
-XCL_DRIVER_DLLESPEC int xclExecBufWithWaitList(xclDeviceHandle handle, unsigned int cmdBO,
-                                               size_t num_bo_in_wait_list, unsigned int *bo_wait_list);
+XCL_DRIVER_DLLESPEC int xclExecBufWithWaitList(xclDeviceHandle handle, xclBufferHandle cmdBO,
+                                               size_t num_bo_in_wait_list, xclBufferHandle *bo_wait_list);
 
 /**
  * xclExecWait() - Wait for one or more execution events on the device
@@ -1020,7 +1061,6 @@ XCL_DRIVER_DLLESPEC const struct axlf_section_header* wrap_get_axlf_section(cons
 
 XCL_DRIVER_DLLESPEC size_t xclDebugReadIPStatus(xclDeviceHandle handle, enum xclDebugReadType type,
                                                                            void* debugResults);
-
 
 #ifdef __cplusplus
 }

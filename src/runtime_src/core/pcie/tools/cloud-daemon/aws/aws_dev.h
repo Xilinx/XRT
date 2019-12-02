@@ -24,6 +24,9 @@
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 #include "core/pcie/linux/scan.h"
 #include "../mpd_plugin.h"
+#include "../common.h"
+#include "../sw_msg.h"
+#include "../pciefunc.h"
 
 #ifdef INTERNAL_TESTING_FOR_AWS
 #include "core/pcie/driver/linux/include/xocl_ioctl.h"
@@ -88,6 +91,7 @@ private:
 };
 
 int get_remote_msd_fd(size_t index, int* fd);
+int mb_notify(size_t index, int fd, bool online);
 int awsLoadXclBin(size_t index, const axlf *xclbin, int *resp);
 int awsGetIcap(size_t index, xcl_pr_region *resp);
 int awsGetSensor(size_t index, xcl_sensor *resp);

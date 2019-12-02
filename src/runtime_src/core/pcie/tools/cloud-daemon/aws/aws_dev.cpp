@@ -64,6 +64,7 @@ int init(mpd_plugin_callbacks *cbs)
         // hook functions
         cbs->mpc_cookie = NULL;
         cbs->get_remote_msd_fd = get_remote_msd_fd;
+        cbs->mb_notify = mb_notify;
         cbs->mb_req.load_xclbin = awsLoadXclBin;
         cbs->mb_req.peer_data.get_icap_data = awsGetIcap;
         cbs->mb_req.peer_data.get_sensor_data = awsGetSensor;
@@ -106,6 +107,53 @@ int get_remote_msd_fd(size_t index, int* fd)
 {
     *fd = -1;
     return 0;
+}
+
+/*
+ * callback function that is used to notify xocl the imagined xclmgmt
+ * online/offline
+ * Input:
+ *        index: index of the user PF
+ *        fd: mailbox file descriptor
+ *        online: online or offline 
+ * Output:
+ *        None
+ * Return value:
+ *        0: success
+ *        others: err code
+ */
+int mb_notify(size_t index, int fd, bool online)
+{
+    std::unique_ptr<sw_msg> swmsg;
+    struct xcl_mailbox_req *mb_req = NULL;
+    struct xcl_mailbox_peer_state mb_conn = { 0 };
+    size_t data_len = sizeof(struct xcl_mailbox_peer_state) + sizeof(struct xcl_mailbox_req);
+    pcieFunc dev(index);
+   
+    std::vector<char> buf(data_len, 0);
+    mb_req = reinterpret_cast<struct xcl_mailbox_req *>(buf.data());
+
+    mb_req->req = XCL_MAILBOX_REQ_MGMT_STATE;
+    if (online)
+        mb_conn.state_flags |= XCL_MB_STATE_ONLINE;
+    else
+        mb_conn.state_flags |= XCL_MB_STATE_OFFLINE;
+    memcpy(mb_req->data, &mb_conn, sizeof(mb_conn));
+
+    try {
+        swmsg = std::make_unique<sw_msg>(mb_req, data_len, 0x1234, XCL_MB_REQ_FLAG_REQUEST);
+    } catch (std::exception &e) {
+        std::cout << "aws mb_notify: " << e.what() << std::endl;
+        throw;
+    }
+
+    struct queue_msg msg;
+    msg.localFd = fd;
+    msg.type = REMOTE_MSG;
+    msg.cb = nullptr;
+    msg.data = std::move(swmsg);
+
+    return handleMsg(dev, msg);    
 }
 
 /*
@@ -532,9 +580,27 @@ int AwsDev::awsReClock2(const xclmgmt_ioc_freqscaling *obj) {
 #ifdef INTERNAL_TESTING_FOR_AWS
     return ioctl(mMgtHandle, XCLMGMT_IOCFREQSCALE, obj);
 #else
-//    # error "INTERNAL_TESTING macro disabled. AMZN code goes here. "
-//    # This API is not supported in AWS, the frequencies are set per AFI
-    return 0;
+    int retVal = 0;
+    fpga_mgmt_image_info orig_info;
+    std::memset(&orig_info, 0, sizeof(struct fpga_mgmt_image_info));
+    fpga_mgmt_describe_local_image(mBoardNumber, &orig_info, 0);
+    if(orig_info.status == FPGA_STATUS_LOADED) {
+        std::cout << "Reclock AFI(" << orig_info.ids.afi_id << ")" << std::endl;
+        union fpga_mgmt_load_local_image_options opt;
+        fpga_mgmt_init_load_local_image_options(&opt);
+        opt.afi_id = orig_info.ids.afi_id;
+        opt.slot_id = mBoardNumber;
+        opt.clock_mains[0] = obj->ocl_target_freq[0];
+        opt.clock_mains[1] = obj->ocl_target_freq[1];
+        opt.clock_mains[2] = obj->ocl_target_freq[2];
+        retVal = fpga_mgmt_load_local_image_with_options(&opt);
+        if (retVal) {
+            std::cout << "Failed to load AFI with freq , error: " << retVal << std::endl;
+            return -retVal;
+        }
+        return retVal;
+    }
+    return 1;
 #endif
 }
 

@@ -17,8 +17,8 @@
 #ifndef xocl_core_object_h_
 #define xocl_core_object_h_
 
-#include "xocl/config.h"
 #include "xocl/api/icd/ocl_icd_bindings.h"
+#include "xocl/config.h"
 
 #include <CL/cl.h>
 #include <type_traits>

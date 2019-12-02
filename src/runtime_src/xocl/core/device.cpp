@@ -32,6 +32,10 @@
 #include <sstream>
 #include <cstring>
 
+#ifdef _WIN32
+#pragma warning ( disable : 4244 4245 4267 4996 4505 )
+#endif
+
 namespace {
 
 static unsigned int uid_count = 0;
@@ -111,13 +115,6 @@ host_copy_message(const xocl::memory* dst, const xocl::memory* src)
   str << "Reverting to host copy for src buffer(" << src->get_uid() << ") "
       << "to dst buffer(" << dst->get_uid() << ")";
   xrt::message::send(xrt::message::severity_level::XRT_WARNING,str.str());
-}
-
-
-static inline unsigned
-myctz(unsigned val)
-{
-  return __builtin_ctz(val);
 }
 
 static void
@@ -258,6 +255,8 @@ get_mem_domain(const memory* mem)
     return xrt::device::memoryDomain::XRT_DEVICE_ONLY_MEM;
   else if (mem->is_device_memory_only_p2p())
     return xrt::device::memoryDomain::XRT_DEVICE_ONLY_MEM_P2P;
+  else if (mem->is_host_only())
+    return xrt::device::memoryDomain::XRT_HOST_ONLY_MEM;
 
   return xrt::device::memoryDomain::XRT_DEVICE_RAM;
 }
@@ -285,7 +284,7 @@ alloc(memory* mem, memidx_type memidx)
       track(mem);
       return boh;
     }
-    catch (const std::bad_alloc& ba) {
+    catch (const std::bad_alloc&) {
       userptr_bad_alloc_message(host_ptr);
     }
   }
@@ -299,7 +298,6 @@ alloc(memory* mem, memidx_type memidx)
   if (host_ptr) {
     if (!aligned_flag)
       unaligned_message(host_ptr);
-
     mem->set_extra_sync();
     auto bo_host_ptr = m_xdevice->map(boh);
     // No need to copy data to a CL_MEM_WRITE_ONLY buffer
@@ -326,7 +324,7 @@ alloc(memory* mem)
       track(mem);
       return boh;
     }
-    catch (const std::bad_alloc& ba) {
+    catch (const std::bad_alloc&) {
       userptr_bad_alloc_message(host_ptr);
     }
   }
@@ -336,7 +334,6 @@ alloc(memory* mem)
   if (host_ptr) {
     if (!aligned_flag)
       unaligned_message(host_ptr);
-
     mem->set_extra_sync();
     auto bo_host_ptr = m_xdevice->map(boh);
     // No need to copy data to a CL_MEM_WRITE_ONLY buffer
@@ -652,7 +649,7 @@ allocate_buffer_object(memory* mem)
     default_allocation_message(this,mem,boh);
     return boh;
   }
-  catch (const std::bad_alloc& ex) {
+  catch (const std::bad_alloc&) {
     default_bad_allocation_message(this,mem);
     throw;
   }
@@ -976,10 +973,9 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
     auto cppkt = xrt::command_cast<ert_start_copybo_cmd*>(cmd);
     auto src_boh = src_buffer->get_buffer_object(this);
     auto dst_boh = dst_buffer->get_buffer_object(this);
-    xdevice->fill_copy_pkt(dst_boh,src_boh,size,dst_offset,src_offset,cppkt);
-
-    cmd->start();    // done() called by scheduler on success
     try {
+      xdevice->fill_copy_pkt(dst_boh,src_boh,size,dst_offset,src_offset,cppkt);
+      cmd->start();    // done() called by scheduler on success
       cmd->execute();  // throws on error
       XOCL_DEBUG(std::cout,"xocl::device::copy_buffer scheduled kdma copy\n");
       // Driver fills dst buffer same as migrate_buffer does, hence dst buffer
@@ -1295,8 +1291,9 @@ unload_program(const program* program)
 {
   if (m_active == program) {
     clear_cus();
-    m_xdevice->release_cu_context(-1); // release virtual CU context
     m_active = nullptr;
+    if (!m_parent.get())
+      m_xdevice->release_cu_context(-1); // release virtual CU context
   }
 }
 

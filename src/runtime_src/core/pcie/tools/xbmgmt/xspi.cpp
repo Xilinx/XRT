@@ -271,7 +271,7 @@ XSPI_Flasher::XSPI_Flasher(std::shared_ptr<pcidev::pci_device> dev)
     mDev = dev;
 
     std::string err;
-    mDev->sysfs_get("flash", "bar_off", err, flash_base);
+    mDev->sysfs_get<unsigned long long>("flash", "bar_off", err, flash_base, -1);
     if (!err.empty())
         flash_base = FLASH_BASE;
 

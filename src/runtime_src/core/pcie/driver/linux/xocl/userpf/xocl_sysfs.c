@@ -24,10 +24,17 @@ static ssize_t xclbinuuid_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	xuid_t *xclbin_id;
+	xuid_t *xclbin_id = NULL;
+	ssize_t cnt = 0;
+	int err = 0;
 
-	xclbin_id = XOCL_XCLBIN_ID(xdev);
-	return sprintf(buf, "%pUb\n", xclbin_id ? xclbin_id : 0);
+	err = XOCL_GET_XCLBIN_ID(xdev, xclbin_id);
+	if (err)
+		return cnt;
+
+	cnt = sprintf(buf, "%pUb\n", xclbin_id ? xclbin_id : 0);
+	XOCL_PUT_XCLBIN_ID(xdev);
+	return cnt;
 }
 
 static DEVICE_ATTR_RO(xclbinuuid);
@@ -56,18 +63,23 @@ static ssize_t kdsstat_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	int size = 0;
-	xuid_t *xclbin_id;
+	int size = 0, err;
+	xuid_t *xclbin_id = NULL;
 	pid_t *plist = NULL;
 	u32 clients, i;
 
-	xclbin_id = XOCL_XCLBIN_ID(xdev);
+	err = XOCL_GET_XCLBIN_ID(xdev, xclbin_id);
+	if (err) {
+		size += sprintf(buf + size, "unable to give xclbin id");
+		return size;
+	}
+
 	size += sprintf(buf + size, "xclbin:\t\t\t%pUb\n",
 		xclbin_id ? xclbin_id : 0);
 	size += sprintf(buf + size, "outstanding execs:\t%d\n",
 		atomic_read(&xdev->outstanding_execs));
-	size += sprintf(buf + size, "total execs:\t\t%ld\n",
-		atomic64_read(&xdev->total_execs));
+	size += sprintf(buf + size, "total execs:\t\t%lld\n",
+		(s64)atomic64_read(&xdev->total_execs));
 
 	clients = get_live_clients(xdev, &plist);
 	size += sprintf(buf + size, "contexts:\t\t%d\n", clients);
@@ -75,13 +87,14 @@ static ssize_t kdsstat_show(struct device *dev,
 	for (i = 0; i < clients; i++)
 		size += sprintf(buf + size, "\t\t\t%d\n", plist[i]);
 	vfree(plist);
+	XOCL_PUT_XCLBIN_ID(xdev);
 	return size;
 }
 static DEVICE_ATTR_RO(kdsstat);
 
 static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 {
-	int i;
+	int i, err;
 	ssize_t count = 0;
 	ssize_t size = 0;
 	size_t memory_usage = 0;
@@ -93,10 +106,15 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 
 	mutex_lock(&xdev->dev_lock);
 
-	topo = XOCL_MEM_TOPOLOGY(xdev);
-	if (!topo) {
+	err = XOCL_GET_MEM_TOPOLOGY(xdev, topo);
+	if (err) {
 		mutex_unlock(&xdev->dev_lock);
-		return -EINVAL;
+		return err;
+	}
+
+	if (!topo) {
+		size = -EINVAL;
+		goto done;
 	}
 
 	for (i = 0; i < topo->m_count; i++) {
@@ -124,6 +142,8 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 		buf += count;
 		size += count;
 	}
+done:
+	XOCL_PUT_MEM_TOPOLOGY(xdev);
 	mutex_unlock(&xdev->dev_lock);
 	return size;
 }
@@ -153,14 +173,14 @@ static ssize_t p2p_enable_show(struct device *dev,
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	u64 size;
 
-	if (xdev->p2p_bar_addr)
+	if (xdev->p2p_mem_chunk_num)
 		return sprintf(buf, "1\n");
 	else if (xocl_get_p2p_bar(xdev, &size) >= 0 &&
-			size > (1 << XOCL_PA_SECTION_SHIFT))
+		size > XOCL_P2P_CHUNK_SIZE)
 		return sprintf(buf, "%d\n", EBUSY);
-	else if (xocl_get_p2p_bar(xdev, &size) < 0 && (
-			xdev->p2p_bar_idx < 0 ||
-			xdev->p2p_bar_len <= (1<<XOCL_PA_SECTION_SHIFT)))
+	else if (xocl_get_p2p_bar(xdev, &size) < 0 &&
+		(xdev->p2p_bar_idx < 0 ||
+		xdev->p2p_bar_len <= XOCL_P2P_CHUNK_SIZE))
 		return sprintf(buf, "%d\n", ENXIO);
 
 	return sprintf(buf, "0\n");
@@ -193,7 +213,7 @@ static ssize_t p2p_enable_store(struct device *dev,
 	}
 
 	size = (ffs(size) == fls(size)) ? (fls(size) - 1) : fls(size);
-	size = enable ? (size + 10) : (XOCL_PA_SECTION_SHIFT - 20);
+	size = enable ? (size + 10) : (XOCL_P2P_CHUNK_SHIFT - 20);
 	if (xocl_pci_rebar_size_to_bytes(size) == curr_size) {
 		if (enable) {
 			xocl_info(&pdev->dev, "p2p is enabled, bar size %d M",
@@ -207,7 +227,7 @@ static ssize_t p2p_enable_store(struct device *dev,
 
 	xocl_info(&pdev->dev, "Resize p2p bar %d to %d M ", p2p_bar,
 			(1 << size));
-	xocl_p2p_mem_release(xdev, false);
+	xocl_p2p_fini(xdev, false);
 
 	ret = xocl_pci_resize_resource(pdev, p2p_bar, size);
 	if (ret) {
@@ -216,10 +236,11 @@ static ssize_t p2p_enable_store(struct device *dev,
 	}
 
 	xdev->p2p_bar_idx = p2p_bar;
+	xdev->p2p_bar_sz_cached = size;
 	xdev->p2p_bar_len = pci_resource_len(pdev, p2p_bar);
 
 	if (enable) {
-		ret = xocl_p2p_mem_reserve(xdev);
+		ret = xocl_p2p_init(xdev);
 		if (ret) {
 			xocl_err(&pdev->dev, "Failed to reserve p2p memory %d",
 					ret);
@@ -342,7 +363,8 @@ static ssize_t ready_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	uint64_t ch_state = 0, ret = 0;
+	uint64_t ch_state = 0, ret = 0, daemon_state = 0;
+	struct xcl_board_info *board_info;
 
 	/* Bypass this check for versal for now */
 	if (XOCL_DSA_IS_VERSAL(xdev))
@@ -350,8 +372,38 @@ static ssize_t ready_show(struct device *dev,
 	else {
 		xocl_mailbox_get(xdev, CHAN_STATE, &ch_state);
 
-		ret = (ch_state & XCL_MB_PEER_READY) ? 1 : 0;
+		if (ch_state & XCL_MB_PEER_SAME_DOMAIN)
+			ret = (ch_state & XCL_MB_PEER_READY) ? 1 : 0;
+		else {
+			/*
+			 * If xocl and xclmgmt are not in the same daemon,
+			 * mark the card as ready only when both MB channel
+			 * and daemon are ready
+			 */
+			xocl_mailbox_get(xdev, DAEMON_STATE, &daemon_state);
+			ret = ((ch_state & XCL_MB_PEER_READY) && daemon_state)
+				? 1 : 0;
+		}
+		if (!ret)
+			goto bail;
+		board_info = vzalloc(sizeof(*board_info));
+		if (!board_info)
+			goto bail;
+		xocl_xmc_get_data(xdev, XCL_BDINFO, board_info);
+		/*
+		 * with legacy mgmtpf driver, exp_bmc_ver will be NULL.
+		 * And we have to mark ready in this case
+		 */
+		if (!strcmp(board_info->bmc_ver, board_info->exp_bmc_ver) ||
+			board_info->exp_bmc_ver[0] == 0)
+			ret = 1;
+		else
+			ret = 0;
 	}
+
+bail:
+	if (board_info)
+		vfree(board_info);
 
 	return sprintf(buf, "0x%llx\n", ret);
 }

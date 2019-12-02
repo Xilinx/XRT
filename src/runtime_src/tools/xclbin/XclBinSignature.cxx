@@ -24,10 +24,14 @@
   #include <openssl/pem.h>
 #endif
 
+#ifdef _WIN32
+# pragma warning ( disable : 4100 4505 )
+#endif
+
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
 
-static bool
+static bool 
 copyFile(const std::string & _src, const std::string _dest)
 {
   XUtil::TRACE(XUtil::format("Copying file '%s' to '%s'", _src.c_str(), _dest.c_str()).c_str());

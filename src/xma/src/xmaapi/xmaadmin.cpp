@@ -19,6 +19,8 @@
 #include <string.h>
 #include <dlfcn.h>
 #include "lib/xmaapi.h"
+#include "app/xma_utils.hpp"
+#include "lib/xma_utils.hpp"
 #include "xmaplugin.h"
 #include <bitset>
 
@@ -33,31 +35,21 @@ xma_admin_session_create(XmaAdminProperties *props)
     if (!g_xma_singleton->xma_initialized) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ADMIN_MOD,
                    "XMA session creation must be after initialization\n");
-        return NULL;
+        return nullptr;
     }
     if (props->plugin_lib == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ADMIN_MOD,
                    "AdminProperties must set plugin_lib\n");
-        return NULL;
+        return nullptr;
     }
 
-    // Load the xmaplugin library as it is a dependency for all plugins
-    void *xmahandle = dlopen("libxma2plugin.so",
-                             RTLD_LAZY | RTLD_GLOBAL);
-    if (!xmahandle)
-    {
-        xma_logmsg(XMA_ERROR_LOG, XMA_ADMIN_MOD,
-                   "Failed to open plugin xmaplugin.so. Error msg: %s\n",
-                   dlerror());
-        return NULL;
-    }
     void *handle = dlopen(props->plugin_lib, RTLD_NOW);
     if (!handle)
     {
         xma_logmsg(XMA_ERROR_LOG, XMA_ADMIN_MOD,
             "Failed to open plugin %s\n Error msg: %s\n",
             props->plugin_lib, dlerror());
-        return NULL;
+        return nullptr;
     }
 
     XmaAdminPlugin *plg =
@@ -66,21 +58,21 @@ xma_admin_session_create(XmaAdminProperties *props)
     if ((error = dlerror()) != NULL)
     {
         xma_logmsg(XMA_ERROR_LOG, XMA_ADMIN_MOD,
-            "Failed to get admin_plugin from %s\n Error msg: %s\n",
+            "Failed to get struct admin_plugin from %s\n Error msg: %s\n",
             props->plugin_lib, dlerror());
-        return NULL;
+        return nullptr;
     }
     if (plg->xma_version == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ADMIN_MOD,
                    "AdminPlugin library must have xma_version function\n");
-        return NULL;
+        return nullptr;
     }
 
     XmaAdminSession *session = (XmaAdminSession*) malloc(sizeof(XmaAdminSession));
     if (session == NULL) {
         xma_logmsg(XMA_ERROR_LOG, XMA_ADMIN_MOD,
             "Failed to allocate memory for AdminSession\n");
-        return NULL;
+        return nullptr;
     }
     memset(session, 0, sizeof(XmaAdminSession));
     // init session data
@@ -95,6 +87,7 @@ xma_admin_session_create(XmaAdminProperties *props)
     bool expected = false;
     bool desired = true;
     while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
         expected = false;
     }
     //Singleton lock acquired
@@ -109,7 +102,7 @@ xma_admin_session_create(XmaAdminProperties *props)
         //Release singleton lock
         g_xma_singleton->locked = false;
         free(session);
-        return NULL;
+        return nullptr;
     }
 
     uint32_t hwcfg_dev_index = 0;
@@ -127,7 +120,7 @@ xma_admin_session_create(XmaAdminProperties *props)
         //Release singleton lock
         g_xma_singleton->locked = false;
         free(session);
-        return NULL;
+        return nullptr;
     }
 
     void* dev_handle = hwcfg->devices[hwcfg_dev_index].handle;
@@ -145,9 +138,20 @@ xma_admin_session_create(XmaAdminProperties *props)
         //Release singleton lock
         g_xma_singleton->locked = false;
         free(session);
-        return NULL;
+        return nullptr;
     }
 
+    /*For ADMIN session will open cu context when scheduling command
+    XmaHwDevice& dev_tmp1 = hwcfg->devices[hwcfg_dev_index];
+    if (xclOpenContext(dev_handle, dev_tmp1.uuid, d, true) != 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMA_ADMIN_MOD, "Failed to open context to CU %s for this session\n", kernel_info->name);
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(session);
+        return nullptr;
+    }
+    */
+    
     // Allocate the private data
     session->base.plugin_data =
         calloc(session->admin_plugin->plugin_data_size, sizeof(uint8_t));
@@ -158,12 +162,24 @@ xma_admin_session_create(XmaAdminProperties *props)
 
     XmaHwSessionPrivate *priv1 = new XmaHwSessionPrivate();
     priv1->dev_handle = dev_handle;
-    priv1->kernel_info = NULL;
+    priv1->kernel_info = nullptr;
     priv1->kernel_complete_count = 0;
     priv1->device = &hwcfg->devices[hwcfg_dev_index];
     session->base.hw_session.private_do_not_use = (void*) priv1;
 
     session->base.session_signature = (void*)(((uint64_t)priv1) | ((uint64_t)priv1->reserved));
+
+    int32_t num_execbo = 6;
+    priv1->kernel_execbos.reserve(num_execbo);
+    priv1->num_execbo_allocated = num_execbo;
+    if (xma_core::create_session_execbo(priv1, num_execbo, XMA_ADMIN_MOD) != XMA_SUCCESS) {
+        //Release singleton lock
+        g_xma_singleton->locked = false;
+        free(session->base.plugin_data);
+        free(session);
+        delete priv1;
+        return nullptr;
+    }
 
     rc = session->admin_plugin->init(session);
     if (rc) {
@@ -175,7 +191,7 @@ xma_admin_session_create(XmaAdminProperties *props)
         free(session->base.plugin_data);
         free(session);
         delete priv1;
-        return NULL;
+        return nullptr;
     }
 
     g_xma_singleton->num_admins++;
@@ -197,6 +213,7 @@ xma_admin_session_destroy(XmaAdminSession *session)
     bool expected = false;
     bool desired = true;
     while (!(g_xma_singleton->locked).compare_exchange_weak(expected, desired)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
         expected = false;
     }
     //Singleton lock acquired
@@ -240,15 +257,15 @@ xma_admin_session_destroy(XmaAdminSession *session)
     /*
     delete (XmaHwSessionPrivate*)session->base.hw_session.private_do_not_use;
     */
-    session->base.hw_session.private_do_not_use = NULL;
-    session->base.plugin_data = NULL;
+    session->base.hw_session.private_do_not_use = nullptr;
+    session->base.plugin_data = nullptr;
     session->base.stats = NULL;
     session->admin_plugin = NULL;
     //do not change kernel in_use as it maybe in use by another plugin
     session->base.hw_session.dev_index = -1;
     session->base.session_signature = NULL;
     free(session);
-    session = NULL;
+    session = nullptr;
 
     //Release singleton lock
     g_xma_singleton->locked = false;

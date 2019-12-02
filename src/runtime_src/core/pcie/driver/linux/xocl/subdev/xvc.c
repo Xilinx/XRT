@@ -154,8 +154,7 @@ static long xvc_ioctl_helper(struct xocl_xvc *xvc, const void __user *arg)
 	u32 write_reg_data;
 	int rv;
 
-	rv = copy_from_user((void *)&xvc_obj, arg,
-				sizeof(struct xil_xvc_ioc));
+	rv = copy_from_user((void *)&xvc_obj, arg, sizeof(struct xil_xvc_ioc));
 	/* anything not copied ? */
 	if (rv) {
 		pr_info("copy_from_user xvc_obj failed: %d.\n", rv);

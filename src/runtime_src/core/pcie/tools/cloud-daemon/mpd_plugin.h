@@ -23,6 +23,7 @@
 #include "xclbin.h"
 
 typedef int (*get_remote_msd_fd_fn)(size_t index, int *fd);
+typedef int (*mb_notify_fn)(size_t index, int fd, bool online);
 typedef int (*hot_reset_fn)(size_t index, int *resp);
 typedef int (*load_xclbin_fn)(size_t index, const axlf *buf, int *resp);
 typedef int (*reclock2_fn)(size_t index, const struct xclmgmt_ioc_freqscaling *obj, int *resp);
@@ -36,6 +37,17 @@ typedef int (*get_subdev_data_fn)(size_t index, char *resp, size_t resp_len);
 typedef int (*user_probe_fn)(size_t index, struct xcl_mailbox_conn_resp *resp);
 typedef int (*program_shell_fn)(size_t index, int *resp);
 typedef int (*read_p2p_bar_addr_fn)(size_t index, const struct xcl_mailbox_p2p_bar_addr *addr, int *resp);
+
+/*
+ * plugin reports some hooks require special treatment from mpd
+ */
+enum MPD_PLUGIN_CAP
+{
+    /*
+     * plugin itself can't fulfil the reset, need mpd help
+     */
+    CAP_RESET_NEED_HELP = 0,
+};
 
 /*
  * hook functions or cookie set by the plugin
@@ -56,6 +68,12 @@ struct mpd_plugin_callbacks {
      * have more controls on the xclbin downloading.
      */
     get_remote_msd_fd_fn get_remote_msd_fd;
+    /*
+     * Function to notify software mailbox online/offline.
+     * For those without xclmgmt driver, this hook function is used to notify
+     * the xocl that imagined mgmt is online/offline. 
+     */
+    mb_notify_fn mb_notify;
     /*
      * The following are all hook functions handling software mailbox msg
      * that initialized from xocl driver
@@ -83,6 +101,10 @@ struct mpd_plugin_callbacks {
         program_shell_fn program_shell; //14 optional
         read_p2p_bar_addr_fn read_p2p_bar_addr; //15 optional
     } mb_req;
+    /*
+     * bitmap of MPD_PLUGIN_CAP
+     */
+    uint64_t plugin_cap;
 };
 
 #define INIT_FN_NAME    "init"

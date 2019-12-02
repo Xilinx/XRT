@@ -50,7 +50,7 @@ def runKernel(opt):
         print("Error: Unable to sync BO")
         return 1
 
-    print("Original string = [%s]\n") % bo.contents[:]
+    print("Original string = [%s]\n" % bo.contents[:].decode("utf-8"))
 
     p = xclBOProperties()
     bodevAddr = p.paddr if not (xclGetBOProperties(opt.handle, boHandle, p)) else -1
@@ -81,7 +81,7 @@ def runKernel(opt):
 
     # construct the exec buffer cmd to start the kernel
     start_cmd = ert_start_kernel_cmd.from_buffer(execData.contents)
-    rsz = (XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA / 4 + 1) + 1  # regmap array size
+    rsz = int((XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA / 4 + 1) + 1)  # regmap array size
     ctypes.memset(execData.contents, 0, ctypes.sizeof(ert_start_kernel_cmd) + rsz*4)
     start_cmd.m_uert.m_start_cmd_struct.state = 1  # ERT_CMD_STATE_NEW
     start_cmd.m_uert.m_start_cmd_struct.opcode = 0  # ERT_START_CU
@@ -91,8 +91,8 @@ def runKernel(opt):
     # Prepare kernel reg map
     new_data = (ctypes.c_uint32 * rsz).from_buffer(execData.contents, 8)
     new_data[XHELLO_HELLO_CONTROL_ADDR_AP_CTRL] = 0x0
-    new_data[XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA / 4] = bodevAddr
-    new_data[XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA / 4 + 1] = (bodevAddr >> 32) & 0xFFFFFFFF
+    new_data[int(XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA / 4)] = bodevAddr
+    new_data[int(XHELLO_HELLO_CONTROL_ADDR_ACCESS1_DATA / 4 + 1)] = (bodevAddr >> 32) & 0xFFFFFFFF
 
     if xclExecBuf(opt.handle, execHandle):
         xclFreeBO(opt.handle, boHandle)
@@ -118,7 +118,7 @@ def runKernel(opt):
         return 1
 
     result = bo.contents[:len("Hello World")]
-    print("Result string = [%s]\n") % result
+    print("Result string = [%s]\n" % result.decode("utf-8"))
 
     xclCloseContext(opt.handle, opt.xuuid, 0)
     xclFreeBO(opt.handle, execHandle)

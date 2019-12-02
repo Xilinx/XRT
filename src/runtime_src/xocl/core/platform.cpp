@@ -27,6 +27,10 @@
 #include <iostream>
 #include <cassert>
 
+#ifdef _WIN32
+#pragma warning ( disable : 4996 )
+#endif
+
 namespace {
 
 static xocl::platform* g_platform = nullptr;
@@ -99,7 +103,7 @@ init_conformance()
   }
 }
 
-}
+} // namespace
 
 namespace xocl {
 

@@ -38,9 +38,10 @@ const char *subCmdFlashDesc = "Update SC firmware or shell on the device";
 const char *subCmdFlashUsage =
     "--scan [--verbose|--json]\n"
     "--update [--shell name [--id id]] [--card bdf] [--force]\n"
-    "--shell --path file [--card bdf] [--type flash_type]\n"
-    "--sc_firmware --path file [--card bdf]\n"
-    "--factory_reset [--card bdf]";
+    "--factory_reset [--card bdf]\n\n"
+    "Experts only:\n"
+    "--shell --path file --card bdf [--type flash_type]\n"
+    "--sc_firmware --path file --card bdf";
 
 #define fmt_str		"    "
 
@@ -528,6 +529,7 @@ static int scan(int argc, char *argv[])
     const option opts[] = {
         { "verbose", no_argument, nullptr, '0' },
         { "json", no_argument, nullptr, '1' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {
@@ -562,6 +564,7 @@ static int update(int argc, char *argv[])
         { "shell", required_argument, nullptr, '1' },
         { "id", required_argument, nullptr, '2' },
         { "force", no_argument, nullptr, '3' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {
@@ -604,6 +607,7 @@ static int shell(int argc, char *argv[])
         { "card", required_argument, nullptr, '0' },
         { "path", required_argument, nullptr, '1' },
         { "flash_type", required_argument, nullptr, '2' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {
@@ -628,11 +632,10 @@ static int shell(int argc, char *argv[])
         }
     }
 
-    if (file.empty())
+    if (file.empty() || index == UINT_MAX)
         return -EINVAL;
 
-    int ret = updateShell(index == UINT_MAX ? 0 : index, type, file.c_str(),
-        nullptr);
+    int ret = updateShell(index, type, file.c_str(), nullptr);
     if (ret)
         return ret;
 
@@ -648,6 +651,7 @@ static int sc(int argc, char *argv[])
     const option opts[] = {
         { "card", required_argument, nullptr, '0' },
         { "path", required_argument, nullptr, '1' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {
@@ -669,10 +673,10 @@ static int sc(int argc, char *argv[])
         }
     }
 
-    if (file.empty())
+    if (file.empty() || index == UINT_MAX)
         return -EINVAL;
 
-    int ret = updateSC(index == UINT_MAX ? 0 : index, file.c_str());
+    int ret = updateSC(index, file.c_str());
     if (ret)
         return ret;
 
@@ -685,6 +689,7 @@ static int reset(int argc, char *argv[])
     unsigned index = UINT_MAX;
     const option opts[] = {
         { "card", required_argument, nullptr, '0' },
+        { nullptr, 0, nullptr, 0 },
     };
 
     while (true) {

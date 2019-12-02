@@ -381,14 +381,18 @@ public:
    *
    * Callbacks are called in arbitrary order
    */
-  static void register_constructor_callbacks(event_callback_type&& aCallback);
+  XRT_XOCL_EXPORT
+  static void
+  register_constructor_callbacks(event_callback_type&& aCallback);
 
   /**
    * Register callback function for event destruction
    *
    * Callbacks are called in arbitrary order
    */
-  static void register_destructor_callbacks(event_callback_type&& aCallback);
+  XRT_XOCL_EXPORT
+  static void
+  register_destructor_callbacks(event_callback_type&& aCallback);
 
 protected:
   /**

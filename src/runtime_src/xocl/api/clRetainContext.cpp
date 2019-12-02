@@ -16,12 +16,11 @@
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/context.h"
 #include "detail/context.h"
-
 #include "plugin/xdp/profile.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
@@ -60,5 +59,3 @@ clRetainContext(cl_context context)
     return CL_OUT_OF_HOST_MEMORY;
   }
 }
-
-

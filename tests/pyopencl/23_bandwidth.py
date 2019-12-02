@@ -61,7 +61,6 @@ def main():
        sys.exit(1)
     else:
        dev = devices[int(index)]
-
     if "qdma" in str(dev):
        threshold = 30000
     
@@ -83,8 +82,9 @@ def main():
        sys.exit(1)
  
     print("Loading xclbin")
- 
-    prg = cl.Program(ctx, [dev], [open(xclbin).read()])
+    with open(xclbin, "rb") as f:
+       src = f.read()
+    prg = cl.Program(ctx, [dev], [src])
  
     try:
        prg.build()
@@ -156,7 +156,7 @@ def main():
             cl.enqueue_copy(commands, output_host2, output_buf2).wait()
             
             # need to check, currently fails
-            limit = beats*(typesize/8)
+            limit = int(beats*(typesize/8))
             if not np.array_equal(output_host1[:limit], input_host1[:limit]):
                print("ERROR: Failed to copy entries")
                input_buf1.release()

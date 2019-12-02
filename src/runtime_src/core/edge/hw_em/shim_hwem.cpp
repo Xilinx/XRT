@@ -212,7 +212,7 @@ int ZYNQShim::xclLoadXclBin(const xclBin *header) {
   mKernelClockFreq = xrt_core::xclbin::get_kernel_freq(header);
   drm_zocl_axlf axlf_obj = {
     .za_xclbin_ptr = const_cast<axlf *>(header),
-    .za_flags = DRM_ZOCL_AXLF_NONE,
+    .za_flags = 0,
   };
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_READ_AXLF, &axlf_obj);

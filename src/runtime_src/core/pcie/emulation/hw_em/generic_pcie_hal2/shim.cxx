@@ -22,6 +22,17 @@
 
 #include "xcl_perfmon_parameters.h"
 
+namespace {
+
+inline bool
+file_exists(const std::string& fnm)
+{
+  struct stat statBuf;
+  return stat(fnm.c_str(), &statBuf) == 0;
+}
+  
+}
+
 namespace xclhwemhal2 {
 
   namespace pt = boost::property_tree;
@@ -635,11 +646,8 @@ namespace xclhwemhal2 {
         if (!launcherArgs.empty())
           simMode = launcherArgs.c_str();
 
-        struct stat statBuf;
-        if (stat(sim_file.c_str(), &statBuf) == -1)
-        {
+        if (!file_exists(sim_file))
           sim_file = "simulate.sh";
-        }
         int r = execl(sim_file.c_str(), sim_file.c_str(), simMode, NULL);
         fclose(stdout);
         if (r == -1){ std::cerr << "FATAL ERROR : Simulation process did not launch" << std::endl; exit(1); }
@@ -1311,8 +1319,10 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     }
 
     xclGetDebugMessages(true);
+    mPrintMessagesLock.lock();
     fetchAndPrintMessages();
     simulator_started = false;
+    mPrintMessagesLock.unlock();
     std::string socketName = sock->get_name();
     if(socketName.empty() == false)// device is active if socketName is non-empty
     {
@@ -1840,10 +1850,10 @@ uint64_t HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
     return -1;
   }
 
-  struct xclemulation::drm_xocl_bo *xobj = new xclemulation::drm_xocl_bo;
+  auto xobj = std::make_unique<xclemulation::drm_xocl_bo>();
   xobj->flags=info->flags;
   /* check whether buffer is p2p or not*/
-  bool noHostMemory = xclemulation::no_host_memory(xobj); 
+  bool noHostMemory = xclemulation::no_host_memory(xobj.get()); 
   std::string sFileName("");
   
   if(xobj->flags & XCL_BO_FLAGS_EXECBUF)
@@ -1867,7 +1877,7 @@ uint64_t HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   }
 
   info->handle = mBufferCount;
-  mXoclObjMap[mBufferCount++] = xobj;
+  mXoclObjMap[mBufferCount++] = xobj.release();
   return 0;
 }
 
@@ -2084,6 +2094,13 @@ void *HwEmShim::xclMapBO(unsigned int boHandle, bool write)
   bo->buf = pBuf;
   PRINTENDFUNC;
   return pBuf;
+}
+
+int HwEmShim::xclUnmapBO(unsigned int boHandle, void* addr)
+{
+  std::lock_guard<std::mutex> lk(mApiMtx);
+  auto bo = xclGetBoByHandle(boHandle);
+  return bo ? munmap(addr, bo->size) : -1;
 }
 
 /**************************************************************************************/

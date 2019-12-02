@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -95,6 +95,14 @@ void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
   return drv->xclMapBO(boHandle, write);
 }
 
+int xclUnmapBO(xclDeviceHandle handle, unsigned int boHandle, void* addr)
+{
+  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
+  if (!drv)
+    return -EINVAL;
+  return drv->xclUnmapBO(boHandle, addr);
+}
+
 int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset)
 {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
@@ -138,7 +146,7 @@ int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
 
 //defining following two functions as they gets called in scheduler init call
 int xclOpenContext(xclDeviceHandle handle, uuid_t xclbinId, unsigned int ipIndex, bool shared)
-  
+
 {
   return 0;
 }
@@ -530,11 +538,11 @@ int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclR
 }
 
 /*
- * API to get number of live processes. 
+ * API to get number of live processes.
  * Applicable only for System Flow as it supports Multiple processes on same device.
  * For Hardware Emulation, return 0
  */
-uint xclGetNumLiveProcesses(xclDeviceHandle handle)
+uint32_t xclGetNumLiveProcesses(xclDeviceHandle handle)
 {
     return 0;
 }
@@ -585,4 +593,3 @@ int xclDestroyProfileResults(xclDeviceHandle handle, ProfileResults* results)
 {
   return 0;
 }
-

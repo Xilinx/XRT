@@ -21,6 +21,8 @@
 #include <stdexcept>
 #include <fstream>
 #include <iostream>
+#include <string>
+#include "xclhal2.h"
 #include "xclbin.h"
 #include "core/include/xclperf.h"
 #include "xdp_base_device.h"
@@ -53,7 +55,7 @@ public:
      * IP will be requested, otherwise exception will be thrown.
      */
     ProfileIP(Device* handle /** < [in] the xrt or hal device handle */, 
-                int index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data *data = nullptr);
+              uint64_t index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data *data = nullptr);
 
     /**
      * The exclusive access should be release in the destructor
@@ -67,14 +69,14 @@ public:
      * (driver) and set the exclusive flag if exclusive access is 
      * granted.
      */
-    virtual void request_exclusive_ip_access(int index);
+    virtual void request_exclusive_ip_access(uint64_t index);
 
     /**
      * The release_exclusive_ip_access API will release the exclusive
      * access granted to this IP to prevent potential card hang, and clear
      * the exclusive flag if success.
      */
-    virtual void release_exclusive_ip_access(int index);
+    virtual void release_exclusive_ip_access(uint64_t index);
 
     /**
      * The map API tries to map the IP specified into user space. The 
@@ -136,6 +138,8 @@ public:
     uint32_t setLogStream(std::ostream* oStream);
     std::ostream* getLogStream() { return out_stream; }
 
+    uint64_t getMIndex() const { return m_index; }
+
 //    double getDeviceClock();
 
 //    bool   isOnEdgeDevice();
@@ -153,6 +157,8 @@ protected:
     std::ostream* out_stream = nullptr; /* Output stream for log */
 
     xdp::Device* getDevice() { return device; }
+
+    uint64_t m_index = 0;         /* m_index field from debug IP Layout */
 
     /**
      * TODO: the exclusive context from hal

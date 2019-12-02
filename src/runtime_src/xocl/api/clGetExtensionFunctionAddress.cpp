@@ -18,13 +18,13 @@
 
 #define CL_USE_DEPRECATED_OPENCL_1_1_APIS
 
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/error.h"
 #include "xocl/core/platform.h"
 
 #include "plugin/xdp/profile.h"
 
+#include <CL/opencl.h>
 #include <string>
 
 namespace xocl {

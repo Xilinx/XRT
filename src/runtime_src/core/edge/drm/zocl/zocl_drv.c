@@ -34,6 +34,7 @@
 #include "zocl_sk.h"
 #include "zocl_bo.h"
 #include "sched_exec.h"
+#include "zocl_xclbin.h"
 
 #define ZOCL_DRIVER_NAME        "zocl"
 #define ZOCL_DRIVER_DESC        "Zynq BO manager"
@@ -92,8 +93,13 @@ static inline irqreturn_t zocl_h2c_isr(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
+#if KERNEL_VERSION(5, 3, 0) <= LINUX_VERSION_CODE
+static int
+match_name(struct device *dev, const void *data)
+#else
 static int
 match_name(struct device *dev, void *data)
+#endif
 {
 	const char *name = data;
 	/*
@@ -412,7 +418,7 @@ static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 	return rc;
 }
 
-static int zocl_bo_fault(struct vm_fault *vmf)
+static vm_fault_t zocl_bo_fault(struct vm_fault *vmf)
 {
 	struct vm_area_struct *vma = vmf->vma;
 	struct drm_gem_object *obj = vma->vm_private_data;
@@ -455,6 +461,9 @@ static int zocl_client_open(struct drm_device *dev, struct drm_file *filp)
 	filp->driver_priv = fpriv;
 	mutex_init(&fpriv->lock);
 	atomic_set(&fpriv->trigger, 0);
+	atomic_set(&fpriv->outstanding_execs, 0);
+	fpriv->abort = false;
+	fpriv->pid = get_pid(task_pid(current));
 	zocl_track_ctx(dev, fpriv);
 	DRM_INFO("Pid %d opened device\n", pid_nr(task_tgid(current)));
 	return 0;
@@ -462,13 +471,49 @@ static int zocl_client_open(struct drm_device *dev, struct drm_file *filp)
 
 static void zocl_client_release(struct drm_device *dev, struct drm_file *filp)
 {
-	struct sched_client_ctx *fpriv = filp->driver_priv;
+	struct sched_client_ctx *client = filp->driver_priv;
+	struct drm_zocl_dev *zdev = dev->dev_private;
+	int pid = pid_nr(client->pid);
+	u32 outstanding = 0;
+	int retry = 20;
+	int i;
 
-	if (!fpriv)
+	if (!client)
 		return;
 
-	zocl_untrack_ctx(dev, fpriv);
-	kfree(fpriv);
+	/* force scheduler to abort scheduled cmds for this client */
+	client->abort = true;
+	outstanding = atomic_read(&client->outstanding_execs);
+	while (retry-- && outstanding) {
+		DRM_INFO("pid(%d) waiting for outstanding %d cmds to finish",
+		    pid, outstanding);
+		msleep(500);
+		outstanding = atomic_read(&client->outstanding_execs);
+	}
+	outstanding = atomic_read(&client->outstanding_execs);
+	if (outstanding) {
+		DRM_ERROR("Please investigate stale cmds\n");
+		for (i = 0; i < zdev->exec->num_cus; i++) {
+			zocl_cu_status_print(&zdev->exec->zcu[i]);
+		}
+	}
+
+	put_pid(client->pid);
+	client->pid = NULL;
+	if (CLIENT_NUM_CU_CTX(client) == 0)
+		goto done;
+
+	/*
+	 * This happens when application exits without releasing the
+	 * contexts. Give up contexts and release xclbin.
+	 */
+	client->num_cus = 0;
+	mutex_lock(&zdev->zdev_xclbin_lock);
+	(void) zocl_xclbin_release(zdev);
+	mutex_unlock(&zdev->zdev_xclbin_lock);
+done:
+	zocl_untrack_ctx(dev, client);
+	kfree(client);
 
 	DRM_INFO("Pid %d closed device\n", pid_nr(task_tgid(current)));
 }
@@ -560,6 +605,8 @@ static const struct drm_ioctl_desc zocl_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(ZOCL_SK_REPORT, zocl_sk_report_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(ZOCL_INFO_CU, zocl_info_cu_ioctl,
+			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(ZOCL_CTX, zocl_ctx_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 };
 
@@ -729,10 +776,16 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 
 	ret = drm_dev_register(drm, 0);
 	if (ret)
-		goto err0;
+		goto err_drm;
 
 	/* During attach, we don't request dma channel */
 	zdev->zdev_dma_chan = NULL;
+
+	/* Initial xclbin */
+	ret = zocl_xclbin_init(zdev);
+	if (ret)
+		goto err_drm;
+	mutex_init(&zdev->zdev_xclbin_lock);
 
 	/* doen with zdev initialization */
 	drm->dev_private = zdev;
@@ -742,18 +795,22 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	rwlock_init(&zdev->attr_rwlock);
 	ret = zocl_init_sysfs(drm->dev);
 	if (ret)
-		goto err0;
+		goto err_sysfs;
 
 	/* Now initial kds */
 	ret = sched_init_exec(drm);
 	if (ret)
-		goto err1;
+		goto err_sched;
 
 	return 0;
-err1:
-	zocl_fini_sysfs(drm->dev);
 
-err0:
+/* error out in exact reverse order of init */
+err_sched:
+	zocl_fini_sysfs(drm->dev);
+err_sysfs:
+	zocl_xclbin_fini(zdev);
+	mutex_destroy(&zdev->zdev_xclbin_lock);
+err_drm:
 	ZOCL_DRM_DEV_PUT(drm);
 	return ret;
 }
@@ -779,9 +836,12 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 		fpga_mgr_put(zdev->fpga_mgr);
 
 	sched_fini_exec(drm);
+
 	zocl_clear_mem(zdev);
 	mutex_destroy(&zdev->mm_lock);
 	zocl_free_sections(zdev);
+	zocl_xclbin_fini(zdev);
+	mutex_destroy(&zdev->zdev_xclbin_lock);
 	zocl_fini_sysfs(drm->dev);
 
 	kfree(zdev->apertures);

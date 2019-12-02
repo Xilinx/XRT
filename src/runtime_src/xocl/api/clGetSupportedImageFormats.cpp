@@ -15,14 +15,13 @@
  */
 
 // Copyright 2017 Xilinx, Inc. All rights reserved.
-
-#include <CL/opencl.h>
 #include "xocl/config.h"
 #include "xocl/core/error.h"
 #include "xocl/api/image.h"
 #include "detail/context.h"
 
 #include "plugin/xdp/profile.h"
+#include <CL/opencl.h>
 
 namespace xocl {
 
@@ -66,13 +65,13 @@ clGetSupportedImageFormats(cl_context context,
 {
   validOrError(context,flags,image_type,num_entries,image_formats,num_image_formats);
 
-  size_t n = 0;
+  cl_uint n = 0;
   for (size_t i = 0; i < sizeof(xocl::images::cl_image_order)/sizeof(uint32_t); ++i)
   {
       for (size_t j = 0; j < sizeof(xocl::images::cl_image_type)/sizeof(uint32_t); ++j) {
         const cl_image_format fmt = {
-          .image_channel_order = xocl::images::cl_image_order[i],
-          .image_channel_data_type = xocl::images::cl_image_type[j]
+          xocl::images::cl_image_order[i],
+          xocl::images::cl_image_type[j]
         };
         xocl::images::xlnx_image_type supported_image_type = xocl::images::get_image_supported_format(&fmt, flags);
         if (supported_image_type==xocl::images::xlnx_image_type::XLNX_UNSUPPORTED_FORMAT)

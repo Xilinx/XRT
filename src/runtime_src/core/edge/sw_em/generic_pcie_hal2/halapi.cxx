@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -27,15 +27,34 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   info.mMagic = 0X586C0C6C;
   info.mHALMajorVersion = XCLHAL_MAJOR_VER;
   info.mHALMinorVersion = XCLHAL_MINOR_VER;
-  info.mVendorId = 0x10ee;
-  info.mDeviceId = 0x0000;
-  info.mSubsystemVendorId = 0x0000;
-  info.mDeviceVersion = 0x0000;
+  info.mMinTransferSize = 32;
+  info.mVendorId = 0x10ee;   // TODO: UKP
+  info.mDeviceId = 0xffff;   // TODO: UKP
+  info.mSubsystemId = 0xffff;
+  info.mSubsystemVendorId = 0xffff;
+  info.mDeviceVersion = 0xffff;
   info.mDDRSize = xclemulation::MEMSIZE_4G;
   info.mDataAlignment = DDR_BUFFER_ALIGNMENT;
   info.mDDRBankCount = 1;
   for(unsigned int i = 0; i < 4 ;i++)
     info.mOCLFrequency[i] = 200;
+
+#if defined(__aarch64__)
+  info.mNumCDMA = 1;
+#else
+  info.mNumCDMA = 0;
+#endif
+
+  std::string deviceName("edge");
+  std::ifstream mVBNV;
+  mVBNV.open("/etc/xocl.txt");
+  if (mVBNV.is_open()) {
+    mVBNV >> deviceName;
+  }
+  mVBNV.close();
+  std::size_t length = deviceName.copy(info.mName, deviceName.length(), 0);
+  info.mName[length] = '\0';
+
   std::list<xclemulation::DDRBank> DDRBankList;
   xclemulation::DDRBank bank;
   bank.ddrSize = xclemulation::MEMSIZE_4G;
@@ -413,6 +432,14 @@ void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
   if (!drv)
     return NULL;
   return drv->xclMapBO(boHandle, write);
+}
+
+int xclUnmapBO(xclDeviceHandle handle, unsigned int boHandle, void* addr)
+{
+  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  if (!drv)
+    return -EINVAL;
+  return drv->xclUnmapBO(boHandle, addr);
 }
 
 int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset) 

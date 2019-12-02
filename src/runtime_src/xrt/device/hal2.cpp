@@ -21,7 +21,10 @@
 #include <cstring> // for std::memcpy
 #include <iostream>
 #include <cerrno>
-#include <sys/mman.h> // for POSIX munmap
+
+#ifdef _WIN32
+# pragma warning( disable : 4267 4996 4244 4245 )
+#endif
 
 namespace xrt { namespace hal2 {
 
@@ -154,14 +157,14 @@ allocExecBuffer(size_t sz)
   auto delBufferObject = [this](ExecBufferObjectHandle::element_type* ebo) {
     ExecBufferObject* bo = static_cast<ExecBufferObject*>(ebo);
     XRT_DEBUG(std::cout,"deleted exec buffer object\n");
-    munmap(bo->data, bo->size);
+    m_ops->mUnmapBO(m_handle, bo->handle, bo->data);
     m_ops->mFreeBO(m_handle, bo->handle);
     delete bo;
   };
 
   auto ubo = std::make_unique<ExecBufferObject>();
   ubo->handle = m_ops->mAllocBO(m_handle,sz, 0, XCL_BO_FLAGS_EXECBUF);  // xrt_mem.h
-  if (ubo->handle == 0xffffffff)
+  if (ubo->handle == NULLBO)
     throw std::bad_alloc();
 
   ubo->size = sz;
@@ -179,7 +182,7 @@ alloc(size_t sz)
   auto delBufferObject = [this](BufferObjectHandle::element_type* vbo) {
     BufferObject* bo = static_cast<BufferObject*>(vbo);
     XRT_DEBUGF("deleted buffer object device address(%p,%d)\n",bo->deviceAddr,bo->size);
-    munmap(bo->hostAddr, bo->size);
+    m_ops->mUnmapBO(m_handle, bo->handle, bo->hostAddr);
     m_ops->mFreeBO(m_handle, bo->handle);
     delete bo;
   };
@@ -187,7 +190,7 @@ alloc(size_t sz)
   uint64_t flags = 0xFFFFFF; //TODO: check default, any bank.
   auto ubo = std::make_unique<BufferObject>();
   ubo->handle = m_ops->mAllocBO(m_handle, sz, 0, flags);
-  if (ubo->handle == 0xffffffff)
+  if (ubo->handle == NULLBO)
     throw std::bad_alloc();
 
   ubo->size = sz;
@@ -213,7 +216,7 @@ alloc(size_t sz,void* userptr)
   uint64_t flags = 0xFFFFFF; //TODO:check default
   auto ubo = std::make_unique<BufferObject>();
   ubo->handle = m_ops->mAllocUserPtrBO(m_handle, userptr, sz, flags);
-  if (ubo->handle == 0xffffffff)
+  if (ubo->handle == NULLBO)
     throw std::bad_alloc();
 
   ubo->hostAddr = userptr;
@@ -234,7 +237,7 @@ alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
     BufferObject* bo = static_cast<BufferObject*>(vbo);
     XRT_DEBUGF("deleted buffer object device address(%p,%d)\n",bo->deviceAddr,bo->size);
     if (mmapRequired)
-      munmap(bo->hostAddr, bo->size);
+      m_ops->mUnmapBO(m_handle, bo->handle, bo->hostAddr);
     m_ops->mFreeBO(m_handle, bo->handle);
     delete bo;
   };
@@ -251,6 +254,8 @@ alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
       flags |= XCL_BO_FLAGS_P2P;
     } else if (domain == Domain::XRT_DEVICE_ONLY_MEM) {
       flags |= XCL_BO_FLAGS_DEV_ONLY;
+    } else if (domain == Domain::XRT_HOST_ONLY_MEM) {
+      flags |= XCL_BO_FLAGS_HOST_ONLY;
     } else
       flags |= XCL_BO_FLAGS_CACHEABLE;
 
@@ -259,7 +264,7 @@ alloc(size_t sz, Domain domain, uint64_t memory_index, void* userptr)
     else
       ubo->handle = m_ops->mAllocBO(m_handle, sz, 0, flags);
 
-    if (ubo->handle == 0xffffffff)
+    if (ubo->handle == NULLBO)
       throw std::bad_alloc();
 
     if (userptr)
@@ -388,9 +393,14 @@ device::
 fill_copy_pkt(const BufferObjectHandle& dst_boh, const BufferObjectHandle& src_boh
               ,size_t sz, size_t dst_offset, size_t src_offset, ert_start_copybo_cmd* pkt)
 {
+#ifndef _WIN32
   BufferObject* dst_bo = getBufferObject(dst_boh);
   BufferObject* src_bo = getBufferObject(src_boh);
   ert_fill_copybo_cmd(pkt,src_bo->handle,dst_bo->handle,src_offset,dst_offset,sz);
+#else
+  throw std::runtime_error("ert_fill_copybo_cmd not implemented on windows");
+#endif
+
   return;
 }
 
@@ -420,6 +430,12 @@ void
 device::
 unmap(const BufferObjectHandle& boh)
 {
+/*
+ * Any BO allocated through xrt::hal2 is mapped by default and cannot be munmap'ed.
+ * The unmapping happens as part of the buffer object handle going out of scope.
+ * xrt::device::map() simply returns the already nmap'ed host pointer contained within the opaque buffer object handle.
+ * So,xrt::device::unmap is provided for symmetry but is a no-op.
+ */
 }
 
 void*
@@ -434,6 +450,12 @@ void
 device::
 unmap(const ExecBufferObjectHandle& boh)
 {
+/*
+ * Any BO allocated through xrt::hal2 is mapped by default and cannot be munmap'ed.
+ * The unmapping happens as part of the buffer object handle going out of scope.
+ * xrt::device::map() simply returns the already nmap'ed host pointer contained within the opaque buffer object handle.
+ * So,xrt::device::unmap is provided for symmetry but is a no-op.
+ */
 }
 
 int
@@ -516,7 +538,7 @@ getBufferFromFd(const int fd, size_t& size, unsigned flags)
   auto delBufferObject = [this](BufferObjectHandle::element_type* vbo) {
     BufferObject* bo = static_cast<BufferObject*>(vbo);
     XRT_DEBUGF("deleted buffer object device address(%p,%d)\n",bo->deviceAddr,bo->size);
-    munmap(bo->hostAddr, bo->size);
+    m_ops->mUnmapBO(m_handle, bo->handle, bo->hostAddr);
     m_ops->mFreeBO(m_handle, bo->handle);
     delete bo;
   };
@@ -527,7 +549,7 @@ getBufferFromFd(const int fd, size_t& size, unsigned flags)
     throw std::runtime_error("ImportBO function not found in FPGA driver. Please install latest driver");
 
   ubo->handle = m_ops->mImportBO(m_handle, fd, flags);
-  if (ubo->handle == 0xffffffff)
+  if (ubo->handle == NULLBO)
     throw std::runtime_error("getBufferFromFd-Create XRT-BO: BOH handle is invalid");
 
   ubo->size = m_ops->mGetBOSize(m_handle, ubo->handle);

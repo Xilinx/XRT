@@ -26,7 +26,7 @@
 
 #include "xclperf.h"
 #include "xcl_app_debug.h"
-#include "stream.h"
+#include "xstream.h"
 #include "ert.h"
 
 #include <memory>
@@ -35,6 +35,11 @@
 #include <thread>
 #include <iosfwd>
 
+#ifdef _WIN32
+# include "core/include/windows/types.h"
+# pragma warning( push )
+# pragma warning ( disable : 4100 )
+#endif
 struct axlf;
 
 namespace xrt {
@@ -156,6 +161,7 @@ public:
     ,XRT_SHARED_PHYSICAL
     ,XRT_DEVICE_ONLY_MEM_P2P
     ,XRT_DEVICE_ONLY_MEM
+    ,XRT_HOST_ONLY_MEM
   };
 
   virtual bool
@@ -719,5 +725,9 @@ createDevices(hal::device_list&,const std::string&,void*,unsigned int,void* pmd=
 } // namespace hal2
 
 } // xrt
+
+#ifdef _WIN32
+# pragma warning( push )
+#endif
 
 #endif
