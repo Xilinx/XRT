@@ -181,6 +181,18 @@ read_dma_stats(boost::property_tree::ptree& pt) const
 
 void
 device_windows::
+read(uint64_t addr, void* buf, uint64_t len) const
+{
+}
+
+void
+device_windows::
+write(uint64_t addr, const void* buf, uint64_t len) const
+{
+}
+
+void
+device_windows::
 auto_flash(const std::string& shell, const std::string& id, bool force) const
 {
   std::cout << "TO-DO: auto_flash\n";

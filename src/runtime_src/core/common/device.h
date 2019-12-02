@@ -180,6 +180,9 @@ public:
   void read_power(boost::property_tree::ptree &pt) const;
   void read_firewall(boost::property_tree::ptree &pt) const;
 
+  virtual void read(uint64_t offset, void* buf, uint64_t len) const = 0;
+  virtual void write(uint64_t offset, const void* buf, uint64_t len) const = 0;
+
   //flash functions
   virtual void auto_flash(const std::string& shell, const std::string& id, bool force) const = 0;
   virtual void reset_shell() const = 0;

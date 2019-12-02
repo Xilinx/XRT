@@ -595,26 +595,13 @@ int XSPI_Flasher::xclUpgradeFirmwareXSpi(std::istream& mcsStream, int index) {
 unsigned int XSPI_Flasher::readReg(unsigned int RegOffset)
 {
     unsigned int value = 0;
-#if 0
-    if( mDev->pcieBarRead( flash_base + RegOffset, &value, 4 ) != 0 ) {
-#endif
-      if (dummy("regReg %d\n",RegOffset)) {
-        assert(0);
-	throw std::runtime_error("read reg ERROR");
-    }
+    m_device->read(flash_base + RegOffset, &value, 4);
     return value;
 }
 
 int XSPI_Flasher::writeReg(unsigned int RegOffset, unsigned int value)
 {
-#if 0
-    int status = mDev->pcieBarWrite(flash_base + RegOffset, &value, 4);
-#endif
-    int status = dummy("writeReg %d %d\n",RegOffset, value);
-    if(status != 0) {
-        assert(0);
-        std::cout << "write reg ERROR " << std::endl;
-    }
+    m_device->write(flash_base + RegOffset, &value, 4);
     return 0;
 }
 
