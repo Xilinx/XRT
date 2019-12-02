@@ -19,7 +19,7 @@
 #include "XBReport.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
-#include "common/core_system.h"
+#include "common/system.h"
 
 // 3rd Party Library - Include Files
 
@@ -33,9 +33,9 @@ using namespace XBReport;
 void
 XBReport::report_system_config()
 {
-  // -- Get the property tree 
+  // -- Get the property tree
   boost::property_tree::ptree _ptSystem;
-  xrt_core::system::get_os_info(_ptSystem);
+  xrt_core::get_os_info(_ptSystem);
   XBU::trace_print_tree("System", _ptSystem);
 
   XBU::message("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
@@ -52,9 +52,9 @@ XBReport::report_system_config()
 void
 XBReport::report_xrt_info()
 {
-  // -- Get the property tree 
+  // -- Get the property tree
   boost::property_tree::ptree _ptXRT;
-  xrt_core::system::get_xrt_info(_ptXRT);
+  xrt_core::get_xrt_info(_ptXRT);
   XBU::trace_print_tree("XRT", _ptXRT);
 
   XBU::message("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");

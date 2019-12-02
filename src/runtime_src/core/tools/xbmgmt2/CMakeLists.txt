@@ -24,12 +24,14 @@ if(WIN32)
   file(GLOB XBMGMT_V2_SUBCMD_FILES
     "SubCmdFlash.cpp"
     "SubCmdVersion.cpp"
+    "flash/xspi.cpp"
   )
 else()
   set(XBMGMT2_NAME "xbmgmt2")
   file(GLOB XBMGMT_V2_SUBCMD_FILES
     "SubCmdFlash.cpp"
     "SubCmdVersion.cpp"
+    "flash/xspi.cpp"
   )
 endif()
 
@@ -53,6 +55,7 @@ if(WIN32)
 else()
   target_link_libraries(
     ${XBMGMT2_NAME}
+    xrt_core
     xrt_core_static
     xrt_coreutil_static
     boost_filesystem

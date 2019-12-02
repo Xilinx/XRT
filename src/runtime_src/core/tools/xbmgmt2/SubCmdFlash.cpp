@@ -20,7 +20,8 @@
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
-#include "core/common/device_core.h"
+#include "core/common/device.h"
+#include "core/common/system.h"
 #include "core/common/error.h"
 
 // 3rd Party Library - Include Files
@@ -32,19 +33,24 @@ namespace po = boost::program_options;
 
 // ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
 #include "tools/common/SubCmd.h"
-static const unsigned int registerResult = 
-                    register_subcommand("flash", 
+static const unsigned int registerResult =
+                    register_subcommand("flash",
                                         "Update SC firmware or shell on the device",
                                         subCmdFlash);
 // =============================================================================
 
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
-uint64_t bdf2index() {
+namespace {
+
+static unsigned int
+bdf2index()
+{
   //this should be placed in xbmgmt common
   return 0;
 }
 
+} // unnamed namespace
 
 
 // ------ F U N C T I O N S ---------------------------------------------------
@@ -54,7 +60,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
 //                      --scan [--verbose|--json]
 //                      --update [--shell name [--id id]] [--card bdf] [--force]
 //                      --factory_reset [--card bdf]
-//                      
+//
 //                      Experts only:
 //                      --shell --path file --card bdf [--type flash_type]
 //                      --sc_firmware --path file --card bdf
@@ -69,7 +75,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
   bool update = false;
   bool shell = false;
   bool sc_firmware = false;
-  
+
 
   po::options_description flashDesc("flash options");
   flashDesc.add_options()
@@ -152,7 +158,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
       return 1;
     }
 
-    xrt_core::device_core::instance().scan_devices(verbose, json); 
+    xrt_core::scan_devices(verbose, json);
     return registerResult;
   }
 
@@ -172,7 +178,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
       ("shell_name", boost::program_options::value<std::string>(&name), "name of shell")
       ("id", boost::program_options::value<std::string>(&id), "id of the card")
     ;
-    
+
     // -- Now process the subcommand options ----------------------------------
     po::variables_map option_vm;
     try {
@@ -196,7 +202,8 @@ int subCmdFlash(const std::vector<std::string> &_options)
       return 1;
     }
 
-    xrt_core::device_core::instance().auto_flash(bdf2index(), name, id, force);
+    auto device = xrt_core::get_mgmtpf_device(bdf2index());
+    device->auto_flash(name, id, force);
     return registerResult;
   }
 
@@ -224,7 +231,8 @@ int subCmdFlash(const std::vector<std::string> &_options)
     // -- Now process the subcommand option-------------------------------
     XBU::verbose(XBU::format("  Card: %s", bdf.c_str()));
 
-    xrt_core::device_core::instance().reset_shell(bdf2index());
+    auto device = xrt_core::get_mgmtpf_device(bdf2index());
+    device->reset_shell();
     return registerResult;
   }
 
@@ -264,7 +272,8 @@ int subCmdFlash(const std::vector<std::string> &_options)
       std::cerr << shellDesc << std::endl;
       return 1;
     }
-    xrt_core::device_core::instance().update_shell(bdf2index(), flash_type, file, secondary);
+    auto device = xrt_core::get_mgmtpf_device(bdf2index());
+    device->update_shell(flash_type, file, secondary);
     return registerResult;
   }
 
@@ -301,10 +310,10 @@ int subCmdFlash(const std::vector<std::string> &_options)
       return 1;
     }
 
-    xrt_core::device_core::instance().update_SC(bdf2index(), file);
+    auto device = xrt_core::get_mgmtpf_device(bdf2index());
+    device->update_SC(file);
     return registerResult;
   }
 
   return registerResult;
 }
-
