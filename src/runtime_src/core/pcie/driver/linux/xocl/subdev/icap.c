@@ -176,7 +176,7 @@ struct icap {
 	 */
 	u64			busy;
 	int			reader_ref;
-	wait_queue_head_t	reader_wq;
+	struct completion 	reader_comp;
 
 };
 
@@ -365,11 +365,11 @@ static int icap_xclbin_wr_lock(struct icap *icap)
  	if (ret)
 		goto done;
 
-	ret = wait_event_interruptible(icap->reader_wq, icap->reader_ref == 0);
-
-	if (ret)
-		goto done;
-
+	if (icap->reader_ref) {
+		ret = wait_for_completion_interruptible(&icap->reader_comp);
+		if (ret)
+			goto done;
+	}
 	BUG_ON(icap->reader_ref != 0);
 
 done:
@@ -421,7 +421,7 @@ static  void icap_xclbin_rd_unlock(struct icap *icap)
 
 	mutex_unlock(&icap->icap_lock);
 	if (wake)
-		wake_up_interruptible(&icap->reader_wq);
+		complete(&icap->reader_comp);
 }
 
 
@@ -3373,6 +3373,7 @@ static int icap_remove(struct platform_device *pdev)
 	sysfs_remove_group(&pdev->dev.kobj, &icap_attr_group);
 	icap_clean_bitstream_axlf(pdev);
 	ICAP_INFO(icap, "cleaned up successfully");
+
 	platform_set_drvdata(pdev, NULL);
 	xocl_drvinst_free(icap);
 	return 0;
@@ -3427,7 +3428,7 @@ static int icap_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, icap);
 	icap->icap_pdev = pdev;
 	mutex_init(&icap->icap_lock);
-	init_waitqueue_head(&icap->reader_wq);
+	init_completion(&icap->reader_comp);
 
 	regs = (void **)&icap->icap_regs;
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
