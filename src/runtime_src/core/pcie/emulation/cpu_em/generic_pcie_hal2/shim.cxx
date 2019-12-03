@@ -399,6 +399,12 @@ namespace xclcpuemhal2 {
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "lib"   + DS + "csim";
           setenv("LD_LIBRARY_PATH",sLdLibs.c_str(),true);
         }
+
+        if (xilinxInstall.empty()) {
+           std::cerr << "ERROR : [SW-EM] Please make sure that the XILINX_VITIS environment variable is set correctly" << std::endl;
+           exit(1);
+        }
+
         std::string modelDirectory("");
 #if defined(RDIPF_aarch64)
         modelDirectory= xilinxInstall + "/data/emulation/unified/cpu_em/zynqu/model/genericpciemodel";
@@ -407,6 +413,19 @@ namespace xclcpuemhal2 {
 #else
         modelDirectory= xilinxInstall + "/data/emulation/unified/cpu_em/generic_pcie/model/genericpciemodel";
 #endif
+
+        FILE *filep;
+        if ((filep = fopen(modelDirectory.c_str(), "r")) != NULL)
+        {
+          // file exists
+          fclose(filep);
+        }
+        else
+        {
+          //File not found, no memory leak since 'file' == NULL
+          std::cerr << "ERROR : [SW-EM] Unable to launch Device process, Please make sure that the XILINX_VITIS environment variable is set correctly" << std::endl;
+          exit(1);
+        }
 
         const char* childArgv[6] = { NULL, NULL, NULL, NULL, NULL, NULL } ;
         childArgv[0] = modelDirectory.c_str() ;
