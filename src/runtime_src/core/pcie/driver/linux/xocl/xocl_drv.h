@@ -433,6 +433,7 @@ struct xocl_rom_funcs {
 	int (*find_firmware)(struct platform_device *pdev, char *fw_name,
 		size_t len, u16 deviceid, const struct firmware **fw);
 	bool (*passthrough_virtualization_on)(struct platform_device *pdev);
+	char *(*get_uuid)(struct platform_device *pdev);
 };
 
 #define ROM_DEV(xdev)	\
@@ -474,6 +475,8 @@ struct xocl_rom_funcs {
 #define xocl_passthrough_virtualization_on(xdev)		\
 	(ROM_CB(xdev, passthrough_virtualization_on) ?		\
 	ROM_OPS(xdev)->passthrough_virtualization_on(ROM_DEV(xdev)) : false)
+#define xocl_rom_get_uuid(xdev)				\
+	(ROM_CB(xdev, get_timestamp) ? ROM_OPS(xdev)->get_uuid(ROM_DEV(xdev)) : NULL)
 
 /* dma callbacks */
 struct xocl_dma_funcs {

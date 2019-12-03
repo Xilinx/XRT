@@ -364,7 +364,7 @@ static ssize_t ready_show(struct device *dev,
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	uint64_t ch_state = 0, ret = 0, daemon_state = 0;
-	struct xcl_board_info *board_info;
+	struct xcl_board_info *board_info = NULL;
 
 	/* Bypass this check for versal for now */
 	if (XOCL_DSA_IS_VERSAL(xdev))
@@ -384,8 +384,11 @@ static ssize_t ready_show(struct device *dev,
 			ret = ((ch_state & XCL_MB_PEER_READY) && daemon_state)
 				? 1 : 0;
 		}
-		if (!ret)
+
+		/* for now skip checking SC compatibility for 1RP flow */
+		if (!ret || !xocl_rom_get_uuid(xdev))
 			goto bail;
+
 		board_info = vzalloc(sizeof(*board_info));
 		if (!board_info)
 			goto bail;

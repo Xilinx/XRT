@@ -1251,7 +1251,7 @@ int xcldev::device::scVersionTest(void)
     if (!exp_sc_ver.empty() && sc_ver.compare(exp_sc_ver) != 0)
     {
         std::cout << "SC firmware version is not expected. SC firmware running on board: " << sc_ver << ". Expected SC firmware: " << exp_sc_ver << std::endl; 
-	return -EINVAL;
+	return 1;
     }
 
     return 0;

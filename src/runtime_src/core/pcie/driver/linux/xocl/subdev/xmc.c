@@ -2703,7 +2703,7 @@ static int xmc_load_board_info(struct xocl_xmc *xmc)
 		tmp_str = (char *)xocl_icap_get_data(xdev, EXP_BMC_VER);
 		if (tmp_str) {
 			strncpy(xmc->exp_bmc_ver, tmp_str,
-				XMC_BDINFO_ENTRY_LEN_MAX);
+				XMC_BDINFO_ENTRY_LEN_MAX - 1);
 		}
 		if (bd_info_valid(xmc->serial_num) &&
 			!strcmp(xmc->bmc_ver, xmc->exp_bmc_ver)) {
