@@ -243,6 +243,16 @@ static u64 get_timestamp(struct platform_device *pdev)
 	return rom->header.TimeSinceEpoch;
 }
 
+static char *get_uuid(struct platform_device *pdev)
+{
+	struct feature_rom *rom;
+
+	rom = platform_get_drvdata(pdev);
+	BUG_ON(!rom);
+
+	return rom->uuid;
+}
+
 static bool is_are(struct platform_device *pdev)
 {
 	struct feature_rom *rom;
@@ -373,6 +383,7 @@ static struct xocl_rom_funcs rom_ops = {
 	.runtime_clk_scale_on = runtime_clk_scale_on,
 	.find_firmware = find_firmware,
 	.passthrough_virtualization_on = passthrough_virtualization_on,
+	.get_uuid = get_uuid,
 };
 
 static int get_header_from_peer(struct feature_rom *rom)
