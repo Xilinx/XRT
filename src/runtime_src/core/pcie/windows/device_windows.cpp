@@ -16,11 +16,13 @@
 
 #include "device_windows.h"
 #include "common/utils.h"
-#include "xrt.h"
+#include "shim.h"
 #include "boost/format.hpp"
 #include <string>
 #include <iostream>
 #include <map>
+#include <fstream>
+#include <setupapi.h>
 
 #pragma warning(disable : 4100 4996)
 
@@ -33,17 +35,20 @@ get_IOCTL_entry(QueryRequest qr) const
   // Initialize our lookup table
   static const std::map<QueryRequest, IOCTLEntry> QueryRequestToIOCTLTable =
   {
-    { QR_PCIE_VENDOR,               { 0 }},
-    { QR_PCIE_DEVICE,               { 0 }},
-    { QR_PCIE_SUBSYSTEM_VENDOR,     { 0 }},
-    { QR_PCIE_SUBSYSTEM_ID,         { 0 }},
-    { QR_PCIE_LINK_SPEED,           { 0 }},
-    { QR_PCIE_EXPRESS_LANE_WIDTH,   { 0 }},
+    { QR_PCIE_VENDOR,               { IOCTL_XOCL_STAT,   XoclStatDevice }},
+    { QR_PCIE_DEVICE,               { IOCTL_XOCL_STAT,   XoclStatDevice }},
+    { QR_PCIE_SUBSYSTEM_VENDOR,     { IOCTL_XOCL_STAT,   XoclStatDevice }},
+    { QR_PCIE_SUBSYSTEM_ID,         { IOCTL_XOCL_STAT,   XoclStatDevice }},
+    { QR_PCIE_LINK_SPEED,           { IOCTL_XOCL_STAT,   XoclStatDevice }},
+    { QR_PCIE_EXPRESS_LANE_WIDTH,   { IOCTL_XOCL_STAT,   XoclStatDevice }},
+    { QR_PCIE_READY_STATUS,         { IOCTL_XOCL_STAT,   XoclStatDevice }},
     { QR_DMA_THREADS_RAW,           { 0 }},
-    { QR_ROM_VBNV,                  { 0 }},
-    { OR_ROM_DDR_BANK_SIZE,         { 0 }},
-    { QR_ROM_DDR_BANK_COUNT_MAX,    { 0 }},
-    { QR_ROM_FPGA_NAME,             { 0 }},
+    { QR_ROM_VBNV,                  { IOCTL_XOCL_STAT,   XoclStatRomInfo }},
+    { QR_ROM_DDR_BANK_SIZE,         { IOCTL_XOCL_STAT,   XoclStatRomInfo }},
+    { QR_ROM_DDR_BANK_COUNT_MAX,    { IOCTL_XOCL_STAT,   XoclStatRomInfo }},
+    { QR_ROM_FPGA_NAME,             { IOCTL_XOCL_STAT,   XoclStatRomInfo }},
+    { QR_ROM_TIME_SINCE_EPOCH,      { IOCTL_XOCL_STAT,   XoclStatRomInfo }},
+    { QR_AXLF_MEMSECTION_COUNT,    { IOCTL_XOCL_STAT,   XoclStatMemTopology }},
     { QR_XMC_VERSION,               { 0 }},
     { QR_XMC_SERIAL_NUM,            { 0 }},
     { QR_XMC_MAX_POWER,             { 0 }},
@@ -117,6 +122,8 @@ query(QueryRequest qr, const std::type_info & _typeInfo, boost::any& value) cons
   boost::any anyEmpty;
   value.swap(anyEmpty);
 
+  auto handle = get_device_handle();
+
   // Get the sysdev and entry values to call
   const IOCTLEntry & entry = get_IOCTL_entry(qr);
 
@@ -124,43 +131,9 @@ query(QueryRequest qr, const std::type_info & _typeInfo, boost::any& value) cons
 
   if (entry.IOCTLValue == 0) {
     sErrorMsg = "IOCTLEntry is initialized with zeros.";
+  } else {
+    queryDeviceWithQR(handle, value, qr, _typeInfo, entry.statClass);
   }
-
-  // Reference linux code:
-//  if (_typeInfo == typeid(std::string)) {
-//    // -- Typeid: std::string --
-//    _returnValue = std::string("");
-//    std::string *stringValue = boost::any_cast<std::string>(&_returnValue);
-//    pcidev::get_dev(_deviceID)->sysfs_get( entry.sSubDevice, entry.sEntry, sErrorMsg, *stringValue);
-//
-//  } else if (_typeInfo == typeid(uint64_t)) {
-//    // -- Typeid: uint64_t --
-//    _returnValue = (uint64_t) -1;
-//    std::vector<uint64_t> uint64Vector;
-//    pcidev::get_dev(_deviceID)->sysfs_get( entry.sSubDevice, entry.sEntry, sErrorMsg, uint64Vector);
-//    if (!uint64Vector.empty()) {
-//      _returnValue = uint64Vector[0];
-//    }
-//
-//  } else if (_typeInfo == typeid(bool)) {
-//    // -- Typeid: bool --
-//    _returnValue = (bool) 0;
-//    std::vector<uint64_t> uint64Vector;
-//    pcidev::get_dev(_deviceID)->sysfs_get( entry.sSubDevice, entry.sEntry, sErrorMsg, uint64Vector);
-//    if (!uint64Vector.empty()) {
-//      _returnValue = (bool) uint64Vector[0];
-//    }
-//
-//  } else if (_typeInfo == typeid(std::vector<std::string>)) {
-//    // -- Typeid: std::vector<std::string>
-//    _returnValue = std::vector<std::string>();
-//    std::vector<std::string> *stringVector = boost::any_cast<std::vector<std::string>>(&_returnValue);
-//    pcidev::get_dev(_deviceID)->sysfs_get( entry.sSubDevice, entry.sEntry, sErrorMsg, *stringVector);
-//
-//  } else {
-//  }
-
-  sErrorMsg = boost::str( boost::format("Error: Unsupported query_device return type: '%s'") % _typeInfo.name());
 
   if (!sErrorMsg.empty()) {
     throw std::runtime_error(sErrorMsg);
@@ -217,6 +190,90 @@ device_windows::
 update_SC(const std::string& file) const
 {
   std::cout << "TO-DO: update_SC\n";
+}
+
+uint64_t
+device_windows::
+get_memtopology_size() const
+{
+  boost::any value;
+  auto handle = get_device_handle();
+  // Get the sysdev and entry values to call
+  const IOCTLEntry & entry = get_IOCTL_entry(QR_AXLF_MEMSECTION_COUNT);
+  std::string sErrorMsg;
+
+  if (entry.IOCTLValue == 0) {
+	sErrorMsg = "IOCTLEntry is initialized with zeros.";
+	throw std::runtime_error(sErrorMsg);
+  }
+  else {
+	queryDeviceWithQR(handle, value, QR_AXLF_MEMSECTION_COUNT, typeid(uint64_t), entry.statClass);
+  }
+
+  uint64_t output = boost::any_cast<uint64_t>(value);
+  output = sizeof(struct mem_topology) + output * sizeof(struct mem_data);
+
+  return output;
+}
+
+uint64_t
+device_windows::
+get_memraw_size() const
+{
+	boost::any value;
+	auto handle = get_device_handle();
+	// Get the sysdev and entry values to call
+	const IOCTLEntry & entry = get_IOCTL_entry(QR_AXLF_MEMSECTION_COUNT);
+	std::string sErrorMsg;
+
+	if (entry.IOCTLValue == 0) {
+		sErrorMsg = "IOCTLEntry is initialized with zeros.";
+		throw std::runtime_error(sErrorMsg);
+	}
+	else {
+		queryDeviceWithQR(handle, value, QR_AXLF_MEMSECTION_COUNT, typeid(uint64_t), entry.statClass);
+	}
+
+	uint64_t output = boost::any_cast<uint64_t>(value);
+	output = sizeof(struct mem_raw_info) + output * sizeof(struct mem_raw);
+
+	return output;
+}
+
+unsigned long
+device_windows::
+get_ip_layoutsize() const
+{
+  auto handle = get_device_handle();
+
+  return shim_get_ip_layoutsize(handle);
+}
+
+void
+device_windows::
+get_ip_layout(struct ip_layout **ipLayout, unsigned long size) const
+{
+  auto handle = get_device_handle();
+
+  shim_get_ip_layout(handle, ipLayout, size);
+}
+
+unsigned long
+device_windows::
+get_mem_topology(struct mem_topology **topoInfo, uint64_t topoSize) const
+{
+  auto handle = get_device_handle();
+
+  return shim_get_mem_topology(handle, topoInfo, topoSize);
+}
+
+unsigned long
+device_windows::
+get_mem_rawinfo(struct mem_raw_info **memRaw, uint64_t rawSize) const
+{
+  auto handle = get_device_handle();
+
+  return shim_get_mem_rawinfo(handle, memRaw, rawSize);
 }
 
 } // xrt_core

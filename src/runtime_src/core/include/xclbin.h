@@ -236,6 +236,17 @@ extern "C" {
         struct mem_data m_mem_data[1]; //Should be sorted on mem_type
     };
 
+    // XoclStatMemRaw
+    struct mem_raw {
+	    uint64_t MemoryUsage;
+	    uint64_t BOCount;
+    };
+
+    struct mem_raw_info {
+	    unsigned long MemRawCount;
+	    struct mem_raw MemRaw[1];
+    };
+
     /****   CONNECTIVITY SECTION ****/
     /* Connectivity of each argument of Kernel. It will be in terms of argument
      * index associated. For associating kernel instances with arguments and

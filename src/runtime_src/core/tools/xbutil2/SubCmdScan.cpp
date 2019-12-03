@@ -17,6 +17,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdScan.h"
+#include "XBReport.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
@@ -81,6 +82,11 @@ int subCmdScan(const std::vector<std::string> &_options)
     return 0;
   }
 
+  // Report system configuration and XRT information
+  XBReport::report_system_config();
+  XBReport::report_xrt_info();
+  std::cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
+
   // Collect
   namespace bpt = boost::property_tree;
   bpt::ptree pt;
@@ -91,10 +97,24 @@ int subCmdScan(const std::vector<std::string> &_options)
   if (!devices || (*devices).size()==0)
     throw xrt_core::error("No devices found");
 
+  int ready_count = 0;
+
   for (auto& device : *devices) {
-    std::cout << "[" << device.second.get<std::string>("device_id") << "] <board TBD> ...\n";
-    // populate with  same output as old xbutil
+	auto device_id = device.second.get<unsigned int>("device_id", (unsigned int)-1);
+	auto dev = xrt_core::get_userpf_device(device_id);
+	boost::property_tree::ptree _pt;
+	dev->get_rom_info(_pt);
+
+	dev->read_ready_status(_pt);
+	bool ready = _pt.get<bool>("ready", "false");
+	if (ready)
+	  ready_count++;
+
+	std::cout << "[" << device_id << "]: " << _pt.get<std::string>("vbnv", "N/A") << "(ts=" << _pt.get<std::string>("time_since_epoch", "N/A") << ")" << std::endl;
   }
+
+  std::cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
+  std::cout << "INFO: Found total " << (*devices).size() << " card(s), " << ready_count << " are usable.\n";
 
   return registerResult;
 }

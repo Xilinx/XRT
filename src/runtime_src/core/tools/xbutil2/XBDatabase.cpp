@@ -26,12 +26,42 @@ namespace XBU = XBUtilities;
 // 3rd Party Library - Include Files
 
 // System - Include Files
+#include <iostream>
+#include <iomanip>
 
 // ------ N A M E S P A C E ---------------------------------------------------
 using namespace XBDatabase;
 
 
 // ------ F U N C T I O N S ---------------------------------------------------
+void
+XBDatabase::dump(boost::property_tree::ptree & _pt, std::ostream& ostr)
+{
+  std::ios::fmtflags f(ostr.flags());
+  ostr << std::left << std::endl;
+  ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+  ostr << std::setw(32) << "Shell" << std::setw(32) << "FPGA" << "IDCode" << std::endl;
+  ostr << std::setw(32) << _pt.get<std::string>("platform.rom.vbnv", "N/A")
+	   << std::setw(32) << _pt.get<std::string>("platform.rom.fpga_name", "N/A")
+	   << _pt.get<std::string>("platform.info.idcode", "N/A") << std::endl;
+  ostr << std::setw(16) << "Vendor" << std::setw(16) << "Device" << std::setw(16) << "SubDevice"
+	   << std::setw(16) << "SubVendor" << std::setw(16) << "SerNum" << std::endl;
+  ostr << std::setw(16) << _pt.get<std::string>("pcie.vendor", "N/A")
+	   << std::setw(16) << _pt.get<std::string>("pcie.device", "N/A")
+	   << std::setw(16) << _pt.get<std::string>("pcie.subsystem_id", "N/A")
+	   << std::setw(16) << _pt.get<std::string>("pcie.subsystem_vendor", "N/A")
+	   << std::setw(16) << _pt.get<std::string>("pcie.serial_number", "N/A") << std::endl;
+  ostr << std::setw(16) << "DDR size (MB)" << std::setw(16) << "DDR count" << std::setw(16)
+	   << "Clock0" << std::setw(16) << "Clock1" << std::setw(16) << "Clock2" << std::endl;
+  ostr << std::setw(16) << strtoull(_pt.get<std::string>("platform.rom.ddr_size_bytes", "N/A").c_str(), nullptr, 16) / (1024 * 1024)
+	   << std::setw(16) << _pt.get("platform.rom.widdr_countdth", -1)
+	   << std::setw(16) << _pt.get("platform.info.clock0", -1)
+	   << std::setw(16) << _pt.get("platform.info.clock1", -1)
+	   << std::setw(16) << _pt.get("platform.info.clock2", -1) << std::endl;
+  ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+  ostr.flags(f);
+}
+
 void
 XBDatabase::create_complete_device_tree(boost::property_tree::ptree & _pt)
 {
@@ -56,6 +86,7 @@ XBDatabase::create_complete_device_tree(boost::property_tree::ptree & _pt)
     // Platform information
     boost::property_tree::ptree ptPlatform;
 
+#if 0
     // Get and add generic information
     {
       boost::property_tree::ptree pt;
@@ -63,6 +94,7 @@ XBDatabase::create_complete_device_tree(boost::property_tree::ptree & _pt)
       ptPlatform.add_child("info", pt);
     }
 
+#endif
     // Get and add ROM information
     {
       boost::property_tree::ptree pt;
@@ -70,6 +102,7 @@ XBDatabase::create_complete_device_tree(boost::property_tree::ptree & _pt)
       ptPlatform.add_child("rom", pt);
     }
 
+#if 0
     // Get and add XMC information
     {
       boost::property_tree::ptree pt;
@@ -132,8 +165,74 @@ XBDatabase::create_complete_device_tree(boost::property_tree::ptree & _pt)
       device->read_dma_stats(pt);
       ptPlatform.add_child("pcie_dma", pt);
     }
+#endif
+
+    {
+	  std::cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
+	  //boost::property_tree::ptree pt;
+	  struct ip_layout *ipLayout = NULL;
+	  unsigned long ipSize = device->get_ip_layoutsize();
+	  ipLayout = (struct ip_layout*)malloc(ipSize);
+	  device->get_ip_layout(&ipLayout, ipSize);
+	  if (ipLayout != NULL) {
+		std::cout << "Compute Unit Status:" << std::endl;
+		for (int i = 0; i < ipLayout->m_count; i++) {
+		  struct ip_data* data = &ipLayout->m_ip_data[i];
+		  if (data->m_type != IP_KERNEL)
+			continue;
+		  size_t len = strlen((char*)data->m_name);
+		  std::string name((const char*)data->m_name, len);
+		  printf("[%d]: %s @0x%llx\t(state:)\n", i, name.c_str(), (unsigned long long)data->m_base_address);
+		}
+	  }
+	  free(ipLayout);
+      //ptPlatform.add_child("ip_layout", pt);
+    }
+
+    {
+	  std::cout << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
+	  struct mem_topology *topoInfo = NULL;
+	  uint64_t memsize = device->get_memtopology_size();
+	  topoInfo = (struct mem_topology*)malloc(memsize);
+
+	  struct mem_raw_info *memRaw = NULL;
+	  uint64_t rawsize = device->get_memraw_size();
+	  memRaw = (struct mem_raw_info*)malloc(rawsize);
+
+	  if (!device->get_mem_topology(&topoInfo, memsize) &&
+		  !device->get_mem_rawinfo(&memRaw, rawsize)) {
+		  std::cout << "Memory Status:" << std::endl;
+		  std::cout << "Tag" << std::setw(16) << "Type" << std::setw(16)
+			  << "Temp(C)" << std::setw(16) << "Size (GB)" << std::setw(16)
+			  << "Mem Usage" << std::setw(16) << "BO count" << std::endl;
+		  for (int i = 0; i < topoInfo->m_count; i++) {
+			  std::cout << topoInfo->m_mem_data[i].m_tag << std::setw(16);
+			  switch (topoInfo->m_mem_data[i].m_type) {
+			  case MEM_DDR3: std::cout << "MEM_DDR3" << std::setw(16); break;
+			  case MEM_DDR4: std::cout << "MEM_DDR4" << std::setw(16); break;
+			  case MEM_DRAM: std::cout << "MEM_DRAM" << std::setw(16); break;
+			  case MEM_STREAMING: std::cout << "MEM_STREAMING" << std::setw(16); break;
+			  case MEM_PREALLOCATED_GLOB: std::cout << "MEM_PREALLOCATED_GLOB" << std::setw(16); break;
+			  case MEM_ARE: std::cout << "MEM_ARE" << std::setw(16); break;
+			  case MEM_HBM: std::cout << "MEM_HBM" << std::setw(16); break;
+			  case MEM_BRAM: std::cout << "MEM_BRAM" << std::setw(16); break;
+			  case MEM_URAM: std::cout << "MEM_URAM" << std::setw(16); break;
+			  case MEM_STREAMING_CONNECTION: std::cout << "MEM_STREAMING_CONNECTION" << std::setw(16); break;
+			  }
+			  std::cout << ptPlatform.get<std::string>("physical.thermal.fpga.temp_c", "N/A") << std::setw(16);
+			  std::cout << topoInfo->m_mem_data[i].m_size / (1024 * 1024) << std::setw(16)
+				  << memRaw->MemRaw[i].MemoryUsage / (1024 * 1024) << " (MB)" << std::setw(16)
+				  << memRaw->MemRaw[i].BOCount << std::endl;
+		  }
+	  }
+	  else {
+		  std::cout << "Memory Status: N/A" << std::endl;
+	  }
+	  free(topoInfo);
+    }
 
     // Add the platform to the device tree
     ptDevice.add_child("platform", ptPlatform);
+    dump(ptDevice, std::cout);
   }
 }

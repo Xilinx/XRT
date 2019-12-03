@@ -40,7 +40,7 @@ device_linux::get_sysdev_entry(QueryRequest qr) const
     { QR_PCIE_EXPRESS_LANE_WIDTH,   {"",     "link_width"}},
     { QR_DMA_THREADS_RAW,           {"dma",  "channel_stat_raw"}},
     { QR_ROM_VBNV,                  {"rom",  "VBNV"}},
-    { OR_ROM_DDR_BANK_SIZE,         {"rom",  "ddr_bank_size"}},
+    { QR_ROM_DDR_BANK_SIZE,         {"rom",  "ddr_bank_size"}},
     { QR_ROM_DDR_BANK_COUNT_MAX,    {"rom",  "ddr_bank_count_max"}},
     { QR_ROM_FPGA_NAME,             {"rom",  "FPGA"}},
     { QR_XMC_VERSION,               {"xmc",  "version"}},
@@ -237,6 +237,48 @@ device_linux::
 update_SC(const std::string& file) const
 {
   std::cout << "TO-DO: update_SC\n";
+}
+
+uint64_t
+device_linux::
+get_memraw_size() const
+{
+	return 0;
+}
+
+uint64_t
+device_linux::
+get_memtopology_size() const
+{
+	return 0;
+}
+
+unsigned long
+device_linux::
+get_ip_layoutsize() const
+{
+	return 0;
+}
+
+void
+device_linux::
+get_ip_layout(struct ip_layout **ipLayout, unsigned long size) const
+{
+  return;
+}
+
+unsigned long
+device_linux::
+get_mem_topology(struct mem_topology **topoInfo, uint64_t topoSize) const
+{
+	return 0;
+}
+
+unsigned long
+device_linux::
+get_mem_rawinfo(struct mem_raw_info **memRaw, uint64_t rawSize) const
+{
+	return 0;
 }
 
 } // xrt_core

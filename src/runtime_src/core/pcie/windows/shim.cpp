@@ -25,14 +25,12 @@
 #include <setupapi.h>
 #include <strsafe.h>
 
-// To be simplified
-#include "core/pcie/driver/windows/include/XoclUser_INTF.h"
-
 #include <cstring>
 #include <cstdio>
 #include <ctime>
 #include <iostream>
 #include <string>
+#include "boost/any.hpp"
 
 #pragma warning(disable : 4100 4996)
 #pragma comment (lib, "Setupapi.lib")
@@ -333,6 +331,30 @@ done:
       CloseHandle(handle);
   }
 
+  size_t
+  write_bo(xclBufferHandle boHandle, const void *src, size_t size, size_t seek)
+  {
+	void* addr = map_bo(boHandle, 1);
+
+	memcpy(addr, src, size);
+
+	unmap_bo(boHandle, addr);
+
+	return 0;
+  }
+
+  size_t
+  read_bo(xclBufferHandle boHandle, void *dst, size_t size, size_t skip)
+  {
+	void* addr = map_bo(boHandle, 1);
+
+	memcpy(dst, addr, size);
+
+	unmap_bo(boHandle, addr);
+
+	return 0;
+  }
+
   int
   sync_bo(buffer_handle_type handle, xclBOSyncDirection dir, size_t size, size_t offset)
   {
@@ -557,7 +579,7 @@ done:
       error = GetLastError();
 
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl failed with error %d", error);
+        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "%s: DeviceIoControl failed with error %d", __func__, error);
 
       goto out;
     }
@@ -576,16 +598,17 @@ done:
     DWORD error;
     DWORD bytesWritten;
     DWORD bytesToRead;
-    XOCL_STAT_CLASS statClass = XoclStatMemTopology;
+    XOCL_STAT_CLASS_ARGS statClassArgs = { 0 };
     XOCL_MEM_TOPOLOGY_INFORMATION topoInfo;
     XOCL_MEM_RAW_INFORMATION memRaw;
 
+	statClassArgs.StatClass = XoclStatMemTopology;
     bytesToRead = sizeof(topoInfo);
 
     if (!DeviceIoControl(deviceHandle,
                          IOCTL_XOCL_STAT,
-                         &statClass,
-                         sizeof(statClass),
+                         &statClassArgs,
+                         sizeof(XOCL_STAT_CLASS_ARGS),
                          &topoInfo,
                          sizeof(topoInfo),
                          &bytesWritten,
@@ -593,8 +616,8 @@ done:
 
       error = GetLastError();
 
-      xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl failed with error %d", error);
+	  send(xrt_core::message::severity_level::XRT_ERROR, "XRT",
+		  "DeviceIoControl failed with error %d for statClass id: %d", error, statClassArgs.StatClass);
 
       goto out;
     }
@@ -608,12 +631,12 @@ done:
              topoInfo.MemTopo[i].m_size);
     }
 
-    statClass = XoclStatMemRaw;
+    statClassArgs.StatClass = XoclStatMemRaw;
 
     if (!DeviceIoControl(deviceHandle,
                          IOCTL_XOCL_STAT,
-                         &statClass,
-                         sizeof(statClass),
+                         &statClassArgs,
+                         sizeof(XOCL_STAT_CLASS_ARGS),
                          &memRaw,
                          sizeof(memRaw),
                          &bytesWritten,
@@ -622,7 +645,8 @@ done:
       error = GetLastError();
 
       xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl failed with error %d", error);
+        send(xrt_core::message::severity_level::XRT_ERROR, "XRT",
+			"DeviceIoControl failed with error %d for statClass id: %d", error, statClassArgs.StatClass);
 
       goto out;
     }
@@ -966,6 +990,24 @@ xclSyncBO(xclDeviceHandle handle, xclBufferHandle boHandle, xclBOSyncDirection d
   return shim->sync_bo(boHandle, dir, size, offset);
 }
 
+size_t
+xclWriteBO(xclDeviceHandle handle, xclBufferHandle boHandle, const void *src, size_t size, size_t seek)
+{
+  xrt_core::message::
+	send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclWriteBO()");
+  auto shim = get_shim_object(handle);
+  return shim->write_bo(boHandle, src, size, seek);
+}
+
+size_t
+xclReadBO(xclDeviceHandle handle, xclBufferHandle boHandle, void *dst, size_t size, size_t skip)
+{
+  xrt_core::message::
+	send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclReadBO()");
+  auto shim = get_shim_object(handle);
+  return shim->read_bo(boHandle, dst, size, skip);
+}
+
 // Compute Unit Execution Management APIs
 int
 xclOpenContext(xclDeviceHandle handle, xuid_t xclbinId, unsigned int ipIndex,bool shared)
@@ -1104,4 +1146,161 @@ xclRead(xclDeviceHandle handle, enum xclAddressSpace space,
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclRead()");
   auto shim = get_shim_object(handle);
   return shim->read(space,offset,hostbuf,size) ? 0 : size;
+}
+
+void queryDeviceWithQR(xclDeviceHandle handle, boost::any & _returnValue,
+	int QR_ID, const std::type_info & _typeInfo, uint64_t statClass)
+{
+  //xclDeviceHandle handle = xclOpen((int)_deviceID, 0, XCL_INFO);
+  //auto handle = get_device_handle();
+  auto shim = get_shim_object(handle);
+  HANDLE deviceHandle = shim->m_dev;
+  XOCL_STAT_QR_INFO qrInfo;
+  XOCL_STAT_CLASS_ARGS statArgs;
+  DWORD bytesWritten;
+  DWORD error = ERROR_SUCCESS;
+  statArgs.StatClass = statClass;
+  statArgs.QueryRequest = true;
+  statArgs.QueryRequestID = QR_ID;
+
+  if (!DeviceIoControl(deviceHandle,
+	  IOCTL_XOCL_STAT,
+	  &statArgs, sizeof(XOCL_STAT_CLASS_ARGS),
+	  &qrInfo, sizeof(XOCL_STAT_QR_INFO),
+	  &bytesWritten, nullptr)) {
+	error = GetLastError();
+	xrt_core::message::
+		send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "%s: DeviceIoControl failed with error %d", __func__, error);
+  }
+  else {
+	switch (qrInfo.type) {
+	case TYPE_STRING:
+	{
+	  size_t len = strlen((char*)qrInfo.OP_STR);
+	  std::string temp(reinterpret_cast<const char *> (qrInfo.OP_STR), len);
+	  _returnValue = boost::any_cast<std::string>(temp);
+	}
+	break;
+	case TYPE_UINT64:
+	  _returnValue = boost::any_cast<uint64_t>(qrInfo.OP_ULONG);
+	  break;
+	case TYPE_BOOL:
+	  _returnValue = boost::any_cast<bool>(qrInfo.OP_BOOL);
+	  break;
+	}
+  }
+
+  return;
+}
+
+DWORD shim_get_ip_layoutsize(xclDeviceHandle handle)
+{
+  DWORD bytesRead;
+  XOCL_STAT_CLASS_ARGS statClassArgs;
+  DWORD  error = ERROR_SUCCESS;
+  struct ip_layout layoutHeader;
+  DWORD size = 0;
+  //xclDeviceHandle handle = xclOpen((int)_deviceID, 0, XCL_INFO);
+  //auto handle = get_device_handle();
+  auto shim = get_shim_object(handle);
+  HANDLE devHandle = shim->m_dev;
+
+  statClassArgs.StatClass = XoclStatIpLayout;
+  if (!DeviceIoControl(devHandle,
+		IOCTL_XOCL_STAT,
+		&statClassArgs,
+		sizeof(XOCL_STAT_CLASS_ARGS),
+		&layoutHeader,
+		sizeof(struct ip_layout),
+		&bytesRead,
+		NULL)) {
+	  error = GetLastError();
+	  xrt_core::message::
+		  send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "%s: DeviceIoControl failed with error %d", __func__, error);
+  } else
+	  size = (DWORD)(sizeof(struct ip_layout) + layoutHeader.m_count * sizeof(struct ip_data));
+
+  return size;
+}
+
+void shim_get_ip_layout(xclDeviceHandle handle, struct ip_layout **ip, DWORD size)
+{
+  DWORD bytesRead;
+  XOCL_STAT_CLASS_ARGS statClassArgs;
+  DWORD  error = ERROR_SUCCESS;
+  struct ip_layout *ipLayout = *ip;
+  //xclDeviceHandle handle = xclOpen((int)_deviceID, 0, XCL_INFO);
+  //auto handle = get_device_handle();
+  auto shim = get_shim_object(handle);
+  HANDLE devHandle = shim->m_dev;
+
+  statClassArgs.StatClass = XoclStatIpLayout;
+  if (!DeviceIoControl(devHandle,
+		IOCTL_XOCL_STAT,
+		&statClassArgs,
+		sizeof(XOCL_STAT_CLASS_ARGS),
+		ipLayout,
+		size,
+		&bytesRead,
+		NULL)) {
+	  error = GetLastError();
+	  xrt_core::message::
+		  send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "%s: DeviceIoControl failed with error %d", __func__, error);
+  }
+
+  return;
+}
+
+DWORD shim_get_mem_topology(xclDeviceHandle handle, struct mem_topology **topo, uint64_t topoSize)
+{
+  struct mem_topology *topoInfo = *topo;
+  auto shim = get_shim_object(handle);
+  HANDLE deviceHandle = shim->m_dev;
+  DWORD error = 0;
+  DWORD bytesWritten;
+  XOCL_STAT_CLASS_ARGS statClassArgs = { 0 };
+
+  statClassArgs.StatClass = XoclStatMemTopology;
+
+  if (!DeviceIoControl(deviceHandle,
+			IOCTL_XOCL_STAT,
+			&statClassArgs,
+			sizeof(XOCL_STAT_CLASS_ARGS),
+			topoInfo,
+			(DWORD)topoSize,
+			&bytesWritten,
+			nullptr)) {
+	  error = GetLastError();
+	  xrt_core::message::
+		  send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "%s: DeviceIoControl failed with error %d", __func__, error);
+  }
+
+  return error;
+}
+
+DWORD shim_get_mem_rawinfo(xclDeviceHandle handle, struct mem_raw_info **mem, uint64_t rawSize)
+{
+  struct mem_raw_info *memRaw = *mem;
+  auto shim = get_shim_object(handle);
+  HANDLE deviceHandle = shim->m_dev;
+  DWORD error = 0;
+  DWORD bytesWritten;
+  XOCL_STAT_CLASS_ARGS statClassArgs = { 0 };
+
+  statClassArgs.StatClass = XoclStatMemRaw;
+
+  if (!DeviceIoControl(deviceHandle,
+		IOCTL_XOCL_STAT,
+		&statClassArgs,
+		sizeof(XOCL_STAT_CLASS_ARGS),
+		memRaw,
+		(DWORD)rawSize,
+		&bytesWritten,
+		nullptr)) {
+	  error = GetLastError();
+	  xrt_core::message::
+		  send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "%s: DeviceIoControl failed with error %d", __func__, error);
+  }
+
+  return error;
 }

@@ -25,8 +25,12 @@ class device_windows : public device_pcie {
 
 public:
   struct IOCTLEntry {
-    uint64_t IOCTLValue;
+    unsigned long IOCTLValue;
+    uint64_t statClass;
   };
+
+  uint64_t channel_stat_raw_v = 0;
+  uint64_t dna_v = 0;
 
   const IOCTLEntry & get_IOCTL_entry( QueryRequest qr) const;
 
@@ -45,7 +49,13 @@ public:
   virtual void update_shell(const std::string& flashType, const std::string& primary, const std::string& secondary) const;
   virtual void update_SC(const std::string& file) const;
 
-private:
+  virtual void get_ip_layout(struct ip_layout **ipLayout, unsigned long size) const;
+  virtual unsigned long get_ip_layoutsize() const;
+  virtual uint64_t get_memtopology_size() const;
+  virtual uint64_t get_memraw_size() const;
+  virtual unsigned long get_mem_topology(struct mem_topology **topoInfo, uint64_t topoSize) const;
+  virtual unsigned long get_mem_rawinfo(struct mem_raw_info **memRaw, uint64_t rawSize) const;
+
 };
 
 } // xrt_core

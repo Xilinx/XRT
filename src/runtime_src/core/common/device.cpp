@@ -22,6 +22,7 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <boost/property_tree/ptree.hpp>
 
 namespace xrt_core {
 
@@ -33,11 +34,13 @@ static std::map<device::QueryRequest, device::QueryRequestEntry> sQueryTable =
   { device::QR_PCIE_SUBSYSTEM_ID,         { "QR_PCIE_SUBSYSTEM_ID",         "subsystem_id",     &typeid(std::string), device::format_primative }},
   { device::QR_PCIE_LINK_SPEED,           { "QR_PCIE_LINK_SPEED",           "link_speed",       &typeid(uint64_t),    device::format_primative }},
   { device::QR_PCIE_EXPRESS_LANE_WIDTH,   { "QR_PCIE_EXPRESS_LANE_WIDTH",   "width",            &typeid(uint64_t),    device::format_primative }},
+  { device::QR_PCIE_READY_STATUS,         { "QR_PCIE_READY_STATUS",         "ready",            &typeid(bool),        device::format_primative }},
 
   { device::QR_ROM_VBNV,                  { "QR_ROM_VBNV",                  "vbnv",             &typeid(std::string), device::format_primative }},
-  { device::OR_ROM_DDR_BANK_SIZE,         { "OR_ROM_DDR_BANK_SIZE",         "ddr_size_bytes",   &typeid(uint64_t),    device::format_hex_base2_shiftup30 }},
+  { device::QR_ROM_DDR_BANK_SIZE,         { "QR_ROM_DDR_BANK_SIZE",         "ddr_size_bytes",   &typeid(uint64_t),    device::format_hex_base2_shiftup30 }},
   { device::QR_ROM_DDR_BANK_COUNT_MAX,    { "QR_ROM_DDR_BANK_COUNT_MAX",    "widdr_countdth",   &typeid(uint64_t),    device::format_primative }},
   { device::QR_ROM_FPGA_NAME,             { "QR_ROM_FPGA_NAME",             "fpga_name",        &typeid(std::string), device::format_primative }},
+  { device::QR_ROM_TIME_SINCE_EPOCH,      { "QR_ROM_TIME_SINCE_EPOCH",      "time_since_epoch", &typeid(uint64_t),    device::format_primative }},
   { device::QR_DMA_THREADS_RAW,           { "QR_DMA_THREADS_RAW",           "dma_threads",      &typeid(std::vector<std::string>),  device::format_primative }},
 
   { device::QR_XMC_VERSION,               { "QR_XMC_VERSION",               "xmc_version",      &typeid(std::string),  device::format_primative }},
@@ -254,9 +257,10 @@ device::
 get_rom_info(boost::property_tree::ptree& pt) const
 {
   query_and_put(QR_ROM_VBNV, pt);
-  query_and_put(OR_ROM_DDR_BANK_SIZE, pt);
+  query_and_put(QR_ROM_DDR_BANK_SIZE, pt);
   query_and_put(QR_ROM_DDR_BANK_COUNT_MAX, pt);
   query_and_put(QR_ROM_FPGA_NAME, pt);
+  query_and_put(QR_ROM_TIME_SINCE_EPOCH, pt);
 }
 
 
@@ -365,6 +369,29 @@ read_firewall(boost::property_tree::ptree& pt) const
   query_and_put(QR_FIREWALL_DETECT_LEVEL, pt);
   query_and_put(QR_FIREWALL_STATUS, pt);
   query_and_put(QR_FIREWALL_TIME_SEC, pt);
+}
+
+size_t
+device::get_ddr_mem_size() const
+{
+  boost::property_tree::ptree _pt;
+
+  query_and_put(QR_ROM_DDR_BANK_SIZE, _pt);
+  query_and_put(QR_ROM_DDR_BANK_COUNT_MAX, _pt);
+
+  auto s = _pt.get<std::string>("ddr_size_bytes", "N/A");
+  auto ddr_size = strtoull(s.c_str(), nullptr, 16);
+  s = _pt.get<std::string>("widdr_countdth", "N/A");
+  auto ddr_bank_count = strtoull(s.c_str(), nullptr, 16);
+
+  return (ddr_size * ddr_bank_count) / (1024 * 1024);
+}
+
+void
+device::
+read_ready_status(boost::property_tree::ptree& pt) const
+{
+  query_and_put(QR_PCIE_READY_STATUS, pt);
 }
 
 } // xrt_core
