@@ -188,4 +188,16 @@ read_dma_stats(boost::property_tree::ptree& pt) const
 {
 }
 
+void
+device_windows::
+read(uint64_t addr, void* buf, uint64_t len) const
+{
+}
+
+void
+device_windows::
+write(uint64_t addr, const void* buf, uint64_t len) const
+{
+}
+
 } // xrt_core

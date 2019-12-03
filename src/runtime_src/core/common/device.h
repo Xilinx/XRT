@@ -187,6 +187,9 @@ public:
   void read_power(boost::property_tree::ptree &pt) const;
   void read_firewall(boost::property_tree::ptree &pt) const;
 
+  virtual void read(uint64_t offset, void* buf, uint64_t len) const = 0;
+  virtual void write(uint64_t offset, const void* buf, uint64_t len) const = 0;
+
   // Helper methods
   typedef std::string (*FORMAT_STRING_PTR)(const boost::any &);
   static std::string format_primative(const boost::any & _data);
