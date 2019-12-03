@@ -44,10 +44,14 @@ get_IOCTL_entry(QueryRequest qr) const
     { OR_ROM_DDR_BANK_SIZE,         { 0 }},
     { QR_ROM_DDR_BANK_COUNT_MAX,    { 0 }},
     { QR_ROM_FPGA_NAME,             { 0 }},
+    { QR_ROM_RAW,                   { 0 }},
+    { QR_ROM_UUID,                  { 0 }},
     { QR_XMC_VERSION,               { 0 }},
     { QR_XMC_SERIAL_NUM,            { 0 }},
     { QR_XMC_MAX_POWER,             { 0 }},
     { QR_XMC_BMC_VERSION,           { 0 }},
+    { QR_XMC_STATUS,                { 0 }},
+    { QR_XMC_REG_BASE,              { 0 }},
     { QR_DNA_SERIAL_NUM,            { 0 }},
     { QR_CLOCK_FREQS,               { 0 }},
     { QR_IDCODE,                    { 0 }},
@@ -95,7 +99,12 @@ get_IOCTL_entry(QueryRequest qr) const
     { QR_FIREWALL_STATUS,           { 0 }},
     { QR_FIREWALL_TIME_SEC,         { 0 }},
 
-    { QR_POWER_MICROWATTS,          { 0 }}
+    { QR_POWER_MICROWATTS,          { 0 }},
+
+    { QR_FLASH_BAR_OFFSET,          { 0 }},
+    { QR_IS_MFG,                    { 0 }},
+    { QR_F_FLASH_TYPE,              { 0 }},
+    { QR_FLASH_TYPE,                { 0 }},
   };
   // Find the translation entry
   std::map<QueryRequest, IOCTLEntry>::const_iterator it = QueryRequestToIOCTLTable.find(qr);
@@ -189,34 +198,6 @@ void
 device_windows::
 write(uint64_t addr, const void* buf, uint64_t len) const
 {
-}
-
-void
-device_windows::
-auto_flash(const std::string& shell, const std::string& id, bool force) const
-{
-  std::cout << "TO-DO: auto_flash\n";
-}
-
-void
-device_windows::
-reset_shell() const
-{
-  std::cout << "TO-DO: reset_shell\n";
-}
-
-void
-device_windows::
-update_shell(const std::string& flashType, const std::string& primary, const std::string& secondary) const
-{
-  std::cout << "TO-DO: update_shell\n";
-}
-
-void
-device_windows::
-update_SC(const std::string& file) const
-{
-  std::cout << "TO-DO: update_SC\n";
 }
 
 } // xrt_core

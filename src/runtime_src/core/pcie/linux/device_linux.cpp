@@ -43,10 +43,14 @@ device_linux::get_sysdev_entry(QueryRequest qr) const
     { OR_ROM_DDR_BANK_SIZE,         {"rom",  "ddr_bank_size"}},
     { QR_ROM_DDR_BANK_COUNT_MAX,    {"rom",  "ddr_bank_count_max"}},
     { QR_ROM_FPGA_NAME,             {"rom",  "FPGA"}},
+    { QR_ROM_RAW,                   {"rom", "raw"}},
+    { QR_ROM_UUID,                  {"rom", "uuid"}},
     { QR_XMC_VERSION,               {"xmc",  "version"}},
     { QR_XMC_SERIAL_NUM,            {"xmc",  "serial_num"}},
     { QR_XMC_MAX_POWER,             {"xmc",  "max_power"}},
     { QR_XMC_BMC_VERSION,           {"xmc",  "bmc_ver"}},
+    { QR_XMC_STATUS,                {"xmc", "status"}},
+    { QR_XMC_REG_BASE,              {"xmc", "reg_base"}},
     { QR_DNA_SERIAL_NUM,            {"dna",  "dna"}},
     { QR_CLOCK_FREQS,               {"icap", "clock_freqs"}},
     { QR_IDCODE,                    {"icap", "idcode"}},
@@ -94,7 +98,12 @@ device_linux::get_sysdev_entry(QueryRequest qr) const
     { QR_FIREWALL_STATUS,           {"firewall", "detected_status"}},
     { QR_FIREWALL_TIME_SEC,         {"firewall", "detected_time"}},
 
-    { QR_POWER_MICROWATTS,          {"xmc", "xmc_power"}}
+    { QR_POWER_MICROWATTS,          {"xmc", "xmc_power"}},
+
+    { QR_FLASH_BAR_OFFSET,          {"flash", "bar_off"}},
+    { QR_IS_MFG,                    {"", "mfg"}},
+    { QR_F_FLASH_TYPE,              {"flash", "flash_type" }},
+    { QR_FLASH_TYPE,                {"", "flash_type" }}
   };
   // Find the translation entry
   auto it = QueryRequestToSysDevTable.find(qr);

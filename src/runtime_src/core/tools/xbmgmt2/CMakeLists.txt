@@ -24,14 +24,20 @@ if(WIN32)
   file(GLOB XBMGMT_V2_SUBCMD_FILES
     "SubCmdFlash.cpp"
     "SubCmdVersion.cpp"
+    "flash/firmware_image.cpp"
+    "flash/xmc.cpp"
     "flash/xspi.cpp"
+    "flash/flasher.cpp"
   )
 else()
   set(XBMGMT2_NAME "xbmgmt2")
   file(GLOB XBMGMT_V2_SUBCMD_FILES
     "SubCmdFlash.cpp"
     "SubCmdVersion.cpp"
+    "flash/firmware_image.cpp"
+    "flash/xmc.cpp"
     "flash/xspi.cpp"
+    "flash/flasher.cpp"
   )
 endif()
 
@@ -47,6 +53,7 @@ if(WIN32)
     Boost::filesystem
     Boost::program_options
     Boost::system
+    ws2_32
     xrt_core
     xrt_core_static
     xrt_coreutil_static
