@@ -21,16 +21,17 @@
 
 namespace xrt_core {
 
-class device_windows : public device_pcie {
-
+class device_windows : public device_pcie
+{
 public:
   struct IOCTLEntry {
-    uint64_t IOCTLValue;
+    std::function<void(QueryRequest qr, const std::type_info& tinfo, boost::any& value)> m_fcn;
   };
 
   const IOCTLEntry & get_IOCTL_entry( QueryRequest qr) const;
 
   device_windows(id_type device_id, bool user);
+  ~device_windows();
 
   // query functions
   virtual void read_dma_stats(boost::property_tree::ptree &_pt) const;
@@ -40,6 +41,7 @@ public:
   virtual void write(uint64_t addr, const void* buf, uint64_t len) const;
 
 private:
+  xclDeviceHandle m_mgmthdl = XRT_NULL_HANDLE;
 };
 
 } // xrt_core
