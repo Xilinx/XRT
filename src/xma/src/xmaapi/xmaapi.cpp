@@ -166,7 +166,7 @@ void xma_thread1() {
                     priv1->num_cu_cmds_avg_tmp = 0;
                     priv1->num_samples = 0;
                 } else if (priv1->num_cu_cmds_avg == 0 && priv1->num_samples == 128) {
-                    xma_logmsg(XMA_ERROR_LOG, "XMA-Session-Stats-Startup", "Session id: %d, avg cmds: %.2f, busy vs idle: %d vs %d", itr1.first, priv1->num_cu_cmds_avg_tmp / 128.0, (uint32_t)priv1->cmd_busy, (uint32_t)priv1->cmd_idle);
+                    xma_logmsg(XMA_INFO_LOG, "XMA-Session-Stats-Startup", "Session id: %d, avg cmds: %.2f, busy vs idle: %d vs %d", itr1.first, priv1->num_cu_cmds_avg_tmp / 128.0, (uint32_t)priv1->cmd_busy, (uint32_t)priv1->cmd_idle);
                 }
                 num_cmds = priv1->num_cu_cmds;
                 priv1->num_cu_cmds_avg_tmp += num_cmds;
@@ -261,8 +261,8 @@ void xma_thread1() {
     xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Num of Encoders: %d", (uint32_t)g_xma_singleton->num_encoders);
     xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Num of Filters: %d", (uint32_t)g_xma_singleton->num_filters);
     xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Num of Kernels: %d", (uint32_t)g_xma_singleton->num_kernels);
-    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Num of Admins: %d\n", (uint32_t)g_xma_singleton->num_admins);
-    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "--------");
+    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "Num of Admins: %d", (uint32_t)g_xma_singleton->num_admins);
+    xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "--------\n");
 }
 
 void xma_thread2() {

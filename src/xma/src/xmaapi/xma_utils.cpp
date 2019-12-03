@@ -414,8 +414,8 @@ void get_session_cmd_load() {
     xma_logmsg(level, "XMA-Session-Stats", "Num of Encoders: %d", (uint32_t)g_xma_singleton->num_encoders);
     xma_logmsg(level, "XMA-Session-Stats", "Num of Filters: %d", (uint32_t)g_xma_singleton->num_filters);
     xma_logmsg(level, "XMA-Session-Stats", "Num of Kernels: %d", (uint32_t)g_xma_singleton->num_kernels);
-    xma_logmsg(level, "XMA-Session-Stats", "Num of Admins: %d\n", (uint32_t)g_xma_singleton->num_admins);
-    xma_logmsg(level, "XMA-Session-Stats", "--------");
+    xma_logmsg(level, "XMA-Session-Stats", "Num of Admins: %d", (uint32_t)g_xma_singleton->num_admins);
+    xma_logmsg(level, "XMA-Session-Stats", "--------\n");
 }
 
 int32_t get_cu_index(int32_t dev_index, char* cu_name1) {
