@@ -382,7 +382,7 @@ void get_session_cmd_load() {
       xma_logmsg(level, "XMA-Session-Load", "Session CU Command Relative Loads: ");
       for (auto& itr1: g_xma_singleton->all_sessions) {
         XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.second.hw_session.private_do_not_use;
-        xclLogMsg(NULL, XRT_INFO, "XMA-Session-Load", "Session id: %d, type: %s, load: %d", itr1.first, 
+        xma_logmsg(level, "XMA-Session-Load", "Session id: %d, type: %s, load: %d", itr1.first, 
             xma_core::get_session_name(itr1.second.session_type).c_str(), (uint32_t)priv1->cmd_load);
       }
       xma_logmsg(level, "XMA-Session-Load", "Num of Decoders: %d", (uint32_t)g_xma_singleton->num_decoders);
