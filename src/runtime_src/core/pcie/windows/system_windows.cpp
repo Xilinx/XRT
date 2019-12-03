@@ -14,6 +14,12 @@
  * under the License.
  */
 
+// This file is delivered with core library (libxrt_core), see
+// core/pcie/windows/CMakeLists.txt.  To prevent compilation of this
+// file from importing symbols from libxrt_core we define this source
+// file to instead export with same macro as used in libxrt_core.
+#define XCL_DRIVER_DLL_EXPORT
+
 #include "system_windows.h"
 #include "device_windows.h"
 #include "gen/version.h"
