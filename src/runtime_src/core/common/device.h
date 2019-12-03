@@ -62,11 +62,15 @@ public:
       OR_ROM_DDR_BANK_SIZE,
       QR_ROM_DDR_BANK_COUNT_MAX,
       QR_ROM_FPGA_NAME,
+      QR_ROM_RAW,
+      QR_ROM_UUID,
 
       QR_XMC_VERSION,
       QR_XMC_SERIAL_NUM,
       QR_XMC_MAX_POWER,
       QR_XMC_BMC_VERSION,
+      QR_XMC_STATUS,
+      QR_XMC_REG_BASE,
 
       QR_DNA_SERIAL_NUM,
       QR_CLOCK_FREQS,
@@ -122,7 +126,10 @@ public:
       QR_FIREWALL_TIME_SEC,
       QR_POWER_MICROWATTS,
 
-      QR_FLASH_BAR_OFFSET
+      QR_FLASH_BAR_OFFSET,
+      QR_IS_MFG,
+      QR_F_FLASH_TYPE,
+      QR_FLASH_TYPE
   };
 public:
 
@@ -179,12 +186,6 @@ public:
   void read_electrical(boost::property_tree::ptree &pt) const;
   void read_power(boost::property_tree::ptree &pt) const;
   void read_firewall(boost::property_tree::ptree &pt) const;
-
-  //flash functions
-  virtual void auto_flash(const std::string& shell, const std::string& id, bool force) const = 0;
-  virtual void reset_shell() const = 0;
-  virtual void update_shell(const std::string& flashType, const std::string& primary, const std::string& secondary) const = 0;
-  virtual void update_SC(const std::string& file) const = 0;
 
   // Helper methods
   typedef std::string (*FORMAT_STRING_PTR)(const boost::any &);

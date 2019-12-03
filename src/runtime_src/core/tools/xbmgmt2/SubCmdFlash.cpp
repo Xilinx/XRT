@@ -23,6 +23,7 @@ namespace XBU = XBUtilities;
 #include "core/common/device.h"
 #include "core/common/system.h"
 #include "core/common/error.h"
+#include "flash/flasher.h"
 
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
@@ -46,8 +47,83 @@ namespace {
 static unsigned int
 bdf2index()
 {
-  //this should be placed in xbmgmt common
-  return 0;
+  return 0;//hardcoded for now
+}
+static void scan_devices(bool verbose, bool json)
+{
+  verbose = verbose;
+  json = json;
+
+  Flasher f(bdf2index());
+  if (!f.isValid())
+      return;
+
+  DSAInfo board = f.getOnBoardDSA();
+  std::vector<DSAInfo> installedDSA = f.getInstalledDSA();
+  BoardInfo info;
+  f.getBoardInfo(info);
+  std::cout << "Card [" << bdf2index() << "]\n";
+  std::cout << "\tCard type:\t\t" << board.board << "\n";
+  std::cout << "\tFlash type:\t\t" << f.sGetFlashType() << "\n";
+  std::cout << "\tFlashable partition running on FPGA:" << "\n";
+  std::cout << "\t\t" << board << "\n";
+  std::cout << "\tCard name\t\t\t" << info.mName << "\n";
+  std::cout << "\tCard S/N: \t\t\t" << info.mSerialNum << "\n";
+  std::cout << "\tConfig mode: \t\t" << info.mConfigMode << "\n";
+  std::cout << "\tFan presence:\t\t" << info.mFanPresence << "\n";
+  std::cout << "\tMax power level:\t\t" << info.mMaxPower << "\n";
+  std::cout << "\tMAC address0:\t\t" << info.mMacAddr0 << "\n";
+  std::cout << "\tMAC address1:\t\t" << info.mMacAddr1 << "\n";
+  std::cout << "\tMAC address2:\t\t" << info.mMacAddr2 << "\n";
+  std::cout << "\tMAC address3:\t\t" << info.mMacAddr3 << "\n";
+
+}
+
+// Update shell on the board.
+static void update_shell(unsigned index, std::string flashType,
+    const std::string& primary, const std::string& secondary)
+{
+    std::shared_ptr<firmwareImage> pri;
+    std::shared_ptr<firmwareImage> sec;
+
+    if (!flashType.empty()) {
+        std::cout << "CAUTION: Overriding flash mode is not recommended. " <<
+            "You may damage your card with this option." << std::endl;
+    }
+
+    Flasher flasher(index);
+    if(!flasher.isValid())
+        return;
+
+    if (!primary.empty())
+        return;
+
+    pri = std::make_shared<firmwareImage>(primary.c_str(), MCS_FIRMWARE_PRIMARY);
+    if (pri->fail())
+        return;
+
+    if (!secondary.empty()) {
+        sec = std::make_shared<firmwareImage>(secondary.c_str(),
+            MCS_FIRMWARE_SECONDARY);
+        if (sec->fail())
+            sec = nullptr;
+    }
+
+    flasher.upgradeFirmware(flashType, pri.get(), sec.get());
+}
+
+static void update_SC(unsigned index, const std::string& file)
+{
+    Flasher flasher(index);
+    if(!flasher.isValid())
+        return;
+
+    std::shared_ptr<firmwareImage> bmc =
+        std::make_shared<firmwareImage>(file.c_str(), BMC_FIRMWARE);
+    if (bmc->fail())
+        return;
+
+    flasher.upgradeBMCFirmware(bmc.get());
 }
 
 } // unnamed namespace
@@ -158,7 +234,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
       return 1;
     }
 
-    xrt_core::scan_devices(verbose, json);
+    scan_devices(verbose, json);
     return registerResult;
   }
 
@@ -202,8 +278,8 @@ int subCmdFlash(const std::vector<std::string> &_options)
       return 1;
     }
 
-    auto device = xrt_core::get_mgmtpf_device(bdf2index());
-    device->auto_flash(name, id, force);
+    // auto device = xrt_core::get_mgmtpf_device(bdf2index());
+    // device->auto_flash(name, id, force);
     return registerResult;
   }
 
@@ -231,8 +307,8 @@ int subCmdFlash(const std::vector<std::string> &_options)
     // -- Now process the subcommand option-------------------------------
     XBU::verbose(XBU::format("  Card: %s", bdf.c_str()));
 
-    auto device = xrt_core::get_mgmtpf_device(bdf2index());
-    device->reset_shell();
+    // auto device = xrt_core::get_mgmtpf_device(bdf2index());
+    // device->reset_shell();
     return registerResult;
   }
 
@@ -272,8 +348,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
       std::cerr << shellDesc << std::endl;
       return 1;
     }
-    auto device = xrt_core::get_mgmtpf_device(bdf2index());
-    device->update_shell(flash_type, file, secondary);
+    update_shell(bdf2index(), flash_type, file, secondary);
     return registerResult;
   }
 
@@ -310,8 +385,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
       return 1;
     }
 
-    auto device = xrt_core::get_mgmtpf_device(bdf2index());
-    device->update_SC(file);
+    update_SC(bdf2index(), file);
     return registerResult;
   }
 
