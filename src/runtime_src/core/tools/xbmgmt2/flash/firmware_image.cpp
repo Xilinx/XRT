@@ -1,6 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
- * Author(s): Max Zhen (maxz@xilinx.com)
+ * Copyright (C) 2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -25,7 +24,7 @@
 #include <regex>
 #include <sstream>
 #include <stdint.h>
-#include <string>
+#include <cstring>
 #include <vector>
 #include <locale>
 

@@ -1,6 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
- * Author(s): Max Zhen
+ * Copyright (C) 2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,7 +16,7 @@
 
 #include <iostream>
 #include <algorithm>
-#include <string>
+#include <cstring>
 #include <cassert>
 #include <vector>
 #include <thread>
@@ -61,7 +60,7 @@ XMC_Flasher::XMC_Flasher(unsigned int device_index)
         }
     }
 
-    mRegBase = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_XMC_STATUS);
+    mRegBase = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_XMC_REG_BASE);
     if (mRegBase == xrt_core::invalid_query_value<uint64_t>())
 	    mRegBase = XMC_REG_BASE;
 

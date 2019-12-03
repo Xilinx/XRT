@@ -1,6 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
- * Author: Ryan Radjabi
+ * Copyright (C) 2019 Xilinx, Inc
  *
  * This is a wrapper class that does the prep work required to program a flash
  * device. Flasher will create a specific flash object determined by the program
@@ -26,7 +25,6 @@
 #include "xmc.h"
 #include "firmware_image.h"
 #include "xclfeatures.h"
-#include <sys/stat.h>
 #include <vector>
 #include <memory>
 #include <climits>

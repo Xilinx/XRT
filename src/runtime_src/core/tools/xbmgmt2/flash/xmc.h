@@ -1,6 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
- * Author(s): Max Zhen
+ * Copyright (C) 2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,7 +17,6 @@
 #define _XMC_H_
 
 #include <list>
-#include <sys/stat.h>
 #include <iostream>
 #include <sstream>
 #include <map>
