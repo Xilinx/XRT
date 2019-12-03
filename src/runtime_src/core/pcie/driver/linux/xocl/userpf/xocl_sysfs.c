@@ -394,10 +394,16 @@ static ssize_t ready_show(struct device *dev,
 			goto bail;
 		xocl_xmc_get_data(xdev, XCL_BDINFO, board_info);
 		/*
+		 * Note:
+		 * bmc_ver can be cut into 5.0 instead of 5.0.6
+		 * a temporary workaround is to compare first 5.0 part,
+		 * platform should make sure bmc_ver is intact.
+		 *
 		 * with legacy mgmtpf driver, exp_bmc_ver will be NULL.
 		 * And we have to mark ready in this case
 		 */
-		if (!strcmp(board_info->bmc_ver, board_info->exp_bmc_ver) ||
+		if (!strncmp(board_info->bmc_ver, board_info->exp_bmc_ver,
+			strlen(board_info->bmc_ver)) ||
 			board_info->exp_bmc_ver[0] == 0)
 			ret = 1;
 		else
