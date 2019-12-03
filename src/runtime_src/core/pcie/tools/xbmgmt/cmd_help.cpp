@@ -16,6 +16,7 @@
 
 #include <string>
 #include "xbmgmt.h"
+#include <iostream>
 
 const char *subCmdHelpDesc = "Print out help message for a sub-command";
 const char *subCmdHelpUsage = "help [sub-command]";
@@ -23,14 +24,11 @@ const char *subCmdHelpUsage = "help [sub-command]";
 int helpHandler(int argc, char *argv[])
 {
     if (argc == 1) {
-        printHelp();
+        printHelp(false);
         return 0;
     }
 
-    if (argc != 2)
-        return -EINVAL;
-
     std::string subCmd(argv[1]);
-    printSubCmdHelp(subCmd);
+    printSubCmdHelp(subCmd, false);
     return 0;
 }

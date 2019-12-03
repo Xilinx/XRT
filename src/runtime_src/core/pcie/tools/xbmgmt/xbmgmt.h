@@ -22,8 +22,8 @@
 
 // Helper functions that can be used by all command handlers
 //
-void printHelp(void);
-void printSubCmdHelp(const std::string& subCmd);
+void printHelp(bool printExpHelp);
+void printSubCmdHelp(const std::string& subCmd, bool printExpHelp);
 bool canProceed(void);
 void sudoOrDie(void);
 unsigned int bdf2index(const std::string& bdfStr);
@@ -36,6 +36,10 @@ int xrt_xbmgmt_version_cmp() ;
 int helpHandler(int argc, char *argv[]);
 extern const char *subCmdHelpDesc;
 extern const char *subCmdHelpUsage;
+
+int expertHandler(int argc, char *argv[]);
+extern const char *subCmdExpertDesc;
+extern const char *subCmdExpertUsage;
 
 int versionHandler(int argc, char *argv[]);
 extern const char *subCmdVersionDesc;

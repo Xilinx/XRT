@@ -43,6 +43,8 @@ static const std::map<std::string, struct subCmd> subCmdList = {
     { "flash", {flashHandler, subCmdFlashDesc, subCmdFlashUsage} },
     // for xbutil flash
     { "-lash", {flashXbutilFlashHandler, subCmdXbutilFlashDesc, subCmdXbutilFlashUsage} },
+    { "-expert-help", {expertHandler, subCmdExpertDesc, subCmdExpertUsage} },
+    { "-expert", {expertHandler, subCmdExpertDesc, subCmdExpertUsage} },
     { "reset", {resetHandler, subCmdResetDesc, subCmdResetUsage} },
     { "clock", {clockHandler, subCmdClockDesc, subCmdClockUsage} },
     { "partition", {partHandler, subCmdPartDesc, subCmdPartUsage} },
@@ -123,7 +125,7 @@ static inline bool isHiddenSubcmd(const std::string& cmd)
     return cmd[0] == '-';
 }
 
-void printHelp(void)
+void printHelp(bool printExpHelp)
 {
     std::stringstream expert_ostr;
     std::cout << "Supported sub-commands are:" << std::endl;
@@ -139,22 +141,24 @@ void printHelp(void)
         std::cout << "\t" << c.first << " - " << c.second.description <<
             std::endl;
     }
-    std::cout << "Experts only:\n" << expert_ostr.str();
+    if (printExpHelp)
+        std::cout << "Experts only:\n" << expert_ostr.str();
     std::cout <<
         "Run xbmgmt help <subcommand> for detailed help of each subcommand" <<
         std::endl;
 }
 
-void printSubCmdHelp(const std::string& subCmd)
+void printSubCmdHelp(const std::string& subCmd, bool printExpHelp)
 {
     auto cmd = subCmdList.find(subCmd);
 
     if (cmd == subCmdList.end()) {
         std::cout << "Unknown sub-command: " << subCmd << std::endl;
     } else {
-        if (std::find(std::begin(basic_subCmd),
-            std::end(basic_subCmd), subCmd) == basic_subCmd.end())
-                std::cout << "Experts only sub-command, use at your own risk." << std::endl;
+        bool is_expert = std::find(std::begin(basic_subCmd),
+            std::end(basic_subCmd), subCmd) == basic_subCmd.end();
+        if (is_expert && !printExpHelp) 
+                return;
         if (!isHiddenSubcmd(subCmd))
             std::cout << "'" << subCmd << "' sub-command usage:" << std::endl;
         std::cout << cmd->second.usage << std::endl;
@@ -183,7 +187,7 @@ bool getenv_or_null(const char* env)
 int main(int argc, char *argv[])
 {
     if (argc < 2) {
-        printHelp();
+        printHelp(false);
         return -EINVAL;
     }
 
@@ -199,15 +203,16 @@ int main(int argc, char *argv[])
     }
 
     if (cmd == subCmdList.end()) {
-        printHelp();
+        printHelp(false);
         return -EINVAL;
     }
+    
 
     --argc;
     ++argv;
     int ret = cmd->second.handler(argc, argv);
     if (ret == -EINVAL)
-        printSubCmdHelp(subCmd);
+        printSubCmdHelp(subCmd, false);
 
     return ret;
 }
