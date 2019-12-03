@@ -74,6 +74,7 @@ extern "C" {
  * device handle to refer to the opened device in all future interaction with XRT.
  */
 typedef void * xclDeviceHandle;
+#define XRT_NULL_HANDLE NULL
 
 /*
  * typedef xclBufferHandle - opaque buffer handle
@@ -89,6 +90,7 @@ typedef void * xclBufferHandle;
 typedef unsigned int xclBufferHandle;
 # define NULLBO	0xffffffff
 #endif
+#define XRT_NULL_BO NULLBO
 
 struct axlf;
 

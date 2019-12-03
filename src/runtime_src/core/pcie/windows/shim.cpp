@@ -804,6 +804,14 @@ done:
 
     return m_locked = true;
   }
+
+  bool
+  unlock_device()
+  {
+    m_locked = false;
+    return true;
+  }
+
 }; // struct shim
 
 shim*
@@ -826,14 +834,13 @@ xclProbe()
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclProbe()");
   GUID guid = GUID_DEVINTERFACE_XOCL_USER;
-  char devpath[256] = {0};
-  size_t len_devpath = sizeof(devpath);
 
-  HDEVINFO device_info = SetupDiGetClassDevs((LPGUID) &guid, NULL, NULL, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
+  HDEVINFO device_info =
+    SetupDiGetClassDevs((LPGUID) &guid, NULL, NULL, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
   if (device_info == INVALID_HANDLE_VALUE) {
     xrt_core::message::
       send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "GetDevices INVALID_HANDLE_VALUE");
-    return 1;
+    return 0;
   }
 
   SP_DEVICE_INTERFACE_DATA device_interface;
@@ -841,18 +848,21 @@ xclProbe()
 
   // enumerate through devices
   DWORD index;
-  for (index = 0; SetupDiEnumDeviceInterfaces(device_info, NULL, &guid, index, &device_interface); ++index) {
+  for (index = 0;
+       SetupDiEnumDeviceInterfaces(device_info, NULL, &guid, index, &device_interface);
+       ++index) {
 
     // get required buffer size
     ULONG detailLength = 0;
-    if (!SetupDiGetDeviceInterfaceDetail(device_info, &device_interface, NULL, 0, &detailLength, NULL) && GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
+    if (!SetupDiGetDeviceInterfaceDetail(device_info, &device_interface, NULL, 0, &detailLength, NULL)
+        && GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
       xrt_core::message::
         send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "SetupDiGetDeviceInterfaceDetail - get length failed");
       break;
     }
 
     // allocate space for device interface detail
-    PSP_DEVICE_INTERFACE_DETAIL_DATA dev_detail = (PSP_DEVICE_INTERFACE_DETAIL_DATA) HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, detailLength);
+    auto dev_detail = static_cast<PSP_DEVICE_INTERFACE_DETAIL_DATA>(HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, detailLength));
     if (!dev_detail) {
       xrt_core::message::
         send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "HeapAlloc failed");
@@ -868,7 +878,6 @@ xclProbe()
       break;
     }
 
-    StringCchCopy(devpath, len_devpath, dev_detail->DevicePath);
     HeapFree(GetProcessHeap(), 0, dev_detail);
   }
 
@@ -1047,6 +1056,15 @@ xclLockDevice(xclDeviceHandle handle)
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclLockDevice()");
   auto shim = get_shim_object(handle);
   return shim->lock_device() ? 0 : 1;
+}
+
+int
+xclUnlockDevice(xclDeviceHandle handle)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclUnlockDevice()");
+  auto shim = get_shim_object(handle);
+  return shim->unlock_device() ? 0 : 1;
 }
 
 ssize_t

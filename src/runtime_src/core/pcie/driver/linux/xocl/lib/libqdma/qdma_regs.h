@@ -768,7 +768,7 @@ struct xlnx_dma_dev;
 int hw_monitor_reg(struct xlnx_dma_dev *xdev, unsigned int reg, u32 mask,
 		u32 val, unsigned int interval_us, unsigned int timeout_us);
 #ifndef __QDMA_VF__
-void qdma_device_attributes_get(struct xlnx_dma_dev *xdev);
+int qdma_device_attributes_get(struct xlnx_dma_dev *xdev);
 void hw_mm_channel_enable(struct xlnx_dma_dev *xdev, int channel, bool c2h);
 void hw_mm_channel_disable(struct xlnx_dma_dev *xdev, int channel, bool c2h);
 void hw_set_global_csr(struct xlnx_dma_dev *xdev);

@@ -14,60 +14,46 @@
  * under the License.
  */
 
-
 #include "device_pcie.h"
-#include "common/utils.h"
-#include "include/xrt.h"
-#include <string>
-#include <iostream>
 
-xrt_core::device_pcie::device_pcie()
+namespace xrt_core {
+
+device_pcie::
+device_pcie(id_type device_id, bool user)
+    : device(device_id), m_userpf(user)
 {
-  // Do nothing
+  if (m_userpf)
+    m_handle = xclOpen(device_id, nullptr, XCL_QUIET);
 }
 
-xrt_core::device_pcie::~device_pcie()
+device_pcie::
+~device_pcie()
 {
-  // Do nothing
+  if (m_userpf && m_handle)
+    xclClose(m_handle);
 }
 
-void 
-xrt_core::device_pcie::get_devices(boost::property_tree::ptree &_pt) const
+xclDeviceHandle
+device_pcie::
+get_device_handle() const
 {
-  size_t cardsFound = get_total_devices();
+  if (!m_userpf)
+    throw std::runtime_error("No device handle for mgmtpf");
 
-  boost::property_tree::ptree ptDevices;
-  for (unsigned int deviceID = 0; deviceID < cardsFound; ++deviceID) {
-    boost::property_tree::ptree ptDevice;
-    std::string valueString;
-
-    // Key: device_id
-    ptDevice.put("device_id", std::to_string(deviceID).c_str());
-
-    // Key: pcie 
-    boost::property_tree::ptree ptPcie;
-    get_device_info(deviceID, ptPcie);
-    ptDevice.add_child("pcie", ptPcie);
-
-    // Create our array of data
-    ptDevices.push_back(std::make_pair("", ptDevice)); 
-  }
-
-  _pt.add_child("devices", ptDevices);
+  return m_handle;
 }
 
-void 
-xrt_core::device_pcie::get_device_info(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
+void
+device_pcie::
+get_info(boost::property_tree::ptree& pt) const
 {
-  query_device_and_put(_deviceID, QR_PCIE_VENDOR, _pt);
-  query_device_and_put(_deviceID, QR_PCIE_DEVICE, _pt);
-  query_device_and_put(_deviceID, QR_PCIE_SUBSYSTEM_VENDOR, _pt);
-  query_device_and_put(_deviceID, QR_PCIE_SUBSYSTEM_ID, _pt);
-  query_device_and_put(_deviceID, QR_PCIE_LINK_SPEED, _pt);
-  query_device_and_put(_deviceID, QR_PCIE_EXPRESS_LANE_WIDTH, _pt);
-  query_device_and_put(_deviceID, QR_DMA_THREADS_RAW, _pt);
+  query_and_put(QR_PCIE_VENDOR, pt);
+  query_and_put(QR_PCIE_DEVICE, pt);
+  query_and_put(QR_PCIE_SUBSYSTEM_VENDOR, pt);
+  query_and_put(QR_PCIE_SUBSYSTEM_ID, pt);
+  query_and_put(QR_PCIE_LINK_SPEED, pt);
+  query_and_put(QR_PCIE_EXPRESS_LANE_WIDTH, pt);
+  query_and_put(QR_DMA_THREADS_RAW, pt);
 }
 
-
-
-
+} // xrt_core

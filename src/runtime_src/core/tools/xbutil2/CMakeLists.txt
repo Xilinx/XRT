@@ -2,7 +2,6 @@
 
 set(Boost_USE_STATIC_LIBS ON)               # Only find static libraries
 set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
-set(Boost_USE_STATIC_RUNTIME ON)            # This is how the boost libraries were build
 
 find_package(Boost REQUIRED COMPONENTS system filesystem program_options)
 include_directories(${Boost_INCLUDE_DIRS})
@@ -15,11 +14,11 @@ include_directories(${CMAKE_BINARY_DIR})
 
 file(GLOB XBUTIL_V2_BASE_FILES
   "xbutil.cpp"
-  "XBUtilMain.cpp"
-  "XBUtilities.cpp"
+  "../common/XBMain.cpp"
+  "../common/XBUtilities.cpp"
   "XBReport.cpp"
   "XBDatabase.cpp"
-  "SubCmd.cpp"
+  "../common/SubCmd.cpp"
 )
 
 if(WIN32)
@@ -29,6 +28,7 @@ if(WIN32)
     "SubCmdClock.cpp"
     "SubCmdQuery.cpp"
     "SubCmdReset.cpp"
+    "SubCmdScan.cpp"
     "SubCmdVersion.cpp"
   )
 else()
@@ -58,32 +58,25 @@ set(XBUTIL_V2_SRCS ${XBUTIL_V2_FILES_SRCS})
 add_executable(${XBUTIL2_NAME} ${XBUTIL_V2_SRCS})
 
 
-if(WIN32) 
+if(WIN32)
   target_link_libraries(
-    ${XBUTIL2_NAME} PRIVATE 
-    Boost::filesystem 
-    Boost::program_options 
-    Boost::system 
+    ${XBUTIL2_NAME} PRIVATE
+    Boost::filesystem
+    Boost::program_options
+    Boost::system
     xrt_core
     xrt_core_static
     xrt_coreutil_static
   )
 
-  # Use the static version of the run-time library 
-  # Note: Needed to link with boost
-  if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-    target_compile_options(${XBUTIL2_NAME} PRIVATE /MTd)
-  else()
-    target_compile_options(${XBUTIL2_NAME} PRIVATE /MT)
-  endif()
 else()
   target_link_libraries(
-    ${XBUTIL2_NAME} 
+    ${XBUTIL2_NAME}
     xrt_core_static
     xrt_coreutil_static
     boost_filesystem
     boost_system
-    boost_program_options 
+    boost_program_options
     uuid
     dl
   )
@@ -92,4 +85,3 @@ endif()
 install (TARGETS ${XBUTIL2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
 
 # -----------------------------------------------------------------------------
-

@@ -17,7 +17,7 @@
 #include "util.h"
 #include <chrono>
 #include <ctime>
-#include "core/common/core_system.h"
+#include "core/common/system.h"
 
 #if defined(__linux__) && defined(__x86_64__)
 #include <unistd.h>
@@ -35,7 +35,7 @@ namespace xdp {
     std::string xrtVersion;
 
     boost::property_tree::ptree xrtInfo;
-    xrt_core::system::get_xrt_info(xrtInfo);
+    xrt_core::get_xrt_info(xrtInfo);
     xrtVersion = "XRT build version: "  + xrtInfo.get<std::string>("version", "N/A") + "\n"
                + "Build version branch: " + xrtInfo.get<std::string>("branch", "N/A") + "\n"
                + "Build version hash: " + xrtInfo.get<std::string>("hash", "N/A") + "\n"

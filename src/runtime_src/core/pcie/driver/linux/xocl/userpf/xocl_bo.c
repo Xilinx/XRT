@@ -211,10 +211,6 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 	if (type == XOCL_BO_EXECBUF || type == XOCL_BO_IMPORT)
 		return 0;
 
-	if (XOCL_DSA_IS_VERSAL(xdev))
-		/* Bypass checking bo user reqs for now */
-		return 0;
-
 	//From "mem_topology" or "feature rom" depending on
 	//unified or non-unified dsa
 	ddr_count = XOCL_DDR_COUNT(xdev);

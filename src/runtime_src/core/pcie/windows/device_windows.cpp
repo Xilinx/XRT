@@ -14,18 +14,21 @@
  * under the License.
  */
 
-
 #include "device_windows.h"
 #include "common/utils.h"
-#include "include/xrt.h"
+#include "xrt.h"
+#include "boost/format.hpp"
 #include <string>
 #include <iostream>
-#include "boost/format.hpp"
 #include <map>
 
+#pragma warning(disable : 4100 4996)
 
-const xrt_core::device_windows::IOCTLEntry & 
-xrt_core::device_windows::get_IOCTL_entry( QueryRequest _eQueryRequest) const
+namespace xrt_core {
+
+const device_windows::IOCTLEntry &
+device_windows::
+get_IOCTL_entry(QueryRequest qr) const
 {
   // Initialize our lookup table
   static const std::map<QueryRequest, IOCTLEntry> QueryRequestToIOCTLTable =
@@ -93,30 +96,29 @@ xrt_core::device_windows::get_IOCTL_entry( QueryRequest _eQueryRequest) const
     { QR_FIREWALL_TIME_SEC,         { 0 }},
 
     { QR_POWER_MICROWATTS,          { 0 }}
-};
+  };
   // Find the translation entry
-  std::map<QueryRequest, IOCTLEntry>::const_iterator it = QueryRequestToIOCTLTable.find(_eQueryRequest);
+  std::map<QueryRequest, IOCTLEntry>::const_iterator it = QueryRequestToIOCTLTable.find(qr);
 
   if (it == QueryRequestToIOCTLTable.end()) {
-    std::string errMsg = boost::str( boost::format("The given query request ID (%d) is not supported.") % _eQueryRequest);
-    throw std::runtime_error( errMsg);
+    std::string errMsg = boost::str( boost::format("The given query request ID (%d) is not supported.") % qr);
+    throw no_such_query(qr, errMsg);
   }
 
   return it->second;
 }
 
-
-
-void 
-xrt_core::device_windows::query_device(uint64_t _deviceID, QueryRequest _eQueryRequest, const std::type_info & _typeInfo, boost::any &_returnValue) const
+void
+device_windows::
+query(QueryRequest qr, const std::type_info & _typeInfo, boost::any& value) const
 {
   // Initialize return data to being empty container.
   // Note: CentOS Boost 1.53 doesn't support the clear() method.
   boost::any anyEmpty;
-  _returnValue.swap(anyEmpty);
+  value.swap(anyEmpty);
 
   // Get the sysdev and entry values to call
-  const IOCTLEntry & entry = get_IOCTL_entry(_eQueryRequest);
+  const IOCTLEntry & entry = get_IOCTL_entry(qr);
 
   std::string sErrorMsg;
 
@@ -124,9 +126,6 @@ xrt_core::device_windows::query_device(uint64_t _deviceID, QueryRequest _eQueryR
     sErrorMsg = "IOCTLEntry is initialized with zeros.";
   }
 
-  // Removes compile warnings for unused variables
-  _deviceID = _deviceID;
- 
   // Reference linux code:
 //  if (_typeInfo == typeid(std::string)) {
 //    // -- Typeid: std::string --
@@ -168,61 +167,56 @@ xrt_core::device_windows::query_device(uint64_t _deviceID, QueryRequest _eQueryR
   }
 }
 
-
-void xrt_core::initialize_child_ctor()
+device_windows::
+device_windows(id_type device_id, bool user)
+  : device_pcie(device_id, user)
 {
-  xrt_core::device_windows::register_child_ctor(boost::factory<xrt_core::device_windows *>());
 }
 
-xrt_core::device_windows::device_windows()
+void
+device_windows::
+read_dma_stats(boost::property_tree::ptree& pt) const
 {
-  // Do nothing
 }
 
-xrt_core::device_windows::~device_windows() {
-  // Do nothing
-}
-
-uint64_t 
-xrt_core::device_windows::get_total_devices() const
+void
+device_windows::
+read(uint64_t addr, void* buf, uint64_t len) const
 {
-  // Linux reference code: 
-  // return pcidev::get_dev_total();
-  return 0;
 }
 
-void 
-xrt_core::device_windows::read_device_dma_stats(uint64_t _deviceID, boost::property_tree::ptree &_pt) const
+void
+device_windows::
+write(uint64_t addr, const void* buf, uint64_t len) const
 {
-  // Removes compiler warnings
-  _deviceID = _deviceID;
-  _pt = _pt;
-  // Linux reference code
-//  _deviceID = _deviceID;
-//  _pt = _pt;
-//  xclDeviceHandle handle = xclOpen(_deviceID, nullptr, XCL_QUIET);
-//
-//  if (!handle) {
-//    // Unable to get a handle
-//    return;
-//  }
-//
-//  xclDeviceUsage devstat = { 0 };
-//  xclGetUsageInfo(handle, &devstat);
-//
-//  // Clean up after ourselves
-//  xclClose(handle);
-//
-//  boost::property_tree::ptree ptChannels;
-//  for (unsigned index = 0; index < XCL_DEVICE_USAGE_COUNT; ++index) {
-//      boost::property_tree::ptree ptDMA;
-//      ptDMA.put( "id", std::to_string(index).c_str());
-//      ptDMA.put( "h2c", unitConvert(devstat.h2c[index]) );
-//      ptDMA.put( "c2h", unitConvert(devstat.c2h[index]) );
-//
-//      // Create our array of data
-//      ptChannels.push_back(std::make_pair("", ptDMA)); 
-//  }
-//
-//  _pt.add_child( "transfer_metrics.channels", ptChannels);
 }
+
+void
+device_windows::
+auto_flash(const std::string& shell, const std::string& id, bool force) const
+{
+  std::cout << "TO-DO: auto_flash\n";
+}
+
+void
+device_windows::
+reset_shell() const
+{
+  std::cout << "TO-DO: reset_shell\n";
+}
+
+void
+device_windows::
+update_shell(const std::string& flashType, const std::string& primary, const std::string& secondary) const
+{
+  std::cout << "TO-DO: update_shell\n";
+}
+
+void
+device_windows::
+update_SC(const std::string& file) const
+{
+  std::cout << "TO-DO: update_SC\n";
+}
+
+} // xrt_core
