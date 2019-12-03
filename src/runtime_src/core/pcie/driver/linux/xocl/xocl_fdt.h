@@ -69,6 +69,10 @@
 #define NODE_CLK_SHUTDOWN "ep_aclk_shutdown_00"
 #define NODE_ERT_BASE "ep_ert_base_address_00"
 #define NODE_ERT_RESET "ep_ert_reset_00"
+#define NODE_CLKFREQ_K1 "ep_freq_cnt_aclk_kernel_00"
+#define NODE_CLKFREQ_K2 "ep_freq_cnt_aclk_kernel_01"
+#define NODE_CLKFREQ_HBM "ep_freq_cnt_aclk_hbm_00"
+#define NODE_UCS_CONTROL "ep_ucs_control_status_00"
 
 enum {
 	IORES_GATEPRBLD,
@@ -83,6 +87,7 @@ enum {
 	IORES_CLKFREQ_K2,
 	IORES_KDMA,
 	IORES_CLKSHUTDOWN,
+	IORES_UCS_CONTROL,
 	IORES_MAX,
 };
 
@@ -93,11 +98,12 @@ enum {
 #define RESNAME_CLKWIZKERNEL2   NODE_CLK_KERNEL2
 #define RESNAME_CLKWIZKERNEL3   NODE_CLK_KERNEL3
 #define RESNAME_CLKFREQ_K1_K2	"clkfreq_kernel1_kernel2"
-#define RESNAME_CLKFREQ_HBM	"clkfreq_hbm"
-#define RESNAME_CLKFREQ_K1	"clkfreq_kernel1"
-#define RESNAME_CLKFREQ_K2	"clkfreq_kernel2"
+#define RESNAME_CLKFREQ_HBM	NODE_CLKFREQ_HBM
+#define RESNAME_CLKFREQ_K1	NODE_CLKFREQ_K1
+#define RESNAME_CLKFREQ_K2	NODE_CLKFREQ_K2
 #define RESNAME_KDMA            NODE_KDMA_CTRL
-#define RESNAME_CLKSHUTDOWN     NODE_CLK_SHUTDOWN
+#define RESNAME_CLKSHUTDOWN	NODE_CLK_SHUTDOWN
+#define RESNAME_UCS_CONTROL     NODE_UCS_CONTROL
 
 struct xocl_iores_map {
 	char		*res_name;
@@ -117,7 +123,8 @@ struct xocl_iores_map map[] = {                                         \
 	{ RESNAME_CLKFREQ_K1, IORES_CLKFREQ_K1},			\
 	{ RESNAME_CLKFREQ_K2, IORES_CLKFREQ_K2},			\
 	{ RESNAME_KDMA, IORES_KDMA },                                   \
-	{ RESNAME_CLKSHUTDOWN, IORES_CLKSHUTDOWN },                     \
+	{ RESNAME_CLKSHUTDOWN, IORES_CLKSHUTDOWN },			\
+	{ RESNAME_UCS_CONTROL, IORES_UCS_CONTROL},			\
 }
 
 #endif

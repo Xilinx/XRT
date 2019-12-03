@@ -1658,49 +1658,9 @@ struct xocl_subdev_map {
 		0,					\
 	}
 
-#define XOCL_RES_IORES_MGMT_VSEC			\
-	((struct resource []) {				\
-		/* OCL_CLKFREQ_BASE */			\
-		{					\
-			.name	= RESNAME_CLKFREQ_K1,\
-			.start	= 0x845000,		\
-			.end	= 0x845fff,		\
-			.flags  = IORESOURCE_MEM,	\
-		},					\
-		/* OCL_CLKFREQ_BASE */			\
-		{					\
-			.name	= RESNAME_CLKFREQ_K2,	\
-			.start	= 0x846000,		\
-			.end	= 0x846fff,		\
-			.flags  = IORESOURCE_MEM,	\
-		},					\
-		{					\
-			.name	= RESNAME_CLKWIZKERNEL1,\
-			.start	= 0x843000,		\
-			.end	= 0x843fff,		\
-			.flags  = IORESOURCE_MEM,	\
-		},					\
-		{					\
-			.name	= RESNAME_CLKWIZKERNEL2,\
-			.start	= 0x844000,		\
-			.end	= 0x844fff,		\
-			.flags  = IORESOURCE_MEM,	\
-		},					\
-	 })
-
-#define	XOCL_DEVINFO_IORES_MGMT_VSEC			\
-	{						\
-		XOCL_SUBDEV_IORES,			\
-		XOCL_IORES3,				\
-		XOCL_RES_IORES_MGMT_VSEC, 		\
-		ARRAY_SIZE(XOCL_RES_IORES_MGMT_VSEC),	\
-		.level = XOCL_SUBDEV_LEVEL_URP,		\
-	}
-
 #define RES_MGMT_VSEC							\
 	((struct xocl_subdev_info []) {					\
 	 	XOCL_DEVINFO_FEATURE_ROM_MGMT_DYN,			\
-	 	XOCL_DEVINFO_IORES_MGMT_VSEC,				\
 		XOCL_DEVINFO_FMGR,					\
 	 })
 
