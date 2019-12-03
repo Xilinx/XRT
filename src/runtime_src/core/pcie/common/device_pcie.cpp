@@ -14,6 +14,12 @@
  * under the License.
  */
 
+// For now device_pcie.cpp is delivered with core library (libxrt_core), see
+// for example core/pcie/windows/CMakeLists.txt.  To prevent compilation of
+// this file from importing symbols from libxrt_core we define this source
+// file to instead export with same macro as used in libxrt_core.
+#define XCL_DRIVER_DLL_EXPORT
+
 #include "device_pcie.h"
 
 namespace xrt_core {

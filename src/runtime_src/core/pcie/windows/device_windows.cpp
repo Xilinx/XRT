@@ -13,8 +13,10 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
+#define XRT_CORE_PCIE_WINDOWS_SOURCE
+#define XCL_DRIVER_DLL_EXPORT
 #include "device_windows.h"
+#include "mgmt.h"
 #include "common/utils.h"
 #include "xrt.h"
 #include "boost/format.hpp"
@@ -23,6 +25,16 @@
 #include <map>
 
 #pragma warning(disable : 4100 4996)
+
+namespace {
+
+void
+not_implemented(xrt_core::device::QueryRequest qr, const std::type_info&, boost::any& value)
+{
+  throw xrt_core::no_such_query(qr, "not implemented");
+}
+
+} // namespace
 
 namespace xrt_core {
 
@@ -33,85 +45,85 @@ get_IOCTL_entry(QueryRequest qr) const
   // Initialize our lookup table
   static const std::map<QueryRequest, IOCTLEntry> QueryRequestToIOCTLTable =
   {
-    { QR_PCIE_VENDOR,               { 0 }},
-    { QR_PCIE_DEVICE,               { 0 }},
-    { QR_PCIE_SUBSYSTEM_VENDOR,     { 0 }},
-    { QR_PCIE_SUBSYSTEM_ID,         { 0 }},
-    { QR_PCIE_LINK_SPEED,           { 0 }},
-    { QR_PCIE_EXPRESS_LANE_WIDTH,   { 0 }},
-    { QR_DMA_THREADS_RAW,           { 0 }},
-    { QR_ROM_VBNV,                  { 0 }},
-    { OR_ROM_DDR_BANK_SIZE,         { 0 }},
-    { QR_ROM_DDR_BANK_COUNT_MAX,    { 0 }},
-    { QR_ROM_FPGA_NAME,             { 0 }},
-    { QR_ROM_RAW,                   { 0 }},
-    { QR_ROM_UUID,                  { 0 }},
-    { QR_XMC_VERSION,               { 0 }},
-    { QR_XMC_SERIAL_NUM,            { 0 }},
-    { QR_XMC_MAX_POWER,             { 0 }},
-    { QR_XMC_BMC_VERSION,           { 0 }},
-    { QR_XMC_STATUS,                { 0 }},
-    { QR_XMC_REG_BASE,              { 0 }},
-    { QR_DNA_SERIAL_NUM,            { 0 }},
-    { QR_CLOCK_FREQS,               { 0 }},
-    { QR_IDCODE,                    { 0 }},
-    { QR_STATUS_MIG_CALIBRATED,     { 0 }},
-    { QR_STATUS_P2P_ENABLED,        { 0 }},
-    { QR_TEMP_CARD_TOP_FRONT,       { 0 }},
-    { QR_TEMP_CARD_TOP_REAR,        { 0 }},
-    { QR_TEMP_CARD_BOTTOM_FRONT,    { 0 }},
-    { QR_TEMP_FPGA,                 { 0 }},
-    { QR_FAN_TRIGGER_CRITICAL_TEMP, { 0 }},
-    { QR_FAN_FAN_PRESENCE,          { 0 }},
-    { QR_FAN_SPEED_RPM,             { 0 }},
-    { QR_CAGE_TEMP_0,               { 0 }},
-    { QR_CAGE_TEMP_1,               { 0 }},
-    { QR_CAGE_TEMP_2,               { 0 }},
-    { QR_CAGE_TEMP_3,               { 0 }},
-    { QR_12V_PEX_MILLIVOLTS,        { 0 }},
-    { QR_12V_PEX_MILLIAMPS,         { 0 }},
-    { QR_12V_AUX_MILLIVOLTS,        { 0 }},
-    { QR_12V_AUX_MILLIAMPS,         { 0 }},
-    { QR_3V3_PEX_MILLIVOLTS,        { 0 }},
-    { QR_3V3_AUX_MILLIVOLTS,        { 0 }},
-    { QR_DDR_VPP_BOTTOM_MILLIVOLTS, { 0 }},
-    { QR_DDR_VPP_TOP_MILLIVOLTS,    { 0 }},
+    { QR_PCIE_VENDOR,               { not_implemented }},
+    { QR_PCIE_DEVICE,               { not_implemented }},
+    { QR_PCIE_SUBSYSTEM_VENDOR,     { nullptr }},
+    { QR_PCIE_SUBSYSTEM_ID,         { nullptr }},
+    { QR_PCIE_LINK_SPEED,           { nullptr }},
+    { QR_PCIE_EXPRESS_LANE_WIDTH,   { nullptr }},
+    { QR_DMA_THREADS_RAW,           { nullptr }},
+    { QR_ROM_VBNV,                  { nullptr }},
+    { OR_ROM_DDR_BANK_SIZE,         { nullptr }},
+    { QR_ROM_DDR_BANK_COUNT_MAX,    { nullptr }},
+    { QR_ROM_FPGA_NAME,             { nullptr }},
+    { QR_ROM_RAW,                   { nullptr }},
+    { QR_ROM_UUID,                  { nullptr }},
+    { QR_XMC_VERSION,               { nullptr }},
+    { QR_XMC_SERIAL_NUM,            { nullptr }},
+    { QR_XMC_MAX_POWER,             { nullptr }},
+    { QR_XMC_BMC_VERSION,           { nullptr }},
+    { QR_XMC_STATUS,                { nullptr }},
+    { QR_XMC_REG_BASE,              { nullptr }},
+    { QR_DNA_SERIAL_NUM,            { nullptr }},
+    { QR_CLOCK_FREQS,               { nullptr }},
+    { QR_IDCODE,                    { nullptr }},
+    { QR_STATUS_MIG_CALIBRATED,     { nullptr }},
+    { QR_STATUS_P2P_ENABLED,        { nullptr }},
+    { QR_TEMP_CARD_TOP_FRONT,       { nullptr }},
+    { QR_TEMP_CARD_TOP_REAR,        { nullptr }},
+    { QR_TEMP_CARD_BOTTOM_FRONT,    { nullptr }},
+    { QR_TEMP_FPGA,                 { nullptr }},
+    { QR_FAN_TRIGGER_CRITICAL_TEMP, { nullptr }},
+    { QR_FAN_FAN_PRESENCE,          { nullptr }},
+    { QR_FAN_SPEED_RPM,             { nullptr }},
+    { QR_CAGE_TEMP_0,               { nullptr }},
+    { QR_CAGE_TEMP_1,               { nullptr }},
+    { QR_CAGE_TEMP_2,               { nullptr }},
+    { QR_CAGE_TEMP_3,               { nullptr }},
+    { QR_12V_PEX_MILLIVOLTS,        { nullptr }},
+    { QR_12V_PEX_MILLIAMPS,         { nullptr }},
+    { QR_12V_AUX_MILLIVOLTS,        { nullptr }},
+    { QR_12V_AUX_MILLIAMPS,         { nullptr }},
+    { QR_3V3_PEX_MILLIVOLTS,        { nullptr }},
+    { QR_3V3_AUX_MILLIVOLTS,        { nullptr }},
+    { QR_DDR_VPP_BOTTOM_MILLIVOLTS, { nullptr }},
+    { QR_DDR_VPP_TOP_MILLIVOLTS,    { nullptr }},
 
-    { QR_5V5_SYSTEM_MILLIVOLTS,     { 0 }},
-    { QR_1V2_VCC_TOP_MILLIVOLTS,    { 0 }},
-    { QR_1V2_VCC_BOTTOM_MILLIVOLTS, { 0 }},
-    { QR_1V8_MILLIVOLTS,            { 0 }},
-    { QR_0V85_MILLIVOLTS,           { 0 }},
-    { QR_0V9_VCC_MILLIVOLTS,        { 0 }},
-    { QR_12V_SW_MILLIVOLTS,         { 0 }},
-    { QR_MGT_VTT_MILLIVOLTS,        { 0 }},
-    { QR_INT_VCC_MILLIVOLTS,        { 0 }},
-    { QR_INT_VCC_MILLIAMPS,         { 0 }},
+    { QR_5V5_SYSTEM_MILLIVOLTS,     { nullptr }},
+    { QR_1V2_VCC_TOP_MILLIVOLTS,    { nullptr }},
+    { QR_1V2_VCC_BOTTOM_MILLIVOLTS, { nullptr }},
+    { QR_1V8_MILLIVOLTS,            { nullptr }},
+    { QR_0V85_MILLIVOLTS,           { nullptr }},
+    { QR_0V9_VCC_MILLIVOLTS,        { nullptr }},
+    { QR_12V_SW_MILLIVOLTS,         { nullptr }},
+    { QR_MGT_VTT_MILLIVOLTS,        { nullptr }},
+    { QR_INT_VCC_MILLIVOLTS,        { nullptr }},
+    { QR_INT_VCC_MILLIAMPS,         { nullptr }},
 
-    { QR_3V3_PEX_MILLIAMPS,         { 0 }},
-    { QR_0V85_MILLIAMPS,            { 0 }},
-    { QR_3V3_VCC_MILLIVOLTS,        { 0 }},
-    { QR_HBM_1V2_MILLIVOLTS,        { 0 }},
-    { QR_2V5_VPP_MILLIVOLTS,        { 0 }},
-    { QR_INT_BRAM_VCC_MILLIVOLTS,   { 0 }},
+    { QR_3V3_PEX_MILLIAMPS,         { nullptr }},
+    { QR_0V85_MILLIAMPS,            { nullptr }},
+    { QR_3V3_VCC_MILLIVOLTS,        { nullptr }},
+    { QR_HBM_1V2_MILLIVOLTS,        { nullptr }},
+    { QR_2V5_VPP_MILLIVOLTS,        { nullptr }},
+    { QR_INT_BRAM_VCC_MILLIVOLTS,   { nullptr }},
 
-    { QR_FIREWALL_DETECT_LEVEL,     { 0 }},
-    { QR_FIREWALL_STATUS,           { 0 }},
-    { QR_FIREWALL_TIME_SEC,         { 0 }},
+    { QR_FIREWALL_DETECT_LEVEL,     { nullptr }},
+    { QR_FIREWALL_STATUS,           { nullptr }},
+    { QR_FIREWALL_TIME_SEC,         { nullptr }},
 
-    { QR_POWER_MICROWATTS,          { 0 }},
+    { QR_POWER_MICROWATTS,          { nullptr }},
 
-    { QR_FLASH_BAR_OFFSET,          { 0 }},
-    { QR_IS_MFG,                    { 0 }},
-    { QR_F_FLASH_TYPE,              { 0 }},
-    { QR_FLASH_TYPE,                { 0 }},
+    { QR_FLASH_BAR_OFFSET,          { nullptr }},
+    { QR_IS_MFG,                    { nullptr }},
+    { QR_F_FLASH_TYPE,              { nullptr }},
+    { QR_FLASH_TYPE,                { nullptr }},
   };
   // Find the translation entry
   std::map<QueryRequest, IOCTLEntry>::const_iterator it = QueryRequestToIOCTLTable.find(qr);
 
-  if (it == QueryRequestToIOCTLTable.end()) {
-    std::string errMsg = boost::str( boost::format("The given query request ID (%d) is not supported.") % qr);
-    throw no_such_query(qr, errMsg);
+  if (it == QueryRequestToIOCTLTable.end() || !it->second.m_fcn) {
+    std::string err = boost::str( boost::format("The given query request ID (%d) is not supported.") % qr);
+    throw no_such_query(qr, err);
   }
 
   return it->second;
@@ -127,13 +139,11 @@ query(QueryRequest qr, const std::type_info & _typeInfo, boost::any& value) cons
   value.swap(anyEmpty);
 
   // Get the sysdev and entry values to call
-  const IOCTLEntry & entry = get_IOCTL_entry(qr);
+  auto& entry = get_IOCTL_entry(qr);
+  if (!entry.m_fcn)
+    throw std::runtime_error("Unexpected error, exception should already have been thrown");
 
   std::string sErrorMsg;
-
-  if (entry.IOCTLValue == 0) {
-    sErrorMsg = "IOCTLEntry is initialized with zeros.";
-  }
 
   // Reference linux code:
 //  if (_typeInfo == typeid(std::string)) {
@@ -180,6 +190,17 @@ device_windows::
 device_windows(id_type device_id, bool user)
   : device_pcie(device_id, user)
 {
+  if (user)
+    return;
+
+  m_mgmthdl = mgmt::open(device_id);
+}
+
+device_windows::
+~device_windows()
+{
+  if (m_mgmthdl)
+    mgmt::close(m_mgmthdl);
 }
 
 void
@@ -192,12 +213,20 @@ void
 device_windows::
 read(uint64_t addr, void* buf, uint64_t len) const
 {
+  if (!m_mgmthdl)
+    throw std::runtime_error("");
+
+  mgmt::read_bar(m_mgmthdl, addr, buf, len);
 }
 
 void
 device_windows::
 write(uint64_t addr, const void* buf, uint64_t len) const
 {
+  if (!m_mgmthdl)
+    throw std::runtime_error("");
+
+  mgmt::write_bar(m_mgmthdl, addr, buf, len);
 }
 
 } // xrt_core
