@@ -486,6 +486,6 @@ struct drm_xocl_reclock_info {
 #define DRM_IOCTL_XOCL_EXECBUF		XOCL_IOC_ARG(EXECBUF, execbuf)
 #define DRM_IOCTL_XOCL_USER_INTR	XOCL_IOC_ARG(USER_INTR, user_intr)
 #define DRM_IOCTL_XOCL_HOT_RESET	XOCL_IOC(HOT_RESET)
-#define DRM_IOCTL_XOCL_RECLOCK		XOCL_IOC_ARG(USER_INTR, reclock_info)
+#define DRM_IOCTL_XOCL_RECLOCK		XOCL_IOC_ARG(RECLOCK, reclock_info)
 
 #endif
