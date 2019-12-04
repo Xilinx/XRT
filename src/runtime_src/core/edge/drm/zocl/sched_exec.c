@@ -2351,6 +2351,7 @@ penguin_query(struct sched_cmd *cmd)
 		mark_cmd_complete(cmd, ERT_CMD_STATE_COMPLETED);
 		break;
 	default:
+		mark_cmd_complete(cmd, ERT_CMD_STATE_ERROR);
 		DRM_ERROR("unknown opcode %d", opc);
 	}
 	SCHED_DEBUG("<- %s\n", __func__);
@@ -2552,6 +2553,7 @@ ps_ert_query(struct sched_cmd *cmd)
 		break;
 
 	default:
+		mark_cmd_complete(cmd, ERT_CMD_STATE_ERROR);
 		DRM_ERROR("unknown opcode %d", opc);
 	}
 	SCHED_DEBUG("<- %s()", __func__);
