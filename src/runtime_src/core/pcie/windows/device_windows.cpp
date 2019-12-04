@@ -152,7 +152,7 @@ get_IOCTL_entry(QueryRequest qr) const
 
 void
 device_windows::
-query(QueryRequest qr, const std::type_info & _typeInfo, boost::any& value) const
+query(QueryRequest qr, const std::type_info & tinfo, boost::any& value) const
 {
   // Initialize return data to being empty container.
   // Note: CentOS Boost 1.53 doesn't support the clear() method.
@@ -164,8 +164,9 @@ query(QueryRequest qr, const std::type_info & _typeInfo, boost::any& value) cons
   if (!entry.m_fcn)
     throw std::runtime_error("Unexpected error, exception should already have been thrown");
 
-  std::string sErrorMsg;
+  entry.m_fcn(qr,tinfo,value);
 
+//  std::string sErrorMsg;
   // Reference linux code:
 //  if (_typeInfo == typeid(std::string)) {
 //    // -- Typeid: std::string --
@@ -199,12 +200,12 @@ query(QueryRequest qr, const std::type_info & _typeInfo, boost::any& value) cons
 //
 //  } else {
 //  }
-
-  sErrorMsg = boost::str( boost::format("Error: Unsupported query_device return type: '%s'") % _typeInfo.name());
-
-  if (!sErrorMsg.empty()) {
-    throw std::runtime_error(sErrorMsg);
-  }
+//
+//  sErrorMsg = boost::str( boost::format("Error: Unsupported query_device return type: '%s'") % _typeInfo.name());
+//
+//  if (!sErrorMsg.empty()) {
+//    throw std::runtime_error(sErrorMsg);
+//  }
 }
 
 device_windows::
