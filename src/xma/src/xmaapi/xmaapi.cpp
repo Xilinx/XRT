@@ -166,7 +166,7 @@ void xma_thread1() {
                     priv1->num_cu_cmds_avg_tmp = 0;
                     priv1->num_samples = 0;
                 } else if (priv1->num_cu_cmds_avg == 0 && priv1->num_samples == 128) {
-                    xma_logmsg(XMA_INFO_LOG, "XMA-Session-Stats-Startup", "Session id: %d, avg cmds: %.2f, busy vs idle: %d vs %d", itr1.first, priv1->num_cu_cmds_avg_tmp / 128.0, (uint32_t)priv1->cmd_busy, (uint32_t)priv1->cmd_idle);
+                    xma_logmsg(XMA_INFO_LOG, "XMA-Session-Stats-Startup", "Session id: %d, type: %s, avg cmds: %.2f, busy vs idle: %d vs %d", itr1.first, xma_core::get_session_name(itr1.second.session_type).c_str(), priv1->num_cu_cmds_avg_tmp / 128.0, (uint32_t)priv1->cmd_busy, (uint32_t)priv1->cmd_idle);
                 }
                 num_cmds = priv1->num_cu_cmds;
                 priv1->num_cu_cmds_avg_tmp += num_cmds;
@@ -221,7 +221,7 @@ void xma_thread1() {
                     kernel_info->num_cu_cmds_avg_tmp = 0;
                     kernel_info->num_samples = 0;
                 } else if (kernel_info->num_cu_cmds_avg == 0 && kernel_info->num_samples == 128) {
-                    xma_logmsg(XMA_ERROR_LOG, "XMA-Session-Stats-Startup", "Session id: %d, cu: %s, avg cmds: %.2f, busy vs idle: %d vs %d", itr1.first, kernel_info->name, kernel_info->num_cu_cmds_avg_tmp / 128.0, (uint32_t)kernel_info->cu_busy, (uint32_t)kernel_info->cu_idle);
+                    xma_logmsg(XMA_ERROR_LOG, "XMA-Session-Stats-Startup", "Session id: %d, type: %s, cu: %s, avg cmds: %.2f, busy vs idle: %d vs %d", itr1.first, xma_core::get_session_name(itr1.second.session_type).c_str(), kernel_info->name, kernel_info->num_cu_cmds_avg_tmp / 128.0, (uint32_t)kernel_info->cu_busy, (uint32_t)kernel_info->cu_idle);
                 }
             }
         }
