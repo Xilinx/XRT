@@ -310,7 +310,6 @@ void Msd::msd_thread(size_t index, std::string host)
     int sockfd = -1, mpdfd = -1, mbxfd = -1;
     int retfd[2];
     int ret;
-    struct queue_msg msg = {0};
     const int interval = 2;
 
     pcieFunc dev(index, false);
@@ -356,15 +355,17 @@ void Msd::msd_thread(size_t index, std::string host)
             continue;
         }
 
-        msg.localFd = mbxfd;
-        msg.remoteFd = mpdfd;
-
         // Process msg.
         for (int i = 0; i < 2; i++) {
+            struct queue_msg msg = {0};
             if (retfd[i] == mbxfd) {
+                msg.localFd = mbxfd;
+                msg.remoteFd = -1;
                 msg.type = LOCAL_MSG;
                 msg.data = std::move(getLocalMsg(dev, mbxfd));
             } else if (retfd[i] == mpdfd) {
+                msg.localFd = -1;
+                msg.remoteFd = mpdfd;
                 msg.type = REMOTE_MSG;
                 msg.data = std::move(getRemoteMsg(dev, mpdfd));
                 msg.cb = Msd::remoteMsgHandler;
@@ -374,7 +375,8 @@ void Msd::msd_thread(size_t index, std::string host)
 
             ret = handleMsg(dev, msg);
             if (ret) { // Socket connection was lost, retry
-                close(mpdfd);
+                if (mpdfd >= 0)
+                    close(mpdfd);
                 mpdfd = -1;
                 continue;
             }
