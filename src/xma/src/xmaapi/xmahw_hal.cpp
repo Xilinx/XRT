@@ -349,7 +349,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             cu_mask.set(0);
             cu_index_ert = 0;
 
-            for (uint32_t d2 = 0; d2 < info.number_of_kernels; d2++) {
+            for (uint32_t d2 = 0; d2 < info.number_of_hardware_kernels; d2++) {
                 if (d1 != d2) {
                     if (dev_tmp1.kernels[d2].base_address < base_addr1) {
                         cu_mask = cu_mask << 1;
