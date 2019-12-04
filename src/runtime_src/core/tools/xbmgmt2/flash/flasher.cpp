@@ -24,7 +24,8 @@
 #include <vector>
 #include <cstring>
 
-
+#define INVALID_ID      0xffff
+#define MFG_REV_OFFSET  0x131008 // For obtaining Golden image version number
 
 #define FLASH_BASE_ADDRESS BPI_FLASH_OFFSET
 #define MAGIC_XLNX_STRING "xlnx" // from xclfeatures.h FeatureRomHeader
@@ -228,9 +229,7 @@ Flasher::Flasher(unsigned int index) : mFRHeader{}
     }
     else if (is_mfg)
     {
-#if 0
-        dev->pcieBarRead(MFG_REV_OFFSET, &mGoldenVer, sizeof(mGoldenVer));
-#endif
+        dev->read(MFG_REV_OFFSET, &mGoldenVer, sizeof(mGoldenVer));
     }
     else
     {

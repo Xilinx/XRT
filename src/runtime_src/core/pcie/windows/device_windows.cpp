@@ -34,6 +34,27 @@ not_implemented(xrt_core::device::QueryRequest qr, const std::type_info&, boost:
   throw xrt_core::no_such_query(qr, "not implemented");
 }
 
+void
+flash_type(xrt_core::device::QueryRequest qr, const std::type_info&, boost::any& value)
+{
+  value = "SPI";
+}
+
+void
+xmc(xrt_core::device::QueryRequest qr, const std::type_info&, boost::any& value)
+{
+  if(qr == xrt_core::device::QR_XMC_STATUS)
+    value = 1;
+  if(value.empty())
+    throw std::runtime_error("Invalid query value");
+}
+
+void
+mfg(xrt_core::device::QueryRequest qr, const std::type_info&, boost::any& value)
+{
+  value = false;
+}
+
 } // namespace
 
 namespace xrt_core {
@@ -62,7 +83,7 @@ get_IOCTL_entry(QueryRequest qr) const
     { QR_XMC_SERIAL_NUM,            { nullptr }},
     { QR_XMC_MAX_POWER,             { nullptr }},
     { QR_XMC_BMC_VERSION,           { nullptr }},
-    { QR_XMC_STATUS,                { nullptr }},
+    { QR_XMC_STATUS,                { xmc }},
     { QR_XMC_REG_BASE,              { nullptr }},
     { QR_DNA_SERIAL_NUM,            { nullptr }},
     { QR_CLOCK_FREQS,               { nullptr }},
@@ -114,9 +135,9 @@ get_IOCTL_entry(QueryRequest qr) const
     { QR_POWER_MICROWATTS,          { nullptr }},
 
     { QR_FLASH_BAR_OFFSET,          { nullptr }},
-    { QR_IS_MFG,                    { nullptr }},
-    { QR_F_FLASH_TYPE,              { nullptr }},
-    { QR_FLASH_TYPE,                { nullptr }},
+    { QR_IS_MFG,                    { mfg }},
+    { QR_F_FLASH_TYPE,              { flash_type }},
+    { QR_FLASH_TYPE,                { flash_type }},
   };
   // Find the translation entry
   std::map<QueryRequest, IOCTLEntry>::const_iterator it = QueryRequestToIOCTLTable.find(qr);

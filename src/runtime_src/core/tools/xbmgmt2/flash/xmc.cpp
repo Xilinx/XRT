@@ -469,25 +469,13 @@ int XMC_Flasher::waitTillIdle()
 unsigned int XMC_Flasher::readReg(unsigned int RegOffset) {
     unsigned int value = 0;
     RegOffset = RegOffset;
-#if 0
-    if( m_device->pcieBarRead(mRegBase + RegOffset, &value, 4) != 0 ) {
-        assert(0);
-        std::cout << "read reg ERROR" << std::endl;
-    }
-#endif
+    m_device->read(mRegBase + RegOffset, &value, 4);
     return value;
 }
 
 int XMC_Flasher::writeReg(unsigned int RegOffset, unsigned int value) {
     value = value; 
-#if 0
-    int status = m_device->pcieBarWrite(mRegBase + RegOffset, &value, 4);
-    if(status != 0) {
-        assert(0);
-        std::cout << "write reg ERROR " << std::endl;
-        return -EINVAL;
-    }
-#endif
+    m_device->write(mRegBase + RegOffset, &value, 4);
     return 0;
 }
 

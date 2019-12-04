@@ -37,6 +37,7 @@
 #ifdef _WIN32
 # pragma warning( disable : 4189 )
 #define be32toh ntohl
+#define PALIGN(p, a) (const char*)NULL //to-do
 #endif
 
 #define hex_digit "([0-9a-fA-F]+)"
@@ -48,9 +49,13 @@
 #define FDT_PROP        0x3
 #define FDT_NOP         0x4
 #define FDT_END         0x9
+
+#ifdef __GNUC__
 #define ALIGN(x, a)     (((x) + ((a) - 1)) & ~((a) - 1))
-#define PALIGN(p, a)    ((char *)(ALIGN((unsigned long)(p), (a)))) //error
+#define PALIGN(p, a)    ((char *)(ALIGN((unsigned long)(p), (a))))
+#endif
 #define GET_CELL(p)     (p += 4, *((const uint32_t *)(p-4)))
+
 struct fdt_header {
     uint32_t magic;
     uint32_t totalsize;
@@ -142,7 +147,7 @@ void getUUIDFromDTB(void *blob, uint64_t &ts, std::vector<std::string> &uuids)
         if (tag == FDT_BEGIN_NODE)
         {
             s = p;
-            // p = PALIGN(p + strlen(s) + 1, 4);
+            p = PALIGN(p + strlen(s) + 1, 4);
             continue;
         }
 
@@ -152,7 +157,7 @@ void getUUIDFromDTB(void *blob, uint64_t &ts, std::vector<std::string> &uuids)
         sz = be32toh(GET_CELL(p));
         s = p_strings + be32toh(GET_CELL(p));
         if (version < 16 && sz >= 8) {}
-            // p = PALIGN(p, 8);
+            p = PALIGN(p, 8);
 
         if (!strcmp(s, "logic_uuid"))
         {
@@ -162,7 +167,7 @@ void getUUIDFromDTB(void *blob, uint64_t &ts, std::vector<std::string> &uuids)
         {
             uuids.push_back(std::string(p));
         }
-        // p = PALIGN(p + sz, 4);
+        p = PALIGN(p + sz, 4);
     }
     if (uuids.size() > 0)
         uuid2ts(uuids[0], ts);
