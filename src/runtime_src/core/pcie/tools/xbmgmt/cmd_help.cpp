@@ -27,7 +27,7 @@ int helpHandler(int argc, char *argv[])
         return 0;
     }
     std::string subCmd(argv[1]);
-    if(subCmd.compare("expert") == 0) {
+    if(subCmd.compare("--expert") == 0) {
         printHelp(true);
         return 0;
     }
