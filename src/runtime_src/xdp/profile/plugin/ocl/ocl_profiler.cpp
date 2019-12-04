@@ -254,6 +254,11 @@ namespace xdp {
       }
       xdp::xoclp::platform::device::data* info = &(itr->second);
 
+      //Begin offload before configuring IP and clock training
+      std::string  binary_name = device->get_xclbin().project_name();
+      auto offloadThread = std::make_unique<OclDeviceOffload>(dInt, ProfileMgr, device, device->get_unique_name(), binary_name, 10);
+      DeviceOffloadList.push_back(std::move(offloadThread));
+
       // Since clock training is performed in mStartTrace, let's record this time
       // XCL_PERF_MON_MEMORY // any type
       info->mLastTraceTrainingTime[XCL_PERF_MON_MEMORY] = std::chrono::steady_clock::now();
@@ -277,15 +282,10 @@ namespace xdp {
         dInt->startTrace(XCL_PERF_MON_MEMORY, traceOption);
         // Configure DMA if present
         if (dInt->hasTs2mm()) {
-          info->ts2mm_en = allocateDeviceDDRBufferForTrace(dInt, device);
+          //info->ts2mm_en = allocateDeviceDDRBufferForTrace(dInt, device);
           /* Todo: Write user specified memory bank here */
           trace_memory = "TS2MM";
         }
-        std::string binary_name = "binary";
-        if (device->is_active())
-          binary_name = device->get_xclbin().project_name();
-        auto offloadThread = std::make_unique<OclDeviceOffload>(dInt, ProfileMgr, device->get_unique_name(), binary_name, 10);
-        DeviceOffloadList.push_back(std::move(offloadThread));
       } else {
         xdevice->startTrace(XCL_PERF_MON_MEMORY, traceOption);
         // for HW_EMU consider , 2 calls , with new XDP, all flow should be same
@@ -671,7 +671,7 @@ namespace xdp {
           binary_name = device->get_xclbin().project_name();
 
         if (dInt) {    // HW Device flow
-          bool endLog = false;
+          //bool endLog = false;
           if (dInt->hasFIFO()) {
           //  uint32_t numTracePackets = 0;
           //  while (!endLog) {
@@ -687,17 +687,17 @@ namespace xdp {
           //  if (numTracePackets >= fifoSize && !isHwEmu)
           //    Plugin->sendMessage(FIFO_WARN_MSG);
           } else if (dInt->hasTs2mm()) {
-            configureDDRTraceReader(dInt->getWordCountTs2mm());
-            uint64_t numTraceBytes = 0;
-            while (!endLog) {
-              auto readBytes = readTraceDataFromDDR(dInt, xdevice, info->mTraceVector);
-              endLog = readBytes != mTraceReadBufChunkSz;
-              profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector, endLog);
-              numTraceBytes += readBytes;
-              info->mTraceVector = {};
-            }
-            if (numTraceBytes >= mDDRBufferSz)
-              Plugin->sendMessage(TS2MM_WARN_MSG_BUF_FULL);
+          //  configureDDRTraceReader(dInt->getWordCountTs2mm());
+          //  uint64_t numTraceBytes = 0;
+          //  while (!endLog) {
+          //    auto readBytes = readTraceDataFromDDR(dInt, xdevice, info->mTraceVector);
+          //    endLog = readBytes != mTraceReadBufChunkSz;
+          //    profileMgr->logDeviceTrace(device_name, binary_name, type, info->mTraceVector, endLog);
+          //    numTraceBytes += readBytes;
+          //    info->mTraceVector = {};
+          //  }
+          //  if (numTraceBytes >= mDDRBufferSz)
+          //      Plugin->sendMessage(TS2MM_WARN_MSG_BUF_FULL);
           }
         } else {
           while(1) {
