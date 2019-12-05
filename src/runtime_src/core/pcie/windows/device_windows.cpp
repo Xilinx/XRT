@@ -99,8 +99,20 @@ rom(const device_type* device, qr_type qr, const std::type_info&, boost::any& va
   case qr_type::QR_ROM_FPGA_NAME:
     value = std::string(reinterpret_cast<const char*>(hdr.FPGAPartName));
     break;
+  }
+
+  if (device->get_user_handle())
+    throw std::runtime_error("device_windows::rom() unexpected qr("
+                             + std::to_string(qr)
+                             + ") for userpf");
+
+  switch (qr) {
   case qr_type::QR_ROM_UUID:
     value = std::string(reinterpret_cast<const char*>(hdr.uuid),16);
+    break;
+  case qr_type::QR_ROM_TIME_SINCE_EPOCH:
+    value = hdr.TimeSinceEpoch;
+    break;
   default:
     throw std::runtime_error("device_windows::rom() unexpected qr " + std::to_string(qr));
   }
@@ -130,6 +142,7 @@ get_IOCTL_entry(QueryRequest qr) const
     { QR_ROM_FPGA_NAME,             { rom }},
     { QR_ROM_RAW,                   { rom }},
     { QR_ROM_UUID,                  { rom }},
+    { QR_ROM_TIME_SINCE_EPOCH,      { rom }},
     { QR_XMC_VERSION,               { nullptr }},
     { QR_XMC_SERIAL_NUM,            { nullptr }},
     { QR_XMC_MAX_POWER,             { nullptr }},
