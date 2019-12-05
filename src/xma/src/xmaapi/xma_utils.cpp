@@ -376,24 +376,46 @@ void get_system_info() {
 }
 
 void get_session_cmd_load() {
-   static auto verbosity = xrt_core::config::get_verbosity();
-   XmaLogLevelType level = (XmaLogLevelType) std::min({(uint32_t)XMA_INFO_LOG, (uint32_t)verbosity});
-   if (g_xma_singleton->all_sessions.size() > 1) {
-      xma_logmsg(level, "XMA-Session-Load", "Session CU Command Relative Loads: ");
-      for (auto& itr1: g_xma_singleton->all_sessions) {
+    static auto verbosity = xrt_core::config::get_verbosity();
+    XmaLogLevelType level = (XmaLogLevelType) std::min({(uint32_t)XMA_INFO_LOG, (uint32_t)verbosity});
+    //static const std::string logger =  xrt_core::config::get_logging();
+    //std::cout << "XMA-Log-Info: To: " << logger << std::endl;
+    xma_logmsg(level, "XMA-Session-Stats", "=== Session CU Command Relative Loads: ===");
+    for (auto& itr1: g_xma_singleton->all_sessions) {
+        xma_logmsg(level, "XMA-Session-Stats", "--------");
         XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) itr1.second.hw_session.private_do_not_use;
-        xma_logmsg(level, "XMA-Session-Load", "Session id: %d, type: %s, load: %d", itr1.first, 
-            xma_core::get_session_name(itr1.second.session_type).c_str(), (uint32_t)priv1->cmd_load);
-      }
-      xma_logmsg(level, "XMA-Session-Load", "Num of Decoders: %d", (uint32_t)g_xma_singleton->num_decoders);
-      xma_logmsg(level, "XMA-Session-Load", "Num of Scalers: %d", (uint32_t)g_xma_singleton->num_scalers);
-      xma_logmsg(level, "XMA-Session-Load", "Num of Encoders: %d", (uint32_t)g_xma_singleton->num_encoders);
-      xma_logmsg(level, "XMA-Session-Load", "Num of Filters: %d", (uint32_t)g_xma_singleton->num_filters);
-      xma_logmsg(level, "XMA-Session-Load", "Num of Kernels: %d", (uint32_t)g_xma_singleton->num_kernels);
-      xma_logmsg(level, "XMA-Session-Load", "Num of Admins: %d\n", (uint32_t)g_xma_singleton->num_admins);
-   } else {
-      xma_logmsg(level, "XMA-Session-Load", "Relative session command loads are available when using more than one session\n");
-   }
+        float avg_cmds = 0;
+        if (priv1->num_cu_cmds_avg != 0) {
+            avg_cmds = priv1->num_cu_cmds_avg / STATS_WINDOW;
+        } else if (priv1->num_samples > 0) {
+            avg_cmds = priv1->num_cu_cmds_avg_tmp / ((float)priv1->num_samples);
+        }
+        xma_logmsg(level, "XMA-Session-Stats", "Session id: %d, type: %s, avg cmds: %.2f, busy vs idle: %d vs %d", itr1.first, 
+            xma_core::get_session_name(itr1.second.session_type).c_str(), avg_cmds, (uint32_t)priv1->cmd_busy, (uint32_t)priv1->cmd_idle);
+
+        xma_logmsg(level, "XMA-Session-Stats", "Session id: %d, max busy vs idle ticks: %d vs %d", itr1.first, (uint32_t)priv1->cmd_busy_ticks, (uint32_t)priv1->cmd_idle_ticks);
+        XmaHwKernel* kernel_info = priv1->kernel_info;
+        if (kernel_info == NULL) {
+            continue;
+        }
+        if (!kernel_info->is_shared) {
+            continue;
+        }
+        if (kernel_info->num_cu_cmds_avg != 0) {
+            avg_cmds = kernel_info->num_cu_cmds_avg / STATS_WINDOW;
+        } else if (kernel_info->num_samples > 0) {
+            avg_cmds = kernel_info->num_cu_cmds_avg_tmp / ((float)kernel_info->num_samples);
+        }
+        xma_logmsg(level, "XMA-Session-Stats", "Session id: %d, cu: %s, avg cmds: %.2f, busy vs idle: %d vs %d", itr1.first, kernel_info->name, avg_cmds, (uint32_t)kernel_info->cu_busy, (uint32_t)kernel_info->cu_idle);
+    }
+    xma_logmsg(level, "XMA-Session-Stats", "--------");
+    xma_logmsg(level, "XMA-Session-Stats", "Num of Decoders: %d", (uint32_t)g_xma_singleton->num_decoders);
+    xma_logmsg(level, "XMA-Session-Stats", "Num of Scalers: %d", (uint32_t)g_xma_singleton->num_scalers);
+    xma_logmsg(level, "XMA-Session-Stats", "Num of Encoders: %d", (uint32_t)g_xma_singleton->num_encoders);
+    xma_logmsg(level, "XMA-Session-Stats", "Num of Filters: %d", (uint32_t)g_xma_singleton->num_filters);
+    xma_logmsg(level, "XMA-Session-Stats", "Num of Kernels: %d", (uint32_t)g_xma_singleton->num_kernels);
+    xma_logmsg(level, "XMA-Session-Stats", "Num of Admins: %d", (uint32_t)g_xma_singleton->num_admins);
+    xma_logmsg(level, "XMA-Session-Stats", "--------\n");
 }
 
 int32_t get_cu_index(int32_t dev_index, char* cu_name1) {

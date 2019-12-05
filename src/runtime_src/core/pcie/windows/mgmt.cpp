@@ -15,6 +15,7 @@
  */
 #define XRT_CORE_PCIE_WINDOWS_SOURCE
 #include "mgmt.h"
+#include "xclfeatures.h"
 #include "core/common/message.h"
 
 #define NOMINMAX
@@ -57,14 +58,14 @@ inline void* wordcopy(void *dst, const void* src, size_t bytes)
     return dst;
 }
 
-struct shim
+struct mgmt
 {
   unsigned int m_idx = std::numeric_limits<unsigned int>::max();
   HANDLE m_hdl = nullptr;
   char* bar_address = nullptr;
 
-  // create shim object, open the device, store the device handle
-  shim(unsigned int devidx) : m_idx(devidx)
+  // create mgmt object, open the device, store the device handle
+  mgmt(unsigned int devidx) : m_idx(devidx)
   {
     GUID guid = GUID_XILINX_PF_INTERFACE;
 
@@ -123,8 +124,8 @@ struct shim
 
   }
 
-  // destruct shim object, close the device
-  ~shim()
+  // destruct mgmt object, close the device
+  ~mgmt()
   {
     // close the device
     CloseHandle(m_hdl);
@@ -142,17 +143,39 @@ struct shim
     wordcopy(bar_address + offset, buf, len);
   }
 
-}; // struct shim
+  void
+  get_rom_info(FeatureRomHeader* value)
+  {
+    XCLMGMT_IOC_DEVICE_INFO device_info;
 
-shim*
-get_shim_object(xclDeviceHandle handle)
+    DWORD bytes = 0;
+    auto status = DeviceIoControl(
+        m_hdl,
+        XCLMGMT_OID_GET_IOC_DEVICE_INFO,
+        (LPVOID)&device_info,
+        sizeof(XCLMGMT_IOC_DEVICE_INFO),
+        (LPVOID)&device_info,
+        sizeof(XCLMGMT_IOC_DEVICE_INFO),
+        &bytes,
+        NULL);
+
+    if (!status || bytes != sizeof(XCLMGMT_IOC_DEVICE_INFO))
+      throw std::runtime_error("DeviceIoControl XCLMGMT_OID_DEVICE_INFO failed");
+
+    std::memcpy(value, &device_info.rom_hdr, sizeof(FeatureRomHeader));
+  }
+
+}; // struct mgmt
+
+mgmt*
+get_mgmt_object(xclDeviceHandle handle)
 {
   // TODO: Do some sanity check
-  return reinterpret_cast<shim*>(handle);
+  return reinterpret_cast<mgmt*>(handle);
 }
 }
 
-namespace mgmt {
+namespace mgmtpf {
 
 unsigned int
 probe()
@@ -210,7 +233,7 @@ open(unsigned int device_index)
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "mgmt::open()");
   try {
-    return new shim(device_index);
+    return new mgmt(device_index);
   }
   catch (const std::exception& ex) {
     xrt_core::message::
@@ -224,8 +247,8 @@ close(xclDeviceHandle hdl)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "mgmt::close()");
-  auto shim = get_shim_object(hdl);
-  delete shim;
+  auto mgmt = get_mgmt_object(hdl);
+  delete mgmt;
 }
 
 void
@@ -233,8 +256,8 @@ read_bar(xclDeviceHandle hdl, uint64_t addr, void* buf, uint64_t len)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "mgmt::read_bar()");
-  auto shim = get_shim_object(hdl);
-  shim->read_bar(addr, buf, len);
+  auto mgmt = get_mgmt_object(hdl);
+  mgmt->read_bar(addr, buf, len);
 }
 
 void
@@ -242,8 +265,17 @@ write_bar(xclDeviceHandle hdl, uint64_t addr, const void* buf, uint64_t len)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "write_bar()");
-  auto shim = get_shim_object(hdl);
-  shim->write_bar(addr, buf, len);
+  auto mgmt = get_mgmt_object(hdl);
+  mgmt->write_bar(addr, buf, len);
+}
+
+void
+get_rom_info(xclDeviceHandle hdl, FeatureRomHeader* value)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_rom_info()");
+  auto mgmt = get_mgmt_object(hdl);
+  mgmt->get_rom_info(value);
 }
 
 } // mgmt

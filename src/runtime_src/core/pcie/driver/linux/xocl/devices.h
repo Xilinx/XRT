@@ -169,6 +169,7 @@ enum {
 #define XOCL_IORES0		"iores0"
 #define XOCL_IORES1		"iores1"
 #define XOCL_IORES2		"iores2"
+#define XOCL_IORES3		"iores3"
 #define XOCL_XDMA		"dma.xdma"
 #define XOCL_QDMA		"dma.qdma"
 #define XOCL_MB_SCHEDULER	"mb_scheduler"
@@ -761,7 +762,7 @@ struct xocl_subdev_map {
 	((struct resource []) {				\
 		/* OCL_CLKFREQ_BASE */			\
 		{					\
-			.name	= RESNAME_CLKFREQ1,	\
+			.name	= RESNAME_CLKFREQ_K1_K2,\
 			.start	= 0x052000,		\
 			.end	= 0x052fff,		\
 			.flags  = IORESOURCE_MEM,	\
@@ -772,14 +773,14 @@ struct xocl_subdev_map {
 	((struct resource []) {				\
 		/* OCL_CLKFREQ_BASE */			\
 		{					\
-			.name	= RESNAME_CLKFREQ1,	\
+			.name	= RESNAME_CLKFREQ_K1_K2,\
 			.start	= 0x052000,		\
 			.end	= 0x052fff,		\
 			.flags  = IORESOURCE_MEM,	\
 		},					\
 		/* OCL_CLKFREQ_BASE */			\
 		{					\
-			.name	= RESNAME_CLKFREQ2,	\
+			.name	= RESNAME_CLKFREQ_HBM,	\
 			.start	= 0x055000,		\
 			.end	= 0x055fff,		\
 			.flags  = IORESOURCE_MEM,	\
@@ -1657,48 +1658,9 @@ struct xocl_subdev_map {
 		0,					\
 	}
 
-#define XOCL_RES_IORES_MGMT_VSEC			\
-	((struct resource []) {				\
-		/* OCL_CLKFREQ_BASE */			\
-		{					\
-			.name	= RESNAME_CLKFREQ1,	\
-			.start	= 0x845000,		\
-			.end	= 0x845fff,		\
-			.flags  = IORESOURCE_MEM,	\
-		},					\
-		/* OCL_CLKFREQ_BASE */			\
-		{					\
-			.name	= RESNAME_CLKFREQ2,	\
-			.start	= 0x846000,		\
-			.end	= 0x846fff,		\
-			.flags  = IORESOURCE_MEM,	\
-		},					\
-		{					\
-			.name	= RESNAME_CLKWIZKERNEL1,\
-			.start	= 0x843000,		\
-			.end	= 0x843fff,		\
-			.flags  = IORESOURCE_MEM,	\
-		},					\
-		{					\
-			.name	= RESNAME_CLKWIZKERNEL2,\
-			.start	= 0x844000,		\
-			.end	= 0x844fff,		\
-			.flags  = IORESOURCE_MEM,	\
-		},					\
-	 })
-
-#define	XOCL_DEVINFO_IORES_MGMT_VSEC			\
-	{						\
-		XOCL_SUBDEV_IORES,			\
-		XOCL_IORES0,				\
-		XOCL_RES_IORES_MGMT_VSEC, 		\
-		ARRAY_SIZE(XOCL_RES_IORES_MGMT_U50),	\
-	}
-
 #define RES_MGMT_VSEC							\
 	((struct xocl_subdev_info []) {					\
 	 	XOCL_DEVINFO_FEATURE_ROM_MGMT_DYN,			\
-	 	/* XOCL_DEVINFO_IORES_MGMT_VSEC,*/			\
 		XOCL_DEVINFO_FMGR,					\
 	 })
 
@@ -1946,14 +1908,14 @@ struct xocl_subdev_map {
 	((struct resource []) {				\
 		/* OCL_CLKFREQ_BASE */			\
 		{					\
-			.name	= RESNAME_CLKFREQ1,	\
+			.name	= RESNAME_CLKFREQ_K1_K2,\
 			.start	= 0x1000000,		\
 			.end	= 0x1000fff,		\
 			.flags  = IORESOURCE_MEM,	\
 		},					\
 		/* OCL_CLKFREQ_BASE */			\
 		{					\
-			.name	= RESNAME_CLKFREQ2,	\
+			.name	= RESNAME_CLKFREQ_HBM,	\
 			.start	= 0x1001000,		\
 			.end	= 0x1001fff,		\
 			.flags  = IORESOURCE_MEM,	\

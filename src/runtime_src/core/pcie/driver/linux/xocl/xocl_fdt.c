@@ -313,6 +313,24 @@ static struct xocl_subdev_map		subdev_map[] = {
 	},
 	{
 		XOCL_SUBDEV_IORES,
+		XOCL_IORES3,
+		{
+			RESNAME_CLKWIZKERNEL1,
+			RESNAME_CLKWIZKERNEL2,
+			RESNAME_CLKWIZKERNEL3,
+			RESNAME_CLKFREQ_K1,
+			RESNAME_CLKFREQ_K2,
+			RESNAME_CLKFREQ_HBM,
+			RESNAME_UCS_CONTROL,
+			NULL
+		},
+		1,
+		0,
+		NULL,
+		devinfo_cb_setlevel,
+	},
+	{
+		XOCL_SUBDEV_IORES,
 		XOCL_IORES2,
 		{
 			RESNAME_GATEPRPRP,

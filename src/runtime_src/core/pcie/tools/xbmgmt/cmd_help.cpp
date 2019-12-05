@@ -23,14 +23,15 @@ const char *subCmdHelpUsage = "help [sub-command]";
 int helpHandler(int argc, char *argv[])
 {
     if (argc == 1) {
-        printHelp();
+        printHelp(false);
+        return 0;
+    }
+    std::string subCmd(argv[1]);
+    if(subCmd.compare("--expert") == 0) {
+        printHelp(true);
         return 0;
     }
 
-    if (argc != 2)
-        return -EINVAL;
-
-    std::string subCmd(argv[1]);
     printSubCmdHelp(subCmd);
     return 0;
 }

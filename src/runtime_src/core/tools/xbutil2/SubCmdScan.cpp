@@ -92,8 +92,18 @@ int subCmdScan(const std::vector<std::string> &_options)
     throw xrt_core::error("No devices found");
 
   for (auto& device : *devices) {
-    std::cout << "[" << device.second.get<std::string>("device_id") << "] <board TBD> ...\n";
-    // populate with  same output as old xbutil
+    auto device_id = device.second.get<unsigned int>("device_id", std::numeric_limits<unsigned int>::max());
+    auto udev = xrt_core::get_userpf_device(device_id);
+    boost::property_tree::ptree _pt;
+    udev->get_rom_info(_pt);
+#if 0
+    dev->read_ready_status(_pt);
+    bool ready = _pt.get<bool>("ready", "false");
+    if (ready)
+      ready_count++;
+
+    std::cout << "[" << device_id << "]: " << _pt.get<std::string>("vbnv", "N/A") << "(ts=" << _pt.get<std::string>("time_since_epoch", "N/A") << ")" << std::endl;
+#endif
   }
 
   return registerResult;

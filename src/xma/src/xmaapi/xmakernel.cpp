@@ -251,7 +251,12 @@ xma_kernel_session_create(XmaKernelProperties *props)
         return nullptr;
     }
 
-    kernel_info->in_use = true;
+    if (kernel_info->in_use) {
+        kernel_info->is_shared = true;
+    } else {
+        kernel_info->in_use = true;
+    }
+    kernel_info->num_sessions++;
     g_xma_singleton->num_kernels++;
     g_xma_singleton->num_of_sessions = session->base.session_id;
     g_xma_singleton->all_sessions.emplace(g_xma_singleton->num_of_sessions, session->base);

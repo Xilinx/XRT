@@ -20,7 +20,9 @@
 #include "core/pcie/windows/config.h"
 #include "xrt.h"
 
-namespace mgmt { // shared implementation
+struct FeatureRomHeader;
+
+namespace mgmtpf { // shared implementation
 
 XRT_CORE_PCIE_WINDOWS_EXPORT
 unsigned int
@@ -42,6 +44,10 @@ XRT_CORE_PCIE_WINDOWS_EXPORT
 void
 write_bar(xclDeviceHandle hdl, uint64_t offset, const void* buf, uint64_t len);
 
-} // mgmt
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_rom_info(xclDeviceHandle hdl, FeatureRomHeader* value);
+
+} // mgmtpf
 
 #endif
