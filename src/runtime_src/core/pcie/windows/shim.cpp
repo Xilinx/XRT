@@ -748,54 +748,113 @@ done:
   ssize_t
   unmgd_pwrite(unsigned flags, const void *buf, size_t count, uint64_t offset)
   {
-    XOCL_PWRITE_BO_ARGS pwriteBO;
-    DWORD  code;
-    DWORD bytesWritten;
+#if 0
+      XOCL_PWRITE_BO_ARGS pwriteBO;
+      DWORD  code;
+      DWORD bytesWritten;
 
-    pwriteBO.Offset = offset;
+      pwriteBO.Offset = offset;
 
-    if (!DeviceIoControl(m_dev,
-                         IOCTL_XOCL_PWRITE_BO,
-                         &pwriteBO,
-                         sizeof(XOCL_PWRITE_BO_ARGS),
-                         (void *)buf,
-                         (DWORD)count,
-                         &bytesWritten,
-                         nullptr)) {
+      if (!DeviceIoControl(m_dev,
+          IOCTL_XOCL_PWRITE_BO,
+          &pwriteBO,
+          sizeof(XOCL_PWRITE_BO_ARGS),
+          (void *)buf,
+          (DWORD)count,
+          &bytesWritten,
+          nullptr)) {
 
-      code = GetLastError();
+          code = GetLastError();
 
-      xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl PWRITE failed with error %d", code);
-      return false;
-    }
-    return true;
+          xrt_core::message::
+              send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl PWRITE failed with error %d", code);
+          return false;
+      }
+#endif
+      return true;
   }
 
   ssize_t
   unmgd_pread(unsigned int flags, void *buf, size_t size, uint64_t offset)
   {
-    XOCL_PREAD_BO_ARGS preadBO;
-    DWORD  code;
-    DWORD bytesRead;
+#if 0
+      XOCL_PREAD_BO_ARGS preadBO;
+      DWORD  code;
+      DWORD bytesRead;
 
-    preadBO.Offset = offset;
+      preadBO.Offset = offset;
 
-    if (!DeviceIoControl(m_dev,
-                         IOCTL_XOCL_PREAD_BO,
-                         &preadBO,
-                         sizeof(XOCL_PREAD_BO_ARGS),
-                         buf,
-                         (DWORD)size,
-                         &bytesRead,
-                         nullptr)) {
+      if (!DeviceIoControl(m_dev,
+          IOCTL_XOCL_PREAD_BO,
+          &preadBO,
+          sizeof(XOCL_PREAD_BO_ARGS),
+          buf,
+          (DWORD)size,
+          &bytesRead,
+          nullptr)) {
 
-      code = GetLastError();
-      xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl PREAD failed with error %d", code);
-      return false;
-    }
-    return true;
+          code = GetLastError();
+          xrt_core::message::
+              send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl PREAD failed with error %d", code);
+          return false;
+      }
+#endif
+      return true;
+  }
+
+  int
+  write_bo(xclBufferHandle boHandle, const void *src, size_t size, size_t seek)
+  {
+      XOCL_PWRITE_BO_ARGS pwriteBO;
+      DWORD  code;
+      DWORD bytesWritten;
+
+      pwriteBO.Offset = seek;
+
+      if (!DeviceIoControl(boHandle,
+          IOCTL_XOCL_PWRITE_BO,
+          &pwriteBO,
+          sizeof(XOCL_PWRITE_BO_ARGS),
+          (void *)src,
+          (DWORD)size,
+          &bytesWritten,
+          nullptr)) {
+
+          code = GetLastError();
+
+          xrt_core::message::
+              send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl PWRITE failed with error %d", code);
+          return code;
+      }
+      // Ignoring bytesWritten as API only expects 0 as success
+      return 0;
+  }
+
+  int
+  read_bo(xclBufferHandle boHandle, void *dst, size_t size, size_t skip)
+  {
+      XOCL_PREAD_BO_ARGS preadBO;
+      DWORD  code;
+      DWORD bytesRead;
+
+      preadBO.Offset = skip;
+
+      if (!DeviceIoControl(boHandle,
+          IOCTL_XOCL_PREAD_BO,
+          &preadBO,
+          sizeof(XOCL_PREAD_BO_ARGS),
+          dst,
+          (DWORD)size,
+          &bytesRead,
+          nullptr)) {
+
+          code = GetLastError();
+          xrt_core::message::
+              send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl PREAD failed with error %d", code);
+          return code;
+      }
+      // Ignoring bytesWritten as API only expects 0 as success
+      return 0;
   }
 
   bool
@@ -1119,6 +1178,21 @@ xclUnmgdPread(xclDeviceHandle handle, unsigned int flags, void *buf, size_t coun
   return shim->unmgd_pread(flags, buf, count, offset);
 }
 
+size_t xclWriteBO(xclDeviceHandle handle, xclBufferHandle boHandle, const void *src, size_t size, size_t seek)
+{
+    xrt_core::message::
+        send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclWriteBO()");
+    auto shim = get_shim_object(handle);
+    return shim->write_bo(boHandle, src, size, seek);
+}
+
+size_t xclReadBO(xclDeviceHandle handle, xclBufferHandle boHandle, void *dst, size_t size, size_t skip)
+{
+    xrt_core::message::
+        send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclReadBO()");
+    auto shim = get_shim_object(handle);
+    return shim->read_bo(boHandle, dst, size, skip);
+}
 
 // Deprecated APIs
 size_t
