@@ -34,7 +34,8 @@ Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
 {
     std::string err;
     E_FlasherType type = E_FlasherType::UNKNOWN;
-
+	//HARDCODED
+	typeStr = "spi";
     if (typeStr.empty())
         typeStr = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_F_FLASH_TYPE);
     if (typeStr.empty())
@@ -86,7 +87,12 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
         }
         else if(secondary == nullptr)
         {
-            retVal = xspi.xclUpgradeFirmwareXSpi(*primary);
+			std::cout << "REACHED FLASHER\n\n";
+			//int length = 8;
+			//char * buffer = new char[length];
+			//primary->read(buffer, length);
+			//std::cout << "DATA: " << buffer[0] << "\n\n";
+			retVal = xspi.xclUpgradeFirmwareXSpi(*primary);
         }
         else
         {
@@ -210,11 +216,11 @@ Flasher::Flasher(unsigned int index) : mFRHeader{}
         return;
     }
 
-    bool is_mfg = false;
-    is_mfg = xrt_core::query_device<bool>(m_device, xrt_core::device::QR_IS_MFG);
+    //bool is_mfg = false;
+    // is_mfg = xrt_core::query_device<bool>(dev, xrt_core::device::QR_IS_MFG);
 
-    std::vector<char> feature_rom;
-    feature_rom = xrt_core::query_device<std::vector<char>>(m_device, xrt_core::device::QR_ROM_RAW);
+    // std::vector<char> feature_rom;
+    // feature_rom = xrt_core::query_device<std::vector<char>>(dev, xrt_core::device::QR_ROM_RAW);
     // if (feature_rom != xrt_core::invalid_query_value<std::vector<char>>())
     // {
     //     memcpy(&mFRHeader, feature_rom.data(), sizeof(struct FeatureRomHeader));
@@ -228,14 +234,14 @@ Flasher::Flasher(unsigned int index) : mFRHeader{}
     //     }
     // }
     // else if (is_mfg)
-    if (is_mfg)
-    {
-        dev->read(MFG_REV_OFFSET, &mGoldenVer, sizeof(mGoldenVer));
-    }
-    else
-    {
-        std::cout << "ERROR: card not supported." << std::endl;
-    }
+    //if (is_mfg)
+    //{
+    //    dev->read(MFG_REV_OFFSET, &mGoldenVer, sizeof(mGoldenVer));
+    //}
+    //else
+    //{
+    //    std::cout << "ERROR: card not supported." << std::endl;
+    //}
     m_device = dev; // Successfully initialized
 }
 

@@ -95,19 +95,20 @@ static void update_shell(unsigned index, std::string flashType,
     if(!flasher.isValid())
         return;
 
-    if (!primary.empty())
+    if (primary.empty())
         return;
 
     pri = std::make_shared<firmwareImage>(primary.c_str(), MCS_FIRMWARE_PRIMARY);
     if (pri->fail())
         return;
-
     if (!secondary.empty()) {
         sec = std::make_shared<firmwareImage>(secondary.c_str(),
             MCS_FIRMWARE_SECONDARY);
         if (sec->fail())
             sec = nullptr;
     }
+
+	
 
     flasher.upgradeFirmware(flashType, pri.get(), sec.get());
 }

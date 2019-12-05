@@ -276,7 +276,7 @@ static void clearBuffers() {
 XSPI_Flasher::XSPI_Flasher(unsigned int device_index)
   : m_device(xrt_core::get_mgmtpf_device(device_index))
 {
-  flash_base = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_FLASH_BAR_OFFSET);
+  //flash_base = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_FLASH_BAR_OFFSET);
   if (flash_base == xrt_core::invalid_query_value<uint64_t>())
     flash_base = FLASH_BASE;
 }
@@ -497,6 +497,12 @@ int XSPI_Flasher::xclUpgradeFirmware2(std::istream& mcsStream1, std::istream& mc
 }
 
 int XSPI_Flasher::xclUpgradeFirmwareXSpi(std::istream& mcsStream, int index) {
+
+	std::cout << "REACHED XSPI\n\n";
+	//int length = 8;
+	//char * buffer = new char[length];
+	//mcsStream.read(buffer, length);
+	//std::cout << "DATA: " << buffer << "\n\n";
     clearBuffers();
     recordList.clear();
 
