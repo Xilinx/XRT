@@ -123,7 +123,7 @@ static inline bool isHiddenSubcmd(const std::string& cmd)
     return cmd[0] == '-';
 }
 
-void printHelp(void)
+void printHelp(bool printExpHelp)
 {
     std::stringstream expert_ostr;
     std::cout << "Supported sub-commands are:" << std::endl;
@@ -139,7 +139,8 @@ void printHelp(void)
         std::cout << "\t" << c.first << " - " << c.second.description <<
             std::endl;
     }
-    std::cout << "Experts only:\n" << expert_ostr.str();
+    if (printExpHelp)
+        std::cout << "Experts only:\n" << expert_ostr.str();
     std::cout <<
         "Run xbmgmt help <subcommand> for detailed help of each subcommand" <<
         std::endl;
@@ -183,7 +184,7 @@ bool getenv_or_null(const char* env)
 int main(int argc, char *argv[])
 {
     if (argc < 2) {
-        printHelp();
+        printHelp(false);
         return -EINVAL;
     }
 
@@ -199,7 +200,7 @@ int main(int argc, char *argv[])
     }
 
     if (cmd == subCmdList.end()) {
-        printHelp();
+        printHelp(false);
         return -EINVAL;
     }
 
