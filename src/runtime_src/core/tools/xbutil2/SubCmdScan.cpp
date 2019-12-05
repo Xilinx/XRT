@@ -91,11 +91,13 @@ int subCmdScan(const std::vector<std::string> &_options)
   if (!devices || (*devices).size()==0)
     throw xrt_core::error("No devices found");
 
+  using query_request = xrt_core::device::QueryRequest;
+  std::cout << "INFO: Found total " << (*devices).size() << " card(s), " << "TBD" << " are usable.\n";
   for (auto& device : *devices) {
     auto device_id = device.second.get<unsigned int>("device_id", std::numeric_limits<unsigned int>::max());
     auto udev = xrt_core::get_userpf_device(device_id);
-    boost::property_tree::ptree _pt;
-    udev->get_rom_info(_pt);
+    auto vbnv = xrt_core::query_device<std::string>(udev, query_request::QR_ROM_VBNV);
+    std::cout << "[" << device_id << "]: " << vbnv << "\n";
 #if 0
     dev->read_ready_status(_pt);
     bool ready = _pt.get<bool>("ready", "false");

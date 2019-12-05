@@ -2298,6 +2298,10 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	ICAP_INFO(icap, "incoming xclbin: %pUb\non device xclbin: %pUb",
 		&xclbin->m_header.uuid, &icap->icap_bitstream_uuid);
 
+	err = xocl_cmc_freeze(xdev);
+	if (err)
+		goto done;
+
 	xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 	icap_refresh_addrs(pdev);
 
@@ -2356,6 +2360,9 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 			reg_wr(icap->icap_ucs_control + 8, 1);
 		}
 	}
+
+	if (ICAP_PRIVILEGED(icap))
+		err = xocl_cmc_free(xdev);
 
 done:
 	if (err) {
