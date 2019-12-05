@@ -748,54 +748,68 @@ done:
   ssize_t
   unmgd_pwrite(unsigned flags, const void *buf, size_t count, uint64_t offset)
   {
-    XOCL_PWRITE_BO_ARGS pwriteBO;
-    DWORD  code;
-    DWORD bytesWritten;
-
-    pwriteBO.Offset = offset;
-
-    if (!DeviceIoControl(m_dev,
-                         IOCTL_XOCL_PWRITE_BO,
-                         &pwriteBO,
-                         sizeof(XOCL_PWRITE_BO_ARGS),
-                         (void *)buf,
-                         (DWORD)count,
-                         &bytesWritten,
-                         nullptr)) {
-
-      code = GetLastError();
-
-      xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl PWRITE failed with error %d", code);
-      return false;
-    }
-    return true;
+    send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "Unmanaged PWRITE is not supported");
+    return false;
   }
 
   ssize_t
   unmgd_pread(unsigned int flags, void *buf, size_t size, uint64_t offset)
   {
-    XOCL_PREAD_BO_ARGS preadBO;
-    DWORD  code;
-    DWORD bytesRead;
+    send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "Unmanaged PREAD is not supported");
+    return false;
+  }
 
-    preadBO.Offset = offset;
+  ssize_t
+      mgd_pwrite(unsigned flags, const void *buf, size_t count, uint64_t offset)
+  {
+      XOCL_PWRITE_BO_ARGS pwriteBO;
+      DWORD  code;
+      DWORD bytesWritten;
 
-    if (!DeviceIoControl(m_dev,
-                         IOCTL_XOCL_PREAD_BO,
-                         &preadBO,
-                         sizeof(XOCL_PREAD_BO_ARGS),
-                         buf,
-                         (DWORD)size,
-                         &bytesRead,
-                         nullptr)) {
+      pwriteBO.Offset = offset;
 
-      code = GetLastError();
-      xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl PREAD failed with error %d", code);
-      return false;
-    }
-    return true;
+      if (!DeviceIoControl(m_dev,
+          IOCTL_XOCL_PWRITE_BO,
+          &pwriteBO,
+          sizeof(XOCL_PWRITE_BO_ARGS),
+          (void *)buf,
+          (DWORD)count,
+          &bytesWritten,
+          nullptr)) {
+
+          code = GetLastError();
+
+          xrt_core::message::
+              send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl PWRITE failed with error %d", code);
+          return false;
+      }
+      return true;
+  }
+
+  ssize_t
+      mgd_pread(unsigned int flags, void *buf, size_t size, uint64_t offset)
+  {
+      XOCL_PREAD_BO_ARGS preadBO;
+      DWORD  code;
+      DWORD bytesRead;
+
+      preadBO.Offset = offset;
+
+      if (!DeviceIoControl(m_dev,
+          IOCTL_XOCL_PREAD_BO,
+          &preadBO,
+          sizeof(XOCL_PREAD_BO_ARGS),
+          buf,
+          (DWORD)size,
+          &bytesRead,
+          nullptr)) {
+
+          code = GetLastError();
+          xrt_core::message::
+              send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl PREAD failed with error %d", code);
+          return false;
+      }
+      return true;
   }
 
   bool
@@ -1104,6 +1118,23 @@ xclUnmgdPread(xclDeviceHandle handle, unsigned int flags, void *buf, size_t coun
   return shim->unmgd_pread(flags, buf, count, offset);
 }
 
+ssize_t
+xclMgdPwrite(xclDeviceHandle handle, unsigned int flags, const void *buf, size_t count, uint64_t offset)
+{
+    xrt_core::message::
+        send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclMgdPwrite()");
+    auto shim = get_shim_object(handle);
+    return shim->mgd_pwrite(flags, buf, count, offset);
+}
+
+ssize_t
+xclMgdPread(xclDeviceHandle handle, unsigned int flags, void *buf, size_t count, uint64_t offset)
+{
+    xrt_core::message::
+        send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclMgdPread()");
+    auto shim = get_shim_object(handle);
+    return shim->mgd_pread(flags, buf, count, offset);
+}
 
 // Deprecated APIs
 size_t
