@@ -89,16 +89,16 @@ rom(const device_type* device, qr_type qr, const std::type_info&, boost::any& va
   switch (qr) {
   case qr_type::QR_ROM_VBNV:
     value = std::string(reinterpret_cast<const char*>(hdr.VBNVName));
-    break;
+    return;
   case qr_type::QR_ROM_DDR_BANK_SIZE:
     value = hdr.DDRChannelSize;
-    break;
+    return;
   case qr_type::QR_ROM_DDR_BANK_COUNT_MAX:
     value = hdr.DDRChannelCount;
-    break;
+    return;
   case qr_type::QR_ROM_FPGA_NAME:
     value = std::string(reinterpret_cast<const char*>(hdr.FPGAPartName));
-    break;
+    return;
   }
 
   if (device->get_user_handle())
@@ -109,10 +109,10 @@ rom(const device_type* device, qr_type qr, const std::type_info&, boost::any& va
   switch (qr) {
   case qr_type::QR_ROM_UUID:
     value = std::string(reinterpret_cast<const char*>(hdr.uuid),16);
-    break;
+    return;
   case qr_type::QR_ROM_TIME_SINCE_EPOCH:
     value = hdr.TimeSinceEpoch;
-    break;
+    return;
   default:
     throw std::runtime_error("device_windows::rom() unexpected qr " + std::to_string(qr));
   }
