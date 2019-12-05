@@ -343,7 +343,7 @@ DSAInfo Flasher::getOnBoardDSA()
     else if (uuid != xrt_core::invalid_query_value<std::string>())
     {
         vbnv = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_ROM_VBNV);
-        ts = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_ROM_TIMESTAMP);
+        ts = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_ROM_TIME_SINCE_EPOCH);
     }
     else
     {
