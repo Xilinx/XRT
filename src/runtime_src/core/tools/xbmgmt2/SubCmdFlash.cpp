@@ -109,8 +109,8 @@ static void update_shell(unsigned index, std::string flashType,
     }
 
     flasher.upgradeFirmware(flashType, pri.get(), sec.get());
-	std::cout << "Shell is updated succesfully\n";
-	std::cout << "Cold reboot machine to load new shell on card" << std::endl;
+    std::cout << "Shell is updated succesfully\n";
+    std::cout << "Cold reboot machine to load new shell on card" << std::endl;
 }
 
 static void update_SC(unsigned index, const std::string& file)

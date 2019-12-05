@@ -85,7 +85,7 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
         }
         else if(secondary == nullptr)
         {
-			retVal = xspi.xclUpgradeFirmwareXSpi(*primary);
+            retVal = xspi.xclUpgradeFirmwareXSpi(*primary);
         }
         else
         {
@@ -340,11 +340,11 @@ DSAInfo Flasher::getOnBoardDSA()
     //    vbnv = std::string(reinterpret_cast<char *>(mFRHeader.VBNVName));
     //    ts = mFRHeader.TimeSinceEpoch;
     //}
-	else if (uuid != xrt_core::invalid_query_value<std::string>())
-	{
-		vbnv = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_ROM_VBNV);
-		ts = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_ROM_TIMESTAMP);
-	}
+    else if (uuid != xrt_core::invalid_query_value<std::string>())
+    {
+        vbnv = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_ROM_VBNV);
+        ts = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_ROM_TIMESTAMP);
+    }
     else
     {
         std::cout << "ERROR: Platform name not found" << std::endl;

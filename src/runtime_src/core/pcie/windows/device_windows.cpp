@@ -102,8 +102,8 @@ rom(const device_type* device, qr_type qr, const std::type_info&, boost::any& va
   case qr_type::QR_ROM_UUID:
     value = std::string(reinterpret_cast<const char*>(hdr.uuid),16);
   case qr_type::QR_ROM_TIMESTAMP:
-	  value = hdr.TimeSinceEpoch;
-	  break;
+    value = hdr.TimeSinceEpoch;
+    break;
   default:
     throw std::runtime_error("device_windows::rom() unexpected qr " + std::to_string(qr));
   }
@@ -133,7 +133,7 @@ get_IOCTL_entry(QueryRequest qr) const
     { QR_ROM_FPGA_NAME,             { rom }},
     { QR_ROM_RAW,                   { rom }},
     { QR_ROM_UUID,                  { rom }},
-	{ QR_ROM_TIMESTAMP,             { rom }},
+    { QR_ROM_TIMESTAMP,             { rom }},
     { QR_XMC_VERSION,               { nullptr }},
     { QR_XMC_SERIAL_NUM,            { nullptr }},
     { QR_XMC_MAX_POWER,             { nullptr }},
