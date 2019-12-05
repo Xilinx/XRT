@@ -704,6 +704,7 @@ struct xocl_mb_funcs {
 	int (*get_data)(struct platform_device *pdev, enum xcl_group_kind kind, void *buf);
 	int (*dr_freeze)(struct platform_device *pdev);
 	int (*dr_free)(struct platform_device *pdev);
+	int (*cmc_access)(struct platform_device *pdev, int flags);
 };
 
 #define	MB_DEV(xdev)		\
@@ -733,6 +734,12 @@ struct xocl_mb_funcs {
 	(MB_CB(xdev, dr_freeze) ? MB_OPS(xdev)->dr_freeze(MB_DEV(xdev)) : -ENODEV)
 #define xocl_xmc_dr_free(xdev)		\
 	(MB_CB(xdev, dr_free) ? MB_OPS(xdev)->dr_free(MB_DEV(xdev)) : -ENODEV)
+
+#define xocl_cmc_free(xdev) 		\
+	(MB_CB(xdev, cmc_access) ? MB_OPS(xdev)->cmc_access(MB_DEV(xdev), 1) : -ENODEV)
+#define xocl_cmc_freeze(xdev)		\
+	(MB_CB(xdev, cmc_access) ? MB_OPS(xdev)->cmc_access(MB_DEV(xdev), 0) : -ENODEV)
+
 
 /* processor system callbacks */
 struct xocl_ps_funcs {

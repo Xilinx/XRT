@@ -89,6 +89,7 @@
 #define	XMC_HOST_MSG_OFFSET_REG		0x300
 #define	XMC_HOST_MSG_ERROR_REG		0x304
 #define	XMC_HOST_MSG_HEADER_REG		0x308
+#define	XMC_HOST_NEW_FEATURE_REG1	0xB20
 
 #define	VALID_ID			0x74736574
 
@@ -325,6 +326,7 @@ static int load_xmc(struct xocl_xmc *xmc);
 static int stop_xmc(struct platform_device *pdev);
 static void xmc_clk_scale_config(struct platform_device *pdev);
 static int xmc_load_board_info(struct xocl_xmc *xmc);
+static int cmc_access_ops(struct platform_device *pdev, int flags);
 
 static void set_sensors_data(struct xocl_xmc *xmc, struct xcl_sensor *sensors)
 {
@@ -1948,12 +1950,18 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 	u32 reg_val = 0;
 	void *xdev_hdl;
 	u32 magic = 0;
+	int ret;
 
 	xmc = platform_get_drvdata(pdev);
 	if (!xmc)
 		return -ENODEV;
 	else if (!xmc->enabled)
 		return -ENODEV;
+
+	/* freeze cmc prior to stop cmc */
+	ret = cmc_access_ops(pdev, 0);
+	if (ret)
+		return ret;
 
 	xdev_hdl = xocl_get_xdev(xmc->pdev);
 
@@ -2260,6 +2268,95 @@ static void xmc_clk_scale_config(struct platform_device *pdev)
 static int xmc_dynamic_region_free(struct platform_device *pdev);
 static int xmc_dynamic_region_freeze(struct platform_device *pdev);
 
+/*
+ * flags can be 1: Grant access (free)
+ *              0: Release access (freeze)
+ */
+static int cmc_access_ops(struct platform_device *pdev, int flags)
+{
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
+	u32 val, grant, ack;
+	int retry;
+	int err = 0;
+
+	if (flags == 1) {
+#if 1
+		/*
+		 * for grant access (flags = 1), we are looking for new
+		 * features, if no new features, skip the grant operation
+		 */
+		err = xocl_iores_read32(xdev, XOCL_SUBDEV_LEVEL_URP,
+		    IORES_GAPPING, 0x0, &val);
+		if (err == -ENODEV) {
+			xocl_xdev_info(xdev, "No %s resource, skip.",
+			    NODE_GAPPING);
+			return 0;
+		} else if (err) {
+			xocl_xdev_err(xdev, "Read %s error %d.",
+			    NODE_GAPPING, err);
+			return err;
+		}
+#else
+		/* test only before xclbin has correct metadata */
+		val = 0x1001000; //hard code ep_gapping_demand_00
+#endif
+		/*
+		 * Dancing with CMC here:
+		 * 0-24 bit is address read from xclbin
+		 * 28 is flag for enable
+		 * 29 is flag for present
+		 */
+		WRITE_REG32(xmc, val & 0x01FFFFFF, XMC_HOST_NEW_FEATURE_REG1);
+		WRITE_REG32(xmc,
+		    (1<<28) | (1<<29), XMC_HOST_NEW_FEATURE_REG1);
+	}
+
+	grant = (u32)flags & 0x1;
+	err = xocl_iores_write32(xdev, XOCL_SUBDEV_LEVEL_BLD, IORES_CMC_MUTEX,
+	    0x0, grant);
+	if (err == -ENODEV) {
+		xocl_xdev_info(xdev, "No %s resource, skip.",
+		    NODE_CMC_MUTEX);
+		return 0;
+	} else if (err) {
+		xocl_xdev_err(xdev, "Write %s to 0x%x error %d.",
+		    NODE_CMC_MUTEX, grant, err);
+		return err;
+	}
+
+	for (retry = 0; retry < 100; retry++) {
+		err = xocl_iores_read32(xdev, XOCL_SUBDEV_LEVEL_BLD,
+		    IORES_CMC_MUTEX, 0x8, &ack);
+		if (err) {
+			if (err == -ENODEV)
+				xocl_xdev_info(xdev, "No %s resource, skip.",
+				    NODE_CMC_MUTEX);
+			else
+				xocl_xdev_err(xdev, "Read ack from %s error %d",
+				    NODE_CMC_MUTEX, err);
+			goto fail;
+		}
+
+		if ((grant & 0x1) == (ack & 0x1))
+			break;
+
+		msleep(100);
+	}
+
+	if ((grant & 0x1) != (ack & 0x1)) {
+		xocl_xdev_err(xdev,
+		    "Grant falied. The bit 0 in Ack (0x%x) is not the same "
+		    "in grant (0x%x)", ack, grant);
+		err = -EBUSY;
+		goto fail;
+	}
+
+	xocl_xdev_info(xdev, "%s CMC succeeded.", flags ? "Grant" : "Release");
+fail:
+	return err;
+}
+
 static struct xocl_mb_funcs xmc_ops = {
 	.load_mgmt_image	= load_mgmt_image,
 	.load_sche_image	= load_sche_image,
@@ -2268,6 +2365,7 @@ static struct xocl_mb_funcs xmc_ops = {
 	.get_data		= xmc_get_data,
 	.dr_freeze          	= xmc_dynamic_region_freeze,
 	.dr_free         	= xmc_dynamic_region_free,
+	.cmc_access              = cmc_access_ops,
 };
 
 static void xmc_unload_board_info(struct xocl_xmc *xmc)
