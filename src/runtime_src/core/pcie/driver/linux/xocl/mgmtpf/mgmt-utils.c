@@ -547,6 +547,18 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 
 	xocl_thread_stop(lro);
 
+	/*
+	 * cmc has its own freeze operation, once ert is also enabled, we need
+	 * refactor code to a register design pattern, the freeze operation
+	 * will loop all registerred module and freeze them one by one, for
+	 * example: cmc, ert, etc.
+	 */
+	ret = xocl_cmc_freeze(lro);
+	if (ret) {
+		mgmt_err(lro, "release CMC access failed %d", ret);
+		goto failed;
+	}
+
 	xocl_mb_stop(lro);
 
 	ret = xocl_subdev_destroy_prp(lro);

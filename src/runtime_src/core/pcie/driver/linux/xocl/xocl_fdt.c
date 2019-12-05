@@ -322,6 +322,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 			RESNAME_CLKFREQ_K2,
 			RESNAME_CLKFREQ_HBM,
 			RESNAME_UCS_CONTROL,
+			RESNAME_GAPPING,
 			NULL
 		},
 		1,
@@ -340,6 +341,7 @@ static struct xocl_subdev_map		subdev_map[] = {
 			RESNAME_CLKWIZKERNEL3,
 			RESNAME_KDMA,
 			RESNAME_CLKSHUTDOWN,
+			RESNAME_CMC_MUTEX,
 			NULL
 		},
 		1,
@@ -837,6 +839,9 @@ int xocl_fdt_check_uuids(xdev_handle_t xdev_hdl, const void *blob,
 	const char *subset_int_uuid = NULL;
 	const char *int_uuid = NULL;
 	int offset, subset_offset;
+
+	// comment this out for debugging xclbin download only
+	//return 0;
 
 	if (!blob || !subset_blob) {
 		xocl_xdev_err(xdev_hdl, "blob is NULL");

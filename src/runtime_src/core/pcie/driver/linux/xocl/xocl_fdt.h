@@ -49,6 +49,7 @@
 #define NODE_AF_DATA_H2C "ep_firewall_data_h2c_00"
 #define NODE_CMC_REG "ep_cmc_regmap_00"
 #define NODE_CMC_RESET "ep_cmc_reset_00"
+#define NODE_CMC_MUTEX "ep_cmc_mutex_00"
 #define NODE_CMC_FW_MEM "ep_cmc_firmware_mem_00"
 #define NODE_ERT_FW_MEM "ep_ert_firmware_mem_00"
 #define NODE_ERT_CQ_MGMT "ep_ert_command_queue_mgmt_00"
@@ -73,6 +74,7 @@
 #define NODE_CLKFREQ_K2 "ep_freq_cnt_aclk_kernel_01"
 #define NODE_CLKFREQ_HBM "ep_freq_cnt_aclk_hbm_00"
 #define NODE_UCS_CONTROL "ep_ucs_control_status_00"
+#define NODE_GAPPING "ep_gapping_demand_00"
 
 enum {
 	IORES_GATEPRBLD,
@@ -88,6 +90,8 @@ enum {
 	IORES_KDMA,
 	IORES_CLKSHUTDOWN,
 	IORES_UCS_CONTROL,
+	IORES_CMC_MUTEX,
+	IORES_GAPPING,
 	IORES_MAX,
 };
 
@@ -104,6 +108,8 @@ enum {
 #define RESNAME_KDMA            NODE_KDMA_CTRL
 #define RESNAME_CLKSHUTDOWN	NODE_CLK_SHUTDOWN
 #define RESNAME_UCS_CONTROL     NODE_UCS_CONTROL
+#define RESNAME_CMC_MUTEX       NODE_CMC_MUTEX
+#define RESNAME_GAPPING         NODE_GAPPING
 
 struct xocl_iores_map {
 	char		*res_name;
@@ -125,6 +131,8 @@ struct xocl_iores_map map[] = {                                         \
 	{ RESNAME_KDMA, IORES_KDMA },                                   \
 	{ RESNAME_CLKSHUTDOWN, IORES_CLKSHUTDOWN },			\
 	{ RESNAME_UCS_CONTROL, IORES_UCS_CONTROL},			\
+	{ RESNAME_CMC_MUTEX, IORES_CMC_MUTEX},				\
+	{ RESNAME_GAPPING, IORES_GAPPING},				\
 }
 
 #endif
