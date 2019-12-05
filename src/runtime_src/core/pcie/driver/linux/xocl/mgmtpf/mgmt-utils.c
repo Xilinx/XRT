@@ -627,13 +627,6 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 		goto failed;
 	}
 
-#if 0
-	/* temp support for lack of VBNV */
-	xocl_fdt_add_pair(lro, lro->core.fdt_blob, "vbnv",
-			bin_axlf->m_header.m_platformVBNV,
-			strlen(bin_axlf->m_header.m_platformVBNV) + 1);
-#endif
-
 	release_firmware(fw);
 	fw = NULL;
 

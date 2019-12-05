@@ -161,7 +161,8 @@ struct icap {
 
 	struct bmc		bmc_header;
 
-	char			*icap_clock_freq_counter_hbm;
+	char			*icap_clock_freq_counters[ICAP_MAX_NUM_CLOCKS];
+	char			*icap_ucs_control;
 
 	uint64_t		cache_expire_secs;
 	struct xcl_pr_region	cache;
@@ -347,7 +348,7 @@ static uint64_t icap_get_data_nolock(struct platform_device *pdev, enum data_kin
 static uint64_t icap_get_data(struct platform_device *pdev, enum data_kind kind);
 static const struct axlf_section_header *get_axlf_section_hdr(
 	struct icap *icap, const struct axlf *top, enum axlf_section_kind kind);
-
+static void icap_refresh_addrs(struct platform_device *pdev);
 
 static int icap_xclbin_wr_lock(struct icap *icap)
 {
@@ -612,10 +613,7 @@ static unsigned int icap_get_clock_frequency_counter_khz(const struct icap *icap
 		if (uuid_is_null(&icap->icap_bitstream_uuid))
 			return freq;
 
-		if (!icap->icap_clock_freq_counter)
-			return freq;
-
-		if (idx < 2) {
+		if (icap->icap_clock_freq_counter && idx < 2) {
 			reg_wr(icap->icap_clock_freq_counter, 0x1);
 			while (times != 0) {
 				status = reg_rd(icap->icap_clock_freq_counter);
@@ -625,21 +623,22 @@ static unsigned int icap_get_clock_frequency_counter_khz(const struct icap *icap
 				times--;
 			};
 			freq = reg_rd(icap->icap_clock_freq_counter + OCL_CLK_FREQ_COUNTER_OFFSET + idx*sizeof(u32));
-		} else if (idx == 2) {
-			if (!icap->icap_clock_freq_counter_hbm)
-				return 0;
+			return freq;
+		} 
 
-			reg_wr(icap->icap_clock_freq_counter_hbm, 0x1);
+		if (icap->icap_clock_freq_counters[idx]) {
+			reg_wr(icap->icap_clock_freq_counters[idx], 0x1);
 			while (times != 0) {
-				status = reg_rd(icap->icap_clock_freq_counter_hbm);
+				status =
+				    reg_rd(icap->icap_clock_freq_counters[idx]);
 				if (status == 0x2)
 					break;
 				mdelay(1);
 				times--;
 			};
-			freq = reg_rd(icap->icap_clock_freq_counter_hbm + OCL_CLK_FREQ_COUNTER_OFFSET);
+			freq = reg_rd(icap->icap_clock_freq_counters[idx] +
+				OCL_CLK_FREQ_COUNTER_OFFSET);
 		}
-
 	} else {
 		switch (idx) {
 		case 0:
@@ -2290,7 +2289,7 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 	struct axlf *xclbin)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
-	int err = 0, num_dev = -1;
+	int err = 0, num_dev = -1, i;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct xocl_subdev *subdevs;
 
@@ -2300,6 +2299,8 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 		&xclbin->m_header.uuid, &icap->icap_bitstream_uuid);
 
 	xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
+	icap_refresh_addrs(pdev);
+
 	if (ICAP_PRIVILEGED(icap)) {
 		err = __icap_xclbin_download(icap, xclbin);
 		if (err)
@@ -2333,8 +2334,27 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 		num_dev = xocl_fdt_parse_blob(xdev, icap->partition_metadata,
 				icap_get_section_size(icap, PARTITION_METADATA),
 				&subdevs);
-		for (num_dev--; num_dev >= 0; num_dev--)
-			xocl_subdev_create(xdev, &subdevs[num_dev].info);
+		ICAP_INFO(icap, "found %d sub devices", num_dev);
+		for (i = 0; i < num_dev; i++)
+			xocl_subdev_create(xdev, &subdevs[i].info);
+	}
+
+	if (num_dev > 0) {
+		for (i = 0; i < ICAP_MAX_NUM_CLOCKS; i++) {
+			if (icap->icap_clock_bases[i])
+				break;
+		}
+		xocl_subdev_create_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
+		icap_refresh_addrs(pdev);
+		/*
+		 * With new 2RP flow, clocks are all moved to ULP.
+		 * We assume there is not any clock left in PLP in this case.
+		 */
+		if (icap->icap_ucs_control) {
+			err = icap_ocl_freqscaling(icap, true);
+			msleep(10);
+			reg_wr(icap->icap_ucs_control + 8, 1);
+		}
 	}
 
 done:
@@ -2770,13 +2790,25 @@ static void icap_refresh_addrs(struct platform_device *pdev)
 		xocl_iores_get_base(xdev, IORES_CLKWIZKERNEL3);
 	ICAP_INFO(icap, "clk2 @ %lx", (unsigned long)icap->icap_clock_bases[2]);
 	icap->icap_clock_freq_counter =
-		xocl_iores_get_base(xdev, IORES_CLKFREQ1);
-	ICAP_INFO(icap, "freq0 @ %lx",
+		xocl_iores_get_base(xdev, IORES_CLKFREQ_K1_K2);
+	ICAP_INFO(icap, "freq_k1_k2 @ %lx",
 			(unsigned long)icap->icap_clock_freq_counter);
-	icap->icap_clock_freq_counter_hbm =
-		xocl_iores_get_base(xdev, IORES_CLKFREQ2);
-	ICAP_INFO(icap, "freq1 @ %lx",
-			(unsigned long)icap->icap_clock_freq_counter_hbm);
+	icap->icap_clock_freq_counters[0] =
+		xocl_iores_get_base(xdev, IORES_CLKFREQ_K1);
+	ICAP_INFO(icap, "freq_k1 @ %lx",
+			(unsigned long)icap->icap_clock_freq_counters[0]);
+	icap->icap_clock_freq_counters[1] =
+		xocl_iores_get_base(xdev, IORES_CLKFREQ_K2);
+	ICAP_INFO(icap, "freq_k2 @ %lx",
+			(unsigned long)icap->icap_clock_freq_counters[1]);
+	icap->icap_clock_freq_counters[2] =
+		xocl_iores_get_base(xdev, IORES_CLKFREQ_HBM);
+	ICAP_INFO(icap, "freq_hbm @ %lx",
+			(unsigned long)icap->icap_clock_freq_counters[2]);
+	icap->icap_ucs_control =
+		xocl_iores_get_base(xdev, IORES_UCS_CONTROL);
+	ICAP_INFO(icap, "ucs_control @ %lx",
+			(unsigned long)icap->icap_ucs_control);
 }
 
 static int icap_offline(struct platform_device *pdev)
