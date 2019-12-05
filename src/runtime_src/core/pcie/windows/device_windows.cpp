@@ -142,7 +142,6 @@ get_IOCTL_entry(QueryRequest qr) const
     { QR_ROM_FPGA_NAME,             { rom }},
     { QR_ROM_RAW,                   { rom }},
     { QR_ROM_UUID,                  { rom }},
-    { QR_ROM_TIMESTAMP,             { rom }},
     { QR_ROM_TIME_SINCE_EPOCH,      { rom }},
     { QR_XMC_VERSION,               { nullptr }},
     { QR_XMC_SERIAL_NUM,            { nullptr }},
