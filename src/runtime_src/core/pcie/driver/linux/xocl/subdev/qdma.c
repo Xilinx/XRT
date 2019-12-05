@@ -877,7 +877,13 @@ static void inline cmpl_aio(struct kiocb *kiocb, unsigned int done_bytes,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,16,0)
 	kiocb->ki_complete(kiocb, done_bytes, error);
 #else
-	if (is_sync_kiocb(kiocb))
+	struct qdma_stream_async_req *io_req;
+	struct qdma_stream_async_arg *cb;
+
+	io_req = (struct qdma_stream_async_req *)kiocb->private;
+	cb = &io_req->cb;
+
+	if (cb->cancel)
 		atomic_set(&kiocb->ki_users, 1);
 	aio_complete(kiocb, done_bytes, error);
 #endif
