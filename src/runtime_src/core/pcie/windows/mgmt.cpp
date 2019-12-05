@@ -87,7 +87,7 @@ struct mgmt
       throw std::runtime_error("Cannot allocate device detail, out of memory");
     device_detail->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
 
-    if (SetupDiGetDeviceInterfaceDetail(device_info, &device_interface, device_detail, size, NULL, NULL)) {
+    if (!SetupDiGetDeviceInterfaceDetail(device_info, &device_interface, device_detail, size, NULL, NULL)) {
       free(device_detail);
       throw std::runtime_error("SetupDiGetDeviceInterfaceDetail - get detail failed");
     }
