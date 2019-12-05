@@ -64,6 +64,7 @@ public:
       QR_ROM_FPGA_NAME,
       QR_ROM_RAW,
       QR_ROM_UUID,
+      QR_ROM_TIME_SINCE_EPOCH,
 
       QR_XMC_VERSION,
       QR_XMC_SERIAL_NUM,

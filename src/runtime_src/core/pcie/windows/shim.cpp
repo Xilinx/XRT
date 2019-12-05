@@ -817,9 +817,24 @@ done:
   void
   get_rom_info(FeatureRomHeader* value)
   {
-    // TODO
-    value->MajorVersion = 100;
-    value->MinorVersion = 100;
+    XOCL_STAT_CLASS stat_class =  XoclStatRomInfo;
+    XOCL_ROM_INFORMATION device_info;
+
+    DWORD bytes = 0;
+    auto status = DeviceIoControl(m_dev,
+        IOCTL_XOCL_STAT,
+        &stat_class, sizeof(stat_class),
+        &device_info, sizeof(device_info),
+        &bytes,
+        nullptr);
+
+    if (!status || bytes != sizeof(device_info))
+      throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (rom_info) failed");
+
+    std::memcpy(value->FPGAPartName, device_info.FPGAPartName, sizeof(device_info.FPGAPartName));
+    std::memcpy(value->VBNVName, device_info.VBNVName, sizeof(device_info.VBNVName));
+    value->DDRChannelCount = device_info.DDRChannelCount;
+    value->DDRChannelSize = device_info.DDRChannelSize;
   }
 
 }; // struct shim
