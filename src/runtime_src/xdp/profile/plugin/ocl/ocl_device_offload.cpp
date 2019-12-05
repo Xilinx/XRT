@@ -169,40 +169,40 @@ void OclDeviceOffload::config_s2mm_reader(uint64_t wordCount)
     << std::dec << std::endl;
 }
 
-  bool OclDeviceOffload::init_s2mm()
-  {
-    debug_stream << "OclDeviceOffload::init_s2mm" << std::endl;
-    /* If buffer is already allocated and still attempting to initialize again, 
-     * then reset the TS2MM IP and free the old buffer
-     */
-    if(m_trbuf) {
-      reset_s2mm();
-    }
-
-    uint64_t trbuf_sz = 0;
-    try {
-      trbuf_sz = xdp::xoclp::platform::get_ts2mm_buf_size();
-      auto memory_sz = xdp::xoclp::platform::device::getMemSizeBytes(xocl_dev, dev_intf->getTS2MmMemIndex());
-      if (memory_sz > 0 && trbuf_sz > memory_sz) {
-        std::string msg = "Trace Buffer size is too big for Memory Resource. Using " + std::to_string(memory_sz)
-                          + " Bytes instead.";
-        xrt::message::send(xrt::message::severity_level::XRT_WARNING, msg);
-        trbuf_sz = memory_sz;
-      }
-      m_trbuf = xrt_dev->alloc(trbuf_sz, xrt::hal::device::Domain::XRT_DEVICE_RAM, dev_intf->getTS2MmMemIndex(), nullptr);
-      // XRT bug. We can't read from memory space we haven't written to
-      xrt_dev->sync(m_trbuf, trbuf_sz, 0, xrt::hal::device::direction::HOST2DEVICE, false);
-    } catch (const std::exception& ex) {
-      std::cerr << ex.what() << std::endl;
-      xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_ALLOC_FAIL);
-      return false;
-    }
-    // Data Mover will write input stream to this address
-    uint64_t bufAddr = xrt_dev->getDeviceAddr(m_trbuf);
-
-    dev_intf->initTS2MM(trbuf_sz, bufAddr);
-    return true;
+bool OclDeviceOffload::init_s2mm()
+{
+  debug_stream << "OclDeviceOffload::init_s2mm" << std::endl;
+  /* If buffer is already allocated and still attempting to initialize again,
+   * then reset the TS2MM IP and free the old buffer
+   */
+  if(m_trbuf) {
+    reset_s2mm();
   }
+
+  uint64_t trbuf_sz = 0;
+  try {
+    trbuf_sz = xdp::xoclp::platform::get_ts2mm_buf_size();
+    auto memory_sz = xdp::xoclp::platform::device::getMemSizeBytes(xocl_dev, dev_intf->getTS2MmMemIndex());
+    if (memory_sz > 0 && trbuf_sz > memory_sz) {
+      std::string msg = "Trace Buffer size is too big for Memory Resource. Using " + std::to_string(memory_sz)
+                        + " Bytes instead.";
+      xrt::message::send(xrt::message::severity_level::XRT_WARNING, msg);
+      trbuf_sz = memory_sz;
+    }
+    m_trbuf = xrt_dev->alloc(trbuf_sz, xrt::hal::device::Domain::XRT_DEVICE_RAM, dev_intf->getTS2MmMemIndex(), nullptr);
+    // XRT bug. We can't read from memory space we haven't written to
+    xrt_dev->sync(m_trbuf, trbuf_sz, 0, xrt::hal::device::direction::HOST2DEVICE, false);
+  } catch (const std::exception& ex) {
+    std::cerr << ex.what() << std::endl;
+    xrt::message::send(xrt::message::severity_level::XRT_WARNING, TS2MM_WARN_MSG_ALLOC_FAIL);
+    return false;
+  }
+  // Data Mover will write input stream to this address
+  uint64_t bufAddr = xrt_dev->getDeviceAddr(m_trbuf);
+
+  dev_intf->initTS2MM(trbuf_sz, bufAddr);
+  return true;
+}
 
 void OclDeviceOffload::reset_s2mm()
 {
