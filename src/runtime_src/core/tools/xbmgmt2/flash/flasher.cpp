@@ -34,8 +34,6 @@ Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
 {
     std::string err;
     E_FlasherType type = E_FlasherType::UNKNOWN;
-	//HARDCODED
-	typeStr = "spi";
     if (typeStr.empty())
         typeStr = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_F_FLASH_TYPE);
     if (typeStr.empty())
@@ -87,11 +85,6 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
         }
         else if(secondary == nullptr)
         {
-			std::cout << "REACHED FLASHER\n\n";
-			//int length = 8;
-			//char * buffer = new char[length];
-			//primary->read(buffer, length);
-			//std::cout << "DATA: " << buffer[0] << "\n\n";
 			retVal = xspi.xclUpgradeFirmwareXSpi(*primary);
         }
         else
@@ -342,12 +335,17 @@ DSAInfo Flasher::getOnBoardDSA()
         ss << "xilinx_" << board_name << "_GOLDEN_" << mGoldenVer;
         vbnv = ss.str();
     }
-    else if (mFRHeader.VBNVName[0] != '\0')
-    {
-        vbnv = std::string(reinterpret_cast<char *>(mFRHeader.VBNVName));
-        ts = mFRHeader.TimeSinceEpoch;
-    }
-    else if (uuid == xrt_core::invalid_query_value<std::string>())
+    //else if (mFRHeader.VBNVName[0] != '\0')
+    //{
+    //    vbnv = std::string(reinterpret_cast<char *>(mFRHeader.VBNVName));
+    //    ts = mFRHeader.TimeSinceEpoch;
+    //}
+	else if (uuid != xrt_core::invalid_query_value<std::string>())
+	{
+		vbnv = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_ROM_VBNV);
+		ts = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_ROM_TIMESTAMP);
+	}
+    else
     {
         std::cout << "ERROR: Platform name not found" << std::endl;
     }

@@ -54,19 +54,19 @@ static void scan_devices(bool verbose, bool json)
   verbose = verbose;
   json = json;
 
-  // Flasher f(bdf2index());
-  // if (!f.isValid())
-  //     return;
+  Flasher f(bdf2index());
+  if (!f.isValid())
+      return;
 
-  // DSAInfo board = f.getOnBoardDSA();
-  // std::vector<DSAInfo> installedDSA = f.getInstalledDSA();
-  // BoardInfo info;
+  DSAInfo board = f.getOnBoardDSA();
+  //std::vector<DSAInfo> installedDSA = f.getInstalledDSA();
+  //BoardInfo info;
   // f.getBoardInfo(info);
-  // std::cout << "Card [" << bdf2index() << "]\n";
-  // std::cout << "\tCard type:\t\t" << board.board << "\n";
-  // std::cout << "\tFlash type:\t\t" << f.sGetFlashType() << "\n";
-  // std::cout << "\tFlashable partition running on FPGA:" << "\n";
-  // std::cout << "\t\t" << board << "\n";
+  std::cout << "Card [" << bdf2index() << "]\n";
+  std::cout << "\tCard type:\t\t" << board.board << "\n";
+  std::cout << "\tFlash type:\t\t" << f.sGetFlashType() << "\n";
+  std::cout << "\tFlashable partition running on FPGA:" << "\n";
+  std::cout << "\t\t" << board << "\n";
   // std::cout << "\tCard name\t\t\t" << info.mName << "\n";
   // std::cout << "\tCard S/N: \t\t\t" << info.mSerialNum << "\n";
   // std::cout << "\tConfig mode: \t\t" << info.mConfigMode << "\n";
@@ -108,9 +108,9 @@ static void update_shell(unsigned index, std::string flashType,
             sec = nullptr;
     }
 
-	
-
     flasher.upgradeFirmware(flashType, pri.get(), sec.get());
+	std::cout << "Shell is updated succesfully\n";
+	std::cout << "Cold reboot machine to load new shell on card" << std::endl;
 }
 
 static void update_SC(unsigned index, const std::string& file)
@@ -325,7 +325,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
     po::options_description shellDesc("shell options");
     shellDesc.add_options()
       ("path", boost::program_options::value<std::string>(&file), "path of shell file")
-      ("card", boost::program_options::value<std::string>(&bdf), "bdf of the card")
+      ("card", boost::program_options::value<std::string>(&bdf), "index of the card") //change this to bdf later
       ("type", boost::program_options::value<std::string>(&flash_type), "flash_type")
     ;
 

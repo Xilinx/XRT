@@ -64,7 +64,7 @@ def main():
     if "qdma" in str(dev):
        threshold = 30000
     
-    if "U2x4" in str(dev):
+    if "u2x4" in str(dev) or "U2x4" in str(dev):
        threshold = 15000
 
     if "gen3x4" in str(dev):
