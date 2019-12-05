@@ -59,7 +59,7 @@ public:
       QR_DMA_THREADS_RAW,
 
       QR_ROM_VBNV,
-      OR_ROM_DDR_BANK_SIZE,
+      QR_ROM_DDR_BANK_SIZE,
       QR_ROM_DDR_BANK_COUNT_MAX,
       QR_ROM_FPGA_NAME,
       QR_ROM_RAW,

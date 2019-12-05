@@ -17,11 +17,19 @@
 #ifndef _XRT_CORE_PCIE_WINDOWS_SHIM_H
 #define _XRT_CORE_PCIE_WINDOWS_SHIM_H
 
+#include "core/pcie/windows/config.h"
 #include "xrt.h"
 #include "core/common/xrt_profiling.h"
 
-namespace xocl { // shared implementation
+struct FeatureRomHeader;
 
-} // xocl
+namespace userpf {
+
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_rom_info(xclDeviceHandle hdl, FeatureRomHeader* value);
+
+} // userpf
+
 
 #endif
