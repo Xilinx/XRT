@@ -418,7 +418,7 @@ static  void icap_xclbin_rd_unlock(struct icap *icap)
 
 	ICAP_DBG(icap, "%d", pid);
 
-	wake = (icap->reader_ref-- == 0);
+	wake = (--icap->reader_ref == 0);
 
 	mutex_unlock(&icap->icap_lock);
 	if (wake)
