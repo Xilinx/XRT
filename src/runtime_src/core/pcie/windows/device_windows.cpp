@@ -17,31 +17,37 @@
 #define XCL_DRIVER_DLL_EXPORT
 #include "device_windows.h"
 #include "mgmt.h"
+#include "shim.h"
 #include "common/utils.h"
 #include "xrt.h"
+#include "xclfeatures.h"
 #include "boost/format.hpp"
 #include <string>
 #include <iostream>
 #include <map>
+#include <mutex>
 
 #pragma warning(disable : 4100 4996)
 
 namespace {
 
-void
-not_implemented(xrt_core::device::QueryRequest qr, const std::type_info&, boost::any& value)
+using device_type = xrt_core::device_windows;
+using qr_type = xrt_core::device::QueryRequest;
+
+static void
+not_implemented(const device_type*, qr_type qr, const std::type_info&, boost::any& value)
 {
   throw xrt_core::no_such_query(qr, "not implemented");
 }
 
-void
-flash_type(xrt_core::device::QueryRequest qr, const std::type_info&, boost::any& value)
+static void
+flash_type(const device_type*, qr_type, const std::type_info&, boost::any& value)
 {
   value = "SPI";
 }
 
-void
-xmc(xrt_core::device::QueryRequest qr, const std::type_info&, boost::any& value)
+static void
+xmc(const device_type*, qr_type qr, const std::type_info&, boost::any& value)
 {
   if(qr == xrt_core::device::QR_XMC_STATUS)
     value = 1;
@@ -50,9 +56,54 @@ xmc(xrt_core::device::QueryRequest qr, const std::type_info&, boost::any& value)
 }
 
 void
-mfg(xrt_core::device::QueryRequest qr, const std::type_info&, boost::any& value)
+mfg(const device_type*, qr_type, const std::type_info&, boost::any& value)
 {
   value = false;
+}
+
+static void
+rom(const device_type* device, qr_type qr, const std::type_info&, boost::any& value)
+{
+  auto init_feature_rom_header = [](const device_type* dev) {
+    FeatureRomHeader hdr = {0};
+    if (auto mhdl = dev->get_mgmt_handle())
+      mgmtpf::get_rom_info(mhdl, &hdr);
+    else if (auto uhdl = dev->get_user_handle())
+      userpf::get_rom_info(uhdl, &hdr);
+    else
+      throw std::runtime_error("No device handle");
+    return hdr;
+  };
+
+  static std::map<const device_type*, FeatureRomHeader> hdrmap;
+  std::mutex mutex;
+  std::lock_guard<std::mutex> lk(mutex);
+  auto it = hdrmap.find(device);
+  if (it == hdrmap.end()) {
+    auto ret = hdrmap.emplace(device,init_feature_rom_header(device));
+    it = ret.first;
+  }
+
+  auto& hdr= (*it).second;
+
+  switch (qr) {
+  case qr_type::QR_ROM_VBNV:
+    value = std::string(reinterpret_cast<const char*>(hdr.VBNVName));
+    break;
+  case qr_type::QR_ROM_DDR_BANK_SIZE:
+    value = hdr.DDRChannelSize;
+    break;
+  case qr_type::QR_ROM_DDR_BANK_COUNT_MAX:
+    value = hdr.DDRChannelCount;
+    break;
+  case qr_type::QR_ROM_FPGA_NAME:
+    value = std::string(reinterpret_cast<const char*>(hdr.FPGAPartName));
+    break;
+  case qr_type::QR_ROM_UUID:
+    value = std::string(reinterpret_cast<const char*>(hdr.uuid),16);
+  default:
+    throw std::runtime_error("device_windows::rom() unexpected qr " + std::to_string(qr));
+  }
 }
 
 } // namespace
@@ -73,12 +124,12 @@ get_IOCTL_entry(QueryRequest qr) const
     { QR_PCIE_LINK_SPEED,           { nullptr }},
     { QR_PCIE_EXPRESS_LANE_WIDTH,   { nullptr }},
     { QR_DMA_THREADS_RAW,           { nullptr }},
-    { QR_ROM_VBNV,                  { nullptr }},
-    { OR_ROM_DDR_BANK_SIZE,         { nullptr }},
-    { QR_ROM_DDR_BANK_COUNT_MAX,    { nullptr }},
-    { QR_ROM_FPGA_NAME,             { nullptr }},
-    { QR_ROM_RAW,                   { nullptr }},
-    { QR_ROM_UUID,                  { nullptr }},
+    { QR_ROM_VBNV,                  { rom }},
+    { QR_ROM_DDR_BANK_SIZE,         { rom }},
+    { QR_ROM_DDR_BANK_COUNT_MAX,    { rom }},
+    { QR_ROM_FPGA_NAME,             { rom }},
+    { QR_ROM_RAW,                   { rom }},
+    { QR_ROM_UUID,                  { rom }},
     { QR_XMC_VERSION,               { nullptr }},
     { QR_XMC_SERIAL_NUM,            { nullptr }},
     { QR_XMC_MAX_POWER,             { nullptr }},
@@ -164,7 +215,7 @@ query(QueryRequest qr, const std::type_info & tinfo, boost::any& value) const
   if (!entry.m_fcn)
     throw std::runtime_error("Unexpected error, exception should already have been thrown");
 
-  entry.m_fcn(qr,tinfo,value);
+  entry.m_fcn(this,qr,tinfo,value);
 
 //  std::string sErrorMsg;
   // Reference linux code:
@@ -215,14 +266,14 @@ device_windows(id_type device_id, bool user)
   if (user)
     return;
 
-  m_mgmthdl = mgmt::open(device_id);
+  m_mgmthdl = mgmtpf::open(device_id);
 }
 
 device_windows::
 ~device_windows()
 {
   if (m_mgmthdl)
-    mgmt::close(m_mgmthdl);
+    mgmtpf::close(m_mgmthdl);
 }
 
 void
@@ -238,7 +289,7 @@ read(uint64_t addr, void* buf, uint64_t len) const
   if (!m_mgmthdl)
     throw std::runtime_error("");
 
-  mgmt::read_bar(m_mgmthdl, addr, buf, len);
+  mgmtpf::read_bar(m_mgmthdl, addr, buf, len);
 }
 
 void
@@ -248,7 +299,7 @@ write(uint64_t addr, const void* buf, uint64_t len) const
   if (!m_mgmthdl)
     throw std::runtime_error("");
 
-  mgmt::write_bar(m_mgmthdl, addr, buf, len);
+  mgmtpf::write_bar(m_mgmthdl, addr, buf, len);
 }
 
 } // xrt_core

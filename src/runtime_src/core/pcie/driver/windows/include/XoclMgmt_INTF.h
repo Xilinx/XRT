@@ -23,7 +23,7 @@
  *
  --*/
 #pragma once
-
+#include "xclfeatures.h"
 #define XCLMGMT_NUM_SUPPORTED_CLOCKS    4
 
 //
@@ -105,7 +105,6 @@ typedef union _DRIVER_VERSION
     ULONG AsUlong;
 } DRIVER_VERSION, *PDRIVER_VERSION;
 #pragma warning(default:4201) // nameless struct/union warning
-
 typedef struct pcie_config_info {
     USHORT vendor;
     USHORT device;
@@ -143,4 +142,5 @@ typedef struct xclmgmt_ioc_device_info {
     ULONGLONG        ocl_frequency[XCLMGMT_NUM_SUPPORTED_CLOCKS];
     bool             mig_calibration[4];
     USHORT           num_clocks;
+	struct FeatureRomHeader rom_hdr;
 }XCLMGMT_IOC_DEVICE_INFO, *PXCLMGMT_IOC_DEVICE_INFO;

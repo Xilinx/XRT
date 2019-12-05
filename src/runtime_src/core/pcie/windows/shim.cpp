@@ -15,8 +15,10 @@
  * under the License.
  */
 #define XCL_DRIVER_DLL_EXPORT
+#define XRT_CORE_PCIE_WINDOWS_SOURCE
 #include "shim.h"
 #include "xrt_mem.h"
+#include "xclfeatures.h"
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 
@@ -812,6 +814,14 @@ done:
     return true;
   }
 
+  void
+  get_rom_info(FeatureRomHeader* value)
+  {
+    // TODO
+    value->MajorVersion = 100;
+    value->MinorVersion = 100;
+  }
+
 }; // struct shim
 
 shim*
@@ -823,7 +833,16 @@ get_shim_object(xclDeviceHandle handle)
 
 }
 
-namespace xocl {  // shared implementation
+namespace userpf {
+
+void
+get_rom_info(xclDeviceHandle hdl, FeatureRomHeader* value)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_rom_info()");
+  auto shim = get_shim_object(hdl);
+  shim->get_rom_info(value);
+}
 
 }
 

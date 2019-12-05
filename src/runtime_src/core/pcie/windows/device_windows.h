@@ -25,13 +25,25 @@ class device_windows : public device_pcie
 {
 public:
   struct IOCTLEntry {
-    std::function<void(QueryRequest qr, const std::type_info& tinfo, boost::any& value)> m_fcn;
+    std::function<void(const device_windows*, QueryRequest, const std::type_info&, boost::any&)> m_fcn;
   };
 
   const IOCTLEntry & get_IOCTL_entry( QueryRequest qr) const;
 
   device_windows(id_type device_id, bool user);
   ~device_windows();
+
+  xclDeviceHandle
+  get_mgmt_handle() const
+  {
+    return m_mgmthdl;
+  }
+
+  xclDeviceHandle
+  get_user_handle() const
+  {
+    return get_device_handle();
+  }
 
   // query functions
   virtual void read_dma_stats(boost::property_tree::ptree &_pt) const;

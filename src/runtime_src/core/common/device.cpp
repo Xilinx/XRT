@@ -35,7 +35,7 @@ static std::map<device::QueryRequest, device::QueryRequestEntry> sQueryTable =
   { device::QR_PCIE_EXPRESS_LANE_WIDTH,   { "QR_PCIE_EXPRESS_LANE_WIDTH",   "width",            &typeid(uint64_t),    device::format_primative }},
 
   { device::QR_ROM_VBNV,                  { "QR_ROM_VBNV",                  "vbnv",             &typeid(std::string), device::format_primative }},
-  { device::OR_ROM_DDR_BANK_SIZE,         { "OR_ROM_DDR_BANK_SIZE",         "ddr_size_bytes",   &typeid(uint64_t),    device::format_hex_base2_shiftup30 }},
+  { device::QR_ROM_DDR_BANK_SIZE,         { "QR_ROM_DDR_BANK_SIZE",         "ddr_size_bytes",   &typeid(uint64_t),    device::format_hex_base2_shiftup30 }},
   { device::QR_ROM_DDR_BANK_COUNT_MAX,    { "QR_ROM_DDR_BANK_COUNT_MAX",    "widdr_countdth",   &typeid(uint64_t),    device::format_primative }},
   { device::QR_ROM_FPGA_NAME,             { "QR_ROM_FPGA_NAME",             "fpga_name",        &typeid(std::string), device::format_primative }},
   { device::QR_DMA_THREADS_RAW,           { "QR_DMA_THREADS_RAW",           "dma_threads",      &typeid(std::vector<std::string>),  device::format_primative }},
@@ -254,7 +254,7 @@ device::
 get_rom_info(boost::property_tree::ptree& pt) const
 {
   query_and_put(QR_ROM_VBNV, pt);
-  query_and_put(OR_ROM_DDR_BANK_SIZE, pt);
+  query_and_put(QR_ROM_DDR_BANK_SIZE, pt);
   query_and_put(QR_ROM_DDR_BANK_COUNT_MAX, pt);
   query_and_put(QR_ROM_FPGA_NAME, pt);
 }
