@@ -326,6 +326,7 @@ static int load_xmc(struct xocl_xmc *xmc);
 static int stop_xmc(struct platform_device *pdev);
 static void xmc_clk_scale_config(struct platform_device *pdev);
 static int xmc_load_board_info(struct xocl_xmc *xmc);
+static int cmc_access_ops(struct platform_device *pdev, int flags);
 
 static void set_sensors_data(struct xocl_xmc *xmc, struct xcl_sensor *sensors)
 {
@@ -1949,12 +1950,18 @@ static int stop_xmc_nolock(struct platform_device *pdev)
 	u32 reg_val = 0;
 	void *xdev_hdl;
 	u32 magic = 0;
+	int ret;
 
 	xmc = platform_get_drvdata(pdev);
 	if (!xmc)
 		return -ENODEV;
 	else if (!xmc->enabled)
 		return -ENODEV;
+
+	/* freeze cmc prior to stop cmc */
+	ret = cmc_access_ops(pdev, 0);
+	if (ret)
+		return ret;
 
 	xdev_hdl = xocl_get_xdev(xmc->pdev);
 
@@ -2281,12 +2288,13 @@ static int cmc_access_ops(struct platform_device *pdev, int flags)
 		 */
 		err = xocl_iores_read32(xdev, XOCL_SUBDEV_LEVEL_URP,
 		    IORES_GAPPING, 0x0, &val);
-		if (err) {
-			if (err == -ENODEV) {
-				xocl_xdev_info(xdev, "No %s resource, skip.",
-				    NODE_GAPPING);
-				return 0;
-			}
+		if (err == -ENODEV) {
+			xocl_xdev_info(xdev, "No %s resource, skip.",
+			    NODE_GAPPING);
+			return 0;
+		} else if (err) {
+			xocl_xdev_err(xdev, "Read %s error %d.",
+			    NODE_GAPPING, err);
 			return err;
 		}
 #else
@@ -2307,12 +2315,13 @@ static int cmc_access_ops(struct platform_device *pdev, int flags)
 	grant = (u32)flags & 0x1;
 	err = xocl_iores_write32(xdev, XOCL_SUBDEV_LEVEL_BLD, IORES_CMC_MUTEX,
 	    0x0, grant);
-	if (err) {
-		if (err == -ENODEV) {
-			xocl_xdev_info(xdev, "No %s resource, skip.",
-			    NODE_CMC_MUTEX);
-			return 0;
-		}
+	if (err == -ENODEV) {
+		xocl_xdev_info(xdev, "No %s resource, skip.",
+		    NODE_CMC_MUTEX);
+		return 0;
+	} else if (err) {
+		xocl_xdev_err(xdev, "Write %s to 0x%x error %d.",
+		    NODE_CMC_MUTEX, grant, err);
 		return err;
 	}
 
@@ -2324,8 +2333,8 @@ static int cmc_access_ops(struct platform_device *pdev, int flags)
 				xocl_xdev_info(xdev, "No %s resource, skip.",
 				    NODE_CMC_MUTEX);
 			else
-				xocl_xdev_err(xdev, "Read ack from %s failed",
-				    NODE_CMC_MUTEX);
+				xocl_xdev_err(xdev, "Read ack from %s error %d",
+				    NODE_CMC_MUTEX, err);
 			goto fail;
 		}
 
