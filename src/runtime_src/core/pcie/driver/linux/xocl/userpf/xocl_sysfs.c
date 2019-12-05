@@ -394,20 +394,16 @@ static ssize_t ready_show(struct device *dev,
 			goto bail;
 		xocl_xmc_get_data(xdev, XCL_BDINFO, board_info);
 		/*
-		 * Note:
-		 * bmc_ver can be cut into 5.0 instead of 5.0.6
-		 * a temporary workaround is to compare first 5.0 part,
-		 * platform should make sure bmc_ver is intact.
-		 *
-		 * with legacy mgmtpf driver, exp_bmc_ver will be NULL.
-		 * And we have to mark ready in this case
+		 * Lift the restriction of mis-matching SC version for
+		 * experienced user to manually update SC firmware than
+		 * installed xsabin may contain.
 		 */
-		if (!strncmp(board_info->bmc_ver, board_info->exp_bmc_ver,
-			strlen(board_info->bmc_ver)) ||
-			board_info->exp_bmc_ver[0] == 0)
-			ret = 1;
-		else
-			ret = 0;
+		if (strcmp(board_info->bmc_ver, board_info->exp_bmc_ver)) {
+			xocl_warn(dev, "installed XSABIN has SC version: "
+			    "(%s) mismatch with loaded SC version: (%s).",
+			    board_info->exp_bmc_ver, board_info->bmc_ver);
+		}
+		ret = 1;
 	}
 
 bail:
