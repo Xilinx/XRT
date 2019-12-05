@@ -72,12 +72,8 @@ int nifdHandler(int argc, char *argv[]);
 extern const char *subCmdNifdDesc;
 extern const char *subCmdNifdUsage;
 
-int hpRescanHandler(int argc, char *argv[]);
-extern const char *subCmdHpRescanDesc;
-extern const char *subCmdHpRescanUsage;
-
-int hpRemoveHandler(int argc, char *argv[]);
-extern const char *subCmdHpRemoveDesc;
-extern const char *subCmdHpRemoveUsage;
+int hotplugHandler(int argc, char *argv[]);
+extern const char *subCmdHotplugDesc;
+extern const char *subCmdHotplugUsage;
 
 #endif /* XBMGMT_H */
