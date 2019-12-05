@@ -25,6 +25,7 @@
 #include <string>
 #include <iostream>
 #include <map>
+#include <mutex>
 
 #pragma warning(disable : 4100 4996)
 
@@ -74,8 +75,16 @@ rom(const device_type* device, qr_type qr, const std::type_info&, boost::any& va
     return hdr;
   };
 
-  // Thread safe static initialization (magic static)
-  static auto hdr = init_feature_rom_header(device);
+  static std::map<const device_type*, FeatureRomHeader> hdrmap;
+  std::mutex mutex;
+  std::lock_guard<std::mutex> lk(mutex);
+  auto it = hdrmap.find(device);
+  if (it == hdrmap.end()) {
+    auto ret = hdrmap.emplace(device,init_feature_rom_header(device));
+    it = ret.first;
+  }
+
+  auto& hdr= (*it).second;
 
   switch (qr) {
   case qr_type::QR_ROM_VBNV:
