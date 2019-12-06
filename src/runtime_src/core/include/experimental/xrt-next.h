@@ -43,7 +43,7 @@ XCL_DRIVER_DLLESPEC int xclP2pEnable(xclDeviceHandle handle, bool enable, bool f
  * This uses kdsstat information in sysfs.
  */
 
-XCL_DRIVER_DLLESPEC uint xclGetNumLiveProcesses(xclDeviceHandle handle);
+XCL_DRIVER_DLLESPEC uint32_t xclGetNumLiveProcesses(xclDeviceHandle handle);
 
 /**
  * xclGetSysfsPath() - Helper function to build a sysfs node full path
