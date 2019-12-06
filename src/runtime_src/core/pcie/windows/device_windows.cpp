@@ -204,9 +204,20 @@ xclbin_fcn(const device_type* device, qr_type qr, const std::type_info&, boost::
     throw std::runtime_error("Query request " + std::to_string(qr) + "requires a userpf device");
 
   if (qr == qr_type::QR_MEM_TOPOLOGY_RAW) {
-    std::vector<char> data(4_k);
-    userpf::get_mem_topology(uhdl, data.data(), 4_k);
-    value = data;
+    size_t size_ret = 0;
+    userpf::get_mem_topology(uhdl, nullptr, 0, &size_ret);
+    std::vector<char> data(size_ret);
+    userpf::get_mem_topology(uhdl, data.data(), size_ret, nullptr);
+    value = std::move(data);
+    return;
+  }
+
+  if (qr == qr_type::QR_IP_LAYOUT_RAW) {
+    size_t size_ret = 0;
+    userpf::get_ip_layout(uhdl, nullptr, 0, &size_ret);
+    std::vector<char> data(size_ret);
+    userpf::get_ip_layout(uhdl, data.data(), size_ret, nullptr);
+    value = std::move(data);
     return;
   }
 
@@ -239,6 +250,7 @@ get_IOCTL_entry(QueryRequest qr) const
     { QR_ROM_UUID,                  { rom }},
     { QR_ROM_TIME_SINCE_EPOCH,      { rom }},
     { QR_MEM_TOPOLOGY_RAW,          { xclbin_fcn }},
+    { QR_IP_LAYOUT_RAW,             { xclbin_fcn }},
     { QR_XMC_VERSION,               { nullptr }},
     { QR_XMC_SERIAL_NUM,            { nullptr }},
     { QR_XMC_MAX_POWER,             { nullptr }},

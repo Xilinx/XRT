@@ -67,6 +67,7 @@ public:
       QR_ROM_TIME_SINCE_EPOCH,
 
       QR_MEM_TOPOLOGY_RAW,
+      QR_IP_LAYOUT_RAW,
 
       QR_XMC_VERSION,
       QR_XMC_SERIAL_NUM,
