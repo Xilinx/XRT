@@ -159,12 +159,12 @@ std::string
 device::format_hex(const boost::any & _data)
 {
   // Can we work with this data type?
-  if (_data.type() == typeid(uint64_t)) 
-	  return boost::str(boost::format("0x%x") % boost::any_cast<uint64_t>(_data));
-  if (_data.type() == typeid(uint16_t)) 
-	  return boost::str(boost::format("0x%x") % boost::any_cast<uint16_t>(_data));
+  if (_data.type() == typeid(uint64_t))
+    return boost::str(boost::format("0x%x") % boost::any_cast<uint64_t>(_data));
+  if (_data.type() == typeid(uint16_t))
+    return boost::str(boost::format("0x%x") % boost::any_cast<uint16_t>(_data));
   if (_data.type() == typeid(uint8_t))
-	  return boost::str(boost::format("0x%x") % boost::any_cast<uint8_t>(_data));
+    return boost::str(boost::format("0x%x") % boost::any_cast<uint8_t>(_data));
   return format_primative(_data);
 }
 
@@ -205,19 +205,19 @@ device::format_base10_shiftdown6(const boost::any &_data)
 std::string
 device::format_hex_base2_shiftup30(const boost::any &_data)
 {
-	if (_data.type() == typeid(uint64_t)) {
-		boost::any modifiedValue = boost::any_cast<uint64_t>(_data) << 30;
-		return format_hex(modifiedValue);
-	}
-	if (_data.type() == typeid(uint16_t)) {
-		boost::any modifiedValue = boost::any_cast<uint16_t>(_data) << 30;
-		return format_hex(modifiedValue);
-	}
-	if (_data.type() == typeid(uint8_t)) {
-		boost::any modifiedValue = boost::any_cast<uint8_t>(_data) << 30;
-		return format_hex(modifiedValue);
-	}
-    return format_primative(_data);
+  if (_data.type() == typeid(uint64_t)) {
+    boost::any modifiedValue = boost::any_cast<uint64_t>(_data) << 30;
+    return format_hex(modifiedValue);
+  }
+  if (_data.type() == typeid(uint16_t)) {
+    boost::any modifiedValue = boost::any_cast<uint16_t>(_data) << 30;
+    return format_hex(modifiedValue);
+  }
+  if (_data.type() == typeid(uint8_t)) {
+    boost::any modifiedValue = boost::any_cast<uint8_t>(_data) << 30;
+    return format_hex(modifiedValue);
+  }
+  return format_primative(_data);
 }
 
 void
