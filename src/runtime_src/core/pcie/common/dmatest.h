@@ -109,7 +109,7 @@ namespace xcldev {
                 //Clear out the host buffer
                 std::memset(bufCmp.get(), 0, mSize);
                 result = xclReadBO(mHandle, i, bufCmp.get(), mSize, 0);
-                if (result < 0)
+                if (result)
                     break;
                 if (std::memcmp(buf, bufCmp.get(), mSize)) {
                     error = -EIO;
