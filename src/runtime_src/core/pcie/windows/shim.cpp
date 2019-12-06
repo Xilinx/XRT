@@ -748,17 +748,20 @@ done:
   ssize_t
   unmgd_pwrite(unsigned flags, const void *buf, size_t count, uint64_t offset)
   {
-#if 0
-      XOCL_PWRITE_BO_ARGS pwriteBO;
+      if (flags) {  // make compatible with Linux code
+          return false;
+      }
+
+      XOCL_PWRITE_BO_UNMGD_ARGS pwriteBO;
       DWORD  code;
       DWORD bytesWritten;
 
       pwriteBO.Offset = offset;
 
       if (!DeviceIoControl(m_dev,
-          IOCTL_XOCL_PWRITE_BO,
+          IOCTL_XOCL_PWRITE_UNMGD,
           &pwriteBO,
-          sizeof(XOCL_PWRITE_BO_ARGS),
+          sizeof(XOCL_PWRITE_BO_UNMGD_ARGS),
           (void *)buf,
           (DWORD)count,
           &bytesWritten,
@@ -767,27 +770,31 @@ done:
           code = GetLastError();
 
           xrt_core::message::
-              send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl PWRITE failed with error %d", code);
+              send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl PWRITE unmanaged failed with error %d", code);
           return false;
       }
-#endif
+
       return true;
   }
 
   ssize_t
   unmgd_pread(unsigned int flags, void *buf, size_t size, uint64_t offset)
   {
-#if 0
-      XOCL_PREAD_BO_ARGS preadBO;
+
+      XOCL_PREAD_BO_UNMGD_ARGS preadBO;
       DWORD  code;
       DWORD bytesRead;
+
+      if (flags) {  // make compatible with Linux code
+          return false;
+      }
 
       preadBO.Offset = offset;
 
       if (!DeviceIoControl(m_dev,
-          IOCTL_XOCL_PREAD_BO,
+          IOCTL_XOCL_PREAD_UNMGD,
           &preadBO,
-          sizeof(XOCL_PREAD_BO_ARGS),
+          sizeof(XOCL_PREAD_BO_UNMGD_ARGS),
           buf,
           (DWORD)size,
           &bytesRead,
@@ -795,10 +802,10 @@ done:
 
           code = GetLastError();
           xrt_core::message::
-              send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl PREAD failed with error %d", code);
+              send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl PREAD unmanaged failed with error %d", code);
           return false;
       }
-#endif
+
       return true;
   }
 
