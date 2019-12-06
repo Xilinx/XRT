@@ -212,7 +212,7 @@ static int hotplugRescan(void)
     catch (const boost::filesystem::ifstream::failure& err) {
         std::cout << "Exception!!!! " << err.what();
         ofile.close();
-        return errno;
+        return -errno;
     }
         
     ofile.close();
