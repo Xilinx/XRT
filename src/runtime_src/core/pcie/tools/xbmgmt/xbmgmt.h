@@ -72,4 +72,8 @@ int nifdHandler(int argc, char *argv[]);
 extern const char *subCmdNifdDesc;
 extern const char *subCmdNifdUsage;
 
+int hotplugHandler(int argc, char *argv[]);
+extern const char *subCmdHotplugDesc;
+extern const char *subCmdHotplugUsage;
+
 #endif /* XBMGMT_H */
