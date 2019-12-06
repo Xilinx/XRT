@@ -145,8 +145,5 @@ int subCmdDmaTest(const std::vector<std::string> &_options)
   bool verbose = true;
   dmatest(device, block_size, verbose);
 
-  XBU::error("COMMAND BODY NOT IMPLEMENTED.");
-  // TODO: Put working code here
-
   return registerResult;
 }
