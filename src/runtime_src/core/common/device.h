@@ -66,6 +66,8 @@ public:
       QR_ROM_UUID,
       QR_ROM_TIME_SINCE_EPOCH,
 
+      QR_MEM_TOPOLOGY_RAW,
+
       QR_XMC_VERSION,
       QR_XMC_SERIAL_NUM,
       QR_XMC_MAX_POWER,

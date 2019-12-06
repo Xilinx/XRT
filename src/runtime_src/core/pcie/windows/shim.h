@@ -35,6 +35,10 @@ XRT_CORE_PCIE_WINDOWS_EXPORT
 void
 get_device_info(xclDeviceHandle hdl, XOCL_DEVICE_INFORMATION* value);
 
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_mem_topology(xclDeviceHandle hdl, char* buffer, size_t len);
+
 } // userpf
 
 

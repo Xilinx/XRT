@@ -25,7 +25,7 @@
 #include <cstring>
 #include <iostream>
 
-#include "xclhal2.h"
+#include "xrt.h"
 
 namespace xcldev {
     class Timer {
@@ -44,13 +44,13 @@ namespace xcldev {
     };
 
     class DMARunner {
-        std::vector<unsigned int> mBOList;
+        std::vector<xclBufferHandle> mBOList;
         xclDeviceHandle mHandle;
         size_t mSize;
         unsigned mFlags;
 
-        int runSyncWorker(std::vector<unsigned>::const_iterator b,
-                          std::vector<unsigned>::const_iterator e,
+        int runSyncWorker(std::vector<xclBufferHandle>::const_iterator b,
+                          std::vector<xclBufferHandle>::const_iterator e,
                           xclBOSyncDirection dir) const {
             int result = 0;
             while (b < e) {
@@ -63,8 +63,8 @@ namespace xcldev {
         }
 
         int runSync(xclBOSyncDirection dir, bool mt) const {
-            const std::vector<unsigned>::const_iterator b = mBOList.begin();
-            const std::vector<unsigned>::const_iterator e = mBOList.end();
+            auto b = mBOList.begin();
+            auto e = mBOList.end();
             if (mt) {
                 auto len = e - b;
                 auto mid = b + len/2;
@@ -85,8 +85,8 @@ namespace xcldev {
                 count = 0x40000;
 
             for (long long i = 0; i < count; i++) {
-                unsigned bo = xclAllocBO(mHandle, mSize, 0, mFlags);
-                if (bo == 0xffffffff)
+                auto bo = xclAllocBO(mHandle, mSize, 0, mFlags);
+                if (bo == XRT_NULL_BO)
                     break;
                 mBOList.push_back(bo);
             }
@@ -97,13 +97,14 @@ namespace xcldev {
         }
 
         ~DMARunner() {
-            for (auto i : mBOList)
-                xclFreeBO(mHandle, i);
+            for (auto bo : mBOList)
+                xclFreeBO(mHandle, bo);
         }
 
         int validate(const char *buf) const {
             std::unique_ptr<char[]> bufCmp(new char[mSize]);
-            int result = 0;
+            int error = 0;
+            size_t result = 0;
             for (auto i : mBOList) {
                 //Clear out the host buffer
                 std::memset(bufCmp.get(), 0, mSize);
@@ -111,29 +112,29 @@ namespace xcldev {
                 if (result < 0)
                     break;
                 if (std::memcmp(buf, bufCmp.get(), mSize)) {
-                    result = -EIO;
+                    error = -EIO;
                     std::cout << "DMA Test data integrity check failed\n";
                     break;
                 }
             }
-            return result;
+            return error ? error : static_cast<int>(result);
         }
 
         int run() const {
             std::unique_ptr<char[]> buf(new char[mSize]);
             std::memset(buf.get(), 'x', mSize);
 
-            int result = 0;
+            size_t result = 0;
             for (auto i : mBOList)
                 result += xclWriteBO(mHandle, i, buf.get(), mSize, 0);
 
             if (result)
-                return result;
+                return static_cast<int>(result);
 
             Timer timer;
             result = runSync(XCL_BO_SYNC_BO_TO_DEVICE, true);
-            double timer_stop = timer.stop();
-            double rate = mBOList.size() * mSize;
+            auto timer_stop = timer.stop();
+            double rate = static_cast<double>(mBOList.size() * mSize);
             rate /= 0x100000; // MB
             rate /= timer_stop;
             rate *= 1000000; // s
@@ -142,7 +143,7 @@ namespace xcldev {
             timer.reset();
             result += runSync(XCL_BO_SYNC_BO_FROM_DEVICE, true);
             timer_stop = timer.stop();
-            rate = mBOList.size() * mSize;
+            rate = static_cast<double>(mBOList.size() * mSize);
             rate /= 0x100000; // MB
             rate /= timer_stop;
             rate *= 1000000; //
@@ -150,7 +151,7 @@ namespace xcldev {
 
             // data integrity check: compare with initialized value 'x'
             result = validate(buf.get());
-            return result;
+            return static_cast<int>(result);
         }
     };
 }

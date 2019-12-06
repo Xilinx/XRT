@@ -35,6 +35,12 @@
 
 namespace {
 
+constexpr size_t
+operator"" _k (unsigned long long value)
+{
+  return value * 1024;
+}
+
 using device_type = xrt_core::device_windows;
 using qr_type = xrt_core::device::QueryRequest;
 
@@ -89,10 +95,10 @@ rom(const device_type* device, qr_type qr, const std::type_info&, boost::any& va
     value = std::string(reinterpret_cast<const char*>(hdr.VBNVName));
     return;
   case qr_type::QR_ROM_DDR_BANK_SIZE:
-    value = hdr.DDRChannelSize;
+    value = static_cast<uint64_t>(hdr.DDRChannelSize);
     return;
   case qr_type::QR_ROM_DDR_BANK_COUNT_MAX:
-    value = hdr.DDRChannelCount;
+    value = static_cast<uint64_t>(hdr.DDRChannelCount);
     return;
   case qr_type::QR_ROM_FPGA_NAME:
     value = std::string(reinterpret_cast<const char*>(hdr.FPGAPartName));
@@ -190,6 +196,23 @@ info(const device_type* device, qr_type qr, const std::type_info& tinfo, boost::
     throw std::runtime_error("No device handle");
 }
 
+static void
+xclbin_fcn(const device_type* device, qr_type qr, const std::type_info&, boost::any& value)
+{
+  auto uhdl = device->get_user_handle();
+  if (!uhdl)
+    throw std::runtime_error("Query request " + std::to_string(qr) + "requires a userpf device");
+
+  if (qr == qr_type::QR_MEM_TOPOLOGY_RAW) {
+    std::vector<char> data(4_k);
+    userpf::get_mem_topology(uhdl, data.data(), 4_k);
+    value = data;
+    return;
+  }
+
+  throw std::runtime_error("device_windows::xclbin() unexpected qr " + std::to_string(qr));
+}
+
 } // namespace
 
 namespace xrt_core {
@@ -215,6 +238,7 @@ get_IOCTL_entry(QueryRequest qr) const
     { QR_ROM_RAW,                   { rom }},
     { QR_ROM_UUID,                  { rom }},
     { QR_ROM_TIME_SINCE_EPOCH,      { rom }},
+    { QR_MEM_TOPOLOGY_RAW,          { xclbin_fcn }},
     { QR_XMC_VERSION,               { nullptr }},
     { QR_XMC_SERIAL_NUM,            { nullptr }},
     { QR_XMC_MAX_POWER,             { nullptr }},

@@ -26,6 +26,7 @@ if(WIN32)
   file(GLOB XBUTIL_V2_SUBCMD_FILES
     "SubCmdProgram.cpp"
     "SubCmdClock.cpp"
+    "SubCmdDmaTest.cpp"
     "SubCmdQuery.cpp"
     "SubCmdReset.cpp"
     "SubCmdScan.cpp"
@@ -77,6 +78,7 @@ else()
     boost_filesystem
     boost_system
     boost_program_options
+    pthread
     uuid
     dl
   )
