@@ -913,6 +913,27 @@ done:
       throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_device_info) failed");
   }
 
+  void
+  get_mem_topology(char* buffer, size_t len)
+  {
+    XOCL_MEM_TOPOLOGY_INFORMATION mem_info;
+    XOCL_STAT_CLASS stat_class =  XoclStatMemTopology;
+
+    DWORD bytes = 0;
+    auto status = DeviceIoControl(m_dev,
+        IOCTL_XOCL_STAT,
+        &stat_class, sizeof(stat_class),
+        &mem_info, sizeof(XOCL_MEM_TOPOLOGY_INFORMATION),
+        &bytes,
+        nullptr);
+
+    if (!status || bytes != sizeof(XOCL_MEM_TOPOLOGY_INFORMATION) || len < sizeof(XOCL_MEM_TOPOLOGY_INFORMATION))
+      throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_mem_topology) failed");
+
+    std::memcpy(buffer, &mem_info, sizeof(XOCL_MEM_TOPOLOGY_INFORMATION));
+  }
+
+
 
 }; // struct shim
 
@@ -943,6 +964,15 @@ get_device_info(xclDeviceHandle hdl, XOCL_DEVICE_INFORMATION* value)
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_device_info()");
   auto shim = get_shim_object(hdl);
   shim->get_device_info(value);
+}
+
+void
+get_mem_topology(xclDeviceHandle hdl, char* buffer, size_t len)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_device_info()");
+  auto shim = get_shim_object(hdl);
+  shim->get_mem_topology(buffer, len);
 }
 
 } // userpf
