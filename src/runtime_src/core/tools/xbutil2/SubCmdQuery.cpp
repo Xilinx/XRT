@@ -101,7 +101,7 @@ int subCmdQuery(const std::vector<std::string> &_options)
 
   int idx = 0;
   for (auto cu : cus) {
-    std::cout << "CU[ " << idx++ << "]: @" << cu << "\n";
+    std::cout << "CU[ " << idx++ << "]: @" << std::hex << cu << std::dec << "\n";
   }
 
   // Gather the complete system information for ALL devices

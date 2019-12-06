@@ -214,9 +214,9 @@ xclbin_fcn(const device_type* device, qr_type qr, const std::type_info&, boost::
 
   if (qr == qr_type::QR_IP_LAYOUT_RAW) {
     size_t size_ret = 0;
-    userpf::get_mem_topology(uhdl, nullptr, 0, &size_ret);
+    userpf::get_ip_layout(uhdl, nullptr, 0, &size_ret);
     std::vector<char> data(size_ret);
-    userpf::get_mem_topology(uhdl, data.data(), size_ret, nullptr);
+    userpf::get_ip_layout(uhdl, data.data(), size_ret, nullptr);
     value = data;
     return;
   }
