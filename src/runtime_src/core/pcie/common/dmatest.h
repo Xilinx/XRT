@@ -134,7 +134,7 @@ namespace xcldev {
             Timer timer;
             result = runSync(XCL_BO_SYNC_BO_TO_DEVICE, true);
             auto timer_stop = timer.stop();
-            auto rate = mBOList.size() * mSize;
+            double rate = static_cast<double>(mBOList.size() * mSize);
             rate /= 0x100000; // MB
             rate /= timer_stop;
             rate *= 1000000; // s
@@ -143,7 +143,7 @@ namespace xcldev {
             timer.reset();
             result += runSync(XCL_BO_SYNC_BO_FROM_DEVICE, true);
             timer_stop = timer.stop();
-            rate = mBOList.size() * mSize;
+            rate = static_cast<double>(mBOList.size() * mSize);
             rate /= 0x100000; // MB
             rate /= timer_stop;
             rate *= 1000000; //
