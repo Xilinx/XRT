@@ -31,6 +31,7 @@ namespace po = boost::program_options;
 
 // System - Include Files
 #include <iostream>
+#include <iterator>
 
 // ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
 #include "tools/common/SubCmd.h"
@@ -67,6 +68,7 @@ dmatest(const std::shared_ptr<xrt_core::device>& device, size_t block_size, bool
 
   //for (auto itrint32_t i = 0; i < map->m_count; i++) {
   for (auto& mem : boost::make_iterator_range(mem_topo->m_mem_data, mem_topo->m_mem_data + mem_topo->m_count)) {
+    auto midx = std::distance(mem_topo->m_mem_data, &mem);
     if (mem.m_type == MEM_STREAMING)
       continue;
 
@@ -86,11 +88,11 @@ dmatest(const std::shared_ptr<xrt_core::device>& device, size_t block_size, bool
         throw xrt_core::error(result, "DMATest failed mem write");
 #endif
     }
-#if 0
-    DMARunner runner( m_handle, blockSize, i);
+
+    xcldev::DMARunner runner(device->get_device_handle(), block_size, static_cast<unsigned int>(midx));
     if (int ret = runner.run())
       throw xrt_core::error(ret,"DMATest failed");
-#endif
+
   }
 }
 
