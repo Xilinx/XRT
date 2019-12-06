@@ -1250,7 +1250,9 @@ int xcldev::device::scVersionTest(void)
     pcidev::get_dev(m_idx)->sysfs_get("xmc", "exp_bmc_ver", errmsg, exp_sc_ver);
     if (!exp_sc_ver.empty() && sc_ver.compare(exp_sc_ver) != 0)
     {
-        std::cout << "SC firmware version is not expected. SC firmware running on board: " << sc_ver << ". Expected SC firmware: " << exp_sc_ver << std::endl; 
+        std::cout << "SC FIRMWARE MISMATCH, ATTENTION" << std::endl;
+        std::cout << "SC firmware running on board: " << sc_ver << ". Expected SC firmware from installed Shell: " << exp_sc_ver << std::endl;
+	std::cout << "Please use \"xbmgmt flash --scan\" to check installed Shell." << std::endl;
 	return 1;
     }
 
