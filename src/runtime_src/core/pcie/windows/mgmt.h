@@ -20,6 +20,9 @@
 #include "core/pcie/windows/config.h"
 #include "xrt.h"
 
+#include <initguid.h>
+#include "core/pcie/driver/windows/include/XoclMgmt_INTF.h"
+
 struct FeatureRomHeader;
 
 namespace mgmtpf { // shared implementation
@@ -47,6 +50,14 @@ write_bar(xclDeviceHandle hdl, uint64_t offset, const void* buf, uint64_t len);
 XRT_CORE_PCIE_WINDOWS_EXPORT
 void
 get_rom_info(xclDeviceHandle hdl, FeatureRomHeader* value);
+
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_xmc_info(xclDeviceHandle hdl /*, ??? *value*/);
+
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_device_info(xclDeviceHandle hdl, XCLMGMT_IOC_DEVICE_INFO* value);
 
 } // mgmtpf
 

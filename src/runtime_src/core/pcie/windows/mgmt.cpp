@@ -144,26 +144,32 @@ struct mgmt
   }
 
   void
-  get_rom_info(FeatureRomHeader* value)
+  get_device_info(XCLMGMT_IOC_DEVICE_INFO* value)
   {
-    XCLMGMT_IOC_DEVICE_INFO device_info;
-
     DWORD bytes = 0;
     auto status = DeviceIoControl(
         m_hdl,
         XCLMGMT_OID_GET_IOC_DEVICE_INFO,
-        (LPVOID)&device_info,
+        value,
         sizeof(XCLMGMT_IOC_DEVICE_INFO),
-        (LPVOID)&device_info,
+        value,
         sizeof(XCLMGMT_IOC_DEVICE_INFO),
         &bytes,
         NULL);
 
     if (!status || bytes != sizeof(XCLMGMT_IOC_DEVICE_INFO))
       throw std::runtime_error("DeviceIoControl XCLMGMT_OID_DEVICE_INFO failed");
+  }
+
+  void
+  get_rom_info(FeatureRomHeader* value)
+  {
+    XCLMGMT_IOC_DEVICE_INFO device_info;
+    get_device_info(&device_info);
 
     std::memcpy(value, &device_info.rom_hdr, sizeof(FeatureRomHeader));
   }
+
 
 }; // struct mgmt
 
@@ -267,6 +273,15 @@ write_bar(xclDeviceHandle hdl, uint64_t addr, const void* buf, uint64_t len)
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "write_bar()");
   auto mgmt = get_mgmt_object(hdl);
   mgmt->write_bar(addr, buf, len);
+}
+
+void
+get_device_info(xclDeviceHandle hdl, XCLMGMT_IOC_DEVICE_INFO* value)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_device_info()");
+  auto mgmt = get_mgmt_object(hdl);
+  mgmt->get_device_info(value);
 }
 
 void

@@ -896,6 +896,24 @@ done:
     value->DDRChannelSize = device_info.DDRChannelSize;
   }
 
+  void
+  get_device_info(XOCL_DEVICE_INFORMATION* value)
+  {
+    XOCL_STAT_CLASS stat_class =  XoclStatDevice;
+
+    DWORD bytes = 0;
+    auto status = DeviceIoControl(m_dev,
+        IOCTL_XOCL_STAT,
+        &stat_class, sizeof(stat_class),
+        value, sizeof(XOCL_DEVICE_INFORMATION),
+        &bytes,
+        nullptr);
+
+    if (!status || bytes != sizeof(XOCL_DEVICE_INFORMATION))
+      throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_device_info) failed");
+  }
+
+
 }; // struct shim
 
 shim*
@@ -918,7 +936,16 @@ get_rom_info(xclDeviceHandle hdl, FeatureRomHeader* value)
   shim->get_rom_info(value);
 }
 
+void
+get_device_info(xclDeviceHandle hdl, XOCL_DEVICE_INFORMATION* value)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_device_info()");
+  auto shim = get_shim_object(hdl);
+  shim->get_device_info(value);
 }
+
+} // userpf
 
 // Basic
 unsigned int

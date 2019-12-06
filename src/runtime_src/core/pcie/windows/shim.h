@@ -20,6 +20,7 @@
 #include "core/pcie/windows/config.h"
 #include "xrt.h"
 #include "core/common/xrt_profiling.h"
+#include "core/pcie/driver/windows/include/XoclUser_INTF.h"
 
 struct FeatureRomHeader;
 
@@ -28,6 +29,11 @@ namespace userpf {
 XRT_CORE_PCIE_WINDOWS_EXPORT
 void
 get_rom_info(xclDeviceHandle hdl, FeatureRomHeader* value);
+
+
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_device_info(xclDeviceHandle hdl, XOCL_DEVICE_INFORMATION* value);
 
 } // userpf
 
