@@ -95,10 +95,10 @@ rom(const device_type* device, qr_type qr, const std::type_info&, boost::any& va
     value = std::string(reinterpret_cast<const char*>(hdr.VBNVName));
     return;
   case qr_type::QR_ROM_DDR_BANK_SIZE:
-    value = hdr.DDRChannelSize;
+    value = static_cast<uint64_t>(hdr.DDRChannelSize);
     return;
   case qr_type::QR_ROM_DDR_BANK_COUNT_MAX:
-    value = hdr.DDRChannelCount;
+    value = static_cast<uint64_t>(hdr.DDRChannelCount);
     return;
   case qr_type::QR_ROM_FPGA_NAME:
     value = std::string(reinterpret_cast<const char*>(hdr.FPGAPartName));
