@@ -78,6 +78,7 @@ else()
     boost_filesystem
     boost_system
     boost_program_options
+    pthread
     uuid
     dl
   )
