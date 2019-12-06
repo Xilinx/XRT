@@ -35,9 +35,29 @@ XRT_CORE_PCIE_WINDOWS_EXPORT
 void
 get_device_info(xclDeviceHandle hdl, XOCL_DEVICE_INFORMATION* value);
 
+/**
+ * get_mem_topology() - Get xclbin mem topology from driver
+ *
+ * @hdl: device handle
+ * @buffer: buffer to hold the mem topology section, ignored if nullptr
+ * @size: size of buffer
+ * @size_ret: returns actual size in bytes required for buffer, ignored if nullptr
+ */
 XRT_CORE_PCIE_WINDOWS_EXPORT
 void
-get_mem_topology(xclDeviceHandle hdl, char* buffer, size_t len);
+get_mem_topology(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret);
+
+/**
+ * get_ip_layout() - Get xclbin ip layout  from driver
+ *
+ * @hdl: device handle
+ * @buffer: buffer to hold the iplayout section, ignored if nullptr
+ * @size: size of buffer
+ * @size_ret: returns actual size in bytes required for buffer, ignored if nullptr
+ */
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_ip_layout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret);
 
 } // userpf
 

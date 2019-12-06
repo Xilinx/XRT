@@ -914,25 +914,86 @@ done:
   }
 
   void
-  get_mem_topology(char* buffer, size_t len)
+  get_mem_topology(char* buffer, size_t size, size_t* size_ret)
   {
     XOCL_MEM_TOPOLOGY_INFORMATION mem_info;
-    XOCL_STAT_CLASS stat_class =  XoclStatMemTopology;
+    XOCL_STAT_CLASS_ARGS statargs;
+
+    statargs.StatClass = XoclStatMemTopology;
 
     DWORD bytes = 0;
     auto status = DeviceIoControl(m_dev,
         IOCTL_XOCL_STAT,
-        &stat_class, sizeof(stat_class),
+        &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
         &mem_info, sizeof(XOCL_MEM_TOPOLOGY_INFORMATION),
         &bytes,
         nullptr);
 
-    if (!status || bytes != sizeof(XOCL_MEM_TOPOLOGY_INFORMATION) || len < sizeof(XOCL_MEM_TOPOLOGY_INFORMATION))
+    if (!status || bytes != sizeof(XOCL_MEM_TOPOLOGY_INFORMATION))
       throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_mem_topology) failed");
+
+    size_t mem_topology_size = sizeof(XOCL_MEM_TOPOLOGY_INFORMATION);
+
+    if (size_ret)
+      *size_ret = mem_topology_size;
+
+    if (!buffer)
+      return;  // size_ret has required size
+
+    if (size < mem_topology_size)
+      throw std::runtime_error
+        ("DeviceIoControl IOCTL_XOCL_STAT (get_mem_topology) failed "
+         "size (" + std::to_string(size) + ") of buffer too small, "
+         "required size (" + std::to_string(mem_topology_size) + ")");
 
     std::memcpy(buffer, &mem_info, sizeof(XOCL_MEM_TOPOLOGY_INFORMATION));
   }
 
+  void
+  get_ip_layout(char* buffer, size_t size, size_t* size_ret)
+  {
+    XU_IP_LAYOUT iplayout_hdr;
+    XOCL_STAT_CLASS_ARGS statargs;
+
+    statargs.StatClass =  XoclStatIpLayout;
+
+    DWORD bytes = 0;
+    auto status = DeviceIoControl(m_dev,
+        IOCTL_XOCL_STAT,
+        &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+        &iplayout_hdr, sizeof(XU_IP_LAYOUT),
+        &bytes,
+        nullptr);
+
+    if (!status || bytes != sizeof(XU_IP_LAYOUT))
+      throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_ip_layout hdr) failed");
+
+    DWORD ip_layout_size = sizeof(XU_IP_LAYOUT) + iplayout_hdr.m_count * sizeof(XU_IP_DATA);
+
+    if (size_ret)
+      *size_ret = ip_layout_size;
+
+    if (!buffer)
+      return;  // size_ret has the required size
+
+    if (size < ip_layout_size)
+      throw std::runtime_error
+        ("DeviceIoControl IOCTL_XOCL_STAT (get_ip_layout) failed "
+         "size (" + std::to_string(size) + ") of buffer too small, "
+         "required size (" + std::to_string(ip_layout_size) + ")");
+
+    auto iplayout = reinterpret_cast<PXU_IP_LAYOUT>(buffer);
+
+    status = DeviceIoControl(m_dev,
+       IOCTL_XOCL_STAT,
+       &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+       iplayout, ip_layout_size,
+       &bytes,
+       nullptr);
+
+    if (!status || bytes != ip_layout_size)
+      throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_ip_layout) failed");
+  }
 
 
 }; // struct shim
@@ -967,12 +1028,21 @@ get_device_info(xclDeviceHandle hdl, XOCL_DEVICE_INFORMATION* value)
 }
 
 void
-get_mem_topology(xclDeviceHandle hdl, char* buffer, size_t len)
+get_mem_topology(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
 {
   xrt_core::message::
-    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_device_info()");
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_mem_topology()");
   auto shim = get_shim_object(hdl);
-  shim->get_mem_topology(buffer, len);
+  shim->get_mem_topology(buffer, size, size_ret);
+}
+
+void
+get_ip_layout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_ip_layout()");
+  auto shim = get_shim_object(hdl);
+  shim->get_ip_layout(buffer, size, size_ret);
 }
 
 } // userpf
