@@ -208,7 +208,7 @@ xclbin_fcn(const device_type* device, qr_type qr, const std::type_info&, boost::
     userpf::get_mem_topology(uhdl, nullptr, 0, &size_ret);
     std::vector<char> data(size_ret);
     userpf::get_mem_topology(uhdl, data.data(), size_ret, nullptr);
-    value = data;
+    value = std::move(data);
     return;
   }
 
@@ -217,7 +217,7 @@ xclbin_fcn(const device_type* device, qr_type qr, const std::type_info&, boost::
     userpf::get_ip_layout(uhdl, nullptr, 0, &size_ret);
     std::vector<char> data(size_ret);
     userpf::get_ip_layout(uhdl, data.data(), size_ret, nullptr);
-    value = data;
+    value = std::move(data);
     return;
   }
 
