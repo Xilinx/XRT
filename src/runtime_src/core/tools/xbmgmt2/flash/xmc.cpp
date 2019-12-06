@@ -59,9 +59,9 @@ XMC_Flasher::XMC_Flasher(unsigned int device_index)
             goto nosup;
         }
     }
-
-    mRegBase = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_XMC_REG_BASE);
-    if (mRegBase == xrt_core::invalid_query_value<uint64_t>())
+    // always takes the false branch so commenting this out for now
+    // mRegBase = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_XMC_REG_BASE);
+    // if (mRegBase == xrt_core::invalid_query_value<uint64_t>())
 	    mRegBase = XMC_REG_BASE;
 
     val = readReg(XMC_REG_OFF_MAGIC);

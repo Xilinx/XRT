@@ -97,14 +97,6 @@ rom(const device_type* device, qr_type qr, const std::type_info&, boost::any& va
   case qr_type::QR_ROM_FPGA_NAME:
     value = std::string(reinterpret_cast<const char*>(hdr.FPGAPartName));
     return;
-  }
-
-  if (device->get_user_handle())
-    throw std::runtime_error("device_windows::rom() unexpected qr("
-                             + std::to_string(qr)
-                             + ") for userpf");
-
-  switch (qr) {
   case qr_type::QR_ROM_UUID:
     value = std::string(reinterpret_cast<const char*>(hdr.uuid),16);
     return;
@@ -173,7 +165,18 @@ info_mgmt(const device_type* device, qr_type qr, const std::type_info&, boost::a
   }
 
   switch (qr) {
-  case 0:
+  case qr_type::QR_PCIE_VENDOR:
+    value = info.pcie_info.vendor;
+    return;
+  case qr_type::QR_PCIE_DEVICE:
+    value = info.pcie_info.device;
+    return;
+  case qr_type::QR_PCIE_SUBSYSTEM_VENDOR:
+    value = info.pcie_info.vubsystem_vendor;
+    return;
+  case qr_type::QR_PCIE_SUBSYSTEM_ID:
+    value = info.pcie_info.subsystem_device;
+    return;
   default:
     throw std::runtime_error("device_windows::info_mgmt() unexpected qr " + std::to_string(qr));
   }

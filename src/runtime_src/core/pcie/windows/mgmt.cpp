@@ -157,7 +157,7 @@ struct mgmt
         &bytes,
         NULL);
 
-    if (!status || bytes != sizeof(XCLMGMT_IOC_DEVICE_INFO))
+    if (!status)// || bytes != sizeof(XCLMGMT_IOC_DEVICE_INFO))
       throw std::runtime_error("DeviceIoControl XCLMGMT_OID_DEVICE_INFO failed");
   }
 
