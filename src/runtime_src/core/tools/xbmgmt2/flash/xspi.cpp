@@ -276,8 +276,9 @@ static void clearBuffers() {
 XSPI_Flasher::XSPI_Flasher(unsigned int device_index)
   : m_device(xrt_core::get_mgmtpf_device(device_index))
 {
-  flash_base = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_FLASH_BAR_OFFSET);
-  if (flash_base == xrt_core::invalid_query_value<uint64_t>())
+  // always takes the false branch even on linux, commenting out for now
+  // flash_base = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_FLASH_BAR_OFFSET);
+  // if (flash_base == xrt_core::invalid_query_value<uint64_t>())
     flash_base = FLASH_BASE;
 }
 
@@ -506,6 +507,7 @@ int XSPI_Flasher::xclUpgradeFirmwareXSpi(std::istream& mcsStream, int index) {
     bool endRecordFound = false;
 
     int lineno = 0;
+	std::cout << "Looking for ELA records...\n";
     while (!mcsStream.eof() && !endRecordFound) {
         lineno++;
         std::string line;

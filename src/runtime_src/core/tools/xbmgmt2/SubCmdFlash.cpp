@@ -59,23 +59,23 @@ static void scan_devices(bool verbose, bool json)
       return;
 
   DSAInfo board = f.getOnBoardDSA();
-  std::vector<DSAInfo> installedDSA = f.getInstalledDSA();
-  BoardInfo info;
-  f.getBoardInfo(info);
+  //std::vector<DSAInfo> installedDSA = f.getInstalledDSA();
+  //BoardInfo info;
+  // f.getBoardInfo(info);
   std::cout << "Card [" << bdf2index() << "]\n";
   std::cout << "\tCard type:\t\t" << board.board << "\n";
   std::cout << "\tFlash type:\t\t" << f.sGetFlashType() << "\n";
   std::cout << "\tFlashable partition running on FPGA:" << "\n";
   std::cout << "\t\t" << board << "\n";
-  std::cout << "\tCard name\t\t\t" << info.mName << "\n";
-  std::cout << "\tCard S/N: \t\t\t" << info.mSerialNum << "\n";
-  std::cout << "\tConfig mode: \t\t" << info.mConfigMode << "\n";
-  std::cout << "\tFan presence:\t\t" << info.mFanPresence << "\n";
-  std::cout << "\tMax power level:\t\t" << info.mMaxPower << "\n";
-  std::cout << "\tMAC address0:\t\t" << info.mMacAddr0 << "\n";
-  std::cout << "\tMAC address1:\t\t" << info.mMacAddr1 << "\n";
-  std::cout << "\tMAC address2:\t\t" << info.mMacAddr2 << "\n";
-  std::cout << "\tMAC address3:\t\t" << info.mMacAddr3 << "\n";
+  // std::cout << "\tCard name\t\t\t" << info.mName << "\n";
+  // std::cout << "\tCard S/N: \t\t\t" << info.mSerialNum << "\n";
+  // std::cout << "\tConfig mode: \t\t" << info.mConfigMode << "\n";
+  // std::cout << "\tFan presence:\t\t" << info.mFanPresence << "\n";
+  // std::cout << "\tMax power level:\t\t" << info.mMaxPower << "\n";
+  // std::cout << "\tMAC address0:\t\t" << info.mMacAddr0 << "\n";
+  // std::cout << "\tMAC address1:\t\t" << info.mMacAddr1 << "\n";
+  // std::cout << "\tMAC address2:\t\t" << info.mMacAddr2 << "\n";
+  // std::cout << "\tMAC address3:\t\t" << info.mMacAddr3 << "\n";
 
 }
 
@@ -95,13 +95,12 @@ static void update_shell(unsigned index, std::string flashType,
     if(!flasher.isValid())
         return;
 
-    if (!primary.empty())
+    if (primary.empty())
         return;
 
     pri = std::make_shared<firmwareImage>(primary.c_str(), MCS_FIRMWARE_PRIMARY);
     if (pri->fail())
         return;
-
     if (!secondary.empty()) {
         sec = std::make_shared<firmwareImage>(secondary.c_str(),
             MCS_FIRMWARE_SECONDARY);
@@ -110,6 +109,8 @@ static void update_shell(unsigned index, std::string flashType,
     }
 
     flasher.upgradeFirmware(flashType, pri.get(), sec.get());
+    std::cout << "Shell is updated succesfully\n";
+    std::cout << "Cold reboot machine to load new shell on card" << std::endl;
 }
 
 static void update_SC(unsigned index, const std::string& file)
@@ -324,7 +325,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
     po::options_description shellDesc("shell options");
     shellDesc.add_options()
       ("path", boost::program_options::value<std::string>(&file), "path of shell file")
-      ("card", boost::program_options::value<std::string>(&bdf), "bdf of the card")
+      ("card", boost::program_options::value<std::string>(&bdf), "index of the card") //change this to bdf later
       ("type", boost::program_options::value<std::string>(&flash_type), "flash_type")
     ;
 

@@ -34,7 +34,6 @@ Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
 {
     std::string err;
     E_FlasherType type = E_FlasherType::UNKNOWN;
-
     if (typeStr.empty())
         typeStr = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_F_FLASH_TYPE);
     if (typeStr.empty())
@@ -210,31 +209,32 @@ Flasher::Flasher(unsigned int index) : mFRHeader{}
         return;
     }
 
-    bool is_mfg = false;
-    is_mfg = xrt_core::query_device<bool>(m_device, xrt_core::device::QR_IS_MFG);
+    //bool is_mfg = false;
+    // is_mfg = xrt_core::query_device<bool>(dev, xrt_core::device::QR_IS_MFG);
 
-    std::vector<char> feature_rom;
-    feature_rom = xrt_core::query_device<std::vector<char>>(m_device, xrt_core::device::QR_ROM_RAW);
-    if (feature_rom != xrt_core::invalid_query_value<std::vector<char>>())
-    {
-        memcpy(&mFRHeader, feature_rom.data(), sizeof(struct FeatureRomHeader));
-        // Something funny going on here. There must be a strange line ending
-        // character. Using "<" will check for a match that EntryPointString
-        // starts with magic char sequence "xlnx".
-        if(std::string(reinterpret_cast<const char*>(mFRHeader.EntryPointString))
-            .compare(0, 4, MAGIC_XLNX_STRING) != 0)
-        {
-            std::cout << "ERROR: Failed to detect feature ROM." << std::endl;
-        }
-    }
-    else if (is_mfg)
-    {
-        dev->read(MFG_REV_OFFSET, &mGoldenVer, sizeof(mGoldenVer));
-    }
-    else
-    {
-        std::cout << "ERROR: card not supported." << std::endl;
-    }
+    // std::vector<char> feature_rom;
+    // feature_rom = xrt_core::query_device<std::vector<char>>(dev, xrt_core::device::QR_ROM_RAW);
+    // if (feature_rom != xrt_core::invalid_query_value<std::vector<char>>())
+    // {
+    //     memcpy(&mFRHeader, feature_rom.data(), sizeof(struct FeatureRomHeader));
+    //     // Something funny going on here. There must be a strange line ending
+    //     // character. Using "<" will check for a match that EntryPointString
+    //     // starts with magic char sequence "xlnx".
+    //     if(std::string(reinterpret_cast<const char*>(mFRHeader.EntryPointString))
+    //         .compare(0, 4, MAGIC_XLNX_STRING) != 0)
+    //     {
+    //         std::cout << "ERROR: Failed to detect feature ROM." << std::endl;
+    //     }
+    // }
+    // else if (is_mfg)
+    //if (is_mfg)
+    //{
+    //    dev->read(MFG_REV_OFFSET, &mGoldenVer, sizeof(mGoldenVer));
+    //}
+    //else
+    //{
+    //    std::cout << "ERROR: card not supported." << std::endl;
+    //}
     m_device = dev; // Successfully initialized
 }
 
@@ -335,12 +335,17 @@ DSAInfo Flasher::getOnBoardDSA()
         ss << "xilinx_" << board_name << "_GOLDEN_" << mGoldenVer;
         vbnv = ss.str();
     }
-    else if (mFRHeader.VBNVName[0] != '\0')
+    //else if (mFRHeader.VBNVName[0] != '\0')
+    //{
+    //    vbnv = std::string(reinterpret_cast<char *>(mFRHeader.VBNVName));
+    //    ts = mFRHeader.TimeSinceEpoch;
+    //}
+    else if (uuid != xrt_core::invalid_query_value<std::string>())
     {
-        vbnv = std::string(reinterpret_cast<char *>(mFRHeader.VBNVName));
-        ts = mFRHeader.TimeSinceEpoch;
+        vbnv = xrt_core::query_device<std::string>(m_device, xrt_core::device::QR_ROM_VBNV);
+        ts = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_ROM_TIME_SINCE_EPOCH);
     }
-    else if (uuid == xrt_core::invalid_query_value<std::string>())
+    else
     {
         std::cout << "ERROR: Platform name not found" << std::endl;
     }

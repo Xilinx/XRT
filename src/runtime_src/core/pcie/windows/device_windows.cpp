@@ -43,7 +43,7 @@ not_implemented(const device_type*, qr_type qr, const std::type_info&, boost::an
 static void
 flash_type(const device_type*, qr_type, const std::type_info&, boost::any& value)
 {
-  value = "SPI";
+  value = std::string("spi");
 }
 
 static void

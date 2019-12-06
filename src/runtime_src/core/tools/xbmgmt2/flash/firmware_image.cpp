@@ -617,7 +617,7 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
         in_file.seekg(0);
         in_file.read(mBuf, bufsize);
     }
-    this->rdbuf()->pubsetbuf(mBuf, bufsize);
+    this->str(mBuf);
 }
 
 firmwareImage::~firmwareImage()
