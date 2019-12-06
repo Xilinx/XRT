@@ -48,7 +48,7 @@ static void
 xmc(const device_type*, qr_type qr, const std::type_info&, boost::any& value)
 {
   if(qr == xrt_core::device::QR_XMC_STATUS)
-    value = 1;
+    value = (uint64_t)1;
   if(value.empty())
     throw std::runtime_error("Invalid query value");
 }
@@ -163,6 +163,8 @@ info_mgmt(const device_type* device, qr_type qr, const std::type_info&, boost::a
     auto ret = info_map.emplace(device,init_device_info(device));
     it = ret.first;
   }
+  
+  auto& info = (*it).second;
 
   switch (qr) {
   case qr_type::QR_PCIE_VENDOR:
@@ -172,7 +174,7 @@ info_mgmt(const device_type* device, qr_type qr, const std::type_info&, boost::a
     value = info.pcie_info.device;
     return;
   case qr_type::QR_PCIE_SUBSYSTEM_VENDOR:
-    value = info.pcie_info.vubsystem_vendor;
+    value = info.pcie_info.subsystem_vendor;
     return;
   case qr_type::QR_PCIE_SUBSYSTEM_ID:
     value = info.pcie_info.subsystem_device;
