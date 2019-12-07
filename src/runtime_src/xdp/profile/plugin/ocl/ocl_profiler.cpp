@@ -24,7 +24,7 @@
 #include <chrono>
 
 #include "ocl_profiler.h"
-#include "xdp/profile/config.h"
+#include "xdp/profile/profile_config.h"
 #include "xdp/profile/core/rt_profile.h"
 #include "xdp/profile/device/xdp_xrt_device.h"
 #include "xdp/profile/device/tracedefs.h"

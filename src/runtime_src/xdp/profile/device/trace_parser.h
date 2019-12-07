@@ -26,8 +26,8 @@
 #include <fstream>
 #include <CL/opencl.h>
 #include "xclperf.h"
-#include "../collection/results.h"
-#include "../config.h"
+#include "xdp/profile/collection/results.h"
+#include "xdp/profile/profile_config.h"
 #include "xdp/profile/plugin/base_plugin.h"
 #include "xdp/profile/core/rt_util.h"
 

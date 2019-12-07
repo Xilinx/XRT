@@ -134,6 +134,19 @@ install(TARGETS xdp
   LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib
   RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
 
+# oclxdp
+
+add_library(oclxdp SHARED ""
+  $<TARGET_OBJECTS:xdpobj>
+  )
+add_dependencies(oclxdp xdp xilinxopencl)
+target_link_libraries (oclxdp xdp xilinxopencl)
+
+install(TARGETS oclxdp
+  ARCHIVE DESTINATION ${XRT_INSTALL_DIR}/lib
+  LIBRARY DESTINATION ${XRT_INSTALL_DIR}/lib
+  RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
+
 # install (FILES "${XRT_XDP_PROFILE_XMA_PLUGIN_DIR}/xma_profile.h" DESTINATION ${XRT_INSTALL_INCLUDE_DIR})
 
 # Only install these files for PCIe device for now, which is .
