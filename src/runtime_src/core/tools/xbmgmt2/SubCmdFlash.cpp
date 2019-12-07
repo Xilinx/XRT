@@ -59,23 +59,32 @@ static void scan_devices(bool verbose, bool json)
       return;
 
   DSAInfo board = f.getOnBoardDSA();
-  //std::vector<DSAInfo> installedDSA = f.getInstalledDSA();
-  //BoardInfo info;
-  // f.getBoardInfo(info);
-  std::cout << "Card [" << bdf2index() << "]\n";
+  std::vector<DSAInfo> installedDSA = f.getInstalledDSA();
+  
+  BoardInfo info;
+  f.getBoardInfo(info);
+  std::cout << "Card [" << bdf2index() << "]:\n";
   std::cout << "\tCard type:\t\t" << board.board << "\n";
   std::cout << "\tFlash type:\t\t" << f.sGetFlashType() << "\n";
   std::cout << "\tFlashable partition running on FPGA:" << "\n";
   std::cout << "\t\t" << board << "\n";
-  // std::cout << "\tCard name\t\t\t" << info.mName << "\n";
-  // std::cout << "\tCard S/N: \t\t\t" << info.mSerialNum << "\n";
-  // std::cout << "\tConfig mode: \t\t" << info.mConfigMode << "\n";
-  // std::cout << "\tFan presence:\t\t" << info.mFanPresence << "\n";
-  // std::cout << "\tMax power level:\t\t" << info.mMaxPower << "\n";
-  // std::cout << "\tMAC address0:\t\t" << info.mMacAddr0 << "\n";
-  // std::cout << "\tMAC address1:\t\t" << info.mMacAddr1 << "\n";
-  // std::cout << "\tMAC address2:\t\t" << info.mMacAddr2 << "\n";
-  // std::cout << "\tMAC address3:\t\t" << info.mMacAddr3 << "\n";
+  std::cout << "\tFlashable partitions installed in system:\n";
+  if (!installedDSA.empty())
+	  std::cout << "\t\t" << installedDSA.front() << "\n";
+  else
+	  std::cout << "\t\tNone\n";
+
+  if (verbose) {
+	std::cout << "\tCard name\t\t\t" << info.mName << "\n";
+	std::cout << "\tCard S/N: \t\t\t" << info.mSerialNum << "\n";
+	std::cout << "\tConfig mode: \t\t" << info.mConfigMode << "\n";
+	std::cout << "\tFan presence:\t\t" << info.mFanPresence << "\n";
+	std::cout << "\tMax power level:\t\t" << info.mMaxPower << "\n";
+	std::cout << "\tMAC address0:\t\t" << info.mMacAddr0 << "\n";
+	std::cout << "\tMAC address1:\t\t" << info.mMacAddr1 << "\n";
+	std::cout << "\tMAC address2:\t\t" << info.mMacAddr2 << "\n";
+	std::cout << "\tMAC address3:\t\t" << info.mMacAddr3 << "\n";
+  }
 
 }
 

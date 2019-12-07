@@ -45,7 +45,7 @@
 XMC_Flasher::XMC_Flasher(unsigned int device_index)
   : m_device(xrt_core::get_mgmtpf_device(device_index))
 {
-    unsigned int val = 0;
+    uint64_t val = 0;
     mPktBufOffset = 0;
     mPkt = {};
 
@@ -53,15 +53,15 @@ XMC_Flasher::XMC_Flasher(unsigned int device_index)
     bool is_mfg = false;
     is_mfg = xrt_core::query_device<bool>(m_device, xrt_core::device::QR_IS_MFG);
     if (!is_mfg) {
-        val = xrt_core::query_device<unsigned int>(m_device, xrt_core::device::QR_XMC_STATUS);
-	if ((val == xrt_core::invalid_query_value<unsigned int>()) || !(val & 1)) {
+        val = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_XMC_STATUS);
+	if ((val == xrt_core::invalid_query_value<uint64_t>()) || !(val & 1)) {
             mProbingErrMsg << "Failed to detect XMC, xmc.bin not loaded";
             goto nosup;
         }
     }
-
-    mRegBase = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_XMC_REG_BASE);
-    if (mRegBase == xrt_core::invalid_query_value<uint64_t>())
+    // always takes the false branch so commenting this out for now
+    // mRegBase = xrt_core::query_device<uint64_t>(m_device, xrt_core::device::QR_XMC_REG_BASE);
+    // if (mRegBase == xrt_core::invalid_query_value<uint64_t>())
 	    mRegBase = XMC_REG_BASE;
 
     val = readReg(XMC_REG_OFF_MAGIC);
