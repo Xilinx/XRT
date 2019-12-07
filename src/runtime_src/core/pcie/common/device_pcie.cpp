@@ -43,9 +43,6 @@ xclDeviceHandle
 device_pcie::
 get_device_handle() const
 {
-  if (!m_userpf)
-    throw std::runtime_error("No device handle for mgmtpf");
-
   return m_handle;
 }
 
