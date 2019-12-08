@@ -55,6 +55,7 @@ namespace xdp {
 
   public:
     // Singleton instance
+    XDP_EXPORT
     static RTSingleton* Instance();
     cl_int getStatus() {
       return Status;

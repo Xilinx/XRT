@@ -18,6 +18,7 @@
 #ifndef _XDP_PROIFLE_XDP_XRT_DEVICE_H
 #define _XDP_PROIFLE_XDP_XRT_DEVICE_H
 
+#include "xdp/config.h"
 #include "xdp_base_device.h"
 #include "xrt/device/device.h"
 
@@ -29,6 +30,7 @@ class XrtDevice : public xdp::Device
   xrt::device* mXrtDevice;
    
 public:
+  XDP_EXPORT
   XrtDevice(xrt::device* xrtDevice);
   virtual ~XrtDevice();
 

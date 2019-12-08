@@ -64,6 +64,7 @@ namespace xdp {
 
     // Set device handle
     // NOTE: this is used by write, read, & traceRead
+    XDP_EXPORT
     void setDevice(xdp::Device* );
 
     // Debug IP layout

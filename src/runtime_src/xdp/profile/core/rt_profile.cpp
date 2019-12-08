@@ -14,6 +14,8 @@
  * under the License.
  */
 
+#define XDP_SOURCE
+
 #include "rt_profile.h"
 #include "rt_util.h"
 #include "trace_logger.h"

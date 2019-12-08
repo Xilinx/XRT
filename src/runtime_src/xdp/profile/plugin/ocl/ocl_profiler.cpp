@@ -14,6 +14,8 @@
  * under the License.
  */
 
+#define XDP_SOURCE
+
 #include <iostream>
 #include <fstream>
 #include <sstream>

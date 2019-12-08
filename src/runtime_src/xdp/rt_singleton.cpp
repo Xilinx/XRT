@@ -14,6 +14,8 @@
  * under the License.
  */
 
+#define XDP_SOURCE
+
 #include "rt_singleton.h"
 #include "xdp/appdebug/appdebug.h"
 
