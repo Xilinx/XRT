@@ -52,7 +52,6 @@ ReturnCodes main_(int argc, char** argv) {
   bool bVerbose = false;
   bool bTrace = false;
   bool bHelp = false;
-  bool bOverride = false;
 
   // Build our global options
   po::options_description globalOptions("Global options");
@@ -60,7 +59,6 @@ ReturnCodes main_(int argc, char** argv) {
     ("help", boost::program_options::bool_switch(&bHelp), "Help to use this program")
     ("verbose", boost::program_options::bool_switch(&bVerbose), "Turn on verbosity")
     ("trace", boost::program_options::bool_switch(&bTrace), "Enables code flow tracing")
-    ("override", boost::program_options::bool_switch(&bOverride), "Bypasses the development check for this executable")
     ("command", po::value<std::string>(), "command to execute")
     ("subArguments", po::value<std::vector<std::string> >(), "Arguments for command")
   ;
@@ -87,14 +85,6 @@ ReturnCodes main_(int argc, char** argv) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
     std::cerr << globalOptions << std::endl;
     return RC_ERROR_IN_COMMAND_LINE;
-  }
-
-  if (bOverride == false) {
-    std::cout << "\n===========================================================\n";
-    std::cout << "this tool is currently under development and currently is  \n"; 
-    std::cout << "not ready to be used in examining XRT drivers or platforms.\n";
-    std::cout << "===========================================================\n";
-    exit(0);
   }
 
   // Set the verbosity if enabled
