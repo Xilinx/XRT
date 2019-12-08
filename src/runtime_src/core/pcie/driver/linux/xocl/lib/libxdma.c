@@ -3629,15 +3629,18 @@ void *xdma_device_open(const char *mname, struct pci_dev *pdev, int *user_max,
 	rv = probe_engines(xdev);
 	if (rv)
 		goto err_engines;
-	/* re-determine user_max */
-	xdev->user_max = min(xdev->user_max, pci_msix_vec_count(pdev) -
-			xdev->c2h_channel_max - xdev->h2c_channel_max);
-	if (xdev->user_max < 0) {
-		rv = -EINVAL;
-		pr_err("Invalid number of interrupts. pci %d, h2c %d, c2h %d",
-			pci_msix_vec_count(pdev), xdev->h2c_channel_max,
-			xdev->c2h_channel_max);
-		goto err_enable_msix;
+	if (!(XOCL_DSA_IS_VERSAL(xcldev))) {
+		/* re-determine user_max */
+		xdev->user_max = min(xdev->user_max, pci_msix_vec_count(pdev) -
+				xdev->c2h_channel_max - xdev->h2c_channel_max);
+		if (xdev->user_max < 0) {
+			rv = -EINVAL;
+			pr_err("Invalid number of interrupts. "
+				"pci %d, h2c %d, c2h %d",
+				pci_msix_vec_count(pdev), xdev->h2c_channel_max,
+				xdev->c2h_channel_max);
+			goto err_enable_msix;
+		}
 	}
 
 	rv = enable_msi_msix(xdev, pdev);

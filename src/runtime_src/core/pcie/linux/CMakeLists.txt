@@ -13,8 +13,10 @@ file(GLOB XRT_PCIE_LINUX_PLUGIN_XDP_FILES
 file(GLOB XRT_PCIE_LINUX_FILES
   "*.h"
   "*.cpp"
+  "../common/system_pcie.cpp"
   "../common/device_pcie.cpp"
-  "../../common/device_core.cpp"
+  "../../common/system.cpp"
+  "../../common/device.cpp"
   )
 
 set(CMAKE_CXX_FLAGS "-DXCLHAL_MAJOR_VER=2 ${CMAKE_CXX_FLAGS}")

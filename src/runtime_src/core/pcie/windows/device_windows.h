@@ -17,32 +17,45 @@
 #ifndef DEVICE_WINDOWS_H
 #define DEVICE_WINDOWS_H
 
-// Please keep eternal include file dependencies to a minimum
-#include <boost/functional/factory.hpp>
 #include "common/device_pcie.h"
 
 namespace xrt_core {
-class device_windows : public xrt_core::device_pcie {
-  public:
-    struct IOCTLEntry {
-      uint64_t IOCTLValue;
-    };
 
-    const IOCTLEntry & get_IOCTL_entry( QueryRequest _eQueryRequest) const;
+class device_windows : public device_pcie
+{
+public:
+  struct IOCTLEntry {
+    std::function<void(const device_windows*, QueryRequest, const std::type_info&, boost::any&)> m_fcn;
+  };
 
-  protected:
-    virtual void read_device_dma_stats(uint64_t _deviceID, boost::property_tree::ptree &_pt) const;
-    virtual uint64_t get_total_devices() const;
-    virtual void query_device(uint64_t _deviceID, QueryRequest _eQueryRequest, const std::type_info & _typeInfo, boost::any &_returnValue) const;
+  const IOCTLEntry & get_IOCTL_entry( QueryRequest qr) const;
 
-  public:
-    device_windows();
-    virtual ~device_windows();
+  device_windows(id_type device_id, bool user);
+  ~device_windows();
 
-  private:
-    device_windows(const device_windows&);
-    device_windows& operator=(const device_windows&);
+  xclDeviceHandle
+  get_mgmt_handle() const
+  {
+    return m_mgmthdl;
+  }
+
+  xclDeviceHandle
+  get_user_handle() const
+  {
+    return get_device_handle();
+  }
+
+  // query functions
+  virtual void read_dma_stats(boost::property_tree::ptree &_pt) const;
+  virtual void query(QueryRequest qr, const std::type_info & tinfo, boost::any& value) const;
+
+  virtual void read(uint64_t addr, void* buf, uint64_t len) const;
+  virtual void write(uint64_t addr, const void* buf, uint64_t len) const;
+
+private:
+  xclDeviceHandle m_mgmthdl = XRT_NULL_HANDLE;
 };
-}
 
-#endif 
+} // xrt_core
+
+#endif

@@ -34,5 +34,7 @@
 #define MAX_PLUGINS             32//32 encoders+32 decoders+...
 
 #define INVALID_M1             -1
+#define STATS_WINDOW            4096.0f
+#define STATS_WINDOW_1          4095
 
 #endif

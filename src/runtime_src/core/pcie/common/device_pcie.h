@@ -17,25 +17,32 @@
 #ifndef DEVICE_PCIE_H
 #define DEVICE_PCIE_H
 
-// Please keep eternal include file dependencies to a minimum
-#include "common/device_core.h"
+#include "common/device.h"
 
 namespace xrt_core {
-class device_pcie : public xrt_core::device_core {
 
-  protected:
-    device_pcie();
-    virtual ~device_pcie();
+class device_pcie : public device
+{
+public:
+  device_pcie(id_type device_id, bool user);
+  ~device_pcie();
 
-  protected:
-    virtual uint64_t get_total_devices() const = 0;
-    virtual void get_devices(boost::property_tree::ptree &_pt) const;
-    virtual void get_device_info(uint64_t _deviceID, boost::property_tree::ptree &_pt) const;
+  virtual void
+  get_info(boost::property_tree::ptree& pt) const;
 
-  private:
-    device_pcie(const device_pcie&);
-    device_pcie& operator=(const device_pcie&);
+  /**
+   * get_device_handle() - Get underlying shim device handle
+   *
+   * Throws if called on non userof devices
+   */
+  xclDeviceHandle
+  get_device_handle() const;
+
+private:
+  bool m_userpf;
+  xclDeviceHandle m_handle = XRT_NULL_HANDLE;
 };
-}
 
-#endif /* CORE_SYSTEM_H */
+} // xrt_core
+
+#endif

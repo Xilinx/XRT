@@ -162,6 +162,7 @@ struct platform_device_id iores_id_table[] = {
 	{ XOCL_DEVNAME(XOCL_IORES0), (kernel_ulong_t)&iores_priv },
 	{ XOCL_DEVNAME(XOCL_IORES1), (kernel_ulong_t)&iores_priv },
 	{ XOCL_DEVNAME(XOCL_IORES2), (kernel_ulong_t)&iores_priv },
+	{ XOCL_DEVNAME(XOCL_IORES3), (kernel_ulong_t)&iores_priv },
 	{ },
 };
 

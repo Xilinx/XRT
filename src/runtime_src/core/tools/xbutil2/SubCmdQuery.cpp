@@ -20,7 +20,11 @@
 #include "XBReport.h"
 #include "XBDatabase.h"
 
-#include "XBUtilities.h"
+#include "common/system.h"
+#include "common/device.h"
+#include "common/xclbin_parser.h"
+
+#include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
@@ -31,9 +35,9 @@ namespace po = boost::program_options;
 #include <iostream>
 
 // ======= R E G I S T E R   T H E   S U B C O M M A N D ======================
-#include "SubCmd.h"
-static const unsigned int registerResult = 
-                    register_subcommand("query", 
+#include "tools/common/SubCmd.h"
+static const unsigned int registerResult =
+                    register_subcommand("query",
                                         "Status of the system and device(s)",
                                         subCmdQuery);
 // =============================================================================
@@ -51,14 +55,14 @@ int subCmdQuery(const std::vector<std::string> &_options)
   }
   XBU::verbose("SubCommand: query");
   // -- Retrieve and parse the subcommand options -----------------------------
-  uint64_t card = 0;
+  xrt_core::device::id_type card = 0;
   uint64_t region = 0;
   bool help = false;
 
   po::options_description queryDesc("query options");
   queryDesc.add_options()
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
-    (",d", boost::program_options::value<uint64_t>(&card), "Card to be examined.")
+    (",d", boost::program_options::value<decltype(card)>(&card), "Card to be examined.")
     (",r", boost::program_options::value<uint64_t>(&region), "Card region.")
   ;
 
@@ -89,7 +93,17 @@ int subCmdQuery(const std::vector<std::string> &_options)
   // Report system configuration and XRT information
   XBReport::report_system_config();
   XBReport::report_xrt_info();
-  
+
+  auto device = xrt_core::get_userpf_device(card);
+  auto iplbuf = xrt_core::query_device<std::vector<char>>(device, xrt_core::device::QR_IP_LAYOUT_RAW);
+  auto iplayout = reinterpret_cast<const ip_layout*>(iplbuf.data());
+  auto cus = xrt_core::xclbin::get_cus(iplayout);
+
+  int idx = 0;
+  for (auto cu : cus) {
+    std::cout << "CU[ " << idx++ << "]: @" << std::hex << cu << std::dec << "\n";
+  }
+
   // Gather the complete system information for ALL devices
   boost::property_tree::ptree pt;
   XBDatabase::create_complete_device_tree(pt);
@@ -97,4 +111,3 @@ int subCmdQuery(const std::vector<std::string> &_options)
   XBU::trace_print_tree("Complete Device Tree", pt);
   return registerResult;
 }
-

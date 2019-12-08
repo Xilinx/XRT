@@ -182,7 +182,7 @@ typedef struct _XOCL_MAP_BAR_ARGS {
 
 typedef struct _XOCL_MAP_BAR_RESULT {
     PVOID       Bar;           // OUT: User VA of mapped buffer
-    ULONG       BarLength;     // OUT: Length of mapped buffer
+    ULONGLONG       BarLength;     // OUT: Length of mapped buffer
 } XOCL_MAP_BAR_RESULT, *PXOCL_MAP_BAR_RESULT;
 
 //
@@ -201,6 +201,7 @@ typedef enum _XOCL_STAT_CLASS {
     XoclStatIpLayout,
     XoclStatKds,
     XoclStatKdsCU,
+    XoclStatRomInfo,
 
 } XOCL_STAT_CLASS, *PXOCL_STAT_CLASS;
 
@@ -331,6 +332,16 @@ typedef struct _XOCL_KDS_CU_INFORMATION {
 } XOCL_KDS_CU_INFORMATION, *PXOCL_KDS_CU_INFORMATION;
 
 //
+// XoclStatRomInfo
+//
+typedef struct _XOCL_ROM_INFORMATION {
+	UCHAR FPGAPartName[64];
+	UCHAR VBNVName[64];
+	uint8_t DDRChannelCount;
+	uint8_t DDRChannelSize;
+} XOCL_ROM_INFORMATION, *PXOCL_ROM_INFORMATION;
+
+//
 // IOCTL_XOCL_PREAD_BO
 //
 // Inbuffer =  XOCL_PREAD_BO
@@ -408,3 +419,25 @@ typedef struct _XOCL_EXECPOLL_ARGS {
     ULONG DelayInMS;        // IN: Poll delay in microseconds
 } XOCL_EXECPOLL_ARGS, *PXOCL_EXECPOLL_ARGS;
 
+//
+// IOCTL_XOCL_PREAD_UNMGD
+// THE IOCTL IS NOT IMPLEMENTED
+// RETURN - STATUS_NOT_IMPLEMENTED
+
+#define IOCTL_XOCL_PREAD_UNMGD         CTL_CODE(FILE_DEVICE_XOCL_USER, 2105, METHOD_OUT_DIRECT, FILE_READ_DATA)
+
+typedef struct _XOCL_PREAD_BO_UNMGD_ARGS {
+    ULONGLONG   Offset;     // IN: BO offset to read from 
+} XOCL_PREAD_BO_UNMGD_ARGS, *PXOCL_PREAD_BO_UNMGD_ARGS;
+
+
+//
+// IOCTL_XOCL_PWRITE_UNMGD
+// DRM_IOCTL_XOCL_PWRITE_UNMGD
+// THE IOCTL IS NOT IMPLEMENTED
+
+#define IOCTL_XOCL_PWRITE_UNMGD        CTL_CODE(FILE_DEVICE_XOCL_USER, 2106, METHOD_IN_DIRECT, FILE_WRITE_DATA)
+
+typedef struct _XOCL_PWRITE_BO_UNMGD_ARGS {
+    ULONGLONG   Offset;     // IN: BI offset to write to 
+} XOCL_PWRITE_BO_UNMGD_ARGS, *PXOCL_PWRITE_BO_UNMGD_ARGS;

@@ -39,6 +39,17 @@ typedef int (*program_shell_fn)(size_t index, int *resp);
 typedef int (*read_p2p_bar_addr_fn)(size_t index, const struct xcl_mailbox_p2p_bar_addr *addr, int *resp);
 
 /*
+ * plugin reports some hooks require special treatment from mpd
+ */
+enum MPD_PLUGIN_CAP
+{
+    /*
+     * plugin itself can't fulfil the reset, need mpd help
+     */
+    CAP_RESET_NEED_HELP = 0,
+};
+
+/*
  * hook functions or cookie set by the plugin
  */
 struct mpd_plugin_callbacks {
@@ -90,6 +101,10 @@ struct mpd_plugin_callbacks {
         program_shell_fn program_shell; //14 optional
         read_p2p_bar_addr_fn read_p2p_bar_addr; //15 optional
     } mb_req;
+    /*
+     * bitmap of MPD_PLUGIN_CAP
+     */
+    uint64_t plugin_cap;
 };
 
 #define INIT_FN_NAME    "init"
