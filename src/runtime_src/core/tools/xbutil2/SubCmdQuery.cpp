@@ -107,7 +107,30 @@ void pu1_query_report()
     std::cout << boost::format("  %-16s : %s") % "VBNV" % ptRom.get<std::string>("vbnv") << std::endl;
     std::cout << boost::format("  %-16s : %s") % "FPGA" % ptRom.get<std::string>("fpga_name") << std::endl;
 
-    std::cout << "----------------------------------------------------------------" << std::endl;
+    std::cout << std::endl;
+    std::cout << "Accelerator"  << std::endl;
+
+  try {
+    auto iplbuf = xrt_core::query_device<std::vector<char>>(pDevice, xrt_core::device::QR_IP_LAYOUT_RAW);
+    auto iplayout = reinterpret_cast<const ip_layout*>(iplbuf.data());
+    auto cus = xrt_core::xclbin::get_cus(iplayout);
+
+    std::cout << "  Compute Unit(s)" << std::endl;
+
+    if (cus.size() == 0) {
+      std::cout << "    No compute units found." << std::endl;
+    } else {
+      int index = 0;
+      for (auto cu : cus) {
+        std::cout << boost::format("    [%d] - Base Address : 0x%x") % index++ % cu << std::endl;
+      }
+    }
+  } catch (...) {
+    std::cout << "   Accelerator metadata (e.g., xclbin) unavailable." <<  std::endl;
+  }
+
+  std::cout << "----------------------------------------------------------------" << std::endl;
+
   }
 }
 
@@ -156,18 +179,6 @@ int subCmdQuery(const std::vector<std::string> &_options)
   XBReport::report_xrt_info();
 
   pu1_query_report();
-
-// It is believed that if there isn't an xclbin load a boost cast will fail.
-// Needs to be investigated more.  In the meantime, commenting out this code.
-//  auto device = xrt_core::get_userpf_device(card);
-//  auto iplbuf = xrt_core::query_device<std::vector<char>>(device, xrt_core::device::QR_IP_LAYOUT_RAW);
-//  auto iplayout = reinterpret_cast<const ip_layout*>(iplbuf.data());
-//  auto cus = xrt_core::xclbin::get_cus(iplayout);
-//
-//  int idx = 0;
-//  for (auto cu : cus) {
-//    std::cout << "CU[ " << idx++ << "]: @" << std::hex << cu << std::dec << "\n";
-//  }
 
   // Gather the complete system information for ALL devices
   boost::property_tree::ptree pt;
