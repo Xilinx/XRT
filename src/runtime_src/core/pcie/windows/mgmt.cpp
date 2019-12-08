@@ -293,4 +293,9 @@ get_rom_info(xclDeviceHandle hdl, FeatureRomHeader* value)
   mgmt->get_rom_info(value);
 }
 
+void
+get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[3])
+{
+}
+
 } // mgmt
