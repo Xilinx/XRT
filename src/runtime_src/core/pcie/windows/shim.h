@@ -59,6 +59,10 @@ XRT_CORE_PCIE_WINDOWS_EXPORT
 void
 get_ip_layout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret);
 
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[3]);
+
 } // userpf
 
 
