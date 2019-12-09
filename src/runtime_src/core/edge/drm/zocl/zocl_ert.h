@@ -185,6 +185,14 @@ struct zocl_ert_ops {
 	 * Notify host the status of a command is changed.
 	 */
 	void (*notify_host)(struct zocl_ert_dev *ert, int slot_idx);
+
+	/**
+	 * @updata_cmd:
+	 *
+	 * Update the data section of a CQ slot
+	 */
+	void (*update_cmd)(struct zocl_ert_dev *ert, int idx,
+			    void *data, int sz);
 };
 
 struct zocl_ert_info {
