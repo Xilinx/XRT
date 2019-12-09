@@ -33,6 +33,10 @@
 #define SCHED_UNUSED __attribute__((unused))
 #endif
 
+#ifndef ERT_VERSION
+#define ERT_VERSION 0
+#endif
+
 #define sched_error_on(exec, expr) \
 ({ \
 	unsigned int ret = 0; \
@@ -909,6 +913,65 @@ print_and_out:
 	DRM_INFO("  cu_base(0x%x)", exec->cu_base_addr);
 	DRM_INFO("  polling(%d)", exec->polling_mode);
 	return 0;
+}
+
+/**
+ * Gather ERT stats in ctrl command packet
+ * [1  ]      : header
+ * [1  ]      : custat version
+ * [1  ]      : ert version
+ * [1  ]      : number of cq slots
+ * [1  ]      : number of cus
+ * [#numcus]  : cu execution stats (number of executions)
+ * [#numcus]  : cu status (1: running, 0: idle)
+ * [#slots]   : command queue slot status
+ */
+static void
+cu_stat(struct sched_cmd *cmd)
+{
+	struct drm_zocl_dev *zdev = cmd->ddev->dev_private;
+	struct zocl_ert_dev *ert = zdev->ert;
+	struct sched_exec_core *exec = zdev->exec;
+	struct ert_packet *pkg;
+	int slot_idx;
+	int pkt_idx = 0;
+	int max_idx = (slot_size(cmd->ddev) >> 2) - 1;
+	int i;
+
+	SCHED_DEBUG("-> %s cq_slot_idx %d\n", __func__, cmd->cq_slot_idx);
+	slot_idx = cmd->cq_slot_idx;
+	pkg = cmd->packet;
+
+	/* custat version, update when changing layout of packet */
+	pkg->data[pkt_idx++] = 0x51a10000;
+
+	/* should be git version */
+	pkg->data[pkt_idx++] = ERT_VERSION;
+
+	/* number of CQ slots */
+	pkg->data[pkt_idx++] = exec->num_slots;
+
+	/* number of CUs */
+	pkg->data[pkt_idx++] = exec->num_cus;
+
+	/* individual CU execution stat */
+	for (i = 0; i < exec->num_cus && pkt_idx < max_idx; ++i)
+		pkg->data[pkt_idx++] = exec->zcu[i].usage;
+
+	/* individual CU status */
+	for (i = 0; i < exec->num_cus && pkt_idx < max_idx; ++i)
+		pkg->data[pkt_idx++] = exec->cu_status[i];
+
+	/* Command slot status
+	 * Hard code QUEUED state. When a NEW command is found,
+	 * ERT/PS will set it to QUEUED. Then no CQ write.
+	 */
+	for (i = 0; i < exec->num_slots && pkt_idx < max_idx; ++i)
+		pkg->data[pkt_idx++] = ERT_CMD_STATE_QUEUED;
+
+	/* update command slot in CQ */
+	ert->ops->update_cmd(ert, slot_idx, pkg->data, pkt_idx * 4);
+	SCHED_DEBUG("<- %s\n", __func__);
 }
 
 static int
@@ -1935,6 +1998,9 @@ queued_to_running(struct sched_cmd *cmd)
 	if (opcode(cmd) == ERT_CONFIGURE)
 		configure(cmd);
 
+	if (opcode(cmd) == ERT_CU_STAT)
+		cu_stat(cmd);
+
 	if (opcode(cmd) == ERT_INIT_CU)
 		init_cus(cmd);
 
@@ -2279,11 +2345,13 @@ penguin_query(struct sched_cmd *cmd)
 		if (cu_done(cmd))
 			mark_cmd_complete(cmd, ERT_CMD_STATE_COMPLETED);
 		break;
+	case ERT_CU_STAT:
 	case ERT_INIT_CU:
 	case ERT_CONFIGURE:
 		mark_cmd_complete(cmd, ERT_CMD_STATE_COMPLETED);
 		break;
 	default:
+		mark_cmd_complete(cmd, ERT_CMD_STATE_ERROR);
 		DRM_ERROR("unknown opcode %d", opc);
 	}
 	SCHED_DEBUG("<- %s\n", __func__);
@@ -2395,6 +2463,12 @@ penguin_submit(struct sched_cmd *cmd)
 		return true;
 	}
 
+	if (opcode(cmd) == ERT_CU_STAT) {
+		cmd->slot_idx = acquire_slot_idx(cmd->ddev);
+		SCHED_DEBUG("<- %s (cu_stat)\n", __func__);
+		return true;
+	}
+
 	if (opcode(cmd) == ERT_INIT_CU) {
 		cmd->slot_idx = acquire_slot_idx(cmd->ddev);
 		SCHED_DEBUG("<- %s (init CU)\n", __func__);
@@ -2473,11 +2547,13 @@ ps_ert_query(struct sched_cmd *cmd)
 		__attribute__ ((fallthrough));
 		/* pass through */
 
+	case ERT_CU_STAT:
 	case ERT_CONFIGURE:
 		mark_cmd_complete(cmd, ERT_CMD_STATE_COMPLETED);
 		break;
 
 	default:
+		mark_cmd_complete(cmd, ERT_CMD_STATE_ERROR);
 		DRM_ERROR("unknown opcode %d", opc);
 	}
 	SCHED_DEBUG("<- %s()", __func__);
@@ -2509,6 +2585,10 @@ ps_ert_submit(struct sched_cmd *cmd)
 	switch (opcode(cmd)) {
 	case ERT_CONFIGURE:
 		SCHED_DEBUG("<- %s (configure)\n", __func__);
+		break;
+
+	case ERT_CU_STAT:
+		SCHED_DEBUG("<- %s (cu stat)\n", __func__);
 		break;
 
 	case ERT_SK_CONFIG:
