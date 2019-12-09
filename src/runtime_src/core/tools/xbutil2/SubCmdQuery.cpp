@@ -125,7 +125,7 @@ pu1_query_report()
       int index = 0;
       for (auto cu : cus) {
         std::string nm = xrt_core::xclbin::get_ip_name(iplayout, cu);
-        std::cout << boost::format("    CU [%d]: %s - Base Address : 0x%x") % index++ % nm.c_str() % cu << std::endl;
+        std::cout << boost::format("    CU[%d]: %s - Base Address : 0x%x") % index++ % nm.c_str() % cu << std::endl;
       }
     }
   } catch (...) {
