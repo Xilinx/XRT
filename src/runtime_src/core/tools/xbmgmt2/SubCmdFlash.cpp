@@ -167,18 +167,19 @@ int subCmdFlash(const std::vector<std::string> &_options)
   flashDesc.add_options()
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
     ("scan", boost::program_options::bool_switch(&scan), "Information about the card")
-    ("factory_reset", boost::program_options::bool_switch(&reset), "Reset to golden image")
-    ("update", boost::program_options::bool_switch(&update), "Update the card with the installed shell")
+    ("shell", boost::program_options::bool_switch(&shell), "Flash platform from source")
+    //("factory_reset", boost::program_options::bool_switch(&reset), "Reset to golden image")
+    //("update", boost::program_options::bool_switch(&update), "Update the card with the installed shell")
   ;
 
-  po::options_description expertsOnlyDesc("experts only");
-  expertsOnlyDesc.add_options()
-    ("shell", boost::program_options::bool_switch(&shell), "Flash platform from source")
-    ("sc_firmware", boost::program_options::bool_switch(&sc_firmware), "Flash sc firmware from source")
-  ;
+  // po::options_description expertsOnlyDesc("experts only");
+  // expertsOnlyDesc.add_options()
+  //   ("shell", boost::program_options::bool_switch(&shell), "Flash platform from source")
+  //   ("sc_firmware", boost::program_options::bool_switch(&sc_firmware), "Flash sc firmware from source")
+  // ;
 
   po::options_description allOptions("");
-  allOptions.add(flashDesc).add(expertsOnlyDesc);
+  allOptions.add(flashDesc);//.add(expertsOnlyDesc);
 
   // Parse the command line
   po::parsed_options parsed = po::command_line_parser(_options).
@@ -210,18 +211,19 @@ int subCmdFlash(const std::vector<std::string> &_options)
   // -- Now process the subcommand --------------------------------------------
   XBU::verbose(XBU::format("  Scan: %ld", scan));
   XBU::verbose(XBU::format("  Shell: %ld", shell));
-  XBU::verbose(XBU::format("  sc_firmware: %ld", sc_firmware));
-  XBU::verbose(XBU::format("  Reset: %ld", reset));
-  XBU::verbose(XBU::format("  Update: %ld", update));
+  // XBU::verbose(XBU::format("  sc_firmware: %ld", sc_firmware));
+  // XBU::verbose(XBU::format("  Reset: %ld", reset));
+  // XBU::verbose(XBU::format("  Update: %ld", update));
 
   if (scan) {
-    bool verbose, json;
+    bool verbose;
+    bool json = false;
     XBU::verbose("Sub command: --scan");
 
     po::options_description scanDesc("scan options");
     scanDesc.add_options()
       (",v", boost::program_options::bool_switch(&verbose), "verbose")
-      ("json", boost::program_options::bool_switch(&json), "json")
+      //("json", boost::program_options::bool_switch(&json), "json")
     ;
     // -- Now process the subcommand options ----------------------------------
     po::variables_map option_vm;
@@ -237,7 +239,7 @@ int subCmdFlash(const std::vector<std::string> &_options)
 
     // -- Now process the subcommand option-------------------------------
     XBU::verbose(XBU::format("  Verbose: %ld", verbose));
-    XBU::verbose(XBU::format("  Json: %ld", json));
+    //XBU::verbose(XBU::format("  Json: %ld", json));
 
     if (verbose && json) {
       XBU::error("Please specify only one option");
@@ -334,8 +336,8 @@ int subCmdFlash(const std::vector<std::string> &_options)
     po::options_description shellDesc("shell options");
     shellDesc.add_options()
       ("path", boost::program_options::value<std::string>(&file), "path of shell file")
-      ("card", boost::program_options::value<std::string>(&bdf), "index of the card") //change this to bdf later
-      ("type", boost::program_options::value<std::string>(&flash_type), "flash_type")
+      // ("card", boost::program_options::value<std::string>(&bdf), "index of the card") //change this to bdf later
+      // ("type", boost::program_options::value<std::string>(&flash_type), "flash_type")
     ;
 
     po::variables_map option_vm;
@@ -344,18 +346,20 @@ int subCmdFlash(const std::vector<std::string> &_options)
       po::notify(option_vm); // Can throw
     } catch (po::error& e) {
       xrt_core::send_exception_message(e.what(), "XBMGMT");
-      std::cerr << shellDesc << std::endl;
+      std::cerr << shellDesc << "\n";
+      std::cerr << "Example: xbmgmt.exe flash --shell --path='path\\to\\dsabin\\file'\n" << std::endl;
     // Re-throw exception
     throw;
     }
 
     // -- Now process the subcommand option-------------------------------
-    XBU::verbose(XBU::format("  Card: %s", bdf.c_str()));
+    // XBU::verbose(XBU::format("  Card: %s", bdf.c_str()));
     XBU::verbose(XBU::format("  File: %s", file.c_str()));
-    XBU::verbose(XBU::format("  Flash_type: %s", flash_type.c_str()));
-    if (file.empty() || bdf2index() == UINT_MAX) {
-      XBU::error("Please specify the shell file path and the device bdf");
-      std::cerr << shellDesc << std::endl;
+    // XBU::verbose(XBU::format("  Flash_type: %s", flash_type.c_str()));
+    if (file.empty()) {// || bdf2index() == UINT_MAX) {
+      XBU::error("Please specify the shell file path");// and the device bdf");
+      std::cerr << shellDesc << "\n";
+      std::cerr << "Example: xbmgmt.exe flash --shell --path='path\\to\\dsabin\\file'" << std::endl;
       return 1;
     }
     update_shell(bdf2index(), flash_type, file, secondary);
