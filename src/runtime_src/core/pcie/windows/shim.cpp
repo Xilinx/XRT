@@ -35,6 +35,7 @@
 #include <ctime>
 #include <iostream>
 #include <string>
+#include <regex>
 
 #pragma warning(disable : 4100 4996)
 #pragma comment (lib, "Setupapi.lib")
@@ -1002,6 +1003,30 @@ done:
       throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_ip_layout) failed");
   }
 
+  void
+  get_bdf_info(uint16_t bdf[3])
+  {
+    // TODO: code share with mgmt
+    GUID guid = GUID_DEVINTERFACE_XOCL_USER;
+    auto hdevinfo = SetupDiGetClassDevs(&guid, NULL, NULL, DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
+    SP_DEVINFO_DATA dev_info_data;
+    dev_info_data.cbSize = sizeof(dev_info_data);
+    DWORD size;
+    SetupDiEnumDeviceInfo(hdevinfo, m_devidx, &dev_info_data);
+    SetupDiGetDeviceRegistryProperty(hdevinfo, &dev_info_data, SPDRP_LOCATION_INFORMATION,
+                                     nullptr, nullptr, 0, &size);
+    std::string buf(static_cast<size_t>(size), 0);
+    SetupDiGetDeviceRegistryProperty(hdevinfo, &dev_info_data, SPDRP_LOCATION_INFORMATION,
+                                     nullptr, (PBYTE)buf.data(), size, nullptr);
+
+    std::regex regex("\\D+(\\d+)\\D+(\\d+)\\D+(\\d+)");
+    std::smatch match;
+    if (std::regex_search(buf, match, regex))
+      std::transform(match.begin() + 1, match.end(), bdf,
+                     [](const auto& m) {
+                       return static_cast<uint16_t>(std::stoi(m.str()));
+                     });
+  }
 
 }; // struct shim
 
@@ -1052,7 +1077,16 @@ get_ip_layout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
   shim->get_ip_layout(buffer, size, size_ret);
 }
 
-} // userpf
+void
+get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[3])
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_bdf_info()");
+  auto shim = get_shim_object(hdl);
+  shim->get_bdf_info(bdf);
+}
+
+} // namespace userpf
 
 // Basic
 unsigned int

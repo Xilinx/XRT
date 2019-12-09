@@ -29,6 +29,7 @@
 
 #include <limits>
 #include <cassert>
+#include <regex>
 
 #pragma warning(disable : 4100 4996)
 #pragma comment (lib, "Setupapi.lib")
@@ -170,6 +171,31 @@ struct mgmt
     std::memcpy(value, &device_info.rom_hdr, sizeof(FeatureRomHeader));
   }
 
+  void
+  get_bdf_info(uint16_t bdf[3])
+  {
+    // TODO: code share with shim
+    GUID guid = GUID_XILINX_PF_INTERFACE;
+    auto hdevinfo = SetupDiGetClassDevs(&guid, NULL, NULL, DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
+    SP_DEVINFO_DATA dev_info_data;
+    dev_info_data.cbSize = sizeof(dev_info_data);
+    DWORD size;
+    SetupDiEnumDeviceInfo(hdevinfo, m_idx, &dev_info_data);
+    SetupDiGetDeviceRegistryProperty(hdevinfo, &dev_info_data, SPDRP_LOCATION_INFORMATION,
+                                     nullptr, nullptr, 0, &size);
+    std::string buf(static_cast<size_t>(size), 0);
+    SetupDiGetDeviceRegistryProperty(hdevinfo, &dev_info_data, SPDRP_LOCATION_INFORMATION,
+                                     nullptr, (PBYTE)buf.data(), size, nullptr);
+
+    std::regex regex("\\D+(\\d+)\\D+(\\d+)\\D+(\\d+)");
+    std::smatch match;
+    if (std::regex_search(buf, match, regex))
+      std::transform(match.begin() + 1, match.end(), bdf,
+                     [](const auto& m) {
+                       return static_cast<uint16_t>(std::stoi(m.str()));
+                     });
+  }
+
 
 }; // struct mgmt
 
@@ -291,6 +317,15 @@ get_rom_info(xclDeviceHandle hdl, FeatureRomHeader* value)
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_rom_info()");
   auto mgmt = get_mgmt_object(hdl);
   mgmt->get_rom_info(value);
+}
+
+void
+get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[3])
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_bdf_info()");
+  auto mgmt = get_mgmt_object(hdl);
+  mgmt->get_bdf_info(bdf);
 }
 
 } // mgmt

@@ -59,6 +59,10 @@ XRT_CORE_PCIE_WINDOWS_EXPORT
 void
 get_device_info(xclDeviceHandle hdl, XCLMGMT_IOC_DEVICE_INFO* value);
 
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[3]);
+
 } // mgmtpf
 
 #endif
