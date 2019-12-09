@@ -24,7 +24,6 @@
 int main( int argc, char** argv )
 {
   try {
-    //to-do: check administrator
     return main_( argc, argv );
   } catch (const std::exception &e) {
     xrt_core::send_exception_message(e.what(), "XBMGMT");

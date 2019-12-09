@@ -484,7 +484,7 @@ std::ostream& operator<<(std::ostream& stream, const DSAInfo& dsa)
     stream << dsa.name;
     if (dsa.timestamp != NULL_TIMESTAMP)
     {
-        stream << ",[ts=0x" << std::hex << dsa.timestamp << "]";
+        stream << ",[ID=0x" << std::hex << dsa.timestamp << "]";
     }
     if (!dsa.bmcVer.empty())
     {
