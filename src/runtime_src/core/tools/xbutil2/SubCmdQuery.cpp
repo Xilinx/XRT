@@ -50,8 +50,9 @@ static const unsigned int registerResult =
 
 // ------ F U N C T I O N S ---------------------------------------------------
 template <typename T>
-std::vector<T> as_vector(boost::property_tree::ptree const& pt, 
-                         boost::property_tree::ptree::key_type const& key)
+std::vector<T>
+as_vector(boost::property_tree::ptree const& pt,
+          boost::property_tree::ptree::key_type const& key)
 {
     std::vector<T> r;
 
@@ -65,7 +66,8 @@ std::vector<T> as_vector(boost::property_tree::ptree const& pt,
     return r;
 }
 
-void pu1_query_report()
+static void
+pu1_query_report()
 {
   boost::property_tree::ptree pt;
   xrt_core::get_devices(pt);
@@ -122,7 +124,8 @@ void pu1_query_report()
     } else {
       int index = 0;
       for (auto cu : cus) {
-        std::cout << boost::format("    [%d] - Base Address : 0x%x") % index++ % cu << std::endl;
+        std::string nm = xrt_core::xclbin::get_ip_name(iplayout, cu);
+        std::cout << boost::format("    CU[%d]: %s - Base Address : 0x%x") % index++ % nm.c_str() % cu << std::endl;
       }
     }
   } catch (...) {
