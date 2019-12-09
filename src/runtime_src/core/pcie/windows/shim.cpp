@@ -1006,6 +1006,7 @@ done:
   void
   get_bdf_info(uint16_t bdf[3])
   {
+    // TODO: code share with mgmt
     GUID guid = GUID_DEVINTERFACE_XOCL_USER;
     auto hdevinfo = SetupDiGetClassDevs(&guid, NULL, NULL, DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
     SP_DEVINFO_DATA dev_info_data;
