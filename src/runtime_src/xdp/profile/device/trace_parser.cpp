@@ -628,22 +628,16 @@ namespace xdp {
     if (!y1 && !x1) {
       y1 = static_cast <double> (hostTimestamp);
       x1 = static_cast <double> (deviceTimestamp);
-      std::cout << "x1 : " << x1 << std::endl;
-      std::cout << "y1 : " << y1 << std::endl;
     } else {
       y2 = static_cast <double> (hostTimestamp);
       x2 = static_cast <double> (deviceTimestamp);
-      std::cout << "x2 : " << x2 << std::endl;
-      std::cout << "y2 : " << y2 << std::endl;
       // slope in ns/cycle
       if (isDeviceFlow) {
         mTrainSlope[type] = 1000.0/mTraceClockRateMHz;
-        std::cout << "Trace clock : " << mTraceClockRateMHz << std::endl;
       } else {
         mTrainSlope[type] = (y2 - y1) / (x2 - x1);
       }
       mTrainOffset[type] = y2 - mTrainSlope[type] * x2;
-      std::cout << "mTrainOffset : " << mTrainOffset[type] << std::endl;
       // next time update x1, y1
       y1 = 0.0;
       x1 = 0.0;
