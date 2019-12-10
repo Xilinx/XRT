@@ -1677,22 +1677,6 @@ public:
         return xclGetDeviceInfo2(m_handle, &devinfo);
     }
 
-    // Currently only u50 uses xbtest
-    bool isXbTestPlatform(void) {
-        std::string name, errmsg;
-        pcidev::get_dev(m_idx)->sysfs_get( "rom", "VBNV", errmsg, name );
-
-        if (!errmsg.empty()) {
-            std::cout << errmsg << std::endl;
-            return false;
-        }
-
-        if( strstr( name.c_str(), "_u50_" ) ) { //This is U50 device
-            return true;
-        }
-        return false;
-    }
-
     int validate(bool quick);
 
     int reset(xclResetKind kind);
@@ -1705,15 +1689,6 @@ private:
     // all output from the run into "output"
     // Note: exe should assume index to be 0 without -d
     int runTestCase(const std::string& exe, const std::string& xclbin, std::string& output);
-
-    // Run a test case using the xbtest external program and collect
-    // all output from the run into "output"
-    // Note: test is the name of a json file containing the test description
-    int runXbTestCase(const std::string& test, std::string& output);
-
-    int bandwidthKernelXbtest(void);
-    int verifyKernelXbtest(void);
-    int dmaXbtest(void);
 
     int scVersionTest(void);
     int pcieLinkTest(void);
