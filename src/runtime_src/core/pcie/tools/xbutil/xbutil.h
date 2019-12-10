@@ -694,7 +694,7 @@ public:
     int readSensors( void ) const
     {
         // board info
-        std::string vendor, device, subsystem, subvendor, xmc_ver,
+        std::string vendor, device, subsystem, subvendor, xmc_ver, xmc_oem_id,
             ser_num, bmc_ver, idcode, fpga, dna, errmsg, max_power;
         int ddr_size = 0, ddr_count = 0, pcie_speed = 0, pcie_width = 0, p2p_enabled = 0;
         std::vector<std::string> clock_freqs;
@@ -707,6 +707,7 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "", "subsystem_device",           errmsg, subsystem );
         pcidev::get_dev(m_idx)->sysfs_get( "", "subsystem_vendor",           errmsg, subvendor );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "version",                 errmsg, xmc_ver );
+        pcidev::get_dev(m_idx)->sysfs_get( "xmc", "xmc_oem_id",              errmsg, xmc_oem_id );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "serial_num",              errmsg, ser_num );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "max_power",               errmsg, max_power );
         pcidev::get_dev(m_idx)->sysfs_get( "xmc", "bmc_ver",                 errmsg, bmc_ver );
@@ -727,6 +728,7 @@ public:
         sensor_tree::put( "board.info.subdevice",      subsystem );
         sensor_tree::put( "board.info.subvendor",      subvendor );
         sensor_tree::put( "board.info.xmcversion",     xmc_ver );
+        sensor_tree::put( "board.info.xmc_oem_id",     xmc_oem_id );
         sensor_tree::put( "board.info.serial_number",  ser_num );
         sensor_tree::put( "board.info.max_power",      lvl2PowerStr(max_power.empty() ? UINT_MAX : stoi(max_power)) );
         sensor_tree::put( "board.info.sc_version",     bmc_ver );
@@ -968,24 +970,26 @@ public:
         ostr << std::setw(16) << "PCIe"
              << std::setw(16) << "DMA chan(bidir)"
              << std::setw(16) << "MIG Calibrated"
-             << std::setw(16) << "P2P Enabled" << std::endl;
+             << std::setw(16) << "P2P Enabled"
+	     << std::setw(16) << "OEM ID" << std::endl;
         ostr << "GEN " << sensor_tree::get( "board.info.pcie_speed", -1 ) << "x" << std::setw(10) 
              << sensor_tree::get( "board.info.pcie_width", -1 ) << std::setw(16) << sensor_tree::get( "board.info.dma_threads", -1 )
              << std::setw(16) << sensor_tree::get<std::string>( "board.info.mig_calibrated", "N/A" );
              switch(sensor_tree::get( "board.info.p2p_enabled", -1)) {
              case ENXIO:
-                      ostr << std::setw(16) << "N/A" << std::endl;
+                      ostr << std::setw(16) << "N/A";
                   break;
              case 0:
-                      ostr << std::setw(16) << "false" << std::endl;
+                      ostr << std::setw(16) << "false";
                   break;
              case 1:
-                      ostr << std::setw(16) << "true" << std::endl;
+                      ostr << std::setw(16) << "true";
                   break;
              case EBUSY:
-                      ostr << std::setw(16) << "no iomem" << std::endl;
+                      ostr << std::setw(16) << "no iomem";
                   break;
              }
+        ostr << std::setw(16) << sensor_tree::get<std::string>( "board.info.xmc_oem_id" , "N/A") << std::endl;
 
 	std::vector<std::string> interface_uuids;
 	std::vector<std::string> logic_uuids;
