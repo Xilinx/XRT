@@ -41,9 +41,12 @@ validOrError(cl_command_queue command_queue,
   if(!config::api_checks())
     return;
 
-  detail::command_queue::validOrError(command_queue); 
+  detail::command_queue::validOrError(command_queue);
   detail::memory::validOrError(buffer,map_flags,offset,size);
   detail::event::validOrError(command_queue,num_events_in_wait_list,event_wait_list);
+
+  if ((xocl(buffer)->get_flags() & CL_MEM_WRITE_ONLY) && map_flags == CL_MAP_WRITE)
+    throw error(CL_MAP_FAILURE,"Map CL_MEM_WRITE_ONLY buffer for write is undefined");
 
   auto ctx1 = xocl(command_queue)->get_context();
   if (ctx1 != xocl(buffer)->get_context())
@@ -55,7 +58,7 @@ validOrError(cl_command_queue command_queue,
 static void*
 clEnqueueMapBuffer(cl_command_queue command_queue,
                    cl_mem           buffer,
-                   cl_bool          blocking_map, 
+                   cl_bool          blocking_map,
                    cl_map_flags     map_flags,
                    size_t           offset,
                    size_t           size,
@@ -88,7 +91,7 @@ clEnqueueMapBuffer(cl_command_queue command_queue,
 void*
 clEnqueueMapBuffer(cl_command_queue command_queue,
                    cl_mem           buffer,
-                   cl_bool          blocking_map, 
+                   cl_bool          blocking_map,
                    cl_map_flags     map_flags,
                    size_t           offset,
                    size_t           size,
@@ -114,9 +117,4 @@ clEnqueueMapBuffer(cl_command_queue command_queue,
     xocl::assign(errcode_ret,CL_OUT_OF_HOST_MEMORY);
     return nullptr;
   }
-  return CL_SUCCESS;
 }
-
-
-
-

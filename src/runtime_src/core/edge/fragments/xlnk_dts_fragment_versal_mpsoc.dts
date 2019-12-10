@@ -1,0 +1,11 @@
+
+/
+
+&amba {
+        zyxclmm_drm {
+                compatible = "xlnx,zocl-versal";
+                status = "okay";
+                xlnx,pr-isolation-addr = <0x201 0x06070000>;
+                reg = <0x202 0x0 0x0 0x100000>;
+        };
+};
