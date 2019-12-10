@@ -66,7 +66,7 @@
 /* Module Parameters */
 unsigned int qdma_max_channel = 16;
 module_param(qdma_max_channel, uint, 0644);
-MODULE_PARM_DESC(qdma_max_channel, "Set number of channels for qdma, default is 8");
+MODULE_PARM_DESC(qdma_max_channel, "Set number of channels for qdma, default is 16");
 
 
 static dev_t	str_dev;
