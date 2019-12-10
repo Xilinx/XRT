@@ -31,4 +31,23 @@
 // Various configurations for xrt consolidated here to
 // for appropriate recompiles
 
+#ifdef _WIN32
+# ifdef XRT_SOURCE
+#  define XRT_EXPORT __declspec(dllexport)
+# else
+#  define XRT_EXPORT __declspec(dllimport)
+# endif
+#endif
+#ifdef __GNUC__
+# ifdef XRT_SOURCE
+#  define XRT_EXPORT __attribute__ ((visibility("default")))
+# else
+#  define XRT_EXPORT
+# endif
+#endif
+
+#ifndef XRT_EXPORT
+# define XRT_EXPORT
+#endif
+
 #endif
