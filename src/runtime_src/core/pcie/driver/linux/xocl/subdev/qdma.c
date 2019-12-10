@@ -63,6 +63,12 @@
 
 #define QDMA_QSETS_MAX		256
 
+/* Module Parameters */
+unsigned int qdma_max_channel = 16;
+module_param(qdma_max_channel, uint, 0644);
+MODULE_PARM_DESC(qdma_max_channel, "Set number of channels for qdma, default is 16");
+
+
 static dev_t	str_dev;
 
 struct qdma_stream_async_req;
@@ -595,6 +601,13 @@ static int set_max_chan(struct xocl_qdma *qdma, u32 count)
 	char	ebuf[MM_EBUF_LEN + 1];
 	int	i, ret;
 	bool	reset = false;
+
+	if (count > QDMA_QSETS_MAX) {
+		xocl_info(&pdev->dev, "Invalide number of channels set %d", count);
+		ret = -EINVAL;
+		goto failed_create_queue;
+	}
+
 
 	if (qdma->channel == count)
 		reset = true;
@@ -1765,7 +1778,7 @@ static int qdma_probe(struct platform_device *pdev)
 	}
 
 	if (!XOCL_DSA_IS_SMARTN(xdev)) {
-		ret = set_max_chan(qdma, 2);
+		ret = set_max_chan(qdma, qdma_max_channel);
 		if (ret) {
 			xocl_err(&pdev->dev, "Set max channel failed");
 			goto failed;
