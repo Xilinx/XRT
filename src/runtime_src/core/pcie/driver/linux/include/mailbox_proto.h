@@ -170,6 +170,7 @@ struct xcl_sensor {
 	uint32_t vol_2v5_vpp;
 	uint32_t vccint_bram;
 	uint32_t version;
+	uint32_t oem_id;
 };
 
 /**

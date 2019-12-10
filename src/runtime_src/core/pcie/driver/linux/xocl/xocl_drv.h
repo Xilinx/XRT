@@ -863,6 +863,7 @@ enum data_kind {
 	VOL_VCCINT_BRAM,
 	XMC_VER,
 	EXP_BMC_VER,
+	XMC_OEM_ID,
 };
 
 enum mb_kind {

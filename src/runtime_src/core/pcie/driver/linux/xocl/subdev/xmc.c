@@ -86,6 +86,7 @@
 #define	XMC_VPP2V5_REG			0x29C
 #define	XMC_VCCINT_BRAM_REG		0x2A8
 #define	XMC_HBM_TEMP2_REG		0x2B4
+#define	XMC_OEM_ID_REG                  0x2C0
 #define	XMC_HOST_MSG_OFFSET_REG		0x300
 #define	XMC_HOST_MSG_ERROR_REG		0x304
 #define	XMC_HOST_MSG_HEADER_REG		0x308
@@ -535,6 +536,9 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 		case XMC_VER:
 			safe_read32(xmc, XMC_VERSION_REG, val);
 			break;
+		case XMC_OEM_ID:
+			safe_read32(xmc, XMC_OEM_ID_REG, val);
+			break;
 		default:
 			break;
 		}
@@ -661,6 +665,9 @@ static void xmc_sensor(struct platform_device *pdev, enum data_kind kind,
 			break;
 		case XMC_VER:
 			*val = xmc->cache->version;
+			break;
+		case XMC_OEM_ID:
+			*val = xmc->cache->oem_id;
 			break;
 		default:
 			break;
@@ -869,6 +876,7 @@ static int xmc_get_data(struct platform_device *pdev, enum xcl_group_kind kind, 
 		xmc_sensor(pdev, VOL_VPP_2V5, &sensors->vol_2v5_vpp, SENSOR_INS);
 		xmc_sensor(pdev, VOL_VCCINT_BRAM, &sensors->vccint_bram, SENSOR_INS);
 		xmc_sensor(pdev, XMC_VER, &sensors->version, SENSOR_INS);
+		xmc_sensor(pdev, XMC_OEM_ID, &sensors->oem_id, SENSOR_INS);
 		break;
 	case XCL_BDINFO:
 		mutex_lock(&xmc->mbx_lock);
@@ -912,19 +920,22 @@ uint64_t xmc_get_power(struct platform_device *pdev, enum sensor_val_kind kind)
 
 	return val;
 }
+
 /*
  * Defining sysfs nodes for all sensor readings.
  */
-#define	SENSOR_SYSFS_NODE(node_name, type)				\
+#define	SENSOR_SYSFS_NODE_FORMAT(node_name, type, format)		\
 	static ssize_t node_name##_show(struct device *dev,		\
 		struct device_attribute *attr, char *buf)		\
 	{								\
 		struct xocl_xmc *xmc = dev_get_drvdata(dev);		\
 		u32 val = 0;						\
 		xmc_sensor(xmc->pdev, type, &val, SENSOR_INS);		\
-		return sprintf(buf, "%d\n", val);			\
+		return sprintf(buf, format, val);			\
 	}								\
 	static DEVICE_ATTR_RO(node_name)
+#define SENSOR_SYSFS_NODE(node_name, type)				\
+	SENSOR_SYSFS_NODE_FORMAT(node_name, type, "%d\n")
 SENSOR_SYSFS_NODE(xmc_12v_pex_vol, VOL_12V_PEX);
 SENSOR_SYSFS_NODE(xmc_12v_aux_vol, VOL_12V_AUX);
 SENSOR_SYSFS_NODE(xmc_12v_pex_curr, CUR_12V_PEX);
@@ -965,6 +976,7 @@ SENSOR_SYSFS_NODE(xmc_vpp2v5_vol, VOL_VPP_2V5);
 SENSOR_SYSFS_NODE(xmc_vccint_bram_vol, VOL_VCCINT_BRAM);
 SENSOR_SYSFS_NODE(xmc_hbm_temp, HBM_TEMP);
 SENSOR_SYSFS_NODE(version, XMC_VER);
+SENSOR_SYSFS_NODE_FORMAT(xmc_oem_id, XMC_OEM_ID, "0x%x\n");
 
 static ssize_t xmc_power_show(struct device *dev,
 	struct device_attribute *da, char *buf)
@@ -1027,7 +1039,8 @@ static DEVICE_ATTR_RO(status);
 	&dev_attr_xmc_vccint_bram_vol.attr,				\
 	&dev_attr_xmc_hbm_temp.attr,					\
 	&dev_attr_xmc_power.attr,					\
-	&dev_attr_version.attr
+	&dev_attr_version.attr,						\
+	&dev_attr_xmc_oem_id.attr
 
 /*
  * Defining sysfs nodes for reading some of xmc regisers.
