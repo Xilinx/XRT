@@ -59,6 +59,23 @@ inline void* wordcopy(void *dst, const void* src, size_t bytes)
     return dst;
 }
 
+static bool is_admin()
+{
+  HANDLE m_hdl = nullptr;
+  TOKEN_ELEVATION elevation;
+  DWORD dwSize;
+
+  if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &m_hdl))
+    throw std::runtime_error("Failed to get Process Token : " + GetLastError());
+  
+  if (!GetTokenInformation(m_hdl, TokenElevation, &elevation, sizeof(elevation), &dwSize)) {
+	CloseHandle(m_hdl);
+    throw std::runtime_error("Failed to get Token Information : " + GetLastError());
+  }
+  
+  return elevation.TokenIsElevated;
+}
+
 struct mgmt
 {
   unsigned int m_idx = std::numeric_limits<unsigned int>::max();
@@ -270,6 +287,9 @@ open(unsigned int device_index)
   catch (const std::exception& ex) {
     xrt_core::message::
       send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "mgmt::open() failed with `%s`", ex.what());
+	if(!is_admin())
+		xrt_core::message::
+		send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "Administrative privileges required");
     return nullptr;
   }
 }
