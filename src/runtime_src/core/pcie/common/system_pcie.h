@@ -14,18 +14,20 @@
  * under the License.
  */
 
-#ifndef __XBUtilMain_h_
-#define __XBUtilMain_h_
-  
-#include <string>
-#include <vector>
+#ifndef SYSTEM_PCIE_H
+#define SYSTEM_PCIE_H
 
-  typedef enum {
-    RC_SUCCESS = 0,
-    RC_ERROR_IN_COMMAND_LINE = 1,
-    RC_ERROR_UNHANDLED_EXCEPTION = 2
-  } ReturnCodes;
-    
-ReturnCodes main_(int argc, char** argv);
+#include "common/system.h"
+
+namespace xrt_core {
+
+class system_pcie : public system
+{
+public:
+  void
+  get_devices(boost::property_tree::ptree& pt) const;
+};
+
+} // xrt_core
 
 #endif

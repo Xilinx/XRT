@@ -165,7 +165,7 @@ int main(int argc, char** argv)
         if (xclOpenContext(handle, xclbinId, cu_index, true))
             throw std::runtime_error("Cannot create context");
 
-        unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE, 0, first_mem);
+        unsigned boHandle2 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem);
         char* bo2 = (char*)xclMapBO(handle, boHandle2, true);
         memset(bo2, 0, DATA_SIZE);
         std::string testVector =  "hello\nthis is Xilinx OpenCL memory read write test\n:-)\n";
@@ -174,45 +174,7 @@ int main(int argc, char** argv)
         if(xclSyncBO(handle, boHandle2, XCL_BO_SYNC_BO_TO_DEVICE , DATA_SIZE,0))
             return 1;
 
-        unsigned boHandle1 = xclAllocBO(handle, DATA_SIZE, 0, first_mem);
-
-
-        //Allocate the exec_bo
-        unsigned execHandle = xclAllocBO(handle, DATA_SIZE, 0, (1<<31));
-        void* execData = xclMapBO(handle, execHandle, true);
-
-        //construct the exec buffer cmd to configure.
-        {
-            auto ecmd = reinterpret_cast<ert_configure_cmd*>(execData);
-
-            std::memset(ecmd, 0, DATA_SIZE);
-            ecmd->state = ERT_CMD_STATE_NEW;
-            ecmd->opcode = ERT_CONFIGURE;
-
-            ecmd->slot_size = 1024;
-            ecmd->num_cus = 1;
-            ecmd->cu_shift = 16;
-            ecmd->cu_base_addr = cu_base_addr;
-
-            ecmd->ert = ert;
-            if (ert) {
-                ecmd->cu_dma = 1;
-                ecmd->cu_isr = 1;
-            }
-
-            // CU -> base address mapping
-            ecmd->data[0] = cu_base_addr;
-            ecmd->count = 5 + ecmd->num_cus;
-        }
-
-        //Send the command.
-        if(xclExecBuf(handle, execHandle)) {
-            std::cout << "Unable to issue xclExecBuf" << std::endl;
-            return 1;
-        }
-
-        //Wait on the command finish
-        while (xclExecWait(handle,1000) == 0);
+        unsigned boHandle1 = xclAllocBO(handle, DATA_SIZE, XCL_BO_DEVICE_RAM, first_mem);
 
         xclBOProperties p;
         uint64_t bo2devAddr = !xclGetBOProperties(handle, boHandle2, &p) ? p.paddr : -1;
@@ -221,7 +183,10 @@ int main(int argc, char** argv)
         if( (bo2devAddr == (uint64_t)(-1)) || (bo1devAddr == (uint64_t)(-1)))
             return 1;
 
-        //--
+        //Allocate the exec_bo
+        unsigned execHandle = xclAllocBO(handle, DATA_SIZE, xclBOKind(0), (1<<31));
+        void* execData = xclMapBO(handle, execHandle, true);
+
         //construct the exec buffer cmd to start the kernel.
         {
             auto ecmd = reinterpret_cast<ert_start_kernel_cmd*>(execData);

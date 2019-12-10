@@ -15,8 +15,10 @@
  * under the License.
  */
 #define XCL_DRIVER_DLL_EXPORT
+#define XRT_CORE_PCIE_WINDOWS_SOURCE
 #include "shim.h"
 #include "xrt_mem.h"
+#include "xclfeatures.h"
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 
@@ -33,6 +35,7 @@
 #include <ctime>
 #include <iostream>
 #include <string>
+#include <regex>
 
 #pragma warning(disable : 4100 4996)
 #pragma comment (lib, "Setupapi.lib")
@@ -746,54 +749,120 @@ done:
   ssize_t
   unmgd_pwrite(unsigned flags, const void *buf, size_t count, uint64_t offset)
   {
-    XOCL_PWRITE_BO_ARGS pwriteBO;
-    DWORD  code;
-    DWORD bytesWritten;
+      if (flags) {  // make compatible with Linux code
+          return false;
+      }
 
-    pwriteBO.Offset = offset;
+      XOCL_PWRITE_BO_UNMGD_ARGS pwriteBO;
+      DWORD  code;
+      DWORD bytesWritten;
 
-    if (!DeviceIoControl(m_dev,
-                         IOCTL_XOCL_PWRITE_BO,
-                         &pwriteBO,
-                         sizeof(XOCL_PWRITE_BO_ARGS),
-                         (void *)buf,
-                         (DWORD)count,
-                         &bytesWritten,
-                         nullptr)) {
+      pwriteBO.Offset = offset;
 
-      code = GetLastError();
+      if (!DeviceIoControl(m_dev,
+          IOCTL_XOCL_PWRITE_UNMGD,
+          &pwriteBO,
+          sizeof(XOCL_PWRITE_BO_UNMGD_ARGS),
+          (void *)buf,
+          (DWORD)count,
+          &bytesWritten,
+          nullptr)) {
 
-      xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl PWRITE failed with error %d", code);
-      return false;
-    }
-    return true;
+          code = GetLastError();
+
+          xrt_core::message::
+              send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl PWRITE unmanaged failed with error %d", code);
+          return false;
+      }
+
+      return true;
   }
 
   ssize_t
   unmgd_pread(unsigned int flags, void *buf, size_t size, uint64_t offset)
   {
-    XOCL_PREAD_BO_ARGS preadBO;
-    DWORD  code;
-    DWORD bytesRead;
 
-    preadBO.Offset = offset;
+      XOCL_PREAD_BO_UNMGD_ARGS preadBO;
+      DWORD  code;
+      DWORD bytesRead;
 
-    if (!DeviceIoControl(m_dev,
-                         IOCTL_XOCL_PREAD_BO,
-                         &preadBO,
-                         sizeof(XOCL_PREAD_BO_ARGS),
-                         buf,
-                         (DWORD)size,
-                         &bytesRead,
-                         nullptr)) {
+      if (flags) {  // make compatible with Linux code
+          return false;
+      }
 
-      code = GetLastError();
-      xrt_core::message::
-        send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl PREAD failed with error %d", code);
-      return false;
-    }
-    return true;
+      preadBO.Offset = offset;
+
+      if (!DeviceIoControl(m_dev,
+          IOCTL_XOCL_PREAD_UNMGD,
+          &preadBO,
+          sizeof(XOCL_PREAD_BO_UNMGD_ARGS),
+          buf,
+          (DWORD)size,
+          &bytesRead,
+          nullptr)) {
+
+          code = GetLastError();
+          xrt_core::message::
+              send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl PREAD unmanaged failed with error %d", code);
+          return false;
+      }
+
+      return true;
+  }
+
+  int
+  write_bo(xclBufferHandle boHandle, const void *src, size_t size, size_t seek)
+  {
+      XOCL_PWRITE_BO_ARGS pwriteBO;
+      DWORD  code;
+      DWORD bytesWritten;
+
+      pwriteBO.Offset = seek;
+
+      if (!DeviceIoControl(boHandle,
+          IOCTL_XOCL_PWRITE_BO,
+          &pwriteBO,
+          sizeof(XOCL_PWRITE_BO_ARGS),
+          (void *)src,
+          (DWORD)size,
+          &bytesWritten,
+          nullptr)) {
+
+          code = GetLastError();
+
+          xrt_core::message::
+              send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl PWRITE failed with error %d", code);
+          return code;
+      }
+      // Ignoring bytesWritten as API only expects 0 as success
+      return 0;
+  }
+
+  int
+  read_bo(xclBufferHandle boHandle, void *dst, size_t size, size_t skip)
+  {
+      XOCL_PREAD_BO_ARGS preadBO;
+      DWORD  code;
+      DWORD bytesRead;
+
+      preadBO.Offset = skip;
+
+      if (!DeviceIoControl(boHandle,
+          IOCTL_XOCL_PREAD_BO,
+          &preadBO,
+          sizeof(XOCL_PREAD_BO_ARGS),
+          dst,
+          (DWORD)size,
+          &bytesRead,
+          nullptr)) {
+
+          code = GetLastError();
+          xrt_core::message::
+              send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "DeviceIoControl PREAD failed with error %d", code);
+          return code;
+      }
+      // Ignoring bytesWritten as API only expects 0 as success
+      return 0;
   }
 
   bool
@@ -804,6 +873,161 @@ done:
 
     return m_locked = true;
   }
+
+  bool
+  unlock_device()
+  {
+    m_locked = false;
+    return true;
+  }
+
+  void
+  get_rom_info(FeatureRomHeader* value)
+  {
+    XOCL_STAT_CLASS stat_class =  XoclStatRomInfo;
+    XOCL_ROM_INFORMATION device_info;
+
+    DWORD bytes = 0;
+    auto status = DeviceIoControl(m_dev,
+        IOCTL_XOCL_STAT,
+        &stat_class, sizeof(stat_class),
+        &device_info, sizeof(device_info),
+        &bytes,
+        nullptr);
+
+    if (!status || bytes != sizeof(device_info))
+      throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (rom_info) failed");
+
+    std::memcpy(value->FPGAPartName, device_info.FPGAPartName, sizeof(device_info.FPGAPartName));
+    std::memcpy(value->VBNVName, device_info.VBNVName, sizeof(device_info.VBNVName));
+    value->DDRChannelCount = device_info.DDRChannelCount;
+    value->DDRChannelSize = device_info.DDRChannelSize;
+  }
+
+  void
+  get_device_info(XOCL_DEVICE_INFORMATION* value)
+  {
+    XOCL_STAT_CLASS stat_class =  XoclStatDevice;
+
+    DWORD bytes = 0;
+    auto status = DeviceIoControl(m_dev,
+        IOCTL_XOCL_STAT,
+        &stat_class, sizeof(stat_class),
+        value, sizeof(XOCL_DEVICE_INFORMATION),
+        &bytes,
+        nullptr);
+
+    if (!status || bytes != sizeof(XOCL_DEVICE_INFORMATION))
+      throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_device_info) failed");
+  }
+
+  void
+  get_mem_topology(char* buffer, size_t size, size_t* size_ret)
+  {
+    XOCL_MEM_TOPOLOGY_INFORMATION mem_info;
+    XOCL_STAT_CLASS_ARGS statargs;
+
+    statargs.StatClass = XoclStatMemTopology;
+
+    DWORD bytes = 0;
+    auto status = DeviceIoControl(m_dev,
+        IOCTL_XOCL_STAT,
+        &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+        &mem_info, sizeof(XOCL_MEM_TOPOLOGY_INFORMATION),
+        &bytes,
+        nullptr);
+
+    if (!status || bytes != sizeof(XOCL_MEM_TOPOLOGY_INFORMATION))
+      throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_mem_topology) failed");
+
+    size_t mem_topology_size = sizeof(XOCL_MEM_TOPOLOGY_INFORMATION);
+
+    if (size_ret)
+      *size_ret = mem_topology_size;
+
+    if (!buffer)
+      return;  // size_ret has required size
+
+    if (size < mem_topology_size)
+      throw std::runtime_error
+        ("DeviceIoControl IOCTL_XOCL_STAT (get_mem_topology) failed "
+         "size (" + std::to_string(size) + ") of buffer too small, "
+         "required size (" + std::to_string(mem_topology_size) + ")");
+
+    std::memcpy(buffer, &mem_info, sizeof(XOCL_MEM_TOPOLOGY_INFORMATION));
+  }
+
+  void
+  get_ip_layout(char* buffer, size_t size, size_t* size_ret)
+  {
+    XU_IP_LAYOUT iplayout_hdr;
+    XOCL_STAT_CLASS_ARGS statargs;
+
+    statargs.StatClass =  XoclStatIpLayout;
+
+    DWORD bytes = 0;
+    auto status = DeviceIoControl(m_dev,
+        IOCTL_XOCL_STAT,
+        &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+        &iplayout_hdr, sizeof(XU_IP_LAYOUT),
+        &bytes,
+        nullptr);
+
+    if (!status || bytes != sizeof(XU_IP_LAYOUT))
+      throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_ip_layout hdr) failed");
+
+    DWORD ip_layout_size = sizeof(XU_IP_LAYOUT) + iplayout_hdr.m_count * sizeof(XU_IP_DATA);
+
+    if (size_ret)
+      *size_ret = ip_layout_size;
+
+    if (!buffer)
+      return;  // size_ret has the required size
+
+    if (size < ip_layout_size)
+      throw std::runtime_error
+        ("DeviceIoControl IOCTL_XOCL_STAT (get_ip_layout) failed "
+         "size (" + std::to_string(size) + ") of buffer too small, "
+         "required size (" + std::to_string(ip_layout_size) + ")");
+
+    auto iplayout = reinterpret_cast<PXU_IP_LAYOUT>(buffer);
+
+    status = DeviceIoControl(m_dev,
+       IOCTL_XOCL_STAT,
+       &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+       iplayout, ip_layout_size,
+       &bytes,
+       nullptr);
+
+    if (!status || bytes != ip_layout_size)
+      throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_ip_layout) failed");
+  }
+
+  void
+  get_bdf_info(uint16_t bdf[3])
+  {
+    // TODO: code share with mgmt
+    GUID guid = GUID_DEVINTERFACE_XOCL_USER;
+    auto hdevinfo = SetupDiGetClassDevs(&guid, NULL, NULL, DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
+    SP_DEVINFO_DATA dev_info_data;
+    dev_info_data.cbSize = sizeof(dev_info_data);
+    DWORD size;
+    SetupDiEnumDeviceInfo(hdevinfo, m_devidx, &dev_info_data);
+    SetupDiGetDeviceRegistryProperty(hdevinfo, &dev_info_data, SPDRP_LOCATION_INFORMATION,
+                                     nullptr, nullptr, 0, &size);
+    std::string buf(static_cast<size_t>(size), 0);
+    SetupDiGetDeviceRegistryProperty(hdevinfo, &dev_info_data, SPDRP_LOCATION_INFORMATION,
+                                     nullptr, (PBYTE)buf.data(), size, nullptr);
+
+    std::regex regex("\\D+(\\d+)\\D+(\\d+)\\D+(\\d+)");
+    std::smatch match;
+    if (std::regex_search(buf, match, regex))
+      std::transform(match.begin() + 1, match.end(), bdf,
+                     [](const auto& m) {
+                       return static_cast<uint16_t>(std::stoi(m.str()));
+                     });
+  }
+
 }; // struct shim
 
 shim*
@@ -815,9 +1039,54 @@ get_shim_object(xclDeviceHandle handle)
 
 }
 
-namespace xocl {  // shared implementation
+namespace userpf {
 
+void
+get_rom_info(xclDeviceHandle hdl, FeatureRomHeader* value)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_rom_info()");
+  auto shim = get_shim_object(hdl);
+  shim->get_rom_info(value);
 }
+
+void
+get_device_info(xclDeviceHandle hdl, XOCL_DEVICE_INFORMATION* value)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_device_info()");
+  auto shim = get_shim_object(hdl);
+  shim->get_device_info(value);
+}
+
+void
+get_mem_topology(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_mem_topology()");
+  auto shim = get_shim_object(hdl);
+  shim->get_mem_topology(buffer, size, size_ret);
+}
+
+void
+get_ip_layout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_ip_layout()");
+  auto shim = get_shim_object(hdl);
+  shim->get_ip_layout(buffer, size, size_ret);
+}
+
+void
+get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[3])
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "get_bdf_info()");
+  auto shim = get_shim_object(hdl);
+  shim->get_bdf_info(bdf);
+}
+
+} // namespace userpf
 
 // Basic
 unsigned int
@@ -826,14 +1095,13 @@ xclProbe()
   xrt_core::message::
     send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclProbe()");
   GUID guid = GUID_DEVINTERFACE_XOCL_USER;
-  char devpath[256] = {0};
-  size_t len_devpath = sizeof(devpath);
 
-  HDEVINFO device_info = SetupDiGetClassDevs((LPGUID) &guid, NULL, NULL, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
+  HDEVINFO device_info =
+    SetupDiGetClassDevs((LPGUID) &guid, NULL, NULL, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
   if (device_info == INVALID_HANDLE_VALUE) {
     xrt_core::message::
       send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "GetDevices INVALID_HANDLE_VALUE");
-    return 1;
+    return 0;
   }
 
   SP_DEVICE_INTERFACE_DATA device_interface;
@@ -841,18 +1109,21 @@ xclProbe()
 
   // enumerate through devices
   DWORD index;
-  for (index = 0; SetupDiEnumDeviceInterfaces(device_info, NULL, &guid, index, &device_interface); ++index) {
+  for (index = 0;
+       SetupDiEnumDeviceInterfaces(device_info, NULL, &guid, index, &device_interface);
+       ++index) {
 
     // get required buffer size
     ULONG detailLength = 0;
-    if (!SetupDiGetDeviceInterfaceDetail(device_info, &device_interface, NULL, 0, &detailLength, NULL) && GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
+    if (!SetupDiGetDeviceInterfaceDetail(device_info, &device_interface, NULL, 0, &detailLength, NULL)
+        && GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
       xrt_core::message::
         send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "SetupDiGetDeviceInterfaceDetail - get length failed");
       break;
     }
 
     // allocate space for device interface detail
-    PSP_DEVICE_INTERFACE_DETAIL_DATA dev_detail = (PSP_DEVICE_INTERFACE_DETAIL_DATA) HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, detailLength);
+    auto dev_detail = static_cast<PSP_DEVICE_INTERFACE_DETAIL_DATA>(HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, detailLength));
     if (!dev_detail) {
       xrt_core::message::
         send(xrt_core::message::severity_level::XRT_ERROR, "XRT", "HeapAlloc failed");
@@ -868,7 +1139,6 @@ xclProbe()
       break;
     }
 
-    StringCchCopy(devpath, len_devpath, dev_detail->DevicePath);
     HeapFree(GetProcessHeap(), 0, dev_detail);
   }
 
@@ -1049,6 +1319,15 @@ xclLockDevice(xclDeviceHandle handle)
   return shim->lock_device() ? 0 : 1;
 }
 
+int
+xclUnlockDevice(xclDeviceHandle handle)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclUnlockDevice()");
+  auto shim = get_shim_object(handle);
+  return shim->unlock_device() ? 0 : 1;
+}
+
 ssize_t
 xclUnmgdPwrite(xclDeviceHandle handle, unsigned int flags, const void *buf, size_t count, uint64_t offset)
 {
@@ -1067,6 +1346,21 @@ xclUnmgdPread(xclDeviceHandle handle, unsigned int flags, void *buf, size_t coun
   return shim->unmgd_pread(flags, buf, count, offset);
 }
 
+size_t xclWriteBO(xclDeviceHandle handle, xclBufferHandle boHandle, const void *src, size_t size, size_t seek)
+{
+    xrt_core::message::
+        send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclWriteBO()");
+    auto shim = get_shim_object(handle);
+    return shim->write_bo(boHandle, src, size, seek);
+}
+
+size_t xclReadBO(xclDeviceHandle handle, xclBufferHandle boHandle, void *dst, size_t size, size_t skip)
+{
+    xrt_core::message::
+        send(xrt_core::message::severity_level::XRT_DEBUG, "XRT", "xclReadBO()");
+    auto shim = get_shim_object(handle);
+    return shim->read_bo(boHandle, dst, size, skip);
+}
 
 // Deprecated APIs
 size_t

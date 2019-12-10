@@ -300,7 +300,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	void *ulp_blob;
 	int rc;
 
-	if (!XOCL_DSA_IS_VERSAL(xdev) && !xocl_is_unified(xdev)) {
+	if (!xocl_is_unified(xdev)) {
 		userpf_err(xdev, "XOCL: not unified Shell\n");
 		return -EINVAL;
 	}

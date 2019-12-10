@@ -352,7 +352,12 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
         delete priv1;
         return nullptr;
     }
-    kernel_info->in_use = true;
+    if (kernel_info->in_use) {
+        kernel_info->is_shared = true;
+    } else {
+        kernel_info->in_use = true;
+    }
+    kernel_info->num_sessions++;
     g_xma_singleton->num_scalers++;
     g_xma_singleton->num_of_sessions = sc_session->base.session_id;
 

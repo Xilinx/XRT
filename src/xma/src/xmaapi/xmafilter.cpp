@@ -256,7 +256,12 @@ xma_filter_session_create(XmaFilterProperties *filter_props)
 
     g_xma_singleton->num_filters++;
     g_xma_singleton->num_of_sessions = filter_session->base.session_id;
-    kernel_info->in_use = true;
+    if (kernel_info->in_use) {
+        kernel_info->is_shared = true;
+    } else {
+        kernel_info->in_use = true;
+    }
+    kernel_info->num_sessions++;
 
     g_xma_singleton->all_sessions.emplace(g_xma_singleton->num_of_sessions, filter_session->base);
 
