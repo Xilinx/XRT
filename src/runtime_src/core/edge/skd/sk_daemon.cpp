@@ -49,6 +49,11 @@ void freeBO(unsigned int boHandle)
   xclFreeBO(devHdl, boHandle);
 }
 
+int getBufferFd(unsigned int boHandle)
+{
+    return xclExportBO(devHdl, boHandle);
+}
+
 /*
  * This function calls XRT interface to create a soft kernel compute
  * unit. Before create soft kernel CU, we allocate a BO to hold the
@@ -152,9 +157,10 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
   syslog(LOG_INFO, "%s_%d start running\n", name, cu_idx);
 
   /* Set Kernel Ops */
-  ops.getHostBO = &getHostBO;
-  ops.mapBO     = &mapBO;
-  ops.freeBO    = &freeBO;
+  ops.getHostBO     = &getHostBO;
+  ops.mapBO         = &mapBO;
+  ops.freeBO        = &freeBO;
+  ops.getBufferFd   = &getBufferFd;
 
   args_from_host = (unsigned *)getKernelArg(boh, cu_idx);
   if (args_from_host == MAP_FAILED) {
