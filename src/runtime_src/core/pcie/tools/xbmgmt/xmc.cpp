@@ -38,6 +38,9 @@ XMC_Flasher::XMC_Flasher(std::shared_ptr<pcidev::pci_device> dev)
     bool is_mfg = false;
     mDev->sysfs_get<bool>("", "mfg", err, is_mfg, false);
     if (!is_mfg) {
+        if (mDev->get_sysfs_path("xmc", "").empty())
+            goto nosup;
+
         mDev->sysfs_get<unsigned>("xmc", "status", err, val, 0);
 	if (!err.empty() || !(val & 1)) {
             mProbingErrMsg << "Failed to detect XMC, xmc.bin not loaded";
@@ -475,8 +478,10 @@ bool XMC_Flasher::isXMCReady()
 
     if (!xmcReady) {
         xrt_core::ios_flags_restore format(std::cout);
-        std::cout << "ERROR: XMC is not ready: 0x" << std::hex
-            << XMC_MODE() << std::endl;
+        if (!mDev->get_sysfs_path("xmc", "").empty()) {
+            std::cout << "ERROR: XMC is not ready: 0x" << std::hex
+                << XMC_MODE() << std::endl;
+        }
     }
     return xmcReady;
 }
