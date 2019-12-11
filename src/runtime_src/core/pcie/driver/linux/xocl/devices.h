@@ -1250,7 +1250,6 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_MAILBOX_MGMT,			\
 			XOCL_DEVINFO_ICAP_MGMT,				\
 			XOCL_DEVINFO_FMGR,				\
-			XOCL_DEVINFO_XMC,				\
 		})
 
 #define	XOCL_BOARD_MGMT_DEFAULT						\
