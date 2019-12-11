@@ -425,10 +425,10 @@ static void platform_type_append(char *prefix, u32 platform_type)
 		type = "_Recovery BLP";
 		break;
 	case XOCL_VSEC_PLAT_1RP:
-		type = "_xdma_201920_2";
+		type = "_xdma_gen3x4_201920_3";
 		break;
 	case XOCL_VSEC_PLAT_2RP:
-		type = "_xdma_201920_2";
+		type = "_xdma_gen3x4_201920_3";
 		break;
 	default:
 		type = "_Unknown";
