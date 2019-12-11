@@ -1,7 +1,7 @@
 /*
  * Simple Driver for Management PF
  *
- * Copyright (C) 2017 Xilinx, Inc.
+ * Copyright (C) 2017-2019 Xilinx, Inc.
  *
  * Code borrowed from Xilinx SDAccel XDMA driver
  *
@@ -933,6 +933,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 
 	if (!(dev_info->flags & XOCL_DSAFLAG_DYNAMIC_IP) &&
 	    !(dev_info->flags & XOCL_DSAFLAG_SMARTN) &&
+	    !(dev_info->flags & XOCL_DSAFLAG_VERSAL) &&
 			i == dev_info->subdev_num &&
 			lro->core.intr_bar_addr != NULL) {
 		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_DMA_MSIX;
@@ -970,7 +971,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	}
 	xocl_info(&pdev->dev, "created all sub devices");
 
-	if (!(dev_info->flags & XOCL_DSAFLAG_SMARTN))
+	if (!(dev_info->flags & (XOCL_DSAFLAG_SMARTN | XOCL_DSAFLAG_VERSAL)))
 		ret = xocl_icap_download_boot_firmware(lro);
 
 	/* return -ENODEV for 2RP platform */
@@ -1249,6 +1250,7 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_xmc,
 	xocl_init_dna,
 	xocl_init_fmgr,
+	xocl_init_ospi_versal,
 };
 
 static void (*drv_unreg_funcs[])(void) = {
@@ -1270,6 +1272,7 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_xmc,
 	xocl_fini_dna,
 	xocl_fini_fmgr,
+	xocl_fini_ospi_versal,
 };
 
 static int __init xclmgmt_init(void)

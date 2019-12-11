@@ -865,6 +865,7 @@ static struct platform_driver zocl_drm_private_driver = {
 
 static struct platform_driver *const drivers[] = {
 	&zocl_ert_driver,
+	&zocl_ospi_versal_driver,
 };
 
 static int __init zocl_init(void)
