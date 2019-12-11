@@ -1829,15 +1829,6 @@ static int icap_download_bitstream(struct icap *icap, const struct axlf *axlf)
 	icap_freeze_axi_gate(icap);
 
 	err = icap_download_hw(icap, axlf);
-	/*
-	 * Perform frequency scaling since PR download can silenty overwrite
-	 * MMCM settings in static region changing the clock frequencies
-	 * although ClockWiz CONFIG registers will misleading report the older
-	 * configuration from before bitstream download as if nothing has
-	 * changed.
-	 */
-	if (!err)
-		err = icap_ocl_freqscaling(icap, true);
 
 	icap_free_axi_gate(icap);
 	return err;
@@ -2237,6 +2228,17 @@ static int icap_verify_signature(struct icap *icap,
 	return ret;
 }
 
+static int set_min_freqs(struct icap *icap)
+{
+	int i = 0;
+	unsigned short freqs[ICAP_MAX_NUM_CLOCKS] = {0};
+
+	for (i = 0; i < ICAP_MAX_NUM_CLOCKS; ++i) {
+		freqs[i] = frequency_table[0].ocl;
+	}
+
+	return set_freqs(icap, freqs, ICAP_MAX_NUM_CLOCKS);
+}
 static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 {
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
@@ -2269,7 +2271,9 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 		err = icap_setup_clock_freq_topology(icap, xclbin);
 		if (err)
 			return err;
-		err = axlf_set_freqscaling(icap);
+		/* Set clock freqs to minimum to avoid excessive current draw
+		 */
+		err = set_min_freqs(icap);
 		if (err)
 			return err;
 	}
@@ -2277,6 +2281,15 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	err = icap_download_bitstream(icap, xclbin);
 	if (err)
 		return err;
+
+	/*
+	 * Restore clock freqs back
+	 */
+	if (!XOCL_DSA_IS_SMARTN(xdev)) {
+		err = axlf_set_freqscaling(icap);
+		if (err)
+			return err;
+	}
 
 	/* Wait for mig recalibration */
 	if ((xocl_is_unified(xdev) || XOCL_DSA_XPR_ON(xdev)))
