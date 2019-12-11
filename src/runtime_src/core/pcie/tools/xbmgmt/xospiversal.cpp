@@ -42,7 +42,7 @@ int XOSPIVER_Flasher::xclUpgradeFirmware(std::istream& binStream)
     total_size = binStream.tellg();
     binStream.seekg(0, binStream.beg);
 
-    std::cout << "INFO: ***BOOT.BIN has " << total_size << " bytes" << std::endl;
+    std::cout << "INFO: ***PDI has " << total_size << " bytes" << std::endl;
 
     int fd = mDev->open("ospi_versal", O_RDWR);
     if (fd == -1) {

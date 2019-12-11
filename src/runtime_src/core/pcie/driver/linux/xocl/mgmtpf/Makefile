@@ -39,7 +39,7 @@ xclmgmt-y := \
 	../subdev/flash.o \
 	../subdev/iores.o \
 	../subdev/axigate.o \
-	../subdev/ospi_versal.o\
+	../subdev/ospi_versal.o \
 	mgmt-core.o \
 	mgmt-cw.o \
 	mgmt-utils.o \
