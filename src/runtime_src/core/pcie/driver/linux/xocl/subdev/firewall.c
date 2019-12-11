@@ -272,8 +272,11 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 {
 	struct firewall	*fw;
 	XOCL_TIMESPEC time;
-	int	i;
+	int	i, bar_idx;
 	u32	val = 0;
+	resource_size_t bar_off = 0;
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	struct resource *res;
 
 	fw = platform_get_drvdata(pdev);
 	BUG_ON(!fw);
@@ -284,7 +287,12 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 	for (i = 0; i < fw->max_level; i++) {
 		val = IS_FIRED(fw, i);
 		if (val) {
-			xocl_info(&pdev->dev, "AXI Firewall %d tripped, status: 0x%x", i, val);
+			res = platform_get_resource(pdev, IORESOURCE_MEM, i);
+			if (res) {
+				xocl_ioaddr_to_baroff(xdev, res->start,
+					&bar_idx, &bar_off);
+			}
+			xocl_info(&pdev->dev, "AXI Firewall %d tripped, status: 0x%x, bar offset 0x%llx", i, val, bar_off);
 			if (!fw->curr_status) {
 				fw->err_detected_status = val;
 				fw->err_detected_level = i;
