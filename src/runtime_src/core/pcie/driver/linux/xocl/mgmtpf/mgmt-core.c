@@ -480,7 +480,7 @@ static int health_check_cb(void *data)
 				/* clock throttle is at bit 29:16, maximum is 6400 */
 				clk_status = CLK_THROTTLED(ucs_status, 29, 16);
 				if (clk_status > CLK_MAX_VALUE)
-					mgmt_err(lro, "ULP kernel clocks %d exceeds expected maximized value %d.", clk_status, CLK_MAX_VALUE);
+					mgmt_err(lro, "ULP kernel clocks %d exceeds expected maximum value %d.", clk_status, CLK_MAX_VALUE);
 				else if (clk_status)
 					mgmt_err(lro, "ULP kernel clocks throttled at %d%%.", (clk_status / CLK_MAX_VALUE) * 100);
 			}
