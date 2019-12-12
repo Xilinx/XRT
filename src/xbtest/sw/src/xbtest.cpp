@@ -458,7 +458,7 @@ int main(int argc, char* argv[])
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Test JSON parser
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        InputParser *input_parser;
+        InputParser *input_parser = nullptr;
 
         if (xbtest_failures[LEVEL_0] == false)
         {
@@ -519,7 +519,7 @@ int main(int argc, char* argv[])
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Device
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        DeviceInterface *device;
+        DeviceInterface *device = nullptr;
 
         if (xbtest_failures[LEVEL_1] == false) device = new DeviceInterface(xbtest_pfm_def, gGlobal_config, &gAbort);
         if (xbtest_failures[LEVEL_1] == false) xbtest_failures[LEVEL_1] = device->SetupDevice(&device_params);
@@ -555,7 +555,7 @@ int main(int argc, char* argv[])
         // Device mgt test, don't check if present in json, run anyway
         // Note: Device mgt not design as singleton but other test might call this test directly, so this object must be created before the other
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        DeviceMgt *device_mgt;
+        DeviceMgt *device_mgt = nullptr;
         if ((gAbort == false) && (xbtest_failures[LEVEL_1] == false))
         {
             device_mgt = new DeviceMgt(xbtest_pfm_def, device, device_mgt_parameters, gGlobal_config);

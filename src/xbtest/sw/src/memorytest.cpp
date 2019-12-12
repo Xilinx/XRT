@@ -34,7 +34,7 @@ extern std::queue<int> IPC_queue;
 
 uint MemoryTest::ReadMemKernel( int kernel_core_idx, uint address )
 {
-    uint read_data;
+    uint read_data = 0;
     if (m_kernel_type == TEST_MEMORY_DDR)
         read_data = m_device->ReadMemDDRKernel(m_kernel_idx, kernel_core_idx, address);
     else if (m_kernel_type == TEST_MEMORY_HBM)
@@ -68,7 +68,7 @@ std::string MemoryTest::GetMemKernelName()
 
 int MemoryTest::GetMemKernelNumCore()
 {
-    int kernel_num_core;
+    int kernel_num_core = 0;
     if (m_kernel_type == TEST_MEMORY_DDR)
         kernel_num_core = m_device->GetMemKernelDDRNumCore(m_kernel_idx);
     else if (m_kernel_type == TEST_MEMORY_HBM)
@@ -80,7 +80,7 @@ int MemoryTest::GetMemKernelNumCore()
 
 int MemoryTest::GetMemKernelNumMem()
 {
-    int kernel_num_mem;
+    int kernel_num_mem = 0;
     if (m_kernel_type == TEST_MEMORY_DDR)
         kernel_num_mem = m_device->GetMemKernelDDRNumMem(m_kernel_idx);
     else if (m_kernel_type == TEST_MEMORY_HBM)
@@ -124,7 +124,7 @@ std::string MemoryTest::GetMemKernelTag2( int kernel_core_idx )
 
 int MemoryTest::GetMemKernelInst()
 {
-    int kernel_inst;
+    int kernel_inst = 0;
     if (m_kernel_type == TEST_MEMORY_DDR)
         kernel_inst = m_device->GetMemKernelDDRInst(m_kernel_idx);
     else if (m_kernel_type == TEST_MEMORY_HBM)
@@ -495,7 +495,7 @@ bool MemoryTest::WaitCfgUpdated( TestItConfig_t test_it )
             std::string msg = "Memory Compute unit configuration not updated";
             if (m_kernel_type == TEST_MEMORY_HBM)
                 msg += " for channel: " + std::to_string(kernel_core_idx) + " (" + GetMemKernelTag(kernel_core_idx) + ")";
-                msg += ", after checking " + std::to_string(watchdog_cnt_init) + " times " + std::to_string(WATCHDOG_TICK/1000) + "ms";
+            msg += ", after checking " + std::to_string(watchdog_cnt_init) + " times " + std::to_string(WATCHDOG_TICK/1000) + "ms";
             LogMessage(LOG_ERROR, msg);
             ret_failure = true;
         }
@@ -1316,7 +1316,7 @@ int MemoryTest::RunThread( MemoryTestcaseCfg_t TC_Cfg, std::list<TestItConfig_t>
             WriteToMeasurementFileResult(&m_outputfile_result_total, test_it_cnt, test_it, total_meas_bw_wr, total_meas_bw_rd);
 
 
-        LogLevel log_level_pass; // Message severity for individual result check
+        LogLevel log_level_pass = LOG_PASS; // Message severity for individual result check
         if      (m_kernel_type == TEST_MEMORY_DDR) log_level_pass = LOG_PASS;
         else if (m_kernel_type == TEST_MEMORY_HBM) log_level_pass = LOG_DEBUG;
 
@@ -1443,7 +1443,7 @@ void MemoryTest::GetBWRange ( MemoryTestcaseCfg_t TC_Cfg, TestItConfig_t *test_i
 
 template<typename T>  T MemoryTest::SelectParamDDRorHBM( T sel_val_ddr, T sel_val_hbm )
 {
-    T sel_val;
+    T sel_val = 0;
     if (m_kernel_type == TEST_MEMORY_DDR)
         sel_val = sel_val_ddr;
     else if (m_kernel_type == TEST_MEMORY_HBM)

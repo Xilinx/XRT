@@ -893,7 +893,7 @@ inline std::string BoolToStr( bool bool_in )
 
 inline bool StrToBool( std::string bool_in )
 {
-    bool bool_out;
+    bool bool_out = false;
     if      (StrMatchNoCase(bool_in, BOOL_TRUE_STR)  == true) bool_out = true;
     else if (StrMatchNoCase(bool_in, BOOL_FALSE_STR) == true) bool_out = false;
     return bool_out;
@@ -997,8 +997,8 @@ typedef struct Xbtest_Pfm_Def_Physical_t
 
 typedef struct Xbtest_Pfm_Def_Mem_Thresh_HiLo_t
 {
-    uint high;
-    uint low;
+    uint high = 0;
+    uint low = 0;
 } Xbtest_Pfm_Def_Mem_Thresh_HiLo_t;
 
 typedef struct Xbtest_Pfm_Def_Mem_Thresh_WrRd_t

@@ -887,9 +887,9 @@ int PowerTest::RunThread( PowerTestcaseCfg_t TC_Cfg, std::list<TestItConfig_t> *
 
     bool test_failure           = false;
     bool test_it_failure        = false;
-    double meas_power_filter;
-    double power_filt;
-    double power_lpf;
+    double meas_power_filter = 0.0;
+    double power_filt = 0.0;
+    double power_lpf = 0.0;
     DeviceInterface::Device_Info device_info;
     double percent = 0.0;
     int throttle = 0;
@@ -1284,11 +1284,11 @@ int PowerTest::RunThread( PowerTestcaseCfg_t TC_Cfg, std::list<TestItConfig_t> *
 
         int power_in_range_cnt = 0;
 
-        double pwr_err;
-        double pwr_err_filt;
-        double pwr_filt_err;
+        double pwr_err = 0.0;
+        double pwr_err_filt = 0.0;
+        double pwr_filt_err = 0.0;
 
-        bool new_TR;
+        bool new_TR = false;
 
         power_in_tol_cnt = 0;
         power_out_tol_cnt = 0;

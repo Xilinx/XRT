@@ -235,10 +235,10 @@ private:
     const int MAX_CALIB_TEMP = 300;
 
     typedef struct {
-        double a;
-        double b;
-        double c;
-        double err;
+        double a = 0.0;
+        double b = 0.0;
+        double c = 0.0;
+        double err = 0.0;
     } leakage_exp_curve;
 
     meas_temp_pwr MeasPwr(uint duration, DeviceInterface::Device_Info *device_info, double percent, bool calibration);

@@ -125,9 +125,9 @@ bool VerifyTest::VerifyKernelBI( DeviceInterface::Build_Info krnl_bi, int kernel
     else if (kernel_type == KRNL_TYPE_GT_MAC)
         m_device->PrintGTKrnlBI(krnl_bi);
 
-    int major_version;
-    int minor_version;
-    int component_id;
+    int major_version = 0;
+    int minor_version = 0;
+    int component_id = 0;
 
     if (kernel_type == KRNL_TYPE_PWR)
     {

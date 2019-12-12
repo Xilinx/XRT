@@ -919,7 +919,7 @@ bool InputParser::ParseTestSequence( TestType test_type, Json_Parameters_t *json
                     {
                         std::string test_sequence_file_name = test_sequence_name + ".input_file[" + std::to_string(test_cnt) + "]";
                         parse_it_failure = RET_SUCCESS; // Reset Status for each line
-                        uint num_param_max;
+                        uint num_param_max = 0;
                         switch(test_type)
                         {
                             case TEST_DMA:          num_param_max = NUM_TEST_SEQ_PARAM_DMA;         break;
