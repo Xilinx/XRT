@@ -59,6 +59,7 @@ MODULE_PARM_DESC(minimum_initialization,
 
 #define	MAX_DYN_SUBDEV		1024
 
+#define	CLK_MAX_VALUE		6400
 #define	CLK_SHUTDOWN_BIT	0x1
 #define	DEBUG_CLK_SHUTDOWN_BIT	0x2
 #define	VALID_CLKSHUTDOWN_BITS	(CLK_SHUTDOWN_BIT|DEBUG_CLK_SHUTDOWN_BIT)
@@ -478,8 +479,10 @@ static int health_check_cb(void *data)
 			} else {
 				/* clock throttle is at bit 29:16, maximum is 6400 */
 				clk_status = CLK_THROTTLED(ucs_status, 29, 16);
-				if (clk_status)
-					mgmt_err(lro, "ULP kernel clocks throttled at %d%%.", clk_status / 64);
+				if (clk_status > CLK_MAX_VALUE)
+					mgmt_err(lro, "ULP kernel clocks %d exceeds expected maximized value %d.", clk_status, CLK_MAX_VALUE);
+				else if (clk_status)
+					mgmt_err(lro, "ULP kernel clocks throttled at %d%%.", (clk_status / CLK_MAX_VALUE) * 100);
 			}
 		}
 	}
