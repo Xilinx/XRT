@@ -2230,12 +2230,9 @@ static int icap_verify_signature(struct icap *icap,
 
 static int set_min_freqs(struct icap *icap)
 {
-	int i = 0;
 	unsigned short freqs[ICAP_MAX_NUM_CLOCKS] = {0};
 
-	for (i = 0; i < ICAP_MAX_NUM_CLOCKS; ++i) {
-		freqs[i] = frequency_table[0].ocl;
-	}
+	freqs[KERNEL_CLK] = frequency_table[0].ocl;
 
 	return set_freqs(icap, freqs, ICAP_MAX_NUM_CLOCKS);
 }
@@ -2285,11 +2282,11 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	/*
 	 * Restore clock freqs back
 	 */
-	if (!XOCL_DSA_IS_SMARTN(xdev)) {
+	if (!XOCL_DSA_IS_SMARTN(xdev))
 		err = axlf_set_freqscaling(icap);
-		if (err)
-			return err;
-	}
+
+	if (err)
+		return err;
 
 	/* Wait for mig recalibration */
 	if ((xocl_is_unified(xdev) || XOCL_DSA_XPR_ON(xdev)))
