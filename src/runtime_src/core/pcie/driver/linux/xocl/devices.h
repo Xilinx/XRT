@@ -192,6 +192,7 @@ enum {
 #define XOCL_DMA_MSIX		"dma_msix"
 #define	XOCL_MAILBOX_VERSAL	"mailbox_versal"
 #define XOCL_ERT		"ert"
+#define XOCL_OSPI_VERSAL	"ospi_versal"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
@@ -217,6 +218,7 @@ enum subdev_id {
 	XOCL_SUBDEV_FMGR,
 	XOCL_SUBDEV_MIG_HBM,
 	XOCL_SUBDEV_MAILBOX_VERSAL,
+	XOCL_SUBDEV_OSPI_VERSAL,
 	XOCL_SUBDEV_NUM
 };
 
@@ -265,7 +267,6 @@ struct xocl_subdev_map {
 		XOCL_RES_FEATURE_ROM_VERSAL,		\
 		ARRAY_SIZE(XOCL_RES_FEATURE_ROM_VERSAL),	\
 	}
-
 
 #define	XOCL_RES_FEATURE_ROM_SMARTN			\
 		((struct resource []) {			\
@@ -1059,6 +1060,22 @@ struct xocl_subdev_map {
 		0,					\
 	}
 
+#define	XOCL_RES_OSPI_VERSAL				\
+		((struct resource []) {			\
+			{				\
+			.start	= 0x3000000,		\
+			.end	= 0x300FFFF,		\
+			.flags	= IORESOURCE_MEM,	\
+			}				\
+		})
+
+#define	XOCL_DEVINFO_OSPI_VERSAL			\
+	{						\
+		XOCL_SUBDEV_OSPI_VERSAL,		\
+		XOCL_OSPI_VERSAL,			\
+		XOCL_RES_OSPI_VERSAL,		\
+		ARRAY_SIZE(XOCL_RES_OSPI_VERSAL),	\
+	}
 
 /* user pf defines */
 #define	USER_RES_QDMA							\
@@ -1221,6 +1238,7 @@ struct xocl_subdev_map {
 #define	MGMT_RES_VERSAL							\
 		((struct xocl_subdev_info []) {				\
 		 	XOCL_DEVINFO_FEATURE_ROM_VERSAL,		\
+		 	XOCL_DEVINFO_OSPI_VERSAL,			\
 		})
 
 #define	MGMT_RES_DSA50							\
